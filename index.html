@@ -3,78 +3,80 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>Arcane vs. Steel — 2D Physics Auto-Battler</title>
-  <meta name="description" content="TABS-inspired 2D physics auto-battler featuring procedural animations, dynamic lighting, floor reflections, and cinematic ultimates." />
+  <title>Arcane vs. Steel — HD-2D Pixel Auto-Battler</title>
+  <meta name="description" content="HD-2D pixel-art physics auto-battler featuring articulated sprite animations, dynamic lighting, floor reflections, and cinematic ultimates." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;800&family=JetBrains+Mono:wght@500;700&family=Plus+Jakarta+Sans:wght@500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Press+Start+2P&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
   <main id="app">
     <canvas id="arena-canvas"></canvas>
 
-    <!-- Top Fighting-Game Broadcast HUD -->
+    <!-- Authentic Dark-Fantasy Arcade HUD -->
     <header class="hud-top">
-      <!-- Warrior (Left) -->
-      <section class="fighter-wing wing-left" id="hud-warrior">
-        <div class="wing-meta">
-          <div class="name-cluster">
-            <span class="class-tag tag-steel">VANGUARD</span>
-            <h2 class="fighter-name">Aethelgard</h2>
-          </div>
-          <span class="hp-readout" id="warrior-hp-text">1200</span>
+      <!-- Left Fighter: Warrior -->
+      <section class="fighter-plate plate-left" id="hud-warrior">
+        <div class="portrait-frame frame-steel">
+          <canvas id="warrior-portrait" width="44" height="44"></canvas>
         </div>
-
-        <div class="hp-shell">
-          <div class="hp-ghost" id="warrior-hp-dmg" style="width: 100%"></div>
-          <div class="hp-fill fill-steel" id="warrior-hp-bar" style="width: 100%"></div>
-        </div>
-
-        <div class="resource-row">
-          <div class="ult-shell" title="Ultimate: Heavenly Earthshatter">
-            <div class="ult-fill fill-ult-steel" id="warrior-mana-bar" style="width: 0%"></div>
-            <span class="ult-text" id="warrior-ult-label">ULT 0%</span>
+        <div class="bars-column">
+          <div class="plate-header">
+            <h2 class="fighter-name">AETHELGARD</h2>
+            <span class="hp-num" id="warrior-hp-text">1200</span>
           </div>
-          <div class="skill-chip" id="warrior-cd-pill">
-            <div class="skill-fill" id="warrior-skill-cd"></div>
-            <span class="skill-label" id="warrior-skill-text">Whirlwind</span>
+          <div class="hp-frame">
+            <div class="hp-ghost" id="warrior-hp-dmg" style="width: 100%"></div>
+            <div class="hp-fill fill-steel" id="warrior-hp-bar" style="width: 100%"></div>
+            <div class="hp-notches"></div>
+          </div>
+          <div class="sub-row">
+            <div class="ult-frame">
+              <div class="ult-fill" id="warrior-mana-bar" style="width: 0%"></div>
+              <span class="ult-label" id="warrior-ult-label">OVERDRIVE 0%</span>
+            </div>
+            <div class="cd-box" id="warrior-cd-pill">
+              <div class="cd-fill" id="warrior-skill-cd"></div>
+              <span class="cd-label" id="warrior-skill-text">WHIRLWIND</span>
+            </div>
           </div>
         </div>
         <span class="sr-only" id="warrior-state">IDLE</span>
       </section>
 
-      <!-- Center Emblem & Timer -->
-      <div class="vs-emblem">
+      <!-- Center Crest & Clock -->
+      <div class="center-emblem">
         <h1 class="sr-only">Arcane vs Steel</h1>
-        <div class="vs-crest">VS</div>
-        <div class="match-clock" id="match-timer">00:00</div>
+        <div class="crest-shield"><span>VS</span></div>
+        <div class="clock-plate" id="match-timer">00:00</div>
       </div>
 
-      <!-- Fire Mage (Right) -->
-      <section class="fighter-wing wing-right" id="hud-mage">
-        <div class="wing-meta">
-          <span class="hp-readout" id="mage-hp-text">950</span>
-          <div class="name-cluster">
-            <h2 class="fighter-name">Ignis Sol</h2>
-            <span class="class-tag tag-arcane">PYROMANCER</span>
+      <!-- Right Fighter: Fire Mage -->
+      <section class="fighter-plate plate-right" id="hud-mage">
+        <div class="bars-column">
+          <div class="plate-header">
+            <span class="hp-num" id="mage-hp-text">950</span>
+            <h2 class="fighter-name">IGNIS SOL</h2>
+          </div>
+          <div class="hp-frame">
+            <div class="hp-ghost" id="mage-hp-dmg" style="width: 100%"></div>
+            <div class="hp-fill fill-arcane" id="mage-hp-bar" style="width: 100%"></div>
+            <div class="hp-notches"></div>
+          </div>
+          <div class="sub-row">
+            <div class="cd-box" id="mage-cd-pill">
+              <div class="cd-fill" id="mage-skill-cd"></div>
+              <span class="cd-label" id="mage-skill-text">PILLAR</span>
+            </div>
+            <div class="ult-frame">
+              <div class="ult-fill" id="mage-mana-bar" style="width: 0%"></div>
+              <span class="ult-label" id="mage-ult-label">OVERDRIVE 0%</span>
+            </div>
           </div>
         </div>
-
-        <div class="hp-shell">
-          <div class="hp-ghost" id="mage-hp-dmg" style="width: 100%"></div>
-          <div class="hp-fill fill-arcane" id="mage-hp-bar" style="width: 100%"></div>
-        </div>
-
-        <div class="resource-row">
-          <div class="skill-chip" id="mage-cd-pill">
-            <div class="skill-fill" id="mage-skill-cd"></div>
-            <span class="skill-label" id="mage-skill-text">Flame Pillar</span>
-          </div>
-          <div class="ult-shell" title="Ultimate: Meteor Cataclysm">
-            <div class="ult-fill fill-ult-arcane" id="mage-mana-bar" style="width: 0%"></div>
-            <span class="ult-text" id="mage-ult-label">ULT 0%</span>
-          </div>
+        <div class="portrait-frame frame-arcane">
+          <canvas id="mage-portrait" width="44" height="44"></canvas>
         </div>
         <span class="sr-only" id="mage-state">IDLE</span>
       </section>
@@ -82,34 +84,33 @@
 
     <!-- Ultimate Callout Banner -->
     <div id="ult-banner" class="ult-banner hidden">
-      <div class="ult-line"></div>
+      <div class="ult-rule"></div>
       <div class="ult-subtitle" id="ult-caster">AETHELGARD</div>
       <div class="ult-title" id="ult-name">HEAVENLY EARTHSHATTER</div>
-      <div class="ult-line"></div>
+      <div class="ult-rule"></div>
     </div>
 
-    <!-- Bottom Thumb-Friendly Control Dock -->
+    <!-- Bottom Forged Iron Action Bar -->
     <footer class="hud-bottom">
-      <div class="control-dock">
-        <button id="btn-slowmo" class="dock-btn" type="button" aria-pressed="false">
-          <span class="status-led"></span>
-          <span>0.35x Slow-Mo</span>
+      <div class="iron-bar">
+        <button id="btn-slowmo" class="iron-btn" type="button" aria-pressed="false">
+          <span class="gem-indicator"></span>
+          <span>0.35x CHRONO</span>
         </button>
-        <div class="dock-divider"></div>
-        <button id="btn-reset" class="dock-btn dock-btn-accent" type="button">
-          <span>Reset Match</span>
+        <button id="btn-reset" class="iron-btn iron-btn-gold" type="button">
+          <span>NEW DUEL</span>
         </button>
       </div>
     </footer>
 
-    <!-- Victory Overlay -->
+    <!-- Victory Modal -->
     <div id="victory-overlay" class="victory-overlay hidden">
-      <div class="victory-modal">
-        <div class="victory-eyebrow">ARENA VERDICT</div>
+      <div class="victory-plaque">
+        <div class="victory-eyebrow">DUEL CONCLUDED</div>
         <h2 class="victory-winner" id="victory-winner">AETHELGARD TRIUMPHS</h2>
         <p class="victory-stats" id="victory-stats">Steel prevails over Arcane</p>
-        <button id="btn-play-again" class="dock-btn dock-btn-accent victory-btn" type="button">
-          Play New Match
+        <button id="btn-play-again" class="iron-btn iron-btn-gold" type="button">
+          FIGHT AGAIN
         </button>
       </div>
     </div>

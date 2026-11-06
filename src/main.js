@@ -1,5 +1,6 @@
 import { Renderer } from './engine/Renderer.js';
 import { VFXManager } from './engine/VFXManager.js';
+import { PixelForge } from './engine/PixelForge.js';
 import { Warrior } from './entities/Warrior.js';
 import { FireMage } from './entities/FireMage.js';
 
@@ -8,6 +9,7 @@ class Game {
     this.canvas = document.getElementById('arena-canvas');
     this.renderer = new Renderer(this.canvas);
     this.vfx = new VFXManager();
+    PixelForge.initAssets();
 
     this.userSlowMo = false;
     this.ultSlowTimer = 0;
@@ -150,12 +152,12 @@ class Game {
       document.getElementById(`${prefix}-hp-text`).textContent = `${Math.ceil(f.hp)}`;
       document.getElementById(`${prefix}-state`).textContent = f.isDead ? 'DEFEATED' : f.state;
       document.getElementById(`${prefix}-mana-bar`).style.width = `${manaPct}%`;
-      document.getElementById(`${prefix}-ult-label`).textContent = `ULT ${Math.floor(manaPct)}%`;
+      document.getElementById(`${prefix}-ult-label`).textContent = `OVERDRIVE ${Math.floor(manaPct)}%`;
 
       const cdPct = ((f.skillMaxCooldown - f.skillCooldown) / f.skillMaxCooldown) * 100;
       document.getElementById(`${prefix}-skill-cd`).style.width = `${cdPct}%`;
       document.getElementById(`${prefix}-skill-text`).textContent =
-        f.skillCooldown <= 0 ? `${f.skillName}` : `${f.skillName} ${f.skillCooldown.toFixed(1)}s`;
+        f.skillCooldown <= 0 ? `${f.skillName}` : `${f.skillCooldown.toFixed(1)}s`;
     };
 
     updateFighterHUD('warrior', this.warrior);

@@ -1,4 +1,5 @@
 import { Fighter } from './Fighter.js';
+import { PixelForge } from '../engine/PixelForge.js';
 
 export class FireMage extends Fighter {
   constructor(x, groundY) {
@@ -15,14 +16,13 @@ export class FireMage extends Fighter {
       primaryColor: '#fb923c'
     });
     this.ultName = 'METEOR CATACLYSM';
-    this.skillName = 'Flame Pillar';
-    this.staffAngle = 0.25;
+    this.skillName = 'PILLAR';
+    this.staffAngle = 0.2;
     this.runeOrbit = 0;
   }
 
   update(dt, enemy, game) {
     this.runeOrbit += dt * 2.8;
-    // Active ranged kiting: keep comfortable distance from Warrior
     if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const dist = Math.abs(enemy.x - this.x);
       if (dist < 230) {
@@ -42,11 +42,11 @@ export class FireMage extends Fighter {
         this.didActionFrame = true;
         this.vx -= this.facing * 125;
         this.torsoVel = -this.facing * 12;
-        this.staffAngle = 0.7;
+        this.staffAngle = 0.75;
 
-        const spawnX = this.x + this.facing * 36;
-        const spawnY = this.y - 48;
-        const targetY = enemy ? enemy.y - 44 : spawnY;
+        const spawnX = this.x + this.facing * 38;
+        const spawnY = this.y - 52;
+        const targetY = enemy ? enemy.y - 46 : spawnY;
         const dx = enemy ? enemy.x - spawnX : this.facing * 450;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
@@ -67,7 +67,7 @@ export class FireMage extends Fighter {
         game.vfx.spawnBurst(spawnX, spawnY, 10, '#fb923c', 150);
       }
     } else {
-      this.staffAngle = 0.25;
+      this.staffAngle = 0.2;
       this.setState('IDLE');
     }
   }
@@ -75,16 +75,15 @@ export class FireMage extends Fighter {
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
     if (t < 0.35) {
-      this.staffAngle = -1.1;
+      this.staffAngle = -0.95;
       if (!this.didActionFrame && enemy) {
         this.didActionFrame = true;
-        // Backstep slightly while summoning pillar
         this.vx -= this.facing * 150;
         game.vfx.spawnFlamePillar(enemy.x + enemy.vx * 0.15, this.groundY, this, enemy);
         game.vfx.spawnShockwave(this.x, this.y - 70, 55, '#fb923c', 0.35);
       }
     } else if (t >= 0.85) {
-      this.staffAngle = 0.25;
+      this.staffAngle = 0.2;
       this.setState('IDLE');
     }
   }
@@ -94,7 +93,7 @@ export class FireMage extends Fighter {
     if (t < 0.75) {
       this.vy = -40;
       this.y = Math.max(this.groundY - 125, this.y - 160 * dt);
-      this.staffAngle = -1.35;
+      this.staffAngle = -1.1;
       this.runeOrbit += dt * 9;
 
       if (Math.random() < 0.85) {
@@ -132,121 +131,106 @@ export class FireMage extends Fighter {
         isMeteor: true
       });
     } else if (t >= 1.55) {
-      this.staffAngle = 0.25;
+      this.staffAngle = 0.2;
       this.setState('IDLE');
     }
   }
 
   draw(ctx, isReflection = false) {
+    const sprites = PixelForge.initAssets().mage;
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
 
-    // 1. Flowing Ember Robe Cloak
-    ctx.beginPath();
-    ctx.moveTo(this.capeNodes[0].x, this.capeNodes[0].y);
-    for (let i = 1; i < this.capeNodes.length; i++) {
-      ctx.lineTo(this.capeNodes[i].x, this.capeNodes[i].y);
+    // 1. Pixel-Art Flowing Ember Cloak
+    for (let i = 0; i < this.capeNodes.length - 1; i++) {
+      const a = this.capeNodes[i];
+      const b = this.capeNodes[i + 1];
+      ctx.strokeStyle = this.hitFlash > 0 ? '#ffffff' : i === 0 ? '#7c2d12' : '#9a3412';
+      ctx.lineWidth = 20 - i * 2.5;
+      ctx.lineCap = 'square';
+      ctx.beginPath();
+      ctx.moveTo(Math.round(a.x), Math.round(a.y));
+      ctx.lineTo(Math.round(b.x), Math.round(b.y));
+      ctx.stroke();
     }
-    ctx.strokeStyle = this.hitFlash > 0 ? '#ffffff' : '#9a3412';
-    ctx.lineWidth = 16;
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
-    ctx.stroke();
 
-    ctx.translate(this.x, this.y);
+    ctx.translate(Math.round(this.x), Math.round(this.y));
     ctx.scale(this.facing, 1);
 
+    // Spinning Arcane Sigil Ring when casting/ulting
     if (this.state === 'ULTIMATE' || this.state === 'SKILL') {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.translate(0, -45);
+      ctx.translate(0, -48);
       ctx.rotate(this.runeOrbit);
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(0, 0, 48, 0, Math.PI * 2);
+      ctx.arc(0, 0, 52, 0, Math.PI * 2);
       ctx.stroke();
       for (let i = 0; i < 6; i++) {
         const a = (i * Math.PI) / 3;
         ctx.fillStyle = '#fb923c';
-        ctx.beginPath();
-        ctx.arc(Math.cos(a) * 48, Math.sin(a) * 48, 4, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillRect(Math.cos(a) * 52 - 4, Math.sin(a) * 52 - 4, 8, 8);
       }
       ctx.restore();
     }
 
-    // 2. Bouncy Legs
-    const step = this.state === 'WALK' ? Math.sin(this.walkPhase) * 11 : 0;
-    ctx.strokeStyle = '#431407';
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.moveTo(-4, -22);
-    ctx.lineTo(-6 - step, 0);
-    ctx.moveTo(4, -22);
-    ctx.lineTo(6 + step, 0);
-    ctx.stroke();
+    const stride = this.state === 'WALK' ? Math.sin(this.walkPhase) * 0.45 : 0;
+    const breathe = Math.sin(this.walkPhase) * 2;
 
-    // 3. Spring-Rigged Robe Torso & Hooded Head
-    ctx.translate(0, -24 + this.headBob * 0.45);
-    ctx.rotate(this.torsoAngle * this.facing);
-
-    ctx.fillStyle = this.hitFlash > 0 ? '#ffffff' : '#7c2d12';
-    ctx.strokeStyle = '#fb923c';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-15, 2);
-    ctx.lineTo(-10, -34);
-    ctx.lineTo(10, -34);
-    ctx.lineTo(15, 2);
-    ctx.closePath();
-    ctx.fill();
-    ctx.stroke();
-
+    // 2. Back Leg & Back Arm
     ctx.save();
-    ctx.translate(0, -43 + this.headBob * 0.35);
-    ctx.fillStyle = this.hitFlash > 0 ? '#ffffff' : '#431407';
-    ctx.beginPath();
-    ctx.moveTo(-13, 8);
-    ctx.quadraticCurveTo(-14, -15, 4, -14);
-    ctx.quadraticCurveTo(14, -6, 12, 8);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = '#fef08a';
-    ctx.beginPath();
-    ctx.arc(5, -2, 2.5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.translate(-6, -30);
+    ctx.rotate(-stride);
+    ctx.drawImage(sprites.leg, -12, 0);
     ctx.restore();
 
+    ctx.save();
+    ctx.translate(-10, -58 + breathe);
+    ctx.rotate(stride * 0.6);
+    ctx.drawImage(sprites.arm, -12, -6);
+    ctx.restore();
+
+    // 3. Spring-Rigged Pixel Robe Torso & Hooded Head
+    ctx.translate(0, -30 + this.headBob * 0.45);
+    ctx.rotate(this.torsoAngle * this.facing);
+
+    ctx.drawImage(sprites.torso, -24, -46 + breathe * 0.5);
+
+    ctx.save();
+    ctx.translate(0, -64 + breathe);
+    ctx.rotate(Math.sin(this.walkPhase * 0.5) * 0.05);
+    ctx.drawImage(sprites.head, -21, -24);
+    ctx.restore();
+
+    // 4. Orbiting Pixel Arcane Runes
     for (let i = 0; i < 3; i++) {
       const a = this.runeOrbit + i * ((Math.PI * 2) / 3);
-      ctx.fillStyle = '#fde047';
-      ctx.beginPath();
-      ctx.arc(Math.cos(a) * 24, -28 + Math.sin(a) * 8, 3, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(Math.round(Math.cos(a) * 28) - 3, Math.round(-38 + Math.sin(a) * 9) - 3, 6, 6);
     }
 
-    // 4. Levitating Ember Staff
+    // 5. Front Leg
+    ctx.save();
+    ctx.translate(6, 0);
+    ctx.rotate(stride);
+    ctx.drawImage(sprites.leg, -12, 0);
+    ctx.restore();
+
+    // 6. Front Arm & Levitating Pixel Ember Staff
     ctx.save();
     const floatY = Math.sin(this.runeOrbit * 1.5) * 4;
-    ctx.translate(16, -22 + floatY);
+    ctx.translate(14, -26 + floatY);
     ctx.rotate(this.staffAngle);
-
-    ctx.strokeStyle = '#78350f';
-    ctx.lineWidth = 4.5;
-    ctx.beginPath();
-    ctx.moveTo(0, 22);
-    ctx.lineTo(0, -34);
-    ctx.stroke();
 
     if (!isReflection) {
       ctx.shadowColor = '#fb923c';
-      ctx.shadowBlur = 18;
+      ctx.shadowBlur = 16;
     }
-    ctx.fillStyle = '#fef08a';
-    ctx.beginPath();
-    ctx.arc(0, -42, 7.5, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.drawImage(sprites.staff, -15, -62);
+    ctx.shadowBlur = 0;
+    ctx.drawImage(sprites.arm, -12, -10);
     ctx.restore();
 
     ctx.restore();
