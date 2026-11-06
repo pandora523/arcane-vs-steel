@@ -22,7 +22,7 @@ export class VFXManager {
   }
 
   spawnParticle(opts) {
-    if (this.particles.length > 260) this.particles.shift();
+    if (this.particles.length > 160) this.particles.shift();
     this.particles.push({
       x: opts.x,
       y: opts.y,
@@ -32,7 +32,7 @@ export class VFXManager {
       endSize: opts.endSize ?? 0,
       color: opts.color || '#38bdf8',
       life: 0,
-      maxLife: opts.maxLife || 0.6,
+      maxLife: opts.maxLife || 0.55,
       gravity: opts.gravity || 0,
       additive: opts.additive !== false,
       drag: opts.drag || 0.98
@@ -50,36 +50,37 @@ export class VFXManager {
         vy: Math.sin(a) * s - (opts.upBias || 0),
         size: (opts.size || 6) * (0.6 + Math.random() * 0.7),
         color,
-        maxLife: (opts.life || 0.5) * (0.6 + Math.random() * 0.6),
+        maxLife: (opts.life || 0.45) * (0.6 + Math.random() * 0.6),
         gravity: opts.gravity ?? 260,
         additive: opts.additive !== false
       });
     }
   }
 
-  spawnSlash(x, y, radius, startAngle, endAngle, color = '#38bdf8', duration = 0.22) {
+  spawnSlash(x, y, radius, startAngle, endAngle, color = '#38bdf8', duration = 0.2) {
     this.slashes.push({ x, y, radius, startAngle, endAngle, color, life: 0, maxLife: duration });
   }
 
-  spawnShockwave(x, y, maxRadius, color = '#38bdf8', duration = 0.45, flat = false) {
+  spawnShockwave(x, y, maxRadius, color = '#38bdf8', duration = 0.4, flat = false) {
     this.shockwaves.push({ x, y, maxRadius, color, life: 0, maxLife: duration, flat });
   }
 
-  spawnDecal(x, width, type = 'scorch', color = '#fb923c', duration = 5.5) {
+  spawnDecal(x, width, type = 'scorch', color = '#fb923c', duration = 5.0) {
+    if (this.decals.length > 8) this.decals.shift();
     this.decals.push({ x, width, type, color, life: 0, maxLife: duration, seed: Math.random() * 100 });
   }
 
   spawnLightning(x, topY, bottomY, color = '#fde08a') {
     const pts = [{ x, y: topY }];
-    const steps = 12;
+    const steps = 10;
     for (let i = 1; i < steps; i++) {
       pts.push({
-        x: x + (Math.random() - 0.5) * 85,
+        x: x + (Math.random() - 0.5) * 80,
         y: topY + ((bottomY - topY) * i) / steps
       });
     }
     pts.push({ x, y: bottomY });
-    this.lightnings.push({ pts, color, life: 0, maxLife: 0.32 });
+    this.lightnings.push({ pts, color, life: 0, maxLife: 0.28 });
   }
 
   spawnFlamePillar(x, groundY, owner, target) {
@@ -89,7 +90,7 @@ export class VFXManager {
       owner,
       target,
       life: 0,
-      maxLife: 1.55,
+      maxLife: 1.5,
       erupted: false,
       tickTimer: 0
     });
@@ -105,7 +106,7 @@ export class VFXManager {
       color: opts.color || '#fb923c',
       coreColor: opts.coreColor || '#fef08a',
       owner: opts.owner,
-      damage: opts.damage || 45,
+      damage: opts.damage || 60,
       isMeteor: !!opts.isMeteor
     });
   }
@@ -119,7 +120,7 @@ export class VFXManager {
       isCrit,
       color: label ? '#38bdf8' : isCrit ? '#facc15' : '#f8fafc',
       life: 0,
-      maxLife: isCrit ? 1.1 : 0.85
+      maxLife: isCrit ? 1.0 : 0.8
     });
   }
 
@@ -156,31 +157,35 @@ export class VFXManager {
     for (let i = this.pillars.length - 1; i >= 0; i--) {
       const pil = this.pillars[i];
       pil.life += dt;
-      if (pil.life >= 0.5 && !pil.erupted) {
+      // Track target slightly before eruption so Warrior can't trivially walk out
+      if (!pil.erupted && pil.target) {
+        pil.x += (pil.target.x - pil.x) * 3.5 * dt;
+      }
+      if (pil.life >= 0.42 && !pil.erupted) {
         pil.erupted = true;
-        renderer.triggerShake(10, 0.38);
+        renderer.triggerShake(10, 0.35);
         this.spawnDecal(pil.x, 105, 'scorch', '#fb923c', 4.5);
-        this.spawnShockwave(pil.x, groundY, 115, '#facc15', 0.42, true);
+        this.spawnShockwave(pil.x, groundY, 120, '#facc15', 0.4, true);
       }
       if (pil.erupted && pil.life < pil.maxLife - 0.15) {
-        for (let k = 0; k < 4; k++) {
-          const spiral = Math.sin(pil.life * 20 + k) * 38;
+        for (let k = 0; k < 3; k++) {
+          const spiral = Math.sin(pil.life * 22 + k * 2) * 38;
           this.spawnParticle({
             x: pil.x + spiral,
             y: groundY - Math.random() * 25,
             vx: (Math.random() - 0.5) * 40,
-            vy: -280 - Math.random() * 210,
-            size: 14 + Math.random() * 10,
+            vy: -290 - Math.random() * 200,
+            size: 13 + Math.random() * 9,
             color: k % 2 === 0 ? '#fb923c' : '#fef08a',
-            maxLife: 0.48,
+            maxLife: 0.42,
             gravity: -110
           });
         }
         pil.tickTimer += dt;
-        if (pil.tickTimer >= 0.22 && pil.target && !pil.target.isDead) {
+        if (pil.tickTimer >= 0.2 && pil.target && !pil.target.isDead) {
           pil.tickTimer = 0;
-          if (Math.abs(pil.target.x - pil.x) < 74 && groundY - pil.target.y < 150) {
-            pil.target.takeDamage(28, pil.owner, false, 70, -115);
+          if (Math.abs(pil.target.x - pil.x) < 88 && groundY - pil.target.y < 165) {
+            pil.target.takeDamage(42, pil.owner, false, 95, -145);
           }
         }
       }
@@ -203,7 +208,7 @@ export class VFXManager {
         x: f.x,
         y: f.y - 45,
         radius: f.state === 'ULTIMATE' ? 240 : 130,
-        color: f.lightColor,
+        isBlue: f.primaryColor === '#38bdf8',
         intensity: f.state === 'ULTIMATE' ? 1.5 : 0.85
       });
     }
@@ -212,8 +217,8 @@ export class VFXManager {
         x: p.x,
         y: p.y,
         radius: p.isMeteor ? 340 : 155,
-        color: 'rgba(251, 146, 60, 1)',
-        intensity: p.isMeteor ? 1.85 : 1.2
+        isBlue: p.color === '#38bdf8',
+        intensity: p.isMeteor ? 1.8 : 1.15
       });
     }
     for (const pil of this.pillars) {
@@ -221,7 +226,7 @@ export class VFXManager {
         x: pil.x,
         y: gy - 60,
         radius: pil.erupted ? 225 : 135,
-        color: 'rgba(251, 146, 60, 1)',
+        isBlue: false,
         intensity: pil.erupted ? 1.45 : 0.8
       });
     }
@@ -253,17 +258,16 @@ export class VFXManager {
     }
   }
 
-  renderMainPass(ctx, isReflection = false) {
+  renderMainPass(ctx, isReflection = false, renderer = null) {
     ctx.save();
-    // 1. Geometric Hexagram Magic Circle & Flame Column
     for (const pil of this.pillars) {
-      const p = Math.min(1, pil.life / 0.5);
+      const p = Math.min(1, pil.life / 0.42);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.translate(pil.x, pil.groundY);
       ctx.scale(1, 0.28);
-      ctx.rotate(pil.life * 3);
-      const r = 74 * p;
+      ctx.rotate(pil.life * 3.5);
+      const r = 78 * p;
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 3;
       ctx.beginPath();
@@ -278,19 +282,16 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 2. Crisp Pixel Particles
     for (const p of this.particles) {
       const t = p.life / p.maxLife;
       const r = Math.max(1, p.size * (1 - t) + p.endSize * t);
-      ctx.save();
       if (p.additive) ctx.globalCompositeOperation = 'lighter';
+      else ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = (1 - t) * (isReflection ? 0.65 : 1);
       ctx.fillStyle = p.color;
-      ctx.fillRect(Math.round(p.x - r), Math.round(p.y - r), Math.round(r * 2), Math.round(r * 2));
-      ctx.restore();
+      ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
     }
 
-    // 3. Ribbon Slashes
     ctx.globalCompositeOperation = 'lighter';
     for (const s of this.slashes) {
       const t = s.life / s.maxLife;
@@ -306,7 +307,6 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 4. Shockwave Rings
     for (const sw of this.shockwaves) {
       const t = sw.life / sw.maxLife;
       const r = sw.maxRadius * (1 - Math.pow(1 - t, 3));
@@ -322,31 +322,27 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 5. Projectiles (Fireballs & Molten Meteor)
+    ctx.globalAlpha = 1;
     for (const proj of this.projectiles) {
-      ctx.save();
-      const g = ctx.createRadialGradient(proj.x, proj.y, 2, proj.x, proj.y, proj.radius * 2.5);
-      g.addColorStop(0, proj.coreColor);
-      g.addColorStop(0.45, proj.color);
-      g.addColorStop(1, 'rgba(251, 146, 60, 0)');
-      ctx.fillStyle = g;
+      const r = proj.radius * 2.5;
+      if (renderer) {
+        const tex = proj.color === '#38bdf8' ? renderer.glowCyan : renderer.glowOrange;
+        ctx.drawImage(tex, proj.x - r, proj.y - r, r * 2, r * 2);
+      }
+      ctx.fillStyle = proj.coreColor;
       ctx.beginPath();
-      ctx.arc(proj.x, proj.y, proj.radius * 2.5, 0, Math.PI * 2);
+      ctx.arc(proj.x, proj.y, proj.radius * 0.55, 0, Math.PI * 2);
       ctx.fill();
-      ctx.restore();
     }
 
-    // 6. Lightning Bolts
     for (const l of this.lightnings) {
       const t = l.life / l.maxLife;
-      ctx.save();
       ctx.strokeStyle = l.color;
       ctx.globalAlpha = 1 - t;
       ctx.lineWidth = (1 - t) * 10;
       ctx.beginPath();
       l.pts.forEach((pt, idx) => (idx === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)));
       ctx.stroke();
-      ctx.restore();
     }
     ctx.restore();
   }
@@ -359,7 +355,7 @@ export class VFXManager {
       ctx.translate(t.x, t.y);
       ctx.scale(scale, scale);
       ctx.globalAlpha = Math.min(1, (1 - p) * 2);
-      ctx.font = `${t.isCrit ? '900 18px' : '700 13px'} "Press Start 2P", monospace`;
+      ctx.font = `${t.isCrit ? '900 17px' : '700 12px'} "Press Start 2P", monospace`;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#000';
       ctx.fillText(t.text, 2, 2);

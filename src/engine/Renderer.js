@@ -1,7 +1,7 @@
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
-    this.ctx = canvas.getContext('2d');
+    this.ctx = canvas.getContext('2d', { alpha: false });
     this.width = window.innerWidth;
     this.height = window.innerHeight;
     this.isMobile = this.width < 768;
@@ -21,45 +21,66 @@ export class Renderer {
     this.time = 0;
 
     this.pillars = [0.1, 0.3, 0.5, 0.7, 0.9];
-    this.stars = Array.from({ length: 45 }, () => ({
+    this.stars = Array.from({ length: 36 }, () => ({
       x: Math.random() * 1600 - 200,
-      y: Math.random() * 520 - 380,
+      y: Math.random() * 480 - 360,
       s: Math.random() < 0.3 ? 3 : 2,
       phase: Math.random() * Math.PI * 2
     }));
 
+    this.bakeLightTextures();
     this.resize();
     window.addEventListener('resize', () => this.resize());
+  }
+
+  bakeLightTextures() {
+    const makeGlow = (rgbaCenter, rgbaMid) => {
+      const c = document.createElement('canvas');
+      c.width = 128;
+      c.height = 128;
+      const gCtx = c.getContext('2d');
+      const g = gCtx.createRadialGradient(64, 64, 2, 64, 64, 64);
+      g.addColorStop(0, rgbaCenter);
+      g.addColorStop(0.45, rgbaMid);
+      g.addColorStop(1, 'rgba(0,0,0,0)');
+      gCtx.fillStyle = g;
+      gCtx.fillRect(0, 0, 128, 128);
+      return c;
+    };
+    this.glowCyan = makeGlow('rgba(186,230,253,0.9)', 'rgba(56,189,248,0.4)');
+    this.glowOrange = makeGlow('rgba(254,240,138,0.95)', 'rgba(251,146,60,0.45)');
+    this.glowGold = makeGlow('rgba(254,240,138,0.9)', 'rgba(234,179,8,0.4)');
+    this.shadowTex = makeGlow('rgba(0,0,0,0.75)', 'rgba(0,0,0,0.35)');
   }
 
   resize() {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
     this.isMobile = this.width < 768;
-    const dpr = Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.5 : 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.25 : 1.75);
     this.canvas.width = this.width * dpr;
     this.canvas.height = this.height * dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  triggerShake(intensity = 10, duration = 0.28) {
+  triggerShake(intensity = 10, duration = 0.25) {
     this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
     this.shakeTime = Math.max(this.shakeTime, duration);
   }
 
   triggerAberration(amount = 8) {
-    this.aberration = Math.max(this.aberration, amount);
+    if (!this.isMobile) this.aberration = Math.max(this.aberration, amount);
   }
 
-  triggerHitStop(duration = 0.055) {
-    this.hitStop = Math.max(this.hitStop, duration);
+  triggerHitStop() {
+    // Disabled freeze-frames so combat movement stays 100% smooth
   }
 
   triggerUltimateCamera(focusX, focusY) {
     this.ultFocusX = focusX;
     this.ultFocusY = focusY;
-    this.ultZoomTimer = 0.85;
-    this.ultDim = 0.78;
+    this.ultZoomTimer = 0.8;
+    this.ultDim = 0.75;
   }
 
   update(rawDt, fighters) {
@@ -69,14 +90,14 @@ export class Renderer {
       if (this.shakeTime === 0) this.shakeIntensity = 0;
     }
     if (this.aberration > 0) this.aberration = Math.max(0, this.aberration - rawDt * 28);
-    if (this.ultDim > 0) this.ultDim = Math.max(0, this.ultDim - rawDt * 0.65);
+    if (this.ultDim > 0) this.ultDim = Math.max(0, this.ultDim - rawDt * 0.7);
     if (this.ultZoomTimer > 0) this.ultZoomTimer = Math.max(0, this.ultZoomTimer - rawDt);
 
     if (fighters && fighters.length === 2) {
       const f1 = fighters[0];
       const f2 = fighters[1];
       const midX = (f1.x + f2.x) * 0.5;
-      const dist = Math.abs(f1.x - f2.x) + 310;
+      const dist = Math.abs(f1.x - f2.x) + 320;
 
       const fitScaleX = this.width / Math.max(600, Math.min(this.worldWidth, dist));
       const fitScaleY = this.height / 720;
@@ -87,14 +108,14 @@ export class Renderer {
       let targetY = this.groundY - 85;
 
       if (this.ultZoomTimer > 0) {
-        targetZoom *= 1.18;
+        targetZoom *= 1.15;
         targetX = this.ultFocusX;
         targetY = this.ultFocusY;
       }
 
-      this.zoom += (targetZoom - this.zoom) * Math.min(1, rawDt * 6);
-      this.camX += (targetX - this.camX) * Math.min(1, rawDt * 7);
-      this.camY += (targetY - this.camY) * Math.min(1, rawDt * 7);
+      this.zoom += (targetZoom - this.zoom) * Math.min(1, rawDt * 8);
+      this.camX += (targetX - this.camX) * Math.min(1, rawDt * 9);
+      this.camY += (targetY - this.camY) * Math.min(1, rawDt * 9);
     }
   }
 
@@ -130,21 +151,21 @@ export class Renderer {
     // 3. Real-Time Floor Reflections Pass
     ctx.save();
     ctx.beginPath();
-    ctx.rect(-600, gy, ww + 1200, 900);
+    ctx.rect(-600, gy, ww + 1200, 700);
     ctx.clip();
 
     ctx.translate(0, gy * 2);
     ctx.scale(1, -0.45);
-    ctx.globalAlpha = 0.25;
+    ctx.globalAlpha = 0.24;
 
     for (const f of fighters) f.draw(ctx, true);
-    vfx.renderMainPass(ctx, true);
+    vfx.renderMainPass(ctx, true, this);
     ctx.restore();
 
-    // Tiled Obsidian Floor Overlay & Center Duel Sigil
+    // Tiled Obsidian Floor Overlay
     this.drawObsidianFloor(ctx, ww, gy);
 
-    // 4. Dynamic Ground Light Pools & Drop Shadows
+    // 4. Dynamic Ground Light Pools & Drop Shadows (Using pre-baked textures)
     const lights = vfx.getActiveLights(fighters, gy);
     this.drawFloorLightPools(ctx, lights, gy);
     this.drawDynamicShadows(ctx, fighters, lights, gy);
@@ -152,54 +173,30 @@ export class Renderer {
     // 5. Main Pass: Fighters & Particles
     const sorted = [...fighters].sort((a, b) => a.y - b.y);
     for (const f of sorted) f.draw(ctx, false);
-    vfx.renderMainPass(ctx, false);
+    vfx.renderMainPass(ctx, false, this);
 
-    // 6. Chromatic Aberration Ghost Pass
-    if (this.aberration > 0.4) {
-      const off = this.aberration;
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(0.32, off * 0.04);
-      ctx.translate(-off, 0);
-      for (const f of sorted) f.draw(ctx, false);
-      ctx.translate(off * 2, 0);
-      for (const f of sorted) f.draw(ctx, false);
-      ctx.restore();
-    }
-
-    // 7. Floating Combat Text
+    // 6. Floating Combat Text
     vfx.renderFloatingTexts(ctx);
 
     ctx.restore();
   }
 
   drawArenaBackground(ctx, ww, gy) {
-    const bgGrad = ctx.createLinearGradient(0, -500, 0, gy);
-    bgGrad.addColorStop(0, '#03050a');
-    bgGrad.addColorStop(0.55, '#0a1020');
-    bgGrad.addColorStop(1, '#161f33');
-    ctx.fillStyle = bgGrad;
+    ctx.fillStyle = '#070c18';
     ctx.fillRect(-600, -700, ww + 1200, gy + 700);
 
-    // Twinkling pixel stars
     for (const st of this.stars) {
-      ctx.fillStyle = `rgba(226, 232, 240, ${0.25 + Math.sin(this.time * 2.5 + st.phase) * 0.2})`;
+      ctx.fillStyle = '#cbd5e1';
+      ctx.globalAlpha = 0.25 + Math.sin(this.time * 2.5 + st.phase) * 0.18;
       ctx.fillRect(st.x, st.y, st.s, st.s);
     }
+    ctx.globalAlpha = 1;
 
-    // Giant Center Eclipse / Astral Rose Window
+    // Giant Center Eclipse Medallion
     const cx = ww * 0.5;
     const cy = gy - 250;
-    const moonGrad = ctx.createRadialGradient(cx, cy, 42, cx, cy, 185);
-    moonGrad.addColorStop(0, 'rgba(250, 204, 21, 0.32)');
-    moonGrad.addColorStop(0.45, 'rgba(234, 88, 12, 0.12)');
-    moonGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = moonGrad;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 185, 0, Math.PI * 2);
-    ctx.fill();
-
-    ctx.fillStyle = '#070a14';
+    ctx.drawImage(this.glowGold, cx - 180, cy - 180, 360, 360);
+    ctx.fillStyle = '#060912';
     ctx.strokeStyle = 'rgba(250, 204, 21, 0.35)';
     ctx.lineWidth = 2;
     ctx.beginPath();
@@ -214,7 +211,8 @@ export class Renderer {
       ctx.fillRect(x, gy - 140, 28, 16);
     }
 
-    // Gothic Pillars, Arches & Braziers
+    // Gothic Pillars & Pre-baked Brazier Glows
+    ctx.save();
     for (let i = 0; i < this.pillars.length; i++) {
       const px = ww * this.pillars[i];
       const pw = 58;
@@ -224,38 +222,26 @@ export class Renderer {
       ctx.fillRect(px - pw * 0.5 + 8, -360, 10, gy + 360);
       ctx.fillRect(px - pw * 0.5 - 6, gy - 24, pw + 12, 24);
 
-      const flicker = Math.sin(this.time * 8 + i * 2.1) * 7;
       const by = gy - 175;
-      const color = i < 2 ? '56, 189, 248' : i === 2 ? '250, 204, 21' : '251, 146, 60';
-
-      // Iron Brazier Bowl
       ctx.fillStyle = '#1e293b';
       ctx.fillRect(px - 16, by, 32, 10);
 
-      const rad = ctx.createRadialGradient(px, by - 6, 2, px, by - 6, 105 + flicker);
-      rad.addColorStop(0, `rgba(${color}, 0.5)`);
-      rad.addColorStop(1, `rgba(${color}, 0)`);
-      ctx.save();
+      const flicker = Math.sin(this.time * 8 + i * 2.1) * 10;
+      const r = 105 + flicker;
+      const tex = i < 2 ? this.glowCyan : i === 2 ? this.glowGold : this.glowOrange;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.fillStyle = rad;
-      ctx.beginPath();
-      ctx.arc(px, by - 6, 105 + flicker, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.drawImage(tex, px - r, by - 6 - r, r * 2, r * 2);
       ctx.fillStyle = '#fef08a';
-      ctx.fillRect(px - 6, by - 12, 12, 12);
-      ctx.restore();
+      ctx.fillRect(px - 5, by - 12, 10, 10);
+      ctx.globalCompositeOperation = 'source-over';
     }
+    ctx.restore();
   }
 
   drawObsidianFloor(ctx, ww, gy) {
-    const floorGrad = ctx.createLinearGradient(0, gy, 0, gy + 550);
-    floorGrad.addColorStop(0, 'rgba(24, 34, 52, 0.42)');
-    floorGrad.addColorStop(0.1, 'rgba(9, 13, 22, 0.55)');
-    floorGrad.addColorStop(1, 'rgba(3, 5, 10, 0.96)');
-    ctx.fillStyle = floorGrad;
-    ctx.fillRect(-600, gy, ww + 1200, 900);
+    ctx.fillStyle = 'rgba(8, 12, 22, 0.72)';
+    ctx.fillRect(-600, gy, ww + 1200, 700);
 
-    // Perspective stone tile lines
     ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -270,8 +256,7 @@ export class Renderer {
     }
     ctx.stroke();
 
-    // Horizon border
-    ctx.strokeStyle = 'rgba(212, 175, 55, 0.32)';
+    ctx.strokeStyle = 'rgba(212, 175, 55, 0.35)';
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(-600, gy);
@@ -287,18 +272,10 @@ export class Renderer {
       const atten = Math.max(0, 1 - distY / 360);
       if (atten <= 0.02) continue;
       const rx = l.radius * (1 + distY * 0.002);
-      const ry = rx * 0.22;
-      ctx.save();
-      ctx.translate(l.x, gy + 4);
-      ctx.scale(1, ry / rx);
-      const g = ctx.createRadialGradient(0, 0, 2, 0, 0, rx);
-      g.addColorStop(0, l.color.replace('1)', `${0.34 * atten * l.intensity})`));
-      g.addColorStop(1, l.color.replace('1)', '0)'));
-      ctx.fillStyle = g;
-      ctx.beginPath();
-      ctx.arc(0, 0, rx, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      const ry = rx * 0.24;
+      const tex = l.isBlue ? this.glowCyan : this.glowOrange;
+      ctx.globalAlpha = Math.min(0.65, 0.42 * atten * l.intensity);
+      ctx.drawImage(tex, l.x - rx, gy + 4 - ry, rx * 2, ry * 2);
     }
     ctx.restore();
   }
@@ -311,22 +288,12 @@ export class Renderer {
       for (const l of lights) {
         const dx = f.x - l.x;
         const dist = Math.hypot(dx, f.y - l.y) + 1;
-        if (dist < 380) shiftX += (dx / dist) * (1 - dist / 380) * 26 * l.intensity;
+        if (dist < 380) shiftX += (dx / dist) * (1 - dist / 380) * 24 * l.intensity;
       }
       shiftX = Math.max(-35, Math.min(35, shiftX));
-      const rx = 42 * scale;
-      const ry = 11 * scale;
-      ctx.save();
-      ctx.translate(f.x + shiftX, gy + 2);
-      ctx.scale(1, ry / rx);
-      const sg = ctx.createRadialGradient(0, 0, 4, 0, 0, rx);
-      sg.addColorStop(0, `rgba(0, 0, 0, ${0.72 * scale})`);
-      sg.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.fillStyle = sg;
-      ctx.beginPath();
-      ctx.arc(0, 0, rx, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      const rx = 44 * scale;
+      const ry = 12 * scale;
+      ctx.drawImage(this.shadowTex, f.x + shiftX - rx, gy + 2 - ry, rx * 2, ry * 2);
     }
   }
 }

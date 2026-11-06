@@ -1,46 +1,53 @@
-// Sample-Based HTML5 Audio Manager (Uses real .wav files in assets/sfx/, zero Oscillator synth)
+// Zero-Latency Pre-Decoded WAV Sample Player (No Oscillator synth, zero main-thread lag)
 export class AudioManager {
   constructor() {
     this.enabled = true;
-    this.unlocked = false;
-    this.pools = {};
+    this.ctx = null;
+    this.master = null;
+    this.buffers = {};
+    this.lastPlayed = {};
     this.volumes = {
       slash: 0.55,
       clang: 0.65,
-      whirlwind: 0.6,
+      whirlwind: 0.55,
       fireball: 0.6,
       flame_pillar: 0.72,
       earthshatter: 0.85,
-      meteor: 0.9
+      meteor: 0.88
     };
 
-    Object.keys(this.volumes).forEach((key) => {
-      this.pools[key] = Array.from({ length: 3 }, () => {
-        const a = new Audio(`assets/sfx/${key}.wav`);
-        a.preload = 'auto';
-        a.volume = this.volumes[key];
-        return a;
-      });
-    });
+    this.initContext();
+    this.preloadWavFiles();
 
-    // Mobile browsers require a user touch gesture to unlock HTML5 Audio playback
     const unlock = () => {
-      if (this.unlocked) return;
-      this.unlocked = true;
-      Object.values(this.pools).forEach((list) => {
-        const a = list[0];
-        a.muted = true;
-        a.play()
-          .then(() => {
-            a.pause();
-            a.currentTime = 0;
-            a.muted = false;
-          })
-          .catch(() => {});
-      });
+      if (this.ctx && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
     };
-    window.addEventListener('pointerdown', unlock, { once: true });
-    window.addEventListener('touchstart', unlock, { once: true });
+    window.addEventListener('pointerdown', unlock, { passive: true });
+    window.addEventListener('touchstart', unlock, { passive: true });
+  }
+
+  initContext() {
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return;
+    this.ctx = new AudioCtx({ latencyHint: 'interactive' });
+    const comp = this.ctx.createDynamicsCompressor();
+    comp.threshold.value = -12;
+    comp.ratio.value = 6;
+    comp.connect(this.ctx.destination);
+    this.master = comp;
+  }
+
+  async preloadWavFiles() {
+    if (!this.ctx) return;
+    for (const key of Object.keys(this.volumes)) {
+      try {
+        const res = await fetch(`assets/sfx/${key}.wav`);
+        const arr = await res.arrayBuffer();
+        this.buffers[key] = await this.ctx.decodeAudioData(arr);
+      } catch (_) {}
+    }
   }
 
   toggle() {
@@ -49,14 +56,24 @@ export class AudioManager {
   }
 
   play(name) {
-    if (!this.enabled || !this.pools[name]) return;
-    const pool = this.pools[name];
-    const audio = pool.find((a) => a.paused || a.ended) || pool[0];
+    if (!this.enabled || !this.ctx || !this.buffers[name]) return;
+    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+
+    const now = performance.now();
+    if (this.lastPlayed[name] && now - this.lastPlayed[name] < 75) return;
+    this.lastPlayed[name] = now;
+
     try {
-      audio.currentTime = 0;
-      audio.volume = this.volumes[name] * (0.9 + Math.random() * 0.15);
-      audio.playbackRate = 0.92 + Math.random() * 0.16;
-      audio.play().catch(() => {});
+      const src = this.ctx.createBufferSource();
+      src.buffer = this.buffers[name];
+      src.playbackRate.value = 0.94 + Math.random() * 0.12;
+
+      const gain = this.ctx.createGain();
+      gain.gain.value = this.volumes[name] || 0.6;
+
+      src.connect(gain);
+      gain.connect(this.master);
+      src.start(0);
     } catch (_) {}
   }
 }
