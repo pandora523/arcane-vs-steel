@@ -153,12 +153,14 @@ class Game {
           this.vfx.spawnBurst(p.x, gy - 15, 24, '#fef08a', 330, { upBias: 140, size: 8 });
 
           if (enemy && !enemy.isDead && Math.abs(enemy.x - p.x) < 310) {
-            enemy.takeDamage(p.damage, p.owner, true, 275, -430);
+            enemy.takeDamage(p.damage, p.owner, true, 240, -380);
+            this.renderer.triggerHitStop(0.09);
           }
         } else if (hitEnemy) {
           const isCrit = Math.random() < 0.28;
-          enemy.takeDamage(isCrit ? p.damage * 1.45 : p.damage, p.owner, isCrit, 130, -80);
+          enemy.takeDamage(isCrit ? p.damage * 1.45 : p.damage, p.owner, isCrit, 110, 0);
           this.audio.play('clang');
+          this.renderer.triggerHitStop(0.055);
           this.vfx.spawnShockwave(p.x, p.y, 68, p.color, 0.25);
           this.vfx.spawnBurst(p.x, p.y, 10, p.color, 200);
         } else {
@@ -204,7 +206,9 @@ class Game {
     this.renderer.update(rawDt, this.fighters);
 
     let timeScale = 1.0;
-    if (this.ultSlowTimer > 0) {
+    if (this.renderer.hitStopTimer > 0) {
+      timeScale = 0.08;
+    } else if (this.ultSlowTimer > 0) {
       this.ultSlowTimer = Math.max(0, this.ultSlowTimer - rawDt);
       timeScale = 0.28;
     } else if (this.userSlowMo) {

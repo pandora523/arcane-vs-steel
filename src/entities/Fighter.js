@@ -56,7 +56,7 @@ export class Fighter {
     this.mana = Math.min(this.maxMana, this.mana + amount);
   }
 
-  takeDamage(amount, attacker, isCrit = false, knockX = 110, knockY = -80) {
+  takeDamage(amount, attacker, isCrit = false, knockX = 95, knockY = 0) {
     if (this.isDead) return;
     if (this.isDeflecting) {
       amount *= 0.25;
@@ -69,7 +69,7 @@ export class Fighter {
 
     const dir = attacker ? Math.sign(this.x - attacker.x) || -this.facing : -this.facing;
     this.vx += dir * knockX;
-    if (this.y >= this.groundY - 2 && knockY < 0) {
+    if (this.y >= this.groundY - 2 && knockY < -120) {
       this.vy = knockY;
     }
     this.torsoVel += dir * 9.5;
@@ -81,7 +81,7 @@ export class Fighter {
       if (isCrit) {
         this.game.renderer.triggerShake(11, 0.24);
         this.game.renderer.triggerAberration(9);
-        this.game.renderer.triggerHitStop(0.05);
+        this.game.renderer.triggerHitStop(0.06);
       }
     }
 
@@ -194,10 +194,10 @@ export class Fighter {
           this.state = 'IDLE';
         } else {
           this.state = 'WALK';
-          this.walkPhase += dt * 11.5;
+          this.walkPhase += dt * 4.5;
           const stride = Math.abs(Math.sin(this.walkPhase));
-          this.x += this.facing * this.moveSpeed * (0.55 + stride * 0.75) * dt;
-          this.headBob = Math.sin(this.walkPhase * 2) * 5;
+          this.x += this.facing * this.moveSpeed * (0.65 + stride * 0.55) * dt;
+          this.headBob = Math.sin(this.walkPhase * 2) * 3;
         }
       } else {
         this.state = 'IDLE';
@@ -205,8 +205,8 @@ export class Fighter {
     }
 
     if (this.state === 'IDLE') {
-      this.walkPhase += dt * 3.2;
-      this.headBob = Math.sin(this.walkPhase) * 2.5;
+      this.walkPhase += dt * 2.8;
+      this.headBob = Math.sin(this.walkPhase) * 2.0;
     } else if (this.state === 'AUTO_ATTACK') {
       this.updateAutoAttack(dt, enemy, game);
     } else if (this.state === 'SKILL') {

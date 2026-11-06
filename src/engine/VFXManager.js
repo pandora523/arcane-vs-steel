@@ -280,6 +280,37 @@ export class VFXManager {
       }
       ctx.stroke();
       ctx.restore();
+
+      if (pil.erupted && pil.life < pil.maxLife - 0.1) {
+        const fade = Math.min(1, (pil.maxLife - pil.life) * 3.2);
+        const pxSize = 6;
+        const cols = 9;
+        const rows = 26;
+        const baseX = Math.round(pil.x / pxSize) * pxSize;
+        const baseY = Math.round(pil.groundY / pxSize) * pxSize;
+        ctx.save();
+        ctx.globalAlpha = fade * (isReflection ? 0.45 : 0.92);
+        for (let row = 0; row < rows; row++) {
+          const hFrac = row / rows;
+          const sway = Math.round(Math.sin(pil.life * 18 - row * 0.55) * (1 + hFrac * 2.2));
+          const halfSpan = Math.max(1, Math.round((1 - hFrac * 0.72) * 4));
+          for (let col = -halfSpan; col <= halfSpan; col++) {
+            const edge = Math.abs(col) / (halfSpan + 0.5);
+            const n = Math.sin(pil.life * 24 - row * 1.1 + col * 1.7);
+            if (hFrac + edge * 0.45 + n * 0.16 > 0.96) continue;
+            const heat = 1 - hFrac * 0.72 - edge * 0.35;
+            ctx.fillStyle =
+              heat > 0.72 ? '#ffffff' : heat > 0.48 ? '#fef08a' : heat > 0.24 ? '#fb923c' : '#dc2626';
+            ctx.fillRect(
+              baseX + (col + sway) * pxSize - pxSize * 0.5,
+              baseY - (row + 1) * pxSize,
+              pxSize,
+              pxSize
+            );
+          }
+        }
+        ctx.restore();
+      }
     }
 
     for (const p of this.particles) {

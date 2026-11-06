@@ -1,5 +1,8 @@
 import { PixelForge } from './PixelForge.js';
 
+const CYAN_FIRE_PAL = ['#0284c7', '#38bdf8', '#7dd3fc', '#f0f9ff'];
+const SOLAR_FIRE_PAL = ['#c2410c', '#f97316', '#facc15', '#fef9c3'];
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -14,6 +17,7 @@ export class Renderer {
     this.shakeTime = 0;
     this.shakeIntensity = 0;
     this.aberration = 0;
+    this.hitStopTimer = 0;
     this.ultDim = 0;
     this.ultZoomTimer = 0;
     this.camX = this.worldWidth * 0.5;
@@ -21,13 +25,12 @@ export class Renderer {
     this.zoom = 1;
     this.time = 0;
 
-    // Pre-generate floating HD-2D volumetric dust motes / bokeh
-    this.motes = Array.from({ length: 34 }, (_, i) => ({
+    this.motes = Array.from({ length: 36 }, (_, i) => ({
       x: (i * 137) % 1300 - 50,
       y: (i * 89) % 520 + 20,
-      spdY: 8 + (i % 5) * 4,
+      spdY: 10 + (i % 5) * 4,
       phase: i * 0.7,
-      size: i % 4 === 0 ? 4 : 2,
+      size: i % 3 === 0 ? 4 : 3,
       isBlue: i % 2 === 0
     }));
 
@@ -50,10 +53,10 @@ export class Renderer {
       gCtx.fillRect(0, 0, 128, 128);
       return c;
     };
-    this.glowCyan = makeGlow('rgba(186,230,253,0.92)', 'rgba(56,189,248,0.42)');
-    this.glowOrange = makeGlow('rgba(254,240,138,0.95)', 'rgba(251,146,60,0.46)');
-    this.glowGold = makeGlow('rgba(254,240,138,0.92)', 'rgba(234,179,8,0.38)');
-    this.shadowTex = makeGlow('rgba(0,0,0,0.86)', 'rgba(0,0,0,0.42)');
+    this.glowCyan = makeGlow('rgba(186,230,253,0.95)', 'rgba(56,189,248,0.45)');
+    this.glowOrange = makeGlow('rgba(254,240,138,0.96)', 'rgba(251,146,60,0.48)');
+    this.glowGold = makeGlow('rgba(254,240,138,0.92)', 'rgba(234,179,8,0.40)');
+    this.shadowTex = makeGlow('rgba(0,0,0,0.92)', 'rgba(0,0,0,0.52)');
   }
 
   resize() {
@@ -75,23 +78,26 @@ export class Renderer {
     if (!this.isMobile) this.aberration = Math.max(this.aberration, amount);
   }
 
-  triggerHitStop() {}
+  triggerHitStop(duration = 0.07) {
+    this.hitStopTimer = Math.max(this.hitStopTimer, duration);
+  }
 
   triggerUltimateCamera(focusX, focusY) {
     this.ultFocusX = focusX;
     this.ultFocusY = focusY;
-    this.ultZoomTimer = 0.8;
-    this.ultDim = 0.75;
+    this.ultZoomTimer = 0.95;
+    this.ultDim = 0.78;
   }
 
   update(rawDt, fighters) {
     this.time += rawDt;
+    if (this.hitStopTimer > 0) this.hitStopTimer = Math.max(0, this.hitStopTimer - rawDt);
     if (this.shakeTime > 0) {
       this.shakeTime = Math.max(0, this.shakeTime - rawDt);
       if (this.shakeTime === 0) this.shakeIntensity = 0;
     }
     if (this.aberration > 0) this.aberration = Math.max(0, this.aberration - rawDt * 28);
-    if (this.ultDim > 0) this.ultDim = Math.max(0, this.ultDim - rawDt * 0.7);
+    if (this.ultDim > 0) this.ultDim = Math.max(0, this.ultDim - rawDt * 0.65);
     if (this.ultZoomTimer > 0) this.ultZoomTimer = Math.max(0, this.ultZoomTimer - rawDt);
 
     if (fighters && fighters.length === 2) {
@@ -138,7 +144,7 @@ export class Renderer {
     ctx.scale(this.zoom, this.zoom);
     ctx.translate(-this.camX, -this.camY);
 
-    // 1. HD-2D Pixel-Art Cathedral Diorama & 3D Perspective Stone Floor
+    // 1. HD-2D Pixel-Art Cathedral Diorama + Live Glowing Pixel-Art Stage Flames
     this.drawHD2DArena(ctx, ww, gy);
 
     if (this.ultDim > 0.01) {
@@ -152,30 +158,32 @@ export class Renderer {
     // 3. Real-Time Pixel-Art Wet Stone Floor Reflections
     ctx.save();
     ctx.beginPath();
-    ctx.rect(-600, gy, ww + 1200, 700);
+    ctx.rect(-600, gy + 2, ww + 1200, 700);
     ctx.clip();
-    ctx.translate(0, gy * 2);
-    ctx.scale(1, -0.44);
-    ctx.globalAlpha = 0.28;
+    ctx.translate(0, (gy + 2) * 2);
+    ctx.scale(1, -0.42);
+    ctx.globalAlpha = 0.26;
     for (const f of fighters) f.draw(ctx, true);
     vfx.renderMainPass(ctx, true, this);
     ctx.restore();
 
-    // 4. Unreal HD-2D Dynamic Point-Light Floor Pools & Contact Shadows
+    // 4. Unreal HD-2D Dynamic Point-Light Floor Pools & Grounded Contact Shadows
     const lights = vfx.getActiveLights(fighters, gy);
     this.drawFloorLightPools(ctx, lights, gy);
     this.drawDynamicShadows(ctx, fighters, lights, gy);
 
-    // 5. Main Pass: Fighters with HD-2D Volumetric Point-Light Rim Bloom
+    // 5. Main Pass: Fighters + Live Pixel-Art Weapon Fire/Rune Glow
     const sorted = [...fighters].sort((a, b) => a.y - b.y);
     for (const f of sorted) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = f.state === 'IDLE' || f.state === 'WALK' ? 0.26 : 0.48;
+      ctx.globalAlpha = f.state === 'IDLE' || f.state === 'WALK' ? 0.25 : 0.48;
       const glow = f.primaryColor === '#38bdf8' ? this.glowCyan : this.glowOrange;
-      ctx.drawImage(glow, f.x - 125, f.y - 195, 250, 250);
+      ctx.drawImage(glow, f.x - 125, f.y - 190, 250, 250);
       ctx.restore();
+
       f.draw(ctx, false);
+      this.drawCharacterPixelFlames(ctx, f);
     }
     vfx.renderMainPass(ctx, false, this);
 
@@ -194,61 +202,151 @@ export class Renderer {
   drawHD2DArena(ctx, ww, gy) {
     const assets = PixelForge.initAssets();
     const bg = assets.arenaBg;
+    const drawW = 1680;
+    const drawH = 945;
+    const drawX = Math.round((ww - drawW) * 0.5);
+    // Align floor surface so gy is firmly on the stone flagstones (not floating near the back wall)
+    const drawY = Math.round(gy - drawH * 0.82);
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     if (bg && bg.complete && bg.naturalWidth > 0) {
-      const drawW = 1680;
-      const drawH = 945;
-      const drawX = Math.round((ww - drawW) * 0.5);
-      const drawY = Math.round(gy - drawH * 0.77);
       ctx.drawImage(bg, drawX, drawY, drawW, drawH);
     } else {
       ctx.fillStyle = '#070a14';
       ctx.fillRect(-600, -700, ww + 1200, gy + 1400);
     }
 
-    // 3D Perspective Pixel-Art Cobblestone Mortar Grid & Arcane Arena Circle on Floor
-    ctx.strokeStyle = 'rgba(12, 16, 28, 0.75)';
+    // 3D Perspective Pixel-Art Cobblestone Mortar Grid
+    ctx.strokeStyle = 'rgba(10, 14, 24, 0.72)';
     ctx.lineWidth = 3;
     const vx = ww * 0.5;
-    const vy = gy - 175;
     for (let i = -9; i <= 9; i++) {
       ctx.beginPath();
-      ctx.moveTo(vx + i * 52, gy - 4);
-      ctx.lineTo(vx + i * 195, gy + 260);
+      ctx.moveTo(vx + i * 54, gy - 32);
+      ctx.lineTo(vx + i * 198, gy + 240);
       ctx.stroke();
     }
     for (let r = 0; r < 6; r++) {
-      const ry = gy + r * r * 11;
-      ctx.fillStyle = r === 0 ? 'rgba(148, 174, 212, 0.22)' : 'rgba(8, 10, 18, 0.65)';
+      const ry = gy - 28 + r * r * 11;
+      ctx.fillStyle = r === 2 ? 'rgba(148, 174, 212, 0.18)' : 'rgba(8, 10, 18, 0.62)';
       ctx.fillRect(-300, ry, ww + 600, 3);
     }
 
-    // Glowing Pixelated Arcane Duel Sigil inlaid in center floor
+    // Live Animated Glowing Pixel-Art Flames on all 6 Cathedral Braziers & Eclipse Rose Window
+    this.drawStagePixelFlames(ctx, drawX, drawY, drawW, drawH, gy);
+    ctx.restore();
+  }
+
+  drawStagePixelFlames(ctx, drawX, drawY, drawW, drawH, gy) {
+    const braziers = [
+      { x: drawX + drawW * 0.105, y: drawY + drawH * 0.585, scale: 1.35, isBlue: true, seed: 1.1 },
+      { x: drawX + drawW * 0.233, y: drawY + drawH * 0.635, scale: 1.05, isBlue: true, seed: 2.7 },
+      { x: drawX + drawW * 0.314, y: drawY + drawH * 0.665, scale: 0.82, isBlue: true, seed: 4.3 },
+      { x: drawX + drawW * 0.697, y: drawY + drawH * 0.665, scale: 0.82, isBlue: false, seed: 5.9 },
+      { x: drawX + drawW * 0.778, y: drawY + drawH * 0.635, scale: 1.05, isBlue: false, seed: 7.4 },
+      { x: drawX + drawW * 0.908, y: drawY + drawH * 0.585, scale: 1.35, isBlue: false, seed: 9.0 }
+    ];
+
+    const t = this.time;
+
+    for (const b of braziers) {
+      const pal = b.isBlue ? CYAN_FIRE_PAL : SOLAR_FIRE_PAL;
+      const glow = b.isBlue ? this.glowCyan : this.glowOrange;
+      const pulse = Math.sin(t * 8 + b.seed) * 14 * b.scale;
+      const glowR = 135 * b.scale + pulse;
+
+      // 1. Volumetric Additive Halo around Brazier & Wet Floor Reflection Glow
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.52;
+      ctx.drawImage(glow, b.x - glowR, b.y - glowR * 1.15, glowR * 2, glowR * 2);
+      ctx.globalAlpha = 0.28;
+      ctx.drawImage(glow, b.x - glowR * 0.7, gy - 25, glowR * 1.4, 95 * b.scale);
+      ctx.restore();
+
+      // 2. Crisp Pixel-Art Animated Fire Column (4px integer pixel blocks)
+      const pxSize = Math.max(4, Math.round(5 * b.scale));
+      const rows = 14;
+      for (let r = 0; r < rows; r++) {
+        const ratio = r / (rows - 1); // 0 = base bowl, 1 = high tip
+        const halfW = Math.max(1, Math.round((1 - ratio * 0.82) * 5 * b.scale));
+        const sway = Math.round(Math.sin(t * 11 - r * 0.65 + b.seed) * (ratio * 3.2 * b.scale));
+        const py = Math.round((b.y - r * pxSize * 0.95) / pxSize) * pxSize;
+
+        for (let c = -halfW; c <= halfW; c++) {
+          const edgeRatio = Math.abs(c) / (halfW + 0.5);
+          // Flicker cutout near top and edges for authentic jagged pixel flame silhouette
+          const noise = Math.sin(t * 16 + r * 1.9 + c * 2.3 + b.seed);
+          if (ratio > 0.65 && noise < -0.15) continue;
+          if (edgeRatio > 0.75 && noise < 0.1) continue;
+
+          const shadeIdx =
+            ratio < 0.28 && edgeRatio < 0.45
+              ? 3
+              : edgeRatio < 0.42 && ratio < 0.65
+                ? 2
+                : edgeRatio < 0.78
+                  ? 1
+                  : 0;
+          ctx.fillStyle = pal[shadeIdx];
+          const px = Math.round((b.x + (c + sway) * pxSize) / pxSize) * pxSize;
+          ctx.fillRect(px, py, pxSize, pxSize);
+        }
+      }
+
+      // 3. Rising Pixel Sparks detaching from Brazier Flame Tip
+      for (let s = 0; s < 4; s++) {
+        const sparkLife = (t * (1.4 + s * 0.25) + b.seed + s * 1.7) % 1;
+        const sx = b.x + Math.sin(t * 6 + s * 2.1 + b.seed) * 22 * b.scale;
+        const sy = b.y - 55 * b.scale - sparkLife * 75 * b.scale;
+        const spSize = sparkLife < 0.5 ? pxSize : Math.max(2, pxSize >> 1);
+        ctx.fillStyle = sparkLife < 0.35 ? pal[3] : sparkLife < 0.7 ? pal[2] : pal[1];
+        ctx.fillRect(Math.round(sx / 2) * 2, Math.round(sy / 2) * 2, spSize, spSize);
+      }
+    }
+
+    // 4. Central Solar Eclipse Rose Window Pixel Corona & Volumetric Pulse
+    const eclipseX = drawX + drawW * 0.504;
+    const eclipseY = drawY + drawH * 0.352;
+    const eclipseR = 54;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.translate(ww * 0.5, gy + 14);
-    ctx.scale(1, 0.22);
-    ctx.strokeStyle = 'rgba(234, 179, 8, 0.24)';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(0, 0, 185, 0, Math.PI * 2);
-    ctx.arc(0, 0, 145, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.globalAlpha = 0.36 + 0.08 * Math.sin(t * 4);
+    ctx.drawImage(this.glowGold, eclipseX - 230, eclipseY - 230, 460, 460);
     ctx.restore();
 
-    // Animated Pixel-Art Braziers + Volumetric Light Blooms
-    ctx.globalCompositeOperation = 'lighter';
-    const f1 = Math.sin(this.time * 7) * 14;
-    const f2 = Math.cos(this.time * 8.5) * 14;
-    ctx.globalAlpha = 0.46;
-    ctx.drawImage(this.glowCyan, 30 - f1, gy - 330, 260 + f1 * 2, 260 + f1 * 2);
-    ctx.drawImage(this.glowCyan, 235 - f2, gy - 265, 200 + f2 * 2, 200 + f2 * 2);
-    ctx.drawImage(this.glowOrange, ww - 290 - f2, gy - 330, 260 + f2 * 2, 260 + f2 * 2);
-    ctx.drawImage(this.glowOrange, ww - 435 - f1, gy - 265, 200 + f1 * 2, 200 + f1 * 2);
-    ctx.globalAlpha = 0.32;
-    ctx.drawImage(this.glowGold, ww * 0.5 - 220, gy - 540, 440, 440);
+    for (let i = 0; i < 24; i++) {
+      const a = (i / 24) * Math.PI * 2 + t * 0.6;
+      const flare = Math.sin(t * 9 + i * 1.7) * 5;
+      const r = eclipseR + flare;
+      const fx = Math.round((eclipseX + Math.cos(a) * r) / 4) * 4;
+      const fy = Math.round((eclipseY + Math.sin(a) * r) / 4) * 4;
+      ctx.fillStyle = i % 3 === 0 ? SOLAR_FIRE_PAL[3] : SOLAR_FIRE_PAL[2];
+      ctx.fillRect(fx, fy, 4, 4);
+    }
+  }
+
+  drawCharacterPixelFlames(ctx, f) {
+    const isBlue = f.primaryColor === '#38bdf8';
+    const pal = isBlue ? CYAN_FIRE_PAL : SOLAR_FIRE_PAL;
+    const t = this.time;
+
+    ctx.save();
+    // Emit live pixel-art fire / rune sparks along the weapon & aura
+    const count = f.state === 'IDLE' || f.state === 'WALK' ? 5 : 10;
+    for (let i = 0; i < count; i++) {
+      const cycle = (t * (1.8 + (i % 3) * 0.4) + i * 0.62) % 1;
+      const spreadX = isBlue
+        ? f.facing * (18 + (i % 4) * 14) + Math.sin(t * 8 + i) * 6
+        : f.facing * (22 + (i % 4) * 12) + Math.cos(t * 7 + i) * 8;
+      const baseY = isBlue ? f.y - 68 - (i % 4) * 16 : f.y - 82 - (i % 3) * 14;
+      const px = Math.round((f.x + spreadX) / 3) * 3;
+      const py = Math.round((baseY - cycle * 34) / 3) * 3;
+      const sz = cycle < 0.45 ? 4 : 3;
+      ctx.fillStyle = cycle < 0.3 ? pal[3] : cycle < 0.7 ? pal[2] : pal[1];
+      ctx.fillRect(px, py, sz, sz);
+    }
     ctx.restore();
   }
 
@@ -256,7 +354,6 @@ export class Renderer {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
 
-    // Diagonal Volumetric Light Shafts from Rose Window & Arches
     const rays = [
       { xTop: ww * 0.5 - 60, xBot: ww * 0.5 - 240, w: 130, col: 'rgba(254, 240, 138, 0.055)' },
       { xTop: ww * 0.5 + 20, xBot: ww * 0.5 - 70, w: 165, col: 'rgba(251, 191, 36, 0.065)' },
@@ -274,11 +371,10 @@ export class Renderer {
       ctx.fill();
     }
 
-    // Crisp Pixel-Art Floating Illuminated Dust Motes
     for (const m of this.motes) {
       const my = gy + 20 - ((m.y + this.time * m.spdY) % 520);
       const mx = m.x + Math.sin(this.time * 1.4 + m.phase) * 22;
-      const alpha = 0.35 + 0.35 * Math.sin(this.time * 3 + m.phase);
+      const alpha = 0.38 + 0.38 * Math.sin(this.time * 3 + m.phase);
       ctx.globalAlpha = alpha;
       ctx.fillStyle = m.isBlue ? '#7dd3fc' : '#fde047';
       const s = m.size;
@@ -292,14 +388,12 @@ export class Renderer {
     const h = this.height;
     ctx.save();
 
-    // Foreground Out-of-Focus Parallax Gothic Pillars (HD-2D Diorama Framing)
     const pShift = (this.camX - this.worldWidth * 0.5) * 0.18;
     ctx.fillStyle = 'rgba(3, 4, 8, 0.88)';
     const pilW = this.isMobile ? 22 : 54;
     ctx.fillRect(-10 - pShift * 0.3, 0, pilW, h);
     ctx.fillRect(w - pilW + 10 - pShift * 0.3, 0, pilW + 20, h);
 
-    // Top & Bottom Tilt-Shift Depth-of-Field Darkening Gradients
     const topG = ctx.createLinearGradient(0, 0, 0, h * 0.22);
     topG.addColorStop(0, 'rgba(2, 3, 7, 0.78)');
     topG.addColorStop(1, 'rgba(2, 3, 7, 0)');
@@ -326,7 +420,7 @@ export class Renderer {
       const ry = rx * 0.25;
       const tex = l.isBlue ? this.glowCyan : this.glowOrange;
       ctx.globalAlpha = Math.min(0.72, 0.48 * atten * l.intensity);
-      ctx.drawImage(tex, l.x - rx, gy + 4 - ry, rx * 2, ry * 2);
+      ctx.drawImage(tex, l.x - rx, gy + 2 - ry, rx * 2, ry * 2);
     }
     ctx.restore();
   }
@@ -339,12 +433,17 @@ export class Renderer {
       for (const l of lights) {
         const dx = f.x - l.x;
         const dist = Math.hypot(dx, f.y - l.y) + 1;
-        if (dist < 380) shiftX += (dx / dist) * (1 - dist / 380) * 24 * l.intensity;
+        if (dist < 380) shiftX += (dx / dist) * (1 - dist / 380) * 18 * l.intensity;
       }
-      shiftX = Math.max(-35, Math.min(35, shiftX));
-      const rx = 56 * scale;
-      const ry = 15 * scale;
-      ctx.drawImage(this.shadowTex, f.x + shiftX - rx, gy + 2 - ry, rx * 2, ry * 2);
+      shiftX = Math.max(-24, Math.min(24, shiftX));
+      const rx = 64 * scale;
+      const ry = 16 * scale;
+      ctx.drawImage(this.shadowTex, f.x + shiftX - rx, gy - ry + 2, rx * 2, ry * 2);
+      // Grounded pixel contact shadow directly under the Knight's boots
+      if (jumpH < 4 && f.primaryColor === '#38bdf8') {
+        ctx.fillStyle = 'rgba(3, 5, 10, 0.88)';
+        ctx.fillRect(Math.round(f.x - 42), gy - 3, 84, 6);
+      }
     }
   }
 }

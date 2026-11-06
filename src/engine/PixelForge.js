@@ -55,32 +55,32 @@ export class PixelForge {
     const t = fighter.stateTimer;
 
     if (st === 'AUTO_ATTACK') {
-      const duration = 0.56;
+      const duration = 0.96;
       const step = Math.min(7, Math.max(0, Math.floor((t / duration) * 8)));
       return 16 + step;
     }
 
     if (st === 'SKILL') {
       if (fighter.skillName === 'WHIRLWIND') {
-        return 24 + (Math.floor(t * 18) % 4);
+        return 24 + (Math.floor(t * 9.5) % 4);
       }
-      const step = Math.min(3, Math.max(0, Math.floor((t / 0.72) * 4)));
+      const step = Math.min(3, Math.max(0, Math.floor((t / 1.05) * 4)));
       return 24 + step;
     }
 
     if (st === 'ULTIMATE') {
-      if (t < 0.32) return 28;
-      if (t < 0.68) return 29;
-      if (t < 0.92) return 30;
+      if (t < 0.42) return 28;
+      if (t < 0.85) return 29;
+      if (t < 1.25) return 30;
       return 31;
     }
 
     if (st === 'WALK') {
-      const walkStep = Math.floor(Math.abs(fighter.walkPhase) * 2.5) % 8;
+      const walkStep = Math.floor(Math.abs(fighter.walkPhase) * 2.0) % 8;
       return 8 + walkStep;
     }
 
-    const idleStep = Math.floor(Math.abs(phase) * 2.6) % 8;
+    const idleStep = Math.floor(Math.abs(phase) * 2.2) % 8;
     return idleStep;
   }
 
@@ -96,13 +96,14 @@ export class PixelForge {
     const row = (frameIdx / 8) | 0;
     const sx = col * cell;
     const sy = row * cell;
+    const baseY = -h + 4;
 
     if (isReflection) {
-      ctx.drawImage(sheet, sx, sy, cell, cell, Math.round(-w * 0.5), Math.round(-h + 12), w, h);
+      ctx.drawImage(sheet, sx, sy, cell, cell, Math.round(-w * 0.5), Math.round(baseY), w, h);
       return;
     }
 
-    // 8-band integer-snapped pixel-row wave for 60FPS sub-frame fluidity with zero blur
+    // 8-band integer-snapped pixel-row wave for upper-body/cape breathing while keeping feet planted
     const slices = 8;
     const sliceSrcH = cell / slices;
     const sliceDstH = h / slices;
@@ -110,19 +111,20 @@ export class PixelForge {
 
     for (let i = 0; i < slices; i++) {
       const ratio = i / (slices - 1);
+      const upperWeight = 1 - ratio * 0.85;
       let rawOffset = 0;
       if (st === 'WALK') {
-        rawOffset = Math.sin(phase * 2.0 + ratio * 2.4) * (ratio > 0.55 ? 4.5 : 2.2);
+        rawOffset = Math.sin(phase * 1.6 + ratio * 2.0) * 2.4 * upperWeight;
       } else if (st === 'IDLE') {
-        rawOffset = Math.sin(phase * 1.6 - ratio * 2.6) * 2.4;
+        rawOffset = Math.sin(phase * 1.4 - ratio * 2.2) * 2.0 * (1 - ratio);
       } else {
-        rawOffset = Math.sin(phase * 2.8 - ratio * 3.0) * 3.5;
+        rawOffset = Math.sin(phase * 2.0 - ratio * 2.4) * 2.4 * (1 - ratio);
       }
 
       // Snap offset to integer 2px pixel steps to preserve crisp HD-2D pixel grid
       const offsetX = Math.round(rawOffset * 0.5) * 2;
       const dx = Math.round(-w * 0.5 + offsetX);
-      const dy = Math.round(-h + 12 + i * sliceDstH);
+      const dy = Math.round(baseY + i * sliceDstH);
 
       ctx.drawImage(
         sheet,
@@ -152,7 +154,7 @@ export class PixelForge {
       cell,
       cell,
       Math.round(-w * 0.5),
-      Math.round(-h + 12),
+      Math.round(-h + 4),
       w,
       h
     );
