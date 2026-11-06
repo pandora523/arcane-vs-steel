@@ -67,9 +67,9 @@ export class VFXManager {
 
   spawnGlyphBurst(x, y, count = 6, theme = 'steel') {
     const sets = {
-      steel: { chars: ['ᚦ', 'ᚱ', 'ᛉ', 'ᛋ', 'ᛏ', 'ᛟ'], col: '#38bdf8', core: '#e0f2fe' },
-      arcane: { chars: ['☉', '✦', '✴', '☼', '🜂', '❖'], col: '#fb923c', core: '#fef08a' },
-      emerald: { chars: ['✦', '❖', '⟡', '🍃', '✧', '✵'], col: '#10b981', core: '#fef08a' }
+      steel: { shape: 'rune', col: '#38bdf8', core: '#e0f2fe' },
+      arcane: { shape: 'star', col: '#fb923c', core: '#fef08a' },
+      emerald: { shape: 'feather', col: '#10b981', core: '#fef08a' }
     };
     const cfg = sets[theme] || sets.steel;
     for (let i = 0; i < count; i++) {
@@ -81,13 +81,14 @@ export class VFXManager {
         y: y + (Math.random() - 0.5) * 24,
         vx: Math.cos(ang) * spd,
         vy: Math.sin(ang) * spd - 45,
-        char: cfg.chars[i % cfg.chars.length],
+        shape: cfg.shape,
+        variant: i % 3,
         color: cfg.col,
         coreColor: cfg.core,
         theme,
         rot: (Math.random() - 0.5) * 0.8,
         vRot: (Math.random() - 0.5) * 4.5,
-        size: 13 + Math.floor(Math.random() * 6),
+        size: 12 + Math.floor(Math.random() * 4),
         life: 0,
         maxLife: 0.65 + Math.random() * 0.35
       });
@@ -468,23 +469,24 @@ export class VFXManager {
 
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * (isReflection ? 0.42 : 0.88);
       if (renderer && !isReflection) {
+        ctx.globalAlpha = fade * 0.24;
         const glow = tor.color === '#38bdf8' ? renderer.glowCyan : renderer.glowEmerald || renderer.glowCyan;
-        ctx.drawImage(glow, baseX - 160, baseY - tor.height, 320, tor.height + 40);
+        ctx.drawImage(glow, baseX - 140, baseY - tor.height, 280, tor.height + 30);
       }
+      ctx.globalAlpha = fade * (isReflection ? 0.28 : 0.56);
 
-      for (let r = 0; r < rows; r++) {
+      for (let r = 0; r < rows; r += 2) {
         const hFrac = r / rows;
-        const coneR = tor.radius * (0.32 + Math.pow(hFrac, 0.85) * 0.95);
+        const coneR = tor.radius * (0.42 + Math.pow(hFrac, 0.85) * 0.95);
         const sway = Math.sin(tor.life * 16 - hFrac * 7) * 14 * hFrac;
         const rot = tor.life * 20 - hFrac * 11;
-        for (let strand = 0; strand < 3; strand++) {
-          const a = rot + (strand * Math.PI * 2) / 3;
+        for (let strand = 0; strand < 2; strand++) {
+          const a = rot + strand * Math.PI;
           const rx = Math.round((baseX + sway + Math.cos(a) * coneR) / 4) * 4;
           const ry = Math.round((baseY - r * pxSize + Math.sin(a) * coneR * 0.22) / 4) * 4;
-          const wBand = Math.max(8, Math.round((14 + hFrac * 18) / 4) * 4);
-          ctx.fillStyle = strand === 0 ? '#ffffff' : strand === 1 ? tor.coreColor : tor.color;
+          const wBand = Math.max(6, Math.round((10 + hFrac * 14) / 4) * 4);
+          ctx.fillStyle = strand === 0 ? tor.coreColor : tor.color;
           ctx.fillRect(rx - wBand * 0.5, ry - 2, wBand, 4);
         }
       }
@@ -704,8 +706,8 @@ export class VFXManager {
       const t = s.life / s.maxLife;
       const alpha = 1 - t;
       const isFullCircle = Math.abs(s.endAngle - s.startAngle) > Math.PI * 1.8;
-      const steps = isFullCircle ? 42 : 28;
-      ctx.globalAlpha = alpha * (isReflection ? 0.5 : 0.95);
+      const steps = isFullCircle ? 32 : 28;
+      ctx.globalAlpha = alpha * (isReflection ? 0.35 : isFullCircle ? 0.52 : 0.88);
       const isCyan = s.color === '#38bdf8' || s.color === '#7dd3fc' || s.color === '#0284c7';
       const isEmerald = s.color === '#10b981' || s.color === '#34d399' || s.color === '#6ee7b7';
       const outerTone = isCyan ? '#0284c7' : isEmerald ? '#059669' : '#ea580c';
@@ -715,13 +717,13 @@ export class VFXManager {
       for (let i = 0; i <= steps; i++) {
         const u = i / steps;
         const ang = s.startAngle + (s.endAngle - s.startAngle) * u;
-        const env = isFullCircle ? 0.85 : Math.sin(u * Math.PI);
+        const env = isFullCircle ? 0.55 : Math.sin(u * Math.PI);
         const rad = s.radius + t * 14;
         const rx = rad;
-        const ry = isFullCircle ? rad * 0.34 : rad;
+        const ry = isFullCircle ? rad * 0.28 : rad;
         const px = Math.round((s.x + Math.cos(ang) * rx) / 4) * 4;
         const py = Math.round((s.y + Math.sin(ang) * ry) / 4) * 4;
-        const sz = Math.max(4, Math.round((env * 18 * (1 - t * 0.45)) / 4) * 4);
+        const sz = Math.max(4, Math.round((env * (isFullCircle ? 12 : 16) * (1 - t * 0.45)) / 4) * 4);
 
         ctx.fillStyle = outerTone;
         ctx.fillRect(px - sz * 0.65, py - sz * 0.65, sz * 1.3, sz * 1.3);
@@ -880,25 +882,43 @@ export class VFXManager {
       }
     }
 
-    // 10. RUNIC GLYPHS, SOLAR SIGILS & ASTRAL FEATHERS
+    // 10. PURE PIXEL-ART RUNIC CRYSTALS, SOLAR STARS & ASTRAL FEATHERS (Zero font/emoji characters)
     if (!isReflection) {
       for (const g of this.glyphs) {
         const p = g.life / g.maxLife;
+        const gx = Math.round(g.x / 2) * 2;
+        const gy = Math.round(g.y / 2) * 2;
         ctx.save();
-        ctx.translate(Math.round(g.x / 2) * 2, Math.round(g.y / 2) * 2);
-        ctx.rotate(g.rot);
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(1, (1 - p) * 1.8);
-        // Pixelated diamond rune backing + glyph symbol
-        ctx.fillStyle = g.color;
-        ctx.fillRect(-6, -6, 12, 12);
-        ctx.fillStyle = g.coreColor;
-        ctx.fillRect(-3, -3, 6, 6);
-        ctx.font = `900 ${g.size}px "Cinzel", serif`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillStyle = '#ffffff';
-        ctx.fillText(g.char, 0, 0);
+        ctx.globalAlpha = Math.min(1, (1 - p) * 1.6);
+
+        if (g.shape === 'rune') {
+          // Stepped pixel-art Nordic cross-crystal
+          ctx.fillStyle = g.color;
+          ctx.fillRect(gx - 2, gy - 8, 4, 16);
+          ctx.fillRect(gx - 6, gy - 2, 12, 4);
+          ctx.fillStyle = g.coreColor;
+          ctx.fillRect(gx - 2, gy - 4, 4, 8);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(gx - 1, gy - 1, 2, 2);
+        } else if (g.shape === 'star') {
+          // Stepped pixel-art 4-point solar flare
+          ctx.fillStyle = g.color;
+          ctx.fillRect(gx - 8, gy - 1, 16, 2);
+          ctx.fillRect(gx - 1, gy - 8, 2, 16);
+          ctx.fillRect(gx - 4, gy - 4, 8, 8);
+          ctx.fillStyle = g.coreColor;
+          ctx.fillRect(gx - 2, gy - 2, 4, 4);
+        } else {
+          // Stepped diagonal pixel-art wind feather / emerald shard
+          ctx.fillStyle = g.color;
+          ctx.fillRect(gx - 6, gy + 2, 4, 4);
+          ctx.fillRect(gx - 3, gy - 1, 6, 4);
+          ctx.fillRect(gx + 1, gy - 4, 5, 4);
+          ctx.fillStyle = g.coreColor;
+          ctx.fillRect(gx - 2, gy, 4, 2);
+          ctx.fillRect(gx + 1, gy - 3, 3, 2);
+        }
         ctx.restore();
       }
     }

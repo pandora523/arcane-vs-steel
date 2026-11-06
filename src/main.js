@@ -312,6 +312,11 @@ class Game {
       const canvas = this.previewCanvases[heroKey];
       const sheet = assets[heroKey]?.sheet;
       if (!canvas || !sheet || !sheet.complete || !sheet.naturalWidth) return;
+      if (canvas.width !== 256) {
+        canvas.width = 256;
+        canvas.height = 256;
+      }
+      const cell = Math.round(sheet.naturalWidth / 8) || 256;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = false;
@@ -326,8 +331,8 @@ class Game {
       }
       const col = frameIdx % 8;
       const row = (frameIdx / 8) | 0;
-      const hover = heroKey === 'mage' ? Math.round(Math.sin(t * 3.2) * 3) : 0;
-      ctx.drawImage(sheet, col * 128, row * 128, 128, 128, 8, 8 + hover, 132, 132);
+      const hover = heroKey === 'mage' ? Math.round(Math.sin(t * 3.2) * 4) : 0;
+      ctx.drawImage(sheet, col * cell, row * cell, cell, cell, 8, 8 + hover, 240, 240);
     };
 
     Object.keys(CHAMPION_ROSTER).forEach((key) => {

@@ -65,10 +65,11 @@ export class Renderer {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
     this.isMobile = this.width < 768;
-    const dpr = Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.35 : 1.85);
-    this.canvas.width = this.width * dpr;
-    this.canvas.height = this.height * dpr;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
+    this.canvas.width = Math.round(this.width * dpr);
+    this.canvas.height = Math.round(this.height * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.ctx.imageSmoothingEnabled = false;
   }
 
   triggerShake(intensity = 4, duration = 0.14) {

@@ -270,18 +270,6 @@ export class Warrior extends Fighter {
     const h = 192;
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
 
-    if (!isReflection && (this.state === 'SKILL' || this.state === 'ULTIMATE' || this.state === 'AUTO_ATTACK')) {
-      for (let g = 1; g <= 2; g++) {
-        ctx.save();
-        ctx.globalAlpha = 0.22 / g;
-        ctx.translate(Math.round(this.x - this.facing * g * 18), Math.round(this.y));
-        ctx.scale(this.facing, 1);
-        const ghostIdx = Math.max(0, frameIdx - g);
-        PixelForge.drawGhostFrame(ctx, sprites, ghostIdx, w, h);
-        ctx.restore();
-      }
-    }
-
     ctx.translate(Math.round(this.x), Math.round(this.y));
     ctx.scale(this.facing, 1);
 
@@ -289,7 +277,7 @@ export class Warrior extends Fighter {
 
     if (this.hitFlash > 0 && !isReflection) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.6;
+      ctx.globalAlpha = 0.5;
       PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);
     }
 

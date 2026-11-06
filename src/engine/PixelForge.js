@@ -111,8 +111,8 @@ export class PixelForge {
 
   static drawSheetFrame(ctx, charSet, fighter, w, h, phase, isReflection = false) {
     const sheet = charSet.sheet;
-    const cell = 128;
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
+    const cell = Math.round(sheet.naturalWidth / 8) || 256;
 
     ctx.imageSmoothingEnabled = false;
 
@@ -123,7 +123,7 @@ export class PixelForge {
     const sy = row * cell;
     const baseY = -h + 10;
 
-    // Draw the full 128x128 HD-2D pixel-art cell intact with zero horizontal slice-shearing
+    // Draw the full 256x256 HD-2D pixel-art cell intact with zero horizontal slice-shearing
     ctx.drawImage(
       sheet,
       sx,
@@ -141,7 +141,7 @@ export class PixelForge {
     const sheet = charSet.sheet;
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
     ctx.imageSmoothingEnabled = false;
-    const cell = 128;
+    const cell = Math.round(sheet.naturalWidth / 8) || 256;
     const col = frameIdx % 8;
     const row = (frameIdx / 8) | 0;
     ctx.drawImage(
