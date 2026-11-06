@@ -289,7 +289,9 @@ export class VFXManager {
       else ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = (1 - t) * (isReflection ? 0.65 : 1);
       ctx.fillStyle = p.color;
-      ctx.fillRect(p.x - r, p.y - r, r * 2, r * 2);
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+      ctx.fill();
     }
 
     ctx.globalCompositeOperation = 'lighter';
@@ -355,7 +357,7 @@ export class VFXManager {
       ctx.translate(t.x, t.y);
       ctx.scale(scale, scale);
       ctx.globalAlpha = Math.min(1, (1 - p) * 2);
-      ctx.font = `${t.isCrit ? '900 17px' : '700 12px'} "Press Start 2P", monospace`;
+      ctx.font = `${t.isCrit ? '900 22px' : '700 16px'} "Cinzel", serif`;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#000';
       ctx.fillText(t.text, 2, 2);

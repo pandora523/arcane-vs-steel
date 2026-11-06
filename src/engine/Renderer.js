@@ -1,3 +1,5 @@
+import { PixelForge } from './PixelForge.js';
+
 export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
@@ -12,21 +14,12 @@ export class Renderer {
     this.shakeTime = 0;
     this.shakeIntensity = 0;
     this.aberration = 0;
-    this.hitStop = 0;
     this.ultDim = 0;
     this.ultZoomTimer = 0;
     this.camX = this.worldWidth * 0.5;
     this.camY = this.groundY - 90;
     this.zoom = 1;
     this.time = 0;
-
-    this.pillars = [0.1, 0.3, 0.5, 0.7, 0.9];
-    this.stars = Array.from({ length: 36 }, () => ({
-      x: Math.random() * 1600 - 200,
-      y: Math.random() * 480 - 360,
-      s: Math.random() < 0.3 ? 3 : 2,
-      phase: Math.random() * Math.PI * 2
-    }));
 
     this.bakeLightTextures();
     this.resize();
@@ -50,14 +43,14 @@ export class Renderer {
     this.glowCyan = makeGlow('rgba(186,230,253,0.9)', 'rgba(56,189,248,0.4)');
     this.glowOrange = makeGlow('rgba(254,240,138,0.95)', 'rgba(251,146,60,0.45)');
     this.glowGold = makeGlow('rgba(254,240,138,0.9)', 'rgba(234,179,8,0.4)');
-    this.shadowTex = makeGlow('rgba(0,0,0,0.75)', 'rgba(0,0,0,0.35)');
+    this.shadowTex = makeGlow('rgba(0,0,0,0.8)', 'rgba(0,0,0,0.38)');
   }
 
   resize() {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
     this.isMobile = this.width < 768;
-    const dpr = Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.25 : 1.75);
+    const dpr = Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.35 : 1.85);
     this.canvas.width = this.width * dpr;
     this.canvas.height = this.height * dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -72,9 +65,7 @@ export class Renderer {
     if (!this.isMobile) this.aberration = Math.max(this.aberration, amount);
   }
 
-  triggerHitStop() {
-    // Disabled freeze-frames so combat movement stays 100% smooth
-  }
+  triggerHitStop() {}
 
   triggerUltimateCamera(focusX, focusY) {
     this.ultFocusX = focusX;
@@ -97,15 +88,15 @@ export class Renderer {
       const f1 = fighters[0];
       const f2 = fighters[1];
       const midX = (f1.x + f2.x) * 0.5;
-      const dist = Math.abs(f1.x - f2.x) + 320;
+      const dist = Math.abs(f1.x - f2.x) + 340;
 
-      const fitScaleX = this.width / Math.max(600, Math.min(this.worldWidth, dist));
+      const fitScaleX = this.width / Math.max(620, Math.min(this.worldWidth, dist));
       const fitScaleY = this.height / 720;
       let targetZoom = Math.min(fitScaleX, fitScaleY * 1.15);
       targetZoom = Math.max(0.42, Math.min(this.isMobile ? 0.85 : 1.15, targetZoom));
 
       let targetX = midX;
-      let targetY = this.groundY - 85;
+      let targetY = this.groundY - 95;
 
       if (this.ultZoomTimer > 0) {
         targetZoom *= 1.15;
@@ -132,12 +123,12 @@ export class Renderer {
     const sx = this.shakeTime > 0 ? (Math.random() - 0.5) * 2 * this.shakeIntensity : 0;
     const sy = this.shakeTime > 0 ? (Math.random() - 0.5) * 2 * this.shakeIntensity : 0;
 
-    const screenAnchorY = this.height * (this.isMobile ? 0.62 : 0.66);
+    const screenAnchorY = this.height * (this.isMobile ? 0.64 : 0.68);
     ctx.translate(this.width * 0.5 + sx, screenAnchorY + sy);
     ctx.scale(this.zoom, this.zoom);
     ctx.translate(-this.camX, -this.camY);
 
-    // 1. Gothic Citadel Sky & Architecture
+    // 1. Hand-Painted Gothic Cathedral Arena Stage
     this.drawArenaBackground(ctx, ww, gy);
 
     if (this.ultDim > 0.01) {
@@ -155,17 +146,14 @@ export class Renderer {
     ctx.clip();
 
     ctx.translate(0, gy * 2);
-    ctx.scale(1, -0.45);
+    ctx.scale(1, -0.42);
     ctx.globalAlpha = 0.24;
 
     for (const f of fighters) f.draw(ctx, true);
     vfx.renderMainPass(ctx, true, this);
     ctx.restore();
 
-    // Tiled Obsidian Floor Overlay
-    this.drawObsidianFloor(ctx, ww, gy);
-
-    // 4. Dynamic Ground Light Pools & Drop Shadows (Using pre-baked textures)
+    // 4. Dynamic Ground Light Pools & Drop Shadows
     const lights = vfx.getActiveLights(fighters, gy);
     this.drawFloorLightPools(ctx, lights, gy);
     this.drawDynamicShadows(ctx, fighters, lights, gy);
@@ -182,86 +170,32 @@ export class Renderer {
   }
 
   drawArenaBackground(ctx, ww, gy) {
-    ctx.fillStyle = '#070c18';
-    ctx.fillRect(-600, -700, ww + 1200, gy + 700);
+    const assets = PixelForge.initAssets();
+    const bg = assets.arenaBg;
 
-    for (const st of this.stars) {
-      ctx.fillStyle = '#cbd5e1';
-      ctx.globalAlpha = 0.25 + Math.sin(this.time * 2.5 + st.phase) * 0.18;
-      ctx.fillRect(st.x, st.y, st.s, st.s);
-    }
-    ctx.globalAlpha = 1;
+    if (bg && bg.complete && bg.naturalWidth > 0) {
+      // Align painted stage floor (at ~76% of image height) with gy
+      const drawW = 1680;
+      const drawH = 945;
+      const drawX = (ww - drawW) * 0.5;
+      const drawY = gy - drawH * 0.77;
+      ctx.drawImage(bg, drawX, drawY, drawW, drawH);
 
-    // Giant Center Eclipse Medallion
-    const cx = ww * 0.5;
-    const cy = gy - 250;
-    ctx.drawImage(this.glowGold, cx - 180, cy - 180, 360, 360);
-    ctx.fillStyle = '#060912';
-    ctx.strokeStyle = 'rgba(250, 204, 21, 0.35)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 46, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-
-    // Distant Battlement Wall
-    ctx.fillStyle = '#080d18';
-    ctx.fillRect(-600, gy - 125, ww + 1200, 125);
-    for (let x = -400; x < ww + 400; x += 48) {
-      ctx.fillRect(x, gy - 140, 28, 16);
-    }
-
-    // Gothic Pillars & Pre-baked Brazier Glows
-    ctx.save();
-    for (let i = 0; i < this.pillars.length; i++) {
-      const px = ww * this.pillars[i];
-      const pw = 58;
-      ctx.fillStyle = '#0b111e';
-      ctx.fillRect(px - pw * 0.5, -360, pw, gy + 360);
-      ctx.fillStyle = '#141e30';
-      ctx.fillRect(px - pw * 0.5 + 8, -360, 10, gy + 360);
-      ctx.fillRect(px - pw * 0.5 - 6, gy - 24, pw + 12, 24);
-
-      const by = gy - 175;
-      ctx.fillStyle = '#1e293b';
-      ctx.fillRect(px - 16, by, 32, 10);
-
-      const flicker = Math.sin(this.time * 8 + i * 2.1) * 10;
-      const r = 105 + flicker;
-      const tex = i < 2 ? this.glowCyan : i === 2 ? this.glowGold : this.glowOrange;
+      // Animated flickering brazier light blooms over the painted braziers
+      ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.drawImage(tex, px - r, by - 6 - r, r * 2, r * 2);
-      ctx.fillStyle = '#fef08a';
-      ctx.fillRect(px - 5, by - 12, 10, 10);
-      ctx.globalCompositeOperation = 'source-over';
+      const f1 = Math.sin(this.time * 7) * 12;
+      const f2 = Math.cos(this.time * 8.5) * 12;
+      ctx.globalAlpha = 0.35;
+      ctx.drawImage(this.glowCyan, 40 - f1, gy - 320, 240 + f1 * 2, 240 + f1 * 2);
+      ctx.drawImage(this.glowCyan, 240 - f2, gy - 260, 190 + f2 * 2, 190 + f2 * 2);
+      ctx.drawImage(this.glowOrange, ww - 280 - f2, gy - 320, 240 + f2 * 2, 240 + f2 * 2);
+      ctx.drawImage(this.glowOrange, ww - 430 - f1, gy - 260, 190 + f1 * 2, 190 + f1 * 2);
+      ctx.restore();
+    } else {
+      ctx.fillStyle = '#070c18';
+      ctx.fillRect(-600, -700, ww + 1200, gy + 1400);
     }
-    ctx.restore();
-  }
-
-  drawObsidianFloor(ctx, ww, gy) {
-    ctx.fillStyle = 'rgba(8, 12, 22, 0.72)';
-    ctx.fillRect(-600, gy, ww + 1200, 700);
-
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.08)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    for (let x = -200; x <= ww + 200; x += 120) {
-      ctx.moveTo(x, gy);
-      ctx.lineTo(ww * 0.5 + (x - ww * 0.5) * 2.4, gy + 450);
-    }
-    for (let r = 1; r <= 5; r++) {
-      const y = gy + r * r * 16;
-      ctx.moveTo(-600, y);
-      ctx.lineTo(ww + 600, y);
-    }
-    ctx.stroke();
-
-    ctx.strokeStyle = 'rgba(212, 175, 55, 0.35)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-600, gy);
-    ctx.lineTo(ww + 600, gy);
-    ctx.stroke();
   }
 
   drawFloorLightPools(ctx, lights, gy) {
@@ -291,8 +225,8 @@ export class Renderer {
         if (dist < 380) shiftX += (dx / dist) * (1 - dist / 380) * 24 * l.intensity;
       }
       shiftX = Math.max(-35, Math.min(35, shiftX));
-      const rx = 44 * scale;
-      const ry = 12 * scale;
+      const rx = 56 * scale;
+      const ry = 15 * scale;
       ctx.drawImage(this.shadowTex, f.x + shiftX - rx, gy + 2 - ry, rx * 2, ry * 2);
     }
   }

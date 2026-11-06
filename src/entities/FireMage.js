@@ -17,7 +17,6 @@ export class FireMage extends Fighter {
     });
     this.ultName = 'METEOR CATACLYSM';
     this.skillName = 'PILLAR';
-    this.staffAngle = 0.18;
     this.runeOrbit = 0;
     this.blinkCooldown = 2.0;
   }
@@ -28,15 +27,14 @@ export class FireMage extends Fighter {
 
     if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const dist = Math.abs(enemy.x - this.x);
-      // Arcane Blink Escape (8.5s cooldown so Warrior has fair window to catch Mage)
       if (dist < 155 && this.blinkCooldown <= 0) {
         this.blinkCooldown = 8.5;
         const oldX = this.x;
         const ww = game.renderer.worldWidth;
         const destX = enemy.x < ww * 0.5 ? Math.min(ww - 110, enemy.x + 265) : Math.max(110, enemy.x - 265);
 
-        game.vfx.spawnShockwave(oldX, this.y - 45, 85, '#facc15', 0.3);
-        game.vfx.spawnBurst(oldX, this.y - 45, 12, '#fb923c', 200);
+        game.vfx.spawnShockwave(oldX, this.y - 55, 85, '#facc15', 0.3);
+        game.vfx.spawnBurst(oldX, this.y - 55, 12, '#fb923c', 200);
         enemy.takeDamage(22, this, false, 95, -50);
 
         this.x = destX;
@@ -45,8 +43,8 @@ export class FireMage extends Fighter {
           this.capeNodes[i].x = this.x;
         }
         if (game.audio) game.audio.play('fireball');
-        game.vfx.spawnShockwave(this.x, this.y - 45, 85, '#fb923c', 0.3);
-        game.vfx.spawnDamageText(this.x, this.y - 95, 0, false, 'ARCANE BLINK!');
+        game.vfx.spawnShockwave(this.x, this.y - 55, 85, '#fb923c', 0.3);
+        game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'ARCANE BLINK!');
       } else if (dist < 220) {
         this.x -= this.facing * this.moveSpeed * 0.72 * dt;
       }
@@ -57,19 +55,17 @@ export class FireMage extends Fighter {
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
     if (t < 0.24) {
-      this.torsoAngle = -this.facing * 0.22;
-      this.staffAngle = -0.6;
+      this.torsoAngle = -this.facing * 0.16;
     } else if (t < 0.5) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.vx -= this.facing * 95;
-        this.torsoVel = -this.facing * 11;
-        this.staffAngle = 0.78;
+        this.torsoVel = -this.facing * 8;
         if (game.audio) game.audio.play('fireball');
 
-        const spawnX = this.x + this.facing * 42;
-        const spawnY = this.y - 60;
-        const targetY = enemy ? enemy.y - 46 : spawnY;
+        const spawnX = this.x + this.facing * 52;
+        const spawnY = this.y - 78;
+        const targetY = enemy ? enemy.y - 60 : spawnY;
         const dx = enemy ? enemy.x - spawnX : this.facing * 460;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
@@ -90,7 +86,6 @@ export class FireMage extends Fighter {
         game.vfx.spawnBurst(spawnX, spawnY, 8, '#fb923c', 160);
       }
     } else {
-      this.staffAngle = 0.18;
       this.setState('IDLE');
     }
   }
@@ -98,16 +93,14 @@ export class FireMage extends Fighter {
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
     if (t < 0.32) {
-      this.staffAngle = -0.95;
       if (!this.didActionFrame && enemy) {
         this.didActionFrame = true;
         this.vx -= this.facing * 110;
         if (game.audio) game.audio.play('flame_pillar');
         game.vfx.spawnFlamePillar(enemy.x, this.groundY, this, enemy);
-        game.vfx.spawnShockwave(this.x, this.y - 70, 65, '#fb923c', 0.35);
+        game.vfx.spawnShockwave(this.x, this.y - 75, 65, '#fb923c', 0.35);
       }
     } else if (t >= 0.78) {
-      this.staffAngle = 0.18;
       this.setState('IDLE');
     }
   }
@@ -117,14 +110,13 @@ export class FireMage extends Fighter {
     if (t < 0.7) {
       this.vy = -45;
       this.y = Math.max(this.groundY - 135, this.y - 170 * dt);
-      this.staffAngle = -1.15;
       this.runeOrbit += dt * 9.5;
 
       if (Math.random() < 0.7) {
         const a = Math.random() * Math.PI * 2;
         game.vfx.spawnParticle({
-          x: this.x + Math.cos(a) * 60,
-          y: this.y - 55 + Math.sin(a) * 60,
+          x: this.x + Math.cos(a) * 65,
+          y: this.y - 65 + Math.sin(a) * 65,
           vx: -Math.cos(a) * 95,
           vy: -Math.sin(a) * 95,
           size: 7,
@@ -156,86 +148,53 @@ export class FireMage extends Fighter {
         isMeteor: true
       });
     } else if (t >= 1.45) {
-      this.staffAngle = 0.18;
       this.setState('IDLE');
     }
   }
 
   draw(ctx) {
     const sprites = PixelForge.initAssets().mage;
+    const isCasting =
+      (this.state === 'AUTO_ATTACK' && this.stateTimer >= 0.16 && this.stateTimer <= 0.5) ||
+      this.state === 'SKILL' ||
+      this.state === 'ULTIMATE';
+    const img = isCasting ? sprites.attack : sprites.idle;
+    if (!img || !img.complete || !img.naturalWidth) return;
+
     ctx.save();
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
 
-    const hoverY = -16 + Math.sin(this.runeOrbit * 1.4) * 6;
+    const hoverY = -12 + Math.sin(this.runeOrbit * 1.4) * 7;
+    const w = 175;
+    const h = 178;
 
-    for (let i = 0; i < this.capeNodes.length - 1; i++) {
-      const a = this.capeNodes[i];
-      const b = this.capeNodes[i + 1];
-      ctx.strokeStyle = this.hitFlash > 0 ? '#ffffff' : i < 2 ? '#9a3412' : '#ea580c';
-      ctx.lineWidth = 18 - i * 2.5;
-      ctx.lineCap = 'square';
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y + hoverY * 0.5);
-      ctx.lineTo(b.x, b.y + hoverY * 0.5);
-      ctx.stroke();
+    // Note: mage_idle.png & mage_attack.png natively face LEFT (-1), so scaleX = -this.facing
+    const scaleDir = -this.facing;
+
+    if (this.state === 'SKILL' || this.state === 'ULTIMATE') {
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      ctx.translate(this.x - this.facing * 22, this.y + hoverY);
+      ctx.scale(scaleDir, 1);
+      ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
+      ctx.restore();
     }
+
+    const breatheY = 1 + Math.sin(this.runeOrbit * 0.8) * 0.025;
+    const breatheX = 1 - Math.sin(this.runeOrbit * 0.8) * 0.015;
+    const tilt = this.torsoAngle * scaleDir * 0.35;
 
     ctx.translate(this.x, this.y + hoverY);
-    ctx.scale(this.facing, 1);
+    ctx.scale(scaleDir * breatheX, breatheY);
+    ctx.rotate(tilt);
 
-    // Levitation Ember Vortex
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.translate(0, -hoverY - 3);
-    ctx.scale(1, 0.28);
-    ctx.strokeStyle = '#fb923c';
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.arc(0, 0, 26 + Math.sin(this.runeOrbit * 2) * 4, this.runeOrbit, this.runeOrbit + Math.PI * 1.5);
-    ctx.stroke();
-    ctx.restore();
+    ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
 
-    // 5 Blazing Fire Orbs Halo
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    for (let i = 0; i < 5; i++) {
-      const baseA = -Math.PI * 0.85 + (i / 4) * (Math.PI * 0.7);
-      const bob = Math.sin(this.runeOrbit * 2 + i) * 4;
-      const ox = Math.cos(baseA) * 38;
-      const oy = -52 + Math.sin(baseA) * 34 + bob;
-      ctx.fillStyle = '#ea580c';
-      ctx.fillRect(ox - 5, oy - 5, 10, 10);
-      ctx.fillStyle = '#fef08a';
-      ctx.fillRect(ox - 3, oy - 3, 6, 6);
+    if (this.hitFlash > 0) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
     }
-    ctx.restore();
-
-    ctx.translate(0, -10);
-    ctx.rotate(this.torsoAngle * this.facing * 0.8);
-
-    ctx.drawImage(sprites.torso, -27, -64);
-
-    ctx.save();
-    ctx.translate(0, -68 + Math.sin(this.runeOrbit * 1.5) * 2);
-    ctx.rotate(Math.sin(this.runeOrbit * 0.7) * 0.05);
-    ctx.drawImage(sprites.head, -26, -50);
-    ctx.restore();
-
-    // Floating Grimoire
-    ctx.save();
-    const bookBob = Math.sin(this.runeOrbit * 2.2) * 5;
-    ctx.translate(28, -42 + bookBob);
-    ctx.rotate(this.state === 'AUTO_ATTACK' || this.state === 'SKILL' ? -0.25 : 0.08);
-    ctx.drawImage(sprites.book, -18, -15);
-    ctx.restore();
-
-    // Twin-Horn Dragon Staff
-    ctx.save();
-    const staffFloat = Math.sin(this.runeOrbit * 1.6) * 4;
-    ctx.translate(-10, -40 + staffFloat);
-    ctx.rotate(this.staffAngle);
-    ctx.drawImage(sprites.staff, -18, -58);
-    ctx.restore();
 
     ctx.restore();
   }

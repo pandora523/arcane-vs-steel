@@ -18,9 +18,6 @@ export class Warrior extends Fighter {
     this.skillMaxCooldown = 4.4;
     this.ultName = 'HEAVENLY EARTHSHATTER';
     this.skillName = 'WHIRLWIND';
-    this.swordAngle = -0.75;
-    this.shieldOffsetX = 14;
-    this.shieldOffsetY = -26;
     this.comboStep = 0;
     this.spinAngle = 0;
     this.isDeflecting = false;
@@ -32,7 +29,7 @@ export class Warrior extends Fighter {
       this.stepDustTimer += dt;
       if (this.stepDustTimer >= 0.28) {
         this.stepDustTimer = 0;
-        game.vfx.spawnBurst(this.x - this.facing * 10, this.groundY - 2, 3, '#64748b', 60, {
+        game.vfx.spawnBurst(this.x - this.facing * 14, this.groundY - 2, 3, '#64748b', 60, {
           upBias: 30,
           size: 4,
           life: 0.3,
@@ -48,39 +45,33 @@ export class Warrior extends Fighter {
     const mode = this.comboStep % 3;
 
     if (t < 0.18) {
-      this.torsoAngle = -this.facing * 0.38 * (t / 0.18);
-      this.swordAngle = mode === 2 ? 1.35 : -2.25;
-      this.shieldOffsetX = 8;
-    } else if (t < 0.4) {
+      this.torsoAngle = -this.facing * 0.22 * (t / 0.18);
+    } else if (t < 0.42) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.comboStep++;
         this.vx += this.facing * 195;
-        this.torsoVel = this.facing * 18;
-        this.shieldOffsetX = 18;
+        this.torsoVel = this.facing * 14;
         if (game.audio) game.audio.play('slash');
 
-        const cx = this.x + this.facing * 24;
-        const cy = this.y - 50;
+        const cx = this.x + this.facing * 32;
+        const cy = this.y - 68;
         const startA = this.facing === 1 ? -1.55 : Math.PI - 0.9;
         const endA = this.facing === 1 ? 0.95 : Math.PI + 1.55;
 
-        game.vfx.spawnSlash(cx, cy, 90, startA, endA, '#0284c7', 0.24);
-        game.vfx.spawnSlash(cx, cy, 76, startA, endA, '#38bdf8', 0.2);
-        game.vfx.spawnSlash(cx, cy, 62, startA, endA, '#ffffff', 0.15);
+        game.vfx.spawnSlash(cx, cy, 98, startA, endA, '#0284c7', 0.24);
+        game.vfx.spawnSlash(cx, cy, 84, startA, endA, '#38bdf8', 0.2);
+        game.vfx.spawnSlash(cx, cy, 70, startA, endA, '#ffffff', 0.15);
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 42) {
           const isCrit = mode === 2 || Math.random() < 0.25;
           const dmg = isCrit ? 116 : 76;
           enemy.takeDamage(dmg, this, isCrit, 145, mode === 2 ? -150 : -75);
           if (game.audio) game.audio.play('clang');
-          game.vfx.spawnBurst(enemy.x, enemy.y - 50, 10, '#bae6fd', 220);
+          game.vfx.spawnBurst(enemy.x, enemy.y - 65, 10, '#bae6fd', 220);
         }
       }
-      this.swordAngle = mode === 2 ? -1.6 : 1.05;
     } else if (t >= 0.58) {
-      this.swordAngle = -0.75;
-      this.shieldOffsetX = 14;
       this.setState('IDLE');
     }
   }
@@ -90,8 +81,7 @@ export class Warrior extends Fighter {
     this.isDeflecting = t >= 0.1 && t <= 0.9;
 
     if (t < 0.1) {
-      this.torsoAngle = -this.facing * 0.32;
-      this.shieldOffsetX = 20;
+      this.torsoAngle = -this.facing * 0.2;
     } else if (t < 0.9) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
@@ -99,20 +89,19 @@ export class Warrior extends Fighter {
       }
       this.spinAngle += dt * 34;
       this.x += this.facing * 435 * dt;
-      this.swordAngle = Math.sin(this.spinAngle) * 1.75;
 
       if (Math.random() < 0.5) {
-        game.vfx.spawnShockwave(this.x, this.y - 44, 78, '#7dd3fc', 0.2, true);
+        game.vfx.spawnShockwave(this.x, this.y - 54, 86, '#7dd3fc', 0.2, true);
       }
 
       for (const proj of game.vfx.projectiles) {
-        if (proj.owner !== this && !proj.isMeteor && Math.hypot(proj.x - this.x, proj.y - (this.y - 48)) < 88) {
+        if (proj.owner !== this && !proj.isMeteor && Math.hypot(proj.x - this.x, proj.y - (this.y - 60)) < 92) {
           proj.owner = this;
           proj.vx = -proj.vx * 1.3;
           proj.vy = -40;
           proj.color = '#38bdf8';
           if (game.audio) game.audio.play('clang');
-          game.vfx.spawnDamageText(this.x, this.y - 98, 0, false, 'AEGIS REFLECT!');
+          game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'AEGIS REFLECT!');
           game.vfx.spawnBurst(proj.x, proj.y, 10, '#38bdf8', 210);
           game.renderer.triggerShake(6, 0.14);
         }
@@ -120,7 +109,7 @@ export class Warrior extends Fighter {
 
       if (!this.lastSpinTick || t - this.lastSpinTick >= 0.18) {
         this.lastSpinTick = t;
-        game.vfx.spawnSlash(this.x, this.y - 48, 84, 0, Math.PI * 2, '#38bdf8', 0.15);
+        game.vfx.spawnSlash(this.x, this.y - 58, 92, 0, Math.PI * 2, '#38bdf8', 0.15);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 110) {
           enemy.takeDamage(42, this, false, 95, -55);
         }
@@ -128,8 +117,6 @@ export class Warrior extends Fighter {
     } else {
       this.isDeflecting = false;
       this.lastSpinTick = 0;
-      this.swordAngle = -0.75;
-      this.shieldOffsetX = 14;
       this.setState('IDLE');
     }
   }
@@ -137,7 +124,6 @@ export class Warrior extends Fighter {
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     if (t < 0.35) {
-      this.swordAngle = -1.95;
       if (Math.random() < 0.7) {
         game.vfx.spawnParticle({
           x: this.x + (Math.random() - 0.5) * 75,
@@ -158,14 +144,12 @@ export class Warrior extends Fighter {
         const targetX = enemy.x - this.facing * 45;
         this.x += (targetX - this.x) * 7.5 * dt;
       }
-      this.swordAngle = -2.45;
     } else if (!this.didActionFrame) {
       this.vy = 1750;
       if (this.y >= this.groundY - 8) {
         this.y = this.groundY;
         this.vy = 0;
         this.didActionFrame = true;
-        this.swordAngle = 1.15;
         if (game.audio) game.audio.play('earthshatter');
 
         game.renderer.triggerShake(26, 0.65);
@@ -185,70 +169,54 @@ export class Warrior extends Fighter {
         }
       }
     } else if (t >= 1.35) {
-      this.swordAngle = -0.75;
       this.setState('IDLE');
     }
   }
 
   draw(ctx) {
     const sprites = PixelForge.initAssets().warrior;
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
+    const isAttacking =
+      (this.state === 'AUTO_ATTACK' && this.stateTimer >= 0.16 && this.stateTimer <= 0.48) ||
+      this.state === 'SKILL' ||
+      (this.state === 'ULTIMATE' && this.stateTimer >= 0.72);
+    const img = isAttacking ? sprites.attack : sprites.idle;
+    if (!img || !img.complete || !img.naturalWidth) return;
 
-    for (let i = 0; i < this.capeNodes.length - 1; i++) {
-      const a = this.capeNodes[i];
-      const b = this.capeNodes[i + 1];
-      ctx.strokeStyle = this.hitFlash > 0 ? '#ffffff' : i === 0 ? '#0369a1' : '#0284c7';
-      ctx.lineWidth = 22 - i * 2.5;
-      ctx.lineCap = 'square';
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.stroke();
+    ctx.save();
+    ctx.imageSmoothingEnabled = true;
+
+    const w = 175;
+    const h = 170;
+
+    // Motion afterimage ghost during Whirlwind Dash or Ultimate
+    if (this.state === 'SKILL' || this.state === 'ULTIMATE') {
+      ctx.save();
+      ctx.globalAlpha = 0.28;
+      ctx.translate(this.x - this.facing * 26, this.y);
+      ctx.scale(this.facing, 1);
+      ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
+      ctx.restore();
     }
 
-    ctx.translate(this.x, this.y);
-    ctx.scale(this.facing, 1);
+    const walkBob = this.state === 'WALK' ? Math.abs(Math.sin(this.walkPhase)) * -10 : 0;
+    const breatheY = 1 + Math.sin(this.walkPhase) * 0.025;
+    const breatheX = 1 - Math.sin(this.walkPhase) * 0.015;
+    const tilt =
+      this.state === 'WALK'
+        ? Math.sin(this.walkPhase) * 0.06 + 0.05
+        : this.torsoAngle * this.facing * 0.45;
 
-    const stride = this.state === 'WALK' ? Math.sin(this.walkPhase) * 0.6 : 0;
-    const stompLift = this.state === 'WALK' ? Math.max(0, -Math.sin(this.walkPhase) * 8) : 0;
-    const breathe = Math.sin(this.walkPhase) * 2;
+    ctx.translate(this.x, this.y + walkBob);
+    ctx.scale(this.facing * breatheX, breatheY);
+    ctx.rotate(tilt);
 
-    ctx.save();
-    ctx.translate(-9, -28);
-    ctx.rotate(-stride);
-    ctx.drawImage(sprites.leg, -12, 0);
-    ctx.restore();
+    ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
 
-    ctx.translate(0, -30 + this.headBob * 0.45);
-    ctx.rotate(this.torsoAngle * this.facing);
-
-    ctx.drawImage(sprites.torso, -27, -50 + breathe * 0.5);
-
-    ctx.save();
-    ctx.translate(0, -68 + breathe);
-    ctx.rotate(Math.sin(this.walkPhase * 0.5) * 0.05);
-    ctx.drawImage(sprites.helmet, -26, -30);
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(9, -stompLift * 0.4);
-    ctx.rotate(stride);
-    ctx.drawImage(sprites.leg, -12, 0);
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(this.shieldOffsetX, this.shieldOffsetY + breathe * 0.7);
-    ctx.rotate(this.isDeflecting ? 0.15 : -0.08);
-    ctx.drawImage(sprites.shield, -18, -30);
-    ctx.restore();
-
-    ctx.save();
-    ctx.translate(-6, -34 + breathe);
-    ctx.rotate(this.swordAngle + Math.PI * 0.5);
-    ctx.drawImage(sprites.sword, -21, -92);
-    ctx.drawImage(sprites.arm, -18, -12);
-    ctx.restore();
+    if (this.hitFlash > 0) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
+    }
 
     ctx.restore();
   }
