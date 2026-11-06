@@ -266,8 +266,8 @@ export class Warrior extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    const w = 192;
-    const h = 192;
+    const w = 208;
+    const h = 208;
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
 
     ctx.translate(Math.round(this.x), Math.round(this.y));

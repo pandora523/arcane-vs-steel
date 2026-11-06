@@ -604,25 +604,18 @@ html, body {
   transform: translateY(-2px);
 }
 
-.card-steel:hover,
-.card-steel.selected-p1,
-.card-steel.selected-p2 {
+.card-steel:hover { border-color: #38bdf8; }
+.card-emerald:hover { border-color: #34d399; }
+.card-arcane:hover { border-color: #fb923c; }
+
+.champ-card.selected-p1 {
   border-color: #38bdf8;
-  box-shadow: 0 0 26px rgba(56, 189, 248, 0.28), inset 0 0 20px rgba(56, 189, 248, 0.12);
+  box-shadow: 0 0 26px rgba(56, 189, 248, 0.34), inset 0 0 20px rgba(56, 189, 248, 0.14);
 }
 
-.card-emerald:hover,
-.card-emerald.selected-p1,
-.card-emerald.selected-p2 {
-  border-color: #34d399;
-  box-shadow: 0 0 26px rgba(52, 211, 153, 0.28), inset 0 0 20px rgba(52, 211, 153, 0.12);
-}
-
-.card-arcane:hover,
-.card-arcane.selected-p1,
-.card-arcane.selected-p2 {
-  border-color: #fb923c;
-  box-shadow: 0 0 26px rgba(251, 146, 60, 0.28), inset 0 0 20px rgba(251, 146, 60, 0.12);
+.champ-card.selected-p2 {
+  border-color: #facc15;
+  box-shadow: 0 0 26px rgba(250, 204, 21, 0.34), inset 0 0 20px rgba(250, 204, 21, 0.14);
 }
 
 .card-Selected-ribbon {
@@ -696,6 +689,7 @@ html, body {
   width: 132px;
   height: 132px;
   image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .champ-meta {
@@ -804,6 +798,20 @@ html, body {
   color: #fef9c3;
 }
 
+.assign-btn.active-p1 {
+  background: linear-gradient(180deg, #0369a1 0%, #082f49 100%);
+  border-color: #38bdf8;
+  color: #e0f2fe;
+  box-shadow: 0 0 8px rgba(56, 189, 248, 0.45);
+}
+
+.assign-btn.active-p2 {
+  background: linear-gradient(180deg, #854d0e 0%, #422006 100%);
+  border-color: #facc15;
+  color: #fef9c3;
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.45);
+}
+
 .landing-actions {
   display: flex;
   justify-content: center;
@@ -844,9 +852,16 @@ html, body {
   pointer-events: none !important;
 }
 
-@media (max-width: 960px) {
+@media (max-width: 680px) {
   .champion-grid {
     grid-template-columns: 1fr;
+  }
+  .champ-preview-stage {
+    height: 112px;
+  }
+  .champ-preview-stage canvas {
+    width: 108px;
+    height: 108px;
   }
 }
 

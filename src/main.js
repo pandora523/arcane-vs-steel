@@ -53,7 +53,7 @@ class Game {
     // Default Matchup: Aethelgard (Warrior) vs. Sylvara (Archer)
     this.slot1Hero = 'warrior';
     this.slot2Hero = 'archer';
-    this.activeAssignSlot = 1; // 1 = Fighter 1 (Left), 2 = Fighter 2 (Right)
+    this.activeAssignSlot = 2; // Default cursor on Slot 2 so clicking a 3rd hero pairs them with Fighter 1
     this.isLandingOpen = true;
 
     this.bindUI();
@@ -174,22 +174,34 @@ class Game {
     document.querySelectorAll('[data-assign-p1]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.assignHeroToSlot(1, btn.getAttribute('data-assign-p1'));
+        this.assignHeroToSlot(1, btn.getAttribute('data-assign-p1'), true);
+        this.setActiveSlot(2);
       });
     });
     document.querySelectorAll('[data-assign-p2]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.assignHeroToSlot(2, btn.getAttribute('data-assign-p2'));
+        this.assignHeroToSlot(2, btn.getAttribute('data-assign-p2'), true);
+        this.setActiveSlot(1);
       });
     });
 
-    // Clicking a card assigns it to the currently active slot and toggles to the other slot
+    // Intuitive card click behavior:
+    // - Clicking a card already in Slot 1 or Slot 2 selects that slot as the active target to replace (without unexpectedly swapping P1 and P2)
+    // - Clicking an unselected card assigns it to the currently active slot and advances the cursor to the other slot
     Object.entries(this.cards).forEach(([heroKey, cardEl]) => {
       if (!cardEl) return;
       cardEl.addEventListener('click', () => {
-        this.assignHeroToSlot(this.activeAssignSlot, heroKey);
-        this.setActiveSlot(this.activeAssignSlot === 1 ? 2 : 1);
+        if (this.slot1Hero === heroKey) {
+          this.setActiveSlot(1);
+          if (this.audio) this.audio.play(CHAMPION_ROSTER[heroKey].selectSfx, 350);
+        } else if (this.slot2Hero === heroKey) {
+          this.setActiveSlot(2);
+          if (this.audio) this.audio.play(CHAMPION_ROSTER[heroKey].selectSfx, 850);
+        } else {
+          this.assignHeroToSlot(this.activeAssignSlot, heroKey, true);
+          this.setActiveSlot(this.activeAssignSlot === 1 ? 2 : 1);
+        }
       });
     });
 
@@ -234,8 +246,7 @@ class Game {
 
   setActiveSlot(slotNum) {
     this.activeAssignSlot = slotNum;
-    if (this.slotBtnLeft) this.slotBtnLeft.classList.toggle('active-slot', slotNum === 1);
-    if (this.slotBtnRight) this.slotBtnRight.classList.toggle('active-slot', slotNum === 2);
+    this.syncRosterSelectionUI(false);
   }
 
   assignHeroToSlot(slotNum, heroKey, playSound = true) {
@@ -252,6 +263,9 @@ class Game {
       this.slot2Hero = heroKey;
     }
     this.syncRosterSelectionUI(playSound, heroKey);
+    if (this.isLandingOpen && this.renderer) {
+      this.resetMatch();
+    }
   }
 
   syncRosterSelectionUI(playSound = false, soundHeroKey = null) {
@@ -259,6 +273,8 @@ class Game {
     const c2 = CHAMPION_ROSTER[this.slot2Hero];
     if (this.slotLeftName) this.slotLeftName.textContent = c1.name;
     if (this.slotRightName) this.slotRightName.textContent = c2.name;
+    if (this.slotBtnLeft) this.slotBtnLeft.classList.toggle('active-slot', this.activeAssignSlot === 1);
+    if (this.slotBtnRight) this.slotBtnRight.classList.toggle('active-slot', this.activeAssignSlot === 2);
 
     Object.keys(CHAMPION_ROSTER).forEach((key) => {
       const card = this.cards[key];
@@ -274,8 +290,23 @@ class Game {
           ? '★ FIGHTER 1 (LEFT)'
           : isP2
             ? '★ FIGHTER 2 (RIGHT)'
-            : 'CLICK TO ASSIGN';
+            : this.activeAssignSlot === 1
+              ? 'CLICK FOR P1 (LEFT)'
+              : 'CLICK FOR P2 (RIGHT)';
       }
+    });
+
+    document.querySelectorAll('[data-assign-p1]').forEach((btn) => {
+      const k = btn.getAttribute('data-assign-p1');
+      const active = this.slot1Hero === k;
+      btn.classList.toggle('active-p1', active);
+      btn.textContent = active ? '★ P1 [LEFT]' : 'SET P1 [LEFT]';
+    });
+    document.querySelectorAll('[data-assign-p2]').forEach((btn) => {
+      const k = btn.getAttribute('data-assign-p2');
+      const active = this.slot2Hero === k;
+      btn.classList.toggle('active-p2', active);
+      btn.textContent = active ? '★ P2 [RIGHT]' : 'SET P2 [RIGHT]';
     });
 
     if (this.startDuelText) {
@@ -312,11 +343,11 @@ class Game {
       const canvas = this.previewCanvases[heroKey];
       const sheet = assets[heroKey]?.sheet;
       if (!canvas || !sheet || !sheet.complete || !sheet.naturalWidth) return;
-      if (canvas.width !== 256) {
-        canvas.width = 256;
-        canvas.height = 256;
+      const cell = Math.round(sheet.naturalWidth / 8) || 208;
+      if (canvas.width !== cell) {
+        canvas.width = cell;
+        canvas.height = cell;
       }
-      const cell = Math.round(sheet.naturalWidth / 8) || 256;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = false;
@@ -331,8 +362,8 @@ class Game {
       }
       const col = frameIdx % 8;
       const row = (frameIdx / 8) | 0;
-      const hover = heroKey === 'mage' ? Math.round(Math.sin(t * 3.2) * 4) : 0;
-      ctx.drawImage(sheet, col * cell, row * cell, cell, cell, 8, 8 + hover, 240, 240);
+      const hover = heroKey === 'mage' ? Math.round(Math.sin(t * 3.2) * 2) * 2 : 0;
+      ctx.drawImage(sheet, col * cell, row * cell, cell, cell, 0, hover, cell, cell);
     };
 
     Object.keys(CHAMPION_ROSTER).forEach((key) => {

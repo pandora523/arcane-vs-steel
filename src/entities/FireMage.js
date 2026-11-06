@@ -250,8 +250,8 @@ export class FireMage extends Fighter {
 
     const hoverScale = this.isDead ? Math.max(0, 1 - (this.deathTimer || 0) * 2.5) : 1;
     const hoverY = Math.round((-8 + Math.sin(this.runeOrbit * 1.4) * 5) * hoverScale);
-    const w = 192;
-    const h = 192;
+    const w = 208;
+    const h = 208;
     const scaleDir = -this.facing;
     const frameIdx = PixelForge.getFrameIndex(this, this.runeOrbit);
 
