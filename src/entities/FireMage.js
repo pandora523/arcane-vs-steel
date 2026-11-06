@@ -19,40 +19,62 @@ export class FireMage extends Fighter {
     this.theme = 'arcane';
     this.deathSfx = 'death_mage';
     this.skillMaxCooldown = 5.2;
-    this.ultName = 'METEOR CATACLYSM';
+    this.ultName = 'ECLIPSE SUPERNOVA';
     this.skillName = 'SOLAR PILLAR';
     this.runeOrbit = 0;
-    this.blinkCooldown = 2.5;
+    this.dodgeMaxCooldown = 3.1;
+    this.dashMaxCooldown = 3.6;
+    this.spawnedEclipse = false;
+  }
+
+  onStartDodge(enemy, game, dir) {
+    this.dashDuration = 0.44;
+    this.vx = dir * 360;
+    if (game.audio) game.audio.play('blink', this.x);
+    game.vfx.spawnShockwave(this.x, this.y - 55, 88, '#facc15', 0.3);
+    game.vfx.spawnBurst(this.x, this.y - 55, 14, '#fb923c', 210);
+    game.vfx.spawnGlyphBurst(this.x, this.y - 60, 6, 'arcane');
+    game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'SOLAR GLIDE!', '#fb923c');
+  }
+
+  onStartDash(enemy, game, dir) {
+    this.dashDuration = 0.42;
+    this.vx = dir * 350;
+    if (game.audio) game.audio.play('fireball', this.x);
+    game.vfx.spawnShockwave(this.x, this.y - 55, 76, '#fb923c', 0.26, false, true);
+    game.vfx.spawnGlyphBurst(this.x, this.y - 60, 5, 'arcane');
+    game.vfx.spawnDamageText(this.x, this.y - 120, 0, false, 'IGNIS SURGE!', '#facc15');
+  }
+
+  updateDashOrDodge(dt, enemy, game) {
+    const t = this.stateTimer;
+    this.x += this.dashDir * 310 * dt;
+
+    if (Math.random() < 0.72) {
+      game.vfx.spawnParticle({
+        x: this.x - this.dashDir * 16,
+        y: this.y - 52 + (Math.random() - 0.5) * 36,
+        vx: -this.dashDir * 75,
+        vy: -45 - Math.random() * 35,
+        size: 6,
+        color: Math.random() > 0.4 ? '#fb923c' : '#fef08a',
+        maxLife: 0.3
+      });
+    }
+
+    if (t >= this.dashDuration) {
+      this.isInvulnerable = false;
+      this.setState('IDLE');
+    }
   }
 
   update(dt, enemy, game) {
     this.runeOrbit += dt * 2.4;
-    this.blinkCooldown = Math.max(0, this.blinkCooldown - dt);
 
     if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const dist = Math.abs(enemy.x - this.x);
-      if (dist < 145 && this.blinkCooldown <= 0) {
-        this.blinkCooldown = 8.5;
-        const oldX = this.x;
-        const ww = game.renderer.worldWidth;
-        const destX = enemy.x < ww * 0.5 ? Math.min(ww - 110, enemy.x + 265) : Math.max(110, enemy.x - 265);
-
-        game.vfx.spawnShockwave(oldX, this.y - 55, 95, '#facc15', 0.34);
-        game.vfx.spawnBurst(oldX, this.y - 55, 16, '#fb923c', 220);
-        game.vfx.spawnGlyphBurst(oldX, this.y - 60, 5, 'arcane');
-        enemy.takeDamage(24, this, false, 75, 0);
-
-        this.x = destX;
-        this.vx = 0;
-        for (let i = 0; i < this.capeNodes.length; i++) {
-          this.capeNodes[i].x = this.x;
-        }
-        if (game.audio) game.audio.play('blink', this.x);
-        game.vfx.spawnShockwave(this.x, this.y - 55, 95, '#fb923c', 0.34);
-        game.vfx.spawnGlyphBurst(this.x, this.y - 60, 5, 'arcane');
-        game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'ARCANE BLINK!', '#fb923c');
-      } else if (dist < 215) {
-        this.x -= this.facing * this.moveSpeed * 0.65 * dt;
+      if (dist < 215) {
+        this.x -= this.facing * this.moveSpeed * 0.68 * dt;
       }
     }
     super.update(dt, enemy, game);
@@ -120,45 +142,49 @@ export class FireMage extends Fighter {
       this.vx -= this.facing * 85;
       if (game.audio) game.audio.play('flame_pillar', enemy.x);
 
-      // Central Solar Cataclysm Tornado Pillar + 2 Flanking Hellfire Geysers + 3 Sky Solar Lances
+      // Signature Pyromancer Skill: Triple Hellfire Eruption Pillars + Twin Arcing Solar Fire-Orbs (zero sky-lances!)
       game.vfx.spawnFlamePillar(enemy.x, this.groundY, this, enemy, {
         theme: 'arcane',
-        delay: 0.34,
+        delay: 0.32,
         maxLife: 1.55,
-        scaleWidth: 1.15
+        scaleWidth: 1.18
       });
       game.vfx.spawnFlamePillar(enemy.x - 95, this.groundY, this, enemy, {
         theme: 'arcane',
-        delay: 0.52,
+        delay: 0.48,
         maxLife: 1.35,
-        scaleWidth: 0.72
+        scaleWidth: 0.76
       });
       game.vfx.spawnFlamePillar(enemy.x + 95, this.groundY, this, enemy, {
         theme: 'arcane',
-        delay: 0.52,
+        delay: 0.48,
         maxLife: 1.35,
-        scaleWidth: 0.72
+        scaleWidth: 0.76
       });
 
-      [-55, 0, 55].forEach((off, idx) => {
-        game.vfx.spawnSkyStrike({
-          x: enemy.x + off,
-          y: -180 - idx * 45,
-          groundY: this.groundY,
-          vx: 0,
-          vy: 1250,
-          type: 'solar_lance',
+      // Twin Solar Orbs launched from Ignis Sol's staff
+      const sx = this.x + this.facing * 48;
+      const sy = this.y - 82;
+      const dx = enemy.x - sx;
+      const dy = (enemy.y - 60) - sy;
+      const dist = Math.hypot(dx, dy) || 1;
+      [-45, 45].forEach((vyOff) => {
+        game.vfx.spawnProjectile({
+          x: sx,
+          y: sy,
+          vx: (dx / dist) * 510,
+          vy: (dy / dist) * 510 + vyOff,
+          radius: 13,
           color: '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          target: enemy,
-          damage: 16,
-          delay: 0.15 + idx * 0.1
+          damage: 38,
+          type: 'fireball'
         });
       });
 
-      game.vfx.spawnShockwave(this.x, this.y - 75, 85, '#fb923c', 0.38);
-      game.vfx.spawnGlyphBurst(this.x, this.y - 80, 6, 'arcane');
+      game.vfx.spawnShockwave(this.x, this.y - 75, 92, '#fb923c', 0.38);
+      game.vfx.spawnGlyphBurst(this.x, this.y - 80, 7, 'arcane');
     } else if (t >= 1.05) {
       this.setState('IDLE');
     }
@@ -170,6 +196,21 @@ export class FireMage extends Fighter {
       this.vy = -40;
       this.y = Math.max(this.groundY - 130, this.y - 145 * dt);
       this.runeOrbit += dt * 7.5;
+
+      // Conjure the Colossal Black-Gold Solar Eclipse Sphere overhead during channel!
+      if (!this.spawnedEclipse) {
+        this.spawnedEclipse = true;
+        const targetX = enemy ? enemy.x : game.renderer.worldWidth * 0.5;
+        game.vfx.spawnEclipseSupernova({
+          x: (this.x + targetX) * 0.5,
+          y: 165,
+          groundY: this.groundY,
+          maxRadius: 96,
+          color: '#fb923c',
+          coreColor: '#fef08a',
+          maxLife: 1.45
+        });
+      }
 
       if (Math.random() < 0.85) {
         const a = Math.random() * Math.PI * 2;
@@ -185,55 +226,36 @@ export class FireMage extends Fighter {
       }
     } else if (!this.didActionFrame) {
       this.didActionFrame = true;
+      this.spawnedEclipse = false;
       if (game.audio) game.audio.play('meteor', this.x);
       const targetX = enemy ? enemy.x : game.renderer.worldWidth * 0.35;
-      const startX = this.x - this.facing * 180;
-      const startY = -160;
-      const dx = targetX - startX;
-      const dy = this.groundY - startY;
-      const len = Math.hypot(dx, dy) || 1;
-      const speed = 640;
+      const eclipseX = (this.x + targetX) * 0.5;
+      const eclipseY = 165;
 
-      // Diagonal Solar Eclipse Orbital Laser Beam + Colossal Doomsday Meteor + Flanking Solar Lances
-      game.vfx.spawnBeam({
-        x1: startX,
-        y1: startY,
-        x2: targetX,
-        y2: this.groundY,
-        width: 58,
-        color: '#fb923c',
-        coreColor: '#fef08a',
-        maxLife: 0.55
-      });
+      // Erupt a radial Supernova Shockwave from the Eclipse Sphere + hurl 3 Colossal Molten Meteors!
+      game.vfx.spawnShockwave(eclipseX, eclipseY, 260, '#fef08a', 0.52);
+      game.vfx.spawnShockwave(eclipseX, eclipseY, 190, '#fb923c', 0.42);
+      game.vfx.spawnBurst(eclipseX, eclipseY, 28, '#fef08a', 320, { size: 8 });
 
-      game.vfx.spawnProjectile({
-        x: startX,
-        y: startY,
-        vx: (dx / len) * speed,
-        vy: (dy / len) * speed,
-        radius: 48,
-        color: '#ea580c',
-        coreColor: '#fef08a',
-        owner: this,
-        damage: 210,
-        type: 'meteor',
-        isMeteor: true
-      });
+      [-90, 0, 90].forEach((off, idx) => {
+        const destX = targetX + off;
+        const dx = destX - eclipseX;
+        const dy = this.groundY - eclipseY;
+        const len = Math.hypot(dx, dy) || 1;
+        const speed = 640 - idx * 35;
 
-      [-115, -55, 55, 115].forEach((off, idx) => {
-        game.vfx.spawnSkyStrike({
-          x: targetX + off,
-          y: -220 - idx * 50,
-          groundY: this.groundY,
-          vx: 0,
-          vy: 1320,
-          type: 'solar_lance',
-          color: '#fb923c',
+        game.vfx.spawnProjectile({
+          x: eclipseX + off * 0.25,
+          y: eclipseY,
+          vx: (dx / len) * speed,
+          vy: (dy / len) * speed,
+          radius: idx === 1 ? 46 : 32,
+          color: '#ea580c',
           coreColor: '#fef08a',
           owner: this,
-          target: enemy,
-          damage: 22,
-          delay: 0.08 * idx
+          damage: idx === 1 ? 135 : 55,
+          type: 'meteor',
+          isMeteor: true
         });
       });
 

@@ -22,14 +22,81 @@ export class Archer extends Fighter {
     this.ultName = 'ASTRAL HURRICANE';
     this.skillName = 'STARFALL VOLLEY';
     this.windPhase = 0;
-    this.evadeCooldown = 2.2;
     this.shotCombo = 0;
     this.stepTimer = 0;
+    this.dodgeMaxCooldown = 2.9;
+    this.dashMaxCooldown = 3.5;
+  }
+
+  onStartDodge(enemy, game, dir) {
+    this.dashDuration = 0.46;
+    // Agile mid-air acrobatic flip-vault!
+    this.vy = -290;
+    this.vx = dir * 340;
+    if (game.audio) game.audio.play('blink', this.x);
+    game.vfx.spawnShockwave(this.x, this.y - 50, 88, '#34d399', 0.3, true);
+    game.vfx.spawnSlash(this.x, this.y - 55, 76, 0, Math.PI * 2, '#10b981', 0.24);
+    game.vfx.spawnGlyphBurst(this.x, this.y - 60, 6, 'emerald');
+    game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'ZEPHYR VAULT!', '#34d399');
+  }
+
+  onStartDash(enemy, game, dir) {
+    this.dashDuration = 0.4;
+    this.vx = dir * 390;
+    if (game.audio) game.audio.play('arrow_shoot', this.x);
+    game.vfx.spawnShockwave(this.x, this.y - 55, 72, '#34d399', 0.25, false, true);
+    game.vfx.spawnGlyphBurst(this.x, this.y - 55, 5, 'emerald');
+    game.vfx.spawnDamageText(this.x, this.y - 120, 0, false, 'GALE STRIDE!', '#34d399');
+  }
+
+  updateDashOrDodge(dt, enemy, game) {
+    const t = this.stateTimer;
+    this.x += this.dashDir * 290 * dt;
+
+    if (Math.random() < 0.65) {
+      game.vfx.spawnParticle({
+        x: this.x,
+        y: this.y - 55 + (Math.random() - 0.5) * 30,
+        vx: -this.dashDir * 85,
+        vy: -25,
+        size: 5,
+        color: '#34d399',
+        maxLife: 0.25
+      });
+    }
+
+    // At the apex of her Zephyr Vault Dodge, Sylvara looses a mid-air counter-arrow at the enemy!
+    if (this.state === 'DODGE' && t >= 0.22 && !this.didActionFrame && enemy && !enemy.isDead) {
+      this.didActionFrame = true;
+      if (game.audio) game.audio.play('arrow_shoot', this.x);
+      const sx = this.x + this.facing * 42;
+      const sy = this.y - 72;
+      const dx = enemy.x - sx;
+      const dy = (enemy.y - 58) - sy;
+      const d = Math.hypot(dx, dy) || 1;
+      game.vfx.spawnProjectile({
+        x: sx,
+        y: sy,
+        vx: (dx / d) * 720,
+        vy: (dy / d) * 720,
+        radius: 13,
+        color: '#34d399',
+        coreColor: '#fef08a',
+        owner: this,
+        damage: 64,
+        type: 'arrow'
+      });
+      game.vfx.spawnShockwave(sx, sy, 52, '#fef08a', 0.22, false, true);
+    }
+
+    if (t >= this.dashDuration) {
+      this.isInvulnerable = false;
+      this.setState('IDLE');
+    }
   }
 
   update(dt, enemy, game) {
     this.windPhase += dt * 3.0;
-    this.evadeCooldown = Math.max(0, this.evadeCooldown - dt);
 
     if (!this.isDead && this.state === 'WALK') {
       this.stepTimer += dt;
@@ -44,31 +111,10 @@ export class Archer extends Fighter {
       }
     }
 
-    // Agile Zephyr Wind-Step Evasion when an enemy closes into melee range
     if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const dist = Math.abs(enemy.x - this.x);
-      if (dist < 155 && this.evadeCooldown <= 0) {
-        this.evadeCooldown = 6.8;
-        const oldX = this.x;
-        const ww = game.renderer.worldWidth;
-        const retreatDir = enemy.x < ww * 0.5 ? 1 : -1;
-        const destX = Math.max(110, Math.min(ww - 110, enemy.x + retreatDir * 290));
-
-        game.vfx.spawnShockwave(oldX, this.y - 55, 92, '#34d399', 0.32, true);
-        game.vfx.spawnSlash(oldX, this.y - 60, 82, 0, Math.PI * 2, '#10b981', 0.24);
-        game.vfx.spawnGlyphBurst(oldX, this.y - 60, 6, 'emerald');
-
-        // Leave a parting wind-blade strike on the pursuer
-        enemy.takeDamage(28, this, false, 95, 0);
-
-        this.x = destX;
-        this.vy = -210;
-        this.vx = retreatDir * 120;
-        if (game.audio) game.audio.play('blink', this.x);
-        game.vfx.spawnShockwave(this.x, this.y - 55, 88, '#fef08a', 0.3);
-        game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'ZEPHYR STEP!', '#34d399');
-      } else if (dist < 240) {
-        this.x -= this.facing * this.moveSpeed * 0.78 * dt;
+      if (dist < 235) {
+        this.x -= this.facing * this.moveSpeed * 0.75 * dt;
       }
     }
 
@@ -174,12 +220,33 @@ export class Archer extends Fighter {
       this.vx -= this.facing * 95;
       if (game.audio) game.audio.play('arrow_rain', enemy ? enemy.x : this.x);
 
-      // Skyward launch shockwave & emerald wind pillar at bow
-      game.vfx.spawnShockwave(this.x + this.facing * 32, this.y - 95, 82, '#34d399', 0.34);
-      game.vfx.spawnGlyphBurst(this.x, this.y - 85, 7, 'emerald');
+      // Skyward bow launch sonic rings & 3-Arrow Direct Fan Spread + 9 Diagonal Starfall Arrows (zero flame pillars!)
+      const bowX = this.x + this.facing * 44;
+      const bowY = this.y - 84;
+      game.vfx.spawnShockwave(bowX, bowY, 82, '#34d399', 0.32, false, true);
+      game.vfx.spawnShockwave(bowX + this.facing * 14, bowY - 10, 56, '#fef08a', 0.24, false, true);
+      game.vfx.spawnGlyphBurst(bowX, bowY, 7, 'emerald');
+
+      // 3 Direct Fan-Spread Wind Arrows from the bow
+      [-0.16, 0, 0.16].forEach((angOff) => {
+        const baseAng = this.facing === 1 ? 0 : Math.PI;
+        const a = baseAng + angOff;
+        game.vfx.spawnProjectile({
+          x: bowX,
+          y: bowY,
+          vx: Math.cos(a) * 650,
+          vy: Math.sin(a) * 650,
+          radius: 12,
+          color: '#34d399',
+          coreColor: '#fef08a',
+          owner: this,
+          damage: 32,
+          type: 'arrow'
+        });
+      });
 
       const centerTargetX = enemy ? enemy.x : this.x + this.facing * 320;
-      // Rain 9 Blazing Emerald-Gold Starfall Arrows from the Heavens + Central Emerald Wind Pillar
+      // Rain 9 Diagonal Emerald-Gold Starfall Arrows from the Heavens
       for (let i = 0; i < 9; i++) {
         const spread = (i - 4) * 34 + (Math.random() - 0.5) * 14;
         game.vfx.spawnSkyStrike({
@@ -193,18 +260,9 @@ export class Archer extends Fighter {
           coreColor: '#fef08a',
           owner: this,
           target: enemy,
-          damage: 18,
-          delay: i * 0.065,
+          damage: 20,
+          delay: i * 0.06,
           maxLinger: 0.55
-        });
-      }
-
-      if (enemy) {
-        game.vfx.spawnFlamePillar(enemy.x, this.groundY, this, enemy, {
-          theme: 'emerald',
-          delay: 0.28,
-          maxLife: 1.25,
-          scaleWidth: 0.92
         });
       }
     } else if (t >= 1.05) {

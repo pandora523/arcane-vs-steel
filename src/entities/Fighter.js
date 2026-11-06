@@ -20,15 +20,22 @@ export class Fighter {
     this.lightColor = opts.lightColor || 'rgba(56, 189, 248, 1)';
     this.primaryColor = opts.primaryColor || '#38bdf8';
 
-    // State Machine: IDLE, WALK, AUTO_ATTACK, SKILL, ULTIMATE, DEATH
+    // State Machine: IDLE, WALK, DASH, DODGE, AUTO_ATTACK, SKILL, ULTIMATE, DEATH
     this.state = 'IDLE';
     this.stateTimer = 0;
     this.didActionFrame = false;
 
     this.autoCooldown = 0;
     this.autoInterval = opts.autoInterval || 1.25;
-    this.skillCooldown = 2.5;
+    this.skillCooldown = 2.2;
     this.skillMaxCooldown = 5.0;
+    this.dodgeCooldown = 1.4;
+    this.dodgeMaxCooldown = 3.4;
+    this.dashCooldown = 1.0;
+    this.dashMaxCooldown = 3.8;
+    this.dashDuration = 0.44;
+    this.dashDir = this.facing;
+    this.isInvulnerable = false;
 
     // TABS-style Spring / Wobble Rigging
     this.walkPhase = Math.random() * Math.PI * 2;
@@ -50,6 +57,9 @@ export class Fighter {
     this.state = newState;
     this.stateTimer = 0;
     this.didActionFrame = false;
+    if (newState !== 'DODGE') {
+      this.isInvulnerable = false;
+    }
   }
 
   gainMana(amount) {
@@ -59,6 +69,14 @@ export class Fighter {
 
   takeDamage(amount, attacker, isCrit = false, knockX = 95, knockY = 0) {
     if (this.isDead) return;
+    if (this.isInvulnerable || (this.state === 'DODGE' && this.stateTimer < 0.36)) {
+      if (this.game) {
+        this.game.vfx.spawnDamageText(this.x, this.y - 110, 0, false, 'EVADED!', this.primaryColor);
+        this.game.vfx.spawnShockwave(this.x, this.y - 55, 68, this.primaryColor, 0.24);
+      }
+      this.gainMana(8);
+      return;
+    }
     if (this.isDeflecting) {
       amount *= 0.25;
       knockX *= 0.2;
@@ -106,6 +124,57 @@ export class Fighter {
     }
   }
 
+  checkIncomingThreat(enemy, game) {
+    if (!game || !game.vfx) return false;
+    // 1. Incoming projectile heading toward this fighter
+    for (const proj of game.vfx.projectiles) {
+      if (proj.owner !== this) {
+        const dx = this.x - proj.x;
+        if (Math.abs(dx) < 185 && Math.sign(proj.vx) === Math.sign(dx)) {
+          return true;
+        }
+      }
+    }
+    // 2. Enemy winding up a melee strike or skill nearby
+    if (enemy && !enemy.isDead) {
+      const dist = Math.abs(enemy.x - this.x);
+      if (dist < 180 && (enemy.state === 'AUTO_ATTACK' || enemy.state === 'SKILL') && enemy.stateTimer > 0.18 && enemy.stateTimer < 0.45) {
+        return true;
+      }
+      // 3. Ranged fighter crowded in close melee range
+      if (this.attackRange > 250 && dist < 175) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  startDodge(enemy, game) {
+    this.dodgeCooldown = this.dodgeMaxCooldown;
+    this.dashDuration = 0.44;
+    this.setState('DODGE');
+    this.isInvulnerable = true;
+    const ww = game.renderer.worldWidth;
+    // Choose smart evasion direction with arena boundary awareness
+    let dir = -this.facing;
+    if (this.x < 180) dir = 1;
+    else if (this.x > ww - 180) dir = -1;
+    this.dashDir = dir;
+    if (this.onStartDodge) {
+      this.onStartDodge(enemy, game, dir);
+    }
+  }
+
+  startDash(enemy, game) {
+    this.dashCooldown = this.dashMaxCooldown;
+    this.dashDuration = 0.42;
+    this.setState('DASH');
+    this.dashDir = this.facing;
+    if (this.onStartDash) {
+      this.onStartDash(enemy, game, this.facing);
+    }
+  }
+
   update(dt, enemy, game) {
     this.game = game;
     this.groundY = game.renderer.groundY;
@@ -117,7 +186,7 @@ export class Fighter {
     }
 
     // Personal-space repulsion so characters never crowd on top of each other
-    if (enemy && !this.isDead && !enemy.isDead && this.state !== 'ULTIMATE') {
+    if (enemy && !this.isDead && !enemy.isDead && this.state !== 'ULTIMATE' && this.state !== 'DASH' && this.state !== 'DODGE') {
       const dx = this.x - enemy.x;
       const absDx = Math.abs(dx);
       const minSep = 115;
@@ -169,6 +238,8 @@ export class Fighter {
 
     this.autoCooldown = Math.max(0, this.autoCooldown - dt);
     this.skillCooldown = Math.max(0, this.skillCooldown - dt);
+    this.dodgeCooldown = Math.max(0, this.dodgeCooldown - dt);
+    this.dashCooldown = Math.max(0, this.dashCooldown - dt);
     this.stateTimer += dt;
 
     // TABS Spring-damper torso physics
@@ -200,6 +271,16 @@ export class Fighter {
           game.triggerUltimateCinematic(this);
           return;
         }
+        // Active Evasive Dodge when threatened by incoming projectile or melee swing
+        if (this.dodgeCooldown <= 0 && this.checkIncomingThreat(enemy, game)) {
+          this.startDodge(enemy, game);
+          return;
+        }
+        // Active Gap-Closing Dash when out of range
+        if (this.dashCooldown <= 0 && ((this.attackRange < 200 && dist > 205) || (this.attackRange >= 200 && dist > 470))) {
+          this.startDash(enemy, game);
+          return;
+        }
         if (this.skillCooldown <= 0 && dist <= this.attackRange * 2.2) {
           this.skillCooldown = this.skillMaxCooldown;
           this.setState('SKILL');
@@ -226,6 +307,12 @@ export class Fighter {
     if (this.state === 'IDLE') {
       this.walkPhase += dt * 2.8;
       this.headBob = Math.sin(this.walkPhase) * 2.0;
+    } else if (this.state === 'DASH' || this.state === 'DODGE') {
+      if (this.updateDashOrDodge) {
+        this.updateDashOrDodge(dt, enemy, game);
+      } else if (this.stateTimer >= this.dashDuration) {
+        this.setState('IDLE');
+      }
     } else if (this.state === 'AUTO_ATTACK') {
       this.updateAutoAttack(dt, enemy, game);
     } else if (this.state === 'SKILL') {
@@ -236,6 +323,7 @@ export class Fighter {
   }
 
   getTargetTorsoAngle() {
+    if (this.state === 'DASH' || this.state === 'DODGE') return this.dashDir * 0.25;
     if (this.state === 'WALK') return this.facing * 0.18 + Math.sin(this.walkPhase) * 0.14;
     if (this.state === 'IDLE') return Math.sin(this.walkPhase) * 0.05;
     return 0;

@@ -10,6 +10,8 @@ export class VFXManager {
     this.skyStrikes = [];
     this.tornados = [];
     this.beams = [];
+    this.crystalSpikes = [];
+    this.supernovas = [];
     this.glyphs = [];
     this.texts = [];
   }
@@ -25,6 +27,8 @@ export class VFXManager {
     this.skyStrikes.length = 0;
     this.tornados.length = 0;
     this.beams.length = 0;
+    this.crystalSpikes.length = 0;
+    this.supernovas.length = 0;
     this.glyphs.length = 0;
     this.texts.length = 0;
   }
@@ -158,11 +162,43 @@ export class VFXManager {
       y1: opts.y1,
       x2: opts.x2,
       y2: opts.y2,
-      width: opts.width || 46,
+      width: opts.width || 44,
       color: opts.color || '#10b981',
       coreColor: opts.coreColor || '#fef08a',
       life: 0,
-      maxLife: opts.maxLife || 0.58
+      maxLife: opts.maxLife || 0.62
+    });
+  }
+
+  spawnCrystalSpike(opts) {
+    this.crystalSpikes.push({
+      x: opts.x,
+      groundY: opts.groundY || 520,
+      height: opts.height || 135,
+      width: opts.width || 38,
+      tilt: opts.tilt || 0,
+      color: opts.color || '#38bdf8',
+      coreColor: opts.coreColor || '#e0f2fe',
+      owner: opts.owner || null,
+      target: opts.target || null,
+      damage: opts.damage || 28,
+      delay: opts.delay || 0,
+      erupted: false,
+      life: 0,
+      maxLife: opts.maxLife || 0.88
+    });
+  }
+
+  spawnEclipseSupernova(opts) {
+    this.supernovas.push({
+      x: opts.x,
+      y: opts.y || 185,
+      groundY: opts.groundY || 520,
+      maxRadius: opts.maxRadius || 96,
+      color: opts.color || '#fb923c',
+      coreColor: opts.coreColor || '#fef08a',
+      life: 0,
+      maxLife: opts.maxLife || 1.25
     });
   }
 
@@ -263,6 +299,28 @@ export class VFXManager {
     stepList(this.decals);
     stepList(this.lightnings);
     stepList(this.beams);
+    stepList(this.supernovas);
+
+    for (let i = this.crystalSpikes.length - 1; i >= 0; i--) {
+      const cs = this.crystalSpikes[i];
+      if (cs.delay > 0) {
+        cs.delay -= dt;
+        continue;
+      }
+      cs.life += dt;
+      if (!cs.erupted) {
+        cs.erupted = true;
+        this.spawnShockwave(cs.x, cs.groundY, 68, cs.color, 0.28, true);
+        this.spawnBurst(cs.x, cs.groundY - 12, 10, '#bae6fd', 190, { upBias: 95, size: 5 });
+        this.spawnGlyphBurst(cs.x, cs.groundY - 45, 3, 'steel');
+        if (cs.target && !cs.target.isDead && Math.abs(cs.target.x - cs.x) < 76) {
+          cs.target.takeDamage(cs.damage, cs.owner, false, 65, -90);
+        }
+      }
+      if (cs.life >= cs.maxLife) {
+        this.crystalSpikes.splice(i, 1);
+      }
+    }
 
     for (let i = this.tornados.length - 1; i >= 0; i--) {
       const tor = this.tornados[i];
@@ -645,17 +703,14 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 4. COLOSSAL BEAMS: Astral Dragon-Arrow Beam & Orbital Solar Laser
+    // 4. TAPERED COILING WIND-DRAGON ARROW PIERCER (Zero flat rectangular bars)
     for (const b of this.beams) {
       const t = b.life / b.maxLife;
       const env = Math.sin(t * Math.PI);
-      const wOuter = Math.max(8, Math.round((b.width * env) / 4) * 4);
-      const wMid = Math.max(4, Math.round((wOuter * 0.65) / 4) * 4);
-      const wCore = Math.max(4, Math.round((wOuter * 0.35) / 4) * 4);
 
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = (1 - t * 0.4) * (isReflection ? 0.45 : 0.95);
+      ctx.globalAlpha = (1 - t * 0.35) * (isReflection ? 0.42 : 0.95);
 
       const dx = b.x2 - b.x1;
       const dy = b.y2 - b.y1;
@@ -665,21 +720,142 @@ export class VFXManager {
       ctx.translate(b.x1, b.y1);
       ctx.rotate(ang);
 
-      ctx.fillStyle = b.color;
-      ctx.fillRect(0, -wOuter * 0.5, dist, wOuter);
-      ctx.fillStyle = b.coreColor;
-      ctx.fillRect(0, -wMid * 0.5, dist, wMid);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(0, -wCore * 0.5, dist, wCore);
+      // Projectile head shoots rapidly across the arena instead of appearing as a static box
+      const headX = Math.min(dist, dist * Math.min(1, t / 0.28));
+      const tailX = Math.max(0, dist * Math.max(0, (t - 0.38) / 0.62));
+      const spanLen = Math.max(40, headX - tailX);
+      const stepPx = 8;
 
-      // Double-helix energy ribbons wrapping along the beam length
-      const stepPx = 16;
-      for (let x = 0; x < dist; x += stepPx) {
-        const wave = Math.sin(x * 0.045 - b.life * 28) * (wOuter * 0.85);
-        ctx.fillStyle = b.coreColor;
-        ctx.fillRect(x, wave - 4, 12, 8);
+      for (let x = tailX; x <= headX; x += stepPx) {
+        const u = (x - tailX) / spanLen; // 0 at feathered tail, 1 at dragon-arrow tip
+        // Organic spindle taper (zero blunt rectangular ends)
+        const taper = Math.sin(Math.pow(u, 0.65) * Math.PI);
+        const hOuter = Math.max(4, Math.round(((b.width * 0.58 * taper * env) / 4)) * 4);
+        const hInner = Math.max(2, Math.round((hOuter * 0.45) / 2) * 2);
+        const undulate = Math.round((Math.sin(x * 0.032 - b.life * 32) * 8 * (1 - u * 0.5)) / 2) * 2;
+
+        // Tapered emerald-gold arrow spine segment
         ctx.fillStyle = b.color;
-        ctx.fillRect(x, -wave - 4, 12, 8);
+        ctx.fillRect(x, undulate - hOuter * 0.5, stepPx, hOuter);
+        ctx.fillStyle = b.coreColor;
+        ctx.fillRect(x, undulate - hInner * 0.5, stepPx, hInner);
+        if (hOuter >= 8) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(x, undulate - 2, stepPx, 4);
+        }
+
+        // Counter-rotating double-helix dragon-wind ribbons
+        const helix1 = Math.round((Math.sin(x * 0.055 - b.life * 36) * (hOuter * 1.15 + 10)) / 4) * 4;
+        const helix2 = Math.round((-Math.sin(x * 0.055 - b.life * 36) * (hOuter * 1.15 + 10)) / 4) * 4;
+        ctx.fillStyle = b.coreColor;
+        ctx.fillRect(x, undulate + helix1 - 3, 8, 6);
+        ctx.fillStyle = '#34d399';
+        ctx.fillRect(x, undulate + helix2 - 3, 8, 6);
+      }
+
+      // Stepped Pixel-Art Dragon-Fang Arrowhead at the leading tip (headX)
+      const tipY = Math.round((Math.sin(headX * 0.032 - b.life * 32) * 4) / 2) * 2;
+      ctx.fillStyle = b.color;
+      ctx.fillRect(headX - 24, tipY - 22, 12, 44);
+      ctx.fillRect(headX - 12, tipY - 16, 12, 32);
+      ctx.fillStyle = b.coreColor;
+      ctx.fillRect(headX - 16, tipY - 14, 14, 28);
+      ctx.fillRect(headX - 2, tipY - 10, 12, 20);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(headX + 10, tipY - 6, 12, 12);
+      ctx.fillRect(headX + 22, tipY - 2, 10, 4);
+
+      ctx.restore();
+    }
+
+    // 4B. GLACIAL FROST-CRYSTAL SPIRES (Warrior Heavenly Earthshatter Wave)
+    for (const cs of this.crystalSpikes) {
+      if (cs.delay > 0) continue;
+      const t = cs.life / cs.maxLife;
+      const pop = Math.min(1, cs.life / 0.12);
+      const fade = Math.min(1, (1 - t) * 2.5);
+      const curH = Math.round((cs.height * pop) / 4) * 4;
+      const baseW = Math.round(cs.width / 4) * 4;
+      const bx = Math.round(cs.x / 4) * 4;
+      const by = Math.round(cs.groundY / 4) * 4;
+
+      ctx.save();
+      ctx.globalAlpha = fade * (isReflection ? 0.45 : 0.96);
+      const rows = Math.max(4, Math.round(curH / 6));
+      for (let r = 0; r < rows; r++) {
+        const u = r / rows;
+        const rowW = Math.max(4, Math.round(((1 - Math.pow(u, 0.85)) * baseW) / 4) * 4);
+        const shiftX = Math.round((u * cs.tilt * 26) / 4) * 4;
+        const ry = by - (r + 1) * 6;
+        // Dark steel-blue outer crystal facet
+        ctx.fillStyle = '#0284c7';
+        ctx.fillRect(bx + shiftX - rowW * 0.5, ry, rowW, 6);
+        // Bright frost-cyan inner crystal facet
+        if (rowW >= 8) {
+          ctx.fillStyle = cs.color;
+          ctx.fillRect(bx + shiftX - rowW * 0.3, ry, rowW * 0.6, 6);
+        }
+        // White-hot diamond core ridge
+        if (rowW >= 12) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(bx + shiftX - 2, ry, 4, 6);
+        }
+      }
+      ctx.restore();
+    }
+
+    // 4C. BLACK-GOLD SOLAR ECLIPSE SUPERNOVA SPHERE (Fire Mage Ultimate)
+    for (const sn of this.supernovas) {
+      const t = sn.life / sn.maxLife;
+      const env = Math.sin(Math.min(1, t * 1.15) * Math.PI);
+      const rad = Math.max(12, Math.round((sn.maxRadius * (0.45 + 0.55 * env)) / 4) * 4);
+      const sx = Math.round(sn.x / 4) * 4;
+      const sy = Math.round(sn.y / 4) * 4;
+
+      ctx.save();
+      if (renderer && !isReflection) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = env * 0.85;
+        ctx.drawImage(renderer.glowOrange, sx - rad * 2.4, sy - rad * 2.4, rad * 4.8, rad * 4.8);
+      }
+
+      // Rotating Pixel-Art Solar Corona Prominences
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = env * (isReflection ? 0.45 : 0.95);
+      for (let ray = 0; ray < 16; ray++) {
+        const a = (ray / 16) * Math.PI * 2 + sn.life * 3.2;
+        const rayLen = rad * (1.18 + 0.25 * Math.sin(sn.life * 18 + ray * 1.7));
+        const rx = Math.round((sx + Math.cos(a) * rayLen) / 4) * 4;
+        const ry = Math.round((sy + Math.sin(a) * rayLen) / 4) * 4;
+        ctx.fillStyle = ray % 2 === 0 ? '#fef08a' : '#fb923c';
+        ctx.fillRect(rx - 6, ry - 6, 12, 12);
+      }
+
+      // Stepped Pixel-Art Eclipse Sun Disc (Blazing Gold-Crimson Rim + Seamless Obsidian Core)
+      ctx.globalCompositeOperation = 'source-over';
+      const pStep = 6;
+      const gridR = Math.round(rad / pStep);
+      const layers = [
+        { frac: 1.0, col: '#ea580c' },
+        { frac: 0.82, col: '#fef08a' },
+        { frac: 0.66, col: '#ffffff' },
+        { frac: 0.52, col: '#09060d' }
+      ];
+      for (const layer of layers) {
+        ctx.fillStyle = layer.col;
+        const rLayer = gridR * layer.frac;
+        const maxGy = Math.floor(rLayer);
+        for (let gy = -maxGy; gy <= maxGy; gy++) {
+          const halfSpan = Math.round(Math.sqrt(Math.max(0, rLayer * rLayer - gy * gy)));
+          if (halfSpan > 0) {
+            ctx.fillRect(
+              sx - halfSpan * pStep,
+              sy + gy * pStep - pStep * 0.5,
+              halfSpan * 2 * pStep,
+              pStep + 1
+            );
+          }
+        }
       }
       ctx.restore();
     }

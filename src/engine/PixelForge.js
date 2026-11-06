@@ -61,12 +61,13 @@ export class PixelForge {
   }
 
   /**
-   * Maps fighter state & timers to one of the 40 HD-2D pixel-art frames (8 cols x 5 rows, 128x128 cells):
+   * Maps fighter state & timers to one of the 48 HD-2D pixel-art frames (8 cols x 6 rows, 208x208 cells):
    * - Row 0 (0..7):   8-frame IDLE combat ready loop
    * - Row 1 (8..15):  8-frame WALK / STRIDE loop
    * - Row 2 (16..23): 8-frame AUTO_ATTACK combo sequence
    * - Row 3 (24..31): 8-frame SKILL (24..27) & ULTIMATE (28..31) sequence
    * - Row 4 (32..39): 8-frame DEATH recoil, kneeling collapse & fallen sequence
+   * - Row 5 (40..47): 8-frame DASH & DODGE evasive sequence
    */
   static getFrameIndex(fighter, phase) {
     const st = fighter.state;
@@ -77,6 +78,12 @@ export class PixelForge {
       const dt = fighter.deathTimer || 0;
       const step = Math.min(7, Math.max(0, Math.floor((dt / deathDuration) * 8)));
       return 32 + step;
+    }
+
+    if (st === 'DASH' || st === 'DODGE') {
+      const dur = fighter.dashDuration || 0.44;
+      const step = Math.min(7, Math.max(0, Math.floor((t / dur) * 8)));
+      return 40 + step;
     }
 
     if (st === 'AUTO_ATTACK') {
@@ -112,7 +119,7 @@ export class PixelForge {
   static drawSheetFrame(ctx, charSet, fighter, w, h, phase, isReflection = false) {
     const sheet = charSet.sheet;
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
-    const cell = Math.round(sheet.naturalWidth / 8) || 256;
+    const cell = Math.round(sheet.naturalWidth / 8) || 208;
 
     ctx.imageSmoothingEnabled = false;
 
@@ -123,7 +130,38 @@ export class PixelForge {
     const sy = row * cell;
     const baseY = -h + 10;
 
-    // Draw the full 256x256 HD-2D pixel-art cell intact with zero horizontal slice-shearing
+    // Crisp pixel-art afterimage trail during active DASH or DODGE
+    if (!isReflection && (fighter.state === 'DASH' || fighter.state === 'DODGE')) {
+      const dir = (fighter.dashDir || fighter.facing) * fighter.facing;
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      ctx.drawImage(
+        sheet,
+        sx,
+        sy,
+        cell,
+        cell,
+        Math.round(-w * 0.5 - dir * 32),
+        Math.round(baseY),
+        w,
+        h
+      );
+      ctx.globalAlpha = 0.42;
+      ctx.drawImage(
+        sheet,
+        sx,
+        sy,
+        cell,
+        cell,
+        Math.round(-w * 0.5 - dir * 16),
+        Math.round(baseY),
+        w,
+        h
+      );
+      ctx.restore();
+    }
+
+    // Draw the full 208x208 HD-2D pixel-art cell intact with zero horizontal slice-shearing
     ctx.drawImage(
       sheet,
       sx,

@@ -26,6 +26,58 @@ export class Warrior extends Fighter {
     this.isDeflecting = false;
     this.stepDustTimer = 0;
     this.spawnedSkyBlades = false;
+    this.dodgeMaxCooldown = 3.2;
+    this.dashMaxCooldown = 3.4;
+  }
+
+  onStartDash(enemy, game, dir) {
+    this.dashDuration = 0.42;
+    this.vx = dir * 420;
+    if (game.audio) game.audio.play('slash', this.x);
+    game.vfx.spawnShockwave(this.x, this.y - 50, 78, '#38bdf8', 0.26, false, true);
+    game.vfx.spawnGlyphBurst(this.x, this.y - 55, 5, 'steel');
+    game.vfx.spawnDamageText(this.x, this.y - 120, 0, false, 'VALKYRIE RUSH!', '#38bdf8');
+  }
+
+  onStartDodge(enemy, game, dir) {
+    this.dashDuration = 0.4;
+    this.vx = dir * 350;
+    if (game.audio) game.audio.play('reflect', this.x);
+    game.vfx.spawnShockwave(this.x, this.y - 55, 84, '#bae6fd', 0.28);
+    game.vfx.spawnGlyphBurst(this.x, this.y - 60, 5, 'steel');
+    game.vfx.spawnDamageText(this.x, this.y - 120, 0, false, 'AEGIS DODGE!', '#7dd3fc');
+  }
+
+  updateDashOrDodge(dt, enemy, game) {
+    const t = this.stateTimer;
+    const speed = this.state === 'DASH' ? 420 : 330;
+    this.x += this.dashDir * speed * dt;
+
+    if (Math.random() < 0.65) {
+      game.vfx.spawnParticle({
+        x: this.x - this.dashDir * 18,
+        y: this.groundY - 6 - Math.random() * 45,
+        vx: -this.dashDir * 90,
+        vy: -30,
+        size: 5,
+        color: '#7dd3fc',
+        maxLife: 0.25
+      });
+    }
+
+    // Valkyrie Rush shoulder-cleave impact if he reaches the enemy during DASH
+    if (this.state === 'DASH' && !this.didActionFrame && enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 130) {
+      this.didActionFrame = true;
+      enemy.takeDamage(54, this, false, 130, -80);
+      if (game.audio) game.audio.play('clang', enemy.x);
+      game.vfx.spawnSlash(this.x + this.facing * 36, this.y - 64, 86, -1.2, 1.2, '#38bdf8', 0.24);
+      game.vfx.spawnShockwave(enemy.x, enemy.y - 55, 82, '#38bdf8', 0.26);
+    }
+
+    if (t >= this.dashDuration) {
+      this.isInvulnerable = false;
+      this.setState('IDLE');
+    }
   }
 
   update(dt, enemy, game) {
@@ -112,16 +164,6 @@ export class Warrior extends Fighter {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         if (game.audio) game.audio.play('whirlwind', this.x);
-        game.vfx.spawnTornado({
-          x: this.x,
-          groundY: this.groundY,
-          followFighter: this,
-          radius: 78,
-          height: 215,
-          color: '#38bdf8',
-          coreColor: '#bae6fd',
-          maxLife: 0.92
-        });
         game.vfx.spawnGlyphBurst(this.x, this.y - 75, 7, 'steel');
       }
       this.spinAngle += dt * 22;
@@ -145,11 +187,11 @@ export class Warrior extends Fighter {
         }
       }
 
-      if (!this.lastSpinTick || t - this.lastSpinTick >= 0.22) {
+      if (!this.lastSpinTick || t - this.lastSpinTick >= 0.2) {
         this.lastSpinTick = t;
-        game.vfx.spawnSlash(this.x, this.y - 58, 102, 0, Math.PI * 2, '#38bdf8', 0.22);
-        game.vfx.spawnSlash(this.x, this.y - 84, 78, 0, Math.PI * 2, '#bae6fd', 0.18);
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 122) {
+        game.vfx.spawnSlash(this.x, this.y - 58, 108, 0, Math.PI * 2, '#38bdf8', 0.22);
+        game.vfx.spawnSlash(this.x, this.y - 84, 82, 0, Math.PI * 2, '#bae6fd', 0.18);
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 126) {
           enemy.takeDamage(48, this, false, 80, 0);
           if (game.audio) game.audio.play('clang', enemy.x);
           game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 60, 3, 'steel');
@@ -221,29 +263,29 @@ export class Warrior extends Fighter {
         game.renderer.triggerAberration(16);
         game.renderer.triggerHitStop(0.095);
 
-        // Cathedral-Height Excalibur Sky Beam + 5 Thunderbolts + Runic Pillar
-        game.vfx.spawnBeam({
-          x1: this.x,
-          y1: -420,
-          x2: this.x,
-          y2: this.groundY,
-          width: 76,
-          color: '#38bdf8',
-          coreColor: '#fef08a',
-          maxLife: 0.58
-        });
-        game.vfx.spawnFlamePillar(this.x, this.groundY, this, enemy, {
-          theme: 'steel',
-          delay: 0.05,
-          maxLife: 1.15,
-          scaleWidth: 1.25
-        });
+        // Chaining Glacial Frost-Crystal Spire Wave erupting sequentially across the arena floor!
+        for (let i = 0; i < 7; i++) {
+          const dir = this.facing;
+          const spikeX = this.x + dir * (42 + i * 44);
+          game.vfx.spawnCrystalSpike({
+            x: spikeX,
+            groundY: this.groundY,
+            height: 110 + (i % 2 === 0 ? 45 : 15),
+            width: 34 + (i % 2) * 8,
+            tilt: dir * (0.35 + i * 0.06),
+            color: '#38bdf8',
+            coreColor: '#e0f2fe',
+            owner: this,
+            target: enemy,
+            damage: 18,
+            delay: i * 0.055,
+            maxLife: 0.92
+          });
+        }
 
         game.vfx.spawnLightning(this.x - 55, -240, this.groundY, '#fef08a', '#38bdf8');
-        game.vfx.spawnLightning(this.x - 22, -260, this.groundY, '#ffffff', '#38bdf8');
         game.vfx.spawnLightning(this.x, -300, this.groundY, '#ffffff', '#38bdf8');
-        game.vfx.spawnLightning(this.x + 25, -260, this.groundY, '#fef08a', '#38bdf8');
-        game.vfx.spawnLightning(this.x + 60, -240, this.groundY, '#38bdf8', '#0284c7');
+        game.vfx.spawnLightning(this.x + 55, -240, this.groundY, '#38bdf8', '#0284c7');
 
         game.vfx.spawnShockwave(this.x, this.groundY, 330, '#facc15', 0.65, true);
         game.vfx.spawnShockwave(this.x, this.groundY - 35, 250, '#38bdf8', 0.52, false);
@@ -253,7 +295,7 @@ export class Warrior extends Fighter {
         game.vfx.spawnGlyphBurst(this.x, this.groundY - 60, 10, 'steel');
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 295) {
-          enemy.takeDamage(215, this, true, 240, -380);
+          enemy.takeDamage(205, this, true, 240, -380);
         }
       }
     } else if (t >= 1.65) {
