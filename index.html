@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Arcane vs. Steel — 2D Physics Auto-Battler</title>
+  <meta name="description" content="TABS-inspired 2D physics auto-battler featuring procedural animations, dynamic lighting, floor reflections, and cinematic ultimates." />
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main id="app">
+    <canvas id="arena-canvas"></canvas>
+
+    <!-- Top HUD Overlay -->
+    <header class="hud-header">
+      <!-- Warrior (Left) -->
+      <section class="fighter-hud fighter-left" id="hud-warrior">
+        <div class="fighter-info">
+          <div class="fighter-title-row">
+            <span class="fighter-badge badge-steel">STEEL</span>
+            <h2 class="fighter-name">Aethelgard</h2>
+            <span class="fighter-state" id="warrior-state">IDLE</span>
+          </div>
+          <span class="fighter-hp-text" id="warrior-hp-text">1200 / 1200</span>
+        </div>
+        <div class="bar-track hp-track">
+          <div class="bar-damage" id="warrior-hp-dmg" style="width: 100%"></div>
+          <div class="bar-fill hp-steel" id="warrior-hp-bar" style="width: 100%"></div>
+        </div>
+        <div class="sub-bars">
+          <div class="bar-track mana-track" title="Ultimate Charge (Heavenly Earthshatter)">
+            <div class="bar-fill mana-fill" id="warrior-mana-bar" style="width: 0%"></div>
+            <span class="bar-label" id="warrior-ult-label">ULTIMATE: 0%</span>
+          </div>
+          <div class="cooldown-pill" id="warrior-cd-pill">
+            <div class="cd-progress" id="warrior-skill-cd"></div>
+            <span class="cd-text" id="warrior-skill-text">Whirlwind Ready</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- Center Match Banner & Controls -->
+      <div class="center-hud">
+        <h1 class="arena-title">ARCANE <span>VS</span> STEEL</h1>
+        <div class="match-timer" id="match-timer">00:00</div>
+        <div class="control-row">
+          <button id="btn-slowmo" class="hud-btn" type="button" aria-pressed="false">
+            <span class="dot"></span> 0.35x Slow-Mo
+          </button>
+          <button id="btn-reset" class="hud-btn hud-btn-primary" type="button">
+            Reset Match
+          </button>
+        </div>
+      </div>
+
+      <!-- Fire Mage (Right) -->
+      <section class="fighter-hud fighter-right" id="hud-mage">
+        <div class="fighter-info">
+          <span class="fighter-hp-text" id="mage-hp-text">950 / 950</span>
+          <div class="fighter-title-row">
+            <span class="fighter-state" id="mage-state">IDLE</span>
+            <h2 class="fighter-name">Ignis Sol</h2>
+            <span class="fighter-badge badge-arcane">ARCANE</span>
+          </div>
+        </div>
+        <div class="bar-track hp-track">
+          <div class="bar-damage" id="mage-hp-dmg" style="width: 100%"></div>
+          <div class="bar-fill hp-arcane" id="mage-hp-bar" style="width: 100%"></div>
+        </div>
+        <div class="sub-bars">
+          <div class="cooldown-pill" id="mage-cd-pill">
+            <div class="cd-progress" id="mage-skill-cd"></div>
+            <span class="cd-text" id="mage-skill-text">Flame Pillar Ready</span>
+          </div>
+          <div class="bar-track mana-track" title="Ultimate Charge (Meteor Cataclysm)">
+            <div class="bar-fill mana-fill-fire" id="mage-mana-bar" style="width: 0%"></div>
+            <span class="bar-label" id="mage-ult-label">ULTIMATE: 0%</span>
+          </div>
+        </div>
+      </section>
+    </header>
+
+    <!-- Ultimate Callout Banner -->
+    <div id="ult-banner" class="ult-banner hidden">
+      <div class="ult-subtitle" id="ult-caster">AETHELGARD</div>
+      <div class="ult-title" id="ult-name">HEAVENLY EARTHSHATTER</div>
+    </div>
+
+    <!-- Victory Banner -->
+    <div id="victory-overlay" class="victory-overlay hidden">
+      <div class="victory-card">
+        <div class="victory-eyebrow">MATCH CONCLUDED</div>
+        <h2 class="victory-winner" id="victory-winner">AETHELGARD TRIUMPHS</h2>
+        <p class="victory-stats" id="victory-stats">Steel prevails over Arcane</p>
+        <button id="btn-play-again" class="hud-btn hud-btn-primary" type="button">Battle Again</button>
+      </div>
+    </div>
+  </main>
+
+  <script type="module" src="src/main.js"></script>
+</body>
+</html>
