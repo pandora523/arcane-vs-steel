@@ -22,7 +22,7 @@ export class FireMage extends Fighter {
   }
 
   update(dt, enemy, game) {
-    this.runeOrbit += dt * 3.1;
+    this.runeOrbit += dt * 3.2;
     this.blinkCooldown = Math.max(0, this.blinkCooldown - dt);
 
     if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
@@ -54,13 +54,15 @@ export class FireMage extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    if (t < 0.24) {
-      this.torsoAngle = -this.facing * 0.16;
+    if (t < 0.22) {
+      // Overhead Rune-Arc Channeling Pose (mage_windup.png)
+      this.torsoAngle = -this.facing * 0.18;
     } else if (t < 0.5) {
+      // Forward Staff Flame Thrust Pose (mage_attack.png)
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.vx -= this.facing * 95;
-        this.torsoVel = -this.facing * 8;
+        this.torsoVel = -this.facing * 9;
         if (game.audio) game.audio.play('fireball');
 
         const spawnX = this.x + this.facing * 52;
@@ -152,45 +154,44 @@ export class FireMage extends Fighter {
     }
   }
 
-  draw(ctx) {
+  draw(ctx, isReflection = false) {
     const sprites = PixelForge.initAssets().mage;
-    const isCasting =
-      (this.state === 'AUTO_ATTACK' && this.stateTimer >= 0.16 && this.stateTimer <= 0.5) ||
-      this.state === 'SKILL' ||
-      this.state === 'ULTIMATE';
-    const img = isCasting ? sprites.attack : sprites.idle;
+    const img = PixelForge.selectFrame(sprites, this);
     if (!img || !img.complete || !img.naturalWidth) return;
 
     ctx.save();
     ctx.imageSmoothingEnabled = true;
 
-    const hoverY = -12 + Math.sin(this.runeOrbit * 1.4) * 7;
-    const w = 175;
-    const h = 178;
-
-    // Note: mage_idle.png & mage_attack.png natively face LEFT (-1), so scaleX = -this.facing
+    const hoverY = -14 + Math.sin(this.runeOrbit * 1.6) * 9;
+    const w = 178;
+    const h = 180;
     const scaleDir = -this.facing;
 
-    if (this.state === 'SKILL' || this.state === 'ULTIMATE') {
-      ctx.save();
-      ctx.globalAlpha = 0.28;
-      ctx.translate(this.x - this.facing * 22, this.y + hoverY);
-      ctx.scale(scaleDir, 1);
-      ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
-      ctx.restore();
+    if (!isReflection && (this.state === 'SKILL' || this.state === 'ULTIMATE' || this.state === 'AUTO_ATTACK')) {
+      for (let g = 1; g <= 2; g++) {
+        ctx.save();
+        ctx.globalAlpha = 0.18 / g;
+        ctx.translate(this.x - this.facing * g * 18, this.y + hoverY);
+        ctx.scale(scaleDir, 1);
+        ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
+        ctx.restore();
+      }
     }
 
-    const breatheY = 1 + Math.sin(this.runeOrbit * 0.8) * 0.025;
-    const breatheX = 1 - Math.sin(this.runeOrbit * 0.8) * 0.015;
-    const tilt = this.torsoAngle * scaleDir * 0.35;
+    const breatheY = 1 + Math.sin(this.runeOrbit * 1.1) * 0.032;
+    const breatheX = 1 - Math.sin(this.runeOrbit * 1.1) * 0.02;
+    const tilt =
+      this.state === 'WALK'
+        ? Math.sin(this.runeOrbit * 1.5) * 0.06 - 0.05
+        : this.torsoAngle * scaleDir * 0.4;
 
     ctx.translate(this.x, this.y + hoverY);
     ctx.scale(scaleDir * breatheX, breatheY);
     ctx.rotate(tilt);
 
-    ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
+    PixelForge.drawDeformedSprite(ctx, img, w, h, this.runeOrbit, this.state, isReflection);
 
-    if (this.hitFlash > 0) {
+    if (this.hitFlash > 0 && !isReflection) {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.55;
       ctx.drawImage(img, -w * 0.5, -h + 8, w, h);

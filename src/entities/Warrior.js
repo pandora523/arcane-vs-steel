@@ -27,7 +27,7 @@ export class Warrior extends Fighter {
   update(dt, enemy, game) {
     if (this.state === 'WALK') {
       this.stepDustTimer += dt;
-      if (this.stepDustTimer >= 0.28) {
+      if (this.stepDustTimer >= 0.26) {
         this.stepDustTimer = 0;
         game.vfx.spawnBurst(this.x - this.facing * 14, this.groundY - 2, 3, '#64748b', 60, {
           upBias: 30,
@@ -44,14 +44,16 @@ export class Warrior extends Fighter {
     const t = this.stateTimer;
     const mode = this.comboStep % 3;
 
-    if (t < 0.18) {
-      this.torsoAngle = -this.facing * 0.22 * (t / 0.18);
-    } else if (t < 0.42) {
+    if (t < 0.22) {
+      // Overhead Windup Pose (warrior_windup.png)
+      this.torsoAngle = -this.facing * 0.24 * (t / 0.22);
+    } else if (t < 0.48) {
+      // Explosive Cleave Pose (warrior_attack.png)
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.comboStep++;
         this.vx += this.facing * 195;
-        this.torsoVel = this.facing * 14;
+        this.torsoVel = this.facing * 15;
         if (game.audio) game.audio.play('slash');
 
         const cx = this.x + this.facing * 32;
@@ -71,7 +73,7 @@ export class Warrior extends Fighter {
           game.vfx.spawnBurst(enemy.x, enemy.y - 65, 10, '#bae6fd', 220);
         }
       }
-    } else if (t >= 0.58) {
+    } else if (t >= 0.62) {
       this.setState('IDLE');
     }
   }
@@ -80,7 +82,7 @@ export class Warrior extends Fighter {
     const t = this.stateTimer;
     this.isDeflecting = t >= 0.1 && t <= 0.9;
 
-    if (t < 0.1) {
+    if (t < 0.12) {
       this.torsoAngle = -this.facing * 0.2;
     } else if (t < 0.9) {
       if (!this.didActionFrame) {
@@ -173,46 +175,44 @@ export class Warrior extends Fighter {
     }
   }
 
-  draw(ctx) {
+  draw(ctx, isReflection = false) {
     const sprites = PixelForge.initAssets().warrior;
-    const isAttacking =
-      (this.state === 'AUTO_ATTACK' && this.stateTimer >= 0.16 && this.stateTimer <= 0.48) ||
-      this.state === 'SKILL' ||
-      (this.state === 'ULTIMATE' && this.stateTimer >= 0.72);
-    const img = isAttacking ? sprites.attack : sprites.idle;
+    const img = PixelForge.selectFrame(sprites, this);
     if (!img || !img.complete || !img.naturalWidth) return;
 
     ctx.save();
     ctx.imageSmoothingEnabled = true;
 
-    const w = 175;
-    const h = 170;
+    const w = 178;
+    const h = 174;
 
-    // Motion afterimage ghost during Whirlwind Dash or Ultimate
-    if (this.state === 'SKILL' || this.state === 'ULTIMATE') {
-      ctx.save();
-      ctx.globalAlpha = 0.28;
-      ctx.translate(this.x - this.facing * 26, this.y);
-      ctx.scale(this.facing, 1);
-      ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
-      ctx.restore();
+    // Multi-ghost afterimage trail during attacks, Whirlwind, or Ultimate
+    if (!isReflection && (this.state === 'SKILL' || this.state === 'ULTIMATE' || this.state === 'AUTO_ATTACK')) {
+      for (let g = 1; g <= 2; g++) {
+        ctx.save();
+        ctx.globalAlpha = 0.18 / g;
+        ctx.translate(this.x - this.facing * g * 20, this.y);
+        ctx.scale(this.facing, 1);
+        ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
+        ctx.restore();
+      }
     }
 
-    const walkBob = this.state === 'WALK' ? Math.abs(Math.sin(this.walkPhase)) * -10 : 0;
-    const breatheY = 1 + Math.sin(this.walkPhase) * 0.025;
-    const breatheX = 1 - Math.sin(this.walkPhase) * 0.015;
+    const walkBob = this.state === 'WALK' ? Math.abs(Math.sin(this.walkPhase * 1.5)) * -12 : 0;
+    const breatheY = 1 + Math.sin(this.walkPhase * 1.4) * 0.032;
+    const breatheX = 1 - Math.sin(this.walkPhase * 1.4) * 0.02;
     const tilt =
       this.state === 'WALK'
-        ? Math.sin(this.walkPhase) * 0.06 + 0.05
-        : this.torsoAngle * this.facing * 0.45;
+        ? Math.sin(this.walkPhase * 1.5) * 0.08 + 0.06
+        : this.torsoAngle * this.facing * 0.5;
 
     ctx.translate(this.x, this.y + walkBob);
     ctx.scale(this.facing * breatheX, breatheY);
     ctx.rotate(tilt);
 
-    ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
+    PixelForge.drawDeformedSprite(ctx, img, w, h, this.walkPhase, this.state, isReflection);
 
-    if (this.hitFlash > 0) {
+    if (this.hitFlash > 0 && !isReflection) {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.55;
       ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
