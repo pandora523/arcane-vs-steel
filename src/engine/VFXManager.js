@@ -12,6 +12,7 @@ export class VFXManager {
     this.beams = [];
     this.crystalSpikes = [];
     this.supernovas = [];
+    this.castAuras = [];
     this.glyphs = [];
     this.texts = [];
   }
@@ -29,6 +30,7 @@ export class VFXManager {
     this.beams.length = 0;
     this.crystalSpikes.length = 0;
     this.supernovas.length = 0;
+    this.castAuras.length = 0;
     this.glyphs.length = 0;
     this.texts.length = 0;
   }
@@ -255,7 +257,65 @@ export class VFXManager {
     });
   }
 
+  spawnSpecialCastAura(fighter, title, tag = '✦ SPECIAL SKILL ✦', theme = 'steel', isUltimate = false) {
+    if (!fighter) return;
+    // Replace any existing cast aura on the same fighter so head banners never overlap
+    for (let i = this.castAuras.length - 1; i >= 0; i--) {
+      if (this.castAuras[i].fighter === fighter) {
+        this.castAuras.splice(i, 1);
+      }
+    }
+    const palette =
+      theme === 'arcane'
+        ? { main: '#fb923c', core: '#fef08a', border: '#ea580c' }
+        : theme === 'emerald'
+          ? { main: '#34d399', core: '#fef08a', border: '#10b981' }
+          : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
+
+    this.castAuras.push({
+      fighter,
+      title: (title || 'SPECIAL MOVE').toUpperCase(),
+      tag: tag.toUpperCase(),
+      theme,
+      isUltimate,
+      mainColor: palette.main,
+      coreColor: palette.core,
+      borderColor: palette.border,
+      life: 0,
+      maxLife: isUltimate ? 1.65 : 1.15
+    });
+
+    // Immediate special-cast burst around the head & shoulders
+    this.spawnShockwave(fighter.x, fighter.y - 105, isUltimate ? 145 : 95, palette.main, isUltimate ? 0.48 : 0.34, false);
+    this.spawnBurst(fighter.x, fighter.y - 105, isUltimate ? 22 : 12, palette.core, isUltimate ? 250 : 175, {
+      upBias: 90,
+      size: isUltimate ? 7 : 5
+    });
+    this.spawnGlyphBurst(fighter.x, fighter.y - 115, isUltimate ? 8 : 5, theme);
+  }
+
   update(dt, groundY, renderer, audio = null) {
+    for (let i = this.castAuras.length - 1; i >= 0; i--) {
+      const ca = this.castAuras[i];
+      ca.life += dt;
+      if (!ca.fighter || ca.fighter.isDead || ca.life >= ca.maxLife) {
+        this.castAuras.splice(i, 1);
+        continue;
+      }
+      if (Math.random() < (ca.isUltimate ? 0.85 : 0.55)) {
+        this.spawnParticle({
+          x: ca.fighter.x + (Math.random() - 0.5) * 92,
+          y: ca.fighter.y - 24 - Math.random() * 110,
+          vx: (Math.random() - 0.5) * 40,
+          vy: -135 - Math.random() * 95,
+          size: ca.isUltimate ? 6 : 4,
+          color: Math.random() > 0.4 ? ca.mainColor : ca.coreColor,
+          maxLife: 0.34,
+          gravity: -60
+        });
+      }
+    }
+
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.life += dt;
@@ -1097,12 +1157,160 @@ export class VFXManager {
         }
         ctx.restore();
       }
+
+      // 11. SPECIAL MOVE CAST HALO & CONVERGING STAR-RAYS AROUND CHARACTER HEAD
+      for (const ca of this.castAuras) {
+        if (!ca.fighter || ca.fighter.isDead) continue;
+        const t = ca.life / ca.maxLife;
+        const env = t < 0.14 ? t / 0.14 : Math.max(0, 1 - (t - 0.14) / 0.86);
+        const hx = Math.round(ca.fighter.x / 4) * 4;
+        const hy = Math.round((ca.fighter.y - 142) / 4) * 4;
+        const baseR = (ca.isUltimate ? 64 : 52) * (0.9 + Math.sin(t * Math.PI) * 0.14);
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = env * 0.92;
+
+        if (renderer) {
+          const glowTex =
+            ca.theme === 'arcane'
+              ? renderer.glowOrange
+              : ca.theme === 'emerald'
+                ? renderer.glowEmerald || renderer.glowCyan
+                : renderer.glowCyan;
+          ctx.drawImage(glowTex, hx - baseR * 1.8, hy - baseR * 1.8, baseR * 3.6, baseR * 3.6);
+        }
+
+        // Spinning 8-Point Stepped Pixel-Art Elemental Crest Halo framing the head
+        const haloNodes = 24;
+        for (let i = 0; i < haloNodes; i++) {
+          const a = (i / haloNodes) * Math.PI * 2 + ca.life * 4.2;
+          const isPoint = i % 3 === 0;
+          const rad = isPoint ? baseR * 1.22 : baseR;
+          const px = Math.round((hx + Math.cos(a) * rad) / 4) * 4;
+          const py = Math.round((hy + Math.sin(a) * rad * 0.72) / 4) * 4;
+          ctx.fillStyle = isPoint ? '#ffffff' : ca.mainColor;
+          ctx.fillRect(px - (isPoint ? 4 : 2), py - (isPoint ? 4 : 2), isPoint ? 8 : 4, isPoint ? 8 : 4);
+          if (isPoint) {
+            const spurX = Math.round((hx + Math.cos(a) * (baseR * 1.44)) / 4) * 4;
+            const spurY = Math.round((hy + Math.sin(a) * (baseR * 1.44) * 0.72) / 4) * 4;
+            ctx.fillStyle = ca.coreColor;
+            ctx.fillRect(spurX - 2, spurY - 2, 4, 4);
+          }
+        }
+
+        // Radiating / Converging Pixel-Art Star-Burst Rays around the outer halo perimeter
+        if (t < 0.65) {
+          const rayEnv = 1 - t / 0.65;
+          const numRays = ca.isUltimate ? 12 : 8;
+          for (let rIdx = 0; rIdx < numRays; rIdx++) {
+            const ra = (rIdx / numRays) * Math.PI * 2 - ca.life * 2.6;
+            const rInner = baseR * 0.88;
+            const rOuter = baseR * (1.35 + (1 - rayEnv) * 0.55);
+            for (let step = 0; step <= 3; step++) {
+              const rr = rInner + ((rOuter - rInner) * step) / 3;
+              const rx = Math.round((hx + Math.cos(ra) * rr) / 4) * 4;
+              const ry = Math.round((hy + Math.sin(ra) * rr * 0.72) / 4) * 4;
+              ctx.fillStyle = step === 1 ? '#ffffff' : ca.coreColor;
+              ctx.fillRect(rx - 2, ry - 2, 4, 4);
+            }
+          }
+        }
+
+        // Rising Vertical Pixel-Art Energy Streamers framing the character's left & right silhouette
+        const streamCount = ca.isUltimate ? 6 : 4;
+        for (let s = 0; s < streamCount; s++) {
+          const side = s % 2 === 0 ? -1 : 1;
+          const lane = Math.floor(s / 2) + 1;
+          const sx = Math.round((ca.fighter.x + side * (42 + lane * 16)) / 4) * 4;
+          const phase = (ca.life * 260 + s * 42) % 140;
+          const sy = Math.round((ca.fighter.y - 16 - phase) / 4) * 4;
+          const sh = ca.isUltimate ? 28 : 20;
+          ctx.fillStyle = ca.mainColor;
+          ctx.fillRect(sx - 2, sy - sh, 4, sh);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(sx - 2, sy - sh, 4, 6);
+        }
+
+        ctx.restore();
+      }
     }
 
     ctx.restore();
   }
 
   renderFloatingTexts(ctx) {
+    // 1. OVERHEAD SPECIAL MOVE & ULTIMATE ART CALLOUT PLATES ABOVE CHARACTER HEAD
+    for (const ca of this.castAuras) {
+      if (!ca.fighter || ca.fighter.isDead) continue;
+      const t = ca.life / ca.maxLife;
+      const alpha = t < 0.08 ? t / 0.08 : t > 0.78 ? Math.max(0, (1 - t) / 0.22) : 1.0;
+      const popScale =
+        t < 0.1
+          ? 0.65 + (t / 0.1) * 0.45
+          : t < 0.2
+            ? 1.1 - ((t - 0.1) / 0.1) * 0.1
+            : 1.0;
+
+      // Anchor cleanly above the caster's helmet/hat/hood so their head stays 100% visible
+      const headX = Math.max(150, Math.min(1050, Math.round(ca.fighter.x)));
+      const floatLift = Math.min(12, t * 18);
+      const headY = Math.max(52, Math.round(ca.fighter.y - 216 - floatLift));
+
+      ctx.save();
+      ctx.translate(headX, headY);
+      ctx.scale(popScale, popScale);
+      ctx.globalAlpha = alpha;
+
+      ctx.font = `${ca.isUltimate ? '900 13px' : '800 12px'} "Cinzel", serif`;
+      const titleW = ctx.measureText(ca.title).width;
+      const plateW = Math.max(ca.isUltimate ? 196 : 164, Math.round((titleW + 36) / 4) * 4);
+      const plateH = ca.isUltimate ? 38 : 34;
+      const halfW = plateW / 2;
+      const halfH = plateH / 2;
+
+      // Outer stepped pixel-art elemental glow border
+      ctx.fillStyle = ca.mainColor;
+      ctx.fillRect(-halfW - 4, -halfH, plateW + 8, plateH);
+      ctx.fillRect(-halfW, -halfH - 4, plateW, plateH + 8);
+
+      // Inner dark obsidian pixel plate
+      ctx.fillStyle = 'rgba(7, 10, 19, 0.92)';
+      ctx.fillRect(-halfW, -halfH, plateW, plateH);
+
+      // Inner crisp accent frame + corner studs
+      ctx.fillStyle = ca.coreColor;
+      ctx.fillRect(-halfW + 2, -halfH + 2, plateW - 4, 2);
+      ctx.fillRect(-halfW + 2, halfH - 4, plateW - 4, 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-halfW - 2, -halfH - 2, 6, 6);
+      ctx.fillRect(halfW - 4, -halfH - 2, 6, 6);
+      ctx.fillRect(-halfW - 2, halfH - 4, 6, 6);
+      ctx.fillRect(halfW - 4, halfH - 4, 6, 6);
+
+      // Downward pixel pointer chevron aimed at the character's head
+      ctx.fillStyle = ca.mainColor;
+      ctx.fillRect(-8, halfH + 2, 16, 4);
+      ctx.fillStyle = ca.coreColor;
+      ctx.fillRect(-4, halfH + 6, 8, 4);
+
+      // Top micro-tag (★ ULTIMATE ART ★ / ✦ SPECIAL SKILL ✦)
+      ctx.textAlign = 'center';
+      ctx.font = '800 9px "Inter", sans-serif';
+      ctx.fillStyle = ca.coreColor;
+      ctx.fillText(ca.tag, 0, -halfH + 13);
+
+      // Main ability name
+      ctx.font = `${ca.isUltimate ? '900 15px' : '800 13px'} "Cinzel", serif`;
+      ctx.fillStyle = '#000000';
+      ctx.fillText(ca.title, 2, halfH - 8);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(ca.title, 0, halfH - 10);
+
+      ctx.restore();
+    }
+
+    // 2. DAMAGE & DODGE/DASH FLOATING TEXTS
     for (const t of this.texts) {
       const p = t.life / t.maxLife;
       const scale = t.isCrit ? 1.35 - p * 0.25 : 1.0;

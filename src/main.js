@@ -74,9 +74,17 @@ class Game {
     const simSec = Number(params.get('sim') || 0);
     const killTarget = params.get('kill');
     const forceUlt = params.get('ult') === '1';
-    if (p1 || p2 || urlHero || simSec > 0 || killTarget || forceUlt) {
+    const forceCorner = params.get('corner') === '1';
+    if (p1 || p2 || urlHero || simSec > 0 || killTarget || forceUlt || forceCorner) {
       this.syncRosterSelectionUI(false);
       this.startDuel(false);
+    }
+
+    if (forceCorner) {
+      // Place left fighter (e.g. Archer) cornered against the left wall and enemy closing in
+      this.leftFighter.x = 105;
+      this.rightFighter.x = 265;
+      this.rightFighter.setState('ATTACK');
     }
 
     if (forceUlt) {
@@ -116,7 +124,6 @@ class Game {
     this.btnPlayAgain = document.getElementById('btn-play-again');
     this.btnOpenSelect = document.getElementById('btn-open-select');
     this.btnVictorySelect = document.getElementById('btn-victory-select');
-    this.ultBanner = document.getElementById('ult-banner');
     this.victoryOverlay = document.getElementById('victory-overlay');
     this.landingOverlay = document.getElementById('landing-overlay');
     this.timerEl = document.getElementById('match-timer');
@@ -394,7 +401,7 @@ class Game {
     this.ultSlowTimer = 0;
     this.isMatchOver = false;
     this.victoryOverlay.classList.add('hidden');
-    this.ultBanner.classList.add('hidden');
+    if (this.ultBanner) this.ultBanner.classList.add('hidden');
     this.updateHUD();
   }
 
@@ -414,14 +421,14 @@ class Game {
     this.renderer.triggerUltimateCamera(caster.x, caster.y - 60);
     if (this.audio) this.audio.play('ult_cast', caster.x);
 
-    document.getElementById('ult-caster').textContent = caster.name.toUpperCase();
-    document.getElementById('ult-name').textContent = caster.ultName;
-    this.ultBanner.classList.remove('hidden');
-
-    clearTimeout(this.ultBannerTimeout);
-    this.ultBannerTimeout = setTimeout(() => {
-      this.ultBanner.classList.add('hidden');
-    }, 1400);
+    // Spawn in-world overhead Ultimate announcement & radiant halo directly around the character's head
+    this.vfx.spawnSpecialCastAura(
+      caster,
+      caster.ultName,
+      '★ ULTIMATE ART ★',
+      caster.theme || 'steel',
+      true
+    );
   }
 
   onFighterDeath(deadFighter) {

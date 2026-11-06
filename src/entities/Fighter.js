@@ -196,17 +196,19 @@ export class Fighter {
       }
     }
 
-    // Physics integration & Gravity
-    this.vy += 980 * dt;
-    this.x += this.vx * dt;
-    this.y += this.vy * dt;
+    // Physics integration & Gravity (skipped while in a controlled parabolic flip-vault arc)
+    if (!this.isFlipVault) {
+      this.vy += 980 * dt;
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
 
-    if (this.y >= this.groundY) {
-      this.y = this.groundY;
-      this.vy = 0;
-      this.vx *= Math.pow(0.001, dt);
-    } else {
-      this.vx *= Math.pow(0.25, dt);
+      if (this.y >= this.groundY) {
+        this.y = this.groundY;
+        this.vy = 0;
+        this.vx *= Math.pow(0.001, dt);
+      } else {
+        this.vx *= Math.pow(0.25, dt);
+      }
     }
 
     // Virtual Arena boundaries (1200 units wide)
@@ -284,6 +286,15 @@ export class Fighter {
         if (this.skillCooldown <= 0 && dist <= this.attackRange * 2.2) {
           this.skillCooldown = this.skillMaxCooldown;
           this.setState('SKILL');
+          if (game.vfx && game.vfx.spawnSpecialCastAura) {
+            game.vfx.spawnSpecialCastAura(
+              this,
+              this.skillName,
+              '✦ SPECIAL SKILL ✦',
+              this.theme || 'steel',
+              false
+            );
+          }
           return;
         }
         if (dist <= this.attackRange) {
