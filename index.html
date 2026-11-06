@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <title>Arcane vs. Steel — HD-2D Pixel Auto-Battler</title>
-  <meta name="description" content="HD-2D pixel-art physics auto-battler featuring articulated sprite animations, dynamic lighting, floor reflections, and cinematic ultimates." />
+  <meta name="description" content="HD-2D pixel-art idle auto-battler featuring articulated 40-frame sprite animations, dynamic lighting, floor reflections, and cinematic ultimates." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700;900&family=Press+Start+2P&display=swap" rel="stylesheet">
@@ -14,38 +14,37 @@
   <main id="app">
     <canvas id="arena-canvas"></canvas>
 
-    <!-- Authentic Dark-Fantasy Arcade HUD -->
+    <!-- Authentic Dark-Fantasy Arcade HUD (Dynamically Bound to Fighter 1 & Fighter 2) -->
     <header class="hud-top">
-      <!-- Left Fighter: Warrior -->
-      <section class="fighter-plate plate-left" id="hud-warrior">
-        <div class="portrait-frame frame-steel">
-          <canvas id="warrior-portrait" width="44" height="44"></canvas>
+      <!-- Left Fighter (P1) -->
+      <section class="fighter-plate plate-left" id="hud-left">
+        <div class="portrait-frame frame-steel" id="left-portrait-frame">
+          <canvas id="left-portrait" width="44" height="44"></canvas>
         </div>
         <div class="bars-column">
           <div class="plate-header">
             <div class="name-row">
-              <h2 class="fighter-name">AETHELGARD</h2>
-              <span class="champ-badge hidden" id="warrior-champ-badge">★ YOU</span>
+              <h2 class="fighter-name" id="left-name">AETHELGARD</h2>
             </div>
-            <span class="hp-num" id="warrior-hp-text">1260</span>
+            <span class="hp-num" id="left-hp-text">1280</span>
           </div>
           <div class="hp-frame">
-            <div class="hp-ghost" id="warrior-hp-dmg" style="width: 100%"></div>
-            <div class="hp-fill fill-steel" id="warrior-hp-bar" style="width: 100%"></div>
+            <div class="hp-ghost" id="left-hp-dmg" style="width: 100%"></div>
+            <div class="hp-fill fill-steel" id="left-hp-bar" style="width: 100%"></div>
             <div class="hp-notches"></div>
           </div>
           <div class="sub-row">
             <div class="ult-frame">
-              <div class="ult-fill" id="warrior-mana-bar" style="width: 0%"></div>
-              <span class="ult-label" id="warrior-ult-label">OVERDRIVE 0%</span>
+              <div class="ult-fill" id="left-mana-bar" style="width: 0%"></div>
+              <span class="ult-label" id="left-ult-label">OVERDRIVE 0%</span>
             </div>
-            <div class="cd-box" id="warrior-cd-pill">
-              <div class="cd-fill" id="warrior-skill-cd"></div>
-              <span class="cd-label" id="warrior-skill-text">WHIRLWIND</span>
+            <div class="cd-box" id="left-cd-pill">
+              <div class="cd-fill" id="left-skill-cd"></div>
+              <span class="cd-label" id="left-skill-text">WHIRLWIND</span>
             </div>
           </div>
         </div>
-        <span class="sr-only" id="warrior-state">IDLE</span>
+        <span class="sr-only" id="left-state">IDLE</span>
       </section>
 
       <!-- Center Crest & Clock -->
@@ -55,36 +54,35 @@
         <div class="clock-plate" id="match-timer">00:00</div>
       </div>
 
-      <!-- Right Fighter: Fire Mage -->
-      <section class="fighter-plate plate-right" id="hud-mage">
+      <!-- Right Fighter (P2) -->
+      <section class="fighter-plate plate-right" id="hud-right">
         <div class="bars-column">
           <div class="plate-header">
-            <span class="hp-num" id="mage-hp-text">1220</span>
+            <span class="hp-num" id="right-hp-text">1180</span>
             <div class="name-row name-row-right">
-              <span class="champ-badge badge-arcane hidden" id="mage-champ-badge">★ YOU</span>
-              <h2 class="fighter-name">IGNIS SOL</h2>
+              <h2 class="fighter-name" id="right-name">SYLVARA</h2>
             </div>
           </div>
           <div class="hp-frame">
-            <div class="hp-ghost" id="mage-hp-dmg" style="width: 100%"></div>
-            <div class="hp-fill fill-arcane" id="mage-hp-bar" style="width: 100%"></div>
+            <div class="hp-ghost" id="right-hp-dmg" style="width: 100%"></div>
+            <div class="hp-fill fill-emerald" id="right-hp-bar" style="width: 100%"></div>
             <div class="hp-notches"></div>
           </div>
           <div class="sub-row">
-            <div class="cd-box" id="mage-cd-pill">
-              <div class="cd-fill" id="mage-skill-cd"></div>
-              <span class="cd-label" id="mage-skill-text">PILLAR</span>
+            <div class="cd-box" id="right-cd-pill">
+              <div class="cd-fill" id="right-skill-cd"></div>
+              <span class="cd-label" id="right-skill-text">STARFALL VOLLEY</span>
             </div>
             <div class="ult-frame">
-              <div class="ult-fill" id="mage-mana-bar" style="width: 0%"></div>
-              <span class="ult-label" id="mage-ult-label">OVERDRIVE 0%</span>
+              <div class="ult-fill" id="right-mana-bar" style="width: 0%"></div>
+              <span class="ult-label" id="right-ult-label">OVERDRIVE 0%</span>
             </div>
           </div>
         </div>
-        <div class="portrait-frame frame-arcane">
-          <canvas id="mage-portrait" width="44" height="44"></canvas>
+        <div class="portrait-frame frame-emerald" id="right-portrait-frame">
+          <canvas id="right-portrait" width="44" height="44"></canvas>
         </div>
-        <span class="sr-only" id="mage-state">IDLE</span>
+        <span class="sr-only" id="right-state">IDLE</span>
       </section>
     </header>
 
@@ -96,17 +94,9 @@
       <div class="ult-rule"></div>
     </div>
 
-    <!-- Bottom Forged Iron Action & Command Bar -->
+    <!-- Bottom Forged Iron Spectator Control Bar (Pure Idle Auto-Battler) -->
     <footer class="hud-bottom">
       <div class="iron-bar">
-        <button id="btn-cmd-skill" class="iron-btn iron-btn-skill hidden" type="button" title="Trigger Champion Skill (Key: W)">
-          <span class="gem-indicator gem-cyan" id="cmd-skill-gem"></span>
-          <span id="cmd-skill-label">[W] SKILL</span>
-        </button>
-        <button id="btn-cmd-ult" class="iron-btn iron-btn-ult hidden" type="button" title="Trigger Overdrive Surge (Key: SPACE)">
-          <span class="gem-indicator gem-gold"></span>
-          <span id="cmd-ult-label">[SPACE] SURGE</span>
-        </button>
         <button id="btn-sfx" class="iron-btn" type="button" aria-pressed="true">
           <span class="gem-indicator"></span>
           <span id="sfx-label">SFX ON</span>
@@ -116,43 +106,56 @@
           <span>0.35x CHRONO</span>
         </button>
         <button id="btn-open-select" class="iron-btn" type="button">
-          <span>CHAMPIONS</span>
+          <span>ROSTER SELECT</span>
         </button>
         <button id="btn-reset" class="iron-btn iron-btn-gold" type="button">
-          <span>NEW DUEL</span>
+          <span>REMATCH</span>
         </button>
       </div>
     </footer>
 
-    <!-- HD-2D Landing Page & Champion Select Modal -->
-    <section id="landing-overlay" class="landing-overlay" aria-label="Champion Selection">
+    <!-- HD-2D Champion Roster & Matchup Selection Landing Page -->
+    <section id="landing-overlay" class="landing-overlay" aria-label="Champion Roster Selection">
       <div class="landing-shell">
         <header class="landing-header">
-          <div class="landing-eyebrow">ECLIPSE SANCTUARY CHRONICLES • HD-2D EDITION</div>
+          <div class="landing-eyebrow">ECLIPSE SANCTUARY CHRONICLES • HD-2D IDLE AUTO-BATTLER</div>
           <h1 class="landing-title">ARCANE <span>VS.</span> STEEL</h1>
-          <p class="landing-subtitle">Select your Champion to command &amp; empower in the Gothic Cathedral Arena</p>
+          <p class="landing-subtitle">Select two Champions from the Sanctuary Roster and watch their autonomous duel unfold</p>
+
+          <!-- Live Matchup Slots Pill Bar -->
+          <div class="matchup-banner">
+            <button type="button" class="slot-pill slot-left active-slot" id="slot-btn-left" title="Click then pick a Champion for the Left Corner">
+              <span class="slot-tag">FIGHTER 1 • LEFT</span>
+              <strong class="slot-hero-name" id="slot-left-name">AETHELGARD</strong>
+            </button>
+            <div class="matchup-vs-badge">VS</div>
+            <button type="button" class="slot-pill slot-right" id="slot-btn-right" title="Click then pick a Champion for the Right Corner">
+              <span class="slot-tag">FIGHTER 2 • RIGHT</span>
+              <strong class="slot-hero-name" id="slot-right-name">SYLVARA</strong>
+            </button>
+          </div>
         </header>
 
         <div class="champion-grid">
-          <!-- Champion 1: Aethelgard -->
-          <article class="champ-card card-steel selected" id="card-warrior" data-hero="warrior" tabindex="0" role="button" aria-pressed="true">
-            <div class="card-Selected-ribbon" id="ribbon-warrior">★ SELECTED CHAMPION</div>
+          <!-- Champion 1: Aethelgard (Runeblade Knight) -->
+          <article class="champ-card card-steel selected-p1" id="card-warrior" data-hero="warrior" tabindex="0">
+            <div class="card-Selected-ribbon" id="ribbon-warrior">★ FIGHTER 1 (LEFT)</div>
             <div class="champ-preview-stage stage-steel">
               <div class="stage-halo halo-steel"></div>
-              <canvas id="preview-warrior" width="160" height="160"></canvas>
+              <canvas id="preview-warrior" width="148" height="148"></canvas>
             </div>
             <div class="champ-meta">
               <div class="champ-role">RUNEBLADE VANGUARD • MELEE</div>
               <h2 class="champ-name">AETHELGARD</h2>
-              <p class="champ-lore">Clad in silver-gilt plate and wielding an ancient frost-rune greatsword that deflects spells and shatters the earth.</p>
+              <p class="champ-lore">Clad in silver-gilt plate and wielding an ancient frost-rune greatsword that deflects spells and shatters the cathedral floor.</p>
               <div class="stat-list">
                 <div class="stat-row">
                   <span>VITALITY</span>
-                  <div class="stat-track"><div class="stat-bar bar-steel" style="width: 94%"></div></div>
+                  <div class="stat-track"><div class="stat-bar bar-steel" style="width: 95%"></div></div>
                 </div>
                 <div class="stat-row">
                   <span>CLEAVE POWER</span>
-                  <div class="stat-track"><div class="stat-bar bar-steel" style="width: 88%"></div></div>
+                  <div class="stat-track"><div class="stat-bar bar-steel" style="width: 90%"></div></div>
                 </div>
                 <div class="stat-row">
                   <span>AEGIS DEFLECT</span>
@@ -160,26 +163,60 @@
                 </div>
               </div>
               <div class="kit-pills">
-                <span class="kit-pill pill-steel">WHIRLWIND VORTEX</span>
+                <span class="kit-pill pill-steel">WHIRLWIND TORNADO</span>
                 <span class="kit-pill pill-steel">AEGIS REFLECT</span>
                 <span class="kit-pill pill-gold">HEAVENLY EARTHSHATTER</span>
+              </div>
+              <div class="slot-assign-row">
+                <button type="button" class="assign-btn" data-assign-p1="warrior">SET P1 [LEFT]</button>
+                <button type="button" class="assign-btn" data-assign-p2="warrior">SET P2 [RIGHT]</button>
               </div>
             </div>
           </article>
 
-          <!-- Center VS Divider -->
-          <div class="landing-vs-column">
-            <div class="landing-vs-line"></div>
-            <div class="landing-vs-diamond"><span>VS</span></div>
-            <div class="landing-vs-line"></div>
-          </div>
+          <!-- Champion 2: Sylvara (Tempest Bowmaster - NEW!) -->
+          <article class="champ-card card-emerald selected-p2" id="card-archer" data-hero="archer" tabindex="0">
+            <div class="card-Selected-ribbon" id="ribbon-archer">★ FIGHTER 2 (RIGHT)</div>
+            <div class="champ-preview-stage stage-emerald">
+              <div class="stage-halo halo-emerald"></div>
+              <canvas id="preview-archer" width="148" height="148"></canvas>
+            </div>
+            <div class="champ-meta">
+              <div class="champ-role">TEMPEST BOWMASTER • RANGER</div>
+              <h2 class="champ-name">SYLVARA</h2>
+              <p class="champ-lore">Elven windrunner who loosing supersonic astral arrows, dances away with Zephyr Steps, and calls down Starfall Volleys.</p>
+              <div class="stat-list">
+                <div class="stat-row">
+                  <span>ATTACK SPEED</span>
+                  <div class="stat-track"><div class="stat-bar bar-emerald" style="width: 98%"></div></div>
+                </div>
+                <div class="stat-row">
+                  <span>STARFALL CRIT</span>
+                  <div class="stat-track"><div class="stat-bar bar-emerald" style="width: 93%"></div></div>
+                </div>
+                <div class="stat-row">
+                  <span>ZEPHYR EVASION</span>
+                  <div class="stat-track"><div class="stat-bar bar-emerald" style="width: 94%"></div></div>
+                </div>
+              </div>
+              <div class="kit-pills">
+                <span class="kit-pill pill-emerald">STARFALL VOLLEY</span>
+                <span class="kit-pill pill-emerald">ZEPHYR STEP</span>
+                <span class="kit-pill pill-gold">ASTRAL HURRICANE</span>
+              </div>
+              <div class="slot-assign-row">
+                <button type="button" class="assign-btn" data-assign-p1="archer">SET P1 [LEFT]</button>
+                <button type="button" class="assign-btn" data-assign-p2="archer">SET P2 [RIGHT]</button>
+              </div>
+            </div>
+          </article>
 
-          <!-- Champion 2: Ignis Sol -->
-          <article class="champ-card card-arcane" id="card-mage" data-hero="mage" tabindex="0" role="button" aria-pressed="false">
-            <div class="card-Selected-ribbon" id="ribbon-mage">CLICK TO SELECT</div>
+          <!-- Champion 3: Ignis Sol (Solar Archmage) -->
+          <article class="champ-card card-arcane" id="card-mage" data-hero="mage" tabindex="0">
+            <div class="card-Selected-ribbon" id="ribbon-mage">CLICK TO ASSIGN</div>
             <div class="champ-preview-stage stage-arcane">
               <div class="stage-halo halo-arcane"></div>
-              <canvas id="preview-mage" width="160" height="160"></canvas>
+              <canvas id="preview-mage" width="148" height="148"></canvas>
             </div>
             <div class="champ-meta">
               <div class="champ-role">SOLAR ARCHMAGE • ARTILLERY</div>
@@ -200,9 +237,13 @@
                 </div>
               </div>
               <div class="kit-pills">
-                <span class="kit-pill pill-arcane">HELLFIRE TORNADO</span>
+                <span class="kit-pill pill-arcane">TRIPLE SOLAR PILLAR</span>
                 <span class="kit-pill pill-arcane">ARCANE BLINK</span>
                 <span class="kit-pill pill-gold">METEOR CATACLYSM</span>
+              </div>
+              <div class="slot-assign-row">
+                <button type="button" class="assign-btn" data-assign-p1="mage">SET P1 [LEFT]</button>
+                <button type="button" class="assign-btn" data-assign-p2="mage">SET P2 [RIGHT]</button>
               </div>
             </div>
           </article>
@@ -210,10 +251,10 @@
 
         <footer class="landing-actions">
           <button id="btn-start-duel" class="landing-cta-btn" type="button">
-            <span id="start-duel-text">ENTER SANCTUARY AS AETHELGARD</span>
+            <span id="start-duel-text">WATCH DUEL: AETHELGARD VS. SYLVARA</span>
           </button>
-          <button id="btn-spectate-duel" class="iron-btn landing-spectate-btn" type="button">
-            <span>SPECTATE AI DUEL</span>
+          <button id="btn-random-duel" class="iron-btn landing-spectate-btn" type="button">
+            <span>RANDOMIZE MATCHUP</span>
           </button>
         </footer>
       </div>
@@ -224,13 +265,13 @@
       <div class="victory-plaque">
         <div class="victory-eyebrow">DUEL CONCLUDED</div>
         <h2 class="victory-winner" id="victory-winner">AETHELGARD TRIUMPHS</h2>
-        <p class="victory-stats" id="victory-stats">Steel prevails over Arcane</p>
+        <p class="victory-stats" id="victory-stats">Steel prevails over the Tempest</p>
         <div class="victory-btn-row">
           <button id="btn-play-again" class="iron-btn iron-btn-gold" type="button">
-            FIGHT AGAIN
+            REMATCH
           </button>
           <button id="btn-victory-select" class="iron-btn" type="button">
-            CHANGE CHAMPION
+            ROSTER SELECT
           </button>
         </div>
       </div>

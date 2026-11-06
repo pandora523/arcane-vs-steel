@@ -2,6 +2,7 @@ import { PixelForge } from './PixelForge.js';
 
 const CYAN_FIRE_PAL = ['#0284c7', '#38bdf8', '#7dd3fc', '#f0f9ff'];
 const SOLAR_FIRE_PAL = ['#c2410c', '#f97316', '#facc15', '#fef9c3'];
+const EMERALD_FIRE_PAL = ['#059669', '#10b981', '#6ee7b7', '#fef08a'];
 
 export class Renderer {
   constructor(canvas) {
@@ -55,6 +56,7 @@ export class Renderer {
     };
     this.glowCyan = makeGlow('rgba(186,230,253,0.95)', 'rgba(56,189,248,0.45)');
     this.glowOrange = makeGlow('rgba(254,240,138,0.96)', 'rgba(251,146,60,0.48)');
+    this.glowEmerald = makeGlow('rgba(167,243,208,0.95)', 'rgba(16,185,129,0.48)');
     this.glowGold = makeGlow('rgba(254,240,138,0.92)', 'rgba(234,179,8,0.40)');
     this.shadowTex = makeGlow('rgba(0,0,0,0.92)', 'rgba(0,0,0,0.52)');
   }
@@ -188,11 +190,17 @@ export class Renderer {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const deathFade = f.isDead ? Math.max(0.08, 1 - (f.deathTimer || 0) * 0.65) : 1;
-      ctx.globalAlpha = (f.state === 'IDLE' || f.state === 'WALK' ? 0.25 : 0.48) * deathFade;
-      const glow = f.primaryColor === '#38bdf8' ? this.glowCyan : this.glowOrange;
-      ctx.drawImage(glow, f.x - 125, f.y - (f.isDead ? 115 : 190), 250, 250);
+      ctx.globalAlpha = (f.state === 'IDLE' || f.state === 'WALK' ? 0.28 : 0.54) * deathFade;
+      const glow =
+        f.primaryColor === '#38bdf8'
+          ? this.glowCyan
+          : f.primaryColor === '#10b981'
+            ? this.glowEmerald
+            : this.glowOrange;
+      ctx.drawImage(glow, f.x - 130, f.y - (f.isDead ? 115 : 195), 260, 260);
       ctx.restore();
 
+      this.drawCharacterGroundHalo(ctx, f);
       f.draw(ctx, false);
       this.drawCharacterPixelFlames(ctx, f);
     }
@@ -402,28 +410,104 @@ export class Renderer {
     }
   }
 
+  drawCharacterGroundHalo(ctx, f) {
+    if (f.isDead && (f.deathTimer || 0) > 0.6) return;
+    const isBlue = f.primaryColor === '#38bdf8';
+    const isEmerald = f.primaryColor === '#10b981';
+    const pal = isBlue ? CYAN_FIRE_PAL : isEmerald ? EMERALD_FIRE_PAL : SOLAR_FIRE_PAL;
+    const t = this.time;
+    const isAction = f.state === 'SKILL' || f.state === 'ULTIMATE' || f.state === 'AUTO_ATTACK';
+    const rX = isAction ? 66 : 48;
+    const rY = isAction ? 17 : 12;
+    const nodes = isAction ? 20 : 14;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = isAction ? 0.82 : 0.48;
+    const gy = f.groundY || this.groundY;
+
+    for (let i = 0; i < nodes; i++) {
+      const a = (i / nodes) * Math.PI * 2 + t * (isAction ? 3.6 : 1.6) * f.facing;
+      const rx = Math.round((f.x + Math.cos(a) * rX) / 3) * 3;
+      const ry = Math.round((gy - 2 + Math.sin(a) * rY) / 3) * 3;
+      ctx.fillStyle = i % 3 === 0 ? '#ffffff' : i % 2 === 0 ? pal[3] : pal[1];
+      ctx.fillRect(rx - 2, ry - 1, 4, 3);
+    }
+    ctx.restore();
+  }
+
   drawCharacterPixelFlames(ctx, f) {
     if (f.isDead && (f.deathTimer || 0) > 0.9) return;
     const isBlue = f.primaryColor === '#38bdf8';
-    const pal = isBlue ? CYAN_FIRE_PAL : SOLAR_FIRE_PAL;
+    const isEmerald = f.primaryColor === '#10b981';
+    const pal = isBlue ? CYAN_FIRE_PAL : isEmerald ? EMERALD_FIRE_PAL : SOLAR_FIRE_PAL;
     const t = this.time;
 
     ctx.save();
-    // Emit live pixel-art fire / rune sparks along the weapon & aura
-    const count = f.isDead ? 3 : f.state === 'IDLE' || f.state === 'WALK' ? 5 : 10;
+    ctx.globalCompositeOperation = 'lighter';
+
+    // 1. Emit live pixel-art fire / rune / wind sparks along the weapon & aura
+    const count = f.isDead ? 4 : f.state === 'IDLE' || f.state === 'WALK' ? 9 : 16;
     const fallDrop = f.isDead ? Math.min(48, (f.deathTimer || 0) * 55) : 0;
     for (let i = 0; i < count; i++) {
       const cycle = (t * (1.8 + (i % 3) * 0.4) + i * 0.62) % 1;
       const spreadX = isBlue
-        ? f.facing * (18 + (i % 4) * 14) + Math.sin(t * 8 + i) * 6
-        : f.facing * (22 + (i % 4) * 12) + Math.cos(t * 7 + i) * 8;
-      const baseY = (isBlue ? f.y - 68 - (i % 4) * 16 : f.y - 82 - (i % 3) * 14) + fallDrop;
+        ? f.facing * (16 + (i % 5) * 12) + Math.sin(t * 8 + i) * 8
+        : isEmerald
+          ? f.facing * (14 + (i % 5) * 11) + Math.cos(t * 9 + i) * 12
+          : f.facing * (18 + (i % 4) * 12) + Math.cos(t * 7 + i) * 10;
+      const baseY = (isBlue ? f.y - 64 - (i % 4) * 18 : f.y - 76 - (i % 4) * 15) + fallDrop;
       const px = Math.round((f.x + spreadX) / 3) * 3;
-      const py = Math.round((baseY - cycle * 34) / 3) * 3;
+      const py = Math.round((baseY - cycle * 38) / 3) * 3;
       const sz = cycle < 0.45 ? 4 : 3;
-      ctx.fillStyle = cycle < 0.3 ? pal[3] : cycle < 0.7 ? pal[2] : pal[1];
+      ctx.fillStyle = cycle < 0.28 ? '#ffffff' : cycle < 0.62 ? pal[3] : pal[1];
       ctx.fillRect(px, py, sz, sz);
     }
+
+    // 2. Character-Specific Signature Aura Overlay
+    if (!f.isDead) {
+      if (isBlue) {
+        // AETHELGARD: Runic Frost-Steel Greatsword Shimmer + Aegis Hexagonal Shield Barrier when deflecting
+        if (f.isDeflecting) {
+          ctx.globalAlpha = 0.78;
+          for (let i = 0; i < 16; i++) {
+            const a = (i / 16) * Math.PI * 2 + t * 8;
+            const hx = Math.round((f.x + Math.cos(a) * 68) / 4) * 4;
+            const hy = Math.round((f.y - 68 + Math.sin(a) * 68) / 4) * 4;
+            ctx.fillStyle = i % 2 === 0 ? '#fef08a' : '#38bdf8';
+            ctx.fillRect(hx - 3, hy - 3, 6, 6);
+          }
+        }
+      } else if (isEmerald) {
+        // SYLVARA: Swirling Emerald Wind Ribbon & Starlight Feathers Orbiting Her Cloak
+        ctx.globalAlpha = 0.85;
+        for (let w = 0; w < 4; w++) {
+          const wa = t * 4.8 + (w * Math.PI) / 2;
+          const wyOff = ((t * 48 + w * 28) % 110) - 10;
+          const wx = Math.round((f.x + Math.cos(wa) * (36 + w * 4)) / 3) * 3;
+          const wy = Math.round((f.y - 18 - wyOff + Math.sin(wa) * 8) / 3) * 3;
+          ctx.fillStyle = w % 2 === 0 ? '#fef08a' : '#34d399';
+          ctx.fillRect(wx - 4, wy - 2, 8, 3);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(wx - 1, wy - 1, 2, 2);
+        }
+      } else {
+        // IGNIS SOL: 3 Orbiting Miniature Solar Fire-Orbs Circling His Arcane Robes
+        ctx.globalAlpha = 0.88;
+        for (let orb = 0; orb < 3; orb++) {
+          const oa = t * 3.4 + (orb * Math.PI * 2) / 3;
+          const ox = Math.round((f.x + Math.cos(oa) * 48) / 3) * 3;
+          const oy = Math.round((f.y - 74 + Math.sin(oa) * 16) / 3) * 3;
+          ctx.fillStyle = '#ea580c';
+          ctx.fillRect(ox - 5, oy - 5, 10, 10);
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(ox - 3, oy - 3, 6, 6);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(ox - 1, oy - 1, 2, 2);
+        }
+      }
+    }
+
     ctx.restore();
   }
 
@@ -497,7 +581,12 @@ export class Renderer {
       if (atten <= 0.02) continue;
       const rx = l.radius * (1 + distY * 0.002);
       const ry = rx * 0.25;
-      const tex = l.isBlue ? this.glowCyan : this.glowOrange;
+      const tex =
+        l.colorType === 'cyan'
+          ? this.glowCyan
+          : l.colorType === 'emerald'
+            ? this.glowEmerald
+            : this.glowOrange;
       ctx.globalAlpha = Math.min(0.72, 0.48 * atten * l.intensity);
       ctx.drawImage(tex, l.x - rx, gy + 2 - ry, rx * 2, ry * 2);
     }

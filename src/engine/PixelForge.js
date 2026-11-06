@@ -15,28 +15,45 @@ export class PixelForge {
       arenaBg: loadImg('assets/sprites/arena_bg.png'),
       warrior: {
         sheet: loadImg('assets/sprites/warrior_sheet.png'),
-        portrait: loadImg('assets/sprites/warrior_portrait.png', (img) =>
-          this.drawPortrait('warrior-portrait', img, '#38bdf8')
-        )
+        portrait: loadImg('assets/sprites/warrior_portrait.png', () => this.refreshPortraits())
       },
       mage: {
         sheet: loadImg('assets/sprites/mage_sheet.png'),
-        portrait: loadImg('assets/sprites/mage_portrait.png', (img) =>
-          this.drawPortrait('mage-portrait', img, '#fb923c')
-        )
+        portrait: loadImg('assets/sprites/mage_portrait.png', () => this.refreshPortraits())
+      },
+      archer: {
+        sheet: loadImg('assets/sprites/archer_sheet.png'),
+        portrait: loadImg('assets/sprites/archer_portrait.png', () => this.refreshPortraits())
       }
     };
 
     return this.assets;
   }
 
+  static setHUDPortraits(leftKey, leftColor, rightKey, rightColor) {
+    this.hudPortraitCfg = { leftKey, leftColor, rightKey, rightColor };
+    this.refreshPortraits();
+  }
+
+  static refreshPortraits() {
+    if (!this.assets || !this.hudPortraitCfg) return;
+    const { leftKey, leftColor, rightKey, rightColor } = this.hudPortraitCfg;
+    if (this.assets[leftKey]?.portrait) {
+      this.drawPortrait('left-portrait', this.assets[leftKey].portrait, leftColor);
+    }
+    if (this.assets[rightKey]?.portrait) {
+      this.drawPortrait('right-portrait', this.assets[rightKey].portrait, rightColor);
+    }
+  }
+
   static drawPortrait(canvasId, img, borderColor) {
     const el = document.getElementById(canvasId);
-    if (!el || !img.complete) return;
+    if (!el || !img || !img.complete || !img.naturalWidth) return;
     el.width = 96;
     el.height = 96;
     const ctx = el.getContext('2d');
     ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, 96, 96);
     ctx.drawImage(img, 0, 0, 96, 96);
     ctx.strokeStyle = borderColor;
     ctx.lineWidth = 4;

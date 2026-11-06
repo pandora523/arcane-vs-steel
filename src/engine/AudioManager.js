@@ -21,8 +21,13 @@ export class AudioManager {
       ult_cast: 0.84,
       death_warrior: 0.92,
       death_mage: 0.92,
+      death_archer: 0.92,
       victory_fanfare: 0.85,
-      footstep_steel: 0.34
+      footstep_steel: 0.34,
+      arrow_shoot: 0.72,
+      arrow_hit: 0.74,
+      arrow_rain: 0.82,
+      archer_ult: 0.90
     };
 
     this.initContext();
