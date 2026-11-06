@@ -157,19 +157,19 @@ export class FireMage extends Fighter {
   draw(ctx, isReflection = false) {
     const sprites = PixelForge.initAssets().mage;
     ctx.save();
-    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingEnabled = false;
 
-    const hoverY = -12 + Math.sin(this.runeOrbit * 1.6) * 7;
-    const w = 184;
-    const h = 186;
+    const hoverY = Math.round(-10 + Math.sin(this.runeOrbit * 1.6) * 6);
+    const w = 192;
+    const h = 192;
     const scaleDir = -this.facing;
     const frameIdx = PixelForge.getFrameIndex(this, this.runeOrbit);
 
     if (!isReflection && (this.state === 'SKILL' || this.state === 'ULTIMATE' || this.state === 'AUTO_ATTACK')) {
       for (let g = 1; g <= 2; g++) {
         ctx.save();
-        ctx.globalAlpha = 0.20 / g;
-        ctx.translate(this.x - this.facing * g * 18, this.y + hoverY);
+        ctx.globalAlpha = 0.22 / g;
+        ctx.translate(Math.round(this.x - this.facing * g * 18), Math.round(this.y + hoverY));
         ctx.scale(scaleDir, 1);
         const ghostIdx = Math.max(0, frameIdx - g);
         PixelForge.drawGhostFrame(ctx, sprites, ghostIdx, w, h);
@@ -177,22 +177,14 @@ export class FireMage extends Fighter {
       }
     }
 
-    const breatheY = 1 + Math.sin(this.runeOrbit * 1.1) * 0.022;
-    const breatheX = 1 - Math.sin(this.runeOrbit * 1.1) * 0.015;
-    const tilt =
-      this.state === 'WALK'
-        ? Math.sin(this.runeOrbit * 1.5) * 0.04 - 0.03
-        : this.torsoAngle * scaleDir * 0.3;
-
-    ctx.translate(this.x, this.y + hoverY);
-    ctx.scale(scaleDir * breatheX, breatheY);
-    ctx.rotate(tilt);
+    ctx.translate(Math.round(this.x), Math.round(this.y + hoverY));
+    ctx.scale(scaleDir, 1);
 
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.runeOrbit, isReflection);
 
     if (this.hitFlash > 0 && !isReflection) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.6;
       PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);
     }
 

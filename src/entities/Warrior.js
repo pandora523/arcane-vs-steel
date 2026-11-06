@@ -178,18 +178,17 @@ export class Warrior extends Fighter {
   draw(ctx, isReflection = false) {
     const sprites = PixelForge.initAssets().warrior;
     ctx.save();
-    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingEnabled = false;
 
-    const w = 184;
-    const h = 184;
+    const w = 192;
+    const h = 192;
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
 
-    // Multi-ghost afterimage trail during attacks, Whirlwind, or Ultimate
     if (!isReflection && (this.state === 'SKILL' || this.state === 'ULTIMATE' || this.state === 'AUTO_ATTACK')) {
       for (let g = 1; g <= 2; g++) {
         ctx.save();
-        ctx.globalAlpha = 0.20 / g;
-        ctx.translate(this.x - this.facing * g * 20, this.y);
+        ctx.globalAlpha = 0.22 / g;
+        ctx.translate(Math.round(this.x - this.facing * g * 20), Math.round(this.y));
         ctx.scale(this.facing, 1);
         const ghostIdx = Math.max(0, frameIdx - g);
         PixelForge.drawGhostFrame(ctx, sprites, ghostIdx, w, h);
@@ -197,23 +196,15 @@ export class Warrior extends Fighter {
       }
     }
 
-    const walkBob = this.state === 'WALK' ? Math.abs(Math.sin(this.walkPhase * 1.5)) * -8 : 0;
-    const breatheY = 1 + Math.sin(this.walkPhase * 1.4) * 0.022;
-    const breatheX = 1 - Math.sin(this.walkPhase * 1.4) * 0.015;
-    const tilt =
-      this.state === 'WALK'
-        ? Math.sin(this.walkPhase * 1.5) * 0.05 + 0.04
-        : this.torsoAngle * this.facing * 0.35;
-
-    ctx.translate(this.x, this.y + walkBob);
-    ctx.scale(this.facing * breatheX, breatheY);
-    ctx.rotate(tilt);
+    const walkBob = this.state === 'WALK' ? Math.round(Math.abs(Math.sin(this.walkPhase * 1.5)) * -6) : 0;
+    ctx.translate(Math.round(this.x), Math.round(this.y + walkBob));
+    ctx.scale(this.facing, 1);
 
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection);
 
     if (this.hitFlash > 0 && !isReflection) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.55;
+      ctx.globalAlpha = 0.6;
       PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);
     }
 

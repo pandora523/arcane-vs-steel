@@ -284,14 +284,18 @@ export class VFXManager {
 
     for (const p of this.particles) {
       const t = p.life / p.maxLife;
-      const r = Math.max(1, p.size * (1 - t) + p.endSize * t);
+      const s = Math.max(2, Math.round((p.size * (1 - t) + p.endSize * t) / 2) * 2);
       if (p.additive) ctx.globalCompositeOperation = 'lighter';
       else ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = (1 - t) * (isReflection ? 0.65 : 1);
+      const px = Math.round(p.x / 2) * 2;
+      const py = Math.round(p.y / 2) * 2;
       ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(px - s * 0.5, py - s * 0.5, s, s);
+      if (p.additive && s >= 4) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
+      }
     }
 
     ctx.globalCompositeOperation = 'lighter';
@@ -301,8 +305,8 @@ export class VFXManager {
       ctx.translate(s.x, s.y);
       ctx.strokeStyle = s.color;
       ctx.globalAlpha = 1 - t;
-      ctx.lineWidth = (1 - t) * 20;
-      ctx.lineCap = 'round';
+      ctx.lineWidth = (1 - t) * 18;
+      ctx.lineCap = 'butt';
       ctx.beginPath();
       ctx.arc(0, 0, s.radius, s.startAngle, s.endAngle);
       ctx.stroke();
@@ -317,7 +321,7 @@ export class VFXManager {
       if (sw.flat) ctx.scale(1, 0.28);
       ctx.strokeStyle = sw.color;
       ctx.globalAlpha = 1 - t;
-      ctx.lineWidth = Math.max(2, (1 - t) * 11);
+      ctx.lineWidth = Math.max(2, (1 - t) * 10);
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.stroke();
@@ -326,15 +330,24 @@ export class VFXManager {
 
     ctx.globalAlpha = 1;
     for (const proj of this.projectiles) {
-      const r = proj.radius * 2.5;
+      const r = proj.radius * 2.8;
+      const px = Math.round(proj.x / 2) * 2;
+      const py = Math.round(proj.y / 2) * 2;
       if (renderer) {
         const tex = proj.color === '#38bdf8' ? renderer.glowCyan : renderer.glowOrange;
-        ctx.drawImage(tex, proj.x - r, proj.y - r, r * 2, r * 2);
+        ctx.drawImage(tex, px - r, py - r, r * 2, r * 2);
       }
+      // HD-2D Pixel-Art Stepped Core + Anamorphic Lens Flare Cross
+      const cs = Math.max(4, Math.round(proj.radius * 0.9));
+      ctx.fillStyle = proj.color;
+      ctx.fillRect(px - cs, py - cs * 0.6, cs * 2, cs * 1.2);
+      ctx.fillRect(px - cs * 0.6, py - cs, cs * 1.2, cs * 2);
       ctx.fillStyle = proj.coreColor;
-      ctx.beginPath();
-      ctx.arc(proj.x, proj.y, proj.radius * 0.55, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(px - cs * 0.5, py - cs * 0.5, cs, cs);
+      if (!isReflection) {
+        ctx.fillStyle = 'rgba(255,255,255,0.75)';
+        ctx.fillRect(px - cs * 2.2, py - 1, cs * 4.4, 2);
+      }
     }
 
     for (const l of this.lightnings) {
@@ -343,7 +356,11 @@ export class VFXManager {
       ctx.globalAlpha = 1 - t;
       ctx.lineWidth = (1 - t) * 10;
       ctx.beginPath();
-      l.pts.forEach((pt, idx) => (idx === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)));
+      l.pts.forEach((pt, idx) =>
+        idx === 0
+          ? ctx.moveTo(Math.round(pt.x / 3) * 3, Math.round(pt.y / 3) * 3)
+          : ctx.lineTo(Math.round(pt.x / 3) * 3, Math.round(pt.y / 3) * 3)
+      );
       ctx.stroke();
     }
     ctx.restore();
