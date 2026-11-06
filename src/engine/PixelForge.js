@@ -1,4 +1,4 @@
-// 32-Frame HD-2D Pixel-Art Sprite Sheet Loader & Nearest-Neighbor Sub-Frame Animator
+// 32-Frame HD-2D Pixel-Art Sprite Sheet Loader & Nearest-Neighbor Animator (128x128 Cells)
 export class PixelForge {
   static initAssets() {
     if (this.assets) return this.assets;
@@ -44,9 +44,9 @@ export class PixelForge {
   }
 
   /**
-   * Maps fighter state & timers to one of the 32 HD-2D pixel-art frames (8 cols x 4 rows):
+   * Maps fighter state & timers to one of the 32 HD-2D pixel-art frames (8 cols x 4 rows, 128x128 cells):
    * - Row 0 (0..7):   8-frame IDLE combat ready loop
-   * - Row 1 (8..15):  8-frame WALK / SPRINT stride loop
+   * - Row 1 (8..15):  8-frame WALK / STRIDE loop
    * - Row 2 (16..23): 8-frame AUTO_ATTACK combo sequence
    * - Row 3 (24..31): 8-frame SKILL (24..27) & ULTIMATE (28..31) sequence
    */
@@ -86,7 +86,7 @@ export class PixelForge {
 
   static drawSheetFrame(ctx, charSet, fighter, w, h, phase, isReflection = false) {
     const sheet = charSet.sheet;
-    const cell = 96;
+    const cell = 128;
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
 
     ctx.imageSmoothingEnabled = false;
@@ -96,55 +96,27 @@ export class PixelForge {
     const row = (frameIdx / 8) | 0;
     const sx = col * cell;
     const sy = row * cell;
-    const baseY = -h + 4;
+    const baseY = -h + 10;
 
-    if (isReflection) {
-      ctx.drawImage(sheet, sx, sy, cell, cell, Math.round(-w * 0.5), Math.round(baseY), w, h);
-      return;
-    }
-
-    // 8-band integer-snapped pixel-row wave for upper-body/cape breathing while keeping feet planted
-    const slices = 8;
-    const sliceSrcH = cell / slices;
-    const sliceDstH = h / slices;
-    const st = fighter.state;
-
-    for (let i = 0; i < slices; i++) {
-      const ratio = i / (slices - 1);
-      const upperWeight = 1 - ratio * 0.85;
-      let rawOffset = 0;
-      if (st === 'WALK') {
-        rawOffset = Math.sin(phase * 1.6 + ratio * 2.0) * 2.4 * upperWeight;
-      } else if (st === 'IDLE') {
-        rawOffset = Math.sin(phase * 1.4 - ratio * 2.2) * 2.0 * (1 - ratio);
-      } else {
-        rawOffset = Math.sin(phase * 2.0 - ratio * 2.4) * 2.4 * (1 - ratio);
-      }
-
-      // Snap offset to integer 2px pixel steps to preserve crisp HD-2D pixel grid
-      const offsetX = Math.round(rawOffset * 0.5) * 2;
-      const dx = Math.round(-w * 0.5 + offsetX);
-      const dy = Math.round(baseY + i * sliceDstH);
-
-      ctx.drawImage(
-        sheet,
-        sx,
-        sy + i * sliceSrcH,
-        cell,
-        sliceSrcH,
-        dx,
-        dy,
-        w,
-        Math.ceil(sliceDstH)
-      );
-    }
+    // Draw the full 128x128 HD-2D pixel-art cell intact with zero horizontal slice-shearing
+    ctx.drawImage(
+      sheet,
+      sx,
+      sy,
+      cell,
+      cell,
+      Math.round(-w * 0.5),
+      Math.round(baseY),
+      w,
+      h
+    );
   }
 
   static drawGhostFrame(ctx, charSet, frameIdx, w, h) {
     const sheet = charSet.sheet;
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
     ctx.imageSmoothingEnabled = false;
-    const cell = 96;
+    const cell = 128;
     const col = frameIdx % 8;
     const row = (frameIdx / 8) | 0;
     ctx.drawImage(
@@ -154,7 +126,7 @@ export class PixelForge {
       cell,
       cell,
       Math.round(-w * 0.5),
-      Math.round(-h + 4),
+      Math.round(-h + 10),
       w,
       h
     );

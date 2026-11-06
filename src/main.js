@@ -22,6 +22,15 @@ class Game {
     this.bindUI();
     this.resetMatch();
 
+    const simSec = Number(new URLSearchParams(window.location.search).get('sim') || 0);
+    if (simSec > 0) {
+      const steps = Math.floor(simSec / 0.02);
+      for (let i = 0; i < steps; i++) {
+        this.stepSimulation(0.02);
+      }
+      this.updateHUD();
+    }
+
     this.lastTime = performance.now();
     requestAnimationFrame((t) => this.loop(t));
   }
@@ -199,10 +208,7 @@ class Game {
     this.timerEl.textContent = `${mins}:${secs}`;
   }
 
-  loop(now) {
-    const rawDt = Math.min(0.033, (now - this.lastTime) / 1000);
-    this.lastTime = now;
-
+  stepSimulation(rawDt) {
     this.renderer.update(rawDt, this.fighters);
 
     let timeScale = 1.0;
@@ -222,6 +228,13 @@ class Game {
     this.mage.update(dt, this.warrior, this);
     this.updateProjectiles(dt);
     this.vfx.update(dt, this.renderer.groundY, this.renderer);
+  }
+
+  loop(now) {
+    const rawDt = Math.min(0.033, (now - this.lastTime) / 1000);
+    this.lastTime = now;
+
+    this.stepSimulation(rawDt);
 
     this.hudTimer += rawDt;
     if (this.hudTimer >= 0.06) {

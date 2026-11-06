@@ -195,9 +195,8 @@ export class Fighter {
         } else {
           this.state = 'WALK';
           this.walkPhase += dt * 4.5;
-          const stride = Math.abs(Math.sin(this.walkPhase));
-          this.x += this.facing * this.moveSpeed * (0.65 + stride * 0.55) * dt;
-          this.headBob = Math.sin(this.walkPhase * 2) * 3;
+          this.x += this.facing * this.moveSpeed * dt;
+          this.headBob = Math.sin(this.walkPhase * 2) * 2.5;
         }
       } else {
         this.state = 'IDLE';

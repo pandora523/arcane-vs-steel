@@ -217,19 +217,10 @@ export class Renderer {
       ctx.fillRect(-600, -700, ww + 1200, gy + 1400);
     }
 
-    // 3D Perspective Pixel-Art Cobblestone Mortar Grid
-    ctx.strokeStyle = 'rgba(10, 14, 24, 0.72)';
-    ctx.lineWidth = 3;
-    const vx = ww * 0.5;
-    for (let i = -9; i <= 9; i++) {
-      ctx.beginPath();
-      ctx.moveTo(vx + i * 54, gy - 32);
-      ctx.lineTo(vx + i * 198, gy + 240);
-      ctx.stroke();
-    }
-    for (let r = 0; r < 6; r++) {
-      const ry = gy - 28 + r * r * 11;
-      ctx.fillStyle = r === 2 ? 'rgba(148, 174, 212, 0.18)' : 'rgba(8, 10, 18, 0.62)';
+    // Subtle Pixel-Stepped Obsidian Flagstone Seams & Specular Trim
+    for (let r = 0; r < 5; r++) {
+      const ry = Math.round((gy - 22 + r * r * 12) / 3) * 3;
+      ctx.fillStyle = r === 1 ? 'rgba(148, 174, 212, 0.11)' : 'rgba(8, 11, 20, 0.34)';
       ctx.fillRect(-300, ry, ww + 600, 3);
     }
 
@@ -389,10 +380,25 @@ export class Renderer {
     ctx.save();
 
     const pShift = (this.camX - this.worldWidth * 0.5) * 0.18;
-    ctx.fillStyle = 'rgba(3, 4, 8, 0.88)';
-    const pilW = this.isMobile ? 22 : 54;
-    ctx.fillRect(-10 - pShift * 0.3, 0, pilW, h);
-    ctx.fillRect(w - pilW + 10 - pShift * 0.3, 0, pilW + 20, h);
+    const pilW = this.isMobile ? 22 : 52;
+    const leftX = Math.round(-10 - pShift * 0.3);
+    const rightX = Math.round(w - pilW + 10 - pShift * 0.3);
+
+    // Foreground HD-2D Parallax Gothic Columns with Pixel Rim-Lighting
+    ctx.fillStyle = 'rgba(4, 6, 12, 0.92)';
+    ctx.fillRect(leftX, 0, pilW, h);
+    ctx.fillRect(rightX, 0, pilW + 20, h);
+
+    ctx.fillStyle = 'rgba(56, 189, 248, 0.14)';
+    ctx.fillRect(leftX + pilW - 4, 0, 4, h);
+    ctx.fillStyle = 'rgba(251, 146, 60, 0.14)';
+    ctx.fillRect(rightX, 0, 4, h);
+
+    for (let y = 24; y < h; y += 48) {
+      ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
+      ctx.fillRect(leftX + pilW - 12, y, 8, 4);
+      ctx.fillRect(rightX + 4, y, 8, 4);
+    }
 
     const topG = ctx.createLinearGradient(0, 0, 0, h * 0.22);
     topG.addColorStop(0, 'rgba(2, 3, 7, 0.78)');
@@ -436,13 +442,11 @@ export class Renderer {
         if (dist < 380) shiftX += (dx / dist) * (1 - dist / 380) * 18 * l.intensity;
       }
       shiftX = Math.max(-24, Math.min(24, shiftX));
-      const rx = 64 * scale;
-      const ry = 16 * scale;
-      ctx.drawImage(this.shadowTex, f.x + shiftX - rx, gy - ry + 2, rx * 2, ry * 2);
-      // Grounded pixel contact shadow directly under the Knight's boots
-      if (jumpH < 4 && f.primaryColor === '#38bdf8') {
-        ctx.fillStyle = 'rgba(3, 5, 10, 0.88)';
-        ctx.fillRect(Math.round(f.x - 42), gy - 3, 84, 6);
+      const rx = 68 * scale;
+      const ry = 17 * scale;
+      ctx.drawImage(this.shadowTex, f.x + shiftX - rx, gy - ry + 4, rx * 2, ry * 2);
+      if (jumpH < 8) {
+        ctx.drawImage(this.shadowTex, f.x - 46, gy - 8, 92, 18);
       }
     }
   }
