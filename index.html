@@ -23,8 +23,11 @@
         </div>
         <div class="bars-column">
           <div class="plate-header">
-            <h2 class="fighter-name">AETHELGARD</h2>
-            <span class="hp-num" id="warrior-hp-text">1200</span>
+            <div class="name-row">
+              <h2 class="fighter-name">AETHELGARD</h2>
+              <span class="champ-badge hidden" id="warrior-champ-badge">★ YOU</span>
+            </div>
+            <span class="hp-num" id="warrior-hp-text">1260</span>
           </div>
           <div class="hp-frame">
             <div class="hp-ghost" id="warrior-hp-dmg" style="width: 100%"></div>
@@ -56,8 +59,11 @@
       <section class="fighter-plate plate-right" id="hud-mage">
         <div class="bars-column">
           <div class="plate-header">
-            <span class="hp-num" id="mage-hp-text">950</span>
-            <h2 class="fighter-name">IGNIS SOL</h2>
+            <span class="hp-num" id="mage-hp-text">1220</span>
+            <div class="name-row name-row-right">
+              <span class="champ-badge badge-arcane hidden" id="mage-champ-badge">★ YOU</span>
+              <h2 class="fighter-name">IGNIS SOL</h2>
+            </div>
           </div>
           <div class="hp-frame">
             <div class="hp-ghost" id="mage-hp-dmg" style="width: 100%"></div>
@@ -90,9 +96,17 @@
       <div class="ult-rule"></div>
     </div>
 
-    <!-- Bottom Forged Iron Action Bar -->
+    <!-- Bottom Forged Iron Action & Command Bar -->
     <footer class="hud-bottom">
       <div class="iron-bar">
+        <button id="btn-cmd-skill" class="iron-btn iron-btn-skill hidden" type="button" title="Trigger Champion Skill (Key: W)">
+          <span class="gem-indicator gem-cyan" id="cmd-skill-gem"></span>
+          <span id="cmd-skill-label">[W] SKILL</span>
+        </button>
+        <button id="btn-cmd-ult" class="iron-btn iron-btn-ult hidden" type="button" title="Trigger Overdrive Surge (Key: SPACE)">
+          <span class="gem-indicator gem-gold"></span>
+          <span id="cmd-ult-label">[SPACE] SURGE</span>
+        </button>
         <button id="btn-sfx" class="iron-btn" type="button" aria-pressed="true">
           <span class="gem-indicator"></span>
           <span id="sfx-label">SFX ON</span>
@@ -101,11 +115,109 @@
           <span class="gem-indicator"></span>
           <span>0.35x CHRONO</span>
         </button>
+        <button id="btn-open-select" class="iron-btn" type="button">
+          <span>CHAMPIONS</span>
+        </button>
         <button id="btn-reset" class="iron-btn iron-btn-gold" type="button">
           <span>NEW DUEL</span>
         </button>
       </div>
     </footer>
+
+    <!-- HD-2D Landing Page & Champion Select Modal -->
+    <section id="landing-overlay" class="landing-overlay" aria-label="Champion Selection">
+      <div class="landing-shell">
+        <header class="landing-header">
+          <div class="landing-eyebrow">ECLIPSE SANCTUARY CHRONICLES • HD-2D EDITION</div>
+          <h1 class="landing-title">ARCANE <span>VS.</span> STEEL</h1>
+          <p class="landing-subtitle">Select your Champion to command &amp; empower in the Gothic Cathedral Arena</p>
+        </header>
+
+        <div class="champion-grid">
+          <!-- Champion 1: Aethelgard -->
+          <article class="champ-card card-steel selected" id="card-warrior" data-hero="warrior" tabindex="0" role="button" aria-pressed="true">
+            <div class="card-Selected-ribbon" id="ribbon-warrior">★ SELECTED CHAMPION</div>
+            <div class="champ-preview-stage stage-steel">
+              <div class="stage-halo halo-steel"></div>
+              <canvas id="preview-warrior" width="160" height="160"></canvas>
+            </div>
+            <div class="champ-meta">
+              <div class="champ-role">RUNEBLADE VANGUARD • MELEE</div>
+              <h2 class="champ-name">AETHELGARD</h2>
+              <p class="champ-lore">Clad in silver-gilt plate and wielding an ancient frost-rune greatsword that deflects spells and shatters the earth.</p>
+              <div class="stat-list">
+                <div class="stat-row">
+                  <span>VITALITY</span>
+                  <div class="stat-track"><div class="stat-bar bar-steel" style="width: 94%"></div></div>
+                </div>
+                <div class="stat-row">
+                  <span>CLEAVE POWER</span>
+                  <div class="stat-track"><div class="stat-bar bar-steel" style="width: 88%"></div></div>
+                </div>
+                <div class="stat-row">
+                  <span>AEGIS DEFLECT</span>
+                  <div class="stat-track"><div class="stat-bar bar-steel" style="width: 92%"></div></div>
+                </div>
+              </div>
+              <div class="kit-pills">
+                <span class="kit-pill pill-steel">WHIRLWIND VORTEX</span>
+                <span class="kit-pill pill-steel">AEGIS REFLECT</span>
+                <span class="kit-pill pill-gold">HEAVENLY EARTHSHATTER</span>
+              </div>
+            </div>
+          </article>
+
+          <!-- Center VS Divider -->
+          <div class="landing-vs-column">
+            <div class="landing-vs-line"></div>
+            <div class="landing-vs-diamond"><span>VS</span></div>
+            <div class="landing-vs-line"></div>
+          </div>
+
+          <!-- Champion 2: Ignis Sol -->
+          <article class="champ-card card-arcane" id="card-mage" data-hero="mage" tabindex="0" role="button" aria-pressed="false">
+            <div class="card-Selected-ribbon" id="ribbon-mage">CLICK TO SELECT</div>
+            <div class="champ-preview-stage stage-arcane">
+              <div class="stage-halo halo-arcane"></div>
+              <canvas id="preview-mage" width="160" height="160"></canvas>
+            </div>
+            <div class="champ-meta">
+              <div class="champ-role">SOLAR ARCHMAGE • ARTILLERY</div>
+              <h2 class="champ-name">IGNIS SOL</h2>
+              <p class="champ-lore">Master of the Solar Eclipse who levitates above the flagstones, warping through space and calling down cataclysmic hellfire.</p>
+              <div class="stat-list">
+                <div class="stat-row">
+                  <span>SOLAR BURST</span>
+                  <div class="stat-track"><div class="stat-bar bar-arcane" style="width: 98%"></div></div>
+                </div>
+                <div class="stat-row">
+                  <span>HELLFIRE RANGE</span>
+                  <div class="stat-track"><div class="stat-bar bar-arcane" style="width: 95%"></div></div>
+                </div>
+                <div class="stat-row">
+                  <span>ARCANE BLINK</span>
+                  <div class="stat-track"><div class="stat-bar bar-arcane" style="width: 90%"></div></div>
+                </div>
+              </div>
+              <div class="kit-pills">
+                <span class="kit-pill pill-arcane">HELLFIRE TORNADO</span>
+                <span class="kit-pill pill-arcane">ARCANE BLINK</span>
+                <span class="kit-pill pill-gold">METEOR CATACLYSM</span>
+              </div>
+            </div>
+          </article>
+        </div>
+
+        <footer class="landing-actions">
+          <button id="btn-start-duel" class="landing-cta-btn" type="button">
+            <span id="start-duel-text">ENTER SANCTUARY AS AETHELGARD</span>
+          </button>
+          <button id="btn-spectate-duel" class="iron-btn landing-spectate-btn" type="button">
+            <span>SPECTATE AI DUEL</span>
+          </button>
+        </footer>
+      </div>
+    </section>
 
     <!-- Victory Modal -->
     <div id="victory-overlay" class="victory-overlay hidden">
@@ -113,9 +225,14 @@
         <div class="victory-eyebrow">DUEL CONCLUDED</div>
         <h2 class="victory-winner" id="victory-winner">AETHELGARD TRIUMPHS</h2>
         <p class="victory-stats" id="victory-stats">Steel prevails over Arcane</p>
-        <button id="btn-play-again" class="iron-btn iron-btn-gold" type="button">
-          FIGHT AGAIN
-        </button>
+        <div class="victory-btn-row">
+          <button id="btn-play-again" class="iron-btn iron-btn-gold" type="button">
+            FIGHT AGAIN
+          </button>
+          <button id="btn-victory-select" class="iron-btn" type="button">
+            CHANGE CHAMPION
+          </button>
+        </div>
       </div>
     </div>
   </main>

@@ -109,7 +109,7 @@ export class Renderer {
       const fitScaleX = this.width / Math.max(620, Math.min(this.worldWidth, dist));
       const fitScaleY = this.height / 720;
       let targetZoom = Math.min(fitScaleX, fitScaleY * 1.15);
-      targetZoom = Math.max(0.42, Math.min(this.isMobile ? 0.85 : 1.15, targetZoom));
+      targetZoom = Math.max(0.52, Math.min(this.isMobile ? 0.85 : 1.15, targetZoom));
 
       let targetX = midX;
       let targetY = this.groundY - 95;
@@ -118,6 +118,16 @@ export class Renderer {
         targetZoom *= 1.15;
         targetX = this.ultFocusX;
         targetY = this.ultFocusY;
+      }
+
+      // Clamp camera X so the viewport stays comfortably inside the 1680-wide cathedral diorama
+      const halfViewW = (this.width * 0.5) / targetZoom;
+      const bgLeft = (this.worldWidth - 1680) * 0.5 + 16;
+      const bgRight = (this.worldWidth + 1680) * 0.5 - 16;
+      if (bgRight - bgLeft > halfViewW * 2) {
+        targetX = Math.max(bgLeft + halfViewW, Math.min(bgRight - halfViewW, targetX));
+      } else {
+        targetX = this.worldWidth * 0.5;
       }
 
       this.zoom += (targetZoom - this.zoom) * Math.min(1, rawDt * 8);
@@ -144,7 +154,7 @@ export class Renderer {
     ctx.scale(this.zoom, this.zoom);
     ctx.translate(-this.camX, -this.camY);
 
-    // 1. HD-2D Pixel-Art Cathedral Diorama + Live Glowing Pixel-Art Stage Flames
+    // 1. HD-2D Pixel-Art Cathedral Diorama + Live Animated Stage Flames
     this.drawHD2DArena(ctx, ww, gy);
 
     if (this.ultDim > 0.01) {
@@ -196,7 +206,7 @@ export class Renderer {
 
     ctx.restore();
 
-    // 8. Screen-Space Unreal HD-2D Tilt-Shift DoF Vignette & Foreground Silhouette Pillars
+    // 8. Screen-Space Unreal HD-2D Soft Tilt-Shift Vignette (Zero hard vertical bars)
     this.drawHD2DPostProcess(ctx);
   }
 
@@ -206,96 +216,169 @@ export class Renderer {
     const drawW = 1680;
     const drawH = 945;
     const drawX = Math.round((ww - drawW) * 0.5);
-    // Align floor surface so gy is firmly on the stone flagstones (not floating near the back wall)
     const drawY = Math.round(gy - drawH * 0.82);
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     if (bg && bg.complete && bg.naturalWidth > 0) {
+      // Seamless mirrored side wings for ultra-wide viewports or extreme camera shake so no vertical cutoff ever appears
+      ctx.save();
+      ctx.translate(drawX, drawY);
+      ctx.scale(-1, 1);
+      ctx.drawImage(bg, 0, 0, drawW, drawH);
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(drawX + drawW * 2, drawY);
+      ctx.scale(-1, 1);
+      ctx.drawImage(bg, 0, 0, drawW, drawH);
+      ctx.restore();
+
+      // Main Cathedral Nave
       ctx.drawImage(bg, drawX, drawY, drawW, drawH);
     } else {
       ctx.fillStyle = '#070a14';
-      ctx.fillRect(-600, -700, ww + 1200, gy + 1400);
+      ctx.fillRect(-1200, -700, ww + 2400, gy + 1400);
     }
 
     // Subtle Pixel-Stepped Obsidian Flagstone Seams & Specular Trim
     for (let r = 0; r < 5; r++) {
       const ry = Math.round((gy - 22 + r * r * 12) / 3) * 3;
       ctx.fillStyle = r === 1 ? 'rgba(148, 174, 212, 0.11)' : 'rgba(8, 11, 20, 0.34)';
-      ctx.fillRect(-300, ry, ww + 600, 3);
+      ctx.fillRect(-800, ry, ww + 1600, 3);
     }
 
-    // Live Animated Glowing Pixel-Art Flames on all 6 Cathedral Braziers & Eclipse Rose Window
-    this.drawStagePixelFlames(ctx, drawX, drawY, drawW, drawH, gy);
+    // Live Animated HD-2D Flames on all 6 Cathedral Braziers & Eclipse Rose Window
+    this.drawStagePixelFlames(ctx, bg, drawX, drawY, drawW, drawH, gy);
     ctx.restore();
   }
 
-  drawStagePixelFlames(ctx, drawX, drawY, drawW, drawH, gy) {
+  getFlameOnlyLayer(bg) {
+    if (this.flameOnlyCanvas) return this.flameOnlyCanvas;
+    if (!bg || !bg.complete || !bg.naturalWidth) return null;
+
+    const w = bg.naturalWidth;
+    const h = bg.naturalHeight;
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const cCtx = c.getContext('2d');
+    cCtx.drawImage(bg, 0, 0, w, h);
+
+    const imgData = cCtx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const r = d[i];
+        const g = d[i + 1];
+        const b = d[i + 2];
+        let alpha = 0;
+        if (x < w * 0.42) {
+          // Left side: isolate only the bright cyan/blue brazier flames (zero stone wall pixels)
+          if (b > 165 && g > 125 && b - r > 55) {
+            alpha = Math.min(255, Math.max(0, (b - 155) * 3.0));
+          }
+        } else if (x > w * 0.58) {
+          // Right side: isolate only the bright solar/orange brazier flames (zero stone wall pixels)
+          if (r > 180 && g > 105 && r - b > 65) {
+            alpha = Math.min(255, Math.max(0, (r - 165) * 3.0));
+          }
+        }
+        d[i + 3] = alpha;
+      }
+    }
+    cCtx.putImageData(imgData, 0, 0);
+    this.flameOnlyCanvas = c;
+    return c;
+  }
+
+  drawStagePixelFlames(ctx, bg, drawX, drawY, drawW, drawH, gy) {
+    // Exact measured brazier flame bounding boxes in arena_bg.png (normalized 0..1 coordinates)
     const braziers = [
-      { x: drawX + drawW * 0.105, y: drawY + drawH * 0.585, scale: 1.35, isBlue: true, seed: 1.1 },
-      { x: drawX + drawW * 0.233, y: drawY + drawH * 0.635, scale: 1.05, isBlue: true, seed: 2.7 },
-      { x: drawX + drawW * 0.314, y: drawY + drawH * 0.665, scale: 0.82, isBlue: true, seed: 4.3 },
-      { x: drawX + drawW * 0.697, y: drawY + drawH * 0.665, scale: 0.82, isBlue: false, seed: 5.9 },
-      { x: drawX + drawW * 0.778, y: drawY + drawH * 0.635, scale: 1.05, isBlue: false, seed: 7.4 },
-      { x: drawX + drawW * 0.908, y: drawY + drawH * 0.585, scale: 1.35, isBlue: false, seed: 9.0 }
+      { cx: 0.0969, top: 0.415, bot: 0.618, w: 0.082, scale: 1.32, isBlue: true, seed: 1.1 },
+      { cx: 0.2203, top: 0.525, bot: 0.655, w: 0.062, scale: 1.02, isBlue: true, seed: 2.7 },
+      { cx: 0.3070, top: 0.588, bot: 0.690, w: 0.044, scale: 0.80, isBlue: true, seed: 4.3 },
+      { cx: 0.7086, top: 0.602, bot: 0.690, w: 0.044, scale: 0.80, isBlue: false, seed: 5.9 },
+      { cx: 0.7883, top: 0.545, bot: 0.660, w: 0.054, scale: 1.02, isBlue: false, seed: 7.4 },
+      { cx: 0.9156, top: 0.445, bot: 0.620, w: 0.082, scale: 1.32, isBlue: false, seed: 9.0 }
     ];
 
     const t = this.time;
+    const flameLayer = this.getFlameOnlyLayer(bg);
+    const bgW = flameLayer ? flameLayer.width : 640;
+    const bgH = flameLayer ? flameLayer.height : 360;
 
     for (const b of braziers) {
       const pal = b.isBlue ? CYAN_FIRE_PAL : SOLAR_FIRE_PAL;
       const glow = b.isBlue ? this.glowCyan : this.glowOrange;
-      const pulse = Math.sin(t * 8 + b.seed) * 14 * b.scale;
-      const glowR = 135 * b.scale + pulse;
+      const worldCx = drawX + drawW * b.cx;
+      const worldTop = drawY + drawH * b.top;
+      const worldBot = drawY + drawH * b.bot;
+      const worldMidY = (worldTop + worldBot) * 0.52;
+      const flameH = worldBot - worldTop;
+      const flameW = drawW * b.w;
 
-      // 1. Volumetric Additive Halo around Brazier & Wet Floor Reflection Glow
+      // 1. Real-Time Heat-Wave Slice Animation using the Isolated Transparent Flame Layer (Zero rectangular wall artifact!)
+      if (flameLayer) {
+        const strips = 14;
+        const srcX = (b.cx - b.w * 0.5) * bgW;
+        const srcW = b.w * bgW;
+        const srcTop = b.top * bgH;
+        const srcH = (b.bot - b.top) * bgH;
+
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.55 + 0.25 * Math.sin(t * 11 + b.seed);
+        for (let s = 0; s < strips; s++) {
+          const ratio = 1 - s / strips;
+          const sy = srcTop + (s / strips) * srcH;
+          const sh = srcH / strips + 0.5;
+          const dy = worldTop + (s / strips) * flameH;
+          const dh = flameH / strips + 1;
+
+          const wave = Math.round(
+            Math.sin(t * 10.5 + s * 0.6 + b.seed) * (ratio * 5.0 * b.scale)
+          );
+          ctx.drawImage(
+            flameLayer,
+            srcX,
+            sy,
+            srcW,
+            sh,
+            Math.round(worldCx - flameW * 0.5 + wave),
+            Math.round(dy - ratio * 4 * b.scale),
+            Math.round(flameW),
+            Math.round(dh)
+          );
+        }
+        ctx.restore();
+      }
+
+      // 2. Volumetric Additive Point-Light Halo & Wet Stone Floor Reflection Pool
+      const pulse = Math.sin(t * 7.5 + b.seed) * 14 * b.scale;
+      const glowR = 125 * b.scale + pulse;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.52;
-      ctx.drawImage(glow, b.x - glowR, b.y - glowR * 1.15, glowR * 2, glowR * 2);
-      ctx.globalAlpha = 0.28;
-      ctx.drawImage(glow, b.x - glowR * 0.7, gy - 25, glowR * 1.4, 95 * b.scale);
+      ctx.globalAlpha = 0.42;
+      ctx.drawImage(glow, worldCx - glowR, worldMidY - glowR, glowR * 2, glowR * 2);
+      ctx.globalAlpha = 0.26;
+      ctx.drawImage(glow, worldCx - glowR * 0.68, gy - 24, glowR * 1.36, 90 * b.scale);
+
+      // 3. Crisp Dancing Pixel Embers & Tongues Detaching from the Flame Crest
+      const emberCount = 8;
+      for (let e = 0; e < emberCount; e++) {
+        const life = (t * (1.2 + (e % 3) * 0.3) + b.seed + e * 1.37) % 1;
+        const spread = (((e * 29) % 11) - 5) * 0.11 * flameW;
+        const sway = Math.sin(t * 8.5 + e * 1.9 + b.seed) * (7 * b.scale * life);
+        const ex = worldCx + spread * (1 - life * 0.55) + sway;
+        const ey = worldBot - flameH * (0.28 + life * 0.88);
+        const pxSz = life < 0.35 ? 4 : life < 0.72 ? 3 : 2;
+        ctx.globalAlpha = Math.max(0, 0.95 - life * 0.85);
+        ctx.fillStyle = life < 0.28 ? pal[3] : life < 0.65 ? pal[2] : pal[1];
+        ctx.fillRect(Math.round(ex / 2) * 2, Math.round(ey / 2) * 2, pxSz, pxSz);
+      }
       ctx.restore();
-
-      // 2. Crisp Pixel-Art Animated Fire Column (4px integer pixel blocks)
-      const pxSize = Math.max(4, Math.round(5 * b.scale));
-      const rows = 14;
-      for (let r = 0; r < rows; r++) {
-        const ratio = r / (rows - 1); // 0 = base bowl, 1 = high tip
-        const halfW = Math.max(1, Math.round((1 - ratio * 0.82) * 5 * b.scale));
-        const sway = Math.round(Math.sin(t * 11 - r * 0.65 + b.seed) * (ratio * 3.2 * b.scale));
-        const py = Math.round((b.y - r * pxSize * 0.95) / pxSize) * pxSize;
-
-        for (let c = -halfW; c <= halfW; c++) {
-          const edgeRatio = Math.abs(c) / (halfW + 0.5);
-          // Flicker cutout near top and edges for authentic jagged pixel flame silhouette
-          const noise = Math.sin(t * 16 + r * 1.9 + c * 2.3 + b.seed);
-          if (ratio > 0.65 && noise < -0.15) continue;
-          if (edgeRatio > 0.75 && noise < 0.1) continue;
-
-          const shadeIdx =
-            ratio < 0.28 && edgeRatio < 0.45
-              ? 3
-              : edgeRatio < 0.42 && ratio < 0.65
-                ? 2
-                : edgeRatio < 0.78
-                  ? 1
-                  : 0;
-          ctx.fillStyle = pal[shadeIdx];
-          const px = Math.round((b.x + (c + sway) * pxSize) / pxSize) * pxSize;
-          ctx.fillRect(px, py, pxSize, pxSize);
-        }
-      }
-
-      // 3. Rising Pixel Sparks detaching from Brazier Flame Tip
-      for (let s = 0; s < 4; s++) {
-        const sparkLife = (t * (1.4 + s * 0.25) + b.seed + s * 1.7) % 1;
-        const sx = b.x + Math.sin(t * 6 + s * 2.1 + b.seed) * 22 * b.scale;
-        const sy = b.y - 55 * b.scale - sparkLife * 75 * b.scale;
-        const spSize = sparkLife < 0.5 ? pxSize : Math.max(2, pxSize >> 1);
-        ctx.fillStyle = sparkLife < 0.35 ? pal[3] : sparkLife < 0.7 ? pal[2] : pal[1];
-        ctx.fillRect(Math.round(sx / 2) * 2, Math.round(sy / 2) * 2, spSize, spSize);
-      }
     }
 
     // 4. Central Solar Eclipse Rose Window Pixel Corona & Volumetric Pulse
@@ -382,38 +465,25 @@ export class Renderer {
     const h = this.height;
     ctx.save();
 
-    const pShift = (this.camX - this.worldWidth * 0.5) * 0.18;
-    const pilW = this.isMobile ? 22 : 52;
-    const leftX = Math.round(-10 - pShift * 0.3);
-    const rightX = Math.round(w - pilW + 10 - pShift * 0.3);
+    // Soft radial HD-2D optical vignette (no vertical side bars!)
+    const rad = Math.hypot(w * 0.5, h * 0.5);
+    const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, rad * 0.52, w * 0.5, h * 0.5, rad * 1.02);
+    vig.addColorStop(0, 'rgba(2, 3, 7, 0)');
+    vig.addColorStop(1, 'rgba(2, 3, 7, 0.62)');
+    ctx.fillStyle = vig;
+    ctx.fillRect(0, 0, w, h);
 
-    // Foreground HD-2D Parallax Gothic Columns with Pixel Rim-Lighting
-    ctx.fillStyle = 'rgba(4, 6, 12, 0.92)';
-    ctx.fillRect(leftX, 0, pilW, h);
-    ctx.fillRect(rightX, 0, pilW + 20, h);
-
-    ctx.fillStyle = 'rgba(56, 189, 248, 0.14)';
-    ctx.fillRect(leftX + pilW - 4, 0, 4, h);
-    ctx.fillStyle = 'rgba(251, 146, 60, 0.14)';
-    ctx.fillRect(rightX, 0, 4, h);
-
-    for (let y = 24; y < h; y += 48) {
-      ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
-      ctx.fillRect(leftX + pilW - 12, y, 8, 4);
-      ctx.fillRect(rightX + 4, y, 8, 4);
-    }
-
-    const topG = ctx.createLinearGradient(0, 0, 0, h * 0.22);
-    topG.addColorStop(0, 'rgba(2, 3, 7, 0.78)');
+    const topG = ctx.createLinearGradient(0, 0, 0, h * 0.18);
+    topG.addColorStop(0, 'rgba(2, 3, 7, 0.72)');
     topG.addColorStop(1, 'rgba(2, 3, 7, 0)');
     ctx.fillStyle = topG;
-    ctx.fillRect(0, 0, w, h * 0.22);
+    ctx.fillRect(0, 0, w, h * 0.18);
 
-    const botG = ctx.createLinearGradient(0, h * 0.78, 0, h);
+    const botG = ctx.createLinearGradient(0, h * 0.80, 0, h);
     botG.addColorStop(0, 'rgba(2, 3, 7, 0)');
-    botG.addColorStop(1, 'rgba(2, 3, 7, 0.85)');
+    botG.addColorStop(1, 'rgba(2, 3, 7, 0.80)');
     ctx.fillStyle = botG;
-    ctx.fillRect(0, h * 0.78, w, h * 0.22);
+    ctx.fillRect(0, h * 0.80, w, h * 0.20);
 
     ctx.restore();
   }

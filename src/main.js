@@ -19,11 +19,29 @@ class Game {
     this.hudTimer = 0;
     this.isMatchOver = false;
 
+    this.selectedHero = 'warrior';
+    this.playerHero = 'warrior';
+    this.isLandingOpen = true;
+    this.surgeCooldown = 0;
+
     this.bindUI();
     this.resetMatch();
 
     const params = new URLSearchParams(window.location.search);
+    const urlHero = params.get('hero');
+    if (urlHero === 'warrior' || urlHero === 'mage') {
+      this.selectChampion(urlHero, false);
+      this.startDuel(urlHero, false);
+    }
+
     const simSec = Number(params.get('sim') || 0);
+    const killTarget = params.get('kill');
+    if (simSec > 0 || killTarget) {
+      this.isLandingOpen = false;
+      if (this.landingOverlay) this.landingOverlay.classList.add('hidden');
+      this.syncChampionUI();
+    }
+
     if (simSec > 0) {
       const steps = Math.floor(simSec / 0.02);
       for (let i = 0; i < steps; i++) {
@@ -31,7 +49,6 @@ class Game {
       }
       this.updateHUD();
     }
-    const killTarget = params.get('kill');
     if (killTarget === 'warrior' || killTarget === 'mage') {
       const victim = killTarget === 'warrior' ? this.warrior : this.mage;
       const attacker = killTarget === 'warrior' ? this.mage : this.warrior;
@@ -54,9 +71,32 @@ class Game {
     this.btnSlowMo = document.getElementById('btn-slowmo');
     this.btnReset = document.getElementById('btn-reset');
     this.btnPlayAgain = document.getElementById('btn-play-again');
+    this.btnOpenSelect = document.getElementById('btn-open-select');
+    this.btnVictorySelect = document.getElementById('btn-victory-select');
     this.ultBanner = document.getElementById('ult-banner');
     this.victoryOverlay = document.getElementById('victory-overlay');
+    this.landingOverlay = document.getElementById('landing-overlay');
     this.timerEl = document.getElementById('match-timer');
+
+    this.cardWarrior = document.getElementById('card-warrior');
+    this.cardMage = document.getElementById('card-mage');
+    this.ribbonWarrior = document.getElementById('ribbon-warrior');
+    this.ribbonMage = document.getElementById('ribbon-mage');
+    this.btnStartDuel = document.getElementById('btn-start-duel');
+    this.startDuelText = document.getElementById('start-duel-text');
+    this.btnSpectateDuel = document.getElementById('btn-spectate-duel');
+
+    this.previewWarriorCanvas = document.getElementById('preview-warrior');
+    this.previewMageCanvas = document.getElementById('preview-mage');
+
+    this.btnCmdSkill = document.getElementById('btn-cmd-skill');
+    this.cmdSkillLabel = document.getElementById('cmd-skill-label');
+    this.cmdSkillGem = document.getElementById('cmd-skill-gem');
+    this.btnCmdUlt = document.getElementById('btn-cmd-ult');
+    this.cmdUltLabel = document.getElementById('cmd-ult-label');
+
+    this.badgeWarrior = document.getElementById('warrior-champ-badge');
+    this.badgeMage = document.getElementById('mage-champ-badge');
 
     const cacheHUD = (p) => ({
       hpBar: document.getElementById(`${p}-hp-bar`),
@@ -72,6 +112,55 @@ class Game {
       warrior: cacheHUD('warrior'),
       mage: cacheHUD('mage')
     };
+
+    if (this.cardWarrior) {
+      this.cardWarrior.addEventListener('click', () => this.selectChampion('warrior'));
+      this.cardWarrior.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.selectChampion('warrior');
+        }
+      });
+    }
+    if (this.cardMage) {
+      this.cardMage.addEventListener('click', () => this.selectChampion('mage'));
+      this.cardMage.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          this.selectChampion('mage');
+        }
+      });
+    }
+
+    if (this.btnStartDuel) {
+      this.btnStartDuel.addEventListener('click', () => this.startDuel(this.selectedHero));
+    }
+    if (this.btnSpectateDuel) {
+      this.btnSpectateDuel.addEventListener('click', () => this.startDuel(null));
+    }
+    if (this.btnOpenSelect) {
+      this.btnOpenSelect.addEventListener('click', () => this.openLanding());
+    }
+    if (this.btnVictorySelect) {
+      this.btnVictorySelect.addEventListener('click', () => this.openLanding());
+    }
+
+    if (this.btnCmdSkill) {
+      this.btnCmdSkill.addEventListener('click', () => this.triggerPlayerSkill());
+    }
+    if (this.btnCmdUlt) {
+      this.btnCmdUlt.addEventListener('click', () => this.triggerPlayerUlt());
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (this.isLandingOpen || this.isMatchOver) return;
+      if (e.code === 'KeyW' || e.code === 'Digit1') {
+        this.triggerPlayerSkill();
+      } else if (e.code === 'Space' || e.code === 'Digit2') {
+        e.preventDefault();
+        this.triggerPlayerUlt();
+      }
+    });
 
     if (this.btnSfx) {
       this.btnSfx.addEventListener('click', () => {
@@ -90,6 +179,142 @@ class Game {
     this.btnPlayAgain.addEventListener('click', () => this.resetMatch());
   }
 
+  selectChampion(hero, playSound = true) {
+    this.selectedHero = hero;
+    const isW = hero === 'warrior';
+    if (this.cardWarrior) {
+      this.cardWarrior.classList.toggle('selected', isW);
+      this.cardWarrior.setAttribute('aria-pressed', String(isW));
+    }
+    if (this.cardMage) {
+      this.cardMage.classList.toggle('selected', !isW);
+      this.cardMage.setAttribute('aria-pressed', String(!isW));
+    }
+    if (this.ribbonWarrior) {
+      this.ribbonWarrior.textContent = isW ? '★ SELECTED CHAMPION' : 'CLICK TO SELECT';
+    }
+    if (this.ribbonMage) {
+      this.ribbonMage.textContent = !isW ? '★ SELECTED CHAMPION' : 'CLICK TO SELECT';
+    }
+    if (this.startDuelText) {
+      this.startDuelText.textContent = isW
+        ? 'ENTER SANCTUARY AS AETHELGARD'
+        : 'ENTER SANCTUARY AS IGNIS SOL';
+    }
+    if (playSound && this.audio) {
+      this.audio.play(isW ? 'slash' : 'fireball', isW ? 320 : 880);
+    }
+  }
+
+  startDuel(hero, playSound = true) {
+    this.playerHero = hero;
+    this.isLandingOpen = false;
+    if (this.landingOverlay) this.landingOverlay.classList.add('hidden');
+    this.syncChampionUI();
+    this.resetMatch();
+    if (playSound && this.audio) {
+      this.audio.play('ult_cast', 600);
+    }
+  }
+
+  openLanding() {
+    this.isLandingOpen = true;
+    this.victoryOverlay.classList.add('hidden');
+    if (this.landingOverlay) this.landingOverlay.classList.remove('hidden');
+  }
+
+  syncChampionUI() {
+    const isW = this.playerHero === 'warrior';
+    const isM = this.playerHero === 'mage';
+    if (this.badgeWarrior) this.badgeWarrior.classList.toggle('hidden', !isW);
+    if (this.badgeMage) this.badgeMage.classList.toggle('hidden', !isM);
+
+    const hasPlayer = isW || isM;
+    if (this.btnCmdSkill) {
+      this.btnCmdSkill.classList.toggle('hidden', !hasPlayer);
+      this.btnCmdSkill.classList.toggle('skill-arcane', isM);
+    }
+    if (this.cmdSkillGem) {
+      this.cmdSkillGem.className = `gem-indicator ${isM ? 'gem-orange' : 'gem-cyan'}`;
+    }
+    if (this.btnCmdUlt) {
+      this.btnCmdUlt.classList.toggle('hidden', !hasPlayer);
+    }
+  }
+
+  getPlayerFighter() {
+    if (this.playerHero === 'warrior') return this.warrior;
+    if (this.playerHero === 'mage') return this.mage;
+    return null;
+  }
+
+  triggerPlayerSkill() {
+    const f = this.getPlayerFighter();
+    if (!f || f.isDead || f.state === 'ULTIMATE' || f.state === 'SKILL') return;
+    if (f.skillCooldown <= 0) {
+      f.skillCooldown = f.skillMaxCooldown;
+      f.setState('SKILL');
+      this.vfx.spawnDamageText(f.x, f.y - 135, 0, false, `${f.skillName}!`);
+    }
+  }
+
+  triggerPlayerUlt() {
+    const f = this.getPlayerFighter();
+    if (!f || f.isDead || f.state === 'ULTIMATE') return;
+    if (f.mana >= f.maxMana) {
+      f.mana = 0;
+      f.setState('ULTIMATE');
+      this.triggerUltimateCinematic(f);
+    } else if (this.surgeCooldown <= 0) {
+      this.surgeCooldown = 5.0;
+      f.gainMana(38);
+      if (this.audio) this.audio.play('reflect', f.x);
+      this.vfx.spawnShockwave(f.x, f.y - 55, 95, '#facc15', 0.35, true);
+      this.vfx.spawnDamageText(f.x, f.y - 135, 0, false, 'OVERDRIVE SURGE +38%!');
+      this.updateHUD();
+    }
+  }
+
+  renderChampionPreviews(now) {
+    if (!this.isLandingOpen) return;
+    const assets = PixelForge.initAssets();
+    const t = now * 0.001;
+
+    const drawPreview = (canvas, sheet, isWarrior, isSelected) => {
+      if (!canvas || !sheet || !sheet.complete || !sheet.naturalWidth) return;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.imageSmoothingEnabled = false;
+
+      // Cycle smoothly between combat-ready idle and signature attack when selected
+      let frameIdx = Math.floor(t * 6.5) % 8;
+      if (isSelected) {
+        const cycle = t % 4.2;
+        if (cycle > 2.6 && cycle < 3.6) {
+          const atkStep = Math.min(7, Math.floor(((cycle - 2.6) / 1.0) * 8));
+          frameIdx = 16 + atkStep;
+        }
+      }
+      const col = frameIdx % 8;
+      const row = (frameIdx / 8) | 0;
+      const hover = isWarrior ? 0 : Math.round(Math.sin(t * 3.2) * 4);
+      ctx.drawImage(sheet, col * 128, row * 128, 128, 128, 8, 10 + hover, 144, 144);
+    };
+
+    drawPreview(
+      this.previewWarriorCanvas,
+      assets.warrior.sheet,
+      true,
+      this.selectedHero === 'warrior'
+    );
+    drawPreview(
+      this.previewMageCanvas,
+      assets.mage.sheet,
+      false,
+      this.selectedHero === 'mage'
+    );
+  }
+
   resetMatch() {
     this.vfx.clear();
     clearTimeout(this.victoryTimeout);
@@ -103,9 +328,11 @@ class Game {
 
     this.matchTime = 0;
     this.ultSlowTimer = 0;
+    this.surgeCooldown = 0;
     this.isMatchOver = false;
     this.victoryOverlay.classList.add('hidden');
     this.ultBanner.classList.add('hidden');
+    this.syncChampionUI();
     this.updateHUD();
   }
 
@@ -233,6 +460,18 @@ class Game {
     sync(this.hudEls.warrior, this.warrior);
     sync(this.hudEls.mage, this.mage);
 
+    const pf = this.getPlayerFighter();
+    if (pf && this.cmdSkillLabel && this.cmdUltLabel) {
+      this.cmdSkillLabel.textContent =
+        pf.skillCooldown <= 0 ? `[W] ${pf.skillName}` : `[W] ${pf.skillCooldown.toFixed(1)}s`;
+      this.cmdUltLabel.textContent =
+        pf.mana >= pf.maxMana
+          ? `[SPACE] ${pf.ultName.split(' ')[0]}!`
+          : this.surgeCooldown <= 0
+            ? `[SPACE] +38% SURGE`
+            : `[SPACE] ${this.surgeCooldown.toFixed(1)}s`;
+    }
+
     const mins = String(Math.floor(this.matchTime / 60)).padStart(2, '0');
     const secs = String(Math.floor(this.matchTime % 60)).padStart(2, '0');
     this.timerEl.textContent = `${mins}:${secs}`;
@@ -240,6 +479,13 @@ class Game {
 
   stepSimulation(rawDt) {
     this.renderer.update(rawDt, this.fighters);
+
+    if (this.isLandingOpen) {
+      // Gently animate idle breathing in the background cathedral while on the Landing Screen
+      this.warrior.walkPhase += rawDt * 2.4;
+      this.mage.runeOrbit += rawDt * 2.2;
+      return;
+    }
 
     let timeScale = 1.0;
     if (this.renderer.hitStopTimer > 0) {
@@ -252,7 +498,15 @@ class Game {
     }
 
     const dt = rawDt * timeScale;
-    if (!this.isMatchOver) this.matchTime += dt;
+    if (!this.isMatchOver) {
+      this.matchTime += dt;
+      if (this.surgeCooldown > 0) this.surgeCooldown = Math.max(0, this.surgeCooldown - dt);
+      const pf = this.getPlayerFighter();
+      if (pf && !pf.isDead && pf.state !== 'ULTIMATE') {
+        // Champion's Blessing: subtle bonus Overdrive generation for the player's chosen hero
+        pf.gainMana(dt * 1.4);
+      }
+    }
 
     this.warrior.update(dt, this.mage, this);
     this.mage.update(dt, this.warrior, this);
@@ -265,6 +519,7 @@ class Game {
     this.lastTime = now;
 
     this.stepSimulation(rawDt);
+    this.renderChampionPreviews(now);
 
     this.hudTimer += rawDt;
     if (this.hudTimer >= 0.06) {
