@@ -1,4 +1,4 @@
-// Procedural 16-bit Pixel-Art Sprite & Portrait Baker (HD-2D Style)
+// Procedural 16-bit Pixel-Art Sprite & Portrait Baker — Distinct Archetypes
 export class PixelForge {
   static createCanvas(w, h) {
     const c = document.createElement('canvas');
@@ -9,7 +9,6 @@ export class PixelForge {
     return { c, ctx };
   }
 
-  // Renders an ASCII pixel grid with a palette map onto an offscreen canvas
   static bakeGrid(grid, palette, scale = 1) {
     const h = grid.length;
     const w = grid[0].length;
@@ -31,238 +30,249 @@ export class PixelForge {
     if (this.assets) return this.assets;
 
     const steelPal = {
-      K: '#090d16', // Dark outline
-      D: '#1e293b', // Dark steel shadow
-      M: '#475569', // Mid steel
-      L: '#94a3b8', // Light steel highlight
-      W: '#e2e8f0', // Specular white
-      C: '#38bdf8', // Cyan rune glow
-      B: '#bae6fd', // Bright cyan core
-      G: '#ca8a04', // Dark gold trim
-      Y: '#facc15', // Bright gold
-      R: '#0284c7'  // Royal cape blue
+      K: '#070a12', // Black outline
+      D: '#1e293b', // Dark steel
+      M: '#475569', // Mid armor
+      L: '#94a3b8', // Bright steel
+      W: '#f8fafc', // Specular edge
+      C: '#0284c7', // Deep cyan
+      B: '#38bdf8', // Glowing cyan
+      E: '#e0f2fe', // White-cyan core
+      G: '#b45309', // Bronze shadow
+      Y: '#facc15'  // Gold trim
     };
 
     const arcanePal = {
-      K: '#120705', // Dark outline
-      D: '#431407', // Deep ember shadow
-      R: '#7c2d12', // Crimson robe mid
-      L: '#c2410c', // Lit robe fold
-      O: '#fb923c', // Arcane orange
-      Y: '#facc15', // Gold trim / fire
-      W: '#fef08a', // White-hot core
-      S: '#292524', // Dark wood staff
-      T: '#78350f'  // Lit wood staff
+      K: '#120604', // Dark outline
+      D: '#3b0764', // Deep mystic shadow
+      P: '#581c87', // Dark crimson-violet hat/robe shadow
+      R: '#9a3412', // Rich ember robe
+      L: '#ea580c', // Bright flame cloth
+      O: '#fb923c', // Glowing orange
+      Y: '#facc15', // Gold runes
+      W: '#fef08a', // White-hot fire
+      S: '#451a03', // Dark staff wood
+      B: '#fde68a'  // Grimoire parchment
     };
 
-    // Warrior Pixel Helmet (14x14)
+    // WARRIOR: Winged/Horned Greathelm with Flowing Plume (18x16)
     const wHelmet = [
-      '....KKKKKK....',
-      '..KKCCCCCCKK..',
-      '.KCCBBBBBBCCK.',
-      '.KKKKKKKKKKKK.',
-      '.KDMMLLLLMMDK.',
-      'KDMLLLLLLLLMDK',
-      'KDMLKKKKKKLMDK',
-      'KDMLKBBBBKLMDK',
-      'KDMLKKKKKKLMDK',
-      'KDDMLLMLLMMDDK',
-      '.KDDMMKKMMDDK.',
-      '.KKDGGGGGGDKK.',
-      '..KKKKKKKKKK..',
-      '..............'
+      '..KKKKBEEEBKKKK...',
+      '.KBBBBEEEEEBBBBK..',
+      'KBBCCCCCCCCCCCBBK.',
+      'KKKK..KKKKKK..KKKK',
+      'KYGK.KDLLLLDK.KGYK',
+      '.KYKKDMLLLLMDKKYK.',
+      '..KKKDMLLLLMDKKK..',
+      '...KKDMLWWLMDKK...',
+      '...KDMKKKKKKMDK...',
+      '...KDMKEEEEKMDK...',
+      '...KDMKKKKKKMDK...',
+      '...KDDMMLLMMDDK...',
+      '...KKDDMMMMDDKK...',
+      '....KKYYYYYYKK....',
+      '.....KKKKKKKK.....',
+      '..................'
     ];
 
-    // Warrior Plated Cuirass (16x18)
+    // WARRIOR: Broad Juggernaut Plate Cuirass (18x18)
     const wTorso = [
-      '..KKKKKKKKKKKK..',
-      '.KGGGGGGGGGGGGK.',
-      'KGDMMLLLLLLMMDGK',
-      'KDMLLLLWWLLLLMDK',
-      'KDMLLGGGGGGLLMDK',
-      'KDMLLGCCCCCLLMDK',
-      'KDMMLLCCCCLLMMDK',
-      'KDDMMLLCCLLMMDDK',
-      '.KDDMMMMMMMMDDK.',
-      '.KKGGGGGGGGGGKK.',
-      '.KDMLLLLLLLLMDK.',
-      '.KDDMMMMMMMMDDK.',
-      '..KGGGGGGGGGGK..',
-      '..KDDMMMMMMDDK..',
-      '..KDDMMKKMMDDK..',
-      '...KKKKKKKKKK...',
-      '................',
-      '................'
+      '.KKKKKKKKKKKKKKKK.',
+      'KYYYYYYYYYYYYYYYYK',
+      'KYDMMLLLLLLLLMMDYK',
+      'KDMLLLLWWWWLLLLMDK',
+      'KDMLLYYYYYYYYLLMDK',
+      'KDMLLYBBBBBBYLLMDK',
+      'KDMLLYBEEEEBYLLMDK',
+      'KDMMLLBBBBBBLLMMDK',
+      '.KDDMMLLBBLLMMDDK.',
+      '.KKYYYYYYYYYYYYKK.',
+      '..KDMLLLLLLLLMDK..',
+      '..KDDMMMMMMMMDDK..',
+      '..KYYYYYYYYYYYYK..',
+      '.KDDMMLLLLLLMMDDK.',
+      '.KDDMMKKKKKKMMDDK.',
+      '..KKKK......KKKK..',
+      '..................',
+      '..................'
     ];
 
-    // Warrior Pauldron & Arm (10x14)
-    const wArm = [
-      '..KKKKKK..',
-      '.KGGGGGGK.',
-      'KGMLLLLMGK',
-      'KDMLLLLMDK',
-      'KDDMMMMDDK',
-      '.KKKKKKKK.',
-      '..KDMMDK..',
-      '..KDMMDK..',
-      '..KGGGGK..',
-      '..KDLLDK..',
-      '..KKKKKK..',
-      '..........',
-      '..........',
-      '..........'
-    ];
-
-    // Warrior Greave / Leg (8x12)
-    const wLeg = [
-      '.KKKKKK.',
-      'KDMMMMDK',
-      'KDMLLMDK',
-      'KGGGGGGK',
-      'KDMLLMDK',
-      'KDMLLMDK',
-      'KDDMMDDK',
-      'KGGGGGGK',
-      'KDDLLLLK',
-      'KKKKKKKK',
-      '........',
-      '........'
-    ];
-
-    // Warrior Runed Greatsword (12x34)
-    const wSword = [
-      '.....KK.....',
-      '....KWWK....',
-      '....KBBK....',
-      '...KWBBWK...',
-      '...KWCWCK...',
-      '...KWBBWK...',
-      '...KWCWCK...',
-      '...KWBBWK...',
-      '...KWCWCK...',
-      '...KWBBWK...',
-      '...KWCWCK...',
-      '...KWBBWK...',
-      '...KWCWCK...',
-      '...KWBBWK...',
-      '...KWCWCK...',
-      '...KWBBWK...',
-      '...KWCWCK...',
-      '...KWBBWK...',
-      '...KWCWCK...',
-      '...KWBBWK...',
-      '...KLLLLK...',
+    // WARRIOR: Heavy Runed Tower Shield (12x20)
+    const wShield = [
       '..KKKKKKKK..',
-      'KKYYYYYYYYKK',
-      'KGGGGGGGGGGK',
-      '.KKKKKKKKKK.',
-      '....KGGK....',
-      '....KMMK....',
-      '....KGGK....',
-      '....KMMK....',
-      '...KYYYYK...',
-      '...KGGGGK...',
-      '....KKKK....',
+      '.KYYYYYYYYK.',
+      'KYDMMMMMMDYK',
+      'KDMLLLLLLMDK',
+      'KDMLYYYYLMDK',
+      'KDMLYBBYLMDK',
+      'KDMLYEEYLMDK',
+      'KDMLYBBYLMDK',
+      'KDMLYBBYLMDK',
+      'KDMLYEEYLMDK',
+      'KDMLYBBYLMDK',
+      'KDMLYYYYLMDK',
+      'KDMLLLLLLMDK',
+      'KDDMMMMMMDDK',
+      '.KYDMMMMDYK.',
+      '.KYYDDDDYYK.',
+      '..KYYYYYYK..',
+      '...KKKKKK...',
       '............',
       '............'
     ];
 
-    // Fire Mage Hooded Head (14x14)
+    // WARRIOR: Spiked Pauldron Arm & Armored Greave
+    const wArm = [
+      '..KK....KK..',
+      '.KYYKKKKYYK.',
+      'KYDMLLLLMDYK',
+      'KDMLLLLLLMDK',
+      'KDDMMMMMMDDK',
+      '.KKKKKKKKKK.',
+      '...KDMMDK...',
+      '...KYYYYK...',
+      '...KDLLDK...',
+      '...KKKKKK...'
+    ];
+
+    const wLeg = [
+      '.KKKKKK.',
+      'KDMMMMDK',
+      'KYYYYYYK',
+      'KDMLLMDK',
+      'KDMLLMDK',
+      'KDDMMDDK',
+      'KYYYYYYK',
+      'KDLLLLWK',
+      'KKKKKKKK'
+    ];
+
+    // WARRIOR: Colossal Runed Greatsword (14x36)
+    const wSword = [
+      '......KK......',
+      '.....KWWK.....',
+      '....KWEEWK....',
+      '....KWBbwK....'.replace('b', 'B'),
+      '...KWEEEEWK...',
+      '...KWBBBBWK...',
+      '...KWBCCBWK...',
+      '...KWEEEEWK...',
+      '...KWBBBBWK...',
+      '...KWBCCBWK...',
+      '...KWEEEEWK...',
+      '...KWBBBBWK...',
+      '...KWBCCBWK...',
+      '...KWEEEEWK...',
+      '...KWBBBBWK...',
+      '...KWBCCBWK...',
+      '...KWEEEEWK...',
+      '...KWBBBBWK...',
+      '...KLLLLLLK...',
+      '..KKKKKKKKKK..',
+      'KKYYYYYYYYYYKK',
+      'KGGGGGGGGGGGGK',
+      '.KKKKKKKKKKKK.',
+      '.....KYYK.....',
+      '.....KMMK.....',
+      '.....KYYK.....',
+      '.....KMMK.....',
+      '....KYYYYK....',
+      '....KGGGGK....',
+      '.....KKKK.....'
+    ];
+
+    // FIRE MAGE: Iconic Tall Pointed Wizard Hat + Blazing Eyes (18x20)
     const mHead = [
-      '....KKKKKK....',
-      '..KKRRRRRRKK..',
-      '.KRRLLLLLLRRK.',
-      '.KRLLYYYYLLRK.',
-      'KRLKKKKKKKKLRK',
-      'KRLKDDDDDDKLRK',
-      'KRLKDWWDDWWKRK',
-      'KRLKDDDDDDKLRK',
-      'KDRLKKKKKKLRDK',
-      '.KDRRLLLLRRDK.',
-      '.KKDDRRRRDDKK.',
-      '..KKYYYYYYKK..',
-      '....KKKKKK....',
-      '..............'
+      '........KKKK......',
+      '......KKRRRRKK....',
+      '.....KRRLLLLRRK...',
+      '....KRRLLOOLLRRK..',
+      '...KRRLLLLLLLLRRK.',
+      '...KPRRRRRRRRRRPK.',
+      '..KPRRYYYYYYYYRRPK',
+      '.KPRRYYWWWWWWYYRRK',
+      'KKKKYYYYYYYYYYYYKK',
+      'KRRRRRRRRRRRRRRRRK',
+      '.KKKKKKKKKKKKKKKK.',
+      '..KPKDDDDDDDDKPK..',
+      '..KPKDWWDDWWDKPK..',
+      '..KPKDOODDOODKPK..',
+      '...KKDDDDDDDDKK...',
+      '...KROOOOOOOORK...',
+      '..KROOWWWWWWOORK..',
+      '...KROOWWWWOORK...',
+      '....KKOOOOOOKK....',
+      '......KKKKKK......'
     ];
 
-    // Fire Mage Robe Torso (16x18)
+    // FIRE MAGE: Ornate Arch-Mage Robe & Tattered Levitating Skirt (18x26)
     const mTorso = [
-      '..KKKKKKKKKKKK..',
-      '.KYYYYYYYYYYYYK.',
-      'KYDRRLLLLLLRRDYK',
-      'KDRRLLYYYYLLRRDK',
-      'KDRRLYOOOOYLRRDK',
-      'KDRRLYOWWOYLRRDK',
-      'KDRRLLYYYYLLRRDK',
-      'KDDRRLLLLLLRRDDK',
-      '.KDDRRRRRRRRDDK.',
-      '.KKYYYYYYYYYYKK.',
-      '.KDRRLLLLLLRRDK.',
-      'KDRRLLYYYYLLRRDK',
-      'KDRRLYOOOOYLRRDK',
-      'KDRRLLLLLLLLRRDK',
-      'KDDRRRRRRRRRRDDK',
-      'KYYYYYYYYYYYYYYK',
-      'KKKKKKKKKKKKKKKK',
-      '................'
+      '..KKKKKKKKKKKKKK..',
+      '.KYYYYYYYYYYYYYYK.',
+      'KYPRRLLLLLLLLRRPYK',
+      'KPRRLLYYYYYYLLRRPK',
+      'KPRRLYOOOOOOYLRRPK',
+      'KPRRLYOWWWWOYLRRPK',
+      'KPRRLLYYYYYYLLRRPK',
+      '.KPRRLLLLLLLLRRPK.',
+      '.KKYYYYYYYYYYYYKK.',
+      '..KPRRLLLLLLRRPK..',
+      '..KPRRLYYYYLRRPK..',
+      '.KPRRLLYOOYLLRRPK.',
+      '.KPRRLLYOOYLLRRPK.',
+      'KPRRLLLYOOYLLLRRPK',
+      'KPRRLLLYOOYLLLRRPK',
+      'KPRRLLYYYYYYLLRRPK',
+      'KPRRLLLLLLLLLLRRPK',
+      'KYYYYYYYYYYYYYYYYK',
+      'KOO..KOOOOOOK..OOK',
+      'KWK..KOWWWWOK..KWK',
+      '.K....KO..OK....K.',
+      '......K....K......'
     ];
 
-    // Fire Mage Arm (8x12)
-    const mArm = [
-      '.KKKKKK.',
-      'KYYYYYYK',
-      'KDRLLRDK',
-      'KDRLLRDK',
-      'KDDRRDDK',
-      'KYYYYYYK',
-      '.KDOODK.',
-      '.KKKKKK.',
-      '........',
-      '........',
-      '........',
-      '........'
+    // FIRE MAGE: Floating Open Spellbook / Grimoire (12x10)
+    const mBook = [
+      '.KKKK..KKKK.',
+      'KBBBBKKBBBBK',
+      'KBYBBOOKBYBK',
+      'KBBBBKKBBBBK',
+      'KBYBBOOKBYBK',
+      'KBBBBKKBBBBK',
+      'KRRRRKKRRRRK',
+      '.KKKKKKKKKK.'
     ];
 
-    // Fire Mage Staff (10x32)
+    // FIRE MAGE: Twin-Horn Dragon Flame Staff (12x32)
     const mStaff = [
-      '...KKKK...',
-      '..KWWWWK..',
-      '.KWYYYYWK.',
-      '.KWYOOYWK.',
-      '.KWYYYYWK.',
-      '..KWWWWK..',
-      '.KKYYYYKK.',
-      'KYYKKKKYYK',
-      'KYK....KYK',
-      '.KK.KK.KK.',
-      '...KYYK...',
-      '...KTTK...',
-      '...KSSK...',
-      '...KTTK...',
-      '...KSSK...',
-      '...KTTK...',
-      '...KSSK...',
-      '...KTTK...',
-      '...KSSK...',
-      '...KTTK...',
-      '...KSSK...',
-      '...KTTK...',
-      '...KSSK...',
-      '...KYYK...',
-      '...KKKK...',
-      '..........',
-      '..........',
-      '..........',
-      '..........',
-      '..........',
-      '..........',
-      '..........'
+      '.KK......KK.',
+      'KWWK....KWWK',
+      'KYYK.KK.KYYK',
+      'KOOKWWWWKOOK',
+      '.KKWOOOOOWKK',
+      '..KWOWWWOWK.',
+      '..KWOYYYYWK.',
+      '...KYYYYYK..',
+      '..KYYYYYYYK.',
+      '..KKKSSSKKK.',
+      '....KYYK....',
+      '....KSSK....',
+      '....KTTK....',
+      '....KSSK....',
+      '....KYYK....',
+      '....KSSK....',
+      '....KSSK....',
+      '....KSSK....',
+      '....KSSK....',
+      '....KYYK....',
+      '....KKKK....'
     ];
 
     this.assets = {
       warrior: {
         helmet: this.bakeGrid(wHelmet, steelPal, 3),
         torso: this.bakeGrid(wTorso, steelPal, 3),
+        shield: this.bakeGrid(wShield, steelPal, 3),
         arm: this.bakeGrid(wArm, steelPal, 3),
         leg: this.bakeGrid(wLeg, steelPal, 3),
         sword: this.bakeGrid(wSword, steelPal, 3)
@@ -270,8 +280,8 @@ export class PixelForge {
       mage: {
         head: this.bakeGrid(mHead, arcanePal, 3),
         torso: this.bakeGrid(mTorso, arcanePal, 3),
-        arm: this.bakeGrid(mArm, arcanePal, 3),
-        leg: this.bakeGrid(wLeg, arcanePal, 3),
+        book: this.bakeGrid(mBook, arcanePal, 3),
+        arm: this.bakeGrid(wArm, arcanePal, 3),
         staff: this.bakeGrid(mStaff, arcanePal, 3)
       }
     };
@@ -291,14 +301,10 @@ export class PixelForge {
       g.addColorStop(1, bgBot);
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, el.width, el.height);
-
       ctx.strokeStyle = accent;
       ctx.lineWidth = 2;
       ctx.strokeRect(1, 1, el.width - 2, el.height - 2);
-
-      if (headSprite) {
-        ctx.drawImage(headSprite, 3, 5, el.width - 6, el.height - 6);
-      }
+      if (headSprite) ctx.drawImage(headSprite, 2, 2, el.width - 4, el.height - 4);
     };
     const a = this.assets;
     paint('warrior-portrait', a.warrior.helmet, '#0c192c', '#050811', '#38bdf8');

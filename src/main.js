@@ -1,6 +1,7 @@
 import { Renderer } from './engine/Renderer.js';
 import { VFXManager } from './engine/VFXManager.js';
 import { PixelForge } from './engine/PixelForge.js';
+import { AudioManager } from './engine/AudioManager.js';
 import { Warrior } from './entities/Warrior.js';
 import { FireMage } from './entities/FireMage.js';
 
@@ -9,6 +10,7 @@ class Game {
     this.canvas = document.getElementById('arena-canvas');
     this.renderer = new Renderer(this.canvas);
     this.vfx = new VFXManager();
+    this.audio = new AudioManager();
     PixelForge.initAssets();
 
     this.userSlowMo = false;
@@ -24,11 +26,21 @@ class Game {
   }
 
   bindUI() {
+    this.btnSfx = document.getElementById('btn-sfx');
+    this.sfxLabel = document.getElementById('sfx-label');
     this.btnSlowMo = document.getElementById('btn-slowmo');
     this.btnReset = document.getElementById('btn-reset');
     this.btnPlayAgain = document.getElementById('btn-play-again');
     this.ultBanner = document.getElementById('ult-banner');
     this.victoryOverlay = document.getElementById('victory-overlay');
+
+    if (this.btnSfx) {
+      this.btnSfx.addEventListener('click', () => {
+        const on = this.audio.toggle();
+        this.btnSfx.setAttribute('aria-pressed', String(on));
+        this.sfxLabel.textContent = on ? 'SFX ON' : 'SFX OFF';
+      });
+    }
 
     this.btnSlowMo.addEventListener('click', () => {
       this.userSlowMo = !this.userSlowMo;
@@ -44,7 +56,6 @@ class Game {
     const gy = this.renderer.groundY;
     const ww = this.renderer.worldWidth;
 
-    // Spawn 720 units apart across the 1200-unit arena
     this.warrior = new Warrior(ww * 0.2, gy);
     this.mage = new FireMage(ww * 0.8, gy);
     this.fighters = [this.warrior, this.mage];
@@ -130,6 +141,7 @@ class Game {
         } else if (hitEnemy) {
           const isCrit = Math.random() < 0.25;
           enemy.takeDamage(isCrit ? p.damage * 1.45 : p.damage, p.owner, isCrit, 125, -75);
+          this.audio.play('clang');
           this.vfx.spawnShockwave(p.x, p.y, 65, p.color, 0.28);
           this.vfx.spawnBurst(p.x, p.y, 12, p.color, 210);
         } else {

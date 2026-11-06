@@ -22,6 +22,7 @@ export class VFXManager {
   }
 
   spawnParticle(opts) {
+    if (this.particles.length > 260) this.particles.shift();
     this.particles.push({
       x: opts.x,
       y: opts.y,
@@ -64,21 +65,21 @@ export class VFXManager {
     this.shockwaves.push({ x, y, maxRadius, color, life: 0, maxLife: duration, flat });
   }
 
-  spawnDecal(x, width, type = 'scorch', color = '#fb923c', duration = 5.0) {
+  spawnDecal(x, width, type = 'scorch', color = '#fb923c', duration = 5.5) {
     this.decals.push({ x, width, type, color, life: 0, maxLife: duration, seed: Math.random() * 100 });
   }
 
-  spawnLightning(x, topY, bottomY, color = '#fde047') {
+  spawnLightning(x, topY, bottomY, color = '#fde08a') {
     const pts = [{ x, y: topY }];
-    const steps = 10;
+    const steps = 12;
     for (let i = 1; i < steps; i++) {
       pts.push({
-        x: x + (Math.random() - 0.5) * 70,
+        x: x + (Math.random() - 0.5) * 85,
         y: topY + ((bottomY - topY) * i) / steps
       });
     }
     pts.push({ x, y: bottomY });
-    this.lightnings.push({ pts, color, life: 0, maxLife: 0.28 });
+    this.lightnings.push({ pts, color, life: 0, maxLife: 0.32 });
   }
 
   spawnFlamePillar(x, groundY, owner, target) {
@@ -88,7 +89,7 @@ export class VFXManager {
       owner,
       target,
       life: 0,
-      maxLife: 1.5,
+      maxLife: 1.55,
       erupted: false,
       tickTimer: 0
     });
@@ -105,17 +106,15 @@ export class VFXManager {
       coreColor: opts.coreColor || '#fef08a',
       owner: opts.owner,
       damage: opts.damage || 45,
-      isMeteor: !!opts.isMeteor,
-      trail: [],
-      dead: false
+      isMeteor: !!opts.isMeteor
     });
   }
 
   spawnDamageText(x, y, amount, isCrit = false, label = '') {
     this.texts.push({
       x: x + (Math.random() - 0.5) * 26,
-      y: y - 20,
-      vy: isCrit ? -95 : -65,
+      y: y - 24,
+      vy: isCrit ? -105 : -70,
       text: label || `${Math.round(amount)}${isCrit ? '!' : ''}`,
       isCrit,
       color: label ? '#38bdf8' : isCrit ? '#facc15' : '#f8fafc',
@@ -125,7 +124,6 @@ export class VFXManager {
   }
 
   update(dt, groundY, renderer) {
-    // Update Particles
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.life += dt;
@@ -144,7 +142,6 @@ export class VFXManager {
       }
     }
 
-    // Update Slashes, Shockwaves, Decals, Lightnings
     const stepList = (arr) => {
       for (let i = arr.length - 1; i >= 0; i--) {
         arr[i].life += dt;
@@ -156,41 +153,40 @@ export class VFXManager {
     stepList(this.decals);
     stepList(this.lightnings);
 
-    // Update Flame Pillars
     for (let i = this.pillars.length - 1; i >= 0; i--) {
       const pil = this.pillars[i];
       pil.life += dt;
-      if (pil.life >= 0.55 && !pil.erupted) {
+      if (pil.life >= 0.5 && !pil.erupted) {
         pil.erupted = true;
-        renderer.triggerShake(9, 0.35);
-        this.spawnDecal(pil.x, 95, 'scorch', '#fb923c', 4.5);
-        this.spawnShockwave(pil.x, groundY, 95, '#fb923c', 0.4, true);
+        renderer.triggerShake(10, 0.38);
+        this.spawnDecal(pil.x, 105, 'scorch', '#fb923c', 4.5);
+        this.spawnShockwave(pil.x, groundY, 115, '#facc15', 0.42, true);
       }
       if (pil.erupted && pil.life < pil.maxLife - 0.15) {
-        for (let k = 0; k < 3; k++) {
+        for (let k = 0; k < 4; k++) {
+          const spiral = Math.sin(pil.life * 20 + k) * 38;
           this.spawnParticle({
-            x: pil.x + (Math.random() - 0.5) * 58,
+            x: pil.x + spiral,
             y: groundY - Math.random() * 25,
-            vx: (Math.random() - 0.5) * 45,
-            vy: -240 - Math.random() * 190,
-            size: 14 + Math.random() * 12,
-            color: Math.random() > 0.35 ? '#fb923c' : '#fef08a',
+            vx: (Math.random() - 0.5) * 40,
+            vy: -280 - Math.random() * 210,
+            size: 14 + Math.random() * 10,
+            color: k % 2 === 0 ? '#fb923c' : '#fef08a',
             maxLife: 0.48,
-            gravity: -90
+            gravity: -110
           });
         }
         pil.tickTimer += dt;
         if (pil.tickTimer >= 0.22 && pil.target && !pil.target.isDead) {
           pil.tickTimer = 0;
-          if (Math.abs(pil.target.x - pil.x) < 68 && groundY - pil.target.y < 140) {
-            pil.target.takeDamage(28, pil.owner, false, 70, -110);
+          if (Math.abs(pil.target.x - pil.x) < 74 && groundY - pil.target.y < 150) {
+            pil.target.takeDamage(28, pil.owner, false, 70, -115);
           }
         }
       }
       if (pil.life >= pil.maxLife) this.pillars.splice(i, 1);
     }
 
-    // Update Floating Texts
     for (let i = this.texts.length - 1; i >= 0; i--) {
       const t = this.texts[i];
       t.life += dt;
@@ -206,7 +202,7 @@ export class VFXManager {
       lights.push({
         x: f.x,
         y: f.y - 45,
-        radius: f.state === 'ULTIMATE' ? 230 : 125,
+        radius: f.state === 'ULTIMATE' ? 240 : 130,
         color: f.lightColor,
         intensity: f.state === 'ULTIMATE' ? 1.5 : 0.85
       });
@@ -215,18 +211,18 @@ export class VFXManager {
       lights.push({
         x: p.x,
         y: p.y,
-        radius: p.isMeteor ? 320 : 145,
+        radius: p.isMeteor ? 340 : 155,
         color: 'rgba(251, 146, 60, 1)',
-        intensity: p.isMeteor ? 1.8 : 1.15
+        intensity: p.isMeteor ? 1.85 : 1.2
       });
     }
     for (const pil of this.pillars) {
       lights.push({
         x: pil.x,
         y: gy - 60,
-        radius: pil.erupted ? 210 : 120,
+        radius: pil.erupted ? 225 : 135,
         color: 'rgba(251, 146, 60, 1)',
-        intensity: pil.erupted ? 1.4 : 0.7
+        intensity: pil.erupted ? 1.45 : 0.8
       });
     }
     return lights;
@@ -237,19 +233,19 @@ export class VFXManager {
       const alpha = Math.min(1, (1 - d.life / d.maxLife) * 1.5);
       ctx.save();
       ctx.translate(d.x, gy);
-      ctx.fillStyle = `rgba(5, 5, 8, ${0.65 * alpha})`;
+      ctx.fillStyle = `rgba(4, 5, 8, ${0.72 * alpha})`;
       ctx.beginPath();
-      ctx.ellipse(0, 2, d.width, 11, 0, 0, Math.PI * 2);
+      ctx.ellipse(0, 2, d.width, 12, 0, 0, Math.PI * 2);
       ctx.fill();
       if (d.type === 'fissure') {
         ctx.globalCompositeOperation = 'lighter';
         ctx.strokeStyle = d.color;
         ctx.globalAlpha = alpha;
-        ctx.lineWidth = 2.5;
+        ctx.lineWidth = 3;
         ctx.beginPath();
-        for (let i = -3; i <= 3; i++) {
+        for (let i = -4; i <= 4; i++) {
           ctx.moveTo(i * 18, 0);
-          ctx.lineTo(i * 26 + Math.sin(d.seed + i) * 12, (i % 2 === 0 ? 1 : -1) * 10);
+          ctx.lineTo(i * 25 + Math.sin(d.seed + i) * 14, (i % 2 === 0 ? 1 : -1) * 12);
         }
         ctx.stroke();
       }
@@ -259,36 +255,42 @@ export class VFXManager {
 
   renderMainPass(ctx, isReflection = false) {
     ctx.save();
-    // 1. Rune circles / Pillars base
+    // 1. Geometric Hexagram Magic Circle & Flame Column
     for (const pil of this.pillars) {
-      const p = Math.min(1, pil.life / 0.55);
+      const p = Math.min(1, pil.life / 0.5);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.translate(pil.x, pil.groundY);
-      ctx.scale(1, 0.26);
-      ctx.strokeStyle = '#fb923c';
+      ctx.scale(1, 0.28);
+      ctx.rotate(pil.life * 3);
+      const r = 74 * p;
+      ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(0, 0, 62 * p, 0, Math.PI * 2);
+      ctx.arc(0, 0, r, 0, Math.PI * 2);
+      for (let i = 0; i < 6; i++) {
+        const a1 = (i * Math.PI) / 3;
+        const a2 = ((i + 2) * Math.PI) / 3;
+        ctx.moveTo(Math.cos(a1) * r, Math.sin(a1) * r);
+        ctx.lineTo(Math.cos(a2) * r, Math.sin(a2) * r);
+      }
       ctx.stroke();
       ctx.restore();
     }
 
-    // 2. Particles
+    // 2. Crisp Pixel Particles
     for (const p of this.particles) {
       const t = p.life / p.maxLife;
-      const r = Math.max(0.5, p.size * (1 - t) + p.endSize * t);
+      const r = Math.max(1, p.size * (1 - t) + p.endSize * t);
       ctx.save();
       if (p.additive) ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = (1 - t) * (isReflection ? 0.65 : 1);
       ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(Math.round(p.x - r), Math.round(p.y - r), Math.round(r * 2), Math.round(r * 2));
       ctx.restore();
     }
 
-    // 3. Ribbon Sword Slashes
+    // 3. Ribbon Slashes
     ctx.globalCompositeOperation = 'lighter';
     for (const s of this.slashes) {
       const t = s.life / s.maxLife;
@@ -296,7 +298,7 @@ export class VFXManager {
       ctx.translate(s.x, s.y);
       ctx.strokeStyle = s.color;
       ctx.globalAlpha = 1 - t;
-      ctx.lineWidth = (1 - t) * 18;
+      ctx.lineWidth = (1 - t) * 20;
       ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.arc(0, 0, s.radius, s.startAngle, s.endAngle);
@@ -313,23 +315,23 @@ export class VFXManager {
       if (sw.flat) ctx.scale(1, 0.28);
       ctx.strokeStyle = sw.color;
       ctx.globalAlpha = 1 - t;
-      ctx.lineWidth = Math.max(1.5, (1 - t) * 10);
+      ctx.lineWidth = Math.max(2, (1 - t) * 11);
       ctx.beginPath();
       ctx.arc(0, 0, r, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
 
-    // 5. Projectiles (Fireballs & Meteors)
+    // 5. Projectiles (Fireballs & Molten Meteor)
     for (const proj of this.projectiles) {
       ctx.save();
-      const g = ctx.createRadialGradient(proj.x, proj.y, 2, proj.x, proj.y, proj.radius * 2.4);
+      const g = ctx.createRadialGradient(proj.x, proj.y, 2, proj.x, proj.y, proj.radius * 2.5);
       g.addColorStop(0, proj.coreColor);
-      g.addColorStop(0.4, proj.color);
+      g.addColorStop(0.45, proj.color);
       g.addColorStop(1, 'rgba(251, 146, 60, 0)');
       ctx.fillStyle = g;
       ctx.beginPath();
-      ctx.arc(proj.x, proj.y, proj.radius * 2.4, 0, Math.PI * 2);
+      ctx.arc(proj.x, proj.y, proj.radius * 2.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -340,7 +342,7 @@ export class VFXManager {
       ctx.save();
       ctx.strokeStyle = l.color;
       ctx.globalAlpha = 1 - t;
-      ctx.lineWidth = (1 - t) * 9;
+      ctx.lineWidth = (1 - t) * 10;
       ctx.beginPath();
       l.pts.forEach((pt, idx) => (idx === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)));
       ctx.stroke();
@@ -357,10 +359,10 @@ export class VFXManager {
       ctx.translate(t.x, t.y);
       ctx.scale(scale, scale);
       ctx.globalAlpha = Math.min(1, (1 - p) * 2);
-      ctx.font = `${t.isCrit ? '800 22px' : '700 15px'} Inter, sans-serif`;
+      ctx.font = `${t.isCrit ? '900 18px' : '700 13px'} "Press Start 2P", monospace`;
       ctx.textAlign = 'center';
       ctx.fillStyle = '#000';
-      ctx.fillText(t.text, 1.5, 1.5);
+      ctx.fillText(t.text, 2, 2);
       ctx.fillStyle = t.color;
       ctx.fillText(t.text, 0, 0);
       ctx.restore();

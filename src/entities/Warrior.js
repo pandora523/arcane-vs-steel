@@ -9,86 +9,127 @@ export class Warrior extends Fighter {
       groundY,
       facing: 1,
       maxHp: 1200,
-      attackRange: 115,
+      attackRange: 120,
       moveSpeed: 185,
-      autoInterval: 1.15,
+      autoInterval: 1.1,
       lightColor: 'rgba(56, 189, 248, 1)',
       primaryColor: '#38bdf8'
     });
     this.ultName = 'HEAVENLY EARTHSHATTER';
     this.skillName = 'WHIRLWIND';
-    this.swordAngle = -0.65;
+    this.swordAngle = -0.75;
+    this.shieldOffsetX = 14;
+    this.shieldOffsetY = -26;
+    this.comboStep = 0;
     this.spinAngle = 0;
     this.isDeflecting = false;
+    this.stepDustTimer = 0;
+  }
+
+  update(dt, enemy, game) {
+    if (this.state === 'WALK') {
+      this.stepDustTimer += dt;
+      if (this.stepDustTimer >= 0.26) {
+        this.stepDustTimer = 0;
+        game.vfx.spawnBurst(this.x - this.facing * 10, this.groundY - 2, 4, '#64748b', 65, {
+          upBias: 35,
+          size: 4,
+          life: 0.35,
+          additive: false
+        });
+      }
+    }
+    super.update(dt, enemy, game);
   }
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    if (t < 0.24) {
-      this.torsoAngle = -this.facing * 0.35 * (t / 0.24);
-      this.swordAngle = -2.1;
-    } else if (t < 0.42) {
+    const mode = this.comboStep % 3; // 0: Overhead Slam, 1: Wide Cleave, 2: Rising Uppercut
+
+    if (t < 0.22) {
+      // Anticipation wind-up
+      this.torsoAngle = -this.facing * 0.38 * (t / 0.22);
+      this.swordAngle = mode === 2 ? 1.35 : -2.25;
+      this.shieldOffsetX = 8;
+    } else if (t < 0.44) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
-        this.vx += this.facing * 150;
-        this.torsoVel = this.facing * 16;
-        const startA = this.facing === 1 ? -1.4 : Math.PI - 0.8;
-        const endA = this.facing === 1 ? 0.9 : Math.PI + 1.4;
-        game.vfx.spawnSlash(this.x + this.facing * 20, this.y - 48, 82, startA, endA, '#38bdf8', 0.24);
-        game.vfx.spawnSlash(this.x + this.facing * 20, this.y - 48, 66, startA, endA, '#ffffff', 0.18);
+        this.comboStep++;
+        this.vx += this.facing * 165;
+        this.torsoVel = this.facing * 18;
+        this.shieldOffsetX = 18;
+        if (game.audio) game.audio.play('slash');
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 35) {
-          const isCrit = Math.random() < 0.28;
-          const dmg = isCrit ? 98 : 64;
-          enemy.takeDamage(dmg, this, isCrit, 160, -90);
-          game.vfx.spawnBurst(enemy.x, enemy.y - 48, 14, '#bae6fd', 220);
+        const cx = this.x + this.facing * 24;
+        const cy = this.y - 50;
+        const startA = this.facing === 1 ? -1.55 : Math.PI - 0.9;
+        const endA = this.facing === 1 ? 0.95 : Math.PI + 1.55;
+
+        game.vfx.spawnSlash(cx, cy, 88, startA, endA, '#0284c7', 0.26);
+        game.vfx.spawnSlash(cx, cy, 76, startA, endA, '#38bdf8', 0.22);
+        game.vfx.spawnSlash(cx, cy, 64, startA, endA, '#ffffff', 0.16);
+
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 38) {
+          const isCrit = mode === 2 || Math.random() < 0.25;
+          const dmg = isCrit ? 102 : 66;
+          enemy.takeDamage(dmg, this, isCrit, 165, mode === 2 ? -170 : -85);
+          if (game.audio) game.audio.play('clang');
+          game.vfx.spawnBurst(enemy.x, enemy.y - 50, 16, '#bae6fd', 240);
         }
       }
-      this.swordAngle = 0.95;
-    } else if (t >= 0.65) {
-      this.swordAngle = -0.65;
+      this.swordAngle = mode === 2 ? -1.6 : 1.05;
+    } else if (t >= 0.64) {
+      this.swordAngle = -0.75;
+      this.shieldOffsetX = 14;
       this.setState('IDLE');
     }
   }
 
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
-    this.isDeflecting = t >= 0.15 && t <= 0.95;
+    this.isDeflecting = t >= 0.12 && t <= 0.95;
 
-    if (t < 0.15) {
-      this.torsoAngle = -this.facing * 0.3;
+    if (t < 0.12) {
+      this.torsoAngle = -this.facing * 0.32;
+      this.shieldOffsetX = 20;
     } else if (t < 0.95) {
-      this.spinAngle += dt * 32;
-      this.x += this.facing * 360 * dt;
-      this.swordAngle = Math.sin(this.spinAngle) * 1.6;
+      if (!this.didActionFrame) {
+        this.didActionFrame = true;
+        if (game.audio) game.audio.play('whirlwind');
+      }
+      this.spinAngle += dt * 34;
+      this.x += this.facing * 365 * dt;
+      this.swordAngle = Math.sin(this.spinAngle) * 1.75;
 
-      if (Math.random() < 0.6) {
-        game.vfx.spawnShockwave(this.x, this.y - 42, 72, '#7dd3fc', 0.25, true);
+      if (Math.random() < 0.65) {
+        game.vfx.spawnShockwave(this.x, this.y - 44, 78, '#7dd3fc', 0.22, true);
       }
 
       for (const proj of game.vfx.projectiles) {
-        if (proj.owner !== this && !proj.isMeteor && Math.hypot(proj.x - this.x, proj.y - (this.y - 45)) < 80) {
+        if (proj.owner !== this && !proj.isMeteor && Math.hypot(proj.x - this.x, proj.y - (this.y - 48)) < 85) {
           proj.owner = this;
-          proj.vx = -proj.vx * 1.25;
-          proj.vy = -60;
+          proj.vx = -proj.vx * 1.3;
+          proj.vy = -50;
           proj.color = '#38bdf8';
-          game.vfx.spawnDamageText(this.x, this.y - 95, 0, false, 'DEFLECT!');
-          game.vfx.spawnBurst(proj.x, proj.y, 12, '#38bdf8', 210);
-          game.renderer.triggerShake(6, 0.15);
+          if (game.audio) game.audio.play('clang');
+          game.vfx.spawnDamageText(this.x, this.y - 98, 0, false, 'AEGIS REFLECT!');
+          game.vfx.spawnBurst(proj.x, proj.y, 14, '#38bdf8', 220);
+          game.renderer.triggerShake(7, 0.16);
         }
       }
 
-      if (!this.lastSpinTick || t - this.lastSpinTick >= 0.18) {
+      if (!this.lastSpinTick || t - this.lastSpinTick >= 0.17) {
         this.lastSpinTick = t;
-        game.vfx.spawnSlash(this.x, this.y - 46, 76, 0, Math.PI * 2, '#38bdf8', 0.16);
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 98) {
-          enemy.takeDamage(34, this, false, 110, -65);
+        game.vfx.spawnSlash(this.x, this.y - 48, 82, 0, Math.PI * 2, '#38bdf8', 0.16);
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 102) {
+          enemy.takeDamage(36, this, false, 115, -70);
         }
       }
     } else {
       this.isDeflecting = false;
       this.lastSpinTick = 0;
-      this.swordAngle = -0.65;
+      this.swordAngle = -0.75;
+      this.shieldOffsetX = 14;
       this.setState('IDLE');
     }
   }
@@ -96,54 +137,56 @@ export class Warrior extends Fighter {
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     if (t < 0.35) {
-      this.swordAngle = -1.8;
-      if (Math.random() < 0.8) {
+      this.swordAngle = -1.95;
+      if (Math.random() < 0.85) {
         game.vfx.spawnParticle({
-          x: this.x + (Math.random() - 0.5) * 65,
+          x: this.x + (Math.random() - 0.5) * 75,
           y: this.y,
           vx: 0,
-          vy: -260,
-          size: 6,
+          vy: -280,
+          size: 7,
           color: '#facc15',
           maxLife: 0.35
         });
       }
     } else if (t < 0.78) {
       if (this.y >= this.groundY - 5 && this.vy >= 0) {
-        this.vy = -980;
-        game.vfx.spawnShockwave(this.x, this.groundY, 115, '#38bdf8', 0.35, true);
+        this.vy = -1020;
+        game.vfx.spawnShockwave(this.x, this.groundY, 130, '#38bdf8', 0.38, true);
       }
       if (enemy) {
         const targetX = enemy.x - this.facing * 50;
-        this.x += (targetX - this.x) * 6 * dt;
+        this.x += (targetX - this.x) * 6.5 * dt;
       }
-      this.swordAngle = -2.4;
+      this.swordAngle = -2.45;
     } else if (!this.didActionFrame) {
-      this.vy = 1650;
+      this.vy = 1750;
       if (this.y >= this.groundY - 8) {
         this.y = this.groundY;
         this.vy = 0;
         this.didActionFrame = true;
-        this.swordAngle = 1.1;
+        this.swordAngle = 1.15;
+        if (game.audio) game.audio.play('earthshatter');
 
-        game.renderer.triggerShake(26, 0.65);
-        game.renderer.triggerAberration(16);
-        game.renderer.triggerHitStop(0.09);
+        game.renderer.triggerShake(28, 0.7);
+        game.renderer.triggerAberration(18);
+        game.renderer.triggerHitStop(0.095);
 
-        game.vfx.spawnLightning(this.x, -160, this.groundY, '#fef08a');
-        game.vfx.spawnLightning(this.x + 28, -160, this.groundY, '#38bdf8');
-        game.vfx.spawnShockwave(this.x, this.groundY, 280, '#facc15', 0.65, true);
-        game.vfx.spawnShockwave(this.x, this.groundY - 30, 210, '#38bdf8', 0.5, false);
-        game.vfx.spawnDecal(this.x, 155, 'fissure', '#facc15', 6.5);
-        game.vfx.spawnBurst(this.x, this.groundY - 10, 40, '#facc15', 380, { upBias: 160, size: 9 });
-        game.vfx.spawnBurst(this.x, this.groundY - 10, 28, '#38bdf8', 320, { upBias: 120, size: 7 });
+        game.vfx.spawnLightning(this.x - 25, -220, this.groundY, '#fef08a');
+        game.vfx.spawnLightning(this.x, -260, this.groundY, '#ffffff');
+        game.vfx.spawnLightning(this.x + 30, -220, this.groundY, '#38bdf8');
+        game.vfx.spawnShockwave(this.x, this.groundY, 310, '#facc15', 0.68, true);
+        game.vfx.spawnShockwave(this.x, this.groundY - 35, 230, '#38bdf8', 0.52, false);
+        game.vfx.spawnDecal(this.x, 170, 'fissure', '#facc15', 7.0);
+        game.vfx.spawnBurst(this.x, this.groundY - 10, 44, '#facc15', 410, { upBias: 175, size: 10 });
+        game.vfx.spawnBurst(this.x, this.groundY - 10, 32, '#38bdf8', 350, { upBias: 130, size: 8 });
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 270) {
-          enemy.takeDamage(215, this, true, 260, -440);
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 280) {
+          enemy.takeDamage(220, this, true, 275, -460);
         }
       }
-    } else if (t >= 1.35) {
-      this.swordAngle = -0.65;
+    } else if (t >= 1.38) {
+      this.swordAngle = -0.75;
       this.setState('IDLE');
     }
   }
@@ -153,12 +196,12 @@ export class Warrior extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Pixel-Art Segmented Flowing Cape
+    // 1. Royal Vanguard Pixel Cape
     for (let i = 0; i < this.capeNodes.length - 1; i++) {
       const a = this.capeNodes[i];
       const b = this.capeNodes[i + 1];
       ctx.strokeStyle = this.hitFlash > 0 ? '#ffffff' : i === 0 ? '#0369a1' : '#0284c7';
-      ctx.lineWidth = 18 - i * 2;
+      ctx.lineWidth = 22 - i * 2.5;
       ctx.lineCap = 'square';
       ctx.beginPath();
       ctx.moveTo(Math.round(a.x), Math.round(a.y));
@@ -169,54 +212,59 @@ export class Warrior extends Fighter {
     ctx.translate(Math.round(this.x), Math.round(this.y));
     ctx.scale(this.facing, 1);
 
-    const stride = this.state === 'WALK' ? Math.sin(this.walkPhase) * 0.55 : 0;
+    const stride = this.state === 'WALK' ? Math.sin(this.walkPhase) * 0.6 : 0;
+    const stompLift = this.state === 'WALK' ? Math.max(0, -Math.sin(this.walkPhase) * 8) : 0;
     const breathe = Math.sin(this.walkPhase) * 2;
 
-    // 2. Back Leg & Back Arm (Articulated Pixel Sprites)
+    // 2. Back Leg (Heavy Greave)
     ctx.save();
-    ctx.translate(-8, -32);
+    ctx.translate(-9, -28);
     ctx.rotate(-stride);
     ctx.drawImage(sprites.leg, -12, 0);
     ctx.restore();
 
-    ctx.save();
-    ctx.translate(-10, -64 + breathe);
-    ctx.rotate(stride * 0.7);
-    ctx.drawImage(sprites.arm, -15, -6);
-    ctx.restore();
-
-    // 3. Spring-Rigged Pixel Cuirass & Helmet
-    ctx.translate(0, -32 + this.headBob * 0.45);
+    // 3. Broad Juggernaut Torso & Horned Plumed Greathelm
+    ctx.translate(0, -30 + this.headBob * 0.45);
     ctx.rotate(this.torsoAngle * this.facing);
 
-    ctx.drawImage(sprites.torso, -24, -46 + breathe * 0.5);
+    ctx.drawImage(sprites.torso, -27, -50 + breathe * 0.5);
 
-    // Pixel Helmet
     ctx.save();
-    ctx.translate(0, -64 + breathe);
+    ctx.translate(0, -68 + breathe);
     ctx.rotate(Math.sin(this.walkPhase * 0.5) * 0.05);
-    ctx.drawImage(sprites.helmet, -21, -24);
+    ctx.drawImage(sprites.helmet, -27, -28);
     ctx.restore();
 
-    // 4. Front Leg
+    // 4. Front Leg (With Stomp Knee Lift)
     ctx.save();
-    ctx.translate(8, 0);
+    ctx.translate(9, -stompLift * 0.4);
     ctx.rotate(stride);
     ctx.drawImage(sprites.leg, -12, 0);
     ctx.restore();
 
-    // 5. Front Arm & Runed Pixel Greatsword
+    // 5. Off-Hand Runed Tower Shield (Distinct Vanguard Silhouette)
     ctx.save();
-    ctx.translate(10, -30 + breathe);
+    ctx.translate(this.shieldOffsetX, this.shieldOffsetY + breathe * 0.7);
+    ctx.rotate(this.isDeflecting ? 0.15 : -0.08);
+    if (this.isDeflecting && !isReflection) {
+      ctx.shadowColor = '#38bdf8';
+      ctx.shadowBlur = 18;
+    }
+    ctx.drawImage(sprites.shield, -18, -30);
+    ctx.restore();
+
+    // 6. Sword Arm & Colossal Runed Greatsword
+    ctx.save();
+    ctx.translate(-6, -34 + breathe);
     ctx.rotate(this.swordAngle + Math.PI * 0.5);
 
     if (!isReflection) {
       ctx.shadowColor = '#38bdf8';
-      ctx.shadowBlur = 14;
+      ctx.shadowBlur = 16;
     }
-    ctx.drawImage(sprites.sword, -18, -82);
+    ctx.drawImage(sprites.sword, -21, -92);
     ctx.shadowBlur = 0;
-    ctx.drawImage(sprites.arm, -15, -10);
+    ctx.drawImage(sprites.arm, -18, -12);
     ctx.restore();
 
     ctx.restore();
