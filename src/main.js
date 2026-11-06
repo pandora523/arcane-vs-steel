@@ -40,10 +40,11 @@ class Game {
   resetMatch() {
     this.vfx.clear();
     const gy = this.renderer.groundY;
-    const w = this.renderer.width;
+    const ww = this.renderer.worldWidth;
 
-    this.warrior = new Warrior(w * 0.28, gy);
-    this.mage = new FireMage(w * 0.72, gy);
+    // Spawn 720 units apart across the 1200-unit arena
+    this.warrior = new Warrior(ww * 0.2, gy);
+    this.mage = new FireMage(ww * 0.8, gy);
     this.fighters = [this.warrior, this.mage];
 
     this.matchTime = 0;
@@ -84,13 +85,14 @@ class Game {
 
   updateProjectiles(dt) {
     const gy = this.renderer.groundY;
+    const ww = this.renderer.worldWidth;
+
     for (let i = this.vfx.projectiles.length - 1; i >= 0; i--) {
       const p = this.vfx.projectiles[i];
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
-      // Trailing smoke & sparks
-      if (Math.random() < 0.85) {
+      if (Math.random() < 0.8) {
         this.vfx.spawnParticle({
           x: p.x + (Math.random() - 0.5) * p.radius,
           y: p.y + (Math.random() - 0.5) * p.radius,
@@ -111,15 +113,14 @@ class Game {
 
       if (hitEnemy || hitGround) {
         if (p.isMeteor) {
-          // Massive Meteor Cataclysm Explosion
           this.renderer.triggerShake(28, 0.7);
           this.renderer.triggerAberration(18);
           this.renderer.triggerHitStop(0.09);
           this.vfx.spawnShockwave(p.x, gy, 320, '#fb923c', 0.7, true);
           this.vfx.spawnShockwave(p.x, gy - 35, 240, '#fef08a', 0.55, false);
           this.vfx.spawnDecal(p.x, 175, 'fissure', '#fb923c', 7.0);
-          this.vfx.spawnBurst(p.x, gy - 15, 55, '#fb923c', 420, { upBias: 180, size: 11 });
-          this.vfx.spawnBurst(p.x, gy - 15, 35, '#fef08a', 340, { upBias: 150, size: 8 });
+          this.vfx.spawnBurst(p.x, gy - 15, 50, '#fb923c', 420, { upBias: 180, size: 11 });
+          this.vfx.spawnBurst(p.x, gy - 15, 32, '#fef08a', 340, { upBias: 150, size: 8 });
 
           if (enemy && !enemy.isDead && Math.abs(enemy.x - p.x) < 280) {
             enemy.takeDamage(p.damage, p.owner, true, 270, -420);
@@ -128,13 +129,13 @@ class Game {
           const isCrit = Math.random() < 0.25;
           enemy.takeDamage(isCrit ? p.damage * 1.45 : p.damage, p.owner, isCrit, 125, -75);
           this.vfx.spawnShockwave(p.x, p.y, 65, p.color, 0.28);
-          this.vfx.spawnBurst(p.x, p.y, 14, p.color, 210);
+          this.vfx.spawnBurst(p.x, p.y, 12, p.color, 210);
         } else {
           this.vfx.spawnDecal(p.x, 42, 'scorch', p.color, 3.5);
-          this.vfx.spawnBurst(p.x, gy, 10, p.color, 150, { upBias: 80 });
+          this.vfx.spawnBurst(p.x, gy, 9, p.color, 150, { upBias: 80 });
         }
         this.vfx.projectiles.splice(i, 1);
-      } else if (p.x < -200 || p.x > this.renderer.width + 200) {
+      } else if (p.x < -300 || p.x > ww + 300) {
         this.vfx.projectiles.splice(i, 1);
       }
     }
@@ -146,15 +147,15 @@ class Game {
       const manaPct = Math.min(100, (f.mana / f.maxMana) * 100);
       document.getElementById(`${prefix}-hp-bar`).style.width = `${hpPct}%`;
       document.getElementById(`${prefix}-hp-dmg`).style.width = `${hpPct}%`;
-      document.getElementById(`${prefix}-hp-text`).textContent = `${Math.ceil(f.hp)} / ${f.maxHp}`;
+      document.getElementById(`${prefix}-hp-text`).textContent = `${Math.ceil(f.hp)}`;
       document.getElementById(`${prefix}-state`).textContent = f.isDead ? 'DEFEATED' : f.state;
       document.getElementById(`${prefix}-mana-bar`).style.width = `${manaPct}%`;
-      document.getElementById(`${prefix}-ult-label`).textContent = `ULTIMATE: ${Math.floor(manaPct)}%`;
+      document.getElementById(`${prefix}-ult-label`).textContent = `ULT ${Math.floor(manaPct)}%`;
 
       const cdPct = ((f.skillMaxCooldown - f.skillCooldown) / f.skillMaxCooldown) * 100;
       document.getElementById(`${prefix}-skill-cd`).style.width = `${cdPct}%`;
       document.getElementById(`${prefix}-skill-text`).textContent =
-        f.skillCooldown <= 0 ? `${f.skillName} Ready` : `${f.skillName}: ${f.skillCooldown.toFixed(1)}s`;
+        f.skillCooldown <= 0 ? `${f.skillName}` : `${f.skillName} ${f.skillCooldown.toFixed(1)}s`;
     };
 
     updateFighterHUD('warrior', this.warrior);
@@ -169,9 +170,8 @@ class Game {
     const rawDt = Math.min(0.05, (now - this.lastTime) / 1000);
     this.lastTime = now;
 
-    this.renderer.update(rawDt);
+    this.renderer.update(rawDt, this.fighters);
 
-    // Hit-stop freeze frames
     if (this.renderer.hitStop > 0) {
       this.renderer.hitStop = Math.max(0, this.renderer.hitStop - rawDt);
       this.renderer.render(this.fighters, this.vfx);
@@ -179,7 +179,6 @@ class Game {
       return;
     }
 
-    // Time scale calculation (Ultimate 0.25x or User Slow-Mo 0.35x)
     let timeScale = 1.0;
     if (this.ultSlowTimer > 0) {
       this.ultSlowTimer = Math.max(0, this.ultSlowTimer - rawDt);

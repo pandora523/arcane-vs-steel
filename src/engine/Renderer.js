@@ -4,7 +4,11 @@ export class Renderer {
     this.ctx = canvas.getContext('2d');
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    this.groundY = Math.floor(this.height * 0.74);
+    this.isMobile = this.width < 768;
+
+    // Virtual Arena Coordinate System (1200 units wide so fighters have huge room on mobile)
+    this.worldWidth = 1200;
+    this.groundY = 520;
 
     // Camera & Cinematic FX state
     this.shakeTime = 0;
@@ -12,27 +16,26 @@ export class Renderer {
     this.aberration = 0;
     this.hitStop = 0;
     this.ultDim = 0;
-    this.targetZoom = 1;
+    this.ultZoomTimer = 0;
+    this.camX = this.worldWidth * 0.5;
+    this.camY = this.groundY - 90;
     this.zoom = 1;
-    this.focusX = this.width * 0.5;
-    this.focusY = this.groundY - 80;
     this.time = 0;
 
-    // Ambient background pillars & torches
-    this.pillars = [0.14, 0.32, 0.5, 0.68, 0.86];
+    this.pillars = [0.12, 0.31, 0.5, 0.69, 0.88];
 
     this.resize();
     window.addEventListener('resize', () => this.resize());
   }
 
   resize() {
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.width = window.innerWidth;
     this.height = window.innerHeight;
+    this.isMobile = this.width < 768;
+    const dpr = Math.min(window.devicePixelRatio || 1, this.isMobile ? 1.5 : 2);
     this.canvas.width = this.width * dpr;
     this.canvas.height = this.height * dpr;
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.groundY = Math.floor(this.height * 0.74);
   }
 
   triggerShake(intensity = 10, duration = 0.28) {
@@ -49,13 +52,13 @@ export class Renderer {
   }
 
   triggerUltimateCamera(focusX, focusY) {
-    this.focusX = focusX;
-    this.focusY = focusY;
-    this.targetZoom = 1.16;
-    this.ultDim = 0.75;
+    this.ultFocusX = focusX;
+    this.ultFocusY = focusY;
+    this.ultZoomTimer = 0.85;
+    this.ultDim = 0.78;
   }
 
-  update(rawDt) {
+  update(rawDt, fighters) {
     this.time += rawDt;
     if (this.shakeTime > 0) {
       this.shakeTime = Math.max(0, this.shakeTime - rawDt);
@@ -67,35 +70,64 @@ export class Renderer {
     if (this.ultDim > 0) {
       this.ultDim = Math.max(0, this.ultDim - rawDt * 0.65);
     }
-    this.targetZoom += (1 - this.targetZoom) * Math.min(1, rawDt * 2.5);
-    this.zoom += (this.targetZoom - this.zoom) * Math.min(1, rawDt * 8);
+    if (this.ultZoomTimer > 0) {
+      this.ultZoomTimer = Math.max(0, this.ultZoomTimer - rawDt);
+    }
+
+    // Dynamic Fighting-Game Camera Framing
+    if (fighters && fighters.length === 2) {
+      const f1 = fighters[0];
+      const f2 = fighters[1];
+      const midX = (f1.x + f2.x) * 0.5;
+      const dist = Math.abs(f1.x - f2.x) + 280;
+
+      const fitScaleX = this.width / Math.max(580, Math.min(this.worldWidth, dist));
+      const fitScaleY = this.height / 720;
+      let targetZoom = Math.min(fitScaleX, fitScaleY * 1.15);
+      targetZoom = Math.max(0.42, Math.min(this.isMobile ? 0.85 : 1.15, targetZoom));
+
+      let targetX = midX;
+      let targetY = this.groundY - 85;
+
+      if (this.ultZoomTimer > 0) {
+        targetZoom *= 1.18;
+        targetX = this.ultFocusX;
+        targetY = this.ultFocusY;
+      }
+
+      this.zoom += (targetZoom - this.zoom) * Math.min(1, rawDt * 6);
+      this.camX += (targetX - this.camX) * Math.min(1, rawDt * 7);
+      this.camY += (targetY - this.camY) * Math.min(1, rawDt * 7);
+    }
   }
 
   render(fighters, vfx) {
     const ctx = this.ctx;
-    const w = this.width;
-    const h = this.height;
+    const ww = this.worldWidth;
     const gy = this.groundY;
+
+    // Clear full viewport
+    ctx.fillStyle = '#05070d';
+    ctx.fillRect(0, 0, this.width, this.height);
 
     ctx.save();
 
-    // Camera Zoom & Shake Transform
+    // Screen Shake + Dynamic World Camera Transform
     const sx = this.shakeTime > 0 ? (Math.random() - 0.5) * 2 * this.shakeIntensity : 0;
     const sy = this.shakeTime > 0 ? (Math.random() - 0.5) * 2 * this.shakeIntensity : 0;
 
-    ctx.translate(w * 0.5 + sx, gy - 80 + sy);
+    const screenAnchorY = this.height * (this.isMobile ? 0.62 : 0.66);
+    ctx.translate(this.width * 0.5 + sx, screenAnchorY + sy);
     ctx.scale(this.zoom, this.zoom);
-    const camOffsetX = (this.focusX - w * 0.5) * (this.zoom - 1);
-    const camOffsetY = (this.focusY - (gy - 80)) * (this.zoom - 1);
-    ctx.translate(-w * 0.5 - camOffsetX, -(gy - 80) - camOffsetY);
+    ctx.translate(-this.camX, -this.camY);
 
     // 1. Arena Sky & Architecture
-    this.drawArenaBackground(ctx, w, h, gy);
+    this.drawArenaBackground(ctx, ww, gy);
 
     // Dim background during Ultimate
     if (this.ultDim > 0.01) {
       ctx.fillStyle = `rgba(2, 4, 10, ${this.ultDim * 0.75})`;
-      ctx.fillRect(-200, -200, w + 400, h + 400);
+      ctx.fillRect(-600, -800, ww + 1200, 2000);
     }
 
     // 2. Ground Scorch & Fissures
@@ -104,33 +136,31 @@ export class Renderer {
     // 3. Real-Time Floor Reflections Pass (Vertically Flipped & Squashed)
     ctx.save();
     ctx.beginPath();
-    ctx.rect(-100, gy, w + 200, h - gy + 200);
+    ctx.rect(-600, gy, ww + 1200, 900);
     ctx.clip();
 
     ctx.translate(0, gy * 2);
     ctx.scale(1, -0.45);
     ctx.globalAlpha = 0.25;
 
-    for (const f of fighters) {
-      f.draw(ctx, true);
-    }
+    for (const f of fighters) f.draw(ctx, true);
     vfx.renderMainPass(ctx, true);
     ctx.restore();
 
     // Floor specular horizon sheen & depth gradient
-    const floorGrad = ctx.createLinearGradient(0, gy, 0, h);
+    const floorGrad = ctx.createLinearGradient(0, gy, 0, gy + 550);
     floorGrad.addColorStop(0, 'rgba(30, 41, 59, 0.38)');
-    floorGrad.addColorStop(0.08, 'rgba(10, 14, 24, 0.45)');
-    floorGrad.addColorStop(1, 'rgba(3, 5, 10, 0.92)');
+    floorGrad.addColorStop(0.08, 'rgba(10, 14, 24, 0.48)');
+    floorGrad.addColorStop(1, 'rgba(3, 5, 10, 0.96)');
     ctx.fillStyle = floorGrad;
-    ctx.fillRect(-100, gy, w + 200, h - gy + 200);
+    ctx.fillRect(-600, gy, ww + 1200, 900);
 
     // Glowing floor horizon line
-    ctx.strokeStyle = 'rgba(148, 163, 184, 0.22)';
+    ctx.strokeStyle = 'rgba(148, 163, 184, 0.24)';
     ctx.lineWidth = 1.5;
     ctx.beginPath();
-    ctx.moveTo(-100, gy);
-    ctx.lineTo(w + 100, gy);
+    ctx.moveTo(-600, gy);
+    ctx.lineTo(ww + 600, gy);
     ctx.stroke();
 
     // 4. Dynamic Ground Light Pools & Dynamic Drop Shadows
@@ -140,9 +170,7 @@ export class Renderer {
 
     // 5. Main Pass: Fighters & Particles
     const sorted = [...fighters].sort((a, b) => a.y - b.y);
-    for (const f of sorted) {
-      f.draw(ctx, false);
-    }
+    for (const f of sorted) f.draw(ctx, false);
     vfx.renderMainPass(ctx, false);
 
     // 6. Chromatic Aberration Ghost Pass on Heavy Hits
@@ -150,7 +178,7 @@ export class Renderer {
       const off = this.aberration;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(0.35, off * 0.04);
+      ctx.globalAlpha = Math.min(0.32, off * 0.04);
       ctx.translate(-off, 0);
       for (const f of sorted) f.draw(ctx, false);
       ctx.translate(off * 2, 0);
@@ -164,40 +192,36 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawArenaBackground(ctx, w, h, gy) {
-    const bgGrad = ctx.createLinearGradient(0, 0, 0, gy);
-    bgGrad.addColorStop(0, '#05070d');
-    bgGrad.addColorStop(0.55, '#0b111e');
+  drawArenaBackground(ctx, ww, gy) {
+    const bgGrad = ctx.createLinearGradient(0, -500, 0, gy);
+    bgGrad.addColorStop(0, '#04060b');
+    bgGrad.addColorStop(0.6, '#0b111e');
     bgGrad.addColorStop(1, '#131c2e');
     ctx.fillStyle = bgGrad;
-    ctx.fillRect(-200, -200, w + 400, gy + 200);
+    ctx.fillRect(-600, -700, ww + 1200, gy + 700);
 
-    // Polished obsidian floor base
-    ctx.fillStyle = '#080c14';
-    ctx.fillRect(-200, gy, w + 400, h - gy + 200);
+    ctx.fillStyle = '#070a12';
+    ctx.fillRect(-600, gy, ww + 1200, 900);
 
-    // Stone pillars & flickering braziers
     for (let i = 0; i < this.pillars.length; i++) {
-      const px = w * this.pillars[i];
-      const pw = 46;
+      const px = ww * this.pillars[i];
+      const pw = 52;
       ctx.fillStyle = '#090e18';
-      ctx.fillRect(px - pw * 0.5, 40, pw, gy - 40);
-      ctx.strokeStyle = 'rgba(255,255,255,0.03)';
-      ctx.strokeRect(px - pw * 0.5, 40, pw, gy - 40);
+      ctx.fillRect(px - pw * 0.5, -350, pw, gy + 350);
+      ctx.strokeStyle = 'rgba(255,255,255,0.035)';
+      ctx.strokeRect(px - pw * 0.5, -350, pw, gy + 350);
 
-      // Brazier glow
       const flicker = Math.sin(this.time * 7 + i * 2.1) * 6;
-      const by = gy - 165;
-      const isLeft = i < 2;
-      const color = isLeft ? '56, 189, 248' : i === 2 ? '168, 85, 247' : '251, 146, 60';
-      const rad = ctx.createRadialGradient(px, by, 2, px, by, 85 + flicker);
-      rad.addColorStop(0, `rgba(${color}, 0.45)`);
+      const by = gy - 175;
+      const color = i < 2 ? '56, 189, 248' : i === 2 ? '234, 179, 8' : '251, 146, 60';
+      const rad = ctx.createRadialGradient(px, by, 2, px, by, 95 + flicker);
+      rad.addColorStop(0, `rgba(${color}, 0.42)`);
       rad.addColorStop(1, `rgba(${color}, 0)`);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       ctx.fillStyle = rad;
       ctx.beginPath();
-      ctx.arc(px, by, 85 + flicker, 0, Math.PI * 2);
+      ctx.arc(px, by, 95 + flicker, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -208,7 +232,7 @@ export class Renderer {
     ctx.globalCompositeOperation = 'lighter';
     for (const l of lights) {
       const distY = Math.max(0, gy - l.y);
-      const atten = Math.max(0, 1 - distY / 340);
+      const atten = Math.max(0, 1 - distY / 360);
       if (atten <= 0.02) continue;
       const rx = l.radius * (1 + distY * 0.002);
       const ry = rx * 0.22;
@@ -231,22 +255,17 @@ export class Renderer {
     for (const f of fighters) {
       const jumpH = Math.max(0, gy - f.y);
       const scale = Math.max(0.25, 1 - jumpH / 320);
-      // Calculate shadow shift from brightest nearby light source
       let shiftX = 0;
       for (const l of lights) {
         const dx = f.x - l.x;
         const dist = Math.hypot(dx, f.y - l.y) + 1;
-        if (dist < 360) {
-          shiftX += (dx / dist) * (1 - dist / 360) * 26 * l.intensity;
-        }
+        if (dist < 380) shiftX += (dx / dist) * (1 - dist / 380) * 26 * l.intensity;
       }
       shiftX = Math.max(-35, Math.min(35, shiftX));
-
       const rx = 38 * scale;
       const ry = 10 * scale;
-      const sx = f.x + shiftX;
       ctx.save();
-      ctx.translate(sx, gy + 2);
+      ctx.translate(f.x + shiftX, gy + 2);
       ctx.scale(1, ry / rx);
       const sg = ctx.createRadialGradient(0, 0, 4, 0, 0, rx);
       sg.addColorStop(0, `rgba(0, 0, 0, ${0.68 * scale})`);

@@ -8,8 +8,8 @@ export class FireMage extends Fighter {
       groundY,
       facing: -1,
       maxHp: 950,
-      attackRange: 390,
-      moveSpeed: 135,
+      attackRange: 470,
+      moveSpeed: 145,
       autoInterval: 1.35,
       lightColor: 'rgba(251, 146, 60, 1)',
       primaryColor: '#fb923c'
@@ -22,11 +22,11 @@ export class FireMage extends Fighter {
 
   update(dt, enemy, game) {
     this.runeOrbit += dt * 2.8;
-    // Keep slight kiting distance when too close
+    // Active ranged kiting: keep comfortable distance from Warrior
     if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const dist = Math.abs(enemy.x - this.x);
-      if (dist < 135) {
-        this.x -= this.facing * this.moveSpeed * 0.65 * dt;
+      if (dist < 230) {
+        this.x -= this.facing * this.moveSpeed * 0.9 * dt;
       }
     }
     super.update(dt, enemy, game);
@@ -35,24 +35,22 @@ export class FireMage extends Fighter {
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
     if (t < 0.28) {
-      // Wind-up cast
       this.torsoAngle = -this.facing * 0.25;
       this.staffAngle = -0.55;
     } else if (t < 0.55) {
-      // Cast Ignis Bolt with recoil
       if (!this.didActionFrame) {
         this.didActionFrame = true;
-        this.vx -= this.facing * 95;
+        this.vx -= this.facing * 125;
         this.torsoVel = -this.facing * 12;
         this.staffAngle = 0.7;
 
         const spawnX = this.x + this.facing * 36;
         const spawnY = this.y - 48;
         const targetY = enemy ? enemy.y - 44 : spawnY;
-        const dx = enemy ? enemy.x - spawnX : this.facing * 400;
+        const dx = enemy ? enemy.x - spawnX : this.facing * 450;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
-        const speed = 540;
+        const speed = 560;
 
         game.vfx.spawnProjectile({
           x: spawnX,
@@ -77,10 +75,11 @@ export class FireMage extends Fighter {
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
     if (t < 0.35) {
-      // Raise staff & telegraph rune circle under Warrior
       this.staffAngle = -1.1;
       if (!this.didActionFrame && enemy) {
         this.didActionFrame = true;
+        // Backstep slightly while summoning pillar
+        this.vx -= this.facing * 150;
         game.vfx.spawnFlamePillar(enemy.x + enemy.vx * 0.15, this.groundY, this, enemy);
         game.vfx.spawnShockwave(this.x, this.y - 70, 55, '#fb923c', 0.35);
       }
@@ -93,7 +92,6 @@ export class FireMage extends Fighter {
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     if (t < 0.75) {
-      // Levitate into the air surrounded by spinning sigils
       this.vy = -40;
       this.y = Math.max(this.groundY - 125, this.y - 160 * dt);
       this.staffAngle = -1.35;
@@ -112,9 +110,8 @@ export class FireMage extends Fighter {
         });
       }
     } else if (!this.didActionFrame) {
-      // Call down massive multi-layered Meteor Cataclysm
       this.didActionFrame = true;
-      const targetX = enemy ? enemy.x : game.renderer.width * 0.35;
+      const targetX = enemy ? enemy.x : game.renderer.worldWidth * 0.35;
       const startX = this.x - this.facing * 180;
       const startY = -140;
       const dx = targetX - startX;
@@ -158,7 +155,6 @@ export class FireMage extends Fighter {
     ctx.translate(this.x, this.y);
     ctx.scale(this.facing, 1);
 
-    // Spinning Arcane Sigil Ring when casting/ulting
     if (this.state === 'ULTIMATE' || this.state === 'SKILL') {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -179,7 +175,7 @@ export class FireMage extends Fighter {
       ctx.restore();
     }
 
-    // 2. Bouncy Legs & Hem of Robe
+    // 2. Bouncy Legs
     const step = this.state === 'WALK' ? Math.sin(this.walkPhase) * 11 : 0;
     ctx.strokeStyle = '#431407';
     ctx.lineWidth = 7;
@@ -194,7 +190,6 @@ export class FireMage extends Fighter {
     ctx.translate(0, -24 + this.headBob * 0.45);
     ctx.rotate(this.torsoAngle * this.facing);
 
-    // Crimson/Charcoal Robe Body
     ctx.fillStyle = this.hitFlash > 0 ? '#ffffff' : '#7c2d12';
     ctx.strokeStyle = '#fb923c';
     ctx.lineWidth = 2;
@@ -207,7 +202,6 @@ export class FireMage extends Fighter {
     ctx.fill();
     ctx.stroke();
 
-    // Hooded Head & Glowing Ember Eyes
     ctx.save();
     ctx.translate(0, -43 + this.headBob * 0.35);
     ctx.fillStyle = this.hitFlash > 0 ? '#ffffff' : '#431407';
@@ -218,25 +212,21 @@ export class FireMage extends Fighter {
     ctx.closePath();
     ctx.fill();
 
-    // Glowing Fire Eyes
     ctx.fillStyle = '#fef08a';
     ctx.beginPath();
     ctx.arc(5, -2, 2.5, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
 
-    // 4. Floating Arcane Runes Orbiting Shoulders
     for (let i = 0; i < 3; i++) {
       const a = this.runeOrbit + i * ((Math.PI * 2) / 3);
-      const rx = Math.cos(a) * 24;
-      const ry = -28 + Math.sin(a) * 8;
       ctx.fillStyle = '#fde047';
       ctx.beginPath();
-      ctx.arc(rx, ry, 3, 0, Math.PI * 2);
+      ctx.arc(Math.cos(a) * 24, -28 + Math.sin(a) * 8, 3, 0, Math.PI * 2);
       ctx.fill();
     }
 
-    // 5. Levitating Ember Staff
+    // 4. Levitating Ember Staff
     ctx.save();
     const floatY = Math.sin(this.runeOrbit * 1.5) * 4;
     ctx.translate(16, -22 + floatY);
@@ -249,7 +239,6 @@ export class FireMage extends Fighter {
     ctx.lineTo(0, -34);
     ctx.stroke();
 
-    // Staff Crown & Levitating Sun Orb
     if (!isReflection) {
       ctx.shadowColor = '#fb923c';
       ctx.shadowBlur = 18;

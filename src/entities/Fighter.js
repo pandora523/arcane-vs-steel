@@ -14,8 +14,8 @@ export class Fighter {
     this.maxMana = 100;
     this.isDead = false;
 
-    this.attackRange = opts.attackRange || 90;
-    this.moveSpeed = opts.moveSpeed || 155;
+    this.attackRange = opts.attackRange || 110;
+    this.moveSpeed = opts.moveSpeed || 165;
     this.lightColor = opts.lightColor || 'rgba(56, 189, 248, 1)';
     this.primaryColor = opts.primaryColor || '#38bdf8';
 
@@ -56,9 +56,8 @@ export class Fighter {
     this.mana = Math.min(this.maxMana, this.mana + amount);
   }
 
-  takeDamage(amount, attacker, isCrit = false, knockX = 90, knockY = -80) {
+  takeDamage(amount, attacker, isCrit = false, knockX = 110, knockY = -80) {
     if (this.isDead) return;
-    // Deflect or reduce damage during Whirlwind Dash
     if (this.isDeflecting) {
       amount *= 0.25;
       knockX *= 0.2;
@@ -73,13 +72,12 @@ export class Fighter {
     if (this.y >= this.groundY - 2 && knockY < 0) {
       this.vy = knockY;
     }
-    // TABS wobble recoil impulse
     this.torsoVel += dir * 9.5;
     this.armVel -= 12;
 
     if (this.game) {
       this.game.vfx.spawnDamageText(this.x, this.y - 75, amount, isCrit);
-      this.game.vfx.spawnBurst(this.x, this.y - 45, isCrit ? 16 : 8, this.primaryColor, 170);
+      this.game.vfx.spawnBurst(this.x, this.y - 45, isCrit ? 14 : 7, this.primaryColor, 170);
       if (isCrit) {
         this.game.renderer.triggerShake(11, 0.24);
         this.game.renderer.triggerAberration(9);
@@ -90,7 +88,7 @@ export class Fighter {
     if (this.hp <= 0) {
       this.isDead = true;
       this.vy = -220;
-      this.vx = dir * 240;
+      this.vx = dir * 260;
       this.torsoVel = dir * 18;
       if (this.game) {
         this.game.renderer.triggerShake(18, 0.5);
@@ -106,9 +104,19 @@ export class Fighter {
 
     if (this.hitFlash > 0) this.hitFlash = Math.max(0, this.hitFlash - dt);
 
-    // Passive mana trickle
     if (!this.isDead && this.state !== 'ULTIMATE') {
       this.gainMana(dt * 4.5);
+    }
+
+    // Personal-space repulsion so characters never crowd on top of each other
+    if (enemy && !this.isDead && !enemy.isDead && this.state !== 'ULTIMATE') {
+      const dx = this.x - enemy.x;
+      const absDx = Math.abs(dx);
+      const minSep = 115;
+      if (absDx < minSep) {
+        const pushDir = dx === 0 ? -this.facing : Math.sign(dx);
+        this.x += pushDir * (minSep - absDx) * 6.5 * dt;
+      }
     }
 
     // Physics integration & Gravity
@@ -124,11 +132,10 @@ export class Fighter {
       this.vx *= Math.pow(0.25, dt);
     }
 
-    // Arena boundaries
-    const margin = 70;
-    this.x = Math.max(margin, Math.min(game.renderer.width - margin, this.x));
+    // Virtual Arena boundaries (1200 units wide)
+    const margin = 80;
+    this.x = Math.max(margin, Math.min(game.renderer.worldWidth - margin, this.x));
 
-    // Update Cape Physics
     this.updateCape(dt);
 
     if (this.isDead) {
@@ -136,26 +143,22 @@ export class Fighter {
       return;
     }
 
-    // Face opponent unless mid-whirlwind
     if (enemy && this.state !== 'ULTIMATE') {
       this.facing = enemy.x >= this.x ? 1 : -1;
     }
 
-    // Cooldowns
     this.autoCooldown = Math.max(0, this.autoCooldown - dt);
     this.skillCooldown = Math.max(0, this.skillCooldown - dt);
     this.stateTimer += dt;
 
     // TABS Spring-damper torso physics
     const targetTorso = this.getTargetTorsoAngle();
-    const springK = 130;
-    const damping = 11;
-    const force = (targetTorso - this.torsoAngle) * springK - this.torsoVel * damping;
+    const force = (targetTorso - this.torsoAngle) * 130 - this.torsoVel * 11;
     this.torsoVel += force * dt;
     this.torsoAngle += this.torsoVel * dt;
 
     // Ambient Aura Particles
-    if (Math.random() < 0.35) {
+    if (Math.random() < 0.28) {
       game.vfx.spawnParticle({
         x: this.x + (Math.random() - 0.5) * 34,
         y: this.y - Math.random() * 60,
@@ -167,7 +170,6 @@ export class Fighter {
       });
     }
 
-    // AI Decision & State Machine
     const dist = enemy ? Math.abs(enemy.x - this.x) : 999;
 
     if (this.state === 'IDLE' || this.state === 'WALK') {
@@ -178,7 +180,7 @@ export class Fighter {
           game.triggerUltimateCinematic(this);
           return;
         }
-        if (this.skillCooldown <= 0 && dist <= this.attackRange * 2.1) {
+        if (this.skillCooldown <= 0 && dist <= this.attackRange * 2.2) {
           this.skillCooldown = this.skillMaxCooldown;
           this.setState('SKILL');
           return;
@@ -193,7 +195,6 @@ export class Fighter {
         } else {
           this.state = 'WALK';
           this.walkPhase += dt * 11.5;
-          // Goofy TABS bouncy stride impulse
           const stride = Math.abs(Math.sin(this.walkPhase));
           this.x += this.facing * this.moveSpeed * (0.55 + stride * 0.75) * dt;
           this.headBob = Math.sin(this.walkPhase * 2) * 5;
@@ -216,35 +217,26 @@ export class Fighter {
   }
 
   getTargetTorsoAngle() {
-    if (this.state === 'WALK') {
-      return this.facing * 0.18 + Math.sin(this.walkPhase) * 0.14;
-    }
-    if (this.state === 'IDLE') {
-      return Math.sin(this.walkPhase) * 0.05;
-    }
+    if (this.state === 'WALK') return this.facing * 0.18 + Math.sin(this.walkPhase) * 0.14;
+    if (this.state === 'IDLE') return Math.sin(this.walkPhase) * 0.05;
     return 0;
   }
 
   updateCape(dt) {
-    const anchorX = this.x - this.facing * 8;
-    const anchorY = this.y - 54 + this.headBob * 0.5;
-    this.capeNodes[0].x = anchorX;
-    this.capeNodes[0].y = anchorY;
-
+    this.capeNodes[0].x = this.x - this.facing * 8;
+    this.capeNodes[0].y = this.y - 54 + this.headBob * 0.5;
     for (let i = 1; i < this.capeNodes.length; i++) {
       const prev = this.capeNodes[i - 1];
       const cur = this.capeNodes[i];
       const wave = Math.sin(this.walkPhase * 1.8 - i * 0.9) * 35;
       cur.x += (-this.facing * 45 - this.vx * 0.25 + wave) * dt;
       cur.y += (140 + i * 15) * dt;
-
       const dx = cur.x - prev.x;
       const dy = cur.y - prev.y;
       const d = Math.hypot(dx, dy) || 1;
-      const segLen = 11;
-      if (d > segLen) {
-        cur.x = prev.x + (dx / d) * segLen;
-        cur.y = prev.y + (dy / d) * segLen;
+      if (d > 11) {
+        cur.x = prev.x + (dx / d) * 11;
+        cur.y = prev.y + (dy / d) * 11;
       }
     }
   }
