@@ -22,9 +22,22 @@ class Game {
     this.bindUI();
     this.resetMatch();
 
-    const simSec = Number(new URLSearchParams(window.location.search).get('sim') || 0);
+    const params = new URLSearchParams(window.location.search);
+    const simSec = Number(params.get('sim') || 0);
     if (simSec > 0) {
       const steps = Math.floor(simSec / 0.02);
+      for (let i = 0; i < steps; i++) {
+        this.stepSimulation(0.02);
+      }
+      this.updateHUD();
+    }
+    const killTarget = params.get('kill');
+    if (killTarget === 'warrior' || killTarget === 'mage') {
+      const victim = killTarget === 'warrior' ? this.warrior : this.mage;
+      const attacker = killTarget === 'warrior' ? this.mage : this.warrior;
+      victim.takeDamage(9999, attacker, true, 120, 0);
+      const dtSec = Number(params.get('dt') || 1.2);
+      const steps = Math.floor(dtSec / 0.02);
       for (let i = 0; i < steps; i++) {
         this.stepSimulation(0.02);
       }
@@ -79,6 +92,8 @@ class Game {
 
   resetMatch() {
     this.vfx.clear();
+    clearTimeout(this.victoryTimeout);
+    clearTimeout(this.ultBannerTimeout);
     const gy = this.renderer.groundY;
     const ww = this.renderer.worldWidth;
 
@@ -97,6 +112,7 @@ class Game {
   triggerUltimateCinematic(caster) {
     this.ultSlowTimer = 0.55;
     this.renderer.triggerUltimateCamera(caster.x, caster.y - 60);
+    if (this.audio) this.audio.play('ult_cast', caster.x);
 
     document.getElementById('ult-caster').textContent = caster.name.toUpperCase();
     document.getElementById('ult-name').textContent = caster.ultName;
@@ -111,16 +127,29 @@ class Game {
   onFighterDeath(deadFighter) {
     if (this.isMatchOver) return;
     this.isMatchOver = true;
+    this.ultSlowTimer = 0.65;
     this.updateHUD();
+
+    if (this.audio) {
+      this.audio.play(
+        deadFighter === this.warrior ? 'death_warrior' : 'death_mage',
+        deadFighter.x
+      );
+    }
+
     const winner = deadFighter === this.warrior ? this.mage : this.warrior;
     document.getElementById('victory-winner').textContent = `${winner.name.toUpperCase()} TRIUMPHS`;
     document.getElementById('victory-stats').textContent =
       winner === this.warrior
         ? 'Steel cleaves through the arcane tempest!'
         : 'Arcane fire reduces steel to molten ash!';
-    setTimeout(() => {
-      if (this.isMatchOver) this.victoryOverlay.classList.remove('hidden');
-    }, 850);
+    clearTimeout(this.victoryTimeout);
+    this.victoryTimeout = setTimeout(() => {
+      if (this.isMatchOver) {
+        this.victoryOverlay.classList.remove('hidden');
+        if (this.audio) this.audio.play('victory_fanfare');
+      }
+    }, 1650);
   }
 
   updateProjectiles(dt) {
@@ -153,6 +182,7 @@ class Game {
 
       if (hitEnemy || hitGround) {
         if (p.isMeteor) {
+          if (this.audio) this.audio.play('meteor_impact', p.x);
           this.renderer.triggerShake(26, 0.65);
           this.renderer.triggerAberration(16);
           this.vfx.spawnShockwave(p.x, gy, 330, '#fb923c', 0.65, true);
@@ -168,7 +198,7 @@ class Game {
         } else if (hitEnemy) {
           const isCrit = Math.random() < 0.28;
           enemy.takeDamage(isCrit ? p.damage * 1.45 : p.damage, p.owner, isCrit, 110, 0);
-          this.audio.play('clang');
+          if (this.audio) this.audio.play(isCrit ? 'hit_crit' : 'clang', enemy.x);
           this.renderer.triggerHitStop(0.055);
           this.vfx.spawnShockwave(p.x, p.y, 68, p.color, 0.25);
           this.vfx.spawnBurst(p.x, p.y, 10, p.color, 200);

@@ -44,15 +44,23 @@ export class PixelForge {
   }
 
   /**
-   * Maps fighter state & timers to one of the 32 HD-2D pixel-art frames (8 cols x 4 rows, 128x128 cells):
+   * Maps fighter state & timers to one of the 40 HD-2D pixel-art frames (8 cols x 5 rows, 128x128 cells):
    * - Row 0 (0..7):   8-frame IDLE combat ready loop
    * - Row 1 (8..15):  8-frame WALK / STRIDE loop
    * - Row 2 (16..23): 8-frame AUTO_ATTACK combo sequence
    * - Row 3 (24..31): 8-frame SKILL (24..27) & ULTIMATE (28..31) sequence
+   * - Row 4 (32..39): 8-frame DEATH recoil, kneeling collapse & fallen sequence
    */
   static getFrameIndex(fighter, phase) {
     const st = fighter.state;
     const t = fighter.stateTimer;
+
+    if (fighter.isDead || st === 'DEATH') {
+      const deathDuration = 1.35;
+      const dt = fighter.deathTimer || 0;
+      const step = Math.min(7, Math.max(0, Math.floor((dt / deathDuration) * 8)));
+      return 32 + step;
+    }
 
     if (st === 'AUTO_ATTACK') {
       const duration = 0.96;

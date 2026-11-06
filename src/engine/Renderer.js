@@ -177,9 +177,10 @@ export class Renderer {
     for (const f of sorted) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = f.state === 'IDLE' || f.state === 'WALK' ? 0.25 : 0.48;
+      const deathFade = f.isDead ? Math.max(0.08, 1 - (f.deathTimer || 0) * 0.65) : 1;
+      ctx.globalAlpha = (f.state === 'IDLE' || f.state === 'WALK' ? 0.25 : 0.48) * deathFade;
       const glow = f.primaryColor === '#38bdf8' ? this.glowCyan : this.glowOrange;
-      ctx.drawImage(glow, f.x - 125, f.y - 190, 250, 250);
+      ctx.drawImage(glow, f.x - 125, f.y - (f.isDead ? 115 : 190), 250, 250);
       ctx.restore();
 
       f.draw(ctx, false);
@@ -319,19 +320,21 @@ export class Renderer {
   }
 
   drawCharacterPixelFlames(ctx, f) {
+    if (f.isDead && (f.deathTimer || 0) > 0.9) return;
     const isBlue = f.primaryColor === '#38bdf8';
     const pal = isBlue ? CYAN_FIRE_PAL : SOLAR_FIRE_PAL;
     const t = this.time;
 
     ctx.save();
     // Emit live pixel-art fire / rune sparks along the weapon & aura
-    const count = f.state === 'IDLE' || f.state === 'WALK' ? 5 : 10;
+    const count = f.isDead ? 3 : f.state === 'IDLE' || f.state === 'WALK' ? 5 : 10;
+    const fallDrop = f.isDead ? Math.min(48, (f.deathTimer || 0) * 55) : 0;
     for (let i = 0; i < count; i++) {
       const cycle = (t * (1.8 + (i % 3) * 0.4) + i * 0.62) % 1;
       const spreadX = isBlue
         ? f.facing * (18 + (i % 4) * 14) + Math.sin(t * 8 + i) * 6
         : f.facing * (22 + (i % 4) * 12) + Math.cos(t * 7 + i) * 8;
-      const baseY = isBlue ? f.y - 68 - (i % 4) * 16 : f.y - 82 - (i % 3) * 14;
+      const baseY = (isBlue ? f.y - 68 - (i % 4) * 16 : f.y - 82 - (i % 3) * 14) + fallDrop;
       const px = Math.round((f.x + spreadX) / 3) * 3;
       const py = Math.round((baseY - cycle * 34) / 3) * 3;
       const sz = cycle < 0.45 ? 4 : 3;
@@ -435,6 +438,7 @@ export class Renderer {
     for (const f of fighters) {
       const jumpH = Math.max(0, gy - f.y);
       const scale = Math.max(0.25, 1 - jumpH / 320);
+      const deadStretch = f.isDead ? 1 + Math.min(0.45, (f.deathTimer || 0) * 0.38) : 1;
       let shiftX = 0;
       for (const l of lights) {
         const dx = f.x - l.x;
@@ -442,11 +446,17 @@ export class Renderer {
         if (dist < 380) shiftX += (dx / dist) * (1 - dist / 380) * 18 * l.intensity;
       }
       shiftX = Math.max(-24, Math.min(24, shiftX));
-      const rx = 68 * scale;
+      const rx = 68 * scale * deadStretch;
       const ry = 17 * scale;
       ctx.drawImage(this.shadowTex, f.x + shiftX - rx, gy - ry + 4, rx * 2, ry * 2);
       if (jumpH < 8) {
-        ctx.drawImage(this.shadowTex, f.x - 46, gy - 8, 92, 18);
+        ctx.drawImage(
+          this.shadowTex,
+          f.x - 46 * deadStretch,
+          gy - 8,
+          92 * deadStretch,
+          18
+        );
       }
     }
   }

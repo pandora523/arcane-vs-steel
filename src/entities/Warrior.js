@@ -25,10 +25,11 @@ export class Warrior extends Fighter {
   }
 
   update(dt, enemy, game) {
-    if (this.state === 'WALK') {
+    if (!this.isDead && this.state === 'WALK') {
       this.stepDustTimer += dt;
       if (this.stepDustTimer >= 0.34) {
         this.stepDustTimer = 0;
+        if (game.audio) game.audio.play('footstep_steel', this.x);
         game.vfx.spawnBurst(this.x - this.facing * 14, this.groundY - 2, 3, '#64748b', 55, {
           upBias: 24,
           size: 4,
@@ -54,7 +55,7 @@ export class Warrior extends Fighter {
         this.comboStep++;
         this.vx += this.facing * 135;
         this.torsoVel = this.facing * 12;
-        if (game.audio) game.audio.play('slash');
+        if (game.audio) game.audio.play('slash', this.x);
 
         const cx = this.x + this.facing * 34;
         const cy = this.y - 68;
@@ -69,7 +70,7 @@ export class Warrior extends Fighter {
           const isCrit = mode === 2 || Math.random() < 0.25;
           const dmg = isCrit ? 124 : 84;
           enemy.takeDamage(dmg, this, isCrit, 125, mode === 2 ? -135 : 0);
-          if (game.audio) game.audio.play('clang');
+          if (game.audio) game.audio.play(isCrit ? 'hit_crit' : 'clang', enemy.x);
           if (game.renderer) game.renderer.triggerHitStop(0.065);
           game.vfx.spawnBurst(enemy.x, enemy.y - 65, 10, '#bae6fd', 210);
         }
@@ -89,7 +90,7 @@ export class Warrior extends Fighter {
     } else if (t < 1.05) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
-        if (game.audio) game.audio.play('whirlwind');
+        if (game.audio) game.audio.play('whirlwind', this.x);
       }
       this.spinAngle += dt * 22;
       this.x += this.facing * 265 * dt;
@@ -104,7 +105,7 @@ export class Warrior extends Fighter {
           proj.vx = -proj.vx * 1.25;
           proj.vy = -35;
           proj.color = '#38bdf8';
-          if (game.audio) game.audio.play('clang');
+          if (game.audio) game.audio.play('reflect', this.x);
           game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'AEGIS REFLECT!');
           game.vfx.spawnBurst(proj.x, proj.y, 10, '#38bdf8', 210);
           game.renderer.triggerShake(6, 0.14);
@@ -116,6 +117,7 @@ export class Warrior extends Fighter {
         game.vfx.spawnSlash(this.x, this.y - 58, 92, 0, Math.PI * 2, '#38bdf8', 0.2);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 115) {
           enemy.takeDamage(46, this, false, 80, 0);
+          if (game.audio) game.audio.play('clang', enemy.x);
         }
       }
     } else if (t >= 1.15) {
@@ -154,7 +156,7 @@ export class Warrior extends Fighter {
         this.y = this.groundY;
         this.vy = 0;
         this.didActionFrame = true;
-        if (game.audio) game.audio.play('earthshatter');
+        if (game.audio) game.audio.play('earthshatter', this.x);
 
         game.renderer.triggerShake(26, 0.65);
         game.renderer.triggerAberration(16);

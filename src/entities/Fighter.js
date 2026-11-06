@@ -13,13 +13,14 @@ export class Fighter {
     this.mana = 0;
     this.maxMana = 100;
     this.isDead = false;
+    this.deathTimer = 0;
 
     this.attackRange = opts.attackRange || 110;
     this.moveSpeed = opts.moveSpeed || 165;
     this.lightColor = opts.lightColor || 'rgba(56, 189, 248, 1)';
     this.primaryColor = opts.primaryColor || '#38bdf8';
 
-    // State Machine: IDLE, WALK, AUTO_ATTACK, SKILL, ULTIMATE
+    // State Machine: IDLE, WALK, AUTO_ATTACK, SKILL, ULTIMATE, DEATH
     this.state = 'IDLE';
     this.stateTimer = 0;
     this.didActionFrame = false;
@@ -87,12 +88,20 @@ export class Fighter {
 
     if (this.hp <= 0) {
       this.isDead = true;
-      this.vy = -220;
-      this.vx = dir * 260;
-      this.torsoVel = dir * 18;
+      this.state = 'DEATH';
+      this.deathTimer = 0;
+      this.vy = -135;
+      this.vx = dir * 165;
+      this.torsoVel = dir * 14;
       if (this.game) {
-        this.game.renderer.triggerShake(18, 0.5);
-        this.game.renderer.triggerAberration(14);
+        this.game.renderer.triggerShake(20, 0.55);
+        this.game.renderer.triggerAberration(15);
+        this.game.renderer.triggerHitStop(0.11);
+        this.game.vfx.spawnShockwave(this.x, this.y - 45, 165, this.primaryColor, 0.55, true);
+        this.game.vfx.spawnBurst(this.x, this.y - 50, 26, this.primaryColor, 280, {
+          upBias: 135,
+          size: 7
+        });
         this.game.onFighterDeath(this);
       }
     }
@@ -139,7 +148,19 @@ export class Fighter {
     this.updateCape(dt);
 
     if (this.isDead) {
+      this.deathTimer += dt;
       this.torsoAngle += (Math.PI * 0.48 * -this.facing - this.torsoAngle) * 6 * dt;
+      if (this.deathTimer < 2.6 && Math.random() < 0.22) {
+        game.vfx.spawnParticle({
+          x: this.x + (Math.random() - 0.5) * 64,
+          y: this.y - 12 - Math.random() * 24,
+          vx: (Math.random() - 0.5) * 22,
+          vy: -42 - Math.random() * 45,
+          size: 4,
+          color: this.primaryColor,
+          maxLife: 0.65
+        });
+      }
       return;
     }
 

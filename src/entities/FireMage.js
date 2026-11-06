@@ -43,7 +43,7 @@ export class FireMage extends Fighter {
         for (let i = 0; i < this.capeNodes.length; i++) {
           this.capeNodes[i].x = this.x;
         }
-        if (game.audio) game.audio.play('fireball');
+        if (game.audio) game.audio.play('blink', this.x);
         game.vfx.spawnShockwave(this.x, this.y - 55, 85, '#fb923c', 0.32);
         game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'ARCANE BLINK!');
       } else if (dist < 215) {
@@ -64,7 +64,7 @@ export class FireMage extends Fighter {
         this.didActionFrame = true;
         this.vx -= this.facing * 65;
         this.torsoVel = -this.facing * 8;
-        if (game.audio) game.audio.play('fireball');
+        if (game.audio) game.audio.play('fireball', this.x);
 
         const spawnX = this.x + this.facing * 52;
         const spawnY = this.y - 78;
@@ -99,7 +99,7 @@ export class FireMage extends Fighter {
     if (t >= 0.42 && !this.didActionFrame && enemy) {
       this.didActionFrame = true;
       this.vx -= this.facing * 85;
-      if (game.audio) game.audio.play('flame_pillar');
+      if (game.audio) game.audio.play('flame_pillar', enemy.x);
       game.vfx.spawnFlamePillar(enemy.x, this.groundY, this, enemy);
       game.vfx.spawnShockwave(this.x, this.y - 75, 65, '#fb923c', 0.38);
     } else if (t >= 1.05) {
@@ -128,7 +128,7 @@ export class FireMage extends Fighter {
       }
     } else if (!this.didActionFrame) {
       this.didActionFrame = true;
-      if (game.audio) game.audio.play('meteor');
+      if (game.audio) game.audio.play('meteor', this.x);
       const targetX = enemy ? enemy.x : game.renderer.worldWidth * 0.35;
       const startX = this.x - this.facing * 180;
       const startY = -160;
@@ -159,8 +159,9 @@ export class FireMage extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // Subtle arcane levitation for the Fire Mage (exempted by user request)
-    const hoverY = Math.round(-8 + Math.sin(this.runeOrbit * 1.4) * 5);
+    // Subtle arcane levitation while alive; smoothly drops to stone floor when defeated
+    const hoverScale = this.isDead ? Math.max(0, 1 - (this.deathTimer || 0) * 2.5) : 1;
+    const hoverY = Math.round((-8 + Math.sin(this.runeOrbit * 1.4) * 5) * hoverScale);
     const w = 192;
     const h = 192;
     const scaleDir = -this.facing;
