@@ -8,13 +8,14 @@ export class Warrior extends Fighter {
       x,
       groundY,
       facing: 1,
-      maxHp: 1200,
-      attackRange: 120,
-      moveSpeed: 185,
-      autoInterval: 1.15,
+      maxHp: 1260,
+      attackRange: 135,
+      moveSpeed: 215,
+      autoInterval: 0.98,
       lightColor: 'rgba(56, 189, 248, 1)',
       primaryColor: '#38bdf8'
     });
+    this.skillMaxCooldown = 4.4;
     this.ultName = 'HEAVENLY EARTHSHATTER';
     this.skillName = 'WHIRLWIND';
     this.swordAngle = -0.75;
@@ -46,15 +47,15 @@ export class Warrior extends Fighter {
     const t = this.stateTimer;
     const mode = this.comboStep % 3;
 
-    if (t < 0.2) {
-      this.torsoAngle = -this.facing * 0.38 * (t / 0.2);
+    if (t < 0.18) {
+      this.torsoAngle = -this.facing * 0.38 * (t / 0.18);
       this.swordAngle = mode === 2 ? 1.35 : -2.25;
       this.shieldOffsetX = 8;
-    } else if (t < 0.42) {
+    } else if (t < 0.4) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.comboStep++;
-        this.vx += this.facing * 160;
+        this.vx += this.facing * 195;
         this.torsoVel = this.facing * 18;
         this.shieldOffsetX = 18;
         if (game.audio) game.audio.play('slash');
@@ -64,20 +65,20 @@ export class Warrior extends Fighter {
         const startA = this.facing === 1 ? -1.55 : Math.PI - 0.9;
         const endA = this.facing === 1 ? 0.95 : Math.PI + 1.55;
 
-        game.vfx.spawnSlash(cx, cy, 88, startA, endA, '#0284c7', 0.24);
-        game.vfx.spawnSlash(cx, cy, 74, startA, endA, '#38bdf8', 0.2);
+        game.vfx.spawnSlash(cx, cy, 90, startA, endA, '#0284c7', 0.24);
+        game.vfx.spawnSlash(cx, cy, 76, startA, endA, '#38bdf8', 0.2);
         game.vfx.spawnSlash(cx, cy, 62, startA, endA, '#ffffff', 0.15);
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 38) {
-          const isCrit = mode === 2 || Math.random() < 0.22;
-          const dmg = isCrit ? 92 : 60;
-          enemy.takeDamage(dmg, this, isCrit, 160, mode === 2 ? -160 : -80);
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 42) {
+          const isCrit = mode === 2 || Math.random() < 0.25;
+          const dmg = isCrit ? 116 : 76;
+          enemy.takeDamage(dmg, this, isCrit, 145, mode === 2 ? -150 : -75);
           if (game.audio) game.audio.play('clang');
           game.vfx.spawnBurst(enemy.x, enemy.y - 50, 10, '#bae6fd', 220);
         }
       }
       this.swordAngle = mode === 2 ? -1.6 : 1.05;
-    } else if (t >= 0.62) {
+    } else if (t >= 0.58) {
       this.swordAngle = -0.75;
       this.shieldOffsetX = 14;
       this.setState('IDLE');
@@ -86,29 +87,29 @@ export class Warrior extends Fighter {
 
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
-    this.isDeflecting = t >= 0.12 && t <= 0.88;
+    this.isDeflecting = t >= 0.1 && t <= 0.9;
 
-    if (t < 0.12) {
+    if (t < 0.1) {
       this.torsoAngle = -this.facing * 0.32;
       this.shieldOffsetX = 20;
-    } else if (t < 0.88) {
+    } else if (t < 0.9) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         if (game.audio) game.audio.play('whirlwind');
       }
       this.spinAngle += dt * 34;
-      this.x += this.facing * 350 * dt;
+      this.x += this.facing * 435 * dt;
       this.swordAngle = Math.sin(this.spinAngle) * 1.75;
 
       if (Math.random() < 0.5) {
-        game.vfx.spawnShockwave(this.x, this.y - 44, 76, '#7dd3fc', 0.2, true);
+        game.vfx.spawnShockwave(this.x, this.y - 44, 78, '#7dd3fc', 0.2, true);
       }
 
       for (const proj of game.vfx.projectiles) {
-        if (proj.owner !== this && !proj.isMeteor && Math.hypot(proj.x - this.x, proj.y - (this.y - 48)) < 82) {
+        if (proj.owner !== this && !proj.isMeteor && Math.hypot(proj.x - this.x, proj.y - (this.y - 48)) < 88) {
           proj.owner = this;
-          proj.vx = -proj.vx * 1.25;
-          proj.vy = -50;
+          proj.vx = -proj.vx * 1.3;
+          proj.vy = -40;
           proj.color = '#38bdf8';
           if (game.audio) game.audio.play('clang');
           game.vfx.spawnDamageText(this.x, this.y - 98, 0, false, 'AEGIS REFLECT!');
@@ -117,11 +118,11 @@ export class Warrior extends Fighter {
         }
       }
 
-      if (!this.lastSpinTick || t - this.lastSpinTick >= 0.19) {
+      if (!this.lastSpinTick || t - this.lastSpinTick >= 0.18) {
         this.lastSpinTick = t;
-        game.vfx.spawnSlash(this.x, this.y - 48, 80, 0, Math.PI * 2, '#38bdf8', 0.15);
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 98) {
-          enemy.takeDamage(30, this, false, 110, -65);
+        game.vfx.spawnSlash(this.x, this.y - 48, 84, 0, Math.PI * 2, '#38bdf8', 0.15);
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 110) {
+          enemy.takeDamage(42, this, false, 95, -55);
         }
       }
     } else {
@@ -154,8 +155,8 @@ export class Warrior extends Fighter {
         game.vfx.spawnShockwave(this.x, this.groundY, 130, '#38bdf8', 0.35, true);
       }
       if (enemy) {
-        const targetX = enemy.x - this.facing * 50;
-        this.x += (targetX - this.x) * 6.5 * dt;
+        const targetX = enemy.x - this.facing * 45;
+        this.x += (targetX - this.x) * 7.5 * dt;
       }
       this.swordAngle = -2.45;
     } else if (!this.didActionFrame) {
@@ -179,8 +180,8 @@ export class Warrior extends Fighter {
         game.vfx.spawnBurst(this.x, this.groundY - 10, 32, '#facc15', 390, { upBias: 165, size: 9 });
         game.vfx.spawnBurst(this.x, this.groundY - 10, 22, '#38bdf8', 330, { upBias: 120, size: 7 });
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 275) {
-          enemy.takeDamage(205, this, true, 260, -440);
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 290) {
+          enemy.takeDamage(235, this, true, 260, -440);
         }
       }
     } else if (t >= 1.35) {
@@ -227,7 +228,7 @@ export class Warrior extends Fighter {
     ctx.save();
     ctx.translate(0, -68 + breathe);
     ctx.rotate(Math.sin(this.walkPhase * 0.5) * 0.05);
-    ctx.drawImage(sprites.helmet, -27, -28);
+    ctx.drawImage(sprites.helmet, -26, -30);
     ctx.restore();
 
     ctx.save();

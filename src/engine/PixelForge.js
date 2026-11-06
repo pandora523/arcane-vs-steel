@@ -1,4 +1,4 @@
-// Procedural 16-bit Pixel-Art Sprite & Portrait Baker — Distinct Archetypes
+// Procedural 16-bit Pixel-Art Sprite & Face Baker — Expressive Character Faces
 export class PixelForge {
   static createCanvas(w, h) {
     const c = document.createElement('canvas');
@@ -30,49 +30,59 @@ export class PixelForge {
     if (this.assets) return this.assets;
 
     const steelPal = {
-      K: '#070a12', // Black outline
+      K: '#070a12', // Outline
       D: '#1e293b', // Dark steel
-      M: '#475569', // Mid armor
-      L: '#94a3b8', // Bright steel
-      W: '#f8fafc', // Specular edge
+      M: '#475569', // Mid steel
+      L: '#94a3b8', // Light steel
+      W: '#f8fafc', // White hair / eye sclera
+      H: '#cbd5e1', // Silver hair mid
+      S: '#fdebd0', // Skin highlight
+      F: '#f5b041', // Warm skin mid (#f0b27a)
+      J: '#ca6f1e', // Skin shadow / jaw / mouth
       C: '#0284c7', // Deep cyan
-      B: '#38bdf8', // Glowing cyan
+      B: '#38bdf8', // Bright cyan iris / rune
       E: '#e0f2fe', // White-cyan core
-      G: '#b45309', // Bronze shadow
-      Y: '#facc15'  // Gold trim
+      G: '#b45309', // Bronze
+      Y: '#facc15'  // Gold crown / trim
     };
+    steelPal.F = '#f0b27a';
 
     const arcanePal = {
-      K: '#120604', // Dark outline
-      D: '#3b0764', // Deep mystic shadow
-      P: '#581c87', // Dark crimson-violet hat/robe shadow
-      R: '#9a3412', // Rich ember robe
-      L: '#ea580c', // Bright flame cloth
-      O: '#fb923c', // Glowing orange
-      Y: '#facc15', // Gold runes
-      W: '#fef08a', // White-hot fire
-      S: '#451a03', // Dark staff wood
+      K: '#120604', // Outline
+      P: '#4c1d95', // Deep royal hood/hat shadow
+      R: '#9a3412', // Crimson hat/robe
+      L: '#ea580c', // Flame hair / bright cloth
+      O: '#fb923c', // Orange glow
+      Y: '#facc15', // Gold crown / iris
+      W: '#ffffff', // Eye sclera / white core
+      S: '#fdebd0', // Fair warm skin highlight
+      F: '#eb984e', // Skin mid
+      J: '#a04000', // Skin shadow / beard
       B: '#fde68a'  // Grimoire parchment
     };
 
-    // WARRIOR: Winged/Horned Greathelm with Flowing Plume (18x16)
-    const wHelmet = [
-      '..KKKKBEEEBKKKK...',
-      '.KBBBBEEEEEBBBBK..',
-      'KBBCCCCCCCCCCCBBK.',
-      'KKKK..KKKKKK..KKKK',
-      'KYGK.KDLLLLDK.KGYK',
-      '.KYKKDMLLLLMDKKYK.',
-      '..KKKDMLLLLMDKKK..',
-      '...KKDMLWWLMDKK...',
-      '...KDMKKKKKKMDK...',
-      '...KDMKEEEEKMDK...',
-      '...KDMKKKKKKMDK...',
-      '...KDDMMLLMMDDK...',
-      '...KKDDMMMMDDKK...',
-      '....KKYYYYYYKK....',
-      '.....KKKKKKKK.....',
-      '..................'
+    // WARRIOR REAL SPRITE FACE: Silver-haired Paladin with Golden Winged Crown & Fierce Eyes (20x20)
+    const wFace = [
+      '....KK........KK....',
+      '...KYYK..KK..KYYK...',
+      '..KYYYYKKBBKKYYYYK..',
+      '..KGGGGYYEEYYGGGGK..',
+      '..KKKKKKKKKKKKKKKK..',
+      '.KWWWWWWWWWWWWWWWWK.',
+      'KWWWHHSSSSSSSSHHWWWK',
+      'KWWHSSSSSSSSSSSSHWWK',
+      'KWHSSKKKKKKKKKKSSHWK',
+      'KWHSSKWWBKKWWBKSSHWK',
+      'KWHSSKWWBKKWWBKSSHWK',
+      'KWHFFSSSSSSSSJJFFHWK',
+      'KWHFFFFSSSSJJFFFFHWK',
+      '.KHFFFFKKKKKKFFFFHK.',
+      '.K.KFFFFJJJJFFFFK.K.',
+      '...KKJJFFFFFFJJKK...',
+      '....KKJJJJJJJJKK....',
+      '....KYYYYYYYYYYK....',
+      '....KKKKKKKKKKKK....',
+      '....................'
     ];
 
     // WARRIOR: Broad Juggernaut Plate Cuirass (18x18)
@@ -97,7 +107,7 @@ export class PixelForge {
       '..................'
     ];
 
-    // WARRIOR: Heavy Runed Tower Shield (12x20)
+    // WARRIOR: Runed Tower Shield (12x20)
     const wShield = [
       '..KKKKKKKK..',
       '.KYYYYYYYYK.',
@@ -121,7 +131,6 @@ export class PixelForge {
       '............'
     ];
 
-    // WARRIOR: Spiked Pauldron Arm & Armored Greave
     const wArm = [
       '..KK....KK..',
       '.KYYKKKKYYK.',
@@ -131,7 +140,7 @@ export class PixelForge {
       '.KKKKKKKKKK.',
       '...KDMMDK...',
       '...KYYYYK...',
-      '...KDLLDK...',
+      '...KSSSSK...',
       '...KKKKKK...'
     ];
 
@@ -147,12 +156,11 @@ export class PixelForge {
       'KKKKKKKK'
     ];
 
-    // WARRIOR: Colossal Runed Greatsword (14x36)
     const wSword = [
       '......KK......',
       '.....KWWK.....',
       '....KWEEWK....',
-      '....KWBbwK....'.replace('b', 'B'),
+      '....KWBBWK....',
       '...KWEEEEWK...',
       '...KWBBBBWK...',
       '...KWBCCBWK...',
@@ -181,31 +189,32 @@ export class PixelForge {
       '.....KKKK.....'
     ];
 
-    // FIRE MAGE: Iconic Tall Pointed Wizard Hat + Blazing Eyes (18x20)
-    const mHead = [
-      '........KKKK......',
-      '......KKRRRRKK....',
-      '.....KRRLLLLRRK...',
-      '....KRRLLOOLLRRK..',
-      '...KRRLLLLLLLLRRK.',
-      '...KPRRRRRRRRRRPK.',
-      '..KPRRYYYYYYYYRRPK',
-      '.KPRRYYWWWWWWYYRRK',
-      'KKKKYYYYYYYYYYYYKK',
-      'KRRRRRRRRRRRRRRRRK',
-      '.KKKKKKKKKKKKKKKK.',
-      '..KPKDDDDDDDDKPK..',
-      '..KPKDWWDDWWDKPK..',
-      '..KPKDOODDOODKPK..',
-      '...KKDDDDDDDDKK...',
-      '...KROOOOOOOORK...',
-      '..KROOWWWWWWOORK..',
-      '...KROOWWWWOORK...',
-      '....KKOOOOOOKK....',
-      '......KKKKKK......'
+    // FIRE MAGE REAL SPRITE FACE: Arch-Sorcerer Face with Wizard Hat, Flame Hair, Amber Eyes & Goatee (20x22)
+    const mFace = [
+      '........KKKK........',
+      '......KKRRRRKK......',
+      '.....KRRLLLLRRK.....',
+      '....KRRLLYYYYRRK....',
+      '...KPRRYYWWWWYRRK...',
+      '..KPRRYYYYYYYYRRPK..',
+      'KKKKYYYYYYYYYYYYKKKK',
+      'KRRRRRRRRRRRRRRRRRRK',
+      '.KKKKKKKKKKKKKKKKKK.',
+      '.KLLLLSSSSSSSSLLLLK.',
+      'KLLLSSSSSSSSSSSSLLLK',
+      'KLLSSKKKKKKKKKKSSLLK',
+      'KLLSSKWWYKKWWYKSSLLK',
+      'KLLSSKWWYKKWWYKSSLLK',
+      'KLLFFSSSSSSSSJJFFLLK',
+      '.KLFFFFSSSSJJFFFFLK.',
+      '..KFFFFKKKKKKFFFFK..',
+      '..KKFFJJWWWWJJFFKK..',
+      '...KKJJJRRRRJJJKK...',
+      '....KKJJRRRRJJKK....',
+      '.....KKYYYYYYKK.....',
+      '.......KKKKKK.......'
     ];
 
-    // FIRE MAGE: Ornate Arch-Mage Robe & Tattered Levitating Skirt (18x26)
     const mTorso = [
       '..KKKKKKKKKKKKKK..',
       '.KYYYYYYYYYYYYYYK.',
@@ -231,7 +240,6 @@ export class PixelForge {
       '......K....K......'
     ];
 
-    // FIRE MAGE: Floating Open Spellbook / Grimoire (12x10)
     const mBook = [
       '.KKKK..KKKK.',
       'KBBBBKKBBBBK',
@@ -243,7 +251,6 @@ export class PixelForge {
       '.KKKKKKKKKK.'
     ];
 
-    // FIRE MAGE: Twin-Horn Dragon Flame Staff (12x32)
     const mStaff = [
       '.KK......KK.',
       'KWWK....KWWK',
@@ -254,23 +261,23 @@ export class PixelForge {
       '..KWOYYYYWK.',
       '...KYYYYYK..',
       '..KYYYYYYYK.',
-      '..KKKSSSKKK.',
+      '..KKKJJJKKK.',
       '....KYYK....',
-      '....KSSK....',
-      '....KTTK....',
-      '....KSSK....',
+      '....KJJk....'.replace('k', 'K'),
+      '....KFFK....',
+      '....KJJK....',
       '....KYYK....',
-      '....KSSK....',
-      '....KSSK....',
-      '....KSSK....',
-      '....KSSK....',
+      '....KJJK....',
+      '....KJJK....',
+      '....KJJK....',
+      '....KJJK....',
       '....KYYK....',
       '....KKKK....'
     ];
 
     this.assets = {
       warrior: {
-        helmet: this.bakeGrid(wHelmet, steelPal, 3),
+        helmet: this.bakeGrid(wFace, steelPal, 2.6),
         torso: this.bakeGrid(wTorso, steelPal, 3),
         shield: this.bakeGrid(wShield, steelPal, 3),
         arm: this.bakeGrid(wArm, steelPal, 3),
@@ -278,7 +285,7 @@ export class PixelForge {
         sword: this.bakeGrid(wSword, steelPal, 3)
       },
       mage: {
-        head: this.bakeGrid(mHead, arcanePal, 3),
+        head: this.bakeGrid(mFace, arcanePal, 2.6),
         torso: this.bakeGrid(mTorso, arcanePal, 3),
         book: this.bakeGrid(mBook, arcanePal, 3),
         arm: this.bakeGrid(wArm, arcanePal, 3),
@@ -291,7 +298,7 @@ export class PixelForge {
   }
 
   static paintHUDPortraits() {
-    const paint = (id, headSprite, bgTop, bgBot, accent) => {
+    const paint = (id, faceSprite, bgTop, bgBot, accent) => {
       const el = document.getElementById(id);
       if (!el) return;
       const ctx = el.getContext('2d');
@@ -301,10 +308,10 @@ export class PixelForge {
       g.addColorStop(1, bgBot);
       ctx.fillStyle = g;
       ctx.fillRect(0, 0, el.width, el.height);
+      if (faceSprite) ctx.drawImage(faceSprite, 2, 2, el.width - 4, el.height - 4);
       ctx.strokeStyle = accent;
       ctx.lineWidth = 2;
       ctx.strokeRect(1, 1, el.width - 2, el.height - 2);
-      if (headSprite) ctx.drawImage(headSprite, 2, 2, el.width - 4, el.height - 4);
     };
     const a = this.assets;
     paint('warrior-portrait', a.warrior.helmet, '#0c192c', '#050811', '#38bdf8');

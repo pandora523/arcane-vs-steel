@@ -8,10 +8,10 @@ export class FireMage extends Fighter {
       x,
       groundY,
       facing: -1,
-      maxHp: 1120,
-      attackRange: 520,
-      moveSpeed: 160,
-      autoInterval: 1.15,
+      maxHp: 1220,
+      attackRange: 490,
+      moveSpeed: 148,
+      autoInterval: 1.25,
       lightColor: 'rgba(251, 146, 60, 1)',
       primaryColor: '#fb923c'
     });
@@ -19,7 +19,7 @@ export class FireMage extends Fighter {
     this.skillName = 'PILLAR';
     this.staffAngle = 0.18;
     this.runeOrbit = 0;
-    this.blinkCooldown = 1.5;
+    this.blinkCooldown = 2.0;
   }
 
   update(dt, enemy, game) {
@@ -28,17 +28,16 @@ export class FireMage extends Fighter {
 
     if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const dist = Math.abs(enemy.x - this.x);
-      // Arcane Blink Escape if Warrior gets too close!
-      if (dist < 175 && this.blinkCooldown <= 0) {
-        this.blinkCooldown = 4.2;
+      // Arcane Blink Escape (8.5s cooldown so Warrior has fair window to catch Mage)
+      if (dist < 155 && this.blinkCooldown <= 0) {
+        this.blinkCooldown = 8.5;
         const oldX = this.x;
         const ww = game.renderer.worldWidth;
-        // Teleport to whichever side of the arena has more room
-        const destX = enemy.x < ww * 0.5 ? Math.min(ww - 110, enemy.x + 390) : Math.max(110, enemy.x - 390);
+        const destX = enemy.x < ww * 0.5 ? Math.min(ww - 110, enemy.x + 265) : Math.max(110, enemy.x - 265);
 
-        game.vfx.spawnShockwave(oldX, this.y - 45, 95, '#facc15', 0.32);
-        game.vfx.spawnBurst(oldX, this.y - 45, 16, '#fb923c', 220);
-        enemy.takeDamage(45, this, false, 180, -90);
+        game.vfx.spawnShockwave(oldX, this.y - 45, 85, '#facc15', 0.3);
+        game.vfx.spawnBurst(oldX, this.y - 45, 12, '#fb923c', 200);
+        enemy.takeDamage(22, this, false, 95, -50);
 
         this.x = destX;
         this.vx = 0;
@@ -46,10 +45,10 @@ export class FireMage extends Fighter {
           this.capeNodes[i].x = this.x;
         }
         if (game.audio) game.audio.play('fireball');
-        game.vfx.spawnShockwave(this.x, this.y - 45, 95, '#fb923c', 0.32);
+        game.vfx.spawnShockwave(this.x, this.y - 45, 85, '#fb923c', 0.3);
         game.vfx.spawnDamageText(this.x, this.y - 95, 0, false, 'ARCANE BLINK!');
-      } else if (dist < 260) {
-        this.x -= this.facing * this.moveSpeed * 0.95 * dt;
+      } else if (dist < 220) {
+        this.x -= this.facing * this.moveSpeed * 0.72 * dt;
       }
     }
     super.update(dt, enemy, game);
@@ -57,13 +56,13 @@ export class FireMage extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    if (t < 0.22) {
+    if (t < 0.24) {
       this.torsoAngle = -this.facing * 0.22;
       this.staffAngle = -0.6;
-    } else if (t < 0.48) {
+    } else if (t < 0.5) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
-        this.vx -= this.facing * 110;
+        this.vx -= this.facing * 95;
         this.torsoVel = -this.facing * 11;
         this.staffAngle = 0.78;
         if (game.audio) game.audio.play('fireball');
@@ -74,18 +73,18 @@ export class FireMage extends Fighter {
         const dx = enemy ? enemy.x - spawnX : this.facing * 460;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
-        const speed = 640;
+        const speed = 600;
 
         game.vfx.spawnProjectile({
           x: spawnX,
           y: spawnY,
           vx: (dx / dist) * speed,
           vy: (dy / dist) * speed,
-          radius: 15,
+          radius: 14,
           color: '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          damage: 74,
+          damage: 98,
           isMeteor: false
         });
         game.vfx.spawnBurst(spawnX, spawnY, 8, '#fb923c', 160);
@@ -102,7 +101,7 @@ export class FireMage extends Fighter {
       this.staffAngle = -0.95;
       if (!this.didActionFrame && enemy) {
         this.didActionFrame = true;
-        this.vx -= this.facing * 140;
+        this.vx -= this.facing * 110;
         if (game.audio) game.audio.play('flame_pillar');
         game.vfx.spawnFlamePillar(enemy.x, this.groundY, this, enemy);
         game.vfx.spawnShockwave(this.x, this.y - 70, 65, '#fb923c', 0.35);
@@ -142,18 +141,18 @@ export class FireMage extends Fighter {
       const dx = targetX - startX;
       const dy = this.groundY - startY;
       const len = Math.hypot(dx, dy) || 1;
-      const speed = 840;
+      const speed = 820;
 
       game.vfx.spawnProjectile({
         x: startX,
         y: startY,
         vx: (dx / len) * speed,
         vy: (dy / len) * speed,
-        radius: 48,
+        radius: 46,
         color: '#ea580c',
         coreColor: '#fef08a',
         owner: this,
-        damage: 245,
+        damage: 220,
         isMeteor: true
       });
     } else if (t >= 1.45) {
@@ -219,7 +218,7 @@ export class FireMage extends Fighter {
     ctx.save();
     ctx.translate(0, -68 + Math.sin(this.runeOrbit * 1.5) * 2);
     ctx.rotate(Math.sin(this.runeOrbit * 0.7) * 0.05);
-    ctx.drawImage(sprites.head, -27, -48);
+    ctx.drawImage(sprites.head, -26, -50);
     ctx.restore();
 
     // Floating Grimoire

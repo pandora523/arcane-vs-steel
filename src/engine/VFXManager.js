@@ -182,10 +182,10 @@ export class VFXManager {
           });
         }
         pil.tickTimer += dt;
-        if (pil.tickTimer >= 0.2 && pil.target && !pil.target.isDead) {
+        if (pil.tickTimer >= 0.25 && pil.target && !pil.target.isDead) {
           pil.tickTimer = 0;
-          if (Math.abs(pil.target.x - pil.x) < 88 && groundY - pil.target.y < 165) {
-            pil.target.takeDamage(42, pil.owner, false, 95, -145);
+          if (Math.abs(pil.target.x - pil.x) < 82 && groundY - pil.target.y < 155) {
+            pil.target.takeDamage(28, pil.owner, false, 35, -55);
           }
         }
       }
