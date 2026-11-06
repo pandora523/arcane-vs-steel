@@ -1,4 +1,4 @@
-// Multi-Frame HD Sprite Loader & 60FPS 2D Slice-Mesh Animator
+// 32-Frame HD Sprite Sheet Atlas Loader & 60FPS Sub-Frame Animator
 export class PixelForge {
   static initAssets() {
     if (this.assets) return this.assets;
@@ -14,21 +14,15 @@ export class PixelForge {
     this.assets = {
       arenaBg: loadImg('assets/sprites/arena_bg.jpg'),
       warrior: {
-        idle: loadImg('assets/sprites/warrior_idle.png'),
-        walk1: loadImg('assets/sprites/warrior_walk1.png'),
-        walk2: loadImg('assets/sprites/warrior_walk2.png'),
-        windup: loadImg('assets/sprites/warrior_windup.png'),
-        attack: loadImg('assets/sprites/warrior_attack.png'),
+        sheet: loadImg('assets/sprites/warrior_sheet.png'),
+        fallback: loadImg('assets/sprites/warrior_idle.png'),
         portrait: loadImg('assets/sprites/warrior_portrait.jpg', (img) =>
           this.drawPortrait('warrior-portrait', img, '#38bdf8')
         )
       },
       mage: {
-        idle: loadImg('assets/sprites/mage_idle.png'),
-        walk1: loadImg('assets/sprites/mage_glide1.png'),
-        walk2: loadImg('assets/sprites/mage_glide2.png'),
-        windup: loadImg('assets/sprites/mage_windup.png'),
-        attack: loadImg('assets/sprites/mage_attack.png'),
+        sheet: loadImg('assets/sprites/mage_sheet.png'),
+        fallback: loadImg('assets/sprites/mage_idle.png'),
         portrait: loadImg('assets/sprites/mage_portrait.jpg', (img) =>
           this.drawPortrait('mage-portrait', img, '#fb923c')
         )
@@ -52,85 +46,113 @@ export class PixelForge {
     ctx.strokeRect(1.5, 1.5, 93, 93);
   }
 
-  // Selects active keyframe from the 5-pose set based on fighter state & animation phase
-  static selectFrame(set, fighter) {
+  /**
+   * Maps fighter state & timers to one of the 32 frames (8 cols x 4 rows):
+   * - Row 0 (0..7):   8-frame IDLE combat ready loop
+   * - Row 1 (8..15):  8-frame WALK / SPRINT stride loop
+   * - Row 2 (16..23): 8-frame AUTO_ATTACK combo sequence
+   * - Row 3 (24..31): 8-frame SKILL (24..27) & ULTIMATE (28..31) sequence
+   */
+  static getFrameIndex(fighter, phase) {
     const st = fighter.state;
     const t = fighter.stateTimer;
+
     if (st === 'AUTO_ATTACK') {
-      if (t < 0.22) return set.windup || set.idle;
-      if (t < 0.5) return set.attack || set.idle;
-      return set.walk1 || set.idle;
+      const duration = 0.56;
+      const step = Math.min(7, Math.max(0, Math.floor((t / duration) * 8)));
+      return 16 + step;
     }
+
     if (st === 'SKILL') {
-      if (t < 0.2) return set.windup || set.idle;
-      // Rapidly alternate poses during Whirlwind / Pillar channeling
-      return Math.floor(t * 14) % 2 === 0 ? set.attack : set.windup;
+      // Warrior Whirlwind spins rapidly through 24..27; Mage Pillar progresses through 24..27
+      if (fighter.skillName === 'WHIRLWIND') {
+        return 24 + (Math.floor(t * 18) % 4);
+      }
+      const step = Math.min(3, Math.max(0, Math.floor((t / 0.72) * 4)));
+      return 24 + step;
     }
+
     if (st === 'ULTIMATE') {
-      if (t < 0.72) return set.windup || set.idle;
-      return set.attack || set.idle;
+      if (t < 0.32) return 28;
+      if (t < 0.68) return 29;
+      if (t < 0.92) return 30;
+      return 31;
     }
+
     if (st === 'WALK') {
-      const cycle = [set.walk1, set.idle, set.walk2, set.idle];
-      const idx = Math.floor(fighter.walkPhase * 1.4) % cycle.length;
-      return cycle[Math.abs(idx)] || set.idle;
+      const walkStep = Math.floor(Math.abs(fighter.walkPhase) * 2.2) % 8;
+      return 8 + walkStep;
     }
-    // IDLE subtle 2-pose breathing alternation
-    return Math.sin(fighter.walkPhase * 0.8) > 0.55 ? set.walk1 || set.idle : set.idle;
+
+    // IDLE: 8-frame breathing, weapon poise & cape wave loop
+    const idleStep = Math.floor(Math.abs(phase) * 2.4) % 8;
+    return idleStep;
   }
 
-  // Renders the sprite with 10-band horizontal mesh deformation (breathing, cloth wave, leg stride)
-  static drawDeformedSprite(ctx, img, w, h, phase, state, isReflection = false) {
-    if (!img || !img.complete || !img.naturalWidth) return;
-    const sw = img.naturalWidth;
-    const sh = img.naturalHeight;
+  static drawSheetFrame(ctx, charSet, fighter, w, h, phase, isReflection = false) {
+    const sheet = charSet.sheet;
+    const cell = 256;
 
-    // Fast single-draw on reflection pass
-    if (isReflection) {
-      ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
+    if (!sheet || !sheet.complete || !sheet.naturalWidth) {
+      const fb = charSet.fallback;
+      if (fb && fb.complete && fb.naturalWidth) {
+        ctx.drawImage(fb, -w * 0.5, -h + 10, w, h);
+      }
       return;
     }
 
-    const slices = 10;
-    const sliceSrcH = sh / slices;
+    const frameIdx = this.getFrameIndex(fighter, phase);
+    const col = frameIdx % 8;
+    const row = Math.floor(frameIdx / 8);
+    const sx = col * cell;
+    const sy = row * cell;
+
+    // Fast single-draw on floor reflection pass
+    if (isReflection) {
+      ctx.drawImage(sheet, sx, sy, cell, cell, -w * 0.5, -h + 10, w, h);
+      return;
+    }
+
+    // 8-band 60FPS sub-frame cloth & limb micro-interpolation over the 32-frame atlas
+    const slices = 8;
+    const sliceSrcH = cell / slices;
     const sliceDstH = h / slices;
-    const isWalk = state === 'WALK';
-    const isAct = state === 'AUTO_ATTACK' || state === 'SKILL' || state === 'ULTIMATE';
+    const st = fighter.state;
 
     for (let i = 0; i < slices; i++) {
-      const ratio = i / (slices - 1); // 0 = head, 0.5 = torso/cape, 1 = feet
+      const ratio = i / (slices - 1);
       let offsetX = 0;
-      let scaleW = 1;
-
-      if (isWalk) {
-        // Upper body leans forward, lower legs shear in stride rhythm
-        offsetX = Math.sin(phase + ratio * 2.4) * (ratio > 0.6 ? 7.5 : 3.5);
-      } else if (isAct) {
-        // Dynamic whip wave from torso to weapon tip
-        offsetX = Math.sin(phase * 3 - ratio * 3.2) * 5.5;
+      if (st === 'WALK') {
+        offsetX = Math.sin(phase * 1.8 + ratio * 2.2) * (ratio > 0.55 ? 3.2 : 1.6);
+      } else if (st === 'IDLE') {
+        offsetX = Math.sin(phase * 1.5 - ratio * 2.5) * 1.8;
       } else {
-        // Idle breathing & cape/robe flutter
-        offsetX = Math.sin(phase * 1.6 - ratio * 2.8) * 3.0;
-        if (ratio > 0.2 && ratio < 0.65) {
-          scaleW = 1 + Math.sin(phase * 1.5) * 0.03;
-        }
+        offsetX = Math.sin(phase * 2.6 - ratio * 3.0) * 2.5;
       }
 
-      const dw = w * scaleW;
-      const dx = -dw * 0.5 + offsetX;
-      const dy = -h + 8 + i * sliceDstH;
+      const dx = -w * 0.5 + offsetX;
+      const dy = -h + 10 + i * sliceDstH;
 
       ctx.drawImage(
-        img,
-        0,
-        i * sliceSrcH,
-        sw,
-        sliceSrcH + 0.8,
+        sheet,
+        sx,
+        sy + i * sliceSrcH,
+        cell,
+        sliceSrcH + 0.6,
         dx,
         dy,
-        dw,
-        sliceDstH + 0.9
+        w,
+        sliceDstH + 0.7
       );
     }
+  }
+
+  static drawGhostFrame(ctx, charSet, frameIdx, w, h) {
+    const sheet = charSet.sheet;
+    if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
+    const cell = 256;
+    const col = frameIdx % 8;
+    const row = Math.floor(frameIdx / 8);
+    ctx.drawImage(sheet, col * cell, row * cell, cell, cell, -w * 0.5, -h + 10, w, h);
   }
 }

@@ -177,45 +177,44 @@ export class Warrior extends Fighter {
 
   draw(ctx, isReflection = false) {
     const sprites = PixelForge.initAssets().warrior;
-    const img = PixelForge.selectFrame(sprites, this);
-    if (!img || !img.complete || !img.naturalWidth) return;
-
     ctx.save();
     ctx.imageSmoothingEnabled = true;
 
-    const w = 178;
-    const h = 174;
+    const w = 184;
+    const h = 184;
+    const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
 
     // Multi-ghost afterimage trail during attacks, Whirlwind, or Ultimate
     if (!isReflection && (this.state === 'SKILL' || this.state === 'ULTIMATE' || this.state === 'AUTO_ATTACK')) {
       for (let g = 1; g <= 2; g++) {
         ctx.save();
-        ctx.globalAlpha = 0.18 / g;
+        ctx.globalAlpha = 0.20 / g;
         ctx.translate(this.x - this.facing * g * 20, this.y);
         ctx.scale(this.facing, 1);
-        ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
+        const ghostIdx = Math.max(0, frameIdx - g);
+        PixelForge.drawGhostFrame(ctx, sprites, ghostIdx, w, h);
         ctx.restore();
       }
     }
 
-    const walkBob = this.state === 'WALK' ? Math.abs(Math.sin(this.walkPhase * 1.5)) * -12 : 0;
-    const breatheY = 1 + Math.sin(this.walkPhase * 1.4) * 0.032;
-    const breatheX = 1 - Math.sin(this.walkPhase * 1.4) * 0.02;
+    const walkBob = this.state === 'WALK' ? Math.abs(Math.sin(this.walkPhase * 1.5)) * -8 : 0;
+    const breatheY = 1 + Math.sin(this.walkPhase * 1.4) * 0.022;
+    const breatheX = 1 - Math.sin(this.walkPhase * 1.4) * 0.015;
     const tilt =
       this.state === 'WALK'
-        ? Math.sin(this.walkPhase * 1.5) * 0.08 + 0.06
-        : this.torsoAngle * this.facing * 0.5;
+        ? Math.sin(this.walkPhase * 1.5) * 0.05 + 0.04
+        : this.torsoAngle * this.facing * 0.35;
 
     ctx.translate(this.x, this.y + walkBob);
     ctx.scale(this.facing * breatheX, breatheY);
     ctx.rotate(tilt);
 
-    PixelForge.drawDeformedSprite(ctx, img, w, h, this.walkPhase, this.state, isReflection);
+    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection);
 
     if (this.hitFlash > 0 && !isReflection) {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.55;
-      ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
+      PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);
     }
 
     ctx.restore();

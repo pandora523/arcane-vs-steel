@@ -156,45 +156,44 @@ export class FireMage extends Fighter {
 
   draw(ctx, isReflection = false) {
     const sprites = PixelForge.initAssets().mage;
-    const img = PixelForge.selectFrame(sprites, this);
-    if (!img || !img.complete || !img.naturalWidth) return;
-
     ctx.save();
     ctx.imageSmoothingEnabled = true;
 
-    const hoverY = -14 + Math.sin(this.runeOrbit * 1.6) * 9;
-    const w = 178;
-    const h = 180;
+    const hoverY = -12 + Math.sin(this.runeOrbit * 1.6) * 7;
+    const w = 184;
+    const h = 186;
     const scaleDir = -this.facing;
+    const frameIdx = PixelForge.getFrameIndex(this, this.runeOrbit);
 
     if (!isReflection && (this.state === 'SKILL' || this.state === 'ULTIMATE' || this.state === 'AUTO_ATTACK')) {
       for (let g = 1; g <= 2; g++) {
         ctx.save();
-        ctx.globalAlpha = 0.18 / g;
+        ctx.globalAlpha = 0.20 / g;
         ctx.translate(this.x - this.facing * g * 18, this.y + hoverY);
         ctx.scale(scaleDir, 1);
-        ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
+        const ghostIdx = Math.max(0, frameIdx - g);
+        PixelForge.drawGhostFrame(ctx, sprites, ghostIdx, w, h);
         ctx.restore();
       }
     }
 
-    const breatheY = 1 + Math.sin(this.runeOrbit * 1.1) * 0.032;
-    const breatheX = 1 - Math.sin(this.runeOrbit * 1.1) * 0.02;
+    const breatheY = 1 + Math.sin(this.runeOrbit * 1.1) * 0.022;
+    const breatheX = 1 - Math.sin(this.runeOrbit * 1.1) * 0.015;
     const tilt =
       this.state === 'WALK'
-        ? Math.sin(this.runeOrbit * 1.5) * 0.06 - 0.05
-        : this.torsoAngle * scaleDir * 0.4;
+        ? Math.sin(this.runeOrbit * 1.5) * 0.04 - 0.03
+        : this.torsoAngle * scaleDir * 0.3;
 
     ctx.translate(this.x, this.y + hoverY);
     ctx.scale(scaleDir * breatheX, breatheY);
     ctx.rotate(tilt);
 
-    PixelForge.drawDeformedSprite(ctx, img, w, h, this.runeOrbit, this.state, isReflection);
+    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.runeOrbit, isReflection);
 
     if (this.hitFlash > 0 && !isReflection) {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.55;
-      ctx.drawImage(img, -w * 0.5, -h + 8, w, h);
+      PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);
     }
 
     ctx.restore();
