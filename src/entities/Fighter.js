@@ -80,9 +80,8 @@ export class Fighter {
       this.game.vfx.spawnDamageText(this.x, this.y - 75, amount, isCrit);
       this.game.vfx.spawnBurst(this.x, this.y - 45, isCrit ? 14 : 7, this.primaryColor, 170);
       if (isCrit) {
-        this.game.renderer.triggerShake(11, 0.24);
-        this.game.renderer.triggerAberration(9);
-        this.game.renderer.triggerHitStop(0.06);
+        this.game.renderer.triggerAberration(5);
+        this.game.renderer.triggerHitStop(0.035);
       }
     }
 
@@ -94,9 +93,9 @@ export class Fighter {
       this.vx = dir * 165;
       this.torsoVel = dir * 14;
       if (this.game) {
-        this.game.renderer.triggerShake(20, 0.55);
-        this.game.renderer.triggerAberration(15);
-        this.game.renderer.triggerHitStop(0.11);
+        this.game.renderer.triggerShake(12, 0.25);
+        this.game.renderer.triggerAberration(8);
+        this.game.renderer.triggerHitStop(0.07);
         this.game.vfx.spawnShockwave(this.x, this.y - 45, 165, this.primaryColor, 0.55, true);
         this.game.vfx.spawnBurst(this.x, this.y - 50, 26, this.primaryColor, 280, {
           upBias: 135,

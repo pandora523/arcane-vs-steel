@@ -71,24 +71,26 @@ export class Renderer {
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
   }
 
-  triggerShake(intensity = 10, duration = 0.25) {
-    this.shakeIntensity = Math.max(this.shakeIntensity, intensity);
-    this.shakeTime = Math.max(this.shakeTime, duration);
+  triggerShake(intensity = 4, duration = 0.14) {
+    // Scale down and cap at a subtle 3.2px micro-thud so the screen never jitters violently
+    const scaled = Math.min(3.2, intensity * 0.14);
+    this.shakeIntensity = Math.min(3.2, Math.max(this.shakeIntensity, scaled));
+    this.shakeTime = Math.min(0.22, Math.max(this.shakeTime, duration * 0.45));
   }
 
-  triggerAberration(amount = 8) {
-    if (!this.isMobile) this.aberration = Math.max(this.aberration, amount);
+  triggerAberration(amount = 4) {
+    if (!this.isMobile) this.aberration = Math.min(4, Math.max(this.aberration, amount * 0.35));
   }
 
-  triggerHitStop(duration = 0.07) {
-    this.hitStopTimer = Math.max(this.hitStopTimer, duration);
+  triggerHitStop(duration = 0.04) {
+    this.hitStopTimer = Math.max(this.hitStopTimer, Math.min(0.05, duration));
   }
 
   triggerUltimateCamera(focusX, focusY) {
     this.ultFocusX = focusX;
     this.ultFocusY = focusY;
-    this.ultZoomTimer = 0.95;
-    this.ultDim = 0.78;
+    this.ultZoomTimer = 0.75;
+    this.ultDim = 0.65;
   }
 
   update(rawDt, fighters) {
@@ -96,10 +98,15 @@ export class Renderer {
     if (this.hitStopTimer > 0) this.hitStopTimer = Math.max(0, this.hitStopTimer - rawDt);
     if (this.shakeTime > 0) {
       this.shakeTime = Math.max(0, this.shakeTime - rawDt);
-      if (this.shakeTime === 0) this.shakeIntensity = 0;
+      // Fast exponential decay so shake settles almost immediately instead of lingering
+      this.shakeIntensity *= Math.exp(-rawDt * 22);
+      if (this.shakeTime === 0 || this.shakeIntensity < 0.15) {
+        this.shakeTime = 0;
+        this.shakeIntensity = 0;
+      }
     }
     if (this.aberration > 0) this.aberration = Math.max(0, this.aberration - rawDt * 28);
-    if (this.ultDim > 0) this.ultDim = Math.max(0, this.ultDim - rawDt * 0.65);
+    if (this.ultDim > 0) this.ultDim = Math.max(0, this.ultDim - rawDt * 0.75);
     if (this.ultZoomTimer > 0) this.ultZoomTimer = Math.max(0, this.ultZoomTimer - rawDt);
 
     if (fighters && fighters.length === 2) {
@@ -117,9 +124,8 @@ export class Renderer {
       let targetY = this.groundY - 95;
 
       if (this.ultZoomTimer > 0) {
-        targetZoom *= 1.15;
-        targetX = this.ultFocusX;
-        targetY = this.ultFocusY;
+        // Gentle 2.5% cinematic breathe without jerking the camera away from the arena center
+        targetZoom *= 1.025;
       }
 
       // Clamp camera X so the viewport stays comfortably inside the 1680-wide cathedral diorama
@@ -132,9 +138,9 @@ export class Renderer {
         targetX = this.worldWidth * 0.5;
       }
 
-      this.zoom += (targetZoom - this.zoom) * Math.min(1, rawDt * 8);
-      this.camX += (targetX - this.camX) * Math.min(1, rawDt * 9);
-      this.camY += (targetY - this.camY) * Math.min(1, rawDt * 9);
+      this.zoom += (targetZoom - this.zoom) * Math.min(1, rawDt * 6);
+      this.camX += (targetX - this.camX) * Math.min(1, rawDt * 6);
+      this.camY += (targetY - this.camY) * Math.min(1, rawDt * 6);
     }
   }
 
@@ -148,8 +154,10 @@ export class Renderer {
 
     ctx.save();
 
-    const sx = this.shakeTime > 0 ? Math.round((Math.random() - 0.5) * 2 * this.shakeIntensity) : 0;
-    const sy = this.shakeTime > 0 ? Math.round((Math.random() - 0.5) * 2 * this.shakeIntensity) : 0;
+    const sx =
+      this.shakeTime > 0 ? Math.round(Math.sin(this.time * 45) * this.shakeIntensity * 0.6) : 0;
+    const sy =
+      this.shakeTime > 0 ? Math.round(Math.cos(this.time * 38) * this.shakeIntensity) : 0;
 
     const screenAnchorY = this.height * (this.isMobile ? 0.64 : 0.68);
     ctx.translate(this.width * 0.5 + sx, screenAnchorY + sy);

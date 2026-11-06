@@ -317,7 +317,7 @@ export class VFXManager {
             size: 6
           });
           this.spawnDecal(s.x, s.type === 'runeblade' ? 76 : 48, 'fissure', s.color, 3.8);
-          if (renderer) renderer.triggerShake(s.type === 'runeblade' ? 9 : 5, 0.18);
+          if (renderer && s.type === 'runeblade') renderer.triggerShake(6, 0.14);
           if (s.target && !s.target.isDead && Math.abs(s.target.x - s.x) < 92) {
             s.target.takeDamage(s.damage, s.owner, s.type === 'runeblade', 55, -60);
           }
@@ -338,7 +338,7 @@ export class VFXManager {
       }
       if (pil.life >= pil.delay && !pil.erupted) {
         pil.erupted = true;
-        if (renderer) renderer.triggerShake(12 * pil.scaleWidth, 0.38);
+        if (renderer && pil.scaleWidth >= 0.95) renderer.triggerShake(8, 0.2);
         const col = pil.theme === 'emerald' ? '#10b981' : pil.theme === 'steel' ? '#38bdf8' : '#fb923c';
         this.spawnDecal(pil.x, 110 * pil.scaleWidth, 'fissure', col, 4.8);
         this.spawnShockwave(pil.x, groundY, 135 * pil.scaleWidth, '#facc15', 0.44, true);
