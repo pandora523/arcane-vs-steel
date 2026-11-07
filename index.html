@@ -95,6 +95,10 @@
           <span class="gem-indicator"></span>
           <span>SLOW-MO</span>
         </button>
+        <button id="btn-auto-tourney" class="iron-btn" type="button" aria-pressed="true" title="Automatically advance winner to face the next Challenger">
+          <span class="gem-indicator"></span>
+          <span>AUTO-TOURNEY</span>
+        </button>
         <button id="btn-open-select" class="iron-btn" type="button">
           <span>ROSTER</span>
         </button>
@@ -361,15 +365,39 @@
       </div>
     </section>
 
-    <!-- Victory Modal -->
+    <!-- Victory Modal with Autonomous Combat Telemetry & Auto-Tourney Progression -->
     <div id="victory-overlay" class="victory-overlay hidden">
       <div class="victory-plaque">
-        <div class="victory-eyebrow">DUEL CONCLUDED</div>
+        <div class="victory-eyebrow" id="victory-eyebrow">DUEL CONCLUDED • KING OF THE SANCTUARY</div>
         <h2 class="victory-winner" id="victory-winner">AETHELGARD TRIUMPHS</h2>
         <p class="victory-stats" id="victory-stats">Steel prevails over the Tempest</p>
+
+        <div class="victory-telemetry" id="victory-telemetry">
+          <div class="telemetry-col" id="telemetry-left">
+            <div class="telemetry-hero" id="tel-left-name">AETHELGARD</div>
+            <div class="telemetry-row"><span>DAMAGE</span><strong id="tel-left-dmg">0</strong></div>
+            <div class="telemetry-row"><span>SKILLS / ULTS</span><strong id="tel-left-skills">0 / 0</strong></div>
+            <div class="telemetry-row"><span>MAX HIT</span><strong id="tel-left-max">0</strong></div>
+            <div class="telemetry-row"><span>HEAL / CLASH</span><strong id="tel-left-extra">0 / 0</strong></div>
+          </div>
+          <div class="telemetry-vs">VS</div>
+          <div class="telemetry-col" id="telemetry-right">
+            <div class="telemetry-hero" id="tel-right-name">SYLVARA</div>
+            <div class="telemetry-row"><span>DAMAGE</span><strong id="tel-right-dmg">0</strong></div>
+            <div class="telemetry-row"><span>SKILLS / ULTS</span><strong id="tel-right-skills">0 / 0</strong></div>
+            <div class="telemetry-row"><span>MAX HIT</span><strong id="tel-right-max">0</strong></div>
+            <div class="telemetry-row"><span>HEAL / CLASH</span><strong id="tel-right-extra">0 / 0</strong></div>
+          </div>
+        </div>
+
+        <div class="victory-auto-next" id="victory-auto-next">AUTO-TOURNEY: NEXT CHALLENGER IN 4S...</div>
+
         <div class="victory-btn-row">
           <button id="btn-play-again" class="iron-btn iron-btn-gold" type="button">
             REMATCH
+          </button>
+          <button id="btn-next-challenger" class="iron-btn" type="button">
+            NEXT CHALLENGER
           </button>
           <button id="btn-victory-select" class="iron-btn" type="button">
             ROSTER SELECT

@@ -53,6 +53,18 @@ export class Fighter {
       x: this.x - this.facing * i * 9,
       y: this.y - 52 + i * 9
     }));
+
+    // Autonomous Combat Telemetry & Desperation State
+    this.isBerserk = false;
+    this.stats = {
+      damageDealt: 0,
+      skillsUsed: 0,
+      ultsUsed: 0,
+      critsLanded: 0,
+      healingDone: 0,
+      biggestHit: 0,
+      clashes: 0
+    };
   }
 
   setState(newState) {
@@ -71,7 +83,11 @@ export class Fighter {
 
   gainMana(amount) {
     if (this.isDead || this.state === 'ULTIMATE') return;
-    this.mana = Math.min(this.maxMana, this.mana + amount);
+    let mult = this.isBerserk ? 1.28 : 1.0;
+    if (this.game && this.game.stageEventTimer > 0 && this.game.renderer?.stageId === 'cathedral') {
+      mult *= 1.55;
+    }
+    this.mana = Math.min(this.maxMana, this.mana + amount * mult);
   }
 
   heal(amount, label = '') {
@@ -79,6 +95,9 @@ export class Fighter {
     const prevHp = this.hp;
     this.hp = Math.min(this.maxHp, this.hp + amount);
     const actualHeal = Math.max(1, Math.round(amount));
+    if (this.stats) {
+      this.stats.healingDone += Math.max(0, Math.round(this.hp - prevHp));
+    }
     if (this.game && this.game.vfx) {
       const txt = label ? `${label} +${actualHeal}` : `+${actualHeal} HP`;
       this.game.vfx.spawnDamageText(this.x - this.facing * 26, this.y - 198, 0, false, txt, '#4ade80');
@@ -99,18 +118,49 @@ export class Fighter {
       this.gainMana(8);
       return;
     }
+    if (attacker && attacker.isBerserk) {
+      amount *= 1.12;
+    }
+    if (this.game && this.game.stageEventTimer > 0 && this.game.renderer?.stageId === 'boneyard') {
+      amount *= 1.18;
+    }
     if (this.isDeflecting) {
       amount *= 0.55;
       knockX *= 0.25;
     } else if (this.hasPoise) {
       knockX *= 0.45;
     }
+    const prevHp = this.hp;
     this.hp = Math.max(0, this.hp - amount);
+    const dealt = Math.max(1, Math.round(prevHp - this.hp));
+    if (attacker && attacker.stats) {
+      attacker.stats.damageDealt += dealt;
+      if (isCrit) attacker.stats.critsLanded++;
+      if (dealt > attacker.stats.biggestHit) attacker.stats.biggestHit = dealt;
+    }
     this.hitFlash = 0.18;
     this.hurtTimer = isCrit ? 0.34 : 0.25;
     this.gainMana(amount * 0.115);
     if (attacker) {
       attacker.gainMana(Math.min(11, Math.max(2.5, amount * 0.11)));
+    }
+
+    // Trigger Low-HP Desperation Overdrive (Berserk State) when crossing below 28% HP
+    if (this.hp > 0 && !this.isBerserk && this.hp / this.maxHp <= 0.28) {
+      this.isBerserk = true;
+      this.gainMana(18);
+      if (this.game && this.game.vfx) {
+        this.game.vfx.spawnDamageText(
+          this.x,
+          this.y - 218,
+          0,
+          false,
+          '★ DESPERATION OVERDRIVE! ★',
+          '#facc15'
+        );
+        this.game.vfx.spawnShockwave(this.x, this.groundY - 4, 138, this.primaryColor, 0.42, true);
+        this.game.vfx.spawnBurst(this.x, this.y - 95, 16, '#facc15', 235, { upBias: 110, size: 6 });
+      }
     }
 
     const dir = attacker ? Math.sign(this.x - attacker.x) || -this.facing : -this.facing;
@@ -281,10 +331,14 @@ export class Fighter {
       this.facing = enemy.x >= this.x ? 1 : -1;
     }
 
-    this.autoCooldown = Math.max(0, this.autoCooldown - dt);
-    this.skillCooldown = Math.max(0, this.skillCooldown - dt);
-    this.dodgeCooldown = Math.max(0, this.dodgeCooldown - dt);
-    this.dashCooldown = Math.max(0, this.dashCooldown - dt);
+    let cdMult = this.isBerserk ? 1.25 : 1.0;
+    if (game && game.stageEventTimer > 0 && game.renderer?.stageId === 'clocktower') {
+      cdMult *= 1.35;
+    }
+    this.autoCooldown = Math.max(0, this.autoCooldown - dt * cdMult);
+    this.skillCooldown = Math.max(0, this.skillCooldown - dt * cdMult);
+    this.dodgeCooldown = Math.max(0, this.dodgeCooldown - dt * cdMult);
+    this.dashCooldown = Math.max(0, this.dashCooldown - dt * cdMult);
     this.stateTimer += dt;
 
     // TABS Spring-damper torso physics
@@ -293,15 +347,15 @@ export class Fighter {
     this.torsoVel += force * dt;
     this.torsoAngle += this.torsoVel * dt;
 
-    // Ambient Aura Particles
-    if (Math.random() < 0.28) {
+    // Ambient Aura & Desperation Overdrive Particles
+    if (Math.random() < (this.isBerserk ? 0.56 : 0.28)) {
       game.vfx.spawnParticle({
-        x: this.x + (Math.random() - 0.5) * 34,
-        y: this.y - Math.random() * 60,
-        vx: (Math.random() - 0.5) * 18,
-        vy: -35 - Math.random() * 35,
-        size: 3.5,
-        color: this.primaryColor,
+        x: this.x + (Math.random() - 0.5) * (this.isBerserk ? 48 : 34),
+        y: this.y - Math.random() * (this.isBerserk ? 85 : 60),
+        vx: (Math.random() - 0.5) * 24,
+        vy: -38 - Math.random() * (this.isBerserk ? 55 : 35),
+        size: this.isBerserk ? 5 : 3.5,
+        color: this.isBerserk && Math.random() < 0.45 ? '#facc15' : this.primaryColor,
         maxLife: 0.55
       });
     }
@@ -312,6 +366,7 @@ export class Fighter {
       if (enemy && !enemy.isDead) {
         if (this.mana >= this.maxMana) {
           this.mana = 0;
+          if (this.stats) this.stats.ultsUsed++;
           this.setState('ULTIMATE');
           game.triggerUltimateCinematic(this);
           return;
@@ -329,6 +384,7 @@ export class Fighter {
         const maxSkillDist = this.skillTriggerRange || this.attackRange * 2.2;
         if (this.skillCooldown <= 0 && dist <= maxSkillDist) {
           this.skillCooldown = this.skillMaxCooldown * (0.86 + Math.random() * 0.28);
+          if (this.stats) this.stats.skillsUsed++;
           this.setState('SKILL');
           if (game.audio) game.audio.play('skill_cast', this.x);
           if (game.vfx && game.vfx.spawnSpecialCastAura) {

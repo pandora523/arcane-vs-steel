@@ -178,6 +178,42 @@ export class Renderer {
     this.ultDim = 0.65;
   }
 
+  triggerUltimateCutIn(caster) {
+    this.cutInTimer = 0.72;
+    this.cutInMaxTimer = 0.72;
+    this.cutInHeroId = caster.heroId || 'warrior';
+    this.cutInName = caster.name || 'CHAMPION';
+    this.cutInUltName = caster.ultName || 'ULTIMATE ART';
+    this.cutInColor = caster.primaryColor || '#38bdf8';
+    this.cutInFacing = caster.facing || 1;
+  }
+
+  triggerKOFinisher(x, y, color = '#facc15', winnerName = '') {
+    this.koFocusX = x;
+    this.koFocusY = y;
+    this.koZoomTimer = 1.25;
+    this.koMaxTimer = 1.25;
+    this.koColor = color;
+    this.koWinnerName = winnerName;
+    this.ultDim = Math.max(this.ultDim, 0.52);
+  }
+
+  triggerClashCamera(x, y) {
+    this.clashFocusX = x;
+    this.clashFocusY = y;
+    this.clashZoomTimer = 0.32;
+    this.triggerAberration(5);
+    this.triggerShake(6, 0.16);
+  }
+
+  triggerStageEvent(title, subtitle, color = '#facc15', duration = 10.0) {
+    this.stageEventTimer = duration;
+    this.stageEventBannerTimer = 2.8;
+    this.stageEventTitle = title;
+    this.stageEventSubtitle = subtitle;
+    this.stageEventColor = color;
+  }
+
   update(rawDt, fighters) {
     this.time += rawDt;
     if (this.hitStopTimer > 0) this.hitStopTimer = Math.max(0, this.hitStopTimer - rawDt);
@@ -193,6 +229,13 @@ export class Renderer {
     if (this.aberration > 0) this.aberration = Math.max(0, this.aberration - rawDt * 28);
     if (this.ultDim > 0) this.ultDim = Math.max(0, this.ultDim - rawDt * 0.75);
     if (this.ultZoomTimer > 0) this.ultZoomTimer = Math.max(0, this.ultZoomTimer - rawDt);
+    if (this.cutInTimer > 0) this.cutInTimer = Math.max(0, this.cutInTimer - rawDt);
+    if (this.koZoomTimer > 0) this.koZoomTimer = Math.max(0, this.koZoomTimer - rawDt);
+    if (this.clashZoomTimer > 0) this.clashZoomTimer = Math.max(0, this.clashZoomTimer - rawDt);
+    if (this.stageEventTimer > 0) this.stageEventTimer = Math.max(0, this.stageEventTimer - rawDt);
+    if (this.stageEventBannerTimer > 0) {
+      this.stageEventBannerTimer = Math.max(0, this.stageEventBannerTimer - rawDt);
+    }
 
     if (fighters && fighters.length === 2) {
       const f1 = fighters[0];
@@ -208,7 +251,15 @@ export class Renderer {
       let targetX = midX;
       let targetY = this.groundY - 95;
 
-      if (this.ultZoomTimer > 0) {
+      if (this.koZoomTimer > 0) {
+        // Dramatic K.O. Finisher zoom toward the fatal impact
+        targetZoom *= 1.12;
+        if (this.koFocusX !== undefined) {
+          targetX = midX * 0.45 + this.koFocusX * 0.55;
+        }
+      } else if (this.clashZoomTimer > 0) {
+        targetZoom *= 1.045;
+      } else if (this.ultZoomTimer > 0) {
         // Gentle 2.5% cinematic breathe without jerking the camera away from the arena center
         targetZoom *= 1.025;
       }
@@ -252,6 +303,9 @@ export class Renderer {
     // 1. HD-2D Pixel-Art Cathedral Diorama + Live Animated Stage Flames & Volumetric God-Rays
     this.drawHD2DArena(ctx, ww, gy);
     this.drawVolumetricGodRays(ctx, ww, gy);
+    if (this.stageEventTimer > 0) {
+      this.drawStagePhenomenonWorld(ctx, ww, gy);
+    }
 
     if (this.ultDim > 0.01) {
       ctx.fillStyle = `rgba(2, 3, 8, ${this.ultDim * 0.82})`;
@@ -1201,6 +1255,19 @@ export class Renderer {
       ctx.fillStyle = i % 3 === 0 ? pal[3] : i % 2 === 0 ? pal[2] : pal[1];
       ctx.fillRect(rx - 2, ry - 1, 4, 3);
     }
+
+    // Low-HP Desperation Overdrive (Berserk) Pulsing Outer Golden-Crimson Rune Ring
+    if (f.isBerserk && !f.isDead) {
+      for (let b = 0; b < 16; b++) {
+        const ba = (b / 16) * Math.PI * 2 - t * 4.5 * f.facing;
+        const bx = Math.round((f.x + Math.cos(ba) * (rX + 20)) / 3) * 3;
+        const by = Math.round((gy - 2 + Math.sin(ba) * (rY + 5)) / 3) * 3;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.55;
+        ctx.fillStyle = b % 2 === 0 ? '#facc15' : '#f43f5e';
+        ctx.fillRect(bx - 3, by - 2, 6, 4);
+      }
+    }
     ctx.restore();
   }
 
@@ -1485,6 +1552,65 @@ export class Renderer {
     ctx.restore();
   }
 
+  drawStagePhenomenonWorld(ctx, ww, gy) {
+    const t = this.time;
+    const fade = Math.min(1, this.stageEventTimer / 1.5);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    if (this.stageId === 'cathedral') {
+      // Solar Eclipse Overdrive Corona & Golden Floor Glyphs
+      const cx = ww * 0.5;
+      const cy = gy - 365;
+      ctx.globalAlpha = 0.35 * fade;
+      ctx.drawImage(this.glowGold, cx - 220, cy - 220, 440, 440);
+      for (let i = 0; i < 24; i++) {
+        const a = (i / 24) * Math.PI * 2 + t * 1.8;
+        const rx = Math.round((cx + Math.cos(a) * 145) / 4) * 4;
+        const ry = Math.round((cy + Math.sin(a) * 145) / 4) * 4;
+        ctx.globalAlpha = 0.75 * fade;
+        ctx.fillStyle = i % 2 === 0 ? '#facc15' : '#fb923c';
+        ctx.fillRect(rx - 4, ry - 4, 8, 8);
+      }
+    } else if (this.stageId === 'sylvan') {
+      // Astral Starlight Monsoon Rain across the Sanctuary
+      for (let r = 0; r < 32; r++) {
+        const rx = Math.round((((r * 97 + t * 140) % (ww + 200)) - 100) / 4) * 4;
+        const ry = Math.round((((r * 73 + t * 420) % 560) + (gy - 540)) / 4) * 4;
+        ctx.globalAlpha = 0.68 * fade;
+        ctx.fillStyle = r % 2 === 0 ? '#34d399' : '#38bdf8';
+        ctx.fillRect(rx, ry, 4, 16);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(rx, ry + 12, 4, 4);
+      }
+    } else if (this.stageId === 'boneyard') {
+      // Blood Moon Frenzy Ground Runes & Crimson Sky Bolts
+      const floorCx = ww * 0.5;
+      for (let k = 0; k < 28; k++) {
+        const a = (k / 28) * Math.PI * 2 - t * 2.4;
+        const rx = Math.round((floorCx + Math.cos(a) * 320) / 4) * 4;
+        const ry = Math.round((gy - 2 + Math.sin(a) * 32) / 4) * 4;
+        ctx.globalAlpha = 0.72 * fade;
+        ctx.fillStyle = k % 2 === 0 ? '#e11d48' : '#c084fc';
+        ctx.fillRect(rx - 4, ry - 2, 8, 4);
+      }
+    } else if (this.stageId === 'clocktower') {
+      // Midnight Chrono Haste Spinning Golden Astrolabe Rings
+      const cx = ww * 0.5;
+      const cy = gy - 260;
+      for (let k = 0; k < 28; k++) {
+        const a = (k / 28) * Math.PI * 2 + t * 3.6;
+        const rx = Math.round((cx + Math.cos(a) * 210) / 4) * 4;
+        const ry = Math.round((cy + Math.sin(a) * 210) / 4) * 4;
+        ctx.globalAlpha = 0.72 * fade;
+        ctx.fillStyle = k % 2 === 0 ? '#fde047' : '#2dd4bf';
+        ctx.fillRect(rx - 4, ry - 4, 8, 8);
+      }
+    }
+
+    ctx.restore();
+  }
+
   drawHD2DPostProcess(ctx) {
     const w = this.width;
     const h = this.height;
@@ -1509,6 +1635,132 @@ export class Renderer {
     botG.addColorStop(1, 'rgba(2, 3, 7, 0.80)');
     ctx.fillStyle = botG;
     ctx.fillRect(0, h * 0.80, w, h * 0.20);
+
+    // 1. Screen-Space Stage Phenomenon Banner (Upper Sky below HUD)
+    if (this.stageEventBannerTimer > 0 && !(this.cutInTimer > 0)) {
+      const p = 1 - this.stageEventBannerTimer / 2.8;
+      const alpha = p < 0.12 ? p / 0.12 : p > 0.82 ? (1 - p) / 0.18 : 1;
+      const bw = Math.min(w - 32, 460);
+      const bh = 42;
+      const bx = Math.round((w - bw) * 0.5);
+      const by = Math.round(h * 0.14);
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+      ctx.fillStyle = 'rgba(7, 10, 18, 0.92)';
+      ctx.fillRect(bx, by, bw, bh);
+      ctx.strokeStyle = this.stageEventColor || '#facc15';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(bx, by, bw, bh);
+
+      ctx.textAlign = 'center';
+      ctx.font = '9px "Press Start 2P", monospace';
+      ctx.fillStyle = this.stageEventColor || '#facc15';
+      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', Math.round(w * 0.5), by + 17);
+      ctx.font = '7px "Press Start 2P", monospace';
+      ctx.fillStyle = '#e2e8f0';
+      ctx.fillText(this.stageEventSubtitle || '', Math.round(w * 0.5), by + 33);
+      ctx.restore();
+    }
+
+    // 2. Screen-Space HD-2D Ultimate Portrait Cut-In Banner (Upper Sky so it never covers fighters!)
+    if (this.cutInTimer > 0) {
+      const p = 1 - this.cutInTimer / (this.cutInMaxTimer || 0.72);
+      const alpha = p < 0.12 ? p / 0.12 : p > 0.78 ? (1 - p) / 0.22 : 1;
+      const stripH = this.isMobile ? 54 : 64;
+      const stripY = Math.round(h * 0.145);
+      const stripW = Math.min(w - 24, 620);
+      const stripX = Math.round((w - stripW) * 0.5);
+
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+
+      // Forged Obsidian & Elemental Speedline Backdrop
+      ctx.fillStyle = 'rgba(5, 8, 16, 0.94)';
+      ctx.fillRect(stripX, stripY, stripW, stripH);
+
+      // Animated pixel speedlines inside the cut-in strip
+      ctx.fillStyle = this.cutInColor || '#38bdf8';
+      for (let s = 0; s < 14; s++) {
+        const sx = stripX + ((s * 67 + Math.round(this.time * 900)) % (stripW - 48));
+        const sy = stripY + 6 + ((s * 13) % (stripH - 12));
+        ctx.globalAlpha = alpha * (s % 2 === 0 ? 0.38 : 0.22);
+        ctx.fillRect(sx, sy, 36 + (s % 3) * 18, 3);
+      }
+
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+      ctx.strokeStyle = this.cutInColor || '#38bdf8';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(stripX, stripY, stripW, stripH);
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(stripX + 3, stripY + 3, stripW - 6, stripH - 6);
+
+      // Champion Pixel Portrait inside left or right side of the cut-in strip
+      const assets = PixelForge.initAssets();
+      const portImg = assets[this.cutInHeroId]?.portrait;
+      const portSize = stripH - 8;
+      const portX = this.cutInFacing >= 0 ? stripX + 6 : stripX + stripW - portSize - 6;
+      if (portImg && portImg.complete && portImg.naturalWidth) {
+        ctx.drawImage(portImg, portX, stripY + 4, portSize, portSize);
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(portX, stripY + 4, portSize, portSize);
+      }
+
+      // Crisp Pixel Cut-In Callout Typography
+      ctx.textAlign = 'center';
+      const textCx = Math.round(w * 0.5 + (this.cutInFacing >= 0 ? 22 : -22));
+      ctx.font = `${this.isMobile ? 7 : 8}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#fef08a';
+      ctx.fillText(
+        `★ ${this.cutInName} • OVERDRIVE 100% ★`,
+        textCx,
+        stripY + (this.isMobile ? 20 : 24)
+      );
+      ctx.font = `${this.isMobile ? 10 : 13}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(this.cutInUltName, textCx, stripY + (this.isMobile ? 41 : 48));
+      ctx.restore();
+    }
+
+    // 3. Screen-Space Final-Blow "K.O. Finisher" Impact Flash & Emblem
+    if (this.koZoomTimer > 0) {
+      const p = 1 - this.koZoomTimer / (this.koMaxTimer || 1.25);
+      const alpha = p < 0.1 ? p / 0.1 : Math.max(0, 1 - (p - 0.1) / 0.9);
+      ctx.save();
+      if (p < 0.28) {
+        // Twin diagonal K.O. finisher light-slashes across the impact
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = (1 - p / 0.28) * 0.48;
+        ctx.strokeStyle = this.koColor || '#facc15';
+        ctx.lineWidth = 10;
+        ctx.beginPath();
+        ctx.moveTo(w * 0.18, h * 0.22);
+        ctx.lineTo(w * 0.82, h * 0.78);
+        ctx.moveTo(w * 0.82, h * 0.22);
+        ctx.lineTo(w * 0.18, h * 0.78);
+        ctx.stroke();
+      }
+
+      // Upper-center K.O. FINISHER plaque
+      const kw = Math.min(w - 32, 380);
+      const kh = 46;
+      const kx = Math.round((w - kw) * 0.5);
+      const ky = Math.round(h * 0.15);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+      ctx.fillStyle = 'rgba(8, 10, 18, 0.94)';
+      ctx.fillRect(kx, ky, kw, kh);
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(kx, ky, kw, kh);
+      ctx.textAlign = 'center';
+      ctx.font = `${this.isMobile ? 11 : 14}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#fef08a';
+      ctx.fillText('★ K.O. FINISHER! ★', Math.round(w * 0.5), ky + 29);
+      ctx.restore();
+    }
 
     ctx.restore();
   }

@@ -75,7 +75,15 @@ class Game {
     PixelForge.initAssets();
 
     this.userSlowMo = false;
+    this.autoTourney = true;
+    this.winStreak = 0;
+    this.reigningHero = null;
     this.ultSlowTimer = 0;
+    this.koSlowTimer = 0;
+    this.clashCooldown = 0;
+    this.stageEventTriggered = false;
+    this.stageEventTimer = 0;
+    this.stageEventTickTimer = 0;
     this.matchTime = 0;
     this.hudTimer = 0;
     this.isMatchOver = false;
@@ -109,6 +117,8 @@ class Game {
     const skillParam = params.get('skill');
     const forceSkill = skillParam === '1' || skillParam === 'both';
     const forceCorner = params.get('corner') === '1';
+    const forceClash = params.get('clash') === '1';
+    const forceEvent = params.get('event') === '1';
     this.isSimPaused = params.get('pause') === '1';
     if (
       p1 ||
@@ -119,10 +129,43 @@ class Game {
       killTarget ||
       forceUlt ||
       forceSkill ||
-      forceCorner
+      forceCorner ||
+      forceClash ||
+      forceEvent
     ) {
       this.syncRosterSelectionUI(false);
       this.startDuel(false);
+    }
+
+    if (forceEvent) {
+      this.triggerStagePhenomenon();
+    }
+
+    if (forceClash) {
+      this.leftFighter.x = 340;
+      this.rightFighter.x = 860;
+      this.vfx.spawnProjectile({
+        x: 565,
+        y: this.renderer.groundY - 105,
+        vx: 520,
+        vy: 0,
+        radius: 26,
+        color: this.leftFighter.primaryColor,
+        damage: 90,
+        owner: this.leftFighter,
+        type: 'blade_wave'
+      });
+      this.vfx.spawnProjectile({
+        x: 635,
+        y: this.renderer.groundY - 105,
+        vx: -520,
+        vy: 0,
+        radius: 26,
+        color: this.rightFighter.primaryColor,
+        damage: 90,
+        owner: this.rightFighter,
+        type: 'fireball'
+      });
     }
 
     if (forceCorner) {
@@ -171,7 +214,11 @@ class Game {
       const dtSec = Number(params.get('dt') || 1.2);
       const steps = Math.floor(dtSec / 0.02);
       for (let i = 0; i < steps; i++) {
+        this.renderer.hitStopTimer = 0;
         this.stepSimulation(0.02);
+      }
+      if (params.get('victory') === '1') {
+        this.victoryOverlay.classList.remove('hidden');
       }
       this.updateHUD();
     }
@@ -184,6 +231,8 @@ class Game {
     this.btnSfx = document.getElementById('btn-sfx');
     this.sfxLabel = document.getElementById('sfx-label');
     this.btnSlowMo = document.getElementById('btn-slowmo');
+    this.btnAutoTourney = document.getElementById('btn-auto-tourney');
+    this.btnNextChallenger = document.getElementById('btn-next-challenger');
     this.btnReset = document.getElementById('btn-reset');
     this.btnPlayAgain = document.getElementById('btn-play-again');
     this.btnOpenSelect = document.getElementById('btn-open-select');
@@ -320,8 +369,41 @@ class Game {
       this.btnSlowMo.setAttribute('aria-pressed', String(this.userSlowMo));
     });
 
+    if (this.btnAutoTourney) {
+      this.btnAutoTourney.addEventListener('click', () => {
+        this.autoTourney = !this.autoTourney;
+        this.btnAutoTourney.setAttribute('aria-pressed', String(this.autoTourney));
+        const autoLabel = document.getElementById('victory-auto-next');
+        if (autoLabel) {
+          autoLabel.textContent = this.autoTourney
+            ? 'AUTO-TOURNEY: NEXT CHALLENGER IN 4S...'
+            : 'AUTO-TOURNEY PAUSED • SELECT NEXT ACTION';
+        }
+        if (!this.autoTourney) {
+          clearTimeout(this.autoNextTimeout);
+        }
+      });
+    }
+
+    if (this.btnNextChallenger) {
+      this.btnNextChallenger.addEventListener('click', () => this.advanceTourneyChallenger());
+    }
+
     this.btnReset.addEventListener('click', () => this.resetMatch());
     this.btnPlayAgain.addEventListener('click', () => this.resetMatch());
+  }
+
+  advanceTourneyChallenger() {
+    clearTimeout(this.autoNextTimeout);
+    const keys = Object.keys(CHAMPION_ROSTER);
+    const keepHero = this.reigningHero || this.slot1Hero;
+    const pool = keys.filter((k) => k !== keepHero && k !== this.slot2Hero);
+    const candidates = pool.length > 0 ? pool : keys.filter((k) => k !== keepHero);
+    const nextChallenger = candidates[Math.floor(Math.random() * candidates.length)] || 'archer';
+    this.slot1Hero = keepHero;
+    this.slot2Hero = nextChallenger;
+    this.syncRosterSelectionUI(false);
+    this.resetMatch();
   }
 
   setActiveSlot(slotNum) {
@@ -410,6 +492,7 @@ class Game {
 
   openLanding() {
     this.isLandingOpen = true;
+    clearTimeout(this.autoNextTimeout);
     this.victoryOverlay.classList.add('hidden');
     if (this.landingOverlay) this.landingOverlay.classList.remove('hidden');
   }
@@ -455,9 +538,14 @@ class Game {
   resetMatch() {
     this.vfx.clear();
     clearTimeout(this.victoryTimeout);
+    clearTimeout(this.autoNextTimeout);
     clearTimeout(this.ultBannerTimeout);
     if (this.renderer && typeof this.renderer.pickRandomStage === 'function') {
       this.renderer.pickRandomStage(this.forcedStage);
+      this.renderer.stageEventTimer = 0;
+      this.renderer.stageEventBannerTimer = 0;
+      this.renderer.koZoomTimer = 0;
+      this.renderer.cutInTimer = 0;
     }
     const gy = this.renderer.groundY;
     const ww = this.renderer.worldWidth;
@@ -476,6 +564,11 @@ class Game {
 
     this.matchTime = 0;
     this.ultSlowTimer = 0;
+    this.koSlowTimer = 0;
+    this.clashCooldown = 0;
+    this.stageEventTriggered = false;
+    this.stageEventTimer = 0;
+    this.stageEventTickTimer = 0;
     this.isMatchOver = false;
     this.victoryOverlay.classList.add('hidden');
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
@@ -496,6 +589,9 @@ class Game {
   triggerUltimateCinematic(caster) {
     this.ultSlowTimer = 0.55;
     this.renderer.triggerUltimateCamera(caster.x, caster.y - 60);
+    if (typeof this.renderer.triggerUltimateCutIn === 'function') {
+      this.renderer.triggerUltimateCutIn(caster);
+    }
     if (this.audio) this.audio.play('ult_cast', caster.x);
 
     // Spawn in-world overhead Ultimate announcement & radiant halo directly around the character's head
@@ -508,9 +604,54 @@ class Game {
     );
   }
 
+  triggerStagePhenomenon() {
+    this.stageEventTriggered = true;
+    this.stageEventTimer = 10.0;
+    this.stageEventTickTimer = 0;
+    const stageId = this.renderer?.stageId || 'cathedral';
+    const gy = this.renderer?.groundY || 520;
+    const ww = this.renderer?.worldWidth || 1200;
+
+    if (stageId === 'cathedral') {
+      this.renderer.triggerStageEvent(
+        '★ STAGE PHENOMENON • SOLAR ECLIPSE ★',
+        'BOTH CHAMPIONS GAIN +55% OVERDRIVE CHARGE!',
+        '#facc15',
+        10.0
+      );
+      this.vfx.spawnShockwave(ww * 0.5, gy - 4, 340, '#facc15', 0.65, true);
+    } else if (stageId === 'sylvan') {
+      this.renderer.triggerStageEvent(
+        '★ STAGE PHENOMENON • STARLIGHT MONSOON ★',
+        'ASTRAL SANCTUARY RAIN RESTORES VITALITY!',
+        '#34d399',
+        10.0
+      );
+      this.vfx.spawnShockwave(ww * 0.5, gy - 4, 340, '#34d399', 0.65, true);
+    } else if (stageId === 'boneyard') {
+      this.renderer.triggerStageEvent(
+        '★ STAGE PHENOMENON • BLOOD MOON FRENZY ★',
+        'ALL ATTACKS DEAL +18% ABYSSAL DAMAGE!',
+        '#e11d48',
+        10.0
+      );
+      this.vfx.spawnShockwave(ww * 0.5, gy - 4, 340, '#e11d48', 0.65, true);
+    } else {
+      this.renderer.triggerStageEvent(
+        '★ STAGE PHENOMENON • MIDNIGHT OVERCLOCK ★',
+        'ALL SKILL & ATTACK COOLDOWNS ACCELERATED +35%!',
+        '#2dd4bf',
+        10.0
+      );
+      this.vfx.spawnShockwave(ww * 0.5, gy - 4, 340, '#2dd4bf', 0.65, true);
+    }
+    if (this.audio) this.audio.play('skill_cast', ww * 0.5);
+  }
+
   onFighterDeath(deadFighter) {
     if (this.isMatchOver) return;
     this.isMatchOver = true;
+    this.koSlowTimer = 1.15;
     this.ultSlowTimer = 0.65;
     this.updateHUD();
 
@@ -520,20 +661,131 @@ class Game {
 
     const winner = deadFighter === this.leftFighter ? this.rightFighter : this.leftFighter;
     const winnerCfg = CHAMPION_ROSTER[winner.heroId] || CHAMPION_ROSTER.warrior;
+    if (typeof this.renderer.triggerKOFinisher === 'function') {
+      this.renderer.triggerKOFinisher(
+        deadFighter.x,
+        deadFighter.y - 95,
+        winner.primaryColor,
+        winner.name
+      );
+    }
+
+    // Track King-of-the-Hill Win Streak
+    if (this.reigningHero === winner.heroId) {
+      this.winStreak++;
+    } else {
+      this.reigningHero = winner.heroId;
+      this.winStreak = 1;
+    }
+
+    const eyebrowEl = document.getElementById('victory-eyebrow');
+    if (eyebrowEl) {
+      eyebrowEl.textContent = `DUEL CONCLUDED • ${winner.name.toUpperCase()} STREAK: ${this.winStreak} WIN${this.winStreak > 1 ? 'S' : ''}`;
+    }
     document.getElementById('victory-winner').textContent = `${winner.name.toUpperCase()} TRIUMPHS`;
     document.getElementById('victory-stats').textContent = winnerCfg.victoryLine;
+
+    // Populate Post-Match Combat Telemetry Card
+    const fillTel = (side, f) => {
+      const s = f?.stats || {
+        damageDealt: 0,
+        skillsUsed: 0,
+        ultsUsed: 0,
+        biggestHit: 0,
+        healingDone: 0,
+        clashes: 0
+      };
+      const nameEl = document.getElementById(`tel-${side}-name`);
+      const dmgEl = document.getElementById(`tel-${side}-dmg`);
+      const skEl = document.getElementById(`tel-${side}-skills`);
+      const maxEl = document.getElementById(`tel-${side}-max`);
+      const exEl = document.getElementById(`tel-${side}-extra`);
+      if (nameEl) nameEl.textContent = f.name;
+      if (dmgEl) dmgEl.textContent = `${s.damageDealt}`;
+      if (skEl) skEl.textContent = `${s.skillsUsed} / ${s.ultsUsed}`;
+      if (maxEl) maxEl.textContent = `${s.biggestHit}`;
+      if (exEl) exEl.textContent = `${s.healingDone} / ${s.clashes}`;
+    };
+    fillTel('left', this.leftFighter);
+    fillTel('right', this.rightFighter);
+
+    const autoLabel = document.getElementById('victory-auto-next');
+    if (autoLabel) {
+      autoLabel.textContent = this.autoTourney
+        ? 'AUTO-TOURNEY: NEXT CHALLENGER IN 4S...'
+        : 'AUTO-TOURNEY PAUSED • SELECT NEXT ACTION';
+    }
+
     clearTimeout(this.victoryTimeout);
+    clearTimeout(this.autoNextTimeout);
     this.victoryTimeout = setTimeout(() => {
       if (this.isMatchOver) {
         this.victoryOverlay.classList.remove('hidden');
         if (this.audio) this.audio.play('victory_fanfare');
+        if (this.autoTourney && !this.isSimPaused) {
+          this.autoNextTimeout = setTimeout(() => {
+            if (this.isMatchOver && this.autoTourney && !this.isLandingOpen) {
+              this.advanceTourneyChallenger();
+            }
+          }, 3800);
+        }
       }
     }, 1650);
+  }
+
+  triggerClashSpark(cx, cy, col1, col2, label = '★ CLASH! ★') {
+    if (this.audio) this.audio.play('clang', cx);
+    this.renderer.triggerHitStop(0.065);
+    if (typeof this.renderer.triggerClashCamera === 'function') {
+      this.renderer.triggerClashCamera(cx, cy);
+    }
+    this.vfx.spawnDamageText(cx, cy - 52, 0, false, label, '#fef08a');
+    this.vfx.spawnShockwave(cx, cy, 135, col1 || '#38bdf8', 0.36, false, true);
+    this.vfx.spawnShockwave(cx, cy, 110, col2 || '#fb923c', 0.32, false, false);
+    this.vfx.spawnShockwave(cx, this.renderer.groundY - 4, 145, '#fef08a', 0.38, true);
+    this.vfx.spawnSlash(cx, cy, 88, -1.1, 1.1, col1 || '#38bdf8', 0.26);
+    this.vfx.spawnSlash(cx, cy, 88, 2.0, -2.0, col2 || '#fb923c', 0.26);
+    this.vfx.spawnBurst(cx, cy, 18, '#fef08a', 290, { upBias: 95, size: 7 });
+    if (this.leftFighter && !this.leftFighter.isDead) {
+      this.leftFighter.gainMana(10);
+      if (this.leftFighter.stats) this.leftFighter.stats.clashes++;
+    }
+    if (this.rightFighter && !this.rightFighter.isDead) {
+      this.rightFighter.gainMana(10);
+      if (this.rightFighter.stats) this.rightFighter.stats.clashes++;
+    }
   }
 
   updateProjectiles(dt) {
     const gy = this.renderer.groundY;
     const ww = this.renderer.worldWidth;
+
+    // 1. Mid-Air Projectile vs. Projectile Clash Detection
+    for (let i = this.vfx.projectiles.length - 1; i >= 0; i--) {
+      const p = this.vfx.projectiles[i];
+      if (!p) continue;
+      for (let j = i - 1; j >= 0; j--) {
+        const q = this.vfx.projectiles[j];
+        if (!q || p.owner === q.owner) continue;
+        const dist = Math.hypot(p.x - q.x, p.y - q.y);
+        if (dist < (p.radius || 18) + (q.radius || 18) + 28) {
+          const cx = (p.x + q.x) * 0.5;
+          const cy = (p.y + q.y) * 0.5;
+          this.triggerClashSpark(cx, cy, p.color, q.color, '★ ARCANE CLASH! ★');
+          if (!p.isMeteor && !q.isMeteor) {
+            this.vfx.projectiles.splice(i, 1);
+            this.vfx.projectiles.splice(j, 1);
+            break;
+          } else if (p.isMeteor && !q.isMeteor) {
+            this.vfx.projectiles.splice(j, 1);
+            i--;
+          } else if (!p.isMeteor && q.isMeteor) {
+            this.vfx.projectiles.splice(i, 1);
+            break;
+          }
+        }
+      }
+    }
 
     for (let i = this.vfx.projectiles.length - 1; i >= 0; i--) {
       const p = this.vfx.projectiles[i];
@@ -693,7 +945,10 @@ class Game {
     if (this.renderer.hitStopTimer > 0) return;
 
     let timeScale = 1.0;
-    if (this.ultSlowTimer > 0) {
+    if (this.koSlowTimer > 0) {
+      this.koSlowTimer = Math.max(0, this.koSlowTimer - rawDt);
+      timeScale = 0.18;
+    } else if (this.ultSlowTimer > 0) {
       this.ultSlowTimer = Math.max(0, this.ultSlowTimer - rawDt);
       timeScale = 0.25;
     } else if (this.userSlowMo) {
@@ -704,9 +959,73 @@ class Game {
     if (!this.isMatchOver) {
       this.matchTime += dt;
     }
+    if (this.clashCooldown > 0) {
+      this.clashCooldown = Math.max(0, this.clashCooldown - dt);
+    }
+
+    // Trigger Autonomous Mid-Match Stage Phenomenon at 11.5s or when either fighter drops below 58% HP
+    if (
+      !this.isMatchOver &&
+      !this.stageEventTriggered &&
+      (this.matchTime >= 11.5 ||
+        this.leftFighter.hp / this.leftFighter.maxHp <= 0.58 ||
+        this.rightFighter.hp / this.rightFighter.maxHp <= 0.58)
+    ) {
+      this.triggerStagePhenomenon();
+    }
+
+    if (this.stageEventTimer > 0) {
+      this.stageEventTimer = Math.max(0, this.stageEventTimer - dt);
+      this.stageEventTickTimer += dt;
+      if (this.stageEventTickTimer >= 2.0) {
+        this.stageEventTickTimer = 0;
+        if (this.renderer?.stageId === 'sylvan' && !this.isMatchOver) {
+          // Starlight Monsoon periodic sanctuary heal
+          this.leftFighter.heal(26, 'STARLIGHT');
+          this.rightFighter.heal(26, 'STARLIGHT');
+        } else if (this.renderer?.stageId === 'boneyard' && !this.isMatchOver) {
+          // Blood Moon Frenzy crimson sky bolt
+          const midX = (this.leftFighter.x + this.rightFighter.x) * 0.5;
+          this.vfx.spawnLightning(midX, 0, midX, this.renderer.groundY, '#e11d48', '#c084fc');
+        }
+      }
+    }
 
     this.leftFighter.update(dt, this.rightFighter, this);
     this.rightFighter.update(dt, this.leftFighter, this);
+
+    // Check Simultaneous Melee / Skill Blade Clash
+    if (
+      !this.isMatchOver &&
+      this.clashCooldown <= 0 &&
+      !this.leftFighter.isDead &&
+      !this.rightFighter.isDead
+    ) {
+      const dist = Math.abs(this.leftFighter.x - this.rightFighter.x);
+      const f1Swinging =
+        (this.leftFighter.state === 'AUTO_ATTACK' || this.leftFighter.state === 'SKILL') &&
+        this.leftFighter.stateTimer >= 0.14 &&
+        this.leftFighter.stateTimer <= 0.42;
+      const f2Swinging =
+        (this.rightFighter.state === 'AUTO_ATTACK' || this.rightFighter.state === 'SKILL') &&
+        this.rightFighter.stateTimer >= 0.14 &&
+        this.rightFighter.stateTimer <= 0.42;
+      if (dist <= 185 && f1Swinging && f2Swinging) {
+        this.clashCooldown = 2.6;
+        const cx = (this.leftFighter.x + this.rightFighter.x) * 0.5;
+        const cy = this.renderer.groundY - 102;
+        this.leftFighter.vx = -155;
+        this.rightFighter.vx = 155;
+        this.triggerClashSpark(
+          cx,
+          cy,
+          this.leftFighter.primaryColor,
+          this.rightFighter.primaryColor,
+          '★ PARRY CLASH! ★'
+        );
+      }
+    }
+
     this.updateProjectiles(dt);
     this.vfx.update(dt, this.renderer.groundY, this.renderer, this.audio);
 

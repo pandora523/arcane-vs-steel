@@ -479,14 +479,69 @@ html, body {
   background: #0b0f19;
   border: 3px solid var(--bronze-lit);
   outline: 2px solid #000;
-  padding: 24px 28px;
+  padding: 20px 24px;
   text-align: center;
   box-shadow: 0 20px 50px #000;
+  width: min(94vw, 540px);
 }
 
-.victory-eyebrow { font-family: var(--font-pixel); font-size: 0.48rem; color: var(--bronze-lit); margin-bottom: 10px; }
-.victory-winner { font-family: var(--font-pixel); font-size: clamp(0.85rem, 3vw, 1.3rem); margin-bottom: 10px; color: #fef08a; }
-.victory-stats { font-family: var(--font-pixel); font-size: 0.52rem; color: var(--text-ash); margin-bottom: 20px; line-height: 1.5; }
+.victory-eyebrow { font-family: var(--font-pixel); font-size: 0.45rem; color: var(--bronze-lit); margin-bottom: 8px; }
+.victory-winner { font-family: var(--font-pixel); font-size: clamp(0.82rem, 2.8vw, 1.2rem); margin-bottom: 8px; color: #fef08a; }
+.victory-stats { font-family: var(--font-pixel); font-size: 0.48rem; color: var(--text-ash); margin-bottom: 14px; line-height: 1.5; }
+
+.victory-telemetry {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items: center;
+  gap: 10px;
+  background: rgba(6, 9, 17, 0.92);
+  border: 1px solid #334155;
+  padding: 10px 12px;
+  margin-bottom: 12px;
+}
+
+.telemetry-col {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.telemetry-hero {
+  font-family: var(--font-pixel);
+  font-size: 0.48rem;
+  color: #fef08a;
+  margin-bottom: 2px;
+  border-bottom: 1px solid #1e293b;
+  padding-bottom: 4px;
+}
+
+.telemetry-row {
+  display: flex;
+  justify-content: space-between;
+  font-family: var(--font-pixel);
+  font-size: 0.38rem;
+  color: #94a3b8;
+}
+
+.telemetry-row strong {
+  color: #f8fafc;
+  font-weight: normal;
+}
+
+.telemetry-vs {
+  font-family: var(--font-pixel);
+  font-size: 0.46rem;
+  color: var(--bronze-lit);
+  padding: 0 4px;
+}
+
+.victory-auto-next {
+  font-family: var(--font-pixel);
+  font-size: 0.42rem;
+  color: #38bdf8;
+  margin-bottom: 14px;
+}
+
 .victory-btn-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 
 /* HD-2D Landing Page & Champion Select Overlay */
