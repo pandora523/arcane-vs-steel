@@ -565,13 +565,15 @@ class Game {
             const impactSfx =
               p.type === 'arrow'
                 ? 'arrow_hit'
-                : p.type === 'blade_wave'
-                  ? isCrit
-                    ? 'hit_crit'
-                    : 'heavy_cleave'
-                  : p.type === 'holy_light'
-                    ? 'holy_hit'
-                    : 'fire_hit';
+                : p.type === 'phantom_scythe'
+                  ? 'scythe_reap'
+                  : p.type === 'blade_wave'
+                    ? isCrit
+                      ? 'hit_crit'
+                      : 'heavy_cleave'
+                    : p.type === 'holy_light'
+                      ? 'holy_hit'
+                      : 'fire_hit';
             this.audio.play(impactSfx, enemy.x);
           }
           this.renderer.triggerHitStop(0.055);
@@ -580,6 +582,11 @@ class Game {
           if (p.type === 'arrow') {
             this.vfx.spawnSlash(p.x, p.y, 58, -0.9, 0.9, '#34d399', 0.22);
             this.vfx.spawnGlyphBurst(p.x, p.y, 5, 'emerald');
+          } else if (p.type === 'phantom_scythe') {
+            this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'abyssal');
+            if (p.owner && typeof p.owner.leechLife === 'function') {
+              p.owner.leechLife(18, enemy, this, 'SOUL LEECH');
+            }
           } else if (p.type === 'blade_wave') {
             this.vfx.spawnSlash(p.x, p.y, 72, -1.2, 1.2, '#38bdf8', 0.25);
             this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'steel');
@@ -596,9 +603,11 @@ class Game {
                 ? 'arrow_hit'
                 : p.type === 'holy_light'
                   ? 'holy_hit'
-                  : p.type === 'blade_wave'
-                    ? 'clang'
-                    : 'fire_hit',
+                  : p.type === 'phantom_scythe'
+                    ? 'scythe_reap'
+                    : p.type === 'blade_wave'
+                      ? 'clang'
+                      : 'fire_hit',
               p.x
             );
           }

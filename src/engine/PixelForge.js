@@ -121,7 +121,7 @@ export class PixelForge {
     }
 
     if (st === 'ULTIMATE') {
-      if (fighter.heroId === 'warrior' || fighter.heroId === 'reaper') {
+      if (fighter.heroId === 'warrior') {
         if (t < 0.50) {
           const blitzFrames = [42, 19, 20, 43, 25, 26];
           return blitzFrames[Math.floor(t * 16) % blitzFrames.length];
@@ -162,6 +162,7 @@ export class PixelForge {
     if (
       !isReflection &&
       !fighter.isAngelicAscent &&
+      fighter.heroId !== 'reaper' &&
       (fighter.state === 'DASH' || fighter.state === 'DODGE' || fighter.isOmnislashing)
     ) {
       const dir = (fighter.dashDir || fighter.facing) * fighter.facing;

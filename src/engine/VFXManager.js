@@ -79,7 +79,7 @@ export class VFXManager {
       arcane: { shape: 'star', col: '#fb923c', core: '#fef08a' },
       emerald: { shape: 'feather', col: '#10b981', core: '#fef08a' },
       radiant: { shape: 'cross', col: '#fde047', core: '#ffffff' },
-      abyssal: { shape: 'rune', col: '#c084fc', core: '#f43f5e' },
+      abyssal: { shape: 'skull', col: '#c084fc', core: '#f43f5e' },
       heal: { shape: 'cross', col: '#4ade80', core: '#fef08a' }
     };
     const cfg = sets[theme] || sets.steel;
@@ -298,8 +298,10 @@ export class VFXManager {
       maxLife: isUltimate ? 1.65 : 1.15
     });
 
-    // Immediate special-cast burst around the head & shoulders
-    this.spawnShockwave(fighter.x, fighter.y - 105, isUltimate ? 145 : 95, palette.main, isUltimate ? 0.48 : 0.34, false);
+    // Immediate special-cast burst around the head & shoulders (skip circular shockwave ring for abyssal Reaper)
+    if (theme !== 'abyssal') {
+      this.spawnShockwave(fighter.x, fighter.y - 105, isUltimate ? 145 : 95, palette.main, isUltimate ? 0.48 : 0.34, false);
+    }
     this.spawnBurst(fighter.x, fighter.y - 105, isUltimate ? 22 : 12, palette.core, isUltimate ? 250 : 175, {
       upBias: 90,
       size: isUltimate ? 7 : 5
@@ -542,7 +544,13 @@ export class VFXManager {
     const lights = [];
     for (const f of fighters) {
       const colorType =
-        f.primaryColor === '#38bdf8' ? 'cyan' : f.primaryColor === '#10b981' ? 'emerald' : 'orange';
+        f.primaryColor === '#38bdf8'
+          ? 'cyan'
+          : f.primaryColor === '#10b981'
+            ? 'emerald'
+            : f.primaryColor === '#c084fc'
+              ? 'violet'
+              : 'orange';
       lights.push({
         x: f.x,
         y: f.y - 45,
@@ -553,7 +561,13 @@ export class VFXManager {
     }
     for (const p of this.projectiles) {
       const colorType =
-        p.color === '#38bdf8' ? 'cyan' : p.color === '#10b981' || p.color === '#34d399' ? 'emerald' : 'orange';
+        p.color === '#38bdf8'
+          ? 'cyan'
+          : p.color === '#10b981' || p.color === '#34d399'
+            ? 'emerald'
+            : p.color === '#c084fc'
+              ? 'violet'
+              : 'orange';
       lights.push({
         x: p.x,
         y: p.y,
@@ -1013,9 +1027,15 @@ export class VFXManager {
       ctx.globalAlpha = alpha * (isReflection ? 0.35 : isFullCircle ? 0.52 : 0.88);
       const isCyan = s.color === '#38bdf8' || s.color === '#7dd3fc' || s.color === '#0284c7';
       const isEmerald = s.color === '#10b981' || s.color === '#34d399' || s.color === '#6ee7b7';
-      const outerTone = isCyan ? '#0284c7' : isEmerald ? '#059669' : '#ea580c';
+      const isAbyssal =
+        s.color === '#c084fc' ||
+        s.color === '#9333ea' ||
+        s.color === '#7e22ce' ||
+        s.color === '#f43f5e' ||
+        s.color === '#e879f9';
+      const outerTone = isCyan ? '#0284c7' : isEmerald ? '#059669' : isAbyssal ? '#4c1d95' : '#ea580c';
       const midTone = s.color;
-      const innerTone = isCyan ? '#bae6fd' : isEmerald ? '#a7f3d0' : '#fef08a';
+      const innerTone = isCyan ? '#bae6fd' : isEmerald ? '#a7f3d0' : isAbyssal ? '#f5d0fe' : '#fef08a';
 
       for (let i = 0; i <= steps; i++) {
         const u = i / steps;
@@ -1065,7 +1085,7 @@ export class VFXManager {
       }
     }
 
-    // 8. PROJECTILES: Astral Wind Arrows, Glacial Blade-Waves, Orbiting Solar Fireballs & Molten Meteors
+    // 8. PROJECTILES: Astral Wind Arrows, Glacial Blade-Waves, Spinning Phantom Scythes, Solar Fireballs & Meteors
     ctx.globalAlpha = 1;
     for (const proj of this.projectiles) {
       const r = proj.radius * 2.9;
@@ -1073,7 +1093,7 @@ export class VFXManager {
       const py = Math.round(proj.y / 4) * 4;
       if (renderer) {
         const tex =
-          proj.color === '#38bdf8'
+          proj.color === '#38bdf8' || proj.color === '#c084fc'
             ? renderer.glowCyan
             : proj.color === '#10b981' || proj.color === '#34d399'
               ? renderer.glowEmerald || renderer.glowCyan
@@ -1103,6 +1123,39 @@ export class VFXManager {
             ctx.fillRect(px + mx * pSize - pSize * 0.5, py + my * pSize - pSize * 0.5, pSize, pSize);
           }
         }
+      } else if (proj.type === 'phantom_scythe') {
+        // Spinning Boomerang Twin-Blade Phantom Scythe + Crimson Skull Eye Hub (Reaper Exclusive)
+        const dir = Math.sign(proj.vx) || 1;
+        const spin = (proj.age || 0) * 20 * dir;
+        ctx.save();
+        ctx.translate(px, py);
+        for (let blade = 0; blade < 2; blade++) {
+          const baseA = spin + blade * Math.PI;
+          for (let s = 0; s <= 10; s++) {
+            const u = s / 10;
+            const a = baseA - u * 1.45 * dir;
+            const rad = 10 + u * 28;
+            const bx = Math.round((Math.cos(a) * rad) / 4) * 4;
+            const by = Math.round((Math.sin(a) * rad) / 4) * 4;
+            const sz = Math.max(4, Math.round(((1 - u * 0.55) * 14) / 4) * 4);
+            ctx.fillStyle = '#4c1d95';
+            ctx.fillRect(bx - sz * 0.6, by - sz * 0.6, sz * 1.2, sz * 1.2);
+            ctx.fillStyle = s % 2 === 0 ? '#c084fc' : '#f43f5e';
+            ctx.fillRect(bx - sz * 0.4, by - sz * 0.4, sz * 0.8, sz * 0.8);
+            if (u > 0.6) {
+              ctx.fillStyle = '#ffffff';
+              ctx.fillRect(bx - 2, by - 2, 4, 4);
+            }
+          }
+        }
+        // Dark obsidian skull-hub center with glowing crimson eye
+        ctx.fillStyle = '#090514';
+        ctx.fillRect(-10, -10, 20, 20);
+        ctx.fillStyle = '#f43f5e';
+        ctx.fillRect(-6, -6, 12, 12);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-2, -2, 4, 4);
+        ctx.restore();
       } else if (proj.type === 'blade_wave') {
         // Towering Glacial Crescent Sword-Wave (Warrior Ranged Finisher)
         const dir = Math.sign(proj.vx) || 1;
@@ -1235,7 +1288,7 @@ export class VFXManager {
       }
     }
 
-    // 10. PURE PIXEL-ART RUNIC CRYSTALS, SOLAR STARS, SACRED CROSSES & ASTRAL FEATHERS (Zero font/emoji characters)
+    // 10. PURE PIXEL-ART RUNIC CRYSTALS, SOLAR STARS, SACRED CROSSES, NECROTIC SKULLS & ASTRAL FEATHERS
     if (!isReflection) {
       for (const g of this.glyphs) {
         const p = g.life / g.maxLife;
@@ -1245,7 +1298,18 @@ export class VFXManager {
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = Math.min(1, (1 - p) * 1.6);
 
-        if (g.shape === 'rune') {
+        if (g.shape === 'skull') {
+          // Stepped pixel-art Abyssal Skull (Reaper Exclusive)
+          ctx.fillStyle = g.color;
+          ctx.fillRect(gx - 6, gy - 8, 12, 10);
+          ctx.fillRect(gx - 4, gy + 2, 8, 4);
+          ctx.fillStyle = '#090514';
+          ctx.fillRect(gx - 4, gy - 4, 3, 3);
+          ctx.fillRect(gx + 1, gy - 4, 3, 3);
+          ctx.fillStyle = g.coreColor;
+          ctx.fillRect(gx - 3, gy - 3, 2, 2);
+          ctx.fillRect(gx + 2, gy - 3, 2, 2);
+        } else if (g.shape === 'rune') {
           // Stepped pixel-art Nordic cross-crystal
           ctx.fillStyle = g.color;
           ctx.fillRect(gx - 2, gy - 8, 4, 16);
@@ -1304,25 +1368,40 @@ export class VFXManager {
               ? renderer.glowOrange
               : ca.theme === 'emerald'
                 ? renderer.glowEmerald || renderer.glowCyan
-                : renderer.glowCyan;
+                : ca.theme === 'abyssal'
+                  ? renderer.glowViolet || renderer.glowCyan
+                  : renderer.glowCyan;
           ctx.drawImage(glowTex, hx - baseR * 1.8, hy - baseR * 1.8, baseR * 3.6, baseR * 3.6);
         }
 
-        // Spinning 8-Point Stepped Pixel-Art Elemental Crest Halo framing the head
-        const haloNodes = 24;
-        for (let i = 0; i < haloNodes; i++) {
-          const a = (i / haloNodes) * Math.PI * 2 + ca.life * 4.2;
-          const isPoint = i % 3 === 0;
-          const rad = isPoint ? baseR * 1.22 : baseR;
-          const px = Math.round((hx + Math.cos(a) * rad) / 4) * 4;
-          const py = Math.round((hy + Math.sin(a) * rad * 0.72) / 4) * 4;
-          ctx.fillStyle = isPoint ? '#ffffff' : ca.mainColor;
-          ctx.fillRect(px - (isPoint ? 4 : 2), py - (isPoint ? 4 : 2), isPoint ? 8 : 4, isPoint ? 8 : 4);
-          if (isPoint) {
-            const spurX = Math.round((hx + Math.cos(a) * (baseR * 1.44)) / 4) * 4;
-            const spurY = Math.round((hy + Math.sin(a) * (baseR * 1.44) * 0.72) / 4) * 4;
-            ctx.fillStyle = ca.coreColor;
-            ctx.fillRect(spurX - 2, spurY - 2, 4, 4);
+        if (ca.theme === 'abyssal') {
+          // Bespoke Soulreaper Cast Crest: Twin Crossed Crescent Scythe Blades & Horned Skull Crest (no circular star halo)
+          for (const side of [-1, 1]) {
+            const sx = hx + side * 44;
+            const sy = hy - 8;
+            ctx.fillStyle = '#c084fc';
+            ctx.fillRect(sx - 6, sy - 16, 12, 32);
+            ctx.fillStyle = '#f43f5e';
+            ctx.fillRect(sx + side * 6, sy - 20, 14 * side, 8);
+            ctx.fillRect(sx + side * 14, sy - 12, 10 * side, 8);
+          }
+        } else {
+          // Spinning 8-Point Stepped Pixel-Art Elemental Crest Halo framing the head
+          const haloNodes = 24;
+          for (let i = 0; i < haloNodes; i++) {
+            const a = (i / haloNodes) * Math.PI * 2 + ca.life * 4.2;
+            const isPoint = i % 3 === 0;
+            const rad = isPoint ? baseR * 1.22 : baseR;
+            const px = Math.round((hx + Math.cos(a) * rad) / 4) * 4;
+            const py = Math.round((hy + Math.sin(a) * rad * 0.72) / 4) * 4;
+            ctx.fillStyle = isPoint ? '#ffffff' : ca.mainColor;
+            ctx.fillRect(px - (isPoint ? 4 : 2), py - (isPoint ? 4 : 2), isPoint ? 8 : 4, isPoint ? 8 : 4);
+            if (isPoint) {
+              const spurX = Math.round((hx + Math.cos(a) * (baseR * 1.44)) / 4) * 4;
+              const spurY = Math.round((hy + Math.sin(a) * (baseR * 1.44) * 0.72) / 4) * 4;
+              ctx.fillStyle = ca.coreColor;
+              ctx.fillRect(spurX - 2, spurY - 2, 4, 4);
+            }
           }
         }
 

@@ -3,6 +3,8 @@ import { PixelForge } from './PixelForge.js';
 const CYAN_FIRE_PAL = ['#0284c7', '#38bdf8', '#7dd3fc', '#f0f9ff'];
 const SOLAR_FIRE_PAL = ['#c2410c', '#f97316', '#facc15', '#fef9c3'];
 const EMERALD_FIRE_PAL = ['#059669', '#10b981', '#6ee7b7', '#fef08a'];
+const RADIANT_FIRE_PAL = ['#ca8a04', '#eab308', '#fde047', '#ffffff'];
+const ABYSSAL_FIRE_PAL = ['#581c87', '#9333ea', '#c084fc', '#f43f5e'];
 
 export class Renderer {
   constructor(canvas) {
@@ -58,6 +60,7 @@ export class Renderer {
     this.glowOrange = makeGlow('rgba(254,240,138,0.96)', 'rgba(251,146,60,0.48)');
     this.glowEmerald = makeGlow('rgba(167,243,208,0.95)', 'rgba(16,185,129,0.48)');
     this.glowGold = makeGlow('rgba(254,240,138,0.92)', 'rgba(234,179,8,0.40)');
+    this.glowViolet = makeGlow('rgba(245,208,254,0.95)', 'rgba(168,85,247,0.48)');
     this.shadowTex = makeGlow('rgba(0,0,0,0.92)', 'rgba(0,0,0,0.52)');
   }
 
@@ -203,15 +206,26 @@ export class Renderer {
       const glow =
         f.primaryColor === '#38bdf8'
           ? this.glowCyan
-          : f.primaryColor === '#10b981'
+          : f.primaryColor === '#10b981' || f.primaryColor === '#34d399'
             ? this.glowEmerald
-            : this.glowOrange;
+            : f.primaryColor === '#fde047'
+              ? this.glowGold
+              : f.primaryColor === '#c084fc'
+                ? this.glowViolet
+                : this.glowOrange;
       ctx.drawImage(glow, f.x - 130, f.y - (f.isDead ? 115 : 195), 260, 260);
       ctx.restore();
 
-      this.drawCharacterGroundHalo(ctx, f);
+      if (f.heroId !== 'reaper') {
+        this.drawCharacterGroundHalo(ctx, f);
+      }
       f.draw(ctx, false);
       this.drawCharacterPixelFlames(ctx, f);
+    }
+    for (const f of sorted) {
+      if (typeof f.drawForegroundOverlay === 'function') {
+        f.drawForegroundOverlay(ctx);
+      }
     }
     vfx.renderMainPass(ctx, false, this);
 
@@ -422,8 +436,18 @@ export class Renderer {
   drawCharacterGroundHalo(ctx, f) {
     if (f.isDead && (f.deathTimer || 0) > 0.6) return;
     const isBlue = f.primaryColor === '#38bdf8';
-    const isEmerald = f.primaryColor === '#10b981';
-    const pal = isBlue ? CYAN_FIRE_PAL : isEmerald ? EMERALD_FIRE_PAL : SOLAR_FIRE_PAL;
+    const isEmerald = f.primaryColor === '#10b981' || f.primaryColor === '#34d399';
+    const isRadiant = f.primaryColor === '#fde047';
+    const isAbyssal = f.primaryColor === '#c084fc';
+    const pal = isBlue
+      ? CYAN_FIRE_PAL
+      : isEmerald
+        ? EMERALD_FIRE_PAL
+        : isRadiant
+          ? RADIANT_FIRE_PAL
+          : isAbyssal
+            ? ABYSSAL_FIRE_PAL
+            : SOLAR_FIRE_PAL;
     const t = this.time;
     const isAction = f.state === 'SKILL' || f.state === 'ULTIMATE' || f.state === 'AUTO_ATTACK';
     const rX = isAction ? 66 : 48;
@@ -448,14 +472,24 @@ export class Renderer {
   drawCharacterPixelFlames(ctx, f) {
     if (f.isDead && (f.deathTimer || 0) > 0.9) return;
     const isBlue = f.primaryColor === '#38bdf8';
-    const isEmerald = f.primaryColor === '#10b981';
-    const pal = isBlue ? CYAN_FIRE_PAL : isEmerald ? EMERALD_FIRE_PAL : SOLAR_FIRE_PAL;
+    const isEmerald = f.primaryColor === '#10b981' || f.primaryColor === '#34d399';
+    const isRadiant = f.primaryColor === '#fde047';
+    const isAbyssal = f.primaryColor === '#c084fc';
+    const pal = isBlue
+      ? CYAN_FIRE_PAL
+      : isEmerald
+        ? EMERALD_FIRE_PAL
+        : isRadiant
+          ? RADIANT_FIRE_PAL
+          : isAbyssal
+            ? ABYSSAL_FIRE_PAL
+            : SOLAR_FIRE_PAL;
     const t = this.time;
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
 
-    // 1. Emit live pixel-art fire / rune / wind sparks along the weapon & aura
+    // 1. Emit live pixel-art fire / rune / wind / wraith sparks along the weapon & aura
     const count = f.isDead ? 4 : f.state === 'IDLE' || f.state === 'WALK' ? 9 : 16;
     const fallDrop = f.isDead ? Math.min(48, (f.deathTimer || 0) * 55) : 0;
     for (let i = 0; i < count; i++) {
@@ -499,6 +533,31 @@ export class Renderer {
           ctx.fillRect(wx - 4, wy - 2, 8, 3);
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(wx - 1, wy - 1, 2, 2);
+        }
+      } else if (isRadiant) {
+        // SERAPHINA: Gentle Golden-Pearl Sanctuary Crown Motes
+        ctx.globalAlpha = 0.78;
+        for (let m = 0; m < 3; m++) {
+          const ma = t * 2.6 + (m * Math.PI * 2) / 3;
+          const mx = Math.round((f.x + Math.cos(ma) * 38) / 3) * 3;
+          const my = Math.round((f.y - 115 + Math.sin(ma * 2) * 8) / 3) * 3;
+          ctx.fillStyle = '#fde047';
+          ctx.fillRect(mx - 3, my - 3, 6, 6);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(mx - 1, my - 1, 2, 2);
+        }
+      } else if (isAbyssal) {
+        // MALAKOR: Creeping Floor Shadow Mist & Drifting Crimson-Violet Soul Wisps
+        ctx.globalAlpha = 0.82;
+        for (let s = 0; s < 3; s++) {
+          const phase = (t * 0.9 + s * 0.33) % 1;
+          const sx = Math.round((f.x - f.facing * (18 + s * 14) + Math.sin(t * 4 + s) * 10) / 4) * 4;
+          const sy = Math.round((f.y - 24 - phase * 92) / 4) * 4;
+          ctx.fillStyle = s % 2 === 0 ? '#c084fc' : '#f43f5e';
+          ctx.fillRect(sx - 4, sy - 4, 8, 6);
+          ctx.fillStyle = '#090514';
+          ctx.fillRect(sx - 3, sy - 2, 2, 2);
+          ctx.fillRect(sx + 1, sy - 2, 2, 2);
         }
       } else {
         // IGNIS SOL: 3 Orbiting Miniature Solar Fire-Orbs Circling His Arcane Robes
@@ -595,7 +654,9 @@ export class Renderer {
           ? this.glowCyan
           : l.colorType === 'emerald'
             ? this.glowEmerald
-            : this.glowOrange;
+            : l.colorType === 'violet'
+              ? this.glowViolet
+              : this.glowOrange;
       ctx.globalAlpha = Math.min(0.72, 0.48 * atten * l.intensity);
       ctx.drawImage(tex, l.x - rx, gy + 2 - ry, rx * 2, ry * 2);
     }
