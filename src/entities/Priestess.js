@@ -517,20 +517,20 @@ export class Priestess extends Fighter {
     const cy = -124;
     const vfxSheet = sprites && sprites.vfx;
 
-    // Helper to draw deeply saturated chunky-pixel VFX sprite without additive whitewash
+    // Helper to draw deeply saturated chunky-pixel VFX sprite with balanced HD-2D bloom
     const drawGlowingVfxCell = (sx, sy, sw, sh, dx, dy, dw, dh, alpha) => {
-      const auraW = Math.round((dw * 1.12) / 4) * 4;
-      const auraH = Math.round((dh * 1.12) / 4) * 4;
+      const auraW = Math.round((dw * 1.14) / 4) * 4;
+      const auraH = Math.round((dh * 1.14) / 4) * 4;
       const midX = dx + dw * 0.5;
       const midY = dy + dh * 0.5;
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(1, alpha * 0.48);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, alpha * 0.28);
       ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(midX - auraW * 0.5), Math.round(midY - auraH * 0.5), auraW, auraH);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(1, alpha * 0.98);
+      ctx.globalAlpha = Math.min(1, alpha * 0.96);
       ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.14);
+      ctx.globalAlpha = Math.min(1, alpha * 0.24);
       ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
     };
 

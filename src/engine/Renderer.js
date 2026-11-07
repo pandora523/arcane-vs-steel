@@ -84,36 +84,36 @@ export class Renderer {
       gCtx.fillRect(0, 0, 160, 160);
       return c;
     };
-    // Rich, deeply saturated jewel-tone radial light textures (no white center stop so additive passes never wash out!)
+    // Rich, deeply saturated jewel-tone radial bloom textures (no white center stop so additive passes never wash out!)
     this.glowCyan = makeGlow(
-      'rgba(14,165,233,0.72)',
-      'rgba(2,132,199,0.46)',
-      'rgba(30,58,138,0.18)'
+      'rgba(56,189,248,0.85)',
+      'rgba(14,165,233,0.56)',
+      'rgba(2,132,199,0.22)'
     );
     this.glowOrange = makeGlow(
-      'rgba(249,115,22,0.76)',
-      'rgba(234,88,12,0.50)',
-      'rgba(154,52,18,0.20)'
+      'rgba(251,146,60,0.86)',
+      'rgba(234,88,12,0.58)',
+      'rgba(180,83,9,0.24)'
     );
     this.glowEmerald = makeGlow(
-      'rgba(16,185,129,0.74)',
-      'rgba(5,150,105,0.48)',
-      'rgba(6,78,59,0.18)'
+      'rgba(52,211,153,0.85)',
+      'rgba(16,185,129,0.56)',
+      'rgba(5,150,105,0.22)'
     );
     this.glowGold = makeGlow(
-      'rgba(234,179,8,0.74)',
-      'rgba(202,138,4,0.48)',
-      'rgba(133,77,14,0.18)'
+      'rgba(250,204,21,0.85)',
+      'rgba(234,179,8,0.56)',
+      'rgba(161,98,7,0.22)'
     );
     this.glowViolet = makeGlow(
-      'rgba(168,85,247,0.76)',
-      'rgba(126,34,206,0.50)',
-      'rgba(76,29,149,0.20)'
+      'rgba(192,132,252,0.86)',
+      'rgba(147,51,234,0.58)',
+      'rgba(107,33,168,0.24)'
     );
     this.glowTeal = makeGlow(
-      'rgba(20,184,166,0.74)',
-      'rgba(13,148,136,0.48)',
-      'rgba(19,78,74,0.18)'
+      'rgba(45,212,191,0.85)',
+      'rgba(20,184,166,0.56)',
+      'rgba(13,148,136,0.22)'
     );
     this.shadowTex = makeGlow('rgba(0,0,0,0.92)', 'rgba(0,0,0,0.52)', 'rgba(0,0,0,0.18)');
   }
@@ -286,9 +286,9 @@ export class Renderer {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const deathFade = f.isDead ? Math.min(1, Math.max(0.08, 1 - (f.deathTimer || 0) * 0.65)) : 1;
-      ctx.globalAlpha = (f.state === 'IDLE' || f.state === 'WALK' ? 0.22 : 0.38) * deathFade;
+      ctx.globalAlpha = (f.state === 'IDLE' || f.state === 'WALK' ? 0.30 : 0.48) * deathFade;
       const glow = this.getGlowForColor(f.primaryColor);
-      ctx.drawImage(glow, f.x - 130, f.y - (f.isDead ? 115 : 195), 260, 260);
+      ctx.drawImage(glow, f.x - 140, f.y - (f.isDead ? 115 : 205), 280, 280);
       ctx.restore();
 
       if (f.heroId !== 'reaper') {

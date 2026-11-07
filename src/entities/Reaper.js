@@ -528,17 +528,17 @@ export class Reaper extends Fighter {
         const dy = Math.round(by - drawH + 10 + riseOffset);
         const dw = Math.round(drawW);
         const dh = Math.round(drawH);
-        // Stepped outer violet-crimson pixel aura
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.45;
+        // Stepped outer violet-crimson pixel bloom aura
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.28;
         ctx.drawImage(vfxSheet, 320, 56, 208, 208, dx - 6, dy - 6, dw + 12, dh + 12);
         // Main chunky-pixel Gothic Crypt Tombstone
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.98;
+        ctx.globalAlpha = fade * 0.96;
         ctx.drawImage(vfxSheet, 320, 56, 208, 208, dx, dy, dw, dh);
-        // Subtle luminous inner rune pass
+        // Balanced luminous inner rune bloom pass
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.15;
+        ctx.globalAlpha = fade * 0.24;
         ctx.drawImage(vfxSheet, 320, 56, 208, 208, dx, dy, dw, dh);
       } else {
         const dx = Math.round(bx - drawW * 0.5);
@@ -546,10 +546,10 @@ export class Reaper extends Fighter {
         const dw = Math.round(drawW);
         const dh = Math.round(drawH * 0.48);
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.98;
+        ctx.globalAlpha = fade * 0.96;
         ctx.drawImage(vfxSheet, 320, 164, 208, 100, dx, dy, dw, dh);
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.14;
+        ctx.globalAlpha = fade * 0.22;
         ctx.drawImage(vfxSheet, 320, 164, 208, 100, dx, dy, dw, dh);
       }
       ctx.restore();
@@ -575,16 +575,16 @@ export class Reaper extends Fighter {
     const dist = Math.hypot(dx, dy) || 1;
     const angle = Math.atan2(dy, dx);
 
-    // 1. Stepped Pixelated Violet-Crimson Soul-Fire Glow along the chain path
+    // 1. Stepped Pixelated Violet-Crimson Soul-Fire Bloom along the chain path
     ctx.save();
-    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalCompositeOperation = 'lighter';
     for (let s = 0; s <= 22; s++) {
       const u = s / 22;
       const sag = Math.sin(u * Math.PI) * 14 + Math.sin(u * Math.PI * 3 + this.stateTimer * 28) * 3;
       const px = Math.round((x1 + dx * u) / 4) * 4;
       const py = Math.round((y1 + dy * u + sag) / 4) * 4;
-      ctx.fillStyle = s % 2 === 0 ? 'rgba(126, 34, 206, 0.58)' : 'rgba(225, 29, 72, 0.52)';
-      ctx.fillRect(px - 8, py - 8, 16, 16);
+      ctx.fillStyle = s % 2 === 0 ? 'rgba(147, 51, 234, 0.42)' : 'rgba(225, 29, 72, 0.38)';
+      ctx.fillRect(px - 10, py - 10, 20, 20);
     }
     ctx.restore();
 
@@ -627,17 +627,17 @@ export class Reaper extends Fighter {
       ctx.rotate(gripRot);
       const cdx = Math.round(-clawSize * 0.56);
       const cdy = Math.round(-clawSize * 0.5);
-      // Stepped outer crimson-violet pixel aura
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.50;
+      // Stepped outer crimson-violet pixel bloom aura
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.28;
       ctx.drawImage(vfxSheet, 528, 56, 208, 208, cdx - 8, cdy - 8, clawSize + 16, clawSize + 16);
       // Main chunky-pixel claw
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.98;
+      ctx.globalAlpha = 0.96;
       ctx.drawImage(vfxSheet, 528, 56, 208, 208, cdx, cdy, clawSize, clawSize);
-      // Subtle luminous core pass
+      // Balanced luminous core bloom pass
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.16;
+      ctx.globalAlpha = 0.24;
       ctx.drawImage(vfxSheet, 528, 56, 208, 208, cdx, cdy, clawSize, clawSize);
       ctx.restore();
     }
@@ -681,19 +681,19 @@ export class Reaper extends Fighter {
     }
 
     const dHalf = Math.round(-drawSize * 0.5);
-    // Stepped outer abyssal pixel aura
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.48;
+    // Stepped outer abyssal pixel bloom aura
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = fade * 0.28;
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf - 10, dHalf - 10, drawSize + 20, drawSize + 20);
 
     // Main 320x320 chunky-pixel Grim Reaper Death Avatar sprite
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.98;
+    ctx.globalAlpha = fade * 0.96;
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, drawSize, drawSize);
 
-    // Subtle inner crimson-violet rune sheen pass
+    // Balanced inner crimson-violet rune bloom pass
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * (0.16 + Math.sin(da.swingProgress * Math.PI) * 0.14);
+    ctx.globalAlpha = fade * (0.24 + Math.sin(da.swingProgress * Math.PI) * 0.14);
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, drawSize, drawSize);
 
     ctx.restore();

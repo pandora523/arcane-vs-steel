@@ -66,33 +66,33 @@ export class VFXManager {
     const cx = dx + dw * 0.5;
     const cy = dy + dh * 0.5;
 
-    // 1. Saturated Radial Jewel-Tone Light Halo behind the chunky pixel VFX sprite
+    // 1. Saturated Radial Jewel-Tone Bloom Halo behind the chunky pixel VFX sprite
     if (renderer && !isReflection) {
       const glowTex = renderer.getGlowForColor ? renderer.getGlowForColor(glowCol) : renderer.glowCyan;
-      const haloW = dw * 1.75;
-      const haloH = dh * 1.75;
+      const haloW = dw * 2.05;
+      const haloH = dh * 2.05;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.28);
+      ctx.globalAlpha = Math.min(1, alpha * 0.44);
       ctx.drawImage(glowTex, cx - haloW * 0.5, cy - haloH * 0.5, haloW, haloH);
     }
 
-    // 2. Stepped Chunky-Pixel Outer Colored Aura Pass (source-over so colors stay deeply saturated)
+    // 2. Stepped Chunky-Pixel Outer Bloom Fringe (balanced 0.28 lighter pass so outer pixels glow warmly)
     if (!isReflection) {
-      const auraW = Math.round((dw * 1.12) / 4) * 4;
-      const auraH = Math.round((dh * 1.12) / 4) * 4;
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(1, alpha * 0.48);
+      const auraW = Math.round((dw * 1.14) / 4) * 4;
+      const auraH = Math.round((dh * 1.14) / 4) * 4;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, alpha * 0.28);
       ctx.drawImage(sheet, sx, sy, sw, sh, Math.round(cx - auraW * 0.5), Math.round(cy - auraH * 0.5), auraW, auraH);
     }
 
     // 3. Main Chunky-Pixel Sprite Body Pass (100% rich saturated pixel blocks)
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = Math.min(1, alpha * 0.98);
+    ctx.globalAlpha = Math.min(1, alpha * 0.96);
     ctx.drawImage(sheet, sx, sy, sw, sh, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
 
-    // 4. Subtle Luminous Accent Pass (capped at 0.14 so colors never wash out to white)
+    // 4. Balanced Inner Luminous Bloom Pass (0.24 alpha: lush HD-2D bloom without blowing out to white)
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * (isReflection ? 0.08 : 0.14));
+    ctx.globalAlpha = Math.min(1, alpha * (isReflection ? 0.12 : 0.24));
     const coreW = Math.round((dw * 0.96) / 4) * 4;
     const coreH = Math.round((dh * 0.96) / 4) * 4;
     ctx.drawImage(sheet, sx, sy, sw, sh, Math.round(cx - coreW * 0.5), Math.round(cy - coreH * 0.5), coreW, coreH);
@@ -1282,7 +1282,7 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 5. PARTICLES: Deeply Saturated 4px-Aligned Chunky Pixel Blocks (Zero Whitewash!)
+    // 5. PARTICLES: Deeply Saturated 4px-Aligned Chunky Pixel Blocks with Balanced HD-2D Bloom!
     for (const p of this.particles) {
       const t = p.life / p.maxLife;
       const fade = 1 - t;
@@ -1291,21 +1291,22 @@ export class VFXManager {
       const py = Math.round(p.y / 4) * 4;
       const pCol = p.color === '#ffffff' ? '#38bdf8' : p.color;
 
-      // 1. Subtle radial jewel-tone halo around each chunky pixel particle
+      // 1. Balanced radial jewel-tone bloom halo around each chunky pixel particle
       if (renderer && !isReflection && s >= 4) {
         const glowTex = renderer.getGlowForColor ? renderer.getGlowForColor(pCol) : renderer.glowCyan;
-        const glowR = s * 2.2;
+        const glowR = s * 2.6;
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.16;
+        ctx.globalAlpha = fade * 0.28;
         ctx.drawImage(glowTex, px - glowR, py - glowR, glowR * 2, glowR * 2);
       }
-      // 2. Stepped chunky outer pixel aura block (+6px) in source-over so colors never clip to white
-      ctx.globalCompositeOperation = 'source-over';
+      // 2. Stepped chunky outer pixel bloom block (+6px) in balanced lighter mode
+      ctx.globalCompositeOperation = 'lighter';
       const outerS = s + 6;
-      ctx.globalAlpha = fade * (isReflection ? 0.22 : 0.44);
+      ctx.globalAlpha = fade * (isReflection ? 0.16 : 0.32);
       ctx.fillStyle = pCol;
       ctx.fillRect(px - outerS * 0.5, py - outerS * 0.5, outerS, outerS);
-      // 3. Richly saturated main chunky pixel block
+      // 3. Richly saturated main chunky pixel block in source-over
+      ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = fade * (isReflection ? 0.65 : 0.96);
       ctx.fillStyle = pCol;
       ctx.fillRect(px - s * 0.5, py - s * 0.5, s, s);
@@ -1396,7 +1397,7 @@ export class VFXManager {
         if (sheet && sheet.complete && sheet.naturalWidth) {
           ctx.save();
           ctx.translate(sx, sy);
-          ctx.rotate(midAng);
+          ctx.rotate(isChrono ? Math.floor(t * 8) * (Math.PI * 0.5) : midAng);
           this.drawBloomedSprite(
             ctx,
             renderer,
@@ -1414,8 +1415,6 @@ export class VFXManager {
             isReflection
           );
           ctx.restore();
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = alpha * (isFullCircle ? 0.58 : 0.92);
         }
       }
 
@@ -1430,6 +1429,13 @@ export class VFXManager {
         const py = Math.round((s.y + Math.sin(ang) * ry) / 4) * 4;
         const sz = Math.max(4, Math.round((env * (isFullCircle ? 12 : 16) * (1 - t * 0.45)) / 4) * 4);
 
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha * (isReflection ? 0.18 : 0.34);
+        ctx.fillStyle = midTone;
+        ctx.fillRect(px - sz * 0.85, py - sz * 0.85, sz * 1.7, sz * 1.7);
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha * (isReflection ? 0.35 : isFullCircle ? 0.58 : 0.94);
         ctx.fillStyle = outerTone;
         ctx.fillRect(px - sz * 0.65, py - sz * 0.65, sz * 1.3, sz * 1.3);
         ctx.fillStyle = midTone;
@@ -1441,26 +1447,29 @@ export class VFXManager {
       }
     }
 
-    // 7. SHOCKWAVES: 3D Perspective Pixel-Art Expanding Rune & Sonic Boom Rings
+    // 7. SHOCKWAVES: 3D Perspective Pixel-Art Expanding Rune & Sonic Boom Rings with Balanced Bloom
     for (const sw of this.shockwaves) {
       const t = sw.life / sw.maxLife;
       const r = sw.maxRadius * (1 - Math.pow(1 - t, 3));
       const xScale = sw.vertical ? 0.34 : 1.0;
       const yScale = sw.flat ? 0.28 : 1.0;
       const nodes = 28;
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = (1 - t) * (isReflection ? 0.5 : 0.92);
 
       for (let i = 0; i < nodes; i++) {
         const a = (i / nodes) * Math.PI * 2 + t * 1.5;
         const px = Math.round((sw.x + Math.cos(a) * r * xScale) / 4) * 4;
         const py = Math.round((sw.y + Math.sin(a) * r * yScale) / 4) * 4;
         const block = Math.max(4, Math.round(((1 - t) * 10) / 2) * 2);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = (1 - t) * (isReflection ? 0.16 : 0.32);
         ctx.fillStyle = sw.color;
+        ctx.fillRect(px - block * 0.8, py - block * 0.8, block * 1.6, block * 1.6);
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = (1 - t) * (isReflection ? 0.5 : 0.92);
         ctx.fillRect(px - block * 0.5, py - block * 0.5, block, block);
         if (i % 4 === 0 && sw.flat) {
           const toothH = Math.max(4, Math.round(((1 - t) * 22) / 4) * 4);
-          ctx.fillStyle = sw.color;
           ctx.fillRect(px - 2, py - toothH, 4, toothH);
         }
       }
@@ -1469,7 +1478,7 @@ export class VFXManager {
     // 8. PROJECTILES: Deeply Saturated Chunky-Pixel Astral Arrows, Frost Blade-Waves, Phantom Scythes, Clockwork Saw-Gears, Holy Orbs & Solar Fireballs
     ctx.globalAlpha = 1;
     for (const proj of this.projectiles) {
-      const r = proj.radius * 3.4;
+      const r = proj.radius * 3.8;
       const px = Math.round(proj.x / 4) * 4;
       const py = Math.round(proj.y / 4) * 4;
       if (renderer) {
@@ -1478,7 +1487,7 @@ export class VFXManager {
           : renderer.glowOrange;
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.42;
+        ctx.globalAlpha = 0.50;
         ctx.drawImage(tex, px - r, py - r, r * 2, r * 2);
         ctx.restore();
       }
@@ -1524,18 +1533,19 @@ export class VFXManager {
       } else if (proj.type === 'clock_gear') {
         const vfxSheet = assets.chronomancer?.vfx;
         const dir = Math.sign(proj.vx) || 1;
-        const spin = (proj.age || 0) * 18 * dir;
+        // 90-degree stepped escapement rotation so every pixel of the clockwork saw-gear stays 100% orthogonal!
+        const spin = Math.floor((proj.age || 0) * 10) * (Math.PI * 0.5) * dir;
         ctx.save();
         ctx.translate(px, py);
         for (let tStep = 1; tStep <= 6; tStep++) {
-          const tx = -dir * tStep * 11;
-          const ty = Math.sin((proj.age || 0) * 32 - tStep * 0.9) * 8;
+          const tx = -dir * tStep * 12;
+          const ty = Math.round((Math.sin((proj.age || 0) * 32 - tStep * 0.9) * 8) / 4) * 4;
           ctx.fillStyle = tStep % 2 === 0 ? '#eab308' : '#0d9488';
-          ctx.fillRect(tx - 4, ty - 3, 8, 6);
+          ctx.fillRect(tx - 4, ty - 4, 8, 8);
         }
         ctx.rotate(spin);
         if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-          const gearSize = 92;
+          const gearSize = 96;
           this.drawBloomedSprite(
             ctx,
             renderer,
