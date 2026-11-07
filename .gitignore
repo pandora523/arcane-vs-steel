@@ -1,0 +1,5 @@
+
+.*
+!.gitignore
+pandora523/
+upload/
