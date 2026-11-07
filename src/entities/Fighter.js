@@ -114,9 +114,6 @@ export class Fighter {
     }
 
     if (this.game) {
-      if (this.game.audio && amount >= 18) {
-        this.game.audio.play('hurt_hit', this.x);
-      }
       this.game.vfx.spawnDamageText(this.x, this.y - 125, amount, isCrit);
       this.game.vfx.spawnBurst(this.x, this.y - 105, isCrit ? 14 : 8, this.primaryColor, 185);
       if (isCrit) {

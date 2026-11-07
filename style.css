@@ -33,9 +33,12 @@
 
 html, body {
   width: 100%;
+  max-width: 100%;
   height: 100%;
   height: 100dvh;
   overflow: hidden;
+  overflow-x: hidden;
+  overscroll-behavior: none;
   background: var(--bg-crypt);
   color: var(--text-ivory);
   font-family: var(--font-pixel);
@@ -52,8 +55,10 @@ html, body {
 
 #app {
   position: relative;
-  width: 100vw;
+  width: 100%;
+  max-width: 100vw;
   height: 100dvh;
+  overflow: hidden;
 }
 
 #arena-canvas {
@@ -468,46 +473,74 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: clamp(10px, 2.2vh, 24px);
+  padding: clamp(8px, 2vh, 22px);
+  overflow: hidden;
+  max-width: 100%;
+  touch-action: pan-y;
   background: radial-gradient(circle at 50% 42%, rgba(7, 10, 20, 0.62) 0%, rgba(3, 5, 11, 0.92) 100%);
   backdrop-filter: blur(4px);
   transition: opacity 0.32s ease, transform 0.32s ease;
 }
 
 .landing-shell {
-  width: min(96vw, 1020px);
-  max-height: 95dvh;
+  width: min(94vw, 1020px);
+  max-width: 100%;
+  max-height: 94dvh;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
+  touch-action: pan-y;
+  scrollbar-width: thin;
+  scrollbar-color: var(--bronze-lit) #060911;
   background: linear-gradient(180deg, rgba(11, 15, 27, 0.95) 0%, rgba(6, 9, 17, 0.98) 100%);
   border: 2px solid var(--bronze-lit);
   outline: 2px solid #000;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.95), inset 0 0 40px rgba(212, 175, 55, 0.08);
-  padding: clamp(14px, 2.4vw, 28px);
+  padding: clamp(12px, 2.2vw, 28px);
   display: flex;
   flex-direction: column;
   gap: clamp(12px, 1.8vh, 20px);
 }
 
+.landing-shell::-webkit-scrollbar {
+  width: 6px;
+  height: 0;
+}
+
+.landing-shell::-webkit-scrollbar-track {
+  background: #060911;
+}
+
+.landing-shell::-webkit-scrollbar-thumb {
+  background: var(--bronze-dim);
+  border: 1px solid var(--bronze-lit);
+}
+
 .landing-header {
   text-align: center;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }
 
 .landing-eyebrow {
   font-family: var(--font-pixel);
-  font-size: clamp(0.38rem, 0.9vw, 0.48rem);
-  letter-spacing: 0.1em;
+  font-size: clamp(0.36rem, 0.9vw, 0.48rem);
+  letter-spacing: 0.08em;
   color: var(--bronze-lit);
   margin-bottom: 6px;
   text-shadow: 0 2px 0 #000;
+  overflow-wrap: break-word;
 }
 
 .landing-title {
   font-family: var(--font-pixel);
-  font-size: clamp(1.05rem, 3vw, 1.85rem);
+  font-size: clamp(0.95rem, 3vw, 1.85rem);
   font-weight: normal;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
   color: #fff;
   text-shadow: 0 3px 0 #000, 0 0 26px rgba(212, 175, 55, 0.45);
+  overflow-wrap: break-word;
 }
 
 .landing-title span {
@@ -517,34 +550,40 @@ html, body {
 
 .landing-subtitle {
   font-family: var(--font-pixel);
-  font-size: clamp(0.42rem, 0.95vw, 0.55rem);
+  font-size: clamp(0.4rem, 0.95vw, 0.55rem);
   line-height: 1.5;
   color: var(--text-ash);
   margin-top: 6px;
+  overflow-wrap: break-word;
 }
 
 .matchup-banner {
-  margin-top: 10px;
-  display: inline-flex;
+  margin: 10px auto 0;
+  display: flex;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: clamp(6px, 1.2vw, 10px);
+  width: 100%;
+  max-width: 480px;
   background: rgba(6, 9, 17, 0.9);
   border: 1px solid #334155;
-  padding: 6px 10px;
+  padding: 6px 8px;
   box-shadow: inset 0 0 12px #000;
 }
 
 .slot-pill {
   background: #0d1322;
   border: 2px solid #334155;
-  padding: 6px 14px;
+  padding: 6px 10px;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
   cursor: pointer;
-  min-width: 158px;
+  flex: 1 1 115px;
+  min-width: 0;
+  max-width: 100%;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
 }
 
@@ -555,31 +594,39 @@ html, body {
 
 .slot-tag {
   font-family: var(--font-pixel);
-  font-size: 0.36rem;
+  font-size: 0.34rem;
   color: #94a3b8;
+  white-space: nowrap;
 }
 
 .slot-hero-name {
   font-family: var(--font-pixel);
-  font-size: 0.62rem;
+  font-size: clamp(0.5rem, 1.2vw, 0.62rem);
   font-weight: normal;
   color: #fef9c3;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
 }
 
 .matchup-vs-badge {
   font-family: var(--font-pixel);
   font-weight: normal;
-  font-size: 0.62rem;
+  font-size: 0.56rem;
   color: var(--bronze-lit);
-  padding: 0 4px;
+  padding: 0 2px;
+  flex-shrink: 0;
 }
 
 .champion-grid {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: clamp(10px, 1.4vw, 16px);
   align-items: stretch;
+  width: 100%;
+  max-width: 100%;
 }
 
 .champ-card {
@@ -593,6 +640,9 @@ html, body {
   gap: 10px;
   align-items: center;
   cursor: pointer;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
   transition: transform 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
 }
 
@@ -729,12 +779,13 @@ html, body {
 
 .stat-row {
   display: grid;
-  grid-template-columns: 86px 1fr;
+  grid-template-columns: minmax(64px, 84px) minmax(0, 1fr);
   align-items: center;
   gap: 6px;
   font-family: var(--font-pixel);
   font-size: 0.36rem;
   color: #cbd5e1;
+  min-width: 0;
 }
 
 .stat-track {
@@ -815,9 +866,11 @@ html, body {
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 14px;
+  gap: 12px;
   flex-wrap: wrap;
   padding-top: 2px;
+  width: 100%;
+  max-width: 100%;
 }
 
 .landing-cta-btn {
@@ -826,10 +879,14 @@ html, body {
   border: 2px solid #fde047;
   outline: 1px solid #000;
   box-shadow: 0 0 24px rgba(250, 204, 21, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.35);
-  padding: 13px 26px;
+  padding: 12px 20px;
   font-family: var(--font-pixel);
-  font-size: clamp(0.54rem, 1.2vw, 0.66rem);
-  letter-spacing: 0.06em;
+  font-size: clamp(0.46rem, 1.15vw, 0.64rem);
+  letter-spacing: 0.05em;
+  line-height: 1.4;
+  text-align: center;
+  max-width: 100%;
+  white-space: normal;
   cursor: pointer;
   transition: transform 0.15s ease, filter 0.15s ease, box-shadow 0.15s ease;
 }
@@ -841,8 +898,9 @@ html, body {
 }
 
 .landing-spectate-btn {
-  padding: 13px 18px;
-  font-size: 0.5rem;
+  padding: 12px 16px;
+  font-size: 0.48rem;
+  max-width: 100%;
 }
 
 .hidden {
@@ -884,8 +942,24 @@ html, body {
 }
 
 @media (max-width: 680px) {
+  .landing-overlay {
+    padding: 6px;
+  }
+  .landing-shell {
+    width: 96vw;
+    padding: 12px 10px;
+  }
+  .matchup-banner {
+    flex-wrap: nowrap;
+    gap: 6px;
+    padding: 5px 6px;
+  }
+  .slot-pill {
+    padding: 5px 6px;
+    flex: 1 1 0;
+  }
   .champion-grid {
-    grid-template-columns: 1fr;
+    grid-template-columns: minmax(0, 1fr);
   }
   .champ-preview-stage {
     height: 112px;
