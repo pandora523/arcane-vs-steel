@@ -1,4 +1,5 @@
 import { PixelFont } from './PixelFont.js';
+import { PixelForge } from './PixelForge.js';
 
 export class VFXManager {
   constructor() {
@@ -80,6 +81,7 @@ export class VFXManager {
       emerald: { shape: 'feather', col: '#10b981', core: '#fef08a' },
       radiant: { shape: 'cross', col: '#fde047', core: '#ffffff' },
       abyssal: { shape: 'skull', col: '#c084fc', core: '#f43f5e' },
+      chrono: { shape: 'cog', col: '#2dd4bf', core: '#facc15' },
       heal: { shape: 'cross', col: '#4ade80', core: '#fef08a' }
     };
     const cfg = sets[theme] || sets.steel;
@@ -283,7 +285,9 @@ export class VFXManager {
             ? { main: '#facc15', core: '#fef9c3', border: '#eab308' }
             : theme === 'abyssal'
               ? { main: '#c084fc', core: '#f43f5e', border: '#9333ea' }
-              : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
+              : theme === 'chrono'
+                ? { main: '#2dd4bf', core: '#facc15', border: '#0d9488' }
+                : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
 
     this.castAuras.push({
       fighter,
@@ -298,8 +302,8 @@ export class VFXManager {
       maxLife: isUltimate ? 1.65 : 1.15
     });
 
-    // Immediate special-cast burst around the head & shoulders (skip circular shockwave ring for abyssal Reaper)
-    if (theme !== 'abyssal') {
+    // Immediate special-cast burst around the head & shoulders (skip circular shockwave ring for abyssal Reaper & chrono)
+    if (theme !== 'abyssal' && theme !== 'chrono') {
       this.spawnShockwave(fighter.x, fighter.y - 105, isUltimate ? 145 : 95, palette.main, isUltimate ? 0.48 : 0.34, false);
     }
     this.spawnBurst(fighter.x, fighter.y - 105, isUltimate ? 22 : 12, palette.core, isUltimate ? 250 : 175, {
@@ -1123,6 +1127,42 @@ export class VFXManager {
             ctx.fillRect(px + mx * pSize - pSize * 0.5, py + my * pSize - pSize * 0.5, pSize, pSize);
           }
         }
+      } else if (proj.type === 'clock_gear') {
+        // Authentic 16-bit HD-2D Spinning Brass & Celestial-Teal Clockwork Saw-Gear (from chronomancer_vfx.png)
+        const vfxSheet = PixelForge.initAssets().chronomancer?.vfx;
+        const dir = Math.sign(proj.vx) || 1;
+        const spin = (proj.age || 0) * 18 * dir;
+        ctx.save();
+        ctx.translate(px, py);
+        // Trailing golden-teal escapement ribbon behind the spinning saw-gear
+        for (let tStep = 1; tStep <= 5; tStep++) {
+          const tx = -dir * tStep * 11;
+          const ty = Math.sin((proj.age || 0) * 32 - tStep * 0.9) * 7;
+          ctx.fillStyle = tStep % 2 === 0 ? '#facc15' : '#2dd4bf';
+          ctx.fillRect(tx - 3, ty - 2, 6, 4);
+        }
+        ctx.rotate(spin);
+        if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+          const gearSize = 68;
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(
+            vfxSheet,
+            528,
+            56,
+            208,
+            208,
+            Math.round(-gearSize * 0.5),
+            Math.round(-gearSize * 0.5),
+            gearSize,
+            gearSize
+          );
+        } else {
+          ctx.fillStyle = '#eab308';
+          ctx.fillRect(-16, -16, 32, 32);
+          ctx.fillStyle = '#2dd4bf';
+          ctx.fillRect(-8, -8, 16, 16);
+        }
+        ctx.restore();
       } else if (proj.type === 'phantom_scythe') {
         // Spinning Boomerang Twin-Blade Phantom Scythe + Crimson Skull Eye Hub (Reaper Exclusive)
         const dir = Math.sign(proj.vx) || 1;
@@ -1288,7 +1328,7 @@ export class VFXManager {
       }
     }
 
-    // 10. PURE PIXEL-ART RUNIC CRYSTALS, SOLAR STARS, SACRED CROSSES, NECROTIC SKULLS & ASTRAL FEATHERS
+    // 10. PURE PIXEL-ART RUNIC CRYSTALS, SOLAR STARS, SACRED CROSSES, NECROTIC SKULLS, CLOCKWORK COGS & ASTRAL FEATHERS
     if (!isReflection) {
       for (const g of this.glyphs) {
         const p = g.life / g.maxLife;
@@ -1298,7 +1338,17 @@ export class VFXManager {
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = Math.min(1, (1 - p) * 1.6);
 
-        if (g.shape === 'skull') {
+        if (g.shape === 'cog') {
+          // Stepped pixel-art Brass & Teal Clockwork Cogwheel (Chronomancer Exclusive)
+          ctx.fillStyle = g.coreColor;
+          ctx.fillRect(gx - 8, gy - 2, 16, 4);
+          ctx.fillRect(gx - 2, gy - 8, 4, 16);
+          ctx.fillRect(gx - 6, gy - 6, 12, 12);
+          ctx.fillStyle = g.color;
+          ctx.fillRect(gx - 4, gy - 4, 8, 8);
+          ctx.fillStyle = '#090d16';
+          ctx.fillRect(gx - 2, gy - 2, 4, 4);
+        } else if (g.shape === 'skull') {
           // Stepped pixel-art Abyssal Skull (Reaper Exclusive)
           ctx.fillStyle = g.color;
           ctx.fillRect(gx - 6, gy - 8, 12, 10);
@@ -1384,6 +1434,15 @@ export class VFXManager {
             ctx.fillStyle = '#f43f5e';
             ctx.fillRect(sx + side * 6, sy - 20, 14 * side, 8);
             ctx.fillRect(sx + side * 14, sy - 12, 10 * side, 8);
+          }
+        } else if (ca.theme === 'chrono') {
+          // Bespoke Chronomancer Cast Crest: 12-Tick Brass Clock Dial & Sweeping Minute/Hour Hands
+          for (let hTick = 0; hTick < 12; hTick++) {
+            const a = (hTick / 12) * Math.PI * 2;
+            const tx = Math.round((hx + Math.cos(a) * baseR) / 2) * 2;
+            const ty = Math.round((hy + Math.sin(a) * baseR * 0.75) / 2) * 2;
+            ctx.fillStyle = hTick % 3 === 0 ? '#facc15' : '#2dd4bf';
+            ctx.fillRect(tx - 3, ty - 3, 6, 6);
           }
         } else {
           // Spinning 8-Point Stepped Pixel-Art Elemental Crest Halo framing the head

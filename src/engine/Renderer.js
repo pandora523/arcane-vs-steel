@@ -5,6 +5,7 @@ const SOLAR_FIRE_PAL = ['#c2410c', '#f97316', '#facc15', '#fef9c3'];
 const EMERALD_FIRE_PAL = ['#059669', '#10b981', '#6ee7b7', '#fef08a'];
 const RADIANT_FIRE_PAL = ['#ca8a04', '#eab308', '#fde047', '#ffffff'];
 const ABYSSAL_FIRE_PAL = ['#581c87', '#9333ea', '#c084fc', '#f43f5e'];
+const CHRONO_FIRE_PAL = ['#0d9488', '#2dd4bf', '#99f6e4', '#facc15'];
 
 export class Renderer {
   constructor(canvas) {
@@ -439,6 +440,7 @@ export class Renderer {
     const isEmerald = f.primaryColor === '#10b981' || f.primaryColor === '#34d399';
     const isRadiant = f.primaryColor === '#fde047';
     const isAbyssal = f.primaryColor === '#c084fc';
+    const isChrono = f.primaryColor === '#2dd4bf';
     const pal = isBlue
       ? CYAN_FIRE_PAL
       : isEmerald
@@ -447,12 +449,14 @@ export class Renderer {
           ? RADIANT_FIRE_PAL
           : isAbyssal
             ? ABYSSAL_FIRE_PAL
-            : SOLAR_FIRE_PAL;
+            : isChrono
+              ? CHRONO_FIRE_PAL
+              : SOLAR_FIRE_PAL;
     const t = this.time;
     const isAction = f.state === 'SKILL' || f.state === 'ULTIMATE' || f.state === 'AUTO_ATTACK';
     const rX = isAction ? 66 : 48;
     const rY = isAction ? 17 : 12;
-    const nodes = isAction ? 20 : 14;
+    const nodes = isChrono ? 12 : isAction ? 20 : 14;
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -475,6 +479,7 @@ export class Renderer {
     const isEmerald = f.primaryColor === '#10b981' || f.primaryColor === '#34d399';
     const isRadiant = f.primaryColor === '#fde047';
     const isAbyssal = f.primaryColor === '#c084fc';
+    const isChrono = f.primaryColor === '#2dd4bf';
     const pal = isBlue
       ? CYAN_FIRE_PAL
       : isEmerald
@@ -483,13 +488,15 @@ export class Renderer {
           ? RADIANT_FIRE_PAL
           : isAbyssal
             ? ABYSSAL_FIRE_PAL
-            : SOLAR_FIRE_PAL;
+            : isChrono
+              ? CHRONO_FIRE_PAL
+              : SOLAR_FIRE_PAL;
     const t = this.time;
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
 
-    // 1. Emit live pixel-art fire / rune / wind / wraith sparks along the weapon & aura
+    // 1. Emit live pixel-art fire / rune / wind / wraith / clockwork sparks along the weapon & aura
     const count = f.isDead ? 4 : f.state === 'IDLE' || f.state === 'WALK' ? 9 : 16;
     const fallDrop = f.isDead ? Math.min(48, (f.deathTimer || 0) * 55) : 0;
     for (let i = 0; i < count; i++) {
@@ -558,6 +565,16 @@ export class Renderer {
           ctx.fillStyle = '#090514';
           ctx.fillRect(sx - 3, sy - 2, 2, 2);
           ctx.fillRect(sx + 1, sy - 2, 2, 2);
+        }
+      } else if (isChrono) {
+        // ZEPHYROS: Ticking Golden-Teal Hourglass Sand Grains around his levitating Astrolabe
+        ctx.globalAlpha = 0.85;
+        for (let g = 0; g < 4; g++) {
+          const ga = t * 5.2 + (g * Math.PI) / 2;
+          const gx = Math.round((f.x + f.facing * 42 + Math.cos(ga) * 18) / 2) * 2;
+          const gy = Math.round((f.y - 102 + Math.sin(ga) * 18) / 2) * 2;
+          ctx.fillStyle = g % 2 === 0 ? '#facc15' : '#2dd4bf';
+          ctx.fillRect(gx - 2, gy - 2, 4, 4);
         }
       } else {
         // IGNIS SOL: 3 Orbiting Miniature Solar Fire-Orbs Circling His Arcane Robes

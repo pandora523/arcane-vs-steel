@@ -7,6 +7,7 @@ import { FireMage } from './entities/FireMage.js';
 import { Archer } from './entities/Archer.js';
 import { Priestess } from './entities/Priestess.js';
 import { Reaper } from './entities/Reaper.js';
+import { Chronomancer } from './entities/Chronomancer.js';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -53,6 +54,15 @@ const CHAMPION_ROSTER = {
     color: '#c084fc',
     selectSfx: 'scythe_reap',
     victoryLine: 'The Abyssal Scythe reaps every soul in the sanctuary!'
+  },
+  chronomancer: {
+    id: 'chronomancer',
+    name: 'ZEPHYROS',
+    cls: Chronomancer,
+    theme: 'chrono',
+    color: '#2dd4bf',
+    selectSfx: 'clock_gear',
+    victoryLine: 'The Grand Astral Clocktower locks all timelines in stasis!'
   }
 };
 
@@ -175,21 +185,24 @@ class Game {
       archer: document.getElementById('card-archer'),
       mage: document.getElementById('card-mage'),
       priestess: document.getElementById('card-priestess'),
-      reaper: document.getElementById('card-reaper')
+      reaper: document.getElementById('card-reaper'),
+      chronomancer: document.getElementById('card-chronomancer')
     };
     this.ribbons = {
       warrior: document.getElementById('ribbon-warrior'),
       archer: document.getElementById('ribbon-archer'),
       mage: document.getElementById('ribbon-mage'),
       priestess: document.getElementById('ribbon-priestess'),
-      reaper: document.getElementById('ribbon-reaper')
+      reaper: document.getElementById('ribbon-reaper'),
+      chronomancer: document.getElementById('ribbon-chronomancer')
     };
     this.previewCanvases = {
       warrior: document.getElementById('preview-warrior'),
       archer: document.getElementById('preview-archer'),
       mage: document.getElementById('preview-mage'),
       priestess: document.getElementById('preview-priestess'),
-      reaper: document.getElementById('preview-reaper')
+      reaper: document.getElementById('preview-reaper'),
+      chronomancer: document.getElementById('preview-chronomancer')
     };
 
     this.btnStartDuel = document.getElementById('btn-start-duel');
@@ -567,13 +580,15 @@ class Game {
                 ? 'arrow_hit'
                 : p.type === 'phantom_scythe'
                   ? 'scythe_reap'
-                  : p.type === 'blade_wave'
-                    ? isCrit
-                      ? 'hit_crit'
-                      : 'heavy_cleave'
-                    : p.type === 'holy_light'
-                      ? 'holy_hit'
-                      : 'fire_hit';
+                  : p.type === 'clock_gear'
+                    ? 'chrono_hit'
+                    : p.type === 'blade_wave'
+                      ? isCrit
+                        ? 'hit_crit'
+                        : 'heavy_cleave'
+                      : p.type === 'holy_light'
+                        ? 'holy_hit'
+                        : 'fire_hit';
             this.audio.play(impactSfx, enemy.x);
           }
           this.renderer.triggerHitStop(0.055);
@@ -587,6 +602,8 @@ class Game {
             if (p.owner && typeof p.owner.leechLife === 'function') {
               p.owner.leechLife(18, enemy, this, 'SOUL LEECH');
             }
+          } else if (p.type === 'clock_gear') {
+            this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'chrono');
           } else if (p.type === 'blade_wave') {
             this.vfx.spawnSlash(p.x, p.y, 72, -1.2, 1.2, '#38bdf8', 0.25);
             this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'steel');
@@ -605,9 +622,11 @@ class Game {
                   ? 'holy_hit'
                   : p.type === 'phantom_scythe'
                     ? 'scythe_reap'
-                    : p.type === 'blade_wave'
-                      ? 'clang'
-                      : 'fire_hit',
+                    : p.type === 'clock_gear'
+                      ? 'chrono_hit'
+                      : p.type === 'blade_wave'
+                        ? 'clang'
+                        : 'fire_hit',
               p.x
             );
           }

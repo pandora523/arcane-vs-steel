@@ -62,7 +62,13 @@ export class AudioManager {
       chain_hook: 0.80,
       soul_drain: 0.74,
       reaper_ult: 0.86,
-      death_reaper: 0.80
+      death_reaper: 0.80,
+      clock_gear: 0.74,
+      chrono_hit: 0.78,
+      time_rewind: 0.76,
+      hourglass_trap: 0.80,
+      chrono_ult: 0.86,
+      death_chrono: 0.80
     };
 
     this.wavKeys = Object.keys(this.volumes);
@@ -170,6 +176,8 @@ export class AudioManager {
       name === 'heavy_cleave' ||
       name === 'scythe_reap' ||
       name === 'chain_hook' ||
+      name === 'chrono_hit' ||
+      name === 'hourglass_trap' ||
       name === 'arrow_hit' ||
       name === 'fire_hit' ||
       name === 'holy_hit' ||
@@ -181,7 +189,8 @@ export class AudioManager {
       name === 'solar_beam' ||
       name === 'archer_ult' ||
       name === 'priestess_ult' ||
-      name === 'reaper_ult';
+      name === 'reaper_ult' ||
+      name === 'chrono_ult';
 
     if (isImpact) {
       this.lastImpactTime = now;
@@ -209,6 +218,7 @@ export class AudioManager {
       name === 'archer_ult' ||
       name === 'priestess_ult' ||
       name === 'reaper_ult' ||
+      name === 'chrono_ult' ||
       name === 'ult_cast' ||
       name === 'thunder_slam';
 

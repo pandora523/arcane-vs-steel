@@ -34,6 +34,11 @@ export class PixelForge {
         sheet: loadImg('assets/sprites/reaper_sheet.png'),
         vfx: loadImg('assets/sprites/reaper_vfx.png'),
         portrait: loadImg('assets/sprites/reaper_portrait.png', () => this.refreshPortraits())
+      },
+      chronomancer: {
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png'),
+        portrait: loadImg('assets/sprites/chronomancer_portrait.png', () => this.refreshPortraits())
       }
     };
 
@@ -164,6 +169,7 @@ export class PixelForge {
       !isReflection &&
       !fighter.isAngelicAscent &&
       fighter.heroId !== 'reaper' &&
+      fighter.heroId !== 'chronomancer' &&
       (fighter.state === 'DASH' || fighter.state === 'DODGE' || fighter.isOmnislashing)
     ) {
       const dir = (fighter.dashDir || fighter.facing) * fighter.facing;

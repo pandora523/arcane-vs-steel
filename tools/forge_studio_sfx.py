@@ -924,8 +924,107 @@ def generate_all_sfx():
     l, r = add_velvet_reverb(l, r, wet=0.24, rt60=0.50, rng=rng)
     master_and_save(f"{out_dir}/death_reaper.wav", l, r, target_peak=0.78, hpf_hz=58.0)
 
-    print("Successfully forged all 43 realistic elemental & weapon foley WAV files in", out_dir)
+    # =========================================================================
+    # CHRONOMANCER (ZEPHYROS) CLOCKWORK & TEMPORAL FOLEY
+    # =========================================================================
+
+    # 44. CLOCK_GEAR: Rapid brass escapement ratchet ticks + spinning bronze saw-gear launch
+    n = int(0.42 * SR)
+    t = np.arange(n) / SR
+    l = np.zeros(n)
+    r = np.zeros(n)
+    for tick_t, f_tick, amp in [(0.00, 3120.0, 0.72), (0.035, 3480.0, 0.65), (0.070, 3840.0, 0.80), (0.115, 2960.0, 0.58)]:
+        i0 = int(tick_t * SR)
+        seg = n - i0
+        tk_l, tk_r = sword_steel_shing(seg, f_tick, 0.065, rng, scrape_intensity=0.82)
+        l[i0:] += tk_l * amp
+        r[i0:] += tk_r * amp
+    whir = swept_bandpass(pink_noise(n, rng), 980.0 + 720.0 * np.sin(2.0 * np.pi * 9.0 * t), q=3.2) * env_ad(n, 0.006, 0.16) * 0.54
+    l += whir
+    r += whir * 0.96
+    l, r = add_velvet_reverb(l, r, wet=0.14, rt60=0.28, rng=rng)
+    master_and_save(f"{out_dir}/clock_gear.wav", l, r, target_peak=0.76, hpf_hz=68.0)
+
+    # 45. CHRONO_HIT: Brass cogwheel crunch + crystalline hourglass glass chime
+    n = int(0.46 * SR)
+    t = np.arange(n) / SR
+    sh_l, sh_r = sword_steel_shing(n, 2640.0, 0.14, rng, scrape_intensity=0.88)
+    chime1 = warm_chord_note(n, 1174.66, 0.002, 0.22, brightness=0.85) * 0.46
+    chime2 = warm_chord_note(n, 1567.98, 0.004, 0.24, brightness=0.88) * 0.38
+    punch = np.sin(2.0 * np.pi * (210.0 * np.exp(-t / 0.04) + 72.0) * t) * env_ad(n, 0.001, 0.08) * 0.68
+    l = sh_l * 0.72 + chime1 + chime2 * 0.85 + punch
+    r = sh_r * 0.72 + chime1 * 0.88 + chime2 + punch
+    l, r = add_velvet_reverb(l, r, wet=0.18, rt60=0.34, rng=rng)
+    master_and_save(f"{out_dir}/chrono_hit.wav", l, r, target_peak=0.80, hpf_hz=62.0)
+
+    # 46. TIME_REWIND: Reverse-envelope celestial clockwork harmonic + rising temporal tape sweep
+    n = int(0.58 * SR)
+    t = np.arange(n) / SR
+    rev_env = np.clip((t / 0.42) ** 1.8, 0.0, 1.0) * np.exp(-np.maximum(0.0, t - 0.42) / 0.05)
+    sweep_f = 340.0 * np.exp(1.45 * (t / 0.58))
+    phase = 2.0 * np.pi * np.cumsum(sweep_f) / SR
+    rew_tone = (np.sin(phase) * 0.65 + np.sin(phase * 1.5) * 0.35 + np.sin(phase * 2.0) * 0.22) * rev_env * 0.62
+    sand_rush = swept_bandpass(pink_noise(n, rng), 620.0 + 1850.0 * (t / 0.58), q=2.8) * rev_env * 0.48
+    l = rew_tone + sand_rush
+    r = rew_tone * 0.96 + sand_rush * 1.04
+    l, r = add_velvet_reverb(l, r, wet=0.22, rt60=0.42, rng=rng)
+    master_and_save(f"{out_dir}/time_rewind.wav", l, r, target_peak=0.76, hpf_hz=64.0)
+
+    # 47. HOURGLASS_TRAP: Heavy brass astrolabe lock + rushing temporal sand stasis seal
+    n = int(0.68 * SR)
+    t = np.arange(n) / SR
+    lock_l, lock_r = sword_steel_shing(n, 2180.0, 0.16, rng, scrape_intensity=0.90)
+    sand_vortex = swept_bandpass(pink_noise(n, rng), 1480.0 * np.exp(-t / 0.36) + 380.0, q=3.0) * env_ad(n, 0.015, 0.28) * 0.58
+    stasis_chord = (
+        warm_chord_note(n, 440.00, 0.01, 0.44, brightness=0.80) * 0.42
+        + warm_chord_note(n, 554.37, 0.02, 0.46, brightness=0.82) * 0.36
+        + warm_chord_note(n, 659.25, 0.03, 0.48, brightness=0.85) * 0.34
+    )
+    l = lock_l * 0.68 + sand_vortex + stasis_chord
+    r = lock_r * 0.68 + sand_vortex * 0.94 + stasis_chord * 1.04
+    l, r = add_velvet_reverb(l, r, wet=0.24, rt60=0.48, rng=rng)
+    master_and_save(f"{out_dir}/hourglass_trap.wav", l, r, target_peak=0.80, hpf_hz=58.0)
+
+    # 48. CHRONO_ULT: 4 rapid grandfather-clock ticks culminating in a colossal Midnight XII Astral Clocktower Toll
+    n = int(1.42 * SR)
+    t = np.arange(n) / SR
+    l = np.zeros(n)
+    r = np.zeros(n)
+    for tick_t, f_tick in [(0.00, 2850.0), (0.09, 2420.0), (0.18, 2960.0), (0.27, 2540.0)]:
+        i0 = int(tick_t * SR)
+        seg = n - i0
+        tk_l, tk_r = sword_steel_shing(seg, f_tick, 0.06, rng, scrape_intensity=0.85)
+        l[i0:] += tk_l * 0.65
+        r[i0:] += tk_r * 0.65
+    # Massive Midnight XII Clocktower Bronze Bell Strike at t=0.34s
+    i_gong = int(0.34 * SR)
+    seg_g = n - i_gong
+    tg = np.arange(seg_g) / SR
+    gong_fund = warm_chord_note(seg_g, 196.00, 0.003, 0.95, brightness=0.92) * 0.68
+    gong_fifth = warm_chord_note(seg_g, 293.66, 0.005, 0.90, brightness=0.88) * 0.50
+    gong_oct = warm_chord_note(seg_g, 392.00, 0.006, 0.85, brightness=0.90) * 0.44
+    gong_shimmer = warm_chord_note(seg_g, 783.99, 0.008, 0.72, brightness=0.95) * 0.32
+    sub_boom = np.sin(2.0 * np.pi * (145.0 * np.exp(-tg / 0.14) + 52.0) * tg) * env_ad(seg_g, 0.002, 0.38) * 0.78
+    l[i_gong:] += gong_fund + gong_fifth * 0.92 + gong_oct + gong_shimmer * 1.1 + sub_boom
+    r[i_gong:] += gong_fund * 0.98 + gong_fifth * 1.08 + gong_oct + gong_shimmer * 0.9 + sub_boom
+    l, r = add_velvet_reverb(l, r, wet=0.28, rt60=0.68, rng=rng)
+    master_and_save(f"{out_dir}/chrono_ult.wav", l, r, target_peak=0.86, hpf_hz=52.0)
+
+    # 49. DEATH_CHRONO: Unwinding clockwork mainspring deceleration + cracked hourglass chime
+    n = int(1.05 * SR)
+    t = np.arange(n) / SR
+    unwind_f = 920.0 * np.exp(-t / 0.38) + 140.0
+    unwind_ph = 2.0 * np.pi * np.cumsum(unwind_f) / SR
+    mainspring = np.sin(unwind_ph) * (0.5 + 0.5 * np.sin(2.0 * np.pi * 16.0 * np.exp(-t / 0.45) * t)) * env_ad(n, 0.01, 0.44) * 0.58
+    glass_l, glass_r = sword_steel_shing(n, 2340.0, 0.18, rng, scrape_intensity=0.78)
+    l = mainspring + glass_l * 0.58
+    r = mainspring * 0.96 + glass_r * 0.58
+    l, r = add_velvet_reverb(l, r, wet=0.24, rt60=0.50, rng=rng)
+    master_and_save(f"{out_dir}/death_chrono.wav", l, r, target_peak=0.78, hpf_hz=58.0)
+
+    print("Successfully forged all 49 realistic elemental & weapon foley WAV files in", out_dir)
 
 
 if __name__ == "__main__":
     generate_all_sfx()
+
