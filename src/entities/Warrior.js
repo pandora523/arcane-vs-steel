@@ -484,9 +484,28 @@ export class Warrior extends Fighter {
           target: enemy,
           damage: 15,
           delay: i * 0.038,
-          maxLife: 0.96
+          maxLife: 0.96,
+          isUltimate: true
         });
       }
+
+      // 1B. Colossal Heavenly Runeblade Sky-Strike cleaving down in front of the target!
+      game.vfx.spawnSkyStrike({
+        x: targetX,
+        y: -220,
+        groundY: this.groundY,
+        vx: 0,
+        vy: 1650,
+        type: 'runeblade',
+        color: '#38bdf8',
+        coreColor: '#ffffff',
+        owner: this,
+        target: enemy,
+        damage: 0,
+        delay: 0.02,
+        maxLinger: 0.65,
+        isUltimate: true
+      });
 
       // 2. Twin Horizontal Piercing Frost-Crescent Blade Waves tearing across the ground!
       [0, 1].forEach((idx) => {
@@ -501,7 +520,8 @@ export class Warrior extends Fighter {
           owner: this,
           damage: 25,
           type: 'blade_wave',
-          isMeteor: false
+          isMeteor: false,
+          isUltimate: true
         });
       });
 

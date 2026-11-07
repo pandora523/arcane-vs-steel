@@ -281,7 +281,8 @@ export class VFXManager {
       scaleWidth: opts.scaleWidth || 1.0,
       theme: opts.theme || 'arcane',
       erupted: false,
-      tickTimer: 0
+      tickTimer: 0,
+      isUltimate: !!opts.isUltimate
     });
   }
 
@@ -296,7 +297,8 @@ export class VFXManager {
       color: opts.color || '#10b981',
       coreColor: opts.coreColor || '#fef08a',
       life: 0,
-      maxLife: opts.maxLife || 1.25
+      maxLife: opts.maxLife || 1.25,
+      isUltimate: !!opts.isUltimate
     });
   }
 
@@ -333,7 +335,8 @@ export class VFXManager {
       delay: opts.delay || 0,
       erupted: false,
       life: 0,
-      maxLife: opts.maxLife || 0.88
+      maxLife: opts.maxLife || 0.88,
+      isUltimate: !!opts.isUltimate
     });
   }
 
@@ -363,11 +366,12 @@ export class VFXManager {
       coreColor: opts.coreColor || '#fef08a',
       owner: opts.owner || null,
       target: opts.target || null,
-      damage: opts.damage || 28,
+      damage: opts.damage ?? 28,
       delay: opts.delay || 0,
       impacted: false,
       linger: 0,
-      maxLinger: opts.maxLinger || 0.48
+      maxLinger: opts.maxLinger || 0.48,
+      isUltimate: !!opts.isUltimate
     });
   }
 
@@ -384,6 +388,7 @@ export class VFXManager {
       damage: opts.damage || 60,
       type: opts.type || (opts.isMeteor ? 'meteor' : 'fireball'),
       isMeteor: !!opts.isMeteor,
+      isUltimate: !!opts.isUltimate,
       pierce: !!opts.pierce,
       age: 0,
       ringTimer: 0
@@ -646,7 +651,7 @@ export class VFXManager {
           });
           this.spawnDecal(s.x, s.type === 'runeblade' ? 76 : 48, 'fissure', s.color, 3.8);
           if (renderer && s.type === 'runeblade') renderer.triggerShake(6, 0.14);
-          if (s.target && !s.target.isDead && Math.abs(s.target.x - s.x) < 92) {
+          if (s.damage > 0 && s.target && !s.target.isDead && Math.abs(s.target.x - s.x) < 92) {
             s.target.takeDamage(s.damage, s.owner, s.type === 'runeblade', 55, -60);
           }
         }
@@ -922,13 +927,15 @@ export class VFXManager {
     }
   }
 
-  renderMainPass(ctx, isReflection = false, renderer = null) {
+  renderMainPass(ctx, isReflection = false, renderer = null, ultimateOnly = false) {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     const assets = PixelForge.initAssets();
 
     // 1. TORNADOS: Unmistakable Conical S-Curving Pixel-Art Tornado Funnel with Swirling Horizontal Wind Bands & Top Vortex Eye
     for (const tor of this.tornados) {
+      const isUltTor = !!tor.isUltimate || tor.radius >= 95;
+      if (!isReflection && isUltTor !== ultimateOnly) continue;
       const fade = Math.min(1, (tor.maxLife - tor.life) * 3.2, tor.life * 5.5);
       const pxSize = 4;
       const baseX = Math.round(tor.x / pxSize) * pxSize;
@@ -948,90 +955,53 @@ export class VFXManager {
       const bandH = Math.max(6, Math.ceil(totalH / bands));
       const vfxSheet = isSteel ? assets.warrior?.vfx : assets.archer?.vfx;
 
-      // A. Conical Tornado Funnel Body (32 Horizontal Cross-Sectional Wind Slices tapering from narrow ground tip to wide top mouth)
+      // A. Conical S-Curving Pixel-Art Tornado Funnel Sprite (sliced from archer_vfx.png Cell 1: x=256, y=0, w=256, h=256)
+      const spriteW = Math.round((tor.radius * 2.55) / 4) * 4;
       for (let b = 0; b < bands; b++) {
         const hFrac = b / (bands - 1); // 0.0 at narrow ground tip -> 1.0 at wide top mouth
-        // Classic tornado funnel profile: pin-point narrow at ground (0.15x), flaring out to wide funnel crown (1.28x) at top
-        const coneProfile = 0.15 + Math.pow(hFrac, 0.85) * 0.72 + Math.pow(hFrac, 2.4) * 0.42;
-        const halfW = Math.max(12, Math.round((tor.radius * coneProfile) / 4) * 4);
-        const sliceW = halfW * 2;
-        // Sinusoidal S-curve spine sway + high-speed helical twist
+        const coneProfile = 0.16 + Math.pow(hFrac, 0.85) * 0.70 + Math.pow(hFrac, 2.2) * 0.36;
+        const halfW = Math.max(10, Math.round((tor.radius * coneProfile) / 4) * 4);
         const spineSway = Math.round(
-          (Math.sin(tor.life * 13 - hFrac * 4.8) * (4 + Math.sin(hFrac * Math.PI) * 22)) / 4
+          (Math.sin(tor.life * 13 - hFrac * 4.8) * (4 + Math.sin(hFrac * Math.PI) * 18)) / 4
         ) * 4;
         const cx = baseX + spineSway;
         const cy = Math.round((baseY - hFrac * totalH) / 4) * 4;
-        const spinPhase = tor.life * 24 - hFrac * 14;
+        const spinPhase = tor.life * 22 - hFrac * 12;
 
-        // 1. Slice-warped texture pass from archer_vfx.png
-        if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-          const srcY = Math.round(56 + (1 - hFrac) * 196);
-          const flip = Math.cos(spinPhase * 0.5) >= 0 ? 1 : -1;
+        // 1. Slice-warped bespoke tornado sprite pass from archer_vfx.png (preserves natural tapered silhouette & transparency!)
+        if (!isSteel && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+          const srcY = Math.round(240 - hFrac * 224);
+          const wobbleW = Math.round((spriteW * (0.94 + 0.08 * Math.sin(spinPhase))) / 4) * 4;
           ctx.save();
           ctx.translate(cx, cy);
-          ctx.scale(flip, 1);
           ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = fade * (isReflection ? 0.32 : 0.75);
-          ctx.drawImage(vfxSheet, 320, srcY, 208, 8, -halfW, -bandH * 0.5, sliceW, bandH + 2);
+          ctx.globalAlpha = fade * (isReflection ? 0.35 : 0.92);
+          ctx.drawImage(vfxSheet, 256, srcY, 256, 9, -wobbleW * 0.5, -bandH * 0.6, wobbleW, bandH + 3);
           ctx.restore();
         }
 
-        // 2. Solid Stepped Pixel-Art Conical Wind Band with Dark Outer Walls, Shaded Cylinder Sides & Spinning Bright Core Stripes
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * (isReflection ? 0.38 : 0.94);
-
-        // Dark forest-obsidian outer edge silhouette so the V-shaped funnel cone reads with 100% clarity
-        ctx.fillStyle = isSteel ? '#082f49' : '#022c22';
-        ctx.fillRect(cx - halfW - 4, cy - bandH * 0.5, sliceW + 8, bandH);
-
-        // Shaded outer cylinder wall
-        ctx.fillStyle = isSteel ? '#0369a1' : '#065f46';
-        ctx.fillRect(cx - halfW, cy - bandH * 0.5, sliceW, bandH);
-
-        // Mid-tone swirling wind body
-        const midW = Math.max(8, Math.round((sliceW * 0.76) / 4) * 4);
-        ctx.fillStyle = (b + Math.floor(tor.life * 28)) % 2 === 0
-          ? isSteel ? '#0284c7' : '#059669'
-          : isSteel ? '#0ea5e9' : '#10b981';
-        ctx.fillRect(cx - midW * 0.5, cy - bandH * 0.5, midW, bandH);
-
-        // Diagonal helical wind stripe sweeping across the front of this horizontal band
-        const stripeX = Math.round((Math.sin(spinPhase) * (halfW * 0.52)) / 4) * 4;
-        const stripeW = Math.max(8, Math.round((sliceW * 0.42) / 4) * 4);
-        ctx.fillStyle = isSteel ? '#38bdf8' : '#34d399';
-        ctx.fillRect(cx + stripeX - stripeW * 0.5, cy - bandH * 0.5, stripeW, Math.max(4, bandH - 2));
-
-        // Razor-bright inner wind crest highlight on every other band
+        // 2. Airy Swirling Elliptical Wind-Ring Arcs (open ring segments, never a solid opaque wall!)
         if (b % 2 === 0) {
-          const coreW = Math.max(4, Math.round((stripeW * 0.48) / 4) * 4);
-          ctx.fillStyle = (b % 4 === 0) ? '#fef08a' : isSteel ? '#e0f2fe' : '#a7f3d0';
-          ctx.fillRect(cx + stripeX - coreW * 0.5, cy - 2, coreW, 4);
-        }
-      }
-
-      // B. 3D Elliptical Vortex Mouth at the Top Crown of the Tornado Funnel (shows the hollow spinning eye!)
-      if (!isReflection) {
-        const topSway = Math.round((Math.sin(tor.life * 13 - 4.8) * 6) / 4) * 4;
-        const topX = baseX + topSway;
-        const topY = Math.round((baseY - totalH) / 4) * 4;
-        const topRx = Math.round((tor.radius * 1.24) / 4) * 4;
-        const topRy = Math.max(12, Math.round((topRx * 0.24) / 4) * 4);
-
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.95;
-        // Outer rim of the top funnel mouth
-        for (let i = 0; i < 24; i++) {
-          const a = (i / 24) * Math.PI * 2 + tor.life * 20;
-          const rx = Math.round((topX + Math.cos(a) * topRx) / 4) * 4;
-          const ry = Math.round((topY + Math.sin(a) * topRy) / 4) * 4;
-          ctx.fillStyle = i % 2 === 0 ? (isSteel ? '#7dd3fc' : '#6ee7b7') : isSteel ? '#0284c7' : '#059669';
-          ctx.fillRect(rx - 8, ry - 4, 16, 8);
-        }
-        // Dark hollow vortex eye inside the top funnel mouth
-        for (let r = -topRy + 4; r <= topRy - 4; r += 4) {
-          const span = Math.round(topRx * 0.68 * Math.sqrt(Math.max(0, 1 - (r / topRy) * (r / topRy))) / 4) * 4;
-          ctx.fillStyle = '#022c22';
-          ctx.fillRect(topX - span, topY + r - 2, span * 2, 4);
+          for (let seg = 0; seg < 5; seg++) {
+            const a = spinPhase + (seg / 5) * Math.PI * 2;
+            const sinA = Math.sin(a);
+            const wx = Math.round((cx + Math.cos(a) * halfW * 0.88) / 4) * 4;
+            const wy = Math.round((cy + sinA * 6) / 4) * 4;
+            const segW = Math.max(8, Math.round((halfW * 0.42) / 4) * 4);
+            ctx.globalCompositeOperation = sinA > 0 ? 'lighter' : 'source-over';
+            ctx.globalAlpha = fade * (sinA > 0 ? 0.55 : 0.65) * (isReflection ? 0.4 : 1);
+            ctx.fillStyle =
+              sinA > 0.4
+                ? '#fef08a'
+                : isSteel
+                  ? sinA > 0
+                    ? '#38bdf8'
+                    : '#0284c7'
+                  : sinA > 0
+                    ? '#34d399'
+                    : '#059669';
+            ctx.fillRect(wx - segW * 0.5, wy - 2, segW, 4);
+          }
         }
       }
 
@@ -1079,6 +1049,8 @@ export class VFXManager {
 
     // 2. FLAME & ELEMENTAL PILLARS: Saturated Pixel Glowing Hellfire Magma Pillar & Sacred Cathedral Pillars
     for (const pil of this.pillars) {
+      const isUltPil = !!pil.isUltimate;
+      if (!isReflection && isUltPil !== ultimateOnly) continue;
       const p = Math.min(1, pil.life / Math.max(0.15, pil.delay));
       const pxSize = 6;
       const baseX = Math.round(pil.x / pxSize) * pxSize;
@@ -1202,6 +1174,8 @@ export class VFXManager {
 
     // 3. SKY STRIKES: Saturated Chunky-Pixel Heavenly Runeblades, Valkyrie Spears & Starfall Arrows
     for (const s of this.skyStrikes) {
+      const isUltStrike = !!s.isUltimate;
+      if (!isReflection && isUltStrike !== ultimateOnly) continue;
       if (s.delay > 0) continue;
       const fade = s.impacted ? Math.max(0, 1 - s.linger / s.maxLinger) : 1;
       const sx = Math.round(s.x / 2) * 2;
@@ -1272,8 +1246,8 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 4. TAPERED COILING WIND-DRAGON ARROW PIERCER & CELESTIAL / SUPERNOVA BEAMS
-    for (const b of this.beams) {
+    // 4. TAPERED COILING WIND-DRAGON ARROW PIERCER & CELESTIAL / SUPERNOVA BEAMS (Always Ultimate -> render in front!)
+    for (const b of isReflection || ultimateOnly ? this.beams : []) {
       const t = b.life / b.maxLife;
       const env = Math.sin(t * Math.PI);
       const beamAlpha = (1 - t * 0.32) * (isReflection ? 0.42 : 0.96);
@@ -1417,6 +1391,8 @@ export class VFXManager {
 
     // 4B. GLACIAL FROST-CRYSTAL SPIRES (Saturated Chunky-Pixel Ice Spire Cluster from warrior_vfx.png)
     for (const cs of this.crystalSpikes) {
+      const isUltSpike = !!cs.isUltimate || cs.maxLife >= 0.9;
+      if (!isReflection && isUltSpike !== ultimateOnly) continue;
       if (cs.delay > 0) continue;
       const t = cs.life / cs.maxLife;
       const pop = Math.min(1, cs.life / 0.12);
@@ -1451,8 +1427,8 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 4C. BLACK-GOLD SOLAR ECLIPSE SUPERNOVA SPHERE (Saturated Chunky-Pixel Eclipse Sun from mage_vfx.png)
-    for (const sn of this.supernovas) {
+    // 4C. BLACK-GOLD SOLAR ECLIPSE SUPERNOVA SPHERE (Saturated Chunky-Pixel Eclipse Sun from mage_vfx.png — Always Ultimate!)
+    for (const sn of isReflection || ultimateOnly ? this.supernovas : []) {
       const t = sn.life / sn.maxLife;
       const env = Math.sin(Math.min(1, t * 1.15) * Math.PI);
       const rad = Math.max(24, Math.round((sn.maxRadius * (0.45 + 0.55 * env)) / 4) * 4);
@@ -1486,7 +1462,7 @@ export class VFXManager {
     }
 
     // 5. PARTICLES: Deeply Saturated 4px-Aligned Chunky Pixel Blocks with Radiant Light Emission & Incandescent Cores!
-    for (const p of this.particles) {
+    for (const p of !ultimateOnly ? this.particles : []) {
       const t = p.life / p.maxLife;
       const fade = 1 - t;
       const s = Math.max(4, Math.round(((p.size * fade + p.endSize * t) / 4)) * 4);
@@ -1521,6 +1497,8 @@ export class VFXManager {
     // 6. SLASHES: Deeply Saturated Chunky-Pixel Crescent Blade, Scythe & Whirlwind Waves + Stepped Arcs
     ctx.globalCompositeOperation = 'source-over';
     for (const s of this.slashes) {
+      const isUltSlash = s.radius >= 118;
+      if (!isReflection && isUltSlash !== ultimateOnly) continue;
       const t = s.life / s.maxLife;
       const alpha = 1 - t;
       const isFullCircle = Math.abs(s.endAngle - s.startAngle) > Math.PI * 1.8;
@@ -1660,6 +1638,8 @@ export class VFXManager {
 
     // 7. SHOCKWAVES: 3D Perspective Pixel-Art Expanding Rune & Sonic Boom Rings with Balanced Bloom
     for (const sw of this.shockwaves) {
+      const isUltSw = sw.maxRadius >= 155;
+      if (!isReflection && isUltSw !== ultimateOnly) continue;
       const t = sw.life / sw.maxLife;
       const r = sw.maxRadius * (1 - Math.pow(1 - t, 3));
       const xScale = sw.vertical ? 0.34 : 1.0;
@@ -1689,6 +1669,8 @@ export class VFXManager {
     // 8. PROJECTILES: Deeply Saturated Chunky-Pixel Astral Arrows, Frost Blade-Waves, Phantom Scythes, Clockwork Saw-Gears, Holy Orbs & Solar Fireballs
     ctx.globalAlpha = 1;
     for (const proj of this.projectiles) {
+      const isUltProj = !!proj.isMeteor || !!proj.isUltimate;
+      if (!isReflection && isUltProj !== ultimateOnly) continue;
       const r = proj.radius * 3.8;
       const px = Math.round(proj.x / 4) * 4;
       const py = Math.round(proj.y / 4) * 4;
@@ -1978,7 +1960,7 @@ export class VFXManager {
     }
 
     // 9. LIGHTNINGS: Stepped Saturated Pixel-Art Skyward Thunderbolts with Radial Light Glow
-    for (const l of this.lightnings) {
+    for (const l of isReflection || ultimateOnly ? this.lightnings : []) {
       const t = l.life / l.maxLife;
       const fade = 1 - t;
       const glowTex = renderer && renderer.getGlowForColor ? renderer.getGlowForColor(l.color) : null;
@@ -2009,7 +1991,7 @@ export class VFXManager {
     }
 
     // 10. PURE PIXEL-ART RUNIC CRYSTALS, SOLAR STARS, SACRED CROSSES, NECROTIC SKULLS, CLOCKWORK COGS & ASTRAL FEATHERS
-    if (!isReflection) {
+    if (!isReflection && !ultimateOnly) {
       for (const g of this.glyphs) {
         const p = g.life / g.maxLife;
         const gx = Math.round(g.x / 2) * 2;

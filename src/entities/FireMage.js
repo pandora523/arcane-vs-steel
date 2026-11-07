@@ -410,7 +410,8 @@ export class FireMage extends Fighter {
           theme: 'arcane',
           delay: idx === 1 ? 0.04 : 0.14,
           maxLife: 1.05,
-          scaleWidth: idx === 1 ? 1.05 : 0.72
+          scaleWidth: idx === 1 ? 1.05 : 0.72,
+          isUltimate: true
         });
       });
       game.vfx.spawnLightning(targetX - 50, -250, this.groundY, '#fef08a', '#fb923c');

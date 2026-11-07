@@ -387,7 +387,8 @@ export class Archer extends Fighter {
           height: 260,
           color: '#10b981',
           coreColor: '#fef08a',
-          maxLife: 0.92
+          maxLife: 0.92,
+          isUltimate: true
         });
       }
       if (Math.random() < 0.85) {
@@ -442,7 +443,8 @@ export class Archer extends Fighter {
         height: 325,
         color: '#10b981',
         coreColor: '#fef08a',
-        maxLife: 1.45
+        maxLife: 1.45,
+        isUltimate: true
       });
 
       game.vfx.spawnLightning(targetX - 35, -240, this.groundY, '#fef08a', '#10b981');

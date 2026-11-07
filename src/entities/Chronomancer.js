@@ -772,11 +772,18 @@ export class Chronomancer extends Fighter {
   }
 
   /**
-   * Foreground pass called by Renderer after all fighters are drawn so Stasis Hourglass & Rewind Ribbons render cleanly over the target
+   * Normal skill pass (behind fighters)
    */
   drawForegroundOverlay(ctx, renderer = null) {
     this.drawStasisHourglass(ctx, renderer);
     this.drawRewindRibbons(ctx);
+  }
+
+  /**
+   * Ultimate pass (rendered IN FRONT of all fighters!)
+   */
+  drawUltimateForeground(ctx, renderer = null) {
+    this.drawDoomsdayClock(ctx, renderer);
   }
 
   draw(ctx, isReflection = false, renderer = null) {
@@ -784,7 +791,6 @@ export class Chronomancer extends Fighter {
     if (!sprites) return;
 
     if (!isReflection) {
-      this.drawDoomsdayClock(ctx, renderer);
       this.drawTemporalEchoes(ctx);
       this.drawOrbitingGears(ctx, renderer);
     }

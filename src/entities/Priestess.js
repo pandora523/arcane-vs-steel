@@ -489,7 +489,8 @@ export class Priestess extends Fighter {
         theme: 'radiant',
         delay: 0.02,
         maxLife: 0.82,
-        scaleWidth: 1.15
+        scaleWidth: 1.15,
+        isUltimate: true
       });
 
       for (let r = 0; r < 4; r++) {
@@ -619,23 +620,7 @@ export class Priestess extends Fighter {
       ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, cellW, cellH);
     }
 
-    // 3. 6 Orbiting Chunky-Pixel Glowing Seraphic Star-Cross Chakrams during ULTIMATE
-    if (this.state === 'ULTIMATE' && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
-      const orbitR = 136;
-      const starSz = 68;
-      for (let i = 0; i < 6; i++) {
-        const a = -this.haloPhase * 2.5 + (i * Math.PI * 2) / 6;
-        const ox = snap(cx + Math.cos(a) * orbitR);
-        const oy = snap(cy + Math.sin(a) * orbitR);
-        ctx.save();
-        ctx.translate(ox, oy);
-        ctx.rotate(this.haloPhase * 3);
-        drawGlowingVfxCell(528, 56, 208, 208, -starSz * 0.5, -starSz * 0.5, starSz, starSz, 0.98);
-        ctx.restore();
-      }
-    }
-
-    // 4. Twin Flanking Chunky-Pixel Glowing Valkyrie Winged Spears during DIVINE SANCTUARY (SKILL)
+    // 3. Twin Flanking Chunky-Pixel Glowing Valkyrie Winged Spears during DIVINE SANCTUARY (SKILL)
     if (this.state === 'SKILL' && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
       const spearSz = 132;
       const bob = Math.round(Math.sin(this.stateTimer * 10) * 6);
@@ -647,7 +632,7 @@ export class Priestess extends Fighter {
       }
     }
 
-    // 5. Subtle Dark Silhouette Separation Cushion right behind Seraphina's head & torso
+    // 4. Subtle Dark Silhouette Separation Cushion right behind Seraphina's head & torso
     // so her Cathedral Halo & Wings blaze brightly around her without ever washing out her face!
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1.0;
@@ -668,6 +653,41 @@ export class Priestess extends Fighter {
     ctx.translate(Math.round(this.x), Math.round(this.y));
     ctx.scale(this.facing, 1);
     this.drawSeraphimVFX(ctx, sprites, false, renderer);
+    ctx.restore();
+  }
+
+  drawUltimateForeground(ctx, renderer = null) {
+    if (this.state !== 'ULTIMATE') return;
+    const sprites = PixelForge.initAssets().priestess;
+    const vfxSheet = sprites && sprites.vfx;
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(Math.round(this.x), Math.round(this.y));
+    ctx.scale(this.facing, 1);
+    const orbitR = 136;
+    const starSz = 68;
+    for (let i = 0; i < 6; i++) {
+      const a = -this.haloPhase * 2.5 + (i * Math.PI * 2) / 6;
+      const ox = Math.round((-4 + Math.cos(a) * orbitR) / 4) * 4;
+      const oy = Math.round((-124 + Math.sin(a) * orbitR) / 4) * 4;
+      ctx.save();
+      ctx.translate(ox, oy);
+      ctx.rotate(this.haloPhase * 3);
+      if (renderer && renderer.glowGold) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.42;
+        ctx.drawImage(renderer.glowGold, -starSz * 0.9, -starSz * 0.9, starSz * 1.8, starSz * 1.8);
+      }
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.34;
+      ctx.drawImage(vfxSheet, 528, 56, 208, 208, -starSz * 0.5 - 6, -starSz * 0.5 - 6, starSz + 12, starSz + 12);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.98;
+      ctx.drawImage(vfxSheet, 528, 56, 208, 208, -starSz * 0.5, -starSz * 0.5, starSz, starSz);
+      ctx.restore();
+    }
     ctx.restore();
   }
 

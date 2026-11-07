@@ -756,24 +756,31 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Foreground pass called by Renderer after all fighters are drawn so Chain-Claw & Soul-Wisps render over the target
+   * Normal skill pass (behind fighters)
    */
   drawForegroundOverlay(ctx, renderer = null) {
     this.drawSkeletalChainClaw(ctx);
-    this.drawSoulWisps(ctx, renderer);
+    if (this.state !== 'ULTIMATE' && !this.deathAvatar) {
+      this.drawSoulWisps(ctx, renderer);
+    }
+  }
+
+  /**
+   * Ultimate pass (rendered IN FRONT of all fighters!)
+   */
+  drawUltimateForeground(ctx, renderer = null) {
+    this.drawTombstones(ctx);
+    this.drawDeathAvatar(ctx);
+    if (this.state === 'ULTIMATE' || this.deathAvatar) {
+      this.drawSoulWisps(ctx, renderer);
+    }
   }
 
   draw(ctx, isReflection = false, renderer = null) {
     const sprites = PixelForge.initAssets().reaper;
     if (!sprites) return;
 
-    // 1. World-Space Haunted Tombstones and Towering Death Avatar behind Malakor
-    if (!isReflection) {
-      this.drawTombstones(ctx);
-      this.drawDeathAvatar(ctx);
-    }
-
-    // 2. Shadow-Grave Submerge Puddle during DODGE or DASH
+    // Shadow-Grave Submerge Puddle during DODGE or DASH
     const isSubmerged = !isReflection && (this.state === 'DODGE' || this.state === 'DASH');
     if (isSubmerged) {
       this.drawShadowPool(ctx);
