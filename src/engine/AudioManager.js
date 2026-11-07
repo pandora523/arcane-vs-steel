@@ -57,7 +57,12 @@ export class AudioManager {
       holy_hit: 0.74,
       holy_heal: 0.76,
       holy_smite: 0.78,
-      priestess_ult: 0.84
+      priestess_ult: 0.84,
+      scythe_reap: 0.78,
+      chain_hook: 0.80,
+      soul_drain: 0.74,
+      reaper_ult: 0.86,
+      death_reaper: 0.80
     };
 
     this.wavKeys = Object.keys(this.volumes);
@@ -163,6 +168,8 @@ export class AudioManager {
     const isImpact =
       name === 'clang' ||
       name === 'heavy_cleave' ||
+      name === 'scythe_reap' ||
+      name === 'chain_hook' ||
       name === 'arrow_hit' ||
       name === 'fire_hit' ||
       name === 'holy_hit' ||
@@ -173,7 +180,8 @@ export class AudioManager {
       name === 'supernova_detonate' ||
       name === 'solar_beam' ||
       name === 'archer_ult' ||
-      name === 'priestess_ult';
+      name === 'priestess_ult' ||
+      name === 'reaper_ult';
 
     if (isImpact) {
       this.lastImpactTime = now;
@@ -200,6 +208,7 @@ export class AudioManager {
       name === 'solar_beam' ||
       name === 'archer_ult' ||
       name === 'priestess_ult' ||
+      name === 'reaper_ult' ||
       name === 'ult_cast' ||
       name === 'thunder_slam';
 

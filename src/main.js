@@ -6,6 +6,7 @@ import { Warrior } from './entities/Warrior.js';
 import { FireMage } from './entities/FireMage.js';
 import { Archer } from './entities/Archer.js';
 import { Priestess } from './entities/Priestess.js';
+import { Reaper } from './entities/Reaper.js';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -43,6 +44,15 @@ const CHAMPION_ROSTER = {
     color: '#fde047',
     selectSfx: 'holy_heal',
     victoryLine: 'Sacred light and divine grace purify the sanctuary!'
+  },
+  reaper: {
+    id: 'reaper',
+    name: 'MALAKOR',
+    cls: Reaper,
+    theme: 'abyssal',
+    color: '#c084fc',
+    selectSfx: 'scythe_reap',
+    victoryLine: 'The Abyssal Scythe reaps every soul in the sanctuary!'
   }
 };
 
@@ -85,9 +95,10 @@ class Game {
     const killTarget = params.get('kill');
     const ultParam = params.get('ult');
     const forceUlt = ultParam === '1' || ultParam === 'both';
+    const forceSkill = params.get('skill') === '1';
     const forceCorner = params.get('corner') === '1';
     this.isSimPaused = params.get('pause') === '1';
-    if (p1 || p2 || urlHero || simSec > 0 || killTarget || forceUlt || forceCorner) {
+    if (p1 || p2 || urlHero || simSec > 0 || killTarget || forceUlt || forceSkill || forceCorner) {
       this.syncRosterSelectionUI(false);
       this.startDuel(false);
     }
@@ -99,6 +110,12 @@ class Game {
       this.leftFighter.wallWingCooldown = 0;
       this.rightFighter.x = 265;
       this.rightFighter.setState('AUTO_ATTACK');
+    }
+
+    if (forceSkill) {
+      this.leftFighter.x = 340;
+      this.rightFighter.x = 740;
+      this.leftFighter.skillCooldown = 0;
     }
 
     if (forceUlt) {
@@ -157,19 +174,22 @@ class Game {
       warrior: document.getElementById('card-warrior'),
       archer: document.getElementById('card-archer'),
       mage: document.getElementById('card-mage'),
-      priestess: document.getElementById('card-priestess')
+      priestess: document.getElementById('card-priestess'),
+      reaper: document.getElementById('card-reaper')
     };
     this.ribbons = {
       warrior: document.getElementById('ribbon-warrior'),
       archer: document.getElementById('ribbon-archer'),
       mage: document.getElementById('ribbon-mage'),
-      priestess: document.getElementById('ribbon-priestess')
+      priestess: document.getElementById('ribbon-priestess'),
+      reaper: document.getElementById('ribbon-reaper')
     };
     this.previewCanvases = {
       warrior: document.getElementById('preview-warrior'),
       archer: document.getElementById('preview-archer'),
       mage: document.getElementById('preview-mage'),
-      priestess: document.getElementById('preview-priestess')
+      priestess: document.getElementById('preview-priestess'),
+      reaper: document.getElementById('preview-reaper')
     };
 
     this.btnStartDuel = document.getElementById('btn-start-duel');

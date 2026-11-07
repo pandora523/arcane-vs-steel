@@ -79,6 +79,7 @@ export class VFXManager {
       arcane: { shape: 'star', col: '#fb923c', core: '#fef08a' },
       emerald: { shape: 'feather', col: '#10b981', core: '#fef08a' },
       radiant: { shape: 'cross', col: '#fde047', core: '#ffffff' },
+      abyssal: { shape: 'rune', col: '#c084fc', core: '#f43f5e' },
       heal: { shape: 'cross', col: '#4ade80', core: '#fef08a' }
     };
     const cfg = sets[theme] || sets.steel;
@@ -162,7 +163,11 @@ export class VFXManager {
     });
   }
 
-  spawnBeam(opts) {
+  spawnBeam(optsOrX1, y1, x2, y2, color = '#c084fc', width = 24, maxLife = 0.45) {
+    const opts =
+      typeof optsOrX1 === 'object'
+        ? optsOrX1
+        : { x1: optsOrX1, y1, x2, y2, color, coreColor: '#f43f5e', width, maxLife };
     this.beams.push({
       x1: opts.x1,
       y1: opts.y1,
@@ -276,7 +281,9 @@ export class VFXManager {
           ? { main: '#34d399', core: '#fef08a', border: '#10b981' }
           : theme === 'radiant'
             ? { main: '#facc15', core: '#fef9c3', border: '#eab308' }
-            : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
+            : theme === 'abyssal'
+              ? { main: '#c084fc', core: '#f43f5e', border: '#9333ea' }
+              : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
 
     this.castAuras.push({
       fighter,

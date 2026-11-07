@@ -861,7 +861,70 @@ def generate_all_sfx():
     l, r = add_velvet_reverb(l, r, wet=0.28, rt60=0.68, rng=rng)
     master_and_save(f"{out_dir}/victory_fanfare.wav", l, r, target_peak=0.82, hpf_hz=62.0)
 
-    print("Successfully forged all 38 realistic elemental & weapon foley WAV files in", out_dir)
+    # 39. SCYTHE_REAP: Deep crescent scythe blade whoosh + resonant dark steel edge slice
+    n = int(0.46 * SR)
+    t = np.arange(n) / SR
+    whoosh = swept_bandpass(pink_noise(n, rng), 920.0 * np.exp(-t / 0.14) + 180.0, q=2.2) * env_ad(n, 0.006, 0.14) * 0.85
+    sh_l, sh_r = sword_steel_shing(n, 1680.0, 0.22, rng, scrape_intensity=0.88)
+    sub_reap = np.sin(2.0 * np.pi * (145.0 * np.exp(-t / 0.09) + 56.0) * t) * env_ad(n, 0.002, 0.12) * 0.65
+    l = whoosh + sh_l * 0.78 + sub_reap
+    r = whoosh * 0.95 + sh_r * 0.78 + sub_reap
+    l, r = add_velvet_reverb(l, r, wet=0.16, rt60=0.36, rng=rng)
+    master_and_save(f"{out_dir}/scythe_reap.wav", l, r, target_peak=0.80, hpf_hz=56.0)
+
+    # 40. CHAIN_HOOK: Metallic iron chain rattle + heavy spiked hook latch clank
+    n = int(0.55 * SR)
+    t = np.arange(n) / SR
+    l = np.zeros(n, dtype=np.float64)
+    r = np.zeros(n, dtype=np.float64)
+    for link_t, f_base, amp in [(0.00, 2450.0, 0.55), (0.045, 2780.0, 0.62), (0.09, 2320.0, 0.58), (0.14, 1980.0, 0.85)]:
+        i0 = int(link_t * SR)
+        seg = n - i0
+        cl_l, cl_r = sword_steel_shing(seg, f_base, 0.11, rng, scrape_intensity=0.92)
+        l[i0:] += cl_l * amp
+        r[i0:] += cl_r * amp
+    hook_thud = np.sin(2.0 * np.pi * (180.0 * np.exp(-t / 0.045) + 64.0) * t) * env_ad(n, 0.002, 0.09) * 0.70
+    l += hook_thud
+    r += hook_thud
+    l, r = add_velvet_reverb(l, r, wet=0.18, rt60=0.38, rng=rng)
+    master_and_save(f"{out_dir}/chain_hook.wav", l, r, target_peak=0.80, hpf_hz=60.0)
+
+    # 41. SOUL_DRAIN: Eerie harmonic lifesteal siphon chord + spectral vacuum breath
+    n = int(0.62 * SR)
+    t = np.arange(n) / SR
+    siphon = swept_bandpass(pink_noise(n, rng), 420.0 + 680.0 * (t / 0.62), q=2.6) * env_ad(n, 0.03, 0.26) * 0.52
+    c1 = warm_chord_note(n, 220.00, 0.02, 0.42, brightness=0.75) * 0.44
+    c2 = warm_chord_note(n, 261.63, 0.03, 0.42, brightness=0.75) * 0.38
+    c3 = warm_chord_note(n, 329.63, 0.04, 0.44, brightness=0.80) * 0.36
+    l = siphon + c1 + c2 * 0.9 + c3 * 1.1
+    r = siphon * 0.96 + c1 * 0.95 + c2 * 1.1 + c3 * 0.9
+    l, r = add_velvet_reverb(l, r, wet=0.26, rt60=0.52, rng=rng)
+    master_and_save(f"{out_dir}/soul_drain.wav", l, r, target_peak=0.76, hpf_hz=58.0)
+
+    # 42. REAPER_ULT: Abyssal cathedral bell toll + dimensional scythe tear & nether shockwave
+    n = int(1.35 * SR)
+    t = np.arange(n) / SR
+    bell_fund = warm_chord_note(n, 146.83, 0.004, 0.95, brightness=0.90) * 0.62
+    bell_min = warm_chord_note(n, 174.61, 0.006, 0.88, brightness=0.85) * 0.48
+    bell_fifth = warm_chord_note(n, 220.00, 0.008, 0.92, brightness=0.88) * 0.45
+    sh_l, sh_r = sword_steel_shing(n, 1540.0, 0.34, rng, scrape_intensity=0.95)
+    sub_boom = np.sin(2.0 * np.pi * (130.0 * np.exp(-t / 0.14) + 48.0) * t) * env_ad(n, 0.003, 0.36) * 0.78
+    l = bell_fund + bell_min * 0.9 + bell_fifth + sh_l * 0.68 + sub_boom
+    r = bell_fund * 0.98 + bell_min * 1.1 + bell_fifth + sh_r * 0.68 + sub_boom
+    l, r = add_velvet_reverb(l, r, wet=0.28, rt60=0.65, rng=rng)
+    master_and_save(f"{out_dir}/reaper_ult.wav", l, r, target_peak=0.86, hpf_hz=52.0)
+
+    # 43. DEATH_REAPER: Heavy scythe drop clatter + fading abyssal wraith sigh
+    n = int(1.05 * SR)
+    t = np.arange(n) / SR
+    scythe_drop_l, scythe_drop_r = sword_steel_shing(n, 1420.0, 0.24, rng, scrape_intensity=0.75)
+    wraith_sigh = swept_bandpass(pink_noise(n, rng), 640.0 * np.exp(-t / 0.42) + 160.0, q=2.2) * env_ad(n, 0.02, 0.42) * 0.62
+    l = scythe_drop_l * 0.65 + wraith_sigh
+    r = scythe_drop_r * 0.65 + wraith_sigh * 0.95
+    l, r = add_velvet_reverb(l, r, wet=0.24, rt60=0.50, rng=rng)
+    master_and_save(f"{out_dir}/death_reaper.wav", l, r, target_peak=0.78, hpf_hz=58.0)
+
+    print("Successfully forged all 43 realistic elemental & weapon foley WAV files in", out_dir)
 
 
 if __name__ == "__main__":

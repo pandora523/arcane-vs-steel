@@ -29,6 +29,10 @@ export class PixelForge {
         sheet: loadImg('assets/sprites/priestess_sheet.png'),
         wings: loadImg('assets/sprites/seraphim_wings.png'),
         portrait: loadImg('assets/sprites/priestess_portrait.png', () => this.refreshPortraits())
+      },
+      reaper: {
+        sheet: loadImg('assets/sprites/reaper_sheet.png'),
+        portrait: loadImg('assets/sprites/reaper_portrait.png', () => this.refreshPortraits())
       }
     };
 
@@ -117,7 +121,7 @@ export class PixelForge {
     }
 
     if (st === 'ULTIMATE') {
-      if (fighter.heroId === 'warrior') {
+      if (fighter.heroId === 'warrior' || fighter.heroId === 'reaper') {
         if (t < 0.50) {
           const blitzFrames = [42, 19, 20, 43, 25, 26];
           return blitzFrames[Math.floor(t * 16) % blitzFrames.length];

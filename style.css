@@ -223,6 +223,10 @@ html, body {
   background: linear-gradient(180deg, #ffffff 0%, #fde047 45%, #ca8a04 100%);
 }
 
+.fill-abyssal {
+  background: linear-gradient(180deg, #f5d0fe 0%, #c084fc 45%, #7e22ce 100%);
+}
+
 .frame-steel {
   border-color: #38bdf8;
 }
@@ -237,6 +241,10 @@ html, body {
 
 .frame-radiant {
   border-color: #fde047;
+}
+
+.frame-abyssal {
+  border-color: #c084fc;
 }
 
 /* 10% Segmented Tick Notches */
@@ -491,7 +499,7 @@ html, body {
 }
 
 .landing-shell {
-  width: min(96vw, 1180px);
+  width: min(97vw, 1340px);
   max-width: 100%;
   max-height: 94dvh;
   overflow-y: auto;
@@ -504,10 +512,10 @@ html, body {
   border: 2px solid var(--bronze-lit);
   outline: 2px solid #000;
   box-shadow: 0 28px 80px rgba(0, 0, 0, 0.95), inset 0 0 40px rgba(212, 175, 55, 0.08);
-  padding: clamp(12px, 2vw, 24px);
+  padding: clamp(12px, 1.6vw, 20px);
   display: flex;
   flex-direction: column;
-  gap: clamp(12px, 1.8vh, 20px);
+  gap: clamp(10px, 1.6vh, 18px);
 }
 
 .landing-shell::-webkit-scrollbar {
@@ -630,8 +638,8 @@ html, body {
 
 .champion-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: clamp(8px, 1.1vw, 14px);
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: clamp(8px, 0.9vw, 12px);
   align-items: stretch;
   width: 100%;
   max-width: 100%;
@@ -642,10 +650,10 @@ html, body {
   background: linear-gradient(180deg, #0f1524 0%, #090c15 100%);
   border: 2px solid #334155;
   outline: 1px solid #000;
-  padding: clamp(9px, 1.1vw, 12px);
+  padding: clamp(8px, 0.95vw, 11px);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 7px;
   align-items: center;
   cursor: pointer;
   min-width: 0;
@@ -662,6 +670,7 @@ html, body {
 .card-emerald:hover { border-color: #34d399; }
 .card-arcane:hover { border-color: #fb923c; }
 .card-radiant:hover { border-color: #fde047; }
+.card-abyssal:hover { border-color: #c084fc; }
 
 .champ-card.selected-p1 {
   border-color: #38bdf8;
@@ -704,7 +713,7 @@ html, body {
 .champ-preview-stage {
   position: relative;
   width: 100%;
-  height: 132px;
+  height: 124px;
   background: radial-gradient(circle at 50% 65%, #131c31 0%, #060911 100%);
   border: 2px solid var(--bronze-dim);
   box-shadow: inset 0 0 18px #000;
@@ -738,12 +747,13 @@ html, body {
 .halo-emerald { background: radial-gradient(circle, #10b981 0%, transparent 70%); }
 .halo-arcane { background: radial-gradient(circle, #fb923c 0%, transparent 70%); }
 .halo-radiant { background: radial-gradient(circle, #fde047 0%, transparent 70%); }
+.halo-abyssal { background: radial-gradient(circle, #c084fc 0%, transparent 70%); }
 
 .champ-preview-stage canvas {
   position: relative;
   z-index: 2;
-  width: 126px;
-  height: 126px;
+  width: 122px;
+  height: 122px;
   image-rendering: pixelated;
   image-rendering: crisp-edges;
 }
@@ -758,14 +768,14 @@ html, body {
 
 .champ-role {
   font-family: var(--font-pixel);
-  font-size: 0.36rem;
+  font-size: 0.34rem;
   color: var(--bronze-lit);
   letter-spacing: 0.04em;
 }
 
 .champ-name {
   font-family: var(--font-pixel);
-  font-size: clamp(0.68rem, 1.15vw, 0.88rem);
+  font-size: clamp(0.64rem, 1.05vw, 0.84rem);
   font-weight: 700;
   letter-spacing: 0.05em;
   color: #fff;
@@ -774,8 +784,8 @@ html, body {
 
 .champ-lore {
   font-family: var(--font-pixel);
-  font-size: 0.42rem;
-  line-height: 1.5;
+  font-size: 0.39rem;
+  line-height: 1.48;
   color: var(--text-ash);
   text-transform: uppercase;
 }
@@ -789,11 +799,11 @@ html, body {
 
 .stat-row {
   display: grid;
-  grid-template-columns: minmax(64px, 84px) minmax(0, 1fr);
+  grid-template-columns: minmax(60px, 78px) minmax(0, 1fr);
   align-items: center;
   gap: 6px;
   font-family: var(--font-pixel);
-  font-size: 0.35rem;
+  font-size: 0.34rem;
   color: #cbd5e1;
   min-width: 0;
 }
@@ -813,6 +823,7 @@ html, body {
 .bar-emerald { background: linear-gradient(90deg, #059669, #6ee7b7); }
 .bar-arcane { background: linear-gradient(90deg, #c2410c, #fde047); }
 .bar-radiant { background: linear-gradient(90deg, #ca8a04, #fef08a); }
+.bar-abyssal { background: linear-gradient(90deg, #7e22ce, #e879f9); }
 
 .kit-pills {
   display: flex;
@@ -823,7 +834,7 @@ html, body {
 
 .kit-pill {
   font-family: var(--font-pixel);
-  font-size: 0.32rem;
+  font-size: 0.31rem;
   padding: 3px 5px;
   border: 1px solid #334155;
   background: #0b101d;
@@ -834,6 +845,7 @@ html, body {
 .pill-emerald { border-color: #10b981; color: #a7f3d0; }
 .pill-arcane { border-color: #ea580c; color: #fed7aa; }
 .pill-radiant { border-color: #eab308; color: #fef9c3; }
+.pill-abyssal { border-color: #a855f7; color: #f5d0fe; }
 .pill-gold { border-color: var(--bronze-lit); color: #fef08a; }
 
 .slot-assign-row {
