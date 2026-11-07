@@ -16,6 +16,7 @@ export class VFXManager {
     this.crystalSpikes = [];
     this.supernovas = [];
     this.castAuras = [];
+    this.hitImpacts = [];
     this.glyphs = [];
     this.texts = [];
   }
@@ -34,8 +35,38 @@ export class VFXManager {
     this.crystalSpikes.length = 0;
     this.supernovas.length = 0;
     this.castAuras.length = 0;
+    this.hitImpacts.length = 0;
     this.glyphs.length = 0;
     this.texts.length = 0;
+  }
+
+  spawnHitImpact(x, y, attacker, isCrit = false) {
+    const heroId = attacker?.heroId || 'warrior';
+    const theme = attacker?.theme || 'steel';
+    const dir = attacker ? Math.sign(x - attacker.x) || 1 : 1;
+    if (this.hitImpacts.length > 18) this.hitImpacts.shift();
+    this.hitImpacts.push({
+      x,
+      y,
+      heroId,
+      theme,
+      dir,
+      isCrit,
+      rot: (Math.random() - 0.5) * 0.45,
+      life: 0,
+      maxLife: isCrit ? 0.42 : 0.3
+    });
+    this.spawnGlyphBurst(x, y - 8, isCrit ? 6 : 3, theme);
+    if (theme !== 'abyssal' && theme !== 'chrono') {
+      this.spawnShockwave(
+        x,
+        y,
+        isCrit ? 92 : 64,
+        attacker?.primaryColor || '#38bdf8',
+        isCrit ? 0.3 : 0.22,
+        false
+      );
+    }
   }
 
   spawnParticle(opts) {
@@ -379,6 +410,7 @@ export class VFXManager {
     stepList(this.lightnings);
     stepList(this.beams);
     stepList(this.supernovas);
+    stepList(this.hitImpacts);
 
     for (let i = this.crystalSpikes.length - 1; i >= 0; i--) {
       const cs = this.crystalSpikes[i];
@@ -634,25 +666,62 @@ export class VFXManager {
 
   renderMainPass(ctx, isReflection = false, renderer = null) {
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    const assets = PixelForge.initAssets();
 
-    // 1. TORNADOS: Swirling 3D-Perspective HD-2D Pixel Vortex Columns (Whirlwind & Astral Hurricane)
+    // 1. TORNADOS: Authentic 16-bit HD-2D Emerald Whirlwind Vortex & Glacial Cyclone Columns
     for (const tor of this.tornados) {
       const fade = Math.min(1, (tor.maxLife - tor.life) * 3.5, tor.life * 5.0);
       const pxSize = 5;
       const baseX = Math.round(tor.x / pxSize) * pxSize;
       const baseY = Math.round(tor.groundY / pxSize) * pxSize;
       const rows = Math.round(tor.height / pxSize);
+      const isSteel = tor.color === '#38bdf8';
 
       ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
       if (renderer && !isReflection) {
-        ctx.globalAlpha = fade * 0.24;
-        const glow = tor.color === '#38bdf8' ? renderer.glowCyan : renderer.glowEmerald || renderer.glowCyan;
-        ctx.drawImage(glow, baseX - 140, baseY - tor.height, 280, tor.height + 30);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.36;
+        const glow = isSteel ? renderer.glowCyan : renderer.glowEmerald || renderer.glowCyan;
+        ctx.drawImage(glow, baseX - 150, baseY - tor.height, 300, tor.height + 36);
       }
-      ctx.globalAlpha = fade * (isReflection ? 0.28 : 0.56);
 
-      for (let r = 0; r < rows; r += 2) {
+      const archerVfx = assets.archer?.vfx;
+      const warriorVfx = assets.warrior?.vfx;
+      if (!isSteel && archerVfx && archerVfx.complete && archerVfx.naturalWidth) {
+        ctx.save();
+        ctx.translate(baseX, baseY - tor.height * 0.48);
+        const flipSpin = Math.floor(tor.life * 14) % 2 === 0 ? 1 : -1;
+        const swayX = Math.sin(tor.life * 16) * 8;
+        ctx.scale(flipSpin, 1);
+        ctx.globalAlpha = fade * (isReflection ? 0.38 : 0.92);
+        const sprW = Math.round(tor.radius * 3.1);
+        const sprH = Math.round(tor.height * 1.06);
+        ctx.drawImage(
+          archerVfx,
+          320,
+          56,
+          208,
+          208,
+          Math.round(-sprW * 0.5 + swayX),
+          Math.round(-sprH * 0.5),
+          sprW,
+          sprH
+        );
+        ctx.restore();
+      } else if (isSteel && warriorVfx && warriorVfx.complete && warriorVfx.naturalWidth) {
+        ctx.save();
+        ctx.translate(baseX, baseY - 92);
+        const flipSpin = Math.floor(tor.life * 16) % 2 === 0 ? 1 : -1;
+        ctx.scale(flipSpin, 1);
+        ctx.globalAlpha = fade * (isReflection ? 0.38 : 0.92);
+        ctx.drawImage(warriorVfx, 320, 56, 208, 208, -104, -104, 208, 208);
+        ctx.restore();
+      }
+
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * (isReflection ? 0.28 : 0.62);
+      for (let r = 0; r < rows; r += 3) {
         const hFrac = r / rows;
         const coneR = tor.radius * (0.42 + Math.pow(hFrac, 0.85) * 0.95);
         const sway = Math.sin(tor.life * 16 - hFrac * 7) * 14 * hFrac;
@@ -669,7 +738,7 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 2. FLAME & ELEMENTAL PILLARS: Pixel-Art Sacred Sigil + Spiraling 5-Tone Tornado
+    // 2. FLAME & ELEMENTAL PILLARS: Authentic 16-bit HD-2D Hellfire Magma Pillar & Sacred Cathedral Pillars
     for (const pil of this.pillars) {
       const p = Math.min(1, pil.life / Math.max(0.15, pil.delay));
       const pxSize = 6;
@@ -680,11 +749,11 @@ export class VFXManager {
       const isRadiant = pil.theme === 'radiant';
       const sigilCol = isEmerald ? '#34d399' : isSteel ? '#38bdf8' : isRadiant ? '#fef08a' : '#facc15';
 
-      // Ground Pixel Octagram Sigil + Overhead Matching Sky Sigil
+      // Ground Pixel Octagram Sigil
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      const rX = 76 * p * pil.scaleWidth;
-      const rY = 22 * p * pil.scaleWidth;
+      const rX = 82 * p * pil.scaleWidth;
+      const rY = 24 * p * pil.scaleWidth;
       const rot = pil.life * 4.2;
       for (let deg = 0; deg < 360; deg += 15) {
         const a = (deg * Math.PI) / 180 + rot;
@@ -697,158 +766,173 @@ export class VFXManager {
 
       if (pil.erupted && pil.life < pil.maxLife - 0.08) {
         const fade = Math.min(1, (pil.maxLife - pil.life) * 3.2);
-        const rows = Math.round(48 * pil.scaleWidth);
+        const pop = Math.min(1, (pil.life - pil.delay) / 0.14);
         ctx.save();
         if (renderer && !isReflection) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fade * 0.68;
+          ctx.globalAlpha = fade * 0.78;
           const glow = isEmerald
             ? renderer.glowEmerald || renderer.glowCyan
             : isSteel
               ? renderer.glowCyan
-              : renderer.glowOrange;
-          ctx.drawImage(glow, baseX - 150, baseY - 290, 300, 320);
+              : isRadiant
+                ? renderer.glowGold || renderer.glowOrange
+                : renderer.glowOrange;
+          ctx.drawImage(glow, baseX - 165, baseY - 310, 330, 340);
         }
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * (isReflection ? 0.45 : 0.95);
 
-        const maxCols = Math.max(2, Math.round(6 * pil.scaleWidth));
-        for (let row = 0; row < rows; row++) {
-          const hFrac = row / rows;
-          const sway = Math.round(Math.sin(pil.life * 20 - row * 0.42) * (1 + hFrac * 3.0));
-          const halfSpan = Math.max(1, Math.round((1 - hFrac * 0.55) * maxCols));
-          for (let col = -halfSpan; col <= halfSpan; col++) {
-            const edge = Math.abs(col) / (halfSpan + 0.5);
-            const n = Math.sin(pil.life * 26 - row * 1.15 + col * 1.6);
-            if (hFrac + edge * 0.42 + n * 0.16 > 0.98) continue;
-            const heat = 1 - hFrac * 0.68 - edge * 0.35;
-            if (isEmerald) {
-              ctx.fillStyle =
-                heat > 0.72
-                  ? '#ffffff'
-                  : heat > 0.5
-                    ? '#fef08a'
-                    : heat > 0.28
-                      ? '#34d399'
-                      : heat > 0.12
-                        ? '#059669'
-                        : '#064e3b';
-            } else if (isSteel) {
-              ctx.fillStyle =
-                heat > 0.72
-                  ? '#ffffff'
-                  : heat > 0.5
-                    ? '#bae6fd'
-                    : heat > 0.28
-                      ? '#38bdf8'
-                      : heat > 0.12
-                        ? '#0284c7'
-                        : '#0c4a6e';
-            } else if (isRadiant) {
-              ctx.fillStyle =
-                heat > 0.65
-                  ? '#ffffff'
-                  : heat > 0.44
-                    ? '#fef9c3'
-                    : heat > 0.24
-                      ? '#fde047'
-                      : heat > 0.10
-                        ? '#f59e0b'
-                        : '#b45309';
-            } else {
-              ctx.fillStyle =
-                heat > 0.72
-                  ? '#ffffff'
-                  : heat > 0.5
-                    ? '#fef08a'
-                    : heat > 0.28
-                      ? '#fb923c'
-                      : heat > 0.12
-                        ? '#dc2626'
-                        : '#7c2d12';
-            }
-            ctx.fillRect(
-              baseX + (col + sway) * pxSize - pxSize * 0.5,
-              baseY - (row + 1) * pxSize,
-              pxSize,
-              pxSize
-            );
-          }
+        const mageVfx = assets.mage?.vfx;
+        const priestVfx = assets.priestess?.vfx;
+        const flipWave = Math.floor(pil.life * 15) % 2 === 0 ? 1 : -1;
 
+        if (!isRadiant && !isEmerald && !isSteel && mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
+          const pilW = Math.round(236 * pil.scaleWidth);
+          const pilH = Math.round(316 * pil.scaleWidth * (0.35 + 0.65 * pop));
+          ctx.save();
+          ctx.translate(baseX, baseY + 12);
+          ctx.scale(flipWave, 1);
+          ctx.globalAlpha = fade * (isReflection ? 0.48 : 0.98);
+          ctx.drawImage(
+            mageVfx,
+            320,
+            56,
+            208,
+            208,
+            Math.round(-pilW * 0.5),
+            Math.round(-pilH),
+            pilW,
+            pilH
+          );
+          ctx.restore();
+        } else if (isRadiant && priestVfx && priestVfx.complete && priestVfx.naturalWidth) {
+          const haloSz = Math.round(210 * pil.scaleWidth);
+          const spearSz = Math.round(220 * pil.scaleWidth * pop);
+          ctx.save();
+          ctx.translate(baseX, baseY - 140 * pil.scaleWidth);
+          ctx.rotate(pil.life * 2.4);
+          ctx.globalAlpha = fade * (isReflection ? 0.45 : 0.92);
+          ctx.drawImage(
+            priestVfx,
+            0,
+            0,
+            320,
+            320,
+            Math.round(-haloSz * 0.5),
+            Math.round(-haloSz * 0.5),
+            haloSz,
+            haloSz
+          );
+          ctx.restore();
+          ctx.save();
+          ctx.translate(baseX, baseY - 115 * pil.scaleWidth);
+          ctx.globalAlpha = fade * (isReflection ? 0.48 : 0.98);
+          ctx.drawImage(
+            priestVfx,
+            320,
+            56,
+            208,
+            208,
+            Math.round(-spearSz * 0.5),
+            Math.round(-spearSz * 0.5),
+            spearSz,
+            spearSz
+          );
+          ctx.restore();
+        }
+
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * (isReflection ? 0.35 : 0.75);
+        const rows = Math.round(42 * pil.scaleWidth);
+        const halfSpan = Math.max(2, Math.round(5 * pil.scaleWidth));
+        for (let row = 0; row < rows; row += 2) {
           const ribCol = Math.round(Math.sin(pil.life * 24 - row * 0.38) * (halfSpan + 2));
-          ctx.fillStyle = row % 2 === 0 ? '#ffffff' : sigilCol;
+          ctx.fillStyle = row % 4 === 0 ? '#ffffff' : sigilCol;
           ctx.fillRect(baseX + ribCol * pxSize, baseY - (row + 1) * pxSize, pxSize, pxSize);
         }
         ctx.restore();
       }
     }
 
-    // 3. SKY STRIKES: Spectral Runeblades, Starfall Astral Arrows, Solar Lances & Holy Spears
+    // 3. SKY STRIKES: Authentic 16-bit HD-2D Heavenly Runeblades, Valkyrie Spears & Starfall Arrows
     for (const s of this.skyStrikes) {
       if (s.delay > 0) continue;
       const fade = s.impacted ? Math.max(0, 1 - s.linger / s.maxLinger) : 1;
-      const sx = Math.round(s.x / 4) * 4;
-      const sy = Math.round(s.y / 4) * 4;
+      const sx = Math.round(s.x / 2) * 2;
+      const sy = Math.round(s.y / 2) * 2;
 
       ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * (isReflection ? 0.5 : 0.95);
+      ctx.globalAlpha = fade * (isReflection ? 0.5 : 0.98);
 
       if (s.type === 'runeblade') {
-        // Colossal Spectral Runeblade of Pure Cyan-White Light Impaling the Ground
-        const bladeH = 136;
-        // Outer cyan aura blade
-        ctx.fillStyle = '#0284c7';
-        ctx.fillRect(sx - 14, sy - bladeH, 28, bladeH - 8);
-        // Inner bright blade
-        ctx.fillStyle = '#38bdf8';
-        ctx.fillRect(sx - 9, sy - bladeH + 4, 18, bladeH - 12);
-        // White-hot fuller core
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(sx - 4, sy - bladeH + 8, 8, bladeH - 12);
-        // Ornate Gold-Cyan Crossguard & Pommel
-        ctx.fillStyle = '#facc15';
-        ctx.fillRect(sx - 28, sy - bladeH + 18, 56, 8);
-        ctx.fillRect(sx - 8, sy - bladeH - 22, 16, 14);
+        const warriorVfx = assets.warrior?.vfx;
+        if (renderer && !isReflection) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = fade * 0.65;
+          ctx.drawImage(renderer.glowCyan, sx - 110, sy - 190, 220, 220);
+          ctx.restore();
+        }
+        if (warriorVfx && warriorVfx.complete && warriorVfx.naturalWidth) {
+          const bladeSz = 216;
+          ctx.drawImage(
+            warriorVfx,
+            0,
+            0,
+            320,
+            320,
+            Math.round(sx - bladeSz * 0.5),
+            Math.round(sy - bladeSz + 14),
+            bladeSz,
+            bladeSz
+          );
+        }
       } else if (s.type === 'holy_spear') {
-        // Seraphic Golden-White Holy Cross-Lance Impaling the Ground from Heaven
-        const spearH = 128;
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(sx - 10, sy - spearH, 20, spearH - 6);
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(sx - 6, sy - spearH + 4, 12, spearH - 10);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(sx - 3, sy - spearH + 6, 6, spearH - 8);
-        // Ornate Seraphic Winged Crossbar near tip & crown
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(sx - 24, sy - spearH + 28, 48, 8);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(sx - 18, sy - spearH + 30, 36, 4);
-        ctx.fillRect(sx - 14, sy - 32, 28, 6);
+        const priestVfx = assets.priestess?.vfx;
+        if (renderer && !isReflection) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = fade * 0.65;
+          ctx.drawImage(renderer.glowGold || renderer.glowOrange, sx - 96, sy - 170, 192, 192);
+          ctx.restore();
+        }
+        if (priestVfx && priestVfx.complete && priestVfx.naturalWidth) {
+          const spearSz = 188;
+          ctx.drawImage(
+            priestVfx,
+            320,
+            56,
+            208,
+            208,
+            Math.round(sx - spearSz * 0.5),
+            Math.round(sy - spearSz + 12),
+            spearSz,
+            spearSz
+          );
+        }
       } else {
-        // Starfall Emerald-Gold Arrow or Solar Lance
+        const archerVfx = assets.archer?.vfx;
         const ang = Math.atan2(s.vy, s.vx || 0.01);
         ctx.translate(sx, sy);
-        ctx.rotate(ang - Math.PI * 0.5);
-        // Glowing shaft
-        ctx.fillStyle = s.color;
-        ctx.fillRect(-4, -68, 8, 68);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-2, -64, 4, 62);
-        // Broadhead tip
-        ctx.fillStyle = s.coreColor;
-        ctx.fillRect(-8, -14, 16, 10);
-        ctx.fillRect(-4, -6, 8, 8);
-        // Radiant fletching feathers
-        ctx.fillStyle = s.color;
-        ctx.fillRect(-10, -72, 20, 12);
-        ctx.fillStyle = s.coreColor;
-        ctx.fillRect(-6, -70, 12, 8);
+        ctx.rotate(ang);
+        if (archerVfx && archerVfx.complete && archerVfx.naturalWidth) {
+          const arrSz = 116;
+          ctx.drawImage(
+            archerVfx,
+            528,
+            56,
+            208,
+            208,
+            Math.round(-arrSz * 0.72),
+            Math.round(-arrSz * 0.5),
+            arrSz,
+            arrSz
+          );
+        }
       }
       ctx.restore();
     }
 
-    // 4. TAPERED COILING WIND-DRAGON ARROW PIERCER (Zero flat rectangular bars)
+    // 4. TAPERED COILING WIND-DRAGON ARROW PIERCER & CELESTIAL / SUPERNOVA BEAMS
     for (const b of this.beams) {
       const t = b.life / b.maxLife;
       const env = Math.sin(t * Math.PI);
@@ -865,21 +949,18 @@ export class VFXManager {
       ctx.translate(b.x1, b.y1);
       ctx.rotate(ang);
 
-      // Projectile head shoots rapidly across the arena instead of appearing as a static box
       const headX = Math.min(dist, dist * Math.min(1, t / 0.28));
       const tailX = Math.max(0, dist * Math.max(0, (t - 0.38) / 0.62));
       const spanLen = Math.max(40, headX - tailX);
       const stepPx = 8;
 
       for (let x = tailX; x <= headX; x += stepPx) {
-        const u = (x - tailX) / spanLen; // 0 at feathered tail, 1 at dragon-arrow tip
-        // Organic spindle taper (zero blunt rectangular ends)
+        const u = (x - tailX) / spanLen;
         const taper = Math.sin(Math.pow(u, 0.65) * Math.PI);
         const hOuter = Math.max(4, Math.round(((b.width * 0.58 * taper * env) / 4)) * 4);
         const hInner = Math.max(2, Math.round((hOuter * 0.45) / 2) * 2);
         const undulate = Math.round((Math.sin(x * 0.032 - b.life * 32) * 8 * (1 - u * 0.5)) / 2) * 2;
 
-        // Tapered emerald-gold arrow spine segment
         ctx.fillStyle = b.color;
         ctx.fillRect(x, undulate - hOuter * 0.5, stepPx, hOuter);
         ctx.fillStyle = b.coreColor;
@@ -889,7 +970,6 @@ export class VFXManager {
           ctx.fillRect(x, undulate - 2, stepPx, 4);
         }
 
-        // Counter-rotating double-helix dragon-wind ribbons
         const helix1 = Math.round((Math.sin(x * 0.055 - b.life * 36) * (hOuter * 1.15 + 10)) / 4) * 4;
         const helix2 = Math.round((-Math.sin(x * 0.055 - b.life * 36) * (hOuter * 1.15 + 10)) / 4) * 4;
         ctx.fillStyle = b.coreColor;
@@ -898,109 +978,124 @@ export class VFXManager {
         ctx.fillRect(x, undulate + helix2 - 3, 8, 6);
       }
 
-      // Stepped Pixel-Art Spear/Dragon-Fang Head at the leading tip (headX)
-      const tipY = Math.round((Math.sin(headX * 0.032 - b.life * 32) * 4) / 2) * 2;
-      ctx.fillStyle = b.color;
-      ctx.fillRect(headX - 24, tipY - 22, 12, 44);
-      ctx.fillRect(headX - 12, tipY - 16, 12, 32);
-      ctx.fillStyle = b.coreColor;
-      ctx.fillRect(headX - 16, tipY - 14, 14, 28);
-      ctx.fillRect(headX - 2, tipY - 10, 12, 20);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(headX + 10, tipY - 6, 12, 12);
-      ctx.fillRect(headX + 22, tipY - 2, 10, 4);
+      const isEmeraldBeam = b.color === '#10b981' || b.color === '#34d399';
+      const isHolyBeam = b.color === '#fde047' || b.color === '#facc15' || b.color === '#fef08a';
+      const archerVfx = assets.archer?.vfx;
+      const priestVfx = assets.priestess?.vfx;
+      const mageVfx = assets.mage?.vfx;
+
+      ctx.globalCompositeOperation = 'source-over';
+      if (isEmeraldBeam && archerVfx && archerVfx.complete && archerVfx.naturalWidth) {
+        const dragSz = 264;
+        ctx.drawImage(
+          archerVfx,
+          0,
+          0,
+          320,
+          320,
+          Math.round(headX - dragSz * 0.62),
+          Math.round(-dragSz * 0.5),
+          dragSz,
+          dragSz
+        );
+      } else if (isHolyBeam && priestVfx && priestVfx.complete && priestVfx.naturalWidth) {
+        const starSz = 136;
+        ctx.drawImage(
+          priestVfx,
+          528,
+          56,
+          208,
+          208,
+          Math.round(headX - starSz * 0.5),
+          Math.round(-starSz * 0.5),
+          starSz,
+          starSz
+        );
+      } else if (mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
+        const meteorSz = 148;
+        ctx.drawImage(
+          mageVfx,
+          528,
+          56,
+          208,
+          208,
+          Math.round(headX - meteorSz * 0.5),
+          Math.round(-meteorSz * 0.5),
+          meteorSz,
+          meteorSz
+        );
+      }
 
       ctx.restore();
     }
 
-    // 4B. GLACIAL FROST-CRYSTAL SPIRES (Warrior Heavenly Earthshatter Wave)
+    // 4B. GLACIAL FROST-CRYSTAL SPIRES (Authentic 16-bit HD-2D Ice Spire Cluster from warrior_vfx.png)
     for (const cs of this.crystalSpikes) {
       if (cs.delay > 0) continue;
       const t = cs.life / cs.maxLife;
       const pop = Math.min(1, cs.life / 0.12);
       const fade = Math.min(1, (1 - t) * 2.5);
-      const curH = Math.round((cs.height * pop) / 4) * 4;
-      const baseW = Math.round(cs.width / 4) * 4;
-      const bx = Math.round(cs.x / 4) * 4;
-      const by = Math.round(cs.groundY / 4) * 4;
+      const bx = Math.round(cs.x / 2) * 2;
+      const by = Math.round(cs.groundY / 2) * 2;
+      const warriorVfx = assets.warrior?.vfx;
 
       ctx.save();
-      ctx.globalAlpha = fade * (isReflection ? 0.45 : 0.96);
-      const rows = Math.max(4, Math.round(curH / 6));
-      for (let r = 0; r < rows; r++) {
-        const u = r / rows;
-        const rowW = Math.max(4, Math.round(((1 - Math.pow(u, 0.85)) * baseW) / 4) * 4);
-        const shiftX = Math.round((u * cs.tilt * 26) / 4) * 4;
-        const ry = by - (r + 1) * 6;
-        // Dark steel-blue outer crystal facet
-        ctx.fillStyle = '#0284c7';
-        ctx.fillRect(bx + shiftX - rowW * 0.5, ry, rowW, 6);
-        // Bright frost-cyan inner crystal facet
-        if (rowW >= 8) {
-          ctx.fillStyle = cs.color;
-          ctx.fillRect(bx + shiftX - rowW * 0.3, ry, rowW * 0.6, 6);
-        }
-        // White-hot diamond core ridge
-        if (rowW >= 12) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(bx + shiftX - 2, ry, 4, 6);
-        }
+      ctx.globalAlpha = fade * (isReflection ? 0.45 : 0.98);
+      if (warriorVfx && warriorVfx.complete && warriorVfx.naturalWidth) {
+        const spireW = Math.round(cs.width * 3.8);
+        const spireH = Math.round(cs.height * 1.38 * pop);
+        ctx.translate(bx, by + 8);
+        ctx.rotate(cs.tilt * 0.18);
+        ctx.drawImage(
+          warriorVfx,
+          320,
+          56,
+          208,
+          208,
+          Math.round(-spireW * 0.5),
+          Math.round(-spireH),
+          spireW,
+          spireH
+        );
       }
       ctx.restore();
     }
 
-    // 4C. BLACK-GOLD SOLAR ECLIPSE SUPERNOVA SPHERE (Fire Mage Ultimate)
+    // 4C. BLACK-GOLD SOLAR ECLIPSE SUPERNOVA SPHERE (Authentic 16-bit HD-2D Eclipse Sun from mage_vfx.png)
     for (const sn of this.supernovas) {
       const t = sn.life / sn.maxLife;
       const env = Math.sin(Math.min(1, t * 1.15) * Math.PI);
-      const rad = Math.max(12, Math.round((sn.maxRadius * (0.45 + 0.55 * env)) / 4) * 4);
-      const sx = Math.round(sn.x / 4) * 4;
-      const sy = Math.round(sn.y / 4) * 4;
+      const rad = Math.max(24, Math.round((sn.maxRadius * (0.45 + 0.55 * env)) / 4) * 4);
+      const sx = Math.round(sn.x / 2) * 2;
+      const sy = Math.round(sn.y / 2) * 2;
+      const mageVfx = assets.mage?.vfx;
 
       ctx.save();
       if (renderer && !isReflection) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = env * 0.85;
-        ctx.drawImage(renderer.glowOrange, sx - rad * 2.4, sy - rad * 2.4, rad * 4.8, rad * 4.8);
+        ctx.globalAlpha = env * 0.9;
+        ctx.drawImage(renderer.glowOrange, sx - rad * 2.5, sy - rad * 2.5, rad * 5.0, rad * 5.0);
       }
 
-      // Rotating Pixel-Art Solar Corona Prominences
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = env * (isReflection ? 0.45 : 0.95);
-      for (let ray = 0; ray < 16; ray++) {
-        const a = (ray / 16) * Math.PI * 2 + sn.life * 3.2;
-        const rayLen = rad * (1.18 + 0.25 * Math.sin(sn.life * 18 + ray * 1.7));
-        const rx = Math.round((sx + Math.cos(a) * rayLen) / 4) * 4;
-        const ry = Math.round((sy + Math.sin(a) * rayLen) / 4) * 4;
-        ctx.fillStyle = ray % 2 === 0 ? '#fef08a' : '#fb923c';
-        ctx.fillRect(rx - 6, ry - 6, 12, 12);
-      }
-
-      // Stepped Pixel-Art Eclipse Sun Disc (Blazing Gold-Crimson Rim + Seamless Obsidian Core)
-      ctx.globalCompositeOperation = 'source-over';
-      const pStep = 6;
-      const gridR = Math.round(rad / pStep);
-      const layers = [
-        { frac: 1.0, col: '#ea580c' },
-        { frac: 0.82, col: '#fef08a' },
-        { frac: 0.66, col: '#ffffff' },
-        { frac: 0.52, col: '#09060d' }
-      ];
-      for (const layer of layers) {
-        ctx.fillStyle = layer.col;
-        const rLayer = gridR * layer.frac;
-        const maxGy = Math.floor(rLayer);
-        for (let gy = -maxGy; gy <= maxGy; gy++) {
-          const halfSpan = Math.round(Math.sqrt(Math.max(0, rLayer * rLayer - gy * gy)));
-          if (halfSpan > 0) {
-            ctx.fillRect(
-              sx - halfSpan * pStep,
-              sy + gy * pStep - pStep * 0.5,
-              halfSpan * 2 * pStep,
-              pStep + 1
-            );
-          }
-        }
+      if (mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
+        const eclipseSz = Math.round(rad * 2.65);
+        ctx.save();
+        ctx.translate(sx, sy);
+        ctx.rotate(sn.life * 0.55);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = env * (isReflection ? 0.48 : 0.98);
+        ctx.drawImage(
+          mageVfx,
+          0,
+          0,
+          320,
+          320,
+          Math.round(-eclipseSz * 0.5),
+          Math.round(-eclipseSz * 0.5),
+          eclipseSz,
+          eclipseSz
+        );
+        ctx.restore();
       }
       ctx.restore();
     }
@@ -1021,7 +1116,7 @@ export class VFXManager {
       }
     }
 
-    // 6. SLASHES: Multi-Tone Stepped HD-2D Pixel-Art Crescent Blade & Wind Waves
+    // 6. SLASHES: Authentic 16-bit HD-2D Crescent Blade, Scythe & Whirlwind Waves + Stepped Arcs
     ctx.globalCompositeOperation = 'lighter';
     for (const s of this.slashes) {
       const t = s.life / s.maxLife;
@@ -1037,9 +1132,65 @@ export class VFXManager {
         s.color === '#7e22ce' ||
         s.color === '#f43f5e' ||
         s.color === '#e879f9';
+      const isRadiant = s.color === '#fde047' || s.color === '#facc15' || s.color === '#f59e0b';
+      const isChrono = s.color === '#2dd4bf' || s.color === '#99f6e4';
       const outerTone = isCyan ? '#0284c7' : isEmerald ? '#059669' : isAbyssal ? '#4c1d95' : '#ea580c';
       const midTone = s.color;
       const innerTone = isCyan ? '#bae6fd' : isEmerald ? '#a7f3d0' : isAbyssal ? '#f5d0fe' : '#fef08a';
+
+      // Draw 16-bit HD-2D Slash Wave Sprite at the arc apex
+      if (!isReflection) {
+        const midAng = (s.startAngle + s.endAngle) * 0.5 + (isFullCircle ? t * 8 : 0);
+        const rad = s.radius + t * 14;
+        const sx = Math.round(s.x + Math.cos(midAng) * rad * 0.72);
+        const sy = Math.round(s.y + Math.sin(midAng) * (isFullCircle ? rad * 0.25 : rad * 0.72));
+        const slashSize = Math.round(Math.min(185, Math.max(96, s.radius * 1.25)) * (1.05 - t * 0.18));
+
+        let sheet = null;
+        let cropX = 528;
+        if (isCyan) {
+          sheet = assets.warrior?.vfx;
+          cropX = 528;
+        } else if (isAbyssal) {
+          sheet = assets.reaper?.vfx;
+          cropX = 736;
+        } else if (isEmerald) {
+          sheet = assets.archer?.vfx;
+          cropX = 320;
+        } else if (isRadiant) {
+          sheet = assets.priestess?.vfx;
+          cropX = 528;
+        } else if (isChrono) {
+          sheet = assets.chronomancer?.vfx;
+          cropX = 528;
+        } else {
+          sheet = assets.mage?.vfx;
+          cropX = 528;
+        }
+
+        if (sheet && sheet.complete && sheet.naturalWidth) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = Math.min(1, alpha * 1.15);
+          ctx.translate(sx, sy);
+          ctx.rotate(midAng);
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(
+            sheet,
+            cropX,
+            56,
+            208,
+            208,
+            Math.round(-slashSize * 0.5),
+            Math.round(-slashSize * 0.5),
+            slashSize,
+            slashSize
+          );
+          ctx.restore();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = alpha * (isFullCircle ? 0.52 : 0.88);
+        }
+      }
 
       for (let i = 0; i <= steps; i++) {
         const u = i / steps;
@@ -1089,15 +1240,15 @@ export class VFXManager {
       }
     }
 
-    // 8. PROJECTILES: Astral Wind Arrows, Glacial Blade-Waves, Spinning Phantom Scythes, Solar Fireballs & Meteors
+    // 8. PROJECTILES: Authentic 16-bit HD-2D Astral Arrows, Frost Blade-Waves, Phantom Scythes, Clockwork Saw-Gears, Holy Orbs & Solar Fireballs
     ctx.globalAlpha = 1;
     for (const proj of this.projectiles) {
-      const r = proj.radius * 2.9;
+      const r = proj.radius * 3.1;
       const px = Math.round(proj.x / 4) * 4;
       const py = Math.round(proj.y / 4) * 4;
       if (renderer) {
         const tex =
-          proj.color === '#38bdf8' || proj.color === '#c084fc'
+          proj.color === '#38bdf8' || proj.color === '#c084fc' || proj.color === '#2dd4bf'
             ? renderer.glowCyan
             : proj.color === '#10b981' || proj.color === '#34d399'
               ? renderer.glowEmerald || renderer.glowCyan
@@ -1106,44 +1257,58 @@ export class VFXManager {
       }
 
       if (proj.isMeteor) {
+        const mageVfx = assets.mage?.vfx;
+        const ang = Math.atan2(proj.vy, proj.vx || 1);
         const dirX = -proj.vx / (Math.hypot(proj.vx, proj.vy) || 1);
         const dirY = -proj.vy / (Math.hypot(proj.vx, proj.vy) || 1);
         const pSize = 6;
-        for (let wStep = 14; wStep >= 1; wStep--) {
+        for (let wStep = 10; wStep >= 1; wStep--) {
           const wx = Math.round((px + dirX * wStep * 9) / pSize) * pSize;
           const wy = Math.round((py + dirY * wStep * 9) / pSize) * pSize;
-          const span = Math.max(1, Math.round((1 - wStep / 15) * 5));
+          const span = Math.max(1, Math.round((1 - wStep / 11) * 4));
           for (let c = -span; c <= span; c++) {
-            ctx.fillStyle = wStep < 4 ? '#fef08a' : wStep < 9 ? '#fb923c' : '#dc2626';
+            ctx.fillStyle = wStep < 4 ? '#fef08a' : wStep < 7 ? '#fb923c' : '#dc2626';
             ctx.fillRect(wx + c * pSize, wy - c * pSize * 0.5, pSize, pSize);
           }
         }
-        for (let my = -5; my <= 5; my++) {
-          for (let mx = -5; mx <= 5; mx++) {
-            const d = Math.hypot(mx, my);
-            if (d > 5.2) continue;
-            ctx.fillStyle =
-              d < 2.0 ? '#ffffff' : d < 3.4 ? '#fef08a' : (mx + my) % 2 === 0 ? '#ea580c' : '#292524';
-            ctx.fillRect(px + mx * pSize - pSize * 0.5, py + my * pSize - pSize * 0.5, pSize, pSize);
-          }
+        if (mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
+          const mSize = 148;
+          ctx.save();
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.translate(px, py);
+          ctx.rotate(ang);
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(
+            mageVfx,
+            528,
+            56,
+            208,
+            208,
+            Math.round(-mSize * 0.5),
+            Math.round(-mSize * 0.5),
+            mSize,
+            mSize
+          );
+          ctx.restore();
+          ctx.globalCompositeOperation = 'lighter';
         }
       } else if (proj.type === 'clock_gear') {
         // Authentic 16-bit HD-2D Spinning Brass & Celestial-Teal Clockwork Saw-Gear (from chronomancer_vfx.png)
-        const vfxSheet = PixelForge.initAssets().chronomancer?.vfx;
+        const vfxSheet = assets.chronomancer?.vfx;
         const dir = Math.sign(proj.vx) || 1;
         const spin = (proj.age || 0) * 18 * dir;
         ctx.save();
         ctx.translate(px, py);
-        // Trailing golden-teal escapement ribbon behind the spinning saw-gear
-        for (let tStep = 1; tStep <= 5; tStep++) {
+        for (let tStep = 1; tStep <= 6; tStep++) {
           const tx = -dir * tStep * 11;
-          const ty = Math.sin((proj.age || 0) * 32 - tStep * 0.9) * 7;
+          const ty = Math.sin((proj.age || 0) * 32 - tStep * 0.9) * 8;
           ctx.fillStyle = tStep % 2 === 0 ? '#facc15' : '#2dd4bf';
           ctx.fillRect(tx - 3, ty - 2, 6, 4);
         }
         ctx.rotate(spin);
         if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-          const gearSize = 68;
+          const gearSize = 84;
+          ctx.globalCompositeOperation = 'source-over';
           ctx.imageSmoothingEnabled = false;
           ctx.drawImage(
             vfxSheet,
@@ -1159,68 +1324,85 @@ export class VFXManager {
         } else {
           ctx.fillStyle = '#eab308';
           ctx.fillRect(-16, -16, 32, 32);
-          ctx.fillStyle = '#2dd4bf';
-          ctx.fillRect(-8, -8, 16, 16);
         }
         ctx.restore();
       } else if (proj.type === 'phantom_scythe') {
-        // Spinning Boomerang Twin-Blade Phantom Scythe + Crimson Skull Eye Hub (Reaper Exclusive)
+        // Authentic 16-bit HD-2D Spinning Skull-Crescent Phantom Scythe Wave (from reaper_vfx.png)
+        const reaperVfx = assets.reaper?.vfx;
         const dir = Math.sign(proj.vx) || 1;
-        const spin = (proj.age || 0) * 20 * dir;
+        const spin = (proj.age || 0) * 22 * dir;
         ctx.save();
         ctx.translate(px, py);
-        for (let blade = 0; blade < 2; blade++) {
-          const baseA = spin + blade * Math.PI;
-          for (let s = 0; s <= 10; s++) {
-            const u = s / 10;
-            const a = baseA - u * 1.45 * dir;
-            const rad = 10 + u * 28;
-            const bx = Math.round((Math.cos(a) * rad) / 4) * 4;
-            const by = Math.round((Math.sin(a) * rad) / 4) * 4;
-            const sz = Math.max(4, Math.round(((1 - u * 0.55) * 14) / 4) * 4);
-            ctx.fillStyle = '#4c1d95';
-            ctx.fillRect(bx - sz * 0.6, by - sz * 0.6, sz * 1.2, sz * 1.2);
-            ctx.fillStyle = s % 2 === 0 ? '#c084fc' : '#f43f5e';
-            ctx.fillRect(bx - sz * 0.4, by - sz * 0.4, sz * 0.8, sz * 0.8);
-            if (u > 0.6) {
-              ctx.fillStyle = '#ffffff';
-              ctx.fillRect(bx - 2, by - 2, 4, 4);
-            }
-          }
+        for (let tStep = 1; tStep <= 5; tStep++) {
+          const tx = -dir * tStep * 12;
+          const ty = Math.cos((proj.age || 0) * 28 - tStep) * 10;
+          ctx.fillStyle = tStep % 2 === 0 ? '#f43f5e' : '#c084fc';
+          ctx.fillRect(tx - 3, ty - 3, 6, 6);
         }
-        // Dark obsidian skull-hub center with glowing crimson eye
-        ctx.fillStyle = '#090514';
-        ctx.fillRect(-10, -10, 20, 20);
-        ctx.fillStyle = '#f43f5e';
-        ctx.fillRect(-6, -6, 12, 12);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-2, -2, 4, 4);
+        ctx.rotate(spin);
+        if (reaperVfx && reaperVfx.complete && reaperVfx.naturalWidth && reaperVfx.naturalWidth >= 944) {
+          const scytheSize = 112;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(
+            reaperVfx,
+            736,
+            56,
+            208,
+            208,
+            Math.round(-scytheSize * 0.5),
+            Math.round(-scytheSize * 0.5),
+            scytheSize,
+            scytheSize
+          );
+          ctx.rotate(Math.PI);
+          ctx.globalAlpha = 0.72;
+          ctx.drawImage(
+            reaperVfx,
+            736,
+            56,
+            208,
+            208,
+            Math.round(-scytheSize * 0.45),
+            Math.round(-scytheSize * 0.45),
+            Math.round(scytheSize * 0.9),
+            Math.round(scytheSize * 0.9)
+          );
+        }
         ctx.restore();
       } else if (proj.type === 'blade_wave') {
-        // Towering Glacial Crescent Sword-Wave (Warrior Ranged Finisher)
+        // Authentic 16-bit HD-2D Glacial Crescent Sword-Wave (from warrior_vfx.png)
+        const warriorVfx = assets.warrior?.vfx;
         const dir = Math.sign(proj.vx) || 1;
         ctx.save();
         ctx.translate(px, py);
         ctx.scale(dir, 1);
-        for (let row = -9; row <= 9; row++) {
-          const u = Math.abs(row) / 9;
-          const curveX = Math.round((1 - u * u) * 26 / 4) * 4;
-          const thick = Math.max(6, Math.round((1 - u * 0.7) * 22 / 4) * 4);
-          const ry = row * 5;
-          ctx.fillStyle = '#0284c7';
-          ctx.fillRect(curveX - thick, ry - 3, thick + 8, 6);
-          ctx.fillStyle = '#38bdf8';
-          ctx.fillRect(curveX - thick * 0.6, ry - 3, thick * 0.75, 6);
-          ctx.fillStyle = '#bae6fd';
-          ctx.fillRect(curveX - 2, ry - 2, 10, 4);
-          if (Math.abs(row) <= 5) {
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(curveX + 4, ry - 2, 6, 4);
-          }
+        for (let trail = 1; trail <= 5; trail++) {
+          const tx = -trail * 14;
+          const ty = ((trail * 17) % 36) - 18;
+          ctx.fillStyle = trail % 2 === 0 ? '#ffffff' : '#38bdf8';
+          ctx.fillRect(tx - 4, ty - 2, 8, 4);
+        }
+        if (warriorVfx && warriorVfx.complete && warriorVfx.naturalWidth) {
+          const waveSize = 132;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(
+            warriorVfx,
+            528,
+            56,
+            208,
+            208,
+            Math.round(-waveSize * 0.5),
+            Math.round(-waveSize * 0.5),
+            waveSize,
+            waveSize
+          );
         }
         ctx.restore();
       } else if (proj.type === 'arrow') {
-        // High-Velocity Emerald-Gold Astral Arrow + Corkscrew Wind Wake
+        // Authentic 16-bit HD-2D Elven Starlight-Gold & Emerald Astral Arrow (from archer_vfx.png)
+        const archerVfx = assets.archer?.vfx;
         const ang = Math.atan2(proj.vy, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
@@ -1229,79 +1411,95 @@ export class VFXManager {
         // Corkscrew emerald wind spiral trailing behind arrow
         for (let w = 1; w <= 7; w++) {
           const wx = -w * 10;
-          const wy = Math.sin(proj.age * 36 - w * 0.9) * 10;
+          const wy = Math.sin((proj.age || 0) * 36 - w * 0.9) * 10;
           ctx.fillStyle = w % 2 === 0 ? '#fef08a' : '#34d399';
           ctx.fillRect(wx - 4, wy - 2, 8, 4);
         }
 
-        // Outer emerald energy envelope
-        ctx.fillStyle = '#059669';
-        ctx.fillRect(-36, -6, 68, 12);
-        // Golden-emerald shaft
-        ctx.fillStyle = '#34d399';
-        ctx.fillRect(-32, -4, 62, 8);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-26, -2, 54, 4);
-        // Starlight Arrowhead
-        ctx.fillStyle = '#fef08a';
-        ctx.fillRect(18, -10, 14, 20);
-        ctx.fillRect(28, -6, 12, 12);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(34, -3, 10, 6);
-        // Jade Fletching
-        ctx.fillStyle = '#6ee7b7';
-        ctx.fillRect(-38, -10, 14, 20);
+        if (archerVfx && archerVfx.complete && archerVfx.naturalWidth) {
+          const arrSize = 112;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(
+            archerVfx,
+            528,
+            56,
+            208,
+            208,
+            Math.round(-arrSize * 0.5),
+            Math.round(-arrSize * 0.5),
+            arrSize,
+            arrSize
+          );
+        } else {
+          ctx.fillStyle = '#34d399';
+          ctx.fillRect(-32, -4, 62, 8);
+        }
         ctx.restore();
       } else if (proj.type === 'holy_light') {
-        // Seraphic 8-Point Golden-White Holy Star-Cross Orb + Orbiting Pearl Motes
+        // Authentic 16-bit HD-2D Seraphic 8-Point Golden-White Holy Star-Cross Orb (from priestess_vfx.png)
+        const priestessVfx = assets.priestess?.vfx;
         ctx.save();
         ctx.translate(px, py);
-        // Horizontal & Vertical Sacred Cross Beams
-        ctx.fillStyle = '#f59e0b';
-        ctx.fillRect(-26, -6, 52, 12);
-        ctx.fillRect(-6, -24, 12, 48);
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(-22, -4, 44, 8);
-        ctx.fillRect(-4, -20, 8, 40);
-        // Inner Diamond Halo
-        ctx.fillStyle = '#fef9c3';
-        ctx.fillRect(-10, -10, 20, 20);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(-18, -2, 36, 4);
-        ctx.fillRect(-2, -16, 4, 32);
-        ctx.fillRect(-6, -6, 12, 12);
-        // 4 Orbiting Sacred Pearl-Gold Motes
         for (let sat = 0; sat < 4; sat++) {
           const sa = (proj.age || 0) * 14 + (sat * Math.PI) / 2;
-          const sx = Math.round((Math.cos(sa) * 20) / 2) * 2;
-          const sy = Math.round((Math.sin(sa) * 20) / 2) * 2;
+          const sx = Math.round((Math.cos(sa) * 28) / 2) * 2;
+          const sy = Math.round((Math.sin(sa) * 28) / 2) * 2;
           ctx.fillStyle = sat % 2 === 0 ? '#ffffff' : '#fde047';
           ctx.fillRect(sx - 3, sy - 3, 6, 6);
         }
+        ctx.rotate((proj.age || 0) * 6);
+        if (priestessVfx && priestessVfx.complete && priestessVfx.naturalWidth) {
+          const orbSize = 92;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(
+            priestessVfx,
+            528,
+            56,
+            208,
+            208,
+            Math.round(-orbSize * 0.5),
+            Math.round(-orbSize * 0.5),
+            orbSize,
+            orbSize
+          );
+        }
         ctx.restore();
       } else {
-        // Stepped 4-Tone Pixel-Art Solar Fireball + Orbiting Ember Satellites
-        const cs = Math.max(4, Math.round((proj.radius * 0.95) / 2) * 2);
-        const outerCol = proj.color === '#38bdf8' ? '#0284c7' : '#dc2626';
-        ctx.fillStyle = outerCol;
-        ctx.fillRect(px - cs * 1.3, py - cs * 0.8, cs * 2.6, cs * 1.6);
-        ctx.fillRect(px - cs * 0.8, py - cs * 1.3, cs * 1.6, cs * 2.6);
-        ctx.fillStyle = proj.color;
-        ctx.fillRect(px - cs, py - cs * 0.6, cs * 2, cs * 1.2);
-        ctx.fillRect(px - cs * 0.6, py - cs, cs * 1.2, cs * 2);
-        ctx.fillStyle = proj.coreColor;
-        ctx.fillRect(px - cs * 0.6, py - cs * 0.6, cs * 1.2, cs * 1.2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(px - cs * 0.3, py - cs * 0.3, cs * 0.6, cs * 0.6);
-
-        // 3 Orbiting mini plasma satellites around fireball
+        // Authentic 16-bit HD-2D Blazing Solar Comet Fireball (from mage_vfx.png)
+        const mageVfx = assets.mage?.vfx;
+        const ang = Math.atan2(proj.vy, proj.vx || 1);
+        ctx.save();
+        ctx.translate(px, py);
         for (let sat = 0; sat < 3; sat++) {
           const sa = (proj.age || 0) * 16 + (sat * Math.PI * 2) / 3;
-          const sx = Math.round((px + Math.cos(sa) * (cs * 1.8)) / 2) * 2;
-          const sy = Math.round((py + Math.sin(sa) * (cs * 1.8)) / 2) * 2;
+          const sx = Math.round((Math.cos(sa) * 26) / 2) * 2;
+          const sy = Math.round((Math.sin(sa) * 26) / 2) * 2;
           ctx.fillStyle = sat === 0 ? '#ffffff' : proj.coreColor;
           ctx.fillRect(sx - 3, sy - 3, 6, 6);
         }
+        ctx.rotate(ang);
+        if (mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
+          const fbSize = 96;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(
+            mageVfx,
+            528,
+            56,
+            208,
+            208,
+            Math.round(-fbSize * 0.5),
+            Math.round(-fbSize * 0.5),
+            fbSize,
+            fbSize
+          );
+        } else {
+          ctx.fillStyle = proj.color;
+          ctx.fillRect(-16, -12, 32, 24);
+        }
+        ctx.restore();
       }
     }
 
@@ -1339,7 +1537,6 @@ export class VFXManager {
         ctx.globalAlpha = Math.min(1, (1 - p) * 1.6);
 
         if (g.shape === 'cog') {
-          // Stepped pixel-art Brass & Teal Clockwork Cogwheel (Chronomancer Exclusive)
           ctx.fillStyle = g.coreColor;
           ctx.fillRect(gx - 8, gy - 2, 16, 4);
           ctx.fillRect(gx - 2, gy - 8, 4, 16);
@@ -1349,7 +1546,6 @@ export class VFXManager {
           ctx.fillStyle = '#090d16';
           ctx.fillRect(gx - 2, gy - 2, 4, 4);
         } else if (g.shape === 'skull') {
-          // Stepped pixel-art Abyssal Skull (Reaper Exclusive)
           ctx.fillStyle = g.color;
           ctx.fillRect(gx - 6, gy - 8, 12, 10);
           ctx.fillRect(gx - 4, gy + 2, 8, 4);
@@ -1360,7 +1556,6 @@ export class VFXManager {
           ctx.fillRect(gx - 3, gy - 3, 2, 2);
           ctx.fillRect(gx + 2, gy - 3, 2, 2);
         } else if (g.shape === 'rune') {
-          // Stepped pixel-art Nordic cross-crystal
           ctx.fillStyle = g.color;
           ctx.fillRect(gx - 2, gy - 8, 4, 16);
           ctx.fillRect(gx - 6, gy - 2, 12, 4);
@@ -1369,7 +1564,6 @@ export class VFXManager {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(gx - 1, gy - 1, 2, 2);
         } else if (g.shape === 'cross') {
-          // Stepped pixel-art Sacred Healing / Holy Cross (+)
           ctx.fillStyle = g.color;
           ctx.fillRect(gx - 3, gy - 9, 6, 18);
           ctx.fillRect(gx - 9, gy - 3, 18, 6);
@@ -1379,7 +1573,6 @@ export class VFXManager {
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(gx - 2, gy - 2, 4, 4);
         } else if (g.shape === 'star') {
-          // Stepped pixel-art 4-point solar flare
           ctx.fillStyle = g.color;
           ctx.fillRect(gx - 8, gy - 1, 16, 2);
           ctx.fillRect(gx - 1, gy - 8, 2, 16);
@@ -1387,7 +1580,6 @@ export class VFXManager {
           ctx.fillStyle = g.coreColor;
           ctx.fillRect(gx - 2, gy - 2, 4, 4);
         } else {
-          // Stepped diagonal pixel-art wind feather / emerald shard
           ctx.fillStyle = g.color;
           ctx.fillRect(gx - 6, gy + 2, 4, 4);
           ctx.fillRect(gx - 3, gy - 1, 6, 4);
@@ -1399,95 +1591,22 @@ export class VFXManager {
         ctx.restore();
       }
 
-      // 11. SPECIAL MOVE CAST HALO & CONVERGING STAR-RAYS AROUND CHARACTER HEAD
+      // 11. SPECIAL MOVE & ULTIMATE RISING ENERGY STREAMERS FLANKING CASTER
       for (const ca of this.castAuras) {
         if (!ca.fighter || ca.fighter.isDead) continue;
         const t = ca.life / ca.maxLife;
         const env = t < 0.14 ? t / 0.14 : Math.max(0, 1 - (t - 0.14) / 0.86);
-        const hx = Math.round(ca.fighter.x / 4) * 4;
-        const hy = Math.round((ca.fighter.y - 142) / 4) * 4;
-        const baseR = (ca.isUltimate ? 64 : 52) * (0.9 + Math.sin(t * Math.PI) * 0.14);
 
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = env * 0.92;
-
-        if (renderer) {
-          const glowTex =
-            ca.theme === 'arcane'
-              ? renderer.glowOrange
-              : ca.theme === 'emerald'
-                ? renderer.glowEmerald || renderer.glowCyan
-                : ca.theme === 'abyssal'
-                  ? renderer.glowViolet || renderer.glowCyan
-                  : renderer.glowCyan;
-          ctx.drawImage(glowTex, hx - baseR * 1.8, hy - baseR * 1.8, baseR * 3.6, baseR * 3.6);
-        }
-
-        if (ca.theme === 'abyssal') {
-          // Bespoke Soulreaper Cast Crest: Twin Crossed Crescent Scythe Blades & Horned Skull Crest (no circular star halo)
-          for (const side of [-1, 1]) {
-            const sx = hx + side * 44;
-            const sy = hy - 8;
-            ctx.fillStyle = '#c084fc';
-            ctx.fillRect(sx - 6, sy - 16, 12, 32);
-            ctx.fillStyle = '#f43f5e';
-            ctx.fillRect(sx + side * 6, sy - 20, 14 * side, 8);
-            ctx.fillRect(sx + side * 14, sy - 12, 10 * side, 8);
-          }
-        } else if (ca.theme === 'chrono') {
-          // Bespoke Chronomancer Cast Crest: 12-Tick Brass Clock Dial & Sweeping Minute/Hour Hands
-          for (let hTick = 0; hTick < 12; hTick++) {
-            const a = (hTick / 12) * Math.PI * 2;
-            const tx = Math.round((hx + Math.cos(a) * baseR) / 2) * 2;
-            const ty = Math.round((hy + Math.sin(a) * baseR * 0.75) / 2) * 2;
-            ctx.fillStyle = hTick % 3 === 0 ? '#facc15' : '#2dd4bf';
-            ctx.fillRect(tx - 3, ty - 3, 6, 6);
-          }
-        } else {
-          // Spinning 8-Point Stepped Pixel-Art Elemental Crest Halo framing the head
-          const haloNodes = 24;
-          for (let i = 0; i < haloNodes; i++) {
-            const a = (i / haloNodes) * Math.PI * 2 + ca.life * 4.2;
-            const isPoint = i % 3 === 0;
-            const rad = isPoint ? baseR * 1.22 : baseR;
-            const px = Math.round((hx + Math.cos(a) * rad) / 4) * 4;
-            const py = Math.round((hy + Math.sin(a) * rad * 0.72) / 4) * 4;
-            ctx.fillStyle = isPoint ? '#ffffff' : ca.mainColor;
-            ctx.fillRect(px - (isPoint ? 4 : 2), py - (isPoint ? 4 : 2), isPoint ? 8 : 4, isPoint ? 8 : 4);
-            if (isPoint) {
-              const spurX = Math.round((hx + Math.cos(a) * (baseR * 1.44)) / 4) * 4;
-              const spurY = Math.round((hy + Math.sin(a) * (baseR * 1.44) * 0.72) / 4) * 4;
-              ctx.fillStyle = ca.coreColor;
-              ctx.fillRect(spurX - 2, spurY - 2, 4, 4);
-            }
-          }
-        }
-
-        // Radiating / Converging Pixel-Art Star-Burst Rays around the outer halo perimeter
-        if (t < 0.65) {
-          const rayEnv = 1 - t / 0.65;
-          const numRays = ca.isUltimate ? 12 : 8;
-          for (let rIdx = 0; rIdx < numRays; rIdx++) {
-            const ra = (rIdx / numRays) * Math.PI * 2 - ca.life * 2.6;
-            const rInner = baseR * 0.88;
-            const rOuter = baseR * (1.35 + (1 - rayEnv) * 0.55);
-            for (let step = 0; step <= 3; step++) {
-              const rr = rInner + ((rOuter - rInner) * step) / 3;
-              const rx = Math.round((hx + Math.cos(ra) * rr) / 4) * 4;
-              const ry = Math.round((hy + Math.sin(ra) * rr * 0.72) / 4) * 4;
-              ctx.fillStyle = step === 1 ? '#ffffff' : ca.coreColor;
-              ctx.fillRect(rx - 2, ry - 2, 4, 4);
-            }
-          }
-        }
 
         // Rising Vertical Pixel-Art Energy Streamers framing the character's left & right silhouette
         const streamCount = ca.isUltimate ? 6 : 4;
         for (let s = 0; s < streamCount; s++) {
           const side = s % 2 === 0 ? -1 : 1;
           const lane = Math.floor(s / 2) + 1;
-          const sx = Math.round((ca.fighter.x + side * (42 + lane * 16)) / 4) * 4;
+          const sx = Math.round((ca.fighter.x + side * (46 + lane * 16)) / 4) * 4;
           const phase = (ca.life * 260 + s * 42) % 140;
           const sy = Math.round((ca.fighter.y - 16 - phase) / 4) * 4;
           const sh = ca.isUltimate ? 28 : 20;
@@ -1499,9 +1618,191 @@ export class VFXManager {
 
         ctx.restore();
       }
+
+      // 12. ON-HIT ELEMENTAL 16-BIT HD-2D IMPACT BURSTS (Triggered on Every Landed Attack & Skill)
+      for (const imp of this.hitImpacts) {
+        const t = imp.life / imp.maxLife;
+        const env = t < 0.18 ? t / 0.18 : Math.max(0, 1 - (t - 0.18) / 0.82);
+        const popScale = t < 0.22 ? 0.55 + (t / 0.22) * 0.65 : 1.2 - (t - 0.22) * 0.35;
+        const baseSize = (imp.isCrit ? 112 : 84) * popScale;
+        const ix = Math.round(imp.x / 2) * 2;
+        const iy = Math.round(imp.y / 2) * 2;
+
+        let sheet = null;
+        let sx = 528;
+        let sy = 56;
+        let sw = 208;
+        let sh = 208;
+
+        if (imp.theme === 'steel') {
+          sheet = assets.warrior?.vfx;
+          sx = imp.isCrit ? 320 : 528;
+        } else if (imp.theme === 'emerald') {
+          sheet = assets.archer?.vfx;
+          sx = 320;
+        } else if (imp.theme === 'arcane') {
+          sheet = assets.mage?.vfx;
+          sx = 528;
+        } else if (imp.theme === 'radiant') {
+          sheet = assets.priestess?.vfx;
+          sx = 528;
+        } else if (imp.theme === 'abyssal') {
+          sheet = assets.reaper?.vfx;
+          sx = sheet && sheet.naturalWidth >= 944 ? 736 : 528;
+        } else if (imp.theme === 'chrono') {
+          sheet = assets.chronomancer?.vfx;
+          sx = 528;
+        }
+
+        if (sheet && sheet.complete && sheet.naturalWidth) {
+          ctx.save();
+          ctx.translate(ix, iy);
+          ctx.scale(imp.dir, 1);
+          ctx.rotate(imp.rot + t * 1.4);
+          ctx.imageSmoothingEnabled = false;
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.min(1, env * 0.82);
+          const drawS = Math.round(baseSize);
+          ctx.drawImage(
+            sheet,
+            sx,
+            sy,
+            sw,
+            sh,
+            Math.round(-drawS * 0.5),
+            Math.round(-drawS * 0.5),
+            drawS,
+            drawS
+          );
+          ctx.restore();
+        }
+      }
     }
 
     ctx.restore();
+  }
+
+  renderBackgroundCastSeals(ctx, renderer = null) {
+    const assets = PixelForge.initAssets();
+    for (const ca of this.castAuras) {
+      if (!ca.fighter || ca.fighter.isDead) continue;
+      const t = ca.life / ca.maxLife;
+      const env = t < 0.14 ? t / 0.14 : Math.max(0, 1 - (t - 0.14) / 0.86);
+      const hx = Math.round(ca.fighter.x / 4) * 4;
+      const hy = Math.round((ca.fighter.y - 128) / 4) * 4;
+      const baseR = (ca.isUltimate ? 78 : 62) * (0.94 + Math.sin(t * Math.PI) * 0.14);
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = env * 0.85;
+
+      if (renderer) {
+        const glowTex =
+          ca.theme === 'arcane'
+            ? renderer.glowOrange
+            : ca.theme === 'emerald'
+              ? renderer.glowEmerald || renderer.glowCyan
+              : ca.theme === 'abyssal'
+                ? renderer.glowViolet || renderer.glowCyan
+                : renderer.glowCyan;
+        ctx.drawImage(glowTex, hx - baseR * 1.9, hy - baseR * 1.9, baseR * 3.8, baseR * 3.8);
+      }
+
+      // Authentic 16-bit HD-2D Champion Crest Sprite Manifestation BEHIND the caster
+      const crestSize = Math.round(baseR * 2.75);
+      ctx.save();
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = env * (ca.isUltimate ? 0.92 : 0.82);
+      ctx.translate(hx, hy);
+
+      if (ca.theme === 'steel' && assets.warrior?.vfx?.complete) {
+        ctx.drawImage(
+          assets.warrior.vfx,
+          0,
+          0,
+          320,
+          320,
+          Math.round(-crestSize * 0.5),
+          Math.round(-crestSize * 0.62),
+          crestSize,
+          crestSize
+        );
+      } else if (ca.theme === 'emerald' && assets.archer?.vfx?.complete) {
+        ctx.drawImage(
+          assets.archer.vfx,
+          0,
+          0,
+          320,
+          320,
+          Math.round(-crestSize * 0.56),
+          Math.round(-crestSize * 0.58),
+          Math.round(crestSize * 1.12),
+          Math.round(crestSize * 1.12)
+        );
+      } else if (ca.theme === 'arcane' && assets.mage?.vfx?.complete) {
+        ctx.rotate(ca.life * 1.4);
+        ctx.drawImage(
+          assets.mage.vfx,
+          0,
+          0,
+          320,
+          320,
+          Math.round(-crestSize * 0.5),
+          Math.round(-crestSize * 0.5),
+          crestSize,
+          crestSize
+        );
+      } else if (ca.theme === 'radiant' && assets.priestess?.vfx?.complete) {
+        ctx.rotate(ca.life * 0.8);
+        ctx.drawImage(
+          assets.priestess.vfx,
+          0,
+          0,
+          320,
+          320,
+          Math.round(-crestSize * 0.52),
+          Math.round(-crestSize * 0.52),
+          Math.round(crestSize * 1.04),
+          Math.round(crestSize * 1.04)
+        );
+      } else if (ca.theme === 'abyssal' && assets.reaper?.vfx?.complete && assets.reaper.vfx.naturalWidth >= 944) {
+        for (const side of [-1, 1]) {
+          ctx.save();
+          ctx.translate(side * 48, -8);
+          ctx.scale(side, 1);
+          ctx.rotate(-0.35 + ca.life * 1.8);
+          const scSize = Math.round(crestSize * 0.72);
+          ctx.drawImage(
+            assets.reaper.vfx,
+            736,
+            56,
+            208,
+            208,
+            Math.round(-scSize * 0.5),
+            Math.round(-scSize * 0.5),
+            scSize,
+            scSize
+          );
+          ctx.restore();
+        }
+      } else if (ca.theme === 'chrono' && assets.chronomancer?.vfx?.complete) {
+        ctx.rotate(-ca.life * 1.2);
+        ctx.drawImage(
+          assets.chronomancer.vfx,
+          0,
+          0,
+          320,
+          320,
+          Math.round(-crestSize * 0.52),
+          Math.round(-crestSize * 0.52),
+          Math.round(crestSize * 1.04),
+          Math.round(crestSize * 1.04)
+        );
+      }
+      ctx.restore();
+      ctx.restore();
+    }
   }
 
   renderFloatingTexts(ctx) {

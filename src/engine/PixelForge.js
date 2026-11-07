@@ -15,19 +15,23 @@ export class PixelForge {
       arenaBg: loadImg('assets/sprites/arena_bg.png'),
       warrior: {
         sheet: loadImg('assets/sprites/warrior_sheet.png'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png'),
         portrait: loadImg('assets/sprites/warrior_portrait.png', () => this.refreshPortraits())
       },
       mage: {
         sheet: loadImg('assets/sprites/mage_sheet.png'),
+        vfx: loadImg('assets/sprites/mage_vfx.png'),
         portrait: loadImg('assets/sprites/mage_portrait.png', () => this.refreshPortraits())
       },
       archer: {
         sheet: loadImg('assets/sprites/archer_sheet.png'),
+        vfx: loadImg('assets/sprites/archer_vfx.png'),
         portrait: loadImg('assets/sprites/archer_portrait.png', () => this.refreshPortraits())
       },
       priestess: {
         sheet: loadImg('assets/sprites/priestess_sheet.png'),
         wings: loadImg('assets/sprites/seraphim_wings.png'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png'),
         portrait: loadImg('assets/sprites/priestess_portrait.png', () => this.refreshPortraits())
       },
       reaper: {

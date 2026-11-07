@@ -515,16 +515,27 @@ export class Priestess extends Fighter {
     const isFullArchangel = this.isAngelicAscent || this.state === 'ULTIMATE';
     const cx = -4;
     const cy = -124;
+    const vfxSheet = sprites && sprites.vfx;
 
-    // 1. Rotating Sacred Rose-Cross Halo Ring behind the wings
-    const haloR = snap((isFullArchangel ? 96 : 68) + Math.sin(this.haloPhase * 3) * 4);
-    ctx.fillStyle = '#fde047';
-    ctx.globalAlpha = 0.65;
-    for (let i = 0; i < 16; i++) {
-      const a = this.haloPhase * 1.4 + (i * Math.PI * 2) / 16;
-      const rx = snap(cx + Math.cos(a) * haloR);
-      const ry = snap(cy + Math.sin(a) * haloR);
-      ctx.fillRect(rx - 2, ry - 2, 4, 4);
+    // 1. Authentic 16-bit HD-2D Sacred Golden Cathedral Stained-Glass Rose Halo behind the wings
+    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
+      const haloSize = isFullArchangel ? 268 : 212;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.rotate(this.haloPhase * 0.65);
+      ctx.globalAlpha = isFullArchangel ? 0.9 : 0.78;
+      ctx.drawImage(
+        vfxSheet,
+        0,
+        0,
+        320,
+        320,
+        Math.round(-haloSize * 0.5),
+        Math.round(-haloSize * 0.5),
+        haloSize,
+        haloSize
+      );
+      ctx.restore();
     }
 
     // 2. Authentic 4-Frame HD-2D Pixel-Art Feathered Seraphim Angel Wings (320x232 per cell)
@@ -547,35 +558,53 @@ export class Priestess extends Fighter {
       ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, cellW, cellH);
     }
 
-    // 3. 8 Orbiting Pixel Star-Cross Chakrams during ULTIMATE
-    if (this.state === 'ULTIMATE') {
-      const orbitR = 124;
-      for (let i = 0; i < 8; i++) {
-        const a = -this.haloPhase * 2.5 + (i * Math.PI * 2) / 8;
+    // 3. 6 Orbiting 16-bit HD-2D Seraphic Star-Cross Chakrams during ULTIMATE
+    if (this.state === 'ULTIMATE' && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
+      const orbitR = 132;
+      const starSz = 56;
+      for (let i = 0; i < 6; i++) {
+        const a = -this.haloPhase * 2.5 + (i * Math.PI * 2) / 6;
         const ox = snap(cx + Math.cos(a) * orbitR);
         const oy = snap(cy + Math.sin(a) * orbitR);
-        ctx.fillStyle = '#eab308';
-        ctx.globalAlpha = 0.92;
-        ctx.fillRect(ox - 12, oy - 4, 24, 8);
-        ctx.fillRect(ox - 4, oy - 12, 8, 24);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(ox - 8, oy - 2, 16, 4);
-        ctx.fillRect(ox - 2, oy - 8, 4, 16);
+        ctx.save();
+        ctx.translate(ox, oy);
+        ctx.rotate(this.haloPhase * 3);
+        ctx.globalAlpha = 0.94;
+        ctx.drawImage(
+          vfxSheet,
+          528,
+          56,
+          208,
+          208,
+          Math.round(-starSz * 0.5),
+          Math.round(-starSz * 0.5),
+          starSz,
+          starSz
+        );
+        ctx.restore();
       }
     }
 
-    // 4. Golden Pixel-Art Cathedral Sanctuary Barrier Dome during DIVINE SANCTUARY (SKILL)
-    if (this.state === 'SKILL') {
-      const domeR = 104;
-      ctx.globalAlpha = 0.78;
-      for (let i = 0; i <= 20; i++) {
-        const a = Math.PI + (i / 20) * Math.PI;
-        const dx = snap(Math.cos(a) * domeR);
-        const dy = snap(-20 + Math.sin(a) * (domeR * 1.15));
-        ctx.fillStyle = i % 2 === 0 ? '#fde047' : '#4ade80';
-        ctx.fillRect(dx - 4, dy - 4, 8, 8);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(dx - 2, dy - 2, 4, 4);
+    // 4. Twin Flanking 16-bit HD-2D Valkyrie Winged Spears during DIVINE SANCTUARY (SKILL)
+    if (this.state === 'SKILL' && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
+      const spearSz = 118;
+      const bob = Math.round(Math.sin(this.stateTimer * 10) * 6);
+      for (const side of [-1, 1]) {
+        ctx.save();
+        ctx.translate(side * 96, -118 + bob);
+        ctx.globalAlpha = 0.92;
+        ctx.drawImage(
+          vfxSheet,
+          320,
+          56,
+          208,
+          208,
+          Math.round(-spearSz * 0.5),
+          Math.round(-spearSz * 0.5),
+          spearSz,
+          spearSz
+        );
+        ctx.restore();
       }
     }
 

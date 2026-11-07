@@ -136,6 +136,9 @@ export class Fighter {
     if (this.game) {
       this.game.vfx.spawnDamageText(this.x, this.y - 125, amount, isCrit);
       this.game.vfx.spawnBurst(this.x, this.y - 105, isCrit ? 14 : 8, this.primaryColor, 185);
+      if (this.game.vfx.spawnHitImpact) {
+        this.game.vfx.spawnHitImpact(this.x, this.y - 98, attacker, isCrit);
+      }
       if (isCrit) {
         this.game.renderer.triggerAberration(5);
         this.game.renderer.triggerHitStop(0.035);

@@ -197,7 +197,10 @@ export class Renderer {
     this.drawFloorLightPools(ctx, lights, gy);
     this.drawDynamicShadows(ctx, fighters, lights, gy);
 
-    // 5. Main Pass: Fighters + Live Pixel-Art Weapon Fire/Rune Glow
+    // 5. Main Pass: Background 16-bit HD-2D Cast Seals + Fighters + Live Weapon Glow
+    if (typeof vfx.renderBackgroundCastSeals === 'function') {
+      vfx.renderBackgroundCastSeals(ctx, this);
+    }
     const sorted = [...fighters].sort((a, b) => a.y - b.y);
     for (const f of sorted) {
       ctx.save();
