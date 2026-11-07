@@ -116,6 +116,14 @@ export class PixelForge {
     }
 
     if (st === 'ULTIMATE') {
+      if (fighter.heroId === 'warrior') {
+        if (t < 0.50) {
+          const blitzFrames = [42, 19, 20, 43, 25, 26];
+          return blitzFrames[Math.floor(t * 16) % blitzFrames.length];
+        }
+        if (t < 0.90) return t < 0.70 ? 28 : 29;
+        return t < 1.15 ? 30 : 31;
+      }
       if (t < 0.42) return 28;
       if (t < 0.85) return 29;
       if (t < 1.25) return 30;
@@ -145,8 +153,11 @@ export class PixelForge {
     const sy = row * cell;
     const baseY = -h + 10;
 
-    // Crisp pixel-art afterimage trail during active DASH or DODGE
-    if (!isReflection && (fighter.state === 'DASH' || fighter.state === 'DODGE')) {
+    // Crisp pixel-art afterimage trail during active DASH, DODGE, or Warrior Omnislash Ultimate
+    if (
+      !isReflection &&
+      (fighter.state === 'DASH' || fighter.state === 'DODGE' || fighter.isOmnislashing)
+    ) {
       const dir = (fighter.dashDir || fighter.facing) * fighter.facing;
       ctx.save();
       ctx.globalAlpha = 0.22;

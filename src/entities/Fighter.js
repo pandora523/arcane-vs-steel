@@ -62,6 +62,11 @@ export class Fighter {
     if (newState !== 'DODGE') {
       this.isInvulnerable = false;
     }
+    if (newState !== 'DODGE' && newState !== 'ULTIMATE') {
+      this.isFlipVault = false;
+      this.isAngelicAscent = false;
+      this.isOmnislashing = false;
+    }
   }
 
   gainMana(amount) {

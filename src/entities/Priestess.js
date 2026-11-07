@@ -8,53 +8,69 @@ export class Priestess extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1180,
-      attackRange: 505,
-      moveSpeed: 116,
-      autoInterval: 1.35,
+      maxHp: 1236,
+      attackRange: 512,
+      moveSpeed: 120,
+      autoInterval: 1.29,
       lightColor: 'rgba(253, 224, 71, 1)',
       primaryColor: '#fde047'
     });
     this.heroId = 'priestess';
     this.theme = 'radiant';
     this.deathSfx = 'death_priestess';
-    this.skillMaxCooldown = 5.5;
+    this.skillMaxCooldown = 5.1;
     this.ultName = 'SERAPHIC APOTHEOSIS';
     this.skillName = 'DIVINE SANCTUARY';
     this.haloPhase = 0;
     this.shotCombo = 0;
-    this.dodgeMaxCooldown = 3.75;
-    this.dashMaxCooldown = 3.6;
+    this.dodgeMaxCooldown = 3.55;
+    this.dashMaxCooldown = 3.55;
+    this.wallWingCooldown = 0;
+    this.isFlipVault = false;
+    this.isAngelicAscent = false;
+    this.ascentStartX = x;
+    this.ascentTargetX = x;
     this.didSanctuaryHeal = false;
     this.didUltMiracle = false;
-    this.didUltSpears = false;
+    this.ultChakramStep = 0;
   }
 
   onStartDodge(enemy, game, dir) {
     const ww = game.renderer.worldWidth;
-    const nearLeftWall = this.x < 210 && dir < 0;
-    const nearRightWall = this.x > ww - 210 && dir > 0;
+    const dist = enemy ? Math.abs(enemy.x - this.x) : 999;
+    const retreatX = this.x - this.facing * 190;
+    const pinnedLeft = (this.x < 215 || retreatX < 100) && (!enemy || enemy.x > this.x - 30);
+    const pinnedRight = (this.x > ww - 215 || retreatX > ww - 100) && (!enemy || enemy.x < this.x + 30);
+    const corneredAtWall = dist < 275 && (pinnedLeft || pinnedRight);
 
-    // Angelic Wings of Grace: if cornered against a wall, Seraphina ascends in a golden feather-flash over the enemy
-    if ((nearLeftWall || nearRightWall) && enemy) {
+    // SERAPHIC WING FLIGHT: When cornered against a wall, Seraphina unfurls 6 golden angel wings
+    // and flies high across the cathedral over the enemy to the opposite side of the arena!
+    if (enemy && corneredAtWall && this.wallWingCooldown <= 0) {
       this.isAngelicAscent = true;
-      this.dashDuration = 0.44;
+      this.isFlipVault = true;
+      this.wallWingCooldown = 9.5;
+      this.dashDuration = 0.54;
       this.ascentStartX = this.x;
-      const leapDir = nearLeftWall ? 1 : -1;
-      const desiredX = enemy.x + leapDir * 250;
-      this.ascentTargetX = Math.max(145, Math.min(ww - 145, desiredX));
+
+      // Fly over the enemy to the open side of the arena
+      const crossDir = this.x < ww * 0.5 ? 1 : -1;
+      const desiredX = enemy.x + crossDir * 250;
+      this.ascentTargetX = Math.max(215, Math.min(ww - 215, desiredX));
+      this.dashDir = Math.sign(this.ascentTargetX - this.ascentStartX) || 1;
       this.vx = 0;
+      this.vy = 0;
 
       if (game.audio) game.audio.play('holy_heal', this.x);
-      this.heal(28, 'GRACE');
-      game.vfx.spawnShockwave(this.x, this.groundY, 115, '#fde047', 0.34, true);
-      game.vfx.spawnBurst(this.x, this.y - 95, 18, '#fef9c3', 220, { upBias: 110 });
-      game.vfx.spawnGlyphBurst(this.x, this.y - 105, 8, 'radiant');
-      game.vfx.spawnDamageText(this.x, this.y - 148, 0, false, 'SERAPHIC ASCENT!', '#fef08a');
+      this.heal(24, 'WINGS OF GRACE');
+      game.vfx.spawnShockwave(this.x, this.groundY, 125, '#fde047', 0.36, true);
+      game.vfx.spawnBurst(this.x, this.y - 95, 20, '#fef9c3', 240, { upBias: 120 });
+      game.vfx.spawnGlyphBurst(this.x, this.y - 105, 9, 'radiant');
+      game.vfx.spawnDamageText(this.x, this.y - 152, 0, false, 'SERAPHIC WING FLIGHT!', '#fef08a');
       return;
     }
 
     this.isAngelicAscent = false;
+    this.isFlipVault = false;
     this.dashDuration = 0.38;
     this.vx = dir * 355;
     if (game.audio) game.audio.play('holy_heal', this.x);
@@ -66,6 +82,7 @@ export class Priestess extends Fighter {
 
   onStartDash(enemy, game, dir) {
     this.isAngelicAscent = false;
+    this.isFlipVault = false;
     this.dashDuration = 0.36;
     this.vx = dir * 360;
     if (game.audio) game.audio.play('holy_bolt', this.x);
@@ -81,28 +98,52 @@ export class Priestess extends Fighter {
       const p = Math.min(1, t / this.dashDuration);
       const ease = 0.5 - 0.5 * Math.cos(p * Math.PI);
       this.x = this.ascentStartX + (this.ascentTargetX - this.ascentStartX) * ease;
-      this.y = this.groundY - Math.sin(p * Math.PI) * 145;
+      this.y = this.groundY - Math.sin(p * Math.PI) * 180;
       if (enemy) {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
 
-      if (Math.random() < 0.8) {
+      // Golden feather & healing cross trail while flying across the sky
+      if (Math.random() < 0.85) {
         game.vfx.spawnParticle({
-          x: this.x + (Math.random() - 0.5) * 32,
-          y: this.y - 90 + (Math.random() - 0.5) * 28,
-          vx: (Math.random() - 0.5) * 50,
-          vy: 30 + Math.random() * 40,
+          x: this.x + (Math.random() - 0.5) * 44,
+          y: this.y - 95 + (Math.random() - 0.5) * 32,
+          vx: -this.dashDir * 65 + (Math.random() - 0.5) * 40,
+          vy: 35 + Math.random() * 45,
           size: 6,
-          color: Math.random() > 0.4 ? '#fde047' : '#ffffff',
-          maxLife: 0.32
+          color: Math.random() > 0.35 ? '#fde047' : '#ffffff',
+          maxLife: 0.36
         });
+      }
+
+      // At the apex of her winged flight over the enemy, Seraphina calls down an Aerial Star-Cross Smite Ray!
+      if (p >= 0.45 && !this.didActionFrame && enemy && !enemy.isDead) {
+        this.didActionFrame = true;
+        if (game.audio) game.audio.play('holy_bolt', this.x);
+        const sx = this.x;
+        const sy = this.y - 102;
+        game.vfx.spawnBeam({
+          x1: sx,
+          y1: sy,
+          x2: enemy.x,
+          y2: enemy.y - 96,
+          width: 22,
+          color: '#fde047',
+          coreColor: '#ffffff',
+          maxLife: 0.30
+        });
+        enemy.takeDamage(20, this, false, 30, 0);
+        game.vfx.spawnShockwave(sx, sy, 68, '#fde047', 0.24, false, false);
+        game.vfx.spawnGlyphBurst(sx, sy, 5, 'radiant');
       }
 
       if (t >= this.dashDuration) {
         this.y = this.groundY;
+        this.vy = 0;
         this.isAngelicAscent = false;
+        this.isFlipVault = false;
         this.isInvulnerable = false;
-        game.vfx.spawnShockwave(this.x, this.groundY, 92, '#fde047', 0.28, true);
+        game.vfx.spawnShockwave(this.x, this.groundY, 96, '#fde047', 0.28, true);
         this.setState('IDLE');
       }
       return;
@@ -130,6 +171,7 @@ export class Priestess extends Fighter {
 
   update(dt, enemy, game) {
     this.haloPhase += dt * 2.8;
+    this.wallWingCooldown = Math.max(0, this.wallWingCooldown - dt);
 
     if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const dist = Math.abs(enemy.x - this.x);
@@ -192,14 +234,14 @@ export class Priestess extends Fighter {
           color: '#fde047',
           coreColor: '#ffffff',
           owner: this,
-          damage: isGraceCast ? 62 : 72,
+          damage: isGraceCast ? 65 : 75,
           type: 'holy_light',
           isMeteor: false
         });
 
         // Every 3rd cast: "GRACE OF DAWN!" — fires a second Holy Lance AND mends Seraphina's wounds!
         if (isGraceCast) {
-          this.heal(28, 'DAWN GRACE');
+          this.heal(29, 'DAWN GRACE');
           game.vfx.spawnProjectile({
             x: spawnX - this.facing * 14,
             y: spawnY - 14,
@@ -209,7 +251,7 @@ export class Priestess extends Fighter {
             color: '#facc15',
             coreColor: '#fef9c3',
             owner: this,
-            damage: 38,
+            damage: 39,
             type: 'holy_light',
             isMeteor: false
           });
@@ -225,9 +267,9 @@ export class Priestess extends Fighter {
   }
 
   updateSkill(dt, enemy, game) {
-    // SIGNATURE PRIESTESS SKILL: "DIVINE SANCTUARY"
-    // Phase 1 (0.14s): Consecrated Cathedral Sanctuary blesses Seraphina with a +84 HP Divine Heal & Emerald-Gold Crosses
-    // Phase 2 (0.40s): Calls down a Pillar of Heaven's Smite + 2 Seraphic Holy Spears + Homing Luminous Orb on the enemy
+    // SIGNATURE PRIESTESS SKILL: "DIVINE SANCTUARY" (Cathedral Barrier Dome + Crisscrossing Sanctum Judgment Rays)
+    // Phase 1 (0.14s): Erects a Golden Pixel-Art Cathedral Dome & Rose-Mandala around Seraphina (+88 HP Heal)
+    // Phase 2 (0.38s): Twin Diagonal Crisscrossing Cathedral Sanctum Beams + Scepter Grace Ray + Luminous Star-Cross Lance!
     const t = this.stateTimer;
 
     if (t < 0.14) {
@@ -235,167 +277,330 @@ export class Priestess extends Fighter {
     } else if (t >= 0.14 && !this.didSanctuaryHeal) {
       this.didSanctuaryHeal = true;
       if (game.audio) game.audio.play('holy_heal', this.x);
-      this.heal(84, 'SANCTUARY');
-      game.vfx.spawnShockwave(this.x, this.groundY, 145, '#4ade80', 0.42, true);
-      game.vfx.spawnShockwave(this.x, this.y - 95, 110, '#fde047', 0.36);
-      game.vfx.spawnGlyphBurst(this.x, this.y - 105, 8, 'heal');
+      this.heal(100, 'SANCTUARY');
+      game.vfx.spawnShockwave(this.x, this.groundY, 155, '#4ade80', 0.42, true);
+      game.vfx.spawnShockwave(this.x, this.y - 95, 120, '#fde047', 0.38);
+      game.vfx.spawnGlyphBurst(this.x, this.y - 105, 9, 'heal');
     }
 
-    if (t >= 0.40 && !this.didActionFrame && enemy) {
+    if (t >= 0.38 && !this.didActionFrame && enemy) {
       this.didActionFrame = true;
-      this.vx -= this.facing * 55;
+      this.vx -= this.facing * 50;
       if (game.audio) game.audio.play('holy_smite', enemy.x);
 
-      // Radiant Pillar of Judgment under the enemy
-      game.vfx.spawnFlamePillar(enemy.x, this.groundY, this, enemy, {
-        theme: 'radiant',
-        delay: 0.22,
-        maxLife: 1.35,
-        scaleWidth: 1.15
-      });
-
-      // 2 Descending Seraphic Holy Spears flanking the enemy
-      [-70, 70].forEach((off, idx) => {
-        game.vfx.spawnSkyStrike({
-          x: enemy.x + off,
-          y: -180 - idx * 60,
-          targetX: enemy.x + off,
-          groundY: this.groundY,
-          vx: 0,
-          vy: 1450,
-          type: 'holy_spear',
-          color: '#fde047',
-          coreColor: '#ffffff',
-          owner: this,
-          target: enemy,
-          damage: 26,
-          delay: idx * 0.08,
-          maxLinger: 0.48
-        });
-      });
-
-      // Direct Holy Light Judgement Orb
-      const sx = this.x + this.facing * 48;
-      const sy = this.y - 114;
+      const sx = this.x + this.facing * 52;
+      const sy = this.y - 118;
       const dx = enemy.x - sx;
-      const dy = (enemy.y - 110) - sy;
+      const dy = (enemy.y - 108) - sy;
       const dist = Math.hypot(dx, dy) || 1;
+      const horizDist = Math.abs(enemy.x - this.x);
+
+      // 1. Twin Diagonal Crisscrossing Cathedral Sanctum Rays converging on the enemy
+      game.vfx.spawnBeam({
+        x1: enemy.x - 145,
+        y1: -120,
+        x2: enemy.x + 35,
+        y2: this.groundY - 8,
+        width: 38,
+        color: '#fde047',
+        coreColor: '#ffffff',
+        maxLife: 0.42
+      });
+      game.vfx.spawnBeam({
+        x1: enemy.x + 145,
+        y1: -120,
+        x2: enemy.x - 35,
+        y2: this.groundY - 8,
+        width: 38,
+        color: '#facc15',
+        coreColor: '#ffffff',
+        maxLife: 0.42
+      });
+
+      // 2. Instant Prismatic Scepter-to-Target Grace Ray
+      game.vfx.spawnBeam({
+        x1: sx,
+        y1: sy,
+        x2: enemy.x,
+        y2: enemy.y - 98,
+        width: 28,
+        color: '#fef08a',
+        coreColor: '#ffffff',
+        maxLife: 0.36
+      });
+
+      if (!enemy.isDead) {
+        const beamDmg = enemy.maxHp > 1200 ? 102 : horizDist >= 260 ? 108 : 78;
+        enemy.takeDamage(beamDmg, this, false, 60, -45);
+      }
+
+      // 3. Follow-up Luminous Star-Cross Lance
       game.vfx.spawnProjectile({
         x: sx,
         y: sy,
-        vx: (dx / dist) * 630,
-        vy: (dy / dist) * 630,
+        vx: (dx / dist) * 645,
+        vy: (dy / dist) * 645,
         radius: 15,
         color: '#fde047',
         coreColor: '#ffffff',
         owner: this,
-        damage: 48,
-        type: 'holy_light'
+        damage: 46,
+        type: 'holy_light',
+        isMeteor: false
       });
 
-      game.vfx.spawnShockwave(this.x, this.y - 110, 92, '#fde047', 0.36);
-      game.vfx.spawnGlyphBurst(this.x, this.y - 110, 7, 'radiant');
+      game.vfx.spawnShockwave(enemy.x, this.groundY, 150, '#fde047', 0.38, true);
+      game.vfx.spawnShockwave(sx, sy, 92, '#fde047', 0.34, false, true);
+      game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 95, 8, 'radiant');
     } else if (t >= 0.96) {
       this.setState('IDLE');
     }
   }
 
   updateUltimate(dt, enemy, game) {
-    // 3-STAGE ULTIMATE ART: "SERAPHIC APOTHEOSIS" (Miracle of Resurrection & Heaven's Judgment)
-    // Stage 1 (0.18s): Miracle Benediction restores +128 HP to Seraphina with a towering Golden Cathedral Halo
-    // Stage 2 (0.52s): 6 Seraphic Holy Spears rain from the heavens across the enemy's position
-    // Stage 3 (0.96s): Colossal Heaven-to-Earth Golden Cathedral Sunbeam + Twin Radiant Pillars smite the enemy
+    // 3-STAGE WINGED ARCHANGEL ULTIMATE: "SERAPHIC APOTHEOSIS"
+    // Stage 1 (0.00s - 0.48s): Unfurls 6 Golden Seraphim Wings + Sacred Halo Mandala & levitates 118px into the air (+132 HP Miracle Heal)
+    // Stage 2 (0.48s - 0.90s): 4 Orbiting Halo Cross-Star Chakrams fire Diagonal Golden Lance Beams downward from her airborne halo!
+    // Stage 3 (0.94s - 1.52s): Twin Crisscrossing Diagonal Heaven's Judgment X-Beams form a Giant Sacred Cross of Light on the enemy!
     const t = this.stateTimer;
-    this.y = this.groundY;
-    this.vy = 0;
     const targetX = enemy ? enemy.x : game.renderer.worldWidth * 0.5;
+    this.isFlipVault = true;
+    this.vx = 0;
+    this.vy = 0;
 
-    if (t < 0.16) {
+    if (t < 0.08) {
       this.didUltMiracle = false;
-      this.didUltSpears = false;
+      this.ultChakramStep = 0;
     }
 
-    // Stage 1: Miracle Benediction Self-Heal + Golden Sanctuary Rings
-    if (t >= 0.18 && !this.didUltMiracle) {
+    // Smooth Archangel Levitation Curve (ascends 118px into the air with 6 flapping Seraphim wings, then glides back down)
+    let lift = 0;
+    if (t < 0.38) {
+      lift = Math.sin((t / 0.38) * (Math.PI * 0.5)) * 118;
+    } else if (t < 1.18) {
+      lift = 118 + Math.sin((t - 0.38) * 8) * 6;
+    } else {
+      lift = Math.max(0, Math.cos(((t - 1.18) / 0.34) * (Math.PI * 0.5)) * 118);
+    }
+    this.y = this.groundY - lift;
+
+    // Stage 1: Miracle Benediction Self-Heal + Golden Sanctuary Rings while ascending on Seraphim wings
+    if (t >= 0.16 && !this.didUltMiracle) {
       this.didUltMiracle = true;
       if (game.audio) game.audio.play('holy_heal', this.x);
-      this.heal(128, 'MIRACLE');
-      game.vfx.spawnShockwave(this.x, this.groundY, 190, '#4ade80', 0.5, true);
+      this.heal(132, 'MIRACLE');
+      game.vfx.spawnShockwave(this.x, this.groundY, 195, '#4ade80', 0.5, true);
       game.vfx.spawnShockwave(this.x, this.y - 105, 160, '#fde047', 0.46);
-      game.vfx.spawnLightning(this.x, -220, this.groundY, '#ffffff', '#fde047');
-      game.vfx.spawnGlyphBurst(this.x, this.y - 115, 10, 'heal');
+      game.vfx.spawnGlyphBurst(this.x, this.y - 115, 12, 'heal');
     }
 
-    // Stage 2: 6 Seraphic Holy Spears rain down from Heaven onto the enemy
-    if (t >= 0.52 && !this.didUltSpears) {
-      this.didUltSpears = true;
-      if (game.audio) game.audio.play('holy_smite', targetX);
-      [-125, -75, -25, 25, 75, 125].forEach((off, idx) => {
-        game.vfx.spawnSkyStrike({
-          x: targetX + off,
-          y: -200 - idx * 45,
-          targetX: targetX + off,
-          groundY: this.groundY,
-          vx: 0,
-          vy: 1550,
-          type: 'holy_spear',
-          color: '#fde047',
-          coreColor: '#ffffff',
-          owner: this,
-          target: enemy,
-          damage: 21,
-          delay: idx * 0.055,
-          maxLinger: 0.55
-        });
+    // Stage 2 (0.44s - 0.80s): 4 Orbiting Halo Star-Cross Chakrams fire Diagonal Golden Lance Beams downward!
+    const volleyTimes = [0.44, 0.56, 0.68, 0.80];
+    if (
+      this.ultChakramStep < volleyTimes.length &&
+      t >= volleyTimes[this.ultChakramStep] &&
+      enemy &&
+      !enemy.isDead
+    ) {
+      const step = this.ultChakramStep;
+      this.ultChakramStep++;
+      if (game.audio) game.audio.play('holy_bolt', this.x);
+
+      const haloX = this.x + Math.cos(step * 1.57) * 58;
+      const haloY = this.y - 118 + Math.sin(step * 1.57) * 34;
+      const aimX = enemy.x + (step - 1.5) * 42;
+      const aimY = this.groundY - 12;
+
+      game.vfx.spawnBeam({
+        x1: haloX,
+        y1: haloY,
+        x2: aimX,
+        y2: aimY,
+        width: 24,
+        color: '#fde047',
+        coreColor: '#ffffff',
+        maxLife: 0.36
       });
+      game.vfx.spawnShockwave(aimX, this.groundY, 82, '#fde047', 0.28, true);
+      game.vfx.spawnShockwave(haloX, haloY, 54, '#fef08a', 0.22);
+      game.vfx.spawnGlyphBurst(aimX, this.groundY - 45, 4, 'radiant');
+      const chakramDmg = Math.abs(enemy.x - this.x) >= 210 ? 25 : 15;
+      enemy.takeDamage(chakramDmg, this, false, 28, 0);
     }
 
-    // Stage 3: Colossal Heaven-to-Earth Golden Cathedral Sunbeam + Twin Radiant Pillars
-    if (t >= 0.96 && !this.didActionFrame) {
+    // Stage 3 (0.94s): Twin Diagonal Crisscrossing Heaven's Judgment X-Beams (Giant Sacred Cross of Light!)
+    if (t >= 0.94 && !this.didActionFrame) {
       this.didActionFrame = true;
       if (game.audio) game.audio.play('priestess_ult', targetX);
+      if (game.audio) game.audio.play('holy_smite', targetX);
 
       game.renderer.triggerShake(24, 0.58);
       game.renderer.triggerAberration(14);
       game.renderer.triggerHitStop(0.085);
 
-      // Colossal Vertical Heaven-to-Earth Golden Cathedral Sunbeam
+      // Diagonal Heaven Beam 1 (Top-Left to Bottom-Right across the enemy)
       game.vfx.spawnBeam({
-        x1: targetX,
+        x1: targetX - 240,
         y1: -140,
-        x2: targetX,
-        y2: this.groundY - 12,
-        width: 92,
+        x2: targetX + 65,
+        y2: this.groundY - 8,
+        width: 68,
+        color: '#fde047',
+        coreColor: '#ffffff',
+        maxLife: 0.74
+      });
+
+      // Diagonal Heaven Beam 2 (Top-Right to Bottom-Left across the enemy, forming an X-Cross of Light!)
+      game.vfx.spawnBeam({
+        x1: targetX + 240,
+        y1: -140,
+        x2: targetX - 65,
+        y2: this.groundY - 8,
+        width: 68,
         color: '#facc15',
         coreColor: '#ffffff',
-        maxLife: 0.72
+        maxLife: 0.74
       });
 
-      for (let r = 0; r < 5; r++) {
-        const ry = 80 + r * 85;
-        game.vfx.spawnShockwave(targetX, ry, 110 + r * 14, r % 2 === 0 ? '#ffffff' : '#fde047', 0.45, true);
+      // Scepter-to-Enemy Direct Golden Judgement Ray
+      game.vfx.spawnBeam({
+        x1: this.x + this.facing * 44,
+        y1: this.y - 115,
+        x2: targetX,
+        y2: this.groundY - 95,
+        width: 44,
+        color: '#fef08a',
+        coreColor: '#ffffff',
+        maxLife: 0.65
+      });
+
+      for (let r = 0; r < 4; r++) {
+        game.vfx.spawnShockwave(
+          targetX,
+          this.groundY - 95,
+          95 + r * 45,
+          r % 2 === 0 ? '#ffffff' : '#fde047',
+          0.46,
+          false
+        );
       }
 
-      [-85, 85].forEach((off) => {
-        game.vfx.spawnFlamePillar(targetX + off, this.groundY, this, enemy, {
-          theme: 'radiant',
-          delay: 0.08,
-          maxLife: 1.05,
-          scaleWidth: 0.85
-        });
-      });
-
-      game.vfx.spawnLightning(targetX, -260, this.groundY, '#ffffff', '#fde047');
-      game.vfx.spawnShockwave(targetX, this.groundY, 260, '#fde047', 0.55, true);
-      game.vfx.spawnBurst(targetX, this.groundY - 40, 32, '#fef9c3', 320, { upBias: 150, size: 8 });
-      game.vfx.spawnGlyphBurst(targetX, this.groundY - 80, 12, 'radiant');
+      game.vfx.spawnShockwave(targetX, this.groundY, 270, '#fde047', 0.55, true);
+      game.vfx.spawnShockwave(targetX, this.groundY, 190, '#4ade80', 0.48, true);
+      game.vfx.spawnBurst(targetX, this.groundY - 60, 32, '#fef9c3', 320, { upBias: 150, size: 8 });
+      game.vfx.spawnGlyphBurst(targetX, this.groundY - 90, 12, 'radiant');
+      game.vfx.spawnGlyphBurst(targetX, this.groundY - 90, 8, 'heal');
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(122, this, true, 150, -210);
+        const ultDmg = Math.abs(enemy.x - this.x) >= 210 ? 138 : 96;
+        enemy.takeDamage(ultDmg, this, true, 150, -210);
       }
     } else if (t >= 1.52) {
+      this.y = this.groundY;
+      this.isFlipVault = false;
       this.setState('IDLE');
     }
+  }
+
+  drawSeraphimVFX(ctx, isReflection) {
+    if (isReflection) return;
+    const showWings =
+      this.isAngelicAscent || this.state === 'ULTIMATE' || this.state === 'SKILL';
+    if (!showWings) return;
+
+    ctx.save();
+    const p = 4; // 4px crisp pixel grid
+    const snap = (v) => Math.round(v / p) * p;
+    const flap = Math.sin(this.haloPhase * 4.5 + this.stateTimer * 14) * 16;
+    const isFullArchangel = this.isAngelicAscent || this.state === 'ULTIMATE';
+    const wingScale = isFullArchangel ? 1.0 : 0.78;
+
+    // 1. Rotating Sacred Rose-Cross Halo Mandala behind Seraphina's shoulders
+    const cx = -4;
+    const cy = -116;
+    const haloR = snap((isFullArchangel ? 88 : 64) + Math.sin(this.haloPhase * 3) * 4);
+    ctx.fillStyle = '#fde047';
+    ctx.globalAlpha = 0.75;
+    for (let i = 0; i < 20; i++) {
+      const a = this.haloPhase * 1.4 + (i * Math.PI * 2) / 20;
+      const rx = snap(cx + Math.cos(a) * haloR);
+      const ry = snap(cy + Math.sin(a) * haloR);
+      ctx.fillRect(rx - 4, ry - 4, 8, 8);
+      if (i % 5 === 0) {
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(rx - 8, ry - 2, 16, 4);
+        ctx.fillRect(rx - 2, ry - 8, 4, 16);
+        ctx.fillStyle = '#fde047';
+      }
+    }
+
+    // 8 Orbiting Pixel Star-Cross Chakrams during ULTIMATE
+    if (this.state === 'ULTIMATE') {
+      const orbitR = 112;
+      for (let i = 0; i < 8; i++) {
+        const a = -this.haloPhase * 2.5 + (i * Math.PI * 2) / 8;
+        const ox = snap(cx + Math.cos(a) * orbitR);
+        const oy = snap(cy + Math.sin(a) * orbitR);
+        ctx.fillStyle = '#eab308';
+        ctx.globalAlpha = 0.92;
+        ctx.fillRect(ox - 14, oy - 4, 28, 8);
+        ctx.fillRect(ox - 4, oy - 14, 8, 28);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(ox - 10, oy - 2, 20, 4);
+        ctx.fillRect(ox - 2, oy - 10, 4, 20);
+      }
+    }
+
+    // 2. 6-Winged Pixel-Art Seraphim Angel Wings (Upper, Mid, Lower feather tiers sweeping wide on both sides)
+    const pairs = isFullArchangel ? [-1, 0, 1] : [-1, 0];
+    pairs.forEach((tier) => {
+      [-1, 1].forEach((side) => {
+        const rootX = side * 18;
+        const rootY = -122 + tier * 22;
+        const span = (128 - Math.abs(tier) * 14) * wingScale;
+        const archLift = (tier === -1 ? -68 : tier === 0 ? -28 : 14) * wingScale;
+        const dynamicFlap = flap * (tier === -1 ? 1.15 : tier === 0 ? 0.85 : 0.6) * wingScale;
+
+        for (let f = 0; f < 10; f++) {
+          const u = (f + 1) / 10;
+          const archCurve = Math.sin(u * Math.PI * 0.78);
+          const wx = snap(rootX + side * (u * span));
+          const wy = snap(rootY + archLift * archCurve + dynamicFlap * u + (u > 0.65 ? (u - 0.65) * 36 : 0));
+          const featherLen = snap((44 - f * 2.6 - Math.max(0, tier) * 8) * wingScale);
+
+          // Dark bronze-gold pixel border so wings pop cleanly against any background
+          ctx.globalAlpha = 0.92;
+          ctx.fillStyle = '#854d0e';
+          ctx.fillRect(wx - 6, wy - 4, 12, featherLen + 8);
+
+          // Golden primary plumage
+          ctx.fillStyle = f < 3 ? '#fef08a' : f < 7 ? '#facc15' : '#eab308';
+          ctx.fillRect(wx - 4, wy, 8, featherLen);
+
+          // Luminous white-gold upper ridge & feather tip
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(wx - 4, wy, 8, 8);
+          ctx.fillRect(wx - 2, wy + featherLen - 6, 4, 6);
+        }
+      });
+    });
+
+    // 3. Golden Pixel-Art Cathedral Sanctuary Barrier Dome during DIVINE SANCTUARY (SKILL)
+    if (this.state === 'SKILL') {
+      const domeR = 104;
+      ctx.globalAlpha = 0.78;
+      for (let i = 0; i <= 20; i++) {
+        const a = Math.PI + (i / 20) * Math.PI;
+        const dx = snap(Math.cos(a) * domeR);
+        const dy = snap(-20 + Math.sin(a) * (domeR * 1.15));
+        ctx.fillStyle = i % 2 === 0 ? '#fde047' : '#4ade80';
+        ctx.fillRect(dx - 4, dy - 4, 8, 8);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(dx - 2, dy - 2, 4, 4);
+      }
+    }
+
+    ctx.restore();
   }
 
   draw(ctx, isReflection = false) {
@@ -410,6 +615,8 @@ export class Priestess extends Fighter {
 
     ctx.translate(Math.round(this.x), Math.round(this.y));
     ctx.scale(scaleDir, 1);
+
+    this.drawSeraphimVFX(ctx, isReflection);
 
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.haloPhase, isReflection);
 

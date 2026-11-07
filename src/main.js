@@ -83,28 +83,38 @@ class Game {
 
     const simSec = Number(params.get('sim') || 0);
     const killTarget = params.get('kill');
-    const forceUlt = params.get('ult') === '1';
+    const ultParam = params.get('ult');
+    const forceUlt = ultParam === '1' || ultParam === 'both';
     const forceCorner = params.get('corner') === '1';
+    this.isSimPaused = params.get('pause') === '1';
     if (p1 || p2 || urlHero || simSec > 0 || killTarget || forceUlt || forceCorner) {
       this.syncRosterSelectionUI(false);
       this.startDuel(false);
     }
 
     if (forceCorner) {
-      // Place left fighter (e.g. Archer) cornered against the left wall and enemy closing in
+      // Place left fighter (e.g. Priestess or Archer) cornered against the left wall and enemy closing in
       this.leftFighter.x = 105;
+      this.leftFighter.dodgeCooldown = 0;
+      this.leftFighter.wallWingCooldown = 0;
       this.rightFighter.x = 265;
-      this.rightFighter.setState('ATTACK');
+      this.rightFighter.setState('AUTO_ATTACK');
     }
 
     if (forceUlt) {
+      this.leftFighter.x = 410;
+      this.rightFighter.x = 710;
       this.leftFighter.mana = this.leftFighter.maxMana;
-      this.rightFighter.mana = this.rightFighter.maxMana;
+      if (ultParam === 'both') {
+        this.rightFighter.mana = this.rightFighter.maxMana;
+      }
     }
 
     if (simSec > 0) {
-      const steps = Math.floor(simSec / 0.02);
+      const steps = Math.round(simSec / 0.02);
       for (let i = 0; i < steps; i++) {
+        this.ultSlowTimer = 0;
+        this.renderer.hitStopTimer = 0;
         this.stepSimulation(0.02);
       }
       this.updateHUD();
@@ -647,7 +657,7 @@ class Game {
       this.renderer.update(rawDt, this.fighters);
       this.vfx.update(rawDt * 0.4, this.renderer.groundY, this.renderer, this.audio);
       this.renderChampionPreviews(now);
-    } else {
+    } else if (!this.isSimPaused) {
       this.stepSimulation(rawDt);
     }
     this.renderer.render(this.fighters, this.vfx);
