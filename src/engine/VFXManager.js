@@ -368,6 +368,7 @@ export class VFXManager {
       target: opts.target || null,
       damage: opts.damage ?? 28,
       delay: opts.delay || 0,
+      flightTime: 0,
       impacted: false,
       linger: 0,
       maxLinger: opts.maxLinger || 0.48,
@@ -596,19 +597,23 @@ export class VFXManager {
       } else {
         tor.x += tor.vx * dt;
       }
-      for (let k = 0; k < 2; k++) {
-        const h = Math.random() * tor.height;
-        const r = tor.radius * (0.35 + (h / tor.height) * 0.85);
-        const a = tor.life * 18 + h * 0.05 + k * Math.PI;
-        this.spawnParticle({
-          x: tor.x + Math.cos(a) * r,
-          y: tor.groundY - h,
-          vx: -Math.sin(a) * 165,
-          vy: -135 - Math.random() * 95,
-          size: 7,
-          color: Math.random() > 0.35 ? tor.color : tor.coreColor,
-          maxLife: 0.36
-        });
+      const isEmeraldTor = tor.color === '#10b981' || tor.color === '#34d399';
+      if (!isEmeraldTor || Math.random() < 0.35) {
+        const count = isEmeraldTor ? 1 : 2;
+        for (let k = 0; k < count; k++) {
+          const h = Math.random() * tor.height;
+          const r = tor.radius * (0.45 + (h / tor.height) * 0.85);
+          const a = tor.life * 18 + h * 0.05 + k * Math.PI;
+          this.spawnParticle({
+            x: tor.x + Math.cos(a) * r,
+            y: tor.groundY - h,
+            vx: -Math.sin(a) * 145,
+            vy: -115 - Math.random() * 75,
+            size: isEmeraldTor ? 4 : 7,
+            color: Math.random() > 0.35 ? tor.color : tor.coreColor,
+            maxLife: isEmeraldTor ? 0.24 : 0.36
+          });
+        }
       }
       if (tor.life >= tor.maxLife) this.tornados.splice(i, 1);
     }
@@ -620,6 +625,7 @@ export class VFXManager {
         continue;
       }
       if (!s.impacted) {
+        s.flightTime = (s.flightTime || 0) + dt;
         s.x += s.vx * dt;
         s.y += s.vy * dt;
         this.spawnParticle({
@@ -954,95 +960,95 @@ export class VFXManager {
       const totalH = Math.round(tor.height * 1.04);
       const bandH = Math.max(6, Math.ceil(totalH / bands));
       const vfxSheet = isSteel ? assets.warrior?.vfx : assets.archer?.vfx;
+      const torCol = Math.floor(tor.life * 30) % 30;
+      const torSx = torCol * 208;
+      const torSy = 416;
 
-      // A. Conical S-Curving Pixel-Art Tornado Funnel Sprite (sliced from archer_vfx.png Cell 1: x=256, y=0, w=256, h=256)
+      // A. 30fps Conical S-Curving Pixel-Art Tornado Funnel Sprite (Row 2 of archer_vfx.png: 30 cols x 208x208)
       const spriteW = Math.round((tor.radius * 2.55) / 4) * 4;
-      for (let b = 0; b < bands; b++) {
-        const hFrac = b / (bands - 1); // 0.0 at narrow ground tip -> 1.0 at wide top mouth
-        const coneProfile = 0.16 + Math.pow(hFrac, 0.85) * 0.70 + Math.pow(hFrac, 2.2) * 0.36;
-        const halfW = Math.max(10, Math.round((tor.radius * coneProfile) / 4) * 4);
-        const spineSway = Math.round(
-          (Math.sin(tor.life * 13 - hFrac * 4.8) * (4 + Math.sin(hFrac * Math.PI) * 18)) / 4
-        ) * 4;
-        const cx = baseX + spineSway;
-        const cy = Math.round((baseY - hFrac * totalH) / 4) * 4;
-        const spinPhase = tor.life * 22 - hFrac * 12;
+      if (!isSteel && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+        this.drawBloomedSprite(
+          ctx,
+          renderer,
+          vfxSheet,
+          torSx,
+          torSy,
+          208,
+          208,
+          Math.round(baseX - spriteW * 0.5),
+          Math.round(baseY - totalH),
+          spriteW,
+          totalH,
+          '#10b981',
+          fade * (isReflection ? 0.42 : 0.98),
+          isReflection
+        );
+      } else {
+        for (let b = 0; b < bands; b++) {
+          const hFrac = b / (bands - 1);
+          const coneProfile = 0.16 + Math.pow(hFrac, 0.85) * 0.70 + Math.pow(hFrac, 2.2) * 0.36;
+          const halfW = Math.max(10, Math.round((tor.radius * coneProfile) / 4) * 4);
+          const spineSway = Math.round(
+            (Math.sin(tor.life * 13 - hFrac * 4.8) * (4 + Math.sin(hFrac * Math.PI) * 18)) / 4
+          ) * 4;
+          const cx = baseX + spineSway;
+          const cy = Math.round((baseY - hFrac * totalH) / 4) * 4;
+          const spinPhase = tor.life * 22 - hFrac * 12;
 
-        // 1. Slice-warped bespoke tornado sprite pass from archer_vfx.png (preserves natural tapered silhouette & transparency!)
-        if (!isSteel && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-          const srcY = Math.round(240 - hFrac * 224);
-          const wobbleW = Math.round((spriteW * (0.94 + 0.08 * Math.sin(spinPhase))) / 4) * 4;
-          ctx.save();
-          ctx.translate(cx, cy);
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = fade * (isReflection ? 0.35 : 0.92);
-          ctx.drawImage(vfxSheet, 256, srcY, 256, 9, -wobbleW * 0.5, -bandH * 0.6, wobbleW, bandH + 3);
-          ctx.restore();
-        }
-
-        // 2. Airy Swirling Elliptical Wind-Ring Arcs (open ring segments, never a solid opaque wall!)
-        if (b % 2 === 0) {
-          for (let seg = 0; seg < 5; seg++) {
-            const a = spinPhase + (seg / 5) * Math.PI * 2;
-            const sinA = Math.sin(a);
-            const wx = Math.round((cx + Math.cos(a) * halfW * 0.88) / 4) * 4;
-            const wy = Math.round((cy + sinA * 6) / 4) * 4;
-            const segW = Math.max(8, Math.round((halfW * 0.42) / 4) * 4);
-            ctx.globalCompositeOperation = sinA > 0 ? 'lighter' : 'source-over';
-            ctx.globalAlpha = fade * (sinA > 0 ? 0.55 : 0.65) * (isReflection ? 0.4 : 1);
-            ctx.fillStyle =
-              sinA > 0.4
-                ? '#fef08a'
-                : isSteel
-                  ? sinA > 0
-                    ? '#38bdf8'
-                    : '#0284c7'
-                  : sinA > 0
-                    ? '#34d399'
-                    : '#059669';
-            ctx.fillRect(wx - segW * 0.5, wy - 2, segW, 4);
+          if (b % 2 === 0) {
+            for (let seg = 0; seg < 5; seg++) {
+              const a = spinPhase + (seg / 5) * Math.PI * 2;
+              const sinA = Math.sin(a);
+              const wx = Math.round((cx + Math.cos(a) * halfW * 0.88) / 4) * 4;
+              const wy = Math.round((cy + sinA * 6) / 4) * 4;
+              const segW = Math.max(8, Math.round((halfW * 0.42) / 4) * 4);
+              ctx.globalCompositeOperation = sinA > 0 ? 'lighter' : 'source-over';
+              ctx.globalAlpha = fade * (sinA > 0 ? 0.55 : 0.65) * (isReflection ? 0.4 : 1);
+              ctx.fillStyle = sinA > 0.4 ? '#fef08a' : sinA > 0 ? '#38bdf8' : '#0284c7';
+              ctx.fillRect(wx - segW * 0.5, wy - 2, segW, 4);
+            }
           }
         }
-      }
 
-      // C. Outer Helical Wind Ribbons & Orbiting Razor Leaves Spiraling Up Outside the Funnel Cone
-      const ribbonTurns = 18;
-      for (let i = 0; i < ribbonTurns; i++) {
-        const hFrac = ((i / ribbonTurns) + tor.life * 1.8) % 1;
-        const coneProfile = 0.18 + Math.pow(hFrac, 0.85) * 0.82 + Math.pow(hFrac, 2.4) * 0.45;
-        const orbitR = tor.radius * coneProfile * 1.16;
-        const spineSway = Math.sin(tor.life * 13 - hFrac * 4.8) * (4 + Math.sin(hFrac * Math.PI) * 22);
-        const angle = tor.life * 22 - hFrac * 11 + (i % 2) * Math.PI;
-        const sinA = Math.sin(angle);
-        if (sinA < -0.2 && !isReflection) continue; // Only draw front/side wrapping wind ribbons over the cone
+        // C. Outer Helical Wind Ribbons for Steel Tornado
+        const ribbonTurns = 18;
+        for (let i = 0; i < ribbonTurns; i++) {
+          const hFrac = ((i / ribbonTurns) + tor.life * 1.8) % 1;
+          const coneProfile = 0.18 + Math.pow(hFrac, 0.85) * 0.82 + Math.pow(hFrac, 2.4) * 0.45;
+          const orbitR = tor.radius * coneProfile * 1.16;
+          const spineSway = Math.sin(tor.life * 13 - hFrac * 4.8) * (4 + Math.sin(hFrac * Math.PI) * 22);
+          const angle = tor.life * 22 - hFrac * 11 + (i % 2) * Math.PI;
+          const sinA = Math.sin(angle);
+          if (sinA < -0.2 && !isReflection) continue;
 
-        const rx = Math.round((baseX + spineSway + Math.cos(angle) * orbitR) / 4) * 4;
-        const ry = Math.round((baseY - hFrac * totalH + sinA * orbitR * 0.20) / 4) * 4;
-        const w = Math.max(8, Math.round((14 + hFrac * 20) / 4) * 4);
+          const rx = Math.round((baseX + spineSway + Math.cos(angle) * orbitR) / 4) * 4;
+          const ry = Math.round((baseY - hFrac * totalH + sinA * orbitR * 0.20) / 4) * 4;
+          const w = Math.max(8, Math.round((14 + hFrac * 20) / 4) * 4);
 
-        if (!isReflection) {
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fade * 0.42;
-          ctx.fillStyle = isSteel ? '#38bdf8' : '#34d399';
-          ctx.fillRect(rx - w * 0.6, ry - 4, w * 1.2, 8);
+          if (!isReflection) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = fade * 0.42;
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(rx - w * 0.6, ry - 4, w * 1.2, 8);
+          }
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = fade * 0.95;
+          ctx.fillStyle = i % 3 === 0 ? '#fef08a' : '#bae6fd';
+          ctx.fillRect(rx - w * 0.5, ry - 2, w, 4);
         }
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.95;
-        ctx.fillStyle = i % 3 === 0 ? '#fef08a' : isSteel ? '#bae6fd' : '#6ee7b7';
-        ctx.fillRect(rx - w * 0.5, ry - 2, w, 4);
-      }
 
-      // D. Ground Dust-Devil Debris Ring at the Narrow Funnel Tip
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * (isReflection ? 0.35 : 0.94);
-      for (let g = 0; g < 14; g++) {
-        const ga = (g / 14) * Math.PI * 2 + tor.life * 25;
-        const grx = tor.radius * 0.48;
-        const gry = grx * 0.28;
-        const gx = Math.round((baseX + Math.cos(ga) * grx) / 4) * 4;
-        const gy = Math.round((baseY - 4 + Math.sin(ga) * gry) / 4) * 4;
-        ctx.fillStyle = g % 2 === 0 ? (isSteel ? '#7dd3fc' : '#6ee7b7') : isSteel ? '#0284c7' : '#047857';
-        ctx.fillRect(gx - 6, gy - 3, 12, 6);
+        // D. Ground Dust-Devil Debris Ring
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * (isReflection ? 0.35 : 0.94);
+        for (let g = 0; g < 14; g++) {
+          const ga = (g / 14) * Math.PI * 2 + tor.life * 25;
+          const grx = tor.radius * 0.48;
+          const gry = grx * 0.28;
+          const gx = Math.round((baseX + Math.cos(ga) * grx) / 4) * 4;
+          const gy = Math.round((baseY - 4 + Math.sin(ga) * gry) / 4) * 4;
+          ctx.fillStyle = g % 2 === 0 ? '#7dd3fc' : '#0284c7';
+          ctx.fillRect(gx - 6, gy - 3, 12, 6);
+        }
       }
       ctx.restore();
     }
@@ -1222,26 +1228,51 @@ export class VFXManager {
         );
       } else {
         const archerVfx = assets.archer?.vfx;
-        const ang = Math.atan2(s.vy, s.vx || 0.01);
-        ctx.translate(sx, sy);
-        ctx.rotate(ang);
-        const arrSz = 124;
-        this.drawBloomedSprite(
-          ctx,
-          renderer,
-          archerVfx,
-          528,
-          56,
-          208,
-          208,
-          Math.round(-arrSz * 0.72),
-          Math.round(-arrSz * 0.5),
-          arrSz,
-          arrSz,
-          '#10b981',
-          fade * (isReflection ? 0.5 : 0.98),
-          isReflection
-        );
+        if (!s.impacted) {
+          // Row 1 F00..F11: 30fps Descending Starfall Comet-Arrow
+          const col = Math.floor((s.flightTime || 0) * 30) % 12;
+          const ang = Math.atan2(s.vy, s.vx || 0.01);
+          ctx.translate(sx, sy);
+          ctx.rotate(ang);
+          const arrSz = 148;
+          this.drawBloomedSprite(
+            ctx,
+            renderer,
+            archerVfx,
+            col * 208,
+            208,
+            208,
+            208,
+            Math.round(-arrSz * 0.78),
+            Math.round(-arrSz * 0.5),
+            arrSz,
+            arrSz,
+            '#10b981',
+            fade * (isReflection ? 0.5 : 0.98),
+            isReflection
+          );
+        } else {
+          // Row 1 F12..F29: 18-Frame Upright Ground Runic Star-Sigil & Helical Wind Geyser Eruption!
+          const impFrac = Math.min(1, s.linger / Math.max(0.01, s.maxLinger));
+          const col = Math.min(29, 12 + Math.floor(impFrac * 18));
+          const impSz = 176;
+          this.drawBloomedSprite(
+            ctx,
+            renderer,
+            archerVfx,
+            col * 208,
+            208,
+            208,
+            208,
+            Math.round(sx - impSz * 0.5),
+            Math.round(sy - impSz * 0.81),
+            impSz,
+            impSz,
+            '#10b981',
+            Math.min(1, fade * (isReflection ? 0.5 : 1.12)),
+            isReflection
+          );
+        }
       }
       ctx.restore();
     }
@@ -1261,8 +1292,9 @@ export class VFXManager {
       ctx.translate(b.x1, b.y1);
       ctx.rotate(ang);
 
-      const headX = Math.min(dist, dist * Math.min(1, t / 0.28));
-      const tailX = Math.max(0, dist * Math.max(0, (t - 0.38) / 0.62));
+      const isEmeraldCheck = b.color === '#10b981' || b.color === '#34d399';
+      const headX = Math.min(dist, dist * Math.min(1, t / (isEmeraldCheck ? 0.62 : 0.28)));
+      const tailX = Math.max(0, dist * Math.max(0, (t - (isEmeraldCheck ? 0.45 : 0.38)) / (isEmeraldCheck ? 0.55 : 0.62)));
       const spanLen = Math.max(40, headX - tailX);
       const stepPx = 8;
 
@@ -1344,23 +1376,57 @@ export class VFXManager {
       const mageVfx = assets.mage?.vfx;
 
       if (isEmeraldBeam && archerVfx) {
-        const dragSz = 276;
+        const dCol = Math.min(29, Math.floor(t * 30));
+        const flipY = Math.cos(ang) < 0 ? -1 : 1;
+        // 30fps Coiling Supersonic Wind-Wake Segments along the beam body (Row 0)
+        for (let wIdx = 1; wIdx <= 3; wIdx++) {
+          const uWake = wIdx / 4;
+          const wx = tailX + spanLen * uWake;
+          const wCol = (dCol + wIdx * 7) % 30;
+          const wakeSz = 164;
+          ctx.save();
+          ctx.translate(Math.round(wx), Math.round(Math.sin(b.life * 28 - wIdx * 1.6) * 14));
+          ctx.scale(1, flipY);
+          this.drawBloomedSprite(
+            ctx,
+            null,
+            archerVfx,
+            wCol * 208,
+            0,
+            208,
+            208,
+            Math.round(-wakeSz * 0.5),
+            Math.round(-wakeSz * 0.5),
+            wakeSz,
+            wakeSz,
+            '#34d399',
+            (1 - t * 0.35) * 0.82,
+            isReflection
+          );
+          ctx.restore();
+        }
+        // Colossal 30fps Roaring Astral Wind-Dragon Head leading the beam (Row 3, sy=624)
+        const dragSz = 268;
+        ctx.save();
+        ctx.translate(Math.round(headX - dragSz * 0.12), 0);
+        ctx.scale(1, flipY);
         this.drawBloomedSprite(
           ctx,
           renderer,
           archerVfx,
-          0,
-          0,
-          320,
-          320,
-          Math.round(headX - dragSz * 0.62),
+          dCol * 208,
+          624,
+          208,
+          208,
+          Math.round(-dragSz * 0.5),
           Math.round(-dragSz * 0.5),
           dragSz,
           dragSz,
           '#10b981',
-          1 - t * 0.3,
+          1 - t * 0.25,
           isReflection
         );
+        ctx.restore();
       } else if (isHolyBeam && priestVfx) {
         const starSz = 168;
         ctx.save();
@@ -1540,12 +1606,14 @@ export class VFXManager {
 
         let sheet = assets.warrior?.vfx;
         let cropX = 528;
+        let cropY = 56;
         if (isAbyssal) {
           sheet = assets.reaper?.vfx;
           cropX = 736;
         } else if (isEmerald) {
           sheet = assets.archer?.vfx;
-          cropX = 528;
+          cropX = Math.min(29, Math.floor(t * 30)) * 208;
+          cropY = 832;
         } else if (isRadiant) {
           sheet = assets.priestess?.vfx;
           cropX = 528;
@@ -1566,7 +1634,7 @@ export class VFXManager {
             renderer,
             sheet,
             cropX,
-            56,
+            cropY,
             208,
             208,
             Math.round(-slashSize * 0.5),
@@ -1781,13 +1849,15 @@ export class VFXManager {
         ctx.rotate(ang);
 
         if (archerVfx && archerVfx.complete && archerVfx.naturalWidth) {
-          const arrSize = 118;
+          // Row 0 F00..F29: 30fps Supersonic Tempest Arrow (spinning fletching, double-helix wind ribbon & Mach cone)
+          const arrCol = Math.floor((proj.age || 0) * 30) % 30;
+          const arrSize = 136;
           this.drawBloomedSprite(
             ctx,
             renderer,
             archerVfx,
-            528,
-            56,
+            arrCol * 208,
+            0,
             208,
             208,
             -arrSize * 0.5,
@@ -1795,7 +1865,7 @@ export class VFXManager {
             arrSize,
             arrSize,
             '#10b981',
-            0.96,
+            0.98,
             isReflection
           );
         } else {
@@ -2072,14 +2142,16 @@ export class VFXManager {
           false
         );
       } else if (ca.theme === 'emerald' && assets.archer?.vfx?.complete) {
+        const sealCol = Math.floor(ca.life * 30) % 30;
+        ctx.scale(ca.fighter.facing || 1, 1);
         this.drawBloomedSprite(
           ctx,
           renderer,
           assets.archer.vfx,
-          0,
-          0,
-          320,
-          320,
+          sealCol * 208,
+          832,
+          208,
+          208,
           -crestSize * 0.56,
           -crestSize * 0.58,
           crestSize * 1.12,

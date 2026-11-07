@@ -78,23 +78,23 @@ export class Archer extends Fighter {
     this.wallFlipCooldown = 3.0;
 
     if (enemy && nearWallOrCornered) {
-      // Vault completely OVER the enemy to the open side of the arena using Row 8 (30-frame JUMP)!
-      this.dashDuration = 0.62;
+      // Sleek, wide horizontal vault across the arena using Row 8 (30-frame JUMP)!
+      this.dashDuration = 0.64;
       const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
-      let target = enemy.x + openSideDir * 305;
-      if (Math.abs(target - this.x) < 220) {
+      let target = enemy.x + openSideDir * 350;
+      if (Math.abs(target - this.x) < 260) {
         const crossDir = this.x < enemy.x ? 1 : -1;
-        target = enemy.x + crossDir * 295;
+        target = enemy.x + crossDir * 340;
       }
       this.flipTargetX = Math.max(150, Math.min(ww - 150, target));
       this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || 1;
-      game.vfx.spawnDamageText(this.x, this.y - 130, 0, false, 'ZEPHYR LEAP!', '#34d399');
+      game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'ZEPHYR VAULT!', '#34d399');
     } else {
-      // Open-arena acrobatic jump-shot retreat using Row 8 (30-frame JUMP)!
-      this.dashDuration = 0.56;
-      this.flipTargetX = Math.max(150, Math.min(ww - 150, this.x + dir * 260));
+      // Long, low-slung acrobatic glide-jump & mid-air bow shot using Row 8 (30-frame JUMP)!
+      this.dashDuration = 0.60;
+      this.flipTargetX = Math.max(150, Math.min(ww - 150, this.x + dir * 340));
       this.dashDir = dir;
-      game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'ZEPHYR JUMP!', '#34d399');
+      game.vfx.spawnDamageText(this.x, this.y - 120, 0, false, 'ZEPHYR LEAP!', '#34d399');
     }
 
     this.vx = 0;
@@ -120,17 +120,37 @@ export class Archer extends Fighter {
 
     if ((this.state === 'DODGE' || this.state === 'JUMP') && this.isFlipVault) {
       const u = Math.min(1, t / this.dashDuration);
-      // F00..F03 (u < 0.13): pre-jump crouch; F04..F13 (0.13..0.45): 360° mid-air somersault flip;
-      // F14..F18 (0.45..0.62): flip exit & downward (+26°) bow draw; F19..F23 (0.62..0.80): aerial shot release!
-      const airU = Math.max(0, Math.min(1, (u - 0.10) / 0.78));
-      const easeU = airU < 0.5 ? 2 * airU * airU : 1 - Math.pow(-2 * airU + 2, 2) / 2;
-      this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * easeU;
-      this.y = this.groundY - Math.sin(airU * Math.PI) * 168;
-      this.flipAngle = 0; // Hand-animated 30-frame Row 8 JUMP handles the 360° somersault flip & downward bow shot!
+      // F00..F03 (u < 0.11): launch crouch; F04..F25 (0.11 <= u <= 0.86): airborne glide & hover shot; F26..F29 (u > 0.86): landing!
+      const airU = Math.max(0, Math.min(1, (u - 0.10) / 0.76));
 
-      if (u < 0.45) {
-        this.facing = this.dashDir || 1;
-      } else if (enemy && !enemy.isDead) {
+      // Smooth horizontal glide with slight hang-time deceleration during bow draw/release (airU = 0.35..0.70)
+      const horizU = airU < 0.35
+        ? (airU / 0.35) * 0.44
+        : airU < 0.70
+          ? 0.44 + ((airU - 0.35) / 0.35) * 0.28
+          : 0.72 + ((airU - 0.70) / 0.30) * 0.28;
+      this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * horizU;
+
+      // Low-slung athletic vault arc (peak height 86px, NEVER a steep 168px bouncy-ball spike!)
+      // with mid-air hang-time hover plateau while drawing & firing the downward bow shot!
+      let liftFrac = 0;
+      if (airU > 0 && airU < 1) {
+        if (airU < 0.28) {
+          const p = airU / 0.28;
+          liftFrac = 1 - Math.pow(1 - p, 2.2);
+        } else if (airU <= 0.68) {
+          // Hang-time wind-hover plateau at the apex while drawing & loosing the arrow
+          const h = (airU - 0.28) / 0.40;
+          liftFrac = 1.0 - Math.sin(h * Math.PI) * 0.06;
+        } else {
+          const p = (airU - 0.68) / 0.32;
+          liftFrac = 1 - Math.pow(p, 1.85);
+        }
+      }
+      this.y = this.groundY - liftFrac * 86;
+      this.flipAngle = 0;
+
+      if (enemy && !enemy.isDead) {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
 
@@ -146,8 +166,8 @@ export class Archer extends Fighter {
         });
       }
 
-      // At Frame F19 (u >= 0.62) after completing her 360° flip & downward draw, Sylvara looses her Aerial Flip-Shot!
-      if (u >= 0.62 && !this.didActionFrame && enemy && !enemy.isDead) {
+      // At Frame F18 (u >= 0.58) during her mid-air wind-hover, Sylvara looses her downward (+24°) Aerial Counter-Shot!
+      if (u >= 0.58 && !this.didActionFrame && enemy && !enemy.isDead) {
         this.didActionFrame = true;
         if (game.audio) game.audio.play('arrow_shoot', this.x);
         const sx = this.x + this.facing * 42;
@@ -167,6 +187,8 @@ export class Archer extends Fighter {
           damage: enemy.hasPoise && enemy.attackRange <= 160 ? 68 : 56,
           type: 'arrow'
         });
+        const shotAng = Math.atan2(dy, dx);
+        game.vfx.spawnSlash(sx, sy, 58, shotAng - 0.85, shotAng + 0.85, '#34d399', 0.24);
         game.vfx.spawnShockwave(sx, sy, 64, '#fef08a', 0.24, false, false);
         game.vfx.spawnGlyphBurst(sx, sy, 5, 'emerald');
       }
@@ -256,6 +278,8 @@ export class Archer extends Fighter {
         type: 'arrow'
       });
 
+      const cAng = this.facing === 1 ? 0 : Math.PI;
+      game.vfx.spawnSlash(spawnX, spawnY, 62, cAng - 0.9, cAng + 0.9, '#34d399', 0.24);
       game.vfx.spawnShockwave(spawnX, spawnY, 64, '#34d399', 0.26, false, true);
       game.vfx.spawnShockwave(spawnX + this.facing * 14, spawnY, 44, '#fef08a', 0.20, false, true);
       game.vfx.spawnGlyphBurst(spawnX, spawnY, 5, 'emerald');
@@ -422,6 +446,8 @@ export class Archer extends Fighter {
 
       const bowX = this.x + this.facing * 48;
       const bowY = this.y - 120;
+      const fAng = this.facing === 1 ? 0 : Math.PI;
+      game.vfx.spawnSlash(bowX, bowY, 68, fAng - 1.0, fAng + 1.0, '#34d399', 0.25);
       game.vfx.spawnShockwave(bowX, bowY, 76, '#34d399', 0.28, false, true);
       game.vfx.spawnGlyphBurst(bowX, bowY, 5, 'emerald');
 
@@ -449,6 +475,8 @@ export class Archer extends Fighter {
 
       const bowX = this.x + this.facing * 42;
       const bowY = this.y - 134;
+      const skyAng = this.facing === 1 ? -0.58 : Math.PI + 0.58;
+      game.vfx.spawnSlash(bowX, bowY, 72, skyAng - 0.95, skyAng + 0.95, '#34d399', 0.26);
       game.vfx.spawnShockwave(bowX, bowY, 82, '#fef08a', 0.32, false, true);
       game.vfx.spawnGlyphBurst(bowX, bowY, 6, 'emerald');
 
@@ -534,14 +562,17 @@ export class Archer extends Fighter {
 
       const startX = this.x + this.facing * 52;
       const startY = this.y - 128;
-      const endX = this.facing === 1 ? game.renderer.worldWidth + 240 : -240;
       const targetX = enemy ? enemy.x : this.x + this.facing * 380;
+      const endX =
+        this.facing === 1
+          ? Math.min(game.renderer.worldWidth - 110, Math.max(targetX + 210, this.x + 560))
+          : Math.max(110, Math.min(targetX - 210, this.x - 560));
 
       game.renderer.triggerShake(26, 0.65);
       game.renderer.triggerAberration(15);
       game.renderer.triggerHitStop(0.09);
 
-      // 1. Colossal Across-Screen Astral Dragon-Arrow Beam at levitated bow height
+      // 1. Colossal Across-Screen 30fps Astral Wind-Dragon Beam at levitated bow height
       game.vfx.spawnBeam({
         x1: startX,
         y1: startY,
@@ -550,7 +581,7 @@ export class Archer extends Fighter {
         width: 64,
         color: '#10b981',
         coreColor: '#fef08a',
-        maxLife: 0.62
+        maxLife: 0.78
       });
 
       // 2. 6 Cascading Vertical Sonic-Boom Rings along the Beam Path

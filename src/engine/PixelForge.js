@@ -27,8 +27,8 @@ export class PixelForge {
         portrait: loadImg('assets/sprites/mage_portrait.png?v=2', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps5'),
-        vfx: loadImg('assets/sprites/archer_vfx.png'),
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps6'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps1'),
         portrait: loadImg('assets/sprites/archer_portrait.png?v=2', () => this.refreshPortraits())
       },
       priestess: {
@@ -487,7 +487,11 @@ export class PixelForge {
     }
 
     // HD-2D Normal-Mapped 4-Step Pixel Lighting + Dual-Layer Character Inking Pass
-    const nm = !isReflection && renderer ? this.ensureNormalMap(charSet) : null;
+    // (Disabled on Archer per user request so Sylvara renders with 100% pure, un-inked 30fps pixel art!)
+    const nm =
+      !isReflection && renderer && fighter.heroId !== 'archer'
+        ? this.ensureNormalMap(charSet)
+        : null;
     if (nm && renderer.activePointLights && renderer.activePointLights.length > 0) {
       const { cellLow, wLow, srcData, normals, litCanvas, litCtx, litImgData } = nm;
       const dst = litImgData.data;

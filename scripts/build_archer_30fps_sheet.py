@@ -1272,140 +1272,140 @@ def build_row7_crouch(tpl):
     return frames
 
 
-def make_jump_body(tpl, jump_dy, tuck_amount):
+def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
     """
-    Constructs a clean aerial jumping ranger body:
-    - Keeps upper torso & hood at `torso_dy = max(0, jump_dy)` so her hood never clips at `y=0` of the 52x52 cell
-      (since world-space `this.y` already lifts Sylvara into the air during JUMP!).
-    - Articulates the Left & Right Ranger Boots/Greaves into an athletic aerial knee-tuck (`dy` lifted upward
-      toward her waist by up to 5px) when `tuck_amount > 0`!
+    Constructs a clean, full-body aerial jumping ranger pose in back-to-front anatomical order:
+    - Backmost Layer: Billowing Emerald Cloak streaming behind Sylvara in mid-air.
+    - Far Leg Layer: Trailing ranger leg & boot kicked back in an athletic aerial scissor-vault.
+    - Split Tunic Tabard: Sweeping between the legs.
+    - Near Leg Layer: Leading knee tucked high in front (classic elven ranger mid-air bow stance!).
+    - Upper Torso & Hood: Crisp, recognizable face, hood, and quiver with zero round-ball distortion.
     """
-    canvas = np.zeros((52, 52, 4), dtype=np.uint8)
-    upper = tpl['stand_upper']
+    stand = tpl['stand'].copy()
     torso_dy = max(0, jump_dy)
-    for y in range(0, 42):
+
+    cloak_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+
+    # 1. Billowing Aerial Cloak (x <= 18, y = 14..46) lifted by the leap
+    cloak_lift = int(round(max(0.0, tuck_amount) * 2.5))
+    for y in range(14, 47):
+        for x in range(1, 19):
+            if stand[y, x, 3] == 0:
+                continue
+            if y >= 33 and x > 15:
+                continue
+            u = (y - 14) / 32.0
+            cx = max(1, min(22, x - int(round(u * 2.8 * max(0.2, tuck_amount)))))
+            cy = max(12, min(48, y + torso_dy - int(round(u * cloak_lift))))
+            cloak_layer[cy, cx] = stand[y, x]
+            if x >= 13 and y <= 34:
+                cloak_layer[min(49, y + torso_dy), x] = stand[y, x]
+
+    # 2. Upper Torso & Hood (y = 0..32, x >= 15)
+    for y in range(0, 33):
         ny = y + torso_dy
-        if 0 <= ny < 52:
-            for x in range(0, 52):
-                if upper[y, x, 3] > 0:
-                    canvas[ny, x] = upper[y, x]
+        if not (0 <= ny < 52):
+            continue
+        dx = torso_lean_dx if y <= 24 else 0
+        for x in range(15, 36):
+            if stand[y, x, 3] > 0:
+                torso_layer[ny, max(1, min(50, x + dx))] = stand[y, x]
 
-    # Articulate back leg (trail leg) & front leg (tucked knee-up leg in mid-air!)
-    def place_jump_leg(patch, pivot_x, pivot_y, rot_deg, dx, dy):
-        pil_p = Image.fromarray(patch, mode='RGBA')
-        rot_p = pil_p.rotate(rot_deg, resample=Image.NEAREST, center=(pivot_x, pivot_y))
-        arr = np.array(rot_p, dtype=np.uint8)
+    hip_x = 26.0
+    hip_y = 31.5 + torso_dy
+
+    def build_aerial_leg(boot_patch, orig_cx, knee_dx, knee_dy, foot_dx, foot_dy, boot_rot_deg, is_far_leg=False):
         layer = np.zeros((52, 52, 4), dtype=np.uint8)
-        for y in range(30, 52):
-            for x in range(8, 48):
-                if arr[y, x, 3] > 0:
-                    ny = max(2, min(49, y + dy))
-                    nx = max(2, min(49, x + dx))
-                    layer[ny, nx] = arr[y, x]
-        return add_outline_to_layer(layer)
+        pil_boot = Image.fromarray(boot_patch, mode='RGBA')
+        rot_boot = np.array(
+            pil_boot.rotate(boot_rot_deg, resample=Image.NEAREST, center=(orig_cx, 40.0)),
+            dtype=np.uint8
+        )
+        for y in range(34, 52):
+            for x in range(4, 50):
+                if rot_boot[y, x, 3] > 0:
+                    ny = max(28, min(49, y + int(round(foot_dy))))
+                    nx = max(4, min(49, x + int(round(foot_dx))))
+                    px_col = rot_boot[y, x].copy()
+                    if is_far_leg:
+                        px_col[0] = int(px_col[0] * 0.78)
+                        px_col[1] = int(px_col[1] * 0.78)
+                        px_col[2] = int(px_col[2] * 0.82)
+                    layer[ny, nx] = px_col
 
-    back_rot = +tuck_amount * 26.0   # Trail leg bends backward
-    front_rot = -tuck_amount * 32.0  # Front knee tucks upward-forward
-    leg_lift = torso_dy - int(round(max(0.0, tuck_amount) * 4.5))
+        kx = hip_x + knee_dx
+        ky = hip_y + knee_dy
+        ax = orig_cx + foot_dx
+        ay = 40.5 + foot_dy
 
-    back_leg = place_jump_leg(tpl['leg_back'], 20.5, 40.0, back_rot, dx=0, dy=leg_lift)
-    front_leg = place_jump_leg(tpl['leg_front'], 30.5, 40.0, front_rot, dx=int(round(tuck_amount * 2.0)), dy=leg_lift - int(round(max(0.0, tuck_amount) * 1.5)))
+        if is_far_leg:
+            c_dark, c_mid, c_hi, c_greave, c_gold = (14, 34, 28, 255), (24, 58, 46, 255), (36, 82, 64, 255), (48, 34, 26, 255), GOLD_DARK
+        else:
+            c_dark, c_mid, c_hi, c_greave, c_gold = CLOAK_DARK, CLOAK_MID, CLOAK_LIGHT, LEATHER_MID, GOLD_BRIGHT
 
-    legs_combined = composite_over(back_leg, front_leg)
-    out = composite_over(legs_combined, canvas)
-    return add_outline_to_layer(out)
-
-
-def make_somersault_tuck_frame(tpl, rot_deg, f_idx):
-    """
-    Constructs a tight, athletic mid-air somersault tuck centered at (26, 26)
-    with max radius <= 19px so rotating 0..360 degrees with Image.NEAREST never
-    clips a single pixel of Sylvara's hood, boots, or bow against the 52x52 frame border!
-    """
-    canvas = np.zeros((52, 52, 4), dtype=np.uint8)
-    upper = tpl['stand_upper']
-    # Shift upper torso down by +5px and right by +2px so hood is at y=7..16, x=20..33 (compact tuck!)
-    for y in range(0, 37):
-        ny = y + 5
-        if 6 <= ny < 44:
-            for x in range(11, 42):
-                nx = x + 2
-                if 8 <= nx < 45 and upper[y, x, 3] > 0:
-                    canvas[ny, nx] = upper[y, x]
-
-    # Tuck both legs tightly up against the torso (y=28..42)
-    def place_tuck_leg(patch, pivot_x, pivot_y, rot_a, dx, dy):
-        pil_p = Image.fromarray(patch, mode='RGBA')
-        rot_p = pil_p.rotate(rot_a, resample=Image.NEAREST, center=(pivot_x, pivot_y))
-        arr = np.array(rot_p, dtype=np.uint8)
-        layer = np.zeros((52, 52, 4), dtype=np.uint8)
-        for y in range(30, 52):
-            for x in range(10, 46):
-                if arr[y, x, 3] > 0:
-                    ny = max(6, min(43, y + dy))
-                    nx = max(8, min(44, x + dx))
-                    layer[ny, nx] = arr[y, x]
+        for off_x, col in [(-1.6, c_dark), (-0.6, c_mid), (0.4, c_hi), (1.4, c_dark)]:
+            draw_line_px(layer, hip_x + off_x, hip_y, kx + off_x * 0.85, ky, col)
+        for off_x, col in [(-1.2, c_dark), (0.0, c_greave), (1.2, c_dark)]:
+            draw_line_px(layer, kx + off_x, ky, ax + off_x * 0.85, ay, col)
+        set_px(layer, kx, ky, c_gold)
+        set_px(layer, kx + 1, ky, c_gold)
         return layer
 
-    back_leg = place_tuck_leg(tpl['leg_back'], 20.5, 40.0, +34.0, dx=3, dy=-5)
-    front_leg = place_tuck_leg(tpl['leg_front'], 30.5, 40.0, -38.0, dx=3, dy=-6)
-    tucked = composite_over(composite_over(back_leg, front_leg), canvas)
-
-    # Draw compact tucked golden recurve bow held close across her chest
-    tucked = draw_articulated_bow(
-        tucked,
-        shoulder=(29, 20),
-        aim_deg=48.0,
-        draw_t=0.0,
-        bow_reach=6.5,
-        bow_half_span=9.2
+    t = max(0.0, tuck_amount)
+    # Far leg trails gracefully backward-left; Near leg tucks high forward-right at the knee with shin angled back!
+    far_leg = build_aerial_leg(
+        tpl['leg_back'],
+        20.5,
+        knee_dx=-3.2 * t - 1.0,
+        knee_dy=4.2 - 1.2 * t,
+        foot_dx=-3.8 * t,
+        foot_dy=torso_dy - 3.2 * t,
+        boot_rot_deg=-24.0 * t,
+        is_far_leg=True
+    )
+    near_leg = build_aerial_leg(
+        tpl['leg_front'],
+        30.5,
+        knee_dx=4.5 * t + 1.2,
+        knee_dy=3.2 - 2.4 * t,
+        foot_dx=1.2 * t,
+        foot_dy=torso_dy - 4.8 * t,
+        boot_rot_deg=-22.0 * t,
+        is_far_leg=False
     )
 
-    # Rotate the compact tucked ranger around center (26, 25.5) using Nearest-Neighbor
-    pil_tuck = Image.fromarray(tucked, mode='RGBA')
-    pil_rot = pil_tuck.rotate(rot_deg, resample=Image.NEAREST, center=(26.0, 25.5))
-    out = np.array(pil_rot, dtype=np.uint8)
+    tunic_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    for off_x, col in [(-2.0, CLOAK_DARK), (-1.0, CLOAK_MID), (0.0, CLOAK_LIGHT), (1.0, GOLD_MID)]:
+        draw_line_px(tunic_layer, hip_x + off_x, hip_y - 1, hip_x + off_x + 1.5 * t, hip_y + 4.0 - 1.0 * t, col)
 
-    # Ensure 2px safety margin at edges so exterior rim never clips
-    out[:2, :, :] = 0
-    out[50:, :, :] = 0
-    out[:, :2, :] = 0
-    out[:, 50:, :] = 0
-
-    # Add a crisp 1px emerald-gold rotational Zephyr Wind-Flip ribbon arc around the somersault
-    ang0 = math.radians(-rot_deg - 55.0)
-    for step in range(9):
-        a = ang0 + step * 0.16
-        rx = 26.0 + math.cos(a) * 19.5
-        ry = 25.5 + math.sin(a) * 19.5
-        col = STAR_GOLD if step in (0, 1) else (EMERALD_BRIGHT if step < 6 else EMERALD_MID)
-        set_px(out, rx, ry, col)
-
+    out = composite_over(cloak_layer, far_leg)
+    out = composite_over(out, tunic_layer)
+    out = composite_over(out, near_leg)
+    out = composite_over(out, torso_layer)
     return out
 
 
 def build_row8_jump(tpl):
     """
-    Row 8: 30-Frame Dedicated JUMP Sequence (ZEPHYR 360° FLIP & MID-AIR COUNTER-SHOT):
-    - Frames 0..3:   Pre-jump deep crouch & explosive wind-spring launch (4 frames)
-    - Frames 4..13:  Full 360° Acrobatic Mid-Air Sommersault Flip! (10 frames: 36° -> 350°)
-    - Frames 14..18: Flip exit snap-open at apex & downward (+26°) aerial bow draw (5 frames)
-    - Frames 19..23: Downward Aerial Flip-Shot release flash, string snap & recoil (5 frames)
-    - Frames 24..29: Parachute cloak descent & shock-absorbing crouch touchdown (6 frames)
+    Row 8: 30-Frame Dedicated JUMP Sequence (ZEPHYR VAULT & MID-AIR COUNTER-SHOT):
+    - Frames 0..3:   Pre-jump athletic knee-bend crouch & wind-spring launch (4 frames)
+    - Frames 4..9:   Sleek Full-Body Aerial Scissor-Vault & Quiver Reach (6 frames — zero round ball!)
+    - Frames 10..17: Mid-Air Wind-Glide Hover & Progressive Downward (+24°) Bow Draw (8 frames)
+    - Frames 18..23: Downward Aerial Counter-Shot Release Flash, String Snap & Recoil (6 frames)
+    - Frames 24..29: Smooth Gliding Descent & Shock-Absorbing Ranger Landing (6 frames)
     """
     frames = []
-    flip_angles = [-36.0, -72.0, -108.0, -144.0, -180.0, -216.0, -252.0, -288.0, -324.0, -350.0]
 
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
         if f <= 3:
-            # Pre-jump crouch (f=0..2) -> explosive launch (f=3)
+            # Frames 0..3: Pre-jump crouch (f=0..2) -> explosive launch push-off (f=3)
             crouch_seq = [1, 3, 4, 1]
-            tuck_seq = [0.0, 0.2, 0.3, -0.2]
             dy = crouch_seq[f]
-            body = make_crouch_body(tpl, dy) if dy >= 2 else make_jump_body(tpl, dy, tuck_seq[f])
+            body = make_crouch_body(tpl, dy) if dy >= 2 else make_jump_body(tpl, dy, tuck_amount=0.25)
             body = apply_cloak_wave(body, phase * 2.0, amplitude=1.8, vertical_flutter=0.8)
-            aim_deg = [38.0, 44.0, 48.0, 24.0][f]
+            aim_deg = [36.0, 42.0, 46.0, 18.0][f]
             frame = draw_articulated_bow(
                 body,
                 shoulder=(28, 16 + dy),
@@ -1414,31 +1414,45 @@ def build_row8_jump(tpl):
                 bow_reach=9.5,
                 bow_half_span=12.0
             )
-            if f == 3:
-                for wx in (19, 23, 28, 32):
-                    set_px(frame, wx, 48, STAR_GOLD if wx % 2 == 0 else EMERALD_BRIGHT)
             frames.append(frame)
 
-        elif f <= 13:
-            # Frames 4..13 (10 frames): Full 360° Acrobatic Tucked Sommersault Flip!
+        elif f <= 9:
+            # Frames 4..9 (6 frames): Full-body sleek aerial vault & quiver arrow-nock!
             k = f - 4
-            rot_deg = flip_angles[k]
-            frame = make_somersault_tuck_frame(tpl, rot_deg, k)
-            frames.append(frame)
+            u = k / 5.0
+            tuck = 0.45 + 0.55 * math.sin(u * math.pi * 0.65)
+            lean_dx = -1 if k in (1, 2, 3) else 0
+            body = make_jump_body(tpl, 0, tuck_amount=tuck, torso_lean_dx=lean_dx)
+            body = apply_cloak_wave(body, phase * 2.0, amplitude=2.4, vertical_flutter=1.1)
 
-        elif f <= 18:
-            # Frames 14..18 (5 frames): Snap out of flip at apex & draw bow downward (+26°) at enemy!
-            k = f - 14
-            u = k / 4.0
-            tuck = 1.0
-            body = make_jump_body(tpl, 0, tuck)
-            body = apply_cloak_wave(body, phase * 2.0, amplitude=2.3, vertical_flutter=1.1)
-            draw_t = 0.35 + u * 0.65  # 0.35 -> 1.00 full draw
-            charge = 3 if f >= 17 else (2 if f >= 15 else 1)
+            # Bow sweeps from upward vault (-14 deg) down toward aerial target (+22 deg) while right hand nocks arrow
+            aim_seq = [-6.0, -14.0, -10.0, +2.0, +14.0, +22.0]
+            hand_pts = [(23, 14), (20, 11), (22, 12), (28, 14), (33, 16), (35, 18)]
             frame = draw_articulated_bow(
                 body,
-                shoulder=(28, 16),
-                aim_deg=+26.0,  # Aimed diagonally DOWNWARD out of the flip!
+                shoulder=(28 + lean_dx, 16),
+                aim_deg=aim_seq[k],
+                draw_t=0.0,
+                arrow_mode='single' if k >= 4 else 'none',
+                hand_override=hand_pts[k],
+                bow_reach=9.8,
+                bow_half_span=12.2
+            )
+            frames.append(frame)
+
+        elif f <= 17:
+            # Frames 10..17 (8 frames): Mid-Air Wind-Glide Hover & Progressive Downward (+24°) Bow Draw!
+            k = f - 10
+            u = k / 7.0
+            tuck = 1.0 - u * 0.12
+            body = make_jump_body(tpl, 0, tuck_amount=tuck, torso_lean_dx=1 if k >= 3 else 0)
+            body = apply_cloak_wave(body, phase * 2.0, amplitude=2.3, vertical_flutter=1.1)
+            draw_t = 0.18 + u * 0.82  # 0.18 -> 1.00 full draw
+            charge = 3 if f >= 16 else (2 if f >= 14 else (1 if f >= 12 else 0))
+            frame = draw_articulated_bow(
+                body,
+                shoulder=(29 if k >= 3 else 28, 16),
+                aim_deg=+24.0,  # Aimed diagonally DOWNWARD at grounded enemy!
                 draw_t=draw_t,
                 arrow_mode='single',
                 charge_level=charge,
@@ -1448,18 +1462,15 @@ def build_row8_jump(tpl):
             frames.append(frame)
 
         elif f <= 23:
-            # Frames 19..23 (5 frames): Downward Flip-Shot release flash, string vibration & recoil!
-            k = f - 19
-            body = make_jump_body(tpl, 0, tuck_amount=0.9 - k * 0.14)
-            if k in (0, 1):
-                body = np.roll(body, -1, axis=1)
-                body[:, -1:] = 0
-            body = apply_cloak_wave(body, phase * 2.0, amplitude=2.4, vertical_flutter=1.2)
-            vib = [1.9, -1.3, 0.8, -0.4, 0.0][k]
+            # Frames 18..23 (6 frames): Downward Aerial Shot release flash, string vibration & mid-air recoil!
+            k = f - 18
+            body = make_jump_body(tpl, 0, tuck_amount=0.85 - k * 0.10, torso_lean_dx=-1 if k <= 2 else 0)
+            body = apply_cloak_wave(body, phase * 2.0, amplitude=2.5, vertical_flutter=1.2)
+            vib = [1.9, -1.4, 0.9, -0.5, 0.2, 0.0][k]
             frame = draw_articulated_bow(
                 body,
-                shoulder=(27 if k <= 1 else 28, 16),
-                aim_deg=+24.0 - k * 2.0,
+                shoulder=(27 if k <= 2 else 28, 16),
+                aim_deg=+24.0 - k * 1.8,
                 draw_t=0.0,
                 string_vib=vib,
                 arrow_mode='none',
@@ -1471,22 +1482,22 @@ def build_row8_jump(tpl):
             frames.append(frame)
 
         else:
-            # Frames 24..29 (6 frames): Parachute cloak descent (F24..F25) & crouch touchdown (F26..F29)
+            # Frames 24..29 (6 frames): Smooth gliding leg extension (F24..F25) & crouch touchdown (F26..F29)
             k = f - 24
             if k <= 1:
-                tuck = [0.35, 0.12][k]
-                body = make_jump_body(tpl, 0, tuck)
-                body = apply_cloak_wave(body, phase * 2.0, amplitude=2.1, vertical_flutter=1.3)
+                tuck = [0.32, 0.10][k]
+                body = make_jump_body(tpl, 0, tuck_amount=tuck)
+                body = apply_cloak_wave(body, phase * 2.0, amplitude=2.0, vertical_flutter=1.1)
                 frame = draw_articulated_bow(
                     body,
                     shoulder=(28, 16),
-                    aim_deg=22.0 + k * 6.0,
+                    aim_deg=20.0 + k * 6.0,
                     draw_t=0.0,
                     bow_reach=9.8,
                     bow_half_span=12.2
                 )
             else:
-                crouch_depths = [3, 4, 2, 0]
+                crouch_depths = [2, 3, 1, 0]
                 d = crouch_depths[k - 2]
                 body = tpl['stand'].copy() if d == 0 else make_crouch_body(tpl, d)
                 body = apply_cloak_wave(body, phase, amplitude=1.6, vertical_flutter=0.7)
