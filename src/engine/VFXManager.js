@@ -734,32 +734,59 @@ export class VFXManager {
       if (type === 'gold') return { nr: 1.0, ng: 0.88, nb: 0.28 };
       return { nr: 1.0, ng: 0.52, nb: 0.16 };
     };
+    const typeForHex = (col) => {
+      if (!col) return 'cyan';
+      if (col === '#10b981' || col === '#34d399' || col === '#6ee7b7' || col === '#a7f3d0' || col === '#4ade80') {
+        return 'emerald';
+      }
+      if (
+        col === '#c084fc' ||
+        col === '#9333ea' ||
+        col === '#7e22ce' ||
+        col === '#e11d48' ||
+        col === '#f43f5e' ||
+        col === '#e879f9'
+      ) {
+        return 'violet';
+      }
+      if (col === '#2dd4bf' || col === '#99f6e4' || col === '#14b8a6' || col === '#5eead4') {
+        return 'teal';
+      }
+      if (
+        col === '#fde047' ||
+        col === '#facc15' ||
+        col === '#eab308' ||
+        col === '#fef08a' ||
+        col === '#fef9c3' ||
+        col === '#ca8a04'
+      ) {
+        return 'gold';
+      }
+      if (col === '#fb923c' || col === '#f97316' || col === '#ea580c' || col === '#dc2626') {
+        return 'orange';
+      }
+      return 'cyan';
+    };
     const pushLight = (x, y, radius, colorType, intensity, z = 68) => {
       const { nr, ng, nb } = rgbForType(colorType);
       lights.push({ x, y, z, radius, colorType, intensity, nr, ng, nb });
     };
 
     for (const f of fighters) {
-      const colorType =
-        f.primaryColor === '#38bdf8'
-          ? 'cyan'
-          : f.primaryColor === '#10b981'
-            ? 'emerald'
-            : f.primaryColor === '#c084fc'
-              ? 'violet'
-              : f.primaryColor === '#2dd4bf'
-                ? 'teal'
-                : f.primaryColor === '#fde047'
-                  ? 'gold'
-                  : 'orange';
+      const colorType = typeForHex(f.primaryColor);
       pushLight(
         f.x + f.facing * 24,
         f.y - 68,
-        f.state === 'ULTIMATE' ? 285 : f.state === 'SKILL' ? 225 : 165,
+        f.state === 'ULTIMATE' ? 295 : f.state === 'SKILL' ? 235 : 175,
         colorType,
-        f.state === 'ULTIMATE' ? 1.75 : f.state === 'SKILL' ? 1.42 : 1.05,
+        f.state === 'ULTIMATE' ? 1.85 : f.state === 'SKILL' ? 1.50 : 1.12,
         64
       );
+      // Seraphina's active Cathedral Rose Halo & Seraphim Wings emit intense Celestial Gold + Emerald Grace light!
+      if (f.heroId === 'priestess' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isAngelicAscent)) {
+        pushLight(f.x, f.y - 124, f.state === 'ULTIMATE' ? 385 : 310, 'gold', f.state === 'ULTIMATE' ? 1.98 : 1.75, 90);
+        pushLight(f.x, f.y - 95, 240, 'emerald', 1.35, 76);
+      }
       // Chronomancer's active Colossal Doomsday Clock & Stasis Hourglass emit intense dual Teal + Gold light!
       if (f.doomsdayClock) {
         pushLight(f.doomsdayClock.x, f.doomsdayClock.y, 410, 'teal', 1.95, 92);
@@ -774,26 +801,33 @@ export class VFXManager {
       }
     }
     for (const p of this.projectiles) {
-      const colorType =
-        p.color === '#38bdf8' || p.color === '#7dd3fc' || p.color === '#e0f2fe'
-          ? 'cyan'
-          : p.color === '#10b981' || p.color === '#34d399'
-            ? 'emerald'
-            : p.color === '#c084fc' || p.color === '#e11d48'
-              ? 'violet'
-              : p.color === '#2dd4bf'
-                ? 'teal'
-                : p.color === '#facc15' || p.color === '#fde047'
-                  ? 'gold'
-                  : 'orange';
+      const colorType = typeForHex(p.color);
       pushLight(
         p.x,
         p.y,
-        p.isMeteor ? 360 : p.type === 'clock_gear' ? 225 : 195,
+        p.isMeteor ? 360 : p.type === 'clock_gear' ? 225 : 205,
         colorType,
-        p.isMeteor ? 1.85 : p.type === 'clock_gear' ? 1.55 : 1.35,
+        p.isMeteor ? 1.85 : p.type === 'clock_gear' ? 1.55 : 1.42,
         72
       );
+    }
+    for (const b of this.beams) {
+      const colorType = typeForHex(b.color);
+      const midX = (b.x1 + b.x2) * 0.5;
+      const midY = (b.y1 + b.y2) * 0.5;
+      pushLight(midX, midY, 310, colorType, 1.85, 86);
+      pushLight(b.x2, b.y2, 295, colorType, 1.90, 82);
+    }
+    for (const s of this.slashes) {
+      const midA = (s.startAngle + s.endAngle) * 0.5;
+      const sx = s.x + Math.cos(midA) * s.radius * 0.65;
+      const sy = s.y + Math.sin(midA) * s.radius * 0.65;
+      pushLight(sx, sy, 215, typeForHex(s.color), 1.48, 72);
+    }
+    for (const ss of this.skyStrikes) {
+      if (ss.delay <= 0) {
+        pushLight(ss.x, ss.y, 195, typeForHex(ss.color), 1.42, 74);
+      }
     }
     for (const pil of this.pillars) {
       const colorType =
@@ -807,9 +841,9 @@ export class VFXManager {
       pushLight(
         pil.x,
         gy - 85,
-        pil.erupted ? 275 : 165,
+        pil.erupted ? 285 : 175,
         colorType,
-        pil.erupted ? 1.7 : 1.0,
+        pil.erupted ? 1.8 : 1.1,
         75
       );
     }
@@ -829,6 +863,29 @@ export class VFXManager {
     for (const sp of this.crystalSpikes) {
       if (sp.life >= 0) {
         pushLight(sp.x, sp.groundY - sp.height * 0.5, 175, 'cyan', 1.25, 62);
+      }
+    }
+    // Sample active character particles & glyphs so swirling particle bursts cast real 3D normal-mapped light!
+    const pLen = this.particles.length;
+    if (pLen > 0) {
+      const stride = Math.max(1, Math.floor(pLen / 8));
+      for (let i = 0; i < pLen && lights.length < 34; i += stride) {
+        const pt = this.particles[i];
+        const fade = 1 - pt.life / pt.maxLife;
+        if (fade > 0.25) {
+          pushLight(pt.x, pt.y, 135, typeForHex(pt.color), 0.95 * fade, 62);
+        }
+      }
+    }
+    const gLen = this.glyphs.length;
+    if (gLen > 0) {
+      const gStride = Math.max(1, Math.floor(gLen / 5));
+      for (let i = 0; i < gLen && lights.length < 38; i += gStride) {
+        const gl = this.glyphs[i];
+        const fade = 1 - gl.life / gl.maxLife;
+        if (fade > 0.25) {
+          pushLight(gl.x, gl.y, 145, typeForHex(gl.color), 1.05 * fade, 64);
+        }
       }
     }
     return lights;
@@ -1219,11 +1276,9 @@ export class VFXManager {
     for (const b of this.beams) {
       const t = b.life / b.maxLife;
       const env = Math.sin(t * Math.PI);
+      const beamAlpha = (1 - t * 0.32) * (isReflection ? 0.42 : 0.96);
 
       ctx.save();
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = (1 - t * 0.35) * (isReflection ? 0.42 : 0.94);
-
       const dx = b.x2 - b.x1;
       const dy = b.y2 - b.y1;
       const dist = Math.hypot(dx, dy) || 1;
@@ -1237,26 +1292,52 @@ export class VFXManager {
       const spanLen = Math.max(40, headX - tailX);
       const stepPx = 8;
 
+      // 1. Emit large radial light halos along the beam shaft so beams visibly illuminate the stage!
+      if (renderer && !isReflection && renderer.getGlowForColor) {
+        const bGlow = renderer.getGlowForColor(b.color);
+        if (bGlow) {
+          ctx.globalCompositeOperation = 'lighter';
+          const gR = Math.max(95, b.width * 2.4);
+          for (let gStep = 0; gStep <= 4; gStep++) {
+            const gx = tailX + (spanLen * gStep) / 4;
+            ctx.globalAlpha = beamAlpha * 0.42;
+            ctx.drawImage(bGlow, gx - gR, -gR * 0.65, gR * 2, gR * 1.3);
+          }
+        }
+      }
+
       for (let x = tailX; x <= headX; x += stepPx) {
         const u = (x - tailX) / spanLen;
         const taper = Math.sin(Math.pow(u, 0.65) * Math.PI);
-        const hOuter = Math.max(4, Math.round(((b.width * 0.64 * taper * env) / 4)) * 4);
-        const hInner = Math.max(2, Math.round((hOuter * 0.48) / 2) * 2);
+        const hOuter = Math.max(4, Math.round(((b.width * 0.68 * taper * env) / 4)) * 4);
+        const hInner = Math.max(4, Math.round((hOuter * 0.52) / 2) * 2);
         const undulate = Math.round((Math.sin(x * 0.032 - b.life * 32) * 8 * (1 - u * 0.5)) / 2) * 2;
 
-        // Saturated outer beam glow sheath
-        ctx.globalAlpha = (1 - t * 0.35) * (isReflection ? 0.22 : 0.42);
+        // Additive outer beam glow sheath in lighter mode
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = beamAlpha * (isReflection ? 0.24 : 0.48);
         ctx.fillStyle = b.color;
-        ctx.fillRect(x - 2, undulate - hOuter * 0.9, stepPx + 4, hOuter * 1.8);
+        ctx.fillRect(x - 2, undulate - hOuter * 1.05, stepPx + 4, hOuter * 2.1);
 
-        ctx.globalAlpha = (1 - t * 0.35) * (isReflection ? 0.42 : 0.94);
+        // Saturated beam body + incandescent white-hot inner core
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = beamAlpha;
         ctx.fillStyle = b.color;
         ctx.fillRect(x, undulate - hOuter * 0.5, stepPx, hOuter);
         ctx.fillStyle = b.coreColor;
         ctx.fillRect(x, undulate - hInner * 0.5, stepPx, hInner);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(x, undulate - Math.max(2, hInner * 0.25), stepPx, Math.max(4, hInner * 0.5));
 
         const helix1 = Math.round((Math.sin(x * 0.055 - b.life * 36) * (hOuter * 1.15 + 10)) / 4) * 4;
         const helix2 = Math.round((-Math.sin(x * 0.055 - b.life * 36) * (hOuter * 1.15 + 10)) / 4) * 4;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = beamAlpha * 0.55;
+        ctx.fillStyle = b.color;
+        ctx.fillRect(x - 2, undulate + helix1 - 5, 12, 10);
+        ctx.fillRect(x - 2, undulate + helix2 - 5, 12, 10);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = beamAlpha;
         ctx.fillStyle = b.coreColor;
         ctx.fillRect(x, undulate + helix1 - 3, 8, 6);
         ctx.fillStyle = b.color;
@@ -1294,7 +1375,7 @@ export class VFXManager {
           isReflection
         );
       } else if (isHolyBeam && priestVfx) {
-        const starSz = 148;
+        const starSz = 164;
         this.drawBloomedSprite(
           ctx,
           renderer,
@@ -1308,7 +1389,7 @@ export class VFXManager {
           starSz,
           starSz,
           '#fde047',
-          1 - t * 0.3,
+          1 - t * 0.25,
           isReflection
         );
       } else if (isFireBeam && mageVfx) {
@@ -1404,34 +1485,37 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 5. PARTICLES: Deeply Saturated 4px-Aligned Chunky Pixel Blocks with Balanced HD-2D Bloom!
+    // 5. PARTICLES: Deeply Saturated 4px-Aligned Chunky Pixel Blocks with Radiant Light Emission & Incandescent Cores!
     for (const p of this.particles) {
       const t = p.life / p.maxLife;
       const fade = 1 - t;
       const s = Math.max(4, Math.round(((p.size * fade + p.endSize * t) / 4)) * 4);
       const px = Math.round(p.x / 4) * 4;
       const py = Math.round(p.y / 4) * 4;
-      const pCol = p.color === '#ffffff' ? '#38bdf8' : p.color;
+      const pCol = p.color === '#ffffff' ? '#fef9c3' : p.color;
 
-      // 1. Balanced radial jewel-tone bloom halo around each chunky pixel particle
+      // 1. Radiant radial jewel-tone light halo around every chunky pixel particle so every particle visibly emits light!
       if (renderer && !isReflection && s >= 4) {
         const glowTex = renderer.getGlowForColor ? renderer.getGlowForColor(pCol) : renderer.glowCyan;
-        const glowR = s * 2.6;
+        const glowR = Math.max(22, s * 4.2);
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.28;
+        ctx.globalAlpha = fade * 0.46;
         ctx.drawImage(glowTex, px - glowR, py - glowR, glowR * 2, glowR * 2);
       }
-      // 2. Stepped chunky outer pixel bloom block (+6px) in balanced lighter mode
+      // 2. Stepped chunky outer pixel bloom block (+6px) in lighter mode
       ctx.globalCompositeOperation = 'lighter';
       const outerS = s + 6;
-      ctx.globalAlpha = fade * (isReflection ? 0.16 : 0.32);
+      ctx.globalAlpha = fade * (isReflection ? 0.22 : 0.42);
       ctx.fillStyle = pCol;
       ctx.fillRect(px - outerS * 0.5, py - outerS * 0.5, outerS, outerS);
-      // 3. Richly saturated main chunky pixel block in source-over
+      // 3. Richly saturated main chunky pixel block + incandescent white-gold core pixel in source-over
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * (isReflection ? 0.65 : 0.96);
+      ctx.globalAlpha = fade * (isReflection ? 0.70 : 0.98);
       ctx.fillStyle = pCol;
       ctx.fillRect(px - s * 0.5, py - s * 0.5, s, s);
+      const coreS = Math.max(2, Math.round(s * 0.45));
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(px - coreS * 0.5, py - coreS * 0.5, coreS, coreS);
     }
 
     // 6. SLASHES: Deeply Saturated Chunky-Pixel Crescent Blade, Scythe & Whirlwind Waves + Stepped Arcs
@@ -1893,11 +1977,11 @@ export class VFXManager {
       }
     }
 
-    // 9. LIGHTNINGS: Stepped Saturated Pixel-Art Skyward Thunderbolts
+    // 9. LIGHTNINGS: Stepped Saturated Pixel-Art Skyward Thunderbolts with Radial Light Glow
     for (const l of this.lightnings) {
       const t = l.life / l.maxLife;
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1 - t;
+      const fade = 1 - t;
+      const glowTex = renderer && renderer.getGlowForColor ? renderer.getGlowForColor(l.color) : null;
       for (let idx = 0; idx < l.pts.length - 1; idx++) {
         const p0 = l.pts[idx];
         const p1 = l.pts[idx + 1];
@@ -1906,11 +1990,20 @@ export class VFXManager {
           const u = s / steps;
           const lx = Math.round((p0.x + (p1.x - p0.x) * u) / 4) * 4;
           const ly = Math.round((p0.y + (p1.y - p0.y) * u) / 4) * 4;
-          const wOuter = Math.max(4, Math.round(((1 - t) * 18) / 4) * 4);
+          const wOuter = Math.max(4, Math.round((fade * 18) / 4) * 4);
+          if (glowTex && !isReflection && s % 2 === 0) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = fade * 0.42;
+            ctx.drawImage(glowTex, lx - 36, ly - 36, 72, 72);
+          }
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = fade;
           ctx.fillStyle = l.mainColor || '#0284c7';
           ctx.fillRect(lx - wOuter * 0.5, ly - 4, wOuter, 8);
           ctx.fillStyle = l.color === '#ffffff' ? '#38bdf8' : l.color;
           ctx.fillRect(lx - wOuter * 0.25, ly - 4, wOuter * 0.5, 8);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(lx - 2, ly - 2, 4, 4);
         }
       }
     }
@@ -1929,8 +2022,8 @@ export class VFXManager {
           const glowTex = renderer.getGlowForColor(g.color);
           ctx.save();
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = Math.min(1, (1 - p) * 0.32);
-          ctx.drawImage(glowTex, gx - 24, gy - 24, 48, 48);
+          ctx.globalAlpha = Math.min(1, (1 - p) * 0.52);
+          ctx.drawImage(glowTex, gx - 34, gy - 34, 68, 68);
           ctx.restore();
         }
 
@@ -1990,11 +2083,9 @@ export class VFXManager {
         if (!ca.fighter || ca.fighter.isDead) continue;
         const t = ca.life / ca.maxLife;
         const env = t < 0.14 ? t / 0.14 : Math.max(0, 1 - (t - 0.14) / 0.86);
+        const glowTex = renderer && renderer.getGlowForColor ? renderer.getGlowForColor(ca.mainColor) : null;
 
         ctx.save();
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = env * 0.90;
-
         // Rising Vertical Pixel-Art Energy Streamers framing the character's left & right silhouette
         const streamCount = ca.isUltimate ? 6 : 4;
         for (let s = 0; s < streamCount; s++) {
@@ -2004,10 +2095,19 @@ export class VFXManager {
           const phase = (ca.life * 260 + s * 42) % 140;
           const sy = Math.round((ca.fighter.y - 16 - phase) / 4) * 4;
           const sh = ca.isUltimate ? 28 : 20;
+          if (glowTex) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = env * 0.42;
+            ctx.drawImage(glowTex, sx - 26, sy - sh - 18, 52, sh + 36);
+          }
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = env * 0.94;
           ctx.fillStyle = ca.borderColor;
           ctx.fillRect(sx - 3, sy - sh - 2, 6, sh + 4);
           ctx.fillStyle = ca.mainColor;
           ctx.fillRect(sx - 2, sy - sh, 4, 8);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(sx - 1, sy - sh + 2, 2, 4);
         }
 
         ctx.restore();
@@ -2021,10 +2121,16 @@ export class VFXManager {
         const iy = Math.round(imp.y / 4) * 4;
         const rInner = Math.round((24 + t * 38) / 4) * 4;
         const rOuter = Math.round(((imp.isCrit ? 76 : 58) + t * 46) / 4) * 4;
+        const glowTex = renderer && renderer.getGlowForColor ? renderer.getGlowForColor(imp.color) : null;
 
         ctx.save();
+        if (glowTex) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.min(1, env * 0.56);
+          ctx.drawImage(glowTex, ix - 95, iy - 95, 190, 190);
+        }
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = Math.min(1, env * 0.92);
+        ctx.globalAlpha = Math.min(1, env * 0.94);
         const rayCount = imp.isCrit ? 8 : 6;
         for (let r = 0; r < rayCount; r++) {
           const a = imp.rot + (r / rayCount) * Math.PI * 2;
@@ -2038,6 +2144,8 @@ export class VFXManager {
             ctx.fillRect(rx - sz, ry - sz, sz * 2, sz * 2);
             ctx.fillStyle = imp.color;
             ctx.fillRect(rx - sz * 0.5, ry - sz * 0.5, sz, sz);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(rx - 2, ry - 2, 4, 4);
           }
         }
         ctx.restore();
@@ -2183,17 +2291,59 @@ export class VFXManager {
     }
   }
 
-  renderFloatingTexts(ctx) {
+  renderFloatingTexts(ctx, fighters = []) {
+    // 0. PERSISTENT CRISP PIXEL P1 / P2 CHAMPION IDENTIFIER POINTERS ABOVE EACH FIGHTER
+    if (fighters && fighters.length > 0) {
+      for (let i = 0; i < fighters.length; i++) {
+        const f = fighters[i];
+        if (!f || f.isDead) continue;
+        const px = Math.round(f.x / 2) * 2;
+        const py = Math.round((f.y - 208) / 2) * 2;
+        const tag = i === 0 ? 'P1' : 'P2';
+        const col = f.primaryColor || (i === 0 ? '#38bdf8' : '#fde047');
+
+        ctx.save();
+        ctx.globalAlpha = 0.92;
+        // Compact dark obsidian badge with champion signature color border
+        ctx.fillStyle = col;
+        ctx.fillRect(px - 14, py - 18, 28, 14);
+        ctx.fillStyle = '#060410';
+        ctx.fillRect(px - 12, py - 16, 24, 10);
+        PixelFont.drawCentered(ctx, tag, px, py - 8, 1, col, '#ffffff', true);
+        // Crisp downward pixel pointer chevron aimed at the champion's head
+        ctx.fillStyle = '#060410';
+        ctx.fillRect(px - 6, py - 3, 12, 4);
+        ctx.fillRect(px - 4, py + 1, 8, 4);
+        ctx.fillStyle = col;
+        ctx.fillRect(px - 4, py - 3, 8, 3);
+        ctx.fillRect(px - 2, py, 4, 3);
+        ctx.restore();
+      }
+    }
+
     // 1. OVERHEAD SPECIAL MOVE & ULTIMATE ART CALLOUT PLATES ABOVE CHARACTER HEAD (100% Crisp Pixel Font)
-    for (const ca of this.castAuras) {
+    const activeBanners = [];
+    for (let idx = 0; idx < this.castAuras.length; idx++) {
+      const ca = this.castAuras[idx];
       if (!ca.fighter || ca.fighter.isDead) continue;
       const t = ca.life / ca.maxLife;
       const alpha = t < 0.08 ? t / 0.08 : t > 0.78 ? Math.max(0, (1 - t) / 0.22) : 1.0;
 
-      // Anchor cleanly above the caster's helmet/hat/hood so their head stays 100% visible
-      const headX = Math.max(165, Math.min(1035, Math.round(ca.fighter.x / 2) * 2));
+      // Anchor high above the caster's head/wings so their character and face stay 100% unobstructed
+      let headX = Math.max(165, Math.min(1035, Math.round(ca.fighter.x / 2) * 2));
       const floatLift = Math.round(Math.min(12, t * 18) / 2) * 2;
-      const headY = Math.max(52, Math.round((ca.fighter.y - 216 - floatLift) / 2) * 2);
+      let headY = Math.round((ca.fighter.y - 246 - floatLift) / 2) * 2;
+
+      // Prevent simultaneous P1 & P2 callout plates from overlapping each other in close-range clashes
+      for (const prev of activeBanners) {
+        if (Math.abs(headX - prev.x) < 210 && Math.abs(headY - prev.y) < 46) {
+          headY = prev.y - 48;
+        }
+      }
+      activeBanners.push({ x: headX, y: headY });
+
+      const heroLabel = (ca.fighter.name || ca.fighter.heroId || '').toUpperCase();
+      const headerTag = heroLabel ? `* ${heroLabel} *` : ca.tag;
 
       ctx.save();
       ctx.globalAlpha = alpha;
@@ -2201,7 +2351,7 @@ export class VFXManager {
       const titleScale = 2; // 10x14 crisp pixel characters
       const tagScale = 1; // 5x7 crisp micro-pixel header
       const titleW = PixelFont.measureWidth(ca.title, titleScale);
-      const tagW = PixelFont.measureWidth(ca.tag, tagScale);
+      const tagW = PixelFont.measureWidth(headerTag, tagScale);
       const plateW = Math.max(ca.isUltimate ? 196 : 164, Math.round((Math.max(titleW, tagW) + 28) / 4) * 4);
       const plateH = ca.isUltimate ? 40 : 36;
       const halfW = plateW / 2;
@@ -2232,8 +2382,8 @@ export class VFXManager {
       ctx.fillStyle = ca.coreColor;
       ctx.fillRect(headX - 4, headY + halfH + 6, 8, 4);
 
-      // Top micro-tag (★ ULTIMATE ART ★ / ✦ SPECIAL SKILL ✦) in 1px bitmap font
-      PixelFont.drawCentered(ctx, ca.tag, headX, headY - 9, tagScale, ca.coreColor, '#ffffff', true);
+      // Top micro-tag showing Champion Name in 1px bitmap font
+      PixelFont.drawCentered(ctx, headerTag, headX, headY - 9, tagScale, ca.coreColor, '#ffffff', true);
 
       // Main ability name in 2px bitmap font with 2-tone pixel highlight
       PixelFont.drawCentered(ctx, ca.title, headX, headY + 7, titleScale, ca.coreColor, '#ffffff', true);

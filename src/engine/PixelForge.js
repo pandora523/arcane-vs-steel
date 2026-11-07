@@ -248,24 +248,47 @@ export class PixelForge {
           }
         }
 
-        // 3. Compute 3D Surface Normal (nx, ny, nz) from height gradients on the 52x52 logical grid
+        // 3. Compute 3D Surface Normal (nx, ny, nz) + Character Inking Flags on the 52x52 logical grid
+        // edgeFlag:
+        //   1.0 = 1px Silhouette Comic Ink (d <= 1.05)
+        //   2.0 = 1px Inner Rim Catchlight (1.05 < d <= 2.2)
+        //   3.0 = 1px Exterior Luminous Separation Rim (d === 0, 4-connected to opaque silhouette)
+        //   4.0 = Interior Cel-Ink Crease Line (d > 2.2, local luminance crease between armor/limb/robe forms)
         const bumpStrength = 2.85;
         for (let y = 0; y < cellLow; y++) {
           for (let x = 0; x < cellLow; x++) {
             const idx = (oy + y) * wLow + (ox + x);
             const nBase = idx * 4;
             const d = distMap[idx];
-            if (d <= 0) {
-              normals[nBase] = 0;
-              normals[nBase + 1] = 0;
-              normals[nBase + 2] = 1;
-              normals[nBase + 3] = 0;
-              continue;
-            }
             const hL = x > 0 ? heightMap[idx - 1] : 0;
             const hR = x < cellLow - 1 ? heightMap[idx + 1] : 0;
             const hU = y > 0 ? heightMap[idx - wLow] : 0;
             const hD = y < cellLow - 1 ? heightMap[idx + wLow] : 0;
+
+            if (d <= 0) {
+              // Check if this transparent pixel is 4-connected to the opaque silhouette (1px Exterior Rim)
+              const touchesOpaque =
+                (x > 0 && distMap[idx - 1] > 0) ||
+                (x < cellLow - 1 && distMap[idx + 1] > 0) ||
+                (y > 0 && distMap[idx - wLow] > 0) ||
+                (y < cellLow - 1 && distMap[idx + wLow] > 0);
+              if (touchesOpaque) {
+                const gx = (hL - hR) * bumpStrength;
+                const gy = (hU - hD) * bumpStrength;
+                const gz = 0.85;
+                const invLen = 1.0 / Math.hypot(gx, gy, gz);
+                normals[nBase] = gx * invLen;
+                normals[nBase + 1] = gy * invLen;
+                normals[nBase + 2] = gz * invLen;
+                normals[nBase + 3] = 3.0;
+              } else {
+                normals[nBase] = 0;
+                normals[nBase + 1] = 0;
+                normals[nBase + 2] = 1;
+                normals[nBase + 3] = 0;
+              }
+              continue;
+            }
 
             const gx = (hL - hR) * bumpStrength;
             const gy = (hU - hD) * bumpStrength;
@@ -275,8 +298,36 @@ export class PixelForge {
             normals[nBase] = gx * invLen;
             normals[nBase + 1] = gy * invLen;
             normals[nBase + 2] = gz * invLen;
-            // Flag silhouette outline pixels (d <= 1.05) so 1px dark outlines stay crisp while inner rim catches light
-            normals[nBase + 3] = d <= 1.05 ? 1.0 : d <= 2.2 ? 2.0 : 0.0;
+
+            if (d <= 1.05) {
+              normals[nBase + 3] = 1.0;
+            } else if (d <= 2.2) {
+              normals[nBase + 3] = 2.0;
+            } else {
+              // Detect interior cel-ink creases where local pixel luminance drops sharply next to brighter forms
+              const pr = srcData[idx * 4];
+              const pg = srcData[idx * 4 + 1];
+              const pb = srcData[idx * 4 + 2];
+              const lum = (pr * 0.299 + pg * 0.587 + pb * 0.114) / 255.0;
+              let maxN = lum;
+              if (x > 0) {
+                const nI = (idx - 1) * 4;
+                maxN = Math.max(maxN, (srcData[nI] * 0.299 + srcData[nI + 1] * 0.587 + srcData[nI + 2] * 0.114) / 255.0);
+              }
+              if (x < cellLow - 1) {
+                const nI = (idx + 1) * 4;
+                maxN = Math.max(maxN, (srcData[nI] * 0.299 + srcData[nI + 1] * 0.587 + srcData[nI + 2] * 0.114) / 255.0);
+              }
+              if (y > 0) {
+                const nI = (idx - wLow) * 4;
+                maxN = Math.max(maxN, (srcData[nI] * 0.299 + srcData[nI + 1] * 0.587 + srcData[nI + 2] * 0.114) / 255.0);
+              }
+              if (y < cellLow - 1) {
+                const nI = (idx + wLow) * 4;
+                maxN = Math.max(maxN, (srcData[nI] * 0.299 + srcData[nI + 1] * 0.587 + srcData[nI + 2] * 0.114) / 255.0);
+              }
+              normals[nBase + 3] = lum < 0.40 && maxN - lum > 0.18 ? 4.0 : 0.0;
+            }
           }
         }
       }
@@ -360,7 +411,7 @@ export class PixelForge {
       recoilY = -2;
     }
 
-    // HD-2D Normal-Mapped 4-Step Pixel Lighting Pass (Sprite -> Guessed Height -> Normal Map -> Light in 4 Steps)
+    // HD-2D Normal-Mapped 4-Step Pixel Lighting + Dual-Layer Character Inking Pass
     const nm = !isReflection && renderer ? this.ensureNormalMap(charSet) : null;
     if (nm && renderer.activePointLights && renderer.activePointLights.length > 0) {
       const { cellLow, wLow, srcData, normals, litCanvas, litCtx, litImgData } = nm;
@@ -374,6 +425,21 @@ export class PixelForge {
       const lights = renderer.activePointLights;
       const numLights = lights.length;
 
+      // Champion Signature Elemental Rim Colors paired with Warm Sunlit Ivory-Gold (#fef3a8)
+      const rimPalettes = {
+        warrior: [56, 189, 248],       // Electric Frost-Cyan (#38bdf8)
+        archer: [52, 211, 153],        // Vivid Sylvan Emerald (#34d399)
+        mage: [251, 146, 60],          // Blazing Solar Amber (#fb923c)
+        priestess: [253, 224, 71],     // Radiant Archangel Gold (#fde047)
+        reaper: [232, 121, 249],       // Luminous Necrotic Orchid (#e879f9)
+        chronomancer: [45, 212, 191]   // Luminous Aether-Teal (#2dd4bf)
+      };
+      const elemRim = rimPalettes[fighter.heroId] || [56, 189, 248];
+      const inkMode =
+        (typeof window !== 'undefined' &&
+          (window.__INK_MODE__ || new URLSearchParams(window.location.search).get('ink'))) ||
+        'dual_gold_elemental';
+
       for (let py = 0; py < cellLow; py++) {
         const wy = fy - 198 + py * 4;
         const rowOff = (oy + py) * wLow + ox;
@@ -383,21 +449,85 @@ export class PixelForge {
           const sIdx = (rowOff + px) * 4;
           const dIdx = (dstRowOff + px) * 4;
           const a = srcData[sIdx + 3];
+          const edgeFlag = normals[sIdx + 3];
+
+          // 1px Exterior Separation Rim (edgeFlag === 3.0) on transparent pixels 4-connected to silhouette
           if (a === 0) {
-            dst[dIdx + 3] = 0;
+            if (edgeFlag === 3.0) {
+              const wnx = normals[sIdx] * flipX;
+              const wny = normals[sIdx + 1];
+              const wnz = normals[sIdx + 2];
+              const wx = fx + flipX * ((px - 26) * 4);
+
+              // Dynamic point-light boost on the exterior rim
+              let rimLightR = 0;
+              let rimLightG = 0;
+              let rimLightB = 0;
+              for (let li = 0; li < numLights; li++) {
+                const L = lights[li];
+                const dx = L.x - wx;
+                const dy = L.y - wy;
+                const rMax = L.radius;
+                if (Math.abs(dx) > rMax || Math.abs(dy) > rMax) continue;
+                const distSq = dx * dx + dy * dy;
+                if (distSq >= rMax * rMax) continue;
+                const dist2D = Math.sqrt(distSq);
+                const dz = L.z || 68;
+                const inv3D = 1.0 / Math.sqrt(distSq + dz * dz);
+                const ndotl = Math.max(0, wnx * dx * inv3D + wny * dy * inv3D + wnz * dz * inv3D);
+                if (ndotl > 0.05) {
+                  const att = (1.0 - dist2D / rMax) * L.intensity * ndotl;
+                  rimLightR += att * L.nr * 95;
+                  rimLightG += att * L.ng * 95;
+                  rimLightB += att * L.nb * 95;
+                }
+              }
+
+              if (inkMode === 'obsidian_comic') {
+                dst[dIdx] = 6;
+                dst[dIdx + 1] = 3;
+                dst[dIdx + 2] = 15;
+                dst[dIdx + 3] = 248;
+              } else if (inkMode === 'ivory_gold_rim') {
+                dst[dIdx] = Math.min(255, (254 + rimLightR * 0.25) | 0);
+                dst[dIdx + 1] = Math.min(255, (240 + rimLightG * 0.25) | 0);
+                dst[dIdx + 2] = Math.min(255, (138 + rimLightB * 0.25) | 0);
+                dst[dIdx + 3] = 236;
+              } else if (inkMode === 'neon_elemental') {
+                dst[dIdx] = Math.min(255, (elemRim[0] + rimLightR * 0.3) | 0);
+                dst[dIdx + 1] = Math.min(255, (elemRim[1] + rimLightG * 0.3) | 0);
+                dst[dIdx + 2] = Math.min(255, (elemRim[2] + rimLightB * 0.3) | 0);
+                dst[dIdx + 3] = 236;
+              } else {
+                // Default Winner ('dual_gold_elemental'): Directional Sunlit Ivory-Gold (#fef3a8) top/front rim
+                // blended with Champion Signature Elemental Neon on side/back rim
+                const goldMix = Math.max(
+                  0.22,
+                  Math.min(0.90, -wny * 0.52 + wnx * fighter.facing * 0.24 + 0.46)
+                );
+                const eMix = 1.0 - goldMix;
+                dst[dIdx] = Math.min(255, (254 * goldMix + elemRim[0] * eMix + rimLightR * 0.25) | 0);
+                dst[dIdx + 1] = Math.min(255, (243 * goldMix + elemRim[1] * eMix + rimLightG * 0.25) | 0);
+                dst[dIdx + 2] = Math.min(255, (168 * goldMix + elemRim[2] * eMix + rimLightB * 0.25) | 0);
+                dst[dIdx + 3] = 238;
+              }
+            } else {
+              dst[dIdx + 3] = 0;
+            }
             continue;
           }
 
           const baseR = srcData[sIdx];
           const baseG = srcData[sIdx + 1];
           const baseB = srcData[sIdx + 2];
-          const edgeFlag = normals[sIdx + 3];
+          const baseLum = (baseR * 0.299 + baseG * 0.587 + baseB * 0.114) / 255.0;
 
-          // Preserve the crisp 1px dark silhouette outline (#0B0F19)
-          if (edgeFlag === 1.0 && baseR < 28 && baseG < 32 && baseB < 45) {
-            dst[dIdx] = baseR;
-            dst[dIdx + 1] = baseG;
-            dst[dIdx + 2] = baseB;
+          // 1px Inner Silhouette Comic Ink (edgeFlag === 1.0): Unbroken Deep Obsidian-Indigo (#06030f)
+          // Locks in razor-sharp comic silhouette separation right inside the luminous exterior rim!
+          if (edgeFlag === 1.0 && baseLum < 0.94) {
+            dst[dIdx] = (6 * 0.88 + baseR * 0.12) | 0;
+            dst[dIdx + 1] = (3 * 0.88 + baseG * 0.12) | 0;
+            dst[dIdx + 2] = (15 * 0.88 + baseB * 0.12) | 0;
             dst[dIdx + 3] = a;
             continue;
           }
@@ -407,17 +537,23 @@ export class PixelForge {
           const wnz = normals[sIdx + 2];
           const wx = fx + flipX * ((px - 26) * 4);
 
-          // Base directional moonlight + 3D pillow ambient shading so away-facing normals have deep HD-2D shadow contrast
+          // Base directional moonlight + 3D pillow shading with rich saturated albedo
           const zenithDot = Math.max(0, -0.18 * wnx - 0.52 * wny + 0.83 * wnz);
           const zenithStep = Math.floor(Math.min(0.999, zenithDot) * 4) / 3;
-          let mulR = 0.62 + zenithStep * 0.24;
-          let mulG = 0.62 + zenithStep * 0.24;
-          let mulB = 0.66 + zenithStep * 0.26;
-          let addR = 0;
-          let addG = 0;
-          let addB = 0;
+          const isFaceOrHead = py <= 22;
+          const innerRimLift = edgeFlag === 2.0 && !isFaceOrHead ? 0.10 : 0.0;
+          let mulR = 0.72 + zenithStep * 0.24 + innerRimLift;
+          let mulG = 0.72 + zenithStep * 0.24 + innerRimLift;
+          let mulB = 0.75 + zenithStep * 0.25 + innerRimLift;
 
-          // Accumulate 3D Normal-Mapped Point Lights quantized into 4 discrete steps ("Light in 4 steps")
+          // Accumulate 3D Normal-Mapped Point Lights and quantize total irradiance into 4 discrete steps
+          let irradR = 0;
+          let irradG = 0;
+          let irradB = 0;
+          let specR = 0;
+          let specG = 0;
+          let specB = 0;
+
           for (let li = 0; li < numLights; li++) {
             const L = lights[li];
             const dx = L.x - wx;
@@ -438,25 +574,57 @@ export class PixelForge {
             const ndotl = Math.max(0, wnx * lx + wny * ly + wnz * lz);
             if (ndotl <= 0.04) continue;
 
-            // Quantize N·L into 4 crisp retro steps (0.0, 0.333, 0.667, 1.0) just like IMG_3334.jpeg!
             const step4 = Math.floor(Math.min(0.999, ndotl * 1.12) * 4) / 3;
             if (step4 <= 0) continue;
 
             const rawAtt = (1.0 - dist2D / rMax) * L.intensity;
-            const stepAtt = Math.min(1.45, Math.ceil(rawAtt * 4) / 4);
+            const stepAtt = Math.min(1.0, Math.ceil(rawAtt * 4) / 4);
             const contrib = step4 * stepAtt;
 
-            mulR += contrib * L.nr * 0.78;
-            mulG += contrib * L.ng * 0.78;
-            mulB += contrib * L.nb * 0.78;
+            irradR += contrib * L.nr;
+            irradG += contrib * L.ng;
+            irradB += contrib * L.nb;
 
-            // Crisp 4-step normal specular & inner-rim highlight on ridges facing the light
-            if (step4 >= 0.66 || (edgeFlag === 2.0 && step4 >= 0.33)) {
-              const spec = (step4 >= 0.95 ? 36 : 18) * stepAtt * (edgeFlag === 2.0 ? 1.35 : 1.0);
-              addR += spec * L.nr;
-              addG += spec * L.ng;
-              addB += spec * L.nb;
+            if (!isFaceOrHead && edgeFlag === 2.0 && step4 >= 0.66) {
+              const sVal = 16 * stepAtt;
+              specR = Math.max(specR, sVal * L.nr);
+              specG = Math.max(specG, sVal * L.ng);
+              specB = Math.max(specB, sVal * L.nb);
             }
+          }
+
+          // Quantize and cap total point-light diffuse contribution into 4 crisp HD-2D steps (max +0.32)
+          const peakIrrad = Math.max(irradR, irradG, irradB);
+          if (peakIrrad > 0 && !isFaceOrHead) {
+            const damp = Math.max(0.0, 1.0 - baseLum * 1.15);
+            const clampedPeak =
+              Math.min(0.32, (Math.ceil(Math.min(1.0, peakIrrad * 0.6) * 4) / 4) * 0.32) * damp;
+            const scale = clampedPeak / peakIrrad;
+            mulR += irradR * scale;
+            mulG += irradG * scale;
+            mulB += irradB * scale;
+          }
+
+          // Never over-brighten character faces (py <= 22) or bright skin/hair/gown pixels (baseLum > 0.48)
+          if (isFaceOrHead || baseLum > 0.48) {
+            mulR = Math.min(1.0, mulR);
+            mulG = Math.min(1.0, mulG);
+            mulB = Math.min(1.0, mulB);
+          }
+
+          const headroom = isFaceOrHead || baseLum > 0.48 ? 0.0 : Math.max(0.0, 1.0 - baseLum * 1.2);
+          let addR = specR * headroom;
+          let addG = specG * headroom;
+          let addB = specB * headroom;
+
+          // Interior Cel-Ink Crease Line (edgeFlag === 4.0): crisp hand-inked internal contour definition
+          if (edgeFlag === 4.0) {
+            mulR *= 0.38;
+            mulG *= 0.36;
+            mulB *= 0.42;
+            addR = 0;
+            addG = 0;
+            addB = 0;
           }
 
           dst[dIdx] = Math.min(255, Math.max(0, (baseR * mulR + addR) | 0));
@@ -495,23 +663,7 @@ export class PixelForge {
     );
   }
 
-  static drawGhostFrame(ctx, charSet, frameIdx, w, h) {
-    const sheet = charSet.sheet;
-    if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
-    ctx.imageSmoothingEnabled = false;
-    const cell = Math.round(sheet.naturalWidth / 8) || 256;
-    const col = frameIdx % 8;
-    const row = (frameIdx / 8) | 0;
-    ctx.drawImage(
-      sheet,
-      col * cell,
-      row * cell,
-      cell,
-      cell,
-      Math.round(-w * 0.5),
-      Math.round(-h + 10),
-      w,
-      h
-    );
+  static drawGhostFrame(_ctx, _charSet, _frameIdx, _w, _h) {
+    // Disabled additive double-exposure so character faces and inked silhouettes stay 100% crisp during hits
   }
 }

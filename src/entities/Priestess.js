@@ -301,20 +301,20 @@ export class Priestess extends Fighter {
         y1: -120,
         x2: enemy.x + 35,
         y2: this.groundY - 8,
-        width: 38,
+        width: 44,
         color: '#fde047',
         coreColor: '#ffffff',
-        maxLife: 0.42
+        maxLife: 0.48
       });
       game.vfx.spawnBeam({
         x1: enemy.x + 145,
         y1: -120,
         x2: enemy.x - 35,
         y2: this.groundY - 8,
-        width: 38,
+        width: 44,
         color: '#facc15',
         coreColor: '#ffffff',
-        maxLife: 0.42
+        maxLife: 0.48
       });
 
       // 2. Instant Prismatic Scepter-to-Target Grace Ray
@@ -323,10 +323,18 @@ export class Priestess extends Fighter {
         y1: sy,
         x2: enemy.x,
         y2: enemy.y - 98,
-        width: 28,
+        width: 32,
         color: '#fef08a',
         coreColor: '#ffffff',
-        maxLife: 0.36
+        maxLife: 0.42
+      });
+
+      // 3. Erupt a Radiant Sanctum Pillar of Light on the Enemy!
+      game.vfx.spawnFlamePillar(enemy.x, this.groundY, this, null, {
+        theme: 'radiant',
+        delay: 0.02,
+        maxLife: 0.68,
+        scaleWidth: 0.85
       });
 
       if (!enemy.isDead) {
@@ -334,13 +342,13 @@ export class Priestess extends Fighter {
         enemy.takeDamage(beamDmg, this, false, 60, -45);
       }
 
-      // 3. Follow-up Luminous Star-Cross Lance
+      // 4. Follow-up Luminous Star-Cross Lance
       game.vfx.spawnProjectile({
         x: sx,
         y: sy,
         vx: (dx / dist) * 645,
         vy: (dy / dist) * 645,
-        radius: 15,
+        radius: 16,
         color: '#fde047',
         coreColor: '#ffffff',
         owner: this,
@@ -349,9 +357,10 @@ export class Priestess extends Fighter {
         isMeteor: false
       });
 
-      game.vfx.spawnShockwave(enemy.x, this.groundY, 150, '#fde047', 0.38, true);
-      game.vfx.spawnShockwave(sx, sy, 92, '#fde047', 0.34, false, true);
-      game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 95, 8, 'radiant');
+      game.vfx.spawnShockwave(enemy.x, this.groundY, 165, '#fde047', 0.42, true);
+      game.vfx.spawnShockwave(sx, sy, 104, '#fef08a', 0.36, false, true);
+      game.vfx.spawnBurst(enemy.x, enemy.y - 95, 22, '#fef08a', 260, { upBias: 110, size: 7 });
+      game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 95, 10, 'radiant');
     } else if (t >= 0.96) {
       this.setState('IDLE');
     }
@@ -416,14 +425,15 @@ export class Priestess extends Fighter {
         y1: haloY,
         x2: aimX,
         y2: aimY,
-        width: 24,
-        color: '#ca8a04',
-        coreColor: '#facc15',
-        maxLife: 0.36
+        width: 30,
+        color: '#fde047',
+        coreColor: '#ffffff',
+        maxLife: 0.42
       });
-      game.vfx.spawnShockwave(aimX, this.groundY, 82, '#eab308', 0.28, true);
-      game.vfx.spawnShockwave(haloX, haloY, 54, '#facc15', 0.22);
-      game.vfx.spawnGlyphBurst(aimX, this.groundY - 45, 4, 'radiant');
+      game.vfx.spawnShockwave(aimX, this.groundY, 92, '#fde047', 0.32, true);
+      game.vfx.spawnShockwave(haloX, haloY, 64, '#fef08a', 0.26);
+      game.vfx.spawnBurst(aimX, this.groundY - 24, 10, '#fef08a', 195, { upBias: 90, size: 6 });
+      game.vfx.spawnGlyphBurst(aimX, this.groundY - 45, 5, 'radiant');
       const chakramDmg = Math.abs(enemy.x - this.x) >= 210 ? 22 : 18;
       enemy.takeDamage(chakramDmg, this, false, 28, 0);
     }
@@ -444,10 +454,10 @@ export class Priestess extends Fighter {
         y1: -140,
         x2: targetX + 65,
         y2: this.groundY - 8,
-        width: 68,
-        color: '#ca8a04',
-        coreColor: '#facc15',
-        maxLife: 0.74
+        width: 74,
+        color: '#fde047',
+        coreColor: '#ffffff',
+        maxLife: 0.78
       });
 
       // Diagonal Heaven Beam 2 (Top-Right to Bottom-Left across the enemy, forming an X-Cross of Light!)
@@ -456,10 +466,10 @@ export class Priestess extends Fighter {
         y1: -140,
         x2: targetX - 65,
         y2: this.groundY - 8,
-        width: 68,
-        color: '#eab308',
-        coreColor: '#facc15',
-        maxLife: 0.74
+        width: 74,
+        color: '#facc15',
+        coreColor: '#ffffff',
+        maxLife: 0.78
       });
 
       // Scepter-to-Enemy Direct Golden Judgement Ray
@@ -468,10 +478,18 @@ export class Priestess extends Fighter {
         y1: this.y - 115,
         x2: targetX,
         y2: this.groundY - 95,
-        width: 44,
-        color: '#ca8a04',
-        coreColor: '#facc15',
-        maxLife: 0.65
+        width: 48,
+        color: '#fef08a',
+        coreColor: '#ffffff',
+        maxLife: 0.68
+      });
+
+      // Twin Radiant Cathedral Pillars of Heaven's Light flanking the enemy!
+      game.vfx.spawnFlamePillar(targetX, this.groundY, this, null, {
+        theme: 'radiant',
+        delay: 0.02,
+        maxLife: 0.82,
+        scaleWidth: 1.15
       });
 
       for (let r = 0; r < 4; r++) {
@@ -479,16 +497,16 @@ export class Priestess extends Fighter {
           targetX,
           this.groundY - 95,
           95 + r * 45,
-          r % 2 === 0 ? '#ca8a04' : '#facc15',
-          0.46,
+          r % 2 === 0 ? '#fde047' : '#fef08a',
+          0.48,
           false
         );
       }
 
-      game.vfx.spawnShockwave(targetX, this.groundY, 270, '#eab308', 0.55, true);
-      game.vfx.spawnShockwave(targetX, this.groundY, 190, '#16a34a', 0.48, true);
-      game.vfx.spawnBurst(targetX, this.groundY - 60, 32, '#facc15', 320, { upBias: 150, size: 8 });
-      game.vfx.spawnGlyphBurst(targetX, this.groundY - 90, 12, 'radiant');
+      game.vfx.spawnShockwave(targetX, this.groundY, 270, '#fde047', 0.55, true);
+      game.vfx.spawnShockwave(targetX, this.groundY, 190, '#4ade80', 0.48, true);
+      game.vfx.spawnBurst(targetX, this.groundY - 60, 36, '#fef08a', 340, { upBias: 150, size: 8 });
+      game.vfx.spawnGlyphBurst(targetX, this.groundY - 90, 14, 'radiant');
       game.vfx.spawnGlyphBurst(targetX, this.groundY - 90, 8, 'heal');
 
       if (enemy && !enemy.isDead) {
@@ -502,7 +520,7 @@ export class Priestess extends Fighter {
     }
   }
 
-  drawSeraphimVFX(ctx, sprites, isReflection) {
+  drawSeraphimVFX(ctx, sprites, isReflection, renderer = null) {
     if (isReflection) return;
     const showWings =
       this.isAngelicAscent || this.state === 'ULTIMATE' || this.state === 'SKILL';
@@ -517,26 +535,47 @@ export class Priestess extends Fighter {
     const cy = -124;
     const vfxSheet = sprites && sprites.vfx;
 
-    // Helper to draw deeply saturated chunky-pixel VFX sprite with balanced HD-2D bloom
+    // 0. Large Radiant Celestial Gold + Emerald-Grace Radial Light Halos behind Seraphina so her skills visibly illuminate the arena!
+    if (renderer && renderer.glowGold) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const bigR = isFullArchangel ? 265 : 205;
+      ctx.globalAlpha = isFullArchangel ? 0.46 : 0.38;
+      ctx.drawImage(renderer.glowGold, cx - bigR, cy - bigR, bigR * 2, bigR * 2);
+      if (renderer.glowEmerald) {
+        const graceR = isFullArchangel ? 190 : 150;
+        ctx.globalAlpha = 0.26;
+        ctx.drawImage(renderer.glowEmerald, cx - graceR, cy - graceR, graceR * 2, graceR * 2);
+      }
+      ctx.restore();
+    }
+
+    // Helper to draw luminous chunky-pixel VFX sprite with rich Celestial Gold HD-2D bloom & radial light halo
     const drawGlowingVfxCell = (sx, sy, sw, sh, dx, dy, dw, dh, alpha) => {
-      const auraW = Math.round((dw * 1.14) / 4) * 4;
-      const auraH = Math.round((dh * 1.14) / 4) * 4;
+      const auraW = Math.round((dw * 1.16) / 4) * 4;
+      const auraH = Math.round((dh * 1.16) / 4) * 4;
       const midX = dx + dw * 0.5;
       const midY = dy + dh * 0.5;
+      if (renderer && renderer.glowGold) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(1, alpha * 0.34);
+        const gR = Math.max(dw, dh) * 0.82;
+        ctx.drawImage(renderer.glowGold, midX - gR, midY - gR, gR * 2, gR * 2);
+      }
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.28);
+      ctx.globalAlpha = Math.min(1, alpha * 0.32);
       ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(midX - auraW * 0.5), Math.round(midY - auraH * 0.5), auraW, auraH);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(1, alpha * 0.96);
+      ctx.globalAlpha = Math.min(1, alpha * 0.98);
       ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.24);
+      ctx.globalAlpha = Math.min(1, alpha * 0.18);
       ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
     };
 
     // 1. Chunky-Pixel Glowing Sacred Golden Cathedral Stained-Glass Rose Halo behind the wings
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
-      const haloSize = isFullArchangel ? 276 : 220;
+      const haloSize = isFullArchangel ? 284 : 232;
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(this.haloPhase * 0.65);
@@ -549,12 +588,12 @@ export class Priestess extends Fighter {
         -haloSize * 0.5,
         haloSize,
         haloSize,
-        isFullArchangel ? 0.94 : 0.84
+        isFullArchangel ? 0.98 : 0.92
       );
       ctx.restore();
     }
 
-    // 2. Authentic 4-Frame HD-2D Pixel-Art Feathered Seraphim Angel Wings (320x232 per cell)
+    // 2. Authentic 4-Frame HD-2D Pixel-Art Feathered Seraphim Angel Wings (320x232 per cell) with Golden Bloom!
     const wingSheet = sprites && sprites.wings;
     if (wingSheet && wingSheet.complete && wingSheet.naturalWidth > 0) {
       const cellW = 320;
@@ -569,15 +608,21 @@ export class Priestess extends Fighter {
       const dx = Math.round(-cellW * 0.5 + recoilX);
       const dy = Math.round(-208 - 26 + recoilY);
 
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.24;
+      ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx - 4, dy - 4, cellW + 8, cellH + 8);
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1.0;
+      ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, cellW, cellH);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.14;
       ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, cellW, cellH);
     }
 
     // 3. 6 Orbiting Chunky-Pixel Glowing Seraphic Star-Cross Chakrams during ULTIMATE
     if (this.state === 'ULTIMATE' && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
       const orbitR = 136;
-      const starSz = 64;
+      const starSz = 68;
       for (let i = 0; i < 6; i++) {
         const a = -this.haloPhase * 2.5 + (i * Math.PI * 2) / 6;
         const ox = snap(cx + Math.cos(a) * orbitR);
@@ -585,23 +630,44 @@ export class Priestess extends Fighter {
         ctx.save();
         ctx.translate(ox, oy);
         ctx.rotate(this.haloPhase * 3);
-        drawGlowingVfxCell(528, 56, 208, 208, -starSz * 0.5, -starSz * 0.5, starSz, starSz, 0.96);
+        drawGlowingVfxCell(528, 56, 208, 208, -starSz * 0.5, -starSz * 0.5, starSz, starSz, 0.98);
         ctx.restore();
       }
     }
 
     // 4. Twin Flanking Chunky-Pixel Glowing Valkyrie Winged Spears during DIVINE SANCTUARY (SKILL)
     if (this.state === 'SKILL' && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
-      const spearSz = 124;
+      const spearSz = 132;
       const bob = Math.round(Math.sin(this.stateTimer * 10) * 6);
       for (const side of [-1, 1]) {
         ctx.save();
         ctx.translate(side * 96, -118 + bob);
-        drawGlowingVfxCell(320, 56, 208, 208, -spearSz * 0.5, -spearSz * 0.5, spearSz, spearSz, 0.95);
+        drawGlowingVfxCell(320, 56, 208, 208, -spearSz * 0.5, -spearSz * 0.5, spearSz, spearSz, 0.98);
         ctx.restore();
       }
     }
 
+    // 5. Subtle Dark Silhouette Separation Cushion right behind Seraphina's head & torso
+    // so her Cathedral Halo & Wings blaze brightly around her without ever washing out her face!
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1.0;
+    const cushionGrad = ctx.createRadialGradient(0, -118, 14, 0, -118, 72);
+    cushionGrad.addColorStop(0, 'rgba(6, 4, 15, 0.68)');
+    cushionGrad.addColorStop(0.65, 'rgba(6, 4, 15, 0.42)');
+    cushionGrad.addColorStop(1, 'rgba(6, 4, 15, 0)');
+    ctx.fillStyle = cushionGrad;
+    ctx.fillRect(-74, -192, 148, 148);
+
+    ctx.restore();
+  }
+
+  drawForegroundOverlay(ctx, renderer = null) {
+    const sprites = PixelForge.initAssets().priestess;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(Math.round(this.x), Math.round(this.y));
+    ctx.scale(this.facing, 1);
+    this.drawSeraphimVFX(ctx, sprites, false, renderer);
     ctx.restore();
   }
 
@@ -613,20 +679,15 @@ export class Priestess extends Fighter {
     const w = 208;
     const h = 208;
     const scaleDir = this.facing;
-    const frameIdx = PixelForge.getFrameIndex(this, this.haloPhase);
 
     ctx.translate(Math.round(this.x), Math.round(this.y));
     ctx.scale(scaleDir, 1);
 
-    this.drawSeraphimVFX(ctx, sprites, isReflection);
+    if (isReflection) {
+      this.drawSeraphimVFX(ctx, sprites, true, renderer);
+    }
 
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.haloPhase, isReflection, renderer);
-
-    if (this.hitFlash > 0 && !isReflection) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.5;
-      PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);
-    }
 
     ctx.restore();
   }

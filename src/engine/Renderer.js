@@ -278,7 +278,7 @@ export class Renderer {
     this.drawFloorLightPools(ctx, lights, gy);
     this.drawDynamicShadows(ctx, fighters, lights, gy);
 
-    // 5. Main Pass: Background 16-bit HD-2D Cast Seals + Normal-Lit Fighters + Live Weapon Glow
+    // 5. Skill & Aura Pass (Rendered BEHIND the character bodies so skills never obscure characters or glow over their faces!)
     if (typeof vfx.renderBackgroundCastSeals === 'function') {
       vfx.renderBackgroundCastSeals(ctx, this);
     }
@@ -290,24 +290,23 @@ export class Renderer {
       const isChrono = f.heroId === 'chronomancer';
       const baseAlpha = isChrono
         ? f.state === 'IDLE' || f.state === 'WALK'
-          ? 0.42
-          : 0.64
+          ? 0.28
+          : 0.42
         : f.state === 'IDLE' || f.state === 'WALK'
-          ? 0.24
-          : 0.40;
+          ? 0.16
+          : 0.26;
       ctx.globalAlpha = baseAlpha * deathFade;
       const glow = this.getGlowForColor(f.primaryColor);
-      ctx.drawImage(glow, f.x - 140, f.y - (f.isDead ? 115 : 205), 280, 280);
+      ctx.drawImage(glow, f.x - 125, f.y - (f.isDead ? 95 : 175), 250, 250);
       if (isChrono && !f.isDead) {
-        ctx.globalAlpha = (f.state === 'IDLE' || f.state === 'WALK' ? 0.30 : 0.48) * deathFade;
-        ctx.drawImage(this.glowGold, f.x - 115, f.y - 190, 230, 230);
+        ctx.globalAlpha = (f.state === 'IDLE' || f.state === 'WALK' ? 0.22 : 0.34) * deathFade;
+        ctx.drawImage(this.glowGold, f.x - 105, f.y - 165, 210, 210);
       }
       ctx.restore();
 
       if (f.heroId !== 'reaper') {
         this.drawCharacterGroundHalo(ctx, f);
       }
-      f.draw(ctx, false, this);
       this.drawCharacterPixelFlames(ctx, f);
     }
     for (const f of sorted) {
@@ -317,11 +316,17 @@ export class Renderer {
     }
     vfx.renderMainPass(ctx, false, this);
 
-    // 6. Volumetric Crepuscular God-Rays & Illuminated Dust Motes
+    // 6. Foreground Character Pass: Crisp Inked Champions drawn IN FRONT of all skill & ultimate effects
+    // so characters and their faces are NEVER buried under overlapping VFX or washed out by additive skill bloom!
+    for (const f of sorted) {
+      f.draw(ctx, false, this);
+    }
+
+    // 7. Volumetric Crepuscular God-Rays & Illuminated Dust Motes
     this.drawVolumetricGodRays(ctx, ww, gy);
 
-    // 7. Floating Combat Text
-    vfx.renderFloatingTexts(ctx);
+    // 8. Champion P1/P2 Identifiers, Ultimate Callout Plates & Floating Combat Text
+    vfx.renderFloatingTexts(ctx, fighters);
 
     ctx.restore();
 
@@ -945,6 +950,7 @@ export class Renderer {
             : isChrono
               ? CHRONO_FIRE_PAL
               : SOLAR_FIRE_PAL;
+    const glowTex = this.getGlowForColor(f.primaryColor);
     const t = this.time;
     const isAction = f.state === 'SKILL' || f.state === 'ULTIMATE' || f.state === 'AUTO_ATTACK';
     const rX = isAction ? 66 : 48;
@@ -952,13 +958,19 @@ export class Renderer {
     const nodes = isChrono ? 12 : isAction ? 20 : 14;
 
     ctx.save();
-    ctx.globalAlpha = isAction ? 0.85 : 0.55;
     const gy = f.groundY || this.groundY;
 
     for (let i = 0; i < nodes; i++) {
       const a = (i / nodes) * Math.PI * 2 + t * (isAction ? 3.6 : 1.6) * f.facing;
       const rx = Math.round((f.x + Math.cos(a) * rX) / 3) * 3;
       const ry = Math.round((gy - 2 + Math.sin(a) * rY) / 3) * 3;
+      if (glowTex && i % 2 === 0) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = isAction ? 0.34 : 0.24;
+        ctx.drawImage(glowTex, rx - 18, ry - 12, 36, 24);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = isAction ? 0.92 : 0.72;
       ctx.fillStyle = i % 3 === 0 ? pal[3] : i % 2 === 0 ? pal[2] : pal[1];
       ctx.fillRect(rx - 2, ry - 1, 4, 3);
     }
@@ -983,11 +995,34 @@ export class Renderer {
             : isChrono
               ? CHRONO_FIRE_PAL
               : SOLAR_FIRE_PAL;
+    const glowTex = this.getGlowForColor(f.primaryColor);
     const t = this.time;
 
     ctx.save();
 
-    // 1. Emit live saturated pixel-art fire / rune / wind / wraith / clockwork sparks along the weapon & aura
+    // Helper so every character particle emits a true radial light halo + stepped pixel bloom + incandescent core
+    const emitGlowingParticle = (px, py, w, h, mainCol, coreCol, glowRadius = 22, glowAlpha = 0.42, customGlow = null) => {
+      const gTex = customGlow || glowTex;
+      if (gTex) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = glowAlpha;
+        ctx.drawImage(gTex, px - glowRadius, py - glowRadius, glowRadius * 2, glowRadius * 2);
+      }
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.36;
+      ctx.fillStyle = mainCol;
+      ctx.fillRect(px - w * 0.5 - 2, py - h * 0.5 - 2, w + 4, h + 4);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.96;
+      ctx.fillStyle = mainCol;
+      ctx.fillRect(px - w * 0.5, py - h * 0.5, w, h);
+      if (coreCol) {
+        ctx.fillStyle = coreCol;
+        ctx.fillRect(px - 1, py - 1, Math.max(2, w - 4), Math.max(2, h - 4));
+      }
+    };
+
+    // 1. Emit live glowing pixel-art fire / rune / wind / wraith / clockwork sparks along the weapon & aura
     const count = f.isDead ? 4 : f.state === 'IDLE' || f.state === 'WALK' ? 9 : 16;
     const fallDrop = f.isDead ? Math.min(48, (f.deathTimer || 0) * 55) : 0;
     for (let i = 0; i < count; i++) {
@@ -1001,85 +1036,136 @@ export class Renderer {
       const px = Math.round((f.x + spreadX) / 3) * 3;
       const py = Math.round((baseY - cycle * 38) / 3) * 3;
       const sz = cycle < 0.45 ? 4 : 3;
-      ctx.fillStyle = cycle < 0.28 ? pal[3] : cycle < 0.62 ? pal[2] : pal[1];
-      ctx.fillRect(px, py, sz, sz);
+      const fade = 1 - cycle * 0.65;
+      const mainCol = cycle < 0.28 ? pal[3] : cycle < 0.62 ? pal[2] : pal[1];
+      emitGlowingParticle(
+        px,
+        py,
+        sz,
+        sz,
+        mainCol,
+        cycle < 0.4 ? '#ffffff' : pal[3],
+        20,
+        0.38 * fade
+      );
     }
 
-    // 2. Character-Specific Signature Aura Overlay (Rich saturated jewel tones, no whitewash)
+    // 2. Character-Specific Signature Aura Particles (Every single orbiting mote/wisp/orb emits light!)
     if (!f.isDead) {
       if (isBlue) {
         // AETHELGARD: Runic Frost-Steel Greatsword Shimmer + Aegis Hexagonal Shield Barrier when deflecting
         if (f.isDeflecting) {
-          ctx.globalAlpha = 0.85;
           for (let i = 0; i < 16; i++) {
             const a = (i / 16) * Math.PI * 2 + t * 8;
             const hx = Math.round((f.x + Math.cos(a) * 68) / 4) * 4;
             const hy = Math.round((f.y - 68 + Math.sin(a) * 68) / 4) * 4;
-            ctx.fillStyle = i % 2 === 0 ? '#e0f2fe' : '#38bdf8';
-            ctx.fillRect(hx - 3, hy - 3, 6, 6);
+            emitGlowingParticle(
+              hx,
+              hy,
+              6,
+              6,
+              i % 2 === 0 ? '#38bdf8' : '#0ea5e9',
+              '#e0f2fe',
+              24,
+              0.44,
+              this.glowCyan
+            );
           }
         }
       } else if (isEmerald) {
         // SYLVARA: Swirling Emerald Wind Ribbon & Starlight Feathers Orbiting Her Cloak
-        ctx.globalAlpha = 0.88;
         for (let w = 0; w < 4; w++) {
           const wa = t * 4.8 + (w * Math.PI) / 2;
           const wyOff = ((t * 48 + w * 28) % 110) - 10;
           const wx = Math.round((f.x + Math.cos(wa) * (36 + w * 4)) / 3) * 3;
           const wy = Math.round((f.y - 18 - wyOff + Math.sin(wa) * 8) / 3) * 3;
-          ctx.fillStyle = w % 2 === 0 ? '#10b981' : '#059669';
-          ctx.fillRect(wx - 4, wy - 2, 8, 3);
-          ctx.fillStyle = '#34d399';
-          ctx.fillRect(wx - 1, wy - 1, 2, 2);
+          emitGlowingParticle(
+            wx,
+            wy,
+            8,
+            4,
+            w % 2 === 0 ? '#10b981' : '#34d399',
+            '#fef08a',
+            26,
+            0.46,
+            this.glowEmerald
+          );
         }
       } else if (isRadiant) {
-        // SERAPHINA: Gentle Imperial-Gold Sanctuary Crown Motes
-        ctx.globalAlpha = 0.85;
-        for (let m = 0; m < 3; m++) {
-          const ma = t * 2.6 + (m * Math.PI * 2) / 3;
-          const mx = Math.round((f.x + Math.cos(ma) * 38) / 3) * 3;
+        // SERAPHINA: Luminous Imperial-Gold Sanctuary Crown Motes
+        for (let m = 0; m < 4; m++) {
+          const ma = t * 2.6 + (m * Math.PI * 2) / 4;
+          const mx = Math.round((f.x + Math.cos(ma) * 40) / 3) * 3;
           const my = Math.round((f.y - 115 + Math.sin(ma * 2) * 8) / 3) * 3;
-          ctx.fillStyle = '#eab308';
-          ctx.fillRect(mx - 3, my - 3, 6, 6);
-          ctx.fillStyle = '#facc15';
-          ctx.fillRect(mx - 1, my - 1, 2, 2);
+          emitGlowingParticle(
+            mx,
+            my,
+            6,
+            6,
+            '#fde047',
+            '#ffffff',
+            28,
+            0.52,
+            this.glowGold
+          );
         }
       } else if (isAbyssal) {
         // MALAKOR: Creeping Floor Shadow Mist & Drifting Crimson-Violet Soul Wisps
-        ctx.globalAlpha = 0.86;
         for (let s = 0; s < 3; s++) {
           const phase = (t * 0.9 + s * 0.33) % 1;
           const sx = Math.round((f.x - f.facing * (18 + s * 14) + Math.sin(t * 4 + s) * 10) / 4) * 4;
           const sy = Math.round((f.y - 24 - phase * 92) / 4) * 4;
-          ctx.fillStyle = s % 2 === 0 ? '#9333ea' : '#e11d48';
-          ctx.fillRect(sx - 4, sy - 4, 8, 6);
+          emitGlowingParticle(
+            sx,
+            sy,
+            8,
+            6,
+            s % 2 === 0 ? '#a855f7' : '#e11d48',
+            '#f43f5e',
+            28,
+            0.48,
+            this.glowViolet
+          );
           ctx.fillStyle = '#090514';
           ctx.fillRect(sx - 3, sy - 2, 2, 2);
           ctx.fillRect(sx + 1, sy - 2, 2, 2);
         }
       } else if (isChrono) {
         // ZEPHYROS: Ticking Golden-Teal Hourglass Sand Grains around his levitating Astrolabe
-        ctx.globalAlpha = 0.88;
         for (let g = 0; g < 4; g++) {
           const ga = t * 5.2 + (g * Math.PI) / 2;
           const gx = Math.round((f.x + f.facing * 42 + Math.cos(ga) * 18) / 2) * 2;
           const gy = Math.round((f.y - 102 + Math.sin(ga) * 18) / 2) * 2;
-          ctx.fillStyle = g % 2 === 0 ? '#eab308' : '#14b8a6';
-          ctx.fillRect(gx - 2, gy - 2, 4, 4);
+          const isGold = g % 2 === 0;
+          emitGlowingParticle(
+            gx,
+            gy,
+            5,
+            5,
+            isGold ? '#facc15' : '#2dd4bf',
+            '#ffffff',
+            26,
+            0.52,
+            isGold ? this.glowGold : this.glowTeal
+          );
         }
       } else {
         // IGNIS SOL: 3 Orbiting Miniature Solar Fire-Orbs Circling His Arcane Robes
-        ctx.globalAlpha = 0.90;
         for (let orb = 0; orb < 3; orb++) {
           const oa = t * 3.4 + (orb * Math.PI * 2) / 3;
           const ox = Math.round((f.x + Math.cos(oa) * 48) / 3) * 3;
           const oy = Math.round((f.y - 74 + Math.sin(oa) * 16) / 3) * 3;
-          ctx.fillStyle = '#c2410c';
-          ctx.fillRect(ox - 5, oy - 5, 10, 10);
-          ctx.fillStyle = '#f97316';
-          ctx.fillRect(ox - 3, oy - 3, 6, 6);
-          ctx.fillStyle = '#facc15';
-          ctx.fillRect(ox - 1, oy - 1, 2, 2);
+          emitGlowingParticle(
+            ox,
+            oy,
+            8,
+            8,
+            '#f97316',
+            '#fef08a',
+            30,
+            0.52,
+            this.glowOrange
+          );
         }
       }
     }

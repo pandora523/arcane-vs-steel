@@ -81,7 +81,7 @@ export class Fighter {
     const actualHeal = Math.max(1, Math.round(amount));
     if (this.game && this.game.vfx) {
       const txt = label ? `${label} +${actualHeal}` : `+${actualHeal} HP`;
-      this.game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, txt, '#4ade80');
+      this.game.vfx.spawnDamageText(this.x - this.facing * 26, this.y - 198, 0, false, txt, '#4ade80');
       this.game.vfx.spawnShockwave(this.x, this.groundY - 4, 88, '#4ade80', 0.36, true);
       this.game.vfx.spawnShockwave(this.x, this.y - 88, 62, '#fde047', 0.30, true);
       this.game.vfx.spawnGlyphBurst(this.x, this.y - 96, 7, 'heal');
@@ -93,7 +93,7 @@ export class Fighter {
     if (this.isDead) return;
     if (this.isInvulnerable || (this.state === 'DODGE' && this.stateTimer < 0.36)) {
       if (this.game) {
-        this.game.vfx.spawnDamageText(this.x, this.y - 135, 0, false, 'EVADED!', this.primaryColor);
+        this.game.vfx.spawnDamageText(this.x - this.facing * 24, this.y - 196, 0, false, 'EVADED!', this.primaryColor);
         this.game.vfx.spawnShockwave(this.x, this.y - 95, 68, this.primaryColor, 0.24);
       }
       this.gainMana(8);
@@ -134,7 +134,7 @@ export class Fighter {
     }
 
     if (this.game) {
-      this.game.vfx.spawnDamageText(this.x, this.y - 125, amount, isCrit);
+      this.game.vfx.spawnDamageText(this.x - this.facing * 24, this.y - 192, amount, isCrit);
       this.game.vfx.spawnBurst(this.x, this.y - 105, isCrit ? 14 : 8, this.primaryColor, 185);
       if (this.game.vfx.spawnHitImpact) {
         this.game.vfx.spawnHitImpact(this.x, this.y - 98, attacker, isCrit);

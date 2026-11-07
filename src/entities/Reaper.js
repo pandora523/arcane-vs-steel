@@ -700,9 +700,9 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Renders Ethereal Sinuous Soul-Fire Comets flying from the enemy into Malakor's chest
+   * Renders Ethereal Sinuous Soul-Fire Comets flying from the enemy into Malakor's chest with Radial Light Emission!
    */
-  drawSoulWisps(ctx) {
+  drawSoulWisps(ctx, renderer = null) {
     if (!this.soulWisps.length) return;
     ctx.save();
     const tx = this.x;
@@ -713,9 +713,17 @@ export class Reaper extends Fighter {
       const wx = w.startX + (tx - w.startX) * u;
       const wy = w.startY + (ty - w.startY) * u + Math.sin(u * Math.PI) * w.arcHeight;
 
-      // Saturated soul-fire comet ribbon trail
       ctx.save();
-      ctx.globalCompositeOperation = 'source-over';
+      // 1. Radial Violet Soul-Light Halo around each Soul-Fire Comet
+      const cx = Math.round(wx / 2) * 2;
+      const cy = Math.round(wy / 2) * 2;
+      if (renderer && renderer.glowViolet) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.52;
+        ctx.drawImage(renderer.glowViolet, cx - 38, cy - 38, 76, 76);
+      }
+
+      // 2. Saturated soul-fire comet ribbon trail with lighter bloom
       for (let tail = 6; tail >= 1; tail--) {
         const tu = Math.max(0, u - tail * 0.035);
         const tlx = Math.round((w.startX + (tx - w.startX) * tu) / 2) * 2;
@@ -723,19 +731,25 @@ export class Reaper extends Fighter {
           (w.startY + (ty - w.startY) * tu + Math.sin(tu * Math.PI) * w.arcHeight) / 2
         ) * 2;
         const sz = Math.max(2, Math.round((7 - tail) * 2));
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = tail % 2 === 0 ? '#a855f7' : '#f43f5e';
+        ctx.globalAlpha = ((7 - tail) / 7) * 0.42;
+        ctx.fillRect(tlx - sz * 0.8, tly - sz * 0.8, sz * 1.6, sz * 1.6);
+        ctx.globalCompositeOperation = 'source-over';
         ctx.fillStyle = tail % 2 === 0 ? '#7e22ce' : w.color;
-        ctx.globalAlpha = ((7 - tail) / 7) * 0.78;
+        ctx.globalAlpha = ((7 - tail) / 7) * 0.88;
         ctx.fillRect(tlx - sz * 0.5, tly - sz * 0.5, sz, sz);
       }
 
-      // Richly Saturated Soul-Wisp Core
-      const cx = Math.round(wx / 2) * 2;
-      const cy = Math.round(wy / 2) * 2;
-      ctx.globalAlpha = 0.96;
+      // 3. Richly Saturated Soul-Wisp Core + Incandescent Center
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.98;
       ctx.fillStyle = '#7e22ce';
       ctx.fillRect(cx - 7, cy - 7, 14, 14);
       ctx.fillStyle = '#e11d48';
-      ctx.fillRect(cx - 4, cy - 4, 8, 8);
+      ctx.fillRect(cx - 5, cy - 5, 10, 10);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx - 2, cy - 2, 4, 4);
       ctx.restore();
     }
     ctx.restore();
@@ -744,9 +758,9 @@ export class Reaper extends Fighter {
   /**
    * Foreground pass called by Renderer after all fighters are drawn so Chain-Claw & Soul-Wisps render over the target
    */
-  drawForegroundOverlay(ctx) {
+  drawForegroundOverlay(ctx, renderer = null) {
     this.drawSkeletalChainClaw(ctx);
-    this.drawSoulWisps(ctx);
+    this.drawSoulWisps(ctx, renderer);
   }
 
   draw(ctx, isReflection = false, renderer = null) {
