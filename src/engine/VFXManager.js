@@ -2039,7 +2039,7 @@ export class VFXManager {
   renderBackgroundCastSeals(ctx, renderer = null) {
     const assets = PixelForge.initAssets();
     for (const ca of this.castAuras) {
-      if (!ca.fighter || ca.fighter.isDead) continue;
+      if (!ca.fighter || ca.fighter.isDead || ca.isUltimate) continue;
       const t = ca.life / ca.maxLife;
       const env = t < 0.14 ? t / 0.14 : Math.max(0, 1 - (t - 0.14) / 0.86);
       const hx = Math.round(ca.fighter.x / 4) * 4;

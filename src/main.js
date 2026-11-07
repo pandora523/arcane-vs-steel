@@ -254,6 +254,9 @@ class Game {
     const forceUlt = ultParam === '1' || ultParam === 'both';
     const skillParam = params.get('skill');
     const forceSkill = skillParam === '1' || skillParam === 'both';
+    const forceCrouch = params.get('crouch') === '1';
+    const forceJump = params.get('jump') === '1';
+    const forceAttack = params.get('attack') === '1';
     const forceCorner = params.get('corner') === '1';
     const forceClash = params.get('clash') === '1';
     const forceEvent = params.get('event') === '1';
@@ -267,12 +270,33 @@ class Game {
       killTarget ||
       forceUlt ||
       forceSkill ||
+      forceCrouch ||
+      forceJump ||
+      forceAttack ||
       forceCorner ||
       forceClash ||
       forceEvent
     ) {
       this.syncRosterSelectionUI(false);
       this.startDuel(false);
+    }
+
+    if (forceCrouch && this.leftFighter.startCrouch) {
+      this.leftFighter.x = 340;
+      this.rightFighter.x = 760;
+      this.leftFighter.startCrouch(this.rightFighter, this);
+    }
+
+    if (forceJump && this.leftFighter.startJump) {
+      this.leftFighter.x = 360;
+      this.rightFighter.x = 680;
+      this.leftFighter.startJump(this.rightFighter, this, 1);
+    }
+
+    if (forceAttack) {
+      this.leftFighter.x = 360;
+      this.rightFighter.x = 740;
+      this.leftFighter.setState('AUTO_ATTACK');
     }
 
     if (forceEvent) {
@@ -689,7 +713,8 @@ class Game {
       const spriteCanvas = document.getElementById(`${prefix}-sprite-canvas`);
       const sheet = heroAssets.sheet;
       if (spriteCanvas && sheet && sheet.complete && sheet.naturalWidth) {
-        const cell = Math.round(sheet.naturalWidth / 8) || 208;
+        const cell = 208;
+        const cols = Math.max(1, Math.round(sheet.naturalWidth / cell));
         if (spriteCanvas.width !== cell) {
           spriteCanvas.width = cell;
           spriteCanvas.height = cell;
@@ -698,14 +723,36 @@ class Game {
         sctx.clearRect(0, 0, cell, cell);
         sctx.imageSmoothingEnabled = false;
 
-        let frameIdx = Math.floor(t * 6.5) % 8;
-        const cycle = (t + (flipX ? 1.4 : 0)) % 3.8;
-        if (cycle > 2.2 && cycle < 3.2) {
-          const atkStep = Math.min(7, Math.floor(((cycle - 2.2) / 1.0) * 8));
-          frameIdx = 16 + atkStep;
+        let col = 0;
+        let row = 0;
+        if (cols === 30) {
+          const cycle = (t + (flipX ? 1.4 : 0)) % 6.0;
+          if (cycle < 1.8) {
+            row = 0; // 30-frame IDLE
+            col = Math.floor(t * 24) % 30;
+          } else if (cycle < 2.8) {
+            row = 2; // 30-frame AUTO_ATTACK
+            col = Math.min(29, Math.floor(((cycle - 1.8) / 1.0) * 30));
+          } else if (cycle < 3.8) {
+            row = 7; // 30-frame CROUCH & SNIPER AIM
+            col = Math.min(29, Math.floor(((cycle - 2.8) / 1.0) * 30));
+          } else if (cycle < 4.8) {
+            row = 8; // 30-frame ZEPHYR JUMP & AERIAL SHOT
+            col = Math.min(29, Math.floor(((cycle - 3.8) / 1.0) * 30));
+          } else {
+            row = 1; // 30-frame WALK STRIDE
+            col = Math.floor(t * 24) % 30;
+          }
+        } else {
+          let frameIdx = Math.floor(t * 6.5) % 8;
+          const cycle = (t + (flipX ? 1.4 : 0)) % 3.8;
+          if (cycle > 2.2 && cycle < 3.2) {
+            const atkStep = Math.min(7, Math.floor(((cycle - 2.2) / 1.0) * 8));
+            frameIdx = 16 + atkStep;
+          }
+          col = frameIdx % cols;
+          row = (frameIdx / cols) | 0;
         }
-        const col = frameIdx % 8;
-        const row = (frameIdx / 8) | 0;
         const hover =
           heroKey === 'mage' || heroKey === 'priestess' ? Math.round(Math.sin(t * 3.2) * 2) * 2 : 0;
 

@@ -27,10 +27,38 @@ export class Archer extends Fighter {
     this.dodgeMaxCooldown = 3.0;
     this.dashMaxCooldown = 3.5;
     this.wallFlipCooldown = 0;
+    this.crouchCooldown = 0;
+    this.crouchDuration = 0.96;
+    this.isCrouching = false;
     this.isFlipVault = false;
     this.flipStartX = x;
     this.flipTargetX = x;
     this.flipAngle = 0;
+  }
+
+  startJump(enemy, game, customDir = null) {
+    this.dodgeCooldown = this.dodgeMaxCooldown * (0.86 + Math.random() * 0.28);
+    this.setState('JUMP');
+    this.isInvulnerable = true;
+    const ww = game.renderer.worldWidth;
+    let dir = customDir !== null ? customDir : -this.facing;
+    if (this.x < 180) dir = 1;
+    else if (this.x > ww - 180) dir = -1;
+    this.dashDir = dir;
+    this.onStartDodge(enemy, game, dir);
+  }
+
+  startCrouch(enemy, game) {
+    this.crouchCooldown = 3.2;
+    this.crouchDuration = 0.96;
+    this.setState('CROUCH');
+    this.isCrouching = true;
+    this.isDeflecting = true;
+    this.vx = 0;
+    if (game && game.vfx) {
+      game.vfx.spawnShockwave(this.x, this.groundY - 2, 62, '#34d399', 0.24, true);
+      game.vfx.spawnDamageText(this.x, this.y - 118, 0, false, 'STEALTH CROUCH!', '#6ee7b7');
+    }
   }
 
   onStartDodge(enemy, game, dir) {
@@ -50,8 +78,8 @@ export class Archer extends Fighter {
     this.wallFlipCooldown = 3.0;
 
     if (enemy && nearWallOrCornered) {
-      // Vault completely OVER the enemy to the open side of the arena!
-      this.dashDuration = 0.56;
+      // Vault completely OVER the enemy to the open side of the arena using Row 8 (30-frame JUMP)!
+      this.dashDuration = 0.62;
       const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
       let target = enemy.x + openSideDir * 305;
       if (Math.abs(target - this.x) < 220) {
@@ -60,27 +88,26 @@ export class Archer extends Fighter {
       }
       this.flipTargetX = Math.max(150, Math.min(ww - 150, target));
       this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || 1;
-      game.vfx.spawnDamageText(this.x, this.y - 130, 0, false, 'ZEPHYR BACKFLIP!', '#34d399');
+      game.vfx.spawnDamageText(this.x, this.y - 130, 0, false, 'ZEPHYR LEAP!', '#34d399');
     } else {
-      // Open-arena acrobatic backflip retreat
-      this.dashDuration = 0.48;
+      // Open-arena acrobatic jump-shot retreat using Row 8 (30-frame JUMP)!
+      this.dashDuration = 0.56;
       this.flipTargetX = Math.max(150, Math.min(ww - 150, this.x + dir * 260));
       this.dashDir = dir;
-      game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'ZEPHYR VAULT!', '#34d399');
+      game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'ZEPHYR JUMP!', '#34d399');
     }
 
     this.vx = 0;
     this.vy = 0;
     if (game.audio) game.audio.play('zephyr_flip', this.x);
     game.vfx.spawnShockwave(this.x, this.groundY, 96, '#34d399', 0.32, true);
-    game.vfx.spawnSlash(this.x, this.y - 55, 82, 0, Math.PI * 2, '#10b981', 0.26);
     game.vfx.spawnGlyphBurst(this.x, this.y - 60, 7, 'emerald');
   }
 
   onStartDash(enemy, game, dir) {
     this.isFlipVault = false;
     this.flipAngle = 0;
-    this.dashDuration = 0.4;
+    this.dashDuration = 0.44;
     this.vx = dir * 380;
     if (game.audio) game.audio.play('arrow_shoot', this.x);
     game.vfx.spawnShockwave(this.x, this.y - 55, 72, '#34d399', 0.25, false, true);
@@ -91,14 +118,20 @@ export class Archer extends Fighter {
   updateDashOrDodge(dt, enemy, game) {
     const t = this.stateTimer;
 
-    if (this.state === 'DODGE' && this.isFlipVault) {
+    if ((this.state === 'DODGE' || this.state === 'JUMP') && this.isFlipVault) {
       const u = Math.min(1, t / this.dashDuration);
-      const easeU = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
+      // Frames F00..F03 (u < 0.12) are pre-jump crouch; F04..F25 (0.12 <= u <= 0.86) are airborne; F26..F29 (u > 0.86) are landing crouch!
+      const airU = Math.max(0, Math.min(1, (u - 0.10) / 0.78));
+      const easeU = airU < 0.5 ? 2 * airU * airU : 1 - Math.pow(-2 * airU + 2, 2) / 2;
       this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * easeU;
-      this.y = this.groundY - Math.sin(u * Math.PI) * 170;
-      this.flipAngle = -Math.PI * 2 * u;
+      this.y = this.groundY - Math.sin(airU * Math.PI) * 162;
+      this.flipAngle = 0; // Hand-animated 30-frame Row 8 JUMP handles knee-tuck, downward bow aim & landing!
 
-      if (Math.random() < 0.8) {
+      if (enemy && !enemy.isDead) {
+        this.facing = enemy.x >= this.x ? 1 : -1;
+      }
+
+      if (airU > 0.05 && airU < 0.95 && Math.random() < 0.8) {
         game.vfx.spawnParticle({
           x: this.x + (Math.random() - 0.5) * 24,
           y: this.y - 70 + (Math.random() - 0.5) * 24,
@@ -110,20 +143,20 @@ export class Archer extends Fighter {
         });
       }
 
-      // At the apex of her mid-air flip over the enemy, Sylvara looses an Aerial Counter Shot!
-      if (u >= 0.45 && !this.didActionFrame && enemy && !enemy.isDead) {
+      // At Frame F18 (u >= 0.58) at the apex of her leap, Sylvara looses her downward (+26°) Aerial Counter-Shot!
+      if (u >= 0.58 && !this.didActionFrame && enemy && !enemy.isDead) {
         this.didActionFrame = true;
         if (game.audio) game.audio.play('arrow_shoot', this.x);
-        const sx = this.x;
-        const sy = this.y - 96;
+        const sx = this.x + this.facing * 42;
+        const sy = this.y - 112;
         const dx = enemy.x - sx;
-        const dy = (enemy.y - 110) - sy;
+        const dy = (enemy.y - 98) - sy;
         const td = Math.hypot(dx, dy) || 1;
         game.vfx.spawnProjectile({
           x: sx,
           y: sy,
-          vx: (dx / td) * 735,
-          vy: (dy / td) * 735,
+          vx: (dx / td) * 745,
+          vy: (dy / td) * 745,
           radius: 13,
           color: '#34d399',
           coreColor: '#fef08a',
@@ -147,6 +180,7 @@ export class Archer extends Fighter {
       return;
     }
 
+    // Row 6 (30-frame DASH — Gale Stride): mid-dash snap-shot at F14 (t >= 0.20)
     this.x += this.dashDir * 285 * dt;
     if (Math.random() < 0.65) {
       game.vfx.spawnParticle({
@@ -168,9 +202,73 @@ export class Archer extends Fighter {
     }
   }
 
+  updateCrouch(dt, enemy, game) {
+    const t = this.stateTimer;
+    const dur = this.crouchDuration || 0.96;
+    this.vx *= Math.pow(0.001, dt);
+    this.isCrouching = t < dur * 0.82;
+    this.isDeflecting = this.isCrouching;
+
+    // Frames F06..F17 (0.19s <= t < 0.57s): Crouched knee-braced sniper bow draw at y - 96
+    if (t >= 0.19 && t < 0.57) {
+      if (Math.random() < 0.7) {
+        const a = t * 26;
+        const tipX = this.x + this.facing * 52;
+        const tipY = this.y - 96;
+        game.vfx.spawnParticle({
+          x: tipX + Math.cos(a) * 22,
+          y: tipY + Math.sin(a) * 22,
+          vx: -Math.cos(a) * 60,
+          vy: -Math.sin(a) * 60,
+          size: 4.5,
+          color: Math.random() > 0.4 ? '#34d399' : '#fef08a',
+          maxLife: 0.22
+        });
+      }
+    } else if (t >= 0.57 && !this.didActionFrame) {
+      // Frame F18 (t = 0.576s): Low-profile knee-braced Sniper Piercer release at y - 96!
+      this.didActionFrame = true;
+      this.shotCombo++;
+      this.vx -= this.facing * 38;
+      if (game.audio) game.audio.play('arrow_shoot', this.x);
+
+      const spawnX = this.x + this.facing * 52;
+      const spawnY = this.y - 96;
+      const targetY = enemy ? enemy.y - 102 : spawnY;
+      const dx = enemy ? enemy.x - spawnX : this.facing * 520;
+      const dy = targetY - spawnY;
+      const dist = Math.hypot(dx, dy) || 1;
+      const speed = 735;
+
+      game.vfx.spawnProjectile({
+        x: spawnX,
+        y: spawnY,
+        vx: (dx / dist) * speed,
+        vy: (dy / dist) * speed,
+        radius: 14,
+        color: '#10b981',
+        coreColor: '#fef08a',
+        owner: this,
+        damage: 94,
+        type: 'arrow'
+      });
+
+      game.vfx.spawnShockwave(spawnX, spawnY, 64, '#34d399', 0.26, false, true);
+      game.vfx.spawnShockwave(spawnX + this.facing * 14, spawnY, 44, '#fef08a', 0.20, false, true);
+      game.vfx.spawnGlyphBurst(spawnX, spawnY, 5, 'emerald');
+    }
+
+    if (t >= dur) {
+      this.isCrouching = false;
+      this.isDeflecting = false;
+      this.setState('IDLE');
+    }
+  }
+
   update(dt, enemy, game) {
     this.windPhase += dt * 3.0;
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
+    this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
 
     if (!this.isDead && this.state === 'WALK') {
       this.stepTimer += dt;
@@ -193,7 +291,20 @@ export class Archer extends Fighter {
 
       if ((pinnedLeft || pinnedRight) && dist < 265 && this.dodgeCooldown <= 0 && this.wallFlipCooldown <= 0) {
         this.wallFlipCooldown = 3.0;
-        this.startDodge(enemy, game);
+        this.startJump(enemy, game);
+        return;
+      }
+
+      // Tactical Stealth Crouch & Knee-Braced Sniper Shot when at marksman range (dist >= 275) every 2nd auto-attack!
+      if (
+        dist >= 275 &&
+        dist <= this.attackRange &&
+        this.autoCooldown <= 0 &&
+        this.crouchCooldown <= 0 &&
+        this.shotCombo % 2 === 1
+      ) {
+        this.autoCooldown = this.autoInterval * (0.92 + Math.random() * 0.2);
+        this.startCrouch(enemy, game);
         return;
       }
 
@@ -207,10 +318,10 @@ export class Archer extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    if (t < 0.34) {
-      // Frames 16, 17, 18: Drawing the recurve bow taut + emerald vortex convergence at arrowtip
-      this.torsoAngle = -this.facing * 0.14 * (t / 0.34);
-      if (Math.random() < 0.65) {
+    if (t < 0.58) {
+      // Row 2 Frames F00..F18: Quiver reach (F00..F04), progressive 14-frame bow draw & limb flex (F05..F18)
+      this.torsoAngle = -this.facing * 0.12 * (t / 0.58);
+      if (t >= 0.18 && Math.random() < 0.65) {
         const a = t * 24;
         const tipX = this.x + this.facing * 54;
         const tipY = this.y - 120;
@@ -224,8 +335,8 @@ export class Archer extends Fighter {
           maxLife: 0.24
         });
       }
-    } else if (t < 0.7) {
-      // Frames 19, 20, 21: High-velocity Tempest Piercer arrow release + vertical sonic boom ring
+    } else if (t < 0.82) {
+      // Row 2 Frame F19 (t = 0.58s): High-velocity Tempest Piercer arrow release + sonic boom ring + vibrating string
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.shotCombo++;
@@ -280,14 +391,15 @@ export class Archer extends Fighter {
         game.vfx.spawnBurst(spawnX, spawnY, 12, '#6ee7b7', 210);
         game.vfx.spawnGlyphBurst(spawnX, spawnY, 4, 'emerald');
       }
-    } else if (t >= 0.92) {
+    } else if (t >= 0.96) {
       this.setState('IDLE');
     }
   }
 
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
-    if (t < 0.32) {
+    if (t < 0.36) {
+      // Row 3 Frames F00..F10: Drawing the 3-Arrow Emerald Fan Volley
       if (Math.random() < 0.65) {
         game.vfx.spawnParticle({
           x: this.x + (Math.random() - 0.5) * 48,
@@ -299,19 +411,17 @@ export class Archer extends Fighter {
           maxLife: 0.28
         });
       }
-    } else if (t >= 0.32 && !this.didActionFrame) {
+    } else if (t >= 0.36 && !this.didActionFrame) {
+      // Row 3 Frame F11 (t = 0.38s): Release 3 Direct Fan-Spread Wind Arrows horizontally!
       this.didActionFrame = true;
-      this.vx -= this.facing * 95;
-      if (game.audio) game.audio.play('arrow_rain', enemy ? enemy.x : this.x);
+      this.vx -= this.facing * 65;
+      if (game.audio) game.audio.play('arrow_shoot', this.x);
 
-      // Skyward bow launch sonic rings & 3-Arrow Direct Fan Spread + 9 Diagonal Starfall Arrows (zero flame pillars!)
-      const bowX = this.x + this.facing * 44;
-      const bowY = this.y - 122;
-      game.vfx.spawnShockwave(bowX, bowY, 82, '#34d399', 0.32, false, true);
-      game.vfx.spawnShockwave(bowX + this.facing * 14, bowY - 10, 56, '#fef08a', 0.24, false, true);
-      game.vfx.spawnGlyphBurst(bowX, bowY, 7, 'emerald');
+      const bowX = this.x + this.facing * 48;
+      const bowY = this.y - 120;
+      game.vfx.spawnShockwave(bowX, bowY, 76, '#34d399', 0.28, false, true);
+      game.vfx.spawnGlyphBurst(bowX, bowY, 5, 'emerald');
 
-      // 3 Direct Fan-Spread Wind Arrows from the bow
       [-0.16, 0, 0.16].forEach((angOff) => {
         const baseAng = this.facing === 1 ? 0 : Math.PI;
         const a = baseAng + angOff;
@@ -328,6 +438,16 @@ export class Archer extends Fighter {
           type: 'arrow'
         });
       });
+    } else if (t >= 0.76 && !this.didSecondaryAction) {
+      // Row 3 Frame F23 (t = 0.78s): High-angle (-32°) Skyward Starfall Beacon Arrow release!
+      this.didSecondaryAction = true;
+      this.vx -= this.facing * 45;
+      if (game.audio) game.audio.play('arrow_rain', enemy ? enemy.x : this.x);
+
+      const bowX = this.x + this.facing * 42;
+      const bowY = this.y - 134;
+      game.vfx.spawnShockwave(bowX, bowY, 82, '#fef08a', 0.32, false, true);
+      game.vfx.spawnGlyphBurst(bowX, bowY, 6, 'emerald');
 
       const centerTargetX = enemy ? enemy.x : this.x + this.facing * 320;
       // Summon a Swirling Conical Emerald Gale Tornado Funnel at the target zone!
@@ -368,7 +488,7 @@ export class Archer extends Fighter {
 
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    // Stay firmly grounded on the arena floor while channeling the Astral Dragon-Arrow & Hurricane Tornado
+    // Row 4 (30 frames) natively animates Sylvara's wind-gather crouch, levitation with Astral Light-Wings, and feather-fall landing
     this.y = this.groundY;
     this.vy = 0;
 
@@ -376,7 +496,7 @@ export class Archer extends Fighter {
       this.spawnedChannelTornado = false;
     }
 
-    if (t < 0.42) {
+    if (t < 0.56) {
       if (!this.spawnedChannelTornado && t >= 0.05) {
         this.spawnedChannelTornado = true;
         if (game.audio) game.audio.play('zephyr_flip', this.x);
@@ -405,11 +525,12 @@ export class Archer extends Fighter {
         });
       }
     } else if (!this.didActionFrame) {
+      // Row 4 Frame F18 (t = 0.56s): Full Astral Light-Wing Dragon-Arrow Release!
       this.didActionFrame = true;
       if (game.audio) game.audio.play('archer_ult', this.x);
 
       const startX = this.x + this.facing * 52;
-      const startY = this.y - 120;
+      const startY = this.y - 128;
       const endX = this.facing === 1 ? game.renderer.worldWidth + 240 : -240;
       const targetX = enemy ? enemy.x : this.x + this.facing * 380;
 
@@ -417,12 +538,12 @@ export class Archer extends Fighter {
       game.renderer.triggerAberration(15);
       game.renderer.triggerHitStop(0.09);
 
-      // 1. Colossal Across-Screen Astral Dragon-Arrow Beam at shoulder/bow height
+      // 1. Colossal Across-Screen Astral Dragon-Arrow Beam at levitated bow height
       game.vfx.spawnBeam({
         x1: startX,
         y1: startY,
         x2: endX,
-        y2: this.groundY - 120,
+        y2: this.groundY - 128,
         width: 64,
         color: '#10b981',
         coreColor: '#fef08a',
@@ -476,11 +597,6 @@ export class Archer extends Fighter {
 
     ctx.translate(Math.round(this.x), Math.round(this.y));
     ctx.scale(this.facing, 1);
-    if (this.isFlipVault && this.flipAngle) {
-      ctx.translate(0, -96);
-      ctx.rotate(this.flipAngle);
-      ctx.translate(0, 96);
-    }
 
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.windPhase, isReflection, renderer);
 

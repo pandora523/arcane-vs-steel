@@ -27,7 +27,7 @@ export class PixelForge {
         portrait: loadImg('assets/sprites/mage_portrait.png?v=2', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png'),
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps'),
         vfx: loadImg('assets/sprites/archer_vfx.png'),
         portrait: loadImg('assets/sprites/archer_portrait.png?v=2', () => this.refreshPortraits())
       },
@@ -80,17 +80,92 @@ export class PixelForge {
   }
 
   /**
-   * Maps fighter state & timers to one of the 48 HD-2D pixel-art frames (8 cols x 6 rows, 208x208 cells):
-   * - Row 0 (0..7):   8-frame IDLE combat ready loop
-   * - Row 1 (8..15):  8-frame WALK / STRIDE loop
-   * - Row 2 (16..23): 8-frame AUTO_ATTACK combo sequence
-   * - Row 3 (24..31): 8-frame SKILL (24..27) & ULTIMATE (28..31) sequence
-   * - Row 4 (32..39): 8-frame DEATH recoil, kneeling collapse & fallen sequence
-   * - Row 5 (40..47): 8-frame DASH & DODGE evasive sequence
+   * Maps fighter state & timers to sprite sheet frames:
+   * - For Sylvara (Archer): 270-frame (30 cols x 9 rows, 208x208 cells) high-framerate animation test:
+   *   Row 0 (0..29):    30-frame IDLE breathing, cloak wave & bow glint
+   *   Row 1 (30..59):   30-frame WALK 2-step ranger boot stride cycle
+   *   Row 2 (60..89):   30-frame AUTO_ATTACK quiver reach, progressive bow flex, draw & release
+   *   Row 3 (90..119):  30-frame SKILL (Starfall Volley 3-arrow fan + skyward beacon shot)
+   *   Row 4 (120..149): 30-frame ULTIMATE (Astral Hurricane levitation, light-wing bow & dragon arrow)
+   *   Row 5 (150..179): 30-frame DEATH stagger, kneeling collapse & fallen settling
+   *   Row 6 (180..209): 30-frame DASH (Gale Stride horizontal wind-dash & snap-shot)
+   *   Row 7 (210..239): 30-frame CROUCH (Stealth knee-bend crouch & low-profile sniper shot)
+   *   Row 8 (240..269): 30-frame JUMP (Zephyr Leap upward knee-tuck, apex downward shot & crouch landing)
+   * - For other champions: 48-frame (8 cols x 6 rows, 208x208 cells) HD-2D sheet.
    */
   static getFrameIndex(fighter, phase) {
     const st = fighter.state;
     const t = fighter.stateTimer;
+
+    // 30-FPS 9-Row (270-Frame) Animation Mapping for Sylvara (Archer)
+    if (fighter.heroId === 'archer') {
+      if (fighter.isDead || st === 'DEATH') {
+        const deathDuration = 1.35;
+        const dt = fighter.deathTimer || 0;
+        const step = Math.min(29, Math.max(0, Math.floor((dt / deathDuration) * 30)));
+        return 150 + step;
+      }
+
+      if (
+        st === 'HURT' ||
+        (fighter.hurtTimer > 0.05 &&
+          st !== 'ULTIMATE' &&
+          st !== 'SKILL' &&
+          st !== 'DODGE' &&
+          st !== 'JUMP' &&
+          st !== 'CROUCH' &&
+          st !== 'DASH')
+      ) {
+        const hurtProgress = 1.0 - Math.min(1.0, Math.max(0.0, (fighter.hurtTimer || 0) / 0.28));
+        return 150 + Math.min(5, Math.max(0, Math.floor(hurtProgress * 6)));
+      }
+
+      if (st === 'JUMP' || st === 'DODGE' || fighter.isFlipVault) {
+        const dur = fighter.dashDuration || 0.56;
+        const step = Math.min(29, Math.max(0, Math.floor((t / dur) * 30)));
+        return 240 + step;
+      }
+
+      if (st === 'CROUCH' || fighter.isCrouching) {
+        const dur = fighter.crouchDuration || 0.96;
+        const step = Math.min(29, Math.max(0, Math.floor((t / dur) * 30)));
+        return 210 + step;
+      }
+
+      if (st === 'DASH') {
+        const dur = fighter.dashDuration || 0.44;
+        const step = Math.min(29, Math.max(0, Math.floor((t / dur) * 30)));
+        return 180 + step;
+      }
+
+      if (st === 'AUTO_ATTACK') {
+        const duration = 0.96;
+        const step = Math.min(29, Math.max(0, Math.floor((t / duration) * 30)));
+        return 60 + step;
+      }
+
+      if (st === 'SKILL') {
+        const step = Math.min(29, Math.max(0, Math.floor((t / 1.05) * 30)));
+        return 90 + step;
+      }
+
+      if (st === 'ULTIMATE') {
+        if (t < 0.56) {
+          const step = Math.min(17, Math.max(0, Math.floor((t / 0.56) * 18)));
+          return 120 + step;
+        }
+        const step = 18 + Math.min(11, Math.max(0, Math.floor(((t - 0.56) / 1.04) * 12)));
+        return 120 + step;
+      }
+
+      if (st === 'WALK') {
+        const walkStep = Math.floor(Math.abs(fighter.walkPhase) * 7.5) % 30;
+        return 30 + walkStep;
+      }
+
+      const idleStep = Math.floor(Math.abs(phase) * 8.0) % 30;
+      return idleStep;
+    }
 
     if (fighter.isDead || st === 'DEATH') {
       const deathDuration = 1.35;
@@ -131,13 +206,13 @@ export class PixelForge {
     }
 
     if (st === 'ULTIMATE') {
-      if (fighter.heroId === 'warrior') {
-        if (t < 0.50) {
-          const blitzFrames = [42, 19, 20, 43, 25, 26];
-          return blitzFrames[Math.floor(t * 16) % blitzFrames.length];
+      if (fighter.heroId === 'warrior' || fighter.heroId === 'reaper') {
+        if (t < 0.34) return t < 0.18 ? 28 : 29;
+        if (t < 0.94) {
+          const blitzFrames = [42, 19, 20, 43, 21, 22, 25, 26];
+          return blitzFrames[Math.floor(t * 15) % blitzFrames.length];
         }
-        if (t < 0.90) return t < 0.70 ? 28 : 29;
-        return t < 1.15 ? 30 : 31;
+        return t < 1.18 ? 30 : 31;
       }
       if (t < 0.42) return 28;
       if (t < 0.85) return 29;
@@ -164,8 +239,9 @@ export class PixelForge {
     const sheet = charSet.sheet;
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return null;
 
-    const cols = 8;
-    const rows = 6;
+    const cell = 208;
+    const cols = Math.max(1, Math.round(sheet.naturalWidth / cell));
+    const rows = Math.max(1, Math.round(sheet.naturalHeight / cell));
     const cellLow = 52; // 208 / 4 = 52 real logical pixels per character cell
     const wLow = cols * cellLow;
     const hLow = rows * cellLow;
@@ -352,21 +428,23 @@ export class PixelForge {
   static drawSheetFrame(ctx, charSet, fighter, w, h, phase, isReflection = false, renderer = null) {
     const sheet = charSet.sheet;
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
-    const cell = Math.round(sheet.naturalWidth / 8) || 208;
+    const cell = 208;
+    const cols = Math.max(1, Math.round(sheet.naturalWidth / cell));
 
     ctx.imageSmoothingEnabled = false;
 
     const frameIdx = this.getFrameIndex(fighter, phase);
-    const col = frameIdx % 8;
-    const row = (frameIdx / 8) | 0;
+    const col = frameIdx % cols;
+    const row = (frameIdx / cols) | 0;
     const sx = col * cell;
     const sy = row * cell;
     const baseY = -h + 10;
 
-    // Crisp pixel-art afterimage trail during active DASH, DODGE, or Warrior Omnislash Ultimate
+    // Crisp pixel-art afterimage trail during active horizontal DASH, DODGE, or Warrior Omnislash Ultimate
     if (
       !isReflection &&
       !fighter.isAngelicAscent &&
+      !fighter.isFlipVault &&
       fighter.heroId !== 'reaper' &&
       fighter.heroId !== 'chronomancer' &&
       (fighter.state === 'DASH' || fighter.state === 'DODGE' || fighter.isOmnislashing)

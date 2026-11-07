@@ -71,10 +71,14 @@ export class Fighter {
     this.state = newState;
     this.stateTimer = 0;
     this.didActionFrame = false;
-    if (newState !== 'DODGE') {
+    this.didSecondaryAction = false;
+    if (newState !== 'DODGE' && newState !== 'JUMP') {
       this.isInvulnerable = false;
     }
-    if (newState !== 'DODGE' && newState !== 'ULTIMATE') {
+    if (newState !== 'CROUCH') {
+      this.isCrouching = false;
+    }
+    if (newState !== 'DODGE' && newState !== 'JUMP' && newState !== 'ULTIMATE') {
       this.isFlipVault = false;
       this.isAngelicAscent = false;
       this.isOmnislashing = false;
@@ -485,10 +489,16 @@ export class Fighter {
       if (this.stateTimer >= 0.28) {
         this.setState('IDLE');
       }
-    } else if (this.state === 'DASH' || this.state === 'DODGE') {
+    } else if (this.state === 'DASH' || this.state === 'DODGE' || this.state === 'JUMP') {
       if (this.updateDashOrDodge) {
         this.updateDashOrDodge(dt, enemy, game);
       } else if (this.stateTimer >= this.dashDuration) {
+        this.setState('IDLE');
+      }
+    } else if (this.state === 'CROUCH') {
+      if (this.updateCrouch) {
+        this.updateCrouch(dt, enemy, game);
+      } else if (this.stateTimer >= (this.crouchDuration || 0.96)) {
         this.setState('IDLE');
       }
     } else if (this.state === 'AUTO_ATTACK') {

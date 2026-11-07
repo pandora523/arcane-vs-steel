@@ -31,7 +31,8 @@ export class Reaper extends Fighter {
     this.soulWisps = []; // Homing Soul-Skull Orbs ripped from enemy into Malakor
     this.tombstones = []; // Haunted Gothic Gravestones & Skeletal Hands on the arena floor
     this.chainClaw = null; // Segmented Iron Chain + Giant Skeletal Bone Claw grapple
-    this.deathAvatar = null; // Towering 270px Hooded Grim Reaper Specter behind Malakor
+    this.deathAvatar = null; // Towering Hooded Grim Reaper Specter looming behind the execution zone
+    this.wraithEchoes = []; // Crimson-Violet Wraith Afterimages left during Phantom Blitz & Wraith Phase
 
     this.didChainPull = false;
     this.didReapFinisher = false;
@@ -257,6 +258,15 @@ export class Reaper extends Fighter {
       }
     }
 
+    // Advance Wraith Afterimage Echoes
+    for (let i = this.wraithEchoes.length - 1; i >= 0; i--) {
+      const ec = this.wraithEchoes[i];
+      ec.life += dt;
+      if (ec.life >= ec.maxLife) {
+        this.wraithEchoes.splice(i, 1);
+      }
+    }
+
     if (!this.isDead && (this.state === 'IDLE' || this.state === 'WALK') && this.dodgeCooldown <= 0 && game.vfx) {
       const inPillar = game.vfx.pillars.some(
         (pil) => pil.erupted && pil.owner !== this && Math.abs(pil.x - this.x) < 105
@@ -425,72 +435,141 @@ export class Reaper extends Fighter {
     }
   }
 
+  spawnWraithTrail(fromX, fromY, toX, toY, facing, count = 4) {
+    const frames = [42, 19, 20, 43];
+    for (let i = 0; i < count; i++) {
+      const u = i / Math.max(1, count);
+      this.wraithEchoes.push({
+        x: fromX + (toX - fromX) * u,
+        y: fromY + (toY - fromY) * u,
+        facing,
+        frameIdx: frames[i % frames.length],
+        life: 0,
+        maxLife: 0.34 + i * 0.05
+      });
+    }
+  }
+
   updateUltimate(dt, enemy, game) {
-    // 100% BESPOKE SOULREAPER ULTIMATE: "GRIM HARVEST — BONEYARD & AVATAR OF DEATH"
+    // 100% BESPOKE SOULREAPER ULTIMATE: "GRIM HARVEST — WRAITH CROSS-REAP & AVATAR OF DEATH"
     const t = this.stateTimer;
     const ww = game.renderer.worldWidth;
     const targetX = enemy ? enemy.x : ww * 0.5;
     this.vx = 0;
     this.vy = 0;
-    this.y = this.groundY;
-    this.isDeflecting = t < 1.45;
+    this.isDeflecting = t < 1.48;
+    this.isInvulnerable = t < 1.25;
 
     if (t < 0.04) {
       this.ultStage = 0;
+      this.y = this.groundY;
     }
 
+    // STAGE 1 (t >= 0.05s): Boneyard Summoning & Towering Hooded Grim Reaper Death Avatar Behind Enemy
     if (t >= 0.05 && this.ultStage === 0) {
       this.ultStage = 1;
       if (game.audio) game.audio.play('soul_drain', targetX);
-      game.renderer.triggerShake(14, 0.28);
+      game.renderer.triggerShake(14, 0.26);
 
-      const center = (this.x + targetX) * 0.5;
-      this.spawnTombstoneRow(center, game, 7);
+      this.spawnTombstoneRow(targetX, game, 5);
       this.deathAvatar = {
+        x: targetX,
+        facing: this.facing,
         life: 0,
-        maxLife: 1.48,
+        maxLife: 1.50,
         swingProgress: 0
       };
 
-      game.vfx.spawnDamageText(this.x + this.facing * 115, this.groundY - 335, 0, false, 'RISE, BONEYARD!', '#c084fc');
+      game.vfx.spawnDamageText(targetX, this.groundY - 265, 0, false, 'DEATH DOMAIN!', '#c084fc');
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(31, this, false, -40, 0);
-        this.leechLife(25, enemy, game, 'GRAVE SIPHON');
+        enemy.takeDamage(28, this, false, -30, 0);
+        this.leechLife(22, enemy, game, 'GRAVE SIPHON');
       }
     }
 
-    if (t >= 0.52 && this.ultStage === 1) {
+    // STAGE 2 (t >= 0.36s): Wraith Phantom Cross-Reap Blitz I — Teleporting Through the Enemy!
+    if (t >= 0.36 && this.ultStage === 1) {
       this.ultStage = 2;
-      if (game.audio) game.audio.play('reaper_ult', this.x);
-      game.renderer.triggerShake(18, 0.34);
-      game.vfx.spawnGlyphBurst(this.x, this.y - 160, 10, 'abyssal');
-      game.vfx.spawnDamageText(this.x + this.facing * 115, this.groundY - 355, 0, false, 'AVATAR OF DEATH!', '#f43f5e');
+      if (game.audio) game.audio.play('scythe_reap', targetX);
+      game.renderer.triggerShake(18, 0.30);
+
+      const dir = enemy ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
+      const oldX = this.x;
+      const newX = Math.max(115, Math.min(ww - 115, targetX + dir * 135));
+      this.spawnWraithTrail(oldX, this.groundY, newX, this.groundY, dir, 4);
+      this.x = newX;
+      this.y = this.groundY;
+      this.facing = -dir;
+
+      const sA = this.facing === 1 ? -1.85 : Math.PI - 1.35;
+      const eA = this.facing === 1 ? 1.35 : Math.PI + 1.85;
+      game.vfx.spawnSlash(targetX, this.groundY - 102, 168, sA, eA, '#c084fc', 0.36);
+      game.vfx.spawnSlash(targetX, this.groundY - 102, 134, sA, eA, '#f43f5e', 0.30);
+      game.vfx.spawnGlyphBurst(targetX, this.groundY - 98, 8, 'abyssal');
 
       if (enemy && !enemy.isDead) {
-        const pullX = Math.max(120, Math.min(ww - 120, this.x + this.facing * 185));
-        enemy.x += (pullX - enemy.x) * 0.55;
-        enemy.takeDamage(33, this, true, -60, -50);
-        this.leechLife(25, enemy, game, 'DEATH TOLL');
+        enemy.takeDamage(34, this, true, -dir * 45, -50);
+        this.leechLife(24, enemy, game, 'PHANTOM REAP');
       }
     }
 
-    if (this.deathAvatar && t >= 0.85) {
-      this.deathAvatar.swingProgress = Math.min(1, (t - 0.85) / 0.28);
+    // STAGE 3 (t >= 0.64s): Aerial Blood-Moon Cross-Reap Blitz II — Shadow-Step Above the Prey!
+    if (t >= 0.64 && this.ultStage === 2) {
+      this.ultStage = 3;
+      if (game.audio) game.audio.play('reaper_ult', targetX);
+      game.renderer.triggerShake(20, 0.32);
+
+      const dir = enemy ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
+      const oldX = this.x;
+      const oldY = this.y;
+      const newX = Math.max(115, Math.min(ww - 115, targetX + dir * 115));
+      const newY = this.groundY - 86;
+      this.spawnWraithTrail(oldX, oldY, newX, newY, dir, 4);
+      this.x = newX;
+      this.y = newY;
+      this.facing = -dir;
+
+      const sA = this.facing === 1 ? -1.95 : Math.PI - 1.45;
+      const eA = this.facing === 1 ? 1.45 : Math.PI + 1.95;
+      game.vfx.spawnSlash(targetX, this.groundY - 118, 178, sA, eA, '#f43f5e', 0.38);
+      game.vfx.spawnSlash(targetX, this.groundY - 118, 142, sA, eA, '#c084fc', 0.32);
+      game.vfx.spawnGlyphBurst(targetX, this.groundY - 110, 10, 'abyssal');
+
+      if (enemy && !enemy.isDead) {
+        enemy.takeDamage(36, this, true, -dir * 40, -60);
+        this.leechLife(26, enemy, game, 'DEATH TOLL');
+      }
     }
 
-    if (t >= 1.00 && this.ultStage === 2) {
-      this.ultStage = 3;
+    if (this.deathAvatar) {
+      this.deathAvatar.x = targetX;
+      if (t >= 0.85) {
+        this.deathAvatar.swingProgress = Math.min(1, (t - 0.85) / 0.28);
+      }
+    }
+
+    // Smooth descent from aerial cross-reap into the final Guillotine Slam
+    if (t >= 0.88 && t < 1.00) {
+      const u = (t - 0.88) / 0.12;
+      this.y = this.groundY - 86 * (1 - u);
+    } else if (t >= 1.00) {
+      this.y = this.groundY;
+    }
+
+    // STAGE 4 (t >= 1.00s): Synchronized X-Guillotine Scythe Execution (Malakor + Towering Death Avatar!)
+    if (t >= 1.00 && this.ultStage === 3) {
+      this.ultStage = 4;
       if (game.audio) game.audio.play('scythe_reap', targetX);
 
       game.renderer.triggerShake(28, 0.58);
       game.renderer.triggerAberration(16);
       game.renderer.triggerHitStop(0.095);
 
-      const center = (this.x + targetX) * 0.5;
-      const startA = this.facing === 1 ? -2.0 : Math.PI - 1.3;
-      const endA = this.facing === 1 ? 1.3 : Math.PI + 2.0;
-      game.vfx.spawnSlash(center, this.groundY - 125, 220, startA, endA, '#c084fc', 0.42);
-      game.vfx.spawnSlash(center, this.groundY - 125, 180, startA, endA, '#f43f5e', 0.36);
+      // Intersecting Twin X-Guillotine Blood-Moon Scythe Slashes across the prey
+      game.vfx.spawnSlash(targetX, this.groundY - 115, 210, -2.1, 1.2, '#c084fc', 0.44);
+      game.vfx.spawnSlash(targetX, this.groundY - 115, 195, Math.PI - 1.2, Math.PI + 2.1, '#f43f5e', 0.40);
+      game.vfx.spawnShockwave(targetX, this.groundY, 195, '#c084fc', 0.44, true);
+      game.vfx.spawnShockwave(targetX, this.groundY - 98, 155, '#f43f5e', 0.38, false, true);
 
       for (const tb of this.tombstones) {
         tb.shattered = true;
@@ -499,14 +578,16 @@ export class Reaper extends Fighter {
       }
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(114, this, true, 185, -240);
-        this.leechLife(48, enemy, game, 'GRIM HARVEST');
+        enemy.takeDamage(106, this, true, this.facing * 165, -230);
+        this.leechLife(46, enemy, game, 'GRIM HARVEST');
         game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 98, 12, 'abyssal');
       }
     }
 
     if (t >= 1.54) {
+      this.y = this.groundY;
       this.isDeflecting = false;
+      this.isInvulnerable = false;
       this.deathAvatar = null;
       this.setState('IDLE');
     }
@@ -687,58 +768,85 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Renders the Colossal 320x320 Chunky-Pixel Glowing Grim Reaper Death Avatar Boss Specter (from reaper_vfx.png) during GRIM HARVEST
+   * Renders the Colossal 320x320 Chunky-Pixel Glowing Grim Reaper Death Avatar Boss Specter BEHIND the fighters during GRIM HARVEST
    */
-  drawDeathAvatar(ctx) {
+  drawDeathAvatar(ctx, renderer = null) {
     if (!this.deathAvatar) return;
     const vfxSheet = PixelForge.initAssets().reaper?.vfx;
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
 
     const da = this.deathAvatar;
-    const rise = Math.min(1, da.life / 0.30);
+    const rise = Math.min(1, da.life / 0.28);
     const fade = Math.min(1, (da.maxLife - da.life) * 3.2);
-    const ax = Math.round(this.x + this.facing * 115);
+    const ax = Math.round(da.x ?? this.x + this.facing * 115);
     const ay = Math.round(this.groundY);
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = fade * 0.98;
 
-    // Clip to floor so the Colossal Death Avatar rises smoothly out of the graveyard floor
+    // Clip to floor so the Colossal Death Avatar rises smoothly out of the graveyard floor behind the enemy
     ctx.beginPath();
-    ctx.rect(ax - 250, ay - 390, 500, 396);
+    ctx.rect(ax - 280, ay - 420, 560, 426);
     ctx.clip();
 
-    const drawSize = 324;
+    const drawSize = 336;
     const riseY = Math.round((1 - rise) * 210);
     const floatBob = Math.round(Math.sin(da.life * 6.5) * 6);
 
-    ctx.translate(ax, ay - drawSize * 0.5 + 8 + riseY + floatBob);
-    ctx.scale(this.facing, 1);
+    ctx.translate(ax, ay - drawSize * 0.5 + 14 + riseY + floatBob);
+    ctx.scale(da.facing || this.facing, 1);
+
+    // Volumetric Blood-Moon & Abyssal Violet Halo behind the Hooded Death Avatar
+    if (renderer && renderer.glowViolet) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.56;
+      ctx.drawImage(renderer.glowViolet, -220, -220, 440, 440);
+    }
 
     if (da.swingProgress > 0) {
       const lunge = Math.sin(da.swingProgress * Math.PI);
-      ctx.rotate(lunge * 0.16);
       ctx.scale(1 + lunge * 0.08, 1 + lunge * 0.08);
     }
 
     const dHalf = Math.round(-drawSize * 0.5);
     // Stepped outer abyssal pixel bloom aura
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.28;
+    ctx.globalAlpha = fade * 0.34;
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf - 10, dHalf - 10, drawSize + 20, drawSize + 20);
 
     // Main 320x320 chunky-pixel Grim Reaper Death Avatar sprite
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.96;
+    ctx.globalAlpha = fade * 0.94;
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, drawSize, drawSize);
 
     // Balanced inner crimson-violet rune bloom pass
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * (0.24 + Math.sin(da.swingProgress * Math.PI) * 0.14);
+    ctx.globalAlpha = fade * (0.24 + Math.sin(da.swingProgress * Math.PI) * 0.16);
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, drawSize, drawSize);
 
     ctx.restore();
+  }
+
+  /**
+   * Renders Malakor's Crimson-Violet Wraith Afterimage Silhouettes left behind during Phantom Cross-Reap Blitz
+   */
+  drawWraithEchoes(ctx) {
+    if (!this.wraithEchoes || !this.wraithEchoes.length) return;
+    const sprites = PixelForge.initAssets().reaper;
+    if (!sprites || !sprites.sheet || !sprites.sheet.complete) return;
+
+    for (const ec of this.wraithEchoes) {
+      const fade = Math.max(0, 1 - ec.life / ec.maxLife);
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.translate(Math.round(ec.x), Math.round(ec.y + 6));
+      ctx.scale(ec.facing, 1);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.46;
+      PixelForge.drawGhostFrame(ctx, sprites, ec.frameIdx, 208, 208);
+      ctx.restore();
+    }
   }
 
   /**
@@ -798,9 +906,12 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Normal skill pass (behind fighters)
+   * Background skill & Ultimate pass (rendered BEHIND the fighters so the Towering Death Avatar & Tombstones frame the duel!)
    */
   drawForegroundOverlay(ctx, renderer = null) {
+    this.drawTombstones(ctx);
+    this.drawDeathAvatar(ctx, renderer);
+    this.drawWraithEchoes(ctx);
     this.drawSkeletalChainClaw(ctx);
     if (this.state !== 'ULTIMATE' && !this.deathAvatar) {
       this.drawSoulWisps(ctx, renderer);
@@ -808,11 +919,9 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Ultimate pass (rendered IN FRONT of all fighters!)
+   * Foreground Ultimate pass (rendered IN FRONT of all fighters!)
    */
   drawUltimateForeground(ctx, renderer = null) {
-    this.drawTombstones(ctx);
-    this.drawDeathAvatar(ctx);
     if (this.state === 'ULTIMATE' || this.deathAvatar) {
       this.drawSoulWisps(ctx, renderer);
     }

@@ -315,21 +315,9 @@ export class Renderer {
     }
 
     if (this.ultDim > 0.01) {
-      ctx.fillStyle = `rgba(2, 3, 8, ${this.ultDim * 0.82})`;
+      ctx.fillStyle = `rgba(2, 3, 10, ${this.ultDim * 0.78})`;
       ctx.fillRect(-600, -800, ww + 1200, 2000);
-      // Radial In-World Spotlight on the Ultimate Caster
-      const spotX = this.ultFocusX ?? ww * 0.5;
-      const spotY = (this.ultFocusY ?? gy) - 105;
-      const spotGlow = this.getGlowForColor(this.cutInColor || '#facc15');
-      if (spotGlow) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = this.ultDim * 0.65;
-        ctx.drawImage(spotGlow, spotX - 310, spotY - 310, 620, 620);
-        ctx.globalAlpha = this.ultDim * 0.42;
-        ctx.drawImage(this.glowGold, spotX - 210, spotY - 210, 420, 420);
-        ctx.restore();
-      }
+      this.drawUltimateAwakeningWorld(ctx, gy);
     }
 
     // 2. Ground Scorch & Fissures
@@ -1639,6 +1627,57 @@ export class Renderer {
     ctx.restore();
   }
 
+  drawUltimateAwakeningWorld(ctx, gy) {
+    const spotX = Math.round(this.ultFocusX ?? this.worldWidth * 0.5);
+    const spotY = Math.round((this.ultFocusY ?? gy) - 100);
+    const elemCol = this.cutInColor || '#facc15';
+    const spotGlow = this.getGlowForColor(elemCol);
+    const dim = Math.min(1, this.ultDim);
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    // 1. Soft Volumetric Backlight Halo Behind the Caster
+    if (spotGlow) {
+      ctx.globalAlpha = dim * 0.58;
+      ctx.drawImage(spotGlow, spotX - 280, spotY - 280, 560, 560);
+      ctx.globalAlpha = dim * 0.36;
+      ctx.drawImage(this.glowGold, spotX - 190, spotY - 190, 380, 380);
+    }
+
+    // 2. Towering Soft-Feathered Skyward Pillar of Elemental Light Rising from the Stone Floor
+    const colW = 148;
+    const colG = ctx.createLinearGradient(spotX - colW, 0, spotX + colW, 0);
+    colG.addColorStop(0, 'rgba(0, 0, 0, 0)');
+    colG.addColorStop(0.28, elemCol);
+    colG.addColorStop(0.5, '#ffffff');
+    colG.addColorStop(0.72, elemCol);
+    colG.addColorStop(1, 'rgba(0, 0, 0, 0)');
+    ctx.globalAlpha = dim * 0.24;
+    ctx.fillStyle = colG;
+    ctx.fillRect(spotX - colW, gy - 680, colW * 2, 684);
+
+    // 3. High-Velocity Ascending Elemental Embers & Speed Filaments Flanking the Caster (Zero Floor Circles!)
+    for (let i = 0; i < 14; i++) {
+      const u = (this.time * (2.2 + (i % 4) * 0.35) + i * 0.29) % 1;
+      const side = i % 2 === 0 ? -1 : 1;
+      const lane = 24 + ((i * 19) % 115);
+      const ex = Math.round(spotX + side * lane);
+      const ey = Math.round(gy - u * 440);
+      const eAlpha = Math.sin(u * Math.PI) * dim;
+      const len = 18 + (i % 3) * 10;
+
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = eAlpha * 0.75;
+      ctx.fillStyle = i % 3 === 0 ? '#fde047' : elemCol;
+      ctx.fillRect(ex - 2, ey - len, 4, len);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(ex - 1, ey - len + 3, 2, len - 6);
+    }
+
+    ctx.restore();
+  }
+
   drawHD2DPostProcess(ctx) {
     const w = this.width;
     const h = this.height;
@@ -1752,141 +1791,63 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 2. Portrait-Free, High-Impact Anamorphic Ultimate Overdrive Slash-Flare & Spinning Champion Runic Sigil
+    // 2. Clean Top-Center Overdrive Awakening Callout (Tucked cleanly under the VS Diamond — Zero Wireframe Shapes, Zero Screen Smudge!)
     if (this.cutInTimer > 0) {
       const p = 1 - this.cutInTimer / (this.cutInMaxTimer || 1.05);
-      const alpha = p < 0.07 ? p / 0.07 : p > 0.82 ? (1 - p) / 0.18 : 1;
-      const slamScale = 1 + Math.max(0, 1 - p / 0.14) * 0.42;
-      const stripH = this.isMobile ? 104 : 154;
-      const stripY = Math.round(h * 0.13);
-      const stripW = Math.min(w - 16, 1120);
-      const cy = stripY + Math.round(stripH * 0.5);
+      const alpha = p < 0.07 ? p / 0.07 : p > 0.80 ? (1 - p) / 0.20 : 1;
+      const slamScale = 1 + Math.max(0, 1 - p / 0.12) * 0.24;
       const cx = Math.round(w * 0.5);
+      const cy = this.isMobile ? 64 : 92;
+      const rx = this.isMobile ? 220 : 340;
+      const ry = this.isMobile ? 28 : 38;
       const elemCol = this.cutInColor || '#38bdf8';
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-
-      // 1) Soft-feathered elliptical dark & elemental horizon wash (fades to 0 alpha on all sides — ZERO BOX!)
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.scale(stripW * 0.56, stripH * 0.64);
-      const ribbonVeil = ctx.createRadialGradient(0, 0, 0.06, 0, 0, 1.0);
-      ribbonVeil.addColorStop(0, 'rgba(2, 5, 14, 0.88)');
-      ribbonVeil.addColorStop(0.58, 'rgba(5, 10, 24, 0.54)');
-      ribbonVeil.addColorStop(1, 'rgba(2, 5, 14, 0)');
-      ctx.fillStyle = ribbonVeil;
-      ctx.beginPath();
-      ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // 2) Anamorphic Elemental Aura Bloom across the horizon
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.translate(cx, cy);
-      ctx.scale(stripW * 0.48, stripH * 0.42);
-      const elemAura = ctx.createRadialGradient(0, 0, 0.04, 0, 0, 1.0);
-      elemAura.addColorStop(0, '#ffffff');
-      elemAura.addColorStop(0.28, elemCol);
-      elemAura.addColorStop(0.65, elemCol);
-      elemAura.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.globalAlpha = alpha * 0.34;
-      ctx.fillStyle = elemAura;
-      ctx.beginPath();
-      ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-
-      // 3) Spinning Sacred / Arcane Octagram Runic Crest Behind the Typography (Pure Geometric Vector Light — No Portrait!)
-      ctx.save();
-      ctx.translate(cx, cy);
-      ctx.globalCompositeOperation = 'lighter';
-      const sigilR = (this.isMobile ? 48 : 72) * (0.92 + 0.12 * Math.sin(p * Math.PI));
-      for (let layer = 0; layer < 2; layer++) {
-        ctx.save();
-        ctx.rotate((layer === 0 ? 1 : -1) * (this.time * 2.4 + p * 3.2) + (layer * Math.PI) / 4);
-        ctx.strokeStyle = layer === 0 ? elemCol : '#fde047';
-        ctx.lineWidth = layer === 0 ? 2.5 : 1.8;
-        ctx.globalAlpha = alpha * (layer === 0 ? 0.58 : 0.44);
-        ctx.beginPath();
-        for (let pt = 0; pt < 8; pt++) {
-          const a = (pt * Math.PI) / 4;
-          const r = pt % 2 === 0 ? sigilR : sigilR * 0.42;
-          const sx = Math.cos(a) * r;
-          const sy = Math.sin(a) * r;
-          if (pt === 0) ctx.moveTo(sx, sy);
-          else ctx.lineTo(sx, sy);
-        }
-        ctx.closePath();
-        ctx.stroke();
-        ctx.restore();
-      }
-      ctx.restore();
-
-      // 4) Blazing Diagonal & Horizontal Anamorphic Slash-Streaks Across the Sky
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const slashSpan = stripW * 0.46;
-      const mainSlash = ctx.createLinearGradient(cx - slashSpan, cy, cx + slashSpan, cy);
-      mainSlash.addColorStop(0, 'rgba(255, 255, 255, 0)');
-      mainSlash.addColorStop(0.22, elemCol);
-      mainSlash.addColorStop(0.5, '#ffffff');
-      mainSlash.addColorStop(0.78, elemCol);
-      mainSlash.addColorStop(1, 'rgba(255, 255, 255, 0)');
-      ctx.globalAlpha = alpha * 0.92;
-      ctx.fillStyle = mainSlash;
-      ctx.beginPath();
-      ctx.moveTo(cx - slashSpan, cy);
-      ctx.lineTo(cx, cy - 5);
-      ctx.lineTo(cx + slashSpan, cy);
-      ctx.lineTo(cx, cy + 5);
-      ctx.closePath();
-      ctx.fill();
-
-      // Flanking Left & Right Wing-Slash Filaments
-      for (const side of [-1, 1]) {
-        const wingX = cx + side * (this.isMobile ? 155 : 295);
-        ctx.fillStyle = '#fde047';
-        ctx.globalAlpha = alpha * 0.78;
-        ctx.beginPath();
-        ctx.moveTo(wingX, cy - 22);
-        ctx.lineTo(wingX + side * 18, cy);
-        ctx.lineTo(wingX, cy + 22);
-        ctx.lineTo(wingX - side * 8, cy);
-        ctx.closePath();
-        ctx.fill();
-      }
-      ctx.restore();
-
-      // 5) Scale-Slam Multi-Layered Ultimate Callout Typography (Zero Portrait, 100% Visual Impact!)
-      ctx.save();
       ctx.translate(cx, cy);
       ctx.scale(slamScale, slamScale);
-      ctx.textAlign = 'center';
 
-      const topTy = -(this.isMobile ? 14 : 20);
-      const botTy = this.isMobile ? 22 : 32;
-
-      ctx.font = `${this.isMobile ? 8 : 12}px "Press Start 2P", monospace`;
-      ctx.fillStyle = '#020617';
-      ctx.fillText(`⚡ ${this.cutInName} • ULTIMATE OVERDRIVE ⚡`, 2, topTy + 2);
-      ctx.fillText(`⚡ ${this.cutInName} • ULTIMATE OVERDRIVE ⚡`, -2, topTy + 2);
-      ctx.fillStyle = '#fde047';
-      ctx.fillText(`⚡ ${this.cutInName} • ULTIMATE OVERDRIVE ⚡`, 0, topTy);
-
-      ctx.font = `${this.isMobile ? 14 : 25}px "Press Start 2P", monospace`;
-      ctx.fillStyle = '#020617';
-      ctx.fillText(this.cutInUltName, 4, botTy + 4);
-      ctx.fillText(this.cutInUltName, -3, botTy + 3);
-      ctx.fillText(this.cutInUltName, 0, botTy + 4);
-      ctx.fillStyle = elemCol;
-      ctx.fillText(this.cutInUltName, 2, botTy + 2);
-      ctx.fillStyle = '#fef08a';
-      ctx.fillText(this.cutInUltName, -1, botTy - 1);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(this.cutInUltName, 0, botTy);
+      // Subtle feathered obsidian backdrop cushion strictly behind the text for 100% legibility (Zero screen wash-out!)
+      ctx.save();
+      ctx.scale(rx, ry);
+      const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
+      veil.addColorStop(0, 'rgba(3, 6, 15, 0.86)');
+      veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.48)');
+      veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
+      ctx.fillStyle = veil;
+      ctx.beginPath();
+      ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
+
+      // Razor-thin 2px tapered elemental divider glint
+      const lineG = ctx.createLinearGradient(-rx * 0.72, 0, rx * 0.72, 0);
+      lineG.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      lineG.addColorStop(0.28, elemCol);
+      lineG.addColorStop(0.5, '#ffffff');
+      lineG.addColorStop(0.72, elemCol);
+      lineG.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = lineG;
+      ctx.fillRect(-rx * 0.72, -3, rx * 1.44, 2);
+
+      ctx.textAlign = 'center';
+      ctx.font = `${this.isMobile ? 7 : 10}px "Press Start 2P", monospace`;
+      const eyebrow = `★ ${(this.cutInName || 'CHAMPION').toUpperCase()} • OVERDRIVE ART ★`;
+      ctx.fillStyle = '#020617';
+      ctx.fillText(eyebrow, 2, -9);
+      ctx.fillText(eyebrow, -2, -9);
+      ctx.fillStyle = '#fde047';
+      ctx.fillText(eyebrow, 0, -11);
+
+      ctx.font = `${this.isMobile ? 12 : 19}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#020617';
+      ctx.fillText(this.cutInUltName, 3, 21);
+      ctx.fillText(this.cutInUltName, -2, 20);
+      ctx.fillText(this.cutInUltName, 0, 22);
+      ctx.fillStyle = elemCol;
+      ctx.fillText(this.cutInUltName, 2, 19);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(this.cutInUltName, 0, 18);
 
       ctx.restore();
     }
