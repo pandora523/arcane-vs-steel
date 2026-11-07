@@ -157,6 +157,7 @@ export class PixelForge {
     // Crisp pixel-art afterimage trail during active DASH, DODGE, or Warrior Omnislash Ultimate
     if (
       !isReflection &&
+      !fighter.isAngelicAscent &&
       (fighter.state === 'DASH' || fighter.state === 'DODGE' || fighter.isOmnislashing)
     ) {
       const dir = (fighter.dashDir || fighter.facing) * fighter.facing;

@@ -532,26 +532,19 @@ export class Priestess extends Fighter {
     if (wingSheet && wingSheet.complete && wingSheet.naturalWidth > 0) {
       const cellW = 320;
       const cellH = 232;
-      const flapSpeed = this.isAngelicAscent ? 11.5 : 8.5;
-      const wingFrame = Math.floor(this.haloPhase * 1.6 + this.stateTimer * flapSpeed) % 4;
-      const bobY = Math.round(Math.sin(this.stateTimer * 12) * 3);
-      const scale = isFullArchangel ? 1.0 : 0.84;
-      const dw = Math.round(cellW * scale);
-      const dh = Math.round(cellH * scale);
-      const dx = Math.round(-dw / 2);
-      const dy = Math.round(-208 - 36 * scale + bobY);
-
-      // Subtle golden motion-trail wing afterimage during high-speed flight / Ultimate
-      if (isFullArchangel) {
-        const prevFrame = (wingFrame + 3) % 4;
-        ctx.save();
-        ctx.globalAlpha = 0.26;
-        ctx.drawImage(wingSheet, prevFrame * cellW, 0, cellW, cellH, dx, dy + 4, dw, dh);
-        ctx.restore();
+      // Calm, regal 2.2 Hz gliding wingbeat (no frantic flapping or double-wing ghosting)
+      const wingFrame = Math.floor(this.stateTimer * 2.2) % 4;
+      let recoilX = 0;
+      let recoilY = 0;
+      if (!this.isDead && this.hurtTimer > 0) {
+        recoilX = -6 + Math.round((Math.sin(this.hurtTimer * 60) * 4) / 2) * 2;
+        recoilY = -2;
       }
+      const dx = Math.round(-cellW * 0.5 + recoilX);
+      const dy = Math.round(-208 - 26 + recoilY);
 
       ctx.globalAlpha = 1.0;
-      ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, dw, dh);
+      ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, cellW, cellH);
     }
 
     // 3. 8 Orbiting Pixel Star-Cross Chakrams during ULTIMATE
