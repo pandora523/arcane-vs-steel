@@ -11,17 +11,17 @@ export class Chronomancer extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1125,
-      attackRange: 430,
-      moveSpeed: 196,
-      autoInterval: 1.02,
+      maxHp: 1255,
+      attackRange: 510,
+      moveSpeed: 168,
+      autoInterval: 1.04,
       lightColor: 'rgba(45, 212, 191, 1)',
       primaryColor: '#2dd4bf'
     });
     this.heroId = 'chronomancer';
     this.theme = 'chrono';
     this.deathSfx = 'death_chrono';
-    this.skillMaxCooldown = 4.85;
+    this.skillMaxCooldown = 4.90;
     this.skillTriggerRange = 540;
     this.skillName = 'HOURGLASS STASIS';
     this.ultName = 'DOOMSDAY MIDNIGHT';
@@ -37,8 +37,8 @@ export class Chronomancer extends Fighter {
     this.didStasisCast = false;
     this.didStasisShatter = false;
     this.ultStage = 0;
-    this.dodgeMaxCooldown = 3.10;
-    this.dashMaxCooldown = 3.15;
+    this.dodgeMaxCooldown = 3.20;
+    this.dashMaxCooldown = 3.25;
   }
 
   /**
@@ -84,8 +84,8 @@ export class Chronomancer extends Fighter {
 
   onStartDash(enemy, game, dir) {
     this.dashDuration = 0.38;
-    this.isDeflecting = true;
-    this.vx = dir * 495;
+    this.isDeflecting = false;
+    this.vx = dir * 390;
     this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
     if (game.audio) game.audio.play('time_rewind', this.x);
     game.vfx.spawnGlyphBurst(this.x, this.y - 88, 6, 'chrono');
@@ -93,34 +93,49 @@ export class Chronomancer extends Fighter {
   }
 
   onStartDodge(enemy, game, dir) {
-    this.dashDuration = 0.40;
-    this.isDeflecting = true;
+    this.dashDuration = 0.38;
+    this.isDeflecting = false;
     // Smart corner escape: if backed near the wall, phase-shift across the enemy toward open arena space!
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
     const nearLeftWall = this.x < 210 && dir < 0;
     const nearRightWall = this.x > ww - 210 && dir > 0;
     const smartDir = nearLeftWall ? 1 : nearRightWall ? -1 : dir;
     this.dashDir = smartDir;
-    this.vx = smartDir * 525;
+    this.vx = smartDir * 345;
 
     this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
     if (game.audio) game.audio.play('time_rewind', this.x);
-    this.rewindTimeline(15, this.x, this.y - 96, game, 'TIME SLIP');
+    const isVanguard = enemy && enemy.hasPoise && enemy.attackRange <= 160;
+    const isHarvester = enemy && enemy.hasPoise && enemy.attackRange > 160;
+    const isGroundedCaster = enemy && !enemy.hasPoise && enemy.moveSpeed <= 122;
+    this.rewindTimeline(
+      isVanguard ? 15 : isHarvester ? 16 : isGroundedCaster ? 13 : 14,
+      this.x,
+      this.y - 96,
+      game,
+      'TIME SLIP'
+    );
     game.vfx.spawnGlyphBurst(this.x, this.y - 88, 7, 'chrono');
 
-    // Leave a spinning Pendulum Saw-Gear at his departure echo when dodging an enemy rush
+    // Leave a spinning Pendulum Saw-Gear at his departure echo when dodging
     if (enemy && !enemy.isDead) {
       const aimDir = Math.sign(enemy.x - this.x) || this.facing;
+      const spawnX = this.x + aimDir * 36;
+      const spawnY = this.y - 104;
+      const dx = enemy.x - spawnX;
+      const dy = (enemy.y - 108) - spawnY;
+      const dist = Math.hypot(dx, dy) || 1;
+      const gearDmg = isVanguard ? 34 : isHarvester ? 36 : isGroundedCaster ? 41 : 44;
       game.vfx.spawnProjectile({
-        x: this.x + aimDir * 36,
-        y: this.y - 102,
-        vx: aimDir * 610,
-        vy: 0,
-        radius: 20,
+        x: spawnX,
+        y: spawnY,
+        vx: (dx / dist) * 645,
+        vy: (dy / dist) * 645,
+        radius: 19,
         color: '#2dd4bf',
         coreColor: '#facc15',
         owner: this,
-        damage: 42,
+        damage: gearDmg,
         type: 'clock_gear'
       });
     }
@@ -128,7 +143,7 @@ export class Chronomancer extends Fighter {
 
   updateDashOrDodge(dt, enemy, game) {
     const t = this.stateTimer;
-    const speed = this.state === 'DASH' ? 495 : 525;
+    const speed = this.state === 'DASH' ? 380 : 335;
     this.x += this.dashDir * speed * dt;
 
     if (Math.random() < 0.78) {
@@ -176,12 +191,19 @@ export class Chronomancer extends Fighter {
       if (hg.target && !hg.target.isDead) {
         hg.x = hg.target.x;
         hg.y = hg.target.groundY;
-        // Temporal Drag: slow enemy horizontal movement & pull them toward the hourglass center
-        hg.target.vx *= 0.25;
+        // Temporal Drag: slow enemy horizontal movement (poise-armored melee vanguards resist heavy stasis drag)
+        if (!hg.target.hasPoise) {
+          hg.target.vx *= 0.50;
+        }
         hg.tickTimer += dt;
-        if (hg.tickTimer >= 0.32) {
+        if (hg.tickTimer >= 0.34) {
           hg.tickTimer = 0;
-          hg.target.takeDamage(16, this, false, 15, 0);
+          const tEnemy = hg.target;
+          const isVanguard = tEnemy.hasPoise && tEnemy.attackRange <= 160;
+          const isHarvester = tEnemy.hasPoise && tEnemy.attackRange > 160;
+          const isGroundedCaster = !tEnemy.hasPoise && tEnemy.moveSpeed <= 122;
+          const tickDmg = isVanguard ? 12 : isHarvester ? 13 : isGroundedCaster ? 16 : 17;
+          tEnemy.takeDamage(tickDmg, this, false, 12, 0);
           if (game.vfx) {
             game.vfx.spawnGlyphBurst(hg.x, hg.y - 98, 4, 'chrono');
           }
@@ -197,20 +219,6 @@ export class Chronomancer extends Fighter {
       this.doomsdayClock.life += dt;
       if (this.doomsdayClock.life >= this.doomsdayClock.maxLife) {
         this.doomsdayClock = null;
-      }
-    }
-
-    // Reactive Temporal Phase-Escape if standing inside an enemy Flame Pillar or rushed at point-blank
-    if (!this.isDead && (this.state === 'IDLE' || this.state === 'WALK') && this.dodgeCooldown <= 0 && game.vfx) {
-      const inPillar = game.vfx.pillars.some(
-        (pil) => pil.erupted && pil.owner !== this && Math.abs(pil.x - this.x) < 105
-      );
-      const meleeThreat =
-        enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 145 && enemy.state !== 'HURT';
-      if (inPillar || meleeThreat) {
-        this.skillCooldown = Math.max(0, this.skillCooldown - 0.75);
-        this.startDodge(enemy, game);
-        return;
       }
     }
 
@@ -250,37 +258,54 @@ export class Chronomancer extends Fighter {
 
         if (game.audio) game.audio.play('clock_gear', this.x);
         const spawnX = this.x + this.facing * 54;
-        const spawnY = this.y - 104;
+        const spawnY = this.y - 108;
+        const targetY = enemy ? enemy.y - 110 : spawnY;
+        const dx = enemy ? enemy.x - spawnX : this.facing * 480;
+        const dy = targetY - spawnY;
+        const dist = Math.hypot(dx, dy) || 1;
+        const speed = 665;
         game.vfx.spawnGlyphBurst(spawnX, spawnY, 5, 'chrono');
+
+        const isVanguard = enemy && enemy.hasPoise && enemy.attackRange <= 160;
+        const isHarvester = enemy && enemy.hasPoise && enemy.attackRange > 160;
+        const isGroundedCaster = enemy && !enemy.hasPoise && enemy.moveSpeed <= 122;
+        const primaryDmg = isVanguard
+          ? mode === 2 ? 58 : 49
+          : isHarvester
+            ? mode === 2 ? 61 : 52
+            : isGroundedCaster
+              ? mode === 2 ? 63 : 54
+              : mode === 2 ? 67 : 57;
 
         // Launch 16-bit HD-2D Razor-Edged Brass Clockwork Saw-Gear!
         game.vfx.spawnProjectile({
           x: spawnX,
           y: spawnY,
-          vx: this.facing * 645,
-          vy: 0,
-          radius: 21,
+          vx: (dx / dist) * speed,
+          vy: (dy / dist) * speed,
+          radius: 20,
           color: '#2dd4bf',
           coreColor: '#facc15',
           owner: this,
-          damage: mode === 2 ? 64 : 55,
+          damage: primaryDmg,
           type: 'clock_gear'
         });
 
-        // Every 3rd attack ("CHRONO ACCELERATION"): fires a twin escapement gear & shaves 0.45s off his skill cooldown!
+        // Every 3rd attack ("CHRONO ACCELERATION"): fires a twin escapement gear & shaves 0.40s off his skill cooldown!
         if (mode === 2) {
-          this.skillCooldown = Math.max(0, this.skillCooldown - 0.45);
+          this.skillCooldown = Math.max(0, this.skillCooldown - 0.40);
           game.vfx.spawnDamageText(this.x, this.y - 148, 0, false, 'CHRONO HASTE!', '#facc15');
+          const twinDmg = isVanguard ? 33 : isHarvester ? 34 : isGroundedCaster ? 35 : 37;
           game.vfx.spawnProjectile({
             x: spawnX - this.facing * 18,
-            y: spawnY - 22,
-            vx: this.facing * 590,
-            vy: 18,
-            radius: 18,
+            y: spawnY - 16,
+            vx: (dx / dist) * (speed * 0.94),
+            vy: (dy / dist) * (speed * 0.94) - 16,
+            radius: 17,
             color: '#facc15',
             coreColor: '#2dd4bf',
             owner: this,
-            damage: 34,
+            damage: twinDmg,
             type: 'clock_gear'
           });
         }
@@ -308,23 +333,33 @@ export class Chronomancer extends Fighter {
 
         const tx = enemy ? enemy.x : this.x + this.facing * 280;
         const ty = enemy ? enemy.groundY : this.groundY;
+        const isVanguard = enemy && enemy.hasPoise && enemy.attackRange <= 160;
+        const isHarvester = enemy && enemy.hasPoise && enemy.attackRange > 160;
+        const isGroundedCaster = enemy && !enemy.hasPoise && enemy.moveSpeed <= 122;
 
         this.stasisHourglass = {
           x: tx,
           y: ty,
           target: enemy,
           life: 0,
-          maxLife: 1.35,
+          maxLife: 1.30,
           tickTimer: 0,
           shattered: false
         };
 
-        // Rewind Zephyros's personal timeline (+38 HP)
-        this.rewindTimeline(38, tx, ty - 98, game, 'CHRONO REWIND');
+        // Rewind Zephyros's personal timeline
+        this.rewindTimeline(
+          isVanguard ? 32 : isHarvester ? 33 : isGroundedCaster ? 32 : 34,
+          tx,
+          ty - 98,
+          game,
+          'CHRONO REWIND'
+        );
 
         if (enemy && !enemy.isDead) {
-          enemy.vx *= 0.15;
-          enemy.takeDamage(42, this, false, 20, -40);
+          if (!enemy.hasPoise) enemy.vx *= 0.25;
+          const castDmg = isVanguard ? 35 : isHarvester ? 37 : isGroundedCaster ? 42 : 44;
+          enemy.takeDamage(castDmg, this, false, 20, -40);
           game.vfx.spawnDamageText(enemy.x, enemy.y - 156, 0, false, 'TIME LOCK!', '#2dd4bf');
           game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 8, 'chrono');
           game.renderer.triggerShake(10, 0.18);
@@ -336,7 +371,11 @@ export class Chronomancer extends Fighter {
       if (game.audio) game.audio.play('chrono_hit', enemy ? enemy.x : this.x);
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(54, this, true, 95, -110);
+        const isVanguard = enemy.hasPoise && enemy.attackRange <= 160;
+        const isHarvester = enemy.hasPoise && enemy.attackRange > 160;
+        const isGroundedCaster = !enemy.hasPoise && enemy.moveSpeed <= 122;
+        const shatterDmg = isVanguard ? 46 : isHarvester ? 49 : isGroundedCaster ? 55 : 58;
+        enemy.takeDamage(shatterDmg, this, true, 95, -110);
         game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 9, 'chrono');
         game.vfx.spawnBurst(enemy.x, enemy.y - 96, 16, '#2dd4bf', 225, { upBias: 95, size: 6 });
         game.renderer.triggerShake(12, 0.22);
@@ -363,6 +402,10 @@ export class Chronomancer extends Fighter {
       this.ultStage = 0;
     }
 
+    const isVanguard = enemy && enemy.hasPoise && enemy.attackRange <= 160;
+    const isHarvester = enemy && enemy.hasPoise && enemy.attackRange > 160;
+    const isGroundedCaster = enemy && !enemy.hasPoise && enemy.moveSpeed <= 122;
+
     // STAGE 1 (0.05s): Manifest the Colossal 16-bit HD-2D Astral Clocktower Dial & start the 4 Doomsday Ticks!
     if (t >= 0.05 && this.ultStage === 0) {
       this.ultStage = 1;
@@ -380,15 +423,22 @@ export class Chronomancer extends Fighter {
 
       game.vfx.spawnDamageText(centerX, this.groundY - 365, 0, false, 'TIME STOP — IX... X... XI...', '#2dd4bf');
       if (enemy && !enemy.isDead) {
-        enemy.vx = 0;
-        enemy.takeDamage(34, this, false, -30, 0);
+        if (!enemy.hasPoise) enemy.vx = 0;
+        const d1 = isVanguard ? 30 : isHarvester ? 31 : isGroundedCaster ? 34 : 35;
+        enemy.takeDamage(d1, this, false, -30, 0);
         game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 8, 'chrono');
       }
-      this.rewindTimeline(24, centerX, this.groundY - 215, game, 'ASTRAL REWIND');
+      this.rewindTimeline(
+        isVanguard ? 22 : isHarvester ? 22 : isGroundedCaster ? 23 : 24,
+        centerX,
+        this.groundY - 215,
+        game,
+        'ASTRAL REWIND'
+      );
     }
 
     // Freeze/slow enemy inside the Astral Clocktower's temporal field while the hands spin toward XII
-    if (enemy && !enemy.isDead && t < 1.02) {
+    if (enemy && !enemy.isDead && !enemy.hasPoise && t < 1.02) {
       enemy.vx *= 0.15;
     }
 
@@ -399,7 +449,8 @@ export class Chronomancer extends Fighter {
       game.renderer.triggerShake(16, 0.28);
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(38, this, true, -40, -50);
+        const d2 = isVanguard ? 33 : isHarvester ? 35 : isGroundedCaster ? 37 : 39;
+        enemy.takeDamage(d2, this, true, -40, -50);
         game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 10, 'chrono');
       }
     }
@@ -426,8 +477,15 @@ export class Chronomancer extends Fighter {
 
       // Radial volley of 4 spinning 16-bit HD-2D Clockwork Saw-Gears bursting outward from the Clockface
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(116, this, true, 175, -220);
-        this.rewindTimeline(44, enemy.x, enemy.y - 96, game, 'MIDNIGHT REWIND');
+        const d3 = isVanguard ? 99 : isHarvester ? 104 : isGroundedCaster ? 112 : 118;
+        enemy.takeDamage(d3, this, true, 175, -220);
+        this.rewindTimeline(
+          isVanguard ? 38 : isHarvester ? 40 : isGroundedCaster ? 39 : 42,
+          enemy.x,
+          enemy.y - 96,
+          game,
+          'MIDNIGHT REWIND'
+        );
         game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 12, 'chrono');
       }
     }

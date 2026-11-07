@@ -201,7 +201,7 @@ export class FireMage extends Fighter {
           color: '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          damage: isTwinFlare ? 72 : 84,
+          damage: isTwinFlare ? 68 : 79,
           type: 'fireball',
           isMeteor: false
         });
@@ -216,7 +216,7 @@ export class FireMage extends Fighter {
             color: '#ea580c',
             coreColor: '#fef08a',
             owner: this,
-            damage: 46,
+            damage: 42,
             type: 'fireball',
             isMeteor: false
           });
@@ -273,7 +273,7 @@ export class FireMage extends Fighter {
           color: '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          damage: 38,
+          damage: 35,
           type: 'fireball'
         });
       });
@@ -317,7 +317,7 @@ export class FireMage extends Fighter {
         game.vfx.spawnShockwave(targetX, this.groundY, 175, '#facc15', 0.48, true);
         game.vfx.spawnLightning(targetX, eclipseY, this.groundY, '#fef08a', '#fb923c');
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(28, this, false, 20, 0);
+          enemy.takeDamage(26, this, false, 20, 0);
         }
       }
 
@@ -371,7 +371,7 @@ export class FireMage extends Fighter {
       }
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(105, this, true, 160, -220);
+        enemy.takeDamage(96, this, true, 160, -220);
       }
 
       // 2. Erupt 5 High-Velocity Molten Cataclysm Meteors fanning across the arena!

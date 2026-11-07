@@ -220,7 +220,7 @@ export class Warrior extends Fighter {
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 50) {
           const isCrit = mode === 2 || Math.random() < 0.25;
-          const dmg = mode === 2 ? 96 : mode === 1 ? 82 : 74;
+          const dmg = mode === 2 ? 93 : mode === 1 ? 80 : 72;
           enemy.takeDamage(dmg, this, isCrit, 115, mode === 2 ? -130 : 0);
           if (game.audio) game.audio.play(isCrit ? 'hit_crit' : 'clang', enemy.x);
           if (game.renderer) game.renderer.triggerHitStop(0.06);
@@ -320,7 +320,7 @@ export class Warrior extends Fighter {
       });
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - slamX) < 195) {
-        enemy.takeDamage(58, this, true, 135, -150);
+        enemy.takeDamage(54, this, true, 135, -150);
       }
     } else if (t >= 0.98) {
       this.isDeflecting = false;

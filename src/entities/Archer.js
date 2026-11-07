@@ -128,7 +128,7 @@ export class Archer extends Fighter {
           color: '#34d399',
           coreColor: '#fef08a',
           owner: this,
-          damage: 56,
+          damage: enemy.hasPoise && enemy.attackRange <= 160 ? 68 : 56,
           type: 'arrow'
         });
         game.vfx.spawnShockwave(sx, sy, 64, '#fef08a', 0.24, false, false);

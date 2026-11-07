@@ -330,7 +330,7 @@ export class Priestess extends Fighter {
       });
 
       if (!enemy.isDead) {
-        const beamDmg = horizDist >= 260 ? (enemy.maxHp > 1320 ? 100 : 110) : 80;
+        const beamDmg = horizDist >= 260 ? (enemy.maxHp > 1320 ? 92 : enemy.moveSpeed <= 122 ? 112 : 98) : 84;
         enemy.takeDamage(beamDmg, this, false, 60, -45);
       }
 
@@ -424,7 +424,7 @@ export class Priestess extends Fighter {
       game.vfx.spawnShockwave(aimX, this.groundY, 82, '#fde047', 0.28, true);
       game.vfx.spawnShockwave(haloX, haloY, 54, '#fef08a', 0.22);
       game.vfx.spawnGlyphBurst(aimX, this.groundY - 45, 4, 'radiant');
-      const chakramDmg = Math.abs(enemy.x - this.x) >= 210 ? 27 : 16;
+      const chakramDmg = Math.abs(enemy.x - this.x) >= 210 ? 22 : 18;
       enemy.takeDamage(chakramDmg, this, false, 28, 0);
     }
 
@@ -492,7 +492,7 @@ export class Priestess extends Fighter {
       game.vfx.spawnGlyphBurst(targetX, this.groundY - 90, 8, 'heal');
 
       if (enemy && !enemy.isDead) {
-        const ultDmg = Math.abs(enemy.x - this.x) >= 210 ? 146 : 103;
+        const ultDmg = Math.abs(enemy.x - this.x) >= 210 ? 128 : 112;
         enemy.takeDamage(ultDmg, this, true, 150, -210);
       }
     } else if (t >= 1.52) {

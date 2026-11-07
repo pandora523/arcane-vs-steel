@@ -8,7 +8,7 @@ export class Reaper extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1244,
+      maxHp: 1249,
       attackRange: 175,
       moveSpeed: 190,
       autoInterval: 1.10,
