@@ -726,6 +726,19 @@ export class VFXManager {
 
   getActiveLights(fighters, gy) {
     const lights = [];
+    const rgbForType = (type) => {
+      if (type === 'cyan') return { nr: 0.22, ng: 0.74, nb: 0.98 };
+      if (type === 'emerald') return { nr: 0.16, ng: 0.85, nb: 0.58 };
+      if (type === 'violet') return { nr: 0.78, ng: 0.36, nb: 0.98 };
+      if (type === 'teal') return { nr: 0.18, ng: 0.86, nb: 0.78 };
+      if (type === 'gold') return { nr: 1.0, ng: 0.88, nb: 0.28 };
+      return { nr: 1.0, ng: 0.52, nb: 0.16 };
+    };
+    const pushLight = (x, y, radius, colorType, intensity, z = 68) => {
+      const { nr, ng, nb } = rgbForType(colorType);
+      lights.push({ x, y, z, radius, colorType, intensity, nr, ng, nb });
+    };
+
     for (const f of fighters) {
       const colorType =
         f.primaryColor === '#38bdf8'
@@ -734,49 +747,89 @@ export class VFXManager {
             ? 'emerald'
             : f.primaryColor === '#c084fc'
               ? 'violet'
-              : 'orange';
-      lights.push({
-        x: f.x,
-        y: f.y - 45,
-        radius: f.state === 'ULTIMATE' ? 270 : f.state === 'SKILL' ? 205 : 148,
+              : f.primaryColor === '#2dd4bf'
+                ? 'teal'
+                : f.primaryColor === '#fde047'
+                  ? 'gold'
+                  : 'orange';
+      pushLight(
+        f.x + f.facing * 24,
+        f.y - 68,
+        f.state === 'ULTIMATE' ? 285 : f.state === 'SKILL' ? 225 : 165,
         colorType,
-        intensity: f.state === 'ULTIMATE' ? 1.65 : f.state === 'SKILL' ? 1.3 : 0.95
-      });
+        f.state === 'ULTIMATE' ? 1.75 : f.state === 'SKILL' ? 1.42 : 1.05,
+        64
+      );
+      // Chronomancer's active Colossal Doomsday Clock & Stasis Hourglass emit intense dual Teal + Gold light!
+      if (f.doomsdayClock) {
+        pushLight(f.doomsdayClock.x, f.doomsdayClock.y, 410, 'teal', 1.95, 92);
+        pushLight(f.doomsdayClock.x, f.doomsdayClock.y + 40, 340, 'gold', 1.75, 84);
+      }
+      if (f.stasisHourglass) {
+        pushLight(f.stasisHourglass.x, f.stasisHourglass.y - 95, 295, 'gold', 1.80, 76);
+        pushLight(f.stasisHourglass.x, f.stasisHourglass.y - 95, 250, 'teal', 1.65, 76);
+      }
+      if (f.deathAvatar) {
+        pushLight(f.deathAvatar.x, f.deathAvatar.y - 140, 340, 'violet', 1.75, 85);
+      }
     }
     for (const p of this.projectiles) {
       const colorType =
-        p.color === '#38bdf8'
+        p.color === '#38bdf8' || p.color === '#7dd3fc' || p.color === '#e0f2fe'
           ? 'cyan'
           : p.color === '#10b981' || p.color === '#34d399'
             ? 'emerald'
-            : p.color === '#c084fc'
+            : p.color === '#c084fc' || p.color === '#e11d48'
               ? 'violet'
-              : 'orange';
-      lights.push({
-        x: p.x,
-        y: p.y,
-        radius: p.isMeteor ? 360 : 175,
+              : p.color === '#2dd4bf'
+                ? 'teal'
+                : p.color === '#facc15' || p.color === '#fde047'
+                  ? 'gold'
+                  : 'orange';
+      pushLight(
+        p.x,
+        p.y,
+        p.isMeteor ? 360 : p.type === 'clock_gear' ? 225 : 195,
         colorType,
-        intensity: p.isMeteor ? 1.85 : 1.25
-      });
+        p.isMeteor ? 1.85 : p.type === 'clock_gear' ? 1.55 : 1.35,
+        72
+      );
     }
     for (const pil of this.pillars) {
-      lights.push({
-        x: pil.x,
-        y: gy - 70,
-        radius: pil.erupted ? 255 : 150,
-        colorType: pil.theme === 'emerald' ? 'emerald' : pil.theme === 'steel' ? 'cyan' : 'orange',
-        intensity: pil.erupted ? 1.6 : 0.9
-      });
+      const colorType =
+        pil.theme === 'emerald'
+          ? 'emerald'
+          : pil.theme === 'steel'
+            ? 'cyan'
+            : pil.theme === 'radiant'
+              ? 'gold'
+              : 'orange';
+      pushLight(
+        pil.x,
+        gy - 85,
+        pil.erupted ? 275 : 165,
+        colorType,
+        pil.erupted ? 1.7 : 1.0,
+        75
+      );
     }
     for (const tor of this.tornados) {
-      lights.push({
-        x: tor.x,
-        y: gy - 90,
-        radius: 260,
-        colorType: tor.color === '#38bdf8' ? 'cyan' : 'emerald',
-        intensity: 1.55
-      });
+      pushLight(
+        tor.x,
+        gy - 110,
+        295,
+        tor.color === '#38bdf8' ? 'cyan' : 'emerald',
+        1.75,
+        82
+      );
+    }
+    for (const sn of this.supernovas) {
+      pushLight(sn.x, sn.y, 380, 'orange', 1.95, 90);
+    }
+    for (const sp of this.crystalSpikes) {
+      if (sp.life >= 0) {
+        pushLight(sp.x, sp.groundY - sp.height * 0.5, 175, 'cyan', 1.25, 62);
+      }
     }
     return lights;
   }
@@ -817,89 +870,152 @@ export class VFXManager {
     ctx.imageSmoothingEnabled = false;
     const assets = PixelForge.initAssets();
 
-    // 1. TORNADOS: Chunky-Pixel Glowing Emerald Whirlwind Vortex & Glacial Cyclone Columns
+    // 1. TORNADOS: Unmistakable Conical S-Curving Pixel-Art Tornado Funnel with Swirling Horizontal Wind Bands & Top Vortex Eye
     for (const tor of this.tornados) {
-      const fade = Math.min(1, (tor.maxLife - tor.life) * 3.5, tor.life * 5.0);
-      const pxSize = 5;
+      const fade = Math.min(1, (tor.maxLife - tor.life) * 3.2, tor.life * 5.5);
+      const pxSize = 4;
       const baseX = Math.round(tor.x / pxSize) * pxSize;
       const baseY = Math.round(tor.groundY / pxSize) * pxSize;
-      const rows = Math.round(tor.height / pxSize);
       const isSteel = tor.color === '#38bdf8';
 
       ctx.save();
       if (renderer && !isReflection) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.34;
+        ctx.globalAlpha = fade * 0.42;
         const glow = isSteel ? renderer.glowCyan : renderer.glowEmerald || renderer.glowCyan;
-        ctx.drawImage(glow, baseX - 180, baseY - tor.height - 20, 360, tor.height + 64);
+        ctx.drawImage(glow, baseX - 210, baseY - tor.height - 30, 420, tor.height + 80);
       }
 
-      const archerVfx = assets.archer?.vfx;
-      const warriorVfx = assets.warrior?.vfx;
-      if (!isSteel && archerVfx && archerVfx.complete && archerVfx.naturalWidth) {
-        ctx.save();
-        ctx.translate(baseX, baseY - tor.height * 0.48);
-        const flipSpin = Math.floor(tor.life * 14) % 2 === 0 ? 1 : -1;
-        const swayX = Math.sin(tor.life * 16) * 8;
-        ctx.scale(flipSpin, 1);
-        const sprW = Math.round(tor.radius * 3.25);
-        const sprH = Math.round(tor.height * 1.1);
-        this.drawBloomedSprite(
-          ctx,
-          renderer,
-          archerVfx,
-          320,
-          56,
-          208,
-          208,
-          Math.round(-sprW * 0.5 + swayX),
-          Math.round(-sprH * 0.5),
-          sprW,
-          sprH,
-          '#10b981',
-          fade * (isReflection ? 0.38 : 0.95),
-          isReflection
-        );
-        ctx.restore();
-      } else if (isSteel && warriorVfx && warriorVfx.complete && warriorVfx.naturalWidth) {
-        ctx.save();
-        ctx.translate(baseX, baseY - 96);
-        const flipSpin = Math.floor(tor.life * 16) % 2 === 0 ? 1 : -1;
-        ctx.scale(flipSpin, 1);
-        this.drawBloomedSprite(
-          ctx,
-          renderer,
-          warriorVfx,
-          320,
-          56,
-          208,
-          208,
-          -112,
-          -112,
-          224,
-          224,
-          '#38bdf8',
-          fade * (isReflection ? 0.38 : 0.95),
-          isReflection
-        );
-        ctx.restore();
-      }
+      const bands = 32;
+      const totalH = Math.round(tor.height * 1.04);
+      const bandH = Math.max(6, Math.ceil(totalH / bands));
+      const vfxSheet = isSteel ? assets.warrior?.vfx : assets.archer?.vfx;
 
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * (isReflection ? 0.35 : 0.85);
-      for (let r = 0; r < rows; r += 3) {
-        const hFrac = r / rows;
-        const coneR = tor.radius * (0.42 + Math.pow(hFrac, 0.85) * 0.95);
-        const sway = Math.sin(tor.life * 16 - hFrac * 7) * 14 * hFrac;
-        const rot = tor.life * 20 - hFrac * 11;
-        for (let strand = 0; strand < 2; strand++) {
-          const a = rot + strand * Math.PI;
-          const rx = Math.round((baseX + sway + Math.cos(a) * coneR) / 4) * 4;
-          const ry = Math.round((baseY - r * pxSize + Math.sin(a) * coneR * 0.22) / 4) * 4;
-          const wBand = Math.max(6, Math.round((10 + hFrac * 14) / 4) * 4);
-          ctx.fillStyle = strand === 0 ? (isSteel ? '#0284c7' : '#059669') : tor.color;
-          ctx.fillRect(rx - wBand * 0.5, ry - 2, wBand, 4);
+      // A. Conical Tornado Funnel Body (32 Horizontal Cross-Sectional Wind Slices tapering from narrow ground tip to wide top mouth)
+      for (let b = 0; b < bands; b++) {
+        const hFrac = b / (bands - 1); // 0.0 at narrow ground tip -> 1.0 at wide top mouth
+        // Classic tornado funnel profile: pin-point narrow at ground (0.15x), flaring out to wide funnel crown (1.28x) at top
+        const coneProfile = 0.15 + Math.pow(hFrac, 0.85) * 0.72 + Math.pow(hFrac, 2.4) * 0.42;
+        const halfW = Math.max(12, Math.round((tor.radius * coneProfile) / 4) * 4);
+        const sliceW = halfW * 2;
+        // Sinusoidal S-curve spine sway + high-speed helical twist
+        const spineSway = Math.round(
+          (Math.sin(tor.life * 13 - hFrac * 4.8) * (4 + Math.sin(hFrac * Math.PI) * 22)) / 4
+        ) * 4;
+        const cx = baseX + spineSway;
+        const cy = Math.round((baseY - hFrac * totalH) / 4) * 4;
+        const spinPhase = tor.life * 24 - hFrac * 14;
+
+        // 1. Slice-warped texture pass from archer_vfx.png
+        if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+          const srcY = Math.round(56 + (1 - hFrac) * 196);
+          const flip = Math.cos(spinPhase * 0.5) >= 0 ? 1 : -1;
+          ctx.save();
+          ctx.translate(cx, cy);
+          ctx.scale(flip, 1);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = fade * (isReflection ? 0.32 : 0.75);
+          ctx.drawImage(vfxSheet, 320, srcY, 208, 8, -halfW, -bandH * 0.5, sliceW, bandH + 2);
+          ctx.restore();
         }
+
+        // 2. Solid Stepped Pixel-Art Conical Wind Band with Dark Outer Walls, Shaded Cylinder Sides & Spinning Bright Core Stripes
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * (isReflection ? 0.38 : 0.94);
+
+        // Dark forest-obsidian outer edge silhouette so the V-shaped funnel cone reads with 100% clarity
+        ctx.fillStyle = isSteel ? '#082f49' : '#022c22';
+        ctx.fillRect(cx - halfW - 4, cy - bandH * 0.5, sliceW + 8, bandH);
+
+        // Shaded outer cylinder wall
+        ctx.fillStyle = isSteel ? '#0369a1' : '#065f46';
+        ctx.fillRect(cx - halfW, cy - bandH * 0.5, sliceW, bandH);
+
+        // Mid-tone swirling wind body
+        const midW = Math.max(8, Math.round((sliceW * 0.76) / 4) * 4);
+        ctx.fillStyle = (b + Math.floor(tor.life * 28)) % 2 === 0
+          ? isSteel ? '#0284c7' : '#059669'
+          : isSteel ? '#0ea5e9' : '#10b981';
+        ctx.fillRect(cx - midW * 0.5, cy - bandH * 0.5, midW, bandH);
+
+        // Diagonal helical wind stripe sweeping across the front of this horizontal band
+        const stripeX = Math.round((Math.sin(spinPhase) * (halfW * 0.52)) / 4) * 4;
+        const stripeW = Math.max(8, Math.round((sliceW * 0.42) / 4) * 4);
+        ctx.fillStyle = isSteel ? '#38bdf8' : '#34d399';
+        ctx.fillRect(cx + stripeX - stripeW * 0.5, cy - bandH * 0.5, stripeW, Math.max(4, bandH - 2));
+
+        // Razor-bright inner wind crest highlight on every other band
+        if (b % 2 === 0) {
+          const coreW = Math.max(4, Math.round((stripeW * 0.48) / 4) * 4);
+          ctx.fillStyle = (b % 4 === 0) ? '#fef08a' : isSteel ? '#e0f2fe' : '#a7f3d0';
+          ctx.fillRect(cx + stripeX - coreW * 0.5, cy - 2, coreW, 4);
+        }
+      }
+
+      // B. 3D Elliptical Vortex Mouth at the Top Crown of the Tornado Funnel (shows the hollow spinning eye!)
+      if (!isReflection) {
+        const topSway = Math.round((Math.sin(tor.life * 13 - 4.8) * 6) / 4) * 4;
+        const topX = baseX + topSway;
+        const topY = Math.round((baseY - totalH) / 4) * 4;
+        const topRx = Math.round((tor.radius * 1.24) / 4) * 4;
+        const topRy = Math.max(12, Math.round((topRx * 0.24) / 4) * 4);
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * 0.95;
+        // Outer rim of the top funnel mouth
+        for (let i = 0; i < 24; i++) {
+          const a = (i / 24) * Math.PI * 2 + tor.life * 20;
+          const rx = Math.round((topX + Math.cos(a) * topRx) / 4) * 4;
+          const ry = Math.round((topY + Math.sin(a) * topRy) / 4) * 4;
+          ctx.fillStyle = i % 2 === 0 ? (isSteel ? '#7dd3fc' : '#6ee7b7') : isSteel ? '#0284c7' : '#059669';
+          ctx.fillRect(rx - 8, ry - 4, 16, 8);
+        }
+        // Dark hollow vortex eye inside the top funnel mouth
+        for (let r = -topRy + 4; r <= topRy - 4; r += 4) {
+          const span = Math.round(topRx * 0.68 * Math.sqrt(Math.max(0, 1 - (r / topRy) * (r / topRy))) / 4) * 4;
+          ctx.fillStyle = '#022c22';
+          ctx.fillRect(topX - span, topY + r - 2, span * 2, 4);
+        }
+      }
+
+      // C. Outer Helical Wind Ribbons & Orbiting Razor Leaves Spiraling Up Outside the Funnel Cone
+      const ribbonTurns = 18;
+      for (let i = 0; i < ribbonTurns; i++) {
+        const hFrac = ((i / ribbonTurns) + tor.life * 1.8) % 1;
+        const coneProfile = 0.18 + Math.pow(hFrac, 0.85) * 0.82 + Math.pow(hFrac, 2.4) * 0.45;
+        const orbitR = tor.radius * coneProfile * 1.16;
+        const spineSway = Math.sin(tor.life * 13 - hFrac * 4.8) * (4 + Math.sin(hFrac * Math.PI) * 22);
+        const angle = tor.life * 22 - hFrac * 11 + (i % 2) * Math.PI;
+        const sinA = Math.sin(angle);
+        if (sinA < -0.2 && !isReflection) continue; // Only draw front/side wrapping wind ribbons over the cone
+
+        const rx = Math.round((baseX + spineSway + Math.cos(angle) * orbitR) / 4) * 4;
+        const ry = Math.round((baseY - hFrac * totalH + sinA * orbitR * 0.20) / 4) * 4;
+        const w = Math.max(8, Math.round((14 + hFrac * 20) / 4) * 4);
+
+        if (!isReflection) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = fade * 0.42;
+          ctx.fillStyle = isSteel ? '#38bdf8' : '#34d399';
+          ctx.fillRect(rx - w * 0.6, ry - 4, w * 1.2, 8);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * 0.95;
+        ctx.fillStyle = i % 3 === 0 ? '#fef08a' : isSteel ? '#bae6fd' : '#6ee7b7';
+        ctx.fillRect(rx - w * 0.5, ry - 2, w, 4);
+      }
+
+      // D. Ground Dust-Devil Debris Ring at the Narrow Funnel Tip
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * (isReflection ? 0.35 : 0.94);
+      for (let g = 0; g < 14; g++) {
+        const ga = (g / 14) * Math.PI * 2 + tor.life * 25;
+        const grx = tor.radius * 0.48;
+        const gry = grx * 0.28;
+        const gx = Math.round((baseX + Math.cos(ga) * grx) / 4) * 4;
+        const gy = Math.round((baseY - 4 + Math.sin(ga) * gry) / 4) * 4;
+        ctx.fillStyle = g % 2 === 0 ? (isSteel ? '#7dd3fc' : '#6ee7b7') : isSteel ? '#0284c7' : '#047857';
+        ctx.fillRect(gx - 6, gy - 3, 12, 6);
       }
       ctx.restore();
     }
@@ -1148,7 +1264,13 @@ export class VFXManager {
       }
 
       const isEmeraldBeam = b.color === '#10b981' || b.color === '#34d399';
-      const isHolyBeam = b.color === '#fde047' || b.color === '#facc15' || b.color === '#fef08a';
+      const isHolyBeam =
+        b.color === '#fde047' ||
+        b.color === '#facc15' ||
+        b.color === '#fef08a' ||
+        b.color === '#ca8a04' ||
+        b.color === '#eab308';
+      const isFireBeam = b.color === '#fb923c' || b.color === '#ea580c' || b.color === '#f97316';
       const archerVfx = assets.archer?.vfx;
       const priestVfx = assets.priestess?.vfx;
       const mageVfx = assets.mage?.vfx;
@@ -1189,7 +1311,7 @@ export class VFXManager {
           1 - t * 0.3,
           isReflection
         );
-      } else if (mageVfx) {
+      } else if (isFireBeam && mageVfx) {
         const meteorSz = 158;
         this.drawBloomedSprite(
           ctx,
@@ -1320,7 +1442,15 @@ export class VFXManager {
       const isFullCircle = Math.abs(s.endAngle - s.startAngle) > Math.PI * 1.8;
       const steps = isFullCircle ? 32 : 28;
       ctx.globalAlpha = alpha * (isReflection ? 0.35 : isFullCircle ? 0.58 : 0.92);
-      const isCyan = s.color === '#38bdf8' || s.color === '#7dd3fc' || s.color === '#0284c7';
+      const isCyan =
+        s.color === '#38bdf8' ||
+        s.color === '#7dd3fc' ||
+        s.color === '#0284c7' ||
+        s.color === '#bae6fd' ||
+        s.color === '#e0f2fe' ||
+        s.color === '#ffffff' ||
+        s.color === '#0ea5e9' ||
+        s.color === '#0369a1';
       const isEmerald = s.color === '#10b981' || s.color === '#34d399' || s.color === '#6ee7b7';
       const isAbyssal =
         s.color === '#c084fc' ||
@@ -1340,7 +1470,7 @@ export class VFXManager {
               ? '#a16207'
               : isChrono
                 ? '#0f766e'
-                : '#9a3412';
+                : '#0369a1';
       const midTone = isCyan
         ? '#0284c7'
         : isEmerald
@@ -1351,7 +1481,7 @@ export class VFXManager {
               ? '#ca8a04'
               : isChrono
                 ? '#0d9488'
-                : '#ea580c';
+                : '#0284c7';
       const innerTone = isCyan
         ? '#38bdf8'
         : isEmerald
@@ -1362,9 +1492,9 @@ export class VFXManager {
               ? '#facc15'
               : isChrono
                 ? '#2dd4bf'
-                : '#facc15';
+                : '#38bdf8';
 
-      // Draw Saturated Chunky-Pixel Slash Wave Sprite at the arc apex
+      // Draw Saturated Chunky-Pixel Slash Wave Sprite at the arc apex (NEVER use mage_vfx solar fireball for slashes!)
       if (!isReflection) {
         const midAng = (s.startAngle + s.endAngle) * 0.5 + (isFullCircle ? t * 8 : 0);
         const rad = s.radius + t * 14;
@@ -1372,17 +1502,14 @@ export class VFXManager {
         const sy = Math.round(s.y + Math.sin(midAng) * (isFullCircle ? rad * 0.25 : rad * 0.72));
         const slashSize = Math.round(Math.min(196, Math.max(106, s.radius * 1.32)) * (1.06 - t * 0.18));
 
-        let sheet = null;
+        let sheet = assets.warrior?.vfx;
         let cropX = 528;
-        if (isCyan) {
-          sheet = assets.warrior?.vfx;
-          cropX = 528;
-        } else if (isAbyssal) {
+        if (isAbyssal) {
           sheet = assets.reaper?.vfx;
           cropX = 736;
         } else if (isEmerald) {
           sheet = assets.archer?.vfx;
-          cropX = 320;
+          cropX = 528;
         } else if (isRadiant) {
           sheet = assets.priestess?.vfx;
           cropX = 528;
@@ -1390,7 +1517,7 @@ export class VFXManager {
           sheet = assets.chronomancer?.vfx;
           cropX = 528;
         } else {
-          sheet = assets.mage?.vfx;
+          sheet = assets.warrior?.vfx;
           cropX = 528;
         }
 
@@ -1487,8 +1614,12 @@ export class VFXManager {
           : renderer.glowOrange;
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.50;
-        ctx.drawImage(tex, px - r, py - r, r * 2, r * 2);
+        ctx.globalAlpha = proj.type === 'clock_gear' ? 0.68 : 0.50;
+        ctx.drawImage(tex, px - r * 1.15, py - r * 1.15, r * 2.3, r * 2.3);
+        if (proj.type === 'clock_gear' && renderer.glowGold) {
+          ctx.globalAlpha = 0.52;
+          ctx.drawImage(renderer.glowGold, px - r * 0.9, py - r * 0.9, r * 1.8, r * 1.8);
+        }
         ctx.restore();
       }
 
@@ -1540,12 +1671,12 @@ export class VFXManager {
         for (let tStep = 1; tStep <= 6; tStep++) {
           const tx = -dir * tStep * 12;
           const ty = Math.round((Math.sin((proj.age || 0) * 32 - tStep * 0.9) * 8) / 4) * 4;
-          ctx.fillStyle = tStep % 2 === 0 ? '#eab308' : '#0d9488';
+          ctx.fillStyle = tStep % 2 === 0 ? '#facc15' : '#2dd4bf';
           ctx.fillRect(tx - 4, ty - 4, 8, 8);
         }
         ctx.rotate(spin);
         if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-          const gearSize = 96;
+          const gearSize = 104;
           this.drawBloomedSprite(
             ctx,
             renderer,
@@ -1559,11 +1690,16 @@ export class VFXManager {
             gearSize,
             gearSize,
             '#2dd4bf',
-            0.96,
+            0.98,
             isReflection
           );
+          if (!isReflection) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = 0.36;
+            ctx.drawImage(vfxSheet, 528, 56, 208, 208, -gearSize * 0.5, -gearSize * 0.5, gearSize, gearSize);
+          }
         } else {
-          ctx.fillStyle = '#eab308';
+          ctx.fillStyle = '#facc15';
           ctx.fillRect(-16, -16, 32, 32);
         }
         ctx.restore();

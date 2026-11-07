@@ -106,7 +106,8 @@ class Game {
     const killTarget = params.get('kill');
     const ultParam = params.get('ult');
     const forceUlt = ultParam === '1' || ultParam === 'both';
-    const forceSkill = params.get('skill') === '1';
+    const skillParam = params.get('skill');
+    const forceSkill = skillParam === '1' || skillParam === 'both';
     const forceCorner = params.get('corner') === '1';
     this.isSimPaused = params.get('pause') === '1';
     if (
@@ -134,9 +135,14 @@ class Game {
     }
 
     if (forceSkill) {
-      this.leftFighter.x = 340;
-      this.rightFighter.x = 740;
+      this.leftFighter.x = 390;
+      this.rightFighter.x = 690;
       this.leftFighter.skillCooldown = 0;
+      this.leftFighter.setState('SKILL');
+      if (skillParam === 'both') {
+        this.rightFighter.skillCooldown = 0;
+        this.rightFighter.setState('AUTO_ATTACK');
+      }
     }
 
     if (forceUlt) {

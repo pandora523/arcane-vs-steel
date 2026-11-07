@@ -392,7 +392,10 @@ export class Chronomancer extends Fighter {
     // with two articulated Brass & Teal Clock Hands that rapidly spin to XII (MIDNIGHT), freezing time and shattering!
     const t = this.stateTimer;
     const ww = game.renderer.worldWidth;
-    const centerX = Math.max(320, Math.min(ww - 320, (this.x + (enemy ? enemy.x : ww * 0.5)) * 0.5));
+    const centerX = Math.max(
+      260,
+      Math.min(ww - 260, this.x * 0.65 + (enemy ? enemy.x : ww * 0.5) * 0.35)
+    );
     this.vx = 0;
     this.vy = 0;
     this.y = this.groundY;
@@ -415,7 +418,7 @@ export class Chronomancer extends Fighter {
 
       this.doomsdayClock = {
         x: centerX,
-        y: this.groundY - 215,
+        y: this.groundY - 195,
         life: 0,
         maxLife: 1.52,
         shattered: false
@@ -431,7 +434,7 @@ export class Chronomancer extends Fighter {
       this.rewindTimeline(
         isVanguard ? 22 : isHarvester ? 22 : isGroundedCaster ? 23 : 24,
         centerX,
-        this.groundY - 215,
+        this.groundY - 195,
         game,
         'ASTRAL REWIND'
       );
@@ -469,7 +472,7 @@ export class Chronomancer extends Fighter {
       game.renderer.triggerHitStop(0.09);
 
       const cx = this.doomsdayClock ? this.doomsdayClock.x : centerX;
-      const cy = this.groundY - 215;
+      const cy = this.groundY - 195;
       game.vfx.spawnDamageText(cx, this.groundY - 380, 0, true, 'MIDNIGHT XII — SHATTER!', '#facc15');
       game.vfx.spawnGlyphBurst(cx, cy, 14, 'chrono');
       game.vfx.spawnBurst(cx, cy, 26, '#2dd4bf', 320, { upBias: 80, size: 8 });
@@ -500,7 +503,7 @@ export class Chronomancer extends Fighter {
   /**
    * Renders the Colossal 320x320 16-bit HD-2D Gothic Astral Clockface & Chunky Stepped Pixel Clock Hands
    */
-  drawDoomsdayClock(ctx) {
+  drawDoomsdayClock(ctx, renderer = null) {
     if (!this.doomsdayClock) return;
     const vfxSheet = PixelForge.initAssets().chronomancer?.vfx;
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
@@ -510,22 +513,35 @@ export class Chronomancer extends Fighter {
     const fade = Math.min(1, (dc.maxLife - dc.life) * 3.0);
     const cx = Math.round(dc.x / 4) * 4;
     const cy = Math.round(dc.y / 4) * 4;
-    const size = Math.round((336 * (0.78 + 0.22 * pop)) / 4) * 4;
+    const size = Math.round((344 * (0.78 + 0.22 * pop)) / 4) * 4;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.translate(cx, cy);
 
+    // 1. Intense Dual-Layer Teal + Gold Radial Light Halos so the Doomsday Clock visibly illuminates the arena!
+    if (renderer) {
+      ctx.globalCompositeOperation = 'lighter';
+      if (renderer.glowTeal) {
+        ctx.globalAlpha = fade * 0.68;
+        ctx.drawImage(renderer.glowTeal, -size * 1.15, -size * 1.15, size * 2.3, size * 2.3);
+      }
+      if (renderer.glowGold) {
+        ctx.globalAlpha = fade * 0.62;
+        ctx.drawImage(renderer.glowGold, -size * 0.85, -size * 0.85, size * 1.7, size * 1.7);
+      }
+    }
+
     // Keep the 320x320 pixelated clockface orthogonal so its chunky 64x64->320x320 pixels & Roman numerals stay razor-sharp!
     const dHalf = Math.round(-size * 0.5);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.28;
-    ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf - 12, dHalf - 12, size + 24, size + 24);
+    ctx.globalAlpha = fade * 0.46;
+    ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf - 16, dHalf - 16, size + 32, size + 32);
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * (dc.shattered ? 0.88 : 0.96);
+    ctx.globalAlpha = fade * (dc.shattered ? 0.92 : 0.98);
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, size, size);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.24;
+    ctx.globalAlpha = fade * 0.38;
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, size, size);
 
     // Chunky Stepped Pixel-Art Clock Hands (Hour Hand + Minute Hand) snapped to 4px orthogonal blocks!
@@ -540,15 +556,15 @@ export class Chronomancer extends Fighter {
       const cosA = Math.cos(angle);
       const sinA = Math.sin(angle);
 
-      // 1. Outer balanced HD-2D bloom aura along the pixel hand
+      // 1. Outer luminous HD-2D bloom aura along the pixel hand
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.34;
-      ctx.fillStyle = isMinute ? '#14b8a6' : '#eab308';
+      ctx.globalAlpha = fade * 0.52;
+      ctx.fillStyle = isMinute ? '#2dd4bf' : '#facc15';
       for (let i = 0; i <= steps; i += 2) {
         const dist = (i / steps) * length;
         const px = Math.round((cosA * dist) / 4) * 4;
         const py = Math.round((sinA * dist) / 4) * 4;
-        ctx.fillRect(px - 8, py - 8, 16, 16);
+        ctx.fillRect(px - 10, py - 10, 20, 20);
       }
 
       // 2. Dark bronze 4px-stepped pixel border
@@ -563,16 +579,16 @@ export class Chronomancer extends Fighter {
         ctx.fillRect(px - bSz * 0.5, py - bSz * 0.5, bSz, bSz);
       }
 
-      // 3. Saturated antique gold / celestial teal pixel shaft & diamond spearhead tip
+      // 3. Radiant imperial gold / electric cyan-teal pixel shaft & diamond spearhead tip
       for (let i = -1; i <= steps; i++) {
         const dist = (i / steps) * length;
         const px = Math.round((cosA * dist) / 4) * 4;
         const py = Math.round((sinA * dist) / 4) * 4;
         const isTip = i >= steps - 2;
-        ctx.fillStyle = isTip ? '#facc15' : '#ca8a04';
+        ctx.fillStyle = isTip ? '#fef08a' : '#facc15';
         const cSz = isTip ? 12 : isMinute ? 8 : 12;
         ctx.fillRect(px - cSz * 0.5, py - cSz * 0.5, cSz, cSz);
-        ctx.fillStyle = isMinute ? '#2dd4bf' : '#fef08a';
+        ctx.fillStyle = isMinute ? '#5eead4' : '#ffffff';
         ctx.fillRect(px - 2, py - 2, 4, 4);
       }
     };
@@ -585,15 +601,15 @@ export class Chronomancer extends Fighter {
     ctx.globalAlpha = fade;
     ctx.fillStyle = '#0b0f19';
     ctx.fillRect(-12, -12, 24, 24);
-    ctx.fillStyle = '#ca8a04';
+    ctx.fillStyle = '#facc15';
     ctx.fillRect(-8, -8, 16, 16);
-    ctx.fillStyle = '#14b8a6';
+    ctx.fillStyle = '#2dd4bf';
     ctx.fillRect(-4, -4, 8, 8);
 
     // Midnight XII bloom pulse at detonation
     if (dc.shattered) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.32;
+      ctx.globalAlpha = fade * 0.48;
       ctx.drawImage(
         vfxSheet,
         0,
@@ -634,15 +650,15 @@ export class Chronomancer extends Fighter {
   /**
    * Renders 2 Counter-Rotating Chunky-Pixel Glowing Brass Clockwork Satellite Gears behind Zephyros's shoulders
    */
-  drawOrbitingGears(ctx) {
+  drawOrbitingGears(ctx, renderer = null) {
     if (this.isDead) return;
     const vfxSheet = PixelForge.initAssets().chronomancer?.vfx;
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
 
     const t = performance.now() * 0.001;
     const gears = [
-      { ox: -this.facing * 42, oy: -128 + Math.round(Math.sin(t * 3.2) * 3) * 2, size: 52, dir: 1 },
-      { ox: this.facing * 36, oy: -146 + Math.round(Math.cos(t * 3.2) * 3) * 2, size: 44, dir: -1 }
+      { ox: -this.facing * 42, oy: -128 + Math.round(Math.sin(t * 3.2) * 3) * 2, size: 54, dir: 1 },
+      { ox: this.facing * 36, oy: -146 + Math.round(Math.cos(t * 3.2) * 3) * 2, size: 46, dir: -1 }
     ];
 
     ctx.save();
@@ -650,18 +666,23 @@ export class Chronomancer extends Fighter {
     for (const g of gears) {
       ctx.save();
       ctx.translate(Math.round((this.x + g.ox) / 2) * 2, Math.round((this.y + g.oy) / 2) * 2);
+      if (renderer && renderer.glowTeal) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.45;
+        ctx.drawImage(renderer.glowTeal, -g.size * 1.1, -g.size * 1.1, g.size * 2.2, g.size * 2.2);
+      }
       // Step rotation in exact 90-degree (Math.PI * 0.5) mechanical escapement ticks so pixels stay 100% orthogonal!
       const tickStep = Math.floor(t * 5.0) * (Math.PI * 0.5) * g.dir;
       ctx.rotate(tickStep);
       const gh = Math.round(-g.size * 0.5);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.28;
+      ctx.globalAlpha = 0.42;
       ctx.drawImage(vfxSheet, 528, 56, 208, 208, gh - 4, gh - 4, g.size + 8, g.size + 8);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.96;
+      ctx.globalAlpha = 0.98;
       ctx.drawImage(vfxSheet, 528, 56, 208, 208, gh, gh, g.size, g.size);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.22;
+      ctx.globalAlpha = 0.34;
       ctx.drawImage(vfxSheet, 528, 56, 208, 208, gh, gh, g.size, g.size);
       ctx.restore();
     }
@@ -671,7 +692,7 @@ export class Chronomancer extends Fighter {
   /**
    * Renders the Chunky-Pixel Glowing Ornate Brass & Teal Stasis Hourglass encasing the enemy
    */
-  drawStasisHourglass(ctx) {
+  drawStasisHourglass(ctx, renderer = null) {
     if (!this.stasisHourglass) return;
     const vfxSheet = PixelForge.initAssets().chronomancer?.vfx;
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
@@ -682,26 +703,39 @@ export class Chronomancer extends Fighter {
     const vibrateX = Math.round(Math.sin(hg.life * 28) * 2) * 2;
     const hx = Math.round(hg.x / 4) * 4 + vibrateX;
     const hy = Math.round(hg.y / 4) * 4;
-    const drawW = Math.round((196 * (0.82 + 0.18 * pop)) / 4) * 4;
-    const drawH = Math.round((212 * (0.82 + 0.18 * pop)) / 4) * 4;
+    const drawW = Math.round((204 * (0.82 + 0.18 * pop)) / 4) * 4;
+    const drawH = Math.round((220 * (0.82 + 0.18 * pop)) / 4) * 4;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.translate(hx, hy - drawH * 0.5 + 8);
 
+    // 1. Luminous Dual-Layer Gold + Teal Radial Light Halos around the Stasis Hourglass!
+    if (renderer) {
+      ctx.globalCompositeOperation = 'lighter';
+      if (renderer.glowGold) {
+        ctx.globalAlpha = fade * 0.65;
+        ctx.drawImage(renderer.glowGold, -drawW * 1.15, -drawH * 1.05, drawW * 2.3, drawH * 2.1);
+      }
+      if (renderer.glowTeal) {
+        ctx.globalAlpha = fade * 0.58;
+        ctx.drawImage(renderer.glowTeal, -drawW * 0.95, -drawH * 0.9, drawW * 1.9, drawH * 1.8);
+      }
+    }
+
     const hw = Math.round(-drawW * 0.5);
     const hh = Math.round(-drawH * 0.5);
     // Stepped outer teal-gold pixel bloom aura
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.28;
-    ctx.drawImage(vfxSheet, 320, 56, 208, 208, hw - 8, hh - 8, drawW + 16, drawH + 16);
+    ctx.globalAlpha = fade * 0.46;
+    ctx.drawImage(vfxSheet, 320, 56, 208, 208, hw - 12, hh - 12, drawW + 24, drawH + 24);
     // Main chunky-pixel hourglass (orthogonal, zero diagonal rotation)
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.96;
+    ctx.globalAlpha = fade * 0.98;
     ctx.drawImage(vfxSheet, 320, 56, 208, 208, hw, hh, drawW, drawH);
-    // Balanced inner sand & rune bloom pass
+    // Boosted inner sand & rune bloom pass
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.24;
+    ctx.globalAlpha = fade * 0.38;
     ctx.drawImage(vfxSheet, 320, 56, 208, 208, hw, hh, drawW, drawH);
     ctx.restore();
   }
@@ -740,19 +774,19 @@ export class Chronomancer extends Fighter {
   /**
    * Foreground pass called by Renderer after all fighters are drawn so Stasis Hourglass & Rewind Ribbons render cleanly over the target
    */
-  drawForegroundOverlay(ctx) {
-    this.drawStasisHourglass(ctx);
+  drawForegroundOverlay(ctx, renderer = null) {
+    this.drawStasisHourglass(ctx, renderer);
     this.drawRewindRibbons(ctx);
   }
 
-  draw(ctx, isReflection = false) {
+  draw(ctx, isReflection = false, renderer = null) {
     const sprites = PixelForge.initAssets().chronomancer;
     if (!sprites) return;
 
     if (!isReflection) {
-      this.drawDoomsdayClock(ctx);
+      this.drawDoomsdayClock(ctx, renderer);
       this.drawTemporalEchoes(ctx);
-      this.drawOrbitingGears(ctx);
+      this.drawOrbitingGears(ctx, renderer);
     }
 
     ctx.save();
@@ -772,7 +806,7 @@ export class Chronomancer extends Fighter {
       ctx.filter = 'brightness(2.3) contrast(1.35)';
     }
 
-    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection);
+    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection, renderer);
     ctx.restore();
   }
 }

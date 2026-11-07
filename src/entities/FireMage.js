@@ -420,7 +420,7 @@ export class FireMage extends Fighter {
     }
   }
 
-  draw(ctx, isReflection = false) {
+  draw(ctx, isReflection = false, renderer = null) {
     const sprites = PixelForge.initAssets().mage;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -433,7 +433,7 @@ export class FireMage extends Fighter {
     ctx.translate(Math.round(this.x), Math.round(this.y));
     ctx.scale(scaleDir, 1);
 
-    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.runeOrbit, isReflection);
+    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.runeOrbit, isReflection, renderer);
 
     if (this.hitFlash > 0 && !isReflection) {
       ctx.globalCompositeOperation = 'lighter';

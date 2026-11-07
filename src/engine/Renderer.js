@@ -268,16 +268,17 @@ export class Renderer {
     ctx.translate(0, (gy + 2) * 2);
     ctx.scale(1, -0.42);
     ctx.globalAlpha = 0.26;
-    for (const f of fighters) f.draw(ctx, true);
+    for (const f of fighters) f.draw(ctx, true, this);
     vfx.renderMainPass(ctx, true, this);
     ctx.restore();
 
-    // 4. Unreal HD-2D Dynamic Point-Light Floor Pools & Grounded Contact Shadows
+    // 4. Unreal HD-2D Dynamic Point-Light Floor Pools, 4-Step Normal Map Lights & Grounded Contact Shadows
     const lights = vfx.getActiveLights(fighters, gy);
+    this.activePointLights = lights;
     this.drawFloorLightPools(ctx, lights, gy);
     this.drawDynamicShadows(ctx, fighters, lights, gy);
 
-    // 5. Main Pass: Background 16-bit HD-2D Cast Seals + Fighters + Live Weapon Glow
+    // 5. Main Pass: Background 16-bit HD-2D Cast Seals + Normal-Lit Fighters + Live Weapon Glow
     if (typeof vfx.renderBackgroundCastSeals === 'function') {
       vfx.renderBackgroundCastSeals(ctx, this);
     }
@@ -286,20 +287,32 @@ export class Renderer {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const deathFade = f.isDead ? Math.min(1, Math.max(0.08, 1 - (f.deathTimer || 0) * 0.65)) : 1;
-      ctx.globalAlpha = (f.state === 'IDLE' || f.state === 'WALK' ? 0.30 : 0.48) * deathFade;
+      const isChrono = f.heroId === 'chronomancer';
+      const baseAlpha = isChrono
+        ? f.state === 'IDLE' || f.state === 'WALK'
+          ? 0.42
+          : 0.64
+        : f.state === 'IDLE' || f.state === 'WALK'
+          ? 0.24
+          : 0.40;
+      ctx.globalAlpha = baseAlpha * deathFade;
       const glow = this.getGlowForColor(f.primaryColor);
       ctx.drawImage(glow, f.x - 140, f.y - (f.isDead ? 115 : 205), 280, 280);
+      if (isChrono && !f.isDead) {
+        ctx.globalAlpha = (f.state === 'IDLE' || f.state === 'WALK' ? 0.30 : 0.48) * deathFade;
+        ctx.drawImage(this.glowGold, f.x - 115, f.y - 190, 230, 230);
+      }
       ctx.restore();
 
       if (f.heroId !== 'reaper') {
         this.drawCharacterGroundHalo(ctx, f);
       }
-      f.draw(ctx, false);
+      f.draw(ctx, false, this);
       this.drawCharacterPixelFlames(ctx, f);
     }
     for (const f of sorted) {
       if (typeof f.drawForegroundOverlay === 'function') {
-        f.drawForegroundOverlay(ctx);
+        f.drawForegroundOverlay(ctx, this);
       }
     }
     vfx.renderMainPass(ctx, false, this);
@@ -1002,7 +1015,7 @@ export class Renderer {
             const a = (i / 16) * Math.PI * 2 + t * 8;
             const hx = Math.round((f.x + Math.cos(a) * 68) / 4) * 4;
             const hy = Math.round((f.y - 68 + Math.sin(a) * 68) / 4) * 4;
-            ctx.fillStyle = i % 2 === 0 ? '#facc15' : '#0ea5e9';
+            ctx.fillStyle = i % 2 === 0 ? '#e0f2fe' : '#38bdf8';
             ctx.fillRect(hx - 3, hy - 3, 6, 6);
           }
         }

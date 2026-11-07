@@ -45,18 +45,22 @@ export class Warrior extends Fighter {
       if (
         proj.owner !== this &&
         !proj.isMeteor &&
-        Math.hypot(proj.x - this.x, proj.y - (this.y - 110)) < 108
+        Math.hypot(proj.x - this.x, proj.y - (this.y - 110)) < 118
       ) {
         this.reflectedInSkill = true;
         proj.owner = this;
         proj.vx = -proj.vx * 1.25;
         proj.vy = -8;
+        proj.type = 'blade_wave';
         proj.color = '#38bdf8';
-        proj.coreColor = '#fef08a';
+        proj.coreColor = '#e0f2fe';
         if (game.audio) game.audio.play('reflect', this.x);
         game.vfx.spawnDamageText(this.x, this.y - 145, 0, false, 'AEGIS REFLECT!', '#38bdf8');
+        const startA = this.facing === 1 ? -1.35 : Math.PI - 1.35;
+        const endA = this.facing === 1 ? 1.35 : Math.PI + 1.35;
+        game.vfx.spawnSlash(proj.x, proj.y, 92, startA, endA, '#38bdf8', 0.28);
         game.vfx.spawnBurst(proj.x, proj.y, 14, '#38bdf8', 240);
-        game.vfx.spawnShockwave(proj.x, proj.y, 85, '#fef08a', 0.26);
+        game.vfx.spawnShockwave(proj.x, proj.y, 85, '#7dd3fc', 0.26);
         game.renderer.triggerShake(6, 0.14);
         break;
       }
@@ -76,10 +80,15 @@ export class Warrior extends Fighter {
   onStartDodge(enemy, game, dir) {
     this.dashDuration = 0.38;
     this.isDeflecting = true;
+    this.reflectedInSkill = false;
+    this.reflectNearbyProjectiles(game);
     const smartDir = enemy && Math.abs(enemy.x - this.x) > 240 ? this.facing : dir;
     this.dashDir = smartDir;
     this.vx = smartDir * 390;
     if (game.audio) game.audio.play('reflect', this.x);
+    const startA = this.facing === 1 ? -1.35 : Math.PI - 1.35;
+    const endA = this.facing === 1 ? 1.35 : Math.PI + 1.35;
+    game.vfx.spawnSlash(this.x + this.facing * 42, this.y - 98, 94, startA, endA, '#38bdf8', 0.26);
     game.vfx.spawnShockwave(this.x, this.y - 90, 92, '#bae6fd', 0.28);
     game.vfx.spawnGlyphBurst(this.x, this.y - 90, 6, 'steel');
     game.vfx.spawnDamageText(this.x, this.y - 140, 0, false, 'AEGIS PARRY!', '#7dd3fc');
@@ -95,7 +104,7 @@ export class Warrior extends Fighter {
         vy: 0,
         radius: 18,
         color: '#38bdf8',
-        coreColor: '#fef08a',
+        coreColor: '#e0f2fe',
         owner: this,
         damage: 42,
         type: 'blade_wave'
@@ -107,6 +116,9 @@ export class Warrior extends Fighter {
     const t = this.stateTimer;
     const speed = this.state === 'DASH' ? 485 : 360;
     this.x += this.dashDir * speed * dt;
+    if (this.state === 'DODGE') {
+      this.reflectNearbyProjectiles(game);
+    }
 
     if (Math.random() < 0.72) {
       game.vfx.spawnParticle({
@@ -174,7 +186,7 @@ export class Warrior extends Fighter {
           vx: this.facing * 45,
           vy: -75,
           size: 5,
-          color: mode === 2 ? '#fef08a' : '#7dd3fc',
+          color: mode === 2 ? '#e0f2fe' : '#7dd3fc',
           maxLife: 0.26
         });
       }
@@ -202,19 +214,19 @@ export class Warrior extends Fighter {
             vy: 0,
             radius: 20,
             color: '#38bdf8',
-            coreColor: '#fef08a',
+            coreColor: '#e0f2fe',
             owner: this,
             damage: 66,
             type: 'blade_wave'
           });
-          game.vfx.spawnShockwave(cx, cy, 82, '#fef08a', 0.26, false, true);
+          game.vfx.spawnShockwave(cx, cy, 82, '#7dd3fc', 0.26, false, true);
         } else {
           if (game.audio) game.audio.play(mode === 1 ? 'heavy_cleave' : 'slash', this.x);
         }
 
         game.vfx.spawnSlash(cx, cy, 114, startA, endA, '#0284c7', 0.32);
         game.vfx.spawnSlash(cx, cy, 96, startA, endA, '#38bdf8', 0.26);
-        game.vfx.spawnSlash(cx, cy, 78, startA, endA, '#ffffff', 0.2);
+        game.vfx.spawnSlash(cx, cy, 78, startA, endA, '#e0f2fe', 0.2);
         game.vfx.spawnShockwave(cx, this.groundY, 96, '#38bdf8', 0.28, true);
         game.vfx.spawnGlyphBurst(cx, cy, 5, 'steel');
 
@@ -228,7 +240,7 @@ export class Warrior extends Fighter {
           game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 95, 5, 'steel');
           if (isCrit || mode === 1) {
             game.vfx.spawnLightning(enemy.x, -140, this.groundY, '#ffffff', '#38bdf8');
-            game.vfx.spawnShockwave(enemy.x, enemy.y - 85, 95, '#fef08a', 0.28);
+            game.vfx.spawnShockwave(enemy.x, enemy.y - 85, 95, '#7dd3fc', 0.28);
           }
         }
       }
@@ -239,7 +251,7 @@ export class Warrior extends Fighter {
 
   updateSkill(dt, enemy, game) {
     // OVERHAULED SKILL KIT: "TEMPEST VANGUARD" (2-Phase Dynamic Assault)
-    // Phase 1 (0.0s - 0.58s): High-Speed Cyclone Vortex Rush + Aegis Spell Reflection
+    // Phase 1 (0.0s - 0.58s): High-Speed Runeblade Whirlwind Rush + Aegis Spell Reflection
     // Phase 2 (0.58s - 1.02s): Thunderous Judgment Slam + Erupting Glacial Crystal Spires under Enemy
     const t = this.stateTimer;
     this.isDeflecting = t >= 0.08 && t <= 0.85;
@@ -256,16 +268,8 @@ export class Warrior extends Fighter {
         this.didActionFrame = true;
         if (game.audio) game.audio.play('whirlwind', this.x);
         game.vfx.spawnGlyphBurst(this.x, this.y - 95, 8, 'steel');
-        game.vfx.spawnTornado({
-          x: this.x + this.facing * 24,
-          groundY: this.groundY,
-          vx: this.facing * 350,
-          radius: 68,
-          height: 220,
-          color: '#38bdf8',
-          coreColor: '#fef08a',
-          maxLife: 0.52
-        });
+        game.vfx.spawnSlash(this.x, this.y - 96, 126, 0, Math.PI * 2, '#38bdf8', 0.28);
+        game.vfx.spawnShockwave(this.x, this.groundY, 135, '#38bdf8', 0.32, true);
       }
 
       this.spinAngle += dt * 24;
@@ -280,7 +284,7 @@ export class Warrior extends Fighter {
       if (!this.lastSpinTick || t - this.lastSpinTick >= 0.18) {
         this.lastSpinTick = t;
         game.vfx.spawnSlash(this.x, this.y - 92, 114, 0, Math.PI * 2, '#38bdf8', 0.22);
-        game.vfx.spawnSlash(this.x, this.y - 116, 86, 0, Math.PI * 2, '#bae6fd', 0.18);
+        game.vfx.spawnSlash(this.x, this.y - 116, 86, 0, Math.PI * 2, '#7dd3fc', 0.18);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 136) {
           enemy.takeDamage(28, this, false, 60, 0);
           if (game.audio) game.audio.play('clang', enemy.x);
@@ -297,7 +301,7 @@ export class Warrior extends Fighter {
       const slamX = this.x + this.facing * 52;
       game.vfx.spawnLightning(slamX, -220, this.groundY, '#ffffff', '#38bdf8');
       game.vfx.spawnShockwave(slamX, this.groundY, 195, '#38bdf8', 0.42, true);
-      game.vfx.spawnShockwave(slamX, this.groundY - 40, 145, '#fef08a', 0.34, false);
+      game.vfx.spawnShockwave(slamX, this.groundY - 40, 145, '#7dd3fc', 0.34, false);
       game.vfx.spawnDecal(slamX, 120, 'fissure', '#38bdf8', 4.5);
       game.vfx.spawnBurst(slamX, this.groundY - 12, 20, '#38bdf8', 290, { upBias: 140, size: 7 });
 
@@ -377,10 +381,10 @@ export class Warrior extends Fighter {
         this.facing = -side;
         if (game.audio) game.audio.play('heavy_cleave', enemy.x);
         game.renderer.triggerShake(12, 0.16);
-        game.vfx.spawnSlash(enemy.x, enemy.y - 110, 126, 0.35, 2.75, '#facc15', 0.32);
+        game.vfx.spawnSlash(enemy.x, enemy.y - 110, 126, 0.35, 2.75, '#7dd3fc', 0.32);
         game.vfx.spawnSlash(enemy.x, enemy.y - 110, 108, -2.5, -0.4, '#38bdf8', 0.28);
-        game.vfx.spawnBurst(enemy.x, enemy.y - 110, 18, '#fef08a', 310);
-        game.vfx.spawnDamageText(enemy.x, enemy.y - 165, 0, false, 'OMNISLASH II!', '#facc15');
+        game.vfx.spawnBurst(enemy.x, enemy.y - 110, 18, '#e0f2fe', 310);
+        game.vfx.spawnDamageText(enemy.x, enemy.y - 165, 0, false, 'OMNISLASH II!', '#38bdf8');
         enemy.takeDamage(32, this, true, 55, -60);
       }
 
@@ -462,7 +466,7 @@ export class Warrior extends Fighter {
       const startA = this.facing === 1 ? -1.65 : Math.PI - 1.45;
       const endA = this.facing === 1 ? 1.45 : Math.PI + 1.65;
       game.vfx.spawnSlash(slamX, this.groundY - 92, 155, startA, endA, '#38bdf8', 0.42);
-      game.vfx.spawnSlash(slamX, this.groundY - 92, 125, startA, endA, '#fef08a', 0.35);
+      game.vfx.spawnSlash(slamX, this.groundY - 92, 125, startA, endA, '#7dd3fc', 0.35);
 
       // 1. Full-Arena Chaining Glacial Frost-Crystal Spire Wave (11 Tectonic Spires erupting outward!)
       const dir = this.facing;
@@ -502,11 +506,11 @@ export class Warrior extends Fighter {
       });
 
       game.vfx.spawnShockwave(slamX, this.groundY, 340, '#38bdf8', 0.62, true);
-      game.vfx.spawnShockwave(targetX, this.groundY, 260, '#facc15', 0.52, true);
+      game.vfx.spawnShockwave(targetX, this.groundY, 260, '#7dd3fc', 0.52, true);
       game.vfx.spawnDecal(slamX, 210, 'fissure', '#38bdf8', 6.5);
       game.vfx.spawnDecal(targetX, 185, 'fissure', '#38bdf8', 6.0);
       game.vfx.spawnBurst(slamX, this.groundY - 20, 36, '#38bdf8', 410, { upBias: 185, size: 9 });
-      game.vfx.spawnBurst(targetX, this.groundY - 20, 28, '#facc15', 350, { upBias: 145, size: 8 });
+      game.vfx.spawnBurst(targetX, this.groundY - 20, 28, '#e0f2fe', 350, { upBias: 145, size: 8 });
       game.vfx.spawnGlyphBurst(slamX, this.groundY - 75, 12, 'steel');
 
       if (enemy && !enemy.isDead) {
@@ -520,7 +524,7 @@ export class Warrior extends Fighter {
     }
   }
 
-  draw(ctx, isReflection = false) {
+  draw(ctx, isReflection = false, renderer = null) {
     const sprites = PixelForge.initAssets().warrior;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -549,7 +553,7 @@ export class Warrior extends Fighter {
       ctx.restore();
     }
 
-    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection);
+    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection, renderer);
 
     if (this.hitFlash > 0 && !isReflection) {
       ctx.globalCompositeOperation = 'lighter';

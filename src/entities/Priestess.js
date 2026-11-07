@@ -605,7 +605,7 @@ export class Priestess extends Fighter {
     ctx.restore();
   }
 
-  draw(ctx, isReflection = false) {
+  draw(ctx, isReflection = false, renderer = null) {
     const sprites = PixelForge.initAssets().priestess;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -620,7 +620,7 @@ export class Priestess extends Fighter {
 
     this.drawSeraphimVFX(ctx, sprites, isReflection);
 
-    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.haloPhase, isReflection);
+    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.haloPhase, isReflection, renderer);
 
     if (this.hitFlash > 0 && !isReflection) {
       ctx.globalCompositeOperation = 'lighter';

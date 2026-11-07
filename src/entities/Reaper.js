@@ -749,7 +749,7 @@ export class Reaper extends Fighter {
     this.drawSoulWisps(ctx);
   }
 
-  draw(ctx, isReflection = false) {
+  draw(ctx, isReflection = false, renderer = null) {
     const sprites = PixelForge.initAssets().reaper;
     if (!sprites) return;
 
@@ -788,7 +788,7 @@ export class Reaper extends Fighter {
     );
     ctx.scale(this.facing, 1);
 
-    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection);
+    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection, renderer);
 
     if (this.hitFlash > 0 && !isReflection) {
       ctx.globalCompositeOperation = 'lighter';

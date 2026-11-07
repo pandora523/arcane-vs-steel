@@ -330,6 +330,18 @@ export class Archer extends Fighter {
       });
 
       const centerTargetX = enemy ? enemy.x : this.x + this.facing * 320;
+      // Summon a Swirling Conical Emerald Gale Tornado Funnel at the target zone!
+      game.vfx.spawnTornado({
+        x: centerTargetX,
+        groundY: this.groundY,
+        vx: this.facing * 38,
+        radius: 78,
+        height: 265,
+        color: '#10b981',
+        coreColor: '#fef08a',
+        maxLife: 1.10
+      });
+
       // Rain 9 Diagonal Emerald-Gold Starfall Arrows from the Heavens
       for (let i = 0; i < 9; i++) {
         const spread = (i - 4) * 34 + (Math.random() - 0.5) * 14;
@@ -356,11 +368,28 @@ export class Archer extends Fighter {
 
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    // Stay firmly grounded on the arena floor while channeling the Astral Dragon-Arrow
+    // Stay firmly grounded on the arena floor while channeling the Astral Dragon-Arrow & Hurricane Tornado
     this.y = this.groundY;
     this.vy = 0;
 
-    if (t < 0.65) {
+    if (t < 0.04) {
+      this.spawnedChannelTornado = false;
+    }
+
+    if (t < 0.42) {
+      if (!this.spawnedChannelTornado && t >= 0.05) {
+        this.spawnedChannelTornado = true;
+        game.vfx.spawnTornado({
+          x: this.x + this.facing * 65,
+          groundY: this.groundY,
+          vx: this.facing * 120,
+          radius: 74,
+          height: 260,
+          color: '#10b981',
+          coreColor: '#fef08a',
+          maxLife: 0.92
+        });
+      }
       if (Math.random() < 0.85) {
         const a = Math.random() * Math.PI * 2;
         game.vfx.spawnParticle({
@@ -404,16 +433,16 @@ export class Archer extends Fighter {
         game.vfx.spawnShockwave(rx, startY, 92 + r * 8, r % 2 === 0 ? '#34d399' : '#fef08a', 0.45, false, true);
       }
 
-      // 3. Colossal Emerald Tempest Tornado + Jade Lightning Bolts on the Enemy
+      // 3. Colossal Emerald Tempest Tornado Funnel + Jade Lightning Bolts on the Enemy
       game.vfx.spawnTornado({
         x: targetX,
         groundY: this.groundY,
         vx: this.facing * 45,
-        radius: 95,
-        height: 310,
+        radius: 102,
+        height: 325,
         color: '#10b981',
         coreColor: '#fef08a',
-        maxLife: 1.35
+        maxLife: 1.45
       });
 
       game.vfx.spawnLightning(targetX - 35, -240, this.groundY, '#fef08a', '#10b981');
@@ -433,7 +462,7 @@ export class Archer extends Fighter {
     }
   }
 
-  draw(ctx, isReflection = false) {
+  draw(ctx, isReflection = false, renderer = null) {
     const sprites = PixelForge.initAssets().archer;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -450,7 +479,7 @@ export class Archer extends Fighter {
       ctx.translate(0, 96);
     }
 
-    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.windPhase, isReflection);
+    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.windPhase, isReflection, renderer);
 
     if (this.hitFlash > 0 && !isReflection) {
       ctx.globalCompositeOperation = 'lighter';
