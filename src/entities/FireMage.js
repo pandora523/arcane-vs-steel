@@ -28,32 +28,75 @@ export class FireMage extends Fighter {
   }
 
   onStartDodge(enemy, game, dir) {
-    this.dashDuration = 0.44;
-    this.vx = dir * 360;
+    const ww = game.renderer.worldWidth;
+    this.dashDuration = 0.42;
+    this.isBlinkTeleport = true;
+    this.didBlink = false;
+    this.blinkOriginX = this.x;
+    this.vx = 0;
+
+    // Teleport across the arena to the open side away from the enemy
+    if (enemy) {
+      const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
+      this.blinkTargetX = Math.max(135, Math.min(ww - 135, enemy.x + openSideDir * 355));
+      if (Math.abs(this.blinkTargetX - this.x) < 150) {
+        this.blinkTargetX = Math.max(135, Math.min(ww - 135, enemy.x - openSideDir * 340));
+      }
+    } else {
+      this.blinkTargetX = Math.max(135, Math.min(ww - 135, this.x + dir * 290));
+    }
+
     if (game.audio) game.audio.play('blink', this.x);
-    game.vfx.spawnShockwave(this.x, this.y - 55, 88, '#facc15', 0.3);
-    game.vfx.spawnBurst(this.x, this.y - 55, 14, '#fb923c', 210);
-    game.vfx.spawnGlyphBurst(this.x, this.y - 60, 6, 'arcane');
-    game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'SOLAR GLIDE!', '#fb923c');
+    // Departure Solar Rift Portal + Lightning Flash
+    game.vfx.spawnShockwave(this.x, this.y - 95, 96, '#facc15', 0.34, false, true);
+    game.vfx.spawnShockwave(this.x, this.groundY, 110, '#fb923c', 0.32, true);
+    game.vfx.spawnLightning(this.x, this.groundY - 220, this.groundY, '#fef08a', '#fb923c');
+    game.vfx.spawnBurst(this.x, this.y - 95, 18, '#fb923c', 230);
+    game.vfx.spawnGlyphBurst(this.x, this.y - 100, 7, 'arcane');
+    game.vfx.spawnDamageText(this.x, this.y - 145, 0, false, 'ARCANE BLINK!', '#facc15');
   }
 
   onStartDash(enemy, game, dir) {
     this.dashDuration = 0.42;
+    this.isBlinkTeleport = false;
     this.vx = dir * 350;
     if (game.audio) game.audio.play('fireball', this.x);
-    game.vfx.spawnShockwave(this.x, this.y - 55, 76, '#fb923c', 0.26, false, true);
-    game.vfx.spawnGlyphBurst(this.x, this.y - 60, 5, 'arcane');
-    game.vfx.spawnDamageText(this.x, this.y - 120, 0, false, 'IGNIS SURGE!', '#facc15');
+    game.vfx.spawnShockwave(this.x, this.y - 95, 76, '#fb923c', 0.26, false, true);
+    game.vfx.spawnGlyphBurst(this.x, this.y - 100, 5, 'arcane');
+    game.vfx.spawnDamageText(this.x, this.y - 140, 0, false, 'IGNIS SURGE!', '#facc15');
   }
 
   updateDashOrDodge(dt, enemy, game) {
     const t = this.stateTimer;
+
+    if (this.isBlinkTeleport) {
+      if (t >= 0.14 && !this.didBlink) {
+        this.didBlink = true;
+        this.x = this.blinkTargetX;
+        if (enemy) {
+          this.facing = enemy.x >= this.x ? 1 : -1;
+        }
+        // Arrival Solar Rift Portal + Lightning Flash at teleport destination
+        game.vfx.spawnShockwave(this.x, this.y - 95, 105, '#fef08a', 0.36, false, true);
+        game.vfx.spawnShockwave(this.x, this.groundY, 120, '#fb923c', 0.34, true);
+        game.vfx.spawnLightning(this.x, this.groundY - 220, this.groundY, '#ffffff', '#fb923c');
+        game.vfx.spawnBurst(this.x, this.y - 95, 20, '#fef08a', 250);
+        game.vfx.spawnGlyphBurst(this.x, this.y - 105, 8, 'arcane');
+      }
+      if (t >= this.dashDuration) {
+        this.isBlinkTeleport = false;
+        this.isInvulnerable = false;
+        this.setState('IDLE');
+      }
+      return;
+    }
+
     this.x += this.dashDir * 310 * dt;
 
     if (Math.random() < 0.72) {
       game.vfx.spawnParticle({
         x: this.x - this.dashDir * 16,
-        y: this.y - 52 + (Math.random() - 0.5) * 36,
+        y: this.y - 90 + (Math.random() - 0.5) * 36,
         vx: -this.dashDir * 75,
         vy: -45 - Math.random() * 35,
         size: 6,
@@ -73,6 +116,12 @@ export class FireMage extends Fighter {
 
     if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const dist = Math.abs(enemy.x - this.x);
+      const ww = game.renderer.worldWidth;
+      const nearWall = this.x < 220 || this.x > ww - 220;
+      if ((dist < 220 || (nearWall && dist < 285)) && this.dodgeCooldown <= 0) {
+        this.startDodge(enemy, game);
+        return;
+      }
       if (dist < 215) {
         this.x -= this.facing * this.moveSpeed * 0.68 * dt;
       }
@@ -89,7 +138,7 @@ export class FireMage extends Fighter {
         const a = t * 18;
         game.vfx.spawnParticle({
           x: this.x + this.facing * 42 + Math.cos(a) * 22,
-          y: this.y - 78 + Math.sin(a) * 22,
+          y: this.y - 115 + Math.sin(a) * 22,
           vx: -Math.cos(a) * 45,
           vy: -Math.sin(a) * 45,
           size: 5,
@@ -106,8 +155,8 @@ export class FireMage extends Fighter {
         if (game.audio) game.audio.play('fireball', this.x);
 
         const spawnX = this.x + this.facing * 52;
-        const spawnY = this.y - 78;
-        const targetY = enemy ? enemy.y - 60 : spawnY;
+        const spawnY = this.y - 115;
+        const targetY = enemy ? enemy.y - 112 : spawnY;
         const dx = enemy ? enemy.x - spawnX : this.facing * 460;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
@@ -164,9 +213,9 @@ export class FireMage extends Fighter {
 
       // Twin Solar Orbs launched from Ignis Sol's staff
       const sx = this.x + this.facing * 48;
-      const sy = this.y - 82;
+      const sy = this.y - 115;
       const dx = enemy.x - sx;
-      const dy = (enemy.y - 60) - sy;
+      const dy = (enemy.y - 112) - sy;
       const dist = Math.hypot(dx, dy) || 1;
       [-45, 45].forEach((vyOff) => {
         game.vfx.spawnProjectile({
@@ -183,8 +232,8 @@ export class FireMage extends Fighter {
         });
       });
 
-      game.vfx.spawnShockwave(this.x, this.y - 75, 92, '#fb923c', 0.38);
-      game.vfx.spawnGlyphBurst(this.x, this.y - 80, 7, 'arcane');
+      game.vfx.spawnShockwave(this.x, this.y - 110, 92, '#fb923c', 0.38);
+      game.vfx.spawnGlyphBurst(this.x, this.y - 110, 7, 'arcane');
     } else if (t >= 1.05) {
       this.setState('IDLE');
     }
@@ -192,9 +241,11 @@ export class FireMage extends Fighter {
 
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    if (t < 0.85) {
-      this.vy = -40;
-      this.y = Math.max(this.groundY - 130, this.y - 145 * dt);
+    // Stay planted firmly on the arena flagstones while channeling the Eclipse Supernova
+    this.y = this.groundY;
+    this.vy = 0;
+
+    if (t < 0.75) {
       this.runeOrbit += dt * 7.5;
 
       // Conjure the Colossal Black-Gold Solar Eclipse Sphere overhead during channel!
@@ -216,7 +267,7 @@ export class FireMage extends Fighter {
         const a = Math.random() * Math.PI * 2;
         game.vfx.spawnParticle({
           x: this.x + Math.cos(a) * 75,
-          y: this.y - 65 + Math.sin(a) * 75,
+          y: this.y - 105 + Math.sin(a) * 75,
           vx: -Math.cos(a) * 110,
           vy: -Math.sin(a) * 110,
           size: 7,
@@ -259,8 +310,8 @@ export class FireMage extends Fighter {
         });
       });
 
-      game.vfx.spawnGlyphBurst(this.x, this.y - 75, 10, 'arcane');
-    } else if (t >= 1.65) {
+      game.vfx.spawnGlyphBurst(this.x, this.y - 110, 10, 'arcane');
+    } else if (t >= 1.55) {
       this.setState('IDLE');
     }
   }
@@ -270,14 +321,12 @@ export class FireMage extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    const hoverScale = this.isDead ? Math.max(0, 1 - (this.deathTimer || 0) * 2.5) : 1;
-    const hoverY = Math.round((-8 + Math.sin(this.runeOrbit * 1.4) * 5) * hoverScale);
     const w = 208;
     const h = 208;
     const scaleDir = -this.facing;
     const frameIdx = PixelForge.getFrameIndex(this, this.runeOrbit);
 
-    ctx.translate(Math.round(this.x), Math.round(this.y + hoverY));
+    ctx.translate(Math.round(this.x), Math.round(this.y));
     ctx.scale(scaleDir, 1);
 
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.runeOrbit, isReflection);

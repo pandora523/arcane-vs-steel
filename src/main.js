@@ -238,7 +238,7 @@ class Game {
       this.btnSfx.addEventListener('click', () => {
         const on = this.audio.toggle();
         this.btnSfx.setAttribute('aria-pressed', String(on));
-        this.sfxLabel.textContent = on ? 'SFX ON' : 'SFX OFF';
+        this.sfxLabel.textContent = on ? 'SFX' : 'MUTE';
       });
     }
 
@@ -486,7 +486,8 @@ class Game {
       const hitEnemy =
         enemy &&
         !enemy.isDead &&
-        Math.hypot(p.x - enemy.x, p.y - (enemy.y - 48)) < p.radius + 34;
+        Math.abs(p.x - enemy.x) < p.radius + 36 &&
+        Math.abs(p.y - (enemy.y - 108)) < p.radius + 68;
       const hitGround = p.y >= gy - 4;
 
       if (hitEnemy || hitGround) {

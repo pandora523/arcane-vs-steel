@@ -117,9 +117,9 @@ export class Archer extends Fighter {
         this.didActionFrame = true;
         if (game.audio) game.audio.play('arrow_shoot', this.x);
         const sx = this.x;
-        const sy = this.y - 72;
+        const sy = this.y - 96;
         const dx = enemy.x - sx;
-        const dy = (enemy.y - 55) - sy;
+        const dy = (enemy.y - 110) - sy;
         const d = Math.hypot(dx, dy) || 1;
         [-28, 28].forEach((spreadX) => {
           const tx = dx + spreadX;
@@ -220,7 +220,7 @@ export class Archer extends Fighter {
       if (Math.random() < 0.65) {
         const a = t * 24;
         const tipX = this.x + this.facing * 54;
-        const tipY = this.y - 76;
+        const tipY = this.y - 120;
         game.vfx.spawnParticle({
           x: tipX + Math.cos(a) * 26,
           y: tipY + Math.sin(a) * 26,
@@ -240,8 +240,8 @@ export class Archer extends Fighter {
         if (game.audio) game.audio.play('arrow_shoot', this.x);
 
         const spawnX = this.x + this.facing * 54;
-        const spawnY = this.y - 76;
-        const targetY = enemy ? enemy.y - 62 : spawnY;
+        const spawnY = this.y - 120;
+        const targetY = enemy ? enemy.y - 116 : spawnY;
         const dx = enemy ? enemy.x - spawnX : this.facing * 520;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
@@ -266,9 +266,9 @@ export class Archer extends Fighter {
         if (isTwinShot) {
           game.vfx.spawnProjectile({
             x: spawnX - this.facing * 18,
-            y: spawnY - 14,
+            y: spawnY - 12,
             vx: (dx / dist) * (speed * 0.94),
-            vy: (dy / dist) * (speed * 0.94) - 22,
+            vy: (dy / dist) * (speed * 0.94) - 18,
             radius: 13,
             color: '#34d399',
             coreColor: '#fef08a',
@@ -298,7 +298,7 @@ export class Archer extends Fighter {
       if (Math.random() < 0.65) {
         game.vfx.spawnParticle({
           x: this.x + (Math.random() - 0.5) * 48,
-          y: this.y - 75,
+          y: this.y - 115,
           vx: 0,
           vy: -180,
           size: 5,
@@ -313,7 +313,7 @@ export class Archer extends Fighter {
 
       // Skyward bow launch sonic rings & 3-Arrow Direct Fan Spread + 9 Diagonal Starfall Arrows (zero flame pillars!)
       const bowX = this.x + this.facing * 44;
-      const bowY = this.y - 84;
+      const bowY = this.y - 122;
       game.vfx.spawnShockwave(bowX, bowY, 82, '#34d399', 0.32, false, true);
       game.vfx.spawnShockwave(bowX + this.facing * 14, bowY - 10, 56, '#fef08a', 0.24, false, true);
       game.vfx.spawnGlyphBurst(bowX, bowY, 7, 'emerald');
@@ -363,15 +363,16 @@ export class Archer extends Fighter {
 
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    if (t < 0.72) {
-      // Levitate into an emerald hurricane vortex while charging the Astral Dragon-Arrow
-      this.vy = -35;
-      this.y = Math.max(this.groundY - 95, this.y - 115 * dt);
+    // Stay firmly grounded on the arena floor while channeling the Astral Dragon-Arrow
+    this.y = this.groundY;
+    this.vy = 0;
+
+    if (t < 0.65) {
       if (Math.random() < 0.85) {
         const a = Math.random() * Math.PI * 2;
         game.vfx.spawnParticle({
-          x: this.x + Math.cos(a) * 80,
-          y: this.y - 70 + Math.sin(a) * 80,
+          x: this.x + this.facing * 38 + Math.cos(a) * 68,
+          y: this.y - 120 + Math.sin(a) * 68,
           vx: -Math.cos(a) * 135,
           vy: -Math.sin(a) * 135,
           size: 7,
@@ -383,8 +384,8 @@ export class Archer extends Fighter {
       this.didActionFrame = true;
       if (game.audio) game.audio.play('archer_ult', this.x);
 
-      const startX = this.x + this.facing * 48;
-      const startY = this.y - 72;
+      const startX = this.x + this.facing * 52;
+      const startY = this.y - 120;
       const endX = this.facing === 1 ? game.renderer.worldWidth + 240 : -240;
       const targetX = enemy ? enemy.x : this.x + this.facing * 380;
 
@@ -392,12 +393,12 @@ export class Archer extends Fighter {
       game.renderer.triggerAberration(15);
       game.renderer.triggerHitStop(0.09);
 
-      // 1. Colossal Across-Screen Astral Dragon-Arrow Beam
+      // 1. Colossal Across-Screen Astral Dragon-Arrow Beam at shoulder/bow height
       game.vfx.spawnBeam({
         x1: startX,
         y1: startY,
         x2: endX,
-        y2: this.groundY - 62,
+        y2: this.groundY - 120,
         width: 64,
         color: '#10b981',
         coreColor: '#fef08a',

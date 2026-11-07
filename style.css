@@ -1,3 +1,11 @@
+@font-face {
+  font-family: 'ArcanePixel';
+  src: url('assets/fonts/pixel_art.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: block;
+}
+
 :root {
   --bg-crypt: #05070c;
   --iron-dark: #0b0e17;
@@ -9,6 +17,7 @@
   --steel-bar: #38bdf8;
   --arcane-bar: #fb923c;
   --blood-trail: #e11d48;
+  --font-pixel: 'ArcanePixel', 'Press Start 2P', monospace;
 }
 
 * {
@@ -17,6 +26,9 @@
   padding: 0;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
+  -webkit-font-smoothing: none;
+  -moz-osx-font-smoothing: grayscale;
+  font-smooth: never;
 }
 
 html, body {
@@ -26,7 +38,7 @@ html, body {
   overflow: hidden;
   background: var(--bg-crypt);
   color: var(--text-ivory);
-  font-family: 'Cinzel', serif;
+  font-family: var(--font-pixel);
   touch-action: manipulation;
 }
 
@@ -55,16 +67,16 @@ html, body {
 /* Top Forged Arcade HUD */
 .hud-top {
   position: absolute;
-  top: max(10px, env(safe-area-inset-top));
+  top: max(8px, env(safe-area-inset-top));
   left: 0;
   right: 0;
   max-width: 1180px;
   margin: 0 auto;
-  padding: 0 clamp(8px, 2vw, 24px);
+  padding: 0 clamp(6px, 1.8vw, 22px);
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   align-items: start;
-  gap: clamp(6px, 1.5vw, 18px);
+  gap: clamp(5px, 1.2vw, 16px);
   pointer-events: none;
   z-index: 10;
 }
@@ -78,8 +90,8 @@ html, body {
 
 .portrait-frame {
   flex-shrink: 0;
-  width: clamp(44px, 6.5vw, 58px);
-  height: clamp(44px, 6.5vw, 58px);
+  width: clamp(40px, 6vw, 56px);
+  height: clamp(40px, 6vw, 56px);
   background: var(--iron-dark);
   border: 2px solid var(--bronze-lit);
   box-shadow: inset 0 0 0 2px #000, 0 6px 16px rgba(0, 0, 0, 0.85);
@@ -123,7 +135,7 @@ html, body {
 }
 
 .champ-badge {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-pixel);
   font-size: 0.42rem;
   padding: 2px 5px;
   background: linear-gradient(180deg, #0284c7, #0369a1);
@@ -142,10 +154,10 @@ html, body {
 }
 
 .fighter-name {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(0.72rem, 2vw, 1.08rem);
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  font-family: var(--font-pixel);
+  font-size: clamp(0.55rem, 1.4vw, 0.82rem);
+  font-weight: normal;
+  letter-spacing: 0.06em;
   color: var(--text-ivory);
   text-shadow: 0 2px 0 #000, 0 0 8px rgba(0, 0, 0, 0.9);
   white-space: nowrap;
@@ -154,8 +166,8 @@ html, body {
 }
 
 .hp-num {
-  font-family: 'Press Start 2P', monospace;
-  font-size: clamp(0.52rem, 1.2vw, 0.68rem);
+  font-family: var(--font-pixel);
+  font-size: clamp(0.48rem, 1.1vw, 0.66rem);
   color: var(--bronze-lit);
   text-shadow: 0 2px 0 #000;
 }
@@ -275,8 +287,8 @@ html, body {
 .ult-label, .cd-label {
   position: relative;
   z-index: 2;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 0.42rem;
+  font-family: var(--font-pixel);
+  font-size: 0.38rem;
   color: #f8fafc;
   text-shadow: 0 1px 0 #000;
   white-space: nowrap;
@@ -287,12 +299,12 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 3px;
 }
 
 .crest-shield {
-  width: clamp(28px, 4.5vw, 38px);
-  height: clamp(28px, 4.5vw, 38px);
+  width: clamp(26px, 4vw, 34px);
+  height: clamp(26px, 4vw, 34px);
   background: linear-gradient(135deg, #27272a, #09090b);
   border: 2px solid var(--bronze-lit);
   outline: 1px solid #000;
@@ -305,53 +317,56 @@ html, body {
 
 .crest-shield span {
   transform: rotate(-45deg);
-  font-weight: 900;
-  font-size: clamp(0.62rem, 1.3vw, 0.82rem);
+  font-family: var(--font-pixel);
+  font-size: clamp(0.46rem, 1vw, 0.6rem);
   color: var(--bronze-lit);
 }
 
 .clock-plate {
-  font-family: 'Press Start 2P', monospace;
-  font-size: clamp(0.48rem, 1.1vw, 0.6rem);
+  font-family: var(--font-pixel);
+  font-size: clamp(0.42rem, 0.95vw, 0.54rem);
   color: var(--text-ash);
   text-shadow: 0 2px 0 #000;
   margin-top: 2px;
 }
 
-/* Bottom Forged Iron Action Bar */
+/* Bottom Forged Iron Spectator Bar — Ultra-Compact, Single-Line & Non-Blocking */
 .hud-bottom {
   position: absolute;
-  bottom: max(12px, env(safe-area-inset-bottom));
+  bottom: max(4px, env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
   z-index: 15;
-  max-width: 96vw;
+  max-width: 98vw;
+  pointer-events: auto;
 }
 
 .iron-bar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
+  align-items: center;
   justify-content: center;
-  gap: 7px;
-  padding: 5px;
-  background: rgba(9, 12, 20, 0.94);
-  border: 2px solid var(--bronze-dim);
+  gap: 4px;
+  padding: 3px 4px;
+  background: rgba(6, 9, 16, 0.78);
+  border: 1px solid rgba(212, 175, 55, 0.58);
   outline: 1px solid #000;
-  box-shadow: 0 10px 26px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.85);
 }
 
 .iron-btn {
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.92) 0%, rgba(15, 23, 42, 0.92) 100%);
   color: var(--text-ivory);
   border: 1px solid #475569;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 0 #000;
-  padding: 8px 11px;
-  font-family: 'Press Start 2P', monospace;
-  font-size: 0.48rem;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 0 #000;
+  padding: 4px 8px;
+  font-family: var(--font-pixel);
+  font-size: 0.42rem;
+  line-height: 1;
   cursor: pointer;
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   white-space: nowrap;
   transition: filter 0.15s ease, transform 0.1s ease, border-color 0.15s ease;
 }
@@ -390,8 +405,8 @@ html, body {
 }
 
 .gem-indicator {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
   background: #475569;
   border: 1px solid #000;
 }
@@ -418,28 +433,7 @@ html, body {
   color: #fef08a;
 }
 
-/* Banners & Victory Plaque */
-.ult-banner {
-  position: absolute;
-  top: 28%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: min(92vw, 640px);
-  text-align: center;
-  pointer-events: none;
-  z-index: 20;
-  transition: opacity 0.25s ease;
-}
-
-.ult-rule {
-  height: 2px;
-  background: linear-gradient(90deg, transparent, var(--bronze-lit), transparent);
-  margin: 6px 0;
-}
-
-.ult-subtitle { font-family: 'Press Start 2P', monospace; font-size: 0.55rem; color: var(--bronze-lit); margin-bottom: 4px; }
-.ult-title { font-size: clamp(1.15rem, 4vw, 2rem); font-weight: 900; letter-spacing: 0.1em; color: #fff; text-shadow: 0 3px 0 #000, 0 0 20px #facc15; }
-
+/* Victory Plaque */
 .victory-overlay {
   position: absolute;
   inset: 0;
@@ -456,14 +450,14 @@ html, body {
   background: #0b0f19;
   border: 3px solid var(--bronze-lit);
   outline: 2px solid #000;
-  padding: 26px 32px;
+  padding: 24px 28px;
   text-align: center;
   box-shadow: 0 20px 50px #000;
 }
 
-.victory-eyebrow { font-family: 'Press Start 2P', monospace; font-size: 0.55rem; color: var(--bronze-lit); margin-bottom: 10px; }
-.victory-winner { font-size: clamp(1.2rem, 4.5vw, 1.8rem); margin-bottom: 8px; }
-.victory-stats { font-size: 0.85rem; color: var(--text-ash); margin-bottom: 20px; }
+.victory-eyebrow { font-family: var(--font-pixel); font-size: 0.48rem; color: var(--bronze-lit); margin-bottom: 10px; }
+.victory-winner { font-family: var(--font-pixel); font-size: clamp(0.85rem, 3vw, 1.3rem); margin-bottom: 10px; color: #fef08a; }
+.victory-stats { font-family: var(--font-pixel); font-size: 0.52rem; color: var(--text-ash); margin-bottom: 20px; line-height: 1.5; }
 .victory-btn-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 
 /* HD-2D Landing Page & Champion Select Overlay */
@@ -499,19 +493,19 @@ html, body {
 }
 
 .landing-eyebrow {
-  font-family: 'Press Start 2P', monospace;
-  font-size: clamp(0.42rem, 1vw, 0.54rem);
-  letter-spacing: 0.14em;
+  font-family: var(--font-pixel);
+  font-size: clamp(0.38rem, 0.9vw, 0.48rem);
+  letter-spacing: 0.1em;
   color: var(--bronze-lit);
   margin-bottom: 6px;
   text-shadow: 0 2px 0 #000;
 }
 
 .landing-title {
-  font-family: 'Cinzel', serif;
-  font-size: clamp(1.5rem, 4.2vw, 2.65rem);
-  font-weight: 900;
-  letter-spacing: 0.12em;
+  font-family: var(--font-pixel);
+  font-size: clamp(1.05rem, 3vw, 1.85rem);
+  font-weight: normal;
+  letter-spacing: 0.08em;
   color: #fff;
   text-shadow: 0 3px 0 #000, 0 0 26px rgba(212, 175, 55, 0.45);
 }
@@ -522,9 +516,11 @@ html, body {
 }
 
 .landing-subtitle {
-  font-size: clamp(0.75rem, 1.5vw, 0.95rem);
+  font-family: var(--font-pixel);
+  font-size: clamp(0.42rem, 0.95vw, 0.55rem);
+  line-height: 1.5;
   color: var(--text-ash);
-  margin-top: 4px;
+  margin-top: 6px;
 }
 
 .matchup-banner {
@@ -546,7 +542,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   cursor: pointer;
   min-width: 158px;
   transition: border-color 0.15s ease, box-shadow 0.15s ease;
@@ -558,23 +554,23 @@ html, body {
 }
 
 .slot-tag {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-pixel);
   font-size: 0.36rem;
   color: #94a3b8;
 }
 
 .slot-hero-name {
-  font-family: 'Cinzel', serif;
-  font-size: 0.88rem;
-  font-weight: 900;
+  font-family: var(--font-pixel);
+  font-size: 0.62rem;
+  font-weight: normal;
   color: #fef9c3;
-  letter-spacing: 0.08em;
+  letter-spacing: 0.06em;
 }
 
 .matchup-vs-badge {
-  font-family: 'Cinzel', serif;
-  font-weight: 900;
-  font-size: 0.82rem;
+  font-family: var(--font-pixel);
+  font-weight: normal;
+  font-size: 0.62rem;
   color: var(--bronze-lit);
   padding: 0 4px;
 }
@@ -623,7 +619,7 @@ html, body {
   top: 7px;
   right: 8px;
   z-index: 4;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-pixel);
   font-size: 0.36rem;
   padding: 4px 6px;
   background: #1e293b;
@@ -701,24 +697,27 @@ html, body {
 }
 
 .champ-role {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-pixel);
   font-size: 0.38rem;
   color: var(--bronze-lit);
   letter-spacing: 0.04em;
 }
 
 .champ-name {
-  font-size: clamp(1rem, 1.8vw, 1.28rem);
-  font-weight: 900;
-  letter-spacing: 0.08em;
+  font-family: var(--font-pixel);
+  font-size: clamp(0.74rem, 1.35vw, 0.96rem);
+  font-weight: 700;
+  letter-spacing: 0.06em;
   color: #fff;
   text-shadow: 0 2px 0 #000;
 }
 
 .champ-lore {
-  font-size: 0.72rem;
-  line-height: 1.34;
+  font-family: var(--font-pixel);
+  font-size: 0.45rem;
+  line-height: 1.55;
   color: var(--text-ash);
+  text-transform: uppercase;
 }
 
 .stat-list {
@@ -733,7 +732,7 @@ html, body {
   grid-template-columns: 86px 1fr;
   align-items: center;
   gap: 6px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-pixel);
   font-size: 0.36rem;
   color: #cbd5e1;
 }
@@ -761,7 +760,7 @@ html, body {
 }
 
 .kit-pill {
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-pixel);
   font-size: 0.34rem;
   padding: 3px 5px;
   border: 1px solid #334155;
@@ -786,7 +785,7 @@ html, body {
   border: 1px solid #475569;
   color: #cbd5e1;
   padding: 6px 4px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-pixel);
   font-size: 0.35rem;
   cursor: pointer;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
@@ -828,7 +827,7 @@ html, body {
   outline: 1px solid #000;
   box-shadow: 0 0 24px rgba(250, 204, 21, 0.38), inset 0 1px 0 rgba(255, 255, 255, 0.35);
   padding: 13px 26px;
-  font-family: 'Press Start 2P', monospace;
+  font-family: var(--font-pixel);
   font-size: clamp(0.54rem, 1.2vw, 0.66rem);
   letter-spacing: 0.06em;
   cursor: pointer;
@@ -852,6 +851,38 @@ html, body {
   pointer-events: none !important;
 }
 
+@media (max-width: 768px), (max-height: 560px) {
+  .hud-bottom {
+    bottom: max(2px, env(safe-area-inset-bottom));
+    padding: 0 4px;
+  }
+  .iron-bar {
+    gap: 3px;
+    padding: 2px 4px;
+    border-width: 1px;
+  }
+  .hud-bottom .iron-btn {
+    padding: 3px 6px;
+    font-size: 0.35rem;
+    letter-spacing: 0.02em;
+  }
+  .bar-divider {
+    height: 11px;
+  }
+  .hud-top {
+    padding: 4px 6px;
+    gap: 4px;
+  }
+  .fighter-plate {
+    padding: 4px 6px;
+    gap: 6px;
+  }
+  .portrait-frame {
+    width: 36px;
+    height: 36px;
+  }
+}
+
 @media (max-width: 680px) {
   .champion-grid {
     grid-template-columns: 1fr;
@@ -869,3 +900,4 @@ html, body {
   .sub-row, .plate-right .sub-row { grid-template-columns: 1fr; gap: 3px; }
   .cd-box { display: none; }
 }
+

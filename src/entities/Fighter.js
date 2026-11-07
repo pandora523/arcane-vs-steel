@@ -45,6 +45,8 @@ export class Fighter {
     this.armAngle = 0;
     this.armVel = 0;
     this.hitFlash = 0;
+    this.hurtTimer = 0;
+    this.hurtDir = -1;
 
     // 5-node Verlet-like Cape / Cloth Trail
     this.capeNodes = Array.from({ length: 5 }, (_, i) => ({
@@ -71,8 +73,8 @@ export class Fighter {
     if (this.isDead) return;
     if (this.isInvulnerable || (this.state === 'DODGE' && this.stateTimer < 0.36)) {
       if (this.game) {
-        this.game.vfx.spawnDamageText(this.x, this.y - 110, 0, false, 'EVADED!', this.primaryColor);
-        this.game.vfx.spawnShockwave(this.x, this.y - 55, 68, this.primaryColor, 0.24);
+        this.game.vfx.spawnDamageText(this.x, this.y - 135, 0, false, 'EVADED!', this.primaryColor);
+        this.game.vfx.spawnShockwave(this.x, this.y - 95, 68, this.primaryColor, 0.24);
       }
       this.gainMana(8);
       return;
@@ -82,11 +84,13 @@ export class Fighter {
       knockX *= 0.2;
     }
     this.hp = Math.max(0, this.hp - amount);
-    this.hitFlash = 0.16;
+    this.hitFlash = 0.18;
+    this.hurtTimer = isCrit ? 0.34 : 0.25;
     this.gainMana(amount * 0.12);
     if (attacker) attacker.gainMana(11);
 
     const dir = attacker ? Math.sign(this.x - attacker.x) || -this.facing : -this.facing;
+    this.hurtDir = dir;
     this.vx += dir * knockX;
     if (this.y >= this.groundY - 2 && knockY < -120) {
       this.vy = knockY;
@@ -94,9 +98,19 @@ export class Fighter {
     this.torsoVel += dir * 9.5;
     this.armVel -= 12;
 
+    if (
+      this.hp > 0 &&
+      !this.isDeflecting &&
+      (this.state === 'IDLE' ||
+        this.state === 'WALK' ||
+        (this.state === 'AUTO_ATTACK' && !this.didActionFrame && isCrit))
+    ) {
+      this.setState('HURT');
+    }
+
     if (this.game) {
-      this.game.vfx.spawnDamageText(this.x, this.y - 75, amount, isCrit);
-      this.game.vfx.spawnBurst(this.x, this.y - 45, isCrit ? 14 : 7, this.primaryColor, 170);
+      this.game.vfx.spawnDamageText(this.x, this.y - 125, amount, isCrit);
+      this.game.vfx.spawnBurst(this.x, this.y - 105, isCrit ? 14 : 8, this.primaryColor, 185);
       if (isCrit) {
         this.game.renderer.triggerAberration(5);
         this.game.renderer.triggerHitStop(0.035);
@@ -114,8 +128,8 @@ export class Fighter {
         this.game.renderer.triggerShake(12, 0.25);
         this.game.renderer.triggerAberration(8);
         this.game.renderer.triggerHitStop(0.07);
-        this.game.vfx.spawnShockwave(this.x, this.y - 45, 165, this.primaryColor, 0.55, true);
-        this.game.vfx.spawnBurst(this.x, this.y - 50, 26, this.primaryColor, 280, {
+        this.game.vfx.spawnShockwave(this.x, this.y - 95, 165, this.primaryColor, 0.55, true);
+        this.game.vfx.spawnBurst(this.x, this.y - 95, 26, this.primaryColor, 280, {
           upBias: 135,
           size: 7
         });
@@ -180,6 +194,7 @@ export class Fighter {
     this.groundY = game.renderer.groundY;
 
     if (this.hitFlash > 0) this.hitFlash = Math.max(0, this.hitFlash - dt);
+    if (this.hurtTimer > 0) this.hurtTimer = Math.max(0, this.hurtTimer - dt);
 
     if (!this.isDead && this.state !== 'ULTIMATE') {
       this.gainMana(dt * 4.5);
@@ -318,6 +333,10 @@ export class Fighter {
     if (this.state === 'IDLE') {
       this.walkPhase += dt * 2.8;
       this.headBob = Math.sin(this.walkPhase) * 2.0;
+    } else if (this.state === 'HURT') {
+      if (this.stateTimer >= 0.28) {
+        this.setState('IDLE');
+      }
     } else if (this.state === 'DASH' || this.state === 'DODGE') {
       if (this.updateDashOrDodge) {
         this.updateDashOrDodge(dt, enemy, game);
@@ -334,6 +353,7 @@ export class Fighter {
   }
 
   getTargetTorsoAngle() {
+    if (this.state === 'HURT' || this.hurtTimer > 0.08) return -this.facing * 0.22;
     if (this.state === 'DASH' || this.state === 'DODGE') return this.dashDir * 0.25;
     if (this.state === 'WALK') return this.facing * 0.18 + Math.sin(this.walkPhase) * 0.14;
     if (this.state === 'IDLE') return Math.sin(this.walkPhase) * 0.05;

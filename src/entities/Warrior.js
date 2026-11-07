@@ -174,13 +174,13 @@ export class Warrior extends Fighter {
       }
 
       for (const proj of game.vfx.projectiles) {
-        if (proj.owner !== this && !proj.isMeteor && Math.hypot(proj.x - this.x, proj.y - (this.y - 60)) < 98) {
+        if (proj.owner !== this && !proj.isMeteor && Math.hypot(proj.x - this.x, proj.y - (this.y - 110)) < 106) {
           proj.owner = this;
           proj.vx = -proj.vx * 1.3;
-          proj.vy = -25;
+          proj.vy = -12;
           proj.color = '#38bdf8';
           if (game.audio) game.audio.play('reflect', this.x);
-          game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'AEGIS REFLECT!', '#38bdf8');
+          game.vfx.spawnDamageText(this.x, this.y - 140, 0, false, 'AEGIS REFLECT!', '#38bdf8');
           game.vfx.spawnBurst(proj.x, proj.y, 14, '#38bdf8', 240);
           game.vfx.spawnShockwave(proj.x, proj.y, 85, '#fef08a', 0.26);
           game.renderer.triggerShake(6, 0.14);
@@ -189,12 +189,12 @@ export class Warrior extends Fighter {
 
       if (!this.lastSpinTick || t - this.lastSpinTick >= 0.2) {
         this.lastSpinTick = t;
-        game.vfx.spawnSlash(this.x, this.y - 58, 108, 0, Math.PI * 2, '#38bdf8', 0.22);
-        game.vfx.spawnSlash(this.x, this.y - 84, 82, 0, Math.PI * 2, '#bae6fd', 0.18);
+        game.vfx.spawnSlash(this.x, this.y - 88, 108, 0, Math.PI * 2, '#38bdf8', 0.22);
+        game.vfx.spawnSlash(this.x, this.y - 112, 82, 0, Math.PI * 2, '#bae6fd', 0.18);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 126) {
           enemy.takeDamage(48, this, false, 80, 0);
           if (game.audio) game.audio.play('clang', enemy.x);
-          game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 60, 3, 'steel');
+          game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 95, 3, 'steel');
         }
       }
     } else if (t >= 1.15) {
@@ -206,7 +206,11 @@ export class Warrior extends Fighter {
 
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    if (t < 0.42) {
+    // Stay planted firmly on the arena floor while channeling and slamming the greatsword
+    this.y = this.groundY;
+    this.vy = 0;
+
+    if (t < 0.38) {
       this.spawnedSkyBlades = false;
       if (Math.random() < 0.85) {
         game.vfx.spawnParticle({
@@ -219,14 +223,11 @@ export class Warrior extends Fighter {
           maxLife: 0.38
         });
       }
-    } else if (t < 0.9) {
-      if (this.y >= this.groundY - 5 && this.vy >= 0) {
-        this.vy = -960;
-        game.vfx.spawnShockwave(this.x, this.groundY, 145, '#38bdf8', 0.38, true);
-        game.vfx.spawnGlyphBurst(this.x, this.groundY - 40, 8, 'steel');
-      }
+    } else if (t < 0.68) {
       if (!this.spawnedSkyBlades && enemy) {
         this.spawnedSkyBlades = true;
+        game.vfx.spawnShockwave(this.x, this.groundY, 145, '#38bdf8', 0.38, true);
+        game.vfx.spawnGlyphBurst(this.x, this.groundY - 95, 8, 'steel');
         // Summon 4 Colossal Spectral Runeblades raining from the heavens around the target
         const offsets = [-110, -42, 42, 110];
         offsets.forEach((off, idx) => {
@@ -247,21 +248,13 @@ export class Warrior extends Fighter {
           });
         });
       }
-      if (enemy) {
-        const targetX = enemy.x - this.facing * 45;
-        this.x += (targetX - this.x) * 6.5 * dt;
-      }
     } else if (!this.didActionFrame) {
-      this.vy = 1650;
-      if (this.y >= this.groundY - 8) {
-        this.y = this.groundY;
-        this.vy = 0;
-        this.didActionFrame = true;
-        if (game.audio) game.audio.play('earthshatter', this.x);
+      this.didActionFrame = true;
+      if (game.audio) game.audio.play('earthshatter', this.x);
 
-        game.renderer.triggerShake(28, 0.68);
-        game.renderer.triggerAberration(16);
-        game.renderer.triggerHitStop(0.095);
+      game.renderer.triggerShake(28, 0.68);
+      game.renderer.triggerAberration(16);
+      game.renderer.triggerHitStop(0.095);
 
         // Chaining Glacial Frost-Crystal Spire Wave erupting sequentially across the arena floor!
         for (let i = 0; i < 7; i++) {
@@ -294,9 +287,8 @@ export class Warrior extends Fighter {
         game.vfx.spawnBurst(this.x, this.groundY - 10, 28, '#38bdf8', 350, { upBias: 135, size: 8 });
         game.vfx.spawnGlyphBurst(this.x, this.groundY - 60, 10, 'steel');
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 295) {
-          enemy.takeDamage(205, this, true, 240, -380);
-        }
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 295) {
+        enemy.takeDamage(205, this, true, 240, -380);
       }
     } else if (t >= 1.65) {
       this.setState('IDLE');

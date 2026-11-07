@@ -1,3 +1,5 @@
+import { PixelFont } from './PixelFont.js';
+
 export class VFXManager {
   constructor() {
     this.particles = [];
@@ -1240,90 +1242,82 @@ export class VFXManager {
   }
 
   renderFloatingTexts(ctx) {
-    // 1. OVERHEAD SPECIAL MOVE & ULTIMATE ART CALLOUT PLATES ABOVE CHARACTER HEAD
+    // 1. OVERHEAD SPECIAL MOVE & ULTIMATE ART CALLOUT PLATES ABOVE CHARACTER HEAD (100% Crisp Pixel Font)
     for (const ca of this.castAuras) {
       if (!ca.fighter || ca.fighter.isDead) continue;
       const t = ca.life / ca.maxLife;
       const alpha = t < 0.08 ? t / 0.08 : t > 0.78 ? Math.max(0, (1 - t) / 0.22) : 1.0;
-      const popScale =
-        t < 0.1
-          ? 0.65 + (t / 0.1) * 0.45
-          : t < 0.2
-            ? 1.1 - ((t - 0.1) / 0.1) * 0.1
-            : 1.0;
 
       // Anchor cleanly above the caster's helmet/hat/hood so their head stays 100% visible
-      const headX = Math.max(150, Math.min(1050, Math.round(ca.fighter.x)));
-      const floatLift = Math.min(12, t * 18);
-      const headY = Math.max(52, Math.round(ca.fighter.y - 216 - floatLift));
+      const headX = Math.max(165, Math.min(1035, Math.round(ca.fighter.x / 2) * 2));
+      const floatLift = Math.round(Math.min(12, t * 18) / 2) * 2;
+      const headY = Math.max(52, Math.round((ca.fighter.y - 216 - floatLift) / 2) * 2);
 
       ctx.save();
-      ctx.translate(headX, headY);
-      ctx.scale(popScale, popScale);
       ctx.globalAlpha = alpha;
 
-      ctx.font = `${ca.isUltimate ? '900 13px' : '800 12px'} "Cinzel", serif`;
-      const titleW = ctx.measureText(ca.title).width;
-      const plateW = Math.max(ca.isUltimate ? 196 : 164, Math.round((titleW + 36) / 4) * 4);
-      const plateH = ca.isUltimate ? 38 : 34;
+      const titleScale = 2; // 10x14 crisp pixel characters
+      const tagScale = 1; // 5x7 crisp micro-pixel header
+      const titleW = PixelFont.measureWidth(ca.title, titleScale);
+      const tagW = PixelFont.measureWidth(ca.tag, tagScale);
+      const plateW = Math.max(ca.isUltimate ? 196 : 164, Math.round((Math.max(titleW, tagW) + 28) / 4) * 4);
+      const plateH = ca.isUltimate ? 40 : 36;
       const halfW = plateW / 2;
       const halfH = plateH / 2;
 
       // Outer stepped pixel-art elemental glow border
       ctx.fillStyle = ca.mainColor;
-      ctx.fillRect(-halfW - 4, -halfH, plateW + 8, plateH);
-      ctx.fillRect(-halfW, -halfH - 4, plateW, plateH + 8);
+      ctx.fillRect(headX - halfW - 4, headY - halfH, plateW + 8, plateH);
+      ctx.fillRect(headX - halfW, headY - halfH - 4, plateW, plateH + 8);
 
       // Inner dark obsidian pixel plate
-      ctx.fillStyle = 'rgba(7, 10, 19, 0.92)';
-      ctx.fillRect(-halfW, -halfH, plateW, plateH);
+      ctx.fillStyle = 'rgba(7, 10, 19, 0.94)';
+      ctx.fillRect(headX - halfW, headY - halfH, plateW, plateH);
 
       // Inner crisp accent frame + corner studs
       ctx.fillStyle = ca.coreColor;
-      ctx.fillRect(-halfW + 2, -halfH + 2, plateW - 4, 2);
-      ctx.fillRect(-halfW + 2, halfH - 4, plateW - 4, 2);
+      ctx.fillRect(headX - halfW + 2, headY - halfH + 2, plateW - 4, 2);
+      ctx.fillRect(headX - halfW + 2, headY + halfH - 4, plateW - 4, 2);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-halfW - 2, -halfH - 2, 6, 6);
-      ctx.fillRect(halfW - 4, -halfH - 2, 6, 6);
-      ctx.fillRect(-halfW - 2, halfH - 4, 6, 6);
-      ctx.fillRect(halfW - 4, halfH - 4, 6, 6);
+      ctx.fillRect(headX - halfW - 2, headY - halfH - 2, 6, 6);
+      ctx.fillRect(headX + halfW - 4, headY - halfH - 2, 6, 6);
+      ctx.fillRect(headX - halfW - 2, headY + halfH - 4, 6, 6);
+      ctx.fillRect(headX + halfW - 4, headY + halfH - 4, 6, 6);
 
       // Downward pixel pointer chevron aimed at the character's head
       ctx.fillStyle = ca.mainColor;
-      ctx.fillRect(-8, halfH + 2, 16, 4);
+      ctx.fillRect(headX - 8, headY + halfH + 2, 16, 4);
       ctx.fillStyle = ca.coreColor;
-      ctx.fillRect(-4, halfH + 6, 8, 4);
+      ctx.fillRect(headX - 4, headY + halfH + 6, 8, 4);
 
-      // Top micro-tag (★ ULTIMATE ART ★ / ✦ SPECIAL SKILL ✦)
-      ctx.textAlign = 'center';
-      ctx.font = '800 9px "Inter", sans-serif';
-      ctx.fillStyle = ca.coreColor;
-      ctx.fillText(ca.tag, 0, -halfH + 13);
+      // Top micro-tag (★ ULTIMATE ART ★ / ✦ SPECIAL SKILL ✦) in 1px bitmap font
+      PixelFont.drawCentered(ctx, ca.tag, headX, headY - 9, tagScale, ca.coreColor, '#ffffff', true);
 
-      // Main ability name
-      ctx.font = `${ca.isUltimate ? '900 15px' : '800 13px'} "Cinzel", serif`;
-      ctx.fillStyle = '#000000';
-      ctx.fillText(ca.title, 2, halfH - 8);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText(ca.title, 0, halfH - 10);
+      // Main ability name in 2px bitmap font with 2-tone pixel highlight
+      PixelFont.drawCentered(ctx, ca.title, headX, headY + 7, titleScale, ca.coreColor, '#ffffff', true);
 
       ctx.restore();
     }
 
-    // 2. DAMAGE & DODGE/DASH FLOATING TEXTS
+    // 2. DAMAGE & DODGE/DASH FLOATING TEXTS (100% Crisp Pixel Font)
     for (const t of this.texts) {
       const p = t.life / t.maxLife;
-      const scale = t.isCrit ? 1.35 - p * 0.25 : 1.0;
+      const isLabel = /[A-Z]/.test(t.text);
+      const pxScale = t.isCrit ? 3 : isLabel ? 2 : 2;
+      const tx = Math.round(t.x / 2) * 2;
+      const ty = Math.round(t.y / 2) * 2;
       ctx.save();
-      ctx.translate(t.x, t.y);
-      ctx.scale(scale, scale);
       ctx.globalAlpha = Math.min(1, (1 - p) * 2);
-      ctx.font = `${t.isCrit ? '900 22px' : '700 16px'} "Cinzel", serif`;
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#000';
-      ctx.fillText(t.text, 2, 2);
-      ctx.fillStyle = t.color;
-      ctx.fillText(t.text, 0, 0);
+      PixelFont.drawCentered(
+        ctx,
+        t.text,
+        tx,
+        ty,
+        pxScale,
+        t.color,
+        '#ffffff',
+        true
+      );
       ctx.restore();
     }
   }

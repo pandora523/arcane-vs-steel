@@ -80,6 +80,17 @@ export class PixelForge {
       return 32 + step;
     }
 
+    if (
+      st === 'HURT' ||
+      (fighter.hurtTimer > 0.05 &&
+        st !== 'ULTIMATE' &&
+        st !== 'SKILL' &&
+        st !== 'DODGE' &&
+        st !== 'DASH')
+    ) {
+      return fighter.hurtTimer > 0.14 ? 32 : 33;
+    }
+
     if (st === 'DASH' || st === 'DODGE') {
       const dur = fighter.dashDuration || 0.44;
       const step = Math.min(7, Math.max(0, Math.floor((t / dur) * 8)));
@@ -161,6 +172,14 @@ export class PixelForge {
       ctx.restore();
     }
 
+    // Pixel-snapped hit-recoil jolt & stagger back-lean when taking damage
+    let recoilX = 0;
+    let recoilY = 0;
+    if (!isReflection && !fighter.isDead && fighter.hurtTimer > 0) {
+      recoilX = -6 + Math.round(Math.sin(fighter.hurtTimer * 60) * 4 / 2) * 2;
+      recoilY = -2;
+    }
+
     // Draw the full 208x208 HD-2D pixel-art cell intact with zero horizontal slice-shearing
     ctx.drawImage(
       sheet,
@@ -168,8 +187,8 @@ export class PixelForge {
       sy,
       cell,
       cell,
-      Math.round(-w * 0.5),
-      Math.round(baseY),
+      Math.round(-w * 0.5 + recoilX),
+      Math.round(baseY + recoilY),
       w,
       h
     );
