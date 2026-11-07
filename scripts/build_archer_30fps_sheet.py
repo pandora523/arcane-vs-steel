@@ -76,16 +76,12 @@ def draw_line_px(buf, x0, y0, x1, y1, col):
 
 
 def add_outline_to_layer(layer):
-    """Adds a crisp 1px dark outline (#0d0d15) around any non-transparent pixel in `layer`."""
-    out = layer.copy()
-    alpha = layer[:, :, 3] > 0
-    for y in range(1, 51):
-        for x in range(1, 51):
-            if alpha[y, x]:
-                continue
-            if alpha[y - 1, x] or alpha[y + 1, x] or alpha[y, x - 1] or alpha[y, x + 1]:
-                out[y, x] = OUTLINE
-    return out
+    """
+    Returns `layer.copy()` without dilating opaque black pixels into transparent space,
+    because `PixelForge.js` (ensureNormalMap + drawSheetFrame) already renders the 1px
+    comic ink outline and 1px exterior rim dynamically at runtime—matching all other champions!
+    """
+    return layer.copy()
 
 
 def composite_over(base, over):
