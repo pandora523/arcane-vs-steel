@@ -86,11 +86,8 @@ class Game {
     this.activeAssignSlot = 2; // Default cursor on Slot 2 so clicking a 3rd hero pairs them with Fighter 1
     this.isLandingOpen = true;
 
-    this.bindUI();
-    this.syncRosterSelectionUI(false);
-    this.resetMatch();
-
     const params = new URLSearchParams(window.location.search);
+    this.forcedStage = params.get('stage') || null;
     const p1 = params.get('p1');
     const p2 = params.get('p2');
     const urlHero = params.get('hero');
@@ -101,6 +98,10 @@ class Game {
       this.slot2Hero = urlHero === 'archer' ? 'mage' : 'archer';
     }
 
+    this.bindUI();
+    this.syncRosterSelectionUI(false);
+    this.resetMatch();
+
     const simSec = Number(params.get('sim') || 0);
     const killTarget = params.get('kill');
     const ultParam = params.get('ult');
@@ -108,7 +109,17 @@ class Game {
     const forceSkill = params.get('skill') === '1';
     const forceCorner = params.get('corner') === '1';
     this.isSimPaused = params.get('pause') === '1';
-    if (p1 || p2 || urlHero || simSec > 0 || killTarget || forceUlt || forceSkill || forceCorner) {
+    if (
+      p1 ||
+      p2 ||
+      urlHero ||
+      this.forcedStage ||
+      simSec > 0 ||
+      killTarget ||
+      forceUlt ||
+      forceSkill ||
+      forceCorner
+    ) {
       this.syncRosterSelectionUI(false);
       this.startDuel(false);
     }
@@ -439,6 +450,9 @@ class Game {
     this.vfx.clear();
     clearTimeout(this.victoryTimeout);
     clearTimeout(this.ultBannerTimeout);
+    if (this.renderer && typeof this.renderer.pickRandomStage === 'function') {
+      this.renderer.pickRandomStage(this.forcedStage);
+    }
     const gy = this.renderer.groundY;
     const ww = this.renderer.worldWidth;
 

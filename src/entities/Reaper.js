@@ -528,17 +528,17 @@ export class Reaper extends Fighter {
         const dy = Math.round(by - drawH + 10 + riseOffset);
         const dw = Math.round(drawW);
         const dh = Math.round(drawH);
-        // Stepped outer violet-crimson pixel glow pass
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.52;
+        // Stepped outer violet-crimson pixel aura
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * 0.45;
         ctx.drawImage(vfxSheet, 320, 56, 208, 208, dx - 6, dy - 6, dw + 12, dh + 12);
         // Main chunky-pixel Gothic Crypt Tombstone
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade;
+        ctx.globalAlpha = fade * 0.98;
         ctx.drawImage(vfxSheet, 320, 56, 208, 208, dx, dy, dw, dh);
-        // Luminous inner rune glow pass
+        // Subtle luminous inner rune pass
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.58;
+        ctx.globalAlpha = fade * 0.15;
         ctx.drawImage(vfxSheet, 320, 56, 208, 208, dx, dy, dw, dh);
       } else {
         const dx = Math.round(bx - drawW * 0.5);
@@ -546,10 +546,10 @@ export class Reaper extends Fighter {
         const dw = Math.round(drawW);
         const dh = Math.round(drawH * 0.48);
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade;
+        ctx.globalAlpha = fade * 0.98;
         ctx.drawImage(vfxSheet, 320, 164, 208, 100, dx, dy, dw, dh);
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.55;
+        ctx.globalAlpha = fade * 0.14;
         ctx.drawImage(vfxSheet, 320, 164, 208, 100, dx, dy, dw, dh);
       }
       ctx.restore();
@@ -577,13 +577,13 @@ export class Reaper extends Fighter {
 
     // 1. Stepped Pixelated Violet-Crimson Soul-Fire Glow along the chain path
     ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalCompositeOperation = 'source-over';
     for (let s = 0; s <= 22; s++) {
       const u = s / 22;
       const sag = Math.sin(u * Math.PI) * 14 + Math.sin(u * Math.PI * 3 + this.stateTimer * 28) * 3;
       const px = Math.round((x1 + dx * u) / 4) * 4;
       const py = Math.round((y1 + dy * u + sag) / 4) * 4;
-      ctx.fillStyle = s % 2 === 0 ? 'rgba(192, 132, 252, 0.52)' : 'rgba(244, 63, 94, 0.45)';
+      ctx.fillStyle = s % 2 === 0 ? 'rgba(126, 34, 206, 0.58)' : 'rgba(225, 29, 72, 0.52)';
       ctx.fillRect(px - 8, py - 8, 16, 16);
     }
     ctx.restore();
@@ -628,16 +628,16 @@ export class Reaper extends Fighter {
       const cdx = Math.round(-clawSize * 0.56);
       const cdy = Math.round(-clawSize * 0.5);
       // Stepped outer crimson-violet pixel aura
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.62;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.50;
       ctx.drawImage(vfxSheet, 528, 56, 208, 208, cdx - 8, cdy - 8, clawSize + 16, clawSize + 16);
       // Main chunky-pixel claw
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1.0;
+      ctx.globalAlpha = 0.98;
       ctx.drawImage(vfxSheet, 528, 56, 208, 208, cdx, cdy, clawSize, clawSize);
-      // Luminous core pass
+      // Subtle luminous core pass
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.65;
+      ctx.globalAlpha = 0.16;
       ctx.drawImage(vfxSheet, 528, 56, 208, 208, cdx, cdy, clawSize, clawSize);
       ctx.restore();
     }
@@ -660,7 +660,7 @@ export class Reaper extends Fighter {
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = fade * 0.96;
+    ctx.globalAlpha = fade * 0.98;
 
     // Clip to floor so the Colossal Death Avatar rises smoothly out of the graveyard floor
     ctx.beginPath();
@@ -681,19 +681,19 @@ export class Reaper extends Fighter {
     }
 
     const dHalf = Math.round(-drawSize * 0.5);
-    // Stepped outer abyssal pixel glow aura
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.58;
+    // Stepped outer abyssal pixel aura
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = fade * 0.48;
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf - 10, dHalf - 10, drawSize + 20, drawSize + 20);
 
     // Main 320x320 chunky-pixel Grim Reaper Death Avatar sprite
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.96;
+    ctx.globalAlpha = fade * 0.98;
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, drawSize, drawSize);
 
-    // Luminous inner crimson-violet rune bloom pass
+    // Subtle inner crimson-violet rune sheen pass
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * (0.58 + Math.sin(da.swingProgress * Math.PI) * 0.35);
+    ctx.globalAlpha = fade * (0.16 + Math.sin(da.swingProgress * Math.PI) * 0.14);
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, drawSize, drawSize);
 
     ctx.restore();
@@ -713,9 +713,9 @@ export class Reaper extends Fighter {
       const wx = w.startX + (tx - w.startX) * u;
       const wy = w.startY + (ty - w.startY) * u + Math.sin(u * Math.PI) * w.arcHeight;
 
-      // Glowing additive soul-fire comet ribbon trail
+      // Saturated soul-fire comet ribbon trail
       ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalCompositeOperation = 'source-over';
       for (let tail = 6; tail >= 1; tail--) {
         const tu = Math.max(0, u - tail * 0.035);
         const tlx = Math.round((w.startX + (tx - w.startX) * tu) / 2) * 2;
@@ -723,18 +723,18 @@ export class Reaper extends Fighter {
           (w.startY + (ty - w.startY) * tu + Math.sin(tu * Math.PI) * w.arcHeight) / 2
         ) * 2;
         const sz = Math.max(2, Math.round((7 - tail) * 2));
-        ctx.fillStyle = tail % 2 === 0 ? '#a855f7' : w.color;
-        ctx.globalAlpha = ((7 - tail) / 7) * 0.65;
+        ctx.fillStyle = tail % 2 === 0 ? '#7e22ce' : w.color;
+        ctx.globalAlpha = ((7 - tail) / 7) * 0.78;
         ctx.fillRect(tlx - sz * 0.5, tly - sz * 0.5, sz, sz);
       }
 
-      // Bright Soul-Wisp Core
+      // Richly Saturated Soul-Wisp Core
       const cx = Math.round(wx / 2) * 2;
       const cy = Math.round(wy / 2) * 2;
-      ctx.globalAlpha = 0.95;
-      ctx.fillStyle = w.color;
+      ctx.globalAlpha = 0.96;
+      ctx.fillStyle = '#7e22ce';
       ctx.fillRect(cx - 7, cy - 7, 14, 14);
-      ctx.fillStyle = '#fdf4ff';
+      ctx.fillStyle = '#e11d48';
       ctx.fillRect(cx - 4, cy - 4, 8, 8);
       ctx.restore();
     }

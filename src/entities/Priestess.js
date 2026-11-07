@@ -417,12 +417,12 @@ export class Priestess extends Fighter {
         x2: aimX,
         y2: aimY,
         width: 24,
-        color: '#fde047',
-        coreColor: '#ffffff',
+        color: '#ca8a04',
+        coreColor: '#facc15',
         maxLife: 0.36
       });
-      game.vfx.spawnShockwave(aimX, this.groundY, 82, '#fde047', 0.28, true);
-      game.vfx.spawnShockwave(haloX, haloY, 54, '#fef08a', 0.22);
+      game.vfx.spawnShockwave(aimX, this.groundY, 82, '#eab308', 0.28, true);
+      game.vfx.spawnShockwave(haloX, haloY, 54, '#facc15', 0.22);
       game.vfx.spawnGlyphBurst(aimX, this.groundY - 45, 4, 'radiant');
       const chakramDmg = Math.abs(enemy.x - this.x) >= 210 ? 22 : 18;
       enemy.takeDamage(chakramDmg, this, false, 28, 0);
@@ -445,8 +445,8 @@ export class Priestess extends Fighter {
         x2: targetX + 65,
         y2: this.groundY - 8,
         width: 68,
-        color: '#fde047',
-        coreColor: '#ffffff',
+        color: '#ca8a04',
+        coreColor: '#facc15',
         maxLife: 0.74
       });
 
@@ -457,8 +457,8 @@ export class Priestess extends Fighter {
         x2: targetX - 65,
         y2: this.groundY - 8,
         width: 68,
-        color: '#facc15',
-        coreColor: '#ffffff',
+        color: '#eab308',
+        coreColor: '#facc15',
         maxLife: 0.74
       });
 
@@ -469,8 +469,8 @@ export class Priestess extends Fighter {
         x2: targetX,
         y2: this.groundY - 95,
         width: 44,
-        color: '#fef08a',
-        coreColor: '#ffffff',
+        color: '#ca8a04',
+        coreColor: '#facc15',
         maxLife: 0.65
       });
 
@@ -479,15 +479,15 @@ export class Priestess extends Fighter {
           targetX,
           this.groundY - 95,
           95 + r * 45,
-          r % 2 === 0 ? '#ffffff' : '#fde047',
+          r % 2 === 0 ? '#ca8a04' : '#facc15',
           0.46,
           false
         );
       }
 
-      game.vfx.spawnShockwave(targetX, this.groundY, 270, '#fde047', 0.55, true);
-      game.vfx.spawnShockwave(targetX, this.groundY, 190, '#4ade80', 0.48, true);
-      game.vfx.spawnBurst(targetX, this.groundY - 60, 32, '#fef9c3', 320, { upBias: 150, size: 8 });
+      game.vfx.spawnShockwave(targetX, this.groundY, 270, '#eab308', 0.55, true);
+      game.vfx.spawnShockwave(targetX, this.groundY, 190, '#16a34a', 0.48, true);
+      game.vfx.spawnBurst(targetX, this.groundY - 60, 32, '#facc15', 320, { upBias: 150, size: 8 });
       game.vfx.spawnGlyphBurst(targetX, this.groundY - 90, 12, 'radiant');
       game.vfx.spawnGlyphBurst(targetX, this.groundY - 90, 8, 'heal');
 
@@ -517,20 +517,20 @@ export class Priestess extends Fighter {
     const cy = -124;
     const vfxSheet = sprites && sprites.vfx;
 
-    // Helper to draw chunky-pixel VFX sprite with stepped outer neon aura & white-hot core
+    // Helper to draw deeply saturated chunky-pixel VFX sprite without additive whitewash
     const drawGlowingVfxCell = (sx, sy, sw, sh, dx, dy, dw, dh, alpha) => {
-      const auraW = Math.round((dw * 1.16) / 4) * 4;
-      const auraH = Math.round((dh * 1.16) / 4) * 4;
+      const auraW = Math.round((dw * 1.12) / 4) * 4;
+      const auraH = Math.round((dh * 1.12) / 4) * 4;
       const midX = dx + dw * 0.5;
       const midY = dy + dh * 0.5;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.55);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = Math.min(1, alpha * 0.48);
       ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(midX - auraW * 0.5), Math.round(midY - auraH * 0.5), auraW, auraH);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(1, alpha);
+      ctx.globalAlpha = Math.min(1, alpha * 0.98);
       ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.65);
+      ctx.globalAlpha = Math.min(1, alpha * 0.14);
       ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
     };
 

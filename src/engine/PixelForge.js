@@ -13,6 +13,9 @@ export class PixelForge {
 
     this.assets = {
       arenaBg: loadImg('assets/sprites/arena_bg.png'),
+      arenaSylvan: loadImg('assets/sprites/arena_sylvan.png'),
+      arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
+      arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
       warrior: {
         sheet: loadImg('assets/sprites/warrior_sheet.png'),
         vfx: loadImg('assets/sprites/warrior_vfx.png'),

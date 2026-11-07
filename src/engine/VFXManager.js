@@ -66,33 +66,33 @@ export class VFXManager {
     const cx = dx + dw * 0.5;
     const cy = dy + dh * 0.5;
 
-    // 1. Wide Radial Neon Light Halo behind the chunky pixel VFX sprite
+    // 1. Saturated Radial Jewel-Tone Light Halo behind the chunky pixel VFX sprite
     if (renderer && !isReflection) {
       const glowTex = renderer.getGlowForColor ? renderer.getGlowForColor(glowCol) : renderer.glowCyan;
-      const haloW = dw * 1.85;
-      const haloH = dh * 1.85;
+      const haloW = dw * 1.75;
+      const haloH = dh * 1.75;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.46);
+      ctx.globalAlpha = Math.min(1, alpha * 0.28);
       ctx.drawImage(glowTex, cx - haloW * 0.5, cy - haloH * 0.5, haloW, haloH);
     }
 
-    // 2. Stepped Chunky-Pixel Outer Neon Aura Pass
+    // 2. Stepped Chunky-Pixel Outer Colored Aura Pass (source-over so colors stay deeply saturated)
     if (!isReflection) {
-      const auraW = Math.round((dw * 1.15) / 4) * 4;
-      const auraH = Math.round((dh * 1.15) / 4) * 4;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.52);
+      const auraW = Math.round((dw * 1.12) / 4) * 4;
+      const auraH = Math.round((dh * 1.12) / 4) * 4;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = Math.min(1, alpha * 0.48);
       ctx.drawImage(sheet, sx, sy, sw, sh, Math.round(cx - auraW * 0.5), Math.round(cy - auraH * 0.5), auraW, auraH);
     }
 
-    // 3. Main Chunky-Pixel Sprite Body Pass (crisp individual retro pixel blocks)
+    // 3. Main Chunky-Pixel Sprite Body Pass (100% rich saturated pixel blocks)
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.globalAlpha = Math.min(1, alpha * 0.98);
     ctx.drawImage(sheet, sx, sy, sw, sh, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
 
-    // 4. Luminous Additive Pixel Core Pass so the effect pops off the dark arena without washing out the pixel grid
+    // 4. Subtle Luminous Accent Pass (capped at 0.14 so colors never wash out to white)
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * (isReflection ? 0.25 : 0.38));
+    ctx.globalAlpha = Math.min(1, alpha * (isReflection ? 0.08 : 0.14));
     const coreW = Math.round((dw * 0.96) / 4) * 4;
     const coreH = Math.round((dh * 0.96) / 4) * 4;
     ctx.drawImage(sheet, sx, sy, sw, sh, Math.round(cx - coreW * 0.5), Math.round(cy - coreH * 0.5), coreW, coreH);
@@ -106,6 +106,18 @@ export class VFXManager {
     const heroId = attacker?.heroId || 'warrior';
     const theme = attacker?.theme || 'steel';
     const col = attacker?.primaryColor || '#38bdf8';
+    const accentCol =
+      theme === 'steel'
+        ? '#0284c7'
+        : theme === 'emerald'
+          ? '#059669'
+          : theme === 'radiant'
+            ? '#eab308'
+            : theme === 'abyssal'
+              ? '#e11d48'
+              : theme === 'chrono'
+                ? '#eab308'
+                : '#ea580c';
     const dir = attacker ? Math.sign(x - attacker.x) || 1 : 1;
     if (this.hitImpacts.length > 22) this.hitImpacts.shift();
     this.hitImpacts.push({
@@ -114,21 +126,22 @@ export class VFXManager {
       heroId,
       theme,
       color: col,
+      accentColor: accentCol,
       dir,
       isCrit,
       rot: (Math.random() - 0.5) * 0.45,
       life: 0,
       maxLife: isCrit ? 0.44 : 0.32
     });
-    // Dense popping particle shower + elemental glyphs spraying outward around the impact!
-    this.spawnBurst(x, y, isCrit ? 26 : 16, col, isCrit ? 290 : 220, {
+    // Dense saturated particle shower + elemental glyphs spraying outward around the impact!
+    this.spawnBurst(x, y, isCrit ? 24 : 15, col, isCrit ? 290 : 220, {
       upBias: 85,
       size: isCrit ? 8 : 6,
       life: isCrit ? 0.52 : 0.38,
       spread: 26,
       additive: true
     });
-    this.spawnBurst(x, y, isCrit ? 12 : 7, '#ffffff', isCrit ? 240 : 170, {
+    this.spawnBurst(x, y, isCrit ? 12 : 7, accentCol, isCrit ? 240 : 170, {
       upBias: 60,
       size: 6,
       life: 0.34,
@@ -181,13 +194,13 @@ export class VFXManager {
 
   spawnGlyphBurst(x, y, count = 6, theme = 'steel') {
     const sets = {
-      steel: { shape: 'rune', col: '#38bdf8', core: '#e0f2fe' },
-      arcane: { shape: 'star', col: '#fb923c', core: '#fef08a' },
-      emerald: { shape: 'feather', col: '#10b981', core: '#fef08a' },
-      radiant: { shape: 'cross', col: '#fde047', core: '#ffffff' },
-      abyssal: { shape: 'skull', col: '#c084fc', core: '#f43f5e' },
-      chrono: { shape: 'cog', col: '#2dd4bf', core: '#facc15' },
-      heal: { shape: 'cross', col: '#4ade80', core: '#fef08a' }
+      steel: { shape: 'rune', col: '#0284c7', core: '#38bdf8' },
+      arcane: { shape: 'star', col: '#ea580c', core: '#facc15' },
+      emerald: { shape: 'feather', col: '#059669', core: '#34d399' },
+      radiant: { shape: 'cross', col: '#ca8a04', core: '#facc15' },
+      abyssal: { shape: 'skull', col: '#7e22ce', core: '#e11d48' },
+      chrono: { shape: 'cog', col: '#0d9488', core: '#eab308' },
+      heal: { shape: 'cross', col: '#16a34a', core: '#facc15' }
     };
     const cfg = sets[theme] || sets.steel;
     for (let i = 0; i < count; i++) {
@@ -816,7 +829,7 @@ export class VFXManager {
       ctx.save();
       if (renderer && !isReflection) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.58;
+        ctx.globalAlpha = fade * 0.34;
         const glow = isSteel ? renderer.glowCyan : renderer.glowEmerald || renderer.glowCyan;
         ctx.drawImage(glow, baseX - 180, baseY - tor.height - 20, 360, tor.height + 64);
       }
@@ -872,8 +885,8 @@ export class VFXManager {
         ctx.restore();
       }
 
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * (isReflection ? 0.28 : 0.68);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * (isReflection ? 0.35 : 0.85);
       for (let r = 0; r < rows; r += 3) {
         const hFrac = r / rows;
         const coneR = tor.radius * (0.42 + Math.pow(hFrac, 0.85) * 0.95);
@@ -884,14 +897,14 @@ export class VFXManager {
           const rx = Math.round((baseX + sway + Math.cos(a) * coneR) / 4) * 4;
           const ry = Math.round((baseY - r * pxSize + Math.sin(a) * coneR * 0.22) / 4) * 4;
           const wBand = Math.max(6, Math.round((10 + hFrac * 14) / 4) * 4);
-          ctx.fillStyle = strand === 0 ? tor.coreColor : tor.color;
+          ctx.fillStyle = strand === 0 ? (isSteel ? '#0284c7' : '#059669') : tor.color;
           ctx.fillRect(rx - wBand * 0.5, ry - 2, wBand, 4);
         }
       }
       ctx.restore();
     }
 
-    // 2. FLAME & ELEMENTAL PILLARS: Blurry-Pixel Glowing Hellfire Magma Pillar & Sacred Cathedral Pillars
+    // 2. FLAME & ELEMENTAL PILLARS: Saturated Pixel Glowing Hellfire Magma Pillar & Sacred Cathedral Pillars
     for (const pil of this.pillars) {
       const p = Math.min(1, pil.life / Math.max(0.15, pil.delay));
       const pxSize = 6;
@@ -900,11 +913,13 @@ export class VFXManager {
       const isEmerald = pil.theme === 'emerald';
       const isSteel = pil.theme === 'steel';
       const isRadiant = pil.theme === 'radiant';
-      const sigilCol = isEmerald ? '#34d399' : isSteel ? '#38bdf8' : isRadiant ? '#fef08a' : '#facc15';
+      const sigilCol = isEmerald ? '#10b981' : isSteel ? '#0ea5e9' : isRadiant ? '#eab308' : '#ea580c';
+      const accentCol = isEmerald ? '#34d399' : isSteel ? '#38bdf8' : isRadiant ? '#facc15' : '#f97316';
 
       // Ground Pixel Octagram Sigil
       ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.9;
       const rX = 82 * p * pil.scaleWidth;
       const rY = 24 * p * pil.scaleWidth;
       const rot = pil.life * 4.2;
@@ -912,7 +927,7 @@ export class VFXManager {
         const a = (deg * Math.PI) / 180 + rot;
         const sx = Math.round((baseX + Math.cos(a) * rX) / 4) * 4;
         const sy = Math.round((baseY + Math.sin(a) * rY) / 4) * 4;
-        ctx.fillStyle = deg % 45 === 0 ? '#ffffff' : sigilCol;
+        ctx.fillStyle = deg % 45 === 0 ? accentCol : sigilCol;
         ctx.fillRect(sx - 3, sy - 2, 6, 4);
       }
       ctx.restore();
@@ -923,7 +938,7 @@ export class VFXManager {
         ctx.save();
         if (renderer && !isReflection) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fade * 0.88;
+          ctx.globalAlpha = fade * 0.42;
           const glow = renderer.getGlowForColor(sigilCol);
           ctx.drawImage(glow, baseX - 190, baseY - 340, 380, 380);
         }
@@ -999,20 +1014,20 @@ export class VFXManager {
           ctx.restore();
         }
 
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * (isReflection ? 0.35 : 0.78);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * (isReflection ? 0.35 : 0.85);
         const rows = Math.round(42 * pil.scaleWidth);
         const halfSpan = Math.max(2, Math.round(5 * pil.scaleWidth));
         for (let row = 0; row < rows; row += 2) {
           const ribCol = Math.round(Math.sin(pil.life * 24 - row * 0.38) * (halfSpan + 2));
-          ctx.fillStyle = row % 4 === 0 ? '#ffffff' : sigilCol;
+          ctx.fillStyle = row % 4 === 0 ? accentCol : sigilCol;
           ctx.fillRect(baseX + ribCol * pxSize, baseY - (row + 1) * pxSize, pxSize, pxSize);
         }
         ctx.restore();
       }
     }
 
-    // 3. SKY STRIKES: Blurry-Pixel Glowing Heavenly Runeblades, Valkyrie Spears & Starfall Arrows
+    // 3. SKY STRIKES: Saturated Chunky-Pixel Heavenly Runeblades, Valkyrie Spears & Starfall Arrows
     for (const s of this.skyStrikes) {
       if (s.delay > 0) continue;
       const fade = s.impacted ? Math.max(0, 1 - s.linger / s.maxLinger) : 1;
@@ -1090,8 +1105,8 @@ export class VFXManager {
       const env = Math.sin(t * Math.PI);
 
       ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = (1 - t * 0.35) * (isReflection ? 0.42 : 0.95);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = (1 - t * 0.35) * (isReflection ? 0.42 : 0.94);
 
       const dx = b.x2 - b.x1;
       const dy = b.y2 - b.y1;
@@ -1113,20 +1128,16 @@ export class VFXManager {
         const hInner = Math.max(2, Math.round((hOuter * 0.48) / 2) * 2);
         const undulate = Math.round((Math.sin(x * 0.032 - b.life * 32) * 8 * (1 - u * 0.5)) / 2) * 2;
 
-        // Soft blurry outer beam glow sheath
-        ctx.globalAlpha = (1 - t * 0.35) * (isReflection ? 0.2 : 0.42);
+        // Saturated outer beam glow sheath
+        ctx.globalAlpha = (1 - t * 0.35) * (isReflection ? 0.22 : 0.42);
         ctx.fillStyle = b.color;
         ctx.fillRect(x - 2, undulate - hOuter * 0.9, stepPx + 4, hOuter * 1.8);
 
-        ctx.globalAlpha = (1 - t * 0.35) * (isReflection ? 0.42 : 0.95);
+        ctx.globalAlpha = (1 - t * 0.35) * (isReflection ? 0.42 : 0.94);
         ctx.fillStyle = b.color;
         ctx.fillRect(x, undulate - hOuter * 0.5, stepPx, hOuter);
         ctx.fillStyle = b.coreColor;
         ctx.fillRect(x, undulate - hInner * 0.5, stepPx, hInner);
-        if (hOuter >= 8) {
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(x, undulate - 2, stepPx, 4);
-        }
 
         const helix1 = Math.round((Math.sin(x * 0.055 - b.life * 36) * (hOuter * 1.15 + 10)) / 4) * 4;
         const helix2 = Math.round((-Math.sin(x * 0.055 - b.life * 36) * (hOuter * 1.15 + 10)) / 4) * 4;
@@ -1201,7 +1212,7 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 4B. GLACIAL FROST-CRYSTAL SPIRES (Blurry-Pixel Glowing Ice Spire Cluster from warrior_vfx.png)
+    // 4B. GLACIAL FROST-CRYSTAL SPIRES (Saturated Chunky-Pixel Ice Spire Cluster from warrior_vfx.png)
     for (const cs of this.crystalSpikes) {
       if (cs.delay > 0) continue;
       const t = cs.life / cs.maxLife;
@@ -1237,7 +1248,7 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 4C. BLACK-GOLD SOLAR ECLIPSE SUPERNOVA SPHERE (Blurry-Pixel Glowing Eclipse Sun from mage_vfx.png)
+    // 4C. BLACK-GOLD SOLAR ECLIPSE SUPERNOVA SPHERE (Saturated Chunky-Pixel Eclipse Sun from mage_vfx.png)
     for (const sn of this.supernovas) {
       const t = sn.life / sn.maxLife;
       const env = Math.sin(Math.min(1, t * 1.15) * Math.PI);
@@ -1271,45 +1282,43 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 5. PARTICLES: Chunky 4px-Aligned Glowing Pixel Blocks with Stepped Pixel-Glow Halos
+    // 5. PARTICLES: Deeply Saturated 4px-Aligned Chunky Pixel Blocks (Zero Whitewash!)
     for (const p of this.particles) {
       const t = p.life / p.maxLife;
       const fade = 1 - t;
       const s = Math.max(4, Math.round(((p.size * fade + p.endSize * t) / 4)) * 4);
       const px = Math.round(p.x / 4) * 4;
       const py = Math.round(p.y / 4) * 4;
+      const pCol = p.color === '#ffffff' ? '#38bdf8' : p.color;
 
-      ctx.globalCompositeOperation = 'lighter';
-      // 1. Balanced radial neon halo around each chunky pixel particle
+      // 1. Subtle radial jewel-tone halo around each chunky pixel particle
       if (renderer && !isReflection && s >= 4) {
-        const glowTex = renderer.getGlowForColor ? renderer.getGlowForColor(p.color) : renderer.glowCyan;
-        const glowR = s * 2.5;
-        ctx.globalAlpha = fade * 0.24;
+        const glowTex = renderer.getGlowForColor ? renderer.getGlowForColor(pCol) : renderer.glowCyan;
+        const glowR = s * 2.2;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.16;
         ctx.drawImage(glowTex, px - glowR, py - glowR, glowR * 2, glowR * 2);
       }
-      // 2. Stepped chunky outer pixel aura block (+8px)
-      const outerS = s + 8;
-      ctx.globalAlpha = fade * (isReflection ? 0.18 : 0.36);
-      ctx.fillStyle = p.color;
+      // 2. Stepped chunky outer pixel aura block (+6px) in source-over so colors never clip to white
+      ctx.globalCompositeOperation = 'source-over';
+      const outerS = s + 6;
+      ctx.globalAlpha = fade * (isReflection ? 0.22 : 0.44);
+      ctx.fillStyle = pCol;
       ctx.fillRect(px - outerS * 0.5, py - outerS * 0.5, outerS, outerS);
-      // 3. Vibrant main chunky pixel block
+      // 3. Richly saturated main chunky pixel block
       ctx.globalAlpha = fade * (isReflection ? 0.65 : 0.96);
+      ctx.fillStyle = pCol;
       ctx.fillRect(px - s * 0.5, py - s * 0.5, s, s);
-      // 4. White-hot center pixel core
-      const coreS = Math.max(4, s - 4);
-      ctx.fillStyle = '#ffffff';
-      ctx.globalAlpha = fade * (isReflection ? 0.35 : 0.85);
-      ctx.fillRect(px - coreS * 0.5, py - coreS * 0.5, coreS, coreS);
     }
 
-    // 6. SLASHES: Blurry-Pixel Glowing Crescent Blade, Scythe & Whirlwind Waves + Stepped Arcs
-    ctx.globalCompositeOperation = 'lighter';
+    // 6. SLASHES: Deeply Saturated Chunky-Pixel Crescent Blade, Scythe & Whirlwind Waves + Stepped Arcs
+    ctx.globalCompositeOperation = 'source-over';
     for (const s of this.slashes) {
       const t = s.life / s.maxLife;
       const alpha = 1 - t;
       const isFullCircle = Math.abs(s.endAngle - s.startAngle) > Math.PI * 1.8;
       const steps = isFullCircle ? 32 : 28;
-      ctx.globalAlpha = alpha * (isReflection ? 0.35 : isFullCircle ? 0.52 : 0.88);
+      ctx.globalAlpha = alpha * (isReflection ? 0.35 : isFullCircle ? 0.58 : 0.92);
       const isCyan = s.color === '#38bdf8' || s.color === '#7dd3fc' || s.color === '#0284c7';
       const isEmerald = s.color === '#10b981' || s.color === '#34d399' || s.color === '#6ee7b7';
       const isAbyssal =
@@ -1320,11 +1329,41 @@ export class VFXManager {
         s.color === '#e879f9';
       const isRadiant = s.color === '#fde047' || s.color === '#facc15' || s.color === '#f59e0b';
       const isChrono = s.color === '#2dd4bf' || s.color === '#99f6e4';
-      const outerTone = isCyan ? '#0284c7' : isEmerald ? '#059669' : isAbyssal ? '#4c1d95' : '#ea580c';
-      const midTone = s.color;
-      const innerTone = isCyan ? '#bae6fd' : isEmerald ? '#a7f3d0' : isAbyssal ? '#f5d0fe' : '#fef08a';
+      const outerTone = isCyan
+        ? '#0369a1'
+        : isEmerald
+          ? '#047857'
+          : isAbyssal
+            ? '#4c1d95'
+            : isRadiant
+              ? '#a16207'
+              : isChrono
+                ? '#0f766e'
+                : '#9a3412';
+      const midTone = isCyan
+        ? '#0284c7'
+        : isEmerald
+          ? '#059669'
+          : isAbyssal
+            ? '#7e22ce'
+            : isRadiant
+              ? '#ca8a04'
+              : isChrono
+                ? '#0d9488'
+                : '#ea580c';
+      const innerTone = isCyan
+        ? '#38bdf8'
+        : isEmerald
+          ? '#34d399'
+          : isAbyssal
+            ? '#e11d48'
+            : isRadiant
+              ? '#facc15'
+              : isChrono
+                ? '#2dd4bf'
+                : '#facc15';
 
-      // Draw Blurry-Pixel Glowing Slash Wave Sprite at the arc apex
+      // Draw Saturated Chunky-Pixel Slash Wave Sprite at the arc apex
       if (!isReflection) {
         const midAng = (s.startAngle + s.endAngle) * 0.5 + (isFullCircle ? t * 8 : 0);
         const rad = s.radius + t * 14;
@@ -1371,12 +1410,12 @@ export class VFXManager {
             slashSize,
             slashSize,
             s.color,
-            Math.min(1, alpha * 1.15),
+            Math.min(1, alpha * 1.05),
             isReflection
           );
           ctx.restore();
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = alpha * (isFullCircle ? 0.52 : 0.88);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = alpha * (isFullCircle ? 0.58 : 0.92);
         }
       }
 
@@ -1397,9 +1436,7 @@ export class VFXManager {
         ctx.fillRect(px - sz * 0.45, py - sz * 0.45, sz * 0.9, sz * 0.9);
         if (sz >= 8) {
           ctx.fillStyle = innerTone;
-          ctx.fillRect(px - sz * 0.3, py - sz * 0.3, sz * 0.6, sz * 0.6);
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(px - 2, py - 2, 4, 4);
+          ctx.fillRect(px - sz * 0.25, py - sz * 0.25, sz * 0.5, sz * 0.5);
         }
       }
     }
@@ -1411,6 +1448,7 @@ export class VFXManager {
       const xScale = sw.vertical ? 0.34 : 1.0;
       const yScale = sw.flat ? 0.28 : 1.0;
       const nodes = 28;
+      ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = (1 - t) * (isReflection ? 0.5 : 0.92);
 
       for (let i = 0; i < nodes; i++) {
@@ -1422,16 +1460,16 @@ export class VFXManager {
         ctx.fillRect(px - block * 0.5, py - block * 0.5, block, block);
         if (i % 4 === 0 && sw.flat) {
           const toothH = Math.max(4, Math.round(((1 - t) * 22) / 4) * 4);
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = sw.color;
           ctx.fillRect(px - 2, py - toothH, 4, toothH);
         }
       }
     }
 
-    // 8. PROJECTILES: Chunky-Pixel Glowing Astral Arrows, Frost Blade-Waves, Phantom Scythes, Clockwork Saw-Gears, Holy Orbs & Solar Fireballs
+    // 8. PROJECTILES: Deeply Saturated Chunky-Pixel Astral Arrows, Frost Blade-Waves, Phantom Scythes, Clockwork Saw-Gears, Holy Orbs & Solar Fireballs
     ctx.globalAlpha = 1;
     for (const proj of this.projectiles) {
-      const r = proj.radius * 3.8;
+      const r = proj.radius * 3.4;
       const px = Math.round(proj.x / 4) * 4;
       const py = Math.round(proj.y / 4) * 4;
       if (renderer) {
@@ -1440,7 +1478,7 @@ export class VFXManager {
           : renderer.glowOrange;
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.82;
+        ctx.globalAlpha = 0.42;
         ctx.drawImage(tex, px - r, py - r, r * 2, r * 2);
         ctx.restore();
       }
@@ -1456,7 +1494,7 @@ export class VFXManager {
           const wy = Math.round((py + dirY * wStep * 9) / pSize) * pSize;
           const span = Math.max(1, Math.round((1 - wStep / 11) * 4));
           for (let c = -span; c <= span; c++) {
-            ctx.fillStyle = wStep < 4 ? '#fef08a' : wStep < 7 ? '#fb923c' : '#dc2626';
+            ctx.fillStyle = wStep < 4 ? '#facc15' : wStep < 7 ? '#ea580c' : '#9a3412';
             ctx.fillRect(wx + c * pSize, wy - c * pSize * 0.5, pSize, pSize);
           }
         }
@@ -1492,7 +1530,7 @@ export class VFXManager {
         for (let tStep = 1; tStep <= 6; tStep++) {
           const tx = -dir * tStep * 11;
           const ty = Math.sin((proj.age || 0) * 32 - tStep * 0.9) * 8;
-          ctx.fillStyle = tStep % 2 === 0 ? '#facc15' : '#2dd4bf';
+          ctx.fillStyle = tStep % 2 === 0 ? '#eab308' : '#0d9488';
           ctx.fillRect(tx - 4, ty - 3, 8, 6);
         }
         ctx.rotate(spin);
@@ -1528,7 +1566,7 @@ export class VFXManager {
         for (let tStep = 1; tStep <= 5; tStep++) {
           const tx = -dir * tStep * 12;
           const ty = Math.cos((proj.age || 0) * 28 - tStep) * 10;
-          ctx.fillStyle = tStep % 2 === 0 ? '#f43f5e' : '#c084fc';
+          ctx.fillStyle = tStep % 2 === 0 ? '#e11d48' : '#7e22ce';
           ctx.fillRect(tx - 4, ty - 4, 8, 8);
         }
         ctx.rotate(spin);
@@ -1553,7 +1591,7 @@ export class VFXManager {
           ctx.rotate(Math.PI);
           this.drawBloomedSprite(
             ctx,
-             null,
+            null,
             reaperVfx,
             736,
             56,
@@ -1578,7 +1616,7 @@ export class VFXManager {
         for (let trail = 1; trail <= 5; trail++) {
           const tx = -trail * 14;
           const ty = ((trail * 17) % 36) - 18;
-          ctx.fillStyle = trail % 2 === 0 ? '#ffffff' : '#38bdf8';
+          ctx.fillStyle = trail % 2 === 0 ? '#0284c7' : '#38bdf8';
           ctx.fillRect(tx - 5, ty - 3, 10, 6);
         }
         if (warriorVfx && warriorVfx.complete && warriorVfx.naturalWidth) {
@@ -1611,7 +1649,7 @@ export class VFXManager {
         for (let w = 1; w <= 7; w++) {
           const wx = -w * 10;
           const wy = Math.sin((proj.age || 0) * 36 - w * 0.9) * 10;
-          ctx.fillStyle = w % 2 === 0 ? '#fef08a' : '#34d399';
+          ctx.fillStyle = w % 2 === 0 ? '#059669' : '#34d399';
           ctx.fillRect(wx - 5, wy - 3, 10, 6);
         }
 
@@ -1646,7 +1684,7 @@ export class VFXManager {
           const sa = (proj.age || 0) * 14 + (sat * Math.PI) / 2;
           const sx = Math.round((Math.cos(sa) * 28) / 2) * 2;
           const sy = Math.round((Math.sin(sa) * 28) / 2) * 2;
-          ctx.fillStyle = sat % 2 === 0 ? '#ffffff' : '#fde047';
+          ctx.fillStyle = sat % 2 === 0 ? '#ca8a04' : '#facc15';
           ctx.fillRect(sx - 4, sy - 4, 8, 8);
         }
         ctx.rotate((proj.age || 0) * 6);
@@ -1679,7 +1717,7 @@ export class VFXManager {
           const sa = (proj.age || 0) * 16 + (sat * Math.PI * 2) / 3;
           const sx = Math.round((Math.cos(sa) * 26) / 2) * 2;
           const sy = Math.round((Math.sin(sa) * 26) / 2) * 2;
-          ctx.fillStyle = sat === 0 ? '#ffffff' : proj.coreColor;
+          ctx.fillStyle = sat === 0 ? '#facc15' : '#ea580c';
           ctx.fillRect(sx - 4, sy - 4, 8, 8);
         }
         ctx.rotate(ang);
@@ -1709,9 +1747,10 @@ export class VFXManager {
       }
     }
 
-    // 9. LIGHTNINGS: Stepped Pixel-Art Skyward Thunderbolts
+    // 9. LIGHTNINGS: Stepped Saturated Pixel-Art Skyward Thunderbolts
     for (const l of this.lightnings) {
       const t = l.life / l.maxLife;
+      ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1 - t;
       for (let idx = 0; idx < l.pts.length - 1; idx++) {
         const p0 = l.pts[idx];
@@ -1722,12 +1761,10 @@ export class VFXManager {
           const lx = Math.round((p0.x + (p1.x - p0.x) * u) / 4) * 4;
           const ly = Math.round((p0.y + (p1.y - p0.y) * u) / 4) * 4;
           const wOuter = Math.max(4, Math.round(((1 - t) * 18) / 4) * 4);
-          ctx.fillStyle = l.mainColor || '#38bdf8';
+          ctx.fillStyle = l.mainColor || '#0284c7';
           ctx.fillRect(lx - wOuter * 0.5, ly - 4, wOuter, 8);
-          ctx.fillStyle = l.color;
+          ctx.fillStyle = l.color === '#ffffff' ? '#38bdf8' : l.color;
           ctx.fillRect(lx - wOuter * 0.25, ly - 4, wOuter * 0.5, 8);
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(lx - 2, ly - 4, 4, 8);
         }
       }
     }
@@ -1739,13 +1776,14 @@ export class VFXManager {
         const gx = Math.round(g.x / 2) * 2;
         const gy = Math.round(g.y / 2) * 2;
         ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(1, (1 - p) * 1.65);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = Math.min(1, (1 - p) * 1.45);
 
         if (renderer && renderer.getGlowForColor) {
           const glowTex = renderer.getGlowForColor(g.color);
           ctx.save();
-          ctx.globalAlpha = Math.min(1, (1 - p) * 0.65);
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.min(1, (1 - p) * 0.32);
           ctx.drawImage(glowTex, gx - 24, gy - 24, 48, 48);
           ctx.restore();
         }
@@ -1775,8 +1813,6 @@ export class VFXManager {
           ctx.fillRect(gx - 6, gy - 2, 12, 4);
           ctx.fillStyle = g.coreColor;
           ctx.fillRect(gx - 2, gy - 4, 4, 8);
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(gx - 1, gy - 1, 2, 2);
         } else if (g.shape === 'cross') {
           ctx.fillStyle = g.color;
           ctx.fillRect(gx - 3, gy - 9, 6, 18);
@@ -1784,8 +1820,6 @@ export class VFXManager {
           ctx.fillStyle = g.coreColor;
           ctx.fillRect(gx - 2, gy - 7, 4, 14);
           ctx.fillRect(gx - 7, gy - 2, 14, 4);
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(gx - 2, gy - 2, 4, 4);
         } else if (g.shape === 'star') {
           ctx.fillStyle = g.color;
           ctx.fillRect(gx - 8, gy - 1, 16, 2);
@@ -1812,8 +1846,8 @@ export class VFXManager {
         const env = t < 0.14 ? t / 0.14 : Math.max(0, 1 - (t - 0.14) / 0.86);
 
         ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = env * 0.92;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = env * 0.90;
 
         // Rising Vertical Pixel-Art Energy Streamers framing the character's left & right silhouette
         const streamCount = ca.isUltimate ? 6 : 4;
@@ -1824,16 +1858,16 @@ export class VFXManager {
           const phase = (ca.life * 260 + s * 42) % 140;
           const sy = Math.round((ca.fighter.y - 16 - phase) / 4) * 4;
           const sh = ca.isUltimate ? 28 : 20;
-          ctx.fillStyle = ca.mainColor;
+          ctx.fillStyle = ca.borderColor;
           ctx.fillRect(sx - 3, sy - sh - 2, 6, sh + 4);
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(sx - 2, sy - sh, 4, 6);
+          ctx.fillStyle = ca.mainColor;
+          ctx.fillRect(sx - 2, sy - sh, 4, 8);
         }
 
         ctx.restore();
       }
 
-      // 12. ON-HIT ELEMENTAL CHUNKY-PIXEL IMPACT RAYS (Radiating Outward Around the Victim so Faces Stay Clear)
+      // 12. ON-HIT ELEMENTAL CHUNKY-PIXEL IMPACT RAYS (Radiating Outward Around the Victim in Saturated Jewel Tones)
       for (const imp of this.hitImpacts) {
         const t = imp.life / imp.maxLife;
         const env = t < 0.18 ? t / 0.18 : Math.max(0, 1 - (t - 0.18) / 0.82);
@@ -1843,8 +1877,8 @@ export class VFXManager {
         const rOuter = Math.round(((imp.isCrit ? 76 : 58) + t * 46) / 4) * 4;
 
         ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(1, env * 0.88);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = Math.min(1, env * 0.92);
         const rayCount = imp.isCrit ? 8 : 6;
         for (let r = 0; r < rayCount; r++) {
           const a = imp.rot + (r / rayCount) * Math.PI * 2;
@@ -1854,9 +1888,9 @@ export class VFXManager {
             const rx = Math.round((ix + Math.cos(a) * d) / 4) * 4;
             const ry = Math.round((iy + Math.sin(a) * d) / 4) * 4;
             const sz = step < 2 ? 8 : 4;
-            ctx.fillStyle = imp.color;
+            ctx.fillStyle = imp.accentColor || '#0284c7';
             ctx.fillRect(rx - sz, ry - sz, sz * 2, sz * 2);
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = imp.color;
             ctx.fillRect(rx - sz * 0.5, ry - sz * 0.5, sz, sz);
           }
         }
