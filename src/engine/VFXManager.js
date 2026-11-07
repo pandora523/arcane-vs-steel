@@ -2291,36 +2291,7 @@ export class VFXManager {
     }
   }
 
-  renderFloatingTexts(ctx, fighters = []) {
-    // 0. PERSISTENT CRISP PIXEL P1 / P2 CHAMPION IDENTIFIER POINTERS ABOVE EACH FIGHTER
-    if (fighters && fighters.length > 0) {
-      for (let i = 0; i < fighters.length; i++) {
-        const f = fighters[i];
-        if (!f || f.isDead) continue;
-        const px = Math.round(f.x / 2) * 2;
-        const py = Math.round((f.y - 208) / 2) * 2;
-        const tag = i === 0 ? 'P1' : 'P2';
-        const col = f.primaryColor || (i === 0 ? '#38bdf8' : '#fde047');
-
-        ctx.save();
-        ctx.globalAlpha = 0.92;
-        // Compact dark obsidian badge with champion signature color border
-        ctx.fillStyle = col;
-        ctx.fillRect(px - 14, py - 18, 28, 14);
-        ctx.fillStyle = '#060410';
-        ctx.fillRect(px - 12, py - 16, 24, 10);
-        PixelFont.drawCentered(ctx, tag, px, py - 8, 1, col, '#ffffff', true);
-        // Crisp downward pixel pointer chevron aimed at the champion's head
-        ctx.fillStyle = '#060410';
-        ctx.fillRect(px - 6, py - 3, 12, 4);
-        ctx.fillRect(px - 4, py + 1, 8, 4);
-        ctx.fillStyle = col;
-        ctx.fillRect(px - 4, py - 3, 8, 3);
-        ctx.fillRect(px - 2, py, 4, 3);
-        ctx.restore();
-      }
-    }
-
+  renderFloatingTexts(ctx) {
     // 1. OVERHEAD SPECIAL MOVE & ULTIMATE ART CALLOUT PLATES ABOVE CHARACTER HEAD (100% Crisp Pixel Font)
     const activeBanners = [];
     for (let idx = 0; idx < this.castAuras.length; idx++) {
