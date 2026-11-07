@@ -1280,42 +1280,55 @@ export class VFXManager {
         }
       }
 
-      for (let x = tailX; x <= headX; x += stepPx) {
-        const u = (x - tailX) / spanLen;
-        const taper = Math.sin(Math.pow(u, 0.65) * Math.PI);
-        const hOuter = Math.max(4, Math.round(((b.width * 0.68 * taper * env) / 4)) * 4);
-        const hInner = Math.max(4, Math.round((hOuter * 0.52) / 2) * 2);
-        const undulate = Math.round((Math.sin(x * 0.032 - b.life * 32) * 8 * (1 - u * 0.5)) / 2) * 2;
+      // 2. Smooth Tapered Volumetric Energy Lance & Helical Sine Ribbons (ZERO stepped square staircases!)
+      const hMax = Math.max(8, b.width * 0.65 * env);
+      const beamGrad = ctx.createLinearGradient(tailX, 0, headX, 0);
+      beamGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      beamGrad.addColorStop(0.18, b.color);
+      beamGrad.addColorStop(0.85, b.coreColor || '#ffffff');
+      beamGrad.addColorStop(1, '#ffffff');
 
-        // Additive outer beam glow sheath in lighter mode
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = beamAlpha * (isReflection ? 0.24 : 0.48);
-        ctx.fillStyle = b.color;
-        ctx.fillRect(x - 2, undulate - hOuter * 1.05, stepPx + 4, hOuter * 2.1);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = beamAlpha * (isReflection ? 0.32 : 0.72);
+      ctx.fillStyle = beamGrad;
+      ctx.beginPath();
+      ctx.moveTo(tailX, 0);
+      ctx.quadraticCurveTo(tailX + spanLen * 0.55, -hMax * 1.25, headX, -hMax * 0.35);
+      ctx.lineTo(headX + 18, 0);
+      ctx.lineTo(headX, hMax * 0.35);
+      ctx.quadraticCurveTo(tailX + spanLen * 0.55, hMax * 1.25, tailX, 0);
+      ctx.closePath();
+      ctx.fill();
 
-        // Saturated beam body + incandescent white-hot inner core
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = beamAlpha;
-        ctx.fillStyle = b.color;
-        ctx.fillRect(x, undulate - hOuter * 0.5, stepPx, hOuter);
-        ctx.fillStyle = b.coreColor;
-        ctx.fillRect(x, undulate - hInner * 0.5, stepPx, hInner);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(x, undulate - Math.max(2, hInner * 0.25), stepPx, Math.max(4, hInner * 0.5));
+      // White-hot incandescent inner core lance
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = beamAlpha;
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(tailX + spanLen * 0.08, 0);
+      ctx.quadraticCurveTo(tailX + spanLen * 0.58, -hMax * 0.42, headX, -hMax * 0.14);
+      ctx.lineTo(headX + 12, 0);
+      ctx.lineTo(headX, hMax * 0.14);
+      ctx.quadraticCurveTo(tailX + spanLen * 0.58, hMax * 0.42, tailX + spanLen * 0.08, 0);
+      ctx.closePath();
+      ctx.fill();
 
-        const helix1 = Math.round((Math.sin(x * 0.055 - b.life * 36) * (hOuter * 1.15 + 10)) / 4) * 4;
-        const helix2 = Math.round((-Math.sin(x * 0.055 - b.life * 36) * (hOuter * 1.15 + 10)) / 4) * 4;
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = beamAlpha * 0.55;
-        ctx.fillStyle = b.color;
-        ctx.fillRect(x - 2, undulate + helix1 - 5, 12, 10);
-        ctx.fillRect(x - 2, undulate + helix2 - 5, 12, 10);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = beamAlpha;
-        ctx.fillStyle = b.coreColor;
-        ctx.fillRect(x, undulate + helix1 - 3, 8, 6);
-        ctx.fillStyle = b.color;
-        ctx.fillRect(x, undulate + helix2 - 3, 8, 6);
+      // Smooth dual-helix energy filaments wrapping the beam
+      for (const sign of [-1, 1]) {
+        ctx.beginPath();
+        const segs = 24;
+        for (let s = 0; s <= segs; s++) {
+          const u = s / segs;
+          const x = tailX + spanLen * u;
+          const taper = Math.sin(u * Math.PI);
+          const y = sign * Math.sin(x * 0.045 - b.life * 34) * (hMax * 0.95 * taper);
+          if (s === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        ctx.strokeStyle = sign > 0 ? b.coreColor || '#fef08a' : b.color;
+        ctx.lineWidth = 2.5;
+        ctx.globalAlpha = beamAlpha * 0.85;
+        ctx.stroke();
       }
 
       const isEmeraldBeam = b.color === '#10b981' || b.color === '#34d399';
@@ -1461,40 +1474,31 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 5. PARTICLES: Deeply Saturated 4px-Aligned Chunky Pixel Blocks with Radiant Light Emission & Incandescent Cores!
+    // 5. PARTICLES: Luminous HD-2D Embers with Smooth Radial Glow Halos & Crisp Cores (Zero oversized +6px squares!)
     for (const p of !ultimateOnly ? this.particles : []) {
       const t = p.life / p.maxLife;
       const fade = 1 - t;
-      const s = Math.max(4, Math.round(((p.size * fade + p.endSize * t) / 4)) * 4);
-      const px = Math.round(p.x / 4) * 4;
-      const py = Math.round(p.y / 4) * 4;
+      const s = Math.max(2, Math.min(5, Math.round(p.size * fade + p.endSize * t)));
+      const px = Math.round(p.x);
+      const py = Math.round(p.y);
       const pCol = p.color === '#ffffff' ? '#fef9c3' : p.color;
 
-      // 1. Radiant radial jewel-tone light halo around every chunky pixel particle so every particle visibly emits light!
-      if (renderer && !isReflection && s >= 4) {
+      if (renderer && !isReflection) {
         const glowTex = renderer.getGlowForColor ? renderer.getGlowForColor(pCol) : renderer.glowCyan;
-        const glowR = Math.max(22, s * 4.2);
+        const glowR = Math.max(16, s * 4.5);
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.46;
+        ctx.globalAlpha = fade * 0.44;
         ctx.drawImage(glowTex, px - glowR, py - glowR, glowR * 2, glowR * 2);
       }
-      // 2. Stepped chunky outer pixel bloom block (+6px) in lighter mode
-      ctx.globalCompositeOperation = 'lighter';
-      const outerS = s + 6;
-      ctx.globalAlpha = fade * (isReflection ? 0.22 : 0.42);
-      ctx.fillStyle = pCol;
-      ctx.fillRect(px - outerS * 0.5, py - outerS * 0.5, outerS, outerS);
-      // 3. Richly saturated main chunky pixel block + incandescent white-gold core pixel in source-over
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * (isReflection ? 0.70 : 0.98);
+      ctx.globalAlpha = fade * (isReflection ? 0.65 : 0.95);
       ctx.fillStyle = pCol;
-      ctx.fillRect(px - s * 0.5, py - s * 0.5, s, s);
-      const coreS = Math.max(2, Math.round(s * 0.45));
+      ctx.fillRect(px - Math.ceil(s * 0.5), py - Math.ceil(s * 0.5), s, s);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(px - coreS * 0.5, py - coreS * 0.5, coreS, coreS);
+      ctx.fillRect(px - 1, py - 1, Math.max(1, s - 2), Math.max(1, s - 2));
     }
 
-    // 6. SLASHES: Deeply Saturated Chunky-Pixel Crescent Blade, Scythe & Whirlwind Waves + Stepped Arcs
+    // 6. SLASHES: Deeply Saturated Chunky-Pixel Crescent Blade, Scythe & Whirlwind Waves
     ctx.globalCompositeOperation = 'source-over';
     for (const s of this.slashes) {
       const isUltSlash = s.radius >= 118;
@@ -1502,7 +1506,6 @@ export class VFXManager {
       const t = s.life / s.maxLife;
       const alpha = 1 - t;
       const isFullCircle = Math.abs(s.endAngle - s.startAngle) > Math.PI * 1.8;
-      const steps = isFullCircle ? 32 : 28;
       ctx.globalAlpha = alpha * (isReflection ? 0.35 : isFullCircle ? 0.58 : 0.92);
       const isCyan =
         s.color === '#38bdf8' ||
@@ -1522,41 +1525,8 @@ export class VFXManager {
         s.color === '#e879f9';
       const isRadiant = s.color === '#fde047' || s.color === '#facc15' || s.color === '#f59e0b';
       const isChrono = s.color === '#2dd4bf' || s.color === '#99f6e4';
-      const outerTone = isCyan
-        ? '#0369a1'
-        : isEmerald
-          ? '#047857'
-          : isAbyssal
-            ? '#4c1d95'
-            : isRadiant
-              ? '#a16207'
-              : isChrono
-                ? '#0f766e'
-                : '#0369a1';
-      const midTone = isCyan
-        ? '#0284c7'
-        : isEmerald
-          ? '#059669'
-          : isAbyssal
-            ? '#7e22ce'
-            : isRadiant
-              ? '#ca8a04'
-              : isChrono
-                ? '#0d9488'
-                : '#0284c7';
-      const innerTone = isCyan
-        ? '#38bdf8'
-        : isEmerald
-          ? '#34d399'
-          : isAbyssal
-            ? '#e11d48'
-            : isRadiant
-              ? '#facc15'
-              : isChrono
-                ? '#2dd4bf'
-                : '#38bdf8';
 
-      // Draw Saturated Chunky-Pixel Slash Wave Sprite at the arc apex (NEVER use mage_vfx solar fireball for slashes!)
+      // Draw Saturated Chunky-Pixel Slash Wave Sprite at the arc apex
       if (!isReflection) {
         const midAng = (s.startAngle + s.endAngle) * 0.5 + (isFullCircle ? t * 8 : 0);
         const rad = s.radius + t * 14;
@@ -1606,34 +1576,6 @@ export class VFXManager {
           ctx.restore();
         }
       }
-
-      for (let i = 0; i <= steps; i++) {
-        const u = i / steps;
-        const ang = s.startAngle + (s.endAngle - s.startAngle) * u;
-        const env = isFullCircle ? 0.55 : Math.sin(u * Math.PI);
-        const rad = s.radius + t * 14;
-        const rx = rad;
-        const ry = isFullCircle ? rad * 0.28 : rad;
-        const px = Math.round((s.x + Math.cos(ang) * rx) / 4) * 4;
-        const py = Math.round((s.y + Math.sin(ang) * ry) / 4) * 4;
-        const sz = Math.max(4, Math.round((env * (isFullCircle ? 12 : 16) * (1 - t * 0.45)) / 4) * 4);
-
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = alpha * (isReflection ? 0.18 : 0.34);
-        ctx.fillStyle = midTone;
-        ctx.fillRect(px - sz * 0.85, py - sz * 0.85, sz * 1.7, sz * 1.7);
-
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = alpha * (isReflection ? 0.35 : isFullCircle ? 0.58 : 0.94);
-        ctx.fillStyle = outerTone;
-        ctx.fillRect(px - sz * 0.65, py - sz * 0.65, sz * 1.3, sz * 1.3);
-        ctx.fillStyle = midTone;
-        ctx.fillRect(px - sz * 0.45, py - sz * 0.45, sz * 0.9, sz * 0.9);
-        if (sz >= 8) {
-          ctx.fillStyle = innerTone;
-          ctx.fillRect(px - sz * 0.25, py - sz * 0.25, sz * 0.5, sz * 0.5);
-        }
-      }
     }
 
     // 7. SHOCKWAVES: HD-2D Volumetric Light Bloom & Staggered Radial Particle Sparks (Zero Dotted Circles!)
@@ -1656,20 +1598,18 @@ export class VFXManager {
         ctx.drawImage(glowTex, sw.x - glowW * 0.5, sw.y - glowH * 0.5, glowW, glowH);
       }
 
-      const sparkCount = 16;
+      const sparkCount = 14;
       for (let i = 0; i < sparkCount; i++) {
-        // Golden-angle + staggered radial distance so particles form an organic burst, never a ring!
         const a = i * 2.39996 + t * (i % 2 === 0 ? 1.4 : -1.1);
         const distMult = 0.28 + ((i * 7 + 3) % 11) * 0.085;
         const curR = r * distMult;
-        const px = Math.round((sw.x + Math.cos(a) * curR * xScale) / 3) * 3;
-        const py = Math.round((sw.y + Math.sin(a) * curR * yScale - (sw.flat ? t * (12 + (i % 5) * 9) : 0)) / 3) * 3;
-        const block = i % 3 === 0 ? 6 : 4;
+        const px = Math.round(sw.x + Math.cos(a) * curR * xScale);
+        const py = Math.round(sw.y + Math.sin(a) * curR * yScale - (sw.flat ? t * (12 + (i % 5) * 9) : 0));
 
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = alpha * (isReflection ? 0.42 : 0.92);
         ctx.fillStyle = sw.color;
-        ctx.fillRect(px - block * 0.5, py - block * 0.5, block, block);
+        ctx.fillRect(px - 2, py - 2, 4, 4);
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(px - 1, py - 1, 2, 2);
       }
@@ -1701,18 +1641,6 @@ export class VFXManager {
       if (proj.isMeteor) {
         const mageVfx = assets.mage?.vfx;
         const ang = Math.atan2(proj.vy, proj.vx || 1);
-        const dirX = -proj.vx / (Math.hypot(proj.vx, proj.vy) || 1);
-        const dirY = -proj.vy / (Math.hypot(proj.vx, proj.vy) || 1);
-        const pSize = 6;
-        for (let wStep = 10; wStep >= 1; wStep--) {
-          const wx = Math.round((px + dirX * wStep * 9) / pSize) * pSize;
-          const wy = Math.round((py + dirY * wStep * 9) / pSize) * pSize;
-          const span = Math.max(1, Math.round((1 - wStep / 11) * 4));
-          for (let c = -span; c <= span; c++) {
-            ctx.fillStyle = wStep < 4 ? '#facc15' : wStep < 7 ? '#ea580c' : '#9a3412';
-            ctx.fillRect(wx + c * pSize, wy - c * pSize * 0.5, pSize, pSize);
-          }
-        }
         if (mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
           const mSize = 156;
           ctx.save();
@@ -1739,16 +1667,9 @@ export class VFXManager {
       } else if (proj.type === 'clock_gear') {
         const vfxSheet = assets.chronomancer?.vfx;
         const dir = Math.sign(proj.vx) || 1;
-        // 90-degree stepped escapement rotation so every pixel of the clockwork saw-gear stays 100% orthogonal!
         const spin = Math.floor((proj.age || 0) * 10) * (Math.PI * 0.5) * dir;
         ctx.save();
         ctx.translate(px, py);
-        for (let tStep = 1; tStep <= 6; tStep++) {
-          const tx = -dir * tStep * 12;
-          const ty = Math.round((Math.sin((proj.age || 0) * 32 - tStep * 0.9) * 8) / 4) * 4;
-          ctx.fillStyle = tStep % 2 === 0 ? '#facc15' : '#2dd4bf';
-          ctx.fillRect(tx - 4, ty - 4, 8, 8);
-        }
         ctx.rotate(spin);
         if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
           const gearSize = 104;
@@ -1784,12 +1705,6 @@ export class VFXManager {
         const spin = (proj.age || 0) * 22 * dir;
         ctx.save();
         ctx.translate(px, py);
-        for (let tStep = 1; tStep <= 5; tStep++) {
-          const tx = -dir * tStep * 12;
-          const ty = Math.cos((proj.age || 0) * 28 - tStep) * 10;
-          ctx.fillStyle = tStep % 2 === 0 ? '#e11d48' : '#7e22ce';
-          ctx.fillRect(tx - 4, ty - 4, 8, 8);
-        }
         ctx.rotate(spin);
         if (reaperVfx && reaperVfx.complete && reaperVfx.naturalWidth && reaperVfx.naturalWidth >= 944) {
           const scytheSize = 118;
@@ -1834,12 +1749,6 @@ export class VFXManager {
         ctx.save();
         ctx.translate(px, py);
         ctx.scale(dir, 1);
-        for (let trail = 1; trail <= 5; trail++) {
-          const tx = -trail * 14;
-          const ty = ((trail * 17) % 36) - 18;
-          ctx.fillStyle = trail % 2 === 0 ? '#0284c7' : '#38bdf8';
-          ctx.fillRect(tx - 5, ty - 3, 10, 6);
-        }
         if (warriorVfx && warriorVfx.complete && warriorVfx.naturalWidth) {
           const waveSize = 138;
           this.drawBloomedSprite(
@@ -1866,13 +1775,6 @@ export class VFXManager {
         ctx.save();
         ctx.translate(px, py);
         ctx.rotate(ang);
-
-        for (let w = 1; w <= 7; w++) {
-          const wx = -w * 10;
-          const wy = Math.sin((proj.age || 0) * 36 - w * 0.9) * 10;
-          ctx.fillStyle = w % 2 === 0 ? '#059669' : '#34d399';
-          ctx.fillRect(wx - 5, wy - 3, 10, 6);
-        }
 
         if (archerVfx && archerVfx.complete && archerVfx.naturalWidth) {
           const arrSize = 118;
@@ -1901,13 +1803,6 @@ export class VFXManager {
         const priestessVfx = assets.priestess?.vfx;
         ctx.save();
         ctx.translate(px, py);
-        for (let sat = 0; sat < 4; sat++) {
-          const sa = (proj.age || 0) * 14 + (sat * Math.PI) / 2;
-          const sx = Math.round((Math.cos(sa) * 28) / 2) * 2;
-          const sy = Math.round((Math.sin(sa) * 28) / 2) * 2;
-          ctx.fillStyle = sat % 2 === 0 ? '#ca8a04' : '#facc15';
-          ctx.fillRect(sx - 4, sy - 4, 8, 8);
-        }
         ctx.rotate((proj.age || 0) * 6);
         if (priestessVfx && priestessVfx.complete && priestessVfx.naturalWidth) {
           const orbSize = 98;
@@ -1934,13 +1829,6 @@ export class VFXManager {
         const ang = Math.atan2(proj.vy, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
-        for (let sat = 0; sat < 3; sat++) {
-          const sa = (proj.age || 0) * 16 + (sat * Math.PI * 2) / 3;
-          const sx = Math.round((Math.cos(sa) * 26) / 2) * 2;
-          const sy = Math.round((Math.sin(sa) * 26) / 2) * 2;
-          ctx.fillStyle = sat === 0 ? '#facc15' : '#ea580c';
-          ctx.fillRect(sx - 4, sy - 4, 8, 8);
-        }
         ctx.rotate(ang);
         if (mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
           const fbSize = 104;
@@ -1968,35 +1856,40 @@ export class VFXManager {
       }
     }
 
-    // 9. LIGHTNINGS: Stepped Saturated Pixel-Art Skyward Thunderbolts with Radial Light Glow
+    // 9. LIGHTNINGS: Smooth Connected Skyward Thunderbolts with Radial Light Glow (Zero stepped square staircases!)
     for (const l of isReflection || ultimateOnly ? this.lightnings : []) {
+      if (!l.pts || l.pts.length < 2) continue;
       const t = l.life / l.maxLife;
       const fade = 1 - t;
       const glowTex = renderer && renderer.getGlowForColor ? renderer.getGlowForColor(l.color) : null;
-      for (let idx = 0; idx < l.pts.length - 1; idx++) {
-        const p0 = l.pts[idx];
-        const p1 = l.pts[idx + 1];
-        const steps = 6;
-        for (let s = 0; s <= steps; s++) {
-          const u = s / steps;
-          const lx = Math.round((p0.x + (p1.x - p0.x) * u) / 4) * 4;
-          const ly = Math.round((p0.y + (p1.y - p0.y) * u) / 4) * 4;
-          const wOuter = Math.max(4, Math.round((fade * 18) / 4) * 4);
-          if (glowTex && !isReflection && s % 2 === 0) {
-            ctx.globalCompositeOperation = 'lighter';
-            ctx.globalAlpha = fade * 0.42;
-            ctx.drawImage(glowTex, lx - 36, ly - 36, 72, 72);
-          }
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = fade;
-          ctx.fillStyle = l.mainColor || '#0284c7';
-          ctx.fillRect(lx - wOuter * 0.5, ly - 4, wOuter, 8);
-          ctx.fillStyle = l.color === '#ffffff' ? '#38bdf8' : l.color;
-          ctx.fillRect(lx - wOuter * 0.25, ly - 4, wOuter * 0.5, 8);
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(lx - 2, ly - 2, 4, 4);
+
+      ctx.save();
+      if (glowTex && !isReflection) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.46;
+        for (let idx = 0; idx < l.pts.length; idx += 2) {
+          const p0 = l.pts[idx];
+          ctx.drawImage(glowTex, p0.x - 44, p0.y - 44, 88, 88);
         }
       }
+
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.beginPath();
+      ctx.moveTo(l.pts[0].x, l.pts[0].y);
+      for (let idx = 1; idx < l.pts.length; idx++) {
+        ctx.lineTo(l.pts[idx].x, l.pts[idx].y);
+      }
+      ctx.strokeStyle = l.color === '#ffffff' ? '#38bdf8' : l.color;
+      ctx.lineWidth = Math.max(3, fade * 10);
+      ctx.globalAlpha = fade * 0.78;
+      ctx.stroke();
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1.5, fade * 3.5);
+      ctx.globalAlpha = fade;
+      ctx.stroke();
+      ctx.restore();
     }
 
     // 10. PURE PIXEL-ART RUNIC CRYSTALS, SOLAR STARS, SACRED CROSSES, NECROTIC SKULLS, CLOCKWORK COGS & ASTRAL FEATHERS
@@ -2020,51 +1913,38 @@ export class VFXManager {
 
         if (g.shape === 'cog') {
           ctx.fillStyle = g.coreColor;
-          ctx.fillRect(gx - 8, gy - 2, 16, 4);
-          ctx.fillRect(gx - 2, gy - 8, 4, 16);
-          ctx.fillRect(gx - 6, gy - 6, 12, 12);
+          ctx.fillRect(gx - 6, gy - 2, 12, 4);
+          ctx.fillRect(gx - 2, gy - 6, 4, 12);
           ctx.fillStyle = g.color;
           ctx.fillRect(gx - 4, gy - 4, 8, 8);
           ctx.fillStyle = '#090d16';
           ctx.fillRect(gx - 2, gy - 2, 4, 4);
         } else if (g.shape === 'skull') {
           ctx.fillStyle = g.color;
-          ctx.fillRect(gx - 6, gy - 8, 12, 10);
-          ctx.fillRect(gx - 4, gy + 2, 8, 4);
-          ctx.fillStyle = '#090514';
-          ctx.fillRect(gx - 4, gy - 4, 3, 3);
-          ctx.fillRect(gx + 1, gy - 4, 3, 3);
+          ctx.fillRect(gx - 5, gy - 6, 10, 8);
+          ctx.fillRect(gx - 3, gy + 2, 6, 3);
           ctx.fillStyle = g.coreColor;
           ctx.fillRect(gx - 3, gy - 3, 2, 2);
-          ctx.fillRect(gx + 2, gy - 3, 2, 2);
+          ctx.fillRect(gx + 1, gy - 3, 2, 2);
         } else if (g.shape === 'rune') {
           ctx.fillStyle = g.color;
-          ctx.fillRect(gx - 2, gy - 8, 4, 16);
-          ctx.fillRect(gx - 6, gy - 2, 12, 4);
+          ctx.fillRect(gx - 2, gy - 6, 4, 12);
+          ctx.fillRect(gx - 5, gy - 2, 10, 4);
           ctx.fillStyle = g.coreColor;
-          ctx.fillRect(gx - 2, gy - 4, 4, 8);
+          ctx.fillRect(gx - 1, gy - 3, 2, 6);
         } else if (g.shape === 'cross') {
           ctx.fillStyle = g.color;
-          ctx.fillRect(gx - 3, gy - 9, 6, 18);
-          ctx.fillRect(gx - 9, gy - 3, 18, 6);
-          ctx.fillStyle = g.coreColor;
           ctx.fillRect(gx - 2, gy - 7, 4, 14);
           ctx.fillRect(gx - 7, gy - 2, 14, 4);
-        } else if (g.shape === 'star') {
-          ctx.fillStyle = g.color;
-          ctx.fillRect(gx - 8, gy - 1, 16, 2);
-          ctx.fillRect(gx - 1, gy - 8, 2, 16);
-          ctx.fillRect(gx - 4, gy - 4, 8, 8);
           ctx.fillStyle = g.coreColor;
-          ctx.fillRect(gx - 2, gy - 2, 4, 4);
+          ctx.fillRect(gx - 1, gy - 5, 2, 10);
+          ctx.fillRect(gx - 5, gy - 1, 10, 2);
         } else {
           ctx.fillStyle = g.color;
-          ctx.fillRect(gx - 6, gy + 2, 4, 4);
-          ctx.fillRect(gx - 3, gy - 1, 6, 4);
-          ctx.fillRect(gx + 1, gy - 4, 5, 4);
+          ctx.fillRect(gx - 6, gy - 1, 12, 2);
+          ctx.fillRect(gx - 1, gy - 6, 2, 12);
           ctx.fillStyle = g.coreColor;
-          ctx.fillRect(gx - 2, gy, 4, 2);
-          ctx.fillRect(gx + 1, gy - 3, 3, 2);
+          ctx.fillRect(gx - 2, gy - 2, 4, 4);
         }
         ctx.restore();
       }
@@ -2077,67 +1957,72 @@ export class VFXManager {
         const glowTex = renderer && renderer.getGlowForColor ? renderer.getGlowForColor(ca.mainColor) : null;
 
         ctx.save();
-        // Rising Vertical Pixel-Art Energy Streamers framing the character's left & right silhouette
         const streamCount = ca.isUltimate ? 6 : 4;
         for (let s = 0; s < streamCount; s++) {
           const side = s % 2 === 0 ? -1 : 1;
           const lane = Math.floor(s / 2) + 1;
-          const sx = Math.round((ca.fighter.x + side * (46 + lane * 16)) / 4) * 4;
+          const sx = Math.round(ca.fighter.x + side * (46 + lane * 16));
           const phase = (ca.life * 260 + s * 42) % 140;
-          const sy = Math.round((ca.fighter.y - 16 - phase) / 4) * 4;
-          const sh = ca.isUltimate ? 28 : 20;
+          const sy = Math.round(ca.fighter.y - 16 - phase);
+          const sh = ca.isUltimate ? 22 : 16;
           if (glowTex) {
             ctx.globalCompositeOperation = 'lighter';
             ctx.globalAlpha = env * 0.42;
-            ctx.drawImage(glowTex, sx - 26, sy - sh - 18, 52, sh + 36);
+            ctx.drawImage(glowTex, sx - 22, sy - sh - 14, 44, sh + 28);
           }
           ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = env * 0.94;
-          ctx.fillStyle = ca.borderColor;
-          ctx.fillRect(sx - 3, sy - sh - 2, 6, sh + 4);
+          ctx.globalAlpha = env * 0.90;
           ctx.fillStyle = ca.mainColor;
-          ctx.fillRect(sx - 2, sy - sh, 4, 8);
+          ctx.fillRect(sx - 1, sy - sh, 3, sh);
           ctx.fillStyle = '#ffffff';
-          ctx.fillRect(sx - 1, sy - sh + 2, 2, 4);
+          ctx.fillRect(sx, sy - sh + 2, 1, sh - 4);
         }
-
         ctx.restore();
       }
 
-      // 12. ON-HIT ELEMENTAL CHUNKY-PIXEL IMPACT RAYS (Radiating Outward Around the Victim in Saturated Jewel Tones)
+      // 12. ON-HIT ELEMENTAL DIAMOND STAR-FLARES (Sleek Tapered Impact Flares — Zero Stepped Square Chains!)
       for (const imp of this.hitImpacts) {
         const t = imp.life / imp.maxLife;
         const env = t < 0.18 ? t / 0.18 : Math.max(0, 1 - (t - 0.18) / 0.82);
-        const ix = Math.round(imp.x / 4) * 4;
-        const iy = Math.round(imp.y / 4) * 4;
-        const rInner = Math.round((24 + t * 38) / 4) * 4;
-        const rOuter = Math.round(((imp.isCrit ? 76 : 58) + t * 46) / 4) * 4;
+        const ix = Math.round(imp.x);
+        const iy = Math.round(imp.y);
+        const rInner = 14 + t * 28;
+        const rOuter = (imp.isCrit ? 64 : 46) + t * 38;
         const glowTex = renderer && renderer.getGlowForColor ? renderer.getGlowForColor(imp.color) : null;
 
         ctx.save();
         if (glowTex) {
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = Math.min(1, env * 0.56);
-          ctx.drawImage(glowTex, ix - 95, iy - 95, 190, 190);
+          ctx.drawImage(glowTex, ix - 85, iy - 85, 170, 170);
         }
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = Math.min(1, env * 0.94);
+        ctx.translate(ix, iy);
         const rayCount = imp.isCrit ? 8 : 6;
         for (let r = 0; r < rayCount; r++) {
           const a = imp.rot + (r / rayCount) * Math.PI * 2;
-          for (let step = 0; step <= 4; step++) {
-            const u = step / 4;
-            const d = rInner + (rOuter - rInner) * u;
-            const rx = Math.round((ix + Math.cos(a) * d) / 4) * 4;
-            const ry = Math.round((iy + Math.sin(a) * d) / 4) * 4;
-            const sz = step < 2 ? 8 : 4;
-            ctx.fillStyle = imp.accentColor || '#0284c7';
-            ctx.fillRect(rx - sz, ry - sz, sz * 2, sz * 2);
-            ctx.fillStyle = imp.color;
-            ctx.fillRect(rx - sz * 0.5, ry - sz * 0.5, sz, sz);
-            ctx.fillStyle = '#ffffff';
-            ctx.fillRect(rx - 2, ry - 2, 4, 4);
-          }
+          ctx.save();
+          ctx.rotate(a);
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.min(1, env * 0.9);
+          ctx.fillStyle = imp.color;
+          ctx.beginPath();
+          ctx.moveTo(rInner, 0);
+          ctx.lineTo((rInner + rOuter) * 0.45, -3.5);
+          ctx.lineTo(rOuter, 0);
+          ctx.lineTo((rInner + rOuter) * 0.45, 3.5);
+          ctx.closePath();
+          ctx.fill();
+
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.fillStyle = '#ffffff';
+          ctx.beginPath();
+          ctx.moveTo(rInner + 4, 0);
+          ctx.lineTo((rInner + rOuter) * 0.48, -1.5);
+          ctx.lineTo(rOuter * 0.88, 0);
+          ctx.lineTo((rInner + rOuter) * 0.48, 1.5);
+          ctx.closePath();
+          ctx.fill();
+          ctx.restore();
         }
         ctx.restore();
       }

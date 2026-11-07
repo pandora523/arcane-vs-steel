@@ -98,6 +98,7 @@ export class Reaper extends Fighter {
   onStartDash(enemy, game, dir) {
     this.dashDuration = 0.40;
     this.isDeflecting = true;
+    this.isWraithPhase = false;
     this.vx = dir * 512;
     if (game.audio) game.audio.play('scythe_reap', this.x);
     game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 6, 'abyssal');
@@ -105,8 +106,33 @@ export class Reaper extends Fighter {
   }
 
   onStartDodge(enemy, game, dir) {
-    this.dashDuration = 0.40;
+    const ww = game.renderer ? game.renderer.worldWidth : 1200;
     const dist = enemy ? Math.abs(enemy.x - this.x) : 0;
+
+    // ★ SIGNATURE REAPER EVASION: "WRAITH PHASE-SHIFT AMBUSH"
+    // In close-to-mid range (dist <= 235), Malakor sinks into his Abyssal Shadow Pool and phases
+    // directly THROUGH the enemy to emerge 155px behind their back for a lethal backstab!
+    if (enemy && !enemy.isDead && dist <= 235) {
+      this.isWraithPhase = true;
+      this.dashDuration = 0.38;
+      this.isDeflecting = true;
+      this.phaseStartX = this.x;
+      const passDir = Math.sign(enemy.x - this.x) || this.facing;
+      let behindX = enemy.x + passDir * 155;
+      if (behindX < 105 || behindX > ww - 105) {
+        behindX = enemy.x - passDir * 155;
+      }
+      this.phaseTargetX = Math.max(95, Math.min(ww - 95, behindX));
+      this.dashDir = Math.sign(this.phaseTargetX - this.phaseStartX) || passDir;
+      this.vx = 0;
+      if (game.audio) game.audio.play('soul_drain', this.x);
+      game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 8, 'abyssal');
+      game.vfx.spawnDamageText(this.x, this.y - 144, 0, false, 'WRAITH PHASE!', '#e879f9');
+      return;
+    }
+
+    this.isWraithPhase = false;
+    this.dashDuration = 0.40;
     this.isDeflecting = dist > 195;
     const smartDir = enemy && dist > 195 ? this.facing : dir;
     this.dashDir = smartDir;
@@ -137,6 +163,36 @@ export class Reaper extends Fighter {
 
   updateDashOrDodge(dt, enemy, game) {
     const t = this.stateTimer;
+
+    if (this.state === 'DODGE' && this.isWraithPhase) {
+      const p = Math.min(1, t / this.dashDuration);
+      const ease = 0.5 - 0.5 * Math.cos(p * Math.PI);
+      this.x = this.phaseStartX + (this.phaseTargetX - this.phaseStartX) * ease;
+      if (enemy) {
+        this.facing = enemy.x >= this.x ? 1 : -1;
+      }
+
+      if (Math.random() < 0.85) {
+        game.vfx.spawnParticle({
+          x: this.x + (Math.random() - 0.5) * 56,
+          y: this.groundY - 6 - Math.random() * 24,
+          vx: -this.dashDir * 60,
+          vy: -45 - Math.random() * 35,
+          size: 5,
+          color: Math.random() > 0.45 ? '#c084fc' : '#f43f5e',
+          maxLife: 0.28
+        });
+      }
+
+      if (t >= this.dashDuration) {
+        this.isWraithPhase = false;
+        this.isDeflecting = false;
+        this.isInvulnerable = false;
+        this.setState('IDLE');
+      }
+      return;
+    }
+
     const speed = this.state === 'DASH' ? 512 : 434;
     this.x += this.dashDir * speed * dt;
 
@@ -147,7 +203,7 @@ export class Reaper extends Fighter {
         y: this.groundY - 4 - Math.random() * 18,
         vx: -this.dashDir * 65,
         vy: -45 - Math.random() * 35,
-        size: 6,
+        size: 5,
         color: Math.random() > 0.45 ? '#c084fc' : '#4c1d95',
         maxLife: 0.28
       });
@@ -300,8 +356,6 @@ export class Reaper extends Fighter {
 
   updateSkill(dt, enemy, game) {
     // SIGNATURE SKILL: "SPECTRAL CHAIN" (Skeletal Bone-Claw Grapple -> Executioner's Scythe Guillotine)
-    // Zero beams or crystal spikes: throws a physical segmented iron chain & giant skeletal bone claw that clamps onto the enemy,
-    // drags them through grasping underworld hands, and finishes with an Executioner's Scythe Guillotine + Soul Leech!
     const t = this.stateTimer;
     const ww = game.renderer.worldWidth;
 
@@ -333,7 +387,6 @@ export class Reaper extends Fighter {
         }
       }
 
-      // Reel the clamped enemy across the floor into Malakor's scythe reach!
       if (enemy && !enemy.isDead) {
         if (Math.abs(enemy.x - this.x) > 147) {
           this.x += this.facing * 128 * dt;
@@ -374,22 +427,18 @@ export class Reaper extends Fighter {
 
   updateUltimate(dt, enemy, game) {
     // 100% BESPOKE SOULREAPER ULTIMATE: "GRIM HARVEST — BONEYARD & AVATAR OF DEATH"
-    // Stage 1 (0.00s - 0.50s): Haunted Gothic Tombstones & Grasping Skeletal Hands erupt across the arena floor!
-    // Stage 2 (0.50s - 1.00s): A Colossal 16-bit HD-2D Grim Reaper Death Avatar manifests above the Boneyard!
-    // Stage 3 (1.00s - 1.55s): The Giant Death Avatar swings its screen-spanning Scythe across the arena, shattering all Tombstones into Homing Soul-Wisps!
     const t = this.stateTimer;
     const ww = game.renderer.worldWidth;
     const targetX = enemy ? enemy.x : ww * 0.5;
     this.vx = 0;
     this.vy = 0;
-    this.y = this.groundY; // Malakor stays grounded in necromantic command (never jumps like Warrior!)
+    this.y = this.groundY;
     this.isDeflecting = t < 1.45;
 
     if (t < 0.04) {
       this.ultStage = 0;
     }
 
-    // STAGE 1 (0.05s): Summon the Haunted Graveyard of 7 Gothic Tombstones & Skeletal Hands
     if (t >= 0.05 && this.ultStage === 0) {
       this.ultStage = 1;
       if (game.audio) game.audio.play('soul_drain', targetX);
@@ -410,7 +459,6 @@ export class Reaper extends Fighter {
       }
     }
 
-    // STAGE 2 (0.52s): The Towering 16-bit HD-2D Grim Reaper Avatar manifests at full height & tolls the Bell of Death
     if (t >= 0.52 && this.ultStage === 1) {
       this.ultStage = 2;
       if (game.audio) game.audio.play('reaper_ult', this.x);
@@ -419,7 +467,6 @@ export class Reaper extends Fighter {
       game.vfx.spawnDamageText(this.x + this.facing * 115, this.groundY - 355, 0, false, 'AVATAR OF DEATH!', '#f43f5e');
 
       if (enemy && !enemy.isDead) {
-        // Pull enemy toward the center of the Boneyard so the Death Avatar's colossal scythe reaps them
         const pullX = Math.max(120, Math.min(ww - 120, this.x + this.facing * 185));
         enemy.x += (pullX - enemy.x) * 0.55;
         enemy.takeDamage(33, this, true, -60, -50);
@@ -431,7 +478,6 @@ export class Reaper extends Fighter {
       this.deathAvatar.swingProgress = Math.min(1, (t - 0.85) / 0.28);
     }
 
-    // STAGE 3 (1.00s): Colossal Grim Reaper Avatar swings its Scythe, shattering all 7 Tombstones into Homing Soul-Wisps!
     if (t >= 1.00 && this.ultStage === 2) {
       this.ultStage = 3;
       if (game.audio) game.audio.play('scythe_reap', targetX);
@@ -449,7 +495,7 @@ export class Reaper extends Fighter {
       for (const tb of this.tombstones) {
         tb.shattered = true;
         game.vfx.spawnGlyphBurst(tb.x, this.groundY - 42, 4, 'abyssal');
-        game.vfx.spawnBurst(tb.x, this.groundY - 36, 10, '#c084fc', 240, { upBias: 120, size: 7 });
+        game.vfx.spawnBurst(tb.x, this.groundY - 36, 10, '#c084fc', 240, { upBias: 120, size: 6 });
       }
 
       if (enemy && !enemy.isDead) {
@@ -476,7 +522,6 @@ export class Reaper extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // Layered Abyssal Shadow-Grave Puddle on the cathedral floor
     ctx.fillStyle = 'rgba(88, 28, 135, 0.78)';
     ctx.fillRect(px - 80, py - 8, 160, 16);
     ctx.fillStyle = 'rgba(192, 132, 252, 0.85)';
@@ -484,7 +529,6 @@ export class Reaper extends Fighter {
     ctx.fillStyle = '#090514';
     ctx.fillRect(px - 58, py - 4, 116, 8);
 
-    // Draw the lower grasping skeletal hands & purple mist from our 16-bit HD-2D tombstone sprite (sy=180..256 of tomb cell)
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
       ctx.drawImage(vfxSheet, 320, 172, 208, 84, px - 68, py - 48, 136, 56);
     }
@@ -511,7 +555,6 @@ export class Reaper extends Fighter {
       ctx.save();
       ctx.globalAlpha = fade;
 
-      // Clip to the stone floor line so each Gothic Tombstone erupts smoothly from beneath the cathedral floor
       ctx.beginPath();
       ctx.rect(bx - 90, by - 180, 180, 188);
       ctx.clip();
@@ -525,15 +568,12 @@ export class Reaper extends Fighter {
         const dy = Math.round(by - drawH + 10 + riseOffset);
         const dw = Math.round(drawW);
         const dh = Math.round(drawH);
-        // Stepped outer violet-crimson pixel bloom aura
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = fade * 0.28;
         ctx.drawImage(vfxSheet, 320, 56, 208, 208, dx - 6, dy - 6, dw + 12, dh + 12);
-        // Main chunky-pixel Gothic Crypt Tombstone
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = fade * 0.96;
         ctx.drawImage(vfxSheet, 320, 56, 208, 208, dx, dy, dw, dh);
-        // Balanced luminous inner rune bloom pass
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = fade * 0.24;
         ctx.drawImage(vfxSheet, 320, 56, 208, 208, dx, dy, dw, dh);
@@ -572,17 +612,22 @@ export class Reaper extends Fighter {
     const dist = Math.hypot(dx, dy) || 1;
     const angle = Math.atan2(dy, dx);
 
-    // 1. Stepped Pixelated Violet-Crimson Soul-Fire Bloom along the chain path
+    // 1. Smooth Continuous Violet-Crimson Soul-Fire Catenary Bloom along the chain path (Zero Stepped Squares!)
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    for (let s = 0; s <= 22; s++) {
-      const u = s / 22;
+    ctx.strokeStyle = 'rgba(168, 85, 247, 0.42)';
+    ctx.lineWidth = 14;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    for (let s = 0; s <= 18; s++) {
+      const u = s / 18;
       const sag = Math.sin(u * Math.PI) * 14 + Math.sin(u * Math.PI * 3 + this.stateTimer * 28) * 3;
-      const px = Math.round((x1 + dx * u) / 4) * 4;
-      const py = Math.round((y1 + dy * u + sag) / 4) * 4;
-      ctx.fillStyle = s % 2 === 0 ? 'rgba(147, 51, 234, 0.42)' : 'rgba(225, 29, 72, 0.38)';
-      ctx.fillRect(px - 10, py - 10, 20, 20);
+      const px = x1 + dx * u;
+      const py = y1 + dy * u + sag;
+      if (s === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
     }
+    ctx.stroke();
     ctx.restore();
 
     // 2. Crisp Interlocking Dark-Iron & Amethyst-Rune Chain Links

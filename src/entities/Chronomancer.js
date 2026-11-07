@@ -37,8 +37,12 @@ export class Chronomancer extends Fighter {
     this.didStasisCast = false;
     this.didStasisShatter = false;
     this.ultStage = 0;
-    this.dodgeMaxCooldown = 3.20;
-    this.dashMaxCooldown = 3.25;
+    this.dodgeMaxCooldown = 2.95;
+    this.dashMaxCooldown = 3.10;
+    this.isChronoWarp = false;
+    this.didChronoWarp = false;
+    this.warpOriginX = x;
+    this.warpTargetX = x;
   }
 
   /**
@@ -78,14 +82,19 @@ export class Chronomancer extends Fighter {
       facing: this.facing,
       frameIdx,
       life: 0,
-      maxLife: 0.58
+      maxLife: 0.65
     });
   }
 
   onStartDash(enemy, game, dir) {
+    const ww = game.renderer ? game.renderer.worldWidth : 1200;
     this.dashDuration = 0.38;
     this.isDeflecting = false;
-    this.vx = dir * 390;
+    this.isChronoWarp = false;
+    // If backed near a wall, surge toward the open arena center!
+    const escapeDir = this.x < 240 ? 1 : this.x > ww - 240 ? -1 : dir;
+    this.dashDir = escapeDir;
+    this.vx = escapeDir * 395;
     this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
     if (game.audio) game.audio.play('time_rewind', this.x);
     game.vfx.spawnGlyphBurst(this.x, this.y - 88, 6, 'chrono');
@@ -93,21 +102,72 @@ export class Chronomancer extends Fighter {
   }
 
   onStartDodge(enemy, game, dir) {
-    this.dashDuration = 0.38;
-    this.isDeflecting = false;
-    // Smart corner escape: if backed near the wall, phase-shift across the enemy toward open arena space!
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
-    const nearLeftWall = this.x < 210 && dir < 0;
-    const nearRightWall = this.x > ww - 210 && dir > 0;
-    const smartDir = nearLeftWall ? 1 : nearRightWall ? -1 : dir;
-    this.dashDir = smartDir;
-    this.vx = smartDir * 345;
+    const dist = enemy ? Math.abs(enemy.x - this.x) : 999;
+    const nearLeft = this.x < 310;
+    const nearRight = this.x > ww - 310;
+    const pressuredOrCornered = dist < 265 || nearLeft || nearRight;
 
+    this.isDeflecting = false;
     this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
     if (game.audio) game.audio.play('time_rewind', this.x);
+
     const isVanguard = enemy && enemy.hasPoise && enemy.attackRange <= 160;
     const isHarvester = enemy && enemy.hasPoise && enemy.attackRange > 160;
     const isGroundedCaster = enemy && !enemy.hasPoise && enemy.moveSpeed <= 122;
+
+    // ★ SIGNATURE CHRONOMANCER GAP-MAKER: "CHRONO PORTAL WARP & STASIS TIME-MINE!"
+    // Whenever Zephyros is pressured or backed toward his side of the stage, he leaves a Frozen Temporal Echo
+    // + Detonating Stasis Time-Mine at his departure spot (slowing & knocking back the pursuer) and warps
+    // through a Dimensional Clockface Rift to the FARTHEST OPEN SIDE of the arena!
+    if (enemy && pressuredOrCornered) {
+      this.isChronoWarp = true;
+      this.didChronoWarp = false;
+      this.dashDuration = 0.42;
+      this.warpOriginX = this.x;
+      this.vx = 0;
+
+      // Pick the far side of the arena that gives the largest gap away from the enemy
+      const farLeftX = 135;
+      const farRightX = ww - 135;
+      let targetX = this.x < ww * 0.5 ? farRightX : farLeftX;
+      if (Math.abs(enemy.x - targetX) < 230) {
+        targetX = Math.abs(enemy.x - farLeftX) > Math.abs(enemy.x - farRightX) ? farLeftX : farRightX;
+      }
+      this.warpTargetX = targetX;
+      this.dashDir = Math.sign(this.warpTargetX - this.warpOriginX) || 1;
+
+      // Departure Stasis Time-Mine Ring & Shockwave
+      game.vfx.spawnShockwave(this.x, this.y - 96, 118, '#2dd4bf', 0.36, false, true);
+      game.vfx.spawnShockwave(this.x, this.groundY, 132, '#facc15', 0.34, true);
+      game.vfx.spawnBurst(this.x, this.y - 96, 18, '#2dd4bf', 235);
+      game.vfx.spawnGlyphBurst(this.x, this.y - 96, 8, 'chrono');
+      game.vfx.spawnDamageText(this.x, this.y - 168, 0, false, 'CHRONO PORTAL WARP!', '#facc15');
+
+      // Stasis Time-Mine knocks back and slows melee pursuers crowding his departure point!
+      if (!enemy.isDead && dist < 225) {
+        const pushDir = Math.sign(enemy.x - this.x) || this.facing;
+        enemy.vx = pushDir * 145;
+        enemy.takeDamage(16, this, false, 95, -45);
+        game.vfx.spawnDamageText(enemy.x, enemy.y - 136, 0, false, 'STASIS MINE!', '#2dd4bf');
+      }
+
+      this.rewindTimeline(
+        isVanguard ? 15 : isHarvester ? 16 : isGroundedCaster ? 13 : 14,
+        this.x,
+        this.y - 96,
+        game,
+        'TIME SLIP'
+      );
+      return;
+    }
+
+    this.isChronoWarp = false;
+    this.dashDuration = 0.38;
+    const smartDir = nearLeft ? 1 : nearRight ? -1 : dir;
+    this.dashDir = smartDir;
+    this.vx = smartDir * 355;
+
     this.rewindTimeline(
       isVanguard ? 15 : isHarvester ? 16 : isGroundedCaster ? 13 : 14,
       this.x,
@@ -117,20 +177,19 @@ export class Chronomancer extends Fighter {
     );
     game.vfx.spawnGlyphBurst(this.x, this.y - 88, 7, 'chrono');
 
-    // Leave a spinning Pendulum Saw-Gear at his departure echo when dodging
     if (enemy && !enemy.isDead) {
       const aimDir = Math.sign(enemy.x - this.x) || this.facing;
       const spawnX = this.x + aimDir * 36;
       const spawnY = this.y - 104;
       const dx = enemy.x - spawnX;
       const dy = (enemy.y - 108) - spawnY;
-      const dist = Math.hypot(dx, dy) || 1;
+      const d = Math.hypot(dx, dy) || 1;
       const gearDmg = isVanguard ? 34 : isHarvester ? 36 : isGroundedCaster ? 41 : 44;
       game.vfx.spawnProjectile({
         x: spawnX,
         y: spawnY,
-        vx: (dx / dist) * 645,
-        vy: (dy / dist) * 645,
+        vx: (dx / d) * 645,
+        vy: (dy / d) * 645,
         radius: 19,
         color: '#2dd4bf',
         coreColor: '#facc15',
@@ -143,6 +202,56 @@ export class Chronomancer extends Fighter {
 
   updateDashOrDodge(dt, enemy, game) {
     const t = this.stateTimer;
+
+    if (this.isChronoWarp) {
+      if (t >= 0.13 && !this.didChronoWarp) {
+        this.didChronoWarp = true;
+        this.x = this.warpTargetX;
+        if (enemy) {
+          this.facing = enemy.x >= this.x ? 1 : -1;
+        }
+        this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
+
+        // Arrival Dimensional Clockface Rift + Counter Saw-Gear!
+        game.vfx.spawnShockwave(this.x, this.y - 96, 118, '#facc15', 0.36, false, true);
+        game.vfx.spawnShockwave(this.x, this.groundY, 132, '#2dd4bf', 0.34, true);
+        game.vfx.spawnBurst(this.x, this.y - 96, 20, '#facc15', 250);
+        game.vfx.spawnGlyphBurst(this.x, this.y - 100, 9, 'chrono');
+
+        if (enemy && !enemy.isDead) {
+          const isVanguard = enemy.hasPoise && enemy.attackRange <= 160;
+          const isHarvester = enemy.hasPoise && enemy.attackRange > 160;
+          const isGroundedCaster = !enemy.hasPoise && enemy.moveSpeed <= 122;
+          const gearDmg = isVanguard ? 24 : isHarvester ? 26 : isGroundedCaster ? 31 : 34;
+          const sx = this.x + this.facing * 44;
+          const sy = this.y - 106;
+          const dx = enemy.x - sx;
+          const dy = (enemy.y - 108) - sy;
+          const d = Math.hypot(dx, dy) || 1;
+          game.vfx.spawnProjectile({
+            x: sx,
+            y: sy,
+            vx: (dx / d) * 665,
+            vy: (dy / d) * 665,
+            radius: 19,
+            color: '#2dd4bf',
+            coreColor: '#facc15',
+            owner: this,
+            damage: gearDmg,
+            type: 'clock_gear'
+          });
+        }
+      }
+
+      if (t >= this.dashDuration) {
+        this.isChronoWarp = false;
+        this.isDeflecting = false;
+        this.isInvulnerable = false;
+        this.setState('IDLE');
+      }
+      return;
+    }
+
     const speed = this.state === 'DASH' ? 380 : 335;
     this.x += this.dashDir * speed * dt;
 
@@ -191,7 +300,6 @@ export class Chronomancer extends Fighter {
       if (hg.target && !hg.target.isDead) {
         hg.x = hg.target.x;
         hg.y = hg.target.groundY;
-        // Temporal Drag: slow enemy horizontal movement (poise-armored melee vanguards resist heavy stasis drag)
         if (!hg.target.hasPoise) {
           hg.target.vx *= 0.50;
         }
@@ -219,6 +327,24 @@ export class Chronomancer extends Fighter {
       this.doomsdayClock.life += dt;
       if (this.doomsdayClock.life >= this.doomsdayClock.maxLife) {
         this.doomsdayClock = null;
+      }
+    }
+
+    // Proactive Temporal Tactician Corner-Escape & Kiting AI!
+    if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
+      const dist = Math.abs(enemy.x - this.x);
+      const ww = game.renderer ? game.renderer.worldWidth : 1200;
+      const nearWall = this.x < 260 || this.x > ww - 260;
+      const incomingProj =
+        game.vfx &&
+        game.vfx.projectiles.some((p) => p.owner === enemy && Math.abs(p.x - this.x) < 150);
+
+      if ((dist < 235 || (nearWall && dist < 305) || incomingProj) && this.dodgeCooldown <= 0) {
+        this.startDodge(enemy, game);
+        return;
+      }
+      if (dist < 245) {
+        this.x -= this.facing * this.moveSpeed * 0.72 * dt;
       }
     }
 
@@ -317,8 +443,6 @@ export class Chronomancer extends Fighter {
 
   updateSkill(dt, enemy, game) {
     // SIGNATURE SKILL: "HOURGLASS STASIS & TEMPORAL REWIND"
-    // Encases the enemy inside the 16-bit HD-2D Ornate Brass & Teal Stasis Hourglass (`chronomancer_vfx.png`),
-    // locking them in swirling temporal sand while rewinding Zephyros's own HP timeline!
     const t = this.stateTimer;
 
     if (t < 0.10) {
@@ -346,7 +470,6 @@ export class Chronomancer extends Fighter {
           shattered: false
         };
 
-        // Rewind Zephyros's personal timeline
         this.rewindTimeline(
           isVanguard ? 32 : isHarvester ? 33 : isGroundedCaster ? 32 : 34,
           tx,
@@ -387,8 +510,6 @@ export class Chronomancer extends Fighter {
 
   updateUltimate(dt, enemy, game) {
     // 100% BESPOKE CHRONOMANCER ULTIMATE: "DOOMSDAY MIDNIGHT — GRAND ASTRAL CLOCKTOWER"
-    // Summons the Colossal 320x320 16-bit HD-2D Gothic Astral Clockface (`chronomancer_vfx.png`) in the sky behind the arena
-    // with two articulated Brass & Teal Clock Hands that rapidly spin to XII (MIDNIGHT), freezing time and shattering!
     const t = this.stateTimer;
     const ww = game.renderer.worldWidth;
     const centerX = Math.max(
@@ -408,7 +529,6 @@ export class Chronomancer extends Fighter {
     const isHarvester = enemy && enemy.hasPoise && enemy.attackRange > 160;
     const isGroundedCaster = enemy && !enemy.hasPoise && enemy.moveSpeed <= 122;
 
-    // STAGE 1 (0.05s): Manifest the Colossal 16-bit HD-2D Astral Clocktower Dial & start the 4 Doomsday Ticks!
     if (t >= 0.05 && this.ultStage === 0) {
       this.ultStage = 1;
       if (game.audio) game.audio.play('chrono_ult', centerX);
@@ -438,12 +558,10 @@ export class Chronomancer extends Fighter {
       );
     }
 
-    // Freeze/slow enemy inside the Astral Clocktower's temporal field while the hands spin toward XII
     if (enemy && !enemy.isDead && !enemy.hasPoise && t < 1.02) {
       enemy.vx *= 0.15;
     }
 
-    // STAGE 2 (0.52s): Second Pendulum Toll as the minute hand sweeps toward XI
     if (t >= 0.52 && this.ultStage === 1) {
       this.ultStage = 2;
       if (game.audio) game.audio.play('clock_gear', centerX);
@@ -456,7 +574,6 @@ export class Chronomancer extends Fighter {
       }
     }
 
-    // STAGE 3 (0.98s): Both Clock Hands align vertically at XII ("MIDNIGHT XII!") — Cataclysmic Temporal Shatter!
     if (t >= 0.98 && this.ultStage === 2) {
       this.ultStage = 3;
       if (this.doomsdayClock) {
@@ -472,10 +589,9 @@ export class Chronomancer extends Fighter {
       const cy = this.groundY - 195;
       game.vfx.spawnDamageText(cx, this.groundY - 380, 0, true, 'MIDNIGHT XII — SHATTER!', '#facc15');
       game.vfx.spawnGlyphBurst(cx, cy, 14, 'chrono');
-      game.vfx.spawnBurst(cx, cy, 26, '#2dd4bf', 320, { upBias: 80, size: 8 });
-      game.vfx.spawnBurst(cx, cy, 22, '#facc15', 290, { upBias: 60, size: 7 });
+      game.vfx.spawnBurst(cx, cy, 26, '#2dd4bf', 320, { upBias: 80, size: 7 });
+      game.vfx.spawnBurst(cx, cy, 22, '#facc15', 290, { upBias: 60, size: 6 });
 
-      // Radial volley of 4 spinning 16-bit HD-2D Clockwork Saw-Gears bursting outward from the Clockface
       if (enemy && !enemy.isDead) {
         const d3 = isVanguard ? 99 : isHarvester ? 104 : isGroundedCaster ? 112 : 118;
         enemy.takeDamage(d3, this, true, 175, -220);
@@ -498,7 +614,7 @@ export class Chronomancer extends Fighter {
   }
 
   /**
-   * Renders the Colossal 320x320 16-bit HD-2D Gothic Astral Clockface & Chunky Stepped Pixel Clock Hands
+   * Renders the Colossal 320x320 16-bit HD-2D Gothic Astral Clockface & Sleek Tapered Clock Hands (Zero Stepped Square Blocks!)
    */
   drawDoomsdayClock(ctx, renderer = null) {
     if (!this.doomsdayClock) return;
@@ -508,15 +624,14 @@ export class Chronomancer extends Fighter {
     const dc = this.doomsdayClock;
     const pop = Math.min(1, dc.life / 0.22);
     const fade = Math.min(1, (dc.maxLife - dc.life) * 3.0);
-    const cx = Math.round(dc.x / 4) * 4;
-    const cy = Math.round(dc.y / 4) * 4;
-    const size = Math.round((344 * (0.78 + 0.22 * pop)) / 4) * 4;
+    const cx = Math.round(dc.x);
+    const cy = Math.round(dc.y);
+    const size = Math.round(344 * (0.78 + 0.22 * pop));
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.translate(cx, cy);
 
-    // 1. Intense Dual-Layer Teal + Gold Radial Light Halos so the Doomsday Clock visibly illuminates the arena!
     if (renderer) {
       ctx.globalCompositeOperation = 'lighter';
       if (renderer.glowTeal) {
@@ -529,79 +644,87 @@ export class Chronomancer extends Fighter {
       }
     }
 
-    // Keep the 320x320 pixelated clockface orthogonal so its chunky 64x64->320x320 pixels & Roman numerals stay razor-sharp!
     const dHalf = Math.round(-size * 0.5);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.46;
-    ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf - 16, dHalf - 16, size + 32, size + 32);
+    ctx.globalAlpha = fade * 0.42;
+    ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf - 12, dHalf - 12, size + 24, size + 24);
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = fade * (dc.shattered ? 0.92 : 0.98);
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, size, size);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.38;
+    ctx.globalAlpha = fade * 0.34;
     ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, size, size);
 
-    // Chunky Stepped Pixel-Art Clock Hands (Hour Hand + Minute Hand) snapped to 4px orthogonal blocks!
-    // Both hands sweep rapidly and lock straight up (-Math.PI / 2 = XII Midnight) at t = 0.98s!
     const progressToMidnight = Math.min(1, dc.life / 0.96);
     const ease = 1 - Math.pow(1 - progressToMidnight, 2.4);
     const minuteAngle = -Math.PI * 0.5 - (1 - ease) * Math.PI * 4.0;
     const hourAngle = -Math.PI * 0.5 - (1 - ease) * Math.PI * 1.35;
 
-    const drawPixelClockHand = (angle, length, isMinute) => {
-      const steps = Math.max(6, Math.round(length / 5));
-      const cosA = Math.cos(angle);
-      const sinA = Math.sin(angle);
+    const drawTaperedClockHand = (angle, length, isMinute) => {
+      ctx.save();
+      ctx.rotate(angle);
+      const baseW = isMinute ? 7 : 10;
 
-      // 1. Outer luminous HD-2D bloom aura along the pixel hand
+      // 1. Smooth additive bloom along the clock hand
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.52;
+      ctx.globalAlpha = fade * 0.48;
       ctx.fillStyle = isMinute ? '#2dd4bf' : '#facc15';
-      for (let i = 0; i <= steps; i += 2) {
-        const dist = (i / steps) * length;
-        const px = Math.round((cosA * dist) / 4) * 4;
-        const py = Math.round((sinA * dist) / 4) * 4;
-        ctx.fillRect(px - 10, py - 10, 20, 20);
-      }
+      ctx.beginPath();
+      ctx.moveTo(-14, -baseW * 1.2);
+      ctx.lineTo(length * 0.78, -baseW * 0.65);
+      ctx.lineTo(length + 8, 0);
+      ctx.lineTo(length * 0.78, baseW * 0.65);
+      ctx.lineTo(-14, baseW * 1.2);
+      ctx.closePath();
+      ctx.fill();
 
-      // 2. Dark bronze 4px-stepped pixel border
+      // 2. Dark obsidian-bronze bevel outline
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = fade * 0.98;
       ctx.fillStyle = '#0b0f19';
-      for (let i = -2; i <= steps; i++) {
-        const dist = (i / steps) * length;
-        const px = Math.round((cosA * dist) / 4) * 4;
-        const py = Math.round((sinA * dist) / 4) * 4;
-        const bSz = isMinute ? 12 : 16;
-        ctx.fillRect(px - bSz * 0.5, py - bSz * 0.5, bSz, bSz);
-      }
+      ctx.beginPath();
+      ctx.moveTo(-12, -baseW);
+      ctx.lineTo(length * 0.76, -baseW * 0.45);
+      ctx.lineTo(length + 4, 0);
+      ctx.lineTo(length * 0.76, baseW * 0.45);
+      ctx.lineTo(-12, baseW);
+      ctx.closePath();
+      ctx.fill();
 
-      // 3. Radiant imperial gold / electric cyan-teal pixel shaft & diamond spearhead tip
-      for (let i = -1; i <= steps; i++) {
-        const dist = (i / steps) * length;
-        const px = Math.round((cosA * dist) / 4) * 4;
-        const py = Math.round((sinA * dist) / 4) * 4;
-        const isTip = i >= steps - 2;
-        ctx.fillStyle = isTip ? '#fef08a' : '#facc15';
-        const cSz = isTip ? 12 : isMinute ? 8 : 12;
-        ctx.fillRect(px - cSz * 0.5, py - cSz * 0.5, cSz, cSz);
-        ctx.fillStyle = isMinute ? '#5eead4' : '#ffffff';
-        ctx.fillRect(px - 2, py - 2, 4, 4);
-      }
+      // 3. Radiant gold/teal inner blade & white core line
+      ctx.fillStyle = isMinute ? '#5eead4' : '#facc15';
+      ctx.beginPath();
+      ctx.moveTo(-8, -(baseW - 3));
+      ctx.lineTo(length * 0.76, -2.5);
+      ctx.lineTo(length, 0);
+      ctx.lineTo(length * 0.76, 2.5);
+      ctx.lineTo(-8, baseW - 3);
+      ctx.closePath();
+      ctx.fill();
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-4, -1.5, length * 0.85, 3);
+      ctx.restore();
     };
 
-    drawPixelClockHand(hourAngle, Math.round(size * 0.27), false);
-    drawPixelClockHand(minuteAngle, Math.round(size * 0.39), true);
+    drawTaperedClockHand(hourAngle, Math.round(size * 0.27), false);
+    drawTaperedClockHand(minuteAngle, Math.round(size * 0.39), true);
 
-    // Central Brass & Cyan Escapement Pivot Cap (4px pixel blocks)
+    // Central Brass & Cyan Escapement Pivot Hub
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = fade;
     ctx.fillStyle = '#0b0f19';
-    ctx.fillRect(-12, -12, 24, 24);
+    ctx.beginPath();
+    ctx.arc(0, 0, 12, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = '#facc15';
-    ctx.fillRect(-8, -8, 16, 16);
+    ctx.beginPath();
+    ctx.arc(0, 0, 8, 0, Math.PI * 2);
+    ctx.fill();
     ctx.fillStyle = '#2dd4bf';
-    ctx.fillRect(-4, -4, 8, 8);
+    ctx.beginPath();
+    ctx.arc(0, 0, 4, 0, Math.PI * 2);
+    ctx.fill();
 
     // Midnight XII bloom pulse at detonation
     if (dc.shattered) {

@@ -363,28 +363,44 @@ export class Fighter {
     }
 
     const dist = enemy ? Math.abs(enemy.x - this.x) : 999;
+    const ww = game.renderer ? game.renderer.worldWidth : 1200;
 
     if (this.state === 'IDLE' || this.state === 'WALK') {
       if (enemy && !enemy.isDead) {
-        if (this.mana >= this.maxMana) {
+        // 1. Smart Archetype Ultimate Timing (don't waste Ultimate into an invulnerable dodge or from out of effective range!)
+        const ultRangeOk =
+          this.heroId === 'warrior'
+            ? dist <= 400
+            : this.heroId === 'reaper'
+              ? dist <= 450
+              : true;
+        if (this.mana >= this.maxMana && !enemy.isInvulnerable && ultRangeOk) {
           this.mana = 0;
           if (this.stats) this.stats.ultsUsed++;
           this.setState('ULTIMATE');
           game.triggerUltimateCinematic(this);
           return;
         }
-        // Active Evasive Dodge when threatened by incoming projectile or melee swing
+
+        // 2. Active Evasive Dodge / Parry / Gap-Maker when threatened by incoming projectile, melee swing, or corner pressure
         if (this.dodgeCooldown <= 0 && this.checkIncomingThreat(enemy, game)) {
           this.startDodge(enemy, game);
           return;
         }
-        // Active Gap-Closing Dash when out of range
-        if (this.dashCooldown <= 0 && ((this.attackRange < 200 && dist > 185) || (this.attackRange >= 200 && dist > 470))) {
+
+        // 3. Archetype Gap-Closing or Repositioning Dash
+        const shouldDash =
+          this.attackRange < 200
+            ? dist > 185
+            : dist > 470 || ((this.x < 210 || this.x > ww - 210) && dist < 260);
+        if (this.dashCooldown <= 0 && shouldDash) {
           this.startDash(enemy, game);
           return;
         }
+
+        // 4. Smart Archetype Skill Timing (wait if enemy is invulnerable mid-dodge)
         const maxSkillDist = this.skillTriggerRange || this.attackRange * 2.2;
-        if (this.skillCooldown <= 0 && dist <= maxSkillDist) {
+        if (this.skillCooldown <= 0 && dist <= maxSkillDist && !enemy.isInvulnerable) {
           this.skillCooldown = this.skillMaxCooldown * (0.86 + Math.random() * 0.28);
           if (this.stats) this.stats.skillsUsed++;
           this.setState('SKILL');
@@ -399,6 +415,8 @@ export class Fighter {
           }
           return;
         }
+
+        // 5. Auto-Attack & Authentic Archetype Tactical Footwork Between Attacks (Zero Static Statue Standing!)
         const atkRange = this.getEffectiveAttackRange ? this.getEffectiveAttackRange() : this.attackRange;
         if (dist <= atkRange) {
           if (this.autoCooldown <= 0) {
@@ -406,7 +424,49 @@ export class Fighter {
             this.setState('AUTO_ATTACK');
             return;
           }
-          this.state = 'IDLE';
+
+          // Between attacks (autoCooldown > 0), each champion exhibits their authentic combat archetype footwork!
+          const isRangedArchetype = this.attackRange >= 300;
+          if (isRangedArchetype) {
+            // Ranged Artillery / Marksman / Sanctuary Weaver / Chronomancer:
+            // Actively kite backward to maintain their 350px-470px sweet-spot spacing (or stride toward center if near a wall)
+            const sweetSpotMin = this.heroId === 'archer' ? 355 : this.heroId === 'priestess' ? 365 : 345;
+            if (dist < sweetSpotMin) {
+              const nearLeft = this.x < 175;
+              const nearRight = this.x > ww - 175;
+              if (!nearLeft && !nearRight) {
+                this.state = 'WALK';
+                this.walkPhase += dt * 4.2;
+                this.x -= this.facing * this.moveSpeed * 0.78 * dt;
+                this.headBob = Math.sin(this.walkPhase * 2) * 2.2;
+              } else {
+                this.state = 'IDLE';
+              }
+            } else {
+              this.state = 'IDLE';
+            }
+          } else if (this.heroId === 'reaper') {
+            // Relentless Harvester (Malakor): If 3rd-strike Phantom Scythe (408px range) is next, weave to mid-range;
+            // otherwise stalk relentlessly into scythe guillotine range (140px)!
+            if (dist > 155) {
+              this.state = 'WALK';
+              this.walkPhase += dt * 4.6;
+              this.x += this.facing * this.moveSpeed * 0.85 * dt;
+              this.headBob = Math.sin(this.walkPhase * 2) * 2.4;
+            } else {
+              this.state = 'IDLE';
+            }
+          } else {
+            // Runic Vanguard (Aethelgard): Press forward into heavy melee pressure range (132px)
+            if (dist > 136) {
+              this.state = 'WALK';
+              this.walkPhase += dt * 4.5;
+              this.x += this.facing * this.moveSpeed * 0.85 * dt;
+              this.headBob = Math.sin(this.walkPhase * 2) * 2.4;
+            } else {
+              this.state = 'IDLE';
+            }
+          }
         } else {
           this.state = 'WALK';
           this.walkPhase += dt * 4.5;

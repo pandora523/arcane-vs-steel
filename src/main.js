@@ -110,8 +110,8 @@ const CHAMPION_ROSTER = {
     id: 'priestess',
     name: 'SERAPHINA',
     role: 'HIGH PRIESTESS',
-    style: 'RADIANT HEALER',
-    trait: 'PASSIVE: SERAPHIM WING ESCAPE',
+    style: 'SANCTUARY WEAVER',
+    trait: 'PASSIVE: HIGH SERAPHIC WING FLIGHT',
     cls: Priestess,
     theme: 'radiant',
     color: '#fde047',
@@ -122,13 +122,13 @@ const CHAMPION_ROSTER = {
         name: 'SACRED STARLIGHT',
         type: 'AUTO + PASSIVE',
         vfxCell: 1,
-        desc: 'Fires purifying light bolts & ascends on 6 Seraphim wings when cornered.'
+        desc: 'Fires purifying light bolts & soars high across the stage to the far side when pressured.'
       },
       {
         name: 'DIVINE SANCTUARY',
         type: 'SKILL • 5.0S CD',
         vfxCell: 2,
-        desc: 'Consecrates the floor, restoring her HP while smiting enemies with Valkyrie spears.'
+        desc: 'Consecrates the floor, repelling melee foes, restoring HP & smiting with Valkyrie spears.'
       },
       {
         name: 'SERAPHIC APOTHEOSIS',
@@ -142,8 +142,8 @@ const CHAMPION_ROSTER = {
     id: 'reaper',
     name: 'MALAKOR',
     role: 'ABYSSAL SOULREAPER',
-    style: 'LIFESTEAL EXECUTIONER',
-    trait: 'PASSIVE: VAMPIRIC SOUL REAP',
+    style: 'RELENTLESS HARVESTER',
+    trait: 'PASSIVE: WRAITH PHASE & SOUL LEECH',
     cls: Reaper,
     theme: 'abyssal',
     color: '#c084fc',
@@ -154,7 +154,7 @@ const CHAMPION_ROSTER = {
         name: 'CRESCENT SCYTHE',
         type: 'AUTO + PASSIVE',
         vfxCell: 2,
-        desc: 'Sweeps wide necrotic scythe waves that drain life force on every strike.'
+        desc: 'Sweeps necrotic scythe waves, hurls boomerang scythes & phases behind attacking foes.'
       },
       {
         name: 'SPECTRAL CHAIN HOOK',
@@ -174,8 +174,8 @@ const CHAMPION_ROSTER = {
     id: 'chronomancer',
     name: 'ZEPHYROS',
     role: 'GRAND CHRONOMANCER',
-    style: 'TIME & STASIS WEAVER',
-    trait: 'PASSIVE: TEMPORAL HP REWIND',
+    style: 'TEMPORAL TACTICIAN',
+    trait: 'PASSIVE: CHRONO PORTAL WARP & REWIND',
     cls: Chronomancer,
     theme: 'chrono',
     color: '#2dd4bf',
@@ -186,7 +186,7 @@ const CHAMPION_ROSTER = {
         name: 'ESCAPEMENT SAW-GEAR',
         type: 'AUTO + PASSIVE',
         vfxCell: 1,
-        desc: 'Hurls spinning clockwork saw-gears & rewinds his own timeline to recover lost HP.'
+        desc: 'Hurls clockwork saw-gears & warps to the far side leaving a Stasis Time-Mine when cornered.'
       },
       {
         name: 'HOURGLASS STASIS',
@@ -812,29 +812,29 @@ class Game {
 
     if (stageId === 'cathedral') {
       this.renderer.triggerStageEvent(
-        '★ STAGE PHENOMENON • SOLAR ECLIPSE ★',
-        'BOTH CHAMPIONS GAIN +55% OVERDRIVE CHARGE!',
+        '★ SOLAR ECLIPSE PHENOMENON ★',
+        'BLESSING: +55% OVERDRIVE CHARGE!',
         '#facc15',
         10.0
       );
     } else if (stageId === 'sylvan') {
       this.renderer.triggerStageEvent(
-        '★ STAGE PHENOMENON • STARLIGHT MONSOON ★',
-        'ASTRAL SANCTUARY RAIN RESTORES VITALITY!',
+        '★ STARLIGHT MONSOON PHENOMENON ★',
+        'BLESSING: +180 HP SANCTUARY REGEN!',
         '#34d399',
         10.0
       );
     } else if (stageId === 'boneyard') {
       this.renderer.triggerStageEvent(
-        '★ STAGE PHENOMENON • BLOOD MOON FRENZY ★',
-        'ALL ATTACKS DEAL +18% ABYSSAL DAMAGE!',
-        '#e11d48',
+        '★ BLOOD MOON FRENZY PHENOMENON ★',
+        'BLESSING: +18% ABYSSAL ATTACK DAMAGE!',
+        '#f43f5e',
         10.0
       );
     } else {
       this.renderer.triggerStageEvent(
-        '★ STAGE PHENOMENON • MIDNIGHT OVERCLOCK ★',
-        'ALL SKILL & ATTACK COOLDOWNS ACCELERATED +35%!',
+        '★ MIDNIGHT OVERCLOCK PHENOMENON ★',
+        'BLESSING: +35% SKILL & ATTACK HASTE!',
         '#2dd4bf',
         10.0
       );

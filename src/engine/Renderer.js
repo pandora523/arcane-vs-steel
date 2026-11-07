@@ -214,7 +214,8 @@ export class Renderer {
 
   triggerStageEvent(title, subtitle, color = '#facc15', duration = 10.0) {
     this.stageEventTimer = duration;
-    this.stageEventBannerTimer = 2.8;
+    this.stageEventBannerTimer = 3.8;
+    this.stageEventMaxBannerTimer = 3.8;
     this.stageEventTitle = title;
     this.stageEventSubtitle = subtitle;
     this.stageEventColor = color;
@@ -306,7 +307,7 @@ export class Renderer {
     ctx.scale(this.zoom, this.zoom);
     ctx.translate(-this.camX, -this.camY);
 
-    // 1. HD-2D Pixel-Art Cathedral Diorama + Live Animated Stage Flames & Volumetric God-Rays
+    // 1. HD-2D Pixel-Art Cathedral Diorama + Live Animated Stage Flames & Atmospheric Blooms
     this.drawHD2DArena(ctx, ww, gy);
     this.drawVolumetricGodRays(ctx, ww, gy);
     if (this.stageEventTimer > 0) {
@@ -316,6 +317,19 @@ export class Renderer {
     if (this.ultDim > 0.01) {
       ctx.fillStyle = `rgba(2, 3, 8, ${this.ultDim * 0.82})`;
       ctx.fillRect(-600, -800, ww + 1200, 2000);
+      // Radial In-World Spotlight on the Ultimate Caster
+      const spotX = this.ultFocusX ?? ww * 0.5;
+      const spotY = (this.ultFocusY ?? gy) - 105;
+      const spotGlow = this.getGlowForColor(this.cutInColor || '#facc15');
+      if (spotGlow) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = this.ultDim * 0.65;
+        ctx.drawImage(spotGlow, spotX - 310, spotY - 310, 620, 620);
+        ctx.globalAlpha = this.ultDim * 0.42;
+        ctx.drawImage(this.glowGold, spotX - 210, spotY - 210, 420, 420);
+        ctx.restore();
+      }
     }
 
     // 2. Ground Scorch & Fissures
@@ -658,60 +672,33 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 4. Shimmering Dual-Elemental (Frost-Cyan vs Solar-Gold) Cathedral Floor Light Strips (Zero circles!)
+    // 4. Soft Dual-Elemental (Frost-Cyan vs Solar-Gold) Cathedral Floor Reflection Pools
     ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
     const altarCx = drawX + drawW * 0.50;
-    for (let r = 0; r < 12; r++) {
-      const rx = Math.round((altarCx + (r - 5.5) * 44) / 4) * 4;
-      const ry = gy + 8 + (r % 2) * 8;
-      const isLeft = r < 6;
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.45 + 0.25 * Math.sin(t * 4.5 + r);
-      ctx.fillStyle = isLeft ? '#38bdf8' : '#fb923c';
-      ctx.fillRect(rx - 10, ry, 20, 3);
-    }
+    ctx.globalAlpha = 0.24 + 0.08 * Math.sin(t * 3.8);
+    ctx.drawImage(this.glowCyan, altarCx - 290, gy - 18, 260, 56);
+    ctx.drawImage(this.glowGold, altarCx + 30, gy - 18, 260, 56);
     ctx.restore();
   }
 
   drawSylvanStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy) {
     const t = this.time;
 
-    // 0. Shimmering Celestial Aurora Borealis Curtains Waving Across the Night Sky + Shooting Astral Stars!
+    // 0. Smooth Volumetric Aurora Borealis Sky Veil (Zero vertical rectangle bars or stepped squares!)
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    for (let band = 0; band < 28; band++) {
-      const u = band / 27;
-      const ax = Math.round((drawX + drawW * (0.16 + u * 0.68)) / 8) * 8;
-      const waveY =
-        Math.sin(t * 1.6 + band * 0.35) * 18 + Math.cos(t * 0.9 - band * 0.22) * 10;
-      const ay = Math.round((drawY + drawH * 0.14 + waveY) / 4) * 4;
-      const ah = Math.round((64 + Math.sin(t * 2.2 + band * 0.5) * 24) / 4) * 4;
-      const col = band % 3 === 0 ? '#34d399' : band % 2 === 0 ? '#38bdf8' : '#2dd4bf';
-      ctx.globalAlpha = (0.18 + 0.06 * Math.sin(t * 3 + band)) * (1 - Math.abs(u - 0.5) * 1.3);
-      ctx.fillStyle = col;
-      ctx.fillRect(ax, ay, 12, ah);
-    }
-
-    // Periodic Shooting Astral Stars across the Sylvan night sky
-    for (let star = 0; star < 2; star++) {
-      const cycle = (t * 0.42 + star * 0.5) % 1;
-      if (cycle < 0.36) {
-        const p = cycle / 0.36;
-        const sx = drawX + drawW * (0.22 + star * 0.32 + p * 0.24);
-        const sy = drawY + drawH * (0.08 + star * 0.05 + p * 0.16);
-        for (let tail = 0; tail < 7; tail++) {
-          const tx = Math.round((sx - tail * 10) / 4) * 4;
-          const ty = Math.round((sy - tail * 6) / 4) * 4;
-          ctx.globalAlpha = (1 - tail / 7) * (1 - p) * 0.85;
-          ctx.fillStyle = tail === 0 ? '#ffffff' : tail < 3 ? '#fef08a' : '#34d399';
-          const sz = tail === 0 ? 6 : 4;
-          ctx.fillRect(tx, ty, sz, sz);
-        }
-      }
+    for (let lobe = 0; lobe < 5; lobe++) {
+      const u = lobe / 4;
+      const ax = drawX + drawW * (0.20 + u * 0.60) + Math.sin(t * 1.1 + lobe * 1.4) * 28;
+      const ay = drawY + drawH * 0.14 + Math.cos(t * 0.9 + lobe * 1.1) * 12;
+      const glow = lobe % 2 === 0 ? this.glowEmerald : this.glowCyan;
+      ctx.globalAlpha = 0.22 + 0.07 * Math.sin(t * 2.4 + lobe);
+      ctx.drawImage(glow, ax - 190, ay - 75, 380, 150);
     }
     ctx.restore();
 
-    // 1. Soft Crescent Moon Volumetric Glow (No dotted circle covering the moon!)
+    // 1. Soft Crescent Moon Volumetric Glow
     const moonX = drawX + drawW * 0.50;
     const moonY = drawY + drawH * 0.25;
     ctx.save();
@@ -722,47 +709,34 @@ export class Renderer {
     ctx.drawImage(this.glowCyan, moonX - 180, moonY - 180, 360, 360);
     ctx.restore();
 
-    // 2. Live Cascading Pixel Waterfall Streams, Glowing Plunge Pool & Bioluminescent Splash Mist
+    // 2. Bioluminescent Waterfall Plunge Pool & Shimmering Mist Motes (Zero blocky rectangle strips!)
     const fallsLeft = drawX + drawW * 0.415;
     const fallsW = drawW * 0.172;
     const fallsTop = drawY + drawH * 0.512;
     const fallsBot = drawY + drawH * 0.728;
     const fallsH = fallsBot - fallsTop;
 
-    // Glowing Bioluminescent Waterfall Plunge Pool Halo
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 0.34 + 0.08 * Math.sin(t * 5);
     ctx.drawImage(this.glowCyan, fallsLeft - 30, fallsBot - 65, fallsW + 60, 130);
-    ctx.globalAlpha = 0.28;
+    ctx.globalAlpha = 0.26 + 0.06 * Math.cos(t * 4.2);
     ctx.drawImage(this.glowEmerald, fallsLeft - 10, fallsTop - 20, fallsW + 20, fallsH + 40);
-    ctx.restore();
 
-    ctx.save();
-    for (let s = 0; s < 20; s++) {
-      const streamX = fallsLeft + (s / 19) * fallsW + Math.sin(s * 2.3) * 3;
-      for (let d = 0; d < 8; d++) {
-        const dropPhase = (t * (1.85 + (s % 4) * 0.24) + d / 8 + s * 0.17) % 1;
-        const dx = Math.round((streamX + Math.sin(t * 9 + d + s) * 2) / 4) * 4;
-        const dy = Math.round((fallsTop + dropPhase * fallsH) / 4) * 4;
-        ctx.globalAlpha = 0.82 * (1 - Math.abs(dropPhase - 0.5) * 0.7);
-        ctx.fillStyle =
-          (s + d) % 4 === 0
-            ? '#e0f2fe'
-            : (s + d) % 3 === 0
-              ? '#34d399'
-              : (s + d) % 2 === 0
-                ? '#38bdf8'
-                : '#0284c7';
-        ctx.fillRect(dx, dy, 4, 12);
-      }
-      // Rising bioluminescent foam, splash droplets & expanding pool ripples at the waterfall base
-      const mistCycle = (t * 1.55 + s * 0.31) % 1;
-      const mx = Math.round((streamX + Math.sin(t * 4.5 + s) * 10) / 4) * 4;
-      const my = Math.round((fallsBot - mistCycle * 34) / 4) * 4;
-      ctx.globalAlpha = (1 - mistCycle) * 0.78;
-      ctx.fillStyle = s % 3 === 0 ? '#fef9c3' : s % 2 === 0 ? '#38bdf8' : '#34d399';
-      ctx.fillRect(mx - 4, my - 2, 8, 4);
+    for (let s = 0; s < 16; s++) {
+      const streamX = fallsLeft + (s / 15) * fallsW + Math.sin(t * 3.2 + s * 1.9) * 5;
+      const dropPhase = (t * (1.25 + (s % 4) * 0.18) + s * 0.21) % 1;
+      const dx = Math.round(streamX);
+      const dy = Math.round(fallsTop + dropPhase * fallsH);
+      const fade = Math.sin(dropPhase * Math.PI);
+      const glow = s % 2 === 0 ? this.glowCyan : this.glowEmerald;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.35;
+      ctx.drawImage(glow, dx - 14, dy - 18, 28, 36);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.85;
+      ctx.fillStyle = s % 3 === 0 ? '#ffffff' : s % 2 === 0 ? '#7dd3fc' : '#6ee7b7';
+      ctx.fillRect(dx - 1, dy - 2, 3, 4);
     }
     ctx.restore();
 
@@ -791,44 +765,38 @@ export class Renderer {
       ctx.drawImage(glow, lx - glowR * 0.68, gy - 24, glowR * 1.36, 88 * l.scale);
       ctx.restore();
 
-      // Pulsing crystal core & detaching bioluminescent spores with micro-glow halos
       ctx.save();
-      const pulseSz = Math.sin(t * 7 + l.seed) > 0 ? 8 : 6;
       ctx.fillStyle = pal[2];
-      ctx.fillRect(Math.round(lx) - pulseSz, Math.round(ly) - pulseSz, pulseSz * 2, pulseSz * 2);
+      ctx.fillRect(Math.round(lx) - 4, Math.round(ly) - 4, 8, 8);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(Math.round(lx) - 3, Math.round(ly) - 3, 6, 6);
+      ctx.fillRect(Math.round(lx) - 2, Math.round(ly) - 2, 4, 4);
 
-      for (let e = 0; e < 10; e++) {
+      for (let e = 0; e < 8; e++) {
         const life = (t * (0.85 + (e % 3) * 0.22) + l.seed + e * 1.19) % 1;
-        const sx = Math.round((lx + Math.sin(t * 4.2 + e * 2.1 + l.seed) * (32 * l.scale)) / 4) * 4;
-        const sy = Math.round((ly + 22 - life * (95 * l.scale)) / 4) * 4;
+        const sx = Math.round(lx + Math.sin(t * 4.2 + e * 2.1 + l.seed) * (32 * l.scale));
+        const sy = Math.round(ly + 22 - life * (95 * l.scale));
         const fade = Math.max(0, 1 - life * 0.85);
-        if (e % 2 === 0) {
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fade * 0.36;
-          ctx.drawImage(glow, sx - 16, sy - 16, 32, 32);
-        }
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.36;
+        ctx.drawImage(glow, sx - 14, sy - 14, 28, 28);
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.94;
+        ctx.globalAlpha = fade * 0.92;
         ctx.fillStyle = e % 3 === 0 ? '#fef08a' : life < 0.45 ? pal[3] : pal[1];
         ctx.fillRect(sx - 2, sy - 2, 4, 4);
       }
       ctx.restore();
     }
 
-    // 4. Drifting Wind-Swept Luminous Sylvan Blossom Petals & Horizontal Plunge-Pool Water Ripples (Zero circles!)
+    // 4. Drifting Wind-Swept Luminous Sylvan Blossom Petals
     ctx.save();
     for (let p = 0; p < 18; p++) {
       const u = (t * (0.14 + (p % 3) * 0.04) + p * 0.17) % 1;
-      const px = Math.round((drawX + drawW * (0.10 + u * 0.80)) / 4) * 4;
-      const py =
-        Math.round(
-          (drawY +
-            drawH * (0.24 + ((p * 0.19 + u * 0.55) % 0.56)) +
-            Math.sin(t * 3.5 + p * 1.7) * 18) /
-            4
-        ) * 4;
+      const px = Math.round(drawX + drawW * (0.10 + u * 0.80));
+      const py = Math.round(
+        drawY +
+          drawH * (0.24 + ((p * 0.19 + u * 0.55) % 0.56)) +
+          Math.sin(t * 3.5 + p * 1.7) * 18
+      );
       const gTex = p % 2 === 0 ? this.glowEmerald : this.glowCyan;
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.32;
@@ -836,16 +804,7 @@ export class Renderer {
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 0.88;
       ctx.fillStyle = p % 3 === 0 ? '#fef08a' : p % 2 === 0 ? '#6ee7b7' : '#7dd3fc';
-      ctx.fillRect(px - 3, py - 2, 6, 4);
-    }
-
-    const poolCx = drawX + drawW * 0.50;
-    for (let r = 0; r < 10; r++) {
-      const rx = Math.round((poolCx + (r - 4.5) * 48 + Math.sin(t * 3 + r) * 12) / 4) * 4;
-      const ry = gy + 6 + (r % 3) * 6;
-      ctx.globalAlpha = 0.48 + 0.28 * Math.sin(t * 4.5 + r);
-      ctx.fillStyle = r % 2 === 0 ? '#34d399' : '#38bdf8';
-      ctx.fillRect(rx - 14, ry, 28, 3);
+      ctx.fillRect(px - 2, py - 2, 4, 3);
     }
     ctx.restore();
   }
@@ -928,9 +887,9 @@ export class Renderer {
         const life = (t * (1.2 + (e % 3) * 0.28) + b.seed + e * 1.31) % 1;
         const spread = (((e * 23) % 11) - 5) * 0.11 * flameW;
         const sway = Math.sin(t * 8.8 + e * 1.7 + b.seed) * (9 * b.scale * life);
-        const ex = Math.round((worldCx + spread * (1 - life * 0.5) + sway) / 4) * 4;
-        const ey = Math.round((worldBot - flameH * (0.22 + life * 1.25)) / 4) * 4;
-        const pxSz = life < 0.35 ? 6 : life < 0.72 ? 4 : 3;
+        const ex = Math.round(worldCx + spread * (1 - life * 0.5) + sway);
+        const ey = Math.round(worldBot - flameH * (0.22 + life * 1.25));
+        const pxSz = life < 0.35 ? 5 : life < 0.72 ? 4 : 3;
         const fade = Math.max(0, 0.96 - life * 0.85);
         if (e % 2 === 0) {
           ctx.globalCompositeOperation = 'lighter';
@@ -952,7 +911,7 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 2. Soft Blood-Crimson & Royal-Purple Eclipse Moon Glow (Zero dotted circles covering the moon!)
+    // 2. Soft Blood-Crimson & Royal-Purple Eclipse Moon Glow
     const moonX = drawX + drawW * 0.50;
     const moonY = drawY + drawH * 0.24;
     ctx.save();
@@ -961,40 +920,26 @@ export class Renderer {
     ctx.drawImage(this.glowViolet, moonX - 250, moonY - 250, 500, 500);
     ctx.restore();
 
-    // 3. Rising Spectral Wraith Wisps with Glowing Comet Tails & Rolling Multi-Layer Graveyard Mist
+    // 3. Rising Spectral Wraith Wisps with Soft Volumetric Glow Halos (Zero rectangular mist bars!)
     ctx.save();
     for (let w = 0; w < 18; w++) {
       const life = (t * (0.44 + (w % 3) * 0.14) + w * 0.67) % 1;
       const wx = drawX + drawW * (0.10 + (w / 17) * 0.80) + Math.sin(t * 3.4 + w * 1.9) * 32;
       const wy = gy + 14 - life * 290;
-      const rx = Math.round(wx / 4) * 4;
-      const ry = Math.round(wy / 4) * 4;
+      const rx = Math.round(wx);
+      const ry = Math.round(wy);
       const fade = Math.sin(life * Math.PI);
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.42;
+      ctx.globalAlpha = fade * 0.44;
       ctx.drawImage(this.glowViolet, rx - 22, ry - 22, 44, 44);
 
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = fade * 0.90;
       ctx.fillStyle = w % 3 === 0 ? '#e11d48' : '#a855f7';
-      ctx.fillRect(rx - 4, ry - 4, 8, 8);
+      ctx.fillRect(rx - 2, ry - 2, 5, 5);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(rx - 2, ry - 2, 4, 4);
-      ctx.fillStyle = '#7e22ce';
-      ctx.fillRect(rx - 2, ry + 4, 4, 8);
-    }
-
-    // Pixel-stepped rolling purple-crimson grave mist ribbons across the obsidian bridge
-    for (let m = 0; m < 16; m++) {
-      const mx =
-        drawX +
-        drawW * 0.08 +
-        ((m * 135 + t * (34 + (m % 4) * 12)) % (drawW * 0.84));
-      const my = gy - 12 + (m % 5) * 9;
-      ctx.globalAlpha = 0.26 + 0.12 * Math.sin(t * 2.8 + m);
-      ctx.fillStyle = m % 3 === 0 ? '#a855f7' : m % 2 === 0 ? '#581c87' : '#9f1239';
-      ctx.fillRect(Math.round(mx / 4) * 4, Math.round(my / 4) * 4, 76, 6);
+      ctx.fillRect(rx - 1, ry - 1, 3, 3);
     }
     ctx.restore();
   }
@@ -1002,7 +947,7 @@ export class Renderer {
   drawClocktowerStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy) {
     const t = this.time;
 
-    // 1. Central Astronomical Stained-Glass Clock Dial with Live Sweeping Clock Hands (No dotted circle rings!)
+    // 1. Central Astronomical Stained-Glass Clock Dial with Sleek Tapered Clock Hands (Zero stepped squares!)
     const clockX = drawX + drawW * 0.50;
     const clockY = drawY + drawH * 0.31;
 
@@ -1015,39 +960,44 @@ export class Renderer {
     ctx.restore();
 
     ctx.save();
-    // Live sweeping pixel-art astronomical clock hands (Hour = Imperial Gold, Minute = Aether Teal, Second = Ticking White-Gold)
     const secAngle = Math.floor(t * 6) * ((Math.PI * 2) / 24) - Math.PI * 0.5;
     const minAngle = t * 0.85 - Math.PI * 0.5;
     const hourAngle = t * 0.18 - Math.PI * 0.25;
-    for (let step = 1; step <= 20; step++) {
-      const r = step * 4.6;
-      const sx = Math.round((clockX + Math.cos(secAngle) * r) / 4) * 4;
-      const sy = Math.round((clockY + Math.sin(secAngle) * r) / 4) * 4;
-      ctx.fillStyle = '#fef08a';
-      ctx.fillRect(sx - 2, sy - 2, 4, 4);
-    }
-    for (let step = 1; step <= 18; step++) {
-      const r = step * 4.6;
-      const mx = Math.round((clockX + Math.cos(minAngle) * r) / 4) * 4;
-      const my = Math.round((clockY + Math.sin(minAngle) * r) / 4) * 4;
-      ctx.fillStyle = step > 14 ? '#5eead4' : '#14b8a6';
-      ctx.fillRect(mx - 3, my - 3, 6, 6);
-    }
-    for (let step = 1; step <= 12; step++) {
-      const r = step * 4.6;
-      const hx = Math.round((clockX + Math.cos(hourAngle) * r) / 4) * 4;
-      const hy = Math.round((clockY + Math.sin(hourAngle) * r) / 4) * 4;
-      ctx.fillStyle = step > 9 ? '#fef08a' : '#eab308';
-      ctx.fillRect(hx - 3, hy - 3, 6, 6);
-    }
+
+    const drawTaperedHand = (angle, len, baseW, col, coreCol) => {
+      ctx.save();
+      ctx.translate(clockX, clockY);
+      ctx.rotate(angle);
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.moveTo(-8, 0);
+      ctx.lineTo(0, -baseW);
+      ctx.lineTo(len, 0);
+      ctx.lineTo(0, baseW);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = coreCol;
+      ctx.beginPath();
+      ctx.moveTo(0, -baseW * 0.45);
+      ctx.lineTo(len * 0.88, 0);
+      ctx.lineTo(0, baseW * 0.45);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    };
+
+    drawTaperedHand(hourAngle, 58, 4.5, '#eab308', '#fef08a');
+    drawTaperedHand(minAngle, 84, 3.5, '#14b8a6', '#5eead4');
+    drawTaperedHand(secAngle, 92, 2.0, '#fde047', '#ffffff');
+
     // Central clockwork pivot boss
     ctx.fillStyle = '#fde047';
-    ctx.fillRect(Math.round(clockX) - 7, Math.round(clockY) - 7, 14, 14);
+    ctx.fillRect(Math.round(clockX) - 5, Math.round(clockY) - 5, 10, 10);
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(Math.round(clockX) - 3, Math.round(clockY) - 3, 6, 6);
+    ctx.fillRect(Math.round(clockX) - 2, Math.round(clockY) - 2, 4, 4);
     ctx.restore();
 
-    // 2. 6 Pulsing Aether-Teal & Imperial-Gold Observatory Lanterns + Anti-Gravity Time-Sand Streams
+    // 2. 6 Pulsing Aether-Teal & Imperial-Gold Observatory Lanterns + Anti-Gravity Time-Sand Motes
     const lanterns = [
       { cx: 0.075, cy: 0.36, scale: 1.20, isTeal: true, seed: 1.3 },
       { cx: 0.176, cy: 0.42, scale: 1.00, isTeal: false, seed: 2.6 },
@@ -1075,8 +1025,8 @@ export class Renderer {
       ctx.save();
       for (let e = 0; e < 10; e++) {
         const life = (t * (1.15 + (e % 3) * 0.25) + l.seed + e * 1.4) % 1;
-        const ex = Math.round((lx + Math.sin(t * 6 + e * 2.1 + l.seed) * (20 * l.scale)) / 4) * 4;
-        const ey = Math.round((ly + 14 - life * (84 * l.scale)) / 4) * 4;
+        const ex = Math.round(lx + Math.sin(t * 6 + e * 2.1 + l.seed) * (20 * l.scale));
+        const ey = Math.round(ly + 14 - life * (84 * l.scale));
         const fade = Math.max(0, 0.95 - life * 0.85);
         if (e % 2 === 0) {
           ctx.globalCompositeOperation = 'lighter';
@@ -1086,51 +1036,27 @@ export class Renderer {
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = fade;
         ctx.fillStyle = life < 0.3 ? '#ffffff' : life < 0.65 ? pal[3] : pal[2];
-        ctx.fillRect(ex - 2, ey - 2, 5, 5);
+        ctx.fillRect(ex - 2, ey - 2, 4, 4);
       }
       ctx.restore();
     }
 
-    // 3. Crackling Pixel Aether-Lightning Arcs Jumping Between the Side Bronze Gears & Central Clock Dial (No circles!)
+    // 3. Rising Anti-Gravity Golden & Teal Time-Sand Motes from the Belfry Floor
     ctx.save();
-    for (let side = -1; side <= 1; side += 2) {
-      const gearCx = drawX + drawW * (side < 0 ? 0.14 : 0.86);
-      const gearCy = drawY + drawH * 0.56;
-      // Periodic Tesla Aether-Arc from side gear toward upper observatory
-      if (Math.sin(t * 7 + side * 2) > 0.15) {
-        const tx = gearCx + side * -95;
-        const ty = gearCy - 110;
-        for (let s = 0; s <= 10; s++) {
-          const u = s / 10;
-          const jx =
-            Math.round(
-              (gearCx + (tx - gearCx) * u + Math.sin(u * Math.PI * 3 + t * 28) * 14) / 4
-            ) * 4;
-          const jy =
-            Math.round(
-              (gearCy + (ty - gearCy) * u + Math.cos(u * Math.PI * 2 + t * 24) * 10) / 4
-            ) * 4;
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = 0.55;
-          ctx.fillStyle = s % 2 === 0 ? '#2dd4bf' : '#fde047';
-          ctx.fillRect(jx - 4, jy - 4, 8, 8);
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = 0.92;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(jx - 2, jy - 2, 4, 4);
-        }
-      }
-    }
-
-    // Rising Anti-Gravity Golden & Teal Time-Sand Streams from the Belfry Floor (No floor oval!)
     const floorCx = drawX + drawW * 0.50;
     for (let n = 0; n < 14; n++) {
       const life = (t * (0.55 + (n % 3) * 0.15) + n * 0.37) % 1;
-      const nx = Math.round((floorCx + (n - 6.5) * 42) / 4) * 4;
-      const ny = Math.round((gy + 12 - life * 85) / 4) * 4;
-      ctx.globalAlpha = (1 - life) * 0.78;
+      const nx = Math.round(floorCx + (n - 6.5) * 42 + Math.sin(t * 2.5 + n) * 8);
+      const ny = Math.round(gy + 12 - life * 85);
+      const fade = Math.sin(life * Math.PI);
+      const glow = n % 2 === 0 ? this.glowGold : this.glowTeal;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.32;
+      ctx.drawImage(glow, nx - 12, ny - 12, 24, 24);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.85;
       ctx.fillStyle = n % 2 === 0 ? '#fde047' : '#2dd4bf';
-      ctx.fillRect(nx - 2, ny - 4, 4, 8);
+      ctx.fillRect(nx - 2, ny - 2, 3, 4);
     }
     ctx.restore();
   }
@@ -1392,51 +1318,19 @@ export class Renderer {
 
   drawVolumetricGodRays(ctx, ww, gy) {
     ctx.save();
+
+    // Soft ambient radial sky-glow per stage (zero hard-edged polygon wedges or stepped rays!)
     ctx.globalCompositeOperation = 'lighter';
-
-    const rayPalettes = {
-      cathedral: [
-        { xTop: ww * 0.5 - 110, xBot: ww * 0.5 - 340, w: 115, col: 'rgba(56, 189, 248, 0.055)' },
-        { xTop: ww * 0.5 - 55, xBot: ww * 0.5 - 220, w: 135, col: 'rgba(234, 179, 8, 0.065)' },
-        { xTop: ww * 0.5 + 15, xBot: ww * 0.5 - 65, w: 175, col: 'rgba(249, 115, 22, 0.075)' },
-        { xTop: ww * 0.5 + 85, xBot: ww * 0.5 + 125, w: 130, col: 'rgba(14, 165, 233, 0.060)' },
-        { xTop: ww * 0.5 + 135, xBot: ww * 0.5 + 290, w: 110, col: 'rgba(250, 204, 21, 0.055)' }
-      ],
-      sylvan: [
-        { xTop: ww * 0.5 - 115, xBot: ww * 0.5 - 350, w: 120, col: 'rgba(52, 211, 153, 0.060)' },
-        { xTop: ww * 0.5 - 65, xBot: ww * 0.5 - 235, w: 145, col: 'rgba(16, 185, 129, 0.070)' },
-        { xTop: ww * 0.5 + 10, xBot: ww * 0.5 - 60, w: 175, col: 'rgba(56, 189, 248, 0.070)' },
-        { xTop: ww * 0.5 + 85, xBot: ww * 0.5 + 145, w: 135, col: 'rgba(52, 211, 153, 0.065)' },
-        { xTop: ww * 0.5 + 140, xBot: ww * 0.5 + 310, w: 115, col: 'rgba(250, 204, 21, 0.050)' }
-      ],
-      boneyard: [
-        { xTop: ww * 0.5 - 110, xBot: ww * 0.5 - 340, w: 115, col: 'rgba(168, 85, 247, 0.060)' },
-        { xTop: ww * 0.5 - 60, xBot: ww * 0.5 - 225, w: 140, col: 'rgba(147, 51, 234, 0.075)' },
-        { xTop: ww * 0.5 + 15, xBot: ww * 0.5 - 65, w: 170, col: 'rgba(225, 29, 72, 0.070)' },
-        { xTop: ww * 0.5 + 90, xBot: ww * 0.5 + 140, w: 130, col: 'rgba(168, 85, 247, 0.065)' },
-        { xTop: ww * 0.5 + 140, xBot: ww * 0.5 + 305, w: 110, col: 'rgba(244, 63, 94, 0.055)' }
-      ],
-      clocktower: [
-        { xTop: ww * 0.5 - 110, xBot: ww * 0.5 - 340, w: 115, col: 'rgba(45, 212, 191, 0.060)' },
-        { xTop: ww * 0.5 - 55, xBot: ww * 0.5 - 230, w: 135, col: 'rgba(20, 184, 166, 0.070)' },
-        { xTop: ww * 0.5 + 20, xBot: ww * 0.5 - 70, w: 170, col: 'rgba(234, 179, 8, 0.075)' },
-        { xTop: ww * 0.5 + 90, xBot: ww * 0.5 + 135, w: 125, col: 'rgba(45, 212, 191, 0.065)' },
-        { xTop: ww * 0.5 + 135, xBot: ww * 0.5 + 295, w: 110, col: 'rgba(250, 204, 21, 0.055)' }
-      ]
-    };
-
-    const rays = rayPalettes[this.stageId] || rayPalettes.cathedral;
-    for (const r of rays) {
-      const sway = Math.sin(this.time * 1.1 + r.xTop) * 24;
-      ctx.fillStyle = r.col;
-      ctx.beginPath();
-      ctx.moveTo(r.xTop, gy - 580);
-      ctx.lineTo(r.xTop + r.w * 0.65, gy - 580);
-      ctx.lineTo(r.xBot + r.w + sway, gy + 45);
-      ctx.lineTo(r.xBot + sway, gy + 45);
-      ctx.closePath();
-      ctx.fill();
-    }
+    ctx.globalAlpha = 0.22 + 0.05 * Math.sin(this.time * 1.4);
+    const skyGlow =
+      this.stageId === 'sylvan'
+        ? this.glowEmerald
+        : this.stageId === 'boneyard'
+          ? this.glowViolet
+          : this.stageId === 'clocktower'
+            ? this.glowTeal
+            : this.glowGold;
+    ctx.drawImage(skyGlow, ww * 0.5 - 380, gy - 540, 760, 480);
 
     const moteColors =
       this.stageId === 'sylvan'
@@ -1455,21 +1349,18 @@ export class Renderer {
       const col = m.isBlue ? moteColors[0] : moteColors[1];
       const glowTex = this.getGlowForColor(col);
       const s = m.size;
-      const sx = Math.round(mx / 2) * 2;
-      const sy = Math.round(my / 2) * 2;
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = alpha * 0.42;
-      ctx.drawImage(glowTex, sx - 16, sy - 16, 32, 32);
+      ctx.globalAlpha = alpha * 0.45;
+      ctx.drawImage(glowTex, mx - 16, my - 16, 32, 32);
 
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = alpha;
       ctx.fillStyle = col;
-      ctx.fillRect(sx, sy, s, s);
-      if (pulse > 0.72) {
+      ctx.fillRect(mx, my, s, s);
+      if (pulse > 0.76) {
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(sx + 1, sy - 2, 2, s + 4);
-        ctx.fillRect(sx - 2, sy + 1, s + 4, 2);
+        ctx.fillRect(mx + 1, my + 1, Math.max(1, s - 2), Math.max(1, s - 2));
       }
     }
     ctx.restore();
@@ -1480,63 +1371,42 @@ export class Renderer {
     const fade = Math.min(1, this.stageEventTimer / 1.5);
     ctx.save();
 
-    // Helper for drawing a multi-layered glowing HD-2D pixel particle with optional tail
-    const drawGlowingPixel = (px, py, size, coreCol, midCol, glowTex, glowR, alpha, tailDx = 0, tailDy = 0) => {
-      const rx = Math.round(px / 3) * 3;
-      const ry = Math.round(py / 3) * 3;
+    // Helper for drawing a luminous HD-2D particle with a smooth tapered streak (zero stepped square tails!)
+    const drawGlowingParticle = (px, py, size, coreCol, midCol, glowTex, glowR, alpha, tailDx = 0, tailDy = 0) => {
       if (glowTex && glowR > 0) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = alpha * 0.42;
-        ctx.drawImage(glowTex, rx - glowR, ry - glowR, glowR * 2, glowR * 2);
+        ctx.globalAlpha = alpha * 0.46;
+        ctx.drawImage(glowTex, px - glowR, py - glowR, glowR * 2, glowR * 2);
+      }
+      if (tailDx !== 0 || tailDy !== 0) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha * 0.55;
+        ctx.strokeStyle = midCol;
+        ctx.lineWidth = Math.max(1.5, size * 0.55);
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(px, py);
+        ctx.lineTo(px + tailDx * 3.2, py + tailDy * 3.2);
+        ctx.stroke();
       }
       ctx.globalCompositeOperation = 'source-over';
-      if (tailDx !== 0 || tailDy !== 0) {
-        for (let step = 3; step >= 1; step--) {
-          const tx = Math.round((rx + tailDx * step) / 3) * 3;
-          const ty = Math.round((ry + tailDy * step) / 3) * 3;
-          const tSz = Math.max(2, size - step);
-          ctx.globalAlpha = alpha * (1 - step * 0.24);
-          ctx.fillStyle = midCol;
-          ctx.fillRect(tx - tSz * 0.5, ty - tSz * 0.5, tSz, tSz);
-        }
-      }
       ctx.globalAlpha = alpha * 0.95;
       ctx.fillStyle = midCol;
-      ctx.fillRect(rx - size * 0.5 - 1, ry - size * 0.5 - 1, size + 2, size + 2);
+      ctx.fillRect(px - size * 0.5, py - size * 0.5, size, size);
       ctx.fillStyle = coreCol;
-      ctx.fillRect(rx - size * 0.5 + 1, ry - size * 0.5 + 1, Math.max(2, size - 2), Math.max(2, size - 2));
+      ctx.fillRect(px - size * 0.25, py - size * 0.25, Math.max(2, size * 0.5), Math.max(2, size * 0.5));
     };
 
     if (this.stageId === 'cathedral') {
-      // ★ CATHEDRAL PHENOMENON: SOLAR ECLIPSE EMBER RAIN & SANCTUARY SUNBEAMS (100% Pure Particles & Light!)
-      // 1. Soft Diagonal Volumetric Sunbeam Shafts slanting from the Rose Window across the Nave
+      // ★ CATHEDRAL PHENOMENON: SOLAR ECLIPSE EMBER RAIN (Pure Particles & Radial Bloom — Zero Polygon Rays!)
       const originX = ww * 0.504;
       const originY = gy - 380;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.38 * fade;
-      ctx.drawImage(this.glowGold, originX - 260, originY - 220, 520, 440);
+      ctx.globalAlpha = 0.42 * fade;
+      ctx.drawImage(this.glowGold, originX - 320, originY - 240, 640, 480);
+      ctx.globalAlpha = 0.28 * fade;
+      ctx.drawImage(this.glowOrange, ww * 0.5 - 480, gy - 220, 960, 260);
 
-      const shafts = [-380, -210, -60, 90, 250, 410];
-      for (let i = 0; i < shafts.length; i++) {
-        const botX = originX + shafts[i] + Math.sin(t * 1.4 + i) * 22;
-        const pulse = 0.65 + 0.35 * Math.sin(t * 3.8 + i * 1.2);
-        const grad = ctx.createLinearGradient(originX, originY, botX, gy);
-        const isGold = i % 2 === 0;
-        grad.addColorStop(0, isGold ? 'rgba(250, 204, 21, 0.16)' : 'rgba(56, 189, 248, 0.14)');
-        grad.addColorStop(0.7, isGold ? 'rgba(249, 115, 22, 0.08)' : 'rgba(14, 165, 233, 0.07)');
-        grad.addColorStop(1, 'rgba(250, 204, 21, 0)');
-        ctx.globalAlpha = fade * pulse;
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(originX - 18, originY);
-        ctx.lineTo(originX + 18, originY);
-        ctx.lineTo(botX + 54, gy + 10);
-        ctx.lineTo(botX - 54, gy + 10);
-        ctx.closePath();
-        ctx.fill();
-      }
-
-      // 2. 64 Cascading Solar-Gold & Frost-Cyan Incandescent Ember Particles & Twinkling Sanctuary Cross-Sparks
       for (let p = 0; p < 64; p++) {
         const seed = p * 1.37;
         const cycle = (t * (0.38 + (p % 5) * 0.07) + seed) % 1;
@@ -1550,23 +1420,15 @@ export class Renderer {
         const glow = isFrost ? this.glowCyan : p % 2 === 0 ? this.glowGold : this.glowOrange;
         const sz = p % 3 === 0 ? 5 : 4;
 
-        drawGlowingPixel(px, py, sz, '#ffffff', midCol, glow, 22, pAlpha, 0, -5);
-
-        // Twinkling 1-pixel diamond cross-glint on larger embers
-        if (p % 5 === 0 && Math.sin(t * 9 + p) > 0.2) {
-          const rx = Math.round(px / 3) * 3;
-          const ry = Math.round(py / 3) * 3;
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = pAlpha;
-          ctx.fillStyle = '#fef08a';
-          ctx.fillRect(rx - 7, ry - 1, 14, 2);
-          ctx.fillRect(rx - 1, ry - 7, 2, 14);
-        }
+        drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 22, pAlpha, 0, -5);
       }
     } else if (this.stageId === 'sylvan') {
-      // ★ SYLVAN PHENOMENON: ASTRAL STARFALL METEOR SHOWER & BIOLUMINESCENT FIREFLY SWARM (100% Pure Particles!)
-      // 1. 18 Diagonal Shooting Starfall Meteors with Tapered Pixel Comet Tails & Starlight Flares
-      for (let s = 0; s < 18; s++) {
+      // ★ SYLVAN PHENOMENON: ASTRAL STARFALL METEOR SHOWER & BIOLUMINESCENT FIREFLY SWARM (Smooth Comet Streaks!)
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.34 * fade;
+      ctx.drawImage(this.glowEmerald, ww * 0.5 - 460, gy - 420, 920, 440);
+
+      for (let s = 0; s < 16; s++) {
         const speed = 0.55 + (s % 4) * 0.12;
         const prog = (t * speed + s * 0.19) % 1;
         const startX = 60 + ((s * 139) % 960);
@@ -1578,28 +1440,9 @@ export class Renderer {
         const col = isCyan ? '#38bdf8' : '#34d399';
         const glow = isCyan ? this.glowCyan : this.glowEmerald;
 
-        // 8-segment pixel comet tail
-        for (let tail = 7; tail >= 1; tail--) {
-          const tx = Math.round((sx - tail * 7) / 3) * 3;
-          const ty = Math.round((sy - tail * 11) / 3) * 3;
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = sAlpha * (1 - tail / 8) * 0.85;
-          ctx.fillStyle = tail < 3 ? '#fef08a' : col;
-          const tSz = tail < 3 ? 4 : 3;
-          ctx.fillRect(tx, ty, tSz, tSz);
-        }
-
-        // Glowing meteor head + 4-pointed starlight pixel flare
-        drawGlowingPixel(sx, sy, 5, '#ffffff', '#fef08a', glow, 26, sAlpha);
-        const hx = Math.round(sx / 3) * 3;
-        const hy = Math.round(sy / 3) * 3;
-        ctx.globalAlpha = sAlpha;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(hx - 8, hy - 1, 16, 2);
-        ctx.fillRect(hx - 1, hy - 8, 2, 16);
+        drawGlowingParticle(sx, sy, 5, '#ffffff', col, glow, 26, sAlpha, -12, -19);
       }
 
-      // 2. 48 Swirling Bioluminescent Forest Fireflies & Floating Emerald Wind-Sparks
       for (let f = 0; f < 48; f++) {
         const life = (t * (0.28 + (f % 4) * 0.06) + f * 0.31) % 1;
         const fx =
@@ -1611,33 +1454,15 @@ export class Renderer {
         const isGold = f % 4 === 0;
         const midCol = isGold ? '#fde047' : f % 2 === 0 ? '#34d399' : '#38bdf8';
         const glow = isGold ? this.glowGold : f % 2 === 0 ? this.glowEmerald : this.glowCyan;
-        drawGlowingPixel(fx, fy, 4, '#ffffff', midCol, glow, 20, fAlpha, -4, 3);
+        drawGlowingParticle(fx, fy, 4, '#ffffff', midCol, glow, 20, fAlpha, -3, 2);
       }
     } else if (this.stageId === 'boneyard') {
-      // ★ BONEYARD PHENOMENON: BLOOD MOON VOLUMETRIC SHAFTS & ABYSSAL SOUL-EMBER ASCENSION (100% Pure Particles & Light!)
-      // 1. 5 Volumetric Crimson-Violet Blood-Moon Light Shafts Streaming from the Necropolis Sky
+      // ★ BONEYARD PHENOMENON: ABYSSAL SOUL-EMBER ASCENSION (Pure Rising Particles & Radial Mist — Zero Polygon Shafts!)
       ctx.globalCompositeOperation = 'lighter';
-      for (let b = 0; b < 5; b++) {
-        const topX = ww * 0.5 + (b - 2) * 95;
-        const botX = ww * (0.14 + b * 0.18) + Math.sin(t * 1.6 + b * 1.3) * 42;
-        const beamW = 85 + (b % 2) * 30;
-        const bAlpha = fade * (0.12 + 0.05 * Math.sin(t * 2.8 + b));
-        const grad = ctx.createLinearGradient(topX, gy - 540, botX, gy + 15);
-        grad.addColorStop(0, `rgba(225, 29, 72, ${bAlpha * 1.35})`);
-        grad.addColorStop(0.55, `rgba(168, 85, 247, ${bAlpha})`);
-        grad.addColorStop(1, 'rgba(168, 85, 247, 0)');
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(topX - beamW * 0.32, gy - 540);
-        ctx.lineTo(topX + beamW * 0.32, gy - 540);
-        ctx.lineTo(botX + beamW * 0.95, gy + 15);
-        ctx.lineTo(botX - beamW * 0.95, gy + 15);
-        ctx.closePath();
-        ctx.fill();
-      }
+      ctx.globalAlpha = 0.36 * fade;
+      ctx.drawImage(this.glowViolet, ww * 0.5 - 480, gy - 320, 960, 360);
 
-      // 2. 84 Rising Crimson & Violet Abyssal Soul-Flame Wisps & Twinkling Diamond Embers
-      for (let w = 0; w < 84; w++) {
+      for (let w = 0; w < 72; w++) {
         const cycle = (t * (0.38 + (w % 5) * 0.07) + w * 0.23) % 1;
         const baseX = 90 + ((w * 79) % (ww - 180));
         const swirlX = Math.sin(cycle * Math.PI * 3 + t * 3.8 + w) * (22 + (w % 3) * 10);
@@ -1646,52 +1471,17 @@ export class Renderer {
         const wAlpha = fade * Math.sin(cycle * Math.PI);
         const isCrimson = w % 3 === 0;
         const midCol = isCrimson ? '#f43f5e' : w % 2 === 0 ? '#e879f9' : '#a855f7';
-        const sz = w % 4 === 0 ? 6 : 4;
+        const sz = w % 4 === 0 ? 5 : 4;
 
-        drawGlowingPixel(wx, wy, sz, '#ffffff', midCol, this.glowViolet, 26, wAlpha, -swirlX * 0.1, 7);
-
-        // Twinkling 4-point diamond soul-glint on every 5th ember
-        if (w % 5 === 0 && Math.sin(t * 9 + w) > 0.25) {
-          const rx = Math.round(wx / 3) * 3;
-          const ry = Math.round(wy / 3) * 3;
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = wAlpha;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(rx - 6, ry - 1, 12, 2);
-          ctx.fillRect(rx - 1, ry - 6, 2, 12);
-        }
+        drawGlowingParticle(wx, wy, sz, '#ffffff', midCol, this.glowViolet, 24, wAlpha, -swirlX * 0.08, 6);
       }
     } else if (this.stageId === 'clocktower') {
-      // ★ CLOCKTOWER PHENOMENON: CELESTIAL OBSERVATORY SHAFTS & ANTI-GRAVITY TIME-SAND VORTEX (100% Pure Particles & Light!)
-      // 1. 5 Volumetric Golden & Aether-Teal Observatory Light Shafts from the Great Clock Dial
+      // ★ CLOCKTOWER PHENOMENON: ANTI-GRAVITY TIME-SAND VORTEX (Pure Helical Time-Sand Particles — Zero Polygon Shafts!)
       ctx.globalCompositeOperation = 'lighter';
-      for (let b = 0; b < 5; b++) {
-        const topX = ww * 0.5 + (b - 2) * 85;
-        const botX = ww * (0.15 + b * 0.175) + Math.cos(t * 1.5 + b * 1.2) * 38;
-        const beamW = 80 + (b % 2) * 28;
-        const bAlpha = fade * (0.12 + 0.05 * Math.sin(t * 3.0 + b));
-        const grad = ctx.createLinearGradient(topX, gy - 530, botX, gy + 15);
-        if (b % 2 === 0) {
-          grad.addColorStop(0, `rgba(253, 224, 71, ${bAlpha * 1.3})`);
-          grad.addColorStop(0.55, `rgba(45, 212, 191, ${bAlpha})`);
-          grad.addColorStop(1, 'rgba(45, 212, 191, 0)');
-        } else {
-          grad.addColorStop(0, `rgba(45, 212, 191, ${bAlpha * 1.3})`);
-          grad.addColorStop(0.55, `rgba(253, 224, 71, ${bAlpha})`);
-          grad.addColorStop(1, 'rgba(253, 224, 71, 0)');
-        }
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.moveTo(topX - beamW * 0.3, gy - 530);
-        ctx.lineTo(topX + beamW * 0.3, gy - 530);
-        ctx.lineTo(botX + beamW * 0.9, gy + 15);
-        ctx.lineTo(botX - beamW * 0.9, gy + 15);
-        ctx.closePath();
-        ctx.fill();
-      }
+      ctx.globalAlpha = 0.36 * fade;
+      ctx.drawImage(this.glowTeal, ww * 0.5 - 460, gy - 420, 920, 440);
 
-      // 2. 84 Levitating Golden & Aether-Teal Time-Sand Particles Rising in Helical Streams
-      for (let p = 0; p < 84; p++) {
+      for (let p = 0; p < 72; p++) {
         const cycle = (t * (0.40 + (p % 4) * 0.08) + p * 0.21) % 1;
         const streamX = 100 + ((p * 73) % (ww - 200));
         const helix = Math.sin(cycle * Math.PI * 3.5 + t * 4.5 + p) * 24;
@@ -1701,20 +1491,9 @@ export class Renderer {
         const isGold = p % 2 === 0;
         const midCol = isGold ? '#fde047' : '#2dd4bf';
         const glow = isGold ? this.glowGold : this.glowTeal;
-        const sz = p % 3 === 0 ? 6 : 4;
+        const sz = p % 3 === 0 ? 5 : 4;
 
-        drawGlowingPixel(px, py, sz, '#ffffff', midCol, glow, 24, pAlpha, 0, 7);
-
-        // Twinkling 4-point diamond star-glint on every 4th time-sand grain
-        if (p % 4 === 0 && Math.cos(t * 10 + p) > 0.22) {
-          const rx = Math.round(px / 3) * 3;
-          const ry = Math.round(py / 3) * 3;
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = pAlpha;
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(rx - 6, ry - 1, 12, 2);
-          ctx.fillRect(rx - 1, ry - 6, 2, 12);
-        }
+        drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 22, pAlpha, 0, 6);
       }
     }
 
@@ -1885,189 +1664,230 @@ export class Renderer {
     ctx.fillStyle = botG;
     ctx.fillRect(0, h * 0.80, w, h * 0.20);
 
-    // 1. Borderless Feathered Stage Phenomenon Callout (Upper Sky below HUD)
+    // 1. High-Impact Stage Phenomenon & Blessing Announcement (Upper Center Sky — Crystal-Clear Blessing Callout!)
     if (this.stageEventBannerTimer > 0 && !(this.cutInTimer > 0)) {
-      const p = 1 - this.stageEventBannerTimer / 2.8;
-      const alpha = p < 0.12 ? p / 0.12 : p > 0.82 ? (1 - p) / 0.18 : 1;
+      const maxT = 3.8;
+      const p = Math.max(0, Math.min(1, 1 - this.stageEventBannerTimer / maxT));
+      const alpha = p < 0.08 ? p / 0.08 : p > 0.84 ? (1 - p) / 0.16 : 1;
+      const slamScale = 1 + Math.max(0, 1 - p / 0.12) * 0.28;
       const cx = Math.round(w * 0.5);
-      const cy = Math.round(h * 0.16);
-      const rx = Math.min(w * 0.44, 340);
-      const ry = 38;
+      const cy = Math.round(h * 0.185);
+      const rx = Math.min(w * 0.48, 490);
+      const ry = this.isMobile ? 48 : 66;
+      const evCol = this.stageEventColor || '#facc15';
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-
-      // Soft radial feathered shadow veil (fades smoothly to 0 on all edges, zero box!)
-      ctx.save();
       ctx.translate(cx, cy);
+      ctx.scale(slamScale, slamScale);
+
+      // Soft radial feathered obsidian-elemental veil (fades smoothly to 0 on all edges, zero box!)
+      ctx.save();
       ctx.scale(rx, ry);
-      const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
-      veil.addColorStop(0, 'rgba(4, 7, 15, 0.78)');
-      veil.addColorStop(0.65, 'rgba(4, 7, 15, 0.42)');
-      veil.addColorStop(1, 'rgba(4, 7, 15, 0)');
+      const veil = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1.0);
+      veil.addColorStop(0, 'rgba(3, 6, 15, 0.90)');
+      veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.64)');
+      veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
       ctx.fillStyle = veil;
       ctx.beginPath();
       ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
-      // Tapered 2px elemental light filament between title and subtitle
-      const lineGrad = ctx.createLinearGradient(cx - rx * 0.75, cy, cx + rx * 0.75, cy);
+      // Anamorphic elemental light wash behind the Blessing headline
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.scale(rx * 0.82, ry * 0.48);
+      const blessAura = ctx.createRadialGradient(0, 0.2, 0.05, 0, 0.2, 1.0);
+      blessAura.addColorStop(0, evCol);
+      blessAura.addColorStop(0.55, evCol);
+      blessAura.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.globalAlpha = alpha * 0.28;
+      ctx.fillStyle = blessAura;
+      ctx.beginPath();
+      ctx.arc(0, 0.2, 1.0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Tapered 3px elemental horizon flare between Phenomenon Title and Blessing Callout
+      const lineGrad = ctx.createLinearGradient(-rx * 0.85, 0, rx * 0.85, 0);
       lineGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-      lineGrad.addColorStop(0.25, this.stageEventColor || '#facc15');
+      lineGrad.addColorStop(0.2, evCol);
       lineGrad.addColorStop(0.5, '#ffffff');
-      lineGrad.addColorStop(0.75, this.stageEventColor || '#facc15');
+      lineGrad.addColorStop(0.8, evCol);
       lineGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
       ctx.fillStyle = lineGrad;
-      ctx.fillRect(cx - rx * 0.75, cy + 1, rx * 1.5, 2);
+      ctx.fillRect(-rx * 0.85, -3, rx * 1.7, 3);
 
+      // Center diamond star-glint on the divider
+      ctx.fillStyle = '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(0, -9);
+      ctx.lineTo(9, -1.5);
+      ctx.lineTo(0, 6);
+      ctx.lineTo(-9, -1.5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Top Line: Phenomenon Title
       ctx.textAlign = 'center';
-      ctx.font = `${this.isMobile ? 8 : 11}px "Press Start 2P", monospace`;
+      ctx.font = `${this.isMobile ? 9 : 13}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', cx + 2, cy - 7);
-      ctx.fillStyle = this.stageEventColor || '#facc15';
-      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', cx, cy - 9);
+      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', 2, -14);
+      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', -2, -14);
+      ctx.fillStyle = evCol;
+      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', 0, -16);
 
-      ctx.font = `${this.isMobile ? 6 : 8}px "Press Start 2P", monospace`;
+      // Bottom Line: HUGE, Unmistakable Active Blessing Headline
+      const blessText = this.stageEventSubtitle || '';
+      ctx.font = `${this.isMobile ? 11 : 18}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(this.stageEventSubtitle || '', cx + 2, cy + 19);
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillText(this.stageEventSubtitle || '', cx, cy + 17);
+      ctx.fillText(blessText, 3, 27);
+      ctx.fillText(blessText, -2, 26);
+      ctx.fillText(blessText, 0, 28);
+      ctx.fillStyle = evCol;
+      ctx.fillText(blessText, 1, 25);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillText(blessText, 0, 24);
       ctx.restore();
     }
 
-    // 2. Borderless HD-2D Ultimate Cut-In Light Ribbon (Feathered Aura + Soft-Masked Portrait + Floating Typography)
+    // 2. Portrait-Free, High-Impact Anamorphic Ultimate Overdrive Slash-Flare & Spinning Champion Runic Sigil
     if (this.cutInTimer > 0) {
       const p = 1 - this.cutInTimer / (this.cutInMaxTimer || 1.05);
-      const alpha = p < 0.08 ? p / 0.08 : p > 0.82 ? (1 - p) / 0.18 : 1;
-      const stripH = this.isMobile ? 96 : 144;
-      const stripY = Math.round(h * 0.125);
-      const stripW = Math.min(w - 16, 1080);
-      const stripX = Math.round((w - stripW) * 0.5);
+      const alpha = p < 0.07 ? p / 0.07 : p > 0.82 ? (1 - p) / 0.18 : 1;
+      const slamScale = 1 + Math.max(0, 1 - p / 0.14) * 0.42;
+      const stripH = this.isMobile ? 104 : 154;
+      const stripY = Math.round(h * 0.13);
+      const stripW = Math.min(w - 16, 1120);
       const cy = stripY + Math.round(stripH * 0.5);
       const cx = Math.round(w * 0.5);
-      const assets = PixelForge.initAssets();
-      const heroAsset = assets[this.cutInHeroId];
-      const portImg = heroAsset?.portrait;
-      const sheetImg = heroAsset?.sheet;
       const elemCol = this.cutInColor || '#38bdf8';
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-      // Soft-feathered elliptical dark & elemental light wash (fades to 0 alpha on top, bottom, left, right—NO BOX!)
+      // 1) Soft-feathered elliptical dark & elemental horizon wash (fades to 0 alpha on all sides — ZERO BOX!)
       ctx.save();
       ctx.translate(cx, cy);
-      ctx.scale(stripW * 0.54, stripH * 0.62);
-      const ribbonVeil = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1.0);
-      ribbonVeil.addColorStop(0, 'rgba(3, 6, 14, 0.84)');
-      ribbonVeil.addColorStop(0.58, 'rgba(6, 11, 24, 0.52)');
-      ribbonVeil.addColorStop(1, 'rgba(3, 6, 14, 0)');
+      ctx.scale(stripW * 0.56, stripH * 0.64);
+      const ribbonVeil = ctx.createRadialGradient(0, 0, 0.06, 0, 0, 1.0);
+      ribbonVeil.addColorStop(0, 'rgba(2, 5, 14, 0.88)');
+      ribbonVeil.addColorStop(0.58, 'rgba(5, 10, 24, 0.54)');
+      ribbonVeil.addColorStop(1, 'rgba(2, 5, 14, 0)');
       ctx.fillStyle = ribbonVeil;
       ctx.beginPath();
       ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
-      // Soft-feathered elliptical elemental aura (zero rectangular top/bottom band edges!)
+      // 2) Anamorphic Elemental Aura Bloom across the horizon
       ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
       ctx.translate(cx, cy);
-      ctx.scale(stripW * 0.44, stripH * 0.38);
-      const elemAura = ctx.createRadialGradient(0, 0, 0.05, 0, 0, 1.0);
-      elemAura.addColorStop(0, elemCol);
-      elemAura.addColorStop(0.55, elemCol);
+      ctx.scale(stripW * 0.48, stripH * 0.42);
+      const elemAura = ctx.createRadialGradient(0, 0, 0.04, 0, 0, 1.0);
+      elemAura.addColorStop(0, '#ffffff');
+      elemAura.addColorStop(0.28, elemCol);
+      elemAura.addColorStop(0.65, elemCol);
       elemAura.addColorStop(1, 'rgba(0, 0, 0, 0)');
-      ctx.globalAlpha = alpha * 0.20;
+      ctx.globalAlpha = alpha * 0.34;
       ctx.fillStyle = elemAura;
       ctx.beginPath();
       ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
 
-      // Single 2px tapered horizontal light filament between subtitle and ultimate title
-      const glowStream = ctx.createLinearGradient(stripX + 80, cy, stripX + stripW - 80, cy);
-      glowStream.addColorStop(0, 'rgba(255, 255, 255, 0)');
-      glowStream.addColorStop(0.25, elemCol);
-      glowStream.addColorStop(0.5, '#fde047');
-      glowStream.addColorStop(0.75, elemCol);
-      glowStream.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      // 3) Spinning Sacred / Arcane Octagram Runic Crest Behind the Typography (Pure Geometric Vector Light — No Portrait!)
       ctx.save();
-      ctx.globalAlpha = alpha * 0.78;
-      ctx.fillStyle = glowStream;
-      ctx.fillRect(stripX + 80, cy - 2, stripW - 160, 2);
-      ctx.restore();
-
-      // Blazing High-Velocity Elemental Speedlines (concentrated toward vertical center, fading at edges)
-      for (let s = 0; s < 22; s++) {
-        const lineW = 70 + (s % 4) * 48;
-        const sx = stripX + 60 + ((s * 97 + Math.round(this.time * 1450)) % Math.max(120, stripW - lineW - 120));
-        const syOffset = ((s * 13) % Math.round(stripH * 0.64)) - Math.round(stripH * 0.32);
-        const sy = cy + syOffset;
-        const edgeFade = 1 - Math.abs(syOffset) / (stripH * 0.36);
-        ctx.fillStyle = s % 3 === 0 ? '#ffffff' : s % 2 === 0 ? elemCol : '#facc15';
-        ctx.globalAlpha = Math.max(0, alpha * edgeFade * (s % 3 === 0 ? 0.55 : 0.32));
-        ctx.fillRect(sx, sy, lineW, s % 3 === 0 ? 3 : 2);
-      }
-
-      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-      const portSize = stripH - 8;
-      const isLeft = this.cutInFacing >= 0;
-      const portX = isLeft ? stripX + 24 : stripX + stripW - portSize - 24;
-      const portY = cy - Math.round(portSize * 0.5);
-      const portCx = portX + Math.round(portSize * 0.5);
-      const portCy = portY + Math.round(portSize * 0.5);
-      const portR = Math.round(portSize * 0.48);
-
-      // 1) Borderless Circular-Masked HD-2D Portrait with Soft Elemental Halo (NO SQUARE BOX!)
-      if (portImg && portImg.complete && portImg.naturalWidth) {
+      ctx.translate(cx, cy);
+      ctx.globalCompositeOperation = 'lighter';
+      const sigilR = (this.isMobile ? 48 : 72) * (0.92 + 0.12 * Math.sin(p * Math.PI));
+      for (let layer = 0; layer < 2; layer++) {
         ctx.save();
-        const halo = ctx.createRadialGradient(portCx, portCy, portR * 0.4, portCx, portCy, portR * 1.32);
-        halo.addColorStop(0, elemCol);
-        halo.addColorStop(0.6, 'rgba(250, 204, 21, 0.35)');
-        halo.addColorStop(1, 'rgba(0, 0, 0, 0)');
-        ctx.fillStyle = halo;
+        ctx.rotate((layer === 0 ? 1 : -1) * (this.time * 2.4 + p * 3.2) + (layer * Math.PI) / 4);
+        ctx.strokeStyle = layer === 0 ? elemCol : '#fde047';
+        ctx.lineWidth = layer === 0 ? 2.5 : 1.8;
+        ctx.globalAlpha = alpha * (layer === 0 ? 0.58 : 0.44);
         ctx.beginPath();
-        ctx.arc(portCx, portCy, portR * 1.32, 0, Math.PI * 2);
-        ctx.fill();
-
-        ctx.beginPath();
-        ctx.arc(portCx, portCy, portR, 0, Math.PI * 2);
-        ctx.clip();
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(portImg, portX, portY, portSize, portSize);
+        for (let pt = 0; pt < 8; pt++) {
+          const a = (pt * Math.PI) / 4;
+          const r = pt % 2 === 0 ? sigilR : sigilR * 0.42;
+          const sx = Math.cos(a) * r;
+          const sy = Math.sin(a) * r;
+          if (pt === 0) ctx.moveTo(sx, sy);
+          else ctx.lineTo(sx, sy);
+        }
+        ctx.closePath();
+        ctx.stroke();
         ctx.restore();
       }
+      ctx.restore();
 
-      // 2) Giant Action-Pose Character Sprite on Opposite Side (with soft radial backlight, no box!)
-      if (!this.isMobile && sheetImg && sheetImg.complete && sheetImg.naturalWidth) {
-        const cell = Math.round(sheetImg.naturalWidth / 8) || 208;
-        const actionSize = Math.round(stripH * 1.42);
-        const actionX = isLeft ? stripX + stripW - actionSize - 24 : stripX + 24;
-        const actionY = cy - Math.round(actionSize * 0.5) - 6;
-        ctx.imageSmoothingEnabled = false;
-        ctx.drawImage(sheetImg, 2 * cell, 2 * cell, cell, cell, actionX, actionY, actionSize, actionSize);
+      // 4) Blazing Diagonal & Horizontal Anamorphic Slash-Streaks Across the Sky
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const slashSpan = stripW * 0.46;
+      const mainSlash = ctx.createLinearGradient(cx - slashSpan, cy, cx + slashSpan, cy);
+      mainSlash.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      mainSlash.addColorStop(0.22, elemCol);
+      mainSlash.addColorStop(0.5, '#ffffff');
+      mainSlash.addColorStop(0.78, elemCol);
+      mainSlash.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.globalAlpha = alpha * 0.92;
+      ctx.fillStyle = mainSlash;
+      ctx.beginPath();
+      ctx.moveTo(cx - slashSpan, cy);
+      ctx.lineTo(cx, cy - 5);
+      ctx.lineTo(cx + slashSpan, cy);
+      ctx.lineTo(cx, cy + 5);
+      ctx.closePath();
+      ctx.fill();
+
+      // Flanking Left & Right Wing-Slash Filaments
+      for (const side of [-1, 1]) {
+        const wingX = cx + side * (this.isMobile ? 155 : 295);
+        ctx.fillStyle = '#fde047';
+        ctx.globalAlpha = alpha * 0.78;
+        ctx.beginPath();
+        ctx.moveTo(wingX, cy - 22);
+        ctx.lineTo(wingX + side * 18, cy);
+        ctx.lineTo(wingX, cy + 22);
+        ctx.lineTo(wingX - side * 8, cy);
+        ctx.closePath();
+        ctx.fill();
       }
+      ctx.restore();
 
-      // 3) Floating Arcade Ultimate Callout Typography with Deep Pixel Drop-Shadow
+      // 5) Scale-Slam Multi-Layered Ultimate Callout Typography (Zero Portrait, 100% Visual Impact!)
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(slamScale, slamScale);
       ctx.textAlign = 'center';
-      const textCx = Math.round(w * 0.5);
-      const topTy = cy - (this.isMobile ? 12 : 18);
-      const botTy = cy + (this.isMobile ? 20 : 30);
 
-      ctx.font = `${this.isMobile ? 8 : 11}px "Press Start 2P", monospace`;
+      const topTy = -(this.isMobile ? 14 : 20);
+      const botTy = this.isMobile ? 22 : 32;
+
+      ctx.font = `${this.isMobile ? 8 : 12}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(`★ ${this.cutInName} • OVERDRIVE UNLEASHED ★`, textCx + 2, topTy + 2);
+      ctx.fillText(`⚡ ${this.cutInName} • ULTIMATE OVERDRIVE ⚡`, 2, topTy + 2);
+      ctx.fillText(`⚡ ${this.cutInName} • ULTIMATE OVERDRIVE ⚡`, -2, topTy + 2);
       ctx.fillStyle = '#fde047';
-      ctx.fillText(`★ ${this.cutInName} • OVERDRIVE UNLEASHED ★`, textCx, topTy);
+      ctx.fillText(`⚡ ${this.cutInName} • ULTIMATE OVERDRIVE ⚡`, 0, topTy);
 
-      ctx.font = `${this.isMobile ? 13 : 22}px "Press Start 2P", monospace`;
+      ctx.font = `${this.isMobile ? 14 : 25}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(this.cutInUltName, textCx + 3, botTy + 3);
-      ctx.fillText(this.cutInUltName, textCx - 2, botTy + 2);
+      ctx.fillText(this.cutInUltName, 4, botTy + 4);
+      ctx.fillText(this.cutInUltName, -3, botTy + 3);
+      ctx.fillText(this.cutInUltName, 0, botTy + 4);
       ctx.fillStyle = elemCol;
-      ctx.fillText(this.cutInUltName, textCx + 1, botTy + 1);
+      ctx.fillText(this.cutInUltName, 2, botTy + 2);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillText(this.cutInUltName, -1, botTy - 1);
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(this.cutInUltName, textCx, botTy);
+      ctx.fillText(this.cutInUltName, 0, botTy);
+      ctx.restore();
+
       ctx.restore();
     }
 
