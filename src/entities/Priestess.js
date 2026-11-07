@@ -502,90 +502,76 @@ export class Priestess extends Fighter {
     }
   }
 
-  drawSeraphimVFX(ctx, isReflection) {
+  drawSeraphimVFX(ctx, sprites, isReflection) {
     if (isReflection) return;
     const showWings =
       this.isAngelicAscent || this.state === 'ULTIMATE' || this.state === 'SKILL';
     if (!showWings) return;
 
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
     const p = 4; // 4px crisp pixel grid
     const snap = (v) => Math.round(v / p) * p;
-    const flap = Math.sin(this.haloPhase * 4.5 + this.stateTimer * 14) * 16;
     const isFullArchangel = this.isAngelicAscent || this.state === 'ULTIMATE';
-    const wingScale = isFullArchangel ? 1.0 : 0.78;
-
-    // 1. Rotating Sacred Rose-Cross Halo Mandala behind Seraphina's shoulders
     const cx = -4;
-    const cy = -116;
-    const haloR = snap((isFullArchangel ? 88 : 64) + Math.sin(this.haloPhase * 3) * 4);
+    const cy = -124;
+
+    // 1. Rotating Sacred Rose-Cross Halo Ring behind the wings
+    const haloR = snap((isFullArchangel ? 96 : 68) + Math.sin(this.haloPhase * 3) * 4);
     ctx.fillStyle = '#fde047';
-    ctx.globalAlpha = 0.75;
-    for (let i = 0; i < 20; i++) {
-      const a = this.haloPhase * 1.4 + (i * Math.PI * 2) / 20;
+    ctx.globalAlpha = 0.65;
+    for (let i = 0; i < 16; i++) {
+      const a = this.haloPhase * 1.4 + (i * Math.PI * 2) / 16;
       const rx = snap(cx + Math.cos(a) * haloR);
       const ry = snap(cy + Math.sin(a) * haloR);
-      ctx.fillRect(rx - 4, ry - 4, 8, 8);
-      if (i % 5 === 0) {
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(rx - 8, ry - 2, 16, 4);
-        ctx.fillRect(rx - 2, ry - 8, 4, 16);
-        ctx.fillStyle = '#fde047';
-      }
+      ctx.fillRect(rx - 2, ry - 2, 4, 4);
     }
 
-    // 8 Orbiting Pixel Star-Cross Chakrams during ULTIMATE
+    // 2. Authentic 4-Frame HD-2D Pixel-Art Feathered Seraphim Angel Wings (320x232 per cell)
+    const wingSheet = sprites && sprites.wings;
+    if (wingSheet && wingSheet.complete && wingSheet.naturalWidth > 0) {
+      const cellW = 320;
+      const cellH = 232;
+      const flapSpeed = this.isAngelicAscent ? 11.5 : 8.5;
+      const wingFrame = Math.floor(this.haloPhase * 1.6 + this.stateTimer * flapSpeed) % 4;
+      const bobY = Math.round(Math.sin(this.stateTimer * 12) * 3);
+      const scale = isFullArchangel ? 1.0 : 0.84;
+      const dw = Math.round(cellW * scale);
+      const dh = Math.round(cellH * scale);
+      const dx = Math.round(-dw / 2);
+      const dy = Math.round(-208 - 36 * scale + bobY);
+
+      // Subtle golden motion-trail wing afterimage during high-speed flight / Ultimate
+      if (isFullArchangel) {
+        const prevFrame = (wingFrame + 3) % 4;
+        ctx.save();
+        ctx.globalAlpha = 0.26;
+        ctx.drawImage(wingSheet, prevFrame * cellW, 0, cellW, cellH, dx, dy + 4, dw, dh);
+        ctx.restore();
+      }
+
+      ctx.globalAlpha = 1.0;
+      ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, dw, dh);
+    }
+
+    // 3. 8 Orbiting Pixel Star-Cross Chakrams during ULTIMATE
     if (this.state === 'ULTIMATE') {
-      const orbitR = 112;
+      const orbitR = 124;
       for (let i = 0; i < 8; i++) {
         const a = -this.haloPhase * 2.5 + (i * Math.PI * 2) / 8;
         const ox = snap(cx + Math.cos(a) * orbitR);
         const oy = snap(cy + Math.sin(a) * orbitR);
         ctx.fillStyle = '#eab308';
         ctx.globalAlpha = 0.92;
-        ctx.fillRect(ox - 14, oy - 4, 28, 8);
-        ctx.fillRect(ox - 4, oy - 14, 8, 28);
+        ctx.fillRect(ox - 12, oy - 4, 24, 8);
+        ctx.fillRect(ox - 4, oy - 12, 8, 24);
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(ox - 10, oy - 2, 20, 4);
-        ctx.fillRect(ox - 2, oy - 10, 4, 20);
+        ctx.fillRect(ox - 8, oy - 2, 16, 4);
+        ctx.fillRect(ox - 2, oy - 8, 4, 16);
       }
     }
 
-    // 2. 6-Winged Pixel-Art Seraphim Angel Wings (Upper, Mid, Lower feather tiers sweeping wide on both sides)
-    const pairs = isFullArchangel ? [-1, 0, 1] : [-1, 0];
-    pairs.forEach((tier) => {
-      [-1, 1].forEach((side) => {
-        const rootX = side * 18;
-        const rootY = -122 + tier * 22;
-        const span = (128 - Math.abs(tier) * 14) * wingScale;
-        const archLift = (tier === -1 ? -68 : tier === 0 ? -28 : 14) * wingScale;
-        const dynamicFlap = flap * (tier === -1 ? 1.15 : tier === 0 ? 0.85 : 0.6) * wingScale;
-
-        for (let f = 0; f < 10; f++) {
-          const u = (f + 1) / 10;
-          const archCurve = Math.sin(u * Math.PI * 0.78);
-          const wx = snap(rootX + side * (u * span));
-          const wy = snap(rootY + archLift * archCurve + dynamicFlap * u + (u > 0.65 ? (u - 0.65) * 36 : 0));
-          const featherLen = snap((44 - f * 2.6 - Math.max(0, tier) * 8) * wingScale);
-
-          // Dark bronze-gold pixel border so wings pop cleanly against any background
-          ctx.globalAlpha = 0.92;
-          ctx.fillStyle = '#854d0e';
-          ctx.fillRect(wx - 6, wy - 4, 12, featherLen + 8);
-
-          // Golden primary plumage
-          ctx.fillStyle = f < 3 ? '#fef08a' : f < 7 ? '#facc15' : '#eab308';
-          ctx.fillRect(wx - 4, wy, 8, featherLen);
-
-          // Luminous white-gold upper ridge & feather tip
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(wx - 4, wy, 8, 8);
-          ctx.fillRect(wx - 2, wy + featherLen - 6, 4, 6);
-        }
-      });
-    });
-
-    // 3. Golden Pixel-Art Cathedral Sanctuary Barrier Dome during DIVINE SANCTUARY (SKILL)
+    // 4. Golden Pixel-Art Cathedral Sanctuary Barrier Dome during DIVINE SANCTUARY (SKILL)
     if (this.state === 'SKILL') {
       const domeR = 104;
       ctx.globalAlpha = 0.78;
@@ -616,7 +602,7 @@ export class Priestess extends Fighter {
     ctx.translate(Math.round(this.x), Math.round(this.y));
     ctx.scale(scaleDir, 1);
 
-    this.drawSeraphimVFX(ctx, isReflection);
+    this.drawSeraphimVFX(ctx, sprites, isReflection);
 
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.haloPhase, isReflection);
 

@@ -27,6 +27,7 @@ export class PixelForge {
       },
       priestess: {
         sheet: loadImg('assets/sprites/priestess_sheet.png'),
+        wings: loadImg('assets/sprites/seraphim_wings.png'),
         portrait: loadImg('assets/sprites/priestess_portrait.png', () => this.refreshPortraits())
       }
     };
