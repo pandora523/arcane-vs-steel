@@ -8,7 +8,7 @@ export class Archer extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1370,
+      maxHp: 1382,
       attackRange: 520,
       moveSpeed: 162,
       autoInterval: 1.08,

@@ -8,22 +8,22 @@ export class FireMage extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1265,
+      maxHp: 1286,
       attackRange: 520,
-      moveSpeed: 115,
-      autoInterval: 1.32,
+      moveSpeed: 120,
+      autoInterval: 1.30,
       lightColor: 'rgba(251, 146, 60, 1)',
       primaryColor: '#fb923c'
     });
     this.heroId = 'mage';
     this.theme = 'arcane';
     this.deathSfx = 'death_mage';
-    this.skillMaxCooldown = 4.8;
+    this.skillMaxCooldown = 4.78;
     this.ultName = 'ECLIPSE SUPERNOVA';
     this.skillName = 'SOLAR PILLAR';
     this.runeOrbit = 0;
     this.castCombo = 0;
-    this.dodgeMaxCooldown = 3.0;
+    this.dodgeMaxCooldown = 2.88;
     this.dashMaxCooldown = 3.4;
     this.spawnedEclipse = false;
     this.didSupernovaFinisher = false;
@@ -59,7 +59,7 @@ export class FireMage extends Fighter {
 
     // Volatile Solar Remnant damages melee pursuers at departure point!
     if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 200) {
-      enemy.takeDamage(36, this, false, 95, -50);
+      enemy.takeDamage(30, this, false, 95, -50);
     }
   }
 
@@ -105,7 +105,7 @@ export class FireMage extends Fighter {
             color: '#fb923c',
             coreColor: '#fef08a',
             owner: this,
-            damage: 40,
+            damage: 45,
             type: 'fireball'
           });
         }
@@ -147,7 +147,7 @@ export class FireMage extends Fighter {
       const nearWall = this.x < 220 || this.x > ww - 220;
       const incomingProj =
         game.vfx &&
-        game.vfx.projectiles.some((p) => p.owner === enemy && Math.abs(p.x - this.x) < 145);
+        game.vfx.projectiles.some((p) => p.owner === enemy && Math.abs(p.x - this.x) < 156);
       if ((dist < 215 || (nearWall && dist < 275) || incomingProj) && this.dodgeCooldown <= 0) {
         this.startDodge(enemy, game);
         return;

@@ -10,7 +10,7 @@ export class Priestess extends Fighter {
       facing,
       maxHp: 1236,
       attackRange: 512,
-      moveSpeed: 120,
+      moveSpeed: 128,
       autoInterval: 1.29,
       lightColor: 'rgba(253, 224, 71, 1)',
       primaryColor: '#fde047'
@@ -48,7 +48,7 @@ export class Priestess extends Fighter {
     if (enemy && corneredAtWall && this.wallWingCooldown <= 0) {
       this.isAngelicAscent = true;
       this.isFlipVault = true;
-      this.wallWingCooldown = 9.5;
+      this.wallWingCooldown = 8.6;
       this.dashDuration = 0.54;
       this.ascentStartX = this.x;
 
@@ -61,7 +61,7 @@ export class Priestess extends Fighter {
       this.vy = 0;
 
       if (game.audio) game.audio.play('holy_heal', this.x);
-      this.heal(24, 'WINGS OF GRACE');
+      this.heal(25, 'WINGS OF GRACE');
       game.vfx.spawnShockwave(this.x, this.groundY, 125, '#fde047', 0.36, true);
       game.vfx.spawnBurst(this.x, this.y - 95, 20, '#fef9c3', 240, { upBias: 120 });
       game.vfx.spawnGlyphBurst(this.x, this.y - 105, 9, 'radiant');
@@ -132,7 +132,7 @@ export class Priestess extends Fighter {
           coreColor: '#ffffff',
           maxLife: 0.30
         });
-        enemy.takeDamage(20, this, false, 30, 0);
+        enemy.takeDamage(23, this, false, 30, 0);
         game.vfx.spawnShockwave(sx, sy, 68, '#fde047', 0.24, false, false);
         game.vfx.spawnGlyphBurst(sx, sy, 5, 'radiant');
       }
@@ -234,14 +234,14 @@ export class Priestess extends Fighter {
           color: '#fde047',
           coreColor: '#ffffff',
           owner: this,
-          damage: isGraceCast ? 65 : 75,
+          damage: isGraceCast ? 64 : 74,
           type: 'holy_light',
           isMeteor: false
         });
 
         // Every 3rd cast: "GRACE OF DAWN!" — fires a second Holy Lance AND mends Seraphina's wounds!
         if (isGraceCast) {
-          this.heal(29, 'DAWN GRACE');
+          this.heal(25, 'DAWN GRACE');
           game.vfx.spawnProjectile({
             x: spawnX - this.facing * 14,
             y: spawnY - 14,
@@ -251,7 +251,7 @@ export class Priestess extends Fighter {
             color: '#facc15',
             coreColor: '#fef9c3',
             owner: this,
-            damage: 39,
+            damage: 38,
             type: 'holy_light',
             isMeteor: false
           });
@@ -277,7 +277,7 @@ export class Priestess extends Fighter {
     } else if (t >= 0.14 && !this.didSanctuaryHeal) {
       this.didSanctuaryHeal = true;
       if (game.audio) game.audio.play('holy_heal', this.x);
-      this.heal(100, 'SANCTUARY');
+      this.heal(91, 'SANCTUARY');
       game.vfx.spawnShockwave(this.x, this.groundY, 155, '#4ade80', 0.42, true);
       game.vfx.spawnShockwave(this.x, this.y - 95, 120, '#fde047', 0.38);
       game.vfx.spawnGlyphBurst(this.x, this.y - 105, 9, 'heal');
@@ -330,7 +330,7 @@ export class Priestess extends Fighter {
       });
 
       if (!enemy.isDead) {
-        const beamDmg = enemy.maxHp > 1200 ? 102 : horizDist >= 260 ? 108 : 78;
+        const beamDmg = horizDist >= 260 ? (enemy.maxHp > 1320 ? 100 : 110) : 80;
         enemy.takeDamage(beamDmg, this, false, 60, -45);
       }
 
@@ -424,7 +424,7 @@ export class Priestess extends Fighter {
       game.vfx.spawnShockwave(aimX, this.groundY, 82, '#fde047', 0.28, true);
       game.vfx.spawnShockwave(haloX, haloY, 54, '#fef08a', 0.22);
       game.vfx.spawnGlyphBurst(aimX, this.groundY - 45, 4, 'radiant');
-      const chakramDmg = Math.abs(enemy.x - this.x) >= 210 ? 25 : 15;
+      const chakramDmg = Math.abs(enemy.x - this.x) >= 210 ? 27 : 16;
       enemy.takeDamage(chakramDmg, this, false, 28, 0);
     }
 
@@ -492,7 +492,7 @@ export class Priestess extends Fighter {
       game.vfx.spawnGlyphBurst(targetX, this.groundY - 90, 8, 'heal');
 
       if (enemy && !enemy.isDead) {
-        const ultDmg = Math.abs(enemy.x - this.x) >= 210 ? 138 : 96;
+        const ultDmg = Math.abs(enemy.x - this.x) >= 210 ? 146 : 103;
         enemy.takeDamage(ultDmg, this, true, 150, -210);
       }
     } else if (t >= 1.52) {

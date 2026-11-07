@@ -8,10 +8,10 @@ export class Reaper extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1256,
-      attackRange: 176,
-      moveSpeed: 197,
-      autoInterval: 1.07,
+      maxHp: 1244,
+      attackRange: 175,
+      moveSpeed: 190,
+      autoInterval: 1.10,
       lightColor: 'rgba(192, 132, 252, 1)',
       primaryColor: '#c084fc'
     });
@@ -20,8 +20,8 @@ export class Reaper extends Fighter {
     this.deathSfx = 'death_reaper';
     this.hasPoise = true;
     this.isDeflecting = false;
-    this.skillMaxCooldown = 4.75;
-    this.skillTriggerRange = 540;
+    this.skillMaxCooldown = 4.90;
+    this.skillTriggerRange = 525;
     this.skillName = 'SPECTRAL CHAIN';
     this.ultName = 'GRIM HARVEST';
     this.comboStep = 0;
@@ -36,13 +36,13 @@ export class Reaper extends Fighter {
     this.didChainPull = false;
     this.didReapFinisher = false;
     this.ultStage = 0;
-    this.dodgeMaxCooldown = 3.15;
-    this.dashMaxCooldown = 2.88;
+    this.dodgeMaxCooldown = 3.22;
+    this.dashMaxCooldown = 3.00;
   }
 
   getEffectiveAttackRange() {
-    // Every 3rd swing hurls a Spinning Boomerang Phantom Scythe up to 415px!
-    return this.comboStep % 3 === 2 ? 415 : this.attackRange;
+    // Every 3rd swing hurls a Spinning Boomerang Phantom Scythe up to 408px!
+    return this.comboStep % 3 === 2 ? 408 : this.attackRange;
   }
 
   /**
@@ -98,7 +98,7 @@ export class Reaper extends Fighter {
   onStartDash(enemy, game, dir) {
     this.dashDuration = 0.40;
     this.isDeflecting = true;
-    this.vx = dir * 530;
+    this.vx = dir * 512;
     if (game.audio) game.audio.play('scythe_reap', this.x);
     game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 6, 'abyssal');
     game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'SHADOW STALK!', '#c084fc');
@@ -110,25 +110,25 @@ export class Reaper extends Fighter {
     this.isDeflecting = dist > 195;
     const smartDir = enemy && dist > 195 ? this.facing : dir;
     this.dashDir = smartDir;
-    this.vx = smartDir * 472;
+    this.vx = smartDir * 456;
     if (game.audio) game.audio.play('soul_drain', this.x);
     game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 7, 'abyssal');
     game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'GRAVE MELD!', '#e879f9');
 
     // When shadow-melding through long-range projectile or pillar fire, siphon soul mist & hurl a counter Phantom Scythe
     if (enemy && !enemy.isDead && dist > 210) {
-      this.leechLife(15, enemy, game, 'GRAVE SIPHON');
-      if (Math.random() < 0.74) {
+      this.leechLife(12, enemy, game, 'GRAVE SIPHON');
+      if (Math.random() < 0.68) {
         game.vfx.spawnProjectile({
           x: this.x + this.facing * 52,
           y: this.y - 104,
-          vx: this.facing * 630,
+          vx: this.facing * 622,
           vy: 0,
           radius: 21,
           color: '#c084fc',
           coreColor: '#f43f5e',
           owner: this,
-          damage: 45,
+          damage: 42,
           type: 'phantom_scythe'
         });
       }
@@ -137,7 +137,7 @@ export class Reaper extends Fighter {
 
   updateDashOrDodge(dt, enemy, game) {
     const t = this.stateTimer;
-    const speed = this.state === 'DASH' ? 530 : 445;
+    const speed = this.state === 'DASH' ? 512 : 434;
     this.x += this.dashDir * speed * dt;
 
     // Bubble dark obsidian-violet shadow particles along the floor pool
@@ -158,11 +158,11 @@ export class Reaper extends Fighter {
       !this.didActionFrame &&
       enemy &&
       !enemy.isDead &&
-      Math.abs(enemy.x - this.x) <= 158
+      Math.abs(enemy.x - this.x) <= 156
     ) {
       this.didActionFrame = true;
-      enemy.takeDamage(47, this, false, 90, -60);
-      this.leechLife(15, enemy, game, 'SOUL LEECH');
+      enemy.takeDamage(43, this, false, 90, -60);
+      this.leechLife(13, enemy, game, 'SOUL LEECH');
       if (game.audio) game.audio.play('scythe_reap', enemy.x);
       game.vfx.spawnSlash(this.x + this.facing * 44, this.y - 96, 112, -1.3, 1.2, '#c084fc', 0.28);
     }
@@ -206,8 +206,8 @@ export class Reaper extends Fighter {
         (pil) => pil.erupted && pil.owner !== this && Math.abs(pil.x - this.x) < 105
       );
       if (inPillar) {
-        this.leechLife(22, enemy, game, 'ABYSSAL SIPHON');
-        this.skillCooldown = Math.max(0, this.skillCooldown - 0.9);
+        this.leechLife(24, enemy, game, 'ABYSSAL SIPHON');
+        this.skillCooldown = Math.max(0, this.skillCooldown - 0.95);
         this.startDodge(enemy, game);
         return;
       }
@@ -265,13 +265,13 @@ export class Reaper extends Fighter {
           game.vfx.spawnProjectile({
             x: this.x + this.facing * 56,
             y: this.y - 104,
-            vx: this.facing * 615,
+            vx: this.facing * 612,
             vy: 0,
             radius: 22,
             color: '#c084fc',
             coreColor: '#f43f5e',
             owner: this,
-            damage: 59,
+            damage: 54,
             type: 'phantom_scythe'
           });
         } else {
@@ -284,9 +284,9 @@ export class Reaper extends Fighter {
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 52) {
           const isCrit = mode === 2 || Math.random() < 0.24;
-          const dmg = mode === 2 ? 84 : mode === 1 ? 74 : 68;
+          const dmg = mode === 2 ? 79 : mode === 1 ? 69 : 63;
           enemy.takeDamage(dmg, this, isCrit, 85, mode === 2 ? -110 : 0);
-          this.leechLife(mode === 2 ? 20 : 14, enemy, game, 'SOUL LEECH');
+          this.leechLife(mode === 2 ? 17 : 12, enemy, game, 'SOUL LEECH');
           if (game.audio) game.audio.play(mode === 2 ? 'soul_drain' : 'scythe_reap', enemy.x);
           if (game.renderer) game.renderer.triggerHitStop(0.055);
           game.vfx.spawnBurst(enemy.x, enemy.y - 96, 14, '#c084fc', 235);
@@ -327,7 +327,7 @@ export class Reaper extends Fighter {
         game.vfx.spawnGlyphBurst(targetX, targetY, 8, 'abyssal');
 
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(28, this, !enemy.hasPoise, -180, -40);
+          enemy.takeDamage(25, this, !enemy.hasPoise, -180, -40);
           game.vfx.spawnDamageText(enemy.x, enemy.y - 154, 0, false, 'DEATH GRIP!', '#e879f9');
           game.renderer.triggerShake(10, 0.20);
         }
@@ -335,11 +335,11 @@ export class Reaper extends Fighter {
 
       // Reel the clamped enemy across the floor into Malakor's scythe reach!
       if (enemy && !enemy.isDead) {
-        if (Math.abs(enemy.x - this.x) > 145) {
-          this.x += this.facing * 135 * dt;
+        if (Math.abs(enemy.x - this.x) > 147) {
+          this.x += this.facing * 128 * dt;
         }
-        const desiredX = Math.max(95, Math.min(ww - 95, this.x + this.facing * 118));
-        enemy.x += (desiredX - enemy.x) * Math.min(1, dt * 6.5);
+        const desiredX = Math.max(95, Math.min(ww - 95, this.x + this.facing * 121));
+        enemy.x += (desiredX - enemy.x) * Math.min(1, dt * 6.0);
         this.chainClaw = {
           targetX: enemy.x,
           targetY: enemy.y - 96,
@@ -362,9 +362,9 @@ export class Reaper extends Fighter {
       game.vfx.spawnSlash(reapX, this.y - 98, 114, startA, endA, '#f43f5e', 0.28);
       game.vfx.spawnGlyphBurst(reapX, this.y - 98, 9, 'abyssal');
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 245) {
-        enemy.takeDamage(69, this, true, 115, -135);
-        this.leechLife(45, enemy, game, 'SOUL DRAIN');
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 241) {
+        enemy.takeDamage(63, this, true, 115, -135);
+        this.leechLife(39, enemy, game, 'SOUL DRAIN');
       }
     } else if (t >= 0.88) {
       this.isDeflecting = false;
@@ -407,8 +407,8 @@ export class Reaper extends Fighter {
 
       game.vfx.spawnDamageText(this.x + this.facing * 115, this.groundY - 335, 0, false, 'RISE, BONEYARD!', '#c084fc');
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(34, this, false, -40, 0);
-        this.leechLife(28, enemy, game, 'GRAVE SIPHON');
+        enemy.takeDamage(31, this, false, -40, 0);
+        this.leechLife(25, enemy, game, 'GRAVE SIPHON');
       }
     }
 
@@ -424,8 +424,8 @@ export class Reaper extends Fighter {
         // Pull enemy toward the center of the Boneyard so the Death Avatar's colossal scythe reaps them
         const pullX = Math.max(120, Math.min(ww - 120, this.x + this.facing * 185));
         enemy.x += (pullX - enemy.x) * 0.55;
-        enemy.takeDamage(36, this, true, -60, -50);
-        this.leechLife(28, enemy, game, 'DEATH TOLL');
+        enemy.takeDamage(33, this, true, -60, -50);
+        this.leechLife(25, enemy, game, 'DEATH TOLL');
       }
     }
 
@@ -456,8 +456,8 @@ export class Reaper extends Fighter {
       }
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(124, this, true, 185, -240);
-        this.leechLife(54, enemy, game, 'GRIM HARVEST');
+        enemy.takeDamage(114, this, true, 185, -240);
+        this.leechLife(48, enemy, game, 'GRIM HARVEST');
         game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 98, 12, 'abyssal');
       }
     }
