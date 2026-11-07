@@ -24,6 +24,10 @@ export class PixelForge {
       archer: {
         sheet: loadImg('assets/sprites/archer_sheet.png'),
         portrait: loadImg('assets/sprites/archer_portrait.png', () => this.refreshPortraits())
+      },
+      priestess: {
+        sheet: loadImg('assets/sprites/priestess_sheet.png'),
+        portrait: loadImg('assets/sprites/priestess_portrait.png', () => this.refreshPortraits())
       }
     };
 

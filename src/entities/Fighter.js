@@ -69,6 +69,21 @@ export class Fighter {
     this.mana = Math.min(this.maxMana, this.mana + amount);
   }
 
+  heal(amount, label = '') {
+    if (this.isDead || amount <= 0) return 0;
+    const prevHp = this.hp;
+    this.hp = Math.min(this.maxHp, this.hp + amount);
+    const actualHeal = Math.max(1, Math.round(amount));
+    if (this.game && this.game.vfx) {
+      const txt = label ? `${label} +${actualHeal}` : `+${actualHeal} HP`;
+      this.game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, txt, '#4ade80');
+      this.game.vfx.spawnShockwave(this.x, this.groundY - 4, 88, '#4ade80', 0.36, true);
+      this.game.vfx.spawnShockwave(this.x, this.y - 88, 62, '#fde047', 0.30, true);
+      this.game.vfx.spawnGlyphBurst(this.x, this.y - 96, 7, 'heal');
+    }
+    return this.hp - prevHp;
+  }
+
   takeDamage(amount, attacker, isCrit = false, knockX = 95, knockY = 0) {
     if (this.isDead) return;
     if (this.isInvulnerable || (this.state === 'DODGE' && this.stateTimer < 0.36)) {

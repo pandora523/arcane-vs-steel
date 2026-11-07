@@ -8,7 +8,7 @@ export class Warrior extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1290,
+      maxHp: 1320,
       attackRange: 152,
       moveSpeed: 162,
       autoInterval: 1.24,

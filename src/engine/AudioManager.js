@@ -1,7 +1,12 @@
-// Studio-Mastered Acoustic Foley & Spatial Audio Engine
-// Plays 31 physically modeled 44.1kHz 16-bit stereo WAV assets (Karplus-Strong bowstrings,
-// 10-mode forged steel resonators, aerodynamic whip formants, and orchestral brass/chime chords)
-// with spatial stereo panning, voice-stealing/ducking, and a clean 52Hz–11kHz studio master bus.
+// Realistic Elemental & Weapon Foley Audio Engine
+// Plays 38 physically modeled 44.1kHz 16-bit stereo WAV assets:
+// - SWORD & STEEL: High-velocity blade air-whips ("SWISH"), friction-excited tempered steel edge
+//   scrapes ("SHING" at 2.4kHz-9.5kHz), and visceral armor/body impact thuds.
+// - ARROW & BOW: Taut recurve bowstring snap, wooden shaft click, supersonic fletching air-zip,
+//   and authentic bodkin "THWACK / THUNK" leather/wood penetration + damped wooden shaft shudder.
+// - FIRE & PYROMANCY: Explosive gas/torch ignition ("FWOOSH"), turbulent combustion roar,
+//   searing thermal hiss, and crackling charcoal/ember snaps for both cast and impact (`fire_hit`).
+// - HOLY LIGHT & HEALING: Crystalline prism shimmer, angelic harp strings, and sanctuary resonance.
 
 export class AudioManager {
   constructor() {
@@ -15,37 +20,44 @@ export class AudioManager {
     this.lastImpactTime = 0;
 
     this.volumes = {
-      slash: 0.62,
-      heavy_cleave: 0.74,
-      blade_wave: 0.68,
+      slash: 0.68,
+      heavy_cleave: 0.78,
+      blade_wave: 0.72,
       storm_leap: 0.70,
       thunder_slam: 0.82,
-      clang: 0.68,
-      hit_crit: 0.82,
-      hurt_hit: 0.45,
-      whirlwind: 0.66,
-      fireball: 0.66,
-      flame_pillar: 0.76,
+      clang: 0.76,
+      hit_crit: 0.84,
+      hurt_hit: 0.42,
+      whirlwind: 0.72,
+      fireball: 0.74,
+      fire_hit: 0.78,
+      flame_pillar: 0.78,
       solar_beam: 0.84,
       eclipse_charge: 0.72,
       supernova_detonate: 0.88,
       earthshatter: 0.86,
-      meteor: 0.68,
+      meteor: 0.72,
       meteor_impact: 0.86,
-      blink: 0.64,
-      zephyr_flip: 0.64,
-      reflect: 0.70,
+      blink: 0.68,
+      zephyr_flip: 0.68,
+      reflect: 0.74,
       skill_cast: 0.56,
       ult_cast: 0.80,
       death_warrior: 0.82,
       death_mage: 0.80,
       death_archer: 0.80,
+      death_priestess: 0.80,
       victory_fanfare: 0.82,
       footstep_steel: 0.22,
-      arrow_shoot: 0.64,
-      arrow_hit: 0.66,
-      arrow_rain: 0.72,
-      archer_ult: 0.84
+      arrow_shoot: 0.72,
+      arrow_hit: 0.80,
+      arrow_rain: 0.74,
+      archer_ult: 0.84,
+      holy_bolt: 0.68,
+      holy_hit: 0.74,
+      holy_heal: 0.76,
+      holy_smite: 0.78,
+      priestess_ult: 0.84
     };
 
     this.wavKeys = Object.keys(this.volumes);
@@ -74,23 +86,23 @@ export class AudioManager {
     hpf.frequency.value = 52;
     hpf.Q.value = 0.707;
 
-    // 2. Warm 10.5kHz Silk Low-Pass Filter (prevents any digital fizz or harshness)
+    // 2. Wide 15.5kHz Studio Low-Pass Filter (preserves crisp sword shing, arrow thwack & fire crackle)
     const lpf = this.ctx.createBiquadFilter();
     lpf.type = 'lowpass';
-    lpf.frequency.value = 10500;
+    lpf.frequency.value = 15500;
     lpf.Q.value = 0.707;
 
     // 3. Transparent Studio Peak Limiter (gentle ratio, no pumping)
     const limiter = this.ctx.createDynamicsCompressor();
-    limiter.threshold.value = -4.5;
+    limiter.threshold.value = -4.0;
     limiter.knee.value = 6;
     limiter.ratio.value = 4.0;
-    limiter.attack.value = 0.004;
+    limiter.attack.value = 0.003;
     limiter.release.value = 0.12;
 
     // 4. Master Output Gain
     const masterGain = this.ctx.createGain();
-    masterGain.gain.value = 0.86;
+    masterGain.gain.value = 0.88;
 
     hpf.connect(lpf);
     lpf.connect(limiter);
@@ -146,23 +158,26 @@ export class AudioManager {
 
     const now = performance.now();
 
-    // Prevent same-frame impact collisions: if a weapon/spell impact just played,
-    // skip redundant hurt_hit thuds so low frequencies never stack or clip.
+    // Prevent same-frame impact collisions: if a weapon/elemental impact just played,
+    // skip redundant hurt_hit thuds so each element's impact foley stays 100% distinct.
     const isImpact =
       name === 'clang' ||
       name === 'heavy_cleave' ||
       name === 'arrow_hit' ||
+      name === 'fire_hit' ||
+      name === 'holy_hit' ||
       name === 'hit_crit' ||
       name === 'thunder_slam' ||
       name === 'meteor_impact' ||
       name === 'earthshatter' ||
       name === 'supernova_detonate' ||
       name === 'solar_beam' ||
-      name === 'archer_ult';
+      name === 'archer_ult' ||
+      name === 'priestess_ult';
 
     if (isImpact) {
       this.lastImpactTime = now;
-    } else if (name === 'hurt_hit' && now - this.lastImpactTime < 110) {
+    } else if (name === 'hurt_hit' && now - this.lastImpactTime < 120) {
       return;
     }
 
@@ -174,7 +189,7 @@ export class AudioManager {
           ? 140
           : name === 'meteor' || name === 'meteor_impact'
             ? 110
-            : 58;
+            : 52;
     if (this.lastPlayed[name] && now - this.lastPlayed[name] < minGap) return;
     this.lastPlayed[name] = now;
 
@@ -184,20 +199,21 @@ export class AudioManager {
       name === 'supernova_detonate' ||
       name === 'solar_beam' ||
       name === 'archer_ult' ||
+      name === 'priestess_ult' ||
       name === 'ult_cast' ||
       name === 'thunder_slam';
 
     // Duck older voices slightly when a major cinematic sound arrives
     this.pruneAndDuckVoices(now, isBigCinematic);
 
-    const baseVol = this.volumes[name] || 0.65;
+    const baseVol = this.volumes[name] || 0.68;
     const voiceGain = this.ctx.createGain();
     voiceGain.gain.setValueAtTime(baseVol, this.ctx.currentTime);
 
-    // Subtle per-voice warm lowpass filter for organic distance & timbre variation
+    // Full-bandwidth natural air filter (preserves crisp sword edge shing, arrow thwack & fire crackle)
     const warmthFilter = this.ctx.createBiquadFilter();
     warmthFilter.type = 'lowpass';
-    warmthFilter.frequency.value = isBigCinematic ? 9200 : 7600 + Math.random() * 1600;
+    warmthFilter.frequency.value = isBigCinematic ? 14800 : 12500 + Math.random() * 2500;
     warmthFilter.Q.value = 0.65;
 
     voiceGain.connect(warmthFilter);
@@ -217,7 +233,7 @@ export class AudioManager {
       try {
         const src = this.ctx.createBufferSource();
         src.buffer = buf;
-        const rateSpread = isBigCinematic ? 0.03 : 0.07;
+        const rateSpread = isBigCinematic ? 0.03 : 0.08;
         src.playbackRate.value = 1.0 - rateSpread * 0.5 + Math.random() * rateSpread;
         src.connect(voiceGain);
         src.start(0);
@@ -237,31 +253,31 @@ export class AudioManager {
   }
 
   pruneAndDuckVoices(now, incomingIsBig) {
-    // Clean up finished voices older than 2.2s
     for (let i = this.activeVoices.length - 1; i >= 0; i--) {
       if (now - this.activeVoices[i].startTime > 2200) {
         this.activeVoices.splice(i, 1);
       }
     }
 
-    // If too many voices are active simultaneously, smoothly fade the oldest non-big voice
     while (this.activeVoices.length > 7) {
       const oldest = this.activeVoices.shift();
       if (oldest && oldest.gainNode) {
         try {
           const t = this.ctx.currentTime;
-          oldest.gainNode.gain.setTargetAtTime(0.0001, t, 0.035);
+          oldest.gainNode.gain.setValueAtTime(oldest.gainNode.gain.value, t);
+          oldest.gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
         } catch (_) {}
       }
     }
 
-    // Duck background combat hits slightly when an Ultimate or Big Impact fires
-    if (incomingIsBig && this.ctx) {
+    if (incomingIsBig) {
       const t = this.ctx.currentTime;
       for (const v of this.activeVoices) {
         if (!v.isBig && v.gainNode) {
           try {
-            v.gainNode.gain.setTargetAtTime(v.gainNode.gain.value * 0.55, t, 0.025);
+            const cur = v.gainNode.gain.value;
+            v.gainNode.gain.setValueAtTime(cur, t);
+            v.gainNode.gain.linearRampToValueAtTime(cur * 0.55, t + 0.03);
           } catch (_) {}
         }
       }
@@ -270,25 +286,21 @@ export class AudioManager {
 
   playWarmFallback(name, dest) {
     if (!this.ctx || !this.pinkNoiseBuffer) return;
-    const t0 = this.ctx.currentTime;
-
-    // Gentle filtered pink-noise air whoosh + soft sine fundamental (zero sawtooth/square buzz)
+    const t = this.ctx.currentTime;
     const src = this.ctx.createBufferSource();
     src.buffer = this.pinkNoiseBuffer;
-    const flt = this.ctx.createBiquadFilter();
-    flt.type = 'bandpass';
-    flt.Q.value = 1.4;
-    flt.frequency.setValueAtTime(900, t0);
-    flt.frequency.exponentialRampToValueAtTime(320, t0 + 0.22);
-
+    const bp = this.ctx.createBiquadFilter();
+    bp.type = 'bandpass';
+    bp.frequency.setValueAtTime(name.includes('arrow') ? 1600 : name.includes('fire') ? 680 : 1200, t);
+    bp.Q.value = 1.4;
     const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.001, t0);
-    g.gain.linearRampToValueAtTime(0.32, t0 + 0.015);
-    g.gain.exponentialRampToValueAtTime(0.0001, t0 + 0.22);
-
-    src.connect(flt);
-    flt.connect(g);
+    g.gain.setValueAtTime(0.001, t);
+    g.gain.linearRampToValueAtTime(0.28, t + 0.012);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    src.connect(bp);
+    bp.connect(g);
     g.connect(dest);
-    src.start(t0, Math.random() * 0.8, 0.24);
+    src.start(t);
+    src.stop(t + 0.17);
   }
 }

@@ -5,6 +5,7 @@ import { AudioManager } from './engine/AudioManager.js';
 import { Warrior } from './entities/Warrior.js';
 import { FireMage } from './entities/FireMage.js';
 import { Archer } from './entities/Archer.js';
+import { Priestess } from './entities/Priestess.js';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -33,6 +34,15 @@ const CHAMPION_ROSTER = {
     color: '#fb923c',
     selectSfx: 'fireball',
     victoryLine: 'Solar cataclysm reduces all opposition to molten ash!'
+  },
+  priestess: {
+    id: 'priestess',
+    name: 'SERAPHINA',
+    cls: Priestess,
+    theme: 'radiant',
+    color: '#fde047',
+    selectSfx: 'holy_heal',
+    victoryLine: 'Sacred light and divine grace purify the sanctuary!'
   }
 };
 
@@ -136,17 +146,20 @@ class Game {
     this.cards = {
       warrior: document.getElementById('card-warrior'),
       archer: document.getElementById('card-archer'),
-      mage: document.getElementById('card-mage')
+      mage: document.getElementById('card-mage'),
+      priestess: document.getElementById('card-priestess')
     };
     this.ribbons = {
       warrior: document.getElementById('ribbon-warrior'),
       archer: document.getElementById('ribbon-archer'),
-      mage: document.getElementById('ribbon-mage')
+      mage: document.getElementById('ribbon-mage'),
+      priestess: document.getElementById('ribbon-priestess')
     };
     this.previewCanvases = {
       warrior: document.getElementById('preview-warrior'),
       archer: document.getElementById('preview-archer'),
-      mage: document.getElementById('preview-mage')
+      mage: document.getElementById('preview-mage'),
+      priestess: document.getElementById('preview-priestess')
     };
 
     this.btnStartDuel = document.getElementById('btn-start-duel');
@@ -369,7 +382,8 @@ class Game {
       }
       const col = frameIdx % 8;
       const row = (frameIdx / 8) | 0;
-      const hover = heroKey === 'mage' ? Math.round(Math.sin(t * 3.2) * 2) * 2 : 0;
+      const hover =
+        heroKey === 'mage' || heroKey === 'priestess' ? Math.round(Math.sin(t * 3.2) * 2) * 2 : 0;
       ctx.drawImage(sheet, col * cell, row * cell, cell, cell, 0, hover, cell, cell);
     };
 
@@ -465,13 +479,13 @@ class Game {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
-      if ((p.type === 'arrow' || p.type === 'blade_wave') && p.ringTimer >= 0.085) {
+      if ((p.type === 'arrow' || p.type === 'blade_wave' || p.type === 'holy_light') && p.ringTimer >= 0.085) {
         p.ringTimer = 0;
         this.vfx.spawnShockwave(
           p.x,
           p.y,
-          p.type === 'blade_wave' ? 46 : 34,
-          p.type === 'blade_wave' ? '#38bdf8' : '#34d399',
+          p.type === 'blade_wave' ? 46 : p.type === 'holy_light' ? 38 : 34,
+          p.type === 'blade_wave' ? '#38bdf8' : p.type === 'holy_light' ? '#fde047' : '#34d399',
           0.22,
           false,
           true
@@ -518,16 +532,17 @@ class Game {
           const isCrit = Math.random() < 0.28;
           enemy.takeDamage(isCrit ? p.damage * 1.38 : p.damage, p.owner, isCrit, 100, 0);
           if (this.audio) {
-            this.audio.play(
-              isCrit
-                ? 'hit_crit'
-                : p.type === 'arrow'
-                  ? 'arrow_hit'
-                  : p.type === 'blade_wave'
-                    ? 'heavy_cleave'
-                    : 'clang',
-              enemy.x
-            );
+            const impactSfx =
+              p.type === 'arrow'
+                ? 'arrow_hit'
+                : p.type === 'blade_wave'
+                  ? isCrit
+                    ? 'hit_crit'
+                    : 'heavy_cleave'
+                  : p.type === 'holy_light'
+                    ? 'holy_hit'
+                    : 'fire_hit';
+            this.audio.play(impactSfx, enemy.x);
           }
           this.renderer.triggerHitStop(0.055);
           this.vfx.spawnShockwave(p.x, p.y, 76, p.color, 0.26);
@@ -538,10 +553,25 @@ class Game {
           } else if (p.type === 'blade_wave') {
             this.vfx.spawnSlash(p.x, p.y, 72, -1.2, 1.2, '#38bdf8', 0.25);
             this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'steel');
+          } else if (p.type === 'holy_light') {
+            this.vfx.spawnShockwave(p.x, p.y, 64, '#ffffff', 0.22);
+            this.vfx.spawnGlyphBurst(p.x, p.y, 5, 'radiant');
           } else {
             this.vfx.spawnGlyphBurst(p.x, p.y, 4, 'arcane');
           }
         } else {
+          if (this.audio) {
+            this.audio.play(
+              p.type === 'arrow'
+                ? 'arrow_hit'
+                : p.type === 'holy_light'
+                  ? 'holy_hit'
+                  : p.type === 'blade_wave'
+                    ? 'clang'
+                    : 'fire_hit',
+              p.x
+            );
+          }
           this.vfx.spawnDecal(p.x, 42, 'scorch', p.color, 3.5);
           this.vfx.spawnBurst(p.x, gy, 8, p.color, 150, { upBias: 70 });
         }

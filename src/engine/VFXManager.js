@@ -77,7 +77,9 @@ export class VFXManager {
     const sets = {
       steel: { shape: 'rune', col: '#38bdf8', core: '#e0f2fe' },
       arcane: { shape: 'star', col: '#fb923c', core: '#fef08a' },
-      emerald: { shape: 'feather', col: '#10b981', core: '#fef08a' }
+      emerald: { shape: 'feather', col: '#10b981', core: '#fef08a' },
+      radiant: { shape: 'cross', col: '#fde047', core: '#ffffff' },
+      heal: { shape: 'cross', col: '#4ade80', core: '#fef08a' }
     };
     const cfg = sets[theme] || sets.steel;
     for (let i = 0; i < count; i++) {
@@ -214,7 +216,7 @@ export class VFXManager {
       groundY: opts.groundY || 520,
       vx: opts.vx || 0,
       vy: opts.vy || 1150,
-      type: opts.type || 'starfall_arrow', // 'starfall_arrow' | 'runeblade' | 'solar_lance'
+      type: opts.type || 'starfall_arrow', // 'starfall_arrow' | 'runeblade' | 'solar_lance' | 'holy_spear'
       color: opts.color || '#10b981',
       coreColor: opts.coreColor || '#fef08a',
       owner: opts.owner || null,
@@ -272,7 +274,9 @@ export class VFXManager {
         ? { main: '#fb923c', core: '#fef08a', border: '#ea580c' }
         : theme === 'emerald'
           ? { main: '#34d399', core: '#fef08a', border: '#10b981' }
-          : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
+          : theme === 'radiant'
+            ? { main: '#facc15', core: '#fef9c3', border: '#eab308' }
+            : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
 
     this.castAuras.push({
       fighter,
@@ -432,6 +436,16 @@ export class VFXManager {
         if (s.y >= s.groundY) {
           s.y = s.groundY;
           s.impacted = true;
+          if (audio) {
+            audio.play(
+              s.type === 'runeblade'
+                ? 'clang'
+                : s.type === 'holy_spear'
+                  ? 'holy_hit'
+                  : 'arrow_hit',
+              s.x
+            );
+          }
           this.spawnShockwave(s.x, s.groundY, s.type === 'runeblade' ? 115 : 78, s.color, 0.34, true);
           this.spawnBurst(s.x, s.groundY - 8, s.type === 'runeblade' ? 14 : 9, s.color, 210, {
             upBias: 110,
@@ -460,13 +474,30 @@ export class VFXManager {
       if (pil.life >= pil.delay && !pil.erupted) {
         pil.erupted = true;
         if (renderer && pil.scaleWidth >= 0.95) renderer.triggerShake(8, 0.2);
-        const col = pil.theme === 'emerald' ? '#10b981' : pil.theme === 'steel' ? '#38bdf8' : '#fb923c';
+        if (audio && pil.scaleWidth >= 0.95) {
+          audio.play(pil.theme === 'radiant' ? 'holy_hit' : 'fire_hit', pil.x);
+        }
+        const col =
+          pil.theme === 'emerald'
+            ? '#10b981'
+            : pil.theme === 'steel'
+              ? '#38bdf8'
+              : pil.theme === 'radiant'
+                ? '#fde047'
+                : '#fb923c';
         this.spawnDecal(pil.x, 110 * pil.scaleWidth, 'fissure', col, 4.8);
         this.spawnShockwave(pil.x, groundY, 135 * pil.scaleWidth, '#facc15', 0.44, true);
         this.spawnGlyphBurst(pil.x, groundY - 40, 6, pil.theme);
       }
       if (pil.erupted && pil.life < pil.maxLife - 0.12) {
-        const colMain = pil.theme === 'emerald' ? '#10b981' : pil.theme === 'steel' ? '#38bdf8' : '#fb923c';
+        const colMain =
+          pil.theme === 'emerald'
+            ? '#10b981'
+            : pil.theme === 'steel'
+              ? '#38bdf8'
+              : pil.theme === 'radiant'
+                ? '#fde047'
+                : '#fb923c';
         for (let k = 0; k < 3; k++) {
           const spiral = Math.sin(pil.life * 22 + k * 2) * 42 * pil.scaleWidth;
           this.spawnParticle({
@@ -475,7 +506,7 @@ export class VFXManager {
             vx: (Math.random() - 0.5) * 44,
             vy: -300 - Math.random() * 210,
             size: (12 + Math.random() * 8) * pil.scaleWidth,
-            color: k % 2 === 0 ? colMain : '#fef08a',
+            color: k % 2 === 0 ? colMain : '#fef9c3',
             maxLife: 0.44,
             gravity: -110
           });
@@ -621,7 +652,8 @@ export class VFXManager {
       const baseY = Math.round(pil.groundY / pxSize) * pxSize;
       const isEmerald = pil.theme === 'emerald';
       const isSteel = pil.theme === 'steel';
-      const sigilCol = isEmerald ? '#34d399' : isSteel ? '#38bdf8' : '#facc15';
+      const isRadiant = pil.theme === 'radiant';
+      const sigilCol = isEmerald ? '#34d399' : isSteel ? '#38bdf8' : isRadiant ? '#fef08a' : '#facc15';
 
       // Ground Pixel Octagram Sigil + Overhead Matching Sky Sigil
       ctx.save();
@@ -687,6 +719,17 @@ export class VFXManager {
                       : heat > 0.12
                         ? '#0284c7'
                         : '#0c4a6e';
+            } else if (isRadiant) {
+              ctx.fillStyle =
+                heat > 0.65
+                  ? '#ffffff'
+                  : heat > 0.44
+                    ? '#fef9c3'
+                    : heat > 0.24
+                      ? '#fde047'
+                      : heat > 0.10
+                        ? '#f59e0b'
+                        : '#b45309';
             } else {
               ctx.fillStyle =
                 heat > 0.72
@@ -708,14 +751,14 @@ export class VFXManager {
           }
 
           const ribCol = Math.round(Math.sin(pil.life * 24 - row * 0.38) * (halfSpan + 2));
-          ctx.fillStyle = row % 2 === 0 ? '#fef08a' : sigilCol;
+          ctx.fillStyle = row % 2 === 0 ? '#ffffff' : sigilCol;
           ctx.fillRect(baseX + ribCol * pxSize, baseY - (row + 1) * pxSize, pxSize, pxSize);
         }
         ctx.restore();
       }
     }
 
-    // 3. SKY STRIKES: Spectral Runeblades, Starfall Astral Arrows & Solar Lances
+    // 3. SKY STRIKES: Spectral Runeblades, Starfall Astral Arrows, Solar Lances & Holy Spears
     for (const s of this.skyStrikes) {
       if (s.delay > 0) continue;
       const fade = s.impacted ? Math.max(0, 1 - s.linger / s.maxLinger) : 1;
@@ -742,6 +785,21 @@ export class VFXManager {
         ctx.fillStyle = '#facc15';
         ctx.fillRect(sx - 28, sy - bladeH + 18, 56, 8);
         ctx.fillRect(sx - 8, sy - bladeH - 22, 16, 14);
+      } else if (s.type === 'holy_spear') {
+        // Seraphic Golden-White Holy Cross-Lance Impaling the Ground from Heaven
+        const spearH = 128;
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(sx - 10, sy - spearH, 20, spearH - 6);
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(sx - 6, sy - spearH + 4, 12, spearH - 10);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(sx - 3, sy - spearH + 6, 6, spearH - 8);
+        // Ornate Seraphic Winged Crossbar near tip & crown
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(sx - 24, sy - spearH + 28, 48, 8);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(sx - 18, sy - spearH + 30, 36, 4);
+        ctx.fillRect(sx - 14, sy - 32, 28, 6);
       } else {
         // Starfall Emerald-Gold Arrow or Solar Lance
         const ang = Math.atan2(s.vy, s.vx || 0.01);
@@ -1094,6 +1152,33 @@ export class VFXManager {
         ctx.fillStyle = '#6ee7b7';
         ctx.fillRect(-38, -10, 14, 20);
         ctx.restore();
+      } else if (proj.type === 'holy_light') {
+        // Seraphic 8-Point Golden-White Holy Star-Cross Orb + Orbiting Pearl Motes
+        ctx.save();
+        ctx.translate(px, py);
+        // Horizontal & Vertical Sacred Cross Beams
+        ctx.fillStyle = '#f59e0b';
+        ctx.fillRect(-26, -6, 52, 12);
+        ctx.fillRect(-6, -24, 12, 48);
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(-22, -4, 44, 8);
+        ctx.fillRect(-4, -20, 8, 40);
+        // Inner Diamond Halo
+        ctx.fillStyle = '#fef9c3';
+        ctx.fillRect(-10, -10, 20, 20);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-18, -2, 36, 4);
+        ctx.fillRect(-2, -16, 4, 32);
+        ctx.fillRect(-6, -6, 12, 12);
+        // 4 Orbiting Sacred Pearl-Gold Motes
+        for (let sat = 0; sat < 4; sat++) {
+          const sa = (proj.age || 0) * 14 + (sat * Math.PI) / 2;
+          const sx = Math.round((Math.cos(sa) * 20) / 2) * 2;
+          const sy = Math.round((Math.sin(sa) * 20) / 2) * 2;
+          ctx.fillStyle = sat % 2 === 0 ? '#ffffff' : '#fde047';
+          ctx.fillRect(sx - 3, sy - 3, 6, 6);
+        }
+        ctx.restore();
       } else {
         // Stepped 4-Tone Pixel-Art Solar Fireball + Orbiting Ember Satellites
         const cs = Math.max(4, Math.round((proj.radius * 0.95) / 2) * 2);
@@ -1143,7 +1228,7 @@ export class VFXManager {
       }
     }
 
-    // 10. PURE PIXEL-ART RUNIC CRYSTALS, SOLAR STARS & ASTRAL FEATHERS (Zero font/emoji characters)
+    // 10. PURE PIXEL-ART RUNIC CRYSTALS, SOLAR STARS, SACRED CROSSES & ASTRAL FEATHERS (Zero font/emoji characters)
     if (!isReflection) {
       for (const g of this.glyphs) {
         const p = g.life / g.maxLife;
@@ -1162,6 +1247,16 @@ export class VFXManager {
           ctx.fillRect(gx - 2, gy - 4, 4, 8);
           ctx.fillStyle = '#ffffff';
           ctx.fillRect(gx - 1, gy - 1, 2, 2);
+        } else if (g.shape === 'cross') {
+          // Stepped pixel-art Sacred Healing / Holy Cross (+)
+          ctx.fillStyle = g.color;
+          ctx.fillRect(gx - 3, gy - 9, 6, 18);
+          ctx.fillRect(gx - 9, gy - 3, 18, 6);
+          ctx.fillStyle = g.coreColor;
+          ctx.fillRect(gx - 2, gy - 7, 4, 14);
+          ctx.fillRect(gx - 7, gy - 2, 14, 4);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(gx - 2, gy - 2, 4, 4);
         } else if (g.shape === 'star') {
           // Stepped pixel-art 4-point solar flare
           ctx.fillStyle = g.color;

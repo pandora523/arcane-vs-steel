@@ -8,23 +8,23 @@ export class FireMage extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1230,
-      attackRange: 515,
-      moveSpeed: 112,
-      autoInterval: 1.38,
+      maxHp: 1265,
+      attackRange: 520,
+      moveSpeed: 115,
+      autoInterval: 1.32,
       lightColor: 'rgba(251, 146, 60, 1)',
       primaryColor: '#fb923c'
     });
     this.heroId = 'mage';
     this.theme = 'arcane';
     this.deathSfx = 'death_mage';
-    this.skillMaxCooldown = 5.1;
+    this.skillMaxCooldown = 4.8;
     this.ultName = 'ECLIPSE SUPERNOVA';
     this.skillName = 'SOLAR PILLAR';
     this.runeOrbit = 0;
     this.castCombo = 0;
-    this.dodgeMaxCooldown = 3.2;
-    this.dashMaxCooldown = 3.5;
+    this.dodgeMaxCooldown = 3.0;
+    this.dashMaxCooldown = 3.4;
     this.spawnedEclipse = false;
     this.didSupernovaFinisher = false;
   }
@@ -59,7 +59,7 @@ export class FireMage extends Fighter {
 
     // Volatile Solar Remnant damages melee pursuers at departure point!
     if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 200) {
-      enemy.takeDamage(32, this, false, 85, -50);
+      enemy.takeDamage(36, this, false, 95, -50);
     }
   }
 
@@ -99,13 +99,13 @@ export class FireMage extends Fighter {
           game.vfx.spawnProjectile({
             x: sx,
             y: sy,
-            vx: (dx / d) * 610,
-            vy: (dy / d) * 610,
+            vx: (dx / d) * 635,
+            vy: (dy / d) * 635,
             radius: 13,
             color: '#fb923c',
             coreColor: '#fef08a',
             owner: this,
-            damage: 34,
+            damage: 40,
             type: 'fireball'
           });
         }
@@ -145,7 +145,10 @@ export class FireMage extends Fighter {
       const dist = Math.abs(enemy.x - this.x);
       const ww = game.renderer.worldWidth;
       const nearWall = this.x < 220 || this.x > ww - 220;
-      if ((dist < 210 || (nearWall && dist < 275)) && this.dodgeCooldown <= 0) {
+      const incomingProj =
+        game.vfx &&
+        game.vfx.projectiles.some((p) => p.owner === enemy && Math.abs(p.x - this.x) < 145);
+      if ((dist < 215 || (nearWall && dist < 275) || incomingProj) && this.dodgeCooldown <= 0) {
         this.startDodge(enemy, game);
         return;
       }
@@ -186,7 +189,7 @@ export class FireMage extends Fighter {
         const dx = enemy ? enemy.x - spawnX : this.facing * 460;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
-        const speed = 585;
+        const speed = 615;
         const isTwinFlare = this.castCombo % 3 === 0;
 
         game.vfx.spawnProjectile({
@@ -198,7 +201,7 @@ export class FireMage extends Fighter {
           color: '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          damage: isTwinFlare ? 66 : 78,
+          damage: isTwinFlare ? 72 : 84,
           type: 'fireball',
           isMeteor: false
         });
@@ -213,7 +216,7 @@ export class FireMage extends Fighter {
             color: '#ea580c',
             coreColor: '#fef08a',
             owner: this,
-            damage: 42,
+            damage: 46,
             type: 'fireball',
             isMeteor: false
           });
@@ -264,13 +267,13 @@ export class FireMage extends Fighter {
         game.vfx.spawnProjectile({
           x: sx,
           y: sy,
-          vx: (dx / dist) * 575,
-          vy: (dy / dist) * 575 + vyOff,
+          vx: (dx / dist) * 595,
+          vy: (dy / dist) * 595 + vyOff,
           radius: 13,
           color: '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          damage: 34,
+          damage: 38,
           type: 'fireball'
         });
       });
