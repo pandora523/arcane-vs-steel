@@ -2283,23 +2283,24 @@ export class VFXManager {
   }
 
   renderFloatingTexts(ctx) {
-    // 1. OVERHEAD SPECIAL MOVE & ULTIMATE ART CALLOUT PLATES ABOVE CHARACTER HEAD (100% Crisp Pixel Font)
+    // 1. BORDERLESS OVERHEAD SPECIAL MOVE & ULTIMATE ART FLOATING CALLOUTS ABOVE CHARACTER HEAD
     const activeBanners = [];
     for (let idx = 0; idx < this.castAuras.length; idx++) {
       const ca = this.castAuras[idx];
       if (!ca.fighter || ca.fighter.isDead) continue;
+      // When the full-width Ultimate Cut-In is active, skip redundant overhead text so the screen stays clean
+      if (ca.isUltimate) continue;
       const t = ca.life / ca.maxLife;
       const alpha = t < 0.08 ? t / 0.08 : t > 0.78 ? Math.max(0, (1 - t) / 0.22) : 1.0;
 
       // Anchor high above the caster's head/wings so their character and face stay 100% unobstructed
       let headX = Math.max(165, Math.min(1035, Math.round(ca.fighter.x / 2) * 2));
-      const floatLift = Math.round(Math.min(12, t * 18) / 2) * 2;
-      let headY = Math.round((ca.fighter.y - 246 - floatLift) / 2) * 2;
+      const floatLift = Math.round(Math.min(14, t * 20) / 2) * 2;
+      let headY = Math.round((ca.fighter.y - 238 - floatLift) / 2) * 2;
 
-      // Prevent simultaneous P1 & P2 callout plates from overlapping each other in close-range clashes
       for (const prev of activeBanners) {
-        if (Math.abs(headX - prev.x) < 210 && Math.abs(headY - prev.y) < 46) {
-          headY = prev.y - 48;
+        if (Math.abs(headX - prev.x) < 210 && Math.abs(headY - prev.y) < 42) {
+          headY = prev.y - 44;
         }
       }
       activeBanners.push({ x: headX, y: headY });
@@ -2314,41 +2315,27 @@ export class VFXManager {
       const tagScale = 1; // 5x7 crisp micro-pixel header
       const titleW = PixelFont.measureWidth(ca.title, titleScale);
       const tagW = PixelFont.measureWidth(headerTag, tagScale);
-      const plateW = Math.max(ca.isUltimate ? 196 : 164, Math.round((Math.max(titleW, tagW) + 28) / 4) * 4);
-      const plateH = ca.isUltimate ? 40 : 36;
-      const halfW = plateW / 2;
-      const halfH = plateH / 2;
+      const halfW = Math.max(76, Math.round(Math.max(titleW, tagW) * 0.58));
 
-      // Outer stepped pixel-art elemental glow border
-      ctx.fillStyle = ca.mainColor;
-      ctx.fillRect(headX - halfW - 4, headY - halfH, plateW + 8, plateH);
-      ctx.fillRect(headX - halfW, headY - halfH - 4, plateW, plateH + 8);
-
-      // Inner dark obsidian pixel plate
-      ctx.fillStyle = 'rgba(7, 10, 19, 0.94)';
-      ctx.fillRect(headX - halfW, headY - halfH, plateW, plateH);
-
-      // Inner crisp accent frame + corner studs
-      ctx.fillStyle = ca.coreColor;
-      ctx.fillRect(headX - halfW + 2, headY - halfH + 2, plateW - 4, 2);
-      ctx.fillRect(headX - halfW + 2, headY + halfH - 4, plateW - 4, 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(headX - halfW - 2, headY - halfH - 2, 6, 6);
-      ctx.fillRect(headX + halfW - 4, headY - halfH - 2, 6, 6);
-      ctx.fillRect(headX - halfW - 2, headY + halfH - 4, 6, 6);
-      ctx.fillRect(headX + halfW - 4, headY + halfH - 4, 6, 6);
-
-      // Downward pixel pointer chevron aimed at the character's head
-      ctx.fillStyle = ca.mainColor;
-      ctx.fillRect(headX - 8, headY + halfH + 2, 16, 4);
-      ctx.fillStyle = ca.coreColor;
-      ctx.fillRect(headX - 4, headY + halfH + 6, 8, 4);
+      // Soft feathered elliptical shadow veil behind floating pixel text (ZERO rectangular box or border!)
+      ctx.save();
+      ctx.translate(headX, headY);
+      ctx.scale(halfW, 20);
+      const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
+      veil.addColorStop(0, 'rgba(3, 6, 14, 0.65)');
+      veil.addColorStop(0.65, 'rgba(3, 6, 14, 0.28)');
+      veil.addColorStop(1, 'rgba(3, 6, 14, 0)');
+      ctx.fillStyle = veil;
+      ctx.beginPath();
+      ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
 
       // Top micro-tag showing Champion Name in 1px bitmap font
-      PixelFont.drawCentered(ctx, headerTag, headX, headY - 9, tagScale, ca.coreColor, '#ffffff', true);
+      PixelFont.drawCentered(ctx, headerTag, headX, headY - 10, tagScale, ca.coreColor, '#ffffff', true);
 
-      // Main ability name in 2px bitmap font with 2-tone pixel highlight
-      PixelFont.drawCentered(ctx, ca.title, headX, headY + 7, titleScale, ca.coreColor, '#ffffff', true);
+      // Main ability name in 2px bitmap font with 2-tone pixel highlight & drop-shadow
+      PixelFont.drawCentered(ctx, ca.title, headX, headY + 6, titleScale, ca.coreColor, '#ffffff', true);
 
       ctx.restore();
     }

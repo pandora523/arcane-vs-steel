@@ -1885,34 +1885,58 @@ export class Renderer {
     ctx.fillStyle = botG;
     ctx.fillRect(0, h * 0.80, w, h * 0.20);
 
-    // 1. Screen-Space Stage Phenomenon Banner (Upper Sky below HUD)
+    // 1. Borderless Feathered Stage Phenomenon Callout (Upper Sky below HUD)
     if (this.stageEventBannerTimer > 0 && !(this.cutInTimer > 0)) {
       const p = 1 - this.stageEventBannerTimer / 2.8;
       const alpha = p < 0.12 ? p / 0.12 : p > 0.82 ? (1 - p) / 0.18 : 1;
-      const bw = Math.min(w - 28, 560);
-      const bh = 52;
-      const bx = Math.round((w - bw) * 0.5);
-      const by = Math.round(h * 0.135);
+      const cx = Math.round(w * 0.5);
+      const cy = Math.round(h * 0.16);
+      const rx = Math.min(w * 0.44, 340);
+      const ry = 38;
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-      ctx.fillStyle = 'rgba(6, 9, 18, 0.94)';
-      ctx.fillRect(bx, by, bw, bh);
-      ctx.strokeStyle = this.stageEventColor || '#facc15';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(bx, by, bw, bh);
+
+      // Soft radial feathered shadow veil (fades smoothly to 0 on all edges, zero box!)
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(rx, ry);
+      const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
+      veil.addColorStop(0, 'rgba(4, 7, 15, 0.78)');
+      veil.addColorStop(0.65, 'rgba(4, 7, 15, 0.42)');
+      veil.addColorStop(1, 'rgba(4, 7, 15, 0)');
+      ctx.fillStyle = veil;
+      ctx.beginPath();
+      ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Tapered 2px elemental light filament between title and subtitle
+      const lineGrad = ctx.createLinearGradient(cx - rx * 0.75, cy, cx + rx * 0.75, cy);
+      lineGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      lineGrad.addColorStop(0.25, this.stageEventColor || '#facc15');
+      lineGrad.addColorStop(0.5, '#ffffff');
+      lineGrad.addColorStop(0.75, this.stageEventColor || '#facc15');
+      lineGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.fillStyle = lineGrad;
+      ctx.fillRect(cx - rx * 0.75, cy + 1, rx * 1.5, 2);
 
       ctx.textAlign = 'center';
-      ctx.font = `${this.isMobile ? 8 : 10}px "Press Start 2P", monospace`;
+      ctx.font = `${this.isMobile ? 8 : 11}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#020617';
+      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', cx + 2, cy - 7);
       ctx.fillStyle = this.stageEventColor || '#facc15';
-      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', Math.round(w * 0.5), by + 21);
+      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', cx, cy - 9);
+
       ctx.font = `${this.isMobile ? 6 : 8}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#020617';
+      ctx.fillText(this.stageEventSubtitle || '', cx + 2, cy + 19);
       ctx.fillStyle = '#f8fafc';
-      ctx.fillText(this.stageEventSubtitle || '', Math.round(w * 0.5), by + 40);
+      ctx.fillText(this.stageEventSubtitle || '', cx, cy + 17);
       ctx.restore();
     }
 
-    // 2. Massive Full-Width HD-2D Ultimate Cut-In Banner (128x128 Portrait + 204x204 Action Sprite + 22px Title!)
+    // 2. Borderless HD-2D Ultimate Cut-In Light Ribbon (Feathered Aura + Soft-Masked Portrait + Floating Typography)
     if (this.cutInTimer > 0) {
       const p = 1 - this.cutInTimer / (this.cutInMaxTimer || 1.05);
       const alpha = p < 0.08 ? p / 0.08 : p > 0.82 ? (1 - p) / 0.18 : 1;
@@ -1920,93 +1944,134 @@ export class Renderer {
       const stripY = Math.round(h * 0.125);
       const stripW = Math.min(w - 16, 1080);
       const stripX = Math.round((w - stripW) * 0.5);
+      const cy = stripY + Math.round(stripH * 0.5);
+      const cx = Math.round(w * 0.5);
       const assets = PixelForge.initAssets();
       const heroAsset = assets[this.cutInHeroId];
       const portImg = heroAsset?.portrait;
       const sheetImg = heroAsset?.sheet;
+      const elemCol = this.cutInColor || '#38bdf8';
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-      // Deep Obsidian Slash Backdrop with Glowing Elemental Gradient
-      ctx.fillStyle = 'rgba(4, 7, 15, 0.96)';
-      ctx.fillRect(stripX, stripY, stripW, stripH);
+      // Soft-feathered elliptical dark & elemental light wash (fades to 0 alpha on top, bottom, left, right—NO BOX!)
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(stripW * 0.54, stripH * 0.62);
+      const ribbonVeil = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1.0);
+      ribbonVeil.addColorStop(0, 'rgba(3, 6, 14, 0.84)');
+      ribbonVeil.addColorStop(0.58, 'rgba(6, 11, 24, 0.52)');
+      ribbonVeil.addColorStop(1, 'rgba(3, 6, 14, 0)');
+      ctx.fillStyle = ribbonVeil;
+      ctx.beginPath();
+      ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
 
-      const grad = ctx.createLinearGradient(stripX, stripY, stripX + stripW, stripY + stripH);
-      grad.addColorStop(0, 'rgba(250, 204, 21, 0.18)');
-      grad.addColorStop(0.5, 'rgba(15, 23, 42, 0.4)');
-      grad.addColorStop(1, 'rgba(56, 189, 248, 0.22)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(stripX, stripY, stripW, stripH);
+      // Soft-feathered elliptical elemental aura (zero rectangular top/bottom band edges!)
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(stripW * 0.44, stripH * 0.38);
+      const elemAura = ctx.createRadialGradient(0, 0, 0.05, 0, 0, 1.0);
+      elemAura.addColorStop(0, elemCol);
+      elemAura.addColorStop(0.55, elemCol);
+      elemAura.addColorStop(1, 'rgba(0, 0, 0, 0)');
+      ctx.globalAlpha = alpha * 0.20;
+      ctx.fillStyle = elemAura;
+      ctx.beginPath();
+      ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
 
-      // Blazing High-Velocity Elemental Speedlines & Pixel Sparks across the full banner
-      for (let s = 0; s < 28; s++) {
-        const lineW = 85 + (s % 4) * 55;
-        const sx = stripX + ((s * 97 + Math.round(this.time * 1450)) % Math.max(120, stripW - lineW));
-        const sy = stripY + 8 + ((s * 17) % (stripH - 16));
-        ctx.fillStyle = s % 3 === 0 ? '#ffffff' : s % 2 === 0 ? this.cutInColor || '#38bdf8' : '#facc15';
-        ctx.globalAlpha = alpha * (s % 3 === 0 ? 0.65 : 0.38);
-        ctx.fillRect(sx, sy, lineW, s % 3 === 0 ? 4 : 3);
+      // Single 2px tapered horizontal light filament between subtitle and ultimate title
+      const glowStream = ctx.createLinearGradient(stripX + 80, cy, stripX + stripW - 80, cy);
+      glowStream.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      glowStream.addColorStop(0.25, elemCol);
+      glowStream.addColorStop(0.5, '#fde047');
+      glowStream.addColorStop(0.75, elemCol);
+      glowStream.addColorStop(1, 'rgba(255, 255, 255, 0)');
+      ctx.save();
+      ctx.globalAlpha = alpha * 0.78;
+      ctx.fillStyle = glowStream;
+      ctx.fillRect(stripX + 80, cy - 2, stripW - 160, 2);
+      ctx.restore();
+
+      // Blazing High-Velocity Elemental Speedlines (concentrated toward vertical center, fading at edges)
+      for (let s = 0; s < 22; s++) {
+        const lineW = 70 + (s % 4) * 48;
+        const sx = stripX + 60 + ((s * 97 + Math.round(this.time * 1450)) % Math.max(120, stripW - lineW - 120));
+        const syOffset = ((s * 13) % Math.round(stripH * 0.64)) - Math.round(stripH * 0.32);
+        const sy = cy + syOffset;
+        const edgeFade = 1 - Math.abs(syOffset) / (stripH * 0.36);
+        ctx.fillStyle = s % 3 === 0 ? '#ffffff' : s % 2 === 0 ? elemCol : '#facc15';
+        ctx.globalAlpha = Math.max(0, alpha * edgeFade * (s % 3 === 0 ? 0.55 : 0.32));
+        ctx.fillRect(sx, sy, lineW, s % 3 === 0 ? 3 : 2);
       }
 
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-      // Heavy Double-Bevel Gold & Elemental Frame
-      ctx.strokeStyle = this.cutInColor || '#38bdf8';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(stripX, stripY, stripW, stripH);
-      ctx.strokeStyle = '#facc15';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(stripX + 5, stripY + 5, stripW - 10, stripH - 10);
-
-      // Left / Right Layout based on Caster Facing
-      const portSize = stripH - 16;
+      const portSize = stripH - 8;
       const isLeft = this.cutInFacing >= 0;
-      const portX = isLeft ? stripX + 10 : stripX + stripW - portSize - 10;
-      const portY = stripY + 8;
+      const portX = isLeft ? stripX + 24 : stripX + stripW - portSize - 24;
+      const portY = cy - Math.round(portSize * 0.5);
+      const portCx = portX + Math.round(portSize * 0.5);
+      const portCy = portY + Math.round(portSize * 0.5);
+      const portR = Math.round(portSize * 0.48);
 
-      // 1) Huge High-Impact Pixel Portrait Frame (128x128 on desktop)
+      // 1) Borderless Circular-Masked HD-2D Portrait with Soft Elemental Halo (NO SQUARE BOX!)
       if (portImg && portImg.complete && portImg.naturalWidth) {
-        ctx.fillStyle = '#060a14';
-        ctx.fillRect(portX, portY, portSize, portSize);
+        ctx.save();
+        const halo = ctx.createRadialGradient(portCx, portCy, portR * 0.4, portCx, portCy, portR * 1.32);
+        halo.addColorStop(0, elemCol);
+        halo.addColorStop(0.6, 'rgba(250, 204, 21, 0.35)');
+        halo.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = halo;
+        ctx.beginPath();
+        ctx.arc(portCx, portCy, portR * 1.32, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(portCx, portCy, portR, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.imageSmoothingEnabled = false;
         ctx.drawImage(portImg, portX, portY, portSize, portSize);
-        ctx.strokeStyle = '#fde047';
-        ctx.lineWidth = 3;
-        ctx.strokeRect(portX, portY, portSize, portSize);
+        ctx.restore();
       }
 
-      // 2) Giant Action-Pose Character Sprite on Opposite Side of Banner (Clean, no reused VFX box!)
+      // 2) Giant Action-Pose Character Sprite on Opposite Side (with soft radial backlight, no box!)
       if (!this.isMobile && sheetImg && sheetImg.complete && sheetImg.naturalWidth) {
         const cell = Math.round(sheetImg.naturalWidth / 8) || 208;
         const actionSize = Math.round(stripH * 1.42);
         const actionX = isLeft ? stripX + stripW - actionSize - 24 : stripX + 24;
-        const actionY = stripY + Math.round((stripH - actionSize) * 0.5) - 6;
-
-        // Frame 18 (row 2, col 2) is the dramatic Ultimate Cast / Cleave pose
+        const actionY = cy - Math.round(actionSize * 0.5) - 6;
+        ctx.imageSmoothingEnabled = false;
         ctx.drawImage(sheetImg, 2 * cell, 2 * cell, cell, cell, actionX, actionY, actionSize, actionSize);
       }
 
-      // 3) Oversized Arcade Ultimate Callout Typography in Center
+      // 3) Floating Arcade Ultimate Callout Typography with Deep Pixel Drop-Shadow
       ctx.textAlign = 'center';
       const textCx = Math.round(w * 0.5);
-      ctx.font = `${this.isMobile ? 8 : 12}px "Press Start 2P", monospace`;
+      const topTy = cy - (this.isMobile ? 12 : 18);
+      const botTy = cy + (this.isMobile ? 20 : 30);
+
+      ctx.font = `${this.isMobile ? 8 : 11}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#020617';
+      ctx.fillText(`★ ${this.cutInName} • OVERDRIVE UNLEASHED ★`, textCx + 2, topTy + 2);
       ctx.fillStyle = '#fde047';
-      ctx.fillText(
-        `★ ${this.cutInName} • OVERDRIVE UNLEASHED ★`,
-        textCx,
-        stripY + (this.isMobile ? 32 : 48)
-      );
+      ctx.fillText(`★ ${this.cutInName} • OVERDRIVE UNLEASHED ★`, textCx, topTy);
 
       ctx.font = `${this.isMobile ? 13 : 22}px "Press Start 2P", monospace`;
-      ctx.fillStyle = '#000000';
-      ctx.fillText(this.cutInUltName, textCx + 3, stripY + (this.isMobile ? 68 : 102) + 3);
-      ctx.fillStyle = this.cutInColor || '#38bdf8';
-      ctx.fillText(this.cutInUltName, textCx + 1, stripY + (this.isMobile ? 68 : 102) + 1);
+      ctx.fillStyle = '#020617';
+      ctx.fillText(this.cutInUltName, textCx + 3, botTy + 3);
+      ctx.fillText(this.cutInUltName, textCx - 2, botTy + 2);
+      ctx.fillStyle = elemCol;
+      ctx.fillText(this.cutInUltName, textCx + 1, botTy + 1);
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(this.cutInUltName, textCx, stripY + (this.isMobile ? 68 : 102));
+      ctx.fillText(this.cutInUltName, textCx, botTy);
       ctx.restore();
     }
 
-    // 3. Screen-Space Decisive K.O. Finisher Winner Banner (ZERO X-LINES, ZERO OBSTRUCTING BANDS!)
+    // 3. Borderless Decisive K.O. Finisher Emblem (Feathered Golden Flare + Circular Medallion Portrait + Floating Typography)
     if (this.koZoomTimer > 0) {
       const p = 1 - this.koZoomTimer / (this.koMaxTimer || 1.35);
       const alpha = p < 0.08 ? p / 0.08 : Math.max(0, 1 - (p - 0.08) / 0.92);
@@ -2014,45 +2079,85 @@ export class Renderer {
       const winPort = assets[this.koWinnerHeroId || 'warrior']?.portrait;
 
       ctx.save();
-      // Ornate Upper-Center DECISIVE FINISH • K.O.! Banner with Winner Portrait
       const kw = Math.min(w - 24, 680);
-      const kh = this.isMobile ? 68 : 88;
+      const kh = this.isMobile ? 72 : 96;
       const kx = Math.round((w - kw) * 0.5);
       const ky = Math.round(h * 0.135);
+      const kcx = Math.round(w * 0.5);
+      const kcy = ky + Math.round(kh * 0.5);
+      const koCol = this.koColor || '#facc15';
 
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-      ctx.fillStyle = 'rgba(6, 9, 18, 0.96)';
-      ctx.fillRect(kx, ky, kw, kh);
-      ctx.strokeStyle = this.koColor || '#facc15';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(kx, ky, kw, kh);
-      ctx.strokeStyle = '#fde047';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(kx + 4, ky + 4, kw - 8, kh - 8);
 
-      const pSz = kh - 16;
+      // Feathered elliptical golden-obsidian light veil (fades smoothly to 0 on all sides—ZERO BOX BORDER!)
+      ctx.save();
+      ctx.translate(kcx, kcy);
+      ctx.scale(kw * 0.55, kh * 0.65);
+      const koVeil = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1.0);
+      koVeil.addColorStop(0, 'rgba(4, 7, 15, 0.84)');
+      koVeil.addColorStop(0.6, 'rgba(8, 12, 24, 0.48)');
+      koVeil.addColorStop(1, 'rgba(4, 7, 15, 0)');
+      ctx.fillStyle = koVeil;
+      ctx.beginPath();
+      ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      // Tapered golden horizontal light flare
+      const koFlare = ctx.createLinearGradient(kx, kcy, kx + kw, kcy);
+      koFlare.addColorStop(0, 'rgba(250, 204, 21, 0)');
+      koFlare.addColorStop(0.25, koCol);
+      koFlare.addColorStop(0.5, '#fef08a');
+      koFlare.addColorStop(0.75, koCol);
+      koFlare.addColorStop(1, 'rgba(250, 204, 21, 0)');
+      ctx.fillStyle = koFlare;
+      ctx.fillRect(kx + 30, kcy + 3, kw - 60, 2);
+
+      const pSz = kh - 12;
+      const pCx = kx + 28 + Math.round(pSz * 0.5);
+      const pCy = kcy;
+      const pR = Math.round(pSz * 0.48);
       if (winPort && winPort.complete && winPort.naturalWidth) {
-        ctx.drawImage(winPort, kx + 10, ky + 8, pSz, pSz);
-        ctx.strokeStyle = '#fde047';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(kx + 10, ky + 8, pSz, pSz);
+        ctx.save();
+        const pGlow = ctx.createRadialGradient(pCx, pCy, pR * 0.4, pCx, pCy, pR * 1.28);
+        pGlow.addColorStop(0, '#fde047');
+        pGlow.addColorStop(0.65, koCol);
+        pGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = pGlow;
+        ctx.beginPath();
+        ctx.arc(pCx, pCy, pR * 1.28, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(pCx, pCy, pR, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(winPort, pCx - pR, pCy - pR, pR * 2, pR * 2);
+        ctx.restore();
       }
 
       ctx.textAlign = 'center';
-      const kTextX = Math.round(kx + kw * 0.5 + pSz * 0.35);
+      const kTextX = Math.round(kcx + pSz * 0.28);
       ctx.font = `${this.isMobile ? 12 : 19}px "Press Start 2P", monospace`;
-      ctx.fillStyle = '#000000';
-      ctx.fillText('★ DECISIVE FINISH • K.O.! ★', kTextX + 2, ky + (this.isMobile ? 30 : 40) + 2);
+      ctx.fillStyle = '#020617';
+      ctx.fillText('★ DECISIVE FINISH • K.O.! ★', kTextX + 3, kcy - 8 + 3);
+      ctx.fillText('★ DECISIVE FINISH • K.O.! ★', kTextX - 2, kcy - 8 + 2);
       ctx.fillStyle = '#fde047';
-      ctx.fillText('★ DECISIVE FINISH • K.O.! ★', kTextX, ky + (this.isMobile ? 30 : 40));
+      ctx.fillText('★ DECISIVE FINISH • K.O.! ★', kTextX, kcy - 8);
 
       ctx.font = `${this.isMobile ? 8 : 11}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#020617';
+      ctx.fillText(
+        `${(this.koWinnerName || 'CHAMPION').toUpperCase()} CLAIMS THE SANCTUARY!`,
+        kTextX + 2,
+        kcy + (this.isMobile ? 18 : 24) + 2
+      );
       ctx.fillStyle = '#ffffff';
       ctx.fillText(
         `${(this.koWinnerName || 'CHAMPION').toUpperCase()} CLAIMS THE SANCTUARY!`,
         kTextX,
-        ky + (this.isMobile ? 52 : 68)
+        kcy + (this.isMobile ? 18 : 24)
       );
       ctx.restore();
     }

@@ -718,30 +718,13 @@ class Game {
         sctx.restore();
       }
 
-      // 3 Bespoke Pixel-Art Skill Icon Canvases sliced from assets[heroKey].vfx
-      const vfxSheet = heroAssets.vfx;
-      if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth && Array.isArray(cfg.skills)) {
-        cfg.skills.forEach((sk, idx) => {
+      // 3 Bespoke Pixel-Art RPG Ability Icons (designed specifically for 56x56 square skill slots!)
+      if (Array.isArray(cfg.skills)) {
+        cfg.skills.forEach((_sk, idx) => {
           const iconCanvas = document.getElementById(`${prefix}-skill-icon-${idx}`);
           if (!iconCanvas) return;
           const ictx = iconCanvas.getContext('2d');
-          const iw = iconCanvas.width;
-          const ih = iconCanvas.height;
-          ictx.clearRect(0, 0, iw, ih);
-          ictx.imageSmoothingEnabled = false;
-
-          const cellIdx = sk.vfxCell ?? idx;
-          const cw = Math.floor(vfxSheet.naturalWidth / 3);
-          const ch = vfxSheet.naturalHeight;
-          const inset = Math.round(cw * 0.04);
-          const srcX = cellIdx * cw + inset;
-          const srcY = Math.round(ch * 0.04);
-          const srcW = cw - inset * 2;
-          const srcH = ch - srcY * 2;
-          const pulse = 1 + Math.sin(t * 3.5 + idx) * 0.04;
-          const drawSz = Math.round(iw * pulse);
-          const off = Math.round((iw - drawSz) * 0.5);
-          ictx.drawImage(vfxSheet, srcX, srcY, srcW, srcH, off, off, drawSz, drawSz);
+          PixelForge.drawSkillIcon(ictx, heroKey, idx, iconCanvas.width, iconCanvas.height, t);
         });
       }
     };
@@ -809,7 +792,6 @@ class Game {
     if (typeof this.renderer.triggerUltimateCutIn === 'function') {
       this.renderer.triggerUltimateCutIn(caster);
     }
-    if (this.audio) this.audio.play('ult_cast', caster.x);
 
     // Spawn in-world overhead Ultimate announcement & radiant halo directly around the character's head
     this.vfx.spawnSpecialCastAura(

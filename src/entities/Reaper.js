@@ -351,7 +351,6 @@ export class Reaper extends Fighter {
       this.isDeflecting = false;
       this.chainClaw = null;
       if (game.audio) game.audio.play('scythe_reap', this.x);
-      if (game.audio) game.audio.play('soul_drain', this.x);
       game.renderer.triggerShake(14, 0.28);
       game.renderer.triggerHitStop(0.06);
 
@@ -393,8 +392,7 @@ export class Reaper extends Fighter {
     // STAGE 1 (0.05s): Summon the Haunted Graveyard of 7 Gothic Tombstones & Skeletal Hands
     if (t >= 0.05 && this.ultStage === 0) {
       this.ultStage = 1;
-      if (game.audio) game.audio.play('chain_hook', targetX);
-      if (game.audio) game.audio.play('soul_drain', this.x);
+      if (game.audio) game.audio.play('soul_drain', targetX);
       game.renderer.triggerShake(14, 0.28);
 
       const center = (this.x + targetX) * 0.5;
@@ -437,7 +435,6 @@ export class Reaper extends Fighter {
     if (t >= 1.00 && this.ultStage === 2) {
       this.ultStage = 3;
       if (game.audio) game.audio.play('scythe_reap', targetX);
-      if (game.audio) game.audio.play('soul_drain', this.x);
 
       game.renderer.triggerShake(28, 0.58);
       game.renderer.triggerAberration(16);

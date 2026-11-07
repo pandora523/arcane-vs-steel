@@ -149,7 +149,7 @@ export class AudioManager {
     await Promise.all(
       this.wavKeys.map(async (key) => {
         try {
-          const res = await fetch(`assets/sfx/${key}.wav`);
+          const res = await fetch(`assets/sfx/${key}.wav?v=2`);
           if (!res.ok) return;
           const arr = await res.arrayBuffer();
           this.buffers[key] = await this.ctx.decodeAudioData(arr);
@@ -222,24 +222,39 @@ export class AudioManager {
       name === 'ult_cast' ||
       name === 'thunder_slam';
 
-    // Duck older voices slightly when a major cinematic sound arrives
-    this.pruneAndDuckVoices(now, isBigCinematic);
+    const isTonalOrCinematic =
+      isBigCinematic ||
+      name === 'victory_fanfare' ||
+      name === 'holy_bolt' ||
+      name === 'holy_hit' ||
+      name === 'holy_heal' ||
+      name === 'holy_smite' ||
+      name === 'soul_drain' ||
+      name === 'chrono_hit' ||
+      name === 'time_rewind' ||
+      name === 'hourglass_trap' ||
+      name === 'skill_cast';
+
+    const isMatchEndSound = name === 'victory_fanfare' || name.startsWith('death_');
+
+    // Duck older voices when a major cinematic sound arrives, or fade out combat voices on match end
+    this.pruneAndDuckVoices(now, isBigCinematic, isMatchEndSound);
 
     const baseVol = this.volumes[name] || 0.68;
     const voiceGain = this.ctx.createGain();
     voiceGain.gain.setValueAtTime(baseVol, this.ctx.currentTime);
 
-    // Full-bandwidth natural air filter (preserves crisp sword edge shing, arrow thwack & fire crackle)
+    // Full-bandwidth natural air filter
     const warmthFilter = this.ctx.createBiquadFilter();
     warmthFilter.type = 'lowpass';
-    warmthFilter.frequency.value = isBigCinematic ? 14800 : 12500 + Math.random() * 2500;
+    warmthFilter.frequency.value = isTonalOrCinematic ? 15500 : 13500 + Math.random() * 1800;
     warmthFilter.Q.value = 0.65;
 
     voiceGain.connect(warmthFilter);
 
-    if (worldX !== null && typeof this.ctx.createStereoPanner === 'function') {
+    if (worldX !== null && name !== 'victory_fanfare' && typeof this.ctx.createStereoPanner === 'function') {
       const panner = this.ctx.createStereoPanner();
-      panner.pan.value = Math.max(-0.55, Math.min(0.55, (worldX - 800) / 700));
+      panner.pan.value = Math.max(-0.48, Math.min(0.48, (worldX - 600) / 650));
       warmthFilter.connect(panner);
       panner.connect(this.master);
     } else {
@@ -252,12 +267,14 @@ export class AudioManager {
       try {
         const src = this.ctx.createBufferSource();
         src.buffer = buf;
-        const rateSpread = isBigCinematic ? 0.03 : 0.08;
-        src.playbackRate.value = 1.0 - rateSpread * 0.5 + Math.random() * rateSpread;
+        // Never detune tonal, ultimate, or victory fanfare sounds!
+        const rateSpread = isTonalOrCinematic || isMatchEndSound ? 0.0 : 0.035;
+        src.playbackRate.value =
+          rateSpread > 0 ? 1.0 - rateSpread * 0.5 + Math.random() * rateSpread : 1.0;
         src.connect(voiceGain);
         src.start(0);
 
-        const voiceEntry = { gainNode: voiceGain, startTime: now, isBig: isBigCinematic };
+        const voiceEntry = { gainNode: voiceGain, startTime: now, isBig: isBigCinematic, name };
         this.activeVoices.push(voiceEntry);
         src.onended = () => {
           const idx = this.activeVoices.indexOf(voiceEntry);
@@ -271,11 +288,25 @@ export class AudioManager {
     this.playWarmFallback(name, voiceGain);
   }
 
-  pruneAndDuckVoices(now, incomingIsBig) {
+  pruneAndDuckVoices(now, incomingIsBig, isMatchEndSound = false) {
     for (let i = this.activeVoices.length - 1; i >= 0; i--) {
       if (now - this.activeVoices[i].startTime > 2200) {
         this.activeVoices.splice(i, 1);
       }
+    }
+
+    if (isMatchEndSound) {
+      const t = this.ctx.currentTime;
+      while (this.activeVoices.length > 0) {
+        const v = this.activeVoices.shift();
+        if (v && v.gainNode) {
+          try {
+            v.gainNode.gain.setValueAtTime(v.gainNode.gain.value, t);
+            v.gainNode.gain.exponentialRampToValueAtTime(0.0008, t + 0.06);
+          } catch (_) {}
+        }
+      }
+      return;
     }
 
     while (this.activeVoices.length > 7) {
@@ -296,7 +327,7 @@ export class AudioManager {
           try {
             const cur = v.gainNode.gain.value;
             v.gainNode.gain.setValueAtTime(cur, t);
-            v.gainNode.gain.linearRampToValueAtTime(cur * 0.55, t + 0.03);
+            v.gainNode.gain.linearRampToValueAtTime(cur * 0.45, t + 0.035);
           } catch (_) {}
         }
       }

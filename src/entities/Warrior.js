@@ -455,7 +455,6 @@ export class Warrior extends Fighter {
     if (!this.didActionFrame) {
       this.didActionFrame = true;
       if (game.audio) game.audio.play('earthshatter', this.x);
-      if (game.audio) game.audio.play('blade_wave', this.x);
 
       game.renderer.triggerShake(28, 0.65);
       game.renderer.triggerAberration(16);

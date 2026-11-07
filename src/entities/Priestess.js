@@ -442,7 +442,6 @@ export class Priestess extends Fighter {
     if (t >= 0.94 && !this.didActionFrame) {
       this.didActionFrame = true;
       if (game.audio) game.audio.play('priestess_ult', targetX);
-      if (game.audio) game.audio.play('holy_smite', targetX);
 
       game.renderer.triggerShake(24, 0.58);
       game.renderer.triggerAberration(14);

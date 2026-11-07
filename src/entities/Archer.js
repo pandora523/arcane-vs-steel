@@ -379,6 +379,7 @@ export class Archer extends Fighter {
     if (t < 0.42) {
       if (!this.spawnedChannelTornado && t >= 0.05) {
         this.spawnedChannelTornado = true;
+        if (game.audio) game.audio.play('zephyr_flip', this.x);
         game.vfx.spawnTornado({
           x: this.x + this.facing * 65,
           groundY: this.groundY,

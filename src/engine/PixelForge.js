@@ -19,33 +19,33 @@ export class PixelForge {
       warrior: {
         sheet: loadImg('assets/sprites/warrior_sheet.png'),
         vfx: loadImg('assets/sprites/warrior_vfx.png'),
-        portrait: loadImg('assets/sprites/warrior_portrait.png', () => this.refreshPortraits())
+        portrait: loadImg('assets/sprites/warrior_portrait.png?v=2', () => this.refreshPortraits())
       },
       mage: {
         sheet: loadImg('assets/sprites/mage_sheet.png'),
         vfx: loadImg('assets/sprites/mage_vfx.png'),
-        portrait: loadImg('assets/sprites/mage_portrait.png', () => this.refreshPortraits())
+        portrait: loadImg('assets/sprites/mage_portrait.png?v=2', () => this.refreshPortraits())
       },
       archer: {
         sheet: loadImg('assets/sprites/archer_sheet.png'),
         vfx: loadImg('assets/sprites/archer_vfx.png'),
-        portrait: loadImg('assets/sprites/archer_portrait.png', () => this.refreshPortraits())
+        portrait: loadImg('assets/sprites/archer_portrait.png?v=2', () => this.refreshPortraits())
       },
       priestess: {
         sheet: loadImg('assets/sprites/priestess_sheet.png'),
         wings: loadImg('assets/sprites/seraphim_wings.png'),
         vfx: loadImg('assets/sprites/priestess_vfx.png'),
-        portrait: loadImg('assets/sprites/priestess_portrait.png', () => this.refreshPortraits())
+        portrait: loadImg('assets/sprites/priestess_portrait.png?v=2', () => this.refreshPortraits())
       },
       reaper: {
         sheet: loadImg('assets/sprites/reaper_sheet.png'),
         vfx: loadImg('assets/sprites/reaper_vfx.png'),
-        portrait: loadImg('assets/sprites/reaper_portrait.png', () => this.refreshPortraits())
+        portrait: loadImg('assets/sprites/reaper_portrait.png?v=2', () => this.refreshPortraits())
       },
       chronomancer: {
         sheet: loadImg('assets/sprites/chronomancer_sheet.png'),
         vfx: loadImg('assets/sprites/chronomancer_vfx.png'),
-        portrait: loadImg('assets/sprites/chronomancer_portrait.png', () => this.refreshPortraits())
+        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=2', () => this.refreshPortraits())
       }
     };
 
@@ -68,18 +68,15 @@ export class PixelForge {
     }
   }
 
-  static drawPortrait(canvasId, img, borderColor) {
+  static drawPortrait(canvasId, img, _borderColor) {
     const el = document.getElementById(canvasId);
     if (!el || !img || !img.complete || !img.naturalWidth) return;
-    el.width = 96;
-    el.height = 96;
+    el.width = 128;
+    el.height = 128;
     const ctx = el.getContext('2d');
     ctx.imageSmoothingEnabled = false;
-    ctx.clearRect(0, 0, 96, 96);
-    ctx.drawImage(img, 0, 0, 96, 96);
-    ctx.strokeStyle = borderColor;
-    ctx.lineWidth = 4;
-    ctx.strokeRect(2, 2, 92, 92);
+    ctx.clearRect(0, 0, 128, 128);
+    ctx.drawImage(img, 0, 0, 128, 128);
   }
 
   /**
@@ -665,5 +662,347 @@ export class PixelForge {
 
   static drawGhostFrame(_ctx, _charSet, _frameIdx, _w, _h) {
     // Disabled additive double-exposure so character faces and inked silhouettes stay 100% crisp during hits
+  }
+
+  /**
+   * Renders 18 purpose-built, crisp 28x28 Pixel-Art RPG Ability Icons (scaled 2x to 56x56)
+   * with rich elemental backgrounds, automatic 1px dark pixel-ink outlines, and animated pixel sparks.
+   */
+  static drawSkillIcon(ctx, heroKey, slotIdx, w, h, t = 0) {
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, w, h);
+
+    const G = 28; // 28x28 logical pixel grid -> 2x2 screen pixels on 56x56 canvas
+    const px = w / G;
+    const buf = new Array(G * G).fill(null);
+    const setPx = (x, y, col) => {
+      const ix = Math.round(x);
+      const iy = Math.round(y);
+      if (ix >= 0 && ix < G && iy >= 0 && iy < G) {
+        buf[iy * G + ix] = col;
+      }
+    };
+    const fillRectPx = (x, y, rw, rh, col) => {
+      for (let yy = y; yy < y + rh; yy++) {
+        for (let xx = x; xx < x + rw; xx++) setPx(xx, yy, col);
+      }
+    };
+    const drawLinePx = (x0, y0, x1, y1, col, thick = 1) => {
+      const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+      for (let i = 0; i <= steps; i++) {
+        const lx = Math.round(x0 + ((x1 - x0) * i) / steps);
+        const ly = Math.round(y0 + ((y1 - y0) * i) / steps);
+        for (let ty = 0; ty < thick; ty++) {
+          for (let tx = 0; tx < thick; tx++) setPx(lx + tx, ly + ty, col);
+        }
+      }
+    };
+    const drawCirclePx = (cx, cy, r, col, fill = false) => {
+      for (let yy = Math.floor(cy - r - 1); yy <= Math.ceil(cy + r + 1); yy++) {
+        for (let xx = Math.floor(cx - r - 1); xx <= Math.ceil(cx + r + 1); xx++) {
+          const d = Math.hypot(xx - cx, yy - cy);
+          if (fill ? d <= r + 0.35 : Math.abs(d - r) <= 0.72) setPx(xx, yy, col);
+        }
+      }
+    };
+
+    const themes = {
+      warrior: { bg0: '#061024', bg1: '#0c2d5e', rim: '#38bdf8', glow: '#7dd3fc', gold: '#facc15' },
+      archer: { bg0: '#041b15', bg1: '#0b4635', rim: '#34d399', glow: '#6ee7b7', gold: '#fde047' },
+      mage: { bg0: '#1c0806', bg1: '#57160b', rim: '#fb923c', glow: '#fde047', gold: '#facc15' },
+      priestess: { bg0: '#191205', bg1: '#4d360b', rim: '#fde047', glow: '#fef9c3', gold: '#fbbf24' },
+      reaper: { bg0: '#11061f', bg1: '#351052', rim: '#c084fc', glow: '#f43f5e', gold: '#e879f9' },
+      chronomancer: { bg0: '#04181c', bg1: '#0d4248', rim: '#2dd4bf', glow: '#99f6e4', gold: '#f59e0b' }
+    };
+    const th = themes[heroKey] || themes.warrior;
+
+    // 1. Rich Recessed RPG Icon Backdrop + Radial Elemental Glow
+    const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.5, 4, w * 0.5, h * 0.5, w * 0.72);
+    bgGrad.addColorStop(0, th.bg1);
+    bgGrad.addColorStop(1, th.bg0);
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    // Subtle pixel-art corner bevels inside the icon frame
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.09)';
+    ctx.fillRect(0, 0, w, px);
+    ctx.fillRect(0, 0, px, h);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.fillRect(0, h - px, w, px);
+    ctx.fillRect(w - px, 0, px, h);
+
+    // 2. Draw Bespoke 28x28 Pixel-Art Emblem per Hero & Skill Slot
+    if (heroKey === 'warrior') {
+      if (slotIdx === 0) {
+        // FROST CRESCENT + AEGIS SHIELD: Winged Sapphire Shield + Diagonal Runeblade + Frost Arc
+        drawCirclePx(13, 15, 7, '#1d4ed8', true);
+        drawCirclePx(13, 15, 7, '#facc15', false);
+        drawCirclePx(13, 15, 4, '#38bdf8', false);
+        // Diagonal Frost Runeblade cutting from bottom-left to top-right
+        drawLinePx(5, 22, 22, 5, '#38bdf8', 2);
+        drawLinePx(6, 21, 22, 5, '#e0f2fe', 1);
+        drawLinePx(7, 16, 12, 21, '#facc15', 2); // Golden Crossguard
+        fillRectPx(4, 21, 3, 3, '#f59e0b'); // Pommel
+        // Glowing Frost Crescent Wave on right
+        drawCirclePx(16, 13, 9, '#7dd3fc', false);
+        drawCirclePx(17, 13, 9, '#ffffff', false);
+      } else if (slotIdx === 1) {
+        // TEMPEST VANGUARD: 3-Blade Cryo-Cyclone Whirlwind Vortex + Lightning Sparks
+        for (let r = 3; r <= 10; r += 3) {
+          drawCirclePx(14, 14, r, r === 9 ? '#ffffff' : '#38bdf8', false);
+        }
+        // Sweeping razor vortex blades
+        drawLinePx(6, 10, 20, 6, '#e0f2fe', 2);
+        drawLinePx(22, 11, 18, 22, '#7dd3fc', 2);
+        drawLinePx(19, 22, 6, 17, '#38bdf8', 2);
+        drawCirclePx(14, 14, 3, '#facc15', true);
+        setPx(14, 14, '#ffffff');
+      } else {
+        // HEAVENLY EARTHSHATTER: Colossal Vertical Runeblade Plunging + 5 Glacial Spires
+        // Left & right erupting glacial crystal spires
+        drawLinePx(5, 23, 7, 12, '#0284c7', 2);
+        drawLinePx(6, 23, 7, 13, '#7dd3fc', 1);
+        drawLinePx(9, 23, 10, 15, '#38bdf8', 2);
+        drawLinePx(22, 23, 20, 12, '#0284c7', 2);
+        drawLinePx(21, 23, 20, 13, '#7dd3fc', 1);
+        drawLinePx(18, 23, 17, 15, '#38bdf8', 2);
+        // Central plunging Greatsword
+        fillRectPx(13, 3, 2, 4, '#f59e0b');
+        fillRectPx(9, 7, 10, 2, '#facc15');
+        fillRectPx(12, 9, 4, 13, '#0284c7');
+        fillRectPx(13, 9, 2, 14, '#e0f2fe');
+        // Golden impact shockwave at base
+        drawLinePx(4, 23, 23, 23, '#fde047', 2);
+        drawLinePx(8, 24, 19, 24, '#ffffff', 1);
+      }
+    } else if (heroKey === 'archer') {
+      if (slotIdx === 0) {
+        // ASTRAL LONGBOW: Golden Recurve Bow + Blazing Emerald Arrow
+        drawCirclePx(11, 14, 9, '#facc15', false);
+        drawCirclePx(12, 14, 9, '#fef08a', false);
+        fillRectPx(4, 5, 6, 18, null); // Open left half for recurve arc
+        drawLinePx(11, 5, 11, 23, '#a7f3d0', 1); // Taut bowstring
+        // Blazing emerald arrow nocked horizontally
+        drawLinePx(6, 14, 23, 14, '#10b981', 2);
+        drawLinePx(7, 14, 23, 14, '#ecfdf5', 1);
+        // Arrowhead
+        drawLinePx(20, 11, 24, 14, '#34d399', 2);
+        drawLinePx(20, 17, 24, 14, '#34d399', 2);
+        // Emerald fletching feathers
+        drawLinePx(5, 12, 8, 14, '#fde047', 1);
+        drawLinePx(5, 16, 8, 14, '#fde047', 1);
+      } else if (slotIdx === 1) {
+        // STARFALL VOLLEY: 5 Diagonal Emerald-Gold Starlight Arrows Raining Down
+        const arrows = [
+          [5, 4, 12, 18],
+          [10, 3, 17, 17],
+          [15, 5, 22, 19],
+          [6, 11, 12, 23],
+          [16, 11, 22, 23]
+        ];
+        for (const [x0, y0, x1, y1] of arrows) {
+          drawLinePx(x0, y0, x1, y1, '#10b981', 2);
+          drawLinePx(x0, y0, x1, y1, '#a7f3d0', 1);
+          fillRectPx(x1 - 1, y1 - 1, 3, 3, '#fde047');
+          setPx(x1, y1, '#ffffff');
+        }
+      } else {
+        // ASTRAL HURRICANE: Coiling Emerald Wind-Dragon + Orbital Starlight Beams
+        fillRectPx(5, 3, 2, 22, '#059669');
+        fillRectPx(21, 3, 2, 22, '#059669');
+        // Coiling emerald dragon S-curve & roaring head
+        drawLinePx(8, 22, 18, 16, '#10b981', 3);
+        drawLinePx(18, 16, 9, 10, '#34d399', 3);
+        drawLinePx(9, 10, 19, 6, '#6ee7b7', 3);
+        // Dragon head, golden horns & glowing eye
+        fillRectPx(16, 5, 6, 5, '#10b981');
+        drawLinePx(14, 3, 18, 5, '#fde047', 2);
+        setPx(19, 7, '#ffffff');
+        setPx(18, 7, '#fde047');
+      }
+    } else if (heroKey === 'mage') {
+      if (slotIdx === 0) {
+        // SOLAR FIREBALL: Molten White-Gold Comet Orb + Crimson Flame Tail
+        drawLinePx(4, 22, 14, 14, '#dc2626', 4);
+        drawLinePx(6, 20, 15, 13, '#f97316', 3);
+        drawCirclePx(17, 11, 6, '#ea580c', true);
+        drawCirclePx(17, 11, 4, '#facc15', true);
+        drawCirclePx(18, 10, 2, '#ffffff', true);
+      } else if (slotIdx === 1) {
+        // TRIPLE SOLAR PILLAR: 3 Erupting Columns of Hellfire Magma
+        const cols = [
+          [6, 8, 4, 15],
+          [12, 4, 4, 19],
+          [18, 7, 4, 16]
+        ];
+        for (const [cx, cy, cw, ch] of cols) {
+          fillRectPx(cx - 1, cy, cw + 2, ch, '#dc2626');
+          fillRectPx(cx, cy - 1, cw, ch + 1, '#f97316');
+          fillRectPx(cx + 1, cy + 1, cw - 2, ch - 2, '#fde047');
+          fillRectPx(cx + 1, cy + 3, 1, ch - 4, '#ffffff');
+        }
+        fillRectPx(4, 22, 20, 2, '#fde047');
+      } else {
+        // ECLIPSE SUPERNOVA: Black-Sun Void Sphere + Blazing Golden Corona Rays
+        for (let a = 0; a < 8; a++) {
+          const ang = (a * Math.PI) / 4;
+          drawLinePx(
+            14,
+            14,
+            14 + Math.cos(ang) * 11,
+            14 + Math.sin(ang) * 11,
+            a % 2 === 0 ? '#fde047' : '#f97316',
+            2
+          );
+        }
+        drawCirclePx(14, 14, 8, '#ea580c', true);
+        drawCirclePx(14, 14, 6, '#fde047', true);
+        drawCirclePx(14, 14, 4.5, '#09040a', true);
+        setPx(19, 10, '#ffffff');
+        setPx(18, 10, '#ffffff');
+      }
+    } else if (heroKey === 'priestess') {
+      if (slotIdx === 0) {
+        // SACRED STARLIGHT: 8-Pointed Celestial Star + Golden Seraphim Wings
+        // Left & right golden angel wings
+        drawLinePx(4, 9, 10, 14, '#f59e0b', 2);
+        drawLinePx(3, 13, 10, 16, '#fde047', 2);
+        drawLinePx(23, 9, 17, 14, '#f59e0b', 2);
+        drawLinePx(24, 13, 17, 16, '#fde047', 2);
+        // Central 8-point star
+        fillRectPx(13, 4, 2, 20, '#fde047');
+        fillRectPx(4, 13, 20, 2, '#fde047');
+        drawCirclePx(14, 14, 4, '#ffffff', true);
+      } else if (slotIdx === 1) {
+        // DIVINE SANCTUARY: Consecrated Golden Floor Ring + Descending Valkyrie Spear
+        drawCirclePx(14, 20, 7, '#f59e0b', false);
+        drawCirclePx(14, 20, 5, '#34d399', false);
+        // Descending Valkyrie Spear
+        fillRectPx(13, 3, 2, 16, '#fde047');
+        fillRectPx(9, 8, 10, 2, '#fef08a');
+        drawLinePx(11, 16, 14, 20, '#ffffff', 2);
+        drawLinePx(17, 16, 14, 20, '#ffffff', 2);
+      } else {
+        // SERAPHIC APOTHEOSIS: 6-Winged Archangel Halo Crown + Judgment Pillars
+        fillRectPx(6, 4, 2, 20, '#f59e0b');
+        fillRectPx(13, 3, 2, 22, '#fef08a');
+        fillRectPx(20, 4, 2, 20, '#f59e0b');
+        drawCirclePx(14, 11, 6, '#fde047', false);
+        drawLinePx(3, 8, 11, 13, '#fde047', 2);
+        drawLinePx(24, 8, 16, 13, '#fde047', 2);
+        drawLinePx(4, 15, 11, 16, '#fef08a', 2);
+        drawLinePx(23, 15, 16, 16, '#fef08a', 2);
+        drawCirclePx(14, 11, 3, '#ffffff', true);
+      }
+    } else if (heroKey === 'reaper') {
+      if (slotIdx === 0) {
+        // CRESCENT SCYTHE: Wicked Curved Abyssal Scythe Blade + Crimson Soul Leech
+        drawLinePx(7, 23, 20, 6, '#9333ea', 2); // Scythe pole
+        // Curved crescent scythe blade at top
+        drawCirclePx(14, 11, 8, '#c084fc', false);
+        drawCirclePx(15, 10, 8, '#f43f5e', false);
+        drawLinePx(8, 6, 21, 8, '#e2e8f0', 2);
+        // Glowing crimson soul drop
+        drawCirclePx(19, 18, 2.5, '#f43f5e', true);
+        setPx(19, 18, '#ffffff');
+      } else if (slotIdx === 1) {
+        // SPECTRAL CHAIN HOOK: Iron Chain Links + Grasping Skeletal Bone-Claw
+        drawLinePx(4, 23, 15, 12, '#94a3b8', 2);
+        drawLinePx(5, 22, 16, 11, '#c084fc', 1);
+        // 3 Curved skeletal claw talons
+        drawLinePx(14, 12, 22, 6, '#e2e8f0', 2);
+        drawLinePx(15, 13, 24, 11, '#e2e8f0', 2);
+        drawLinePx(14, 14, 21, 18, '#e2e8f0', 2);
+        drawCirclePx(15, 13, 2.5, '#f43f5e', true);
+      } else {
+        // GRIM HARVEST: Hooded Death-Avatar Skull + Crimson Eyes + Crossed Scythes
+        drawLinePx(5, 22, 22, 5, '#9333ea', 2);
+        drawLinePx(22, 22, 5, 5, '#9333ea', 2);
+        // Dark hood & skull
+        drawCirclePx(14, 13, 6.5, '#581c87', true);
+        fillRectPx(10, 10, 8, 7, '#cbd5e1');
+        fillRectPx(11, 16, 6, 4, '#94a3b8');
+        // Glowing crimson eyes
+        fillRectPx(11, 12, 2, 2, '#f43f5e');
+        fillRectPx(15, 12, 2, 2, '#f43f5e');
+        setPx(11, 12, '#ffffff');
+        setPx(15, 12, '#ffffff');
+      }
+    } else {
+      // CHRONOMANCER
+      if (slotIdx === 0) {
+        // ESCAPEMENT SAW-GEAR: 8-Toothed Golden Gear + Cyan Temporal Rewind Arc
+        for (let a = 0; a < 8; a++) {
+          const ang = (a * Math.PI) / 4;
+          drawLinePx(14, 14, 14 + Math.cos(ang) * 9, 14 + Math.sin(ang) * 9, '#f59e0b', 2);
+        }
+        drawCirclePx(14, 14, 7, '#fbbf24', true);
+        drawCirclePx(14, 14, 4, '#0d4248', true);
+        drawCirclePx(14, 14, 2, '#2dd4bf', true);
+        drawCirclePx(14, 14, 10, '#2dd4bf', false);
+      } else if (slotIdx === 1) {
+        // HOURGLASS STASIS: Ornate Golden Frame + Glowing Turquoise Sand Bulbs
+        fillRectPx(7, 4, 14, 2, '#fbbf24');
+        fillRectPx(7, 22, 14, 2, '#fbbf24');
+        drawLinePx(8, 6, 8, 22, '#d97706', 1);
+        drawLinePx(19, 6, 19, 22, '#d97706', 1);
+        // Upper & lower sand bulbs
+        drawLinePx(9, 6, 14, 13, '#2dd4bf', 2);
+        drawLinePx(18, 6, 14, 13, '#2dd4bf', 2);
+        drawLinePx(14, 14, 9, 21, '#2dd4bf', 2);
+        drawLinePx(14, 14, 18, 21, '#2dd4bf', 2);
+        fillRectPx(11, 18, 6, 3, '#99f6e4');
+        fillRectPx(13, 12, 2, 6, '#ffffff');
+      } else {
+        // DOOMSDAY MIDNIGHT: Grand Celestial Clockface Striking XII
+        drawCirclePx(14, 14, 10, '#f59e0b', false);
+        drawCirclePx(14, 14, 8, '#2dd4bf', false);
+        // Clock ticks at 12, 3, 6, 9
+        fillRectPx(13, 5, 2, 3, '#fef08a');
+        fillRectPx(13, 20, 2, 3, '#fef08a');
+        fillRectPx(5, 13, 3, 2, '#fef08a');
+        fillRectPx(20, 13, 3, 2, '#fef08a');
+        // Hands locked vertically at Midnight XII + glowing core
+        fillRectPx(13, 6, 2, 9, '#ffffff');
+        drawLinePx(14, 14, 19, 10, '#fbbf24', 2);
+        drawCirclePx(14, 14, 2, '#fde047', true);
+      }
+    }
+
+    // 3. Automatic 1px Dark Pixel-Ink Silhouette Outline around all non-empty emblem pixels
+    const outlineCol = '#03060c';
+    for (let y = 1; y < G - 1; y++) {
+      for (let x = 1; x < G - 1; x++) {
+        if (buf[y * G + x]) continue;
+        if (
+          buf[(y - 1) * G + x] ||
+          buf[(y + 1) * G + x] ||
+          buf[y * G + (x - 1)] ||
+          buf[y * G + (x + 1)]
+        ) {
+          ctx.fillStyle = outlineCol;
+          ctx.fillRect(Math.round(x * px), Math.round(y * px), Math.ceil(px), Math.ceil(px));
+        }
+      }
+    }
+
+    // 4. Render Crisp Pixel-Art Emblem Clusters
+    for (let y = 0; y < G; y++) {
+      for (let x = 0; x < G; x++) {
+        const c = buf[y * G + x];
+        if (!c) continue;
+        ctx.fillStyle = c;
+        ctx.fillRect(Math.round(x * px), Math.round(y * px), Math.ceil(px), Math.ceil(px));
+      }
+    }
+
+    // 5. Subtle Animated Pixel Sparkles in corners
+    const sparkPhase = Math.floor(t * 3 + slotIdx * 2) % 2;
+    ctx.fillStyle = sparkPhase === 0 ? '#ffffff' : th.glow;
+    ctx.fillRect(Math.round(3 * px), Math.round(3 * px), Math.ceil(px), Math.ceil(px));
+    ctx.fillRect(Math.round(24 * px), Math.round(24 * px), Math.ceil(px), Math.ceil(px));
+
+    ctx.restore();
   }
 }

@@ -329,7 +329,6 @@ export class Chronomancer extends Fighter {
       if (!this.didStasisCast) {
         this.didStasisCast = true;
         if (game.audio) game.audio.play('hourglass_trap', enemy ? enemy.x : this.x);
-        if (game.audio) game.audio.play('time_rewind', this.x);
 
         const tx = enemy ? enemy.x : this.x + this.facing * 280;
         const ty = enemy ? enemy.groundY : this.groundY;
@@ -413,7 +412,6 @@ export class Chronomancer extends Fighter {
     if (t >= 0.05 && this.ultStage === 0) {
       this.ultStage = 1;
       if (game.audio) game.audio.play('chrono_ult', centerX);
-      if (game.audio) game.audio.play('hourglass_trap', this.x);
       game.renderer.triggerShake(14, 0.26);
 
       this.doomsdayClock = {
@@ -465,7 +463,6 @@ export class Chronomancer extends Fighter {
         this.doomsdayClock.shattered = true;
       }
       if (game.audio) game.audio.play('chrono_hit', centerX);
-      if (game.audio) game.audio.play('time_rewind', this.x);
 
       game.renderer.triggerShake(26, 0.52);
       game.renderer.triggerAberration(15);

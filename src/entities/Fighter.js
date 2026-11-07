@@ -388,7 +388,6 @@ export class Fighter {
           this.skillCooldown = this.skillMaxCooldown * (0.86 + Math.random() * 0.28);
           if (this.stats) this.stats.skillsUsed++;
           this.setState('SKILL');
-          if (game.audio) game.audio.play('skill_cast', this.x);
           if (game.vfx && game.vfx.spawnSpecialCastAura) {
             game.vfx.spawnSpecialCastAura(
               this,

@@ -344,7 +344,6 @@ export class FireMage extends Fighter {
       this.spawnedEclipse = false;
       if (game.audio) {
         game.audio.play('solar_beam', targetX);
-        game.audio.play('meteor', eclipseX);
       }
 
       game.renderer.triggerShake(26, 0.65);
