@@ -1362,7 +1362,10 @@ export class VFXManager {
           isReflection
         );
       } else if (isHolyBeam && priestVfx) {
-        const starSz = 164;
+        const starSz = 168;
+        ctx.save();
+        ctx.translate(Math.round(headX), 0);
+        ctx.rotate(Math.PI * 0.25);
         this.drawBloomedSprite(
           ctx,
           renderer,
@@ -1371,7 +1374,7 @@ export class VFXManager {
           56,
           208,
           208,
-          Math.round(headX - starSz * 0.5),
+          Math.round(-starSz * 0.5),
           Math.round(-starSz * 0.5),
           starSz,
           starSz,
@@ -1379,6 +1382,7 @@ export class VFXManager {
           1 - t * 0.25,
           isReflection
         );
+        ctx.restore();
       } else if (isFireBeam && mageVfx) {
         const meteorSz = 158;
         this.drawBloomedSprite(
@@ -1801,11 +1805,12 @@ export class VFXManager {
         ctx.restore();
       } else if (proj.type === 'holy_light') {
         const priestessVfx = assets.priestess?.vfx;
+        const ang = Math.atan2(proj.vy, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
-        ctx.rotate((proj.age || 0) * 6);
+        ctx.rotate(ang + Math.PI * 0.25);
         if (priestessVfx && priestessVfx.complete && priestessVfx.naturalWidth) {
-          const orbSize = 98;
+          const orbSize = 114;
           this.drawBloomedSprite(
             ctx,
             renderer,
@@ -1819,7 +1824,7 @@ export class VFXManager {
             orbSize,
             orbSize,
             '#facc15',
-            0.96,
+            0.98,
             isReflection
           );
         }
@@ -2102,7 +2107,6 @@ export class VFXManager {
           false
         );
       } else if (ca.theme === 'radiant' && assets.priestess?.vfx?.complete) {
-        ctx.rotate(ca.life * 0.8);
         this.drawBloomedSprite(
           ctx,
           renderer,

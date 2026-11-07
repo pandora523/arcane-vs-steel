@@ -585,12 +585,12 @@ export class Priestess extends Fighter {
       ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
     };
 
-    // 1. Chunky-Pixel Glowing Sacred Golden Cathedral Stained-Glass Rose Halo behind the wings
+    // 1. Chunky-Pixel Glowing Celestial Harp & Spear-Rain Gate behind the wings (Candidate B)
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
       const haloSize = isFullArchangel ? 284 : 232;
+      const gateBob = Math.round(Math.sin(this.haloPhase * 2.4) * 5);
       ctx.save();
-      ctx.translate(cx, cy);
-      ctx.rotate(this.haloPhase * 0.65);
+      ctx.translate(cx, cy + gateBob);
       drawGlowingVfxCell(
         0,
         0,
@@ -631,9 +631,9 @@ export class Priestess extends Fighter {
       ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, cellW, cellH);
     }
 
-    // 3. Twin Flanking Chunky-Pixel Glowing Valkyrie Winged Spears during DIVINE SANCTUARY (SKILL)
+    // 3. Twin Flanking Chunky-Pixel Glowing Seraphic Ophanim Halo Pillars during DIVINE SANCTUARY (SKILL)
     if (this.state === 'SKILL' && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
-      const spearSz = 132;
+      const spearSz = 140;
       const bob = Math.round(Math.sin(this.stateTimer * 10) * 6);
       for (const side of [-1, 1]) {
         ctx.save();
@@ -644,7 +644,7 @@ export class Priestess extends Fighter {
     }
 
     // 4. Subtle Dark Silhouette Separation Cushion right behind Seraphina's head & torso
-    // so her Cathedral Halo & Wings blaze brightly around her without ever washing out her face!
+    // so her Celestial Harp Gate & Wings blaze brightly around her without ever washing out her face!
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1.0;
     const cushionGrad = ctx.createRadialGradient(0, -118, 14, 0, -118, 72);
@@ -678,14 +678,14 @@ export class Priestess extends Fighter {
     ctx.translate(Math.round(this.x), Math.round(this.y));
     ctx.scale(this.facing, 1);
     const orbitR = 136;
-    const starSz = 68;
+    const starSz = 74;
     for (let i = 0; i < 6; i++) {
       const a = -this.haloPhase * 2.5 + (i * Math.PI * 2) / 6;
       const ox = Math.round((-4 + Math.cos(a) * orbitR) / 4) * 4;
       const oy = Math.round((-124 + Math.sin(a) * orbitR) / 4) * 4;
       ctx.save();
       ctx.translate(ox, oy);
-      ctx.rotate(this.haloPhase * 3);
+      ctx.rotate(a + Math.PI * 0.25);
       if (renderer && renderer.glowGold) {
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = 0.42;
