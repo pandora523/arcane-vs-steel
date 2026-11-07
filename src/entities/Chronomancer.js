@@ -517,21 +517,20 @@ export class Chronomancer extends Fighter {
     ctx.globalAlpha = fade * (dc.shattered ? 0.82 : 0.96);
     ctx.translate(cx, cy);
 
-    // Slow majestic rotation of the outer astronomical clock dial
+    // Slow majestic rotation of the outer astronomical clock dial with stepped pixel glow
     const dialRot = dc.life * 0.35;
     ctx.save();
     ctx.rotate(dialRot);
-    ctx.drawImage(
-      vfxSheet,
-      0,
-      0,
-      320,
-      320,
-      Math.round(-size * 0.5),
-      Math.round(-size * 0.5),
-      size,
-      size
-    );
+    const dHalf = Math.round(-size * 0.5);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = fade * 0.55;
+    ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf - 10, dHalf - 10, size + 20, size + 20);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = fade * (dc.shattered ? 0.86 : 0.96);
+    ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, size, size);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = fade * 0.62;
+    ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, size, size);
     ctx.restore();
 
     // Articulated Ornate Brass & Glowing Cyan-Teal Clock Hands (Hour Hand + Minute Hand)
@@ -544,6 +543,11 @@ export class Chronomancer extends Fighter {
     const drawClockHand = (angle, length, width, isMinute) => {
       ctx.save();
       ctx.rotate(angle);
+      // Outer teal-gold neon pixel glow
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.fillStyle = isMinute ? 'rgba(45, 212, 191, 0.55)' : 'rgba(250, 204, 21, 0.55)';
+      ctx.fillRect(-16, -width * 0.5 - 6, length + 24, width + 12);
+      ctx.globalCompositeOperation = 'source-over';
       // Dark bronze shadow border
       ctx.fillStyle = '#1c1917';
       ctx.fillRect(-14, -width * 0.5 - 2, length + 18, width + 4);
@@ -577,7 +581,7 @@ export class Chronomancer extends Fighter {
     // Additive Midnight XII Bloom flash at detonation
     if (dc.shattered) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.58;
+      ctx.globalAlpha = fade * 0.65;
       ctx.drawImage(
         vfxSheet,
         0,
@@ -616,7 +620,7 @@ export class Chronomancer extends Fighter {
   }
 
   /**
-   * Renders 2 Counter-Rotating 16-bit HD-2D Brass Clockwork Satellite Gears behind Zephyros's shoulders
+   * Renders 2 Counter-Rotating Chunky-Pixel Glowing Brass Clockwork Satellite Gears behind Zephyros's shoulders
    */
   drawOrbitingGears(ctx) {
     if (this.isDead) return;
@@ -625,8 +629,8 @@ export class Chronomancer extends Fighter {
 
     const t = performance.now() * 0.001;
     const gears = [
-      { ox: -this.facing * 42, oy: -128 + Math.sin(t * 3.2) * 6, size: 46, dir: 1 },
-      { ox: this.facing * 36, oy: -146 + Math.cos(t * 3.2) * 6, size: 36, dir: -1 }
+      { ox: -this.facing * 42, oy: -128 + Math.sin(t * 3.2) * 6, size: 52, dir: 1 },
+      { ox: this.facing * 36, oy: -146 + Math.cos(t * 3.2) * 6, size: 42, dir: -1 }
     ];
 
     ctx.save();
@@ -635,25 +639,23 @@ export class Chronomancer extends Fighter {
       ctx.save();
       ctx.translate(Math.round(this.x + g.ox), Math.round(this.y + g.oy));
       ctx.rotate(t * 2.8 * g.dir);
-      ctx.globalAlpha = 0.88;
-      ctx.drawImage(
-        vfxSheet,
-        528,
-        56,
-        208,
-        208,
-        Math.round(-g.size * 0.5),
-        Math.round(-g.size * 0.5),
-        g.size,
-        g.size
-      );
+      const gh = Math.round(-g.size * 0.5);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.52;
+      ctx.drawImage(vfxSheet, 528, 56, 208, 208, gh - 4, gh - 4, g.size + 8, g.size + 8);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.92;
+      ctx.drawImage(vfxSheet, 528, 56, 208, 208, gh, gh, g.size, g.size);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.55;
+      ctx.drawImage(vfxSheet, 528, 56, 208, 208, gh, gh, g.size, g.size);
       ctx.restore();
     }
     ctx.restore();
   }
 
   /**
-   * Renders the Authentic 16-bit HD-2D Ornate Brass & Teal Stasis Hourglass encasing the enemy
+   * Renders the Chunky-Pixel Glowing Ornate Brass & Teal Stasis Hourglass encasing the enemy
    */
   drawStasisHourglass(ctx) {
     if (!this.stasisHourglass) return;
@@ -665,29 +667,30 @@ export class Chronomancer extends Fighter {
     const fade = Math.min(1, (hg.maxLife - hg.life) * 3.2);
     const hx = Math.round(hg.x);
     const hy = Math.round(hg.y);
-    const drawW = Math.round(188 * (0.82 + 0.18 * pop));
-    const drawH = Math.round(204 * (0.82 + 0.18 * pop));
+    const drawW = Math.round(196 * (0.82 + 0.18 * pop));
+    const drawH = Math.round(212 * (0.82 + 0.18 * pop));
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = fade * 0.92;
     ctx.translate(hx, hy - drawH * 0.5 + 8);
 
-    // Subtle pendulum rock as the hourglass traps the target in stasis
     const rock = Math.sin(hg.life * 18) * 0.06;
     ctx.rotate(rock);
 
-    ctx.drawImage(
-      vfxSheet,
-      320,
-      56,
-      208,
-      208,
-      Math.round(-drawW * 0.5),
-      Math.round(-drawH * 0.5),
-      drawW,
-      drawH
-    );
+    const hw = Math.round(-drawW * 0.5);
+    const hh = Math.round(-drawH * 0.5);
+    // Stepped outer teal-gold pixel aura
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = fade * 0.58;
+    ctx.drawImage(vfxSheet, 320, 56, 208, 208, hw - 8, hh - 8, drawW + 16, drawH + 16);
+    // Main chunky-pixel hourglass
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = fade * 0.94;
+    ctx.drawImage(vfxSheet, 320, 56, 208, 208, hw, hh, drawW, drawH);
+    // Luminous inner sand & rune core pass
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = fade * 0.65;
+    ctx.drawImage(vfxSheet, 320, 56, 208, 208, hw, hh, drawW, drawH);
     ctx.restore();
   }
 

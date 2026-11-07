@@ -517,23 +517,39 @@ export class Priestess extends Fighter {
     const cy = -124;
     const vfxSheet = sprites && sprites.vfx;
 
-    // 1. Authentic 16-bit HD-2D Sacred Golden Cathedral Stained-Glass Rose Halo behind the wings
+    // Helper to draw chunky-pixel VFX sprite with stepped outer neon aura & white-hot core
+    const drawGlowingVfxCell = (sx, sy, sw, sh, dx, dy, dw, dh, alpha) => {
+      const auraW = Math.round((dw * 1.16) / 4) * 4;
+      const auraH = Math.round((dh * 1.16) / 4) * 4;
+      const midX = dx + dw * 0.5;
+      const midY = dy + dh * 0.5;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, alpha * 0.55);
+      ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(midX - auraW * 0.5), Math.round(midY - auraH * 0.5), auraW, auraH);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = Math.min(1, alpha);
+      ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, alpha * 0.65);
+      ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
+    };
+
+    // 1. Chunky-Pixel Glowing Sacred Golden Cathedral Stained-Glass Rose Halo behind the wings
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
-      const haloSize = isFullArchangel ? 268 : 212;
+      const haloSize = isFullArchangel ? 276 : 220;
       ctx.save();
       ctx.translate(cx, cy);
       ctx.rotate(this.haloPhase * 0.65);
-      ctx.globalAlpha = isFullArchangel ? 0.9 : 0.78;
-      ctx.drawImage(
-        vfxSheet,
+      drawGlowingVfxCell(
         0,
         0,
         320,
         320,
-        Math.round(-haloSize * 0.5),
-        Math.round(-haloSize * 0.5),
+        -haloSize * 0.5,
+        -haloSize * 0.5,
         haloSize,
-        haloSize
+        haloSize,
+        isFullArchangel ? 0.94 : 0.84
       );
       ctx.restore();
     }
@@ -543,7 +559,6 @@ export class Priestess extends Fighter {
     if (wingSheet && wingSheet.complete && wingSheet.naturalWidth > 0) {
       const cellW = 320;
       const cellH = 232;
-      // Calm, regal 2.2 Hz gliding wingbeat (no frantic flapping or double-wing ghosting)
       const wingFrame = Math.floor(this.stateTimer * 2.2) % 4;
       let recoilX = 0;
       let recoilY = 0;
@@ -554,14 +569,15 @@ export class Priestess extends Fighter {
       const dx = Math.round(-cellW * 0.5 + recoilX);
       const dy = Math.round(-208 - 26 + recoilY);
 
+      ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 1.0;
       ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, cellW, cellH);
     }
 
-    // 3. 6 Orbiting 16-bit HD-2D Seraphic Star-Cross Chakrams during ULTIMATE
+    // 3. 6 Orbiting Chunky-Pixel Glowing Seraphic Star-Cross Chakrams during ULTIMATE
     if (this.state === 'ULTIMATE' && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
-      const orbitR = 132;
-      const starSz = 56;
+      const orbitR = 136;
+      const starSz = 64;
       for (let i = 0; i < 6; i++) {
         const a = -this.haloPhase * 2.5 + (i * Math.PI * 2) / 6;
         const ox = snap(cx + Math.cos(a) * orbitR);
@@ -569,41 +585,19 @@ export class Priestess extends Fighter {
         ctx.save();
         ctx.translate(ox, oy);
         ctx.rotate(this.haloPhase * 3);
-        ctx.globalAlpha = 0.94;
-        ctx.drawImage(
-          vfxSheet,
-          528,
-          56,
-          208,
-          208,
-          Math.round(-starSz * 0.5),
-          Math.round(-starSz * 0.5),
-          starSz,
-          starSz
-        );
+        drawGlowingVfxCell(528, 56, 208, 208, -starSz * 0.5, -starSz * 0.5, starSz, starSz, 0.96);
         ctx.restore();
       }
     }
 
-    // 4. Twin Flanking 16-bit HD-2D Valkyrie Winged Spears during DIVINE SANCTUARY (SKILL)
+    // 4. Twin Flanking Chunky-Pixel Glowing Valkyrie Winged Spears during DIVINE SANCTUARY (SKILL)
     if (this.state === 'SKILL' && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
-      const spearSz = 118;
+      const spearSz = 124;
       const bob = Math.round(Math.sin(this.stateTimer * 10) * 6);
       for (const side of [-1, 1]) {
         ctx.save();
         ctx.translate(side * 96, -118 + bob);
-        ctx.globalAlpha = 0.92;
-        ctx.drawImage(
-          vfxSheet,
-          320,
-          56,
-          208,
-          208,
-          Math.round(-spearSz * 0.5),
-          Math.round(-spearSz * 0.5),
-          spearSz,
-          spearSz
-        );
+        drawGlowingVfxCell(320, 56, 208, 208, -spearSz * 0.5, -spearSz * 0.5, spearSz, spearSz, 0.95);
         ctx.restore();
       }
     }

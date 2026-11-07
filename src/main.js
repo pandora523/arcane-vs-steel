@@ -535,15 +535,15 @@ class Game {
         );
       }
 
-      if (Math.random() < 0.72) {
+      for (let k = 0; k < 2; k++) {
         this.vfx.spawnParticle({
-          x: p.x + (Math.random() - 0.5) * p.radius,
-          y: p.y + (Math.random() - 0.5) * p.radius,
-          vx: -p.vx * 0.15 + (Math.random() - 0.5) * 40,
-          vy: -p.vy * 0.15 - 25,
-          size: p.isMeteor ? 15 : 6,
-          color: Math.random() > 0.3 ? p.color : '#fef08a',
-          maxLife: p.isMeteor ? 0.48 : 0.28
+          x: p.x + (Math.random() - 0.5) * p.radius * 1.25,
+          y: p.y + (Math.random() - 0.5) * p.radius * 1.25,
+          vx: -p.vx * 0.16 + (Math.random() - 0.5) * 55,
+          vy: -p.vy * 0.16 - 28 + (Math.random() - 0.5) * 30,
+          size: p.isMeteor ? 16 : 7,
+          color: k === 0 ? p.color : p.coreColor || '#fef08a',
+          maxLife: p.isMeteor ? 0.52 : 0.34
         });
       }
 

@@ -524,31 +524,33 @@ export class Reaper extends Fighter {
       const riseOffset = Math.round((1 - pop) * (drawH * 0.85));
 
       if (!tb.shattered) {
-        // Full 16-bit HD-2D Gothic Crypt Tombstone + Skull Relief + Glowing Runes + Grasping Bone Hands
-        ctx.drawImage(
-          vfxSheet,
-          320,
-          56,
-          208,
-          208,
-          Math.round(bx - drawW * 0.5),
-          Math.round(by - drawH + 10 + riseOffset),
-          Math.round(drawW),
-          Math.round(drawH)
-        );
+        const dx = Math.round(bx - drawW * 0.5);
+        const dy = Math.round(by - drawH + 10 + riseOffset);
+        const dw = Math.round(drawW);
+        const dh = Math.round(drawH);
+        // Stepped outer violet-crimson pixel glow pass
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.52;
+        ctx.drawImage(vfxSheet, 320, 56, 208, 208, dx - 6, dy - 6, dw + 12, dh + 12);
+        // Main chunky-pixel Gothic Crypt Tombstone
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade;
+        ctx.drawImage(vfxSheet, 320, 56, 208, 208, dx, dy, dw, dh);
+        // Luminous inner rune glow pass
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.58;
+        ctx.drawImage(vfxSheet, 320, 56, 208, 208, dx, dy, dw, dh);
       } else {
-        // Shattered base with grasping skeletal hands & glowing purple grave mist still clawing from the ground
-        ctx.drawImage(
-          vfxSheet,
-          320,
-          164,
-          208,
-          100,
-          Math.round(bx - drawW * 0.5),
-          Math.round(by - drawH * 0.48 + 10),
-          Math.round(drawW),
-          Math.round(drawH * 0.48)
-        );
+        const dx = Math.round(bx - drawW * 0.5);
+        const dy = Math.round(by - drawH * 0.48 + 10);
+        const dw = Math.round(drawW);
+        const dh = Math.round(drawH * 0.48);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade;
+        ctx.drawImage(vfxSheet, 320, 164, 208, 100, dx, dy, dw, dh);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.55;
+        ctx.drawImage(vfxSheet, 320, 164, 208, 100, dx, dy, dw, dh);
       }
       ctx.restore();
     }
@@ -573,21 +575,17 @@ export class Reaper extends Fighter {
     const dist = Math.hypot(dx, dy) || 1;
     const angle = Math.atan2(dy, dx);
 
-    // 1. Volumetric Violet Soul-Fire Glow along the chain path
+    // 1. Stepped Pixelated Violet-Crimson Soul-Fire Glow along the chain path
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = 'rgba(192, 132, 252, 0.45)';
-    ctx.lineWidth = 14;
-    ctx.beginPath();
-    for (let s = 0; s <= 24; s++) {
-      const u = s / 24;
+    for (let s = 0; s <= 22; s++) {
+      const u = s / 22;
       const sag = Math.sin(u * Math.PI) * 14 + Math.sin(u * Math.PI * 3 + this.stateTimer * 28) * 3;
-      const px = x1 + dx * u;
-      const py = y1 + dy * u + sag;
-      if (s === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
+      const px = Math.round((x1 + dx * u) / 4) * 4;
+      const py = Math.round((y1 + dy * u + sag) / 4) * 4;
+      ctx.fillStyle = s % 2 === 0 ? 'rgba(192, 132, 252, 0.52)' : 'rgba(244, 63, 94, 0.45)';
+      ctx.fillRect(px - 8, py - 8, 16, 16);
     }
-    ctx.stroke();
     ctx.restore();
 
     // 2. Crisp Interlocking Dark-Iron & Amethyst-Rune Chain Links
@@ -618,34 +616,36 @@ export class Reaper extends Fighter {
       ctx.restore();
     }
 
-    // 3. Authentic 16-bit HD-2D Demonic Skeletal Bone-Gauntlet Claw clamping the enemy!
+    // 3. Chunky-Pixel Glowing Demonic Skeletal Bone-Gauntlet Claw clamping the enemy!
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
       const dir = Math.sign(dx) || this.facing;
-      const clawSize = 148;
+      const clawSize = 156;
       ctx.save();
       ctx.translate(x2, y2);
       ctx.scale(dir, 1);
-      // Slight gripping pulse as it drags the victim
       const gripRot = Math.sin(this.stateTimer * 32) * 0.08;
       ctx.rotate(gripRot);
-      ctx.drawImage(
-        vfxSheet,
-        528,
-        56,
-        208,
-        208,
-        Math.round(-clawSize * 0.56),
-        Math.round(-clawSize * 0.5),
-        clawSize,
-        clawSize
-      );
+      const cdx = Math.round(-clawSize * 0.56);
+      const cdy = Math.round(-clawSize * 0.5);
+      // Stepped outer crimson-violet pixel aura
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.62;
+      ctx.drawImage(vfxSheet, 528, 56, 208, 208, cdx - 8, cdy - 8, clawSize + 16, clawSize + 16);
+      // Main chunky-pixel claw
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1.0;
+      ctx.drawImage(vfxSheet, 528, 56, 208, 208, cdx, cdy, clawSize, clawSize);
+      // Luminous core pass
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.65;
+      ctx.drawImage(vfxSheet, 528, 56, 208, 208, cdx, cdy, clawSize, clawSize);
       ctx.restore();
     }
     ctx.restore();
   }
 
   /**
-   * Renders the Colossal 320x320 16-bit HD-2D Grim Reaper Death Avatar Boss Specter (from reaper_vfx.png) during GRIM HARVEST
+   * Renders the Colossal 320x320 Chunky-Pixel Glowing Grim Reaper Death Avatar Boss Specter (from reaper_vfx.png) during GRIM HARVEST
    */
   drawDeathAvatar(ctx) {
     if (!this.deathAvatar) return;
@@ -664,52 +664,37 @@ export class Reaper extends Fighter {
 
     // Clip to floor so the Colossal Death Avatar rises smoothly out of the graveyard floor
     ctx.beginPath();
-    ctx.rect(ax - 240, ay - 380, 480, 386);
+    ctx.rect(ax - 250, ay - 390, 500, 396);
     ctx.clip();
 
-    const drawSize = 316;
+    const drawSize = 324;
     const riseY = Math.round((1 - rise) * 210);
     const floatBob = Math.round(Math.sin(da.life * 6.5) * 6);
 
     ctx.translate(ax, ay - drawSize * 0.5 + 8 + riseY + floatBob);
     ctx.scale(this.facing, 1);
 
-    // Subtle forward lunge tilt when swinging the Nether Scythe at Stage 3
     if (da.swingProgress > 0) {
       const lunge = Math.sin(da.swingProgress * Math.PI);
       ctx.rotate(lunge * 0.16);
       ctx.scale(1 + lunge * 0.08, 1 + lunge * 0.08);
     }
 
-    // Draw the 320x320 16-bit HD-2D Castlevania/Octopath Grim Reaper Death Avatar sprite
-    ctx.drawImage(
-      vfxSheet,
-      0,
-      0,
-      320,
-      320,
-      Math.round(-drawSize * 0.5),
-      Math.round(-drawSize * 0.5),
-      drawSize,
-      drawSize
-    );
+    const dHalf = Math.round(-drawSize * 0.5);
+    // Stepped outer abyssal pixel glow aura
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = fade * 0.58;
+    ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf - 10, dHalf - 10, drawSize + 20, drawSize + 20);
 
-    // Additive crimson-violet eye & scythe rune bloom during the execution swing
-    if (da.swingProgress > 0.05) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * Math.sin(da.swingProgress * Math.PI) * 0.55;
-      ctx.drawImage(
-        vfxSheet,
-        0,
-        0,
-        320,
-        320,
-        Math.round(-drawSize * 0.5),
-        Math.round(-drawSize * 0.5),
-        drawSize,
-        drawSize
-      );
-    }
+    // Main 320x320 chunky-pixel Grim Reaper Death Avatar sprite
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = fade * 0.96;
+    ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, drawSize, drawSize);
+
+    // Luminous inner crimson-violet rune bloom pass
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = fade * (0.58 + Math.sin(da.swingProgress * Math.PI) * 0.35);
+    ctx.drawImage(vfxSheet, 0, 0, 320, 320, dHalf, dHalf, drawSize, drawSize);
 
     ctx.restore();
   }

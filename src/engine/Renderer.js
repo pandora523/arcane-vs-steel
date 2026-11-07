@@ -44,25 +44,78 @@ export class Renderer {
   }
 
   bakeLightTextures() {
-    const makeGlow = (rgbaCenter, rgbaMid) => {
+    const makeGlow = (rgbaHot, rgbaMid, rgbaOuter) => {
       const c = document.createElement('canvas');
-      c.width = 128;
-      c.height = 128;
+      c.width = 160;
+      c.height = 160;
       const gCtx = c.getContext('2d');
-      const g = gCtx.createRadialGradient(64, 64, 2, 64, 64, 64);
-      g.addColorStop(0, rgbaCenter);
-      g.addColorStop(0.42, rgbaMid);
+      const g = gCtx.createRadialGradient(80, 80, 2, 80, 80, 80);
+      g.addColorStop(0, rgbaHot);
+      g.addColorStop(0.26, rgbaMid);
+      g.addColorStop(0.62, rgbaOuter);
       g.addColorStop(1, 'rgba(0,0,0,0)');
       gCtx.fillStyle = g;
-      gCtx.fillRect(0, 0, 128, 128);
+      gCtx.fillRect(0, 0, 160, 160);
       return c;
     };
-    this.glowCyan = makeGlow('rgba(186,230,253,0.95)', 'rgba(56,189,248,0.45)');
-    this.glowOrange = makeGlow('rgba(254,240,138,0.96)', 'rgba(251,146,60,0.48)');
-    this.glowEmerald = makeGlow('rgba(167,243,208,0.95)', 'rgba(16,185,129,0.48)');
-    this.glowGold = makeGlow('rgba(254,240,138,0.92)', 'rgba(234,179,8,0.40)');
-    this.glowViolet = makeGlow('rgba(245,208,254,0.95)', 'rgba(168,85,247,0.48)');
-    this.shadowTex = makeGlow('rgba(0,0,0,0.92)', 'rgba(0,0,0,0.52)');
+    this.glowCyan = makeGlow(
+      'rgba(255,255,255,0.98)',
+      'rgba(125,211,252,0.78)',
+      'rgba(14,165,233,0.34)'
+    );
+    this.glowOrange = makeGlow(
+      'rgba(255,255,255,0.98)',
+      'rgba(253,224,71,0.82)',
+      'rgba(249,115,22,0.38)'
+    );
+    this.glowEmerald = makeGlow(
+      'rgba(255,255,255,0.98)',
+      'rgba(110,231,183,0.80)',
+      'rgba(16,185,129,0.36)'
+    );
+    this.glowGold = makeGlow(
+      'rgba(255,255,255,0.98)',
+      'rgba(254,240,138,0.82)',
+      'rgba(234,179,8,0.36)'
+    );
+    this.glowViolet = makeGlow(
+      'rgba(255,255,255,0.98)',
+      'rgba(232,121,249,0.80)',
+      'rgba(147,51,234,0.38)'
+    );
+    this.glowTeal = makeGlow(
+      'rgba(255,255,255,0.98)',
+      'rgba(94,234,212,0.80)',
+      'rgba(20,184,166,0.36)'
+    );
+    this.shadowTex = makeGlow('rgba(0,0,0,0.92)', 'rgba(0,0,0,0.52)', 'rgba(0,0,0,0.18)');
+  }
+
+  getGlowForColor(col) {
+    if (!col) return this.glowCyan;
+    if (col === 'emerald' || col === '#10b981' || col === '#34d399' || col === '#6ee7b7' || col === '#a7f3d0') {
+      return this.glowEmerald;
+    }
+    if (col === 'arcane' || col === '#f97316' || col === '#fb923c' || col === '#dc2626' || col === '#ea580c') {
+      return this.glowOrange;
+    }
+    if (col === 'radiant' || col === '#fde047' || col === '#facc15' || col === '#eab308' || col === '#fef08a') {
+      return this.glowGold;
+    }
+    if (
+      col === 'abyssal' ||
+      col === '#c084fc' ||
+      col === '#9333ea' ||
+      col === '#7e22ce' ||
+      col === '#f43f5e' ||
+      col === '#e879f9'
+    ) {
+      return this.glowViolet;
+    }
+    if (col === 'chrono' || col === '#2dd4bf' || col === '#99f6e4' || col === '#14b8a6') {
+      return this.glowTeal;
+    }
+    return this.glowCyan;
   }
 
   resize() {
