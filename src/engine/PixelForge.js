@@ -27,7 +27,7 @@ export class PixelForge {
         portrait: loadImg('assets/sprites/mage_portrait.png?v=2', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps2'),
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps5'),
         vfx: loadImg('assets/sprites/archer_vfx.png'),
         portrait: loadImg('assets/sprites/archer_portrait.png?v=2', () => this.refreshPortraits())
       },

@@ -120,14 +120,17 @@ export class Archer extends Fighter {
 
     if ((this.state === 'DODGE' || this.state === 'JUMP') && this.isFlipVault) {
       const u = Math.min(1, t / this.dashDuration);
-      // Frames F00..F03 (u < 0.12) are pre-jump crouch; F04..F25 (0.12 <= u <= 0.86) are airborne; F26..F29 (u > 0.86) are landing crouch!
+      // F00..F03 (u < 0.13): pre-jump crouch; F04..F13 (0.13..0.45): 360° mid-air somersault flip;
+      // F14..F18 (0.45..0.62): flip exit & downward (+26°) bow draw; F19..F23 (0.62..0.80): aerial shot release!
       const airU = Math.max(0, Math.min(1, (u - 0.10) / 0.78));
       const easeU = airU < 0.5 ? 2 * airU * airU : 1 - Math.pow(-2 * airU + 2, 2) / 2;
       this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * easeU;
-      this.y = this.groundY - Math.sin(airU * Math.PI) * 162;
-      this.flipAngle = 0; // Hand-animated 30-frame Row 8 JUMP handles knee-tuck, downward bow aim & landing!
+      this.y = this.groundY - Math.sin(airU * Math.PI) * 168;
+      this.flipAngle = 0; // Hand-animated 30-frame Row 8 JUMP handles the 360° somersault flip & downward bow shot!
 
-      if (enemy && !enemy.isDead) {
+      if (u < 0.45) {
+        this.facing = this.dashDir || 1;
+      } else if (enemy && !enemy.isDead) {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
 
@@ -143,8 +146,8 @@ export class Archer extends Fighter {
         });
       }
 
-      // At Frame F18 (u >= 0.58) at the apex of her leap, Sylvara looses her downward (+26°) Aerial Counter-Shot!
-      if (u >= 0.58 && !this.didActionFrame && enemy && !enemy.isDead) {
+      // At Frame F19 (u >= 0.62) after completing her 360° flip & downward draw, Sylvara looses her Aerial Flip-Shot!
+      if (u >= 0.62 && !this.didActionFrame && enemy && !enemy.isDead) {
         this.didActionFrame = true;
         if (game.audio) game.audio.play('arrow_shoot', this.x);
         const sx = this.x + this.facing * 42;

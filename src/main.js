@@ -256,6 +256,7 @@ class Game {
     const forceSkill = skillParam === '1' || skillParam === 'both';
     const forceCrouch = params.get('crouch') === '1';
     const forceJump = params.get('jump') === '1';
+    const forceWalk = params.get('walk') === '1';
     const forceAttack = params.get('attack') === '1';
     const forceCorner = params.get('corner') === '1';
     const forceClash = params.get('clash') === '1';
@@ -272,6 +273,7 @@ class Game {
       forceSkill ||
       forceCrouch ||
       forceJump ||
+      forceWalk ||
       forceAttack ||
       forceCorner ||
       forceClash ||
@@ -279,6 +281,19 @@ class Game {
     ) {
       this.syncRosterSelectionUI(false);
       this.startDuel(false);
+    }
+
+    if (forceWalk) {
+      this.leftFighter.x = 220;
+      this.rightFighter.x = 960;
+      this.leftFighter.dashCooldown = 10;
+      this.leftFighter.skillCooldown = 10;
+      this.leftFighter.autoCooldown = 10;
+      this.rightFighter.dashCooldown = 10;
+      this.rightFighter.skillCooldown = 10;
+      this.rightFighter.autoCooldown = 10;
+      this.leftFighter.setState('WALK');
+      this.rightFighter.setState('WALK');
     }
 
     if (forceCrouch && this.leftFighter.startCrouch) {
