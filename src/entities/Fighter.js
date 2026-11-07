@@ -25,13 +25,13 @@ export class Fighter {
     this.stateTimer = 0;
     this.didActionFrame = false;
 
-    this.autoCooldown = 0;
+    this.autoCooldown = Math.random() * 0.35;
     this.autoInterval = opts.autoInterval || 1.25;
-    this.skillCooldown = 2.2;
+    this.skillCooldown = 1.6 + Math.random() * 1.1;
     this.skillMaxCooldown = 5.0;
-    this.dodgeCooldown = 1.4;
+    this.dodgeCooldown = 0.8 + Math.random() * 0.9;
     this.dodgeMaxCooldown = 3.4;
-    this.dashCooldown = 1.0;
+    this.dashCooldown = 0.6 + Math.random() * 0.8;
     this.dashMaxCooldown = 3.8;
     this.dashDuration = 0.44;
     this.dashDir = this.facing;
@@ -80,14 +80,18 @@ export class Fighter {
       return;
     }
     if (this.isDeflecting) {
-      amount *= 0.25;
-      knockX *= 0.2;
+      amount *= 0.55;
+      knockX *= 0.25;
+    } else if (this.hasPoise) {
+      knockX *= 0.45;
     }
     this.hp = Math.max(0, this.hp - amount);
     this.hitFlash = 0.18;
     this.hurtTimer = isCrit ? 0.34 : 0.25;
-    this.gainMana(amount * 0.12);
-    if (attacker) attacker.gainMana(11);
+    this.gainMana(amount * 0.115);
+    if (attacker) {
+      attacker.gainMana(Math.min(11, Math.max(2.5, amount * 0.11)));
+    }
 
     const dir = attacker ? Math.sign(this.x - attacker.x) || -this.facing : -this.facing;
     this.hurtDir = dir;
@@ -101,6 +105,7 @@ export class Fighter {
     if (
       this.hp > 0 &&
       !this.isDeflecting &&
+      (!this.hasPoise || isCrit || amount >= 95) &&
       (this.state === 'IDLE' ||
         this.state === 'WALK' ||
         (this.state === 'AUTO_ATTACK' && !this.didActionFrame && isCrit))
@@ -109,6 +114,9 @@ export class Fighter {
     }
 
     if (this.game) {
+      if (this.game.audio && amount >= 18) {
+        this.game.audio.play('hurt_hit', this.x);
+      }
       this.game.vfx.spawnDamageText(this.x, this.y - 125, amount, isCrit);
       this.game.vfx.spawnBurst(this.x, this.y - 105, isCrit ? 14 : 8, this.primaryColor, 185);
       if (isCrit) {
@@ -164,7 +172,7 @@ export class Fighter {
   }
 
   startDodge(enemy, game) {
-    this.dodgeCooldown = this.dodgeMaxCooldown;
+    this.dodgeCooldown = this.dodgeMaxCooldown * (0.86 + Math.random() * 0.28);
     this.dashDuration = 0.44;
     this.setState('DODGE');
     this.isInvulnerable = true;
@@ -180,7 +188,7 @@ export class Fighter {
   }
 
   startDash(enemy, game) {
-    this.dashCooldown = this.dashMaxCooldown;
+    this.dashCooldown = this.dashMaxCooldown * (0.86 + Math.random() * 0.28);
     this.dashDuration = 0.42;
     this.setState('DASH');
     this.dashDir = this.facing;
@@ -294,27 +302,30 @@ export class Fighter {
           return;
         }
         // Active Gap-Closing Dash when out of range
-        if (this.dashCooldown <= 0 && ((this.attackRange < 200 && dist > 205) || (this.attackRange >= 200 && dist > 470))) {
+        if (this.dashCooldown <= 0 && ((this.attackRange < 200 && dist > 185) || (this.attackRange >= 200 && dist > 470))) {
           this.startDash(enemy, game);
           return;
         }
-        if (this.skillCooldown <= 0 && dist <= this.attackRange * 2.2) {
-          this.skillCooldown = this.skillMaxCooldown;
+        const maxSkillDist = this.skillTriggerRange || this.attackRange * 2.2;
+        if (this.skillCooldown <= 0 && dist <= maxSkillDist) {
+          this.skillCooldown = this.skillMaxCooldown * (0.86 + Math.random() * 0.28);
           this.setState('SKILL');
+          if (game.audio) game.audio.play('skill_cast', this.x);
           if (game.vfx && game.vfx.spawnSpecialCastAura) {
             game.vfx.spawnSpecialCastAura(
               this,
               this.skillName,
-              '✦ SPECIAL SKILL ✦',
+              '* SPECIAL SKILL *',
               this.theme || 'steel',
               false
             );
           }
           return;
         }
-        if (dist <= this.attackRange) {
+        const atkRange = this.getEffectiveAttackRange ? this.getEffectiveAttackRange() : this.attackRange;
+        if (dist <= atkRange) {
           if (this.autoCooldown <= 0) {
-            this.autoCooldown = this.autoInterval;
+            this.autoCooldown = this.autoInterval * (0.88 + Math.random() * 0.24);
             this.setState('AUTO_ATTACK');
             return;
           }

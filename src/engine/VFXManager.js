@@ -811,11 +811,11 @@ export class VFXManager {
         const helix2 = Math.round((-Math.sin(x * 0.055 - b.life * 36) * (hOuter * 1.15 + 10)) / 4) * 4;
         ctx.fillStyle = b.coreColor;
         ctx.fillRect(x, undulate + helix1 - 3, 8, 6);
-        ctx.fillStyle = '#34d399';
+        ctx.fillStyle = b.color;
         ctx.fillRect(x, undulate + helix2 - 3, 8, 6);
       }
 
-      // Stepped Pixel-Art Dragon-Fang Arrowhead at the leading tip (headX)
+      // Stepped Pixel-Art Spear/Dragon-Fang Head at the leading tip (headX)
       const tipY = Math.round((Math.sin(headX * 0.032 - b.life * 32) * 4) / 2) * 2;
       ctx.fillStyle = b.color;
       ctx.fillRect(headX - 24, tipY - 22, 12, 44);
@@ -1000,7 +1000,7 @@ export class VFXManager {
       }
     }
 
-    // 8. PROJECTILES: Astral Wind Arrows, Orbiting Solar Fireballs & Molten Meteors
+    // 8. PROJECTILES: Astral Wind Arrows, Glacial Blade-Waves, Orbiting Solar Fireballs & Molten Meteors
     ctx.globalAlpha = 1;
     for (const proj of this.projectiles) {
       const r = proj.radius * 2.9;
@@ -1038,6 +1038,29 @@ export class VFXManager {
             ctx.fillRect(px + mx * pSize - pSize * 0.5, py + my * pSize - pSize * 0.5, pSize, pSize);
           }
         }
+      } else if (proj.type === 'blade_wave') {
+        // Towering Glacial Crescent Sword-Wave (Warrior Ranged Finisher)
+        const dir = Math.sign(proj.vx) || 1;
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.scale(dir, 1);
+        for (let row = -9; row <= 9; row++) {
+          const u = Math.abs(row) / 9;
+          const curveX = Math.round((1 - u * u) * 26 / 4) * 4;
+          const thick = Math.max(6, Math.round((1 - u * 0.7) * 22 / 4) * 4);
+          const ry = row * 5;
+          ctx.fillStyle = '#0284c7';
+          ctx.fillRect(curveX - thick, ry - 3, thick + 8, 6);
+          ctx.fillStyle = '#38bdf8';
+          ctx.fillRect(curveX - thick * 0.6, ry - 3, thick * 0.75, 6);
+          ctx.fillStyle = '#bae6fd';
+          ctx.fillRect(curveX - 2, ry - 2, 10, 4);
+          if (Math.abs(row) <= 5) {
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(curveX + 4, ry - 2, 6, 4);
+          }
+        }
+        ctx.restore();
       } else if (proj.type === 'arrow') {
         // High-Velocity Emerald-Gold Astral Arrow + Corkscrew Wind Wake
         const ang = Math.atan2(proj.vy, proj.vx || 1);

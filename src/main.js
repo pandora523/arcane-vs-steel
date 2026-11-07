@@ -465,9 +465,17 @@ class Game {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
-      if (p.type === 'arrow' && p.ringTimer >= 0.085) {
+      if ((p.type === 'arrow' || p.type === 'blade_wave') && p.ringTimer >= 0.085) {
         p.ringTimer = 0;
-        this.vfx.spawnShockwave(p.x, p.y, 34, '#34d399', 0.22, false, true);
+        this.vfx.spawnShockwave(
+          p.x,
+          p.y,
+          p.type === 'blade_wave' ? 46 : 34,
+          p.type === 'blade_wave' ? '#38bdf8' : '#34d399',
+          0.22,
+          false,
+          true
+        );
       }
 
       if (Math.random() < 0.72) {
@@ -493,24 +501,33 @@ class Game {
       if (hitEnemy || hitGround) {
         if (p.isMeteor) {
           if (this.audio) this.audio.play('meteor_impact', p.x);
-          this.renderer.triggerShake(26, 0.65);
-          this.renderer.triggerAberration(16);
-          this.vfx.spawnShockwave(p.x, gy, 330, '#fb923c', 0.65, true);
-          this.vfx.spawnShockwave(p.x, gy - 35, 250, '#fef08a', 0.5, false);
-          this.vfx.spawnDecal(p.x, 180, 'fissure', '#fb923c', 6.5);
-          this.vfx.spawnBurst(p.x, gy - 15, 36, '#fb923c', 410, { upBias: 175, size: 10 });
-          this.vfx.spawnBurst(p.x, gy - 15, 24, '#fef08a', 330, { upBias: 140, size: 8 });
-          this.vfx.spawnGlyphBurst(p.x, gy - 50, 10, 'arcane');
+          this.renderer.triggerShake(22, 0.52);
+          this.renderer.triggerAberration(14);
+          this.vfx.spawnShockwave(p.x, gy, 290, '#fb923c', 0.6, true);
+          this.vfx.spawnShockwave(p.x, gy - 35, 220, '#fef08a', 0.46, false);
+          this.vfx.spawnDecal(p.x, 165, 'fissure', '#fb923c', 6.0);
+          this.vfx.spawnBurst(p.x, gy - 15, 30, '#fb923c', 380, { upBias: 165, size: 9 });
+          this.vfx.spawnBurst(p.x, gy - 15, 20, '#fef08a', 310, { upBias: 130, size: 8 });
+          this.vfx.spawnGlyphBurst(p.x, gy - 50, 8, 'arcane');
 
-          if (enemy && !enemy.isDead && Math.abs(enemy.x - p.x) < 310) {
-            enemy.takeDamage(p.damage, p.owner, true, 240, -380);
-            this.renderer.triggerHitStop(0.09);
+          if (enemy && !enemy.isDead && Math.abs(enemy.x - p.x) < 230) {
+            enemy.takeDamage(p.damage, p.owner, true, 160, -240);
+            this.renderer.triggerHitStop(0.075);
           }
         } else if (hitEnemy) {
-          const isCrit = Math.random() < (p.type === 'arrow' ? 0.34 : 0.28);
-          enemy.takeDamage(isCrit ? p.damage * 1.42 : p.damage, p.owner, isCrit, 105, 0);
+          const isCrit = Math.random() < 0.28;
+          enemy.takeDamage(isCrit ? p.damage * 1.38 : p.damage, p.owner, isCrit, 100, 0);
           if (this.audio) {
-            this.audio.play(isCrit ? 'hit_crit' : p.type === 'arrow' ? 'arrow_hit' : 'clang', enemy.x);
+            this.audio.play(
+              isCrit
+                ? 'hit_crit'
+                : p.type === 'arrow'
+                  ? 'arrow_hit'
+                  : p.type === 'blade_wave'
+                    ? 'heavy_cleave'
+                    : 'clang',
+              enemy.x
+            );
           }
           this.renderer.triggerHitStop(0.055);
           this.vfx.spawnShockwave(p.x, p.y, 76, p.color, 0.26);
@@ -518,6 +535,9 @@ class Game {
           if (p.type === 'arrow') {
             this.vfx.spawnSlash(p.x, p.y, 58, -0.9, 0.9, '#34d399', 0.22);
             this.vfx.spawnGlyphBurst(p.x, p.y, 5, 'emerald');
+          } else if (p.type === 'blade_wave') {
+            this.vfx.spawnSlash(p.x, p.y, 72, -1.2, 1.2, '#38bdf8', 0.25);
+            this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'steel');
           } else {
             this.vfx.spawnGlyphBurst(p.x, p.y, 4, 'arcane');
           }

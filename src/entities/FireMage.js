@@ -8,28 +8,30 @@ export class FireMage extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1220,
-      attackRange: 490,
-      moveSpeed: 98,
-      autoInterval: 1.5,
+      maxHp: 1230,
+      attackRange: 515,
+      moveSpeed: 112,
+      autoInterval: 1.38,
       lightColor: 'rgba(251, 146, 60, 1)',
       primaryColor: '#fb923c'
     });
     this.heroId = 'mage';
     this.theme = 'arcane';
     this.deathSfx = 'death_mage';
-    this.skillMaxCooldown = 5.2;
+    this.skillMaxCooldown = 5.1;
     this.ultName = 'ECLIPSE SUPERNOVA';
     this.skillName = 'SOLAR PILLAR';
     this.runeOrbit = 0;
-    this.dodgeMaxCooldown = 3.1;
-    this.dashMaxCooldown = 3.6;
+    this.castCombo = 0;
+    this.dodgeMaxCooldown = 3.2;
+    this.dashMaxCooldown = 3.5;
     this.spawnedEclipse = false;
+    this.didSupernovaFinisher = false;
   }
 
   onStartDodge(enemy, game, dir) {
     const ww = game.renderer.worldWidth;
-    this.dashDuration = 0.42;
+    this.dashDuration = 0.4;
     this.isBlinkTeleport = true;
     this.didBlink = false;
     this.blinkOriginX = this.x;
@@ -47,19 +49,24 @@ export class FireMage extends Fighter {
     }
 
     if (game.audio) game.audio.play('blink', this.x);
-    // Departure Solar Rift Portal + Lightning Flash
-    game.vfx.spawnShockwave(this.x, this.y - 95, 96, '#facc15', 0.34, false, true);
-    game.vfx.spawnShockwave(this.x, this.groundY, 110, '#fb923c', 0.32, true);
+    // Departure Solar Rift Portal + Volatile Remnant Detonation
+    game.vfx.spawnShockwave(this.x, this.y - 95, 105, '#facc15', 0.34, false, true);
+    game.vfx.spawnShockwave(this.x, this.groundY, 120, '#fb923c', 0.32, true);
     game.vfx.spawnLightning(this.x, this.groundY - 220, this.groundY, '#fef08a', '#fb923c');
     game.vfx.spawnBurst(this.x, this.y - 95, 18, '#fb923c', 230);
     game.vfx.spawnGlyphBurst(this.x, this.y - 100, 7, 'arcane');
     game.vfx.spawnDamageText(this.x, this.y - 145, 0, false, 'ARCANE BLINK!', '#facc15');
+
+    // Volatile Solar Remnant damages melee pursuers at departure point!
+    if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 200) {
+      enemy.takeDamage(32, this, false, 85, -50);
+    }
   }
 
   onStartDash(enemy, game, dir) {
-    this.dashDuration = 0.42;
+    this.dashDuration = 0.4;
     this.isBlinkTeleport = false;
-    this.vx = dir * 350;
+    this.vx = dir * 365;
     if (game.audio) game.audio.play('fireball', this.x);
     game.vfx.spawnShockwave(this.x, this.y - 95, 76, '#fb923c', 0.26, false, true);
     game.vfx.spawnGlyphBurst(this.x, this.y - 100, 5, 'arcane');
@@ -70,18 +77,38 @@ export class FireMage extends Fighter {
     const t = this.stateTimer;
 
     if (this.isBlinkTeleport) {
-      if (t >= 0.14 && !this.didBlink) {
+      if (t >= 0.13 && !this.didBlink) {
         this.didBlink = true;
         this.x = this.blinkTargetX;
         if (enemy) {
           this.facing = enemy.x >= this.x ? 1 : -1;
         }
-        // Arrival Solar Rift Portal + Lightning Flash at teleport destination
-        game.vfx.spawnShockwave(this.x, this.y - 95, 105, '#fef08a', 0.36, false, true);
-        game.vfx.spawnShockwave(this.x, this.groundY, 120, '#fb923c', 0.34, true);
+        // Arrival Solar Rift Portal + Lightning Flash + Snap Solar Bolt
+        game.vfx.spawnShockwave(this.x, this.y - 95, 108, '#fef08a', 0.36, false, true);
+        game.vfx.spawnShockwave(this.x, this.groundY, 124, '#fb923c', 0.34, true);
         game.vfx.spawnLightning(this.x, this.groundY - 220, this.groundY, '#ffffff', '#fb923c');
         game.vfx.spawnBurst(this.x, this.y - 95, 20, '#fef08a', 250);
         game.vfx.spawnGlyphBurst(this.x, this.y - 105, 8, 'arcane');
+
+        if (enemy && !enemy.isDead) {
+          const sx = this.x + this.facing * 46;
+          const sy = this.y - 115;
+          const dx = enemy.x - sx;
+          const dy = (enemy.y - 112) - sy;
+          const d = Math.hypot(dx, dy) || 1;
+          game.vfx.spawnProjectile({
+            x: sx,
+            y: sy,
+            vx: (dx / d) * 610,
+            vy: (dy / d) * 610,
+            radius: 13,
+            color: '#fb923c',
+            coreColor: '#fef08a',
+            owner: this,
+            damage: 34,
+            type: 'fireball'
+          });
+        }
       }
       if (t >= this.dashDuration) {
         this.isBlinkTeleport = false;
@@ -91,7 +118,7 @@ export class FireMage extends Fighter {
       return;
     }
 
-    this.x += this.dashDir * 310 * dt;
+    this.x += this.dashDir * 320 * dt;
 
     if (Math.random() < 0.72) {
       game.vfx.spawnParticle({
@@ -118,7 +145,7 @@ export class FireMage extends Fighter {
       const dist = Math.abs(enemy.x - this.x);
       const ww = game.renderer.worldWidth;
       const nearWall = this.x < 220 || this.x > ww - 220;
-      if ((dist < 220 || (nearWall && dist < 285)) && this.dodgeCooldown <= 0) {
+      if ((dist < 210 || (nearWall && dist < 275)) && this.dodgeCooldown <= 0) {
         this.startDodge(enemy, game);
         return;
       }
@@ -131,9 +158,8 @@ export class FireMage extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    if (t < 0.36) {
-      // Frames 16, 17, 18: Deliberate overhead staff channeling windup + dynamic solar rune sparks
-      this.torsoAngle = -this.facing * 0.18 * (t / 0.36);
+    if (t < 0.34) {
+      this.torsoAngle = -this.facing * 0.18 * (t / 0.34);
       if (Math.random() < 0.55) {
         const a = t * 18;
         game.vfx.spawnParticle({
@@ -146,11 +172,11 @@ export class FireMage extends Fighter {
           maxLife: 0.25
         });
       }
-    } else if (t < 0.72) {
-      // Frames 19, 20, 21: Forward spell release & Solar Comet Fireball
+    } else if (t < 0.7) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
-        this.vx -= this.facing * 65;
+        this.castCombo++;
+        this.vx -= this.facing * 55;
         this.torsoVel = -this.facing * 8;
         if (game.audio) game.audio.play('fireball', this.x);
 
@@ -160,7 +186,8 @@ export class FireMage extends Fighter {
         const dx = enemy ? enemy.x - spawnX : this.facing * 460;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
-        const speed = 475;
+        const speed = 585;
+        const isTwinFlare = this.castCombo % 3 === 0;
 
         game.vfx.spawnProjectile({
           x: spawnX,
@@ -171,147 +198,221 @@ export class FireMage extends Fighter {
           color: '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          damage: 94,
+          damage: isTwinFlare ? 66 : 78,
           type: 'fireball',
           isMeteor: false
         });
-        game.vfx.spawnShockwave(spawnX, spawnY, 54, '#facc15', 0.24, false, true);
+
+        if (isTwinFlare) {
+          game.vfx.spawnProjectile({
+            x: spawnX - this.facing * 16,
+            y: spawnY - 14,
+            vx: (dx / dist) * (speed * 0.94),
+            vy: (dy / dist) * (speed * 0.94) - 22,
+            radius: 13,
+            color: '#ea580c',
+            coreColor: '#fef08a',
+            owner: this,
+            damage: 42,
+            type: 'fireball',
+            isMeteor: false
+          });
+        }
+
+        game.vfx.spawnShockwave(spawnX, spawnY, 58, '#facc15', 0.24, false, true);
         game.vfx.spawnBurst(spawnX, spawnY, 12, '#fb923c', 180);
         game.vfx.spawnGlyphBurst(spawnX, spawnY, 4, 'arcane');
       }
-    } else if (t >= 0.96) {
+    } else if (t >= 0.92) {
       this.setState('IDLE');
     }
   }
 
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
-    if (t >= 0.42 && !this.didActionFrame && enemy) {
+    if (t >= 0.38 && !this.didActionFrame && enemy) {
       this.didActionFrame = true;
-      this.vx -= this.facing * 85;
+      this.vx -= this.facing * 75;
       if (game.audio) game.audio.play('flame_pillar', enemy.x);
 
-      // Signature Pyromancer Skill: Triple Hellfire Eruption Pillars + Twin Arcing Solar Fire-Orbs (zero sky-lances!)
+      // Signature Pyromancer Skill: Triple Hellfire Eruption Pillars + Twin Arcing Solar Fire-Orbs
       game.vfx.spawnFlamePillar(enemy.x, this.groundY, this, enemy, {
         theme: 'arcane',
-        delay: 0.32,
-        maxLife: 1.55,
-        scaleWidth: 1.18
+        delay: 0.26,
+        maxLife: 1.45,
+        scaleWidth: 1.15
       });
       game.vfx.spawnFlamePillar(enemy.x - 95, this.groundY, this, enemy, {
         theme: 'arcane',
-        delay: 0.48,
-        maxLife: 1.35,
-        scaleWidth: 0.76
+        delay: 0.4,
+        maxLife: 1.25,
+        scaleWidth: 0.75
       });
       game.vfx.spawnFlamePillar(enemy.x + 95, this.groundY, this, enemy, {
         theme: 'arcane',
-        delay: 0.48,
-        maxLife: 1.35,
-        scaleWidth: 0.76
+        delay: 0.4,
+        maxLife: 1.25,
+        scaleWidth: 0.75
       });
 
-      // Twin Solar Orbs launched from Ignis Sol's staff
       const sx = this.x + this.facing * 48;
       const sy = this.y - 115;
       const dx = enemy.x - sx;
       const dy = (enemy.y - 112) - sy;
       const dist = Math.hypot(dx, dy) || 1;
-      [-45, 45].forEach((vyOff) => {
+      [-38, 38].forEach((vyOff) => {
         game.vfx.spawnProjectile({
           x: sx,
           y: sy,
-          vx: (dx / dist) * 510,
-          vy: (dy / dist) * 510 + vyOff,
+          vx: (dx / dist) * 575,
+          vy: (dy / dist) * 575 + vyOff,
           radius: 13,
           color: '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          damage: 38,
+          damage: 34,
           type: 'fireball'
         });
       });
 
       game.vfx.spawnShockwave(this.x, this.y - 110, 92, '#fb923c', 0.38);
       game.vfx.spawnGlyphBurst(this.x, this.y - 110, 7, 'arcane');
-    } else if (t >= 1.05) {
+    } else if (t >= 0.98) {
       this.setState('IDLE');
     }
   }
 
   updateUltimate(dt, enemy, game) {
+    // OVERHAULED 3-STAGE ULTIMATE: "ECLIPSE SUPERNOVA" (Cataclysmic Solar Armageddon)
+    // Stage 1 (0.0s - 0.55s): Colossal Black-Gold Solar Eclipse Singularity + Gravity Well Lock + Corona Lightning
+    // Stage 2 (0.55s - 1.05s): Heaven-to-Earth Obliterating Solar Plasma Beam + 5 High-Velocity Cataclysm Meteors
+    // Stage 3 (1.05s - 1.58s): Supernova Cataclysm Eruption + 3 Chaining Hellfire Magma Pillars
     const t = this.stateTimer;
-    // Stay planted firmly on the arena flagstones while channeling the Eclipse Supernova
     this.y = this.groundY;
     this.vy = 0;
 
-    if (t < 0.75) {
-      this.runeOrbit += dt * 7.5;
+    const targetX = enemy ? enemy.x : game.renderer.worldWidth * 0.5;
+    const eclipseX = enemy ? (this.x * 0.3 + enemy.x * 0.7) : game.renderer.worldWidth * 0.5;
+    const eclipseY = 148;
 
-      // Conjure the Colossal Black-Gold Solar Eclipse Sphere overhead during channel!
+    if (t < 0.55) {
+      this.runeOrbit += dt * 8.5;
+      this.didSupernovaFinisher = false;
+
       if (!this.spawnedEclipse) {
         this.spawnedEclipse = true;
-        const targetX = enemy ? enemy.x : game.renderer.worldWidth * 0.5;
+        if (game.audio) game.audio.play('eclipse_charge', eclipseX);
         game.vfx.spawnEclipseSupernova({
-          x: (this.x + targetX) * 0.5,
-          y: 165,
+          x: eclipseX,
+          y: eclipseY,
           groundY: this.groundY,
-          maxRadius: 96,
+          maxRadius: 112,
           color: '#fb923c',
           coreColor: '#fef08a',
-          maxLife: 1.45
+          maxLife: 1.55
         });
+        game.vfx.spawnShockwave(targetX, this.groundY, 175, '#facc15', 0.48, true);
+        game.vfx.spawnLightning(targetX, eclipseY, this.groundY, '#fef08a', '#fb923c');
+        if (enemy && !enemy.isDead) {
+          enemy.takeDamage(28, this, false, 20, 0);
+        }
       }
 
-      if (Math.random() < 0.85) {
+      if (enemy && !enemy.isDead) {
+        const pullDir = Math.sign(eclipseX - enemy.x);
+        enemy.x += pullDir * 105 * dt;
+      }
+
+      if (Math.random() < 0.88) {
         const a = Math.random() * Math.PI * 2;
         game.vfx.spawnParticle({
-          x: this.x + Math.cos(a) * 75,
-          y: this.y - 105 + Math.sin(a) * 75,
-          vx: -Math.cos(a) * 110,
-          vy: -Math.sin(a) * 110,
+          x: eclipseX + Math.cos(a) * 110,
+          y: eclipseY + Math.sin(a) * 110,
+          vx: -Math.cos(a) * 165,
+          vy: -Math.sin(a) * 165,
           size: 7,
           color: Math.random() > 0.35 ? '#facc15' : '#fb923c',
-          maxLife: 0.38
+          maxLife: 0.36
         });
       }
     } else if (!this.didActionFrame) {
+      // Stage 2: Heaven-to-Earth Solar Plasma Beam + 5 High-Velocity Cataclysm Meteors!
       this.didActionFrame = true;
       this.spawnedEclipse = false;
-      if (game.audio) game.audio.play('meteor', this.x);
-      const targetX = enemy ? enemy.x : game.renderer.worldWidth * 0.35;
-      const eclipseX = (this.x + targetX) * 0.5;
-      const eclipseY = 165;
+      if (game.audio) {
+        game.audio.play('solar_beam', targetX);
+        game.audio.play('meteor', eclipseX);
+      }
 
-      // Erupt a radial Supernova Shockwave from the Eclipse Sphere + hurl 3 Colossal Molten Meteors!
-      game.vfx.spawnShockwave(eclipseX, eclipseY, 260, '#fef08a', 0.52);
-      game.vfx.spawnShockwave(eclipseX, eclipseY, 190, '#fb923c', 0.42);
-      game.vfx.spawnBurst(eclipseX, eclipseY, 28, '#fef08a', 320, { size: 8 });
+      game.renderer.triggerShake(26, 0.65);
+      game.renderer.triggerAberration(16);
+      game.renderer.triggerHitStop(0.09);
 
-      [-90, 0, 90].forEach((off, idx) => {
+      // 1. Colossal Heaven-to-Earth Solar Plasma Beam searing straight from the Eclipse Sphere into the Enemy!
+      game.vfx.spawnBeam({
+        x1: eclipseX,
+        y1: eclipseY,
+        x2: targetX,
+        y2: this.groundY - 24,
+        width: 84,
+        color: '#fb923c',
+        coreColor: '#fef08a',
+        maxLife: 0.68
+      });
+
+      for (let r = 0; r < 5; r++) {
+        const u = (r + 1) / 5;
+        const rx = eclipseX + (targetX - eclipseX) * u;
+        const ry = eclipseY + (this.groundY - 24 - eclipseY) * u;
+        game.vfx.spawnShockwave(rx, ry, 95 + r * 14, r % 2 === 0 ? '#fef08a' : '#fb923c', 0.45, true);
+      }
+
+      if (enemy && !enemy.isDead) {
+        enemy.takeDamage(105, this, true, 160, -220);
+      }
+
+      // 2. Erupt 5 High-Velocity Molten Cataclysm Meteors fanning across the arena!
+      [-150, -75, 0, 75, 150].forEach((off, idx) => {
         const destX = targetX + off;
         const dx = destX - eclipseX;
         const dy = this.groundY - eclipseY;
         const len = Math.hypot(dx, dy) || 1;
-        const speed = 640 - idx * 35;
+        const speed = 860 - Math.abs(idx - 2) * 40;
 
         game.vfx.spawnProjectile({
-          x: eclipseX + off * 0.25,
+          x: eclipseX + off * 0.22,
           y: eclipseY,
           vx: (dx / len) * speed,
           vy: (dy / len) * speed,
-          radius: idx === 1 ? 46 : 32,
+          radius: idx === 2 ? 46 : 32,
           color: '#ea580c',
           coreColor: '#fef08a',
           owner: this,
-          damage: idx === 1 ? 135 : 55,
+          damage: idx === 2 ? 48 : 24,
           type: 'meteor',
           isMeteor: true
         });
       });
 
+      game.vfx.spawnShockwave(eclipseX, eclipseY, 270, '#fef08a', 0.52);
+      game.vfx.spawnShockwave(eclipseX, eclipseY, 195, '#fb923c', 0.42);
+      game.vfx.spawnBurst(eclipseX, eclipseY, 32, '#fef08a', 340, { size: 8 });
       game.vfx.spawnGlyphBurst(this.x, this.y - 110, 10, 'arcane');
-    } else if (t >= 1.55) {
+    } else if (t >= 1.02 && !this.didSupernovaFinisher) {
+      // Stage 3: Supernova Cataclysm Eruption + 3 Chaining Hellfire Magma Pillars!
+      this.didSupernovaFinisher = true;
+      if (game.audio) game.audio.play('supernova_detonate', targetX);
+      [-115, 0, 115].forEach((off, idx) => {
+        game.vfx.spawnFlamePillar(targetX + off, this.groundY, this, enemy, {
+          theme: 'arcane',
+          delay: idx === 1 ? 0.04 : 0.14,
+          maxLife: 1.05,
+          scaleWidth: idx === 1 ? 1.05 : 0.72
+        });
+      });
+      game.vfx.spawnLightning(targetX - 50, -250, this.groundY, '#fef08a', '#fb923c');
+      game.vfx.spawnLightning(targetX + 50, -250, this.groundY, '#ffffff', '#ea580c');
+    } else if (t >= 1.56) {
       this.setState('IDLE');
     }
   }

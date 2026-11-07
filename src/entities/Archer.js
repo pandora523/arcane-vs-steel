@@ -8,23 +8,23 @@ export class Archer extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1180,
+      maxHp: 1335,
       attackRange: 520,
-      moveSpeed: 158,
-      autoInterval: 1.18,
+      moveSpeed: 162,
+      autoInterval: 1.08,
       lightColor: 'rgba(16, 185, 129, 1)',
       primaryColor: '#10b981'
     });
     this.heroId = 'archer';
     this.theme = 'emerald';
     this.deathSfx = 'death_archer';
-    this.skillMaxCooldown = 4.8;
+    this.skillMaxCooldown = 4.6;
     this.ultName = 'ASTRAL HURRICANE';
     this.skillName = 'STARFALL VOLLEY';
     this.windPhase = 0;
     this.shotCombo = 0;
     this.stepTimer = 0;
-    this.dodgeMaxCooldown = 2.6;
+    this.dodgeMaxCooldown = 3.0;
     this.dashMaxCooldown = 3.5;
     this.wallFlipCooldown = 0;
     this.isFlipVault = false;
@@ -47,31 +47,31 @@ export class Archer extends Fighter {
     this.isFlipVault = true;
     this.flipStartX = this.x;
     this.flipAngle = 0;
+    this.wallFlipCooldown = 3.0;
 
     if (enemy && nearWallOrCornered) {
       // Vault completely OVER the enemy to the open side of the arena!
-      this.dashDuration = 0.58;
+      this.dashDuration = 0.56;
       const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
-      let target = enemy.x + openSideDir * 310;
-      // If enemy is near center, always vault to the opposite side of where Archer started
+      let target = enemy.x + openSideDir * 305;
       if (Math.abs(target - this.x) < 220) {
         const crossDir = this.x < enemy.x ? 1 : -1;
-        target = enemy.x + crossDir * 300;
+        target = enemy.x + crossDir * 295;
       }
       this.flipTargetX = Math.max(150, Math.min(ww - 150, target));
       this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || 1;
       game.vfx.spawnDamageText(this.x, this.y - 130, 0, false, 'ZEPHYR BACKFLIP!', '#34d399');
     } else {
       // Open-arena acrobatic backflip retreat
-      this.dashDuration = 0.5;
-      this.flipTargetX = Math.max(150, Math.min(ww - 150, this.x + dir * 270));
+      this.dashDuration = 0.48;
+      this.flipTargetX = Math.max(150, Math.min(ww - 150, this.x + dir * 260));
       this.dashDir = dir;
       game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'ZEPHYR VAULT!', '#34d399');
     }
 
     this.vx = 0;
     this.vy = 0;
-    if (game.audio) game.audio.play('blink', this.x);
+    if (game.audio) game.audio.play('zephyr_flip', this.x);
     game.vfx.spawnShockwave(this.x, this.groundY, 96, '#34d399', 0.32, true);
     game.vfx.spawnSlash(this.x, this.y - 55, 82, 0, Math.PI * 2, '#10b981', 0.26);
     game.vfx.spawnGlyphBurst(this.x, this.y - 60, 7, 'emerald');
@@ -81,7 +81,7 @@ export class Archer extends Fighter {
     this.isFlipVault = false;
     this.flipAngle = 0;
     this.dashDuration = 0.4;
-    this.vx = dir * 390;
+    this.vx = dir * 380;
     if (game.audio) game.audio.play('arrow_shoot', this.x);
     game.vfx.spawnShockwave(this.x, this.y - 55, 72, '#34d399', 0.25, false, true);
     game.vfx.spawnGlyphBurst(this.x, this.y - 55, 5, 'emerald');
@@ -93,11 +93,9 @@ export class Archer extends Fighter {
 
     if (this.state === 'DODGE' && this.isFlipVault) {
       const u = Math.min(1, t / this.dashDuration);
-      // Smooth ease-in-out horizontal traversal + high parabolic arc over the enemy
       const easeU = u < 0.5 ? 2 * u * u : 1 - Math.pow(-2 * u + 2, 2) / 2;
       this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * easeU;
-      this.y = this.groundY - Math.sin(u * Math.PI) * 175;
-      // Full 360-degree mid-air acrobatic backflip rotation
+      this.y = this.groundY - Math.sin(u * Math.PI) * 170;
       this.flipAngle = -Math.PI * 2 * u;
 
       if (Math.random() < 0.8) {
@@ -112,30 +110,26 @@ export class Archer extends Fighter {
         });
       }
 
-      // At the apex of her mid-air flip over the enemy, Sylvara looses a Twin Aerial Counter Shot!
-      if (u >= 0.42 && !this.didActionFrame && enemy && !enemy.isDead) {
+      // At the apex of her mid-air flip over the enemy, Sylvara looses an Aerial Counter Shot!
+      if (u >= 0.45 && !this.didActionFrame && enemy && !enemy.isDead) {
         this.didActionFrame = true;
         if (game.audio) game.audio.play('arrow_shoot', this.x);
         const sx = this.x;
         const sy = this.y - 96;
         const dx = enemy.x - sx;
         const dy = (enemy.y - 110) - sy;
-        const d = Math.hypot(dx, dy) || 1;
-        [-28, 28].forEach((spreadX) => {
-          const tx = dx + spreadX;
-          const td = Math.hypot(tx, dy) || 1;
-          game.vfx.spawnProjectile({
-            x: sx,
-            y: sy,
-            vx: (tx / td) * 740,
-            vy: (dy / td) * 740,
-            radius: 13,
-            color: '#34d399',
-            coreColor: '#fef08a',
-            owner: this,
-            damage: 42,
-            type: 'arrow'
-          });
+        const td = Math.hypot(dx, dy) || 1;
+        game.vfx.spawnProjectile({
+          x: sx,
+          y: sy,
+          vx: (dx / td) * 735,
+          vy: (dy / td) * 735,
+          radius: 13,
+          color: '#34d399',
+          coreColor: '#fef08a',
+          owner: this,
+          damage: 56,
+          type: 'arrow'
         });
         game.vfx.spawnShockwave(sx, sy, 64, '#fef08a', 0.24, false, false);
         game.vfx.spawnGlyphBurst(sx, sy, 5, 'emerald');
@@ -153,7 +147,7 @@ export class Archer extends Fighter {
       return;
     }
 
-    this.x += this.dashDir * 290 * dt;
+    this.x += this.dashDir * 285 * dt;
     if (Math.random() < 0.65) {
       game.vfx.spawnParticle({
         x: this.x,
@@ -194,18 +188,17 @@ export class Archer extends Fighter {
     if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const ww = game.renderer.worldWidth;
       const dist = Math.abs(enemy.x - this.x);
-      const pinnedLeft = this.x < 250 && enemy.x > this.x;
-      const pinnedRight = this.x > ww - 250 && enemy.x < this.x;
+      const pinnedLeft = this.x < 240 && enemy.x > this.x;
+      const pinnedRight = this.x > ww - 240 && enemy.x < this.x;
 
-      // If Archer is near a wall and enemy closes within 285px, immediately backflip OVER the enemy to the other side!
-      if ((pinnedLeft || pinnedRight) && dist < 285 && this.wallFlipCooldown <= 0) {
-        this.wallFlipCooldown = 1.8;
+      if ((pinnedLeft || pinnedRight) && dist < 265 && this.dodgeCooldown <= 0 && this.wallFlipCooldown <= 0) {
+        this.wallFlipCooldown = 3.0;
         this.startDodge(enemy, game);
         return;
       }
 
-      if (dist < 235) {
-        this.x -= this.facing * this.moveSpeed * 0.75 * dt;
+      if (dist < 220) {
+        this.x -= this.facing * this.moveSpeed * 0.65 * dt;
       }
     }
 
@@ -236,7 +229,7 @@ export class Archer extends Fighter {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.shotCombo++;
-        this.vx -= this.facing * 55;
+        this.vx -= this.facing * 50;
         if (game.audio) game.audio.play('arrow_shoot', this.x);
 
         const spawnX = this.x + this.facing * 54;
@@ -245,7 +238,7 @@ export class Archer extends Fighter {
         const dx = enemy ? enemy.x - spawnX : this.facing * 520;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
-        const speed = 680;
+        const speed = 675;
         const isTwinShot = this.shotCombo % 3 === 0;
 
         // Primary Supersonic Astral Arrow
@@ -258,7 +251,7 @@ export class Archer extends Fighter {
           color: '#10b981',
           coreColor: '#fef08a',
           owner: this,
-          damage: isTwinShot ? 76 : 82,
+          damage: isTwinShot ? 80 : 92,
           type: 'arrow'
         });
 
@@ -273,7 +266,7 @@ export class Archer extends Fighter {
             color: '#34d399',
             coreColor: '#fef08a',
             owner: this,
-            damage: 58,
+            damage: 62,
             type: 'arrow'
           });
         }
@@ -287,7 +280,7 @@ export class Archer extends Fighter {
         game.vfx.spawnBurst(spawnX, spawnY, 12, '#6ee7b7', 210);
         game.vfx.spawnGlyphBurst(spawnX, spawnY, 4, 'emerald');
       }
-    } else if (t >= 0.96) {
+    } else if (t >= 0.92) {
       this.setState('IDLE');
     }
   }
@@ -331,7 +324,7 @@ export class Archer extends Fighter {
           color: '#34d399',
           coreColor: '#fef08a',
           owner: this,
-          damage: 32,
+          damage: 36,
           type: 'arrow'
         });
       });
@@ -351,7 +344,7 @@ export class Archer extends Fighter {
           coreColor: '#fef08a',
           owner: this,
           target: enemy,
-          damage: 20,
+          damage: 23,
           delay: i * 0.06,
           maxLinger: 0.55
         });
@@ -433,7 +426,7 @@ export class Archer extends Fighter {
       game.vfx.spawnGlyphBurst(targetX, this.groundY - 70, 12, 'emerald');
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(225, this, true, 240, -370);
+        enemy.takeDamage(238, this, true, 220, -340);
       }
     } else if (t >= 1.6) {
       this.setState('IDLE');
