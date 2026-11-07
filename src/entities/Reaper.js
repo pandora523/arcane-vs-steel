@@ -8,10 +8,10 @@ export class Reaper extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1240,
-      attackRange: 175,
-      moveSpeed: 192,
-      autoInterval: 1.08,
+      maxHp: 1256,
+      attackRange: 176,
+      moveSpeed: 197,
+      autoInterval: 1.07,
       lightColor: 'rgba(192, 132, 252, 1)',
       primaryColor: '#c084fc'
     });
@@ -19,7 +19,8 @@ export class Reaper extends Fighter {
     this.theme = 'abyssal';
     this.deathSfx = 'death_reaper';
     this.hasPoise = true;
-    this.skillMaxCooldown = 4.9;
+    this.isDeflecting = false;
+    this.skillMaxCooldown = 4.75;
     this.skillTriggerRange = 540;
     this.skillName = 'SPECTRAL CHAIN';
     this.ultName = 'GRIM HARVEST';
@@ -35,13 +36,13 @@ export class Reaper extends Fighter {
     this.didChainPull = false;
     this.didReapFinisher = false;
     this.ultStage = 0;
-    this.dodgeMaxCooldown = 3.2;
-    this.dashMaxCooldown = 3.0;
+    this.dodgeMaxCooldown = 3.15;
+    this.dashMaxCooldown = 2.88;
   }
 
   getEffectiveAttackRange() {
-    // Every 3rd swing hurls a Spinning Boomerang Phantom Scythe up to 395px!
-    return this.comboStep % 3 === 2 ? 395 : this.attackRange;
+    // Every 3rd swing hurls a Spinning Boomerang Phantom Scythe up to 415px!
+    return this.comboStep % 3 === 2 ? 415 : this.attackRange;
   }
 
   /**
@@ -96,7 +97,8 @@ export class Reaper extends Fighter {
 
   onStartDash(enemy, game, dir) {
     this.dashDuration = 0.40;
-    this.vx = dir * 515;
+    this.isDeflecting = true;
+    this.vx = dir * 530;
     if (game.audio) game.audio.play('scythe_reap', this.x);
     game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 6, 'abyssal');
     game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'SHADOW STALK!', '#c084fc');
@@ -104,17 +106,38 @@ export class Reaper extends Fighter {
 
   onStartDodge(enemy, game, dir) {
     this.dashDuration = 0.40;
-    const smartDir = enemy && Math.abs(enemy.x - this.x) > 220 ? this.facing : dir;
+    const dist = enemy ? Math.abs(enemy.x - this.x) : 0;
+    this.isDeflecting = dist > 195;
+    const smartDir = enemy && dist > 195 ? this.facing : dir;
     this.dashDir = smartDir;
-    this.vx = smartDir * 445;
+    this.vx = smartDir * 472;
     if (game.audio) game.audio.play('soul_drain', this.x);
     game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 7, 'abyssal');
     game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'GRAVE MELD!', '#e879f9');
+
+    // When shadow-melding through long-range projectile or pillar fire, siphon soul mist & hurl a counter Phantom Scythe
+    if (enemy && !enemy.isDead && dist > 210) {
+      this.leechLife(15, enemy, game, 'GRAVE SIPHON');
+      if (Math.random() < 0.74) {
+        game.vfx.spawnProjectile({
+          x: this.x + this.facing * 52,
+          y: this.y - 104,
+          vx: this.facing * 630,
+          vy: 0,
+          radius: 21,
+          color: '#c084fc',
+          coreColor: '#f43f5e',
+          owner: this,
+          damage: 45,
+          type: 'phantom_scythe'
+        });
+      }
+    }
   }
 
   updateDashOrDodge(dt, enemy, game) {
     const t = this.stateTimer;
-    const speed = this.state === 'DASH' ? 515 : 415;
+    const speed = this.state === 'DASH' ? 530 : 445;
     this.x += this.dashDir * speed * dt;
 
     // Bubble dark obsidian-violet shadow particles along the floor pool
@@ -135,16 +158,17 @@ export class Reaper extends Fighter {
       !this.didActionFrame &&
       enemy &&
       !enemy.isDead &&
-      Math.abs(enemy.x - this.x) <= 156
+      Math.abs(enemy.x - this.x) <= 158
     ) {
       this.didActionFrame = true;
-      enemy.takeDamage(46, this, false, 90, -60);
+      enemy.takeDamage(47, this, false, 90, -60);
       this.leechLife(15, enemy, game, 'SOUL LEECH');
       if (game.audio) game.audio.play('scythe_reap', enemy.x);
       game.vfx.spawnSlash(this.x + this.facing * 44, this.y - 96, 112, -1.3, 1.2, '#c084fc', 0.28);
     }
 
     if (t >= this.dashDuration) {
+      this.isDeflecting = false;
       this.isInvulnerable = false;
       this.setState('IDLE');
     }
@@ -174,6 +198,18 @@ export class Reaper extends Fighter {
       this.deathAvatar.life += dt;
       if (this.deathAvatar.life >= this.deathAvatar.maxLife) {
         this.deathAvatar = null;
+      }
+    }
+
+    if (!this.isDead && (this.state === 'IDLE' || this.state === 'WALK') && this.dodgeCooldown <= 0 && game.vfx) {
+      const inPillar = game.vfx.pillars.some(
+        (pil) => pil.erupted && pil.owner !== this && Math.abs(pil.x - this.x) < 105
+      );
+      if (inPillar) {
+        this.leechLife(22, enemy, game, 'ABYSSAL SIPHON');
+        this.skillCooldown = Math.max(0, this.skillCooldown - 0.9);
+        this.startDodge(enemy, game);
+        return;
       }
     }
 
@@ -229,13 +265,13 @@ export class Reaper extends Fighter {
           game.vfx.spawnProjectile({
             x: this.x + this.facing * 56,
             y: this.y - 104,
-            vx: this.facing * 590,
+            vx: this.facing * 615,
             vy: 0,
             radius: 22,
             color: '#c084fc',
             coreColor: '#f43f5e',
             owner: this,
-            damage: 58,
+            damage: 59,
             type: 'phantom_scythe'
           });
         } else {
@@ -250,7 +286,7 @@ export class Reaper extends Fighter {
           const isCrit = mode === 2 || Math.random() < 0.24;
           const dmg = mode === 2 ? 84 : mode === 1 ? 74 : 68;
           enemy.takeDamage(dmg, this, isCrit, 85, mode === 2 ? -110 : 0);
-          this.leechLife(mode === 2 ? 22 : 15, enemy, game, 'SOUL LEECH');
+          this.leechLife(mode === 2 ? 20 : 14, enemy, game, 'SOUL LEECH');
           if (game.audio) game.audio.play(mode === 2 ? 'soul_drain' : 'scythe_reap', enemy.x);
           if (game.renderer) game.renderer.triggerHitStop(0.055);
           game.vfx.spawnBurst(enemy.x, enemy.y - 96, 14, '#c084fc', 235);
@@ -273,12 +309,13 @@ export class Reaper extends Fighter {
       this.didChainPull = false;
       this.didReapFinisher = false;
       this.torsoAngle = -this.facing * 0.22;
+      this.isDeflecting = enemy ? Math.abs(enemy.x - this.x) > 195 : false;
       this.chainClaw = {
         targetX: enemy ? enemy.x : this.x + this.facing * 320,
         targetY: enemy ? enemy.y - 96 : this.y - 96,
         phase: 'extend'
       };
-    } else if (t < 0.52) {
+    } else if (t < 0.44) {
       if (!this.didChainPull) {
         this.didChainPull = true;
         if (game.audio) game.audio.play('chain_hook', this.x);
@@ -290,7 +327,7 @@ export class Reaper extends Fighter {
         game.vfx.spawnGlyphBurst(targetX, targetY, 8, 'abyssal');
 
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(28, this, false, -180, -40);
+          enemy.takeDamage(28, this, !enemy.hasPoise, -180, -40);
           game.vfx.spawnDamageText(enemy.x, enemy.y - 154, 0, false, 'DEATH GRIP!', '#e879f9');
           game.renderer.triggerShake(10, 0.20);
         }
@@ -298,8 +335,11 @@ export class Reaper extends Fighter {
 
       // Reel the clamped enemy across the floor into Malakor's scythe reach!
       if (enemy && !enemy.isDead) {
-        const desiredX = Math.max(95, Math.min(ww - 95, this.x + this.facing * 124));
-        enemy.x += (desiredX - enemy.x) * Math.min(1, dt * 4.5);
+        if (Math.abs(enemy.x - this.x) > 145) {
+          this.x += this.facing * 135 * dt;
+        }
+        const desiredX = Math.max(95, Math.min(ww - 95, this.x + this.facing * 118));
+        enemy.x += (desiredX - enemy.x) * Math.min(1, dt * 6.5);
         this.chainClaw = {
           targetX: enemy.x,
           targetY: enemy.y - 96,
@@ -308,6 +348,7 @@ export class Reaper extends Fighter {
       }
     } else if (!this.didReapFinisher) {
       this.didReapFinisher = true;
+      this.isDeflecting = false;
       this.chainClaw = null;
       if (game.audio) game.audio.play('scythe_reap', this.x);
       if (game.audio) game.audio.play('soul_drain', this.x);
@@ -321,11 +362,12 @@ export class Reaper extends Fighter {
       game.vfx.spawnSlash(reapX, this.y - 98, 114, startA, endA, '#f43f5e', 0.28);
       game.vfx.spawnGlyphBurst(reapX, this.y - 98, 9, 'abyssal');
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 225) {
-        enemy.takeDamage(68, this, true, 115, -135);
-        this.leechLife(48, enemy, game, 'SOUL DRAIN');
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 245) {
+        enemy.takeDamage(69, this, true, 115, -135);
+        this.leechLife(45, enemy, game, 'SOUL DRAIN');
       }
-    } else if (t >= 0.96) {
+    } else if (t >= 0.88) {
+      this.isDeflecting = false;
       this.chainClaw = null;
       this.setState('IDLE');
     }
@@ -334,14 +376,15 @@ export class Reaper extends Fighter {
   updateUltimate(dt, enemy, game) {
     // 100% BESPOKE SOULREAPER ULTIMATE: "GRIM HARVEST — BONEYARD & AVATAR OF DEATH"
     // Stage 1 (0.00s - 0.50s): Haunted Gothic Tombstones & Grasping Skeletal Hands erupt across the arena floor!
-    // Stage 2 (0.50s - 1.00s): A Colossal 270px-Tall Hooded Grim Reaper Specter manifests above the Boneyard, raising a 310px Nether Scythe!
-    // Stage 3 (1.00s - 1.55s): The Giant Death Avatar swings its screen-spanning Scythe across the arena, shattering all Tombstones into Homing Soul-Skulls!
+    // Stage 2 (0.50s - 1.00s): A Colossal 16-bit HD-2D Grim Reaper Death Avatar manifests above the Boneyard!
+    // Stage 3 (1.00s - 1.55s): The Giant Death Avatar swings its screen-spanning Scythe across the arena, shattering all Tombstones into Homing Soul-Wisps!
     const t = this.stateTimer;
     const ww = game.renderer.worldWidth;
     const targetX = enemy ? enemy.x : ww * 0.5;
     this.vx = 0;
     this.vy = 0;
     this.y = this.groundY; // Malakor stays grounded in necromantic command (never jumps like Warrior!)
+    this.isDeflecting = t < 1.45;
 
     if (t < 0.04) {
       this.ultStage = 0;
@@ -362,20 +405,20 @@ export class Reaper extends Fighter {
         swingProgress: 0
       };
 
-      game.vfx.spawnDamageText(this.x + this.facing * 92, this.groundY - 350, 0, false, 'RISE, BONEYARD!', '#c084fc');
+      game.vfx.spawnDamageText(this.x + this.facing * 115, this.groundY - 335, 0, false, 'RISE, BONEYARD!', '#c084fc');
       if (enemy && !enemy.isDead) {
         enemy.takeDamage(34, this, false, -40, 0);
         this.leechLife(28, enemy, game, 'GRAVE SIPHON');
       }
     }
 
-    // STAGE 2 (0.52s): The Towering 270px Grim Reaper Avatar manifests at full height & tolls the Bell of Death
+    // STAGE 2 (0.52s): The Towering 16-bit HD-2D Grim Reaper Avatar manifests at full height & tolls the Bell of Death
     if (t >= 0.52 && this.ultStage === 1) {
       this.ultStage = 2;
       if (game.audio) game.audio.play('reaper_ult', this.x);
       game.renderer.triggerShake(18, 0.34);
       game.vfx.spawnGlyphBurst(this.x, this.y - 160, 10, 'abyssal');
-      game.vfx.spawnDamageText(this.x + this.facing * 92, this.groundY - 365, 0, false, 'AVATAR OF DEATH!', '#f43f5e');
+      game.vfx.spawnDamageText(this.x + this.facing * 115, this.groundY - 355, 0, false, 'AVATAR OF DEATH!', '#f43f5e');
 
       if (enemy && !enemy.isDead) {
         // Pull enemy toward the center of the Boneyard so the Death Avatar's colossal scythe reaps them
@@ -390,7 +433,7 @@ export class Reaper extends Fighter {
       this.deathAvatar.swingProgress = Math.min(1, (t - 0.85) / 0.28);
     }
 
-    // STAGE 3 (1.00s): Colossal Grim Reaper Avatar swings its 310px Scythe, shattering all 7 Tombstones into Homing Soul-Skulls!
+    // STAGE 3 (1.00s): Colossal Grim Reaper Avatar swings its Scythe, shattering all 7 Tombstones into Homing Soul-Wisps!
     if (t >= 1.00 && this.ultStage === 2) {
       this.ultStage = 3;
       if (game.audio) game.audio.play('scythe_reap', targetX);
@@ -399,6 +442,12 @@ export class Reaper extends Fighter {
       game.renderer.triggerShake(28, 0.58);
       game.renderer.triggerAberration(16);
       game.renderer.triggerHitStop(0.095);
+
+      const center = (this.x + targetX) * 0.5;
+      const startA = this.facing === 1 ? -2.0 : Math.PI - 1.3;
+      const endA = this.facing === 1 ? 1.3 : Math.PI + 2.0;
+      game.vfx.spawnSlash(center, this.groundY - 125, 220, startA, endA, '#c084fc', 0.42);
+      game.vfx.spawnSlash(center, this.groundY - 125, 180, startA, endA, '#f43f5e', 0.36);
 
       for (const tb of this.tombstones) {
         tb.shattered = true;
@@ -414,313 +463,295 @@ export class Reaper extends Fighter {
     }
 
     if (t >= 1.54) {
+      this.isDeflecting = false;
       this.deathAvatar = null;
       this.setState('IDLE');
     }
   }
 
   /**
-   * Renders the Abyssal Floor Shadow Pool & Grasping Shadow Hands when Malakor dodges/dashes
+   * Renders the Abyssal Floor Shadow Pool & Grasping Bone Hands when Malakor dodges/dashes
    */
   drawShadowPool(ctx) {
     const px = Math.round(this.x / 4) * 4;
     const py = Math.round(this.groundY / 4) * 4;
-    const t = this.stateTimer;
+    const vfxSheet = PixelForge.initAssets().reaper?.vfx;
     ctx.save();
-    // Outer violet-crimson rim & inner obsidian void pool on the floor
-    ctx.fillStyle = '#7e22ce';
-    ctx.fillRect(px - 76, py - 10, 152, 16);
-    ctx.fillStyle = '#c084fc';
-    ctx.fillRect(px - 68, py - 8, 136, 12);
-    ctx.fillStyle = '#090514';
-    ctx.fillRect(px - 60, py - 6, 120, 10);
+    ctx.imageSmoothingEnabled = false;
 
-    // 4 Grasping Skeletal Shadow Hands reaching out of the shadow puddle
-    for (let i = -2; i <= 2; i++) {
-      if (i === 0) continue;
-      const hx = px + i * 26;
-      const reach = 14 + Math.round(Math.sin(t * 28 + i * 1.9) * 8);
-      ctx.fillStyle = '#4c1d95';
-      ctx.fillRect(hx - 4, py - reach, 8, reach);
-      ctx.fillStyle = '#e879f9';
-      ctx.fillRect(hx - 6, py - reach - 4, 4, 6);
-      ctx.fillRect(hx + 2, py - reach - 4, 4, 6);
+    // Layered Abyssal Shadow-Grave Puddle on the cathedral floor
+    ctx.fillStyle = 'rgba(88, 28, 135, 0.78)';
+    ctx.fillRect(px - 80, py - 8, 160, 16);
+    ctx.fillStyle = 'rgba(192, 132, 252, 0.85)';
+    ctx.fillRect(px - 68, py - 6, 136, 12);
+    ctx.fillStyle = '#090514';
+    ctx.fillRect(px - 58, py - 4, 116, 8);
+
+    // Draw the lower grasping skeletal hands & purple mist from our 16-bit HD-2D tombstone sprite (sy=180..256 of tomb cell)
+    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+      ctx.drawImage(vfxSheet, 320, 172, 208, 84, px - 68, py - 48, 136, 56);
     }
     ctx.restore();
   }
 
   /**
-   * Renders Haunted Gothic Gravestones (Weathered Stone Tombstones with Gothic Cross Finials, Skull Emblems & Grasping Bone Hands)
+   * Renders Authentic 16-bit HD-2D Haunted Gothic Crypt Tombstones & Grasping Skeletal Hands (from reaper_vfx.png)
    */
   drawTombstones(ctx) {
     if (!this.tombstones.length) return;
+    const vfxSheet = PixelForge.initAssets().reaper?.vfx;
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
+
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
     for (const tb of this.tombstones) {
       if (tb.life <= 0) continue;
-      const pop = Math.min(1, tb.life / 0.14);
+      const pop = Math.min(1, tb.life / 0.18);
       const fade = Math.min(1, (tb.maxLife - tb.life) * 3.0);
-      const bx = tb.x;
-      const by = Math.round(tb.groundY / 4) * 4;
-      const h = Math.round((tb.height * pop) / 4) * 4;
-      const w = tb.width;
+      const bx = Math.round(tb.x);
+      const by = Math.round(tb.groundY);
 
+      ctx.save();
       ctx.globalAlpha = fade;
 
-      // Dark grave soil mound & necrotic mist at base of tombstone
-      ctx.fillStyle = '#090514';
-      ctx.fillRect(bx - w * 0.75, by - 6, w * 1.5, 10);
-      ctx.fillStyle = 'rgba(168, 85, 247, 0.55)';
-      ctx.fillRect(bx - w * 0.65, by - 4, w * 1.3, 6);
+      // Clip to the stone floor line so each Gothic Tombstone erupts smoothly from beneath the cathedral floor
+      ctx.beginPath();
+      ctx.rect(bx - 90, by - 180, 180, 188);
+      ctx.clip();
+
+      const drawW = 128 + (tb.height - 96) * 0.65;
+      const drawH = drawW;
+      const riseOffset = Math.round((1 - pop) * (drawH * 0.85));
 
       if (!tb.shattered) {
-        // Gothic Cross Finial atop the gravestone
-        const topY = by - h;
-        ctx.fillStyle = '#090514';
-        ctx.fillRect(bx - 6, topY - 26, 12, 26);
-        ctx.fillRect(bx - 14, topY - 20, 28, 10);
-        ctx.fillStyle = '#64748b';
-        ctx.fillRect(bx - 4, topY - 24, 8, 24);
-        ctx.fillRect(bx - 12, topY - 18, 24, 6);
-
-        // Stepped Weathered Dark-Slate Gravestone Slab
-        ctx.fillStyle = '#090514';
-        ctx.fillRect(bx - w * 0.5 - 4, topY, w + 8, h);
-        ctx.fillStyle = '#1e293b';
-        ctx.fillRect(bx - w * 0.5, topY + 4, w, h - 4);
-        ctx.fillStyle = '#334155';
-        ctx.fillRect(bx - w * 0.5 + 4, topY + 8, w - 8, h - 12);
-        // Stone highlight bevel
-        ctx.fillStyle = '#64748b';
-        ctx.fillRect(bx - w * 0.5 + 2, topY + 4, w - 4, 4);
-
-        // Glowing Crimson-Amethyst Skull Emblem carved into the Tombstone
-        const sy = topY + 24;
-        ctx.fillStyle = '#e2e8f0';
-        ctx.fillRect(bx - 8, sy - 8, 16, 12);
-        ctx.fillRect(bx - 4, sy + 4, 8, 4);
-        ctx.fillStyle = '#090514';
-        ctx.fillRect(bx - 6, sy - 4, 4, 4);
-        ctx.fillRect(bx + 2, sy - 4, 4, 4);
-        ctx.fillStyle = '#f43f5e';
-        ctx.fillRect(bx - 5, sy - 3, 2, 2);
-        ctx.fillRect(bx + 3, sy - 3, 2, 2);
-
-        // Carved Epitaph Rune Lines below the skull
-        ctx.fillStyle = '#c084fc';
-        ctx.fillRect(bx - 10, sy + 14, 20, 4);
-        ctx.fillRect(bx - 6, sy + 22, 12, 4);
+        // Full 16-bit HD-2D Gothic Crypt Tombstone + Skull Relief + Glowing Runes + Grasping Bone Hands
+        ctx.drawImage(
+          vfxSheet,
+          320,
+          56,
+          208,
+          208,
+          Math.round(bx - drawW * 0.5),
+          Math.round(by - drawH + 10 + riseOffset),
+          Math.round(drawW),
+          Math.round(drawH)
+        );
+      } else {
+        // Shattered base with grasping skeletal hands & glowing purple grave mist still clawing from the ground
+        ctx.drawImage(
+          vfxSheet,
+          320,
+          164,
+          208,
+          100,
+          Math.round(bx - drawW * 0.5),
+          Math.round(by - drawH * 0.48 + 10),
+          Math.round(drawW),
+          Math.round(drawH * 0.48)
+        );
       }
-
-      // Grasping Bone Hands clawing out of the grave soil in front of each tombstone
-      const handWave = Math.round(Math.sin(tb.life * 18 + tb.seed) * 6);
-      ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(bx - 14, by - 18 + handWave, 4, 18 - handWave);
-      ctx.fillRect(bx - 18, by - 22 + handWave, 12, 4);
-      ctx.fillRect(bx + 10, by - 16 - handWave, 4, 16 + handWave);
-      ctx.fillRect(bx + 6, by - 20 - handWave, 12, 4);
+      ctx.restore();
     }
     ctx.restore();
   }
 
   /**
-   * Renders the Segmented Iron Chain & Giant Crimson-Bone Skeletal Claw clamping over the enemy during SPECTRAL CHAIN
+   * Renders the Taut Dark-Iron Spectral Chain & Authentic 16-bit HD-2D Demonic Skeletal Bone-Gauntlet Claw clamping the enemy
    */
   drawSkeletalChainClaw(ctx) {
     if (!this.chainClaw) return;
+    const vfxSheet = PixelForge.initAssets().reaper?.vfx;
+
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
     const x1 = Math.round(this.x + this.facing * 44);
-    const y1 = Math.round(this.y - 98);
+    const y1 = Math.round(this.y - 94);
     const x2 = Math.round(this.chainClaw.targetX);
     const y2 = Math.round(this.chainClaw.targetY);
-    const dir = Math.sign(x2 - x1) || this.facing;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dist = Math.hypot(dx, dy) || 1;
+    const angle = Math.atan2(dy, dx);
 
-    // 1. Alternating Horizontal & Vertical Iron Chain Links with Abyssal Outline
-    const links = 16;
-    for (let i = 0; i <= links; i++) {
-      const u = i / links;
-      const sag = Math.sin(u * Math.PI) * 16;
-      const lx = Math.round((x1 + (x2 - x1) * u) / 4) * 4;
-      const ly = Math.round((y1 + (y2 - y1) * u + sag) / 4) * 4;
+    // 1. Volumetric Violet Soul-Fire Glow along the chain path
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = 'rgba(192, 132, 252, 0.45)';
+    ctx.lineWidth = 14;
+    ctx.beginPath();
+    for (let s = 0; s <= 24; s++) {
+      const u = s / 24;
+      const sag = Math.sin(u * Math.PI) * 14 + Math.sin(u * Math.PI * 3 + this.stateTimer * 28) * 3;
+      const px = x1 + dx * u;
+      const py = y1 + dy * u + sag;
+      if (s === 0) ctx.moveTo(px, py);
+      else ctx.lineTo(px, py);
+    }
+    ctx.stroke();
+    ctx.restore();
 
+    // 2. Crisp Interlocking Dark-Iron & Amethyst-Rune Chain Links
+    const numLinks = Math.max(8, Math.min(22, Math.round(dist / 18)));
+    for (let i = 0; i <= numLinks; i++) {
+      const u = i / numLinks;
+      const sag = Math.sin(u * Math.PI) * 14 + Math.sin(u * Math.PI * 3 + this.stateTimer * 28) * 3;
+      const lx = Math.round((x1 + dx * u) / 2) * 2;
+      const ly = Math.round((y1 + dy * u + sag) / 2) * 2;
+
+      ctx.save();
+      ctx.translate(lx, ly);
+      ctx.rotate(angle + (i % 2 === 0 ? 0.18 : -0.18));
+
+      // Outer obsidian iron link shadow
       ctx.fillStyle = '#090514';
+      ctx.fillRect(-9, -5, 18, 10);
+      // Shaded dark steel & amethyst inner link bevel
+      ctx.fillStyle = i % 2 === 0 ? '#64748b' : '#9333ea';
+      ctx.fillRect(-7, -3, 14, 6);
+      ctx.fillStyle = i % 2 === 0 ? '#cbd5e1' : '#e879f9';
+      ctx.fillRect(-5, -3, 10, 2);
+      // Hollow link center
       if (i % 2 === 0) {
-        ctx.fillRect(lx - 10, ly - 6, 20, 12);
-        ctx.fillStyle = '#cbd5e1';
-        ctx.fillRect(lx - 8, ly - 4, 16, 8);
         ctx.fillStyle = '#090514';
-        ctx.fillRect(lx - 4, ly - 2, 8, 4);
-      } else {
-        ctx.fillRect(lx - 6, ly - 8, 12, 16);
-        ctx.fillStyle = '#c084fc';
-        ctx.fillRect(lx - 4, ly - 6, 8, 12);
+        ctx.fillRect(-3, -1, 6, 2);
       }
+      ctx.restore();
     }
 
-    // 2. Giant Pixel-Art Skeletal Bone-Claw & Underworld Jaws clamping the target!
-    ctx.translate(x2, y2);
-    ctx.scale(dir, 1);
-    // Obsidian Wrist Cuff & Crimson Soul Gem
-    ctx.fillStyle = '#090514';
-    ctx.fillRect(-26, -18, 22, 36);
-    ctx.fillStyle = '#7e22ce';
-    ctx.fillRect(-22, -14, 14, 28);
-    ctx.fillStyle = '#f43f5e';
-    ctx.fillRect(-18, -6, 8, 12);
-    // 4 Giant Articulated Bone Fingers clamping around the enemy's torso
-    const fingerOffsets = [-28, -10, 10, 28];
-    for (const fy of fingerOffsets) {
-      const curve = fy < 0 ? 8 : -8;
-      ctx.fillStyle = '#090514';
-      ctx.fillRect(-6, fy - 6, 36, 12);
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(-4, fy - 4, 24, 8);
-      // Hooked crimson-violet bone talons at tip
-      ctx.fillStyle = '#f43f5e';
-      ctx.fillRect(20, fy - 4 + curve * 0.5, 12, 8);
+    // 3. Authentic 16-bit HD-2D Demonic Skeletal Bone-Gauntlet Claw clamping the enemy!
+    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+      const dir = Math.sign(dx) || this.facing;
+      const clawSize = 148;
+      ctx.save();
+      ctx.translate(x2, y2);
+      ctx.scale(dir, 1);
+      // Slight gripping pulse as it drags the victim
+      const gripRot = Math.sin(this.stateTimer * 32) * 0.08;
+      ctx.rotate(gripRot);
+      ctx.drawImage(
+        vfxSheet,
+        528,
+        56,
+        208,
+        208,
+        Math.round(-clawSize * 0.56),
+        Math.round(-clawSize * 0.5),
+        clawSize,
+        clawSize
+      );
+      ctx.restore();
     }
     ctx.restore();
   }
 
   /**
-   * Renders the Towering 270px Hooded Grim Reaper Death Avatar above the Boneyard during GRIM HARVEST
+   * Renders the Colossal 320x320 16-bit HD-2D Grim Reaper Death Avatar Boss Specter (from reaper_vfx.png) during GRIM HARVEST
    */
   drawDeathAvatar(ctx) {
     if (!this.deathAvatar) return;
+    const vfxSheet = PixelForge.initAssets().reaper?.vfx;
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
+
     const da = this.deathAvatar;
     const rise = Math.min(1, da.life / 0.30);
     const fade = Math.min(1, (da.maxLife - da.life) * 3.2);
-    // Positioned forward over the Boneyard & higher so the Death Avatar's Skull & Scythe are 100% clear of the overhead plaque
-    const ax = Math.round((this.x + this.facing * 92) / 4) * 4;
-    const ay = Math.round((this.groundY - 156 * rise) / 4) * 4;
+    const ax = Math.round(this.x + this.facing * 115);
+    const ay = Math.round(this.groundY);
 
     ctx.save();
-    ctx.translate(ax, ay);
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = fade * 0.96;
+
+    // Clip to floor so the Colossal Death Avatar rises smoothly out of the graveyard floor
+    ctx.beginPath();
+    ctx.rect(ax - 240, ay - 380, 480, 386);
+    ctx.clip();
+
+    const drawSize = 316;
+    const riseY = Math.round((1 - rise) * 210);
+    const floatBob = Math.round(Math.sin(da.life * 6.5) * 6);
+
+    ctx.translate(ax, ay - drawSize * 0.5 + 8 + riseY + floatBob);
     ctx.scale(this.facing, 1);
-    ctx.globalAlpha = fade * 0.92;
 
-    // 1. Towering Tattered Abyssal Shroud & Exposed Necrotic Ribcage Torso
-    ctx.fillStyle = '#090514';
-    ctx.fillRect(-60, -116, 120, 172);
-    ctx.fillStyle = '#2e1065';
-    ctx.fillRect(-52, -108, 104, 156);
-    ctx.fillStyle = '#4c1d95';
-    ctx.fillRect(-40, -96, 80, 128);
-
-    // Glowing Bone-White & Violet Ribcage Bars + Spine
-    ctx.fillStyle = '#cbd5e1';
-    ctx.fillRect(-4, -76, 8, 72);
-    for (let r = 0; r < 4; r++) {
-      const ry = -70 + r * 18;
-      const rw = 58 - r * 6;
-      ctx.fillStyle = '#090514';
-      ctx.fillRect(-rw * 0.5 - 2, ry - 2, rw + 4, 10);
-      ctx.fillStyle = '#e2e8f0';
-      ctx.fillRect(-rw * 0.5, ry, rw, 6);
-      ctx.fillStyle = '#090514';
-      ctx.fillRect(-6, ry, 12, 6);
+    // Subtle forward lunge tilt when swinging the Nether Scythe at Stage 3
+    if (da.swingProgress > 0) {
+      const lunge = Math.sin(da.swingProgress * Math.PI);
+      ctx.rotate(lunge * 0.16);
+      ctx.scale(1 + lunge * 0.08, 1 + lunge * 0.08);
     }
 
-    // 2. Colossal Horned Reaper Hood & Skull Face with Blazing Crimson Eyes
-    ctx.fillStyle = '#090514';
-    ctx.fillRect(-48, -176, 96, 72);
-    // Twin Curved Obsidian Horns on the Death Avatar's Hood
-    ctx.fillRect(-64, -188, 20, 16);
-    ctx.fillRect(44, -188, 20, 16);
-    ctx.fillStyle = '#c084fc';
-    ctx.fillRect(-60, -184, 12, 8);
-    ctx.fillRect(48, -184, 12, 8);
+    // Draw the 320x320 16-bit HD-2D Castlevania/Octopath Grim Reaper Death Avatar sprite
+    ctx.drawImage(
+      vfxSheet,
+      0,
+      0,
+      320,
+      320,
+      Math.round(-drawSize * 0.5),
+      Math.round(-drawSize * 0.5),
+      drawSize,
+      drawSize
+    );
 
-    ctx.fillStyle = '#3b0764';
-    ctx.fillRect(-42, -170, 84, 60);
-    // Deep pitch-black hood void
-    ctx.fillStyle = '#090514';
-    ctx.fillRect(-30, -156, 60, 46);
-    // Pixel Skull Cranium & Jaw Teeth inside Hood
-    ctx.fillStyle = '#f8fafc';
-    ctx.fillRect(-22, -150, 44, 26);
-    ctx.fillRect(-14, -124, 28, 10);
-    ctx.fillStyle = '#090514';
-    ctx.fillRect(-8, -122, 4, 8);
-    ctx.fillRect(0, -122, 4, 8);
-    ctx.fillRect(8, -122, 4, 8);
-    // Blazing Crimson-White Eye Sockets
-    ctx.fillStyle = '#f43f5e';
-    ctx.fillRect(-16, -142, 12, 10);
-    ctx.fillRect(4, -142, 12, 10);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(-12, -140, 4, 4);
-    ctx.fillRect(8, -140, 4, 4);
-
-    // 3. Colossal 310px-Wide Netherworld Executioner Scythe (Swings down at Stage 3!)
-    const swingA = -0.78 + da.swingProgress * 2.15;
-    ctx.save();
-    ctx.translate(18, -102);
-    ctx.rotate(swingA);
-
-    // Long Obsidian Polearm Shaft
-    ctx.fillStyle = '#090514';
-    ctx.fillRect(-24, -148, 14, 232);
-    ctx.fillStyle = '#9333ea';
-    ctx.fillRect(-20, -144, 6, 224);
-
-    // Enormous Stepped Crescent Reaper Blade at top of shaft
-    for (let s = 0; s <= 18; s++) {
-      const u = s / 18;
-      const bx = Math.round((-16 + u * 176) / 4) * 4;
-      const by = Math.round((-144 + u * u * 100) / 4) * 4;
-      const thick = Math.max(8, Math.round(((1 - u * 0.65) * 38) / 4) * 4);
-      ctx.fillStyle = '#090514';
-      ctx.fillRect(bx - 4, by - 4, 16, thick + 8);
-      ctx.fillStyle = '#7e22ce';
-      ctx.fillRect(bx, by, 12, thick);
-      ctx.fillStyle = s % 2 === 0 ? '#c084fc' : '#f43f5e';
-      ctx.fillRect(bx + 2, by + thick * 0.45, 10, thick * 0.45);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(bx + 4, by + thick - 4, 8, 4);
+    // Additive crimson-violet eye & scythe rune bloom during the execution swing
+    if (da.swingProgress > 0.05) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * Math.sin(da.swingProgress * Math.PI) * 0.55;
+      ctx.drawImage(
+        vfxSheet,
+        0,
+        0,
+        320,
+        320,
+        Math.round(-drawSize * 0.5),
+        Math.round(-drawSize * 0.5),
+        drawSize,
+        drawSize
+      );
     }
-    ctx.restore();
 
     ctx.restore();
   }
 
   /**
-   * Renders Homing Soul-Wisp Skull Orbs flying from the enemy into Malakor's chest
+   * Renders Ethereal Sinuous Soul-Fire Comets flying from the enemy into Malakor's chest
    */
   drawSoulWisps(ctx) {
     if (!this.soulWisps.length) return;
     ctx.save();
     const tx = this.x;
-    const ty = this.y - 98;
+    const ty = this.y - 94;
     for (const w of this.soulWisps) {
       if (w.life < 0) continue;
       const u = Math.min(1, w.life / w.maxLife);
-      const wx = Math.round((w.startX + (tx - w.startX) * u) / 4) * 4;
-      const wy = Math.round(
-        (w.startY + (ty - w.startY) * u + Math.sin(u * Math.PI) * w.arcHeight) / 4
-      ) * 4;
+      const wx = w.startX + (tx - w.startX) * u;
+      const wy = w.startY + (ty - w.startY) * u + Math.sin(u * Math.PI) * w.arcHeight;
 
-      // Trailing Wisp Tail
-      for (let tail = 1; tail <= 3; tail++) {
-        const tu = Math.max(0, u - tail * 0.06);
-        const tlx = Math.round((w.startX + (tx - w.startX) * tu) / 4) * 4;
+      // Glowing additive soul-fire comet ribbon trail
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let tail = 6; tail >= 1; tail--) {
+        const tu = Math.max(0, u - tail * 0.035);
+        const tlx = Math.round((w.startX + (tx - w.startX) * tu) / 2) * 2;
         const tly = Math.round(
-          (w.startY + (ty - w.startY) * tu + Math.sin(tu * Math.PI) * w.arcHeight) / 4
-        ) * 4;
-        ctx.fillStyle = w.color;
-        ctx.globalAlpha = (1 - tail * 0.25) * 0.75;
-        ctx.fillRect(tlx - 4, tly - 4, 8, 8);
+          (w.startY + (ty - w.startY) * tu + Math.sin(tu * Math.PI) * w.arcHeight) / 2
+        ) * 2;
+        const sz = Math.max(2, Math.round((7 - tail) * 2));
+        ctx.fillStyle = tail % 2 === 0 ? '#a855f7' : w.color;
+        ctx.globalAlpha = ((7 - tail) / 7) * 0.65;
+        ctx.fillRect(tlx - sz * 0.5, tly - sz * 0.5, sz, sz);
       }
 
-      // Soul-Skull Wisp Head
+      // Bright Soul-Wisp Core
+      const cx = Math.round(wx / 2) * 2;
+      const cy = Math.round(wy / 2) * 2;
       ctx.globalAlpha = 0.95;
-      ctx.fillStyle = '#090514';
-      ctx.fillRect(wx - 8, wy - 8, 16, 16);
       ctx.fillStyle = w.color;
-      ctx.fillRect(wx - 6, wy - 6, 12, 10);
-      ctx.fillRect(wx - 4, wy + 4, 8, 4);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(wx - 4, wy - 3, 3, 3);
-      ctx.fillRect(wx + 1, wy - 3, 3, 3);
+      ctx.fillRect(cx - 7, cy - 7, 14, 14);
+      ctx.fillStyle = '#fdf4ff';
+      ctx.fillRect(cx - 4, cy - 4, 8, 8);
+      ctx.restore();
     }
     ctx.restore();
   }
@@ -756,10 +787,20 @@ export class Reaper extends Fighter {
     const h = 208;
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
 
-    // When submerged in the Shadow Pool during Dodge/Dash, sink 32px into the floor shadow!
-    const sinkOffset = isSubmerged ? Math.round(Math.sin(Math.min(1, this.stateTimer / 0.12) * (Math.PI * 0.5)) * 32) : 0;
+    // Grounded offset (+6px) so Malakor's armored boots sit firmly in the floor contact shadow, plus rhythmic walk step bob!
+    const groundPlantOffset = 6;
+    const walkBob =
+      !isReflection && this.state === 'WALK'
+        ? Math.round(Math.abs(Math.sin(this.walkPhase * 4.0)) * 3)
+        : 0;
+    const sinkOffset = isSubmerged
+      ? Math.round(Math.sin(Math.min(1, this.stateTimer / 0.12) * (Math.PI * 0.5)) * 32)
+      : 0;
 
-    ctx.translate(Math.round(this.x), Math.round(this.y + sinkOffset));
+    ctx.translate(
+      Math.round(this.x),
+      Math.round(this.y + groundPlantOffset - walkBob + sinkOffset)
+    );
     ctx.scale(this.facing, 1);
 
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection);

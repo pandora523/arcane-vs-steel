@@ -32,6 +32,7 @@ export class PixelForge {
       },
       reaper: {
         sheet: loadImg('assets/sprites/reaper_sheet.png'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png'),
         portrait: loadImg('assets/sprites/reaper_portrait.png', () => this.refreshPortraits())
       }
     };
