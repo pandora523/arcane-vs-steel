@@ -13,56 +13,194 @@ const CHAMPION_ROSTER = {
   warrior: {
     id: 'warrior',
     name: 'AETHELGARD',
+    role: 'RUNEBLADE KNIGHT',
+    style: 'MELEE VANGUARD',
+    trait: 'PASSIVE: AEGIS SPELL DEFLECT',
     cls: Warrior,
     theme: 'steel',
     color: '#38bdf8',
     selectSfx: 'slash',
-    victoryLine: 'Runeblade steel cleaves through the sanctuary tempest!'
+    victoryLine: 'Runeblade steel cleaves through the sanctuary tempest!',
+    skills: [
+      {
+        name: 'FROST CRESCENT',
+        type: 'AUTO + PASSIVE',
+        vfxCell: 0,
+        desc: 'Cleaves with frost waves & raises an Aegis barrier that deflects projectiles.'
+      },
+      {
+        name: 'TEMPEST VANGUARD',
+        type: 'SKILL • 4.5S CD',
+        vfxCell: 1,
+        desc: '3-hit spinning cryo-cyclone that pulls foes inward and shatters armor.'
+      },
+      {
+        name: 'HEAVENLY EARTHSHATTER',
+        type: '★ OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Leaps skyward and slams a colossal Runeblade monolith, erupting 5 glacial spires.'
+      }
+    ]
   },
   archer: {
     id: 'archer',
     name: 'SYLVARA',
+    role: 'TEMPEST BOWMASTER',
+    style: 'RANGED MARKSMAN',
+    trait: 'PASSIVE: ZEPHYR VAULT EVASION',
     cls: Archer,
     theme: 'emerald',
     color: '#34d399',
     selectSfx: 'arrow_shoot',
-    victoryLine: 'Supersonic astral arrows pierce through the eclipse!'
+    victoryLine: 'Supersonic astral arrows pierce through the eclipse!',
+    skills: [
+      {
+        name: 'ASTRAL LONGBOW',
+        type: 'AUTO + PASSIVE',
+        vfxCell: 0,
+        desc: 'Fires high-velocity piercing arrows & vaults over cornering foes with Zephyr Backflip.'
+      },
+      {
+        name: 'STARFALL VOLLEY',
+        type: 'SKILL • 4.2S CD',
+        vfxCell: 1,
+        desc: 'Rains 5 emerald starlight arrows from the heavens onto the enemy position.'
+      },
+      {
+        name: 'ASTRAL HURRICANE',
+        type: '★ OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Unleashes an Emerald Wind-Dragon and 10-beam orbital starlight bombardment.'
+      }
+    ]
   },
   mage: {
     id: 'mage',
     name: 'IGNIS SOL',
+    role: 'SOLAR ARCHMAGE',
+    style: 'ARCANE ARTILLERY',
+    trait: 'PASSIVE: ARCANE BLINK WARP',
     cls: FireMage,
     theme: 'arcane',
     color: '#fb923c',
     selectSfx: 'fireball',
-    victoryLine: 'Solar cataclysm reduces all opposition to molten ash!'
+    victoryLine: 'Solar cataclysm reduces all opposition to molten ash!',
+    skills: [
+      {
+        name: 'SOLAR FIREBALL',
+        type: 'AUTO + PASSIVE',
+        vfxCell: 2,
+        desc: 'Launches explosive solar plasma orbs & teleports away from melee threats.'
+      },
+      {
+        name: 'TRIPLE SOLAR PILLAR',
+        type: 'SKILL • 4.8S CD',
+        vfxCell: 1,
+        desc: 'Erupts 3 sequential columns of molten hellfire beneath the enemy.'
+      },
+      {
+        name: 'ECLIPSE SUPERNOVA',
+        type: '★ OVERDRIVE ULT',
+        vfxCell: 0,
+        desc: 'Summons the Black-Sun Eclipse, raining meteors before a cataclysmic solar beam.'
+      }
+    ]
   },
   priestess: {
     id: 'priestess',
     name: 'SERAPHINA',
+    role: 'HIGH PRIESTESS',
+    style: 'RADIANT HEALER',
+    trait: 'PASSIVE: SERAPHIM WING ESCAPE',
     cls: Priestess,
     theme: 'radiant',
     color: '#fde047',
     selectSfx: 'holy_heal',
-    victoryLine: 'Sacred light and divine grace purify the sanctuary!'
+    victoryLine: 'Sacred light and divine grace purify the sanctuary!',
+    skills: [
+      {
+        name: 'SACRED STARLIGHT',
+        type: 'AUTO + PASSIVE',
+        vfxCell: 1,
+        desc: 'Fires purifying light bolts & ascends on 6 Seraphim wings when cornered.'
+      },
+      {
+        name: 'DIVINE SANCTUARY',
+        type: 'SKILL • 5.0S CD',
+        vfxCell: 2,
+        desc: 'Consecrates the floor, restoring her HP while smiting enemies with Valkyrie spears.'
+      },
+      {
+        name: 'SERAPHIC APOTHEOSIS',
+        type: '★ OVERDRIVE ULT',
+        vfxCell: 0,
+        desc: 'Ascends in full Archangel form, calling down 7 pillars of heavenly judgment.'
+      }
+    ]
   },
   reaper: {
     id: 'reaper',
     name: 'MALAKOR',
+    role: 'ABYSSAL SOULREAPER',
+    style: 'LIFESTEAL EXECUTIONER',
+    trait: 'PASSIVE: VAMPIRIC SOUL REAP',
     cls: Reaper,
     theme: 'abyssal',
     color: '#c084fc',
     selectSfx: 'scythe_reap',
-    victoryLine: 'The Abyssal Scythe reaps every soul in the sanctuary!'
+    victoryLine: 'The Abyssal Scythe reaps every soul in the sanctuary!',
+    skills: [
+      {
+        name: 'CRESCENT SCYTHE',
+        type: 'AUTO + PASSIVE',
+        vfxCell: 2,
+        desc: 'Sweeps wide necrotic scythe waves that drain life force on every strike.'
+      },
+      {
+        name: 'SPECTRAL CHAIN HOOK',
+        type: 'SKILL • 4.6S CD',
+        vfxCell: 1,
+        desc: 'Hurls a skeletal claw chain across the arena, dragging ranged foes into melee.'
+      },
+      {
+        name: 'GRIM HARVEST',
+        type: '★ OVERDRIVE ULT',
+        vfxCell: 0,
+        desc: 'Summons the colossal Death-Avatar & gothic tombstones to reap the battlefield.'
+      }
+    ]
   },
   chronomancer: {
     id: 'chronomancer',
     name: 'ZEPHYROS',
+    role: 'GRAND CHRONOMANCER',
+    style: 'TIME & STASIS WEAVER',
+    trait: 'PASSIVE: TEMPORAL HP REWIND',
     cls: Chronomancer,
     theme: 'chrono',
     color: '#2dd4bf',
     selectSfx: 'clock_gear',
-    victoryLine: 'The Grand Astral Clocktower locks all timelines in stasis!'
+    victoryLine: 'The Grand Astral Clocktower locks all timelines in stasis!',
+    skills: [
+      {
+        name: 'ESCAPEMENT SAW-GEAR',
+        type: 'AUTO + PASSIVE',
+        vfxCell: 1,
+        desc: 'Hurls spinning clockwork saw-gears & rewinds his own timeline to recover lost HP.'
+      },
+      {
+        name: 'HOURGLASS STASIS',
+        type: 'SKILL • 4.6S CD',
+        vfxCell: 0,
+        desc: 'Materializes a golden hourglass prison that freezes the enemy in time.'
+      },
+      {
+        name: 'DOOMSDAY MIDNIGHT',
+        type: '★ OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Manifests the Celestial Astrolabe Clock, striking 12 chimes of temporal judgment.'
+      }
+    ]
   }
 };
 
@@ -449,12 +587,12 @@ class Game {
       }
       if (ribbon) {
         ribbon.textContent = isP1
-          ? '★ FIGHTER 1 (LEFT)'
+          ? '★ P1'
           : isP2
-            ? '★ FIGHTER 2 (RIGHT)'
+            ? '★ P2'
             : this.activeAssignSlot === 1
-              ? 'CLICK FOR P1 (LEFT)'
-              : 'CLICK FOR P2 (RIGHT)';
+              ? 'SET P1'
+              : 'SET P2';
       }
     });
 
@@ -462,14 +600,42 @@ class Game {
       const k = btn.getAttribute('data-assign-p1');
       const active = this.slot1Hero === k;
       btn.classList.toggle('active-p1', active);
-      btn.textContent = active ? '★ P1 [LEFT]' : 'SET P1 [LEFT]';
+      btn.textContent = active ? '★ P1' : 'P1';
     });
     document.querySelectorAll('[data-assign-p2]').forEach((btn) => {
       const k = btn.getAttribute('data-assign-p2');
       const active = this.slot2Hero === k;
       btn.classList.toggle('active-p2', active);
-      btn.textContent = active ? '★ P2 [RIGHT]' : 'SET P2 [RIGHT]';
+      btn.textContent = active ? '★ P2' : 'P2';
     });
+
+    // Populate Left (P1) and Right (P2) Fighter Profile & Visual Skill Breakdown Panels
+    const syncProfilePanel = (prefix, cfg) => {
+      if (!cfg) return;
+      const nameEl = document.getElementById(`${prefix}-profile-name`);
+      const roleEl = document.getElementById(`${prefix}-profile-role`);
+      const styleEl = document.getElementById(`${prefix}-profile-style`);
+      const traitEl = document.getElementById(`${prefix}-profile-trait`);
+      const haloEl = document.getElementById(`${prefix}-halo`);
+      if (nameEl) nameEl.textContent = cfg.name;
+      if (roleEl) roleEl.textContent = cfg.role;
+      if (styleEl) styleEl.textContent = cfg.style;
+      if (traitEl) traitEl.textContent = cfg.trait;
+      if (haloEl) haloEl.className = `stage-halo halo-${cfg.theme}`;
+
+      if (Array.isArray(cfg.skills)) {
+        cfg.skills.forEach((sk, idx) => {
+          const sName = document.getElementById(`${prefix}-skill-name-${idx}`);
+          const sType = document.getElementById(`${prefix}-skill-type-${idx}`);
+          const sDesc = document.getElementById(`${prefix}-skill-desc-${idx}`);
+          if (sName) sName.textContent = sk.name;
+          if (sType) sType.textContent = sk.type;
+          if (sDesc) sDesc.textContent = sk.desc;
+        });
+      }
+    };
+    syncProfilePanel('p1', c1);
+    syncProfilePanel('p2', c2);
 
     if (this.startDuelText) {
       this.startDuelText.textContent = `WATCH DUEL: ${c1.name} VS. ${c2.name}`;
@@ -502,37 +668,86 @@ class Game {
     const assets = PixelForge.initAssets();
     const t = now * 0.001;
 
-    const drawPreview = (heroKey, isHoveredOrSelected) => {
+    // 1. Render the 6 Center Portrait Selector Tiles from crisp pixel portraits
+    Object.keys(CHAMPION_ROSTER).forEach((heroKey) => {
       const canvas = this.previewCanvases[heroKey];
-      const sheet = assets[heroKey]?.sheet;
-      if (!canvas || !sheet || !sheet.complete || !sheet.naturalWidth) return;
-      const cell = Math.round(sheet.naturalWidth / 8) || 208;
-      if (canvas.width !== cell) {
-        canvas.width = cell;
-        canvas.height = cell;
-      }
+      const port = assets[heroKey]?.portrait;
+      if (!canvas || !port || !port.complete || !port.naturalWidth) return;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(port, 0, 0, canvas.width, canvas.height);
+    });
 
-      let frameIdx = Math.floor(t * 6.5) % 8;
-      if (isHoveredOrSelected) {
-        const cycle = (t + (heroKey === 'archer' ? 1.1 : 0)) % 4.0;
-        if (cycle > 2.4 && cycle < 3.4) {
-          const atkStep = Math.min(7, Math.floor(((cycle - 2.4) / 1.0) * 8));
+    // 2. Render Live Animated Fighter Sprites & 3 Bespoke VFX Skill Icons on Left (P1) and Right (P2) Profile Panels
+    const drawSideProfileVisuals = (prefix, heroKey, flipX) => {
+      const cfg = CHAMPION_ROSTER[heroKey];
+      const heroAssets = assets[heroKey];
+      if (!cfg || !heroAssets) return;
+
+      // Live Animated Character Stage
+      const spriteCanvas = document.getElementById(`${prefix}-sprite-canvas`);
+      const sheet = heroAssets.sheet;
+      if (spriteCanvas && sheet && sheet.complete && sheet.naturalWidth) {
+        const cell = Math.round(sheet.naturalWidth / 8) || 208;
+        if (spriteCanvas.width !== cell) {
+          spriteCanvas.width = cell;
+          spriteCanvas.height = cell;
+        }
+        const sctx = spriteCanvas.getContext('2d');
+        sctx.clearRect(0, 0, cell, cell);
+        sctx.imageSmoothingEnabled = false;
+
+        let frameIdx = Math.floor(t * 6.5) % 8;
+        const cycle = (t + (flipX ? 1.4 : 0)) % 3.8;
+        if (cycle > 2.2 && cycle < 3.2) {
+          const atkStep = Math.min(7, Math.floor(((cycle - 2.2) / 1.0) * 8));
           frameIdx = 16 + atkStep;
         }
+        const col = frameIdx % 8;
+        const row = (frameIdx / 8) | 0;
+        const hover =
+          heroKey === 'mage' || heroKey === 'priestess' ? Math.round(Math.sin(t * 3.2) * 2) * 2 : 0;
+
+        sctx.save();
+        if (flipX) {
+          sctx.translate(cell, 0);
+          sctx.scale(-1, 1);
+        }
+        sctx.drawImage(sheet, col * cell, row * cell, cell, cell, 0, hover, cell, cell);
+        sctx.restore();
       }
-      const col = frameIdx % 8;
-      const row = (frameIdx / 8) | 0;
-      const hover =
-        heroKey === 'mage' || heroKey === 'priestess' ? Math.round(Math.sin(t * 3.2) * 2) * 2 : 0;
-      ctx.drawImage(sheet, col * cell, row * cell, cell, cell, 0, hover, cell, cell);
+
+      // 3 Bespoke Pixel-Art Skill Icon Canvases sliced from assets[heroKey].vfx
+      const vfxSheet = heroAssets.vfx;
+      if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth && Array.isArray(cfg.skills)) {
+        cfg.skills.forEach((sk, idx) => {
+          const iconCanvas = document.getElementById(`${prefix}-skill-icon-${idx}`);
+          if (!iconCanvas) return;
+          const ictx = iconCanvas.getContext('2d');
+          const iw = iconCanvas.width;
+          const ih = iconCanvas.height;
+          ictx.clearRect(0, 0, iw, ih);
+          ictx.imageSmoothingEnabled = false;
+
+          const cellIdx = sk.vfxCell ?? idx;
+          const cw = Math.floor(vfxSheet.naturalWidth / 3);
+          const ch = vfxSheet.naturalHeight;
+          const inset = Math.round(cw * 0.04);
+          const srcX = cellIdx * cw + inset;
+          const srcY = Math.round(ch * 0.04);
+          const srcW = cw - inset * 2;
+          const srcH = ch - srcY * 2;
+          const pulse = 1 + Math.sin(t * 3.5 + idx) * 0.04;
+          const drawSz = Math.round(iw * pulse);
+          const off = Math.round((iw - drawSz) * 0.5);
+          ictx.drawImage(vfxSheet, srcX, srcY, srcW, srcH, off, off, drawSz, drawSz);
+        });
+      }
     };
 
-    Object.keys(CHAMPION_ROSTER).forEach((key) => {
-      drawPreview(key, this.slot1Hero === key || this.slot2Hero === key);
-    });
+    drawSideProfileVisuals('p1', this.slot1Hero, false);
+    drawSideProfileVisuals('p2', this.slot2Hero, true);
   }
 
   resetMatch() {
@@ -555,6 +770,8 @@ class Game {
 
     this.leftFighter = new c1.cls(ww * 0.2, gy, 1);
     this.rightFighter = new c2.cls(ww * 0.8, gy, -1);
+    this.leftFighter.game = this;
+    this.rightFighter.game = this;
     this.fighters = [this.leftFighter, this.rightFighter];
 
     // Configure dynamic HUD headers, bar themes & portraits
@@ -609,7 +826,6 @@ class Game {
     this.stageEventTimer = 10.0;
     this.stageEventTickTimer = 0;
     const stageId = this.renderer?.stageId || 'cathedral';
-    const gy = this.renderer?.groundY || 520;
     const ww = this.renderer?.worldWidth || 1200;
 
     if (stageId === 'cathedral') {
@@ -619,7 +835,6 @@ class Game {
         '#facc15',
         10.0
       );
-      this.vfx.spawnShockwave(ww * 0.5, gy - 4, 340, '#facc15', 0.65, true);
     } else if (stageId === 'sylvan') {
       this.renderer.triggerStageEvent(
         '★ STAGE PHENOMENON • STARLIGHT MONSOON ★',
@@ -627,7 +842,6 @@ class Game {
         '#34d399',
         10.0
       );
-      this.vfx.spawnShockwave(ww * 0.5, gy - 4, 340, '#34d399', 0.65, true);
     } else if (stageId === 'boneyard') {
       this.renderer.triggerStageEvent(
         '★ STAGE PHENOMENON • BLOOD MOON FRENZY ★',
@@ -635,7 +849,6 @@ class Game {
         '#e11d48',
         10.0
       );
-      this.vfx.spawnShockwave(ww * 0.5, gy - 4, 340, '#e11d48', 0.65, true);
     } else {
       this.renderer.triggerStageEvent(
         '★ STAGE PHENOMENON • MIDNIGHT OVERCLOCK ★',
@@ -643,7 +856,6 @@ class Game {
         '#2dd4bf',
         10.0
       );
-      this.vfx.spawnShockwave(ww * 0.5, gy - 4, 340, '#2dd4bf', 0.65, true);
     }
     if (this.audio) this.audio.play('skill_cast', ww * 0.5);
   }
@@ -666,7 +878,8 @@ class Game {
         deadFighter.x,
         deadFighter.y - 95,
         winner.primaryColor,
-        winner.name
+        winner.name,
+        winner.heroId
       );
     }
 
@@ -719,7 +932,7 @@ class Game {
     clearTimeout(this.victoryTimeout);
     clearTimeout(this.autoNextTimeout);
     this.victoryTimeout = setTimeout(() => {
-      if (this.isMatchOver) {
+      if (this.isMatchOver && !this.isSimPaused) {
         this.victoryOverlay.classList.remove('hidden');
         if (this.audio) this.audio.play('victory_fanfare');
         if (this.autoTourney && !this.isSimPaused) {
@@ -736,16 +949,22 @@ class Game {
   triggerClashSpark(cx, cy, col1, col2, label = '★ CLASH! ★') {
     if (this.audio) this.audio.play('clang', cx);
     this.renderer.triggerHitStop(0.065);
+    const c1 = col1 || this.leftFighter?.primaryColor || '#38bdf8';
+    const c2 = col2 || this.rightFighter?.primaryColor || '#fb923c';
     if (typeof this.renderer.triggerClashCamera === 'function') {
-      this.renderer.triggerClashCamera(cx, cy);
+      this.renderer.triggerClashCamera(
+        cx,
+        cy,
+        this.leftFighter?.heroId || 'warrior',
+        this.rightFighter?.heroId || 'mage',
+        c1,
+        c2
+      );
     }
-    this.vfx.spawnDamageText(cx, cy - 52, 0, false, label, '#fef08a');
-    this.vfx.spawnShockwave(cx, cy, 135, col1 || '#38bdf8', 0.36, false, true);
-    this.vfx.spawnShockwave(cx, cy, 110, col2 || '#fb923c', 0.32, false, false);
-    this.vfx.spawnShockwave(cx, this.renderer.groundY - 4, 145, '#fef08a', 0.38, true);
-    this.vfx.spawnSlash(cx, cy, 88, -1.1, 1.1, col1 || '#38bdf8', 0.26);
-    this.vfx.spawnSlash(cx, cy, 88, 2.0, -2.0, col2 || '#fb923c', 0.26);
-    this.vfx.spawnBurst(cx, cy, 18, '#fef08a', 290, { upBias: 95, size: 7 });
+    this.vfx.spawnDamageText(cx, cy - 68, 0, false, label, '#fef08a');
+    this.vfx.spawnBurst(cx, cy, 24, '#fef08a', 320, { upBias: 115, size: 7 });
+    this.vfx.spawnBurst(cx - 12, cy, 18, c1, 285, { upBias: 95, size: 6 });
+    this.vfx.spawnBurst(cx + 12, cy, 18, c2, 285, { upBias: 95, size: 6 });
     if (this.leftFighter && !this.leftFighter.isDead) {
       this.leftFighter.gainMana(10);
       if (this.leftFighter.stats) this.leftFighter.stats.clashes++;
@@ -963,10 +1182,14 @@ class Game {
       this.clashCooldown = Math.max(0, this.clashCooldown - dt);
     }
 
-    // Trigger Autonomous Mid-Match Stage Phenomenon at 11.5s or when either fighter drops below 58% HP
+    // Trigger Autonomous Mid-Match Stage Phenomenon at 11.5s or when either living fighter drops below 58% HP
     if (
       !this.isMatchOver &&
       !this.stageEventTriggered &&
+      !this.leftFighter.isDead &&
+      !this.rightFighter.isDead &&
+      this.leftFighter.hp > 0 &&
+      this.rightFighter.hp > 0 &&
       (this.matchTime >= 11.5 ||
         this.leftFighter.hp / this.leftFighter.maxHp <= 0.58 ||
         this.rightFighter.hp / this.rightFighter.maxHp <= 0.58)
@@ -984,9 +1207,12 @@ class Game {
           this.leftFighter.heal(26, 'STARLIGHT');
           this.rightFighter.heal(26, 'STARLIGHT');
         } else if (this.renderer?.stageId === 'boneyard' && !this.isMatchOver) {
-          // Blood Moon Frenzy crimson sky bolt
+          // Blood Moon Frenzy crimson soul-ember eruption
           const midX = (this.leftFighter.x + this.rightFighter.x) * 0.5;
-          this.vfx.spawnLightning(midX, 0, midX, this.renderer.groundY, '#e11d48', '#c084fc');
+          this.vfx.spawnBurst(midX, this.renderer.groundY - 40, 20, '#e11d48', 260, {
+            upBias: 160,
+            size: 6
+          });
         }
       }
     }

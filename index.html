@@ -108,260 +108,239 @@
       </div>
     </footer>
 
-    <!-- HD-2D Champion Roster & Matchup Selection Landing Page -->
+    <!-- HD-2D Portrait-First Versus Selector & Visual Skill Showcase Landing Page -->
     <section id="landing-overlay" class="landing-overlay" aria-label="Champion Roster Selection">
       <div class="landing-shell">
         <header class="landing-header">
           <div class="landing-eyebrow">ECLIPSE SANCTUARY CHRONICLES • HD-2D IDLE AUTO-BATTLER</div>
           <h1 class="landing-title">ARCANE <span>VS.</span> STEEL</h1>
-          <p class="landing-subtitle">Select two Champions from the Sanctuary Roster and watch their autonomous duel unfold</p>
-
-          <!-- Live Matchup Slots Pill Bar -->
-          <div class="matchup-banner">
-            <button type="button" class="slot-pill slot-left active-slot" id="slot-btn-left" title="Click then pick a Champion for the Left Corner">
-              <span class="slot-tag">FIGHTER 1 • LEFT</span>
-              <strong class="slot-hero-name" id="slot-left-name">AETHELGARD</strong>
-            </button>
-            <div class="matchup-vs-badge">VS</div>
-            <button type="button" class="slot-pill slot-right" id="slot-btn-right" title="Click then pick a Champion for the Right Corner">
-              <span class="slot-tag">FIGHTER 2 • RIGHT</span>
-              <strong class="slot-hero-name" id="slot-right-name">SYLVARA</strong>
-            </button>
-          </div>
         </header>
 
-        <div class="champion-grid">
-          <!-- Champion 1: Aethelgard (Runeblade Knight) -->
-          <article class="champ-card card-steel selected-p1" id="card-warrior" data-hero="warrior" tabindex="0">
-            <div class="card-Selected-ribbon" id="ribbon-warrior">★ FIGHTER 1 (LEFT)</div>
-            <div class="champ-preview-stage stage-steel">
-              <div class="stage-halo halo-steel"></div>
-              <canvas id="preview-warrior" width="148" height="148"></canvas>
+        <div class="versus-layout">
+          <!-- LEFT PANEL: FIGHTER 1 PROFILE & VISUAL SKILL BREAKDOWN -->
+          <aside class="fighter-profile profile-steel" id="profile-left">
+            <div class="profile-top-bar">
+              <div class="profile-corner-tag tag-p1">★ FIGHTER 1 • LEFT CORNER</div>
+              <span class="profile-style-pill" id="p1-profile-style">MELEE VANGUARD</span>
             </div>
-            <div class="champ-meta">
-              <div class="champ-role">RUNEBLADE VANGUARD • MELEE</div>
-              <h2 class="champ-name">AETHELGARD</h2>
-              <p class="champ-lore">Clad in silver-gilt plate and wielding an ancient frost-rune greatsword that deflects spells and shatters the cathedral floor.</p>
-              <div class="stat-list">
-                <div class="stat-row">
-                  <span>VITALITY</span>
-                  <div class="stat-track"><div class="stat-bar bar-steel" style="width: 95%"></div></div>
-                </div>
-                <div class="stat-row">
-                  <span>CLEAVE POWER</span>
-                  <div class="stat-track"><div class="stat-bar bar-steel" style="width: 90%"></div></div>
-                </div>
-                <div class="stat-row">
-                  <span>AEGIS DEFLECT</span>
-                  <div class="stat-track"><div class="stat-bar bar-steel" style="width: 92%"></div></div>
-                </div>
-              </div>
-              <div class="kit-pills">
-                <span class="kit-pill pill-steel">TEMPEST VANGUARD</span>
-                <span class="kit-pill pill-steel">FROST CRESCENT</span>
-                <span class="kit-pill pill-gold">HEAVENLY EARTHSHATTER</span>
-              </div>
-              <div class="slot-assign-row">
-                <button type="button" class="assign-btn" data-assign-p1="warrior">SET P1 [LEFT]</button>
-                <button type="button" class="assign-btn" data-assign-p2="warrior">SET P2 [RIGHT]</button>
-              </div>
-            </div>
-          </article>
 
-          <!-- Champion 2: Sylvara (Tempest Bowmaster - NEW!) -->
-          <article class="champ-card card-emerald selected-p2" id="card-archer" data-hero="archer" tabindex="0">
-            <div class="card-Selected-ribbon" id="ribbon-archer">* FIGHTER 2 (RIGHT)</div>
-            <div class="champ-preview-stage stage-emerald">
-              <div class="stage-halo halo-emerald"></div>
-              <canvas id="preview-archer" width="148" height="148"></canvas>
-            </div>
-            <div class="champ-meta">
-              <div class="champ-role">TEMPEST BOWMASTER - RANGER</div>
-              <h2 class="champ-name">SYLVARA</h2>
-              <p class="champ-lore">Elven windrunner who looses supersonic astral arrows, vaults over foes with Zephyr Backflips, and calls down Starfall Volleys.</p>
-              <div class="stat-list">
-                <div class="stat-row">
-                  <span>ATTACK SPEED</span>
-                  <div class="stat-track"><div class="stat-bar bar-emerald" style="width: 98%"></div></div>
-                </div>
-                <div class="stat-row">
-                  <span>STARFALL CRIT</span>
-                  <div class="stat-track"><div class="stat-bar bar-emerald" style="width: 93%"></div></div>
-                </div>
-                <div class="stat-row">
-                  <span>ZEPHYR EVASION</span>
-                  <div class="stat-track"><div class="stat-bar bar-emerald" style="width: 94%"></div></div>
-                </div>
+            <div class="profile-hero-showcase">
+              <div class="profile-stage" id="p1-stage">
+                <div class="stage-halo halo-steel" id="p1-halo"></div>
+                <canvas id="p1-sprite-canvas" width="208" height="208"></canvas>
               </div>
-              <div class="kit-pills">
-                <span class="kit-pill pill-emerald">STARFALL VOLLEY</span>
-                <span class="kit-pill pill-emerald">ZEPHYR BACKFLIP</span>
-                <span class="kit-pill pill-gold">ASTRAL HURRICANE</span>
-              </div>
-              <div class="slot-assign-row">
-                <button type="button" class="assign-btn" data-assign-p1="archer">SET P1 [LEFT]</button>
-                <button type="button" class="assign-btn" data-assign-p2="archer">SET P2 [RIGHT]</button>
+              <div class="profile-identity">
+                <div class="profile-role" id="p1-profile-role">RUNEBLADE KNIGHT</div>
+                <h2 class="profile-name" id="p1-profile-name">AETHELGARD</h2>
+                <div class="profile-trait-badge" id="p1-profile-trait">PASSIVE: AEGIS SPELL DEFLECT</div>
               </div>
             </div>
-          </article>
 
-          <!-- Champion 3: Ignis Sol (Solar Archmage) -->
-          <article class="champ-card card-arcane" id="card-mage" data-hero="mage" tabindex="0">
-            <div class="card-Selected-ribbon" id="ribbon-mage">CLICK TO ASSIGN</div>
-            <div class="champ-preview-stage stage-arcane">
-              <div class="stage-halo halo-arcane"></div>
-              <canvas id="preview-mage" width="148" height="148"></canvas>
-            </div>
-            <div class="champ-meta">
-              <div class="champ-role">SOLAR ARCHMAGE - ARTILLERY</div>
-              <h2 class="champ-name">IGNIS SOL</h2>
-              <p class="champ-lore">Master of the Solar Eclipse who warps across space with Arcane Blink and calls down cataclysmic Solar Plasma & Meteors.</p>
-              <div class="stat-list">
-                <div class="stat-row">
-                  <span>SOLAR BURST</span>
-                  <div class="stat-track"><div class="stat-bar bar-arcane" style="width: 98%"></div></div>
-                </div>
-                <div class="stat-row">
-                  <span>HELLFIRE RANGE</span>
-                  <div class="stat-track"><div class="stat-bar bar-arcane" style="width: 95%"></div></div>
-                </div>
-                <div class="stat-row">
-                  <span>ARCANE BLINK</span>
-                  <div class="stat-track"><div class="stat-bar bar-arcane" style="width: 90%"></div></div>
+            <div class="profile-skills-header">COMBAT ARSENAL &amp; SKILL EFFECTS</div>
+            <div class="profile-skill-list" id="p1-skill-list">
+              <div class="skill-card">
+                <div class="skill-icon-box"><canvas id="p1-skill-icon-0" width="56" height="56"></canvas></div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name" id="p1-skill-name-0">FROST CRESCENT</strong>
+                    <span class="skill-type-badge badge-auto" id="p1-skill-type-0">AUTO + PASSIVE</span>
+                  </div>
+                  <p class="skill-desc" id="p1-skill-desc-0">Cleaves with frost waves &amp; raises an Aegis barrier that deflects projectiles.</p>
                 </div>
               </div>
-              <div class="kit-pills">
-                <span class="kit-pill pill-arcane">TRIPLE SOLAR PILLAR</span>
-                <span class="kit-pill pill-arcane">ARCANE BLINK</span>
-                <span class="kit-pill pill-gold">ECLIPSE SUPERNOVA</span>
-              </div>
-              <div class="slot-assign-row">
-                <button type="button" class="assign-btn" data-assign-p1="mage">SET P1 [LEFT]</button>
-                <button type="button" class="assign-btn" data-assign-p2="mage">SET P2 [RIGHT]</button>
-              </div>
-            </div>
-          </article>
 
-          <!-- Champion 4: Seraphina (Radiant High Priestess - NEW!) -->
-          <article class="champ-card card-radiant" id="card-priestess" data-hero="priestess" tabindex="0">
-            <div class="card-Selected-ribbon" id="ribbon-priestess">CLICK TO ASSIGN</div>
-            <div class="champ-preview-stage stage-radiant">
-              <div class="stage-halo halo-radiant"></div>
-              <canvas id="preview-priestess" width="148" height="148"></canvas>
-            </div>
-            <div class="champ-meta">
-              <div class="champ-role">HIGH PRIESTESS • HEALER & LIGHT</div>
-              <h2 class="champ-name">SERAPHINA</h2>
-              <p class="champ-lore">Blessed oracle of the Dawn Cathedral who mends her own wounds with Divine Sanctuary and smites foes with Seraphic Light.</p>
-              <div class="stat-list">
-                <div class="stat-row">
-                  <span>DIVINE HEAL</span>
-                  <div class="stat-track"><div class="stat-bar bar-radiant" style="width: 98%"></div></div>
-                </div>
-                <div class="stat-row">
-                  <span>HOLY SMITE</span>
-                  <div class="stat-track"><div class="stat-bar bar-radiant" style="width: 92%"></div></div>
-                </div>
-                <div class="stat-row">
-                  <span>AEGIS GRACE</span>
-                  <div class="stat-track"><div class="stat-bar bar-radiant" style="width: 94%"></div></div>
+              <div class="skill-card">
+                <div class="skill-icon-box"><canvas id="p1-skill-icon-1" width="56" height="56"></canvas></div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name" id="p1-skill-name-1">TEMPEST VANGUARD</strong>
+                    <span class="skill-type-badge badge-skill" id="p1-skill-type-1">SKILL • 4.5S CD</span>
+                  </div>
+                  <p class="skill-desc" id="p1-skill-desc-1">3-hit spinning cryo-cyclone that pulls foes inward and shatters armor.</p>
                 </div>
               </div>
-              <div class="kit-pills">
-                <span class="kit-pill pill-radiant">DIVINE SANCTUARY</span>
-                <span class="kit-pill pill-radiant">DAWN GRACE HEAL</span>
-                <span class="kit-pill pill-gold">SERAPHIC APOTHEOSIS</span>
-              </div>
-              <div class="slot-assign-row">
-                <button type="button" class="assign-btn" data-assign-p1="priestess">SET P1 [LEFT]</button>
-                <button type="button" class="assign-btn" data-assign-p2="priestess">SET P2 [RIGHT]</button>
-              </div>
-            </div>
-          </article>
 
-          <!-- Champion 5: Malakor (Abyssal Soulreaper) -->
-          <article class="champ-card card-abyssal" id="card-reaper" data-hero="reaper" tabindex="0">
-            <div class="card-Selected-ribbon" id="ribbon-reaper">CLICK TO ASSIGN</div>
-            <div class="champ-preview-stage stage-abyssal">
-              <div class="stage-halo halo-abyssal"></div>
-              <canvas id="preview-reaper" width="148" height="148"></canvas>
-            </div>
-            <div class="champ-meta">
-              <div class="champ-role">ABYSSAL SOULREAPER • MELEE</div>
-              <h2 class="champ-name">MALAKOR</h2>
-              <p class="champ-lore">Dread warlock-knight whose crescent war-scythe hooks ranged foes with Spectral Chains and drains their life force.</p>
-              <div class="stat-list">
-                <div class="stat-row">
-                  <span>SOUL DRAIN</span>
-                  <div class="stat-track"><div class="stat-bar bar-abyssal" style="width: 97%"></div></div>
+              <div class="skill-card skill-card-ult">
+                <div class="skill-icon-box icon-box-ult"><canvas id="p1-skill-icon-2" width="56" height="56"></canvas></div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name" id="p1-skill-name-2">HEAVENLY EARTHSHATTER</strong>
+                    <span class="skill-type-badge badge-ult" id="p1-skill-type-2">★ OVERDRIVE ULT</span>
+                  </div>
+                  <p class="skill-desc" id="p1-skill-desc-2">Leaps skyward and slams a colossal Runeblade monolith, erupting 5 glacial spires.</p>
                 </div>
-                <div class="stat-row">
-                  <span>SCYTHE REACH</span>
-                  <div class="stat-track"><div class="stat-bar bar-abyssal" style="width: 95%"></div></div>
-                </div>
-                <div class="stat-row">
-                  <span>CHAIN PULL</span>
-                  <div class="stat-track"><div class="stat-bar bar-abyssal" style="width: 96%"></div></div>
-                </div>
-              </div>
-              <div class="kit-pills">
-                <span class="kit-pill pill-abyssal">SPECTRAL CHAIN</span>
-                <span class="kit-pill pill-abyssal">LIFESTEAL REAP</span>
-                <span class="kit-pill pill-gold">GRIM HARVEST</span>
-              </div>
-              <div class="slot-assign-row">
-                <button type="button" class="assign-btn" data-assign-p1="reaper">SET P1 [LEFT]</button>
-                <button type="button" class="assign-btn" data-assign-p2="reaper">SET P2 [RIGHT]</button>
               </div>
             </div>
-          </article>
+          </aside>
 
-          <!-- Champion 6: Zephyros (Clockwork Chronomancer - NEW!) -->
-          <article class="champ-card card-chrono" id="card-chronomancer" data-hero="chronomancer" tabindex="0">
-            <div class="card-Selected-ribbon" id="ribbon-chronomancer">CLICK TO ASSIGN</div>
-            <div class="champ-preview-stage stage-chrono">
-              <div class="stage-halo halo-chrono"></div>
-              <canvas id="preview-chronomancer" width="148" height="148"></canvas>
+          <!-- CENTER COLUMN: 6-CHAMPION PORTRAIT SELECTOR & DUEL LAUNCHER -->
+          <div class="versus-center-col">
+            <div class="matchup-banner">
+              <button type="button" class="slot-pill slot-left active-slot" id="slot-btn-left" title="Click to select a Champion for Fighter 1 (Left)">
+                <span class="slot-tag">SELECTING P1 • LEFT</span>
+                <strong class="slot-hero-name" id="slot-left-name">AETHELGARD</strong>
+              </button>
+              <div class="matchup-vs-badge">VS</div>
+              <button type="button" class="slot-pill slot-right" id="slot-btn-right" title="Click to select a Champion for Fighter 2 (Right)">
+                <span class="slot-tag">SELECTING P2 • RIGHT</span>
+                <strong class="slot-hero-name" id="slot-right-name">SYLVARA</strong>
+              </button>
             </div>
-            <div class="champ-meta">
-              <div class="champ-role">CHRONOMANCER • TIME WEAVER</div>
-              <h2 class="champ-name">ZEPHYROS</h2>
-              <p class="champ-lore">Master of the Grand Astral Clocktower who hurls razor saw-gears, traps foes in Stasis Hourglasses, and rewinds his own HP.</p>
-              <div class="stat-list">
-                <div class="stat-row">
-                  <span>TIME REWIND</span>
-                  <div class="stat-track"><div class="stat-bar bar-chrono" style="width: 97%"></div></div>
+
+            <div class="portrait-grid-label">CLICK A PORTRAIT TO SELECT CHAMPION</div>
+
+            <div class="champion-grid">
+              <!-- 1. Warrior -->
+              <article class="champ-card card-steel selected-p1" id="card-warrior" data-hero="warrior" tabindex="0">
+                <div class="card-Selected-ribbon" id="ribbon-warrior">★ P1</div>
+                <div class="portrait-tile-frame stage-steel">
+                  <canvas id="preview-warrior" width="96" height="96"></canvas>
                 </div>
-                <div class="stat-row">
-                  <span>STASIS CONTROL</span>
-                  <div class="stat-track"><div class="stat-bar bar-chrono" style="width: 96%"></div></div>
+                <h2 class="champ-name">AETHELGARD</h2>
+                <div class="champ-role">RUNE KNIGHT</div>
+                <div class="slot-assign-row">
+                  <button type="button" class="assign-btn" data-assign-p1="warrior">P1</button>
+                  <button type="button" class="assign-btn" data-assign-p2="warrior">P2</button>
                 </div>
-                <div class="stat-row">
-                  <span>GEAR CADENCE</span>
-                  <div class="stat-track"><div class="stat-bar bar-chrono" style="width: 94%"></div></div>
+              </article>
+
+              <!-- 2. Archer -->
+              <article class="champ-card card-emerald selected-p2" id="card-archer" data-hero="archer" tabindex="0">
+                <div class="card-Selected-ribbon" id="ribbon-archer">★ P2</div>
+                <div class="portrait-tile-frame stage-emerald">
+                  <canvas id="preview-archer" width="96" height="96"></canvas>
                 </div>
+                <h2 class="champ-name">SYLVARA</h2>
+                <div class="champ-role">BOWMASTER</div>
+                <div class="slot-assign-row">
+                  <button type="button" class="assign-btn" data-assign-p1="archer">P1</button>
+                  <button type="button" class="assign-btn" data-assign-p2="archer">P2</button>
+                </div>
+              </article>
+
+              <!-- 3. Fire Mage -->
+              <article class="champ-card card-arcane" id="card-mage" data-hero="mage" tabindex="0">
+                <div class="card-Selected-ribbon" id="ribbon-mage">PICK</div>
+                <div class="portrait-tile-frame stage-arcane">
+                  <canvas id="preview-mage" width="96" height="96"></canvas>
+                </div>
+                <h2 class="champ-name">IGNIS SOL</h2>
+                <div class="champ-role">SOLAR MAGE</div>
+                <div class="slot-assign-row">
+                  <button type="button" class="assign-btn" data-assign-p1="mage">P1</button>
+                  <button type="button" class="assign-btn" data-assign-p2="mage">P2</button>
+                </div>
+              </article>
+
+              <!-- 4. Priestess -->
+              <article class="champ-card card-radiant" id="card-priestess" data-hero="priestess" tabindex="0">
+                <div class="card-Selected-ribbon" id="ribbon-priestess">PICK</div>
+                <div class="portrait-tile-frame stage-radiant">
+                  <canvas id="preview-priestess" width="96" height="96"></canvas>
+                </div>
+                <h2 class="champ-name">SERAPHINA</h2>
+                <div class="champ-role">PRIESTESS</div>
+                <div class="slot-assign-row">
+                  <button type="button" class="assign-btn" data-assign-p1="priestess">P1</button>
+                  <button type="button" class="assign-btn" data-assign-p2="priestess">P2</button>
+                </div>
+              </article>
+
+              <!-- 5. Reaper -->
+              <article class="champ-card card-abyssal" id="card-reaper" data-hero="reaper" tabindex="0">
+                <div class="card-Selected-ribbon" id="ribbon-reaper">PICK</div>
+                <div class="portrait-tile-frame stage-abyssal">
+                  <canvas id="preview-reaper" width="96" height="96"></canvas>
+                </div>
+                <h2 class="champ-name">MALAKOR</h2>
+                <div class="champ-role">SOULREAPER</div>
+                <div class="slot-assign-row">
+                  <button type="button" class="assign-btn" data-assign-p1="reaper">P1</button>
+                  <button type="button" class="assign-btn" data-assign-p2="reaper">P2</button>
+                </div>
+              </article>
+
+              <!-- 6. Chronomancer -->
+              <article class="champ-card card-chrono" id="card-chronomancer" data-hero="chronomancer" tabindex="0">
+                <div class="card-Selected-ribbon" id="ribbon-chronomancer">PICK</div>
+                <div class="portrait-tile-frame stage-chrono">
+                  <canvas id="preview-chronomancer" width="96" height="96"></canvas>
+                </div>
+                <h2 class="champ-name">ZEPHYROS</h2>
+                <div class="champ-role">CHRONOMANCER</div>
+                <div class="slot-assign-row">
+                  <button type="button" class="assign-btn" data-assign-p1="chronomancer">P1</button>
+                  <button type="button" class="assign-btn" data-assign-p2="chronomancer">P2</button>
+                </div>
+              </article>
+            </div>
+
+            <footer class="landing-actions">
+              <button id="btn-start-duel" class="landing-cta-btn" type="button">
+                <span id="start-duel-text">WATCH DUEL: AETHELGARD VS. SYLVARA</span>
+              </button>
+              <button id="btn-random-duel" class="iron-btn landing-spectate-btn" type="button">
+                <span>RANDOMIZE MATCHUP</span>
+              </button>
+            </footer>
+          </div>
+
+          <!-- RIGHT PANEL: FIGHTER 2 PROFILE & VISUAL SKILL BREAKDOWN -->
+          <aside class="fighter-profile profile-emerald" id="profile-right">
+            <div class="profile-top-bar">
+              <div class="profile-corner-tag tag-p2">★ FIGHTER 2 • RIGHT CORNER</div>
+              <span class="profile-style-pill" id="p2-profile-style">RANGED MARKSMAN</span>
+            </div>
+
+            <div class="profile-hero-showcase">
+              <div class="profile-stage" id="p2-stage">
+                <div class="stage-halo halo-emerald" id="p2-halo"></div>
+                <canvas id="p2-sprite-canvas" width="208" height="208"></canvas>
               </div>
-              <div class="kit-pills">
-                <span class="kit-pill pill-chrono">HOURGLASS STASIS</span>
-                <span class="kit-pill pill-chrono">CHRONO REWIND</span>
-                <span class="kit-pill pill-gold">DOOMSDAY MIDNIGHT</span>
-              </div>
-              <div class="slot-assign-row">
-                <button type="button" class="assign-btn" data-assign-p1="chronomancer">SET P1 [LEFT]</button>
-                <button type="button" class="assign-btn" data-assign-p2="chronomancer">SET P2 [RIGHT]</button>
+              <div class="profile-identity">
+                <div class="profile-role" id="p2-profile-role">TEMPEST BOWMASTER</div>
+                <h2 class="profile-name" id="p2-profile-name">SYLVARA</h2>
+                <div class="profile-trait-badge" id="p2-profile-trait">PASSIVE: ZEPHYR VAULT EVASION</div>
               </div>
             </div>
-          </article>
+
+            <div class="profile-skills-header">COMBAT ARSENAL &amp; SKILL EFFECTS</div>
+            <div class="profile-skill-list" id="p2-skill-list">
+              <div class="skill-card">
+                <div class="skill-icon-box"><canvas id="p2-skill-icon-0" width="56" height="56"></canvas></div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name" id="p2-skill-name-0">ASTRAL LONGBOW</strong>
+                    <span class="skill-type-badge badge-auto" id="p2-skill-type-0">AUTO + PASSIVE</span>
+                  </div>
+                  <p class="skill-desc" id="p2-skill-desc-0">Fires high-velocity piercing arrows &amp; vaults over cornering enemies with Zephyr Backflip.</p>
+                </div>
+              </div>
+
+              <div class="skill-card">
+                <div class="skill-icon-box"><canvas id="p2-skill-icon-1" width="56" height="56"></canvas></div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name" id="p2-skill-name-1">STARFALL VOLLEY</strong>
+                    <span class="skill-type-badge badge-skill" id="p2-skill-type-1">SKILL • 4.2S CD</span>
+                  </div>
+                  <p class="skill-desc" id="p2-skill-desc-1">Rains 5 emerald starlight arrows from the heavens onto the enemy's position.</p>
+                </div>
+              </div>
+
+              <div class="skill-card skill-card-ult">
+                <div class="skill-icon-box icon-box-ult"><canvas id="p2-skill-icon-2" width="56" height="56"></canvas></div>
+                <div class="skill-info">
+                  <div class="skill-title-row">
+                    <strong class="skill-name" id="p2-skill-name-2">ASTRAL HURRICANE</strong>
+                    <span class="skill-type-badge badge-ult" id="p2-skill-type-2">★ OVERDRIVE ULT</span>
+                  </div>
+                  <p class="skill-desc" id="p2-skill-desc-2">Unleashes an Emerald Wind-Dragon and 10-beam orbital starlight bombardment.</p>
+                </div>
+              </div>
+            </div>
+          </aside>
         </div>
-
-        <footer class="landing-actions">
-          <button id="btn-start-duel" class="landing-cta-btn" type="button">
-            <span id="start-duel-text">WATCH DUEL: AETHELGARD VS. SYLVARA</span>
-          </button>
-          <button id="btn-random-duel" class="iron-btn landing-spectate-btn" type="button">
-            <span>RANDOMIZE MATCHUP</span>
-          </button>
-        </footer>
       </div>
     </section>
 

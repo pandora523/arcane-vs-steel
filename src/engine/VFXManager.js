@@ -1636,33 +1636,42 @@ export class VFXManager {
       }
     }
 
-    // 7. SHOCKWAVES: 3D Perspective Pixel-Art Expanding Rune & Sonic Boom Rings with Balanced Bloom
+    // 7. SHOCKWAVES: HD-2D Volumetric Light Bloom & Staggered Radial Particle Sparks (Zero Dotted Circles!)
     for (const sw of this.shockwaves) {
       const isUltSw = sw.maxRadius >= 155;
       if (!isReflection && isUltSw !== ultimateOnly) continue;
       const t = sw.life / sw.maxLife;
+      const alpha = Math.max(0, 1 - t);
       const r = sw.maxRadius * (1 - Math.pow(1 - t, 3));
-      const xScale = sw.vertical ? 0.34 : 1.0;
-      const yScale = sw.flat ? 0.28 : 1.0;
-      const nodes = 28;
+      const xScale = sw.vertical ? 0.42 : 1.0;
+      const yScale = sw.flat ? 0.35 : 0.85;
+      const glowTex =
+        renderer && renderer.getGlowForColor ? renderer.getGlowForColor(sw.color) : null;
 
-      for (let i = 0; i < nodes; i++) {
-        const a = (i / nodes) * Math.PI * 2 + t * 1.5;
-        const px = Math.round((sw.x + Math.cos(a) * r * xScale) / 4) * 4;
-        const py = Math.round((sw.y + Math.sin(a) * r * yScale) / 4) * 4;
-        const block = Math.max(4, Math.round(((1 - t) * 10) / 2) * 2);
+      if (glowTex && !isReflection) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = (1 - t) * (isReflection ? 0.16 : 0.32);
-        ctx.fillStyle = sw.color;
-        ctx.fillRect(px - block * 0.8, py - block * 0.8, block * 1.6, block * 1.6);
+        ctx.globalAlpha = alpha * 0.45;
+        const glowW = Math.max(80, r * 2.1 * xScale);
+        const glowH = Math.max(60, r * 2.1 * yScale);
+        ctx.drawImage(glowTex, sw.x - glowW * 0.5, sw.y - glowH * 0.5, glowW, glowH);
+      }
+
+      const sparkCount = 16;
+      for (let i = 0; i < sparkCount; i++) {
+        // Golden-angle + staggered radial distance so particles form an organic burst, never a ring!
+        const a = i * 2.39996 + t * (i % 2 === 0 ? 1.4 : -1.1);
+        const distMult = 0.28 + ((i * 7 + 3) % 11) * 0.085;
+        const curR = r * distMult;
+        const px = Math.round((sw.x + Math.cos(a) * curR * xScale) / 3) * 3;
+        const py = Math.round((sw.y + Math.sin(a) * curR * yScale - (sw.flat ? t * (12 + (i % 5) * 9) : 0)) / 3) * 3;
+        const block = i % 3 === 0 ? 6 : 4;
 
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = (1 - t) * (isReflection ? 0.5 : 0.92);
+        ctx.globalAlpha = alpha * (isReflection ? 0.42 : 0.92);
+        ctx.fillStyle = sw.color;
         ctx.fillRect(px - block * 0.5, py - block * 0.5, block, block);
-        if (i % 4 === 0 && sw.flat) {
-          const toothH = Math.max(4, Math.round(((1 - t) * 22) / 4) * 4);
-          ctx.fillRect(px - 2, py - toothH, 4, toothH);
-        }
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 1, py - 1, 2, 2);
       }
     }
 

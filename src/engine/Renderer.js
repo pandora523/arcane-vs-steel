@@ -179,8 +179,8 @@ export class Renderer {
   }
 
   triggerUltimateCutIn(caster) {
-    this.cutInTimer = 0.72;
-    this.cutInMaxTimer = 0.72;
+    this.cutInTimer = 1.05;
+    this.cutInMaxTimer = 1.05;
     this.cutInHeroId = caster.heroId || 'warrior';
     this.cutInName = caster.name || 'CHAMPION';
     this.cutInUltName = caster.ultName || 'ULTIMATE ART';
@@ -188,20 +188,26 @@ export class Renderer {
     this.cutInFacing = caster.facing || 1;
   }
 
-  triggerKOFinisher(x, y, color = '#facc15', winnerName = '') {
+  triggerKOFinisher(x, y, color = '#facc15', winnerName = '', winnerHeroId = 'warrior') {
     this.koFocusX = x;
     this.koFocusY = y;
-    this.koZoomTimer = 1.25;
-    this.koMaxTimer = 1.25;
+    this.koZoomTimer = 1.35;
+    this.koMaxTimer = 1.35;
     this.koColor = color;
     this.koWinnerName = winnerName;
-    this.ultDim = Math.max(this.ultDim, 0.52);
+    this.koWinnerHeroId = winnerHeroId;
+    this.ultDim = Math.max(this.ultDim, 0.56);
   }
 
-  triggerClashCamera(x, y) {
+  triggerClashCamera(x, y, hero1 = 'warrior', hero2 = 'mage', col1 = '#38bdf8', col2 = '#fb923c') {
     this.clashFocusX = x;
     this.clashFocusY = y;
-    this.clashZoomTimer = 0.32;
+    this.clashZoomTimer = 0.55;
+    this.clashMaxTimer = 0.55;
+    this.clashHero1 = hero1;
+    this.clashHero2 = hero2;
+    this.clashCol1 = col1;
+    this.clashCol2 = col2;
     this.triggerAberration(5);
     this.triggerShake(6, 0.16);
   }
@@ -377,13 +383,19 @@ export class Renderer {
       f.draw(ctx, false, this);
     }
 
-    // 7. Foreground Ultimate Attack Pass: Ultimate Attacks blaze IN FRONT of the characters!
+    // 7. Foreground Ultimate Attack Pass: Ultimate Attacks, Clashes & K.O. Finishers blaze IN FRONT of the characters!
     for (const f of sorted) {
       if (typeof f.drawUltimateForeground === 'function') {
         f.drawUltimateForeground(ctx, this);
       }
     }
     vfx.renderMainPass(ctx, false, this, true);
+    if (this.clashZoomTimer > 0) {
+      this.drawClashWorld(ctx, gy);
+    }
+    if (this.koZoomTimer > 0) {
+      this.drawKOFinisherWorld(ctx, gy);
+    }
 
     // 8. Ultimate Callout Plates & Floating Combat Text
     vfx.renderFloatingTexts(ctx);
@@ -551,26 +563,16 @@ export class Renderer {
     ctx.drawImage(this.glowOrange, eclipseX - 210, eclipseY - 210, 420, 420);
     ctx.restore();
 
-    // Counter-rotating dual pixel solar corona rings & radial prominence flares on the Rose Window
+    // Rising Golden & Frost Sanctuary Censer Sparks below the Rose Window (Zero dotted circles!)
     ctx.save();
-    for (let i = 0; i < 36; i++) {
-      const a = (i / 36) * Math.PI * 2 + t * 0.65;
-      const flare = Math.sin(t * 9.5 + i * 1.7) * 8;
-      const r = eclipseR + flare + (i % 3 === 0 ? 8 : 0);
-      const fx = Math.round((eclipseX + Math.cos(a) * r) / 4) * 4;
-      const fy = Math.round((eclipseY + Math.sin(a) * r) / 4) * 4;
-      ctx.fillStyle = i % 3 === 0 ? '#ffffff' : i % 2 === 0 ? SOLAR_FIRE_PAL[3] : SOLAR_FIRE_PAL[2];
-      ctx.fillRect(fx - 2, fy - 2, i % 3 === 0 ? 6 : 4, i % 3 === 0 ? 6 : 4);
-    }
-    // Outer orbiting golden cathedral astrolabe sparks around the Rose Window
-    for (let j = 0; j < 18; j++) {
-      const a2 = -(j / 18) * Math.PI * 2 - t * 0.38;
-      const r2 = eclipseR + 36 + Math.sin(t * 5 + j) * 6;
-      const ox = Math.round((eclipseX + Math.cos(a2) * r2) / 4) * 4;
-      const oy = Math.round((eclipseY + Math.sin(a2) * r2) / 4) * 4;
-      ctx.globalAlpha = 0.55 + 0.35 * Math.sin(t * 6 + j);
-      ctx.fillStyle = j % 2 === 0 ? '#fde047' : '#fb923c';
-      ctx.fillRect(ox - 2, oy - 2, 4, 4);
+    for (let j = 0; j < 14; j++) {
+      const life = (t * (0.45 + (j % 3) * 0.12) + j * 0.41) % 1;
+      const ox = Math.round((eclipseX + (j - 6.5) * 26 + Math.sin(t * 3.2 + j) * 10) / 4) * 4;
+      const oy = Math.round((eclipseY + 95 - life * 165) / 4) * 4;
+      ctx.globalAlpha = Math.sin(life * Math.PI) * 0.85;
+      ctx.fillStyle = j % 3 === 0 ? '#ffffff' : j % 2 === 0 ? '#fde047' : '#fb923c';
+      ctx.fillRect(ox - 2, oy - 4, 4, 8);
+      ctx.fillRect(ox - 4, oy - 2, 8, 4);
     }
     ctx.restore();
 
@@ -656,24 +658,17 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 4. Drifting Dual-Elemental (Frost-Cyan vs Solar-Gold) Sanctuary Floor Rune Ring & Rising Censer Sparks
+    // 4. Shimmering Dual-Elemental (Frost-Cyan vs Solar-Gold) Cathedral Floor Light Strips (Zero circles!)
     ctx.save();
     const altarCx = drawX + drawW * 0.50;
-    const altarCy = gy + 16;
-    for (let r = 0; r < 24; r++) {
-      const ra = (r / 24) * Math.PI * 2 + t * 0.42;
-      const rx = Math.round((altarCx + Math.cos(ra) * 250) / 4) * 4;
-      const ry = Math.round((altarCy + Math.sin(ra) * 26) / 4) * 4;
-      const isLeft = Math.cos(ra) < 0;
-      const col = isLeft ? '#38bdf8' : '#fb923c';
-      const gTex = isLeft ? this.glowCyan : this.glowOrange;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.28 + 0.18 * Math.sin(t * 5 + r);
-      ctx.drawImage(gTex, rx - 16, ry - 16, 32, 32);
+    for (let r = 0; r < 12; r++) {
+      const rx = Math.round((altarCx + (r - 5.5) * 44) / 4) * 4;
+      const ry = gy + 8 + (r % 2) * 8;
+      const isLeft = r < 6;
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.65 + 0.30 * Math.sin(t * 5 + r);
-      ctx.fillStyle = col;
-      ctx.fillRect(rx - 3, ry - 2, 6, 4);
+      ctx.globalAlpha = 0.45 + 0.25 * Math.sin(t * 4.5 + r);
+      ctx.fillStyle = isLeft ? '#38bdf8' : '#fb923c';
+      ctx.fillRect(rx - 10, ry, 20, 3);
     }
     ctx.restore();
   }
@@ -692,11 +687,9 @@ export class Renderer {
       const ay = Math.round((drawY + drawH * 0.14 + waveY) / 4) * 4;
       const ah = Math.round((64 + Math.sin(t * 2.2 + band * 0.5) * 24) / 4) * 4;
       const col = band % 3 === 0 ? '#34d399' : band % 2 === 0 ? '#38bdf8' : '#2dd4bf';
-      ctx.globalAlpha = (0.22 + 0.08 * Math.sin(t * 3 + band)) * (1 - Math.abs(u - 0.5) * 1.3);
+      ctx.globalAlpha = (0.18 + 0.06 * Math.sin(t * 3 + band)) * (1 - Math.abs(u - 0.5) * 1.3);
       ctx.fillStyle = col;
-      ctx.fillRect(ax, ay, 16, ah);
-      ctx.globalAlpha *= 1.5;
-      ctx.fillRect(ax, ay + ah - 12, 16, 8);
+      ctx.fillRect(ax, ay, 12, ah);
     }
 
     // Periodic Shooting Astral Stars across the Sylvan night sky
@@ -718,26 +711,16 @@ export class Renderer {
     }
     ctx.restore();
 
-    // 1. Colossal Glowing Crescent Moon Corona & Orbiting Astral Starlight Motes
+    // 1. Soft Crescent Moon Volumetric Glow (No dotted circle covering the moon!)
     const moonX = drawX + drawW * 0.50;
     const moonY = drawY + drawH * 0.25;
-    const moonR = 98;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.38 + 0.10 * Math.sin(t * 3.2);
-    ctx.drawImage(this.glowEmerald, moonX - 270, moonY - 270, 540, 540);
-    ctx.globalAlpha = 0.30 + 0.08 * Math.cos(t * 2.5);
-    ctx.drawImage(this.glowCyan, moonX - 210, moonY - 210, 420, 420);
+    ctx.globalAlpha = 0.34 + 0.08 * Math.sin(t * 3.2);
+    ctx.drawImage(this.glowEmerald, moonX - 240, moonY - 240, 480, 480);
+    ctx.globalAlpha = 0.24 + 0.06 * Math.cos(t * 2.5);
+    ctx.drawImage(this.glowCyan, moonX - 180, moonY - 180, 360, 360);
     ctx.restore();
-
-    for (let i = 0; i < 34; i++) {
-      const a = (i / 34) * Math.PI * 2 + t * 0.48;
-      const r = moonR + Math.sin(t * 6.5 + i * 1.9) * 10;
-      const fx = Math.round((moonX + Math.cos(a) * r) / 4) * 4;
-      const fy = Math.round((moonY + Math.sin(a) * r) / 4) * 4;
-      ctx.fillStyle = i % 4 === 0 ? '#fef9c3' : i % 2 === 0 ? '#34d399' : '#38bdf8';
-      ctx.fillRect(fx - 2, fy - 2, i % 4 === 0 ? 6 : 4, i % 4 === 0 ? 6 : 4);
-    }
 
     // 2. Live Cascading Pixel Waterfall Streams, Glowing Plunge Pool & Bioluminescent Splash Mist
     const fallsLeft = drawX + drawW * 0.415;
@@ -828,13 +811,13 @@ export class Renderer {
         }
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = fade * 0.94;
-        ctx.fillStyle = e % 3 === 0 ? '#fde047' : life < 0.45 ? pal[3] : pal[1];
+        ctx.fillStyle = e % 3 === 0 ? '#fef08a' : life < 0.45 ? pal[3] : pal[1];
         ctx.fillRect(sx - 2, sy - 2, 4, 4);
       }
       ctx.restore();
     }
 
-    // 4. Drifting Wind-Swept Luminous Sylvan Blossom Petals & Glowing Floor Rune Ring
+    // 4. Drifting Wind-Swept Luminous Sylvan Blossom Petals & Horizontal Plunge-Pool Water Ripples (Zero circles!)
     ctx.save();
     for (let p = 0; p < 18; p++) {
       const u = (t * (0.14 + (p % 3) * 0.04) + p * 0.17) % 1;
@@ -856,15 +839,13 @@ export class Renderer {
       ctx.fillRect(px - 3, py - 2, 6, 4);
     }
 
-    const runeCx = drawX + drawW * 0.50;
-    const runeCy = gy + 16;
-    for (let r = 0; r < 24; r++) {
-      const ra = (r / 24) * Math.PI * 2 + t * 0.38;
-      const rx = Math.round((runeCx + Math.cos(ra) * 245) / 4) * 4;
-      const ry = Math.round((runeCy + Math.sin(ra) * 26) / 4) * 4;
-      ctx.globalAlpha = 0.55 + 0.35 * Math.sin(t * 4.5 + r);
+    const poolCx = drawX + drawW * 0.50;
+    for (let r = 0; r < 10; r++) {
+      const rx = Math.round((poolCx + (r - 4.5) * 48 + Math.sin(t * 3 + r) * 12) / 4) * 4;
+      const ry = gy + 6 + (r % 3) * 6;
+      ctx.globalAlpha = 0.48 + 0.28 * Math.sin(t * 4.5 + r);
       ctx.fillStyle = r % 2 === 0 ? '#34d399' : '#38bdf8';
-      ctx.fillRect(rx - 3, ry - 2, 6, 4);
+      ctx.fillRect(rx - 14, ry, 28, 3);
     }
     ctx.restore();
   }
@@ -872,35 +853,13 @@ export class Renderer {
   drawBoneyardStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy) {
     const t = this.time;
 
-    // 0. Periodic Forked Crimson-Violet Blood-Moon Sky Lightning Bolts Behind the Gothic Spires!
-    const boltCycle = (t * 0.55) % 1;
-    if (boltCycle < 0.18) {
-      const boltFade = 1 - boltCycle / 0.18;
-      const boltSide = Math.floor(t * 0.55) % 2 === 0 ? 0.31 : 0.69;
-      let bx = drawX + drawW * boltSide;
-      let by = drawY + drawH * 0.06;
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = boltFade * 0.35;
-      ctx.drawImage(this.glowViolet, bx - 180, by - 40, 360, 360);
-      for (let seg = 0; seg < 14; seg++) {
-        const nx = bx + Math.sin(seg * 2.7 + t * 30) * 18;
-        const ny = by + 22;
-        const sx = Math.round(bx / 4) * 4;
-        const sy = Math.round(by / 4) * 4;
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = boltFade * 0.55;
-        ctx.fillStyle = seg % 2 === 0 ? '#e11d48' : '#c084fc';
-        ctx.fillRect(sx - 6, sy - 4, 12, 24);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = boltFade * 0.95;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(sx - 2, sy - 2, 4, 22);
-        bx = nx;
-        by = ny;
-      }
-      ctx.restore();
-    }
+    // 0. Breathing Blood-Moon Atmospheric Horizon Pulse Behind the Gothic Spires
+    const moonPulse = 0.22 + 0.12 * Math.sin(t * 2.1);
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = moonPulse;
+    ctx.drawImage(this.glowViolet, drawX + drawW * 0.25, drawY + drawH * 0.02, drawW * 0.5, drawH * 0.45);
+    ctx.restore();
 
     // 1. 4 Flickering Abyssal Soul-Fire Braziers on the Necropolis Bone Pillars
     const braziers = [
@@ -993,25 +952,14 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 2. Colossal Blood-Crimson & Royal-Purple Eclipse Moon Corona (cx: 0.50, cy: 0.24)
+    // 2. Soft Blood-Crimson & Royal-Purple Eclipse Moon Glow (Zero dotted circles covering the moon!)
     const moonX = drawX + drawW * 0.50;
     const moonY = drawY + drawH * 0.24;
-    const moonR = 98;
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.42 + 0.10 * Math.sin(t * 3.8);
-    ctx.drawImage(this.glowViolet, moonX - 270, moonY - 270, 540, 540);
+    ctx.globalAlpha = 0.38 + 0.10 * Math.sin(t * 3.8);
+    ctx.drawImage(this.glowViolet, moonX - 250, moonY - 250, 500, 500);
     ctx.restore();
-
-    for (let i = 0; i < 36; i++) {
-      const a = (i / 36) * Math.PI * 2 - t * 0.58;
-      const flare = Math.sin(t * 8.5 + i * 1.5) * 9;
-      const r = moonR + flare;
-      const fx = Math.round((moonX + Math.cos(a) * r) / 4) * 4;
-      const fy = Math.round((moonY + Math.sin(a) * r) / 4) * 4;
-      ctx.fillStyle = i % 4 === 0 ? '#fecdd3' : i % 3 === 0 ? '#e11d48' : i % 2 === 0 ? '#c084fc' : '#7e22ce';
-      ctx.fillRect(fx - 2, fy - 2, i % 4 === 0 ? 6 : 5, i % 4 === 0 ? 6 : 5);
-    }
 
     // 3. Rising Spectral Wraith Wisps with Glowing Comet Tails & Rolling Multi-Layer Graveyard Mist
     ctx.save();
@@ -1054,37 +1002,19 @@ export class Renderer {
   drawClocktowerStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy) {
     const t = this.time;
 
-    // 1. Central Astronomical Stained-Glass Clock Dial with 3 Counter-Rotating Astrolabe Rings & Live Clock Hands
+    // 1. Central Astronomical Stained-Glass Clock Dial with Live Sweeping Clock Hands (No dotted circle rings!)
     const clockX = drawX + drawW * 0.50;
     const clockY = drawY + drawH * 0.31;
-    const clockR = 102;
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.40 + 0.10 * Math.sin(t * 3.6);
-    ctx.drawImage(this.glowTeal, clockX - 270, clockY - 270, 540, 540);
-    ctx.globalAlpha = 0.30 + 0.08 * Math.cos(t * 2.8);
-    ctx.drawImage(this.glowGold, clockX - 210, clockY - 210, 420, 420);
+    ctx.globalAlpha = 0.38 + 0.10 * Math.sin(t * 3.6);
+    ctx.drawImage(this.glowTeal, clockX - 250, clockY - 250, 500, 500);
+    ctx.globalAlpha = 0.28 + 0.08 * Math.cos(t * 2.8);
+    ctx.drawImage(this.glowGold, clockX - 190, clockY - 190, 380, 380);
     ctx.restore();
 
-    // Outer & Inner Counter-Rotating Escapement Gear Rings & Celestial Numeral Nodes
     ctx.save();
-    for (let i = 0; i < 32; i++) {
-      const a = (i / 32) * Math.PI * 2 + t * 0.45;
-      const gx = Math.round((clockX + Math.cos(a) * clockR) / 4) * 4;
-      const gy2 = Math.round((clockY + Math.sin(a) * clockR) / 4) * 4;
-      ctx.fillStyle = i % 4 === 0 ? '#fef9c3' : i % 2 === 0 ? '#fde047' : '#2dd4bf';
-      ctx.fillRect(gx - 3, gy2 - 3, i % 4 === 0 ? 8 : 6, i % 4 === 0 ? 8 : 6);
-    }
-    for (let j = 0; j < 20; j++) {
-      const a2 = -(j / 20) * Math.PI * 2 - t * 0.72;
-      const r2 = 66;
-      const gx2 = Math.round((clockX + Math.cos(a2) * r2) / 4) * 4;
-      const gy3 = Math.round((clockY + Math.sin(a2) * r2) / 4) * 4;
-      ctx.fillStyle = j % 2 === 0 ? '#2dd4bf' : '#facc15';
-      ctx.fillRect(gx2 - 2, gy3 - 2, 4, 4);
-    }
-
     // Live sweeping pixel-art astronomical clock hands (Hour = Imperial Gold, Minute = Aether Teal, Second = Ticking White-Gold)
     const secAngle = Math.floor(t * 6) * ((Math.PI * 2) / 24) - Math.PI * 0.5;
     const minAngle = t * 0.85 - Math.PI * 0.5;
@@ -1161,18 +1091,11 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 3. Crackling Pixel Aether-Lightning Arcs Jumping Between the Side Bronze Gears & Central Clock Dial!
+    // 3. Crackling Pixel Aether-Lightning Arcs Jumping Between the Side Bronze Gears & Central Clock Dial (No circles!)
     ctx.save();
     for (let side = -1; side <= 1; side += 2) {
       const gearCx = drawX + drawW * (side < 0 ? 0.14 : 0.86);
       const gearCy = drawY + drawH * 0.56;
-      for (let k = 0; k < 10; k++) {
-        const ka = t * 3.8 * side + (k * Math.PI * 2) / 10;
-        const kx = Math.round((gearCx + Math.cos(ka) * 62) / 4) * 4;
-        const ky = Math.round((gearCy + Math.sin(ka) * 62) / 4) * 4;
-        ctx.fillStyle = k % 2 === 0 ? '#2dd4bf' : '#fde047';
-        ctx.fillRect(kx - 3, ky - 3, 6, 6);
-      }
       // Periodic Tesla Aether-Arc from side gear toward upper observatory
       if (Math.sin(t * 7 + side * 2) > 0.15) {
         const tx = gearCx + side * -95;
@@ -1199,16 +1122,15 @@ export class Renderer {
       }
     }
 
-    // Illuminated Golden-Teal Floor Astrolabe Ring & Rising Anti-Gravity Sand Streams
+    // Rising Anti-Gravity Golden & Teal Time-Sand Streams from the Belfry Floor (No floor oval!)
     const floorCx = drawX + drawW * 0.50;
-    const floorCy = gy + 18;
-    for (let n = 0; n < 26; n++) {
-      const na = (n / 26) * Math.PI * 2 - t * 0.48;
-      const nx = Math.round((floorCx + Math.cos(na) * 260) / 4) * 4;
-      const ny = Math.round((floorCy + Math.sin(na) * 28) / 4) * 4;
-      ctx.globalAlpha = 0.6 + 0.35 * Math.sin(t * 5 + n);
+    for (let n = 0; n < 14; n++) {
+      const life = (t * (0.55 + (n % 3) * 0.15) + n * 0.37) % 1;
+      const nx = Math.round((floorCx + (n - 6.5) * 42) / 4) * 4;
+      const ny = Math.round((gy + 12 - life * 85) / 4) * 4;
+      ctx.globalAlpha = (1 - life) * 0.78;
       ctx.fillStyle = n % 2 === 0 ? '#fde047' : '#2dd4bf';
-      ctx.fillRect(nx - 3, ny - 2, 6, 4);
+      ctx.fillRect(nx - 2, ny - 4, 4, 8);
     }
     ctx.restore();
   }
@@ -1232,42 +1154,23 @@ export class Renderer {
               ? CHRONO_FIRE_PAL
               : SOLAR_FIRE_PAL;
     const glowTex = this.getGlowForColor(f.primaryColor);
-    const t = this.time;
     const isAction = f.state === 'SKILL' || f.state === 'ULTIMATE' || f.state === 'AUTO_ATTACK';
-    const rX = isAction ? 66 : 48;
-    const rY = isAction ? 17 : 12;
-    const nodes = isChrono ? 12 : isAction ? 20 : 14;
-
-    ctx.save();
     const gy = f.groundY || this.groundY;
 
-    for (let i = 0; i < nodes; i++) {
-      const a = (i / nodes) * Math.PI * 2 + t * (isAction ? 3.6 : 1.6) * f.facing;
-      const rx = Math.round((f.x + Math.cos(a) * rX) / 3) * 3;
-      const ry = Math.round((gy - 2 + Math.sin(a) * rY) / 3) * 3;
-      if (glowTex && i % 2 === 0) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = isAction ? 0.34 : 0.24;
-        ctx.drawImage(glowTex, rx - 18, ry - 12, 36, 24);
-      }
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = isAction ? 0.92 : 0.72;
-      ctx.fillStyle = i % 3 === 0 ? pal[3] : i % 2 === 0 ? pal[2] : pal[1];
-      ctx.fillRect(rx - 2, ry - 1, 4, 3);
+    // Crisp HD-2D Horizontal Floor Rim Reflection (Zero dotted circles under characters!)
+    ctx.save();
+    if (glowTex) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = isAction ? 0.36 : 0.22;
+      ctx.drawImage(glowTex, f.x - 64, gy - 14, 128, 28);
     }
-
-    // Low-HP Desperation Overdrive (Berserk) Pulsing Outer Golden-Crimson Rune Ring
-    if (f.isBerserk && !f.isDead) {
-      for (let b = 0; b < 16; b++) {
-        const ba = (b / 16) * Math.PI * 2 - t * 4.5 * f.facing;
-        const bx = Math.round((f.x + Math.cos(ba) * (rX + 20)) / 3) * 3;
-        const by = Math.round((gy - 2 + Math.sin(ba) * (rY + 5)) / 3) * 3;
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.55;
-        ctx.fillStyle = b % 2 === 0 ? '#facc15' : '#f43f5e';
-        ctx.fillRect(bx - 3, by - 2, 6, 4);
-      }
-    }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = isAction ? 0.85 : 0.55;
+    ctx.fillStyle = pal[2];
+    const barW = isAction ? 76 : 52;
+    ctx.fillRect(Math.round(f.x - barW * 0.5), gy + 1, barW, 3);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(Math.round(f.x - barW * 0.22), gy + 1, Math.round(barW * 0.44), 2);
     ctx.restore();
   }
 
@@ -1342,6 +1245,26 @@ export class Renderer {
         20,
         0.38 * fade
       );
+    }
+
+    // Low-HP Desperation Overdrive (Berserk): Rising Crimson-Gold Body Lightning & Aura Flames (No Floor Circle!)
+    if (f.isBerserk && !f.isDead) {
+      for (let b = 0; b < 8; b++) {
+        const bCycle = (t * 2.6 + b * 0.37) % 1;
+        const bx = Math.round((f.x + ((b % 2 === 0 ? 1 : -1) * (14 + (b % 4) * 9)) + Math.sin(t * 14 + b) * 6) / 3) * 3;
+        const by = Math.round((f.y - 16 - bCycle * 128) / 3) * 3;
+        emitGlowingParticle(
+          bx,
+          by,
+          4,
+          12,
+          b % 2 === 0 ? '#facc15' : '#f43f5e',
+          '#ffffff',
+          24,
+          0.48 * (1 - bCycle * 0.5),
+          this.glowGold
+        );
+      }
     }
 
     // 2. Character-Specific Signature Aura Particles (Every single orbiting mote/wisp/orb emits light!)
@@ -1556,56 +1479,382 @@ export class Renderer {
     const t = this.time;
     const fade = Math.min(1, this.stageEventTimer / 1.5);
     ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
+
+    // Helper for drawing a multi-layered glowing HD-2D pixel particle with optional tail
+    const drawGlowingPixel = (px, py, size, coreCol, midCol, glowTex, glowR, alpha, tailDx = 0, tailDy = 0) => {
+      const rx = Math.round(px / 3) * 3;
+      const ry = Math.round(py / 3) * 3;
+      if (glowTex && glowR > 0) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha * 0.42;
+        ctx.drawImage(glowTex, rx - glowR, ry - glowR, glowR * 2, glowR * 2);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      if (tailDx !== 0 || tailDy !== 0) {
+        for (let step = 3; step >= 1; step--) {
+          const tx = Math.round((rx + tailDx * step) / 3) * 3;
+          const ty = Math.round((ry + tailDy * step) / 3) * 3;
+          const tSz = Math.max(2, size - step);
+          ctx.globalAlpha = alpha * (1 - step * 0.24);
+          ctx.fillStyle = midCol;
+          ctx.fillRect(tx - tSz * 0.5, ty - tSz * 0.5, tSz, tSz);
+        }
+      }
+      ctx.globalAlpha = alpha * 0.95;
+      ctx.fillStyle = midCol;
+      ctx.fillRect(rx - size * 0.5 - 1, ry - size * 0.5 - 1, size + 2, size + 2);
+      ctx.fillStyle = coreCol;
+      ctx.fillRect(rx - size * 0.5 + 1, ry - size * 0.5 + 1, Math.max(2, size - 2), Math.max(2, size - 2));
+    };
 
     if (this.stageId === 'cathedral') {
-      // Solar Eclipse Overdrive Corona & Golden Floor Glyphs
-      const cx = ww * 0.5;
-      const cy = gy - 365;
-      ctx.globalAlpha = 0.35 * fade;
-      ctx.drawImage(this.glowGold, cx - 220, cy - 220, 440, 440);
-      for (let i = 0; i < 24; i++) {
-        const a = (i / 24) * Math.PI * 2 + t * 1.8;
-        const rx = Math.round((cx + Math.cos(a) * 145) / 4) * 4;
-        const ry = Math.round((cy + Math.sin(a) * 145) / 4) * 4;
-        ctx.globalAlpha = 0.75 * fade;
-        ctx.fillStyle = i % 2 === 0 ? '#facc15' : '#fb923c';
-        ctx.fillRect(rx - 4, ry - 4, 8, 8);
+      // ★ CATHEDRAL PHENOMENON: SOLAR ECLIPSE EMBER RAIN & SANCTUARY SUNBEAMS (100% Pure Particles & Light!)
+      // 1. Soft Diagonal Volumetric Sunbeam Shafts slanting from the Rose Window across the Nave
+      const originX = ww * 0.504;
+      const originY = gy - 380;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.38 * fade;
+      ctx.drawImage(this.glowGold, originX - 260, originY - 220, 520, 440);
+
+      const shafts = [-380, -210, -60, 90, 250, 410];
+      for (let i = 0; i < shafts.length; i++) {
+        const botX = originX + shafts[i] + Math.sin(t * 1.4 + i) * 22;
+        const pulse = 0.65 + 0.35 * Math.sin(t * 3.8 + i * 1.2);
+        const grad = ctx.createLinearGradient(originX, originY, botX, gy);
+        const isGold = i % 2 === 0;
+        grad.addColorStop(0, isGold ? 'rgba(250, 204, 21, 0.16)' : 'rgba(56, 189, 248, 0.14)');
+        grad.addColorStop(0.7, isGold ? 'rgba(249, 115, 22, 0.08)' : 'rgba(14, 165, 233, 0.07)');
+        grad.addColorStop(1, 'rgba(250, 204, 21, 0)');
+        ctx.globalAlpha = fade * pulse;
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(originX - 18, originY);
+        ctx.lineTo(originX + 18, originY);
+        ctx.lineTo(botX + 54, gy + 10);
+        ctx.lineTo(botX - 54, gy + 10);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // 2. 64 Cascading Solar-Gold & Frost-Cyan Incandescent Ember Particles & Twinkling Sanctuary Cross-Sparks
+      for (let p = 0; p < 64; p++) {
+        const seed = p * 1.37;
+        const cycle = (t * (0.38 + (p % 5) * 0.07) + seed) % 1;
+        const lane = ((p * 73) % 980) + 110;
+        const driftX = (cycle - 0.5) * ((lane - originX) * 0.35) + Math.sin(t * 3.2 + seed) * 16;
+        const px = lane + driftX;
+        const py = gy - 520 + cycle * 525;
+        const pAlpha = fade * Math.sin(cycle * Math.PI);
+        const isFrost = p % 4 === 0;
+        const midCol = isFrost ? '#38bdf8' : p % 2 === 0 ? '#facc15' : '#fb923c';
+        const glow = isFrost ? this.glowCyan : p % 2 === 0 ? this.glowGold : this.glowOrange;
+        const sz = p % 3 === 0 ? 5 : 4;
+
+        drawGlowingPixel(px, py, sz, '#ffffff', midCol, glow, 22, pAlpha, 0, -5);
+
+        // Twinkling 1-pixel diamond cross-glint on larger embers
+        if (p % 5 === 0 && Math.sin(t * 9 + p) > 0.2) {
+          const rx = Math.round(px / 3) * 3;
+          const ry = Math.round(py / 3) * 3;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = pAlpha;
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(rx - 7, ry - 1, 14, 2);
+          ctx.fillRect(rx - 1, ry - 7, 2, 14);
+        }
       }
     } else if (this.stageId === 'sylvan') {
-      // Astral Starlight Monsoon Rain across the Sanctuary
-      for (let r = 0; r < 32; r++) {
-        const rx = Math.round((((r * 97 + t * 140) % (ww + 200)) - 100) / 4) * 4;
-        const ry = Math.round((((r * 73 + t * 420) % 560) + (gy - 540)) / 4) * 4;
-        ctx.globalAlpha = 0.68 * fade;
-        ctx.fillStyle = r % 2 === 0 ? '#34d399' : '#38bdf8';
-        ctx.fillRect(rx, ry, 4, 16);
+      // ★ SYLVAN PHENOMENON: ASTRAL STARFALL METEOR SHOWER & BIOLUMINESCENT FIREFLY SWARM (100% Pure Particles!)
+      // 1. 18 Diagonal Shooting Starfall Meteors with Tapered Pixel Comet Tails & Starlight Flares
+      for (let s = 0; s < 18; s++) {
+        const speed = 0.55 + (s % 4) * 0.12;
+        const prog = (t * speed + s * 0.19) % 1;
+        const startX = 60 + ((s * 139) % 960);
+        const startY = gy - 540 + (s % 3) * 45;
+        const sx = startX + prog * 280;
+        const sy = startY + prog * 460;
+        const sAlpha = fade * Math.sin(prog * Math.PI);
+        const isCyan = s % 2 === 0;
+        const col = isCyan ? '#38bdf8' : '#34d399';
+        const glow = isCyan ? this.glowCyan : this.glowEmerald;
+
+        // 8-segment pixel comet tail
+        for (let tail = 7; tail >= 1; tail--) {
+          const tx = Math.round((sx - tail * 7) / 3) * 3;
+          const ty = Math.round((sy - tail * 11) / 3) * 3;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = sAlpha * (1 - tail / 8) * 0.85;
+          ctx.fillStyle = tail < 3 ? '#fef08a' : col;
+          const tSz = tail < 3 ? 4 : 3;
+          ctx.fillRect(tx, ty, tSz, tSz);
+        }
+
+        // Glowing meteor head + 4-pointed starlight pixel flare
+        drawGlowingPixel(sx, sy, 5, '#ffffff', '#fef08a', glow, 26, sAlpha);
+        const hx = Math.round(sx / 3) * 3;
+        const hy = Math.round(sy / 3) * 3;
+        ctx.globalAlpha = sAlpha;
         ctx.fillStyle = '#ffffff';
-        ctx.fillRect(rx, ry + 12, 4, 4);
+        ctx.fillRect(hx - 8, hy - 1, 16, 2);
+        ctx.fillRect(hx - 1, hy - 8, 2, 16);
+      }
+
+      // 2. 48 Swirling Bioluminescent Forest Fireflies & Floating Emerald Wind-Sparks
+      for (let f = 0; f < 48; f++) {
+        const life = (t * (0.28 + (f % 4) * 0.06) + f * 0.31) % 1;
+        const fx =
+          100 +
+          ((f * 97 + t * 85) % (ww - 200)) +
+          Math.sin(t * 3.6 + f * 1.7) * 28;
+        const fy = gy - 16 - life * 360 + Math.cos(t * 2.8 + f) * 14;
+        const fAlpha = fade * Math.sin(life * Math.PI) * (0.65 + 0.35 * Math.sin(t * 8 + f));
+        const isGold = f % 4 === 0;
+        const midCol = isGold ? '#fde047' : f % 2 === 0 ? '#34d399' : '#38bdf8';
+        const glow = isGold ? this.glowGold : f % 2 === 0 ? this.glowEmerald : this.glowCyan;
+        drawGlowingPixel(fx, fy, 4, '#ffffff', midCol, glow, 20, fAlpha, -4, 3);
       }
     } else if (this.stageId === 'boneyard') {
-      // Blood Moon Frenzy Ground Runes & Crimson Sky Bolts
-      const floorCx = ww * 0.5;
-      for (let k = 0; k < 28; k++) {
-        const a = (k / 28) * Math.PI * 2 - t * 2.4;
-        const rx = Math.round((floorCx + Math.cos(a) * 320) / 4) * 4;
-        const ry = Math.round((gy - 2 + Math.sin(a) * 32) / 4) * 4;
-        ctx.globalAlpha = 0.72 * fade;
-        ctx.fillStyle = k % 2 === 0 ? '#e11d48' : '#c084fc';
-        ctx.fillRect(rx - 4, ry - 2, 8, 4);
+      // ★ BONEYARD PHENOMENON: BLOOD MOON VOLUMETRIC SHAFTS & ABYSSAL SOUL-EMBER ASCENSION (100% Pure Particles & Light!)
+      // 1. 5 Volumetric Crimson-Violet Blood-Moon Light Shafts Streaming from the Necropolis Sky
+      ctx.globalCompositeOperation = 'lighter';
+      for (let b = 0; b < 5; b++) {
+        const topX = ww * 0.5 + (b - 2) * 95;
+        const botX = ww * (0.14 + b * 0.18) + Math.sin(t * 1.6 + b * 1.3) * 42;
+        const beamW = 85 + (b % 2) * 30;
+        const bAlpha = fade * (0.12 + 0.05 * Math.sin(t * 2.8 + b));
+        const grad = ctx.createLinearGradient(topX, gy - 540, botX, gy + 15);
+        grad.addColorStop(0, `rgba(225, 29, 72, ${bAlpha * 1.35})`);
+        grad.addColorStop(0.55, `rgba(168, 85, 247, ${bAlpha})`);
+        grad.addColorStop(1, 'rgba(168, 85, 247, 0)');
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(topX - beamW * 0.32, gy - 540);
+        ctx.lineTo(topX + beamW * 0.32, gy - 540);
+        ctx.lineTo(botX + beamW * 0.95, gy + 15);
+        ctx.lineTo(botX - beamW * 0.95, gy + 15);
+        ctx.closePath();
+        ctx.fill();
+      }
+
+      // 2. 84 Rising Crimson & Violet Abyssal Soul-Flame Wisps & Twinkling Diamond Embers
+      for (let w = 0; w < 84; w++) {
+        const cycle = (t * (0.38 + (w % 5) * 0.07) + w * 0.23) % 1;
+        const baseX = 90 + ((w * 79) % (ww - 180));
+        const swirlX = Math.sin(cycle * Math.PI * 3 + t * 3.8 + w) * (22 + (w % 3) * 10);
+        const wx = baseX + swirlX;
+        const wy = gy + 8 - cycle * 490;
+        const wAlpha = fade * Math.sin(cycle * Math.PI);
+        const isCrimson = w % 3 === 0;
+        const midCol = isCrimson ? '#f43f5e' : w % 2 === 0 ? '#e879f9' : '#a855f7';
+        const sz = w % 4 === 0 ? 6 : 4;
+
+        drawGlowingPixel(wx, wy, sz, '#ffffff', midCol, this.glowViolet, 26, wAlpha, -swirlX * 0.1, 7);
+
+        // Twinkling 4-point diamond soul-glint on every 5th ember
+        if (w % 5 === 0 && Math.sin(t * 9 + w) > 0.25) {
+          const rx = Math.round(wx / 3) * 3;
+          const ry = Math.round(wy / 3) * 3;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = wAlpha;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(rx - 6, ry - 1, 12, 2);
+          ctx.fillRect(rx - 1, ry - 6, 2, 12);
+        }
       }
     } else if (this.stageId === 'clocktower') {
-      // Midnight Chrono Haste Spinning Golden Astrolabe Rings
-      const cx = ww * 0.5;
-      const cy = gy - 260;
-      for (let k = 0; k < 28; k++) {
-        const a = (k / 28) * Math.PI * 2 + t * 3.6;
-        const rx = Math.round((cx + Math.cos(a) * 210) / 4) * 4;
-        const ry = Math.round((cy + Math.sin(a) * 210) / 4) * 4;
-        ctx.globalAlpha = 0.72 * fade;
-        ctx.fillStyle = k % 2 === 0 ? '#fde047' : '#2dd4bf';
-        ctx.fillRect(rx - 4, ry - 4, 8, 8);
+      // ★ CLOCKTOWER PHENOMENON: CELESTIAL OBSERVATORY SHAFTS & ANTI-GRAVITY TIME-SAND VORTEX (100% Pure Particles & Light!)
+      // 1. 5 Volumetric Golden & Aether-Teal Observatory Light Shafts from the Great Clock Dial
+      ctx.globalCompositeOperation = 'lighter';
+      for (let b = 0; b < 5; b++) {
+        const topX = ww * 0.5 + (b - 2) * 85;
+        const botX = ww * (0.15 + b * 0.175) + Math.cos(t * 1.5 + b * 1.2) * 38;
+        const beamW = 80 + (b % 2) * 28;
+        const bAlpha = fade * (0.12 + 0.05 * Math.sin(t * 3.0 + b));
+        const grad = ctx.createLinearGradient(topX, gy - 530, botX, gy + 15);
+        if (b % 2 === 0) {
+          grad.addColorStop(0, `rgba(253, 224, 71, ${bAlpha * 1.3})`);
+          grad.addColorStop(0.55, `rgba(45, 212, 191, ${bAlpha})`);
+          grad.addColorStop(1, 'rgba(45, 212, 191, 0)');
+        } else {
+          grad.addColorStop(0, `rgba(45, 212, 191, ${bAlpha * 1.3})`);
+          grad.addColorStop(0.55, `rgba(253, 224, 71, ${bAlpha})`);
+          grad.addColorStop(1, 'rgba(253, 224, 71, 0)');
+        }
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.moveTo(topX - beamW * 0.3, gy - 530);
+        ctx.lineTo(topX + beamW * 0.3, gy - 530);
+        ctx.lineTo(botX + beamW * 0.9, gy + 15);
+        ctx.lineTo(botX - beamW * 0.9, gy + 15);
+        ctx.closePath();
+        ctx.fill();
       }
+
+      // 2. 84 Levitating Golden & Aether-Teal Time-Sand Particles Rising in Helical Streams
+      for (let p = 0; p < 84; p++) {
+        const cycle = (t * (0.40 + (p % 4) * 0.08) + p * 0.21) % 1;
+        const streamX = 100 + ((p * 73) % (ww - 200));
+        const helix = Math.sin(cycle * Math.PI * 3.5 + t * 4.5 + p) * 24;
+        const px = streamX + helix;
+        const py = gy + 6 - cycle * 505;
+        const pAlpha = fade * Math.sin(cycle * Math.PI);
+        const isGold = p % 2 === 0;
+        const midCol = isGold ? '#fde047' : '#2dd4bf';
+        const glow = isGold ? this.glowGold : this.glowTeal;
+        const sz = p % 3 === 0 ? 6 : 4;
+
+        drawGlowingPixel(px, py, sz, '#ffffff', midCol, glow, 24, pAlpha, 0, 7);
+
+        // Twinkling 4-point diamond star-glint on every 4th time-sand grain
+        if (p % 4 === 0 && Math.cos(t * 10 + p) > 0.22) {
+          const rx = Math.round(px / 3) * 3;
+          const ry = Math.round(py / 3) * 3;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = pAlpha;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(rx - 6, ry - 1, 12, 2);
+          ctx.fillRect(rx - 1, ry - 6, 2, 12);
+        }
+      }
+    }
+
+    ctx.restore();
+  }
+
+  drawClashWorld(ctx, gy) {
+    const p = 1 - this.clashZoomTimer / (this.clashMaxTimer || 0.55);
+    const alpha = Math.max(0, 1 - p);
+    const cx = this.clashFocusX || this.worldWidth * 0.5;
+    const cy = this.clashFocusY || gy - 105;
+    const col1 = this.clashCol1 || '#38bdf8';
+    const col2 = this.clashCol2 || '#fb923c';
+    const glow1 = this.getGlowForColor(col1);
+    const glow2 = this.getGlowForColor(col2);
+
+    ctx.save();
+
+    // 1. Dual-Elemental Volumetric Impact Bloom at the Clash Point & Floor Reflection
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = alpha * 0.62;
+    if (glow1) ctx.drawImage(glow1, cx - 210, cy - 180, 360, 360);
+    if (glow2) ctx.drawImage(glow2, cx - 150, cy - 180, 360, 360);
+    ctx.globalAlpha = alpha * 0.48;
+    ctx.drawImage(this.glowGold, cx - 140, cy - 140, 280, 280);
+
+    // 2. Crisp Pixel-Art 4-Point Diamond Starflare at the Clash Core (Zero boxy crescents or circles!)
+    const flareSpan = Math.round((46 * (1 - p * 0.45)) / 3) * 3;
+    const fcx = Math.round(cx / 3) * 3;
+    const fcy = Math.round(cy / 3) * 3;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = alpha * 0.95;
+    ctx.fillStyle = '#fde047';
+    ctx.fillRect(fcx - flareSpan, fcy - 2, flareSpan * 2, 4);
+    ctx.fillRect(fcx - 2, fcy - flareSpan, 4, flareSpan * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(fcx - Math.round(flareSpan * 0.65), fcy - 1, Math.round(flareSpan * 1.3), 2);
+    ctx.fillRect(fcx - 1, fcy - Math.round(flareSpan * 0.65), 2, Math.round(flareSpan * 1.3));
+    ctx.fillRect(fcx - 5, fcy - 5, 10, 10);
+
+    // 3. 48 High-Velocity Radial Pixel Sparks & Tapered Comet Streaks Bursting from the Clash
+    for (let i = 0; i < 48; i++) {
+      const seed = i * 2.39996;
+      const angle = seed + Math.sin(i * 1.7) * 0.25;
+      const speed = 65 + (i % 6) * 38;
+      const dist = 10 + p * speed;
+      const gravityDrop = p * p * 26;
+      const sx = cx + Math.cos(angle) * dist;
+      const sy = cy + Math.sin(angle) * dist * 0.85 + gravityDrop;
+      const sCol = i % 3 === 0 ? '#fde047' : i % 2 === 0 ? col1 : col2;
+      const sGlow = i % 2 === 0 ? glow1 : glow2;
+
+      // 3-step pixel motion trail pointing back toward (cx, cy)
+      for (let tStep = 3; tStep >= 1; tStep--) {
+        const tailDist = Math.max(0, dist - tStep * 8);
+        const tx = Math.round((cx + Math.cos(angle) * tailDist) / 3) * 3;
+        const ty = Math.round((cy + Math.sin(angle) * tailDist * 0.85 + gravityDrop * 0.8) / 3) * 3;
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha * (1 - tStep * 0.25) * 0.88;
+        ctx.fillStyle = sCol;
+        ctx.fillRect(tx - 2, ty - 2, 4, 4);
+      }
+
+      const rx = Math.round(sx / 3) * 3;
+      const ry = Math.round(sy / 3) * 3;
+      if (i % 2 === 0 && sGlow) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha * 0.36;
+        ctx.drawImage(sGlow, rx - 18, ry - 18, 36, 36);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = sCol;
+      const sz = i % 3 === 0 ? 6 : 4;
+      ctx.fillRect(rx - sz * 0.5, ry - sz * 0.5, sz, sz);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(rx - 1, ry - 1, 3, 3);
+    }
+
+    ctx.restore();
+  }
+
+  drawKOFinisherWorld(ctx, gy) {
+    const p = 1 - this.koZoomTimer / (this.koMaxTimer || 1.35);
+    const alpha = Math.max(0, 1 - p * 0.85);
+    const kx = this.koFocusX || this.worldWidth * 0.5;
+    const ky = this.koFocusY || gy - 95;
+    const koCol = this.koColor || '#facc15';
+    const koGlow = this.getGlowForColor(koCol);
+
+    ctx.save();
+
+    // 1. Volumetric Golden & Winner-Elemental Light Bloom at the K.O. Point
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = alpha * 0.55;
+    if (koGlow) ctx.drawImage(koGlow, kx - 220, ky - 200, 440, 400);
+    ctx.globalAlpha = alpha * 0.45;
+    ctx.drawImage(this.glowGold, kx - 170, ky - 170, 340, 340);
+
+    // 2. 52 Ascending & Radial Finisher Pixel Embers with Comet Tails (Zero reused VFX sprites, zero blocky wedges!)
+    for (let i = 0; i < 52; i++) {
+      const seed = i * 1.732;
+      const isRising = i % 2 === 0;
+      let sx;
+      let sy;
+      if (isRising) {
+        const riseProg = (p * (1.1 + (i % 4) * 0.25) + (i / 52) * 0.35) % 1;
+        const spread = ((i % 9) - 4) * 18 + Math.sin(this.time * 7 + seed) * 14;
+        sx = kx + spread;
+        sy = gy - 8 - riseProg * 380;
+      } else {
+        const angle = seed;
+        const speed = 75 + (i % 6) * 42;
+        const dist = 12 + p * speed;
+        sx = kx + Math.cos(angle) * dist;
+        sy = ky + Math.sin(angle) * dist * 0.75 + p * p * 35;
+      }
+
+      const rx = Math.round(sx / 3) * 3;
+      const ry = Math.round(sy / 3) * 3;
+      const eCol = i % 3 === 0 ? '#fde047' : i % 2 === 0 ? koCol : '#ffffff';
+
+      if (i % 3 === 0 && koGlow) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha * 0.35;
+        ctx.drawImage(koGlow, rx - 18, ry - 18, 36, 36);
+      }
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = alpha * 0.92;
+      ctx.fillStyle = eCol;
+      const sz = i % 4 === 0 ? 6 : 4;
+      ctx.fillRect(rx - sz * 0.5, ry - sz * 0.5, sz, sz);
+      if (isRising) {
+        ctx.globalAlpha = alpha * 0.55;
+        ctx.fillRect(rx - 1, ry + sz * 0.5, 3, 8);
+      }
+      ctx.globalAlpha = alpha;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(rx - 1, ry - 1, 2, 2);
     }
 
     ctx.restore();
@@ -1640,125 +1889,171 @@ export class Renderer {
     if (this.stageEventBannerTimer > 0 && !(this.cutInTimer > 0)) {
       const p = 1 - this.stageEventBannerTimer / 2.8;
       const alpha = p < 0.12 ? p / 0.12 : p > 0.82 ? (1 - p) / 0.18 : 1;
-      const bw = Math.min(w - 32, 460);
-      const bh = 42;
+      const bw = Math.min(w - 28, 560);
+      const bh = 52;
       const bx = Math.round((w - bw) * 0.5);
-      const by = Math.round(h * 0.14);
+      const by = Math.round(h * 0.135);
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-      ctx.fillStyle = 'rgba(7, 10, 18, 0.92)';
+      ctx.fillStyle = 'rgba(6, 9, 18, 0.94)';
       ctx.fillRect(bx, by, bw, bh);
       ctx.strokeStyle = this.stageEventColor || '#facc15';
-      ctx.lineWidth = 2;
+      ctx.lineWidth = 3;
       ctx.strokeRect(bx, by, bw, bh);
 
       ctx.textAlign = 'center';
-      ctx.font = '9px "Press Start 2P", monospace';
+      ctx.font = `${this.isMobile ? 8 : 10}px "Press Start 2P", monospace`;
       ctx.fillStyle = this.stageEventColor || '#facc15';
-      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', Math.round(w * 0.5), by + 17);
-      ctx.font = '7px "Press Start 2P", monospace';
-      ctx.fillStyle = '#e2e8f0';
-      ctx.fillText(this.stageEventSubtitle || '', Math.round(w * 0.5), by + 33);
+      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', Math.round(w * 0.5), by + 21);
+      ctx.font = `${this.isMobile ? 6 : 8}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#f8fafc';
+      ctx.fillText(this.stageEventSubtitle || '', Math.round(w * 0.5), by + 40);
       ctx.restore();
     }
 
-    // 2. Screen-Space HD-2D Ultimate Portrait Cut-In Banner (Upper Sky so it never covers fighters!)
+    // 2. Massive Full-Width HD-2D Ultimate Cut-In Banner (128x128 Portrait + 204x204 Action Sprite + 22px Title!)
     if (this.cutInTimer > 0) {
-      const p = 1 - this.cutInTimer / (this.cutInMaxTimer || 0.72);
-      const alpha = p < 0.12 ? p / 0.12 : p > 0.78 ? (1 - p) / 0.22 : 1;
-      const stripH = this.isMobile ? 54 : 64;
-      const stripY = Math.round(h * 0.145);
-      const stripW = Math.min(w - 24, 620);
+      const p = 1 - this.cutInTimer / (this.cutInMaxTimer || 1.05);
+      const alpha = p < 0.08 ? p / 0.08 : p > 0.82 ? (1 - p) / 0.18 : 1;
+      const stripH = this.isMobile ? 96 : 144;
+      const stripY = Math.round(h * 0.125);
+      const stripW = Math.min(w - 16, 1080);
       const stripX = Math.round((w - stripW) * 0.5);
+      const assets = PixelForge.initAssets();
+      const heroAsset = assets[this.cutInHeroId];
+      const portImg = heroAsset?.portrait;
+      const sheetImg = heroAsset?.sheet;
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-      // Forged Obsidian & Elemental Speedline Backdrop
-      ctx.fillStyle = 'rgba(5, 8, 16, 0.94)';
+      // Deep Obsidian Slash Backdrop with Glowing Elemental Gradient
+      ctx.fillStyle = 'rgba(4, 7, 15, 0.96)';
       ctx.fillRect(stripX, stripY, stripW, stripH);
 
-      // Animated pixel speedlines inside the cut-in strip
-      ctx.fillStyle = this.cutInColor || '#38bdf8';
-      for (let s = 0; s < 14; s++) {
-        const sx = stripX + ((s * 67 + Math.round(this.time * 900)) % (stripW - 48));
-        const sy = stripY + 6 + ((s * 13) % (stripH - 12));
-        ctx.globalAlpha = alpha * (s % 2 === 0 ? 0.38 : 0.22);
-        ctx.fillRect(sx, sy, 36 + (s % 3) * 18, 3);
+      const grad = ctx.createLinearGradient(stripX, stripY, stripX + stripW, stripY + stripH);
+      grad.addColorStop(0, 'rgba(250, 204, 21, 0.18)');
+      grad.addColorStop(0.5, 'rgba(15, 23, 42, 0.4)');
+      grad.addColorStop(1, 'rgba(56, 189, 248, 0.22)');
+      ctx.fillStyle = grad;
+      ctx.fillRect(stripX, stripY, stripW, stripH);
+
+      // Blazing High-Velocity Elemental Speedlines & Pixel Sparks across the full banner
+      for (let s = 0; s < 28; s++) {
+        const lineW = 85 + (s % 4) * 55;
+        const sx = stripX + ((s * 97 + Math.round(this.time * 1450)) % Math.max(120, stripW - lineW));
+        const sy = stripY + 8 + ((s * 17) % (stripH - 16));
+        ctx.fillStyle = s % 3 === 0 ? '#ffffff' : s % 2 === 0 ? this.cutInColor || '#38bdf8' : '#facc15';
+        ctx.globalAlpha = alpha * (s % 3 === 0 ? 0.65 : 0.38);
+        ctx.fillRect(sx, sy, lineW, s % 3 === 0 ? 4 : 3);
       }
 
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+      // Heavy Double-Bevel Gold & Elemental Frame
       ctx.strokeStyle = this.cutInColor || '#38bdf8';
-      ctx.lineWidth = 3;
+      ctx.lineWidth = 4;
       ctx.strokeRect(stripX, stripY, stripW, stripH);
       ctx.strokeStyle = '#facc15';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(stripX + 3, stripY + 3, stripW - 6, stripH - 6);
+      ctx.lineWidth = 2;
+      ctx.strokeRect(stripX + 5, stripY + 5, stripW - 10, stripH - 10);
 
-      // Champion Pixel Portrait inside left or right side of the cut-in strip
-      const assets = PixelForge.initAssets();
-      const portImg = assets[this.cutInHeroId]?.portrait;
-      const portSize = stripH - 8;
-      const portX = this.cutInFacing >= 0 ? stripX + 6 : stripX + stripW - portSize - 6;
+      // Left / Right Layout based on Caster Facing
+      const portSize = stripH - 16;
+      const isLeft = this.cutInFacing >= 0;
+      const portX = isLeft ? stripX + 10 : stripX + stripW - portSize - 10;
+      const portY = stripY + 8;
+
+      // 1) Huge High-Impact Pixel Portrait Frame (128x128 on desktop)
       if (portImg && portImg.complete && portImg.naturalWidth) {
-        ctx.drawImage(portImg, portX, stripY + 4, portSize, portSize);
-        ctx.strokeStyle = '#facc15';
-        ctx.lineWidth = 2;
-        ctx.strokeRect(portX, stripY + 4, portSize, portSize);
+        ctx.fillStyle = '#060a14';
+        ctx.fillRect(portX, portY, portSize, portSize);
+        ctx.drawImage(portImg, portX, portY, portSize, portSize);
+        ctx.strokeStyle = '#fde047';
+        ctx.lineWidth = 3;
+        ctx.strokeRect(portX, portY, portSize, portSize);
       }
 
-      // Crisp Pixel Cut-In Callout Typography
+      // 2) Giant Action-Pose Character Sprite on Opposite Side of Banner (Clean, no reused VFX box!)
+      if (!this.isMobile && sheetImg && sheetImg.complete && sheetImg.naturalWidth) {
+        const cell = Math.round(sheetImg.naturalWidth / 8) || 208;
+        const actionSize = Math.round(stripH * 1.42);
+        const actionX = isLeft ? stripX + stripW - actionSize - 24 : stripX + 24;
+        const actionY = stripY + Math.round((stripH - actionSize) * 0.5) - 6;
+
+        // Frame 18 (row 2, col 2) is the dramatic Ultimate Cast / Cleave pose
+        ctx.drawImage(sheetImg, 2 * cell, 2 * cell, cell, cell, actionX, actionY, actionSize, actionSize);
+      }
+
+      // 3) Oversized Arcade Ultimate Callout Typography in Center
       ctx.textAlign = 'center';
-      const textCx = Math.round(w * 0.5 + (this.cutInFacing >= 0 ? 22 : -22));
-      ctx.font = `${this.isMobile ? 7 : 8}px "Press Start 2P", monospace`;
-      ctx.fillStyle = '#fef08a';
+      const textCx = Math.round(w * 0.5);
+      ctx.font = `${this.isMobile ? 8 : 12}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#fde047';
       ctx.fillText(
-        `★ ${this.cutInName} • OVERDRIVE 100% ★`,
+        `★ ${this.cutInName} • OVERDRIVE UNLEASHED ★`,
         textCx,
-        stripY + (this.isMobile ? 20 : 24)
+        stripY + (this.isMobile ? 32 : 48)
       );
-      ctx.font = `${this.isMobile ? 10 : 13}px "Press Start 2P", monospace`;
+
+      ctx.font = `${this.isMobile ? 13 : 22}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#000000';
+      ctx.fillText(this.cutInUltName, textCx + 3, stripY + (this.isMobile ? 68 : 102) + 3);
+      ctx.fillStyle = this.cutInColor || '#38bdf8';
+      ctx.fillText(this.cutInUltName, textCx + 1, stripY + (this.isMobile ? 68 : 102) + 1);
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(this.cutInUltName, textCx, stripY + (this.isMobile ? 41 : 48));
+      ctx.fillText(this.cutInUltName, textCx, stripY + (this.isMobile ? 68 : 102));
       ctx.restore();
     }
 
-    // 3. Screen-Space Final-Blow "K.O. Finisher" Impact Flash & Emblem
+    // 3. Screen-Space Decisive K.O. Finisher Winner Banner (ZERO X-LINES, ZERO OBSTRUCTING BANDS!)
     if (this.koZoomTimer > 0) {
-      const p = 1 - this.koZoomTimer / (this.koMaxTimer || 1.25);
-      const alpha = p < 0.1 ? p / 0.1 : Math.max(0, 1 - (p - 0.1) / 0.9);
-      ctx.save();
-      if (p < 0.28) {
-        // Twin diagonal K.O. finisher light-slashes across the impact
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = (1 - p / 0.28) * 0.48;
-        ctx.strokeStyle = this.koColor || '#facc15';
-        ctx.lineWidth = 10;
-        ctx.beginPath();
-        ctx.moveTo(w * 0.18, h * 0.22);
-        ctx.lineTo(w * 0.82, h * 0.78);
-        ctx.moveTo(w * 0.82, h * 0.22);
-        ctx.lineTo(w * 0.18, h * 0.78);
-        ctx.stroke();
-      }
+      const p = 1 - this.koZoomTimer / (this.koMaxTimer || 1.35);
+      const alpha = p < 0.08 ? p / 0.08 : Math.max(0, 1 - (p - 0.08) / 0.92);
+      const assets = PixelForge.initAssets();
+      const winPort = assets[this.koWinnerHeroId || 'warrior']?.portrait;
 
-      // Upper-center K.O. FINISHER plaque
-      const kw = Math.min(w - 32, 380);
-      const kh = 46;
+      ctx.save();
+      // Ornate Upper-Center DECISIVE FINISH • K.O.! Banner with Winner Portrait
+      const kw = Math.min(w - 24, 680);
+      const kh = this.isMobile ? 68 : 88;
       const kx = Math.round((w - kw) * 0.5);
-      const ky = Math.round(h * 0.15);
+      const ky = Math.round(h * 0.135);
+
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
-      ctx.fillStyle = 'rgba(8, 10, 18, 0.94)';
+      ctx.fillStyle = 'rgba(6, 9, 18, 0.96)';
       ctx.fillRect(kx, ky, kw, kh);
-      ctx.strokeStyle = '#facc15';
-      ctx.lineWidth = 3;
+      ctx.strokeStyle = this.koColor || '#facc15';
+      ctx.lineWidth = 4;
       ctx.strokeRect(kx, ky, kw, kh);
+      ctx.strokeStyle = '#fde047';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(kx + 4, ky + 4, kw - 8, kh - 8);
+
+      const pSz = kh - 16;
+      if (winPort && winPort.complete && winPort.naturalWidth) {
+        ctx.drawImage(winPort, kx + 10, ky + 8, pSz, pSz);
+        ctx.strokeStyle = '#fde047';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(kx + 10, ky + 8, pSz, pSz);
+      }
+
       ctx.textAlign = 'center';
-      ctx.font = `${this.isMobile ? 11 : 14}px "Press Start 2P", monospace`;
-      ctx.fillStyle = '#fef08a';
-      ctx.fillText('★ K.O. FINISHER! ★', Math.round(w * 0.5), ky + 29);
+      const kTextX = Math.round(kx + kw * 0.5 + pSz * 0.35);
+      ctx.font = `${this.isMobile ? 12 : 19}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#000000';
+      ctx.fillText('★ DECISIVE FINISH • K.O.! ★', kTextX + 2, ky + (this.isMobile ? 30 : 40) + 2);
+      ctx.fillStyle = '#fde047';
+      ctx.fillText('★ DECISIVE FINISH • K.O.! ★', kTextX, ky + (this.isMobile ? 30 : 40));
+
+      ctx.font = `${this.isMobile ? 8 : 11}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText(
+        `${(this.koWinnerName || 'CHAMPION').toUpperCase()} CLAIMS THE SANCTUARY!`,
+        kTextX,
+        ky + (this.isMobile ? 52 : 68)
+      );
       ctx.restore();
     }
 

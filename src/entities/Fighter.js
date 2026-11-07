@@ -158,8 +158,7 @@ export class Fighter {
           '★ DESPERATION OVERDRIVE! ★',
           '#facc15'
         );
-        this.game.vfx.spawnShockwave(this.x, this.groundY - 4, 138, this.primaryColor, 0.42, true);
-        this.game.vfx.spawnBurst(this.x, this.y - 95, 16, '#facc15', 235, { upBias: 110, size: 6 });
+        this.game.vfx.spawnBurst(this.x, this.y - 95, 22, '#facc15', 245, { upBias: 115, size: 6 });
       }
     }
 
@@ -206,10 +205,13 @@ export class Fighter {
         this.game.renderer.triggerShake(12, 0.25);
         this.game.renderer.triggerAberration(8);
         this.game.renderer.triggerHitStop(0.07);
-        this.game.vfx.spawnShockwave(this.x, this.y - 95, 165, this.primaryColor, 0.55, true);
-        this.game.vfx.spawnBurst(this.x, this.y - 95, 26, this.primaryColor, 280, {
-          upBias: 135,
+        this.game.vfx.spawnBurst(this.x, this.y - 95, 32, this.primaryColor, 295, {
+          upBias: 145,
           size: 7
+        });
+        this.game.vfx.spawnBurst(this.x, this.y - 95, 18, '#fde047', 240, {
+          upBias: 120,
+          size: 6
         });
         this.game.onFighterDeath(this);
       }
