@@ -94,8 +94,8 @@ export class Titan extends Fighter {
         return img;
       };
       assets.titan = {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps10'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps10'),
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps11'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps11'),
         portrait: loadImg('assets/sprites/titan_portrait.png?v=2', () => PixelForge.refreshPortraits())
       };
     }
