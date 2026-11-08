@@ -185,95 +185,101 @@ def composite_over(base, over):
     return res
 
 
-def neutralize_archer_chest_arm(cell, max_chest_x=28):
-    """
-    Removes Lyra's baked bow-arm and chest-hand across her chest/torso (y=16..29, x=21..51):
-    - Erases any protruding arm pixels at x > max_chest_x (x >= 29) for 16 <= y <= 29.
-    - For 18 <= y <= 27 and 21 <= x <= max_chest_x, replaces any skin/leather/gold/bright pixels
-      (r > 95 or g > 95) on her chest with clean dark/mid forest tunic shading (or LEATHER_DARK at belt y=26..27)
-      so her torso has ZERO baked arms or hands sitting on her chest!
-    """
-    for y in range(16, 30):
-        for x in range(21, 52):
-            if x > max_chest_x:
-                cell[y, x] = 0
-            elif 18 <= y <= 27 and cell[y, x, 3] > 0:
-                r, g, b, _ = cell[y, x]
-                if r > 95 or g > 95 or (int(r) + int(g) + int(b) > 240):
-                    if y >= 26:
-                        cell[y, x] = LEATHER_DARK
-                    else:
-                        cell[y, x] = CLOAK_MID if (x + y) % 2 == 0 else CLOAK_DARK
+def strip_isolated_pixels(layer):
+    """Removes 1px isolated floating pixels that have 0 or 1 orthogonal opaque neighbors."""
+    out = layer.copy()
+    alpha = out[:, :, 3] > 0
+    for y in range(1, 51):
+        for x in range(1, 51):
+            if not alpha[y, x]:
+                continue
+            n = int(alpha[y - 1, x]) + int(alpha[y + 1, x]) + int(alpha[y, x - 1]) + int(alpha[y, x + 1])
+            if n <= 1:
+                out[y, x] = 0
+    return out
 
 
 def make_clean_templates(src):
     """
-    Removes the baked-in bow/arrow AND baked chest-arms/hands from the master poses so we can animate
-    a single articulated Elven Greatbow + Bowstring + Arrow + IK Arm without EVER duplicating weapons or limbs.
+    Removes ONLY the baked-in bow and arrow outside Sylvara's body while preserving 100% of her
+    emerald tunic, silver shoulder pauldron, emerald belt gem, front hip/thigh (x=28..33, y=24..35),
+    and flowing cloak so she NEVER looks like she is missing a piece of her body!
     """
-    # 1. Clean standing body (no bow, no baked chest-arm/hand)
+    # 1. Clean standing body:
+    # Take head & upper shoulders (y=0..17, x=0..29) from `idle`, and take the 100% unobstructed,
+    # bow-free torso, emerald belt buckle, front hip, cloak, and legs (y=18..49, x=0..33) from `atk_rel`!
     stand = src['idle'].copy()
     rel = src['atk_rel'].copy()
-    stand[18:32, 19:29] = rel[18:32, 19:29]
-    for y in range(0, 34):
+    stand[18:49, 0:34] = rel[18:49, 0:34]
+    # Zero only the baked bow & extended horizontal arm outside her body silhouette:
+    for y in range(0, 50):
         for x in range(0, 52):
-            if y <= 15 and x >= 30:
+            if y <= 17 and x >= 30:
                 stand[y, x] = 0
-            elif 16 <= y <= 33 and x >= 29:
+            elif 18 <= y <= 23 and x >= 29:
                 stand[y, x] = 0
-    neutralize_archer_chest_arm(stand, max_chest_x=28)
-    stand = add_outline_to_layer(stand)
+            elif 24 <= y <= 35 and x >= 34:
+                stand[y, x] = 0
+            elif y >= 36 and x >= 36:
+                stand[y, x] = 0
+    stand = strip_isolated_pixels(add_outline_to_layer(stand))
 
-    # Extract Sylvara's actual pixel-art Left Boot and Right Boot (y=40..49 only, no upper thighs!)
+    # Extract Sylvara's actual pixel-art Left Boot and Right Boot (y=39..49)
     leg_back_patch = np.zeros((52, 52, 4), dtype=np.uint8)
     leg_front_patch = np.zeros((52, 52, 4), dtype=np.uint8)
-    leg_back_patch[40:50, 16:25] = stand[40:50, 16:25]
-    leg_front_patch[40:50, 26:37] = stand[40:50, 26:37]
+    leg_back_patch[39:50, 16:25] = stand[39:50, 16:25]
+    leg_front_patch[39:50, 26:36] = stand[39:50, 26:36]
 
-    # Upper torso + full left emerald cloak (strip all standing thigh pixels y >= 32, x >= 13!)
+    # Upper torso + waist/tunic hip (y=0..33) + full left emerald cloak (y=34..44, x <= 16)
     stand_upper = np.zeros((52, 52, 4), dtype=np.uint8)
-    stand_upper[:32, :] = stand[:32, :]
-    stand_upper[32:44, :13] = stand[32:44, :13]
+    stand_upper[:34, :] = stand[:34, :]
+    stand_upper[34:45, :17] = stand[34:45, :17]
     stand_upper = add_outline_to_layer(stand_upper)
 
-    # 2. Clean aiming horizontal body (from atk_rel)
+    # 2. Clean aiming horizontal body (from atk_rel):
+    # Keep her entire torso, waist, hips, cloak, and legs (x <= 33 for y=24..35) intact; only strip the bow & extended arm!
     aim_h = rel.copy()
-    for y in range(0, 35):
+    for y in range(0, 50):
         for x in range(0, 52):
-            if y <= 15 and x >= 30:
+            if y <= 18 and x >= 29:
                 aim_h[y, x] = 0
-            elif 16 <= y <= 34 and x >= 29:
+            elif 19 <= y <= 23 and x >= 29:
                 aim_h[y, x] = 0
-    neutralize_archer_chest_arm(aim_h, max_chest_x=28)
-    aim_h = add_outline_to_layer(aim_h)
+            elif 24 <= y <= 35 and x >= 34:
+                aim_h[y, x] = 0
+            elif y >= 36 and x >= 36:
+                aim_h[y, x] = 0
+    aim_h = strip_isolated_pixels(add_outline_to_layer(aim_h))
 
-    # Aiming upper body without standing thighs (for aerial jump shots & crouch shots!)
     aim_h_upper = np.zeros((52, 52, 4), dtype=np.uint8)
-    aim_h_upper[:32, :] = aim_h[:32, :]
-    aim_h_upper[32:44, :13] = aim_h[32:44, :13]
+    aim_h_upper[:34, :] = aim_h[:34, :]
+    aim_h_upper[34:45, :17] = aim_h[34:45, :17]
     aim_h_upper = add_outline_to_layer(aim_h_upper)
 
     # 3. Clean aiming upward body (from skill_up)
     aim_up = src['skill_up'].copy()
-    for y in range(0, 35):
+    # Restore clean bow-free lower torso & hips from `stand` (y=19..35, x=18..34)
+    aim_up[19:35, 18:34] = stand[19:35, 18:34]
+    for y in range(0, 50):
         for x in range(0, 52):
-            if y <= 15 and x >= 30:
+            if y <= 18 and x >= 29:
                 aim_up[y, x] = 0
-            elif 16 <= y <= 34 and x >= 29:
+            elif 19 <= y <= 23 and x >= 29:
                 aim_up[y, x] = 0
-    neutralize_archer_chest_arm(aim_up, max_chest_x=28)
-    aim_up = add_outline_to_layer(aim_up)
+            elif 24 <= y <= 35 and x >= 34:
+                aim_up[y, x] = 0
+    aim_up = strip_isolated_pixels(add_outline_to_layer(aim_up))
 
-    # 4. Clean kneeling/crouching bodies (kneel1, kneel2) without baked-in right bow limb or chest hand
+    # 4. Clean kneeling bodies (kneel1, kneel2) for Row 5 DEATH only:
+    # Remove only the baked right bow limb (x >= 31, y=14..33) while keeping her kneeling body intact
     kneel1 = src['kneel1'].copy()
     kneel2 = src['kneel2'].copy()
     for kn in (kneel1, kneel2):
         for y in range(14, 34):
-            for x in range(29, 52):
+            for x in range(31, 52):
                 kn[y, x] = 0
-        neutralize_archer_chest_arm(kn, max_chest_x=28)
-    kneel1 = add_outline_to_layer(kneel1)
-    kneel2 = add_outline_to_layer(kneel2)
+    kneel1 = strip_isolated_pixels(add_outline_to_layer(kneel1))
+    kneel2 = strip_isolated_pixels(add_outline_to_layer(kneel2))
 
     # 5. Clean fallen body (remove the sticking-up bowstring at y <= 36!)
     fall = src['fall'].copy()
@@ -287,13 +293,18 @@ def make_clean_templates(src):
                 fall[y, x] = 0
     fall = add_outline_to_layer(fall)
 
-    # 6. Clean dash body (remove front bow limb and neutralize chest arm)
+    # 6. Clean dash body: remove ONLY the baked front bow limb (x >= 35 for y=12..29, x >= 32 for y=26..31)
+    # while keeping her entire leaning torso, head, quiver, and legs 100% intact!
     dash = src['dash'].copy()
-    for y in range(8, 30):
-        for x in range(30, 52):
-            dash[y, x] = 0
-    neutralize_archer_chest_arm(dash, max_chest_x=29)
-    dash = add_outline_to_layer(dash)
+    for y in range(10, 32):
+        for x in range(0, 52):
+            if y <= 24 and x >= 34:
+                dash[y, x] = 0
+            elif 25 <= y <= 31 and x >= 32:
+                r, g, b, a = dash[y, x]
+                if a > 0 and (r > 130 or g > 130):
+                    dash[y, x] = 0
+    dash = strip_isolated_pixels(add_outline_to_layer(dash))
 
     return {
         'stand': stand,
@@ -310,32 +321,32 @@ def make_clean_templates(src):
     }
 
 
-def apply_cloak_wave(frame, phase_rad, amplitude=1.4, vertical_flutter=0.6, is_dash=False):
+def apply_cloak_wave(frame, phase_rad, amplitude=1.2, vertical_flutter=0.5, is_dash=False):
     """
-    Applies a smooth 30-frame traveling wind-wave to Sylvara's emerald cloak (left side of sprite)
-    without touching her torso, head, or legs, and fills all wave pinholes.
+    Applies a smooth, tear-free 30-frame traveling wind-wave to Sylvara's emerald cloak (left side of sprite)
+    without detaching floating pixels above her back or tearing seams.
     """
     out = frame.copy()
     if is_dash:
-        cloak_region = frame[15:38, 0:22].copy()
-        out[15:38, 0:22] = 0
-        for y in range(15, 38):
-            for x in range(0, 22):
-                if cloak_region[y - 15, x, 3] == 0:
+        cloak_region = frame[16:36, 0:21].copy()
+        out[16:36, 0:21] = 0
+        for y in range(16, 36):
+            for x in range(0, 21):
+                if cloak_region[y - 16, x, 3] == 0:
                     continue
-                if y >= 32 and x >= 15:
-                    out[y, max(2, x)] = cloak_region[y - 15, x]
+                if y >= 31 and x >= 14:
+                    out[y, max(2, x)] = cloak_region[y - 16, x]
                     continue
-                dist_from_shoulder = max(0.0, (22 - x) / 18.0)
-                dy = int(round(math.sin(phase_rad - dist_from_shoulder * 3.2) * amplitude * dist_from_shoulder))
-                dx = int(round(math.cos(phase_rad * 2.0 - dist_from_shoulder * 2.5) * 0.8 * dist_from_shoulder))
-                ny = max(12, min(46, y + dy))
-                nx = max(2, min(22, x + dx))
-                out[ny, nx] = cloak_region[y - 15, x]
-                if x >= 14 and out[y, x, 3] == 0:
-                    out[y, x] = cloak_region[y - 15, x]
-        out = fill_layer_pinholes(out, x0=2, x1=23, y0=11, y1=47, require_3_neighbors=False)
-        return add_outline_to_layer(out)
+                dist_from_shoulder = max(0.0, (21 - x) / 18.0)
+                dy = int(round(math.sin(phase_rad - dist_from_shoulder * 2.8) * min(1.0, amplitude * 0.5) * dist_from_shoulder))
+                dx = int(round(math.cos(phase_rad * 2.0 - dist_from_shoulder * 2.2) * 0.6 * dist_from_shoulder))
+                ny = max(16, min(36, y + dy))
+                nx = max(2, min(21, x + dx))
+                out[ny, nx] = cloak_region[y - 16, x]
+                if x >= 13 and out[y, x, 3] == 0:
+                    out[y, x] = cloak_region[y - 16, x]
+        out = fill_layer_pinholes(out, x0=2, x1=22, y0=15, y1=37, require_3_neighbors=False)
+        return strip_isolated_pixels(add_outline_to_layer(out))
 
     cloak_mask = np.zeros((52, 52), dtype=bool)
     for y in range(14, 48):
@@ -349,8 +360,8 @@ def apply_cloak_wave(frame, phase_rad, amplitude=1.4, vertical_flutter=0.6, is_d
 
     for y in range(14, 48):
         u = (y - 14) / 33.0
-        wave_x = math.sin(phase_rad - u * 3.6) * (amplitude * (0.25 + 0.85 * u))
-        wave_y = math.cos(phase_rad - u * 2.8) * (vertical_flutter * u)
+        wave_x = math.sin(phase_rad - u * 3.4) * (min(1.3, amplitude) * (0.2 + 0.75 * u))
+        wave_y = math.cos(phase_rad - u * 2.6) * (min(0.6, vertical_flutter) * u)
         dx = int(round(wave_x))
         dy = int(round(wave_y))
         max_cloak_x = 18 if y < 38 else 15
@@ -365,7 +376,7 @@ def apply_cloak_wave(frame, phase_rad, amplitude=1.4, vertical_flutter=0.6, is_d
                 out[y, x] = cloak_pixels[y, x]
 
     out = fill_layer_pinholes(out, x0=2, x1=21, y0=13, y1=49, require_3_neighbors=False)
-    return add_outline_to_layer(out)
+    return strip_isolated_pixels(add_outline_to_layer(out))
 
 
 def solve_ik_elbow(sx, sy, hx, hy, L1=4.8, L2=4.6, bend_side=1.0):
@@ -404,15 +415,15 @@ def solve_ik_elbow(sx, sy, hx, hy, L1=4.8, L2=4.6, bend_side=1.0):
     return ex, ey
 
 
-def draw_ik_ranger_arm(layer, sx, sy, hx, hy, L1=5.2, L2=5.0, bend_side=1.0, is_draw_arm=False, is_rear=False):
+def draw_ik_ranger_arm(layer, sx, sy, hx, hy, L1=4.6, L2=4.4, bend_side=1.0, is_draw_arm=False, is_rear=False):
     """
-    Draws a sculpted 2-segment archer arm onto `layer` with a 1px dark outer outline (`CLOAK_DEEP`)
-    so the arm reads with crisp separation against the torso:
-    - Rotating emerald-and-silver sylvan shoulder pauldron at (sx, sy)
-    - 3px-thick emerald sleeve upper arm from (sx, sy) to (ex, ey)
-    - Leather/silver elbow guard at (ex, ey)
-    - 3px-thick leather archer's bracer forearm from (ex, ey) to (hx, hy)
-    - 2x2 archer's glove/skin hand at (hx, hy)
+    Draws a sleek, anatomically proportioned 3px-thick elven ranger bow-arm onto `layer`
+    from `(sx, sy)` (just in front of Sylvara's master-painted silver shoulder pauldron)
+    to the bow grip `(hx, hy)`:
+    - 3px-thick emerald sleeve upper arm (`+0.75` highlight, `0.0` core, `-0.75` dark shadow)
+    - 3px-thick leather/silver archer's bracer forearm
+    - Subtle silver elbow guard at `(ex, ey)`
+    - 2x2 archer's glove/skin hand at `(hx, hy)`
     """
     sx = max(4.0, min(47.0, float(sx)))
     sy = max(4.0, min(47.0, float(sy)))
@@ -421,40 +432,26 @@ def draw_ik_ranger_arm(layer, sx, sy, hx, hy, L1=5.2, L2=5.0, bend_side=1.0, is_
 
     ex, ey = solve_ik_elbow(sx, sy, hx, hy, L1=L1, L2=L2, bend_side=bend_side)
 
-    # 1. Upper Arm (Shoulder -> Elbow) with 1px CLOAK_DEEP outer outline + 3px emerald sleeve
+    # 1. Sleek 3px Upper Arm (Shoulder -> Elbow)
     u1x, u1y = ex - sx, ey - sy
     d1 = max(1.0, math.hypot(u1x, u1y))
     n1x, n1y = -u1y / d1, u1x / d1
-    draw_line_px(layer, sx + n1x * 1.25, sy + n1y * 1.25, ex + n1x * 1.05, ey + n1y * 1.05, CLOAK_DEEP)
-    draw_line_px(layer, sx - n1x * 1.25, sy - n1y * 1.25, ex - n1x * 1.05, ey - n1y * 1.05, CLOAK_DEEP)
-    draw_line_px(layer, sx + n1x * 0.7, sy + n1y * 0.7, ex + n1x * 0.6, ey + n1y * 0.6, CLOAK_LIGHT)
-    draw_line_px(layer, sx - n1x * 0.7, sy - n1y * 0.7, ex - n1x * 0.6, ey - n1y * 0.6, CLOAK_DARK)
+    draw_line_px(layer, sx - n1x * 0.75, sy - n1y * 0.75, ex - n1x * 0.75, ey - n1y * 0.75, CLOAK_DEEP)
+    draw_line_px(layer, sx + n1x * 0.75, sy + n1y * 0.75, ex + n1x * 0.75, ey + n1y * 0.75, CLOAK_LIGHT)
     draw_line_px(layer, sx, sy, ex, ey, CLOAK_MID)
 
-    # 2. Forearm Bracer (Elbow -> Hand) with 1px CLOAK_DEEP outer outline + 3px leather/silver bracer
+    # 2. Sleek 3px Forearm Bracer (Elbow -> Hand)
     u2x, u2y = hx - ex, hy - ey
     d2 = max(1.0, math.hypot(u2x, u2y))
     n2x, n2y = -u2y / d2, u2x / d2
-    draw_line_px(layer, ex + n2x * 1.2, ey + n2y * 1.2, hx + n2x * 1.0, hy + n2y * 1.0, CLOAK_DEEP)
-    draw_line_px(layer, ex - n2x * 1.2, ey - n2y * 1.2, hx - n2x * 1.0, hy - n2y * 1.0, CLOAK_DEEP)
-    draw_line_px(layer, ex + n2x * 0.65, ey + n2y * 0.65, hx + n2x * 0.55, hy + n2y * 0.55, SILVER_MID)
-    draw_line_px(layer, ex - n2x * 0.65, ey - n2y * 0.65, hx - n2x * 0.55, hy - n2y * 0.55, LEATHER_MID)
+    draw_line_px(layer, ex - n2x * 0.75, ey - n2y * 0.75, hx - n2x * 0.75, hy - n2y * 0.75, CLOAK_DEEP)
+    draw_line_px(layer, ex + n2x * 0.75, ey + n2y * 0.75, hx + n2x * 0.75, hy + n2y * 0.75, SILVER_MID)
     draw_line_px(layer, ex, ey, hx, hy, LEATHER_LIGHT)
 
-    # 3. Rotating Emerald-and-Silver Sylvan Shoulder Pauldron at (sx, sy)
-    ux1, uy1 = u1x / d1, u1y / d1
-    for p_step in (-1.3, -0.4, 0.4, 1.3):
-        px_s = sx + ux1 * 0.9 + n1x * p_step
-        py_s = sy + uy1 * 0.9 + n1y * p_step
-        set_px(layer, px_s, py_s, SILVER_BRIGHT if abs(p_step) > 0.9 else CLOAK_LIGHT)
-        set_px(layer, sx + n1x * p_step, sy + n1y * p_step, CLOAK_MID)
-    set_px(layer, sx, sy - 1, SILVER_BRIGHT)
-
-    # 4. Leather/Silver Elbow Guard at (ex, ey)
+    # 3. Subtle Silver Elbow Guard at (ex, ey)
     set_px(layer, ex, ey, SILVER_BRIGHT if is_draw_arm else SILVER_MID)
-    set_px(layer, ex + n1x * 0.6, ey + n1y * 0.6, LEATHER_LIGHT)
 
-    # 5. 2x2 Archer's Glove / Skin Hand at (hx, hy)
+    # 4. 2x2 Archer's Glove / Skin Hand at (hx, hy)
     ihx = max(3, min(47, int(round(hx))))
     ihy = max(3, min(47, int(round(hy))))
     set_px(layer, ihx, ihy, SKIN_LIGHT)
@@ -495,10 +492,11 @@ def draw_articulated_bow(
     bow_half_span=13.0,
 ):
     """
-    Renders Sylvara's 2-Bone IK Left Bow-Arm holding the Golden Elven Greatbow well IN FRONT of her torso
-    (`gx = 33..38, gy = 18..23` in forward stances; `gx = 30..33, gy = 12..15` in skyward stances — NEVER `gx <= 29`),
-    and ONLY renders the Right Draw-Arm (`draw_ik_ranger_arm(..., is_rear=False)`) when `draw_t >= 0.20`
-    so zero extra hands ever sit on her chest in IDLE, WALK, or DASH!
+    Renders Sylvara's sleek 2-Bone IK Left Bow-Arm at her true anatomical shoulder height (`sy_bow = 15.5 + dy_off`)
+    right in front of her existing silver shoulder pauldron (`x = 20..25, y = 13..16`), holding the Golden Elven
+    Greatbow well IN FRONT of her torso (`gx = 33..37, gy = 15..20` in forward stances; `gx = 30..33, gy = 11..15`
+    in skyward stances), and renders a compact drawing hand + bracer at `(nock_x, nock_y)` when `draw_t >= 0.20`
+    without covering her silver pauldron or putting extra limbs on her chest.
     """
     bow_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     bow_layer = np.zeros((52, 52, 4), dtype=np.uint8)
@@ -513,31 +511,29 @@ def draw_articulated_bow(
     dx_off = float(shoulder[0]) - 28.0
     dy_off = float(shoulder[1]) - 16.0
 
-    sx_bow = 26.5 + dx_off
-    sy_bow = 18.5 + dy_off
-    sx_draw = 24.5 + dx_off
-    sy_draw = 18.5 + dy_off
+    sx_bow = 27.0 + dx_off
+    sy_bow = 15.5 + dy_off
 
-    # Keep bow grip gx well out IN FRONT of her torso (gx = 33..38 in forward stances, gx = 30..33 in skyward stances)
-    eff_reach = max(8.6, bow_reach - 1.0 + 1.2 * draw_t)
+    # Keep bow grip gx well out IN FRONT of her torso at natural shoulder/chest level (gy = 15..20)
+    eff_reach = max(7.5, bow_reach - 2.0 + 1.0 * draw_t)
     raw_gx = sx_bow + ux * eff_reach
     raw_gy = sy_bow + uy * eff_reach
     if aim_deg < -18.0:
         gx = max(30.5, min(33.5, raw_gx))
-        gy = max(12.0, min(15.5, raw_gy))
+        gy = max(11.5, min(15.0, raw_gy))
     else:
-        gx = max(33.0, min(38.0, raw_gx))
-        gy = max(17.5 + max(0.0, dy_off * 0.8), min(25.0 + max(0.0, dy_off), raw_gy))
+        gx = max(33.0, min(37.5, raw_gx))
+        gy = max(14.5 + max(0.0, dy_off * 0.8), min(20.5 + max(0.0, dy_off), raw_gy))
 
-    # 1. Left Bow-Arm (2-Bone IK holding the bow out in front of her body)
+    # 1. Left Bow-Arm (sleek 3px 2-Bone IK holding the bow out in front of her shoulder)
     draw_ik_ranger_arm(
         bow_arm_layer,
         sx_bow,
         sy_bow,
         gx,
         gy,
-        L1=5.4,
-        L2=5.2,
+        L1=4.6,
+        L2=4.4,
         bend_side=1.0,
         is_draw_arm=False,
         is_rear=True,
@@ -573,12 +569,12 @@ def draw_articulated_bow(
     set_px(bow_layer, max(3.0, min(48.0, gx + ux * 0.8)), max(3.0, min(48.0, gy + uy * 0.8)), EMERALD_MID)
     set_px(bow_layer, gx, max(3.0, min(48.0, gy - 1.0)), EMERALD_BRIGHT)
 
-    # 3. Compute Bowstring Nock Point
+    # 3. Compute Bowstring Nock Point anchored to her cheek/pauldron (x = 26, y = 15 + dy_off)
     mid_tip_x = 0.5 * (top_tip[0] + bot_tip[0])
     mid_tip_y = 0.5 * (top_tip[1] + bot_tip[1])
 
-    cheek_x = max(4.0, min(46.0, sx_draw - ux * 1.2 + px * (-0.8)))
-    cheek_y = max(4.0, min(46.0, sy_draw - uy * 1.2 + py * (-1.0)))
+    cheek_x = max(4.0, min(46.0, sx_bow - ux * 1.0 + px * (-0.4)))
+    cheek_y = max(4.0, min(46.0, sy_bow - uy * 0.5 + py * (-0.4)))
 
     if draw_t > 0.01:
         nock_x = max(3.5, min(47.5, mid_tip_x * (1.0 - draw_t) + cheek_x * draw_t))
@@ -591,20 +587,16 @@ def draw_articulated_bow(
     draw_line_px(str_layer, top_tip[0], top_tip[1], nock_x, nock_y, EMERALD_BRIGHT)
     draw_line_px(str_layer, bot_tip[0], bot_tip[1], nock_x, nock_y, EMERALD_BRIGHT)
 
-    # 5. Right Draw-Arm: ONLY drawn when draw_t >= 0.20 so no second hand ever sits on her chest!
+    # 5. Right Draw-Hand & Bracer at (nock_x, nock_y) when draw_t >= 0.20 (preserving her silver shoulder pauldron!)
     if draw_t >= 0.20:
-        draw_ik_ranger_arm(
-            draw_arm_layer,
-            sx_draw,
-            sy_draw,
-            nock_x,
-            nock_y,
-            L1=4.8,
-            L2=4.6,
-            bend_side=-1.0,
-            is_draw_arm=True,
-            is_rear=False,
-        )
+        ihx = max(3, min(47, int(round(nock_x))))
+        ihy = max(3, min(47, int(round(nock_y))))
+        set_px(draw_arm_layer, ihx - 1, ihy, SILVER_MID)
+        set_px(draw_arm_layer, ihx - 1, ihy + 1, LEATHER_LIGHT)
+        set_px(draw_arm_layer, ihx, ihy, SKIN_LIGHT)
+        set_px(draw_arm_layer, ihx + 1, ihy, SKIN_LIGHT)
+        set_px(draw_arm_layer, ihx, ihy + 1, SKIN_MID)
+        set_px(draw_arm_layer, ihx + 1, ihy + 1, SKIN_MID)
 
     # 6. Nocked Emerald / Astral Arrow(s) or Release Flash (auto-clamped inside [3..48, 3..48])
     arrow_layer = np.zeros((52, 52, 4), dtype=np.uint8)
@@ -709,7 +701,7 @@ def render_walk_legs(tpl, f):
     cape_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    # 1. Extract Flowing Emerald Cloak (x <= 16 for y < 31, x <= 12 for 31 <= y <= 43 so back leg is NEVER copied!)
+    # 1. Extract Flowing Emerald Cloak (x <= 18 for y < 31, x <= 12 for 31 <= y <= 43 so back leg is NEVER copied!)
     for y in range(14, 44):
         ny = y + bob_y
         if not (2 <= ny < 50):
@@ -717,25 +709,25 @@ def render_walk_legs(tpl, f):
         u = (y - 14) / 29.0
         wave_dx = int(round(-u * 1.6 + math.sin(phase - u * 3.2) * (1.2 * u)))
         wave_dy = int(round(math.cos(phase - u * 2.6) * (0.6 * u)))
-        max_cx = 16 if y < 31 else 12
+        max_cx = 18 if y < 31 else 12
         for x in range(1, max_cx + 1):
             if stand[y, x, 3] == 0:
                 continue
             cy = max(14, min(48, ny + wave_dy))
-            cx = max(2, min(19, x + wave_dx))
+            cx = max(2, min(20, x + wave_dx))
             cape_layer[cy, cx] = stand[y, x]
             if x >= max_cx - 3 and y <= 35:
                 cape_layer[ny, x] = stand[y, x]
-    cape_layer = fill_layer_pinholes(cape_layer, x0=2, x1=20, y0=13, y1=48, require_3_neighbors=False)
+    cape_layer = fill_layer_pinholes(cape_layer, x0=2, x1=21, y0=13, y1=48, require_3_neighbors=False)
 
-    # 2. Extract ONLY Upper Torso, Head & Waist Belt (y = 0..31, stopping strictly at waist belt above standing thighs!)
-    for y in range(0, 32):
+    # 2. Extract Upper Torso, Head, Waist Belt & Emerald Tunic Skirt (y = 0..33)
+    for y in range(0, 34):
         ny = y + bob_y
         if not (2 <= ny < 50):
             continue
         lean_dx = 1 if y <= 26 else 0
-        min_tx = 16 if y < 28 else 20
-        max_tx = 30 if y < 28 else 29
+        min_tx = 16 if y < 29 else 19
+        max_tx = 31 if y < 29 else 30
         for x in range(min_tx, max_tx):
             if stand[y, x, 3] > 0:
                 torso_layer[ny, min(49, x + lean_dx)] = stand[y, x]
@@ -1214,23 +1206,15 @@ def build_row5_death(tpl):
 
         elif f <= 13:
             u = (f - 6) / 7.0
-            base = (tpl['kneel1'] if f <= 9 else tpl['kneel2']).copy()
-            if f in (7, 8):
-                head_drop = 1
-                head_slice = base[8:19, 20:32].copy()
-                base[8 + head_drop:19 + head_drop, 20:32] = head_slice
-                base[8, 20:32] = head_slice[0, :]
-                base = fill_layer_pinholes(base)
-                base = add_outline_to_layer(base)
-
-            base = apply_cloak_wave(base, u * math.pi, amplitude=1.0, vertical_flutter=0.3)
+            base = make_crouch_body(tpl, 5 if f <= 9 else 6)
+            base = apply_cloak_wave(base, u * math.pi, amplitude=0.9, vertical_flutter=0.25)
             bow_deg = 52.0 + u * 20.0
             frame = draw_articulated_bow(
                 base,
-                shoulder=(27, 23 + (1 if f >= 10 else 0)),
+                shoulder=(28, 21 + (1 if f >= 10 else 0)),
                 aim_deg=bow_deg,
                 draw_t=0.0,
-                bow_reach=8.0,
+                bow_reach=8.5,
                 bow_half_span=11.0
             )
             frames.append(frame)
@@ -1240,11 +1224,11 @@ def build_row5_death(tpl):
             tilt_deg = +u * 85.0
 
             kneel_with_bow = draw_articulated_bow(
-                tpl['kneel2'].copy(),
-                shoulder=(27, 24),
+                make_crouch_body(tpl, 6),
+                shoulder=(28, 22),
                 aim_deg=72.0 + u * 16.0,
                 draw_t=0.0,
-                bow_reach=7.5,
+                bow_reach=8.0,
                 bow_half_span=10.5
             )
             pil_kn = Image.fromarray(kneel_with_bow, mode='RGBA')
@@ -1382,35 +1366,46 @@ def build_row6_dash(tpl):
 
 def make_crouch_body(tpl, crouch_depth):
     """
-    Constructs a clean low-profile crouched ranger body with `crouch_depth` in [1..6] logical pixels:
-    - Uses `kneel1` bent legs anchored at the bottom (y=31..50) when crouch_depth >= 5, or compressed
-      bent-knee standing legs (y=32..50) when crouch_depth in 1..4.
-    - Shifts upper torso (y < 32) down by `crouch_depth` and left cloak (32..43, x <= 12) down by `crouch_depth // 2`.
+    Constructs a seamless, continuous knee-bend crouched ranger body from `tpl['stand']`
+    with `crouch_depth` in [1..6] logical pixels:
+    - Shifts upper torso, hood, and cloak (ny <= 27 + d) down by `d` with a subtle 1px forward athletic lean.
+    - Compresses the thighs and knees (ny = 28 + d .. 42) via inverse-mapped vertical warp with a forward knee bend.
+    - Keeps boots anchored cleanly at the ground line (ny = 43..49).
     """
+    stand = tpl['stand']
+    d = max(0, min(6, int(round(crouch_depth))))
+    if d == 0:
+        return stand.copy()
+
     canvas = np.zeros((52, 52, 4), dtype=np.uint8)
-    upper = tpl['stand_upper']
-    if crouch_depth >= 5:
-        canvas[31:50, :] = tpl['kneel1'][31:50, :]
-    else:
-        canvas[32:50, :] = tpl['stand'][32:50, :]
-
-    for y in range(1, 32):
-        ny = y + crouch_depth
-        if 1 <= ny <= 49:
-            for x in range(1, 51):
-                if upper[y, x, 3] > 0:
-                    canvas[ny, x] = upper[y, x]
-
-    # Shift left cloak (y=32..43, x <= 12) down smoothly without copying standing thighs
-    cloak_shift = crouch_depth // 2
-    for y in range(32, 44):
-        ny = min(49, y + cloak_shift)
-        for x in range(1, 13):
-            if upper[y, x, 3] > 0:
-                canvas[ny, x] = upper[y, x]
+    for ny in range(1, 50):
+        if ny <= 27 + d:
+            sy = ny - d
+            if 1 <= sy < 50:
+                dx = 1 if (d >= 3 and sy <= 25) else 0
+                for x in range(1, 50):
+                    if stand[sy, x, 3] > 0:
+                        canvas[ny, min(49, x + dx)] = stand[sy, x]
+        elif ny <= 42:
+            u = (ny - (27 + d)) / float(max(1, 42 - (27 + d)))
+            sy = min(42, max(28, int(round(27.0 + u * 15.0))))
+            knee_bend = math.sin(u * math.pi) * (d * 0.35)
+            for x in range(1, 50):
+                if stand[sy, x, 3] > 0:
+                    if x >= 23:
+                        dx = int(round(knee_bend))
+                    elif x <= 16:
+                        dx = -int(round(knee_bend * 0.35))
+                    else:
+                        dx = 0
+                    canvas[ny, max(2, min(49, x + dx))] = stand[sy, x]
+        else:
+            for x in range(1, 50):
+                if stand[ny, x, 3] > 0:
+                    canvas[ny, x] = stand[ny, x]
 
     canvas = fill_layer_pinholes(canvas, require_3_neighbors=False)
-    return add_outline_to_layer(canvas)
+    return strip_isolated_pixels(canvas)
 
 
 def build_row7_crouch(tpl):
@@ -1428,12 +1423,12 @@ def build_row7_crouch(tpl):
             depths = [0, 1, 2, 4, 5, 6]
             d = depths[f]
             base = tpl['stand'].copy() if d == 0 else make_crouch_body(tpl, d)
-            base = apply_cloak_wave(base, phase, amplitude=1.3, vertical_flutter=0.4)
+            base = apply_cloak_wave(base, phase, amplitude=1.1, vertical_flutter=0.3)
             u = f / 5.0
-            aim_deg = 38.0 * (1.0 - u) + 2.0 * u
+            aim_deg = 34.0 * (1.0 - u) + 2.0 * u
             frame = draw_articulated_bow(
                 base,
-                shoulder=(28, 16 + d),
+                shoulder=(28 + (1 if d >= 3 else 0), 16 + d),
                 aim_deg=aim_deg,
                 draw_t=0.0,
                 arrow_mode='single' if f >= 4 else 'none',
@@ -1443,15 +1438,15 @@ def build_row7_crouch(tpl):
             frames.append(frame)
 
         elif f <= 17:
-            d = 6
+            d = 5
             base = make_crouch_body(tpl, d)
-            base = apply_cloak_wave(base, phase, amplitude=1.2, vertical_flutter=0.3)
+            base = apply_cloak_wave(base, phase, amplitude=1.0, vertical_flutter=0.25)
             draw_t = (f - 5) / 12.0  # 0.08 -> 1.00
             charge = 3 if f >= 16 else (2 if f >= 14 else (1 if f >= 11 else 0))
             frame = draw_articulated_bow(
                 base,
-                shoulder=(28, 15 + d),
-                aim_deg=-2.0,
+                shoulder=(29, 16 + d),
+                aim_deg=0.0,
                 draw_t=draw_t,
                 arrow_mode='single',
                 charge_level=charge,
@@ -1461,17 +1456,17 @@ def build_row7_crouch(tpl):
             frames.append(frame)
 
         elif f <= 22:
-            d = 6
+            d = 5
             k = f - 18
             base = make_crouch_body(tpl, d)
             if k in (0, 1):
                 base = shift_layer(base, -1, 0)
-            base = apply_cloak_wave(base, phase * 1.5, amplitude=1.6, vertical_flutter=0.5)
+            base = apply_cloak_wave(base, phase * 1.5, amplitude=1.2, vertical_flutter=0.35)
             vib = [1.8, -1.2, 0.8, -0.4, 0.0][k]
             frame = draw_articulated_bow(
                 base,
-                shoulder=(27 if k <= 1 else 28, 15 + d),
-                aim_deg=-5.0 + k * 1.5,
+                shoulder=(28 if k <= 1 else 29, 16 + d),
+                aim_deg=-3.0 + k * 1.5,
                 draw_t=0.0,
                 string_vib=vib,
                 arrow_mode='none',
@@ -1482,16 +1477,16 @@ def build_row7_crouch(tpl):
             frames.append(frame)
 
         else:
-            depths = [6, 5, 4, 3, 2, 1, 0]
+            depths = [5, 5, 4, 3, 2, 1, 0]
             k = f - 23
             d = depths[k]
             base = tpl['stand'].copy() if d == 0 else make_crouch_body(tpl, d)
-            base = apply_cloak_wave(base, phase, amplitude=1.4, vertical_flutter=0.5)
+            base = apply_cloak_wave(base, phase, amplitude=1.1, vertical_flutter=0.3)
             u = k / 6.0
-            aim_deg = 4.0 * (1.0 - u) + 38.0 * u
+            aim_deg = 4.0 * (1.0 - u) + 34.0 * u
             frame = draw_articulated_bow(
                 base,
-                shoulder=(28 + (1 if d <= 1 else 0), 16 + d),
+                shoulder=(28 + (1 if d >= 3 else 0), 16 + d),
                 aim_deg=aim_deg,
                 draw_t=0.0,
                 arrow_mode='none',
@@ -1506,9 +1501,9 @@ def build_row7_crouch(tpl):
 def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
     """
     Constructs a clean, full-body aerial jumping ranger pose in back-to-front anatomical order:
-    - Backmost Layer: Billowing Emerald Cloak streaming behind Sylvara down to y=43 (x <= 16 for y < 31, x <= 12 for 31 <= y <= 43).
+    - Backmost Layer: Billowing Emerald Cloak streaming behind Sylvara down to y=43 (x <= 18 for y < 35, x <= 14 for 35 <= y <= 43).
     - Far Leg Layer: Trailing ranger leg & boot kicked back in an athletic aerial scissor-vault.
-    - Upper Torso & Hood: Strictly stops at waist belt (y=0..31, with x in 20..28 for y=28..31) so ZERO standing thigh pixels are copied!
+    - Upper Torso, Hood & Tunic Hip: (y=0..33, with x in 18..31 for y=28..33) so her waist and hips are never pinched!
     - Split Tunic Tabard: Sweeping between the legs.
     - Near Leg Layer: Leading knee tucked high in front (classic elven ranger mid-air bow stance!).
     """
@@ -1519,23 +1514,23 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
     cape_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    # 1. Billowing Aerial Cloak (x <= 16 for y < 31, x <= 12 for 31 <= y <= 43) lifted by the leap
-    cloak_lift = int(round(max(0.0, tuck_amount) * 2.5))
+    # 1. Billowing Aerial Cloak (x <= 18 for y < 35, x <= 14 for 35 <= y <= 43) lifted by the leap
+    cloak_lift = int(round(max(0.0, tuck_amount) * 2.2))
     for y in range(14, 44):
-        max_cx = 16 if y < 31 else 12
+        max_cx = 18 if y < 35 else 14
         for x in range(1, max_cx + 1):
             if stand[y, x, 3] == 0:
                 continue
             u = (y - 14) / 29.0
-            cx = max(2, min(22, x - int(round(u * 2.5 * max(0.2, tuck_amount)))))
+            cx = max(2, min(22, x - int(round(u * 2.0 * max(0.2, tuck_amount)))))
             cy = max(12, min(48, y + torso_dy - int(round(u * cloak_lift))))
             cape_layer[cy, cx] = stand[y, x]
-            if x >= 11 and y < 31:
+            if x >= 11 and y < 35:
                 cape_layer[min(49, y + torso_dy), x] = stand[y, x]
     cape_layer = fill_layer_pinholes(cape_layer, x0=2, x1=23, y0=11, y1=49, require_3_neighbors=False)
 
-    # 2. Upper Torso & Hood stopping strictly at waist belt (y = 0..31, with 20 <= x <= 28 for y = 28..31)
-    for y in range(0, 32):
+    # 2. Upper Torso, Hood & Tunic Hip (y = 0..33, with 18 <= x <= 31 for y = 28..33)
+    for y in range(0, 34):
         ny = y + torso_dy
         if not (1 <= ny <= 50):
             continue
@@ -1543,7 +1538,7 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
         if y < 28:
             x_min, x_max = 15, 34
         else:
-            x_min, x_max = 20, 28
+            x_min, x_max = 18, 31
         for x in range(x_min, x_max + 1):
             if stand[y, x, 3] > 0:
                 torso_layer[ny, max(2, min(49, x + dx))] = stand[y, x]
@@ -1618,7 +1613,7 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
     out = composite_over(out, torso_layer)
     out = composite_over(out, tunic_layer)
     out = composite_over(out, near_leg)
-    return fill_layer_pinholes(out, require_3_neighbors=False)
+    return strip_isolated_pixels(fill_layer_pinholes(out, require_3_neighbors=False))
 
 
 def build_row8_jump(tpl):
