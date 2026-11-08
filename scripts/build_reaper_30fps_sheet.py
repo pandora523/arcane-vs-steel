@@ -339,14 +339,27 @@ def make_clean_templates(src):
     stand_upper[32:45, :15] = stand[32:45, :15]
     stand_upper = fill_layer_pinholes(add_outline_to_layer(stand_upper))
 
-    # 2. Clean forward slash/lunge body (from `atk_slash` with all right-side crescent blade pixels stripped,
-    #    baked chest arm neutralized, and clean lower legs/boots grafted from `stand`)
-    lunge = src['atk_slash'].copy()
-    for y in range(0, 52):
-        for x in range(31, 52):
-            lunge[y, x] = 0
+    # 2. Clean forward slash/lunge body: combines `atk_slash`'s billowing crimson battle-cloak on the left
+    #    (y = 19..44, x = 2..22, with the back gap filled) with `stand`'s crisp hooded skull, glowing eyes,
+    #    shoulder pauldron, and ribcage armor shifted (+1, +1) into an aggressive forward slash lean!
+    lunge = np.zeros((52, 52, 4), dtype=np.uint8)
+    raw_slash = src['atk_slash'].copy()
+    for y in range(19, 45):
+        for x in range(2, 23):
+            if raw_slash[y, x, 3] > 0:
+                lunge[y, x] = raw_slash[y, x]
+    for y in range(21, 33):
+        for x in range(13, 22):
+            if lunge[y, x, 3] == 0:
+                lunge[y, x] = np.array(CRIMSON_DARK if ((x + y) % 2 == 0) else ROBE_DEEP, dtype=np.uint8)
+    lunge[32:50, 8:40] = stand[32:50, 8:40]
+    for y in range(9, 33):
+        for x in range(15, 30):
+            if stand[y, x, 3] > 0:
+                ny = min(49, y + 1)
+                nx = min(49, x + 1)
+                lunge[ny, nx] = stand[y, x]
     lunge = neutralize_reaper_chest_arm(lunge)
-    lunge[36:50, 8:42] = stand[36:50, 8:42]
     lunge[50:, :, :] = 0
     lunge[:, :2, :] = 0
     lunge = strip_isolated_pixels(fill_layer_pinholes(add_outline_to_layer(lunge)))
@@ -608,202 +621,225 @@ def draw_articulated_scythe(
     shoulder_pos=(26, 19),
 ):
     """
-    Renders Malakor's articulated Abyssal Great-Scythe with an unmistakable WIDE Two-Handed Polearm Grip:
-    - Upper / Forward Hand (`(ux_grip, uy_grip)`): Grips `4.5..5.2px` UP the obsidian shaft toward the scythe head,
-      driven by the upper 2-Bone IK arm (`upper_arm_layer`, `bend_side=-1.0`, arcing above from `(sx_arm + 2.0, sy_arm - 1.2)`).
-    - Lower / Rear Hand (`(lx_grip, ly_grip)`): Grips `2.0..2.5px` DOWN the obsidian shaft toward the butt-spike,
-      driven by the lower 2-Bone IK arm (`lower_arm_layer`, `bend_side=+1.0`, arcing below from `(sx_arm - 0.5, sy_arm + 1.0)`).
-    - Because the upper arm bends UP (`bend_side=-1.0`) to the upper shaft and the lower arm bends DOWN (`bend_side=+1.0`)
-      to the lower shaft (`6.5..7.5px` apart along the pole), BOTH arms and BOTH bright skeletal bone gauntlets are 100%
-      visible and separated at every angle!
+    Renders Malakor's full-scale Abyssal Great-Scythe with an authentic Wide Two-Handed Polearm Grip
+    across his body (matching the iconic proportions of R0 C0 and R2 C3 in `backups/reaper_sheet_before_30fps.png`):
+    - Full-length diagonal Obsidian-Amethyst Polearm Shaft (`~28px` long) extending from the wicked butt-spike
+      near his lower-left hip (`bx0, by0`) across his torso through his Rear Hand (`rx, ry`) and Lead Hand (`hx, hy`)
+      up-right to the Winged Skull Collar (`head_x, head_y`).
+    - Full-scale `23.5px` Curved Crescent Abyssal Scythe Blade (`5px` wide near the collar tapering to a lethal
+      inward-hooked point, never crushed to a stub!) + broad silver-violet crescent motion-blur wake during slashes.
+    - Near Arm (Right Arm): Connects from Malakor's Near Shoulder Pauldron (`17.5 + dx_off, 18.5 + dy_off`)
+      down across his torso to his Rear Hand (`rx, ry`) gripping the lower polearm shaft.
+    - Far Arm (Left Arm): Connects from his Far Shoulder (`26.0 + dx_off, 17.5 + dy_off`) to his Lead Hand (`hx, hy`)
+      gripping the upper polearm shaft (`7.5..9.5px` up the pole from the Rear Hand).
     """
     scythe_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    upper_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    lower_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    far_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    near_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     gauntlet_top_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     fx_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
     def set_clamped_px(buf, x, y, col):
-        ix = max(3, min(48, int(round(x))))
-        iy = max(3, min(48, int(round(y))))
+        ix = max(2, min(49, int(round(x))))
+        iy = max(2, min(49, int(round(y))))
         buf[iy, ix] = col
 
-    # Keep shaft angle in [-82.0, 68.0] and blade_dir = 1 so the scythe pole and crescent blade
-    # stay cleanly in front of Malakor's body (hx >= 30) and never cut backward across his hood!
-    eff_deg = max(-82.0, min(68.0, float(shaft_deg)))
-    eff_bdir = 1
-    rad = math.radians(eff_deg)
-    ux, uy = math.cos(rad), math.sin(rad)
-    px, py = -uy * eff_bdir, ux * eff_bdir
-
-    # Center reference grip within [31..40, 11..40] strictly out in front of Malakor's torso
-    hx = float(max(31.0, min(40.0, grip_pos[0])))
-    hy = float(max(11.0, min(40.0, grip_pos[1])))
-
-    # True shoulder attachment at sx_arm = 25.5 + dx_off, sy_arm = 17.0 + dy_off
-    dx_off = float(shoulder_pos[0]) - 26.0
+    in_deg = float(shaft_deg)
     dy_off = float(shoulder_pos[1]) - 19.0
-    sx_arm = float(max(10.0, min(40.0, 25.5 + dx_off)))
-    sy_arm = float(max(10.0, min(40.0, 17.0 + dy_off)))
+    dx_off = float(shoulder_pos[0]) - 26.0
+    crouch_dy = max(0.0, dy_off)
 
-    # Dynamically clamp shaft_up (shaft_reach) so head + top spike stay inside [3..48, 3..48]
-    shaft_up = float(shaft_reach)
-    if ux > 0.04:
-        shaft_up = min(shaft_up, (45.0 - hx) / ux)
-    elif ux < -0.04:
-        shaft_up = min(shaft_up, (30.0 - hx) / ux)
-    if uy > 0.04:
-        shaft_up = min(shaft_up, (45.0 - hy) / uy)
-    elif uy < -0.04:
-        shaft_up = min(shaft_up, (6.0 - hy) / uy)
-    shaft_up = max(5.5, shaft_up)
+    # Check if this is a vertical ground-plant pose (Row 4 Ult Stage 3 or Row 5 Kneeling):
+    is_vertical_plant = (float(shaft_back) >= 15.0 and in_deg <= -78.0) or (not two_handed and in_deg <= -75.0)
 
-    # Dynamically clamp shaft_back so butt-spike stays in front of body and inside [3..48, 3..48]
-    eff_back = float(shaft_back)
-    if -ux > 0.04:
-        eff_back = min(eff_back, (45.5 - hx) / (-ux))
-    elif -ux < -0.04:
-        eff_back = min(eff_back, (28.0 - hx) / (-ux))
-    if -uy > 0.04:
-        eff_back = min(eff_back, (45.5 - hy) / (-uy))
-    elif -uy < -0.04:
-        eff_back = min(eff_back, (5.5 - hy) / (-uy))
-    eff_back = max(4.8, eff_back)
+    if is_vertical_plant:
+        eff_deg = -88.0
+        rad = math.radians(eff_deg)
+        ux, uy = math.cos(rad), math.sin(rad)
+        px, py = -uy, ux
+        plant_x = 33.5 if not two_handed else 34.5
+        hx = plant_x
+        hy = 22.0 + crouch_dy * 0.65
+        rx = plant_x - 0.5
+        ry = min(42.0, hy + 6.5)
+        head_x = plant_x + 0.5
+        head_y = max(7.0, 11.5 + crouch_dy * 0.45)
+        bx0 = plant_x - 0.5
+        by0 = 46.5
+        eff_blade = 17.5
+        eff_curve = 9.5
+        norm_u = 0.0
+    else:
+        # Map caller shaft_deg [-80..+55] across a full 87-degree polearm swing arc [-75 deg .. +12 deg]:
+        # - At -80 deg (High Windup): eff_deg = -75 deg (collar high at y=6 above hood, both hands raised!)
+        # - At -50 deg (Guard/Idle):  eff_deg = -48 deg (classic diagonal 2-handed polearm guard across torso!)
+        # - At -14 deg (Mid-Slash):   eff_deg = -16 deg (polearm punched horizontally forward!)
+        # - At +50 deg (Low Reap):    eff_deg = +12 deg (collar driven low as crescent blade hooks across floor!)
+        if in_deg <= -50.0:
+            u_a = max(0.0, (in_deg - (-80.0)) / 30.0)
+            eff_deg = -75.0 + u_a * 27.0
+        elif in_deg <= -14.0:
+            u_a = (in_deg - (-50.0)) / 36.0
+            eff_deg = -48.0 + u_a * 32.0
+        else:
+            u_a = min(1.0, (in_deg - (-14.0)) / 69.0)
+            eff_deg = -16.0 + u_a * 28.0
 
-    bx0 = max(27.5, min(46.5, hx - ux * eff_back))
-    by0 = max(4.5, min(46.5, hy - uy * eff_back))
-    head_x = max(30.0, min(45.5, hx + ux * shaft_up))
-    head_y = max(5.5, min(45.5, hy + uy * shaft_up))
+        norm_u = max(0.0, min(1.0, (eff_deg - (-75.0)) / 87.0))
+        rad = math.radians(eff_deg)
+        ux, uy = math.cos(rad), math.sin(rad)
+        px, py = -uy, ux
 
-    # Dynamically reduce blade_len (blade_span) so head_x + px * b_dist and head_y + py * b_dist
-    # and the curved crescent tip stay in front of his body and NEVER exceed [3..48, 3..48]
-    blade_len = float(blade_span)
-    if px > 0.04:
-        blade_len = min(blade_len, (46.0 - head_x) / px)
-    elif px < -0.04:
-        blade_len = min(blade_len, (30.0 - head_x) / px)
-    if py > 0.04:
-        blade_len = min(blade_len, (46.0 - head_y) / py)
-    elif py < -0.04:
-        blade_len = min(blade_len, (5.0 - head_y) / py)
-    blade_len = max(5.5, blade_len)
-    eff_curve = float(blade_curve) * (blade_len / max(1.0, float(blade_span)))
+        # Hands midpoint (cx, cy) stays in front of Malakor's torso (cx=26.2..27.6) so his hood & eyes stay 100% clear
+        if eff_deg <= -48.0:
+            w = (eff_deg - (-75.0)) / 27.0
+            cx = 26.5 * (1.0 - w) + 26.2 * w
+            cy = 18.2 * (1.0 - w) + 21.8 * w + crouch_dy * 0.65
+        elif eff_deg <= -16.0:
+            w = (eff_deg - (-48.0)) / 32.0
+            cx = 26.2 * (1.0 - w) + 27.6 * w
+            cy = 21.8 * (1.0 - w) + 23.0 * w + crouch_dy * 0.65
+        else:
+            w = (eff_deg - (-16.0)) / 28.0
+            cx = 27.6 * (1.0 - w) + 26.4 * w
+            cy = 23.0 * (1.0 - w) + 24.2 * w + crouch_dy * 0.65
 
-    # 1. Long Obsidian-Iron & Amethyst Polearm Haft (from butt-spike `bx0, by0` to head `head_x, head_y`)
-    haft_steps = int(max(abs(head_x - bx0), abs(head_y - by0), 1) * 2)
+        cx += max(-1.5, min(1.5, dx_off * 0.5))
+        hx = cx + ux * 4.5
+        hy = cy + uy * 4.5
+        rx = cx - ux * 4.5
+        ry = cy - uy * 4.5
+        head_x = cx + ux * 13.0
+        head_y = cy + uy * 13.0
+        bx0 = max(6.0, min(45.0, cx - ux * 13.0))
+        by0 = max(6.0, min(46.0, cy - uy * 13.0))
+        eff_blade = 21.0
+        eff_curve = 12.0
+
+    # 1. Broad Silver-Violet Crescent Slash Motion-Blur Wake (when slash_arc is active, matching R2 C3!)
+    if slash_arc is not None:
+        for i in range(37):
+            s = i / 36.0
+            if s < 0.06:
+                continue
+            b_dist = s * eff_blade
+            hook = -(s ** 1.50) * eff_curve
+            cx_b = head_x + px * b_dist + ux * hook
+            cy_b = head_y + py * b_dist + uy * hook
+            wake_w = int(round(math.sin(s * math.pi) * (7.5 + norm_u * 2.0)))
+            for w_k in range(1, wake_w + 1):
+                wx = cx_b - ux * (w_k * 0.85) - px * (w_k * 0.25)
+                wy = cy_b - uy * (w_k * 0.85) - py * (w_k * 0.25)
+                u_w = w_k / max(1.0, float(wake_w))
+                if u_w < 0.40:
+                    w_col = SOUL_WHITE
+                elif u_w < 0.74:
+                    w_col = STEEL_EDGE if (i + w_k) % 2 == 0 else VIOLET_BRIGHT
+                else:
+                    w_col = VIOLET_MID if (i % 2 == 0) else OBSIDIAN_LIGHT
+                set_clamped_px(scythe_layer, wx, wy, w_col)
+
+    # 2. Full-Length Diagonal Obsidian-Iron & Amethyst Polearm Haft (bx0, by0 -> head_x, head_y)
+    haft_steps = int(max(abs(head_x - bx0), abs(head_y - by0), 1) * 2.5)
     for i in range(haft_steps + 1):
-        t = i / haft_steps
+        t = i / max(1, haft_steps)
         sh_x = bx0 + (head_x - bx0) * t
         sh_y = by0 + (head_y - by0) * t
-        set_clamped_px(scythe_layer, sh_x - px * 0.6, sh_y - py * 0.6, OBSIDIAN_DEEP)
-        col_shaft = VIOLET_MID if (int(i / 3) % 3 == 0) else OBSIDIAN_MID
+        set_clamped_px(scythe_layer, sh_x - px * 0.65, sh_y - py * 0.65, OBSIDIAN_DEEP)
+        set_clamped_px(scythe_layer, sh_x + px * 0.55, sh_y + py * 0.55, OBSIDIAN_DARK)
+        col_shaft = VIOLET_MID if (int(i / 4) % 3 == 0) else OBSIDIAN_LIGHT
         set_clamped_px(scythe_layer, sh_x, sh_y, col_shaft)
 
-    # Wicked Butt-Spike at rear of shaft (clamped inside [27..48, 3..48])
-    set_clamped_px(scythe_layer, max(27.0, bx0 - ux), by0 - uy, STEEL_LIGHT)
-    set_clamped_px(scythe_layer, max(27.0, bx0 - ux * 1.6), by0 - uy * 1.6, VIOLET_BRIGHT)
+    # Wicked Butt-Spike at bottom-left of polearm shaft
+    set_clamped_px(scythe_layer, bx0 - ux * 0.9, by0 - uy * 0.9, STEEL_LIGHT)
+    set_clamped_px(scythe_layer, bx0 - ux * 1.7, by0 - uy * 1.7, VIOLET_BRIGHT)
 
-    # 2. Winged Necropolis Skull Collar at Scythe Head (`head_x, head_y`)
-    for dx_c in (-1, 0, 1):
-        for dy_c in (-1, 0, 1):
-            set_clamped_px(
-                scythe_layer,
-                head_x + dx_c,
-                head_y + dy_c,
-                OBSIDIAN_LIGHT if (dx_c == 0 or dy_c == 0) else OBSIDIAN_DARK
-            )
+    # 3. Ornate Winged Necropolis Skull Collar + Upper Horn Spikes at Scythe Head
+    for dx_c in (-2, -1, 0, 1, 2):
+        for dy_c in (-2, -1, 0, 1, 2):
+            if abs(dx_c) + abs(dy_c) <= 3:
+                set_clamped_px(
+                    scythe_layer,
+                    head_x + dx_c,
+                    head_y + dy_c,
+                    OBSIDIAN_LIGHT if (abs(dx_c) <= 1 and abs(dy_c) <= 1) else OBSIDIAN_DARK
+                )
+    for h_i in range(1, 5):
+        set_clamped_px(
+            scythe_layer,
+            head_x - px * (h_i * 0.9) - ux * (h_i * 0.3),
+            head_y - py * (h_i * 0.9) - uy * (h_i * 0.3),
+            VIOLET_BRIGHT if h_i == 2 else OBSIDIAN_LIGHT
+        )
     set_clamped_px(scythe_layer, head_x, head_y, CRIMSON_BRIGHT if rune_glow >= 1 else CRIMSON_MID)
-    set_clamped_px(scythe_layer, max(29.0, head_x - px * 1.6), head_y - py * 1.6, VIOLET_BRIGHT)
-    set_clamped_px(scythe_layer, head_x + ux * 1.4, head_y + uy * 1.4, STEEL_LIGHT)
-    set_clamped_px(scythe_layer, head_x + ux * 2.2, head_y + uy * 2.2, VIOLET_BRIGHT)
+    set_clamped_px(scythe_layer, head_x + ux * 1.5, head_y + uy * 1.5, STEEL_LIGHT)
+    set_clamped_px(scythe_layer, head_x + ux * 2.4, head_y + uy * 2.4, VIOLET_BRIGHT)
 
-    # 3. Sweeping Curved Crescent Abyssal Scythe Blade (strictly in front of body: x >= 29)
-    b_steps = 24
+    # 4. Massive 21px Curved Crescent Abyssal Scythe Blade
+    b_steps = 40
     for i in range(b_steps + 1):
-        s = i / b_steps  # 0.0 at collar -> 1.0 at lethal crescent tip
-        b_dist = s * blade_len
-        hook = -(s ** 1.65) * eff_curve + math.sin(s * math.pi) * 1.4
-        cx = max(29.5, min(47.5, head_x + px * b_dist + ux * hook))
-        cy = max(3.5, min(47.5, head_y + py * b_dist + uy * hook))
+        s = i / b_steps
+        b_dist = s * eff_blade
+        hook = -(s ** 1.50) * eff_curve
+        cx_b = head_x + px * b_dist + ux * hook
+        cy_b = head_y + py * b_dist + uy * hook
 
-        # Blade width tapers from 4.2px near the collar to 1px at the needle tip
-        w_blade = max(1, int(round((1.0 - s * 0.78) * 4.2)))
+        w_blade = max(1, int(round((1.0 - s * 0.78) * 5.0)))
         for w_i in range(w_blade + 1):
-            off_u = (1.0 - (w_i / max(1, w_blade)) * 2.0) * (w_blade * 0.42)
-            bx_p = max(29.0, cx + ux * off_u)
-            by_p = cy + uy * off_u
+            off_u = (1.0 - (w_i / max(1, w_blade)) * 2.0) * (w_blade * 0.45)
+            bx_p = cx_b + ux * off_u
+            by_p = cy_b + uy * off_u
 
             if w_i == 0:
                 col_b = OBSIDIAN_DARK if s < 0.75 else VIOLET_MID
             elif w_i == w_blade:
-                if slash_arc is not None and 0.2 <= s <= 0.85:
-                    col_b = CRIMSON_BRIGHT if (i % 4 < 2) else SOUL_WHITE
+                if slash_arc is not None and 0.12 <= s <= 0.92:
+                    col_b = SOUL_WHITE
                 else:
                     col_b = SOUL_WHITE if (rune_glow >= 2 and s > 0.25) else (STEEL_EDGE if s < 0.8 else VIOLET_PINK)
-            elif w_i == 1 and 0.18 <= s <= 0.78 and (i % 4 == (rune_glow % 4)):
-                col_b = CRIMSON_BRIGHT if (i % 8 < 4) else VIOLET_PINK
+            elif w_i == 1 and 0.12 <= s <= 0.78 and (i % 6 == (rune_glow % 6)):
+                col_b = CRIMSON_BRIGHT if (i % 12 < 6) else VIOLET_PINK
             else:
-                col_b = VIOLET_BRIGHT if (w_i == w_blade - 1) else OBSIDIAN_MID
+                col_b = VIOLET_BRIGHT if (w_i >= w_blade - 2) else OBSIDIAN_MID
 
             set_clamped_px(scythe_layer, bx_p, by_p, col_b)
 
-    # 4. Wide Two-Handed Polearm IK Arms (True 2-Shoulder Open V/Diamond Geometry — NEVER crossing!):
+    # 5. Authentic Two-Handed Polearm Arms Across the Body:
+    sx_far = max(14.0, min(40.0, 26.0 + dx_off))
+    sy_far = max(10.0, min(40.0, 17.5 + dy_off))
+    ex_f, ey_f = solve_ik_elbow(sx_far, sy_far, hx, hy, 5.8, 5.8, bend_side=1.0)
+    draw_thick_line_px(far_arm_layer, sx_far, sy_far, ex_f, ey_f, OBSIDIAN_MID, OBSIDIAN_DEEP)
+    draw_thick_line_px(far_arm_layer, ex_f, ey_f, hx, hy, OBSIDIAN_LIGHT, OBSIDIAN_DARK)
+    set_clamped_px(far_arm_layer, ex_f, ey_f, VIOLET_MID)
+
     if two_handed:
-        # Grip 1: 4.5px UP the shaft toward `(head_x, head_y)`
-        up_dist = min(4.8, max(3.4, shaft_up * 0.45))
-        p1 = (
-            max(31.0, min(44.0, hx + ux * up_dist)),
-            max(7.0, min(42.0, hy + uy * up_dist)),
-        )
+        sx_near = max(12.0, min(36.0, 18.0 + dx_off))
+        sy_near = max(10.0, min(42.0, 18.5 + dy_off))
+        ex_n, ey_n = solve_ik_elbow(sx_near, sy_near, rx, ry, 6.4, 6.4, bend_side=1.0)
+        draw_thick_line_px(near_arm_layer, sx_near, sy_near, ex_n, ey_n, OBSIDIAN_MID, OBSIDIAN_DEEP)
+        draw_thick_line_px(near_arm_layer, ex_n, ey_n, rx, ry, OBSIDIAN_LIGHT, OBSIDIAN_DARK)
+        set_clamped_px(near_arm_layer, ex_n, ey_n, VIOLET_BRIGHT)
+        set_clamped_px(near_arm_layer, (ex_n + rx) * 0.5, (ey_n + ry) * 0.5, BONE_MID)
 
-        # Grip 2: 2.3px DOWN the shaft toward `(bx0, by0)` (~6.8px total hand separation along shaft!)
-        dn_dist = min(2.5, max(1.8, eff_back * 0.36))
-        p2 = (
-            max(29.5, min(42.0, hx - ux * dn_dist)),
-            max(10.0, min(43.0, hy - uy * dn_dist)),
-        )
-
-        # Sort grip points vertically (`top_grip` higher on screen, `bot_grip` lower on screen)
-        # so the Upper Arm (`bend_side=-1.0`) and Lower Across-Chest Arm (`bend_side=+1.0`) NEVER cross in an X
-        # even during low downward reaps (`eff_deg > 0`, where `uy > 0`)!
-        if p1[1] <= p2[1]:
-            top_grip, bot_grip = p1, p2
-        else:
-            top_grip, bot_grip = p2, p1
-
-        # Far / Upper Arm attaches at Far Shoulder `(sx_arm + 1.5, sy_arm - 1.2)` and arches UP/OUT (`bend_side=-1.0`) to `top_grip`
-        sx_u = max(26.0, min(40.0, sx_arm + 1.5))
-        sy_u = max(10.0, min(40.0, sy_arm - 1.2))
-        draw_ik_reaper_arm(
-            upper_arm_layer, sx_u, sy_u, top_grip[0], top_grip[1], L1=7.0, L2=6.8, bend_side=-1.0, is_rear=True
-        )
-
-        # Near / Lower Arm attaches directly under the Near Shoulder Pauldron `(19.5 + dx_off, sy_arm + 1.8)`
-        # and reaches ACROSS Malakor's chest (`bend_side=+1.0`) to `bot_grip`!
-        twist_dx = max(0.0, (bot_grip[0] - 29.0) * 0.38)
-        sx_l = max(18.5, min(36.0, 19.5 + dx_off + twist_dx))
-        sy_l = max(11.0, min(41.0, sy_arm + 1.8))
-        draw_ik_reaper_arm(
-            lower_arm_layer, sx_l, sy_l, bot_grip[0], bot_grip[1], L1=7.6, L2=7.4, bend_side=1.0, is_rear=False
-        )
-
-        # Draw BOTH 2x2 skeletal bone gauntlets ON TOP of the scythe shaft so both hands are 100% unmistakable!
-        for gx_p, gy_p in (top_grip, bot_grip):
+        for gx_p, gy_p in ((hx, hy), (rx, ry)):
             ix_g, iy_g = int(round(gx_p)), int(round(gy_p))
-            set_clamped_px(gauntlet_top_layer, ix_g, iy_g, SOUL_WHITE)
-            set_clamped_px(gauntlet_top_layer, ix_g + 1, iy_g, BONE_LIGHT)
-            set_clamped_px(gauntlet_top_layer, ix_g, iy_g + 1, BONE_LIGHT)
-            set_clamped_px(gauntlet_top_layer, ix_g + 1, iy_g + 1, BONE_MID)
-        chain_origin_x, chain_origin_y = bot_grip[0] + 1.5, bot_grip[1]
+            set_clamped_px(gauntlet_top_layer, ix_g, iy_g, BONE_LIGHT)
+            set_clamped_px(gauntlet_top_layer, ix_g + 1, iy_g, BONE_MID)
+            set_clamped_px(gauntlet_top_layer, ix_g, iy_g + 1, BONE_MID)
+            set_clamped_px(gauntlet_top_layer, ix_g + 1, iy_g + 1, BONE_DARK)
     else:
-        draw_ik_reaper_arm(lower_arm_layer, sx_arm, sy_arm, hx, hy, L1=5.4, L2=5.2, bend_side=1.0, is_rear=False)
-        chain_origin_x, chain_origin_y = hx, hy
+        ix_g, iy_g = int(round(hx)), int(round(hy))
+        set_clamped_px(gauntlet_top_layer, ix_g, iy_g, BONE_LIGHT)
+        set_clamped_px(gauntlet_top_layer, ix_g + 1, iy_g, BONE_MID)
+        set_clamped_px(gauntlet_top_layer, ix_g, iy_g + 1, BONE_MID)
+        set_clamped_px(gauntlet_top_layer, ix_g + 1, iy_g + 1, BONE_DARK)
 
-    # 5. Optional Extended Spectral Bone-Claw & Abyssal Chain launched from forward gauntlet (Row 3 SKILL Phase 1: F00..F14)
+    # 6. Optional Extended Spectral Bone-Claw & Abyssal Chain launched from Lead Hand (Row 3 SKILL Phase 1: F00..F14)
     if left_claw_ext is not None:
         raw_tx, raw_ty, pinch_t, draw_chain = left_claw_ext
         tx = max(32, min(44, int(round(raw_tx))))
         ty = max(6, min(44, int(round(raw_ty))))
+        chain_origin_x, chain_origin_y = hx + 1.5, hy
 
         if draw_chain:
             c_steps = int(max(abs(tx - chain_origin_x), abs(ty - chain_origin_y), 1) * 2)
@@ -827,9 +863,9 @@ def draw_articulated_scythe(
         for d_t in range(1, 4):
             set_clamped_px(fx_layer, tx + d_t, ty, SOUL_WHITE if d_t == 3 else BONE_LIGHT)
 
-    out = composite_over(base_frame, upper_arm_layer)
+    out = composite_over(base_frame, far_arm_layer)
     out = composite_over(out, scythe_layer)
-    out = composite_over(out, lower_arm_layer)
+    out = composite_over(out, near_arm_layer)
     out = composite_over(out, gauntlet_top_layer)
     out = composite_over(out, fx_layer)
     return strip_isolated_pixels(add_outline_to_layer(out))
@@ -888,7 +924,6 @@ def render_walk_legs(tpl, f):
         ny = y + bob_y
         if not (2 <= ny < 50):
             continue
-        lean_dx = 1 if y <= 27 else 0
         for x in range(14, 32):
             if stand[y, x, 3] > 0:
                 col = stand[y, x].copy()
@@ -896,7 +931,7 @@ def render_walk_legs(tpl, f):
                     r, g, b, _ = col
                     if r > 70 or g > 70:
                         col = np.array(ROBE_DARK if ((x + y) % 2 == 0) else ROBE_DEEP, dtype=np.uint8)
-                torso_layer[ny, min(49, x + lean_dx)] = col
+                torso_layer[ny, min(49, x)] = col
 
     torso_layer = fill_layer_pinholes(torso_layer, require_3_neighbors=False)
 
@@ -982,12 +1017,7 @@ def render_walk_legs(tpl, f):
 def make_crouch_body(tpl, crouch_depth):
     """
     Constructs a continuous vertical compression warp on `tpl['stand']` with `crouch_depth` in [1..7]
-    so Malakor's left tattered cloak (`x = 10..20, y = 26..36`) and armor remain 100% solid with zero holes:
-    - Shifts `ny <= 27 + d` down by `d` (with `dx = 1` for `d >= 3 and sy <= 25`).
-    - Compresses `ny = 28 + d .. 42` from `sy = int(round(27.0 + u * 15.0))` with a subtle forward
-      knee bend (`dx = int(round(math.sin(u * math.pi) * d * 0.35))` for `x >= 22`,
-      `-int(round(math.sin(u * math.pi) * d * 0.15))` for `x <= 15`).
-    - Keeps `ny = 43..49` anchored at the bottom, then calls `fill_layer_pinholes(canvas, require_3_neighbors=False)`.
+    so Malakor's left tattered cloak (`x = 10..20, y = 26..36`) and armor remain 100% solid with zero holes.
     """
     stand = tpl['stand']
     d = max(0, min(7, int(round(crouch_depth))))
@@ -999,10 +1029,9 @@ def make_crouch_body(tpl, crouch_depth):
         if ny <= 27 + d:
             sy = ny - d
             if 1 <= sy < 50:
-                dx = 1 if (d >= 3 and sy <= 25) else 0
                 for x in range(1, 50):
                     if stand[sy, x, 3] > 0:
-                        canvas[ny, min(49, x + dx)] = stand[sy, x]
+                        canvas[ny, x] = stand[sy, x]
         elif ny <= 42:
             u = (ny - (27 + d)) / float(max(1, 42 - (27 + d)))
             sy = min(42, max(27, int(round(27.0 + u * 15.0))))
@@ -1027,16 +1056,7 @@ def make_crouch_body(tpl, crouch_depth):
 def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
     """
     Constructs a full-body aerial Shadow-Wing Reaper pose in true back-to-front anatomical order
-    with Malakor's FULL tattered dark cloak behind his legs:
-    - Backmost Layer (`cape_layer`): Full width of his tattered dark cloak (`x = 1..25` for `y = 14..42`,
-      plus `x = 1..13` for `y = 43..44`), replacing any bright standing-leg bone/metal pixel (`r > 70 or g > 70`)
-      in `y = 32..42, x = 14..25` with dark tattered cloak shading (`ROBE_DARK` / `ROBE_DEEP`) so the full
-      dark cloak drapes seamlessly behind his two animated leaping skeletal legs!
-    - Far Leg Layer: Trailing obsidian greave & boot kicked back in an aerial vault.
-    - Crimson Tabard: Streaming between the legs.
-    - Near Leg Layer: Leading armored knee tucked high in front.
-    - Upper Torso & Hooded Skull (`torso_layer`): Extended down to `y = 33` (`x = 14..31`) so his ribcage,
-      soul-fire core, and tattered waist sash are 100% intact!
+    with Malakor's FULL tattered dark cloak behind his legs.
     """
     stand = tpl['stand'].copy()
     torso_dy = max(-2, min(4, int(round(jump_dy))))
@@ -1067,11 +1087,11 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
     cape_layer = fill_layer_pinholes(cape_layer, x0=2, x1=26, y0=12, y1=48, require_3_neighbors=False)
 
     # 2. Upper Armored Torso, Ribcage, Soul-Fire Core & Tattered Waist Sash extended down to y = 33 (x = 14..31)
+    dx_torso = min(1, max(0, int(torso_lean_dx)))
     for y in range(0, 34):
         ny = y + torso_dy
         if not (2 <= ny < 50):
             continue
-        dx = torso_lean_dx if y <= 27 else 0
         for x in range(14, 32):
             if stand[y, x, 3] > 0:
                 col = stand[y, x].copy()
@@ -1079,7 +1099,7 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
                     r, g, b, _ = col
                     if r > 70 or g > 70:
                         col = np.array(ROBE_DARK if ((x + y) % 2 == 0) else ROBE_DEEP, dtype=np.uint8)
-                torso_layer[ny, max(2, min(49, x + dx))] = col
+                torso_layer[ny, max(2, min(49, x + dx_torso))] = col
 
     torso_layer = fill_layer_pinholes(torso_layer, require_3_neighbors=False)
 
@@ -1614,12 +1634,11 @@ def build_row5_death(tpl):
             frames.append(ensure_safe_cell(frame, margin=1))
 
         elif f <= 17:
-            # F07..F17: Drops to one knee while Great-Scythe lowers diagonally in front (gx = 34)
+            # F07..F17: Drops to one knee with Great-Scythe planted vertically at x=33.5 (matching R4 C2..C4)
             u = (f - 7) / 10.0
             base = (tpl['kneel1'] if f <= 11 else tpl['kneel2']).copy()
             head_bow = 1 if (12 <= f <= 14) else (2 if f >= 15 else 0)
             if head_bow > 0:
-                # Copy head cleanly without leaving blank neck/shoulder gaps
                 head_slice = base[18:28, 15:29].copy()
                 base[18:18 + head_bow, 15:29] = 0
                 mask = head_slice[:, :, 3] > 0
@@ -1628,58 +1647,52 @@ def build_row5_death(tpl):
                 base = fill_layer_pinholes(base)
             base = apply_cloak_wave(base, u * math.pi, amplitude=0.8 * (1.0 - u * 0.5), vertical_flutter=0.3)
 
-            shaft_deg = -10.0 * (1.0 - u) + 20.0 * u
             frame = draw_abyssal_scythe(
                 base,
-                grip_pos=(34, int(round(25 + u * 4))),
-                shaft_deg=shaft_deg,
+                grip_pos=(34, 24 + head_bow),
+                shaft_deg=-88.0,
                 shaft_reach=14.0,
-                shaft_back=11.0,
+                shaft_back=16.0,
                 blade_span=15.5,
                 blade_curve=5.0,
                 blade_dir=1,
-                rune_glow=1 if f <= 12 else 0,
+                rune_glow=(f % 3) + 1,
                 two_handed=False,
-                shoulder_pos=(25, 23 + head_bow),
+                shoulder_pos=(25, 21 + head_bow),
             )
             frames.append(ensure_safe_cell(frame, margin=1))
 
         elif f <= 22:
-            # F18..F22: Collapsing forward/horizontally onto the arena floor (clamped above y=48)
+            # F18..F22: Grounded forward slump from kneel2 down onto the arena floor (anchored at y=46)
             u = (f - 17) / 5.0
-            tilt_deg = -u * 75.0
-            pil_kn = Image.fromarray(tpl['kneel2'], mode='RGBA')
-            rot_arr = np.array(
-                pil_kn.rotate(tilt_deg, resample=Image.NEAREST, center=(22, 44)),
-                dtype=np.uint8
-            )
-            ys, xs = np.where(rot_arr[:, :, 3] > 0)
-            max_y = int(ys.max()) if len(ys) > 0 else 46
-            shift_y = min(46 - max_y, 2)
-            shift_x = int(round(u * 3.0))
-
+            kn = tpl['kneel2']
             body = np.zeros((52, 52, 4), dtype=np.uint8)
-            for y in range(52):
-                for x in range(52):
-                    if rot_arr[y, x, 3] > 0:
-                        ny = max(2, min(47, y + shift_y))
-                        nx = max(2, min(48, x + shift_x))
-                        body[ny, nx] = rot_arr[y, x]
-            body = fill_layer_pinholes(body)
+            for sy in range(18, 49):
+                # Compress vertical height above y=46 by (1 - u*0.52) and lean forward
+                rel_h = max(0, 46 - sy)
+                ny = min(47, max(20, int(round(46.0 - rel_h * (1.0 - u * 0.52)))))
+                dx_slump = int(round((rel_h / 28.0) * u * 5.0))
+                for sx in range(2, 48):
+                    if kn[sy, sx, 3] > 0:
+                        nx = max(2, min(48, sx + dx_slump))
+                        body[ny, nx] = kn[sy, sx]
+                        if ny + 1 <= 46 and body[ny + 1, nx, 3] == 0:
+                            body[ny + 1, nx] = kn[sy, sx]
+            body = strip_isolated_pixels(fill_layer_pinholes(add_outline_to_layer(body), require_3_neighbors=False))
 
-            # Scythe settles flat along the ground (clamped safely above y=49)
+            # Scythe tips forward-down toward the floor as he slumps
             frame = draw_abyssal_scythe(
                 body,
-                grip_pos=(34, int(round(31 + u * 6))),
-                shaft_deg=18.0 * (1.0 - u) + 2.0 * u,
+                grip_pos=(34, int(round(26 + u * 6))),
+                shaft_deg=-35.0 * (1.0 - u) + 50.0 * u,
                 shaft_reach=13.0,
                 shaft_back=12.0,
-                blade_span=13.0 * (1.0 - u * 0.25),
-                blade_curve=4.2 * (1.0 - u * 0.25),
+                blade_span=15.0,
+                blade_curve=5.0,
                 blade_dir=1,
                 rune_glow=0,
                 two_handed=False,
-                shoulder_pos=(26, int(round(27 + u * 8))),
+                shoulder_pos=(26 + int(round(u * 2.0)), int(round(23 + u * 7))),
             )
             frames.append(ensure_safe_cell(frame, margin=1))
 
