@@ -1134,12 +1134,152 @@ def build_row3_skill(tpl):
     return frames
 
 
+EMERALD_CYAN = (103, 232, 249, 255)
+
+
+def draw_row4_tempest_vfx(frame, f):
+    """
+    Renders Row 4 (ULTIMATE - Astral Hurricane) signature VFX onto `frame`:
+    1. Swirling Emerald-Gold Tempest Vortex Ring at Lyra's feet (`y = 44..48, x = 12..34`) during `F02..F25`.
+    2. Spiraling emerald wind-leaves & starlight motes rising around her cloak (`x = 6..18, y = 12..40`) during `F02..F24`.
+    3. Coiled Emerald Wind-Dragon Crest forming around the tip of her nocked Dragon-Arrow (`F08..F17`, strictly `x <= 48, y >= 3`).
+    4. Explosive Sonic Gale Shockwave upon release (`F18..F22`, strictly `x <= 48, y >= 3`).
+    """
+    out = frame.copy()
+
+    # 1. Swirling Emerald-Gold Tempest Vortex Ring at feet (y = 44..48, x = 12..34)
+    if 2 <= f <= 25:
+        vortex_scale = min(1.0, (f - 1) / 3.0) if f <= 4 else (max(0.3, (26 - f) / 4.0) if f >= 23 else 1.0)
+        cx, cy = 23.0, 46.0
+        rx = 10.5 * vortex_scale
+        ry = 1.8 * vortex_scale
+        steps_v = 36
+        for i in range(steps_v):
+            ang = (i / float(steps_v)) * 2.0 * math.pi
+            vx = max(12.0, min(34.0, cx + math.cos(ang) * rx))
+            vy = max(44.0, min(48.0, cy + math.sin(ang) * ry))
+            sw = (i + f * 3) % 8
+            if sw in (0, 1):
+                col = STAR_GOLD
+            elif sw in (2, 3):
+                col = EMERALD_CORE
+            elif sw in (4, 5):
+                col = EMERALD_BRIGHT
+            else:
+                col = EMERALD_MID
+            set_px(out, vx, vy, col)
+            # Inner counter-rotating vortex ring
+            vx_in = max(14.0, min(32.0, cx + math.cos(ang - f * 0.4) * (rx * 0.62)))
+            vy_in = max(45.0, min(48.0, cy + math.sin(ang - f * 0.4) * (ry * 0.55)))
+            if (i + f * 2) % 3 == 0:
+                set_px(out, vx_in, vy_in, STAR_GOLD if (i + f) % 2 == 0 else EMERALD_BRIGHT)
+
+        # Upward-curling vortex rim wind-tongues & updraft spirals (x=12..34, y=40..46) cradling her boots
+        if 4 <= f <= 22:
+            curl_h = 3 + (f % 2)
+            for dy_c in range(curl_h + 1):
+                set_px(out, 12 + (dy_c // 2), 46 - dy_c, EMERALD_BRIGHT if dy_c < curl_h else STAR_GOLD)
+                set_px(out, 13 + (dy_c // 2), 46 - dy_c, EMERALD_MID)
+                set_px(out, 34 - (dy_c // 2), 46 - dy_c, EMERALD_BRIGHT if dy_c < curl_h else STAR_GOLD)
+                set_px(out, 33 - (dy_c // 2), 46 - dy_c, EMERALD_MID)
+            for u_i in range(3):
+                ux_p = 17 + ((f * 2 + u_i * 5) % 13)
+                uy_p = 42 + ((f + u_i) % 3)
+                set_px(out, ux_p, uy_p, STAR_GOLD if u_i == 0 else EMERALD_BRIGHT)
+                set_px(out, ux_p + 1, uy_p + 1, EMERALD_MID)
+
+    # 2. Spiraling emerald wind-leaves & starlight motes rising around her cloak (x = 6..18, y = 12..40)
+    if 2 <= f <= 24:
+        for y in range(13, 40):
+            u = (39.0 - y) / 26.0
+            sx1 = 12.0 + math.sin(u * 5.2 - f * 0.55) * 4.5
+            sx1 = max(6.0, min(18.0, sx1))
+            if (y + f * 2) % 3 != 0:
+                c1 = STAR_GOLD if (y + f) % 5 == 0 else (EMERALD_BRIGHT if (y + f) % 2 == 0 else EMERALD_MID)
+                set_px(out, sx1, y, c1)
+                set_px(out, max(6.0, sx1 - 1.0), y, EMERALD_MID)
+
+        # 4 ascending sylvan wind-leaves & starlight motes (x = 6..18, y = 12..40)
+        for leaf_i in range(4):
+            ly = 39 - ((f * 2 + leaf_i * 7) % 27)
+            lx = 7 + int(round((math.sin(f * 0.45 + leaf_i * 1.6) + 1.0) * 4.5))
+            lx = max(6, min(17, lx))
+            ly = max(12, min(39, ly))
+            set_px(out, lx, ly, EMERALD_BRIGHT)
+            set_px(out, min(18, lx + 1), max(12, ly - 1), STAR_GOLD if leaf_i % 2 == 0 else EMERALD_CORE)
+            set_px(out, max(6, lx - 1), min(40, ly + 1), EMERALD_MID)
+
+    # 3. Coiled Emerald Wind-Dragon Crest around nocked Dragon-Arrow (F08..F17, strictly x <= 48, y >= 3)
+    if 8 <= f <= 17:
+        g = min(1.0, (f - 7) / 3.0)
+        # Coiled serpentine wind-dragon body spiraling along the arrow shaft (x = 31..43)
+        for sx in range(31, 44):
+            wave = math.sin((sx - 31) * 0.7 - f * 0.65)
+            sy = max(4, min(47, int(round(14.5 + wave * (3.2 * g)))))
+            set_px(out, sx, sy, EMERALD_BRIGHT if wave >= 0 else EMERALD_MID)
+            set_px(out, sx, max(3, sy - 1), STAR_GOLD if wave > 0.25 else EMERALD_CORE)
+
+        # Coiled Wind-Dragon Head & Jaws at arrow tip (x = 39..48, y = 6..22)
+        horn_top_y = max(5, int(round(12 - 5.0 * g)))
+        jaw_bot_y = min(22, int(round(16 + 5.0 * g)))
+        # Swept-back upper dragon horn & emerald mane crest
+        draw_line_px(out, 45, 12, 39, horn_top_y, STAR_GOLD)
+        draw_line_px(out, 45, 13, 40, min(47, horn_top_y + 1), EMERALD_BRIGHT)
+        draw_line_px(out, 42, 11, 37, max(5, horn_top_y + 1), EMERALD_MID)
+        # Upper dragon snout & glowing eye
+        draw_line_px(out, 43, 13, 48, 13, EMERALD_CORE)
+        draw_line_px(out, 44, 14, 48, 14, STAR_GOLD)
+        set_px(out, 44, 12, (255, 255, 255, 255))
+        set_px(out, 43, 12, STAR_GOLD)
+        # Lower roaring dragon jaw & beard crest
+        draw_line_px(out, 43, 16, 47, 16, EMERALD_BRIGHT)
+        draw_line_px(out, 44, 16, 39, jaw_bot_y, STAR_GOLD)
+        draw_line_px(out, 45, 17, 40, max(3, jaw_bot_y - 1), EMERALD_MID)
+        # Swirling dragon vortex halo around tip
+        for i in range(12):
+            ang = (i / 12.0) * 2.0 * math.pi + f * 0.5
+            hx = max(36.0, min(48.0, 43.0 + math.cos(ang) * (4.5 * g)))
+            hy = max(5.0, min(23.0, 14.5 + math.sin(ang) * (5.5 * g)))
+            set_px(out, hx, hy, STAR_GOLD if i % 3 == 0 else EMERALD_BRIGHT)
+
+    # 4. Explosive Sonic Gale Shockwave upon release (F18..F22, strictly x <= 48, y >= 3)
+    elif 18 <= f <= 22:
+        k = f - 18  # 0..4
+        cx_sw = min(46.0, 39.0 + k * 1.8)
+        cy_sw = 15.0
+        rx_sw = 2.2
+        ry_sw = min(11.0, 6.5 + k * 1.1)
+        steps_s = 32
+        for i in range(steps_s):
+            ang = (i / float(steps_s)) * 2.0 * math.pi
+            sx = max(3.0, min(48.0, cx_sw + math.cos(ang) * rx_sw))
+            sy = max(3.0, min(48.0, cy_sw + math.sin(ang) * ry_sw))
+            col = (255, 255, 255, 255) if (i + k) % 4 == 0 else (STAR_GOLD if (i + k) % 2 == 0 else EMERALD_BRIGHT)
+            set_px(out, sx, sy, col)
+            set_px(out, max(3.0, sx - 1.0), sy, EMERALD_MID if (i % 2 == 0) else EMERALD_BRIGHT)
+
+        # Secondary inner sonic ring
+        cx_in = max(34.0, cx_sw - 3.5)
+        ry_in = max(3.5, ry_sw - 2.5)
+        for i in range(20):
+            ang = (i / 20.0) * 2.0 * math.pi
+            sx = max(3.0, min(48.0, cx_in + math.cos(ang) * 1.5))
+            sy = max(3.0, min(48.0, cy_sw + math.sin(ang) * ry_in))
+            set_px(out, sx, sy, STAR_GOLD if i % 2 == 0 else EMERALD_CORE)
+
+        # Horizontal sonic gale blast streaks (x = 34..48)
+        for by, bcol in [(8, EMERALD_BRIGHT), (11, STAR_GOLD), (15, (255, 255, 255, 255)), (19, STAR_GOLD), (22, EMERALD_BRIGHT)]:
+            x0_b = min(45, 34 + k * 2)
+            draw_line_px(out, x0_b, by, 48, by, bcol)
+
+    return out
+
+
 def build_row4_ultimate(tpl):
     """Row 4: 30-Frame Dedicated ULTIMATE (ASTRAL HURRICANE / TEMPEST DRAGON SHOT)."""
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
-        base_src = tpl['aim_h'] if 4 <= f <= 25 else tpl['stand']
 
         if f <= 3:
             crouch_dy = [0, 1, 2, 1][f]
@@ -1191,7 +1331,7 @@ def build_row4_ultimate(tpl):
                 bow_half_span=12.5,
             )
         elif f <= 17:
-            # F04..F17: Full horizontal Dragon-Arrow draw with crisp emerald-gold astral bowstring & arrow tip star-flare on F06..F14+!
+            # F04..F17: Full horizontal Dragon-Arrow draw with crisp emerald-gold astral bowstring & arrow tip star-flare!
             draw_t = min(1.0, (f - 3) / 11.0)
             charge = 3 if f >= 10 else (2 if f >= 6 else 1)
             flare = 1.0 if f >= 6 else 0.0
@@ -1236,13 +1376,7 @@ def build_row4_ultimate(tpl):
                 bow_half_span=12.4,
             )
 
-        if leg_tuck > 0.05:
-            for wx_i in range(3):
-                wx = max(3, min(47, 20 + ((f * 3 + wx_i * 5) % 14)))
-                wy = max(3, min(48, 48 - (wx_i % 2)))
-                set_px(frame, wx, wy, STAR_GOLD if wx_i == 0 else EMERALD_BRIGHT)
-                set_px(frame, wx + 1, wy, EMERALD_MID)
-
+        frame = draw_row4_tempest_vfx(frame, f)
         frames.append(frame)
     return frames
 
@@ -1379,6 +1513,70 @@ def build_row5_death(tpl):
     return frames
 
 
+def draw_row6_dash_slipstream(frame, f, vault_arc=0):
+    """
+    Renders Row 6 (DASH - Gale Stride) VFX onto `frame`:
+    - During `F03..F20`: Horizontal Emerald-Cyan & Star-Gold Gale Slipstream Streaks + Floating Sylvan
+      Feather/Leaf Motes (`x = 4..16, y = 14..42`) trailing behind her billowing cloak.
+    - During `F11..F15`: Crisp mid-dash snap-arrow release flash & forward sonic gale ring (`x = 37..48, y = 10..24`).
+    """
+    out = frame.copy()
+
+    if 3 <= f <= 20:
+        # 1. Horizontal Emerald-Cyan & Star-Gold Gale Slipstream Streaks (x = 4..16, y = 14..42)
+        streak_rows = [16, 21, 27, 33, 39]
+        for idx, base_y in enumerate(streak_rows):
+            if f >= 19 and idx % 2 == 1:
+                continue
+            sy = max(14, min(42, base_y + ((f + idx) % 3) - 1 + vault_arc))
+            x0 = max(4, min(11, 4 + ((f * 2 + idx * 3) % 6)))
+            x1 = max(x0 + 3, min(16, x0 + 5 + ((f + idx) % 3)))
+            lead_col = STAR_GOLD if (idx + f) % 2 == 0 else EMERALD_CYAN
+            mid_col = EMERALD_BRIGHT if (idx + f) % 2 == 0 else EMERALD_CYAN
+            draw_line_px(out, x0, sy, x1, sy, mid_col)
+            set_px(out, x1, sy, lead_col)
+            set_px(out, max(4, x1 - 1), sy, lead_col)
+            set_px(out, x0, sy, EMERALD_MID)
+            if sy + 1 <= 42:
+                set_px(out, max(4, min(16, (x0 + x1) // 2)), sy + 1, EMERALD_DEEP)
+
+        # 2. Floating Sylvan Feather/Leaf Motes trailing behind cloak (x = 4..16, y = 14..42)
+        for m_i in range(3):
+            mx = 5 + ((f * 3 + m_i * 4) % 10)  # 5..14
+            my = 15 + ((f * 2 + m_i * 9) % 25)  # 15..39
+            mx = max(4, min(15, mx))
+            my = max(15, min(41, my))
+            set_px(out, mx, my, EMERALD_BRIGHT)
+            set_px(out, min(16, mx + 1), max(14, my - 1), STAR_GOLD if (m_i + f) % 2 == 0 else EMERALD_CYAN)
+            set_px(out, max(4, mx - 1), min(42, my + 1), EMERALD_MID)
+
+    # 3. Crisp Mid-Dash Snap-Arrow Release Flash at F11..F15 (strictly inside x <= 48, y >= 3)
+    if 11 <= f <= 15:
+        k_rel = f - 11  # 0..4
+        cy_f = max(12, min(24, 17 + vault_arc))
+        cx_ring = min(46, 39 + k_rel * 2)
+        ry_ring = max(3.0, 5.5 - k_rel * 0.5)
+        for i in range(18):
+            ang = (i / 18.0) * 2.0 * math.pi
+            rx_p = max(36.0, min(48.0, cx_ring + math.cos(ang) * 1.6))
+            ry_p = max(6.0, min(30.0, cy_f + math.sin(ang) * ry_ring))
+            set_px(out, rx_p, ry_p, STAR_GOLD if (i + k_rel) % 2 == 0 else EMERALD_CYAN)
+
+        # High-velocity snap-arrow bolt & muzzle star flash
+        if k_rel <= 2:
+            fx_x = 38 + k_rel
+            set_px(out, fx_x, cy_f, (255, 255, 255, 255))
+            for d in range(1, 4 - k_rel):
+                set_px(out, fx_x, max(4, cy_f - d), STAR_GOLD if d == 1 else EMERALD_BRIGHT)
+                set_px(out, fx_x, min(47, cy_f + d), STAR_GOLD if d == 1 else EMERALD_BRIGHT)
+        bolt_x0 = min(44, 38 + k_rel * 2)
+        draw_line_px(out, bolt_x0, cy_f, 48, cy_f, (255, 255, 255, 255) if k_rel <= 1 else STAR_GOLD)
+        draw_line_px(out, max(36, bolt_x0 - 1), cy_f - 1, 47, cy_f - 1, EMERALD_CYAN)
+        draw_line_px(out, max(36, bolt_x0 - 1), cy_f + 1, 47, cy_f + 1, EMERALD_BRIGHT)
+
+    return out
+
+
 def build_row6_dash(tpl):
     """Row 6: 30-Frame Dedicated DASH (GALE STRIDE) Sequence."""
     frames = []
@@ -1398,6 +1596,7 @@ def build_row6_dash(tpl):
                 bow_reach=9.5,
                 bow_half_span=12.0
             )
+            frame = draw_row6_dash_slipstream(frame, f, vault_arc=crouch_dy)
             frames.append(frame)
 
         elif f <= 18:
@@ -1406,39 +1605,44 @@ def build_row6_dash(tpl):
             base = shift_layer(tpl['dash'], 0, vault_arc)
             base = apply_cloak_wave(base, k * 0.9, amplitude=2.2, is_dash=True)
 
-            if 10 <= f <= 13:
-                draw_t = (f - 9) / 4.0
+            if 6 <= f <= 10:
+                draw_t = (f - 5) / 5.0
                 frame = draw_articulated_bow(
                     base,
                     shoulder=(32, 17 + vault_arc),
                     aim_deg=6.0,
                     draw_t=draw_t,
                     arrow_mode='single',
-                    charge_level=2 if f == 13 else 1,
+                    charge_level=3 if f == 10 else (2 if f >= 8 else 1),
                     bow_reach=9.0,
-                    bow_half_span=11.5
+                    bow_half_span=11.5,
+                    bow_flare=1.0 if f >= 8 else 0.0,
                 )
-            elif f in (14, 15):
+            elif 11 <= f <= 15:
+                k_rel = f - 11
+                vib_seq = [1.8, -1.3, 0.9, -0.5, 0.2]
                 frame = draw_articulated_bow(
                     base,
                     shoulder=(32, 17 + vault_arc),
-                    aim_deg=4.0,
+                    aim_deg=4.0 + k_rel * 1.5,
                     draw_t=0.0,
-                    string_vib=1.6 if f == 14 else -1.0,
+                    string_vib=vib_seq[k_rel],
                     arrow_mode='none',
-                    release_flash=(f == 14),
+                    release_flash=(k_rel <= 1),
                     bow_reach=9.0,
-                    bow_half_span=11.5
+                    bow_half_span=11.5,
+                    bow_flare=1.0 if k_rel <= 1 else 0.0,
                 )
             else:
                 frame = draw_articulated_bow(
                     base,
                     shoulder=(32, 17 + vault_arc),
-                    aim_deg=20.0,
+                    aim_deg=16.0,
                     draw_t=0.0,
                     bow_reach=9.0,
                     bow_half_span=11.5
                 )
+            frame = draw_row6_dash_slipstream(frame, f, vault_arc=vault_arc)
             frames.append(frame)
 
         elif f <= 24:
@@ -1454,6 +1658,7 @@ def build_row6_dash(tpl):
                 bow_reach=10.0,
                 bow_half_span=12.5
             )
+            frame = draw_row6_dash_slipstream(frame, f, vault_arc=slide_dy)
             frames.append(frame)
 
         else:
@@ -1516,41 +1721,114 @@ def make_crouch_body(tpl, crouch_depth):
     return strip_isolated_pixels(canvas)
 
 
+def draw_row7_gale_ward_ring(frame, f):
+    """
+    Renders Row 7 (CROUCH - Stealth & Sniper Aim) Gale-Ward Ring VFX onto `frame`:
+    - During `F00..F10`: Spinning vertical Emerald-Gold Wind-Rose / Gale-Ward Deflection Ring
+      (`cx = 36, cy = 26, rx = 3, ry = 8`) in front of her crouched bow with 4 rotating Wind-Rose petals.
+    - During `F11..F17`: Shatters into a forward-surging sonic ring + wind-rose shards & sniper arrow trail!
+    """
+    out = frame.copy()
+
+    if 0 <= f <= 10:
+        cx, cy = 36.0, 26.0
+        rx, ry = 3.0, 8.0
+        steps_r = 28
+        for i in range(steps_r):
+            ang = (i / float(steps_r)) * 2.0 * math.pi
+            px = max(3.0, min(48.0, cx + math.cos(ang) * rx))
+            py = max(3.0, min(48.0, cy + math.sin(ang) * ry))
+            sw = (i + f * 3) % 8
+            if sw in (0, 1):
+                col = STAR_GOLD
+            elif sw in (2, 3):
+                col = EMERALD_CORE
+            elif sw in (4, 5):
+                col = EMERALD_BRIGHT
+            else:
+                col = EMERALD_MID
+            set_px(out, px, py, col)
+
+        # 4 rotating Wind-Rose compass petals / spokes inside and crowning the ring
+        for p in range(4):
+            ang_p = f * 0.55 + p * (math.pi * 0.5)
+            ix0 = cx + math.cos(ang_p) * 1.0
+            iy0 = cy + math.sin(ang_p) * 2.5
+            ix1 = cx + math.cos(ang_p) * (rx + 0.8)
+            iy1 = cy + math.sin(ang_p) * (ry + 0.8)
+            draw_line_px(out, ix0, iy0, ix1, iy1, STAR_GOLD if p % 2 == 0 else EMERALD_BRIGHT)
+        set_px(out, cx, cy, (255, 255, 255, 255) if f >= 6 else STAR_GOLD)
+        set_px(out, cx, max(3.0, cy - ry - 1.0), STAR_GOLD)
+        set_px(out, cx, min(48.0, cy + ry + 1.0), STAR_GOLD)
+
+    elif 11 <= f <= 17:
+        k = f - 11  # 0..6
+        # Forward-surging shattered sonic ring
+        cx_s = min(46.0, 38.0 + k * 1.35)
+        cy_s = 24.0
+        rx_s = 2.4
+        ry_s = max(4.5, 8.0 - k * 0.45)
+        steps_s = 24
+        for i in range(steps_s):
+            # Shatter gaps open as k increases
+            if k >= 3 and (i + k) % 4 == 0:
+                continue
+            ang = (i / float(steps_s)) * 2.0 * math.pi
+            px = max(3.0, min(48.0, cx_s + math.cos(ang) * rx_s))
+            py = max(3.0, min(48.0, cy_s + math.sin(ang) * ry_s))
+            col = (255, 255, 255, 255) if (i + k) % 4 == 0 else (STAR_GOLD if (i + k) % 2 == 0 else EMERALD_BRIGHT)
+            set_px(out, px, py, col)
+
+        # Outward-bursting Wind-Rose shards & piercing low sniper arrow laser trail
+        for sh_i, sh_y in enumerate([16, 20, 24, 28, 32]):
+            sx0 = min(45, 36 + k * 2 + (sh_i % 2))
+            sx1 = min(48, sx0 + 2)
+            draw_line_px(out, sx0, sh_y, sx1, sh_y, STAR_GOLD if sh_i % 2 == 0 else EMERALD_BRIGHT)
+        if k <= 3:
+            draw_line_px(out, 36 + k * 2, 22, 48, 22, (255, 255, 255, 255) if k <= 1 else STAR_GOLD)
+            draw_line_px(out, 35 + k * 2, 23, 47, 23, EMERALD_BRIGHT)
+
+    return out
+
+
 def build_row7_crouch(tpl):
     """
     Row 7: 30-Frame Dedicated CROUCH Sequence (RANGER STEALTH CROUCH & LOW-PROFILE SNIPER SHOT):
-    - Frames 0..5:   Smooth knee-bend descent into low stealth crouch (depth: 0 -> 1 -> 2 -> 4 -> 5 -> 6px)
-    - Frames 6..17:  Crouched low-profile knee-braced sniper bow draw (draw_t: 0.0 -> 1.0 at y=21!)
-    - Frames 18..22: Low-stance sniper arrow release flash, string snap & crouched recoil
-    - Frames 23..29: Smooth push-off from bent knee back to upright ready stance (depth: 6 -> 0px)
+    - Frames 0..10:  Low stealth crouch & knee-braced sniper bow draw with spinning vertical
+                     Emerald-Gold Wind-Rose / Gale-Ward Deflection Ring (`cx=36, cy=26, rx=3, ry=8`)
+    - Frames 11..17: Low sniper arrow release flash, string snap & Gale-Ward Ring shattering into a forward sonic ring!
+    - Frames 18..22: Crouched stealth camouflage shimmer & overwatch recovery
+    - Frames 23..29: Smooth push-off from bent knee back to upright ready stance (depth: 5 -> 0px)
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 5:
-            depths = [0, 1, 2, 4, 5, 6]
+        if f <= 2:
+            depths = [3, 4, 5]
             d = depths[f]
-            base = tpl['stand'].copy() if d == 0 else make_crouch_body(tpl, d)
+            base = make_crouch_body(tpl, d)
             base = apply_cloak_wave(base, phase, amplitude=1.1, vertical_flutter=0.3)
-            u = f / 5.0
-            aim_deg = 34.0 * (1.0 - u) + 2.0 * u
+            aim_deg = [14.0, 6.0, 0.0][f]
+            draw_t = [0.15, 0.30, 0.45][f]
             frame = draw_articulated_bow(
                 base,
-                shoulder=(28 + (1 if d >= 3 else 0), 16 + d),
+                shoulder=(29, 16 + d),
                 aim_deg=aim_deg,
-                draw_t=0.0,
-                arrow_mode='single' if f >= 4 else 'none',
-                bow_reach=10.0,
+                draw_t=draw_t,
+                arrow_mode='single',
+                charge_level=1 if f == 2 else 0,
+                bow_reach=10.2,
                 bow_half_span=11.5
             )
+            frame = draw_row7_gale_ward_ring(frame, f)
             frames.append(frame)
 
-        elif f <= 17:
+        elif f <= 10:
             d = 5
             base = make_crouch_body(tpl, d)
             base = apply_cloak_wave(base, phase, amplitude=1.0, vertical_flutter=0.25)
-            draw_t = (f - 5) / 12.0  # 0.08 -> 1.00
-            charge = 3 if f >= 16 else (2 if f >= 14 else (1 if f >= 11 else 0))
+            draw_t = 0.50 + ((f - 3) / 7.0) * 0.50  # 0.50 -> 1.00
+            charge = 3 if f >= 8 else (2 if f >= 5 else 1)
             frame = draw_articulated_bow(
                 base,
                 shoulder=(29, 16 + d),
@@ -1559,39 +1837,64 @@ def build_row7_crouch(tpl):
                 arrow_mode='single',
                 charge_level=charge,
                 bow_reach=10.2,
-                bow_half_span=11.5
+                bow_half_span=11.5,
+                bow_flare=1.0 if f >= 6 else 0.0,
             )
+            frame = draw_row7_gale_ward_ring(frame, f)
+            frames.append(frame)
+
+        elif f <= 17:
+            d = 5
+            k = f - 11  # 0..6
+            base = make_crouch_body(tpl, d)
+            if k in (0, 1):
+                base = shift_layer(base, -1, 0)
+            base = apply_cloak_wave(base, phase * 1.5, amplitude=1.2, vertical_flutter=0.35)
+            vib = [1.9, -1.3, 0.9, -0.6, 0.3, -0.1, 0.0][k]
+            frame = draw_articulated_bow(
+                base,
+                shoulder=(28 if k <= 1 else 29, 16 + d),
+                aim_deg=-3.0 + k * 0.8,
+                draw_t=0.0,
+                string_vib=vib,
+                arrow_mode='none',
+                release_flash=(k <= 1),
+                bow_reach=10.2,
+                bow_half_span=11.5,
+                bow_flare=1.0 if k <= 1 else 0.0,
+            )
+            frame = draw_row7_gale_ward_ring(frame, f)
             frames.append(frame)
 
         elif f <= 22:
             d = 5
             k = f - 18
             base = make_crouch_body(tpl, d)
-            if k in (0, 1):
-                base = shift_layer(base, -1, 0)
-            base = apply_cloak_wave(base, phase * 1.5, amplitude=1.2, vertical_flutter=0.35)
-            vib = [1.8, -1.2, 0.8, -0.4, 0.0][k]
+            base = apply_cloak_wave(base, phase, amplitude=1.0, vertical_flutter=0.3)
             frame = draw_articulated_bow(
                 base,
-                shoulder=(28 if k <= 1 else 29, 16 + d),
-                aim_deg=-3.0 + k * 1.5,
+                shoulder=(29, 16 + d),
+                aim_deg=2.0 + k * 1.5,
                 draw_t=0.0,
-                string_vib=vib,
                 arrow_mode='none',
-                release_flash=(k == 0),
-                bow_reach=10.2,
+                bow_reach=10.0,
                 bow_half_span=11.5
             )
+            # Subtle sylvan stealth leaf-mote drifting behind cloak during overwatch hold
+            lx = 9 + ((f * 2) % 7)
+            ly = 24 + ((f * 3) % 14)
+            set_px(frame, lx, ly, EMERALD_BRIGHT)
+            set_px(frame, lx + 1, ly - 1, STAR_GOLD if f % 2 == 0 else EMERALD_MID)
             frames.append(frame)
 
         else:
-            depths = [5, 5, 4, 3, 2, 1, 0]
+            depths = [5, 4, 3, 2, 1, 1, 0]
             k = f - 23
             d = depths[k]
             base = tpl['stand'].copy() if d == 0 else make_crouch_body(tpl, d)
             base = apply_cloak_wave(base, phase, amplitude=1.1, vertical_flutter=0.3)
             u = k / 6.0
-            aim_deg = 4.0 * (1.0 - u) + 34.0 * u
+            aim_deg = 8.0 * (1.0 - u) + 34.0 * u
             frame = draw_articulated_bow(
                 base,
                 shoulder=(28 + (1 if d >= 3 else 0), 16 + d),

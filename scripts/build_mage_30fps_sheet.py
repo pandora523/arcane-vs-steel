@@ -1062,6 +1062,202 @@ def apply_solar_plasma_tint(frame, amount, phase_rad, f_idx):
     return out
 
 
+def draw_solar_cast_trail(c, cx, cy, start_deg, end_deg, intensity=1.0, radius=10.5):
+    """
+    Renders a blazing 3-band Solar-Yellow, Flame-Orange & Crimson Crescent Cast Arc
+    (SOLAR_WHITE, SOLAR_YELLOW, FLAME_ORANGE, CRIMSON_MID, strictly inside 3 <= x <= 48, 3 <= y <= 48)
+    tracing the sweeping path of the Sun-Staff finial during Row 2 (F10..F16),
+    Row 3 (F15..F21), and Row 4 (F13..F21).
+    """
+    eff_int = max(0.0, min(1.0, float(intensity)))
+    if eff_int <= 0.05:
+        return c
+
+    s_deg = float(start_deg)
+    e_deg = float(end_deg)
+    if abs(e_deg - s_deg) < 1.0:
+        return c
+
+    r_mid = float(radius)
+    steps = max(18, int(round(abs(e_deg - s_deg) * 0.75)))
+
+    for i in range(steps + 1):
+        u = i / float(max(1, steps))
+        deg = s_deg + (e_deg - s_deg) * u
+        rad = math.radians(deg)
+        ca, sa = math.cos(rad), math.sin(rad)
+
+        # Band 1 (Inner trailing wake: r_mid - 1.0) -> CRIMSON_MID to FLAME_ORANGE
+        if u >= 0.12:
+            rx_in = max(3.0, min(48.0, cx + ca * (r_mid - 1.1)))
+            ry_in = max(3.0, min(48.0, cy + sa * (r_mid - 1.1)))
+            col_in = FLAME_ORANGE if (u > 0.72 and eff_int >= 0.75) else CRIMSON_MID
+            set_px(c, rx_in, ry_in, col_in)
+
+        # Band 2 (Middle core arc: r_mid) -> CRIMSON_MID -> FLAME_ORANGE -> SOLAR_YELLOW
+        rx_md = max(3.0, min(48.0, cx + ca * r_mid))
+        ry_md = max(3.0, min(48.0, cy + sa * r_mid))
+        if u > 0.76:
+            col_md = SOLAR_WHITE if eff_int >= 0.85 else SOLAR_YELLOW
+        elif u > 0.36:
+            col_md = SOLAR_YELLOW if u > 0.56 else FLAME_ORANGE
+        else:
+            col_md = FLAME_ORANGE if (i % 2 == 0) else CRIMSON_MID
+        set_px(c, rx_md, ry_md, col_md)
+
+        # Band 3 (Outer blazing crescent edge: r_mid + 1.0) -> FLAME_ORANGE -> SOLAR_YELLOW -> SOLAR_WHITE
+        if u >= 0.08:
+            rx_out = max(3.0, min(48.0, cx + ca * (r_mid + 1.0)))
+            ry_out = max(3.0, min(48.0, cy + sa * (r_mid + 1.0)))
+            if u > 0.68 and eff_int >= 0.7:
+                col_out = SOLAR_WHITE
+            elif u > 0.28:
+                col_out = SOLAR_YELLOW
+            else:
+                col_out = FLAME_ORANGE
+            set_px(c, rx_out, ry_out, col_out)
+
+        # Extra crescent flare crest along leading half when intensity is high
+        if u > 0.55 and eff_int >= 0.75 and i % 2 == 0:
+            rx_crest = max(3.0, min(48.0, cx + ca * (r_mid + 1.9)))
+            ry_crest = max(3.0, min(48.0, cy + sa * (r_mid + 1.9)))
+            set_px(c, rx_crest, ry_crest, SOLAR_YELLOW if u > 0.8 else FLAME_ORANGE)
+
+    return c
+
+
+def draw_ground_sun_circle(c, cx=25.0, cy=46.5, rx=12.0, ry=1.8, phase_rad=0.0, intensity=1.0):
+    """
+    Renders a perspective-flattened Golden-Crimson Sun-Wheel Ritual Circle & Rising Ember Motes
+    (y = 44..48, x = 12..38) beneath Ignis's boots during Row 3 (SKILL F03..F22)
+    and Row 4 (ULTIMATE F02..F25).
+    """
+    eff_int = max(0.0, min(1.0, float(intensity)))
+    if eff_int <= 0.05:
+        return c
+
+    eff_rx = max(6.0, min(13.0, float(rx)))
+    eff_ry = max(1.2, min(2.2, float(ry)))
+
+    # 1. Inner radial Sun-Wheel spokes (8 rotating spokes inside y = 44..48, x = 12..38)
+    for sp in range(8):
+        a_sp = (sp / 8.0) * 2.0 * math.pi + phase_rad * 1.5
+        ca, sa = math.cos(a_sp), math.sin(a_sp)
+        for r_frac in (0.35, 0.62, 0.85):
+            sx_p = int(round(max(12.0, min(38.0, cx + ca * eff_rx * r_frac))))
+            sy_p = int(round(max(44.0, min(48.0, cy + sa * eff_ry * r_frac))))
+            # Keep back-half spokes behind boots while front-half spokes glow across the ground plane
+            if sa < 0.0 and c[sy_p, sx_p, 3] > 0:
+                continue
+            col_sp = SOLAR_YELLOW if r_frac < 0.5 else (FLAME_ORANGE if sp % 2 == 0 else CRIMSON_MID)
+            set_px(c, sx_p, sy_p, col_sp)
+
+    # 2. Outer & inner concentric Sun-Wheel ritual ellipse rings (x = 12..38, y = 44..48)
+    ring_steps = 36
+    for s in range(ring_steps):
+        a = (s / float(ring_steps)) * 2.0 * math.pi + phase_rad
+        ca, sa = math.cos(a), math.sin(a)
+
+        # Outer ritual ring
+        ox = int(round(max(12.0, min(38.0, cx + ca * eff_rx))))
+        oy = int(round(max(44.0, min(48.0, cy + sa * eff_ry))))
+        if not (sa < -0.15 and c[oy, ox, 3] > 0):
+            if s % 9 == 0 and eff_int >= 0.7:
+                col_o = SOLAR_WHITE
+            elif s % 3 == 0:
+                col_o = SOLAR_YELLOW
+            elif s % 2 == 0:
+                col_o = FLAME_ORANGE
+            else:
+                col_o = CRIMSON_MID
+            set_px(c, ox, oy, col_o)
+
+        # Outer crimson-gold rim accent
+        if sa >= 0.0 and s % 2 == 0:
+            rim_x = int(round(max(12.0, min(38.0, cx + ca * (eff_rx + 0.8)))))
+            rim_y = int(round(max(44.0, min(48.0, cy + sa * (eff_ry + 0.4)))))
+            set_px(c, rim_x, rim_y, GOLD_BRIGHT if s % 6 == 0 else CRIMSON_MID)
+
+    # 3. Rising Golden-Orange & Crimson Ember Motes above the ritual circle (y = 44..47, x = 12..38)
+    mote_offsets = [-11.5, -8.5, -4.5, 4.5, 8.5, 11.5]
+    for m_idx, dx_m in enumerate(mote_offsets):
+        wobble = math.sin(phase_rad * 2.0 + m_idx * 1.3) * 0.8
+        mx = int(round(max(12.0, min(38.0, cx + dx_m + wobble))))
+        lift = int(round(((phase_rad * 2.2 + m_idx * 0.9) % 3.2)))
+        my = int(round(max(44.0, min(48.0, 47.0 - lift))))
+        if c[my, mx, 3] == 0 or my >= 46:
+            m_col = SOLAR_WHITE if (lift == 0 and eff_int >= 0.8) else (
+                SOLAR_YELLOW if m_idx % 3 == 0 else (FLAME_ORANGE if m_idx % 2 == 0 else CRIMSON_MID)
+            )
+            set_px(c, mx, my, m_col)
+
+    return c
+
+
+def draw_aerial_flame_thrusters(c, boot_y=41, phase_rad=0.0, intensity=1.0, is_apex=False):
+    """
+    Renders swirling Solar Flame-Jet Thrusters & Golden Hover Rings beneath Ignis's boots
+    (y = 39..47, x = 14..32) during Row 8 (JUMP - Flame-Glide Vault) F04..F20.
+    """
+    eff_int = max(0.0, min(1.0, float(intensity)))
+    if eff_int <= 0.05:
+        return c
+
+    # 1. Twin swirling Solar Flame-Jet Thruster plumes beneath left & right boots (x = 18..20 and x = 25..27)
+    jet_roots = [19.0, 26.0]
+    if is_apex:
+        jet_roots.append(22.5)
+
+    plume_len = 6 if is_apex else 5
+    for j_idx, jx_base in enumerate(jet_roots):
+        for dy_j in range(0, plume_len + 1):
+            vy = int(round(max(39.0, min(47.0, boot_y + dy_j))))
+            swirl = math.sin(phase_rad * 3.0 + dy_j * 0.9 + j_idx * 1.7) * (0.9 if dy_j >= 2 else 0.4)
+            vx = int(round(max(14.0, min(32.0, jx_base + swirl))))
+            if dy_j <= 1:
+                col_core = SOLAR_WHITE if (is_apex or eff_int >= 0.75) else SOLAR_YELLOW
+                col_wing = SOLAR_YELLOW
+            elif dy_j <= 3:
+                col_core = SOLAR_YELLOW
+                col_wing = FLAME_ORANGE
+            else:
+                col_core = FLAME_ORANGE if dy_j == 4 else FLAME_CRIMSON
+                col_wing = CRIMSON_MID
+            set_px(c, vx, vy, col_core)
+            if dy_j <= 3:
+                set_px(c, max(14, vx - 1), vy, col_wing)
+                set_px(c, min(32, vx + 1), vy, col_wing)
+
+    # 2. Upper Golden-Solar Hover Ring encircling the thruster nozzles (y = 41..44, x = 14..32)
+    ring1_cy = max(40.5, min(44.0, float(boot_y) + 1.5))
+    ring1_rx = 7.8 if is_apex else 6.8
+    ring1_ry = 1.2
+    for s in range(24):
+        a = (s / 24.0) * 2.0 * math.pi + phase_rad * 2.5
+        rx1 = int(round(max(14.0, min(32.0, 23.0 + math.cos(a) * ring1_rx))))
+        ry1 = int(round(max(39.0, min(47.0, ring1_cy + math.sin(a) * ring1_ry))))
+        if s % 6 == 0 and (is_apex or eff_int >= 0.75):
+            r_col = SOLAR_WHITE
+        elif s % 2 == 0:
+            r_col = SOLAR_YELLOW
+        else:
+            r_col = FLAME_GOLD if s % 3 == 0 else FLAME_ORANGE
+        set_px(c, rx1, ry1, r_col)
+
+    # 3. Lower Secondary Flame-Glide Hover Ring & Swirling Exhaust Sparks (y = 44..47, x = 15..31)
+    ring2_cy = max(44.0, min(46.5, float(boot_y) + 4.2))
+    ring2_rx = 5.6 if is_apex else 4.8
+    ring2_ry = 1.0
+    for s in range(18):
+        a = (s / 18.0) * 2.0 * math.pi - phase_rad * 2.5
+        rx2 = int(round(max(14.0, min(32.0, 23.0 + math.cos(a) * ring2_rx))))
+        ry2 = int(round(max(39.0, min(47.0, ring2_cy + math.sin(a) * ring2_ry))))
+        r2_col = SOLAR_YELLOW if (s % 4 == 0 and is_apex) else (FLAME_ORANGE if s % 2 == 0 else CRIMSON_MID)
+        set_px(c, rx2, ry2, r2_col)
+
+    return c
+
+
 def build_row0_idle(tpl):
     """
     Row 0 (`IDLE`, 30 frames):
@@ -1169,8 +1365,8 @@ def build_row2_auto_attack(tpl):
     Row 2 (`AUTO_ATTACK`, 30 frames):
     - F00..F09 (Windup): Draws Sun-Staff back to `-102°` while Left Spellcasting Arm raises a glowing
       Solar Fireball Orb (`orb_radius=3`) in front of his chest (`hand_x = 31..34, hand_y = 22..25`).
-    - F10..F18 (Thrust & Cast): Thrusts Sun-Staff forward to `-36°` with `flare=1.0` as both hands
-      project the blazing Solar Fireball!
+    - F10..F18 (Thrust & Cast): Thrusts Sun-Staff forward to `-36°` with `flare=1.0` and a blazing 3-band
+      Solar Pyroblast Crescent Cast Trail (`F10..F16`) as both hands project the Solar Fireball!
     - F19..F29 (Recovery): Smooth follow-through recovery to `-68°` caster stance.
     """
     frames = []
@@ -1253,6 +1449,20 @@ def build_row2_auto_attack(tpl):
                 mode='orb',
                 phase_rad=phase * 2.5,
             )
+            # Sweeping Solar Pyroblast Crescent Cast Trail on F10..F16 (k = 0..6)
+            if k <= 6:
+                trail_starts = [-100.0, -96.0, -88.0, -76.0, -66.0, -56.0, -50.0]
+                trail_ends = [-52.0, -18.0, 4.0, 8.0, 4.0, -8.0, -22.0]
+                trail_int = [0.85, 1.0, 1.0, 0.95, 0.85, 0.72, 0.58][k]
+                draw_solar_cast_trail(
+                    frame,
+                    cx=33.5,
+                    cy=18.2,
+                    start_deg=trail_starts[k],
+                    end_deg=trail_ends[k],
+                    intensity=trail_int,
+                    radius=11.2,
+                )
         else:
             u = (f - 19) / 10.0
             staff_deg = -57.0 * (1.0 - u) + (-68.0) * u
@@ -1288,9 +1498,10 @@ def build_row2_auto_attack(tpl):
 def build_row3_skill(tpl):
     """
     Row 3 (`SKILL` - Solar Pillar, 30 frames):
-    - F00..F06: Raises Sun-Staff high overhead (`-98°`).
+    - F00..F06: Raises Sun-Staff high overhead (`-98°`) as the Ground Sun-Wheel Ritual Circle ignites (`F03..F22`).
     - F07..F14: Slams Sun-Staff vertically (`-88°`, `grip_y + 4`) into the ground with magma runes & shockwave.
-    - F15..F22: Sweeps Sun-Staff forward (`-34°`) with Left Spellcasting Arm conjuring a blazing solar sigil!
+    - F15..F22: Sweeps Sun-Staff forward (`-34°`) with blazing Solar Crescent Cast Trail (`F15..F21`) and
+      Left Spellcasting Arm conjuring a blazing solar sigil!
     - F23..F29: Smooth recovery back to `-68°` stance.
     """
     frames = []
@@ -1398,6 +1609,20 @@ def build_row3_skill(tpl):
                 mode='sigil',
                 phase_rad=phase * 2.5,
             )
+            # Sweeping Solar Pyroblast Crescent Cast Trail on F15..F21 (k = 0..6)
+            if k <= 6:
+                skill_trail_starts = [-94.0, -90.0, -84.0, -74.0, -64.0, -54.0, -48.0]
+                skill_trail_ends = [-52.0, -16.0, 6.0, 10.0, 6.0, -6.0, -20.0]
+                skill_trail_int = [0.85, 1.0, 1.0, 0.95, 0.85, 0.72, 0.58][k]
+                draw_solar_cast_trail(
+                    frame,
+                    cx=33.5,
+                    cy=18.2,
+                    start_deg=skill_trail_starts[k],
+                    end_deg=skill_trail_ends[k],
+                    intensity=skill_trail_int,
+                    radius=11.2,
+                )
         else:
             u = (f - 23) / 6.0
             base = apply_robe_cloak_wave(tpl['stand'].copy(), phase, amplitude=1.5, vertical_flutter=0.5)
@@ -1425,6 +1650,27 @@ def build_row3_skill(tpl):
                 phase_rad=phase,
             )
 
+        # Blazing Ground Sun-Wheel Ritual Circle & Rising Ember Motes beneath Ignis's boots (F03..F22)
+        if 3 <= f <= 22:
+            if f <= 6:
+                sigil_int = 0.55 + (f - 3) * 0.15
+                sigil_rx = 9.5 + (f - 3) * 0.8
+            elif f <= 18:
+                sigil_int = 1.0
+                sigil_rx = 12.2
+            else:
+                sigil_int = max(0.45, 1.0 - (f - 18) * 0.14)
+                sigil_rx = 12.2 - (f - 18) * 0.6
+            draw_ground_sun_circle(
+                frame,
+                cx=25.0,
+                cy=46.5,
+                rx=sigil_rx,
+                ry=1.8,
+                phase_rad=phase * 2.5,
+                intensity=sigil_int,
+            )
+
         frames.append(ensure_safe_cell(frame, margin=2))
     return frames
 
@@ -1433,8 +1679,10 @@ def build_row4_ultimate(tpl):
     """
     Row 4 (`ULTIMATE` - Cataclysm: Eclipse Supernova, 30 frames):
     - F00..F12: Raises BOTH arms skyward (`staff angle -92°`, left arm raised high to `(30, 14)`)
-      channeling a miniature black-gold Solar Eclipse orb above his crown.
-    - F13..F22: Slashes the Sun-Staff forward (`-32°`) to command the heaven-to-earth Solar Beam!
+      channeling a miniature black-gold Solar Eclipse orb above his crown, with a blazing
+      Ground Sun-Wheel Ritual Circle (`F02..F25`) beneath his boots.
+    - F13..F22: Slashes the Sun-Staff forward (`-32°`) with a blazing 3-band Solar Crescent Cast Trail (`F13..F21`)
+      to command the heaven-to-earth Solar Beam!
     - F23..F29: Smooth recovery to `-68°` stance.
     """
     frames = []
@@ -1526,6 +1774,20 @@ def build_row4_ultimate(tpl):
                 mode='orb',
                 phase_rad=phase * 3.0,
             )
+            # Sweeping Solar Pyroblast Crescent Cast Trail on F13..F21 (k = 0..8)
+            if k <= 8:
+                ult_trail_starts = [-96.0, -92.0, -86.0, -78.0, -68.0, -60.0, -54.0, -48.0, -44.0]
+                ult_trail_ends = [-48.0, -12.0, 10.0, 12.0, 10.0, 4.0, -4.0, -14.0, -24.0]
+                ult_trail_int = [0.90, 1.0, 1.0, 1.0, 0.95, 0.85, 0.75, 0.65, 0.55][k]
+                draw_solar_cast_trail(
+                    frame,
+                    cx=33.5,
+                    cy=17.0,
+                    start_deg=ult_trail_starts[k],
+                    end_deg=ult_trail_ends[k],
+                    intensity=ult_trail_int,
+                    radius=11.2,
+                )
             # Heaven-to-earth diagonal Solar Beam rays streaking at x=43..48
             if 1 <= k <= 7:
                 for by_b in range(5, 46, 2):
@@ -1563,11 +1825,28 @@ def build_row4_ultimate(tpl):
                 phase_rad=phase,
             )
 
+        # Blazing Ground Sun-Wheel Ritual Circle & Rising Ember Motes beneath Ignis's boots (F02..F25)
         if 2 <= f <= 25:
-            for gx_i in range(4):
-                gx_e = 16 + ((f * 3 + gx_i * 4) % 16)
-                gy_e = 48 + (gx_i % 2)
-                set_px(frame, gx_e, gy_e, SOLAR_YELLOW if gx_i % 2 == 0 else FLAME_ORANGE)
+            if f <= 5:
+                u_sig = (f - 2) / 3.0
+                ult_sig_int = 0.6 + u_sig * 0.4
+                ult_sig_rx = 10.0 + u_sig * 2.5
+            elif f <= 21:
+                ult_sig_int = 1.0
+                ult_sig_rx = 12.6
+            else:
+                u_fade = (f - 21) / 4.0
+                ult_sig_int = max(0.4, 1.0 - u_fade * 0.6)
+                ult_sig_rx = 12.6 - u_fade * 2.0
+            draw_ground_sun_circle(
+                frame,
+                cx=25.0,
+                cy=46.5,
+                rx=ult_sig_rx,
+                ry=1.9,
+                phase_rad=phase * 3.0,
+                intensity=ult_sig_int,
+            )
 
         frames.append(ensure_safe_cell(frame, margin=2))
     return frames
@@ -2027,10 +2306,11 @@ def build_row7_crouch(tpl):
 def build_row8_jump(tpl):
     """
     Row 8 (`JUMP`, 30 frames):
-    Full-body Flame-Glide Aerial Vault & mid-air Fireball cast with expressive Sun-Staff arc (`-104°` to `-38°`):
+    Full-body Flame-Glide Aerial Vault & mid-air Fireball cast with expressive Sun-Staff arc (`-104°` to `-38°`)
+    and swirling Solar Flame-Jet Thrusters & Golden Hover Rings beneath Ignis's boots (`F04..F20`):
     - F00..F04: Knee-bend launch with ember burst at boots (`staff_deg = -72° -> -104°`).
-    - F05..F11: Ascending aerial vault with full-length robe streaming (`staff_deg = -104° -> -58°`).
-    - F12..F18: Apex mid-air hover thrusting Sun-Staff forward (`-38°`, `flare=1.0`) with Left Spellcasting Arm!
+    - F05..F11: Ascending aerial vault with full-length robe streaming & flame-jet thrusters (`staff_deg = -104° -> -58°`).
+    - F12..F18: Apex mid-air hover with blazing hover rings & thrusters, thrusting Sun-Staff forward (`-38°`, `flare=1.0`)!
     - F19..F24: Descending flame-cushioned glide (`staff_deg = -46° -> -64°`).
     - F25..F29: Soft landing (`staff_deg = -64° -> -68°`).
     """
@@ -2067,7 +2347,7 @@ def build_row8_jump(tpl):
                 flare=0.0,
                 phase_rad=phase * 2.0,
             )
-            if f >= 2:
+            if f in (2, 3):
                 for ex_b in (18, 22, 27, 31):
                     set_px(frame, ex_b, 48, SOLAR_YELLOW if ex_b % 2 == 0 else FLAME_ORANGE)
                     set_px(frame, ex_b, 49, FLAME_CRIMSON)
@@ -2101,11 +2381,6 @@ def build_row8_jump(tpl):
                 flare=0.3 if k >= 5 else 0.0,
                 phase_rad=phase * 2.0,
             )
-            for j in range(3):
-                jx = 18 + j * 5 + (f % 2)
-                jy = 47 + (j % 2)
-                set_px(frame, jx, jy, SOLAR_YELLOW if j == 1 else FLAME_ORANGE)
-                set_px(frame, jx, min(49, jy + 1), FLAME_CRIMSON)
 
         elif f <= 18:
             k = f - 12
@@ -2138,9 +2413,6 @@ def build_row8_jump(tpl):
                 flare=flare_val,
                 phase_rad=phase * 2.5,
             )
-            for j in range(3):
-                jx = 18 + j * 5 + (f % 2)
-                set_px(frame, jx, 47, FLAME_GOLD)
 
         elif f <= 24:
             k = f - 19
@@ -2171,9 +2443,10 @@ def build_row8_jump(tpl):
                 flare=0.0,
                 phase_rad=phase * 2.0,
             )
-            for j in range(3):
-                jx = 18 + j * 5
-                set_px(frame, jx, 48, FLAME_ORANGE)
+            if f >= 21:
+                for j in range(3):
+                    jx = 18 + j * 5
+                    set_px(frame, jx, 48, FLAME_ORANGE)
 
         else:
             k = f - 25
@@ -2204,6 +2477,29 @@ def build_row8_jump(tpl):
                 orb_radius=0,
                 flare=0.0,
                 phase_rad=phase,
+            )
+
+        # Swirling Solar Flame-Jet Thrusters & Golden Hover Rings beneath Ignis's boots (F04..F20)
+        if 4 <= f <= 20:
+            is_apex_hover = 12 <= f <= 18
+            if f == 4:
+                boot_y_thr = 42
+                thr_int = 0.70
+            elif f <= 11:
+                boot_y_thr = 40
+                thr_int = 0.85 + 0.15 * ((f - 5) / 6.0)
+            elif f <= 18:
+                boot_y_thr = 39 if f in (13, 14, 15, 16) else 40
+                thr_int = 1.0
+            else:
+                boot_y_thr = 41 + (f - 19)
+                thr_int = 0.75 - (f - 19) * 0.2
+            draw_aerial_flame_thrusters(
+                frame,
+                boot_y=boot_y_thr,
+                phase_rad=phase * 2.5,
+                intensity=thr_int,
+                is_apex=is_apex_hover,
             )
 
         frames.append(ensure_safe_cell(frame, margin=2))

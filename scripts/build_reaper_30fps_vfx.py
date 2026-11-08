@@ -53,7 +53,7 @@ C_CRIMSON_AURA = (244, 63, 94, 135)
 def put(px, x, y, col):
     ix = int(round(x))
     iy = int(round(y))
-    if 0 <= ix < LOGICAL and 0 <= iy < LOGICAL:
+    if 2 <= ix <= 49 and 2 <= iy <= 49:
         if col[3] < 255 and px[ix, iy][3] > 0:
             dst = px[ix, iy]
             a = col[3] / 255.0
@@ -207,9 +207,9 @@ def build_row1_spectral_bone_claw(f):
 
     cy = 26.0 + math.sin(phase * 2.0) * 1.0
 
-    # 1. Trailing Interlocking Dark-Iron & Amethyst Chain Links (x = 2..wrist_x)
+    # 1. Trailing Interlocking Dark-Iron & Amethyst Chain Links (x = 4..wrist_x)
     link_idx = 0
-    for lx in range(3, int(wrist_x) - 1, 4):
+    for lx in range(4, int(wrist_x) - 1, 4):
         ly = cy + math.sin(lx * 0.45 - phase * 3.0) * 1.8
         # Outer obsidian iron link
         for dx_l in range(-2, 3):
@@ -271,9 +271,9 @@ def build_row1_spectral_bone_claw(f):
     put(px, wrist_x + 2, cy, C_WHITE)
 
     # 5. Clamping Soul-Fire Impact Burst (F10..F19) or Locked Rune Vortex (F20..F29)
-    grip_cx = wrist_x + 17.0
+    grip_cx = wrist_x + 16.5
     if burst_int > 0.05:
-        r_b = 3.0 + (1.0 - burst_int) * 11.0
+        r_b = 3.0 + (1.0 - burst_int) * 8.5
         draw_circle(px, grip_cx, cy, r_b, C_CRIMSON_BRIGHT if f % 2 == 0 else C_VIOLET_PINK, fill=False)
         draw_star(px, grip_cx, cy, 4 + int(burst_int * 4), C_WHITE, C_CRIMSON_BRIGHT, rot=phase)
     elif f >= 20:
@@ -286,15 +286,15 @@ def build_row1_spectral_bone_claw(f):
 def build_row2_necropolis_tombstone(f):
     """
     Row 2 (F00..F29): GOTHIC NECROPOLIS TOMBSTONE & SOUL VORTEX
-    - F00..F06: Ground fissure & erupting carved gothic skull-cross tombstone monolith
-    - F07..F21: Pulsing obsidian tombstone with swirling emerald-violet spectral skulls & crimson rune glow
-    - F22..F29: Crumbling stone & soul-spirit ascension
+    - Towering 35px-tall Ornate Gothic Cathedral Gargoyle Obelisk / Tombstone (y = 10..45, x = 14..38)
+    - Tiered gothic spires, sculpted gargoyle wings/shoulders, blazing crimson-magenta rune cross in the center,
+      cracked obsidian-slate stone bevels, and orbiting emerald-violet soul wisps that erupt when the obelisk shatters (F22..F29)!
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
     px = img.load()
     phase = (f / 30.0) * math.pi * 2.0
     cx = 26
-    gy = 46
+    gy = 45
 
     if f <= 6:
         rise_u = (f + 1) / 7.0
@@ -306,92 +306,150 @@ def build_row2_necropolis_tombstone(f):
         rise_u = 1.0
         crumble_u = (f - 21) / 8.0
 
-    # 1. Haunted Necropolis Ground Miasma Pool & Fissure at Base (y = 43..49)
-    pool_rx = int(round(16.0 * min(1.0, rise_u * 1.3) * (1.0 - crumble_u * 0.4)))
+    # 1. Haunted Necropolis Ground Miasma Pool & Runic Fissure at Base (y = 42..48, x = 8..44)
+    pool_rx = int(round(17.0 * min(1.0, rise_u * 1.35) * (1.0 - crumble_u * 0.25)))
     for dx in range(-pool_rx, pool_rx + 1):
-        for dy in range(-2, 3):
-            if (dx * dx) / max(1.0, pool_rx * pool_rx) + (dy * dy) / 6.0 <= 1.0:
-                col_p = C_VIOLET_BRIGHT if dy == 0 and abs(dx) < pool_rx * 0.6 else (C_VIOLET_DARK if dy <= 0 else C_ABYSS_DEEP)
+        for dy in range(-2, 4):
+            if (dx * dx) / max(1.0, pool_rx * pool_rx) + (dy * dy) / 7.5 <= 1.0:
+                if dy == 0 and abs(dx) < pool_rx * 0.7:
+                    col_p = C_SPECTRAL_MINT if (dx + f) % 4 == 0 else C_VIOLET_PINK
+                elif dy <= 0:
+                    col_p = C_VIOLET_BRIGHT if abs(dx) % 3 == 0 else C_CRIMSON_DARK
+                else:
+                    col_p = C_VIOLET_DARK if (dx + dy) % 2 == 0 else C_ABYSS_DEEP
                 put(px, cx + dx, gy + dy, col_p)
 
-    # 2. Carved Gothic Skull-Cross Tombstone Monolith
-    full_h = 32  # Top of cross at y = 14 when fully risen
+    # 2. Towering 35px Ornate Gothic Cathedral Gargoyle Obelisk / Tombstone (y = 10..45, x = 14..38)
+    full_h = 35  # Top of central spire at y = 10 when gy = 45
     vis_h = int(round(full_h * rise_u))
     top_y = gy - vis_h
 
-    if crumble_u < 0.85:
-        for local_y in range(vis_h):
+    if crumble_u < 0.92:
+        for local_y in range(vis_h + 1):
             y = top_y + local_y
-            if not (4 <= y < gy):
+            if not (4 <= y <= gy):
                 continue
-            # If crumbling (F22..F29), break monolith into rising/falling fragments
+
+            # During F22..F29, fracture the obelisk into exploding stone & rune blocks
             if crumble_u > 0.0:
-                frag_id = (local_y // 4)
-                if (frag_id + int(crumble_u * 6)) % 3 == 0 and crumble_u > 0.35:
+                frag_id = local_y // 3
+                if crumble_u > 0.55 and (frag_id + f) % 3 == 0:
                     continue
-                x_jit = int(round(math.sin(frag_id * 2.7) * crumble_u * 6.0))
-                y_jit = int(round((crumble_u * crumble_u) * 8.0 * (1 if frag_id % 2 == 0 else -1)))
+                dir_sign = -1 if (frag_id % 2 == 0) else 1
+                x_jit = int(round(dir_sign * (1.5 + (frag_id % 3)) * crumble_u * 4.5))
+                y_jit = int(round(( (frag_id % 4) - 1.5 ) * crumble_u * 5.0))
             else:
                 x_jit, y_jit = 0, 0
 
-            # Gothic finial cross at local_y = 0..7, arched shoulder at 8..13, plinth slab at 14..31
-            if local_y < 3:
-                half_w = 1
-            elif local_y < 6:
-                half_w = 4
-            elif local_y < 8:
-                half_w = 2
-            elif local_y < 14:
-                u_arch = (local_y - 8) / 6.0
-                half_w = int(round(5 + math.sin(u_arch * math.pi * 0.5) * 5))
-            elif local_y >= 28:
-                half_w = 12
+            # Compute tiered Gothic Cathedral Silhouette width (`x = 14..38` -> `half_w` up to 12)
+            if local_y <= 2:
+                half_w = local_y  # Central finial spike tip (0..2)
+            elif local_y in (3, 4):
+                half_w = 4  # Upper finial cross-bar
+            elif local_y <= 7:
+                half_w = 2 + (local_y - 5)  # Spire neck (2..4)
+            elif local_y <= 13:
+                # Gargoyle shoulder wings & flanking mini-spires (half_w = 11..12 -> x = 14..38)
+                half_w = 12 if local_y in (9, 10, 11) else 10
+            elif local_y <= 28:
+                # Cathedral Obelisk main buttressed body (half_w = 9..10)
+                half_w = 10 if local_y % 5 == 0 else 9
             else:
-                half_w = 10
+                # Wide Stepped Gothic Plinth Base (local_y = 29..35, half_w = 11..12 -> x = 14..38)
+                half_w = 11 if local_y < 32 else 12
 
             for dx in range(-half_w, half_w + 1):
+                # Carve gaps between central spire and flanking gargoyle mini-spires at local_y = 8..10
+                if 8 <= local_y <= 10 and 5 <= abs(dx) <= 7:
+                    continue
+
                 px_x = cx + dx + x_jit
                 px_y = y + y_jit
-                if abs(dx) == half_w or local_y in (0, 8, 28):
-                    col_t = C_BONE_MID if dx < 0 else C_OBSIDIAN_DARK
-                elif abs(dx) == half_w - 1:
-                    col_t = C_OBSIDIAN_MID
-                else:
-                    col_t = C_OBSIDIAN_DARK
 
-                # Glowing carved Skull & Runic Cross inside the tombstone face (local_y = 12..26)
-                if 12 <= local_y <= 17 and abs(dx) <= 3:
-                    # Carved skull face in upper arch
-                    if local_y in (14, 15) and abs(dx) == 2:
-                        col_t = C_CRIMSON_BRIGHT if (f % 4 != 0) else C_WHITE
-                    elif abs(dx) + abs(local_y - 14) <= 3:
+                # Default stone shading: High-contrast carved bone-slate & obsidian bevels
+                is_outer_rim = (abs(dx) == half_w or local_y == 0 or local_y in (8, 14, 29, 35))
+                is_inner_rib = (abs(dx) == half_w - 1 or abs(dx) == 6)
+
+                if is_outer_rim:
+                    col_t = C_BONE_WHITE if (dx < 0 and local_y < 15) else (C_BONE_LIGHT if dx <= 0 else C_VIOLET_BRIGHT)
+                elif is_inner_rib:
+                    col_t = C_BONE_MID if dx < 0 else C_VIOLET_DARK
+                else:
+                    col_t = C_BONE_DARK if (dx + local_y) % 4 == 0 else C_OBSIDIAN_MID
+
+                # Sculpted Gargoyle Wing Feathers & Glowing Gargoyle Eyes on shoulders (local_y = 9..13)
+                if 9 <= local_y <= 13 and abs(dx) >= 7:
+                    if local_y == 10 and abs(dx) == 9:
+                        col_t = C_CRIMSON_BRIGHT  # Blazing gargoyle eye
+                    elif (abs(dx) + local_y) % 2 == 0:
                         col_t = C_BONE_LIGHT
-                elif 19 <= local_y <= 26 and (dx == 0 or (local_y == 22 and abs(dx) <= 4)):
-                    # Glowing crimson-violet necropolis rune cross on slab
-                    pulse = math.sin(phase * 2.0 - local_y * 0.4) > 0
-                    col_t = C_CRIMSON_BRIGHT if pulse else C_VIOLET_BRIGHT
+                    else:
+                        col_t = C_OBSIDIAN_DARK
+
+                # Cracked Obsidian Stone Bevels / Glowing Necrotic Fissure Veins
+                crack_1 = (local_y >= 14 and abs((dx + 5) - (local_y - 14) * 0.55) < 0.65)
+                crack_2 = (local_y >= 18 and abs((dx - 6) + (local_y - 18) * 0.5) < 0.65)
+                if crack_1 or crack_2:
+                    col_t = C_SPECTRAL_MINT if (local_y + f) % 3 == 0 else C_VIOLET_BRIGHT
+
+                # Blazing Crimson-Magenta Rune Cross in the Center (local_y = 11..28, dx = -6..+6)
+                in_vert_shaft = (11 <= local_y <= 28 and abs(dx) <= 1)
+                in_horiz_arm = (16 <= local_y <= 18 and abs(dx) <= 6)
+                in_cross_flare = (
+                    (local_y in (11, 28) and abs(dx) <= 2)
+                    or (local_y in (15, 19) and abs(dx) in (5, 6))
+                )
+                if in_vert_shaft or in_horiz_arm or in_cross_flare:
+                    if (dx == 0 and 12 <= local_y <= 27) or (local_y == 17 and abs(dx) <= 5):
+                        col_t = C_WHITE if (local_y + f) % 3 == 0 else C_CRIMSON_LIGHT
+                    elif abs(dx) + abs(local_y - 17) <= 2:
+                        col_t = C_WHITE  # Blazing cross nexus core
+                    else:
+                        col_t = C_CRIMSON_BRIGHT if (local_y + dx + f) % 2 == 0 else C_VIOLET_PINK
 
                 put(px, px_x, px_y, col_t)
 
-    # 3. Swirling Emerald-Mint & Violet Spectral Skulls / Soul Wisps Orbiting the Tombstone (F05..F29)
-    if f >= 4:
-        for w_idx in range(3):
-            wa = phase * 1.8 + w_idx * (math.pi * 2.0 / 3.0)
-            wx = cx + math.cos(wa) * (13.5 + crumble_u * 4.0)
-            wy = (gy - 14 - w_idx * 5) - crumble_u * 12.0 + math.sin(wa * 2.0) * 2.5
-            if math.sin(wa) >= -0.3 or crumble_u > 0.0:
-                col_w = C_SPECTRAL_MINT if w_idx == 0 else (C_VIOLET_PINK if w_idx == 1 else C_CRIMSON_BRIGHT)
-                draw_circle(px, wx, wy, 1.8, col_w, fill=True)
-                put(px, wx, wy, C_WHITE)
-                put(px, wx - math.cos(wa) * 2.0, wy + 1.5, col_w)
+        # Flanking Gothic Mini-Spire Finial Tips at local_y = 6..8, abs(dx) == 9
+        if vis_h >= 12 and crumble_u < 0.4:
+            for side in (-1, 1):
+                sx_sp = cx + side * 9
+                for dy_sp in range(3):
+                    put(px, sx_sp, top_y + 6 + dy_sp, C_BONE_WHITE if dy_sp == 0 else C_BONE_LIGHT)
+            draw_star(px, cx, max(5, top_y), 2, C_WHITE, C_CRIMSON_BRIGHT, rot=phase)
 
-    # 4. Ascending Soul-Spirit Pillar during Crumble (F22..F29)
+    # 3. Orbiting Emerald-Violet Soul Wisps (F03..F21) that Erupt Skyward on Shatter (F22..F29)
+    if f >= 3:
+        num_wisps = 4 if crumble_u == 0.0 else 8
+        for w_idx in range(num_wisps):
+            wa = phase * 2.0 + w_idx * (math.pi * 2.0 / num_wisps)
+            if crumble_u == 0.0:
+                rx_w = 14.5 + math.sin(phase + w_idx) * 1.5
+                wx = cx + math.cos(wa) * rx_w
+                wy = (gy - 8 - (w_idx * 6)) + math.sin(wa * 2.0) * 2.5
+            else:
+                # Erupting outward & skyward when the obelisk shatters (F22..F29)
+                erupt_r = 4.0 + crumble_u * (14.0 + (w_idx % 3) * 3.0)
+                wx = cx + math.cos(wa) * erupt_r
+                wy = (gy - 14) - crumble_u * (16.0 + (w_idx % 4) * 3.5) + math.sin(wa) * 4.0
+
+            col_w = C_SPECTRAL_MINT if w_idx % 2 == 0 else (C_VIOLET_PINK if w_idx % 3 == 0 else C_CRIMSON_BRIGHT)
+            draw_circle(px, wx, wy, 1.8, col_w, fill=True)
+            put(px, wx, wy, C_WHITE)
+            # Trailing soul wisp tail
+            for t_s in range(1, 4):
+                tx_w = wx - math.cos(wa) * t_s * 1.2
+                ty_w = wy + t_s * 1.1
+                put(px, tx_w, ty_w, C_SPECTRAL_TEAL if w_idx % 2 == 0 else C_VIOLET_BRIGHT)
+
+    # 4. Erupting Emerald-Violet & Crimson Soul-Fire Geyser during Shatter (F22..F29)
     if crumble_u > 0.0:
-        for h in range(4, int(36 * (1.0 - crumble_u * 0.3))):
-            py = gy - 4 - h
-            wx = cx + math.sin(h * 0.35 - phase * 3.0) * (3.5 * (1.0 - crumble_u * 0.5))
-            put(px, wx, py, C_WHITE if h % 3 == 0 else C_VIOLET_PINK)
-            put(px, wx + 1, py, C_SPECTRAL_MINT if h % 2 == 0 else C_CRIMSON_BRIGHT)
+        draw_star(px, cx, gy - 18 - int(crumble_u * 10), 4, C_WHITE, C_CRIMSON_BRIGHT, rot=phase)
+        for h in range(3, int(33 * (1.0 - crumble_u * 0.15))):
+            py = gy - 2 - h
+            for strand in (-1, 1):
+                wx = cx + strand * math.sin(h * 0.35 - phase * 3.0) * (3.0 + crumble_u * 5.0)
+                put(px, wx, py, C_WHITE if h % 3 == 0 else (C_SPECTRAL_MINT if strand > 0 else C_VIOLET_PINK))
+                put(px, wx + strand, py, C_CRIMSON_BRIGHT if h % 2 == 0 else C_VIOLET_BRIGHT)
 
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)
 
@@ -399,10 +457,8 @@ def build_row2_necropolis_tombstone(f):
 def build_row3_sovereign_of_death_avatar(f):
     """
     Row 3 (F00..F29): GRIM HARVEST - COLOSSAL SOVEREIGN OF DEATH AVATAR
-    - F00..F07: Materializing from abyssal ribs, necrotic miasma & tattered dark shroud
-    - F08..F21: Towering horned skeletal Sovereign of Death roaring with blazing crimson eye sockets
-      and sweeping a colossal twin-crescent phantom scythe
-    - F22..F29: Dissolving into a swirling blood-moon & violet soul vortex
+    - Enriched with taller jagged abyssal crown horns, brighter crimson-violet eye sockets,
+      blazing ribcage soul-fire core, and wider crossed spectral scythe blades (strictly within 2 <= x <= 49, 2 <= y <= 49).
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
     px = img.load()
@@ -412,115 +468,162 @@ def build_row3_sovereign_of_death_avatar(f):
     if f <= 7:
         mat_u = (f + 1) / 8.0
         diss_u = 0.0
-        roar_u = 0.0
+        roar_u = 0.25
     elif f <= 21:
         mat_u = 1.0
         diss_u = 0.0
-        roar_u = math.sin(((f - 8) / 13.0) * math.pi)
+        roar_u = 0.35 + 0.65 * math.sin(((f - 8) / 13.0) * math.pi)
     else:
         mat_u = 1.0
         diss_u = (f - 21) / 8.0
-        roar_u = 0.0
+        roar_u = 0.2
 
-    # 1. Volumetric Blood-Moon & Violet Halo Behind the Sovereign (y = 6..46)
-    halo_r = 19.0 * mat_u * (1.0 - diss_u * 0.35)
-    for s in range(56):
-        a = (s / 56.0) * math.pi * 2.0 + phase * 1.5
+    # 1. Volumetric Blood-Moon & Violet Halo Behind the Sovereign (r <= 20, strictly inside 4..48)
+    halo_r = 19.5 * mat_u * (1.0 - diss_u * 0.3)
+    for s in range(64):
+        a = (s / 64.0) * math.pi * 2.0 + phase * 1.5
         rx = cx + math.cos(a) * halo_r
-        ry = 25.0 + math.sin(a) * halo_r
-        put(px, rx, ry, C_CRIMSON_BRIGHT if s % 4 == 0 else (C_VIOLET_BRIGHT if s % 2 == 0 else C_VIOLET_AURA))
+        ry = 26.0 + math.sin(a) * halo_r
+        put(px, rx, ry, C_CRIMSON_BRIGHT if s % 4 == 0 else (C_VIOLET_PINK if s % 2 == 0 else C_VIOLET_DARK))
 
-    if diss_u < 0.88:
-        bob_y = math.sin(phase) * 1.2 - diss_u * 6.0
-        head_y = 14.0 + (1.0 - mat_u) * 10.0 + bob_y
+    if diss_u < 0.90:
+        bob_y = math.sin(phase) * 1.0 - diss_u * 3.0
+        head_y = 14.5 + (1.0 - mat_u) * 5.0 + bob_y
 
-        # 2. Towering Tattered Abyssal Shroud &Exposed Ribcage Torso (y = head_y+6 .. 47)
-        max_body_y = int(min(48, head_y + 6 + 28 * mat_u))
-        for y in range(int(head_y + 5), max_body_y):
-            u_b = (y - (head_y + 5)) / 28.0
-            if diss_u > 0.0 and ((y + f) % 3 == 0) and diss_u > 0.4:
+        # 2. Wider Crossed Spectral Scythe Blades & Hafts Behind the Sovereign (strictly inside 3..48)
+        sweep_off = math.sin(phase * 1.5) * 1.5
+        for side in (-1, 1):
+            # Long diagonal dark-bone & rune scythe haft crossing behind the chest
+            haft_x0 = cx - side * 10.0
+            haft_y0 = min(46.0, head_y + 27.0)
+            haft_x1 = cx + side * 14.0
+            haft_y1 = max(7.0, head_y - 4.0 + sweep_off * side)
+            draw_line(px, haft_x0, haft_y0, haft_x1, haft_y1, C_BONE_LIGHT)
+            draw_line(px, haft_x0, haft_y0 + 1, haft_x1, haft_y1 + 1, C_VIOLET_BRIGHT)
+
+            # Wide Sweeping Crescent Spectral Scythe Blade arcing outward from collar (haft_x1, haft_y1)
+            # Sweeps across x = 4..20 (left) and x = 32..48 (right), y = 6..30
+            steps_b = 24
+            for bi in range(steps_b + 1):
+                bu = bi / float(steps_b)
+                # Blade curves outward to the side then hooks sharply down and inward
+                bx_s = haft_x1 + side * (math.sin(bu * math.pi * 0.82) * 7.5 - (bu ** 2.2) * 3.5)
+                by_s = haft_y1 - math.sin(bu * math.pi * 0.5) * 2.0 + (bu ** 1.35) * 20.5
+                w_blade = max(1, int(round((1.0 - bu * 0.55) * 3.8)))
+                for bw in range(w_blade + 1):
+                    px_b = bx_s - side * bw
+                    if bw == 0:
+                        col_b = C_WHITE
+                    elif bw == 1:
+                        col_b = C_CRIMSON_BRIGHT if (bi + f) % 4 != 0 else C_SOUL_CORE
+                    elif bw == 2:
+                        col_b = C_VIOLET_PINK if side == -1 else C_SPECTRAL_MINT
+                    else:
+                        col_b = C_VIOLET
+                    put(px, px_b, by_s, col_b)
+
+        # 3. Towering Tattered Abyssal Shroud & Ribcage Soul-Fire Core (y = head_y+5 .. 47)
+        max_body_y = int(min(47, head_y + 5 + 27 * mat_u))
+        for y in range(int(head_y + 5), max_body_y + 1):
+            u_b = (y - (head_y + 5)) / 27.0
+            if diss_u > 0.45 and ((y + f) % 3 == 0):
                 continue
-            shroud_w = int(round((11.0 - u_b * 3.0 + math.sin(u_b * 5.0 - phase * 2.0) * 2.0) * (1.0 - diss_u * 0.5)))
-            sway_x = math.sin(u_b * 3.5 - phase * 2.0) * (1.5 + diss_u * 4.0)
+            shroud_w = int(round((12.0 - u_b * 2.5 + math.sin(u_b * 5.0 - phase * 2.0) * 1.8) * (1.0 - diss_u * 0.4)))
+            sway_x = math.sin(u_b * 3.5 - phase * 2.0) * (1.2 + diss_u * 3.0)
+
             for dx in range(-shroud_w, shroud_w + 1):
                 px_x = cx + sway_x + dx
                 if abs(dx) == shroud_w:
-                    put(px, px_x, y, C_VIOLET_BRIGHT if (y + dx) % 3 == 0 else C_CRIMSON_DARK)
+                    put(px, px_x, y, C_VIOLET_PINK if (y + dx) % 3 == 0 else C_CRIMSON_BRIGHT)
                 elif abs(dx) >= shroud_w - 2:
-                    put(px, px_x, y, C_OBSIDIAN_MID)
+                    put(px, px_x, y, C_VIOLET_DARK if (dx + y) % 2 == 0 else C_OBSIDIAN_MID)
                 else:
                     put(px, px_x, y, C_OBSIDIAN_DARK)
 
-            # Sculpted Skeletal Ribcage & Blazing Soul-Heart inside Chest (u_b = 0.12..0.55)
-            if 0.12 <= u_b <= 0.55:
-                rib_y = int(y - head_y - 5)
-                if rib_y % 3 == 0:
-                    rib_w = int(round(5.5 * (1.0 - (u_b - 0.12) * 0.8)))
-                    for rdx in range(-rib_w, rib_w + 1):
-                        if abs(rdx) >= 1:
-                            put(px, cx + sway_x + rdx, y, C_BONE_LIGHT if abs(rdx) < rib_w else C_BONE_MID)
-                # Blazing Crimson-Violet Soul Heart inside ribcage
-                if 0.22 <= u_b <= 0.42:
-                    put(px, cx + sway_x, y, C_WHITE if roar_u > 0.4 else C_CRIMSON_BRIGHT)
-                    put(px, cx + sway_x - 1, y, C_VIOLET_PINK)
-                    put(px, cx + sway_x + 1, y, C_SPECTRAL_MINT)
+            # Blazing Ribcage Soul-Fire Core & High-Contrast Articulated Skeletal Ribs (u_b = 0.08..0.68)
+            if 0.08 <= u_b <= 0.68:
+                rib_rel = y - int(head_y + 5)
+                core_w = int(round(4.5 * math.sin(((u_b - 0.08) / 0.60) * math.pi)))
+                # Glowing Soul-Fire Core inside the chest cavity
+                for cdx in range(-core_w, core_w + 1):
+                    dist_c = abs(cdx)
+                    if dist_c == 0:
+                        col_c = C_WHITE
+                    elif dist_c == 1:
+                        col_c = C_CRIMSON_BRIGHT if (y + f) % 2 == 0 else C_SOUL_CORE
+                    elif dist_c == 2:
+                        col_c = C_VIOLET_PINK if (y + cdx + f) % 2 == 0 else C_SPECTRAL_MINT
+                    else:
+                        col_c = C_CRIMSON
+                    put(px, cx + sway_x + cdx, y, col_c)
 
-        # 3. Hooded Skeletal Sovereign Skull, Horned Crown & Roaring Jaw
+                # Sculpted Bone Ribs arching over the Soul-Fire Core every 3 pixels
+                if rib_rel % 3 == 0:
+                    rib_w = int(round(7.5 * (1.0 - (u_b - 0.08) * 0.55)))
+                    for rdx in range(-rib_w, rib_w + 1):
+                        if abs(rdx) >= 2:
+                            put(px, cx + sway_x + rdx, y, C_BONE_WHITE if abs(rdx) < rib_w - 1 else C_BONE_MID)
+                        elif rdx == 0:
+                            # Sternum bone nexus with spectral gem
+                            put(px, cx + sway_x, y, C_SPECTRAL_MINT if (rib_rel // 3) % 2 == 0 else C_WHITE)
+
+        # 4. Hooded Skeletal Sovereign Skull, Taller Jagged Abyssal Crown Horns & Brighter Eye Sockets
         for dy in range(-5, 6):
-            hood_w = int(round(6.5 - abs(dy) * 0.55))
+            hood_w = int(round(7.0 - abs(dy) * 0.5))
             for dx in range(-hood_w, hood_w + 1):
                 if abs(dx) == hood_w or dy == -5:
-                    put(px, cx + dx, head_y + dy, C_VIOLET_BRIGHT if dy < 0 else C_OBSIDIAN_MID)
-                elif abs(dx) <= 3 and -2 <= dy <= 3:
-                    # Inner skull face
+                    put(px, cx + dx, head_y + dy, C_VIOLET_PINK if dy < 0 else C_VIOLET_BRIGHT)
+                elif abs(dx) <= 4 and -3 <= dy <= 3:
                     put(px, cx + dx, head_y + dy, C_BONE_WHITE if dy <= 0 else C_BONE_LIGHT)
                 else:
                     put(px, cx + dx, head_y + dy, C_OBSIDIAN_DARK)
 
-        # Swept Horned Sovereign Crown atop Hood
+        # Taller Jagged Abyssal Crown Horns (sweeping up to y = head_y - 10 >= 4)
         for sign in (-1, 1):
-            for hd in range(1, 7):
-                put(px, cx + sign * (3 + hd * 0.85), head_y - 3 - hd * 0.85, C_CRIMSON_BRIGHT if hd >= 5 else C_BONE_WHITE)
-        put(px, cx, head_y - 6, C_WHITE)
-        put(px, cx, head_y - 7, C_CRIMSON_BRIGHT)
+            # Outer jagged great-horn with stepped abyssal barbs
+            for hd in range(1, 10):
+                jag = (1.0 if hd in (4, 7) else 0.0) * sign
+                hx_c = cx + sign * (3.5 + hd * 0.9) + jag
+                hy_c = max(3, head_y - 2.5 - hd * 0.85)
+                col_h = C_WHITE if hd == 9 else (C_CRIMSON_BRIGHT if hd >= 6 else (C_VIOLET_PINK if hd >= 4 else C_BONE_WHITE))
+                put(px, hx_c, hy_c, col_h)
+                put(px, hx_c - sign, hy_c, C_BONE_LIGHT if hd < 5 else C_CRIMSON)
+            # Inner secondary abyssal crown tine
+            for hd2 in range(1, 7):
+                put(px, cx + sign * (2.0 + hd2 * 0.35), max(3, head_y - 4.0 - hd2 * 0.9), C_VIOLET_PINK if hd2 >= 4 else C_BONE_WHITE)
 
-        # Blazing Crimson Eye Sockets & Roaring Lower Jaw
+        # Towering Central Abyssal Crown Spike & Blood-Moon Star
+        for cd in range(1, 8):
+            put(px, cx, max(3, head_y - 4 - cd), C_WHITE if cd >= 6 else C_CRIMSON_BRIGHT)
+            if cd in (3, 5):
+                put(px, cx - 1, max(3, head_y - 4 - cd), C_VIOLET_PINK)
+                put(px, cx + 1, max(3, head_y - 4 - cd), C_VIOLET_PINK)
+
+        # Brighter Crimson-Violet Eye Sockets & Trailing Eye-Flame Wisps
         for sign in (-1, 1):
+            # 3x2 Blazing eye socket
             put(px, cx + sign * 2, head_y, C_WHITE)
             put(px, cx + sign * 3, head_y, C_CRIMSON_BRIGHT)
-            put(px, cx + sign * 2, head_y - 1, C_VIOLET_PINK)
+            put(px, cx + sign * 1, head_y, C_CRIMSON_LIGHT)
+            put(px, cx + sign * 2, head_y - 1, C_CRIMSON_BRIGHT)
+            put(px, cx + sign * 3, head_y - 1, C_VIOLET_PINK)
+            put(px, cx + sign * 4, head_y - 2, C_VIOLET_PINK if f % 2 == 0 else C_SPECTRAL_MINT)
 
+        # Roaring Skeletal Jaw with Soul-Fire Breath
         jaw_drop = int(round(1 + roar_u * 2.5))
-        for dx in range(-2, 3):
-            put(px, cx + dx, head_y + 3 + jaw_drop, C_BONE_LIGHT)
-            if roar_u > 0.3 and abs(dx) <= 1:
-                put(px, cx + dx, head_y + 2 + jaw_drop, C_CRIMSON_BRIGHT)
-
-        # 4. Colossal Sweeping Sovereign Scythes (Crossed / Sweeping Arc across F08..F21)
-        scythe_sweep = -35.0 + (f / 29.0) * 110.0
-        for side in (-1, 1):
-            ang = math.radians(scythe_sweep * side - 90.0)
-            hx_s = cx + side * 14.0
-            hy_s = head_y + 4.0 + math.sin(phase + side) * 2.0
-            # Diagonal haft from Sovereign's gauntlets to top corners
-            draw_line(px, cx + side * 6, head_y + 11, hx_s, hy_s - 8, C_BONE_MID)
-            # Giant glowing crescent blade at top left & top right
-            for bi in range(16):
-                bu = bi / 15.0
-                bx_s = hx_s + side * (bu * 10.0)
-                by_s = (hy_s - 8) + (bu * bu) * 12.0
-                put(px, bx_s, by_s, C_WHITE if bi < 10 else C_VIOLET_PINK)
-                put(px, bx_s - side, by_s, C_CRIMSON_BRIGHT if side == -1 else C_SPECTRAL_MINT)
-                put(px, bx_s - side * 2, by_s + 1, C_VIOLET)
+        for dx in range(-3, 4):
+            put(px, cx + dx, head_y + 3 + jaw_drop, C_BONE_WHITE if abs(dx) % 2 == 0 else C_BONE_MID)
+            if abs(dx) <= 2:
+                put(px, cx + dx, head_y + 2 + jaw_drop, C_WHITE if dx == 0 else C_CRIMSON_BRIGHT)
 
     # 5. Blood-Moon Soul Vortex Dissolution (F22..F29)
     if diss_u > 0.0:
         for v_i in range(28):
             u_v = v_i / 27.0
             va = phase * 3.0 + u_v * math.pi * 4.0
-            vr = (1.0 - diss_u * 0.7) * 18.0 * math.sin(u_v * math.pi)
+            vr = (1.0 - diss_u * 0.65) * 18.0 * math.sin(u_v * math.pi)
             vx = cx + math.cos(va) * vr
-            vy = 26.0 + (u_v - 0.5) * 34.0 * (1.0 - diss_u * 0.4)
+            vy = 26.0 + (u_v - 0.5) * 34.0 * (1.0 - diss_u * 0.35)
             put(px, vx, vy, C_WHITE if v_i % 4 == 0 else (C_CRIMSON_BRIGHT if v_i % 2 == 0 else C_VIOLET_PINK))
 
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)

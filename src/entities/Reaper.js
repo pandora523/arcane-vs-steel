@@ -896,15 +896,15 @@ export class Reaper extends Fighter {
       ctx.globalAlpha = fade;
 
       ctx.beginPath();
-      ctx.rect(bx - 90, by - 180, 180, 188);
+      ctx.rect(bx - 110, by - 210, 220, 218);
       ctx.clip();
 
-      const drawW = 128 + ((ts.height ?? 112) - 96) * 0.65;
+      const drawW = 156 + ((ts.height ?? 112) - 96) * 0.75;
       const drawH = drawW;
       const riseOffset = Math.round((1 - pop) * (drawH * 0.65));
 
       const dx = Math.round(bx - drawW * 0.5);
-      const dy = Math.round(by - drawH + 10 + riseOffset);
+      const dy = Math.round(by - drawH + 12 + riseOffset);
       const dw = Math.round(drawW);
       const dh = Math.round(drawH);
 

@@ -863,6 +863,216 @@ def draw_celestial_staff(
     return out
 
 
+def draw_sacred_smite_trail(c, cx, cy, start_deg, end_deg, intensity=1.0):
+    """
+    Renders a radiant 3-band Pure-White, Star-Cream & Cathedral-Gold Crescent Cast Arc
+    (WHITE_PURE, STAR_CREAM, GOLD_BRIGHT, strictly inside 3 <= x <= 48, 3 <= y <= 48)
+    tracing the path of Seraphina's Sacred Staff finial during:
+    - Row 2 (AUTO_ATTACK) F10..F16
+    - Row 3 (SKILL) F14..F21
+    - Row 4 (ULTIMATE) F14..F22
+    """
+    scale = max(0.0, min(1.2, float(intensity)))
+    if scale <= 0.05:
+        return c
+
+    out = c.copy()
+    a0 = math.radians(min(float(start_deg), float(end_deg)))
+    a1 = math.radians(max(float(start_deg), float(end_deg)))
+    span = max(0.08, a1 - a0)
+
+    # Elliptical radii matching the true trajectory of the Sacred Staff finial tip
+    rx_base = 16.0
+    ry_base = 13.0
+    protected = {WOOD_DARK, SKIN_LIGHT, SKIN_MID, OUTLINE}
+
+    def put_trail_px(px, py, col, overwrite=True):
+        ix = max(3, min(48, int(round(px))))
+        iy = max(3, min(48, int(round(py))))
+        cur = tuple(int(v) for v in out[iy, ix])
+        if cur in protected:
+            return
+        if overwrite or out[iy, ix, 3] == 0:
+            out[iy, ix] = col
+
+    steps = max(24, int(round(math.degrees(span) * 0.9)))
+    for s in range(steps + 1):
+        u = s / float(steps)
+        ang = a0 + u * span
+        ca, sa = math.cos(ang), math.sin(ang)
+
+        # Band 1 (Inner Cathedral-Gold band, dr = -1.0)
+        if u >= 0.08:
+            x_in = cx + ca * (rx_base - 1.2)
+            y_in = cy + sa * (ry_base - 1.0)
+            col_in = STAR_CREAM if (u >= 0.80 and scale >= 0.9) else GOLD_BRIGHT
+            put_trail_px(x_in, y_in, col_in, overwrite=(u >= 0.25))
+
+        # Band 2 (Middle Star-Cream & Pure-White core band, dr = 0.0)
+        x_mid = cx + ca * rx_base
+        y_mid = cy + sa * ry_base
+        if u >= 0.58 and scale >= 0.75:
+            col_mid = WHITE_PURE
+        elif u >= 0.22:
+            col_mid = STAR_CREAM
+        else:
+            col_mid = GOLD_BRIGHT
+        put_trail_px(x_mid, y_mid, col_mid, overwrite=True)
+
+        # Band 3 (Outer Pure-White & Star-Cream crescent edge, dr = +1.0)
+        if u >= 0.16:
+            x_out = cx + ca * (rx_base + 1.2)
+            y_out = cy + sa * (ry_base + 1.0)
+            col_out = WHITE_PURE if u >= 0.38 else (STAR_CREAM if u >= 0.24 else GOLD_BRIGHT)
+            put_trail_px(x_out, y_out, col_out, overwrite=True)
+
+    # Radiant 4-point starlight sparkles along the crescent arc
+    spark_u_list = (0.32, 0.65, 0.94) if scale >= 0.8 else (0.50, 0.90)
+    for idx_s, su in enumerate(spark_u_list):
+        sang = a0 + su * span
+        sx = max(4, min(47, int(round(cx + math.cos(sang) * (rx_base + 1.8)))))
+        sy = max(4, min(47, int(round(cy + math.sin(sang) * (ry_base + 1.4)))))
+        put_trail_px(sx, sy, WHITE_PURE, overwrite=True)
+        arm_col = GOLD_BRIGHT if idx_s % 2 == 0 else STAR_CREAM
+        put_trail_px(sx - 1, sy, arm_col, overwrite=False)
+        put_trail_px(sx + 1, sy, arm_col, overwrite=False)
+        put_trail_px(sx, sy - 1, arm_col, overwrite=False)
+        put_trail_px(sx, sy + 1, arm_col, overwrite=False)
+
+    return out
+
+
+def draw_sanctuary_ground_circle(c, cx=25.0, cy=46.0, phase_rad=0.0, intensity=1.0):
+    """
+    Renders a perspective-flattened Golden Cathedral Rose-Window Sanctuary Circle &
+    Rising Star-Cross Motes (y = 44..48, x = 12..38) beneath Seraphina's hem during
+    Row 3 (SKILL - Divine Sanctuary & Spear Rain) F02..F23 and
+    Row 4 (ULTIMATE - Seraphim Apotheosis) F01..F26.
+    """
+    scale = max(0.0, min(1.2, float(intensity)))
+    if scale <= 0.05:
+        return c
+
+    out = c.copy()
+    rx = min(13.0, 10.5 + 2.5 * min(1.0, scale))
+    ry = 2.0
+
+    def put_rune_px(px, py, col, front_arc=False):
+        ix = max(12, min(38, int(round(px))))
+        iy = max(44, min(48, int(round(py))))
+        if front_arc or out[iy, ix, 3] == 0:
+            out[iy, ix] = col
+
+    # 1. Outer & Inner Perspective-Flattened Cathedral Rose-Window Rings (x = 12..38, y = 44..48)
+    steps = 36
+    for s in range(steps):
+        a = (s / float(steps)) * 2.0 * math.pi
+        a_rot = a + phase_rad
+        ca, sa = math.cos(a), math.sin(a)
+        is_front = sa >= 0.15
+
+        # Outer sanctuary ring
+        ox = cx + ca * rx
+        oy = cy + sa * ry
+        if s % 9 == 0:
+            col_o = WHITE_PURE
+        elif s % 3 == 0:
+            col_o = STAR_CREAM if math.sin(a_rot * 4.0) >= 0.0 else GOLD_BRIGHT
+        else:
+            col_o = GOLD_BRIGHT if s % 2 == 0 else GOLD_ROYAL
+        put_rune_px(ox, oy, col_o, front_arc=is_front)
+
+        # Inner rose-window filigree ring
+        if s % 2 == 0:
+            ix_r = cx + ca * (rx * 0.62)
+            iy_r = cy + sa * (ry * 0.55)
+            col_i = CYAN_SACRED if s % 6 == 0 else (STAR_CREAM if s % 4 == 0 else GOLD_BRIGHT)
+            put_rune_px(ix_r, iy_r, col_i, front_arc=(sa >= 0.35))
+
+    # 2. Rotating 8-Fold Rose-Window Spokes & Left/Right Gothic Finial Tips (x = 12..38, y = 45..47)
+    for k in range(8):
+        ang_k = phase_rad * 0.8 + k * (math.pi * 0.25)
+        ck, sk = math.cos(ang_k), math.sin(ang_k)
+        for r_frac in (0.35, 0.68, 0.92):
+            sx_k = cx + ck * (rx * r_frac)
+            sy_k = cy + sk * (ry * r_frac)
+            put_rune_px(
+                sx_k,
+                sy_k,
+                WHITE_PURE if r_frac > 0.8 else GOLD_BRIGHT,
+                front_arc=(sk >= 0.25),
+            )
+
+    # Left & right rose-window cardinal tips at x = 12..14 and x = 36..38
+    put_rune_px(12, 46, GOLD_BRIGHT, front_arc=True)
+    put_rune_px(13, 46, WHITE_PURE, front_arc=True)
+    put_rune_px(37, 46, WHITE_PURE, front_arc=True)
+    put_rune_px(38, 46, GOLD_BRIGHT, front_arc=True)
+
+    # 3. Rising Star-Cross Motes (y = 44..48, x = 12..38) ascending from the sanctuary perimeter
+    mote_anchors = (14, 18, 25, 32, 36)
+    for m_idx, mx_base in enumerate(mote_anchors):
+        drift_x = int(round(math.sin(phase_rad + m_idx * 1.3) * 1.0))
+        mx = max(13, min(37, mx_base + drift_x))
+        # Cycle upward from y = 47 to y = 44
+        rise_u = ((phase_rad / (2.0 * math.pi)) * 2.0 + m_idx * 0.27) % 1.0
+        my = max(44, min(47, int(round(47.0 - rise_u * 3.0))))
+        is_flank = (mx <= 18 or mx >= 31 or my >= 47)
+        put_rune_px(mx, my, WHITE_PURE, front_arc=is_flank)
+        arm_c = GOLD_BRIGHT if m_idx % 2 == 0 else STAR_CREAM
+        put_rune_px(mx - 1, my, arm_c, front_arc=is_flank)
+        put_rune_px(mx + 1, my, arm_c, front_arc=is_flank)
+        put_rune_px(mx, max(44, my - 1), arm_c, front_arc=is_flank)
+        put_rune_px(mx, min(48, my + 1), CYAN_SACRED if m_idx % 2 == 1 else GOLD_BRIGHT, front_arc=is_flank)
+
+    return out
+
+
+def draw_angel_feather_slipstream(c, f, phase_rad=0.0, intensity=1.0):
+    """
+    Renders drifting Golden-White Angel Feathers & Twinkling 4-Point Starlight Motes
+    (x = 4..16, y = 12..42) trailing behind Seraphina's flapping Seraphim wings
+    during Row 6 (DASH) and Row 8 (JUMP) F04..F20.
+    """
+    scale = max(0.0, min(1.2, float(intensity)))
+    if scale <= 0.05:
+        return c
+
+    out = c.copy()
+
+    def put_wake_px(px, py, col, allow_over_wing=False):
+        ix = max(4, min(16, int(round(px))))
+        iy = max(12, min(42, int(round(py))))
+        if out[iy, ix, 3] == 0 or (allow_over_wing and ix <= 11 and tuple(int(v) for v in out[iy, ix]) != OUTLINE):
+            out[iy, ix] = col
+
+    # 1. Four drifting Golden-White Angel Feathers across y = 13..40, x = 4..16
+    feather_lanes = (14, 21, 29, 37)
+    for ft_idx, y_lane in enumerate(feather_lanes):
+        fx = 4 + ((20 - f) * 2 + ft_idx * 3) % 10  # 4..13 so fx + 2 <= 15
+        fy = max(13, min(40, y_lane + int(round(math.sin(phase_rad * 2.0 + ft_idx * 1.5) * 1.5))))
+        # 4-pixel swept angel feather plume (WHITE_PURE shaft, STAR_CREAM vane, GOLD_BRIGHT tip)
+        put_wake_px(fx, fy, GOLD_BRIGHT, allow_over_wing=True)
+        put_wake_px(fx + 1, fy, WHITE_PURE, allow_over_wing=True)
+        put_wake_px(fx + 2, max(12, fy - 1), STAR_CREAM, allow_over_wing=True)
+        put_wake_px(fx + 1, min(42, fy + 1), STAR_CREAM, allow_over_wing=False)
+
+    # 2. Twinkling 4-Point Starlight Motes across x = 4..16, y = 12..42
+    star_lanes = (16, 26, 35)
+    for st_idx, sy_lane in enumerate(star_lanes):
+        sx = 5 + ((f * 3 + st_idx * 4) % 10)  # 5..14 so sx +- 1 stays inside 4..15
+        sy = max(13, min(41, sy_lane + int(round(math.cos(phase_rad * 2.0 + st_idx * 1.7) * 1.5))))
+        put_wake_px(sx, sy, WHITE_PURE, allow_over_wing=True)
+        arm_col = GOLD_BRIGHT if (f + st_idx) % 2 == 0 else STAR_CREAM
+        put_wake_px(sx - 1, sy, arm_col, allow_over_wing=True)
+        put_wake_px(sx + 1, sy, arm_col, allow_over_wing=True)
+        put_wake_px(sx, sy - 1, arm_col, allow_over_wing=True)
+        put_wake_px(sx, sy + 1, CYAN_SACRED if st_idx == 1 else arm_col, allow_over_wing=True)
+
+    return out
+
+
+
 def render_walk_legs(tpl, f):
     """
     Renders Seraphina's graceful 30-frame 2-step cathedral stride (F00..F14 step A, F15..F29 step B)
@@ -1171,6 +1381,18 @@ def build_row2_auto_attack(tpl):
                 grip_override=(34.5 if k >= 1 else 32.5, 18.5 + (k % 2) * 0.4),
                 phase_rad=phase,
             )
+            if 10 <= f <= 16:
+                trail_starts = [-98.0, -94.0, -88.0, -80.0, -72.0, -64.0, -56.0]
+                trail_ends = [-54.0, -36.0, -34.0, -35.0, -36.0, -38.0, -40.0]
+                trail_int = [0.85, 1.0, 1.0, 0.95, 0.90, 0.80, 0.65][k]
+                frame = draw_sacred_smite_trail(
+                    frame,
+                    cx=28.5,
+                    cy=19.0,
+                    start_deg=trail_starts[k],
+                    end_deg=trail_ends[k],
+                    intensity=trail_int,
+                )
             frames.append(ensure_safe_cell(frame, margin=2))
 
         else:
@@ -1244,6 +1466,9 @@ def build_row3_skill(tpl):
                 grip_override=(29.5, grip_y),
                 phase_rad=phase * 2.0,
             )
+            if f >= 2:
+                sanc_int = min(1.0, 0.55 + (f - 2) * 0.15)
+                frame = draw_sanctuary_ground_circle(frame, cx=25.0, cy=46.0, phase_rad=phase * 2.0, intensity=sanc_int)
             frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 22:
@@ -1282,6 +1507,18 @@ def build_row3_skill(tpl):
                 grip_override=(gx_sk, gy_sk),
                 phase_rad=phase * 2.0,
             )
+            if 14 <= f <= 21:
+                sk_starts = [-96.0, -94.0, -88.0, -82.0, -75.0, -68.0, -60.0, -54.0]
+                sk_ends = [-54.0, -34.0, -32.0, -33.0, -35.0, -36.0, -38.0, -42.0]
+                sk_ints = [0.90, 1.0, 1.0, 1.0, 0.95, 0.85, 0.75, 0.60]
+                frame = draw_sacred_smite_trail(
+                    frame,
+                    cx=28.5,
+                    cy=18.5,
+                    start_deg=sk_starts[k],
+                    end_deg=sk_ends[k],
+                    intensity=sk_ints[k],
+                )
             # Three Valkyrie Light-Spear tips projecting at the right edge during F15..F20
             if 1 <= k <= 6:
                 for sp_i, sp_y in enumerate((9 + k, 15 + k, 21 + k)):
@@ -1290,6 +1527,13 @@ def build_row3_skill(tpl):
                     set_px(frame, sx_sp, sy_sp, GOLD_BRIGHT)
                     set_px(frame, min(48, sx_sp + 1), sy_sp, WHITE_PURE)
                     set_px(frame, max(3, sx_sp - 1), sy_sp, CYAN_SACRED)
+            frame = draw_sanctuary_ground_circle(
+                frame,
+                cx=25.0,
+                cy=46.0,
+                phase_rad=phase * 2.0,
+                intensity=1.0 if f <= 20 else (0.85 if f == 21 else 0.70),
+            )
             frames.append(ensure_safe_cell(frame, margin=2))
 
         else:
@@ -1310,6 +1554,8 @@ def build_row3_skill(tpl):
                 charge_level=1 if u < 0.5 else 0,
                 phase_rad=phase,
             )
+            if f <= 23:
+                frame = draw_sanctuary_ground_circle(frame, cx=25.0, cy=46.0, phase_rad=phase * 2.0, intensity=0.55)
             frames.append(ensure_safe_cell(frame, margin=2))
 
     return frames
@@ -1400,6 +1646,18 @@ def build_row4_ultimate(tpl):
                 grip_override=(gx_u, gy_u),
                 phase_rad=phase * 3.0,
             )
+            if 14 <= f <= 22:
+                ult_starts = [-96.0, -94.0, -90.0, -84.0, -78.0, -72.0, -66.0, -60.0, -54.0]
+                ult_ends = [-56.0, -36.0, -34.0, -35.0, -36.0, -37.0, -38.0, -40.0, -42.0]
+                ult_ints = [0.90, 1.0, 1.0, 1.0, 0.95, 0.90, 0.85, 0.75, 0.65]
+                frame = draw_sacred_smite_trail(
+                    frame,
+                    cx=28.5,
+                    cy=18.0,
+                    start_deg=ult_starts[k],
+                    end_deg=ult_ends[k],
+                    intensity=ult_ints[k],
+                )
 
         else:
             k = f - 24
@@ -1426,6 +1684,21 @@ def build_row4_ultimate(tpl):
                 charge_level=2 if k <= 2 else 1,
                 flare=max(0.0, 0.6 * (1.0 - u)),
                 phase_rad=phase * 2.0,
+            )
+
+        if 1 <= f <= 26:
+            if f <= 3:
+                ult_sanc_int = 0.50 + f * 0.16
+            elif f <= 23:
+                ult_sanc_int = 1.0
+            else:
+                ult_sanc_int = 0.85 - (f - 24) * 0.15
+            frame = draw_sanctuary_ground_circle(
+                frame,
+                cx=25.0,
+                cy=46.0,
+                phase_rad=phase * 2.5,
+                intensity=ult_sanc_int,
             )
 
         # Orbiting starlight motes around Seraphina during Apotheosis
@@ -1609,6 +1882,8 @@ def build_row6_dash(tpl):
                 charge_level=1,
                 phase_rad=phase,
             )
+            if f == 4:
+                frame = draw_angel_feather_slipstream(frame, f, phase_rad=phase * 2.0, intensity=0.8)
 
         elif f <= 21:
             k = f - 5
@@ -1628,11 +1903,8 @@ def build_row6_dash(tpl):
                 flare=0.7 if 5 <= k <= 10 else 0.3,
                 phase_rad=phase * 2.0,
             )
-            for ft in range(3):
-                fx = 4 + ((f * 3 + ft * 4) % 10)
-                fy = 18 + ft * 7 + int(round(math.sin(phase * 2.0 + ft) * 1.5))
-                set_px(frame, fx, fy, WHITE_PURE if ft == 0 else GOLD_BRIGHT)
-                set_px(frame, fx + 1, fy, STAR_CREAM)
+            if f <= 20:
+                frame = draw_angel_feather_slipstream(frame, f, phase_rad=phase * 2.0, intensity=1.0)
 
         else:
             u = (f - 22) / 7.0
@@ -1788,6 +2060,8 @@ def build_row8_jump(tpl):
                 charge_level=1 if f >= 3 else 0,
                 phase_rad=phase,
             )
+            if f == 4:
+                frame = draw_angel_feather_slipstream(frame, f, phase_rad=phase * 2.0, intensity=0.8)
             frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 11:
@@ -1816,6 +2090,7 @@ def build_row8_jump(tpl):
                 charge_level=2 if k >= 3 else 1,
                 phase_rad=phase * 2.0,
             )
+            frame = draw_angel_feather_slipstream(frame, f, phase_rad=phase * 2.0, intensity=1.0)
             frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 18:
@@ -1850,6 +2125,7 @@ def build_row8_jump(tpl):
                 grip_override=(34.5, 17.5 + (k % 2) * 0.4),
                 phase_rad=phase * 2.5,
             )
+            frame = draw_angel_feather_slipstream(frame, f, phase_rad=phase * 2.5, intensity=1.0)
             frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 24:
@@ -1871,6 +2147,8 @@ def build_row8_jump(tpl):
                 charge_level=1 if k <= 1 else 0,
                 phase_rad=phase * 2.0,
             )
+            if f <= 20:
+                frame = draw_angel_feather_slipstream(frame, f, phase_rad=phase * 2.0, intensity=0.85)
             frames.append(ensure_safe_cell(frame, margin=2))
 
         else:

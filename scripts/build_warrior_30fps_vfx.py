@@ -43,7 +43,7 @@ C_GOLD_AURA = (250, 204, 21, 145)
 def put(px, x, y, col):
     ix = int(round(x))
     iy = int(round(y))
-    if 0 <= ix < LOGICAL and 0 <= iy < LOGICAL:
+    if 2 <= ix <= 49 and 2 <= iy <= 49:
         if col[3] < 255 and px[ix, iy][3] > 0:
             dst = px[ix, iy]
             a = col[3] / 255.0
@@ -139,7 +139,7 @@ def build_row0_blade_wave(f):
                 put(px, wx, y, C_SAPPHIRE_DARK if t_off < thick else C_SAPPHIRE_DEEP)
 
     # 4. Blazing Starlight-Gold & Frost Glint at Crescent Apex & Horns
-    draw_star(px, 46, cy, 3 + (f % 2), C_WHITE, C_GOLD_LIGHT, rot=phase)
+    draw_star(px, 45, cy, 3 + (f % 2), C_WHITE, C_GOLD_LIGHT, rot=phase)
     draw_star(px, 27, cy - 20, 2, C_WHITE, C_FROST_BRIGHT, rot=-phase)
     draw_star(px, 27, cy + 20, 2, C_WHITE, C_FROST_BRIGHT, rot=-phase)
 
@@ -158,9 +158,9 @@ def build_row1_runeblade_skystrike(f):
     """
     Row 1 (`runeblade` Sky-Strike, 30 frames):
     - F00..F11 (12 frames): Colossal heavenly gold-and-Sapphire Runeblade plummeting point-down from the heavens
-      with trailing lightning and frost-fire.
-    - F12..F29 (18 frames): Runeblade buried point-down into shattered tectonic earth with erupting golden-cyan
-      shockwave rings, lightning arcs, and fading rune embers.
+      with sweeping Golden Valkyrie Wings on the crossguard and spiraling frost-cyan lightning around the blade fuller!
+    - F12..F29 (18 frames): Runeblade buried point-down into a double-ringed golden-frost impact crater (F12..F26)
+      with erupting frost-lightning arcs and rising rune embers.
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
     px = img.load()
@@ -170,26 +170,42 @@ def build_row1_runeblade_skystrike(f):
         # F00..F11: Colossal Heavenly Runeblade plummeting vertically point-down (tip at y=47)
         phase = (f / 12.0) * math.pi * 2.0
 
-        # 1. Trailing Frost-Fire & Golden Lightning Wake above/around blade
-        for y in range(2, 44):
-            u_y = (y - 2) / 41.0
-            flare = math.sin(y * 0.35 + phase * 2.0) * (2.5 + (1.0 - u_y) * 3.5)
-            put(px, cx + flare, y, C_FROST_BRIGHT if y % 2 == 0 else C_FROST_AURA)
-            put(px, cx - flare, y, C_GOLD_LIGHT if y % 3 == 0 else C_FROST_AURA)
+        # 1. Background Spiraling Frost-Fire & Golden Slipstream Wake
+        for y in range(4, 45):
+            u_y = (y - 4) / 41.0
+            spiral_bg = -math.sin(y * 0.42 - phase * 2.0) * (5.5 + (1.0 - u_y) * 2.0)
+            put(px, cx + spiral_bg, y, C_FROST_AURA if y % 2 == 0 else C_GOLD_AURA)
 
-        # 2. Leather Hilt & Sapphire-Gold Pommel at top (y=3..11)
-        draw_star(px, cx, 4, 3, C_WHITE, C_GOLD, rot=phase)
-        for y in range(6, 12):
+        # 2. Ornate Sapphire-Gold Pommel & Grip at top (y=4..12)
+        draw_star(px, cx, 5, 3, C_WHITE, C_GOLD, rot=phase)
+        for y in range(6, 13):
             put(px, cx - 1, y, C_GOLD_DEEP)
-            put(px, cx, y, C_GOLD_LIGHT if y % 2 == 0 else C_ROYAL_BLUE)
+            put(px, cx, y, C_GOLD_WHITE if y % 2 == 0 else C_ROYAL_BLUE)
             put(px, cx + 1, y, C_GOLD_DEEP)
 
-        # 3. Swept Winged Golden Valkyrie Crossguard (y=12..15, x=15..37)
-        for dx in range(-11, 12):
-            wing_y = 13 - abs(dx) // 4
-            put(px, cx + dx, wing_y, C_GOLD_WHITE if abs(dx) <= 2 else C_GOLD)
-            put(px, cx + dx, wing_y + 1, C_GOLD_DEEP if abs(dx) > 3 else C_FROST_CYAN)
-        put(px, cx, 13, C_WHITE)
+        # 3. Sweeping Multi-Tiered Golden Valkyrie Wings on Crossguard (y=6..17, x=7..45)
+        wing_flap = math.sin(phase) * 0.8
+        for side in (-1, 1):
+            for tier in range(4):
+                # Tier 0 is longest upper primary pinion (reaches dx=18), Tier 3 is inner lower covert
+                max_span = 18 - tier * 3
+                base_y = 13 + tier
+                for d in range(2, max_span + 1):
+                    u_w = d / float(max_span)
+                    wx = cx + side * d
+                    # Sweeps gracefully upward and outward like Valkyrie pinions
+                    wy = base_y - int(round((u_w ** 1.15) * (7.0 - tier * 1.1) - wing_flap * u_w))
+                    if d >= max_span - 1:
+                        col_w = C_WHITE if tier == 0 else C_GOLD_WHITE
+                    elif tier % 2 == 0:
+                        col_w = C_GOLD_LIGHT if d < max_span * 0.6 else C_GOLD
+                    else:
+                        col_w = C_GOLD if d < max_span * 0.5 else C_FROST_BRIGHT
+                    put(px, wx, wy, col_w)
+                    # Under-feather shading & sapphire trim
+                    put(px, wx, wy + 1, C_GOLD_DEEP if tier < 3 else C_SAPPHIRE)
+        # Central Crossguard Valkyrie Sapphire-Diamond Sunburst Gem (x=24..28, y=12..15)
+        draw_ice_diamond(px, cx, 13, 2, C_FROST_BRIGHT, C_GOLD_WHITE)
 
         # 4. Colossal Fullered Sapphire-Cyan & Gold Runeblade (y=15..47)
         for y in range(15, 48):
@@ -197,70 +213,127 @@ def build_row1_runeblade_skystrike(f):
             half_w = 4 if prog < 0.72 else int(round((1.0 - (prog - 0.72) / 0.28) * 4.0))
             for dx in range(-half_w, half_w + 1):
                 if abs(dx) == half_w:
-                    put(px, cx + dx, y, C_WHITE if prog > 0.6 else C_FROST_BRIGHT)
+                    put(px, cx + dx, y, C_WHITE if prog > 0.55 else C_FROST_BRIGHT)
                 elif abs(dx) == half_w - 1:
                     put(px, cx + dx, y, C_FROST_CYAN)
                 elif dx == 0:
-                    is_rune = ((y + f) % 4 <= 1) and (prog < 0.82)
+                    # Central fuller etched with glowing Nordic gold runes
+                    is_rune = ((y + f) % 3 == 0) and (prog < 0.85)
                     put(px, cx, y, C_GOLD_WHITE if is_rune else C_WHITE)
+                elif abs(dx) == 1 and ((y + f) % 5 == 0) and (prog < 0.78):
+                    put(px, cx + dx, y, C_GOLD)
                 else:
                     put(px, cx + dx, y, C_SAPPHIRE if dx < 0 else C_SAPPHIRE_DARK)
 
-        # Blazing tip star at point-down apex (y=47)
-        draw_star(px, cx, 47, 4, C_WHITE, C_GOLD_LIGHT, rot=phase * 0.5)
+        # 5. Foreground Spiraling Frost-Cyan & White-Gold Lightning Helix around the Blade Fuller (y=15..46)
+        for y in range(15, 46):
+            u_y = (y - 15) / 31.0
+            ang_l = y * 0.46 - phase * 2.0
+            for strand in (0, 1):
+                sa = ang_l + strand * math.pi
+                # Only draw the foreground pass or wide lateral arcs so it wraps convincingly around the blade
+                lx = cx + math.sin(sa) * (6.2 * (1.0 - u_y * 0.35))
+                if math.cos(sa) >= -0.25 or abs(lx - cx) > 3.5:
+                    put(px, lx, y, C_WHITE if (y + strand) % 3 == 0 else C_FROST_BRIGHT)
+                    put(px, lx + (1 if lx >= cx else -1), y, C_FROST_CYAN if strand == 0 else C_GOLD_LIGHT)
+                    if (y + f + strand * 2) % 6 == 0:
+                        # Crackling lateral lightning spur
+                        spur_dir = 1 if lx >= cx else -1
+                        put(px, lx + spur_dir * 2, y - 1, C_ICE_CORE)
+
+        # Blazing tip star at point-down apex (y=46)
+        draw_star(px, cx, 46, 3, C_WHITE, C_GOLD_LIGHT, rot=phase * 0.5)
     else:
-        # F12..F29 (18 frames): Runeblade buried point-down into shattered tectonic earth (ground gy=42)
+        # F12..F29 (18 frames): Runeblade buried point-down into a Double-Ringed Golden-Frost Impact Crater (F12..F26)
         u = (f - 12) / 17.0
-        gy = 42
+        gy = 41
         vib = int(round(math.sin((f - 12) * 2.2) * (1.5 * (1.0 - u))))
 
-        # 1. Expanding Golden-Cyan Tectonic Ground Shockwave Ring (y=37..48)
-        rx = 6.0 + (1.0 - math.pow(1.0 - u, 2.0)) * 19.0
-        ry = 2.0 + (1.0 - math.pow(1.0 - u, 2.0)) * 5.0
-        for s in range(44):
-            a = (s / 44.0) * math.pi * 2.0 + u * 3.0
-            sx = cx + math.cos(a) * rx
-            sy = gy + math.sin(a) * ry
-            col_r = C_GOLD_LIGHT if s % 5 == 0 else (C_FROST_BRIGHT if u < 0.6 else C_SAPPHIRE)
-            if u < 0.92 or s % 2 == 0:
-                put(px, sx, sy, col_r)
+        # 1. Double-Ringed Golden-Frost Impact Crater (prominent across F12..F26, fading F27..F29)
+        ring_grow = 1.0 - math.pow(1.0 - min(1.0, (f - 12) / 14.0), 2.0)
+        rx_outer = 9.0 + ring_grow * 12.5   # up to 21.5 -> x = 4..48
+        ry_outer = 2.5 + ring_grow * 3.5    # up to 6.0  -> y = 35..47
+        rx_inner = 5.0 + ring_grow * 8.0    # up to 13.0
+        ry_inner = 1.5 + ring_grow * 2.2    # up to 3.7
 
-        # 2. Buried Colossal Runeblade Impaled in the Earth (y=10..42)
-        blade_alpha_fade = 1.0 if u < 0.75 else (1.0 - (u - 0.75) / 0.25)
-        if blade_alpha_fade > 0.15:
+        # Radial Frost-Gold Runic Crater Spokes connecting inner and outer rings (F12..F26)
+        if f <= 26:
+            for spk in range(8):
+                sa = (spk / 8.0) * math.pi * 2.0 + u * 2.0
+                x0_s = cx + math.cos(sa) * rx_inner
+                y0_s = gy + math.sin(sa) * ry_inner
+                x1_s = cx + math.cos(sa) * rx_outer
+                y1_s = gy + math.sin(sa) * ry_outer
+                draw_line(px, x0_s, y0_s, x1_s, y1_s, C_GOLD_LIGHT if spk % 2 == 0 else C_FROST_CYAN)
+
+        # Outer Golden-Frost Crater Ring + Jagged Ice Rim Teeth
+        for s in range(56):
+            if f > 26 and (s + f) % 2 != 0:
+                continue
+            a = (s / 56.0) * math.pi * 2.0 + u * 2.5
+            sx = cx + math.cos(a) * rx_outer
+            sy = gy + math.sin(a) * ry_outer
+            col_out = C_GOLD_WHITE if s % 7 == 0 else (C_GOLD if s % 2 == 0 else C_FROST_BRIGHT)
+            put(px, sx, sy, col_out)
+            if f <= 24 and s % 7 == 0:
+                # Mini jagged frost-gold tooth rising from outer crater rim
+                put(px, sx, sy - 1, C_WHITE)
+                put(px, sx, sy - 2, C_FROST_CYAN)
+
+        # Inner Blazing Frost-Cyan & Gold-White Shockwave Ring (F12..F26)
+        if f <= 26:
+            for s in range(44):
+                a = -(s / 44.0) * math.pi * 2.0 + u * 3.5
+                ix_r = cx + math.cos(a) * rx_inner
+                iy_r = gy + math.sin(a) * ry_inner
+                col_in = C_WHITE if s % 4 == 0 else (C_ICE_CORE if s % 2 == 0 else C_GOLD_LIGHT)
+                put(px, ix_r, iy_r, col_in)
+
+        # 2. Buried Colossal Winged Runeblade Impaled in the Crater Center (F12..F26, fading by F28)
+        if f <= 27:
             bx_c = cx + vib
-            # Pommel & Hilt (y=8..14)
-            for y in range(8, 14):
-                put(px, bx_c, y, C_GOLD_LIGHT)
+            # Pommel & Hilt (y=7..13)
+            for y in range(7, 14):
+                put(px, bx_c, y, C_GOLD_WHITE if y % 2 == 0 else C_GOLD_LIGHT)
                 put(px, bx_c - 1, y, C_GOLD_DEEP)
                 put(px, bx_c + 1, y, C_GOLD_DEEP)
-            # Winged Golden Crossguard (y=14..16)
-            for dx in range(-9, 10):
-                wy = 15 - abs(dx) // 4
-                put(px, bx_c + dx, wy, C_GOLD_WHITE if abs(dx) <= 2 else C_GOLD)
-                put(px, bx_c + dx, wy + 1, C_GOLD_DEEP)
-            # Impaled Blade Shaft (y=16..42)
-            for y in range(16, gy + 1):
+
+            # Sweeping Golden Valkyrie Wings on the Impaled Crossguard (x=12..40, y=9..16)
+            for side in (-1, 1):
+                for tier in range(3):
+                    span_w = 13 - tier * 3
+                    for d in range(2, span_w + 1):
+                        wx = bx_c + side * d
+                        wy = 14 + tier - int(round((d / float(span_w)) * (5.0 - tier)))
+                        put(px, wx, wy, C_GOLD_WHITE if d >= span_w - 1 else (C_GOLD_LIGHT if tier == 0 else C_GOLD))
+                        put(px, wx, wy + 1, C_GOLD_DEEP if tier < 2 else C_FROST_CYAN)
+
+            # Impaled Blade Shaft with Spiraling Frost-Cyan Lightning (y=15..41)
+            for y in range(15, gy + 1):
                 for dx in range(-3, 4):
                     if abs(dx) == 3:
                         put(px, bx_c + dx, y, C_FROST_BRIGHT)
                     elif dx == 0:
-                        put(px, bx_c, y, C_GOLD_LIGHT if (y + f) % 4 == 0 else C_WHITE)
+                        put(px, bx_c, y, C_GOLD_WHITE if (y + f) % 3 == 0 else C_WHITE)
                     else:
                         put(px, bx_c + dx, y, C_FROST_CYAN if dx < 0 else C_SAPPHIRE)
+                # Spiraling frost-cyan lightning along the impaled blade
+                if f <= 24:
+                    lx_imp = bx_c + math.sin(y * 0.5 - u * 10.0) * 4.8
+                    put(px, lx_imp, y, C_WHITE if y % 2 == 0 else C_FROST_BRIGHT)
 
         # 3. Erupting Golden-Cyan Lightning Arcs & Rising Rune Embers
-        if u < 0.65:
+        if f <= 23:
             for bolt in (-1, 1):
-                bx0 = cx + bolt * (4 + int(u * 12))
-                draw_line(px, bx0, gy, bx0 + bolt * 5, gy - 14 + int(u * 10), C_GOLD_LIGHT if bolt > 0 else C_FROST_BRIGHT)
-                draw_line(px, bx0 + bolt * 5, gy - 14 + int(u * 10), bx0 + bolt * 2, gy - 26 + int(u * 14), C_WHITE)
+                bx0 = cx + bolt * (5 + int(u * 10))
+                draw_line(px, bx0, gy, bx0 + bolt * 4, gy - 12 + int(u * 8), C_GOLD_LIGHT if bolt > 0 else C_FROST_BRIGHT)
+                draw_line(px, bx0 + bolt * 4, gy - 12 + int(u * 8), bx0 + bolt * 2, gy - 23 + int(u * 11), C_WHITE)
         for emb in range(8):
-            ang = -math.pi * 0.15 - (emb / 7.0) * math.pi * 0.7
-            dist = 4.0 + u * 24.0
+            ang = -math.pi * 0.18 - (emb / 7.0) * math.pi * 0.64
+            dist = 4.0 + u * 21.0
             ex = cx + math.cos(ang) * dist
             ey = gy + math.sin(ang) * dist
-            if 3 <= ey <= gy:
+            if 4 <= ey <= gy:
                 put(px, ex, ey, C_GOLD_LIGHT if emb % 2 == 0 else C_FROST_BRIGHT)
 
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)
@@ -269,82 +342,117 @@ def build_row1_runeblade_skystrike(f):
 def build_row2_glacial_crystal_spire(f):
     """
     Row 2 (`warrior` Glacial Crystal Spire Eruption, 30 frames):
-    - F00..F05: Ground frost-crack sigil & erupting jagged sapphire-cyan glacier crystal cluster
-    - F06..F21: Towering multi-faceted translucent ice crystal spire pulsing with inner aurora light & orbiting frost motes
-    - F22..F29: Explosive crystalline shatter into sparkling ice diamonds
+    - Frost-rune ground seal at base (y = 41..47, x = 9..43)
+    - Flanking secondary crystal shards at the base (x = 12..39, y = 30..45)
+    - Towering central glacial crystal spire with brighter diamond-white specular facet lines!
+    - Explosive crystalline shatter in F22..F29
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
     px = img.load()
     cx = 26
-    gy = 47
+    gy = 45
     phase = (f / 30.0) * math.pi * 2.0
+
+    # 1. Persistent Glowing Nordic Frost-Rune Ground Seal (y = 41..48, x = 9..43)
+    seal_scale = ((f + 1) / 4.0) if f <= 3 else (1.0 if f <= 21 else max(0.25, 1.0 - (f - 21) / 9.0))
+    rx_seal = 16.5 * min(1.0, seal_scale)
+    ry_seal = 3.2 * min(1.0, seal_scale)
+    # 8 Radial Frost-Rune Seal Spokes
+    for spk in range(8):
+        sa = phase + spk * (math.pi * 0.25)
+        draw_line(
+            px,
+            cx,
+            gy,
+            cx + math.cos(sa) * rx_seal,
+            gy + math.sin(sa) * ry_seal,
+            C_GOLD_LIGHT if spk % 2 == 0 else C_FROST_CYAN,
+        )
+    # Outer & Inner Frost-Rune Ground Seal Rings
+    for s in range(48):
+        a = (s / 48.0) * math.pi * 2.0 + phase
+        sx_o = cx + math.cos(a) * rx_seal
+        sy_o = gy + math.sin(a) * ry_seal
+        put(px, sx_o, sy_o, C_WHITE if s % 6 == 0 else (C_FROST_BRIGHT if s % 2 == 0 else C_SAPPHIRE))
+        sx_i = cx + math.cos(a) * (rx_seal * 0.58)
+        sy_i = gy + math.sin(a) * (ry_seal * 0.58)
+        put(px, sx_i, sy_i, C_GOLD_WHITE if s % 4 == 0 else C_ICE_CORE)
 
     if f <= 21:
         # Growth envelope: erupts rapidly over F00..F05, stands full height pulsing during F06..F21
         grow = ((f + 1) / 6.0) if f <= 5 else 1.0
-        aurora_pulse = 0.5 + 0.5 * math.sin(phase * 2.0)
 
-        # 1. Ground Frost-Crack Sigil at Base (y=44..49)
-        for rx in range(-14, 15):
-            put(px, cx + rx, gy, C_FROST_BRIGHT if abs(rx) < 8 else C_SAPPHIRE)
-            if abs(rx) % 4 == 0:
-                put(px, cx + rx, gy + 1, C_ICE_CORE)
-
-        # 2. Left & Right Flanking Secondary Glacier Spikes
-        for side, tilt_dx, max_sh, base_w in [(-1, -6.5, 24.0, 4.5), (+1, +6.5, 22.0, 4.5)]:
+        # 2. Outer Basal Secondary Crystal Shards at Base (`x = 12..39, y = 30..45`)
+        # Four distinct angled basal shards (2 left, 2 right) spanning x = 12..39, y = 30..45
+        basal_shards = [
+            # (base_x_off, tilt_dx, max_h, base_hw)
+            (-8.5, -5.0, 14.0, 3.2),   # Outer-left shard reaching x=12..18, y=31..45
+            (-5.0, -4.5, 22.0, 4.2),   # Mid-left spire shard reaching x=14..22, y=23..45
+            (+5.0, +4.5, 21.0, 4.2),   # Mid-right spire shard reaching x=30..38, y=24..45
+            (+8.5, +4.8, 15.0, 3.2),   # Outer-right shard reaching x=34..39, y=30..45
+        ]
+        for bx_off, tilt_dx, max_sh, base_w in basal_shards:
             sh = int(round(max_sh * grow))
             for h in range(sh + 1):
                 u_h = h / float(max(1, sh))
                 sy = gy - h
-                scx = cx + side * 4.5 + tilt_dx * u_h
-                hw = max(0, int(round(base_w * (1.0 - u_h))))
+                scx = cx + bx_off + tilt_dx * u_h
+                hw = max(0, int(round(base_w * (1.0 - u_h * 0.88))))
                 for dx in range(-hw, hw + 1):
-                    if dx == -hw or dx == hw:
-                        col = C_FROST_BRIGHT if dx * side > 0 else C_SAPPHIRE_DARK
-                    elif dx == 0:
-                        col = C_ICE_CORE
+                    # Bright diamond-white specular facet ridges on every secondary shard
+                    is_edge = (abs(dx) == hw)
+                    is_ridge = (dx == 0 or (h + abs(dx) * 2) % 7 == 0)
+                    if is_edge:
+                        col = C_WHITE if (dx * bx_off < 0 or u_h > 0.65) else C_FROST_BRIGHT
+                    elif is_ridge:
+                        col = C_WHITE if u_h > 0.3 else C_GOLD_WHITE
+                    elif dx < 0:
+                        col = C_ICE_CORE if dx == -1 else C_FROST_CYAN
                     else:
-                        col = C_FROST_CYAN if dx < 0 else C_SAPPHIRE
+                        col = C_FROST_BRIGHT if dx == 1 else C_SAPPHIRE
                     put(px, scx + dx, sy, col)
 
-        # 3. Towering Central Multi-Faceted Glacial Crystal Spire (up to 41px tall: y=6..47)
-        main_h = int(round(41.0 * grow))
+        # 3. Towering Central Multi-Faceted Glacial Crystal Spire (40px tall: y = 5..45)
+        main_h = int(round(40.0 * grow))
         for h in range(main_h + 1):
             u_h = h / float(max(1, main_h))
             sy = gy - h
-            # Faceted hexagonal crystal profile: widens slightly above base, then tapers to razor diamond apex
-            profile = (0.75 + 0.25 * (u_h / 0.25)) if u_h < 0.25 else (1.0 - (u_h - 0.25) / 0.75)
+            profile = (0.78 + 0.22 * (u_h / 0.25)) if u_h < 0.25 else (1.0 - (u_h - 0.25) / 0.75)
             hw = max(0, int(round(7.5 * profile)))
             for dx in range(-hw, hw + 1):
+                # Diagonal diamond-white internal specular facet lines + central prism spine + razor edges
+                diag_facet_1 = ((h - abs(dx) * 2 + (f // 2)) % 9 == 0)
+                diag_facet_2 = (abs(dx) == max(1, hw // 2) and h % 2 == 0)
                 if abs(dx) == hw:
-                    col = C_WHITE if (dx < 0 and u_h > 0.3) else C_FROST_BRIGHT
+                    col = C_WHITE if (dx < 0 or u_h > 0.45) else C_FROST_BRIGHT
                 elif dx == 0:
-                    # Inner pulsing aurora gold-white spine
-                    is_aurora = abs(u_h - ((f % 10) / 10.0)) < 0.16
-                    col = C_GOLD_WHITE if (is_aurora and aurora_pulse > 0.4) else C_WHITE
-                elif dx == -1:
-                    col = C_ICE_CORE
+                    col = C_WHITE if (h + f) % 3 != 0 else C_GOLD_WHITE
+                elif diag_facet_1 or diag_facet_2:
+                    col = C_WHITE if dx <= 0 else C_ICE_CORE
                 elif dx < 0:
-                    col = C_FROST_BRIGHT if (h + dx) % 3 == 0 else C_FROST_CYAN
+                    col = C_ICE_CORE if dx >= -2 else C_FROST_BRIGHT
                 else:
-                    col = C_SAPPHIRE if dx <= 3 else C_SAPPHIRE_DARK
+                    col = C_FROST_CYAN if dx <= 2 else (C_SAPPHIRE if dx <= 4 else C_SAPPHIRE_DARK)
                 put(px, cx + dx, sy, col)
 
-        # 4. Orbiting Frost Motes & Apex Star Glint (F06..F21)
+        # 4. Shimmering Diamond-White Facet Star Glints & Orbiting Frost Motes (F05..F21)
         if f >= 5:
             draw_star(px, cx, gy - main_h, 3, C_WHITE, C_GOLD_LIGHT, rot=phase)
+            # Specular glints dancing along the crystal facet vertices
+            glint_y = gy - 12 - ((f * 2) % 22)
+            draw_star(px, cx - 2, glint_y, 2, C_WHITE, C_ICE_CORE, rot=-phase)
             for m in range(5):
                 ma = phase * 2.0 + m * (math.pi * 2.0 / 5.0)
-                mx = cx + math.cos(ma) * 12.5
-                my = gy - 10 - m * 6 + math.sin(ma) * 2.0
+                mx = cx + math.cos(ma) * 13.5
+                my = gy - 9 - m * 6 + math.sin(ma) * 2.0
                 draw_ice_diamond(px, mx, my, 1, C_WHITE, C_FROST_BRIGHT)
     else:
         # F22..F29 (8 frames): Explosive Crystalline Shatter into sparkling ice diamonds!
         u = (f - 22) / 7.0
-        for shard_i in range(12):
-            ang = -math.pi * 0.92 + (shard_i / 11.0) * math.pi * 0.84
-            base_y = gy - 8 - (shard_i % 4) * 8
-            dist = 3.0 + u * 18.0
+        for shard_i in range(14):
+            ang = -math.pi * 0.92 + (shard_i / 13.0) * math.pi * 0.84
+            base_y = gy - 6 - (shard_i % 4) * 8
+            dist = 3.0 + u * 17.5
             sx = cx + math.cos(ang) * dist
             sy = base_y + math.sin(ang) * dist * 0.6 + u * u * 6.0
             r_sh = 2 if (u < 0.55 and shard_i % 2 == 0) else 1
@@ -469,7 +577,7 @@ def build_row4_slash_wave_and_shockwave(f):
     else:
         # F15..F29: Dissipating frost-lightning sparks & aftershock wave
         u = (f - 15) / 14.0
-        lead_x_base = 47.5 + u * 2.0
+        lead_x_base = 46.5 + u * 2.0
         thick_rem = max(0, int(round(5.0 * (1.0 - u))))
 
         if thick_rem >= 1:

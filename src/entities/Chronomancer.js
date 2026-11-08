@@ -43,6 +43,7 @@ export class Chronomancer extends Fighter {
     this.didChronoWarp = false;
     this.warpOriginX = x;
     this.warpTargetX = x;
+    this.warpPortalTimer = 0;
     this.wallFlipCooldown = 0;
     this.crouchCooldown = 0;
     this.crouchDuration = 0.96;
@@ -202,6 +203,7 @@ export class Chronomancer extends Fighter {
       this.isChronoWarp = true;
       this.didChronoWarp = false;
       this.dashDuration = 0.42;
+      this.warpPortalTimer = 0.56;
       this.warpOriginX = this.x;
       this.vx = 0;
 
@@ -510,6 +512,7 @@ export class Chronomancer extends Fighter {
   update(dt, enemy, game) {
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
+    this.warpPortalTimer = Math.max(0, this.warpPortalTimer - dt);
 
     // Advance Temporal Echoes
     for (let i = this.temporalEchoes.length - 1; i >= 0; i--) {
@@ -1167,11 +1170,59 @@ export class Chronomancer extends Fighter {
     this.drawDoomsdayClock(ctx, renderer);
   }
 
+  /**
+   * Renders Dual 12-Hour Clockface Temporal Rift Wormhole Portals (Row 2 of chronomancer_vfx.png) at departure & arrival coordinates during CHRONO PORTAL WARP!
+   */
+  drawWarpPortals(ctx, renderer = null) {
+    if (this.warpPortalTimer <= 0 && !this.isChronoWarp) return;
+    const vfxSheet = PixelForge.initAssets().chronomancer?.vfx;
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
+
+    const fade = Math.min(1, this.warpPortalTimer / 0.22);
+    const col = Math.floor(performance.now() * 0.035) % 30;
+    const portals = [
+      { x: this.warpOriginX, y: this.groundY - 96, scale: 0.94 },
+      { x: this.warpTargetX, y: this.groundY - 96, scale: 1.04 }
+    ];
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (const p of portals) {
+      const size = Math.round(176 * p.scale);
+      const half = Math.round(-size * 0.5);
+      ctx.save();
+      ctx.translate(Math.round(p.x), Math.round(p.y));
+      if (renderer) {
+        ctx.globalCompositeOperation = 'lighter';
+        if (renderer.glowTeal) {
+          ctx.globalAlpha = fade * 0.56;
+          ctx.drawImage(renderer.glowTeal, -size * 1.15, -size * 1.15, size * 2.3, size * 2.3);
+        }
+        if (renderer.glowGold) {
+          ctx.globalAlpha = fade * 0.48;
+          ctx.drawImage(renderer.glowGold, -size * 0.85, -size * 0.85, size * 1.7, size * 1.7);
+        }
+      }
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.45;
+      ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half - 8, half - 8, size + 16, size + 16);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.94;
+      ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half, half, size, size);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.36;
+      ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half, half, size, size);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   draw(ctx, isReflection = false, renderer = null) {
     const sprites = PixelForge.initAssets().chronomancer;
     if (!sprites) return;
 
     if (!isReflection) {
+      this.drawWarpPortals(ctx, renderer);
       this.drawTemporalEchoes(ctx);
       this.drawOrbitingGears(ctx, renderer);
     }

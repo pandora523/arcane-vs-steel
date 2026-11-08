@@ -99,10 +99,10 @@ def fill_layer_pinholes(layer, x0=1, x1=50, y0=1, y1=50, require_3_neighbors=Fal
 
 def ensure_safe_cell(frame):
     """
-    Guarantees zero pixels touch the 52x52 cell border (x=0, x=51, y=0, y=51) and fills
-    any 1px interior pinholes from movement.
+    Guarantees zero pixels touch the outer 2px cell border (strictly inside 2 <= x <= 49, 2 <= y <= 49)
+    and fills any 1px interior pinholes from movement.
     """
-    out = fill_layer_pinholes(frame, 1, 50, 1, 50, require_3_neighbors=True)
+    out = fill_layer_pinholes(frame, 2, 49, 2, 49, require_3_neighbors=True)
     ys, xs = np.where(out[:, :, 3] > 0)
     if len(ys) == 0:
         return out
@@ -110,33 +110,33 @@ def ensure_safe_cell(frame):
     xmin, xmax = int(xs.min()), int(xs.max())
 
     dy = 0
-    if ymin < 1 and ymax < 50:
-        dy = min(1 - ymin, 50 - ymax)
-    elif ymax > 50 and ymin > 1:
-        dy = -min(ymax - 50, ymin - 1)
+    if ymin < 2 and ymax < 49:
+        dy = min(2 - ymin, 49 - ymax)
+    elif ymax > 49 and ymin > 2:
+        dy = -min(ymax - 49, ymin - 2)
 
     dx = 0
-    if xmin < 1 and xmax < 50:
-        dx = min(1 - xmin, 50 - xmax)
-    elif xmax > 50 and xmin > 1:
-        dx = -min(xmax - 50, xmin - 1)
+    if xmin < 2 and xmax < 49:
+        dx = min(2 - xmin, 49 - xmax)
+    elif xmax > 49 and xmin > 2:
+        dx = -min(xmax - 49, xmin - 2)
 
     if dx != 0 or dy != 0:
         shifted = np.zeros_like(out)
         for y in range(52):
             ny = y + dy
-            if 1 <= ny <= 50:
+            if 2 <= ny <= 49:
                 for x in range(52):
                     nx = x + dx
-                    if 1 <= nx <= 50 and out[y, x, 3] > 0:
+                    if 2 <= nx <= 49 and out[y, x, 3] > 0:
                         shifted[ny, nx] = out[y, x]
         out = shifted
 
-    # Clear extreme 1px perimeter if any single stray spark remained on 0 or 51
-    out[0, :, :] = 0
-    out[51, :, :] = 0
-    out[:, 0, :] = 0
-    out[:, 51, :] = 0
+    # Clear extreme 2px perimeter so all pixels stay strictly inside 2 <= x <= 49, 2 <= y <= 49
+    out[0:2, :, :] = 0
+    out[50:52, :, :] = 0
+    out[:, 0:2, :] = 0
+    out[:, 50:52, :] = 0
     return out
 
 
@@ -222,7 +222,8 @@ def make_clean_templates(src):
     stand_upper[34:44, :15] = stand[34:44, :15]
     stand_upper = add_outline_to_layer(stand_upper)
 
-    # 2. Clean forward-lunging body (from lunge cell(2, 3), stripping baked-in sword at x >= 31)
+    # 2. Clean forward-lunging body (from lunge cell(2, 3), stripping baked-in sword at x >= 31
+    #    and grafting `stand`'s crisp winged golden Valkyrie helmet, visor, and upper shoulder pauldron)
     lunge = src['lunge'].copy()
     for y in range(19, 32):
         for x in range(19, 30):
@@ -234,11 +235,18 @@ def make_clean_templates(src):
                 lunge[y, x] = 0
             elif 15 <= y <= 30 and x >= 31:
                 lunge[y, x] = 0
+    # Clear pinhead region on lunge and graft stand's winged golden Valkyrie helmet, visor & upper pauldron
+    # (y = 3..18, x = 16..31 shifted forward by dx = +2, dy = +1 to match forward-leaning lunge posture)
+    lunge[3:17, 17:34] = 0
+    for y in range(3, 19):
+        for x in range(16, 32):
+            if stand[y, x, 3] > 0:
+                lunge[min(49, y + 1), min(49, x + 2)] = stand[y, x]
     lunge[0:2, :, :] = 0
     lunge[50:, :, :] = 0
     lunge[:, 0:2, :] = 0
     lunge[:, 50:, :] = 0
-    lunge = add_outline_to_layer(lunge)
+    lunge = fill_layer_pinholes(add_outline_to_layer(lunge))
 
     # 3. Clean kneeling bodies (kneel1, kneel2) with vertical planted sword on right (x >= 31) removed
     kneel1 = src['kneel1'].copy()
@@ -666,33 +674,55 @@ def draw_valkyrie_aura_wings(canvas, shoulder=(24, 17), wing_span=1.0, phase=0.0
     return composite_over(wing_layer, canvas)
 
 
-def draw_aegis_greatshield(canvas, cx, cy, glow=0.5):
+def draw_aegis_greatshield(canvas, y_off=0, glow=0.75, f_idx=0):
     """
-    Renders Aethelgard's ornate Frost-Gold Valkyrie Aegis Greatshield on his left arm during CROUCH.
+    Renders Aethelgard's crisp, translucent-looking chunky-pixel Golden-Sapphire Valkyrie Aegis Crest Shield
+    (`x = 36..41, y = 18..31`, with `GOLD_BRIGHT` rim, `FROST_CYAN` cross-emblem, and `CAPE_ROYAL_HI` core)
+    in front of his lead gauntlet during CROUCH (`F00..F11`).
     """
     sh = np.zeros((52, 52, 4), dtype=np.uint8)
-    for dy in range(-8, 9):
-        half_w = 4 if abs(dy) <= 4 else (3 if abs(dy) <= 6 else 2)
-        for dx in range(-half_w, half_w + 1):
-            px_x = cx + dx
-            px_y = cy + dy
-            if abs(dx) == half_w or abs(dy) == 8:
-                col = GOLD_WHITE if (glow > 0.7 and dy < 0) else GOLD_BRIGHT
-            elif abs(dx) == half_w - 1:
-                col = GOLD_MID
-            elif dx == 0 or dy == 0:
-                col = FROST_WHITE if glow > 0.6 else GOLD_BRIGHT
+    y0 = 18 + int(round(y_off))
+    for dy in range(14):
+        py = y0 + dy
+        if not (2 <= py <= 49):
+            continue
+        if dy == 0:
+            set_px(sh, 37, py, GOLD_BRIGHT)
+            set_px(sh, 38, py, GOLD_WHITE if glow >= 0.7 else GOLD_BRIGHT)
+            set_px(sh, 39, py, GOLD_WHITE if glow >= 0.7 else GOLD_BRIGHT)
+            set_px(sh, 40, py, GOLD_BRIGHT)
+        elif 1 <= dy <= 8:
+            # Left and right ornate GOLD_BRIGHT kite-shield rim (x = 36, 41)
+            rim_col = GOLD_WHITE if (dy in (4, 5) and glow >= 0.75) else (GOLD_BRIGHT if dy <= 6 else GOLD_MID)
+            set_px(sh, 36, py, rim_col)
+            set_px(sh, 41, py, GOLD_BRIGHT if dy <= 7 else GOLD_MID)
+            if dy in (4, 5):
+                # Horizontal crossbar of the FROST_CYAN Valkyrie cross-emblem
+                set_px(sh, 37, py, FROST_CYAN)
+                set_px(sh, 38, py, FROST_WHITE if (glow >= 0.65 and (dy + f_idx) % 2 == 0) else FROST_CYAN)
+                set_px(sh, 39, py, FROST_WHITE if (glow >= 0.65 and (dy + f_idx) % 2 == 1) else FROST_CYAN)
+                set_px(sh, 40, py, FROST_CYAN)
             else:
-                col = FROST_BRIGHT if (glow > 0.5 and abs(dx) + abs(dy) <= 3) else CAPE_ROYAL_MID
-            set_px(sh, px_x, px_y, col)
-
-    if glow > 0.55:
-        for dy in range(-9, 10):
-            bx = cx + 5 - (dy * dy) // 22
-            if abs(dy) % 2 == 0 or glow > 0.8:
-                set_px(sh, bx, cy + dy, FROST_WHITE if abs(dy) <= 3 else FROST_BRIGHT)
-                if glow > 0.75:
-                    set_px(sh, bx + 1, cy + dy, FROST_CYAN)
+                # Sapphire core (CAPE_ROYAL_HI) with vertical FROST_CYAN cross-emblem at x = 38..39
+                core_l = FROST_BRIGHT if ((dy + f_idx) % 4 == 0 and glow >= 0.75) else CAPE_ROYAL_HI
+                core_r = CAPE_ROYAL_MID if (dy >= 6 and (dy + f_idx) % 2 == 1) else CAPE_ROYAL_HI
+                set_px(sh, 37, py, core_l)
+                set_px(sh, 38, py, FROST_CYAN)
+                set_px(sh, 39, py, FROST_CYAN)
+                set_px(sh, 40, py, core_r)
+        elif 9 <= dy <= 11:
+            # Tapering lower kite shield (x = 37..40)
+            rim_l = GOLD_BRIGHT if dy <= 10 else GOLD_MID
+            set_px(sh, 37, py, rim_l)
+            set_px(sh, 40, py, rim_l)
+            inner_col = FROST_CYAN if dy <= 10 else CAPE_ROYAL_HI
+            set_px(sh, 38, py, inner_col)
+            set_px(sh, 39, py, inner_col)
+        else:
+            # Pointed bottom shield finial (dy = 12..13, x = 38..39)
+            tip_col = GOLD_BRIGHT if dy == 12 else GOLD_MID
+            set_px(sh, 38, py, tip_col)
+            set_px(sh, 39, py, tip_col)
 
     return composite_over(canvas, sh)
 
@@ -1444,6 +1474,34 @@ def build_row4_ultimate(tpl):
                 sx = 31 + s_i * 4
                 sy = 4 + ((k * 3 + s_i * 4) % 14)
                 draw_line_px(frame, sx, sy, sx, sy + 6, GOLD_BRIGHT if s_i == 1 else FROST_BRIGHT)
+
+            # Expanding ground frost-gold pressure ring & rising ice-shard motes (y = 42..48, x = 22..46)
+            imp_cx = 36
+            half_span = 4 + k * 2  # expands from x = 32..40 at F21 out to x = 22..46 at F26
+            x_left = max(22, imp_cx - half_span)
+            x_right = min(46, imp_cx + min(10, half_span))
+            for rx in range(x_left, x_right + 1):
+                dist_c = abs(rx - imp_cx)
+                if k >= 2 or dist_c % 2 == (k % 2):
+                    col_g = FROST_WHITE if dist_c <= 2 else (GOLD_BRIGHT if (rx + k) % 3 == 0 else FROST_CYAN)
+                    set_px(frame, rx, 48, col_g)
+                if k >= 3 and dist_c in (2, 5, 8, 11) and 22 <= rx <= 46:
+                    shard_h = 3 if dist_c <= 5 else 2
+                    for sh_dy in range(1, shard_h + 1):
+                        set_px(
+                            frame,
+                            rx,
+                            48 - sh_dy,
+                            FROST_WHITE if sh_dy == shard_h else (GOLD_BRIGHT if dist_c % 2 == 0 else FROST_BRIGHT),
+                        )
+            # Rising ice-shard motes around the descending/planting blade (y = 42..46, x = 22..46)
+            for m_i in range(4):
+                mx = max(22, min(46, 25 + m_i * 6 + ((k + m_i) % 3) - 1))
+                my = max(42, min(47, 46 - ((k + m_i * 2) % 5)))
+                set_px(frame, mx, my, GOLD_WHITE if (m_i + k) % 2 == 0 else FROST_BRIGHT)
+                if my + 1 <= 47:
+                    set_px(frame, mx, my + 1, FROST_CYAN)
+
             frames.append(ensure_safe_cell(frame))
 
         else:
@@ -1464,10 +1522,42 @@ def build_row4_ultimate(tpl):
                 shoulder=(27, 17 + crouch_d),
                 two_handed=True
             )
-            # Tectonic ground shockwave sparks at blade impact (x=35, y=48)
-            for rx in range(24 - k * 3, 46 + k * 2, 2):
-                if 2 <= rx < 49:
-                    set_px(frame, rx, 48, GOLD_BRIGHT if rx % 4 == 0 else FROST_BRIGHT)
+            # Rich expanding frost-gold crystal ground shockwave & rising ice-shard motes (y = 42..48, x = 22..46)
+            imp_cx = 36
+            x_min = max(22, 24 - k)
+            x_max = min(46, 44 + k)
+            for rx in range(x_min, x_max + 1):
+                dist_c = abs(rx - imp_cx)
+                # Glowing 2px frost-gold fissure bed along y = 47..48
+                c_base = FROST_WHITE if dist_c <= 2 else (GOLD_BRIGHT if (rx + k) % 3 == 0 else FROST_BRIGHT)
+                set_px(frame, rx, 48, c_base)
+                if dist_c <= 10 - k and (rx + k) % 2 == 0:
+                    set_px(frame, rx, 47, GOLD_WHITE if dist_c <= 3 else FROST_CYAN)
+
+            # Erupting angled frost-gold crystal spires on both sides of the planted blade (y = 42..47, x = 22..46)
+            crystal_offsets = [(-11 - k, 3), (-7 - k, 5 - k), (-3, 4), (3, 4), (6 + k, 5 - k), (9 + k, 3)]
+            for dx_c, h_c in crystal_offsets:
+                cx_s = max(22, min(46, imp_cx + dx_c))
+                lean = -1 if dx_c < 0 else 1
+                for dy_s in range(1, max(2, h_c) + 1):
+                    px_s = max(22, min(46, cx_s + (lean if dy_s >= 3 else 0)))
+                    py_s = max(42, min(48, 48 - dy_s))
+                    if dy_s == h_c:
+                        col_s = FROST_WHITE
+                    elif dy_s == h_c - 1:
+                        col_s = GOLD_BRIGHT if abs(dx_c) % 2 == 1 else FROST_BRIGHT
+                    else:
+                        col_s = FROST_CYAN
+                    set_px(frame, px_s, py_s, col_s)
+
+            # Rising ice-shard motes & golden starlight embers floating at y = 42..45, x = 22..46
+            for m_idx, base_mx in enumerate((23, 28, 33, 39, 43, 46)):
+                mx = max(22, min(46, base_mx + ((k + m_idx) % 2) * (-1 if m_idx < 3 else 1)))
+                my = max(42, min(46, 45 - k - (m_idx % 2)))
+                set_px(frame, mx, my, GOLD_WHITE if (m_idx + k) % 2 == 0 else FROST_WHITE)
+                if my + 1 <= 47:
+                    set_px(frame, mx, my + 1, GOLD_BRIGHT if (m_idx + k) % 2 == 0 else FROST_CYAN)
+
             frames.append(ensure_safe_cell(frame))
 
     return frames
@@ -1689,9 +1779,9 @@ def build_row6_dash(tpl):
 
 def build_row7_crouch(tpl):
     """
-    Row 7 (`CROUCH`, 30 frames — HEMA Low *Pflug* Guard into Two-Handed Rising *Unterhau* Cleave):
-    - F00..F06: Drops into a low bent-knee *Pflug* (Plow) guard (`d = 5`), bracing the greatsword with both hands near his forward hip (`hx = 35, hy = 20 + d, ang = -48 -> -22 deg`).
-    - F07..F12: Coils the blade down into low *Wechsel / Alber* guard (`ang = -22 -> +22 deg`) as frost runes charge.
+    Row 7 (`CROUCH`, 30 frames — HEMA Low *Pflug* Aegis Shield Guard into Two-Handed Rising *Unterhau* Cleave):
+    - F00..F06: Drops into a low bent-knee *Pflug* (Plow) guard (`d = 5`), bracing the greatsword with both hands near his forward hip (`hx = 35, hy = 20 + d, ang = -48 -> -22 deg`) behind his glowing Golden-Sapphire Valkyrie Aegis Crest Shield (`x = 36..41, y = 18..31`).
+    - F07..F11: Holds defensive Aegis Shield barrier (`x = 36..41, y = 18..31`) while coiling the blade down into low *Wechsel / Alber* guard (`ang = -22 -> +18 deg`) as frost runes charge; F12 coils to `+22 deg` just as the shield barrier releases into the counter-cleave.
     - F13..F18: Drives both hands upward in an explosive two-handed rising *Unterhau* (upward diagonal cleave) from `+22 deg` up to `-46 deg` (`hx = 36..38, hy = 21+d -> 16+d`).
     - F19..F29: Rises smoothly from crouch back to upright two-handed *Halb-Vom-Tag* stance.
     """
@@ -1715,6 +1805,7 @@ def build_row7_crouch(tpl):
                 shoulder=(27, 17 + d),
                 two_handed=True
             )
+            frame = draw_aegis_greatshield(frame, y_off=0, glow=0.65 + u * 0.2, f_idx=f)
             frames.append(ensure_safe_cell(frame))
 
         elif f <= 12:
@@ -1734,6 +1825,8 @@ def build_row7_crouch(tpl):
                 shoulder=(27, 17 + d),
                 two_handed=True
             )
+            if f <= 11:
+                frame = draw_aegis_greatshield(frame, y_off=0, glow=0.85 + u * 0.15, f_idx=f)
             frames.append(ensure_safe_cell(frame))
 
         elif f <= 18:
@@ -1936,15 +2029,20 @@ def main():
     num_rows = len(rows)
     cell_px = 208
     sheet = Image.new('RGBA', (30 * cell_px, num_rows * cell_px), (0, 0, 0, 0))
+    boundary_clips = 0
 
     for r_idx, (r_name, r_frames) in enumerate(rows):
         assert len(r_frames) == 30, f'{r_name} has {len(r_frames)} frames instead of 30'
         adj_diffs = sum(1 for i in range(29) if np.any(r_frames[i] != r_frames[i + 1]))
         print(f'{r_name:54s}: 30 frames generated, {adj_diffs}/29 adjacent transitions distinct')
         for c_idx, arr in enumerate(r_frames):
+            ys, xs = np.where(arr[:, :, 3] > 0)
+            if len(ys) > 0 and (ys.min() < 2 or ys.max() > 49 or xs.min() < 2 or xs.max() > 49):
+                boundary_clips += 1
             cell_im = Image.fromarray(arr, mode='RGBA').resize((cell_px, cell_px), Image.NEAREST)
             sheet.paste(cell_im, (c_idx * cell_px, r_idx * cell_px))
 
+    print(f'Boundary clips outside (2 <= x <= 49, 2 <= y <= 49): {boundary_clips}/270')
     sheet.save('assets/sprites/warrior_sheet.png')
     print('Saved assets/sprites/warrior_sheet.png:', sheet.size)
 

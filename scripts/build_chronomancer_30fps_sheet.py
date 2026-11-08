@@ -805,6 +805,258 @@ def draw_time_slip_afterimage(base_frame, body_layer, dx_trail=-6, phase=0.0):
     return composite_over(ghost, base_frame)
 
 
+def draw_chrono_pendulum_trail(c, cx, cy, start_deg, end_deg, intensity=1.0):
+    """
+    Renders a crisp 3-band Cyan-Bright, Teal-Mid & Brass-Gold Crescent Pendulum Arc + Tick Marks
+    (`WHITE_CORE`, `CYAN_BRIGHT`, `GOLD_BRIGHT`, `TEAL_MID`, strictly inside `3 <= x <= 48, 3 <= y <= 48`)
+    tracing the sweeping path of Zephyros's Astrolabe Staff finial during:
+    - Row 2 (`AUTO_ATTACK`) F10..F17
+    - Row 3 (`SKILL`) F10..F19
+    - Row 4 (`ULTIMATE`) F17..F24
+    """
+    if intensity <= 0.05:
+        return c
+
+    def set_arc_px(buf, px_x, px_y, col):
+        ix = max(3, min(48, int(round(px_x))))
+        iy = max(3, min(48, int(round(px_y))))
+        buf[iy, ix] = col
+
+    trail = np.zeros((52, 52, 4), dtype=np.uint8)
+    a0 = float(start_deg)
+    a1 = float(end_deg)
+    if a1 < a0:
+        a0, a1 = a1, a0
+    span = max(8.0, a1 - a0)
+
+    r_outer = 9.6
+    r_mid = 8.4
+    r_inner = 7.2
+
+    steps = max(18, int(round(span * 0.75)))
+    for i in range(steps + 1):
+        u = i / float(steps)
+        deg = a0 + u * (a1 - a0)
+        rad = math.radians(deg)
+        ca = math.cos(rad)
+        sa = math.sin(rad)
+
+        # Inner Band: TEAL_MID -> TEAL_BRIGHT
+        if u >= 0.12:
+            col_in = TEAL_BRIGHT if (u >= 0.68 and intensity >= 0.55) else TEAL_MID
+            set_arc_px(trail, cx + ca * r_inner, cy + sa * r_inner, col_in)
+
+        # Middle Band: TEAL_MID / CYAN_BRIGHT -> CYAN_CORE
+        if u >= 0.05:
+            if u >= 0.82 and intensity >= 0.65:
+                col_mid = CYAN_CORE
+            elif u >= 0.25:
+                col_mid = CYAN_BRIGHT
+            else:
+                col_mid = TEAL_MID
+            set_arc_px(trail, cx + ca * r_mid, cy + sa * r_mid, col_mid)
+
+        # Outer Band: BRASS-GOLD -> WHITE_CORE crescent edge
+        if u >= 0.78 and intensity >= 0.6:
+            col_out = WHITE_CORE
+        elif u >= 0.45:
+            col_out = GOLD_STAR if i % 2 == 0 else GOLD_BRIGHT
+        else:
+            col_out = GOLD_BRIGHT if i % 2 == 0 else BRASS_LIGHT
+        set_arc_px(trail, cx + ca * r_outer, cy + sa * r_outer, col_out)
+
+    # Radial Clockwork Pendulum Tick Marks along the arc (every ~14 degrees)
+    num_ticks = max(4, int(round(span / 14.0)))
+    for t_i in range(num_ticks + 1):
+        u_t = t_i / float(max(1, num_ticks))
+        t_deg = a0 + u_t * (a1 - a0)
+        t_rad = math.radians(t_deg)
+        ca = math.cos(t_rad)
+        sa = math.sin(t_rad)
+        tick_col = WHITE_CORE if u_t >= 0.82 else (GOLD_STAR if t_i % 2 == 0 else GOLD_BRIGHT)
+        set_arc_px(trail, cx + ca * (r_outer + 0.9), cy + sa * (r_outer + 0.9), tick_col)
+        set_arc_px(trail, cx + ca * (r_inner - 0.8), cy + sa * (r_inner - 0.8), CYAN_BRIGHT if t_i % 2 == 0 else TEAL_MID)
+
+    mask = trail[:, :, 3] > 0
+    c[mask] = trail[mask]
+    return c
+
+
+def draw_clockwork_ground_dial(
+    base_frame,
+    cx=25.0,
+    cy=46.0,
+    rx=12.5,
+    ry=1.9,
+    rot_rad=0.0,
+    intensity=1.0,
+    phase=0.0,
+):
+    """
+    Renders a wide, perspective-flattened 12-Point Golden-Teal Clockwork Sundial (`y = 44..48, x = 12..38`)
+    beneath Zephyros's boots with rotating clock-hand ticks and rising temporal sand motes for:
+    - Row 3 (`SKILL - Stasis Hourglass`) F02..F22
+    - Row 4 (`ULTIMATE - Doomsday Clock Midnight`) F01..F26
+    """
+    if intensity <= 0.05:
+        return base_frame
+
+    back_dial = np.zeros((52, 52, 4), dtype=np.uint8)
+    front_dial = np.zeros((52, 52, 4), dtype=np.uint8)
+
+    def set_dial_px(buf, px_x, px_y, col, y_min=44, y_max=48):
+        ix = max(12, min(38, int(round(px_x))))
+        iy = max(y_min, min(y_max, int(round(px_y))))
+        buf[iy, ix] = col
+
+    rx_eff = min(12.5, float(rx) * (0.78 + 0.22 * min(1.0, intensity)))
+    ry_eff = min(2.0, float(ry))
+
+    # 1. Outer & Inner Elliptical Golden-Teal Sundial Rings (y = 44..48, x = 12..38)
+    steps = 36
+    for s in range(steps):
+        a = (s / float(steps)) * 2.0 * math.pi + rot_rad * 0.5
+        ca = math.cos(a)
+        sa = math.sin(a)
+        target = front_dial if sa >= 0.0 else back_dial
+
+        ox = cx + ca * rx_eff
+        oy = cy + sa * ry_eff
+        col_out = GOLD_BRIGHT if s % 3 == 0 else (CYAN_BRIGHT if s % 3 == 1 else BRASS_LIGHT)
+        set_dial_px(target, ox, oy, col_out)
+
+        ix_r = cx + math.cos(-a * 1.4) * (rx_eff * 0.62)
+        iy_r = cy + math.sin(-a * 1.4) * (ry_eff * 0.62)
+        col_in = TEAL_MID if s % 2 == 0 else GOLD_STAR
+        set_dial_px(target, ix_r, iy_r, col_in)
+
+    # 2. 12-Point Clockwork Sundial Rim Ticks (Roman numeral hour points around the ellipse)
+    for h_i in range(12):
+        ha = rot_rad * 0.35 + h_i * (2.0 * math.pi / 12.0)
+        ca = math.cos(ha)
+        sa = math.sin(ha)
+        target = front_dial if sa >= -0.05 else back_dial
+        tx = cx + ca * (rx_eff + 0.9)
+        ty = cy + sa * (ry_eff + 0.45)
+        if h_i % 3 == 0:
+            t_col = WHITE_CORE if h_i == 0 else GOLD_STAR
+        else:
+            t_col = GOLD_BRIGHT if h_i % 2 == 0 else CYAN_BRIGHT
+        set_dial_px(target, tx, ty, t_col)
+        # Inner tick bridge
+        set_dial_px(target, cx + ca * (rx_eff - 0.8), cy + sa * (ry_eff - 0.25), TEAL_MID if h_i % 2 else BRASS_MID)
+
+    # 3. Rotating Clock-Hand Ticks sweeping across the Sundial Floor
+    hand1_a = rot_rad * 1.6
+    hand2_a = -rot_rad * 2.8 + 1.1
+    for step_h in range(1, 9):
+        u_h = step_h / 8.0
+        hx1 = cx + math.cos(hand1_a) * (rx_eff * 0.85 * u_h)
+        hy1 = cy + math.sin(hand1_a) * (ry_eff * 0.85 * u_h)
+        t1 = front_dial if math.sin(hand1_a) >= 0.0 else back_dial
+        set_dial_px(t1, hx1, hy1, WHITE_CORE if step_h >= 7 else GOLD_STAR)
+
+        if step_h <= 6:
+            hx2 = cx + math.cos(hand2_a) * (rx_eff * 0.62 * (step_h / 6.0))
+            hy2 = cy + math.sin(hand2_a) * (ry_eff * 0.62 * (step_h / 6.0))
+            t2 = front_dial if math.sin(hand2_a) >= 0.0 else back_dial
+            set_dial_px(t2, hx2, hy2, CYAN_CORE if step_h == 6 else CYAN_BRIGHT)
+
+    set_dial_px(front_dial, cx, cy, WHITE_CORE)
+
+    # 4. Rising Temporal Sand Motes above the Sundial Perimeter (x = 13..37, y = 38..46)
+    num_motes = 6 if intensity >= 0.65 else 4
+    for m_i in range(num_motes):
+        m_ang = phase * 1.5 + m_i * (2.0 * math.pi / float(num_motes))
+        mx = int(round(cx + math.cos(m_ang) * (rx_eff * 0.82)))
+        mx = max(13, min(37, mx))
+        rise_u = ((phase * 1.8 + m_i * 0.37) % 1.0)
+        my = int(round(46.0 - rise_u * 6.5))
+        my = max(38, min(46, my))
+        m_col = GOLD_STAR if m_i % 3 == 0 else (CYAN_BRIGHT if m_i % 3 == 1 else GOLD_BRIGHT)
+        if base_frame[my, mx, 3] == 0:
+            front_dial[my, mx] = m_col
+            if my + 1 <= 47 and base_frame[my + 1, mx, 3] == 0 and m_i % 2 == 0:
+                front_dial[my + 1, mx] = TEAL_MID
+
+    out = composite_over(back_dial, base_frame)
+    out = composite_over(out, front_dial)
+    return out
+
+
+def draw_aerial_escapement_platform(
+    base_frame,
+    cx=23.0,
+    cy=43.5,
+    rx=8.0,
+    ry=2.0,
+    rot_rad=0.0,
+    intensity=1.0,
+):
+    """
+    Renders a rotating Brass-and-Cyan Clockwork Escapement Hover Ring (`y = 40..47, x = 14..32`)
+    directly beneath Zephyros's boots during Row 8 (`JUMP - Time-Glide Vault`) F04..F20.
+    """
+    if intensity <= 0.05:
+        return base_frame
+
+    back_ring = np.zeros((52, 52, 4), dtype=np.uint8)
+    front_ring = np.zeros((52, 52, 4), dtype=np.uint8)
+
+    def set_plat_px(buf, px_x, px_y, col):
+        ix = max(14, min(32, int(round(px_x))))
+        iy = max(40, min(47, int(round(px_y))))
+        buf[iy, ix] = col
+
+    # 1. Outer Brass Escapement Gear Ring & Inner Cyan-Teal Levitation Ring
+    steps = 28
+    for s in range(steps):
+        a = (s / float(steps)) * 2.0 * math.pi + rot_rad
+        ca = math.cos(a)
+        sa = math.sin(a)
+        target = front_ring if sa >= 0.0 else back_ring
+
+        ox = cx + ca * rx
+        oy = cy + sa * ry
+        col_out = GOLD_BRIGHT if s % 2 == 0 else BRASS_LIGHT
+        set_plat_px(target, ox, oy, col_out)
+
+        ix_r = cx + math.cos(-a * 1.5) * (rx * 0.62)
+        iy_r = cy + math.sin(-a * 1.5) * (ry * 0.62)
+        col_in = CYAN_CORE if s % 4 == 0 else (CYAN_BRIGHT if s % 2 == 0 else TEAL_MID)
+        set_plat_px(target, ix_r, iy_r, col_in)
+
+    # 2. 8 Rotating Brass Escapement Gear Teeth + 4 Clockwork Spokes
+    for k in range(8):
+        ta = rot_rad * 1.25 + k * (math.pi * 0.25)
+        ca = math.cos(ta)
+        sa = math.sin(ta)
+        target = front_ring if sa >= -0.05 else back_ring
+        tx = cx + ca * (rx + 0.9)
+        ty = cy + sa * (ry + 0.5)
+        set_plat_px(target, tx, ty, GOLD_STAR if k % 2 == 0 else GOLD_BRIGHT)
+        if k % 2 == 0:
+            for sp_u in (0.25, 0.50, 0.78):
+                set_plat_px(
+                    target,
+                    cx + ca * (rx * sp_u),
+                    cy + sa * (ry * sp_u),
+                    BRASS_MID if sp_u > 0.4 else CYAN_BRIGHT
+                )
+
+    set_plat_px(front_ring, cx, cy, WHITE_CORE)
+
+    # 3. Subtle downward temporal hover thruster glow at y = 45..47
+    for m in (-2, 0, 2):
+        mx = int(round(cx + m * 2.2 + math.sin(rot_rad * 2.0 + m) * 0.8))
+        my = min(47, int(round(cy + ry + 1.0)))
+        set_plat_px(front_ring, mx, my, CYAN_BRIGHT if m != 0 else GOLD_STAR)
+
+    out = composite_over(back_ring, base_frame)
+    out = composite_over(out, front_ring)
+    return out
+
+
 def draw_chrono_staff(
     base_frame,
     shoulder=(25.5, 17.0),
@@ -1425,7 +1677,8 @@ def build_row2_auto_attack(tpl):
     Row 2 (`AUTO_ATTACK`, 30 frames):
     - F00..F09: Winds the Astrolabe Staff back to `-102°` while his Left Clockwork Arm extends forward
       (`hand_x = 31..34, hand_y = 22..25`) spinning a miniature golden-teal Saw-Gear!
-    - F10..F18: Thrusts the Astrolabe Staff forward to `-36°` (`flare=1.0`) to launch the Saw-Gear!
+    - F10..F18: Thrusts the Astrolabe Staff forward to `-36°` (`flare=1.0`) with a sweeping 3-band
+      Cyan-Gold Chrono-Pendulum Slash Trail (`F10..F17`) to launch the Saw-Gear!
     - F19..F29: Smooth follow-through and recovery back to `-68°`.
     """
     frames = []
@@ -1487,6 +1740,12 @@ def build_row2_auto_attack(tpl):
                 conjure_mode='gear_launch',
                 mode_progress=u
             )
+            if f <= 17:
+                u_tr = (f - 10) / 7.0
+                trail_start = -102.0 + u_tr * 36.0
+                frame = draw_chrono_pendulum_trail(
+                    frame, gx, gy, trail_start, staff_angle_deg, intensity=1.0 - u_tr * 0.42
+                )
         else:
             u = (f - 19) / 10.0
             staff_angle_deg = -36.0 * (1.0 - u) + (-68.0) * u
@@ -1514,8 +1773,10 @@ def build_row3_skill(tpl):
     """
     Row 3 (`SKILL` - Stasis Hourglass Cage, 30 frames):
     - F00..F09: Raises the Astrolabe Staff high (`-96°`) while his left hand conjures a glowing
-      teal-gold miniature Hourglass (`left_relic_mode='mini_hourglass'`)!
-    - F10..F21: Sweeps the Astrolabe Staff forward (`-34°`, `flare=1.0`) to shatter the temporal field!
+      teal-gold miniature Hourglass (`left_relic_mode='mini_hourglass'`) and a 12-Point Clockwork
+      Sundial Ground Ring (`F02..F22`) ignites beneath his boots!
+    - F10..F21: Sweeps the Astrolabe Staff forward (`-34°`, `flare=1.0`) with a sweeping 3-band
+      Cyan-Gold Chrono-Pendulum Slash Trail (`F10..F19`) to shatter the temporal field!
     - F22..F29: Smooth recovery back to `-68°`.
     """
     frames = []
@@ -1524,6 +1785,12 @@ def build_row3_skill(tpl):
         base = (tpl['aim_h'] if 2 <= f <= 23 else tpl['stand']).copy()
         base = apply_coat_wave(base, phase * 2.0, amplitude=2.0, vertical_flutter=0.8)
         base = draw_escapement_halo(base, cx=20.0, cy=13.0, radius=7.6, rot_rad=phase * 2.0)
+
+        if 2 <= f <= 22:
+            dial_int = min(1.0, (f - 1) / 3.0) if f <= 4 else (min(1.0, (23 - f) / 3.0) if f >= 20 else 1.0)
+            base = draw_clockwork_ground_dial(
+                base, cx=25.0, cy=46.0, rx=12.5, ry=1.9, rot_rad=phase * 2.2, intensity=dial_int, phase=phase
+            )
 
         if f <= 9:
             u = f / 9.0
@@ -1568,6 +1835,12 @@ def build_row3_skill(tpl):
                 conjure_mode='rewind_shatter',
                 mode_progress=u
             )
+            if f <= 19:
+                u_tr = (f - 10) / 9.0
+                trail_start = -96.0 + u_tr * 36.0
+                frame = draw_chrono_pendulum_trail(
+                    frame, gx, gy, trail_start, staff_angle_deg, intensity=1.0 - u_tr * 0.42
+                )
         else:
             u = (f - 22) / 7.0
             staff_angle_deg = -34.0 * (1.0 - u) + (-68.0) * u
@@ -1591,8 +1864,10 @@ def build_row4_ultimate(tpl):
     """
     Row 4 (`ULTIMATE` - Doomsday Clock: Midnight Paradox, 30 frames):
     - F00..F16: Raises both the Astrolabe Staff (`-90°`, held high) and his Left Conjuring Hand skyward
-      (`left_relic_mode='skyward_paradox'`) with an orbiting golden Roman numeral clock ring around his head/shoulders!
-    - F17..F24: Slashes the Astrolabe Staff down to `-32°` (`flare=1.0`) at Midnight XII!
+      (`left_relic_mode='skyward_paradox'`) with an orbiting golden Roman numeral clock ring around his
+      shoulders and a 12-Point Clockwork Sundial Ground Ring (`F01..F26`) beneath his boots!
+    - F17..F24: Slashes the Astrolabe Staff down to `-32°` (`flare=1.0`) at Midnight XII with a sweeping
+      3-band Cyan-Gold Chrono-Pendulum Slash Trail (`F17..F24`)!
     - F25..F29: Smooth descent and recovery back to `-68°`.
     """
     frames = []
@@ -1603,7 +1878,7 @@ def build_row4_ultimate(tpl):
             u = f / 16.0
             u_lift = min(1.0, f / 5.0)
             tuck = 0.45 * u_lift
-            body = make_jump_body(tpl, 0, tuck_amount=tuck, draw_boot_rings=(f >= 2), phase=phase)
+            body = make_jump_body(tpl, 0, tuck_amount=tuck, draw_boot_rings=False, phase=phase)
             body = apply_coat_wave(body, phase * 2.2, amplitude=2.2, vertical_flutter=0.9)
             body = draw_escapement_halo(
                 body,
@@ -1614,6 +1889,11 @@ def build_row4_ultimate(tpl):
                 roman_clock=True,
                 orbit_gears=2 if f < 7 else 3
             )
+            if f >= 1:
+                dial_int = min(1.0, f / 3.0)
+                body = draw_clockwork_ground_dial(
+                    body, cx=25.0, cy=46.0, rx=12.5, ry=1.9, rot_rad=phase * 2.5, intensity=dial_int, phase=phase
+                )
             staff_angle_deg = -68.0 * (1.0 - u_lift) + (-90.0) * u_lift
             gx = 34
             gy = int(round(18.0 * (1.0 - u_lift) + 14.0 * u_lift))
@@ -1636,7 +1916,7 @@ def build_row4_ultimate(tpl):
         elif f <= 24:
             u = (f - 17) / 7.0
             u_slash = min(1.0, (f - 16) / 2.2)
-            body = make_jump_body(tpl, 0, tuck_amount=0.45 * (1.0 - u * 0.5), torso_lean_dx=1, draw_boot_rings=True, phase=phase)
+            body = make_jump_body(tpl, 0, tuck_amount=0.45 * (1.0 - u * 0.5), torso_lean_dx=1, draw_boot_rings=False, phase=phase)
             body = apply_coat_wave(body, phase * 2.5, amplitude=2.3, vertical_flutter=1.0)
             body = draw_escapement_halo(
                 body,
@@ -1646,6 +1926,9 @@ def build_row4_ultimate(tpl):
                 rot_rad=phase * 4.0,
                 roman_clock=True,
                 orbit_gears=3 if f <= 21 else 2
+            )
+            body = draw_clockwork_ground_dial(
+                body, cx=25.0, cy=46.0, rx=12.8, ry=2.0, rot_rad=phase * 3.5, intensity=1.0, phase=phase
             )
             staff_angle_deg = -90.0 * (1.0 - u_slash) + (-32.0) * u_slash
             gx = int(round(34.0 * (1.0 - u_slash) + 33.0 * u_slash))
@@ -1665,14 +1948,22 @@ def build_row4_ultimate(tpl):
                 conjure_mode='gear_launch',
                 mode_progress=u
             )
+            trail_start = -90.0 + u * 34.0
+            frame = draw_chrono_pendulum_trail(
+                frame, gx, gy, trail_start, staff_angle_deg, intensity=1.0 - u * 0.38
+            )
         else:
             u = (f - 25) / 4.0
             tuck = max(0.0, 0.22 * (1.0 - u))
-            body = make_jump_body(tpl, 0, tuck_amount=tuck, draw_boot_rings=(u < 0.5), phase=phase)
+            body = make_jump_body(tpl, 0, tuck_amount=tuck, draw_boot_rings=False, phase=phase)
             body = apply_coat_wave(body, phase * 2.0, amplitude=1.8, vertical_flutter=0.7)
             body = draw_escapement_halo(
                 body, cx=20.5, cy=13.0, radius=7.4, rot_rad=phase * 2.5, roman_clock=(u < 0.5), orbit_gears=0
             )
+            if f <= 26:
+                body = draw_clockwork_ground_dial(
+                    body, cx=25.0, cy=46.0, rx=12.0, ry=1.8, rot_rad=phase * 2.5, intensity=0.65 if f == 25 else 0.35, phase=phase
+                )
             staff_angle_deg = -32.0 * (1.0 - u) + (-68.0) * u
             frame = draw_chrono_staff(
                 body,
@@ -2075,12 +2366,13 @@ def build_row7_crouch(tpl):
 def build_row8_jump(tpl):
     """
     Row 8 (`JUMP`, 30 frames — ZERO bouncy-ball frames!):
-    Full-body Time-Glide Aerial Vault with wide Astrolabe Staff arc (`-98°` high lift to `-38°` aerial launch):
-    - F00..F04: Knee-bend launch (`-68° -> -84°`)
-    - F05..F11: Ascending aerial vault with glowing cyan clock-rings beneath the boots, raising staff to `-98°`
+    Full-body Time-Glide Aerial Vault with wide Astrolabe Staff arc (`-98°` high lift to `-38°` aerial launch)
+    and rotating Brass-and-Cyan Clockwork Escapement Hover-Platform (`F04..F20`, `y = 40..47, x = 14..32`):
+    - F00..F04: Knee-bend launch (`-68° -> -84°`), igniting the Escapement Hover-Platform at `F04`
+    - F05..F11: Ascending aerial vault atop the rotating Brass-and-Cyan Escapement Hover Ring, raising staff to `-98°`
       while Left Clockwork Arm spins up an aerial Saw-Gear
-    - F12..F18: Apex mid-air hover thrusting the Astrolabe Staff forward (`-38°`, `flare=1.0`) to launch the Saw-Gear
-    - F19..F24: Time-slowed feather descent (`-38° -> -64°`)
+    - F12..F18: Apex mid-air hover atop the Escapement Hover Ring, thrusting the Astrolabe Staff forward (`-38°`, `flare=1.0`) to launch the Saw-Gear
+    - F19..F24: Time-slowed feather descent (`-38° -> -64°`, platform fades after `F20`)
     - F25..F29: Crisp shock-absorbing landing (`-64° -> -68°`)
     """
     frames = []
@@ -2090,9 +2382,13 @@ def build_row8_jump(tpl):
             crouch_seq = [1, 3, 4, 2, 0]
             dy = crouch_seq[f]
             u = f / 4.0
-            body = make_crouch_body(tpl, dy) if dy >= 2 else make_jump_body(tpl, dy, tuck_amount=0.25, draw_boot_rings=(f == 4), phase=phase)
+            body = make_crouch_body(tpl, dy) if dy >= 2 else make_jump_body(tpl, dy, tuck_amount=0.25, draw_boot_rings=False, phase=phase)
             body = apply_coat_wave(body, phase * 2.0, amplitude=1.8, vertical_flutter=0.7)
             body = draw_escapement_halo(body, cx=20.0, cy=13.0 + dy, radius=7.2, rot_rad=phase * 2.0)
+            if f == 4:
+                body = draw_aerial_escapement_platform(
+                    body, cx=23.0, cy=44.5, rx=7.8, ry=1.9, rot_rad=phase * 3.0, intensity=0.8
+                )
             frame = draw_chrono_staff(
                 body,
                 shoulder=(25.0, 17.0 + dy),
@@ -2109,9 +2405,12 @@ def build_row8_jump(tpl):
         elif f <= 11:
             u = (f - 5) / 6.0
             tuck = 0.40 + 0.45 * math.sin(u * math.pi * 0.7)
-            body = make_jump_body(tpl, 0, tuck_amount=tuck, torso_lean_dx=1, draw_boot_rings=True, phase=phase)
+            body = make_jump_body(tpl, 0, tuck_amount=tuck, torso_lean_dx=1, draw_boot_rings=False, phase=phase)
             body = apply_coat_wave(body, phase * 2.0, amplitude=2.2, vertical_flutter=1.0)
             body = draw_escapement_halo(body, cx=21.0, cy=13.0, radius=7.4, rot_rad=phase * 3.0)
+            body = draw_aerial_escapement_platform(
+                body, cx=23.0, cy=43.5 - u * 0.5, rx=8.0, ry=2.0, rot_rad=phase * 3.2, intensity=1.0
+            )
             gx = int(round(33.0 * (1.0 - u) + 30.0 * u))
             gy = int(round(18.0 * (1.0 - u) + 15.0 * u))
             frame = draw_chrono_staff(
@@ -2135,9 +2434,12 @@ def build_row8_jump(tpl):
             tuck = 0.85 - u * 0.15
             recoil_dx = -1 if f in (15, 16) else 0
             lean_dx = 1 + recoil_dx
-            body = make_jump_body(tpl, 0, tuck_amount=tuck, torso_lean_dx=lean_dx, draw_boot_rings=True, phase=phase)
+            body = make_jump_body(tpl, 0, tuck_amount=tuck, torso_lean_dx=lean_dx, draw_boot_rings=False, phase=phase)
             body = apply_coat_wave(body, phase * 2.5, amplitude=2.4, vertical_flutter=1.1)
             body = draw_escapement_halo(body, cx=21.0 + recoil_dx, cy=13.0, radius=7.5, rot_rad=phase * 4.0)
+            body = draw_aerial_escapement_platform(
+                body, cx=23.0 + recoil_dx, cy=43.0 + u * 0.5, rx=8.0, ry=2.0, rot_rad=phase * 3.8, intensity=1.0
+            )
 
             staff_angle_deg = -98.0 * (1.0 - u_thrust) + (-38.0) * u_thrust
             gx = int(round(30.0 * (1.0 - u_thrust) + 33.0 * u_thrust)) + recoil_dx
@@ -2157,13 +2459,16 @@ def build_row8_jump(tpl):
             )
             frames.append(frame)
 
-
         elif f <= 24:
             u = (f - 19) / 5.0
             tuck = 0.65 * (1.0 - u * 0.75)
-            body = make_jump_body(tpl, 0, tuck_amount=tuck, draw_boot_rings=(f <= 22), phase=phase)
+            body = make_jump_body(tpl, 0, tuck_amount=tuck, draw_boot_rings=(f in (21, 22)), phase=phase)
             body = apply_coat_wave(body, phase * 2.0, amplitude=2.0, vertical_flutter=0.9)
             body = draw_escapement_halo(body, cx=20.5, cy=13.0, radius=7.2, rot_rad=phase * 2.5)
+            if f <= 20:
+                body = draw_aerial_escapement_platform(
+                    body, cx=23.0, cy=44.0 + (f - 19) * 0.5, rx=7.8, ry=1.9, rot_rad=phase * 3.0, intensity=0.85 if f == 19 else 0.6
+                )
             frame = draw_chrono_staff(
                 body,
                 shoulder=(25.0, 17.0),

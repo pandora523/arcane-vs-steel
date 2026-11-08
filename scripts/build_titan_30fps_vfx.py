@@ -51,7 +51,7 @@ C_JADE_AURA = (16, 185, 129, 145)
 def put(px, x, y, col):
     ix = int(round(x))
     iy = int(round(y))
-    if 0 <= ix < LOGICAL and 0 <= iy < LOGICAL:
+    if 2 <= ix <= 49 and 2 <= iy <= 49:
         if col[3] < 255 and px[ix, iy][3] > 0:
             dst = px[ix, iy]
             a = col[3] / 255.0
@@ -106,14 +106,16 @@ def draw_mini_hammer(px, cx, cy, angle_rad, scale=1.0, glow=True):
             put(px, wx, wy, col)
 
 
-def draw_mountain_king_anvil(px, cx, top_y, w=28, h=22, phase=0.0, superheated=False):
+def draw_mountain_king_anvil(px, cx, top_y, w=30, h=22, phase=0.0, superheated=False):
     """
-    Renders the Colossal Bronze, Dark-Iron & Emerald-Rune Mountain King's Forge Anvil (`28x22` logical px):
+    Renders the Colossal Bronze, Dark-Iron & Emerald-Rune Mountain King's Forge Anvil (`30x22` logical px):
     - Top flat striking face + projecting horn on the right & heel on the left (`dy = 0..6`)
-    - Tapered heavy waist (`dy = 7..14`) etched with glowing Nordic Emerald-Jade & Molten-Gold runes
+    - Branching glowing Molten Magma Veins across the basalt body, horn, and base
+    - Central carved luminous Jade Nordic Hammer Rune (Mjolnir / World-Forge Hammer at `dy = 5..17, dx = -5..+5`)
     - Wide stepped forged base (`dy = 15..21`)
     """
-    half_w = w // 2  # 14
+    half_w = w // 2  # 15
+    pulse_shift = int(round(phase * 2.0))
     for dy in range(h):
         y = top_y + dy
         if dy <= 2:
@@ -125,30 +127,53 @@ def draw_mountain_king_anvil(px, cx, top_y, w=28, h=22, phase=0.0, superheated=F
             x0, x1 = cx - horn_ext, cx + horn_ext
         elif dy <= 14:
             # Heavy concave forged waist
-            waist_w = 8 + abs(dy - 10)
+            waist_w = 9 + abs(dy - 10)
             x0, x1 = cx - waist_w, cx + waist_w
         else:
             # Wide stepped Anvil Base & feet
-            base_w = 10 + (dy - 14) // 2
+            base_w = 11 + (dy - 14) // 2
             x0, x1 = cx - base_w, cx + base_w
 
         for x in range(x0, x1 + 1):
             dx = x - cx
             is_border = (x == x0 or x == x1 or dy == 0 or dy == h - 1 or dy == 6 or dy == 15)
+
+            # Central Carved Jade Nordic Hammer Rune (Mjolnir: hammerhead at dy=5..9, haft at dy=10..16, pommel at dy=17)
+            in_hammer_head = (5 <= dy <= 9 and abs(dx) <= (5 if dy in (6, 7, 8) else 4))
+            in_hammer_haft = (10 <= dy <= 16 and abs(dx) <= 1)
+            in_hammer_pommel = (dy == 17 and abs(dx) <= 2)
+            in_jade_hammer = in_hammer_head or in_hammer_haft or in_hammer_pommel
+
+            # Branching Glowing Molten Magma Veins across the dark-basalt body & horn/heel
+            vein_left = (dy >= 3 and abs((dx + 6) + (dy - 8) * 0.65) < 0.75)
+            vein_right = (dy >= 3 and abs((dx - 6) - (dy - 8) * 0.65) < 0.75)
+            vein_branch = (dy in (4, 12, 18) and 4 <= abs(dx) <= 9)
+            is_magma_vein = (vein_left or vein_right or vein_branch) and not in_jade_hammer
+
             if dy == 0:
-                col = C_GOLD_WHITE if superheated else C_GOLD_MOLTEN
+                col = C_WHITE if (superheated and abs(dx) % 3 == 0) else (C_GOLD_WHITE if superheated else C_GOLD_MOLTEN)
             elif is_border:
-                col = C_GOLD_MOLTEN if (superheated and dy <= 6) else C_BRONZE_BRIGHT
-            elif 8 <= dy <= 13 and abs(dx) <= 5:
-                # Central Carved Nordic Emerald-Jade & Gold Anvil Rune
-                if dx == 0 or abs(dx) == 3 or (dy in (8, 13) and abs(dx) <= 3):
-                    col = C_JADE_WHITE if superheated else C_JADE_LIGHT
-                elif abs(dx) == 1 and dy in (10, 11):
+                col = C_GOLD_MOLTEN if (superheated or dy <= 6) else C_BRONZE_BRIGHT
+            elif in_jade_hammer:
+                # Crisp multi-tone Emerald-Jade Nordic Hammer Rune with white-jade core & gold rune knot
+                if (dx == 0 and 6 <= dy <= 16) or (dy == 7 and abs(dx) <= 4):
+                    col = C_WHITE if (superheated and (dy + pulse_shift) % 3 == 0) else C_JADE_WHITE
+                elif dy == 7 and abs(dx) == 2:
                     col = C_GOLD_WHITE
+                elif (dy in (5, 9) and abs(dx) == 4) or (dy >= 11 and abs(dx) == 1):
+                    col = C_JADE_BRIGHT
                 else:
-                    col = C_BASALT_DEEP
-            elif dy <= 5 and abs(dx) % 4 == 0:
-                col = C_JADE_BRIGHT if (dx + int(round(phase * 2))) % 2 == 0 else C_GOLD_MOLTEN
+                    col = C_JADE_LIGHT
+            elif is_magma_vein:
+                # Pulsing Molten Magma Veins
+                if (abs(dx) + dy + pulse_shift) % 3 == 0:
+                    col = C_GOLD_WHITE if superheated else C_GOLD_MOLTEN
+                elif (abs(dx) + dy) % 2 == 0:
+                    col = C_MAGMA_ORANGE
+                else:
+                    col = C_MAGMA_RED
+            elif dy <= 4 and abs(dx) % 4 == 0:
+                col = C_JADE_LIGHT if (dx + pulse_shift) % 2 == 0 else C_GOLD_MOLTEN
             else:
                 col = C_BASALT_MID if dx < 0 else C_BASALT_DARK
             put(px, x, y, col)
@@ -214,67 +239,106 @@ def build_row0_forge_wave(f):
 def build_row1_runic_anvil(f):
     """
     Row 1 (`runic_anvil` - Anvil of the Mountain King Sky-Strike, 30..59):
-    - F00..F11: Colossal bronze, dark-iron & emerald-rune Mountain King's Forge Anvil (28x22 logical px)
-      plummeting from the sky with trailing glowing chains and magma sparks.
-    - F12..F29: Anvil slamming into the earth (y=26..46) with a blinding molten-gold & jade runic explosion,
-      flying spectral forge hammers, and expanding shockwave rings!
+    - F00..F11: Colossal bronze, dark-iron & emerald-rune Mountain King's Forge Anvil (30x22 logical px)
+      with glowing Molten Magma Veins & central carved Jade Nordic Hammer Rune plummeting from the sky.
+    - F12..F29: Anvil slamming into the earth (y=23..44) with concentric double Seismic Shockwave Rings,
+      erupting Golden-Jade Forge Sparks (F12..F27), and flying spectral forge hammers!
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
     px = img.load()
     cx = 26
 
     if f < 12:
-        # F00..F11: Colossal 28x22 Mountain King's Forge Anvil plummeting from the sky
+        # F00..F11: Colossal 30x22 Mountain King's Forge Anvil plummeting from the sky
         u = f / 11.0
         phase = u * math.pi * 2.0
-        top_y = int(round(2 + u * 22))  # descends from y=2 down to y=24
+        top_y = int(round(3 + u * 19))  # descends from y=3 down to y=22
 
         # 1. Trailing Glowing Runic Forge Chains & Magma Sparks above the falling Anvil
-        for chain_x in (cx - 7, cx + 7):
-            for y_c in range(1, max(2, top_y)):
+        for chain_x in (cx - 8, cx + 8):
+            for y_c in range(2, max(3, top_y)):
                 link_w = 1 if (y_c + f) % 3 == 0 else 0
                 for dx_c in range(-link_w, link_w + 1):
                     put(px, chain_x + dx_c, y_c, C_GOLD_WHITE if (y_c + f) % 4 == 0 else C_JADE_LIGHT)
-        for sp in range(8):
-            sx = cx + int(math.sin(sp * 1.7 + phase) * 12)
-            sy = max(1, top_y - 2 - (sp * 3 + f) % 14)
-            put(px, sx, sy, C_GOLD_MOLTEN if sp % 2 == 0 else C_MAGMA_ORANGE)
+        for sp in range(10):
+            sx = cx + int(math.sin(sp * 1.7 + phase) * 13)
+            sy = max(2, top_y - 2 - (sp * 3 + f) % 13)
+            put(px, sx, sy, C_GOLD_MOLTEN if sp % 2 == 0 else (C_JADE_LIGHT if sp % 3 == 0 else C_MAGMA_ORANGE))
 
-        # 2. The Colossal 28x22 Mountain King's Forge Anvil
-        draw_mountain_king_anvil(px, cx, top_y, w=28, h=22, phase=phase, superheated=(f >= 8))
+        # 2. The Colossal 30x22 Mountain King's Forge Anvil with Magma Veins & Jade Hammer Rune
+        draw_mountain_king_anvil(px, cx, top_y, w=30, h=22, phase=phase, superheated=(f >= 7))
 
     else:
-        # F12..F29: Anvil slamming into the earth (y=25..46) with blinding molten-gold & jade explosion,
-        # flying spectral forge hammers, and expanding shockwave rings!
+        # F12..F29: Anvil slamming into the earth (y=23..44) with Seismic Shockwave Rings & Golden-Jade Forge Sparks
         u = (f - 12) / 17.0
         phase = u * math.pi * 2.0
-        gy = 45
+        gy = 43
         vib_y = -1 if (f in (12, 14)) else 0
 
-        # 1. Expanding Molten-Gold & Emerald-Jade Runic Shockwave Rings on the ground
-        rx = 9.0 + u * 16.0
-        ry = 3.0 + u * 4.5
-        for s in range(48):
-            a = (s / 48.0) * math.pi * 2.0 + u * 2.5
-            sx = cx + math.cos(a) * rx
-            sy = gy - 2 + math.sin(a) * ry
-            put(px, sx, sy, C_GOLD_WHITE if s % 4 == 0 else (C_JADE_LIGHT if s % 2 == 0 else C_MAGMA_ORANGE))
+        # 1. Concentric Double Seismic Shockwave Rings + Radial Magma Fissures (F12..F27, fading F28..F29)
+        ring_grow = 1.0 - math.pow(1.0 - min(1.0, (f - 12) / 15.0), 2.0)
+        rx_out = 10.0 + ring_grow * 11.5   # up to 21.5 -> x = 4..48
+        ry_out = 2.5 + ring_grow * 3.0     # up to 5.5  -> y = 37..48
+        rx_in = 6.0 + ring_grow * 8.0      # up to 14.0
+        ry_in = 1.6 + ring_grow * 1.8      # up to 3.4
 
-        # 2. Slammed 28x22 Mountain King's Forge Anvil anchored at y=25..46
-        draw_mountain_king_anvil(px, cx, 25 + vib_y, w=28, h=22, phase=phase, superheated=(u < 0.65))
+        if f <= 27:
+            for fiss in range(8):
+                fa = (fiss / 8.0) * math.pi * 2.0 + u * 1.8
+                draw_line(
+                    px,
+                    cx + math.cos(fa) * rx_in,
+                    gy + math.sin(fa) * ry_in,
+                    cx + math.cos(fa) * rx_out,
+                    gy + math.sin(fa) * ry_out,
+                    C_MAGMA_ORANGE if fiss % 2 == 0 else C_JADE_LIGHT,
+                )
 
-        # 3. Flying Spectral Forge Hammers & Blinding Golden-Jade Runic Explosion
+        # Outer Molten-Gold & Magma Seismic Ring
+        for s in range(56):
+            if f > 27 and (s + f) % 2 != 0:
+                continue
+            a = (s / 56.0) * math.pi * 2.0 + u * 2.5
+            sx = cx + math.cos(a) * rx_out
+            sy = gy + math.sin(a) * ry_out
+            put(px, sx, sy, C_GOLD_WHITE if s % 6 == 0 else (C_GOLD_MOLTEN if s % 2 == 0 else C_MAGMA_ORANGE))
+
+        # Inner Emerald-Jade & Gold Runic Seismic Ring (F12..F27)
+        if f <= 27:
+            for s in range(44):
+                a = -(s / 44.0) * math.pi * 2.0 + u * 3.5
+                ix_s = cx + math.cos(a) * rx_in
+                iy_s = gy + math.sin(a) * ry_in
+                put(px, ix_s, iy_s, C_JADE_WHITE if s % 4 == 0 else (C_JADE_LIGHT if s % 2 == 0 else C_GOLD_WHITE))
+
+        # 2. Slammed 30x22 Mountain King's Forge Anvil anchored at y=23..44
+        draw_mountain_king_anvil(px, cx, 23 + vib_y, w=30, h=22, phase=phase, superheated=(f <= 24))
+
+        # 3. Erupting Golden-Jade Forge Sparks Fountain (F12..F27) & Flying Spectral Forge Hammers
+        if f <= 27:
+            u_sp = (f - 12) / 15.0
+            for sp_i in range(12):
+                ang_sp = -math.pi * 0.90 + (sp_i / 11.0) * math.pi * 0.80
+                dist_sp = 6.0 + u_sp * (13.0 + (sp_i % 3) * 2.0)
+                spx = cx + math.cos(ang_sp) * dist_sp
+                spy = 28.0 + math.sin(ang_sp) * dist_sp * 0.85 + (u_sp * u_sp) * 5.0
+                if sp_i % 3 == 0 and f <= 22:
+                    draw_star(px, spx, spy, 2, C_WHITE, C_JADE_LIGHT if sp_i % 2 == 0 else C_GOLD_MOLTEN, rot=phase)
+                else:
+                    put(px, spx, spy, C_GOLD_WHITE if sp_i % 2 == 0 else C_JADE_WHITE)
+                    put(px, spx, spy + 1, C_MAGMA_ORANGE if sp_i % 2 == 0 else C_JADE_BRIGHT)
+
         for h_side in (-1, 1):
-            ang_launch = -math.pi * 0.5 + h_side * (0.45 + u * 0.75)
-            dist = 8.0 + u * 15.0
+            ang_launch = -math.pi * 0.5 + h_side * (0.45 + u * 0.72)
+            dist = 8.0 + u * 13.5
             hx = cx + math.cos(ang_launch) * dist
-            hy = 28.0 + math.sin(ang_launch) * dist * 0.8
+            hy = 26.0 + math.sin(ang_launch) * dist * 0.8
             draw_mini_hammer(px, hx, hy, phase * 2.5 * h_side, scale=0.65, glow=True)
 
-        if u < 0.55:
-            draw_star(px, cx, 25, 5, C_WHITE, C_GOLD_WHITE, rot=phase)
-            draw_star(px, cx - 10, 32, 3, C_JADE_WHITE, C_JADE_LIGHT, rot=-phase)
-            draw_star(px, cx + 10, 32, 3, C_JADE_WHITE, C_JADE_LIGHT, rot=-phase)
+        if f <= 20:
+            draw_star(px, cx, 23, 4, C_WHITE, C_GOLD_WHITE, rot=phase)
+            draw_star(px, cx - 11, 30, 3, C_JADE_WHITE, C_JADE_LIGHT, rot=-phase)
+            draw_star(px, cx + 11, 30, 3, C_JADE_WHITE, C_JADE_LIGHT, rot=-phase)
 
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)
 
@@ -283,77 +347,147 @@ def build_row2_forge_monolith(f):
     """
     Row 2 (`titan` pillar / spire - Volcanic Basalt & Jade-Rune Forge Monolith Eruption, 60..89):
     - F00..F06: Glowing golden-jade magma fissure & Nordic forge runes on the ground.
-    - F07..F21: Towering hexagonal Basalt & Bronze Forge-Monolith (y=6..48) carved with glowing
-      emerald-jade and molten-gold runes and topped with an anvil crown.
+    - F07..F21: Towering Hexagonal Basalt & Bronze Forge-Monolith (y=5..47) featuring:
+      * Jagged Basalt Side-Buttresses (x=12..40, y=18..46)
+      * Pulsing Molten Magma Fissures zig-zagging across the stone & buttresses
+      * Glowing Jade World-Forge Crown Crest at the top of the monolith!
     - F22..F29: Explosive volcanic shatter into glowing magma fragments and jade sparks.
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
     px = img.load()
     cx = 26
-    gy = 47
+    gy = 46
     phase = (f / 30.0) * math.pi * 2.0
 
     if f <= 6:
         # F00..F06: Glowing golden-jade magma fissure & Nordic forge runes on the ground + early eruption
         u = f / 6.0
-        fissure_w = int(round(8 + u * 10))
+        fissure_w = int(round(9 + u * 9))
         for dx in range(-fissure_w, fissure_w + 1):
-            put(px, cx + dx, gy, C_GOLD_WHITE if abs(dx) < 5 else C_MAGMA_ORANGE)
+            put(px, cx + dx, gy, C_GOLD_WHITE if abs(dx) < 6 else C_MAGMA_ORANGE)
             put(px, cx + dx, gy - 1, C_JADE_LIGHT if dx % 3 == 0 else C_GOLD_MOLTEN)
             if abs(dx) % 4 == 0:
-                draw_line(px, cx + dx, gy, cx + dx, gy - int(2 + u * 8), C_GOLD_MOLTEN if dx < 0 else C_JADE_LIGHT)
-        # Rising monolith tip emerging from fissure on F03..F06
-        if f >= 3:
-            emerge_h = int(round((f - 2) * 7.0))
+                draw_line(px, cx + dx, gy, cx + dx, gy - int(2 + u * 9), C_GOLD_MOLTEN if dx < 0 else C_JADE_LIGHT)
+        # Rising monolith & jagged buttress tips emerging from fissure on F02..F06
+        if f >= 2:
+            emerge_h = int(round((f - 1) * 6.5))
             for h in range(emerge_h):
                 sy = gy - h
-                for dx in range(-7, 8):
-                    put(px, cx + dx, sy, C_BRONZE_BRIGHT if abs(dx) == 7 else (C_JADE_LIGHT if dx == 0 else C_BASALT_DARK))
+                hw_e = 11 if h < 4 else 8
+                for dx in range(-hw_e, hw_e + 1):
+                    if abs(dx) == hw_e:
+                        col = C_BRONZE_BRIGHT
+                    elif dx == 0:
+                        col = C_JADE_WHITE if h % 2 == 0 else C_JADE_LIGHT
+                    elif abs(dx) == 4 and h % 2 == 0:
+                        col = C_MAGMA_ORANGE
+                    else:
+                        col = C_BASALT_DARK
+                    put(px, cx + dx, sy, col)
 
     elif f <= 21:
-        # F07..F21: Towering Hexagonal Basalt & Bronze Forge-Monolith (y=6..48) topped with an Anvil Crown!
+        # F07..F21: Towering Basalt & Jade-Rune Forge Monolith with Jagged Side-Buttresses,
+        # Pulsing Magma Fissures, and a Glowing Jade World-Forge Crown Crest!
         k = f - 7
         grow = min(1.0, (k + 2) / 3.0)
-        mon_h = int(round(41.0 * grow))
+        mon_h = int(round(36.0 * grow))  # Shaft top at y = 10, plus 5px Jade Crown Crest reaching y = 5!
         top_y = gy - mon_h
 
-        # Ground Magma & Jade Fissure Base (y=45..48)
-        for dx in range(-15, 16):
-            put(px, cx + dx, gy, C_GOLD_MOLTEN if abs(dx) < 10 else C_MAGMA_ORANGE)
-            put(px, cx + dx, gy + 1, C_BRONZE_DARK)
+        # 1. Volcanic Ground Magma & Jade Fissure Base (y=44..48, x=9..43)
+        for dx in range(-16, 17):
+            put(px, cx + dx, gy, C_GOLD_WHITE if abs(dx) < 6 else (C_GOLD_MOLTEN if abs(dx) < 12 else C_MAGMA_ORANGE))
+            put(px, cx + dx, gy + 1, C_MAGMA_RED if abs(dx) % 3 == 0 else C_BRONZE_DARK)
+            if abs(dx) in (5, 10, 14):
+                put(px, cx + dx, gy - 1, C_JADE_LIGHT)
 
-        # Hexagonal Basalt & Bronze Column Shaft
+        # 2. Jagged Basalt Side-Buttresses Flanking the Monolith (h = 0..28 -> y = 18..46, x = 12..40)
+        # Three tiered jagged basalt buttress spurs on left and right with magma fissures
+        buttress_tiers = [
+            # (h_start, h_end, max_hw)
+            (0, int(11 * grow), 14),    # Lower wide jagged basalt buttress (x=12..40)
+            (int(9 * grow), int(20 * grow), 12),   # Mid jagged basalt buttress (x=14..38)
+            (int(18 * grow), int(27 * grow), 10),  # Upper basalt spur (x=16..36)
+        ]
+        for b_idx, (h0, h1, b_hw) in enumerate(buttress_tiers):
+            for h in range(h0, h1 + 1):
+                sy = gy - h
+                u_b = (h - h0) / float(max(1, h1 - h0))
+                # Jagged diagonal taper inward toward the top of each buttress spur
+                cur_hw = int(round(b_hw - u_b * 4.0))
+                for side in (-1, 1):
+                    for b_dx in range(7, cur_hw + 1):
+                        px_b = cx + side * b_dx
+                        is_jagged_edge = (b_dx == cur_hw or h == h1)
+                        is_buttress_fissure = ((h + b_dx + f) % 5 == 0)
+                        if is_jagged_edge:
+                            col_b = C_BRONZE_BRIGHT if side < 0 else C_BASALT_LIGHT
+                        elif is_buttress_fissure:
+                            col_b = C_GOLD_MOLTEN if (h + f) % 2 == 0 else C_MAGMA_ORANGE
+                        else:
+                            col_b = C_BASALT_MID if side < 0 else C_BASALT_DEEP
+                        put(px, px_b, sy, col_b)
+
+        # 3. Central Hexagonal Basalt & Bronze Column Shaft + Pulsing Magma Fissures + Jade Rune Channel
         for h in range(mon_h + 1):
             sy = gy - h
             u_h = h / float(max(1, mon_h))
-            # Anvil Crown widening at top 22% of monolith
-            if u_h > 0.78:
-                hw = 10 if u_h < 0.92 else 8
+            # Anvil Capital widening at top of shaft (u_h > 0.80)
+            if u_h > 0.80:
+                hw = 10 if u_h < 0.93 else 9
             else:
-                hw = 7 if u_h > 0.12 else 9
+                hw = 7
 
             for dx in range(-hw, hw + 1):
+                # Zig-zagging Pulsing Molten Magma Fissures along left & right basalt facets
+                fiss_left = (0.08 <= u_h <= 0.82 and abs((dx + 4.5) - math.sin(h * 0.45) * 1.4) < 0.7)
+                fiss_right = (0.08 <= u_h <= 0.82 and abs((dx - 4.5) + math.cos(h * 0.45) * 1.4) < 0.7)
+
                 if abs(dx) == hw or h == mon_h:
-                    col = C_GOLD_MOLTEN if (u_h > 0.78 and h % 2 == 0) else C_BRONZE_BRIGHT
+                    col = C_GOLD_MOLTEN if (u_h > 0.80 and h % 2 == 0) else C_BRONZE_BRIGHT
+                elif dx == 0 and 0.10 <= u_h <= 0.88:
+                    # Central vertical Nordic Emerald-Jade Rune Channel
+                    col = C_WHITE if (h + f) % 4 == 0 else (C_JADE_WHITE if (h + f) % 2 == 0 else C_JADE_LIGHT)
+                elif abs(dx) in (1, 2) and (h % 5 in (1, 3)) and (0.14 <= u_h <= 0.82):
+                    # Carved horizontal Emerald-Jade & Gold rune bars
+                    col = C_JADE_LIGHT if abs(dx) == 1 else C_GOLD_WHITE
+                elif fiss_left or fiss_right:
+                    # Pulsing Molten Magma Fissures
+                    pulse_m = (h + f) % 3
+                    col = C_GOLD_WHITE if pulse_m == 0 else (C_GOLD_MOLTEN if pulse_m == 1 else C_MAGMA_ORANGE)
                 elif abs(dx) == 3:
-                    # Hexagonal facet ridge
-                    col = C_BRONZE_MID if (h + k) % 4 != 0 else C_GOLD_MOLTEN
-                elif dx == 0 and 0.15 <= u_h <= 0.85:
-                    # Central vertical Nordic Emerald-Jade & Gold rune channel
-                    col = C_JADE_WHITE if (h + f) % 5 == 0 else C_JADE_LIGHT
-                elif abs(dx) in (1, 2) and (h % 6 in (2, 4)) and (0.2 <= u_h <= 0.75):
-                    # Carved horizontal rune cross-bars
-                    col = C_GOLD_WHITE if (h + f) % 3 == 0 else C_GOLD_MOLTEN
+                    col = C_BRONZE_MID
                 else:
                     col = C_BASALT_MID if dx < -3 else (C_BASALT_DARK if abs(dx) <= 3 else C_BASALT_DEEP)
                 put(px, cx + dx, sy, col)
 
-        # Rising forge embers & orbiting jade sparks around the monolith
-        draw_star(px, cx, top_y, 3, C_WHITE, C_GOLD_WHITE, rot=phase)
-        for m in range(4):
-            ma = phase * 2.0 + m * (math.pi * 0.5)
-            mx = cx + math.cos(ma) * 12.0
-            my = gy - 8 - m * 8 + math.sin(ma) * 2.0
+        # 4. Glowing Jade World-Forge Crown Crest at the Top of the Monolith (y = top_y - 5 .. top_y)
+        if grow >= 0.85:
+            crest_cy = top_y - 2
+            # Sweeping Left & Right Jade-Gold World-Forge Crown Wings (dx = -8..+8)
+            for side in (-1, 1):
+                for d_c in range(2, 9):
+                    wx_c = cx + side * d_c
+                    wy_c = top_y - 1 - (d_c - 2) // 2
+                    put(px, wx_c, wy_c, C_JADE_WHITE if d_c >= 7 else C_JADE_LIGHT)
+                    put(px, wx_c, wy_c + 1, C_GOLD_MOLTEN if d_c % 2 == 0 else C_JADE_BRIGHT)
+            # Central Diamond Emerald-Jade World-Forge Crest Finial
+            for dy_c in range(-3, 2):
+                rem_c = 3 - abs(dy_c)
+                for dx_c in range(-rem_c, rem_c + 1):
+                    if dx_c == 0 and dy_c == 0:
+                        col_cr = C_WHITE
+                    elif abs(dx_c) + abs(dy_c) == 3:
+                        col_cr = C_GOLD_WHITE if dy_c < 0 else C_JADE_BRIGHT
+                    else:
+                        col_cr = C_JADE_WHITE if dy_c <= 0 else C_JADE_LIGHT
+                    put(px, cx + dx_c, crest_cy + dy_c, col_cr)
+            draw_star(px, cx, crest_cy - 1, 3, C_WHITE, C_JADE_WHITE, rot=phase)
+
+        # 5. Rising Forge Embers & Orbiting Jade-Gold Sparks
+        for m in range(5):
+            ma = phase * 2.0 + m * (math.pi * 2.0 / 5.0)
+            mx = cx + math.cos(ma) * 14.5
+            my = gy - 8 - m * 7 + math.sin(ma) * 2.0
             put(px, mx, my, C_JADE_LIGHT if m % 2 == 0 else C_GOLD_MOLTEN)
             put(px, mx, my - 1, C_WHITE)
 
@@ -363,7 +497,7 @@ def build_row2_forge_monolith(f):
         for sh_i in range(14):
             ang = -math.pi * 0.92 + (sh_i / 13.0) * math.pi * 0.84
             base_y = gy - 6 - (sh_i % 5) * 7
-            dist = 3.0 + u * 18.0
+            dist = 3.0 + u * 17.5
             sx = int(round(cx + math.cos(ang) * dist))
             sy = int(round(base_y + math.sin(ang) * dist * 0.6 + u * u * 6.0))
             for dy_s in (-1, 0, 1):
@@ -524,7 +658,7 @@ def build_row4_cleave_and_seal(f):
 
     # Flying forge sparks ahead of the crescent cleave
     for sp in range(5):
-        sx = min(50, int(round(lead_x_base - (sp - 2) ** 2 * 2.2 + 2.0)))
+        sx = min(48, int(round(lead_x_base - (sp - 2) ** 2 * 2.2 + 2.0)))
         sy = int(round(cy + (sp - 2) * 7.5 + math.sin(phase + sp) * 1.5))
         put(px, sx, sy, C_GOLD_WHITE if sp % 2 == 0 else C_JADE_LIGHT)
 

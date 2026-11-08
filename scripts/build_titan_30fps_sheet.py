@@ -1545,20 +1545,122 @@ def build_row2_auto_attack(tpl):
     return frames
 
 
+def draw_floating_forge_anvil_sigil(canvas, f, phase):
+    """
+    Row 3 helper (F03..F12): Conjures a glowing Jade-Cyan & Molten-Gold Runic Forge Sigil
+    and Floating Runic Forge Anvil above Titan's shoulders (x = 18..32, y = 4..10).
+    """
+    su = min(1.0, (f - 2) / 9.0)
+    cx, cy = 25.0, 7.0
+    rx = 3.5 + 3.5 * su  # spans x = 18..32 at full charge
+    ry = 1.5 + 1.5 * su  # spans y = 4..10 at full charge
+
+    # 1. Outer Elliptical Jade-Cyan & Molten-Gold Runic Halo Ring (x = 18..32, y = 4..10)
+    steps = 28
+    for i in range(steps):
+        ang = (i / float(steps)) * 2.0 * math.pi + phase * 1.8
+        px_x = max(18, min(32, int(round(cx + math.cos(ang) * rx))))
+        px_y = max(4, min(10, int(round(cy + math.sin(ang) * ry))))
+        if i % 4 == 0:
+            col = JADE_WHITE if (f % 2 == 0) else GOLD_WHITE
+        elif i % 2 == 0:
+            col = JADE_LIGHT
+        else:
+            col = GOLD_MOLTEN if (i % 3 == 0) else JADE_BRIGHT
+        set_px(canvas, px_x, px_y, col)
+
+    # Cardinal Nordic Rune Sparks on the sigil perimeter
+    set_px(canvas, int(round(cx - rx)), 7, JADE_WHITE)
+    set_px(canvas, int(round(cx + rx)), 7, JADE_WHITE)
+    set_px(canvas, 25, max(4, int(round(cy - ry))), GOLD_WHITE)
+    set_px(canvas, 25, min(10, int(round(cy + ry))), GOLD_MOLTEN)
+
+    # 2. Crisp Floating Jade-Gold Runic Forge Anvil inside the sigil (x = 21..29, y = 5..9)
+    if f >= 4:
+        # Top flat anvil face (y = 5..6, x = 22..28) + left horn (x = 20..21, y = 6) + right hardy heel (x = 29, y = 6)
+        for ax in range(22, 29):
+            set_px(canvas, ax, 5, GOLD_WHITE if 24 <= ax <= 26 else GOLD_MOLTEN)
+            set_px(canvas, ax, 6, JADE_LIGHT if ax in (23, 25, 27) else BRONZE_BRIGHT)
+        set_px(canvas, 21, 6, GOLD_MOLTEN)
+        if f >= 6:
+            set_px(canvas, 20, 6, JADE_WHITE)
+            set_px(canvas, 29, 6, GOLD_MOLTEN)
+        # Narrow anvil waist with glowing Jade-Cyan Nordic rune core (y = 7, x = 23..27)
+        for ax in range(23, 28):
+            set_px(canvas, ax, 7, JADE_WHITE if ax == 25 else (JADE_BRIGHT if ax in (24, 26) else BRONZE_MID))
+        # Flared forged anvil base (y = 8..9, x = 22..28)
+        for ax in range(22, 29):
+            set_px(canvas, ax, 8, GOLD_MOLTEN if ax in (22, 25, 28) else BRONZE_BRIGHT)
+        if f >= 5:
+            for ax in range(23, 28):
+                set_px(canvas, ax, 9, JADE_LIGHT if ax == 25 else BRONZE_MID)
+
+
+def draw_tectonic_anvil_crater(canvas, k):
+    """
+    Row 3 helper (F13..F22, k = 0..9): Erupts a jagged Molten-Jade Tectonic Ground Fissure
+    & Rising Basalt Sparks along the floor (x = 26..48, y = 43..48, strictly within 2..49).
+    """
+    max_fx = min(48, 32 + k * 3) if k <= 6 else 48
+    fade = 1.0 if k <= 6 else max(0.35, 1.0 - (k - 6) * 0.22)
+
+    # 1. Fractured Basalt & Magma-Jade Tectonic Fissure Bed (x = 26..max_fx, y = 44..48)
+    for x in range(26, max_fx + 1):
+        zig = ((x + k) % 3) - 1  # -1, 0, +1
+        core_y = max(44, min(47, 46 + zig))
+        # Basalt crust edges at y = 44..48
+        set_px(canvas, x, min(48, core_y + 1), OBSIDIAN_DARK if (x % 2 == 0) else MAGMA_ORANGE)
+        set_px(canvas, x, max(43, core_y - 1), BRONZE_MID if (x % 3 == 0) else JADE_DEEP)
+        # Glowing Molten-Jade & Gold fissure vein core
+        if fade > 0.65:
+            core_col = JADE_WHITE if (x + k) % 4 == 0 else (GOLD_WHITE if (x + k) % 4 == 2 else JADE_LIGHT)
+        else:
+            core_col = JADE_BRIGHT if (x + k) % 2 == 0 else GOLD_MOLTEN
+        set_px(canvas, x, core_y, core_col)
+        if x % 2 == 0 and core_y < 48:
+            set_px(canvas, x, 48, GOLD_MOLTEN if fade > 0.6 else MAGMA_RED)
+
+    # 2. Jagged Upturned Basalt & Jade Crater Teeth at impact zone (x = 33..47, y = 43..47)
+    for tx in (33, 37, 41, 45):
+        if tx <= max_fx:
+            tooth_h = 3 if (k <= 6 and tx >= 37) else 2
+            for dy_t in range(tooth_h):
+                ty = max(43, 46 - dy_t)
+                col_t = (
+                    JADE_WHITE
+                    if dy_t == tooth_h - 1 and k <= 5
+                    else (JADE_BRIGHT if dy_t == 1 else OBSIDIAN_DARK)
+                )
+                set_px(canvas, tx, ty, col_t)
+                if tx + 1 <= 48:
+                    set_px(canvas, tx + 1, ty, GOLD_MOLTEN if dy_t == tooth_h - 1 else BRONZE_MID)
+
+    # 3. Rising Basalt Chunks & Molten-Jade Sparks (x = 28..48, y = 43..48 & ejecting embers)
+    num_sparks = 7 if k <= 6 else 4
+    for s_i in range(num_sparks):
+        sx_p = min(48, max(26, 28 + s_i * 3 + ((k * 2 + s_i) % 3)))
+        sy_p = max(43, min(48, 47 - ((k + s_i * 2) % 5)))
+        set_px(canvas, sx_p, sy_p, GOLD_WHITE if s_i % 3 == 0 else (JADE_LIGHT if s_i % 2 == 0 else MAGMA_ORANGE))
+        if sy_p - 1 >= 43:
+            set_px(canvas, sx_p, sy_p - 1, OBSIDIAN_MID if s_i % 2 == 0 else JADE_BRIGHT)
+
+
 def build_row3_skill(tpl):
     """
     Row 3 (`SKILL` - Anvil of the Mountain King, 90..119):
-    - F00..F12: Two-handed overhead windup raising the Great-Hammer from `-52 deg` up to `-125 deg`
-      behind his shoulders as an Emerald-Jade & Molten-Gold Forge Seal flares!
-    - F13..F22: Crushing two-handed Anvil Slam driving the Great-Hammer from `-125 deg` down to `+16 deg`
-      with a blazing cleave arc and explosive horizontal amber-gold & jade shockwave arc.
+    - F00..F12: Two-handed overhead windup raising the Great-Hammer from `-52 deg` up to `-122 deg`
+      behind his shoulders while conjuring a glowing Jade-Cyan & Molten-Gold Runic Forge Sigil
+      & Floating Runic Forge Anvil above his shoulders (`x = 18..32, y = 4..10`) on `F03..F12`!
+    - F13..F22: Crushing two-handed Anvil Slam driving the Great-Hammer from `-122 deg` down to `+16 deg`
+      with a blazing cleave arc, horizontal shockwave, and jagged Molten-Jade Tectonic Ground Fissure
+      & Rising Basalt Sparks along the floor (`x = 26..48, y = 43..48`)!
     - F23..F29: Smooth two-handed recovery to `(34, 22, -52 deg)`.
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
         if f <= 12:
-            # F00..F12: Two-handed overhead windup from -52 deg to -125 deg behind his shoulders
+            # F00..F12: Two-handed overhead windup from -52 deg to -122 deg behind his shoulders
             u = f / 12.0
             base = tpl["stand"].copy()
             base = apply_mantle_and_beard_sway(
@@ -1566,7 +1668,7 @@ def build_row3_skill(tpl):
             )
 
             sx, sy = 27, 17
-            hammer_ang = -52.0 * (1.0 - u) + (-125.0) * u
+            hammer_ang = -52.0 * (1.0 - u) + (-122.0) * u
             hx = int(round(34 * (1.0 - u) + 31 * u))
             hy = int(round(22 * (1.0 - u) + 13 * u))
             frame = draw_2h_warhammer_and_arms(
@@ -1581,6 +1683,10 @@ def build_row3_skill(tpl):
                 two_handed=True,
                 phase=phase,
             )
+
+            # F03..F12: Floating Jade-Cyan & Molten-Gold Runic Forge Sigil & Anvil above shoulders (x=18..32, y=4..10)
+            if f >= 3:
+                draw_floating_forge_anvil_sigil(frame, f, phase)
 
             # Flaring Emerald-Jade & Molten-Gold Forge Seal around the raised gauntlets
             seal_r = 2.5 + u * 2.5
@@ -1598,7 +1704,7 @@ def build_row3_skill(tpl):
             frames.append(frame)
 
         elif f <= 22:
-            # F13..F22: Full-body two-handed Anvil Slam from -125 deg down to +16 deg
+            # F13..F22: Full-body two-handed Anvil Slam from -122 deg down to +16 deg
             k = f - 13
             base = tpl["lunge"].copy()
             base = apply_mantle_and_beard_sway(
@@ -1613,7 +1719,7 @@ def build_row3_skill(tpl):
             cleave_arc = None
             if k <= 5:
                 arc_int = [0.85, 1.0, 1.0, 0.9, 0.7, 0.45][k]
-                a0 = [-125.0, -92.0, -52.0, -20.0, -5.0, 2.0][k]
+                a0 = [-122.0, -92.0, -52.0, -20.0, -5.0, 2.0][k]
                 cleave_arc = (a0, ang_seq[k] + 4.0, 18.0, arc_int)
 
             frame = draw_2h_warhammer_and_arms(
@@ -1639,6 +1745,9 @@ def build_row3_skill(tpl):
                     set_px(frame, arc_x, arc_y, GOLD_WHITE if ua > 0.6 else GOLD_MOLTEN)
                     set_px(frame, arc_x, arc_y - 1, JADE_LIGHT if rx_i % 2 == 0 else MAGMA_ORANGE)
                     set_px(frame, arc_x, arc_y + 1, JADE_BRIGHT)
+
+            # F13..F22 (k=0..9): Jagged Molten-Jade Tectonic Ground Fissure & Rising Basalt Sparks (x=26..48, y=43..48)
+            draw_tectonic_anvil_crater(frame, k)
 
             frames.append(frame)
 
@@ -1668,15 +1777,125 @@ def build_row3_skill(tpl):
     return frames
 
 
+def draw_ragnarok_lightning_and_mantle(canvas, f, crouch_d=0, intensity=1.0):
+    """
+    Row 4 helper (F02..F25): Renders crackling Jade-Gold Runic Lightning Arcs & Rising Volcanic
+    Embers around Titan's horned helm and pauldrons/mantle.
+    """
+    # 1. Volcanic Magma Mantle Rim along upper fur mantle & pauldrons (x = 9..26, y = 14..32)
+    for m_i in range(8):
+        mx = 9 + m_i * 2
+        my = min(36, 16 + crouch_d + abs(m_i - 3) * 2 + ((f + m_i) % 2))
+        if 3 <= mx <= 48 and 3 <= my <= 46:
+            set_px(canvas, mx, my, MAGMA_ORANGE if (m_i + f) % 2 == 0 else GOLD_MOLTEN)
+            if m_i % 2 == 0 and my - 1 >= 3:
+                set_px(canvas, mx, my - 1, GOLD_WHITE if (f + m_i) % 3 == 0 else JADE_LIGHT)
+
+    # 2. Crackling Multi-Segment Jade-Gold Runic Lightning Arcs around Horned Helm & Pauldrons
+    origins = [
+        (23, max(5, 9 + crouch_d), -1, -1),   # Left helm horn arc
+        (31, max(5, 9 + crouch_d), 1, -1),    # Right helm horn arc
+        (16, max(8, 16 + crouch_d), -1, 0),   # Rear pauldron arc
+        (30, max(8, 16 + crouch_d), 1, -1),   # Lead pauldron arc
+    ]
+    for idx, (ox, oy, dir_x, dir_y) in enumerate(origins):
+        cx_l, cy_l = float(ox), float(oy)
+        steps = 4 if intensity >= 0.85 else 3
+        for s in range(1, steps + 1):
+            zig = 1 if ((f + idx + s) % 2 == 0) else -1
+            nx_l = max(4.0, min(47.0, cx_l + dir_x * 1.6 + zig * 0.8))
+            ny_l = max(3.0, min(45.0, cy_l + dir_y * 1.3 - (0.6 if dir_y == 0 else 0.0) + zig * 0.7))
+            col_l = (
+                JADE_WHITE
+                if s == 1
+                else (JADE_LIGHT if (s + idx + f) % 2 == 0 else (GOLD_WHITE if s == steps else GOLD_MOLTEN))
+            )
+            draw_line_px(canvas, cx_l, cy_l, nx_l, ny_l, col_l)
+            cx_l, cy_l = nx_l, ny_l
+        # Lightning fork tip
+        set_px(canvas, max(4.0, min(47.0, cx_l + dir_x)), max(3.0, min(45.0, cy_l - 1)), JADE_BRIGHT)
+
+    # 3. Rising Volcanic & Runic Embers drifting skyward around helm & pauldrons
+    for e_i in range(7):
+        ex = 11 + e_i * 4 + ((f + e_i) % 3)
+        ey = max(4, 24 + crouch_d - ((f * 2 + e_i * 3) % 18))
+        col_e = GOLD_WHITE if e_i % 3 == 0 else (JADE_LIGHT if e_i % 2 == 0 else MAGMA_ORANGE)
+        set_px(canvas, ex, ey, col_e)
+        if ey + 1 <= 45 and e_i % 2 == 0:
+            set_px(canvas, ex, ey + 1, MAGMA_RED if e_i % 4 == 0 else JADE_BRIGHT)
+
+
+def draw_ragnarok_world_forge_geysers(canvas, f):
+    """
+    Row 4 helper (F11..F25): Renders a wider, brighter 2-stage World-Forge Lava & Jade Geyser
+    Eruption along the floor (y = 40..48, x = 14..48, strictly inside 2 <= x <= 49, 2 <= y <= 49).
+    - Stage 1 (F11..F19): Tectonic Lava & Jade Fissure Crust with 4 surging Geyser Plumes.
+    - Stage 2 (F20..F25): Cataclysmic 7-Pillar World-Forge Lava & Jade Geyser Wall!
+    """
+    is_stage2 = (f >= 20)
+
+    # 1. Continuous Molten Lava & Jade-Fire Tectonic Bed along the floor (x = 14..48, y = 45..48)
+    for x in range(14, 49):
+        wave = (x + f) % 3
+        set_px(canvas, x, 48, OBSIDIAN_DARK if (x % 3 == 0) else MAGMA_RED)
+        set_px(canvas, x, 47, MAGMA_ORANGE if wave == 0 else (GOLD_MOLTEN if wave == 1 else JADE_DEEP))
+        set_px(
+            canvas,
+            x,
+            46,
+            GOLD_WHITE if (is_stage2 and wave == 0) else (JADE_LIGHT if wave == 1 else GOLD_MOLTEN),
+        )
+        if is_stage2 or (x + f) % 2 == 0:
+            set_px(canvas, x, 45, JADE_WHITE if (x + f) % 4 == 0 else (MAGMA_ORANGE if wave == 2 else JADE_BRIGHT))
+
+    # 2. Erupting Lava & Jade Geyser Columns (y = 40..47, x = 14..48)
+    if not is_stage2:
+        # Stage 1 (F11..F19): 4 surging geyser columns at x = 16, 25, 36, 45
+        k = f - 11
+        geyser_xs = [16, 25, 36, 45]
+        for g_idx, gx in enumerate(geyser_xs):
+            top_y = max(40, 42 - ((k + g_idx) % 3))
+            is_jade = (g_idx % 2 == 1)
+            for gy in range(top_y, 47):
+                set_px(canvas, gx, gy, JADE_WHITE if is_jade else GOLD_WHITE)
+                if gx - 1 >= 14:
+                    set_px(canvas, gx - 1, gy, JADE_LIGHT if is_jade else GOLD_MOLTEN)
+                if gx + 1 <= 48:
+                    set_px(canvas, gx + 1, gy, JADE_BRIGHT if is_jade else MAGMA_ORANGE)
+            # Geyser crest spray at y = 40..41
+            set_px(canvas, max(14, gx - 1), top_y, GOLD_MOLTEN if is_jade else JADE_LIGHT)
+            set_px(canvas, min(48, gx + 1), top_y, MAGMA_ORANGE if is_jade else GOLD_WHITE)
+    else:
+        # Stage 2 (F20..F25): Cataclysmic 7-Pillar World-Forge Lava & Jade Geyser Wall across x = 14..48, y = 40..48!
+        k = f - 20
+        geyser_xs = [15, 20, 26, 31, 37, 42, 47]
+        for g_idx, gx in enumerate(geyser_xs):
+            top_y = max(40, 40 + ((k + g_idx) % 2))
+            is_jade = (g_idx % 2 == 0)
+            for gy in range(top_y, 47):
+                core_c = JADE_WHITE if is_jade else GOLD_WHITE
+                mid_c = JADE_LIGHT if is_jade else GOLD_MOLTEN
+                edge_c = JADE_BRIGHT if is_jade else MAGMA_ORANGE
+                set_px(canvas, gx, gy, core_c)
+                if gx - 1 >= 14:
+                    set_px(canvas, gx - 1, gy, mid_c if gy <= top_y + 2 else edge_c)
+                if gx + 1 <= 48:
+                    set_px(canvas, gx + 1, gy, mid_c if (gy + k) % 2 == 0 else edge_c)
+            # Crown spark at y = 40
+            set_px(canvas, gx, 40, GOLD_WHITE if is_jade else JADE_WHITE)
+
+
 def build_row4_ultimate(tpl):
     """
     Row 4 (`ULTIMATE` - Ragnarok: World-Forge Eruption, 120..149):
-    - F00..F09: Torgar roars as a blazing Molten-Gold & Jade Runic Crown/Horns and furnace back-jets ignite,
+    - F00..F09: Torgar roars as a blazing Molten-Gold & Jade Runic Crown/Horns, furnace back-jets,
+      and crackling Jade-Gold Runic Lightning Arcs & Rising Volcanic Embers (`F02..F25`) ignite,
       hoisting the superheated World-Breaker War-Hammer skyward in front of his shoulder `(34, 22) -> (31, 12)`.
-    - F10..F20: Two consecutive seismic earth-slams (`(38, 24 + crouch_d)`) with volcanic cracks
-      and magma plumes erupting under his boots.
-    - F21..F29: Cataclysmic final overhead World-Breaker plunge (`(38, 24 + crouch_d)`) with blinding
-      golden-jade forge nova & shockwave rings (F22..F26) and triumphant recovery (F27..F29).
+    - F10..F20: Two consecutive seismic earth-slams (`(38, 24 + crouch_d)`) with Stage 1 of the
+      World-Forge Lava & Jade Geyser Eruption (`F11..F19`, `x = 14..48, y = 40..48`).
+    - F21..F29: Cataclysmic final overhead World-Breaker plunge (`(38, 24 + crouch_d)`) unleashing
+      Stage 2 of the World-Forge Lava & Jade Geyser Eruption (`F20..F25`, `x = 14..48, y = 40..48`),
+      blinding golden-jade forge nova & shockwave rings (F22..F26), and triumphant recovery (F27..F29).
     """
     frames = []
     for f in range(30):
@@ -1703,11 +1922,13 @@ def build_row4_ultimate(tpl):
                 angle_deg=ang,
                 glow_intensity=1.15 + u * 0.3,
                 scale=1.05 + u * 0.08,
-                haft_len=15.5,
+                haft_len=21.0,
                 shoulder=(sx, sy),
-                two_handed=False,
+                two_handed=True,
                 phase=phase * 2.0,
             )
+            if f >= 2:
+                draw_ragnarok_lightning_and_mantle(frame, f, crouch_d=0, intensity=0.6 + 0.4 * u)
             frames.append(frame)
 
         elif f <= 20:
@@ -1745,21 +1966,19 @@ def build_row4_ultimate(tpl):
                 angle_deg=ang,
                 glow_intensity=1.4,
                 scale=1.08,
-                haft_len=15.0,
+                haft_len=21.0,
                 shoulder=(sx, sy),
-                two_handed=False,
+                two_handed=True,
                 cleave_arc=cleave,
                 phase=phase * 2.0,
             )
 
-            # Volcanic cracks and magma/jade plumes erupting under boots during Slam 1 & Slam 2
-            if is_slam1 or is_slam2:
-                for cx_p in (14, 28, 42):
-                    plume_h = 6 + ((k * 3 + cx_p) % 5)
-                    draw_line_px(frame, cx_p, 45, cx_p, 45 - plume_h, GOLD_WHITE if cx_p == 42 else MAGMA_ORANGE)
-                    set_px(frame, cx_p - 1, 45 - plume_h // 2, JADE_LIGHT)
-                    set_px(frame, cx_p + 1, 45 - plume_h // 2, GOLD_MOLTEN)
-                draw_line_px(frame, 10, 45, 46, 45, GOLD_MOLTEN if k % 2 == 0 else JADE_BRIGHT)
+            # Crackling Jade-Gold Runic Lightning Arcs & Rising Volcanic Embers (F02..F25)
+            draw_ragnarok_lightning_and_mantle(frame, f, crouch_d=crouch_d, intensity=1.0)
+
+            # Wider, brighter 2-stage World-Forge Lava & Jade Geyser Eruption along floor (F11..F25, x=14..48, y=40..48)
+            if f >= 11:
+                draw_ragnarok_world_forge_geysers(frame, f)
 
             frames.append(frame)
 
@@ -1776,11 +1995,13 @@ def build_row4_ultimate(tpl):
                     angle_deg=-102.0,
                     glow_intensity=1.5,
                     scale=1.08,
-                    haft_len=14.5,
+                    haft_len=21.0,
                     shoulder=(27, 15),
-                    two_handed=False,
+                    two_handed=True,
                     phase=phase,
                 )
+                draw_ragnarok_lightning_and_mantle(frame, f, crouch_d=0, intensity=1.0)
+                draw_ragnarok_world_forge_geysers(frame, f)
             else:
                 crouch_d = [5, 6, 6, 5, 4][k - 1]
                 body = make_crouch_juggernaut(tpl, crouch_d)
@@ -1796,12 +2017,15 @@ def build_row4_ultimate(tpl):
                     angle_deg=34.0,
                     glow_intensity=1.5,
                     scale=1.10,
-                    haft_len=15.0,
+                    haft_len=21.0,
                     shoulder=(sx, sy),
-                    two_handed=False,
+                    two_handed=True,
                     cleave_arc=(-95.0, 36.0, 18.0, 1.0) if k <= 2 else None,
                     phase=phase,
                 )
+                if f <= 25:
+                    draw_ragnarok_lightning_and_mantle(frame, f, crouch_d=crouch_d, intensity=1.0)
+                    draw_ragnarok_world_forge_geysers(frame, f)
                 # Blinding golden-jade forge nova & expanding shockwave rings at ground level (clamped inside [4..47])
                 ring_rx = min(16, 7 + k * 2)
                 for s_i in range(32):
@@ -1830,9 +2054,9 @@ def build_row4_ultimate(tpl):
                 angle_deg=ang,
                 glow_intensity=1.1,
                 scale=1.04,
-                haft_len=16.5,
+                haft_len=21.0,
                 shoulder=(27, 17 + crouch_d),
-                two_handed=False,
+                two_handed=True,
                 phase=phase,
             )
             frames.append(frame)
@@ -2084,110 +2308,171 @@ def build_row6_dash(tpl):
     return frames
 
 
+def draw_molten_basalt_bulwark_shield(canvas, f, phase):
+    """
+    Row 7 helper (F00..F11): Renders a chunky-pixel Molten Basalt & Jade-Rune Bulwark Wall / Shield
+    at x = 37..43, y = 20..36 (with obsidian-bronze bevels, glowing jade Nordic rune core, and magma rim)
+    in front of Titan's braced gauntlets while keeping his full crouched body (x = 8..35) 100% visible!
+    """
+    sh = np.zeros((52, 52, 4), dtype=np.uint8)
+    # Ramp shield materialization slightly on F00..F01, full fortified bulwark on F02..F10, de-materialize on F11
+    y_top = 21 if f == 0 else 20
+    y_bot = 35 if f == 0 else 36
+    pulse_hi = (f % 2 == 0)
+
+    for y in range(y_top, y_bot + 1):
+        is_cap = (y in (y_top, y_top + 1, y_bot - 1, y_bot))
+        x_lo = 38 if (y in (y_top, y_bot)) else 37
+        x_hi = 42 if (y in (y_top, y_bot)) else 43
+        for x in range(x_lo, x_hi + 1):
+            if y in (y_top, y_bot):
+                # Stepped top & bottom magma-bronze battlements
+                col = GOLD_WHITE if (x == 40 and pulse_hi) else (GOLD_MOLTEN if x in (39, 40, 41) else BRONZE_BRIGHT)
+            elif x == 43:
+                # Front-facing Magma Rim (x = 43)
+                col = (
+                    GOLD_WHITE
+                    if (26 <= y <= 30 and pulse_hi)
+                    else (GOLD_MOLTEN if (y + f) % 2 == 0 else MAGMA_ORANGE)
+                )
+            elif x == 37:
+                # Rear Obsidian-Bronze Bevel Edge (x = 37)
+                col = BRONZE_MID if (y % 3 == 0) else OBSIDIAN_DEEP
+            elif x in (38, 42) or is_cap:
+                # Forged Obsidian-Bronze Inner Bevel Frame
+                col = BRONZE_BRIGHT if (x == 42 or y == y_top + 1) else (BRONZE_MID if (y % 2 == 0) else IRON_DARK)
+            else:
+                # Dark Volcanic Basalt Slab Interior (x = 39..41, y = 22..34)
+                col = OBSIDIAN_MID if ((x + y) % 3 == 0) else OBSIDIAN_DARK
+            set_px(sh, x, y, col)
+
+    # Glowing Jade Nordic Rune Core inside the basalt slab (x = 39..41, y = 23..33)
+    for ry in range(23, 34):
+        set_px(sh, 40, ry, JADE_WHITE if (26 <= ry <= 30 or pulse_hi) else JADE_LIGHT)
+    # Nordic Anvil/Othala Rune branches at x = 39 and x = 41
+    for ry in (24, 26, 28, 30, 32):
+        col_r = JADE_WHITE if (ry == 28 and pulse_hi) else (JADE_LIGHT if ry in (26, 28, 30) else JADE_BRIGHT)
+        set_px(sh, 39, ry, col_r)
+        set_px(sh, 41, ry, col_r)
+    # Molten-Gold Corner Rivets on the bulwark bevel
+    for rx_r, ry_r in [(38, 22), (42, 22), (38, 34), (42, 34)]:
+        set_px(sh, rx_r, ry_r, GOLD_MOLTEN)
+
+    return composite_over(canvas, sh)
+
+
 def build_row7_crouch(tpl):
     """
-    Row 7 (`CROUCH` - Braced Earthbreaker Stance & Magma Quake, 210..239):
-    - ZERO boxy `draw_anvil_shield` door covering Titan's body!
+    Row 7 (`CROUCH` - Braced Earthbreaker Stance & Tectonic Bulwark, 210..239):
     - Uses continuous vertical compression `make_crouch_juggernaut` on `tpl['stand']` so his horned helm,
       beard, obsidian breastplate, wide bronze battle-girdle/tassets, bent knees, and anchored sabatons
       remain 100% visible and complete.
-    - F00..F06: Drops into a powerhouse braced earthbreaker crouch (`d = 1..6`), lowering his
-      Earthbreaker Greathammer diagonally (`angle_deg = -45 deg -> +26 deg`) in front of him.
-    - F07..F18: Holds a deep braced earthbreaker crouch (`d = 5..6`) holding and sweeping his
-      Earthbreaker Greathammer diagonally (`angle_deg = 25°..38°`) in front of him (`hx = 34..37`),
-      unleashing low ground-hugging magma fissures & forge embers along the floor (`y = 43..45`).
-    - F19..F29: Rises smoothly back to standing stance `(34, 22, -52 deg)`.
+    - F00..F11: Titan braces low in his unbreakable Earthbreaker Stance (`d = 1..6`) with his two-handed
+      Great-Hammer held behind a chunky-pixel Molten Basalt & Jade-Rune Bulwark Wall / Shield
+      (`x = 37..43, y = 20..36`, with obsidian-bronze bevels, glowing jade Nordic rune core, and magma rim)!
+    - F12..F19: Sweeps his two-handed Great-Hammer forward in a low seismic shockwave cleave (`angle_deg = 12°..38°`),
+      unleashing a blazing low cleave arc and ground-hugging magma-jade seismic shockwave fissure (`y = 43..47, x = 32..48`)!
+    - F20..F29: Rises smoothly back to standing stance `(34, 22, -52 deg)`.
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 6:
-            # F00..F06: Drops into deep fortified crouch & lowers Greathammer into diagonal braced guard
-            depths = [1, 2, 3, 4, 5, 6, 6]
+        if f <= 11:
+            # F00..F11: Braced Earthbreaker Stance + Molten Basalt & Jade-Rune Bulwark Wall / Shield (x=37..43, y=20..36)
+            depths = [1, 2, 4, 5, 6, 6, 6, 6, 6, 6, 5, 5]
             d = depths[f]
-            u = f / 6.0
+            u = min(1.0, f / 5.0)
             base = make_crouch_juggernaut(tpl, d)
             base = apply_mantle_and_beard_sway(
-                base, phase, amplitude=1.2, vertical_flutter=0.3, furnace_pulse=0.75 + u * 0.25
+                base, phase * 1.5, amplitude=1.2, vertical_flutter=0.3, furnace_pulse=0.8 + 0.2 * math.sin(phase * 2.0)
             )
-            ang = -45.0 * (1.0 - u) + 26.0 * u
-            frame = draw_warhammer(
+            ang_seq = [-44.0, -34.0, -24.0, -14.0, -6.0, -2.0, 0.0, 2.0, 0.0, -4.0, -12.0, -22.0]
+            hx_seq = [34, 34, 33, 33, 33, 33, 34, 34, 33, 33, 33, 32]
+            frame = draw_2h_warhammer_and_arms(
                 base,
-                hand_x=34 + (1 if f >= 4 else 0),
+                hand_x=hx_seq[f],
                 hand_y=21 + d,
-                angle_deg=ang,
-                glow_intensity=0.9 + u * 0.25,
+                angle_deg=ang_seq[f],
+                glow_intensity=0.95 + u * 0.25,
                 scale=1.0,
-                haft_len=15.0,
+                haft_len=21.0,
                 shoulder=(27, 17 + d),
-                two_handed=False,
+                two_handed=True,
                 phase=phase,
             )
+            frame = draw_molten_basalt_bulwark_shield(frame, f, phase)
             frames.append(frame)
 
-        elif f <= 18:
-            # F07..F18: Powerhouse braced earthbreaker crouch holding Greathammer diagonally (25°..38°) in front of him!
-            k = f - 7  # 0..11
-            d = 5 if k in (4, 5, 6) else 6
+        elif f <= 19:
+            # F12..F19: Sweeps his two-handed Great-Hammer forward in a low seismic shockwave cleave!
+            k = f - 12  # 0..7
+            d = 5 if k in (2, 3, 4) else 6
             base = make_crouch_juggernaut(tpl, d)
             base = apply_mantle_and_beard_sway(
-                base, phase * 2.0, amplitude=1.4, vertical_flutter=0.4, furnace_pulse=1.0
+                base, phase * 2.0, amplitude=1.5, vertical_flutter=0.4, furnace_pulse=1.0
             )
 
-            ang_seq = [26.0, 28.0, 31.0, 34.0, 37.0, 38.0, 36.0, 34.0, 31.0, 29.0, 27.0, 25.0]
-            hx_seq = [35, 35, 36, 36, 37, 37, 36, 36, 35, 35, 34, 34]
-            hy_off = [21, 21, 21, 22, 22, 22, 22, 21, 21, 21, 21, 21]
+            ang_seq = [10.0, 24.0, 34.0, 38.0, 36.0, 32.0, 28.0, 24.0]
+            hx_seq = [35, 36, 37, 37, 37, 36, 35, 35]
+            hy_off = [21, 21, 22, 22, 22, 22, 21, 21]
 
-            frame = draw_warhammer(
+            cleave_arc = None
+            if k <= 5:
+                arc_int = [0.85, 1.0, 1.0, 0.9, 0.75, 0.55][k]
+                a0 = [-20.0, -8.0, 4.0, 12.0, 16.0, 18.0][k]
+                cleave_arc = (a0, ang_seq[k] + 4.0, 17.5, arc_int)
+
+            frame = draw_2h_warhammer_and_arms(
                 base,
                 hand_x=hx_seq[k],
                 hand_y=hy_off[k] + d,
                 angle_deg=ang_seq[k],
-                glow_intensity=1.25 if 2 <= k <= 8 else 1.05,
-                scale=1.0,
-                haft_len=14.5,
+                glow_intensity=1.35 if k <= 5 else 1.1,
+                scale=1.02,
+                haft_len=21.0,
                 shoulder=(27, 17 + d),
-                two_handed=False,
+                two_handed=True,
+                cleave_arc=cleave_arc,
                 phase=phase,
             )
 
-            # Low ground-hugging Molten Magma & Emerald-Jade Quake Fissure along the floor (y=43..45, x=32..46)
-            if 2 <= k <= 9:
-                sk = k - 2
-                wave_x = min(46, 36 + sk * 2)
-                for wx in range(32, wave_x + 1):
-                    wy = 45 - ((wx + sk) % 2)
-                    set_px(
-                        frame,
-                        wx,
-                        wy,
-                        GOLD_WHITE if wx >= wave_x - 1 else (JADE_LIGHT if wx % 3 == 0 else MAGMA_ORANGE),
-                    )
-                    set_px(frame, wx, 45, GOLD_MOLTEN)
+            # Low ground-hugging Molten Magma & Emerald-Jade Seismic Shockwave Fissure (y=43..47, x=32..48)
+            wave_x = min(48, 36 + k * 2)
+            for wx in range(32, wave_x + 1):
+                wy = 45 - ((wx + k) % 2)
+                set_px(
+                    frame,
+                    wx,
+                    wy,
+                    GOLD_WHITE if wx >= wave_x - 1 else (JADE_LIGHT if wx % 3 == 0 else MAGMA_ORANGE),
+                )
+                set_px(frame, wx, 46, GOLD_MOLTEN if (wx + k) % 2 == 0 else JADE_BRIGHT)
+                if wx % 3 == 0:
+                    set_px(frame, wx, 43, JADE_WHITE if k <= 4 else GOLD_MOLTEN)
 
             frames.append(frame)
 
         else:
-            # F19..F29: Rises smoothly from crouch back to standing stance (34, 22, -52 deg)
-            depths = [6, 5, 5, 4, 4, 3, 3, 2, 1, 1, 0]
-            k = f - 19
+            # F20..F29: Rises smoothly from crouch back to standing stance (34, 22, -52 deg)
+            depths = [5, 5, 4, 4, 3, 3, 2, 1, 1, 0]
+            k = f - 20
             d = depths[k]
-            u = k / 10.0
+            u = k / 9.0
             base = make_crouch_juggernaut(tpl, d) if d > 0 else tpl["stand"].copy()
             base = apply_mantle_and_beard_sway(
                 base, phase, amplitude=1.4, vertical_flutter=0.5, furnace_pulse=0.75 - u * 0.2
             )
-            ang = 25.0 * (1.0 - u) + (-52.0) * u
-            frame = draw_warhammer(
+            ang = 24.0 * (1.0 - u) + (-52.0) * u
+            frame = draw_2h_warhammer_and_arms(
                 base,
                 hand_x=34,
                 hand_y=22 + d,
                 angle_deg=ang,
                 glow_intensity=0.95 - u * 0.1,
                 scale=1.0,
-                haft_len=16.5,
+                haft_len=21.0,
                 shoulder=(27, 17 + d),
-                two_handed=False,
+                two_handed=True,
                 phase=phase,
             )
             frames.append(frame)
