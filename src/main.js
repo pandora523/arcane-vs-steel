@@ -1,16 +1,16 @@
-import { Renderer } from './engine/Renderer.js?v=30fps17';
-import { VFXManager } from './engine/VFXManager.js?v=30fps17';
-import { PixelForge } from './engine/PixelForge.js?v=30fps17';
-import { AudioManager } from './engine/AudioManager.js?v=30fps17';
-import { Warrior } from './entities/Warrior.js?v=30fps17';
-import { FireMage } from './entities/FireMage.js?v=30fps17';
-import { Archer } from './entities/Archer.js?v=30fps17';
-import { Priestess } from './entities/Priestess.js?v=30fps17';
-import { Reaper } from './entities/Reaper.js?v=30fps17';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps17';
-import { Titan } from './entities/Titan.js?v=30fps17';
-import { Ronin } from './entities/Ronin.js?v=30fps17';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps17';
+import { Renderer } from './engine/Renderer.js?v=30fps18';
+import { VFXManager } from './engine/VFXManager.js?v=30fps18';
+import { PixelForge } from './engine/PixelForge.js?v=30fps18';
+import { AudioManager } from './engine/AudioManager.js?v=30fps18';
+import { Warrior } from './entities/Warrior.js?v=30fps18';
+import { FireMage } from './entities/FireMage.js?v=30fps18';
+import { Archer } from './entities/Archer.js?v=30fps18';
+import { Priestess } from './entities/Priestess.js?v=30fps18';
+import { Reaper } from './entities/Reaper.js?v=30fps18';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps18';
+import { Titan } from './entities/Titan.js?v=30fps18';
+import { Ronin } from './entities/Ronin.js?v=30fps18';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps18';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -145,31 +145,31 @@ const CHAMPION_ROSTER = {
     id: 'reaper',
     name: 'MALAKOR',
     role: 'ABYSSAL SOULREAPER',
-    style: 'RELENTLESS HARVESTER',
-    trait: 'PASSIVE: WRAITH PHASE & SOUL LEECH',
+    style: 'NECROTIC HOOK HARVESTER',
+    trait: 'PASSIVE: GRAVE-SUBMERGE & SOUL HOOK',
     cls: Reaper,
     theme: 'abyssal',
     color: '#c084fc',
     selectSfx: 'scythe_reap',
-    victoryLine: 'The Abyssal Scythe reaps every soul in the sanctuary!',
+    victoryLine: 'The Abyssal Scythe hooks every soul into the graveyard!',
     skills: [
       {
-        name: 'CRESCENT SCYTHE',
-        type: 'AUTO + PASSIVE',
-        vfxCell: 2,
-        desc: 'Sweeps necrotic scythe waves, hurls boomerang scythes & phases behind attacking foes.'
+        name: 'SOUL HOOK & BOOMERANG',
+        type: 'AUTO + GRAVE SUBMERGE',
+        vfxCell: 0,
+        desc: 'Hooks foes inward with scythe pulls, hurls returning boomerang scythes & submerges underground to erupt!'
       },
       {
-        name: 'SPECTRAL CHAIN HOOK',
-        type: 'SKILL • 4.6S CD',
+        name: 'SPECTRAL CHAIN PRISON',
+        type: 'SKILL • 4.8S CD',
         vfxCell: 1,
-        desc: 'Hurls a skeletal claw chain across the arena, dragging ranged foes into melee.'
+        desc: 'Drags ranged foes into melee with a bone-claw chain & cages them between two Haunted Tombstones.'
       },
       {
         name: 'GRIM HARVEST',
         type: '★ OVERDRIVE ULT',
-        vfxCell: 0,
-        desc: 'Summons the colossal Death-Avatar & gothic tombstones to reap the battlefield.'
+        vfxCell: 3,
+        desc: 'Summons the colossal Death-Avatar & gothic tombstones to execute a cross-reap blitz.'
       }
     ]
   },
@@ -209,31 +209,31 @@ const CHAMPION_ROSTER = {
     id: 'titan',
     name: 'TORGAR',
     role: 'RUNIC TITAN-FORGER',
-    style: 'HEAVY JUGGERNAUT',
-    trait: 'PASSIVE: IRON-ANVIL BULWARK PARRY',
+    style: 'UNSTOPPABLE JUGGERNAUT',
+    trait: 'PASSIVE: SUPER-ARMOR & MAGMA SHELL',
     cls: Titan,
     theme: 'forge',
     color: '#f59e0b',
     selectSfx: 'thunder_slam',
-    victoryLine: 'The World-Breaker War-Hammer reforges the sanctuary in molten gold and jade!',
+    victoryLine: 'The World-Breaker War-Hammer crushes the arena under molten iron and stone!',
     skills: [
       {
-        name: 'TECTONIC WAR-HAMMER',
-        type: 'AUTO + PASSIVE',
+        name: 'TECTONIC EARTH-SHAKER',
+        type: 'AUTO + MAGMA FORTIFY',
         vfxCell: 0,
-        desc: 'Slams seismic forge-waves across the floor & braces behind an Iron-Anvil Bulwark that parries.'
+        desc: 'Slams ground fissures that suck foes inward & encases himself in 62% Damage-Reduction Magma Armor.'
       },
       {
-        name: 'MOUNTAIN ANVIL',
-        type: 'SKILL • 4.8S CD',
+        name: 'ANVIL CANNONBALL SMASH',
+        type: 'SKILL • 4.7S CD',
         vfxCell: 1,
-        desc: 'Drops a colossal Runic Forge Anvil from the sky, then smashes it into basalt & jade monoliths.'
+        desc: 'Summons a physical Iron Anvil obstacle, then batters it horizontally across the stage for a Wall-Crush!'
       },
       {
         name: 'WORLD-FORGE RAGNAROK',
         type: '★ OVERDRIVE ULT',
         vfxCell: 3,
-        desc: 'Manifests the Colossal Ragnarok Titan Avatar & Nordic Forge-Wheel, unleashing 3 volcanic quakes.'
+        desc: 'Grows to 1.25x Giant Size and marches forward with 3 unstoppable volcanic hammer slams.'
       }
     ]
   },
@@ -241,31 +241,31 @@ const CHAMPION_ROSTER = {
     id: 'ronin',
     name: 'KAZE-MARU',
     role: 'STORMBLADE RONIN',
-    style: 'LIGHTNING DUELIST',
-    trait: 'PASSIVE: RAIJIN IAIDO PARRY & FLASH-STEP',
+    style: 'IAIDO BLINK ASSASSIN',
+    trait: 'PASSIVE: SERENE MIND COUNTER-BLINK',
     cls: Ronin,
     theme: 'storm',
     color: '#818cf8',
     selectSfx: 'slash',
-    victoryLine: 'The Thunder-Odachi severs the storm in a single Iaido flash!',
+    victoryLine: 'You were already cut before the Odachi clicked back into its scabbard!',
     skills: [
       {
-        name: 'RAIJIN IAIDO CRESCENT',
-        type: 'AUTO + PASSIVE',
+        name: 'SANDAN IAIDO & COUNTER',
+        type: 'AUTO + COUNTER-BLINK',
         vfxCell: 0,
-        desc: 'Unleashes two-handed Kendo thunder crescents & deflects projectiles in Iaido Parry stance.'
+        desc: 'Dashes through foes with Delayed Judgment-Cuts & teleports behind attackers on incoming strikes!'
       },
       {
-        name: 'RAIJIN THUNDER-PILLAR',
-        type: 'SKILL • 4.3S CD',
+        name: 'ZANTETSUKEN 5-FOLD FLASH',
+        type: 'SKILL • 4.2S CD',
         vfxCell: 2,
-        desc: 'Executes a blinding two-handed Kiriage rising cut that calls down a Raijin Thunder-Pillar.'
+        desc: 'Zig-zags across the enemy 5 times leaving suspended lightning lines that detonate on sheath-click!'
       },
       {
-        name: 'SUSANOO THUNDERSTORM',
+        name: 'SUSANOO OMNISLASH',
         type: '★ OVERDRIVE ULT',
         vfxCell: 3,
-        desc: 'Manifests the Colossal Susanoo Storm-Samurai & Raijin Taiko Drum Ring for an 8-bolt judgment.'
+        desc: 'Teleports around the airborne target for an 8-hit omnidirectional storm-slash cage.'
       }
     ]
   },
@@ -273,31 +273,31 @@ const CHAMPION_ROSTER = {
     id: 'valkyrie',
     name: 'FREYJA',
     role: 'DRAGON-LANCE VALKYRIE',
-    style: 'CRIMSON SKY-DRAGOON',
-    trait: 'PASSIVE: PHALANX PARRY & DRAGOON SKY-DIVE',
+    style: 'AERIAL SKY-DRAGOON',
+    trait: 'PASSIVE: VALKYRIE WINGS & HIGH JUMP',
     cls: Valkyrie,
     theme: 'crimson',
     color: '#f43f5e',
     selectSfx: 'holy_spear',
-    victoryLine: 'Crimson dragonfire and the Gungnir War-Lance pierce the heavens!',
+    victoryLine: 'From the skies of Valhalla, the Gungnir War-Lance pierces the earth!',
     skills: [
       {
-        name: 'CRIMSON HALBERD THRUST',
-        type: 'AUTO + PASSIVE',
+        name: 'DOUBLE IMPALE & JAVELIN',
+        type: 'AUTO + WING BACKSTEP',
         vfxCell: 0,
-        desc: 'Strikes with two-handed Dragon-Lance shockwaves & parries incoming spells in Phalanx Guard.'
+        desc: 'Hovers on Valkyrie wings with rapid double-impales & flaps backward into mid-air hurling 2 javelins.'
       },
       {
-        name: 'GUNGNIR SKY-LANCE',
+        name: 'WYVERN CORKSCREW DRILL',
         type: 'SKILL • 4.4S CD',
         vfxCell: 1,
-        desc: 'Calls down a colossal Crimson-Gold Gungnir Dragon-Lance that shatters into Ruby Spires.'
+        desc: 'Flies horizontally across the arena in a dragonfire drill vortex, skewering & dragging foes!'
       },
       {
-        name: 'BAHAMUT CATACLYSM',
+        name: 'VALHALLA SKY-SANCTUARY',
         type: '★ OVERDRIVE ULT',
         vfxCell: 3,
-        desc: 'Summons the Colossal Bahamut Dragon Crest & Solar-Rose Valkyrie Halo, raining 6 Sky-Lances.'
+        desc: 'Ascends high into the sky, raining 8 Gungnir Light-Spears before a Bahamut Supernova Dive!'
       }
     ]
   }

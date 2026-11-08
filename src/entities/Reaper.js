@@ -9,9 +9,9 @@ export class Reaper extends Fighter {
       groundY,
       facing,
       maxHp: 1249,
-      attackRange: 175,
-      moveSpeed: 190,
-      autoInterval: 1.10,
+      attackRange: 182,
+      moveSpeed: 195,
+      autoInterval: 1.06,
       lightColor: 'rgba(192, 132, 252, 1)',
       primaryColor: '#c084fc'
     });
@@ -20,28 +20,35 @@ export class Reaper extends Fighter {
     this.deathSfx = 'death_reaper';
     this.hasPoise = true;
     this.isDeflecting = false;
-    this.skillMaxCooldown = 4.90;
+    this.skillMaxCooldown = 4.80;
     this.skillTriggerRange = 525;
     this.skillName = 'SPECTRAL CHAIN';
     this.ultName = 'GRIM HARVEST';
     this.comboStep = 0;
     this.stepDustTimer = 0;
 
-    // 100% Bespoke Soulreaper Visual Systems (Zero shared Warrior/Priestess/Mage/Archer VFX)
+    // 100% Bespoke Soulreaper Harvester Systems
     this.soulWisps = []; // Homing Soul-Skull Orbs ripped from enemy into Malakor
-    this.tombstones = []; // Haunted Gothic Gravestones & Skeletal Hands on the arena floor
+    this.tombstones = []; // Haunted Gothic Gravestones & Tombstone Prison Cages on the arena floor
     this.chainClaw = null; // Segmented Iron Chain + Giant Skeletal Bone Claw grapple
     this.deathAvatar = null; // Towering Hooded Grim Reaper Specter looming behind the execution zone
-    this.wraithEchoes = []; // Crimson-Violet Wraith Afterimages left during Phantom Blitz & Wraith Phase
+    this.wraithEchoes = []; // Crimson-Violet Wraith Afterimages left during Phantom Blitz & Wraith Float
+    this.activeBoomerangScythe = null; // Returning Twin-Blade Phantom Scythe Boomerang (outbound -> hover buzzsaw -> return)
+
+    // Underground Grave-Submerge & Spectral Wraith Float state
+    this.isSubmerged = false;
+    this.submergeDepth = 0;
+    this.submergeDir = 1;
+    this.wraithAlpha = 1.0;
 
     this.didChainPull = false;
     this.didReapFinisher = false;
     this.ultStage = 0;
-    this.dodgeMaxCooldown = 3.22;
-    this.dashMaxCooldown = 3.00;
+    this.dodgeMaxCooldown = 3.20;
+    this.dashMaxCooldown = 2.95;
     this.wallFlipCooldown = 0;
     this.crouchCooldown = 0;
-    this.crouchDuration = 0.90;
+    this.crouchDuration = 0.86;
     this.isCrouching = false;
     this.isFlipVault = false;
     this.flipStartX = x;
@@ -50,12 +57,12 @@ export class Reaper extends Fighter {
   }
 
   getEffectiveAttackRange() {
-    // Every 3rd swing hurls a Spinning Boomerang Phantom Scythe up to 408px!
-    return this.comboStep % 3 === 2 ? 408 : this.attackRange;
+    // Every 3rd swing hurls a Returning Boomerang Phantom Scythe up to 395px!
+    return this.comboStep % 3 === 2 ? 395 : this.attackRange;
   }
 
   /**
-   * Bespoke Necrotic Soul-Siphon (never uses Seraphina's green/gold cross heals!)
+   * Bespoke Necrotic Soul-Siphon
    * Rips homing crimson-violet Soul-Skull Orbs out of the enemy that curve into Malakor's chest.
    */
   leechLife(amount, sourceEntity, game, label = 'SOUL LEECH') {
@@ -100,9 +107,55 @@ export class Reaper extends Fighter {
         life: 1.55,
         maxLife: 1.55,
         shattered: false,
+        isPrison: false,
         seed: i * 1.7
       });
     }
+  }
+
+  /**
+   * Raises 2 Haunted Gothic Tombstones on BOTH sides of the hooked enemy to cage & slow them!
+   */
+  spawnTombstonePrison(enemyX, game) {
+    const ww = game.renderer ? game.renderer.worldWidth : 1200;
+    const offsets = [-72, 72];
+    for (let i = 0; i < offsets.length; i++) {
+      const tx = Math.max(90, Math.min(ww - 90, enemyX + offsets[i]));
+      this.tombstones.push({
+        x: Math.round(tx / 4) * 4,
+        groundY: this.groundY,
+        width: 44,
+        height: 92,
+        delay: i * 0.03,
+        life: 2.15,
+        maxLife: 2.15,
+        shattered: false,
+        isPrison: true,
+        seed: i * 2.3
+      });
+    }
+  }
+
+  /**
+   * Spawns a Returning Twin-Blade Phantom Scythe Boomerang that flies out 385px,
+   * buzz-saws in place for 0.24s, and then reverses back to Malakor's hand!
+   */
+  spawnBoomerangScythe(game) {
+    const startX = this.x + this.facing * 54;
+    const startY = this.y - 102;
+    this.activeBoomerangScythe = {
+      x: startX,
+      y: startY,
+      startX,
+      targetX: startX + this.facing * 385,
+      dir: this.facing,
+      phase: 'outbound', // 'outbound' -> 'hover' -> 'return'
+      timer: 0,
+      angle: 0,
+      hitOutbound: false,
+      hitHover: false,
+      hitReturn: false
+    };
   }
 
   startJump(enemy, game, customDir = null) {
@@ -110,24 +163,37 @@ export class Reaper extends Fighter {
     this.setState('JUMP');
     this.isInvulnerable = true;
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
-    let dir = customDir !== null ? customDir : -this.facing;
+    let dir = customDir !== null ? customDir : this.facing;
+    if (enemy && Math.abs(enemy.x - this.x) > 140) {
+      dir = Math.sign(enemy.x - this.x) || this.facing;
+    }
     if (this.x < 180) dir = 1;
     else if (this.x > ww - 180) dir = -1;
     this.dashDir = dir;
     this.onStartDodge(enemy, game, dir, true);
   }
 
+  /**
+   * CROUCH: "ABYSSAL GRAVE-SUBMERGE & UPPERCUT ERUPTION"
+   * Malakor sinks completely underground into a creeping Shadow Puddle (isSubmerged = true),
+   * slides 185px along the floor toward/underneath the enemy, and erupts upward with a Scythe Uppercut!
+   */
   startCrouch(enemy, game) {
-    this.crouchCooldown = 3.2;
-    this.crouchDuration = 0.90;
+    this.crouchCooldown = 3.25;
+    this.crouchDuration = 0.86;
     this.setState('CROUCH');
     this.isCrouching = true;
-    this.isDeflecting = true;
+    this.isSubmerged = true;
+    this.submergeDepth = 0;
+    this.didActionFrame = false;
+    this.submergeDir = enemy ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
+    this.facing = this.submergeDir;
     this.vx = 0;
+    if (game && game.audio) game.audio.play('soul_drain', this.x);
     if (game && game.vfx) {
-      game.vfx.spawnShockwave(this.x, this.groundY - 2, 66, '#c084fc', 0.24, true);
-      game.vfx.spawnGlyphBurst(this.x, this.groundY - 28, 5, 'abyssal');
-      game.vfx.spawnDamageText(this.x, this.y - 122, 0, false, 'WRAITH SHROUD!', '#e879f9');
+      game.vfx.spawnShockwave(this.x, this.groundY - 2, 82, '#c084fc', 0.28, true);
+      game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 7, 'abyssal');
+      game.vfx.spawnDamageText(this.x, this.y - 126, 0, false, 'GRAVE SUBMERGE!', '#e879f9');
     }
   }
 
@@ -136,8 +202,10 @@ export class Reaper extends Fighter {
     this.flipAngle = 0;
     this.dashDuration = 0.40;
     this.isDeflecting = true;
+    this.isSubmerged = true;
+    this.submergeDepth = 0.85;
     this.isWraithPhase = false;
-    this.vx = dir * 512;
+    this.vx = dir * 515;
     if (game.audio) game.audio.play('scythe_reap', this.x);
     game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 6, 'abyssal');
     game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'SHADOW STALK!', '#c084fc');
@@ -148,51 +216,51 @@ export class Reaper extends Fighter {
     const dist = enemy ? Math.abs(enemy.x - this.x) : 0;
     const nearWall = this.x < 280 || this.x > ww - 280;
 
-    // 1. Sleek 86px-high Shadow-Wing Aerial Vault (Row 8 JUMP, 30 frames) when jumping or escaping wall pressure!
+    // 1. SPECTRAL WRAITH FLOAT-GLIDE & EXECUTIONER GUILLOTINE (Row 8 JUMP)
     if (forceJump || (nearWall && dist < 265)) {
       this.isFlipVault = true;
       this.isWraithPhase = false;
+      this.isSubmerged = false;
+      this.wraithAlpha = 0.46;
       this.flipStartX = this.x;
       this.flipAngle = 0;
-      this.wallFlipCooldown = 3.0;
-      this.dashDuration = 0.62;
+      this.wallFlipCooldown = 2.9;
+      this.dashDuration = 0.64;
 
-      if (enemy && nearWall) {
-        const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
-        let target = enemy.x + openSideDir * 310;
-        if (Math.abs(target - this.x) < 230) {
-          const crossDir = this.x < enemy.x ? 1 : -1;
-          target = enemy.x + crossDir * 300;
-        }
-        this.flipTargetX = Math.max(140, Math.min(ww - 140, target));
-        this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || 1;
+      if (enemy && !enemy.isDead) {
+        const approachSide = this.x < enemy.x ? -76 : 76;
+        const target = nearWall
+          ? enemy.x + (enemy.x < ww * 0.5 ? 210 : -210)
+          : enemy.x + approachSide;
+        this.flipTargetX = Math.max(125, Math.min(ww - 125, target));
+        this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || dir;
       } else {
-        this.flipTargetX = Math.max(140, Math.min(ww - 140, this.x + dir * 310));
+        this.flipTargetX = Math.max(125, Math.min(ww - 125, this.x + dir * 270));
         this.dashDir = dir;
       }
 
       this.vx = 0;
       this.vy = 0;
-      if (game.audio) game.audio.play('scythe_reap', this.x);
+      if (game.audio) game.audio.play('soul_drain', this.x);
       game.vfx.spawnShockwave(this.x, this.groundY, 92, '#c084fc', 0.30, true);
       game.vfx.spawnGlyphBurst(this.x, this.y - 60, 7, 'abyssal');
-      game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, 'SHADOW VAULT!', '#e879f9');
+      game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, 'WRAITH GLIDE!', '#e879f9');
       return;
     }
 
-    // 2. SIGNATURE REAPER EVASION: "WRAITH PHASE-SHIFT AMBUSH"
-    // In close-to-mid range (dist <= 235), Malakor sinks into his Abyssal Shadow Pool and phases
-    // directly THROUGH the enemy to emerge 155px behind their back for a lethal backstab!
-    if (enemy && !enemy.isDead && dist <= 235) {
+    // 2. WRAITH PHASE-SHIFT AMBUSH (Sinks underground and phases through the enemy's back!)
+    if (enemy && !enemy.isDead && dist <= 245) {
       this.isFlipVault = false;
       this.isWraithPhase = true;
+      this.isSubmerged = true;
+      this.submergeDepth = 0.92;
       this.dashDuration = 0.38;
       this.isDeflecting = true;
       this.phaseStartX = this.x;
       const passDir = Math.sign(enemy.x - this.x) || this.facing;
-      let behindX = enemy.x + passDir * 155;
+      let behindX = enemy.x + passDir * 148;
       if (behindX < 105 || behindX > ww - 105) {
-        behindX = enemy.x - passDir * 155;
+        behindX = enemy.x - passDir * 148;
       }
       this.phaseTargetX = Math.max(95, Math.min(ww - 95, behindX));
       this.dashDir = Math.sign(this.phaseTargetX - this.phaseStartX) || passDir;
@@ -205,116 +273,85 @@ export class Reaper extends Fighter {
 
     this.isFlipVault = false;
     this.isWraithPhase = false;
+    this.isSubmerged = true;
+    this.submergeDepth = 0.85;
     this.dashDuration = 0.40;
-    this.isDeflecting = dist > 195;
+    this.isDeflecting = true;
     const smartDir = enemy && dist > 195 ? this.facing : dir;
     this.dashDir = smartDir;
-    this.vx = smartDir * 456;
+    this.vx = smartDir * 465;
     if (game.audio) game.audio.play('soul_drain', this.x);
     game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 7, 'abyssal');
     game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'GRAVE MELD!', '#e879f9');
-
-    // When shadow-melding through long-range projectile or pillar fire, siphon soul mist & hurl a counter Phantom Scythe
-    if (enemy && !enemy.isDead && dist > 210) {
-      this.leechLife(12, enemy, game, 'GRAVE SIPHON');
-      if (Math.random() < 0.68) {
-        game.vfx.spawnProjectile({
-          x: this.x + this.facing * 52,
-          y: this.y - 104,
-          vx: this.facing * 622,
-          vy: 0,
-          radius: 21,
-          color: '#c084fc',
-          coreColor: '#f43f5e',
-          owner: this,
-          damage: 42,
-          type: 'phantom_scythe'
-        });
-      }
-    }
   }
 
   updateDashOrDodge(dt, enemy, game) {
     const t = this.stateTimer;
 
-    // Row 8 (30-frame JUMP — Shadow-Wing Aerial Vault & Apex Downward Phantom Scythe Reap)
+    // Row 8 (30-frame JUMP — Spectral Wraith Float-Glide & Executioner Guillotine Cleave!)
     if ((this.state === 'DODGE' || this.state === 'JUMP') && this.isFlipVault) {
       const u = Math.min(1, t / this.dashDuration);
-      const airU = Math.max(0, Math.min(1, (u - 0.10) / 0.76));
+      const ease = 0.5 - 0.5 * Math.cos(u * Math.PI);
+      this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * ease;
 
-      const horizU = airU < 0.35
-        ? (airU / 0.35) * 0.44
-        : airU < 0.70
-          ? 0.44 + ((airU - 0.35) / 0.35) * 0.28
-          : 0.72 + ((airU - 0.70) / 0.30) * 0.28;
-      this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * horizU;
-
-      // Sleek 86px-high Shadow-Wing vault arc (matching Archer's 86px height & hover plateau)
+      // Spectral Wraith Float-Glide arc (hovers weightlessly at 96px before dropping the Guillotine!)
       let liftFrac = 0;
-      if (airU > 0 && airU < 1) {
-        if (airU < 0.28) {
-          const p = airU / 0.28;
-          liftFrac = 1 - Math.pow(1 - p, 2.2);
-        } else if (airU <= 0.68) {
-          const h = (airU - 0.28) / 0.40;
-          liftFrac = 1.0 - Math.sin(h * Math.PI) * 0.06;
-        } else {
-          const p = (airU - 0.68) / 0.32;
-          liftFrac = 1 - Math.pow(p, 1.85);
-        }
+      if (u < 0.25) {
+        liftFrac = Math.sin((u / 0.25) * (Math.PI * 0.5));
+      } else if (u <= 0.62) {
+        liftFrac = 1.0 + Math.sin(((u - 0.25) / 0.37) * Math.PI) * 0.12;
+      } else {
+        const p = (u - 0.62) / 0.38;
+        liftFrac = Math.max(0, 1 - Math.pow(p, 2.2));
       }
-      this.y = this.groundY - liftFrac * 86;
-      this.flipAngle = 0;
+      this.y = this.groundY - liftFrac * 96;
+      this.wraithAlpha = u < 0.60 ? 0.48 : 0.96;
 
       if (enemy && !enemy.isDead) {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
 
-      if (airU > 0.05 && airU < 0.95 && Math.random() < 0.8) {
-        game.vfx.spawnParticle({
-          x: this.x + (Math.random() - 0.5) * 28,
-          y: this.y - 72 + (Math.random() - 0.5) * 24,
-          vx: -this.dashDir * 68,
-          vy: 24,
-          size: 5,
-          color: Math.random() > 0.45 ? '#c084fc' : '#f43f5e',
-          maxLife: 0.28
+      // Leave spectral wraith echoes while floating across the sky
+      if (u < 0.62 && Math.random() < 0.45) {
+        this.wraithEchoes.push({
+          x: this.x,
+          y: this.y,
+          facing: this.facing,
+          frameIdx: 248,
+          life: 0,
+          maxLife: 0.26
         });
       }
 
-      // At apex (F15, u >= 0.50), Malakor cleaves his Great-Scythe downward & hurls an aerial Phantom Scythe!
-      if (u >= 0.50 && !this.didActionFrame && enemy && !enemy.isDead) {
+      // At u >= 0.58: Executioner Guillotine Cleave (Missing-HP Execute Damage!)
+      if (u >= 0.58 && !this.didActionFrame) {
         this.didActionFrame = true;
         if (game.audio) game.audio.play('scythe_reap', this.x);
-        const sx = this.x + this.facing * 46;
-        const sy = this.y - 108;
-        const dx = enemy.x - sx;
-        const dy = (enemy.y - 96) - sy;
-        const td = Math.hypot(dx, dy) || 1;
-        game.vfx.spawnProjectile({
-          x: sx,
-          y: sy,
-          vx: (dx / td) * 635,
-          vy: (dy / td) * 635,
-          radius: 21,
-          color: '#c084fc',
-          coreColor: '#f43f5e',
-          owner: this,
-          damage: 54,
-          type: 'phantom_scythe'
-        });
-        const shotAng = Math.atan2(dy, dx);
-        game.vfx.spawnSlash(sx, sy, 88, shotAng - 1.1, shotAng + 1.1, '#c084fc', 0.26);
-        game.vfx.spawnGlyphBurst(sx, sy, 5, 'abyssal');
+        const cx = this.x + this.facing * 52;
+        const cy = this.y - 82;
+        const sA = this.facing === 1 ? -1.95 : Math.PI - 1.25;
+        const eA = this.facing === 1 ? 1.25 : Math.PI + 1.95;
+        game.vfx.spawnSlash(cx, cy, 138, sA, eA, '#f43f5e', 0.32);
+        game.vfx.spawnSlash(cx, cy, 114, sA, eA, '#c084fc', 0.26);
+        game.vfx.spawnGlyphBurst(cx, cy, 7, 'abyssal');
+
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 215) {
+          const missingRatio = Math.max(0, Math.min(1, 1 - enemy.hp / enemy.maxHp));
+          const execDmg = Math.round(44 + missingRatio * 34);
+          enemy.takeDamage(execDmg, this, true, -this.facing * 65, -145);
+          this.leechLife(20, enemy, game, 'GUILLOTINE REAP');
+          game.vfx.spawnDamageText(enemy.x, enemy.y - 156, 0, false, '★ GUILLOTINE EXECUTE! ★', '#f43f5e');
+          if (game.renderer) game.renderer.triggerShake(12, 0.24);
+        }
       }
 
       if (t >= this.dashDuration) {
         this.y = this.groundY;
         this.vy = 0;
         this.isFlipVault = false;
-        this.flipAngle = 0;
+        this.wraithAlpha = 1.0;
         this.isInvulnerable = false;
-        game.vfx.spawnShockwave(this.x, this.groundY, 76, '#c084fc', 0.26, true);
+        game.vfx.spawnShockwave(this.x, this.groundY, 84, '#c084fc', 0.26, true);
         this.setState('IDLE');
       }
       return;
@@ -342,6 +379,8 @@ export class Reaper extends Fighter {
 
       if (t >= this.dashDuration) {
         this.isWraithPhase = false;
+        this.isSubmerged = false;
+        this.submergeDepth = 0;
         this.isDeflecting = false;
         this.isInvulnerable = false;
         this.setState('IDLE');
@@ -349,10 +388,9 @@ export class Reaper extends Fighter {
       return;
     }
 
-    const speed = this.state === 'DASH' ? 512 : 434;
+    const speed = this.state === 'DASH' ? 515 : 445;
     this.x += this.dashDir * speed * dt;
 
-    // Bubble dark obsidian-violet shadow particles along the floor pool
     if (Math.random() < 0.82) {
       game.vfx.spawnParticle({
         x: this.x + (Math.random() - 0.5) * 64,
@@ -370,83 +408,99 @@ export class Reaper extends Fighter {
       !this.didActionFrame &&
       enemy &&
       !enemy.isDead &&
-      Math.abs(enemy.x - this.x) <= 156
+      Math.abs(enemy.x - this.x) <= 165
     ) {
       this.didActionFrame = true;
-      enemy.takeDamage(43, this, false, 90, -60);
-      this.leechLife(13, enemy, game, 'SOUL LEECH');
+      // Hook inward during Shadow Stalk!
+      enemy.takeDamage(44, this, false, -68, -75);
+      this.leechLife(14, enemy, game, 'SOUL HOOK');
       if (game.audio) game.audio.play('scythe_reap', enemy.x);
-      game.vfx.spawnSlash(this.x + this.facing * 44, this.y - 96, 112, -1.3, 1.2, '#c084fc', 0.28);
+      game.vfx.spawnSlash(this.x + this.facing * 44, this.y - 96, 118, -1.3, 1.2, '#c084fc', 0.28);
     }
 
     if (t >= this.dashDuration) {
       this.isDeflecting = false;
+      this.isSubmerged = false;
+      this.submergeDepth = 0;
       this.isInvulnerable = false;
       this.setState('IDLE');
     }
   }
 
+  /**
+   * CROUCH UPDATE: "ABYSSAL GRAVE-SUBMERGE & UPPERCUT ERUPTION"
+   * Phase 1 (0.00s..0.44s): Sinks into an untargetable underground Shadow Puddle and slides 185px along the floor toward the enemy!
+   * Phase 2 (0.44s..0.86s): Burst upward out of the floor right beside the enemy with a rising 2-Handed Scythe Uppercut!
+   */
   updateCrouch(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.crouchDuration || 0.90;
-    this.vx *= Math.pow(0.001, dt);
-    this.isCrouching = t < dur * 0.80;
-    this.isDeflecting = this.isCrouching;
+    const dur = this.crouchDuration || 0.86;
+    const ww = game.renderer ? game.renderer.worldWidth : 1200;
 
-    if (t >= 0.14 && t < 0.36) {
-      if (Math.random() < 0.7) {
-        const a = t * 24;
-        const sx = this.x + this.facing * 46;
-        const sy = this.y - 84;
+    if (t < 0.44) {
+      this.isCrouching = true;
+      this.isSubmerged = true;
+      this.isDeflecting = true;
+      this.submergeDepth = Math.min(1, t / 0.14);
+
+      if (enemy && !enemy.isDead) {
+        const desiredX = enemy.x - this.submergeDir * 72;
+        const delta = desiredX - this.x;
+        const slideSpeed = Math.min(440, Math.max(210, Math.abs(delta) * 4.2));
+        this.x += Math.sign(delta || this.submergeDir) * slideSpeed * dt;
+      } else {
+        this.x += this.submergeDir * 340 * dt;
+      }
+      this.x = Math.max(90, Math.min(ww - 90, this.x));
+
+      if (Math.random() < 0.88) {
         game.vfx.spawnParticle({
-          x: sx + Math.cos(a) * 20,
-          y: sy + Math.sin(a) * 20,
-          vx: -Math.cos(a) * 55,
-          vy: -Math.sin(a) * 55,
-          size: 4.5,
+          x: this.x + (Math.random() - 0.5) * 76,
+          y: this.groundY - 4 - Math.random() * 16,
+          vx: -this.submergeDir * 75,
+          vy: -55 - Math.random() * 40,
+          size: 5.5,
           color: Math.random() > 0.45 ? '#c084fc' : '#f43f5e',
-          maxLife: 0.22
+          maxLife: 0.26
         });
       }
-    } else if (t >= 0.36 && !this.didActionFrame) {
-      // Row 7 Frame F11: Hurls a low-profile spinning Phantom Scythe boomerang from Wraith-Shroud crouch!
+    } else if (!this.didActionFrame) {
+      // ERUPT UPWARD OUT OF THE GRAVE PUDDLE WITH A RISING SCYTHE UPPERCUT!
       this.didActionFrame = true;
+      this.isSubmerged = false;
+      this.submergeDepth = 0;
       this.comboStep++;
-      this.vx -= this.facing * 35;
-      if (game.audio) game.audio.play('scythe_reap', this.x);
-
-      const spawnX = this.x + this.facing * 52;
-      const spawnY = this.y - 84;
-      const targetY = enemy ? enemy.y - 94 : spawnY;
-      const dx = enemy ? enemy.x - spawnX : this.facing * 408;
-      const dy = targetY - spawnY;
-      const dist = Math.hypot(dx, dy) || 1;
-      const speed = 625;
-
-      game.vfx.spawnProjectile({
-        x: spawnX,
-        y: spawnY,
-        vx: (dx / dist) * speed,
-        vy: (dy / dist) * speed,
-        radius: 22,
-        color: '#c084fc',
-        coreColor: '#f43f5e',
-        owner: this,
-        damage: 56,
-        type: 'phantom_scythe'
-      });
-
-      const cAng = this.facing === 1 ? 0 : Math.PI;
-      game.vfx.spawnSlash(spawnX, spawnY, 96, cAng - 1.1, cAng + 1.1, '#c084fc', 0.26);
-      game.vfx.spawnShockwave(spawnX, spawnY, 64, '#e879f9', 0.24, false, true);
-      game.vfx.spawnGlyphBurst(spawnX, spawnY, 5, 'abyssal');
       if (enemy && !enemy.isDead) {
-        this.leechLife(14, enemy, game, 'SHROUD REAP');
+        this.facing = enemy.x >= this.x ? 1 : -1;
       }
+      if (game.audio) game.audio.play('scythe_reap', this.x);
+      if (game.renderer) {
+        game.renderer.triggerShake(14, 0.28);
+        game.renderer.triggerHitStop(0.055);
+      }
+
+      const eruptX = this.x + this.facing * 48;
+      const eruptY = this.groundY - 96;
+      const sA = this.facing === 1 ? 1.45 : Math.PI - 1.45;
+      const eA = this.facing === 1 ? -1.75 : Math.PI + 1.75;
+      game.vfx.spawnSlash(eruptX, eruptY, 136, sA, eA, '#c084fc', 0.34);
+      game.vfx.spawnSlash(eruptX, eruptY, 112, sA, eA, '#f43f5e', 0.28);
+      game.vfx.spawnShockwave(this.x, this.groundY, 118, '#c084fc', 0.32, true);
+      game.vfx.spawnGlyphBurst(eruptX, eruptY, 8, 'abyssal');
+      game.vfx.spawnDamageText(this.x, this.y - 152, 0, false, '★ GRAVE ERUPTION! ★', '#e879f9');
+
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 215) {
+        enemy.takeDamage(58, this, true, -55, -215);
+        this.leechLife(22, enemy, game, 'GRAVE HARVEST');
+      }
+    } else {
+      this.submergeDepth = Math.max(0, this.submergeDepth - dt * 5);
     }
 
     if (t >= dur) {
       this.isCrouching = false;
+      this.isSubmerged = false;
+      this.submergeDepth = 0;
       this.isDeflecting = false;
       this.setState('IDLE');
     }
@@ -455,6 +509,55 @@ export class Reaper extends Fighter {
   update(dt, enemy, game) {
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
+
+    // Advance Returning Boomerang Phantom Scythe
+    if (this.activeBoomerangScythe) {
+      const bs = this.activeBoomerangScythe;
+      bs.timer += dt;
+      bs.angle += dt * 26;
+
+      if (bs.phase === 'outbound') {
+        bs.x += bs.dir * 680 * dt;
+        if (!bs.hitOutbound && enemy && !enemy.isDead && Math.abs(enemy.x - bs.x) < 58 && Math.abs((enemy.y - 96) - bs.y) < 88) {
+          bs.hitOutbound = true;
+          enemy.takeDamage(38, this, false, -45, -60);
+          this.leechLife(12, enemy, game, 'SCYTHE REAP');
+          game.vfx.spawnGlyphBurst(bs.x, bs.y, 5, 'abyssal');
+        }
+        if (Math.abs(bs.x - bs.startX) >= 385 || bs.timer >= 0.56) {
+          bs.phase = 'hover';
+          bs.timer = 0;
+        }
+      } else if (bs.phase === 'hover') {
+        if (!bs.hitHover && bs.timer >= 0.10 && enemy && !enemy.isDead && Math.abs(enemy.x - bs.x) < 74) {
+          bs.hitHover = true;
+          enemy.takeDamage(32, this, true, -75, -80);
+          this.leechLife(12, enemy, game, 'VORTEX SHRED');
+          game.vfx.spawnSlash(bs.x, bs.y, 92, 0, Math.PI * 2, '#f43f5e', 0.24);
+        }
+        if (bs.timer >= 0.24) {
+          bs.phase = 'return';
+          bs.timer = 0;
+        }
+      } else if (bs.phase === 'return') {
+        const dx = this.x - bs.x;
+        const dy = (this.y - 98) - bs.y;
+        const dist = Math.hypot(dx, dy) || 1;
+        bs.x += (dx / dist) * 760 * dt;
+        bs.y += (dy / dist) * 760 * dt;
+        if (!bs.hitReturn && enemy && !enemy.isDead && Math.abs(enemy.x - bs.x) < 62 && Math.abs((enemy.y - 96) - bs.y) < 88) {
+          bs.hitReturn = true;
+          // Return hit pulls the enemy INWARD toward Malakor!
+          enemy.takeDamage(46, this, true, -125, -95);
+          this.leechLife(16, enemy, game, 'RETURN HOOK!');
+          game.vfx.spawnDamageText(enemy.x, enemy.y - 150, 0, false, '★ BOOMERANG HOOK! ★', '#e879f9');
+          game.vfx.spawnGlyphBurst(bs.x, bs.y, 6, 'abyssal');
+        }
+        if (dist < 42 || bs.timer >= 0.75) {
+          this.activeBoomerangScythe = null;
+        }
+      }
+    }
 
     // Advance Homing Soul-Wisp Orbs
     for (let i = this.soulWisps.length - 1; i >= 0; i--) {
@@ -465,20 +568,25 @@ export class Reaper extends Fighter {
       }
     }
 
-    // Advance Haunted Tombstones (life counts down from maxLife -> 0 so (1 - ts.life / ts.maxLife) * 30 = 0..29)
+    // Advance Haunted Tombstones & apply Tombstone Prison Cage slow/soul-drain to trapped enemies!
     for (let i = this.tombstones.length - 1; i >= 0; i--) {
       const ts = this.tombstones[i];
       if (ts.delay > 0) {
         ts.delay = Math.max(0, ts.delay - dt);
       } else {
         ts.life -= dt;
+        if (ts.isPrison && enemy && !enemy.isDead && Math.abs(enemy.x - ts.x) < 68) {
+          enemy.vx *= Math.pow(0.12, dt);
+          const pushIn = ts.x < this.x + this.facing * 120 ? 1 : -1;
+          enemy.x += pushIn * 45 * dt;
+        }
         if (ts.life <= 0) {
           this.tombstones.splice(i, 1);
         }
       }
     }
 
-    // Advance Giant Grim Reaper Death Avatar (life counts down from maxLife -> 0 so (1 - da.life / da.maxLife) * 30 = 0..29)
+    // Advance Giant Grim Reaper Death Avatar
     if (this.deathAvatar) {
       this.deathAvatar.life -= dt;
       if (this.deathAvatar.life <= 0) {
@@ -519,15 +627,8 @@ export class Reaper extends Fighter {
         return;
       }
 
-      // Wraith-Shroud Low Crouch & Boomerang Phantom Scythe throw at mid-range (dist 205..408)!
-      if (
-        dist >= 205 &&
-        dist <= 408 &&
-        this.autoCooldown <= 0 &&
-        this.crouchCooldown <= 0 &&
-        this.comboStep % 3 === 2
-      ) {
-        this.autoCooldown = this.autoInterval * (0.92 + Math.random() * 0.2);
+      // Trigger Underground Grave-Submerge & Uppercut Eruption to ambush enemies from 190..360px!
+      if (dist >= 190 && dist <= 360 && this.crouchCooldown <= 0) {
         this.startCrouch(enemy, game);
         return;
       }
@@ -553,8 +654,8 @@ export class Reaper extends Fighter {
     const t = this.stateTimer;
     const mode = this.comboStep % 3;
 
-    if (t < 0.30) {
-      this.torsoAngle = -this.facing * 0.24 * (t / 0.30);
+    if (t < 0.28) {
+      this.torsoAngle = -this.facing * 0.24 * (t / 0.28);
       if (Math.random() < 0.58) {
         game.vfx.spawnParticle({
           x: this.x - this.facing * 18 + (Math.random() - 0.5) * 28,
@@ -566,60 +667,56 @@ export class Reaper extends Fighter {
           maxLife: 0.26
         });
       }
-    } else if (t < 0.66) {
+    } else if (t < 0.64) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.comboStep++;
-        this.vx += this.facing * 165;
+        this.vx += this.facing * 135;
         this.torsoVel = this.facing * 13;
 
-        const cx = this.x + this.facing * 48;
+        const cx = this.x + this.facing * 52;
         const cy = this.y - 98;
-        const startA = this.facing === 1 ? -1.75 : Math.PI - 1.05;
-        const endA = this.facing === 1 ? 1.15 : Math.PI + 1.75;
+        // Reverse-hook slash arc (curves INWARD toward Malakor!)
+        const startA = this.facing === 1 ? 1.25 : Math.PI - 1.25;
+        const endA = this.facing === 1 ? -1.75 : Math.PI + 1.75;
 
         if (mode === 2) {
-          // 3rd Strike: Hurls a Spinning Boomerang Twin-Blade Phantom Scythe!
+          // 3rd Strike: Hurls a Returning Twin-Blade Boomerang Phantom Scythe!
           if (game.audio) game.audio.play('scythe_reap', this.x);
-          game.vfx.spawnDamageText(this.x, this.y - 146, 0, false, 'PHANTOM SCYTHE!', '#e879f9');
-          game.vfx.spawnProjectile({
-            x: this.x + this.facing * 56,
-            y: this.y - 104,
-            vx: this.facing * 612,
-            vy: 0,
-            radius: 22,
-            color: '#c084fc',
-            coreColor: '#f43f5e',
-            owner: this,
-            damage: 54,
-            type: 'phantom_scythe'
-          });
+          game.vfx.spawnDamageText(this.x, this.y - 146, 0, false, 'BOOMERANG SCYTHE!', '#e879f9');
+          this.spawnBoomerangScythe(game);
         } else {
           if (game.audio) game.audio.play('scythe_reap', this.x);
         }
 
-        game.vfx.spawnSlash(cx, cy, 124, startA, endA, '#9333ea', 0.30);
-        game.vfx.spawnSlash(cx, cy, 102, startA, endA, '#c084fc', 0.24);
+        game.vfx.spawnSlash(cx, cy, 128, startA, endA, '#9333ea', 0.30);
+        game.vfx.spawnSlash(cx, cy, 104, startA, endA, '#c084fc', 0.24);
         game.vfx.spawnGlyphBurst(cx, cy, 5, 'abyssal');
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 52) {
-          const isCrit = mode === 2 || Math.random() < 0.24;
-          const dmg = mode === 2 ? 79 : mode === 1 ? 69 : 63;
-          enemy.takeDamage(dmg, this, isCrit, 85, mode === 2 ? -110 : 0);
-          this.leechLife(mode === 2 ? 17 : 12, enemy, game, 'SOUL LEECH');
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 54) {
+          const isCrit = mode === 2 || Math.random() < 0.26;
+          const dmg = mode === 2 ? 68 : mode === 1 ? 64 : 58;
+          // Hits 1 & 2 physically HOOK and PULL the enemy 82px INWARD toward Malakor (knockX = -82)!
+          const inwardPull = mode === 2 ? -95 : -82;
+          enemy.takeDamage(dmg, this, isCrit, inwardPull, mode === 2 ? -115 : -35);
+          if (!enemy.unstoppablePoise) {
+            const pullDir = Math.sign(this.x - enemy.x);
+            enemy.x += pullDir * 36;
+          }
+          this.leechLife(mode === 2 ? 18 : 14, enemy, game, 'SOUL HOOK');
           if (game.audio) game.audio.play(mode === 2 ? 'soul_drain' : 'scythe_reap', enemy.x);
           if (game.renderer) game.renderer.triggerHitStop(0.055);
           game.vfx.spawnBurst(enemy.x, enemy.y - 96, 14, '#c084fc', 235);
           game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 5, 'abyssal');
         }
       }
-    } else if (t >= 0.88) {
+    } else if (t >= 0.86) {
       this.setState('IDLE');
     }
   }
 
   updateSkill(dt, enemy, game) {
-    // SIGNATURE SKILL: "SPECTRAL CHAIN" (Skeletal Bone-Claw Grapple -> Executioner's Scythe Guillotine)
+    // SIGNATURE SKILL: "SPECTRAL CHAIN & HAUNTED TOMBSTONE PRISON"
     const t = this.stateTimer;
     const ww = game.renderer.worldWidth;
 
@@ -645,8 +742,8 @@ export class Reaper extends Fighter {
         game.vfx.spawnGlyphBurst(targetX, targetY, 8, 'abyssal');
 
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(25, this, !enemy.hasPoise, -180, -40);
-          game.vfx.spawnDamageText(enemy.x, enemy.y - 154, 0, false, 'DEATH GRIP!', '#e879f9');
+          enemy.takeDamage(28, this, !enemy.hasPoise, -185, -45);
+          game.vfx.spawnDamageText(enemy.x, enemy.y - 154, 0, false, 'TOMBSTONE PRISON!', '#e879f9');
           game.renderer.triggerShake(10, 0.20);
         }
       }
@@ -656,7 +753,7 @@ export class Reaper extends Fighter {
           this.x += this.facing * 128 * dt;
         }
         const desiredX = Math.max(95, Math.min(ww - 95, this.x + this.facing * 121));
-        enemy.x += (desiredX - enemy.x) * Math.min(1, dt * 6.0);
+        enemy.x += (desiredX - enemy.x) * Math.min(1, dt * 6.5);
         this.chainClaw = {
           targetX: enemy.x,
           targetY: enemy.y - 96,
@@ -678,9 +775,13 @@ export class Reaper extends Fighter {
       game.vfx.spawnSlash(reapX, this.y - 98, 114, startA, endA, '#f43f5e', 0.28);
       game.vfx.spawnGlyphBurst(reapX, this.y - 98, 9, 'abyssal');
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 241) {
-        enemy.takeDamage(63, this, true, 115, -135);
-        this.leechLife(39, enemy, game, 'SOUL DRAIN');
+      // Raise 2 Haunted Gothic Tombstones on BOTH sides of the enemy to cage them!
+      const prisonCenter = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 121;
+      this.spawnTombstonePrison(prisonCenter, game);
+
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 245) {
+        enemy.takeDamage(65, this, true, -35, -135);
+        this.leechLife(40, enemy, game, 'SOUL DRAIN');
       }
     } else if (t >= 0.88) {
       this.isDeflecting = false;
@@ -820,7 +921,6 @@ export class Reaper extends Fighter {
       game.renderer.triggerAberration(16);
       game.renderer.triggerHitStop(0.095);
 
-      // Intersecting Twin X-Guillotine Blood-Moon Scythe Slashes across the prey
       game.vfx.spawnSlash(targetX, this.groundY - 115, 210, -2.1, 1.2, '#c084fc', 0.44);
       game.vfx.spawnSlash(targetX, this.groundY - 115, 195, Math.PI - 1.2, Math.PI + 2.1, '#f43f5e', 0.40);
       game.vfx.spawnShockwave(targetX, this.groundY, 195, '#c084fc', 0.44, true);
@@ -850,7 +950,46 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Renders the Abyssal Floor Shadow Pool & Grasping Bone Hands when Malakor dodges/dashes
+   * Renders the Returning Twin-Blade Phantom Scythe Boomerang (from Row 0 of reaper_vfx.png)
+   */
+  drawBoomerangScythe(ctx) {
+    if (!this.activeBoomerangScythe) return;
+    const bs = this.activeBoomerangScythe;
+    const vfxSheet = PixelForge.initAssets().reaper?.vfx;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    const bx = Math.round(bs.x);
+    const by = Math.round(bs.y);
+
+    // Tether soul-thread connecting Malakor's hand to the returning Boomerang Scythe
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = bs.phase === 'return' ? 'rgba(244, 63, 94, 0.55)' : 'rgba(192, 132, 252, 0.38)';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    ctx.moveTo(this.x + this.facing * 36, this.y - 96);
+    ctx.lineTo(bx, by);
+    ctx.stroke();
+    ctx.restore();
+
+    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+      const col = Math.floor((bs.timer * 38) % 30);
+      const size = 148;
+      const half = Math.round(-size * 0.5);
+      ctx.translate(bx, by);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.36;
+      ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, half - 6, half - 6, size + 12, size + 12);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.96;
+      ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, half, half, size, size);
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Renders the Abyssal Floor Shadow Pool & Grasping Bone Hands when Malakor submerges underground!
    */
   drawShadowPool(ctx) {
     const px = Math.round(this.x / 4) * 4;
@@ -859,16 +998,16 @@ export class Reaper extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    ctx.fillStyle = 'rgba(88, 28, 135, 0.78)';
-    ctx.fillRect(px - 80, py - 8, 160, 16);
-    ctx.fillStyle = 'rgba(192, 132, 252, 0.85)';
-    ctx.fillRect(px - 68, py - 6, 136, 12);
+    ctx.fillStyle = 'rgba(88, 28, 135, 0.84)';
+    ctx.fillRect(px - 88, py - 9, 176, 18);
+    ctx.fillStyle = 'rgba(192, 132, 252, 0.90)';
+    ctx.fillRect(px - 74, py - 6, 148, 12);
     ctx.fillStyle = '#090514';
-    ctx.fillRect(px - 58, py - 4, 116, 8);
+    ctx.fillRect(px - 62, py - 4, 124, 8);
 
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-      const col = Math.min(29, Math.max(0, Math.floor((this.stateTimer / 0.42) * 30)));
-      ctx.drawImage(vfxSheet, col * 208, 416 + 124, 208, 84, px - 68, py - 48, 136, 56);
+      const col = Math.min(29, Math.max(0, Math.floor(((this.stateTimer * 28) % 30))));
+      ctx.drawImage(vfxSheet, col * 208, 416 + 124, 208, 84, px - 72, py - 50, 144, 58);
     }
     ctx.restore();
   }
@@ -940,7 +1079,6 @@ export class Reaper extends Fighter {
     const dist = Math.hypot(dx, dy) || 1;
     const angle = Math.atan2(dy, dx);
 
-    // 1. Smooth Continuous Violet-Crimson Soul-Fire Catenary Bloom along the chain path (Zero Stepped Squares!)
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.strokeStyle = 'rgba(168, 85, 247, 0.42)';
@@ -958,7 +1096,6 @@ export class Reaper extends Fighter {
     ctx.stroke();
     ctx.restore();
 
-    // 2. Crisp Interlocking Dark-Iron & Amethyst-Rune Chain Links
     const numLinks = Math.max(8, Math.min(22, Math.round(dist / 18)));
     for (let i = 0; i <= numLinks; i++) {
       const u = i / numLinks;
@@ -970,15 +1107,12 @@ export class Reaper extends Fighter {
       ctx.translate(lx, ly);
       ctx.rotate(angle + (i % 2 === 0 ? 0.18 : -0.18));
 
-      // Outer obsidian iron link shadow
       ctx.fillStyle = '#090514';
       ctx.fillRect(-9, -5, 18, 10);
-      // Shaded dark steel & amethyst inner link bevel
       ctx.fillStyle = i % 2 === 0 ? '#64748b' : '#9333ea';
       ctx.fillRect(-7, -3, 14, 6);
       ctx.fillStyle = i % 2 === 0 ? '#cbd5e1' : '#e879f9';
       ctx.fillRect(-5, -3, 10, 2);
-      // Hollow link center
       if (i % 2 === 0) {
         ctx.fillStyle = '#090514';
         ctx.fillRect(-3, -1, 6, 2);
@@ -986,7 +1120,6 @@ export class Reaper extends Fighter {
       ctx.restore();
     }
 
-    // 3. 30fps Articulating Skeletal Bone-Claw & Abyssal Chain Hook from Row 1 (col * 208, 208, 208, 208)
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
       const dir = Math.sign(dx) || this.facing;
       const clawSize = 156;
@@ -998,15 +1131,12 @@ export class Reaper extends Fighter {
       ctx.rotate(gripRot);
       const cdx = Math.round(-clawSize * 0.56);
       const cdy = Math.round(-clawSize * 0.5);
-      // Stepped outer crimson-violet pixel bloom aura
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.28;
       ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, cdx - 8, cdy - 8, clawSize + 16, clawSize + 16);
-      // Main chunky-pixel claw
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 0.96;
       ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, cdx, cdy, clawSize, clawSize);
-      // Balanced luminous core bloom pass
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.24;
       ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, cdx, cdy, clawSize, clawSize);
@@ -1035,7 +1165,6 @@ export class Reaper extends Fighter {
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = fade * 0.98;
 
-    // Clip to floor so the Colossal Death Avatar rises smoothly out of the graveyard floor behind the enemy
     ctx.beginPath();
     ctx.rect(ax - 280, ay - 420, 560, 426);
     ctx.clip();
@@ -1047,7 +1176,6 @@ export class Reaper extends Fighter {
     ctx.translate(ax, ay - drawSize * 0.5 + 14 + riseY + floatBob);
     ctx.scale(da.facing || this.facing, 1);
 
-    // Volumetric Blood-Moon & Abyssal Violet Halo behind the Hooded Death Avatar
     if (renderer && renderer.glowViolet) {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = fade * 0.56;
@@ -1060,17 +1188,14 @@ export class Reaper extends Fighter {
     }
 
     const dHalf = Math.round(-drawSize * 0.5);
-    // Stepped outer abyssal pixel bloom aura
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = fade * 0.34;
     ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf - 10, dHalf - 10, drawSize + 20, drawSize + 20);
 
-    // Main 30fps chunky-pixel Grim Reaper Sovereign of Death Avatar sprite (Row 3)
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = fade * 0.94;
     ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf, dHalf, drawSize, drawSize);
 
-    // Balanced inner crimson-violet rune bloom pass
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = fade * (0.24 + Math.sin(da.swingProgress * Math.PI) * 0.16);
     ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf, dHalf, drawSize, drawSize);
@@ -1079,7 +1204,7 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Renders Malakor's Crimson-Violet Wraith Afterimage Silhouettes left behind during Phantom Cross-Reap Blitz
+   * Renders Malakor's Crimson-Violet Wraith Afterimage Silhouettes
    */
   drawWraithEchoes(ctx) {
     if (!this.wraithEchoes || !this.wraithEchoes.length) return;
@@ -1100,7 +1225,7 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Renders Ethereal Sinuous Soul-Fire Comets flying from the enemy into Malakor's chest with Radial Light Emission!
+   * Renders Ethereal Sinuous Soul-Fire Comets flying from the enemy into Malakor's chest
    */
   drawSoulWisps(ctx, renderer = null) {
     if (!this.soulWisps.length) return;
@@ -1114,7 +1239,6 @@ export class Reaper extends Fighter {
       const wy = w.startY + (ty - w.startY) * u + Math.sin(u * Math.PI) * w.arcHeight;
 
       ctx.save();
-      // 1. Radial Violet Soul-Light Halo around each Soul-Fire Comet
       const cx = Math.round(wx / 2) * 2;
       const cy = Math.round(wy / 2) * 2;
       if (renderer && renderer.glowViolet) {
@@ -1123,7 +1247,6 @@ export class Reaper extends Fighter {
         ctx.drawImage(renderer.glowViolet, cx - 38, cy - 38, 76, 76);
       }
 
-      // 2. Saturated soul-fire comet ribbon trail with lighter bloom
       for (let tail = 6; tail >= 1; tail--) {
         const tu = Math.max(0, u - tail * 0.035);
         const tlx = Math.round((w.startX + (tx - w.startX) * tu) / 2) * 2;
@@ -1141,7 +1264,6 @@ export class Reaper extends Fighter {
         ctx.fillRect(tlx - sz * 0.5, tly - sz * 0.5, sz, sz);
       }
 
-      // 3. Richly Saturated Soul-Wisp Core + Incandescent Center
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 0.98;
       ctx.fillStyle = '#7e22ce';
@@ -1156,20 +1278,21 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Background skill & Ultimate pass (rendered BEHIND the fighters so the Towering Death Avatar & Tombstones frame the duel!)
+   * Background skill & Ultimate pass
    */
   drawForegroundOverlay(ctx, renderer = null) {
     this.drawTombstones(ctx);
     this.drawDeathAvatar(ctx, renderer);
     this.drawWraithEchoes(ctx);
     this.drawSkeletalChainClaw(ctx);
+    this.drawBoomerangScythe(ctx);
     if (this.state !== 'ULTIMATE' && !this.deathAvatar) {
       this.drawSoulWisps(ctx, renderer);
     }
   }
 
   /**
-   * Foreground Ultimate pass (rendered IN FRONT of all fighters!)
+   * Foreground Ultimate pass
    */
   drawUltimateForeground(ctx, renderer = null) {
     if (this.state === 'ULTIMATE' || this.deathAvatar) {
@@ -1181,9 +1304,9 @@ export class Reaper extends Fighter {
     const sprites = PixelForge.initAssets().reaper;
     if (!sprites) return;
 
-    // Shadow-Grave Submerge Puddle during DODGE or DASH (not during aerial flip-vault JUMP)
-    const isSubmerged = !isReflection && (this.state === 'DODGE' || this.state === 'DASH') && !this.isFlipVault;
-    if (isSubmerged) {
+    const showShadowPool =
+      !isReflection && (this.isSubmerged || ((this.state === 'DODGE' || this.state === 'DASH') && !this.isFlipVault));
+    if (showShadowPool) {
       this.drawShadowPool(ctx);
     }
 
@@ -1194,21 +1317,31 @@ export class Reaper extends Fighter {
     const h = 208;
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
 
-    // Grounded offset (+6px) so Malakor's armored boots sit firmly in the floor contact shadow, plus rhythmic walk step bob!
     const groundPlantOffset = 6;
     const walkBob =
       !isReflection && this.state === 'WALK'
         ? Math.round(Math.abs(Math.sin(this.walkPhase * 4.0)) * 3)
         : 0;
-    const sinkOffset = isSubmerged
-      ? Math.round(Math.sin(Math.min(1, this.stateTimer / 0.12) * (Math.PI * 0.5)) * 32)
+    const sinkOffset = showShadowPool
+      ? Math.round((this.submergeDepth || 0.7) * 52)
       : 0;
+
+    // Clip to floor when sinking underground during Grave-Submerge!
+    if (showShadowPool && sinkOffset > 12) {
+      ctx.beginPath();
+      ctx.rect(this.x - 160, this.groundY - 240, 320, 246);
+      ctx.clip();
+    }
 
     ctx.translate(
       Math.round(this.x),
       Math.round(this.y + groundPlantOffset - walkBob + sinkOffset)
     );
     ctx.scale(this.facing, 1);
+
+    if (!isReflection && this.wraithAlpha < 0.99) {
+      ctx.globalAlpha = this.wraithAlpha;
+    }
 
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection, renderer);
 

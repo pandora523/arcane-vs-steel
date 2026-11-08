@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
 """
-Builds Kaze-Maru's (Ronin - Storm-Blade Samurai) 30-Frame-Per-Animation HD-2D Sprite Sheet:
+Builds Kaze-Maru's (Ronin - Storm-Blade Iaido Master) 30-Frame-Per-Animation HD-2D Sprite Sheet:
 - 9 rows x 30 columns = 270 unique frames (6240 x 1872 at 208x208 per cell, 52x52 logical upscaled 4x NEAREST):
-  * Row 0: IDLE (30 frames)
-  * Row 1: WALK (30 frames)
-  * Row 2: AUTO_ATTACK - THUNDER IAIDO & JODAN CLEAVE (30 frames)
-  * Row 3: SKILL - RAIJIN THUNDER-PILLAR & FLASH-CUT (30 frames)
-  * Row 4: ULTIMATE - SUSANOO: THOUSAND-BLADE THUNDERSTORM (30 frames)
+  * Row 0: IDLE - LOW COILED IAIDO / WAKIGAMAE STANCE (30 frames)
+  * Row 1: WALK - LOW GLIDING SAMURAI SURIASHI FOOTWORK (30 frames)
+  * Row 2: AUTO_ATTACK - 3-HIT SANDAN KENDO & IAIDO DRAW-CUT COMBO (30 frames)
+  * Row 3: SKILL - ZANTETSUKEN 5-FOLD LIGHTNING ZIG-ZAG & SHEATH CLICK (30 frames)
+  * Row 4: ULTIMATE - SUSANOO OMNISLASH STORM (30 frames)
   * Row 5: DEATH & HURT (30 frames)
-  * Row 6: DASH - IAIDO LIGHTNING FLASH-STEP (30 frames)
-  * Row 7: CROUCH - RAIJIN THUNDER-DRUM PARRY & IAIDO COUNTER (30 frames)
-  * Row 8: JUMP - RAIJIN SKY-VAULT & AERIAL CLEAVE (30 frames)
-- Un-inked clean pixel art: zero white background halo, strictly ONE Two-Handed Thunder-Odachi Great-Katana per frame
-  gripped by BOTH hands via 2-bone IK arms from Rear Shoulder (21, 18) and Lead Shoulder (27, 19),
-  grounded horizontal prone body & flat Odachi on Death F18..F29, and zero bouncy-ball frames in Jump.
+  * Row 6: DASH - SHUNPO LIGHTNING STEP (30 frames)
+  * Row 7: CROUCH - IAIDO SERENE MIND COUNTER-BLINK (30 frames)
+  * Row 8: JUMP - TSUBAME GAESHI DOUBLE AIR-SLASH (30 frames)
+- 100% Unique Samurai / Iaido Master Silhouette & Animation Set:
+  * NO European left-billowing cape (stripped at x < 19, y = 18..40).
+  * Waist-Worn Lacquered Katana Scabbard (`Saya`) with Golden `Koiguchi`/`Kojiri` Fittings & Flowing Violet-Cyan `Sageo` Cord (`x = 7..21, y = 26..33`).
+  * Floating Ring of 5 Raijin Taiko Thunder-Drums (`Tomoe` drums linked by crackling cyan-violet lightning) hovering behind his shoulders (`cx = 23, cy = 16, rx = 10, ry = 7`).
+  * Strictly ONE Two-Handed Thunder-Odachi Great-Katana per frame gripped by BOTH hands via 2-bone IK arms.
 """
 
 from collections import deque
@@ -149,6 +151,9 @@ def ensure_safe_cell(cell, margin=2):
                         shifted[ny, nx] = out[y, x]
         out = shifted
 
+    out = fill_layer_pinholes(out, lo, hi, lo, hi, require_3_neighbors=True)
+    out = fill_layer_pinholes(out, lo, hi, lo, hi, require_3_neighbors=True)
+
     # Strictly clear perimeter outside [2..49, 2..49]
     out[:lo, :, :] = 0
     out[52 - lo :, :, :] = 0
@@ -164,15 +169,141 @@ def composite_over(base, over):
     return res
 
 
+def draw_samurai_saya_and_raijin_drums(
+    canvas,
+    dy_offset=0,
+    phase=0.0,
+    sageo_wave=1.0,
+    show_drums=True,
+    koiguchi_glint=0.0,
+):
+    """
+    Renders Kaze-Maru's two iconic Samurai silhouette features (replacing the old left-billowing cape):
+    a) Floating Ring of 5 Raijin Taiko Thunder-Drums (`Tomoe` drums linked by crackling cyan-violet lightning)
+       hovering behind his shoulders (`cx = 23, cy = 16 + dy_offset, rx = 10, ry = 7`), drawn BEHIND the torso
+       so his crescent kabuto & silver topknot mane pop cleanly in front!
+    b) Waist-Worn Lacquered Katana Scabbard (`Saya`) with Golden `Koiguchi`/`Kojiri` Fittings & Flowing
+       Violet-Cyan `Sageo` Cord extending diagonally behind his left hip (`x = 7..21, y = 26..33`).
+    """
+    bg_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    fg_saya = np.zeros((52, 52, 4), dtype=np.uint8)
+
+    # --- (b) Floating Ring of 5 Raijin Taiko Thunder-Drums behind shoulders ---
+    if show_drums:
+        cx = 23.0
+        cy = 16.0 + dy_offset
+        rx = 10.0
+        ry = 7.0
+        wobble = math.sin(phase) * 0.08
+        drum_angles_deg = [-172.0, -134.0, -92.0, -48.0, -10.0]
+        drum_centers = []
+        for idx, a_deg in enumerate(drum_angles_deg):
+            ang = math.radians(a_deg) + wobble * (1 if idx % 2 == 0 else -1)
+            dx = cx + math.cos(ang) * rx
+            dy = cy + math.sin(ang) * ry
+            drum_centers.append((dx, dy))
+
+        # Crackling cyan-violet lightning arcs linking the 5 Taiko drums around the ring
+        for i in range(len(drum_centers) - 1):
+            x0, y0 = drum_centers[i]
+            x1, y1 = drum_centers[i + 1]
+            mx = 0.5 * (x0 + x1) + math.cos(phase + i) * 0.8
+            my = 0.5 * (y0 + y1) - 0.8 + math.sin(phase * 2.0 + i) * 0.6
+            col_arc1 = CYAN_BRIGHT if (i + int(round(phase * 2))) % 2 == 0 else VIOLET_BRIGHT
+            col_arc2 = VIOLET_GLOW if col_arc1 == CYAN_BRIGHT else CYAN_LIGHT
+            draw_line_px(bg_layer, x0, y0, mx, my, col_arc1)
+            draw_line_px(bg_layer, mx, my, x1, y1, col_arc2)
+
+        # Render each 3x3 Raijin Taiko Drum with golden-brass rim and glowing Tomoe core
+        for idx, (dx, dy) in enumerate(drum_centers):
+            ix, iy = int(round(dx)), int(round(dy))
+            for oy in (-1, 0, 1):
+                for ox in (-1, 0, 1):
+                    if ox == 0 and oy == 0:
+                        col_d = DIAMOND_WHITE if (idx + int(round(phase * 3))) % 2 == 0 else CYAN_LIGHT
+                    elif abs(ox) + abs(oy) == 1:
+                        col_d = BRASS_BRIGHT if (ox + oy + idx) % 2 == 0 else INDIGO_DEEP
+                    else:
+                        col_d = BRASS_MID
+                    set_px(bg_layer, ix + ox, iy + oy, col_d)
+
+    # --- (a) Waist-Worn Lacquered Katana Scabbard (`Saya`) & Flowing `Sageo` Cord (x = 7..21, y = 26..33) ---
+    # Extending diagonally from left waist koiguchi (21, 26 + dy_offset) to kojiri chape (7, 32 + dy_offset)
+    kx0, ky0 = 21.0, 26.0 + dy_offset
+    kx1, ky1 = 7.0, 32.0 + dy_offset
+    steps = 28
+    for i in range(steps + 1):
+        u = i / float(steps)
+        # Subtle curved katana sori profile along the scabbard
+        sori = math.sin(u * math.pi) * 0.75
+        sx = kx0 + (kx1 - kx0) * u
+        sy = ky0 + (ky1 - ky0) * u - sori
+
+        if u <= 0.12:
+            # Golden Koiguchi (scabbard mouth collar) at x = 20..21
+            c_top = GOLD_WHITE
+            c_mid = BRASS_BRIGHT
+            c_bot = BRASS_MID
+        elif u >= 0.88:
+            # Golden Kojiri (scabbard tip chape) at x = 7..8
+            c_top = GOLD_WHITE if u >= 0.94 else BRASS_BRIGHT
+            c_mid = BRASS_BRIGHT
+            c_bot = BRASS_DARK
+        elif 0.26 <= u <= 0.34:
+            # Golden Kurikata (cord attachment fitting) near x = 16..17
+            c_top = BRASS_BRIGHT
+            c_mid = GOLD_WHITE
+            c_bot = INDIGO_DEEP
+        else:
+            # Lacquered deep indigo-violet saya with electric-cyan urushi lacquer stripe
+            c_top = INDIGO_DEEP
+            c_mid = CYAN_MID if (i % 5 == 0) else CAPE_MID
+            c_bot = CAPE_DEEP
+
+        target = fg_saya if u <= 0.25 else bg_layer
+        set_px(target, sx, sy - 0.5, c_top)
+        set_px(target, sx, sy, c_mid)
+        set_px(target, sx, sy + 0.6, c_bot)
+
+    # Flowing Violet-Cyan Sageo Cord hanging and waving from Kurikata (x = 16, y = 28 + dy_offset)
+    cord_x0 = 16.0
+    cord_y0 = 28.0 + dy_offset
+    for c_step in range(1, 7):
+        u_c = c_step / 6.0
+        sway = math.sin(phase - u_c * 2.4) * (1.6 * u_c * sageo_wave)
+        cx_p = cord_x0 - u_c * 2.5 + sway
+        cy_p = cord_y0 + c_step * 0.85
+        col_c = CYAN_LIGHT if c_step % 2 == 0 else VIOLET_BRIGHT
+        set_px(bg_layer, cx_p, cy_p, col_c)
+        set_px(bg_layer, cx_p + 0.7, cy_p, VIOLET_GLOW if c_step % 2 == 0 else INDIGO_MID)
+
+    # Optional bright Battoujutsu / Noto glint at the hip Koiguchi (x = 21..23, y = 26 + dy_offset)
+    if koiguchi_glint > 0.15:
+        gx, gy = 22, int(round(26 + dy_offset))
+        set_px(fg_saya, gx, gy, DIAMOND_WHITE)
+        r_g = 2 if koiguchi_glint < 0.7 else 3
+        for d in range(1, r_g + 1):
+            col_g = DIAMOND_WHITE if d == 1 else CYAN_LIGHT
+            set_px(fg_saya, gx + d, gy, col_g)
+            set_px(fg_saya, gx - d, gy, col_g)
+            set_px(fg_saya, gx, gy + d, col_g)
+            set_px(fg_saya, gx, gy - d, col_g)
+
+    out = composite_over(bg_layer, canvas)
+    out = composite_over(out, fg_saya)
+    return out
+
+
 def extract_clean_base_sprite(
     path="/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/4f1fb80f-a88f-4496-9746-b4b9fe84f6d4/ronin_v1_base_1794151225087.jpg",
 ):
     """
     Loads `ronin_v1_base_1794151225087.jpg` (1024x1024), performs a BFS flood-fill from all 4 image borders
     to strip the white background + 3-pass anti-aliased fringe (ZERO white halo!), crops tight character bounds,
-    and scales cleanly into the 52x52 logical cell (`y = 5..45`, boots planted firmly at `y = 45`),
-    preserving Kaze-Maru's crescent kabuto, silver mane, glowing cyan eyes, indigo-violet breastplate (`do`),
-    waist sash (`obi`), kusazuri hip tassets (`y = 26..34, x = 20..33`), and billowing haori cape (`x = 5..20, y = 18..38`).
+    scales cleanly into the 52x52 logical cell (`y = 5..45`, boots planted firmly at `y = 45`),
+    and strips the large left-billowing cape (`x < 19, y = 18..40`) so Kaze-Maru has a 100% distinct
+    Samurai silhouette (crescent kabuto, silver topknot mane, glowing cyan eyes, indigo-violet `do` breastplate,
+    waist `obi`, and `kusazuri` hip tassets) with ZERO shared cape silhouette!
     """
     im = Image.open(path).convert("RGBA")
     arr = np.array(im, dtype=np.uint8)
@@ -246,6 +377,11 @@ def extract_clean_base_sprite(
                 if touches_empty and min(r, g, b) > 175 and (max(r, g, b) - min(r, g, b)) < 38:
                     cell[y, x] = (0, 0, 0, 0)
 
+    # Strip the large European left-billowing cape (x < 19, y = 16..41) so Kaze-Maru has a pure Samurai silhouette!
+    cell[16:18, :18] = 0
+    cell[18:41, :19] = 0
+    cell[29:38, :20] = 0
+
     # Plant right boot (x=29..37, y=38..44) down +1px so BOTH boots plant firmly on y=45
     # while duplicating row 38 so zero horizontal slit opens at y=38!
     right_boot = cell[38:45, 29:38].copy()
@@ -258,30 +394,30 @@ def extract_clean_base_sprite(
 def neutralize_baked_side_arms(tpl_img, max_chest_x=31):
     """
     Neutralizes/strips the lowered static side-arms on Kaze-Maru's torso so the two-handed
-    2-bone IK arms gripping the Thunder-Odachi are 100% cleanly visible with ZERO extra limbs or side fists:
-    1. Erases the protruding lowered right arm & fist on the right side (`x > max_chest_x` for `18 <= y <= 28`).
-    2. Repaints the lowered left forearm & fist (`19 <= x <= 23, 20 <= y <= 28`) into clean dark indigo/violet
-       haori cape & waist armor shading (`CAPE_DARK`, `CAPE_DEEP`, `INDIGO_DARK`), while preserving his
-       upper shoulder `sode` pauldron (`y <= 19`), central lightning chestplate `do` (`24 <= x <= 31, 17 <= y <= 24`),
-       waist `obi` (`y = 24..25`), and `kusazuri` hip tassets (`y >= 26, x = 22..33`).
+    2-bone IK arms gripping the Thunder-Odachi are 100% cleanly visible with ZERO extra limbs or side fists,
+    and ensures the left torso/hip edge (x = 19..22) is crisp dark indigo Samurai `do` armor.
     """
     out = tpl_img.copy()
-    # 1. Strip protruding lowered right arm & fist (y = 17..28, x > max_chest_x)
+    # 1. Ensure left cape area stays stripped
+    out[18:41, :19] = 0
+    out[29:38, :20] = 0
+
+    # 2. Strip protruding lowered right arm & fist (y = 17..28, x > max_chest_x)
     for y in range(17, 29):
         lim_x = max_chest_x + 1 if y <= 18 else max_chest_x
         for x in range(lim_x + 1, 50):
             out[y, x] = (0, 0, 0, 0)
 
-    # 2. Neutralize lowered left forearm & fist (y = 20..28, x = 19..23) into haori cape & torso side
+    # 3. Neutralize lowered left forearm & fist (y = 20..28, x = 19..23) into clean dark indigo torso armor
     for y in range(20, 29):
         for x in range(19, 24):
             if out[y, x, 3] > 0:
-                if x == 19:
-                    out[y, x] = CAPE_DEEP
-                elif x <= 21:
-                    out[y, x] = CAPE_DARK if (x + y) % 2 == 0 else CAPE_DEEP
-                else:
+                if x <= 20:
+                    out[y, x] = INDIGO_DEEP
+                elif x == 21:
                     out[y, x] = INDIGO_DARK if (x + y) % 2 == 0 else INDIGO_DEEP
+                else:
+                    out[y, x] = INDIGO_MID if (x + y) % 2 == 0 else INDIGO_DARK
 
     # Ensure clean right chestplate border at x = max_chest_x (y = 19..27)
     for y in range(19, 28):
@@ -293,30 +429,25 @@ def neutralize_baked_side_arms(tpl_img, max_chest_x=31):
 
 def make_clean_templates():
     """
-    Constructs Kaze-Maru's modular anatomical templates from the clean 52x52 base sprite:
+    Constructs Kaze-Maru's modular anatomical templates from the clean 52x52 cape-free Samurai base sprite:
     - `stand`: full standing storm-samurai with static lowered side-arms neutralized and boots planted at y=45
-    - `stand_upper`: upper body, kabuto, haori cape & kusazuri hip tassets (`y = 0..34`)
+    - `stand_upper`: upper body, kabuto, & kusazuri hip tassets (`y = 0..34`)
     - `leg_back` (`leg_near`) and `leg_front` (`leg_far`): lower suneate shin-greaves & war-boots at `y = 38..46`
     - `lunge`: forward-leaning Kendo lunge body (+2px upper-body lean) with static arms neutralized
     - `kneel`: dropped to one knee (`y + 6px`) with static arms neutralized
     - `fall`: 90-degree horizontally collapsed prone samurai on the floor (`y = 35..46`)
-    - `dash`: forward-tilted (+14 deg) Iaido flash-step body with streaming silver mane & haori cape
+    - `dash`: forward-tilted (+14 deg) Shunpo flash-step body with streaming silver topknot mane
     """
     raw = extract_clean_base_sprite()
     stand = neutralize_baked_side_arms(raw, max_chest_x=31)
 
-    # Extract lower suneate shin-greaves & war-boots at y=38..46
-    # - leg_back (viewer left): 19 <= x <= 26, 38 <= y <= 46
-    # - leg_front (viewer right): 29 <= x <= 38, 38 <= y <= 46
     leg_back_patch = np.zeros((52, 52, 4), dtype=np.uint8)
     leg_front_patch = np.zeros((52, 52, 4), dtype=np.uint8)
     leg_back_patch[38:47, 19:27] = stand[38:47, 19:27]
     leg_front_patch[38:47, 29:38] = stand[38:47, 29:38]
 
-    # Upper torso, kabuto & kusazuri tassets (y = 0..35)
     stand_upper = np.zeros((52, 52, 4), dtype=np.uint8)
     stand_upper[:36, :] = stand[:36, :]
-    stand_upper[36:40, :20] = stand[36:40, :20]
     stand_upper = fill_layer_pinholes(stand_upper)
 
     # Forward-leaning Kendo lunge body (+2px upper-body lean)
@@ -324,7 +455,7 @@ def make_clean_templates():
     lunge[32:46, :] = stand[32:46, :]
     for y in range(5, 32):
         dx = 2 if y <= 25 else 1
-        for x in range(3, 48):
+        for x in range(12, 48):
             if stand[y, x, 3] > 0 and x + dx <= 49:
                 lunge[y, x + dx] = stand[y, x]
     lunge = neutralize_baked_side_arms(lunge, max_chest_x=33)
@@ -336,7 +467,7 @@ def make_clean_templates():
     for y in range(5, 35):
         ny = y + 6
         if ny < 45:
-            for x in range(3, 46):
+            for x in range(12, 46):
                 if stand[y, x, 3] > 0:
                     kneel[ny, x] = stand[y, x]
     kneel = neutralize_baked_side_arms(kneel, max_chest_x=31)
@@ -344,8 +475,6 @@ def make_clean_templates():
 
     # Horizontally collapsed prone body (90-degree rotated flat on the floor at y=35..46)
     body_no_cape = stand.copy()
-    body_no_cape[18:39, 4:18] = 0
-    # Trim protruding lower horn tip during 90-deg rotation so torso/legs rest flush on the floor
     body_no_cape[5:13, 31:38] = 0
     pil_body = Image.fromarray(body_no_cape, mode="RGBA")
     rot_90 = np.array(
@@ -361,7 +490,6 @@ def make_clean_templates():
             if len(col_ys) == 0:
                 continue
             nx = max(6, min(45, x + dx_shift))
-            # Settle each column of the prone samurai so its bottom rests firmly on y=45..46 (never floating!)
             col_bot = int(col_ys.max())
             target_bot = 46 if (10 <= nx <= 40) else 45
             dy_col = target_bot - col_bot
@@ -370,7 +498,7 @@ def make_clean_templates():
                 fall[ny, nx] = rot_90[y, x]
     fall = fill_layer_pinholes(fall, x0=5, x1=46, y0=34, y1=47, require_3_neighbors=False)
 
-    # Dash body (+14 deg forward Iaido flash-step tilt)
+    # Dash body (+14 deg forward Shunpo flash-step tilt)
     pil_stand = Image.fromarray(stand, mode="RGBA")
     rot_dash = np.array(
         pil_stand.rotate(-13.0, resample=Image.Resampling.NEAREST, center=(26, 36)),
@@ -384,7 +512,7 @@ def make_clean_templates():
             for x in range(52):
                 if rot_dash[y, x, 3] > 0:
                     ny = max(4, min(45, y + d_shift))
-                    nx = max(3, min(48, x))
+                    nx = max(12, min(48, x))
                     dash[ny, nx] = rot_dash[y, x]
     dash = neutralize_baked_side_arms(dash, max_chest_x=33)
     dash = fill_layer_pinholes(dash)
@@ -401,51 +529,55 @@ def make_clean_templates():
     }
 
 
-def apply_cape_and_mane_wave(frame, phase_rad, amplitude=1.5, vertical_flutter=0.6, is_dash=False, rune_pulse=0.6):
+def _extract_full_haori_cape(
+    stand,
+    dy_offset=0,
+    phase=0.0,
+    wave_scale=1.0,
+    lift_y=0,
+    show_drums=True,
+    koiguchi_glint=0.0,
+):
+    """
+    Replaces the old left-billowing cape extraction with Kaze-Maru's pure Samurai back/hip features:
+    - Floating Ring of 5 Raijin Taiko Thunder-Drums (`cx = 23, cy = 16 + dy_offset, rx = 10, ry = 7`)
+    - Waist-Worn Lacquered Katana Scabbard (`Saya`) with Golden `Koiguchi`/`Kojiri` Fittings & Flowing
+      Violet-Cyan `Sageo` Cord (`x = 7..21, y = 26..33`).
+    """
+    empty = np.zeros((52, 52, 4), dtype=np.uint8)
+    return draw_samurai_saya_and_raijin_drums(
+        empty,
+        dy_offset=dy_offset,
+        phase=phase,
+        sageo_wave=wave_scale,
+        show_drums=show_drums,
+        koiguchi_glint=koiguchi_glint,
+    )
+
+
+def apply_cape_and_mane_wave(
+    frame,
+    phase_rad,
+    amplitude=1.5,
+    vertical_flutter=0.6,
+    is_dash=False,
+    rune_pulse=0.6,
+    dy_offset=0,
+    show_drums=True,
+    koiguchi_glint=0.0,
+):
     """
     Animates Kaze-Maru's:
-    1. Billowing indigo-violet haori cape (`x = 3..18, y = 18..38`) with crackling cyan lightning veins
-    2. Flowing silver kabuto horsehair mane (`x = 12..24, y = 6..13`)
-    3. Pulsing electric-cyan & violet armor lightning runes & glowing cyan kabuto eyes (`y = 10..25, x = 23..32`).
+    1. Flowing silver kabuto topknot horsehair mane (`x = 12..24, y = 6..14`)
+    2. Pulsing electric-cyan & violet armor lightning runes & glowing cyan kabuto eyes (`y = 10..34, x = 22..32`)
+    3. Waist-worn lacquered Katana Scabbard (`Saya`) + flowing `Sageo` cord (`x = 7..21, y = 26..33`)
+       and Floating Ring of 5 Raijin Taiko Thunder-Drums behind his shoulders (`cx = 23, cy = 16, rx = 10, ry = 7`).
     """
     out = frame.copy()
 
-    # 1. Billowing Indigo-Violet Haori Cape Wave (x = 3..18, y = 18..38)
-    cape_mask = np.zeros((52, 52), dtype=bool)
-    for y in range(18, 39):
-        max_x = 18 if y < 30 else 16
-        for x in range(3, max_x + 1):
-            if frame[y, x, 3] > 0:
-                cape_mask[y, x] = True
-
-    cape_src = frame.copy()
-    out[cape_mask] = 0
-
-    for y in range(18, 39):
-        u = (y - 18) / 21.0
-        if is_dash:
-            wave_x = -1.4 * u + math.sin(phase_rad * 2.0 - u * 3.5) * (amplitude * u)
-            wave_y = -1.8 * u + math.cos(phase_rad * 2.0 - u * 3.0) * (vertical_flutter * u)
-        else:
-            wave_x = math.sin(phase_rad - u * 3.2) * (amplitude * (0.25 + 0.75 * u))
-            wave_y = math.cos(phase_rad - u * 2.6) * (vertical_flutter * u)
-        dx = int(round(wave_x))
-        dy = int(round(wave_y))
-        max_x = 18 if y < 30 else 16
-        for x in range(3, max_x + 1):
-            if not cape_mask[y, x]:
-                continue
-            nx = max(3, min(19, x + dx))
-            ny = max(15, min(42, y + dy))
-            out[ny, nx] = cape_src[y, x]
-            if dx < 0 and x >= max_x - 3 and out[y, x, 3] == 0:
-                out[y, x] = cape_src[y, x]
-
-    out = fill_layer_pinholes(out, x0=3, x1=20, y0=15, y1=43, require_3_neighbors=False)
-
-    # 2. Silver Kabuto Mane Wave (x = 12..24, y = 6..13)
+    # 1. Silver Kabuto Topknot Mane Wave (x = 12..24, y = 6..15)
     mane_mask = np.zeros((52, 52), dtype=bool)
-    for y in range(6, 14):
+    for y in range(6, 16):
         for x in range(12, 25):
             if out[y, x, 3] > 0:
                 r, g, b, _ = out[y, x]
@@ -454,24 +586,23 @@ def apply_cape_and_mane_wave(frame, phase_rad, amplitude=1.5, vertical_flutter=0
 
     mane_src = out.copy()
     out[mane_mask] = 0
-    for y in range(6, 14):
+    for y in range(6, 16):
         for x in range(12, 25):
             if not mane_mask[y, x]:
                 continue
             u_m = max(0.0, (24 - x) / 11.0)
-            m_dy = int(round(math.sin(phase_rad - u_m * 2.5) * (0.8 * u_m)))
-            ny = max(4, min(15, y + m_dy))
+            m_dy = int(round(math.sin(phase_rad - u_m * 2.5) * (0.85 * u_m)))
+            ny = max(4, min(16, y + m_dy))
             out[ny, x] = mane_src[y, x]
             if u_m < 0.35 and out[y, x, 3] == 0:
                 out[y, x] = mane_src[y, x]
 
-    # 3. Pulsing Electric-Cyan Kabuto Eyes & Armor Lightning Runes (y = 10..34, x = 22..32)
-    for y in range(10, 35):
-        for x in range(22, 33):
+    # 2. Pulsing Electric-Cyan Kabuto Eyes & Armor Lightning Runes (y = 10..35, x = 22..33)
+    for y in range(10, 36):
+        for x in range(22, 34):
             if out[y, x, 3] == 0:
                 continue
             r, g, b, _ = out[y, x]
-            # Bright cyan lightning or eye pixels
             if g > 175 and b > 205:
                 if rune_pulse > 0.78:
                     out[y, x] = DIAMOND_WHITE if (x + y) % 2 == 0 else CYAN_LIGHT
@@ -480,6 +611,15 @@ def apply_cape_and_mane_wave(frame, phase_rad, amplitude=1.5, vertical_flutter=0
                 else:
                     out[y, x] = CYAN_BRIGHT if (x + y) % 2 == 0 else VIOLET_BRIGHT
 
+    # 3. Composite the 5-Drum Raijin Taiko Ring behind shoulders + Waist-Worn Lacquered Saya & Sageo Cord
+    out = draw_samurai_saya_and_raijin_drums(
+        out,
+        dy_offset=dy_offset,
+        phase=phase_rad,
+        sageo_wave=amplitude / 1.4,
+        show_drums=show_drums,
+        koiguchi_glint=koiguchi_glint,
+    )
     return fill_layer_pinholes(out)
 
 
@@ -527,7 +667,6 @@ def draw_ik_ronin_arm(layer, sx, sy, hx, hy, L1=5.6, L2=5.4, bend_side=1.0, is_r
     n2x, n2y = -u2y / d2, u2x / d2
 
     if is_rear:
-        # 1. Rear upper arm & sode shoulder guard from (sx, sy) to (ex, ey)
         for off, col in [
             (-1.0, INDIGO_DEEP),
             (-0.4, INDIGO_DARK),
@@ -537,7 +676,6 @@ def draw_ik_ronin_arm(layer, sx, sy, hx, hy, L1=5.6, L2=5.4, bend_side=1.0, is_r
         ]:
             draw_line_px(layer, sx + n1x * off, sy + n1y * off, ex + n1x * (off * 0.85), ey + n1y * (off * 0.85), col)
 
-        # 2. Rear kote forearm vambrace from (ex, ey) to (hx, hy)
         for off, col in [
             (-1.0, INDIGO_DEEP),
             (-0.4, INDIGO_MID),
@@ -547,13 +685,11 @@ def draw_ik_ronin_arm(layer, sx, sy, hx, hy, L1=5.6, L2=5.4, bend_side=1.0, is_r
         ]:
             draw_line_px(layer, ex + n2x * off, ey + n2y * off, hx + n2x * (off * 0.85), hy + n2y * (off * 0.85), col)
 
-        # Rear sode shoulder cap & elbow couter
         for dy_s in (-1, 0, 1):
             for dx_s in (-1, 0, 1):
                 set_px(layer, sx + dx_s, sy + dy_s, INDIGO_LIGHT if dy_s <= 0 else INDIGO_DARK)
         set_px(layer, ex, ey, CYAN_BRIGHT)
     else:
-        # 1. Lead upper arm from (sx, sy) to (ex, ey)
         for off, col in [
             (-1.15, INDIGO_DEEP),
             (-0.5, INDIGO_MID),
@@ -563,7 +699,6 @@ def draw_ik_ronin_arm(layer, sx, sy, hx, hy, L1=5.6, L2=5.4, bend_side=1.0, is_r
         ]:
             draw_line_px(layer, sx + n1x * off, sy + n1y * off, ex + n1x * (off * 0.85), ey + n1y * (off * 0.85), col)
 
-        # 2. Lead kote vambrace with crackling cyan lightning inlay from (ex, ey) to (hx, hy)
         for off, col in [
             (-1.15, INDIGO_DEEP),
             (-0.5, INDIGO_MID),
@@ -573,7 +708,6 @@ def draw_ik_ronin_arm(layer, sx, sy, hx, hy, L1=5.6, L2=5.4, bend_side=1.0, is_r
         ]:
             draw_line_px(layer, ex + n2x * off, ey + n2y * off, hx + n2x * (off * 0.85), hy + n2y * (off * 0.85), col)
 
-        # 3. Layered Samurai Sode Shoulder Pauldron at (sx, sy)
         for p_step in (-1.4, -0.7, 0.0, 0.7, 1.4):
             for r_step in (-0.5, 0.2, 0.9):
                 px_s = sx + ux1 * r_step + n1x * p_step
@@ -586,11 +720,9 @@ def draw_ik_ronin_arm(layer, sx, sy, hx, hy, L1=5.6, L2=5.4, bend_side=1.0, is_r
                     col_p = INDIGO_MID
                 set_px(layer, px_s, py_s, col_p)
 
-        # 4. Glowing cyan elbow couter (`hiji-gane`) at (ex, ey)
         set_px(layer, ex, ey, CYAN_LIGHT)
         set_px(layer, ex + n1x * 0.7, ey + n1y * 0.7, INDIGO_LIGHT)
 
-    # 5. 3x3 Armored Tekko Gauntlet fist clasping the tsuka hilt at (hx, hy)
     for dy_g in (-1, 0, 1):
         for dx_g in (-1, 0, 1):
             if dx_g == 0 and dy_g == 0:
@@ -627,7 +759,7 @@ def draw_two_handed_odachi(
     - **BOTH hands grip the Odachi hilt (`tsuka`)** connected via 2-bone IK arms from
       Rear Shoulder `(21, 18)` to the rear pommel grip and Lead Shoulder `(27, 19)` to the upper grip
       just behind the tsuba guard!
-    - Rigidly translates the Odachi if the blade tip (`kissaki`) or pommel approaches `[3..48, 3..46]`
+    - Rigidly translates the Odachi if the blade tip (`kissaki`) or pommel approaches `[4..47.5, 4..46]`
       so the `~22px` Odachi is NEVER foreshortened and NEVER clips outside `2 <= x <= 49, 2 <= y <= 49`.
     """
     rear_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
@@ -638,13 +770,11 @@ def draw_two_handed_odachi(
 
     rad = math.radians(angle_deg)
     ux, uy = math.cos(rad), math.sin(rad)
-    # Normal vector pointing toward the back spine (mune) / curve direction of the katana
     px, py = -uy, ux
 
-    eff_blade = float(blade_len) * scale  # ~17.0px blade
-    grip_sep = 3.6 * min(1.0, scale)      # 3.6px spacing between rear hand and lead hand on the 5px tsuka
+    eff_blade = float(blade_len) * scale
+    grip_sep = 3.6 * min(1.0, scale)
 
-    # Lead hand grips just behind the tsuba; rear hand grips near the kashira pommel
     lead_gx = float(hand_x)
     lead_gy = float(hand_y)
     rear_gx = lead_gx - ux * grip_sep
@@ -655,12 +785,10 @@ def draw_two_handed_odachi(
     tsuba_x = lead_gx + ux * 1.3
     tsuba_y = lead_gy + uy * 1.3
 
-    # Blade tip (kissaki) including subtle sori curve (~1.5px perpendicular offset at tip)
     sori_sign = -1.0 if math.cos(rad) >= -0.2 else 1.0
     tip_x = tsuba_x + ux * eff_blade + px * (1.3 * sori_sign)
     tip_y = tsuba_y + uy * eff_blade + py * (1.3 * sori_sign)
 
-    # Rigidly keep both pommel and tip inside [4.0..47.5, 4.0..46.0] so the 22px Odachi never clips
     min_x = min(pom_x, tip_x, tsuba_x)
     max_x = max(pom_x, tip_x, tsuba_x)
     min_y = min(pom_y, tip_y, tsuba_y)
@@ -687,17 +815,15 @@ def draw_two_handed_odachi(
     tsuba_x += dx_fix
     tsuba_y += dy_fix
 
-    # 1. 5px Wrapped Tsuka Hilt (from pom_x, pom_y to tsuba_x, tsuba_y) with diamond silk wrap & golden menuki
+    # 1. 5px Wrapped Tsuka Hilt
     hilt_steps = 14
     for i in range(hilt_steps + 1):
         u_h = i / float(hilt_steps)
         hx_p = pom_x + (tsuba_x - pom_x) * u_h
         hy_p = pom_y + (tsuba_y - pom_y) * u_h
         if i <= 2:
-            # Golden Kashira Pommel Cap
             c_hilt = GOLD_WHITE if i == 0 else BRASS_BRIGHT
         elif i % 3 == 1:
-            # Golden Menuki & Silk Tsuka-ito Diamond Node
             c_hilt = BRASS_BRIGHT if i % 2 == 0 else CYAN_LIGHT
         else:
             c_hilt = INDIGO_DARK
@@ -705,7 +831,7 @@ def draw_two_handed_odachi(
         set_px(odachi_layer, hx_p + px * 0.55, hy_p + py * 0.55, INDIGO_DEEP)
         set_px(odachi_layer, hx_p - px * 0.55, hy_p - py * 0.55, INDIGO_MID)
 
-    # 2. Ornate Circular Brass-and-Cyan Raijin Tsuba Guard at (tsuba_x, tsuba_y)
+    # 2. Ornate Circular Brass-and-Cyan Raijin Tsuba Guard
     for t_off in (-2.1, -1.4, -0.7, 0.0, 0.7, 1.4, 2.1):
         gx_t = tsuba_x + px * t_off
         gy_t = tsuba_y + py * t_off
@@ -716,7 +842,6 @@ def draw_two_handed_odachi(
         else:
             col_t = BRASS_BRIGHT
         set_px(odachi_layer, gx_t, gy_t, col_t)
-    # Golden Habaki Blade Collar just ahead of the tsuba
     hab_x = tsuba_x + ux * 0.9
     hab_y = tsuba_y + uy * 0.9
     set_px(odachi_layer, hab_x, hab_y, GOLD_WHITE)
@@ -726,28 +851,23 @@ def draw_two_handed_odachi(
     blade_steps = int(round(eff_blade * 3.0))
     for i in range(2, blade_steps + 1):
         u_b = i / float(blade_steps)
-        # Authentic Japanese Odachi Sori curvature: gentle arc along the blade peaking near u_b = 0.65
         sori_curve = (math.sin(u_b * math.pi * 0.85) * 1.15 + (u_b * u_b) * 0.55) * sori_sign
         bx = tsuba_x + ux * (u_b * eff_blade) + px * sori_curve
         by = tsuba_y + uy * (u_b * eff_blade) + py * sori_curve
 
-        # Cutting edge (ha) on the outer curve (sori_sign), dark spine (mune) on the inner curve (-sori_sign)
         edge_vx = px * sori_sign
         edge_vy = py * sori_sign
 
-        # Razor-sharp Diamond-White & Ice-Cyan Cutting Edge (ha) + Kissaki point
         if u_b > 0.88:
             set_px(odachi_layer, bx, by, DIAMOND_WHITE)
             set_px(odachi_layer, bx + edge_vx * 0.5, by + edge_vy * 0.5, CYAN_LIGHT)
         else:
-            # Spine (mune): deep indigo-violet steel
             set_px(
                 odachi_layer,
                 bx - edge_vx * 0.75,
                 by - edge_vy * 0.75,
                 INDIGO_MID if (i % 4 == 0) else INDIGO_DARK,
             )
-            # Core Lightning Hamon temper wave: alternating electric-cyan & violet-glow zig-zag
             hamon_wave = ((i + int(round(phase * 3.0))) % 4 == 0)
             c_hamon = (
                 DIAMOND_WHITE
@@ -755,7 +875,6 @@ def draw_two_handed_odachi(
                 else (CYAN_BRIGHT if (i % 2 == 0) else VIOLET_BRIGHT)
             )
             set_px(odachi_layer, bx, by, c_hamon)
-            # Razor Cutting Edge (ha): diamond-white & ice-cyan
             c_edge = DIAMOND_WHITE if (i % 3 != 0 or glow_intensity >= 1.05) else CYAN_LIGHT
             set_px(odachi_layer, bx + edge_vx * 0.72, by + edge_vy * 0.72, c_edge)
 
@@ -769,7 +888,7 @@ def draw_two_handed_odachi(
             spy = tsuba_y + uy * (u_sp * eff_blade) + py * (sori_c + (1.4 if s_i % 2 == 0 else -1.4))
             set_px(fx_layer, spx, spy, DIAMOND_WHITE if s_i == 0 else (CYAN_LIGHT if s_i % 2 == 0 else VIOLET_BRIGHT))
 
-    # 5. BOTH Rear IK Arm ((21, 18) -> rear_gx, rear_gy) AND Lead IK Arm ((27, 19) -> lead_gx, lead_gy)
+    # 5. BOTH Rear IK Arm AND Lead IK Arm
     if draw_arms and rear_shoulder is not None and lead_shoulder is not None:
         sx_r, sy_r = float(rear_shoulder[0]), float(rear_shoulder[1])
         sx_l, sy_l = float(lead_shoulder[0]), float(lead_shoulder[1])
@@ -780,12 +899,11 @@ def draw_two_handed_odachi(
             sy_r,
             rear_gx,
             rear_gy,
-            L1=5.8,
-            L2=5.5,
+            L1=6.2,
+            L2=5.8,
             bend_side=1.0,
             is_rear=True,
         )
-        # Rear Tekko Gauntlet fingers wrapped over the tsuka at (rear_gx, rear_gy)
         for dy_g in (-1, 0, 1):
             for dx_g in (-1, 0, 1):
                 if dx_g == 0 and dy_g == 0:
@@ -802,12 +920,11 @@ def draw_two_handed_odachi(
             sy_l,
             lead_gx,
             lead_gy,
-            L1=5.8,
-            L2=5.5,
+            L1=6.2,
+            L2=5.8,
             bend_side=1.0,
             is_rear=False,
         )
-        # 1px dark indigo silhouette seam around lead_arm_layer so the lead arm & gauntlet pop cleanly against torso
         arm_mask = lead_arm_layer[:, :, 3] > 0
         for y_a in range(3, 48):
             for x_a in range(3, 48):
@@ -836,9 +953,7 @@ def draw_two_handed_odachi(
                 continue
             ax = max(4.0, min(47.5, piv_x + ca * r_uniform))
             ay = max(4.0, min(46.0, piv_y + sa * r_uniform))
-            # Outer Band 1: Razor Diamond-White & Electric Ice-Cyan leading edge
             set_px(fx_layer, ax, ay, DIAMOND_WHITE if u_a > 0.45 else CYAN_LIGHT)
-            # Mid Band 2: Blazing Thunder-Cyan core + jagged lightning teeth
             set_px(
                 fx_layer,
                 max(4.0, min(47.5, ax - ca * 1.2)),
@@ -846,7 +961,6 @@ def draw_two_handed_odachi(
                 CYAN_BRIGHT if (k % 3 != 0) else DIAMOND_WHITE,
             )
             if env > 0.38:
-                # Inner Band 3: Deep Indigo-Violet Storm Plasma wake
                 set_px(
                     fx_layer,
                     max(4.0, min(47.5, ax - ca * 2.4)),
@@ -865,10 +979,8 @@ def draw_two_handed_odachi(
     if cross_slash_arc is not None:
         render_3band_slash_arc(cross_slash_arc)
 
-    # Painter's Order: Body -> Rear Arm -> Two-Handed Odachi -> Rear Gauntlet Clasp -> Lead Arm & Gauntlet -> Slash FX
     out = composite_over(canvas, rear_arm_layer)
     out = composite_over(out, odachi_layer)
-    # When Odachi is raised in high Jodan-no-kamae overhead (angle_deg < -88 deg), keep kabuto crescent & eyes in front of hilt/blade base
     if angle_deg < -88.0:
         for yh in range(5, 16):
             for xh in range(23, 33):
@@ -878,52 +990,6 @@ def draw_two_handed_odachi(
     out = composite_over(out, lead_arm_layer)
     out = composite_over(out, fx_layer)
     return out
-
-
-def _extract_full_haori_cape(stand, dy_offset=0, phase=0.0, wave_scale=1.0, lift_y=0):
-    """
-    Extracts Kaze-Maru's billowing indigo-violet haori cape (`x = 4..21` for `y = 18..40`),
-    filling the lower drape behind his legs (`y = 32..40, x = 14..21`) with `CAPE_DARK` / `CAPE_DEEP`
-    so the haori cape sweeps continuously behind his striding or airborne legs!
-    """
-    cape_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    for y in range(18, 41):
-        ny = y + dy_offset
-        if not (3 <= ny <= 47):
-            continue
-        u = (y - 18) / 22.0
-        wave_dx = int(round((-u * 1.2 + math.sin(phase - u * 3.0) * (1.3 * u)) * wave_scale))
-        wave_dy = int(round(math.cos(phase - u * 2.5) * (0.5 * u) * wave_scale + u * lift_y))
-
-        if y <= 32:
-            for x in range(4, 22):
-                if stand[y, x, 3] == 0:
-                    continue
-                cx = max(3, min(22, x + wave_dx))
-                cy = max(10, min(44, ny + wave_dy))
-                cape_layer[cy, cx] = stand[y, x]
-                if x >= 15:
-                    cape_layer[ny, x] = stand[y, x]
-        else:
-            left_x = min(15, 7 + (y - 32))
-            right_x = 21 - max(0, (y - 34) // 2)
-            for x in range(left_x, right_x + 1):
-                if x < 15 and stand[y, x, 3] > 0:
-                    col = stand[y, x]
-                else:
-                    if x == left_x or y >= 39 or x == right_x:
-                        col = INDIGO_DEEP
-                    elif (x + y) % 5 == 0:
-                        col = VIOLET_DEEP
-                    else:
-                        col = CAPE_DARK if (x + y) % 2 == 0 else CAPE_DEEP
-                cx = max(3, min(22, x + wave_dx))
-                cy = max(14, min(44, ny + wave_dy))
-                cape_layer[cy, cx] = col
-                if 15 <= x <= right_x and y <= 38:
-                    cape_layer[ny, x] = col
-
-    return fill_layer_pinholes(cape_layer, x0=3, x1=23, y0=10, y1=45, require_3_neighbors=False)
 
 
 def _draw_samurai_armored_leg(
@@ -958,7 +1024,6 @@ def _draw_samurai_armored_leg(
         c_hi = INDIGO_LIGHT
         c_lightning = CYAN_BRIGHT
 
-    # 1. Hakama pleated thigh (hip -> knee)
     thigh_strips = [
         (-2.2, c_edge),
         (-1.4, c_dark),
@@ -971,7 +1036,6 @@ def _draw_samurai_armored_leg(
     for off_x, col in thigh_strips:
         draw_line_px(layer, hip_x + off_x, hip_y, knee_x + off_x * 0.9, knee_y, col)
 
-    # 2. Suneate armored shin greave with cyan lightning streak (knee -> ankle)
     greave_strips = [
         (-2.0, c_edge),
         (-1.2, c_dark),
@@ -984,7 +1048,6 @@ def _draw_samurai_armored_leg(
     for off_x, col in greave_strips:
         draw_line_px(layer, knee_x + off_x * 0.9, knee_y, ank_x + off_x * 0.85, ank_y, col)
 
-    # 3. Rotated samurai war-boot
     pil_boot = Image.fromarray(boot_patch, mode="RGBA")
     rot_boot = np.array(
         pil_boot.rotate(boot_rot_deg, resample=Image.Resampling.NEAREST, center=(orig_cx, 42.5)),
@@ -1002,7 +1065,6 @@ def _draw_samurai_armored_leg(
                     px_col[2] = int(px_col[2] * 0.84)
                 layer[ny, nx] = px_col
 
-    # 4. Pointed Samurai Knee-Guard (`tate-age`) with cyan lightning rune at (knee_x, knee_y)
     for dy_k in (-1, 0, 1):
         for dx_k in (-2, -1, 0, 1, 2):
             if abs(dx_k) == 2 and abs(dy_k) == 1:
@@ -1020,8 +1082,8 @@ def _draw_samurai_armored_leg(
 
 def render_walk_ronin(tpl, f):
     """
-    Row 1 helper: Smooth 30-frame 2-step anatomical samurai stride cycle (F00..F14 Step A, F15..F29 Step B)
-    preserving Kaze-Maru's billowing indigo-violet haori cape, waist obi & kusazuri hip tassets (`y = 0..34`),
+    Row 1 helper: Smooth 30-frame 2-step Suriashi gliding Samurai stride cycle (F00..F14 Step A, F15..F29 Step B)
+    preserving Kaze-Maru's 5-Drum Raijin Ring, waist Saya scabbard, waist obi & kusazuri hip tassets (`y = 0..34`),
     and articulated suneate greaves & war-boots!
     """
     phase = (f / 30.0) * 2.0 * math.pi
@@ -1031,10 +1093,7 @@ def render_walk_ronin(tpl, f):
     torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     tasset_overlay = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    # 1. Full Billowing Indigo-Violet Haori Cape behind legs
-    cape_layer = _extract_full_haori_cape(stand, dy_offset=bob_y, phase=phase, wave_scale=1.0, lift_y=0)
-
-    # 2. Upper Torso, Crescent Kabuto, Silver Mane, Obi & Kusazuri Hip Tassets (`y = 0..34`)
+    # Upper Torso, Crescent Kabuto, Silver Mane, Obi & Kusazuri Hip Tassets (`y = 0..34`)
     for y in range(0, 35):
         ny = y + bob_y
         if not (2 <= ny <= 49):
@@ -1052,14 +1111,14 @@ def render_walk_ronin(tpl, f):
         s_val = math.sin(swing_phase)
         c_val = math.cos(swing_phase)
 
-        knee_lift = max(0.0, c_val)
+        knee_lift = max(0.0, c_val) * 0.75  # Low gliding Suriashi footwork
         hip_y = 33.0 + bob_y
-        knee_x = hip_x + s_val * 2.5 + knee_lift * 1.2
-        knee_y = hip_y + 4.8 - knee_lift * 1.8
+        knee_x = hip_x + s_val * 2.6 + knee_lift * 1.1
+        knee_y = hip_y + 4.9 - knee_lift * 1.4
 
-        foot_target_x = foot_base_x + s_val * 3.0 - knee_lift * 0.8
-        foot_lift_dy = bob_y - int(round(knee_lift * 2.2))
-        boot_rot_deg = s_val * 10.0 - knee_lift * 12.0
+        foot_target_x = foot_base_x + s_val * 3.2 - knee_lift * 0.6
+        foot_lift_dy = bob_y - int(round(knee_lift * 1.6))
+        boot_rot_deg = s_val * 8.0 - knee_lift * 9.0
 
         dx_boot = foot_target_x - orig_cx
         ank_x = foot_target_x + math.sin(math.radians(boot_rot_deg)) * 0.6
@@ -1088,17 +1147,18 @@ def render_walk_ronin(tpl, f):
         tpl["leg_front"], orig_cx=33.0, hip_x=30.5, foot_base_x=32.5, swing_phase=phase, is_far_leg=False
     )
 
-    out = composite_over(cape_layer, far_leg)
-    out = composite_over(out, torso_layer)
+    out = composite_over(far_leg, torso_layer)
     out = composite_over(out, near_leg)
     out = composite_over(out, tasset_overlay)
-    out = apply_cape_and_mane_wave(out, phase, amplitude=1.4, vertical_flutter=0.5, rune_pulse=0.7)
+    out = apply_cape_and_mane_wave(
+        out, phase, amplitude=1.4, vertical_flutter=0.5, rune_pulse=0.7, dy_offset=bob_y
+    )
     return fill_layer_pinholes(out)
 
 
 def make_crouch_ronin(tpl, crouch_depth):
     """
-    Constructs Kaze-Maru's deep knee-bend samurai crouch via a continuous vertical compression warp on `tpl['stand']`:
+    Constructs Kaze-Maru's deep knee-bend Iai-Goshi samurai crouch via a continuous vertical compression warp on `tpl['stand']`:
     - Shifts `ny <= 27 + d` down by `d`
     - Compresses `ny = 28 + d .. 43` from `sy = 27 .. 43` with a 1px forward knee bend
     - Keeps his war-boots anchored firmly on the ground at `ny = 44..49`.
@@ -1110,50 +1170,43 @@ def make_crouch_ronin(tpl, crouch_depth):
 
     canvas = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    # 1. Shift upper body, crescent kabuto, sode pauldrons, and obi (`ny <= 27 + d`) down by `d`
     for ny in range(d, 28 + d):
         sy = ny - d
         if 0 <= sy <= 27 and 2 <= ny <= 49:
             canvas[ny, :] = stand[sy, :]
 
-    # 2. Compress kusazuri tassets, hakama thighs, knee guards, and suneate greaves (`ny = 28 + d .. 43`)
     span = max(1.0, float(43 - (28 + d)))
     for ny in range(28 + d, 44):
         u = (ny - (28 + d)) / span
         sy = int(round(27.0 + u * 16.0))
         sy = max(27, min(43, sy))
         knee_dx = 1 if (d >= 2 and 0.25 <= u <= 0.75) else 0
-        for x in range(2, 50):
+        for x in range(18, 50):
             if stand[sy, x, 3] > 0:
-                nx = x if x <= 16 else min(49, x + knee_dx)
+                nx = min(49, x + knee_dx)
                 canvas[ny, nx] = stand[sy, x]
 
-    # 3. Keep war-boots anchored firmly on the ground at `ny = 44..49`
     for ny in range(44, 50):
         canvas[ny, :] = stand[ny, :]
 
     return fill_layer_pinholes(canvas)
 
 
-def make_aerial_ronin(tpl, jump_dy, body_tilt_deg=0.0, leg_tuck=0.5, thruster_intensity=0.8, phase=0.0):
+def make_aerial_ronin(tpl, jump_dy, body_tilt_deg=0.0, leg_tuck=0.65, thruster_intensity=0.6, phase=0.0):
     """
-    Row 8 helper: Constructs a full-body airborne Kaze-Maru posture with tucked knees and
-    **crackling electric cloud/lightning thrusters** beneath his boots, preserving his crescent kabuto,
-    silver mane, billowing haori cape, kusazuri hip tassets, and articulated suneate legs!
+    Row 8 helper: Constructs a full-body airborne Kaze-Maru posture with tucked knees,
+    5-Drum Raijin Ring, waist Saya scabbard, and ZERO ground circle!
     """
     stand = tpl["stand"].copy()
-    dy_i = max(-3, min(4, int(round(jump_dy))))
+    dy_i = max(-5, min(2, int(round(jump_dy))))
     t = max(0.0, min(1.0, leg_tuck))
 
     torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     tasset_overlay = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    cape_lift = int(round(-t * 1.5))
-    cape_layer = _extract_full_haori_cape(stand, dy_offset=dy_i, phase=phase, wave_scale=1.1, lift_y=cape_lift)
-
     lean_dx = 1 if body_tilt_deg > 5.0 else (-1 if body_tilt_deg < -5.0 else 0)
     for y in range(0, 35):
-        ny = max(2, min(47, y + dy_i))
+        ny = max(3, min(46, y + dy_i))
         dx = lean_dx if y <= 24 else 0
         min_tx = 12 if y < 16 else (18 if y < 27 else 20)
         max_tx = 35
@@ -1192,95 +1245,40 @@ def make_aerial_ronin(tpl, jump_dy, body_tilt_deg=0.0, leg_tuck=0.5, thruster_in
         tpl["leg_back"],
         orig_cx=22.5,
         hip_x=22.5,
-        knee_dx=-1.0 - 1.0 * t,
-        knee_dy=4.4 - 1.8 * t,
-        foot_dx=-0.5 - 1.0 * t,
-        foot_dy=dy_i - 2.2 * t,
-        boot_rot_deg=-10.0 * t,
+        knee_dx=-1.0 - 1.2 * t,
+        knee_dy=4.0 - 2.0 * t,
+        foot_dx=-0.8 - 1.2 * t,
+        foot_dy=dy_i - 3.2 * t,
+        boot_rot_deg=-12.0 * t,
         is_far_leg=True,
     )
     near_leg = build_aerial_leg(
         tpl["leg_front"],
         orig_cx=33.0,
         hip_x=30.5,
-        knee_dx=1.4 + 1.2 * t,
-        knee_dy=4.0 - 2.2 * t,
-        foot_dx=0.0 + 1.0 * t,
-        foot_dy=dy_i - 3.0 * t,
-        boot_rot_deg=-14.0 * t,
+        knee_dx=1.4 + 1.4 * t,
+        knee_dy=3.8 - 2.4 * t,
+        foot_dx=0.2 + 1.0 * t,
+        foot_dy=dy_i - 3.8 * t,
+        boot_rot_deg=-16.0 * t,
         is_far_leg=False,
     )
 
-    # Crackling Electric Cloud / Lightning Thrusters beneath both boots when airborne
-    fx_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    if thruster_intensity > 0.1:
-        jet_len = int(round(4.5 * thruster_intensity))
-        near_boot_y = max(30, min(43, int(round(44 + dy_i - 3.0 * t))))
-        far_boot_y = max(30, min(43, int(round(44 + dy_i - 2.2 * t))))
-        for boot_cx, boot_by in [(21, far_boot_y), (33, near_boot_y)]:
-            # Swirling electric storm cloud puff directly under boot sole
-            for dx_c in (-2, -1, 0, 1, 2):
-                set_px(
-                    fx_layer,
-                    boot_cx + dx_c,
-                    boot_by + 1,
-                    DIAMOND_WHITE if dx_c == 0 else (CYAN_LIGHT if abs(dx_c) == 1 else VIOLET_BRIGHT),
-                )
-            # Jagged downward lightning thruster arcs
-            for d in range(1, jet_len + 1):
-                jy = boot_by + 1 + d
-                if jy <= 48:
-                    zig = 1 if ((d + int(round(phase * 3))) % 2 == 0) else -1
-                    col = DIAMOND_WHITE if d == 1 else (CYAN_BRIGHT if d <= 2 else (VIOLET_BRIGHT if d <= 3 else VIOLET_GLOW))
-                    set_px(fx_layer, boot_cx + zig, jy, col)
-                    if d <= 2:
-                        set_px(fx_layer, boot_cx, jy, CYAN_LIGHT)
-
-    out = composite_over(fx_layer, cape_layer)
-    out = composite_over(out, far_leg)
-    out = composite_over(out, torso_layer)
+    out = composite_over(far_leg, torso_layer)
     out = composite_over(out, near_leg)
     out = composite_over(out, tasset_overlay)
-    out = apply_cape_and_mane_wave(out, phase, amplitude=1.5, vertical_flutter=0.6, rune_pulse=0.95)
+    out = apply_cape_and_mane_wave(
+        out, phase, amplitude=1.5, vertical_flutter=0.6, rune_pulse=0.95, dy_offset=dy_i
+    )
     return fill_layer_pinholes(out)
-
-
-def draw_raijin_8drum_wheel_sigil(canvas, cx, cy, rx, ry, phase, num_drums=8, is_ground=False):
-    """
-    Renders a Rotating 8-Drum Raijin Thunder-Wheel Sigil (overhead at y=4..10 or behind shoulders)
-    or a Ground Raijin Lightning Circle (`y = 44..48`).
-    """
-    # 1. Crackling Electric-Cyan & Violet Ring Perimeter
-    steps = 32
-    for i in range(steps):
-        ang = (i / float(steps)) * 2.0 * math.pi + phase
-        px_x = max(3, min(48, int(round(cx + math.cos(ang) * rx))))
-        px_y = max(3, min(48, int(round(cy + math.sin(ang) * ry))))
-        col = DIAMOND_WHITE if i % 4 == 0 else (CYAN_BRIGHT if i % 2 == 0 else VIOLET_BRIGHT)
-        set_px(canvas, px_x, px_y, col)
-
-    # 2. 8 Rotating Brass-and-Cyan Raijin Thunder-Drums with Tomoe Cores around the ring
-    for d_i in range(num_drums):
-        da = (d_i / float(num_drums)) * 2.0 * math.pi + phase
-        dx_d = max(4, min(47, int(round(cx + math.cos(da) * rx))))
-        dy_d = max(4, min(47, int(round(cy + math.sin(da) * ry))))
-        set_px(canvas, dx_d, dy_d, DIAMOND_WHITE if (d_i % 2 == 0) else CYAN_LIGHT)
-        if not is_ground:
-            for ox, oy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-                set_px(canvas, dx_d + ox, dy_d + oy, BRASS_BRIGHT if (ox + oy) % 2 == 0 else VIOLET_GLOW)
-        else:
-            set_px(canvas, dx_d - 1, dy_d, BRASS_BRIGHT)
-            set_px(canvas, dx_d + 1, dy_d, CYAN_BRIGHT)
 
 
 def build_row0_idle(tpl):
     """
-    Row 0 (`IDLE`, 0..29):
-    - Breathing cycle (`1px` chest/shoulder rise on `F08..F20` with solid waist row duplication)
-    - Billowing indigo-violet haori cape & silver kabuto mane wave (`F00..F29`)
-    - Pulsing cyan-violet armor lightning runes
-    - Two-handed `Chudan-no-kamae` guard (`hand_x = 31, hand_y = 23 + breath_dy, angle_deg = -48°`)
-    - Subtle rising electric cyan-violet sparks along the Odachi blade & tip.
+    Row 0 (`IDLE` - Low Coiled Iaido / Wakigamae Stance, 0..29):
+    - Instead of holding the blade up at `-48°` like Warrior, Kaze-Maru holds his curved Odachi
+      **low and nearly horizontal near his hip scabbard (`hand_x = 29, hand_y = 26 + breath_dy, angle_deg = -10° + 3° * sin(phase)`)**,
+      poised for an instant Battoujutsu draw-cut with cyan lightning arcing between his blade and waist scabbard!
     """
     frames = []
     for f in range(30):
@@ -1296,20 +1294,27 @@ def build_row0_idle(tpl):
             base = fill_layer_pinholes(base)
 
         pulse = 0.55 + 0.45 * math.sin(phase)
+        glint = 0.45 if (f % 6 in (0, 1)) else 0.0
         base = apply_cape_and_mane_wave(
-            base, phase, amplitude=1.5, vertical_flutter=0.5, rune_pulse=pulse
+            base,
+            phase,
+            amplitude=1.4,
+            vertical_flutter=0.5,
+            rune_pulse=pulse,
+            dy_offset=breath_dy,
+            koiguchi_glint=glint,
         )
 
-        # Two-handed Chudan-no-kamae guard in front of Kaze-Maru's torso
-        odachi_ang = -48.0 + math.sin(phase) * 3.5
-        hx = 31
-        hy = 23 + breath_dy
+        # Low Coiled Iaido / Wakigamae Stance near his hip scabbard
+        odachi_ang = -10.0 + 3.0 * math.sin(phase)
+        hx = 29
+        hy = 26 + breath_dy
         frame = draw_two_handed_odachi(
             base,
             hand_x=hx,
             hand_y=hy,
             angle_deg=odachi_ang,
-            glow_intensity=0.9 + 0.3 * math.sin(phase),
+            glow_intensity=0.95 + 0.25 * math.sin(phase),
             scale=1.0,
             blade_len=17.0,
             rear_shoulder=(21, 18 + breath_dy),
@@ -1318,10 +1323,14 @@ def build_row0_idle(tpl):
             phase=phase,
         )
 
-        # Rising electric cyan-violet spark drifting near the Odachi kissaki tip
-        spark_x = 42 + (f % 4)
-        spark_y = max(6, 11 + breath_dy - ((f // 3) % 4))
-        set_px(frame, spark_x, spark_y, DIAMOND_WHITE if f % 3 == 0 else (CYAN_LIGHT if f % 2 == 0 else VIOLET_BRIGHT))
+        # Crackling cyan-violet lightning arcing between his waist Saya koiguchi (21, 26) and the low Odachi blade (35..44, 24..26)
+        arc_x0, arc_y0 = 21, 26 + breath_dy
+        arc_x1 = 35 + (f % 8)
+        arc_y1 = 25 + breath_dy - int(round(math.sin(phase) * 1.0))
+        mid_x = (arc_x0 + arc_x1) // 2
+        mid_y = arc_y0 - 2 + ((f // 2) % 3)
+        draw_line_px(frame, arc_x0, arc_y0, mid_x, mid_y, CYAN_LIGHT if f % 2 == 0 else VIOLET_BRIGHT)
+        draw_line_px(frame, mid_x, mid_y, arc_x1, arc_y1, DIAMOND_WHITE if f % 3 == 0 else CYAN_BRIGHT)
 
         frames.append(frame)
     return frames
@@ -1329,10 +1338,10 @@ def build_row0_idle(tpl):
 
 def build_row1_walk(tpl):
     """
-    Row 1 (`WALK`, 30..59):
-    - Smooth 30-frame 2-step anatomical stride cycle (`F00..F14` Step A, `F15..F29` Step B)
-    - Grounded heel-strike lightning/dust motes at `F07..F10` and `F22..F25`
-    - Two-handed Thunder-Odachi carried in mobile Chudan guard with both IK arms connected.
+    Row 1 (`WALK` - Low Gliding Samurai Suriashi Footwork, 30..59):
+    - Kaze-Maru glides forward with his Odachi held in a **Low Trailing Side-Guard
+      (`hand_x = 28, hand_y = 27 + bob_y, angle_deg = +14° + 6° * sin(phase)`)** —
+      completely distinct from every other character!
     """
     frames = []
     for f in range(30):
@@ -1340,10 +1349,9 @@ def build_row1_walk(tpl):
         body = render_walk_ronin(tpl, f)
         bob_y = int(round(math.cos(phase * 2.0) * 1.0))
 
-        swing = math.sin(phase)
-        odachi_ang = -44.0 + swing * 12.0
-        hx = 31 - int(round(swing * 1.5))
-        hy = 23 + bob_y
+        odachi_ang = 14.0 + 6.0 * math.sin(phase)
+        hx = 28
+        hy = 27 + bob_y
 
         frame = draw_two_handed_odachi(
             body,
@@ -1352,26 +1360,22 @@ def build_row1_walk(tpl):
             angle_deg=odachi_ang,
             glow_intensity=0.95 + 0.2 * math.sin(phase * 2.0),
             scale=1.0,
-            blade_len=17.0,
+            blade_len=16.5,
             rear_shoulder=(21, 18 + bob_y),
             lead_shoulder=(27, 19 + bob_y),
             draw_arms=True,
             phase=phase,
         )
 
-        # Grounded heel-strike lightning/dust motes at F07..F10 (Step A plant) and F22..F25 (Step B plant)
-        if 7 <= f <= 10:
-            k = f - 7
-            for m_i in range(3):
-                mx = min(47, 34 + k + m_i * 2)
-                my = max(41, 45 - m_i - (k % 2))
-                set_px(frame, mx, my, DIAMOND_WHITE if m_i == 0 else (CYAN_BRIGHT if m_i == 1 else VIOLET_BRIGHT))
-        elif 22 <= f <= 25:
-            k = f - 22
-            for m_i in range(3):
-                mx = max(14, 21 - k - m_i * 2)
-                my = max(41, 45 - m_i - (k % 2))
-                set_px(frame, mx, my, DIAMOND_WHITE if m_i == 0 else (CYAN_BRIGHT if m_i == 1 else VIOLET_BRIGHT))
+        # Subtle Suriashi static-lightning sparks trailing from his gliding tabi boots
+        if 6 <= f <= 10:
+            k = f - 6
+            set_px(frame, 33 - k, 45, CYAN_LIGHT if k % 2 == 0 else VIOLET_BRIGHT)
+            set_px(frame, 31 - k, 44, DIAMOND_WHITE if k == 1 else CYAN_BRIGHT)
+        elif 21 <= f <= 25:
+            k = f - 21
+            set_px(frame, 21 - k, 45, CYAN_LIGHT if k % 2 == 0 else VIOLET_BRIGHT)
+            set_px(frame, 19 - k, 44, DIAMOND_WHITE if k == 1 else VIOLET_BRIGHT)
 
         frames.append(frame)
     return frames
@@ -1379,65 +1383,69 @@ def build_row1_walk(tpl):
 
 def build_row2_auto_attack(tpl):
     """
-    Row 2 (`AUTO_ATTACK - Thunder Iaido & Jodan Cleave`, 60..89):
-    - `F00..F09`: Raises Odachi with both hands to `-118°` (`Jodan-no-kamae` high overhead guard).
-    - `F10..F17`: Unleashes a supersonic `145°` two-handed downward lightning cleave from `-118°` to `+26°`
-      with a blazing 3-band **Electric White, Thunder-Cyan & Indigo-Violet Crescent Katana Slash Trail**
-      and ground-skimming lightning sparks.
-    - `F18..F29`: Smooth two-handed Kendo `zanshin` recovery back to `-48°`.
+    Row 2 (`AUTO_ATTACK` - 3-Hit Sandan Kendo & Iaido Draw-Cut Combo, 60..89):
+    - `F00..F09`: Coiled hip-sheath windup (`F00..F03`) -> blinding horizontal **Battoujutsu Draw-Cut (`angle_deg = -6°`)**
+      with a horizontal cyan-white slash streak across `y = 24..28` (`F04..F09`).
+    - `F10..F19`: Rising diagonal **Kiriage Upper-Slash (`angle_deg` sweeping from `+35°` up to `-65°`)**.
+    - `F20..F29`: **Iaido Judgment-Cut X-Slash** (`cross_slash_arc` + twin diagonal X-cut lines across `x = 28..47, y = 10..40`)
+      and smooth return to the `-10°` hip Iaido stance.
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 9:
-            # F00..F09: Two-handed Jodan-no-kamae overhead windup from -48 deg to -118 deg
-            u = f / 9.0
-            base = tpl["stand"].copy()
+
+        if f <= 3:
+            # F00..F03: Coiled hip-sheath Battoujutsu windup at left waist koiguchi
+            crouch_d = [1, 2, 3, 3][f]
+            base = make_crouch_ronin(tpl, crouch_d)
             base = apply_cape_and_mane_wave(
-                base, phase, amplitude=1.5 + u * 0.5, vertical_flutter=0.6, rune_pulse=0.65 + u * 0.35
+                base,
+                phase * 1.5,
+                amplitude=1.4,
+                rune_pulse=0.85,
+                dy_offset=crouch_d,
+                koiguchi_glint=0.9,
             )
-            ang = -48.0 * (1.0 - u) + (-118.0) * u
-            hx = int(round(31 * (1.0 - u) + 29 * u))
-            hy = int(round(23 * (1.0 - u) + 14 * u))
+            ang_seq = [-6.0, 2.0, 8.0, 12.0]
+            hx_seq = [28, 26, 25, 24]
+            hy_seq = [26 + crouch_d, 26 + crouch_d, 26 + crouch_d, 26 + crouch_d]
             frame = draw_two_handed_odachi(
                 base,
-                hand_x=hx,
-                hand_y=hy,
-                angle_deg=ang,
-                glow_intensity=0.95 + u * 0.4,
-                scale=1.02,
-                blade_len=17.0,
-                rear_shoulder=(21, 18),
-                lead_shoulder=(27, 18),
+                hand_x=hx_seq[f],
+                hand_y=hy_seq[f],
+                angle_deg=ang_seq[f],
+                glow_intensity=1.15,
+                scale=0.96,
+                blade_len=16.5,
+                rear_shoulder=(21, 18 + crouch_d),
+                lead_shoulder=(27, 19 + crouch_d),
                 draw_arms=True,
                 phase=phase,
             )
             frames.append(frame)
 
-        elif f <= 17:
-            # F10..F17: Supersonic 145 deg two-handed downward lightning cleave (-118 deg -> +26 deg)
-            k = f - 10  # 0..7
-            base = (tpl["lunge"] if k >= 1 else tpl["stand"]).copy()
+        elif f <= 9:
+            # F04..F09: Blinding horizontal Battoujutsu Draw-Cut (angle_deg = -6 deg) + horizontal slash streak across y = 24..28
+            k = f - 4  # 0..5
+            base = tpl["lunge"].copy()
             base = apply_cape_and_mane_wave(
-                base, phase * 2.2, amplitude=2.0, vertical_flutter=0.8, rune_pulse=1.0
+                base,
+                phase * 2.0,
+                amplitude=1.8,
+                rune_pulse=1.0,
+                koiguchi_glint=1.0 if k <= 2 else 0.4,
             )
-            ang_seq = [-68.0, -18.0, 12.0, 26.0, 26.0, 22.0, 14.0, 4.0]
-            hx_seq = [32, 34, 35, 35, 35, 34, 34, 33]
-            hy_seq = [16, 19, 22, 24, 24, 24, 23, 23]
-
-            slash_arc = None
-            if k <= 5:
-                arc_int = [0.9, 1.0, 1.0, 0.95, 0.8, 0.55][k]
-                a0 = [-118.0, -108.0, -96.0, -82.0, -68.0, -52.0][k]
-                slash_arc = (a0, ang_seq[k] + 5.0, 18.5, arc_int)
-
+            ang_seq = [-12.0, -6.0, -6.0, -6.0, -2.0, 6.0]
+            hx_seq = [33, 35, 36, 35, 34, 33]
+            hy_seq = [25, 25, 25, 25, 26, 26]
+            slash_arc = (-34.0, 16.0, 18.0, 1.0 if k <= 3 else 0.65) if k <= 4 else None
             frame = draw_two_handed_odachi(
                 base,
                 hand_x=hx_seq[k],
                 hand_y=hy_seq[k],
                 angle_deg=ang_seq[k],
-                glow_intensity=1.4 if k <= 5 else 1.1,
-                scale=1.04,
+                glow_intensity=1.45,
+                scale=1.02,
                 blade_len=17.0,
                 rear_shoulder=(23, 18),
                 lead_shoulder=(29, 19),
@@ -1445,151 +1453,187 @@ def build_row2_auto_attack(tpl):
                 slash_arc=slash_arc,
                 phase=phase,
             )
-
-            # Crackling electric ground-cleave sparks at blade tip impact zone (k=1..6)
-            if 1 <= k <= 6:
-                imp_x, imp_y = 43, 44
-                for sp in range(5):
-                    sx_s = min(48, imp_x - 4 + sp * 2 + (k % 2))
-                    sy_s = max(38, imp_y - ((sp + k) % 4) * 2)
-                    set_px(frame, sx_s, sy_s, DIAMOND_WHITE if sp == 2 else (CYAN_LIGHT if sp % 2 == 0 else VIOLET_BRIGHT))
-                draw_line_px(frame, imp_x - 5, 45, min(48, imp_x + 4), 45, CYAN_BRIGHT if k <= 3 else VIOLET_GLOW)
-
+            # Horizontal cyan-white Battoujutsu slash streak across x = 22..48, y = 24..28
+            if k <= 4:
+                x_end = min(48, 38 + k * 3)
+                for sx in range(22, x_end + 1):
+                    u_s = (sx - 22) / max(1.0, float(x_end - 22))
+                    cy_s = 26 + int(round(math.sin((u_s - 0.5) * math.pi) * 1.2))
+                    set_px(frame, sx, cy_s, DIAMOND_WHITE if u_s > 0.35 else CYAN_LIGHT)
+                    set_px(frame, sx, cy_s - 1, CYAN_BRIGHT if sx % 2 == 0 else VIOLET_BRIGHT)
+                    set_px(frame, sx, cy_s + 1, VIOLET_GLOW if sx % 2 == 0 else CYAN_MID)
             frames.append(frame)
 
-        else:
-            # F18..F29: Smooth two-handed recovery from 4 deg back to -48 deg Chudan guard
-            u = (f - 18) / 11.0
-            base = (tpl["lunge"] if f <= 20 else tpl["stand"]).copy()
+        elif f <= 19:
+            # F10..F19: Rising diagonal Kiriage Upper-Slash (angle_deg sweeping from +35 deg up to -65 deg)
+            k = f - 10  # 0..9
+            crouch_d = 2 if k <= 2 else 0
+            base = make_crouch_ronin(tpl, crouch_d) if crouch_d > 0 else tpl["lunge"].copy()
             base = apply_cape_and_mane_wave(
-                base, phase, amplitude=1.5, vertical_flutter=0.5, rune_pulse=0.85 - u * 0.25
+                base, phase * 2.2, amplitude=1.9, rune_pulse=1.0, dy_offset=crouch_d
             )
-            ang = 4.0 * (1.0 - u) + (-48.0) * u
-            hx = int(round(33 * (1.0 - u) + 31 * u))
-            hy = 23
-            frame = draw_two_handed_odachi(
-                base,
-                hand_x=hx,
-                hand_y=hy,
-                angle_deg=ang,
-                glow_intensity=1.05 - u * 0.15,
-                scale=1.0,
-                blade_len=17.0,
-                rear_shoulder=(21, 18),
-                lead_shoulder=(27, 19),
-                draw_arms=True,
-                phase=phase,
-            )
-            frames.append(frame)
-    return frames
-
-
-def draw_raijin_ground_fissures(canvas, k):
-    """
-    Row 3 helper (F13..F22, k = 0..9): Erupts crackling electric-cyan & indigo-violet
-    ground lightning fissures and rising plasma sparks along `x = 24..48, y = 42..48`.
-    """
-    max_fx = min(48, 30 + k * 3) if k <= 6 else 48
-    fade = 1.0 if k <= 6 else max(0.35, 1.0 - (k - 6) * 0.22)
-
-    for x in range(24, max_fx + 1):
-        zig = ((x + k) % 3) - 1
-        core_y = max(44, min(47, 46 + zig))
-        set_px(canvas, x, min(48, core_y + 1), INDIGO_DARK if (x % 2 == 0) else VIOLET_DEEP)
-        set_px(canvas, x, max(43, core_y - 1), VIOLET_GLOW if (x % 3 == 0) else CYAN_DEEP)
-        if fade > 0.65:
-            core_col = DIAMOND_WHITE if (x + k) % 4 == 0 else (CYAN_LIGHT if (x + k) % 2 == 0 else VIOLET_BRIGHT)
-        else:
-            core_col = CYAN_BRIGHT if (x + k) % 2 == 0 else VIOLET_GLOW
-        set_px(canvas, x, core_y, core_col)
-
-    # Mini vertical lightning arcs jumping off the ground fissure at x = 31, 37, 43, 47
-    for lx in (31, 37, 43, 47):
-        if lx <= max_fx:
-            arc_h = 4 if (k <= 5 and lx >= 37) else 2
-            for dy_a in range(arc_h):
-                ly = max(41, 45 - dy_a)
-                zig_x = min(48, lx + ((dy_a + k) % 2))
-                set_px(
-                    canvas,
-                    zig_x,
-                    ly,
-                    DIAMOND_WHITE if dy_a == arc_h - 1 else (CYAN_LIGHT if dy_a % 2 == 0 else VIOLET_BRIGHT),
-                )
-
-
-def build_row3_skill(tpl):
-    """
-    Row 3 (`SKILL - Raijin Thunder-Pillar & Flash-Cut`, 90..119):
-    - **Phase 1 (`F00..F12`)**: Overhead two-handed lightning convergence with a
-      **Rotating 8-Drum Raijin Thunder-Wheel Sigil** above his kabuto (`x = 18..32, y = 4..10`)
-      + **Ground Raijin Lightning Circle** (`y = 44..48, x = 14..38`).
-    - **Phase 2 (`F13..F22`)**: Explosive horizontal/diagonal Iaido flash-cut with crackling ground lightning fissures.
-    - **Phase 3 (`F23..F29`)**: Smooth recovery to two-handed Chudan guard.
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 12:
-            # Phase 1 (F00..F12): Overhead two-handed lightning convergence + 8-Drum Raijin Sigil + Ground Circle
-            u = f / 12.0
-            base = tpl["stand"].copy()
-            base = apply_cape_and_mane_wave(
-                base, phase * 1.6, amplitude=1.6, vertical_flutter=0.6, rune_pulse=0.75 + u * 0.25
-            )
-            # Ground Raijin Lightning Circle (y = 44..48, x = 14..38)
-            draw_raijin_8drum_wheel_sigil(
-                base, cx=26.0, cy=46.0, rx=8.0 + u * 4.5, ry=1.8, phase=phase * 2.0, num_drums=8, is_ground=True
-            )
-
-            ang = -48.0 * (1.0 - u) + (-115.0) * u
-            hx = int(round(31 * (1.0 - u) + 29 * u))
-            hy = int(round(23 * (1.0 - u) + 14 * u))
-            frame = draw_two_handed_odachi(
-                base,
-                hand_x=hx,
-                hand_y=hy,
-                angle_deg=ang,
-                glow_intensity=1.05 + u * 0.35,
-                scale=1.02,
-                blade_len=17.0,
-                rear_shoulder=(21, 18),
-                lead_shoulder=(27, 18),
-                draw_arms=True,
-                phase=phase,
-            )
-
-            # Rotating 8-Drum Raijin Thunder-Wheel Sigil above his kabuto (x = 18..32, y = 4..10)
-            if f >= 2:
-                su = min(1.0, (f - 1) / 9.0)
-                draw_raijin_8drum_wheel_sigil(
-                    frame, cx=25.0, cy=7.0, rx=3.5 + 3.5 * su, ry=1.5 + 1.2 * su, phase=phase * 2.2, num_drums=8, is_ground=False
-                )
-            frames.append(frame)
-
-        elif f <= 22:
-            # Phase 2 (F13..F22): Explosive horizontal/diagonal Iaido flash-cut + ground lightning fissures
-            k = f - 13  # 0..9
-            base = tpl["lunge"].copy()
-            base = apply_cape_and_mane_wave(
-                base, phase * 2.5, amplitude=2.0, vertical_flutter=0.8, rune_pulse=1.0
-            )
-            ang_seq = [-66.0, -18.0, 8.0, 18.0, 20.0, 18.0, 12.0, 4.0, -8.0, -22.0]
-            hx_seq = [32, 34, 35, 35, 35, 35, 34, 34, 33, 32]
-            hy_seq = [16, 19, 21, 23, 23, 23, 22, 22, 22, 22]
-
+            ang_seq = [22.0, 35.0, 24.0, -4.0, -28.0, -48.0, -60.0, -65.0, -62.0, -54.0]
+            hx_seq = [31, 31, 32, 34, 35, 35, 34, 34, 33, 33]
+            hy_seq = [27, 28, 27, 25, 23, 21, 20, 19, 20, 21]
             slash_arc = None
-            if k <= 5:
-                arc_int = [0.9, 1.0, 1.0, 0.95, 0.8, 0.55][k]
-                a0 = [-115.0, -104.0, -90.0, -76.0, -64.0, -48.0][k]
-                slash_arc = (a0, ang_seq[k] + 5.0, 18.5, arc_int)
+            if 2 <= k <= 8:
+                arc_int = [0.85, 1.0, 1.0, 1.0, 0.9, 0.75, 0.55][k - 2]
+                slash_arc = (ang_seq[k] - 5.0, 36.0, 18.0, arc_int)
 
             frame = draw_two_handed_odachi(
                 base,
                 hand_x=hx_seq[k],
                 hand_y=hy_seq[k],
                 angle_deg=ang_seq[k],
-                glow_intensity=1.4 if k <= 6 else 1.05,
+                glow_intensity=1.45 if 2 <= k <= 7 else 1.15,
+                scale=1.03,
+                blade_len=17.0,
+                rear_shoulder=(22, 18 + crouch_d),
+                lead_shoulder=(28, 19 + crouch_d),
+                draw_arms=True,
+                slash_arc=slash_arc,
+                phase=phase,
+            )
+            # Rising diagonal Kiriage slash streak from lower-left (28, 38) to upper-right (46, 12)
+            if 3 <= k <= 7:
+                draw_line_px(frame, 29, 36, 46, 13, DIAMOND_WHITE if k <= 5 else CYAN_LIGHT)
+                draw_line_px(frame, 28, 36, 45, 13, CYAN_BRIGHT)
+                draw_line_px(frame, 30, 37, 47, 14, VIOLET_BRIGHT)
+            frames.append(frame)
+
+        else:
+            # F20..F29: Iaido Judgment-Cut X-Slash (cross_slash_arc + twin diagonal X-cut lines across x=28..47, y=10..40)
+            k = f - 20  # 0..9
+            if k <= 5:
+                base = tpl["lunge"].copy()
+                base = apply_cape_and_mane_wave(base, phase * 2.5, amplitude=2.0, rune_pulse=1.0)
+                ang_seq = [-38.0, 14.0, 24.0, -18.0, -14.0, -12.0]
+                hx_seq = [35, 36, 36, 35, 34, 33]
+                hy_seq = [21, 24, 25, 24, 25, 25]
+                slash1 = (-72.0, 30.0, 18.0, 1.0 if k <= 3 else 0.7)
+                slash2 = (-36.0, 38.0, 15.5, 0.95 if k <= 3 else 0.65)
+                frame = draw_two_handed_odachi(
+                    base,
+                    hand_x=hx_seq[k],
+                    hand_y=hy_seq[k],
+                    angle_deg=ang_seq[k],
+                    glow_intensity=1.5,
+                    scale=1.04,
+                    blade_len=17.0,
+                    rear_shoulder=(23, 18),
+                    lead_shoulder=(29, 19),
+                    draw_arms=True,
+                    slash_arc=slash1,
+                    cross_slash_arc=slash2,
+                    phase=phase,
+                )
+                # Twin intersecting diagonal X-cut energy lines across x = 28..47, y = 10..40
+                c_core = DIAMOND_WHITE if k <= 3 else CYAN_LIGHT
+                c_edge = CYAN_BRIGHT if k % 2 == 0 else VIOLET_BRIGHT
+                draw_line_px(frame, 28, 11, 47, 39, c_core)
+                draw_line_px(frame, 29, 11, 47, 38, c_edge)
+                draw_line_px(frame, 28, 39, 47, 11, c_core)
+                draw_line_px(frame, 29, 40, 47, 12, VIOLET_GLOW)
+                # Bright X-intersection star flare at (38, 25)
+                for d_f in (-2, -1, 0, 1, 2):
+                    set_px(frame, 38 + d_f, 25, DIAMOND_WHITE)
+                    set_px(frame, 38, 25 + d_f, DIAMOND_WHITE)
+            else:
+                # F26..F29 (k = 6..9): Smooth recovery back to -10 deg hip Iaido stance
+                u = (k - 5) / 4.0
+                base = tpl["stand"].copy()
+                base = apply_cape_and_mane_wave(base, phase, amplitude=1.4, rune_pulse=0.8 - u * 0.2)
+                ang = -12.0 * (1.0 - u) + (-10.0) * u
+                hx = int(round(32 * (1.0 - u) + 29 * u))
+                hy = int(round(25 * (1.0 - u) + 26 * u))
+                frame = draw_two_handed_odachi(
+                    base,
+                    hand_x=hx,
+                    hand_y=hy,
+                    angle_deg=ang,
+                    glow_intensity=1.1 - u * 0.15,
+                    scale=1.0,
+                    blade_len=17.0,
+                    rear_shoulder=(21, 18),
+                    lead_shoulder=(27, 19),
+                    draw_arms=True,
+                    phase=phase,
+                )
+            frames.append(frame)
+
+    return frames
+
+
+def build_row3_skill(tpl):
+    """
+    Row 3 (`SKILL` - Zantetsuken 5-Fold Lightning Zig-Zag & Sheath Click, 90..119):
+    - `F00..F07`: Deep Iaido sheath crouch (`crouch_depth = 4`, `angle_deg = -4°`).
+    - `F08..F20`: High-speed forward Zantetsuken dash-cut (`tpl['dash']`) surrounded by a
+      **Web of 4 Criss-Crossing Diagonal Cyan-White Judgment-Cut Slash Lines** across the frame!
+    - `F21..F29`: **Chiburi & Noto (Clicking the Odachi back into the hip scabbard)** with a bright
+      diamond-white star-glint at his hip `koiguchi` (`x = 24, y = 26`) as the lightning web detonates!
+    """
+    frames = []
+    for f in range(30):
+        phase = (f / 30.0) * 2.0 * math.pi
+
+        if f <= 7:
+            # F00..F07: Deep Iaido sheath crouch (crouch_depth = 4, angle_deg = -4 deg)
+            depths = [1, 2, 3, 4, 4, 4, 4, 4]
+            d = depths[f]
+            u = f / 7.0
+            base = make_crouch_ronin(tpl, d)
+            base = apply_cape_and_mane_wave(
+                base,
+                phase * 1.8,
+                amplitude=1.5,
+                rune_pulse=0.8 + 0.2 * u,
+                dy_offset=d,
+                koiguchi_glint=0.6 + 0.4 * u,
+            )
+            ang = -10.0 * (1.0 - u) + (-4.0) * u
+            hx = int(round(28 * (1.0 - u) + 25 * u))
+            hy = 25 + d
+            frame = draw_two_handed_odachi(
+                base,
+                hand_x=hx,
+                hand_y=hy,
+                angle_deg=ang,
+                glow_intensity=1.1 + 0.3 * u,
+                scale=0.98,
+                blade_len=16.5,
+                rear_shoulder=(21, 18 + d),
+                lead_shoulder=(27, 19 + d),
+                draw_arms=True,
+                phase=phase,
+            )
+            # Crackling cyan-violet concentration arcs converging on the hip koiguchi (22, 26 + d)
+            if f >= 3:
+                kx, ky = 22, 26 + d
+                for a_i in range(3):
+                    ox = kx + (a_i - 1) * 5 + (f % 2)
+                    oy = ky - 4 + (a_i % 2) * 7
+                    draw_line_px(frame, ox, oy, kx, ky, DIAMOND_WHITE if a_i == 1 else CYAN_BRIGHT)
+            frames.append(frame)
+
+        elif f <= 20:
+            # F08..F20: High-speed forward Zantetsuken dash-cut (tpl['dash']) + Web of 4 Criss-Crossing Judgment-Cut Lines
+            k = f - 8  # 0..12
+            base = shift_layer(tpl["dash"], dx=1 if k % 2 == 0 else 0, dy=0)
+            base = apply_cape_and_mane_wave(
+                base, phase * 3.0, amplitude=2.0, vertical_flutter=0.8, is_dash=True, rune_pulse=1.0
+            )
+            ang_seq = [-28.0, 16.0, 22.0, -38.0, -52.0, 14.0, 24.0, -22.0, 18.0, 12.0, -8.0, -14.0, -6.0]
+            hx_seq = [35, 36, 36, 34, 34, 36, 36, 35, 35, 34, 33, 32, 31]
+            hy_seq = [22, 24, 24, 20, 19, 24, 24, 21, 24, 24, 24, 24, 25]
+            slash_arc = (-64.0, 28.0, 18.0, 0.95) if k <= 9 else None
+
+            frame = draw_two_handed_odachi(
+                base,
+                hand_x=hx_seq[k],
+                hand_y=hy_seq[k],
+                angle_deg=ang_seq[k],
+                glow_intensity=1.5,
                 scale=1.03,
                 blade_len=17.0,
                 rear_shoulder=(23, 18),
@@ -1599,35 +1643,45 @@ def build_row3_skill(tpl):
                 phase=phase,
             )
 
-            # Explosive horizontal Iaido flash-cut beam across x = 24..48, y = 21..25 (k = 1..6)
-            if 1 <= k <= 6:
-                for rx_i in range(18):
-                    ua = rx_i / 17.0
-                    arc_x = int(round(25 + ua * 22))
-                    arc_y = 23 + int(round(math.sin((ua - 0.5) * math.pi) * 3.0))
-                    set_px(frame, arc_x, arc_y, DIAMOND_WHITE if ua > 0.55 else CYAN_LIGHT)
-                    set_px(frame, arc_x, arc_y - 1, CYAN_BRIGHT if rx_i % 2 == 0 else VIOLET_BRIGHT)
-                    set_px(frame, arc_x, arc_y + 1, VIOLET_GLOW)
+            # Web of 4 Criss-Crossing Diagonal Cyan-White Judgment-Cut Slash Lines across the frame
+            web_lines = [
+                (6, 12 + (k % 3), 47, 36 - (k % 3)),
+                (7, 39 - (k % 2), 47, 10 + (k % 2)),
+                (12, 7, 45, 42),
+                (14, 43, 46, 8),
+            ]
+            num_active = min(4, 1 + k // 2)
+            for l_idx in range(num_active):
+                x0, y0, x1, y1 = web_lines[l_idx]
+                c_main = DIAMOND_WHITE if (l_idx + k) % 2 == 0 else CYAN_LIGHT
+                c_glow = CYAN_BRIGHT if l_idx % 2 == 0 else VIOLET_BRIGHT
+                draw_line_px(frame, x0, y0, x1, y1, c_main)
+                draw_line_px(frame, x0, min(46, y0 + 1), x1, min(46, y1 + 1), c_glow)
 
-            # Crackling ground lightning fissures (x = 24..48, y = 42..48)
-            draw_raijin_ground_fissures(frame, k)
             frames.append(frame)
 
         else:
-            # Phase 3 (F23..F29): Smooth recovery to Chudan guard
-            u = (f - 23) / 6.0
-            base = (tpl["lunge"] if f <= 24 else tpl["stand"]).copy()
+            # F21..F29: Chiburi & Noto (Clicking the Odachi back into the hip scabbard)
+            # with a bright diamond-white star-glint at his hip koiguchi (x = 24, y = 26) as the lightning web detonates!
+            k = f - 21  # 0..8
+            u = k / 8.0
+            base = tpl["stand"].copy()
             base = apply_cape_and_mane_wave(
-                base, phase, amplitude=1.5, vertical_flutter=0.5, rune_pulse=0.75 - u * 0.2
+                base,
+                phase,
+                amplitude=1.4,
+                rune_pulse=1.0 - u * 0.3,
+                koiguchi_glint=1.0 if k <= 5 else 0.3,
             )
-            ang = -22.0 * (1.0 - u) + (-48.0) * u
-            hx = int(round(32 * (1.0 - u) + 31 * u))
+            ang = -6.0 * (1.0 - u) + (-10.0) * u
+            hx = int(round(27 * (1.0 - u) + 29 * u))
+            hy = 26
             frame = draw_two_handed_odachi(
                 base,
                 hand_x=hx,
-                hand_y=23,
+                hand_y=hy,
                 angle_deg=ang,
-                glow_intensity=0.95,
+                glow_intensity=1.3 - u * 0.3,
                 scale=1.0,
                 blade_len=17.0,
                 rear_shoulder=(21, 18),
@@ -1635,32 +1689,51 @@ def build_row3_skill(tpl):
                 draw_arms=True,
                 phase=phase,
             )
+
+            # Bright Diamond-White Star-Glint at his hip koiguchi (x = 24, y = 26) on F21..F26
+            if k <= 5:
+                gx, gy = 24, 26
+                star_r = 4 if k in (1, 2, 3) else 3
+                for d_s in range(-star_r, star_r + 1):
+                    set_px(frame, gx + d_s, gy, DIAMOND_WHITE if abs(d_s) <= 2 else CYAN_LIGHT)
+                    set_px(frame, gx, gy + d_s, DIAMOND_WHITE if abs(d_s) <= 2 else CYAN_LIGHT)
+                for dx_d, dy_d in [(-2, -2), (2, -2), (-2, 2), (2, 2), (-1, -1), (1, -1), (-1, 1), (1, 1)]:
+                    set_px(frame, gx + dx_d, gy + dy_d, GOLD_WHITE if abs(dx_d) == 1 else CYAN_BRIGHT)
+
+            # Detonating lightning web fragments bursting into cyan-violet sparks (F21..F25)
+            if k <= 4:
+                burst_pts = [(12, 14), (39, 13), (44, 24), (37, 36), (15, 37), (29, 11)]
+                for b_i, (bx, by) in enumerate(burst_pts):
+                    sx_b = min(47, max(4, bx + (1 if b_i % 2 == 0 else -1) * k))
+                    sy_b = min(45, max(5, by + (1 if b_i >= 3 else -1) * k))
+                    set_px(frame, sx_b, sy_b, DIAMOND_WHITE if (b_i + k) % 2 == 0 else CYAN_BRIGHT)
+                    set_px(frame, min(47, sx_b + 1), sy_b, VIOLET_BRIGHT)
+
             frames.append(frame)
+
     return frames
 
 
-def draw_susanoo_8drum_halo_and_arcs(canvas, f, crouch_d=0, intensity=1.0, phase=0.0):
+def draw_susanoo_8drum_wheel(canvas, f, crouch_d=0, phase=0.0):
     """
     Row 4 Ultimate helper:
-    1. **Floating 8-Drum Raijin Halo Ring** behind Kaze-Maru's shoulders (`cx = 25, cy = 16 + crouch_d, r = 10.5`)
-    2. Crackling multi-branch cyan-violet lightning arcs around his kabuto & pauldrons
-    3. Blazing ground storm seal (`y = 44..48, x = 12..48`).
+    Renders Kaze-Maru's blazing **8-Drum Raijin Thunder-Wheel** behind his shoulders (`cx = 24, cy = 16, r = 11.0`)
+    linked by crackling cyan-violet lightning arcs (with ZERO vertical ground pillars!).
     """
-    bg_halo = np.zeros((52, 52, 4), dtype=np.uint8)
-    cx, cy = 25.0, 16.5 + crouch_d
-    r_halo = 10.5
+    bg_wheel = np.zeros((52, 52, 4), dtype=np.uint8)
+    cx, cy = 24.0, 16.0 + crouch_d
+    r_wheel = 11.0
 
-    # 1. Floating 8-Drum Raijin Halo Ring behind shoulders
-    for s in range(40):
-        ang = (s / 40.0) * 2.0 * math.pi + phase
-        rx = max(4, min(47, int(round(cx + math.cos(ang) * r_halo))))
-        ry = max(4, min(45, int(round(cy + math.sin(ang) * r_halo))))
-        set_px(bg_halo, rx, ry, CYAN_BRIGHT if s % 2 == 0 else VIOLET_GLOW)
+    for s in range(44):
+        ang = (s / 44.0) * 2.0 * math.pi + phase
+        rx = max(4, min(47, int(round(cx + math.cos(ang) * r_wheel))))
+        ry = max(4, min(45, int(round(cy + math.sin(ang) * r_wheel))))
+        set_px(bg_wheel, rx, ry, CYAN_BRIGHT if s % 2 == 0 else VIOLET_GLOW)
 
     for d_i in range(8):
         da = (d_i / 8.0) * 2.0 * math.pi + phase
-        dx_d = max(5, min(46, int(round(cx + math.cos(da) * r_halo))))
-        dy_d = max(5, min(44, int(round(cy + math.sin(da) * r_halo))))
+        dx_d = max(5, min(46, int(round(cx + math.cos(da) * r_wheel))))
+        dy_d = max(5, min(44, int(round(cy + math.sin(da) * r_wheel))))
         for oy in (-1, 0, 1):
             for ox in (-1, 0, 1):
                 if ox == 0 and oy == 0:
@@ -1669,168 +1742,138 @@ def draw_susanoo_8drum_halo_and_arcs(canvas, f, crouch_d=0, intensity=1.0, phase
                     col_d = BRASS_BRIGHT if (d_i % 2 == 0) else CYAN_BRIGHT
                 else:
                     col_d = BRASS_MID
-                set_px(bg_halo, dx_d + ox, dy_d + oy, col_d)
+                set_px(bg_wheel, dx_d + ox, dy_d + oy, col_d)
 
-    # Composite character over the Halo Ring so the 8-drum ring floats behind his shoulders
-    out = composite_over(bg_halo, canvas)
-
-    # 2. Crackling multi-branch cyan-violet lightning arcs around kabuto & pauldrons
-    origins = [
-        (22, max(5, 8 + crouch_d), -1, -1),
-        (31, max(5, 8 + crouch_d), 1, -1),
-        (15, max(8, 16 + crouch_d), -1, 0),
-        (32, max(8, 16 + crouch_d), 1, -1),
-    ]
-    for idx, (ox, oy, dir_x, dir_y) in enumerate(origins):
-        cx_l, cy_l = float(ox), float(oy)
-        steps = 4 if intensity >= 0.85 else 3
-        for s in range(1, steps + 1):
-            zig = 1 if ((f + idx + s) % 2 == 0) else -1
-            nx_l = max(4.0, min(47.0, cx_l + dir_x * 1.6 + zig * 0.8))
-            ny_l = max(3.0, min(45.0, cy_l + dir_y * 1.2 - (0.5 if dir_y == 0 else 0.0) + zig * 0.7))
-            col_l = DIAMOND_WHITE if s == 1 else (CYAN_LIGHT if (s + idx + f) % 2 == 0 else VIOLET_BRIGHT)
-            draw_line_px(out, cx_l, cy_l, nx_l, ny_l, col_l)
-            cx_l, cy_l = nx_l, ny_l
-
-    # 3. Blazing Ground Storm Seal (y = 44..48, x = 12..48)
-    max_sx = 48 if f >= 11 else int(round(36 + (f / 10.0) * 10))
-    for x in range(12, max_sx + 1):
-        wave = (x + f) % 3
-        set_px(out, x, 48, INDIGO_DARK if x % 3 == 0 else VIOLET_DEEP)
-        set_px(out, x, 47, VIOLET_GLOW if wave == 0 else (CYAN_MID if wave == 1 else INDIGO_MID))
-        set_px(out, x, 46, DIAMOND_WHITE if (f >= 11 and wave == 0) else (CYAN_LIGHT if wave == 1 else CYAN_BRIGHT))
-        if (x + f) % 4 == 0:
-            set_px(out, x, 45, VIOLET_BRIGHT if wave == 2 else CYAN_LIGHT)
-
-    # Erupting ground storm lightning pillars during overdrive (F11..F25)
-    if 11 <= f <= 25:
-        pillar_xs = [15, 24, 35, 45] if f < 20 else [14, 20, 27, 34, 41, 47]
-        for p_idx, px_p in enumerate(pillar_xs):
-            top_y = max(39, 41 - ((f + p_idx) % 3))
-            is_cyan = (p_idx % 2 == 0)
-            for py_p in range(top_y, 47):
-                set_px(out, px_p, py_p, DIAMOND_WHITE if is_cyan else VIOLET_WHITE)
-                if px_p - 1 >= 12:
-                    set_px(out, px_p - 1, py_p, CYAN_LIGHT if is_cyan else VIOLET_BRIGHT)
-                if px_p + 1 <= 48:
-                    set_px(out, px_p + 1, py_p, CYAN_BRIGHT if is_cyan else VIOLET_GLOW)
-
-    return out
+    return composite_over(bg_wheel, canvas)
 
 
 def build_row4_ultimate(tpl):
     """
-    Row 4 (`ULTIMATE - Susanoo: Thousand-Blade Thunderstorm`, 120..149):
-    - Surrounded by a **Floating 8-Drum Raijin Halo Ring** behind his shoulders, crackling multi-branch
-      cyan-violet lightning arcs, a blazing ground storm seal (`y = 44..48`), and a multi-slash
-      cross-cleave overdrive (`F11..F24`).
+    Row 4 (`ULTIMATE` - Susanoo Omnislash Storm, 120..149):
+    - Kaze-Maru holds his Odachi vertically in front of his chest (`angle_deg = -88°`, `Ken-In` blade seal)
+      while his 8-Drum Raijin Thunder-Wheel blazes behind him and **criss-crossing omnidirectional
+      cyan-violet sword slashes** fill the air around him!
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 10:
-            # F00..F10: Skyward Susanoo awakening & overhead Thunder-Odachi hoist (-48 deg -> -116 deg)
-            u = f / 10.0
+
+        if f <= 6:
+            # F00..F06: Raising the Odachi from -10 deg hip stance into the vertical -88 deg Ken-In blade seal in front of chest
+            u = f / 6.0
             base = tpl["stand"].copy()
             base = apply_cape_and_mane_wave(
-                base, phase * 2.5, amplitude=1.8, vertical_flutter=0.8, rune_pulse=1.0
+                base, phase * 2.0, amplitude=1.6, rune_pulse=0.85 + 0.15 * u, show_drums=False
             )
-            base = draw_susanoo_8drum_halo_and_arcs(base, f, crouch_d=0, intensity=0.5 + 0.5 * u, phase=phase * 2.0)
-
-            ang = -48.0 * (1.0 - u) + (-116.0) * u
-            hx = int(round(31 * (1.0 - u) + 29 * u))
-            hy = int(round(23 * (1.0 - u) + 13 * u))
+            base = draw_susanoo_8drum_wheel(base, f, crouch_d=0, phase=phase * 2.0)
+            ang = -10.0 * (1.0 - u) + (-88.0) * u
+            hx = int(round(29 * (1.0 - u) + 28 * u))
+            hy = int(round(26 * (1.0 - u) + 22 * u))
             frame = draw_two_handed_odachi(
                 base,
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=ang,
-                glow_intensity=1.2 + u * 0.3,
-                scale=1.04,
+                glow_intensity=1.2 + 0.3 * u,
+                scale=1.0,
                 blade_len=17.0,
                 rear_shoulder=(21, 18),
-                lead_shoulder=(27, 18),
+                lead_shoulder=(27, 19),
                 draw_arms=True,
                 phase=phase * 2.0,
             )
             frames.append(frame)
 
         elif f <= 24:
-            # F11..F24: Multi-slash cross-cleave overdrive (Slash 1: F11..F15, Slash 2: F16..F20, Final X-Cleave: F21..F24)
-            k = f - 11  # 0..13
-            crouch_d = 2 if (k in (1, 2, 6, 7)) else (4 if k >= 10 else 0)
-            base = make_crouch_ronin(tpl, crouch_d) if crouch_d > 0 else tpl["lunge"].copy()
+            # F07..F24: Kaze-Maru holds the vertical Ken-In Blade Seal (angle_deg = -88 deg) in front of his chest
+            # while the 8-Drum Raijin Thunder-Wheel spins behind him and omnidirectional sword slashes fill the air!
+            k = f - 7  # 0..17
+            hover_dy = -1 if (k % 4 in (1, 2)) else 0
+            base = shift_layer(tpl["stand"], dx=0, dy=hover_dy)
             base = apply_cape_and_mane_wave(
-                base, phase * 3.0, amplitude=2.0, vertical_flutter=0.9, rune_pulse=1.0
+                base, phase * 3.0, amplitude=2.0, rune_pulse=1.0, dy_offset=hover_dy, show_drums=False
             )
-            base = draw_susanoo_8drum_halo_and_arcs(
-                base, f, crouch_d=crouch_d, intensity=1.0, phase=phase * 3.0
+            base = draw_susanoo_8drum_wheel(base, f, crouch_d=hover_dy, phase=phase * 3.0)
+
+            ang = -88.0 + math.sin(k * 0.8) * 2.0
+            frame = draw_two_handed_odachi(
+                base,
+                hand_x=28,
+                hand_y=22 + hover_dy,
+                angle_deg=ang,
+                glow_intensity=1.5,
+                scale=1.02,
+                blade_len=17.0,
+                rear_shoulder=(21, 18 + hover_dy),
+                lead_shoulder=(27, 19 + hover_dy),
+                draw_arms=True,
+                phase=phase * 3.0,
             )
 
-            sy_r, sy_l = 18 + crouch_d, 19 + crouch_d
-            if k <= 4:
-                # Slash 1 (F11..F15): High-to-low downward diagonal thunder cleave
-                ang = [-45.0, 10.0, 26.0, 20.0, -15.0][k]
-                hx, hy = 35, sy_l + 4
-                slash1 = (-110.0, ang + 6.0, 18.5, 1.0 if k <= 3 else 0.7)
-                slash2 = None
-            elif k <= 9:
-                # Slash 2 (F16..F20): Rising reverse-diagonal lightning flash-cut
-                sk = k - 5
-                ang = [30.0, -12.0, -52.0, -76.0, -92.0][sk]
-                hx, hy = 34, sy_l + 1
-                slash1 = (ang - 6.0, 32.0, 18.5, 1.0 if sk <= 3 else 0.75)
-                slash2 = None
-            else:
-                # Final X-Cleave Overdrive (F21..F24): Simultaneous intersecting X-slash arcs!
-                sk = k - 10
-                ang = [-20.0, 22.0, 28.0, 24.0][sk]
-                hx, hy = 35, sy_l + 4
-                slash1 = (-108.0, 30.0, 18.5, 1.0)
-                slash2 = (-68.0, 34.0, 15.5, 0.95)
+            # Criss-crossing omnidirectional cyan-violet & diamond-white katana slashes filling the air around him
+            omni_slashes = [
+                (5, 10, 46, 34),
+                (6, 38, 47, 12),
+                (10, 6, 44, 42),
+                (8, 24, 47, 20),
+                (14, 42, 46, 8),
+                (4, 18, 42, 40),
+                (12, 9, 47, 28),
+            ]
+            for s_i in range(5):
+                idx = (k * 2 + s_i) % len(omni_slashes)
+                x0, y0, x1, y1 = omni_slashes[idx]
+                # Perturb endpoints slightly with k so every frame has a dynamic storm of omnislashes
+                dy_off = ((k + s_i) % 3) - 1
+                c_core = DIAMOND_WHITE if s_i % 2 == 0 else CYAN_LIGHT
+                c_wake = CYAN_BRIGHT if (s_i + k) % 2 == 0 else VIOLET_BRIGHT
+                draw_line_px(frame, x0, y0 + dy_off, x1, y1 - dy_off, c_core)
+                draw_line_px(frame, x0, min(46, y0 + dy_off + 1), x1, min(46, y1 - dy_off + 1), c_wake)
 
+            # Re-composite Kaze-Maru's kabuto face & vertical Ken-In blade tip in front of background slashes for crisp readability
+            for cy_f in range(8, 26):
+                for cx_f in range(22, 31):
+                    if base[cy_f, cx_f, 3] > 0:
+                        frame[cy_f, cx_f] = base[cy_f, cx_f]
+            frame = draw_two_handed_odachi(
+                frame,
+                hand_x=28,
+                hand_y=22 + hover_dy,
+                angle_deg=ang,
+                glow_intensity=1.5,
+                scale=1.02,
+                blade_len=17.0,
+                rear_shoulder=(21, 18 + hover_dy),
+                lead_shoulder=(27, 19 + hover_dy),
+                draw_arms=True,
+                phase=phase * 3.0,
+            )
+            frames.append(frame)
+
+        else:
+            # F25..F29: Lowering the Odachi from -88 deg Ken-In seal back to the low -10 deg hip Iaido stance
+            k = f - 25  # 0..4
+            u = (k + 1) / 5.0
+            base = tpl["stand"].copy()
+            base = apply_cape_and_mane_wave(base, phase, amplitude=1.5, rune_pulse=0.9 - u * 0.2, show_drums=True)
+            ang = -88.0 * (1.0 - u) + (-10.0) * u
+            hx = int(round(28 * (1.0 - u) + 29 * u))
+            hy = int(round(22 * (1.0 - u) + 26 * u))
             frame = draw_two_handed_odachi(
                 base,
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=ang,
-                glow_intensity=1.5,
-                scale=1.06,
+                glow_intensity=1.25 - u * 0.25,
+                scale=1.0,
                 blade_len=17.0,
-                rear_shoulder=(22, sy_r),
-                lead_shoulder=(28, sy_l),
-                draw_arms=True,
-                slash_arc=slash1,
-                cross_slash_arc=slash2,
-                phase=phase * 2.5,
-            )
-            frames.append(frame)
-
-        else:
-            # F25..F29: Triumphant recovery to Chudan guard as Raijin halo & storm seal subside
-            k = f - 25  # 0..4
-            u = (k + 1) / 5.0
-            crouch_d = [3, 2, 1, 0, 0][k]
-            base = make_crouch_ronin(tpl, crouch_d) if crouch_d > 0 else tpl["stand"].copy()
-            base = apply_cape_and_mane_wave(base, phase, amplitude=1.5, vertical_flutter=0.6, rune_pulse=0.9)
-            base = draw_susanoo_8drum_halo_and_arcs(
-                base, f, crouch_d=crouch_d, intensity=max(0.3, 1.0 - u * 0.7), phase=phase * 2.0
-            )
-            ang = 20.0 * (1.0 - u) + (-48.0) * u
-            frame = draw_two_handed_odachi(
-                base,
-                hand_x=int(round(34 * (1.0 - u) + 31 * u)),
-                hand_y=23 + crouch_d,
-                angle_deg=ang,
-                glow_intensity=1.2 - u * 0.25,
-                scale=1.02,
-                blade_len=17.0,
-                rear_shoulder=(21, 18 + crouch_d),
-                lead_shoulder=(27, 19 + crouch_d),
+                rear_shoulder=(21, 18),
+                lead_shoulder=(27, 19),
                 draw_arms=True,
                 phase=phase,
             )
             frames.append(frame)
+
     return frames
 
 
@@ -1845,17 +1888,18 @@ def build_row5_death(tpl):
     frames = []
     for f in range(30):
         if f <= 6:
-            # F00..F06: Hurt stagger recoil with electric cyan-violet hit-sparks
             u = f / 6.0
             dx = -int(round(math.sin(u * math.pi * 0.85) * 2.0))
             dy = int(round(u * 2.0))
             base = shift_layer(tpl["stand"], dx=dx, dy=dy)
-            base = apply_cape_and_mane_wave(base, u * math.pi, amplitude=1.5, vertical_flutter=0.5, rune_pulse=0.45)
+            base = apply_cape_and_mane_wave(
+                base, u * math.pi, amplitude=1.4, vertical_flutter=0.5, rune_pulse=0.45, dy_offset=dy
+            )
             frame = draw_two_handed_odachi(
                 base,
-                hand_x=max(29, 31 + dx),
-                hand_y=23 + dy,
-                angle_deg=-48.0 + u * 42.0,
+                hand_x=max(27, 29 + dx),
+                hand_y=25 + dy,
+                angle_deg=-10.0 + u * 34.0,
                 glow_intensity=0.7,
                 scale=1.0,
                 blade_len=17.0,
@@ -1863,7 +1907,6 @@ def build_row5_death(tpl):
                 lead_shoulder=(27 + dx, 19 + dy),
                 draw_arms=True,
             )
-            # Electric hit-sparks bursting off breastplate
             for sp in range(4):
                 sx_s = min(47, 30 + sp * 2 + f)
                 sy_s = max(5, 20 - (sp % 2) * 3 + (f // 2))
@@ -1871,10 +1914,9 @@ def build_row5_death(tpl):
             frames.append(frame)
 
         elif f <= 17:
-            # F07..F17: Progressive kneeling collapse
             u = (f - 7) / 10.0
             kneel_src = tpl["kneel"].copy()
-            extra_drop = 0 if f <= 13 else (f - 13)  # 1, 2, 3, 4 on F14..F17
+            extra_drop = 0 if f <= 13 else (f - 13)
             base = np.zeros((52, 52, 4), dtype=np.uint8)
             for sy in range(8, 46):
                 for sx in range(3, 48):
@@ -1888,7 +1930,15 @@ def build_row5_death(tpl):
                         base[ny, nx] = kneel_src[sy, sx]
             base = fill_layer_pinholes(base)
             flicker = 0.65 if (f % 3 == 0) else 0.2
-            base = apply_cape_and_mane_wave(base, u * math.pi, amplitude=1.0, vertical_flutter=0.3, rune_pulse=flicker)
+            base = apply_cape_and_mane_wave(
+                base,
+                u * math.pi,
+                amplitude=1.0,
+                vertical_flutter=0.3,
+                rune_pulse=flicker,
+                dy_offset=6 + extra_drop,
+                show_drums=(f <= 13),
+            )
 
             frame = draw_two_handed_odachi(
                 base,
@@ -1905,12 +1955,9 @@ def build_row5_death(tpl):
             frames.append(frame)
 
         else:
-            # F18..F29: Grounded horizontal prone collapse (y = 33..46, anchored on the floor at y = 46, never floating!)
-            # with the Two-Handed Thunder-Odachi resting flat on the floor (y = 44..46) and fading cyan-violet soul embers.
             k = f - 18  # 0..11
             fall_src = tpl["fall"]
             frame = np.zeros((52, 52, 4), dtype=np.uint8)
-            # Subtle settling of upper armor/haori from y=33..46 on F18..F20 to y=35..46 on F21..F29 while bottom stays locked at y=46
             v_stretch = [1.15, 1.10, 1.05, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0, 1.0][k]
             for sy in range(34, 47):
                 h_from_floor = 46 - sy
@@ -1922,19 +1969,15 @@ def build_row5_death(tpl):
                             frame[ny + 1, sx] = fall_src[sy, sx]
             frame = fill_layer_pinholes(frame, x0=5, x1=47, y0=33, y1=47, require_3_neighbors=False)
 
-            # Draw the Two-Handed Thunder-Odachi resting flat on the floor (y = 44..46, x = 15..45)
             for hx_p in range(15, 21):
                 set_px(frame, hx_p, 45, BRASS_BRIGHT if hx_p in (15, 18) else INDIGO_DARK)
-            # Circular Raijin Tsuba at x = 21, y = 44..46
             set_px(frame, 21, 44, BRASS_BRIGHT)
             set_px(frame, 21, 45, GOLD_WHITE if k <= 3 else CYAN_BRIGHT)
             set_px(frame, 21, 46, BRASS_MID)
-            # Curved 17px Odachi blade resting flat along x = 22..44, y = 45..46
             for bx_p in range(22, 45):
                 set_px(frame, bx_p, 45, DIAMOND_WHITE if (bx_p + k) % 5 == 0 else CYAN_LIGHT)
                 set_px(frame, bx_p, 46, INDIGO_MID if bx_p % 2 == 0 else CYAN_DEEP)
 
-            # Fading cyan-violet soul embers drifting upward from the fallen samurai so every frame F18..F29 is unique
             ember_x = 18 + k * 2
             ember_y = 34 + (k % 3)
             set_px(frame, min(44, ember_x), ember_y, DIAMOND_WHITE if k <= 2 else (CYAN_BRIGHT if k <= 7 else VIOLET_GLOW))
@@ -1945,29 +1988,53 @@ def build_row5_death(tpl):
     return frames
 
 
+def draw_shunpo_branching_lightning(canvas, k):
+    """
+    Row 6 helper: Draws jagged branching cyan-violet lightning bolts trailing behind Kaze-Maru
+    during his Shunpo Lightning Step (NO horizontal bar lines!).
+    """
+    bolt_roots = [
+        (20, 15 + (k % 2)),
+        (19, 23 - (k % 2)),
+        (21, 32 + (k % 2)),
+    ]
+    for b_idx, (rx, ry) in enumerate(bolt_roots):
+        cx, cy = float(rx), float(ry)
+        for seg in range(4):
+            nx = max(4.0, cx - 3.4)
+            zig_dy = (2.2 if ((seg + b_idx + k) % 2 == 0) else -2.2)
+            ny = max(8.0, min(43.0, cy + zig_dy))
+            col = DIAMOND_WHITE if seg == 0 else (CYAN_BRIGHT if (seg + b_idx) % 2 == 0 else VIOLET_BRIGHT)
+            draw_line_px(canvas, cx, cy, nx, ny, col)
+            # Diagonal fork branch off segment 1
+            if seg == 1:
+                fx = max(4.0, nx - 2.5)
+                fy = max(8.0, min(43.0, ny + (2.5 if zig_dy > 0 else -2.5)))
+                draw_line_px(canvas, nx, ny, fx, fy, CYAN_LIGHT if b_idx % 2 == 0 else VIOLET_GLOW)
+            cx, cy = nx, ny
+
+
 def build_row6_dash(tpl):
     """
-    Row 6 (`DASH - Iaido Lightning Flash-Step`, 180..209):
-    - `F00..F02`: Quick Iaido coil crouch (`d = 2..4`).
-    - `F03..F22`: Forward-leaning two-handed Iaido sprint/lunge with trailing
-      **electric cyan-violet lightning ribbons & afterimage streaks** (`x = 4..16, y = 14..42`)
-      and a mid-dash horizontal slash (`F10..F16`).
-    - `F23..F29`: Skidding boot-stop with electric ground sparks and recovery to Chudan guard.
+    Row 6 (`DASH` - Shunpo Lightning Step, 180..209):
+    - Low forward-leaning Shunpo blur with **jagged branching cyan-violet lightning bolts**
+      trailing behind him (NO horizontal bar lines!).
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
         if f <= 2:
-            # F00..F02: Quick Iaido coil crouch
             crouch_d = [2, 4, 3][f]
             u = f / 2.0
             base = make_crouch_ronin(tpl, crouch_d)
-            base = apply_cape_and_mane_wave(base, phase * 2.0, amplitude=1.6, is_dash=True, rune_pulse=0.85)
-            ang = -48.0 * (1.0 - u) + (-18.0) * u
+            base = apply_cape_and_mane_wave(
+                base, phase * 2.0, amplitude=1.6, is_dash=True, rune_pulse=0.85, dy_offset=crouch_d
+            )
+            ang = -10.0 * (1.0 - u) + 8.0 * u
             frame = draw_two_handed_odachi(
                 base,
-                hand_x=31 + f,
-                hand_y=23 + crouch_d,
+                hand_x=29 - f,
+                hand_y=26 + crouch_d,
                 angle_deg=ang,
                 glow_intensity=1.0 + u * 0.25,
                 scale=1.0,
@@ -1980,35 +2047,25 @@ def build_row6_dash(tpl):
             frames.append(frame)
 
         elif f <= 22:
-            # F03..F22: Forward-leaning two-handed Iaido sprint/lunge + lightning ribbons + mid-dash horizontal slash (F10..F16)
+            # F03..F22: Low forward-leaning Shunpo blur + jagged branching cyan-violet lightning bolts
             k = f - 3  # 0..19
-            bob_dy = int(round(math.sin(k * 0.7) * 1.0))
-            base = shift_layer(tpl["dash"], dx=0, dy=bob_dy)
+            bob_dy = 1 + int(round(math.sin(k * 0.7) * 1.0))
+            base = shift_layer(tpl["dash"], dx=1, dy=bob_dy)
             base = apply_cape_and_mane_wave(
-                base, k * 0.85, amplitude=1.8, vertical_flutter=0.8, is_dash=True, rune_pulse=1.0
+                base, k * 0.85, amplitude=1.8, vertical_flutter=0.8, is_dash=True, rune_pulse=1.0, dy_offset=bob_dy
             )
+            draw_shunpo_branching_lightning(base, k)
 
-            # Trailing electric cyan-violet lightning ribbons & afterimage streaks (x = 4..16, y = 14..42)
-            for r_idx in range(5):
-                ry = 15 + r_idx * 6 + ((k + r_idx) % 2)
-                rx0 = 4 + ((k * 2 + r_idx * 3) % 6)
-                col_r = CYAN_BRIGHT if r_idx % 2 == 0 else VIOLET_BRIGHT
-                draw_line_px(base, rx0, ry, min(16, rx0 + 5), ry, col_r)
-                set_px(base, min(16, rx0 + 2), ry - 1, DIAMOND_WHITE if (r_idx + k) % 3 == 0 else CYAN_LIGHT)
-
-            # Mid-dash horizontal slash on F10..F16
             if 10 <= f <= 16:
                 sk = f - 10  # 0..6
-                ang_seq = [-32.0, -8.0, 12.0, 18.0, 14.0, 6.0, -6.0]
-                hx_d = 35
-                hy_d = 21 + bob_dy
-                slash_arc = (-45.0, ang_seq[sk] + 5.0, 17.5, 0.95 if sk <= 4 else 0.65)
+                ang_seq = [-26.0, -6.0, 10.0, 16.0, 12.0, 4.0, -4.0]
+                slash_arc = (-38.0, ang_seq[sk] + 6.0, 17.5, 0.95 if sk <= 4 else 0.65)
                 frame = draw_two_handed_odachi(
                     base,
-                    hand_x=hx_d,
-                    hand_y=hy_d,
+                    hand_x=35,
+                    hand_y=23 + bob_dy,
                     angle_deg=ang_seq[sk],
-                    glow_intensity=1.4,
+                    glow_intensity=1.45,
                     scale=1.02,
                     blade_len=17.0,
                     rear_shoulder=(23, 18 + bob_dy),
@@ -2017,18 +2074,13 @@ def build_row6_dash(tpl):
                     slash_arc=slash_arc,
                     phase=phase,
                 )
-                # Horizontal electric slash streak across mid-torso height (x = 26..47, y = 22..24)
-                for sx_h in range(28, 48):
-                    set_px(frame, sx_h, 23 + bob_dy, DIAMOND_WHITE if sx_h > 38 else CYAN_LIGHT)
-                    if sx_h % 2 == 0:
-                        set_px(frame, sx_h, 22 + bob_dy, VIOLET_BRIGHT)
             else:
                 pump_dx = int(round(math.sin(k * 0.7) * 1.0))
                 frame = draw_two_handed_odachi(
                     base,
-                    hand_x=33 + pump_dx,
-                    hand_y=22 + bob_dy,
-                    angle_deg=-14.0 + math.sin(k * 0.6) * 5.0,
+                    hand_x=30 + pump_dx,
+                    hand_y=26 + bob_dy,
+                    angle_deg=8.0 + math.sin(k * 0.6) * 5.0,
                     glow_intensity=1.25,
                     scale=1.0,
                     blade_len=16.5,
@@ -2040,19 +2092,19 @@ def build_row6_dash(tpl):
             frames.append(frame)
 
         else:
-            # F23..F29: Skidding boot-stop with electric sparks & recovery to Chudan guard
+            # F23..F29: Skidding boot-stop & recovery to low -10 deg Iaido stance
             k = f - 23  # 0..6
             u = k / 6.0
             crouch_d = [3, 3, 2, 2, 1, 1, 0][k]
             base = make_crouch_ronin(tpl, crouch_d) if crouch_d > 0 else tpl["stand"].copy()
             base = apply_cape_and_mane_wave(
-                base, phase, amplitude=1.5, vertical_flutter=0.5, rune_pulse=0.85 - u * 0.2
+                base, phase, amplitude=1.5, vertical_flutter=0.5, rune_pulse=0.85 - u * 0.2, dy_offset=crouch_d
             )
-            ang = -14.0 * (1.0 - u) + (-48.0) * u
+            ang = 6.0 * (1.0 - u) + (-10.0) * u
             frame = draw_two_handed_odachi(
                 base,
-                hand_x=int(round(33 * (1.0 - u) + 31 * u)),
-                hand_y=23 + crouch_d,
+                hand_x=int(round(30 * (1.0 - u) + 29 * u)),
+                hand_y=26 + crouch_d,
                 angle_deg=ang,
                 glow_intensity=1.05 - u * 0.15,
                 scale=1.0,
@@ -2070,76 +2122,82 @@ def build_row6_dash(tpl):
     return frames
 
 
-def draw_raijin_thunder_drum_shield(canvas, f, phase):
+def draw_dragon_lightning_counter_vortex(canvas, f, phase):
     """
-    Row 7 helper (F00..F11): Renders a spinning **Brass & Electric-Cyan Raijin Thunder-Drum Wheel Shield**
-    at `x = 36..42, y = 19..34` in front of Kaze-Maru's lead gauntlet while keeping his crouched body
-    (`x = 5..34`) 100% visible!
+    Row 7 helper (`F04..F14`): Renders a **Coiling Cyan-Indigo Dragon-Lightning Counter-Vortex**
+    spiraling around Kaze-Maru's waist (`cx = 26, cy = 29, rx = 11.5, ry = 4.5`) with a glowing
+    electric dragon-head spark — and ZERO shield wheel or ground spikes!
     """
-    sh = np.zeros((52, 52, 4), dtype=np.uint8)
-    cx, cy = 39.0, 26.5
-    rx = 3.0
-    ry = 7.0 if 1 <= f <= 10 else 6.0
-    pulse_hi = (f % 2 == 0)
+    back_vortex = np.zeros((52, 52, 4), dtype=np.uint8)
+    front_vortex = np.zeros((52, 52, 4), dtype=np.uint8)
+    cx = 26.0
+    cy = 29.5
+    rx = 11.5
+    ry = 4.5
 
-    # 1. Elliptical Brass & Indigo-Steel Thunder-Drum Shield Rim & Tomoe Core (x = 36..42, y = 19..34)
-    for y in range(int(cy - ry), int(cy + ry) + 1):
-        dy_n = (y - cy) / max(1.0, ry)
-        half_x = int(round(rx * math.sqrt(max(0.0, 1.0 - dy_n * dy_n))))
-        for dx in range(-half_x, half_x + 1):
-            x = int(round(cx + dx))
-            if not (36 <= x <= 42 and 19 <= y <= 34):
-                continue
-            is_rim = (abs(dx) == half_x or abs(y - cy) >= ry - 1.0)
-            if is_rim:
-                col = GOLD_WHITE if (dx > 0 and pulse_hi) else (BRASS_BRIGHT if (y + f) % 2 == 0 else CYAN_BRIGHT)
-            elif dx == 0 and abs(y - cy) <= 2.5:
-                # Spinning Three-Tomoe Electric Core at (39, 25..28)
-                col = DIAMOND_WHITE if pulse_hi else CYAN_LIGHT
-            else:
-                # Rotating Lightning Spokes inside the drum shield
-                ang = math.atan2(dy_n, dx / max(1.0, rx)) + phase * 2.5
-                spoke = int(round((ang / (2.0 * math.pi)) * 6.0)) % 2 == 0
-                col = CYAN_BRIGHT if spoke else (VIOLET_GLOW if (x + y) % 2 == 0 else INDIGO_DARK)
-            set_px(sh, x, y, col)
+    steps = 36
+    head_idx = (f * 3) % steps
+    for i in range(steps):
+        ang = (i / float(steps)) * 2.0 * math.pi + phase * 2.5
+        ca, sa = math.cos(ang), math.sin(ang)
+        vx = cx + ca * rx
+        vy = cy + sa * ry - math.sin(ang * 2.0) * 1.5
+        target = front_vortex if sa >= 0.0 else back_vortex
 
-    # 2. Orbiting Raijin Drum Nodes around the shield perimeter
-    for d_i in range(6):
-        da = (d_i / 6.0) * 2.0 * math.pi + phase * 2.0
-        nx = int(round(cx + math.cos(da) * rx))
-        ny = int(round(cy + math.sin(da) * ry))
-        if 36 <= nx <= 42 and 19 <= ny <= 34:
-            set_px(sh, nx, ny, DIAMOND_WHITE if d_i % 2 == 0 else GOLD_WHITE)
+        dist_head = (head_idx - i) % steps
+        if dist_head <= 2:
+            col = DIAMOND_WHITE
+            set_px(target, vx, vy - 1, CYAN_LIGHT)
+            set_px(target, vx, vy + 1, VIOLET_BRIGHT)
+        elif dist_head <= 14:
+            col = CYAN_BRIGHT if i % 2 == 0 else VIOLET_BRIGHT
+        elif dist_head <= 24:
+            col = CYAN_MID if i % 2 == 0 else VIOLET_GLOW
+        else:
+            col = INDIGO_LIGHT
 
-    return composite_over(canvas, sh)
+        set_px(target, vx, vy, col)
+
+    out = composite_over(back_vortex, canvas)
+    out = composite_over(out, front_vortex)
+    return out
 
 
 def build_row7_crouch(tpl):
     """
-    Row 7 (`CROUCH - Raijin Thunder-Drum Parry & Iaido Counter`, 210..239):
-    - `F00..F11`: Deep knee-bend crouch (`d = 1..6`) with a spinning **Brass & Electric-Cyan Raijin Thunder-Drum
-      Wheel Shield** (`x = 36..42, y = 19..34`) in front of his lead gauntlet.
-    - `F12..F19`: Explosive low rising Iaido counter-slash (`+32°` to `-45°`) with a cyan-violet crescent slash trail.
-    - `F20..F29`: Smooth rise back to standing Chudan guard.
+    Row 7 (`CROUCH` - Iaido Serene Mind Counter-Blink, 210..239):
+    - ZERO overhead/front drum shield and ZERO vertical ground spikes at his feet!
+    - `F00..F14`: Kaze-Maru drops into a deep **Iai-Goshi Sheath Counter-Stance (`crouch_depth = 5`)**
+      holding the Odachi horizontally at his hip scabbard (`hand_x = 26, hand_y = 29, angle_deg = -6°`)
+      while a **Coiling Cyan-Indigo Dragon-Lightning Counter-Vortex** spirals around his waist (`F04..F14`)!
+    - `F15..F25`: **Instant Lightning Blink-Afterimage & Critical Backstab Slash**!
+    - `F26..F29`: Smooth return to the low `-10°` standing Iaido stance.
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 11:
-            # F00..F11: Deep knee-bend crouch + spinning Raijin Thunder-Drum Wheel Shield (x = 36..42, y = 19..34)
-            depths = [1, 2, 4, 5, 6, 6, 6, 6, 6, 6, 5, 5]
+
+        if f <= 14:
+            # F00..F14: Deep Iai-Goshi Sheath Counter-Stance (crouch_depth = 5) + Coiling Dragon-Lightning Counter-Vortex
+            depths = [2, 3, 4, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5, 5]
             d = depths[f]
             base = make_crouch_ronin(tpl, d)
             base = apply_cape_and_mane_wave(
-                base, phase * 1.5, amplitude=1.2, vertical_flutter=0.3, rune_pulse=0.85
+                base,
+                phase * 1.6,
+                amplitude=1.3,
+                vertical_flutter=0.3,
+                rune_pulse=0.9,
+                dy_offset=d,
+                koiguchi_glint=0.85 if f >= 4 else 0.3,
             )
-            ang_seq = [-42.0, -32.0, -22.0, -14.0, -8.0, -4.0, -2.0, -4.0, -8.0, -14.0, -22.0, -30.0]
+            ang = -6.0 + math.sin(phase * 2.0) * 1.5
             frame = draw_two_handed_odachi(
                 base,
-                hand_x=31,
-                hand_y=21 + d,
-                angle_deg=ang_seq[f],
-                glow_intensity=1.05,
+                hand_x=26,
+                hand_y=24 + d,  # 29 when d = 5
+                angle_deg=ang,
+                glow_intensity=1.15,
                 scale=0.98,
                 blade_len=16.5,
                 rear_shoulder=(21, 18 + d),
@@ -2147,102 +2205,112 @@ def build_row7_crouch(tpl):
                 draw_arms=True,
                 phase=phase,
             )
-            frame = draw_raijin_thunder_drum_shield(frame, f, phase)
+            if f >= 4:
+                frame = draw_dragon_lightning_counter_vortex(frame, f, phase)
             frames.append(frame)
 
-        elif f <= 19:
-            # F12..F19: Explosive low rising Iaido counter-slash (+32 deg sweeping up to -45 deg)
-            # with a blazing 3-band cyan-violet crescent slash trail
-            k = f - 12  # 0..7
-            d = 5 if k in (2, 3, 4) else 6
-            base = make_crouch_ronin(tpl, d)
+        elif f <= 25:
+            # F15..F25: Instant Lightning Blink-Afterimage & Critical Backstab Slash!
+            k = f - 15  # 0..10
+            base = shift_layer(tpl["lunge"], dx=2, dy=0)
             base = apply_cape_and_mane_wave(
-                base, phase * 2.0, amplitude=1.5, vertical_flutter=0.4, rune_pulse=1.0
+                base, phase * 2.5, amplitude=1.9, vertical_flutter=0.6, rune_pulse=1.0
             )
-            ang_seq = [32.0, 12.0, -12.0, -32.0, -45.0, -44.0, -38.0, -32.0]
-            hx_seq = [34, 35, 35, 34, 33, 33, 32, 32]
-            hy_off = [22, 21, 20, 19, 19, 19, 20, 20]
 
-            slash_arc = None
+            # Shunpo Blink-Afterimage ghost trailing on the left (F15..F20)
             if k <= 5:
-                arc_int = [0.85, 1.0, 1.0, 0.95, 0.8, 0.6][k]
-                a1 = [36.0, 34.0, 32.0, 28.0, 22.0, 14.0][k]
-                slash_arc = (ang_seq[k] - 4.0, a1, 18.0, arc_int)
+                ghost_src = make_crouch_ronin(tpl, 5)
+                ghost_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+                for gy in range(10, 45):
+                    for gx in range(14, 34):
+                        if ghost_src[gy, gx, 3] > 0 and (gx + gy + k) % 2 == 0:
+                            nx = max(4, gx - 6)
+                            ghost_layer[gy, nx] = CYAN_BRIGHT if (gx + gy) % 4 == 0 else VIOLET_DEEP
+                # Jagged lightning blink-arc linking the afterimage to Kaze-Maru
+                draw_line_px(ghost_layer, 16, 26, 28, 23, DIAMOND_WHITE if k <= 2 else CYAN_LIGHT)
+                draw_line_px(ghost_layer, 15, 32, 29, 29, VIOLET_BRIGHT)
+                base = composite_over(ghost_layer, base)
+
+            ang_seq = [28.0, 6.0, -18.0, -36.0, -44.0, -42.0, -34.0, -26.0, -20.0, -16.0, -14.0]
+            hx_seq = [35, 36, 36, 35, 35, 34, 34, 33, 32, 31, 30]
+            hy_seq = [25, 24, 22, 21, 20, 21, 22, 23, 24, 25, 25]
+            slash_arc = (ang_seq[k] - 6.0, 34.0, 18.0, 1.0 if k <= 4 else 0.65) if k <= 6 else None
 
             frame = draw_two_handed_odachi(
                 base,
                 hand_x=hx_seq[k],
-                hand_y=hy_off[k] + d,
+                hand_y=hy_seq[k],
                 angle_deg=ang_seq[k],
-                glow_intensity=1.4 if k <= 5 else 1.1,
+                glow_intensity=1.45 if k <= 6 else 1.1,
                 scale=1.02,
                 blade_len=17.0,
-                rear_shoulder=(21, 18 + d),
-                lead_shoulder=(27, 19 + d),
+                rear_shoulder=(23, 18),
+                lead_shoulder=(29, 19),
                 draw_arms=True,
                 slash_arc=slash_arc,
                 phase=phase,
             )
 
-            # Ground-skimming electric cyan-violet wave along y = 43..47, x = 32..48
-            wave_x = min(48, 36 + k * 2)
-            for wx in range(32, wave_x + 1):
-                wy = 45 - ((wx + k) % 2)
-                set_px(frame, wx, wy, DIAMOND_WHITE if wx >= wave_x - 1 else (CYAN_LIGHT if wx % 2 == 0 else VIOLET_BRIGHT))
-                set_px(frame, wx, 46, CYAN_BRIGHT if (wx + k) % 2 == 0 else VIOLET_GLOW)
+            # Critical Backstab Star-Flare at the strike apex (x = 42, y = 21) on F16..F20
+            if 1 <= k <= 5:
+                cx_s, cy_s = 42, 21
+                for d_s in range(-3, 4):
+                    set_px(frame, cx_s + d_s, cy_s, DIAMOND_WHITE if abs(d_s) <= 1 else CYAN_LIGHT)
+                    set_px(frame, cx_s, cy_s + d_s, DIAMOND_WHITE if abs(d_s) <= 1 else VIOLET_BRIGHT)
             frames.append(frame)
 
         else:
-            # F20..F29: Smooth rise back to standing Chudan guard
-            depths = [5, 5, 4, 4, 3, 3, 2, 1, 1, 0]
-            k = f - 20
-            d = depths[k]
-            u = k / 9.0
-            base = make_crouch_ronin(tpl, d) if d > 0 else tpl["stand"].copy()
+            # F26..F29: Smooth return to standing -10 deg Iaido stance
+            k = f - 26  # 0..3
+            u = (k + 1) / 4.0
+            crouch_d = [2, 1, 1, 0][k]
+            base = make_crouch_ronin(tpl, crouch_d) if crouch_d > 0 else tpl["stand"].copy()
             base = apply_cape_and_mane_wave(
-                base, phase, amplitude=1.4, vertical_flutter=0.5, rune_pulse=0.75 - u * 0.2
+                base, phase, amplitude=1.4, vertical_flutter=0.5, rune_pulse=0.75, dy_offset=crouch_d
             )
-            ang = -32.0 * (1.0 - u) + (-48.0) * u
+            ang = -14.0 * (1.0 - u) + (-10.0) * u
             frame = draw_two_handed_odachi(
                 base,
-                hand_x=31,
-                hand_y=23 + d,
+                hand_x=29,
+                hand_y=26 + crouch_d,
                 angle_deg=ang,
-                glow_intensity=0.95,
+                glow_intensity=1.0,
                 scale=1.0,
                 blade_len=17.0,
-                rear_shoulder=(21, 18 + d),
-                lead_shoulder=(27, 19 + d),
+                rear_shoulder=(21, 18 + crouch_d),
+                lead_shoulder=(27, 19 + crouch_d),
                 draw_arms=True,
                 phase=phase,
             )
             frames.append(frame)
+
     return frames
 
 
 def build_row8_jump(tpl):
     """
-    Row 8 (`JUMP - Raijin Sky-Vault & Aerial Cleave`, 240..269):
-    - Takeoff crouch (`F00..F03`), ascending aerial vault with tucked knees and
-      **crackling electric cloud/lightning thrusters** beneath his boots (`F04..F11`),
-      apex mid-air two-handed downward Odachi cleave (`-95°` to `+45°`, `F12..F18`) with a 3-band
-      lightning slash trail, descent (`F19..F24`), and grounded landing (`F25..F29`).
+    Row 8 (`JUMP` - Tsubame Gaeshi Double Air-Slash, 240..269):
+    - ZERO ground circle during airborne frames (`F04..F23`)!
+    - Kaze-Maru leaps into the air and executes a **Twin X-Shaped Swallow-Turn Aerial Slash (`Tsubame Gaeshi`)**
+      with two crossing cyan-white crescent arcs in mid-air (`F11..F20`)!
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
         if f <= 3:
-            # F00..F03: Takeoff crouch
-            crouch_seq = [1, 3, 5, 3]
+            # F00..F03: Takeoff coil
+            crouch_seq = [1, 3, 4, 2]
             d = crouch_seq[f]
             u = f / 3.0
             body = make_crouch_ronin(tpl, d)
-            body = apply_cape_and_mane_wave(body, phase * 2.0, amplitude=1.5, vertical_flutter=0.6, rune_pulse=0.85)
-            ang = -48.0 - u * 28.0
+            body = apply_cape_and_mane_wave(
+                body, phase * 2.0, amplitude=1.5, vertical_flutter=0.6, rune_pulse=0.85, dy_offset=d
+            )
+            ang = -10.0 * (1.0 - u) + (-52.0) * u
             frame = draw_two_handed_odachi(
                 body,
-                hand_x=31,
-                hand_y=22 + d,
+                hand_x=29,
+                hand_y=25 + d,
                 angle_deg=ang,
                 glow_intensity=1.0 + u * 0.2,
                 scale=1.0,
@@ -2254,22 +2322,19 @@ def build_row8_jump(tpl):
             )
             frames.append(frame)
 
-        elif f <= 11:
-            # F04..F11: Ascending aerial vault with tucked knees & crackling electric cloud/lightning thrusters
-            k = f - 4  # 0..7
-            u = k / 7.0
-            jump_dy = int(round(-1 - math.sin(u * math.pi * 0.85) * 2.5))
-            tilt_deg = 12.0 * (1.0 - u) + (-6.0) * u
+        elif f <= 10:
+            # F04..F10: Ascending aerial leap (ZERO ground circle!)
+            k = f - 4  # 0..6
+            u = k / 6.0
+            jump_dy = int(round(-2 - math.sin(u * math.pi * 0.85) * 3.0))
             body = make_aerial_ronin(
-                tpl, jump_dy=jump_dy, body_tilt_deg=tilt_deg, leg_tuck=0.45 + 0.4 * u, thruster_intensity=1.0, phase=phase * 2.0
+                tpl, jump_dy=jump_dy, body_tilt_deg=8.0 * (1.0 - u), leg_tuck=0.55 + 0.35 * u, phase=phase * 2.0
             )
-            ang = -76.0 * (1.0 - u) + (-95.0) * u
-            hx = int(round(31 * (1.0 - u) + 30 * u))
-            hy = 18 + jump_dy
+            ang = -58.0 * (1.0 - u) + (-86.0) * u
             frame = draw_two_handed_odachi(
                 body,
-                hand_x=hx,
-                hand_y=hy,
+                hand_x=30,
+                hand_y=18 + jump_dy,
                 angle_deg=ang,
                 glow_intensity=1.25,
                 scale=1.0,
@@ -2281,54 +2346,63 @@ def build_row8_jump(tpl):
             )
             frames.append(frame)
 
-        elif f <= 18:
-            # F12..F18: Apex mid-air two-handed downward Odachi cleave (-95 deg to +45 deg) with 3-band lightning slash trail
-            k = f - 12  # 0..6
-            u = k / 6.0
-            jump_dy = int(round(-3 + u * 1.5))
-            tilt_deg = -4.0 * (1.0 - u) + 12.0 * u
+        elif f <= 20:
+            # F11..F20: Twin X-Shaped Swallow-Turn Aerial Slash (Tsubame Gaeshi) in mid-air!
+            k = f - 11  # 0..9
+            jump_dy = -4 if k <= 6 else -3
             body = make_aerial_ronin(
-                tpl, jump_dy=jump_dy, body_tilt_deg=tilt_deg, leg_tuck=0.8 - 0.25 * u, thruster_intensity=0.95, phase=phase * 2.0
+                tpl, jump_dy=jump_dy, body_tilt_deg=10.0 if k <= 4 else -6.0, leg_tuck=0.85, phase=phase * 2.2
             )
-            ang_seq = [-95.0, -42.0, 6.0, 32.0, 45.0, 42.0, 34.0]
-            hx_seq = [30, 33, 35, 36, 36, 35, 34]
-            hy_seq = [16 + jump_dy, 19 + jump_dy, 21 + jump_dy, 23 + jump_dy, 24 + jump_dy, 24 + jump_dy, 23 + jump_dy]
+            # First downward diagonal swallow-cut (k=0..3) then instant upward reverse swallow-cut (k=4..9)
+            ang_seq = [-45.0, 12.0, 34.0, 28.0, -18.0, -52.0, -68.0, -62.0, -44.0, -26.0]
+            hx_seq = [33, 35, 36, 35, 35, 34, 34, 33, 32, 31]
+            hy_seq = [17, 20, 22, 22, 20, 18, 17, 18, 19, 20]
 
-            slash_arc = None
-            if 1 <= k <= 5:
-                arc_int = [0.95, 1.0, 1.0, 0.85, 0.65][k - 1]
-                a0 = [-95.0, -86.0, -74.0, -58.0, -42.0][k - 1]
-                slash_arc = (a0, ang_seq[k] + 5.0, 18.0, arc_int)
+            slash1 = (-82.0, 34.0, 17.5, 1.0 if k <= 6 else 0.7)
+            slash2 = (-64.0, 38.0, 15.0, 1.0 if 3 <= k <= 7 else 0.65) if k >= 2 else None
 
             frame = draw_two_handed_odachi(
                 body,
                 hand_x=hx_seq[k],
-                hand_y=hy_seq[k],
+                hand_y=hy_seq[k] + jump_dy,
                 angle_deg=ang_seq[k],
-                glow_intensity=1.45 if k <= 5 else 1.15,
-                scale=1.03,
+                glow_intensity=1.5,
+                scale=1.02,
                 blade_len=16.5,
                 rear_shoulder=(21, 18 + jump_dy),
                 lead_shoulder=(27, 19 + jump_dy),
                 draw_arms=True,
-                slash_arc=slash_arc,
-                phase=phase * 2.0,
+                slash_arc=slash1,
+                cross_slash_arc=slash2,
+                phase=phase * 2.2,
             )
+
+            # Twin crossing X-shaped cyan-white crescent slash streaks in mid-air (x = 27..47, y = 8..34)
+            draw_line_px(frame, 28, 9, 47, 33, DIAMOND_WHITE if k <= 5 else CYAN_LIGHT)
+            draw_line_px(frame, 29, 9, 47, 32, CYAN_BRIGHT)
+            if k >= 2:
+                draw_line_px(frame, 28, 33, 47, 9, DIAMOND_WHITE if k <= 7 else CYAN_LIGHT)
+                draw_line_px(frame, 29, 34, 47, 10, VIOLET_BRIGHT)
+                # Aerial X-cross glint at (38, 21)
+                for d_g in (-1, 0, 1):
+                    set_px(frame, 38 + d_g, 21, DIAMOND_WHITE)
+                    set_px(frame, 38, 21 + d_g, DIAMOND_WHITE)
+
             frames.append(frame)
 
-        elif f <= 24:
-            # F19..F24: Controlled aerial descent
-            k = f - 19  # 0..5
-            u = k / 5.0
-            jump_dy = int(round(-1 + u * 1.0))
+        elif f <= 23:
+            # F21..F23: Controlled aerial descent (ZERO ground circle!)
+            k = f - 21  # 0..2
+            u = (k + 1) / 3.0
+            jump_dy = int(round(-2 * (1.0 - u)))
             body = make_aerial_ronin(
-                tpl, jump_dy=jump_dy, body_tilt_deg=8.0 * (1.0 - u), leg_tuck=0.5 * (1.0 - u * 0.6), thruster_intensity=0.6 * (1.0 - u), phase=phase
+                tpl, jump_dy=jump_dy, body_tilt_deg=4.0 * (1.0 - u), leg_tuck=0.5 * (1.0 - u * 0.5), phase=phase
             )
-            ang = 30.0 * (1.0 - u) + (-18.0) * u
+            ang = -22.0 * (1.0 - u) + (-12.0) * u
             frame = draw_two_handed_odachi(
                 body,
-                hand_x=int(round(34 * (1.0 - u) + 32 * u)),
-                hand_y=22 + jump_dy,
+                hand_x=30,
+                hand_y=23 + jump_dy,
                 angle_deg=ang,
                 glow_intensity=1.1,
                 scale=1.0,
@@ -2341,22 +2415,22 @@ def build_row8_jump(tpl):
             frames.append(frame)
 
         else:
-            # F25..F29: Grounded landing absorption & recovery
-            k = f - 25  # 0..4
-            u = k / 4.0
-            crouch_depths = [5, 4, 3, 1, 0]
+            # F24..F29: Grounded landing absorption & return to -10 deg hip Iaido stance
+            k = f - 24  # 0..5
+            u = k / 5.0
+            crouch_depths = [4, 4, 3, 2, 1, 0]
             d = crouch_depths[k]
             body = make_crouch_ronin(tpl, d) if d > 0 else tpl["stand"].copy()
             body = apply_cape_and_mane_wave(
-                body, phase, amplitude=1.5, vertical_flutter=0.5, rune_pulse=0.95 - u * 0.25
+                body, phase, amplitude=1.4, vertical_flutter=0.5, rune_pulse=0.9 - u * 0.2, dy_offset=d
             )
-            ang = -18.0 * (1.0 - u) + (-48.0) * u
+            ang = -14.0 * (1.0 - u) + (-10.0) * u
             frame = draw_two_handed_odachi(
                 body,
-                hand_x=31,
-                hand_y=23 + d,
+                hand_x=29,
+                hand_y=26 + d,
                 angle_deg=ang,
-                glow_intensity=1.1 - u * 0.2,
+                glow_intensity=1.05 - u * 0.1,
                 scale=1.0,
                 blade_len=17.0,
                 rear_shoulder=(21, 18 + d),
@@ -2364,101 +2438,16 @@ def build_row8_jump(tpl):
                 draw_arms=True,
                 phase=phase,
             )
-            if k <= 2:
-                for sx_s in range(16, 44, 4):
-                    set_px(
-                        frame,
-                        sx_s + (k % 2),
-                        45 - (sx_s % 3),
-                        DIAMOND_WHITE if sx_s % 8 == 0 else (CYAN_LIGHT if sx_s % 4 == 0 else VIOLET_BRIGHT),
-                    )
             frames.append(frame)
     return frames
 
 
 def apply_pass12_vanguard_upgrades(cell_208, r_idx, f):
     """
-    Pass #12 Melee & Vanguard 30fps Character Sheet Refiner (Ronin - storm-indigo/cyan):
-    1. Row 2 (AUTO_ATTACK, F14..F19) Strike Apex Impact Glint at (x = 152 + (f - 14) * 3, y = 92 + ((f * 7) % 18)).
-    2. Row 7 / Row 3 (SKILL / CROUCH, F08..F20) Grounded Cast-Surge Sigil Glow at y = 186..189, x = 76..134 + 3 rising motes.
-    3. Row 8 / Row 4 (ULTIMATE / JUMP, F03..F26) Overdrive Ascension Lightning / Aura Pillars at x = 68, 88, 122, 140.
-    All pixels strictly clamped inside [4..203] in x and y.
+    Applies clean 208x208 safety margin clamping (`[4..203]`) with ZERO shared generic overlays
+    (no shared ground rings, no shared vertical aura pillars, no shared strike glints).
     """
     out = cell_208.copy()
-    c_white = DIAMOND_WHITE
-    c_prim = CYAN_BRIGHT
-    c_sec = VIOLET_GLOW
-
-    def p208(x, y, col):
-        ix = int(round(x))
-        iy = int(round(y))
-        if 4 <= ix <= 203 and 4 <= iy <= 203:
-            out[iy, ix] = col
-
-    # 1. Row 2 (AUTO_ATTACK, F14..F19) Strike Apex Impact Glint
-    if r_idx == 2 and 14 <= f <= 19:
-        gx = 152 + (f - 14) * 3
-        gy = 92 + ((f * 7) % 18)
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
-                p208(gx + dx, gy + dy, c_white)
-        r_arm = 6 - ((f - 14) % 2)
-        for d in range(2, r_arm + 1):
-            col_ray = c_white if d <= 3 else c_prim
-            p208(gx + d, gy, col_ray)
-            p208(gx - d, gy, col_ray)
-            p208(gx, gy + d, col_ray)
-            p208(gx, gy - d, col_ray)
-            if d <= 3:
-                p208(gx + d, gy - 1, c_sec)
-                p208(gx - d, gy + 1, c_sec)
-                p208(gx - 1, gy + d, c_sec)
-                p208(gx + 1, gy - d, c_sec)
-        for dx, dy in ((-2, -2), (2, -2), (-2, 2), (2, 2)):
-            p208(gx + dx, gy + dy, c_sec)
-        e1x = gx - 6 - (f - 14)
-        e1y = gy - 4 + ((f - 14) % 3) * 2
-        e2x = gx - 11 - ((f - 14) % 3) * 2
-        e2y = gy + 4 - ((f - 14) % 2) * 2
-        for ex, ey, c_hi, c_lo in ((e1x, e1y, c_white, c_prim), (e2x, e2y, c_sec, INDIGO_LIGHT)):
-            p208(ex, ey, c_hi)
-            p208(ex + 1, ey, c_hi)
-            p208(ex, ey + 1, c_lo)
-            p208(ex + 1, ey + 1, c_lo)
-
-    # 2. Row 7 / Row 3 (SKILL, F08..F20) Grounded Cast-Surge Sigil Glow
-    if r_idx in (3, 7) and 8 <= f <= 20:
-        for x in range(76, 135):
-            u = (x - 105.0) / 29.0
-            ay = 186 + int(round((u * u) * 2.0))
-            ay = max(186, min(188, ay))
-            col_top = c_white if (abs(x - 105) <= 10 or (x + f) % 4 == 0) else c_prim
-            col_bot = c_sec if abs(x - 105) <= 18 else INDIGO_LIGHT
-            p208(x, ay, col_top)
-            p208(x, ay + 1, col_bot)
-        mote_xs = [86 + ((f - 8) % 3), 105 + (((f - 8) + 1) % 3) - 1, 124 - ((f - 8) % 3)]
-        for m_i, mx in enumerate(mote_xs):
-            my = (182 - ((f - 8) * 3) % 24) if m_i == 0 else (182 - (((f - 8) * 3 + m_i * 7) % 24))
-            p208(mx, my, c_white)
-            p208(mx + 1, my, c_prim)
-            p208(mx, my + 1, c_sec)
-            p208(mx + 1, my + 1, INDIGO_LIGHT)
-            p208(mx, my + 2, VIOLET_BRIGHT if (m_i + f) % 2 == 0 else c_prim)
-
-    # 3. Row 8 / Row 4 (ULTIMATE, F03..F26) Overdrive Ascension Lightning / Aura Pillars
-    if r_idx in (4, 8) and 3 <= f <= 26:
-        for idx, mx in enumerate((68, 88, 122, 140)):
-            my = 168 - (((f - 3) * 5 + idx * 19) % 116)
-            p208(mx, my - 2, c_prim)
-            p208(mx, my - 1, c_white)
-            p208(mx, my, c_white)
-            p208(mx - 1, my, c_prim)
-            p208(mx + 1, my, c_sec)
-            zig = 1 if (f + idx) % 2 == 0 else -1
-            p208(mx + zig, my + 1, c_prim)
-            p208(mx, my + 2, c_sec)
-            p208(mx, my + 3, INDIGO_LIGHT if idx % 2 == 0 else VIOLET_BRIGHT)
-
     out[:4, :, :] = 0
     out[204:, :, :] = 0
     out[:, :4, :] = 0
@@ -2470,15 +2459,15 @@ def main():
     tpl = make_clean_templates()
 
     rows = [
-        ("ROW 0: IDLE (30 FRAMES)", build_row0_idle(tpl)),
-        ("ROW 1: WALK - SAMURAI STRIDE (30 FRAMES)", build_row1_walk(tpl)),
-        ("ROW 2: AUTO_ATTACK - THUNDER IAIDO & JODAN CLEAVE (30 FRAMES)", build_row2_auto_attack(tpl)),
-        ("ROW 3: SKILL - RAIJIN THUNDER-PILLAR & FLASH-CUT (30 FRAMES)", build_row3_skill(tpl)),
-        ("ROW 4: ULTIMATE - SUSANOO: THOUSAND-BLADE THUNDERSTORM (30 FRAMES)", build_row4_ultimate(tpl)),
+        ("ROW 0: IDLE - LOW COILED IAIDO / WAKIGAMAE STANCE (30 FRAMES)", build_row0_idle(tpl)),
+        ("ROW 1: WALK - LOW GLIDING SURIASHI FOOTWORK (30 FRAMES)", build_row1_walk(tpl)),
+        ("ROW 2: AUTO_ATTACK - 3-HIT SANDAN IAIDO DRAW-CUT COMBO (30 FRAMES)", build_row2_auto_attack(tpl)),
+        ("ROW 3: SKILL - ZANTETSUKEN 5-FOLD LIGHTNING ZIG-ZAG & NOTO (30 FRAMES)", build_row3_skill(tpl)),
+        ("ROW 4: ULTIMATE - SUSANOO OMNISLASH STORM (30 FRAMES)", build_row4_ultimate(tpl)),
         ("ROW 5: DEATH & HURT (30 FRAMES)", build_row5_death(tpl)),
-        ("ROW 6: DASH - IAIDO LIGHTNING FLASH-STEP (30 FRAMES)", build_row6_dash(tpl)),
-        ("ROW 7: CROUCH - RAIJIN THUNDER-DRUM PARRY & COUNTER (30 FRAMES)", build_row7_crouch(tpl)),
-        ("ROW 8: JUMP - RAIJIN SKY-VAULT & AERIAL CLEAVE (30 FRAMES)", build_row8_jump(tpl)),
+        ("ROW 6: DASH - SHUNPO LIGHTNING STEP (30 FRAMES)", build_row6_dash(tpl)),
+        ("ROW 7: CROUCH - IAIDO SERENE MIND COUNTER-BLINK (30 FRAMES)", build_row7_crouch(tpl)),
+        ("ROW 8: JUMP - TSUBAME GAESHI DOUBLE AIR-SLASH (30 FRAMES)", build_row8_jump(tpl)),
     ]
 
     num_rows = len(rows)
@@ -2486,11 +2475,19 @@ def main():
     sheet = Image.new("RGBA", (30 * cell_px, num_rows * cell_px), (0, 0, 0, 0))
 
     top_clips = bot_clips = left_clips = right_clips = 0
+    pinhole_count = 0
     for r_idx, (r_name, r_frames) in enumerate(rows):
         assert len(r_frames) == 30, f"{r_name} has {len(r_frames)} frames instead of 30"
         cells_208 = []
         for c_idx in range(30):
             r_frames[c_idx] = ensure_safe_cell(r_frames[c_idx], margin=2)
+            # Audit 52x52 interior 4-neighbor pinholes inside torso region
+            alpha52 = r_frames[c_idx][:, :, 3] > 0
+            for py in range(10, 44):
+                for px in range(20, 32):
+                    if not alpha52[py, px]:
+                        if alpha52[py - 1, px] and alpha52[py + 1, px] and alpha52[py, px - 1] and alpha52[py, px + 1]:
+                            pinhole_count += 1
             cell_im = Image.fromarray(r_frames[c_idx], mode="RGBA").resize((cell_px, cell_px), Image.Resampling.NEAREST)
             cell_208 = apply_pass12_vanguard_upgrades(np.array(cell_im, dtype=np.uint8), r_idx, c_idx)
             cells_208.append(cell_208)
@@ -2504,9 +2501,11 @@ def main():
                 right_clips += 1
             sheet.paste(Image.fromarray(cell_208, mode="RGBA"), (c_idx * cell_px, r_idx * cell_px))
         adj_diffs = sum(1 for i in range(29) if np.any(cells_208[i] != cells_208[i + 1]))
-        print(f"{r_name:68s}: 30 frames generated, {adj_diffs}/29 adjacent transitions distinct")
+        print(f"{r_name:70s}: 30 frames generated, {adj_diffs}/29 adjacent transitions distinct")
 
-    print(f"Boundary clip audit across 270 frames: TOP={top_clips}, BOT={bot_clips}, LEFT={left_clips}, RIGHT={right_clips}")
+    print(
+        f"Boundary clip audit across 270 frames: TOP={top_clips}, BOT={bot_clips}, LEFT={left_clips}, RIGHT={right_clips}, PINHOLES={pinhole_count}/270"
+    )
     out_path = "/home/antigravity/assets/sprites/ronin_sheet.png"
     sheet.save(out_path)
     print("Saved:", out_path, sheet.size)

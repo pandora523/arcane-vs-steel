@@ -135,6 +135,19 @@ export class Fighter {
 
   takeDamage(amount, attacker, isCrit = false, knockX = 95, knockY = 0) {
     if (this.isDead || this.isBenched) return;
+    // Kaze-Maru's Iaido Serene Mind Counter-Blink: teleports behind the attacker on incoming hit!
+    if (this.iaidoCounterActive && typeof this.triggerIaidoCounterBlink === 'function' && attacker && !attacker.isDead) {
+      this.triggerIaidoCounterBlink(attacker, this.game);
+      return;
+    }
+    // Malakor's Abyssal Grave-Submerge: untargetable while sliding underground as a shadow puddle!
+    if (this.isSubmerged) {
+      if (this.game && this.game.vfx) {
+        this.game.vfx.spawnDamageText(this.x, this.groundY - 76, 0, false, 'GRAVE PHASE!', '#c084fc');
+      }
+      this.gainMana(8);
+      return;
+    }
     if (this.isInvulnerable || (this.state === 'DODGE' && this.stateTimer < 0.36)) {
       if (this.game) {
         this.game.vfx.spawnDamageText(this.x - this.facing * 24, this.y - 196, 0, false, 'EVADED!', this.primaryColor);
@@ -208,11 +221,25 @@ export class Fighter {
     if (this.game && this.game.stageEventTimer > 0 && this.game.renderer?.stageId === 'boneyard') {
       amount *= 1.18;
     }
-    if (this.isDeflecting) {
+    if (this.forgeArmorTimer > 0) {
+      // Torgar's Magma Armor Fortify: 62% damage reduction, unstoppable super-armor, and molten thorn reflection!
+      amount *= 0.38;
+      knockX *= 0.12;
+      knockY = 0;
+      if (attacker && !attacker.isDead && !this._isThornReflect && Math.abs(attacker.x - this.x) < 210) {
+        this._isThornReflect = true;
+        attacker.takeDamage(16, this, false, 65, 0);
+        this._isThornReflect = false;
+        if (this.game && this.game.vfx) {
+          this.game.vfx.spawnDamageText(this.x, this.y - 210, 0, false, 'MAGMA ARMOR!', '#f59e0b');
+        }
+      }
+    } else if (this.isDeflecting) {
       amount *= 0.55;
       knockX *= 0.25;
     } else if (this.hasPoise) {
-      knockX *= 0.45;
+      knockX *= 0.35;
+      knockY *= 0.35;
     }
     const prevHp = this.hp;
     this.hp = Math.max(0, this.hp - amount);
@@ -249,7 +276,7 @@ export class Fighter {
     const dir = attacker ? Math.sign(this.x - attacker.x) || -this.facing : -this.facing;
     this.hurtDir = dir;
     this.vx += dir * knockX;
-    if (this.y >= this.groundY - 2 && knockY < -120) {
+    if (this.y >= this.groundY - 2 && knockY < -120 && !(this.forgeArmorTimer > 0) && !this.unstoppablePoise) {
       this.vy = knockY;
     }
     this.torsoVel += dir * 9.5;
@@ -258,6 +285,8 @@ export class Fighter {
     if (
       this.hp > 0 &&
       !this.isDeflecting &&
+      !(this.forgeArmorTimer > 0) &&
+      !this.unstoppablePoise &&
       (!this.hasPoise || isCrit || amount >= 95) &&
       (this.state === 'IDLE' ||
         this.state === 'WALK' ||
@@ -501,9 +530,11 @@ export class Fighter {
         const ultRangeOk =
           this.heroId === 'warrior'
             ? dist <= 400
-            : this.heroId === 'reaper' || this.heroId === 'titan'
-              ? dist <= 450
-              : true;
+            : this.heroId === 'reaper' || this.heroId === 'titan' || this.heroId === 'ronin'
+              ? dist <= 480
+              : this.heroId === 'valkyrie'
+                ? dist <= 620
+                : true;
         if (this.mana >= this.maxMana && !enemy.isInvulnerable && ultRangeOk) {
           this.mana = 0;
           if (this.stats) this.stats.ultsUsed++;
@@ -520,9 +551,13 @@ export class Fighter {
 
         // 3. Archetype Gap-Closing or Repositioning Dash
         const shouldDash =
-          this.attackRange < 200
-            ? dist > 185
-            : dist > 470 || ((this.x < 210 || this.x > ww - 210) && dist < 260);
+          this.heroId === 'valkyrie'
+            ? dist > 235
+            : this.heroId === 'ronin'
+              ? dist > 165
+              : this.attackRange < 200
+                ? dist > 185
+                : dist > 470 || ((this.x < 210 || this.x > ww - 210) && dist < 260);
         if (this.dashCooldown <= 0 && shouldDash) {
           this.startDash(enemy, game);
           return;
@@ -575,10 +610,42 @@ export class Fighter {
             } else {
               this.state = 'IDLE';
             }
+          } else if (this.heroId === 'valkyrie') {
+            // Winged Sky-Dragoon (Freyja): Maintains long-reach polearm spacing (165px-215px) with winged hover-glide!
+            if (dist < 162 && this.x > 165 && this.x < ww - 165) {
+              this.state = 'WALK';
+              this.walkPhase += dt * 5.0;
+              this.x -= this.facing * this.moveSpeed * 0.65 * dt;
+              this.headBob = Math.sin(this.walkPhase * 2) * 2.6;
+            } else if (dist > 195) {
+              this.state = 'WALK';
+              this.walkPhase += dt * 5.0;
+              this.x += this.facing * this.moveSpeed * 0.85 * dt;
+              this.headBob = Math.sin(this.walkPhase * 2) * 2.6;
+            } else {
+              this.state = 'IDLE';
+            }
+          } else if (this.heroId === 'ronin') {
+            // Storm-Blade Iaido Samurai (Kaze-Maru): Fast Suriashi in-and-out micro-footwork & pressure!
+            this.state = 'WALK';
+            this.walkPhase += dt * 6.2;
+            const weaveDir = dist > 135 ? 1 : Math.sin(this.walkPhase * 1.4) > 0 ? 0.55 : -0.45;
+            this.x += this.facing * this.moveSpeed * 0.75 * weaveDir * dt;
+            this.headBob = Math.sin(this.walkPhase * 2) * 1.8;
+          } else if (this.heroId === 'titan') {
+            // Unstoppable Mountain Juggernaut (Torgar): Slow, earth-shaking heavy march into point-blank maul range (126px)
+            if (dist > 126) {
+              this.state = 'WALK';
+              this.walkPhase += dt * 3.2;
+              this.x += this.facing * this.moveSpeed * 0.90 * dt;
+              this.headBob = Math.abs(Math.sin(this.walkPhase * 2)) * 3.2;
+            } else {
+              this.state = 'IDLE';
+            }
           } else if (this.heroId === 'reaper') {
-            // Relentless Harvester (Malakor): If 3rd-strike Phantom Scythe (408px range) is next, weave to mid-range;
-            // otherwise stalk relentlessly into scythe guillotine range (140px)!
-            if (dist > 155) {
+            // Relentless Harvester (Malakor): If 3rd-strike Boomerang Scythe is next, weave to mid-range;
+            // otherwise stalk relentlessly into scythe hook range (148px)!
+            if (dist > 152) {
               this.state = 'WALK';
               this.walkPhase += dt * 4.6;
               this.x += this.facing * this.moveSpeed * 0.85 * dt;
