@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js';
-import { PixelForge } from '../engine/PixelForge.js';
+import { Fighter } from './Fighter.js?v=30fps19';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps19';
 
 export class Priestess extends Fighter {
   constructor(x, groundY, facing = -1) {

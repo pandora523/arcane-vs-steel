@@ -173,6 +173,7 @@ export class AudioManager {
       parry_clang: 'reflect',
       raijin_slash: 'blade_wave',
       dragon_dive: 'earthshatter',
+      death_knight: 'death_warrior',
       death_titan: 'death_warrior',
       death_ronin: 'death_warrior',
       death_valkyrie: 'death_priestess'

@@ -1,11 +1,12 @@
-import { Fighter } from './Fighter.js';
-import { PixelForge } from '../engine/PixelForge.js';
+import { Fighter } from './Fighter.js?v=30fps19';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps19';
 
 export class Valkyrie extends Fighter {
-  constructor(opts) {
+  constructor(x, groundY, facing = 1) {
+    const opts = typeof x === 'object' && x !== null ? x : { x, groundY, facing };
     super({
       ...opts,
-      name: opts.name || 'FREYJA',
+      name: opts.name || 'Freyja',
       maxHp: 1180,
       moveSpeed: 212,
       attackRange: 215,
@@ -14,15 +15,21 @@ export class Valkyrie extends Fighter {
       primaryColor: '#f43f5e'
     });
     this.heroId = 'valkyrie';
-    this.skillName = 'WYVERN CORKSCREW CHARGE';
-    this.ultName = 'VALHALLA: SKY-SPEAR RAIN';
+    this.deathSfx = 'death_priestess';
+    this.skillName = 'WYVERN CORKSCREW';
+    this.ultName = 'VALHALLA SKY-SANCTUARY';
     this.theme = 'crimson';
     this.hasPoise = true;
     this.skillTriggerRange = 480;
-    this.skillMaxCooldown = 5.0;
+    this.skillMaxCooldown = 4.4;
+    this.autoDuration = 0.54;
+    this.skillDuration = 0.86;
+    this.ultDuration = 1.48;
+    this.crouchDuration = 0.58;
+    this.dashDuration = 0.38;
     this.comboStep = 0;
 
-    // Freyja Unique Mechanics:
+    // Freyja Unique Sky-Dragoon Mechanics:
     // 1. Winged Hover Physics (floats gracefully above ground hazards on her Valkyrie wings)
     this.hoverOffset = 0;
     // 2. High Dragoon Jump Target Crosshair on the arena floor
@@ -53,26 +60,24 @@ export class Valkyrie extends Fighter {
   update(dt, enemy, game) {
     // Update Active Raining Gungnir Light-Spears / Javelins
     if (this.activeSkySpears.length > 0 && game) {
-      const targets = game.getOpponentsOf ? game.getOpponentsOf(this) : enemy ? [enemy] : [];
+      const targets = game.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
       for (let i = this.activeSkySpears.length - 1; i >= 0; i--) {
         const sp = this.activeSkySpears[i];
         sp.age += dt;
         sp.x += sp.vx * dt;
         sp.y += sp.vy * dt;
 
-        // Check hit against opponents
         for (const t of targets) {
-          if (t && !t.isDead && !sp.hitTargets.has(t)) {
+          if (t && !t.isDead && !t.isBenched && !sp.hitTargets.has(t)) {
             if (Math.abs(t.x - sp.x) < 58 && Math.abs(t.y - 65 - sp.y) < 75) {
               sp.hitTargets.add(t);
               t.takeDamage(sp.damage, this, sp.isUlt, 95, -135);
-              if (game.audio) game.audio.playSkillHit('crimson');
+              if (game.audio) game.audio.play('holy_spear', sp.x);
               game.vfx.spawnBurst(sp.x, sp.y, 10, '#fbbf24', 195, { upBias: 60, size: 5 });
             }
           }
         }
 
-        // Impact on stone floor
         if (sp.y >= this.groundY - 4 || sp.age >= sp.maxLife) {
           game.vfx.spawnShockwave(sp.x, this.groundY - 4, sp.isUlt ? 115 : 78, '#f43f5e', 0.26, true);
           game.vfx.spawnBurst(sp.x, this.groundY - 12, sp.isUlt ? 12 : 8, '#fbbf24', 180, {
@@ -97,7 +102,6 @@ export class Valkyrie extends Fighter {
   startDodge(enemy, game) {
     this.dodgeCooldown = this.dodgeMaxCooldown * (0.85 + Math.random() * 0.26);
     const dist = enemy && !enemy.isDead ? Math.abs(enemy.x - this.x) : 999;
-    // Close melee pressure -> Wing-Backstep & Twin Javelin Throw; Mid-range -> High Dragoon Sky-Dive!
     if (dist < 185) {
       this.startCrouch(enemy, game);
     } else {
@@ -106,9 +110,6 @@ export class Valkyrie extends Fighter {
   }
 
   startCrouch(enemy, game) {
-    // FREYJA UNIQUE CROUCH: VALKYRIE WING-BACKSTEP & TWIN JAVELIN THROW!
-    // Instead of sitting on the ground with a shield, Freyja beats her wings to back-step 155px into mid-air
-    // while hurling 2 angled Golden Valkyrie Javelins downward at the enemy!
     this.crouchDuration = 0.64;
     this.setState('CROUCH');
     this.isCrouching = true;
@@ -125,11 +126,11 @@ export class Valkyrie extends Fighter {
     this.vx = 0;
     this.vy = 0;
 
-    if (game && game.audio) game.audio.playDash('crimson');
+    if (game && game.audio) game.audio.play('dash_whoosh', this.x);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(
         this.x,
-        this.y - 206,
+        this.y - 146,
         0,
         false,
         'VALKYRIE WING-BACKSTEP!',
@@ -144,28 +145,25 @@ export class Valkyrie extends Fighter {
     const dur = this.crouchDuration || 0.64;
     const u = Math.min(1, t / dur);
 
-    // Smooth airborne wing-backstep arc (rises 64px off the floor while gliding back 155px)
     const easeU = 1 - Math.pow(1 - u, 1.8);
     this.x = this.vaultStartX + (this.vaultTargetX - this.vaultStartX) * easeU;
     this.y = this.groundY - Math.sin(u * Math.PI) * 64;
     this.vx = 0;
     this.vy = 0;
 
-    // Throw Javelin #1 at t = 0.20s
     if (t >= 0.20 && !this.didActionFrame) {
       this.didActionFrame = true;
       const tx = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 240;
       this.spawnGungnirSkySpear(this.x + this.facing * 24, this.y - 92, tx - 18, this.groundY, 24, false);
-      if (game.audio) game.audio.playSkillCast('crimson');
-      game.vfx.spawnDamageText(this.x, this.y - 210, 0, false, 'GUNGNIR JAVELIN!', '#fbbf24');
+      if (game.audio) game.audio.play('holy_spear', this.x);
+      game.vfx.spawnDamageText(this.x, this.y - 150, 0, false, 'GUNGNIR JAVELIN!', '#fbbf24');
     }
 
-    // Throw Javelin #2 at t = 0.36s
     if (t >= 0.36 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
       const tx = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 280;
       this.spawnGungnirSkySpear(this.x + this.facing * 24, this.y - 92, tx + 22, this.groundY, 26, false);
-      if (game.audio) game.audio.playSkillCast('crimson');
+      if (game.audio) game.audio.play('holy_spear', this.x);
     }
 
     if (t >= dur) {
@@ -178,9 +176,6 @@ export class Valkyrie extends Fighter {
   }
 
   startJump(enemy, game) {
-    // FREYJA SIGNATURE DRAGOON JUMP: HIGH DRAGOON SKY-DIVE IMPALE!
-    // Rockets 225px straight up into the sky, locks a Crimson Dragon Crosshair onto the enemy's floor position,
-    // and dives lance-first at 1700 px/s directly onto the target!
     this.dashDuration = 0.68;
     this.setState('JUMP');
     this.isInvulnerable = true;
@@ -195,11 +190,11 @@ export class Valkyrie extends Fighter {
     this.vx = 0;
     this.vy = 0;
 
-    if (game && game.audio) game.audio.playDash('crimson');
+    if (game && game.audio) game.audio.play('dash_whoosh', this.x);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(
         this.x,
-        this.y - 208,
+        this.y - 148,
         0,
         true,
         '★ HIGH DRAGOON JUMP! ★',
@@ -212,11 +207,11 @@ export class Valkyrie extends Fighter {
 
   onStartDash(enemy, game, dir) {
     this.isFlipVault = false;
-    if (game && game.audio) game.audio.playDash('crimson');
+    if (game && game.audio) game.audio.play('dash_whoosh', this.x);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(
         this.x,
-        this.y - 196,
+        this.y - 144,
         0,
         false,
         'VALKYRIE WING-GLIDE!',
@@ -232,19 +227,16 @@ export class Valkyrie extends Fighter {
 
     if (this.isFlipVault) {
       const ww = game.renderer.worldWidth;
-      // Continuously track enemy X during the ascent phase (u < 0.46)
       if (u < 0.46 && enemy && !enemy.isDead) {
         this.dragoonTargetX = Math.max(90, Math.min(ww - 90, enemy.x));
       }
 
       if (u < 0.48) {
-        // Phase 1: Skyward Rocket Ascent (y rises 225px into the top of the screen!)
         const pAsc = u / 0.48;
         const easeAsc = 1 - Math.pow(1 - pAsc, 2.2);
         this.x = this.vaultStartX + (this.dragoonTargetX - this.vaultStartX) * (easeAsc * 0.35);
         this.y = this.groundY - easeAsc * 225;
       } else {
-        // Phase 2: Supersonic Diagonal Lance Dive-Bomb onto dragoonTargetX!
         const pDive = (u - 0.48) / 0.52;
         const apexX = this.vaultStartX + (this.dragoonTargetX - this.vaultStartX) * 0.35;
         this.x = apexX + (this.dragoonTargetX - apexX) * pDive;
@@ -253,11 +245,10 @@ export class Valkyrie extends Fighter {
       this.vx = 0;
       this.vy = 0;
 
-      // Impact on the target at u >= 0.88!
       if (u >= 0.88 && !this.didActionFrame) {
         this.didActionFrame = true;
         this.y = this.groundY;
-        if (game.audio) game.audio.playSkillHit('crimson');
+        if (game.audio) game.audio.play('holy_spear', this.x);
         game.renderer.triggerShake(11, 0.22);
         game.renderer.triggerHitStop(0.045);
         game.vfx.spawnShockwave(this.x, this.groundY - 4, 185, '#f43f5e', 0.36, true);
@@ -270,7 +261,7 @@ export class Valkyrie extends Fighter {
           enemy.takeDamage(52, this, true, 175, -210);
           game.vfx.spawnDamageText(
             enemy.x,
-            enemy.y - 222,
+            enemy.y - 162,
             0,
             true,
             '★ DRAGOON SKY-DIVE! ★',
@@ -290,7 +281,6 @@ export class Valkyrie extends Fighter {
       return;
     }
 
-    // Airborne Wing-Jet Dash (flies 28px above the floor)
     this.y = this.groundY - Math.sin(u * Math.PI) * 28;
     this.vx = this.dashDir * 590 * (1 - u * 0.52);
     if (t >= dur) {
@@ -302,14 +292,13 @@ export class Valkyrie extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    // FREYJA UNIQUE AUTO-ATTACK: RAPID DOUBLE LANCE IMPALE + 3RD-HIT RISING HALBERD LAUNCHER!
-    // (Zero generic wave projectile spam!)
-    // Jab #1 at t = 0.16s (long 220px polearm reach)
     if (t >= 0.16 && !this.didActionFrame) {
       this.didActionFrame = true;
       this.vx = this.facing * 145;
-      if (game.audio) game.audio.playMeleeHit(false);
-      game.vfx.spawnSlashArc(this.x + this.facing * 26, this.y - 84, this.facing, '#fbbf24', 132, 1);
+      if (game.audio) game.audio.play('holy_spear', this.x);
+      const sA = this.facing === 1 ? -1.4 : Math.PI - 1.1;
+      const eA = this.facing === 1 ? 1.1 : Math.PI + 1.4;
+      game.vfx.spawnSlash(this.x + this.facing * 36, this.y - 84, 132, sA, eA, '#fbbf24', 0.24);
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 25) {
         enemy.takeDamage(22, this, false, 65, 0);
@@ -317,28 +306,29 @@ export class Valkyrie extends Fighter {
       }
     }
 
-    // Jab #2 / Rising Halberd Launcher at t = 0.34s!
     if (t >= 0.34 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
       const step = this.comboStep;
       this.comboStep = (this.comboStep + 1) % 3;
 
       if (step < 2) {
-        // High-speed Armor-Piercing Segunda Thrust
         this.vx = this.facing * 165;
-        if (game.audio) game.audio.playMeleeHit(true);
-        game.vfx.spawnSlashArc(this.x + this.facing * 34, this.y - 92, this.facing, '#f43f5e', 138, -1);
+        if (game.audio) game.audio.play('holy_spear', this.x);
+        const sA = this.facing === 1 ? -1.5 : Math.PI - 1.2;
+        const eA = this.facing === 1 ? 1.2 : Math.PI + 1.5;
+        game.vfx.spawnSlash(this.x + this.facing * 42, this.y - 92, 138, sA, eA, '#f43f5e', 0.26);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 32) {
           const isCrit = Math.random() < 0.32;
           enemy.takeDamage(isCrit ? 34 : 26, this, isCrit, 95, 0);
           this.gainMana(8);
         }
       } else {
-        // 3rd Combo Finisher: RISING WYVERN HALBERD LAUNCHER (pops enemy high into the air & lifts Freyja on her wings!)
         this.vy = -165;
         this.vx = this.facing * 175;
-        if (game.audio) game.audio.playSkillHit('crimson');
-        game.vfx.spawnSlashArc(this.x + this.facing * 28, this.y - 88, this.facing, '#fbbf24', 148, -1);
+        if (game.audio) game.audio.play('holy_spear', this.x);
+        const sA = this.facing === 1 ? 1.4 : Math.PI - 1.4;
+        const eA = this.facing === 1 ? -1.8 : Math.PI + 1.8;
+        game.vfx.spawnSlash(this.x + this.facing * 36, this.y - 88, 148, sA, eA, '#fbbf24', 0.30);
         game.vfx.spawnBurst(this.x + this.facing * 75, this.y - 88, 16, '#f43f5e', 220, {
           upBias: 155,
           size: 5
@@ -347,7 +337,7 @@ export class Valkyrie extends Fighter {
           enemy.takeDamage(38, this, true, 85, -225);
           game.vfx.spawnDamageText(
             enemy.x,
-            enemy.y - 216,
+            enemy.y - 156,
             0,
             true,
             'HALBERD SKY-LAUNCH!',
@@ -365,9 +355,6 @@ export class Valkyrie extends Fighter {
 
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
-    // FREYJA UNIQUE SKILL: WYVERN CORKSCREW DRILL-CHARGE!
-    // Freyja flares her Valkyrie wings, wraps her Gungnir War-Lance in a spinning Dragonfire Vortex,
-    // and flies horizontally across the stage (y = groundY - 38), SKEWERING and DRAGGING the enemy with her!
     if (!this._corkscrewHits) this._corkscrewHits = 0;
 
     if (t < 0.62) {
@@ -375,7 +362,6 @@ export class Valkyrie extends Fighter {
       this.vy = 0;
       this.vx = this.facing * 640;
 
-      // Spawn spiraling crimson-gold dragonfire drill rings along her lance tip
       if (Math.random() < 0.75) {
         game.vfx.spawnParticle({
           x: this.x + this.facing * 72,
@@ -388,7 +374,6 @@ export class Valkyrie extends Fighter {
         });
       }
 
-      // If enemy is in front of Freyja's lance, SKEWER and DRAG them along with her across the arena!
       if (enemy && !enemy.isDead) {
         const dx = (enemy.x - this.x) * this.facing;
         if (dx > -25 && dx < 135 && Math.abs(enemy.y - this.y) < 95) {
@@ -404,23 +389,22 @@ export class Valkyrie extends Fighter {
             (t >= 0.44 && this._corkscrewHits === 2)
           ) {
             this._corkscrewHits++;
-            if (game.audio) game.audio.playMeleeHit(true);
-            game.vfx.spawnSlashArc(enemy.x, enemy.y - 72, this.facing, '#fbbf24', 115, this._corkscrewHits % 2 === 0 ? 1 : -1);
+            if (game.audio) game.audio.play('holy_spear', enemy.x);
+            game.vfx.spawnSlash(enemy.x, enemy.y - 72, 115, -1.6, 1.4, '#fbbf24', 0.24);
             enemy.takeDamage(16, this, false, 25, 0);
             if (this._corkscrewHits === 1) {
-              game.vfx.spawnDamageText(enemy.x, enemy.y - 212, 0, true, 'WYVERN SKEWER!', '#fbbf24');
+              game.vfx.spawnDamageText(enemy.x, enemy.y - 152, 0, true, 'WYVERN SKEWER!', '#fbbf24');
             }
           }
         }
       }
     }
 
-    // Final Winged Halberd Slam Finisher at t = 0.62s!
     if (t >= 0.62 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
       this.y = this.groundY;
       this.vx = 0;
-      if (game.audio) game.audio.playSkillHit('crimson');
+      if (game.audio) game.audio.play('holy_spear', this.x);
       game.renderer.triggerShake(10, 0.20);
       game.vfx.spawnShockwave(this.x + this.facing * 68, this.groundY - 6, 155, '#f43f5e', 0.32, true);
       game.vfx.spawnBurst(this.x + this.facing * 68, this.groundY - 48, 22, '#fbbf24', 260, {
@@ -441,15 +425,11 @@ export class Valkyrie extends Fighter {
 
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    // FREYJA UNIQUE ULTIMATE: VALHALLA SKY-SANCTUARY & 8-SPEAR BARRAGE + BAHAMUT SUPERNOVA DIVE!
-    // Freyja ascends high into the sky (y = groundY - 195) on giant Bahamut wings and rains 8 angled
-    // Golden Gungnir Light-Spears diagonally down at the enemy before diving down in a Supernova Finale!
     if (!this._spearsFired) this._spearsFired = 0;
     this.isInvulnerable = true;
 
     const ww = game.renderer.worldWidth;
     if (t < 1.42) {
-      // Hover high in the upper sky (y = groundY - 195)
       const targetSkyX = ww * 0.5 - this.facing * 120;
       this.x += (targetSkyX - this.x) * Math.min(1, dt * 6);
       const targetSkyY = this.groundY - 195 + Math.sin(t * 8) * 8;
@@ -460,7 +440,6 @@ export class Valkyrie extends Fighter {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
 
-      // Rain 8 Gungnir Light-Spears diagonally from Freyja's sky position toward the enemy!
       const spearInterval = 0.13;
       const expectedSpears = Math.min(8, Math.floor(Math.max(0, t - 0.26) / spearInterval));
       while (this._spearsFired < expectedSpears) {
@@ -477,10 +456,9 @@ export class Valkyrie extends Fighter {
           14,
           true
         );
-        if (game.audio) game.audio.playSkillCast('crimson');
+        if (game.audio) game.audio.play('holy_spear', this.x);
       }
     } else if (t >= 1.42 && !this.didSecondaryAction) {
-      // Final Bahamut Supernova Sky-Dive onto the enemy!
       this.didSecondaryAction = true;
       const impactX = enemy && !enemy.isDead ? enemy.x : ww * 0.5;
       this.x = Math.max(90, Math.min(ww - 90, impactX));
@@ -489,8 +467,7 @@ export class Valkyrie extends Fighter {
       this.vy = 0;
 
       if (game.audio) {
-        game.audio.playUltimate('crimson');
-        game.audio.playSkillHit('crimson');
+        game.audio.play('thunder_slam', this.x);
       }
       game.renderer.triggerShake(15, 0.28);
       game.renderer.triggerAberration(9);
@@ -502,7 +479,7 @@ export class Valkyrie extends Fighter {
       });
       game.vfx.spawnDamageText(
         this.x,
-        this.groundY - 235,
+        this.groundY - 175,
         0,
         true,
         '★ BAHAMUT SUPERNOVA DIVE! ★',
@@ -523,7 +500,6 @@ export class Valkyrie extends Fighter {
   }
 
   drawForegroundOverlay(ctx) {
-    // 1. Render High Dragoon Jump Floor Target Crosshair when Freyja is in the sky!
     if (this.dragoonTargetX !== null && this.state === 'JUMP') {
       const tx = Math.round(this.dragoonTargetX);
       const ty = Math.round(this.groundY - 4);
@@ -535,13 +511,11 @@ export class Valkyrie extends Fighter {
       ctx.fillRect(tx - 46, ty - 3, 92, 6);
       ctx.fillStyle = '#fbbf24';
       ctx.fillRect(tx - 24, ty - 5, 48, 10);
-      // Vertical lock-on laser beam from sky
       ctx.fillStyle = '#fef08a';
       ctx.fillRect(tx - 2, ty - 220, 4, 220);
       ctx.restore();
     }
 
-    // 2. Render Active Raining Gungnir Light-Spears / Javelins
     if (this.activeSkySpears.length > 0) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
@@ -549,7 +523,6 @@ export class Valkyrie extends Fighter {
         ctx.save();
         ctx.translate(sp.x, sp.y);
         ctx.rotate(sp.angle);
-        // Crimson-Gold Gungnir Spear shaft & diamond spearhead
         ctx.fillStyle = '#f43f5e';
         ctx.fillRect(-38, -4, 72, 8);
         ctx.fillStyle = '#fbbf24';
@@ -562,79 +535,34 @@ export class Valkyrie extends Fighter {
     }
   }
 
-  draw(ctx, isReflection = false) {
-    const assets = PixelForge.initAssets();
-    const sheet = assets.valkyrieSheet;
-    if (!sheet || !sheet.complete || sheet.naturalWidth === 0) return;
-
-    const totalCols = 30;
-    const totalRows = 9;
-    const cellW = sheet.naturalWidth / totalCols;
-    const cellH = sheet.naturalHeight / totalRows;
-
-    let row = 0;
-    let col = 0;
-
-    if (this.isDead || this.state === 'DEATH') {
-      row = 5;
-      col = Math.min(29, Math.floor((this.deathTimer / 1.05) * 30));
-    } else if (this.state === 'HURT' || this.hurtTimer > 0.08) {
-      row = 5;
-      col = Math.min(8, Math.floor((1 - this.hurtTimer / 0.34) * 9));
-    } else if (this.state === 'ULTIMATE') {
-      row = 4;
-      col = Math.min(29, Math.floor((this.stateTimer / 1.78) * 30));
-    } else if (this.state === 'SKILL') {
-      row = 3;
-      col = Math.min(29, Math.floor((this.stateTimer / 0.80) * 30));
-    } else if (this.state === 'AUTO_ATTACK') {
-      row = 2;
-      col = Math.min(29, Math.floor((this.stateTimer / 0.56) * 30));
-    } else if (this.state === 'JUMP') {
-      row = 8;
-      const dur = Math.max(0.01, this.dashDuration || 0.68);
-      col = Math.min(29, Math.floor((this.stateTimer / dur) * 30));
-    } else if (this.state === 'CROUCH') {
-      row = 7;
-      const dur = Math.max(0.01, this.crouchDuration || 0.64);
-      col = Math.min(29, Math.floor((this.stateTimer / dur) * 30));
-    } else if (this.state === 'DASH' || this.state === 'DODGE') {
-      row = 6;
-      const dur = Math.max(0.01, this.dashDuration || 0.44);
-      col = Math.min(29, Math.floor((this.stateTimer / dur) * 30));
-    } else if (this.state === 'WALK') {
-      row = 1;
-      col = Math.floor(((this.walkPhase / (Math.PI * 2)) % 1 + 1) * 30) % 30;
-    } else {
-      row = 0;
-      col = Math.floor(((this.walkPhase / (Math.PI * 2)) % 1 + 1) * 30) % 30;
-    }
-
-    const drawW = 208;
-    const drawH = 208;
-    const anchorFootY = Math.round((45.5 / 52) * drawH);
-    const hoverY = isReflection ? 0 : Math.round(this.hoverOffset || 0);
+  draw(ctx, isReflection = false, renderer = null) {
+    const sprites = PixelForge.initAssets().valkyrie;
+    if (!sprites) return;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.translate(Math.round(this.x), Math.round(this.y + hoverY));
+
+    const w = 208;
+    const h = 208;
+    const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
+
+    const groundPlantOffset = 6;
+    const hoverY = isReflection ? 0 : Math.round(this.hoverOffset || 0);
+
+    ctx.translate(
+      Math.round(this.x),
+      Math.round(this.y + groundPlantOffset + hoverY)
+    );
     ctx.scale(this.facing, 1);
 
+    PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection, renderer);
+
     if (this.hitFlash > 0 && !isReflection) {
-      ctx.filter = 'brightness(2.2) contrast(1.4)';
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.5;
+      PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);
     }
 
-    ctx.drawImage(
-      sheet,
-      col * cellW,
-      row * cellH,
-      cellW,
-      cellH,
-      -Math.round(drawW * 0.5),
-      -anchorFootY,
-      drawW,
-      drawH
-    );
     ctx.restore();
   }
 }

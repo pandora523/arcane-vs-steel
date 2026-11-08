@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js';
-import { PixelForge } from '../engine/PixelForge.js';
+import { Fighter } from './Fighter.js?v=30fps19';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps19';
 
 export class Reaper extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -22,6 +22,9 @@ export class Reaper extends Fighter {
     this.isDeflecting = false;
     this.skillMaxCooldown = 4.80;
     this.skillTriggerRange = 525;
+    this.autoDuration = 0.96;
+    this.skillDuration = 1.15;
+    this.ultDuration = 1.65;
     this.skillName = 'SPECTRAL CHAIN';
     this.ultName = 'GRIM HARVEST';
     this.comboStep = 0;
@@ -1219,7 +1222,7 @@ export class Reaper extends Fighter {
       ctx.scale(ec.facing, 1);
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = fade * 0.46;
-      PixelForge.drawGhostFrame(ctx, sprites, ec.frameIdx, 208, 208);
+      PixelForge.drawAfterimageFrame(ctx, sprites, ec.frameIdx, 208, 208);
       ctx.restore();
     }
   }

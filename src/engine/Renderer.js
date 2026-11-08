@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js';
+import { PixelForge } from './PixelForge.js?v=30fps19';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -272,19 +272,31 @@ export class Renderer {
       this.stageEventBannerTimer = Math.max(0, this.stageEventBannerTimer - rawDt);
     }
 
-    if (fighters && fighters.length >= 2) {
-      const activePool = fighters.filter(
+    if (!Number.isFinite(this.zoom) || this.zoom <= 0) this.zoom = 1;
+    if (!Number.isFinite(this.camX)) this.camX = this.worldWidth * 0.5;
+    if (!Number.isFinite(this.camY)) this.camY = this.groundY - 95;
+
+    const validFighters = Array.isArray(fighters)
+      ? fighters.filter((f) => f && Number.isFinite(f.x) && Number.isFinite(f.y))
+      : [];
+
+    if (validFighters.length >= 1) {
+      const activePool = validFighters.filter(
         (f) => !f.isBenched && (!f.isDead || (f.deathTimer || 0) < 1.1)
       );
-      const pool = activePool.length > 0 ? activePool : fighters;
+      const pool = activePool.length > 0 ? activePool : validFighters;
       let minX = pool[0].x;
       let maxX = pool[0].x;
+      let maxAirLift = 0;
       for (const f of pool) {
         if (f.x < minX) minX = f.x;
         if (f.x > maxX) maxX = f.x;
+        const lift = Math.max(0, this.groundY - f.y);
+        if (lift > maxAirLift) maxAirLift = lift;
       }
       const midX = (minX + maxX) * 0.5;
-      const dist = Math.abs(maxX - minX) + (fighters.length > 2 ? 380 : 340);
+      const horizSpan = Math.abs(maxX - minX) + (validFighters.length > 2 ? 380 : 340);
+      const dist = Math.max(horizSpan, maxAirLift * 1.35 + 340);
 
       const fitScaleX = this.width / Math.max(620, Math.min(this.worldWidth, dist));
       const fitScaleY = this.height / 720;
@@ -292,12 +304,12 @@ export class Renderer {
       targetZoom = Math.max(0.52, Math.min(this.isMobile ? 0.85 : 1.15, targetZoom));
 
       let targetX = midX;
-      let targetY = this.groundY - 95;
+      let targetY = this.groundY - 95 - Math.min(95, maxAirLift * 0.32);
 
       if (this.koZoomTimer > 0) {
         // Dramatic K.O. Finisher zoom toward the fatal impact
         targetZoom *= 1.12;
-        if (this.koFocusX !== undefined) {
+        if (Number.isFinite(this.koFocusX)) {
           targetX = midX * 0.45 + this.koFocusX * 0.55;
         }
       } else if (this.clashZoomTimer > 0) {
@@ -317,9 +329,10 @@ export class Renderer {
         targetX = this.worldWidth * 0.5;
       }
 
-      this.zoom += (targetZoom - this.zoom) * Math.min(1, rawDt * 6);
-      this.camX += (targetX - this.camX) * Math.min(1, rawDt * 6);
-      this.camY += (targetY - this.camY) * Math.min(1, rawDt * 6);
+      const lerpFactor = Math.min(1, Math.max(0, rawDt * 6));
+      this.zoom += (targetZoom - this.zoom) * lerpFactor;
+      this.camX += (targetX - this.camX) * lerpFactor;
+      this.camY += (targetY - this.camY) * lerpFactor;
     }
   }
 

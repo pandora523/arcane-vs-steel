@@ -1,6 +1,6 @@
-import { Fighter } from './Fighter.js';
-import { PixelForge } from '../engine/PixelForge.js';
-import { PixelFont } from '../engine/PixelFont.js';
+import { Fighter } from './Fighter.js?v=30fps19';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps19';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps19';
 
 const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
@@ -1024,7 +1024,7 @@ export class Chronomancer extends Fighter {
       ctx.scale(ec.facing, 1);
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = fade * 0.42;
-      PixelForge.drawGhostFrame(ctx, sprites, ec.frameIdx, 208, 208);
+      PixelForge.drawAfterimageFrame(ctx, sprites, ec.frameIdx, 208, 208);
       ctx.restore();
     }
   }

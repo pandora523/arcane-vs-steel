@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js';
-import { PixelForge } from '../engine/PixelForge.js';
+import { Fighter } from './Fighter.js?v=30fps19';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps19';
 
 export class FireMage extends Fighter {
   constructor(x, groundY, facing = -1) {
@@ -786,7 +786,7 @@ export class FireMage extends Fighter {
       ctx.scale(ec.facing, 1);
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = fade * 0.48;
-      PixelForge.drawGhostFrame(ctx, sprites, ec.frameIdx, 208, 208);
+      PixelForge.drawAfterimageFrame(ctx, sprites, ec.frameIdx, 208, 208);
       ctx.restore();
     }
   }

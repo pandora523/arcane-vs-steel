@@ -17,49 +17,49 @@ export class PixelForge {
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps18'),
-        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps18'),
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps19'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps19'),
         portrait: loadImg('assets/sprites/warrior_portrait.png?v=2', () => this.refreshPortraits())
       },
       mage: {
-        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps18'),
-        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps18'),
+        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps19'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps19'),
         portrait: loadImg('assets/sprites/mage_portrait.png?v=2', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps18'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps18'),
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps19'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps19'),
         portrait: loadImg('assets/sprites/archer_portrait.png?v=2', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps18'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps18'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps18'),
+        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps19'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps19'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps19'),
         portrait: loadImg('assets/sprites/priestess_portrait.png?v=2', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps18'),
-        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps18'),
+        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps19'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps19'),
         portrait: loadImg('assets/sprites/reaper_portrait.png?v=2', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps18'),
-        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps18'),
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps19'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps19'),
         portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=2', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps18'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps18'),
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps19'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps19'),
         portrait: loadImg('assets/sprites/titan_portrait.png?v=2', () => this.refreshPortraits())
       },
       ronin: {
-        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps18'),
-        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps18'),
+        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps19'),
+        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps19'),
         portrait: loadImg('assets/sprites/ronin_portrait.png?v=2', () => this.refreshPortraits())
       },
       valkyrie: {
-        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps18'),
-        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps18'),
+        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps19'),
+        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps19'),
         portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=2', () => this.refreshPortraits())
       }
     };
@@ -96,7 +96,7 @@ export class PixelForge {
 
   /**
    * Maps fighter state & timers to 270-frame (30 cols x 9 rows, 208x208 cells) 30fps HD-2D sprite sheets
-   * across all 7 champions (Warrior, FireMage, Archer, Priestess, Reaper, Chronomancer, Titan):
+   * across all 9 champions (Warrior, FireMage, Archer, Priestess, Reaper, Chronomancer, Titan, Ronin, Valkyrie):
    *   Row 0 (0..29):    30-frame IDLE breathing, cloak/robe/hair wave & weapon glint
    *   Row 1 (30..59):   30-frame WALK anatomical 2-step stride cycle
    *   Row 2 (60..89):   30-frame AUTO_ATTACK progressive windup, strike/cast & follow-through
@@ -157,7 +157,7 @@ export class PixelForge {
     }
 
     if (st === 'AUTO_ATTACK') {
-      const duration = 0.96;
+      const duration = fighter.autoDuration || 0.96;
       const step = Math.min(29, Math.max(0, Math.floor((t / duration) * 30)));
       return 60 + step;
     }
@@ -169,7 +169,7 @@ export class PixelForge {
     }
 
     if (st === 'ULTIMATE') {
-      const ultDur = 1.60;
+      const ultDur = fighter.ultDuration || 1.60;
       const step = Math.min(29, Math.max(0, Math.floor((t / ultDur) * 30)));
       return 120 + step;
     }
@@ -695,6 +695,20 @@ export class PixelForge {
 
   static drawGhostFrame(_ctx, _charSet, _frameIdx, _w, _h) {
     // Disabled additive double-exposure so character faces and inked silhouettes stay 100% crisp during hits
+  }
+
+  static drawAfterimageFrame(ctx, charSet, frameIdx, w, h) {
+    const sheet = charSet?.sheet;
+    if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
+    const cell = 208;
+    const cols = Math.max(1, Math.round(sheet.naturalWidth / cell));
+    const safeIdx = Math.max(0, frameIdx | 0);
+    const col = safeIdx % cols;
+    const row = (safeIdx / cols) | 0;
+    const sx = col * cell;
+    const sy = row * cell;
+    const baseY = -h + 10;
+    ctx.drawImage(sheet, sx, sy, cell, cell, Math.round(-w * 0.5), Math.round(baseY), w, h);
   }
 
   /**

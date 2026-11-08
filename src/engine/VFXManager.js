@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js';
-import { PixelForge } from './PixelForge.js';
+import { PixelFont } from './PixelFont.js?v=30fps19';
+import { PixelForge } from './PixelForge.js?v=30fps19';
 
 export class VFXManager {
   constructor() {
@@ -161,6 +161,7 @@ export class VFXManager {
   }
 
   spawnParticle(opts) {
+    if (!opts || !Number.isFinite(opts.x) || !Number.isFinite(opts.y)) return;
     if (this.particles.length > 750) this.particles.shift();
     this.particles.push({
       x: opts.x,
@@ -559,9 +560,20 @@ export class VFXManager {
     // Emit rising radiant/arcane particles along active beams
     for (const b of this.beams) {
       if (Math.random() < 0.85) {
+        const u = Math.random();
+        const bx =
+          Number.isFinite(b.x1) && Number.isFinite(b.x2)
+            ? b.x1 + (b.x2 - b.x1) * u
+            : Number.isFinite(b.x)
+              ? b.x
+              : 800;
+        const by =
+          Number.isFinite(b.y1) && Number.isFinite(b.y2)
+            ? b.y1 + (b.y2 - b.y1) * u
+            : (Number.isFinite(b.groundY) ? b.groundY : groundY) - Math.random() * 240;
         this.spawnParticle({
-          x: b.x + (Math.random() - 0.5) * b.width,
-          y: b.groundY - Math.random() * 240,
+          x: bx + (Math.random() - 0.5) * (b.width || 24),
+          y: by + (Math.random() - 0.5) * 18,
           vx: (Math.random() - 0.5) * 65,
           vy: -180 - Math.random() * 140,
           size: 7,
