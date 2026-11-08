@@ -1587,6 +1587,66 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0, draw_boot_rings=F
     return out
 
 
+def draw_chrono_idle_finial_motes(frame, staff_angle_deg, grip_x, grip_y, phase):
+    """
+    Pass #8: 3 phase-looping cyan-teal & brass-gold temporal sand/gear motes
+    orbiting his Astrolabe Staff finial (x = 31..42, y = 7..18) across Row 0 (IDLE).
+    """
+    rad = math.radians(staff_angle_deg)
+    finial_cx = max(33.0, min(40.0, grip_x + math.cos(rad) * 11.5))
+    finial_cy = max(9.0, min(16.0, grip_y + math.sin(rad) * 11.5))
+
+    for m_idx in range(3):
+        m_ang = phase + m_idx * (2.0 * math.pi / 3.0)
+        mx = int(round(max(31.0, min(42.0, finial_cx + math.cos(m_ang) * 4.0))))
+        my = int(round(max(7.0, min(18.0, finial_cy + math.sin(m_ang) * 3.2))))
+        is_cyan = (m_idx % 2 == 0)
+        core_col = CYAN_CORE if is_cyan else GOLD_STAR
+        sub_col = TEAL_BRIGHT if is_cyan else BRASS_LIGHT
+        set_px(frame, mx, my, core_col)
+        tx = int(round(max(31.0, min(42.0, mx - math.cos(m_ang) * 1.0))))
+        ty = int(round(max(7.0, min(18.0, my - math.sin(m_ang) * 1.0))))
+        set_px(frame, tx, ty, sub_col)
+        if m_idx == 2 and my + 1 <= 18:
+            set_px(frame, mx, my + 1, CYAN_BRIGHT)
+
+
+def draw_chrono_walk_footstep_motes(frame, f):
+    """
+    Pass #8: During the two stride contact windows of Row 1 (WALK) (F06..F10 and F21..F25),
+    draw crisp Grounded Footstep / Hem Trail Motes at y = 44..46, x = 16..33:
+    Cyan-gold temporal sand motes at boot level.
+    """
+    if 6 <= f <= 10:
+        u = (f - 6) / 4.0
+        base_x = 26
+    elif 21 <= f <= 25:
+        u = (f - 21) / 4.0
+        base_x = 20
+    else:
+        return
+
+    drift = int(round(u * 4.0))
+    # Mote 1: Cyan temporal sand puff trailing behind boot
+    m1_x = max(16, min(33, base_x - drift))
+    m1_y = 46 - (1 if f % 2 == 0 else 0)
+    set_px(frame, m1_x, m1_y, CYAN_CORE if u < 0.5 else CYAN_BRIGHT)
+    if m1_x - 1 >= 16 and u < 0.8:
+        set_px(frame, m1_x - 1, max(44, m1_y - 1), GOLD_STAR)
+
+    # Mote 2: Brass-gold sand mote rising from boot strike
+    m2_x = max(16, min(33, base_x + 3 - int(round(u * 2.0))))
+    m2_y = 45 - int(round(u * 1.0))
+    set_px(frame, m2_x, max(44, min(46, m2_y)), GOLD_BRIGHT)
+    if m2_x + 1 <= 33 and u < 0.75:
+        set_px(frame, m2_x + 1, 46, TEAL_BRIGHT)
+
+    # Mote 3: Secondary cyan-gold grain
+    m3_x = max(16, min(33, base_x - 2 - drift))
+    m3_y = 44 + (1 if u > 0.5 else 0)
+    set_px(frame, m3_x, m3_y, BRASS_LIGHT if f % 2 == 0 else CYAN_BRIGHT)
+
+
 def build_row0_idle(tpl):
     """
     Row 0 (`IDLE`, 30 frames):
@@ -1631,6 +1691,7 @@ def build_row0_idle(tpl):
             left_relic_mode='escapement_ring',
             conjure_mode='none'
         )
+        draw_chrono_idle_finial_motes(frame, staff_angle_deg, grip_x, grip_y, phase)
         frames.append(frame)
     return frames
 
@@ -1668,6 +1729,7 @@ def build_row1_walk(tpl):
             left_relic_mode='escapement_ring',
             conjure_mode='none'
         )
+        draw_chrono_walk_footstep_motes(frame, f)
         frames.append(frame)
     return frames
 
@@ -1981,6 +2043,42 @@ def build_row4_ultimate(tpl):
     return frames
 
 
+def draw_chrono_ward_shatter_sparks(frame, f):
+    """
+    Pass #8: On F01..F05 of Row 5 (DEATH & HURT), draw a crisp 4-ray
+    Elemental Ward-Shatter Spark Burst at chest height (x = 26..33, y = 18..25)
+    that expands and fades across F01..F05.
+    """
+    if not (1 <= f <= 5):
+        return
+    u = (f - 1) / 4.0
+    cx, cy = 29, 21
+    ray_len = 1 + int(round(u * 2.5))  # 1..3 px
+
+    if f <= 3:
+        set_px(frame, cx, cy, WHITE_CORE if f == 1 else CYAN_CORE)
+
+    rays = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
+    for r_idx, (rx, ry) in enumerate(rays):
+        start_step = 1 if f <= 2 else 2
+        for step in range(start_step, ray_len + 1):
+            px = max(26, min(33, cx + rx * step))
+            py = max(18, min(25, cy + ry * step))
+            if step == ray_len:
+                col = GOLD_BRIGHT if (r_idx + f) % 2 == 0 else TEAL_BRIGHT
+            else:
+                col = WHITE_CORE if f <= 2 else (CYAN_CORE if f <= 4 else CYAN_BRIGHT)
+            set_px(frame, px, py, col)
+
+    # Cross ward-shatter flecks on F01..F04
+    if f <= 4:
+        span = 1 + (1 if f >= 3 else 0)
+        set_px(frame, max(26, cx - span), cy, CYAN_CORE if f <= 2 else GOLD_STAR)
+        set_px(frame, min(33, cx + span), cy, CYAN_CORE if f <= 2 else GOLD_BRIGHT)
+        set_px(frame, cx, max(18, cy - span), WHITE_CORE if f == 1 else CYAN_BRIGHT)
+        set_px(frame, cx, min(25, cy + span), GOLD_STAR if f <= 2 else BRASS_LIGHT)
+
+
 def build_row5_death(tpl):
     """
     Row 5 (`DEATH` & `HURT`, 30 frames):
@@ -2008,6 +2106,8 @@ def build_row5_death(tpl):
                 left_hand=(30.0 + dx, 24.0 + dy),
                 left_relic_mode='none'
             )
+            if 1 <= f <= 5:
+                draw_chrono_ward_shatter_sparks(frame, f)
             frames.append(frame)
 
         elif f <= 17:

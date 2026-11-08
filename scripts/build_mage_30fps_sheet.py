@@ -1258,6 +1258,58 @@ def draw_aerial_flame_thrusters(c, boot_y=41, phase_rad=0.0, intensity=1.0, is_a
     return c
 
 
+def draw_mage_idle_finial_motes(frame, staff_deg, grip_dx, grip_dy, breathe, phase):
+    """
+    Pass #8: 3 phase-looping ((f / 30.0) * 2 * math.pi) solar-yellow & crimson-orange
+    ember-sparks orbiting Ignis Sol's Sun-Staff finial (strictly inside x = 31..42, y = 7..18)
+    across all 30 frames of Row 0 (IDLE).
+    """
+    rad = math.radians(staff_deg)
+    ux, uy = math.cos(rad), math.sin(rad)
+    hx_grip = max(29.5, min(35.5, 25.0 + grip_dx))
+    hy_grip = max(13.5, min(28.0, 17.0 + breathe + grip_dy))
+    fin_cx = max(34.5, min(38.5, hx_grip + ux * 10.5))
+    fin_cy = max(11.0, min(14.5, hy_grip + uy * 8.5 + 3.0))
+
+    for m_idx in range(3):
+        ang = phase + m_idx * ((2.0 * math.pi) / 3.0)
+        rx, ry = 3.4, 3.0
+        mx = max(31, min(42, int(round(fin_cx + math.cos(ang) * rx))))
+        my = max(7, min(18, int(round(fin_cy + math.sin(ang) * ry))))
+        tx = max(31, min(42, int(round(fin_cx + math.cos(ang - 0.5) * (rx * 0.85)))))
+        ty = max(7, min(18, int(round(fin_cy + math.sin(ang - 0.5) * (ry * 0.85)))))
+        lead_col = SOLAR_WHITE if (m_idx == 0 and math.sin(ang * 2.0) > 0.3) else SOLAR_YELLOW
+        tail_col = FLAME_ORANGE if m_idx % 2 == 0 else FLAME_CRIMSON
+        set_px(frame, tx, ty, tail_col)
+        set_px(frame, mx, my, lead_col)
+
+
+def draw_mage_walk_footstep_motes(frame, f):
+    """
+    Pass #8: Warm solar-ember & cinder sparks at boot/hem level (y = 44..46, x = 16..33)
+    during the two stride contact windows of Row 1 (WALK) (F06..F10 and F21..F25).
+    """
+    if 6 <= f <= 10:
+        k = f - 6
+        step_offset = 0
+    elif 21 <= f <= 25:
+        k = f - 21
+        step_offset = 2
+    else:
+        return
+
+    base_xs = [30 - k * 2 - step_offset, 25 - k - (step_offset // 2), 19 - k + step_offset]
+    for p_idx, bx in enumerate(base_xs):
+        px = max(16, min(33, bx))
+        py = max(44, min(46, 46 - ((k + p_idx) % 3)))
+        lead_col = SOLAR_YELLOW if (p_idx + k) % 2 == 0 else FLAME_GOLD
+        cinder_col = FLAME_ORANGE if k <= 2 else FLAME_CRIMSON
+        set_px(frame, px, py, lead_col)
+        set_px(frame, max(16, min(33, px - 1)), max(44, min(46, py + (1 if py < 46 else -1))), cinder_col)
+        if k <= 3:
+            set_px(frame, max(16, min(33, px + 1)), py, FLAME_CRIMSON if p_idx == 2 else FLAME_ORANGE)
+
+
 def build_row0_idle(tpl):
     """
     Row 0 (`IDLE`, 30 frames):
@@ -1311,6 +1363,7 @@ def build_row0_idle(tpl):
             flare=0.0,
             phase_rad=phase,
         )
+        draw_mage_idle_finial_motes(frame, staff_deg, grip_dx, grip_dy, breathe, phase)
         frames.append(ensure_safe_cell(frame, margin=2))
     return frames
 
@@ -1356,6 +1409,7 @@ def build_row1_walk(tpl):
             flare=0.0,
             phase_rad=phase,
         )
+        draw_mage_walk_footstep_motes(frame, f)
         frames.append(ensure_safe_cell(frame, margin=2))
     return frames
 
@@ -1852,6 +1906,43 @@ def build_row4_ultimate(tpl):
     return frames
 
 
+def draw_mage_ward_shatter_sparks(frame, f):
+    """
+    Pass #8: Crisp 4-ray Elemental Ward-Shatter Spark Burst at chest height (x = 26..33, y = 18..25)
+    on F01..F05 of Row 5 (DEATH & HURT) that expands and fades across F01..F05.
+    """
+    if not (1 <= f <= 5):
+        return
+    k = f - 1  # 0..4
+    cx, cy = 29.5, 21.5
+
+    if k <= 1:
+        core_col = SOLAR_WHITE if k == 0 else SOLAR_YELLOW
+        for dx_c in (0, 1):
+            for dy_c in (0, 1):
+                set_px(frame, 29 + dx_c, 21 + dy_c, core_col)
+    elif k == 2:
+        set_px(frame, 29, 21, SOLAR_YELLOW)
+        set_px(frame, 30, 22, FLAME_ORANGE)
+
+    r_in = max(0.5, k * 0.7)
+    r_out = min(3.5, 1.4 + k * 0.6)
+    ray_dirs = [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)]
+    for r_idx, (rx_d, ry_d) in enumerate(ray_dirs):
+        x0 = max(26, min(33, int(round(cx + rx_d * r_in))))
+        y0 = max(18, min(25, int(round(cy + ry_d * r_in))))
+        x1 = max(26, min(33, int(round(cx + rx_d * r_out))))
+        y1 = max(18, min(25, int(round(cy + ry_d * r_out))))
+        ray_col = SOLAR_YELLOW if k <= 1 else (FLAME_ORANGE if k <= 3 else FLAME_CRIMSON)
+        tip_col = SOLAR_WHITE if k == 0 else (SOLAR_YELLOW if k <= 2 else FLAME_ORANGE)
+        draw_line_px(frame, x0, y0, x1, y1, ray_col)
+        set_px(frame, x1, y1, tip_col)
+        if k <= 2:
+            cx_card = max(26, min(33, int(round(cx + (rx_d if r_idx % 2 == 0 else 0.0) * (1.2 + k * 0.6)))))
+            cy_card = max(18, min(25, int(round(cy + (ry_d if r_idx % 2 == 1 else 0.0) * (1.2 + k * 0.6)))))
+            set_px(frame, cx_card, cy_card, FLAME_GOLD if k == 0 else FLAME_ORANGE)
+
+
 def build_row5_death(tpl):
     """
     Row 5 (`DEATH` & `HURT`, 30 frames):
@@ -1888,6 +1979,7 @@ def build_row5_death(tpl):
                 orb_radius=0,
                 flare=0.0,
             )
+            draw_mage_ward_shatter_sparks(frame, f)
             frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 17:

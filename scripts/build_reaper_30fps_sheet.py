@@ -1376,6 +1376,115 @@ def pulse_hood_eyes(frame, dy=0, bright=False):
         set_px(frame, 25, ey, CRIMSON_BRIGHT if bright else VIOLET_BRIGHT)
 
 
+def draw_idle_scythe_soul_wisps(frame, f, breath_dy=0):
+    """
+    Pass #8 Row 0 (`IDLE`) Living Weapon Rune-Mote Ascension:
+    Renders 3 slowly ascending, phase-animated crimson-magenta & abyssal-violet soul wisps
+    curling upward from the Great-Scythe skull collar and curved crescent blade (`x = 28..45, y = 6..22`)
+    across all 30 frames (`f = 0..29`, looping seamlessly via `(f / 30.0) * 2 * math.pi`).
+    """
+    phase = (f / 30.0) * 2.0 * math.pi
+    # Base anchors along the skull collar (x~34, y~14) and curved crescent blade (x~39..43, y~16..21)
+    base_anchors = [
+        (33.5, 16.5),
+        (38.5, 18.0),
+        (42.5, 20.5),
+    ]
+    for w_idx in range(3):
+        u = ((f + w_idx * 10) % 30) / 30.0
+        w_phase = phase + w_idx * (2.0 * math.pi / 3.0)
+        ax0, ay0 = base_anchors[(w_idx + (f // 10)) % 3] if False else (
+            32.0 + u * 9.5 + math.sin(w_phase) * 1.4,
+            20.0 - u * 12.2 + breath_dy * 0.5,
+        )
+        wx = max(29, min(44, int(round(ax0))))
+        wy = max(7, min(20, int(round(ay0))))
+        curl_dx = 1 if math.cos(w_phase) >= 0.0 else -1
+
+        is_crimson = ((f + w_idx) % 2 == 0)
+        head_col = SOUL_WHITE if (0.25 <= u <= 0.75 and (f + w_idx) % 3 == 0) else (C_BLADE_MAGENTA if is_crimson else VIOLET_BRIGHT)
+        mid_col = CRIMSON_BRIGHT if is_crimson else C_BLADE_MAGENTA
+        tail_col = VIOLET_MID if is_crimson else CRIMSON_MID
+
+        # Connected 3-to-4px curling soul wisp inside x = 28..45, y = 6..22
+        set_px(frame, wx, wy, head_col)
+        set_px(frame, wx, min(22, wy + 1), mid_col)
+        set_px(frame, max(28, min(45, wx + curl_dx)), min(22, wy + 1), tail_col)
+        if 0.15 <= u <= 0.85:
+            set_px(frame, max(28, min(45, wx + curl_dx)), max(6, wy - 1), C_BLADE_MAGENTA if is_crimson else CRIMSON_BRIGHT)
+
+
+def draw_walk_shadow_mist_puffs(frame, f):
+    """
+    Pass #8 Row 1 (`WALK`) Grounded Heel-Strike Footstep Sparks / Dust Puffs (`F06..F10` & `F21..F25`):
+    Draws small, crisp 3-to-5 pixel dark violet-crimson shadow-mist puffs at boot/hem level
+    (`y = 44..46, x = 16..34`) during both foot-plant windows.
+    """
+    if 6 <= f <= 10:
+        k = f - 6  # Step 1 front greave plant (x = 27..33, y = 44..46)
+        cx = 29 + (k % 2)
+        pts = [
+            (cx, 46, CRIMSON_BRIGHT if k <= 1 else VIOLET_MID),
+            (cx, 45, VIOLET_BRIGHT if k <= 2 else CRIMSON_DARK),
+            (min(34, cx + 1), 45, C_BLADE_MAGENTA if k <= 1 else VIOLET_DEEP),
+            (max(16, cx - 1), 46, CRIMSON_DARK),
+        ]
+        if k <= 2:
+            pts.append((min(34, cx + 1 + (k // 2)), 44, VIOLET_BRIGHT if k == 0 else CRIMSON_MID))
+        for px_x, px_y, col in pts:
+            if 16 <= px_x <= 34 and 44 <= px_y <= 46:
+                set_px(frame, px_x, px_y, col)
+
+    elif 21 <= f <= 25:
+        k = f - 21  # Step 2 rear/opposite greave plant (x = 17..24, y = 44..46)
+        cx = 20 + (k % 2)
+        pts = [
+            (cx, 46, CRIMSON_BRIGHT if k <= 1 else VIOLET_MID),
+            (cx, 45, VIOLET_BRIGHT if k <= 2 else CRIMSON_DARK),
+            (max(16, cx - 1), 45, C_BLADE_MAGENTA if k <= 1 else VIOLET_DEEP),
+            (min(34, cx + 1), 46, CRIMSON_DARK),
+        ]
+        if k <= 2:
+            pts.append((max(16, cx - 1 - (k // 2)), 44, VIOLET_BRIGHT if k == 0 else CRIMSON_MID))
+        for px_x, px_y, col in pts:
+            if 16 <= px_x <= 34 and 44 <= px_y <= 46:
+                set_px(frame, px_x, px_y, col)
+
+
+def draw_hurt_impact_burst(frame, f):
+    """
+    Pass #8 Row 5 (`DEATH F01..F05`) Directional Impact Hit-Burst on Initial Hurt Frames:
+    Draws a crisp 4-ray Directional Hit-Spark / Armor Impact Glint at chest height
+    (`x = 26..33, y = 18..25`) that expands and fades across `F01..F05`.
+    """
+    if not (1 <= f <= 5):
+        return
+    k = f - 1  # 0..4
+    cx = 29
+    cy = 21 + (1 if k >= 3 else 0)
+
+    def set_burst_px(x, y, col):
+        if 26 <= x <= 33 and 18 <= y <= 25:
+            set_px(frame, x, y, col)
+
+    # Connected central core + cardinal bridge so strip_isolated_pixels never removes any ray pixel
+    set_burst_px(cx, cy, SOUL_WHITE if k <= 2 else C_BLADE_MAGENTA)
+    for dx_c, dy_c in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+        set_burst_px(cx + dx_c, cy + dy_c, CRIMSON_BRIGHT if k <= 1 else VIOLET_MID)
+
+    # 4 directional diagonal rays expanding across F01..F05 within x=26..33, y=18..25
+    r_max = min(3, 1 + (k + 1) // 2)
+    for idx, (rx, ry) in enumerate(((-1, -1), (1, -1), (-1, 1), (1, 1))):
+        for r_step in range(1, r_max + 1):
+            px_x = cx + rx * r_step
+            px_y = cy + ry * r_step
+            if r_step == r_max:
+                col = SOUL_WHITE if k == 0 else (CRIMSON_BRIGHT if (idx + k) % 2 == 0 else VIOLET_BRIGHT)
+            else:
+                col = C_BLADE_MAGENTA if k <= 2 else CRIMSON_MID
+            set_burst_px(px_x, px_y, col)
+
+
 def build_row0_idle(tpl):
     """
     Row 0: 30-Frame Ominous Soulreaper IDLE with wide Two-Handed Polearm Carry:
@@ -1414,7 +1523,9 @@ def build_row0_idle(tpl):
             two_handed=True,
             shoulder_pos=(26, 19 + breath_dy),
         )
-        frames.append(ensure_safe_cell(frame, margin=1))
+        # Pass #8: 3 crimson-magenta & abyssal-violet soul wisps curling upward from skull collar & crescent blade (x=28..45, y=6..22)
+        draw_idle_scythe_soul_wisps(frame, f, breath_dy=breath_dy)
+        frames.append(ensure_safe_cell(frame, margin=2))
     return frames
 
 
@@ -1444,7 +1555,9 @@ def build_row1_walk(tpl):
             two_handed=True,
             shoulder_pos=(26, 19 + bob_y),
         )
-        frames.append(ensure_safe_cell(frame, margin=1))
+        # Pass #8: Dark violet-crimson shadow-mist puffs at boot/hem level on F06..F10 & F21..F25
+        draw_walk_shadow_mist_puffs(frame, f)
+        frames.append(ensure_safe_cell(frame, margin=2))
     return frames
 
 
@@ -1852,7 +1965,9 @@ def build_row5_death(tpl):
                 two_handed=True,
                 shoulder_pos=(26 + dx, 19 + dy),
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            # Pass #8: Crisp 4-ray Directional Hit-Spark / Armor Impact Glint at chest height (x=26..33, y=18..25) on F01..F05
+            draw_hurt_impact_burst(frame, f)
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 17:
             u = (f - 7) / 10.0

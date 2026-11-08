@@ -856,6 +856,65 @@ def render_walk_legs(tpl, f):
     return out
 
 
+def draw_archer_idle_bow_tip_motes(frame, aim_deg, breath_dy, phase):
+    """
+    Pass #8: 3 phase-looping ((f / 30.0) * 2 * math.pi) emerald-mint & starlight-gold
+    wind-motes orbiting Sylvara's upper and lower Astral Longbow tips across all 30 IDLE frames.
+    """
+    rad = math.radians(aim_deg)
+    ux, uy = math.cos(rad), math.sin(rad)
+    px, py = -uy, ux
+    gx = 33.9
+    gy = 21.1 + breath_dy
+    top_cx = gx - ux * 3.2 - px * 12.5
+    top_cy = gy - uy * 3.2 - py * 12.5
+    bot_cx = gx - ux * 3.2 + px * 12.5
+    bot_cy = gy - uy * 3.2 + py * 12.5
+
+    mote_anchors = [
+        (top_cx, top_cy, 2.6, 2.2, 0.0),
+        (top_cx - 1.2, top_cy + 2.2, 2.8, 2.2, (2.0 * math.pi) / 3.0),
+        (bot_cx, bot_cy, 2.5, 2.0, (4.0 * math.pi) / 3.0),
+    ]
+    for m_idx, (cx, cy, rx, ry, phase_off) in enumerate(mote_anchors):
+        ang = phase + phase_off
+        mx = max(3, min(48, int(round(cx + math.cos(ang) * rx))))
+        my = max(3, min(48, int(round(cy + math.sin(ang) * ry))))
+        tx = max(3, min(48, int(round(cx + math.cos(ang - 0.55) * (rx * 0.85)))))
+        ty = max(3, min(48, int(round(cy + math.sin(ang - 0.55) * (ry * 0.85)))))
+        lead_col = STAR_GOLD if (m_idx == 0 or math.sin(ang * 2.0) > 0.25) else EMERALD_CORE
+        tail_col = EMERALD_BRIGHT if m_idx % 2 == 0 else EMERALD_MID
+        set_px(frame, tx, ty, tail_col)
+        set_px(frame, mx, my, lead_col)
+
+
+def draw_archer_walk_footstep_motes(frame, f):
+    """
+    Pass #8: Grounded emerald wind-leaf & star-dust footstep puffs at y = 44..46, x = 16..33
+    during the two stride contact windows of Row 1 WALK (F06..F10 and F21..F25).
+    """
+    if 6 <= f <= 10:
+        k = f - 6
+        step_offset = 0
+    elif 21 <= f <= 25:
+        k = f - 21
+        step_offset = 2
+    else:
+        return
+
+    # 3 crisp wind-leaf & star-dust puffs drifting backward and upward inside x = 16..33, y = 44..46
+    base_xs = [29 - k * 2 - step_offset, 24 - k - (step_offset // 2), 20 - k + step_offset]
+    for p_idx, bx in enumerate(base_xs):
+        px = max(16, min(33, bx))
+        py = max(44, min(46, 46 - ((k + p_idx) % 3)))
+        lead_col = STAR_GOLD if (p_idx + k) % 2 == 0 else EMERALD_CORE
+        leaf_col = EMERALD_BRIGHT if k <= 2 else EMERALD_MID
+        set_px(frame, px, py, lead_col)
+        set_px(frame, max(16, min(33, px - 1)), max(44, min(46, py + (1 if py < 46 else -1))), leaf_col)
+        if k <= 3:
+            set_px(frame, max(16, min(33, px + 1)), py, EMERALD_MID if p_idx == 2 else EMERALD_BRIGHT)
+
+
 def build_row0_idle(tpl):
     """Row 0: 30-Frame Living Sylvan Ranger IDLE."""
     frames = []
@@ -898,6 +957,7 @@ def build_row0_idle(tpl):
         if 2 <= gx <= 49 and 2 <= gy <= 49:
             set_px(frame, gx, gy, STAR_GOLD if f % 5 == 0 else EMERALD_CORE)
 
+        draw_archer_idle_bow_tip_motes(frame, aim_deg, breath_dy, phase)
         frames.append(frame)
     return frames
 
@@ -924,6 +984,7 @@ def build_row1_walk(tpl):
             bow_reach=9.5,
             bow_half_span=12.2
         )
+        draw_archer_walk_footstep_motes(frame, f)
         frames.append(frame)
     return frames
 
@@ -1381,6 +1442,46 @@ def build_row4_ultimate(tpl):
     return frames
 
 
+def draw_archer_ward_shatter_sparks(frame, f):
+    """
+    Pass #8: Crisp 4-ray Elemental Ward-Shatter Spark Burst at chest height (x = 26..33, y = 18..25)
+    on F01..F05 of Row 5 (DEATH & HURT) that expands and fades across F01..F05.
+    """
+    if not (1 <= f <= 5):
+        return
+    k = f - 1  # 0..4
+    cx, cy = 29.5, 21.5
+
+    # Central impact flash on F01..F02
+    if k <= 1:
+        core_col = (255, 255, 255, 255) if k == 0 else STAR_GOLD
+        for dx_c in (0, 1):
+            for dy_c in (0, 1):
+                set_px(frame, 29 + dx_c, 21 + dy_c, core_col)
+    elif k == 2:
+        set_px(frame, 29, 21, STAR_GOLD)
+        set_px(frame, 30, 22, EMERALD_BRIGHT)
+
+    # 4 expanding diagonal/cardinal ward-shatter rays strictly inside x = 26..33, y = 18..25
+    r_in = max(0.5, k * 0.7)
+    r_out = min(3.5, 1.4 + k * 0.6)
+    ray_dirs = [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)]
+    for r_idx, (rx_d, ry_d) in enumerate(ray_dirs):
+        x0 = max(26, min(33, int(round(cx + rx_d * r_in))))
+        y0 = max(18, min(25, int(round(cy + ry_d * r_in))))
+        x1 = max(26, min(33, int(round(cx + rx_d * r_out))))
+        y1 = max(18, min(25, int(round(cy + ry_d * r_out))))
+        ray_col = STAR_GOLD if k <= 1 else (EMERALD_BRIGHT if k <= 3 else EMERALD_MID)
+        tip_col = (255, 255, 255, 255) if k == 0 else (STAR_GOLD if k <= 2 else EMERALD_BRIGHT)
+        draw_line_px(frame, x0, y0, x1, y1, ray_col)
+        set_px(frame, x1, y1, tip_col)
+        if k <= 2:
+            # Secondary cardinal ward-ring glint inside 26..33, 18..25
+            cx_card = max(26, min(33, int(round(cx + (rx_d if r_idx % 2 == 0 else 0.0) * (1.2 + k * 0.6)))))
+            cy_card = max(18, min(25, int(round(cy + (ry_d if r_idx % 2 == 1 else 0.0) * (1.2 + k * 0.6)))))
+            set_px(frame, cx_card, cy_card, EMERALD_CORE if k == 0 else EMERALD_BRIGHT)
+
+
 def build_row5_death(tpl):
     """
     Row 5: 30-Frame Dedicated DEATH Sequence:
@@ -1407,6 +1508,7 @@ def build_row5_death(tpl):
                 bow_reach=9.0,
                 bow_half_span=11.8,
             )
+            draw_archer_ward_shatter_sparks(frame, f)
             frames.append(frame)
 
         elif f <= 13:
@@ -2183,15 +2285,23 @@ def main():
     cell_px = 208
     sheet = Image.new('RGBA', (30 * cell_px, num_rows * cell_px), (0, 0, 0, 0))
 
+    clipped_frames = 0
     for r_idx, (r_name, r_frames) in enumerate(rows):
         assert len(r_frames) == 30, f'{r_name} has {len(r_frames)} frames instead of 30'
         for c_idx in range(30):
             r_frames[c_idx] = ensure_safe_cell(r_frames[c_idx], margin=2)
+            ys, xs = np.where(r_frames[c_idx][:, :, 3] > 0)
+            if len(ys) > 0 and (xs.min() < 2 or xs.max() > 49 or ys.min() < 2 or ys.max() > 49):
+                clipped_frames += 1
         adj_diffs = sum(1 for i in range(29) if np.any(r_frames[i] != r_frames[i + 1]))
+        assert adj_diffs == 29, f'{r_name} has {adj_diffs}/29 distinct transitions!'
         print(f'{r_name:52s}: 30 frames generated, {adj_diffs}/29 adjacent transitions distinct')
         for c_idx, arr in enumerate(r_frames):
             cell_im = Image.fromarray(arr, mode='RGBA').resize((cell_px, cell_px), Image.NEAREST)
             sheet.paste(cell_im, (c_idx * cell_px, r_idx * cell_px))
+
+    print(f'Boundary-clipped frames outside [2..49]: {clipped_frames}/270')
+    assert clipped_frames == 0, f'Found {clipped_frames}/270 boundary-clipped frames!'
 
     sheet.save('assets/sprites/archer_sheet.png')
     print('Saved assets/sprites/archer_sheet.png:', sheet.size)

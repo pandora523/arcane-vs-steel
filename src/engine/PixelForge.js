@@ -17,40 +17,50 @@ export class PixelForge {
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps15'),
-        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps15'),
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps16'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps16'),
         portrait: loadImg('assets/sprites/warrior_portrait.png?v=2', () => this.refreshPortraits())
       },
       mage: {
-        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps15'),
-        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps15'),
+        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps16'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps16'),
         portrait: loadImg('assets/sprites/mage_portrait.png?v=2', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps15'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps15'),
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps16'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps16'),
         portrait: loadImg('assets/sprites/archer_portrait.png?v=2', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps15'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps15'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps15'),
+        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps16'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps16'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps16'),
         portrait: loadImg('assets/sprites/priestess_portrait.png?v=2', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps15'),
-        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps15'),
+        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps16'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps16'),
         portrait: loadImg('assets/sprites/reaper_portrait.png?v=2', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps15'),
-        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps15'),
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps16'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps16'),
         portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=2', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps15'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps15'),
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps16'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps16'),
         portrait: loadImg('assets/sprites/titan_portrait.png?v=2', () => this.refreshPortraits())
+      },
+      ronin: {
+        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps16'),
+        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps16'),
+        portrait: loadImg('assets/sprites/ronin_portrait.png?v=2', () => this.refreshPortraits())
+      },
+      valkyrie: {
+        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps16'),
+        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps16'),
+        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=2', () => this.refreshPortraits())
       }
     };
 
@@ -1028,6 +1038,65 @@ export class PixelForge {
         fillRectPx(15, 12, 3, 2, '#ffffff');
         fillRectPx(11, 16, 6, 6, '#f97316'); // Braided fire beard
         fillRectPx(4, 23, 20, 2, '#fde047');
+      }
+    } else if (heroKey === 'ronin') {
+      if (slotIdx === 0) {
+        // STORM-ODACHI IAIDO: Curved Indigo-Cyan Great-Katana + Raijin Parry Sparks
+        drawLinePx(5, 22, 22, 5, '#6366f1', 2);
+        drawLinePx(6, 21, 22, 5, '#38bdf8', 1);
+        drawLinePx(8, 17, 11, 20, '#facc15', 2); // Golden Tsuba guard
+        drawLinePx(15, 6, 23, 12, '#818cf8', 1); // Lightning arc
+        drawLinePx(17, 12, 23, 16, '#e0f2fe', 1);
+        setPx(22, 5, '#ffffff');
+      } else if (slotIdx === 1) {
+        // RAIJIN THUNDER-PILLAR: Descending Heaven Odachi + 3 Tomoe Drum Ring
+        drawCirclePx(14, 14, 9, '#6366f1', false);
+        drawCirclePx(14, 5, 2, '#facc15', true);
+        drawCirclePx(6, 18, 2, '#facc15', true);
+        drawCirclePx(22, 18, 2, '#facc15', true);
+        fillRectPx(13, 3, 2, 19, '#38bdf8');
+        fillRectPx(13, 5, 1, 16, '#ffffff');
+        drawLinePx(8, 22, 20, 22, '#818cf8', 2);
+      } else {
+        // SUSANOO THUNDERSTORM: Horned Storm-Tengu Mask + Twin Crossed Lightning Odachis
+        drawLinePx(4, 22, 23, 5, '#38bdf8', 2);
+        drawLinePx(23, 22, 4, 5, '#38bdf8', 2);
+        drawCirclePx(14, 14, 6, '#312e81', true);
+        drawLinePx(7, 7, 12, 11, '#facc15', 2);
+        drawLinePx(20, 7, 15, 11, '#facc15', 2);
+        fillRectPx(10, 12, 3, 2, '#38bdf8');
+        fillRectPx(15, 12, 3, 2, '#38bdf8');
+        setPx(11, 12, '#ffffff');
+        setPx(16, 12, '#ffffff');
+      }
+    } else if (heroKey === 'valkyrie') {
+      if (slotIdx === 0) {
+        // DRAGON-LANCE THRUST: Crimson-Gold Winged Gungnir Halberd + Phalanx Cross-Guard
+        drawLinePx(5, 22, 22, 5, '#f59e0b', 2);
+        // Winged halberd axe-wings near tip
+        drawLinePx(14, 9, 19, 4, '#f43f5e', 2);
+        drawLinePx(18, 13, 23, 8, '#f43f5e', 2);
+        drawLinePx(16, 11, 23, 4, '#fef08a', 2);
+        setPx(23, 4, '#ffffff');
+      } else if (slotIdx === 1) {
+        // GUNGNIR SKY-LANCE: Plunging Crimson-Gold Sky-Lance + Dragonfire Crater
+        fillRectPx(13, 3, 2, 18, '#fbbf24');
+        drawLinePx(8, 9, 14, 14, '#f43f5e', 2);
+        drawLinePx(20, 9, 14, 14, '#f43f5e', 2);
+        drawLinePx(11, 16, 14, 21, '#ffffff', 2);
+        drawLinePx(17, 16, 14, 21, '#ffffff', 2);
+        drawLinePx(5, 22, 23, 22, '#f43f5e', 2);
+        drawLinePx(8, 23, 20, 23, '#fef08a', 1);
+      } else {
+        // BAHAMUT CATACLYSM: Winged Crimson Dragon Crest + Golden Valkyrie Crown
+        drawLinePx(4, 10, 11, 15, '#f43f5e', 3);
+        drawLinePx(23, 10, 16, 15, '#f43f5e', 3);
+        drawLinePx(5, 6, 12, 12, '#fbbf24', 2);
+        drawLinePx(22, 6, 15, 12, '#fbbf24', 2);
+        fillRectPx(10, 9, 8, 9, '#be123c');
+        fillRectPx(11, 12, 2, 2, '#fef08a');
+        fillRectPx(15, 12, 2, 2, '#fef08a');
+        fillRectPx(13, 4, 2, 19, '#ffffff');
       }
     }
 

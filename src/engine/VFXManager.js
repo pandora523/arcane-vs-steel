@@ -119,7 +119,11 @@ export class VFXManager {
                 ? '#eab308'
                 : theme === 'forge'
                   ? '#10b981'
-                  : '#ea580c';
+                  : theme === 'storm'
+                    ? '#38bdf8'
+                    : theme === 'crimson'
+                      ? '#fbbf24'
+                      : '#ea580c';
     const dir = attacker ? Math.sign(x - attacker.x) || 1 : 1;
     if (this.hitImpacts.length > 22) this.hitImpacts.shift();
     this.hitImpacts.push({
@@ -203,6 +207,8 @@ export class VFXManager {
       abyssal: { shape: 'skull', col: '#7e22ce', core: '#e11d48' },
       chrono: { shape: 'cog', col: '#0d9488', core: '#eab308' },
       forge: { shape: 'rune', col: '#d97706', core: '#10b981' },
+      storm: { shape: 'rune', col: '#6366f1', core: '#38bdf8' },
+      crimson: { shape: 'star', col: '#e11d48', core: '#fbbf24' },
       heal: { shape: 'cross', col: '#16a34a', core: '#facc15' }
     };
     const cfg = sets[theme] || sets.steel;
@@ -433,7 +439,11 @@ export class VFXManager {
                 ? { main: '#2dd4bf', core: '#facc15', border: '#0d9488' }
                 : theme === 'forge'
                   ? { main: '#f59e0b', core: '#34d399', border: '#d97706' }
-                  : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
+                  : theme === 'storm'
+                    ? { main: '#818cf8', core: '#38bdf8', border: '#6366f1' }
+                    : theme === 'crimson'
+                      ? { main: '#f43f5e', core: '#fbbf24', border: '#e11d48' }
+                      : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
 
     this.castAuras.push({
       fighter,
@@ -637,7 +647,11 @@ export class VFXManager {
         s.flightTime = (s.flightTime || 0) + dt;
         s.x += s.vx * dt;
         s.y += s.vy * dt;
-        const isHeavyWeapon = s.type === 'runeblade' || s.type === 'runic_anvil';
+        const isHeavyWeapon =
+          s.type === 'runeblade' ||
+          s.type === 'runic_anvil' ||
+          s.type === 'raijin_odachi' ||
+          s.type === 'gungnir_lance';
         this.spawnParticle({
           x: s.x + (Math.random() - 0.5) * 16,
           y: s.y - 18,
@@ -652,9 +666,9 @@ export class VFXManager {
           s.impacted = true;
           if (audio) {
             audio.play(
-              s.type === 'runic_anvil'
+              s.type === 'runic_anvil' || s.type === 'raijin_odachi'
                 ? 'thunder_slam'
-                : s.type === 'runeblade'
+                : s.type === 'runeblade' || s.type === 'gungnir_lance'
                   ? 'clang'
                   : s.type === 'holy_spear'
                     ? 'holy_hit'
@@ -769,6 +783,8 @@ export class VFXManager {
       if (type === 'cyan') return { nr: 0.22, ng: 0.74, nb: 0.98 };
       if (type === 'emerald') return { nr: 0.16, ng: 0.85, nb: 0.58 };
       if (type === 'violet') return { nr: 0.78, ng: 0.36, nb: 0.98 };
+      if (type === 'indigo') return { nr: 0.51, ng: 0.55, nb: 0.98 };
+      if (type === 'crimson') return { nr: 0.96, ng: 0.25, nb: 0.37 };
       if (type === 'teal') return { nr: 0.18, ng: 0.86, nb: 0.78 };
       if (type === 'gold') return { nr: 1.0, ng: 0.88, nb: 0.28 };
       return { nr: 1.0, ng: 0.52, nb: 0.16 };
@@ -778,12 +794,16 @@ export class VFXManager {
       if (col === '#10b981' || col === '#34d399' || col === '#6ee7b7' || col === '#a7f3d0' || col === '#4ade80') {
         return 'emerald';
       }
+      if (col === '#818cf8' || col === '#6366f1' || col === '#a5b4fc' || col === '#4f46e5') {
+        return 'indigo';
+      }
+      if (col === '#f43f5e' || col === '#e11d48' || col === '#be123c' || col === '#fda4af') {
+        return 'crimson';
+      }
       if (
         col === '#c084fc' ||
         col === '#9333ea' ||
         col === '#7e22ce' ||
-        col === '#e11d48' ||
-        col === '#f43f5e' ||
         col === '#e879f9'
       ) {
         return 'violet';
@@ -797,6 +817,7 @@ export class VFXManager {
         col === '#eab308' ||
         col === '#f59e0b' ||
         col === '#d97706' ||
+        col === '#fbbf24' ||
         col === '#fef08a' ||
         col === '#fef9c3' ||
         col === '#ca8a04'
@@ -833,6 +854,16 @@ export class VFXManager {
         pushLight(f.x, f.y - 110, f.state === 'ULTIMATE' ? 390 : 300, 'gold', f.state === 'ULTIMATE' ? 1.95 : 1.70, 88);
         pushLight(f.x + f.facing * 32, f.y - 82, 235, 'emerald', 1.40, 74);
       }
+      // Kaze-Maru's Thunder-Odachi & Susanoo Storm-God Avatar emit Electric Indigo + Thunder-Cyan light!
+      if (f.heroId === 'ronin' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isDeflecting)) {
+        pushLight(f.x, f.y - 115, f.state === 'ULTIMATE' ? 395 : 305, 'indigo', f.state === 'ULTIMATE' ? 1.95 : 1.72, 88);
+        pushLight(f.x + f.facing * 34, f.y - 84, 240, 'cyan', 1.45, 76);
+      }
+      // Freyja's Gungnir Dragon-Lance & Bahamut Cataclysm emit Dragonfire Crimson + Imperial Gold light!
+      if (f.heroId === 'valkyrie' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isDeflecting)) {
+        pushLight(f.x, f.y - 118, f.state === 'ULTIMATE' ? 395 : 305, 'crimson', f.state === 'ULTIMATE' ? 1.95 : 1.72, 88);
+        pushLight(f.x + f.facing * 34, f.y - 84, 245, 'gold', 1.48, 76);
+      }
       // Chronomancer's active Colossal Doomsday Clock & Stasis Hourglass emit intense dual Teal + Gold light!
       if (f.doomsdayClock) {
         pushLight(f.doomsdayClock.x, f.doomsdayClock.y, 410, 'teal', 1.95, 92);
@@ -848,6 +879,14 @@ export class VFXManager {
       if (f.worldForgeAvatar) {
         pushLight(f.worldForgeAvatar.x, f.worldForgeAvatar.y - 150, 380, 'gold', 1.88, 88);
         pushLight(f.worldForgeAvatar.x, f.worldForgeAvatar.y - 110, 280, 'emerald', 1.45, 78);
+      }
+      if (f.susanooAvatar) {
+        pushLight(f.susanooAvatar.x, f.susanooAvatar.y - 145, 385, 'indigo', 1.92, 88);
+        pushLight(f.susanooAvatar.x, f.susanooAvatar.y - 105, 285, 'cyan', 1.50, 78);
+      }
+      if (f.bahamutAvatar) {
+        pushLight(f.bahamutAvatar.x, f.bahamutAvatar.y - 148, 390, 'crimson', 1.94, 88);
+        pushLight(f.bahamutAvatar.x, f.bahamutAvatar.y - 108, 290, 'gold', 1.52, 78);
       }
     }
     for (const p of this.projectiles) {
@@ -1295,6 +1334,50 @@ export class VFXManager {
           fade * (isReflection ? 0.5 : 0.98),
           isReflection
         );
+      } else if (s.type === 'raijin_odachi') {
+        const roninVfx = assets.ronin?.vfx;
+        const odachiSz = s.impacted ? 236 : 216;
+        const col = !s.impacted
+          ? Math.floor((s.flightTime || 0) * 30) % 12
+          : Math.min(29, 12 + Math.floor(Math.min(1, s.linger / Math.max(0.01, s.maxLinger)) * 18));
+        this.drawBloomedSprite(
+          ctx,
+          renderer,
+          roninVfx,
+          col * 208,
+          208,
+          208,
+          208,
+          Math.round(sx - odachiSz * 0.5),
+          Math.round(sy - odachiSz * 0.84),
+          odachiSz,
+          odachiSz,
+          '#818cf8',
+          fade * (isReflection ? 0.5 : 0.98),
+          isReflection
+        );
+      } else if (s.type === 'gungnir_lance') {
+        const valkVfx = assets.valkyrie?.vfx;
+        const lanceSz = s.impacted ? 238 : 218;
+        const col = !s.impacted
+          ? Math.floor((s.flightTime || 0) * 30) % 12
+          : Math.min(29, 12 + Math.floor(Math.min(1, s.linger / Math.max(0.01, s.maxLinger)) * 18));
+        this.drawBloomedSprite(
+          ctx,
+          renderer,
+          valkVfx,
+          col * 208,
+          208,
+          208,
+          208,
+          Math.round(sx - lanceSz * 0.5),
+          Math.round(sy - lanceSz * 0.84),
+          lanceSz,
+          lanceSz,
+          '#f43f5e',
+          fade * (isReflection ? 0.5 : 0.98),
+          isReflection
+        );
       } else {
         const archerVfx = assets.archer?.vfx;
         if (!s.impacted) {
@@ -1556,7 +1639,31 @@ export class VFXManager {
         cs.color === '#f59e0b' ||
         cs.color === '#10b981' ||
         cs.color === '#d97706';
-      const spireVfx = isTitanMonolith ? assets.titan?.vfx : assets.warrior?.vfx;
+      const isRoninPillar =
+        cs.heroId === 'ronin' ||
+        cs.owner?.heroId === 'ronin' ||
+        cs.color === '#818cf8' ||
+        cs.color === '#6366f1';
+      const isValkyrieObelisk =
+        cs.heroId === 'valkyrie' ||
+        cs.owner?.heroId === 'valkyrie' ||
+        cs.color === '#f43f5e' ||
+        cs.color === '#be123c' ||
+        (cs.color === '#fbbf24' && cs.owner?.heroId === 'valkyrie');
+      const spireVfx = isRoninPillar
+        ? assets.ronin?.vfx
+        : isValkyrieObelisk
+          ? assets.valkyrie?.vfx
+          : isTitanMonolith
+            ? assets.titan?.vfx
+            : assets.warrior?.vfx;
+      const spireGlowCol = isRoninPillar
+        ? '#818cf8'
+        : isValkyrieObelisk
+          ? '#f43f5e'
+          : isTitanMonolith
+            ? '#f59e0b'
+            : '#38bdf8';
 
       ctx.save();
       if (spireVfx && spireVfx.complete && spireVfx.naturalWidth) {
@@ -1577,7 +1684,7 @@ export class VFXManager {
           Math.round(-spireH),
           spireW,
           spireH,
-          isTitanMonolith ? '#f59e0b' : '#38bdf8',
+          spireGlowCol,
           fade * (isReflection ? 0.45 : 0.98),
           isReflection
         );
@@ -1643,7 +1750,7 @@ export class VFXManager {
       ctx.fillRect(px - 1, py - 1, Math.max(1, s - 2), Math.max(1, s - 2));
     }
 
-    // 6. SLASHES: Deeply Saturated Chunky-Pixel Crescent Blade, Scythe, War-Hammer & Whirlwind Waves
+    // 6. SLASHES: Deeply Saturated Chunky-Pixel Crescent Blade, Scythe, War-Hammer, Odachi, Dragon-Lance & Whirlwind Waves
     ctx.globalCompositeOperation = 'source-over';
     for (const s of this.slashes) {
       const isUltSlash = s.radius >= 118;
@@ -1652,6 +1759,16 @@ export class VFXManager {
       const alpha = 1 - t;
       const isFullCircle = Math.abs(s.endAngle - s.startAngle) > Math.PI * 1.8;
       ctx.globalAlpha = alpha * (isReflection ? 0.35 : isFullCircle ? 0.58 : 0.92);
+      const isRoninSlash =
+        s.heroId === 'ronin' ||
+        s.color === '#818cf8' ||
+        s.color === '#6366f1' ||
+        s.color === '#a5b4fc';
+      const isValkyrieSlash =
+        s.heroId === 'valkyrie' ||
+        s.color === '#f43f5e' ||
+        s.color === '#be123c' ||
+        s.color === '#e11d48';
       const isTitanSlash =
         s.heroId === 'titan' ||
         s.color === '#f59e0b' ||
@@ -1663,7 +1780,6 @@ export class VFXManager {
         s.color === '#c084fc' ||
         s.color === '#9333ea' ||
         s.color === '#7e22ce' ||
-        s.color === '#f43f5e' ||
         s.color === '#e879f9';
       const isRadiant = s.color === '#fde047' || s.color === '#facc15';
       const isChrono = s.color === '#2dd4bf' || s.color === '#99f6e4';
@@ -1680,7 +1796,11 @@ export class VFXManager {
         const slashCol = Math.min(29, Math.floor(t * 30));
         const cropX = slashCol * 208;
         const cropY = 832;
-        if (isTitanSlash && assets.titan?.vfx?.complete) {
+        if (isRoninSlash && assets.ronin?.vfx?.complete) {
+          sheet = assets.ronin.vfx;
+        } else if (isValkyrieSlash && assets.valkyrie?.vfx?.complete) {
+          sheet = assets.valkyrie.vfx;
+        } else if (isTitanSlash && assets.titan?.vfx?.complete) {
           sheet = assets.titan.vfx;
         } else if (isAbyssal) {
           sheet = assets.reaper?.vfx;
@@ -1921,6 +2041,64 @@ export class VFXManager {
             0.96,
             isReflection
           );
+        }
+        ctx.restore();
+      } else if (proj.type === 'storm_wave') {
+        const roninVfx = assets.ronin?.vfx;
+        const ang = Math.atan2(proj.vy || 0, proj.vx || 1);
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(ang);
+        if (roninVfx && roninVfx.complete && roninVfx.naturalWidth) {
+          const waveSize = 140;
+          this.drawBloomedSprite(
+            ctx,
+            renderer,
+            roninVfx,
+            pCol * 208,
+            0,
+            208,
+            208,
+            -waveSize * 0.5,
+            -waveSize * 0.5,
+            waveSize,
+            waveSize,
+            '#818cf8',
+            0.98,
+            isReflection
+          );
+        } else {
+          ctx.fillStyle = '#818cf8';
+          ctx.fillRect(-18, -14, 36, 28);
+        }
+        ctx.restore();
+      } else if (proj.type === 'dragon_lance') {
+        const valkVfx = assets.valkyrie?.vfx;
+        const ang = Math.atan2(proj.vy || 0, proj.vx || 1);
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(ang);
+        if (valkVfx && valkVfx.complete && valkVfx.naturalWidth) {
+          const lanceSize = 142;
+          this.drawBloomedSprite(
+            ctx,
+            renderer,
+            valkVfx,
+            pCol * 208,
+            0,
+            208,
+            208,
+            -lanceSize * 0.5,
+            -lanceSize * 0.5,
+            lanceSize,
+            lanceSize,
+            '#f43f5e',
+            0.98,
+            isReflection
+          );
+        } else {
+          ctx.fillStyle = '#f43f5e';
+          ctx.fillRect(-20, -10, 40, 20);
         }
         ctx.restore();
       } else if (proj.type === 'arrow') {
@@ -2323,6 +2501,40 @@ export class VFXManager {
           crestSize * 1.08,
           crestSize * 1.08,
           '#f59e0b',
+          alpha,
+          false
+        );
+      } else if (ca.theme === 'storm' && assets.ronin?.vfx?.complete) {
+        this.drawBloomedSprite(
+          ctx,
+          renderer,
+          assets.ronin.vfx,
+          sealCol * 208,
+          624,
+          208,
+          208,
+          -crestSize * 0.54,
+          -crestSize * 0.56,
+          crestSize * 1.08,
+          crestSize * 1.08,
+          '#818cf8',
+          alpha,
+          false
+        );
+      } else if (ca.theme === 'crimson' && assets.valkyrie?.vfx?.complete) {
+        this.drawBloomedSprite(
+          ctx,
+          renderer,
+          assets.valkyrie.vfx,
+          sealCol * 208,
+          624,
+          208,
+          208,
+          -crestSize * 0.54,
+          -crestSize * 0.56,
+          crestSize * 1.08,
+          crestSize * 1.08,
+          '#f43f5e',
           alpha,
           false
         );

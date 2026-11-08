@@ -1014,6 +1014,120 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
     return out
 
 
+def draw_idle_runeblade_motes(frame, f, breath_dy=0):
+    """
+    Pass #8 Row 0 (`IDLE`) Living Weapon Rune-Mote Ascension:
+    Renders 3 slowly ascending, phase-animated frost-cyan & starlight-gold diamond glints
+    drifting upward along the Runeblade Greatsword blade (`x = 34..45, y = 6..20`) across
+    all 30 frames (`f = 0..29`, looping seamlessly via `(f / 30.0) * 2 * math.pi`).
+    """
+    phase = (f / 30.0) * 2.0 * math.pi
+    for m_idx in range(3):
+        u = ((f + m_idx * 10) % 30) / 30.0
+        m_phase = phase + m_idx * (2.0 * math.pi / 3.0)
+        raw_x = 35.5 + u * 8.2 + math.sin(m_phase) * 0.9
+        raw_y = 19.0 - u * 11.8 + breath_dy * 0.5 + math.cos(m_phase) * 0.4
+        cx = max(35, min(44, int(round(raw_x))))
+        cy = max(7, min(19, int(round(raw_y))))
+
+        is_gold = ((f + m_idx) % 2 == 0)
+        core_col = GOLD_WHITE if is_gold else FROST_WHITE
+        petal_hi = GOLD_BRIGHT if is_gold else FROST_BRIGHT
+        petal_lo = FROST_CYAN if is_gold else GOLD_MID
+
+        set_px(frame, cx, cy, core_col)
+        if 0.12 <= u <= 0.86:
+            # Crisp 4-petal diamond glint + trailing frost-cyan mote tail inside x=34..45, y=6..20
+            set_px(frame, cx, max(6, cy - 1), petal_hi)
+            set_px(frame, min(45, cx + 1), cy, petal_hi if (f % 3 != 0) else FROST_CYAN)
+            set_px(frame, max(34, cx - 1), cy, FROST_CYAN)
+            set_px(frame, cx, min(20, cy + 1), petal_lo)
+        else:
+            # Compact ascending birth/fade spark
+            set_px(frame, cx, max(6, cy - 1), petal_hi)
+            set_px(frame, min(45, cx + 1), cy, FROST_CYAN)
+
+
+def draw_walk_heel_strike_sparks(frame, f):
+    """
+    Pass #8 Row 1 (`WALK`) Grounded Heel-Strike Footstep Sparks (`F06..F10` & `F21..F25`):
+    Draws crisp 3-to-5 pixel steel-blue & frost-gold boot-strike sparks at boot level
+    (`y = 44..46, x = 16..34`) during both foot-plant windows.
+    """
+    if 6 <= f <= 10:
+        k = f - 6  # Step 1 front/lead sabaton plant (x = 27..33, y = 44..46)
+        cx = 29 + (k % 2)
+        pts = [
+            (cx, 46, GOLD_WHITE if k <= 1 else STEEL_BRIGHT),
+            (min(34, cx + 1 + (k // 2)), 45, GOLD_BRIGHT if k <= 2 else FROST_CYAN),
+            (max(16, cx - 1 - (k // 2)), 45, FROST_BRIGHT if k <= 2 else STEEL_LIGHT),
+        ]
+        if k <= 3:
+            pts.append((min(34, cx + 2), 44, FROST_CYAN if k <= 1 else STEEL_MID))
+        if k <= 1:
+            pts.append((cx, 45, FROST_WHITE))
+        for px_x, px_y, col in pts:
+            if 16 <= px_x <= 34 and 44 <= px_y <= 46:
+                set_px(frame, px_x, px_y, col)
+
+    elif 21 <= f <= 25:
+        k = f - 21  # Step 2 rear/opposite sabaton plant (x = 17..24, y = 44..46)
+        cx = 20 + (k % 2)
+        pts = [
+            (cx, 46, GOLD_WHITE if k <= 1 else STEEL_BRIGHT),
+            (min(34, cx + 1 + (k // 2)), 45, FROST_BRIGHT if k <= 2 else STEEL_LIGHT),
+            (max(16, cx - 1 - (k // 2)), 45, GOLD_BRIGHT if k <= 2 else FROST_CYAN),
+        ]
+        if k <= 3:
+            pts.append((max(16, cx - 2), 44, FROST_CYAN if k <= 1 else STEEL_MID))
+        if k <= 1:
+            pts.append((cx, 45, FROST_WHITE))
+        for px_x, px_y, col in pts:
+            if 16 <= px_x <= 34 and 44 <= px_y <= 46:
+                set_px(frame, px_x, px_y, col)
+
+
+def draw_hurt_impact_burst(frame, f):
+    """
+    Pass #8 Row 5 (`DEATH F01..F05`) Directional Impact Hit-Burst on Initial Hurt Frames:
+    Draws a crisp 4-ray Directional Hit-Spark / Armor Impact Glint at chest height
+    (`x = 26..33, y = 18..25`) that expands and fades across `F01..F05`.
+    """
+    if not (1 <= f <= 5):
+        return
+    k = f - 1  # 0..4
+    cx = 29
+    cy = 21 + (1 if k >= 3 else 0)
+
+    def set_burst_px(x, y, col):
+        if 26 <= x <= 33 and 18 <= y <= 25:
+            set_px(frame, x, y, col)
+
+    # Core impact flash on F01..F03
+    if k <= 2:
+        set_burst_px(cx, cy, FROST_WHITE if k <= 1 else GOLD_WHITE)
+        if k == 0:
+            for dx_c, dy_c in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                set_burst_px(cx + dx_c, cy + dy_c, GOLD_WHITE)
+
+    # 4 directional diagonal impact rays expanding from r=1..2 (F01) out to r=2..3 (F04..F05)
+    r_inner = 1 if k <= 2 else 2
+    r_outer = min(3, 1 + (k + 1) // 2)
+    rays = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
+    for idx, (rx, ry) in enumerate(rays):
+        for r_step in range(r_inner, r_outer + 1):
+            px_x = cx + rx * r_step
+            px_y = cy + ry * r_step
+            if r_step == r_outer:
+                col = GOLD_BRIGHT if (idx + k) % 2 == 0 else FROST_BRIGHT
+            else:
+                col = FROST_WHITE if k <= 1 else FROST_CYAN
+            set_burst_px(px_x, px_y, col)
+    # Forward directional armor glint spike toward x=32..33
+    if k <= 3:
+        set_burst_px(min(33, cx + 2 + (k // 2)), cy, GOLD_WHITE if k <= 1 else FROST_CYAN)
+
+
 def build_row0_idle(tpl):
     """
     Row 0 (`IDLE`, 30 frames):
@@ -1057,14 +1171,8 @@ def build_row0_idle(tpl):
             two_handed=True
         )
 
-        glint_u = (f / 29.0)
-        glint_dist = 2.5 + (glint_u * 14.0 if f < 15 else (1.0 - (f - 15) / 14.0) * 14.0)
-        rad = math.radians(blade_ang)
-        gx = min(48, max(3, hx + math.cos(rad) * (1.4 + glint_dist)))
-        gy = min(48, max(3, hy + math.sin(rad) * (1.4 + glint_dist)))
-        set_px(frame, gx, gy, FROST_WHITE)
-        set_px(frame, gx + 1, gy, GOLD_BRIGHT)
-        set_px(frame, gx, gy - 1, FROST_BRIGHT)
+        # Pass #8: 3 slowly ascending frost-cyan & starlight-gold diamond glints along the Runeblade (x=34..45, y=6..20)
+        draw_idle_runeblade_motes(frame, f, breath_dy=breath_dy)
 
         frames.append(ensure_safe_cell(frame))
     return frames
@@ -1096,6 +1204,8 @@ def build_row1_walk(tpl):
             shoulder=(26, 17 + bob_y),
             two_handed=True
         )
+        # Pass #8: Grounded steel-blue & frost-gold heel-strike footstep sparks on F06..F10 & F21..F25
+        draw_walk_heel_strike_sparks(frame, f)
         frames.append(ensure_safe_cell(frame))
     return frames
 
@@ -1596,6 +1706,8 @@ def build_row5_death(tpl):
                 shoulder=(25 + dx, 17 + dy),
                 two_handed=True
             )
+            # Pass #8: Crisp 4-ray Directional Hit-Spark / Armor Impact Glint at chest height (x=26..33, y=18..25) on F01..F05
+            draw_hurt_impact_burst(frame, f)
             frames.append(ensure_safe_cell(frame))
 
         elif f <= 17:

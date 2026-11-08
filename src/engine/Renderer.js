@@ -7,6 +7,8 @@ const RADIANT_FIRE_PAL = ['#a16207', '#ca8a04', '#eab308', '#facc15'];
 const ABYSSAL_FIRE_PAL = ['#4c1d95', '#7e22ce', '#a855f7', '#e11d48'];
 const CHRONO_FIRE_PAL = ['#115e59', '#0d9488', '#14b8a6', '#eab308'];
 const FORGE_FIRE_PAL = ['#78350f', '#d97706', '#f59e0b', '#34d399'];
+const STORM_FIRE_PAL = ['#312e81', '#4f46e5', '#818cf8', '#38bdf8'];
+const CRIMSON_FIRE_PAL = ['#881337', '#be123c', '#f43f5e', '#fbbf24'];
 
 export const STAGE_ROSTER = [
   { id: 'cathedral', name: 'ECLIPSE CATHEDRAL NAVE', assetKey: 'arenaBg' },
@@ -116,6 +118,16 @@ export class Renderer {
       'rgba(20,184,166,0.56)',
       'rgba(13,148,136,0.22)'
     );
+    this.glowIndigo = makeGlow(
+      'rgba(129,140,248,0.86)',
+      'rgba(99,102,241,0.58)',
+      'rgba(67,56,202,0.24)'
+    );
+    this.glowCrimson = makeGlow(
+      'rgba(244,63,94,0.86)',
+      'rgba(225,29,72,0.58)',
+      'rgba(159,18,57,0.24)'
+    );
     this.shadowTex = makeGlow('rgba(0,0,0,0.92)', 'rgba(0,0,0,0.52)', 'rgba(0,0,0,0.18)');
   }
 
@@ -123,6 +135,12 @@ export class Renderer {
     if (!col) return this.glowCyan;
     if (col === 'emerald' || col === '#10b981' || col === '#34d399' || col === '#6ee7b7' || col === '#a7f3d0') {
       return this.glowEmerald;
+    }
+    if (col === 'storm' || col === '#818cf8' || col === '#6366f1' || col === '#a5b4fc') {
+      return this.glowIndigo || this.glowCyan;
+    }
+    if (col === 'crimson' || col === '#f43f5e' || col === '#be123c' || col === '#e11d48' || col === '#fda4af') {
+      return this.glowCrimson || this.glowOrange;
     }
     if (col === 'arcane' || col === '#f97316' || col === '#fb923c' || col === '#dc2626' || col === '#ea580c') {
       return this.glowOrange;
@@ -134,6 +152,7 @@ export class Renderer {
       col === '#facc15' ||
       col === '#eab308' ||
       col === '#f59e0b' ||
+      col === '#fbbf24' ||
       col === '#d97706' ||
       col === '#fef08a'
     ) {
@@ -144,7 +163,6 @@ export class Renderer {
       col === '#c084fc' ||
       col === '#9333ea' ||
       col === '#7e22ce' ||
-      col === '#f43f5e' ||
       col === '#e879f9'
     ) {
       return this.glowViolet;
@@ -1171,6 +1189,8 @@ export class Renderer {
     const isAbyssal = f.primaryColor === '#c084fc';
     const isChrono = f.primaryColor === '#2dd4bf';
     const isForge = f.primaryColor === '#f59e0b';
+    const isStorm = f.primaryColor === '#818cf8';
+    const isCrimson = f.primaryColor === '#f43f5e';
     const pal = isBlue
       ? CYAN_FIRE_PAL
       : isEmerald
@@ -1183,7 +1203,11 @@ export class Renderer {
               ? CHRONO_FIRE_PAL
               : isForge
                 ? FORGE_FIRE_PAL
-                : SOLAR_FIRE_PAL;
+                : isStorm
+                  ? STORM_FIRE_PAL
+                  : isCrimson
+                    ? CRIMSON_FIRE_PAL
+                    : SOLAR_FIRE_PAL;
     const glowTex = this.getGlowForColor(f.primaryColor);
     const isAction = f.state === 'SKILL' || f.state === 'ULTIMATE' || f.state === 'AUTO_ATTACK';
     const gy = f.groundY || this.groundY;
@@ -1213,6 +1237,8 @@ export class Renderer {
     const isAbyssal = f.primaryColor === '#c084fc';
     const isChrono = f.primaryColor === '#2dd4bf';
     const isForge = f.primaryColor === '#f59e0b';
+    const isStorm = f.primaryColor === '#818cf8';
+    const isCrimson = f.primaryColor === '#f43f5e';
     const pal = isBlue
       ? CYAN_FIRE_PAL
       : isEmerald
@@ -1225,7 +1251,11 @@ export class Renderer {
               ? CHRONO_FIRE_PAL
               : isForge
                 ? FORGE_FIRE_PAL
-                : SOLAR_FIRE_PAL;
+                : isStorm
+                  ? STORM_FIRE_PAL
+                  : isCrimson
+                    ? CRIMSON_FIRE_PAL
+                    : SOLAR_FIRE_PAL;
     const glowTex = this.getGlowForColor(f.primaryColor);
     const t = this.time;
 
@@ -1357,6 +1387,80 @@ export class Renderer {
               24,
               0.46,
               i % 2 === 0 ? this.glowGold : this.glowEmerald
+            );
+          }
+        }
+      } else if (isStorm) {
+        // KAZE-MARU: Orbiting Raijin Thunder-Drum Sparks + Spinning Raijin Wheel Ring when deflecting
+        for (let r = 0; r < 4; r++) {
+          const ra = t * 5.0 + (r * Math.PI) / 2;
+          const rx = Math.round((f.x + f.facing * 22 + Math.cos(ra) * 36) / 3) * 3;
+          const ry = Math.round((f.y - 84 + Math.sin(ra * 2) * 14) / 3) * 3;
+          const isCyan = r % 2 === 1;
+          emitGlowingParticle(
+            rx,
+            ry,
+            6,
+            6,
+            isCyan ? '#38bdf8' : '#818cf8',
+            '#e0f2fe',
+            26,
+            0.48,
+            isCyan ? this.glowCyan : this.glowIndigo
+          );
+        }
+        if (f.isDeflecting) {
+          for (let i = 0; i < 16; i++) {
+            const a = (i / 16) * Math.PI * 2 + t * 9.0;
+            const hx = Math.round((f.x + Math.cos(a) * 68) / 4) * 4;
+            const hy = Math.round((f.y - 70 + Math.sin(a) * 68) / 4) * 4;
+            emitGlowingParticle(
+              hx,
+              hy,
+              6,
+              6,
+              i % 2 === 0 ? '#818cf8' : '#38bdf8',
+              '#ffffff',
+              24,
+              0.46,
+              i % 2 === 0 ? this.glowIndigo : this.glowCyan
+            );
+          }
+        }
+      } else if (isCrimson) {
+        // FREYJA: Orbiting Crimson-Gold Dragonfire Feathers + Phalanx Greatshield Ring when deflecting
+        for (let r = 0; r < 4; r++) {
+          const ra = t * 4.5 + (r * Math.PI) / 2;
+          const rx = Math.round((f.x + f.facing * 24 + Math.cos(ra) * 38) / 3) * 3;
+          const ry = Math.round((f.y - 86 + Math.sin(ra * 2) * 14) / 3) * 3;
+          const isGold = r % 2 === 1;
+          emitGlowingParticle(
+            rx,
+            ry,
+            6,
+            6,
+            isGold ? '#fbbf24' : '#f43f5e',
+            '#fef08a',
+            26,
+            0.48,
+            isGold ? this.glowGold : this.glowCrimson
+          );
+        }
+        if (f.isDeflecting) {
+          for (let i = 0; i < 16; i++) {
+            const a = (i / 16) * Math.PI * 2 + t * 8.0;
+            const hx = Math.round((f.x + Math.cos(a) * 70) / 4) * 4;
+            const hy = Math.round((f.y - 70 + Math.sin(a) * 70) / 4) * 4;
+            emitGlowingParticle(
+              hx,
+              hy,
+              6,
+              6,
+              i % 2 === 0 ? '#f43f5e' : '#fbbf24',
+              '#fef08a',
+              24,
+              0.46,
+              i % 2 === 0 ? this.glowCrimson : this.glowGold
             );
           }
         }

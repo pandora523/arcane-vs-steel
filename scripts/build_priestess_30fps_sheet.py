@@ -1248,6 +1248,73 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0, wing_unfurl=0.0, 
     return fill_layer_pinholes(out, 1, 50, 1, 50, require_3_neighbors=True)
 
 
+def draw_priestess_idle_finial_motes(frame, staff_deg, breathe, phase):
+    """
+    Pass #8: 3 phase-looping twinkling 4-point star-cream & rose-gold motes
+    orbiting her Sacred Cathedral Staff finial (x = 31..42, y = 7..18) across Row 0 (IDLE).
+    """
+    rad = math.radians(staff_deg)
+    sx, sy = 25.0, 17.0 + breathe
+    reach = 5.2
+    gx = sx + math.cos(rad * 0.45 + 0.1) * reach + 5.2
+    gy = sy + math.sin(rad * 0.45 + 0.1) * reach * 0.45 + 3.8
+    finial_cx = max(33.0, min(40.0, gx + math.cos(rad) * 14.2))
+    finial_cy = max(9.0, min(16.0, gy + math.sin(rad) * 14.2))
+
+    for m_idx in range(3):
+        m_ang = phase + m_idx * (2.0 * math.pi / 3.0)
+        mx = int(round(max(32.0, min(41.0, finial_cx + math.cos(m_ang) * 3.8))))
+        my = int(round(max(8.0, min(17.0, finial_cy + math.sin(m_ang) * 3.0))))
+        core_col = STAR_CREAM if m_idx % 2 == 0 else WHITE_PURE
+        arm_col = ROSE_GOLD if (m_idx + int(round(phase * 3))) % 2 == 0 else STAR_CREAM
+        set_px(frame, mx, my, core_col)
+        # 4-point twinkling star arms clamped strictly within x = 31..42, y = 7..18
+        if mx - 1 >= 31:
+            set_px(frame, mx - 1, my, arm_col)
+        if mx + 1 <= 42:
+            set_px(frame, mx + 1, my, arm_col)
+        if my - 1 >= 7:
+            set_px(frame, mx, my - 1, arm_col)
+        if my + 1 <= 18:
+            set_px(frame, mx, my + 1, GOLD_BRIGHT if m_idx == 1 else arm_col)
+
+
+def draw_priestess_walk_footstep_motes(frame, f):
+    """
+    Pass #8: During the two stride contact windows of Row 1 (WALK) (F06..F10 and F21..F25),
+    draw crisp Grounded Footstep / Hem Trail Motes at y = 44..46, x = 16..33:
+    Golden-white starlight & rose-petal motes at hem level.
+    """
+    if 6 <= f <= 10:
+        u = (f - 6) / 4.0
+        base_x = 26
+    elif 21 <= f <= 25:
+        u = (f - 21) / 4.0
+        base_x = 20
+    else:
+        return
+
+    drift = int(round(u * 4.0))
+    # Mote 1: Golden-white starlight puff trailing behind hem
+    m1_x = max(16, min(33, base_x - drift))
+    m1_y = 46 - (1 if f % 2 == 0 else 0)
+    set_px(frame, m1_x, m1_y, WHITE_PURE if u < 0.5 else STAR_CREAM)
+    if m1_x - 1 >= 16 and u < 0.8:
+        set_px(frame, m1_x - 1, max(44, m1_y - 1), GOLD_BRIGHT)
+
+    # Mote 2: Rose-petal mote floating near hem contact
+    m2_x = max(16, min(33, base_x + 3 - int(round(u * 2.0))))
+    m2_y = 45 - int(round(u * 1.0))
+    set_px(frame, m2_x, max(44, min(46, m2_y)), ROSE_GOLD)
+    if m2_x + 1 <= 33 and u < 0.75:
+        set_px(frame, m2_x + 1, 46, STAR_CREAM)
+
+    # Mote 3: Secondary starlight-rose shimmer mote
+    m3_x = max(16, min(33, base_x - 2 - drift))
+    m3_y = 44 + (1 if u > 0.5 else 0)
+    set_px(frame, m3_x, m3_y, GOLD_BRIGHT if f % 2 == 0 else ROSE_GOLD)
+
+
 def build_row0_idle(tpl):
     """Row 0: 30-Frame Serene Cathedral IDLE."""
     frames = []
@@ -1276,6 +1343,7 @@ def build_row0_idle(tpl):
             charge_level=1 if f % 10 in (4, 5) else 0,
             phase_rad=phase,
         )
+        draw_priestess_idle_finial_motes(frame, staff_deg, breathe, phase)
         frames.append(ensure_safe_cell(frame, margin=2))
     return frames
 
@@ -1302,6 +1370,7 @@ def build_row1_walk(tpl):
             charge_level=(f % 3),
             phase_rad=phase + f * 0.35,
         )
+        draw_priestess_walk_footstep_motes(frame, f)
         frames.append(ensure_safe_cell(frame, margin=2))
     return frames
 
@@ -1713,6 +1782,42 @@ def build_row4_ultimate(tpl):
     return frames
 
 
+def draw_priestess_ward_shatter_sparks(frame, f):
+    """
+    Pass #8: On F01..F05 of Row 5 (DEATH & HURT), draw a crisp 4-ray
+    Elemental Ward-Shatter Spark Burst at chest height (x = 26..33, y = 18..25)
+    that expands and fades across F01..F05.
+    """
+    if not (1 <= f <= 5):
+        return
+    u = (f - 1) / 4.0
+    cx, cy = 29, 21
+    ray_len = 1 + int(round(u * 2.5))  # 1..3 px
+
+    if f <= 3:
+        set_px(frame, cx, cy, WHITE_PURE if f == 1 else STAR_CREAM)
+
+    rays = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
+    for r_idx, (rx, ry) in enumerate(rays):
+        start_step = 1 if f <= 2 else 2
+        for step in range(start_step, ray_len + 1):
+            px = max(26, min(33, cx + rx * step))
+            py = max(18, min(25, cy + ry * step))
+            if step == ray_len:
+                col = ROSE_GOLD if (r_idx + f) % 2 == 0 else CYAN_SACRED
+            else:
+                col = WHITE_PURE if f <= 2 else (STAR_CREAM if f <= 4 else GOLD_BRIGHT)
+            set_px(frame, px, py, col)
+
+    # Cross ward-shatter flecks on F01..F04
+    if f <= 4:
+        span = 1 + (1 if f >= 3 else 0)
+        set_px(frame, max(26, cx - span), cy, STAR_CREAM if f <= 2 else ROSE_GOLD)
+        set_px(frame, min(33, cx + span), cy, STAR_CREAM if f <= 2 else GOLD_BRIGHT)
+        set_px(frame, cx, max(18, cy - span), WHITE_PURE if f == 1 else CYAN_SACRED)
+        set_px(frame, cx, min(25, cy + span), GOLD_BRIGHT if f <= 2 else ROSE_GOLD)
+
+
 def build_row5_death(tpl):
     """
     Row 5: 30-Frame DEATH & HURT Sequence:
@@ -1740,6 +1845,8 @@ def build_row5_death(tpl):
                 reach=5.0,
                 dim_factor=0.95 - u * 0.04,
             )
+            if 1 <= f <= 5:
+                draw_priestess_ward_shatter_sparks(frame, f)
             frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 17:

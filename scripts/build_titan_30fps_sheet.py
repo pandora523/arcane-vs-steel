@@ -1349,6 +1349,111 @@ def draw_ragnarok_crown_and_jets(canvas, head_xy=(28, 9), shoulder_xy=(21, 17), 
     return composite_over(fx, canvas)
 
 
+def draw_idle_hammer_forge_sparks(frame, f, breath_dy=0):
+    """
+    Pass #8 Row 0 (`IDLE`) Living Weapon Rune-Mote Ascension:
+    Renders 3 slowly ascending, phase-animated molten-gold & emerald-jade forge sparks
+    drifting upward from the Runic Great-Hammer head (`x = 34..46, y = 7..22`) across
+    all 30 frames (`f = 0..29`, looping seamlessly via `(f / 30.0) * 2 * math.pi`).
+    """
+    phase = (f / 30.0) * 2.0 * math.pi
+    for s_idx in range(3):
+        u = ((f + s_idx * 10) % 30) / 30.0
+        s_phase = phase + s_idx * (2.0 * math.pi / 3.0)
+        raw_x = 35.5 + u * 9.0 + math.sin(s_phase) * 1.1
+        raw_y = 20.5 - u * 12.2 + breath_dy * 0.5 + math.cos(s_phase) * 0.4
+        sx = max(35, min(45, int(round(raw_x))))
+        sy = max(8, min(21, int(round(raw_y))))
+
+        is_jade = ((f + s_idx) % 2 == 1)
+        core_col = JADE_WHITE if is_jade else GOLD_WHITE
+        rim_col = JADE_LIGHT if is_jade else GOLD_MOLTEN
+        tail_col = JADE_BRIGHT if is_jade else MAGMA_ORANGE
+
+        set_px(frame, sx, sy, core_col)
+        set_px(frame, sx, max(7, sy - 1), rim_col)
+        set_px(frame, min(46, sx + 1), sy, rim_col if (f % 3 != 0) else tail_col)
+        if 0.14 <= u <= 0.86:
+            set_px(frame, max(34, sx - 1), sy, tail_col)
+            set_px(frame, sx, min(22, sy + 1), tail_col)
+
+
+def draw_walk_seismic_footstep_sparks(frame, f):
+    """
+    Pass #8 Row 1 (`WALK`) Grounded Heel-Strike Footstep Sparks / Dust Puffs (`F06..F10` & `F21..F25`):
+    Draws small, crisp 3-to-5 pixel molten-amber & basalt-dust seismic footstep sparks
+    at boot level (`y = 44..46, x = 16..34`) during both foot-plant windows.
+    """
+    if 6 <= f <= 10:
+        k = f - 6  # Step 1 lead sabaton plant (x = 27..33, y = 44..46)
+        cx = 29 + (k % 2)
+        pts = [
+            (cx, 46, GOLD_WHITE if k <= 1 else AMBER_FLAME),
+            (min(34, cx + 1 + (k // 2)), 45, GOLD_MOLTEN if k <= 2 else MAGMA_ORANGE),
+            (max(16, cx - 1 - (k // 2)), 45, BRONZE_BRIGHT if k <= 1 else OBSIDIAN_MID),
+        ]
+        if k <= 3:
+            pts.append((min(34, cx + 2), 44, MAGMA_ORANGE if k <= 1 else BRONZE_MID))
+        if k <= 1:
+            pts.append((cx, 45, GOLD_MOLTEN))
+        for px_x, px_y, col in pts:
+            if 16 <= px_x <= 34 and 44 <= px_y <= 46:
+                set_px(frame, px_x, px_y, col)
+
+    elif 21 <= f <= 25:
+        k = f - 21  # Step 2 rear/opposite sabaton plant (x = 17..24, y = 44..46)
+        cx = 20 + (k % 2)
+        pts = [
+            (cx, 46, GOLD_WHITE if k <= 1 else AMBER_FLAME),
+            (max(16, cx - 1 - (k // 2)), 45, GOLD_MOLTEN if k <= 2 else MAGMA_ORANGE),
+            (min(34, cx + 1 + (k // 2)), 45, BRONZE_BRIGHT if k <= 1 else OBSIDIAN_MID),
+        ]
+        if k <= 3:
+            pts.append((max(16, cx - 2), 44, MAGMA_ORANGE if k <= 1 else BRONZE_MID))
+        if k <= 1:
+            pts.append((cx, 45, GOLD_MOLTEN))
+        for px_x, px_y, col in pts:
+            if 16 <= px_x <= 34 and 44 <= px_y <= 46:
+                set_px(frame, px_x, px_y, col)
+
+
+def draw_hurt_impact_burst(frame, f):
+    """
+    Pass #8 Row 5 (`DEATH F01..F05`) Directional Impact Hit-Burst on Initial Hurt Frames:
+    Draws a crisp 4-ray Directional Hit-Spark / Armor Impact Glint at chest height
+    (`x = 26..33, y = 18..25`) that expands and fades across `F01..F05`.
+    """
+    if not (1 <= f <= 5):
+        return
+    k = f - 1  # 0..4
+    cx = 29
+    cy = 21 + (1 if k >= 3 else 0)
+
+    def set_burst_px(x, y, col):
+        if 26 <= x <= 33 and 18 <= y <= 25:
+            set_px(frame, x, y, col)
+
+    if k <= 2:
+        set_burst_px(cx, cy, GOLD_WHITE if k <= 1 else JADE_WHITE)
+        if k == 0:
+            for dx_c, dy_c in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                set_burst_px(cx + dx_c, cy + dy_c, GOLD_MOLTEN)
+
+    r_inner = 1 if k <= 2 else 2
+    r_outer = min(3, 1 + (k + 1) // 2)
+    for idx, (rx, ry) in enumerate(((-1, -1), (1, -1), (-1, 1), (1, 1))):
+        for r_step in range(r_inner, r_outer + 1):
+            px_x = cx + rx * r_step
+            px_y = cy + ry * r_step
+            if r_step == r_outer:
+                col = GOLD_MOLTEN if (idx + k) % 2 == 0 else JADE_LIGHT
+            else:
+                col = GOLD_WHITE if k <= 1 else MAGMA_ORANGE
+            set_burst_px(px_x, px_y, col)
+    if k <= 3:
+        set_burst_px(min(33, cx + 2 + (k // 2)), cy, GOLD_WHITE if k <= 1 else MAGMA_ORANGE)
+
+
 def build_row0_idle(tpl):
     """
     Row 0 (`IDLE`, 0..29):
@@ -1393,10 +1498,8 @@ def build_row0_idle(tpl):
             phase=phase,
         )
 
-        # Travelling molten-gold & emerald-jade rune spark near the raised warhammer head
-        spark_x = 39 + (f % 4)
-        spark_y = max(6, 10 + breath_dy + ((f // 5) % 3) - 1)
-        set_px(frame, spark_x, spark_y, JADE_LIGHT if f % 2 == 0 else GOLD_WHITE)
+        # Pass #8: 3 slowly ascending molten-gold & emerald-jade forge sparks from the Runic Great-Hammer head (x=34..46, y=7..22)
+        draw_idle_hammer_forge_sparks(frame, f, breath_dy=breath_dy)
 
         frames.append(frame)
     return frames
@@ -1434,6 +1537,8 @@ def build_row1_walk(tpl):
             two_handed=False,
             phase=phase,
         )
+        # Pass #8: Grounded molten-amber & basalt-dust seismic footstep sparks on F06..F10 & F21..F25
+        draw_walk_seismic_footstep_sparks(frame, f)
         frames.append(frame)
     return frames
 
@@ -2093,6 +2198,8 @@ def build_row5_death(tpl):
                 shoulder=(27 + dx, 17 + dy),
                 two_handed=True,
             )
+            # Pass #8: Crisp 4-ray Directional Hit-Spark / Armor Impact Glint at chest height (x=26..33, y=18..25) on F01..F05
+            draw_hurt_impact_burst(frame, f)
             # Breastplate hit sparks flying outward
             for sp in range(4):
                 sx_s = min(47, 30 + sp * 2 + f)

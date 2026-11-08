@@ -1,14 +1,16 @@
-import { Renderer } from './engine/Renderer.js?v=30fps13';
-import { VFXManager } from './engine/VFXManager.js?v=30fps13';
-import { PixelForge } from './engine/PixelForge.js?v=30fps13';
-import { AudioManager } from './engine/AudioManager.js?v=30fps13';
-import { Warrior } from './entities/Warrior.js?v=30fps13';
-import { FireMage } from './entities/FireMage.js?v=30fps13';
-import { Archer } from './entities/Archer.js?v=30fps13';
-import { Priestess } from './entities/Priestess.js?v=30fps13';
-import { Reaper } from './entities/Reaper.js?v=30fps13';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps13';
-import { Titan } from './entities/Titan.js?v=30fps13';
+import { Renderer } from './engine/Renderer.js?v=30fps16';
+import { VFXManager } from './engine/VFXManager.js?v=30fps16';
+import { PixelForge } from './engine/PixelForge.js?v=30fps16';
+import { AudioManager } from './engine/AudioManager.js?v=30fps16';
+import { Warrior } from './entities/Warrior.js?v=30fps16';
+import { FireMage } from './entities/FireMage.js?v=30fps16';
+import { Archer } from './entities/Archer.js?v=30fps16';
+import { Priestess } from './entities/Priestess.js?v=30fps16';
+import { Reaper } from './entities/Reaper.js?v=30fps16';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps16';
+import { Titan } from './entities/Titan.js?v=30fps16';
+import { Ronin } from './entities/Ronin.js?v=30fps16';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps16';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -232,6 +234,70 @@ const CHAMPION_ROSTER = {
         type: '★ OVERDRIVE ULT',
         vfxCell: 3,
         desc: 'Manifests the Colossal Ragnarok Titan Avatar & Nordic Forge-Wheel, unleashing 3 volcanic quakes.'
+      }
+    ]
+  },
+  ronin: {
+    id: 'ronin',
+    name: 'KAZE-MARU',
+    role: 'STORMBLADE RONIN',
+    style: 'LIGHTNING DUELIST',
+    trait: 'PASSIVE: RAIJIN IAIDO PARRY & FLASH-STEP',
+    cls: Ronin,
+    theme: 'storm',
+    color: '#818cf8',
+    selectSfx: 'slash',
+    victoryLine: 'The Thunder-Odachi severs the storm in a single Iaido flash!',
+    skills: [
+      {
+        name: 'RAIJIN IAIDO CRESCENT',
+        type: 'AUTO + PASSIVE',
+        vfxCell: 0,
+        desc: 'Unleashes two-handed Kendo thunder crescents & deflects projectiles in Iaido Parry stance.'
+      },
+      {
+        name: 'RAIJIN THUNDER-PILLAR',
+        type: 'SKILL • 4.3S CD',
+        vfxCell: 2,
+        desc: 'Executes a blinding two-handed Kiriage rising cut that calls down a Raijin Thunder-Pillar.'
+      },
+      {
+        name: 'SUSANOO THUNDERSTORM',
+        type: '★ OVERDRIVE ULT',
+        vfxCell: 3,
+        desc: 'Manifests the Colossal Susanoo Storm-Samurai & Raijin Taiko Drum Ring for an 8-bolt judgment.'
+      }
+    ]
+  },
+  valkyrie: {
+    id: 'valkyrie',
+    name: 'FREYJA',
+    role: 'DRAGON-LANCE VALKYRIE',
+    style: 'CRIMSON SKY-DRAGOON',
+    trait: 'PASSIVE: PHALANX PARRY & DRAGOON SKY-DIVE',
+    cls: Valkyrie,
+    theme: 'crimson',
+    color: '#f43f5e',
+    selectSfx: 'holy_spear',
+    victoryLine: 'Crimson dragonfire and the Gungnir War-Lance pierce the heavens!',
+    skills: [
+      {
+        name: 'CRIMSON HALBERD THRUST',
+        type: 'AUTO + PASSIVE',
+        vfxCell: 0,
+        desc: 'Strikes with two-handed Dragon-Lance shockwaves & parries incoming spells in Phalanx Guard.'
+      },
+      {
+        name: 'GUNGNIR SKY-LANCE',
+        type: 'SKILL • 4.4S CD',
+        vfxCell: 1,
+        desc: 'Calls down a colossal Crimson-Gold Gungnir Dragon-Lance that shatters into Ruby Spires.'
+      },
+      {
+        name: 'BAHAMUT CATACLYSM',
+        type: '★ OVERDRIVE ULT',
+        vfxCell: 3,
+        desc: 'Summons the Colossal Bahamut Dragon Crest & Solar-Rose Valkyrie Halo, raining 6 Sky-Lances.'
       }
     ]
   }
@@ -558,6 +624,16 @@ class Game {
       btn.addEventListener('click', () => this.setGameMode(modeKey, true));
     });
 
+    this.stageBtns = document.querySelectorAll('[data-stage]');
+    this.stageBtns.forEach((btn) => {
+      btn.addEventListener('click', () => {
+        const stg = btn.getAttribute('data-stage');
+        this.forcedStage = stg === 'auto' ? null : stg;
+        this.syncRosterSelectionUI(true);
+        this.resetMatch();
+      });
+    });
+
     this.slotBtnLeft = document.getElementById('slot-btn-left');
     this.slotBtnLeftPartner = document.getElementById('slot-btn-left-partner');
     this.slotBtnRight = document.getElementById('slot-btn-right');
@@ -606,7 +682,9 @@ class Game {
       priestess: document.getElementById('card-priestess'),
       reaper: document.getElementById('card-reaper'),
       chronomancer: document.getElementById('card-chronomancer'),
-      titan: document.getElementById('card-titan')
+      titan: document.getElementById('card-titan'),
+      ronin: document.getElementById('card-ronin'),
+      valkyrie: document.getElementById('card-valkyrie')
     };
     this.ribbons = {
       warrior: document.getElementById('ribbon-warrior'),
@@ -615,7 +693,9 @@ class Game {
       priestess: document.getElementById('ribbon-priestess'),
       reaper: document.getElementById('ribbon-reaper'),
       chronomancer: document.getElementById('ribbon-chronomancer'),
-      titan: document.getElementById('ribbon-titan')
+      titan: document.getElementById('ribbon-titan'),
+      ronin: document.getElementById('ribbon-ronin'),
+      valkyrie: document.getElementById('ribbon-valkyrie')
     };
     this.previewCanvases = {
       warrior: document.getElementById('preview-warrior'),
@@ -624,7 +704,9 @@ class Game {
       priestess: document.getElementById('preview-priestess'),
       reaper: document.getElementById('preview-reaper'),
       chronomancer: document.getElementById('preview-chronomancer'),
-      titan: document.getElementById('preview-titan')
+      titan: document.getElementById('preview-titan'),
+      ronin: document.getElementById('preview-ronin'),
+      valkyrie: document.getElementById('preview-valkyrie')
     };
 
     this.btnStartDuel = document.getElementById('btn-start-duel');
@@ -654,7 +736,8 @@ class Game {
       left: cacheHUD('left'),
       right: cacheHUD('right'),
       crestVs: document.getElementById('crest-vs-text'),
-      modeBadge: document.getElementById('hud-mode-badge')
+      modeBadge: document.getElementById('hud-mode-badge'),
+      stageBadge: document.getElementById('hud-stage-badge')
     };
 
     if (this.slotBtnLeft) {
@@ -893,12 +976,20 @@ class Game {
     const c2 = CHAMPION_ROSTER[this.slot2Hero] || CHAMPION_ROSTER.archer;
     const c2b = CHAMPION_ROSTER[this.slot2PartnerHero] || CHAMPION_ROSTER.reaper;
 
-    // 1. Mode Selector Bar & Bottom Bar Mode/Assist Controls
+    // 1. Mode Selector Bar, Stage Selector Bar & Bottom Bar Mode/Assist Controls
     if (this.modeBtns) {
       Object.entries(this.modeBtns).forEach(([modeKey, btn]) => {
         if (!btn) return;
         const active = this.gameMode === modeKey;
         btn.classList.toggle('active-mode', active);
+        btn.setAttribute('aria-pressed', String(active));
+      });
+    }
+    if (this.stageBtns) {
+      const currentStageKey = this.forcedStage || 'auto';
+      this.stageBtns.forEach((btn) => {
+        const active = btn.getAttribute('data-stage') === currentStageKey;
+        btn.classList.toggle('active-stage', active);
         btn.setAttribute('aria-pressed', String(active));
       });
     }
@@ -1346,6 +1437,15 @@ class Game {
             ? 'TAG RELAY'
             : '1V1 DUEL';
     }
+    if (this.hudEls.stageBadge) {
+      const stgNames = {
+        cathedral: 'GOTHIC SANCTUARY',
+        sylvan: 'SYLVAN GLADE',
+        boneyard: 'NECROPOLIS',
+        clocktower: 'ASTRAL CLOCKTOWER'
+      };
+      this.hudEls.stageBadge.textContent = stgNames[this.renderer?.stageId] || 'GOTHIC SANCTUARY';
+    }
 
     this.matchTime = 0;
     this.ultSlowTimer = 0;
@@ -1492,9 +1592,13 @@ class Game {
                   ? 'clock_gear'
                   : ally.heroId === 'titan'
                     ? 'forge_wave'
-                    : ally.heroId === 'warrior'
-                      ? 'blade_wave'
-                      : 'fireball'
+                    : ally.heroId === 'ronin'
+                      ? 'storm_wave'
+                      : ally.heroId === 'valkyrie'
+                        ? 'crimson_lance'
+                        : ally.heroId === 'warrior'
+                          ? 'blade_wave'
+                          : 'fireball'
       });
       if (!point.isDead) {
         point.heal(42, 'TAG GRACE');
