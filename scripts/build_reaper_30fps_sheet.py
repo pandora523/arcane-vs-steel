@@ -295,6 +295,27 @@ def make_clean_templates(src):
     # Erase baked protruding arm and neutralize baked bone-hands on chest
     stand = neutralize_reaper_chest_arm(stand)
 
+    # Strip the baked-in left-side hanging arm & pale bone hand (x=11..18, y=20..33) from `stand`
+    # while preserving the Near Shoulder Pauldron (y=15..19, x=15..20) and lower cloak (y>=25),
+    # so Malakor NEVER has a third/idle arm hanging down at his left side while wielding the scythe 2-handed!
+    for y in range(21, 25):
+        for x in range(11, 15):
+            if y == 21 and x >= 14:
+                continue
+            stand[y, x] = 0
+    for y in range(20, 34):
+        for x in range(13, 19):
+            if stand[y, x, 3] == 0:
+                continue
+            r, g, b, _ = stand[y, x]
+            if int(r) + int(g) + int(b) > 85 or b > 45 or r > 45:
+                if (x + y) % 3 == 0:
+                    stand[y, x] = CRIMSON_DEEP
+                elif (x + y) % 2 == 0:
+                    stand[y, x] = OBSIDIAN_DEEP
+                else:
+                    stand[y, x] = (28, 10, 24, 255)
+
     # Keep boots ending at y=49 and left cloak at x>=2 so 2px margin remains around templates
     for x in range(52):
         if stand[50, x, 3] > 0 and stand[49, x, 3] == 0:
@@ -526,20 +547,23 @@ def draw_ik_reaper_arm(layer, sx, sy, hx, hy, L1=5.2, L2=5.0, bend_side=1.0, is_
     n2x, n2y = -u2y / d2, u2x / d2
 
     if is_rear:
-        # 2-3px shaded rear upper arm and forearm
-        draw_line_px(layer, sx + n1x * 0.7, sy + n1y * 0.7, ex + n1x * 0.6, ey + n1y * 0.6, ROBE_MID)
-        draw_line_px(layer, sx - n1x * 0.7, sy - n1y * 0.7, ex - n1x * 0.6, ey - n1y * 0.6, OBSIDIAN_DEEP)
-        draw_line_px(layer, sx, sy, ex, ey, ROBE_DARK)
+        # 3px-thick bone-plated & violet-trimmed upper-shaft arm (clearly visible against dark backgrounds!)
+        draw_line_px(layer, sx + n1x * 0.85, sy + n1y * 0.85, ex + n1x * 0.7, ey + n1y * 0.7, BONE_MID)
+        draw_line_px(layer, sx - n1x * 0.85, sy - n1y * 0.85, ex - n1x * 0.7, ey - n1y * 0.7, ROBE_MID)
+        draw_line_px(layer, sx, sy, ex, ey, ROBE_LIGHT)
 
-        draw_line_px(layer, ex + n2x * 0.7, ey + n2y * 0.7, hx + n2x * 0.6, hy + n2y * 0.6, BONE_DARK)
-        draw_line_px(layer, ex - n2x * 0.7, ey - n2y * 0.7, hx - n2x * 0.6, hy - n2y * 0.6, ROBE_DARK)
-        draw_line_px(layer, ex, ey, hx, hy, ROBE_MID)
+        draw_line_px(layer, ex + n2x * 0.8, ey + n2y * 0.8, hx + n2x * 0.65, hy + n2y * 0.65, BONE_LIGHT)
+        draw_line_px(layer, ex - n2x * 0.8, ey - n2y * 0.8, hx - n2x * 0.65, hy - n2y * 0.65, ROBE_MID)
+        draw_line_px(layer, ex, ey, hx, hy, BONE_MID)
 
-        # Rear elbow & skeletal gauntlet grip
-        set_px(layer, ex, ey, BONE_DARK)
-        set_px(layer, hx, hy, BONE_MID)
-        set_px(layer, hx + 1, hy, BONE_DARK)
-        set_px(layer, hx, hy - 1, VOID_PURPLE)
+        # Glowing elbow couter & 2x2 skeletal bone gauntlet fist at (hx, hy)
+        set_px(layer, ex, ey, VIOLET_BRIGHT)
+        set_px(layer, ex + n1x * 0.6, ey + n1y * 0.6, BONE_LIGHT)
+        ix_h, iy_h = int(round(hx)), int(round(hy))
+        set_px(layer, ix_h, iy_h, SOUL_WHITE)
+        set_px(layer, ix_h + 1, iy_h, BONE_LIGHT)
+        set_px(layer, ix_h, iy_h + 1, BONE_LIGHT)
+        set_px(layer, ix_h + 1, iy_h + 1, BONE_MID)
         return
 
     # 1. 3px-thick dark armored upper arm (ROBE_MID, BONE_DARK) from (sx, sy) to (ex, ey)
@@ -552,32 +576,25 @@ def draw_ik_reaper_arm(layer, sx, sy, hx, hy, L1=5.2, L2=5.0, bend_side=1.0, is_
     draw_line_px(layer, ex - n2x * 0.85, ey - n2y * 0.85, hx - n2x * 0.65, hy - n2y * 0.65, ROBE_DARK)
     draw_line_px(layer, ex, ey, hx, hy, ROBE_LIGHT)
 
-    # 3. Rotating spiked bone/necropolis shoulder pauldron at (sx, sy) (BONE_LIGHT, BONE_MID, VOID_PURPLE)
-    ux1, uy1 = u1x / d1, u1y / d1
-    for p_step in (-1.5, -0.5, 0.5, 1.5):
-        px_s = sx + ux1 * 1.0 + n1x * p_step
-        py_s = sy + uy1 * 1.0 + n1y * p_step
-        set_px(layer, px_s, py_s, VOID_PURPLE if abs(p_step) > 1.0 else BONE_MID)
-        set_px(layer, sx + n1x * p_step, sy + n1y * p_step, BONE_MID if abs(p_step) <= 1.0 else ROBE_MID)
-    # Bone spikes protruding from top/outer shoulder pauldron
-    set_px(layer, sx, sy - 1, BONE_LIGHT)
-    set_px(layer, sx - 1, sy - 1, BONE_MID)
+    # 3. Clean shoulder transition at (sx, sy) under Malakor's existing Near Shoulder Pauldron
+    set_px(layer, sx, sy, ROBE_LIGHT)
+    set_px(layer, sx + n1x * 0.7, sy + n1y * 0.7, BONE_DARK)
 
     # 4. Bone/soul-cyan elbow couter at (ex, ey)
     set_px(layer, ex, ey, SOUL_CYAN)
     set_px(layer, ex + n1x * 0.7, ey + n1y * 0.7, BONE_LIGHT)
 
-    # 5. 2x2 skeletal gauntlet fist (BONE_LIGHT, BONE_MID) at (hx, hy)
+    # 5. 2x2 skeletal gauntlet fist (SOUL_WHITE, BONE_LIGHT, BONE_MID) at (hx, hy)
     ix_h, iy_h = int(round(hx)), int(round(hy))
-    set_px(layer, ix_h, iy_h, BONE_LIGHT)
-    set_px(layer, ix_h + 1, iy_h, BONE_MID)
-    set_px(layer, ix_h, iy_h + 1, BONE_MID)
-    set_px(layer, ix_h + 1, iy_h + 1, BONE_DARK)
+    set_px(layer, ix_h, iy_h, SOUL_WHITE)
+    set_px(layer, ix_h + 1, iy_h, BONE_LIGHT)
+    set_px(layer, ix_h, iy_h + 1, BONE_LIGHT)
+    set_px(layer, ix_h + 1, iy_h + 1, BONE_MID)
 
 
 def draw_articulated_scythe(
     base_frame,
-    grip_pos=(35, 19),
+    grip_pos=(34, 20),
     shaft_deg=-50.0,
     shaft_reach=15.0,
     shaft_back=12.0,
@@ -591,18 +608,19 @@ def draw_articulated_scythe(
     shoulder_pos=(26, 19),
 ):
     """
-    Renders Malakor's articulated Abyssal Great-Scythe with an authentic WIDE Two-Handed Polearm Grip:
-    - Upper / Lead Hand (`(hx, hy)`): Right skeletal gauntlet gripping higher up the obsidian shaft to guide
-      the heavy scythe head, driven by the foreground 2-Bone IK arm (`lead_arm_layer`, `is_rear=False`).
-    - Lower / Rear Hand (`(rx_grip, ry_grip)`): Left skeletal gauntlet gripping the lower shaft `5.5..6.2px`
-      further down toward the butt-spike (`rx_grip >= 29.5`, strictly in front of his torso, NEVER on his chest!),
-      acting as the rear lever/pull hand for wide reaping pull-cuts (`rear_arm_layer`, `is_rear=True`).
-    - Dynamically clamps `shaft_reach`, `shaft_back`, and `blade_span` so the scythe head, butt-spike, and
-      crescent blade tip NEVER exceed `[3..48, 3..48]`.
+    Renders Malakor's articulated Abyssal Great-Scythe with an unmistakable WIDE Two-Handed Polearm Grip:
+    - Upper / Forward Hand (`(ux_grip, uy_grip)`): Grips `4.5..5.2px` UP the obsidian shaft toward the scythe head,
+      driven by the upper 2-Bone IK arm (`upper_arm_layer`, `bend_side=-1.0`, arcing above from `(sx_arm + 2.0, sy_arm - 1.2)`).
+    - Lower / Rear Hand (`(lx_grip, ly_grip)`): Grips `2.0..2.5px` DOWN the obsidian shaft toward the butt-spike,
+      driven by the lower 2-Bone IK arm (`lower_arm_layer`, `bend_side=+1.0`, arcing below from `(sx_arm - 0.5, sy_arm + 1.0)`).
+    - Because the upper arm bends UP (`bend_side=-1.0`) to the upper shaft and the lower arm bends DOWN (`bend_side=+1.0`)
+      to the lower shaft (`6.5..7.5px` apart along the pole), BOTH arms and BOTH bright skeletal bone gauntlets are 100%
+      visible and separated at every angle!
     """
     scythe_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    rear_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    lead_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    upper_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    lower_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    gauntlet_top_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     fx_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
     def set_clamped_px(buf, x, y, col):
@@ -618,9 +636,9 @@ def draw_articulated_scythe(
     ux, uy = math.cos(rad), math.sin(rad)
     px, py = -uy * eff_bdir, ux * eff_bdir
 
-    # Auto-clamp primary (upper) hand grip within [31..42, 10..40] strictly out in front of Malakor's torso
-    hx = float(max(31.0, min(42.0, grip_pos[0])))
-    hy = float(max(10.0, min(40.0, grip_pos[1])))
+    # Center reference grip within [31..40, 11..40] strictly out in front of Malakor's torso
+    hx = float(max(31.0, min(40.0, grip_pos[0])))
+    hy = float(max(11.0, min(40.0, grip_pos[1])))
 
     # True shoulder attachment at sx_arm = 25.5 + dx_off, sy_arm = 17.0 + dy_off
     dx_off = float(shoulder_pos[0]) - 26.0
@@ -638,7 +656,7 @@ def draw_articulated_scythe(
         shaft_up = min(shaft_up, (45.0 - hy) / uy)
     elif uy < -0.04:
         shaft_up = min(shaft_up, (6.0 - hy) / uy)
-    shaft_up = max(4.5, shaft_up)
+    shaft_up = max(5.5, shaft_up)
 
     # Dynamically clamp shaft_back so butt-spike stays in front of body and inside [3..48, 3..48]
     eff_back = float(shaft_back)
@@ -729,36 +747,70 @@ def draw_articulated_scythe(
 
             set_clamped_px(scythe_layer, bx_p, by_p, col_b)
 
-    # 4. Wide Two-Handed Polearm IK Arms:
-    # - Rear / Lower Hand (`rx_grip, ry_grip`) grips the lower shaft 5.5..6.2px down from `(hx, hy)` toward `(bx0, by0)`
-    if two_handed and left_claw_ext is None:
-        back_dist = max(4.2, min(6.2, math.hypot(hx - bx0, hy - by0) * 0.68))
-        rx_grip = max(29.5, min(44.0, hx - ux * back_dist))
-        ry_grip = max(10.0, min(42.0, hy - uy * back_dist))
-        sx_r = max(27.5, min(40.0, sx_arm + 2.0))
-        sy_r = max(10.0, min(40.0, sy_arm + 1.5))
-        draw_ik_reaper_arm(rear_arm_layer, sx_r, sy_r, rx_grip, ry_grip, L1=5.0, L2=4.8, bend_side=1.0, is_rear=True)
-        # Rear skeletal gauntlet fingers wrapped around the lower polearm shaft
-        ix_r, iy_r = int(round(rx_grip)), int(round(ry_grip))
-        set_clamped_px(scythe_layer, ix_r, iy_r, BONE_MID)
-        set_clamped_px(scythe_layer, ix_r + 1, iy_r, BONE_LIGHT)
-        set_clamped_px(scythe_layer, ix_r, iy_r + 1, BONE_DARK)
+    # 4. Wide Two-Handed Polearm IK Arms (True 2-Shoulder Open V/Diamond Geometry — NEVER crossing!):
+    if two_handed:
+        # Grip 1: 4.5px UP the shaft toward `(head_x, head_y)`
+        up_dist = min(4.8, max(3.4, shaft_up * 0.45))
+        p1 = (
+            max(31.0, min(44.0, hx + ux * up_dist)),
+            max(7.0, min(42.0, hy + uy * up_dist)),
+        )
 
-    # - Lead / Upper Hand (`hx, hy`) grips the upper-middle polearm shaft to guide the heavy crescent head
-    draw_ik_reaper_arm(lead_arm_layer, sx_arm, sy_arm, hx, hy, L1=5.4, L2=5.2, bend_side=1.0, is_rear=False)
+        # Grip 2: 2.3px DOWN the shaft toward `(bx0, by0)` (~6.8px total hand separation along shaft!)
+        dn_dist = min(2.5, max(1.8, eff_back * 0.36))
+        p2 = (
+            max(29.5, min(42.0, hx - ux * dn_dist)),
+            max(10.0, min(43.0, hy - uy * dn_dist)),
+        )
 
-    # 5. Optional Extended Spectral Bone-Claw & Abyssal Chain launched from forward grip (Row 3 SKILL Phase 1: F00..F14)
+        # Sort grip points vertically (`top_grip` higher on screen, `bot_grip` lower on screen)
+        # so the Upper Arm (`bend_side=-1.0`) and Lower Across-Chest Arm (`bend_side=+1.0`) NEVER cross in an X
+        # even during low downward reaps (`eff_deg > 0`, where `uy > 0`)!
+        if p1[1] <= p2[1]:
+            top_grip, bot_grip = p1, p2
+        else:
+            top_grip, bot_grip = p2, p1
+
+        # Far / Upper Arm attaches at Far Shoulder `(sx_arm + 1.5, sy_arm - 1.2)` and arches UP/OUT (`bend_side=-1.0`) to `top_grip`
+        sx_u = max(26.0, min(40.0, sx_arm + 1.5))
+        sy_u = max(10.0, min(40.0, sy_arm - 1.2))
+        draw_ik_reaper_arm(
+            upper_arm_layer, sx_u, sy_u, top_grip[0], top_grip[1], L1=7.0, L2=6.8, bend_side=-1.0, is_rear=True
+        )
+
+        # Near / Lower Arm attaches directly under the Near Shoulder Pauldron `(19.5 + dx_off, sy_arm + 1.8)`
+        # and reaches ACROSS Malakor's chest (`bend_side=+1.0`) to `bot_grip`!
+        twist_dx = max(0.0, (bot_grip[0] - 29.0) * 0.38)
+        sx_l = max(18.5, min(36.0, 19.5 + dx_off + twist_dx))
+        sy_l = max(11.0, min(41.0, sy_arm + 1.8))
+        draw_ik_reaper_arm(
+            lower_arm_layer, sx_l, sy_l, bot_grip[0], bot_grip[1], L1=7.6, L2=7.4, bend_side=1.0, is_rear=False
+        )
+
+        # Draw BOTH 2x2 skeletal bone gauntlets ON TOP of the scythe shaft so both hands are 100% unmistakable!
+        for gx_p, gy_p in (top_grip, bot_grip):
+            ix_g, iy_g = int(round(gx_p)), int(round(gy_p))
+            set_clamped_px(gauntlet_top_layer, ix_g, iy_g, SOUL_WHITE)
+            set_clamped_px(gauntlet_top_layer, ix_g + 1, iy_g, BONE_LIGHT)
+            set_clamped_px(gauntlet_top_layer, ix_g, iy_g + 1, BONE_LIGHT)
+            set_clamped_px(gauntlet_top_layer, ix_g + 1, iy_g + 1, BONE_MID)
+        chain_origin_x, chain_origin_y = bot_grip[0] + 1.5, bot_grip[1]
+    else:
+        draw_ik_reaper_arm(lower_arm_layer, sx_arm, sy_arm, hx, hy, L1=5.4, L2=5.2, bend_side=1.0, is_rear=False)
+        chain_origin_x, chain_origin_y = hx, hy
+
+    # 5. Optional Extended Spectral Bone-Claw & Abyssal Chain launched from forward gauntlet (Row 3 SKILL Phase 1: F00..F14)
     if left_claw_ext is not None:
         raw_tx, raw_ty, pinch_t, draw_chain = left_claw_ext
         tx = max(32, min(44, int(round(raw_tx))))
         ty = max(6, min(44, int(round(raw_ty))))
 
         if draw_chain:
-            c_steps = int(max(abs(tx - hx), abs(ty - hy), 1) * 2)
+            c_steps = int(max(abs(tx - chain_origin_x), abs(ty - chain_origin_y), 1) * 2)
             for ci in range(c_steps + 1):
                 u_c = ci / max(1, c_steps)
-                cx_i = hx + (tx - hx) * u_c
-                cy_i = hy + (ty - hy) * u_c + math.sin(u_c * math.pi * 2.0) * 0.6
+                cx_i = chain_origin_x + (tx - chain_origin_x) * u_c
+                cy_i = chain_origin_y + (ty - chain_origin_y) * u_c + math.sin(u_c * math.pi * 2.0) * 0.6
                 c_col = VIOLET_BRIGHT if (ci % 3 == 0) else (STEEL_LIGHT if ci % 2 == 0 else OBSIDIAN_MID)
                 set_clamped_px(fx_layer, cx_i, cy_i, c_col)
                 set_clamped_px(fx_layer, cx_i, cy_i + 1, OBSIDIAN_DEEP)
@@ -775,9 +827,10 @@ def draw_articulated_scythe(
         for d_t in range(1, 4):
             set_clamped_px(fx_layer, tx + d_t, ty, SOUL_WHITE if d_t == 3 else BONE_LIGHT)
 
-    out = composite_over(base_frame, rear_arm_layer)
+    out = composite_over(base_frame, upper_arm_layer)
     out = composite_over(out, scythe_layer)
-    out = composite_over(out, lead_arm_layer)
+    out = composite_over(out, lower_arm_layer)
+    out = composite_over(out, gauntlet_top_layer)
     out = composite_over(out, fx_layer)
     return strip_isolated_pixels(add_outline_to_layer(out))
 
@@ -1326,7 +1379,7 @@ def build_row3_skill(tpl):
                 blade_curve=5.8,
                 blade_dir=1,
                 rune_glow=2,
-                two_handed=False,
+                two_handed=True,
                 left_claw_ext=(claw_x, claw_y, pinch, True),
                 shoulder_pos=(26, 19),
             )
@@ -1555,7 +1608,7 @@ def build_row5_death(tpl):
                 blade_curve=5.8,
                 blade_dir=1,
                 rune_glow=1,
-                two_handed=False,
+                two_handed=True,
                 shoulder_pos=(26 + dx, 19 + dy),
             )
             frames.append(ensure_safe_cell(frame, margin=1))

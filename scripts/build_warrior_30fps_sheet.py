@@ -478,18 +478,19 @@ def draw_runeblade(
     hy = float(max(6.0, min(47.0, hand_y)))
 
     # 1. Long Two-Handed Leather-Wrapped Greatsword Hilt & Heavy Golden Pommel behind lead hand
-    hilt_len = 5.0 if two_handed else 3.0
+    hilt_len = 5.6 if two_handed else 3.0
     pom_x = max(2.5, min(48.5, hx - ux * hilt_len))
     pom_y = max(2.5, min(48.5, hy - uy * hilt_len))
     draw_line_px(sword_layer, pom_x, pom_y, hx, hy, LEATHER_DARK)
-    draw_line_px(sword_layer, pom_x + px * 0.4, pom_y + py * 0.4, hx + px * 0.4, hy + py * 0.4, LEATHER_LIGHT)
-    # Heavy Golden Counterweight Pommel
+    draw_line_px(sword_layer, pom_x + px * 0.5, pom_y + py * 0.5, hx + px * 0.5, hy + py * 0.5, LEATHER_LIGHT)
+    # Heavy Golden Counterweight Pommel (2x2 starlight-gold pommel cap)
     set_px(sword_layer, pom_x, pom_y, GOLD_BRIGHT)
-    set_px(sword_layer, pom_x - ux * 0.6, pom_y - uy * 0.6, GOLD_WHITE)
+    set_px(sword_layer, pom_x - ux * 0.7, pom_y - uy * 0.7, GOLD_WHITE)
+    set_px(sword_layer, pom_x + px * 0.6, pom_y + py * 0.6, GOLD_MID)
 
-    # Rear (Left) Hand Grip Position on the lower half of the greatsword hilt (near the pommel)
-    pom_hx = max(29.0, min(47.0, hx - ux * 3.3))
-    pom_hy = max(6.0, min(47.0, hy - uy * 3.3))
+    # Rear (Left) Hand Grip Position on the lower half of the greatsword hilt (3.6px behind lead hand, right above pommel)
+    pom_hx = max(29.5, min(47.0, hx - ux * 3.6))
+    pom_hy = max(6.0, min(47.0, hy - uy * 3.6))
 
     # 2. Guard Center & Broad Fullered Runeblade (auto-clamped to stay 100% inside [3..48])
     gx = hx + ux * 1.4
@@ -538,23 +539,46 @@ def draw_runeblade(
         set_px(sword_layer, cx_g, cy_g, col_g)
     set_px(sword_layer, gx, gy, FROST_CYAN if glow_intensity < 0.7 else FROST_WHITE)
 
-    # 4. Two-Handed 2-Bone IK Sword-Arms (Rear Pommel Arm + Lead Crossguard Arm)
+    # 4. Two-Handed 2-Bone IK Sword-Arms (True 2-Shoulder Open V-Frame — Near Pauldron Arm + Far Shoulder Arm)
     if draw_arm and shoulder is not None:
         sx = max(5.0, min(45.0, float(shoulder[0])))
         sy = max(5.0, min(45.0, float(shoulder[1])))
 
         if two_handed:
-            # Rear (Left) Arm attaches at far shoulder edge (sx_r >= 28.0) and reaches to (pom_hx, pom_hy) on the pommel
-            sx_r = max(28.0, min(45.0, sx + 2.5))
-            sy_r = max(6.0, min(45.0, sy + 1.2))
-            ex_r, ey_r = solve_ik_elbow(sx_r, sy_r, pom_hx, pom_hy, l1=5.0, l2=5.0, bend_side=1.0)
-            draw_ik_armored_arm(rear_arm_layer, sx_r, sy_r, ex_r, ey_r, pom_hx, pom_hy, is_rear=True, draw_pauldron=False)
-            # Draw the rear gauntlet fingers wrapped around the lower hilt over `sword_layer`
-            set_px(sword_layer, pom_hx, pom_hy, STEEL_MID)
-            set_px(sword_layer, pom_hx + px * 0.6, pom_hy + py * 0.6, GOLD_MID)
+            p1 = (hx, hy)
+            p2 = (pom_hx, pom_hy)
+            if p1[1] <= p2[1]:
+                top_grip, bot_grip = p1, p2
+            else:
+                top_grip, bot_grip = p2, p1
 
-        ex, ey = solve_ik_elbow(sx, sy, hx, hy, l1=5.4, l2=5.4, bend_side=1.0)
-        draw_ik_armored_arm(lead_arm_layer, sx, sy, ex, ey, hx, hy, is_rear=False, draw_pauldron=True)
+            # Far / Upper Arm from Far Shoulder `(sx + 1.0, sy - 1.0)` arching UP/OUT (`bend_side=-1.0`) to `top_grip`
+            sx_u = max(25.5, min(45.0, sx + 1.0))
+            sy_u = max(5.0, min(45.0, sy - 1.0))
+            ex_u, ey_u = solve_ik_elbow(sx_u, sy_u, top_grip[0], top_grip[1], l1=6.6, l2=6.4, bend_side=-1.0)
+            draw_ik_armored_arm(
+                rear_arm_layer, sx_u, sy_u, ex_u, ey_u, top_grip[0], top_grip[1], is_rear=True, draw_pauldron=False
+            )
+
+            # Near / Lower Arm from directly under Warrior's Silver Shoulder Pauldron `(20.5 + dx_off, sy + 0.6)`
+            # reaching ACROSS his chest (`bend_side=+1.0`) to `bot_grip`!
+            dx_off = sx - 26.0
+            twist_dx = max(0.0, (bot_grip[0] - 28.5) * 0.38)
+            sx_l = max(19.5, min(38.0, 20.5 + dx_off + twist_dx))
+            sy_l = max(6.0, min(45.0, sy + 0.6))
+            ex_l, ey_l = solve_ik_elbow(sx_l, sy_l, bot_grip[0], bot_grip[1], l1=7.4, l2=7.2, bend_side=1.0)
+            draw_ik_armored_arm(
+                lead_arm_layer, sx_l, sy_l, ex_l, ey_l, bot_grip[0], bot_grip[1], is_rear=False, draw_pauldron=False
+            )
+
+            # Render BOTH steel-and-gold gauntlets on top of the greatsword hilt so both hands are 100% visible!
+            for gx_p, gy_p in (top_grip, bot_grip):
+                set_px(lead_arm_layer, gx_p, gy_p, STEEL_BRIGHT)
+                set_px(lead_arm_layer, gx_p + 1, gy_p, STEEL_LIGHT)
+                set_px(lead_arm_layer, gx_p, gy_p + 1, GOLD_BRIGHT)
+        else:
+            ex, ey = solve_ik_elbow(sx, sy, hx, hy, l1=5.6, l2=5.6, bend_side=1.0)
+            draw_ik_armored_arm(lead_arm_layer, sx, sy, ex, ey, hx, hy, is_rear=False, draw_pauldron=False)
     else:
         set_px(lead_arm_layer, hx, hy, STEEL_LIGHT)
         set_px(lead_arm_layer, hx - px * 0.8, hy - py * 0.8, STEEL_MID)
