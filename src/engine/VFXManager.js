@@ -1097,6 +1097,8 @@ export class VFXManager {
         const mageVfx = assets.mage?.vfx;
         const priestVfx = assets.priestess?.vfx;
         const flipWave = Math.floor(pil.life * 15) % 2 === 0 ? 1 : -1;
+        const pilFrac = Math.min(1, Math.max(0, (pil.life - pil.delay) / Math.max(0.1, pil.maxLife - pil.delay)));
+        const pilCol = Math.min(29, Math.floor(pilFrac * 30));
 
         if (!isRadiant && !isEmerald && !isSteel && mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
           const pilW = Math.round(248 * pil.scaleWidth);
@@ -1108,8 +1110,8 @@ export class VFXManager {
             ctx,
             renderer,
             mageVfx,
-            320,
-            56,
+            pilCol * 208,
+            208,
             208,
             208,
             Math.round(-pilW * 0.5),
@@ -1124,17 +1126,17 @@ export class VFXManager {
         } else if (isRadiant && priestVfx && priestVfx.complete && priestVfx.naturalWidth) {
           const haloSz = Math.round(224 * pil.scaleWidth);
           const spearSz = Math.round(232 * pil.scaleWidth * pop);
+          const haloCol = Math.floor(pil.life * 30) % 30;
           ctx.save();
           ctx.translate(baseX, baseY - 140 * pil.scaleWidth);
-          ctx.rotate(pil.life * 2.4);
           this.drawBloomedSprite(
             ctx,
             renderer,
             priestVfx,
-            0,
-            0,
-            320,
-            320,
+            haloCol * 208,
+            624,
+            208,
+            208,
             Math.round(-haloSz * 0.5),
             Math.round(-haloSz * 0.5),
             haloSz,
@@ -1150,8 +1152,8 @@ export class VFXManager {
             ctx,
             renderer,
             priestVfx,
-            320,
-            56,
+            pilCol * 208,
+            416,
             208,
             208,
             Math.round(-spearSz * 0.5),
@@ -1178,7 +1180,7 @@ export class VFXManager {
       }
     }
 
-    // 3. SKY STRIKES: Saturated Chunky-Pixel Heavenly Runeblades, Valkyrie Spears & Starfall Arrows
+    // 3. SKY STRIKES: 30fps Heavenly Runeblades, Valkyrie Spears & Starfall Arrows (F00..F11 Flight + F12..F29 Ground Impact)
     for (const s of this.skyStrikes) {
       const isUltStrike = !!s.isUltimate;
       if (!isReflection && isUltStrike !== ultimateOnly) continue;
@@ -1190,17 +1192,20 @@ export class VFXManager {
       ctx.save();
       if (s.type === 'runeblade') {
         const warriorVfx = assets.warrior?.vfx;
-        const bladeSz = 228;
+        const bladeSz = s.impacted ? 236 : 220;
+        const col = !s.impacted
+          ? Math.floor((s.flightTime || 0) * 30) % 12
+          : Math.min(29, 12 + Math.floor(Math.min(1, s.linger / Math.max(0.01, s.maxLinger)) * 18));
         this.drawBloomedSprite(
           ctx,
           renderer,
           warriorVfx,
-          0,
-          0,
-          320,
-          320,
+          col * 208,
+          208,
+          208,
+          208,
           Math.round(sx - bladeSz * 0.5),
-          Math.round(sy - bladeSz + 16),
+          Math.round(sy - bladeSz * 0.85),
           bladeSz,
           bladeSz,
           '#38bdf8',
@@ -1209,17 +1214,20 @@ export class VFXManager {
         );
       } else if (s.type === 'holy_spear') {
         const priestVfx = assets.priestess?.vfx;
-        const spearSz = 200;
+        const spearSz = s.impacted ? 212 : 196;
+        const col = !s.impacted
+          ? Math.floor((s.flightTime || 0) * 30) % 12
+          : Math.min(29, 12 + Math.floor(Math.min(1, s.linger / Math.max(0.01, s.maxLinger)) * 18));
         this.drawBloomedSprite(
           ctx,
           renderer,
           priestVfx,
-          320,
-          56,
+          col * 208,
+          208,
           208,
           208,
           Math.round(sx - spearSz * 0.5),
-          Math.round(sy - spearSz + 14),
+          Math.round(sy - spearSz * 0.82),
           spearSz,
           spearSz,
           '#fde047',
@@ -1374,15 +1382,15 @@ export class VFXManager {
       const archerVfx = assets.archer?.vfx;
       const priestVfx = assets.priestess?.vfx;
       const mageVfx = assets.mage?.vfx;
+      const bCol = Math.min(29, Math.floor(t * 30));
 
       if (isEmeraldBeam && archerVfx) {
-        const dCol = Math.min(29, Math.floor(t * 30));
         const flipY = Math.cos(ang) < 0 ? -1 : 1;
         // 30fps Coiling Supersonic Wind-Wake Segments along the beam body (Row 0)
         for (let wIdx = 1; wIdx <= 3; wIdx++) {
           const uWake = wIdx / 4;
           const wx = tailX + spanLen * uWake;
-          const wCol = (dCol + wIdx * 7) % 30;
+          const wCol = (bCol + wIdx * 7) % 30;
           const wakeSz = 164;
           ctx.save();
           ctx.translate(Math.round(wx), Math.round(Math.sin(b.life * 28 - wIdx * 1.6) * 14));
@@ -1414,7 +1422,7 @@ export class VFXManager {
           ctx,
           renderer,
           archerVfx,
-          dCol * 208,
+          bCol * 208,
           624,
           208,
           208,
@@ -1428,16 +1436,15 @@ export class VFXManager {
         );
         ctx.restore();
       } else if (isHolyBeam && priestVfx) {
-        const starSz = 168;
+        const starSz = 176;
         ctx.save();
         ctx.translate(Math.round(headX), 0);
-        ctx.rotate(Math.PI * 0.25);
         this.drawBloomedSprite(
           ctx,
           renderer,
           priestVfx,
-          528,
-          56,
+          bCol * 208,
+          0,
           208,
           208,
           Math.round(-starSz * 0.5),
@@ -1450,13 +1457,13 @@ export class VFXManager {
         );
         ctx.restore();
       } else if (isFireBeam && mageVfx) {
-        const meteorSz = 158;
+        const meteorSz = 168;
         this.drawBloomedSprite(
           ctx,
           renderer,
           mageVfx,
-          528,
-          56,
+          bCol * 208,
+          624,
           208,
           208,
           Math.round(headX - meteorSz * 0.5),
@@ -1472,7 +1479,7 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 4B. GLACIAL FROST-CRYSTAL SPIRES (Saturated Chunky-Pixel Ice Spire Cluster from warrior_vfx.png)
+    // 4B. GLACIAL FROST-CRYSTAL SPIRES (30fps Row 2 of warrior_vfx.png)
     for (const cs of this.crystalSpikes) {
       const isUltSpike = !!cs.isUltimate || cs.maxLife >= 0.9;
       if (!isReflection && isUltSpike !== ultimateOnly) continue;
@@ -1488,14 +1495,15 @@ export class VFXManager {
       if (warriorVfx && warriorVfx.complete && warriorVfx.naturalWidth) {
         const spireW = Math.round(cs.width * 3.95);
         const spireH = Math.round(cs.height * 1.44 * pop);
+        const spCol = Math.min(29, Math.floor(t * 30));
         ctx.translate(bx, by + 10);
         ctx.rotate(cs.tilt * 0.18);
         this.drawBloomedSprite(
           ctx,
           renderer,
           warriorVfx,
-          320,
-          56,
+          spCol * 208,
+          416,
           208,
           208,
           Math.round(-spireW * 0.5),
@@ -1510,7 +1518,7 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 4C. BLACK-GOLD SOLAR ECLIPSE SUPERNOVA SPHERE (Saturated Chunky-Pixel Eclipse Sun from mage_vfx.png — Always Ultimate!)
+    // 4C. BLACK-GOLD SOLAR ECLIPSE SUPERNOVA SPHERE (30fps Row 2 of mage_vfx.png — Always Ultimate!)
     for (const sn of isReflection || ultimateOnly ? this.supernovas : []) {
       const t = sn.life / sn.maxLife;
       const env = Math.sin(Math.min(1, t * 1.15) * Math.PI);
@@ -1522,16 +1530,16 @@ export class VFXManager {
       ctx.save();
       if (mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
         const eclipseSz = Math.round(rad * 2.75);
+        const snCol = Math.min(29, Math.floor(t * 30));
         ctx.translate(sx, sy);
-        ctx.rotate(sn.life * 0.55);
         this.drawBloomedSprite(
           ctx,
           renderer,
           mageVfx,
-          0,
-          0,
-          320,
-          320,
+          snCol * 208,
+          416,
+          208,
+          208,
           Math.round(-eclipseSz * 0.5),
           Math.round(-eclipseSz * 0.5),
           eclipseSz,
@@ -1605,30 +1613,32 @@ export class VFXManager {
         const slashSize = Math.round(Math.min(196, Math.max(106, s.radius * 1.32)) * (1.06 - t * 0.18));
 
         let sheet = assets.warrior?.vfx;
-        let cropX = 528;
-        let cropY = 56;
+        const slashCol = Math.min(29, Math.floor(t * 30));
+        const cropX = slashCol * 208;
+        const cropY = 832;
         if (isAbyssal) {
           sheet = assets.reaper?.vfx;
-          cropX = 736;
         } else if (isEmerald) {
           sheet = assets.archer?.vfx;
-          cropX = Math.min(29, Math.floor(t * 30)) * 208;
-          cropY = 832;
         } else if (isRadiant) {
           sheet = assets.priestess?.vfx;
-          cropX = 528;
         } else if (isChrono) {
           sheet = assets.chronomancer?.vfx;
-          cropX = 528;
+        } else if (
+          s.color === '#fb923c' ||
+          s.color === '#ea580c' ||
+          s.color === '#f97316' ||
+          s.color === '#dc2626'
+        ) {
+          sheet = assets.mage?.vfx;
         } else {
           sheet = assets.warrior?.vfx;
-          cropX = 528;
         }
 
         if (sheet && sheet.complete && sheet.naturalWidth) {
           ctx.save();
           ctx.translate(sx, sy);
-          ctx.rotate(isChrono ? Math.floor(t * 8) * (Math.PI * 0.5) : midAng);
+          ctx.rotate(midAng);
           this.drawBloomedSprite(
             ctx,
             renderer,
@@ -1687,7 +1697,7 @@ export class VFXManager {
       }
     }
 
-    // 8. PROJECTILES: Deeply Saturated Chunky-Pixel Astral Arrows, Frost Blade-Waves, Phantom Scythes, Clockwork Saw-Gears, Holy Orbs & Solar Fireballs
+    // 8. PROJECTILES: 30fps Astral Arrows, Frost Blade-Waves, Phantom Scythes, Clockwork Saw-Gears, Holy Orbs & Solar Fireballs
     ctx.globalAlpha = 1;
     for (const proj of this.projectiles) {
       const isUltProj = !!proj.isMeteor || !!proj.isUltimate;
@@ -1695,6 +1705,7 @@ export class VFXManager {
       const r = proj.radius * 3.8;
       const px = Math.round(proj.x / 4) * 4;
       const py = Math.round(proj.y / 4) * 4;
+      const pCol = Math.floor((proj.age || 0) * 30) % 30;
       if (renderer) {
         const tex = renderer.getGlowForColor
           ? renderer.getGlowForColor(proj.color)
@@ -1722,8 +1733,8 @@ export class VFXManager {
             ctx,
             renderer,
             mageVfx,
-            528,
-            56,
+            pCol * 208,
+            624,
             208,
             208,
             -mSize * 0.5,
@@ -1739,18 +1750,17 @@ export class VFXManager {
       } else if (proj.type === 'clock_gear') {
         const vfxSheet = assets.chronomancer?.vfx;
         const dir = Math.sign(proj.vx) || 1;
-        const spin = Math.floor((proj.age || 0) * 10) * (Math.PI * 0.5) * dir;
         ctx.save();
         ctx.translate(px, py);
-        ctx.rotate(spin);
+        ctx.scale(dir, 1);
         if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-          const gearSize = 104;
+          const gearSize = 108;
           this.drawBloomedSprite(
             ctx,
             renderer,
             vfxSheet,
-            528,
-            56,
+            pCol * 208,
+            0,
             208,
             208,
             -gearSize * 0.5,
@@ -1761,11 +1771,6 @@ export class VFXManager {
             0.98,
             isReflection
           );
-          if (!isReflection) {
-            ctx.globalCompositeOperation = 'lighter';
-            ctx.globalAlpha = 0.36;
-            ctx.drawImage(vfxSheet, 528, 56, 208, 208, -gearSize * 0.5, -gearSize * 0.5, gearSize, gearSize);
-          }
         } else {
           ctx.fillStyle = '#facc15';
           ctx.fillRect(-16, -16, 32, 32);
@@ -1774,18 +1779,17 @@ export class VFXManager {
       } else if (proj.type === 'phantom_scythe') {
         const reaperVfx = assets.reaper?.vfx;
         const dir = Math.sign(proj.vx) || 1;
-        const spin = (proj.age || 0) * 22 * dir;
         ctx.save();
         ctx.translate(px, py);
-        ctx.rotate(spin);
-        if (reaperVfx && reaperVfx.complete && reaperVfx.naturalWidth && reaperVfx.naturalWidth >= 944) {
-          const scytheSize = 118;
+        ctx.scale(dir, 1);
+        if (reaperVfx && reaperVfx.complete && reaperVfx.naturalWidth) {
+          const scytheSize = 124;
           this.drawBloomedSprite(
             ctx,
             renderer,
             reaperVfx,
-            736,
-            56,
+            pCol * 208,
+            0,
             208,
             208,
             -scytheSize * 0.5,
@@ -1793,42 +1797,25 @@ export class VFXManager {
             scytheSize,
             scytheSize,
             '#c084fc',
-            0.96,
-            isReflection
-          );
-          ctx.rotate(Math.PI);
-          this.drawBloomedSprite(
-            ctx,
-            null,
-            reaperVfx,
-            736,
-            56,
-            208,
-            208,
-            -scytheSize * 0.45,
-            -scytheSize * 0.45,
-            scytheSize * 0.9,
-            scytheSize * 0.9,
-            '#f43f5e',
-            0.78,
+            0.98,
             isReflection
           );
         }
         ctx.restore();
       } else if (proj.type === 'blade_wave') {
         const warriorVfx = assets.warrior?.vfx;
-        const dir = Math.sign(proj.vx) || 1;
+        const ang = Math.atan2(proj.vy || 0, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
-        ctx.scale(dir, 1);
+        ctx.rotate(ang);
         if (warriorVfx && warriorVfx.complete && warriorVfx.naturalWidth) {
           const waveSize = 138;
           this.drawBloomedSprite(
             ctx,
             renderer,
             warriorVfx,
-            528,
-            56,
+            pCol * 208,
+            0,
             208,
             208,
             -waveSize * 0.5,
@@ -1850,13 +1837,12 @@ export class VFXManager {
 
         if (archerVfx && archerVfx.complete && archerVfx.naturalWidth) {
           // Row 0 F00..F29: 30fps Supersonic Tempest Arrow (spinning fletching, double-helix wind ribbon & Mach cone)
-          const arrCol = Math.floor((proj.age || 0) * 30) % 30;
           const arrSize = 136;
           this.drawBloomedSprite(
             ctx,
             renderer,
             archerVfx,
-            arrCol * 208,
+            pCol * 208,
             0,
             208,
             208,
@@ -1878,15 +1864,15 @@ export class VFXManager {
         const ang = Math.atan2(proj.vy, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
-        ctx.rotate(ang + Math.PI * 0.25);
+        ctx.rotate(ang);
         if (priestessVfx && priestessVfx.complete && priestessVfx.naturalWidth) {
           const orbSize = 114;
           this.drawBloomedSprite(
             ctx,
             renderer,
             priestessVfx,
-            528,
-            56,
+            pCol * 208,
+            0,
             208,
             208,
             -orbSize * 0.5,
@@ -1906,13 +1892,13 @@ export class VFXManager {
         ctx.translate(px, py);
         ctx.rotate(ang);
         if (mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
-          const fbSize = 104;
+          const fbSize = 116;
           this.drawBloomedSprite(
             ctx,
             renderer,
             mageVfx,
-            528,
-            56,
+            pCol * 208,
+            0,
             208,
             208,
             -fbSize * 0.5,
@@ -1920,7 +1906,7 @@ export class VFXManager {
             fbSize,
             fbSize,
             '#fb923c',
-            0.96,
+            0.98,
             isReflection
           );
         } else {
@@ -2119,9 +2105,10 @@ export class VFXManager {
       ctx.save();
       ctx.imageSmoothingEnabled = false;
 
-      // Authentic Chunky-Pixel Glowing Champion Crest Sprite Manifestation BEHIND the caster
+      // 30fps Glowing Champion Crest Sprite Manifestation BEHIND the caster
       const crestSize = Math.round(baseR * 2.8);
       const alpha = env * (ca.isUltimate ? 0.94 : 0.86);
+      const sealCol = Math.floor(ca.life * 30) % 30;
       ctx.translate(hx, hy);
 
       if (ca.theme === 'steel' && assets.warrior?.vfx?.complete) {
@@ -2129,10 +2116,10 @@ export class VFXManager {
           ctx,
           renderer,
           assets.warrior.vfx,
-          0,
-          0,
-          320,
-          320,
+          sealCol * 208,
+          624,
+          208,
+          208,
           -crestSize * 0.5,
           -crestSize * 0.62,
           crestSize,
@@ -2142,7 +2129,6 @@ export class VFXManager {
           false
         );
       } else if (ca.theme === 'emerald' && assets.archer?.vfx?.complete) {
-        const sealCol = Math.floor(ca.life * 30) % 30;
         ctx.scale(ca.fighter.facing || 1, 1);
         this.drawBloomedSprite(
           ctx,
@@ -2161,15 +2147,14 @@ export class VFXManager {
           false
         );
       } else if (ca.theme === 'arcane' && assets.mage?.vfx?.complete) {
-        ctx.rotate(ca.life * 1.4);
         this.drawBloomedSprite(
           ctx,
           renderer,
           assets.mage.vfx,
-          0,
-          0,
-          320,
-          320,
+          sealCol * 208,
+          832,
+          208,
+          208,
           -crestSize * 0.5,
           -crestSize * 0.5,
           crestSize,
@@ -2183,10 +2168,10 @@ export class VFXManager {
           ctx,
           renderer,
           assets.priestess.vfx,
-          0,
-          0,
-          320,
-          320,
+          sealCol * 208,
+          624,
+          208,
+          208,
           -crestSize * 0.52,
           -crestSize * 0.52,
           crestSize * 1.04,
@@ -2195,41 +2180,32 @@ export class VFXManager {
           alpha,
           false
         );
-      } else if (ca.theme === 'abyssal' && assets.reaper?.vfx?.complete && assets.reaper.vfx.naturalWidth >= 944) {
-        for (const side of [-1, 1]) {
-          ctx.save();
-          ctx.translate(side * 48, -8);
-          ctx.scale(side, 1);
-          ctx.rotate(-0.35 + ca.life * 1.8);
-          const scSize = Math.round(crestSize * 0.74);
-          this.drawBloomedSprite(
-            ctx,
-            renderer,
-            assets.reaper.vfx,
-            736,
-            56,
-            208,
-            208,
-            -scSize * 0.5,
-            -scSize * 0.5,
-            scSize,
-            scSize,
-            '#c084fc',
-            alpha,
-            false
-          );
-          ctx.restore();
-        }
+      } else if (ca.theme === 'abyssal' && assets.reaper?.vfx?.complete) {
+        this.drawBloomedSprite(
+          ctx,
+          renderer,
+          assets.reaper.vfx,
+          sealCol * 208,
+          832,
+          208,
+          208,
+          -crestSize * 0.52,
+          -crestSize * 0.52,
+          crestSize * 1.04,
+          crestSize * 1.04,
+          '#c084fc',
+          alpha,
+          false
+        );
       } else if (ca.theme === 'chrono' && assets.chronomancer?.vfx?.complete) {
-        ctx.rotate(-ca.life * 1.2);
         this.drawBloomedSprite(
           ctx,
           renderer,
           assets.chronomancer.vfx,
-          0,
-          0,
-          320,
-          320,
+          sealCol * 208,
+          624,
+          208,
+          208,
           -crestSize * 0.52,
           -crestSize * 0.52,
           crestSize * 1.04,

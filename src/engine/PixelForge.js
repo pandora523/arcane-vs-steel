@@ -17,34 +17,34 @@ export class PixelForge {
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png'),
-        vfx: loadImg('assets/sprites/warrior_vfx.png'),
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps7'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps7'),
         portrait: loadImg('assets/sprites/warrior_portrait.png?v=2', () => this.refreshPortraits())
       },
       mage: {
-        sheet: loadImg('assets/sprites/mage_sheet.png'),
-        vfx: loadImg('assets/sprites/mage_vfx.png'),
+        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps7'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps7'),
         portrait: loadImg('assets/sprites/mage_portrait.png?v=2', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps6'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps1'),
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps7'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps7'),
         portrait: loadImg('assets/sprites/archer_portrait.png?v=2', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadImg('assets/sprites/priestess_sheet.png'),
-        wings: loadImg('assets/sprites/seraphim_wings.png'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png'),
+        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps7'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps7'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps7'),
         portrait: loadImg('assets/sprites/priestess_portrait.png?v=2', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadImg('assets/sprites/reaper_sheet.png'),
-        vfx: loadImg('assets/sprites/reaper_vfx.png'),
+        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps7'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps7'),
         portrait: loadImg('assets/sprites/reaper_portrait.png?v=2', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadImg('assets/sprites/chronomancer_sheet.png'),
-        vfx: loadImg('assets/sprites/chronomancer_vfx.png'),
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps7'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps7'),
         portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=2', () => this.refreshPortraits())
       }
     };
@@ -80,98 +80,27 @@ export class PixelForge {
   }
 
   /**
-   * Maps fighter state & timers to sprite sheet frames:
-   * - For Sylvara (Archer): 270-frame (30 cols x 9 rows, 208x208 cells) high-framerate animation test:
-   *   Row 0 (0..29):    30-frame IDLE breathing, cloak wave & bow glint
-   *   Row 1 (30..59):   30-frame WALK 2-step ranger boot stride cycle
-   *   Row 2 (60..89):   30-frame AUTO_ATTACK quiver reach, progressive bow flex, draw & release
-   *   Row 3 (90..119):  30-frame SKILL (Starfall Volley 3-arrow fan + skyward beacon shot)
-   *   Row 4 (120..149): 30-frame ULTIMATE (Astral Hurricane levitation, light-wing bow & dragon arrow)
-   *   Row 5 (150..179): 30-frame DEATH stagger, kneeling collapse & fallen settling
-   *   Row 6 (180..209): 30-frame DASH (Gale Stride horizontal wind-dash & snap-shot)
-   *   Row 7 (210..239): 30-frame CROUCH (Stealth knee-bend crouch & low-profile sniper shot)
-   *   Row 8 (240..269): 30-frame JUMP (Zephyr Leap upward knee-tuck, apex downward shot & crouch landing)
-   * - For other champions: 48-frame (8 cols x 6 rows, 208x208 cells) HD-2D sheet.
+   * Maps fighter state & timers to 270-frame (30 cols x 9 rows, 208x208 cells) 30fps HD-2D sprite sheets
+   * across all 6 champions (Warrior, FireMage, Archer, Priestess, Reaper, Chronomancer):
+   *   Row 0 (0..29):    30-frame IDLE breathing, cloak/robe/hair wave & weapon glint
+   *   Row 1 (30..59):   30-frame WALK anatomical 2-step stride cycle
+   *   Row 2 (60..89):   30-frame AUTO_ATTACK progressive windup, strike/cast & follow-through
+   *   Row 3 (90..119):  30-frame SKILL 2-phase special skill animation
+   *   Row 4 (120..149): 30-frame ULTIMATE multi-stage overdrive animation
+   *   Row 5 (150..179): 30-frame DEATH stagger (F00..F05 HURT), kneeling collapse & flat horizontal rest
+   *   Row 6 (180..209): 30-frame DASH forward assault charge / phase-glide
+   *   Row 7 (210..239): 30-frame CROUCH tactical low stance & counter-shot/slash
+   *   Row 8 (240..269): 30-frame JUMP full-body aerial vault & apex downward strike/shot
    */
   static getFrameIndex(fighter, phase) {
     const st = fighter.state;
     const t = fighter.stateTimer;
 
-    // 30-FPS 9-Row (270-Frame) Animation Mapping for Sylvara (Archer)
-    if (fighter.heroId === 'archer') {
-      if (fighter.isDead || st === 'DEATH') {
-        const deathDuration = 1.35;
-        const dt = fighter.deathTimer || 0;
-        const step = Math.min(29, Math.max(0, Math.floor((dt / deathDuration) * 30)));
-        return 150 + step;
-      }
-
-      if (
-        st === 'HURT' ||
-        (fighter.hurtTimer > 0.05 &&
-          st !== 'ULTIMATE' &&
-          st !== 'SKILL' &&
-          st !== 'DODGE' &&
-          st !== 'JUMP' &&
-          st !== 'CROUCH' &&
-          st !== 'DASH')
-      ) {
-        const hurtProgress = 1.0 - Math.min(1.0, Math.max(0.0, (fighter.hurtTimer || 0) / 0.28));
-        return 150 + Math.min(5, Math.max(0, Math.floor(hurtProgress * 6)));
-      }
-
-      if (st === 'JUMP' || st === 'DODGE' || fighter.isFlipVault) {
-        const dur = fighter.dashDuration || 0.56;
-        const step = Math.min(29, Math.max(0, Math.floor((t / dur) * 30)));
-        return 240 + step;
-      }
-
-      if (st === 'CROUCH' || fighter.isCrouching) {
-        const dur = fighter.crouchDuration || 0.96;
-        const step = Math.min(29, Math.max(0, Math.floor((t / dur) * 30)));
-        return 210 + step;
-      }
-
-      if (st === 'DASH') {
-        const dur = fighter.dashDuration || 0.44;
-        const step = Math.min(29, Math.max(0, Math.floor((t / dur) * 30)));
-        return 180 + step;
-      }
-
-      if (st === 'AUTO_ATTACK') {
-        const duration = 0.96;
-        const step = Math.min(29, Math.max(0, Math.floor((t / duration) * 30)));
-        return 60 + step;
-      }
-
-      if (st === 'SKILL') {
-        const step = Math.min(29, Math.max(0, Math.floor((t / 1.05) * 30)));
-        return 90 + step;
-      }
-
-      if (st === 'ULTIMATE') {
-        if (t < 0.56) {
-          const step = Math.min(17, Math.max(0, Math.floor((t / 0.56) * 18)));
-          return 120 + step;
-        }
-        const step = 18 + Math.min(11, Math.max(0, Math.floor(((t - 0.56) / 1.04) * 12)));
-        return 120 + step;
-      }
-
-      if (st === 'WALK') {
-        const walkStep = Math.floor(Math.abs(fighter.walkPhase) * 7.5) % 30;
-        return 30 + walkStep;
-      }
-
-      const idleStep = Math.floor(Math.abs(phase) * 8.0) % 30;
-      return idleStep;
-    }
-
     if (fighter.isDead || st === 'DEATH') {
       const deathDuration = 1.35;
       const dt = fighter.deathTimer || 0;
-      const step = Math.min(7, Math.max(0, Math.floor((dt / deathDuration) * 8)));
-      return 32 + step;
+      const step = Math.min(29, Math.max(0, Math.floor((dt / deathDuration) * 30)));
+      return 150 + step;
     }
 
     if (
@@ -180,52 +109,56 @@ export class PixelForge {
         st !== 'ULTIMATE' &&
         st !== 'SKILL' &&
         st !== 'DODGE' &&
+        st !== 'JUMP' &&
+        st !== 'CROUCH' &&
         st !== 'DASH')
     ) {
-      return fighter.hurtTimer > 0.14 ? 32 : 33;
+      const hurtProgress = 1.0 - Math.min(1.0, Math.max(0.0, (fighter.hurtTimer || 0) / 0.28));
+      return 150 + Math.min(5, Math.max(0, Math.floor(hurtProgress * 6)));
     }
 
-    if (st === 'DASH' || st === 'DODGE') {
+    if (st === 'JUMP' || st === 'DODGE' || fighter.isFlipVault) {
+      const dur = fighter.dashDuration || 0.56;
+      const step = Math.min(29, Math.max(0, Math.floor((t / dur) * 30)));
+      return 240 + step;
+    }
+
+    if (st === 'CROUCH' || fighter.isCrouching) {
+      const dur = fighter.crouchDuration || 0.96;
+      const step = Math.min(29, Math.max(0, Math.floor((t / dur) * 30)));
+      return 210 + step;
+    }
+
+    if (st === 'DASH') {
       const dur = fighter.dashDuration || 0.44;
-      const step = Math.min(7, Math.max(0, Math.floor((t / dur) * 8)));
-      return 40 + step;
+      const step = Math.min(29, Math.max(0, Math.floor((t / dur) * 30)));
+      return 180 + step;
     }
 
     if (st === 'AUTO_ATTACK') {
       const duration = 0.96;
-      const step = Math.min(7, Math.max(0, Math.floor((t / duration) * 8)));
-      return 16 + step;
+      const step = Math.min(29, Math.max(0, Math.floor((t / duration) * 30)));
+      return 60 + step;
     }
 
     if (st === 'SKILL') {
-      if (fighter.skillName === 'WHIRLWIND') {
-        return 24 + (Math.floor(t * 9.5) % 4);
-      }
-      const step = Math.min(3, Math.max(0, Math.floor((t / 1.05) * 4)));
-      return 24 + step;
+      const skillDur = fighter.skillDuration || 1.05;
+      const step = Math.min(29, Math.max(0, Math.floor((t / skillDur) * 30)));
+      return 90 + step;
     }
 
     if (st === 'ULTIMATE') {
-      if (fighter.heroId === 'warrior' || fighter.heroId === 'reaper') {
-        if (t < 0.34) return t < 0.18 ? 28 : 29;
-        if (t < 0.94) {
-          const blitzFrames = [42, 19, 20, 43, 21, 22, 25, 26];
-          return blitzFrames[Math.floor(t * 15) % blitzFrames.length];
-        }
-        return t < 1.18 ? 30 : 31;
-      }
-      if (t < 0.42) return 28;
-      if (t < 0.85) return 29;
-      if (t < 1.25) return 30;
-      return 31;
+      const ultDur = 1.60;
+      const step = Math.min(29, Math.max(0, Math.floor((t / ultDur) * 30)));
+      return 120 + step;
     }
 
     if (st === 'WALK') {
-      const walkStep = Math.floor(Math.abs(fighter.walkPhase) * 2.0) % 8;
-      return 8 + walkStep;
+      const walkStep = Math.floor(Math.abs(fighter.walkPhase) * 7.5) % 30;
+      return 30 + walkStep;
     }
 
-    const idleStep = Math.floor(Math.abs(phase) * 2.2) % 8;
+    const idleStep = Math.floor(Math.abs(phase) * 8.0) % 30;
     return idleStep;
   }
 
@@ -487,11 +420,8 @@ export class PixelForge {
     }
 
     // HD-2D Normal-Mapped 4-Step Pixel Lighting + Dual-Layer Character Inking Pass
-    // (Disabled on Archer per user request so Sylvara renders with 100% pure, un-inked 30fps pixel art!)
-    const nm =
-      !isReflection && renderer && fighter.heroId !== 'archer'
-        ? this.ensureNormalMap(charSet)
-        : null;
+    // (Disabled across all 6 overhauled 30fps champions so every model renders with pure, un-inked 30fps pixel art!)
+    const nm = null;
     if (nm && renderer.activePointLights && renderer.activePointLights.length > 0) {
       const { cellLow, wLow, srcData, normals, litCanvas, litCtx, litImgData } = nm;
       const dst = litImgData.data;

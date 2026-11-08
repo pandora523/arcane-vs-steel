@@ -32,6 +32,14 @@ export class Warrior extends Fighter {
     this.didSlamFinisher = false;
     this.dodgeMaxCooldown = 3.4;
     this.dashMaxCooldown = 3.2;
+    this.crouchCooldown = 0;
+    this.crouchDuration = 0.96;
+    this.isCrouching = false;
+    this.vaultCooldown = 0;
+    this.isFlipVault = false;
+    this.flipStartX = x;
+    this.flipTargetX = x;
+    this.flipAngle = 0;
   }
 
   getEffectiveAttackRange() {
@@ -45,7 +53,7 @@ export class Warrior extends Fighter {
       if (
         proj.owner !== this &&
         !proj.isMeteor &&
-        Math.hypot(proj.x - this.x, proj.y - (this.y - 110)) < 118
+        Math.hypot(proj.x - this.x, proj.y - (this.y - 110)) < 124
       ) {
         this.reflectedInSkill = true;
         proj.owner = this;
@@ -67,8 +75,75 @@ export class Warrior extends Fighter {
     }
   }
 
+  startCrouch(enemy, game) {
+    this.crouchCooldown = 3.2;
+    this.crouchDuration = 0.96;
+    this.setState('CROUCH');
+    this.isCrouching = true;
+    this.isDeflecting = true;
+    this.reflectedInSkill = false;
+    this.vx = 0;
+    this.reflectNearbyProjectiles(game);
+    if (game && game.audio) game.audio.play('reflect', this.x);
+    if (game && game.vfx) {
+      game.vfx.spawnShockwave(this.x, this.groundY - 2, 74, '#38bdf8', 0.26, true);
+      game.vfx.spawnGlyphBurst(this.x, this.y - 82, 5, 'steel');
+      game.vfx.spawnDamageText(this.x, this.y - 128, 0, false, 'AEGIS STANCE!', '#7dd3fc');
+    }
+  }
+
+  startJump(enemy, game, customDir = null) {
+    this.dodgeCooldown = this.dodgeMaxCooldown * (0.86 + Math.random() * 0.28);
+    this.vaultCooldown = 3.2;
+    this.setState('JUMP');
+    this.isInvulnerable = true;
+    const ww = game.renderer.worldWidth;
+    let dir = customDir !== null ? customDir : this.facing;
+    if (this.x < 180) dir = 1;
+    else if (this.x > ww - 180) dir = -1;
+    this.dashDir = dir;
+    this.onStartJumpVault(enemy, game, dir);
+  }
+
+  onStartJumpVault(enemy, game, dir) {
+    const ww = game.renderer.worldWidth;
+    const dist = enemy ? Math.abs(enemy.x - this.x) : 280;
+    this.isFlipVault = true;
+    this.flipStartX = this.x;
+    this.flipAngle = 0;
+    this.dashDuration = 0.62;
+    this.isDeflecting = true;
+
+    if (enemy && !enemy.isDead) {
+      const toEnemy = Math.sign(enemy.x - this.x) || this.facing;
+      if (dist > 210) {
+        // Aggressive Valkyrie Aerial Leap closing toward the enemy's flank!
+        const target = enemy.x - toEnemy * 95;
+        this.flipTargetX = Math.max(140, Math.min(ww - 140, target));
+        this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || toEnemy;
+      } else {
+        // Tactical Valkyrie Vault across or away from close pressure
+        const openDir = this.x < 260 ? 1 : this.x > ww - 260 ? -1 : dir;
+        this.flipTargetX = Math.max(140, Math.min(ww - 140, this.x + openDir * 270));
+        this.dashDir = openDir;
+      }
+    } else {
+      this.flipTargetX = Math.max(140, Math.min(ww - 140, this.x + dir * 270));
+      this.dashDir = dir;
+    }
+
+    this.vx = 0;
+    this.vy = 0;
+    if (game.audio) game.audio.play('storm_leap', this.x);
+    game.vfx.spawnShockwave(this.x, this.groundY, 98, '#38bdf8', 0.32, true);
+    game.vfx.spawnGlyphBurst(this.x, this.y - 65, 6, 'steel');
+    game.vfx.spawnDamageText(this.x, this.y - 135, 0, false, 'VALKYRIE VAULT!', '#38bdf8');
+  }
+
   onStartDash(enemy, game, dir) {
-    this.dashDuration = 0.42;
+    this.isFlipVault = false;
+    this.flipAngle = 0;
+    this.dashDuration = 0.44;
     this.isDeflecting = true;
     this.vx = dir * 485;
     if (game.audio) game.audio.play('storm_leap', this.x);
@@ -78,47 +153,128 @@ export class Warrior extends Fighter {
   }
 
   onStartDodge(enemy, game, dir) {
-    this.dashDuration = 0.38;
-    this.isDeflecting = true;
-    this.reflectedInSkill = false;
-    this.reflectNearbyProjectiles(game);
-    const smartDir = enemy && Math.abs(enemy.x - this.x) > 240 ? this.facing : dir;
-    this.dashDir = smartDir;
-    this.vx = smartDir * 390;
-    if (game.audio) game.audio.play('reflect', this.x);
-    const startA = this.facing === 1 ? -1.35 : Math.PI - 1.35;
-    const endA = this.facing === 1 ? 1.35 : Math.PI + 1.35;
-    game.vfx.spawnSlash(this.x + this.facing * 42, this.y - 98, 94, startA, endA, '#38bdf8', 0.26);
-    game.vfx.spawnShockwave(this.x, this.y - 90, 92, '#bae6fd', 0.28);
-    game.vfx.spawnGlyphBurst(this.x, this.y - 90, 6, 'steel');
-    game.vfx.spawnDamageText(this.x, this.y - 140, 0, false, 'AEGIS PARRY!', '#7dd3fc');
-
-    // Retaliatory Frost-Crescent Counter Wave on parry!
-    if (enemy && !enemy.isDead && Math.random() < 0.65) {
-      const spawnX = this.x + this.facing * 48;
-      const spawnY = this.y - 108;
-      game.vfx.spawnProjectile({
-        x: spawnX,
-        y: spawnY,
-        vx: this.facing * 610,
-        vy: 0,
-        radius: 18,
-        color: '#38bdf8',
-        coreColor: '#e0f2fe',
-        owner: this,
-        damage: 42,
-        type: 'blade_wave'
-      });
+    // Check if an enemy projectile is approaching: if so and crouch is ready, brace behind Aegis Greatshield (CROUCH)!
+    let hasIncomingProjectile = false;
+    if (game && game.vfx) {
+      for (const proj of game.vfx.projectiles) {
+        if (proj.owner !== this && Math.abs(proj.x - this.x) < 220 && Math.sign(proj.vx) === Math.sign(this.x - proj.x)) {
+          hasIncomingProjectile = true;
+          break;
+        }
+      }
     }
+
+    if (hasIncomingProjectile && this.crouchCooldown <= 0) {
+      this.startCrouch(enemy, game);
+      return;
+    }
+
+    // Otherwise execute the 30-frame Row 8 Valkyrie Aerial Vault & Mid-Air Frost Cleave (JUMP)!
+    const smartDir = enemy && Math.abs(enemy.x - this.x) > 220 ? this.facing : dir;
+    this.setState('JUMP');
+    this.isInvulnerable = true;
+    this.onStartJumpVault(enemy, game, smartDir);
   }
 
   updateDashOrDodge(dt, enemy, game) {
     const t = this.stateTimer;
+
+    // Row 8 (30-frame JUMP — Valkyrie Aerial Vault & Mid-Air Downward Frost-Blade Cleave)
+    if ((this.state === 'DODGE' || this.state === 'JUMP') && this.isFlipVault) {
+      const u = Math.min(1, t / this.dashDuration);
+      const airU = Math.max(0, Math.min(1, (u - 0.12) / 0.74));
+
+      // Smooth horizontal glide with apex hang-time plateau during two-handed overhead Frost Cleave (airU = 0.32..0.68)
+      const horizU =
+        airU < 0.32
+          ? (airU / 0.32) * 0.44
+          : airU < 0.68
+            ? 0.44 + ((airU - 0.32) / 0.36) * 0.28
+            : 0.72 + ((airU - 0.68) / 0.32) * 0.28;
+      this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * horizU;
+
+      // Sleek 86px-high non-steep Valkyrie vault trajectory with mid-air apex plateau (matching Archer.js!)
+      let liftFrac = 0;
+      if (airU > 0 && airU < 1) {
+        if (airU < 0.28) {
+          const p = airU / 0.28;
+          liftFrac = 1 - Math.pow(1 - p, 2.2);
+        } else if (airU <= 0.68) {
+          const h = (airU - 0.28) / 0.40;
+          liftFrac = 1.0 - Math.sin(h * Math.PI) * 0.06;
+        } else {
+          const p = (airU - 0.68) / 0.32;
+          liftFrac = 1 - Math.pow(p, 1.85);
+        }
+      }
+      this.y = this.groundY - liftFrac * 86;
+      this.flipAngle = 0;
+      this.reflectNearbyProjectiles(game);
+
+      if (enemy && !enemy.isDead) {
+        this.facing = enemy.x >= this.x ? 1 : -1;
+      }
+
+      if (airU > 0.05 && airU < 0.95 && Math.random() < 0.75) {
+        game.vfx.spawnParticle({
+          x: this.x + (Math.random() - 0.5) * 26,
+          y: this.y - 72 + (Math.random() - 0.5) * 24,
+          vx: -this.dashDir * 75,
+          vy: 25,
+          size: 5,
+          color: Math.random() > 0.4 ? '#38bdf8' : '#fef08a',
+          maxLife: 0.26
+        });
+      }
+
+      // At Frame F13..F14 (u >= 0.44), Aethelgard unleashes his mid-air downward-angled Frost-Crescent Blade-Wave!
+      if (u >= 0.44 && !this.didActionFrame && enemy && !enemy.isDead) {
+        this.didActionFrame = true;
+        if (game.audio) game.audio.play('blade_wave', this.x);
+        const sx = this.x + this.facing * 44;
+        const sy = this.y - 104;
+        const dx = enemy.x - sx;
+        const dy = (enemy.y - 92) - sy;
+        const td = Math.hypot(dx, dy) || 1;
+        game.vfx.spawnProjectile({
+          x: sx,
+          y: sy,
+          vx: (dx / td) * 660,
+          vy: (dy / td) * 660,
+          radius: 18,
+          color: '#38bdf8',
+          coreColor: '#fef08a',
+          owner: this,
+          damage: 62,
+          type: 'blade_wave'
+        });
+        const cleaveAng = Math.atan2(dy, dx);
+        game.vfx.spawnSlash(sx, sy, 98, cleaveAng - 1.15, cleaveAng + 1.15, '#38bdf8', 0.28);
+        game.vfx.spawnShockwave(sx, sy, 76, '#7dd3fc', 0.24, false, false);
+        game.vfx.spawnGlyphBurst(sx, sy, 5, 'steel');
+
+        if (Math.abs(enemy.x - this.x) <= 165) {
+          enemy.takeDamage(54, this, true, 115, -90);
+        }
+      }
+
+      if (t >= this.dashDuration) {
+        this.y = this.groundY;
+        this.vy = 0;
+        this.isFlipVault = false;
+        this.flipAngle = 0;
+        this.isDeflecting = false;
+        this.isInvulnerable = false;
+        game.vfx.spawnShockwave(this.x, this.groundY, 84, '#38bdf8', 0.26, true);
+        this.setState('IDLE');
+      }
+      return;
+    }
+
+    // Row 6 (30-frame DASH — Valkyrie Assault Charge)
     const speed = this.state === 'DASH' ? 485 : 360;
     this.x += this.dashDir * speed * dt;
-    if (this.state === 'DODGE') {
-      this.reflectNearbyProjectiles(game);
-    }
+    this.reflectNearbyProjectiles(game);
 
     if (Math.random() < 0.72) {
       game.vfx.spawnParticle({
@@ -155,7 +311,75 @@ export class Warrior extends Fighter {
     }
   }
 
+  updateCrouch(dt, enemy, game) {
+    const t = this.stateTimer;
+    const dur = this.crouchDuration || 0.96;
+    this.vx *= Math.pow(0.001, dt);
+    this.isCrouching = t < dur * 0.82;
+    this.isDeflecting = this.isCrouching;
+
+    if (t < 0.62) {
+      this.reflectNearbyProjectiles(game);
+    }
+
+    // Frames F05..F12 (0.16s <= t < 0.42s): Bracing behind glowing Frost-Gold Aegis Greatshield
+    if (t >= 0.16 && t < 0.42) {
+      if (Math.random() < 0.7) {
+        const a = t * 24;
+        const shX = this.x + this.facing * 42;
+        const shY = this.y - 88;
+        game.vfx.spawnParticle({
+          x: shX + Math.cos(a) * 20,
+          y: shY + Math.sin(a) * 20,
+          vx: -Math.cos(a) * 55,
+          vy: -Math.sin(a) * 55,
+          size: 4.5,
+          color: Math.random() > 0.4 ? '#38bdf8' : '#fef08a',
+          maxLife: 0.22
+        });
+      }
+    } else if (t >= 0.42 && !this.didActionFrame) {
+      // Frame F13 (t = 0.42s): Low horizontal Frost-Crescent Counter-Slash from behind Aegis Greatshield!
+      this.didActionFrame = true;
+      this.vx += this.facing * 95;
+      if (game.audio) game.audio.play('blade_wave', this.x);
+
+      const spawnX = this.x + this.facing * 48;
+      const spawnY = this.y - 92;
+      game.vfx.spawnProjectile({
+        x: spawnX,
+        y: spawnY,
+        vx: this.facing * 655,
+        vy: 0,
+        radius: 19,
+        color: '#38bdf8',
+        coreColor: '#fef08a',
+        owner: this,
+        damage: 68,
+        type: 'blade_wave'
+      });
+
+      const cAng = this.facing === 1 ? 0 : Math.PI;
+      game.vfx.spawnSlash(spawnX, spawnY, 96, cAng - 1.15, cAng + 1.15, '#38bdf8', 0.26);
+      game.vfx.spawnShockwave(spawnX, spawnY, 72, '#7dd3fc', 0.26, false, true);
+      game.vfx.spawnGlyphBurst(spawnX, spawnY, 5, 'steel');
+
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 45) {
+        enemy.takeDamage(64, this, true, 110, -70);
+      }
+    }
+
+    if (t >= dur) {
+      this.isCrouching = false;
+      this.isDeflecting = false;
+      this.setState('IDLE');
+    }
+  }
+
   update(dt, enemy, game) {
+    this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
+    this.vaultCooldown = Math.max(0, this.vaultCooldown - dt);
+
     if (!this.isDead && this.state === 'WALK') {
       this.stepDustTimer += dt;
       if (this.stepDustTimer >= 0.32) {
@@ -169,6 +393,41 @@ export class Warrior extends Fighter {
         });
       }
     }
+
+    if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
+      const dist = Math.abs(enemy.x - this.x);
+
+      // 1. Defensive Aegis Crouch & Frost-Crescent Counter-Slash when enemy projectiles approach or at mid-range (185..340px)
+      let projectileApproaching = false;
+      if (game && game.vfx) {
+        for (const proj of game.vfx.projectiles) {
+          if (proj.owner !== this && Math.abs(proj.x - this.x) < 235 && Math.sign(proj.vx) === Math.sign(this.x - proj.x)) {
+            projectileApproaching = true;
+            break;
+          }
+        }
+      }
+      if (
+        this.crouchCooldown <= 0 &&
+        (projectileApproaching || (dist >= 195 && dist <= 340 && this.autoCooldown > 0.25 && Math.random() < 0.04))
+      ) {
+        this.startCrouch(enemy, game);
+        return;
+      }
+
+      // 2. Valkyrie Aerial Vault (Row 8 JUMP) to close mid-far distance (250..410px) with an aerial Frost-Crescent cleave!
+      if (
+        dist >= 250 &&
+        dist <= 410 &&
+        this.vaultCooldown <= 0 &&
+        this.dodgeCooldown <= 0 &&
+        this.skillCooldown > 0.6
+      ) {
+        this.startJump(enemy, game, this.facing);
+        return;
+      }
+    }
+
     super.update(dt, enemy, game);
   }
 
@@ -177,7 +436,7 @@ export class Warrior extends Fighter {
     const mode = this.comboStep % 3;
 
     if (t < 0.32) {
-      // Frames 16, 17, 18: Runeblade windup + azure rune convergence
+      // Row 2 Frames F00..F09: Progressive overhead/back-shoulder windup + frost-gold rune charge
       this.torsoAngle = -this.facing * 0.24 * (t / 0.32);
       if (Math.random() < 0.55) {
         game.vfx.spawnParticle({
@@ -191,7 +450,7 @@ export class Warrior extends Fighter {
         });
       }
     } else if (t < 0.68) {
-      // Frames 19, 20, 21: Dynamic 3-Part Runeblade Combo
+      // Row 2 Frames F10..F18: Explosive forward Runeblade cleave & Frost-Crescent slash arc
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.comboStep++;
@@ -244,10 +503,11 @@ export class Warrior extends Fighter {
           }
         }
       }
-    } else if (t >= 0.9) {
+    } else if (t >= 0.96) {
       this.setState('IDLE');
     }
   }
+
 
   updateSkill(dt, enemy, game) {
     // OVERHAULED SKILL KIT: "TEMPEST VANGUARD" (2-Phase Dynamic Assault)
