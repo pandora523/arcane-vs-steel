@@ -6,6 +6,7 @@ const EMERALD_FIRE_PAL = ['#065f46', '#059669', '#10b981', '#34d399'];
 const RADIANT_FIRE_PAL = ['#a16207', '#ca8a04', '#eab308', '#facc15'];
 const ABYSSAL_FIRE_PAL = ['#4c1d95', '#7e22ce', '#a855f7', '#e11d48'];
 const CHRONO_FIRE_PAL = ['#115e59', '#0d9488', '#14b8a6', '#eab308'];
+const FORGE_FIRE_PAL = ['#78350f', '#d97706', '#f59e0b', '#34d399'];
 
 export const STAGE_ROSTER = [
   { id: 'cathedral', name: 'ECLIPSE CATHEDRAL NAVE', assetKey: 'arenaBg' },
@@ -126,7 +127,16 @@ export class Renderer {
     if (col === 'arcane' || col === '#f97316' || col === '#fb923c' || col === '#dc2626' || col === '#ea580c') {
       return this.glowOrange;
     }
-    if (col === 'radiant' || col === '#fde047' || col === '#facc15' || col === '#eab308' || col === '#fef08a') {
+    if (
+      col === 'radiant' ||
+      col === 'forge' ||
+      col === '#fde047' ||
+      col === '#facc15' ||
+      col === '#eab308' ||
+      col === '#f59e0b' ||
+      col === '#d97706' ||
+      col === '#fef08a'
+    ) {
       return this.glowGold;
     }
     if (
@@ -1056,6 +1066,7 @@ export class Renderer {
     const isRadiant = f.primaryColor === '#fde047';
     const isAbyssal = f.primaryColor === '#c084fc';
     const isChrono = f.primaryColor === '#2dd4bf';
+    const isForge = f.primaryColor === '#f59e0b';
     const pal = isBlue
       ? CYAN_FIRE_PAL
       : isEmerald
@@ -1066,7 +1077,9 @@ export class Renderer {
             ? ABYSSAL_FIRE_PAL
             : isChrono
               ? CHRONO_FIRE_PAL
-              : SOLAR_FIRE_PAL;
+              : isForge
+                ? FORGE_FIRE_PAL
+                : SOLAR_FIRE_PAL;
     const glowTex = this.getGlowForColor(f.primaryColor);
     const isAction = f.state === 'SKILL' || f.state === 'ULTIMATE' || f.state === 'AUTO_ATTACK';
     const gy = f.groundY || this.groundY;
@@ -1095,6 +1108,7 @@ export class Renderer {
     const isRadiant = f.primaryColor === '#fde047';
     const isAbyssal = f.primaryColor === '#c084fc';
     const isChrono = f.primaryColor === '#2dd4bf';
+    const isForge = f.primaryColor === '#f59e0b';
     const pal = isBlue
       ? CYAN_FIRE_PAL
       : isEmerald
@@ -1105,7 +1119,9 @@ export class Renderer {
             ? ABYSSAL_FIRE_PAL
             : isChrono
               ? CHRONO_FIRE_PAL
-              : SOLAR_FIRE_PAL;
+              : isForge
+                ? FORGE_FIRE_PAL
+                : SOLAR_FIRE_PAL;
     const glowTex = this.getGlowForColor(f.primaryColor);
     const t = this.time;
 
@@ -1200,6 +1216,43 @@ export class Renderer {
               24,
               0.44,
               this.glowCyan
+            );
+          }
+        }
+      } else if (isForge) {
+        // TORGAR: Orbiting Molten-Gold & Runic-Jade Forge Sparks + Iron-Anvil Bulwark Ring when deflecting
+        for (let r = 0; r < 4; r++) {
+          const ra = t * 4.2 + (r * Math.PI) / 2;
+          const rx = Math.round((f.x + f.facing * 24 + Math.cos(ra) * 38) / 3) * 3;
+          const ry = Math.round((f.y - 82 + Math.sin(ra * 2) * 14) / 3) * 3;
+          const isJade = r % 2 === 1;
+          emitGlowingParticle(
+            rx,
+            ry,
+            6,
+            6,
+            isJade ? '#10b981' : '#f59e0b',
+            '#fef08a',
+            26,
+            0.48,
+            isJade ? this.glowEmerald : this.glowGold
+          );
+        }
+        if (f.isDeflecting) {
+          for (let i = 0; i < 16; i++) {
+            const a = (i / 16) * Math.PI * 2 + t * 7.5;
+            const hx = Math.round((f.x + Math.cos(a) * 70) / 4) * 4;
+            const hy = Math.round((f.y - 68 + Math.sin(a) * 70) / 4) * 4;
+            emitGlowingParticle(
+              hx,
+              hy,
+              6,
+              6,
+              i % 2 === 0 ? '#f59e0b' : '#10b981',
+              '#fef08a',
+              24,
+              0.46,
+              i % 2 === 0 ? this.glowGold : this.glowEmerald
             );
           }
         }

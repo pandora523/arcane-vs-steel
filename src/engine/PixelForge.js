@@ -46,6 +46,11 @@ export class PixelForge {
         sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps7'),
         vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps7'),
         portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=2', () => this.refreshPortraits())
+      },
+      titan: {
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps7'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps7'),
+        portrait: loadImg('assets/sprites/titan_portrait.png?v=2', () => this.refreshPortraits())
       }
     };
 
@@ -725,7 +730,8 @@ export class PixelForge {
       mage: { bg0: '#1c0806', bg1: '#57160b', rim: '#fb923c', glow: '#fde047', gold: '#facc15' },
       priestess: { bg0: '#191205', bg1: '#4d360b', rim: '#fde047', glow: '#fef9c3', gold: '#fbbf24' },
       reaper: { bg0: '#11061f', bg1: '#351052', rim: '#c084fc', glow: '#f43f5e', gold: '#e879f9' },
-      chronomancer: { bg0: '#04181c', bg1: '#0d4248', rim: '#2dd4bf', glow: '#99f6e4', gold: '#f59e0b' }
+      chronomancer: { bg0: '#04181c', bg1: '#0d4248', rim: '#2dd4bf', glow: '#99f6e4', gold: '#f59e0b' },
+      titan: { bg0: '#1a0c04', bg1: '#4a2108', rim: '#f59e0b', glow: '#34d399', gold: '#fde047' }
     };
     const th = themes[heroKey] || themes.warrior;
 
@@ -941,7 +947,7 @@ export class PixelForge {
         setPx(11, 12, '#ffffff');
         setPx(15, 12, '#ffffff');
       }
-    } else {
+    } else if (heroKey === 'chronomancer') {
       // CHRONOMANCER
       if (slotIdx === 0) {
         // ESCAPEMENT SAW-GEAR: 8-Toothed Golden Gear + Cyan Temporal Rewind Arc
@@ -979,6 +985,43 @@ export class PixelForge {
         fillRectPx(13, 6, 2, 9, '#ffffff');
         drawLinePx(14, 14, 19, 10, '#fbbf24', 2);
         drawCirclePx(14, 14, 2, '#fde047', true);
+      }
+    } else if (heroKey === 'titan') {
+      if (slotIdx === 0) {
+        // TECTONIC WAR-HAMMER + ANVIL BULWARK: Colossal Runic War-Hammer + Emerald-Jade & Molten Gold Rune Core
+        drawLinePx(5, 23, 19, 9, '#b45309', 2); // Heavy bronze haft
+        // Colossal beveled War-Hammer head
+        fillRectPx(12, 4, 11, 7, '#475569');
+        fillRectPx(13, 5, 9, 5, '#f59e0b');
+        fillRectPx(15, 6, 5, 3, '#10b981');
+        setPx(17, 7, '#ffffff');
+        // Molten ground shockwave arc
+        drawLinePx(6, 23, 23, 23, '#fde047', 2);
+      } else if (slotIdx === 1) {
+        // MOUNTAIN ANVIL: Colossal Bronze & Obsidian Forge Anvil + Descending Lightning/Sparks
+        fillRectPx(7, 13, 15, 4, '#64748b'); // Anvil top horn & face
+        fillRectPx(4, 14, 4, 2, '#94a3b8');  // Left horn
+        fillRectPx(10, 17, 9, 4, '#334155'); // Anvil waist
+        fillRectPx(8, 21, 13, 3, '#475569'); // Anvil base
+        // Glowing emerald-jade & gold forge runes on anvil
+        fillRectPx(12, 15, 5, 2, '#10b981');
+        fillRectPx(13, 18, 3, 2, '#fde047');
+        // Overhead impact sparks
+        drawLinePx(14, 4, 14, 12, '#fde047', 2);
+        drawLinePx(8, 7, 13, 12, '#f97316', 2);
+        drawLinePx(20, 7, 15, 12, '#34d399', 2);
+      } else {
+        // WORLD-FORGE RAGNAROK: Horned Molten Titan Crown + Erupting Basalt & Jade Monoliths
+        fillRectPx(5, 12, 3, 12, '#10b981');
+        fillRectPx(20, 12, 3, 12, '#10b981');
+        // Horned Titan helmet & glowing eyes
+        drawLinePx(5, 6, 11, 11, '#fde047', 2);
+        drawLinePx(22, 6, 16, 11, '#fde047', 2);
+        fillRectPx(9, 9, 10, 10, '#d97706');
+        fillRectPx(10, 12, 3, 2, '#ffffff');
+        fillRectPx(15, 12, 3, 2, '#ffffff');
+        fillRectPx(11, 16, 6, 6, '#f97316'); // Braided fire beard
+        fillRectPx(4, 23, 20, 2, '#fde047');
       }
     }
 

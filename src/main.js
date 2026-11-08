@@ -8,6 +8,7 @@ import { Archer } from './entities/Archer.js';
 import { Priestess } from './entities/Priestess.js';
 import { Reaper } from './entities/Reaper.js';
 import { Chronomancer } from './entities/Chronomancer.js';
+import { Titan } from './entities/Titan.js';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -201,6 +202,38 @@ const CHAMPION_ROSTER = {
         desc: 'Manifests the Celestial Astrolabe Clock, striking 12 chimes of temporal judgment.'
       }
     ]
+  },
+  titan: {
+    id: 'titan',
+    name: 'TORGAR',
+    role: 'RUNIC TITAN-FORGER',
+    style: 'HEAVY JUGGERNAUT',
+    trait: 'PASSIVE: IRON-ANVIL BULWARK PARRY',
+    cls: Titan,
+    theme: 'forge',
+    color: '#f59e0b',
+    selectSfx: 'thunder_slam',
+    victoryLine: 'The World-Breaker War-Hammer reforges the sanctuary in molten gold and jade!',
+    skills: [
+      {
+        name: 'TECTONIC WAR-HAMMER',
+        type: 'AUTO + PASSIVE',
+        vfxCell: 0,
+        desc: 'Slams seismic forge-waves across the floor & braces behind an Iron-Anvil Bulwark that parries.'
+      },
+      {
+        name: 'MOUNTAIN ANVIL',
+        type: 'SKILL • 4.8S CD',
+        vfxCell: 1,
+        desc: 'Drops a colossal Runic Forge Anvil from the sky, then smashes it into basalt & jade monoliths.'
+      },
+      {
+        name: 'WORLD-FORGE RAGNAROK',
+        type: '★ OVERDRIVE ULT',
+        vfxCell: 3,
+        desc: 'Manifests the Colossal Ragnarok Titan Avatar & Nordic Forge-Wheel, unleashing 3 volcanic quakes.'
+      }
+    ]
   }
 };
 
@@ -226,8 +259,8 @@ class Game {
     this.hudTimer = 0;
     this.isMatchOver = false;
 
-    // Default Matchup: Aethelgard (Warrior) vs. Sylvara (Archer)
-    this.slot1Hero = 'warrior';
+    // Default Matchup: Torgar (Titan-Forger) vs. Sylvara (Archer)
+    this.slot1Hero = 'titan';
     this.slot2Hero = 'archer';
     this.activeAssignSlot = 2; // Default cursor on Slot 2 so clicking a 3rd hero pairs them with Fighter 1
     this.isLandingOpen = true;
@@ -237,6 +270,10 @@ class Game {
     const p1 = params.get('p1');
     const p2 = params.get('p2');
     const urlHero = params.get('hero');
+    const rosterHero = params.get('roster');
+    if (rosterHero && CHAMPION_ROSTER[rosterHero]) {
+      this.slot1Hero = rosterHero;
+    }
     if (p1 && CHAMPION_ROSTER[p1]) this.slot1Hero = p1;
     if (p2 && CHAMPION_ROSTER[p2]) this.slot2Hero = p2;
     if (urlHero && CHAMPION_ROSTER[urlHero]) {
@@ -429,7 +466,8 @@ class Game {
       mage: document.getElementById('card-mage'),
       priestess: document.getElementById('card-priestess'),
       reaper: document.getElementById('card-reaper'),
-      chronomancer: document.getElementById('card-chronomancer')
+      chronomancer: document.getElementById('card-chronomancer'),
+      titan: document.getElementById('card-titan')
     };
     this.ribbons = {
       warrior: document.getElementById('ribbon-warrior'),
@@ -437,7 +475,8 @@ class Game {
       mage: document.getElementById('ribbon-mage'),
       priestess: document.getElementById('ribbon-priestess'),
       reaper: document.getElementById('ribbon-reaper'),
-      chronomancer: document.getElementById('ribbon-chronomancer')
+      chronomancer: document.getElementById('ribbon-chronomancer'),
+      titan: document.getElementById('ribbon-titan')
     };
     this.previewCanvases = {
       warrior: document.getElementById('preview-warrior'),
@@ -445,7 +484,8 @@ class Game {
       mage: document.getElementById('preview-mage'),
       priestess: document.getElementById('preview-priestess'),
       reaper: document.getElementById('preview-reaper'),
-      chronomancer: document.getElementById('preview-chronomancer')
+      chronomancer: document.getElementById('preview-chronomancer'),
+      titan: document.getElementById('preview-titan')
     };
 
     this.btnStartDuel = document.getElementById('btn-start-duel');
@@ -707,7 +747,7 @@ class Game {
     const assets = PixelForge.initAssets();
     const t = now * 0.001;
 
-    // 1. Render the 6 Center Portrait Selector Tiles from crisp pixel portraits
+    // 1. Render the 7 Center Portrait Selector Tiles from crisp pixel portraits
     Object.keys(CHAMPION_ROSTER).forEach((heroKey) => {
       const canvas = this.previewCanvases[heroKey];
       const port = assets[heroKey]?.portrait;
@@ -1057,13 +1097,22 @@ class Game {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
-      if ((p.type === 'arrow' || p.type === 'blade_wave' || p.type === 'holy_light') && p.ringTimer >= 0.085) {
+      if (
+        (p.type === 'arrow' || p.type === 'blade_wave' || p.type === 'forge_wave' || p.type === 'holy_light') &&
+        p.ringTimer >= 0.085
+      ) {
         p.ringTimer = 0;
         this.vfx.spawnShockwave(
           p.x,
           p.y,
-          p.type === 'blade_wave' ? 46 : p.type === 'holy_light' ? 38 : 34,
-          p.type === 'blade_wave' ? '#38bdf8' : p.type === 'holy_light' ? '#fde047' : '#34d399',
+          p.type === 'forge_wave' ? 52 : p.type === 'blade_wave' ? 46 : p.type === 'holy_light' ? 38 : 34,
+          p.type === 'forge_wave'
+            ? '#f59e0b'
+            : p.type === 'blade_wave'
+              ? '#38bdf8'
+              : p.type === 'holy_light'
+                ? '#fde047'
+                : '#34d399',
           0.22,
           false,
           true
@@ -1117,13 +1166,15 @@ class Game {
                   ? 'scythe_reap'
                   : p.type === 'clock_gear'
                     ? 'chrono_hit'
-                    : p.type === 'blade_wave'
-                      ? isCrit
-                        ? 'hit_crit'
-                        : 'heavy_cleave'
-                      : p.type === 'holy_light'
-                        ? 'holy_hit'
-                        : 'fire_hit';
+                    : p.type === 'forge_wave'
+                      ? 'thunder_slam'
+                      : p.type === 'blade_wave'
+                        ? isCrit
+                          ? 'hit_crit'
+                          : 'heavy_cleave'
+                        : p.type === 'holy_light'
+                          ? 'holy_hit'
+                          : 'fire_hit';
             this.audio.play(impactSfx, enemy.x);
           }
           this.renderer.triggerHitStop(0.055);
@@ -1139,6 +1190,9 @@ class Game {
             }
           } else if (p.type === 'clock_gear') {
             this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'chrono');
+          } else if (p.type === 'forge_wave') {
+            this.vfx.spawnSlash(p.x, p.y, 78, -1.1, 1.1, '#f59e0b', 0.26);
+            this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'forge');
           } else if (p.type === 'blade_wave') {
             this.vfx.spawnSlash(p.x, p.y, 72, -1.2, 1.2, '#38bdf8', 0.25);
             this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'steel');
@@ -1159,9 +1213,11 @@ class Game {
                     ? 'scythe_reap'
                     : p.type === 'clock_gear'
                       ? 'chrono_hit'
-                      : p.type === 'blade_wave'
-                        ? 'clang'
-                        : 'fire_hit',
+                      : p.type === 'forge_wave'
+                        ? 'thunder_slam'
+                        : p.type === 'blade_wave'
+                          ? 'clang'
+                          : 'fire_hit',
               p.x
             );
           }

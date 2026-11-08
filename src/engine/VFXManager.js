@@ -117,7 +117,9 @@ export class VFXManager {
               ? '#e11d48'
               : theme === 'chrono'
                 ? '#eab308'
-                : '#ea580c';
+                : theme === 'forge'
+                  ? '#10b981'
+                  : '#ea580c';
     const dir = attacker ? Math.sign(x - attacker.x) || 1 : 1;
     if (this.hitImpacts.length > 22) this.hitImpacts.shift();
     this.hitImpacts.push({
@@ -200,6 +202,7 @@ export class VFXManager {
       radiant: { shape: 'cross', col: '#ca8a04', core: '#facc15' },
       abyssal: { shape: 'skull', col: '#7e22ce', core: '#e11d48' },
       chrono: { shape: 'cog', col: '#0d9488', core: '#eab308' },
+      forge: { shape: 'rune', col: '#d97706', core: '#10b981' },
       heal: { shape: 'cross', col: '#16a34a', core: '#facc15' }
     };
     const cfg = sets[theme] || sets.steel;
@@ -428,7 +431,9 @@ export class VFXManager {
               ? { main: '#c084fc', core: '#f43f5e', border: '#9333ea' }
               : theme === 'chrono'
                 ? { main: '#2dd4bf', core: '#facc15', border: '#0d9488' }
-                : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
+                : theme === 'forge'
+                  ? { main: '#f59e0b', core: '#34d399', border: '#d97706' }
+                  : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
 
     this.castAuras.push({
       fighter,
@@ -628,12 +633,13 @@ export class VFXManager {
         s.flightTime = (s.flightTime || 0) + dt;
         s.x += s.vx * dt;
         s.y += s.vy * dt;
+        const isHeavyWeapon = s.type === 'runeblade' || s.type === 'runic_anvil';
         this.spawnParticle({
           x: s.x + (Math.random() - 0.5) * 16,
           y: s.y - 18,
           vx: -s.vx * 0.12 + (Math.random() - 0.5) * 35,
           vy: -75,
-          size: s.type === 'runeblade' ? 8 : 6,
+          size: isHeavyWeapon ? 8 : 6,
           color: Math.random() > 0.35 ? s.color : s.coreColor,
           maxLife: 0.32
         });
@@ -642,23 +648,25 @@ export class VFXManager {
           s.impacted = true;
           if (audio) {
             audio.play(
-              s.type === 'runeblade'
-                ? 'clang'
-                : s.type === 'holy_spear'
-                  ? 'holy_hit'
-                  : 'arrow_hit',
+              s.type === 'runic_anvil'
+                ? 'thunder_slam'
+                : s.type === 'runeblade'
+                  ? 'clang'
+                  : s.type === 'holy_spear'
+                    ? 'holy_hit'
+                    : 'arrow_hit',
               s.x
             );
           }
-          this.spawnShockwave(s.x, s.groundY, s.type === 'runeblade' ? 115 : 78, s.color, 0.34, true);
-          this.spawnBurst(s.x, s.groundY - 8, s.type === 'runeblade' ? 14 : 9, s.color, 210, {
+          this.spawnShockwave(s.x, s.groundY, isHeavyWeapon ? 115 : 78, s.color, 0.34, true);
+          this.spawnBurst(s.x, s.groundY - 8, isHeavyWeapon ? 14 : 9, s.color, 210, {
             upBias: 110,
             size: 6
           });
-          this.spawnDecal(s.x, s.type === 'runeblade' ? 76 : 48, 'fissure', s.color, 3.8);
-          if (renderer && s.type === 'runeblade') renderer.triggerShake(6, 0.14);
+          this.spawnDecal(s.x, isHeavyWeapon ? 76 : 48, 'fissure', s.color, 3.8);
+          if (renderer && isHeavyWeapon) renderer.triggerShake(6, 0.14);
           if (s.damage > 0 && s.target && !s.target.isDead && Math.abs(s.target.x - s.x) < 92) {
-            s.target.takeDamage(s.damage, s.owner, s.type === 'runeblade', 55, -60);
+            s.target.takeDamage(s.damage, s.owner, isHeavyWeapon, 55, -60);
           }
         }
       } else {
@@ -767,6 +775,8 @@ export class VFXManager {
         col === '#fde047' ||
         col === '#facc15' ||
         col === '#eab308' ||
+        col === '#f59e0b' ||
+        col === '#d97706' ||
         col === '#fef08a' ||
         col === '#fef9c3' ||
         col === '#ca8a04'
@@ -798,6 +808,11 @@ export class VFXManager {
         pushLight(f.x, f.y - 124, f.state === 'ULTIMATE' ? 385 : 310, 'gold', f.state === 'ULTIMATE' ? 1.98 : 1.75, 90);
         pushLight(f.x, f.y - 95, 240, 'emerald', 1.35, 76);
       }
+      // Torgar's World-Breaker War-Hammer & Ragnarok World-Forge emit Molten Gold + Emerald Jade Runic light!
+      if (f.heroId === 'titan' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isBulwarkActive)) {
+        pushLight(f.x, f.y - 110, f.state === 'ULTIMATE' ? 390 : 300, 'gold', f.state === 'ULTIMATE' ? 1.95 : 1.70, 88);
+        pushLight(f.x + f.facing * 32, f.y - 82, 235, 'emerald', 1.40, 74);
+      }
       // Chronomancer's active Colossal Doomsday Clock & Stasis Hourglass emit intense dual Teal + Gold light!
       if (f.doomsdayClock) {
         pushLight(f.doomsdayClock.x, f.doomsdayClock.y, 410, 'teal', 1.95, 92);
@@ -809,6 +824,10 @@ export class VFXManager {
       }
       if (f.deathAvatar) {
         pushLight(f.deathAvatar.x, f.deathAvatar.y - 140, 340, 'violet', 1.75, 85);
+      }
+      if (f.worldForgeAvatar) {
+        pushLight(f.worldForgeAvatar.x, f.worldForgeAvatar.y - 150, 380, 'gold', 1.88, 88);
+        pushLight(f.worldForgeAvatar.x, f.worldForgeAvatar.y - 110, 280, 'emerald', 1.45, 78);
       }
     }
     for (const p of this.projectiles) {
@@ -1180,7 +1199,7 @@ export class VFXManager {
       }
     }
 
-    // 3. SKY STRIKES: 30fps Heavenly Runeblades, Valkyrie Spears & Starfall Arrows (F00..F11 Flight + F12..F29 Ground Impact)
+    // 3. SKY STRIKES: 30fps Heavenly Runeblades, Valkyrie Spears, Runic Anvils & Starfall Arrows (F00..F11 Flight + F12..F29 Ground Impact)
     for (const s of this.skyStrikes) {
       const isUltStrike = !!s.isUltimate;
       if (!isReflection && isUltStrike !== ultimateOnly) continue;
@@ -1209,6 +1228,28 @@ export class VFXManager {
           bladeSz,
           bladeSz,
           '#38bdf8',
+          fade * (isReflection ? 0.5 : 0.98),
+          isReflection
+        );
+      } else if (s.type === 'runic_anvil') {
+        const titanVfx = assets.titan?.vfx;
+        const anvilSz = s.impacted ? 232 : 212;
+        const col = !s.impacted
+          ? Math.floor((s.flightTime || 0) * 30) % 12
+          : Math.min(29, 12 + Math.floor(Math.min(1, s.linger / Math.max(0.01, s.maxLinger)) * 18));
+        this.drawBloomedSprite(
+          ctx,
+          renderer,
+          titanVfx,
+          col * 208,
+          208,
+          208,
+          208,
+          Math.round(sx - anvilSz * 0.5),
+          Math.round(sy - anvilSz * 0.84),
+          anvilSz,
+          anvilSz,
+          '#f59e0b',
           fade * (isReflection ? 0.5 : 0.98),
           isReflection
         );
@@ -1479,7 +1520,7 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 4B. GLACIAL FROST-CRYSTAL SPIRES (30fps Row 2 of warrior_vfx.png)
+    // 4B. GLACIAL FROST-CRYSTAL SPIRES & TITAN VOLCANIC BASALT-JADE MONOLITHS (30fps Row 2 of warrior_vfx.png / titan_vfx.png)
     for (const cs of this.crystalSpikes) {
       const isUltSpike = !!cs.isUltimate || cs.maxLife >= 0.9;
       if (!isReflection && isUltSpike !== ultimateOnly) continue;
@@ -1489,10 +1530,16 @@ export class VFXManager {
       const fade = Math.min(1, (1 - t) * 2.5);
       const bx = Math.round(cs.x / 2) * 2;
       const by = Math.round(cs.groundY / 2) * 2;
-      const warriorVfx = assets.warrior?.vfx;
+      const isTitanMonolith =
+        cs.heroId === 'titan' ||
+        cs.owner?.heroId === 'titan' ||
+        cs.color === '#f59e0b' ||
+        cs.color === '#10b981' ||
+        cs.color === '#d97706';
+      const spireVfx = isTitanMonolith ? assets.titan?.vfx : assets.warrior?.vfx;
 
       ctx.save();
-      if (warriorVfx && warriorVfx.complete && warriorVfx.naturalWidth) {
+      if (spireVfx && spireVfx.complete && spireVfx.naturalWidth) {
         const spireW = Math.round(cs.width * 3.95);
         const spireH = Math.round(cs.height * 1.44 * pop);
         const spCol = Math.min(29, Math.floor(t * 30));
@@ -1501,7 +1548,7 @@ export class VFXManager {
         this.drawBloomedSprite(
           ctx,
           renderer,
-          warriorVfx,
+          spireVfx,
           spCol * 208,
           416,
           208,
@@ -1510,7 +1557,7 @@ export class VFXManager {
           Math.round(-spireH),
           spireW,
           spireH,
-          '#38bdf8',
+          isTitanMonolith ? '#f59e0b' : '#38bdf8',
           fade * (isReflection ? 0.45 : 0.98),
           isReflection
         );
@@ -1576,7 +1623,7 @@ export class VFXManager {
       ctx.fillRect(px - 1, py - 1, Math.max(1, s - 2), Math.max(1, s - 2));
     }
 
-    // 6. SLASHES: Deeply Saturated Chunky-Pixel Crescent Blade, Scythe & Whirlwind Waves
+    // 6. SLASHES: Deeply Saturated Chunky-Pixel Crescent Blade, Scythe, War-Hammer & Whirlwind Waves
     ctx.globalCompositeOperation = 'source-over';
     for (const s of this.slashes) {
       const isUltSlash = s.radius >= 118;
@@ -1585,15 +1632,12 @@ export class VFXManager {
       const alpha = 1 - t;
       const isFullCircle = Math.abs(s.endAngle - s.startAngle) > Math.PI * 1.8;
       ctx.globalAlpha = alpha * (isReflection ? 0.35 : isFullCircle ? 0.58 : 0.92);
-      const isCyan =
-        s.color === '#38bdf8' ||
-        s.color === '#7dd3fc' ||
-        s.color === '#0284c7' ||
-        s.color === '#bae6fd' ||
-        s.color === '#e0f2fe' ||
-        s.color === '#ffffff' ||
-        s.color === '#0ea5e9' ||
-        s.color === '#0369a1';
+      const isTitanSlash =
+        s.heroId === 'titan' ||
+        s.color === '#f59e0b' ||
+        s.color === '#d97706' ||
+        s.color === '#b45309' ||
+        (s.color === '#fbbf24' && assets.titan?.vfx?.complete);
       const isEmerald = s.color === '#10b981' || s.color === '#34d399' || s.color === '#6ee7b7';
       const isAbyssal =
         s.color === '#c084fc' ||
@@ -1601,7 +1645,7 @@ export class VFXManager {
         s.color === '#7e22ce' ||
         s.color === '#f43f5e' ||
         s.color === '#e879f9';
-      const isRadiant = s.color === '#fde047' || s.color === '#facc15' || s.color === '#f59e0b';
+      const isRadiant = s.color === '#fde047' || s.color === '#facc15';
       const isChrono = s.color === '#2dd4bf' || s.color === '#99f6e4';
 
       // Draw Saturated Chunky-Pixel Slash Wave Sprite at the arc apex
@@ -1616,7 +1660,9 @@ export class VFXManager {
         const slashCol = Math.min(29, Math.floor(t * 30));
         const cropX = slashCol * 208;
         const cropY = 832;
-        if (isAbyssal) {
+        if (isTitanSlash && assets.titan?.vfx?.complete) {
+          sheet = assets.titan.vfx;
+        } else if (isAbyssal) {
           sheet = assets.reaper?.vfx;
         } else if (isEmerald) {
           sheet = assets.archer?.vfx;
@@ -1697,7 +1743,7 @@ export class VFXManager {
       }
     }
 
-    // 8. PROJECTILES: 30fps Astral Arrows, Frost Blade-Waves, Phantom Scythes, Clockwork Saw-Gears, Holy Orbs & Solar Fireballs
+    // 8. PROJECTILES: 30fps Astral Arrows, Frost Blade-Waves, Forge-Waves, Phantom Scythes, Clockwork Saw-Gears, Holy Orbs & Solar Fireballs
     ctx.globalAlpha = 1;
     for (const proj of this.projectiles) {
       const isUltProj = !!proj.isMeteor || !!proj.isUltimate;
@@ -1747,6 +1793,35 @@ export class VFXManager {
           );
           ctx.restore();
         }
+      } else if (proj.type === 'forge_wave') {
+        const titanVfx = assets.titan?.vfx;
+        const dir = Math.sign(proj.vx) || 1;
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.scale(dir, 1);
+        if (titanVfx && titanVfx.complete && titanVfx.naturalWidth) {
+          const waveSize = Math.max(136, Math.round(proj.radius * 4.5));
+          this.drawBloomedSprite(
+            ctx,
+            renderer,
+            titanVfx,
+            pCol * 208,
+            0,
+            208,
+            208,
+            -waveSize * 0.5,
+            -waveSize * 0.5,
+            waveSize,
+            waveSize,
+            '#f59e0b',
+            0.98,
+            isReflection
+          );
+        } else {
+          ctx.fillStyle = '#f59e0b';
+          ctx.fillRect(-18, -14, 36, 28);
+        }
+        ctx.restore();
       } else if (proj.type === 'clock_gear') {
         const vfxSheet = assets.chronomancer?.vfx;
         const dir = Math.sign(proj.vx) || 1;
@@ -2211,6 +2286,23 @@ export class VFXManager {
           crestSize * 1.04,
           crestSize * 1.04,
           '#2dd4bf',
+          alpha,
+          false
+        );
+      } else if (ca.theme === 'forge' && assets.titan?.vfx?.complete) {
+        this.drawBloomedSprite(
+          ctx,
+          renderer,
+          assets.titan.vfx,
+          sealCol * 208,
+          624,
+          208,
+          208,
+          -crestSize * 0.54,
+          -crestSize * 0.58,
+          crestSize * 1.08,
+          crestSize * 1.08,
+          '#f59e0b',
           alpha,
           false
         );

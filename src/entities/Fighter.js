@@ -375,7 +375,7 @@ export class Fighter {
         const ultRangeOk =
           this.heroId === 'warrior'
             ? dist <= 400
-            : this.heroId === 'reaper'
+            : this.heroId === 'reaper' || this.heroId === 'titan'
               ? dist <= 450
               : true;
         if (this.mana >= this.maxMana && !enemy.isInvulnerable && ultRangeOk) {
