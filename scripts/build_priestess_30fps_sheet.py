@@ -191,63 +191,115 @@ def composite_over(base, over):
     return res
 
 
+def neutralize_priestess_baked_arms(cell):
+    """
+    Erases all baked right-arm pixels (x >= 29, y = 12..30) and replaces any baked
+    prayer hands/sleeves on Seraphina's chest (x = 21..28, y = 18..27) with clean
+    white-and-gold cathedral bodice shading (ROBE_CREAM, ROBE_SHADOW, and a 1px
+    vertical GOLD_MID center seam at x = 25).
+    """
+    out = cell.copy()
+    # Erase any protruding baked right arm / sleeve / staff pixels on the right of torso
+    out[12:31, 29:44] = 0
+
+    # Replace baked prayer hands / bright sleeve pixels on her chest with clean bodice shading
+    for y in range(18, 28):
+        for x in range(21, 29):
+            if out[y, x, 3] == 0:
+                continue
+            if x == 28 and y <= 24:
+                out[y, x] = ROBE_SHADOW
+            elif x == 25:
+                out[y, x] = GOLD_MID
+            elif 23 <= x <= 26:
+                out[y, x] = ROBE_CREAM
+            else:
+                out[y, x] = ROBE_SHADOW
+    return fill_layer_pinholes(out, 1, 50, 1, 50, require_3_neighbors=True)
+
+
 def make_clean_templates(src):
     """
-    Strips 100% of the baked-in staff from every source pose so we can articulate
-    EXACTLY ONE crisp Celestial Sun-Staff (`draw_celestial_staff`) per frame with
-    zero duplicate staffs or leftover shaft tips.
+    Strips 100% of the baked-in staff AND baked arms/chest-hands from every source pose
+    so we can articulate EXACTLY ONE crisp Celestial Sun-Staff and ONE 2-Bone IK Staff Arm
+    (`draw_celestial_staff`) per frame with zero duplicate staffs or chest-hands.
     """
-    # 1. Clean standing body (no baked staff at x >= 30 or bottom tip at y=42..46)
+    # 1. Clean standing body (no baked staff or baked arms/chest-hands, unified full-length gown y=0..46)
     stand = src['idle'].copy()
-    stand[:22, 30:] = 0
-    stand[22:32, 30:] = 0
+    stand[:22, 29:] = 0
+    stand[22:32, 29:] = 0
     stand[32:37, 31:] = 0
     stand[42:44, 31:] = 0
+    stand[43, :11] = 0
     stand[44:47, 29:] = 0
+    # Unify lower gown hem at y=44..45 and subtle golden slipper tips at y=46 (erase split boots at y=47..51)
+    stand[45:52, :] = 0
+    for x in range(14, 28):
+        stand[44, x] = GOLD_MID if 16 <= x <= 26 else OUTLINE
+        stand[45, x] = ROBE_SHADOW if 15 <= x <= 26 else OUTLINE
+    for sx_tip in (18, 25):
+        for dx_t in (-1, 0, 1):
+            stand[46, sx_tip + dx_t] = GOLD_BRIGHT if dx_t == 0 else OUTLINE
+    stand = neutralize_priestess_baked_arms(stand)
     stand = fill_layer_pinholes(add_outline_to_layer(stand), 1, 50, 1, 50, require_3_neighbors=True)
 
     # Extract Seraphina's Back Greave/Boot and Front Greave/Boot from `stand`
     leg_back_patch = np.zeros((52, 52, 4), dtype=np.uint8)
     leg_front_patch = np.zeros((52, 52, 4), dtype=np.uint8)
-    leg_back_patch[40:49, 15:22] = stand[40:49, 15:22]
-    leg_front_patch[40:50, 23:29] = stand[40:50, 23:29]
+    leg_back_patch[40:48, 15:22] = stand[40:48, 15:22]
+    leg_front_patch[40:48, 23:29] = stand[40:48, 23:29]
 
-    # Upper torso + upper vestments (without lower boots y >= 40, keeping left train x <= 14)
+    # Upper torso + upper vestments
     stand_upper = stand.copy()
     stand_upper[40:, 15:] = 0
     stand_upper = fill_layer_pinholes(add_outline_to_layer(stand_upper), 1, 50, 1, 50, require_3_neighbors=True)
 
-    # 2. Clean upward-prayer body (from atk_up)
+    # 2. Clean upward-prayer body (from atk_up, with baked arm and chest-hands neutralized and unified gown)
     cast_up = src['atk_up'].copy()
-    cast_up[:14, 31:] = 0
-    cast_up[14:19, 32:] = 0
-    cast_up[19:26, 30:] = 0
-    cast_up[33:36, 31:] = 0
-    cast_up[42:44, 31:] = 0
-    cast_up[44:46, 29:] = 0
+    cast_up[:14, 29:] = 0
+    cast_up[14:31, 29:] = 0
+    cast_up[30:52, :] = stand[30:52, :]
+    cast_up = neutralize_priestess_baked_arms(cast_up)
     cast_up = fill_layer_pinholes(add_outline_to_layer(cast_up), 1, 50, 1, 50, require_3_neighbors=True)
 
-    # 3. Clean forward-extension lunging body (from atk_ext, with billowing hair & parted cape)
+    # 3. Clean forward-extension lunging body (from atk_ext, with baked right arm stripped and unified swept gown)
     cast_ext = src['atk_ext'].copy()
-    cast_ext[13:23, 32:] = 0
+    cast_ext[:31, 29:] = 0
+    cast_ext[14:30, :11] = 0
+    cast_ext[20:30, 18:29] = stand[20:30, 18:29]
+    cast_ext[30:52, :] = 0
+    for y in range(30, 48):
+        v = (y - 30) / 16.0
+        sweep_dx = int(round(1.0 - v * 2.0))
+        for x in range(4, 33):
+            if stand[y, x, 3] > 0:
+                cast_ext[y, max(2, min(49, x + sweep_dx))] = stand[y, x]
+    cast_ext = neutralize_priestess_baked_arms(cast_ext)
     cast_ext = fill_layer_pinholes(add_outline_to_layer(cast_ext), 1, 50, 1, 50, require_3_neighbors=True)
 
     cast_ext_upper = cast_ext.copy()
     cast_ext_upper[40:, 14:] = 0
     cast_ext_upper = fill_layer_pinholes(add_outline_to_layer(cast_ext_upper), 1, 50, 1, 50, require_3_neighbors=True)
 
-    # 4. Clean kneeling prayer body (from kneel1, removing baked staff at x >= 31..33)
-    kneel = src['kneel1'].copy()
-    kneel[:23, 32:] = 0
-    kneel[23:43, 33:] = 0
-    kneel[43:48, 31:] = 0
-    # Shift kneeling pose up by 1px if it touches y=50 so it never clips at bottom
-    ys_k, _ = np.where(kneel[:, :, 3] > 0)
-    if len(ys_k) > 0 and ys_k.max() >= 50:
-        kn_s = np.zeros_like(kneel)
-        kn_s[:51, :] = kneel[1:, :]
-        kneel = kn_s
-    kneel = fill_layer_pinholes(add_outline_to_layer(kneel), 1, 50, 1, 50, require_3_neighbors=True)
+    # 4. Clean kneeling prayer bodies (kneel1, kneel2)
+    kneel1 = src['kneel1'].copy()
+    kneel2 = src['kneel3'].copy()
+    for kn_idx, kn in enumerate((kneel1, kneel2)):
+        kn[:31, 29:] = 0
+        kn[31:43, 33:] = 0
+        kn[43:48, 31:] = 0
+        kn = neutralize_priestess_baked_arms(kn)
+        ys_k, _ = np.where(kn[:, :, 3] > 0)
+        if len(ys_k) > 0 and ys_k.max() >= 50:
+            kn_s = np.zeros_like(kn)
+            kn_s[:51, :] = kn[1:, :]
+            kn = kn_s
+        kn = fill_layer_pinholes(add_outline_to_layer(kn), 1, 50, 1, 50, require_3_neighbors=True)
+        if kn_idx == 0:
+            kneel1 = kn
+        else:
+            kneel2 = kn
+    kneel = kneel1.copy()
 
     # 5. Clean horizontal fallen body (from fall, removing baked diagonal staff on her back at y <= 33!)
     fall = src['fall'].copy()
@@ -257,11 +309,18 @@ def make_clean_templates(src):
     fall[34, 39:] = 0
     fall = fill_layer_pinholes(add_outline_to_layer(fall), 1, 50, 1, 50, require_3_neighbors=True)
 
-    # 6. Clean forward dash body (from dash, removing horizontal baked staff across waist & front)
+    # 6. Clean forward dash body (from dash, removing horizontal baked staff, baked arms, and 3-prong lower skirt)
     dash = src['dash'].copy()
-    dash[18:29, 31:] = 0
-    dash[20:29, 19:31] = stand[20:29, 19:31]
-    dash[22:32, 30:] = 0
+    dash[15:31, 29:] = 0
+    dash[20:30, 18:29] = stand[20:30, 18:29]
+    dash[30:52, :] = 0
+    for y in range(30, 48):
+        v = (y - 30) / 16.0
+        sweep_dx = -int(round(v * 2.0))
+        for x in range(4, 33):
+            if stand[y, x, 3] > 0:
+                dash[y, max(2, min(49, x + sweep_dx))] = stand[y, x]
+    dash = neutralize_priestess_baked_arms(dash)
     dash = fill_layer_pinholes(add_outline_to_layer(dash), 1, 50, 1, 50, require_3_neighbors=True)
 
     return {
@@ -273,6 +332,8 @@ def make_clean_templates(src):
         'cast_ext': cast_ext,
         'cast_ext_upper': cast_ext_upper,
         'kneel': kneel,
+        'kneel1': kneel1,
+        'kneel2': kneel2,
         'fall': fall,
         'dash': dash,
     }
@@ -396,7 +457,7 @@ def draw_mini_wings_on_back(frame, shoulder_x=22, shoulder_y=18, unfurl=1.0, pha
     return composite_over(wing_layer, frame)
 
 
-def solve_ik_elbow(sx, sy, hx, hy, L1=4.8, L2=4.5, bend_side=1.0):
+def solve_ik_elbow(sx, sy, hx, hy, L1=5.6, L2=5.4, bend_side=1.0):
     """
     2-Bone Inverse Kinematics solver returning the anatomical elbow joint (ex, ey)
     between shoulder (sx, sy) and hand (hx, hy).
@@ -425,14 +486,14 @@ def draw_ik_priestess_arm(
     sy,
     hx,
     hy,
-    L1=4.8,
-    L2=4.5,
+    L1=5.6,
+    L2=5.4,
     bend_side=1.0,
     is_prayer_hand=False,
     dim_factor=1.0,
 ):
     """
-    Renders Seraphina's 2-Bone IK Cathedral Arm:
+    Renders Seraphina's single 2-Bone IK Cathedral Arm:
     - Rotating gold-and-ivory cathedral shoulder pauldron/cap at `(sx, sy)` (`GOLD_BRIGHT`, `GOLD_MID`, `ROBE_PURE`)
     - 3px-thick white silk upper sleeve (`ROBE_PURE`, `ROBE_CREAM`, `ROBE_SHADOW`) from `(sx, sy)` to `(ex, ey)`
     - Golden elbow trim at `(ex, ey)`
@@ -451,11 +512,11 @@ def draw_ik_priestess_arm(
 
     ex, ey = solve_ik_elbow(sx, sy, hx, hy, L1=L1, L2=L2, bend_side=bend_side)
 
-    c_pure = dim_col(ROBE_CREAM if is_prayer_hand else ROBE_PURE)
-    c_cream = dim_col(VEST_MID if is_prayer_hand else ROBE_CREAM)
-    c_shad = dim_col(VEST_DEEP if is_prayer_hand else ROBE_SHADOW)
-    c_gold_hi = dim_col(GOLD_MID if is_prayer_hand else GOLD_BRIGHT)
-    c_gold_mid = dim_col(GOLD_DARK if is_prayer_hand else GOLD_MID)
+    c_pure = dim_col(ROBE_PURE)
+    c_cream = dim_col(ROBE_CREAM)
+    c_shad = dim_col(ROBE_SHADOW)
+    c_gold_hi = dim_col(GOLD_BRIGHT)
+    c_gold_mid = dim_col(GOLD_MID)
 
     # 1. 3px-thick white silk upper sleeve from (sx, sy) to (ex, ey)
     u1x, u1y = ex - sx, ey - sy
@@ -486,14 +547,13 @@ def draw_ik_priestess_arm(
         )
 
     # 3. Rotating gold-and-ivory cathedral shoulder pauldron/cap at (sx, sy)
-    if not is_prayer_hand:
-        ux1, uy1 = u1x / d1, u1y / d1
-        for p_step in (-1.2, -0.4, 0.4, 1.2):
-            px_s = sx + ux1 * 0.9 + n1x * p_step
-            py_s = sy + uy1 * 0.9 + n1y * p_step
-            set_px(layer, px_s, py_s, c_gold_hi if abs(p_step) > 0.8 else c_pure)
-            set_px(layer, sx + n1x * p_step, sy + n1y * p_step, c_gold_mid)
-        set_px(layer, sx, sy - 1, c_gold_hi)
+    ux1, uy1 = u1x / d1, u1y / d1
+    for p_step in (-1.2, -0.4, 0.4, 1.2):
+        px_s = sx + ux1 * 0.9 + n1x * p_step
+        py_s = sy + uy1 * 0.9 + n1y * p_step
+        set_px(layer, px_s, py_s, c_gold_hi if abs(p_step) > 0.8 else c_pure)
+        set_px(layer, sx + n1x * p_step, sy + n1y * p_step, c_gold_mid)
+    set_px(layer, sx, sy - 1, c_gold_hi)
 
     # 4. Golden elbow trim at (ex, ey)
     set_px(layer, ex, ey, c_gold_hi)
@@ -509,7 +569,7 @@ def draw_ik_priestess_arm(
 
 def draw_celestial_staff(
     base_frame,
-    shoulder=(28, 19),
+    shoulder=(26, 19),
     staff_deg=-72.0,
     reach=5.2,
     shaft_up=14.0,
@@ -523,14 +583,14 @@ def draw_celestial_staff(
     phase_rad=0.0,
 ):
     """
-    Renders Seraphina's single articulated Celestial Sun-Staff AND 2-Bone IK Cathedral Arms:
-    - Left Prayer/Blessing IK Arm (`draw_ik_priestess_arm`) drawn BEFORE the staff shaft.
-    - Dynamic wide arm-swing trajectory `(gx, gy)` driven by `staff_deg` and `reach`.
+    Renders Seraphina's single articulated Celestial Sun-Staff AND single Right 2-Bone IK Cathedral Arm:
+    - ZERO secondary chest/prayer hand (`is_prayer_hand` removed) so no hand ever appears stuck to her chest!
+    - Staff grip `gx` is ALWAYS out in front of Seraphina's torso (`gx = 33..39, gy = 13..24`, or `gx = 31..34, gy = 11..14`
+      during high overhead windup) — NEVER `gx <= 29` on her chest!
     - Auto-foreshortened golden-ivory staff shaft from butt `(bx0, by0)` through `(gx, gy)` to finial `(tx, ty)`
       clamped inside `x in [7..43], y in [7..43]` so the 8-point Starlight Finial rays NEVER clip at cell borders.
     - Right Staff IK Arm (`draw_ik_priestess_arm`) drawn OVER the staff shaft.
     """
-    rear_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     staff_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     lead_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     fx_layer = np.zeros((52, 52, 4), dtype=np.uint8)
@@ -539,22 +599,23 @@ def draw_celestial_staff(
     ux, uy = math.cos(rad), math.sin(rad)
     px, py = -uy, ux
 
-    sx, sy = float(shoulder[0]), float(shoulder[1])
+    sx, sy = 26.0, float(shoulder[1])
+    if not draw_arm:
+        sx = float(shoulder[0])
 
     # Expressive arm-swing trajectory driven by staff_deg and reach:
-    # Convert screen-space staff_deg (-88..-70 upright windup, -15..+35 forward/downward swing)
-    # into tilt from vertical (2..20 deg windup, 75..125 deg forward/downward swing)
     tilt_from_up = (staff_deg + 90.0) if staff_deg <= 5.0 else (staff_deg if staff_deg <= 88.0 else staff_deg + 90.0)
     if staff_deg > 5.0 and staff_deg <= 45.0:
-        # Downward aerial smite (+25..+35 deg below horizontal = 115..125 deg from vertical)
         tilt_from_up = staff_deg + 90.0
     swing_rad = math.radians(tilt_from_up - 45.0)
 
     if draw_arm:
-        gx = sx + reach * 0.85 + math.sin(swing_rad) * 4.5
-        gy = sy + 0.5 + math.sin(swing_rad) * 4.2 + (reach - 5.5) * 0.4
-        gx = max(8.0, min(42.0, gx))
-        gy = max(8.0, min(42.0, gy))
+        # Keep gx ALWAYS out in front of Seraphina's torso (31..34 in overhead windup, 33..39 in idle/walk/cast)
+        min_gx = 31.5 if tilt_from_up < 16.0 else 33.0
+        gx = 34.5 + math.sin(swing_rad) * 3.5 + (reach - 5.2) * 0.65
+        gx = max(min_gx, min(39.0, gx))
+        gy = sy - 0.5 + math.sin(swing_rad) * 4.5 + (reach - 5.2) * 0.45
+        gy = max(11.5, min(max(24.0, sy + 3.5), gy))
     else:
         gx = sx + ux * 1.2 + abs(math.cos(rad)) * reach
         gy = sy + uy * 1.2 + math.sin(rad) * 1.5
@@ -569,31 +630,7 @@ def draw_celestial_staff(
             c[3],
         )
 
-    # 1. Left Prayer / Blessing IK Arm (drawn BEFORE the staff)
-    if draw_arm:
-        if hand2_override is not None:
-            lhx, lhy = float(hand2_override[0]), float(hand2_override[1])
-        else:
-            # Moves smoothly from prayer pose near her chest to an outstretched blessing gesture during casts
-            forward_t = max(0.0, min(1.0, (tilt_from_up - 20.0) / 65.0))
-            lhx = (sx - 1.5) * (1.0 - forward_t) + (gx - 2.8) * forward_t
-            lhy = (sy - 0.5) * (1.0 - forward_t) + (gy - 1.2) * forward_t
-        lhx = max(6.0, min(42.0, lhx))
-        lhy = max(6.0, min(43.0, lhy))
-        draw_ik_priestess_arm(
-            rear_arm_layer,
-            sx - 3.0,
-            sy + 1.0,
-            lhx,
-            lhy,
-            L1=4.3,
-            L2=4.0,
-            bend_side=1.0,
-            is_prayer_hand=True,
-            dim_factor=dim_factor,
-        )
-
-    # 2. Auto-foreshorten shaft_up and shaft_down dynamically so Finial (tx, ty) stays inside [7..43]
+    # 1. Auto-foreshorten shaft_up and shaft_down dynamically so Finial (tx, ty) stays inside [7..43]
     eff_up = float(shaft_up)
     if ux > 0.05:
         eff_up = min(eff_up, (43.0 - gx) / ux)
@@ -632,7 +669,7 @@ def draw_celestial_staff(
     for w in (-2, -1, 0, 1, 2):
         set_px(staff_layer, cx_neck + px * w, cy_neck + py * w, dim_col(GOLD_BRIGHT if abs(w) <= 1 else GOLD_DARK))
 
-    # 3. Ornate Celestial Sun-Ring & 8-Point Starlight Finial centered at (tx, ty)
+    # 2. Ornate Celestial Sun-Ring & 8-Point Starlight Finial centered at (tx, ty)
     ring_r = 3.0
     for step in range(16):
         a = (step / 16.0) * 2.0 * math.pi
@@ -660,23 +697,22 @@ def draw_celestial_staff(
     set_px(staff_layer, tx - px * 1.0, ty - py * 1.0, dim_col(GOLD_BRIGHT))
     set_px(staff_layer, tx, ty, dim_col(WHITE_PURE if dim_factor > 0.6 else GOLD_MID))
 
-    # 4. Right Staff IK Arm drawn OVER the staff shaft!
+    # 3. Single Right Staff IK Arm drawn OVER the staff shaft!
     if draw_arm:
-        bend_dir = -1.0 if (gy < sy - 2.5 and gx <= sx + 2.5) else 1.0
         draw_ik_priestess_arm(
             lead_arm_layer,
             sx,
             sy,
             gx,
             gy,
-            L1=4.8,
-            L2=4.5,
-            bend_side=bend_dir,
+            L1=6.0,
+            L2=5.8,
+            bend_side=1.0,
             is_prayer_hand=False,
             dim_factor=dim_factor,
         )
 
-    # 5. Dynamic Charge Runes & Sacred Starlight Cast Flash at Finial Tip (clamped inside [2..49])
+    # 4. Dynamic Charge Runes & Sacred Starlight Cast Flash at Finial Tip (clamped inside [2..49])
     if charge_level >= 1:
         for d in range(1, charge_level + 2):
             col = WHITE_PURE if d == 1 else (GOLD_BRIGHT if d == 2 else STAR_CREAM)
@@ -703,7 +739,7 @@ def draw_celestial_staff(
         for dx_d, dy_d in [(-2, -2), (2, -2), (-2, 2), (2, 2)]:
             set_px(fx_layer, max(2.0, min(49.0, fx_cx + dx_d)), max(2.0, min(49.0, fx_cy + dy_d)), GOLD_BRIGHT)
 
-    # 6. Optional Shimmering Golden Rose-Window Barrier in front of Crouching Seraphina (Row 7)
+    # 5. Optional Shimmering Golden Rose-Window Barrier in front of Crouching Seraphina (Row 7)
     if draw_rose_barrier:
         bcx = min(45.0, gx + 7.5)
         bcy = max(10.0, min(41.0, gy + 1.5))
@@ -716,326 +752,209 @@ def draw_celestial_staff(
         draw_line_px(fx_layer, bcx, max(2.0, bcy - 6), bcx, min(49.0, bcy + 6), STAR_CREAM)
         draw_line_px(fx_layer, max(2.0, bcx - 2), bcy, min(49.0, bcx + 2), bcy, WHITE_PURE)
 
-    out = composite_over(base_frame, rear_arm_layer)
-    out = composite_over(out, staff_layer)
+    out = composite_over(base_frame, staff_layer)
     out = composite_over(out, lead_arm_layer)
     out = composite_over(out, fx_layer)
     return out
 
 
 
+
 def render_walk_legs(tpl, f):
     """
     Renders Seraphina's graceful 30-frame 2-step cathedral stride (F00..F14 step A, F15..F29 step B)
-    in true anatomical depth order:
-    1. Backmost Layer: Flowing blonde hair & cathedral robe train with sacred breeze wave.
-    2. Far Leg Layer: Sculpted white-gold thigh + knee + boot (`leg_back`) shaded 0.80x for clear depth separation.
-    3. Parted Cathedral Stole / Tabard: Golden-trimmed white stole swaying dynamically at y=31..39.
-    4. Near Leg Layer: Full-brightness white-gold greave + boot (`leg_front`) with smooth knee-lift & stride reach.
-    5. Upper Torso & Head: Gentle 2-step vertical cadence bob (+1px forward posture).
+    keeping her full-length white-and-gold gown (y=0..46) intact from `tpl['stand']` (NEVER slicing
+    at y=36 or pasting separate legs underneath a cut dress!):
+    - Upper body (y=0..29): gentle 2-step vertical cadence bob (`bob_y`) and flowing hair wave.
+    - Lower gown (y=30..46): smooth horizontal stride-sway and pleat wave (`v = (y - 30) / 16.0`)
+      with subtle golden slipper tips peeking at y=45..46.
     """
     phase = (f / 30.0) * 2.0 * math.pi
     bob_y = int(round(math.cos(phase * 2.0) * 1.0))
 
     stand = tpl['stand'].copy()
-    train_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    out = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    # 1. Extract Left Hair & Cathedral Robe Train (x <= 18, y = 12..46) with pure horizontal traveling wave
-    for y in range(12, 47):
+    # 1. Upper Body, Head & Flowing Hair (y = 0..29) with vertical bob_y
+    for y in range(0, 30):
         ny = y + bob_y
         if not (2 <= ny < 50):
             continue
-        u = (y - 12) / 34.0
-        wave_dx = int(round(-u * 1.8 + math.sin(phase - u * 3.2) * (1.4 * u)))
-        for x in range(1, 19):
+        u_hair = max(0.0, (y - 12) / 34.0)
+        hair_dx = int(round(math.sin(phase - u_hair * 3.0) * (1.2 * u_hair)))
+        for x in range(1, 33):
             if stand[y, x, 3] == 0:
                 continue
-            if y >= 39 and x > 14:
+            if x <= 16 and y >= 12:
+                cx = max(2, min(20, x + hair_dx))
+                out[ny, cx] = stand[y, x]
+                if x >= 12:
+                    out[ny, x] = stand[y, x]
+            else:
+                out[ny, x] = stand[y, x]
+
+    # When bob_y == -1, duplicate row 29 so shifting y=0..29 up by 1px never leaves a waist slit
+    if bob_y < 0:
+        out[29, 12:30] = stand[29, 12:30]
+
+    # 2. Full-Length White-and-Gold Cathedral Gown (y = 30..44) with smooth stride-sway & pleat wave
+    for y in range(30, 45):
+        v = (y - 30) / 16.0
+        sway_dx = int(round(math.sin(phase) * 2.5 * v))
+        wave_dx = int(round(math.cos(phase - v * 2.0) * 1.5 * v))
+        for x in range(4, 33):
+            if stand[y, x, 3] == 0:
                 continue
-            cx = max(2, min(21, x + wave_dx))
-            train_layer[ny, cx] = stand[y, x]
-            if x >= 11 and y <= 39:
-                train_layer[ny, x] = stand[y, x]
-                if x + 1 < 21:
-                    train_layer[ny, x + 1] = stand[y, x]
-    train_layer = fill_layer_pinholes(train_layer, x0=2, x1=22, y0=10, y1=49, require_3_neighbors=False)
+            if x <= 15:
+                nx = max(2, min(49, x + wave_dx))
+                out[y, nx] = stand[y, x]
+                if x >= 13:
+                    out[y, max(2, min(49, x + sway_dx))] = stand[y, x]
+            else:
+                nx = max(2, min(49, x + sway_dx + wave_dx))
+                out[y, nx] = stand[y, x]
 
-    # 2. Extract Upper Torso, Skirt, Halo & Head (keep torso vestments down to y=36..38)
-    for y in range(0, 37):
-        ny = y + bob_y
-        if not (2 <= ny < 50):
-            continue
-        lean_dx = 1 if y <= 28 else 0
-        for x in range(14, 32):
-            if stand[y, x, 3] > 0:
-                torso_layer[ny, min(49, x + lean_dx)] = stand[y, x]
-                if lean_dx > 0 and x >= 15 and torso_layer[ny, x, 3] == 0:
-                    torso_layer[ny, x] = stand[y, x]
+        # Animated vertical golden stole & pleat highlights along the swaying gown front
+        pleat_cx = int(round(23.5 + sway_dx + wave_dx * 0.6))
+        if 31 <= y <= 43:
+            if 2 <= pleat_cx < 49:
+                out[y, pleat_cx] = GOLD_BRIGHT if y % 2 == 0 else GOLD_MID
+            if 2 <= pleat_cx - 2 < 49 and out[y, pleat_cx - 2, 3] > 0:
+                out[y, pleat_cx - 2] = ROBE_PURE
+            if 2 <= pleat_cx + 2 < 49 and out[y, pleat_cx + 2, 3] > 0:
+                out[y, pleat_cx + 2] = ROBE_CREAM
 
-    # Fill any transparent hip/skirt seam pixels at y=29..35, x=20..31 with ROBE_SHADOW / ROBE_CREAM
-    for y in range(29, 36):
-        ny = max(2, min(49, y + bob_y))
-        for x in range(20, 30):
-            if torso_layer[ny, x, 3] == 0:
-                torso_layer[ny, x] = ROBE_CREAM if 22 <= x <= 27 else ROBE_SHADOW
-    torso_layer = fill_layer_pinholes(torso_layer, x0=12, x1=34, y0=4, y1=40, require_3_neighbors=False)
+    # 3. Lower Golden Hem & Subtle Golden Slipper Tips Peeking at y = 45..46
+    v_hem = 15.0 / 16.0
+    hem_dx = int(round(math.sin(phase) * 2.5 * v_hem + math.cos(phase - v_hem * 2.0) * 1.5 * v_hem))
+    for x in range(13, 28):
+        if stand[44, x, 3] > 0:
+            nx = max(2, min(49, x + hem_dx))
+            out[44, nx] = GOLD_MID if 15 <= x <= 26 else stand[44, x]
 
-    hip_x = 23.0
-    hip_y = 33.5 + bob_y
+    # Two subtle golden slipper tips peeking gracefully at y = 45..46 as she strides
+    slip_a_x = int(round(18.5 + hem_dx - math.sin(phase) * 2.0))
+    slip_b_x = int(round(24.5 + hem_dx + math.sin(phase) * 2.0))
+    for sx_tip, is_lead in [(slip_a_x, math.sin(phase) < 0), (slip_b_x, math.sin(phase) >= 0)]:
+        col_top = GOLD_BRIGHT if is_lead else GOLD_MID
+        col_bot = GOLD_MID if is_lead else GOLD_DARK
+        for dx_t in (-1, 0, 1):
+            px_x = max(2, min(49, sx_tip + dx_t))
+            out[45, px_x] = col_top if dx_t >= 0 else OUTLINE
+            out[46, px_x] = col_bot if dx_t == 0 else OUTLINE
 
-    def build_striding_leg(boot_patch, orig_cx, swing_phase, is_far_leg=False):
-        layer = np.zeros((52, 52, 4), dtype=np.uint8)
-        s_val = math.sin(swing_phase)
-        c_val = math.cos(swing_phase)
-
-        knee_lift = max(0.0, c_val)
-        knee_x = hip_x + s_val * 4.2 + knee_lift * 1.8
-        knee_y = hip_y + 5.0 - knee_lift * 1.6
-
-        foot_target_x = 23.5 + s_val * 5.6 - knee_lift * 1.8
-        foot_lift_dy = bob_y - int(round(knee_lift * 2.5))
-
-        boot_rot_deg = s_val * 18.0 - knee_lift * 20.0
-        pil_boot = Image.fromarray(boot_patch, mode='RGBA')
-        rot_boot = np.array(
-            pil_boot.rotate(boot_rot_deg, resample=Image.NEAREST, center=(orig_cx, 42.0)),
-            dtype=np.uint8
-        )
-
-        dx_boot = int(round(foot_target_x - orig_cx))
-        for y in range(37, 52):
-            for x in range(4, 50):
-                if rot_boot[y, x, 3] > 0:
-                    ny = min(49, max(35, y + foot_lift_dy))
-                    nx = min(49, max(6, x + dx_boot))
-                    px_col = rot_boot[y, x].copy()
-                    if is_far_leg:
-                        px_col[0] = int(px_col[0] * 0.78)
-                        px_col[1] = int(px_col[1] * 0.78)
-                        px_col[2] = int(px_col[2] * 0.82)
-                    layer[ny, nx] = px_col
-
-        ank_x = foot_target_x + math.sin(math.radians(boot_rot_deg)) * 1.2
-        ank_y = 42.0 + foot_lift_dy
-
-        if is_far_leg:
-            c_dark = VEST_DEEP
-            c_mid = VEST_SHADOW
-            c_hi = VEST_MID
-            c_greave = GOLD_DARK
-            c_gold = GOLD_MID
-        else:
-            c_dark = VEST_SHADOW
-            c_mid = VEST_MID
-            c_hi = VEST_LIGHT
-            c_greave = VEST_LIGHT
-            c_gold = GOLD_BRIGHT
-
-        # Sculpted Cathedral Pleated Skirt / Thigh (Hip -> Knee)
-        for off_x, col in [(-2.2, c_dark), (-1.4, c_mid), (-0.6, c_hi), (0.2, c_hi), (1.0, c_hi), (1.7, c_mid), (2.4, c_dark)]:
-            draw_line_px(layer, hip_x + off_x, hip_y - 1.5, knee_x + off_x * 0.85, knee_y, col)
-
-        # Sculpted White-and-Gold Greave (Knee -> Boot Top)
-        for off_x, col in [(-1.4, c_dark), (-0.6, c_greave), (0.2, c_gold), (0.9, c_greave), (1.4, c_dark)]:
-            draw_line_px(layer, knee_x + off_x, knee_y, ank_x + off_x * 0.85, ank_y, col)
-
-        # Golden Winged Knee-Guard highlight
-        set_px(layer, knee_x, knee_y, c_gold)
-        set_px(layer, knee_x + 1, knee_y, c_gold)
-        return fill_layer_pinholes(layer, x0=4, x1=49, y0=30, y1=50, require_3_neighbors=False)
-
-    far_leg = build_striding_leg(tpl['leg_back'], 18.5, phase + math.pi, is_far_leg=True)
-    near_leg = build_striding_leg(tpl['leg_front'], 25.5, phase, is_far_leg=False)
-
-    # Dynamic white-and-gold cathedral stole / front tabard swaying between parted vestments
-    stole_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    flap_dx = math.sin(phase) * 2.0
-    stole_cols = [
-        (-4.0, TEAL_DEEP),
-        (-3.2, TEAL_LINING),
-        (-2.4, VEST_SHADOW),
-        (-1.6, VEST_MID),
-        (-0.8, VEST_MID),
-        (0.0, VEST_LIGHT),
-        (0.8, GOLD_BRIGHT),
-        (1.6, VEST_LIGHT),
-        (2.4, GOLD_MID),
-        (3.0, GOLD_MID),
-    ]
-    for off_x, col in stole_cols:
-        draw_line_px(
-            stole_layer,
-            hip_x + off_x,
-            hip_y - 2.0,
-            hip_x + off_x + flap_dx * 0.85,
-            hip_y + 7.0,
-            col
-        )
-    stole_layer = fill_layer_pinholes(stole_layer, x0=14, x1=34, y0=29, y1=45, require_3_neighbors=False)
-
-    out = composite_over(train_layer, torso_layer)
-    out = composite_over(out, far_leg)
-    out = composite_over(out, stole_layer)
-    out = composite_over(out, near_leg)
-    return fill_layer_pinholes(out, 1, 50, 1, 50, require_3_neighbors=True)
+    return fill_layer_pinholes(out, 1, 50, 1, 50, require_3_neighbors=False)
 
 
 def make_crouch_body(tpl, crouch_depth):
     """
-    Constructs a clean Benediction Prayer crouch body with `crouch_depth` in [1..7] logical pixels:
-    - Anchors Seraphina's kneeling lower vestments (`tpl['kneel']` y=35..49) firmly on the floor when depth >= 4,
-      or compressed standing legs when depth in 1..3.
-    - Lowers her upper torso, flowing hair, and head smoothly by `crouch_depth` pixels (up to 7px lower!).
+    Constructs a clean Benediction Prayer crouch body with `crouch_depth` in [1..7] logical pixels
+    by smoothly lowering the upper body (y=0..29) and vertically compressing the full-length
+    white-and-gold gown (y=30..46) without any horizontal cut at y=36.
     """
+    stand = tpl['stand'].copy()
     canvas = np.zeros((52, 52, 4), dtype=np.uint8)
-    if crouch_depth >= 4:
-        canvas[35:50, :33] = tpl['kneel'][35:50, :33]
-        upper = tpl['stand_upper']
-        for y in range(0, 37):
-            ny = y + crouch_depth
-            if 2 <= ny < 49:
-                for x in range(0, 33):
-                    if upper[y, x, 3] > 0:
-                        canvas[ny, x] = upper[y, x]
-    else:
-        canvas[36:50, :32] = tpl['stand'][36:50, :32]
-        upper = tpl['stand_upper']
-        for y in range(0, 37):
-            ny = y + crouch_depth
-            if 2 <= ny < 49:
-                for x in range(0, 33):
-                    if upper[y, x, 3] > 0:
-                        canvas[ny, x] = upper[y, x]
+    d = max(0, min(7, int(crouch_depth)))
 
-    # Fill any transparent hip/skirt seam pixels at y=29..35, x=20..30 with ROBE_SHADOW / ROBE_CREAM
-    for y in range(max(29, 29 + crouch_depth - 2), min(46, 36 + crouch_depth)):
-        for x in range(20, 30):
-            if canvas[y, x, 3] == 0:
-                canvas[y, x] = ROBE_CREAM if 22 <= x <= 27 else ROBE_SHADOW
+    # 1. Lower Upper Body, Halo, Hair & Bodice (y = 0..29) by crouch_depth `d`
+    for y in range(0, 30):
+        ny = y + d
+        if 2 <= ny < 49:
+            for x in range(0, 33):
+                if stand[y, x, 3] > 0:
+                    canvas[ny, x] = stand[y, x]
+
+    # 2. Smoothly compress Full-Length Gown (source y = 30..44) into target y = (30 + d)..45
+    y_start = 30 + d
+    y_end = 45
+    span = max(1.0, float(y_end - y_start))
+    for ny in range(y_start, y_end + 1):
+        v = (ny - y_start) / span
+        src_y = min(44, int(round(30.0 + v * 14.0)))
+        # Subtle outward flare of the cathedral skirt hem as it settles on the floor
+        flare = int(round(v * (d * 0.25)))
+        for x in range(4, 33):
+            if stand[src_y, x, 3] == 0:
+                continue
+            if x < 18:
+                nx = max(2, min(49, x - flare))
+                canvas[ny, nx] = stand[src_y, x]
+                canvas[ny, x] = stand[src_y, x]
+            else:
+                nx = max(2, min(49, x + flare))
+                canvas[ny, nx] = stand[src_y, x]
+                canvas[ny, x] = stand[src_y, x]
+
+    # 3. Subtle golden slipper tips peeking at y = 46 beneath the compressed gown hem
+    for sx_tip in (18, 25):
+        for dx_t in (-1, 0, 1):
+            canvas[46, sx_tip + dx_t] = GOLD_MID if dx_t == 0 else OUTLINE
 
     return fill_layer_pinholes(add_outline_to_layer(canvas), 1, 50, 1, 50, require_3_neighbors=False)
 
 
 def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0, wing_unfurl=0.0, phase_rad=0.0):
     """
-    Constructs a full-body Seraphic Wing-Glide Vault pose (NEVER a round ball!):
-    - Every frame preserves Seraphina's full head, golden halo crown, flowing blonde hair,
-      cathedral vestments, sculpted legs/boots, and optional unfurling golden wing-feathers.
+    Constructs a full-body Seraphic Wing-Glide Vault pose keeping Seraphina's full-length
+    white-and-gold gown (y=0..46) intact and sweeping it smoothly in the air (NEVER slicing
+    at y=36 or pasting separate legs below a cut dress!).
     """
     stand = tpl['stand'].copy()
-    torso_dy = max(-2, min(4, jump_dy))
+    torso_dy = max(-2, min(4, int(round(jump_dy))))
+    t = max(0.0, float(tuck_amount))
 
-    train_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    out = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    # 1. Flowing Blonde Hair & Cathedral Cape lifted by the angelic leap
-    for y in range(12, 47):
-        for x in range(1, 19):
-            if stand[y, x, 3] == 0:
-                continue
-            if y >= 39 and x > 14:
-                continue
-            u = (y - 12) / 34.0
-            cx = max(2, min(21, x - int(round(u * 2.2 * max(0.2, tuck_amount)))))
-            cy = max(10, min(48, y + torso_dy))
-            train_layer[cy, cx] = stand[y, x]
-            if x >= 11 and y <= 39:
-                train_layer[max(2, min(49, y + torso_dy)), x] = stand[y, x]
-    train_layer = fill_layer_pinholes(train_layer, x0=2, x1=22, y0=9, y1=49, require_3_neighbors=False)
-
-    # 2. Upper Torso, Skirt, Halo & Head (keep torso vestments down to y=36)
-    for y in range(0, 37):
+    # 1. Upper Body, Head & Flowing Hair (y = 0..29) lifted by torso_dy
+    for y in range(0, 30):
         ny = y + torso_dy
         if not (2 <= ny < 50):
             continue
-        dx = torso_lean_dx if y <= 26 else 0
-        for x in range(14, 32):
-            if stand[y, x, 3] > 0:
-                torso_layer[ny, max(2, min(49, x + dx))] = stand[y, x]
-                if dx > 0 and x >= 15 and torso_layer[ny, x, 3] == 0:
-                    torso_layer[ny, x] = stand[y, x]
+        u_hair = max(0.0, (y - 12) / 34.0)
+        hair_dx = -int(round(u_hair * 2.0 * max(0.2, t)))
+        lean_dx = torso_lean_dx if y <= 26 else 0
+        for x in range(1, 33):
+            if stand[y, x, 3] == 0:
+                continue
+            if x <= 16 and y >= 12:
+                cx = max(2, min(21, x + hair_dx))
+                out[ny, cx] = stand[y, x]
+                if x >= 12:
+                    out[ny, max(2, min(49, x + lean_dx))] = stand[y, x]
+            else:
+                nx = max(2, min(49, x + lean_dx))
+                out[ny, nx] = stand[y, x]
+                if lean_dx > 0 and x >= 15 and out[ny, x, 3] == 0:
+                    out[ny, x] = stand[y, x]
 
-    # Fill any transparent hip/skirt seam pixels at y=29..35, x=20..30 with ROBE_SHADOW / ROBE_CREAM
-    for y in range(29, 36):
-        ny = max(2, min(49, y + torso_dy))
-        for x in range(20, 30):
-            if torso_layer[ny, x, 3] == 0:
-                torso_layer[ny, x] = ROBE_CREAM if 22 <= x <= 27 else ROBE_SHADOW
-    torso_layer = fill_layer_pinholes(torso_layer, x0=12, x1=34, y0=4, y1=40, require_3_neighbors=False)
+    # 2. Full-Length White-and-Gold Gown (source y = 30..44) swept smoothly in the aerial vault
+    y_start = max(2, 30 + torso_dy)
+    hem_lift = int(round(t * 2.0))
+    y_end = min(47, max(y_start + 10, 44 + torso_dy - hem_lift))
+    span = max(1.0, float(y_end - y_start))
 
-    hip_x = 23.0
-    hip_y = 33.5 + torso_dy
+    for ny in range(y_start, y_end + 1):
+        v = (ny - y_start) / span
+        src_y = min(44, int(round(30.0 + v * 14.0)))
+        sweep_dx = int(round(-v * t * 2.2 + math.sin(phase_rad - v * 2.0) * (1.2 * v)))
+        for x in range(4, 33):
+            if stand[src_y, x, 3] == 0:
+                continue
+            nx = max(2, min(49, x + sweep_dx))
+            out[ny, nx] = stand[src_y, x]
+            if sweep_dx < 0 and x >= 15 and nx + 1 < 49 and out[ny, nx + 1, 3] == 0:
+                out[ny, nx + 1] = stand[src_y, x]
 
-    def build_aerial_leg(boot_patch, orig_cx, knee_dx, knee_dy, foot_dx, foot_dy, boot_rot_deg, is_far_leg=False):
-        layer = np.zeros((52, 52, 4), dtype=np.uint8)
-        pil_boot = Image.fromarray(boot_patch, mode='RGBA')
-        rot_boot = np.array(
-            pil_boot.rotate(boot_rot_deg, resample=Image.NEAREST, center=(orig_cx, 42.0)),
-            dtype=np.uint8
-        )
-        for y in range(34, 52):
-            for x in range(4, 50):
-                if rot_boot[y, x, 3] > 0:
-                    ny = max(28, min(49, y + int(round(foot_dy))))
-                    nx = max(4, min(49, x + int(round(foot_dx))))
-                    px_col = rot_boot[y, x].copy()
-                    if is_far_leg:
-                        px_col[0] = int(px_col[0] * 0.78)
-                        px_col[1] = int(px_col[1] * 0.78)
-                        px_col[2] = int(px_col[2] * 0.82)
-                    layer[ny, nx] = px_col
+    # 3. Subtle Golden Slipper Tips Peeking Beneath the Swept Gown Hem
+    hem_sweep_dx = int(round(-t * 2.2 + math.sin(phase_rad - 2.0) * 1.2))
+    slip_y = min(48, y_end + 1)
+    for base_sx, is_front in [(18, False), (24, True)]:
+        sx_tip = max(3, min(48, base_sx + hem_sweep_dx))
+        col_fill = GOLD_BRIGHT if is_front else GOLD_MID
+        for dx_t in (-1, 0, 1):
+            out[slip_y, sx_tip + dx_t] = col_fill if dx_t == 0 else OUTLINE
 
-        kx = hip_x + knee_dx
-        ky = hip_y + knee_dy
-        ax = orig_cx + foot_dx
-        ay = 42.0 + foot_dy
-
-        if is_far_leg:
-            c_dark, c_mid, c_hi, c_greave, c_gold = VEST_DEEP, VEST_SHADOW, VEST_MID, GOLD_DARK, GOLD_MID
-        else:
-            c_dark, c_mid, c_hi, c_greave, c_gold = VEST_SHADOW, VEST_MID, VEST_LIGHT, VEST_LIGHT, GOLD_BRIGHT
-
-        for off_x, col in [(-2.0, c_dark), (-1.2, c_mid), (-0.4, c_hi), (0.4, c_hi), (1.1, c_mid), (1.8, c_dark)]:
-            draw_line_px(layer, hip_x + off_x, hip_y - 1.5, kx + off_x * 0.85, ky, col)
-        for off_x, col in [(-1.2, c_dark), (-0.4, c_greave), (0.4, c_gold), (1.0, c_greave), (1.4, c_dark)]:
-            draw_line_px(layer, kx + off_x, ky, ax + off_x * 0.85, ay, col)
-        set_px(layer, kx, ky, c_gold)
-        set_px(layer, kx + 1, ky, c_gold)
-        return fill_layer_pinholes(layer, x0=4, x1=49, y0=28, y1=50, require_3_neighbors=False)
-
-    t = max(0.0, tuck_amount)
-    far_leg = build_aerial_leg(
-        tpl['leg_back'],
-        18.5,
-        knee_dx=-2.6 * t - 0.8,
-        knee_dy=4.5 - 1.2 * t,
-        foot_dx=-3.2 * t,
-        foot_dy=torso_dy - 3.0 * t,
-        boot_rot_deg=-20.0 * t,
-        is_far_leg=True
-    )
-    near_leg = build_aerial_leg(
-        tpl['leg_front'],
-        25.5,
-        knee_dx=3.8 * t + 1.0,
-        knee_dy=3.8 - 2.2 * t,
-        foot_dx=1.0 * t,
-        foot_dy=torso_dy - 4.4 * t,
-        boot_rot_deg=-18.0 * t,
-        is_far_leg=False
-    )
-
-    stole_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    for off_x, col in [(-3.5, TEAL_DEEP), (-2.7, TEAL_LINING), (-1.9, VEST_SHADOW), (-1.1, VEST_MID), (-0.3, VEST_LIGHT), (0.5, VEST_LIGHT), (1.3, GOLD_BRIGHT), (2.1, VEST_MID), (2.7, GOLD_MID)]:
-        draw_line_px(stole_layer, hip_x + off_x, hip_y - 2.0, hip_x + off_x + 1.5 * t, hip_y + 6.5 - 1.0 * t, col)
-    stole_layer = fill_layer_pinholes(stole_layer, x0=14, x1=34, y0=27, y1=45, require_3_neighbors=False)
-
-    out = composite_over(train_layer, torso_layer)
-    out = composite_over(out, far_leg)
-    out = composite_over(out, stole_layer)
-    out = composite_over(out, near_leg)
-    out = fill_layer_pinholes(out, 1, 50, 1, 50, require_3_neighbors=True)
+    out = fill_layer_pinholes(out, 1, 50, 1, 50, require_3_neighbors=False)
 
     if wing_unfurl > 0.05:
         out = draw_mini_wings_on_back(out, shoulder_x=21, shoulder_y=18 + torso_dy, unfurl=wing_unfurl, phase_rad=phase_rad)

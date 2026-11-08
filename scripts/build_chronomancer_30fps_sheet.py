@@ -198,18 +198,35 @@ def composite_over(base, over):
     return res
 
 
+def neutralize_chrono_chest_arm(cell, max_chest_x=28, min_hand_x=21):
+    """
+    Erases protruding baked arm pixels at x > max_chest_x (for y=16..29) and replaces any
+    bright brass/cyan/skin baked hand pixels (r > 110 or g > 110) on Chronomancer's chest
+    (18 <= y <= 28, min_hand_x <= x <= max_chest_x) with clean dark/mid temporal coat shading
+    (`COAT_DARK` / `COAT_TEAL`) so his chest has ZERO baked hands or extra arms.
+    """
+    cell[16:30, max_chest_x + 1:44] = 0
+    for y in range(18, 29):
+        for x in range(min_hand_x, max_chest_x + 1):
+            if cell[y, x, 3] > 0:
+                r, g, b, _ = cell[y, x]
+                if r > 110 or g > 110 or (int(r) + int(g) + int(b) > 260):
+                    cell[y, x] = COAT_TEAL if (x + y) % 2 == 0 else COAT_DARK
+
+
 def make_clean_templates(src):
     """
-    Strips ALL baked-in hourglass/gear pixels from the backup cells so we can animate
-    EXACTLY ONE crisp articulated Chrono-Astrolabe Staff (`draw_chrono_staff`) per frame
-    with zero duplicate weapons or extra limbs.
+    Strips ALL baked-in hourglass/gear pixels AND baked chest-hands/arms from the backup cells
+    so we animate EXACTLY ONE crisp articulated Chrono-Astrolabe Staff + single Right IK Arm
+    per frame with zero duplicate weapons, zero chest-hands, and zero extra limbs.
     """
-    # 1. Clean standing Chronomancer body (patch uncovered chest/waist from cast_h, strip hourglass at x >= 30, y <= 23)
+    # 1. Clean standing Chronomancer body (strip hourglass & neutralize baked chest hand/arm)
     stand = src['idle'].copy()
     cast_h = src['cast_h'].copy()
     cast_h[:, :3] = 0
-    stand[16:24, 18:31] = cast_h[16:24, 18:31]
-    stand[0:24, 30:] = 0
+    stand[16:24, 18:29] = cast_h[16:24, 18:29]
+    stand[0:24, 29:] = 0
+    neutralize_chrono_chest_arm(stand, max_chest_x=28, min_hand_x=21)
     # Add subtle glowing cyan eye & brass astrolabe crown diadem accent on head
     set_px(stand, 25, 7, CYAN_BRIGHT)
     set_px(stand, 26, 7, CYAN_CORE)
@@ -217,21 +234,22 @@ def make_clean_templates(src):
     set_px(stand, 26, 4, GOLD_BRIGHT)
     stand = add_outline_to_layer(stand)
 
-    # Extract Zephyros's brass-trimmed pixel-art boots from `stand`
+    # Extract Zephyros's brass-trimmed pixel-art boots from `stand` (y=40..49 only, no upper thighs)
     leg_back_patch = np.zeros((52, 52, 4), dtype=np.uint8)
     leg_front_patch = np.zeros((52, 52, 4), dtype=np.uint8)
-    leg_back_patch[39:50, 15:23] = stand[39:50, 15:23]
-    leg_front_patch[39:50, 24:34] = stand[39:50, 24:34]
+    leg_back_patch[40:50, 15:23] = stand[40:50, 15:23]
+    leg_front_patch[40:50, 24:34] = stand[40:50, 24:34]
 
-    # Upper torso + upper coat (without lower legs y >= 40) for walk/crouch/jump articulation
-    stand_upper = stand.copy()
-    stand_upper[40:, :, :] = 0
-    stand_upper[40:46, :15, :] = stand[40:46, :15, :]
+    # Upper torso + left coat-tail with ALL standing thigh pixels (y >= 32, x >= 15) stripped!
+    stand_upper = np.zeros((52, 52, 4), dtype=np.uint8)
+    stand_upper[:32, :] = stand[:32, :]
+    stand_upper[32:44, :15] = stand[32:44, :15]
     stand_upper = add_outline_to_layer(stand_upper)
 
-    # 2. Clean casting body (from cast_h, with extended arm/gear at x >= 30, y <= 21 removed)
+    # 2. Clean casting body (from cast_h, with extended arm/gear removed and chest hand neutralized)
     aim_h = cast_h.copy()
-    aim_h[0:22, 30:] = 0
+    aim_h[0:22, 29:] = 0
+    neutralize_chrono_chest_arm(aim_h, max_chest_x=28, min_hand_x=21)
     set_px(aim_h, 25, 7, CYAN_BRIGHT)
     set_px(aim_h, 26, 7, CYAN_CORE)
     set_px(aim_h, 24, 4, BRASS_LIGHT)
@@ -242,10 +260,15 @@ def make_clean_templates(src):
     kneel1 = src['kneel1'].copy()
     kneel2 = src['kneel2'].copy()
     for kn in (kneel1, kneel2):
-        kn[29:37, 32:] = 0
+        kn[18:37, 30:] = 0
         kn[37:50, 34:] = 0
-        set_px(kn, 34, 15, CYAN_BRIGHT)
-        set_px(kn, 34, 12, BRASS_LIGHT)
+        neutralize_chrono_chest_arm(kn, max_chest_x=29, min_hand_x=21)
+        for y in range(24, 34):
+            for x in range(22, 30):
+                if kn[y, x, 3] > 0:
+                    r, g, b, _ = kn[y, x]
+                    if r > 115 or g > 115:
+                        kn[y, x] = COAT_TEAL if (x + y) % 2 == 0 else COAT_DARK
     kneel1 = add_outline_to_layer(kneel1)
     kneel2 = add_outline_to_layer(kneel2)
 
@@ -256,14 +279,15 @@ def make_clean_templates(src):
     fall[43:50, 35:] = 0
     fall = add_outline_to_layer(fall)
 
-    # 5. Clean dash lunge body (strip front hourglass at x >= 40, y=14..27 and baked background blobs at x <= 23, y <= 17)
+    # 5. Clean dash lunge body (strip front hourglass & baked chest arm, then recenter by dx = -4)
     dash = src['dash'].copy()
-    dash[14:28, 40:] = 0
+    dash[14:30, 36:] = 0
     dash[10:18, 17:25] = 0
-    set_px(dash, 43, 8, CYAN_BRIGHT)
-    set_px(dash, 42, 5, GOLD_BRIGHT)
-    # Recenter dash left by dx = -4 so dashing body sits at x=8..39 with plenty of room for forward staff lunges
+    set_px(dash, 41, 8, CYAN_BRIGHT)
+    set_px(dash, 40, 5, GOLD_BRIGHT)
+    # Recenter dash left by dx = -4 so dashing body sits at x=8..35 with plenty of room for forward staff lunges
     dash = shift_layer(dash, -4, 0)
+    neutralize_chrono_chest_arm(dash, max_chest_x=31, min_hand_x=21)
     dash = add_outline_to_layer(dash)
 
     return {
@@ -435,7 +459,7 @@ def draw_escapement_halo(
     return composite_over(halo, base_frame)
 
 
-def solve_ik_elbow(sx, sy, hx, hy, L1=4.8, L2=4.6, bend_side=1.0):
+def solve_ik_elbow(sx, sy, hx, hy, L1=5.2, L2=5.0, bend_side=1.0):
     """
     2-Bone Inverse Kinematics solver returning the anatomical elbow joint (ex, ey)
     between shoulder (sx, sy) and hand (hx, hy).
@@ -458,7 +482,7 @@ def solve_ik_elbow(sx, sy, hx, hy, L1=4.8, L2=4.6, bend_side=1.0):
     return ex, ey
 
 
-def draw_ik_chrono_arm(layer, sx, sy, hx, hy, L1=4.8, L2=4.6, bend_side=1.0, is_offhand=False):
+def draw_ik_chrono_arm(layer, sx, sy, hx, hy, L1=5.2, L2=5.0, bend_side=1.0, is_offhand=False):
     """
     Draws Zephyros's sculpted 2-bone IK clockwork sleeve & vambrace arm onto `layer`:
     - Rotating brass-and-teal clockwork shoulder pauldron at (sx, sy) (`BRASS_BRIGHT`, `BRASS_MID`, `COAT_TEAL`)
@@ -469,26 +493,31 @@ def draw_ik_chrono_arm(layer, sx, sy, hx, hy, L1=4.8, L2=4.6, bend_side=1.0, is_
     """
     ex, ey = solve_ik_elbow(sx, sy, hx, hy, L1=L1, L2=L2, bend_side=bend_side)
 
-    c_sleeve_hi = COAT_TEAL if is_offhand else COAT_LIGHT
-    c_sleeve_mid = COAT_DARK if is_offhand else COAT_TEAL
-    c_sleeve_dark = TEAL_COAT_DEEP if is_offhand else COAT_DARK
-    c_brass_hi = BRASS_MID if is_offhand else BRASS_BRIGHT
-    c_brass_mid = BRASS_DARK if is_offhand else BRASS_MID
+    c_sleeve_hi = COAT_LIGHT
+    c_sleeve_mid = COAT_TEAL
+    c_sleeve_dark = COAT_DARK
+    c_out = TEAL_COAT_DEEP
+    c_brass_hi = BRASS_BRIGHT
+    c_brass_mid = BRASS_MID
 
-    # 1. 3px-thick Teal Coat Upper Sleeve from (sx, sy) to (ex, ey)
+    # 1. 3px-thick Teal Coat Upper Sleeve from (sx, sy) to (ex, ey) with 1px dark outer crease
     u1x, u1y = ex - sx, ey - sy
     d1 = max(1.0, math.hypot(u1x, u1y))
     n1x, n1y = -u1y / d1, u1x / d1
-    draw_line_px(layer, sx + n1x * 0.85, sy + n1y * 0.85, ex + n1x * 0.7, ey + n1y * 0.7, c_sleeve_hi)
-    draw_line_px(layer, sx - n1x * 0.85, sy - n1y * 0.85, ex - n1x * 0.7, ey - n1y * 0.7, c_sleeve_dark)
+    draw_line_px(layer, sx + n1x * 1.2, sy + n1y * 1.2, ex + n1x * 1.0, ey + n1y * 1.0, c_out)
+    draw_line_px(layer, sx - n1x * 1.2, sy - n1y * 1.2, ex - n1x * 1.0, ey - n1y * 1.0, c_out)
+    draw_line_px(layer, sx + n1x * 0.75, sy + n1y * 0.75, ex + n1x * 0.65, ey + n1y * 0.65, c_sleeve_hi)
+    draw_line_px(layer, sx - n1x * 0.75, sy - n1y * 0.75, ex - n1x * 0.65, ey - n1y * 0.65, c_sleeve_dark)
     draw_line_px(layer, sx, sy, ex, ey, c_sleeve_mid)
 
     # 2. 3px-thick Brass-Cuffed Forearm Vambrace from (ex, ey) to (hx, hy) with TIME_CYAN rune dot
     u2x, u2y = hx - ex, hy - ey
     d2 = max(1.0, math.hypot(u2x, u2y))
     n2x, n2y = -u2y / d2, u2x / d2
-    draw_line_px(layer, ex + n2x * 0.8, ey + n2y * 0.8, hx + n2x * 0.65, hy + n2y * 0.65, c_brass_mid)
-    draw_line_px(layer, ex - n2x * 0.8, ey - n2y * 0.8, hx - n2x * 0.65, hy - n2y * 0.65, c_sleeve_dark)
+    draw_line_px(layer, ex + n2x * 1.15, ey + n2y * 1.15, hx + n2x * 0.95, hy + n2y * 0.95, c_out)
+    draw_line_px(layer, ex - n2x * 1.15, ey - n2y * 1.15, hx - n2x * 0.95, hy - n2y * 0.95, c_out)
+    draw_line_px(layer, ex + n2x * 0.7, ey + n2y * 0.7, hx + n2x * 0.6, hy + n2y * 0.6, c_brass_mid)
+    draw_line_px(layer, ex - n2x * 0.7, ey - n2y * 0.7, hx - n2x * 0.6, hy - n2y * 0.6, c_sleeve_dark)
     draw_line_px(layer, ex, ey, hx, hy, COAT_TEAL)
     # Glowing TIME_CYAN clockwork rune dot on forearm vambrace
     set_px(layer, (ex + hx) * 0.5, (ey + hy) * 0.5, TIME_CYAN)
@@ -500,24 +529,23 @@ def draw_ik_chrono_arm(layer, sx, sy, hx, hy, L1=4.8, L2=4.6, bend_side=1.0, is_
         py_s = sy + uy1 * 0.9 + n1y * p_step
         set_px(layer, px_s, py_s, c_brass_hi if abs(p_step) > 0.5 else COAT_TEAL)
         set_px(layer, sx + n1x * p_step, sy + n1y * p_step, c_brass_mid)
-    if not is_offhand:
-        set_px(layer, sx, sy - 1, BRASS_BRIGHT)
+    set_px(layer, sx, sy - 1, BRASS_BRIGHT)
 
     # 4. Brass Gear Elbow Joint at (ex, ey)
     set_px(layer, ex, ey, c_brass_hi)
-    set_px(layer, ex + n1x * 0.7, ey + n1y * 0.7, c_brass_mid)
+    set_px(layer, ex + n1x * 0.65, ey + n1y * 0.65, c_brass_mid)
 
     # 5. 2x2 Gloved/Skin Hand at (hx, hy)
     set_px(layer, hx, hy, SKIN_LIGHT)
-    set_px(layer, hx + 1, hy, SKIN_LIGHT if not is_offhand else SKIN_SHADOW)
+    set_px(layer, hx + 1, hy, SKIN_LIGHT)
     set_px(layer, hx, hy + 1, c_brass_hi)
     set_px(layer, hx - (u2x / d2) * 0.8, hy - (u2y / d2) * 0.8, BRASS_BRIGHT)
 
 
 def draw_chrono_staff(
     base_frame,
-    shoulder=(27, 15),
-    grip=(32, 19),
+    shoulder=(26, 18),
+    grip=(34, 20),
     staff_tilt_deg=15.0,
     finial_spin=0.0,
     left_hand=None,
@@ -527,13 +555,14 @@ def draw_chrono_staff(
 ):
     """
     Renders EXACTLY ONE crisp articulated Chrono-Astrolabe Staff (`draw_chrono_staff`) per frame:
-    - Full 2-Bone Inverse Kinematics Left Time-Gear Arm & Right Staff-Holding Arm (`draw_ik_chrono_arm`).
-    - Auto-clamped `(gx, gy)` inside `[12..41, 10..40]` and auto-foreshortened `top_len` & `bot_len`
-      so the Astrolabe Finial `(fcx, fcy)` stays inside `x in [7..43], y in [7..43]` (ZERO edge clipping!).
+    - ONLY ONE clean, unmistakable Right Staff 2-Bone IK Arm (`draw_ik_chrono_arm(..., is_offhand=False)`)
+      extending from shoulder `(26, 18)` out to `grip` `(gx, gy)` in front of the torso (`gx >= 31`) —
+      ZERO secondary off-hand on the chest!
+    - Auto-foreshortened `top_len` & `bot_len` so the Astrolabe Finial `(fcx, fcy)` stays inside
+      `x in [7..43], y in [7..43]` (ZERO edge clipping!).
     - Bespoke Chronomancer spell constructs (`saw_gear`, `gear_launch`, `stasis_hourglass`,
       `rewind_shatter`, `doomsday_clock`, `escapement_shield`).
     """
-    offhand_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     staff_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     right_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     fx_layer = np.zeros((52, 52, 4), dtype=np.uint8)
@@ -545,32 +574,13 @@ def draw_chrono_staff(
     px = -uy
     py = ux
 
-    sx = float(max(10.0, min(38.0, shoulder[0])))
-    sy = float(max(9.0, min(36.0, shoulder[1])))
-    gx = float(max(12.0, min(41.0, grip[0])))
-    gy = float(max(10.0, min(40.0, grip[1])))
+    sx = float(max(20.0, min(35.0, shoulder[0])))
+    sy = float(max(12.0, min(32.0, shoulder[1])))
+    # Keep staff grip strictly out in front of the torso (gx >= 31) so hand never sits on the chest!
+    gx = float(max(31.0, min(41.0, grip[0])))
+    gy = float(max(11.0, min(36.0, grip[1])))
 
-    # 1. Left Time-Gear IK Arm (ALWAYS animated across all rows; drawn behind staff shaft)
-    if left_hand is None:
-        lhx = sx - 2.0 + int((gx - sx) * 0.5)
-        lhy = sy + 2.0 + int((gy - sy) * 0.4)
-    else:
-        lhx, lhy = float(left_hand[0]), float(left_hand[1])
-    lhx = max(8.0, min(43.0, lhx))
-    lhy = max(8.0, min(42.0, lhy))
-    draw_ik_chrono_arm(
-        offhand_layer,
-        sx - 3.0,
-        sy + 1.0,
-        lhx,
-        lhy,
-        L1=4.4,
-        L2=4.2,
-        bend_side=1.0,
-        is_offhand=True
-    )
-
-    # 2. Ornate Brass-and-Obsidian Chrono-Astrolabe Staff Shaft with Dynamic Foreshortening
+    # 1. Ornate Brass-and-Obsidian Chrono-Astrolabe Staff Shaft with Dynamic Foreshortening
     # Astrolabe finial center sits at `gx + ux * (top_len + 3.2), gy + uy * (top_len + 3.2)`.
     # Keep finial center strictly inside x in [7..43], y in [7..43] so ring_r = 3.2 + 1.2 never clips!
     max_finial_dist = 9.5 + 3.2
@@ -613,7 +623,7 @@ def draw_chrono_staff(
     set_px(staff_layer, bx0, by0, GOLD_BRIGHT)
     set_px(staff_layer, bx0 + ux * 1.2, by0 + uy * 1.2, TEAL_BRIGHT)
 
-    # 3. Spinning Turquoise & Brass Astrolabe Finial at Staff Head (clamped inside [7..43])
+    # 2. Spinning Turquoise & Brass Astrolabe Finial at Staff Head (clamped inside [7..43])
     fcx = max(7.0, min(43.0, tx0 + ux * 3.0))
     fcy = max(7.0, min(43.0, ty0 + uy * 3.0))
     finial_r = 3.2
@@ -644,21 +654,20 @@ def draw_chrono_staff(
     set_px(staff_layer, tx0 + px * 2.0, ty0 + py * 2.0, GOLD_BRIGHT)
     set_px(staff_layer, tx0 - px * 2.0, ty0 - py * 2.0, GOLD_BRIGHT)
 
-    # 4. Right Staff-Holding 2-Bone IK Arm (drawn OVER the staff shaft)
-    bend_dir = -1.0 if (gy < sy - 2.5 and gx <= sx + 2.5) else 1.0
+    # 3. Single Right Staff-Holding 2-Bone IK Arm (drawn OVER the staff shaft)
     draw_ik_chrono_arm(
         right_arm_layer,
         sx,
         sy,
         gx,
         gy,
-        L1=4.8,
-        L2=4.6,
-        bend_side=bend_dir,
+        L1=5.2,
+        L2=5.0,
+        bend_side=1.0,
         is_offhand=False
     )
 
-    # 5. Bespoke Chronomancer Spell & Projectile Constructs (all safely clamped inside [3..48])
+    # 4. Bespoke Chronomancer Spell & Projectile Constructs (all safely clamped inside [3..48])
     if conjure_mode == 'saw_gear':
         gcx = max(6.0, min(44.0, fcx + 4.2 + mode_progress * 1.8))
         gcy = max(6.0, min(44.0, fcy + 1.5))
@@ -736,7 +745,7 @@ def draw_chrono_staff(
             ma = -math.pi * 0.5 - (1.0 - mode_progress) * 3.4
             set_px(fx_layer, dcx + math.cos(ma) * (d + 1), max(3.0, dcy + math.sin(ma) * (d + 1)), CYAN_BRIGHT)
 
-    # 6. Optional Spinning Brass-and-Cyan Escapement Shield Dial (Row 7 CROUCH)
+    # 5. Optional Spinning Brass-and-Cyan Escapement Shield Dial (Row 7 CROUCH)
     if shield_center is not None:
         scx = max(10.0, min(41.0, float(shield_center[0])))
         scy = max(10.0, min(41.0, float(shield_center[1])))
@@ -762,8 +771,7 @@ def draw_chrono_staff(
                     GOLD_BRIGHT
                 )
 
-    out = composite_over(base_frame, offhand_layer)
-    out = composite_over(out, staff_layer)
+    out = composite_over(base_frame, staff_layer)
     out = composite_over(out, right_arm_layer)
     out = composite_over(out, fx_layer)
     return out
@@ -771,12 +779,11 @@ def draw_chrono_staff(
 
 def render_walk_legs(tpl, f):
     """
-    Renders a fluid, anatomical 30-frame 2-step Chronomancer stride cycle (f = 0..29, F00..F14 step A, F15..F29 step B):
-    1. Backmost Layer: Trailing teal-and-brass clockwork coat tails (bridged solidly to the waist).
-    2. Far Leg Layer: Sculpted clockwork trousers & brass-trimmed boot (shaded 0.78x for clear depth separation).
-    3. Split Clockwork Coat Front Lapel/Tabard: Sweeps naturally with the leading thigh at y = 30..37.
-    4. Near Leg Layer: Full-brightness sculpted leg & brass-trimmed boot articulating cleanly beneath the coat.
-    5. Upper Torso & Head: Smooth 2-step vertical bob and +1px natural forward posture down to y=36.
+    Renders a fluid, anatomical 30-frame 2-step Chronomancer stride cycle (f = 0..29, F00..F14 step A, F15..F29 step B)
+    in true painter's order with ZERO standing thigh remnants (no extra legs!) and full flowing temporal coat-tail:
+    - `coat_layer` copies `x <= 17` for `y < 31` and `x <= 13` for `31 <= y <= 43` so the back leg is NEVER copied.
+    - `torso_layer` ONLY copies `y = 0..31` (and for `y = 28..31`, restricts `x` to `20 <= x <= 28`), stopping strictly
+      at his waist belt (`hip_y = 31.0`) so ZERO standing thigh pixels (`y >= 32`) are copied!
     """
     phase = (f / 30.0) * 2.0 * math.pi
     bob_y = int(round(math.cos(phase * 2.0) * 1.0))
@@ -785,39 +792,39 @@ def render_walk_legs(tpl, f):
     coat_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    # 1. Extract trailing clockwork coat tails (x <= 18, y = 18..46) onto backmost layer
-    for y in range(18, 46):
+    # 1. Extract trailing clockwork coat-tail (x <= 17 for y < 31, x <= 13 for 31 <= y <= 43 so back leg is excluded!)
+    for y in range(18, 44):
         ny = y + bob_y
-        if not (0 <= ny < 52):
+        if not (2 <= ny < 50):
             continue
-        u = (y - 18) / 28.0
-        wave_dx = int(round(-u * 2.2 + math.sin(phase - u * 3.2) * (1.3 * u)))
-        wave_dy = int(round(math.cos(phase - u * 2.6) * (0.7 * u)))
-        for x in range(1, 19):
+        u = (y - 18) / 26.0
+        wave_dx = int(round(-u * 1.8 + math.sin(phase - u * 3.2) * (1.2 * u)))
+        wave_dy = int(round(math.cos(phase - u * 2.6) * (0.6 * u)))
+        max_cx = 17 if y < 31 else 13
+        for x in range(1, max_cx + 1):
             if stand[y, x, 3] == 0:
                 continue
-            if y >= 34 and x > 14:
-                continue
             cy = max(18, min(48, ny + wave_dy))
-            cx = max(2, min(21, x + wave_dx))
+            cx = max(2, min(19, x + wave_dx))
             coat_layer[cy, cx] = stand[y, x]
-            if x >= 12 and y <= 35:
+            if x >= max_cx - 3 and y <= 35:
                 coat_layer[ny, x] = stand[y, x]
-                if x + 1 < 21:
-                    coat_layer[ny, x + 1] = stand[y, x]
+    coat_layer = fill_layer_pinholes(coat_layer, x0=2, x1=20, y0=17, y1=48, require_3_neighbors=False)
 
-    # 2. Extract Upper Torso & Coat down to y = 36 (x >= 14) with +1px forward lean
-    for y in range(0, 36):
+    # 2. Extract ONLY Upper Torso, Head & Waist Belt (y = 0..31, stopping strictly above standing thighs y >= 32!)
+    for y in range(0, 32):
         ny = y + bob_y
-        if not (0 <= ny < 52):
+        if not (2 <= ny < 50):
             continue
         lean_dx = 1 if y <= 26 else 0
-        for x in range(14, 34):
+        min_tx = 15 if y < 28 else 20
+        max_tx = 30 if y < 28 else 29
+        for x in range(min_tx, max_tx):
             if stand[y, x, 3] > 0:
-                torso_layer[ny, min(50, x + lean_dx)] = stand[y, x]
+                torso_layer[ny, min(49, x + lean_dx)] = stand[y, x]
 
     hip_x = 24.5
-    hip_y = 31.5 + bob_y
+    hip_y = 31.0 + bob_y
 
     def build_striding_leg(boot_patch, orig_cx, swing_phase, is_far_leg=False):
         layer = np.zeros((52, 52, 4), dtype=np.uint8)
@@ -825,24 +832,24 @@ def render_walk_legs(tpl, f):
         c_val = math.cos(swing_phase)
 
         knee_lift = max(0.0, c_val)
-        knee_x = hip_x + s_val * 4.4 + knee_lift * 2.0
-        knee_y = hip_y + 4.8 - knee_lift * 1.7
+        knee_x = hip_x + s_val * 4.4 + knee_lift * 1.8
+        knee_y = hip_y + 5.2 - knee_lift * 1.7
 
-        foot_target_x = 25.0 + s_val * 6.4 - knee_lift * 2.0
-        foot_lift_dy = bob_y - int(round(knee_lift * 2.8))
+        foot_target_x = 24.5 + s_val * 6.0 - knee_lift * 1.8
+        foot_lift_dy = bob_y - int(round(knee_lift * 2.4))
 
-        boot_rot_deg = s_val * 19.0 - knee_lift * 20.0
+        boot_rot_deg = s_val * 17.0 - knee_lift * 18.0
         pil_boot = Image.fromarray(boot_patch, mode='RGBA')
         rot_boot = np.array(
-            pil_boot.rotate(boot_rot_deg, resample=Image.NEAREST, center=(orig_cx, 40.0)),
+            pil_boot.rotate(boot_rot_deg, resample=Image.NEAREST, center=(orig_cx, 42.0)),
             dtype=np.uint8
         )
 
         dx_boot = int(round(foot_target_x - orig_cx))
-        for y in range(36, 52):
+        for y in range(38, 52):
             for x in range(4, 50):
                 if rot_boot[y, x, 3] > 0:
-                    ny = min(49, max(35, y + foot_lift_dy))
+                    ny = min(49, max(36, y + foot_lift_dy))
                     nx = min(49, max(6, x + dx_boot))
                     px_col = rot_boot[y, x].copy()
                     if is_far_leg:
@@ -851,8 +858,8 @@ def render_walk_legs(tpl, f):
                         px_col[2] = int(px_col[2] * 0.82)
                     layer[ny, nx] = px_col
 
-        ank_x = foot_target_x + math.sin(math.radians(boot_rot_deg)) * 1.4
-        ank_y = 40.5 + foot_lift_dy
+        ank_x = foot_target_x + math.sin(math.radians(boot_rot_deg)) * 1.3
+        ank_y = 41.5 + foot_lift_dy
 
         if is_far_leg:
             c_dark = TEAL_COAT_DEEP
@@ -876,132 +883,113 @@ def render_walk_legs(tpl, f):
         # Brass clockwork knee-buckle highlight
         set_px(layer, knee_x, knee_y, c_brass)
         set_px(layer, knee_x + 1, knee_y, c_brass)
-        return layer
+        return fill_layer_pinholes(layer, x0=4, x1=49, y0=30, y1=50, require_3_neighbors=True)
 
     far_leg = build_striding_leg(tpl['leg_back'], 18.5, phase + math.pi, is_far_leg=True)
     near_leg = build_striding_leg(tpl['leg_front'], 28.0, phase, is_far_leg=False)
 
-    # Split teal-and-brass coat front tasset at y = 31..37
+    # Split teal-and-brass coat front tasset at y = 31..36
     tasset_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    stride_open = abs(math.sin(phase))
-    flap_dx = math.sin(phase) * 2.0
+    flap_dx = math.sin(phase) * 1.8
     for off_x, col in [
-        (-2.5, TEAL_COAT_DARK),
-        (-1.5, TEAL_COAT_MID),
-        (-0.5, TEAL_COAT_LIGHT),
-        (0.5, TEAL_COAT_MID),
-        (1.5, BRASS_LIGHT),
+        (-2.0, TEAL_COAT_DARK),
+        (-1.0, TEAL_COAT_MID),
+        (0.0, TEAL_COAT_LIGHT),
+        (1.0, BRASS_LIGHT),
     ]:
         draw_line_px(
             tasset_layer,
             hip_x + off_x,
             hip_y - 1.0,
-            hip_x + off_x + flap_dx + stride_open * 1.1,
+            hip_x + off_x + flap_dx,
             hip_y + 4.5,
             col
         )
 
-    out = composite_over(coat_layer, far_leg)
+    out = composite_over(far_leg, coat_layer)
+    out = composite_over(out, torso_layer)
     out = composite_over(out, tasset_layer)
     out = composite_over(out, near_leg)
-    out = composite_over(out, torso_layer)
-
-    # Fill any transparent hip/coat seam pixels at y=29..35, x=20..31
-    for y in range(29, 36):
-        for x in range(20, 31):
-            if out[y, x, 3] == 0:
-                if out[y - 1, x, 3] > 0 or out[y, x - 1, 3] > 0:
-                    out[y, x] = COAT_TEAL if (x + y) % 2 == 0 else COAT_DARK
-
-    return fill_layer_pinholes(out)
+    return out
 
 
 def make_crouch_body(tpl, crouch_depth):
     """
     Constructs a low-profile Temporal Calibration kneel/crouch with `crouch_depth` in [1..7] logical pixels:
-    - Uses `kneel1` bent legs anchored at the bottom (y=36..50) when crouch_depth >= 5, or compressed
-      bent-knee standing legs when crouch_depth in 1..4.
-    - Lowers the upper body (`stand_upper`) smoothly by `crouch_depth` pixels (up to 7px lower silhouette!).
+    - Uses `kneel1` bent legs when crouch_depth >= 5, or standing legs when crouch_depth in 1..4.
+    - Lowers `stand_upper` (y=0..31, which has ZERO standing thighs!) by `crouch_depth` pixels and carries
+      down the left coat-tail (`y=32..43, x<=14`) so zero duplicate legs appear.
     """
     canvas = np.zeros((52, 52, 4), dtype=np.uint8)
     if crouch_depth >= 5:
-        canvas[36:50, 6:34] = tpl['kneel1'][36:50, 6:34]
-        upper = tpl['stand_upper']
-        for y in range(0, 36):
-            ny = y + crouch_depth
-            if 0 <= ny < 49:
-                for x in range(0, 52):
-                    if upper[y, x, 3] > 0:
-                        canvas[ny, x] = upper[y, x]
+        canvas[31:50, 6:34] = tpl['kneel1'][31:50, 6:34]
     else:
-        canvas[38:50, :] = tpl['stand'][38:50, :]
-        upper = tpl['stand_upper']
-        for y in range(0, 38):
-            ny = y + crouch_depth
-            if 0 <= ny < 49:
-                for x in range(0, 52):
-                    if upper[y, x, 3] > 0:
-                        canvas[ny, x] = upper[y, x]
-
-    # Fill any transparent hip/coat seam pixels at y=29..35, x=20..31
-    for y in range(29, 36):
-        for x in range(20, 31):
-            if canvas[y, x, 3] == 0 and canvas[y - 1, x, 3] > 0 and canvas[y + 1, x, 3] > 0:
-                canvas[y, x] = COAT_TEAL if (x + y) % 2 == 0 else COAT_DARK
-
-    canvas = fill_layer_pinholes(canvas)
-    return add_outline_to_layer(canvas)
+        canvas[32:50, :] = tpl['stand'][32:50, :]
+    upper = tpl['stand_upper']
+    for y in range(0, 32):
+        ny = min(49, y + crouch_depth)
+        if 2 <= ny < 49:
+            for x in range(0, 52):
+                if upper[y, x, 3] > 0:
+                    canvas[ny, x] = upper[y, x]
+    # Also carry down the lower left temporal coat-tail (x <= 14, y = 32..43)
+    for y in range(32, 44):
+        ny = min(48, y + max(0, crouch_depth // 2))
+        for x in range(0, 15):
+            if upper[y, x, 3] > 0:
+                canvas[ny, x] = upper[y, x]
+    return fill_layer_pinholes(add_outline_to_layer(canvas), 2, 50, 2, 50, require_3_neighbors=True)
 
 
 def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0, draw_boot_rings=False, phase=0.0):
     """
-    Constructs a full-body aerial jumping Chronomancer pose in back-to-front anatomical order:
-    - Every frame shows the Chronomancer's full head, silver hair/crown, teal-and-brass coat,
-      articulated boots, and Chrono-Staff — NEVER a round ball!
-    - Optional glowing cyan clock-rings beneath the boots during aerial ascent/hover.
+    Constructs a full-body aerial jumping Chronomancer pose in back-to-front anatomical order
+    with ZERO standing thigh remnants (only the two tucked aerial legs!):
+    - `coat_layer` copies `x <= 17` for `y < 31` and `x <= 13` for `31 <= y <= 43` so back leg is excluded.
+    - `torso_layer` ONLY copies `y = 0..31` (and `20 <= x <= 28` for `y = 28..31`), stopping strictly at `hip_y = 31.0`.
     """
     stand = tpl['stand'].copy()
-    torso_dy = max(0, jump_dy)
+    torso_dy = max(0, int(round(jump_dy)))
 
     coat_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    # 1. Billowing Aerial Clockwork Coat Tails (x <= 18, y = 18..45)
-    coat_lift = int(round(max(0.0, tuck_amount) * 2.5))
-    for y in range(18, 46):
-        for x in range(1, 19):
+    # 1. Billowing Aerial Clockwork Coat-Tail (x <= 17 for y < 31, x <= 13 for 31 <= y <= 43)
+    coat_lift = int(round(max(0.0, tuck_amount) * 2.2))
+    for y in range(18, 44):
+        max_cx = 17 if y < 31 else 13
+        for x in range(1, max_cx + 1):
             if stand[y, x, 3] == 0:
                 continue
-            if y >= 34 and x > 14:
-                continue
-            u = (y - 18) / 27.0
-            cx = max(2, min(21, x - int(round(u * 2.6 * max(0.2, tuck_amount)))))
+            u = (y - 18) / 26.0
+            cx = max(2, min(19, x - int(round(u * 2.2 * max(0.2, tuck_amount)))))
             cy = max(14, min(48, y + torso_dy - int(round(u * coat_lift))))
             coat_layer[cy, cx] = stand[y, x]
-            if x >= 12 and y <= 34:
-                coat_layer[min(49, y + torso_dy), x] = stand[y, x]
+            if x >= max_cx - 3 and y <= 34:
+                coat_layer[min(48, y + torso_dy), x] = stand[y, x]
+    coat_layer = fill_layer_pinholes(coat_layer, x0=2, x1=20, y0=14, y1=48, require_3_neighbors=False)
 
-    # 2. Upper Torso & Coat down to y = 36 (x >= 14)
-    for y in range(0, 36):
-        ny = y + torso_dy
-        if not (0 <= ny < 52):
-            continue
+    # 2. Upper Torso, Head & Waist Belt (y = 0..31, stopping strictly at hip_y = 31.0!)
+    for y in range(0, 32):
+        ny = max(2, min(49, y + torso_dy))
         dx = torso_lean_dx if y <= 24 else 0
-        for x in range(14, 34):
+        min_tx = 15 if y < 28 else 20
+        max_tx = 30 if y < 28 else 29
+        for x in range(min_tx, max_tx):
             if stand[y, x, 3] > 0:
-                torso_layer[ny, max(2, min(50, x + dx))] = stand[y, x]
+                torso_layer[ny, max(2, min(49, x + dx))] = stand[y, x]
 
-    hip_x = 24.5
-    hip_y = 31.5 + torso_dy
+    hip_x = 24.5 + (torso_lean_dx * 0.5)
+    hip_y = 31.0 + torso_dy
 
     def build_aerial_leg(boot_patch, orig_cx, knee_dx, knee_dy, foot_dx, foot_dy, boot_rot_deg, is_far_leg=False):
         layer = np.zeros((52, 52, 4), dtype=np.uint8)
         pil_boot = Image.fromarray(boot_patch, mode='RGBA')
         rot_boot = np.array(
-            pil_boot.rotate(boot_rot_deg, resample=Image.NEAREST, center=(orig_cx, 40.0)),
+            pil_boot.rotate(boot_rot_deg, resample=Image.NEAREST, center=(orig_cx, 42.0)),
             dtype=np.uint8
         )
-        for y in range(34, 52):
+        for y in range(38, 52):
             for x in range(4, 50):
                 if rot_boot[y, x, 3] > 0:
                     ny = max(28, min(48, y + int(round(foot_dy))))
@@ -1016,7 +1004,7 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0, draw_boot_rings=F
         kx = hip_x + knee_dx
         ky = hip_y + knee_dy
         ax = orig_cx + foot_dx
-        ay = 40.5 + foot_dy
+        ay = 41.5 + foot_dy
 
         if is_far_leg:
             c_dark, c_mid, c_hi, c_greave, c_brass = TEAL_COAT_DEEP, TEAL_COAT_DARK, TEAL_COAT_MID, LEATHER_DARK, BRASS_DARK
@@ -1029,15 +1017,15 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0, draw_boot_rings=F
             draw_line_px(layer, kx + off_x, ky, ax + off_x * 0.85, ay, col)
         set_px(layer, kx, ky, c_brass)
         set_px(layer, kx + 1, ky, c_brass)
-        return layer
+        return fill_layer_pinholes(layer, x0=4, x1=49, y0=26, y1=49, require_3_neighbors=True)
 
     t = max(0.0, tuck_amount)
     far_leg = build_aerial_leg(
         tpl['leg_back'],
         18.5,
-        knee_dx=-3.0 * t - 1.0,
-        knee_dy=4.2 - 1.2 * t,
-        foot_dx=-3.5 * t,
+        knee_dx=-2.8 * t - 1.2,
+        knee_dy=4.5 - 1.4 * t,
+        foot_dx=-2.5 * t,
         foot_dy=torso_dy - 3.0 * t,
         boot_rot_deg=-22.0 * t,
         is_far_leg=True
@@ -1045,31 +1033,22 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0, draw_boot_rings=F
     near_leg = build_aerial_leg(
         tpl['leg_front'],
         28.0,
-        knee_dx=4.2 * t + 1.0,
-        knee_dy=3.2 - 2.2 * t,
+        knee_dx=4.2 * t + 1.2,
+        knee_dy=3.5 - 2.2 * t,
         foot_dx=1.2 * t,
-        foot_dy=torso_dy - 4.4 * t,
+        foot_dy=torso_dy - 4.2 * t,
         boot_rot_deg=-20.0 * t,
         is_far_leg=False
     )
 
     tasset_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     for off_x, col in [(-2.0, TEAL_COAT_DARK), (-1.0, TEAL_COAT_MID), (0.0, TEAL_COAT_LIGHT), (1.0, BRASS_LIGHT)]:
-        draw_line_px(tasset_layer, hip_x + off_x, hip_y - 1, hip_x + off_x + 1.4 * t, hip_y + 4.0 - 1.0 * t, col)
+        draw_line_px(tasset_layer, hip_x + off_x, hip_y - 1, hip_x + off_x + 1.4 * t, hip_y + 4.5 - 1.0 * t, col)
 
-    out = composite_over(coat_layer, far_leg)
+    out = composite_over(far_leg, coat_layer)
+    out = composite_over(out, torso_layer)
     out = composite_over(out, tasset_layer)
     out = composite_over(out, near_leg)
-    out = composite_over(out, torso_layer)
-
-    # Fill any transparent hip/coat seam pixels at y=29..35, x=20..31
-    for y in range(29, 36):
-        for x in range(20, 31):
-            if out[y, x, 3] == 0:
-                if out[y - 1, x, 3] > 0 or out[y, x - 1, 3] > 0:
-                    out[y, x] = COAT_TEAL if (x + y) % 2 == 0 else COAT_DARK
-
-    out = fill_layer_pinholes(out)
 
     # Glowing cyan-and-gold clock-rings beneath the boots during aerial ascent/hover
     if draw_boot_rings:
@@ -1088,7 +1067,8 @@ def build_row0_idle(tpl):
     """
     Row 0 (`IDLE`, 30 frames):
     Smooth breathing, swaying teal-and-gold coat tails (F00..F29), rotating brass escapement
-    halo gear behind the shoulders, and a spinning turquoise astrolabe finial on the staff.
+    halo gear behind the shoulders, and a spinning turquoise astrolabe finial on the staff
+    held cleanly out in front (`gx = 34..35, gy = 19..20`).
     """
     frames = []
     for f in range(30):
@@ -1109,12 +1089,12 @@ def build_row0_idle(tpl):
         base = apply_coat_wave(base, phase, amplitude=1.5, vertical_flutter=0.6)
         base = draw_escapement_halo(base, cx=20.0, cy=13.0 + breathe, radius=7.2, rot_rad=phase)
 
-        tilt_deg = 12.0 + math.sin(phase) * 3.5
-        grip_x = 32 + int(round(math.sin(phase) * 1.0))
-        grip_y = 19 + breathe + (1 if f in (23, 24, 25) else 0)
+        tilt_deg = 14.0 + math.sin(phase) * 3.5
+        grip_x = 34 + int(round(math.sin(phase) * 1.0))
+        grip_y = 20 + breathe + (1 if f in (23, 24, 25) else 0)
         frame = draw_chrono_staff(
             base,
-            shoulder=(27, 15 + breathe),
+            shoulder=(26, 18 + breathe),
             grip=(grip_x, grip_y),
             staff_tilt_deg=tilt_deg,
             finial_spin=phase * 2.0,
@@ -1127,8 +1107,8 @@ def build_row0_idle(tpl):
 def build_row1_walk(tpl):
     """
     Row 1 (`WALK`, 30 frames):
-    Anatomical 30fps stride (F00..F14 step A, F15..F29 step B) with back-to-front brass-trimmed boots
-    articulating beneath the clockwork coat, natural torso lean, and counter-swinging Chrono-Staff.
+    Anatomical 30fps 2-leg stride (F00..F14 step A, F15..F29 step B) with back-to-front brass-trimmed boots
+    articulating beneath the clockwork coat and counter-swinging Chrono-Staff held out in front (`gx = 33..36`).
     """
     frames = []
     for f in range(30):
@@ -1137,20 +1117,17 @@ def build_row1_walk(tpl):
         body = render_walk_legs(tpl, f)
         body = draw_escapement_halo(body, cx=20.5, cy=13.0 + bob_y, radius=7.0, rot_rad=phase)
 
-        # Wide counter-swinging Chrono-Staff & natural left hand swing
-        staff_tilt = 18.0 - math.sin(phase) * 12.0
-        grip_x = int(round(32.0 - math.sin(phase) * 3.8))
-        grip_y = int(round(19.5 + bob_y + math.cos(phase) * 1.6))
-        lh_x = int(round(25.0 + math.sin(phase) * 3.8))
-        lh_y = int(round(20.0 + bob_y - math.sin(phase) * 1.4))
+        # Counter-swinging Chrono-Staff kept cleanly in front of the torso (gx = 33..36)
+        staff_tilt = 18.0 - math.sin(phase) * 10.0
+        grip_x = int(round(34.5 - math.sin(phase) * 1.8))
+        grip_y = int(round(20.0 + bob_y + math.cos(phase) * 1.4))
 
         frame = draw_chrono_staff(
             body,
-            shoulder=(28, 15 + bob_y),
+            shoulder=(26, 18 + bob_y),
             grip=(grip_x, grip_y),
             staff_tilt_deg=staff_tilt,
             finial_spin=phase * 2.0,
-            left_hand=(lh_x, lh_y),
             conjure_mode='none'
         )
         frames.append(frame)
@@ -1160,10 +1137,10 @@ def build_row1_walk(tpl):
 def build_row2_auto_attack(tpl):
     """
     Row 2 (`AUTO_ATTACK`, 30 frames):
-    30fps Clock-Gear Launch with wide 2-Bone IK arm travel:
-    - F00..F09: High windup from (31, 19) to (27, 15) while spinning up a golden saw-gear
-    - F10..F18: Sharp forward cast sweep from (27, 15) to (36, 22) launching the gear with turquoise time-sparks
-    - F19..F29: Follow-through dip to (30, 26) and smooth recovery to (31, 19)
+    30fps Clock-Gear Launch with wide 2-Bone IK arm travel out in front (`gx = 32..38`):
+    - F00..F09: High windup from (34, 20) to (32, 14) while spinning up a golden saw-gear
+    - F10..F18: Sharp forward cast sweep from (32, 14) to (38, 22) launching the gear with turquoise time-sparks
+    - F19..F29: Follow-through dip to (34, 24) and smooth recovery to (34, 20)
     """
     frames = []
     for f in range(30):
@@ -1181,16 +1158,15 @@ def build_row2_auto_attack(tpl):
 
         if f <= 9:
             u = f / 9.0
-            tilt_deg = 12.0 - u * 30.0  # Winds staff back from +12 deg to -18 deg
-            gx = int(round(31.0 * (1.0 - u) + 27.0 * u))
-            gy = int(round(19.0 * (1.0 - u) + 15.0 * u))
+            tilt_deg = 14.0 - u * 28.0  # Winds staff back from +14 deg to -14 deg
+            gx = int(round(34.0 * (1.0 - u) + 32.0 * u))
+            gy = int(round(20.0 * (1.0 - u) + 14.0 * u))
             frame = draw_chrono_staff(
                 base,
-                shoulder=(26, 15),
+                shoulder=(26, 18),
                 grip=(gx, gy),
                 staff_tilt_deg=tilt_deg,
                 finial_spin=phase * 3.0,
-                left_hand=(int(round(29.0 + u * 6.0)), int(round(18.0 - u * 3.0))),
                 conjure_mode='saw_gear',
                 mode_progress=u
             )
@@ -1198,33 +1174,31 @@ def build_row2_auto_attack(tpl):
             u = (f - 10) / 8.0
             u_thrust = min(1.0, (f - 10) / 5.0)
             tilt_deg = -10.0 * (1.0 - u_thrust) + (38.0 + math.sin(u * math.pi) * 8.0) * u_thrust
-            gx = int(round(27.0 * (1.0 - u_thrust) + 36.0 * u_thrust))
-            gy = int(round(15.0 * (1.0 - u_thrust) + 22.0 * u_thrust))
+            gx = int(round(32.0 * (1.0 - u_thrust) + 38.0 * u_thrust))
+            gy = int(round(14.0 * (1.0 - u_thrust) + 22.0 * u_thrust))
             frame = draw_chrono_staff(
                 base,
-                shoulder=(28, 15),
+                shoulder=(27, 18),
                 grip=(gx, gy),
                 staff_tilt_deg=tilt_deg,
                 finial_spin=phase * 4.0,
-                left_hand=(int(round(33.0 + u_thrust * 3.0)), int(round(15.0 + u_thrust * 3.0))),
                 conjure_mode='gear_launch' if f <= 15 else 'none',
                 mode_progress=u
             )
         else:
             u = (f - 19) / 10.0
-            # Follow-through dip through (30, 26) at u=0.4 then back to (31, 19)
             if u <= 0.45:
                 w = u / 0.45
-                gx = int(round(36.0 * (1.0 - w) + 30.0 * w))
-                gy = int(round(22.0 * (1.0 - w) + 26.0 * w))
+                gx = int(round(38.0 * (1.0 - w) + 34.0 * w))
+                gy = int(round(22.0 * (1.0 - w) + 24.0 * w))
             else:
                 w = (u - 0.45) / 0.55
-                gx = int(round(30.0 * (1.0 - w) + 31.0 * w))
-                gy = int(round(26.0 * (1.0 - w) + 19.0 * w))
-            tilt_deg = 36.0 * (1.0 - u) + 12.0 * u
+                gx = 34
+                gy = int(round(24.0 * (1.0 - w) + 20.0 * w))
+            tilt_deg = 36.0 * (1.0 - u) + 14.0 * u
             frame = draw_chrono_staff(
                 base,
-                shoulder=(27, 15),
+                shoulder=(26, 18),
                 grip=(gx, gy),
                 staff_tilt_deg=tilt_deg,
                 finial_spin=phase * 2.0,
@@ -1237,9 +1211,9 @@ def build_row2_auto_attack(tpl):
 def build_row3_skill(tpl):
     """
     Row 3 (`SKILL` - Temporal Stasis Hourglass & Rewind Shatter, 30 frames):
-    - Phase 1 (F00..F14): Raises the Chrono-Staff to (27, 15) and left hand forward to conjure the
+    - Phase 1 (F00..F14): Raises the Chrono-Staff to (33, 14) to conjure the
       Stasis Hourglass with swirling cyan clockwork rings.
-    - Phase 2 (F15..F29): Snaps the staff downward to (36, 20) (F15..F22) to trigger the Temporal Rewind Shatter
+    - Phase 2 (F15..F29): Snaps the staff downward to (38, 21) (F15..F22) to trigger the Temporal Rewind Shatter
       and settles back to stance (F23..F29).
     """
     frames = []
@@ -1251,45 +1225,41 @@ def build_row3_skill(tpl):
 
         if f <= 14:
             u = f / 14.0
-            # Raises staff high & back toward (27, 15) while left hand projects the Stasis Hourglass
-            tilt_deg = 14.0 * (1.0 - u) - 4.0 * u
-            gx = int(round(32.0 * (1.0 - u) + 27.0 * u))
-            gy = int(round(19.0 * (1.0 - u) + 15.0 * u))
-            lh = (int(round(31.0 + u * 6.0)), int(round(17.0 - u * 3.0)))
+            tilt_deg = 14.0 * (1.0 - u) + 2.0 * u
+            gx = int(round(34.0 * (1.0 - u) + 33.0 * u))
+            gy = int(round(20.0 * (1.0 - u) + 14.0 * u))
             frame = draw_chrono_staff(
                 base,
-                shoulder=(27, 15),
+                shoulder=(26, 18),
                 grip=(gx, gy),
                 staff_tilt_deg=tilt_deg,
                 finial_spin=phase * 3.0,
-                left_hand=lh,
                 conjure_mode='stasis_hourglass',
                 mode_progress=u
             )
         elif f <= 22:
             u = (f - 15) / 7.0
             u_snap = min(1.0, u * 1.6)
-            # Snaps the Chrono-Staff forward & downward from (27, 15) to (36, 20) (+48 deg) to shatter the Stasis Hourglass!
-            tilt_deg = -4.0 * (1.0 - u_snap) + 48.0 * u_snap
-            gx = int(round(27.0 * (1.0 - u_snap) + 36.0 * u_snap))
-            gy = int(round(15.0 * (1.0 - u_snap) + 20.0 * u_snap))
+            # Snaps the Chrono-Staff forward & downward from (33, 14) to (38, 21) (+48 deg) to shatter the Stasis Hourglass!
+            tilt_deg = 2.0 * (1.0 - u_snap) + 48.0 * u_snap
+            gx = int(round(33.0 * (1.0 - u_snap) + 38.0 * u_snap))
+            gy = int(round(14.0 * (1.0 - u_snap) + 21.0 * u_snap))
             frame = draw_chrono_staff(
                 base,
-                shoulder=(28, 15),
+                shoulder=(27, 18),
                 grip=(gx, gy),
                 staff_tilt_deg=tilt_deg,
                 finial_spin=-phase * 4.0,
-                left_hand=(int(round(35.0 - u_snap * 4.0)), int(round(15.0 + u_snap * 4.0))),
                 conjure_mode='rewind_shatter',
                 mode_progress=u
             )
         else:
             u = (f - 23) / 6.0
-            tilt_deg = 48.0 * (1.0 - u) + 12.0 * u
+            tilt_deg = 48.0 * (1.0 - u) + 14.0 * u
             frame = draw_chrono_staff(
                 base,
-                shoulder=(27, 15),
-                grip=(int(round(36.0 * (1.0 - u) + 32.0 * u)), int(round(20.0 * (1.0 - u) + 19.0 * u))),
+                shoulder=(26, 18),
+                grip=(int(round(38.0 * (1.0 - u) + 34.0 * u)), int(round(21.0 * (1.0 - u) + 20.0 * u))),
                 staff_tilt_deg=tilt_deg,
                 finial_spin=phase * 2.0,
                 conjure_mode='none'
@@ -1301,11 +1271,11 @@ def build_row3_skill(tpl):
 def build_row4_ultimate(tpl):
     """
     Row 4 (`ULTIMATE` - Doomsday Clock: Midnight Paradox, 30 frames):
-    - Stage 1 (F00..F10): Ascends slightly, hoisting Chrono-Staff overhead to (28, 13)
+    - Stage 1 (F00..F10): Ascends slightly, hoisting Chrono-Staff overhead to (32, 13)
       as a glowing Roman-numeral clock ring forms behind the back.
-    - Stage 2 (F11..F20): Sweeps both hands like clock hands approaching XII (F11..F20)
+    - Stage 2 (F11..F20): Holds Chrono-Staff high at (32..33, 12..13) as clock hands approach XII (F11..F20)
       surrounded by orbiting golden gears.
-    - Stage 3 (F21..F29): Grand sweep of the Chrono-Staff forward/down to (36, 22) at the stroke of Midnight (F21..F29)
+    - Stage 3 (F21..F29): Grand sweep of the Chrono-Staff forward/down to (38, 22) at the stroke of Midnight (F21..F29)
       to detonate the Doomsday Paradox.
     """
     frames = []
@@ -1320,15 +1290,14 @@ def build_row4_ultimate(tpl):
             body = draw_escapement_halo(
                 body, cx=21.0, cy=13.0, radius=7.6, rot_rad=phase * 2.0, roman_clock=True, orbit_gears=1 if f >= 6 else 0
             )
-            gx = int(round(32.0 * (1.0 - u) + 28.0 * u))
-            gy = int(round(19.0 * (1.0 - u) + 13.0 * u))
+            gx = int(round(34.0 * (1.0 - u) + 32.0 * u))
+            gy = int(round(20.0 * (1.0 - u) + 13.0 * u))
             frame = draw_chrono_staff(
                 body,
-                shoulder=(27, 14),
+                shoulder=(26, 17),
                 grip=(gx, gy),
-                staff_tilt_deg=12.0 * (1.0 - u) - 2.0 * u,
+                staff_tilt_deg=14.0 * (1.0 - u) + 2.0 * u,
                 finial_spin=phase * 3.0,
-                left_hand=(int(round(22.0 - u * 5.0)), int(round(17.0 - u * 4.0))),
                 conjure_mode='doomsday_clock',
                 mode_progress=u * 0.5
             )
@@ -1339,47 +1308,40 @@ def build_row4_ultimate(tpl):
             body = draw_escapement_halo(
                 body, cx=21.0, cy=13.0, radius=7.8, rot_rad=-phase * 3.0, roman_clock=True, orbit_gears=3
             )
-            # Sweeps both hands upward like clock hands approaching XII!
-            hand_ang = -math.pi * 0.1 - u * (math.pi * 0.4)
-            lh_x = int(round(24.0 + math.cos(hand_ang + math.pi * 0.6) * 7.0))
-            lh_y = int(round(14.0 + math.sin(hand_ang + math.pi * 0.6) * 5.0))
             frame = draw_chrono_staff(
                 body,
-                shoulder=(27, 14),
-                grip=(int(round(28.0 + u * 2.0)), int(round(13.0 - u * 1.0))),
-                staff_tilt_deg=-4.0 + u * 6.0,
+                shoulder=(26, 17),
+                grip=(int(round(32.0 + u * 2.0)), int(round(13.0 - u * 1.0))),
+                staff_tilt_deg=2.0 + u * 6.0,
                 finial_spin=phase * 4.0,
-                left_hand=(lh_x, lh_y),
                 conjure_mode='doomsday_clock',
                 mode_progress=0.5 + u * 0.5
             )
         else:
             u = (f - 21) / 8.0
-            u_sweep = min(1.0, u * 1.6)
             tuck = max(0.0, 0.45 * (1.0 - u))
             body = make_jump_body(tpl, 0, tuck_amount=tuck, torso_lean_dx=1 if u < 0.6 else 0, draw_boot_rings=(u < 0.6), phase=phase)
             body = apply_coat_wave(body, phase * 2.0, amplitude=2.2, vertical_flutter=0.9)
             body = draw_escapement_halo(
                 body, cx=21.0, cy=13.0, radius=7.8, rot_rad=phase * 4.0, roman_clock=(u < 0.7), orbit_gears=2 if u < 0.5 else 0
             )
-            # Grand sweep from (28, 13) down-forward to (36, 22) at Midnight (F21..F25), then settles (F26..F29)
+            # Grand sweep from (33, 13) down-forward to (38, 22) at Midnight (F21..F25), then settles (F26..F29)
             if u <= 0.55:
                 w = u / 0.55
-                gx = int(round(28.0 * (1.0 - w) + 36.0 * w))
+                gx = int(round(33.0 * (1.0 - w) + 38.0 * w))
                 gy = int(round(13.0 * (1.0 - w) + 22.0 * w))
-                tilt_deg = 2.0 * (1.0 - w) + 46.0 * w
+                tilt_deg = 8.0 * (1.0 - w) + 46.0 * w
             else:
                 w = (u - 0.55) / 0.45
-                gx = int(round(36.0 * (1.0 - w) + 32.0 * w))
-                gy = int(round(22.0 * (1.0 - w) + 19.0 * w))
+                gx = int(round(38.0 * (1.0 - w) + 34.0 * w))
+                gy = int(round(22.0 * (1.0 - w) + 20.0 * w))
                 tilt_deg = 46.0 * (1.0 - w) + 14.0 * w
             frame = draw_chrono_staff(
                 body,
-                shoulder=(28, 15),
+                shoulder=(27, 18),
                 grip=(gx, gy),
                 staff_tilt_deg=tilt_deg,
                 finial_spin=phase * 3.0,
-                left_hand=(int(round(35.0 - u_sweep * 3.0)), int(round(15.0 + u_sweep * 4.0))) if u < 0.6 else None,
                 conjure_mode='gear_launch' if u < 0.55 else 'none',
                 mode_progress=u
             )
@@ -1392,7 +1354,7 @@ def build_row5_death(tpl):
     Row 5 (`DEATH` & `HURT`, 30 frames):
     - F00..F06: Hit-stagger recoil (`HURT` uses F00..F05).
     - F07..F17: Drops to knees as the brass halo gears wind down and dim.
-    - F18..F29: Collapses horizontally onto the ground (y=38..46) with the Chrono-Staff
+    - F18..F29: Collapses horizontally onto the ground (y=38..48) with the Chrono-Staff
       resting flat beside the body (ZERO floating upright staff!).
     """
     frames = []
@@ -1406,8 +1368,8 @@ def build_row5_death(tpl):
             base = draw_escapement_halo(base, cx=20.0 + dx, cy=13.0 + dy, radius=7.0, rot_rad=-u * 1.5, brightness=1.0 - u * 0.25)
             frame = draw_chrono_staff(
                 base,
-                shoulder=(27 + dx, 15 + dy),
-                grip=(31 + dx - int(round(u * 2.0)), 19 + dy + int(round(u * 3.0))),
+                shoulder=(26 + dx, 18 + dy),
+                grip=(33 + dx, 20 + dy + int(round(u * 2.0))),
                 staff_tilt_deg=16.0 + u * 24.0,
                 finial_spin=-u * 2.0
             )
@@ -1418,7 +1380,6 @@ def build_row5_death(tpl):
             base = (tpl['kneel1'] if f <= 12 else tpl['kneel2']).copy()
             head_bow = 1 if f >= 14 else 0
             if head_bow == 1:
-                # Shift entire upper head+torso (y=2..28, x=14..42) down by 1px and keep row 8 filled cleanly
                 upper_slice = base[2:28, 14:42].copy()
                 row8_backup = base[8, 14:42].copy()
                 base[2:28, 14:42] = 0
@@ -1431,11 +1392,11 @@ def build_row5_death(tpl):
             halo_b = max(0.0, 0.70 * (1.0 - u))
             base = draw_escapement_halo(base, cx=22.0, cy=19.0, radius=6.5, rot_rad=-1.5 - u * 1.2, brightness=halo_b)
 
-            # Staff tilts progressively toward the ground as Zephyros kneels
+            # Staff tilts progressively toward the ground in front of the kneeling body (gx = 34..37)
             frame = draw_chrono_staff(
                 base,
                 shoulder=(27, 22 + head_bow),
-                grip=(31 + int(round(u * 3.0)), 26 + int(round(u * 5.0))),
+                grip=(34 + int(round(u * 3.0)), 26 + int(round(u * 4.0))),
                 staff_tilt_deg=42.0 + u * 36.0,
                 finial_spin=-3.5 - u * 1.0
             )
@@ -1463,7 +1424,6 @@ def build_row5_death(tpl):
             draw_line_px(staff_floor, 19 + dx, staff_y - 1, 42 + dx, staff_y - 1, BRASS_MID)
             for rx in (22, 28, 35, 40):
                 set_px(staff_floor, rx + dx, staff_y - 1, BRASS_LIGHT)
-            # Flat Astrolabe Finial resting on the ground at x=45, y=44..46 (progressively dimming turquoise-brass glow)
             fcx = 45 + dx
             fcy = 44
             ring_pts = [(-2, 0), (2, 0), (0, -1), (0, 1), (-1, -1), (1, -1), (-1, 1), (1, 1)]
@@ -1490,7 +1450,7 @@ def build_row6_dash(tpl):
     """
     Row 6 (`DASH` - Temporal Rift Phase-Step, 30 frames):
     Sleek forward time-skip lunge wrapped in cyan-gold clockwork afterimages and streaming coat tails.
-    Uses recentered `tpl['dash']` (shifted left by -4px to x=8..39) so the lunging staff & FX stay 100% inside x <= 48!
+    Uses recentered `tpl['dash']` (shifted left by -4px) with staff grip out in front (`gx = 34..39`).
     """
     frames = []
     for f in range(30):
@@ -1503,8 +1463,8 @@ def build_row6_dash(tpl):
             base = draw_escapement_halo(base, cx=20.0, cy=13.0 + crouch_dy, radius=7.2, rot_rad=phase * 2.0)
             frame = draw_chrono_staff(
                 base,
-                shoulder=(28, 15 + crouch_dy),
-                grip=(int(round(30.0 + u * 4.0)), 18 + crouch_dy),
+                shoulder=(26, 18 + crouch_dy),
+                grip=(int(round(34.0 + u * 2.0)), 19 + crouch_dy),
                 staff_tilt_deg=15.0 + u * 25.0,
                 finial_spin=phase * 3.0
             )
@@ -1528,11 +1488,10 @@ def build_row6_dash(tpl):
 
             frame = draw_chrono_staff(
                 base,
-                shoulder=(32 + lunge_dx, 15 + bob_dy),
-                grip=(37 + lunge_dx, 18 + bob_dy),
+                shoulder=(31 + lunge_dx, 17 + bob_dy),
+                grip=(37 + lunge_dx, 19 + bob_dy),
                 staff_tilt_deg=44.0 + math.sin(u * math.pi) * 8.0,
                 finial_spin=phase * 4.0,
-                left_hand=(28 + lunge_dx, 19 + bob_dy),
                 conjure_mode='gear_launch' if 8 <= f <= 13 else 'none',
                 mode_progress=u
             )
@@ -1546,9 +1505,9 @@ def build_row6_dash(tpl):
             base = draw_escapement_halo(base, cx=20.0, cy=13.0 + crouch_dy, radius=7.2, rot_rad=phase * 2.0)
             frame = draw_chrono_staff(
                 base,
-                shoulder=(27, 15 + crouch_dy),
-                grip=(int(round(35.0 * (1.0 - u) + 32.0 * u)), int(round(21.0 * (1.0 - u) + 19.0 * u)) + crouch_dy),
-                staff_tilt_deg=38.0 * (1.0 - u) + 12.0 * u,
+                shoulder=(26, 18 + crouch_dy),
+                grip=(int(round(36.0 * (1.0 - u) + 34.0 * u)), int(round(21.0 * (1.0 - u) + 20.0 * u)) + crouch_dy),
+                staff_tilt_deg=38.0 * (1.0 - u) + 14.0 * u,
                 finial_spin=phase * 2.0
             )
             frames.append(frame)
@@ -1560,9 +1519,9 @@ def build_row7_crouch(tpl):
     """
     Row 7 (`CROUCH`, 30 frames):
     - F00..F06: Drops into a low Temporal Calibration kneel (7px lower silhouette), projecting a
-      spinning brass-and-cyan Escapement Shield dial in front.
-    - F07..F18: Fires a high-velocity low Saw-Gear from the crouched stance (F11..F16) with wide IK arm thrust.
-    - F19..F29: Rises smoothly back to standing stance.
+      spinning brass-and-cyan Escapement Shield dial in front (`gx = 33..34`).
+    - F07..F18: Fires a high-velocity low Saw-Gear from the crouched stance (`gx = 33..38`).
+    - F19..F29: Rises smoothly back to standing stance (`gx = 34`).
     """
     frames = []
     for f in range(30):
@@ -1577,11 +1536,10 @@ def build_row7_crouch(tpl):
             shield_pt = (40.0, 24.0 + d * 0.5) if f >= 2 else None
             frame = draw_chrono_staff(
                 base,
-                shoulder=(27, 15 + d),
-                grip=(int(round(32.0 - u * 3.0)), 19 + d),
+                shoulder=(26, 17 + d),
+                grip=(int(round(34.0 - u * 1.0)), 19 + d),
                 staff_tilt_deg=14.0 + u * 16.0,
                 finial_spin=phase * 3.0,
-                left_hand=(int(round(32.0 + u * 4.0)), 18 + d),
                 shield_center=shield_pt
             )
             frames.append(frame)
@@ -1598,28 +1556,27 @@ def build_row7_crouch(tpl):
                 mode = 'saw_gear'
                 prog = (f - 7) / 3.0
                 tilt = 26.0 - prog * 10.0
-                gx = int(round(29.0 - prog * 2.0))
+                gx = int(round(34.0 - prog * 1.0))
                 gy = 25 - int(round(prog * 2.0))
             elif f <= 16:
                 mode = 'gear_launch'
                 prog = (f - 11) / 5.0
                 tilt = 40.0
-                gx = int(round(28.0 + min(1.0, prog * 1.6) * 8.0))
+                gx = int(round(33.0 + min(1.0, prog * 1.6) * 5.0))
                 gy = 23 + int(round(min(1.0, prog * 1.6) * 3.0))
             else:
                 mode = 'none'
                 prog = 0.0
                 tilt = 26.0
-                gx = 32
+                gx = 35
                 gy = 25
 
             frame = draw_chrono_staff(
                 base,
-                shoulder=(27, 15 + d),
+                shoulder=(26, 17 + d),
                 grip=(gx, gy),
                 staff_tilt_deg=tilt,
                 finial_spin=phase * 4.0,
-                left_hand=(36, 18 + d),
                 conjure_mode=mode,
                 mode_progress=prog,
                 shield_center=(41.0, 27.0)
@@ -1636,9 +1593,9 @@ def build_row7_crouch(tpl):
             base = draw_escapement_halo(base, cx=20.0, cy=13.0 + d, radius=7.0, rot_rad=phase * 2.0)
             frame = draw_chrono_staff(
                 base,
-                shoulder=(27, 15 + d),
-                grip=(int(round(30.0 * (1.0 - u) + 32.0 * u)), 19 + d),
-                staff_tilt_deg=26.0 * (1.0 - u) + 12.0 * u,
+                shoulder=(26, 17 + d),
+                grip=(int(round(35.0 * (1.0 - u) + 34.0 * u)), 20 + d),
+                staff_tilt_deg=26.0 * (1.0 - u) + 14.0 * u,
                 finial_spin=phase * 2.0,
                 shield_center=(41.0, 27.0) if k <= 1 else None
             )
@@ -1650,13 +1607,12 @@ def build_row7_crouch(tpl):
 def build_row8_jump(tpl):
     """
     Row 8 (`JUMP`, 30 frames — ZERO bouncy-ball frames!):
-    Full-body Time-Glide Aerial Vault & mid-air downward Saw-Gear Volley:
+    Full-body Time-Glide Aerial Vault & mid-air downward Saw-Gear Volley (`gx = 33..37`):
     - F00..F04: Knee-bend launch
     - F05..F11: Ascending aerial vault with glowing cyan clock-rings beneath the boots & high IK staff lift
     - F12..F18: Apex mid-air hover sweeping Chrono-Staff downward at 35 deg to launch a spinning Clock-Gear
     - F19..F24: Time-slowed feather descent
     - F25..F29: Crisp landing
-    Every frame shows the Chronomancer's full head, coat, boots, and Chrono-Staff — NEVER a round ball!
     """
     frames = []
     for f in range(30):
@@ -1670,8 +1626,8 @@ def build_row8_jump(tpl):
             body = draw_escapement_halo(body, cx=20.0, cy=13.0 + dy, radius=7.2, rot_rad=phase * 2.0)
             frame = draw_chrono_staff(
                 body,
-                shoulder=(27, 15 + dy),
-                grip=(31 - (1 if dy >= 3 else 0), 19 + dy),
+                shoulder=(26, 18 + dy),
+                grip=(34, 20 + dy),
                 staff_tilt_deg=16.0 + dy * 4.0,
                 finial_spin=phase * 2.5
             )
@@ -1684,15 +1640,14 @@ def build_row8_jump(tpl):
             body = make_jump_body(tpl, 0, tuck_amount=tuck, torso_lean_dx=1, draw_boot_rings=True, phase=phase)
             body = apply_coat_wave(body, phase * 2.0, amplitude=2.2, vertical_flutter=1.0)
             body = draw_escapement_halo(body, cx=21.0, cy=13.0, radius=7.4, rot_rad=phase * 3.0)
-            gx = int(round(28.0 * (1.0 - u) + 34.0 * u))
+            gx = int(round(33.0 * (1.0 - u) + 36.0 * u))
             gy = int(round(14.0 * (1.0 - u) + 19.0 * u))
             frame = draw_chrono_staff(
                 body,
-                shoulder=(28, 15),
+                shoulder=(27, 17),
                 grip=(gx, gy),
                 staff_tilt_deg=18.0 + u * 85.0,  # Sweeps smoothly toward downward 35-deg aerial aim (90 + 35 = 125 deg)
                 finial_spin=phase * 3.0,
-                left_hand=(int(round(25.0 + u * 8.0)), int(round(15.0 + u * 2.0))),
                 conjure_mode='saw_gear' if f >= 9 else 'none',
                 mode_progress=(f - 9) / 3.0 if f >= 9 else 0.0
             )
@@ -1709,16 +1664,14 @@ def build_row8_jump(tpl):
 
             mode = 'saw_gear' if f <= 14 else 'gear_launch'
             prog = (f - 12) / 2.0 if f <= 14 else (f - 15) / 3.0
-            gx = (30 if f <= 14 else 35) + recoil_dx
-            gy = 16 if f <= 14 else 21
-            # 125.0 deg from vertical up = 35.0 deg downward below horizontal!
+            gx = (34 if f <= 14 else 37) + recoil_dx
+            gy = 17 if f <= 14 else 21
             frame = draw_chrono_staff(
                 body,
-                shoulder=(28 + recoil_dx, 15),
+                shoulder=(27 + recoil_dx, 17),
                 grip=(gx, gy),
                 staff_tilt_deg=125.0 - (4.0 if f in (15, 16) else 0.0),
                 finial_spin=phase * 4.0,
-                left_hand=(33 + recoil_dx, 18),
                 conjure_mode=mode,
                 mode_progress=prog
             )
@@ -1733,8 +1686,8 @@ def build_row8_jump(tpl):
             body = draw_escapement_halo(body, cx=20.5, cy=13.0, radius=7.2, rot_rad=phase * 2.5)
             frame = draw_chrono_staff(
                 body,
-                shoulder=(27, 15),
-                grip=(int(round(35.0 * (1.0 - u) + 30.0 * u)), int(round(21.0 * (1.0 - u) + 17.0 * u))),
+                shoulder=(26, 18),
+                grip=(int(round(36.0 * (1.0 - u) + 34.0 * u)), int(round(21.0 * (1.0 - u) + 19.0 * u))),
                 staff_tilt_deg=110.0 * (1.0 - u) + 18.0 * u,
                 finial_spin=phase * 2.5
             )
@@ -1750,9 +1703,9 @@ def build_row8_jump(tpl):
             body = draw_escapement_halo(body, cx=20.0, cy=13.0 + d, radius=7.2, rot_rad=phase * 2.0)
             frame = draw_chrono_staff(
                 body,
-                shoulder=(27, 15 + d),
-                grip=(32, 19 + d),
-                staff_tilt_deg=12.0 + d * 3.0,
+                shoulder=(26, 18 + d),
+                grip=(34, 20 + d),
+                staff_tilt_deg=14.0 + d * 3.0,
                 finial_spin=phase * 2.0
             )
             frames.append(frame)

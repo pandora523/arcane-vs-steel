@@ -216,10 +216,26 @@ def composite_over(base, over):
 
 def make_clean_templates(src):
     """
-    Strips ALL baked-in scythe blades and shafts from Malakor's master poses so we can
-    animate strictly ONE articulated Abyssal Great-Scythe (`draw_abyssal_scythe`) per frame
-    with zero duplicate scythes or phantom weapon fragments.
+    Strips ALL baked-in scythe blades, shafts, protruding arms, and baked chest bone-hands
+    from Malakor's master poses so we can animate strictly ONE articulated Abyssal Great-Scythe
+    (`draw_abyssal_scythe`) and ONE clean Lead IK Arm per frame with zero duplicate limbs or chest hands.
     """
+    def neutralize_reaper_chest_arm(cell):
+        """
+        Erases any protruding baked arm pixels at x >= 29 for 16 <= y <= 29, and replaces
+        any bright bone/necrotic/gold hand or forearm pixels (r > 95 or g > 95) across
+        Malakor's chest (18 <= y <= 28, 21 <= x <= 28) with clean dark abyssal robe/ribcage
+        shading (ROBE_DARK / ROBE_MID) so his chest has ZERO baked bone-hands!
+        """
+        cell[16:30, 29:44] = 0
+        for y in range(18, 29):
+            for x in range(21, 29):
+                if cell[y, x, 3] > 0:
+                    r, g, b, _ = cell[y, x]
+                    if r > 95 or g > 95:
+                        cell[y, x] = ROBE_MID if ((x + y) % 2 == 0) else ROBE_DARK
+        return cell
+
     # 1. Clean standing body from `idle` (0, 0)
     stand = src['idle'].copy()
     slash_ref = src['atk_slash'].copy()
@@ -260,6 +276,9 @@ def make_clean_templates(src):
                 elif stand[below_y, x, 3] > 0:
                     stand[y, x] = stand[below_y, x]
 
+    # Erase baked protruding arm and neutralize baked bone-hands on chest
+    stand = neutralize_reaper_chest_arm(stand)
+
     # Keep boots ending at y=49 and left cloak at x>=2 so 2px margin remains around templates
     for x in range(52):
         if stand[50, x, 3] > 0 and stand[49, x, 3] == 0:
@@ -277,30 +296,31 @@ def make_clean_templates(src):
     leg_back_patch[39:50, 8:18] = stand[39:50, 8:18]
     leg_front_patch[39:50, 26:36] = stand[39:50, 26:36]
 
-    # Upper torso + crimson tabard + tattered cloak without lower boots (y >= 40)
-    stand_upper = stand.copy()
-    stand_upper[40:, :, :] = 0
-    # Preserve far-left tattered cloak tips at x <= 7, y = 40..46
-    stand_upper[40:47, :8, :] = stand[40:47, :8, :]
+    # Upper torso + waist belt + left tattered cloak with ALL standing thigh pixels (y >= 32, x >= 15) stripped!
+    stand_upper = np.zeros((52, 52, 4), dtype=np.uint8)
+    stand_upper[:32, :] = stand[:32, :]
+    stand_upper[32:45, :15] = stand[32:45, :15]
     stand_upper = fill_layer_pinholes(add_outline_to_layer(stand_upper))
 
-    # 2. Clean forward slash/lunge body (from `atk_slash` with all right-side crescent blade pixels stripped
-    #    and clean lower legs/boots grafted from `stand`)
+    # 2. Clean forward slash/lunge body (from `atk_slash` with all right-side crescent blade pixels stripped,
+    #    baked chest arm neutralized, and clean lower legs/boots grafted from `stand`)
     lunge = src['atk_slash'].copy()
     for y in range(0, 52):
         for x in range(31, 52):
             lunge[y, x] = 0
+    lunge = neutralize_reaper_chest_arm(lunge)
     lunge[36:50, 8:42] = stand[36:50, 8:42]
     lunge[50:, :, :] = 0
     lunge[:, :2, :] = 0
     lunge = fill_layer_pinholes(add_outline_to_layer(lunge))
 
-    # 3. Clean kneeling bodies (`kneel1`, `kneel2`) with the baked vertical scythe at x >= 30, y <= 17 removed!
+    # 3. Clean kneeling bodies (`kneel1`, `kneel2`) with baked vertical scythe & chest bone-hands removed!
     kneel1 = src['kneel1'].copy()
     kneel2 = src['kneel2'].copy()
     for kn in (kneel1, kneel2):
         kn[:18, :, :] = 0
         kn[:, 30:, :] = 0
+        neutralize_reaper_chest_arm(kn)
         for x in range(52):
             if kn[50, x, 3] > 0 and kn[49, x, 3] == 0:
                 kn[49, x] = kn[50, x]
@@ -320,9 +340,11 @@ def make_clean_templates(src):
             fall[ny, :] = raw_fall[y, :]
     fall = fill_layer_pinholes(add_outline_to_layer(fall))
 
-    # 5. Clean horizontal wraith-dash body (`dash`) with front scythe blade/shaft (x >= 38) stripped
+    # 5. Clean horizontal wraith-dash body (`dash`) with front scythe blade/shaft (x >= 38)
+    #    and baked chest arm/bone-hand removed!
     dash = src['dash'].copy()
     dash[:, 38:, :] = 0
+    dash = neutralize_reaper_chest_arm(dash)
     dash[50:, :, :] = 0
     dash[:, :2, :] = 0
     dash = fill_layer_pinholes(add_outline_to_layer(dash))
@@ -555,11 +577,11 @@ def draw_ik_reaper_arm(layer, sx, sy, hx, hy, L1=5.2, L2=5.0, bend_side=1.0, is_
 
 def draw_abyssal_scythe(
     base_frame,
-    grip_pos=(26, 25),
+    grip_pos=(33, 21),
     shaft_deg=-35.0,
-    shaft_reach=15.5,
-    shaft_back=12.5,
-    blade_span=17.5,
+    shaft_reach=15.0,
+    shaft_back=12.0,
+    blade_span=17.0,
     blade_curve=6.0,
     blade_dir=1,
     rune_glow=1,
@@ -569,14 +591,13 @@ def draw_abyssal_scythe(
     shoulder_pos=(26, 19),
 ):
     """
-    Renders strictly ONE articulated Abyssal Great-Scythe AND Malakor's 2-Bone IK Weapon Arms onto `base_frame`:
-    - Auto-clamps `(gx, gy)` within `[10..42, 10..40]`.
+    Renders strictly ONE articulated Abyssal Great-Scythe AND ONE clean Lead 2-Bone IK Weapon Arm
+    (`draw_ik_reaper_arm(..., is_rear=False)`) extending from `shoulder_pos` out to `(gx, gy)`:
+    - ZERO secondary rear arm (`is_rear=True`) so no bone-hands ever appear on Malakor's chest!
+    - Auto-clamps `(gx, gy)` within `[30..42, 10..40]` out in front of Malakor's torso.
     - Dynamically reduces `shaft_reach` (`shaft_up`) and `blade_span` (`blade_len`) so the scythe head,
       butt-spike, and crescent blade tip NEVER exceed `[3..48, 3..48]`.
-    - Draws Rear IK Arm BEFORE the scythe shaft, and draws Lead IK Arm (`shoulder_pos -> elbow -> (gx, gy)`)
-      OVER the scythe shaft so Malakor visibly grips and swings the Abyssal Scythe with both arms!
     """
-    rear_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     scythe_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     lead_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     fx_layer = np.zeros((52, 52, 4), dtype=np.uint8)
@@ -591,8 +612,8 @@ def draw_abyssal_scythe(
     # Perpendicular vector pointing in the direction of the scythe blade
     px, py = -uy * blade_dir, ux * blade_dir
 
-    # Auto-clamp primary hand grip within [10..42, 10..40]
-    gx = float(max(10.0, min(42.0, grip_pos[0])))
+    # Auto-clamp primary hand grip within [30..42, 10..40] strictly out in front of Malakor's torso
+    gx = float(max(30.0, min(42.0, grip_pos[0])))
     gy = float(max(10.0, min(40.0, grip_pos[1])))
 
     sx = float(max(10.0, min(40.0, shoulder_pos[0])))
@@ -641,14 +662,7 @@ def draw_abyssal_scythe(
     blade_len = max(5.5, blade_len)
     eff_curve = float(blade_curve) * (blade_len / max(1.0, float(blade_span)))
 
-    # 1. Rear IK Arm (drawn BEFORE the scythe shaft)
-    if two_handed and left_claw_ext is None:
-        rsx, rsy = sx - 4.0, sy + 1.0
-        g2x = max(8.0, min(44.0, gx + ux * 3.8))
-        g2y = max(8.0, min(42.0, gy + uy * 3.8))
-        draw_ik_reaper_arm(rear_arm_layer, rsx, rsy, g2x, g2y, L1=5.2, L2=5.0, bend_side=1.0, is_rear=True)
-
-    # 2. Optional Subtle Trailing Soul-Motes During High-Velocity Reap Swings
+    # 1. Optional Subtle Trailing Soul-Motes During High-Velocity Reap Swings
     if slash_arc is not None:
         s_deg, e_deg, s_rad, _ = slash_arc
         for i in range(4):
@@ -659,7 +673,7 @@ def draw_abyssal_scythe(
             col = CRIMSON_BRIGHT if (i % 2 == 0) else VIOLET_BRIGHT
             set_clamped_px(fx_layer, sx_p, sy_p, col)
 
-    # 3. Long Obsidian-Iron & Amethyst Polearm Haft (from butt-spike `bx0, by0` to head `head_x, head_y`)
+    # 2. Long Obsidian-Iron & Amethyst Polearm Haft (from butt-spike `bx0, by0` to head `head_x, head_y`)
     haft_steps = int(max(abs(head_x - bx0), abs(head_y - by0), 1) * 2)
     for i in range(haft_steps + 1):
         t = i / haft_steps
@@ -673,7 +687,7 @@ def draw_abyssal_scythe(
     set_clamped_px(scythe_layer, bx0 - ux, by0 - uy, STEEL_LIGHT)
     set_clamped_px(scythe_layer, bx0 - ux * 1.6, by0 - uy * 1.6, VIOLET_BRIGHT)
 
-    # 4. Winged Necropolis Skull Collar at Scythe Head (`head_x, head_y`)
+    # 3. Winged Necropolis Skull Collar at Scythe Head (`head_x, head_y`)
     for dx_c in (-1, 0, 1):
         for dy_c in (-1, 0, 1):
             set_clamped_px(
@@ -688,7 +702,7 @@ def draw_abyssal_scythe(
     set_clamped_px(scythe_layer, head_x + ux * 1.4, head_y + uy * 1.4, STEEL_LIGHT)
     set_clamped_px(scythe_layer, head_x + ux * 2.2, head_y + uy * 2.2, VIOLET_BRIGHT)
 
-    # 5. Sweeping Curved Crescent Abyssal Scythe Blade
+    # 4. Sweeping Curved Crescent Abyssal Scythe Blade
     b_steps = 24
     for i in range(b_steps + 1):
         s = i / b_steps  # 0.0 at collar -> 1.0 at lethal crescent tip
@@ -720,26 +734,21 @@ def draw_abyssal_scythe(
             if rune_glow >= 3:
                 set_clamped_px(fx_layer, cx + px * 2.0, cy + py * 2.0, SOUL_WHITE)
 
-    # 6. Lead IK Arm (drawn OVER the scythe shaft so Malakor visibly grips and swings the Abyssal Scythe!)
-    bend_dir = -1.0 if (gy < sy - 3.0 and gx <= sx + 2.0) else 1.0
-    draw_ik_reaper_arm(lead_arm_layer, sx, sy, gx, gy, L1=5.2, L2=5.0, bend_side=bend_dir, is_rear=False)
+    # 5. Single Clean Lead IK Arm (drawn OVER the scythe shaft so Malakor visibly grips and swings the Abyssal Scythe!)
+    draw_ik_reaper_arm(lead_arm_layer, sx, sy, gx, gy, L1=5.4, L2=5.2, bend_side=1.0, is_rear=False)
 
-    # 7. Optional Extended Left Spectral Bone-Claw & Abyssal Chain (Row 3 SKILL Phase 1: F00..F14)
+    # 6. Optional Extended Spectral Bone-Claw & Abyssal Chain launched from forward grip (Row 3 SKILL Phase 1: F00..F14)
     if left_claw_ext is not None:
         raw_tx, raw_ty, pinch_t, draw_chain = left_claw_ext
-        tx = max(6, min(43, int(round(raw_tx))))
+        tx = max(6, min(44, int(round(raw_tx))))
         ty = max(6, min(44, int(round(raw_ty))))
-        sh_x, sh_y = sx + 1.0, sy + 1.0
-        hand_ext_x = min(40.0, sh_x + 5.0)
-        hand_ext_y = sh_y + 1.0
-        draw_ik_reaper_arm(rear_arm_layer, sh_x, sh_y, hand_ext_x, hand_ext_y, L1=4.8, L2=4.6, bend_side=1.0, is_rear=True)
 
         if draw_chain:
-            c_steps = int(max(abs(tx - hand_ext_x), abs(ty - hand_ext_y), 1))
+            c_steps = int(max(abs(tx - gx), abs(ty - gy), 1))
             for ci in range(c_steps + 1):
                 u_c = ci / max(1, c_steps)
-                cx_i = hand_ext_x + (tx - hand_ext_x) * u_c
-                cy_i = hand_ext_y + (ty - hand_ext_y) * u_c + math.sin(u_c * math.pi * 2.0) * 0.8
+                cx_i = gx + (tx - gx) * u_c
+                cy_i = gy + (ty - gy) * u_c + math.sin(u_c * math.pi * 2.0) * 0.8
                 c_col = VIOLET_BRIGHT if (ci % 3 == 0) else (STEEL_LIGHT if ci % 2 == 0 else OBSIDIAN_DEEP)
                 set_clamped_px(fx_layer, cx_i, cy_i, c_col)
 
@@ -748,15 +757,14 @@ def draw_abyssal_scythe(
         set_clamped_px(fx_layer, tx - 1, ty, VIOLET_BRIGHT)
         for sign in (-1, 1):
             a_talon = math.radians(sign * spread_ang)
-            for d_t in range(1, 6):
+            for d_t in range(1, 5):
                 kx = tx + math.cos(a_talon) * d_t
-                ky = ty + math.sin(a_talon) * d_t - sign * (0.25 if d_t >= 4 else 0.0)
+                ky = ty + math.sin(a_talon) * d_t - sign * (0.25 if d_t >= 3 else 0.0)
                 set_clamped_px(fx_layer, kx, ky, BONE_LIGHT if d_t >= 3 else BONE_MID)
-        for d_t in range(1, 5):
-            set_clamped_px(fx_layer, tx + d_t, ty, SOUL_WHITE if d_t == 4 else BONE_LIGHT)
+        for d_t in range(1, 4):
+            set_clamped_px(fx_layer, tx + d_t, ty, SOUL_WHITE if d_t == 3 else BONE_LIGHT)
 
-    out = composite_over(base_frame, rear_arm_layer)
-    out = composite_over(out, scythe_layer)
+    out = composite_over(base_frame, scythe_layer)
     out = composite_over(out, lead_arm_layer)
     out = composite_over(out, fx_layer)
     return add_outline_to_layer(out)
@@ -765,12 +773,15 @@ def draw_abyssal_scythe(
 def render_walk_legs(tpl, f):
     """
     Renders a grounded, predatory 30-frame 2-step armored stride cycle (f = 0..29)
-    in true back-to-front anatomical depth order:
-    1. Backmost Layer: Tattered crimson-shadow cloak (`cloak_layer`) bridged solidly to torso (no cape notch).
+    in true back-to-front anatomical depth order with ZERO extra legs:
+    1. Backmost Layer: Tattered crimson-shadow cloak (`cloak_layer`) copying x <= 17 for y < 31
+       and x <= 13 for 31 <= y <= 44 so the dark cloak flows down on the left without copying the back leg!
     2. Far Leg Layer: Sculpted obsidian thigh + knee-guard + greave/boot (`far_leg`, shaded 0.78x).
     3. Crimson Necropolis Tabard (`tabard_layer`) swinging dynamically between the legs.
     4. Near Leg Layer: Full-brightness obsidian thigh + knee-skull + greave/boot (`near_leg`).
-    5. Upper Torso & Hooded Skull (`torso_layer`) keeping robes through y=36 and filling hip/pelvis seam rows y=28..35.
+    5. Upper Torso & Hooded Skull (`torso_layer`) copying ONLY y = 0..31 (and restricting x to 20..28
+       for y = 28..31), stopping strictly at his waist belt (`hip_y = 31.0`) so ZERO standing thigh pixels
+       (`y >= 32`) are copied!
     """
     phase = (f / 30.0) * 2.0 * math.pi
     bob_y = int(round(math.cos(phase * 2.0) * 1.0))
@@ -779,60 +790,47 @@ def render_walk_legs(tpl, f):
     cloak_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    # 1. Backmost tattered cloak (left side x=1..17, y=22..47 and right flare x=33..42, y=31..40)
-    # Remove any cape notch that erases x > 11, y >= 34; only skip standing boot (y >= 39, x >= 9)
-    for y in range(22, 48):
+    # 1. Backmost tattered cloak: x <= 17 for y < 31 and x <= 13 for 31 <= y <= 44
+    for y in range(20, 45):
         ny = y + bob_y
         if not (2 <= ny < 50):
             continue
-        u = (y - 22) / 25.0
-        wave_dx = min(0, int(round(-u * 1.6 + math.sin(phase - u * 3.2) * (1.2 * u))))
+        u = max(0.0, (y - 20) / 24.0)
+        wave_dx = min(0, int(round(-u * 1.5 + math.sin(phase - u * 3.2) * (1.2 * u))))
         wave_dy = int(round(math.cos(phase - u * 2.6) * (0.6 * u)))
-        for x in range(1, 18):
+        max_cloak_x = 17 if y < 31 else 13
+        for x in range(1, max_cloak_x + 1):
             if stand[y, x, 3] == 0:
                 continue
-            if y >= 39 and x >= 9:
-                continue
-            cy = max(20, min(48, ny + wave_dy))
-            cx = max(2, min(18, x + wave_dx))
+            cy = max(18, min(48, ny + wave_dy))
+            cx = max(2, min(max_cloak_x, x + wave_dx))
             cloak_layer[cy, cx] = stand[y, x]
-            if x >= 11 and y <= 38:
+            if x >= max_cloak_x - 2:
                 cloak_layer[ny, x] = stand[y, x]
-                if x + 1 < 19:
-                    cloak_layer[ny, x + 1] = stand[y, x]
     cloak_layer = fill_layer_pinholes(cloak_layer)
 
-    for y in range(31, 41):
-        ny = y + bob_y
-        if 2 <= ny < 50:
-            for x in range(33, 43):
-                if stand[y, x, 3] > 0:
-                    cloak_layer[ny, x] = stand[y, x]
-
-    # 2. Upper Armored Torso & Hooded Skull keeping torso robes through y=36
-    for y in range(11, 38):
-        if y >= 37:
-            continue
+    # 2. Upper Armored Torso & Hooded Skull stopping strictly at y = 31 (waist belt)
+    for y in range(0, 32):
         ny = y + bob_y
         if not (2 <= ny < 50):
             continue
-        lean_dx = 1 if y <= 28 else 0
-        for x in range(13, 34):
-            if y >= 37 and 18 <= x <= 33:
-                continue
+        lean_dx = 1 if y <= 27 else 0
+        x_min = 15 if y < 28 else 20
+        x_max = 30 if y < 28 else 28
+        for x in range(x_min, x_max + 1):
             if stand[y, x, 3] > 0:
                 torso_layer[ny, min(49, x + lean_dx)] = stand[y, x]
 
-    # Fill hip/pelvis seam rows y=28..35, x=20..30 with ROBE_DARK / ROBE_MID where transparent before drawing legs
-    for y in range(28, 36):
+    # Fill waist belt / pelvis seam rows y=28..31, x=20..28 so zero gap appears above hip_y=31
+    for y in range(28, 32):
         ny = max(2, min(48, y + bob_y))
-        for x in range(20, 31):
+        for x in range(20, 29):
             if torso_layer[ny, x, 3] == 0:
-                torso_layer[ny, x] = ROBE_MID if (22 <= x <= 28 and y <= 33) else ROBE_DARK
+                torso_layer[ny, x] = ROBE_MID if (22 <= x <= 27) else ROBE_DARK
     torso_layer = fill_layer_pinholes(torso_layer)
 
-    hip_x = 22.5
-    hip_y = 34.0 + bob_y
+    hip_x = 24.0
+    hip_y = 31.0 + bob_y
 
     def build_striding_greave(boot_patch, orig_cx, swing_phase, is_far_leg=False):
         layer = np.zeros((52, 52, 4), dtype=np.uint8)
@@ -841,9 +839,9 @@ def render_walk_legs(tpl, f):
 
         knee_lift = max(0.0, c_val)
         knee_x = hip_x + s_val * 5.2 + knee_lift * 1.8
-        knee_y = hip_y + 4.5 - knee_lift * 1.6
+        knee_y = hip_y + 6.5 - knee_lift * 1.8
 
-        foot_target_x = 22.5 + s_val * 7.2 - knee_lift * 1.8
+        foot_target_x = 24.0 + s_val * 7.0 - knee_lift * 1.6
         foot_lift_dy = bob_y - int(round(knee_lift * 2.4))
 
         boot_rot_deg = s_val * 16.0 - knee_lift * 18.0
@@ -857,7 +855,7 @@ def render_walk_legs(tpl, f):
         for y in range(37, 52):
             for x in range(4, 48):
                 if rot_boot[y, x, 3] > 0:
-                    ny = min(49, max(36, y + foot_lift_dy))
+                    ny = min(49, max(35, y + foot_lift_dy))
                     nx = min(48, max(5, x + dx_boot))
                     px_col = rot_boot[y, x].copy()
                     if is_far_leg:
@@ -890,16 +888,16 @@ def render_walk_legs(tpl, f):
     far_leg = build_striding_greave(tpl['leg_back'], 12.0, phase + math.pi, is_far_leg=True)
     near_leg = build_striding_greave(tpl['leg_front'], 30.0, phase, is_far_leg=False)
 
-    # Dynamic Crimson Necropolis Tabard swinging between the greaves (y = 33..42)
+    # Dynamic Crimson Necropolis Tabard swinging between the greaves (y = 31..40)
     tabard_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     flap_dx = math.sin(phase) * 2.0
     for off_x, col in [(-2.0, CRIMSON_DEEP), (-1.0, CRIMSON_DARK), (0.0, CRIMSON_MID), (1.0, CRIMSON_DARK)]:
         draw_line_px(
             tabard_layer,
             hip_x + off_x,
-            hip_y - 1.0,
+            hip_y,
             hip_x + off_x + flap_dx,
-            hip_y + 6.5,
+            hip_y + 8.0,
             col
         )
 
@@ -915,45 +913,51 @@ def make_crouch_body(tpl, crouch_depth):
     Constructs a low-profile Wraith-Shroud crouch body with `crouch_depth` in [1..7] logical pixels:
     - Uses `kneel1` bent legs anchored firmly on the floor when `crouch_depth >= 5`, or compressed
       standing legs when `crouch_depth in 1..4`.
-    - Keeps torso robes through y=36, fills hip/pelvis seam rows y=28..35, x=20..30 with ROBE_DARK/ROBE_MID,
-      and lowers Malakor's upper armored torso, hooded skull, and tattered cloak smoothly by `crouch_depth` pixels!
+    - Composites thigh-free `stand_upper[0:32, :]` shifted by `crouch_depth` (plus left cloak `32..44, :15`)
+      so ZERO duplicate thighs or extra legs appear!
     """
     canvas = np.zeros((52, 52, 4), dtype=np.uint8)
     if crouch_depth >= 5:
-        canvas[36:50, :] = tpl['kneel1'][36:50, :]
+        canvas[31:50, :] = tpl['kneel1'][31:50, :]
     else:
-        canvas[37:50, :] = tpl['stand'][37:50, :]
+        canvas[32:50, :] = tpl['stand'][32:50, :]
 
-    # Fill hip/pelvis seam rows y=28..35, x=20..30 before compositing lowered upper body
-    for y in range(28, 36):
+    # Fill pelvis/waist seam rows so lowering upper torso leaves zero transparent gap
+    for y in range(28, 35):
         ny = min(48, y + crouch_depth)
-        for x in range(20, 31):
+        for x in range(20, 29):
             if canvas[ny, x, 3] == 0:
-                canvas[ny, x] = ROBE_MID if (22 <= x <= 28 and y <= 33) else ROBE_DARK
+                canvas[ny, x] = ROBE_MID if (22 <= x <= 27 and y <= 32) else ROBE_DARK
 
     upper = tpl['stand_upper']
-    for y in range(10, 38):
-        if y >= 37:
-            continue
+    for y in range(0, 32):
         ny = min(48, y + crouch_depth)
         if 2 <= ny < 49:
             for x in range(0, 52):
-                if y >= 37 and 18 <= x <= 33:
-                    continue
                 if upper[y, x, 3] > 0:
                     canvas[ny, x] = upper[y, x]
+
+    # Carry lower left tattered cloak (`x <= 13, y = 32..44`) down smoothly
+    cloak_shift = max(0, crouch_depth // 2)
+    for y in range(32, 45):
+        ny = min(48, y + cloak_shift)
+        for x in range(0, 14):
+            if upper[y, x, 3] > 0 and canvas[ny, x, 3] == 0:
+                canvas[ny, x] = upper[y, x]
 
     return fill_layer_pinholes(add_outline_to_layer(canvas))
 
 
 def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
     """
-    Constructs a full-body aerial Shadow-Wing Reaper pose in true back-to-front anatomical order:
-    - Backmost Layer: Billowing tattered crimson-shadow cloak streaming behind Malakor (no cape notch).
+    Constructs a full-body aerial Shadow-Wing Reaper pose in true back-to-front anatomical order
+    with ZERO extra legs:
+    - Backmost Layer: Billowing tattered crimson-shadow cloak (`x <= 17` for `y < 31` and `x <= 13` for `31 <= y <= 44`).
     - Far Leg Layer: Trailing obsidian greave & boot kicked back in an aerial vault.
     - Crimson Tabard: Streaming between the legs.
     - Near Leg Layer: Leading armored knee tucked high in front.
-    - Upper Torso & Hooded Skull: Keeps torso robes through y=36 and fills hip/pelvis seam rows y=28..35.
+    - Upper Torso & Hooded Skull: Copies ONLY `y = 0..31` (and restricts `x` to `20..28` for `y = 28..31`),
+      stopping strictly at `hip_y = 31.0 + torso_dy` so ZERO standing thigh pixels (`y >= 32`) are copied!
     """
     stand = tpl['stand'].copy()
     torso_dy = max(-2, min(4, int(round(jump_dy))))
@@ -961,49 +965,44 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
     cloak_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    # 1. Billowing Aerial Cloak (x <= 17, y = 22..47) without any cape notch at x > 11, y >= 34
+    # 1. Billowing Aerial Cloak: x <= 17 for y < 31 and x <= 13 for 31 <= y <= 44
     cloak_lift = int(round(max(0.0, tuck_amount) * 3.0))
-    for y in range(22, 47):
-        for x in range(1, 18):
+    for y in range(20, 45):
+        max_cloak_x = 17 if y < 31 else 13
+        for x in range(1, max_cloak_x + 1):
             if stand[y, x, 3] == 0:
                 continue
-            if y >= 39 and x >= 9:
-                continue
-            u = (y - 22) / 24.0
-            cx = max(2, min(19, x - int(round(u * 2.4 * max(0.2, tuck_amount)))))
+            u = max(0.0, (y - 20) / 24.0)
+            cx = max(2, min(max_cloak_x, x - int(round(u * 2.2 * max(0.2, tuck_amount)))))
             cy = max(14, min(48, y + torso_dy - int(round(u * cloak_lift))))
             cloak_layer[cy, cx] = stand[y, x]
-            if x >= 11 and y <= 38:
+            if x >= max_cloak_x - 2:
                 ny_b = max(12, min(48, y + torso_dy))
                 cloak_layer[ny_b, x] = stand[y, x]
-                if x + 1 < 19:
-                    cloak_layer[ny_b, x + 1] = stand[y, x]
     cloak_layer = fill_layer_pinholes(cloak_layer)
 
-    # 2. Upper Armored Torso & Hooded Skull keeping torso robes through y=36
-    for y in range(11, 38):
-        if y >= 37:
-            continue
+    # 2. Upper Armored Torso & Hooded Skull stopping strictly at y = 31 (waist belt)
+    for y in range(0, 32):
         ny = y + torso_dy
         if not (2 <= ny < 50):
             continue
         dx = torso_lean_dx if y <= 27 else 0
-        for x in range(13, 34):
-            if y >= 37 and 18 <= x <= 33:
-                continue
+        x_min = 15 if y < 28 else 20
+        x_max = 30 if y < 28 else 28
+        for x in range(x_min, x_max + 1):
             if stand[y, x, 3] > 0:
                 torso_layer[ny, max(2, min(49, x + dx))] = stand[y, x]
 
-    # Fill hip/pelvis seam rows y=28..35, x=20..30 with ROBE_DARK / ROBE_MID where transparent before drawing legs
-    for y in range(28, 36):
+    # Fill waist belt / pelvis seam rows y=28..31, x=20..28 so zero gap appears above hip_y=31
+    for y in range(28, 32):
         ny = max(2, min(48, y + torso_dy))
-        for x in range(20, 31):
+        for x in range(20, 29):
             if torso_layer[ny, x, 3] == 0:
-                torso_layer[ny, x] = ROBE_MID if (22 <= x <= 28 and y <= 33) else ROBE_DARK
+                torso_layer[ny, x] = ROBE_MID if (22 <= x <= 27) else ROBE_DARK
     torso_layer = fill_layer_pinholes(torso_layer)
 
-    hip_x = 22.5
-    hip_y = 34.0 + torso_dy
+    hip_x = 24.0
+    hip_y = 31.0 + torso_dy
 
     def build_aerial_greave(boot_patch, orig_cx, knee_dx, knee_dy, foot_dx, foot_dy, boot_rot_deg, is_far_leg=False):
         layer = np.zeros((52, 52, 4), dtype=np.uint8)
@@ -1045,8 +1044,8 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
     far_leg = build_aerial_greave(
         tpl['leg_back'],
         12.0,
-        knee_dx=-3.0 * t - 1.5,
-        knee_dy=4.0 - 1.2 * t,
+        knee_dx=-3.0 * t - 2.0,
+        knee_dy=6.0 - 1.5 * t,
         foot_dx=-2.5 * t,
         foot_dy=torso_dy - 3.5 * t,
         boot_rot_deg=-22.0 * t,
@@ -1056,7 +1055,7 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
         tpl['leg_front'],
         30.0,
         knee_dx=4.5 * t + 2.0,
-        knee_dy=3.0 - 2.4 * t,
+        knee_dy=5.0 - 2.6 * t,
         foot_dx=1.2 * t,
         foot_dy=torso_dy - 4.8 * t,
         boot_rot_deg=-20.0 * t,
@@ -1065,7 +1064,7 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
 
     tabard_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     for off_x, col in [(-1.5, CRIMSON_DEEP), (-0.5, CRIMSON_DARK), (0.5, CRIMSON_MID), (1.5, CRIMSON_DARK)]:
-        draw_line_px(tabard_layer, hip_x + off_x, hip_y - 1, hip_x + off_x + 1.5 * t, hip_y + 5.0 - 1.2 * t, col)
+        draw_line_px(tabard_layer, hip_x + off_x, hip_y, hip_x + off_x + 1.5 * t, hip_y + 7.0 - 1.2 * t, col)
 
     out = composite_over(cloak_layer, far_leg)
     out = composite_over(out, tabard_layer)
@@ -1081,7 +1080,7 @@ def pulse_hood_eyes(frame, dy=0, bright=False):
 
 
 def build_row0_idle(tpl):
-    """Row 0: 30-Frame Ominous Soulreaper IDLE."""
+    """Row 0: 30-Frame Ominous Soulreaper IDLE with forward scythe grip (gx = 33..34, gy = 20..21)."""
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
@@ -1098,16 +1097,16 @@ def build_row0_idle(tpl):
         base = apply_cloak_wave(base, phase, amplitude=1.6, vertical_flutter=0.7)
         pulse_hood_eyes(base, dy=breath_dy, bright=(f % 6 in (2, 3)))
 
-        shaft_deg = -34.0 + math.sin(phase) * 3.2
+        shaft_deg = -52.0 + math.sin(phase) * 3.5
         rune_glow = 2 if (f % 10 in (4, 5, 6)) else 1
-        grip_x = 26 + int(round(math.sin(phase) * 1.0))
+        grip_x = 33 + int(round(math.sin(phase) * 1.0))
         frame = draw_abyssal_scythe(
             base,
-            grip_pos=(grip_x, 25 + breath_dy),
+            grip_pos=(grip_x, 21 + breath_dy),
             shaft_deg=shaft_deg,
-            shaft_reach=15.5,
+            shaft_reach=15.0,
             shaft_back=13.0,
-            blade_span=17.5,
+            blade_span=17.0,
             blade_curve=6.0,
             blade_dir=1,
             rune_glow=rune_glow,
@@ -1119,7 +1118,7 @@ def build_row0_idle(tpl):
 
 
 def build_row1_walk(tpl):
-    """Row 1: 30-Frame Predatory 2-Step Armored Stride Cycle."""
+    """Row 1: 30-Frame Predatory 2-Step Armored Stride Cycle with forward scythe grip (gx = 33..35, gy = 20..22)."""
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
@@ -1127,17 +1126,17 @@ def build_row1_walk(tpl):
         bob_y = int(round(math.cos(phase * 2.0) * 1.0))
         pulse_hood_eyes(body, dy=bob_y, bright=(f % 8 < 3))
 
-        # Subtle 2px counter-swinging Abyssal Great-Scythe across Malakor's stride
-        shaft_deg = -32.0 - math.sin(phase) * 10.5
-        grip_x = 26 + int(round(math.sin(phase) * 2.0))
-        grip_y = 25 + bob_y + int(round(math.cos(phase) * 1.0))
+        # Subtle 2px counter-swinging Abyssal Great-Scythe held out in front (gx = 33..35)
+        shaft_deg = -48.0 - math.sin(phase) * 10.5
+        grip_x = 34 - int(round(math.sin(phase) * 1.0))
+        grip_y = 21 + bob_y + int(round(math.cos(phase) * 1.0))
         frame = draw_abyssal_scythe(
             body,
             grip_pos=(grip_x, grip_y),
             shaft_deg=shaft_deg,
-            shaft_reach=15.0,
+            shaft_reach=14.5,
             shaft_back=12.5,
-            blade_span=17.0,
+            blade_span=16.5,
             blade_curve=5.8,
             blade_dir=1,
             rune_glow=1 + (1 if f % 6 == 0 else 0),
@@ -1151,9 +1150,9 @@ def build_row1_walk(tpl):
 def build_row2_auto_attack(tpl):
     """
     Row 2: 30-Frame AUTO_ATTACK (Abyssal Scythe Reap):
-    - F00..F09: Two-handed high back-shoulder windup (26, 25) -> (23, 14) (-34 deg -> -126 deg)
-    - F10..F18: Lethal wide crescent reap slash (23, 14) -> (35, 22) -> (29, 27) (-85 deg -> +46 deg)
-    - F19..F29: Smooth follow-through & recovery (29, 27) -> (26, 25) (+46 deg -> -34 deg)
+    - F00..F09: High overhead windup (33, 21) -> (31, 13) (-52 deg -> -122 deg)
+    - F10..F18: Lethal wide crescent reap slash (31, 13) -> (38, 20) -> (34, 24) (-85 deg -> +46 deg)
+    - F19..F29: Smooth follow-through & recovery (34, 24) -> (33, 21) (+46 deg -> -52 deg)
     """
     frames = []
     for f in range(30):
@@ -1170,37 +1169,37 @@ def build_row2_auto_attack(tpl):
 
         if f <= 9:
             u = f / 9.0
-            # Smooth easing into high back-shoulder windup: (26, 25) -> (23, 14)
+            # High overhead windup out in front: (33, 21) -> (31, 13)
             ease = u * u * (3.0 - 2.0 * u)
-            shaft_deg = -34.0 * (1.0 - ease) + (-126.0) * ease
-            gx = int(round(26 * (1.0 - ease) + 23 * ease))
-            gy = int(round(25 * (1.0 - ease) + 14 * ease))
+            shaft_deg = -52.0 * (1.0 - ease) + (-122.0) * ease
+            gx = int(round(33 * (1.0 - ease) + 31 * ease))
+            gy = int(round(21 * (1.0 - ease) + 13 * ease))
             frame = draw_abyssal_scythe(
                 base,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
                 shaft_reach=15.0,
                 shaft_back=11.0,
-                blade_span=17.5,
+                blade_span=17.0,
                 blade_curve=6.0,
                 blade_dir=1,
                 rune_glow=3 if f >= 7 else 2,
                 two_handed=True,
-                shoulder_pos=(25, 19),
+                shoulder_pos=(26, 19),
             )
         elif f <= 18:
             u = (f - 10) / 8.0
-            # Explosive wide reap sweep: (23, 14) -> (35, 22) wide reap -> (29, 27) low follow-through
+            # Explosive wide reap sweep out in front: (31, 13) -> (38, 20) -> (34, 24)
             ease = 1.0 - math.pow(1.0 - u, 2.0)
             shaft_deg = -85.0 * (1.0 - ease) + 46.0 * ease
             if u <= 0.55:
                 w = u / 0.55
-                gx = int(round(23 * (1.0 - w) + 35 * w))
-                gy = int(round(14 * (1.0 - w) + 22 * w))
+                gx = int(round(31 * (1.0 - w) + 38 * w))
+                gy = int(round(13 * (1.0 - w) + 20 * w))
             else:
                 w = (u - 0.55) / 0.45
-                gx = int(round(35 * (1.0 - w) + 29 * w))
-                gy = int(round(22 * (1.0 - w) + 27 * w))
+                gx = int(round(38 * (1.0 - w) + 34 * w))
+                gy = int(round(20 * (1.0 - w) + 24 * w))
             arc_s = max(-95.0, shaft_deg - 65.0)
             arc_e = shaft_deg + 12.0
             slash_arc = (arc_s, arc_e, 20.5, 1.0 - u * 0.35) if f <= 16 else None
@@ -1208,9 +1207,9 @@ def build_row2_auto_attack(tpl):
                 base,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
-                shaft_reach=15.5,
+                shaft_reach=15.0,
                 shaft_back=11.5,
-                blade_span=18.0,
+                blade_span=17.5,
                 blade_curve=6.2,
                 blade_dir=1,
                 rune_glow=3 if f <= 15 else 2,
@@ -1221,16 +1220,16 @@ def build_row2_auto_attack(tpl):
         else:
             u = (f - 18) / 11.0
             ease = u * u * (3.0 - 2.0 * u)
-            shaft_deg = 46.0 * (1.0 - ease) + (-34.0) * ease
-            gx = int(round(29 * (1.0 - ease) + 26 * ease))
-            gy = int(round(27 * (1.0 - ease) + 25 * ease))
+            shaft_deg = 46.0 * (1.0 - ease) + (-52.0) * ease
+            gx = int(round(34 * (1.0 - ease) + 33 * ease))
+            gy = int(round(24 * (1.0 - ease) + 21 * ease))
             frame = draw_abyssal_scythe(
                 base,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
-                shaft_reach=15.5,
+                shaft_reach=15.0,
                 shaft_back=12.5,
-                blade_span=17.5,
+                blade_span=17.0,
                 blade_curve=6.0,
                 blade_dir=1,
                 rune_glow=1,
@@ -1245,10 +1244,10 @@ def build_row2_auto_attack(tpl):
 def build_row3_skill(tpl):
     """
     Row 3: 30-Frame SKILL (Spectral Chain Hook + Executioner Guillotine Slam):
-    - Phase 1 (F00..F14): Extends left gauntlet forward launching the Spectral Bone-Claw & Abyssal Chain
-      while holding the single Great-Scythe poised high at (23, 15).
-    - Phase 2 (F15..F29): High-arcing two-handed overhead Guillotine Scythe execution slam
-      sweeping from (23, 15) -> (36, 20) -> (31, 26) and smooth recovery (F24..F29).
+    - Phase 1 (F00..F14): Extends forward gauntlet `(34..36, 19..21)` launching the Spectral Bone-Claw
+      & Abyssal Chain while holding the Great-Scythe poised high.
+    - Phase 2 (F15..F29): High-arcing overhead Guillotine Scythe execution slam
+      sweeping from `(31, 13) -> (38, 19) -> (35, 24)` and smooth recovery `(35, 24) -> (33, 21)`.
     """
     frames = []
     for f in range(30):
@@ -1259,53 +1258,53 @@ def build_row3_skill(tpl):
         pulse_hood_eyes(base, dy=1 if use_lunge else 0, bright=True)
 
         if f <= 14:
-            # Phase 1: Spectral Bone-Claw & Chain Hook launch + drag while Great-Scythe is poised high at (23, 15)!
+            # Phase 1: Spectral Bone-Claw & Chain Hook launch + drag from forward grip (34..36, 19..21)
             if f <= 6:
                 u = f / 6.0
-                claw_x = int(round(32 + u * 11))
-                claw_y = 21
+                claw_x = int(round(37 + u * 7))
+                claw_y = 20
                 pinch = 0.0 if f < 5 else 0.6
             elif f <= 11:
                 u = (f - 6) / 5.0
-                claw_x = int(round(43 - u * 8))
-                claw_y = 21 + int(round(math.sin(u * math.pi) * 1.5))
+                claw_x = int(round(44 - u * 6))
+                claw_y = 20 + int(round(math.sin(u * math.pi) * 1.5))
                 pinch = 1.0
             else:
                 u = (f - 11) / 3.0
-                claw_x = int(round(35 - u * 5))
-                claw_y = 21
+                claw_x = int(round(38 - u * 3))
+                claw_y = 20
                 pinch = 0.5
 
-            scythe_deg = -132.0 - math.sin((f / 14.0) * math.pi) * 12.0
-            gx = 23 - int(round(math.sin((f / 14.0) * math.pi) * 2.0))
-            gy = 15 + int(round(math.sin((f / 14.0) * math.pi) * 2.0))
+            scythe_deg = -118.0 - math.sin((f / 14.0) * math.pi) * 10.0
+            gx = 34 + int(round(math.sin((f / 14.0) * math.pi) * 2.0))
+            gy = 19 + int(round(math.cos((f / 14.0) * math.pi) * 1.0))
             frame = draw_abyssal_scythe(
                 base,
                 grip_pos=(gx, gy),
                 shaft_deg=scythe_deg,
                 shaft_reach=14.5,
                 shaft_back=10.5,
-                blade_span=17.0,
+                blade_span=16.5,
                 blade_curve=5.8,
                 blade_dir=-1,
                 rune_glow=2,
                 two_handed=False,
                 left_claw_ext=(claw_x, claw_y, pinch, True),
-                shoulder_pos=(25, 19),
+                shoulder_pos=(26, 19),
             )
         elif f <= 18:
-            # Phase 2 Windup: Raise Great-Scythe high overhead at (23, 15) with both hands for Guillotine Execution!
+            # Phase 2 Windup: Raise Great-Scythe high overhead at (31, 13) for Guillotine Execution!
             u = (f - 14) / 4.0
-            shaft_deg = -132.0 * (1.0 - u) + (-72.0) * u
-            gx = int(round(23 * (1.0 - u) + 25 * u))
-            gy = int(round(16 * (1.0 - u) + 15 * u))
+            shaft_deg = -118.0 * (1.0 - u) + (-72.0) * u
+            gx = int(round(34 * (1.0 - u) + 31 * u))
+            gy = int(round(19 * (1.0 - u) + 13 * u))
             frame = draw_abyssal_scythe(
                 base,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
-                shaft_reach=15.5,
+                shaft_reach=15.0,
                 shaft_back=11.0,
-                blade_span=18.0,
+                blade_span=17.5,
                 blade_curve=6.2,
                 blade_dir=1,
                 rune_glow=3,
@@ -1313,26 +1312,26 @@ def build_row3_skill(tpl):
                 shoulder_pos=(26, 18),
             )
         elif f <= 23:
-            # Phase 2 Execution: Crushing overhead Guillotine Scythe Slam sweeping (25, 15) -> (36, 20) -> (31, 26)!
+            # Phase 2 Execution: Crushing overhead Guillotine Scythe Slam sweeping (31, 13) -> (38, 19) -> (35, 24)!
             u = (f - 18) / 5.0
             ease = 1.0 - math.pow(1.0 - u, 2.2)
             shaft_deg = -72.0 * (1.0 - ease) + 52.0 * ease
             if u <= 0.6:
                 w = u / 0.6
-                gx = int(round(25 * (1.0 - w) + 36 * w))
-                gy = int(round(15 * (1.0 - w) + 20 * w))
+                gx = int(round(31 * (1.0 - w) + 38 * w))
+                gy = int(round(13 * (1.0 - w) + 19 * w))
             else:
                 w = (u - 0.6) / 0.4
-                gx = int(round(36 * (1.0 - w) + 31 * w))
-                gy = int(round(20 * (1.0 - w) + 26 * w))
-            slash_arc = (-78.0, shaft_deg + 10.0, 21.5, 1.0 - u * 0.25) if f <= 22 else None
+                gx = int(round(38 * (1.0 - w) + 35 * w))
+                gy = int(round(19 * (1.0 - w) + 24 * w))
+            slash_arc = (-78.0, shaft_deg + 10.0, 21.0, 1.0 - u * 0.25) if f <= 22 else None
             frame = draw_abyssal_scythe(
                 base,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
-                shaft_reach=16.0,
+                shaft_reach=15.5,
                 shaft_back=11.5,
-                blade_span=18.5,
+                blade_span=18.0,
                 blade_curve=6.4,
                 blade_dir=1,
                 rune_glow=3,
@@ -1341,18 +1340,18 @@ def build_row3_skill(tpl):
                 shoulder_pos=(27, 19),
             )
         else:
-            # Smooth recovery (F24..F29)
+            # Smooth recovery (F24..F29): (35, 24) -> (33, 21)
             u = (f - 23) / 6.0
-            shaft_deg = 52.0 * (1.0 - u) + (-34.0) * u
-            gx = int(round(31 * (1.0 - u) + 26 * u))
-            gy = int(round(26 * (1.0 - u) + 25 * u))
+            shaft_deg = 52.0 * (1.0 - u) + (-52.0) * u
+            gx = int(round(35 * (1.0 - u) + 33 * u))
+            gy = int(round(24 * (1.0 - u) + 21 * u))
             frame = draw_abyssal_scythe(
                 base,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
-                shaft_reach=15.5,
+                shaft_reach=15.0,
                 shaft_back=12.5,
-                blade_span=17.5,
+                blade_span=17.0,
                 blade_curve=6.0,
                 blade_dir=1,
                 rune_glow=2 if f <= 25 else 1,
@@ -1367,18 +1366,18 @@ def build_row3_skill(tpl):
 def build_row4_ultimate(tpl):
     """
     Row 4: 30-Frame ULTIMATE (Grim Harvest: Sovereign of Death):
-    - Stage 1 (F00..F10): Raises the Abyssal Great-Scythe skyward to (24, 13) with both hands as dark
+    - Stage 1 (F00..F10): Raises the Abyssal Great-Scythe skyward to (31, 12) as dark
       necropolis miasma and soul flames erupt around him.
     - Stage 2 (F11..F20): Unfurls tattered shadow-wings and sweeps the Great-Scythe in a wide 360-degree
-      Soul-Harvest cleave out to (35, 24).
-    - Stage 3 (F21..F29): Drives the scythe haft into the ground to detonate the Grim Harvest pillars.
+      Soul-Harvest cleave out in front (gx = 32..38, gy = 13..24).
+    - Stage 3 (F21..F29): Drives the scythe haft into the ground at (35, 22 + crouch_d) to detonate Grim Harvest pillars.
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
 
         if f <= 10:
-            # Stage 1: Skyward Sovereign Invocation -> (24, 13) overhead raise
+            # Stage 1: Skyward Sovereign Invocation -> (33, 21) to (31, 12) overhead raise
             u = f / 10.0
             wing_spread = max(0.0, (f - 3) / 7.0) * 0.85
             base = tpl['stand'].copy()
@@ -1386,16 +1385,16 @@ def build_row4_ultimate(tpl):
             base = draw_shadow_wings(base, phase * 2.0, spread=wing_spread, shoulder_y=18)
             pulse_hood_eyes(base, dy=0, bright=True)
 
-            shaft_deg = -34.0 * (1.0 - u) + (-86.0) * u
-            gx = int(round(26 * (1.0 - u) + 24 * u))
-            gy = int(round(25 * (1.0 - u) + 13 * u))
+            shaft_deg = -52.0 * (1.0 - u) + (-88.0) * u
+            gx = int(round(33 * (1.0 - u) + 31 * u))
+            gy = int(round(21 * (1.0 - u) + 12 * u))
             frame = draw_abyssal_scythe(
                 base,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
-                shaft_reach=16.0,
+                shaft_reach=15.5,
                 shaft_back=12.0,
-                blade_span=18.5,
+                blade_span=18.0,
                 blade_curve=6.4,
                 blade_dir=1,
                 rune_glow=3 if f >= 4 else 2,
@@ -1410,25 +1409,25 @@ def build_row4_ultimate(tpl):
                 set_px(frame, mx, max(3, my - 1), SOUL_WHITE if f >= 7 else VIOLET_MID)
 
         elif f <= 20:
-            # Stage 2: Levitating Shadow-Wing 360-degree Soul-Harvest Cleave sweeping (24, 13) -> (35, 24)!
+            # Stage 2: Levitating Shadow-Wing 360-degree Soul-Harvest Cleave sweeping (31, 13) -> (38, 20) -> (34, 24)!
             u = (f - 11) / 9.0
             body = make_jump_body(tpl, -1, tuck_amount=0.55, torso_lean_dx=1 if 13 <= f <= 18 else 0)
             body = apply_cloak_wave(body, phase * 3.0, amplitude=2.5, vertical_flutter=1.2)
             body = draw_shadow_wings(body, phase * 3.0, spread=1.0, shoulder_y=17)
             pulse_hood_eyes(body, dy=-1, bright=True)
 
-            # Full 360-degree harvest spin (-86 deg -> +274 deg) with wide grip sweep out to (35, 24)
-            shaft_deg = -86.0 + u * 360.0
+            # Full 360-degree harvest spin (-88 deg -> +272 deg) with forward grip (gx = 31..38)
+            shaft_deg = -88.0 + u * 360.0
             slash_arc = (shaft_deg - 85.0, shaft_deg + 10.0, 21.0, 1.0)
-            gx = int(round(24 + math.sin(u * math.pi) * 11.0))
+            gx = int(round(32 + math.sin(u * math.pi) * 6.0))
             gy = int(round(13 + math.sin(u * math.pi * 0.85) * 11.0))
             frame = draw_abyssal_scythe(
                 body,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
-                shaft_reach=16.0,
+                shaft_reach=15.5,
                 shaft_back=11.5,
-                blade_span=18.5,
+                blade_span=18.0,
                 blade_curve=6.4,
                 blade_dir=1,
                 rune_glow=3,
@@ -1450,11 +1449,11 @@ def build_row4_ultimate(tpl):
             if f <= 26:
                 frame = draw_abyssal_scythe(
                     body,
-                    grip_pos=(33, 24 + crouch_d),
+                    grip_pos=(35, 21 + crouch_d),
                     shaft_deg=-88.0,
                     shaft_reach=14.0,
                     shaft_back=19.0 - crouch_d,
-                    blade_span=17.5,
+                    blade_span=17.0,
                     blade_curve=6.0,
                     blade_dir=1,
                     rune_glow=3 if f <= 24 else 2,
@@ -1464,23 +1463,23 @@ def build_row4_ultimate(tpl):
                 # Erupting Grim Harvest shock-sigil at base of planted haft (x=24..44, y=47..49)
                 sigil_r = 4 + (f - 21) * 3
                 for dx_s in range(-sigil_r, sigil_r + 1):
-                    sx_p = 31 + dx_s
+                    sx_p = 33 + dx_s
                     if 3 <= sx_p <= 48:
                         set_px(frame, sx_p, 49, VIOLET_BRIGHT if dx_s % 2 == 0 else CRIMSON_BRIGHT)
                         if abs(dx_s) % 3 == 0 and f <= 24:
                             set_px(frame, sx_p, 47, SOUL_WHITE)
                             set_px(frame, sx_p, 48, VIOLET_PINK)
             else:
-                # F27..F29: Smooth return from planted haft to ready stance
+                # F27..F29: Smooth return from planted haft to ready stance (35 -> 33, 21)
                 u_rec = (f - 26) / 3.0
-                shaft_deg = -88.0 * (1.0 - u_rec) + (-34.0) * u_rec
+                shaft_deg = -88.0 * (1.0 - u_rec) + (-52.0) * u_rec
                 frame = draw_abyssal_scythe(
                     body,
-                    grip_pos=(int(round(33 * (1.0 - u_rec) + 26 * u_rec)), 25),
+                    grip_pos=(int(round(35 * (1.0 - u_rec) + 33 * u_rec)), 21),
                     shaft_deg=shaft_deg,
-                    shaft_reach=15.5,
+                    shaft_reach=15.0,
                     shaft_back=13.0,
-                    blade_span=17.5,
+                    blade_span=17.0,
                     blade_curve=6.0,
                     blade_dir=1,
                     rune_glow=1,
@@ -1495,8 +1494,8 @@ def build_row4_ultimate(tpl):
 def build_row5_death(tpl):
     """
     Row 5: 30-Frame DEATH & HURT Sequence:
-    - F00..F06: Hit-stagger recoil (HURT uses F00..F05)
-    - F07..F17: Drops to one knee clutching his chest as his cloak settles
+    - F00..F06: Hit-stagger recoil (HURT uses F00..F05) with scythe held out in front (gx = 33..34)
+    - F07..F17: Drops to one knee as Great-Scythe lowers out in front (gx = 34)
     - F18..F29: Collapses horizontally onto the ground (y=36..46) with his Abyssal Great-Scythe
       lying flat beside him (ZERO floating upright scythe and ZERO y=51 clips!)
     """
@@ -1511,11 +1510,11 @@ def build_row5_death(tpl):
             base = apply_cloak_wave(base, u * math.pi, amplitude=1.8, vertical_flutter=0.6)
             frame = draw_abyssal_scythe(
                 base,
-                grip_pos=(26 + dx, 25 + dy),
-                shaft_deg=-34.0 + u * 36.0,
-                shaft_reach=15.0,
+                grip_pos=(33, 21 + dy),
+                shaft_deg=-48.0 + u * 36.0,
+                shaft_reach=14.5,
                 shaft_back=12.0,
-                blade_span=17.0,
+                blade_span=16.5,
                 blade_curve=5.8,
                 blade_dir=1,
                 rune_glow=1,
@@ -1525,7 +1524,7 @@ def build_row5_death(tpl):
             frames.append(ensure_safe_cell(frame, margin=1))
 
         elif f <= 17:
-            # F07..F17: Drops to one knee clutching chest while Great-Scythe lowers diagonally toward the floor
+            # F07..F17: Drops to one knee while Great-Scythe lowers diagonally in front (gx = 34)
             u = (f - 7) / 10.0
             base = (tpl['kneel1'] if f <= 11 else tpl['kneel2']).copy()
             head_bow = 1 if (12 <= f <= 14) else (2 if f >= 15 else 0)
@@ -1542,7 +1541,7 @@ def build_row5_death(tpl):
             shaft_deg = -10.0 * (1.0 - u) + 20.0 * u
             frame = draw_abyssal_scythe(
                 base,
-                grip_pos=(25, int(round(28 + u * 4))),
+                grip_pos=(34, int(round(25 + u * 4))),
                 shaft_deg=shaft_deg,
                 shaft_reach=14.0,
                 shaft_back=11.0,
@@ -1551,7 +1550,7 @@ def build_row5_death(tpl):
                 blade_dir=1,
                 rune_glow=1 if f <= 12 else 0,
                 two_handed=False,
-                shoulder_pos=(24, 24 + head_bow),
+                shoulder_pos=(25, 23 + head_bow),
             )
             frames.append(ensure_safe_cell(frame, margin=1))
 
@@ -1581,16 +1580,16 @@ def build_row5_death(tpl):
             # Scythe settles flat along the ground (clamped safely above y=49)
             frame = draw_abyssal_scythe(
                 body,
-                grip_pos=(26, int(round(33 + u * 6))),
+                grip_pos=(34, int(round(31 + u * 6))),
                 shaft_deg=18.0 * (1.0 - u) + 2.0 * u,
-                shaft_reach=13.5,
+                shaft_reach=13.0,
                 shaft_back=12.0,
                 blade_span=13.0 * (1.0 - u * 0.25),
                 blade_curve=4.2 * (1.0 - u * 0.25),
                 blade_dir=1,
                 rune_glow=0,
                 two_handed=False,
-                shoulder_pos=(24, int(round(28 + u * 8))),
+                shoulder_pos=(26, int(round(27 + u * 8))),
             )
             frames.append(ensure_safe_cell(frame, margin=1))
 
@@ -1623,7 +1622,7 @@ def build_row6_dash(tpl):
     """
     Row 6: 30-Frame DASH (Wraith Phase-Rush):
     - Low horizontal wraith-blitz lunge with trailing crimson-violet shadow ribbons
-      and forward-poised single Great-Scythe blade.
+      and forward-poised single Great-Scythe blade (`gx = 34..37, gy = 20..23`).
     """
     frames = []
     for f in range(30):
@@ -1634,19 +1633,19 @@ def build_row6_dash(tpl):
             body = make_crouch_body(tpl, crouch_d) if f <= 1 else tpl['dash'].copy()
             body = apply_cloak_wave(body, phase * 2.0, amplitude=2.0, is_dash=(f >= 2))
             pulse_hood_eyes(body, dy=crouch_d, bright=True)
-            shaft_deg = -30.0 * (1.0 - u) + (-8.0) * u
+            shaft_deg = -45.0 * (1.0 - u) + (-14.0) * u
             frame = draw_abyssal_scythe(
                 body,
-                grip_pos=(28, 25 + crouch_d),
+                grip_pos=(34, 21 + crouch_d),
                 shaft_deg=shaft_deg,
-                shaft_reach=15.0,
+                shaft_reach=14.5,
                 shaft_back=12.0,
-                blade_span=17.0,
+                blade_span=16.5,
                 blade_curve=5.8,
                 blade_dir=1,
                 rune_glow=2,
                 two_handed=True,
-                shoulder_pos=(27, 20 + crouch_d),
+                shoulder_pos=(27, 19 + crouch_d),
             )
         elif f <= 21:
             k = f - 4
@@ -1655,20 +1654,20 @@ def build_row6_dash(tpl):
             body = apply_cloak_wave(body, k * 0.85, amplitude=2.4, is_dash=True)
             pulse_hood_eyes(body, dy=hover_dy, bright=True)
 
-            # Mid-dash scythe slice at F11..F16
+            # Mid-dash scythe slice at F11..F16 held well out in front (gx = 35..38)
             if 11 <= f <= 16:
                 u_s = (f - 11) / 5.0
-                shaft_deg = -18.0 + u_s * 42.0
-                slash_arc = (-22.0, shaft_deg + 8.0, 19.5, 0.9) if f <= 14 else None
-                gx = 31 + int(round(math.sin(u_s * math.pi) * 3.0))
+                shaft_deg = -22.0 + u_s * 44.0
+                slash_arc = (-24.0, shaft_deg + 8.0, 19.5, 0.9) if f <= 14 else None
+                gx = 35 + int(round(math.sin(u_s * math.pi) * 3.0))
             else:
-                shaft_deg = -6.0 + math.sin(phase * 2.0) * 4.0
+                shaft_deg = -10.0 + math.sin(phase * 2.0) * 4.0
                 slash_arc = None
-                gx = 30
+                gx = 35
 
             frame = draw_abyssal_scythe(
                 body,
-                grip_pos=(gx, 26 + hover_dy),
+                grip_pos=(gx, 22 + hover_dy),
                 shaft_deg=shaft_deg,
                 shaft_reach=14.5,
                 shaft_back=13.0,
@@ -1678,7 +1677,7 @@ def build_row6_dash(tpl):
                 rune_glow=3 if 11 <= f <= 15 else 2,
                 slash_arc=slash_arc,
                 two_handed=True,
-                shoulder_pos=(28, 21 + hover_dy),
+                shoulder_pos=(28, 20 + hover_dy),
             )
             # Trailing crimson-violet wraith shadow ribbons behind cloak (x=3..12, y=24..44)
             for r_i in range(4):
@@ -1692,14 +1691,14 @@ def build_row6_dash(tpl):
             body = tpl['stand'].copy() if crouch_d == 0 else make_crouch_body(tpl, crouch_d)
             body = apply_cloak_wave(body, phase, amplitude=1.6, vertical_flutter=0.6)
             pulse_hood_eyes(body, dy=crouch_d, bright=(f <= 25))
-            shaft_deg = 16.0 * (1.0 - u) + (-34.0) * u
+            shaft_deg = 16.0 * (1.0 - u) + (-52.0) * u
             frame = draw_abyssal_scythe(
                 body,
-                grip_pos=(int(round(29 * (1.0 - u) + 26 * u)), 25 + crouch_d),
+                grip_pos=(int(round(35 * (1.0 - u) + 33 * u)), 21 + crouch_d),
                 shaft_deg=shaft_deg,
-                shaft_reach=15.0,
+                shaft_reach=14.5,
                 shaft_back=12.5,
-                blade_span=17.5,
+                blade_span=17.0,
                 blade_curve=6.0,
                 blade_dir=1,
                 rune_glow=1,
@@ -1714,10 +1713,10 @@ def build_row6_dash(tpl):
 def build_row7_crouch(tpl):
     """
     Row 7: 30-Frame CROUCH Sequence (Wraith-Shroud Low Stance & Phantom Scythe Boomerang Throw):
-    - F00..F06: Drops into a low Wraith-Shroud crouch (up to 7px lower silhouette), wrapping his
-      tattered shadow-cloak defensively while spinning his Great-Scythe low.
-    - F07..F18: Hurls a spinning Phantom Scythe boomerang from his low crouch with wide IK arm swing.
-    - F19..F29: Rises smoothly back to upright combat stance.
+    - F00..F06: Drops into a low Wraith-Shroud crouch (up to 7px lower silhouette), holding
+      Great-Scythe out in front (`gx = 33..34, gy = 21..25`).
+    - F07..F18: Hurls a spinning Phantom Scythe boomerang from his low crouch with forward IK arm swing (`gx = 32..38`).
+    - F19..F29: Rises smoothly back to upright combat stance (`gx = 35 -> 33`).
     """
     frames = []
     for f in range(30):
@@ -1729,9 +1728,9 @@ def build_row7_crouch(tpl):
             body = apply_cloak_wave(body, phase, amplitude=1.4, vertical_flutter=0.4)
             pulse_hood_eyes(body, dy=d, bright=(f >= 4))
             u = f / 6.0
-            shaft_deg = -34.0 * (1.0 - u) + 8.0 * u
-            gx = int(round(26 * (1.0 - u) + 24 * u))
-            gy = int(round(25 + d * 0.85))
+            shaft_deg = -52.0 * (1.0 - u) + (-8.0) * u
+            gx = int(round(33 * (1.0 - u) + 34 * u))
+            gy = int(round(21 + d * 0.55))
             frame = draw_abyssal_scythe(
                 body,
                 grip_pos=(gx, gy),
@@ -1754,25 +1753,25 @@ def build_row7_crouch(tpl):
             pulse_hood_eyes(body, dy=d, bright=True)
 
             if f <= 10:
-                # Low crouch windup (F07..F10): (24, 31) -> (22, 24)
+                # Low crouch windup out in front (F07..F10): (34, 25) -> (32, 18)
                 u = (f - 7) / 3.0
-                shaft_deg = 8.0 * (1.0 - u) + (-68.0) * u
-                gx = int(round(24 * (1.0 - u) + 22 * u))
-                gy = int(round(31 * (1.0 - u) + 24 * u))
+                shaft_deg = -8.0 * (1.0 - u) + (-68.0) * u
+                gx = int(round(34 * (1.0 - u) + 32 * u))
+                gy = int(round(25 * (1.0 - u) + 18 * u))
                 slash_arc = None
             elif f <= 16:
-                # Low-stance Phantom Scythe boomerang release slash (F11..F16): (22, 24) -> (34, 28)!
+                # Low-stance Phantom Scythe boomerang release slash (F11..F16): (32, 18) -> (38, 24)!
                 u = (f - 11) / 5.0
                 shaft_deg = -55.0 * (1.0 - u) + 24.0 * u
-                gx = int(round(22 * (1.0 - u) + 34 * u))
-                gy = int(round(24 * (1.0 - u) + 28 * u))
+                gx = int(round(32 * (1.0 - u) + 38 * u))
+                gy = int(round(18 * (1.0 - u) + 24 * u))
                 slash_arc = (-45.0, shaft_deg + 12.0, 19.0, 1.0 - u * 0.3)
             else:
-                # Follow-through hold (F17..F18): (34, 28) -> (30, 30)
+                # Follow-through hold (F17..F18): (38, 24) -> (35, 25)
                 u = (f - 16) / 2.0
                 shaft_deg = 24.0 * (1.0 - u) + 12.0 * u
-                gx = int(round(34 * (1.0 - u) + 30 * u))
-                gy = int(round(28 * (1.0 - u) + 30 * u))
+                gx = int(round(38 * (1.0 - u) + 35 * u))
+                gy = int(round(24 * (1.0 - u) + 25 * u))
                 slash_arc = None
 
             frame = draw_abyssal_scythe(
@@ -1787,7 +1786,7 @@ def build_row7_crouch(tpl):
                 rune_glow=3 if 10 <= f <= 15 else 2,
                 slash_arc=slash_arc,
                 two_handed=True,
-                shoulder_pos=(26, 25),
+                shoulder_pos=(26, 24),
             )
         else:
             depths = [7, 6, 6, 5, 4, 3, 2, 1, 1, 0, 0]
@@ -1797,16 +1796,16 @@ def build_row7_crouch(tpl):
             body = apply_cloak_wave(body, phase, amplitude=1.4, vertical_flutter=0.5)
             pulse_hood_eyes(body, dy=d, bright=(d >= 4))
             u = k / 10.0
-            shaft_deg = 12.0 * (1.0 - u) + (-34.0) * u
-            gx = int(round(30 * (1.0 - u) + 26 * u))
-            gy = int(round((24 + d) * (1.0 - u) + 25 * u))
+            shaft_deg = 12.0 * (1.0 - u) + (-52.0) * u
+            gx = int(round(35 * (1.0 - u) + 33 * u))
+            gy = int(round((21 + int(d * 0.5)) * (1.0 - u) + 21 * u))
             frame = draw_abyssal_scythe(
                 body,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
-                shaft_reach=15.0,
+                shaft_reach=14.5,
                 shaft_back=12.5,
-                blade_span=17.5,
+                blade_span=17.0,
                 blade_curve=6.0,
                 blade_dir=1,
                 rune_glow=1,
@@ -1821,13 +1820,13 @@ def build_row7_crouch(tpl):
 def build_row8_jump(tpl):
     """
     Row 8: 30-Frame JUMP Sequence (Shadow-Wing Aerial Vault & Mid-Air Downward Scythe Reap):
-    - ZERO bouncy-ball frames! Every single frame shows Malakor's full hooded skull, armor, cloak,
-      articulated greaves, shadow-wings, and strictly ONE Abyssal Great-Scythe with wide IK arm swing:
-      * F00..F04: Knee-bend crouch & explosive shadow-jump launch
-      * F05..F11: Ascending Shadow-Wing aerial vault raising grip to (23, 14)
-      * F12..F18: Apex mid-air downward Crescent Scythe cleave sweeping (23, 14) -> (35, 22) -> (30, 26)
-      * F19..F24: Descending wraith-glide
-      * F25..F29: Grounded shock-absorbing landing
+    - Every single frame shows Malakor's full hooded skull, armor, cloak, 2 articulated greaves,
+      shadow-wings, and strictly ONE Abyssal Great-Scythe with forward IK arm swing (`gx = 31..38`):
+      * F00..F04: Knee-bend crouch & explosive shadow-jump launch (`gx = 33 -> 32`)
+      * F05..F11: Ascending Shadow-Wing aerial vault raising grip to `(31, 13)`
+      * F12..F18: Apex mid-air downward Crescent Scythe cleave sweeping `(31, 13) -> (38, 20) -> (34, 24)`
+      * F19..F24: Descending wraith-glide (`gx = 34 -> 33`)
+      * F25..F29: Grounded shock-absorbing landing (`gx = 33`)
     """
     frames = []
     for f in range(30):
@@ -1840,16 +1839,16 @@ def build_row8_jump(tpl):
             body = apply_cloak_wave(body, phase * 2.0, amplitude=1.8, vertical_flutter=0.8)
             body = draw_shadow_wings(body, phase * 2.0, spread=0.25 * f, shoulder_y=18 + d)
             pulse_hood_eyes(body, dy=d, bright=True)
-            shaft_deg = [-34.0, -20.0, -10.0, -42.0, -68.0][f]
-            gx = [26, 26, 27, 25, 24][f]
-            gy = [26, 28, 29, 24, 19][f]
+            shaft_deg = [-52.0, -36.0, -24.0, -52.0, -74.0][f]
+            gx = [33, 33, 34, 33, 32][f]
+            gy = [22, 23, 24, 20, 17][f]
             frame = draw_abyssal_scythe(
                 body,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
-                shaft_reach=15.0,
+                shaft_reach=14.5,
                 shaft_back=12.0,
-                blade_span=17.0,
+                blade_span=16.5,
                 blade_curve=5.8,
                 blade_dir=1,
                 rune_glow=2,
@@ -1857,23 +1856,23 @@ def build_row8_jump(tpl):
                 shoulder_pos=(26, 19 + d),
             )
         elif f <= 11:
-            # F05..F11: Ascending Shadow-Wing aerial vault raising Great-Scythe to (23, 14)
+            # F05..F11: Ascending Shadow-Wing aerial vault raising Great-Scythe to (31, 13)
             u = (f - 5) / 6.0
             tuck = 0.55 + 0.45 * math.sin(u * math.pi * 0.7)
             body = make_jump_body(tpl, -1, tuck_amount=tuck, torso_lean_dx=1)
             body = apply_cloak_wave(body, phase * 2.0, amplitude=2.3, vertical_flutter=1.1)
             body = draw_shadow_wings(body, phase * 2.0, spread=0.95, shoulder_y=17)
             pulse_hood_eyes(body, dy=-1, bright=True)
-            shaft_deg = -68.0 * (1.0 - u) + (-118.0) * u
-            gx = int(round(24 * (1.0 - u) + 23 * u))
-            gy = int(round(19 * (1.0 - u) + 14 * u))
+            shaft_deg = -74.0 * (1.0 - u) + (-118.0) * u
+            gx = int(round(32 * (1.0 - u) + 31 * u))
+            gy = int(round(17 * (1.0 - u) + 13 * u))
             frame = draw_abyssal_scythe(
                 body,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
                 shaft_reach=15.0,
                 shaft_back=11.0,
-                blade_span=17.5,
+                blade_span=17.0,
                 blade_curve=6.0,
                 blade_dir=1,
                 rune_glow=3 if f >= 9 else 2,
@@ -1881,7 +1880,7 @@ def build_row8_jump(tpl):
                 shoulder_pos=(26, 18),
             )
         elif f <= 18:
-            # F12..F18: Apex mid-air downward Crescent Scythe cleave sweeping (23, 14) -> (35, 22) -> (30, 26)!
+            # F12..F18: Apex mid-air downward Crescent Scythe cleave sweeping (31, 13) -> (38, 20) -> (34, 24)!
             u = (f - 12) / 6.0
             ease = 1.0 - math.pow(1.0 - u, 2.0)
             body = make_jump_body(tpl, -1, tuck_amount=0.95 - u * 0.15, torso_lean_dx=1 if f <= 16 else 0)
@@ -1892,20 +1891,20 @@ def build_row8_jump(tpl):
             shaft_deg = -105.0 * (1.0 - ease) + 48.0 * ease
             if u <= 0.6:
                 w = u / 0.6
-                gx = int(round(23 * (1.0 - w) + 35 * w))
-                gy = int(round(14 * (1.0 - w) + 22 * w))
+                gx = int(round(31 * (1.0 - w) + 38 * w))
+                gy = int(round(13 * (1.0 - w) + 20 * w))
             else:
                 w = (u - 0.6) / 0.4
-                gx = int(round(35 * (1.0 - w) + 30 * w))
-                gy = int(round(22 * (1.0 - w) + 26 * w))
+                gx = int(round(38 * (1.0 - w) + 34 * w))
+                gy = int(round(20 * (1.0 - w) + 24 * w))
             slash_arc = (-85.0, shaft_deg + 14.0, 20.5, 1.0 - u * 0.25) if f <= 17 else None
             frame = draw_abyssal_scythe(
                 body,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
-                shaft_reach=15.5,
+                shaft_reach=15.0,
                 shaft_back=11.5,
-                blade_span=18.0,
+                blade_span=17.5,
                 blade_curve=6.2,
                 blade_dir=1,
                 rune_glow=3,
@@ -1921,16 +1920,16 @@ def build_row8_jump(tpl):
             body = apply_cloak_wave(body, phase * 2.0, amplitude=2.1, vertical_flutter=1.0)
             body = draw_shadow_wings(body, phase * 2.0, spread=0.85 * (1.0 - u * 0.5), shoulder_y=18)
             pulse_hood_eyes(body, dy=0, bright=True)
-            shaft_deg = 48.0 * (1.0 - u) + (-18.0) * u
-            gx = int(round(30 * (1.0 - u) + 26 * u))
-            gy = int(round(26 * (1.0 - u) + 24 * u))
+            shaft_deg = 48.0 * (1.0 - u) + (-32.0) * u
+            gx = int(round(34 * (1.0 - u) + 33 * u))
+            gy = int(round(24 * (1.0 - u) + 21 * u))
             frame = draw_abyssal_scythe(
                 body,
                 grip_pos=(gx, gy),
                 shaft_deg=shaft_deg,
-                shaft_reach=15.0,
+                shaft_reach=14.5,
                 shaft_back=12.0,
-                blade_span=17.5,
+                blade_span=17.0,
                 blade_curve=6.0,
                 blade_dir=1,
                 rune_glow=2,
@@ -1946,14 +1945,14 @@ def build_row8_jump(tpl):
             body = apply_cloak_wave(body, phase, amplitude=1.6, vertical_flutter=0.6)
             pulse_hood_eyes(body, dy=d, bright=(k <= 2))
             u = k / 4.0
-            shaft_deg = -18.0 * (1.0 - u) + (-34.0) * u
+            shaft_deg = -32.0 * (1.0 - u) + (-52.0) * u
             frame = draw_abyssal_scythe(
                 body,
-                grip_pos=(26, 25 + d),
+                grip_pos=(33, 21 + int(d * 0.5)),
                 shaft_deg=shaft_deg,
-                shaft_reach=15.5,
+                shaft_reach=15.0,
                 shaft_back=13.0,
-                blade_span=17.5,
+                blade_span=17.0,
                 blade_curve=6.0,
                 blade_dir=1,
                 rune_glow=1,
