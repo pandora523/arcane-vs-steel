@@ -17,39 +17,39 @@ export class PixelForge {
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps13'),
-        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps13'),
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps14'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps14'),
         portrait: loadImg('assets/sprites/warrior_portrait.png?v=2', () => this.refreshPortraits())
       },
       mage: {
-        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps13'),
-        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps13'),
+        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps14'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps14'),
         portrait: loadImg('assets/sprites/mage_portrait.png?v=2', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps13'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps13'),
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps14'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps14'),
         portrait: loadImg('assets/sprites/archer_portrait.png?v=2', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps13'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps13'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps13'),
+        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps14'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps14'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps14'),
         portrait: loadImg('assets/sprites/priestess_portrait.png?v=2', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps13'),
-        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps13'),
+        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps14'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps14'),
         portrait: loadImg('assets/sprites/reaper_portrait.png?v=2', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps13'),
-        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps13'),
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps14'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps14'),
         portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=2', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps13'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps13'),
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps14'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps14'),
         portrait: loadImg('assets/sprites/titan_portrait.png?v=2', () => this.refreshPortraits())
       }
     };
@@ -86,14 +86,14 @@ export class PixelForge {
 
   /**
    * Maps fighter state & timers to 270-frame (30 cols x 9 rows, 208x208 cells) 30fps HD-2D sprite sheets
-   * across all 6 champions (Warrior, FireMage, Archer, Priestess, Reaper, Chronomancer):
+   * across all 7 champions (Warrior, FireMage, Archer, Priestess, Reaper, Chronomancer, Titan):
    *   Row 0 (0..29):    30-frame IDLE breathing, cloak/robe/hair wave & weapon glint
    *   Row 1 (30..59):   30-frame WALK anatomical 2-step stride cycle
    *   Row 2 (60..89):   30-frame AUTO_ATTACK progressive windup, strike/cast & follow-through
    *   Row 3 (90..119):  30-frame SKILL 2-phase special skill animation
    *   Row 4 (120..149): 30-frame ULTIMATE multi-stage overdrive animation
    *   Row 5 (150..179): 30-frame DEATH stagger (F00..F05 HURT), kneeling collapse & flat horizontal rest
-   *   Row 6 (180..209): 30-frame DASH forward assault charge / phase-glide
+   *   Row 6 (180..209): 30-frame DASH forward assault charge / Arcane Blink / Chrono Portal Warp
    *   Row 7 (210..239): 30-frame CROUCH tactical low stance & counter-shot/slash
    *   Row 8 (240..269): 30-frame JUMP full-body aerial vault & apex downward strike/shot
    */
@@ -120,6 +120,12 @@ export class PixelForge {
     ) {
       const hurtProgress = 1.0 - Math.min(1.0, Math.max(0.0, (fighter.hurtTimer || 0) / 0.28));
       return 150 + Math.min(5, Math.max(0, Math.floor(hurtProgress * 6)));
+    }
+
+    if (fighter.isBlinkTeleport || fighter.isChronoWarp) {
+      const dur = fighter.dashDuration || 0.42;
+      const step = Math.min(29, Math.max(0, Math.floor((t / dur) * 30)));
+      return 180 + step;
     }
 
     if (st === 'JUMP' || st === 'DODGE' || fighter.isFlipVault) {

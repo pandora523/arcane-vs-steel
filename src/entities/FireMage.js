@@ -34,20 +34,77 @@ export class FireMage extends Fighter {
     this.flipStartX = x;
     this.flipTargetX = x;
     this.flipAngle = 0;
+    this.isBlinkTeleport = false;
+    this.didBlink = false;
+    this.blinkOriginX = x;
+    this.blinkTargetX = x;
+    this.blinkPortalTimer = 0;
+    this.solarEchoes = [];
     this.spawnedEclipse = false;
     this.didSupernovaFinisher = false;
+  }
+
+  spawnSolarEcho(frameIdx) {
+    if (this.solarEchoes.length > 4) this.solarEchoes.shift();
+    this.solarEchoes.push({
+      x: this.x,
+      y: this.groundY,
+      facing: this.facing,
+      frameIdx,
+      life: 0,
+      maxLife: 0.58
+    });
   }
 
   startJump(enemy, game, customDir = null) {
     this.dodgeCooldown = this.dodgeMaxCooldown * (0.86 + Math.random() * 0.28);
     this.setState('JUMP');
     this.isInvulnerable = true;
+    this.isBlinkTeleport = false;
+    this.isFlipVault = true;
+    this.flipStartX = this.x;
+    this.flipAngle = 0;
+    this.wallFlipCooldown = 3.0;
+
     const ww = game.renderer.worldWidth;
     let dir = customDir !== null ? customDir : -this.facing;
     if (this.x < 180) dir = 1;
     else if (this.x > ww - 180) dir = -1;
-    this.dashDir = dir;
-    this.onStartDodge(enemy, game, dir);
+
+    const dist = enemy ? Math.abs(enemy.x - this.x) : 300;
+    const retreatX = this.x - this.facing * 260;
+    const nearWallOrCornered =
+      this.x < 330 ||
+      this.x > ww - 330 ||
+      retreatX < 190 ||
+      retreatX > ww - 190 ||
+      dist < 225;
+
+    if (enemy && nearWallOrCornered) {
+      this.dashDuration = 0.64;
+      const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
+      let target = enemy.x + openSideDir * 350;
+      if (Math.abs(target - this.x) < 260) {
+        const crossDir = this.x < enemy.x ? 1 : -1;
+        target = enemy.x + crossDir * 340;
+      }
+      this.flipTargetX = Math.max(150, Math.min(ww - 150, target));
+      this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || 1;
+      game.vfx.spawnDamageText(this.x, this.y - 130, 0, false, 'FLAME GLIDE!', '#facc15');
+    } else {
+      this.dashDuration = 0.60;
+      this.flipTargetX = Math.max(150, Math.min(ww - 150, this.x + dir * 335));
+      this.dashDir = dir;
+      game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'SOLAR VAULT!', '#fb923c');
+    }
+
+    this.vx = 0;
+    this.vy = 0;
+    this.spawnSolarEcho(PixelForge.getFrameIndex(this, this.runeOrbit));
+    if (game.audio) game.audio.play('blink', this.x);
+    game.vfx.spawnShockwave(this.x, this.groundY, 98, '#fb923c', 0.32, true);
+    game.vfx.spawnBurst(this.x, this.groundY - 12, 14, '#fef08a', 210);
+    game.vfx.spawnGlyphBurst(this.x, this.y - 65, 7, 'arcane');
   }
 
   startCrouch(enemy, game) {
@@ -67,57 +124,60 @@ export class FireMage extends Fighter {
   onStartDodge(enemy, game, dir) {
     const ww = game.renderer.worldWidth;
     const dist = enemy ? Math.abs(enemy.x - this.x) : 300;
-    const retreatX = this.x - this.facing * 260;
-    const nearWallOrCornered =
-      this.x < 330 ||
-      this.x > ww - 330 ||
-      retreatX < 190 ||
-      retreatX > ww - 190 ||
-      dist < 225;
+    const nearLeft = this.x < 320;
+    const nearRight = this.x > ww - 320;
 
-    this.isFlipVault = true;
-    this.flipStartX = this.x;
+    // ★ SIGNATURE FIREMAGE EVASION: "ARCANE BLINK!" (Instant Solar Rift Phase-Shift Teleport)
+    this.isFlipVault = false;
     this.flipAngle = 0;
-    this.wallFlipCooldown = 3.0;
-
-    if (enemy && nearWallOrCornered) {
-      // Sleek 86px-high horizontal Flame-Glide Aerial Vault across the arena using Row 8 (30-frame JUMP)!
-      this.dashDuration = 0.64;
-      const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
-      let target = enemy.x + openSideDir * 350;
-      if (Math.abs(target - this.x) < 260) {
-        const crossDir = this.x < enemy.x ? 1 : -1;
-        target = enemy.x + crossDir * 340;
-      }
-      this.flipTargetX = Math.max(150, Math.min(ww - 150, target));
-      this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || 1;
-      game.vfx.spawnDamageText(this.x, this.y - 130, 0, false, 'FLAME GLIDE!', '#facc15');
-    } else {
-      // Long, low-slung pyromantic aerial vault & apex downward fireball cast using Row 8 (30-frame JUMP)!
-      this.dashDuration = 0.60;
-      this.flipTargetX = Math.max(150, Math.min(ww - 150, this.x + dir * 335));
-      this.dashDir = dir;
-      game.vfx.spawnDamageText(this.x, this.y - 125, 0, false, 'SOLAR VAULT!', '#fb923c');
-    }
-
+    this.isBlinkTeleport = true;
+    this.didBlink = false;
+    this.dashDuration = 0.40;
+    this.blinkOriginX = this.x;
+    this.blinkPortalTimer = 0.56;
     this.vx = 0;
     this.vy = 0;
+
+    let targetX;
+    if (enemy && (nearLeft || nearRight || dist < 245)) {
+      const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
+      targetX = enemy.x + openSideDir * 340;
+      if (Math.abs(targetX - this.x) < 250) {
+        const crossDir = this.x < enemy.x ? 1 : -1;
+        targetX = enemy.x + crossDir * 330;
+      }
+    } else {
+      const smartDir = nearLeft ? 1 : nearRight ? -1 : dir;
+      targetX = this.x + smartDir * 295;
+    }
+    this.blinkTargetX = Math.max(140, Math.min(ww - 140, targetX));
+    this.dashDir = Math.sign(this.blinkTargetX - this.blinkOriginX) || dir || 1;
+
+    this.spawnSolarEcho(PixelForge.getFrameIndex(this, this.runeOrbit));
     if (game.audio) game.audio.play('blink', this.x);
-    game.vfx.spawnShockwave(this.x, this.groundY, 98, '#fb923c', 0.32, true);
-    game.vfx.spawnBurst(this.x, this.groundY - 12, 14, '#fef08a', 210);
-    game.vfx.spawnGlyphBurst(this.x, this.y - 65, 7, 'arcane');
+
+    // Departure Solar Rift Detonation + Vertical Solar Lightning!
+    game.vfx.spawnShockwave(this.x, this.y - 92, 112, '#fef08a', 0.34, false, true);
+    game.vfx.spawnShockwave(this.x, this.groundY, 124, '#fb923c', 0.34, true);
+    game.vfx.spawnBurst(this.x, this.y - 90, 20, '#fb923c', 240);
+    game.vfx.spawnGlyphBurst(this.x, this.y - 95, 9, 'arcane');
+    game.vfx.spawnLightning(this.x, this.y - 185, this.groundY, '#fef08a', '#fb923c');
+    game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'ARCANE BLINK!', '#fef08a');
 
     // Volatile Solar Remnant scorches melee pursuers at departure point!
-    if (enemy && !enemy.isDead && dist < 200) {
-      enemy.takeDamage(28, this, false, 90, -50);
+    if (enemy && !enemy.isDead && dist < 210) {
+      enemy.takeDamage(30, this, false, 95, -55);
+      game.vfx.spawnDamageText(enemy.x, enemy.y - 132, 0, false, 'SOLAR REMNANT!', '#fb923c');
     }
   }
 
   onStartDash(enemy, game, dir) {
     this.isFlipVault = false;
+    this.isBlinkTeleport = false;
     this.flipAngle = 0;
     this.dashDuration = 0.44;
     this.vx = dir * 370;
+    this.spawnSolarEcho(PixelForge.getFrameIndex(this, this.runeOrbit));
     if (game.audio) game.audio.play('fireball', this.x);
     game.vfx.spawnShockwave(this.x, this.y - 95, 76, '#fb923c', 0.26, false, true);
     game.vfx.spawnGlyphBurst(this.x, this.y - 100, 5, 'arcane');
@@ -213,7 +273,54 @@ export class FireMage extends Fighter {
       return;
     }
 
-    // Row 6 (30-frame DASH - Flame-Step Blink Glide): aerodynamic horizontal flame glide + mid-dash snap fireball
+    // ★ Row 6 (30-frame DODGE - ARCANE BLINK TELEPORT): Instant Solar Rift Phase-Out & Phase-In!
+    if (this.isBlinkTeleport) {
+      if (t >= 0.13 && !this.didBlink) {
+        this.didBlink = true;
+        this.x = this.blinkTargetX;
+        if (enemy && !enemy.isDead) {
+          this.facing = enemy.x >= this.x ? 1 : -1;
+        }
+        this.spawnSolarEcho(PixelForge.getFrameIndex(this, this.runeOrbit));
+
+        // Arrival Solar Rift Detonation + Lightning Flash + Instant Snap Solar Bolt!
+        game.vfx.spawnShockwave(this.x, this.y - 92, 114, '#fef08a', 0.34, false, true);
+        game.vfx.spawnShockwave(this.x, this.groundY, 128, '#fb923c', 0.32, true);
+        game.vfx.spawnBurst(this.x, this.y - 92, 22, '#fef08a', 255);
+        game.vfx.spawnGlyphBurst(this.x, this.y - 96, 10, 'arcane');
+        game.vfx.spawnLightning(this.x, this.y - 185, this.groundY, '#fef08a', '#fb923c');
+
+        if (enemy && !enemy.isDead) {
+          if (game.audio) game.audio.play('fireball', this.x);
+          const sx = this.x + this.facing * 44;
+          const sy = this.y - 108;
+          const dx = enemy.x - sx;
+          const dy = (enemy.y - 108) - sy;
+          const d = Math.hypot(dx, dy) || 1;
+          game.vfx.spawnProjectile({
+            x: sx,
+            y: sy,
+            vx: (dx / d) * 655,
+            vy: (dy / d) * 655,
+            radius: 14,
+            color: '#fb923c',
+            coreColor: '#fef08a',
+            owner: this,
+            damage: 48,
+            type: 'fireball'
+          });
+        }
+      }
+
+      if (t >= this.dashDuration) {
+        this.isBlinkTeleport = false;
+        this.isInvulnerable = false;
+        this.setState('IDLE');
+      }
+      return;
+    }
+
+    // Row 6 (30-frame DASH - Flame-Step Glide): aerodynamic horizontal flame glide + mid-dash snap fireball
     this.x += this.dashDir * 295 * dt;
     if (Math.random() < 0.75) {
       game.vfx.spawnParticle({
@@ -251,6 +358,7 @@ export class FireMage extends Fighter {
 
     if (t >= this.dashDuration) {
       this.isFlipVault = false;
+      this.isBlinkTeleport = false;
       this.flipAngle = 0;
       this.isInvulnerable = false;
       this.setState('IDLE');
@@ -327,6 +435,15 @@ export class FireMage extends Fighter {
     this.runeOrbit += dt * 3.0;
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
+    this.blinkPortalTimer = Math.max(0, this.blinkPortalTimer - dt);
+
+    for (let i = this.solarEchoes.length - 1; i >= 0; i--) {
+      const ec = this.solarEchoes[i];
+      ec.life += dt;
+      if (ec.life >= ec.maxLife) {
+        this.solarEchoes.splice(i, 1);
+      }
+    }
 
     if (!this.isDead && this.state === 'WALK') {
       this.stepTimer += dt;
@@ -344,8 +461,18 @@ export class FireMage extends Fighter {
     if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const dist = Math.abs(enemy.x - this.x);
       const ww = game.renderer.worldWidth;
+      const nearWall = this.x < 260 || this.x > ww - 260;
       const pinnedLeft = this.x < 240 && enemy.x > this.x;
       const pinnedRight = this.x > ww - 240 && enemy.x < this.x;
+      const incomingProj =
+        game.vfx &&
+        game.vfx.projectiles.some((p) => p.owner === enemy && Math.abs(p.x - this.x) < 155);
+
+      // Proactive Arcane Blink Teleport when pressured, cornered, or evading incoming projectiles!
+      if ((dist < 235 || (nearWall && dist < 305) || incomingProj) && this.dodgeCooldown <= 0) {
+        this.startDodge(enemy, game);
+        return;
+      }
 
       if ((pinnedLeft || pinnedRight) && dist < 265 && this.dodgeCooldown <= 0 && this.wallFlipCooldown <= 0) {
         this.wallFlipCooldown = 3.0;
@@ -646,8 +773,92 @@ export class FireMage extends Fighter {
     }
   }
 
+  drawSolarEchoes(ctx) {
+    if (!this.solarEchoes.length) return;
+    const sprites = PixelForge.initAssets().mage;
+    if (!sprites || !sprites.sheet || !sprites.sheet.complete) return;
+
+    for (const ec of this.solarEchoes) {
+      const fade = Math.max(0, 1 - ec.life / ec.maxLife);
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.translate(Math.round(ec.x), Math.round(ec.y));
+      ctx.scale(ec.facing, 1);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.48;
+      PixelForge.drawGhostFrame(ctx, sprites, ec.frameIdx, 208, 208);
+      ctx.restore();
+    }
+  }
+
+  drawBlinkPortals(ctx, renderer = null) {
+    if (this.blinkPortalTimer <= 0) return;
+    const vfxSheet = PixelForge.initAssets().mage?.vfx;
+    const fade = Math.min(1, this.blinkPortalTimer / 0.42);
+    const col = Math.floor((0.56 - this.blinkPortalTimer) * 52) % 30;
+    const portals = [this.blinkOriginX];
+    if (this.didBlink || this.blinkPortalTimer < 0.44) {
+      portals.push(this.blinkTargetX);
+    }
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (let idx = 0; idx < portals.length; idx++) {
+      const px = Math.round(portals[idx]);
+      const py = Math.round(this.groundY - 96);
+      const size = Math.round(168 * (0.82 + 0.18 * fade));
+      const half = Math.round(-size * 0.5);
+
+      ctx.save();
+      ctx.translate(px, py);
+
+      if (renderer) {
+        ctx.globalCompositeOperation = 'lighter';
+        if (renderer.glowOrange) {
+          ctx.globalAlpha = fade * 0.65;
+          ctx.drawImage(renderer.glowOrange, -size * 1.1, -size * 1.1, size * 2.2, size * 2.2);
+        }
+        if (renderer.glowGold) {
+          ctx.globalAlpha = fade * 0.55;
+          ctx.drawImage(renderer.glowGold, -size * 0.85, -size * 0.85, size * 1.7, size * 1.7);
+        }
+      }
+
+      if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+        // Row 2 (y = 416) on mage_vfx.png: Blazing Solar Eclipse / Rift Ring
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.48;
+        ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half - 8, half - 8, size + 16, size + 16);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * 0.92;
+        ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half, half, size, size);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.40;
+        ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half, half, size, size);
+      }
+
+      // Vertical Solar Rift Tear Core (chunky 4px pixel beam)
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.85;
+      ctx.fillStyle = '#fb923c';
+      ctx.fillRect(-10, -76, 20, 152);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(-6, -68, 12, 136);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-2, -56, 4, 112);
+
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   draw(ctx, isReflection = false, renderer = null) {
     const sprites = PixelForge.initAssets().mage;
+    if (!isReflection) {
+      this.drawBlinkPortals(ctx, renderer);
+      this.drawSolarEchoes(ctx);
+    }
+
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 

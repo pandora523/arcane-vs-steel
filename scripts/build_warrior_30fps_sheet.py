@@ -1528,33 +1528,38 @@ def build_row5_death(tpl):
             frames.append(ensure_safe_cell(frame))
 
         elif f <= 23:
-            # F18..F23: Collapsing forward from knee onto the floor while Runeblade tips down flat onto the ground
-            u = (f - 18) / 5.0
-            tilt_deg = -u * 78.0  # CW rotation in PIL (tilts kneeling warrior forward-right onto the ground)
-            pil_kn = Image.fromarray(make_crouch_body(tpl, 6), mode='RGBA')
-            rot_arr = np.array(
-                pil_kn.rotate(tilt_deg, resample=Image.NEAREST, center=(24, 43)),
-                dtype=np.uint8
-            )
-            rot_arr = fill_layer_pinholes(rot_arr, 1, 50, 1, 50, require_3_neighbors=True)
-
-            ys, xs = np.where(rot_arr[:, :, 3] > 0)
-            max_y = ys.max() if len(ys) > 0 else 47
-            drop_y = 46 - max_y
-            shift_x = int(round(u * 3.0))
-
+            # F18..F23: Grounded floor collapse anchored at y = 46 (zero mid-air floating rotation!)
+            u = (f - 17) / 6.0
+            kn = make_crouch_body(tpl, 6)
+            fall_tpl = tpl['fall']
             frame = np.zeros((52, 52, 4), dtype=np.uint8)
-            for y in range(52):
-                for x in range(52):
-                    if rot_arr[y, x, 3] > 0:
-                        ny = max(2, min(48, y + drop_y))
-                        nx = max(2, min(49, x + shift_x))
-                        frame[ny, nx] = rot_arr[y, x]
 
-            # Runeblade tips smoothly from planted (+72 deg) to horizontal flat on the ground (0 deg at y=47)
+            for sy in range(8, 49):
+                rel_h = max(0, 46 - sy)
+                comp = 1.0 - u * 0.56
+                ny = min(47, max(14, int(round(46.0 - rel_h * comp))))
+                dx_slump = int(round((rel_h / 28.0) * u * 7.5))
+                for sx in range(2, 46):
+                    if kn[sy, sx, 3] > 0:
+                        nx = max(3, min(47, sx + dx_slump))
+                        frame[ny, nx] = kn[sy, sx]
+                        if ny + 1 <= 46 and frame[ny + 1, nx, 3] == 0:
+                            frame[ny + 1, nx] = kn[sy, sx]
+
+            if f >= 20:
+                w_fall = (f - 19) / 5.0
+                max_fall_x = int(round(34 + w_fall * 10))
+                for fy in range(36, 48):
+                    for fx in range(8, min(48, max_fall_x)):
+                        if fall_tpl[fy, fx, 3] > 0 and frame[fy, fx, 3] == 0:
+                            frame[fy, fx] = fall_tpl[fy, fx]
+
+            frame = fill_layer_pinholes(add_outline_to_layer(frame), 2, 49, 2, 49, require_3_neighbors=False)
+
+            # Runeblade tips smoothly from planted (+72 deg) to horizontal flat on the ground (0 deg at y=46)
             blade_ang = (1.0 - u) * 72.0 + u * 2.0
-            hx = int(round(33 * (1.0 - u) + 27 * u))
-            hy = int(round(31 * (1.0 - u) + 46 * u))
+            hx = int(round(33 * (1.0 - u) + 26 * u))
+            hy = int(round(29 * (1.0 - u) + 46 * u))
             frame = draw_runeblade(
                 frame,
                 hand_x=hx,

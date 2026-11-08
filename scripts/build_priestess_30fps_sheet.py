@@ -399,30 +399,99 @@ def draw_halo_crown(frame, head_cx=25, head_top_y=6, phase_rad=0.0, intensity=1.
     return out
 
 
-def draw_mini_wings_on_back(frame, shoulder_x=17, shoulder_y=16, unfurl=1.0, phase_rad=0.0):
+C_OUTLINE = OUTLINE
+C_WING_WHITE = WHITE_PURE
+C_WING_CREAM = STAR_CREAM
+C_WING_GOLD = GOLD_BRIGHT
+
+
+def draw_seraphim_wings(c, cx=18, cy=17, span_phase=0.0, alpha_scale=1.0):
     """
-    Renders luminous golden-white seraphic wing-feathers unfurling from Seraphina's shoulders
-    for aerial vault (Row 8 JUMP) and Apotheosis (Row 4 ULTIMATE).
+    Renders Seraphina's majestic, multi-feathered golden-white Archangel Wings behind her back
+    (x = 4..18, y = 7..35, safely inside x >= 3, y >= 3) with 4 distinct sweeping primary feather
+    pinions (C_WING_WHITE, C_WING_CREAM, C_WING_GOLD, and dark outline C_OUTLINE) that flap
+    gracefully with `span_phase`.
     """
-    if unfurl <= 0.05:
-        return frame
+    scale = max(0.0, min(1.0, float(alpha_scale)))
+    if scale <= 0.05:
+        return c
+
     wing_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    flap_dy = math.sin(phase_rad * 2.0) * 1.8 * unfurl
+    flap = math.sin(span_phase)
+    rx = int(round(cx))
+    ry = int(round(cy))
 
-    for pinion_idx, (ang_base, _length_scale) in enumerate([(-148.0, 1.0), (-168.0, 0.90), (168.0, 0.78)]):
-        ang = math.radians(ang_base + math.sin(phase_rad + pinion_idx * 0.7) * 7.0)
-        ux, uy = math.cos(ang), math.sin(ang)
-        p_len = int(round((10.0 - pinion_idx * 1.4) * unfurl))
-        for d in range(1, p_len + 1):
-            wx = max(2.0, min(49.0, shoulder_x + ux * d))
-            wy = max(2.0, min(48.0, shoulder_y + pinion_idx * 2.2 + uy * d + flap_dy * (d / max(1, p_len))))
-            col = GOLD_BRIGHT if d <= 3 else (WHITE_PURE if d < p_len else STAR_CREAM)
-            set_px(wing_layer, wx, wy, col)
-            if d >= 3 and d % 2 == 1:
-                set_px(wing_layer, wx, min(49.0, wy + 1), VEST_LIGHT)
-                set_px(wing_layer, wx, min(49.0, wy + 2), GOLD_MID if d >= p_len - 1 else STAR_CREAM)
+    # 1. Golden Archangel Wing Covert Arch & Inner Feather Mantle (x = 9..18, y = 9..28)
+    arch_span = max(3, int(round(7.0 * scale)))
+    for i in range(arch_span + 1):
+        u = i / max(1, arch_span)
+        ax = max(5, min(18, int(round(rx - i * 1.1))))
+        ay_top = max(7, min(33, int(round(ry - 3.0 - math.sin(u * math.pi * 0.75) * (4.5 * scale) + flap * 1.2 * u))))
+        ay_bot = max(ay_top + 2, min(34, int(round(ry + 6.0 + (1.0 - u) * 4.0 * scale))))
+        set_px(wing_layer, ax, max(7, ay_top - 1), C_OUTLINE)
+        set_px(wing_layer, ax, ay_top, C_WING_GOLD)
+        set_px(wing_layer, ax, ay_top + 1, C_WING_GOLD if i % 2 == 0 else C_WING_WHITE)
+        for fy in range(ay_top + 2, ay_bot + 1):
+            col = C_WING_WHITE if (fy - ay_top) <= 4 else (C_WING_CREAM if (fy + i) % 2 == 0 else C_WING_GOLD)
+            set_px(wing_layer, ax, fy, col)
 
-    return composite_over(wing_layer, frame)
+    # 2. Four Distinct Sweeping Primary Feather Pinions (x = 4..18, y = 7..35)
+    # Drawn from lowest (Pinion 4) to highest (Pinion 1) so upper feathers layer cleanly over lower ones
+    pinion_specs = [
+        # (p_idx, root_dy, mid_dx, mid_dy, tip_x_full, tip_dy, flap_mult)
+        (3, 5.0, -6.5, 8.5, 6.0, 15.0, 0.9),   # Pinion 4: Long trailing lower seraph pinion (y = 22..34)
+        (2, 2.0, -7.5, 3.0, 5.0, 4.5, 1.3),    # Pinion 3: Sweeping lower-mid primary pinion (y = 18..24)
+        (1, -1.0, -7.8, -2.5, 4.0, -2.5, 1.7), # Pinion 2: Grand upper-mid primary pinion (y = 13..18)
+        (0, -3.5, -7.0, -7.0, 4.0, -8.5, 2.1), # Pinion 1: High Archangel crown pinion (y = 7..13)
+    ]
+
+    for p_idx, root_dy, mid_dx, mid_dy, tip_x_full, tip_dy, flap_mult in pinion_specs:
+        sx_p = float(rx - 1)
+        sy_p = float(ry) + root_dy * scale
+        mx_p = float(rx) + mid_dx * (0.45 + 0.55 * scale)
+        my_p = float(ry) + mid_dy * scale + flap * flap_mult * 0.65
+        # Even when partially folded (scale = 0.6 in SKILL), tips reach x = 7..8 beyond her hair
+        tx_p = tip_x_full * scale + (rx - 6.0) * (1.0 - scale)
+        ty_p = float(ry) + tip_dy * scale + flap * flap_mult
+
+        steps = 18
+        for s in range(steps + 1):
+            t = s / float(steps)
+            omt = 1.0 - t
+            bx = omt * omt * sx_p + 2.0 * omt * t * mx_p + t * t * tx_p
+            by = omt * omt * sy_p + 2.0 * omt * t * my_p + t * t * ty_p
+            ix = max(4, min(18, int(round(bx))))
+            iy = max(7, min(34, int(round(by))))
+
+            # Top feather edge (dark outline on outer vane, bright gold on inner covert)
+            if t >= 0.30:
+                set_px(wing_layer, ix, max(7, iy - 1), C_OUTLINE if t >= 0.45 else C_WING_GOLD)
+            else:
+                set_px(wing_layer, ix, max(7, iy - 1), C_WING_GOLD)
+
+            # Primary feather shaft & bright white upper vane
+            shaft_col = C_WING_GOLD if (t <= 0.28 or t >= 0.88) else C_WING_WHITE
+            set_px(wing_layer, ix, iy, shaft_col)
+
+            # Luminous cream/white mid vane
+            vane_col = C_WING_WHITE if t <= 0.72 else (C_WING_CREAM if t <= 0.90 else C_WING_GOLD)
+            set_px(wing_layer, ix, min(35, iy + 1), vane_col)
+
+            # Golden-cream lower barb
+            if t <= 0.85:
+                barb_col = C_WING_CREAM if t <= 0.62 else C_WING_GOLD
+                set_px(wing_layer, ix, min(35, iy + 2), barb_col)
+
+            # Crisp dark feather-separation slot between the 4 primary pinions
+            if 0.28 <= t <= 0.82:
+                set_px(wing_layer, ix, min(35, iy + 3), C_OUTLINE)
+
+    return composite_over(wing_layer, c)
+
+
+def draw_mini_wings_on_back(frame, shoulder_x=18, shoulder_y=17, unfurl=1.0, phase_rad=0.0):
+    """Wrapper forwarding to `draw_seraphim_wings`."""
+    return draw_seraphim_wings(frame, cx=shoulder_x, cy=shoulder_y, span_phase=phase_rad * 2.0, alpha_scale=unfurl)
 
 
 def solve_ik_elbow(sx, sy, hx, hy, L1=4.4, L2=4.2, bend_side=1.0):
@@ -522,37 +591,102 @@ def draw_ik_priestess_arm(
     # 5. 2x2 graceful hand (SKIN_LIGHT, SKIN_MID) at (hx, hy)
     ix, iy = int(round(hx)), int(round(hy))
     set_px(layer, ix, iy, dim_col(SKIN_LIGHT))
-    set_px(layer, ix + 1, iy, dim_col(SKIN_LIGHT))
+    set_px(layer, ix + 1, iy, dim_col(GOLD_BRIGHT if is_prayer_hand else SKIN_LIGHT))
     set_px(layer, ix, iy + 1, dim_col(SKIN_MID))
-    set_px(layer, ix + 1, iy + 1, dim_col(SKIN_MID))
+    set_px(layer, ix + 1, iy + 1, dim_col(SKIN_LIGHT if is_prayer_hand else SKIN_MID))
+
+
+def draw_left_prayer_arm(
+    base_frame,
+    shoulder=(24.0, 18.0),
+    hand=(31.0, 23.0),
+    mote_glow=1.0,
+    aegis_shield=False,
+    phase_rad=0.0,
+):
+    """
+    Renders Seraphina's Left Prayer/Blessing Arm & Golden Halo Mote (and optional
+    golden hexagonal Aegis prayer barrier in Row 7 CROUCH F00..F10).
+    """
+    arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    sx, sy = float(shoulder[0]), float(shoulder[1])
+    hx, hy = float(hand[0]), float(hand[1])
+
+    draw_ik_priestess_arm(
+        arm_layer,
+        sx,
+        sy,
+        hx,
+        hy,
+        L1=4.4,
+        L2=4.2,
+        bend_side=1.0,
+        is_prayer_hand=True,
+        dim_factor=0.96,
+    )
+
+    # Luminous Golden Halo Mote hovering at her prayer/blessing hand
+    if mote_glow > 0.05:
+        mx = max(4.0, min(46.0, hx + 1.5))
+        my = max(4.0, min(46.0, hy - 1.0 + math.sin(phase_rad * 2.0) * 0.5))
+        set_px(arm_layer, mx, my, WHITE_PURE)
+        set_px(arm_layer, mx + 1, my, GOLD_BRIGHT)
+        set_px(arm_layer, mx - 1, my, GOLD_BRIGHT)
+        set_px(arm_layer, mx, my - 1, GOLD_BRIGHT)
+        set_px(arm_layer, mx, my + 1, STAR_CREAM)
+        if mote_glow >= 1.1:
+            set_px(arm_layer, mx + 2, my, STAR_CREAM)
+            set_px(arm_layer, mx, my - 2, CYAN_SACRED)
+            set_px(arm_layer, mx + 1, my - 1, CYAN_SACRED)
+
+    # Golden Hexagonal Aegis Shield projected forward in Row 7 CROUCH (F00..F10)
+    if aegis_shield:
+        acx = max(33, min(43, int(round(hx + 5.0))))
+        acy = max(16, min(34, int(round(hy + 1.0))))
+        # Hexagonal perimeter (width 5px, height 11px) in front of her kneeling prayer hand
+        for dy_s in range(-5, 6):
+            abs_y = abs(dy_s)
+            rx_s = 3 if abs_y <= 2 else (2 if abs_y <= 4 else 1)
+            py_s = max(4, min(47, acy + dy_s))
+            if abs_y == 5:
+                for dx_s in (-1, 0, 1):
+                    set_px(arm_layer, acx + dx_s, py_s, GOLD_BRIGHT if dx_s == 0 else GOLD_MID)
+            else:
+                set_px(arm_layer, acx - rx_s, py_s, GOLD_BRIGHT if abs_y <= 2 else GOLD_MID)
+                set_px(arm_layer, acx + rx_s, py_s, WHITE_PURE if abs_y <= 1 else GOLD_BRIGHT)
+                if abs_y in (0, 2):
+                    set_px(arm_layer, acx, py_s, WHITE_PURE if abs_y == 0 else CYAN_SACRED)
+        # Sacred cross-facet inside the hexagonal Aegis shield
+        set_px(arm_layer, acx - 1, acy, STAR_CREAM)
+        set_px(arm_layer, acx + 1, acy, STAR_CREAM)
+        set_px(arm_layer, acx, acy - 1, STAR_CREAM)
+        set_px(arm_layer, acx, acy + 1, STAR_CREAM)
+
+    return composite_over(base_frame, arm_layer)
 
 
 def draw_celestial_staff(
     base_frame,
     shoulder=(25.0, 17.0),
-    staff_deg=16.0,
+    staff_deg=-74.0,
     reach=5.2,
     shaft_up=10.0,
-    shaft_down=20.0,
+    shaft_down=19.5,
     charge_level=0,
     cast_flash=False,
+    flare=0.0,
     dim_factor=1.0,
     hand2_override=None,
     draw_arm=True,
     draw_rose_barrier=False,
     phase_rad=0.0,
     allow_horizontal=False,
+    grip_override=None,
 ):
     """
-    Renders Seraphina's Celestial Sun-Staff and 2-Bone IK Cathedral Arm:
-    - Keeps her Celestial Staff in a graceful vertical-to-diagonal angle range
-      (-20 deg to +28 deg from vertical) with a full-length 28..32px shaft across
-      IDLE, WALK, AUTO_ATTACK, SKILL, ULTIMATE, DASH, CROUCH, and JUMP
-      (only tilting horizontal during DEATH collapse when allow_horizontal=True).
-    - Attaches her 2-bone IK arm at her true shoulder (sx = 25.0 + dx_off, sy = 17.0 + dy_off)
-      with L1 = 4.4, L2 = 4.2, clamping hx in 30.5..35.0 and hy in 15.0..22.5 so her staff
-      is held gracefully in front of her gown with its Sacred Sunburst Halo above (y = 5..14)
-      and full golden shaft extending down (y = 15..42).
+    Renders Seraphina's Celestial Sun-Staff and 2-Bone IK Cathedral Arm across the full
+    expressive polar angle range (-102 deg prayer windup/skyward elevation to -36 deg
+    forward Sacred Starlight thrust, plus planted -88 deg and fallen horizontal).
     """
     staff_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     lead_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
@@ -580,62 +714,66 @@ def draw_celestial_staff(
         tx = max(7.0, min(43.0, gx + ux * shaft_up))
         ty = max(7.0, min(45.0, gy + uy * shaft_up))
     else:
-        # Convert polar angles (e.g. -72 deg) or direct vertical-tilt angles into [-20..+28] deg from vertical
-        if staff_deg < -35.0:
-            tilt = staff_deg + 90.0
+        # Support both polar angles (-105..-25 deg, where -90 is straight up)
+        # and relative-to-vertical tilt angles (-20..+56 deg)
+        if staff_deg <= -25.0:
+            tilt = float(staff_deg) + 90.0
         else:
             tilt = float(staff_deg)
-        tilt = max(-20.0, min(28.0, tilt))
+        tilt = max(-18.0, min(56.0, tilt))
         rad = math.radians(-90.0 + tilt)
         ux, uy = math.cos(rad), math.sin(rad)
         px, py = -uy, ux
 
-        sx = float(shoulder[0])
-        sy = float(shoulder[1])
-        sx = max(23.5, min(28.0, sx))
-        sy = max(14.5, min(22.0, sy))
+        sx = max(23.0, min(28.5, float(shoulder[0])))
+        sy = max(12.5, min(26.0, float(shoulder[1])))
 
-        # Hand position in front of her gown: clamped in hx in [30.5, 35.0], hy in [15.0, 22.5]
-        t_norm = (tilt + 20.0) / 48.0
-        hx = sx + 5.8 + (t_norm - 0.5) * 2.2 + (reach - 5.2) * 0.45
-        hy = sy + 1.8 + (t_norm - 0.5) * 2.6 + (reach - 5.2) * 0.25
-        hx = max(30.5, min(35.0, hx))
-        hy = max(15.0, min(22.5, hy))
+        if grip_override is not None:
+            hx, hy = float(grip_override[0]), float(grip_override[1])
+        else:
+            if tilt <= 0.0:
+                u_back = max(0.0, min(1.0, -tilt / 12.0))
+                hx = sx + 4.8 - u_back * 1.2 + (reach - 5.2) * 0.4
+                hy = sy + 0.4 - u_back * 1.2
+            else:
+                u_fwd = max(0.0, min(1.0, tilt / 54.0))
+                hx = sx + 5.0 + u_fwd * 3.2 + (reach - 5.2) * 0.55
+                hy = sy + 1.0 + u_fwd * 2.4 + (reach - 5.2) * 0.25
+            hx = max(28.5, min(36.5, hx))
+            hy = max(12.5, min(29.0, hy))
 
-        L1, L2 = 4.4, 4.2
+        L1, L2 = 4.6, 4.4
         max_r = L1 + L2 - 0.12
         ddx, ddy = hx - sx, hy - sy
         dist = math.hypot(ddx, ddy)
         if dist > max_r:
             hx = sx + ddx * (max_r / dist)
             hy = sy + ddy * (max_r / dist)
-            hx = max(30.5, min(35.0, hx))
-            hy = max(15.0, min(22.5, hy))
 
         gx, gy = hx, hy
 
-        # Full-length 28..32px golden shaft:
-        # Sacred Sunburst Halo centered at ty in [8.0..11.8] so halo spans y = 5..14
-        # Full golden shaft extending down to by0 in [37.0..42.0] (y = 15..42)
-        eff_up = max(9.0, min(11.0, float(shaft_up)))
+        # Compute upper shaft length (eff_up) so finial swings freely across x = 25..43, y = 6.5..18
+        eff_up = float(shaft_up)
         if uy < -0.05:
-            eff_up = min(eff_up, (gy - 8.2) / (-uy))
+            eff_up = min(eff_up, max(5.5, (gy - 6.8) / (-uy)))
         if ux > 0.05:
-            eff_up = min(eff_up, (42.5 - gx) / ux)
+            eff_up = min(eff_up, max(5.5, (42.8 - gx) / ux))
         elif ux < -0.05:
-            eff_up = min(eff_up, (gx - 28.5) / (-ux))
-        eff_up = max(8.5, min(11.0, eff_up))
+            eff_up = min(eff_up, max(5.5, (gx - 7.0) / (-ux)))
+        eff_up = max(6.0, min(11.5, eff_up))
 
-        target_total = 30.0
-        eff_down = max(float(shaft_down), target_total - eff_up)
+        # Compute lower shaft length (eff_down) so staff extends naturally down to y <= 46
+        eff_down = float(shaft_down)
         if -uy > 0.05:
-            eff_down = min(eff_down, (42.0 - gy) / (-uy))
-        eff_down = max(18.5, min(22.0, eff_down))
+            eff_down = min(eff_down, max(8.0, (46.0 - gy) / (-uy)))
+        if -ux < -0.05:
+            eff_down = min(eff_down, max(8.0, (gx - 5.0) / ux))
+        eff_down = max(11.0, min(23.0, eff_down))
 
         bx0 = max(4.0, min(47.0, gx - ux * eff_down))
-        by0 = max(15.0, min(42.5, gy - uy * eff_down))
-        tx = max(28.0, min(43.0, gx + ux * eff_up))
-        ty = max(7.5, min(12.5, gy + uy * eff_up))
+        by0 = max(14.0, min(46.5, gy - uy * eff_down))
+        tx = max(7.0, min(43.0, gx + ux * eff_up))
+        ty = max(6.8, min(44.0, gy + uy * eff_up))
 
     # 1. Draw full-length golden-ivory staff shaft from (bx0, by0) through (gx, gy) to (tx, ty)
     draw_line_px(staff_layer, bx0, by0, tx, ty, dim_col(GOLD_MID))
@@ -648,20 +786,20 @@ def draw_celestial_staff(
     for w in (-2, -1, 0, 1, 2):
         set_px(staff_layer, cx_neck + px * w, cy_neck + py * w, dim_col(GOLD_BRIGHT if abs(w) <= 1 else GOLD_DARK))
 
-    # 2. Sacred Sunburst Halo & 8-Point Starlight Finial centered at (tx, ty) (y = 5..14)
+    # 2. Sacred Sunburst Halo & 8-Point Starlight Finial centered at (tx, ty)
     ring_r = 3.0
     for step in range(16):
         a = (step / 16.0) * 2.0 * math.pi
         rx = tx + math.cos(a) * ring_r
         ry = ty + math.sin(a) * ring_r
         c_ring = GOLD_BRIGHT if step % 2 == 0 else GOLD_MID
-        set_px(staff_layer, rx, ry, dim_col(c_ring))
+        set_px(staff_layer, max(3.0, min(48.0, rx)), max(3.0, min(48.0, ry)), dim_col(c_ring))
 
     for k in range(8):
         a = rad + k * (math.pi * 0.25)
         ray_len = 3.8 if k % 2 == 0 else 3.2
-        rx = max(2.0, min(49.0, tx + math.cos(a) * ray_len))
-        ry = max(2.0, min(49.0, ty + math.sin(a) * ray_len))
+        rx = max(3.0, min(48.0, tx + math.cos(a) * ray_len))
+        ry = max(3.0, min(48.0, ty + math.sin(a) * ray_len))
         set_px(
             staff_layer,
             rx,
@@ -669,12 +807,12 @@ def draw_celestial_staff(
             dim_col(STAR_CREAM if (k % 2 == 0 and charge_level >= 1) else GOLD_BRIGHT)
         )
 
-    set_px(staff_layer, tx - ux * 1.0, ty - uy * 1.0, dim_col(CYAN_SACRED))
-    set_px(staff_layer, tx + px * 1.0, ty + py * 1.0, dim_col(CYAN_SACRED))
-    set_px(staff_layer, tx - px * 1.0, ty - py * 1.0, dim_col(GOLD_BRIGHT))
-    set_px(staff_layer, tx, ty, dim_col(WHITE_PURE if dim_factor > 0.6 else GOLD_MID))
+    set_px(staff_layer, max(3.0, min(48.0, tx - ux * 1.0)), max(3.0, min(48.0, ty - uy * 1.0)), dim_col(CYAN_SACRED))
+    set_px(staff_layer, max(3.0, min(48.0, tx + px * 1.0)), max(3.0, min(48.0, ty + py * 1.0)), dim_col(CYAN_SACRED))
+    set_px(staff_layer, max(3.0, min(48.0, tx - px * 1.0)), max(3.0, min(48.0, ty - py * 1.0)), dim_col(GOLD_BRIGHT))
+    set_px(staff_layer, max(3.0, min(48.0, tx)), max(3.0, min(48.0, ty)), dim_col(WHITE_PURE if dim_factor > 0.6 else GOLD_MID))
 
-    # 3. Single Right 2-Bone IK Arm (L1 = 4.4, L2 = 4.2) drawn OVER the staff shaft
+    # 3. Single Right 2-Bone IK Arm drawn OVER the staff shaft
     if draw_arm:
         draw_ik_priestess_arm(
             lead_arm_layer,
@@ -682,39 +820,42 @@ def draw_celestial_staff(
             sy,
             gx,
             gy,
-            L1=4.4,
-            L2=4.2,
+            L1=4.6,
+            L2=4.4,
             bend_side=1.0,
             is_prayer_hand=False,
             dim_factor=dim_factor,
         )
 
-    # 4. Dynamic Charge Runes & Sacred Starlight Cast Flash at Finial Tip
-    if charge_level >= 1:
-        for d in range(1, charge_level + 2):
-            col = WHITE_PURE if d == 1 else (GOLD_BRIGHT if d == 2 else STAR_CREAM)
-            set_px(fx_layer, min(49.0, tx + d), ty, col)
-            set_px(fx_layer, max(2.0, tx - d), ty, col)
-            set_px(fx_layer, tx, min(49.0, ty + d), col)
-            set_px(fx_layer, tx, max(2.0, ty - d), col)
+    # 4. Dynamic Charge Runes & Sacred Starlight Cast Flash / Flare at Finial Tip
+    eff_flare = max(float(flare), 1.0 if cast_flash else 0.0)
+    if charge_level >= 1 or eff_flare > 0.1:
+        max_d = max(charge_level + 1, int(round(eff_flare * 4.0)))
+        for d in range(1, max_d + 1):
+            col = WHITE_PURE if d == 1 else (GOLD_BRIGHT if d <= 2 else STAR_CREAM)
+            set_px(fx_layer, min(48.0, tx + d), ty, col)
+            set_px(fx_layer, max(3.0, tx - d), ty, col)
+            set_px(fx_layer, tx, min(48.0, ty + d), col)
+            set_px(fx_layer, tx, max(3.0, ty - d), col)
         for m in range(3):
             ma = phase_rad * 2.0 + m * (2.0 * math.pi / 3.0)
-            mx = max(2.0, min(49.0, tx + math.cos(ma) * (3.8 + charge_level * 0.4)))
-            my = max(2.0, min(49.0, ty + math.sin(ma) * (3.8 + charge_level * 0.4)))
+            mx = max(3.0, min(48.0, tx + math.cos(ma) * (3.8 + charge_level * 0.4)))
+            my = max(3.0, min(48.0, ty + math.sin(ma) * (3.8 + charge_level * 0.4)))
             set_px(fx_layer, mx, my, GOLD_BRIGHT if m % 2 == 0 else CYAN_SACRED)
 
-    if cast_flash:
-        fx_cx = max(5.0, min(46.0, tx + px * 2.2))
-        fx_cy = max(4.0, min(46.0, ty + py * 0.5))
+    if eff_flare >= 0.4:
+        fx_cx = max(5.0, min(45.0, tx + ux * 2.4))
+        fx_cy = max(5.0, min(45.0, ty + uy * 2.4))
         set_px(fx_layer, fx_cx, fx_cy, WHITE_PURE)
-        for d in range(1, 5):
+        span_f = int(round(2 + eff_flare * 2.5))
+        for d in range(1, span_f + 1):
             col = WHITE_PURE if d <= 2 else (GOLD_BRIGHT if d <= 3 else STAR_CREAM)
-            set_px(fx_layer, max(2.0, min(49.0, fx_cx + d)), fx_cy, col)
-            set_px(fx_layer, max(2.0, min(49.0, fx_cx - d)), fx_cy, col)
-            set_px(fx_layer, fx_cx, max(2.0, min(49.0, fx_cy + d)), col)
-            set_px(fx_layer, fx_cx, max(2.0, min(49.0, fx_cy - d)), col)
+            set_px(fx_layer, max(3.0, min(48.0, fx_cx + d)), fx_cy, col)
+            set_px(fx_layer, max(3.0, min(48.0, fx_cx - d)), fx_cy, col)
+            set_px(fx_layer, fx_cx, max(3.0, min(48.0, fx_cy + d)), col)
+            set_px(fx_layer, fx_cx, max(3.0, min(48.0, fx_cy - d)), col)
         for dx_d, dy_d in [(-2, -2), (2, -2), (-2, 2), (2, 2)]:
-            set_px(fx_layer, max(2.0, min(49.0, fx_cx + dx_d)), max(2.0, min(49.0, fx_cy + dy_d)), GOLD_BRIGHT)
+            set_px(fx_layer, max(3.0, min(48.0, fx_cx + dx_d)), max(3.0, min(48.0, fx_cy + dy_d)), CYAN_SACRED if eff_flare >= 0.8 else GOLD_BRIGHT)
 
     out = composite_over(base_frame, staff_layer)
     out = composite_over(out, lead_arm_layer)
@@ -798,13 +939,14 @@ def render_walk_legs(tpl, f):
 def make_crouch_body(tpl, crouch_depth):
     """
     Smooth continuous vertical compression warp on `tpl['stand']`:
+    - Supports up to 7px kneeling depth (`d = 0..7`)
     - Shifts `ny <= 27 + d` down by `d`
     - Compresses `ny = 28 + d .. 43` from `sy = int(round(27.0 + u * 16.0))`
       with a subtle 1px forward knee bend
     - Keeps her golden slippers/hem anchored at `ny = 44..49`
     """
     stand = tpl['stand'].copy()
-    d = max(0, min(6, int(round(crouch_depth))))
+    d = max(0, min(7, int(round(crouch_depth))))
     if d == 0:
         return stand
 
@@ -893,10 +1035,6 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0, wing_unfurl=0.0, 
                 out[ny, nx + 1] = stand[src_y, x]
 
     out = fill_layer_pinholes(out, 1, 50, 1, 50, require_3_neighbors=False)
-
-    if wing_unfurl > 0.05:
-        out = draw_mini_wings_on_back(out, shoulder_x=17, shoulder_y=16 + torso_dy, unfurl=wing_unfurl, phase_rad=phase_rad)
-
     return fill_layer_pinholes(out, 1, 50, 1, 50, require_3_neighbors=True)
 
 
@@ -919,16 +1057,16 @@ def build_row0_idle(tpl):
         base = apply_hair_and_vestment_wave(base, phase, amplitude=1.4, vertical_flutter=0.5)
         base = draw_halo_crown(base, head_cx=23, head_top_y=7 + breathe, phase_rad=phase, intensity=1.0)
 
-        tilt_deg = 16.0 + math.sin(phase) * 3.0
+        staff_deg = -74.0 + math.sin(phase) * 4.0
         frame = draw_celestial_staff(
             base,
             shoulder=(25.0, 17.0 + breathe),
-            staff_deg=tilt_deg,
+            staff_deg=staff_deg,
             reach=5.2,
             charge_level=1 if f % 10 in (4, 5) else 0,
             phase_rad=phase,
         )
-        frames.append(ensure_safe_cell(frame, margin=1))
+        frames.append(ensure_safe_cell(frame, margin=2))
     return frames
 
 
@@ -940,30 +1078,31 @@ def build_row1_walk(tpl):
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
-        bob_y = int(round(math.cos(phase * 2.0) * 1.0))
+        bob_y = int(round(math.cos(phase * 2.0 + 0.18) * 1.0))
         body = render_walk_legs(tpl, f)
-        body = draw_halo_crown(body, head_cx=23, head_top_y=7 + bob_y, phase_rad=phase, intensity=1.0)
+        body = draw_halo_crown(body, head_cx=23, head_top_y=7 + bob_y, phase_rad=phase + 0.25, intensity=1.0 + (0.4 if f % 2 == 1 else 0.0))
 
-        tilt_deg = 16.0 - math.sin(phase) * 7.0
-        reach_w = 5.2 - math.sin(phase) * 0.6
+        staff_deg = -74.0 - math.sin(phase + 0.2) * 9.0 + (1.2 if f % 2 == 1 else -1.2)
+        reach_w = 5.2 - math.sin(phase + 0.2) * 0.7
         frame = draw_celestial_staff(
             body,
             shoulder=(25.0, 17.0 + bob_y),
-            staff_deg=tilt_deg,
+            staff_deg=staff_deg,
             reach=reach_w,
-            charge_level=1 if f % 6 in (2, 3) else 0,
-            phase_rad=phase,
+            charge_level=(f % 3),
+            phase_rad=phase + f * 0.35,
         )
-        frames.append(ensure_safe_cell(frame, margin=1))
+        frames.append(ensure_safe_cell(frame, margin=2))
     return frames
 
 
 def build_row2_auto_attack(tpl):
     """
     Row 2: 30-Frame AUTO_ATTACK (Sacred Starlight Cast):
-    - F00..F09: Prayerful windup drawing the Sun-Staff back to -12 deg from vertical with golden runes gathering.
-    - F10..F18: Forward diagonal cast (+22..+27 deg from vertical) unleashing a Sacred Starlight bolt with full 30px staff.
-    - F19..F29: Serene follow-through back to standing stance (+16 deg).
+    - F00..F09: Raises the Sacred Staff back to -100 deg during prayer windup while her left hand
+      forms a luminous golden prayer gesture (hand_x = 30..33, hand_y = 22..24).
+    - F10..F18: Thrusts the Sacred Staff forward to -38 deg (flare=1.0) to project Sacred Starlight!
+    - F19..F29: Serene follow-through back to standing stance (-74 deg).
     """
     frames = []
     for f in range(30):
@@ -972,230 +1111,332 @@ def build_row2_auto_attack(tpl):
             u = f / 9.0
             base = (tpl['stand'] if f <= 3 else tpl['cast_up']).copy()
             base = apply_hair_and_vestment_wave(base, phase, amplitude=1.5, vertical_flutter=0.6)
-            base = draw_halo_crown(base, head_cx=23, head_top_y=7, phase_rad=phase, intensity=1.2)
-            tilt_deg = 16.0 - u * 28.0  # +16 -> -12 deg from vertical
-            charge = 2 if f >= 7 else (1 if f >= 4 else 0)
+            base = draw_halo_crown(base, head_cx=23, head_top_y=7, phase_rad=phase, intensity=1.3)
+            # Left hand forms a luminous golden prayer gesture (hand_x = 30..33, hand_y = 22..24)
+            lh_x = 30.0 + u * 2.5
+            lh_y = 24.0 - u * 2.0
+            base = draw_left_prayer_arm(
+                base,
+                shoulder=(24.0, 18.0),
+                hand=(lh_x, lh_y),
+                mote_glow=0.8 + u * 0.5,
+                phase_rad=phase * 2.0,
+            )
+            # Raises Sacred Staff back to -100 deg
+            staff_deg = -74.0 * (1.0 - u) + (-100.0) * u
+            charge = 2 if f >= 6 else (1 if f >= 3 else 0)
             frame = draw_celestial_staff(
                 base,
-                shoulder=(25.0, 17.0 - u * 1.0),
-                staff_deg=tilt_deg,
-                reach=5.0 - u * 0.6,
+                shoulder=(25.0, 17.0 - u * 1.5),
+                staff_deg=staff_deg,
+                reach=5.0 - u * 0.8,
                 charge_level=charge,
+                grip_override=(29.8 - u * 1.0, 17.5 - u * 2.5),
                 phase_rad=phase,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 18:
             k = f - 10
+            u_cast = k / 8.0
             base = tpl['cast_ext'].copy()
             if f in (11, 12):
-                base = shift_layer(base, dx=-1, dy=0)
+                base = shift_layer(base, dx=1, dy=0)
             base = apply_hair_and_vestment_wave(base, phase * 1.5, amplitude=1.8, vertical_flutter=0.7)
-            base = draw_halo_crown(base, head_cx=26, head_top_y=8, phase_rad=phase, intensity=1.4)
+            base = draw_halo_crown(base, head_cx=25, head_top_y=7, phase_rad=phase, intensity=1.5)
+            base = draw_left_prayer_arm(
+                base,
+                shoulder=(25.0, 18.0),
+                hand=(31.0 - u_cast * 1.0, 22.0 + u_cast * 1.5),
+                mote_glow=1.1 if k <= 4 else 0.6,
+                phase_rad=phase * 2.0,
+            )
             if k == 0:
-                tilt_deg = 18.0
-                reach_ext = 5.8
+                staff_deg = -56.0
+                flare_v = 0.7
             elif k <= 5:
-                tilt_deg = 24.0 + (k - 1) * 0.8  # +24..+27.2 deg diagonal cast
-                reach_ext = 6.6
+                staff_deg = -38.0 - (k - 1) * 0.6  # Thrust forward to -38 deg!
+                flare_v = 1.0
             else:
-                tilt_deg = 26.0 - (k - 5) * 2.0
-                reach_ext = 6.2 - (k - 5) * 0.2
+                staff_deg = -40.0 - (k - 5) * 4.5
+                flare_v = 0.65
             frame = draw_celestial_staff(
                 base,
-                shoulder=(27.0, 17.0),
-                staff_deg=tilt_deg,
-                reach=reach_ext,
-                charge_level=3 if k <= 3 else 2,
-                cast_flash=(f in (11, 12)),
+                shoulder=(26.5, 17.0),
+                staff_deg=staff_deg,
+                reach=6.5,
+                charge_level=3 if k <= 5 else 2,
+                cast_flash=(f in (11, 12, 13)),
+                flare=flare_v,
+                grip_override=(34.5 if k >= 1 else 32.5, 18.5 + (k % 2) * 0.4),
                 phase_rad=phase,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         else:
             u = (f - 19) / 10.0
             base = (tpl['cast_ext'] if f <= 21 else tpl['stand']).copy()
             base = apply_hair_and_vestment_wave(base, phase, amplitude=1.5, vertical_flutter=0.6)
-            base = draw_halo_crown(base, head_cx=25 if f <= 21 else 23, head_top_y=7, phase_rad=phase, intensity=1.1)
-            tilt_deg = 22.0 * (1.0 - u) + 16.0 * u
+            base = draw_halo_crown(base, head_cx=24 if f <= 21 else 23, head_top_y=7, phase_rad=phase, intensity=1.1)
+            if f <= 23:
+                base = draw_left_prayer_arm(
+                    base,
+                    shoulder=(24.5, 18.0),
+                    hand=(30.0, 23.5),
+                    mote_glow=max(0.0, 0.5 * (1.0 - u * 2.0)),
+                    phase_rad=phase,
+                )
+            staff_deg = -52.0 * (1.0 - u) + (-74.0) * u
             reach_rec = 6.0 * (1.0 - u) + 5.2 * u
-            sx_rec = 26.5 if f <= 21 else 25.0
+            sx_rec = 26.0 if f <= 21 else 25.0
             frame = draw_celestial_staff(
                 base,
                 shoulder=(sx_rec, 17.0),
-                staff_deg=tilt_deg,
+                staff_deg=staff_deg,
                 reach=reach_rec,
                 charge_level=1 if f <= 21 else 0,
                 phase_rad=phase,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            frames.append(ensure_safe_cell(frame, margin=2))
 
     return frames
 
 
 def build_row3_skill(tpl):
     """
-    Row 3: 30-Frame SKILL (Divine Sanctuary & Valkyrie Spear Rain):
-    - Phase 1 (F00..F14): Prayer elevation raising the Celestial Sun-Staff skyward (-14..+4 deg)
-      with a radiant golden halo burst to consecrate the sanctuary and call down Valkyrie Spears.
-    - Phase 2 (F15..F22): Sweeps the full-length staff forward in a commanding diagonal archangel
-      blessing (+22..+27 deg) and settles back to stance (F23..F29).
+    Row 3: 30-Frame SKILL (Celestial Benediction & Valkyrie Spears):
+    - Unfurls subtle folded/glowing Seraphim wing pinions behind her back.
+    - F00..F13: Raises the Sacred Staff skyward (-94 deg, raised high grip_y - 4) with a glowing
+      golden halo above her head and Left Prayer/Blessing Arm raised in benediction.
+    - F14..F22: Sweeps the Sacred Staff forward (-36 deg, flare=1.0) to launch the 3 Valkyrie Light-Spears!
+    - F23..F29: Smooth recovery back to standing stance (-74 deg).
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 14:
-            u = f / 14.0
-            elev = math.sin(u * math.pi)
+        if f <= 13:
+            u = f / 13.0
+            elev = math.sin(u * math.pi * 0.85)
             base = tpl['cast_up'].copy()
-            base = apply_hair_and_vestment_wave(base, phase * 2.0, amplitude=1.8, vertical_flutter=0.8)
-            base = draw_halo_crown(base, head_cx=23, head_top_y=6, phase_rad=phase * 2.0, intensity=1.6)
-            tilt_deg = 12.0 - elev * 24.0  # +12 -> -12 deg skyward elevation
-            charge = 3 if 5 <= f <= 12 else 2
-            frame = draw_celestial_staff(
+            base = apply_hair_and_vestment_wave(base, phase * 2.0, amplitude=1.7, vertical_flutter=0.7)
+            # Subtle folded/glowing Seraphim wing pinions during Divine Sanctuary & Valkyrie Spears
+            wing_scale = 0.45 + 0.35 * elev
+            base = draw_seraphim_wings(base, cx=18, cy=17, span_phase=phase * 2.0, alpha_scale=wing_scale)
+            base = draw_halo_crown(base, head_cx=23, head_top_y=5, phase_rad=phase * 2.0, intensity=1.8)
+            base = draw_left_prayer_arm(
                 base,
-                shoulder=(25.0, 17.0 - elev * 1.5),
-                staff_deg=tilt_deg,
-                reach=4.8 - elev * 0.4,
-                charge_level=charge,
-                cast_flash=(f in (6, 7)),
+                shoulder=(24.0, 17.5 - elev * 1.0),
+                hand=(30.5 + elev * 1.5, 22.0 - elev * 4.5),
+                mote_glow=1.3,
                 phase_rad=phase * 2.0,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            staff_deg = -76.0 * (1.0 - elev) + (-94.0) * elev
+            grip_y = 18.0 - elev * 4.0  # grip_y - 4 at peak skyward raise!
+            frame = draw_celestial_staff(
+                base,
+                shoulder=(25.0, 16.5 - elev * 2.0),
+                staff_deg=staff_deg,
+                reach=4.8,
+                shaft_up=8.5,
+                charge_level=3 if f >= 4 else 2,
+                cast_flash=(f in (6, 7, 11)),
+                flare=0.85 if f >= 5 else 0.4,
+                grip_override=(29.5, grip_y),
+                phase_rad=phase * 2.0,
+            )
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 22:
-            k = f - 15
+            k = f - 14
+            u_sw = k / 8.0
             base = tpl['cast_ext'].copy()
-            base = apply_hair_and_vestment_wave(base, phase * 2.0, amplitude=2.0, vertical_flutter=0.8)
-            base = draw_halo_crown(base, head_cx=26, head_top_y=8, phase_rad=phase * 2.0, intensity=1.5)
-            w = min(1.0, k / 2.0)
-            tilt_deg = 14.0 * (1.0 - w) + 26.0 * w
-            reach_sk = 5.6 * (1.0 - w) + 6.6 * w
-            frame = draw_celestial_staff(
+            if k in (1, 2):
+                base = shift_layer(base, dx=1, dy=0)
+            base = apply_hair_and_vestment_wave(base, phase * 2.0, amplitude=1.9, vertical_flutter=0.8)
+            base = draw_seraphim_wings(base, cx=18, cy=17, span_phase=phase * 2.5, alpha_scale=0.80 - u_sw * 0.20)
+            base = draw_halo_crown(base, head_cx=25, head_top_y=6, phase_rad=phase * 2.0, intensity=1.7)
+            base = draw_left_prayer_arm(
                 base,
-                shoulder=(27.0, 17.0),
-                staff_deg=tilt_deg,
-                reach=reach_sk,
-                charge_level=3 if k <= 4 else 2,
-                cast_flash=(f in (16, 17)),
+                shoulder=(25.0, 18.0),
+                hand=(32.0 - u_sw * 1.5, 19.5 + u_sw * 2.5),
+                mote_glow=1.2,
                 phase_rad=phase * 2.0,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            if k == 0:
+                staff_deg = -58.0
+                gx_sk, gy_sk = 32.5, 16.5
+            elif k <= 6:
+                staff_deg = -36.0 - (k - 1) * 0.5  # Sweeps forward to -36 deg!
+                gx_sk, gy_sk = 34.8, 18.5
+            else:
+                staff_deg = -40.0 - (k - 6) * 5.0
+                gx_sk, gy_sk = 33.8, 18.8
+            frame = draw_celestial_staff(
+                base,
+                shoulder=(26.5, 17.0),
+                staff_deg=staff_deg,
+                reach=6.6,
+                charge_level=3,
+                cast_flash=(k in (1, 2, 3)),
+                flare=1.0 if k <= 6 else 0.7,
+                grip_override=(gx_sk, gy_sk),
+                phase_rad=phase * 2.0,
+            )
+            # Three Valkyrie Light-Spear tips projecting at the right edge during F15..F20
+            if 1 <= k <= 6:
+                for sp_i, sp_y in enumerate((9 + k, 15 + k, 21 + k)):
+                    sx_sp = min(46, 42 + ((k + sp_i) % 3))
+                    sy_sp = max(4, min(46, sp_y))
+                    set_px(frame, sx_sp, sy_sp, GOLD_BRIGHT)
+                    set_px(frame, min(48, sx_sp + 1), sy_sp, WHITE_PURE)
+                    set_px(frame, max(3, sx_sp - 1), sy_sp, CYAN_SACRED)
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         else:
             u = (f - 23) / 6.0
             base = tpl['stand'].copy()
             base = apply_hair_and_vestment_wave(base, phase, amplitude=1.5, vertical_flutter=0.6)
-            base = draw_halo_crown(base, head_cx=23, head_top_y=7, phase_rad=phase, intensity=1.1)
-            tilt_deg = 25.0 * (1.0 - u) + 16.0 * u
+            wing_sc = max(0.0, 0.55 * (1.0 - u))
+            if wing_sc > 0.08:
+                base = draw_seraphim_wings(base, cx=18, cy=17, span_phase=phase * 2.0, alpha_scale=wing_sc)
+            base = draw_halo_crown(base, head_cx=23, head_top_y=7, phase_rad=phase, intensity=1.2)
+            staff_deg = -50.0 * (1.0 - u) + (-74.0) * u
             reach_rec = 6.2 * (1.0 - u) + 5.2 * u
             frame = draw_celestial_staff(
                 base,
                 shoulder=(25.0, 17.0),
-                staff_deg=tilt_deg,
+                staff_deg=staff_deg,
                 reach=reach_rec,
                 charge_level=1 if u < 0.5 else 0,
                 phase_rad=phase,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            frames.append(ensure_safe_cell(frame, margin=2))
 
     return frames
 
 
 def build_row4_ultimate(tpl):
     """
-    Row 4: 30-Frame ULTIMATE (Seraphic Apotheosis):
-    - Stage 1 (F00..F10): Ascends in prayer with staff held vertically (+6..-8 deg) as seraphic wings unfurl.
-    - Stage 2 (F11..F20): Full Archangel elevation with floating hair, blazing crown halo, unfurled
-      golden wing-feathers, and orbiting starlight motes (-8..+18 deg).
-    - Stage 3 (F21..F29): Directs the full-length Celestial Sun-Staff forward at +24..+28 deg to channel
-      Judgment Pillars and the Final Absolution Beam.
+    Row 4: 30-Frame ULTIMATE (Seraphim Archangel Ascension):
+    - F00..F13: Spreads her grand Archangel Wings wide (x = 4..18, y = 7..35) while raising both
+      her Sacred Staff (-92 deg) and Left Blessing Arm skyward.
+    - F14..F23: Thrusts the Sacred Staff forward (-40 deg, flare=1.0) to command the Cathedral
+      Judgment Pillars!
+    - F24..F29: Graceful descent and recovery back to stance (-74 deg).
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 10:
-            u = f / 10.0
-            dy_lift = -int(round(u * 2.0))
+        if f <= 13:
+            u = f / 13.0
+            dy_lift = -1 if f >= 3 else 0
             body = make_jump_body(
                 tpl,
                 jump_dy=dy_lift,
                 tuck_amount=u * 0.45,
-                wing_unfurl=u * 0.85,
-                phase_rad=phase * 2.0
-            )
-            body = apply_hair_and_vestment_wave(body, phase * 2.0, amplitude=1.8, vertical_flutter=0.8)
-            body = draw_halo_crown(body, head_cx=23, head_top_y=6 - int(round(u * 1.0)), phase_rad=phase * 2.0, intensity=1.6)
-            tilt_deg = 8.0 - u * 16.0  # +8 -> -8 deg
-            frame = draw_celestial_staff(
-                body,
-                shoulder=(25.0, 17.0 + dy_lift),
-                staff_deg=tilt_deg,
-                reach=4.8,
-                charge_level=2 if f >= 5 else 1,
                 phase_rad=phase * 2.0,
             )
-
-        elif f <= 20:
-            u = (f - 11) / 9.0
-            body = make_jump_body(
-                tpl,
-                jump_dy=-2,
-                tuck_amount=0.55,
-                wing_unfurl=1.0,
-                phase_rad=phase * 3.0
+            body = apply_hair_and_vestment_wave(body, phase * 2.0, amplitude=1.8, vertical_flutter=0.8)
+            wing_scale = min(1.0, 0.65 + u * 0.35)
+            body = draw_seraphim_wings(body, cx=18, cy=17 + dy_lift, span_phase=phase * 3.0, alpha_scale=wing_scale)
+            body = draw_halo_crown(body, head_cx=23, head_top_y=5, phase_rad=phase * 2.5, intensity=1.8)
+            # Left Blessing Arm raised skyward (hand_x = 29..32, hand_y = 13..16)
+            body = draw_left_prayer_arm(
+                body,
+                shoulder=(24.0, 17.0 + dy_lift),
+                hand=(29.5 + u * 2.0, 18.5 - u * 4.5),
+                mote_glow=1.5,
+                phase_rad=phase * 2.5,
             )
-            body = apply_hair_and_vestment_wave(body, phase * 2.5, amplitude=2.0, vertical_flutter=0.9)
-            body = draw_halo_crown(body, head_cx=23, head_top_y=5, phase_rad=phase * 3.0, intensity=1.8)
-            tilt_deg = -8.0 + u * 26.0  # -8 -> +18 deg
+            staff_deg = -78.0 * (1.0 - u) + (-92.0) * u
             frame = draw_celestial_staff(
                 body,
-                shoulder=(25.0, 15.0),
-                staff_deg=tilt_deg,
-                reach=5.0 + u * 0.8,
+                shoulder=(25.0, 16.0 + dy_lift),
+                staff_deg=staff_deg,
+                reach=4.8,
+                shaft_up=8.5,
+                charge_level=3 if f >= 5 else 2,
+                cast_flash=(f in (8, 12)),
+                flare=0.9 if f >= 6 else 0.4,
+                grip_override=(30.0, 16.5 - u * 2.5),
+                phase_rad=phase * 2.5,
+            )
+
+        elif f <= 23:
+            k = f - 14
+            u = k / 9.0
+            lean_dx = 1 if k <= 6 else 0
+            body = make_jump_body(
+                tpl,
+                jump_dy=-1,
+                tuck_amount=0.50,
+                torso_lean_dx=lean_dx,
+                phase_rad=phase * 3.0,
+            )
+            body = apply_hair_and_vestment_wave(body, phase * 2.5, amplitude=2.0, vertical_flutter=0.9)
+            body = draw_seraphim_wings(body, cx=18 + lean_dx, cy=16, span_phase=phase * 4.0, alpha_scale=1.0)
+            body = draw_halo_crown(body, head_cx=23 + lean_dx, head_top_y=5, phase_rad=phase * 3.0, intensity=1.9)
+            body = draw_left_prayer_arm(
+                body,
+                shoulder=(24.5 + lean_dx, 17.0),
+                hand=(31.5 + (k % 2) * 0.5, 19.0 + u * 2.0),
+                mote_glow=1.4,
+                phase_rad=phase * 3.0,
+            )
+            if k == 0:
+                staff_deg = -60.0
+                gx_u, gy_u = 32.5, 16.5
+            else:
+                staff_deg = -40.0 + math.sin(u * math.pi) * 2.5  # Thrusts forward to -40 deg!
+                gx_u, gy_u = 34.8, 18.0 + (k % 2) * 0.4
+            frame = draw_celestial_staff(
+                body,
+                shoulder=(26.0 + lean_dx, 16.0),
+                staff_deg=staff_deg,
+                reach=6.5,
                 charge_level=3,
-                cast_flash=(f in (13, 17)),
+                cast_flash=(k in (1, 2, 5, 6)),
+                flare=1.0,
+                grip_override=(gx_u, gy_u),
                 phase_rad=phase * 3.0,
             )
 
         else:
-            k = f - 21
-            u = k / 8.0
-            tuck = max(0.0, 0.55 * (1.0 - u))
-            wing_u = max(0.2, 1.0 - u * 0.7)
-            dy_lift = -int(round((1.0 - u) * 2.0))
-            lean_dx = 1 if k <= 5 else 0
+            k = f - 24
+            u = k / 5.0
+            tuck = max(0.0, 0.45 * (1.0 - u))
+            wing_u = max(0.45, 1.0 - u * 0.50)
+            dy_lift = -1 if k <= 2 else 0
             body = make_jump_body(
                 tpl,
                 jump_dy=dy_lift,
                 tuck_amount=tuck,
-                torso_lean_dx=lean_dx,
-                wing_unfurl=wing_u,
-                phase_rad=phase * 2.0
+                phase_rad=phase * 2.0,
             )
-            body = apply_hair_and_vestment_wave(body, phase * 2.0, amplitude=1.8, vertical_flutter=0.8)
-            body = draw_halo_crown(body, head_cx=23 + lean_dx, head_top_y=6, phase_rad=phase * 2.0, intensity=1.6)
-            tilt_deg = 26.0 if k <= 5 else (26.0 - (k - 5) * 3.3)
-            reach_ult = 6.5 if k <= 5 else (6.5 - (k - 5) * 0.4)
+            body = apply_hair_and_vestment_wave(body, phase * 2.0, amplitude=1.7, vertical_flutter=0.7)
+            body = draw_seraphim_wings(body, cx=18, cy=17 + dy_lift, span_phase=phase * 2.5, alpha_scale=wing_u)
+            body = draw_halo_crown(body, head_cx=23, head_top_y=6, phase_rad=phase * 2.0, intensity=1.5)
+            staff_deg = -42.0 * (1.0 - u) + (-74.0) * u
+            reach_ult = 6.4 * (1.0 - u) + 5.2 * u
             frame = draw_celestial_staff(
                 body,
-                shoulder=(25.0 + lean_dx, 17.0 + dy_lift),
-                staff_deg=tilt_deg,
+                shoulder=(25.0, 17.0 + dy_lift),
+                staff_deg=staff_deg,
                 reach=reach_ult,
-                charge_level=3 if k <= 5 else 1,
-                cast_flash=(k in (0, 1, 2)),
+                charge_level=2 if k <= 2 else 1,
+                flare=max(0.0, 0.6 * (1.0 - u)),
                 phase_rad=phase * 2.0,
             )
 
         # Orbiting starlight motes around Seraphina during Apotheosis
         for m in range(4):
             ma = phase * 2.0 + m * (math.pi * 0.5)
-            mx = max(2.0, min(48.0, 24.0 + math.cos(ma) * 14.0))
-            my = max(2.0, min(48.0, 24.0 + math.sin(ma) * 10.0))
+            mx = max(3.0, min(47.0, 24.0 + math.cos(ma) * 13.5))
+            my = max(3.0, min(47.0, 24.0 + math.sin(ma) * 9.5))
             set_px(frame, mx, my, WHITE_PURE if m % 2 == 0 else GOLD_BRIGHT)
-            set_px(frame, mx + 1, my, STAR_CREAM)
+            set_px(frame, min(48.0, mx + 1), my, STAR_CREAM)
 
-        frames.append(ensure_safe_cell(frame, margin=1))
+        frames.append(ensure_safe_cell(frame, margin=2))
     return frames
 
 
@@ -1203,9 +1444,12 @@ def build_row5_death(tpl):
     """
     Row 5: 30-Frame DEATH & HURT Sequence:
     - F00..F06: Hit-stagger recoil (HURT uses F00..F05).
-    - F07..F17: Sinks gracefully to her knees in prayer, leaning on her dimming staff (+18..+28 deg).
-    - F18..F29: Collapses horizontally onto the ground (y=36..49) with her Celestial Staff
-      resting flat beside her.
+    - F07..F17: Sinks gracefully to her knees in prayer, planting her Sacred Staff upright at -88 deg
+      beside her at F14..F17.
+    - F18..F22: Grounded floor collapse anchored at y = 46 (smoothly transitioning from kneel at F14..F17
+      to fall at F23..F29, planting her Sacred Staff upright at -88 deg beside her as she slumps onto
+      the cathedral floor, with zero floating rotated blobs).
+    - F23..F29: Collapsed horizontally on the cathedral floor with her dimmed Sacred Staff resting flat beside her.
     """
     frames = []
     for f in range(30):
@@ -1215,71 +1459,121 @@ def build_row5_death(tpl):
             dy = int(round(u * 1.0))
             base = shift_layer(tpl['stand'], dx=dx, dy=dy)
             base = apply_hair_and_vestment_wave(base, u * math.pi, amplitude=1.4, vertical_flutter=0.5)
+            staff_deg = -74.0 - u * 8.0
             frame = draw_celestial_staff(
                 base,
                 shoulder=(25.0 + dx, 17.0 + dy),
-                staff_deg=16.0 + u * 8.0,
+                staff_deg=staff_deg,
                 reach=5.0,
-                dim_factor=0.95,
+                dim_factor=0.95 - u * 0.04,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 17:
             u = (f - 7) / 10.0
-            base = (tpl['kneel1'] if f <= 11 else tpl['kneel2']).copy()
-            base = apply_hair_and_vestment_wave(base, u * math.pi, amplitude=1.0, vertical_flutter=0.3)
-            tilt_deg = 18.0 + u * 10.0  # +18 -> +28 deg
+            base = (tpl['kneel1'] if f <= 12 else tpl['kneel2']).copy()
+            head_bow = 1 if f >= 15 else 0
+            if head_bow > 0:
+                head_slice = base[10:22, 14:31].copy()
+                base[10:11, 14:31] = 0
+                mask = head_slice[:, :, 3] > 0
+                target_view = base[11:23, 14:31]
+                target_view[mask] = head_slice[mask]
+                base = fill_layer_pinholes(base)
+            base = apply_hair_and_vestment_wave(base, u * math.pi, amplitude=1.0 * (1.0 - u * 0.4), vertical_flutter=0.3)
+            # Plants Sacred Staff upright at -88 deg beside her at F14..F17
+            staff_deg = -78.0 * (1.0 - u) + (-88.0) * u if f < 14 else -88.0
+            gy_kn = 20.5 + u * 2.5 + head_bow * 0.5
             frame = draw_celestial_staff(
                 base,
-                shoulder=(26.0, 19.0 + u * 2.0),
-                staff_deg=tilt_deg,
-                reach=5.2 + u * 0.8,
-                dim_factor=0.90 - u * 0.20,
+                shoulder=(25.5, 19.5 + u * 2.0 + head_bow),
+                staff_deg=staff_deg,
+                reach=5.4,
+                shaft_up=9.5,
+                shaft_down=23.0,
+                grip_override=(33.0, gy_kn),
+                dim_factor=0.90 - u * 0.16,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 22:
-            u = (f - 17) / 6.0
-            tilt_deg = u * 78.0
-            kneel_with_staff = draw_celestial_staff(
-                tpl['kneel2'].copy(),
-                shoulder=(26.0, 21.0),
-                staff_deg=28.0,
-                reach=5.8,
-                dim_factor=0.70,
-            )
-            pil_kn = Image.fromarray(kneel_with_staff, mode='RGBA')
-            rotated = pil_kn.rotate(-tilt_deg, resample=Image.NEAREST, center=(24, 42))
-            rot_arr = np.array(rotated, dtype=np.uint8)
+            # F18..F22: Grounded floor collapse anchored at y = 46 (smoothly transitioning from kneel2 to fall)
+            u = (f - 17) / 5.0
+            kn = tpl['kneel2']
+            fall_tpl = tpl['fall']
+            body = np.zeros((52, 52, 4), dtype=np.uint8)
 
-            ys, _ = np.where(rot_arr[:, :, 3] > 0)
-            max_y = int(ys.max()) if len(ys) > 0 else 48
-            drop_y = 48 - max_y
-            frame = np.zeros((52, 52, 4), dtype=np.uint8)
-            for y in range(52):
-                for x in range(52):
-                    if rot_arr[y, x, 3] > 0:
-                        ny = max(2, min(49, y + drop_y))
-                        nx = max(2, min(49, x))
-                        frame[ny, nx] = rot_arr[y, x]
-            frame = fill_layer_pinholes(frame, 2, 50, 2, 50, require_3_neighbors=True)
-            frames.append(ensure_safe_cell(frame, margin=1))
+            for sy in range(10, 49):
+                rel_h = max(0, 46 - sy)
+                # Compress vertical height above y = 46 down toward the floor and slump forward
+                comp = 1.0 - u * 0.56
+                ny = min(47, max(16, int(round(46.0 - rel_h * comp))))
+                dx_slump = int(round((rel_h / 28.0) * u * 7.5))
+                for sx in range(2, 46):
+                    if kn[sy, sx, 3] > 0:
+                        nx = max(3, min(47, sx + dx_slump))
+                        body[ny, nx] = kn[sy, sx]
+                        if ny + 1 <= 46 and body[ny + 1, nx, 3] == 0:
+                            body[ny + 1, nx] = kn[sy, sx]
+
+            # Blend lower gown skirt along the floor (y = 38..47) toward `fall` at F21..F22 for a seamless transition
+            if f >= 20:
+                w_fall = (f - 19) / 4.0
+                max_fall_x = int(round(34 + w_fall * 10))
+                for fy in range(36, 48):
+                    for fx in range(8, min(48, max_fall_x)):
+                        if fall_tpl[fy, fx, 3] > 0 and body[fy, fx, 3] == 0:
+                            body[fy, fx] = fall_tpl[fy, fx]
+
+            body = fill_layer_pinholes(add_outline_to_layer(body), 2, 49, 2, 49, require_3_neighbors=False)
+
+            # Sacred Staff is planted upright at -88 deg beside her as she begins slumping (F18),
+            # then tips smoothly forward-down toward the cathedral floor (F19..F22) to meet F23
+            staff_slump_degs = [-88.0, -72.0, -50.0, -26.0, -10.0]
+            s_deg = staff_slump_degs[f - 18]
+            gy_slump = 24.0 + u * 14.0
+            sy_slump = 22.0 + u * 13.0
+            sx_slump = 26.0 + u * 3.0
+            if f <= 20:
+                frame = draw_celestial_staff(
+                    body,
+                    shoulder=(sx_slump, sy_slump),
+                    staff_deg=s_deg,
+                    reach=5.4,
+                    shaft_up=9.5,
+                    shaft_down=max(14.0, 46.0 - gy_slump),
+                    grip_override=(34.0, gy_slump),
+                    dim_factor=0.72 - u * 0.08,
+                )
+            else:
+                frame = draw_celestial_staff(
+                    body,
+                    shoulder=(25.0, 38.0 + (f - 20) * 2.2),
+                    staff_deg=s_deg,
+                    reach=2.2,
+                    shaft_up=12.5,
+                    shaft_down=13.0,
+                    dim_factor=0.70 - u * 0.08,
+                    draw_arm=False,
+                    allow_horizontal=True,
+                )
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         else:
             k = f - 23
             frame = tpl['fall'].copy()
             frame = draw_celestial_staff(
                 frame,
-                shoulder=(25.0, 43.0),
-                staff_deg=1.5,
+                shoulder=(25.0, 43.0 + (0.3 if k % 2 == 1 else 0.0)),
+                staff_deg=1.5 + k * 0.2,
                 reach=2.0,
                 shaft_up=13.5,
                 shaft_down=13.5,
-                dim_factor=max(0.55, 0.72 - k * 0.03),
+                dim_factor=max(0.50, 0.68 - k * 0.025),
                 draw_arm=False,
                 allow_horizontal=True,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            frames.append(ensure_safe_cell(frame, margin=2))
 
     return frames
 
@@ -1290,8 +1584,9 @@ gen_row5_death = build_row5_death
 def build_row6_dash(tpl):
     """
     Row 6: 30-Frame DASH (Angelic Feather-Glide):
-    - Forward angelic glide dash with full-length Celestial Staff held in a graceful
-      diagonal glide angle (+20..+27 deg from vertical) and trailing light feathers.
+    - Unfurls majestic multi-feathered Seraphim Wings (x = 4..18, y = 7..35) behind her back.
+    - Forward angelic glide dash with full-length Celestial Staff swept forward (-58..-46 deg)
+      and trailing golden-white feathers.
     """
     frames = []
     for f in range(30):
@@ -1302,11 +1597,14 @@ def build_row6_dash(tpl):
             src_body = tpl['stand'] if f <= 1 else tpl['dash']
             base = shift_layer(src_body, dx=0, dy=crouch_dy)
             base = apply_hair_and_vestment_wave(base, phase * 2.0, amplitude=1.6, is_dash=(f >= 2))
+            wing_sc = 0.45 + u * 0.45
+            base = draw_seraphim_wings(base, cx=18, cy=17 + crouch_dy, span_phase=phase * 2.5, alpha_scale=wing_sc)
             base = draw_halo_crown(base, head_cx=24, head_top_y=7 + crouch_dy, phase_rad=phase, intensity=1.2)
+            staff_deg = -74.0 * (1.0 - u) + (-54.0) * u
             frame = draw_celestial_staff(
                 base,
                 shoulder=(25.0 + (1.0 if f >= 2 else 0.0), 17.0 + crouch_dy),
-                staff_deg=16.0 + u * 9.0,
+                staff_deg=staff_deg,
                 reach=5.2 + u * 1.0,
                 charge_level=1,
                 phase_rad=phase,
@@ -1316,21 +1614,23 @@ def build_row6_dash(tpl):
             k = f - 5
             glide_dy = -1 if 3 <= k <= 12 else 0
             base = shift_layer(tpl['dash'], dx=0, dy=glide_dy)
-            base = apply_hair_and_vestment_wave(base, k * 0.8, amplitude=2.0, is_dash=True)
+            base = apply_hair_and_vestment_wave(base, k * 0.8, amplitude=1.8, is_dash=True)
+            base = draw_seraphim_wings(base, cx=18, cy=17 + glide_dy, span_phase=phase * 3.0, alpha_scale=0.95)
             base = draw_halo_crown(base, head_cx=25, head_top_y=7 + glide_dy, phase_rad=phase * 2.0, intensity=1.4)
-            tilt_deg = 24.0 + math.sin(k * 0.5) * 3.0  # +21..+27 deg diagonal glide
+            staff_deg = -50.0 + math.sin(k * 0.5) * 4.0  # -54..-46 deg diagonal glide
             frame = draw_celestial_staff(
                 base,
                 shoulder=(26.0, 17.0 + glide_dy),
-                staff_deg=tilt_deg,
+                staff_deg=staff_deg,
                 reach=6.2,
                 charge_level=2 if 4 <= k <= 11 else 1,
                 cast_flash=(f == 12),
+                flare=0.7 if 5 <= k <= 10 else 0.3,
                 phase_rad=phase * 2.0,
             )
             for ft in range(3):
                 fx = 4 + ((f * 3 + ft * 4) % 10)
-                fy = 18 + ft * 8 + int(round(math.sin(phase * 2.0 + ft) * 2.0))
+                fy = 18 + ft * 7 + int(round(math.sin(phase * 2.0 + ft) * 1.5))
                 set_px(frame, fx, fy, WHITE_PURE if ft == 0 else GOLD_BRIGHT)
                 set_px(frame, fx + 1, fy, STAR_CREAM)
 
@@ -1338,94 +1638,122 @@ def build_row6_dash(tpl):
             u = (f - 22) / 7.0
             base = (tpl['dash'] if f <= 24 else tpl['stand']).copy()
             base = apply_hair_and_vestment_wave(base, phase, amplitude=1.5, vertical_flutter=0.6)
+            wing_sc = max(0.0, 0.85 * (1.0 - u))
+            if wing_sc > 0.08:
+                base = draw_seraphim_wings(base, cx=18, cy=17, span_phase=phase * 2.0, alpha_scale=wing_sc)
             base = draw_halo_crown(base, head_cx=23, head_top_y=7, phase_rad=phase, intensity=1.1)
-            tilt_deg = 24.0 * (1.0 - u) + 16.0 * u
+            staff_deg = -50.0 * (1.0 - u) + (-74.0) * u
             frame = draw_celestial_staff(
                 base,
                 shoulder=(26.0 if f <= 24 else 25.0, 17.0),
-                staff_deg=tilt_deg,
+                staff_deg=staff_deg,
                 reach=6.2 * (1.0 - u) + 5.2 * u,
                 phase_rad=phase,
             )
 
-        frames.append(ensure_safe_cell(frame, margin=1))
+        frames.append(ensure_safe_cell(frame, margin=2))
     return frames
 
 
 def build_row7_crouch(tpl):
     """
-    Row 7: 30-Frame CROUCH Sequence (Benediction Prayer & Sacred Counter-Cast):
-    - Uses smooth continuous vertical compression warp `make_crouch_body(tpl, d)`
-      keeping her golden slippers/hem anchored at ny = 44..49.
-    - Holds her glowing Celestial Staff at a graceful diagonal prayer angle (15..24 deg)
-      with zero boxy pasted-on shield/orb over her body.
+    Row 7: 30-Frame CROUCH Sequence (Aegis Prayer):
+    - Kneels down 7px (make_crouch_body(tpl, 7)) keeping her golden slippers anchored at ny = 44..49.
+    - F00..F10: Holds her left hand forward projecting the golden hexagonal Aegis shield while
+      holding her Sacred Staff in a guarded prayer angle (-78..-86 deg).
+    - F11..F18: Thrusts her Sacred Staff forward to -40 deg (flare=1.0) for the low Sacred Starbolt!
+    - F19..F29: Smoothly rises from kneeling back to standing stance (-40 -> -74 deg).
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 6:
-            depths = [0, 1, 2, 3, 4, 5, 6]
+        if f <= 10:
+            depths = [1, 2, 4, 5, 6, 7, 7, 7, 7, 7, 7]
             d = depths[f]
-            base = tpl['stand'].copy() if d == 0 else make_crouch_body(tpl, d)
+            u = f / 10.0
+            base = make_crouch_body(tpl, d)
             base = apply_hair_and_vestment_wave(base, phase, amplitude=1.2, vertical_flutter=0.4)
-            base = draw_halo_crown(base, head_cx=23, head_top_y=7 + d, phase_rad=phase, intensity=1.2)
-            u = f / 6.0
-            tilt_deg = 15.0 + u * 5.0  # 15 -> 20 deg prayer angle
-            frame = draw_celestial_staff(
+            base = draw_halo_crown(base, head_cx=23, head_top_y=7 + d, phase_rad=phase * 2.0, intensity=1.3)
+            # Left hand forward projecting the golden hexagonal Aegis shield (F00..F10)
+            lh_x = 31.0 + min(2.0, f * 0.25)
+            lh_y = 19.0 + min(4.5, d * 0.65)
+            base = draw_left_prayer_arm(
                 base,
-                shoulder=(25.0, 17.0 + min(4.0, d * 0.65)),
-                staff_deg=tilt_deg,
-                reach=5.2 + u * 0.5,
-                charge_level=1 if f >= 4 else 0,
+                shoulder=(24.0, 17.5 + min(4.5, d * 0.65)),
+                hand=(lh_x, lh_y),
+                mote_glow=1.2,
+                aegis_shield=True,
                 phase_rad=phase * 2.0,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            staff_deg = -76.0 - math.sin(u * math.pi) * 10.0  # Guarded prayer staff (-76..-86 deg)
+            frame = draw_celestial_staff(
+                base,
+                shoulder=(25.0, 17.0 + min(4.5, d * 0.65)),
+                staff_deg=staff_deg,
+                reach=5.0,
+                charge_level=2 if f >= 5 else 1,
+                grip_override=(30.0, 18.5 + min(4.0, d * 0.55)),
+                phase_rad=phase * 2.0,
+            )
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 18:
-            d = 6
+            d = 7
+            k = f - 11
+            u_bolt = k / 7.0
             base = make_crouch_body(tpl, d)
             if f in (12, 13):
-                base = shift_layer(base, dx=-1, dy=0)
-            base = apply_hair_and_vestment_wave(base, phase * 1.5, amplitude=1.3, vertical_flutter=0.4)
-            base = draw_halo_crown(base, head_cx=23, head_top_y=7 + d, phase_rad=phase * 2.0, intensity=1.4)
-            if f <= 10:
-                u_aim = (f - 7) / 3.0
-                tilt_deg = 20.0 + u_aim * 4.0  # 20 -> 24 deg
-                reach_cr = 5.7 + u_aim * 0.6
-            elif f <= 16:
-                tilt_deg = 24.0 - (f - 11) * 0.5  # 24 -> 21.5 deg
-                reach_cr = 6.3
-            else:
-                tilt_deg = 21.0 - (f - 16) * 1.0
-                reach_cr = 5.8
-            frame = draw_celestial_staff(
+                base = shift_layer(base, dx=1, dy=0)
+            base = apply_hair_and_vestment_wave(base, phase * 1.5, amplitude=1.4, vertical_flutter=0.4)
+            base = draw_halo_crown(base, head_cx=23, head_top_y=7 + d, phase_rad=phase * 2.0, intensity=1.5)
+            base = draw_left_prayer_arm(
                 base,
-                shoulder=(25.0, 17.0 + 4.0),
-                staff_deg=tilt_deg,
-                reach=reach_cr,
-                charge_level=3 if 10 <= f <= 15 else 2,
-                cast_flash=(f in (12, 13)),
+                shoulder=(24.5, 21.5),
+                hand=(31.0, 24.5),
+                mote_glow=1.0 if k <= 4 else 0.5,
+                aegis_shield=(k == 0),
                 phase_rad=phase * 2.0,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            # Thrusts Sacred Staff forward to -40 deg for the low Sacred Starbolt!
+            if k == 0:
+                staff_deg = -56.0
+                gx_cr, gy_cr = 32.5, 21.5
+            elif k <= 5:
+                staff_deg = -40.0 - (k - 1) * 0.6
+                gx_cr, gy_cr = 34.5, 22.0 + (k % 2) * 0.4
+            else:
+                staff_deg = -43.0 - (k - 5) * 4.0
+                gx_cr, gy_cr = 33.5, 22.0
+            frame = draw_celestial_staff(
+                base,
+                shoulder=(25.5, 21.5),
+                staff_deg=staff_deg,
+                reach=6.3,
+                charge_level=3 if k <= 5 else 2,
+                cast_flash=(f in (12, 13, 14)),
+                flare=1.0 if k <= 5 else 0.65,
+                grip_override=(gx_cr, gy_cr),
+                phase_rad=phase * 2.0,
+            )
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         else:
-            depths = [6, 5, 5, 4, 4, 3, 2, 2, 1, 1, 0]
+            depths = [7, 6, 6, 5, 4, 3, 3, 2, 1, 1, 0]
             k = f - 19
             d = depths[k]
             base = tpl['stand'].copy() if d == 0 else make_crouch_body(tpl, d)
             base = apply_hair_and_vestment_wave(base, phase, amplitude=1.3, vertical_flutter=0.5)
             base = draw_halo_crown(base, head_cx=23, head_top_y=7 + d, phase_rad=phase, intensity=1.0)
             u = k / 10.0
-            tilt_deg = 20.0 * (1.0 - u) + 16.0 * u
+            staff_deg = -48.0 * (1.0 - u) + (-74.0) * u
             frame = draw_celestial_staff(
                 base,
-                shoulder=(25.0, 17.0 + min(4.0, d * 0.65)),
-                staff_deg=tilt_deg,
+                shoulder=(25.0, 17.0 + min(4.5, d * 0.65)),
+                staff_deg=staff_deg,
                 reach=5.8 * (1.0 - u) + 5.2 * u,
                 phase_rad=phase,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            frames.append(ensure_safe_cell(frame, margin=2))
 
     return frames
 
@@ -1433,11 +1761,12 @@ def build_row7_crouch(tpl):
 def build_row8_jump(tpl):
     """
     Row 8: 30-Frame JUMP Sequence (Seraphic Wing-Glide Vault & Starlight Smite):
-    - F00..F04: Graceful knee-bend launch (+16 -> +6 deg).
-    - F05..F11: Ascending angelic vault with luminous golden wing-feathers unfurling (+6 -> +24 deg).
-    - F12..F18: Apex mid-air hover holding her full-length Celestial Staff at +25..+28 deg for Starlight Smite.
-    - F19..F24: Feather-cushioned descent (+24 -> +16 deg).
-    - F25..F29: Poised landing.
+    - F00..F04: Graceful knee-bend launch (-74 -> -88 deg) as Seraphim wings begin to unfurl.
+    - F05..F11: Ascending angelic vault with full majestic Archangel Wings (x = 4..18, y = 7..35)
+      flapping gracefully (-88 -> -52 deg).
+    - F12..F18: Apex mid-air hover thrusting her Sacred Staff forward at -42 deg (flare=1.0) for Starlight Smite!
+    - F19..F24: Feather-cushioned descent (-44 -> -70 deg).
+    - F25..F29: Poised landing (-70 -> -74 deg).
     """
     frames = []
     for f in range(30):
@@ -1445,39 +1774,49 @@ def build_row8_jump(tpl):
         if f <= 4:
             crouch_seq = [1, 2, 4, 2, 0]
             dy = crouch_seq[f]
-            body = make_crouch_body(tpl, dy) if dy >= 2 else make_jump_body(tpl, dy, tuck_amount=0.25, wing_unfurl=0.25 * f, phase_rad=phase)
+            body = make_crouch_body(tpl, dy) if dy >= 2 else make_jump_body(tpl, dy, tuck_amount=0.25, phase_rad=phase)
             body = apply_hair_and_vestment_wave(body, phase * 1.5, amplitude=1.5, vertical_flutter=0.6)
+            if f >= 1:
+                body = draw_seraphim_wings(body, cx=18, cy=17 + dy, span_phase=phase * 2.0, alpha_scale=0.35 + f * 0.14)
             body = draw_halo_crown(body, head_cx=23, head_top_y=7 + dy, phase_rad=phase, intensity=1.2)
-            tilt_deg = [16.0, 14.0, 12.0, 8.0, 6.0][f]
+            staff_deg = [-74.0, -78.0, -82.0, -86.0, -88.0][f]
             frame = draw_celestial_staff(
                 body,
                 shoulder=(25.0, 17.0 + min(3.0, dy * 0.7)),
-                staff_deg=tilt_deg,
-                reach=5.0 + f * 0.15,
+                staff_deg=staff_deg,
+                reach=5.0 + f * 0.1,
                 charge_level=1 if f >= 3 else 0,
                 phase_rad=phase,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 11:
             k = f - 5
             u = k / 6.0
             tuck = 0.45 + 0.40 * math.sin(u * math.pi * 0.65)
-            wing_u = 0.55 + 0.45 * u
+            wing_u = 0.85 + 0.15 * u
             lean_dx = 1 if k >= 3 else 0
-            body = make_jump_body(tpl, jump_dy=-1, tuck_amount=tuck, torso_lean_dx=lean_dx, wing_unfurl=wing_u, phase_rad=phase * 2.0)
+            body = make_jump_body(tpl, jump_dy=-1, tuck_amount=tuck, torso_lean_dx=lean_dx, phase_rad=phase * 2.0)
             body = apply_hair_and_vestment_wave(body, phase * 2.0, amplitude=1.8, vertical_flutter=0.8)
+            body = draw_seraphim_wings(body, cx=18 + lean_dx, cy=16, span_phase=phase * 3.0, alpha_scale=wing_u)
             body = draw_halo_crown(body, head_cx=23 + lean_dx, head_top_y=6, phase_rad=phase * 2.0, intensity=1.5)
-            tilt_deg = 6.0 * (1.0 - u) + 24.0 * u
+            body = draw_left_prayer_arm(
+                body,
+                shoulder=(24.0 + lean_dx, 17.0),
+                hand=(30.5 + u * 1.5, 20.5 - u * 2.0),
+                mote_glow=1.1,
+                phase_rad=phase * 2.0,
+            )
+            staff_deg = -88.0 * (1.0 - u) + (-52.0) * u
             frame = draw_celestial_staff(
                 body,
                 shoulder=(25.0 + lean_dx, 16.0),
-                staff_deg=tilt_deg,
+                staff_deg=staff_deg,
                 reach=5.4 + u * 1.0,
                 charge_level=2 if k >= 3 else 1,
                 phase_rad=phase * 2.0,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 18:
             k = f - 12
@@ -1487,42 +1826,52 @@ def build_row8_jump(tpl):
                 jump_dy=-2,
                 tuck_amount=0.82 - k * 0.04,
                 torso_lean_dx=lean_dx,
-                wing_unfurl=1.0,
-                phase_rad=phase * 2.5
-            )
-            body = apply_hair_and_vestment_wave(body, phase * 2.2, amplitude=2.0, vertical_flutter=0.9)
-            body = draw_halo_crown(body, head_cx=23 + lean_dx, head_top_y=5, phase_rad=phase * 2.5, intensity=1.7)
-            tilt_deg = 27.5 - (2.5 if k >= 4 else 0.0)
-            frame = draw_celestial_staff(
-                body,
-                shoulder=(25.0 + lean_dx, 15.5),
-                staff_deg=tilt_deg,
-                reach=6.5,
-                charge_level=3 if k <= 4 else 2,
-                cast_flash=(f in (15, 16)),
                 phase_rad=phase * 2.5,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            body = apply_hair_and_vestment_wave(body, phase * 2.2, amplitude=2.0, vertical_flutter=0.9)
+            body = draw_seraphim_wings(body, cx=18 + lean_dx, cy=16, span_phase=phase * 3.5, alpha_scale=1.0)
+            body = draw_halo_crown(body, head_cx=23 + lean_dx, head_top_y=5, phase_rad=phase * 2.5, intensity=1.7)
+            body = draw_left_prayer_arm(
+                body,
+                shoulder=(24.5 + lean_dx, 16.5),
+                hand=(31.5, 19.0 + (k % 2) * 0.5),
+                mote_glow=1.3,
+                phase_rad=phase * 2.5,
+            )
+            staff_deg = -42.0 - (2.5 if k >= 4 else 0.0)
+            frame = draw_celestial_staff(
+                body,
+                shoulder=(25.5 + lean_dx, 15.5),
+                staff_deg=staff_deg,
+                reach=6.5,
+                charge_level=3 if k <= 4 else 2,
+                cast_flash=(f in (14, 15, 16)),
+                flare=1.0 if k <= 4 else 0.65,
+                grip_override=(34.5, 17.5 + (k % 2) * 0.4),
+                phase_rad=phase * 2.5,
+            )
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         elif f <= 24:
             k = f - 19
             u = k / 5.0
             tuck = 0.55 * (1.0 - u)
-            wing_u = 0.90 - u * 0.55
+            wing_u = 0.95 - u * 0.50
             dy_lift = -1 if k <= 2 else 0
-            body = make_jump_body(tpl, jump_dy=dy_lift, tuck_amount=tuck, wing_unfurl=wing_u, phase_rad=phase * 2.0)
+            body = make_jump_body(tpl, jump_dy=dy_lift, tuck_amount=tuck, phase_rad=phase * 2.0)
             body = apply_hair_and_vestment_wave(body, phase * 2.0, amplitude=1.7, vertical_flutter=0.8)
+            body = draw_seraphim_wings(body, cx=18, cy=17 + dy_lift, span_phase=phase * 2.5, alpha_scale=wing_u)
             body = draw_halo_crown(body, head_cx=23, head_top_y=6, phase_rad=phase * 2.0, intensity=1.3)
-            tilt_deg = 24.0 * (1.0 - u) + 16.0 * u
+            staff_deg = -46.0 * (1.0 - u) + (-70.0) * u
             frame = draw_celestial_staff(
                 body,
                 shoulder=(25.0, 17.0 + dy_lift),
-                staff_deg=tilt_deg,
+                staff_deg=staff_deg,
                 reach=6.2 * (1.0 - u) + 5.2 * u,
                 charge_level=1 if k <= 1 else 0,
                 phase_rad=phase * 2.0,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            frames.append(ensure_safe_cell(frame, margin=2))
 
         else:
             k = f - 25
@@ -1530,17 +1879,19 @@ def build_row8_jump(tpl):
             d = crouch_depths[k]
             body = tpl['stand'].copy() if d == 0 else make_crouch_body(tpl, d)
             body = apply_hair_and_vestment_wave(body, phase, amplitude=1.4, vertical_flutter=0.5)
+            if k <= 1:
+                body = draw_seraphim_wings(body, cx=18, cy=17 + d, span_phase=phase * 2.0, alpha_scale=0.35 - k * 0.15)
             body = draw_halo_crown(body, head_cx=23, head_top_y=7 + d, phase_rad=phase, intensity=1.0)
             u = k / 4.0
-            tilt_deg = 18.0 * (1.0 - u) + 16.0 * u
+            staff_deg = -70.0 * (1.0 - u) + (-74.0) * u
             frame = draw_celestial_staff(
                 body,
                 shoulder=(25.0, 17.0 + min(2.5, d * 0.7)),
-                staff_deg=tilt_deg,
+                staff_deg=staff_deg,
                 reach=5.2,
                 phase_rad=phase,
             )
-            frames.append(ensure_safe_cell(frame, margin=1))
+            frames.append(ensure_safe_cell(frame, margin=2))
 
     return frames
 
@@ -1570,15 +1921,22 @@ def main():
     cell_px = 208
     canvas = Image.new('RGBA', (30 * cell_px, num_rows * cell_px), (0, 0, 0, 0))
 
+    clipped_total = 0
     for r, (r_name, r_frames) in enumerate(rows):
         assert len(r_frames) == 30, f'{r_name} has {len(r_frames)} frames instead of 30'
         for f in range(30):
-            r_frames[f] = ensure_safe_cell(r_frames[f], margin=1)
+            r_frames[f] = ensure_safe_cell(r_frames[f], margin=2)
+            ys, xs = np.where(r_frames[f][:, :, 3] > 0)
+            if len(ys) > 0 and (xs.min() < 2 or xs.max() > 49 or ys.min() < 2 or ys.max() > 49):
+                clipped_total += 1
         adj_diffs = sum(1 for i in range(29) if np.any(r_frames[i] != r_frames[i + 1]))
         print(f'{r_name:56s}: 30 frames generated, {adj_diffs}/29 adjacent transitions distinct')
+        assert adj_diffs == 29, f'{r_name} has duplicate adjacent frames ({adj_diffs}/29)'
         for f, cell in enumerate(r_frames):
-            cell = ensure_safe_cell(cell, margin=1)
             paste_cell(canvas, r, f, cell, cell_px=cell_px)
+
+    print(f'Boundary-clipped frames outside [2..49]: {clipped_total}/270')
+    assert clipped_total == 0, f'Expected 0/270 boundary-clipped frames, got {clipped_total}'
 
     canvas.save('assets/sprites/priestess_sheet.png')
     print('Saved assets/sprites/priestess_sheet.png:', canvas.size)
@@ -1607,4 +1965,5 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 

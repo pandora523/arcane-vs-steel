@@ -123,7 +123,7 @@ def shift_layer(layer, dx=0, dy=0):
     return fill_layer_pinholes(out)
 
 
-def ensure_safe_cell(cell, margin=1):
+def ensure_safe_cell(cell, margin=2):
     """
     Guarantees zero pixels touch the 52x52 cell border (x=0, x=51, y=0, y=51) and fills
     any 1px interior pinholes from movement.
@@ -525,13 +525,13 @@ def solve_ik_elbow(sx, sy, hx, hy, L1=5.8, L2=5.5, bend_side=1.0):
 
 def draw_ik_titan_arm(layer, sx, sy, hx, hy, L1=5.8, L2=5.5, bend_side=1.0, is_rear=False):
     """
-    Draws Torgar's single colossal 2-Bone Inverse Kinematics (IK) Titan Arm extending from
-    shoulder `(sx, sy)` out in front of his torso to `(hx, hy)`:
-    - Rotating bronze-and-obsidian shoulder pauldron at `(sx, sy)`
-    - 3.5px-thick muscular/armored bicep from `(sx, sy)` to `(ex, ey)`
-    - Glowing molten-gold elbow couter at `(ex, ey)`
-    - 3.5px-thick heavy forge vambrace from `(ex, ey)` to `(hx, hy)`
-    - `3x3` heavy Titan gauntlet fist at `(hx, hy)`
+    Draws Torgar's 2-Bone Inverse Kinematics (IK) Titan Arm extending from shoulder `(sx, sy)`
+    to shaft grip `(hx, hy)`:
+    - When `is_rear=True`: Rear Armored Arm & Gauntlet extending from rear shoulder `(20, 22)`
+      across to the rear shaft grip with forged dark-bronze/iron plates and a `3x3` Rear Armored Gauntlet.
+    - When `is_rear=False`: Lead Armored Arm & Gauntlet extending from lead shoulder `(27, 22)`
+      to the lead shaft grip (`5-6px` further along the shaft towards the hammer head) with rotating
+      bronze-obsidian pauldron, glowing molten elbow couter, and `3x3` Lead Armored Gauntlet.
     """
     ex, ey = solve_ik_elbow(sx, sy, hx, hy, L1=L1, L2=L2, bend_side=bend_side)
 
@@ -544,82 +544,113 @@ def draw_ik_titan_arm(layer, sx, sy, hx, hy, L1=5.8, L2=5.5, bend_side=1.0, is_r
     d2 = max(1.0, math.hypot(u2x, u2y))
     n2x, n2y = -u2y / d2, u2x / d2
 
-    # 1. 3.5px-thick muscular/armored bicep from (sx, sy) to (ex, ey)
-    for off, col in [
-        (-1.25, OBSIDIAN_DEEP),
-        (-0.6, BRONZE_MID),
-        (0.0, SKIN_MID),
-        (0.6, BRONZE_BRIGHT),
-        (1.25, OBSIDIAN_DARK),
-    ]:
-        draw_line_px(layer, sx + n1x * off, sy + n1y * off, ex + n1x * (off * 0.85), ey + n1y * (off * 0.85), col)
+    if is_rear:
+        # 1. Rear upper arm & shoulder bracer from (sx, sy) to (ex, ey)
+        for off, col in [
+            (-1.1, OBSIDIAN_DEEP),
+            (-0.5, BRONZE_DARK),
+            (0.0, BRONZE_MID),
+            (0.5, IRON_MID),
+            (1.1, OBSIDIAN_DARK),
+        ]:
+            draw_line_px(layer, sx + n1x * off, sy + n1y * off, ex + n1x * (off * 0.85), ey + n1y * (off * 0.85), col)
 
-    # 2. 3.5px-thick heavy forge vambrace (BRONZE_MID, OBSIDIAN_MID, LAVA_GOLD) from (ex, ey) to (hx, hy)
-    for off, col in [
-        (-1.25, OBSIDIAN_DARK),
-        (-0.6, OBSIDIAN_MID),
-        (0.0, LAVA_GOLD),
-        (0.6, BRONZE_BRIGHT),
-        (1.25, BRONZE_MID),
-    ]:
-        draw_line_px(layer, ex + n2x * off, ey + n2y * off, hx + n2x * (off * 0.85), hy + n2y * (off * 0.85), col)
+        # 2. Rear heavy vambrace from (ex, ey) to (hx, hy)
+        for off, col in [
+            (-1.1, OBSIDIAN_DEEP),
+            (-0.5, IRON_DARK),
+            (0.0, BRONZE_BRIGHT),
+            (0.5, BRONZE_MID),
+            (1.1, OBSIDIAN_DARK),
+        ]:
+            draw_line_px(layer, ex + n2x * off, ey + n2y * off, hx + n2x * (off * 0.85), hy + n2y * (off * 0.85), col)
 
-    # 3. Rotating bronze-and-obsidian shoulder pauldron at (sx, sy)
-    for p_step in (-1.6, -0.8, 0.0, 0.8, 1.6):
-        for r_step in (-0.6, 0.2, 1.0):
-            px_s = sx + ux1 * r_step + n1x * p_step
-            py_s = sy + uy1 * r_step + n1y * p_step
-            if abs(p_step) >= 1.4 or r_step >= 0.9:
-                col_p = BRONZE_BRIGHT
-            elif abs(p_step) >= 0.7:
-                col_p = BRONZE_MID
-            else:
-                col_p = OBSIDIAN_MID
-            set_px(layer, px_s, py_s, col_p)
-    set_px(layer, sx, sy - 1, LAVA_ORANGE)
-    set_px(layer, sx + ux1 * 0.7, sy + uy1 * 0.7, LAVA_GOLD)
+        # 3. Rear shoulder guard & glowing elbow rivet
+        for dy_s in (-1, 0, 1):
+            for dx_s in (-1, 0, 1):
+                set_px(layer, sx + dx_s, sy + dy_s, BRONZE_MID if dy_s <= 0 else OBSIDIAN_MID)
+        set_px(layer, ex, ey, GOLD_MOLTEN)
+        set_px(layer, ex + n1x * 0.7, ey + n1y * 0.7, BRONZE_BRIGHT)
+    else:
+        # 1. 3.5px-thick muscular/armored lead bicep from (sx, sy) to (ex, ey)
+        for off, col in [
+            (-1.25, OBSIDIAN_DEEP),
+            (-0.6, BRONZE_MID),
+            (0.0, SKIN_MID),
+            (0.6, BRONZE_BRIGHT),
+            (1.25, OBSIDIAN_DARK),
+        ]:
+            draw_line_px(layer, sx + n1x * off, sy + n1y * off, ex + n1x * (off * 0.85), ey + n1y * (off * 0.85), col)
 
-    # 4. Glowing molten-gold elbow couter at (ex, ey)
-    set_px(layer, ex, ey, LAVA_GOLD)
-    set_px(layer, ex + n1x * 0.8, ey + n1y * 0.8, BRONZE_BRIGHT)
-    set_px(layer, ex - n1x * 0.8, ey - n1y * 0.8, OBSIDIAN_DARK)
+        # 2. 3.5px-thick heavy lead forge vambrace from (ex, ey) to (hx, hy)
+        for off, col in [
+            (-1.25, OBSIDIAN_DARK),
+            (-0.6, OBSIDIAN_MID),
+            (0.0, LAVA_GOLD),
+            (0.6, BRONZE_BRIGHT),
+            (1.25, BRONZE_MID),
+        ]:
+            draw_line_px(layer, ex + n2x * off, ey + n2y * off, hx + n2x * (off * 0.85), hy + n2y * (off * 0.85), col)
 
-    # 5. 3x3 heavy Titan gauntlet fist at (hx, hy)
+        # 3. Rotating bronze-and-obsidian lead shoulder pauldron at (sx, sy)
+        for p_step in (-1.6, -0.8, 0.0, 0.8, 1.6):
+            for r_step in (-0.6, 0.2, 1.0):
+                px_s = sx + ux1 * r_step + n1x * p_step
+                py_s = sy + uy1 * r_step + n1y * p_step
+                if abs(p_step) >= 1.4 or r_step >= 0.9:
+                    col_p = BRONZE_BRIGHT
+                elif abs(p_step) >= 0.7:
+                    col_p = BRONZE_MID
+                else:
+                    col_p = OBSIDIAN_MID
+                set_px(layer, px_s, py_s, col_p)
+        set_px(layer, sx, sy - 1, LAVA_ORANGE)
+        set_px(layer, sx + ux1 * 0.7, sy + uy1 * 0.7, LAVA_GOLD)
+
+        # 4. Glowing molten-gold elbow couter at (ex, ey)
+        set_px(layer, ex, ey, LAVA_GOLD)
+        set_px(layer, ex + n1x * 0.8, ey + n1y * 0.8, BRONZE_BRIGHT)
+        set_px(layer, ex - n1x * 0.8, ey - n1y * 0.8, OBSIDIAN_DARK)
+
+    # 5. 3x3 heavy Titan gauntlet fist clasping the shaft at (hx, hy)
     for dy_g in (-1, 0, 1):
         for dx_g in (-1, 0, 1):
             if dx_g == 0 and dy_g == -1:
                 col_g = LAVA_GOLD
             elif dy_g <= 0:
-                col_g = BRONZE_BRIGHT
+                col_g = BRONZE_BRIGHT if not is_rear else BRONZE_MID
             else:
-                col_g = OBSIDIAN_MID
+                col_g = OBSIDIAN_MID if not is_rear else IRON_DARK
             set_px(layer, hx + dx_g, hy + dy_g, col_g)
 
     return ex, ey
 
 
-def draw_warhammer(
+def draw_2h_warhammer_and_arms(
     canvas,
     hand_x,
     hand_y,
     angle_deg,
     glow_intensity=1.0,
     scale=1.0,
-    haft_len=16.5,
+    haft_len=21.0,
     shoulder=(27, 17),
-    two_handed=False,
+    two_handed=True,
     draw_arm=True,
     cleave_arc=None,
     phase=0.0,
 ):
     """
-    Renders Torgar's Colossal World-Breaker Runic War-Hammer AND a SINGLE clean, colossal
-    Lead 2-Bone IK Arm extending from shoulder `(27, 17)` out in front of his body to `(gx, gy)`:
-    - ZERO secondary `is_rear=True` arm (no extra limbs or hands on the chest!).
-    - Keeps `(gx, gy)` cleanly out in front of Torgar's torso (`gx = 31..40`) while auto-foreshortening
-      `haft_len` so the warhammer head NEVER goes outside `[5..46, 5..46]`.
+    Renders Torgar's long-hafted Two-Handed Obsidian-Magma Great-Hammer (`shaft length 20..22px`,
+    from runic pommel cap to colossal obsidian-magma anvil head) gripped by BOTH:
+    - Rear Armored Gauntlet (`(20, 22 + dy_s) -> rear shaft grip (rear_gx, rear_gy)`)
+    - Lead Armored Gauntlet (`(27, 22 + dy_s) -> lead shaft grip (lead_gx, lead_gy)`, spaced `5.5px`
+      along the shaft towards the hammer head)
+    while keeping the hammer head + magma glow strictly inside `2 <= x <= 49` and `2 <= y <= 49`.
     """
+    rear_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     hammer_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    rear_gauntlet_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     lead_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     fx_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
@@ -627,53 +658,79 @@ def draw_warhammer(
     ux, uy = math.cos(rad), math.sin(rad)
     px, py = -uy, ux  # perpendicular vector (striking axis of hammerhead)
 
-    # Keep grip (gx, gy) cleanly in front of the torso inside [31..40, 10..40]
-    gx = float(max(31.0, min(40.0, hand_x)))
-    gy = float(max(10.0, min(40.0, hand_y)))
+    half_strike = 4.3 * scale   # 8.6px across striking faces
+    half_thick = 2.6 * scale    # 5.2px along haft axis
 
-    half_strike = 4.2 * scale   # 8.5px across striking faces
-    half_thick = 2.5 * scale    # 5.0px along haft axis
-
-    # Exact directional bounding radii (rx, ry) of the rotated hammerhead + finial spike
-    rx = abs(px) * half_strike + abs(ux) * (half_thick + 1.5) + 0.4
-    ry = abs(py) * half_strike + abs(uy) * (half_thick + 1.5) + 0.4
-    min_cx = 2.5 + rx
-    max_cx = 48.5 - rx
-    min_cy = 2.5 + ry
+    # Exact directional bounding radii (rx, ry) of the rotated hammerhead + finial spike + magma glow
+    rx = abs(px) * (half_strike + 0.5) + abs(ux) * (half_thick + 1.5) + 0.5
+    ry = abs(py) * (half_strike + 0.5) + abs(uy) * (half_thick + 1.5) + 0.5
+    min_cx = 3.0 + rx
+    max_cx = 48.0 - rx
+    min_cy = 3.0 + ry
     max_cy = 46.5 - ry
 
-    # Auto-foreshorten haft_len along (ux, uy) so hammerhead stays 100% inside [2..49, 2..47] without distorting angle!
-    max_len = float(haft_len * scale)
-    if ux > 0.05:
-        max_len = min(max_len, (max_cx - gx) / ux)
-    elif ux < -0.05:
-        max_len = min(max_len, (min_cx - gx) / ux)
-    if uy > 0.05:
-        max_len = min(max_len, (max_cy - gy) / uy)
-    elif uy < -0.05:
-        max_len = min(max_len, (min_cy - gy) / uy)
-    eff_len = max(5.5, max_len)
+    # True Two-Handed Great-Hammer dimensions (total shaft length 20..22px from pommel to colossal anvil head):
+    # - pom_dist = 3.8px behind rear_grip
+    # - grip_sep = 5.5px between rear_grip and lead_grip
+    # - head_from_lead = 10.6px from lead_grip to anvil head center (plus 2.6px head half_thick = 22.5px total!)
+    grip_sep = 5.5 * min(1.0, scale)
+    pom_dist = 3.8 * min(1.0, scale)
+    head_from_rear = 16.0 * min(1.04, scale)
 
-    # 1. Heavy Dark-Iron & Bronze Haft (from pommel `-3.5px` behind hand to hammerhead neck `+eff_len`)
-    pom_x = max(3.0, min(48.0, gx - ux * (3.5 * scale)))
-    pom_y = max(3.0, min(46.0, gy - uy * (3.5 * scale)))
-    neck_x = gx + ux * (eff_len - 2.0 * scale)
-    neck_y = gy + uy * (eff_len - 2.0 * scale)
+    # Center point between Rear Grip and Lead Grip
+    mid_gx = float(max(27.0, min(31.5, hand_x - 4.0)))
+    mid_gy = float(max(14.5, min(33.0, hand_y + 1.5)))
 
-    haft_steps = int(round((eff_len + 3.5 * scale) * 2.5))
+    rear_gx = mid_gx - ux * (grip_sep * 0.5)
+    rear_gy = mid_gy - uy * (grip_sep * 0.5)
+    lead_gx = mid_gx + ux * (grip_sep * 0.5)
+    lead_gy = mid_gy + uy * (grip_sep * 0.5)
+    head_cx = rear_gx + ux * head_from_rear
+    head_cy = rear_gy + uy * head_from_rear
+
+    # Translate the rigid 21px Great-Hammer if head_cx/head_cy or pommel approaches [3..48, 3..46]
+    # so the full 20..22px shaft length and 5.5px two-handed grip spacing are NEVER foreshortened!
+    dx_fix = 0.0
+    if head_cx > max_cx:
+        dx_fix = max_cx - head_cx
+    elif head_cx < min_cx:
+        dx_fix = min_cx - head_cx
+    dy_fix = 0.0
+    if head_cy > max_cy:
+        dy_fix = max_cy - head_cy
+    elif head_cy < min_cy:
+        dy_fix = min_cy - head_cy
+
+    rear_gx += dx_fix
+    rear_gy += dy_fix
+    lead_gx += dx_fix
+    lead_gy += dy_fix
+    head_cx += dx_fix
+    head_cy += dy_fix
+
+    pom_x = max(3.0, min(48.0, rear_gx - ux * pom_dist))
+    pom_y = max(3.0, min(46.0, rear_gy - uy * pom_dist))
+    neck_x = head_cx - ux * (1.8 * scale)
+    neck_y = head_cy - uy * (1.8 * scale)
+
+    # 1. Long-Hafted Obsidian-Magma Great-Hammer Shaft (20..22px from pommel to colossal anvil head)
+    haft_steps = int(round(math.hypot(neck_x - pom_x, neck_y - pom_y) * 2.6))
     for i in range(haft_steps + 1):
         u_s = i / float(max(1, haft_steps))
         sx_p = pom_x + (neck_x - pom_x) * u_s
         sy_p = pom_y + (neck_y - pom_y) * u_s
-        ring_band = (i % 6 == 0)
-        c_core = BRONZE_BRIGHT if ring_band else IRON_MID
-        c_edge = BRONZE_MID if ring_band else OBSIDIAN_DARK
+        ring_band = (i % 5 == 0)
+        magma_vein = (i % 7 == 3)
+        c_core = GOLD_MOLTEN if ring_band else (MAGMA_ORANGE if magma_vein else IRON_MID)
+        c_edge = BRONZE_BRIGHT if ring_band else BRONZE_MID
         set_px(hammer_layer, sx_p, sy_p, c_core)
-        set_px(hammer_layer, sx_p + px * 0.65, sy_p + py * 0.65, c_edge)
-        set_px(hammer_layer, sx_p - px * 0.65, sy_p - py * 0.65, OBSIDIAN_DEEP)
+        set_px(hammer_layer, sx_p + px * 0.68, sy_p + py * 0.68, c_edge)
+        set_px(hammer_layer, sx_p - px * 0.68, sy_p - py * 0.68, OBSIDIAN_DEEP)
 
-    # Runic Emerald/Gold Pommel Cap
+    # Heavy Runic Magma-Gold & Jade Pommel Counterweight at (pom_x, pom_y)
     set_px(hammer_layer, pom_x, pom_y, GOLD_MOLTEN)
+    set_px(hammer_layer, pom_x + px * 0.7, pom_y + py * 0.7, BRONZE_BRIGHT)
+    set_px(hammer_layer, pom_x - px * 0.7, pom_y - py * 0.7, BRONZE_MID)
     set_px(
         hammer_layer,
         max(3.0, min(48.0, pom_x - ux * 0.9)),
@@ -681,10 +738,7 @@ def draw_warhammer(
         JADE_BRIGHT,
     )
 
-    # 2. Massive Rectangular/Beveled Obsidian & Bronze Runic Hammerhead at tip of haft
-    head_cx = max(min_cx, min(max_cx, gx + ux * eff_len))
-    head_cy = max(min_cy, min(max_cy, gy + uy * eff_len))
-
+    # 2. Colossal Beveled Obsidian-Magma & Bronze Anvil Hammerhead at tip of long haft
     s_steps = int(round(half_strike * 4))
     t_steps = int(round(half_thick * 4))
     for si in range(-s_steps, s_steps + 1):
@@ -694,8 +748,8 @@ def draw_warhammer(
             if abs(sp) > half_strike - 0.7 and abs(ta) > half_thick - 0.7:
                 continue
 
-            wx = max(2.0, min(49.0, head_cx + px * sp + ux * ta))
-            wy = max(2.0, min(47.0, head_cy + py * sp + uy * ta))
+            wx = max(3.0, min(48.0, head_cx + px * sp + ux * ta))
+            wy = max(3.0, min(46.5, head_cy + py * sp + uy * ta))
 
             asp = abs(sp) / max(0.1, half_strike)
             ata = abs(ta) / max(0.1, half_thick)
@@ -706,36 +760,75 @@ def draw_warhammer(
                 col = BRONZE_BRIGHT if ta > 0 else BRONZE_MID
             elif asp < 0.22 and ata < 0.58:
                 col = JADE_LIGHT if glow_intensity >= 0.85 else JADE_BRIGHT
-            elif 0.36 <= asp <= 0.64 and (abs(ta - (abs(sp) - 2.0)) < 0.75 or abs(ta) < 0.35):
-                col = GOLD_WHITE if glow_intensity >= 1.0 else GOLD_MOLTEN
+            elif 0.34 <= asp <= 0.66 and (abs(ta - (abs(sp) - 2.0)) < 0.8 or abs(ta) < 0.38):
+                col = GOLD_WHITE if glow_intensity >= 1.05 else (MAGMA_ORANGE if (si + ti) % 2 == 0 else GOLD_MOLTEN)
             else:
                 col = IRON_DARK if (si + ti) % 3 == 0 else OBSIDIAN_DARK
 
             set_px(hammer_layer, wx, wy, col)
 
-    # Top Finial Spike protruding beyond the hammerhead (clamped within [4..47])
+    # Top Finial Spike protruding beyond the anvil hammerhead (clamped within [3..48, 3..46])
     set_px(
         hammer_layer,
-        max(4.0, min(47.0, head_cx + ux * (half_thick + 0.8))),
-        max(4.0, min(46.0, head_cy + uy * (half_thick + 0.8))),
+        max(3.0, min(48.0, head_cx + ux * (half_thick + 0.8))),
+        max(3.0, min(46.0, head_cy + uy * (half_thick + 0.8))),
         BRONZE_BRIGHT,
     )
     set_px(
         hammer_layer,
-        max(4.0, min(47.0, head_cx + ux * (half_thick + 1.5))),
-        max(4.0, min(46.0, head_cy + uy * (half_thick + 1.5))),
+        max(3.0, min(48.0, head_cx + ux * (half_thick + 1.4))),
+        max(3.0, min(46.0, head_cy + uy * (half_thick + 1.4))),
         GOLD_MOLTEN,
     )
 
-    # 3. Single Colossal Lead 2-Bone IK Titan Arm ((sx, sy) -> elbow -> (gx, gy))
+    # 3. BOTH Rear Armored Gauntlet ((20, 22) -> rear_grip) AND Lead Armored Gauntlet ((27, 22) -> lead_grip)
     if draw_arm and shoulder is not None:
-        sx = float(max(24.0, min(32.0, shoulder[0])))
-        sy = float(max(12.0, min(36.0, shoulder[1])))
-        draw_ik_titan_arm(lead_arm_layer, sx, sy, gx, gy, L1=6.2, L2=5.8, bend_side=1.0, is_rear=False)
-        # 1px dark silhouette seam around lead_arm_layer so the arm pops cleanly against torso & haft
+        dx_s = float(shoulder[0]) - 27.0
+        dy_s = float(shoulder[1]) - 17.0
+
+        # Rear Armored Arm from (20 + dx_s, 22 + dy_s) -> (rear_gx, rear_gy)
+        sx_rear = float(max(17.0, min(24.0, 20.0 + dx_s)))
+        sy_rear = float(max(14.0, min(36.0, 22.0 + dy_s)))
+        draw_ik_titan_arm(
+            rear_arm_layer,
+            sx_rear,
+            sy_rear,
+            rear_gx,
+            rear_gy,
+            L1=6.2,
+            L2=5.8,
+            bend_side=1.0,
+            is_rear=True,
+        )
+        # Rear Armored Gauntlet fingers wrapped on top of the shaft at (rear_gx, rear_gy)
+        for dy_g in (-1, 0, 1):
+            for dx_g in (-1, 0, 1):
+                if dx_g == 0 and dy_g == -1:
+                    col_rg = LAVA_GOLD
+                elif dy_g <= 0:
+                    col_rg = BRONZE_BRIGHT
+                else:
+                    col_rg = BRONZE_MID
+                set_px(rear_gauntlet_layer, rear_gx + dx_g, rear_gy + dy_g, col_rg)
+
+        # Lead Armored Arm from (27 + dx_s, 22 + dy_s) -> (lead_gx, lead_gy)
+        sx_lead = float(max(24.0, min(32.0, 27.0 + dx_s)))
+        sy_lead = float(max(14.0, min(36.0, 21.5 + dy_s)))
+        draw_ik_titan_arm(
+            lead_arm_layer,
+            sx_lead,
+            sy_lead,
+            lead_gx,
+            lead_gy,
+            L1=6.2,
+            L2=5.8,
+            bend_side=1.0,
+            is_rear=False,
+        )
+        # 1px dark silhouette seam around lead_arm_layer so the lead arm & gauntlet pop cleanly against torso & haft
         arm_mask = lead_arm_layer[:, :, 3] > 0
-        for y_a in range(3, 49):
-            for x_a in range(3, 49):
+        for y_a in range(3, 48):
+            for x_a in range(3, 48):
                 if not arm_mask[y_a, x_a]:
                     if (
                         arm_mask[y_a - 1, x_a]
@@ -745,29 +838,30 @@ def draw_warhammer(
                     ):
                         lead_arm_layer[y_a, x_a] = OBSIDIAN_DEEP
     else:
-        for dy_g in (-1, 0, 1):
-            for dx_g in (-1, 0, 1):
-                set_px(lead_arm_layer, gx + dx_g, gy + dy_g, BRONZE_BRIGHT if (dx_g == 0 and dy_g == -1) else IRON_MID)
+        for gx_p, gy_p in [(rear_gx, rear_gy), (lead_gx, lead_gy)]:
+            for dy_g in (-1, 0, 1):
+                for dx_g in (-1, 0, 1):
+                    set_px(lead_arm_layer, gx_p + dx_g, gy_p + dy_g, BRONZE_BRIGHT if (dx_g == 0 and dy_g == -1) else IRON_MID)
 
-    # 4. Trailing Molten-Gold & Emerald-Jade Embers when glow_intensity > 1.0
-    if glow_intensity > 1.0:
+    # 4. Trailing Molten-Gold, Magma-Orange & Emerald-Jade Embers around the anvil head
+    if glow_intensity > 0.95:
         num_embers = 5 if glow_intensity >= 1.25 else 3
         for e_i in range(num_embers):
             e_ang = phase + e_i * 2.1
-            ex_e = max(5.0, min(46.0, head_cx + math.cos(e_ang) * (4.2 + (e_i % 2) * 1.5)))
-            ey_e = max(5.0, min(46.0, head_cy + math.sin(e_ang) * (3.2 + (e_i % 2) * 1.2) - 0.8))
+            ex_e = max(4.0, min(47.0, head_cx + math.cos(e_ang) * (4.2 + (e_i % 2) * 1.3)))
+            ey_e = max(4.0, min(46.0, head_cy + math.sin(e_ang) * (3.2 + (e_i % 2) * 1.1) - 0.6))
             set_px(fx_layer, ex_e, ey_e, GOLD_WHITE if e_i % 2 == 0 else JADE_LIGHT)
             if glow_intensity >= 1.2:
-                set_px(fx_layer, ex_e, max(5.0, ey_e - 1.0), MAGMA_ORANGE if e_i % 2 == 0 else JADE_BRIGHT)
+                set_px(fx_layer, ex_e, max(4.0, ey_e - 1.0), MAGMA_ORANGE if e_i % 2 == 0 else JADE_BRIGHT)
 
-    # 5. Optional Molten-Gold & Emerald-Jade Hammer Cleave Arc (true circular arc inside [5..46, 5..45])
+    # 5. Optional Molten-Gold & Emerald-Jade Hammer Cleave Arc (true circular arc inside [4..47, 4..45])
     if cleave_arc is not None:
         a_start, a_end, arc_r, arc_int = cleave_arc
-        arc_steps = 40
+        arc_steps = 44
         piv_x = float(shoulder[0]) if shoulder is not None else 27.0
-        piv_y = max(21.0, float(shoulder[1]) if shoulder is not None else 21.0)
-        r_uniform = min(float(arc_r), piv_y - 5.0, 46.5 - piv_x, 45.0 - piv_y)
-        r_uniform = max(11.0, r_uniform)
+        piv_y = max(21.0, float(shoulder[1]) + 4.0 if shoulder is not None else 21.0)
+        r_uniform = min(float(arc_r), piv_y - 4.5, 47.0 - piv_x, 45.0 - piv_y)
+        r_uniform = max(11.5, r_uniform)
         for k in range(arc_steps + 1):
             u_a = k / float(arc_steps)
             ang = math.radians(a_start + (a_end - a_start) * u_a)
@@ -775,27 +869,32 @@ def draw_warhammer(
             env = math.sin(u_a * math.pi) * arc_int
             if env <= 0.1:
                 continue
-            ax = piv_x + ca * r_uniform
-            ay = piv_y + sa * r_uniform
+            ax = max(4.0, min(47.0, piv_x + ca * r_uniform))
+            ay = max(4.0, min(45.5, piv_y + sa * r_uniform))
             set_px(fx_layer, ax, ay, GOLD_WHITE if u_a > 0.6 else GOLD_MOLTEN)
-            set_px(fx_layer, ax - ca * 1.3, ay - sa * 1.3, JADE_LIGHT if (k % 3 == 0) else MAGMA_ORANGE)
+            set_px(fx_layer, max(4.0, min(47.0, ax - ca * 1.3)), max(4.0, min(45.5, ay - sa * 1.3)), JADE_LIGHT if (k % 3 == 0) else MAGMA_ORANGE)
             if env > 0.45:
-                set_px(fx_layer, ax - ca * 2.5, ay - sa * 2.5, JADE_BRIGHT)
-                set_px(fx_layer, ax - ca * 3.6, ay - sa * 3.6, BRONZE_MID)
+                set_px(fx_layer, max(4.0, min(47.0, ax - ca * 2.5)), max(4.0, min(45.5, ay - sa * 2.5)), JADE_BRIGHT)
+                set_px(fx_layer, max(4.0, min(47.0, ax - ca * 3.6)), max(4.0, min(45.5, ay - sa * 3.6)), BRONZE_MID)
 
-    out = composite_over(canvas, hammer_layer)
-    # When the warhammer is cocked back overhead (angle_deg < -85 deg), keep Torgar's horned helm & eyes in front of the hammerhead!
-    if angle_deg < -85.0:
+    # Painter's Order: Body -> Rear Arm -> 2H Great-Hammer -> Rear Gauntlet Clasp -> Lead Arm & Gauntlet -> FX
+    out = composite_over(canvas, rear_arm_layer)
+    out = composite_over(out, hammer_layer)
+    # When the warhammer is cocked back overhead (angle_deg < -88 deg), keep Torgar's horned helm & eyes in front of the hammerhead!
+    if angle_deg < -88.0:
         for yh in range(5, 17):
-            for xh in range(24, 33):
+            for xh in range(23, 33):
                 if canvas[yh, xh, 3] > 0:
                     out[yh, xh] = canvas[yh, xh]
+    out = composite_over(out, rear_gauntlet_layer)
     out = composite_over(out, lead_arm_layer)
     out = composite_over(out, fx_layer)
     return out
 
 
-draw_articulated_greathammer = draw_warhammer
+draw_warhammer = draw_2h_warhammer_and_arms
+draw_hammer_and_arm = draw_2h_warhammer_and_arms
+draw_articulated_greathammer = draw_2h_warhammer_and_arms
 
 
 def _extract_full_crimson_cape(stand, dy_offset=0, phase=0.0, wave_scale=1.0, lift_y=0):
@@ -1342,17 +1441,17 @@ def build_row1_walk(tpl):
 def build_row2_auto_attack(tpl):
     """
     Row 2 (`AUTO_ATTACK` - Tectonic Hammer Quake, 60..89):
-    - F00..F10: Raises the War-Hammer high above his front shoulder from `(34, 22, -52 deg)`
-      to `(31, 12, -125 deg)` — NEVER pulling the grip onto his chest (`x <= 28`)!
-    - F11..F19: Drives the War-Hammer forward and down through `(35, 15, -45 deg) -> (39, 21, +18 deg) -> (37, 27, +48 deg)`
+    - F00..F10: Two-handed overhead windup raising the long-hafted Great-Hammer from `-52 deg`
+      up to `-125 deg` high behind his shoulders with both gauntlets gripping the shaft.
+    - F11..F19: Crushing two-handed forward swing & ground slam from `-125 deg` down to `+16 deg`
       with a wide multi-frame molten-gold & emerald-jade hammer cleave arc and ground-shatter magma sparks.
-    - F20..F29: Returns smoothly from `(37, 27, +48 deg)` to `(34, 22, -52 deg)`.
+    - F20..F29: Smooth two-handed recovery from `-6 deg` back to `-52 deg`.
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
         if f <= 10:
-            # F00..F10: Raise War-Hammer high above front shoulder from (34, 22, -52 deg) to (31, 12, -125 deg)
+            # F00..F10: Two-handed overhead windup from -52 deg up to -125 deg behind his shoulders
             u = f / 10.0
             base = tpl["stand"].copy()
             base = apply_mantle_and_beard_sway(
@@ -1361,23 +1460,23 @@ def build_row2_auto_attack(tpl):
             sx, sy = 27, 17
             ang = -52.0 * (1.0 - u) + (-125.0) * u
             hx = int(round(34 * (1.0 - u) + 31 * u))
-            hy = int(round(22 * (1.0 - u) + 12 * u))
-            frame = draw_warhammer(
+            hy = int(round(22 * (1.0 - u) + 13 * u))
+            frame = draw_2h_warhammer_and_arms(
                 base,
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=0.85 + u * 0.45,
                 scale=1.04,
-                haft_len=16.5,
+                haft_len=21.0,
                 shoulder=(sx, sy),
-                two_handed=False,
+                two_handed=True,
                 phase=phase,
             )
             frames.append(frame)
 
         elif f <= 19:
-            # F11..F19: Drive War-Hammer forward and down through (35, 15, -45 deg) -> (39, 21, +18 deg) -> (37, 27, +48 deg)
+            # F11..F19: Crushing two-handed cleave from -125 deg down to +16 deg forward ground slam
             k = f - 11
             base = (tpl["lunge"] if k >= 1 else tpl["stand"]).copy()
             base = apply_mantle_and_beard_sway(
@@ -1385,61 +1484,61 @@ def build_row2_auto_attack(tpl):
             )
 
             sx, sy = 28, 17
-            ang_seq = [-45.0, -8.0, 18.0, 36.0, 48.0, 48.0, 44.0, 38.0, 28.0]
-            hx_seq = [35, 38, 39, 38, 37, 37, 37, 36, 36]
-            hy_seq = [15, 18, 21, 25, 27, 27, 26, 25, 24]
+            ang_seq = [-72.0, -24.0, 6.0, 16.0, 16.0, 15.0, 11.0, 4.0, -6.0]
+            hx_seq = [33, 35, 36, 36, 36, 36, 35, 35, 34]
+            hy_seq = [15, 18, 21, 23, 24, 24, 23, 23, 22]
 
             cleave_arc = None
             if k <= 5:
-                arc_int = [0.85, 1.0, 1.0, 0.9, 0.7, 0.45][k]
-                a0 = [-120.0, -90.0, -55.0, -25.0, -5.0, 10.0][k]
-                cleave_arc = (a0, ang_seq[k] + 6.0, 18.0, arc_int)
+                arc_int = [0.85, 1.0, 1.0, 0.95, 0.75, 0.5][k]
+                a0 = [-125.0, -95.0, -58.0, -25.0, -8.0, 0.0][k]
+                cleave_arc = (a0, ang_seq[k] + 4.0, 18.0, arc_int)
 
-            frame = draw_warhammer(
+            frame = draw_2h_warhammer_and_arms(
                 base,
                 hand_x=hx_seq[k],
                 hand_y=hy_seq[k],
                 angle_deg=ang_seq[k],
                 glow_intensity=1.35 if k <= 5 else 1.0,
-                scale=1.05,
-                haft_len=16.0,
+                scale=1.04,
+                haft_len=21.0,
                 shoulder=(sx, sy),
-                two_handed=False,
+                two_handed=True,
                 cleave_arc=cleave_arc,
                 phase=phase,
             )
 
-            # Ground-shatter magma & emerald-jade sparks at impact (F12..F16 -> k=1..5)
-            if 1 <= k <= 5:
-                imp_x, imp_y = 43, 44
+            # Ground-shatter magma & emerald-jade sparks at impact (F12..F17 -> k=1..6)
+            if 1 <= k <= 6:
+                imp_x, imp_y = 42, 44
                 for sp in range(5):
                     sx_s = imp_x - 4 + sp * 2 + (k % 2)
                     sy_s = imp_y - ((sp + k) % 4) * 2
                     set_px(frame, sx_s, sy_s, GOLD_WHITE if sp == 2 else (JADE_LIGHT if sp % 2 == 0 else MAGMA_ORANGE))
-                    draw_line_px(frame, imp_x - 4, 45, imp_x + 3, 45, GOLD_MOLTEN if k <= 3 else MAGMA_ORANGE)
+                draw_line_px(frame, imp_x - 5, 45, imp_x + 4, 45, GOLD_MOLTEN if k <= 3 else MAGMA_ORANGE)
 
             frames.append(frame)
 
         else:
-            # F20..F29: Return smoothly from (37, 27, +48 deg) to (34, 22, -52 deg)
+            # F20..F29: Return smoothly from -6 deg to -52 deg two-handed ready stance
             u = (f - 20) / 9.0
             base = (tpl["lunge"] if f <= 22 else tpl["stand"]).copy()
             base = apply_mantle_and_beard_sway(
                 base, phase, amplitude=1.5, vertical_flutter=0.5, furnace_pulse=0.8 - u * 0.25
             )
-            ang = 48.0 * (1.0 - u) + (-52.0) * u
-            hx = int(round(37 * (1.0 - u) + 34 * u))
-            hy = int(round(27 * (1.0 - u) + 22 * u))
-            frame = draw_warhammer(
+            ang = -6.0 * (1.0 - u) + (-52.0) * u
+            hx = int(round(34 * (1.0 - u) + 34 * u))
+            hy = int(round(22 * (1.0 - u) + 22 * u))
+            frame = draw_2h_warhammer_and_arms(
                 base,
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=1.05 - u * 0.2,
                 scale=1.0,
-                haft_len=16.5,
+                haft_len=21.0,
                 shoulder=(27, 17),
-                two_handed=False,
+                two_handed=True,
                 phase=phase,
             )
             frames.append(frame)
@@ -1449,17 +1548,17 @@ def build_row2_auto_attack(tpl):
 def build_row3_skill(tpl):
     """
     Row 3 (`SKILL` - Anvil of the Mountain King, 90..119):
-    - F00..F12: Raises the War-Hammer high in front of his shoulder from `(34, 22, -52 deg)` to `(32, 13, -118 deg)`
-      as an Emerald-Jade & Molten-Gold Forge Seal flares around the raised gauntlet/hammer!
-    - F13..F22: Full-body horizontal War-Hammer anvil slam driving grip forward through `(35, 16) -> (39, 21) -> (37, 25)`
-      with an explosive horizontal amber-gold & jade shockwave arc.
-    - F23..F29: Smooth recovery to `(34, 22, -52 deg)`.
+    - F00..F12: Two-handed overhead windup raising the Great-Hammer from `-52 deg` up to `-125 deg`
+      behind his shoulders as an Emerald-Jade & Molten-Gold Forge Seal flares!
+    - F13..F22: Crushing two-handed Anvil Slam driving the Great-Hammer from `-125 deg` down to `+16 deg`
+      with a blazing cleave arc and explosive horizontal amber-gold & jade shockwave arc.
+    - F23..F29: Smooth two-handed recovery to `(34, 22, -52 deg)`.
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
         if f <= 12:
-            # F00..F12: Raise War-Hammer high in front of shoulder from (34, 22, -52 deg) to (32, 13, -118 deg)
+            # F00..F12: Two-handed overhead windup from -52 deg to -125 deg behind his shoulders
             u = f / 12.0
             base = tpl["stand"].copy()
             base = apply_mantle_and_beard_sway(
@@ -1467,26 +1566,26 @@ def build_row3_skill(tpl):
             )
 
             sx, sy = 27, 17
-            hammer_ang = -52.0 * (1.0 - u) + (-118.0) * u
-            hx = int(round(34 * (1.0 - u) + 32 * u))
+            hammer_ang = -52.0 * (1.0 - u) + (-125.0) * u
+            hx = int(round(34 * (1.0 - u) + 31 * u))
             hy = int(round(22 * (1.0 - u) + 13 * u))
-            frame = draw_warhammer(
+            frame = draw_2h_warhammer_and_arms(
                 base,
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=hammer_ang,
                 glow_intensity=1.0 + u * 0.3,
                 scale=1.0,
-                haft_len=16.0,
+                haft_len=21.0,
                 shoulder=(sx, sy),
-                two_handed=False,
+                two_handed=True,
                 phase=phase,
             )
 
-            # Flaring Emerald-Jade & Molten-Gold Forge Seal around the raised gauntlet
+            # Flaring Emerald-Jade & Molten-Gold Forge Seal around the raised gauntlets
             seal_r = 2.5 + u * 2.5
-            seal_cx = min(44, hx + 4)
-            seal_cy = max(6, hy - 2)
+            seal_cx = min(44, hx + 3)
+            seal_cy = max(6, hy - 1)
             for s_i in range(16):
                 sa = (s_i / 16.0) * 2.0 * math.pi + phase * 2.0
                 sx_f = max(4.0, min(47.0, seal_cx + math.cos(sa) * seal_r))
@@ -1499,7 +1598,7 @@ def build_row3_skill(tpl):
             frames.append(frame)
 
         elif f <= 22:
-            # F13..F22: Full-body War-Hammer anvil slam driving grip forward through (35, 16) -> (39, 21) -> (37, 25)
+            # F13..F22: Full-body two-handed Anvil Slam from -125 deg down to +16 deg
             k = f - 13
             base = tpl["lunge"].copy()
             base = apply_mantle_and_beard_sway(
@@ -1507,20 +1606,27 @@ def build_row3_skill(tpl):
             )
 
             sx, sy = 28, 17
-            ang_seq = [-65.0, -20.0, 4.0, 14.0, 20.0, 22.0, 18.0, 10.0, -5.0, -22.0]
-            hx_seq = [35, 37, 39, 39, 38, 37, 37, 36, 36, 35]
-            hy_seq = [16, 19, 21, 23, 24, 25, 25, 24, 24, 23]
+            ang_seq = [-74.0, -26.0, 4.0, 14.0, 16.0, 16.0, 13.0, 6.0, -6.0, -20.0]
+            hx_seq = [33, 35, 36, 36, 36, 36, 35, 35, 35, 34]
+            hy_seq = [16, 19, 21, 23, 24, 24, 23, 23, 22, 22]
 
-            frame = draw_warhammer(
+            cleave_arc = None
+            if k <= 5:
+                arc_int = [0.85, 1.0, 1.0, 0.9, 0.7, 0.45][k]
+                a0 = [-125.0, -92.0, -52.0, -20.0, -5.0, 2.0][k]
+                cleave_arc = (a0, ang_seq[k] + 4.0, 18.0, arc_int)
+
+            frame = draw_2h_warhammer_and_arms(
                 base,
                 hand_x=hx_seq[k],
                 hand_y=hy_seq[k],
                 angle_deg=ang_seq[k],
                 glow_intensity=1.35 if 1 <= k <= 6 else 1.0,
-                scale=1.0,
-                haft_len=15.5,
+                scale=1.02,
+                haft_len=21.0,
                 shoulder=(sx, sy),
-                two_handed=False,
+                two_handed=True,
+                cleave_arc=cleave_arc,
                 phase=phase,
             )
 
@@ -1543,19 +1649,19 @@ def build_row3_skill(tpl):
             base = apply_mantle_and_beard_sway(
                 base, phase, amplitude=1.5, vertical_flutter=0.5, furnace_pulse=0.75 - u * 0.2
             )
-            ang = -22.0 * (1.0 - u) + (-52.0) * u
+            ang = -20.0 * (1.0 - u) + (-52.0) * u
             hx = int(round(35 * (1.0 - u) + 34 * u))
             hy = int(round(23 * (1.0 - u) + 22 * u))
-            frame = draw_warhammer(
+            frame = draw_2h_warhammer_and_arms(
                 base,
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=0.95,
                 scale=1.0,
-                haft_len=16.5,
+                haft_len=21.0,
                 shoulder=(27, 17),
-                two_handed=False,
+                two_handed=True,
                 phase=phase,
             )
             frames.append(frame)
@@ -1737,10 +1843,11 @@ def build_row5_death(tpl):
     """
     Row 5 (`DEATH` & `HURT`, 150..179):
     - F00..F06: Hit-stagger recoil (`HURT` uses F00..F06) with sparks flying off his breastplate.
-    - F07..F17: Drops heavy to one knee (y+6px), leaning on his War-Hammer shaft in front of him (`gx = 34`).
-    - F18..F29: Collapses horizontally (90 deg rotated body lying flat on the ground at y=37..46)
-      with his War-Hammer lying flat (0 deg horizontal) on the ground beside him (y=43..46)
-      — ZERO upright or floating hammer!
+    - F07..F13: Drops heavy to one knee (`tpl["kneel"]`), bracing on his two-handed Great-Hammer.
+    - F14..F17: Kneeling stagger (`F14..F17`), torso and horned helm sinking progressively deeper onto his knees.
+    - F18..F22: Grounded intermediate slump (`F18..F22`, anchored firmly at `y = 46`) lowering Titan
+      smoothly from his kneeling stagger into his fallen colossus pose with zero mid-air floating!
+    - F23..F29: Fallen colossus pose (`F23..F29`, anchored at `y = 46`) with his Great-Hammer planted beside him.
     """
     frames = []
     for f in range(30):
@@ -1751,16 +1858,16 @@ def build_row5_death(tpl):
             dy = int(round(u * 2.0))
             base = shift_layer(tpl["stand"], dx=dx, dy=dy)
             base = apply_mantle_and_beard_sway(base, u * math.pi, amplitude=1.5, vertical_flutter=0.5, furnace_pulse=0.4)
-            frame = draw_warhammer(
+            frame = draw_2h_warhammer_and_arms(
                 base,
                 hand_x=max(31, 34 + dx),
                 hand_y=22 + dy,
                 angle_deg=-52.0 + u * 45.0,
                 glow_intensity=0.6,
                 scale=1.0,
-                haft_len=16.0,
+                haft_len=21.0,
                 shoulder=(27 + dx, 17 + dy),
-                two_handed=False,
+                two_handed=True,
             )
             # Breastplate hit sparks flying outward
             for sp in range(4):
@@ -1770,59 +1877,111 @@ def build_row5_death(tpl):
             frames.append(frame)
 
         elif f <= 17:
-            # F07..F17: Drops heavy to one knee (y+6px), leaning on his War-Hammer shaft in front of him
+            # F07..F17: Drops heavy to one knee (F07..F13) and sinks into a deep kneeling stagger (F14..F17)
             u = (f - 7) / 10.0
-            base = tpl["kneel"].copy()
-            if f >= 13:
-                head_drop = 1 if f <= 15 else 2
-                head_slice = base[12:24, 22:34].copy()
-                base[12 + head_drop : 24 + head_drop, 22:34] = head_slice
-                base = fill_layer_pinholes(base)
+            kneel_src = tpl["kneel"].copy()
+            # Anchor kneel_src bottom at y=46 and progressively compress torso downward on F14..F17
+            extra_drop = 0 if f <= 13 else (f - 13)  # 1, 2, 3, 4 on F14..F17
+            base = np.zeros((52, 52, 4), dtype=np.uint8)
+            for sy in range(10, 46):
+                for sx in range(2, 48):
+                    if kneel_src[sy, sx, 3] > 0:
+                        if sy <= 34:
+                            ny = min(45, sy + 1 + extra_drop)
+                            nx = min(48, sx + (1 if (extra_drop >= 2 and sy <= 24) else 0))
+                        else:
+                            ny = min(46, sy + 1)
+                            nx = sx
+                        base[ny, nx] = kneel_src[sy, sx]
+            base = fill_layer_pinholes(base)
             flicker = 0.65 if (f % 3 == 0) else 0.15
             base = apply_mantle_and_beard_sway(base, u * math.pi, amplitude=1.0, vertical_flutter=0.3, furnace_pulse=flicker)
 
-            frame = draw_warhammer(
+            frame = draw_2h_warhammer_and_arms(
                 base,
                 hand_x=34,
-                hand_y=27 + (1 if f >= 14 else 0),
-                angle_deg=48.0 - u * 8.0,
+                hand_y=26 + extra_drop,
+                angle_deg=26.0 + u * 18.0,
                 glow_intensity=max(0.2, 0.6 * (1.0 - u)),
+                scale=0.96,
+                haft_len=21.0,
+                shoulder=(27, 22 + extra_drop),
+                two_handed=True,
+            )
+            frames.append(frame)
+
+        elif f <= 22:
+            # F18..F22: Grounded intermediate slump anchored at y = 46 (smoothly lowering from kneeling stagger to fallen colossus)
+            k = f - 18  # 0..4
+            v_scales = [0.76, 0.64, 0.52, 0.42, 0.34]
+            h_shears = [0.12, 0.19, 0.26, 0.33, 0.40]
+            v_sc = v_scales[k]
+            h_sh = h_shears[k]
+
+            kneel_src = tpl["kneel"]
+            slump = np.zeros((52, 52, 4), dtype=np.uint8)
+            for sy in range(10, 46):
+                h_above = max(0, 45 - sy)
+                ny = max(18, min(46, 46 - int(round(h_above * v_sc))))
+                for sx in range(3, 46):
+                    if kneel_src[sy, sx, 3] > 0:
+                        dx_s = int(round(h_above * h_sh)) if sx >= 14 else int(round(h_above * h_sh * 0.45))
+                        nx = max(4, min(46, sx + dx_s))
+                        slump[ny, nx] = kneel_src[sy, sx]
+                        if ny + 1 <= 46 and slump[ny + 1, nx, 3] == 0:
+                            slump[ny + 1, nx] = kneel_src[sy, sx]
+            slump = fill_layer_pinholes(slump, x0=3, x1=48, y0=18, y1=47, require_3_neighbors=False)
+
+            # Lower the 2H Great-Hammer progressively onto the floor beside him (angle 30 deg -> 4 deg)
+            ham_ang = [30.0, 22.0, 15.0, 9.0, 4.0][k]
+            ham_hy = [30, 32, 34, 36, 38][k]
+            sh_y = [26, 28, 30, 32, 34][k]
+            frame = draw_2h_warhammer_and_arms(
+                slump,
+                hand_x=33,
+                hand_y=ham_hy,
+                angle_deg=ham_ang,
+                glow_intensity=0.25,
                 scale=0.95,
-                haft_len=14.5,
-                shoulder=(27, 23 + (1 if f >= 14 else 0)),
-                two_handed=False,
+                haft_len=21.0,
+                shoulder=(28, sh_y),
+                two_handed=True,
             )
             frames.append(frame)
 
         else:
-            # F18..F29: Collapses horizontally (90 deg rotated body lying flat on the ground at y=37..46)
-            # with his War-Hammer lying flat (0 deg horizontal) on the ground beside him (y=43..46)!
-            k = f - 18
-            frame = tpl["fall"].copy()
-            if k == 0:
-                frame = shift_layer(frame, dx=0, dy=-1)
+            # F23..F29: Fallen colossus pose anchored at y = 46 with his 21px Great-Hammer planted beside him
+            k = f - 23  # 0..6
+            frame = shift_layer(tpl["fall"], dx=0, dy=0 if k == 0 else 1)
 
-            # Draw the War-Hammer lying flat on its broad face horizontally at y=43..46, x=18..43
-            for hx_p in range(18, 35):
-                set_px(frame, hx_p, 44, BRONZE_BRIGHT if hx_p % 3 == 0 else IRON_MID)
-                set_px(frame, hx_p, 45, OBSIDIAN_DARK)
-            set_px(frame, 17, 44, GOLD_MOLTEN)
-            # Flat-lying Hammerhead block (x=34..43, y=42..46)
-            for hy_p in range(42, 47):
-                for hx_p in range(34, 44):
-                    if hy_p in (42, 46) or hx_p in (34, 43):
-                        col = BRONZE_BRIGHT if hy_p == 42 else BRONZE_MID
-                    elif hy_p == 44 and hx_p in (37, 38, 39):
-                        col = JADE_LIGHT if k <= 4 else JADE_BRIGHT
-                    elif hy_p in (43, 45) and hx_p in (36, 41):
+            # Draw the long-hafted 21px Great-Hammer resting beside him at y=42..46, x=15..44
+            for hx_p in range(16, 35):
+                ring = (hx_p % 4 == 0)
+                set_px(frame, hx_p, 44, GOLD_MOLTEN if ring else IRON_MID)
+                set_px(frame, hx_p, 45, BRONZE_MID if ring else OBSIDIAN_DARK)
+            # Pommel cap at x=15
+            set_px(frame, 15, 44, GOLD_MOLTEN)
+            set_px(frame, 15, 45, JADE_BRIGHT)
+            # Gauntlet clasp remnants at x=20..21 and x=26..27
+            for gx_c in (20, 26):
+                set_px(frame, gx_c, 43, BRONZE_BRIGHT)
+                set_px(frame, gx_c + 1, 43, BRONZE_MID)
+            # Colossal Anvil Hammerhead block (x=35..44, y=41..46)
+            for hy_p in range(41, 47):
+                for hx_p in range(35, 45):
+                    if hy_p in (41, 46) or hx_p in (35, 44):
+                        col = BRONZE_BRIGHT if hy_p == 41 else BRONZE_MID
+                    elif hy_p in (43, 44) and hx_p in (38, 39, 40):
+                        col = JADE_LIGHT if k <= 2 else JADE_BRIGHT
+                    elif hy_p in (42, 45) and hx_p in (37, 42):
                         col = GOLD_MOLTEN
                     else:
                         col = OBSIDIAN_DARK
                     set_px(frame, hx_p, hy_p, col)
 
-            # Cooling forge ember drifting along the fallen hammer so every frame F18..F29 is unique
-            ember_x = 24 + k
-            set_px(frame, min(43, ember_x), 43 - (k % 2), GOLD_MOLTEN if k <= 5 else JADE_BRIGHT)
+            # Cooling forge ember drifting along the fallen hammer so every frame F23..F29 is unique
+            ember_x = 24 + k * 2
+            set_px(frame, min(44, ember_x), 42 - (k % 2), GOLD_MOLTEN if k <= 3 else JADE_BRIGHT)
             frames.append(frame)
 
     return frames
@@ -2194,7 +2353,7 @@ def main():
     for r_idx, (r_name, r_frames) in enumerate(rows):
         assert len(r_frames) == 30, f"{r_name} has {len(r_frames)} frames instead of 30"
         for c_idx in range(30):
-            r_frames[c_idx] = ensure_safe_cell(r_frames[c_idx], margin=1)
+            r_frames[c_idx] = ensure_safe_cell(r_frames[c_idx], margin=2)
             arr_c = r_frames[c_idx]
             if np.any(arr_c[0, :, 3] > 0):
                 top_clips += 1

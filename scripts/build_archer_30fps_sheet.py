@@ -134,7 +134,7 @@ def shift_layer(layer, dx=0, dy=0):
     return fill_layer_pinholes(out)
 
 
-def ensure_safe_cell(cell, margin=1):
+def ensure_safe_cell(cell, margin=2):
     """
     Guarantees zero pixels touch the 52x52 cell border (x=0, x=51, y=0, y=51) and fills
     any 1px interior pinholes from movement.
@@ -490,6 +490,7 @@ def draw_articulated_bow(
     hand_override=None,
     bow_reach=10.5,
     bow_half_span=13.0,
+    bow_flare=0.0,
 ):
     """
     Renders Sylvara's sleek 2-Bone IK Left Bow-Arm at her true anatomical shoulder height (`sy_bow = 15.5 + dy_off`)
@@ -554,7 +555,7 @@ def draw_articulated_bow(
             by = max(3.0, min(48.0, gy + uy * bend + py * span))
 
             set_px(bow_layer, max(3.0, min(48.0, bx - ux * 0.7)), max(3.0, min(48.0, by - uy * 0.7)), WOOD_DARK)
-            col = GOLD_BRIGHT if (s < 0.25 or s > 0.82) else GOLD_MID
+            col = STAR_GOLD if (bow_flare > 0.0 and (s < 0.28 or s > 0.80)) else (GOLD_BRIGHT if (s < 0.25 or s > 0.82) else GOLD_MID)
             set_px(bow_layer, bx, by, col)
 
             if astral_wings > 0.05 and 0.25 <= s <= 0.95 and i % 2 == 0:
@@ -566,8 +567,8 @@ def draw_articulated_bow(
                 else:
                     bot_tip = (bx, by)
 
-    set_px(bow_layer, max(3.0, min(48.0, gx + ux * 0.8)), max(3.0, min(48.0, gy + uy * 0.8)), EMERALD_MID)
-    set_px(bow_layer, gx, max(3.0, min(48.0, gy - 1.0)), EMERALD_BRIGHT)
+    set_px(bow_layer, max(3.0, min(48.0, gx + ux * 0.8)), max(3.0, min(48.0, gy + uy * 0.8)), STAR_GOLD if bow_flare > 0.0 else EMERALD_MID)
+    set_px(bow_layer, gx, max(3.0, min(48.0, gy - 1.0)), (255, 255, 255, 255) if bow_flare > 0.0 else EMERALD_BRIGHT)
 
     # 3. Compute Bowstring Nock Point anchored to her cheek/pauldron (x = 26, y = 15 + dy_off)
     mid_tip_x = 0.5 * (top_tip[0] + bot_tip[0])
@@ -583,9 +584,37 @@ def draw_articulated_bow(
         nock_x = max(3.5, min(47.5, mid_tip_x + ux * string_vib))
         nock_y = max(3.5, min(47.5, mid_tip_y + uy * string_vib))
 
-    # 4. Taut Luminous Emerald Bowstring
-    draw_line_px(str_layer, top_tip[0], top_tip[1], nock_x, nock_y, EMERALD_BRIGHT)
-    draw_line_px(str_layer, bot_tip[0], bot_tip[1], nock_x, nock_y, EMERALD_BRIGHT)
+    # 4. Taut Luminous Emerald-Gold Astral Bowstring
+    if bow_flare > 0.0:
+        # Outer emerald astral string glow + inner star-gold core string
+        draw_line_px(
+            str_layer,
+            max(3.0, min(48.0, top_tip[0] - ux * 0.6)),
+            max(3.0, min(48.0, top_tip[1] - uy * 0.6)),
+            max(3.0, min(48.0, nock_x - ux * 0.6)),
+            max(3.0, min(48.0, nock_y - uy * 0.6)),
+            EMERALD_BRIGHT,
+        )
+        draw_line_px(
+            str_layer,
+            max(3.0, min(48.0, bot_tip[0] - ux * 0.6)),
+            max(3.0, min(48.0, bot_tip[1] - uy * 0.6)),
+            max(3.0, min(48.0, nock_x - ux * 0.6)),
+            max(3.0, min(48.0, nock_y - uy * 0.6)),
+            EMERALD_BRIGHT,
+        )
+        draw_line_px(str_layer, top_tip[0], top_tip[1], nock_x, nock_y, STAR_GOLD)
+        draw_line_px(str_layer, bot_tip[0], bot_tip[1], nock_x, nock_y, STAR_GOLD)
+        # Astral limb-tip & nock star glints
+        for lx_t, ly_t in [top_tip, bot_tip]:
+            set_px(fx_layer, max(3.0, min(48.0, lx_t)), max(3.0, min(48.0, ly_t)), (255, 255, 255, 255))
+            set_px(fx_layer, max(3.0, min(48.0, lx_t + ux)), max(3.0, min(48.0, ly_t + uy)), STAR_GOLD)
+            set_px(fx_layer, max(3.0, min(48.0, lx_t - ux)), max(3.0, min(48.0, ly_t - uy)), EMERALD_BRIGHT)
+        set_px(fx_layer, max(3.0, min(48.0, nock_x)), max(3.0, min(48.0, nock_y - 1.0)), STAR_GOLD)
+        set_px(fx_layer, max(3.0, min(48.0, nock_x - 1.0)), max(3.0, min(48.0, nock_y)), EMERALD_BRIGHT)
+    else:
+        draw_line_px(str_layer, top_tip[0], top_tip[1], nock_x, nock_y, EMERALD_BRIGHT)
+        draw_line_px(str_layer, bot_tip[0], bot_tip[1], nock_x, nock_y, EMERALD_BRIGHT)
 
     # 5. Right Draw-Hand & Bracer at (nock_x, nock_y) when draw_t >= 0.20 (preserving her silver shoulder pauldron!)
     if draw_t >= 0.20:
@@ -601,12 +630,12 @@ def draw_articulated_bow(
     # 6. Nocked Emerald / Astral Arrow(s) or Release Flash (auto-clamped inside [3..48, 3..48])
     arrow_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    def render_single_arrow(ax0, ay0, ang_deg, length=18.5, is_astral=False, charge=0):
+    def render_single_arrow(ax0, ay0, ang_deg, length=18.5, is_astral=False, charge=0, extra_flare=0.0):
         arad = math.radians(ang_deg)
         aux, auy = math.cos(arad), math.sin(arad)
         apx, apy = -auy, aux
 
-        margin_tip = 4.0 + charge
+        margin_tip = 4.5 + max(charge, 2 if extra_flare > 0.0 else 0)
         max_len = float(length)
         if aux > 0.05:
             max_len = min(max_len, (51.0 - margin_tip - ax0) / aux)
@@ -621,51 +650,62 @@ def draw_articulated_bow(
         ax1 = max(3.5, min(47.5, ax0 + aux * eff_len))
         ay1 = max(3.5, min(47.5, ay0 + auy * eff_len))
 
-        set_px(arrow_layer, max(3.0, min(48.0, ax0 - aux + apx)), max(3.0, min(48.0, ay0 - auy + apy)), STAR_GOLD if is_astral else EMERALD_BRIGHT)
-        set_px(arrow_layer, max(3.0, min(48.0, ax0 - aux - apx)), max(3.0, min(48.0, ay0 - auy - apy)), STAR_GOLD if is_astral else EMERALD_BRIGHT)
+        set_px(arrow_layer, max(3.0, min(48.0, ax0 - aux + apx)), max(3.0, min(48.0, ay0 - auy + apy)), STAR_GOLD if (is_astral or extra_flare > 0.0) else EMERALD_BRIGHT)
+        set_px(arrow_layer, max(3.0, min(48.0, ax0 - aux - apx)), max(3.0, min(48.0, ay0 - auy - apy)), STAR_GOLD if (is_astral or extra_flare > 0.0) else EMERALD_BRIGHT)
 
-        shaft_col = STAR_GOLD if is_astral else EMERALD_CORE
+        shaft_col = STAR_GOLD if (is_astral or extra_flare > 0.0) else EMERALD_CORE
         draw_line_px(arrow_layer, ax0, ay0, ax1, ay1, shaft_col)
-        if is_astral:
+        if is_astral or extra_flare > 0.0:
             draw_line_px(
                 arrow_layer,
-                max(3.0, min(48.0, ax0 + apx)),
-                max(3.0, min(48.0, ay0 + apy)),
-                max(3.0, min(48.0, ax1 - aux * 2 + apx)),
-                max(3.0, min(48.0, ay1 - auy * 2 + apy)),
-                EMERALD_MID,
+                max(3.0, min(48.0, ax0 + apx * 0.85)),
+                max(3.0, min(48.0, ay0 + apy * 0.85)),
+                max(3.0, min(48.0, ax1 - aux * 1.5 + apx * 0.85)),
+                max(3.0, min(48.0, ay1 - auy * 1.5 + apy * 0.85)),
+                EMERALD_BRIGHT if extra_flare > 0.0 else EMERALD_MID,
             )
 
-        set_px(arrow_layer, ax1, ay1, EMERALD_CORE)
-        set_px(arrow_layer, max(3.0, min(48.0, ax1 - aux + apx)), max(3.0, min(48.0, ay1 - auy + apy)), EMERALD_MID)
-        set_px(arrow_layer, max(3.0, min(48.0, ax1 - aux - apx)), max(3.0, min(48.0, ay1 - auy - apy)), EMERALD_MID)
-        set_px(arrow_layer, max(3.0, min(48.0, ax1 + aux)), max(3.0, min(48.0, ay1 + auy)), STAR_GOLD if is_astral else EMERALD_BRIGHT)
+        set_px(arrow_layer, ax1, ay1, (255, 255, 255, 255) if extra_flare > 0.0 else EMERALD_CORE)
+        set_px(arrow_layer, max(3.0, min(48.0, ax1 - aux + apx)), max(3.0, min(48.0, ay1 - auy + apy)), EMERALD_BRIGHT if extra_flare > 0.0 else EMERALD_MID)
+        set_px(arrow_layer, max(3.0, min(48.0, ax1 - aux - apx)), max(3.0, min(48.0, ay1 - auy - apy)), EMERALD_BRIGHT if extra_flare > 0.0 else EMERALD_MID)
+        set_px(arrow_layer, max(3.0, min(48.0, ax1 + aux)), max(3.0, min(48.0, ay1 + auy)), STAR_GOLD if (is_astral or extra_flare > 0.0) else EMERALD_BRIGHT)
 
-        if charge >= 1:
-            tx = max(4, min(47, int(round(ax1 + aux))))
-            ty = max(4, min(47, int(round(ay1 + auy))))
+        eff_charge = max(charge, 2 if extra_flare > 0.0 else 0)
+        if eff_charge >= 1:
+            tx = max(4, min(46, int(round(ax1 + aux))))
+            ty = max(4, min(46, int(round(ay1 + auy))))
             set_px(fx_layer, tx, ty, (255, 255, 255, 255))
-            for d in range(1, charge + 1):
-                col = STAR_GOLD if d == 1 else EMERALD_BRIGHT
+            for d in range(1, eff_charge + 1):
+                col = STAR_GOLD if d == 1 else (EMERALD_BRIGHT if d == 2 else EMERALD_MID)
                 set_px(fx_layer, min(48, tx + d), ty, col)
                 set_px(fx_layer, max(3, tx - d), ty, col)
                 set_px(fx_layer, tx, min(48, ty + d), col)
                 set_px(fx_layer, tx, max(3, ty - d), col)
-            if charge >= 3:
+            if eff_charge >= 2 or extra_flare > 0.0:
                 for dx_c, dy_c in [(-1, -1), (1, -1), (-1, 1), (1, 1)]:
-                    set_px(fx_layer, max(3, min(48, tx + dx_c)), max(3, min(48, ty + dy_c)), STAR_GOLD)
+                    set_px(
+                        fx_layer,
+                        max(3, min(48, tx + dx_c)),
+                        max(3, min(48, ty + dy_c)),
+                        STAR_GOLD if (dx_c + dy_c) % 2 == 0 else EMERALD_BRIGHT,
+                    )
 
     if arrow_mode == 'single':
-        render_single_arrow(nock_x, nock_y, aim_deg, length=18.5, is_astral=False, charge=charge_level)
+        render_single_arrow(nock_x, nock_y, aim_deg, length=18.5, is_astral=False, charge=charge_level, extra_flare=bow_flare)
     elif arrow_mode == 'starfall':
-        render_single_arrow(nock_x, nock_y, aim_deg, length=19.0, is_astral=True, charge=charge_level)
+        render_single_arrow(nock_x, nock_y, aim_deg, length=19.0, is_astral=True, charge=charge_level, extra_flare=bow_flare)
     elif arrow_mode == 'astral_dragon':
-        render_single_arrow(nock_x, nock_y, aim_deg, length=20.0, is_astral=True, charge=charge_level)
+        render_single_arrow(nock_x, nock_y, aim_deg, length=20.0, is_astral=True, charge=charge_level, extra_flare=bow_flare)
     elif arrow_mode == 'fan3':
         for d_ang in (-13.0, 0.0, 13.0):
             render_single_arrow(
-                nock_x, nock_y, aim_deg + d_ang, length=17.5, is_astral=False,
-                charge=max(0, charge_level - (0 if d_ang == 0 else 1))
+                nock_x,
+                nock_y,
+                aim_deg + d_ang,
+                length=17.5,
+                is_astral=(bow_flare > 0.0),
+                charge=max(0, charge_level - (0 if d_ang == 0 else 1)),
+                extra_flare=bow_flare,
             )
 
     if release_flash:
@@ -975,13 +1015,13 @@ def build_row2_auto_attack(tpl):
 
 
 def build_row3_skill(tpl):
-    """Row 3: 30-Frame SKILL (STARFALL VOLLEY)."""
+    """Row 3: 30-Frame SKILL (STARFALL VOLLEY / HEAVENS' ARROW RAIN)."""
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
-        if 15 <= f <= 26:
+        if 4 <= f <= 25:
             base = tpl['aim_up'].copy()
-        elif 3 <= f <= 14:
+        elif f == 3:
             base = tpl['aim_h'].copy()
         else:
             base = tpl['stand'].copy()
@@ -990,7 +1030,7 @@ def build_row3_skill(tpl):
 
         if f <= 3:
             u = f / 3.0
-            aim_deg = 36.0 * (1.0 - u) - 4.0 * u
+            aim_deg = 36.0 * (1.0 - u) + (-14.0) * u
             hand_pts = [(23, 14), (19, 9), (25, 12), (34, 14)]
             frame = draw_articulated_bow(
                 base,
@@ -1000,63 +1040,83 @@ def build_row3_skill(tpl):
                 arrow_mode='fan3' if f == 3 else 'none',
                 hand_override=hand_pts[f],
                 bow_reach=10.0,
-                bow_half_span=13.0
+                bow_half_span=13.0,
             )
-        elif f <= 11:
-            draw_t = (f - 3) / 8.0
-            charge = 2 if f >= 10 else (1 if f >= 8 else 0)
+        elif f <= 14:
+            # F04..F14: Skyward 3-arrow fan draw with crisp emerald-gold astral bowstring & arrow tip star-flare on F06..F14!
+            u = (f - 3) / 11.0
+            draw_t = min(1.0, u)
+            charge = 3 if f >= 10 else (2 if f >= 6 else 1)
+            flare = 1.0 if f >= 6 else 0.0
             frame = draw_articulated_bow(
                 base,
                 shoulder=(28, 15),
-                aim_deg=-4.0,
+                aim_deg=-14.0 - u * 4.0,
                 draw_t=draw_t,
                 arrow_mode='fan3',
                 charge_level=charge,
-                bow_reach=10.5,
-                bow_half_span=13.0
+                bow_reach=10.4,
+                bow_half_span=12.8,
+                bow_flare=flare,
             )
-        elif f <= 14:
-            k = f - 12
+        elif f <= 17:
+            # F15..F17: Skyward 3-arrow fan release flash & bowstring snap
+            k = f - 15
             vib = [1.8, -1.1, 0.4][k]
             frame = draw_articulated_bow(
                 base,
                 shoulder=(27 if k == 0 else 28, 15),
-                aim_deg=-8.0 - k * 4.0,
+                aim_deg=-18.0 - k * 4.0,
                 draw_t=0.0,
                 string_vib=vib,
                 arrow_mode='none',
                 release_flash=(k == 0),
                 hand_override=[(21, 13), (20, 10), (26, 12)][k],
-                bow_reach=10.5,
-                bow_half_span=13.0
+                bow_reach=10.4,
+                bow_half_span=12.8,
             )
-        elif f <= 22:
-            draw_t = (f - 14) / 8.0
-            charge = 3 if f >= 21 else (2 if f >= 19 else 1)
+        elif f <= 23:
+            # F18..F23: High-angle (-32 deg) Starfall Astral Arrow finisher draw & release
+            if f <= 22:
+                draw_t = (f - 17) / 5.0
+                charge = 3 if f >= 21 else 2
+                frame = draw_articulated_bow(
+                    base,
+                    shoulder=(28, 14),
+                    aim_deg=-32.0,
+                    draw_t=draw_t,
+                    arrow_mode='starfall',
+                    charge_level=charge,
+                    bow_reach=10.2,
+                    bow_half_span=12.8,
+                    bow_flare=1.0 if f >= 19 else 0.0,
+                )
+            else:
+                frame = draw_articulated_bow(
+                    base,
+                    shoulder=(27, 14),
+                    aim_deg=-34.0,
+                    draw_t=0.0,
+                    string_vib=1.9,
+                    arrow_mode='none',
+                    release_flash=True,
+                    hand_override=(21, 15),
+                    bow_reach=10.2,
+                    bow_half_span=12.8,
+                )
+        elif f <= 26:
+            k = f - 24
+            vib = [-1.2, 0.7, 0.0][k]
             frame = draw_articulated_bow(
                 base,
                 shoulder=(28, 14),
-                aim_deg=-32.0,
-                draw_t=draw_t,
-                arrow_mode='starfall',
-                charge_level=charge,
-                bow_reach=10.2,
-                bow_half_span=12.8
-            )
-        elif f <= 26:
-            k = f - 23
-            vib = [1.9, -1.2, 0.7, 0.0][k]
-            frame = draw_articulated_bow(
-                base,
-                shoulder=(27 if k <= 1 else 28, 14),
-                aim_deg=-35.0 + k * 3.0,
+                aim_deg=-32.0 + (k + 1) * 3.0,
                 draw_t=0.0,
                 string_vib=vib,
                 arrow_mode='none',
-                release_flash=(k == 0),
-                hand_override=(21, 15),
+                hand_override=(22, 15),
                 bow_reach=10.2,
-                bow_half_span=12.8
+                bow_half_span=12.8,
             )
         else:
             u = (f - 26) / 3.0
@@ -1068,14 +1128,14 @@ def build_row3_skill(tpl):
                 draw_t=0.0,
                 arrow_mode='none',
                 bow_reach=9.8,
-                bow_half_span=12.5
+                bow_half_span=12.5,
             )
         frames.append(frame)
     return frames
 
 
 def build_row4_ultimate(tpl):
-    """Row 4: 30-Frame Dedicated ULTIMATE (ASTRAL HURRICANE)."""
+    """Row 4: 30-Frame Dedicated ULTIMATE (ASTRAL HURRICANE / TEMPEST DRAGON SHOT)."""
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
@@ -1128,11 +1188,13 @@ def build_row4_ultimate(tpl):
                 astral_wings=wings,
                 hand_override=(20, 11 + crouch_dy),
                 bow_reach=10.0,
-                bow_half_span=12.5
+                bow_half_span=12.5,
             )
         elif f <= 17:
+            # F04..F17: Full horizontal Dragon-Arrow draw with crisp emerald-gold astral bowstring & arrow tip star-flare on F06..F14+!
             draw_t = min(1.0, (f - 3) / 11.0)
-            charge = 3 if f >= 14 else (2 if f >= 10 else 1)
+            charge = 3 if f >= 10 else (2 if f >= 6 else 1)
+            flare = 1.0 if f >= 6 else 0.0
             frame = draw_articulated_bow(
                 base,
                 shoulder=(sh_x, sh_y),
@@ -1142,7 +1204,8 @@ def build_row4_ultimate(tpl):
                 charge_level=charge,
                 astral_wings=wings,
                 bow_reach=10.5,
-                bow_half_span=12.8
+                bow_half_span=12.8,
+                bow_flare=flare,
             )
         elif f <= 23:
             k = f - 18
@@ -1158,7 +1221,7 @@ def build_row4_ultimate(tpl):
                 astral_wings=wings,
                 hand_override=(20, 14),
                 bow_reach=10.5,
-                bow_half_span=12.8
+                bow_half_span=12.8,
             )
         else:
             u = (f - 23) / 6.0
@@ -1170,7 +1233,7 @@ def build_row4_ultimate(tpl):
                 draw_t=0.0,
                 astral_wings=wings,
                 bow_reach=10.0,
-                bow_half_span=12.4
+                bow_half_span=12.4,
             )
 
         if leg_tuck > 0.05:
@@ -1185,7 +1248,15 @@ def build_row4_ultimate(tpl):
 
 
 def build_row5_death(tpl):
-    """Row 5: 30-Frame Dedicated DEATH Sequence."""
+    """
+    Row 5: 30-Frame Dedicated DEATH Sequence:
+    - F00..F05: Hit-stagger recoil
+    - F06..F13: Drops to her knees (`make_crouch_body`)
+    - F14..F17: Kneeling stagger (`kneel` anchored at `y = 46..47`), torso and bow sinking lower
+    - F18..F23: Grounded floor collapse anchored at `y = 46` (smoothly lowering her torso, cloak,
+      and bow onto the floor with ZERO mid-air floating rotation!)
+    - F24..F29: Fallen ranger pose (`fall` anchored at `y = 46..47`) with golden bow resting beside her.
+    """
     frames = []
     for f in range(30):
         if f <= 5:
@@ -1200,7 +1271,7 @@ def build_row5_death(tpl):
                 aim_deg=40.0 + u * 24.0,
                 draw_t=0.0,
                 bow_reach=9.0,
-                bow_half_span=11.8
+                bow_half_span=11.8,
             )
             frames.append(frame)
 
@@ -1208,62 +1279,99 @@ def build_row5_death(tpl):
             u = (f - 6) / 7.0
             base = make_crouch_body(tpl, 5 if f <= 9 else 6)
             base = apply_cloak_wave(base, u * math.pi, amplitude=0.9, vertical_flutter=0.25)
-            bow_deg = 52.0 + u * 20.0
+            bow_deg = 52.0 + u * 16.0
             frame = draw_articulated_bow(
                 base,
                 shoulder=(28, 21 + (1 if f >= 10 else 0)),
                 aim_deg=bow_deg,
                 draw_t=0.0,
                 bow_reach=8.5,
-                bow_half_span=11.0
+                bow_half_span=11.0,
+            )
+            frames.append(frame)
+
+        elif f <= 17:
+            # F14..F17: Deep kneeling stagger anchored on the floor (lowering torso & bow prior to floor collapse)
+            k = f - 14  # 0..3
+            extra_drop = k + 1  # 1..4
+            crouch6 = make_crouch_body(tpl, 6)
+            base = np.zeros((52, 52, 4), dtype=np.uint8)
+            for sy in range(8, 50):
+                for sx in range(2, 48):
+                    if crouch6[sy, sx, 3] > 0:
+                        if sy <= 34:
+                            ny = min(45, sy + extra_drop)
+                            nx = min(48, sx + (1 if (extra_drop >= 2 and sy <= 24) else 0))
+                        else:
+                            ny = min(46, int(round(34 + extra_drop + (sy - 34) * ((46.0 - (34 + extra_drop)) / 15.0))))
+                            nx = sx
+                        base[ny, nx] = crouch6[sy, sx]
+            base = fill_layer_pinholes(base, require_3_neighbors=False)
+            base = apply_cloak_wave(base, (k / 4.0) * math.pi, amplitude=0.7, vertical_flutter=0.2)
+            frame = draw_articulated_bow(
+                base,
+                shoulder=(28 + (1 if k >= 2 else 0), 22 + extra_drop),
+                aim_deg=68.0 + k * 4.0,
+                draw_t=0.0,
+                bow_reach=8.0,
+                bow_half_span=10.2,
             )
             frames.append(frame)
 
         elif f <= 23:
-            u = (f - 13) / 11.0
-            tilt_deg = +u * 85.0
+            # F18..F23: Grounded floor collapse anchored at y = 46 (ZERO mid-air floating rotation!)
+            k = f - 18  # 0..5
+            v_scales = [0.72, 0.58, 0.46, 0.36, 0.28, 0.22]
+            h_shears = [0.14, 0.21, 0.28, 0.35, 0.41, 0.46]
+            v_sc = v_scales[k]
+            h_sh = h_shears[k]
 
-            kneel_with_bow = draw_articulated_bow(
-                make_crouch_body(tpl, 6),
-                shoulder=(28, 22),
-                aim_deg=72.0 + u * 16.0,
-                draw_t=0.0,
-                bow_reach=8.0,
-                bow_half_span=10.5
-            )
-            pil_kn = Image.fromarray(kneel_with_bow, mode='RGBA')
-            rotated = pil_kn.rotate(tilt_deg, resample=Image.NEAREST, center=(26, 42))
-            rot_arr = np.array(rotated, dtype=np.uint8)
-
-            ys, xs = np.where(rot_arr[:, :, 3] > 0)
-            max_y = ys.max() if len(ys) > 0 else 48
-            drop_y = 48 - max_y
-            shift_x = int(round(u * 4.0))
-
+            crouch6 = make_crouch_body(tpl, 6)
             frame = np.zeros((52, 52, 4), dtype=np.uint8)
-            for y in range(52):
-                for x in range(52):
-                    if rot_arr[y, x, 3] > 0:
-                        ny = max(2, min(49, y + drop_y))
-                        nx = max(2, min(49, x + shift_x))
-                        frame[ny, nx] = rot_arr[y, x]
+            for sy in range(8, 50):
+                h_above = max(0, 48 - sy)
+                ny = max(18, min(46, 46 - int(round(h_above * v_sc))))
+                for sx in range(2, 46):
+                    if crouch6[sy, sx, 3] > 0:
+                        dx_s = int(round(h_above * h_sh)) if sx >= 15 else int(round(h_above * h_sh * 0.42))
+                        nx = max(3, min(46, sx + dx_s))
+                        frame[ny, nx] = crouch6[sy, sx]
+                        if ny + 1 <= 46 and frame[ny + 1, nx, 3] == 0:
+                            frame[ny + 1, nx] = crouch6[sy, sx]
 
-            frame = fill_layer_pinholes(frame, require_3_neighbors=False)
-            frame = add_outline_to_layer(frame)
+            # On F22..F23 (k=4..5), blend in the grounded horizontal fallen cloak/body contours at y=36..46
+            if k >= 4:
+                fall_anchored = shift_layer(tpl['fall'], 0, -2 if k == 4 else -1)
+                for fy in range(35, 48):
+                    for fx in range(2, 48):
+                        if fall_anchored[fy, fx, 3] > 0 and frame[fy, fx, 3] == 0:
+                            frame[min(46, fy), fx] = fall_anchored[fy, fx]
+
+            frame = fill_layer_pinholes(frame, x0=2, x1=48, y0=18, y1=47, require_3_neighbors=False)
+
+            # Lower her Golden Elven Greatbow onto the floor in front of her (y=42..46, x=28..45)
+            bow_y = min(46, 41 + k)
+            bow_floor = np.zeros((52, 52, 4), dtype=np.uint8)
+            draw_line_px(bow_floor, 29, min(46, bow_y + 1), 37, max(38, bow_y - 1), GOLD_MID)
+            draw_line_px(bow_floor, 37, max(38, bow_y - 1), 45, min(46, bow_y + 1), GOLD_MID)
+            draw_line_px(bow_floor, 30, bow_y, 44, bow_y, WOOD_DARK)
+            set_px(bow_floor, 37, max(38, bow_y - 1), EMERALD_BRIGHT if k <= 2 else EMERALD_MID)
+            frame = composite_over(frame, bow_floor)
             frames.append(frame)
 
         else:
+            # F24..F29: Fallen ranger pose anchored at y = 46..47 with golden bow resting on the floor
             k = f - 24
-            frame = tpl['fall'].copy()
-            if k == 0:
-                frame = shift_layer(frame, 0, -1)
+            frame = shift_layer(tpl['fall'], 0, -2 if k == 0 else -1)
 
             bow_floor = np.zeros((52, 52, 4), dtype=np.uint8)
-            draw_line_px(bow_floor, 30, 47, 38, 45, GOLD_MID)
-            draw_line_px(bow_floor, 38, 45, 46, 47, GOLD_MID)
-            draw_line_px(bow_floor, 31, 46, 45, 46, WOOD_DARK)
+            draw_line_px(bow_floor, 30, 46, 38, 44, GOLD_MID)
+            draw_line_px(bow_floor, 38, 44, 46, 46, GOLD_MID)
+            draw_line_px(bow_floor, 31, 45, 45, 45, WOOD_DARK)
             gem_col = EMERALD_BRIGHT if k <= 1 else (EMERALD_MID if k <= 3 else EMERALD_DEEP)
-            set_px(bow_floor, 38, 45, gem_col)
+            set_px(bow_floor, 38, 44, gem_col)
+            # Fading emerald spirit-mote drifting along the fallen bow so every frame F24..F29 is unique
+            set_px(bow_floor, 35 + k, 43 - (k % 2), STAR_GOLD if k <= 1 else EMERALD_MID)
             bow_floor = add_outline_to_layer(bow_floor)
             frame = composite_over(frame, bow_floor)
             frames.append(frame)
@@ -1775,7 +1883,7 @@ def main():
     for r_idx, (r_name, r_frames) in enumerate(rows):
         assert len(r_frames) == 30, f'{r_name} has {len(r_frames)} frames instead of 30'
         for c_idx in range(30):
-            r_frames[c_idx] = ensure_safe_cell(r_frames[c_idx], margin=1)
+            r_frames[c_idx] = ensure_safe_cell(r_frames[c_idx], margin=2)
         adj_diffs = sum(1 for i in range(29) if np.any(r_frames[i] != r_frames[i + 1]))
         print(f'{r_name:52s}: 30 frames generated, {adj_diffs}/29 adjacent transitions distinct')
         for c_idx, arr in enumerate(r_frames):
