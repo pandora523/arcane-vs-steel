@@ -680,6 +680,46 @@ def build_row4_valhalla_crescent_starcross(f):
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)
 
 
+def apply_pass11_star_mote_polish(cell_img, row_idx, f):
+    """
+    Pass #11 HD-2D Specular Star-Mote & Aura Polish:
+    Adds orbiting 4-point specular star glints (3x3 white core + themed 1px rays,
+    strictly inside [16..191]) that revolve smoothly with frame index f (0..29).
+    """
+    px = cell_img.load()
+    phase = (f / 30.0) * math.pi * 2.0
+    for m_idx in range(3):
+        ang = phase + m_idx * (math.pi * 2.0 / 3.0) + row_idx * 0.45
+        rx = 60.0 + 8.0 * math.sin(phase * 2.0 + m_idx * 1.7 + row_idx)
+        ry = 56.0 + 8.0 * math.cos(phase * 2.0 + m_idx * 1.3 + row_idx)
+        cx = max(24, min(183, int(round(104.0 + math.cos(ang) * rx))))
+        cy = max(24, min(183, int(round(104.0 + math.sin(ang) * ry))))
+        ray_col = C_GOLD_LIGHT if (m_idx + row_idx) % 2 == 0 else C_ROSE_FLAME
+        ray_len = 5 + ((f + m_idx) % 3)
+
+        for dy in range(-2, 3):
+            for dx in range(-2, 3):
+                if abs(dx) == 2 or abs(dy) == 2:
+                    x, y = cx + dx, cy + dy
+                    if 16 <= x <= 191 and 16 <= y <= 191 and px[x, y][3] == 0:
+                        px[x, y] = C_RUBY_AURA
+
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                x, y = cx + dx, cy + dy
+                if 16 <= x <= 191 and 16 <= y <= 191:
+                    px[x, y] = C_WHITE
+
+        for d in range(2, ray_len + 1):
+            c_step = C_WHITE if d == 2 else ray_col
+            for dx, dy in ((-d, 0), (d, 0), (0, -d), (0, d)):
+                x, y = cx + dx, cy + dy
+                if 16 <= x <= 191 and 16 <= y <= 191:
+                    px[x, y] = c_step
+
+    return cell_img
+
+
 def main():
     sheet_w = COLS * CELL  # 6240
     sheet_h = ROWS * CELL  # 1040
@@ -695,22 +735,21 @@ def main():
 
     top_clips = bot_clips = left_clips = right_clips = 0
     for row_idx, (label, fn) in enumerate(builders):
-        row_frames_52 = []
+        row_frames_208 = []
         for col_idx in range(COLS):
-            cell_img = fn(col_idx)
-            # Audit logical 52x52 boundary safety (strictly inside 2 <= x <= 49, 2 <= y <= 49)
-            arr52 = np.array(cell_img.resize((LOGICAL, LOGICAL), Image.Resampling.NEAREST), dtype=np.uint8)
-            row_frames_52.append(arr52)
-            if np.any(arr52[:2, :, 3] > 0):
+            cell_img = apply_pass11_star_mote_polish(fn(col_idx), row_idx, col_idx)
+            arr208 = np.array(cell_img, dtype=np.uint8)
+            row_frames_208.append(arr208)
+            if np.any(arr208[:8, :, 3] > 0):
                 top_clips += 1
-            if np.any(arr52[50:, :, 3] > 0):
+            if np.any(arr208[200:, :, 3] > 0):
                 bot_clips += 1
-            if np.any(arr52[:, :2, 3] > 0):
+            if np.any(arr208[:, :8, 3] > 0):
                 left_clips += 1
-            if np.any(arr52[:, 50:, 3] > 0):
+            if np.any(arr208[:, 200:, 3] > 0):
                 right_clips += 1
             sheet.paste(cell_img, (col_idx * CELL, row_idx * CELL))
-        adj_diffs = sum(1 for i in range(29) if np.any(row_frames_52[i] != row_frames_52[i + 1]))
+        adj_diffs = sum(1 for i in range(29) if np.any(row_frames_208[i] != row_frames_208[i + 1]))
         print(f"{label:68s}: 30 frames, {adj_diffs}/29 adjacent transitions distinct")
 
     print(

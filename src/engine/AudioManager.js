@@ -163,9 +163,21 @@ export class AudioManager {
     return this.enabled;
   }
 
-  play(name, worldX = null) {
+  play(rawName, worldX = null) {
     if (!this.enabled || !this.ctx) return;
     if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+
+    const aliasMap = {
+      holy_spear: 'holy_smite',
+      dash_whoosh: 'storm_leap',
+      parry_clang: 'reflect',
+      raijin_slash: 'blade_wave',
+      dragon_dive: 'earthshatter',
+      death_titan: 'death_warrior',
+      death_ronin: 'death_warrior',
+      death_valkyrie: 'death_priestess'
+    };
+    const name = aliasMap[rawName] || rawName;
 
     const now = performance.now();
 

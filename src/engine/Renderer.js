@@ -2052,16 +2052,18 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 2. Clean Top-Center Overdrive Awakening Callout (Tucked cleanly under the VS Diamond — Zero Wireframe Shapes, Zero Screen Smudge!)
+    // 2. Clean Top-Center Overdrive Awakening Callout with Circular Hero Medallion Portrait (Tucked cleanly under the VS Diamond!)
     if (this.cutInTimer > 0) {
       const p = 1 - this.cutInTimer / (this.cutInMaxTimer || 1.05);
       const alpha = p < 0.07 ? p / 0.07 : p > 0.80 ? (1 - p) / 0.20 : 1;
       const slamScale = 1 + Math.max(0, 1 - p / 0.12) * 0.24;
       const cx = Math.round(w * 0.5);
       const cy = this.isMobile ? 64 : 92;
-      const rx = this.isMobile ? 220 : 340;
-      const ry = this.isMobile ? 28 : 38;
+      const rx = this.isMobile ? 235 : 365;
+      const ry = this.isMobile ? 30 : 40;
       const elemCol = this.cutInColor || '#38bdf8';
+      const assets = PixelForge.initAssets();
+      const cutPort = assets[this.cutInHeroId || 'warrior']?.portrait;
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
@@ -2072,8 +2074,8 @@ export class Renderer {
       ctx.save();
       ctx.scale(rx, ry);
       const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
-      veil.addColorStop(0, 'rgba(3, 6, 15, 0.86)');
-      veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.48)');
+      veil.addColorStop(0, 'rgba(3, 6, 15, 0.88)');
+      veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.52)');
       veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
       ctx.fillStyle = veil;
       ctx.beginPath();
@@ -2082,33 +2084,57 @@ export class Renderer {
       ctx.restore();
 
       // Razor-thin 2px tapered elemental divider glint
-      const lineG = ctx.createLinearGradient(-rx * 0.72, 0, rx * 0.72, 0);
+      const lineG = ctx.createLinearGradient(-rx * 0.76, 0, rx * 0.76, 0);
       lineG.addColorStop(0, 'rgba(255, 255, 255, 0)');
       lineG.addColorStop(0.28, elemCol);
       lineG.addColorStop(0.5, '#ffffff');
       lineG.addColorStop(0.72, elemCol);
       lineG.addColorStop(1, 'rgba(255, 255, 255, 0)');
       ctx.fillStyle = lineG;
-      ctx.fillRect(-rx * 0.72, -3, rx * 1.44, 2);
+      ctx.fillRect(-rx * 0.76, -3, rx * 1.52, 2);
 
+      // Circular Hero Portrait Medallion on the left of the Cut-In Callout
+      const pR = this.isMobile ? 18 : 24;
+      const pCx = -rx * 0.56;
+      const pCy = 2;
+      if (cutPort && cutPort.complete && cutPort.naturalWidth) {
+        ctx.save();
+        const pGlow = ctx.createRadialGradient(pCx, pCy, pR * 0.35, pCx, pCy, pR * 1.32);
+        pGlow.addColorStop(0, '#fde047');
+        pGlow.addColorStop(0.65, elemCol);
+        pGlow.addColorStop(1, 'rgba(0, 0, 0, 0)');
+        ctx.fillStyle = pGlow;
+        ctx.beginPath();
+        ctx.arc(pCx, pCy, pR * 1.32, 0, Math.PI * 2);
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.arc(pCx, pCy, pR, 0, Math.PI * 2);
+        ctx.clip();
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(cutPort, pCx - pR, pCy - pR, pR * 2, pR * 2);
+        ctx.restore();
+      }
+
+      const textShiftX = cutPort ? Math.round(pR * 0.55) : 0;
       ctx.textAlign = 'center';
       ctx.font = `${this.isMobile ? 7 : 10}px "Press Start 2P", monospace`;
       const eyebrow = `★ ${(this.cutInName || 'CHAMPION').toUpperCase()} • OVERDRIVE ART ★`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(eyebrow, 2, -9);
-      ctx.fillText(eyebrow, -2, -9);
+      ctx.fillText(eyebrow, textShiftX + 2, -9);
+      ctx.fillText(eyebrow, textShiftX - 2, -9);
       ctx.fillStyle = '#fde047';
-      ctx.fillText(eyebrow, 0, -11);
+      ctx.fillText(eyebrow, textShiftX, -11);
 
       ctx.font = `${this.isMobile ? 12 : 19}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(this.cutInUltName, 3, 21);
-      ctx.fillText(this.cutInUltName, -2, 20);
-      ctx.fillText(this.cutInUltName, 0, 22);
+      ctx.fillText(this.cutInUltName, textShiftX + 3, 21);
+      ctx.fillText(this.cutInUltName, textShiftX - 2, 20);
+      ctx.fillText(this.cutInUltName, textShiftX, 22);
       ctx.fillStyle = elemCol;
-      ctx.fillText(this.cutInUltName, 2, 19);
+      ctx.fillText(this.cutInUltName, textShiftX + 2, 19);
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(this.cutInUltName, 0, 18);
+      ctx.fillText(this.cutInUltName, textShiftX, 18);
 
       ctx.restore();
     }
@@ -2227,7 +2253,11 @@ export class Renderer {
                 ? this.glowGold
                 : l.colorType === 'teal'
                   ? this.glowTeal
-                  : this.glowOrange;
+                  : l.colorType === 'indigo'
+                    ? this.glowIndigo
+                    : l.colorType === 'crimson'
+                      ? this.glowCrimson
+                      : this.glowOrange;
       ctx.globalAlpha = Math.min(0.38, 0.28 * atten * l.intensity);
       ctx.drawImage(tex, l.x - rx, gy + 2 - ry, rx * 2, ry * 2);
     }

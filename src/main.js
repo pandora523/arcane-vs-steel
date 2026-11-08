@@ -1,16 +1,16 @@
-import { Renderer } from './engine/Renderer.js?v=30fps16';
-import { VFXManager } from './engine/VFXManager.js?v=30fps16';
-import { PixelForge } from './engine/PixelForge.js?v=30fps16';
-import { AudioManager } from './engine/AudioManager.js?v=30fps16';
-import { Warrior } from './entities/Warrior.js?v=30fps16';
-import { FireMage } from './entities/FireMage.js?v=30fps16';
-import { Archer } from './entities/Archer.js?v=30fps16';
-import { Priestess } from './entities/Priestess.js?v=30fps16';
-import { Reaper } from './entities/Reaper.js?v=30fps16';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps16';
-import { Titan } from './entities/Titan.js?v=30fps16';
-import { Ronin } from './entities/Ronin.js?v=30fps16';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps16';
+import { Renderer } from './engine/Renderer.js?v=30fps17';
+import { VFXManager } from './engine/VFXManager.js?v=30fps17';
+import { PixelForge } from './engine/PixelForge.js?v=30fps17';
+import { AudioManager } from './engine/AudioManager.js?v=30fps17';
+import { Warrior } from './entities/Warrior.js?v=30fps17';
+import { FireMage } from './entities/FireMage.js?v=30fps17';
+import { Archer } from './entities/Archer.js?v=30fps17';
+import { Priestess } from './entities/Priestess.js?v=30fps17';
+import { Reaper } from './entities/Reaper.js?v=30fps17';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps17';
+import { Titan } from './entities/Titan.js?v=30fps17';
+import { Ronin } from './entities/Ronin.js?v=30fps17';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps17';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -1178,30 +1178,37 @@ class Game {
       ctx.drawImage(port, 0, 0, canvas.width, canvas.height);
     });
 
-    const drawAnimatedHeroOnStage = (sctx, heroKey, flipX, destX, destY, destSize, phaseOffset = 0, alpha = 1) => {
+    const drawAnimatedHeroOnStage = (sctx, heroKey, flipX, destX, destY, destSize, phaseOffset = 0, alpha = 1, drawBadge = false) => {
       const sheet = assets[heroKey]?.sheet;
+      const cfg = CHAMPION_ROSTER[heroKey];
       if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
       const cell = 208;
       const cols = Math.max(1, Math.round(sheet.naturalWidth / cell));
       let col = 0;
       let row = 0;
+      let stateTag = 'IDLE';
       if (cols === 30) {
         const cycle = (t + phaseOffset + (flipX ? 1.4 : 0)) % 6.0;
         if (cycle < 1.8) {
           row = 0;
           col = Math.floor((t + phaseOffset) * 24) % 30;
+          stateTag = 'IDLE • 30FPS';
         } else if (cycle < 2.8) {
           row = 2;
           col = Math.min(29, Math.floor(((cycle - 1.8) / 1.0) * 30));
+          stateTag = 'ATTACK • 30FPS';
         } else if (cycle < 3.8) {
           row = 7;
           col = Math.min(29, Math.floor(((cycle - 2.8) / 1.0) * 30));
+          stateTag = 'SKILL • 30FPS';
         } else if (cycle < 4.8) {
           row = 8;
           col = Math.min(29, Math.floor(((cycle - 3.8) / 1.0) * 30));
+          stateTag = '★ OVERDRIVE ULT';
         } else {
           row = 1;
           col = Math.floor((t + phaseOffset) * 24) % 30;
+          stateTag = 'STRIDE • 30FPS';
         }
       } else {
         let frameIdx = Math.floor((t + phaseOffset) * 6.5) % 8;
@@ -1218,6 +1225,27 @@ class Game {
           ? Math.round(Math.sin((t + phaseOffset) * 3.2) * 2) * 2
           : 0;
 
+      // Grounded HD-2D Elemental Pedestal Rim & Rising Embers
+      const primaryCol = cfg?.color || '#38bdf8';
+      const footCx = Math.round(destX + destSize * 0.5);
+      const footY = Math.min(204, Math.round(destY + destSize * 0.91));
+      sctx.save();
+      sctx.globalAlpha = alpha * 0.72;
+      sctx.fillStyle = primaryCol;
+      sctx.fillRect(footCx - 38, footY, 76, 3);
+      sctx.fillStyle = '#ffffff';
+      sctx.fillRect(footCx - 18, footY, 36, 2);
+
+      for (let m = 0; m < 5; m++) {
+        const mLife = (t * (1.3 + m * 0.22) + phaseOffset + m * 0.41) % 1;
+        const mx = Math.round(footCx + (m - 2) * 16 + Math.sin(t * 4.5 + m) * 5);
+        const my = Math.round(footY - 4 - mLife * 54);
+        sctx.globalAlpha = alpha * (1 - mLife) * 0.85;
+        sctx.fillStyle = m % 2 === 0 ? primaryCol : '#fef08a';
+        sctx.fillRect(mx - 1, my - 1, 3, 3);
+      }
+      sctx.restore();
+
       sctx.save();
       sctx.globalAlpha = alpha;
       if (flipX) {
@@ -1228,6 +1256,18 @@ class Game {
         sctx.drawImage(sheet, col * cell, row * cell, cell, cell, destX, destY + hover, destSize, destSize);
       }
       sctx.restore();
+
+      if (drawBadge) {
+        sctx.save();
+        sctx.font = '7px "Press Start 2P", monospace';
+        sctx.textAlign = flipX ? 'right' : 'left';
+        const tx = flipX ? 264 : 8;
+        sctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
+        sctx.fillText(stateTag, tx + 1, 13);
+        sctx.fillStyle = row === 8 ? '#facc15' : primaryCol;
+        sctx.fillText(stateTag, tx, 12);
+        sctx.restore();
+      }
     };
 
     // 2. Render Live Animated Fighter Sprites & 3 Bespoke VFX Skill Icons on Left (P1) and Right (P2) Profile Panels
@@ -1253,10 +1293,10 @@ class Game {
           const frontSize = 186;
           const backX = flipX ? 112 : -4;
           const frontX = flipX ? 4 : 84;
-          drawAnimatedHeroOnStage(sctx, secondaryKey, flipX, backX, 26, backSize, 2.1, 0.92);
-          drawAnimatedHeroOnStage(sctx, primaryKey, flipX, frontX, 16, frontSize, 0, 1.0);
+          drawAnimatedHeroOnStage(sctx, secondaryKey, flipX, backX, 26, backSize, 2.1, 0.92, false);
+          drawAnimatedHeroOnStage(sctx, primaryKey, flipX, frontX, 16, frontSize, 0, 1.0, true);
         } else {
-          drawAnimatedHeroOnStage(sctx, primaryKey, flipX, 32, 0, 208, 0, 1.0);
+          drawAnimatedHeroOnStage(sctx, primaryKey, flipX, 32, 0, 208, 0, 1.0, true);
         }
       }
 

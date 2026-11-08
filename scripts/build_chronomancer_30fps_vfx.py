@@ -688,6 +688,46 @@ def build_row4_pendulum_slash_and_seal(f):
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)
 
 
+def apply_pass11_star_mote_polish(cell_img, row_idx, f):
+    """
+    Pass #11 HD-2D Specular Star-Mote & Aura Polish:
+    Adds orbiting 4-point specular star glints (3x3 white core + themed 1px rays,
+    strictly inside [16..191]) that revolve smoothly with frame index f (0..29).
+    """
+    px = cell_img.load()
+    phase = (f / 30.0) * math.pi * 2.0
+    for m_idx in range(3):
+        ang = phase + m_idx * (math.pi * 2.0 / 3.0) + row_idx * 0.45
+        rx = 60.0 + 8.0 * math.sin(phase * 2.0 + m_idx * 1.7 + row_idx)
+        ry = 56.0 + 8.0 * math.cos(phase * 2.0 + m_idx * 1.3 + row_idx)
+        cx = max(24, min(183, int(round(104.0 + math.cos(ang) * rx))))
+        cy = max(24, min(183, int(round(104.0 + math.sin(ang) * ry))))
+        ray_col = C_CYAN_BRIGHT if (m_idx + row_idx) % 2 == 0 else C_GOLD_LIGHT
+        ray_len = 5 + ((f + m_idx) % 3)
+
+        for dy in range(-2, 3):
+            for dx in range(-2, 3):
+                if abs(dx) == 2 or abs(dy) == 2:
+                    x, y = cx + dx, cy + dy
+                    if 16 <= x <= 191 and 16 <= y <= 191 and px[x, y][3] == 0:
+                        px[x, y] = C_TEAL_AURA
+
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                x, y = cx + dx, cy + dy
+                if 16 <= x <= 191 and 16 <= y <= 191:
+                    px[x, y] = C_WHITE
+
+        for d in range(2, ray_len + 1):
+            c_step = C_WHITE if d == 2 else ray_col
+            for dx, dy in ((-d, 0), (d, 0), (0, -d), (0, d)):
+                x, y = cx + dx, cy + dy
+                if 16 <= x <= 191 and 16 <= y <= 191:
+                    px[x, y] = c_step
+
+    return cell_img
+
+
 def main():
     sheet_w = COLS * CELL  # 6240
     sheet_h = ROWS * CELL  # 1040
@@ -704,7 +744,7 @@ def main():
     boundary_clips = 0
     for row_idx, (label, fn) in enumerate(builders):
         for col_idx in range(COLS):
-            cell_img = fn(col_idx)
+            cell_img = apply_pass11_star_mote_polish(fn(col_idx), row_idx, col_idx)
             # Check 208x208 cell outer 8px border (equivalent to logical 2px border 2<=x<=49, 2<=y<=49)
             c_px = cell_img.load()
             clipped = False

@@ -2287,6 +2287,96 @@ def build_row8_jump(tpl):
     return frames
 
 
+def apply_pass12_vanguard_upgrades(cell_208, r_idx, f):
+    """
+    Pass #12 Melee & Vanguard 30fps Character Sheet Refiner (Valkyrie - crimson-rose/gold):
+    1. Row 2 (AUTO_ATTACK, F14..F19) Strike Apex Impact Glint at (x = 152 + (f - 14) * 3, y = 92 + ((f * 7) % 18)).
+    2. Row 7 / Row 3 (SKILL / CROUCH, F08..F20) Grounded Cast-Surge Sigil Glow at y = 186..189, x = 76..134 + 3 rising motes.
+    3. Row 8 / Row 4 (ULTIMATE / JUMP, F03..F26) Overdrive Ascension Lightning / Aura Pillars at x = 68, 88, 122, 140.
+    All pixels strictly clamped inside [4..203] in x and y.
+    """
+    out = cell_208.copy()
+    c_white = GOLD_WHITE
+    c_prim = ROSE_FLAME
+    c_sec = GOLD_BRIGHT
+
+    def p208(x, y, col):
+        ix = int(round(x))
+        iy = int(round(y))
+        if 4 <= ix <= 203 and 4 <= iy <= 203:
+            out[iy, ix] = col
+
+    # 1. Row 2 (AUTO_ATTACK, F14..F19) Strike Apex Impact Glint
+    if r_idx == 2 and 14 <= f <= 19:
+        gx = 152 + (f - 14) * 3
+        gy = 92 + ((f * 7) % 18)
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                p208(gx + dx, gy + dy, c_white)
+        r_arm = 6 - ((f - 14) % 2)
+        for d in range(2, r_arm + 1):
+            col_ray = c_white if d <= 3 else c_prim
+            p208(gx + d, gy, col_ray)
+            p208(gx - d, gy, col_ray)
+            p208(gx, gy + d, col_ray)
+            p208(gx, gy - d, col_ray)
+            if d <= 3:
+                p208(gx + d, gy - 1, c_sec)
+                p208(gx - d, gy + 1, c_sec)
+                p208(gx - 1, gy + d, c_sec)
+                p208(gx + 1, gy - d, c_sec)
+        for dx, dy in ((-2, -2), (2, -2), (-2, 2), (2, 2)):
+            p208(gx + dx, gy + dy, c_sec)
+        e1x = gx - 6 - (f - 14)
+        e1y = gy - 4 + ((f - 14) % 3) * 2
+        e2x = gx - 11 - ((f - 14) % 3) * 2
+        e2y = gy + 4 - ((f - 14) % 2) * 2
+        for ex, ey, c_hi, c_lo in ((e1x, e1y, c_white, c_prim), (e2x, e2y, c_sec, RUBY_CORE)):
+            p208(ex, ey, c_hi)
+            p208(ex + 1, ey, c_hi)
+            p208(ex, ey + 1, c_lo)
+            p208(ex + 1, ey + 1, c_lo)
+
+    # 2. Row 7 / Row 3 (SKILL, F08..F20) Grounded Cast-Surge Sigil Glow
+    if r_idx in (3, 7) and 8 <= f <= 20:
+        for x in range(76, 135):
+            u = (x - 105.0) / 29.0
+            ay = 186 + int(round((u * u) * 2.0))
+            ay = max(186, min(188, ay))
+            col_top = c_white if (abs(x - 105) <= 10 or (x + f) % 4 == 0) else c_prim
+            col_bot = c_sec if abs(x - 105) <= 18 else RUBY_CORE
+            p208(x, ay, col_top)
+            p208(x, ay + 1, col_bot)
+        mote_xs = [86 + ((f - 8) % 3), 105 + (((f - 8) + 1) % 3) - 1, 124 - ((f - 8) % 3)]
+        for m_i, mx in enumerate(mote_xs):
+            my = (182 - ((f - 8) * 3) % 24) if m_i == 0 else (182 - (((f - 8) * 3 + m_i * 7) % 24))
+            p208(mx, my, c_white)
+            p208(mx + 1, my, c_prim)
+            p208(mx, my + 1, c_sec)
+            p208(mx + 1, my + 1, RUBY_CORE)
+            p208(mx, my + 2, AMBER_FLAME if (m_i + f) % 2 == 0 else c_prim)
+
+    # 3. Row 8 / Row 4 (ULTIMATE, F03..F26) Overdrive Ascension Lightning / Aura Pillars
+    if r_idx in (4, 8) and 3 <= f <= 26:
+        for idx, mx in enumerate((68, 88, 122, 140)):
+            my = 168 - (((f - 3) * 5 + idx * 19) % 116)
+            p208(mx, my - 2, c_prim)
+            p208(mx, my - 1, c_white)
+            p208(mx, my, c_white)
+            p208(mx - 1, my, c_prim)
+            p208(mx + 1, my, c_sec)
+            zig = 1 if (f + idx) % 2 == 0 else -1
+            p208(mx + zig, my + 1, c_prim)
+            p208(mx, my + 2, c_sec)
+            p208(mx, my + 3, RUBY_CORE if idx % 2 == 0 else AMBER_FLAME)
+
+    out[:4, :, :] = 0
+    out[204:, :, :] = 0
+    out[:, :4, :] = 0
+    out[:, 204:, :] = 0
+    return out
+
+
 def main():
     tpl = make_clean_templates()
 
@@ -2309,22 +2399,23 @@ def main():
     top_clips = bot_clips = left_clips = right_clips = 0
     for r_idx, (r_name, r_frames) in enumerate(rows):
         assert len(r_frames) == 30, f"{r_name} has {len(r_frames)} frames instead of 30"
+        cells_208 = []
         for c_idx in range(30):
             r_frames[c_idx] = ensure_safe_cell(r_frames[c_idx], margin=2)
-            arr_c = r_frames[c_idx]
-            if np.any(arr_c[:2, :, 3] > 0):
+            cell_im = Image.fromarray(r_frames[c_idx], mode="RGBA").resize((cell_px, cell_px), Image.Resampling.NEAREST)
+            cell_208 = apply_pass12_vanguard_upgrades(np.array(cell_im, dtype=np.uint8), r_idx, c_idx)
+            cells_208.append(cell_208)
+            if np.any(cell_208[:2, :, 3] > 0):
                 top_clips += 1
-            if np.any(arr_c[50:, :, 3] > 0):
+            if np.any(cell_208[206:, :, 3] > 0):
                 bot_clips += 1
-            if np.any(arr_c[:, :2, 3] > 0):
+            if np.any(cell_208[:, :2, 3] > 0):
                 left_clips += 1
-            if np.any(arr_c[:, 50:, 3] > 0):
+            if np.any(cell_208[:, 206:, 3] > 0):
                 right_clips += 1
-        adj_diffs = sum(1 for i in range(29) if np.any(r_frames[i] != r_frames[i + 1]))
+            sheet.paste(Image.fromarray(cell_208, mode="RGBA"), (c_idx * cell_px, r_idx * cell_px))
+        adj_diffs = sum(1 for i in range(29) if np.any(cells_208[i] != cells_208[i + 1]))
         print(f"{r_name:62s}: 30 frames generated, {adj_diffs}/29 adjacent transitions distinct")
-        for c_idx, arr in enumerate(r_frames):
-            cell_im = Image.fromarray(arr, mode="RGBA").resize((cell_px, cell_px), Image.Resampling.NEAREST)
-            sheet.paste(cell_im, (c_idx * cell_px, r_idx * cell_px))
 
     print(f"Boundary clip audit across 270 frames: TOP={top_clips}, BOT={bot_clips}, LEFT={left_clips}, RIGHT={right_clips}")
     out_path = "/home/antigravity/assets/sprites/valkyrie_sheet.png"

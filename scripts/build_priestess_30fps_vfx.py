@@ -929,6 +929,46 @@ def save_vfx_contact_sheet(all_rows, wings_sheet):
     print(f"Saved contact sheet: {out_debug} ({contact.size[0]}x{contact.size[1]})")
 
 
+def apply_pass11_star_mote_polish(cell_img, row_idx, f):
+    """
+    Pass #11 HD-2D Specular Star-Mote & Aura Polish:
+    Adds orbiting 4-point specular star glints (3x3 white core + themed 1px rays,
+    strictly inside [16..191]) that revolve smoothly with frame index f (0..29).
+    """
+    px = cell_img.load()
+    phase = (f / 30.0) * math.pi * 2.0
+    for m_idx in range(3):
+        ang = phase + m_idx * (math.pi * 2.0 / 3.0) + row_idx * 0.45
+        rx = 60.0 + 8.0 * math.sin(phase * 2.0 + m_idx * 1.7 + row_idx)
+        ry = 56.0 + 8.0 * math.cos(phase * 2.0 + m_idx * 1.3 + row_idx)
+        cx = max(24, min(183, int(round(104.0 + math.cos(ang) * rx))))
+        cy = max(24, min(183, int(round(104.0 + math.sin(ang) * ry))))
+        ray_col = C_GOLD_BRIGHT if (m_idx + row_idx) % 2 == 0 else C_ROSE_BRIGHT
+        ray_len = 5 + ((f + m_idx) % 3)
+
+        for dy in range(-2, 3):
+            for dx in range(-2, 3):
+                if abs(dx) == 2 or abs(dy) == 2:
+                    x, y = cx + dx, cy + dy
+                    if 16 <= x <= 191 and 16 <= y <= 191 and px[x, y][3] == 0:
+                        px[x, y] = C_GOLD_GLOW
+
+        for dy in (-1, 0, 1):
+            for dx in (-1, 0, 1):
+                x, y = cx + dx, cy + dy
+                if 16 <= x <= 191 and 16 <= y <= 191:
+                    px[x, y] = (255, 255, 255, 255)
+
+        for d in range(2, ray_len + 1):
+            c_step = (255, 255, 255, 255) if d == 2 else ray_col
+            for dx, dy in ((-d, 0), (d, 0), (0, -d), (0, d)):
+                x, y = cx + dx, cy + dy
+                if 16 <= x <= 191 and 16 <= y <= 191:
+                    px[x, y] = c_step
+
+    return cell_img
+
+
 def main():
     all_rows = [
         build_row0_holy_light(),
@@ -942,21 +982,25 @@ def main():
     boundary_clips = 0
     for r_idx, r_frames in enumerate(all_rows):
         diffs = 0
+        prev_arr208 = None
         for c_idx, frame_arr in enumerate(r_frames):
-            if c_idx > 0 and not np.array_equal(r_frames[c_idx - 1], frame_arr):
-                diffs += 1
-            # Verify 2 <= x <= 49, 2 <= y <= 49 (no non-zero alpha on outer 2px border)
-            alpha = frame_arr[:, :, 3]
-            if (
-                np.any(alpha[:2, :] > 0)
-                or np.any(alpha[50:, :] > 0)
-                or np.any(alpha[:, :2] > 0)
-                or np.any(alpha[:, 50:] > 0)
-            ):
-                boundary_clips += 1
             cell_img = Image.fromarray(frame_arr, mode="RGBA").resize(
                 (CELL, CELL), resample=Image.Resampling.NEAREST
             )
+            cell_img = apply_pass11_star_mote_polish(cell_img, r_idx, c_idx)
+            arr208 = np.array(cell_img, dtype=np.uint8)
+            if prev_arr208 is not None and not np.array_equal(prev_arr208, arr208):
+                diffs += 1
+            prev_arr208 = arr208
+            # Verify 2px outer border (and 8px logical border) is 100% transparent
+            alpha = arr208[:, :, 3]
+            if (
+                np.any(alpha[:8, :] > 0)
+                or np.any(alpha[200:, :] > 0)
+                or np.any(alpha[:, :8] > 0)
+                or np.any(alpha[:, 200:] > 0)
+            ):
+                boundary_clips += 1
             vfx_sheet.paste(cell_img, (c_idx * CELL, r_idx * CELL))
         print(f"VFX Row {r_idx}: {diffs}/29 distinct adjacent frame transitions")
 

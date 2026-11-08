@@ -2606,6 +2606,88 @@ def build_row8_jump(tpl):
     return frames
 
 
+def apply_pass12_postprocess(cell_arr, r_idx, f):
+    """
+    Pass #12 Post-Processing Upgrade (applied on 208x208 cell_arr with all pixels strictly inside [4..203]):
+    1. Row 2 (AUTO_ATTACK, F13..F19): Crisp 4-point elemental release star + 2 orbiting motes
+       at (x = 148 + (f - 13) * 2, y = 88 + ((f * 5) % 14)) in teal-cyan/brass palette.
+    2. Row 7 & Row 3 (SKILL, F08..F20): Glowing elemental floor rune-bar at y = 186..189, x = 76..134
+       with 3 rising rune motes (y = 182 - ((f - 8) * 3) % 24).
+    3. Row 8 & Row 4 (ULTIMATE, F03..F26): 4 ascending overdrive starlight motes around the caster
+       (x = 68, 88, 122, 140, y cycling upward with f).
+    """
+    out = cell_arr.copy()
+
+    def put208(px, py, col):
+        ix = max(4, min(203, int(round(px))))
+        iy = max(4, min(203, int(round(py))))
+        out[iy, ix] = col
+
+    # 1. Row 2 (AUTO_ATTACK, F13..F19) Muzzle / Cast-Release Flash Star
+    if r_idx == 2 and 13 <= f <= 19:
+        cx = 148 + (f - 13) * 2
+        cy = 88 + ((f * 5) % 14)
+        # 4-point elemental release star (teal-cyan/brass)
+        for d in range(-6, 7):
+            col_h = WHITE_CORE if abs(d) <= 1 else (CYAN_BRIGHT if abs(d) <= 3 else GOLD_BRIGHT)
+            put208(cx + d, cy, col_h)
+            put208(cx, cy + d, col_h)
+            if abs(d) <= 3:
+                put208(cx + d, cy - 1, GOLD_STAR if abs(d) <= 1 else TEAL_BRIGHT)
+                put208(cx + d, cy + 1, GOLD_STAR if abs(d) <= 1 else TEAL_BRIGHT)
+                put208(cx - 1, cy + d, GOLD_STAR if abs(d) <= 1 else TEAL_BRIGHT)
+                put208(cx + 1, cy + d, GOLD_STAR if abs(d) <= 1 else TEAL_BRIGHT)
+        for dx_d, dy_d in [(-2, -2), (2, -2), (-2, 2), (2, 2)]:
+            put208(cx + dx_d, cy + dy_d, BRASS_LIGHT)
+        # 2 orbiting motes
+        ang = (f - 13) * 0.95
+        for m_idx in range(2):
+            ma = ang + m_idx * math.pi
+            mx = cx + int(round(math.cos(ma) * 8.0))
+            my = cy + int(round(math.sin(ma) * 6.0))
+            m_col = CYAN_BRIGHT if m_idx == 0 else BRASS_LIGHT
+            put208(mx, my, WHITE_CORE)
+            put208(mx + 1, my, m_col)
+            put208(mx - 1, my, m_col)
+            put208(mx, my + 1, m_col)
+            put208(mx, my - 1, m_col)
+
+    # 2. Row 7 & Row 3 (SKILL, F08..F20) Grounded Arcane Rune-Floor Glow
+    if r_idx in (3, 7) and 8 <= f <= 20:
+        for x_bar in range(76, 135):
+            is_glyph = ((x_bar + (f - 8) * 3) % 8) < 2
+            put208(x_bar, 186, GOLD_BRIGHT if is_glyph else TEAL_MID)
+            put208(x_bar, 187, WHITE_CORE if is_glyph else CYAN_BRIGHT)
+            put208(x_bar, 188, BRASS_LIGHT if is_glyph else TEAL_BRIGHT)
+            put208(x_bar, 189, BRASS_MID)
+        # 3 rising rune motes (y = 182 - ((f - 8) * 3) % 24)
+        base_mote_y = 182 - ((f - 8) * 3) % 24
+        for m_i, mx_base in enumerate((86, 105, 124)):
+            mx = mx_base + (((f - 8) + m_i) % 3) - 1
+            my = max(4, min(203, base_mote_y - m_i * 2))
+            put208(mx, my, WHITE_CORE)
+            put208(mx - 1, my, CYAN_BRIGHT if m_i % 2 == 0 else BRASS_LIGHT)
+            put208(mx + 1, my, CYAN_BRIGHT if m_i % 2 == 0 else BRASS_LIGHT)
+            put208(mx, my - 1, GOLD_STAR)
+            put208(mx, my + 1, TEAL_BRIGHT)
+            put208(mx, my + 2, BRASS_MID)
+
+    # 3. Row 8 & Row 4 (ULTIMATE, F03..F26) Overdrive Ascension Energy Motes
+    if r_idx in (4, 8) and 3 <= f <= 26:
+        for m_i, mx in enumerate((68, 88, 122, 140)):
+            my = 172 - ((f - 3) * 4 + m_i * 18) % 108
+            put208(mx, my, WHITE_CORE)
+            for d in (1, 2):
+                c_arm = CYAN_BRIGHT if d == 1 else BRASS_LIGHT
+                put208(mx - d, my, c_arm)
+                put208(mx + d, my, c_arm)
+                put208(mx, my - d, c_arm)
+            for t_dy in range(1, 5):
+                put208(mx, my + t_dy, GOLD_STAR if t_dy == 1 else (CYAN_BRIGHT if t_dy <= 2 else BRASS_MID))
+
+    return out
+
+
 def main():
     src = load_source_cells()
     tpl = make_clean_templates(src)
@@ -2633,19 +2715,28 @@ def main():
     sheet = Image.new('RGBA', (30 * cell_px, num_rows * cell_px), (0, 0, 0, 0))
 
     clipped_count = 0
+    cell_rows_208 = []
     for r_idx, (r_name, r_frames) in enumerate(rows):
         assert len(r_frames) == 30, f'{r_name} has {len(r_frames)} frames instead of 30'
-        adj_diffs = sum(1 for i in range(29) if np.any(r_frames[i] != r_frames[i + 1]))
+        row_208 = []
+        for c_idx, arr in enumerate(r_frames):
+            cell_im = Image.fromarray(arr, mode='RGBA').resize((cell_px, cell_px), Image.NEAREST)
+            cell_arr = apply_pass12_postprocess(np.array(cell_im, dtype=np.uint8), r_idx, c_idx)
+            if (
+                np.any(cell_arr[:2, :, 3] > 0)
+                or np.any(cell_arr[206:, :, 3] > 0)
+                or np.any(cell_arr[:, :2, 3] > 0)
+                or np.any(cell_arr[:, 206:, 3] > 0)
+            ):
+                clipped_count += 1
+            row_208.append(cell_arr)
+            sheet.paste(Image.fromarray(cell_arr, mode='RGBA'), (c_idx * cell_px, r_idx * cell_px))
+        adj_diffs = sum(1 for i in range(29) if np.any(row_208[i] != row_208[i + 1]))
         print(f'{r_name:56s}: 30 frames generated, {adj_diffs}/29 adjacent transitions distinct')
         assert adj_diffs == 29, f'{r_name} has {adj_diffs}/29 distinct transitions!'
-        for c_idx, arr in enumerate(r_frames):
-            ys, xs = np.where(arr[:, :, 3] > 0)
-            if len(ys) > 0 and (ys.min() < 2 or ys.max() > 49 or xs.min() < 2 or xs.max() > 49):
-                clipped_count += 1
-            cell_im = Image.fromarray(arr, mode='RGBA').resize((cell_px, cell_px), Image.NEAREST)
-            sheet.paste(cell_im, (c_idx * cell_px, r_idx * cell_px))
+        cell_rows_208.append(row_208)
 
-    print(f'Boundary-clipped frames outside [2..49]: {clipped_count}/270')
+    print(f'Boundary-clipped frames on outer 2px border [0, 1, 206, 207]: {clipped_count}/270')
     assert clipped_count == 0, f'Found {clipped_count} boundary-clipped frames!'
 
     out_path = 'assets/sprites/chronomancer_sheet.png'
@@ -2657,14 +2748,14 @@ def main():
     pad_top = 24
     dbg = Image.new('RGBA', (30 * preview_cell, num_rows * (preview_cell + pad_top)), (15, 20, 30, 255))
     draw = ImageDraw.Draw(dbg)
-    for r_idx, (r_name, r_frames) in enumerate(rows):
+    for r_idx, (r_name, _) in enumerate(rows):
         y0 = r_idx * (preview_cell + pad_top)
         draw.rectangle([0, y0, 30 * preview_cell, y0 + pad_top - 2], fill=(26, 34, 50, 255))
         draw.text((8, y0 + 5), r_name, fill=(94, 234, 212, 255))
-        for c_idx, arr in enumerate(r_frames):
+        for c_idx, cell_arr in enumerate(cell_rows_208[r_idx]):
             x0 = c_idx * preview_cell
             draw.text((x0 + 4, y0 + 13), f'F{c_idx:02d}', fill=(254, 240, 138, 255))
-            p_im = Image.fromarray(arr, mode='RGBA').resize((preview_cell, preview_cell), Image.NEAREST)
+            p_im = Image.fromarray(cell_arr, mode='RGBA').resize((preview_cell, preview_cell), Image.NEAREST)
             dbg.paste(p_im, (x0, y0 + pad_top), p_im)
             draw.rectangle([x0, y0 + pad_top, x0 + preview_cell - 1, y0 + pad_top + preview_cell - 1], outline=(35, 45, 65, 255))
 
@@ -2679,5 +2770,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 

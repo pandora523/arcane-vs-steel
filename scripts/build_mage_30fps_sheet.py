@@ -2609,6 +2609,88 @@ gen_row7_crouch = build_row7_crouch
 gen_row8_jump = build_row8_jump
 
 
+def apply_pass12_postprocess(cell_arr, r_idx, f):
+    """
+    Pass #12 Post-Processing Upgrade (applied on 208x208 cell_arr with all pixels strictly inside [4..203]):
+    1. Row 2 (AUTO_ATTACK, F13..F19): Crisp 4-point elemental release star + 2 orbiting motes
+       at (x = 148 + (f - 13) * 2, y = 88 + ((f * 5) % 14)) in solar-orange/gold palette.
+    2. Row 7 & Row 3 (SKILL, F08..F20): Glowing elemental floor rune-bar at y = 186..189, x = 76..134
+       with 3 rising rune motes (y = 182 - ((f - 8) * 3) % 24).
+    3. Row 8 & Row 4 (ULTIMATE, F03..F26): 4 ascending overdrive starlight motes around the caster
+       (x = 68, 88, 122, 140, y cycling upward with f).
+    """
+    out = cell_arr.copy()
+
+    def put208(px, py, col):
+        ix = max(4, min(203, int(round(px))))
+        iy = max(4, min(203, int(round(py))))
+        out[iy, ix] = col
+
+    # 1. Row 2 (AUTO_ATTACK, F13..F19) Muzzle / Cast-Release Flash Star
+    if r_idx == 2 and 13 <= f <= 19:
+        cx = 148 + (f - 13) * 2
+        cy = 88 + ((f * 5) % 14)
+        # 4-point elemental release star (solar-orange/gold)
+        for d in range(-6, 7):
+            col_h = SOLAR_WHITE if abs(d) <= 1 else (SOLAR_YELLOW if abs(d) <= 3 else FLAME_ORANGE)
+            put208(cx + d, cy, col_h)
+            put208(cx, cy + d, col_h)
+            if abs(d) <= 3:
+                put208(cx + d, cy - 1, FLAME_GOLD if abs(d) <= 1 else FLAME_CRIMSON)
+                put208(cx + d, cy + 1, FLAME_GOLD if abs(d) <= 1 else FLAME_CRIMSON)
+                put208(cx - 1, cy + d, FLAME_GOLD if abs(d) <= 1 else FLAME_CRIMSON)
+                put208(cx + 1, cy + d, FLAME_GOLD if abs(d) <= 1 else FLAME_CRIMSON)
+        for dx_d, dy_d in [(-2, -2), (2, -2), (-2, 2), (2, 2)]:
+            put208(cx + dx_d, cy + dy_d, FLAME_GOLD)
+        # 2 orbiting motes
+        ang = (f - 13) * 0.95
+        for m_idx in range(2):
+            ma = ang + m_idx * math.pi
+            mx = cx + int(round(math.cos(ma) * 8.0))
+            my = cy + int(round(math.sin(ma) * 6.0))
+            m_col = SOLAR_YELLOW if m_idx == 0 else FLAME_ORANGE
+            put208(mx, my, SOLAR_WHITE)
+            put208(mx + 1, my, m_col)
+            put208(mx - 1, my, m_col)
+            put208(mx, my + 1, m_col)
+            put208(mx, my - 1, m_col)
+
+    # 2. Row 7 & Row 3 (SKILL, F08..F20) Grounded Arcane Rune-Floor Glow
+    if r_idx in (3, 7) and 8 <= f <= 20:
+        for x_bar in range(76, 135):
+            is_glyph = ((x_bar + (f - 8) * 3) % 8) < 2
+            put208(x_bar, 186, SOLAR_YELLOW if is_glyph else FLAME_CRIMSON)
+            put208(x_bar, 187, SOLAR_WHITE if is_glyph else FLAME_ORANGE)
+            put208(x_bar, 188, FLAME_GOLD if is_glyph else FLAME_ORANGE)
+            put208(x_bar, 189, FLAME_CRIMSON)
+        # 3 rising rune motes (y = 182 - ((f - 8) * 3) % 24)
+        base_mote_y = 182 - ((f - 8) * 3) % 24
+        for m_i, mx_base in enumerate((86, 105, 124)):
+            mx = mx_base + (((f - 8) + m_i) % 3) - 1
+            my = max(4, min(203, base_mote_y - m_i * 2))
+            put208(mx, my, SOLAR_WHITE)
+            put208(mx - 1, my, SOLAR_YELLOW if m_i % 2 == 0 else FLAME_ORANGE)
+            put208(mx + 1, my, SOLAR_YELLOW if m_i % 2 == 0 else FLAME_ORANGE)
+            put208(mx, my - 1, SOLAR_YELLOW)
+            put208(mx, my + 1, FLAME_ORANGE)
+            put208(mx, my + 2, FLAME_CRIMSON)
+
+    # 3. Row 8 & Row 4 (ULTIMATE, F03..F26) Overdrive Ascension Energy Motes
+    if r_idx in (4, 8) and 3 <= f <= 26:
+        for m_i, mx in enumerate((68, 88, 122, 140)):
+            my = 172 - ((f - 3) * 4 + m_i * 18) % 108
+            put208(mx, my, SOLAR_WHITE)
+            for d in (1, 2):
+                c_arm = SOLAR_YELLOW if d == 1 else FLAME_ORANGE
+                put208(mx - d, my, c_arm)
+                put208(mx + d, my, c_arm)
+                put208(mx, my - d, c_arm)
+            for t_dy in range(1, 5):
+                put208(mx, my + t_dy, FLAME_GOLD if t_dy == 1 else (FLAME_ORANGE if t_dy <= 2 else FLAME_CRIMSON))
+
+    return out
+
+
 def main():
     src = load_source_cells()
     tpl = make_clean_templates(src)
@@ -2630,26 +2712,31 @@ def main():
     sheet = Image.new('RGBA', (30 * cell_px, num_rows * cell_px), (0, 0, 0, 0))
 
     clipped_frames = 0
+    cell_rows_208 = []
     for r_idx, (r_name, r_frames) in enumerate(rows):
         assert len(r_frames) == 30, f'{r_name} has {len(r_frames)} frames instead of 30'
+        row_208 = []
         for c_idx in range(30):
             r_frames[c_idx] = ensure_safe_cell(r_frames[c_idx], margin=2)
-            arr = r_frames[c_idx]
-            left_edge = int(np.sum(arr[:, :2, 3] > 0))
-            right_edge = int(np.sum(arr[:, 50:, 3] > 0))
-            top_edge = int(np.sum(arr[:2, :, 3] > 0))
-            bottom_edge = int(np.sum(arr[50:, :, 3] > 0))
-            if left_edge > 0 or right_edge > 0 or top_edge > 0 or bottom_edge > 0:
+            cell_im = Image.fromarray(r_frames[c_idx], mode='RGBA').resize((cell_px, cell_px), Image.NEAREST)
+            cell_arr = apply_pass12_postprocess(np.array(cell_im, dtype=np.uint8), r_idx, c_idx)
+            # Check outer 2px border [0, 1, 206, 207] is 100% transparent
+            if (
+                np.any(cell_arr[:2, :, 3] > 0)
+                or np.any(cell_arr[206:, :, 3] > 0)
+                or np.any(cell_arr[:, :2, 3] > 0)
+                or np.any(cell_arr[:, 206:, 3] > 0)
+            ):
                 clipped_frames += 1
-        adj_diffs = sum(1 for i in range(29) if np.any(r_frames[i] != r_frames[i + 1]))
+            row_208.append(cell_arr)
+            sheet.paste(Image.fromarray(cell_arr, mode='RGBA'), (c_idx * cell_px, r_idx * cell_px))
+        adj_diffs = sum(1 for i in range(29) if np.any(row_208[i] != row_208[i + 1]))
         assert adj_diffs == 29, f'{r_name} has only {adj_diffs}/29 distinct adjacent transitions'
         print(f'{r_name:58s}: 30 frames generated, {adj_diffs}/29 adjacent transitions distinct')
-        for c_idx, arr in enumerate(r_frames):
-            cell_im = Image.fromarray(arr, mode='RGBA').resize((cell_px, cell_px), Image.NEAREST)
-            sheet.paste(cell_im, (c_idx * cell_px, r_idx * cell_px))
+        cell_rows_208.append(row_208)
 
     assert clipped_frames == 0, f'Found {clipped_frames}/270 boundary-clipped frames!'
-    print(f'Boundary verification: {clipped_frames}/270 clipped frames (all pixels strictly in 2..49)')
+    print(f'Boundary verification: {clipped_frames}/270 clipped frames on outer 2px border [0, 1, 206, 207]')
 
     sheet.save('assets/sprites/mage_sheet.png')
     print('Saved assets/sprites/mage_sheet.png:', sheet.size)
@@ -2659,14 +2746,14 @@ def main():
     pad_top = 24
     dbg = Image.new('RGBA', (30 * preview_cell, num_rows * (preview_cell + pad_top)), (15, 20, 30, 255))
     draw = ImageDraw.Draw(dbg)
-    for r_idx, (r_name, r_frames) in enumerate(rows):
+    for r_idx, (r_name, _) in enumerate(rows):
         y0 = r_idx * (preview_cell + pad_top)
         draw.rectangle([0, y0, 30 * preview_cell, y0 + pad_top - 2], fill=(28, 22, 34, 255))
         draw.text((8, y0 + 5), r_name, fill=(251, 146, 60, 255))
-        for c_idx, arr in enumerate(r_frames):
+        for c_idx, cell_arr in enumerate(cell_rows_208[r_idx]):
             x0 = c_idx * preview_cell
             draw.text((x0 + 4, y0 + 13), f'F{c_idx:02d}', fill=(254, 240, 138, 255))
-            p_im = Image.fromarray(arr, mode='RGBA').resize((preview_cell, preview_cell), Image.NEAREST)
+            p_im = Image.fromarray(cell_arr, mode='RGBA').resize((preview_cell, preview_cell), Image.NEAREST)
             dbg.paste(p_im, (x0, y0 + pad_top), p_im)
             draw.rectangle(
                 [x0, y0 + pad_top, x0 + preview_cell - 1, y0 + pad_top + preview_cell - 1],
@@ -2683,5 +2770,6 @@ def main():
 
 if __name__ == '__main__':
     main()
+
 
 
