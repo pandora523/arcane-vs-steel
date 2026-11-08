@@ -67,6 +67,78 @@ def add_outline_to_layer(layer):
     return layer.copy()
 
 
+def fill_layer_pinholes(layer, x0=1, x1=50, y0=1, y1=50, require_3_neighbors=False):
+    """
+    Fills 1px transparent pinholes/slits inside moved, waved, or rotated pixel layers
+    so movement never causes missing interior pixels or torn seams.
+    """
+    out = layer.copy()
+    alpha = layer[:, :, 3] > 0
+    for y in range(max(1, y0), min(51, y1)):
+        for x in range(max(1, x0), min(51, x1)):
+            if alpha[y, x]:
+                continue
+            up = alpha[y - 1, x]
+            dn = alpha[y + 1, x]
+            lf = alpha[y, x - 1]
+            rt = alpha[y, x + 1]
+            if (up and dn) or (lf and rt):
+                n_cnt = int(up) + int(dn) + int(lf) + int(rt)
+                if not require_3_neighbors or n_cnt >= 3:
+                    if up:
+                        out[y, x] = layer[y - 1, x]
+                    elif lf:
+                        out[y, x] = layer[y, x - 1]
+                    elif dn:
+                        out[y, x] = layer[y + 1, x]
+                    elif rt:
+                        out[y, x] = layer[y, x + 1]
+    return out
+
+
+def ensure_safe_cell(frame):
+    """
+    Guarantees zero pixels touch the 52x52 cell border (x=0, x=51, y=0, y=51) and fills
+    any 1px interior pinholes from movement.
+    """
+    out = fill_layer_pinholes(frame, 1, 50, 1, 50, require_3_neighbors=True)
+    ys, xs = np.where(out[:, :, 3] > 0)
+    if len(ys) == 0:
+        return out
+    ymin, ymax = int(ys.min()), int(ys.max())
+    xmin, xmax = int(xs.min()), int(xs.max())
+
+    dy = 0
+    if ymin < 1 and ymax < 50:
+        dy = min(1 - ymin, 50 - ymax)
+    elif ymax > 50 and ymin > 1:
+        dy = -min(ymax - 50, ymin - 1)
+
+    dx = 0
+    if xmin < 1 and xmax < 50:
+        dx = min(1 - xmin, 50 - xmax)
+    elif xmax > 50 and xmin > 1:
+        dx = -min(xmax - 50, xmin - 1)
+
+    if dx != 0 or dy != 0:
+        shifted = np.zeros_like(out)
+        for y in range(52):
+            ny = y + dy
+            if 1 <= ny <= 50:
+                for x in range(52):
+                    nx = x + dx
+                    if 1 <= nx <= 50 and out[y, x, 3] > 0:
+                        shifted[ny, nx] = out[y, x]
+        out = shifted
+
+    # Clear extreme 1px perimeter if any single stray spark remained on 0 or 51
+    out[0, :, :] = 0
+    out[51, :, :] = 0
+    out[:, 0, :] = 0
+    out[:, 51, :] = 0
+    return out
+
+
 def composite_over(base, over):
     res = base.copy()
     mask = over[:, :, 3] > 0
@@ -112,6 +184,10 @@ def make_clean_templates(src):
                 stand[y, x] = 0
             elif 22 <= y <= 28 and x >= 31:
                 stand[y, x] = 0
+    stand[0:2, :, :] = 0
+    stand[50:, :, :] = 0
+    stand[:, 0:2, :] = 0
+    stand[:, 50:, :] = 0
     stand = add_outline_to_layer(stand)
 
     # Extract Aethelgard's actual pixel-art Left (Back) Leg/Sabaton and Right (Front) Leg/Sabaton
@@ -123,7 +199,7 @@ def make_clean_templates(src):
     # Upper torso + tassets (without lower legs y >= 40) for walk/crouch/jump articulation
     stand_upper = stand.copy()
     stand_upper[40:, :, :] = 0
-    stand_upper[40:44, :10, :] = stand[40:44, :10, :]
+    stand_upper[40:44, :12, :] = stand[40:44, :12, :]
     stand_upper = add_outline_to_layer(stand_upper)
 
     # 2. Clean forward-lunging body (from lunge cell(2, 3), stripping baked-in sword)
@@ -136,6 +212,10 @@ def make_clean_templates(src):
                 lunge[y, x] = 0
             elif 22 <= y <= 29 and x >= 35:
                 lunge[y, x] = 0
+    lunge[0:2, :, :] = 0
+    lunge[50:, :, :] = 0
+    lunge[:, 0:2, :] = 0
+    lunge[:, 50:, :] = 0
     lunge = add_outline_to_layer(lunge)
 
     # 3. Clean kneeling bodies (kneel1, kneel2) with vertical planted sword on right (x >= 32) removed
@@ -147,12 +227,22 @@ def make_clean_templates(src):
             for x in range(30, 33):
                 if y <= 14 and x >= 31:
                     kn[y, x] = 0
+        # Shift up by 2px if kneeling boots/cape touch y >= 49 so DEATH/CROUCH never clip at bottom
+        ys_k, _ = np.where(kn[:, :, 3] > 0)
+        if len(ys_k) > 0 and ys_k.max() >= 49:
+            shift_up = int(ys_k.max() - 48)
+            kn_s = np.zeros_like(kn)
+            kn_s[:52 - shift_up, :] = kn[shift_up:, :]
+            kn[:, :, :] = kn_s
+        kn[:, 0:2, :] = 0
     kneel1 = add_outline_to_layer(kneel1)
     kneel2 = add_outline_to_layer(kneel2)
 
     # 4. Clean horizontal fallen body (strip floor sword at y >= 45 so we can place our single flat Runeblade cleanly)
     fall = src['fall'].copy()
     fall[45:, :, :] = 0
+    fall[:, 0:2, :] = 0
+    fall[:, 50:, :] = 0
     fall = add_outline_to_layer(fall)
 
     # 5. Clean dash body (from cell(5, 2) with high-streaming cape, stripping baked-in sword at x >= 30, y <= 28)
@@ -166,6 +256,10 @@ def make_clean_templates(src):
                 dash[y, x] = 0
             elif 23 <= y <= 28 and x >= 31:
                 dash[y, x] = 0
+    dash[0:2, :, :] = 0
+    dash[50:, :, :] = 0
+    dash[:, 0:2, :] = 0
+    dash[:, 50:, :] = 0
     dash = add_outline_to_layer(dash)
 
     return {
@@ -184,30 +278,33 @@ def make_clean_templates(src):
 def apply_cape_wave(frame, phase_rad, amplitude=1.5, vertical_flutter=0.6, is_dash=False, crimson_trim=True):
     """
     Applies a smooth 30-frame traveling wind-wave to Aethelgard's royal cape (left side of sprite)
-    without disturbing his armored torso, head, or legs.
+    without disturbing his armored torso, head, or legs, and fills all wave pinholes/seams.
     """
     out = frame.copy()
     if is_dash:
         cape_region = frame[4:36, 0:21].copy()
-        out[4:36, 0:21] = 0
+        out[4:36, 0:18] = 0
         for y in range(4, 36):
             for x in range(0, 21):
                 if cape_region[y - 4, x, 3] == 0:
                     continue
-                if y >= 28 and x >= 13:
-                    out[y, x] = cape_region[y - 4, x]
+                if (y >= 26 and x >= 12) or x >= 16:
+                    out[y, max(2, x)] = cape_region[y - 4, x]
                     continue
-                dist_from_shoulder = max(0.0, (21 - x) / 17.0)
-                dy = int(round(math.sin(phase_rad - dist_from_shoulder * 3.2) * amplitude * dist_from_shoulder))
-                dx = int(round(math.cos(phase_rad * 2.0 - dist_from_shoulder * 2.4) * 0.8 * dist_from_shoulder))
-                ny = max(2, min(44, y + dy))
-                nx = max(1, min(21, x + dx))
+                dist_from_shoulder = max(0.0, (20 - x) / 17.0)
+                dy = int(round(math.sin(phase_rad - dist_from_shoulder * 3.2) * (amplitude * 0.65) * dist_from_shoulder))
+                dx = int(round(math.cos(phase_rad * 2.0 - dist_from_shoulder * 2.4) * 0.6 * dist_from_shoulder))
+                ny = max(3, min(44, y + dy))
+                nx = max(2, min(20, x + dx))
                 out[ny, nx] = cape_region[y - 4, x]
+                if x >= 12 and out[y, x, 3] == 0:
+                    out[y, x] = cape_region[y - 4, x]
+        out = fill_layer_pinholes(out, x0=2, x1=22, y0=3, y1=45, require_3_neighbors=False)
         return add_outline_to_layer(out)
 
     cape_mask = np.zeros((52, 52), dtype=bool)
     for y in range(13, 44):
-        max_cape_x = 18 if y < 35 else 10
+        max_cape_x = 18 if y < 36 else 13
         for x in range(1, max_cape_x + 1):
             if frame[y, x, 3] > 0:
                 cape_mask[y, x] = True
@@ -217,20 +314,23 @@ def apply_cape_wave(frame, phase_rad, amplitude=1.5, vertical_flutter=0.6, is_da
 
     for y in range(13, 44):
         u = (y - 13) / 30.0
-        wave_x = math.sin(phase_rad - u * 3.5) * (amplitude * (0.25 + 0.85 * u))
-        wave_y = math.cos(phase_rad - u * 2.8) * (vertical_flutter * u)
+        wave_x = math.sin(phase_rad - u * 3.5) * (amplitude * (0.25 + 0.75 * u))
+        wave_y = math.cos(phase_rad - u * 2.8) * (vertical_flutter * 0.75 * u)
         dx = int(round(wave_x))
         dy = int(round(wave_y))
-        max_cape_x = 18 if y < 35 else 10
+        max_cape_x = 18 if y < 36 else 13
         for x in range(1, max_cape_x + 1):
             if not cape_mask[y, x]:
                 continue
-            nx = max(1, min(20, x + dx))
+            nx = max(2, min(20, x + dx))
             ny = max(13, min(46, y + dy))
             if out[ny, nx, 3] == 0:
                 out[ny, nx] = cape_pixels[y, x]
-            if dx < 0 and x >= max_cape_x - 3 and out[y, x, 3] == 0:
+            # Anchor inner seam to torso/hips so zero gap ever opens when cape waves left or vertically
+            if x >= max_cape_x - 4 and out[y, x, 3] == 0:
                 out[y, x] = cape_pixels[y, x]
+
+    out = fill_layer_pinholes(out, x0=2, x1=21, y0=12, y1=46, require_3_neighbors=False)
 
     # Subtle royal crimson-and-gold inner lining glint along the undulating cape edge
     if crimson_trim:
@@ -246,6 +346,76 @@ def apply_cape_wave(frame, phase_rad, amplitude=1.5, vertical_flutter=0.6, is_da
     return add_outline_to_layer(out)
 
 
+def solve_ik_elbow(sx, sy, hx, hy, l1=5.2, l2=5.2, bend_side=1.0):
+    """
+    2-Bone Inverse Kinematics solver returning the anatomical elbow joint (ex, ey)
+    between shoulder (sx, sy) and hand (hx, hy).
+    `bend_side = +1.0` bends the elbow naturally downward/back-left for a right-facing warrior.
+    """
+    dx = float(hx - sx)
+    dy = float(hy - sy)
+    dist = max(0.8, math.hypot(dx, dy))
+    max_reach = l1 + l2 - 0.15
+    if dist > max_reach:
+        dx *= max_reach / dist
+        dy *= max_reach / dist
+        dist = max_reach
+    ux, uy = dx / dist, dy / dist
+    px, py = -uy * bend_side, ux * bend_side
+    a = (l1 * l1 - l2 * l2 + dist * dist) / (2.0 * dist)
+    h = math.sqrt(max(0.0, l1 * l1 - a * a))
+    ex = sx + ux * a + px * h
+    ey = sy + uy * a + py * h
+    return ex, ey
+
+
+def draw_ik_armored_arm(layer, sx, sy, ex, ey, hx, hy, is_rear=False, draw_pauldron=True):
+    """
+    Draws a sculpted 2-segment armored arm (Rotating Pauldron -> Upper Arm Rerebrace ->
+    Golden Elbow Couter -> Forearm Vambrace -> Gauntlet Fist) onto `layer`.
+    """
+    if is_rear:
+        c_hi, c_mid, c_dark, c_gold = STEEL_MID, STEEL_DARK, STEEL_DEEP, GOLD_DARK
+    else:
+        c_hi, c_mid, c_dark, c_gold = STEEL_BRIGHT, STEEL_LIGHT, STEEL_DARK, GOLD_BRIGHT
+
+    # 1. Upper Arm (Shoulder -> Elbow) with 3px thickness
+    u1x, u1y = ex - sx, ey - sy
+    d1 = max(1.0, math.hypot(u1x, u1y))
+    n1x, n1y = -u1y / d1, u1x / d1
+    draw_line_px(layer, sx + n1x * 0.9, sy + n1y * 0.9, ex + n1x * 0.7, ey + n1y * 0.7, c_hi)
+    draw_line_px(layer, sx - n1x * 0.9, sy - n1y * 0.9, ex - n1x * 0.7, ey - n1y * 0.7, c_dark)
+    draw_line_px(layer, sx, sy, ex, ey, c_mid)
+
+    # 2. Forearm Vambrace (Elbow -> Hand) with 3px thickness
+    u2x, u2y = hx - ex, hy - ey
+    d2 = max(1.0, math.hypot(u2x, u2y))
+    n2x, n2y = -u2y / d2, u2x / d2
+    draw_line_px(layer, ex + n2x * 0.85, ey + n2y * 0.85, hx + n2x * 0.65, hy + n2y * 0.65, c_hi)
+    draw_line_px(layer, ex - n2x * 0.85, ey - n2y * 0.85, hx - n2x * 0.65, hy - n2y * 0.65, c_dark)
+    draw_line_px(layer, ex, ey, hx, hy, c_mid)
+
+    # 3. Articulated Shoulder Pauldron rotating with the upper arm
+    if draw_pauldron:
+        ux1, uy1 = u1x / d1, u1y / d1
+        for p_step in (-1.5, -0.5, 0.5, 1.5):
+            px_s = sx + ux1 * 1.1 + n1x * p_step
+            py_s = sy + uy1 * 1.1 + n1y * p_step
+            set_px(layer, px_s, py_s, c_gold if abs(p_step) > 1.0 else c_hi)
+            set_px(layer, sx + n1x * p_step, sy + n1y * p_step, c_mid)
+        set_px(layer, sx, sy - 1, c_gold)
+
+    # 4. Golden Elbow Couter Joint at (ex, ey)
+    set_px(layer, ex, ey, c_gold)
+    set_px(layer, ex + n1x * 0.7, ey + n1y * 0.7, c_hi)
+
+    # 5. Armored Gauntlet Fist at (hx, hy)
+    set_px(layer, hx, hy, c_hi)
+    set_px(layer, hx - (u2x / d2) * 0.9, hy - (u2y / d2) * 0.9, c_gold)
+    set_px(layer, hx + n2x * 0.7, hy + n2y * 0.7, c_mid)
+    set_px(layer, hx - n2x * 0.7, hy - n2y * 0.7, c_dark)
+
+
 def draw_runeblade(
     canvas,
     hand_x,
@@ -253,47 +423,66 @@ def draw_runeblade(
     angle_deg,
     glow_intensity=0.5,
     blade_len=21.5,
-    shoulder=(26, 19),
+    shoulder=(25, 19),
     two_handed=False,
     draw_arm=True,
     slash_arc=None,
 ):
     """
-    Renders Aethelgard's single articulated Runeblade (Armored Gauntlet + Winged Golden Crossguard +
-    Sapphire-Pommel Hilt + Fullered Frost-Cyan Greatsword Blade with glowing Nordic Runes) onto `canvas`.
+    Renders Aethelgard's single articulated Runeblade AND 2-Joint Inverse-Kinematics (IK)
+    Sword-Arms (Rotating Shoulder Pauldron -> Upper Arm -> Bent Elbow Couter -> Forearm Vambrace ->
+    Gauntlet Fist) onto `canvas`.
+    Automatically foreshortens `blade_len` when pointed near cell edges so the diamond tip and crossguard
+    NEVER get cut off at x=0, x=51, y=0, or y=51.
     """
+    rear_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     sword_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    lead_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     fx_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
     rad = math.radians(angle_deg)
     ux, uy = math.cos(rad), math.sin(rad)
     px, py = -uy, ux
 
-    hx, hy = float(hand_x), float(hand_y)
+    hx = float(max(6.0, min(45.0, hand_x)))
+    hy = float(max(6.0, min(47.0, hand_y)))
 
-    # 1. Articulated Armored Sword-Arm from Shoulder to Gauntlet
+    # 1. Rear / Off-Hand IK Arm (gripping lower hilt when two_handed, or counter-balancing when one-handed)
     if draw_arm and shoulder is not None:
-        sx, sy = shoulder
-        draw_line_px(sword_layer, sx, sy, hx, hy, STEEL_DARK)
-        draw_line_px(sword_layer, sx, sy - 1, hx - ux * 1.5, hy - uy * 1.5 - 1, STEEL_MID)
-        set_px(sword_layer, sx + (hx - sx) * 0.45, sy + (hy - sy) * 0.45 - 1, STEEL_LIGHT)
+        sx = max(5.0, min(45.0, float(shoulder[0])))
+        sy = max(5.0, min(45.0, float(shoulder[1])))
         if two_handed:
-            draw_line_px(sword_layer, sx - 3, sy + 1, hx - ux * 1.8, hy - uy * 1.8, STEEL_MID)
+            rsx, rsy = sx - 3.0, sy + 1.0
+            rhx = max(4.0, min(47.0, hx - ux * 2.2))
+            rhy = max(4.0, min(47.0, hy - uy * 2.2))
+            rex, rey = solve_ik_elbow(rsx, rsy, rhx, rhy, l1=5.0, l2=5.0, bend_side=1.0)
+            draw_ik_armored_arm(rear_arm_layer, rsx, rsy, rex, rey, rhx, rhy, is_rear=True, draw_pauldron=False)
 
-    # 2. Leather-Wrapped Hilt & Golden Pommel behind hand
-    pom_x = hx - ux * 3.2
-    pom_y = hy - uy * 3.2
+    # 2. Leather-Wrapped Hilt & Golden Pommel behind hand (clamped within [2..49])
+    pom_x = max(2.5, min(48.5, hx - ux * 3.0))
+    pom_y = max(2.5, min(48.5, hy - uy * 3.0))
     draw_line_px(sword_layer, pom_x, pom_y, hx, hy, LEATHER_DARK)
     set_px(sword_layer, pom_x, pom_y, GOLD_BRIGHT)
-    set_px(sword_layer, pom_x - ux * 0.8, pom_y - uy * 0.8, FROST_CYAN)
+    set_px(sword_layer, max(2.0, min(49.0, pom_x - ux * 0.8)), max(2.0, min(49.0, pom_y - uy * 0.8)), FROST_CYAN)
 
-    # 3. Guard Center & Broad Fullered Runeblade (from guard to diamond point)
+    # 3. Guard Center & Broad Fullered Runeblade (auto-clamped to stay 100% inside [3..48])
     gx = hx + ux * 1.4
     gy = hy + uy * 1.4
-    steps = int(round(blade_len * 2))
+    max_len = float(blade_len)
+    if ux > 0.05:
+        max_len = min(max_len, (47.5 - gx) / ux)
+    elif ux < -0.05:
+        max_len = min(max_len, (3.5 - gx) / ux)
+    if uy > 0.05:
+        max_len = min(max_len, (47.5 - gy) / uy)
+    elif uy < -0.05:
+        max_len = min(max_len, (3.5 - gy) / uy)
+    eff_blade_len = max(7.5, max_len)
+
+    steps = int(round(eff_blade_len * 2))
     for i in range(steps + 1):
         s = i / float(max(1, steps))
-        dist = s * blade_len
+        dist = s * eff_blade_len
         bx = gx + ux * dist
         by = gy + uy * dist
 
@@ -320,27 +509,35 @@ def draw_runeblade(
     # 4. Ornate Winged Golden Valkyrie Crossguard (drawn over blade base)
     for span in (-3.2, -2.2, -1.2, 0.0, 1.2, 2.2, 3.2):
         wing_f = 0.6 if abs(span) > 2.0 else 0.0
-        cx_g = gx + px * span + ux * wing_f
-        cy_g = gy + py * span + uy * wing_f
+        cx_g = max(2.0, min(49.0, gx + px * span + ux * wing_f))
+        cy_g = max(2.0, min(49.0, gy + py * span + uy * wing_f))
         col_g = GOLD_WHITE if abs(span) < 0.5 else (GOLD_BRIGHT if abs(span) > 2.0 else GOLD_MID)
         set_px(sword_layer, cx_g, cy_g, col_g)
     # Central sapphire rune-gem in crossguard
     set_px(sword_layer, gx, gy, FROST_CYAN if glow_intensity < 0.7 else FROST_WHITE)
 
-    # Armored Gauntlet Fist gripping the hilt
-    set_px(sword_layer, hx, hy, STEEL_LIGHT)
-    set_px(sword_layer, hx - px * 0.8, hy - py * 0.8, STEEL_MID)
+    # 5. Primary / Lead 2-Bone IK Sword-Arm (Pauldron -> Upper Arm -> Elbow Couter -> Vambrace -> Gauntlet)
+    if draw_arm and shoulder is not None:
+        sx = max(5.0, min(45.0, float(shoulder[0])))
+        sy = max(5.0, min(45.0, float(shoulder[1])))
+        # When hand is raised high overhead (hy < sy - 3), bend elbow slightly forward/outward so arm silhouettes clearly
+        bend_dir = -1.0 if (hy < sy - 3.5 and hx <= sx + 2.0) else 1.0
+        ex, ey = solve_ik_elbow(sx, sy, hx, hy, l1=5.4, l2=5.4, bend_side=bend_dir)
+        draw_ik_armored_arm(lead_arm_layer, sx, sy, ex, ey, hx, hy, is_rear=False, draw_pauldron=True)
+    else:
+        set_px(lead_arm_layer, hx, hy, STEEL_LIGHT)
+        set_px(lead_arm_layer, hx - px * 0.8, hy - py * 0.8, STEEL_MID)
 
-    # 5. High-Intensity Rune Charge Star / Glint
+    # 6. High-Intensity Rune Charge Star / Glint
     if glow_intensity >= 0.75:
-        tip_x = gx + ux * (blade_len * 0.88)
-        tip_y = gy + uy * (blade_len * 0.88)
+        tip_x = max(3.0, min(48.0, gx + ux * (eff_blade_len * 0.88)))
+        tip_y = max(3.0, min(48.0, gy + uy * (eff_blade_len * 0.88)))
         set_px(fx_layer, tip_x, tip_y, FROST_WHITE)
         for dx, dy in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
             set_px(fx_layer, tip_x + dx, tip_y + dy, GOLD_BRIGHT if glow_intensity >= 0.9 else FROST_BRIGHT)
 
-    # 6. Optional Dynamic Crescent Slash Trail
-    if slash_arc is not None:
+    # 7. Optional Dynamic Crescent Slash Trail (clamped smoothly inside [2..49])
+    if slash_arc is not None and shoulder is not None:
         a_start, a_end, arc_r, arc_intensity = slash_arc
         arc_steps = 36
         for k in range(arc_steps + 1):
@@ -350,15 +547,27 @@ def draw_runeblade(
             env = math.sin(u_a * math.pi) * arc_intensity
             if env <= 0.1:
                 continue
-            ax = shoulder[0] + ca * arc_r
-            ay = shoulder[1] + sa * arc_r
+            r_eff = float(arc_r)
+            if ca > 0.05:
+                r_eff = min(r_eff, (48.0 - shoulder[0]) / ca)
+            elif ca < -0.05:
+                r_eff = min(r_eff, (3.0 - shoulder[0]) / ca)
+            if sa > 0.05:
+                r_eff = min(r_eff, (48.0 - shoulder[1]) / sa)
+            elif sa < -0.05:
+                r_eff = min(r_eff, (3.0 - shoulder[1]) / sa)
+            r_eff = max(6.0, r_eff)
+            ax = shoulder[0] + ca * r_eff
+            ay = shoulder[1] + sa * r_eff
             set_px(fx_layer, ax, ay, FROST_WHITE if u_a > 0.65 else GOLD_BRIGHT)
             set_px(fx_layer, ax - ca * 1.2, ay - sa * 1.2, FROST_BRIGHT)
             if env > 0.45:
                 set_px(fx_layer, ax - ca * 2.4, ay - sa * 2.4, FROST_CYAN)
                 set_px(fx_layer, ax - ca * 3.4, ay - sa * 3.4, FROST_MID)
 
-    out = composite_over(canvas, sword_layer)
+    out = composite_over(canvas, rear_arm_layer)
+    out = composite_over(out, sword_layer)
+    out = composite_over(out, lead_arm_layer)
     out = composite_over(out, fx_layer)
     return out
 
@@ -378,22 +587,29 @@ def draw_valkyrie_aura_wings(canvas, shoulder=(24, 17), wing_span=1.0, phase=0.0
     ]:
         for idx, deg0 in enumerate(ang_list):
             ang = math.radians(deg0 + math.sin(phase + idx * 0.5) * 3.5)
-            max_len = (15.5 - idx * 1.3) if side == -1 else (11.5 - idx * 1.4)
-            f_len = int(round(max_len * wing_span))
-            for d in range(2, f_len + 1):
-                wx = base_x + math.cos(ang) * d
-                wy = sy + math.sin(ang) * d
-                if d >= f_len - 1:
+            ca, sa = math.cos(ang), math.sin(ang)
+            max_len = (14.5 - idx * 1.2) if side == -1 else (10.5 - idx * 1.3)
+            f_len = float(max_len * wing_span)
+            if ca < -0.05:
+                f_len = min(f_len, (2.5 - base_x) / ca)
+            elif ca > 0.05:
+                f_len = min(f_len, (48.5 - base_x) / ca)
+            if sa < -0.05:
+                f_len = min(f_len, (2.5 - sy) / sa)
+            f_len_i = max(2, int(round(f_len)))
+            for d in range(2, f_len_i + 1):
+                wx = base_x + ca * d
+                wy = sy + sa * d
+                if d >= f_len_i - 1:
                     col = FROST_WHITE
                 elif idx % 2 == 0:
-                    col = GOLD_BRIGHT if d < f_len * 0.65 else FROST_BRIGHT
+                    col = GOLD_BRIGHT if d < f_len_i * 0.65 else FROST_BRIGHT
                 else:
-                    col = FROST_CYAN if d < f_len * 0.65 else FROST_MID
+                    col = FROST_CYAN if d < f_len_i * 0.65 else FROST_MID
                 set_px(wing_layer, wx, wy, col)
-                if d < f_len - 2:
+                if d < f_len_i - 2:
                     set_px(wing_layer, wx, wy + 1, GOLD_MID if idx % 2 == 0 else FROST_DEEP)
     return composite_over(wing_layer, canvas)
-
 
 
 def draw_aegis_greatshield(canvas, cx, cy, glow=0.5):
@@ -433,7 +649,7 @@ def render_walk_legs(tpl, f):
     Renders a grounded, heavy-armored 30-frame 2-step Valkyrie walk cycle (f = 0..29) in true painter's order:
     1. Far Leg Layer (shaded 0.78x for clear depth separation: articulated thigh, knee-guard, greave & sabaton).
     2. Flowing Royal Cape Layer (bridged solidly to back/hips so zero gap ever opens).
-    3. Upper Torso & Pelvis + Royal Blue/Gold Split Tabard swinging with the stride.
+    3. Upper Torso & Pelvis/Tassets + Royal Blue/Gold Split Tabard swinging with the stride.
     4. Near Leg Layer (full-brightness sculpted plate thigh, golden knee-guard, steel greave & sabaton).
     """
     phase = (f / 30.0) * 2.0 * math.pi
@@ -443,36 +659,38 @@ def render_walk_legs(tpl, f):
     cape_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
-    # 1. Extract Flowing Royal Cape (x <= 18, y = 13..43)
+    # 1. Extract Flowing Royal Cape (x <= 18, y = 13..43) without flat horizontal step cutouts
     for y in range(13, 44):
         ny = y + bob_y
-        if not (0 <= ny < 52):
+        if not (2 <= ny < 50):
             continue
         u = (y - 13) / 30.0
-        wave_dx = int(round(-u * 2.0 + math.sin(phase - u * 3.2) * (1.4 * u)))
-        wave_dy = int(round(math.cos(phase - u * 2.6) * (0.7 * u)))
-        for x in range(1, 19):
+        wave_dx = int(round(-u * 1.6 + math.sin(phase - u * 3.2) * (1.3 * u)))
+        wave_dy = int(round(math.cos(phase - u * 2.6) * (0.6 * u)))
+        max_cx = 18 if y < 36 else 14
+        for x in range(1, max_cx + 1):
             if stand[y, x, 3] == 0:
                 continue
-            if y >= 34 and x > 11:
-                continue
             cy = max(13, min(48, ny + wave_dy))
-            cx = max(1, min(20, x + wave_dx))
+            cx = max(2, min(20, x + wave_dx))
             cape_layer[cy, cx] = stand[y, x]
-            if x >= 11 and y <= 34:
+            if x >= 10 and y <= 37:
                 cape_layer[ny, x] = stand[y, x]
                 if x + 1 < 20:
                     cape_layer[ny, x + 1] = stand[y, x]
+    cape_layer = fill_layer_pinholes(cape_layer, x0=2, x1=21, y0=12, y1=48, require_3_neighbors=False)
 
-    # 2. Extract Upper Torso, Pauldron & Winged Helm (y = 0..33, x >= 14) with +1px athletic forward lean
-    for y in range(0, 34):
+    # 2. Extract Upper Torso, Pauldron, Winged Helm & Hip Tassets (y = 0..37, x >= 14) so zero hip gaps open
+    for y in range(0, 38):
         ny = y + bob_y
-        if not (0 <= ny < 52):
+        if not (2 <= ny < 50):
             continue
         lean_dx = 1 if y <= 26 else 0
-        for x in range(14, 34):
+        min_tx = 14 if y < 34 else 16
+        max_tx = 34 if y < 34 else 31
+        for x in range(min_tx, max_tx):
             if stand[y, x, 3] > 0:
-                torso_layer[ny, min(50, x + lean_dx)] = stand[y, x]
+                torso_layer[ny, min(49, x + lean_dx)] = stand[y, x]
 
     hip_x = 23.5
     hip_y = 32.0 + bob_y
@@ -486,10 +704,10 @@ def render_walk_legs(tpl, f):
         knee_x = hip_x + s_val * 4.5 + knee_lift * 2.0
         knee_y = hip_y + 5.0 - knee_lift * 1.8
 
-        foot_target_x = 23.5 + s_val * 6.8 - knee_lift * 2.0
-        foot_lift_dy = bob_y - int(round(knee_lift * 2.6))
+        foot_target_x = 23.5 + s_val * 6.5 - knee_lift * 1.8
+        foot_lift_dy = bob_y - int(round(knee_lift * 2.4))
 
-        boot_rot_deg = s_val * 18.0 - knee_lift * 20.0
+        boot_rot_deg = s_val * 16.0 - knee_lift * 18.0
         pil_boot = Image.fromarray(boot_patch, mode='RGBA')
         rot_boot = np.array(
             pil_boot.rotate(boot_rot_deg, resample=Image.NEAREST, center=(orig_cx, 40.0)),
@@ -518,18 +736,18 @@ def render_walk_legs(tpl, f):
             c_dark, c_mid, c_hi, c_gold = STEEL_DARK, STEEL_MID, STEEL_LIGHT, GOLD_BRIGHT
 
         # Sculpted Plate Thigh Cuisse (Hip -> Knee)
-        for off_x, col in [(-1.8, c_dark), (-0.8, c_mid), (0.2, c_hi), (1.2, c_mid), (2.0, c_dark)]:
+        for off_x, col in [(-2.2, c_dark), (-1.2, c_mid), (-0.2, c_hi), (0.8, c_hi), (1.6, c_mid), (2.4, c_dark)]:
             draw_line_px(layer, hip_x + off_x, hip_y, knee_x + off_x * 0.85, knee_y, col)
 
         # Sculpted Steel Shin Greave (Knee -> Sabaton Boot)
-        for off_x, col in [(-1.4, c_dark), (-0.4, c_mid), (0.6, c_hi), (1.4, c_dark)]:
+        for off_x, col in [(-1.6, c_dark), (-0.6, c_mid), (0.4, c_hi), (1.4, c_dark)]:
             draw_line_px(layer, knee_x + off_x, knee_y, ank_x + off_x * 0.85, ank_y, col)
 
         # Winged Golden Knee-Guard Poleyn
         set_px(layer, knee_x, knee_y, c_gold)
         set_px(layer, knee_x + 1, knee_y, c_gold)
         set_px(layer, knee_x, knee_y - 1, c_hi)
-        return layer
+        return fill_layer_pinholes(layer, x0=3, x1=49, y0=31, y1=50, require_3_neighbors=True)
 
     # F00..F14: right (near) leg swings forward (sin(phase) >= 0), left (far) leg swings back
     # F15..F29: left (far) leg swings forward, right (near) leg swings back
@@ -539,90 +757,97 @@ def render_walk_legs(tpl, f):
     # Royal Blue & Gold Split Tabard swinging between the legs at y = 32..39
     tabard_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     flap_dx = math.sin(phase) * 2.0
-    for off_x, col in [(-2.0, CAPE_ROYAL_DARK), (-1.0, CAPE_ROYAL_MID), (0.0, CAPE_ROYAL_HI), (1.0, GOLD_MID)]:
+    for off_x, col in [
+        (-2.5, CAPE_ROYAL_DARK),
+        (-1.5, CAPE_ROYAL_MID),
+        (-0.5, CAPE_ROYAL_HI),
+        (0.5, CAPE_ROYAL_HI),
+        (1.5, GOLD_MID),
+    ]:
         draw_line_px(
             tabard_layer,
             hip_x + off_x,
             hip_y - 1.0,
             hip_x + off_x + flap_dx,
-            hip_y + 6.2,
+            hip_y + 6.5,
             col
         )
 
-    # Back-to-front anatomical composition: Back Leg -> Cape -> Torso/Tabard -> Front Leg
+    # Back-to-front anatomical composition: Back Leg -> Cape -> Torso/Tassets -> Tabard -> Front Leg
     out = composite_over(far_leg, cape_layer)
+    out = composite_over(out, torso_layer)
     out = composite_over(out, tabard_layer)
     out = composite_over(out, near_leg)
-    out = composite_over(out, torso_layer)
     return out
 
 
 def make_crouch_body(tpl, crouch_depth):
     """
     Constructs a clean low-profile crouched Valkyrie body with `crouch_depth` in [1..7] logical pixels:
-    - Uses `kneel1` bent armored legs anchored on the floor (y=36..50) when crouch_depth >= 5,
+    - Uses `kneel1` bent armored legs anchored on the floor (y=34..49) when crouch_depth >= 5,
       or compressed standing legs when crouch_depth in 1..4.
-    - Lowers `stand_upper` by `crouch_depth` pixels so Aethelgard drops into a true tactical knee-crouch!
+    - Lowers `stand_upper` by `crouch_depth` pixels with full overlap so zero horizontal seams or missing pixels appear!
     """
     canvas = np.zeros((52, 52, 4), dtype=np.uint8)
     if crouch_depth >= 5:
-        canvas[36:51, :32] = tpl['kneel1'][36:51, :32]
+        canvas[34:50, :] = tpl['kneel1'][34:50, :]
         upper = tpl['stand_upper']
-        for y in range(0, 36):
-            ny = y + crouch_depth
-            if 0 <= ny < 49:
+        for y in range(0, 39):
+            ny = min(49, y + crouch_depth)
+            if 2 <= ny < 49:
                 for x in range(0, 52):
                     if upper[y, x, 3] > 0:
                         canvas[ny, x] = upper[y, x]
     else:
-        canvas[38:50, :] = tpl['stand'][38:50, :]
+        canvas[35:50, :] = tpl['stand'][35:50, :]
         upper = tpl['stand_upper']
-        for y in range(0, 38):
-            ny = y + crouch_depth
-            if 0 <= ny < 49:
+        for y in range(0, 39):
+            ny = min(49, y + crouch_depth)
+            if 2 <= ny < 49:
                 for x in range(0, 52):
                     if upper[y, x, 3] > 0:
                         canvas[ny, x] = upper[y, x]
-    return add_outline_to_layer(canvas)
+    return fill_layer_pinholes(add_outline_to_layer(canvas), 2, 50, 2, 50, require_3_neighbors=True)
 
 
 def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
     """
     Constructs a clean, full-body aerial jumping Valkyrie pose in back-to-front anatomical order:
-    - Every frame preserves Aethelgard's full head, winged helm, chestplate, cape, and articulated legs
-      (ZERO bouncy-ball frames!).
+    - Every frame preserves Aethelgard's full head, winged helm, chestplate, cape, tassets, and articulated legs
+      (ZERO bouncy-ball frames and ZERO hip/cape cutouts!).
     """
     stand = tpl['stand'].copy()
-    torso_dy = int(round(jump_dy))
+    # Keep torso_dy >= -2 so the winged helm plume at y=4 stays inside y >= 2 (never TOP_CLIP!)
+    torso_dy = max(-2, min(4, int(round(jump_dy))))
 
     cape_layer = np.zeros((52, 52, 4), dtype=np.uint8)
     torso_layer = np.zeros((52, 52, 4), dtype=np.uint8)
 
     # 1. Billowing Aerial Royal Cape (x <= 18, y = 13..43) streaming behind/below in mid-air
-    cape_lift = int(round(max(0.0, tuck_amount) * 2.2))
+    cape_lift = int(round(max(0.0, tuck_amount) * 2.0))
     for y in range(13, 44):
-        for x in range(1, 19):
+        max_cx = 18 if y < 36 else 14
+        for x in range(1, max_cx + 1):
             if stand[y, x, 3] == 0:
                 continue
-            if y >= 34 and x > 11:
-                continue
             u = (y - 13) / 30.0
-            cx = max(1, min(21, x - int(round(u * 2.5 * max(0.2, tuck_amount)))))
-            cy = max(8, min(49, y + torso_dy + int(round(u * cape_lift))))
+            cx = max(2, min(21, x - int(round(u * 2.2 * max(0.2, tuck_amount)))))
+            cy = max(8, min(48, y + torso_dy + int(round(u * cape_lift))))
             cape_layer[cy, cx] = stand[y, x]
-            if x >= 11 and y <= 33:
-                ny_b = max(4, min(49, y + torso_dy))
+            if x >= 10 and y <= 36:
+                ny_b = max(4, min(48, y + torso_dy))
                 cape_layer[ny_b, x] = stand[y, x]
+    cape_layer = fill_layer_pinholes(cape_layer, x0=2, x1=21, y0=8, y1=49, require_3_neighbors=False)
 
-    # 2. Upper Torso & Winged Helm (y = 0..33, x >= 14)
-    for y in range(0, 34):
-        ny = y + torso_dy
-        if not (0 <= ny < 52):
-            continue
+    # 2. Upper Torso, Winged Helm & Hip Tassets (y = 0..37, x >= 14)
+    for y in range(0, 38):
+        ny = max(2, min(49, y + torso_dy))
         dx = torso_lean_dx if y <= 24 else 0
-        for x in range(14, 34):
+        min_tx = 14 if y < 34 else 16
+        max_tx = 34 if y < 34 else 31
+        for x in range(min_tx, max_tx):
             if stand[y, x, 3] > 0:
-                torso_layer[ny, max(1, min(50, x + dx))] = stand[y, x]
+                torso_layer[ny, max(2, min(49, x + dx))] = stand[y, x]
 
     hip_x = 23.5 + (torso_lean_dx * 0.5)
     hip_y = 32.0 + torso_dy
@@ -637,8 +862,8 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
         for y in range(34, 52):
             for x in range(3, 50):
                 if rot_boot[y, x, 3] > 0:
-                    ny = max(24, min(49, y + int(round(foot_dy))))
-                    nx = max(3, min(49, x + int(round(foot_dx))))
+                    ny = max(24, min(48, y + int(round(foot_dy))))
+                    nx = max(3, min(48, x + int(round(foot_dx))))
                     px_col = rot_boot[y, x].copy()
                     if is_far_leg:
                         px_col[0] = int(px_col[0] * 0.76)
@@ -656,13 +881,13 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
         else:
             c_dark, c_mid, c_hi, c_gold = STEEL_DARK, STEEL_MID, STEEL_LIGHT, GOLD_BRIGHT
 
-        for off_x, col in [(-1.6, c_dark), (-0.6, c_mid), (0.4, c_hi), (1.4, c_dark)]:
+        for off_x, col in [(-2.0, c_dark), (-1.0, c_mid), (0.0, c_hi), (1.0, c_hi), (1.8, c_dark)]:
             draw_line_px(layer, hip_x + off_x, hip_y, kx + off_x * 0.85, ky, col)
-        for off_x, col in [(-1.2, c_dark), (0.0, c_mid), (1.0, c_hi)]:
+        for off_x, col in [(-1.4, c_dark), (-0.4, c_mid), (0.6, c_hi), (1.4, c_dark)]:
             draw_line_px(layer, kx + off_x, ky, ax + off_x * 0.85, ay, col)
         set_px(layer, kx, ky, c_gold)
         set_px(layer, kx + 1, ky, c_gold)
-        return layer
+        return fill_layer_pinholes(layer, x0=3, x1=49, y0=24, y1=49, require_3_neighbors=True)
 
     t = max(0.0, tuck_amount)
     far_leg = build_aerial_armored_leg(
@@ -687,23 +912,23 @@ def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
     )
 
     tabard_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    for off_x, col in [(-2.0, CAPE_ROYAL_DARK), (-1.0, CAPE_ROYAL_MID), (0.0, CAPE_ROYAL_HI), (1.0, GOLD_MID)]:
-        draw_line_px(tabard_layer, hip_x + off_x, hip_y - 1, hip_x + off_x + 1.5 * t, hip_y + 5.0 - 1.0 * t, col)
+    for off_x, col in [(-2.2, CAPE_ROYAL_DARK), (-1.2, CAPE_ROYAL_MID), (-0.2, CAPE_ROYAL_HI), (0.8, GOLD_MID)]:
+        draw_line_px(tabard_layer, hip_x + off_x, hip_y - 1, hip_x + off_x + 1.5 * t, hip_y + 5.5 - 1.0 * t, col)
 
     out = composite_over(far_leg, cape_layer)
+    out = composite_over(out, torso_layer)
     out = composite_over(out, tabard_layer)
     out = composite_over(out, near_leg)
-    out = composite_over(out, torso_layer)
     return out
 
 
 def build_row0_idle(tpl):
     """
     Row 0 (`IDLE`, 30 frames):
-    - Smooth breathing (`0..1px` chest/shoulder rise)
+    - Smooth breathing (`0..1px` chest/shoulder rise with zero waist gap!)
     - Flowing royal cape wave (`F00..F29`) with crimson/gold inner trim glint
     - Subtle helm wing/plume sway
-    - Travelling frost-gold rune glint down the single articulated Runeblade
+    - Articulated 2-joint IK arm breathing with the Runeblade + travelling frost-gold rune glint
     """
     frames = []
     for f in range(30):
@@ -713,8 +938,10 @@ def build_row0_idle(tpl):
         breath_dy = -1 if 8 <= f <= 19 else 0
         if breath_dy != 0:
             upper = base[3:29, 17:32].copy()
-            base[3:29, 17:32] = 0
+            base[3:28, 17:32] = 0
             base[3 + breath_dy:29 + breath_dy, 17:32] = upper
+            # Keep waist row y=28 filled from upper[-1] so breathing NEVER creates a horizontal waist gap!
+            base[28, 17:32] = upper[-1, :]
             base = add_outline_to_layer(base)
 
         # Subtle helm wing/plume sway & golden crest glint
@@ -727,30 +954,30 @@ def build_row0_idle(tpl):
 
         base = apply_cape_wave(base, phase, amplitude=1.6, vertical_flutter=0.7)
 
-        blade_ang = -45.0 + math.sin(phase) * 2.5
-        hx = 29
-        hy = 24 + breath_dy
+        blade_ang = -45.0 + math.sin(phase) * 4.5
+        hx = 29 + int(round(math.sin(phase) * 1.2))
+        hy = 23 + breath_dy + int(round(math.cos(phase) * 0.8))
         frame = draw_runeblade(
             base,
             hand_x=hx,
             hand_y=hy,
             angle_deg=blade_ang,
             glow_intensity=0.45 + 0.25 * math.sin(phase),
-            blade_len=21.5,
-            shoulder=(25, 18 + breath_dy)
+            blade_len=19.5,
+            shoulder=(24, 18 + breath_dy)
         )
 
         # Travelling frost-gold rune glint running along the Runeblade fuller (F00..F29)
         glint_u = (f / 29.0)
-        glint_dist = 2.5 + (glint_u * 17.5 if f < 15 else (1.0 - (f - 15) / 14.0) * 17.5)
+        glint_dist = 2.5 + (glint_u * 15.0 if f < 15 else (1.0 - (f - 15) / 14.0) * 15.0)
         rad = math.radians(blade_ang)
-        gx = hx + math.cos(rad) * (1.4 + glint_dist)
-        gy = hy + math.sin(rad) * (1.4 + glint_dist)
+        gx = min(48, max(3, hx + math.cos(rad) * (1.4 + glint_dist)))
+        gy = min(48, max(3, hy + math.sin(rad) * (1.4 + glint_dist)))
         set_px(frame, gx, gy, FROST_WHITE)
         set_px(frame, gx + 1, gy, GOLD_BRIGHT)
         set_px(frame, gx, gy - 1, FROST_BRIGHT)
 
-        frames.append(frame)
+        frames.append(ensure_safe_cell(frame))
     return frames
 
 
@@ -760,7 +987,7 @@ def build_row1_walk(tpl):
     - Anatomical 2-step armored walk cycle:
       * F00..F14: right leg forward / left leg back
       * F15..F29: left leg forward / right leg back
-    - Back-to-front painter's order with swinging Runeblade & pauldron.
+    - Back-to-front painter's order with wide counter-swinging 2-joint IK sword arm & pauldron.
     """
     frames = []
     for f in range(30):
@@ -768,11 +995,11 @@ def build_row1_walk(tpl):
         body = render_walk_legs(tpl, f)
         bob_y = int(round(math.cos(phase * 2.0) * 1.0))
 
-        # Counter-swinging Runeblade carry angle & hand position
+        # Wide athletic counter-swinging Runeblade carry angle & IK hand position
         swing = math.sin(phase)
-        blade_ang = -38.0 + swing * 10.5
-        hx = 29 - int(round(swing * 2.0))
-        hy = 24 + bob_y + int(round(abs(swing) * 1.0))
+        blade_ang = -36.0 + swing * 18.0
+        hx = 28 - int(round(swing * 3.5))
+        hy = 23 + bob_y + int(round(abs(swing) * 1.5))
 
         frame = draw_runeblade(
             body,
@@ -780,26 +1007,26 @@ def build_row1_walk(tpl):
             hand_y=hy,
             angle_deg=blade_ang,
             glow_intensity=0.5,
-            blade_len=21.0,
-            shoulder=(26, 18 + bob_y)
+            blade_len=19.0,
+            shoulder=(25, 18 + bob_y)
         )
-        frames.append(frame)
+        frames.append(ensure_safe_cell(frame))
     return frames
 
 
 def build_row2_auto_attack(tpl):
     """
     Row 2 (`AUTO_ATTACK`, 30 frames):
-    - F00..F09: Progressive overhead/back-shoulder windup with frost rune charge
-    - F10..F18: Explosive forward cleave & frost-gold slash arc with dynamic cape whip
-    - F19..F29: Follow-through and smooth stance recovery
+    - F00..F09: Progressive overhead/back-shoulder windup with two-handed IK arms lifting the sword high behind the helm
+    - F10..F18: Explosive forward cleave & frost-gold slash arc with full arm extension across the chest
+    - F19..F29: Follow-through and smooth arm/stance recovery
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
 
         if f <= 9:
-            # Progressive overhead/back-shoulder windup with frost rune convergence
+            # Progressive overhead/back-shoulder windup: arms visibly lift and bend high behind the head
             u = f / 9.0
             base = tpl['stand'].copy()
             coil_dx = -1 if f >= 4 else 0
@@ -808,9 +1035,9 @@ def build_row2_auto_attack(tpl):
                 base[:, -1:] = 0
             base = apply_cape_wave(base, phase, amplitude=1.6 + u * 0.6, vertical_flutter=0.7)
 
-            ang = -45.0 * (1.0 - u) + (-142.0) * u
-            hx = int(round(29 * (1.0 - u) + 23 * u))
-            hy = int(round(24 * (1.0 - u) + 12 * u))
+            ang = -45.0 * (1.0 - u) + (-140.0) * u
+            hx = int(round(29 * (1.0 - u) + 21 * u))
+            hy = int(round(23 * (1.0 - u) + 12 * u))
             glow = 0.45 + u * 0.55
             frame = draw_runeblade(
                 base,
@@ -818,31 +1045,30 @@ def build_row2_auto_attack(tpl):
                 hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=glow,
-                blade_len=21.0,
-                shoulder=(25 + coil_dx, 17),
-                two_handed=(f >= 3)
+                blade_len=18.5,
+                shoulder=(24 + coil_dx, 17),
+                two_handed=(f >= 2)
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         elif f <= 18:
-            # Explosive forward cleave & frost-gold crescent slash arc
+            # Explosive forward cleave: IK arms uncoil from overhead (26,12) to full forward extension (35,20) and down (31,28)
             k = f - 10
-            u = k / 8.0
             base = (tpl['lunge'] if k >= 1 else tpl['stand']).copy()
             if k in (2, 3, 4):
                 base = np.roll(base, 1, axis=1)
                 base[:, 0:1] = 0
             base = apply_cape_wave(base, phase * 2.0, amplitude=2.3, vertical_flutter=1.0)
 
-            ang_seq = [-85.0, -32.0, +12.0, +34.0, +44.0, +48.0, +46.0, +42.0, +36.0]
-            hx_seq = [29, 33, 35, 34, 33, 32, 32, 31, 31]
-            hy_seq = [13, 17, 21, 25, 27, 28, 28, 27, 26]
+            ang_seq = [-82.0, -28.0, +10.0, +32.0, +44.0, +48.0, +46.0, +42.0, +36.0]
+            hx_seq = [26, 32, 35, 35, 34, 32, 31, 30, 30]
+            hy_seq = [12, 16, 20, 24, 27, 28, 28, 27, 26]
             slash_arc = None
             if k <= 5:
                 arc_int = [0.75, 1.0, 1.0, 0.9, 0.65, 0.4][k]
-                a0 = [-140.0, -110.0, -75.0, -40.0, -15.0, 0.0][k]
+                a0 = [-135.0, -105.0, -70.0, -35.0, -10.0, 5.0][k]
                 a1 = ang_seq[k] + 8.0
-                slash_arc = (a0, a1, 20.5, arc_int)
+                slash_arc = (a0, a1, 19.0, arc_int)
 
             frame = draw_runeblade(
                 base,
@@ -850,31 +1076,31 @@ def build_row2_auto_attack(tpl):
                 hand_y=hy_seq[k],
                 angle_deg=ang_seq[k],
                 glow_intensity=1.0 if k <= 4 else 0.7,
-                blade_len=21.5,
-                shoulder=(28, 18),
-                two_handed=(k <= 3),
+                blade_len=18.5,
+                shoulder=(26, 18),
+                two_handed=(k <= 4),
                 slash_arc=slash_arc
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         else:
-            # F19..F29: Smooth recovery from cleave stance back to idle ready stance
+            # F19..F29: Smooth arm & sword recovery from low cleave stance back to idle ready stance
             u = (f - 18) / 11.0
             base = (tpl['lunge'] if f <= 21 else tpl['stand']).copy()
             base = apply_cape_wave(base, phase, amplitude=1.6, vertical_flutter=0.6)
             ang = 36.0 * (1.0 - u) + (-45.0) * u
-            hx = int(round(31 * (1.0 - u) + 29 * u))
-            hy = int(round(26 * (1.0 - u) + 24 * u))
+            hx = int(round(30 * (1.0 - u) + 29 * u))
+            hy = int(round(26 * (1.0 - u) + 23 * u))
             frame = draw_runeblade(
                 base,
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=0.65 - u * 0.2,
-                blade_len=21.5,
-                shoulder=(26, 18)
+                blade_len=19.5,
+                shoulder=(24, 18)
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
     return frames
 
@@ -882,7 +1108,8 @@ def build_row2_auto_attack(tpl):
 def render_whirlwind_spin_frame(tpl, f):
     """
     Phase 1 of Row 3 (`F00..F16`): 2-turn high-speed 360-degree Valkyrie Whirlwind spin!
-    Alternates Front/Right/Back/Left armored silhouettes with a full 360-degree Frost-Gold Runeblade cyclone ring.
+    Alternates Front/Right/Back/Left armored silhouettes with a full 360-degree Frost-Gold Runeblade cyclone ring
+    and orbiting 2-joint IK sword-arms.
     """
     u = f / 16.0
     spin_rad = u * 4.0 * math.pi  # 2 complete 360-degree rotations across F00..F16
@@ -900,12 +1127,11 @@ def render_whirlwind_spin_frame(tpl, f):
     else:
         base = apply_cape_wave(base, spin_rad, amplitude=2.2, vertical_flutter=0.9)
 
-
     # 3D Perspective Horizontal Cyclone Ring (Back half behind torso, Front half in front of torso)
     back_ring = np.zeros((52, 52, 4), dtype=np.uint8)
     front_ring = np.zeros((52, 52, 4), dtype=np.uint8)
     cx, cy = 26.0, 24.0
-    rx, ry = 22.5, 6.5
+    rx, ry = 20.5, 6.0
 
     for s_idx in range(48):
         a = (s_idx / 48.0) * 2.0 * math.pi + spin_rad
@@ -918,19 +1144,18 @@ def render_whirlwind_spin_frame(tpl, f):
         set_px(target, px_x, px_y, col)
         set_px(target, px_x - ca * 1.5, px_y - sa * 0.6, FROST_CYAN if trail_t > 0.4 else FROST_MID)
         if trail_t > 0.6:
-            set_px(target, px_x - ca * 3.0, px_y - sa * 1.0, GOLD_MID)
+            set_px(target, px_x - ca * 2.8, px_y - sa * 1.0, GOLD_MID)
 
     # 3D Perspective Horizontal Runeblade sweeping 360 deg in the plane of the cyclone ring
     if cos_s >= 0:
         blade_ang_deg = sin_s * 14.0
     else:
         blade_ang_deg = 180.0 - sin_s * 14.0
-    persp_len = 9.0 + 12.0 * abs(cos_s)
-    hx = int(round(26 + cos_s * 4.5))
-    hy = int(round(23 + sin_s * 2.0))
+    persp_len = 8.5 + 10.5 * abs(cos_s)
+    hx = int(round(26 + cos_s * 6.5))
+    hy = int(round(22 + sin_s * 2.5))
 
     if sin_s < 0:
-        # Blade is on the back half of the 360-deg orbit (behind Aethelgard's body)
         sword_canvas = draw_runeblade(
             back_ring,
             hand_x=hx,
@@ -938,13 +1163,12 @@ def render_whirlwind_spin_frame(tpl, f):
             angle_deg=blade_ang_deg,
             glow_intensity=0.9,
             blade_len=persp_len,
-            shoulder=(26, 19),
+            shoulder=(25, 19),
             two_handed=False
         )
         out = composite_over(sword_canvas, base)
         out = composite_over(out, front_ring)
     else:
-        # Blade is on the front half of the 360-deg orbit (in front of Aethelgard's body)
         out = composite_over(back_ring, base)
         out = draw_runeblade(
             out,
@@ -953,11 +1177,11 @@ def render_whirlwind_spin_frame(tpl, f):
             angle_deg=blade_ang_deg,
             glow_intensity=1.0,
             blade_len=persp_len,
-            shoulder=(26, 19),
+            shoulder=(25, 19),
             two_handed=True
         )
         out = composite_over(out, front_ring)
-    return out
+    return ensure_safe_cell(out)
 
 
 def build_row3_skill(tpl):
@@ -976,13 +1200,13 @@ def build_row3_skill(tpl):
             # F17..F21: High-altitude athletic leap windup with two-handed overhead Runeblade & lightning charge
             k = f - 17
             u = k / 4.0
-            jump_dy = [-2, -4, -6, -6, -4][k]
+            jump_dy = [-1, -2, -2, -2, -1][k]
             tuck = [0.4, 0.75, 0.95, 0.9, 0.65][k]
             body = make_jump_body(tpl, jump_dy, tuck_amount=tuck, torso_lean_dx=-1 if k <= 2 else 1)
             body = apply_cape_wave(body, phase * 2.0, amplitude=2.2, vertical_flutter=1.0)
 
-            ang = -115.0 + u * 25.0
-            hx = 25 + int(round(u * 3))
+            ang = -125.0 + u * 35.0
+            hx = 22 + int(round(u * 5))
             hy = 12 + jump_dy
             frame = draw_runeblade(
                 body,
@@ -990,11 +1214,11 @@ def build_row3_skill(tpl):
                 hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=1.0,
-                blade_len=21.0,
-                shoulder=(25, 17 + jump_dy),
+                blade_len=18.5,
+                shoulder=(24, 17 + jump_dy),
                 two_handed=True
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
         else:
             # F22..F29: Two-handed overhead Thunder-Slam driving the Runeblade into the earth with golden lightning sparks
             k = f - 22
@@ -1003,9 +1227,9 @@ def build_row3_skill(tpl):
             body = apply_cape_wave(body, phase * 2.0, amplitude=2.0, vertical_flutter=0.8)
 
             ang_seq = [18.0, 52.0, 58.0, 56.0, 48.0, 24.0, -12.0, -42.0]
-            hx_seq = [33, 33, 33, 33, 32, 31, 30, 29]
-            hy_seq = [21, 27, 28, 28, 27, 26, 25, 24]
-            slash_arc = (-95.0, 54.0, 21.0, 1.0 if k == 0 else 0.7) if k <= 1 else None
+            hx_seq = [34, 34, 33, 33, 32, 31, 30, 29]
+            hy_seq = [19, 27, 29, 29, 27, 26, 24, 23]
+            slash_arc = (-95.0, 54.0, 19.0, 1.0 if k == 0 else 0.7) if k <= 1 else None
 
             frame = draw_runeblade(
                 body,
@@ -1013,21 +1237,21 @@ def build_row3_skill(tpl):
                 hand_y=hy_seq[k],
                 angle_deg=ang_seq[k],
                 glow_intensity=1.0 if k <= 4 else 0.6,
-                blade_len=20.0,
-                shoulder=(27, 17 + crouch_d),
+                blade_len=18.5,
+                shoulder=(26, 17 + crouch_d),
                 two_handed=(k <= 5),
                 slash_arc=slash_arc
             )
 
             # Erupting golden-cyan ground lightning sparks at impact point (F22..F26)
             if k <= 4:
-                ix, iy = 45, 47
+                ix, iy = 44, 47
                 for bolt in range(3):
                     bx0 = ix - 4 + bolt * 3
                     draw_line_px(frame, bx0, iy, bx0 + (bolt - 1) * 3, iy - 6 - (k % 3) * 2, GOLD_BRIGHT if bolt == 1 else FROST_BRIGHT)
                     set_px(frame, bx0, iy - 1, FROST_WHITE)
 
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
     return frames
 
@@ -1044,109 +1268,120 @@ def build_row4_ultimate(tpl):
         phase = (f / 30.0) * 2.0 * math.pi
 
         if f <= 4:
-            # Stage 1A (F00..F04): Low forward omnislash blitz strike
+            # Stage 1A (F00..F04): Low forward omnislash blitz strike with dynamic arm extension
             u = f / 4.0
             body = tpl['dash'].copy()
-            body = apply_cape_wave(body, phase * 3.0, amplitude=2.2, is_dash=True)
-            ang = -12.0 + u * 24.0
-            slash_arc = (-45.0, ang + 10.0, 21.0, 0.9) if f >= 1 else None
+            body = apply_cape_wave(body, phase * 3.0, amplitude=2.0, is_dash=True)
+            ang = -18.0 + u * 34.0
+            hx = int(round(29 + u * 6))
+            hy = int(round(20 + u * 4))
+            slash_arc = (-45.0, ang + 10.0, 19.0, 0.9) if f >= 1 else None
             frame = draw_runeblade(
                 body,
-                hand_x=33,
-                hand_y=22,
+                hand_x=hx,
+                hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=0.95,
-                blade_len=20.0,
-                shoulder=(28, 18),
-                slash_arc=slash_arc
-            )
-            frames.append(frame)
-
-        elif f <= 8:
-            # Stage 1B (F05..F08): Upward diagonal cross-cleave
-            k = f - 5
-            u = k / 3.0
-            body = tpl['lunge'].copy()
-            body = apply_cape_wave(body, phase * 3.0, amplitude=2.3, vertical_flutter=1.0)
-            ang = 32.0 * (1.0 - u) + (-68.0) * u
-            slash_arc = (38.0, ang - 8.0, 21.0, 0.95)
-            frame = draw_runeblade(
-                body,
-                hand_x=32,
-                hand_y=int(round(24 - u * 8)),
-                angle_deg=ang,
-                glow_intensity=1.0,
-                blade_len=21.0,
-                shoulder=(28, 17),
+                blade_len=18.0,
+                shoulder=(26, 18),
                 two_handed=True,
                 slash_arc=slash_arc
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
-        elif f <= 12:
-            # Stage 1C (F09..F12): Spinning reverse whirl-slash
-            k = f - 9
+        elif f <= 8:
+            # Stage 1B (F05..F08): Upward diagonal cross-cleave with arms sweeping from low-front to high-overhead
+            k = f - 5
             u = k / 3.0
-            body = tpl['stand'].copy()
-            body = apply_cape_wave(body, phase * 3.0, amplitude=2.4, vertical_flutter=1.1)
-            ang = -80.0 * (1.0 - u) + 28.0 * u
-            slash_arc = (-95.0, ang + 10.0, 21.5, 0.95)
+            body = tpl['lunge'].copy()
+            body = apply_cape_wave(body, phase * 3.0, amplitude=2.2, vertical_flutter=1.0)
+            ang = 32.0 * (1.0 - u) + (-68.0) * u
+            hx = int(round(34 * (1.0 - u) + 27 * u))
+            hy = int(round(26 * (1.0 - u) + 14 * u))
+            slash_arc = (38.0, ang - 8.0, 19.0, 0.95)
             frame = draw_runeblade(
                 body,
-                hand_x=31,
-                hand_y=21,
+                hand_x=hx,
+                hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=1.0,
-                blade_len=21.0,
+                blade_len=18.5,
                 shoulder=(26, 17),
                 two_handed=True,
                 slash_arc=slash_arc
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
+
+        elif f <= 12:
+            # Stage 1C (F09..F12): Spinning reverse whirl-slash with full arm follow-through
+            k = f - 9
+            u = k / 3.0
+            body = tpl['stand'].copy()
+            body = apply_cape_wave(body, phase * 3.0, amplitude=2.2, vertical_flutter=1.0)
+            ang = -80.0 * (1.0 - u) + 28.0 * u
+            hx = int(round(25 * (1.0 - u) + 34 * u))
+            hy = int(round(14 * (1.0 - u) + 24 * u))
+            slash_arc = (-95.0, ang + 10.0, 19.0, 0.95)
+            frame = draw_runeblade(
+                body,
+                hand_x=hx,
+                hand_y=hy,
+                angle_deg=ang,
+                glow_intensity=1.0,
+                blade_len=18.5,
+                shoulder=(25, 17),
+                two_handed=True,
+                slash_arc=slash_arc
+            )
+            frames.append(ensure_safe_cell(frame))
 
         elif f <= 20:
             # Stage 2 (F13..F20): Ascending Dragon-Vault skyward uppercut with blazing Golden-Cyan Valkyrie Aura Wings!
             k = f - 13
             u = k / 7.0
-            jump_dy = int(round(-2 - math.sin(u * math.pi * 0.8) * 4))
+            jump_dy = int(round(-1 - math.sin(u * math.pi * 0.8) * 1))
             tuck = 0.55 + 0.4 * math.sin(u * math.pi * 0.85)
             body = make_jump_body(tpl, jump_dy, tuck_amount=tuck, torso_lean_dx=1)
-            body = apply_cape_wave(body, phase * 3.0, amplitude=2.5, vertical_flutter=1.2)
+            body = apply_cape_wave(body, phase * 3.0, amplitude=2.3, vertical_flutter=1.1)
             body = draw_valkyrie_aura_wings(body, shoulder=(23, 17 + jump_dy), wing_span=0.65 + 0.35 * math.sin(u * math.pi * 0.8), phase=phase * 2.0)
 
-            ang = -52.0 - u * 28.0
+            ang = -45.0 - u * 35.0
+            hx = int(round(32 - u * 5))
+            hy = int(round(21 - u * 7)) + jump_dy
             frame = draw_runeblade(
                 body,
-                hand_x=31,
-                hand_y=15 + jump_dy,
+                hand_x=hx,
+                hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=1.0,
-                blade_len=21.0,
-                shoulder=(27, 17 + jump_dy),
+                blade_len=18.5,
+                shoulder=(26, 17 + jump_dy),
                 two_handed=True,
-                slash_arc=(15.0, ang, 20.0, 0.85) if k <= 3 else None
+                slash_arc=(15.0, ang, 18.5, 0.85) if k <= 3 else None
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         elif f <= 26:
             # Stage 3A (F21..F26): Inverted two-handed meteoric Runeblade plunge!
             k = f - 21
             u = k / 5.0
-            jump_dy = int(round(-4 + u * 4))
+            jump_dy = int(round(-2 + u * 2))
             body = make_jump_body(tpl, jump_dy, tuck_amount=0.85 - u * 0.4, torso_lean_dx=2)
-            body = apply_cape_wave(body, phase * 3.0, amplitude=2.6, vertical_flutter=1.3)
+            body = apply_cape_wave(body, phase * 3.0, amplitude=2.4, vertical_flutter=1.1)
             body = draw_valkyrie_aura_wings(body, shoulder=(24, 16 + jump_dy), wing_span=1.0 - u * 0.2, phase=phase * 2.0)
 
-            # Runeblade held two-handed point-down (+78..+86 deg) plunging toward earth
+            # Runeblade held two-handed point-down (+76..+86 deg) plunging toward earth as arms drive downward
             ang = 76.0 + u * 10.0
+            hx = int(round(31 + u * 3))
+            hy = int(round(17 + u * 7)) + jump_dy
             frame = draw_runeblade(
                 body,
-                hand_x=33,
-                hand_y=21 + jump_dy,
+                hand_x=hx,
+                hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=1.0,
-                blade_len=21.0,
-                shoulder=(28, 17 + jump_dy),
+                blade_len=18.5,
+                shoulder=(27, 17 + jump_dy),
                 two_handed=True
             )
             # Vertical meteoric speed streaks around plunging blade
@@ -1154,7 +1389,7 @@ def build_row4_ultimate(tpl):
                 sx = 31 + s_i * 4
                 sy = 4 + ((k * 3 + s_i * 4) % 14)
                 draw_line_px(frame, sx, sy, sx, sy + 6, GOLD_BRIGHT if s_i == 1 else FROST_BRIGHT)
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         else:
             # Stage 3B (F27..F29): Heroic ground impact stance with Runeblade driven vertically into shattered earth!
@@ -1167,18 +1402,18 @@ def build_row4_ultimate(tpl):
             frame = draw_runeblade(
                 body,
                 hand_x=34,
-                hand_y=25 + crouch_d,
+                hand_y=24 + crouch_d,
                 angle_deg=86.0 - k * 8.0,
                 glow_intensity=1.0,
-                blade_len=19.0,
-                shoulder=(28, 18 + crouch_d),
+                blade_len=17.5,
+                shoulder=(27, 18 + crouch_d),
                 two_handed=True
             )
             # Tectonic ground shockwave sparks at blade impact (x=35, y=48)
             for rx in range(24 - k * 3, 46 + k * 2, 2):
-                if 2 <= rx < 50:
+                if 2 <= rx < 49:
                     set_px(frame, rx, 48, GOLD_BRIGHT if rx % 4 == 0 else FROST_BRIGHT)
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
     return frames
 
@@ -1194,27 +1429,28 @@ def build_row5_death(tpl):
     frames = []
     for f in range(30):
         if f <= 6:
-            # F00..F06: Hit-stagger recoil
+            # F00..F06: Hit-stagger recoil with arm thrown back
             u = f / 6.0
-            dx = -int(round(math.sin(u * math.pi * 0.85) * 2.5))
+            dx = -int(round(math.sin(u * math.pi * 0.85) * 2.0))
             dy = int(round(u * 2.0))
             base = np.zeros((52, 52, 4), dtype=np.uint8)
             for y in range(52):
                 for x in range(52):
-                    ny, nx = y + dy, x + dx
-                    if 0 <= ny < 52 and 0 <= nx < 52:
+                    if tpl['stand'][y, x, 3] > 0:
+                        ny = max(2, min(49, y + dy))
+                        nx = max(2, min(49, x + dx))
                         base[ny, nx] = tpl['stand'][y, x]
-            base = apply_cape_wave(base, u * math.pi, amplitude=1.8, vertical_flutter=0.6)
+            base = apply_cape_wave(base, u * math.pi, amplitude=1.6, vertical_flutter=0.5)
             frame = draw_runeblade(
                 base,
-                hand_x=29 + dx,
-                hand_y=25 + dy,
-                angle_deg=-35.0 + u * 55.0,
+                hand_x=29 + dx + int(round(u * 3)),
+                hand_y=24 + dy + int(round(u * 2)),
+                angle_deg=-35.0 + u * 65.0,
                 glow_intensity=0.4,
-                blade_len=20.5,
-                shoulder=(25 + dx, 18 + dy)
+                blade_len=18.5,
+                shoulder=(24 + dx, 18 + dy)
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         elif f <= 17:
             # F07..F17: Drops to one knee clutching chest, planting single Runeblade point-down into the floor
@@ -1222,22 +1458,25 @@ def build_row5_death(tpl):
             base = (tpl['kneel1'] if f <= 12 else tpl['kneel2']).copy()
             if f >= 14:
                 head_drop = 1 if f <= 15 else 2
-                head_slice = base[8:19, 19:31].copy()
-                base[8:19, 19:31] = 0
-                base[8 + head_drop:19 + head_drop, 19:31] = head_slice
+                head_slice = base[4:19, 18:32].copy()
+                base[4:4 + head_drop, 18:32] = 0
+                for hy_s in range(head_slice.shape[0]):
+                    for hx_s in range(head_slice.shape[1]):
+                        if head_slice[hy_s, hx_s, 3] > 0:
+                            base[4 + head_drop + hy_s, 18 + hx_s] = head_slice[hy_s, hx_s]
 
             base = apply_cape_wave(base, u * math.pi, amplitude=1.1, vertical_flutter=0.3)
-            # Single Runeblade planted point-down (+88 deg) into ground at x=35, y=28..49
+            # Single Runeblade planted point-down (+88 deg) into ground at x=34, y=27..47
             frame = draw_runeblade(
                 base,
-                hand_x=35,
-                hand_y=28 + (1 if f >= 13 else 0),
+                hand_x=34,
+                hand_y=27 + (1 if f >= 13 else 0),
                 angle_deg=88.0,
                 glow_intensity=max(0.15, 0.45 * (1.0 - u)),
-                blade_len=19.5,
-                shoulder=(28, 22 + (1 if f >= 13 else 0))
+                blade_len=17.5,
+                shoulder=(27, 21 + (1 if f >= 13 else 0))
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         elif f <= 23:
             # F18..F23: Collapsing forward from knee onto the floor while Runeblade tips down flat onto the ground
@@ -1248,6 +1487,7 @@ def build_row5_death(tpl):
                 pil_kn.rotate(tilt_deg, resample=Image.NEAREST, center=(24, 43)),
                 dtype=np.uint8
             )
+            rot_arr = fill_layer_pinholes(rot_arr, 1, 50, 1, 50, require_3_neighbors=True)
 
             ys, xs = np.where(rot_arr[:, :, 3] > 0)
             max_y = ys.max() if len(ys) > 0 else 47
@@ -1262,21 +1502,21 @@ def build_row5_death(tpl):
                         nx = max(2, min(49, x + shift_x))
                         frame[ny, nx] = rot_arr[y, x]
 
-            # Runeblade tips smoothly from planted (+82 deg) to horizontal flat on the ground (0 deg at y=47)
+            # Runeblade tips smoothly from planted (+72 deg) to horizontal flat on the ground (0 deg at y=47)
             blade_ang = (1.0 - u) * 72.0 + u * 2.0
             hx = int(round(33 * (1.0 - u) + 27 * u))
-            hy = int(round(32 * (1.0 - u) + 46 * u))
+            hy = int(round(31 * (1.0 - u) + 46 * u))
             frame = draw_runeblade(
                 frame,
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=blade_ang,
                 glow_intensity=0.15,
-                blade_len=19.0,
+                blade_len=17.5,
                 shoulder=None,
                 draw_arm=False
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         else:
             # F24..F29: Collapsed horizontally on the ground (y=35..46) with Runeblade resting flat beside him!
@@ -1290,28 +1530,27 @@ def build_row5_death(tpl):
             frame = draw_runeblade(
                 frame,
                 hand_x=26,
-                hand_y=47,
+                hand_y=46,
                 angle_deg=0.0,
                 glow_intensity=max(0.02, 0.35 - k * 0.06),
-                blade_len=20.0,
+                blade_len=18.5,
                 shoulder=None,
                 draw_arm=False
             )
             # Fading frost rune ember along the fallen blade so each settling frame F24..F29 is distinct
             ember_x = 30 + k * 3
             if ember_x < 46:
-                set_px(frame, ember_x, 47, FROST_BRIGHT if k <= 2 else FROST_CYAN)
-            frames.append(frame)
+                set_px(frame, ember_x, 46, FROST_BRIGHT if k <= 2 else FROST_CYAN)
+            frames.append(ensure_safe_cell(frame))
 
     return frames
-
 
 
 def build_row6_dash(tpl):
     """
     Row 6 (`DASH` - Valkyrie Assault Charge, 30 frames):
-    - Low aerodynamic Valkyrie assault charge with trailing royal cape, horizontal Runeblade thrust,
-      and golden-frost speed afterimages.
+    - Low aerodynamic Valkyrie assault charge with trailing royal cape, horizontal Runeblade thrust
+      driven by an articulated IK arm, and golden-frost speed afterimages.
     """
     frames = []
     for f in range(30):
@@ -1323,20 +1562,20 @@ def build_row6_dash(tpl):
             src_body = tpl['stand'] if f <= 1 else tpl['dash']
             base = np.zeros((52, 52, 4), dtype=np.uint8)
             for y in range(52):
-                ny = min(50, y + crouch_dy)
+                ny = min(49, y + crouch_dy)
                 base[ny, :] = src_body[y, :]
             base = apply_cape_wave(base, phase * 2.0, amplitude=1.9, is_dash=(f >= 2))
             ang = -45.0 * (1.0 - u) + (-4.0) * u
             frame = draw_runeblade(
                 base,
-                hand_x=30 + int(round(u * 3)),
-                hand_y=23 + crouch_dy,
+                hand_x=28 + int(round(u * 5)),
+                hand_y=23 + crouch_dy - int(round(u * 1)),
                 angle_deg=ang,
                 glow_intensity=0.6 + u * 0.3,
-                blade_len=18.5,
-                shoulder=(26 + int(round(u * 2)), 18 + crouch_dy)
+                blade_len=16.5,
+                shoulder=(25 + int(round(u * 2)), 18 + crouch_dy)
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         elif f <= 22:
             # F04..F22: Full aerodynamic Valkyrie assault charge + horizontal Runeblade thrust + speed streaks
@@ -1344,9 +1583,9 @@ def build_row6_dash(tpl):
             bob_dy = 1 + int(round(math.sin((k / 18.0) * math.pi * 2.0) * 1.0))
             base = np.zeros((52, 52, 4), dtype=np.uint8)
             for y in range(52):
-                ny = min(50, max(0, y + bob_dy))
+                ny = min(49, max(2, y + bob_dy))
                 base[ny, :] = tpl['dash'][y, :]
-            base = apply_cape_wave(base, k * 0.85, amplitude=2.2, is_dash=True)
+            base = apply_cape_wave(base, k * 0.85, amplitude=2.0, is_dash=True)
 
             # Golden-frost horizontal speed streaks trailing behind cape & boots
             for s_idx in range(4):
@@ -1354,17 +1593,17 @@ def build_row6_dash(tpl):
                 sx0 = 2 + ((k * 3 + s_idx * 5) % 9)
                 draw_line_px(base, sx0, sy, sx0 + 5, sy, GOLD_BRIGHT if s_idx % 2 == 0 else FROST_BRIGHT)
 
-            thrust_dx = 1 if 8 <= f <= 16 else 0
+            thrust_dx = int(round(math.sin((k / 18.0) * math.pi) * 2.5))
             frame = draw_runeblade(
                 base,
-                hand_x=33 + thrust_dx,
-                hand_y=22 + bob_dy,
-                angle_deg=-2.0 + math.sin(k * 0.6) * 2.0,
+                hand_x=31 + thrust_dx,
+                hand_y=21 + bob_dy,
+                angle_deg=-2.0 + math.sin(k * 0.6) * 3.0,
                 glow_intensity=0.95,
-                blade_len=16.5,
-                shoulder=(28, 18 + bob_dy)
+                blade_len=15.0,
+                shoulder=(26, 18 + bob_dy)
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         else:
             # F23..F29: Armored brake-slide and smooth recovery to ready stance
@@ -1373,7 +1612,7 @@ def build_row6_dash(tpl):
             src_body = tpl['lunge'] if f <= 25 else tpl['stand']
             base = np.zeros((52, 52, 4), dtype=np.uint8)
             for y in range(52):
-                ny = min(50, y + crouch_dy)
+                ny = min(49, y + crouch_dy)
                 base[ny, :] = src_body[y, :]
             base = apply_cape_wave(base, phase, amplitude=1.6, vertical_flutter=0.6)
             ang = -2.0 * (1.0 - u) + (-45.0) * u
@@ -1383,10 +1622,10 @@ def build_row6_dash(tpl):
                 hand_y=23 + crouch_dy,
                 angle_deg=ang,
                 glow_intensity=0.8 - u * 0.3,
-                blade_len=19.5,
-                shoulder=(26, 18 + crouch_dy)
+                blade_len=18.0,
+                shoulder=(25, 18 + crouch_dy)
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
     return frames
 
@@ -1397,7 +1636,7 @@ def build_row7_crouch(tpl):
     - F00..F06: Drops into a low tactical Aegis knee-crouch (7px lower silhouette), raising an ornate
       Frost-Gold Valkyrie Aegis Greatshield on his left arm while leveling his Runeblade.
     - F07..F18: Braces behind the glowing Aegis barrier (F07..F12) and unleashes a low horizontal
-      Frost-Crescent counter-slash (F13..F18).
+      Frost-Crescent counter-slash with full IK arm extension (F13..F18).
     - F19..F29: Recovers and rises smoothly back to combat stance.
     """
     frames = []
@@ -1412,19 +1651,19 @@ def build_row7_crouch(tpl):
             ang = -45.0 * (1.0 - u) + (-14.0) * u
             frame = draw_runeblade(
                 base,
-                hand_x=29,
-                hand_y=23 + d,
+                hand_x=29 - int(round(u * 2)),
+                hand_y=22 + d,
                 angle_deg=ang,
                 glow_intensity=0.5 + u * 0.3,
-                blade_len=19.5,
-                shoulder=(25, 17 + d)
+                blade_len=17.5,
+                shoulder=(24, 17 + d)
             )
             if f >= 2:
                 frame = draw_aegis_greatshield(frame, cx=31, cy=21 + d, glow=0.4 + u * 0.4)
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         elif f <= 12:
-            # F07..F12: Braces behind glowing Aegis Greatshield barrier while coiling Runeblade for counter-slash
+            # F07..F12: Braces behind glowing Aegis Greatshield barrier while coiling sword arm back for counter-slash
             d = 7
             k = f - 7
             u = k / 5.0
@@ -1432,15 +1671,15 @@ def build_row7_crouch(tpl):
             base = apply_cape_wave(base, phase, amplitude=1.2, vertical_flutter=0.3)
             frame = draw_runeblade(
                 base,
-                hand_x=27 - int(round(u * 2)),
-                hand_y=23 + d,
-                angle_deg=-16.0 - u * 22.0,
+                hand_x=27 - int(round(u * 4)),
+                hand_y=22 + d - int(round(u * 2)),
+                angle_deg=-16.0 - u * 30.0,
                 glow_intensity=0.8 + u * 0.2,
-                blade_len=19.0,
-                shoulder=(25, 17 + d)
+                blade_len=17.5,
+                shoulder=(24, 17 + d)
             )
             frame = draw_aegis_greatshield(frame, cx=32, cy=21 + d, glow=0.85 + 0.15 * math.sin(k * 1.2))
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         elif f <= 18:
             # F13..F18: Unleashes low horizontal Frost-Crescent counter-slash from behind the Aegis shield!
@@ -1452,21 +1691,22 @@ def build_row7_crouch(tpl):
                 base = np.roll(base, 1, axis=1)
                 base[:, 0:1] = 0
             base = apply_cape_wave(base, phase * 2.0, amplitude=1.8, vertical_flutter=0.6)
-            frame = draw_aegis_greatshield(base, cx=28, cy=21 + d, glow=0.65 - u * 0.2)
+            frame = draw_aegis_greatshield(base, cx=27, cy=21 + d, glow=0.65 - u * 0.2)
 
             ang_seq = [4.0, 12.0, 16.0, 14.0, 8.0, 0.0]
-            slash_arc = (-32.0, 22.0, 20.0, 1.0 - k * 0.22) if k <= 3 else None
+            hx_seq = [33, 35, 35, 34, 32, 31]
+            slash_arc = (-32.0, 22.0, 18.5, 1.0 - k * 0.22) if k <= 3 else None
             frame = draw_runeblade(
                 frame,
-                hand_x=33 if k <= 3 else 31,
-                hand_y=23 + d,
+                hand_x=hx_seq[k],
+                hand_y=22 + d,
                 angle_deg=ang_seq[k],
                 glow_intensity=1.0 if k <= 2 else 0.7,
-                blade_len=18.5,
-                shoulder=(27, 17 + d),
+                blade_len=16.5,
+                shoulder=(26, 17 + d),
                 slash_arc=slash_arc
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         else:
             # F19..F29: Smoothly rises from 7px crouch back to upright combat stance
@@ -1482,13 +1722,13 @@ def build_row7_crouch(tpl):
             frame = draw_runeblade(
                 base,
                 hand_x=int(round(31 * (1.0 - u) + 29 * u)),
-                hand_y=24 + d,
+                hand_y=23 + d,
                 angle_deg=ang,
                 glow_intensity=0.65 - u * 0.2,
-                blade_len=20.5,
-                shoulder=(25, 18 + d)
+                blade_len=18.5,
+                shoulder=(24, 18 + d)
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
     return frames
 
@@ -1497,11 +1737,11 @@ def build_row8_jump(tpl):
     """
     Row 8 (`JUMP`, 30 frames — ZERO bouncy-ball frames!):
     - F00..F04: Athletic knee-bend crouch launch
-    - F05..F11: Powerful ascending Valkyrie vault with knees tucked and cape streaming below, raising Runeblade overhead
+    - F05..F11: Powerful ascending Valkyrie vault with knees tucked and cape streaming below, raising Runeblade overhead with two-handed IK arms
     - F12..F18: Apex mid-air two-handed overhead cleave unleashing a downward-angled Frost Crescent
     - F19..F24: Descending armored glide
     - F25..F29: Shock-absorbing knee-bend landing
-    Every single frame shows Aethelgard's full head, plumed helm, armor, cape, legs, and Runeblade!
+    Every single frame shows Aethelgard's full head, plumed helm, armor, cape, legs, IK arms, and Runeblade!
     """
     frames = []
     for f in range(30):
@@ -1516,14 +1756,14 @@ def build_row8_jump(tpl):
             ang = -45.0 + (22.0 if f in (1, 2) else -18.0 * u)
             frame = draw_runeblade(
                 body,
-                hand_x=29,
-                hand_y=23 + d,
+                hand_x=29 - int(round(u * 2)),
+                hand_y=22 + d,
                 angle_deg=ang,
                 glow_intensity=0.55 + u * 0.25,
-                blade_len=20.5,
-                shoulder=(25, 17 + d)
+                blade_len=18.5,
+                shoulder=(24, 17 + d)
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         elif f <= 11:
             # F05..F11: Ascending Valkyrie vault with tucked armored knees & two-handed overhead windup
@@ -1534,19 +1774,19 @@ def build_row8_jump(tpl):
             body = apply_cape_wave(body, phase * 2.0, amplitude=2.3, vertical_flutter=1.1)
 
             ang = -55.0 * (1.0 - u) + (-128.0) * u
-            hx = int(round(29 * (1.0 - u) + 25 * u))
-            hy = int(round(20 * (1.0 - u) + 12 * u))
+            hx = int(round(29 * (1.0 - u) + 22 * u))
+            hy = int(round(21 * (1.0 - u) + 12 * u))
             frame = draw_runeblade(
                 body,
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=0.75 + u * 0.25,
-                blade_len=20.5,
-                shoulder=(25, 16),
+                blade_len=18.5,
+                shoulder=(24, 16),
                 two_handed=(k >= 2)
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         elif f <= 18:
             # F12..F18: Apex mid-air two-handed overhead cleave unleashing a downward-angled Frost Crescent!
@@ -1557,13 +1797,13 @@ def build_row8_jump(tpl):
             body = apply_cape_wave(body, phase * 2.0, amplitude=2.5, vertical_flutter=1.2)
 
             ang_seq = [-65.0, -8.0, 28.0, 42.0, 46.0, 42.0, 36.0]
-            hx_seq = [30, 33, 34, 34, 33, 32, 31]
-            hy_seq = [13, 17, 21, 24, 25, 25, 24]
+            hx_seq = [27, 33, 35, 35, 33, 32, 31]
+            hy_seq = [12, 16, 20, 24, 26, 26, 24]
             slash_arc = None
             if k <= 4:
                 arc_int = [0.8, 1.0, 1.0, 0.85, 0.55][k]
                 a0 = [-128.0, -90.0, -45.0, -10.0, 10.0][k]
-                slash_arc = (a0, ang_seq[k] + 6.0, 20.5, arc_int)
+                slash_arc = (a0, ang_seq[k] + 6.0, 19.0, arc_int)
 
             frame = draw_runeblade(
                 body,
@@ -1571,12 +1811,12 @@ def build_row8_jump(tpl):
                 hand_y=hy_seq[k],
                 angle_deg=ang_seq[k],
                 glow_intensity=1.0 if k <= 4 else 0.75,
-                blade_len=20.5,
-                shoulder=(27, 17),
+                blade_len=18.5,
+                shoulder=(26, 17),
                 two_handed=(k <= 3),
                 slash_arc=slash_arc
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         elif f <= 24:
             # F19..F24: Descending armored glide as legs extend toward the arena floor
@@ -1592,10 +1832,10 @@ def build_row8_jump(tpl):
                 hand_y=int(round(24 * (1.0 - u) + 22 * u)),
                 angle_deg=ang,
                 glow_intensity=0.65,
-                blade_len=20.5,
-                shoulder=(26, 17)
+                blade_len=19.0,
+                shoulder=(25, 17)
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
         else:
             # F25..F29: Shock-absorbing knee-bend touchdown back to ready stance
@@ -1609,13 +1849,13 @@ def build_row8_jump(tpl):
             frame = draw_runeblade(
                 body,
                 hand_x=29,
-                hand_y=24 + d,
+                hand_y=23 + d,
                 angle_deg=ang,
                 glow_intensity=0.55,
-                blade_len=21.5,
-                shoulder=(25, 18 + d)
+                blade_len=19.5,
+                shoulder=(24, 18 + d)
             )
-            frames.append(frame)
+            frames.append(ensure_safe_cell(frame))
 
     return frames
 
