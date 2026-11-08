@@ -41,6 +41,27 @@
               <span class="cd-label" id="left-skill-text">WHIRLWIND</span>
             </div>
           </div>
+          <!-- 2v2 Partner Wing (Left Team P1B) -->
+          <div class="partner-wing hidden" id="left-partner-wing">
+            <div class="partner-mini-frame" id="left-partner-frame">
+              <canvas id="left-partner-portrait" width="28" height="28"></canvas>
+            </div>
+            <div class="partner-bars">
+              <div class="partner-header">
+                <span class="partner-name" id="left-partner-name">SERAPHINA</span>
+                <span class="partner-badge" id="left-partner-badge">ALLY ACTIVE</span>
+                <span class="partner-hp-num" id="left-partner-hp-text">1080</span>
+              </div>
+              <div class="partner-bar-stack">
+                <div class="partner-hp-track">
+                  <div class="partner-hp-fill fill-radiant" id="left-partner-hp-bar" style="width: 100%"></div>
+                </div>
+                <div class="partner-ult-track">
+                  <div class="partner-ult-fill" id="left-partner-mana-bar" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
         <span class="sr-only" id="left-state">IDLE</span>
       </section>
@@ -48,8 +69,9 @@
       <!-- Center Crest & Clock -->
       <div class="center-emblem">
         <h1 class="sr-only">Arcane vs Steel</h1>
-        <div class="crest-shield"><span>VS</span></div>
+        <div class="crest-shield"><span id="crest-vs-text">2V2</span></div>
         <div class="clock-plate" id="match-timer">00:00</div>
+        <div class="hud-mode-tag" id="hud-mode-badge">CHAOS BRAWL</div>
       </div>
 
       <!-- Right Fighter (P2) -->
@@ -76,6 +98,27 @@
               <span class="ult-label" id="right-ult-label">OVERDRIVE 0%</span>
             </div>
           </div>
+          <!-- 2v2 Partner Wing (Right Team P2B) -->
+          <div class="partner-wing partner-wing-right hidden" id="right-partner-wing">
+            <div class="partner-bars">
+              <div class="partner-header partner-header-right">
+                <span class="partner-hp-num" id="right-partner-hp-text">1160</span>
+                <span class="partner-badge" id="right-partner-badge">ALLY ACTIVE</span>
+                <span class="partner-name" id="right-partner-name">MALAKOR</span>
+              </div>
+              <div class="partner-bar-stack">
+                <div class="partner-hp-track">
+                  <div class="partner-hp-fill fill-abyssal" id="right-partner-hp-bar" style="width: 100%"></div>
+                </div>
+                <div class="partner-ult-track">
+                  <div class="partner-ult-fill" id="right-partner-mana-bar" style="width: 0%"></div>
+                </div>
+              </div>
+            </div>
+            <div class="partner-mini-frame" id="right-partner-frame">
+              <canvas id="right-partner-portrait" width="28" height="28"></canvas>
+            </div>
+          </div>
         </div>
         <div class="portrait-frame frame-emerald" id="right-portrait-frame">
           <canvas id="right-portrait" width="44" height="44"></canvas>
@@ -87,6 +130,14 @@
     <!-- Bottom Forged Iron Spectator Control Bar (Compact Non-Blocking Strip) -->
     <footer class="hud-bottom">
       <div class="iron-bar">
+        <button id="btn-mode-cycle" class="iron-btn iron-btn-mode" type="button" title="Cycle Battle Mode: 1v1 Duel / 2v2 Chaos Brawl / 2v2 Tag Relay">
+          <span class="gem-indicator gem-gold"></span>
+          <span id="mode-cycle-label">MODE: 2V2 BRAWL</span>
+        </button>
+        <button id="btn-tag-assist" class="iron-btn iron-btn-skill" type="button" title="Trigger Team Tag-Swap or Twin-Soul Synchronized Assist!">
+          <span class="gem-indicator gem-cyan"></span>
+          <span id="tag-assist-label">⚡ TWIN ASSIST</span>
+        </button>
         <button id="btn-sfx" class="iron-btn" type="button" aria-pressed="true">
           <span class="gem-indicator"></span>
           <span id="sfx-label">SFX</span>
@@ -112,15 +163,37 @@
     <section id="landing-overlay" class="landing-overlay" aria-label="Champion Roster Selection">
       <div class="landing-shell">
         <header class="landing-header">
-          <div class="landing-eyebrow">ECLIPSE SANCTUARY CHRONICLES • HD-2D IDLE AUTO-BATTLER</div>
-          <h1 class="landing-title">ARCANE <span>VS.</span> STEEL</h1>
+          <div class="landing-title-block">
+            <div class="landing-eyebrow">ECLIPSE SANCTUARY CHRONICLES • HD-2D IDLE AUTO-BATTLER</div>
+            <h1 class="landing-title">ARCANE <span>VS.</span> STEEL</h1>
+          </div>
+          <div class="mode-selector-bar" role="group" aria-label="Battle Mode Selector">
+            <button type="button" class="mode-pill" id="mode-btn-1v1" data-mode="1v1">
+              <span class="mode-pill-icon">⚔</span>
+              <span class="mode-pill-text">1V1 DUEL</span>
+            </button>
+            <button type="button" class="mode-pill active-mode" id="mode-btn-2v2-brawl" data-mode="2v2_brawl">
+              <span class="mode-pill-icon">🔥</span>
+              <span class="mode-pill-text">2V2 CHAOS BRAWL</span>
+              <span class="mode-new-tag">NEW</span>
+            </button>
+            <button type="button" class="mode-pill" id="mode-btn-2v2-tag" data-mode="2v2_tag">
+              <span class="mode-pill-icon">⚡</span>
+              <span class="mode-pill-text">2V2 TAG RELAY</span>
+              <span class="mode-new-tag">NEW</span>
+            </button>
+          </div>
         </header>
 
         <div class="versus-layout">
-          <!-- LEFT PANEL: FIGHTER 1 PROFILE & VISUAL SKILL BREAKDOWN -->
+          <!-- LEFT PANEL: FIGHTER 1 / TEAM 1 PROFILE & VISUAL SKILL BREAKDOWN -->
           <aside class="fighter-profile profile-steel" id="profile-left">
             <div class="profile-top-bar">
-              <div class="profile-corner-tag tag-p1">★ FIGHTER 1 • LEFT CORNER</div>
+              <div class="profile-corner-tag tag-p1" id="p1-corner-tag">★ TEAM 1 • LEFT DUO</div>
+              <div class="duo-tab-row" id="p1-duo-tabs">
+                <button type="button" class="duo-tab-btn active-tab" id="p1-tab-lead" data-inspect-left="lead">★ P1 LEAD</button>
+                <button type="button" class="duo-tab-btn" id="p1-tab-partner" data-inspect-left="partner">★ P1B ALLY</button>
+              </div>
               <span class="profile-style-pill" id="p1-profile-style">MELEE VANGUARD</span>
             </div>
 
@@ -173,21 +246,33 @@
             </div>
           </aside>
 
-          <!-- CENTER COLUMN: 6-CHAMPION PORTRAIT SELECTOR & DUEL LAUNCHER -->
+          <!-- CENTER COLUMN: 7-CHAMPION PORTRAIT SELECTOR & DUEL LAUNCHER -->
           <div class="versus-center-col">
-            <div class="matchup-banner">
-              <button type="button" class="slot-pill slot-left active-slot" id="slot-btn-left" title="Click to select a Champion for Fighter 1 (Left)">
-                <span class="slot-tag">SELECTING P1 • LEFT</span>
-                <strong class="slot-hero-name" id="slot-left-name">AETHELGARD</strong>
-              </button>
-              <div class="matchup-vs-badge">VS</div>
-              <button type="button" class="slot-pill slot-right" id="slot-btn-right" title="Click to select a Champion for Fighter 2 (Right)">
-                <span class="slot-tag">SELECTING P2 • RIGHT</span>
-                <strong class="slot-hero-name" id="slot-right-name">SYLVARA</strong>
-              </button>
+            <div class="matchup-banner" id="matchup-banner">
+              <div class="team-slot-col">
+                <button type="button" class="slot-pill slot-left active-slot" id="slot-btn-left" title="Click to select a Champion for P1 Lead (Left Team)">
+                  <span class="slot-tag" id="slot-left-tag">★ P1 LEAD</span>
+                  <strong class="slot-hero-name" id="slot-left-name">TORGAR</strong>
+                </button>
+                <button type="button" class="slot-pill slot-left-partner" id="slot-btn-left-partner" title="Click to select a Partner Champion for P1B Ally (Left Team)">
+                  <span class="slot-tag" id="slot-left-partner-tag">★ P1B ALLY</span>
+                  <strong class="slot-hero-name" id="slot-left-partner-name">SERAPHINA</strong>
+                </button>
+              </div>
+              <div class="matchup-vs-badge" id="matchup-vs-text">2V2</div>
+              <div class="team-slot-col">
+                <button type="button" class="slot-pill slot-right" id="slot-btn-right" title="Click to select a Champion for P2 Lead (Right Team)">
+                  <span class="slot-tag" id="slot-right-tag">★ P2 LEAD</span>
+                  <strong class="slot-hero-name" id="slot-right-name">SYLVARA</strong>
+                </button>
+                <button type="button" class="slot-pill slot-right-partner" id="slot-btn-right-partner" title="Click to select a Partner Champion for P2B Ally (Right Team)">
+                  <span class="slot-tag" id="slot-right-partner-tag">★ P2B ALLY</span>
+                  <strong class="slot-hero-name" id="slot-right-partner-name">MALAKOR</strong>
+                </button>
+              </div>
             </div>
 
-            <div class="portrait-grid-label">CLICK A PORTRAIT TO SELECT CHAMPION</div>
+            <div class="portrait-grid-label" id="portrait-grid-label">CLICK A PORTRAIT TO ASSIGN TO ACTIVE SLOT</div>
 
             <div class="champion-grid">
               <!-- 1. Warrior -->
@@ -301,10 +386,14 @@
             </footer>
           </div>
 
-          <!-- RIGHT PANEL: FIGHTER 2 PROFILE & VISUAL SKILL BREAKDOWN -->
+          <!-- RIGHT PANEL: FIGHTER 2 / TEAM 2 PROFILE & VISUAL SKILL BREAKDOWN -->
           <aside class="fighter-profile profile-emerald" id="profile-right">
             <div class="profile-top-bar">
-              <div class="profile-corner-tag tag-p2">★ FIGHTER 2 • RIGHT CORNER</div>
+              <div class="profile-corner-tag tag-p2" id="p2-corner-tag">★ TEAM 2 • RIGHT DUO</div>
+              <div class="duo-tab-row" id="p2-duo-tabs">
+                <button type="button" class="duo-tab-btn active-tab" id="p2-tab-lead" data-inspect-right="lead">★ P2 LEAD</button>
+                <button type="button" class="duo-tab-btn" id="p2-tab-partner" data-inspect-right="partner">★ P2B ALLY</button>
+              </div>
               <span class="profile-style-pill" id="p2-profile-style">RANGED MARKSMAN</span>
             </div>
 

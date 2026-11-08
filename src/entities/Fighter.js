@@ -109,11 +109,32 @@ export class Fighter {
       this.game.vfx.spawnShockwave(this.x, this.y - 88, 62, '#fde047', 0.30, true);
       this.game.vfx.spawnGlyphBurst(this.x, this.y - 96, 7, 'heal');
     }
+    // 2v2 Sanctuary Ally Grace: share 55% of active combat heals with injured teammate!
+    if (
+      !this._isAllyGraceHeal &&
+      this.game &&
+      typeof this.game.is2v2Mode === 'function' &&
+      this.game.is2v2Mode() &&
+      label !== 'STARLIGHT' &&
+      label !== 'RESERVE REGEN' &&
+      label !== 'ALLY GRACE'
+    ) {
+      const ally = this.game.getTeammateOf ? this.game.getTeammateOf(this) : null;
+      if (ally && !ally.isDead && ally.hp < ally.maxHp) {
+        const sharedAmt = Math.max(8, Math.round(amount * 0.55));
+        ally._isAllyGraceHeal = true;
+        const healedAlly = ally.heal(sharedAmt, 'ALLY GRACE');
+        ally._isAllyGraceHeal = false;
+        if (this.stats && healedAlly > 0) {
+          this.stats.healingDone += Math.round(healedAlly);
+        }
+      }
+    }
     return this.hp - prevHp;
   }
 
   takeDamage(amount, attacker, isCrit = false, knockX = 95, knockY = 0) {
-    if (this.isDead) return;
+    if (this.isDead || this.isBenched) return;
     if (this.isInvulnerable || (this.state === 'DODGE' && this.stateTimer < 0.36)) {
       if (this.game) {
         this.game.vfx.spawnDamageText(this.x - this.facing * 24, this.y - 196, 0, false, 'EVADED!', this.primaryColor);
@@ -122,6 +143,65 @@ export class Fighter {
       this.gainMana(8);
       return;
     }
+
+    // 2v2 Twin-Soul Cross-Combo: when both teammates strike the same target within 0.95s!
+    if (
+      !this._isSplashDamage &&
+      attacker &&
+      this.game &&
+      typeof this.game.is2v2Mode === 'function' &&
+      this.game.is2v2Mode()
+    ) {
+      const nowT = this.game.matchTime || 0;
+      if (
+        this.lastHitBy &&
+        this.lastHitBy !== attacker &&
+        this.lastHitBy.team &&
+        this.lastHitBy.team === attacker.team &&
+        nowT - (this.lastHitTime || -99) <= 0.95 &&
+        nowT - (this.lastComboTime || -99) >= 1.15
+      ) {
+        this.lastComboTime = nowT;
+        amount *= 1.16;
+        isCrit = true;
+        attacker.gainMana(7);
+        this.lastHitBy.gainMana(7);
+        if (attacker.stats) attacker.stats.clashes++;
+        if (this.game.vfx) {
+          this.game.vfx.spawnDamageText(
+            this.x,
+            this.y - 232,
+            0,
+            false,
+            '★ TWIN-SOUL COMBO! ★',
+            '#fde047'
+          );
+          this.game.vfx.spawnShockwave(this.x, this.y - 98, 96, attacker.primaryColor, 0.28);
+          this.game.vfx.spawnBurst(this.x, this.y - 98, 14, this.lastHitBy.primaryColor || '#fef08a', 235, {
+            upBias: 95,
+            size: 6
+          });
+        }
+      }
+      this.lastHitBy = attacker;
+      this.lastHitTime = nowT;
+
+      // 2v2 Chaos Brawl Cleave Splash: heavy strikes cleave nearby opposing teammate within 94px
+      if (this.game.gameMode === '2v2_brawl' && (amount >= 38 || isCrit)) {
+        const enemyAlly = this.game.getTeammateOf ? this.game.getTeammateOf(this) : null;
+        if (
+          enemyAlly &&
+          !enemyAlly.isDead &&
+          !enemyAlly.isBenched &&
+          Math.abs(enemyAlly.x - this.x) < 94
+        ) {
+          enemyAlly._isSplashDamage = true;
+          enemyAlly.takeDamage(Math.round(amount * 0.52), attacker, false, knockX * 0.65, 0);
+          enemyAlly._isSplashDamage = false;
+        }
+      }
+    }
+
     if (attacker && attacker.isBerserk) {
       amount *= 1.12;
     }
@@ -224,9 +304,9 @@ export class Fighter {
 
   checkIncomingThreat(enemy, game) {
     if (!game || !game.vfx) return false;
-    // 1. Incoming projectile heading toward this fighter
+    // 1. Incoming enemy projectile heading toward this fighter
     for (const proj of game.vfx.projectiles) {
-      if (proj.owner !== this) {
+      if (proj.owner !== this && (!this.team || !proj.owner?.team || proj.owner.team !== this.team)) {
         const dx = this.x - proj.x;
         if (Math.abs(dx) < 185 && Math.sign(proj.vx) === Math.sign(dx)) {
           return true;
@@ -280,6 +360,30 @@ export class Fighter {
     if (this.hitFlash > 0) this.hitFlash = Math.max(0, this.hitFlash - dt);
     if (this.hurtTimer > 0) this.hurtTimer = Math.max(0, this.hurtTimer - dt);
 
+    // Benched Reserve Fighter on the Sanctuary Tag Pedestal (in 2v2 Tag Relay mode)
+    if (this.isBenched && !this.isDead) {
+      const ww = game.renderer ? game.renderer.worldWidth : 1200;
+      const isLeftTeam = this.team === 'left' || this.team === 1;
+      const targetBenchX = isLeftTeam ? 54 : ww - 54;
+      this.x += (targetBenchX - this.x) * Math.min(1, dt * 10);
+      this.y = this.groundY - 6;
+      this.vx = 0;
+      this.vy = 0;
+      this.facing = isLeftTeam ? 1 : -1;
+      this.state = 'IDLE';
+      this.walkPhase += dt * 2.5;
+      this.headBob = Math.sin(this.walkPhase) * 1.8;
+      this.torsoAngle *= Math.pow(0.05, dt);
+      this.gainMana(dt * 4.2);
+      if (this.hp < this.maxHp) {
+        this.hp = Math.min(this.maxHp, this.hp + dt * 15);
+      }
+      this.autoCooldown = Math.max(0, this.autoCooldown - dt);
+      this.skillCooldown = Math.max(0, this.skillCooldown - dt);
+      this.updateCape(dt);
+      return;
+    }
+
     if (!this.isDead && this.state !== 'ULTIMATE') {
       this.gainMana(dt * 4.5);
     }
@@ -288,10 +392,32 @@ export class Fighter {
     if (enemy && !this.isDead && !enemy.isDead && this.state !== 'ULTIMATE' && this.state !== 'DASH' && this.state !== 'DODGE') {
       const dx = this.x - enemy.x;
       const absDx = Math.abs(dx);
-      const minSep = 115;
+      const minSep = 110;
       if (absDx < minSep) {
         const pushDir = dx === 0 ? -this.facing : Math.sign(dx);
         this.x += pushDir * (minSep - absDx) * 6.5 * dt;
+      }
+    }
+
+    // 2v2 Teammate Tactical Spacing: keep a natural 76px Vanguard/Flanker stagger so allies never stack on the same X pixel
+    if (
+      game &&
+      game.gameMode === '2v2_brawl' &&
+      !this.isDead &&
+      this.state !== 'ULTIMATE' &&
+      this.state !== 'DASH' &&
+      this.state !== 'DODGE'
+    ) {
+      const ally = game.getTeammateOf ? game.getTeammateOf(this) : null;
+      if (ally && !ally.isDead && !ally.isBenched) {
+        const adx = this.x - ally.x;
+        const absAdx = Math.abs(adx);
+        const allySep = 76;
+        if (absAdx < allySep) {
+          const defaultDir = this.slotRole === 'partner' ? -this.facing : this.facing;
+          const pushDir = absAdx < 4 ? defaultDir : Math.sign(adx);
+          this.x += pushDir * (allySep - absAdx) * 4.8 * dt;
+        }
       }
     }
 

@@ -574,8 +574,12 @@ export class VFXManager {
         this.spawnShockwave(cs.x, cs.groundY, 68, cs.color, 0.28, true);
         this.spawnBurst(cs.x, cs.groundY - 12, 16, '#bae6fd', 220, { upBias: 115, size: 7 });
         this.spawnGlyphBurst(cs.x, cs.groundY - 45, 5, 'steel');
-        if (cs.target && !cs.target.isDead && Math.abs(cs.target.x - cs.x) < 76) {
-          cs.target.takeDamage(cs.damage, cs.owner, false, 65, -90);
+        const csEnemies =
+          cs.owner?.game?.getEnemiesOf ? cs.owner.game.getEnemiesOf(cs.owner) : cs.target ? [cs.target] : [];
+        for (const foe of csEnemies) {
+          if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - cs.x) < 76) {
+            foe.takeDamage(cs.damage, cs.owner, false, 65, -90);
+          }
         }
       } else if (Math.random() < 0.65) {
         this.spawnParticle({
@@ -665,8 +669,14 @@ export class VFXManager {
           });
           this.spawnDecal(s.x, isHeavyWeapon ? 76 : 48, 'fissure', s.color, 3.8);
           if (renderer && isHeavyWeapon) renderer.triggerShake(6, 0.14);
-          if (s.damage > 0 && s.target && !s.target.isDead && Math.abs(s.target.x - s.x) < 92) {
-            s.target.takeDamage(s.damage, s.owner, isHeavyWeapon, 55, -60);
+          if (s.damage > 0) {
+            const strikeEnemies =
+              s.owner?.game?.getEnemiesOf ? s.owner.game.getEnemiesOf(s.owner) : s.target ? [s.target] : [];
+            for (const foe of strikeEnemies) {
+              if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - s.x) < 92) {
+                foe.takeDamage(s.damage, s.owner, isHeavyWeapon, 55, -60);
+              }
+            }
           }
         }
       } else {
@@ -724,10 +734,20 @@ export class VFXManager {
           });
         }
         pil.tickTimer += dt;
-        if (pil.tickTimer >= 0.25 && pil.target && !pil.target.isDead) {
+        if (pil.tickTimer >= 0.25) {
           pil.tickTimer = 0;
-          if (Math.abs(pil.target.x - pil.x) < 88 * pil.scaleWidth && groundY - pil.target.y < 155) {
-            pil.target.takeDamage(Math.round(28 * pil.scaleWidth), pil.owner, false, 35, -55);
+          const pilEnemies =
+            pil.owner?.game?.getEnemiesOf ? pil.owner.game.getEnemiesOf(pil.owner) : pil.target ? [pil.target] : [];
+          for (const foe of pilEnemies) {
+            if (
+              foe &&
+              !foe.isDead &&
+              !foe.isBenched &&
+              Math.abs(foe.x - pil.x) < 88 * pil.scaleWidth &&
+              groundY - foe.y < 155
+            ) {
+              foe.takeDamage(Math.round(28 * pil.scaleWidth), pil.owner, false, 35, -55);
+            }
           }
         }
       }

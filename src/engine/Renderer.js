@@ -254,11 +254,19 @@ export class Renderer {
       this.stageEventBannerTimer = Math.max(0, this.stageEventBannerTimer - rawDt);
     }
 
-    if (fighters && fighters.length === 2) {
-      const f1 = fighters[0];
-      const f2 = fighters[1];
-      const midX = (f1.x + f2.x) * 0.5;
-      const dist = Math.abs(f1.x - f2.x) + 340;
+    if (fighters && fighters.length >= 2) {
+      const activePool = fighters.filter(
+        (f) => !f.isBenched && (!f.isDead || (f.deathTimer || 0) < 1.1)
+      );
+      const pool = activePool.length > 0 ? activePool : fighters;
+      let minX = pool[0].x;
+      let maxX = pool[0].x;
+      for (const f of pool) {
+        if (f.x < minX) minX = f.x;
+        if (f.x > maxX) maxX = f.x;
+      }
+      const midX = (minX + maxX) * 0.5;
+      const dist = Math.abs(maxX - minX) + (fighters.length > 2 ? 380 : 340);
 
       const fitScaleX = this.width / Math.max(620, Math.min(this.worldWidth, dist));
       const fitScaleY = this.height / 720;
@@ -341,7 +349,10 @@ export class Renderer {
     ctx.translate(0, (gy + 2) * 2);
     ctx.scale(1, -0.42);
     ctx.globalAlpha = 0.26;
-    for (const f of fighters) f.draw(ctx, true, this);
+    for (const f of fighters) {
+      if (f.isBenched) continue;
+      f.draw(ctx, true, this);
+    }
     vfx.renderMainPass(ctx, true, this);
     ctx.restore();
 
@@ -355,8 +366,11 @@ export class Renderer {
     if (typeof vfx.renderBackgroundCastSeals === 'function') {
       vfx.renderBackgroundCastSeals(ctx, this);
     }
-    const sorted = [...fighters].sort((a, b) => a.y - b.y);
+    const sorted = [...fighters].sort((a, b) => (a.isBenched ? -1 : b.isBenched ? 1 : a.y - b.y));
     for (const f of sorted) {
+      if (f.isBenched && !f.isDead) {
+        this.drawTagPedestalWorld(ctx, f);
+      }
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const deathFade = f.isDead ? Math.min(1, Math.max(0.08, 1 - (f.deathTimer || 0) * 0.65)) : 1;
@@ -368,7 +382,7 @@ export class Renderer {
         : f.state === 'IDLE' || f.state === 'WALK'
           ? 0.16
           : 0.26;
-      ctx.globalAlpha = baseAlpha * deathFade;
+      ctx.globalAlpha = baseAlpha * deathFade * (f.isBenched ? 0.65 : 1);
       const glow = this.getGlowForColor(f.primaryColor);
       ctx.drawImage(glow, f.x - 125, f.y - (f.isDead ? 95 : 175), 250, 250);
       if (isChrono && !f.isDead) {
@@ -383,21 +397,30 @@ export class Renderer {
       this.drawCharacterPixelFlames(ctx, f);
     }
     for (const f of sorted) {
-      if (typeof f.drawForegroundOverlay === 'function') {
+      if (!f.isBenched && typeof f.drawForegroundOverlay === 'function') {
         f.drawForegroundOverlay(ctx, this);
       }
     }
     vfx.renderMainPass(ctx, false, this, false);
 
-    // 6. Character Pass: Crisp Inked Champions drawn IN FRONT of normal skills & auto-attacks
+    // 6. Character Pass: Crisp Champions drawn IN FRONT of normal skills & auto-attacks
     // so characters and their faces are NEVER buried under regular combat VFX or washed out by additive skill bloom!
     for (const f of sorted) {
-      f.draw(ctx, false, this);
+      if (f.isBenched) {
+        ctx.save();
+        ctx.translate(f.x, f.y);
+        ctx.scale(0.8, 0.8);
+        ctx.translate(-f.x, -f.y);
+        f.draw(ctx, false, this);
+        ctx.restore();
+      } else {
+        f.draw(ctx, false, this);
+      }
     }
 
     // 7. Foreground Ultimate Attack Pass: Ultimate Attacks, Clashes & K.O. Finishers blaze IN FRONT of the characters!
     for (const f of sorted) {
-      if (typeof f.drawUltimateForeground === 'function') {
+      if (!f.isBenched && typeof f.drawUltimateForeground === 'function') {
         f.drawUltimateForeground(ctx, this);
       }
     }
@@ -409,6 +432,13 @@ export class Renderer {
       this.drawKOFinisherWorld(ctx, gy);
     }
 
+    // 7.5. In-World 2v2 Overhead Team & Mini-HP Badges (when 4 fighters are present)
+    if (fighters.length > 2) {
+      for (const f of sorted) {
+        this.drawFighter2v2OverheadBadge(ctx, f);
+      }
+    }
+
     // 8. Ultimate Callout Plates & Floating Combat Text
     vfx.renderFloatingTexts(ctx);
 
@@ -416,6 +446,80 @@ export class Renderer {
 
     // 8. Screen-Space Unreal HD-2D Soft Tilt-Shift Vignette (Zero hard vertical bars)
     this.drawHD2DPostProcess(ctx);
+  }
+
+  drawTagPedestalWorld(ctx, f) {
+    const px = Math.round(f.x);
+    const py = Math.round(f.y);
+    const pulse = 0.72 + Math.sin(this.time * 5.2) * 0.22;
+    const isLeft = f.team === 'left' || f.team === 1;
+    const teamCol = isLeft ? '#38bdf8' : '#facc15';
+    ctx.save();
+    ctx.fillStyle = '#090d18';
+    ctx.fillRect(px - 44, py - 4, 88, 12);
+    ctx.strokeStyle = teamCol;
+    ctx.lineWidth = 2;
+    ctx.strokeRect(px - 44, py - 4, 88, 12);
+    ctx.globalAlpha = 0.55 * pulse;
+    ctx.fillStyle = f.primaryColor || teamCol;
+    ctx.fillRect(px - 36, py - 8, 72, 4);
+    ctx.restore();
+  }
+
+  drawFighter2v2OverheadBadge(ctx, f) {
+    if (!f || (f.isDead && (f.deathTimer || 0) > 0.6)) return;
+    const bx = Math.round(f.x);
+    const by = Math.round(f.y - (f.isBenched ? 168 : 206));
+    const isLeft = f.team === 'left' || f.team === 1;
+    const tagLabel = f.isBenched
+      ? 'STANDBY'
+      : isLeft
+        ? f.slotRole === 'partner'
+          ? 'P1B'
+          : '★P1'
+        : f.slotRole === 'partner'
+          ? 'P2B'
+          : '★P2';
+    const borderCol = isLeft
+      ? f.slotRole === 'partner'
+        ? '#2dd4bf'
+        : '#38bdf8'
+      : f.slotRole === 'partner'
+        ? '#fb923c'
+        : '#facc15';
+    const hpPct = Math.max(0, Math.min(1, f.hp / Math.max(1, f.maxHp)));
+    const manaPct = Math.max(0, Math.min(1, f.mana / Math.max(1, f.maxMana)));
+
+    ctx.save();
+    const barW = 54;
+    const barH = 6;
+    const x0 = bx - Math.floor(barW / 2);
+    const y0 = by;
+
+    // Role Pill Tag above mini HP bar
+    ctx.font = '8px "ArcanePixel", monospace';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = '#050811';
+    ctx.fillRect(bx - 24, y0 - 13, 48, 11);
+    ctx.strokeStyle = borderCol;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(bx - 24, y0 - 13, 48, 11);
+    ctx.fillStyle = '#fef9c3';
+    ctx.fillText(tagLabel, bx, y0 - 4);
+
+    // Mini HP bar & Overdrive strip
+    ctx.fillStyle = '#05070e';
+    ctx.fillRect(x0 - 1, y0 - 1, barW + 2, barH + 4);
+    ctx.strokeStyle = borderCol;
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x0 - 1, y0 - 1, barW + 2, barH + 4);
+
+    ctx.fillStyle = f.primaryColor || borderCol;
+    ctx.fillRect(x0, y0, Math.round(barW * hpPct), barH - 1);
+
+    ctx.fillStyle = '#facc15';
+    ctx.fillRect(x0, y0 + barH, Math.round(barW * manaPct), 2);
+    ctx.restore();
   }
 
   drawHD2DArena(ctx, ww, gy) {

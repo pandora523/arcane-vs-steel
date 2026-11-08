@@ -255,31 +255,56 @@ class Game {
     this.stageEventTriggered = false;
     this.stageEventTimer = 0;
     this.stageEventTickTimer = 0;
+    this.team1TagCd = 2.5;
+    this.team2TagCd = 2.5;
+    this.team1AssistCd = 3.2;
+    this.team2AssistCd = 3.8;
     this.matchTime = 0;
     this.hudTimer = 0;
     this.isMatchOver = false;
 
-    // Default Matchup: Torgar (Titan-Forger) vs. Sylvara (Archer)
+    // Default Mode & 4-Slot Team Lineup:
+    // Team 1 (Arcane & Sanctuary): Torgar (Titan-Forger) + Seraphina (High Priestess)
+    // Team 2 (Challenger Duo): Sylvara (Tempest Bowmaster) + Malakor (Abyssal Soulreaper)
+    this.gameMode = '2v2_brawl'; // '1v1' | '2v2_brawl' | '2v2_tag'
     this.slot1Hero = 'titan';
+    this.slot1PartnerHero = 'priestess';
     this.slot2Hero = 'archer';
-    this.activeAssignSlot = 2; // Default cursor on Slot 2 so clicking a 3rd hero pairs them with Fighter 1
+    this.slot2PartnerHero = 'reaper';
+    this.inspectLeftRole = 'lead'; // 'lead' | 'partner'
+    this.inspectRightRole = 'lead'; // 'lead' | 'partner'
+    this.activeAssignSlot = 2; // 1 = P1 Lead, 2 = P2 Lead, 3 = P1B Partner, 4 = P2B Partner
     this.isLandingOpen = true;
 
     const params = new URLSearchParams(window.location.search);
     this.forcedStage = params.get('stage') || null;
+    const modeParam = params.get('mode');
+    if (modeParam === '1v1' || modeParam === 'duel') {
+      this.gameMode = '1v1';
+    } else if (modeParam === '2v2_tag' || modeParam === 'tag') {
+      this.gameMode = '2v2_tag';
+    } else if (modeParam === '2v2_brawl' || modeParam === '2v2' || modeParam === 'brawl') {
+      this.gameMode = '2v2_brawl';
+    }
+
     const p1 = params.get('p1');
+    const p1b = params.get('p1b');
     const p2 = params.get('p2');
+    const p2b = params.get('p2b');
     const urlHero = params.get('hero');
     const rosterHero = params.get('roster');
     if (rosterHero && CHAMPION_ROSTER[rosterHero]) {
       this.slot1Hero = rosterHero;
     }
     if (p1 && CHAMPION_ROSTER[p1]) this.slot1Hero = p1;
+    if (p1b && CHAMPION_ROSTER[p1b]) this.slot1PartnerHero = p1b;
     if (p2 && CHAMPION_ROSTER[p2]) this.slot2Hero = p2;
+    if (p2b && CHAMPION_ROSTER[p2b]) this.slot2PartnerHero = p2b;
     if (urlHero && CHAMPION_ROSTER[urlHero]) {
       this.slot1Hero = urlHero;
       this.slot2Hero = urlHero === 'archer' ? 'mage' : 'archer';
     }
+    this.ensureDistinctTeamPartners();
 
     this.bindUI();
     this.syncRosterSelectionUI(false);
@@ -298,11 +323,17 @@ class Game {
     const forceCorner = params.get('corner') === '1';
     const forceClash = params.get('clash') === '1';
     const forceEvent = params.get('event') === '1';
+    const forceTagSwap = params.get('tagswap') === '1';
+    const forceAssist = params.get('assist') === '1';
+    const startArena = params.get('battle') === '1';
     this.isSimPaused = params.get('pause') === '1';
     if (
       p1 ||
+      p1b ||
       p2 ||
+      p2b ||
       urlHero ||
+      startArena ||
       this.forcedStage ||
       simSec > 0 ||
       killTarget ||
@@ -314,7 +345,9 @@ class Game {
       forceAttack ||
       forceCorner ||
       forceClash ||
-      forceEvent
+      forceEvent ||
+      forceTagSwap ||
+      forceAssist
     ) {
       this.syncRosterSelectionUI(false);
       this.startDuel(false);
@@ -355,6 +388,14 @@ class Game {
       this.triggerStagePhenomenon();
     }
 
+    if (forceTagSwap) {
+      this.triggerTeamTagSwap(1, true);
+    }
+
+    if (forceAssist) {
+      this.triggerTeamAssist(1, true);
+    }
+
     if (forceClash) {
       this.leftFighter.x = 340;
       this.rightFighter.x = 860;
@@ -383,7 +424,6 @@ class Game {
     }
 
     if (forceCorner) {
-      // Place left fighter (e.g. Priestess or Archer) cornered against the left wall and enemy closing in
       this.leftFighter.x = 105;
       this.leftFighter.dodgeCooldown = 0;
       this.leftFighter.wallWingCooldown = 0;
@@ -398,7 +438,15 @@ class Game {
       this.leftFighter.setState('SKILL');
       if (skillParam === 'both') {
         this.rightFighter.skillCooldown = 0;
-        this.rightFighter.setState('AUTO_ATTACK');
+        this.rightFighter.setState('SKILL');
+        if (this.leftPartner && !this.leftPartner.isBenched) {
+          this.leftPartner.skillCooldown = 0;
+          this.leftPartner.setState('AUTO_ATTACK');
+        }
+        if (this.rightPartner && !this.rightPartner.isBenched) {
+          this.rightPartner.skillCooldown = 0;
+          this.rightPartner.setState('AUTO_ATTACK');
+        }
       }
     }
 
@@ -425,6 +473,13 @@ class Game {
         killTarget === 'left' || killTarget === this.slot1Hero ? this.leftFighter : this.rightFighter;
       const attacker = victim === this.leftFighter ? this.rightFighter : this.leftFighter;
       victim.takeDamage(9999, attacker, true, 120, 0);
+      if (this.is2v2Mode()) {
+        const partnerVictim = victim === this.leftFighter ? this.leftPartner : this.rightPartner;
+        if (partnerVictim && !partnerVictim.isDead) {
+          partnerVictim.isBenched = false;
+          partnerVictim.takeDamage(9999, attacker, true, 120, 0);
+        }
+      }
       const dtSec = Number(params.get('dt') || 1.2);
       const steps = Math.floor(dtSec / 0.02);
       for (let i = 0; i < steps; i++) {
@@ -441,10 +496,48 @@ class Game {
     requestAnimationFrame((t) => this.loop(t));
   }
 
+  is2v2Mode() {
+    return this.gameMode === '2v2_brawl' || this.gameMode === '2v2_tag';
+  }
+
+  ensureDistinctTeamPartners() {
+    const keys = Object.keys(CHAMPION_ROSTER);
+    if (this.slot1PartnerHero === this.slot1Hero) {
+      this.slot1PartnerHero = keys.find((k) => k !== this.slot1Hero && k !== this.slot2Hero) || 'priestess';
+    }
+    if (this.slot2PartnerHero === this.slot2Hero) {
+      this.slot2PartnerHero = keys.find((k) => k !== this.slot2Hero && k !== this.slot1Hero) || 'reaper';
+    }
+  }
+
+  setGameMode(mode, playSound = true) {
+    if (!['1v1', '2v2_brawl', '2v2_tag'].includes(mode)) return;
+    this.gameMode = mode;
+    if (!this.is2v2Mode()) {
+      this.inspectLeftRole = 'lead';
+      this.inspectRightRole = 'lead';
+      if (this.activeAssignSlot > 2) this.activeAssignSlot = 1;
+    } else {
+      this.ensureDistinctTeamPartners();
+    }
+    this.syncRosterSelectionUI(playSound);
+    this.resetMatch();
+  }
+
+  cycleGameMode() {
+    const order = ['2v2_brawl', '2v2_tag', '1v1'];
+    const next = order[(order.indexOf(this.gameMode) + 1) % order.length];
+    this.setGameMode(next, true);
+  }
+
   bindUI() {
     this.btnSfx = document.getElementById('btn-sfx');
     this.sfxLabel = document.getElementById('sfx-label');
     this.btnSlowMo = document.getElementById('btn-slowmo');
+    this.btnModeCycle = document.getElementById('btn-mode-cycle');
+    this.modeCycleLabel = document.getElementById('mode-cycle-label');
+    this.btnTagAssist = document.getElementById('btn-tag-assist');
+    this.tagAssistLabel = document.getElementById('tag-assist-label');
     this.btnAutoTourney = document.getElementById('btn-auto-tourney');
     this.btnNextChallenger = document.getElementById('btn-next-challenger');
     this.btnReset = document.getElementById('btn-reset');
@@ -455,10 +548,56 @@ class Game {
     this.landingOverlay = document.getElementById('landing-overlay');
     this.timerEl = document.getElementById('match-timer');
 
+    this.modeBtns = {
+      '1v1': document.getElementById('mode-btn-1v1'),
+      '2v2_brawl': document.getElementById('mode-btn-2v2-brawl'),
+      '2v2_tag': document.getElementById('mode-btn-2v2-tag')
+    };
+    Object.entries(this.modeBtns).forEach(([modeKey, btn]) => {
+      if (!btn) return;
+      btn.addEventListener('click', () => this.setGameMode(modeKey, true));
+    });
+
     this.slotBtnLeft = document.getElementById('slot-btn-left');
+    this.slotBtnLeftPartner = document.getElementById('slot-btn-left-partner');
     this.slotBtnRight = document.getElementById('slot-btn-right');
+    this.slotBtnRightPartner = document.getElementById('slot-btn-right-partner');
     this.slotLeftName = document.getElementById('slot-left-name');
+    this.slotLeftPartnerName = document.getElementById('slot-left-partner-name');
     this.slotRightName = document.getElementById('slot-right-name');
+    this.slotRightPartnerName = document.getElementById('slot-right-partner-name');
+
+    this.p1DuoTabs = document.getElementById('p1-duo-tabs');
+    this.p2DuoTabs = document.getElementById('p2-duo-tabs');
+    this.p1TabLead = document.getElementById('p1-tab-lead');
+    this.p1TabPartner = document.getElementById('p1-tab-partner');
+    this.p2TabLead = document.getElementById('p2-tab-lead');
+    this.p2TabPartner = document.getElementById('p2-tab-partner');
+
+    if (this.p1TabLead) {
+      this.p1TabLead.addEventListener('click', () => {
+        this.inspectLeftRole = 'lead';
+        this.setActiveSlot(1);
+      });
+    }
+    if (this.p1TabPartner) {
+      this.p1TabPartner.addEventListener('click', () => {
+        this.inspectLeftRole = 'partner';
+        this.setActiveSlot(3);
+      });
+    }
+    if (this.p2TabLead) {
+      this.p2TabLead.addEventListener('click', () => {
+        this.inspectRightRole = 'lead';
+        this.setActiveSlot(2);
+      });
+    }
+    if (this.p2TabPartner) {
+      this.p2TabPartner.addEventListener('click', () => {
+        this.inspectRightRole = 'partner';
+        this.setActiveSlot(4);
+      });
+    }
 
     this.cards = {
       warrior: document.getElementById('card-warrior'),
@@ -502,51 +641,102 @@ class Game {
       manaBar: document.getElementById(`${side}-mana-bar`),
       ultLabel: document.getElementById(`${side}-ult-label`),
       skillCd: document.getElementById(`${side}-skill-cd`),
-      skillText: document.getElementById(`${side}-skill-text`)
+      skillText: document.getElementById(`${side}-skill-text`),
+      partnerWing: document.getElementById(`${side}-partner-wing`),
+      partnerPortrait: document.getElementById(`${side}-partner-portrait`),
+      partnerName: document.getElementById(`${side}-partner-name`),
+      partnerStatus: document.getElementById(`${side}-partner-badge`),
+      partnerHpText: document.getElementById(`${side}-partner-hp-text`),
+      partnerHpBar: document.getElementById(`${side}-partner-hp-bar`),
+      partnerManaBar: document.getElementById(`${side}-partner-mana-bar`)
     });
     this.hudEls = {
       left: cacheHUD('left'),
-      right: cacheHUD('right')
+      right: cacheHUD('right'),
+      crestVs: document.getElementById('crest-vs-text'),
+      modeBadge: document.getElementById('hud-mode-badge')
     };
 
     if (this.slotBtnLeft) {
-      this.slotBtnLeft.addEventListener('click', () => this.setActiveSlot(1));
+      this.slotBtnLeft.addEventListener('click', () => {
+        this.inspectLeftRole = 'lead';
+        this.setActiveSlot(1);
+      });
+    }
+    if (this.slotBtnLeftPartner) {
+      this.slotBtnLeftPartner.addEventListener('click', () => {
+        this.inspectLeftRole = 'partner';
+        this.setActiveSlot(3);
+      });
     }
     if (this.slotBtnRight) {
-      this.slotBtnRight.addEventListener('click', () => this.setActiveSlot(2));
+      this.slotBtnRight.addEventListener('click', () => {
+        this.inspectRightRole = 'lead';
+        this.setActiveSlot(2);
+      });
+    }
+    if (this.slotBtnRightPartner) {
+      this.slotBtnRightPartner.addEventListener('click', () => {
+        this.inspectRightRole = 'partner';
+        this.setActiveSlot(4);
+      });
     }
 
     // Direct P1 / P2 slot buttons on each roster card
     document.querySelectorAll('[data-assign-p1]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.assignHeroToSlot(1, btn.getAttribute('data-assign-p1'), true);
-        this.setActiveSlot(2);
+        const heroKey = btn.getAttribute('data-assign-p1');
+        if (this.is2v2Mode() && this.activeAssignSlot === 3) {
+          this.assignHeroToSlot(3, heroKey, true);
+          this.setActiveSlot(1);
+        } else {
+          this.assignHeroToSlot(1, heroKey, true);
+          this.setActiveSlot(this.is2v2Mode() ? 3 : 2);
+        }
       });
     });
     document.querySelectorAll('[data-assign-p2]').forEach((btn) => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        this.assignHeroToSlot(2, btn.getAttribute('data-assign-p2'), true);
-        this.setActiveSlot(1);
+        const heroKey = btn.getAttribute('data-assign-p2');
+        if (this.is2v2Mode() && this.activeAssignSlot === 4) {
+          this.assignHeroToSlot(4, heroKey, true);
+          this.setActiveSlot(2);
+        } else {
+          this.assignHeroToSlot(2, heroKey, true);
+          this.setActiveSlot(this.is2v2Mode() ? 4 : 1);
+        }
       });
     });
 
-    // Intuitive card click behavior:
-    // - Clicking a card already in Slot 1 or Slot 2 selects that slot as the active target to replace (without unexpectedly swapping P1 and P2)
-    // - Clicking an unselected card assigns it to the currently active slot and advances the cursor to the other slot
     Object.entries(this.cards).forEach(([heroKey, cardEl]) => {
       if (!cardEl) return;
       cardEl.addEventListener('click', () => {
         if (this.slot1Hero === heroKey) {
+          this.inspectLeftRole = 'lead';
           this.setActiveSlot(1);
           if (this.audio) this.audio.play(CHAMPION_ROSTER[heroKey].selectSfx, 350);
+        } else if (this.is2v2Mode() && this.slot1PartnerHero === heroKey) {
+          this.inspectLeftRole = 'partner';
+          this.setActiveSlot(3);
+          if (this.audio) this.audio.play(CHAMPION_ROSTER[heroKey].selectSfx, 350);
         } else if (this.slot2Hero === heroKey) {
+          this.inspectRightRole = 'lead';
           this.setActiveSlot(2);
+          if (this.audio) this.audio.play(CHAMPION_ROSTER[heroKey].selectSfx, 850);
+        } else if (this.is2v2Mode() && this.slot2PartnerHero === heroKey) {
+          this.inspectRightRole = 'partner';
+          this.setActiveSlot(4);
           if (this.audio) this.audio.play(CHAMPION_ROSTER[heroKey].selectSfx, 850);
         } else {
           this.assignHeroToSlot(this.activeAssignSlot, heroKey, true);
-          this.setActiveSlot(this.activeAssignSlot === 1 ? 2 : 1);
+          if (this.is2v2Mode()) {
+            const nextOrder = { 1: 3, 3: 2, 2: 4, 4: 1 };
+            this.setActiveSlot(nextOrder[this.activeAssignSlot] || 1);
+          } else {
+            this.setActiveSlot(this.activeAssignSlot === 1 ? 2 : 1);
+          }
         }
       });
     });
@@ -556,12 +746,11 @@ class Game {
     }
     if (this.btnRandomDuel) {
       this.btnRandomDuel.addEventListener('click', () => {
-        const keys = Object.keys(CHAMPION_ROSTER);
-        const i1 = Math.floor(Math.random() * keys.length);
-        let i2 = Math.floor(Math.random() * (keys.length - 1));
-        if (i2 >= i1) i2++;
-        this.slot1Hero = keys[i1];
-        this.slot2Hero = keys[i2];
+        const keys = [...Object.keys(CHAMPION_ROSTER)].sort(() => Math.random() - 0.5);
+        this.slot1Hero = keys[0];
+        this.slot2Hero = keys[1];
+        this.slot1PartnerHero = keys[2];
+        this.slot2PartnerHero = keys[3];
         this.syncRosterSelectionUI(true);
         this.startDuel(true);
       });
@@ -585,6 +774,20 @@ class Game {
       this.userSlowMo = !this.userSlowMo;
       this.btnSlowMo.setAttribute('aria-pressed', String(this.userSlowMo));
     });
+
+    if (this.btnModeCycle) {
+      this.btnModeCycle.addEventListener('click', () => this.cycleGameMode());
+    }
+
+    if (this.btnTagAssist) {
+      this.btnTagAssist.addEventListener('click', () => {
+        if (this.gameMode === '2v2_tag') {
+          this.triggerTeamTagSwap(1, true);
+        } else if (this.gameMode === '2v2_brawl') {
+          this.triggerTeamAssist(1, true);
+        }
+      });
+    }
 
     if (this.btnAutoTourney) {
       this.btnAutoTourney.addEventListener('click', () => {
@@ -613,34 +816,70 @@ class Game {
   advanceTourneyChallenger() {
     clearTimeout(this.autoNextTimeout);
     const keys = Object.keys(CHAMPION_ROSTER);
-    const keepHero = this.reigningHero || this.slot1Hero;
-    const pool = keys.filter((k) => k !== keepHero && k !== this.slot2Hero);
-    const candidates = pool.length > 0 ? pool : keys.filter((k) => k !== keepHero);
-    const nextChallenger = candidates[Math.floor(Math.random() * candidates.length)] || 'archer';
-    this.slot1Hero = keepHero;
-    this.slot2Hero = nextChallenger;
+    if (this.is2v2Mode()) {
+      const keepLead = this.reigningHero || this.slot1Hero;
+      const keepPartner =
+        this.slot1PartnerHero !== keepLead
+          ? this.slot1PartnerHero
+          : keys.find((k) => k !== keepLead) || 'priestess';
+      const pool = keys
+        .filter((k) => k !== keepLead && k !== keepPartner)
+        .sort(() => Math.random() - 0.5);
+      this.slot1Hero = keepLead;
+      this.slot1PartnerHero = keepPartner;
+      this.slot2Hero = pool[0] || 'archer';
+      this.slot2PartnerHero = pool[1] || 'reaper';
+    } else {
+      const keepHero = this.reigningHero || this.slot1Hero;
+      const pool = keys.filter((k) => k !== keepHero && k !== this.slot2Hero);
+      const candidates = pool.length > 0 ? pool : keys.filter((k) => k !== keepHero);
+      const nextChallenger = candidates[Math.floor(Math.random() * candidates.length)] || 'archer';
+      this.slot1Hero = keepHero;
+      this.slot2Hero = nextChallenger;
+    }
     this.syncRosterSelectionUI(false);
     this.resetMatch();
   }
 
   setActiveSlot(slotNum) {
     this.activeAssignSlot = slotNum;
+    if (slotNum === 1) this.inspectLeftRole = 'lead';
+    if (slotNum === 3) this.inspectLeftRole = 'partner';
+    if (slotNum === 2) this.inspectRightRole = 'lead';
+    if (slotNum === 4) this.inspectRightRole = 'partner';
     this.syncRosterSelectionUI(false);
   }
 
   assignHeroToSlot(slotNum, heroKey, playSound = true) {
     if (!CHAMPION_ROSTER[heroKey]) return;
+    const prevSlots = {
+      1: this.slot1Hero,
+      2: this.slot2Hero,
+      3: this.slot1PartnerHero,
+      4: this.slot2PartnerHero
+    };
+    const prevHero = prevSlots[slotNum];
+
+    // If heroKey is already in another slot, swap cleanly so all 4 slots stay distinct
+    if (slotNum !== 1 && this.slot1Hero === heroKey) this.slot1Hero = prevHero;
+    if (slotNum !== 2 && this.slot2Hero === heroKey) this.slot2Hero = prevHero;
+    if (slotNum !== 3 && this.slot1PartnerHero === heroKey) this.slot1PartnerHero = prevHero;
+    if (slotNum !== 4 && this.slot2PartnerHero === heroKey) this.slot2PartnerHero = prevHero;
+
     if (slotNum === 1) {
-      if (this.slot2Hero === heroKey) {
-        this.slot2Hero = this.slot1Hero;
-      }
       this.slot1Hero = heroKey;
-    } else {
-      if (this.slot1Hero === heroKey) {
-        this.slot1Hero = this.slot2Hero;
-      }
+      this.inspectLeftRole = 'lead';
+    } else if (slotNum === 2) {
       this.slot2Hero = heroKey;
+      this.inspectRightRole = 'lead';
+    } else if (slotNum === 3) {
+      this.slot1PartnerHero = heroKey;
+      this.inspectLeftRole = 'partner';
+    } else if (slotNum === 4) {
+      this.slot2PartnerHero = heroKey;
+      this.inspectRightRole = 'partner';
     }
+    this.ensureDistinctTeamPartners();
     this.syncRosterSelectionUI(playSound, heroKey);
     if (this.isLandingOpen && this.renderer) {
       this.resetMatch();
@@ -648,48 +887,122 @@ class Game {
   }
 
   syncRosterSelectionUI(playSound = false, soundHeroKey = null) {
-    const c1 = CHAMPION_ROSTER[this.slot1Hero];
-    const c2 = CHAMPION_ROSTER[this.slot2Hero];
-    if (this.slotLeftName) this.slotLeftName.textContent = c1.name;
-    if (this.slotRightName) this.slotRightName.textContent = c2.name;
-    if (this.slotBtnLeft) this.slotBtnLeft.classList.toggle('active-slot', this.activeAssignSlot === 1);
-    if (this.slotBtnRight) this.slotBtnRight.classList.toggle('active-slot', this.activeAssignSlot === 2);
+    const is2v2 = this.is2v2Mode();
+    const c1 = CHAMPION_ROSTER[this.slot1Hero] || CHAMPION_ROSTER.titan;
+    const c1b = CHAMPION_ROSTER[this.slot1PartnerHero] || CHAMPION_ROSTER.priestess;
+    const c2 = CHAMPION_ROSTER[this.slot2Hero] || CHAMPION_ROSTER.archer;
+    const c2b = CHAMPION_ROSTER[this.slot2PartnerHero] || CHAMPION_ROSTER.reaper;
 
+    // 1. Mode Selector Bar & Bottom Bar Mode/Assist Controls
+    if (this.modeBtns) {
+      Object.entries(this.modeBtns).forEach(([modeKey, btn]) => {
+        if (!btn) return;
+        const active = this.gameMode === modeKey;
+        btn.classList.toggle('active-mode', active);
+        btn.setAttribute('aria-pressed', String(active));
+      });
+    }
+    if (this.modeCycleLabel) {
+      this.modeCycleLabel.textContent =
+        this.gameMode === '2v2_brawl'
+          ? 'MODE: 2V2 BRAWL'
+          : this.gameMode === '2v2_tag'
+            ? 'MODE: 2V2 TAG'
+            : 'MODE: 1V1 DUEL';
+    }
+    if (this.btnTagAssist) {
+      this.btnTagAssist.classList.toggle('hidden', !is2v2);
+      if (this.tagAssistLabel) {
+        this.tagAssistLabel.textContent =
+          this.gameMode === '2v2_tag' ? '⚡ TAG SWAP' : '⚡ TWIN ASSIST';
+      }
+    }
+
+    // 2. Matchup Banner 4-Slot Names & Active Slot Highlight
+    if (this.slotLeftName) this.slotLeftName.textContent = c1.name;
+    if (this.slotLeftPartnerName) this.slotLeftPartnerName.textContent = c1b.name;
+    if (this.slotRightName) this.slotRightName.textContent = c2.name;
+    if (this.slotRightPartnerName) this.slotRightPartnerName.textContent = c2b.name;
+
+    if (this.slotBtnLeftPartner) this.slotBtnLeftPartner.classList.toggle('hidden', !is2v2);
+    if (this.slotBtnRightPartner) this.slotBtnRightPartner.classList.toggle('hidden', !is2v2);
+    if (this.p1DuoTabs) this.p1DuoTabs.classList.toggle('hidden', !is2v2);
+    if (this.p2DuoTabs) this.p2DuoTabs.classList.toggle('hidden', !is2v2);
+
+    if (this.slotBtnLeft) this.slotBtnLeft.classList.toggle('active-slot', this.activeAssignSlot === 1);
+    if (this.slotBtnLeftPartner)
+      this.slotBtnLeftPartner.classList.toggle('active-slot', this.activeAssignSlot === 3);
+    if (this.slotBtnRight) this.slotBtnRight.classList.toggle('active-slot', this.activeAssignSlot === 2);
+    if (this.slotBtnRightPartner)
+      this.slotBtnRightPartner.classList.toggle('active-slot', this.activeAssignSlot === 4);
+
+    if (this.p1TabLead) {
+      this.p1TabLead.textContent = `★ P1: ${c1.name}`;
+      this.p1TabLead.classList.toggle('active-duo-tab', this.inspectLeftRole === 'lead');
+    }
+    if (this.p1TabPartner) {
+      this.p1TabPartner.textContent = `P1B: ${c1b.name}`;
+      this.p1TabPartner.classList.toggle('active-duo-tab', this.inspectLeftRole === 'partner');
+    }
+    if (this.p2TabLead) {
+      this.p2TabLead.textContent = `★ P2: ${c2.name}`;
+      this.p2TabLead.classList.toggle('active-duo-tab', this.inspectRightRole === 'lead');
+    }
+    if (this.p2TabPartner) {
+      this.p2TabPartner.textContent = `P2B: ${c2b.name}`;
+      this.p2TabPartner.classList.toggle('active-duo-tab', this.inspectRightRole === 'partner');
+    }
+
+    // 3. Roster Card Badges & Quick-Assign Buttons
+    const slotPrompts = {
+      1: 'SET P1',
+      2: 'SET P2',
+      3: 'SET P1B',
+      4: 'SET P2B'
+    };
     Object.keys(CHAMPION_ROSTER).forEach((key) => {
       const card = this.cards[key];
       const ribbon = this.ribbons[key];
       const isP1 = this.slot1Hero === key;
+      const isP1B = is2v2 && this.slot1PartnerHero === key;
       const isP2 = this.slot2Hero === key;
+      const isP2B = is2v2 && this.slot2PartnerHero === key;
       if (card) {
         card.classList.toggle('selected-p1', isP1);
+        card.classList.toggle('selected-p1b', isP1B);
         card.classList.toggle('selected-p2', isP2);
+        card.classList.toggle('selected-p2b', isP2B);
       }
       if (ribbon) {
         ribbon.textContent = isP1
-          ? '★ P1'
-          : isP2
-            ? '★ P2'
-            : this.activeAssignSlot === 1
-              ? 'SET P1'
-              : 'SET P2';
+          ? '★ P1 LEAD'
+          : isP1B
+            ? '★ P1B ALLY'
+            : isP2
+              ? '★ P2 LEAD'
+              : isP2B
+                ? '★ P2B ALLY'
+                : slotPrompts[this.activeAssignSlot] || 'SET P1';
       }
     });
 
     document.querySelectorAll('[data-assign-p1]').forEach((btn) => {
       const k = btn.getAttribute('data-assign-p1');
-      const active = this.slot1Hero === k;
-      btn.classList.toggle('active-p1', active);
-      btn.textContent = active ? '★ P1' : 'P1';
+      const isP1 = this.slot1Hero === k;
+      const isP1B = is2v2 && this.slot1PartnerHero === k;
+      btn.classList.toggle('active-p1', isP1 || isP1B);
+      btn.textContent = isP1 ? '★ P1' : isP1B ? '★ P1B' : this.activeAssignSlot === 3 && is2v2 ? '+P1B' : 'P1';
     });
     document.querySelectorAll('[data-assign-p2]').forEach((btn) => {
       const k = btn.getAttribute('data-assign-p2');
-      const active = this.slot2Hero === k;
-      btn.classList.toggle('active-p2', active);
-      btn.textContent = active ? '★ P2' : 'P2';
+      const isP2 = this.slot2Hero === k;
+      const isP2B = is2v2 && this.slot2PartnerHero === k;
+      btn.classList.toggle('active-p2', isP2 || isP2B);
+      btn.textContent = isP2 ? '★ P2' : isP2B ? '★ P2B' : this.activeAssignSlot === 4 && is2v2 ? '+P2B' : 'P2';
     });
 
-    // Populate Left (P1) and Right (P2) Fighter Profile & Visual Skill Breakdown Panels
-    const syncProfilePanel = (prefix, cfg) => {
+    // 4. Populate Left (P1 / P1B) and Right (P2 / P2B) Fighter Profile & Skill Breakdown Panels
+    const syncProfilePanel = (prefix, cfg, partnerCfg) => {
       if (!cfg) return;
       const nameEl = document.getElementById(`${prefix}-profile-name`);
       const roleEl = document.getElementById(`${prefix}-profile-role`);
@@ -697,7 +1010,10 @@ class Game {
       const traitEl = document.getElementById(`${prefix}-profile-trait`);
       const haloEl = document.getElementById(`${prefix}-halo`);
       if (nameEl) nameEl.textContent = cfg.name;
-      if (roleEl) roleEl.textContent = cfg.role;
+      if (roleEl) {
+        roleEl.textContent =
+          is2v2 && partnerCfg ? `${cfg.role} • DUO WITH ${partnerCfg.name}` : cfg.role;
+      }
       if (styleEl) styleEl.textContent = cfg.style;
       if (traitEl) traitEl.textContent = cfg.trait;
       if (haloEl) haloEl.className = `stage-halo halo-${cfg.theme}`;
@@ -713,16 +1029,28 @@ class Game {
         });
       }
     };
-    syncProfilePanel('p1', c1);
-    syncProfilePanel('p2', c2);
+
+    const leftInspected = is2v2 && this.inspectLeftRole === 'partner' ? c1b : c1;
+    const leftOther = is2v2 && this.inspectLeftRole === 'partner' ? c1 : c1b;
+    const rightInspected = is2v2 && this.inspectRightRole === 'partner' ? c2b : c2;
+    const rightOther = is2v2 && this.inspectRightRole === 'partner' ? c2 : c2b;
+
+    syncProfilePanel('p1', leftInspected, leftOther);
+    syncProfilePanel('p2', rightInspected, rightOther);
 
     if (this.startDuelText) {
-      this.startDuelText.textContent = `WATCH DUEL: ${c1.name} VS. ${c2.name}`;
+      if (this.gameMode === '2v2_brawl') {
+        this.startDuelText.textContent = `LAUNCH 2V2 CHAOS BRAWL: ${c1.name} + ${c1b.name} VS. ${c2.name} + ${c2b.name}`;
+      } else if (this.gameMode === '2v2_tag') {
+        this.startDuelText.textContent = `LAUNCH 2V2 TAG RELAY: ${c1.name} + ${c1b.name} VS. ${c2.name} + ${c2b.name}`;
+      } else {
+        this.startDuelText.textContent = `WATCH DUEL: ${c1.name} VS. ${c2.name}`;
+      }
     }
 
     if (playSound && this.audio) {
       const sfxHero = CHAMPION_ROSTER[soundHeroKey || this.slot1Hero];
-      this.audio.play(sfxHero.selectSfx, 600);
+      if (sfxHero) this.audio.play(sfxHero.selectSfx, 600);
     }
   }
 
@@ -746,6 +1074,7 @@ class Game {
     if (!this.isLandingOpen) return;
     const assets = PixelForge.initAssets();
     const t = now * 0.001;
+    const is2v2 = this.is2v2Mode();
 
     // 1. Render the 7 Center Portrait Selector Tiles from crisp pixel portraits
     Object.keys(CHAMPION_ROSTER).forEach((heroKey) => {
@@ -758,81 +1087,186 @@ class Game {
       ctx.drawImage(port, 0, 0, canvas.width, canvas.height);
     });
 
-    // 2. Render Live Animated Fighter Sprites & 3 Bespoke VFX Skill Icons on Left (P1) and Right (P2) Profile Panels
-    const drawSideProfileVisuals = (prefix, heroKey, flipX) => {
-      const cfg = CHAMPION_ROSTER[heroKey];
-      const heroAssets = assets[heroKey];
-      if (!cfg || !heroAssets) return;
+    const drawAnimatedHeroOnStage = (sctx, heroKey, flipX, destX, destY, destSize, phaseOffset = 0, alpha = 1) => {
+      const sheet = assets[heroKey]?.sheet;
+      if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
+      const cell = 208;
+      const cols = Math.max(1, Math.round(sheet.naturalWidth / cell));
+      let col = 0;
+      let row = 0;
+      if (cols === 30) {
+        const cycle = (t + phaseOffset + (flipX ? 1.4 : 0)) % 6.0;
+        if (cycle < 1.8) {
+          row = 0;
+          col = Math.floor((t + phaseOffset) * 24) % 30;
+        } else if (cycle < 2.8) {
+          row = 2;
+          col = Math.min(29, Math.floor(((cycle - 1.8) / 1.0) * 30));
+        } else if (cycle < 3.8) {
+          row = 7;
+          col = Math.min(29, Math.floor(((cycle - 2.8) / 1.0) * 30));
+        } else if (cycle < 4.8) {
+          row = 8;
+          col = Math.min(29, Math.floor(((cycle - 3.8) / 1.0) * 30));
+        } else {
+          row = 1;
+          col = Math.floor((t + phaseOffset) * 24) % 30;
+        }
+      } else {
+        let frameIdx = Math.floor((t + phaseOffset) * 6.5) % 8;
+        const cycle = (t + phaseOffset + (flipX ? 1.4 : 0)) % 3.8;
+        if (cycle > 2.2 && cycle < 3.2) {
+          const atkStep = Math.min(7, Math.floor(((cycle - 2.2) / 1.0) * 8));
+          frameIdx = 16 + atkStep;
+        }
+        col = frameIdx % cols;
+        row = (frameIdx / cols) | 0;
+      }
+      const hover =
+        heroKey === 'mage' || heroKey === 'priestess'
+          ? Math.round(Math.sin((t + phaseOffset) * 3.2) * 2) * 2
+          : 0;
 
-      // Live Animated Character Stage
+      sctx.save();
+      sctx.globalAlpha = alpha;
+      if (flipX) {
+        sctx.translate(destX + destSize, destY + hover);
+        sctx.scale(-1, 1);
+        sctx.drawImage(sheet, col * cell, row * cell, cell, cell, 0, 0, destSize, destSize);
+      } else {
+        sctx.drawImage(sheet, col * cell, row * cell, cell, cell, destX, destY + hover, destSize, destSize);
+      }
+      sctx.restore();
+    };
+
+    // 2. Render Live Animated Fighter Sprites & 3 Bespoke VFX Skill Icons on Left (P1) and Right (P2) Profile Panels
+    const drawSideProfileVisuals = (prefix, primaryKey, secondaryKey, flipX) => {
+      const cfg = CHAMPION_ROSTER[primaryKey];
+      if (!cfg) return;
+
       const spriteCanvas = document.getElementById(`${prefix}-sprite-canvas`);
-      const sheet = heroAssets.sheet;
-      if (spriteCanvas && sheet && sheet.complete && sheet.naturalWidth) {
-        const cell = 208;
-        const cols = Math.max(1, Math.round(sheet.naturalWidth / cell));
-        if (spriteCanvas.width !== cell) {
-          spriteCanvas.width = cell;
-          spriteCanvas.height = cell;
+      if (spriteCanvas) {
+        const cw = 272;
+        const ch = 208;
+        if (spriteCanvas.width !== cw || spriteCanvas.height !== ch) {
+          spriteCanvas.width = cw;
+          spriteCanvas.height = ch;
         }
         const sctx = spriteCanvas.getContext('2d');
-        sctx.clearRect(0, 0, cell, cell);
+        sctx.clearRect(0, 0, cw, ch);
         sctx.imageSmoothingEnabled = false;
 
-        let col = 0;
-        let row = 0;
-        if (cols === 30) {
-          const cycle = (t + (flipX ? 1.4 : 0)) % 6.0;
-          if (cycle < 1.8) {
-            row = 0; // 30-frame IDLE
-            col = Math.floor(t * 24) % 30;
-          } else if (cycle < 2.8) {
-            row = 2; // 30-frame AUTO_ATTACK
-            col = Math.min(29, Math.floor(((cycle - 1.8) / 1.0) * 30));
-          } else if (cycle < 3.8) {
-            row = 7; // 30-frame CROUCH & SNIPER AIM
-            col = Math.min(29, Math.floor(((cycle - 2.8) / 1.0) * 30));
-          } else if (cycle < 4.8) {
-            row = 8; // 30-frame ZEPHYR JUMP & AERIAL SHOT
-            col = Math.min(29, Math.floor(((cycle - 3.8) / 1.0) * 30));
-          } else {
-            row = 1; // 30-frame WALK STRIDE
-            col = Math.floor(t * 24) % 30;
-          }
+        if (is2v2 && secondaryKey && CHAMPION_ROSTER[secondaryKey]) {
+          // Draw partner slightly behind & clearly separated horizontally to showcase the 2v2 Duo on the stage pedestal
+          const backSize = 164;
+          const frontSize = 186;
+          const backX = flipX ? 112 : -4;
+          const frontX = flipX ? 4 : 84;
+          drawAnimatedHeroOnStage(sctx, secondaryKey, flipX, backX, 26, backSize, 2.1, 0.92);
+          drawAnimatedHeroOnStage(sctx, primaryKey, flipX, frontX, 16, frontSize, 0, 1.0);
         } else {
-          let frameIdx = Math.floor(t * 6.5) % 8;
-          const cycle = (t + (flipX ? 1.4 : 0)) % 3.8;
-          if (cycle > 2.2 && cycle < 3.2) {
-            const atkStep = Math.min(7, Math.floor(((cycle - 2.2) / 1.0) * 8));
-            frameIdx = 16 + atkStep;
-          }
-          col = frameIdx % cols;
-          row = (frameIdx / cols) | 0;
+          drawAnimatedHeroOnStage(sctx, primaryKey, flipX, 32, 0, 208, 0, 1.0);
         }
-        const hover =
-          heroKey === 'mage' || heroKey === 'priestess' ? Math.round(Math.sin(t * 3.2) * 2) * 2 : 0;
-
-        sctx.save();
-        if (flipX) {
-          sctx.translate(cell, 0);
-          sctx.scale(-1, 1);
-        }
-        sctx.drawImage(sheet, col * cell, row * cell, cell, cell, 0, hover, cell, cell);
-        sctx.restore();
       }
 
-      // 3 Bespoke Pixel-Art RPG Ability Icons (designed specifically for 56x56 square skill slots!)
       if (Array.isArray(cfg.skills)) {
         cfg.skills.forEach((_sk, idx) => {
           const iconCanvas = document.getElementById(`${prefix}-skill-icon-${idx}`);
           if (!iconCanvas) return;
           const ictx = iconCanvas.getContext('2d');
-          PixelForge.drawSkillIcon(ictx, heroKey, idx, iconCanvas.width, iconCanvas.height, t);
+          PixelForge.drawSkillIcon(ictx, primaryKey, idx, iconCanvas.width, iconCanvas.height, t);
         });
       }
     };
 
-    drawSideProfileVisuals('p1', this.slot1Hero, false);
-    drawSideProfileVisuals('p2', this.slot2Hero, true);
+    const p1Front = is2v2 && this.inspectLeftRole === 'partner' ? this.slot1PartnerHero : this.slot1Hero;
+    const p1Back = is2v2 && this.inspectLeftRole === 'partner' ? this.slot1Hero : this.slot1PartnerHero;
+    const p2Front = is2v2 && this.inspectRightRole === 'partner' ? this.slot2PartnerHero : this.slot2Hero;
+    const p2Back = is2v2 && this.inspectRightRole === 'partner' ? this.slot2Hero : this.slot2PartnerHero;
+
+    drawSideProfileVisuals('p1', p1Front, p1Back, false);
+    drawSideProfileVisuals('p2', p2Front, p2Back, true);
+  }
+
+  getTeamFighters(team) {
+    if (!this.fighters) return [];
+    return this.fighters.filter((f) => f && f.team === team);
+  }
+
+  getTeammateOf(fighter) {
+    if (!fighter || !this.is2v2Mode() || !this.fighters) return null;
+    return this.fighters.find((f) => f && f !== fighter && f.team === fighter.team) || null;
+  }
+
+  getEnemiesOf(fighter) {
+    if (!fighter || !this.fighters) return [];
+    const activeEnemies = this.fighters.filter(
+      (f) => f && f.team !== fighter.team && !f.isDead && !f.isBenched
+    );
+    if (activeEnemies.length > 0) return activeEnemies;
+    const anyLivingEnemies = this.fighters.filter((f) => f && f.team !== fighter.team && !f.isDead);
+    if (anyLivingEnemies.length > 0) return anyLivingEnemies;
+    const fallback = fighter.team === 1 ? this.rightFighter : this.leftFighter;
+    return fallback ? [fallback] : [];
+  }
+
+  getTargetFor(fighter) {
+    const enemies = this.getEnemiesOf(fighter);
+    if (enemies.length <= 1) {
+      return enemies[0] || (fighter.team === 1 ? this.rightFighter : this.leftFighter);
+    }
+    // Dynamic 2v2 targeting: pick nearest enemy, with a tactical bias toward low-HP targets or cross-comboing
+    let best = enemies[0];
+    let bestScore = Infinity;
+    for (const e of enemies) {
+      const dist = Math.abs(e.x - fighter.x);
+      const hpRatio = e.hp / Math.max(1, e.maxHp);
+      const roleBias = fighter.slotRole === 'partner' && e.slotRole === 'partner' ? -55 : 0;
+      const score = dist + hpRatio * 95 + roleBias;
+      if (score < bestScore) {
+        bestScore = score;
+        best = e;
+      }
+    }
+    return best;
+  }
+
+  getPointFighter(team) {
+    const members = this.getTeamFighters(team);
+    const activePoint = members.find((f) => f.isPoint && !f.isDead && !f.isBenched);
+    if (activePoint) return activePoint;
+    const activeAny = members.find((f) => !f.isDead && !f.isBenched);
+    if (activeAny) return activeAny;
+    return members[0] || (team === 1 ? this.leftFighter : this.rightFighter);
+  }
+
+  getReserveFighter(team) {
+    const point = this.getPointFighter(team);
+    const members = this.getTeamFighters(team);
+    return members.find((f) => f !== point) || null;
+  }
+
+  drawPartnerPortrait(canvas, heroId, accentColor) {
+    if (!canvas) return;
+    const assets = PixelForge.initAssets();
+    const port = assets[heroId]?.portrait;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.imageSmoothingEnabled = false;
+    if (port && port.complete && port.naturalWidth) {
+      ctx.drawImage(port, 0, 0, canvas.width, canvas.height);
+    } else if (port) {
+      port.addEventListener(
+        'load',
+        () => {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          ctx.imageSmoothingEnabled = false;
+          ctx.drawImage(port, 0, 0, canvas.width, canvas.height);
+        },
+        { once: true }
+      );
+    }
+    canvas.style.borderColor = accentColor || '#fbbf24';
   }
 
   resetMatch() {
@@ -849,25 +1283,78 @@ class Game {
     }
     const gy = this.renderer.groundY;
     const ww = this.renderer.worldWidth;
+    const is2v2 = this.is2v2Mode();
+    this.ensureDistinctTeamPartners();
 
-    const c1 = CHAMPION_ROSTER[this.slot1Hero] || CHAMPION_ROSTER.warrior;
+    const c1 = CHAMPION_ROSTER[this.slot1Hero] || CHAMPION_ROSTER.titan;
+    const c1b = CHAMPION_ROSTER[this.slot1PartnerHero] || CHAMPION_ROSTER.priestess;
     const c2 = CHAMPION_ROSTER[this.slot2Hero] || CHAMPION_ROSTER.archer;
+    const c2b = CHAMPION_ROSTER[this.slot2PartnerHero] || CHAMPION_ROSTER.reaper;
 
-    this.leftFighter = new c1.cls(ww * 0.2, gy, 1);
-    this.rightFighter = new c2.cls(ww * 0.8, gy, -1);
+    this.leftFighter = new c1.cls(is2v2 ? ww * 0.25 : ww * 0.2, gy, 1);
+    this.rightFighter = new c2.cls(is2v2 ? ww * 0.75 : ww * 0.8, gy, -1);
     this.leftFighter.game = this;
     this.rightFighter.game = this;
-    this.fighters = [this.leftFighter, this.rightFighter];
+    this.leftFighter.team = 1;
+    this.rightFighter.team = 2;
+    this.leftFighter.slotRole = 'lead';
+    this.rightFighter.slotRole = 'lead';
+    this.leftFighter.isPoint = true;
+    this.rightFighter.isPoint = true;
+    this.leftFighter.isBenched = false;
+    this.rightFighter.isBenched = false;
+    this.leftFighter.benchX = 76;
+    this.rightFighter.benchX = ww - 76;
 
-    // Configure dynamic HUD headers, bar themes & portraits
-    this.applySideHUDTheme(this.hudEls.left, c1, this.leftFighter);
-    this.applySideHUDTheme(this.hudEls.right, c2, this.rightFighter);
+    if (is2v2) {
+      const isTag = this.gameMode === '2v2_tag';
+      this.leftPartner = new c1b.cls(isTag ? 76 : ww * 0.14, gy, 1);
+      this.rightPartner = new c2b.cls(isTag ? ww - 76 : ww * 0.86, gy, -1);
+      this.leftPartner.game = this;
+      this.rightPartner.game = this;
+      this.leftPartner.team = 1;
+      this.rightPartner.team = 2;
+      this.leftPartner.slotRole = 'partner';
+      this.rightPartner.slotRole = 'partner';
+      this.leftPartner.isPoint = false;
+      this.rightPartner.isPoint = false;
+      this.leftPartner.isBenched = isTag;
+      this.rightPartner.isBenched = isTag;
+      this.leftPartner.benchX = 76;
+      this.rightPartner.benchX = ww - 76;
+      // Render partners slightly behind lead fighters
+      this.fighters = [this.leftPartner, this.rightPartner, this.leftFighter, this.rightFighter];
+    } else {
+      this.leftPartner = null;
+      this.rightPartner = null;
+      this.fighters = [this.leftFighter, this.rightFighter];
+    }
+
+    // Configure dynamic HUD headers, bar themes, Partner Wings & portraits
+    this.applySideHUDTheme(this.hudEls.left, c1, this.leftFighter, c1b);
+    this.applySideHUDTheme(this.hudEls.right, c2, this.rightFighter, c2b);
     PixelForge.setHUDPortraits(c1.id, c1.color, c2.id, c2.color);
+
+    if (this.hudEls.crestVs) {
+      this.hudEls.crestVs.textContent = is2v2 ? '2V2' : 'VS';
+    }
+    if (this.hudEls.modeBadge) {
+      this.hudEls.modeBadge.textContent =
+        this.gameMode === '2v2_brawl'
+          ? 'CHAOS BRAWL'
+          : this.gameMode === '2v2_tag'
+            ? 'TAG RELAY'
+            : '1V1 DUEL';
+    }
 
     this.matchTime = 0;
     this.ultSlowTimer = 0;
     this.koSlowTimer = 0;
     this.clashCooldown = 0;
+    this.team1TagCd = 2.4;
+    this.team2TagCd = 2.8;
+    this.team1AssistCd = 2.8;
+    this.team2AssistCd = 3.4;
     this.stageEventTriggered = false;
     this.stageEventTimer = 0;
     this.stageEventTickTimer = 0;
@@ -877,7 +1364,8 @@ class Game {
     this.updateHUD();
   }
 
-  applySideHUDTheme(els, rosterCfg, fighter) {
+  applySideHUDTheme(els, rosterCfg, fighter, partnerCfg = null) {
+    if (!els || !rosterCfg || !fighter) return;
     if (els.name) els.name.textContent = rosterCfg.name;
     if (els.skillText) els.skillText.textContent = fighter.skillName;
     if (els.hpBar) {
@@ -886,6 +1374,154 @@ class Game {
     if (els.portraitFrame) {
       els.portraitFrame.className = `portrait-frame frame-${rosterCfg.theme}`;
     }
+    if (els.partnerWing) {
+      const showPartner = this.is2v2Mode() && Boolean(partnerCfg);
+      els.partnerWing.classList.toggle('hidden', !showPartner);
+      if (showPartner && partnerCfg) {
+        if (els.partnerName) els.partnerName.textContent = partnerCfg.name;
+        if (els.partnerHpBar) {
+          els.partnerHpBar.className = `partner-hp-fill fill-${partnerCfg.theme}`;
+        }
+        this.drawPartnerPortrait(els.partnerPortrait, partnerCfg.id, partnerCfg.color);
+      }
+    }
+  }
+
+  triggerTeamTagSwap(team, manual = false) {
+    if (this.gameMode !== '2v2_tag' || this.isMatchOver) return false;
+    const cdKey = team === 1 ? 'team1TagCd' : 'team2TagCd';
+    if (!manual && this[cdKey] > 0) return false;
+
+    const point = this.getPointFighter(team);
+    const reserve = this.getReserveFighter(team);
+    if (!point || !reserve || reserve.isDead || !reserve.isBenched) return false;
+
+    this[cdKey] = 6.2;
+    const gy = this.renderer.groundY;
+    const incomingX = Math.max(130, Math.min(this.renderer.worldWidth - 130, point.x + (team === 1 ? 34 : -34)));
+
+    // Outgoing point fighter vaults to the Sanctuary Tag Pedestal
+    if (!point.isDead) {
+      point.isBenched = true;
+      point.isPoint = false;
+      point.x = point.benchX || (team === 1 ? 76 : this.renderer.worldWidth - 76);
+      point.y = gy;
+      point.vx = 0;
+      point.vy = 0;
+      point.setState('IDLE');
+    }
+
+    // Reserve partner leaps into the arena with a Tag-In Assault strike!
+    reserve.isBenched = false;
+    reserve.isPoint = true;
+    reserve.x = incomingX;
+    reserve.y = gy - 28;
+    reserve.vx = (team === 1 ? 1 : -1) * 260;
+    reserve.vy = -180;
+    reserve.gainMana(18);
+    reserve.skillCooldown = Math.min(reserve.skillCooldown, 0.35);
+    reserve.setState('SKILL');
+
+    // Refresh HUD primary/partner portraits for this side
+    const sideKey = team === 1 ? 'left' : 'right';
+    const pointCfg = CHAMPION_ROSTER[reserve.heroId];
+    const partnerCfg = CHAMPION_ROSTER[point.heroId];
+    this.applySideHUDTheme(this.hudEls[sideKey], pointCfg, reserve, partnerCfg);
+    const leftPoint = this.getPointFighter(1);
+    const rightPoint = this.getPointFighter(2);
+    const lc = CHAMPION_ROSTER[leftPoint.heroId] || CHAMPION_ROSTER.titan;
+    const rc = CHAMPION_ROSTER[rightPoint.heroId] || CHAMPION_ROSTER.archer;
+    PixelForge.setHUDPortraits(lc.id, lc.color, rc.id, rc.color);
+
+    this.vfx.spawnSpecialCastAura(
+      reserve,
+      'TAG-IN ASSAULT!',
+      `★ ${reserve.name} ENTERS! ★`,
+      reserve.theme || 'steel',
+      false
+    );
+    this.vfx.spawnShockwave(reserve.x, gy - 48, 150, reserve.primaryColor, 0.36, true);
+    this.vfx.spawnBurst(reserve.x, gy - 68, 22, reserve.primaryColor, 260, { upBias: 110, size: 6 });
+    if (this.audio) this.audio.play('dash_whoosh', reserve.x);
+    this.renderer.triggerShake(8, 0.2);
+    return true;
+  }
+
+  triggerTeamAssist(team, manual = false) {
+    if (!this.is2v2Mode() || this.isMatchOver) return false;
+    const cdKey = team === 1 ? 'team1AssistCd' : 'team2AssistCd';
+    if (!manual && this[cdKey] > 0) return false;
+
+    const point = this.getPointFighter(team);
+    const ally = this.getReserveFighter(team);
+    if (!point || !ally || ally.isDead) return false;
+
+    this[cdKey] = 6.5;
+    const target = this.getTargetFor(point);
+    if (!target || target.isDead) return false;
+
+    if (this.gameMode === '2v2_tag' && ally.isBenched) {
+      // Reserve Partner fires a Cross-Arena Tag Assist Barrage from the Sanctuary Pedestal!
+      const dir = target.x >= ally.x ? 1 : -1;
+      ally.facing = dir;
+      this.vfx.spawnSpecialCastAura(
+        ally,
+        'TAG ASSIST!',
+        `★ ${ally.name} COVER FIRE ★`,
+        ally.theme || 'steel',
+        false
+      );
+      this.vfx.spawnProjectile({
+        x: ally.x + dir * 48,
+        y: ally.y - 102,
+        vx: dir * 740,
+        vy: 0,
+        radius: 26,
+        color: ally.primaryColor,
+        coreColor: '#ffffff',
+        damage: 78,
+        owner: ally,
+        type:
+          ally.heroId === 'archer'
+            ? 'arrow'
+            : ally.heroId === 'priestess'
+              ? 'holy_light'
+              : ally.heroId === 'reaper'
+                ? 'phantom_scythe'
+                : ally.heroId === 'chronomancer'
+                  ? 'clock_gear'
+                  : ally.heroId === 'titan'
+                    ? 'forge_wave'
+                    : ally.heroId === 'warrior'
+                      ? 'blade_wave'
+                      : 'fireball'
+      });
+      if (!point.isDead) {
+        point.heal(42, 'TAG GRACE');
+        point.gainMana(12);
+      }
+      if (this.audio) this.audio.play('skill_cast', ally.x);
+      return true;
+    }
+
+    // In 2v2 Chaos Brawl: Synchronized Twin-Soul Assault Surge between both active teammates!
+    point.gainMana(20);
+    ally.gainMana(20);
+    ally.skillCooldown = 0;
+    if (ally.state === 'IDLE' || ally.state === 'WALK') {
+      ally.setState('SKILL');
+    }
+    this.vfx.spawnSpecialCastAura(
+      ally,
+      'TWIN-SOUL ASSIST!',
+      `★ ${point.name} × ${ally.name} ★`,
+      ally.theme || 'steel',
+      false
+    );
+    this.vfx.spawnBeam(point.x, point.y - 96, ally.x, ally.y - 96, ally.primaryColor, 18, 0.34);
+    this.vfx.spawnShockwave((point.x + ally.x) * 0.5, this.renderer.groundY - 70, 165, '#fbbf24', 0.35, true);
+    if (this.audio) this.audio.play('skill_cast', ally.x);
+    return true;
   }
 
   triggerUltimateCinematic(caster) {
@@ -895,7 +1531,6 @@ class Game {
       this.renderer.triggerUltimateCutIn(caster);
     }
 
-    // Spawn in-world overhead Ultimate announcement & radiant halo directly around the character's head
     this.vfx.spawnSpecialCastAura(
       caster,
       caster.ultName,
@@ -946,16 +1581,71 @@ class Game {
 
   onFighterDeath(deadFighter) {
     if (this.isMatchOver) return;
-    this.isMatchOver = true;
-    this.koSlowTimer = 1.15;
-    this.ultSlowTimer = 0.65;
-    this.updateHUD();
 
     if (this.audio && deadFighter.deathSfx) {
       this.audio.play(deadFighter.deathSfx, deadFighter.x);
     }
 
-    const winner = deadFighter === this.leftFighter ? this.rightFighter : this.leftFighter;
+    // In 2v2 Modes: Check if the fallen fighter's teammate is still alive!
+    const survivingAlly = this.getTeammateOf(deadFighter);
+    if (survivingAlly && !survivingAlly.isDead) {
+      deadFighter.isPoint = false;
+      survivingAlly.isPoint = true;
+      if (survivingAlly.isBenched) {
+        // Reserve partner immediately leaps off the Tag Pedestal into the arena!
+        survivingAlly.isBenched = false;
+        survivingAlly.x = Math.max(
+          130,
+          Math.min(this.renderer.worldWidth - 130, deadFighter.x + (survivingAlly.team === 1 ? -40 : 40))
+        );
+        survivingAlly.y = this.renderer.groundY;
+      }
+      // Trigger AVENGER OVERDRIVE SURGE on the surviving teammate!
+      survivingAlly.heal(Math.round(survivingAlly.maxHp * 0.18), 'AVENGER GRACE');
+      survivingAlly.gainMana(48);
+      survivingAlly.skillCooldown = 0;
+      this.vfx.spawnSpecialCastAura(
+        survivingAlly,
+        '★ AVENGER OVERDRIVE! ★',
+        `${deadFighter.name} FALLEN • FINAL STAND!`,
+        survivingAlly.theme || 'steel',
+        true
+      );
+      this.vfx.spawnShockwave(
+        survivingAlly.x,
+        this.renderer.groundY - 60,
+        210,
+        survivingAlly.primaryColor,
+        0.48,
+        true
+      );
+      this.renderer.triggerShake(15, 0.35);
+
+      // Update Top HUD so the surviving partner becomes the primary HUD bar
+      const sideKey = survivingAlly.team === 1 ? 'left' : 'right';
+      const allyCfg = CHAMPION_ROSTER[survivingAlly.heroId];
+      const fallenCfg = CHAMPION_ROSTER[deadFighter.heroId];
+      this.applySideHUDTheme(this.hudEls[sideKey], allyCfg, survivingAlly, fallenCfg);
+      const leftPoint = this.getPointFighter(1);
+      const rightPoint = this.getPointFighter(2);
+      const lc = CHAMPION_ROSTER[leftPoint.heroId] || CHAMPION_ROSTER.titan;
+      const rc = CHAMPION_ROSTER[rightPoint.heroId] || CHAMPION_ROSTER.archer;
+      PixelForge.setHUDPortraits(lc.id, lc.color, rc.id, rc.color);
+      this.updateHUD();
+      return;
+    }
+
+    this.isMatchOver = true;
+    this.koSlowTimer = 1.15;
+    this.ultSlowTimer = 0.65;
+    this.updateHUD();
+
+    const winningTeam = deadFighter.team === 1 ? 2 : 1;
+    const winningFighters = this.getTeamFighters(winningTeam);
+    const winner =
+      winningFighters.find((f) => !f.isDead) ||
+      winningFighters[0] ||
+      (winningTeam === 1 ? this.leftFighter : this.rightFighter);
     const winnerCfg = CHAMPION_ROSTER[winner.heroId] || CHAMPION_ROSTER.warrior;
     if (typeof this.renderer.triggerKOFinisher === 'function') {
       this.renderer.triggerKOFinisher(
@@ -968,23 +1658,35 @@ class Game {
     }
 
     // Track King-of-the-Hill Win Streak
-    if (this.reigningHero === winner.heroId) {
+    const leadWinnerHero = winningTeam === 1 ? this.slot1Hero : this.slot2Hero;
+    if (this.reigningHero === leadWinnerHero) {
       this.winStreak++;
     } else {
-      this.reigningHero = winner.heroId;
+      this.reigningHero = leadWinnerHero;
       this.winStreak = 1;
     }
 
     const eyebrowEl = document.getElementById('victory-eyebrow');
-    if (eyebrowEl) {
-      eyebrowEl.textContent = `DUEL CONCLUDED • ${winner.name.toUpperCase()} STREAK: ${this.winStreak} WIN${this.winStreak > 1 ? 'S' : ''}`;
+    if (this.is2v2Mode() && winningFighters.length >= 2) {
+      const fA = winningFighters[0];
+      const fB = winningFighters[1];
+      const duoTitle = `${fA.name.toUpperCase()} & ${fB.name.toUpperCase()}`;
+      if (eyebrowEl) {
+        eyebrowEl.textContent = `2V2 ${this.gameMode === '2v2_tag' ? 'TAG RELAY' : 'CHAOS BRAWL'} CONCLUDED • STREAK: ${this.winStreak} WIN${this.winStreak > 1 ? 'S' : ''}`;
+      }
+      document.getElementById('victory-winner').textContent = `${duoTitle} TRIUMPH`;
+    } else {
+      if (eyebrowEl) {
+        eyebrowEl.textContent = `DUEL CONCLUDED • ${winner.name.toUpperCase()} STREAK: ${this.winStreak} WIN${this.winStreak > 1 ? 'S' : ''}`;
+      }
+      document.getElementById('victory-winner').textContent = `${winner.name.toUpperCase()} TRIUMPHS`;
     }
-    document.getElementById('victory-winner').textContent = `${winner.name.toUpperCase()} TRIUMPHS`;
     document.getElementById('victory-stats').textContent = winnerCfg.victoryLine;
 
-    // Populate Post-Match Combat Telemetry Card
-    const fillTel = (side, f) => {
-      const s = f?.stats || {
+    // Populate Post-Match Combat Telemetry Card (aggregates team stats in 2v2!)
+    const fillTel = (side, teamNum) => {
+      const members = this.getTeamFighters(teamNum);
+      const agg = {
         damageDealt: 0,
         skillsUsed: 0,
         ultsUsed: 0,
@@ -992,19 +1694,33 @@ class Game {
         healingDone: 0,
         clashes: 0
       };
+      members.forEach((m) => {
+        if (!m || !m.stats) return;
+        agg.damageDealt += m.stats.damageDealt || 0;
+        agg.skillsUsed += m.stats.skillsUsed || 0;
+        agg.ultsUsed += m.stats.ultsUsed || 0;
+        agg.biggestHit = Math.max(agg.biggestHit, m.stats.biggestHit || 0);
+        agg.healingDone += m.stats.healingDone || 0;
+        agg.clashes += m.stats.clashes || 0;
+      });
       const nameEl = document.getElementById(`tel-${side}-name`);
       const dmgEl = document.getElementById(`tel-${side}-dmg`);
       const skEl = document.getElementById(`tel-${side}-skills`);
       const maxEl = document.getElementById(`tel-${side}-max`);
       const exEl = document.getElementById(`tel-${side}-extra`);
-      if (nameEl) nameEl.textContent = f.name;
-      if (dmgEl) dmgEl.textContent = `${s.damageDealt}`;
-      if (skEl) skEl.textContent = `${s.skillsUsed} / ${s.ultsUsed}`;
-      if (maxEl) maxEl.textContent = `${s.biggestHit}`;
-      if (exEl) exEl.textContent = `${s.healingDone} / ${s.clashes}`;
+      if (nameEl) {
+        nameEl.textContent =
+          members.length >= 2
+            ? `${members[members.length - 1].name} + ${members[0].name}`
+            : members[0]?.name || 'CHAMPION';
+      }
+      if (dmgEl) dmgEl.textContent = `${agg.damageDealt}`;
+      if (skEl) skEl.textContent = `${agg.skillsUsed} / ${agg.ultsUsed}`;
+      if (maxEl) maxEl.textContent = `${agg.biggestHit}`;
+      if (exEl) exEl.textContent = `${agg.healingDone} / ${agg.clashes}`;
     };
-    fillTel('left', this.leftFighter);
-    fillTel('right', this.rightFighter);
+    fillTel('left', 1);
+    fillTel('right', 2);
 
     const autoLabel = document.getElementById('victory-auto-next');
     if (autoLabel) {
@@ -1033,14 +1749,16 @@ class Game {
   triggerClashSpark(cx, cy, col1, col2, label = '★ CLASH! ★') {
     if (this.audio) this.audio.play('clang', cx);
     this.renderer.triggerHitStop(0.065);
-    const c1 = col1 || this.leftFighter?.primaryColor || '#38bdf8';
-    const c2 = col2 || this.rightFighter?.primaryColor || '#fb923c';
+    const f1 = this.getPointFighter(1);
+    const f2 = this.getPointFighter(2);
+    const c1 = col1 || f1?.primaryColor || '#38bdf8';
+    const c2 = col2 || f2?.primaryColor || '#fb923c';
     if (typeof this.renderer.triggerClashCamera === 'function') {
       this.renderer.triggerClashCamera(
         cx,
         cy,
-        this.leftFighter?.heroId || 'warrior',
-        this.rightFighter?.heroId || 'mage',
+        f1?.heroId || 'warrior',
+        f2?.heroId || 'mage',
         c1,
         c2
       );
@@ -1049,13 +1767,13 @@ class Game {
     this.vfx.spawnBurst(cx, cy, 24, '#fef08a', 320, { upBias: 115, size: 7 });
     this.vfx.spawnBurst(cx - 12, cy, 18, c1, 285, { upBias: 95, size: 6 });
     this.vfx.spawnBurst(cx + 12, cy, 18, c2, 285, { upBias: 95, size: 6 });
-    if (this.leftFighter && !this.leftFighter.isDead) {
-      this.leftFighter.gainMana(10);
-      if (this.leftFighter.stats) this.leftFighter.stats.clashes++;
+    if (f1 && !f1.isDead) {
+      f1.gainMana(10);
+      if (f1.stats) f1.stats.clashes++;
     }
-    if (this.rightFighter && !this.rightFighter.isDead) {
-      this.rightFighter.gainMana(10);
-      if (this.rightFighter.stats) this.rightFighter.stats.clashes++;
+    if (f2 && !f2.isDead) {
+      f2.gainMana(10);
+      if (f2.stats) f2.stats.clashes++;
     }
   }
 
@@ -1063,13 +1781,13 @@ class Game {
     const gy = this.renderer.groundY;
     const ww = this.renderer.worldWidth;
 
-    // 1. Mid-Air Projectile vs. Projectile Clash Detection
+    // 1. Mid-Air Projectile vs. Projectile Clash Detection (ignore friendly projectiles!)
     for (let i = this.vfx.projectiles.length - 1; i >= 0; i--) {
       const p = this.vfx.projectiles[i];
       if (!p) continue;
       for (let j = i - 1; j >= 0; j--) {
         const q = this.vfx.projectiles[j];
-        if (!q || p.owner === q.owner) continue;
+        if (!q || p.owner === q.owner || (p.owner && q.owner && p.owner.team === q.owner.team)) continue;
         const dist = Math.hypot(p.x - q.x, p.y - q.y);
         if (dist < (p.radius || 18) + (q.radius || 18) + 28) {
           const cx = (p.x + q.x) * 0.5;
@@ -1131,15 +1849,23 @@ class Game {
         });
       }
 
-      const enemy = p.owner === this.leftFighter ? this.rightFighter : this.leftFighter;
-      const hitEnemy =
-        enemy &&
-        !enemy.isDead &&
-        Math.abs(p.x - enemy.x) < p.radius + 36 &&
-        Math.abs(p.y - (enemy.y - 108)) < p.radius + 68;
+      const enemies = p.owner ? this.getEnemiesOf(p.owner) : [this.rightFighter];
+      let hitTarget = null;
+      for (const cand of enemies) {
+        if (
+          cand &&
+          !cand.isDead &&
+          !cand.isBenched &&
+          Math.abs(p.x - cand.x) < p.radius + 36 &&
+          Math.abs(p.y - (cand.y - 108)) < p.radius + 68
+        ) {
+          hitTarget = cand;
+          break;
+        }
+      }
       const hitGround = p.y >= gy - 4;
 
-      if (hitEnemy || hitGround) {
+      if (hitTarget || hitGround) {
         if (p.isMeteor) {
           if (this.audio) this.audio.play('meteor_impact', p.x);
           this.renderer.triggerShake(22, 0.52);
@@ -1151,13 +1877,15 @@ class Game {
           this.vfx.spawnBurst(p.x, gy - 15, 20, '#fef08a', 310, { upBias: 130, size: 8 });
           this.vfx.spawnGlyphBurst(p.x, gy - 50, 8, 'arcane');
 
-          if (enemy && !enemy.isDead && Math.abs(enemy.x - p.x) < 230) {
-            enemy.takeDamage(p.damage, p.owner, true, 160, -240);
-            this.renderer.triggerHitStop(0.075);
+          for (const cand of enemies) {
+            if (cand && !cand.isDead && !cand.isBenched && Math.abs(cand.x - p.x) < 230) {
+              cand.takeDamage(p.damage, p.owner, true, 160, -240);
+              this.renderer.triggerHitStop(0.075);
+            }
           }
-        } else if (hitEnemy) {
+        } else if (hitTarget) {
           const isCrit = Math.random() < 0.28;
-          enemy.takeDamage(isCrit ? p.damage * 1.38 : p.damage, p.owner, isCrit, 100, 0);
+          hitTarget.takeDamage(isCrit ? p.damage * 1.38 : p.damage, p.owner, isCrit, 100, 0);
           if (this.audio) {
             const impactSfx =
               p.type === 'arrow'
@@ -1175,7 +1903,7 @@ class Game {
                         : p.type === 'holy_light'
                           ? 'holy_hit'
                           : 'fire_hit';
-            this.audio.play(impactSfx, enemy.x);
+            this.audio.play(impactSfx, hitTarget.x);
           }
           this.renderer.triggerHitStop(0.055);
           this.vfx.spawnShockwave(p.x, p.y, 76, p.color, 0.26);
@@ -1186,7 +1914,7 @@ class Game {
           } else if (p.type === 'phantom_scythe') {
             this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'abyssal');
             if (p.owner && typeof p.owner.leechLife === 'function') {
-              p.owner.leechLife(18, enemy, this, 'SOUL LEECH');
+              p.owner.leechLife(18, hitTarget, this, 'SOUL LEECH');
             }
           } else if (p.type === 'clock_gear') {
             this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'chrono');
@@ -1232,7 +1960,7 @@ class Game {
   }
 
   updateHUD() {
-    const sync = (els, f) => {
+    const sync = (els, f, partner) => {
       if (!els || !f) return;
       const hpPct = Math.max(0, (f.hp / f.maxHp) * 100);
       const manaPct = Math.min(100, (f.mana / f.maxMana) * 100);
@@ -1248,10 +1976,30 @@ class Game {
       els.skillCd.style.width = `${cdPct}%`;
       els.skillText.textContent =
         f.skillCooldown > 0.05 ? `${f.skillName} ${f.skillCooldown.toFixed(1)}s` : `${f.skillName} READY`;
+
+      if (this.is2v2Mode() && partner && els.partnerWing) {
+        const pHpPct = Math.max(0, (partner.hp / partner.maxHp) * 100);
+        const pManaPct = Math.min(100, (partner.mana / partner.maxMana) * 100);
+        if (els.partnerHpBar) els.partnerHpBar.style.width = `${pHpPct}%`;
+        if (els.partnerManaBar) els.partnerManaBar.style.width = `${pManaPct}%`;
+        if (els.partnerHpText) els.partnerHpText.textContent = `${Math.ceil(partner.hp)}`;
+        if (els.partnerStatus) {
+          els.partnerStatus.textContent = partner.isDead
+            ? 'FALLEN'
+            : partner.isBenched
+              ? 'STANDBY'
+              : 'ALLY ACTIVE';
+        }
+      }
     };
 
-    sync(this.hudEls.left, this.leftFighter);
-    sync(this.hudEls.right, this.rightFighter);
+    const leftPoint = this.getPointFighter(1);
+    const leftPartner = this.getReserveFighter(1);
+    const rightPoint = this.getPointFighter(2);
+    const rightPartner = this.getReserveFighter(2);
+
+    sync(this.hudEls.left, leftPoint, leftPartner);
+    sync(this.hudEls.right, rightPoint, rightPartner);
 
     const mins = String(Math.floor(this.matchTime / 60)).padStart(2, '0');
     const secs = String(Math.floor(this.matchTime % 60)).padStart(2, '0');
@@ -1281,18 +2029,19 @@ class Game {
     if (this.clashCooldown > 0) {
       this.clashCooldown = Math.max(0, this.clashCooldown - dt);
     }
+    if (this.team1TagCd > 0) this.team1TagCd = Math.max(0, this.team1TagCd - dt);
+    if (this.team2TagCd > 0) this.team2TagCd = Math.max(0, this.team2TagCd - dt);
+    if (this.team1AssistCd > 0) this.team1AssistCd = Math.max(0, this.team1AssistCd - dt);
+    if (this.team2AssistCd > 0) this.team2AssistCd = Math.max(0, this.team2AssistCd - dt);
 
-    // Trigger Autonomous Mid-Match Stage Phenomenon at 11.5s or when either living fighter drops below 58% HP
+    const activeFighters = this.fighters.filter((f) => f && !f.isDead && !f.isBenched);
+
+    // Trigger Autonomous Mid-Match Stage Phenomenon at 11.5s or when any active fighter drops below 58% HP
     if (
       !this.isMatchOver &&
       !this.stageEventTriggered &&
-      !this.leftFighter.isDead &&
-      !this.rightFighter.isDead &&
-      this.leftFighter.hp > 0 &&
-      this.rightFighter.hp > 0 &&
-      (this.matchTime >= 11.5 ||
-        this.leftFighter.hp / this.leftFighter.maxHp <= 0.58 ||
-        this.rightFighter.hp / this.rightFighter.maxHp <= 0.58)
+      activeFighters.length >= 2 &&
+      (this.matchTime >= 11.5 || activeFighters.some((f) => f.hp / f.maxHp <= 0.58))
     ) {
       this.triggerStagePhenomenon();
     }
@@ -1303,12 +2052,10 @@ class Game {
       if (this.stageEventTickTimer >= 2.0) {
         this.stageEventTickTimer = 0;
         if (this.renderer?.stageId === 'sylvan' && !this.isMatchOver) {
-          // Starlight Monsoon periodic sanctuary heal
-          this.leftFighter.heal(26, 'STARLIGHT');
-          this.rightFighter.heal(26, 'STARLIGHT');
+          activeFighters.forEach((f) => f.heal(26, 'STARLIGHT'));
         } else if (this.renderer?.stageId === 'boneyard' && !this.isMatchOver) {
-          // Blood Moon Frenzy crimson soul-ember eruption
-          const midX = (this.leftFighter.x + this.rightFighter.x) * 0.5;
+          const midX =
+            activeFighters.reduce((acc, f) => acc + f.x, 0) / Math.max(1, activeFighters.length);
           this.vfx.spawnBurst(midX, this.renderer.groundY - 40, 20, '#e11d48', 260, {
             upBias: 160,
             size: 6
@@ -1317,38 +2064,65 @@ class Game {
       }
     }
 
-    this.leftFighter.update(dt, this.rightFighter, this);
-    this.rightFighter.update(dt, this.leftFighter, this);
+    // Autonomous 2v2 Tag Relay Swaps & Twin-Soul Assists
+    if (this.is2v2Mode() && !this.isMatchOver) {
+      for (const team of [1, 2]) {
+        const point = this.getPointFighter(team);
+        const reserve = this.getReserveFighter(team);
+        if (!point || !reserve || point.isDead || reserve.isDead) continue;
 
-    // Check Simultaneous Melee / Skill Blade Clash
-    if (
-      !this.isMatchOver &&
-      this.clashCooldown <= 0 &&
-      !this.leftFighter.isDead &&
-      !this.rightFighter.isDead
-    ) {
-      const dist = Math.abs(this.leftFighter.x - this.rightFighter.x);
-      const f1Swinging =
-        (this.leftFighter.state === 'AUTO_ATTACK' || this.leftFighter.state === 'SKILL') &&
-        this.leftFighter.stateTimer >= 0.14 &&
-        this.leftFighter.stateTimer <= 0.42;
-      const f2Swinging =
-        (this.rightFighter.state === 'AUTO_ATTACK' || this.rightFighter.state === 'SKILL') &&
-        this.rightFighter.stateTimer >= 0.14 &&
-        this.rightFighter.stateTimer <= 0.42;
-      if (dist <= 185 && f1Swinging && f2Swinging) {
-        this.clashCooldown = 2.6;
-        const cx = (this.leftFighter.x + this.rightFighter.x) * 0.5;
-        const cy = this.renderer.groundY - 102;
-        this.leftFighter.vx = -155;
-        this.rightFighter.vx = 155;
-        this.triggerClashSpark(
-          cx,
-          cy,
-          this.leftFighter.primaryColor,
-          this.rightFighter.primaryColor,
-          '★ PARRY CLASH! ★'
-        );
+        if (this.gameMode === '2v2_tag' && reserve.isBenched) {
+          const pointHpRatio = point.hp / point.maxHp;
+          const reserveHpRatio = reserve.hp / reserve.maxHp;
+          if (
+            (pointHpRatio <= 0.48 && reserveHpRatio > pointHpRatio + 0.08) ||
+            (reserveHpRatio - pointHpRatio >= 0.28 && this.matchTime > 5.0)
+          ) {
+            this.triggerTeamTagSwap(team, false);
+          } else {
+            this.triggerTeamAssist(team, false);
+          }
+        } else if (this.gameMode === '2v2_brawl') {
+          this.triggerTeamAssist(team, false);
+        }
+      }
+    }
+
+    // Update all fighters with dynamic 2v2 target acquisition
+    for (const f of this.fighters) {
+      if (!f) continue;
+      const target = this.getTargetFor(f);
+      f.update(dt, target, this);
+    }
+
+    // Check Simultaneous Melee / Skill Blade Clash across opposing active fighters
+    if (!this.isMatchOver && this.clashCooldown <= 0) {
+      const team1Active = activeFighters.filter((f) => f.team === 1);
+      const team2Active = activeFighters.filter((f) => f.team === 2);
+      let clashed = false;
+      for (const f1 of team1Active) {
+        if (clashed) break;
+        const f1Swinging =
+          (f1.state === 'AUTO_ATTACK' || f1.state === 'SKILL') &&
+          f1.stateTimer >= 0.14 &&
+          f1.stateTimer <= 0.42;
+        if (!f1Swinging) continue;
+        for (const f2 of team2Active) {
+          const f2Swinging =
+            (f2.state === 'AUTO_ATTACK' || f2.state === 'SKILL') &&
+            f2.stateTimer >= 0.14 &&
+            f2.stateTimer <= 0.42;
+          if (f2Swinging && Math.abs(f1.x - f2.x) <= 185) {
+            this.clashCooldown = 2.6;
+            const cx = (f1.x + f2.x) * 0.5;
+            const cy = this.renderer.groundY - 102;
+            f1.vx = -155;
+            f2.vx = 155;
+            this.triggerClashSpark(cx, cy, f1.primaryColor, f2.primaryColor, '★ PARRY CLASH! ★');
+            clashed = true;
+            break;
+          }
+        }
       }
     }
 
