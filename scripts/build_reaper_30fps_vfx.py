@@ -707,18 +707,14 @@ def apply_pass11_star_mote_polish(cell_img, row_idx, f):
         ray_col = C_CRIMSON_BRIGHT if (m_idx + row_idx) % 2 == 0 else C_VIOLET_PINK
         ray_len = 5 + ((f + m_idx) % 3)
 
-        for dy in range(-2, 3):
-            for dx in range(-2, 3):
-                if abs(dx) == 2 or abs(dy) == 2:
-                    x, y = cx + dx, cy + dy
-                    if 16 <= x <= 191 and 16 <= y <= 191 and px[x, y][3] == 0:
-                        px[x, y] = C_VIOLET_AURA
-
         for dy in (-1, 0, 1):
             for dx in (-1, 0, 1):
-                x, y = cx + dx, cy + dy
-                if 16 <= x <= 191 and 16 <= y <= 191:
-                    px[x, y] = C_WHITE
+                if abs(dx) + abs(dy) <= 1:
+                    x, y = cx + dx, cy + dy
+                    if 16 <= x <= 191 and 16 <= y <= 191:
+                        px[x, y] = C_WHITE
+                elif px[cx + dx, cy + dy][3] == 0:
+                    px[cx + dx, cy + dy] = C_VIOLET_AURA
 
         for d in range(2, ray_len + 1):
             c_step = C_WHITE if d == 2 else ray_col

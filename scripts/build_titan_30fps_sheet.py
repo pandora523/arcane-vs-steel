@@ -819,9 +819,9 @@ def draw_2h_warhammer_and_arms(
     min_cy = 3.0 + ry
     max_cy = 46.5 - ry
 
-    grip_sep = 4.8 * min(1.0, scale) if is_shoulder_rested else 5.5 * min(1.0, scale)
+    grip_sep = 4.8 * min(1.0, scale) if is_shoulder_rested else 5.5 * min(1.05, scale)
     pom_dist = 3.6 * min(1.0, scale)
-    head_from_rear = 15.0 * min(1.04, scale) if is_shoulder_rested else 16.0 * min(1.04, scale)
+    head_from_rear = 15.0 * min(1.04, scale) if is_shoulder_rested else 16.0 * min(1.26, scale)
 
     if is_shoulder_rested:
         mid_gx = float(hand_x - 2.0)
@@ -893,25 +893,35 @@ def draw_2h_warhammer_and_arms(
 
     # 2. Colossal Rectangular World-Breaker Anvil Hammerhead
     if is_ground_slam:
-        # Flat-slammed Colossal Rectangular Hammerhead resting directly on the stone floor (x = 38..47, y = 37..44)
-        for py_m in range(37, 45):
-            for px_m in range(38, 48):
-                if py_m in (37, 44) or px_m in (38, 47):
-                    col_m = GOLD_WHITE if (py_m == 44 and px_m in (41, 42, 43)) else (GOLD_MOLTEN if py_m == 44 else BRONZE_BRIGHT)
-                elif 41 <= px_m <= 44 and 40 <= py_m <= 41:
-                    col_m = JADE_WHITE if px_m in (42, 43) else JADE_LIGHT
+        # Enlarged World-Breaker Anvil Hammerhead slammed in front of Titan (expands with `scale` up to x = 34..48, y = 34..45)
+        grow_w = max(0, min(4, int(round((scale - 1.0) * 9.0))))
+        grow_h = max(0, min(3, int(round((scale - 1.0) * 7.0))))
+        x0_m = max(34, 38 - grow_w)
+        x1_m = 48
+        y0_m = max(34, 37 - grow_h)
+        y1_m = 45
+        mid_x0 = (x0_m + x1_m) // 2 - 2
+        mid_x1 = (x0_m + x1_m) // 2 + 2
+        mid_y0 = (y0_m + y1_m) // 2 - 1
+        mid_y1 = (y0_m + y1_m) // 2 + 1
+        for py_m in range(y0_m, y1_m + 1):
+            for px_m in range(x0_m, x1_m + 1):
+                if py_m in (y0_m, y1_m) or px_m in (x0_m, x1_m):
+                    col_m = GOLD_WHITE if (py_m == y1_m and mid_x0 <= px_m <= mid_x1) else (GOLD_MOLTEN if py_m >= y1_m - 1 else BRONZE_BRIGHT)
+                elif mid_x0 <= px_m <= mid_x1 and mid_y0 <= py_m <= mid_y1:
+                    col_m = JADE_WHITE if (mid_x0 + 1 <= px_m <= mid_x1 - 1) else JADE_LIGHT
                 elif (px_m + py_m) % 3 == 0:
                     col_m = GOLD_MOLTEN if glow_intensity >= 1.2 else MAGMA_ORANGE
                 else:
                     col_m = OBSIDIAN_DARK
                 set_px(hammer_layer, px_m, py_m, col_m)
     elif is_floor_planted:
-        # Planted Colossal Rectangular Mallet Head resting straight down on the stone floor (x = 32..41, y = 39..45)
+        # Planted Colossal Rectangular Mallet Head resting straight down on the stone floor in front of Titan (x = 34..43, y = 39..45)
         for py_m in range(39, 46):
-            for px_m in range(32, 42):
-                if py_m in (39, 45) or px_m in (32, 41):
-                    col_m = GOLD_MOLTEN if (py_m == 45 and px_m in (34, 37, 39)) else BRONZE_BRIGHT
-                elif px_m in (36, 37) and 41 <= py_m <= 43:
+            for px_m in range(34, 44):
+                if py_m in (39, 45) or px_m in (34, 43):
+                    col_m = GOLD_MOLTEN if (py_m == 45 and px_m in (36, 39, 41)) else BRONZE_BRIGHT
+                elif px_m in (38, 39) and 41 <= py_m <= 43:
                     col_m = JADE_WHITE if py_m == 42 else JADE_LIGHT
                 elif (px_m + py_m) % 3 == 0:
                     col_m = MAGMA_ORANGE
@@ -1624,16 +1634,16 @@ def build_row1_walk(tpl):
 def draw_lava_fissure_and_shockwave_ring(canvas, k, max_k=8):
     """
     Row 2 helper (`F14..F22`, k = 0..8): Cracks a Molten Lava Fissure & Tectonic Shockwave Ring
-    (`y = 41..46, x = 26..48`) along the stone floor under the flat-slammed War-Hammer!
+    (`y = 41..46, x = 33..48`) strictly in front of Torgar under his slammed World-Breaker Hammer!
     """
     u = k / float(max(1, max_k))
-    cx_ring = 38.0
+    cx_ring = 41.5
     cy_ring = 43.5
-    rx_ring = 5.5 + u * 6.0   # expands across x = 26..48
+    rx_ring = 4.5 + u * 4.0   # expands across x = 33..48 in front of Titan's boots
     ry_ring = 1.6 + u * 0.9   # spans y = 41..46
 
-    max_x = min(48, int(round(38 + k * 1.6)))
-    min_x = max(26, int(round(32 - k * 1.0)))
+    max_x = min(48, int(round(41 + k * 1.2)))
+    min_x = max(33, int(round(37 - k * 0.7)))
     for x in range(min_x, max_x + 1):
         zig = ((x + k) % 3) - 1
         fy = max(41, min(46, 44 + zig))
@@ -1644,14 +1654,14 @@ def draw_lava_fissure_and_shockwave_ring(canvas, k, max_k=8):
     steps = 36
     for i in range(steps):
         ang = (i / float(steps)) * 2.0 * math.pi
-        px_x = max(26, min(48, int(round(cx_ring + math.cos(ang) * rx_ring))))
+        px_x = max(33, min(48, int(round(cx_ring + math.cos(ang) * rx_ring))))
         px_y = max(41, min(46, int(round(cy_ring + math.sin(ang) * ry_ring))))
         col = GOLD_WHITE if (i % 3 == 0 and k <= 5) else (JADE_LIGHT if i % 2 == 0 else GOLD_MOLTEN)
         set_px(canvas, px_x, px_y, col)
 
     if k <= 6:
         for sp in range(5):
-            sx_s = max(26, min(48, 30 + sp * 4 + (k % 3)))
+            sx_s = max(33, min(48, 34 + sp * 3 + (k % 3)))
             sy_s = max(38, min(45, 42 - ((sp + k) % 4)))
             set_px(canvas, sx_s, sy_s, GOLD_WHITE if sp == 2 else (JADE_LIGHT if sp % 2 == 0 else MAGMA_ORANGE))
 
@@ -1660,9 +1670,9 @@ def build_row2_auto_attack(tpl):
     """
     Row 2 (`AUTO_ATTACK` — `TECTONIC OVERHEAD EARTH-SHAKER SMASH`, 60..89):
     - `F00..F11`: Raises the colossal rectangular War-Hammer high behind his head (`angle_deg = -125°` on `F00..F11`).
-    - `F12..F13`: Crushing downward earth-shaker whip from `-125°` to flat ground impact with blazing cleave arc.
-    - `F14..F22`: Slams the War-Hammer flat onto the stone floor (`angle_deg = +22°` on `F14..F22`), cracking a
-      Molten Lava Fissure & Tectonic Shockwave Ring (`y = 41..46, x = 26..48`) along the ground!
+    - `F12..F13`: Crushing downward earth-shaker whip from `-125°` to flat ground impact with growing hammerhead!
+    - `F14..F22`: Slams the enlarged World-Breaker War-Hammer flat onto the stone floor (`angle_deg = +22°` on `F14..F22`),
+      cracking a Molten Lava Fissure & Tectonic Shockwave Ring (`y = 41..46, x = 33..48`) in front of his feet!
     - `F23..F29`: Heaves the War-Hammer back up over his shoulder (`hand_x = 28, hand_y = 22, angle_deg = -102°`).
     """
     frames = []
@@ -1684,7 +1694,7 @@ def build_row2_auto_attack(tpl):
                 hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=1.0 + 0.35 * (f / 11.0),
-                scale=1.05,
+                scale=1.04 + 0.14 * (f / 11.0),
                 haft_len=21.0,
                 shoulder=(sx, sy),
                 two_handed=True,
@@ -1707,8 +1717,8 @@ def build_row2_auto_attack(tpl):
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=ang,
-                glow_intensity=1.4,
-                scale=1.05,
+                glow_intensity=1.45,
+                scale=1.28 if k == 0 else 1.42,
                 haft_len=21.0,
                 shoulder=(28, 17),
                 two_handed=True,
@@ -1718,8 +1728,7 @@ def build_row2_auto_attack(tpl):
             frames.append(frame)
 
         elif f <= 22:
-            # F14..F22: Slams the War-Hammer FLAT onto the stone floor (angle_deg = +22 deg on F14..F22)
-            # cracking a Molten Lava Fissure & Tectonic Shockwave Ring (y = 41..46, x = 26..48)!
+            # F14..F22: Slams the enlarged World-Breaker War-Hammer FLAT onto the stone floor in front of Titan
             k = f - 14  # 0..8
             crouch_d = 3 if k <= 4 else (2 if k <= 6 else 1)
             base = make_crouch_juggernaut(tpl, crouch_d)
@@ -1736,8 +1745,8 @@ def build_row2_auto_attack(tpl):
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=ang,
-                glow_intensity=1.4 - k * 0.04,
-                scale=1.05,
+                glow_intensity=1.45 - k * 0.04,
+                scale=1.50 - k * 0.04,
                 haft_len=21.0,
                 shoulder=(28, 17 + crouch_d),
                 two_handed=True,
@@ -1763,7 +1772,7 @@ def build_row2_auto_attack(tpl):
                 hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=1.0,
-                scale=1.02,
+                scale=1.14 * (1.0 - u) + 1.02 * u,
                 haft_len=21.0,
                 shoulder=(27, 17),
                 two_handed=True,
@@ -1841,7 +1850,7 @@ def build_row3_skill(tpl):
     - `F00..F02`: Torgar stamps his sabaton to summon the Mountain Anvil.
     - `F03..F13`: Torgar summons a physical Runic Iron Forge-Anvil (`x = 35..43, y = 37..45`) on the floor
       in front of him while coiling his War-Hammer back (`angle_deg -> -95°`) like a power batter!
-    - `F14..F25`: Torgar winds up and swings his War-Hammer horizontally like a batter (`angle_deg` sweeping
+    - `F14..F25`: Torgar winds up and swings his growing War-Hammer horizontally like a batter (`angle_deg` sweeping
       from `-95°` to `+10°` and into high follow-through) to smash the Anvil horizontally across the frame
       (`x = 38..48, y = 26..36`) in a trail of molten gold & jade sparks!
     - `F26..F29`: Returns smoothly to his shoulder-rested Juggernaut stance (`hand_x = 28, hand_y = 22, angle_deg = -102°`).
@@ -1884,7 +1893,7 @@ def build_row3_skill(tpl):
                 hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=1.05 + 0.25 * u,
-                scale=1.02,
+                scale=1.04 + 0.18 * u,
                 haft_len=21.0,
                 shoulder=(27, 17),
                 two_handed=True,
@@ -1899,18 +1908,17 @@ def build_row3_skill(tpl):
             frames.append(frame)
 
         elif f <= 25:
-            # F14..F25: Swings War-Hammer from -95 deg through +10 deg and into upper-left follow-through
-            # so the flying Cannonball Anvil (x = 38..48, y = 26..36) is 100% unobstructed!
+            # F14..F25: Swings growing War-Hammer from -95 deg through +10 deg and into upper-left follow-through
             k = f - 14  # 0..11
             base = tpl["lunge"].copy()
             base = apply_mantle_and_beard_sway(
                 base, phase * 2.5, amplitude=2.0, vertical_flutter=0.8, furnace_pulse=1.0
             )
 
-            # Sweeps from -95 deg -> -45 deg -> +10 deg at contact, then follows through high (-55 .. -90 deg)
             ang_seq = [-95.0, -35.0, 10.0, 8.0, -38.0, -56.0, -68.0, -76.0, -82.0, -88.0, -92.0, -96.0]
             hx_seq = [30, 34, 36, 35, 32, 31, 30, 30, 29, 29, 29, 28]
             hy_seq = [23, 23, 24, 23, 19, 17, 16, 16, 17, 18, 19, 20]
+            scale_seq = [1.26, 1.38, 1.44, 1.40, 1.32, 1.24, 1.18, 1.14, 1.10, 1.08, 1.05, 1.03]
 
             cleave_arc = None
             if 1 <= k <= 5:
@@ -1923,8 +1931,8 @@ def build_row3_skill(tpl):
                 hand_x=hx_seq[k],
                 hand_y=hy_seq[k],
                 angle_deg=ang_seq[k],
-                glow_intensity=1.4 if k <= 6 else 1.1,
-                scale=1.04,
+                glow_intensity=1.45 if k <= 6 else 1.1,
+                scale=scale_seq[k],
                 haft_len=21.0,
                 shoulder=(28, 17),
                 two_handed=True,
@@ -2022,11 +2030,12 @@ def draw_ragnarok_lightning_and_mantle(canvas, f, crouch_d=0, intensity=1.0):
 
 def draw_ragnarok_world_forge_geysers(canvas, f):
     """
-    Row 4 helper (F11..F25): Renders a 2-stage World-Forge Lava & Jade Geyser Eruption along the floor.
+    Row 4 helper (F11..F25): Renders a 2-stage World-Forge Lava & Jade Geyser Eruption
+    strictly in front of Torgar (`x = 33..48`) where his growing World-Breaker Hammer strikes!
     """
     is_stage2 = (f >= 20)
 
-    for x in range(14, 49):
+    for x in range(33, 49):
         wave = (x + f) % 3
         set_px(canvas, x, 48, OBSIDIAN_DARK if (x % 3 == 0) else MAGMA_RED)
         set_px(canvas, x, 47, MAGMA_ORANGE if wave == 0 else (GOLD_MOLTEN if wave == 1 else JADE_DEEP))
@@ -2041,34 +2050,34 @@ def draw_ragnarok_world_forge_geysers(canvas, f):
 
     if not is_stage2:
         k = f - 11
-        geyser_xs = [16, 25, 36, 45]
+        geyser_xs = [35, 41, 47]
         for g_idx, gx in enumerate(geyser_xs):
-            top_y = max(40, 42 - ((k + g_idx) % 3))
+            top_y = max(39, 42 - ((k + g_idx) % 3))
             is_jade = (g_idx % 2 == 1)
             for gy in range(top_y, 47):
                 set_px(canvas, gx, gy, JADE_WHITE if is_jade else GOLD_WHITE)
-                if gx - 1 >= 14:
+                if gx - 1 >= 33:
                     set_px(canvas, gx - 1, gy, JADE_LIGHT if is_jade else GOLD_MOLTEN)
                 if gx + 1 <= 48:
                     set_px(canvas, gx + 1, gy, JADE_BRIGHT if is_jade else MAGMA_ORANGE)
-            set_px(canvas, max(14, gx - 1), top_y, GOLD_MOLTEN if is_jade else JADE_LIGHT)
+            set_px(canvas, max(33, gx - 1), top_y, GOLD_MOLTEN if is_jade else JADE_LIGHT)
             set_px(canvas, min(48, gx + 1), top_y, MAGMA_ORANGE if is_jade else GOLD_WHITE)
     else:
         k = f - 20
-        geyser_xs = [15, 20, 26, 31, 37, 42, 47]
+        geyser_xs = [34, 38, 43, 47]
         for g_idx, gx in enumerate(geyser_xs):
-            top_y = max(40, 40 + ((k + g_idx) % 2))
+            top_y = max(39, 40 + ((k + g_idx) % 2))
             is_jade = (g_idx % 2 == 0)
             for gy in range(top_y, 47):
                 core_c = JADE_WHITE if is_jade else GOLD_WHITE
                 mid_c = JADE_LIGHT if is_jade else GOLD_MOLTEN
                 edge_c = JADE_BRIGHT if is_jade else MAGMA_ORANGE
                 set_px(canvas, gx, gy, core_c)
-                if gx - 1 >= 14:
+                if gx - 1 >= 33:
                     set_px(canvas, gx - 1, gy, mid_c if gy <= top_y + 2 else edge_c)
                 if gx + 1 <= 48:
                     set_px(canvas, gx + 1, gy, mid_c if (gy + k) % 2 == 0 else edge_c)
-            set_px(canvas, gx, 40, GOLD_WHITE if is_jade else JADE_WHITE)
+            set_px(canvas, gx, 39, GOLD_WHITE if is_jade else JADE_WHITE)
 
 
 def build_row4_ultimate(tpl):
@@ -2098,7 +2107,7 @@ def build_row4_ultimate(tpl):
                 hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=1.15 + u * 0.3,
-                scale=1.05 + u * 0.08,
+                scale=1.05 + u * 0.18,
                 haft_len=21.0,
                 shoulder=(sx, sy),
                 two_handed=True,
@@ -2126,27 +2135,31 @@ def build_row4_ultimate(tpl):
                 ang = -115.0
                 hx, hy = 31, sy - 5
                 cleave = None
+                slam_scale = 1.24
             elif is_slam1:
                 ang = [12.0, 26.0, 28.0, 20.0][k - 1]
                 hx, hy = 36, sy + 6
                 cleave = (-95.0, ang + 5.0, 18.0, 1.0 if k <= 2 else 0.7)
+                slam_scale = [1.38, 1.48, 1.46, 1.36][k - 1]
             else:
                 ang = [16.0, 26.0, 28.0, 24.0, 10.0][k - 6]
                 hx, hy = 36, sy + 7
                 cleave = (-95.0, ang + 5.0, 18.5, 1.0 if k <= 8 else 0.75)
+                slam_scale = [1.40, 1.50, 1.48, 1.42, 1.32][k - 6]
 
             frame = draw_warhammer(
                 base,
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=ang,
-                glow_intensity=1.4,
-                scale=1.08,
+                glow_intensity=1.45,
+                scale=slam_scale,
                 haft_len=21.0,
                 shoulder=(sx, sy),
                 two_handed=True,
                 cleave_arc=cleave,
                 phase=phase * 2.0,
+                flat_floor_slam=(is_slam1 or is_slam2),
             )
 
             draw_ragnarok_lightning_and_mantle(frame, f, crouch_d=crouch_d, intensity=1.0)
@@ -2166,7 +2179,7 @@ def build_row4_ultimate(tpl):
                     hand_y=11,
                     angle_deg=-118.0,
                     glow_intensity=1.5,
-                    scale=1.08,
+                    scale=1.30,
                     haft_len=21.0,
                     shoulder=(27, 15),
                     two_handed=True,
@@ -2188,21 +2201,22 @@ def build_row4_ultimate(tpl):
                     hand_y=sy + 6,
                     angle_deg=26.0,
                     glow_intensity=1.5,
-                    scale=1.10,
+                    scale=1.55 - (k - 1) * 0.04,
                     haft_len=21.0,
                     shoulder=(sx, sy),
                     two_handed=True,
                     cleave_arc=(-105.0, 28.0, 18.0, 1.0) if k <= 2 else None,
                     phase=phase,
+                    flat_floor_slam=True,
                 )
                 if f <= 25:
                     draw_ragnarok_lightning_and_mantle(frame, f, crouch_d=crouch_d, intensity=1.0)
                     draw_ragnarok_world_forge_geysers(frame, f)
-                ring_rx = min(16, 7 + k * 2)
+                ring_rx = min(8, 4 + k)
                 for s_i in range(32):
                     sa = (s_i / 32.0) * 2.0 * math.pi
-                    rx = max(4.0, min(47.0, 29.0 + math.cos(sa) * ring_rx))
-                    ry = max(40.0, min(46.0, 44.0 + math.sin(sa) * 2.5))
+                    rx = max(33.0, min(48.0, 41.0 + math.cos(sa) * ring_rx))
+                    ry = max(40.0, min(46.0, 44.0 + math.sin(sa) * 2.2))
                     set_px(frame, rx, ry, GOLD_WHITE if s_i % 3 == 0 else (JADE_LIGHT if s_i % 2 == 0 else GOLD_MOLTEN))
 
             frames.append(frame)
@@ -2223,7 +2237,7 @@ def build_row4_ultimate(tpl):
                 hand_y=int(round((24 + crouch_d) * (1.0 - u) + 22 * u)),
                 angle_deg=ang,
                 glow_intensity=1.1,
-                scale=1.04,
+                scale=1.18 * (1.0 - u) + 1.04 * u,
                 haft_len=21.0,
                 shoulder=(27, 17 + crouch_d),
                 two_handed=True,
@@ -2610,11 +2624,11 @@ def build_row7_crouch(tpl):
 
 def draw_wide_molten_crater(canvas, k):
     """
-    Row 8 helper (`F17..F26`, k = 0..9): Erupts a Wide Molten Crater (`x = 12..48, y = 41..47`)
-    across the floor when Torgar slams straight down in his Tectonic Belly-Crush Dunk!
+    Row 8 helper (`F17..F26`, k = 0..9): Erupts a Molten Crater (`x = 33..48, y = 41..47`)
+    strictly in front of Torgar when his growing World-Breaker Hammer slams the stone floor!
     """
-    span_l = max(12, 24 - k * 3) if k <= 4 else 12
-    span_r = min(48, 36 + k * 3) if k <= 4 else 48
+    span_l = max(33, 39 - k * 2) if k <= 3 else 33
+    span_r = min(48, 43 + k * 2) if k <= 3 else 48
     fade = 1.0 if k <= 6 else max(0.4, 1.0 - (k - 6) * 0.2)
 
     for x in range(span_l, span_r + 1):
@@ -2624,15 +2638,15 @@ def draw_wide_molten_crater(canvas, k):
         set_px(canvas, x, 44, JADE_LIGHT if (x + k) % 4 == 0 else (GOLD_MOLTEN if wave == 0 else MAGMA_ORANGE))
 
     for rx_rim in (span_l, span_l + 1, span_r - 1, span_r):
-        if 12 <= rx_rim <= 48:
+        if 33 <= rx_rim <= 48:
             set_px(canvas, rx_rim, 43, BRONZE_BRIGHT if rx_rim % 2 == 0 else OBSIDIAN_MID)
             set_px(canvas, rx_rim, 42, GOLD_WHITE if k <= 5 else GOLD_MOLTEN)
             if k <= 6:
                 set_px(canvas, rx_rim, 41, MAGMA_ORANGE if rx_rim % 2 == 0 else JADE_LIGHT)
 
     if k <= 7:
-        for b_i in range(6):
-            bx = max(12, min(48, 15 + b_i * 6 + ((k + b_i) % 3)))
+        for b_i in range(4):
+            bx = max(33, min(48, 34 + b_i * 4 + ((k + b_i) % 3)))
             by = max(38, min(43, 42 - ((k + b_i * 2) % 4)))
             set_px(canvas, bx, by, GOLD_WHITE if b_i % 2 == 0 else JADE_LIGHT)
             set_px(canvas, bx, min(45, by + 1), MAGMA_ORANGE)
@@ -2643,9 +2657,9 @@ def build_row8_jump(tpl):
     Row 8 (`JUMP` — `TECTONIC BELLY-CRUSH DUNK`, 240..269):
     - Heavy, low-arcing unstoppable Juggernaut leap:
       * `F00..F03`: Deep muscular Juggernaut squat windup.
-      * `F04..F16`: Low-arcing unstoppable Juggernaut leap raising the colossal rectangular War-Hammer
+      * `F04..F16`: Low-arcing unstoppable Juggernaut leap raising the growing colossal rectangular War-Hammer
         with BOTH hands overhead (`two_handed=True`, `angle_deg = -118°..-130°`)!
-      * `F17..F26`: Slamming straight down into a Wide Molten Crater on the floor (`x = 12..48, y = 41..47`)!
+      * `F17..F26`: Slamming straight down into a Forward Molten Crater (`x = 33..48, y = 41..47`) in front of his feet!
       * `F27..F29`: Rises from the crater hoisting his War-Hammer back over his shoulder (`-102°`).
     """
     frames = []
@@ -2664,7 +2678,7 @@ def build_row8_jump(tpl):
                 hand_y=21 + d - int(round(u * 4)),
                 angle_deg=ang,
                 glow_intensity=1.0 + u * 0.25,
-                scale=1.02,
+                scale=1.02 + u * 0.06,
                 haft_len=21.0,
                 shoulder=(27, 17 + d),
                 two_handed=True,
@@ -2689,8 +2703,8 @@ def build_row8_jump(tpl):
                 hand_x=hx,
                 hand_y=hy,
                 angle_deg=ang,
-                glow_intensity=1.3,
-                scale=1.04,
+                glow_intensity=1.35,
+                scale=1.08 + u * 0.22,
                 haft_len=21.0,
                 shoulder=(sx, sy),
                 two_handed=True,
@@ -2710,7 +2724,7 @@ def build_row8_jump(tpl):
                     hand_y=19,
                     angle_deg=-35.0,
                     glow_intensity=1.45,
-                    scale=1.05,
+                    scale=1.36,
                     haft_len=21.0,
                     shoulder=(28, 16),
                     two_handed=True,
@@ -2732,8 +2746,8 @@ def build_row8_jump(tpl):
                     hand_x=36,
                     hand_y=25,
                     angle_deg=ang,
-                    glow_intensity=1.45 - k * 0.04,
-                    scale=1.05,
+                    glow_intensity=1.50 - k * 0.04,
+                    scale=1.50 - (k - 1) * 0.04,
                     haft_len=21.0,
                     shoulder=(sx, sy),
                     two_handed=True,
@@ -2761,7 +2775,7 @@ def build_row8_jump(tpl):
                 hand_y=hy,
                 angle_deg=ang,
                 glow_intensity=1.05,
-                scale=1.02,
+                scale=1.14 * (1.0 - u) + 1.02 * u,
                 haft_len=21.0,
                 shoulder=(27, 17 + d),
                 two_handed=True,
@@ -2787,9 +2801,9 @@ def apply_pass12_vanguard_upgrades(cell_208, r_idx, f):
         if 4 <= ix <= 203 and 4 <= iy <= 203:
             out[iy, ix] = col
 
-    # 1. Row 2 (AUTO_ATTACK, F14..F19) Ground-Slam Strike Apex Impact Glint
+    # 1. Row 2 (AUTO_ATTACK, F14..F19) Ground-Slam Strike Apex Impact Glint (strictly in front of Titan)
     if r_idx == 2 and 14 <= f <= 19:
-        gx = 162 + (f - 14) * 3
+        gx = 166 + (f - 14) * 3
         gy = 160 + ((f * 5) % 10)
         for dy in (-1, 0, 1):
             for dx in (-1, 0, 1):
@@ -2809,17 +2823,17 @@ def apply_pass12_vanguard_upgrades(cell_208, r_idx, f):
         for dx, dy in ((-2, -2), (2, -2), (-2, 2), (2, 2)):
             p208(gx + dx, gy + dy, c_sec)
 
-    # 2. Row 7 / Row 3 (SKILL / CROUCH, F08..F20) Grounded Cast-Surge Sigil Glow
-    if r_idx in (3, 7) and 8 <= f <= 20:
-        for x in range(76, 135):
-            u = (x - 105.0) / 29.0
+    # 2. Row 3 (SKILL, F08..F20) Forward Anvil & Hammer Slam Floor Sigil Glow (in front of Titan at x = 136..194)
+    if r_idx == 3 and 8 <= f <= 20:
+        for x in range(136, 195):
+            u = (x - 165.0) / 29.0
             ay = 186 + int(round((u * u) * 2.0))
             ay = max(186, min(188, ay))
-            col_top = c_white if (abs(x - 105) <= 10 or (x + f) % 4 == 0) else c_prim
-            col_bot = c_sec if abs(x - 105) <= 18 else JADE_BRIGHT
+            col_top = c_white if (abs(x - 165) <= 10 or (x + f) % 4 == 0) else c_prim
+            col_bot = c_sec if abs(x - 165) <= 18 else JADE_BRIGHT
             p208(x, ay, col_top)
             p208(x, ay + 1, col_bot)
-        mote_xs = [86 + ((f - 8) % 3), 105 + (((f - 8) + 1) % 3) - 1, 124 - ((f - 8) % 3)]
+        mote_xs = [146 + ((f - 8) % 3), 165 + (((f - 8) + 1) % 3) - 1, 184 - ((f - 8) % 3)]
         for m_i, mx in enumerate(mote_xs):
             my = (182 - ((f - 8) * 3) % 24) if m_i == 0 else (182 - (((f - 8) * 3 + m_i * 7) % 24))
             p208(mx, my, c_white)
@@ -2830,7 +2844,7 @@ def apply_pass12_vanguard_upgrades(cell_208, r_idx, f):
 
     # 3. Row 4 (ULTIMATE, F03..F26) Overdrive Ascension Lightning / Aura Pillars
     if r_idx == 4 and 3 <= f <= 26:
-        for idx, mx in enumerate((68, 88, 122, 140)):
+        for idx, mx in enumerate((136, 152, 170, 188)):
             my = 168 - (((f - 3) * 5 + idx * 19) % 116)
             p208(mx, my - 2, c_sec)
             p208(mx, my - 1, c_white)

@@ -1,16 +1,16 @@
-import { Renderer } from './engine/Renderer.js?v=30fps20';
-import { VFXManager } from './engine/VFXManager.js?v=30fps20';
-import { PixelForge } from './engine/PixelForge.js?v=30fps20';
-import { AudioManager } from './engine/AudioManager.js?v=30fps20';
-import { Warrior } from './entities/Warrior.js?v=30fps20';
-import { FireMage } from './entities/FireMage.js?v=30fps20';
-import { Archer } from './entities/Archer.js?v=30fps20';
-import { Priestess } from './entities/Priestess.js?v=30fps20';
-import { Reaper } from './entities/Reaper.js?v=30fps20';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps20';
-import { Titan } from './entities/Titan.js?v=30fps20';
-import { Ronin } from './entities/Ronin.js?v=30fps20';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps20';
+import { Renderer } from './engine/Renderer.js?v=30fps21';
+import { VFXManager } from './engine/VFXManager.js?v=30fps21';
+import { PixelForge } from './engine/PixelForge.js?v=30fps21';
+import { AudioManager } from './engine/AudioManager.js?v=30fps21';
+import { Warrior } from './entities/Warrior.js?v=30fps21';
+import { FireMage } from './entities/FireMage.js?v=30fps21';
+import { Archer } from './entities/Archer.js?v=30fps21';
+import { Priestess } from './entities/Priestess.js?v=30fps21';
+import { Reaper } from './entities/Reaper.js?v=30fps21';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps21';
+import { Titan } from './entities/Titan.js?v=30fps21';
+import { Ronin } from './entities/Ronin.js?v=30fps21';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps21';
 
 const CHAMPION_ROSTER = {
   warrior: {

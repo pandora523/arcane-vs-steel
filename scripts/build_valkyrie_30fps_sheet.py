@@ -1420,69 +1420,67 @@ def build_row1_walk(tpl):
 
 def build_row2_auto_attack(tpl):
     """
-    Row 2 (`AUTO_ATTACK` — `TRIPLE VALKYRIE IMPALE & RISING HALBERD LAUNCHER`, 30 frames):
-    - `F00..F10`: **Rapid Long-Reach Lance Jab #1** (`angle_deg = -4°`, lunging forward to `hand_x = 35`
-      with a linear golden-crimson spear thrust streak extending to `x = 47`).
-    - `F11..F19`: **High-Angle Lance Impale #2** (`angle_deg = -18°`, lunging to `hand_x = 36`
-      with a piercing golden-ruby thrust cone).
-    - `F20..F29`: **Rising Wyvern Halberd Launcher** (`angle_deg` sweeping from `+32°` up to `-78°`
-      with a wide crimson-gold crescent halberd trail and flared Valkyrie wings).
+    Row 2 (`AUTO_ATTACK` — `RANGED GUNGNIR JAVELIN THROW COMBO`, 30 frames):
+    - `F00..F10`: **Overhead Gungnir Javelin Throw #1** (Freyja cocks Gungnir high at `hand_y = 15..18`
+      and hurls a blazing golden-crimson javelin forward-upward on `F04..F07`).
+    - `F11..F19`: **High-Arc Gungnir Javelin Throw #2** (`angle_deg = -38° .. -16°`, hurling a second
+      radiant javelin on a sweeping skyward trajectory).
+    - `F20..F29`: **Winged Hover Twin-Javelin Volley Finisher** (Freyja hovers airborne with flared
+      Valkyrie wings and hurls twin converging Gungnir Javelins).
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
         if f <= 10:
-            # F00..F10: Rapid Long-Reach Lance Jab #1 (angle_deg = -4 deg, lunging to hand_x = 35)
-            is_lunge = 3 <= f <= 8
-            base = (tpl["lunge"] if is_lunge else tpl["stand"]).copy()
+            # F00..F10: Overhead Gungnir Javelin Throw #1
+            is_throw = 3 <= f <= 7
+            base = (tpl["lunge"] if is_throw else tpl["stand"]).copy()
             base = apply_hair_and_cape_wave(base, phase * 2.0, amplitude=1.6, vertical_flutter=0.6, rune_pulse=0.95)
-            wing_span = [0.96, 0.92, 0.98, 1.08, 1.10, 1.08, 1.06, 1.04, 1.00, 0.96, 0.94][f]
+            wing_span = [0.96, 1.00, 1.04, 1.10, 1.12, 1.10, 1.06, 1.04, 1.00, 0.96, 0.94][f]
             base = draw_valkyrie_dragon_wings(
-                base, attach_xy=(21 if is_lunge else 20, 17), wing_span=wing_span, flap_phase=phase * 2.0
+                base, attach_xy=(21 if is_throw else 20, 17), wing_span=wing_span, flap_phase=phase * 2.0
             )
 
-            hx_seq = [30, 29, 32, 34, 35, 35, 34, 33, 32, 30, 29]
-            hy_seq = [24, 24, 23, 23, 23, 23, 23, 23, 24, 24, 24]
-            ang_seq = [-8.0, -6.0, -4.0, -4.0, -4.0, -4.0, -4.0, -4.0, -6.0, -10.0, -14.0]
+            hx_seq = [29, 27, 26, 31, 34, 35, 34, 33, 31, 30, 29]
+            hy_seq = [21, 17, 15, 16, 17, 18, 19, 20, 21, 22, 23]
+            ang_seq = [-16.0, -32.0, -38.0, -24.0, -14.0, -10.0, -12.0, -14.0, -16.0, -14.0, -12.0]
 
             frame = draw_two_handed_dragon_lance(
                 base,
                 hand_x=hx_seq[f],
                 hand_y=hy_seq[f],
                 angle_deg=ang_seq[f],
-                glow_intensity=1.35 if 3 <= f <= 7 else 1.05,
+                glow_intensity=1.40 if 3 <= f <= 7 else 1.08,
                 scale=1.02,
-                shoulder_rear=(22 if is_lunge else 21, 18),
-                shoulder_lead=(28 if is_lunge else 27, 19),
+                shoulder_rear=(22 if is_throw else 21, 18),
+                shoulder_lead=(28 if is_throw else 27, 19),
                 phase=phase,
             )
 
-            # Linear golden-crimson spear thrust streak extending to x = 47 on F03..F07
-            if 3 <= f <= 7:
+            # Radiant Gungnir Javelin release streak on F04..F07
+            if 4 <= f <= 7:
                 reach_x = 47 if f in (4, 5, 6) else 45
-                draw_line_px(frame, 33, 22, reach_x, 22, GOLD_WHITE)
-                draw_line_px(frame, 34, 21, reach_x - 1, 21, GOLD_BRIGHT)
-                draw_line_px(frame, 34, 23, reach_x - 1, 23, RUBY_CORE)
-                set_px(frame, reach_x, 21, GOLD_WHITE)
-                set_px(frame, reach_x, 23, RUBY_CORE)
-                set_px(frame, reach_x - 1, 20, AMBER_FLAME)
-                set_px(frame, reach_x - 1, 24, CRIMSON_BRIGHT)
+                draw_line_px(frame, 34, 17, reach_x, 14, GOLD_WHITE)
+                draw_line_px(frame, 35, 16, reach_x - 1, 13, GOLD_BRIGHT)
+                draw_line_px(frame, 35, 18, reach_x - 1, 15, RUBY_CORE)
+                set_px(frame, reach_x, 13, GOLD_WHITE)
+                set_px(frame, reach_x, 15, RUBY_CORE)
             frames.append(frame)
 
         elif f <= 19:
-            # F11..F19: High-Angle Lance Impale #2 (angle_deg = -18 deg, lunging to hand_x = 36 with piercing thrust cone)
+            # F11..F19: High-Arc Gungnir Javelin Throw #2
             k = f - 11  # 0..8
-            is_lunge = k <= 6
-            base = (tpl["lunge"] if is_lunge else tpl["stand"]).copy()
+            is_throw = 1 <= k <= 5
+            base = (tpl["lunge"] if is_throw else tpl["stand"]).copy()
             base = apply_hair_and_cape_wave(base, phase * 2.4, amplitude=1.8, vertical_flutter=0.7, rune_pulse=1.0)
-            wing_span = [1.02, 1.08, 1.12, 1.14, 1.12, 1.08, 1.04, 0.98, 0.95][k]
+            wing_span = [1.02, 1.08, 1.14, 1.16, 1.12, 1.08, 1.04, 0.98, 0.95][k]
             base = draw_valkyrie_dragon_wings(
-                base, attach_xy=(21 if is_lunge else 20, 17), wing_span=wing_span, flap_phase=phase * 2.5
+                base, attach_xy=(21 if is_throw else 20, 17), wing_span=wing_span, flap_phase=phase * 2.5
             )
 
-            hx_seq = [32, 35, 36, 36, 36, 35, 33, 31, 30]
-            hy_seq = [23, 22, 22, 22, 22, 22, 23, 24, 25]
-            ang_seq = [-18.0, -18.0, -18.0, -18.0, -18.0, -18.0, -14.0, 8.0, 26.0]
+            hx_seq = [27, 31, 34, 35, 35, 34, 32, 30, 29]
+            hy_seq = [16, 16, 17, 17, 18, 19, 20, 22, 23]
+            ang_seq = [-38.0, -28.0, -20.0, -16.0, -16.0, -18.0, -20.0, -16.0, -12.0]
 
             frame = draw_two_handed_dragon_lance(
                 base,
@@ -1491,51 +1489,50 @@ def build_row2_auto_attack(tpl):
                 angle_deg=ang_seq[k],
                 glow_intensity=1.45 if k <= 5 else 1.1,
                 scale=1.03,
-                shoulder_rear=(22 if is_lunge else 21, 18),
-                shoulder_lead=(28 if is_lunge else 27, 19),
-                drill_cone=(1 <= k <= 5),
+                shoulder_rear=(22 if is_throw else 21, 18),
+                shoulder_lead=(28 if is_throw else 27, 19),
                 phase=phase * 2.0,
             )
 
-            # Piercing golden-ruby high-angle thrust cone extending to x = 47, y = 15..21 on F12..F16 (k = 1..5)
             if 1 <= k <= 5:
-                draw_line_px(frame, 35, 20, 47, 16, GOLD_WHITE)
-                draw_line_px(frame, 36, 18, 46, 15, GOLD_BRIGHT)
-                draw_line_px(frame, 36, 22, 46, 18, RUBY_CORE)
-                set_px(frame, 47, 15, GOLD_WHITE)
-                set_px(frame, 47, 17, RUBY_CORE)
+                draw_line_px(frame, 35, 16, 47, 11, GOLD_WHITE)
+                draw_line_px(frame, 36, 15, 46, 10, GOLD_BRIGHT)
+                draw_line_px(frame, 36, 17, 46, 12, RUBY_CORE)
+                set_px(frame, 47, 10, GOLD_WHITE)
+                set_px(frame, 47, 12, RUBY_CORE)
             frames.append(frame)
 
         else:
-            # F20..F29: Rising Wyvern Halberd Launcher (angle_deg sweeping from +32 deg up to -78 deg)
+            # F20..F29: Winged Hover Twin-Javelin Volley Finisher
             k = f - 20  # 0..9
-            is_lunge = k <= 6
-            base = (tpl["lunge"] if is_lunge else tpl["stand"]).copy()
-            base = apply_hair_and_cape_wave(base, phase * 2.2, amplitude=1.9, vertical_flutter=0.8, rune_pulse=1.0)
-            wing_span = [1.04, 1.10, 1.14, 1.16, 1.16, 1.14, 1.10, 1.06, 1.02, 0.98][k]
-            base = draw_valkyrie_dragon_wings(
-                base, attach_xy=(21 if is_lunge else 20, 17), wing_span=wing_span, flap_phase=phase * 2.2
+            dy = -2 if 1 <= k <= 7 else -1
+            body = make_aerial_valkyrie(
+                tpl,
+                jump_dy=dy,
+                body_tilt_deg=4.0 if k <= 6 else 0.0,
+                leg_tuck=0.35 if k <= 6 else 0.15,
+                wing_span=[1.04, 1.10, 1.15, 1.16, 1.16, 1.14, 1.10, 1.06, 1.02, 0.98][k],
+                phase=phase * 2.2,
             )
 
-            ang_seq = [32.0, 14.0, -8.0, -32.0, -54.0, -70.0, -78.0, -56.0, -32.0, -14.0]
-            hx_seq = [33, 34, 35, 35, 34, 34, 33, 32, 31, 30]
-            hy_seq = [24, 23, 22, 21, 20, 19, 19, 21, 22, 24]
+            ang_seq = [-46.0, -42.0, -30.0, -20.0, -14.0, -12.0, -14.0, -18.0, -16.0, -12.0]
+            hx_seq = [27, 29, 33, 35, 35, 34, 33, 31, 30, 29]
+            hy_seq = [15, 15, 16, 17, 17, 18, 19, 20, 21, 22]
 
             cleave_arc = None
-            if 1 <= k <= 7:
-                arc_int = [0.85, 1.0, 1.0, 1.0, 1.0, 0.92, 0.75][k - 1]
-                a0 = [32.0, 32.0, 28.0, 20.0, 8.0, -8.0, -28.0][k - 1]
-                cleave_arc = (a0, ang_seq[k] - 4.0, 18.0, arc_int)
+            if 2 <= k <= 6:
+                arc_int = [0.85, 1.0, 1.0, 0.92, 0.75][k - 2]
+                cleave_arc = (-46.0, ang_seq[k], 17.0, arc_int)
 
             frame = draw_two_handed_dragon_lance(
-                base,
+                body,
                 hand_x=hx_seq[k],
                 hand_y=hy_seq[k],
                 angle_deg=ang_seq[k],
-                glow_intensity=1.45 if k <= 6 else 1.1,
+                glow_intensity=1.48 if k <= 6 else 1.1,
                 scale=1.04,
-                shoulder_rear=(22 if is_lunge else 21, 18),
-                shoulder_lead=(28 if is_lunge else 27, 19),
+                shoulder_rear=(21, 18 + dy),
+                shoulder_lead=(27, 19 + dy),
                 cleave_arc=cleave_arc,
                 phase=phase,
             )
@@ -1545,130 +1542,120 @@ def build_row2_auto_attack(tpl):
 
 def draw_corkscrew_drill_vortex(canvas, f, phase):
     """
-    Row 3 helper (`F05..F25`): Surrounds Freyja's horizontally couched Gungnir War-Lance (`angle_deg = 0°`)
-    in a Blazing Helical Crimson-Gold Dragonfire Corkscrew Drill Vortex that spirals across `x = 28..47`!
+    Row 3 helper (`F05..F24`): Conjures arcing Golden-Crimson Gungnir Light-Javelins fanning out
+    around Freyja during her `GUNGNIR JAVELIN BARRAGE` aerial hover!
     """
     vortex = np.zeros((52, 52, 4), dtype=np.uint8)
-    cy = 22.0
-    # 1. Double-helix spiraling dragonfire drill strands across x = 28..47
-    for x in range(28, 48):
-        u = (x - 28) / 19.0  # 0.0 at shaft -> 1.0 at piercing needle tip (x=47)
-        radius = (1.0 - u * 0.78) * 5.2 + 0.6
-        theta = u * math.pi * 5.0 - phase * 4.0
-        for strand in (0, 1):
-            ang = theta + strand * math.pi
-            sy = cy + math.sin(ang) * radius
-            sy_clamped = max(14.0, min(30.0, sy))
-            if strand == 0:
-                col_main = GOLD_WHITE if (x + f) % 2 == 0 else GOLD_BRIGHT
-                col_wake = AMBER_FLAME
-            else:
-                col_main = RUBY_CORE if (x + f) % 2 == 0 else CRIMSON_BRIGHT
-                col_wake = GOLD_BRIGHT
-            set_px(vortex, x, sy_clamped, col_main)
-            set_px(vortex, x, max(14.0, min(30.0, sy_clamped + (0.8 if math.cos(ang) >= 0 else -0.8))), col_wake)
-
-    # 2. Central blazing Gungnir drill spine & piercing star-tip at (47, 22)
-    draw_line_px(vortex, 32, cy, 47, cy, GOLD_WHITE)
-    set_px(vortex, 47, cy - 1, GOLD_BRIGHT)
-    set_px(vortex, 47, cy + 1, RUBY_CORE)
-    set_px(vortex, 46, cy - 2, AMBER_FLAME)
-    set_px(vortex, 46, cy + 2, CRIMSON_BRIGHT)
+    javelin_lanes = [
+        (33, 10, 46, 6),
+        (34, 15, 47, 12),
+        (35, 20, 47, 18),
+        (33, 25, 46, 24),
+    ]
+    for j_idx, (x0, y0, x1, y1) in enumerate(javelin_lanes):
+        prog = ((f * 2 + j_idx * 3) % 10) / 9.0
+        sx = x0 + (x1 - x0) * max(0.0, prog - 0.35)
+        sy = y0 + (y1 - y0) * max(0.0, prog - 0.35)
+        tx = x0 + (x1 - x0) * prog
+        ty = y0 + (y1 - y0) * prog
+        draw_line_px(vortex, sx, sy, tx, ty, GOLD_WHITE if (j_idx + f) % 2 == 0 else GOLD_BRIGHT)
+        set_px(vortex, tx, ty, GOLD_WHITE)
+        set_px(vortex, max(4.0, tx - 1.0), max(4.0, ty - 1.0), RUBY_CORE if j_idx % 2 == 0 else AMBER_FLAME)
 
     return composite_over(canvas, vortex)
 
 
 def build_row3_skill(tpl):
     """
-    Row 3 (`SKILL` — `WYVERN CORKSCREW DRILL-CHARGE`, 30 frames):
-    - Freyja hovers airborne (`dy = -2`) with her Valkyrie wings spread wide, couches her Gungnir War-Lance
-      horizontally (`angle_deg = 0°`), and surrounds the lance in a **Blazing Helical Crimson-Gold Dragonfire
-      Corkscrew Drill Vortex (`drill_cone=True`)** that spirals across `x = 28..47`!
+    Row 3 (`SKILL` — `GUNGNIR JAVELIN BARRAGE`, 30 frames):
+    - Freyja hovers airborne (`dy = -2`) with her Valkyrie wings unfurled wide, raising Gungnir high
+      (`angle_deg = -28° .. -14°`) to conjure and hurl a 6-Javelin Celestial Halo Barrage from afar!
     """
     frames = []
     for f in range(30):
         phase = (f / 30.0) * 2.0 * math.pi
         if f <= 4:
-            # F00..F04: Airborne takeoff & horizontal lance couch
+            # F00..F04: Airborne hover ascent & overhead Gungnir javelin raise
             u = f / 4.0
             dy = -1 if f in (1, 2) else (-2 if f >= 3 else 0)
             body = make_aerial_valkyrie(
                 tpl,
                 jump_dy=dy,
-                body_tilt_deg=6.0 * u,
-                leg_tuck=0.35 + 0.25 * u,
-                wing_span=0.98 + 0.14 * u,
+                body_tilt_deg=4.0 * u,
+                leg_tuck=0.30 + 0.15 * u,
+                wing_span=0.98 + 0.16 * u,
                 phase=phase * 2.0,
             )
-            ang = -10.0 * (1.0 - u) + 0.0 * u
-            hx = int(round(30 * (1.0 - u) + 33 * u))
+            ang = -10.0 * (1.0 - u) + (-34.0) * u
+            hx = int(round(30 * (1.0 - u) + 29 * u))
+            hy = int(round(23 * (1.0 - u) + 16 * u)) + dy
             frame = draw_two_handed_dragon_lance(
                 body,
                 hand_x=hx,
-                hand_y=24 + dy,
+                hand_y=hy,
                 angle_deg=ang,
-                glow_intensity=1.1 + 0.3 * u,
-                scale=1.0,
+                glow_intensity=1.1 + 0.35 * u,
+                scale=1.02,
                 shoulder_rear=(21, 18 + dy),
                 shoulder_lead=(27, 19 + dy),
-                drill_cone=(f >= 3),
                 phase=phase * 2.0,
             )
             frames.append(frame)
 
         elif f <= 24:
-            # F05..F24: Airborne hover (dy = -2), wings spread wide, lance couched at 0 deg with Corkscrew Drill Vortex
+            # F05..F24: Airborne hover (dy = -2), wings spread wide, hurling rhythmic Gungnir Javelin barrage!
             k = f - 5  # 0..19
             dy = -2
+            throw_wave = math.sin(k * 0.95)
             body = make_aerial_valkyrie(
                 tpl,
                 jump_dy=dy,
-                body_tilt_deg=10.0,
-                leg_tuck=0.60,
-                wing_span=1.12 + 0.04 * math.sin(k * 0.7),
+                body_tilt_deg=4.0 + 3.0 * throw_wave,
+                leg_tuck=0.45,
+                wing_span=1.14 + 0.04 * math.sin(k * 0.7),
                 phase=k * 0.65,
             )
-            hx = 34 + (k % 2)
+            hx = int(round(31 + 3.0 * throw_wave))
+            hy = int(round(16 + 1.5 * throw_wave))
+            ang = -24.0 + 10.0 * throw_wave
             frame = draw_two_handed_dragon_lance(
                 body,
                 hand_x=hx,
-                hand_y=22,
-                angle_deg=0.0,
-                glow_intensity=1.45,
-                scale=1.02,
+                hand_y=hy,
+                angle_deg=ang,
+                glow_intensity=1.48,
+                scale=1.03,
                 shoulder_rear=(22, 18 + dy),
                 shoulder_lead=(28, 19 + dy),
-                drill_cone=True,
                 phase=k * 0.7,
             )
             frame = draw_corkscrew_drill_vortex(frame, f, k * 0.65)
             frames.append(frame)
 
         else:
-            # F25..F29: Airborne deceleration back to hover-lancer ready stance
+            # F25..F29: Graceful descent back to hover-lancer ready stance
             k = f - 25  # 0..4
             u = (k + 1) / 5.0
             dy = -2 if k <= 1 else -1
             body = make_aerial_valkyrie(
                 tpl,
                 jump_dy=dy,
-                body_tilt_deg=10.0 * (1.0 - u),
-                leg_tuck=0.60 * (1.0 - u * 0.7),
-                wing_span=1.10 - 0.12 * u,
+                body_tilt_deg=4.0 * (1.0 - u),
+                leg_tuck=0.45 * (1.0 - u * 0.7),
+                wing_span=1.12 - 0.14 * u,
                 phase=phase,
             )
-            ang = 0.0 * (1.0 - u) + (-10.0) * u
-            hx = int(round(33 * (1.0 - u) + 30 * u))
+            ang = -20.0 * (1.0 - u) + (-10.0) * u
+            hx = int(round(32 * (1.0 - u) + 30 * u))
             frame = draw_two_handed_dragon_lance(
                 body,
                 hand_x=hx,
-                hand_y=22 - dy - 2,
+                hand_y=18 + int(round(4 * u)),
                 angle_deg=ang,
-                glow_intensity=1.2 - 0.2 * u,
+                glow_intensity=1.25 - 0.2 * u,
                 scale=1.0,
                 shoulder_rear=(21, 18 + dy),
                 shoulder_lead=(27, 19 + dy),
-                drill_cone=(k == 0),
                 phase=phase,
             )
             frames.append(frame)

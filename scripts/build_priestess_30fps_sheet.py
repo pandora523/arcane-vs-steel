@@ -1422,6 +1422,7 @@ def build_row2_auto_attack(tpl):
             if f in (11, 12):
                 base = shift_layer(base, dx=1, dy=0)
             base = apply_hair_and_vestment_wave(base, phase * 1.5, amplitude=1.8, vertical_flutter=0.7)
+            base = draw_seraphim_wings(base, cx=18, cy=17, span_phase=phase * 2.0, alpha_scale=0.48 * (1.0 - u_cast * 0.45))
             base = draw_halo_crown(base, head_cx=25, head_top_y=7, phase_rad=phase, intensity=1.5)
             base = draw_left_prayer_arm(
                 base,
@@ -2327,15 +2328,17 @@ def apply_pass12_postprocess(cell_arr, r_idx, f):
             put208(mx, my + 1, m_col)
             put208(mx, my - 1, m_col)
 
-    # 2. Row 7 & Row 3 (SKILL, F08..F20) Grounded Arcane Rune-Floor Glow
+    # 2. Row 7 & Row 3 (SKILL, F08..F20) Curved Perspective Sanctuary Rune-Floor Arch
     if r_idx in (3, 7) and 8 <= f <= 20:
-        for x_bar in range(76, 135):
-            is_glyph = ((x_bar + (f - 8) * 3) % 8) < 2
-            put208(x_bar, 186, WHITE_PURE if is_glyph else GOLD_ROYAL)
-            put208(x_bar, 187, WHITE_PURE if is_glyph else GOLD_BRIGHT)
-            put208(x_bar, 188, STAR_CREAM if is_glyph else GOLD_BRIGHT)
-            put208(x_bar, 189, GOLD_ROYAL)
-        # 3 rising rune motes (y = 182 - ((f - 8) * 3) % 24)
+        for x_bar in range(78, 133):
+            norm_dx = (x_bar - 105.0) / 27.5
+            arch_curve = int(round((1.0 - norm_dx * norm_dx) * 3.0))
+            ay = 185 + arch_curve
+            is_glyph = ((x_bar + (f - 8) * 3) % 9) == 0
+            if abs(norm_dx) < 0.88:
+                put208(x_bar, ay, WHITE_PURE if is_glyph else GOLD_BRIGHT)
+                put208(x_bar, ay + 1, STAR_CREAM if is_glyph else GOLD_ROYAL)
+        # 3 rising diamond rune motes (y = 182 - ((f - 8) * 3) % 24)
         base_mote_y = 182 - ((f - 8) * 3) % 24
         for m_i, mx_base in enumerate((86, 105, 124)):
             mx = mx_base + (((f - 8) + m_i) % 3) - 1
@@ -2345,7 +2348,6 @@ def apply_pass12_postprocess(cell_arr, r_idx, f):
             put208(mx + 1, my, GOLD_BRIGHT if m_i % 2 == 0 else STAR_CREAM)
             put208(mx, my - 1, WHITE_PURE)
             put208(mx, my + 1, STAR_CREAM)
-            put208(mx, my + 2, GOLD_ROYAL)
 
     # 3. Row 8 & Row 4 (ULTIMATE, F03..F26) Overdrive Ascension Energy Motes
     if r_idx in (4, 8) and 3 <= f <= 26:

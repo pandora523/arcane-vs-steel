@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps20';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps20';
+import { Fighter } from './Fighter.js?v=30fps21';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps21';
 
 export class Ronin extends Fighter {
   constructor(x, groundY, facing = 1) {

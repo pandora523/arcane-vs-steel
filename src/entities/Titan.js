@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps20';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps20';
+import { Fighter } from './Fighter.js?v=30fps21';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps21';
 
 export class Titan extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -173,7 +173,8 @@ export class Titan extends Fighter {
     this.forgeArmorTimer = 2.6;
     this.heal(38, 'FORGE TEMPER');
     this.vx = 0;
-    if (game && game.audio) game.audio.play('clang', this.x);
+    const frontX = this.x + this.facing * 118;
+    if (game && game.audio) game.audio.play('clang', frontX);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(
         this.x,
@@ -183,8 +184,8 @@ export class Titan extends Fighter {
         'MAGMA ARMOR FORTIFY!',
         '#fbbf24'
       );
-      game.vfx.spawnShockwave(this.x, this.groundY - 6, 128, '#f59e0b', 0.34, true);
-      game.vfx.spawnBurst(this.x, this.y - 72, 16, '#fbbf24', 180, {
+      game.vfx.spawnShockwave(frontX, this.groundY - 6, 128, '#f59e0b', 0.34, true);
+      game.vfx.spawnBurst(frontX, this.groundY - 32, 16, '#fbbf24', 180, {
         upBias: 85,
         size: 5
       });
@@ -197,46 +198,47 @@ export class Titan extends Fighter {
     this.vx *= Math.pow(0.001, dt);
     this.isDeflecting = t < 0.65;
 
-    // Deflect incoming enemy projectiles with molten anvil clang
+    // Deflect incoming enemy projectiles with molten anvil clang in front of Torgar
     if (this.isDeflecting && game && game.vfx) {
       for (const proj of game.vfx.projectiles) {
         if (
           proj.owner !== this &&
           (!this.team || !proj.owner?.team || proj.owner.team !== this.team) &&
-          Math.abs(proj.x - this.x) < 105
+          Math.abs(proj.x - (this.x + this.facing * 60)) < 115
         ) {
           proj.owner = this;
           proj.vx = -proj.vx * 1.25;
           proj.vy = -Math.abs(proj.vy) * 0.4;
           proj.color = '#f59e0b';
           this.gainMana(12);
-          if (game.audio) game.audio.play('clang', this.x);
+          if (game.audio) game.audio.play('clang', proj.x);
           game.vfx.spawnShockwave(proj.x, proj.y, 88, '#fef08a', 0.24);
           game.vfx.spawnDamageText(this.x, this.y - 156, 0, false, 'ANVIL DEFLECT!', '#fef08a');
         }
       }
     }
 
-    // At t = 0.36s: Erupt a 360-degree Point-Blank Molten Magma Nova around Torgar
+    // At t = 0.36s: Erupt a Molten Magma Hammer-Slam Nova IN FRONT of Torgar (never on his feet!)
     if (t >= 0.36 && !this.didActionFrame) {
       this.didActionFrame = true;
-      if (game.audio) game.audio.play('thunder_slam', this.x);
+      const slamX = this.x + this.facing * 124;
+      if (game.audio) game.audio.play('thunder_slam', slamX);
       game.renderer.triggerShake(8, 0.18);
       this.activeGroundQuakes.push({
-        x: this.x,
+        x: slamX,
         y: this.groundY - 4,
         radius: 28,
         speed: 480,
         age: 0,
-        maxAge: 0.38,
+        maxAge: 0.42,
         color: '#f59e0b'
       });
-      game.vfx.spawnShockwave(this.x, this.groundY - 6, 195, '#f59e0b', 0.36, true);
-      game.vfx.spawnBurst(this.x, this.y - 54, 24, '#f97316', 250, {
+      game.vfx.spawnShockwave(slamX, this.groundY - 6, 195, '#f59e0b', 0.36, true);
+      game.vfx.spawnBurst(slamX, this.groundY - 24, 24, '#f97316', 250, {
         upBias: 110,
         size: 6
       });
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 195) {
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - slamX) <= 185) {
         enemy.takeDamage(36, this, false, 235, -165);
         game.vfx.spawnDamageText(enemy.x, enemy.y - 150, 0, false, 'MOLTEN NOVA!', '#fbbf24');
       }
@@ -261,7 +263,7 @@ export class Titan extends Fighter {
     this.dashDir = dir;
     this.isFlipVault = true;
     this.vaultStartX = this.x;
-    const targetDist = enemy && !enemy.isDead ? Math.min(240, Math.max(95, Math.abs(enemy.x - this.x) - 45)) : 165;
+    const targetDist = enemy && !enemy.isDead ? Math.min(220, Math.max(85, Math.abs(enemy.x - this.x) - 115)) : 145;
     this.vaultTargetX = Math.max(85, Math.min(ww - 85, this.x + dir * targetDist));
     this.vx = 0;
     this.vy = 0;
@@ -312,22 +314,27 @@ export class Titan extends Fighter {
       if (u >= 0.82 && !this.didActionFrame) {
         this.didActionFrame = true;
         this.y = this.groundY;
-        if (game.audio) game.audio.play('thunder_slam', this.x);
+        const slamX = this.x + this.facing * 128;
+        if (game.audio) game.audio.play('thunder_slam', slamX);
         game.renderer.triggerShake(10, 0.22);
         this.activeGroundQuakes.push({
-          x: this.x,
+          x: slamX,
           y: this.groundY - 4,
-          radius: 24,
+          radius: 26,
           speed: 540,
           age: 0,
-          maxAge: 0.42,
+          maxAge: 0.44,
           color: '#10b981'
         });
-        game.vfx.spawnShockwave(this.x, this.groundY - 4, 210, '#f59e0b', 0.36, true);
-        game.vfx.spawnDecal(this.x, 180, 'fissure', '#f59e0b', 4.5);
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 245 && enemy.y >= this.groundY - 70) {
+        game.vfx.spawnShockwave(slamX, this.groundY - 4, 210, '#f59e0b', 0.36, true);
+        game.vfx.spawnDecal(slamX, 180, 'fissure', '#f59e0b', 4.5);
+        game.vfx.spawnBurst(slamX, this.groundY - 18, 22, '#fbbf24', 250, {
+          upBias: 135,
+          size: 6
+        });
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - slamX) <= 215 && enemy.y >= this.groundY - 70) {
           enemy.takeDamage(46, this, true, 165, -210);
-          game.vfx.spawnDamageText(enemy.x, enemy.y - 155, 0, true, 'SEISMIC STOMP!', '#fef08a');
+          game.vfx.spawnDamageText(enemy.x, enemy.y - 155, 0, true, 'SEISMIC SLAM!', '#fef08a');
         }
       }
 
@@ -364,10 +371,11 @@ export class Titan extends Fighter {
       this.didActionFrame = true;
       const step = this.comboStep;
       this.comboStep = (this.comboStep + 1) % 3;
-      this.vx = this.facing * (step === 2 ? 185 : 135);
+      this.vx = this.facing * (step === 2 ? 165 : 115);
       this.armVel = 36;
 
-      const slamX = this.x + this.facing * 92;
+      // Hammerhead slams far IN FRONT of Torgar (132px ahead), never on his feet!
+      const slamX = this.x + this.facing * 132;
       const slamY = this.groundY - 4;
       if (game.audio) game.audio.play('thunder_slam', slamX);
       game.renderer.triggerShake(step === 2 ? 10 : 7, 0.18);
@@ -375,24 +383,24 @@ export class Titan extends Fighter {
       this.activeGroundQuakes.push({
         x: slamX,
         y: slamY,
-        radius: 18,
+        radius: 22,
         speed: step === 2 ? 560 : 460,
         age: 0,
-        maxAge: 0.38,
+        maxAge: 0.42,
         color: step === 2 ? '#10b981' : '#f59e0b'
       });
 
       const sA = this.facing === 1 ? -1.85 : Math.PI - 1.25;
       const eA = this.facing === 1 ? 1.25 : Math.PI + 1.85;
-      game.vfx.spawnSlash(this.x + this.facing * 42, this.y - 86, 135, sA, eA, '#f59e0b', 0.30);
-      game.vfx.spawnShockwave(slamX, slamY, step === 2 ? 195 : 145, '#f59e0b', 0.32, true);
-      game.vfx.spawnDecal(slamX, 140, 'fissure', '#f59e0b', 4.0);
-      game.vfx.spawnBurst(slamX, slamY - 12, step === 2 ? 22 : 14, '#fbbf24', 240, {
-        upBias: 115,
+      game.vfx.spawnSlash(this.x + this.facing * 64, this.y - 86, 148, sA, eA, '#f59e0b', 0.30);
+      game.vfx.spawnShockwave(slamX, slamY, step === 2 ? 205 : 155, '#f59e0b', 0.32, true);
+      game.vfx.spawnDecal(slamX, 150, 'fissure', '#f59e0b', 4.0);
+      game.vfx.spawnBurst(slamX, slamY - 14, step === 2 ? 24 : 16, '#fbbf24', 250, {
+        upBias: 125,
         size: 6
       });
 
-      const reach = step === 2 ? 235 : 205;
+      const reach = step === 2 ? 245 : 215;
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= reach) {
         const isCrit = step === 2 || Math.random() < 0.28;
         const dmg = (step === 2 ? 56 : 42) * (isCrit ? 1.35 : 1);
@@ -417,7 +425,7 @@ export class Titan extends Fighter {
     const t = this.stateTimer;
     if (t >= 0.16 && !this.didActionFrame) {
       this.didActionFrame = true;
-      const anvilX = Math.max(95, Math.min(game.renderer.worldWidth - 95, this.x + this.facing * 88));
+      const anvilX = Math.max(95, Math.min(game.renderer.worldWidth - 95, this.x + this.facing * 118));
       this.activeAnvil = {
         x: anvilX,
         y: this.groundY,
@@ -430,24 +438,26 @@ export class Titan extends Fighter {
       };
       if (game.audio) game.audio.play('skill_cast', anvilX);
       game.renderer.triggerShake(7, 0.14);
-      game.vfx.spawnShockwave(anvilX, this.groundY - 8, 115, '#10b981', 0.28, true);
+      game.vfx.spawnShockwave(anvilX, this.groundY - 8, 125, '#10b981', 0.28, true);
       game.vfx.spawnDamageText(anvilX, this.groundY - 115, 0, false, 'FORGE ANVIL!', '#10b981');
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - anvilX) < 82) {
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - anvilX) < 88) {
         enemy.takeDamage(26, this, false, 45, -135);
       }
     }
 
     if (t >= 0.44 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
-      this.vx = this.facing * 175;
-      if (game.audio) game.audio.play('thunder_slam', this.x);
+      this.vx = this.facing * 155;
+      const slamX = this.x + this.facing * 128;
+      if (game.audio) game.audio.play('thunder_slam', slamX);
       game.renderer.triggerShake(11, 0.22);
       const sA = this.facing === 1 ? -1.6 : Math.PI - 1.2;
       const eA = this.facing === 1 ? 1.2 : Math.PI + 1.6;
-      game.vfx.spawnSlash(this.x + this.facing * 45, this.y - 88, 142, sA, eA, '#fef08a', 0.32);
+      game.vfx.spawnSlash(this.x + this.facing * 68, this.y - 88, 152, sA, eA, '#fef08a', 0.32);
+      game.vfx.spawnShockwave(slamX, this.groundY - 6, 165, '#f59e0b', 0.30, true);
       game.vfx.spawnDamageText(
-        this.x + this.facing * 45,
+        slamX,
         this.y - 156,
         0,
         true,
@@ -460,7 +470,7 @@ export class Titan extends Fighter {
         this.activeAnvil.vx = this.facing * 840;
         this.activeAnvil.age = 0;
       }
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 165) {
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - slamX) < 155) {
         enemy.takeDamage(34, this, true, 220, -145);
       }
     }
@@ -478,7 +488,7 @@ export class Titan extends Fighter {
     if (enemy && !enemy.isDead) {
       this.facing = enemy.x >= this.x ? 1 : -1;
       const dist = Math.abs(enemy.x - this.x);
-      if (dist > 115) {
+      if (dist > 145) {
         this.x += this.facing * 215 * dt;
       }
     }
@@ -486,19 +496,19 @@ export class Titan extends Fighter {
     this.headBob = Math.abs(Math.sin(this.walkPhase)) * 4.5;
 
     const triggerQuakeWave = (waveIdx) => {
+      const slamX = this.x + this.facing * 138;
       if (game.audio) {
-        game.audio.play('thunder_slam', this.x);
+        game.audio.play('thunder_slam', slamX);
       }
       game.renderer.triggerShake(13 + waveIdx * 2, 0.26);
       game.renderer.triggerAberration(6 + waveIdx * 2);
-      const slamX = this.x + this.facing * 105;
       this.activeGroundQuakes.push({
         x: slamX,
         y: this.groundY - 4,
-        radius: 26,
+        radius: 32,
         speed: 640,
         age: 0,
-        maxAge: 0.48,
+        maxAge: 0.52,
         color: waveIdx % 2 === 0 ? '#f59e0b' : '#10b981'
       });
       game.vfx.spawnDecal(slamX, 220, 'fissure', '#f59e0b', 5.5);
@@ -547,24 +557,221 @@ export class Titan extends Fighter {
     }
   }
 
+  drawGrowingWorldBreakerHammer(ctx) {
+    // Renders Torgar's World-Breaker Hammer visibly GROWING HUGE (up to 2.25x - 2.65x!) as he slams it down IN FRONT of him!
+    let swingProg = -1;
+    let maxGrowth = 2.15;
+    let lingerAlpha = 0;
+
+    const t = this.stateTimer;
+    if (this.state === 'AUTO_ATTACK' && t >= 0.10 && t <= 0.56) {
+      maxGrowth = this.comboStep === 0 ? 2.25 : 1.95;
+      if (t <= 0.34) {
+        swingProg = (t - 0.10) / 0.24;
+        lingerAlpha = 1.0;
+      } else {
+        swingProg = 1.0;
+        lingerAlpha = Math.max(0, 1.0 - (t - 0.34) / 0.22);
+      }
+    } else if (this.state === 'SKILL' && t >= 0.22 && t <= 0.64) {
+      maxGrowth = 2.05;
+      if (t <= 0.44) {
+        swingProg = (t - 0.22) / 0.22;
+        lingerAlpha = 1.0;
+      } else {
+        swingProg = 1.0;
+        lingerAlpha = Math.max(0, 1.0 - (t - 0.44) / 0.20);
+      }
+    } else if (this.state === 'JUMP' && this.isFlipVault) {
+      const u = Math.min(1, t / Math.max(0.01, this.dashDuration || 0.62));
+      if (u >= 0.45 && u <= 0.96) {
+        maxGrowth = 2.15;
+        swingProg = Math.min(1.0, (u - 0.45) / 0.37);
+        lingerAlpha = u <= 0.82 ? 1.0 : Math.max(0, 1.0 - (u - 0.82) / 0.14);
+      }
+    } else if (this.state === 'ULTIMATE' && t >= 0.20 && t <= 1.72) {
+      maxGrowth = 2.55;
+      // 3 colossal slam cycles peaking at 0.45s, 0.92s, and 1.40s
+      const slamPeaks = [0.45, 0.92, 1.40];
+      for (const pk of slamPeaks) {
+        if (t >= pk - 0.24 && t <= pk + 0.22) {
+          if (t <= pk) {
+            swingProg = (t - (pk - 0.24)) / 0.24;
+            lingerAlpha = 1.0;
+          } else {
+            swingProg = 1.0;
+            lingerAlpha = Math.max(0, 1.0 - (t - pk) / 0.22);
+          }
+          break;
+        }
+      }
+    }
+
+    if (swingProg < 0 || lingerAlpha <= 0.02) return;
+
+    const easeSwing = Math.pow(swingProg, 1.65);
+    // Hammer grows dramatically from 0.95x at overhead windup to maxGrowth (2.15x - 2.55x!) as it slams into the ground in front!
+    const hScale = 0.95 + (maxGrowth - 0.95) * easeSwing;
+    // Pivot in front of Titan's chest/shoulder so the colossal hammerhead lands at x + facing * 130, y = groundY - 12
+    const pivX = this.x + this.facing * 24;
+    const pivY = this.y - 84;
+    const localAngle = -2.05 * (1 - easeSwing) + 0.36 * easeSwing;
+
+    ctx.save();
+    ctx.translate(pivX, pivY);
+    ctx.scale(this.facing, 1);
+    ctx.rotate(localAngle);
+
+    const shaftLen = 56 * hScale;
+    const headW = 28 * hScale;
+    const headH = 44 * hScale;
+    const headX = shaftLen;
+
+    // 1. Blazing Molten-Jade Swing Crescent Trail behind the growing hammerhead
+    if (swingProg > 0.18 && swingProg < 0.98) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.62 * lingerAlpha;
+      ctx.strokeStyle = '#f59e0b';
+      ctx.lineWidth = 14 * (hScale * 0.55);
+      ctx.lineCap = 'round';
+      ctx.beginPath();
+      ctx.arc(0, 0, shaftLen + headW * 0.35, -0.85, 0.05);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#10b981';
+      ctx.lineWidth = 6 * (hScale * 0.55);
+      ctx.beginPath();
+      ctx.arc(0, 0, shaftLen + headW * 0.5, -0.75, 0.05);
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    ctx.globalAlpha = Math.min(1, lingerAlpha * 0.96);
+
+    // 2. Heavy Obsidian-Bronze Haft with Molten Gold Rings
+    ctx.fillStyle = '#27272a';
+    ctx.beginPath();
+    ctx.roundRect(-12, -4 * hScale * 0.55, shaftLen + 10, 8 * hScale * 0.55, 3);
+    ctx.fill();
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // 3. Colossal Growing Rectangular World-Breaker Anvil Hammerhead in front!
+    const hx0 = headX - headW * 0.35;
+    const hy0 = -headH * 0.52;
+
+    // Soft radial magma glow around the giant hammerhead
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    const rad = ctx.createRadialGradient(
+      hx0 + headW * 0.5,
+      0,
+      4,
+      hx0 + headW * 0.5,
+      0,
+      headH * 0.85
+    );
+    rad.addColorStop(0, 'rgba(254, 240, 138, 0.75)');
+    rad.addColorStop(0.5, 'rgba(245, 158, 11, 0.42)');
+    rad.addColorStop(1, 'rgba(16, 185, 129, 0)');
+    ctx.fillStyle = rad;
+    ctx.beginPath();
+    ctx.arc(hx0 + headW * 0.5, 0, headH * 0.85, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Outer Obsidian-Bronze Beveled Anvil Block
+    ctx.fillStyle = '#18181b';
+    ctx.strokeStyle = '#fbbf24';
+    ctx.lineWidth = Math.max(2.5, 2.2 * hScale * 0.6);
+    ctx.beginPath();
+    ctx.roundRect(hx0, hy0, headW, headH, 4 * hScale * 0.5);
+    ctx.fill();
+    ctx.stroke();
+
+    // Front Crushing Strike Face (Blazing White-Gold & Molten Orange)
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.roundRect(hx0 + headW * 0.72, hy0 + 2, headW * 0.28, headH - 4, 2);
+    ctx.fill();
+
+    // Glowing Emerald-Jade World-Forge Runic Core inside the Giant Hammerhead
+    ctx.fillStyle = '#10b981';
+    ctx.beginPath();
+    ctx.moveTo(hx0 + headW * 0.45, -headH * 0.26);
+    ctx.lineTo(hx0 + headW * 0.66, 0);
+    ctx.lineTo(hx0 + headW * 0.45, headH * 0.26);
+    ctx.lineTo(hx0 + headW * 0.24, 0);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#ecfdf5';
+    ctx.beginPath();
+    ctx.arc(hx0 + headW * 0.45, 0, 3.2 * hScale * 0.55, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
   drawForegroundOverlay(ctx) {
     const vfxSheet = PixelForge.initAssets().titan?.vfx;
+    const hasVfx = !!(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
 
+    // 1. Render Torgar's Visibly Growing Colossal World-Breaker Hammer in front during slams!
+    this.drawGrowingWorldBreakerHammer(ctx);
+
+    // 2. Forward Ground Quakes & 30fps Molten Magma Crater Eruption at slamX (in front of Titan, never on his feet!)
     if (this.activeGroundQuakes.length > 0) {
       ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
       for (const q of this.activeGroundQuakes) {
-        const alpha = Math.max(0, 1 - q.age / q.maxAge);
-        ctx.globalAlpha = alpha * 0.9;
-        ctx.fillStyle = q.color;
-        ctx.fillRect(Math.round(q.x - q.radius), Math.round(q.y - 4), Math.round(q.radius * 2), 6);
-        ctx.fillStyle = '#fef08a';
-        ctx.fillRect(Math.round(q.x - q.radius), Math.round(q.y - 10), 8, 12);
-        ctx.fillRect(Math.round(q.x + q.radius - 8), Math.round(q.y - 10), 8, 12);
+        const u = Math.min(1, q.age / Math.max(0.01, q.maxAge));
+        const alpha = Math.max(0, 1 - u);
+
+        // Render the 30fps Molten Magma Crater & Geyser (Row 2 of titan_vfx.png) at the forward impact point!
+        if (hasVfx) {
+          const fCol = Math.min(29, Math.floor(u * 29));
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.globalAlpha = Math.min(1, alpha * 1.15);
+          const cW = 192;
+          const cH = 164;
+          ctx.drawImage(
+            vfxSheet,
+            fCol * 208,
+            2 * 208,
+            208,
+            208,
+            Math.round(q.x - cW * 0.5),
+            Math.round(q.y - cH + 18),
+            cW,
+            cH
+          );
+          ctx.restore();
+        }
+
+        // Smooth elliptical tectonic shockwave ring expanding from the forward impact point
+        ctx.save();
+        ctx.globalAlpha = alpha * 0.85;
+        ctx.strokeStyle = q.color;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.ellipse(q.x, q.y - 2, q.radius, Math.max(6, q.radius * 0.18), 0, 0, Math.PI * 2);
+        ctx.stroke();
+
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(q.x, q.y - 2, q.radius * 0.72, Math.max(4, q.radius * 0.12), 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
       }
       ctx.restore();
     }
 
-    if (this.activeAnvil && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
+    if (this.activeAnvil && hasVfx) {
       const a = this.activeAnvil;
       const cellW = 208;
       const cellH = 208;
@@ -580,15 +787,20 @@ export class Titan extends Fighter {
     if (this.forgeArmorTimer > 0 && !this.isDead) {
       const pulse = 0.65 + 0.35 * Math.sin(this.walkPhase * 4);
       ctx.save();
-      ctx.globalAlpha = Math.min(1, this.forgeArmorTimer * 1.5) * 0.85;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, this.forgeArmorTimer * 1.5) * 0.82;
       for (let i = 0; i < 4; i++) {
         const ang = this.walkPhase * 2.4 + (i * Math.PI) / 2;
-        const ox = Math.round(this.x + Math.cos(ang) * 44);
-        const oy = Math.round(this.y - 74 + Math.sin(ang) * 18);
+        const ox = this.x + Math.cos(ang) * 44;
+        const oy = this.y - 74 + Math.sin(ang) * 18;
         ctx.fillStyle = i % 2 === 0 ? '#f59e0b' : '#10b981';
-        ctx.fillRect(ox - 5, oy - 7, 10, 14);
-        ctx.fillStyle = '#fef08a';
-        ctx.fillRect(ox - 2, oy - 4, 4, 8 * pulse);
+        ctx.beginPath();
+        ctx.moveTo(ox, oy - 9 * pulse);
+        ctx.lineTo(ox + 6, oy);
+        ctx.lineTo(ox, oy + 9 * pulse);
+        ctx.lineTo(ox - 6, oy);
+        ctx.closePath();
+        ctx.fill();
       }
       ctx.restore();
     }

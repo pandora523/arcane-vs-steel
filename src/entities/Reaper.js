@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps20';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps20';
+import { Fighter } from './Fighter.js?v=30fps21';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps21';
 
 export class Reaper extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -809,137 +809,346 @@ export class Reaper extends Fighter {
   }
 
   updateUltimate(dt, enemy, game) {
-    // 100% BESPOKE SOULREAPER ULTIMATE: "GRIM HARVEST — WRAITH CROSS-REAP & AVATAR OF DEATH"
+    // 100% OVERHAULED SOULREAPER ULTIMATE: "GRIM HARVEST — BLOOD-MOON ECLIPSE & SOVEREIGN SCYTHE CATACLYSM"
     const t = this.stateTimer;
     const ww = game.renderer.worldWidth;
     const targetX = enemy ? enemy.x : ww * 0.5;
     this.vx = 0;
     this.vy = 0;
-    this.isDeflecting = t < 1.48;
-    this.isInvulnerable = t < 1.25;
+    this.isDeflecting = t < 1.50;
+    this.isInvulnerable = t < 1.32;
 
     if (t < 0.04) {
       this.ultStage = 0;
       this.y = this.groundY;
+      this.ultPassStartX = this.x;
+      this.ultPassTargetX = targetX;
+      this.ultScytheWaves = [];
+      this.ultSlashRibbons = [];
     }
 
-    // STAGE 1 (t >= 0.05s): Boneyard Summoning & Towering Hooded Grim Reaper Death Avatar Behind Enemy
-    if (t >= 0.05 && this.ultStage === 0) {
+    // Advance active Ultimate Scythe Vortex Waves & Guillotine Slash Ribbons
+    if (this.ultScytheWaves) {
+      for (let i = this.ultScytheWaves.length - 1; i >= 0; i--) {
+        const sw = this.ultScytheWaves[i];
+        sw.x += sw.vx * dt;
+        sw.y += sw.vy * dt;
+        sw.life += dt;
+        if (sw.life >= sw.maxLife) {
+          this.ultScytheWaves.splice(i, 1);
+        }
+      }
+    }
+    if (this.ultSlashRibbons) {
+      for (let i = this.ultSlashRibbons.length - 1; i >= 0; i--) {
+        const sr = this.ultSlashRibbons[i];
+        sr.life += dt;
+        if (sr.life >= sr.maxLife) {
+          this.ultSlashRibbons.splice(i, 1);
+        }
+      }
+    }
+
+    // STAGE 1 (t >= 0.04s): Blood-Moon Eclipse Domain, Flanking Crypt Obelisks & Sovereign of Death Awakening
+    if (t >= 0.04 && this.ultStage === 0) {
       this.ultStage = 1;
       if (game.audio) game.audio.play('soul_drain', targetX);
-      game.renderer.triggerShake(14, 0.26);
+      game.renderer.triggerShake(15, 0.28);
 
-      this.spawnTombstoneRow(targetX, game, 5);
+      // Spawn 2 flanking Haunted Crypt Obelisks framing the execution arena (never cluttering center!)
+      this.tombstones = [];
+      for (const side of [-1, 1]) {
+        const tx = Math.max(85, Math.min(ww - 85, targetX + side * 185));
+        this.tombstones.push({
+          x: tx,
+          groundY: this.groundY,
+          height: 122,
+          delay: 0.02,
+          life: 1.48,
+          maxLife: 1.48,
+          shattered: false,
+          isPrison: true
+        });
+        game.vfx.spawnShockwave(tx, this.groundY, 88, '#c084fc', 0.30, true);
+      }
+
       this.deathAvatar = {
         x: targetX,
         y: this.groundY,
         facing: this.facing,
-        life: 1.50,
-        maxLife: 1.50,
-        swingProgress: 0
+        life: 1.52,
+        maxLife: 1.52,
+        swingProgress: 0,
+        eclipsePhase: 0
       };
 
-      game.vfx.spawnDamageText(targetX, this.groundY - 265, 0, false, 'DEATH DOMAIN!', '#c084fc');
+      game.vfx.spawnShockwave(targetX, this.groundY, 210, '#f43f5e', 0.42, true);
+      game.vfx.spawnShockwave(targetX, this.groundY, 155, '#c084fc', 0.36, true);
+      game.vfx.spawnDamageText(targetX, this.groundY - 268, 0, false, '★ BLOOD-MOON ECLIPSE! ★', '#f43f5e');
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(28, this, false, -30, 0);
-        this.leechLife(22, enemy, game, 'GRAVE SIPHON');
+        enemy.takeDamage(22, this, false, -25, 0);
+        this.leechLife(18, enemy, game, 'ECLIPSE SIPHON');
       }
     }
 
-    // STAGE 2 (t >= 0.36s): Wraith Phantom Cross-Reap Blitz I — Teleporting Through the Enemy!
-    if (t >= 0.36 && this.ultStage === 1) {
+    // STAGE 2 (t >= 0.26s): Wraith Reap Blitz I — High-Speed Shadow Dash Through Enemy + Spinning Scythe Vortex
+    if (t >= 0.26 && this.ultStage === 1) {
       this.ultStage = 2;
       if (game.audio) game.audio.play('scythe_reap', targetX);
-      game.renderer.triggerShake(18, 0.30);
+      game.renderer.triggerShake(16, 0.26);
 
       const dir = enemy ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
-      const oldX = this.x;
-      const newX = Math.max(115, Math.min(ww - 115, targetX + dir * 135));
-      this.spawnWraithTrail(oldX, this.groundY, newX, this.groundY, dir, 4);
-      this.x = newX;
-      this.y = this.groundY;
+      this.ultPassStartX = this.x;
+      this.ultPassTargetX = Math.max(110, Math.min(ww - 110, targetX + dir * 145));
       this.facing = -dir;
+
+      this.spawnWraithTrail(this.ultPassStartX, this.groundY, this.ultPassTargetX, this.groundY, dir, 5);
+      this.ultSlashRibbons.push({
+        x1: targetX - dir * 185,
+        y1: this.groundY - 58,
+        cx: targetX,
+        cy: this.groundY - 142,
+        x2: targetX + dir * 185,
+        y2: this.groundY - 118,
+        color: '#c084fc',
+        core: '#ffffff',
+        width: 22,
+        life: 0,
+        maxLife: 0.36
+      });
+      this.ultScytheWaves.push({
+        x: targetX - dir * 85,
+        y: this.groundY - 98,
+        vx: dir * 320,
+        vy: -20,
+        size: 158,
+        life: 0,
+        maxLife: 0.44
+      });
 
       const sA = this.facing === 1 ? -1.85 : Math.PI - 1.35;
       const eA = this.facing === 1 ? 1.35 : Math.PI + 1.85;
-      game.vfx.spawnSlash(targetX, this.groundY - 102, 168, sA, eA, '#c084fc', 0.36);
-      game.vfx.spawnSlash(targetX, this.groundY - 102, 134, sA, eA, '#f43f5e', 0.30);
+      game.vfx.spawnSlash(targetX, this.groundY - 102, 172, sA, eA, '#c084fc', 0.36);
+      game.vfx.spawnSlash(targetX, this.groundY - 102, 138, sA, eA, '#f43f5e', 0.30);
       game.vfx.spawnGlyphBurst(targetX, this.groundY - 98, 8, 'abyssal');
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(34, this, true, -dir * 45, -50);
-        this.leechLife(24, enemy, game, 'PHANTOM REAP');
+        enemy.takeDamage(26, this, true, -dir * 40, -45);
+        this.leechLife(18, enemy, game, 'WRAITH REAP I');
       }
     }
 
-    // STAGE 3 (t >= 0.64s): Aerial Blood-Moon Cross-Reap Blitz II — Shadow-Step Above the Prey!
-    if (t >= 0.64 && this.ultStage === 2) {
+    // Smooth continuous wraith glide during Stage 2 (t = 0.26..0.50)
+    if (t >= 0.26 && t < 0.50 && this.ultStage === 2) {
+      const u = Math.min(1, (t - 0.26) / 0.20);
+      const ease = 1 - Math.pow(1 - u, 3);
+      this.x = this.ultPassStartX + (this.ultPassTargetX - this.ultPassStartX) * ease;
+      this.y = this.groundY - Math.sin(u * Math.PI) * 28;
+    }
+
+    // STAGE 3 (t >= 0.52s): Wraith Reap Blitz II — Curved Blood-Moon Sky-Arc Slash Across the Prey!
+    if (t >= 0.52 && this.ultStage === 2) {
       this.ultStage = 3;
       if (game.audio) game.audio.play('reaper_ult', targetX);
-      game.renderer.triggerShake(20, 0.32);
+      game.renderer.triggerShake(18, 0.28);
 
       const dir = enemy ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
-      const oldX = this.x;
-      const oldY = this.y;
-      const newX = Math.max(115, Math.min(ww - 115, targetX + dir * 115));
-      const newY = this.groundY - 86;
-      this.spawnWraithTrail(oldX, oldY, newX, newY, dir, 4);
-      this.x = newX;
-      this.y = newY;
+      this.ultPassStartX = this.x;
+      this.ultPassTargetX = Math.max(110, Math.min(ww - 110, targetX + dir * 135));
       this.facing = -dir;
+
+      this.spawnWraithTrail(
+        this.ultPassStartX,
+        this.groundY - 24,
+        this.ultPassTargetX,
+        this.groundY - 72,
+        dir,
+        5
+      );
+      this.ultSlashRibbons.push({
+        x1: targetX - dir * 190,
+        y1: this.groundY - 195,
+        cx: targetX,
+        cy: this.groundY - 82,
+        x2: targetX + dir * 190,
+        y2: this.groundY - 32,
+        color: '#f43f5e',
+        core: '#ffe4e6',
+        width: 24,
+        life: 0,
+        maxLife: 0.38
+      });
+      this.ultScytheWaves.push({
+        x: targetX - dir * 75,
+        y: this.groundY - 124,
+        vx: dir * 290,
+        vy: 45,
+        size: 164,
+        life: 0,
+        maxLife: 0.44
+      });
 
       const sA = this.facing === 1 ? -1.95 : Math.PI - 1.45;
       const eA = this.facing === 1 ? 1.45 : Math.PI + 1.95;
-      game.vfx.spawnSlash(targetX, this.groundY - 118, 178, sA, eA, '#f43f5e', 0.38);
-      game.vfx.spawnSlash(targetX, this.groundY - 118, 142, sA, eA, '#c084fc', 0.32);
-      game.vfx.spawnGlyphBurst(targetX, this.groundY - 110, 10, 'abyssal');
+      game.vfx.spawnSlash(targetX, this.groundY - 116, 182, sA, eA, '#f43f5e', 0.38);
+      game.vfx.spawnSlash(targetX, this.groundY - 116, 146, sA, eA, '#c084fc', 0.32);
+      game.vfx.spawnGlyphBurst(targetX, this.groundY - 110, 9, 'abyssal');
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(36, this, true, -dir * 40, -60);
-        this.leechLife(26, enemy, game, 'DEATH TOLL');
+        enemy.takeDamage(28, this, true, -dir * 35, -55);
+        this.leechLife(20, enemy, game, 'BLOOD-MOON REAP');
       }
     }
 
-    if (this.deathAvatar) {
-      this.deathAvatar.x = targetX;
-      if (t >= 0.85) {
-        this.deathAvatar.swingProgress = Math.min(1, (t - 0.85) / 0.28);
+    // Smooth parabolic sky-arc motion during Stage 3 (t = 0.52..0.76) — never freezes static in mid-air!
+    if (t >= 0.52 && t < 0.76 && this.ultStage === 3) {
+      const u = Math.min(1, (t - 0.52) / 0.22);
+      const ease = 1 - Math.pow(1 - u, 2);
+      this.x = this.ultPassStartX + (this.ultPassTargetX - this.ultPassStartX) * ease;
+      this.y = this.groundY - Math.sin(u * Math.PI) * 92;
+    }
+
+    // STAGE 4 (t >= 0.76s): Wraith Reap Blitz III — Ascending Vortex Uppercut & Soul-Chain Snare!
+    if (t >= 0.76 && this.ultStage === 3) {
+      this.ultStage = 4;
+      if (game.audio) game.audio.play('chain_hook', targetX);
+      game.renderer.triggerShake(20, 0.28);
+
+      const dir = enemy ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
+      this.ultPassStartX = this.x;
+      this.ultPassTargetX = Math.max(115, Math.min(ww - 115, targetX - dir * 118));
+      this.facing = dir;
+
+      this.spawnWraithTrail(this.ultPassStartX, this.groundY - 38, this.ultPassTargetX, this.groundY, dir, 4);
+      this.ultSlashRibbons.push({
+        x1: targetX - 145,
+        y1: this.groundY - 24,
+        cx: targetX,
+        cy: this.groundY - 215,
+        x2: targetX + 145,
+        y2: this.groundY - 24,
+        color: '#a855f7',
+        core: '#ffffff',
+        width: 24,
+        life: 0,
+        maxLife: 0.40
+      });
+
+      game.vfx.spawnShockwave(targetX, this.groundY - 96, 145, '#c084fc', 0.34, false, true);
+      game.vfx.spawnGlyphBurst(targetX, this.groundY - 108, 10, 'abyssal');
+
+      if (enemy && !enemy.isDead) {
+        enemy.takeDamage(24, this, true, 0, -90);
+        this.leechLife(18, enemy, game, 'SOUL SNARE');
       }
     }
 
-    // Smooth descent from aerial cross-reap into the final Guillotine Slam
-    if (t >= 0.88 && t < 1.00) {
-      const u = (t - 0.88) / 0.12;
-      this.y = this.groundY - 86 * (1 - u);
+    if (t >= 0.76 && t < 1.00 && this.ultStage === 4) {
+      const u = Math.min(1, (t - 0.76) / 0.22);
+      this.x = this.ultPassStartX + (this.ultPassTargetX - this.ultPassStartX) * u;
+      this.y = this.groundY - Math.sin(u * Math.PI) * 54;
     } else if (t >= 1.00) {
       this.y = this.groundY;
     }
 
-    // STAGE 4 (t >= 1.00s): Synchronized X-Guillotine Scythe Execution (Malakor + Towering Death Avatar!)
-    if (t >= 1.00 && this.ultStage === 3) {
-      this.ultStage = 4;
+    if (this.deathAvatar) {
+      this.deathAvatar.x = targetX;
+      this.deathAvatar.eclipsePhase = t * 5.2;
+      if (t >= 0.78) {
+        this.deathAvatar.swingProgress = Math.min(1, (t - 0.78) / 0.30);
+      }
+    }
+
+    // STAGE 5 (t >= 1.00s): Synchronized Sovereign X-Guillotine Cataclysm & 3 Abyssal Soul-Geysers!
+    if (t >= 1.00 && this.ultStage === 4) {
+      this.ultStage = 5;
       if (game.audio) game.audio.play('scythe_reap', targetX);
 
       game.renderer.triggerShake(28, 0.58);
       game.renderer.triggerAberration(16);
       game.renderer.triggerHitStop(0.095);
 
-      game.vfx.spawnSlash(targetX, this.groundY - 115, 210, -2.1, 1.2, '#c084fc', 0.44);
-      game.vfx.spawnSlash(targetX, this.groundY - 115, 195, Math.PI - 1.2, Math.PI + 2.1, '#f43f5e', 0.40);
-      game.vfx.spawnShockwave(targetX, this.groundY, 195, '#c084fc', 0.44, true);
-      game.vfx.spawnShockwave(targetX, this.groundY - 98, 155, '#f43f5e', 0.38, false, true);
+      // Giant Crisscrossing Crimson & Violet X-Guillotine Ribbons across the enemy!
+      this.ultSlashRibbons.push(
+        {
+          x1: targetX - 235,
+          y1: this.groundY - 265,
+          cx: targetX,
+          cy: this.groundY - 115,
+          x2: targetX + 235,
+          y2: this.groundY - 10,
+          color: '#f43f5e',
+          core: '#ffffff',
+          width: 32,
+          life: 0,
+          maxLife: 0.52
+        },
+        {
+          x1: targetX + 235,
+          y1: this.groundY - 265,
+          cx: targetX,
+          cy: this.groundY - 115,
+          x2: targetX - 235,
+          y2: this.groundY - 10,
+          color: '#c084fc',
+          core: '#ffffff',
+          width: 32,
+          life: 0,
+          maxLife: 0.52
+        }
+      );
+
+      // Erupt 3 towering Abyssal Soul-Geyser Pillars (center + flanking)
+      const geyserOffsets = [0, -130, 130];
+      geyserOffsets.forEach((off, idx) => {
+        const gx = Math.max(75, Math.min(ww - 75, targetX + off));
+        game.vfx.spawnFlamePillar(gx, this.groundY, this, null, {
+          theme: 'abyssal',
+          delay: idx === 0 ? 0 : 0.05,
+          maxLife: idx === 0 ? 0.82 : 0.68,
+          scaleWidth: idx === 0 ? 1.18 : 0.86,
+          isUltimate: idx === 0
+        });
+      });
+
+      // Diagonal Heaven-to-Hell Crimson & Violet Execution Beams
+      game.vfx.spawnBeam({
+        x1: targetX - 210,
+        y1: -120,
+        x2: targetX + 55,
+        y2: this.groundY - 6,
+        width: 58,
+        color: '#f43f5e',
+        coreColor: '#ffffff',
+        maxLife: 0.54
+      });
+      game.vfx.spawnBeam({
+        x1: targetX + 210,
+        y1: -120,
+        x2: targetX - 55,
+        y2: this.groundY - 6,
+        width: 58,
+        color: '#c084fc',
+        coreColor: '#ffffff',
+        maxLife: 0.54
+      });
+
+      game.vfx.spawnSlash(targetX, this.groundY - 115, 215, -2.1, 1.2, '#c084fc', 0.46);
+      game.vfx.spawnSlash(targetX, this.groundY - 115, 198, Math.PI - 1.2, Math.PI + 2.1, '#f43f5e', 0.42);
+      game.vfx.spawnShockwave(targetX, this.groundY, 225, '#c084fc', 0.46, true);
+      game.vfx.spawnShockwave(targetX, this.groundY - 102, 175, '#f43f5e', 0.40, false, true);
 
       for (const tb of this.tombstones) {
         tb.shattered = true;
-        tb.life = Math.min(tb.life, tb.maxLife * 0.26);
-        game.vfx.spawnGlyphBurst(tb.x, this.groundY - 42, 4, 'abyssal');
-        game.vfx.spawnBurst(tb.x, this.groundY - 36, 10, '#c084fc', 240, { upBias: 120, size: 6 });
+        tb.life = Math.min(tb.life, tb.maxLife * 0.28);
+        game.vfx.spawnGlyphBurst(tb.x, this.groundY - 48, 5, 'abyssal');
+        game.vfx.spawnBurst(tb.x, this.groundY - 40, 12, '#c084fc', 245, { upBias: 125, size: 6 });
       }
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(106, this, true, this.facing * 165, -230);
-        this.leechLife(46, enemy, game, 'GRIM HARVEST');
-        game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 98, 12, 'abyssal');
+        enemy.takeDamage(84, this, true, this.facing * 165, -230);
+        this.leechLife(38, enemy, game, 'GRIM HARVEST');
+        game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 98, 14, 'abyssal');
       }
     }
 
@@ -948,6 +1157,8 @@ export class Reaper extends Fighter {
       this.isDeflecting = false;
       this.isInvulnerable = false;
       this.deathAvatar = null;
+      this.ultScytheWaves = [];
+      this.ultSlashRibbons = [];
       this.setState('IDLE');
     }
   }
@@ -995,18 +1206,26 @@ export class Reaper extends Fighter {
    * Renders the Abyssal Floor Shadow Pool & Grasping Bone Hands when Malakor submerges underground!
    */
   drawShadowPool(ctx) {
-    const px = Math.round(this.x / 4) * 4;
-    const py = Math.round(this.groundY / 4) * 4;
+    const px = Math.round(this.x);
+    const py = Math.round(this.groundY);
     const vfxSheet = PixelForge.initAssets().reaper?.vfx;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    ctx.fillStyle = 'rgba(88, 28, 135, 0.84)';
-    ctx.fillRect(px - 88, py - 9, 176, 18);
-    ctx.fillStyle = 'rgba(192, 132, 252, 0.90)';
-    ctx.fillRect(px - 74, py - 6, 148, 12);
+    ctx.beginPath();
+    ctx.ellipse(px, py, 92, 12, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(88, 28, 135, 0.82)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.ellipse(px, py, 76, 8, 0, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(192, 132, 252, 0.88)';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.ellipse(px, py, 60, 5, 0, 0, Math.PI * 2);
     ctx.fillStyle = '#090514';
-    ctx.fillRect(px - 62, py - 4, 124, 8);
+    ctx.fill();
 
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
       const col = Math.min(29, Math.max(0, Math.floor(((this.stateTimer * 28) % 30))));
@@ -1149,7 +1368,7 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Renders the Colossal 30fps Grim Reaper Sovereign of Death Avatar BEHIND the fighters during GRIM HARVEST (from Row 3 of reaper_vfx.png)
+   * Renders the Blood-Moon Eclipse, Necrotic Pentagram Execution Floor Seal, and Colossal 30fps Sovereign of Death Avatar BEHIND the fighters during GRIM HARVEST
    */
   drawDeathAvatar(ctx, renderer = null) {
     if (!this.deathAvatar) return;
@@ -1159,50 +1378,137 @@ export class Reaper extends Fighter {
     const da = this.deathAvatar;
     const col = Math.min(29, Math.floor(((1 - da.life / da.maxLife)) * 30));
     const elapsed = da.maxLife - da.life;
-    const rise = Math.min(1, elapsed / 0.28);
+    const rise = Math.min(1, elapsed / 0.26);
     const fade = Math.min(1, da.life * 3.2);
     const ax = Math.round(da.x ?? this.x + this.facing * 115);
     const ay = Math.round(this.groundY);
+    const phase = da.eclipsePhase || elapsed * 5.0;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = fade * 0.98;
 
+    // 1. Necrotic 5-Pointed Blood-Moon Pentagram Execution Seal on the Arena Floor (under the enemy!)
+    ctx.save();
+    ctx.translate(ax, ay - 2);
+    ctx.scale(1, 0.24);
+    const sealR = (165 + Math.sin(phase * 1.8) * 10) * rise;
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = fade * 0.78;
+    ctx.strokeStyle = '#f43f5e';
+    ctx.lineWidth = 8;
     ctx.beginPath();
-    ctx.rect(ax - 280, ay - 420, 560, 426);
+    ctx.arc(0, 0, sealR, 0, Math.PI * 2);
+    ctx.stroke();
+
+    ctx.strokeStyle = '#c084fc';
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(0, 0, sealR * 0.78, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Rotating 5-pointed Necrotic Pentagram Star inside the floor seal
+    ctx.rotate(phase * 0.75);
+    ctx.strokeStyle = '#ffe4e6';
+    ctx.lineWidth = 4;
+    ctx.beginPath();
+    for (let i = 0; i <= 5; i++) {
+      const a = (i * 4 * Math.PI) / 5 - Math.PI * 0.5;
+      const sx = Math.cos(a) * (sealR * 0.76);
+      const sy = Math.sin(a) * (sealR * 0.76);
+      if (i === 0) ctx.moveTo(sx, sy);
+      else ctx.lineTo(sx, sy);
+    }
+    ctx.stroke();
+    ctx.restore();
+
+    // 2. Towering Blood-Moon Eclipse & Sovereign of Death Avatar (clipped cleanly to the floor)
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(ax - 320, ay - 460, 640, 464);
     ctx.clip();
 
-    const drawSize = 336;
-    const riseY = Math.round((1 - rise) * 210);
+    const moonX = ax;
+    const moonY = ay - 228;
+    const moonR = Math.round(108 * rise);
+
+    if (moonR > 12) {
+      // Outer Crimson-Violet Blood-Moon Corona
+      const coronaGrad = ctx.createRadialGradient(moonX, moonY, moonR * 0.55, moonX, moonY, moonR * 1.85);
+      coronaGrad.addColorStop(0, 'rgba(244, 63, 94, 0.72)');
+      coronaGrad.addColorStop(0.5, 'rgba(168, 85, 247, 0.42)');
+      coronaGrad.addColorStop(1, 'rgba(15, 5, 29, 0)');
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = coronaGrad;
+      ctx.beginPath();
+      ctx.arc(moonX, moonY, moonR * 1.85, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Rotating Eclipse Rim Rays
+      ctx.save();
+      ctx.translate(moonX, moonY);
+      ctx.rotate(-phase * 0.45);
+      ctx.strokeStyle = 'rgba(251, 113, 133, 0.65)';
+      ctx.lineWidth = 4;
+      for (let r = 0; r < 8; r++) {
+        const ra = (r * Math.PI) / 4;
+        ctx.beginPath();
+        ctx.moveTo(Math.cos(ra) * (moonR * 0.92), Math.sin(ra) * (moonR * 0.92));
+        ctx.lineTo(Math.cos(ra) * (moonR * 1.48), Math.sin(ra) * (moonR * 1.48));
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      // Blazing Blood-Crimson Rim Ring + Abyssal Black Eclipse Disc
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.95;
+      ctx.strokeStyle = '#fb7185';
+      ctx.lineWidth = 8;
+      ctx.beginPath();
+      ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
+      ctx.stroke();
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.92;
+      ctx.fillStyle = '#090314';
+      ctx.beginPath();
+      ctx.arc(moonX, moonY, moonR * 0.93, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    const drawSize = 356;
+    const riseY = Math.round((1 - rise) * 190);
     const floatBob = Math.round(Math.sin(elapsed * 6.5) * 6);
 
-    ctx.translate(ax, ay - drawSize * 0.5 + 14 + riseY + floatBob);
+    ctx.translate(ax, ay - drawSize * 0.5 + 10 + riseY + floatBob);
     ctx.scale(da.facing || this.facing, 1);
 
     if (renderer && renderer.glowViolet) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.56;
-      ctx.drawImage(renderer.glowViolet, -220, -220, 440, 440);
+      ctx.globalAlpha = fade * 0.54;
+      ctx.drawImage(renderer.glowViolet, -230, -230, 460, 460);
     }
 
     if (da.swingProgress > 0) {
       const lunge = Math.sin(da.swingProgress * Math.PI);
-      ctx.scale(1 + lunge * 0.08, 1 + lunge * 0.08);
+      ctx.rotate(lunge * 0.14);
+      ctx.scale(1 + lunge * 0.12, 1 + lunge * 0.12);
     }
 
     const dHalf = Math.round(-drawSize * 0.5);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.34;
+    ctx.globalAlpha = fade * 0.36;
     ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf - 10, dHalf - 10, drawSize + 20, drawSize + 20);
 
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.94;
+    ctx.globalAlpha = fade * 0.96;
     ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf, dHalf, drawSize, drawSize);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * (0.24 + Math.sin(da.swingProgress * Math.PI) * 0.16);
+    ctx.globalAlpha = fade * (0.26 + Math.sin(da.swingProgress * Math.PI) * 0.18);
     ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf, dHalf, drawSize, drawSize);
 
+    ctx.restore();
     ctx.restore();
   }
 
@@ -1228,53 +1534,68 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Renders Ethereal Sinuous Soul-Fire Comets flying from the enemy into Malakor's chest
+   * Renders Smooth Sinuous Soul-Fire Comet Ribbons (zero blocky fillRect squares!) flying from the enemy into Malakor's chest
    */
   drawSoulWisps(ctx, renderer = null) {
     if (!this.soulWisps.length) return;
     ctx.save();
     const tx = this.x;
-    const ty = this.y - 94;
+    const ty = this.y - 96;
     for (const w of this.soulWisps) {
       if (w.life < 0) continue;
       const u = Math.min(1, w.life / w.maxLife);
       const wx = w.startX + (tx - w.startX) * u;
       const wy = w.startY + (ty - w.startY) * u + Math.sin(u * Math.PI) * w.arcHeight;
+      const uTail = Math.max(0, u - 0.22);
+      const tailX = w.startX + (tx - w.startX) * uTail;
+      const tailY = w.startY + (ty - w.startY) * uTail + Math.sin(uTail * Math.PI) * w.arcHeight;
+      const uMid = (u + uTail) * 0.5;
+      const midX = w.startX + (tx - w.startX) * uMid;
+      const midY =
+        w.startY +
+        (ty - w.startY) * uMid +
+        Math.sin(uMid * Math.PI) * w.arcHeight +
+        Math.cos(w.life * 24) * 10;
 
       ctx.save();
-      const cx = Math.round(wx / 2) * 2;
-      const cy = Math.round(wy / 2) * 2;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+
       if (renderer && renderer.glowViolet) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.52;
-        ctx.drawImage(renderer.glowViolet, cx - 38, cy - 38, 76, 76);
+        ctx.globalAlpha = 0.50;
+        ctx.drawImage(renderer.glowViolet, wx - 36, wy - 36, 72, 72);
       }
 
-      for (let tail = 6; tail >= 1; tail--) {
-        const tu = Math.max(0, u - tail * 0.035);
-        const tlx = Math.round((w.startX + (tx - w.startX) * tu) / 2) * 2;
-        const tly = Math.round(
-          (w.startY + (ty - w.startY) * tu + Math.sin(tu * Math.PI) * w.arcHeight) / 2
-        ) * 2;
-        const sz = Math.max(2, Math.round((7 - tail) * 2));
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = tail % 2 === 0 ? '#a855f7' : '#f43f5e';
-        ctx.globalAlpha = ((7 - tail) / 7) * 0.42;
-        ctx.fillRect(tlx - sz * 0.8, tly - sz * 0.8, sz * 1.6, sz * 1.6);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.fillStyle = tail % 2 === 0 ? '#7e22ce' : w.color;
-        ctx.globalAlpha = ((7 - tail) / 7) * 0.88;
-        ctx.fillRect(tlx - sz * 0.5, tly - sz * 0.5, sz, sz);
-      }
+      // Outer Crimson-Violet Soul-Comet Ribbon
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.68;
+      ctx.strokeStyle = w.color || '#c084fc';
+      ctx.lineWidth = 11;
+      ctx.beginPath();
+      ctx.moveTo(tailX, tailY);
+      ctx.quadraticCurveTo(midX, midY, wx, wy);
+      ctx.stroke();
 
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.98;
-      ctx.fillStyle = '#7e22ce';
-      ctx.fillRect(cx - 7, cy - 7, 14, 14);
-      ctx.fillStyle = '#e11d48';
-      ctx.fillRect(cx - 5, cy - 5, 10, 10);
+      // Inner White-Hot Soul-Comet Core Ribbon
+      ctx.globalAlpha = 0.94;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4;
+      ctx.beginPath();
+      ctx.moveTo(tailX, tailY);
+      ctx.quadraticCurveTo(midX, midY, wx, wy);
+      ctx.stroke();
+
+      // Glowing Soul-Orb Head (smooth circular arc + diamond star glint, zero fillRect boxes!)
+      ctx.fillStyle = '#f43f5e';
+      ctx.beginPath();
+      ctx.arc(wx, wy, 7, 0, Math.PI * 2);
+      ctx.fill();
+
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(cx - 2, cy - 2, 4, 4);
+      ctx.beginPath();
+      ctx.arc(wx, wy, 3.5, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     }
     ctx.restore();
@@ -1295,9 +1616,62 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Foreground Ultimate pass
+   * Foreground Ultimate pass — Renders Spinning Abyssal Scythe Vortex Blades, Curved Guillotine Slash Ribbons & Soul-Comets
    */
   drawUltimateForeground(ctx, renderer = null) {
+    const vfxSheet = PixelForge.initAssets().reaper?.vfx;
+
+    // 1. Render Spinning Abyssal Scythe Vortex Waves (from Row 0 of reaper_vfx.png)
+    if (this.ultScytheWaves && this.ultScytheWaves.length && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (const sw of this.ultScytheWaves) {
+        const u = Math.min(1, sw.life / sw.maxLife);
+        const fade = Math.sin(u * Math.PI);
+        const col = Math.floor((sw.life * 45) % 30);
+        const sz = sw.size || 158;
+        const half = Math.round(-sz * 0.5);
+        ctx.save();
+        ctx.translate(Math.round(sw.x), Math.round(sw.y));
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.44;
+        ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, half - 8, half - 8, sz + 16, sz + 16);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * 0.95;
+        ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, half, half, sz, sz);
+        ctx.restore();
+      }
+      ctx.restore();
+    }
+
+    // 2. Render Curved Crimson & Violet Guillotine Slash Ribbons
+    if (this.ultSlashRibbons && this.ultSlashRibbons.length) {
+      ctx.save();
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      for (const sr of this.ultSlashRibbons) {
+        const u = Math.min(1, sr.life / sr.maxLife);
+        const fade = Math.pow(1 - u, 1.35);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.78;
+        ctx.strokeStyle = sr.color;
+        ctx.lineWidth = sr.width * (1.15 - u * 0.45);
+        ctx.beginPath();
+        ctx.moveTo(sr.x1, sr.y1);
+        ctx.quadraticCurveTo(sr.cx, sr.cy, sr.x2, sr.y2);
+        ctx.stroke();
+
+        ctx.globalAlpha = fade * 0.96;
+        ctx.strokeStyle = sr.core || '#ffffff';
+        ctx.lineWidth = Math.max(3, sr.width * 0.36 * (1 - u * 0.4));
+        ctx.beginPath();
+        ctx.moveTo(sr.x1, sr.y1);
+        ctx.quadraticCurveTo(sr.cx, sr.cy, sr.x2, sr.y2);
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
     if (this.state === 'ULTIMATE' || this.deathAvatar) {
       this.drawSoulWisps(ctx, renderer);
     }

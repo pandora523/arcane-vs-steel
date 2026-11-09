@@ -551,13 +551,11 @@ export class Fighter {
 
         // 3. Archetype Gap-Closing or Repositioning Dash
         const shouldDash =
-          this.heroId === 'valkyrie'
-            ? dist > 235
-            : this.heroId === 'ronin'
-              ? dist > 165
-              : this.attackRange < 200
-                ? dist > 185
-                : dist > 470 || ((this.x < 210 || this.x > ww - 210) && dist < 260);
+          this.heroId === 'ronin'
+            ? dist > 165
+            : this.attackRange < 200
+              ? dist > 185
+              : dist > 490 || ((this.x < 210 || this.x > ww - 210) && dist < 260);
         if (this.dashCooldown <= 0 && shouldDash) {
           this.startDash(enemy, game);
           return;
@@ -593,89 +591,93 @@ export class Fighter {
           // Between attacks (autoCooldown > 0), each champion exhibits their authentic combat archetype footwork!
           const isRangedArchetype = this.attackRange >= 300;
           if (isRangedArchetype) {
-            // Ranged Artillery / Marksman / Sanctuary Weaver / Chronomancer:
-            // Actively kite backward to maintain their 350px-470px sweet-spot spacing (or stride toward center if near a wall)
-            const sweetSpotMin = this.heroId === 'archer' ? 355 : this.heroId === 'priestess' ? 365 : 345;
+            // Ranged Artillery / Marksman / Valkyrie Javelin Thrower / Sanctuary Weaver / Chronomancer:
+            // Actively kite backward to maintain their 355px-480px sweet-spot spacing (or stride toward center if near a wall)
+            const sweetSpotMin =
+              this.heroId === 'valkyrie'
+                ? 385
+                : this.heroId === 'archer'
+                  ? 355
+                  : this.heroId === 'priestess'
+                    ? 365
+                    : 345;
             if (dist < sweetSpotMin) {
               const nearLeft = this.x < 175;
               const nearRight = this.x > ww - 175;
               if (!nearLeft && !nearRight) {
                 this.state = 'WALK';
+                this.moveDir = -1;
                 this.walkPhase += dt * 4.2;
                 this.x -= this.facing * this.moveSpeed * 0.78 * dt;
                 this.headBob = Math.sin(this.walkPhase * 2) * 2.2;
               } else {
                 this.state = 'IDLE';
+                this.moveDir = 0;
               }
             } else {
               this.state = 'IDLE';
-            }
-          } else if (this.heroId === 'valkyrie') {
-            // Winged Sky-Dragoon (Freyja): Maintains long-reach polearm spacing (165px-215px) with winged hover-glide!
-            if (dist < 162 && this.x > 165 && this.x < ww - 165) {
-              this.state = 'WALK';
-              this.walkPhase += dt * 5.0;
-              this.x -= this.facing * this.moveSpeed * 0.65 * dt;
-              this.headBob = Math.sin(this.walkPhase * 2) * 2.6;
-            } else if (dist > 195) {
-              this.state = 'WALK';
-              this.walkPhase += dt * 5.0;
-              this.x += this.facing * this.moveSpeed * 0.85 * dt;
-              this.headBob = Math.sin(this.walkPhase * 2) * 2.6;
-            } else {
-              this.state = 'IDLE';
+              this.moveDir = 0;
             }
           } else if (this.heroId === 'ronin') {
             // Storm-Blade Iaido Samurai (Kaze-Maru): Fast Suriashi in-and-out micro-footwork & pressure!
             this.state = 'WALK';
             this.walkPhase += dt * 6.2;
             const weaveDir = dist > 135 ? 1 : Math.sin(this.walkPhase * 1.4) > 0 ? 0.55 : -0.45;
+            this.moveDir = weaveDir >= 0 ? 1 : -1;
             this.x += this.facing * this.moveSpeed * 0.75 * weaveDir * dt;
             this.headBob = Math.sin(this.walkPhase * 2) * 1.8;
           } else if (this.heroId === 'titan') {
             // Unstoppable Mountain Juggernaut (Torgar): Slow, earth-shaking heavy march into point-blank maul range (126px)
             if (dist > 126) {
               this.state = 'WALK';
+              this.moveDir = 1;
               this.walkPhase += dt * 3.2;
               this.x += this.facing * this.moveSpeed * 0.90 * dt;
               this.headBob = Math.abs(Math.sin(this.walkPhase * 2)) * 3.2;
             } else {
               this.state = 'IDLE';
+              this.moveDir = 0;
             }
           } else if (this.heroId === 'reaper') {
-            // Relentless Harvester (Malakor): If 3rd-strike Boomerang Scythe is next, weave to mid-range;
-            // otherwise stalk relentlessly into scythe hook range (148px)!
+            // Relentless Harvester (Malakor): Stalk relentlessly into scythe hook range (148px)!
             if (dist > 152) {
               this.state = 'WALK';
+              this.moveDir = 1;
               this.walkPhase += dt * 4.6;
               this.x += this.facing * this.moveSpeed * 0.85 * dt;
               this.headBob = Math.sin(this.walkPhase * 2) * 2.4;
             } else {
               this.state = 'IDLE';
+              this.moveDir = 0;
             }
           } else {
             // Runic Vanguard (Aethelgard): Press forward into heavy melee pressure range (132px)
             if (dist > 136) {
               this.state = 'WALK';
+              this.moveDir = 1;
               this.walkPhase += dt * 4.5;
               this.x += this.facing * this.moveSpeed * 0.85 * dt;
               this.headBob = Math.sin(this.walkPhase * 2) * 2.4;
             } else {
               this.state = 'IDLE';
+              this.moveDir = 0;
             }
           }
         } else {
           this.state = 'WALK';
+          this.moveDir = 1;
           this.walkPhase += dt * 4.5;
           this.x += this.facing * this.moveSpeed * dt;
           this.headBob = Math.sin(this.walkPhase * 2) * 2.5;
         }
       } else {
         this.state = 'IDLE';
+        this.moveDir = 0;
       }
     }
 
     if (this.state === 'IDLE') {
+      this.moveDir = 0;
       this.walkPhase += dt * 2.8;
       this.headBob = Math.sin(this.walkPhase) * 2.0;
     } else if (this.state === 'HURT') {
@@ -701,6 +703,31 @@ export class Fighter {
     } else if (this.state === 'ULTIMATE') {
       this.updateUltimate(dt, enemy, game);
     }
+
+    // Dynamic Forward-Lean Momentum Physics (leans upper body toward enemy when advancing, keeps boots planted!)
+    let targetLean = 0;
+    if (this.state === 'HURT' || this.hurtTimer > 0.05) {
+      targetLean = -0.11;
+    } else if (this.state === 'DASH') {
+      const isFwdDash = (this.dashDir || this.facing) * this.facing > 0;
+      targetLean = isFwdDash ? 0.21 : -0.10;
+    } else if (this.state === 'DODGE') {
+      targetLean = -0.09;
+    } else if (this.state === 'WALK') {
+      if ((this.moveDir ?? 1) >= 0) {
+        targetLean = 0.145 + Math.sin(this.walkPhase * 2) * 0.025;
+      } else {
+        targetLean = -0.055;
+      }
+    } else if (this.state === 'AUTO_ATTACK' || this.state === 'SKILL') {
+      const fwdVel = (this.vx || 0) * this.facing;
+      if (fwdVel > 40) {
+        targetLean = Math.min(0.18, 0.08 + fwdVel / 950);
+      } else if (this.attackRange < 260 && this.stateTimer > 0.08 && this.stateTimer < 0.38) {
+        targetLean = 0.075;
+      }
+    }
+    this.forwardLean = (this.forwardLean || 0) + (targetLean - (this.forwardLean || 0)) * Math.min(1, dt * 15);
   }
 
   getTargetTorsoAngle() {
