@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps21';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps21';
+import { Fighter } from './Fighter.js?v=30fps22';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps22';
 
 export class Warrior extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -8,10 +8,10 @@ export class Warrior extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1320,
+      maxHp: 1260,
       attackRange: 152,
-      moveSpeed: 162,
-      autoInterval: 1.24,
+      moveSpeed: 156,
+      autoInterval: 1.29,
       lightColor: 'rgba(56, 189, 248, 1)',
       primaryColor: '#38bdf8'
     });
@@ -19,7 +19,7 @@ export class Warrior extends Fighter {
     this.theme = 'steel';
     this.deathSfx = 'death_warrior';
     this.hasPoise = true; // Runic Juggernaut Poise resists ranged knockback/hitstun
-    this.skillMaxCooldown = 5.1;
+    this.skillMaxCooldown = 5.4;
     this.skillTriggerRange = 480;
     this.ultName = 'HEAVENLY EARTHSHATTER';
     this.skillName = 'TEMPEST VANGUARD';
@@ -30,8 +30,8 @@ export class Warrior extends Fighter {
     this.stepDustTimer = 0;
     this.spawnedSkyBlades = false;
     this.didSlamFinisher = false;
-    this.dodgeMaxCooldown = 3.4;
-    this.dashMaxCooldown = 3.2;
+    this.dodgeMaxCooldown = 3.6;
+    this.dashMaxCooldown = 3.35;
     this.crouchCooldown = 0;
     this.crouchDuration = 0.96;
     this.isCrouching = false;
@@ -83,6 +83,7 @@ export class Warrior extends Fighter {
     this.isDeflecting = true;
     this.reflectedInSkill = false;
     this.vx = 0;
+    this.heal(8, 'RUNIC RESOLVE');
     this.reflectNearbyProjectiles(game);
     if (game && game.audio) game.audio.play('reflect', this.x);
     if (game && game.vfx) {
@@ -491,7 +492,7 @@ export class Warrior extends Fighter {
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 50) {
           const isCrit = mode === 2 || Math.random() < 0.25;
-          const dmg = mode === 2 ? 93 : mode === 1 ? 80 : 72;
+          const dmg = mode === 2 ? 78 : mode === 1 ? 66 : 59;
           enemy.takeDamage(dmg, this, isCrit, 115, mode === 2 ? -130 : 0);
           if (game.audio) game.audio.play(isCrit ? 'hit_crit' : 'clang', enemy.x);
           if (game.renderer) game.renderer.triggerHitStop(0.06);
@@ -546,7 +547,7 @@ export class Warrior extends Fighter {
         game.vfx.spawnSlash(this.x, this.y - 92, 114, 0, Math.PI * 2, '#38bdf8', 0.22);
         game.vfx.spawnSlash(this.x, this.y - 116, 86, 0, Math.PI * 2, '#7dd3fc', 0.18);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 136) {
-          enemy.takeDamage(28, this, false, 60, 0);
+          enemy.takeDamage(24, this, false, 60, 0);
           if (game.audio) game.audio.play('clang', enemy.x);
           game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 95, 3, 'steel');
         }
@@ -577,14 +578,14 @@ export class Warrior extends Fighter {
           coreColor: '#e0f2fe',
           owner: this,
           target: enemy,
-          damage: 16,
+          damage: 15,
           delay: idx * 0.04,
           maxLife: 0.78
         });
       });
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - slamX) < 195) {
-        enemy.takeDamage(54, this, true, 135, -150);
+        enemy.takeDamage(48, this, true, 135, -150);
       }
     } else if (t >= 0.98) {
       this.isDeflecting = false;

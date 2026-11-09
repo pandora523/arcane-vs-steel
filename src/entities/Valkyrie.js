@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps21';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps21';
+import { Fighter } from './Fighter.js?v=30fps22';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps22';
 
 export class Valkyrie extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -7,10 +7,10 @@ export class Valkyrie extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Freyja',
-      maxHp: 1120,
-      moveSpeed: 215,
+      maxHp: 1205,
+      moveSpeed: 212,
       attackRange: 520,
-      autoInterval: 0.82,
+      autoInterval: 0.99,
       lightColor: 'rgba(244, 63, 94, 1)',
       primaryColor: '#f43f5e'
     });
@@ -21,7 +21,8 @@ export class Valkyrie extends Fighter {
     this.theme = 'crimson';
     this.hasPoise = true;
     this.skillTriggerRange = 620;
-    this.skillMaxCooldown = 4.4;
+    this.skillMaxCooldown = 4.75;
+    this.dodgeMaxCooldown = 3.30;
     this.autoDuration = 0.56;
     this.skillDuration = 0.86;
     this.ultDuration = 1.65;
@@ -92,10 +93,10 @@ export class Valkyrie extends Fighter {
         sp.age += dt;
         const u = Math.min(1, sp.age / Math.max(0.05, sp.flightDuration));
 
-        // Smooth homing lock-on during first 72% of the arc
-        if (u < 0.72 && enemy && !enemy.isDead) {
+        // Smooth homing lock-on during first 52% of the arc so fast dashes/blinks have fair counterplay
+        if (u < 0.52 && enemy && !enemy.isDead) {
           const desiredTx = Math.max(85, Math.min(ww - 85, enemy.x + sp.spreadOffset));
-          sp.targetX += (desiredTx - sp.targetX) * Math.min(1, dt * 9);
+          sp.targetX += (desiredTx - sp.targetX) * Math.min(1, dt * 6.2);
         }
 
         // Ease-in-out acceleration along the quadratic Bezier curve: graceful halo fan-out -> supersonic dive!
@@ -138,10 +139,10 @@ export class Valkyrie extends Fighter {
 
         for (const t of targets) {
           if (t && !t.isDead && !t.isBenched && !sp.hitTargets.has(t)) {
-            if (Math.abs(t.x - sp.x) < 68 && Math.abs(t.y - 68 - sp.y) < 84) {
+            if (Math.abs(t.x - sp.x) < 60 && Math.abs(t.y - 68 - sp.y) < 82) {
               sp.hitTargets.add(t);
-              t.takeDamage(sp.damage, this, sp.isUlt, 85, -115);
-              this.gainMana(sp.isUlt ? 0 : 5);
+              t.takeDamage(sp.damage, this, sp.isUlt, 65, sp.isUlt ? -115 : -45);
+              this.gainMana(sp.isUlt ? 0 : 2.8);
               if (game.audio) game.audio.play('holy_spear', sp.x);
               game.vfx.spawnSlash(sp.x, sp.y, 98, sp.angle - 0.9, sp.angle + 0.9, '#f43f5e', 0.22);
               game.vfx.spawnBurst(sp.x, sp.y, 10, '#fbbf24', 195, { upBias: 65, size: 4.5 });
@@ -214,6 +215,7 @@ export class Valkyrie extends Fighter {
     this.vaultTargetX = Math.max(85, Math.min(ww - 85, this.x + retreatDir * 175));
     this.vx = 0;
     this.vy = 0;
+    this.heal(5, 'VALKYRIE GRACE');
 
     if (game && game.audio) game.audio.play('dash_whoosh', this.x);
     if (game && game.vfx) {
@@ -248,7 +250,7 @@ export class Valkyrie extends Fighter {
         this.y - 98,
         tx - 16,
         this.groundY - 24,
-        24,
+        18,
         false,
         -this.facing * 105
       );
@@ -264,7 +266,7 @@ export class Valkyrie extends Fighter {
         this.y - 98,
         tx + 18,
         this.groundY - 24,
-        26,
+        19,
         false,
         this.facing * 125
       );
@@ -286,6 +288,7 @@ export class Valkyrie extends Fighter {
     this.isInvulnerable = true;
     this.isFlipVault = true;
     this._jumpJavelins = 0;
+    this.heal(6, 'VALHALLA WINGS');
 
     const ww = game.renderer.worldWidth;
     this.vaultStartX = this.x;
@@ -361,7 +364,7 @@ export class Valkyrie extends Fighter {
           this.y - 96,
           tx - 22,
           this.groundY - 28,
-          26,
+          19,
           false,
           -125
         );
@@ -375,7 +378,7 @@ export class Valkyrie extends Fighter {
           this.y - 96,
           tx + 22,
           this.groundY - 28,
-          28,
+          20,
           false,
           125
         );
@@ -415,7 +418,7 @@ export class Valkyrie extends Fighter {
         this.y - 106,
         tx,
         this.groundY - 32,
-        22,
+        17,
         false,
         arcDir
       );
@@ -440,7 +443,7 @@ export class Valkyrie extends Fighter {
           this.y - 110,
           tx + (Math.random() - 0.5) * 28,
           this.groundY - 28,
-          24,
+          18,
           false,
           arcDir
         );
@@ -453,7 +456,7 @@ export class Valkyrie extends Fighter {
           this.y - 122,
           tx - 18,
           this.groundY - 24,
-          20,
+          16,
           false,
           -155
         );
@@ -462,7 +465,7 @@ export class Valkyrie extends Fighter {
           this.y - 98,
           tx + 18,
           this.groundY - 24,
-          20,
+          16,
           false,
           155
         );
@@ -524,7 +527,7 @@ export class Valkyrie extends Fighter {
         sy,
         tx,
         this.groundY - 22,
-        14,
+        12,
         false,
         arcSpreads[idx]
       );
@@ -554,7 +557,7 @@ export class Valkyrie extends Fighter {
         color: '#f43f5e',
         owner: this,
         target: enemy,
-        damage: 22,
+        damage: 21,
         delay: 0
       });
     }
@@ -626,7 +629,7 @@ export class Valkyrie extends Fighter {
           sy,
           Math.max(90, Math.min(ww - 90, tx)),
           this.groundY,
-          13,
+          10,
           true,
           arcSpread
         );
@@ -634,8 +637,6 @@ export class Valkyrie extends Fighter {
       }
     } else if (t >= 1.42 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
-      // Ranged Sovereign Finisher: Freyja remains airborne at her ranged sanctuary vantage while hurling the
-      // Colossal Gungnir Judgment Lance onto the enemy's position from the heavens!
       const impactX = Math.max(90, Math.min(ww - 90, enemy && !enemy.isDead ? enemy.x : ww * 0.5));
 
       if (game.audio) {
@@ -663,7 +664,7 @@ export class Valkyrie extends Fighter {
           color: '#f43f5e',
           owner: this,
           target: enemy,
-          damage: i === 0 ? 18 : 10,
+          damage: i === 0 ? 14 : 8,
           delay: Math.floor(Math.abs(off) / 105) * 0.06
         });
       });
@@ -678,7 +679,7 @@ export class Valkyrie extends Fighter {
       );
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(54, this, true, 235, -245);
+        enemy.takeDamage(42, this, true, 235, -245);
       }
     }
 

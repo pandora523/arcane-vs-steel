@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps21';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps21';
+import { Fighter } from './Fighter.js?v=30fps22';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps22';
 
 export class Titan extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -8,7 +8,7 @@ export class Titan extends Fighter {
       ...opts,
       name: opts.name || 'Torgar',
       maxHp: 1520,
-      moveSpeed: 138,
+      moveSpeed: 164,
       attackRange: 185,
       autoInterval: 1.04,
       lightColor: 'rgba(245, 158, 11, 1)',
@@ -22,7 +22,8 @@ export class Titan extends Fighter {
     this.hasPoise = true;
     this.unstoppablePoise = false;
     this.skillTriggerRange = 460;
-    this.skillMaxCooldown = 4.7;
+    this.skillMaxCooldown = 4.25;
+    this.dashMaxCooldown = 2.65;
     this.autoDuration = 0.86;
     this.skillDuration = 0.94;
     this.ultDuration = 1.52;
@@ -87,7 +88,7 @@ export class Titan extends Fighter {
           if (t && !t.isDead && !t.isBenched && !a.hitTargets.has(t)) {
             if (Math.abs(t.x - a.x) < 68 && Math.abs(t.y - a.y) < 110) {
               a.hitTargets.add(t);
-              t.takeDamage(54, this, true, 340, -165);
+              t.takeDamage(64, this, true, 340, -165);
               if (game.audio) game.audio.play('thunder_slam', t.x);
               game.renderer.triggerShake(11, 0.22);
               game.renderer.triggerHitStop(0.05);
@@ -170,8 +171,8 @@ export class Titan extends Fighter {
     this.setState('CROUCH');
     this.isCrouching = true;
     this.isDeflecting = true;
-    this.forgeArmorTimer = 2.6;
-    this.heal(38, 'FORGE TEMPER');
+    this.forgeArmorTimer = 2.3;
+    this.heal(30, 'FORGE TEMPER');
     this.vx = 0;
     const frontX = this.x + this.facing * 118;
     if (game && game.audio) game.audio.play('clang', frontX);
@@ -239,7 +240,7 @@ export class Titan extends Fighter {
         size: 6
       });
       if (enemy && !enemy.isDead && Math.abs(enemy.x - slamX) <= 185) {
-        enemy.takeDamage(36, this, false, 235, -165);
+        enemy.takeDamage(28, this, false, 235, -165);
         game.vfx.spawnDamageText(enemy.x, enemy.y - 150, 0, false, 'MOLTEN NOVA!', '#fbbf24');
       }
     }
@@ -403,7 +404,7 @@ export class Titan extends Fighter {
       const reach = step === 2 ? 245 : 215;
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= reach) {
         const isCrit = step === 2 || Math.random() < 0.28;
-        const dmg = (step === 2 ? 56 : 42) * (isCrit ? 1.35 : 1);
+        const dmg = (step === 2 ? 51 : 38) * (isCrit ? 1.35 : 1);
         const knockX = step === 2 ? 165 : -78;
         const knockY = step === 2 ? -225 : -135;
         enemy.takeDamage(dmg, this, isCrit, knockX, knockY);
@@ -467,7 +468,7 @@ export class Titan extends Fighter {
 
       if (this.activeAnvil) {
         this.activeAnvil.state = 'flying';
-        this.activeAnvil.vx = this.facing * 840;
+        this.activeAnvil.vx = this.facing * 920;
         this.activeAnvil.age = 0;
       }
       if (enemy && !enemy.isDead && Math.abs(enemy.x - slamX) < 155) {

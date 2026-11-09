@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps21';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps21';
+import { Fighter } from './Fighter.js?v=30fps22';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps22';
 
 export class Priestess extends Fighter {
   constructor(x, groundY, facing = -1) {
@@ -8,23 +8,23 @@ export class Priestess extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1236,
+      maxHp: 1160,
       attackRange: 512,
-      moveSpeed: 128,
-      autoInterval: 1.29,
+      moveSpeed: 132,
+      autoInterval: 1.33,
       lightColor: 'rgba(253, 224, 71, 1)',
       primaryColor: '#fde047'
     });
     this.heroId = 'priestess';
     this.theme = 'radiant';
     this.deathSfx = 'death_priestess';
-    this.skillMaxCooldown = 5.1;
+    this.skillMaxCooldown = 5.55;
     this.ultName = 'SERAPHIC APOTHEOSIS';
     this.skillName = 'DIVINE SANCTUARY';
     this.haloPhase = 0;
     this.shotCombo = 0;
-    this.dodgeMaxCooldown = 3.55;
-    this.dashMaxCooldown = 3.55;
+    this.dodgeMaxCooldown = 3.90;
+    this.dashMaxCooldown = 3.85;
     this.wallWingCooldown = 0;
     this.crouchCooldown = 0;
     this.crouchDuration = 0.96;
@@ -52,7 +52,7 @@ export class Priestess extends Fighter {
   }
 
   startCrouch(enemy, game) {
-    this.crouchCooldown = 3.2;
+    this.crouchCooldown = 4.0;
     this.crouchDuration = 0.96;
     this.setState('CROUCH');
     this.isCrouching = true;
@@ -60,7 +60,7 @@ export class Priestess extends Fighter {
     this.vx = 0;
     if (game && game.vfx) {
       if (game.audio) game.audio.play('holy_heal', this.x);
-      this.heal(20, 'BENEDICTION');
+      this.heal(13, 'BENEDICTION');
       game.vfx.spawnShockwave(this.x, this.groundY - 2, 68, '#fde047', 0.26, true);
       game.vfx.spawnGlyphBurst(this.x, this.y - 88, 6, 'radiant');
       game.vfx.spawnDamageText(this.x, this.y - 122, 0, false, 'BENEDICTION PRAYER!', '#fef08a');
@@ -81,7 +81,7 @@ export class Priestess extends Fighter {
     // SERAPHIC WING-GLIDE VAULT (Row 8 JUMP, 86px sleek aerial glide + apex downward Starlight Smite)
     this.isAngelicAscent = true;
     this.isFlipVault = true;
-    this.wallWingCooldown = 3.2;
+    this.wallWingCooldown = 3.5;
     this.ascentStartX = this.x;
     this.wingSpearCount = 0;
 
@@ -106,7 +106,7 @@ export class Priestess extends Fighter {
     this.vx = 0;
     this.vy = 0;
     if (game.audio) game.audio.play('holy_heal', this.x);
-    this.heal(25, 'WINGS OF GRACE');
+    this.heal(16, 'WINGS OF GRACE');
     game.vfx.spawnShockwave(this.x, this.groundY, 118, '#fde047', 0.34, true);
     game.vfx.spawnBurst(this.x, this.y - 95, 18, '#fef9c3', 230, { upBias: 120 });
     game.vfx.spawnGlyphBurst(this.x, this.y - 100, 8, 'radiant');
@@ -191,7 +191,7 @@ export class Priestess extends Fighter {
           color: '#fde047',
           coreColor: '#ffffff',
           owner: this,
-          damage: 58,
+          damage: 45,
           type: 'holy_light',
           isMeteor: false
         });
@@ -280,7 +280,7 @@ export class Priestess extends Fighter {
         color: '#fde047',
         coreColor: '#ffffff',
         owner: this,
-        damage: 82,
+        damage: 66,
         type: 'holy_light',
         isMeteor: false
       });
@@ -383,14 +383,14 @@ export class Priestess extends Fighter {
           color: '#fde047',
           coreColor: '#ffffff',
           owner: this,
-          damage: isGraceCast ? 48 : 74,
+          damage: isGraceCast ? 41 : 62,
           type: 'holy_light',
           isMeteor: false
         });
 
         // Every 3rd cast: "GRACE OF DAWN!" — mends Seraphina's wounds, fires a twin Star-Bolt, and calls down a Heaven's Valkyrie Light-Spear!
         if (isGraceCast) {
-          this.heal(25, 'DAWN GRACE');
+          this.heal(17, 'DAWN GRACE');
           game.vfx.spawnProjectile({
             x: spawnX - this.facing * 14,
             y: spawnY - 14,
@@ -400,7 +400,7 @@ export class Priestess extends Fighter {
             color: '#facc15',
             coreColor: '#fef9c3',
             owner: this,
-            damage: 24,
+            damage: 20,
             type: 'holy_light',
             isMeteor: false
           });
@@ -417,7 +417,7 @@ export class Priestess extends Fighter {
               coreColor: '#ffffff',
               owner: this,
               target: enemy,
-              damage: 30,
+              damage: 24,
               isUltimate: false
             });
           }
@@ -445,7 +445,7 @@ export class Priestess extends Fighter {
     } else if (t >= 0.14 && !this.didSanctuaryHeal) {
       this.didSanctuaryHeal = true;
       if (game.audio) game.audio.play('holy_heal', this.x);
-      this.heal(91, 'SANCTUARY');
+      this.heal(62, 'SANCTUARY');
       game.vfx.spawnShockwave(this.x, this.groundY, 165, '#4ade80', 0.44, true);
       game.vfx.spawnShockwave(this.x, this.y - 95, 130, '#fde047', 0.38);
       game.vfx.spawnGlyphBurst(this.x, this.y - 105, 10, 'heal');
@@ -453,7 +453,7 @@ export class Priestess extends Fighter {
       // Sanctuary Repulsion Wave pushes encroaching melee attackers back!
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 215) {
         const pushDir = Math.sign(enemy.x - this.x) || this.facing;
-        enemy.vx += pushDir * 195;
+        enemy.vx += pushDir * 175;
       }
     }
 
@@ -500,7 +500,7 @@ export class Priestess extends Fighter {
       });
 
       if (!enemy.isDead) {
-        const beamDmg = horizDist >= 260 ? (enemy.maxHp > 1320 ? 68 : enemy.moveSpeed <= 122 ? 84 : 72) : 60;
+        const beamDmg = horizDist >= 260 ? 54 : 48;
         enemy.takeDamage(beamDmg, this, false, 60, -45);
       }
 
@@ -517,7 +517,7 @@ export class Priestess extends Fighter {
           coreColor: '#ffffff',
           owner: this,
           target: enemy,
-          damage: 14,
+          damage: 12,
           delay: side < 0 ? 0 : 0.06,
           isUltimate: false
         });
@@ -533,7 +533,7 @@ export class Priestess extends Fighter {
         color: '#fde047',
         coreColor: '#ffffff',
         owner: this,
-        damage: 42,
+        damage: 33,
         type: 'holy_light',
         isMeteor: false
       });
@@ -550,9 +550,6 @@ export class Priestess extends Fighter {
 
   updateUltimate(dt, enemy, game) {
     // 3-STAGE WINGED ARCHANGEL ULTIMATE: "SERAPHIC APOTHEOSIS"
-    // Stage 1 (0.00s - 0.44s): Unfurls 6 Golden Seraphim Wings + Sacred Halo Mandala & levitates 122px into the air (+132 HP Miracle Heal)
-    // Stage 2 (0.44s - 0.82s): 4 Orbiting Ophanim Star-Chakrams fire Diagonal Golden Lance Beams + Descending Heaven's Valkyrie Light-Spears!
-    // Stage 3 (0.94s - 1.52s): Twin Crisscrossing Diagonal Heaven's Judgment X-Beams + 3 Cathedral Sanctum Pillars erupt on the enemy!
     const t = this.stateTimer;
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
     const targetX = enemy ? enemy.x : ww * 0.5;
@@ -580,7 +577,7 @@ export class Priestess extends Fighter {
     if (t >= 0.16 && !this.didUltMiracle) {
       this.didUltMiracle = true;
       if (game.audio) game.audio.play('holy_heal', this.x);
-      this.heal(132, 'MIRACLE');
+      this.heal(86, 'MIRACLE');
       game.vfx.spawnShockwave(this.x, this.groundY, 205, '#4ade80', 0.52, true);
       game.vfx.spawnShockwave(this.x, this.y - 105, 168, '#fde047', 0.48);
       game.vfx.spawnGlyphBurst(this.x, this.y - 115, 14, 'heal');
@@ -626,7 +623,7 @@ export class Priestess extends Fighter {
         coreColor: '#ffffff',
         owner: this,
         target: enemy,
-        damage: 8,
+        damage: 7,
         isUltimate: true
       });
 
@@ -634,8 +631,7 @@ export class Priestess extends Fighter {
       game.vfx.spawnShockwave(haloX, haloY, 66, '#fef08a', 0.26);
       game.vfx.spawnBurst(aimX, this.groundY - 24, 10, '#fef08a', 195, { upBias: 90, size: 6 });
       game.vfx.spawnGlyphBurst(aimX, this.groundY - 45, 5, 'radiant');
-      const chakramDmg = Math.abs(enemy.x - this.x) >= 210 ? 16 : 12;
-      enemy.takeDamage(chakramDmg, this, false, 28, 0);
+      enemy.takeDamage(13, this, false, 28, 0);
     }
 
     // Stage 3 (0.94s): Twin Diagonal Crisscrossing Heaven's Judgment X-Beams + 3 Cathedral Sanctum Pillars!
@@ -714,8 +710,7 @@ export class Priestess extends Fighter {
       game.vfx.spawnGlyphBurst(targetX, this.groundY - 90, 8, 'heal');
 
       if (enemy && !enemy.isDead) {
-        const ultDmg = Math.abs(enemy.x - this.x) >= 210 ? 124 : 108;
-        enemy.takeDamage(ultDmg, this, true, 150, -210);
+        enemy.takeDamage(96, this, true, 150, -210);
       }
     } else if (t >= 1.52) {
       this.y = this.groundY;

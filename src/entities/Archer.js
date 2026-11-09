@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps21';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps21';
+import { Fighter } from './Fighter.js?v=30fps22';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps22';
 
 export class Archer extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -8,24 +8,24 @@ export class Archer extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1382,
+      maxHp: 1335,
       attackRange: 520,
-      moveSpeed: 162,
-      autoInterval: 1.08,
+      moveSpeed: 173,
+      autoInterval: 1.01,
       lightColor: 'rgba(16, 185, 129, 1)',
       primaryColor: '#10b981'
     });
     this.heroId = 'archer';
     this.theme = 'emerald';
     this.deathSfx = 'death_archer';
-    this.skillMaxCooldown = 4.6;
+    this.skillMaxCooldown = 4.25;
     this.ultName = 'ASTRAL HURRICANE';
     this.skillName = 'STARFALL VOLLEY';
     this.windPhase = 0;
     this.shotCombo = 0;
     this.stepTimer = 0;
-    this.dodgeMaxCooldown = 3.0;
-    this.dashMaxCooldown = 3.5;
+    this.dodgeMaxCooldown = 2.88;
+    this.dashMaxCooldown = 3.20;
     this.wallFlipCooldown = 0;
     this.crouchCooldown = 0;
     this.crouchDuration = 0.96;
@@ -99,6 +99,7 @@ export class Archer extends Fighter {
 
     this.vx = 0;
     this.vy = 0;
+    this.heal(13, 'SYLVAN BREEZE');
     if (game.audio) game.audio.play('zephyr_flip', this.x);
     game.vfx.spawnShockwave(this.x, this.groundY, 96, '#34d399', 0.32, true);
     game.vfx.spawnGlyphBurst(this.x, this.y - 60, 7, 'emerald');
@@ -184,7 +185,7 @@ export class Archer extends Fighter {
           color: '#34d399',
           coreColor: '#fef08a',
           owner: this,
-          damage: enemy.hasPoise && enemy.attackRange <= 160 ? 68 : 56,
+          damage: enemy.hasPoise && enemy.attackRange <= 160 ? 66 : 57,
           type: 'arrow'
         });
         const shotAng = Math.atan2(dy, dx);
@@ -206,7 +207,7 @@ export class Archer extends Fighter {
     }
 
     // Row 6 (30-frame DASH — Gale Stride): mid-dash snap-shot at F14 (t >= 0.20)
-    this.x += this.dashDir * 285 * dt;
+    this.x += this.dashDir * 295 * dt;
     if (Math.random() < 0.65) {
       game.vfx.spawnParticle({
         x: this.x,
@@ -217,6 +218,29 @@ export class Archer extends Fighter {
         color: '#34d399',
         maxLife: 0.25
       });
+    }
+
+    if (t >= 0.20 && !this.didActionFrame && enemy && !enemy.isDead) {
+      this.didActionFrame = true;
+      if (game.audio) game.audio.play('arrow_shoot', this.x);
+      const sx = this.x + this.facing * 46;
+      const sy = this.y - 110;
+      const dx = enemy.x - sx;
+      const dy = (enemy.y - 106) - sy;
+      const d = Math.hypot(dx, dy) || 1;
+      game.vfx.spawnProjectile({
+        x: sx,
+        y: sy,
+        vx: (dx / d) * 710,
+        vy: (dy / d) * 710,
+        radius: 13,
+        color: '#34d399',
+        coreColor: '#fef08a',
+        owner: this,
+        damage: 44,
+        type: 'arrow'
+      });
+      game.vfx.spawnShockwave(sx, sy, 54, '#fef08a', 0.22, false, true);
     }
 
     if (t >= this.dashDuration) {
@@ -263,7 +287,7 @@ export class Archer extends Fighter {
       const dx = enemy ? enemy.x - spawnX : this.facing * 520;
       const dy = targetY - spawnY;
       const dist = Math.hypot(dx, dy) || 1;
-      const speed = 735;
+      const speed = 715;
 
       game.vfx.spawnProjectile({
         x: spawnX,
@@ -274,7 +298,7 @@ export class Archer extends Fighter {
         color: '#10b981',
         coreColor: '#fef08a',
         owner: this,
-        damage: 94,
+        damage: 89,
         type: 'arrow'
       });
 
@@ -316,7 +340,7 @@ export class Archer extends Fighter {
       const pinnedLeft = this.x < 240 && enemy.x > this.x;
       const pinnedRight = this.x > ww - 240 && enemy.x < this.x;
 
-      if ((pinnedLeft || pinnedRight) && dist < 265 && this.dodgeCooldown <= 0 && this.wallFlipCooldown <= 0) {
+      if ((pinnedLeft || pinnedRight || dist < 190) && dist < 265 && this.dodgeCooldown <= 0 && this.wallFlipCooldown <= 0) {
         this.wallFlipCooldown = 3.0;
         this.startJump(enemy, game);
         return;
@@ -345,10 +369,10 @@ export class Archer extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    if (t < 0.58) {
+    if (t < 0.48) {
       // Row 2 Frames F00..F18: Quiver reach (F00..F04), progressive 14-frame bow draw & limb flex (F05..F18)
-      this.torsoAngle = -this.facing * 0.12 * (t / 0.58);
-      if (t >= 0.18 && Math.random() < 0.65) {
+      this.torsoAngle = -this.facing * 0.12 * (t / 0.48);
+      if (t >= 0.16 && Math.random() < 0.65) {
         const a = t * 24;
         const tipX = this.x + this.facing * 54;
         const tipY = this.y - 120;
@@ -362,8 +386,8 @@ export class Archer extends Fighter {
           maxLife: 0.24
         });
       }
-    } else if (t < 0.82) {
-      // Row 2 Frame F19 (t = 0.58s): High-velocity Tempest Piercer arrow release + sonic boom ring + vibrating string
+    } else if (t < 0.74) {
+      // Row 2 Frame F19: High-velocity Tempest Piercer arrow release + sonic boom ring + vibrating string
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.shotCombo++;
@@ -376,7 +400,7 @@ export class Archer extends Fighter {
         const dx = enemy ? enemy.x - spawnX : this.facing * 520;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
-        const speed = 675;
+        const speed = 705;
         const isTwinShot = this.shotCombo % 3 === 0;
 
         // Primary Supersonic Astral Arrow
@@ -389,7 +413,7 @@ export class Archer extends Fighter {
           color: '#10b981',
           coreColor: '#fef08a',
           owner: this,
-          damage: isTwinShot ? 80 : 92,
+          damage: isTwinShot ? 84 : 96,
           type: 'arrow'
         });
 
@@ -404,7 +428,7 @@ export class Archer extends Fighter {
             color: '#34d399',
             coreColor: '#fef08a',
             owner: this,
-            damage: 62,
+            damage: 64,
             type: 'arrow'
           });
         }
@@ -418,7 +442,7 @@ export class Archer extends Fighter {
         game.vfx.spawnBurst(spawnX, spawnY, 12, '#6ee7b7', 210);
         game.vfx.spawnGlyphBurst(spawnX, spawnY, 4, 'emerald');
       }
-    } else if (t >= 0.96) {
+    } else if (t >= 0.86) {
       this.setState('IDLE');
     }
   }
@@ -442,6 +466,7 @@ export class Archer extends Fighter {
       // Row 3 Frame F11 (t = 0.38s): Release 3 Direct Fan-Spread Wind Arrows horizontally!
       this.didActionFrame = true;
       this.vx -= this.facing * 65;
+      this.heal(18, 'STARLIGHT GRACE');
       if (game.audio) game.audio.play('arrow_shoot', this.x);
 
       const bowX = this.x + this.facing * 48;
@@ -457,13 +482,13 @@ export class Archer extends Fighter {
         game.vfx.spawnProjectile({
           x: bowX,
           y: bowY,
-          vx: Math.cos(a) * 650,
-          vy: Math.sin(a) * 650,
+          vx: Math.cos(a) * 675,
+          vy: Math.sin(a) * 675,
           radius: 12,
           color: '#34d399',
           coreColor: '#fef08a',
           owner: this,
-          damage: 36,
+          damage: 41,
           type: 'arrow'
         });
       });
@@ -507,7 +532,7 @@ export class Archer extends Fighter {
           coreColor: '#fef08a',
           owner: this,
           target: enemy,
-          damage: 23,
+          damage: 25,
           delay: i * 0.06,
           maxLinger: 0.55
         });

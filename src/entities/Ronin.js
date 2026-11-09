@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps21';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps21';
+import { Fighter } from './Fighter.js?v=30fps22';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps22';
 
 export class Ronin extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -7,10 +7,10 @@ export class Ronin extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Kaze-Maru',
-      maxHp: 1060,
-      moveSpeed: 238,
+      maxHp: 1125,
+      moveSpeed: 222,
       attackRange: 175,
-      autoInterval: 0.66,
+      autoInterval: 0.86,
       lightColor: 'rgba(129, 140, 248, 1)',
       primaryColor: '#818cf8'
     });
@@ -21,7 +21,9 @@ export class Ronin extends Fighter {
     this.theme = 'storm';
     this.hasPoise = false;
     this.skillTriggerRange = 440;
-    this.skillMaxCooldown = 4.2;
+    this.skillMaxCooldown = 4.85;
+    this.dodgeMaxCooldown = 3.45;
+    this.dashMaxCooldown = 3.40;
     this.autoDuration = 0.46;
     this.skillDuration = 0.72;
     this.ultDuration = 1.36;
@@ -111,8 +113,9 @@ export class Ronin extends Fighter {
       );
     }
 
-    attacker.takeDamage(54, this, true, 145, -155);
-    this.gainMana(18);
+    attacker.takeDamage(48, this, true, 145, -155);
+    this.heal(16, 'SERENE FOCUS');
+    this.gainMana(15);
     this.didActionFrame = true;
   }
 
@@ -148,7 +151,7 @@ export class Ronin extends Fighter {
           game.vfx.spawnShockwave(t.x, t.y - 82, 115, '#38bdf8', 0.26);
           game.vfx.spawnBurst(t.x, t.y - 82, 16, '#818cf8', 235, { upBias: 95, size: 5 });
           game.vfx.spawnDamageText(t.x, t.y - 156, 0, true, 'JUDGMENT SHEATH!', '#38bdf8');
-          t.takeDamage(28, this, true, 95, -145);
+          t.takeDamage(24, this, true, 95, -145);
         }
       }
     }
@@ -247,8 +250,8 @@ export class Ronin extends Fighter {
       const sA = this.facing === 1 ? -1.6 : Math.PI - 1.2;
       const eA = this.facing === 1 ? 1.2 : Math.PI + 1.6;
       game.vfx.spawnSlash(this.x, this.y - 74, 120, sA, eA, '#38bdf8', 0.26);
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - (oldX + this.x) * 0.5) < 135) {
-        enemy.takeDamage(38, this, true, 125, -135);
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - (oldX + this.x) * 0.5) < 145) {
+        enemy.takeDamage(34, this, true, 125, -135);
       }
     }
 
@@ -329,7 +332,7 @@ export class Ronin extends Fighter {
         this.addSlashLine(this.x - 45, this.y - 110, this.x + this.facing * 75, this.y - 20, 0.28);
         game.vfx.spawnSlash(this.x, this.y - 68, 118, -1.6, 1.2, '#38bdf8', 0.26);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 145) {
-          enemy.takeDamage(24, this, false, 45, -130);
+          enemy.takeDamage(22, this, false, 45, -130);
         }
       }
 
@@ -339,7 +342,7 @@ export class Ronin extends Fighter {
         this.addSlashLine(this.x - 45, this.y - 20, this.x + this.facing * 75, this.y - 110, 0.28);
         game.vfx.spawnSlash(this.x, this.y - 68, 124, 1.2, -1.6, '#818cf8', 0.26);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 155) {
-          enemy.takeDamage(28, this, true, 95, 120);
+          enemy.takeDamage(25, this, true, 95, 120);
         }
       }
 
@@ -358,6 +361,7 @@ export class Ronin extends Fighter {
       this.spawnAfterimage(this.x, this.y, this.facing, 6, Math.floor(u * 28), 0.22);
     }
     if (t >= dur) {
+      this.isDeflecting = false;
       this.isInvulnerable = false;
       this.setState('IDLE');
     }
@@ -385,11 +389,11 @@ export class Ronin extends Fighter {
           0.24
         );
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 28) {
-          const isCrit = Math.random() < 0.32;
-          const dmg = (step === 0 ? 28 : 32) * (isCrit ? 1.35 : 1);
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 30) {
+          const isCrit = Math.random() < 0.30;
+          const dmg = (step === 0 ? 27 : 30) * (isCrit ? 1.35 : 1);
           enemy.takeDamage(dmg, this, isCrit, 75, step === 1 ? -145 : 0);
-          this.gainMana(10);
+          this.gainMana(9);
         }
       } else {
         // Step 2 (3rd Hit): IAIDO FLASH-THROUGH SLASH & DELAYED JUDGMENT CUT!
@@ -397,7 +401,7 @@ export class Ronin extends Fighter {
         const ww = game.renderer.worldWidth;
         this.spawnAfterimage(oldX, this.y, this.facing, 2, 16, 0.30);
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 220) {
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 215) {
           const newX = Math.max(85, Math.min(ww - 85, enemy.x + this.facing * 94));
           this.spawnAfterimage((oldX + newX) * 0.5, this.y, this.facing, 6, 15, 0.26);
           this.x = newX;
@@ -416,8 +420,8 @@ export class Ronin extends Fighter {
             'IAIDO FLASH-THROUGH!',
             '#38bdf8'
           );
-          enemy.takeDamage(34, this, true, 35, -125);
-          this.gainMana(14);
+          enemy.takeDamage(32, this, true, 35, -125);
+          this.gainMana(11);
 
           this.delayedJudgmentCuts.push({
             target: enemy,
@@ -439,6 +443,7 @@ export class Ronin extends Fighter {
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
     if (!this._zantetsuStep) this._zantetsuStep = 0;
+    this.isInvulnerable = t < 0.56;
 
     const triggerZigZagPass = (passIdx) => {
       const ww = game.renderer.worldWidth;
@@ -471,7 +476,7 @@ export class Ronin extends Fighter {
       game.vfx.spawnSlash(center, this.groundY - 78 + off.dy * 0.5, 125, -1.6, 1.4, '#38bdf8', 0.26);
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - center) < 220) {
-        enemy.takeDamage(14, this, false, 18, -95);
+        enemy.takeDamage(12, this, false, 18, -95);
       }
     };
 
@@ -523,13 +528,14 @@ export class Ronin extends Fighter {
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 320) {
         game.vfx.spawnShockwave(enemy.x, enemy.y - 78, 165, '#818cf8', 0.34);
-        enemy.takeDamage(42, this, true, 165, -210);
+        enemy.takeDamage(36, this, true, 165, -210);
       }
     }
 
     if (t >= 0.86) {
       this._zantetsuStep = 0;
       this.y = this.groundY;
+      this.isInvulnerable = false;
       this.setState('IDLE');
     }
   }
@@ -588,7 +594,7 @@ export class Ronin extends Fighter {
         );
 
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(18, this, true, 15, -115);
+          enemy.takeDamage(16, this, true, 15, -115);
         }
       }
     }
@@ -623,7 +629,7 @@ export class Ronin extends Fighter {
       );
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(58, this, true, 220, -245);
+        enemy.takeDamage(52, this, true, 220, -245);
       }
     }
 

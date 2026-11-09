@@ -222,13 +222,13 @@ export class Fighter {
       amount *= 1.18;
     }
     if (this.forgeArmorTimer > 0) {
-      // Torgar's Magma Armor Fortify: 62% damage reduction, unstoppable super-armor, and molten thorn reflection!
-      amount *= 0.38;
+      // Torgar's Magma Armor Fortify: 48% damage reduction, unstoppable super-armor, and molten thorn reflection!
+      amount *= 0.52;
       knockX *= 0.12;
       knockY = 0;
       if (attacker && !attacker.isDead && !this._isThornReflect && Math.abs(attacker.x - this.x) < 210) {
         this._isThornReflect = true;
-        attacker.takeDamage(16, this, false, 65, 0);
+        attacker.takeDamage(12, this, false, 65, 0);
         this._isThornReflect = false;
         if (this.game && this.game.vfx) {
           this.game.vfx.spawnDamageText(this.x, this.y - 210, 0, false, 'MAGMA ARMOR!', '#f59e0b');

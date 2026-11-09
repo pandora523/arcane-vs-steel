@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps21';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps21';
+import { Fighter } from './Fighter.js?v=30fps22';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps22';
 
 export class FireMage extends Fighter {
   constructor(x, groundY, facing = -1) {
@@ -8,24 +8,24 @@ export class FireMage extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1286,
+      maxHp: 1275,
       attackRange: 520,
-      moveSpeed: 128,
-      autoInterval: 1.24,
+      moveSpeed: 138,
+      autoInterval: 1.18,
       lightColor: 'rgba(251, 146, 60, 1)',
       primaryColor: '#fb923c'
     });
     this.heroId = 'mage';
     this.theme = 'arcane';
     this.deathSfx = 'death_mage';
-    this.skillMaxCooldown = 4.78;
+    this.skillMaxCooldown = 4.55;
     this.ultName = 'ECLIPSE SUPERNOVA';
     this.skillName = 'SOLAR PILLAR';
     this.runeOrbit = 0;
     this.castCombo = 0;
     this.stepTimer = 0;
     this.dodgeMaxCooldown = 2.88;
-    this.dashMaxCooldown = 3.4;
+    this.dashMaxCooldown = 3.25;
     this.wallFlipCooldown = 0;
     this.crouchCooldown = 0;
     this.crouchDuration = 0.96;
@@ -114,6 +114,7 @@ export class FireMage extends Fighter {
     this.isCrouching = true;
     this.isDeflecting = true;
     this.vx = 0;
+    this.heal(13, 'FLAME WARD');
     if (game && game.vfx) {
       game.vfx.spawnShockwave(this.x, this.groundY - 2, 66, '#fb923c', 0.26, true);
       game.vfx.spawnShockwave(this.x + this.facing * 42, this.y - 92, 48, '#fef08a', 0.24, false, true);
@@ -137,6 +138,7 @@ export class FireMage extends Fighter {
     this.blinkPortalTimer = 0.56;
     this.vx = 0;
     this.vy = 0;
+    this.heal(16, 'SOLAR PHOENIX');
 
     let targetX;
     if (enemy && (nearLeft || nearRight || dist < 245)) {
@@ -166,7 +168,7 @@ export class FireMage extends Fighter {
 
     // Volatile Solar Remnant scorches melee pursuers at departure point!
     if (enemy && !enemy.isDead && dist < 210) {
-      enemy.takeDamage(30, this, false, 95, -55);
+      enemy.takeDamage(32, this, false, 95, -55);
       game.vfx.spawnDamageText(enemy.x, enemy.y - 132, 0, false, 'SOLAR REMNANT!', '#fb923c');
     }
   }
@@ -246,8 +248,8 @@ export class FireMage extends Fighter {
         game.vfx.spawnProjectile({
           x: sx,
           y: sy,
-          vx: (dx / td) * 685,
-          vy: (dy / td) * 685,
+          vx: (dx / td) * 675,
+          vy: (dy / td) * 675,
           radius: 14,
           color: '#fb923c',
           coreColor: '#fef08a',
@@ -300,13 +302,13 @@ export class FireMage extends Fighter {
           game.vfx.spawnProjectile({
             x: sx,
             y: sy,
-            vx: (dx / d) * 655,
-            vy: (dy / d) * 655,
+            vx: (dx / d) * 675,
+            vy: (dy / d) * 675,
             radius: 14,
             color: '#fb923c',
             coreColor: '#fef08a',
             owner: this,
-            damage: 48,
+            damage: 50,
             type: 'fireball'
           });
         }
@@ -344,8 +346,8 @@ export class FireMage extends Fighter {
       game.vfx.spawnProjectile({
         x: sx,
         y: sy,
-        vx: (dx / d) * 645,
-        vy: (dy / d) * 645,
+        vx: (dx / d) * 665,
+        vy: (dy / d) * 665,
         radius: 13,
         color: '#fb923c',
         coreColor: '#fef08a',
@@ -401,7 +403,7 @@ export class FireMage extends Fighter {
       const dx = enemy ? enemy.x - spawnX : this.facing * 500;
       const dy = targetY - spawnY;
       const dist = Math.hypot(dx, dy) || 1;
-      const speed = 665;
+      const speed = 705;
 
       game.vfx.spawnProjectile({
         x: spawnX,
@@ -412,7 +414,7 @@ export class FireMage extends Fighter {
         color: '#fb923c',
         coreColor: '#fef08a',
         owner: this,
-        damage: 86,
+        damage: 85,
         type: 'fireball',
         isMeteor: false
       });
@@ -532,7 +534,7 @@ export class FireMage extends Fighter {
         const dx = enemy ? enemy.x - spawnX : this.facing * 460;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
-        const speed = 625;
+        const speed = 665;
         const isTwinFlare = this.castCombo % 3 === 0;
 
         game.vfx.spawnProjectile({
@@ -544,7 +546,7 @@ export class FireMage extends Fighter {
           color: '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          damage: isTwinFlare ? 68 : 79,
+          damage: isTwinFlare ? 69 : 80,
           type: 'fireball',
           isMeteor: false
         });
@@ -559,7 +561,7 @@ export class FireMage extends Fighter {
             color: '#ea580c',
             coreColor: '#fef08a',
             owner: this,
-            damage: 42,
+            damage: 43,
             type: 'fireball',
             isMeteor: false
           });
@@ -588,19 +590,19 @@ export class FireMage extends Fighter {
 
       game.vfx.spawnFlamePillar(enemy.x, this.groundY, this, enemy, {
         theme: 'arcane',
-        delay: 0.24,
+        delay: 0.15,
         maxLife: 1.45,
         scaleWidth: 1.15
       });
       game.vfx.spawnFlamePillar(enemy.x - 95, this.groundY, this, enemy, {
         theme: 'arcane',
-        delay: 0.36,
+        delay: 0.24,
         maxLife: 1.25,
         scaleWidth: 0.75
       });
       game.vfx.spawnFlamePillar(enemy.x + 95, this.groundY, this, enemy, {
         theme: 'arcane',
-        delay: 0.36,
+        delay: 0.24,
         maxLife: 1.25,
         scaleWidth: 0.75
       });
@@ -623,13 +625,13 @@ export class FireMage extends Fighter {
         game.vfx.spawnProjectile({
           x: sx,
           y: sy,
-          vx: (dx / dist) * 595,
-          vy: (dy / dist) * 595 + vyOff,
+          vx: (dx / dist) * 635,
+          vy: (dy / dist) * 635 + vyOff,
           radius: 13,
           color: '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          damage: 35,
+          damage: 38,
           type: 'fireball'
         });
       });

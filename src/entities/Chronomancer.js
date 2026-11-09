@@ -1,6 +1,6 @@
-import { Fighter } from './Fighter.js?v=30fps21';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps21';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps21';
+import { Fighter } from './Fighter.js?v=30fps22';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps22';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps22';
 
 const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
@@ -11,17 +11,17 @@ export class Chronomancer extends Fighter {
       x,
       groundY,
       facing,
-      maxHp: 1255,
+      maxHp: 1205,
       attackRange: 510,
       moveSpeed: 168,
-      autoInterval: 1.04,
+      autoInterval: 1.09,
       lightColor: 'rgba(45, 212, 191, 1)',
       primaryColor: '#2dd4bf'
     });
     this.heroId = 'chronomancer';
     this.theme = 'chrono';
     this.deathSfx = 'death_chrono';
-    this.skillMaxCooldown = 4.90;
+    this.skillMaxCooldown = 5.15;
     this.skillTriggerRange = 540;
     this.skillName = 'HOURGLASS STASIS';
     this.ultName = 'DOOMSDAY MIDNIGHT';
@@ -37,7 +37,7 @@ export class Chronomancer extends Fighter {
     this.didStasisCast = false;
     this.didStasisShatter = false;
     this.ultStage = 0;
-    this.dodgeMaxCooldown = 2.95;
+    this.dodgeMaxCooldown = 3.12;
     this.dashMaxCooldown = 3.10;
     this.isChronoWarp = false;
     this.didChronoWarp = false;
@@ -207,13 +207,13 @@ export class Chronomancer extends Fighter {
       this.warpOriginX = this.x;
       this.vx = 0;
 
-      const farLeftX = 135;
-      const farRightX = ww - 135;
-      let targetX = this.x < ww * 0.5 ? farRightX : farLeftX;
-      if (Math.abs(enemy.x - targetX) < 230) {
-        targetX = Math.abs(enemy.x - farLeftX) > Math.abs(enemy.x - farRightX) ? farLeftX : farRightX;
+      const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
+      let targetX = enemy.x + openSideDir * 375;
+      if (Math.abs(targetX - this.x) < 250) {
+        const crossDir = this.x < enemy.x ? 1 : -1;
+        targetX = enemy.x + crossDir * 365;
       }
-      this.warpTargetX = targetX;
+      this.warpTargetX = Math.max(140, Math.min(ww - 140, targetX));
       this.dashDir = Math.sign(this.warpTargetX - this.warpOriginX) || 1;
 
       game.vfx.spawnShockwave(this.x, this.y - 96, 118, '#2dd4bf', 0.36, false, true);
@@ -230,7 +230,7 @@ export class Chronomancer extends Fighter {
       }
 
       this.rewindTimeline(
-        isVanguard ? 15 : isHarvester ? 16 : isGroundedCaster ? 13 : 14,
+        13,
         this.x,
         this.y - 96,
         game,
@@ -246,7 +246,7 @@ export class Chronomancer extends Fighter {
     this.vx = smartDir * 355;
 
     this.rewindTimeline(
-      isVanguard ? 15 : isHarvester ? 16 : isGroundedCaster ? 13 : 14,
+      13,
       this.x,
       this.y - 96,
       game,
@@ -732,7 +732,7 @@ export class Chronomancer extends Fighter {
         };
 
         this.rewindTimeline(
-          isVanguard ? 32 : isHarvester ? 33 : isGroundedCaster ? 32 : 34,
+          28,
           tx,
           ty - 98,
           game,
