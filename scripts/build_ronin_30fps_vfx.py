@@ -45,6 +45,30 @@ C_BRASS_BRIGHT = (234, 179, 8, 255)
 C_BRASS_MID = (180, 110, 24, 255)
 C_BRASS_DARK = (120, 53, 15, 255)
 
+C_STORM_AURA = (34, 211, 238, 95)
+C_VIOLET_AURA = (139, 92, 246, 90)
+
+
+def apply_logical_storm_aura(img, row_idx, f):
+    """
+    Wraps opaque logical pixels (within 3..48) with a 1px translucent HD-2D electric-cyan / violet
+    storm aura fringe so every VFX frame has a soft volumetric glow before 4x NEAREST upscaling.
+    """
+    arr = np.array(img, dtype=np.uint8)
+    alpha = arr[:, :, 3]
+    px = img.load()
+    for y in range(3, 49):
+        for x in range(3, 49):
+            if alpha[y, x] == 0:
+                if (
+                    alpha[y - 1, x] > 180
+                    or alpha[y + 1, x] > 180
+                    or alpha[y, x - 1] > 180
+                    or alpha[y, x + 1] > 180
+                ):
+                    px[x, y] = C_STORM_AURA if (x + y + f + row_idx) % 2 == 0 else C_VIOLET_AURA
+    return img
+
 
 def put(px, x, y, col):
     ix = int(round(x))
@@ -250,6 +274,7 @@ def build_row0_crescent_wave(f):
         draw_line(px, zig1_x, zig1_y, zig2_x, zig2_y, C_VIOLET_BRIGHT)
 
     draw_star(px, 44, cy, 2 + (f % 2), C_WHITE, C_CYAN_LIGHT, rot=phase)
+    apply_logical_storm_aura(img, 0, f)
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)
 
 
@@ -345,6 +370,7 @@ def build_row1_sky_odachi(f):
         if f <= 20:
             draw_star(px, cx, 14, 3, C_WHITE, C_GOLD_WHITE, rot=phase)
 
+    apply_logical_storm_aura(img, 1, f)
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)
 
 
@@ -453,6 +479,7 @@ def build_row2_dragon_pillar(f):
         for h_s in range(1, 4):
             put(px, hx_c + side * (2 + h_s), max(6, hy_c - 1 - h_s), C_GOLD_WHITE if h_s == 3 else C_BRASS_BRIGHT)
 
+    apply_logical_storm_aura(img, 2, f)
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)
 
 
@@ -540,6 +567,7 @@ def build_row3_susanoo_avatar(f):
     # Apex Storm-Crest Star above Susanoo's Kabuto (y = 6..8)
     draw_star(px, cx, 7 + bob, 2, C_WHITE, C_CYAN_LIGHT, rot=-phase)
 
+    apply_logical_storm_aura(img, 3, f)
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)
 
 
@@ -621,6 +649,7 @@ def build_row4_judgment_slash_ring(f):
             rot=phase,
         )
 
+    apply_logical_storm_aura(img, 4, f)
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)
 
 
@@ -697,12 +726,12 @@ def main():
         print(f"{label:66s}: {adj_diffs}/29 adjacent transitions distinct")
 
     print(f"VFX Boundary clip audit across 150 frames (outside 2..49 logical): {clip_count}/150")
-    out_path = "/home/antigravity/assets/sprites/ronin_vfx.png"
+    out_path = "/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/ronin_vfx.png"
     sheet.save(out_path)
     print(f"Saved 30fps Ronin VFX sheet to {out_path} ({sheet.size[0]}x{sheet.size[1]})")
 
     # Build contact sheet in artifact directory
-    art_dir = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/4f1fb80f-a88f-4496-9746-b4b9fe84f6d4"
+    art_dir = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
     thumb = 80
     pad_top = 24
     cw = COLS * thumb
