@@ -113,3 +113,18 @@ Verify visually:
 - Zero extra limbs or duplicate hands on torso/hips.
 - Zero border clipping (`0/270` frames touching the 2px safety margin).
 - Smooth, readable 16-bit HD-2D silhouette across all 9 rows.
+
+---
+
+## Stage 8: High-Precision `104x104 -> 208x208` 13-Part Skeletal Articulation & Zero-Shear Rules
+
+When upgrading champions that require intricate armor filigree, non-boxy silhouettes, and full-body martial articulation (such as **Kaze-Maru (`Ronin`)** in `scripts/build_ronin_30fps_sheet.py`):
+1. **Generate Cape-Free Full-Stance Base Art (`assets/sprites/<hero>_v2_base.jpg`)**:
+   - Avoid giant horizontal capes in the `1024x1024` reference image that crush the character's horizontal width when downsampled.
+   - Generate the character in a clear three-quarter `Kamae` martial stance with separated limbs so all 13 anatomical parts (`mane`, `head`, `torso`, `l_sode`, `l_forearm`, `r_sode`, `r_forearm`, `l_thigh`, `l_shin`, `l_foot`, `r_thigh`, `r_shin`, `r_foot`) segment cleanly.
+2. **Assemble & Rotate in `512x512` Space -> Downsample `NEAREST` to `104x104` Logical Grid (`2x NEAREST` -> `208x208`)**:
+   - Rendering at `104x104` logical resolution (`2x2` pixel blocks in `208x208`) provides **400% (4x) finer detail** than `52x52` (`4x4` pixel blocks), preserving crescent `Kabuto` horns, `Menpo` Oni-mask tusks, glowing eyes, chest lightning filigree, braided `Obi` waist ropes, `Kusazuri` tassets, and diamond `Kikko` knee-guards without boxiness.
+   - Draw dark-navy cloth joint capsules (`draw_capsule`, `draw_joint_cap`) underneath rotated armor plates and layer `torso` (`Kusazuri` tassets) over hip joints and `shin` (`Kikko` knee-guards) over knee joints so bending up to `±90°` never opens a seam.
+3. **Never Shear or Skew Sprites (`ctx.transform` / Scanline Shifting)**:
+   - Never apply horizontal scanline shifts (`lunge[y, x + dx] = stand[y, x]`) in Python or `ctx.transform(1, 0, -fwdSign * lean, 1, 0, 0)` in `PixelForge.js` — both pull the sprite sideways like rubber. All leaning, lunging, crouching, and supersonic spear-diving postures must come from genuine multi-joint skeletal rotation (`torso_deg`, `head_rel_deg`, `l_thigh_deg`, `l_shin_deg`, `r_thigh_deg`, `r_shin_deg`, `l_sode_rel_deg`, `r_sode_rel_deg`).
+

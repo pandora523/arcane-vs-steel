@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps28';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps28';
+import { Fighter } from './Fighter.js?v=30fps29';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps29';
 
 export class Ronin extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -1321,19 +1321,14 @@ export class Ronin extends Fighter {
     // 0. Render 4x4 Pixel-Art Raijin Storm-Domain Ground Seal during ULTIMATE
     this.drawPixelStormDomain4x4(ctx);
 
-    // 1. Render Indigo-Cyan Lightning Afterimage Clones (with dynamic dive pitch!)
+    // 1. Render Indigo-Cyan Lightning Afterimage Clones (pure un-rotated 4x4 pixel-art frames!)
     if (this.afterimages.length > 0 && sprites && sprites.sheet && sprites.sheet.complete) {
       for (const img of this.afterimages) {
         const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.58);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
-        ctx.translate(Math.round(img.x), Math.round(img.y));
+        ctx.translate(Math.round(img.x / 4) * 4, Math.round(img.y / 4) * 4);
         ctx.scale(img.facing, 1);
-        if (img.pitch) {
-          ctx.translate(0, -76);
-          ctx.rotate(img.pitch);
-          ctx.translate(0, 76);
-        }
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = alpha;
         PixelForge.drawAfterimageFrame(ctx, sprites, img.frameIdx || 190, 208, 208);
@@ -1452,13 +1447,6 @@ export class Ronin extends Fighter {
       Math.round(this.y + groundPlantOffset - walkBob)
     );
     ctx.scale(this.facing, 1);
-
-    // Apply smooth aerodynamic dive pitch around Kaze-Maru's center of mass during SKILL / ULTIMATE / DASH
-    if (!isReflection && Math.abs(this.divePitchRad) > 0.005) {
-      ctx.translate(0, -76);
-      ctx.rotate(this.divePitchRad);
-      ctx.translate(0, 76);
-    }
 
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection, renderer);
 

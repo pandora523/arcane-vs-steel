@@ -17,54 +17,54 @@ export class PixelForge {
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps28'),
-        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps28'),
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps29'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps29'),
         portrait: loadImg('assets/sprites/warrior_portrait.png?v=2', () => this.refreshPortraits())
       },
       mage: {
-        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps28'),
-        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps28'),
+        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps29'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps29'),
         portrait: loadImg('assets/sprites/mage_portrait.png?v=2', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps28'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps28'),
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps29'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps29'),
         portrait: loadImg('assets/sprites/archer_portrait.png?v=2', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps28'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps28'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps28'),
+        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps29'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps29'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps29'),
         portrait: loadImg('assets/sprites/priestess_portrait.png?v=2', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps28'),
-        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps28'),
+        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps29'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps29'),
         portrait: loadImg('assets/sprites/reaper_portrait.png?v=2', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps28'),
-        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps28'),
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps29'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps29'),
         portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=2', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps28'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps28'),
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps29'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps29'),
         portrait: loadImg('assets/sprites/titan_portrait.png?v=2', () => this.refreshPortraits())
       },
       ronin: {
-        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps28'),
-        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps28'),
+        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps29'),
+        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps29'),
         portrait: loadImg('assets/sprites/ronin_portrait.png?v=2', () => this.refreshPortraits())
       },
       valkyrie: {
-        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps28'),
-        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps28'),
+        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps29'),
+        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps29'),
         portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=2', () => this.refreshPortraits())
       },
       icemage: {
-        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps28'),
-        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps28'),
+        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps29'),
+        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps29'),
         portrait: loadImg('assets/sprites/icemage_portrait.png?v=2', () => this.refreshPortraits())
       }
     };
@@ -684,37 +684,18 @@ export class PixelForge {
       return;
     }
 
-    // Fallback / main sprite draw with grounded forward-lean momentum shear (boots anchored at y=0)
-    const lean = !isReflection && !fighter.isDead ? (fighter.forwardLean || 0) : 0;
-    if (Math.abs(lean) > 0.004) {
-      const fwdSign = fighter.heroId === 'mage' ? -1 : 1;
-      ctx.save();
-      ctx.transform(1, 0, -fwdSign * lean, 1, 0, 0);
-      ctx.drawImage(
-        sheet,
-        sx,
-        sy,
-        cell,
-        cell,
-        Math.round(-w * 0.5 + recoilX),
-        Math.round(baseY + recoilY),
-        w,
-        h
-      );
-      ctx.restore();
-    } else {
-      ctx.drawImage(
-        sheet,
-        sx,
-        sy,
-        cell,
-        cell,
-        Math.round(-w * 0.5 + recoilX),
-        Math.round(baseY + recoilY),
-        w,
-        h
-      );
-    }
+    // Draw crisp 30fps handcrafted sprite frame directly on the integer pixel grid (ZERO horizontal shear/pulling!)
+    ctx.drawImage(
+      sheet,
+      sx,
+      sy,
+      cell,
+      cell,
+      Math.round(-w * 0.5 + recoilX),
+      Math.round(baseY + recoilY),
+      w,
+      h
+    );
   }
 
   static drawGhostFrame(_ctx, _charSet, _frameIdx, _w, _h) {

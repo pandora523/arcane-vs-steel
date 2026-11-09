@@ -79,9 +79,10 @@
     "ronin": {
       "name": "Kaze-Maru",
       "theme": "storm",
-      "base_source": "ronin_v1_base_1794151225087.jpg",
-      "script": "scripts/build_ronin_30fps_sheet.py",
-      "vfx_script": "scripts/build_ronin_30fps_vfx.py"
+      "base_source": "assets/sprites/ronin_v2_base.jpg",
+      "logical_res": "104x104 (2x NEAREST -> 208x208)",
+      "rig": "13-part hierarchical skeletal articulation (mane, head, torso, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot)",
+      "script": "scripts/build_ronin_30fps_sheet.py"
     },
     "valkyrie": {
       "name": "Freyja",
