@@ -1,6 +1,6 @@
-import { Fighter } from './Fighter.js?v=30fps27';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps27';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps27';
+import { Fighter } from './Fighter.js?v=30fps28';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps28';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps28';
 
 export class IceMage extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -35,6 +35,7 @@ export class IceMage extends Fighter {
     this.triMatrixCage = null; // Geometric 3-Prism Triangular Laser Matrix around the enemy during SKILL
     this.borealisCathedral = null; // Colossal Diamond Iceberg Prison + 7-Prism Orbital Array + Aurora Sky Curtain during ULTIMATE
     this.skateRibbons = []; // Crystalline figure-skating blade ribbons left behind as Glacia glides
+    this.activeFrostRings = []; // Pure 4x4 pixel-art expanding crystalline snowflake shockwaves (zero smooth Canvas2D arcs!)
 
     this.dodgeMaxCooldown = 3.08;
     this.dashMaxCooldown = 3.05;
@@ -50,6 +51,22 @@ export class IceMage extends Fighter {
     this.didMatrixDeploy = false;
     this.didMatrixImplode = false;
     this.ultStage = 0;
+  }
+
+  /**
+   * Spawns a pure 4x4 pixel-art expanding Crystalline Snowflake Shockwave Ring (replaces smooth vector spawnShockwave).
+   */
+  spawnPixelFrostRing(x, y, maxRadius = 110, color = '#67e8f9', maxLife = 0.30, isFloor = false, hasSpikes = false) {
+    this.activeFrostRings.push({
+      x,
+      y,
+      maxRadius,
+      color,
+      life: 0,
+      maxLife,
+      isFloor,
+      hasSpikes
+    });
   }
 
   /**
@@ -170,7 +187,7 @@ export class IceMage extends Fighter {
       }
       if (game.vfx) {
         game.vfx.spawnDamageText(enemy.x, enemy.y - 172, 0, true, '★ ABSOLUTE ZERO SHATTER! ★', '#67e8f9');
-        game.vfx.spawnShockwave(enemy.x, enemy.y - 96, 118, '#67e8f9', 0.30, false, true);
+        this.spawnPixelFrostRing(enemy.x, enemy.y - 96, 118, '#67e8f9', 0.32, false, true);
         game.vfx.spawnBurst(enemy.x, enemy.y - 96, 18, '#a5f3fc', 240, { upBias: 95, size: 6 });
         game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 8, 'glacial');
       }
@@ -306,10 +323,10 @@ export class IceMage extends Fighter {
     this.vx = 0;
     this.vy = 0;
     this.spawnPermafrostZone(this.x, 140, 4.2);
+    this.spawnPixelFrostRing(this.x, this.groundY, 92, '#67e8f9', 0.30, true, false);
     if (game && game.audio) game.audio.play('frost_cast', this.x);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(this.x, this.y - 135, 0, false, 'AXEL PRISM VAULT!', '#67e8f9');
-      game.vfx.spawnShockwave(this.x, this.groundY, 92, '#67e8f9', 0.30, true);
       game.vfx.spawnGlyphBurst(this.x, this.y - 60, 6, 'glacial');
     }
   }
@@ -333,10 +350,10 @@ export class IceMage extends Fighter {
       refractedCount: 0
     };
     this.spawnPermafrostZone(this.x + this.facing * 50, 165, 4.8);
+    this.spawnPixelFrostRing(wallX, this.groundY - 2, 84, '#67e8f9', 0.28, true, false);
 
     if (game && game.audio) game.audio.play('frost_cast', wallX);
     if (game && game.vfx) {
-      game.vfx.spawnShockwave(wallX, this.groundY - 2, 84, '#67e8f9', 0.28, true);
       game.vfx.spawnGlyphBurst(wallX, this.groundY - 78, 6, 'glacial');
       game.vfx.spawnDamageText(this.x, this.y - 128, 0, false, 'REFRACTIVE ICE-WALL!', '#a5f3fc');
     }
@@ -416,11 +433,11 @@ export class IceMage extends Fighter {
 
     // Spawn a floating Hexagonal Cryo-Prism Mirror where the decoy shattered!
     const prism = this.deployCryoPrism(d.x, this.groundY - 132, game, 6.8);
+    this.spawnPixelFrostRing(d.x, d.y - 92, 112, '#67e8f9', 0.30, false, true);
 
     if (game) {
       if (game.audio) game.audio.play('ice_shatter', d.x);
       if (game.vfx) {
-        game.vfx.spawnShockwave(d.x, d.y - 92, 112, '#67e8f9', 0.28, false, true);
         game.vfx.spawnBurst(d.x, d.y - 92, 16, '#a5f3fc', 225, { upBias: 85, size: 6 });
         game.vfx.spawnGlyphBurst(d.x, d.y - 92, 7, 'glacial');
         game.vfx.spawnDamageText(d.x, d.y - 162, 0, false, 'DECOY SHATTER NOVA!', '#67e8f9');
@@ -517,9 +534,7 @@ export class IceMage extends Fighter {
         this.flipAngle = 0;
         this.isInvulnerable = false;
         this.spawnPermafrostZone(this.x, 145, 4.2);
-        if (game && game.vfx) {
-          game.vfx.spawnShockwave(this.x, this.groundY, 76, '#67e8f9', 0.25, true);
-        }
+        this.spawnPixelFrostRing(this.x, this.groundY, 76, '#67e8f9', 0.25, true, false);
         this.setState('IDLE');
       }
       return;
@@ -716,6 +731,12 @@ export class IceMage extends Fighter {
       this.skateRibbons[i].life += dt;
       if (this.skateRibbons[i].life >= this.skateRibbons[i].maxLife) {
         this.skateRibbons.splice(i, 1);
+      }
+    }
+    for (let i = this.activeFrostRings.length - 1; i >= 0; i--) {
+      this.activeFrostRings[i].life += dt;
+      if (this.activeFrostRings[i].life >= this.activeFrostRings[i].maxLife) {
+        this.activeFrostRings.splice(i, 1);
       }
     }
 
@@ -1046,7 +1067,7 @@ export class IceMage extends Fighter {
       const cx = this.borealisCathedral ? this.borealisCathedral.x : centerX;
       const cy = this.groundY - 135;
       game.vfx.spawnDamageText(cx, this.groundY - 380, 0, true, '★ CATHEDRAL DIAMOND SHATTER! ★', '#a5f3fc');
-      game.vfx.spawnShockwave(cx, cy, 240, '#67e8f9', 0.44, false, true);
+      this.spawnPixelFrostRing(cx, cy, 240, '#67e8f9', 0.44, false, true);
       game.vfx.spawnBurst(cx, cy, 28, '#67e8f9', 320, { upBias: 90, size: 7 });
       game.vfx.spawnBurst(cx, cy, 22, '#e879f9', 290, { upBias: 75, size: 6 });
       game.vfx.spawnGlyphBurst(cx, cy, 14, 'glacial');
@@ -1613,10 +1634,64 @@ export class IceMage extends Fighter {
     ctx.restore();
   }
 
+  /**
+   * Pass 15: Pure 4x4 Pixel-Art Expanding Crystalline Snowflake Shockwave Rings
+   * Replaces smooth Canvas2D vector shockwaves with stepped 4x4 pixel frost rings + 8 crystalline star spikes + bloomed Row-4 Hoarfrost Starburst!
+   */
+  drawPixelFrostRings4x4(ctx, renderer = null) {
+    if (!this.activeFrostRings.length) return;
+    const vfxSheet = PixelForge.initAssets().icemage?.vfx;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    for (const r of this.activeFrostRings) {
+      const u = Math.min(1, r.life / r.maxLife);
+      const fade = Math.max(0, 1 - u);
+      const rad = r.maxRadius * (0.20 + 0.80 * Math.pow(u, 0.65));
+      const rx = Math.round(r.x / 4) * 4;
+      const ry = Math.round(r.y / 4) * 4;
+      const rX = rad;
+      const rY = r.isFloor ? rad * 0.24 : rad;
+
+      if (renderer && renderer.glowGlacial) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.45;
+        ctx.drawImage(renderer.glowGlacial, rx - rX * 1.15, ry - rY * 1.15, rX * 2.3, rY * 2.3);
+      }
+
+      // If hasSpikes (Shatter Nova), also stamp the 3-pass bloomed Row-4 Hoarfrost Shatter Starburst sprite cell!
+      if (r.hasSpikes && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+        const col = Math.min(29, Math.floor(u * 30));
+        this.drawBloomedVfxCell(ctx, vfxSheet, 4, col, rx, ry, Math.round(r.maxRadius * 1.45), fade * 0.88, renderer, 1.6);
+      }
+
+      ctx.globalCompositeOperation = 'lighter';
+      const steps = Math.max(24, Math.min(64, Math.round(rad * 0.55)));
+      for (let s = 0; s < steps; s++) {
+        const ang = (s / steps) * Math.PI * 2;
+        const spikeBoost = r.hasSpikes && s % 4 === 0 ? 1.22 : 1.0;
+        const px = Math.round((rx + Math.cos(ang) * rX * spikeBoost) / 4) * 4;
+        const py = Math.round((ry + Math.sin(ang) * rY * spikeBoost) / 4) * 4;
+
+        ctx.globalAlpha = fade * 0.58;
+        ctx.fillStyle = s % 3 === 0 ? '#e879f9' : r.color;
+        ctx.fillRect(px - 4, py - 4, 8, 8);
+
+        ctx.globalAlpha = fade * 0.95;
+        ctx.fillStyle = s % 2 === 0 ? '#ffffff' : '#a5f3fc';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+      }
+    }
+
+    ctx.restore();
+  }
+
   drawForegroundOverlay(ctx, renderer = null) {
     this.drawPermafrostZones(ctx, renderer);
     this.drawIceConstructsAndBrittle(ctx, renderer);
     this.drawCryoPrismsAndBeams(ctx, renderer);
+    this.drawPixelFrostRings4x4(ctx, renderer);
   }
 
   drawUltimateForeground(ctx, renderer = null) {

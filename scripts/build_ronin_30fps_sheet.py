@@ -161,31 +161,35 @@ def composite_over(base, over):
 
 def refine_ronin_pixel_model(cell):
     """
-    Pass 1 HD-2D Pixel Refinement & De-Noising of Kaze-Maru's 45px Samurai Model (y = 4..48):
-    - Removes isolated dark #000000 interior speckles inside the silver topknot mane, crescent kabuto horns,
-      and indigo-violet O-Yoroi armor plates so pixel clusters read with Octopath/Chronomancer clarity.
+    Pass 10 HD-2D Pixel Refinement & De-Noising of Kaze-Maru's 45px Samurai Model (y = 4..48):
+    - Strips the noisy AI upper-left drum/hook remnant (y = 4..16, x = 4..23) and replaces it with a
+      clean, hand-sculpted, wind-swept Silver Samurai Wolf-Mane (y = 6..15, x = 15..24).
     - Hand-sculpts his:
       1) Gleaming Silver-Gold Crescent Moon `Maedate` Kabuto Horns (y = 4..9, x = 23..32)
-      2) Flowing Silver Horsehair Topknot Mane (y = 5..14, x = 11..24)
-      3) Fierce Indigo-Steel `Menpo` Oni-Mask & Luminous 2px Electric-Cyan Samurai Eyes (y = 9..14, x = 24..31)
-      4) Layered `O-Yoroi` `Do` Breastplate with Crackling Cyan-Violet Lightning Veins (y = 15..25, x = 21..31)
-      5) Silk Violet-Gold `Obi` Waist Sash & `Kusazuri` Hip Tassets (y = 25..35, x = 20..33)
-      6) Lightning `Kikko` Knee Guards, `Suneate` Shin Greaves & Tabi War-Boots planted at y = 48.
+      2) Fierce Indigo-Steel `Menpo` Oni-Mask & Luminous 2px Electric-Cyan Samurai Eyes (y = 9..14, x = 24..31)
+      3) Layered `O-Yoroi` `Do` Breastplate & `Sode` Pauldrons with Crackling Cyan-Violet Lightning Veins (y = 15..25, x = 20..32)
+      4) Silk Violet-Gold `Obi` Waist Sash & `Kusazuri` Hip Tassets (y = 25..35, x = 20..33)
+      5) High-Contrast Armored `Haidate` Thighs, `Kikko` Knee-Guards, `Suneate` Shin-Greaves & `Waraji` Battle-Boots planted at y = 48.
     """
     out = cell.copy()
 
-    # 1. De-noise overly dark interior speckles inside the silver mane (y = 4..15, x = 10..24)
-    for y in range(4, 16):
-        for x in range(10, 25):
-            if out[y, x, 3] > 0:
-                r, g, b, _ = [int(v) for v in out[y, x]]
-                lum = 0.299 * r + 0.587 * g + 0.114 * b
-                if lum < 95:
-                    out[y, x] = SILVER_MID if (x + y) % 2 == 0 else SILVER_DARK
-                elif lum > 205:
-                    out[y, x] = SILVER_WHITE
-                elif lum > 155:
-                    out[y, x] = SILVER_LIGHT
+    # 1. Strip the noisy AI upper-left orange/white drum-hook artifact (y = 4..18, x = 4..24)
+    out[4:18, 4:24] = 0
+
+    # Hand-sculpt compact Indigo-Steel `Shikoro` (tiered Kabuto neck-guard plates, x = 22..25, y = 7..13)
+    # plus two slender wind-swept silver hair strands (y = 10..13, x = 18..22) so the Raijin Drum Halo is 100% clear
+    for sy in range(7, 14):
+        set_px(out, 23, sy, INDIGO_MID if sy % 2 == 0 else BRASS_BRIGHT)
+        set_px(out, 24, sy, INDIGO_LIGHT if sy % 2 == 0 else INDIGO_DARK)
+    # Two crisp 1px silver-white hair strands streaming behind the Menpo mask
+    set_px(out, 22, 9, SILVER_LIGHT)
+    set_px(out, 21, 9, SILVER_WHITE)
+    set_px(out, 20, 10, SILVER_LIGHT)
+    set_px(out, 19, 10, SILVER_MID)
+    set_px(out, 22, 11, SILVER_WHITE)
+    set_px(out, 21, 11, SILVER_LIGHT)
+    set_px(out, 20, 12, SILVER_MID)
+    set_px(out, 19, 12, INDIGO_LIGHT)
 
     # 2. De-noise pure-black interior speckles inside the torso/tassets/legs (y = 14..47, x = 19..36)
     for y in range(14, 47):
@@ -194,52 +198,58 @@ def refine_ronin_pixel_model(cell):
                 continue
             r, g, b, _ = [int(v) for v in out[y, x]]
             lum = 0.299 * r + 0.587 * g + 0.114 * b
-            if lum < 22:
+            if lum < 28:
                 out[y, x] = INDIGO_DARK if (x + y) % 2 == 0 else INDIGO_MID
 
     # 3. Hand-sculpt Gleaming Crescent Moon `Maedate` Kabuto Horns & Kabuto Dome (y = 4..10, x = 23..32)
-    # Left horn sweeping up-left to (24, 4), right horn sweeping up-right to (31, 4)
     horn_pixels = [
-        (24, 4, GOLD_WHITE),
-        (24, 5, SILVER_WHITE),
-        (25, 6, SILVER_LIGHT),
+        (23, 4, GOLD_WHITE),
+        (24, 5, GOLD_WHITE),
+        (24, 6, BRASS_BRIGHT),
         (25, 7, BRASS_BRIGHT),
         (26, 8, GOLD_WHITE),
-        (27, 8, GOLD_WHITE),
+        (27, 8, PURE_WHITE),
         (28, 8, GOLD_WHITE),
         (29, 8, BRASS_BRIGHT),
-        (30, 7, SILVER_LIGHT),
-        (30, 6, SILVER_WHITE),
-        (31, 5, SILVER_WHITE),
-        (31, 4, GOLD_WHITE),
+        (30, 7, BRASS_BRIGHT),
+        (31, 6, GOLD_WHITE),
+        (31, 5, GOLD_WHITE),
+        (32, 4, PURE_WHITE),
     ]
     for hx, hy, hcol in horn_pixels:
         set_px(out, hx, hy, hcol)
 
-    # Kabuto crown & visor brim (y = 6..9, x = 25..30)
-    for x in range(26, 30):
+    # Kabuto crown, Shikoro neck plates & visor brim (y = 6..9, x = 24..31)
+    for x in range(25, 30):
         set_px(out, x, 6, INDIGO_LIGHT if x == 27 else INDIGO_MID)
         set_px(out, x, 7, INDIGO_MID)
-    for x in range(25, 31):
-        set_px(out, x, 9, INDIGO_DARK)
+    for x in range(24, 31):
+        set_px(out, x, 9, CYAN_MID if x in (26, 29) else INDIGO_DARK)
 
-    # 4. Luminous 2px Electric-Cyan Samurai Eyes & Fierce Menpo Oni-Mask (y = 10..14, x = 25..30)
+    # 4. Luminous 2px Electric-Cyan Samurai Eyes & Fierce Menpo Oni-Mask (y = 10..14, x = 24..30)
+    set_px(out, 25, 10, INDIGO_DEEP)
     set_px(out, 26, 10, PURE_WHITE)
     set_px(out, 27, 10, CYAN_LIGHT)
+    set_px(out, 28, 10, INDIGO_DEEP)
     set_px(out, 29, 10, PURE_WHITE)
     set_px(out, 30, 10, CYAN_BRIGHT)
-    set_px(out, 28, 10, INDIGO_DEEP)
-    # Menpo Oni cheekguards & golden fangs (y = 11..13)
     for x in range(25, 31):
         set_px(out, x, 11, INDIGO_MID if x in (26, 29) else INDIGO_DARK)
         set_px(out, x, 13, INDIGO_DEEP)
-    set_px(out, 26, 12, INDIGO_DARK)
+    set_px(out, 25, 12, INDIGO_DARK)
+    set_px(out, 26, 12, SILVER_LIGHT)
     set_px(out, 27, 12, GOLD_WHITE)
     set_px(out, 28, 12, INDIGO_DEEP)
     set_px(out, 29, 12, GOLD_WHITE)
     set_px(out, 30, 12, INDIGO_DARK)
 
-    # 5. Crisp Crackling Cyan-Violet Lightning Veins across the `Do` Breastplate (y = 16..24, x = 23..30)
+    # 5. Layered `Sode` Shoulder Pauldrons & Crackling Cyan-Violet Lightning Veins across `Do` Breastplate (y = 15..24, x = 20..32)
+    for sy in range(16, 21):
+        set_px(out, 20, sy, BRASS_BRIGHT if sy == 16 else INDIGO_LIGHT)
+        set_px(out, 21, sy, CYAN_BRIGHT if sy == 18 else INDIGO_MID)
+        set_px(out, 31, sy, CYAN_BRIGHT if sy == 18 else INDIGO_MID)
+        set_px(out, 32, sy, BRASS_BRIGHT if sy == 16 else INDIGO_LIGHT)
+
     lightning_veins = [
         (25, 16, CYAN_LIGHT),
         (26, 17, PURE_WHITE),
@@ -264,11 +274,51 @@ def refine_ronin_pixel_model(cell):
     set_px(out, 28, 25, BRASS_BRIGHT)
     set_px(out, 27, 26, BRASS_BRIGHT)
 
-    # 7. Crisp Cyan-Trimmed `Kusazuri` Hip Tasset Plates (y = 27..34, x = 21..32)
-    for ty in (28, 30, 32, 34):
-        for tx in (22, 24, 27, 29, 31):
+    # 7. Crisp Gold & Cyan-Trimmed `Kusazuri` Hip Tasset Plates (y = 27..35, x = 20..33)
+    for ty in range(27, 36):
+        for tx in range(20, 34):
             if out[ty, tx, 3] > 0:
-                set_px(out, tx, ty, CYAN_BRIGHT if ty in (28, 32) else INDIGO_LIGHT)
+                if ty in (28, 31, 34):
+                    if tx in (22, 25, 28, 31):
+                        set_px(out, tx, ty, CYAN_BRIGHT if ty != 31 else BRASS_BRIGHT)
+                    else:
+                        set_px(out, tx, ty, INDIGO_LIGHT)
+                elif tx in (20, 33):
+                    set_px(out, tx, ty, INDIGO_DEEP)
+
+    # 8. High-Contrast Armored `Haidate` Thighs, `Kikko` Knees, `Suneate` Shin-Greaves & `Waraji` Boots (y = 36..48)
+    # Back leg (left on screen: center x = 22..25) & Front leg (right on screen: center x = 31..34)
+    for ly in range(36, 49):
+        # Back leg (x = 20..25)
+        for lx in range(20, 26):
+            if ly <= 39:
+                # Haidate thigh plate
+                col = INDIGO_DEEP if lx in (20, 25) else (INDIGO_LIGHT if lx == 22 else INDIGO_MID)
+            elif ly in (40, 41):
+                # Kikko knee guard with brass/cyan rivet
+                col = GOLD_WHITE if (lx == 22 and ly == 40) else (INDIGO_LIGHT if lx in (21, 23) else INDIGO_DARK)
+            elif ly <= 46:
+                # Suneate shin greave with cyan lightning ridge
+                col = INDIGO_DEEP if lx in (20, 25) else (CYAN_MID if lx == 22 else (INDIGO_LIGHT if lx == 23 else INDIGO_DARK))
+            else:
+                # Waraji battle-boot & gold strap at y = 47..48
+                col = BRASS_BRIGHT if (ly == 47 and lx in (22, 24)) else (INDIGO_MID if ly == 47 else INDIGO_DEEP)
+            set_px(out, lx, ly, col)
+
+        # Front leg (x = 30..35)
+        for rx in range(30, 36):
+            if ly <= 39:
+                col = INDIGO_DEEP if rx in (30, 35) else (INDIGO_LIGHT if rx in (32, 33) else INDIGO_MID)
+            elif ly in (40, 41):
+                col = PURE_WHITE if (rx == 33 and ly == 40) else (CYAN_BRIGHT if rx == 32 else INDIGO_LIGHT)
+            elif ly <= 46:
+                col = INDIGO_DEEP if rx in (30, 35) else (CYAN_BRIGHT if rx == 33 else (INDIGO_LIGHT if rx == 32 else INDIGO_MID))
+            else:
+                col = GOLD_WHITE if (ly == 47 and rx in (32, 34)) else (INDIGO_LIGHT if ly == 47 else INDIGO_DEEP)
+            set_px(out, rx, ly, col)
+
+    # Clear between-legs gap (x = 26..29, y = 37..48) so the two legs have a crisp athletic stance separation
+    out[37:49, 26:30] = 0
 
     return fill_layer_pinholes(out)
 
@@ -283,8 +333,8 @@ def draw_samurai_saya_and_raijin_drums(
 ):
     """
     Pass 2: Renders Kaze-Maru's two iconic Samurai silhouette features:
-    a) Floating Ring of 5 Raijin Taiko Thunder-Drums (`Tomoe` drums linked by crackling cyan-violet lightning)
-       hovering behind his shoulders (`cx = 23, cy = 16 + dy_offset, rx = 10.5, ry = 7.2`).
+    a) Symmetric Floating Halo Ring of 5 Raijin Taiko Thunder-Drums (`Tomoe` drums linked by crackling
+       cyan-violet lightning) framing both shoulders and Kabuto (`cx = 26.5, cy = 14.5 + dy_offset, rx = 10.5, ry = 8.5`).
     b) Waist-Worn Lacquered Katana Scabbard (`Saya`) with Golden `Koiguchi`/`Kojiri` Fittings & Flowing
        Violet-Cyan `Sageo` Cord extending diagonally behind his left hip (`x = 7..21, y = 26..33`).
     """
@@ -292,12 +342,12 @@ def draw_samurai_saya_and_raijin_drums(
     fg_saya = np.zeros((52, 52, 4), dtype=np.uint8)
 
     if show_drums:
-        cx = 23.0
-        cy = 16.0 + dy_offset
+        cx = 26.5
+        cy = 14.5 + dy_offset
         rx = 10.5
-        ry = 7.2
-        wobble = math.sin(phase) * 0.09
-        drum_angles_deg = [-172.0, -134.0, -92.0, -48.0, -10.0]
+        ry = 8.5
+        wobble = math.sin(phase) * 0.08
+        drum_angles_deg = [-168.0, -132.0, -90.0, -48.0, -12.0]
         drum_centers = []
         for idx, a_deg in enumerate(drum_angles_deg):
             ang = math.radians(a_deg) + wobble * (1 if idx % 2 == 0 else -1)
@@ -308,8 +358,8 @@ def draw_samurai_saya_and_raijin_drums(
         for i in range(len(drum_centers) - 1):
             x0, y0 = drum_centers[i]
             x1, y1 = drum_centers[i + 1]
-            mx = 0.5 * (x0 + x1) + math.cos(phase + i) * 0.85
-            my = 0.5 * (y0 + y1) - 0.85 + math.sin(phase * 2.0 + i) * 0.65
+            mx = 0.5 * (x0 + x1) + math.cos(phase + i) * 0.65
+            my = 0.5 * (y0 + y1) - 0.65 + math.sin(phase * 2.0 + i) * 0.45
             col_arc1 = CYAN_BRIGHT if (i + int(round(phase * 2))) % 2 == 0 else VIOLET_BRIGHT
             col_arc2 = VIOLET_GLOW if col_arc1 == CYAN_BRIGHT else CYAN_LIGHT
             draw_line_px(bg_layer, x0, y0, mx, my, col_arc1)
@@ -524,8 +574,8 @@ def make_clean_templates():
 
     leg_back_patch = np.zeros((52, 52, 4), dtype=np.uint8)
     leg_front_patch = np.zeros((52, 52, 4), dtype=np.uint8)
-    leg_back_patch[39:49, 19:28] = stand[39:49, 19:28]
-    leg_front_patch[39:49, 29:39] = stand[39:49, 29:39]
+    leg_back_patch[43:49, 19:27] = stand[43:49, 19:27]
+    leg_front_patch[43:49, 29:37] = stand[43:49, 29:37]
 
     stand_upper = np.zeros((52, 52, 4), dtype=np.uint8)
     stand_upper[:37, :] = stand[:37, :]
@@ -601,111 +651,230 @@ def make_clean_templates():
     }
 
 
-def make_sharp_diving_ronin(tpl, tilt_deg=-38.0, dive_dx=-3, dive_dy=-2, phase=0.0):
+def render_hand_sculpted_spear_dive(
+    dive_angle_deg=16.0,
+    cx=24.0,
+    cy=25.0,
+    phase=0.0,
+    is_steep_dive=False,
+    supercharged=True,
+):
     """
-    Constructs Kaze-Maru's Full-Body Razor-Sharp Aerodynamic Diving Spear Posture (`>--->>`):
-    - Starts from `tpl['stand']` with a streamlined tapered leg silhouette, rotates the ENTIRE figure
-      by `tilt_deg` (e.g. `-34°` for horizontal-diagonal omnislash dive, `-52°` for steep downward
-      Heaven-Split meteor dive) so his boots, legs, waist obi, breastplate, and horned crescent kabuto
-      form a single, long, needle-sharp diagonal dart!
+    Pass 11: Hand-Sculpted Parametric Supersonic Diving Spear Samurai (`>--->>`):
+    Instead of rotating a standing sprite with NEAREST (which breaks 1px lines and leaves an upright circular
+    drum ring), this function hand-sculpts Kaze-Maru's ENTIRE body, pressed-together legs, billowing wolf-mane,
+    swept-back V-chevron Raijin drums, forward-tucked horned Kabuto, locked gauntlets, 15px Thunder-Odachi
+    spearhead, and Supersonic Mach-Cone V-Shockwings directly along `dive_angle_deg`!
     """
-    src = tpl["stand"].copy()
-    # Taper the lower legs together (y = 35..48) before rotating so his boots form a sharp aerodynamic tail-fin!
-    tapered = np.zeros_like(src)
-    tapered[:35, :] = src[:35, :]
-    for y in range(35, 49):
-        u_t = (y - 35) / 13.0
-        target_cx = 26.5 - u_t * 2.0
-        row_xs = np.where(src[y, :, 3] > 0)[0]
-        if len(row_xs) > 0:
-            orig_mid = 0.5 * (row_xs.min() + row_xs.max())
-            for x in row_xs:
-                # Compress leg spread by 55% toward target_cx for a sleek, unified diving spear tail
-                nx = int(round(target_cx + (x - orig_mid) * (0.68 - 0.25 * u_t)))
-                if 4 <= nx <= 47:
-                    tapered[y, nx] = src[y, x]
-    tapered = fill_layer_pinholes(tapered)
-
-    # Rotate the entire streamlined Samurai figure by tilt_deg around (26, 26)
-    pil_fig = Image.fromarray(tapered, mode="RGBA")
-    rot_fig = np.array(
-        pil_fig.rotate(tilt_deg, resample=Image.Resampling.NEAREST, center=(26, 26)),
-        dtype=np.uint8,
-    )
-    rot_fig = fill_layer_pinholes(rot_fig)
-
-    out = np.zeros((52, 52, 4), dtype=np.uint8)
-    for y in range(52):
-        ny = y + int(round(dive_dy))
-        if 3 <= ny <= 48:
-            for x in range(52):
-                nx = x + int(round(dive_dx))
-                if 3 <= nx <= 48 and rot_fig[y, x, 3] > 0:
-                    out[ny, nx] = rot_fig[y, x]
-
-    # Pulse armor lightning veins & kabuto eyes to pure white / cyan-light during the dive
-    for y in range(4, 48):
-        for x in range(4, 48):
-            if out[y, x, 3] > 0:
-                r, g, b, _ = out[y, x]
-                if g > 175 and b > 205:
-                    out[y, x] = PURE_WHITE if (x + y) % 2 == 0 else CYAN_LIGHT
-
-    return fill_layer_pinholes(out)
-
-
-def draw_sharp_dive_spear_aura(canvas, tip_x, tip_y, angle_deg, phase=0.0, is_steep_dive=False):
-    """
-    Renders a razor-sharp, needle-pointed Supersonic Lightning Spear-Cone & Wake (`>--->>`)
-    aligned with Kaze-Maru's diving Odachi tip `(tip_x, tip_y)` along `angle_deg`:
-    - Piercing 4-point Diamond-White Spearhead Star at `(tip_x, tip_y)`
-    - Two sleek, narrow, swept-back Supersonic V-Shockwings (`±16°` spread) trailing back along his body
-    - High-velocity parallel cyan/violet speed-streaks behind his boots/shoulders.
-    """
-    out = canvas.copy()
-    rad = math.radians(angle_deg)
+    canvas = np.zeros((52, 52, 4), dtype=np.uint8)
+    rad = math.radians(dive_angle_deg)
     ux, uy = math.cos(rad), math.sin(rad)
-    px, py = -uy, ux
+    # Normal vector pointing "up-back" perpendicular to the dive axis
+    nx, ny = uy, -ux
 
-    # 1. Swept-back narrow V-Shockwings tapering from the piercing blade tip (tip_x, tip_y)
-    wing_len = 22 if is_steep_dive else 19
-    for d in range(wing_len + 1):
-        u = d / float(wing_len)
-        bx = tip_x - ux * d
-        by = tip_y - uy * d
-        spread = 0.6 + u * (5.2 if is_steep_dive else 4.4)
-        for side in (-1.0, 1.0):
-            wx = bx + px * (spread * side)
-            wy = by + py * (spread * side)
-            if 3 <= wx <= 48 and 3 <= wy <= 47:
-                if d <= 4:
-                    col = PURE_WHITE
-                elif d <= 11:
-                    col = CYAN_LIGHT if d % 2 == 0 else CYAN_BRIGHT
+    def to_xy(s, n):
+        return cx + ux * s + nx * n, cy + uy * s + ny * n
+
+    # 1. Swept-Back V-Chevron Raijin Taiko Drums & Slipstream Lightning Contrails (s = -18 .. -8)
+    chevron_drums = [(-9.5, 6.2), (-9.5, -6.2), (-15.0, 8.2), (-15.0, -8.2)]
+    for d_idx, (ds, dn) in enumerate(chevron_drums):
+        dx_d, dy_d = to_xy(ds, dn)
+        # Trailing contrail streak behind each drum
+        for st in range(1, 7):
+            sx_t, sy_t = to_xy(ds - st * 1.1, dn + math.sin(phase + st + d_idx) * 0.4)
+            col_t = CYAN_LIGHT if st <= 2 else (VIOLET_BRIGHT if st % 2 == 0 else INDIGO_LIGHT)
+            set_px(canvas, sx_t, sy_t, col_t)
+        # 3x3 Raijin Drum with gold rim & white-cyan Tomoe core
+        ix, iy = int(round(dx_d)), int(round(dy_d))
+        for oy in (-1, 0, 1):
+            for ox in (-1, 0, 1):
+                if ox == 0 and oy == 0:
+                    c_d = PURE_WHITE if (d_idx + int(round(phase * 2))) % 2 == 0 else CYAN_LIGHT
+                elif abs(ox) + abs(oy) == 1:
+                    c_d = GOLD_WHITE if ox + oy < 0 else BRASS_BRIGHT
                 else:
-                    col = VIOLET_BRIGHT if (d + int(side)) % 2 == 0 else VIOLET_GLOW
-                set_px(out, wx, wy, col)
+                    c_d = BRASS_MID
+                set_px(canvas, ix + ox, iy + oy, c_d)
 
-    # 2. Central piercing needle extension 2px ahead of tip_x, tip_y
-    for lead_d in (0.0, 1.0, 2.0):
-        lx = max(3.0, min(48.0, tip_x + ux * lead_d))
-        ly = max(3.0, min(47.0, tip_y + uy * lead_d))
-        set_px(out, lx, ly, PURE_WHITE)
+    # 2. Tapered Aerodynamic Boots & Pressed-Together `Suneate` Shin-Greaves (s = -19 .. -7)
+    for s_step in range(-38, -13):
+        s = s_step * 0.5  # -19.0 .. -7.0
+        u_leg = (s - (-19.0)) / 12.0  # 0 at boot tip -> 1 at hip
+        hw = 1.0 + u_leg * 1.8
+        n_steps = int(round(hw * 2.0)) + 1
+        for ni in range(-n_steps, n_steps + 1):
+            n = ni * 0.5
+            if abs(n) > hw:
+                continue
+            px_l, py_l = to_xy(s, n)
+            if abs(n) >= hw - 0.45:
+                col_l = INDIGO_DEEP
+            elif abs(s - (-17.5)) < 0.6:
+                col_l = GOLD_WHITE if abs(n) < 0.6 else BRASS_BRIGHT  # Waraji gold boot strap
+            elif abs(s - (-12.5)) < 0.7:
+                col_l = PURE_WHITE if abs(n) < 0.5 else CYAN_BRIGHT   # Kikko knee guard glint
+            elif abs(n) <= 0.45:
+                col_l = CYAN_BRIGHT if s_step % 3 != 0 else CYAN_LIGHT  # Suneate lightning shin ridge
+            elif n > 0:
+                col_l = INDIGO_LIGHT
+            else:
+                col_l = INDIGO_DARK
+            set_px(canvas, px_l, py_l, col_l)
 
-    # 3. 3 Parallel Aerodynamic Lightning Speed-Streaks trailing behind his diving boots/back
-    tail_cx = tip_x - ux * 26.0
-    tail_cy = tip_y - uy * 26.0
-    for s_idx, n_off in enumerate((-3.5, 0.0, 3.5)):
-        sx0 = tail_cx + px * n_off
-        sy0 = tail_cy + py * n_off
-        for step in range(8):
-            sx = sx0 - ux * (step * 1.3)
-            sy = sy0 - uy * (step * 1.3)
-            if 3 <= sx <= 48 and 3 <= sy <= 47:
-                col_s = PURE_WHITE if step <= 1 else (CYAN_LIGHT if s_idx % 2 == 0 else VIOLET_BRIGHT)
-                set_px(out, sx, sy, col_s)
+    # 3. Streamlined `Kusazuri` Tassets, Golden `Obi` Sash & Storm-Core `Do` Breastplate (s = -7.0 .. +2.5)
+    for s_step in range(-14, 6):
+        s = s_step * 0.5  # -7.0 .. +2.5
+        hw = 3.2 if s < -3.5 else (2.8 if s < -2.0 else 3.6)
+        n_steps = int(round(hw * 2.0)) + 1
+        for ni in range(-n_steps, n_steps + 1):
+            n = ni * 0.5
+            if abs(n) > hw:
+                continue
+            px_b, py_b = to_xy(s, n)
+            if abs(n) >= hw - 0.45:
+                col_b = BRASS_BRIGHT if (-1.0 <= s <= 2.0) else INDIGO_DEEP
+            elif -3.2 <= s <= -2.0:
+                # Golden-Violet Obi Waist Sash
+                col_b = GOLD_WHITE if abs(n) <= 0.8 else (CAPE_LIGHT if ni % 2 == 0 else VIOLET_GLOW)
+            elif s < -3.2:
+                # Kusazuri Hip Tassets with cyan/gold lacing
+                col_b = CYAN_BRIGHT if (s_step % 3 == 0 and abs(n) < 1.8) else (INDIGO_LIGHT if n > 0 else INDIGO_MID)
+            else:
+                # Storm-Core Do Breastplate with blazing white-cyan lightning veins
+                is_vein = abs(n - math.sin(s * 1.2 + phase) * 1.1) < 0.65
+                if is_vein:
+                    col_b = PURE_WHITE if supercharged else CYAN_LIGHT
+                elif abs(n) >= hw - 1.1:
+                    col_b = CYAN_BRIGHT if n > 0 else VIOLET_BRIGHT  # Sode shoulder pauldron trim
+                else:
+                    col_b = INDIGO_MID if n > 0 else INDIGO_DARK
+            set_px(canvas, px_b, py_b, col_b)
 
-    return out
+    # 4. Wind-Swept Silver Wolf-Mane Streaming Back from Kabuto (s = -9.0 .. +2.0, n = +2.2 .. +5.0)
+    for m_step in range(22):
+        u_m = m_step / 21.0
+        ms = 2.0 - u_m * 11.0
+        wave = math.sin(phase * 2.0 - u_m * 3.5) * (0.9 * u_m)
+        mn_center = 2.6 + u_m * 1.6 + wave
+        m_thick = (1.0 - u_m * 0.65) * 1.4
+        for m_off in (-0.8, -0.3, 0.2, 0.7):
+            if abs(m_off) <= m_thick:
+                mx_p, my_p = to_xy(ms, mn_center + m_off)
+                c_m = SILVER_WHITE if m_off > 0.1 else (SILVER_LIGHT if u_m < 0.6 else SILVER_MID)
+                set_px(canvas, mx_p, my_p, c_m)
+
+    # 5. Forward-Tucked Horned Kabuto Helm, Blazing Cyan Eye-Streak & Swept-Back Golden Crescent Horns (s = +1.5 .. +7.0)
+    for s_step in range(3, 15):
+        s = s_step * 0.5  # +1.5 .. +7.0
+        hw = 2.6 * (1.0 - max(0.0, (s - 4.5) / 3.5) * 0.5)
+        for ni in range(-5, 6):
+            n = ni * 0.5
+            if abs(n) > hw:
+                continue
+            hx_p, hy_p = to_xy(s, n)
+            if 4.0 <= s <= 5.8 and -1.2 <= n <= 0.8:
+                # Blazing Electric-Cyan Samurai Eyes & Visor Slit
+                col_h = PURE_WHITE if abs(n) <= 0.4 else CYAN_LIGHT
+            elif s >= 5.5:
+                col_h = GOLD_WHITE if abs(n) <= 0.6 else INDIGO_LIGHT
+            elif abs(n) >= hw - 0.5:
+                col_h = INDIGO_DEEP
+            else:
+                col_h = INDIGO_LIGHT if n > 0 else INDIGO_DARK
+            set_px(canvas, hx_p, hy_p, col_h)
+
+    # Swept-Back Golden-Brass Crescent `Maedate` Kabuto Horns (sweeping from s = +6.5 back to s = -0.5, n = ±3.4)
+    for h_i in range(15):
+        u_h = h_i / 14.0
+        hs = 6.5 - u_h * 7.0
+        for side in (-1.0, 1.0):
+            hn = side * (1.0 + u_h * 2.8)
+            hx_c, hy_c = to_xy(hs, hn)
+            col_hc = PURE_WHITE if u_h > 0.75 else (GOLD_WHITE if u_h > 0.35 else BRASS_BRIGHT)
+            set_px(canvas, hx_c, hy_c, col_hc)
+
+    # 6. Locked Two-Handed Gauntlets, Circular Raijin `Tsuba` & 15px Razor-Sharp Thunder-Odachi Spearhead (s = +5.5 .. +23.5)
+    # Hilt & Gauntlets (s = +5.5 .. +8.5)
+    for s_h in range(11, 18):
+        s = s_h * 0.5
+        for n_h in (-1.0, -0.5, 0.0, 0.5, 1.0):
+            gx_p, gy_p = to_xy(s, n_h)
+            col_g = CYAN_BRIGHT if abs(n_h) <= 0.3 else (BRASS_BRIGHT if s_h % 2 == 0 else INDIGO_DARK)
+            set_px(canvas, gx_p, gy_p, col_g)
+
+    # Ornate Circular Raijin Tsuba Guard at s = +8.5 (n = -2.5 .. +2.5)
+    for n_t in (-2.5, -2.0, -1.5, -1.0, -0.5, 0.0, 0.5, 1.0, 1.5, 2.0, 2.5):
+        tx_p, ty_p = to_xy(8.5, n_t)
+        col_ts = GOLD_WHITE if abs(n_t) >= 2.0 else (CYAN_LIGHT if abs(n_t) >= 1.0 else BRASS_BRIGHT)
+        set_px(canvas, tx_p, ty_p, col_ts)
+
+    # 15px Razor-Sharp Diamond-White & Electric-Cyan Odachi Spear Blade (s = +9.0 .. +23.5)
+    for b_step in range(18, 48):
+        s = b_step * 0.5  # +9.0 .. +23.5
+        u_b = (s - 9.0) / 14.5
+        # Taper from hw = 1.5 down to a 1px needle kissaki tip at s = +23.5
+        hw_b = max(0.0, 1.45 * (1.0 - u_b * 0.85))
+        if u_b >= 0.82:
+            bx_p, by_p = to_xy(s, 0.0)
+            set_px(canvas, bx_p, by_p, PURE_WHITE)
+            if u_b < 0.93:
+                for side in (-0.5, 0.5):
+                    sx_p, sy_p = to_xy(s, side)
+                    set_px(canvas, sx_p, sy_p, CYAN_LIGHT)
+        else:
+            for nb in (-1.2, -0.6, 0.0, 0.6, 1.2):
+                if abs(nb) <= hw_b + 0.2:
+                    bx_p, by_p = to_xy(s, nb)
+                    if abs(nb) <= 0.3:
+                        col_bl = PURE_WHITE
+                    elif nb > 0:
+                        col_bl = CYAN_LIGHT if b_step % 2 == 0 else PURE_WHITE
+                    else:
+                        col_bl = CYAN_BRIGHT if b_step % 2 == 0 else VIOLET_BRIGHT
+                    set_px(canvas, bx_p, by_p, col_bl)
+
+    # 7. Supersonic Mach-Cone V-Shockwings & Twin Helical Lightning Ribbons Peeling Off the Spear Tip!
+    wing_len = 22.0 if is_steep_dive else 19.0
+    for w_step in range(int(wing_len * 2) + 1):
+        d_back = w_step * 0.5
+        u_w = d_back / wing_len
+        ws = 23.5 - d_back
+        spread = 0.4 + u_w * (6.2 if is_steep_dive else 5.2)
+        for side in (-1.0, 1.0):
+            wx_p, wy_p = to_xy(ws, side * spread)
+            if d_back <= 4.0:
+                col_w = PURE_WHITE
+            elif d_back <= 11.0:
+                col_w = CYAN_LIGHT if w_step % 2 == 0 else CYAN_BRIGHT
+            else:
+                col_w = VIOLET_BRIGHT if (w_step + int(side)) % 2 == 0 else VIOLET_GLOW
+            set_px(canvas, wx_p, wy_p, col_w)
+            # Inner glow band on shockwing
+            if d_back >= 2.5 and w_step % 2 == 0:
+                wx_in, wy_in = to_xy(ws, side * (spread - 0.7))
+                set_px(canvas, wx_in, wy_in, CYAN_BRIGHT if side > 0 else VIOLET_GLOW)
+
+    # Double-helix lightning spiraling down the length of the spear & body (s = -12 .. +21)
+    for h_step in range(-24, 42):
+        hs = h_step * 0.5
+        u_h = (hs + 12.0) / 33.0
+        amp = 2.2 + (1.0 - abs(u_h - 0.5) * 1.4) * 2.2
+        hn1 = math.sin(u_h * math.pi * 4.0 - phase * 2.5) * amp
+        hn2 = -hn1
+        if h_step % 2 == 0:
+            x1, y1 = to_xy(hs, hn1)
+            set_px(canvas, x1, y1, PURE_WHITE if h_step % 6 == 0 else CYAN_LIGHT)
+        else:
+            x2, y2 = to_xy(hs, hn2)
+            set_px(canvas, x2, y2, VIOLET_BRIGHT if h_step % 3 == 0 else CYAN_BRIGHT)
+
+    # Piercing 4-point star glint at the needle tip (s = +23.5, n = 0)
+    tip_x, tip_y = to_xy(23.5, 0.0)
+    for d_star in (-2, -1, 0, 1, 2):
+        set_px(canvas, tip_x + d_star, tip_y, PURE_WHITE if abs(d_star) <= 1 else CYAN_LIGHT)
+        set_px(canvas, tip_x, tip_y + d_star, PURE_WHITE if abs(d_star) <= 1 else CYAN_LIGHT)
+
+    return ensure_safe_cell(fill_layer_pinholes(canvas))
 
 
 def apply_cape_and_mane_wave(
@@ -1177,10 +1346,10 @@ def _draw_samurai_armored_leg(
 ):
     if is_far_leg:
         c_edge = INDIGO_DEEP
-        c_dark = INDIGO_DEEP
-        c_mid = INDIGO_DARK
-        c_hi = INDIGO_MID
-        c_lightning = CYAN_MID
+        c_dark = INDIGO_DARK
+        c_mid = INDIGO_MID
+        c_hi = INDIGO_LIGHT
+        c_lightning = CYAN_LIGHT
     else:
         c_edge = INDIGO_DEEP
         c_dark = INDIGO_DARK
@@ -1224,9 +1393,9 @@ def _draw_samurai_armored_leg(
                 nx = min(48, max(3, x + int(round(dx_boot))))
                 px_col = rot_boot[y, x].copy()
                 if is_far_leg:
-                    px_col[0] = int(px_col[0] * 0.78)
-                    px_col[1] = int(px_col[1] * 0.78)
-                    px_col[2] = int(px_col[2] * 0.84)
+                    px_col[0] = int(px_col[0] * 0.88)
+                    px_col[1] = int(px_col[1] * 0.88)
+                    px_col[2] = int(px_col[2] * 0.92)
                 layer[ny, nx] = px_col
 
     for dy_k in (-1, 0, 1):
@@ -1234,7 +1403,7 @@ def _draw_samurai_armored_leg(
             if abs(dx_k) == 2 and abs(dy_k) == 1:
                 continue
             if dx_k == 0 and dy_k <= 0:
-                col_k = CYAN_LIGHT if not is_far_leg else CYAN_MID
+                col_k = CYAN_LIGHT if not is_far_leg else GOLD_WHITE
             elif dy_k == -1 or abs(dx_k) == 2:
                 col_k = c_hi
             else:
@@ -1246,9 +1415,12 @@ def _draw_samurai_armored_leg(
 
 def render_walk_ronin(tpl, f):
     """
-    Row 1 helper: Smooth 30-frame 2-step Suriashi & Hayagake Samurai stride cycle (F00..F14 Step A, F15..F29 Step B)
-    with full 45px height (`y = 4..48`), subtle forward combat lean, counter-swaying kusazuri hip tassets,
-    and smooth knee/ankle articulation.
+    Row 1 helper: Smooth 30-frame 2-step Suriashi & Okuri-Ashi Samurai combat stride cycle:
+    - Step A (`F00..F14`): Lead leg (`near_leg`) lifts and drives forward (`x = 31.5 -> 36.2 -> 32.5`) while
+      rear leg (`far_leg`) braces and pushes back (`x = 22.0 -> 18.2 -> 20.5`).
+    - Step B (`F15..F29`): Rear leg (`far_leg`) lifts its knee and glides forward (`x = 20.5 -> 24.5 -> 22.0`)
+      while lead leg (`near_leg`) anchors in a strong Kendo front stance (`x = 32.5 -> 34.2 -> 31.5`),
+      preserving a crisp wide athletic gap between both legs on every single frame (`F00..F29`)!
     """
     phase = (f / 30.0) * 2.0 * math.pi
     bob_y = int(round(math.cos(phase * 2.0) * 1.0))
@@ -1272,52 +1444,65 @@ def render_walk_ronin(tpl, f):
                 if 27 <= y <= 35 and 21 <= x <= 34:
                     tasset_overlay[ny, nx] = stand[y, x]
 
-    def build_striding_leg(boot_patch, orig_cx, hip_x, foot_base_x, swing_phase, is_far_leg=False):
-        layer = np.zeros((52, 52, 4), dtype=np.uint8)
-        s_val = math.sin(swing_phase)
-        c_val = math.cos(swing_phase)
+    # Continuous C-infinity Suriashi / Hayagake 2-step cycle across all 30 frames:
+    # - F00..F14 (sin > 0): Lead leg (near_leg) glides forward (30.8 -> 35.6) with 1px knee/boot lift while rear leg pushes back (23.2 -> 18.8)
+    # - F15..F29 (sin < 0): Rear leg (far_leg) glides forward (18.8 -> 23.2) with 1px knee/boot lift while lead leg pulls back (35.6 -> 30.8)
+    stride = -math.cos(phase)
+    s1 = math.sin(phase)
 
-        knee_lift = max(0.0, c_val) * 1.05
-        hip_y = 35.0 + bob_y
-        knee_x = hip_x + s_val * 3.1 + knee_lift * 1.3
-        knee_y = hip_y + 5.2 - knee_lift * 1.7
+    near_lift = max(0.0, s1)
+    far_lift = max(0.0, -s1)
 
-        foot_target_x = foot_base_x + s_val * 3.8 - knee_lift * 0.6
-        foot_lift_dy = bob_y - int(round(knee_lift * 1.9))
-        boot_rot_deg = s_val * 10.0 - knee_lift * 11.0
+    near_foot_x = 33.2 + stride * 2.4
+    near_knee_x = 32.2 + stride * 2.0 + near_lift * 1.0
+    far_foot_x = 21.0 - stride * 2.2
+    far_knee_x = 21.8 - stride * 1.8 + far_lift * 1.0
 
-        dx_boot = foot_target_x - orig_cx
-        ank_x = foot_target_x + math.sin(math.radians(boot_rot_deg)) * 0.7
-        ank_y = 44.5 + foot_lift_dy
+    hip_y = 35.0 + bob_y
 
-        return _draw_samurai_armored_leg(
-            layer,
-            boot_patch=boot_patch,
-            orig_cx=orig_cx,
-            hip_x=hip_x,
-            hip_y=hip_y,
-            knee_x=knee_x,
-            knee_y=knee_y,
-            ank_x=ank_x,
-            ank_y=ank_y,
-            dx_boot=dx_boot,
-            dy_boot=foot_lift_dy,
-            boot_rot_deg=boot_rot_deg,
-            is_far_leg=is_far_leg,
-        )
-
-    far_leg = build_striding_leg(
-        tpl["leg_back"], orig_cx=23.0, hip_x=23.0, foot_base_x=22.5, swing_phase=phase + math.pi, is_far_leg=True
+    far_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    far_lift_dy = -1 if far_lift > 0.35 else 0
+    far_rot = (far_foot_x - 21.0) * 2.5 - far_lift * 6.0
+    far_leg = _draw_samurai_armored_leg(
+        far_layer,
+        boot_patch=tpl["leg_back"],
+        orig_cx=22.5,
+        hip_x=22.5,
+        hip_y=hip_y,
+        knee_x=far_knee_x,
+        knee_y=hip_y + 5.2 - far_lift * 1.0,
+        ank_x=far_foot_x,
+        ank_y=45.0 + far_lift_dy,
+        dx_boot=far_foot_x - 22.5,
+        dy_boot=far_lift_dy,
+        boot_rot_deg=far_rot,
+        is_far_leg=True,
     )
-    near_leg = build_striding_leg(
-        tpl["leg_front"], orig_cx=33.5, hip_x=31.0, foot_base_x=33.0, swing_phase=phase, is_far_leg=False
+
+    near_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+    near_lift_dy = -1 if near_lift > 0.35 else 0
+    near_rot = (near_foot_x - 33.2) * 2.5 - near_lift * 6.0
+    near_leg = _draw_samurai_armored_leg(
+        near_layer,
+        boot_patch=tpl["leg_front"],
+        orig_cx=32.5,
+        hip_x=31.5,
+        hip_y=hip_y,
+        knee_x=near_knee_x,
+        knee_y=hip_y + 5.2 - near_lift * 1.0,
+        ank_x=near_foot_x,
+        ank_y=45.0 + near_lift_dy,
+        dx_boot=near_foot_x - 32.5,
+        dy_boot=near_lift_dy,
+        boot_rot_deg=near_rot,
+        is_far_leg=False,
     )
 
     out = composite_over(far_leg, torso_layer)
     out = composite_over(out, near_leg)
     out = composite_over(out, tasset_overlay)
     out = apply_cape_and_mane_wave(
-        out, phase, amplitude=1.5, vertical_flutter=0.5, rune_pulse=0.75, dy_offset=bob_y
+        out, phase, amplitude=1.5, vertical_flutter=0.5, rune_pulse=0.75 + 0.15 * abs(s1), dy_offset=bob_y
     )
     return fill_layer_pinholes(out)
 
@@ -1770,34 +1955,18 @@ def build_row3_skill(tpl):
         elif f <= 20:
             k = f - 7  # 0..13
             if k <= 8:
-                tilt_seq = [-28.0, -32.0, -36.0, -38.0, -34.0, -30.0, -34.0, -36.0, -30.0]
-                dy_seq = [-1, -2, -2, -2, -1, -1, -2, -2, -1]
-                base = make_sharp_diving_ronin(
-                    tpl, tilt_deg=tilt_seq[k], dive_dx=-2, dive_dy=dy_seq[k], phase=phase * 3.0
+                # F07..F15: Hand-Sculpted Supersonic Horizontal/Diagonal Spear-Lunge (`>--->>`)
+                ang_seq = [6.0, 8.0, 11.0, 14.0, 12.0, 9.0, 12.0, 14.0, 8.0]
+                cx_seq = [23.0, 24.0, 24.5, 25.0, 24.5, 24.0, 24.5, 24.5, 23.5]
+                cy_seq = [26.0, 25.5, 25.0, 25.0, 25.5, 26.0, 25.0, 25.0, 26.0]
+                frame = render_hand_sculpted_spear_dive(
+                    dive_angle_deg=ang_seq[k],
+                    cx=cx_seq[k],
+                    cy=cy_seq[k],
+                    phase=phase * 3.0,
+                    is_steep_dive=False,
+                    supercharged=True,
                 )
-                draw_shunpo_branching_lightning(base, k)
-                ang_seq = [10.0, 14.0, 18.0, 20.0, 16.0, 12.0, 16.0, 18.0, 12.0]
-                hx_seq = [31, 32, 32, 32, 32, 31, 32, 32, 31]
-                hy_seq = [21, 22, 22, 22, 22, 21, 22, 22, 21]
-                frame = draw_two_handed_odachi(
-                    base,
-                    hand_x=hx_seq[k],
-                    hand_y=hy_seq[k],
-                    angle_deg=ang_seq[k],
-                    glow_intensity=1.55,
-                    scale=1.02,
-                    blade_len=17.5,
-                    rear_shoulder=(23, 18 + dy_seq[k]),
-                    lead_shoulder=(28, 19 + dy_seq[k]),
-                    draw_arms=True,
-                    slash_arc=None,
-                    mach_cone=False,
-                    phase=phase,
-                )
-                rad_b = math.radians(ang_seq[k])
-                tip_x = min(47.0, hx_seq[k] + 1.3 * math.cos(rad_b) + 17.5 * math.cos(rad_b))
-                tip_y = min(46.0, hy_seq[k] + 1.3 * math.sin(rad_b) + 17.5 * math.sin(rad_b))
-                frame = draw_sharp_dive_spear_aura(frame, tip_x, tip_y, ang_seq[k], phase=phase, is_steep_dive=False)
             else:
                 sk = k - 9  # 0..4
                 base = shift_layer(tpl["dash"], dx=1, dy=0)
@@ -1904,12 +2073,12 @@ def build_row4_ultimate(tpl):
     - `F00..F04` (Phase 1 - Raijin Awakening & Skyward Launch Coil):
       Coils low (`crouch_d = 3 -> 4`) with his 8-Drum Raijin Thunder-Wheel & Floor Sigil blazing, then leaps skyward!
     - `F05..F13` (Phase 2 - Razor-Sharp Supersonic Diagonal Omnislash Dives):
-      His entire body pitches into a sleek `-34°` to `-42°` aerodynamic diving hawk/spear posture (`make_sharp_diving_ronin`),
-      legs tapered and swept back, both IK arms thrusting his supercharged Thunder-Odachi straight forward along the
-      dive vector (`angle_deg = +14°..+22°`) with a needle-pointed `draw_sharp_dive_spear_aura` V-Shockwing!
-    - `F14..F21` (Phase 3 - Steep `-48°..-54°` Heaven-Split Meteor Dive - `Amaterasu Plunge`):
-      Pitches steeper into a razor-sharp downward Heaven-Split Dive, his whole body and two-handed Odachi pointed
-      diagonally down-right (`angle_deg = +28°..+38°`), wrapped in a needle-sharp Supersonic Spear-Cone!
+      Hand-sculpted aerodynamic diving spear posture (`render_hand_sculpted_spear_dive`, `dive_angle_deg = +18°..+28°`)
+      with swept-back V-chevron drums, pressed-together legs, forward-tucked horned Kabuto, locked two-handed
+      15px Thunder-Odachi spearhead, and Supersonic Mach-Cone V-Shockwings!
+    - `F14..F21` (Phase 3 - Steep `+34°..+42°` Heaven-Split Meteor Dive - `Amaterasu Plunge`):
+      Pitches steeper into a razor-sharp downward Heaven-Split Dive (`is_steep_dive=True`), his whole body and
+      two-handed Odachi pointed diagonally down-right like a thunderbolt javelin from the heavens!
     - `F22..F25` (Phase 4 - Thunder-Crater Impact Lunge & Shockwave Eruption):
       Lands in a deep forward Kendo split-lunge on the Rotating Raijin Lightning Floor Sigil (`y = 45..48`) as a
       massive crescent thunder-wave erupts!
@@ -1950,73 +2119,35 @@ def build_row4_ultimate(tpl):
             frames.append(frame)
 
         elif f <= 13:
-            # Phase 2 (F05..F13): Razor-Sharp Supersonic Diagonal Omnislash Dives (`>--->>`)
+            # Phase 2 (F05..F13): Hand-Sculpted Razor-Sharp Supersonic Diagonal Omnislash Dives (`>--->>`)
             k = f - 5  # 0..8
-            tilt_seq = [-34.0, -38.0, -42.0, -40.0, -36.0, -40.0, -42.0, -38.0, -34.0]
-            dy_seq = [-3, -3, -2, -2, -3, -3, -2, -2, -3]
-            body = make_sharp_diving_ronin(
-                tpl, tilt_deg=tilt_seq[k], dive_dx=-3, dive_dy=dy_seq[k], phase=phase * 3.0
-            )
-            body = draw_susanoo_8drum_wheel(body, f, cx=20.0, cy=15.0 + dy_seq[k], phase=phase * 3.2)
-
-            ang_seq = [12.0, 16.0, 20.0, 18.0, 14.0, 18.0, 22.0, 18.0, 14.0]
-            hx_seq = [30, 31, 31, 31, 30, 31, 31, 31, 30]
-            hy_seq = [21, 22, 22, 22, 21, 22, 22, 22, 21]
-
-            frame = draw_two_handed_odachi(
-                body,
-                hand_x=hx_seq[k],
-                hand_y=hy_seq[k],
-                angle_deg=ang_seq[k],
-                glow_intensity=1.55,
-                scale=1.0,
-                blade_len=17.5,
-                rear_shoulder=(22, 18 + dy_seq[k]),
-                lead_shoulder=(27, 19 + dy_seq[k]),
-                draw_arms=True,
-                slash_arc=None,
-                mach_cone=False,
+            ang_seq = [18.0, 22.0, 26.0, 24.0, 20.0, 24.0, 28.0, 24.0, 20.0]
+            cx_seq = [23.5, 24.0, 24.5, 24.0, 23.5, 24.0, 24.5, 24.0, 23.5]
+            cy_seq = [24.0, 24.5, 25.0, 24.5, 24.0, 24.5, 25.0, 24.5, 24.0]
+            frame = render_hand_sculpted_spear_dive(
+                dive_angle_deg=ang_seq[k],
+                cx=cx_seq[k],
+                cy=cy_seq[k],
                 phase=phase * 3.2,
+                is_steep_dive=False,
+                supercharged=True,
             )
-            rad_b = math.radians(ang_seq[k])
-            tip_x = min(47.0, hx_seq[k] + 1.3 * math.cos(rad_b) + 17.5 * math.cos(rad_b))
-            tip_y = min(46.0, hy_seq[k] + 1.3 * math.sin(rad_b) + 17.5 * math.sin(rad_b))
-            frame = draw_sharp_dive_spear_aura(frame, tip_x, tip_y, ang_seq[k], phase=phase * 3.2, is_steep_dive=False)
             frames.append(frame)
 
         elif f <= 21:
-            # Phase 3 (F14..F21): Steep -48..-54 deg Heaven-Split Meteor Dive (`Susanoo Amaterasu Plunge`)!
+            # Phase 3 (F14..F21): Hand-Sculpted Steep +34..+42 deg Heaven-Split Meteor Dive (`Susanoo Amaterasu Plunge`)!
             k = f - 14  # 0..7
-            tilt_seq = [-46.0, -50.0, -54.0, -56.0, -56.0, -52.0, -48.0, -42.0]
-            dy_seq = [-4, -3, -2, -1, 0, 1, 1, 2]
-            body = make_sharp_diving_ronin(
-                tpl, tilt_deg=tilt_seq[k], dive_dx=-4, dive_dy=dy_seq[k], phase=phase * 3.5
+            ang_seq = [32.0, 36.0, 40.0, 42.0, 42.0, 38.0, 34.0, 30.0]
+            cx_seq = [23.0, 23.5, 24.0, 24.5, 24.5, 24.0, 23.5, 23.5]
+            cy_seq = [23.0, 23.5, 24.0, 24.5, 24.5, 24.5, 24.0, 24.0]
+            frame = render_hand_sculpted_spear_dive(
+                dive_angle_deg=ang_seq[k],
+                cx=cx_seq[k],
+                cy=cy_seq[k],
+                phase=phase * 3.6,
+                is_steep_dive=True,
+                supercharged=True,
             )
-            body = draw_susanoo_8drum_wheel(body, f, cx=19.0, cy=14.0 + dy_seq[k], phase=phase * 3.5)
-
-            ang_seq = [26.0, 30.0, 34.0, 36.0, 36.0, 32.0, 28.0, 22.0]
-            hx_seq = [29, 30, 30, 30, 30, 30, 30, 30]
-            hy_seq = [21, 22, 23, 24, 24, 24, 24, 24]
-
-            frame = draw_two_handed_odachi(
-                body,
-                hand_x=hx_seq[k],
-                hand_y=hy_seq[k],
-                angle_deg=ang_seq[k],
-                glow_intensity=1.65,
-                scale=1.0,
-                blade_len=17.5,
-                rear_shoulder=(21, 17 + dy_seq[k]),
-                lead_shoulder=(26, 19 + dy_seq[k]),
-                draw_arms=True,
-                slash_arc=None,
-                mach_cone=False,
-                phase=phase * 3.5,
-            )
-            rad_b = math.radians(ang_seq[k])
-            tip_x = min(47.0, hx_seq[k] + 1.3 * math.cos(rad_b) + 17.5 * math.cos(rad_b))
-            tip_y = min(46.0, hy_seq[k] + 1.3 * math.sin(rad_b) + 17.5 * math.sin(rad_b))
-            frame = draw_sharp_dive_spear_aura(frame, tip_x, tip_y, ang_seq[k], phase=phase * 3.5, is_steep_dive=True)
             frames.append(frame)
 
         elif f <= 25:
