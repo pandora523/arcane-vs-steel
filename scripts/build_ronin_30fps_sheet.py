@@ -16,7 +16,7 @@ import os
 import math
 import time
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "ronin_v2_base.jpg")
@@ -29,6 +29,102 @@ LOGICAL = 104
 COLS = 30
 ROWS = 9
 VFX_ROWS = 4
+
+# Strict 18-Color Hand-Crafted Pixel-Art Samurai Master Palette (Zero Continuous AI Gradients)
+MASTER_PALETTE = np.array([
+    # 0-1: Crisp Selective Outlines (Selout) & Deepest Crevices
+    [12, 14, 24],     # 0: Abyssal Outline
+    [20, 24, 40],     # 1: Dark Indigo Selout / Deep Crevice
+    # 2-5: 4-Step Indigo-Steel Samurai Armor & Hakama Cel Ramp (crisp metallic plate readability)
+    [32, 37, 62],     # 2: Hakama / Armor Deep Shadow
+    [48, 56, 92],     # 3: Do-Maru Armor Base Indigo
+    [74, 86, 134],    # 4: Do-Maru Armor Lit Steel-Indigo
+    [112, 126, 178],  # 5: Armor Plate Specular Rim
+    # 6-8: 3-Step Royal Amethyst / Violet Odoshi Lacing & Obi Ramp
+    [68, 38, 106],    # 6: Deep Violet Cord Shadow
+    [110, 62, 164],   # 7: Royal Amethyst Obi / Lacing Mid
+    [158, 102, 216],  # 8: Bright Lavender Silk Highlight
+    # 9-12: 4-Step Moonlit Silver Wolf-Mane & Steel Ramp
+    [116, 128, 158],  # 9: Silver Mane Cool Slate Shadow
+    [162, 174, 204],  # 10: Silver Mane Midtone
+    [210, 220, 240],  # 11: Moonlit Silver Highlight
+    [246, 250, 255],  # 12: Pure Snow-Silver Specular
+    # 13-15: 3-Step Imperial Gold Kabuto Crescent & Trim Ramp
+    [136, 92, 36],    # 13: Antique Bronze Shadow
+    [202, 152, 54],   # 14: Imperial Samurai Gold
+    [250, 214, 96],   # 15: Sunlit Gold Highlight
+    # 16-17: 2-Step Raijin Electric Cyan Eye & Crest Accent
+    [42, 174, 224],   # 16: Deep Storm Cyan
+    [106, 242, 255],  # 17: Luminous Electric Cyan
+], dtype=np.int32)
+
+
+def quantize_and_cluster_104(arr104):
+    """
+    Transforms a downsampled 104x104 RGBA frame into authentic hand-clustered pixel art:
+    1. Quantizes all opaque pixels to the 18-color MASTER_PALETTE (eliminating AI gradients/mixels).
+    2. Runs 2 passes of cardinal neighbor majority clustering (removing isolated 1px AI speckles).
+    3. Applies a crisp 1px dark selective outline (Selout) around the silhouette.
+    """
+    out = arr104.copy()
+    alpha = out[:, :, 3] > 128
+    out[~alpha] = [0, 0, 0, 0]
+    out[alpha, 3] = 255
+    if not np.any(alpha):
+        return out
+
+    # 1. Map every opaque RGB pixel to nearest color in MASTER_PALETTE
+    rgb = out[:, :, :3].astype(np.int32)
+    diff = rgb[:, :, None, :] - MASTER_PALETTE[None, None, :, :]
+    # Perceptual weights (protect hue differences between indigo, violet, gold, and cyan)
+    dist2 = diff[:, :, :, 0] ** 2 * 2 + diff[:, :, :, 1] ** 2 * 3 + diff[:, :, :, 2] ** 2 * 2
+    idx_map = np.argmin(dist2, axis=2)
+    idx_map[~alpha] = -1
+
+    # 2. Two passes of Cardinal Pixel-Clustering (Orphan-Pixel Despeckle)
+    for _ in range(2):
+        up = np.pad(idx_map[:-1, :], ((1, 0), (0, 0)), constant_values=-1)
+        dn = np.pad(idx_map[1:, :], ((0, 1), (0, 0)), constant_values=-1)
+        lf = np.pad(idx_map[:, :-1], ((0, 0), (1, 0)), constant_values=-1)
+        rt = np.pad(idx_map[:, 1:], ((0, 0), (0, 1)), constant_values=-1)
+
+        same_cnt = (
+            (idx_map == up).astype(np.int8)
+            + (idx_map == dn).astype(np.int8)
+            + (idx_map == lf).astype(np.int8)
+            + (idx_map == rt).astype(np.int8)
+        )
+        # Isolated 1px speckle (differs from all 4 cardinal neighbors, and not a bright gold/cyan accent)
+        interior = alpha & (up >= 0) & (dn >= 0) & (lf >= 0) & (rt >= 0)
+        protect = (idx_map == 15) | (idx_map == 17)
+        orphan = interior & (same_cnt == 0) & (~protect)
+
+        replacement = np.where((up == dn) & (up >= 0), up, np.where((lf == rt) & (lf >= 0), lf, up))
+        idx_map = np.where(orphan & (replacement >= 0), replacement, idx_map)
+
+    # 3. Crisp 1px Selective Outline (Selout) on outer silhouette edges
+    up_a = np.pad(alpha[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+    dn_a = np.pad(alpha[1:, :], ((0, 1), (0, 0)), constant_values=False)
+    lf_a = np.pad(alpha[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+    rt_a = np.pad(alpha[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+    edge = alpha & (~(up_a & dn_a & lf_a & rt_a))
+
+    is_mane = (idx_map >= 9) & (idx_map <= 12)
+    is_gold_or_cyan = idx_map >= 14
+    body_edge = edge & (~is_mane) & (~is_gold_or_cyan)
+    mane_edge = edge & is_mane
+
+    # Upper/left lit silhouette gets Dark Indigo Selout (1); lower/right shadow edge gets Abyssal Outline (0)
+    shadow_edge = body_edge & ((~dn_a) | (~rt_a))
+    lit_edge = body_edge & (~shadow_edge)
+    idx_map[lit_edge] = 1
+    idx_map[shadow_edge] = 0
+    idx_map[mane_edge & ((~dn_a) | (~rt_a))] = 3
+
+    valid = idx_map >= 0
+    out_rgb = MASTER_PALETTE[np.clip(idx_map, 0, len(MASTER_PALETTE) - 1)].astype(np.uint8)
+    out[:, :, :3] = np.where(valid[:, :, None], out_rgb, 0)
+    return out
 
 
 def keep_largest_component(mask):
@@ -74,15 +170,14 @@ def poly_mask(H, W, pts):
 def load_and_segment_512():
     """
     Loads ronin_v2_base.jpg (1024x1024), removes exterior & interior white pockets,
-    segments into 13 anatomical parts, and downsamples 2x to 512x512 working space
-    (which is still 5x higher resolution than the 104x104 target grid, giving
-    ultra-fast sub-pixel joint rotation with zero quality loss).
+    applies cel-clustering & AI-confetti suppression on the 512x512 master rig,
+    and segments into 13 clean anatomical pixel-art parts.
     """
     im = Image.open(BASE_IMG_PATH).convert("RGBA")
     for seed in [(0, 0), (1023, 0), (0, 1023), (1023, 1023), (430, 412), (460, 625)]:
         ImageDraw.floodfill(im, seed, (0, 0, 0, 0), thresh=40)
     arr = np.array(im)
-    for _ in range(2):
+    for _ in range(3):
         a = arr[:, :, 3] > 0
         up = np.pad(a[1:, :], ((0, 1), (0, 0)), constant_values=False)
         dn = np.pad(a[:-1, :], ((1, 0), (0, 0)), constant_values=False)
@@ -92,14 +187,30 @@ def load_and_segment_512():
         r = arr[:, :, 0].astype(np.int16)
         g = arr[:, :, 1].astype(np.int16)
         b = arr[:, :, 2].astype(np.int16)
-        white_fringe = edge & (r > 180) & (g > 180) & (b > 180) & (np.abs(r - g) < 28) & (np.abs(g - b) < 28)
+        white_fringe = edge & (r > 165) & (g > 165) & (b > 165) & (np.abs(r - g) < 32) & (np.abs(g - b) < 32)
         arr[white_fringe] = [0, 0, 0, 0]
 
-    # Downsample 2x NEAREST to 512x512 for fast high-precision skeletal assembly
+    # Downsample 2x NEAREST to 512x512 and run Median Cel-Clustering to flatten AI brushwork into clean cel planes
     im512 = Image.fromarray(arr, "RGBA").resize((512, 512), Image.Resampling.NEAREST)
+    rgb512 = im512.convert("RGB")
+    rgb_med3 = np.array(rgb512.filter(ImageFilter.MedianFilter(size=3)))
+    rgb_med5 = np.array(rgb512.filter(ImageFilter.MedianFilter(size=5)))
     arr512 = np.array(im512)
     H, W = arr512.shape[:2]
     alpha = arr512[:, :, 3] > 0
+
+    # Use 3x3 median on head/helmet (y < 142) to keep crisp crescent horns & eyes, 5x5 median on armor/body (y >= 142)
+    yy = np.arange(H)[:, None]
+    cel_rgb = np.where(yy[:, :, None] < 142, rgb_med3, rgb_med5)
+
+    # Suppress noisy AI cyan filigree speckles on lower armor/legs (y >= 210) while keeping breastplate crest & gold rims
+    r5 = cel_rgb[:, :, 0].astype(np.int16)
+    g5 = cel_rgb[:, :, 1].astype(np.int16)
+    b5 = cel_rgb[:, :, 2].astype(np.int16)
+    lower_legs = (yy >= 210) & alpha
+    noisy_cyan_speckle = lower_legs & ((b5 - r5) > 42) & ((g5 - r5) > 24)
+    cel_rgb[noisy_cyan_speckle] = [74, 86, 134]
+    arr512[:, :, :3] = np.where(alpha[:, :, None], cel_rgb, 0)
 
     def P(pts):
         return [(x * 0.5, y * 0.5) for (x, y) in pts]
@@ -584,7 +695,7 @@ def render_pose_104(parts, cfg):
     paste_rotated_part(canvas, parts["l_sode"], l_sh_src, l_sh_dst, l_sode_deg)
     paste_rotated_part(canvas, parts["l_forearm"], l_elb_src, l_elb_dst, l_fore_deg)
 
-    # Dynamic framing from 512x512 canvas to 104x104
+    # Dynamic framing from 600x560 canvas to 104x104
     S = 592
     scale = 104.0 / S
     cx = 267.5 + OX
@@ -594,32 +705,57 @@ def render_pose_104(parts, cfg):
 
     bbox = canvas.getbbox()
     c_xmin = float(bbox[0]) if bbox else float(cx)
+    c_ymin = float(bbox[1]) if bbox else float(y_bot - 200.0)
     c_xmax = float(bbox[2]) if bbox else float(cx)
+    c_ymax = float(bbox[3]) if bbox else float(y_bot)
     saya_rad = math.radians(cfg.get("saya_deg", 152.0 + torso_deg * 0.5))
     saya_tip_cx = l_hip_dst[0] + math.cos(saya_rad) * (20.0 / scale)
+    saya_tip_cy = l_hip_dst[1] + math.sin(saya_rad) * (20.0 / scale)
     c_xmin = min(c_xmin, saya_tip_cx - 12)
     c_xmax = max(c_xmax, saya_tip_cx + 12)
+    c_ymin = min(c_ymin, saya_tip_cy - 12)
+    c_ymax = max(c_ymax, saya_tip_cy + 12)
     if not cfg.get("sheathed", False):
         hand_c = r_hand_dst if cfg.get("sword_hand", "right") == "right" else l_hand_dst
         b_rad = math.radians(cfg.get("odachi_deg", -28.0))
         b_len = cfg.get("odachi_len", 30.0)
-        tip_cx = hand_c[0] + math.cos(b_rad) * ((3.0 + b_len) / scale)
+        tip_cx = hand_c[0] + math.cos(b_rad) * ((3.5 + b_len) / scale)
+        tip_cy = hand_c[1] + math.sin(b_rad) * ((3.5 + b_len) / scale)
         pom_cx = hand_c[0] - math.cos(b_rad) * (8.5 / scale)
-        c_xmin = min(c_xmin, tip_cx - 16, pom_cx - 12)
-        c_xmax = max(c_xmax, tip_cx + 16, pom_cx + 12)
+        pom_cy = hand_c[1] - math.sin(b_rad) * (8.5 / scale)
+        pad_tip = 26.0 if cfg.get("mach_cone") is not None else 16.0
+        c_xmin = min(c_xmin, tip_cx - pad_tip, pom_cx - 12)
+        c_xmax = max(c_xmax, tip_cx + pad_tip, pom_cx + 12)
+        c_ymin = min(c_ymin, tip_cy - pad_tip, pom_cy - 12)
+        c_ymax = max(c_ymax, tip_cy + pad_tip, pom_cy + 12)
 
-    min_104 = (c_xmin - crop_x0) * scale
-    max_104 = (c_xmax - crop_x0) * scale
-    span_104 = max_104 - min_104
-    if span_104 > 90.0:
-        S = int(round((c_xmax - c_xmin) / (89.0 / 104.0)))
+    if cfg.get("spear_mode", False):
+        span_x = c_xmax - c_xmin
+        span_y = c_ymax - c_ymin
+        req_S = int(round(max(span_x, span_y) / (84.0 / 104.0)))
+        S = max(592, req_S)
         scale = 104.0 / S
         crop_x0 = int(round(0.5 * (c_xmin + c_xmax) - S * 0.50))
-        crop_y0 = int(round(y_bot - S * (99.0 / 104.0)))
-    elif max_104 > 97.0:
-        crop_x0 += int(round((max_104 - 97.0) / scale))
-    elif min_104 < 6.0:
-        crop_x0 += int(round((min_104 - 6.0) / scale))
+        crop_y0 = int(round(0.5 * (c_ymin + c_ymax) - S * (60.0 / 104.0)))
+        min_y104 = (c_ymin - crop_y0) * scale
+        max_y104 = (c_ymax - crop_y0) * scale
+        if max_y104 > 96.0:
+            crop_y0 += int(round((max_y104 - 96.0) / scale))
+        elif min_y104 < 7.0:
+            crop_y0 += int(round((min_y104 - 7.0) / scale))
+    else:
+        min_104 = (c_xmin - crop_x0) * scale
+        max_104 = (c_xmax - crop_x0) * scale
+        span_104 = max_104 - min_104
+        if span_104 > 90.0:
+            S = int(round((c_xmax - c_xmin) / (89.0 / 104.0)))
+            scale = 104.0 / S
+            crop_x0 = int(round(0.5 * (c_xmin + c_xmax) - S * 0.50))
+            crop_y0 = int(round(y_bot - S * (99.0 / 104.0)))
+        elif max_104 > 97.0:
+            crop_x0 += int(round((max_104 - 97.0) / scale))
+        elif min_104 < 6.0:
+            crop_x0 += int(round((min_104 - 6.0) / scale))
 
     win = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     win.paste(canvas, (-crop_x0, -crop_y0))
@@ -634,10 +770,10 @@ def render_pose_104(parts, cfg):
     l_hand_104 = to104(l_hand_dst)
     r_hand_104 = to104(r_hand_dst)
 
-    # Fast numpy auto-grounding so boots sit cleanly on y = 91 (or 91 + airborne_dy)
+    # Fast numpy auto-grounding so boots sit cleanly on y = 99 when grounded
     ys, xs = np.where(arr104[:, :, 3] > 0)
     dy_ground = 0
-    if len(ys) > 0:
+    if len(ys) > 0 and not cfg.get("spear_mode", False):
         cur_bot = int(ys.max())
         cur_top = int(ys.min())
         if cfg.get("grounded", True):
@@ -657,6 +793,9 @@ def render_pose_104(parts, cfg):
             if y_src1 > y_src0:
                 shifted[y_dst0:y_dst1] = arr104[y_src0:y_src1]
             arr104 = shifted
+
+    # Transform downsampled 104x104 body into authentic cel-clustered 18-color pixel art with 1px Selout
+    arr104 = quantize_and_cluster_104(arr104)
 
     neck_104 = (neck_104[0], neck_104[1] + dy_ground)
     l_hip_104 = (l_hip_104[0], l_hip_104[1] + dy_ground)
@@ -737,12 +876,17 @@ def render_pose_104(parts, cfg):
     if cfg.get("speedlines", 0) > 0:
         n_lines = cfg["speedlines"]
         ph = cfg.get("mane_wave_phase", 0.0)
+        sl_deg = b_deg if cfg.get("mach_cone") is not None else 0.0
+        sl_rad = math.radians(sl_deg)
+        ux_s, uy_s = math.cos(sl_rad), math.sin(sl_rad)
         for k in range(n_lines):
-            ly = int(26 + (k * 11 + int(ph * 5)) % 56)
-            lx0 = int(6 + (k * 7 + int(ph * 9)) % 18)
-            lx1 = lx0 + 10 + (k % 3) * 4
+            ly = 24.0 + (k * 11 + int(ph * 5)) % 56
+            lx0 = 6.0 + (k * 7 + int(ph * 9)) % 18
+            slen = 10.0 + (k % 3) * 4.0
+            lx1 = min(96.0, max(5.0, lx0 + ux_s * slen))
+            ly1 = min(96.0, max(5.0, ly + uy_s * slen))
             col = (105, 245, 255, 255) if k % 2 == 0 else (185, 130, 255, 255)
-            draw_line_104(out, lx0, ly, lx1, ly, col, 1)
+            draw_line_104(out, lx0, ly, lx1, ly1, col, 1)
 
     # Final safety clamp to [3..100] and pinhole fill
     out[:3, :, :] = 0
@@ -759,6 +903,45 @@ def render_pose_104(parts, cfg):
         out[pinhole] = [24, 28, 48, 255]
 
     return out
+
+
+def make_spear_dive_cfg(p_deg, ph, u=0.5, ultimate=False):
+    """
+    Constructs a 13-part articulated full-body Supersonic Spear-Dive configuration
+    aligned along trajectory angle `p_deg` (negative = upward-diagonal '/', 0 = horizontal '--->',
+    positive = head-first downward-diagonal '\\').
+    """
+    return dict(
+        pelvis_dx=0.0,
+        pelvis_dy=18.0,
+        torso_deg=68.0 + 0.72 * p_deg,
+        head_rel_deg=-24.0 - 0.15 * p_deg,
+        mane_rel_deg=-38.0,
+        mane_wave_phase=ph * (4.0 if ultimate else 3.0),
+        mane_wave_amp=12.0 if ultimate else 10.5,
+        l_thigh_deg=66.0 + 0.75 * p_deg,
+        l_shin_deg=72.0 + 0.75 * p_deg,
+        l_foot_deg=70.0 + 0.70 * p_deg,
+        r_thigh_deg=92.0 + 0.75 * p_deg,
+        r_shin_deg=76.0 + 0.75 * p_deg,
+        r_foot_deg=72.0 + 0.70 * p_deg,
+        l_sode_rel_deg=-60.0,
+        l_fore_rel_deg=-42.0,
+        r_sode_rel_deg=-76.0 if p_deg < 0 else -52.0,
+        r_fore_rel_deg=-38.0 if p_deg < 0 else -34.0,
+        right_arm_in_front=True,
+        grounded=False,
+        spear_mode=True,
+        odachi_deg=p_deg,
+        odachi_len=28.0,
+        drums_active=True,
+        mach_cone=dict(
+            len=40.0 if ultimate else 34.0,
+            intensity=1.1 if ultimate else (0.88 + 0.20 * math.sin(u * math.pi)),
+            ultimate=ultimate
+        ),
+        speedlines=7 if ultimate else 5
+    )
 
 
 def build_row_configs(row_idx):
@@ -927,9 +1110,9 @@ def build_row_configs(row_idx):
                 ))
 
         elif row_idx == 3:
-            # Row 3: SKILL (Thunderous Blink Strike — Full-Body Supersonic Spear-Dive!)
+            # Row 3: SKILL (Zantetsuken Flash — Grounded Cast + 3 Multi-Angle Spear Passes!)
             if f < 6:
-                # Phase 1: Deep Iaido Coil & Lightning Compression
+                # Phase 1: Deep Grounded Iaido Coil & Lightning Compression (100% Grounded!)
                 u = f / 5.0
                 cfgs.append(dict(
                     pelvis_dx=-15.0 * u,
@@ -947,39 +1130,19 @@ def build_row_configs(row_idx):
                     l_fore_rel_deg=-38.0 * u,
                     r_sode_rel_deg=28.0 * u,
                     r_fore_rel_deg=24.0 * u,
+                    grounded=True,
                     sheathed=True,
                     drums_active=True
                 ))
+            elif f < 9:
+                # Pass 1 (F06..F08): Up-Diagonal Spear-Dash ('/' -18 deg)
+                cfgs.append(make_spear_dive_cfg(-18.0, ph, (f - 6) / 2.0, ultimate=False))
+            elif f < 12:
+                # Pass 2 (F09..F11): Cross-Air Horizontal Spear-Blitz ('--->' +2 deg)
+                cfgs.append(make_spear_dive_cfg(2.0, ph, (f - 9) / 2.0, ultimate=False))
             elif f < 16:
-                # Phase 2: Grounded Supersonic Horizontal Spear-Lunge (100% grounded on floor, zero lifting!)
-                u = (f - 6) / 9.0
-                cyc = math.sin(u * math.pi)
-                cfgs.append(dict(
-                    pelvis_dx=0.0,
-                    pelvis_dy=95.0 + 15.0 * cyc,
-                    torso_deg=34.0 + 8.0 * cyc,
-                    head_rel_deg=-16.0,
-                    mane_rel_deg=-30.0,
-                    mane_wave_phase=ph * 3.0,
-                    mane_wave_amp=11.0,
-                    l_thigh_deg=28.0 + 6.0 * cyc,
-                    l_shin_deg=22.0 + 6.0 * cyc,
-                    l_foot_deg=14.0,
-                    r_thigh_deg=-32.0 - 4.0 * cyc,
-                    r_shin_deg=18.0 + 4.0 * cyc,
-                    r_foot_deg=0.0,
-                    l_sode_rel_deg=14.0,
-                    l_fore_rel_deg=-28.0,
-                    r_sode_rel_deg=-42.0 - 6.0 * cyc,
-                    r_fore_rel_deg=-22.0,
-                    right_arm_in_front=True,
-                    grounded=True,
-                    odachi_deg=2.0 + 3.0 * math.sin(u * 2.0 * math.pi),
-                    odachi_len=30.0,
-                    drums_active=True,
-                    mach_cone=dict(len=36.0, intensity=0.85 + 0.25 * cyc, ultimate=False),
-                    speedlines=5
-                ))
+                # Pass 3 (F12..F15): Head-First Down-Diagonal Spear-Dive ('\\' +26 deg)
+                cfgs.append(make_spear_dive_cfg(26.0, ph, (f - 12) / 3.0, ultimate=False))
             elif f < 23:
                 # Phase 3: Cross-Slash Impact Detonation
                 u = (f - 16) / 6.0
@@ -1030,9 +1193,9 @@ def build_row_configs(row_idx):
                 ))
 
         elif row_idx == 4:
-            # Row 4: ULTIMATE (Amatsu-Ikazuchi — 100% Grounded Godspeed Thunder-Spear Charge & Omnislash!)
+            # Row 4: ULTIMATE (Susanoo Omnislash — 100% Grounded Cast + 6 Multi-Angle Spear Dashes!)
             if f < 5:
-                # Phase 1: Deep Grounded Raijin Iaido Awakening (zero lifting off the floor!)
+                # Phase 1 (F00..F04): Deep Grounded Raijin Iaido Awakening (100% Grounded — ZERO lifting/floating!)
                 u = f / 4.0
                 cfgs.append(dict(
                     pelvis_dx=-15.0 * u,
@@ -1054,36 +1217,24 @@ def build_row_configs(row_idx):
                     sheathed=(f >= 1),
                     drums_active=True
                 ))
+            elif f < 8:
+                # Pass 1 (F05..F07): Ground-Launch Up-Diagonal Spear-Dash ('/' -20 deg)
+                cfgs.append(make_spear_dive_cfg(-20.0, ph, (f - 5) / 2.0, ultimate=True))
+            elif f < 10:
+                # Pass 2 (F08..F09): Head-First Down-Diagonal Cross-Dive ('\\' +24 deg)
+                cfgs.append(make_spear_dive_cfg(24.0, ph, f - 8, ultimate=True))
+            elif f < 12:
+                # Pass 3 (F10..F11): Up-Diagonal Sky-Slash ('/' -22 deg)
+                cfgs.append(make_spear_dive_cfg(-22.0, ph, f - 10, ultimate=True))
+            elif f < 14:
+                # Pass 4 (F12..F13): Horizontal Supersonic Blitz ('--->' +4 deg)
+                cfgs.append(make_spear_dive_cfg(4.0, ph, f - 12, ultimate=True))
+            elif f < 17:
+                # Pass 5 (F14..F16): Steep Up-Diagonal Ascension Slash to Heaven-Split Apex ('/' -24 deg)
+                cfgs.append(make_spear_dive_cfg(-24.0, ph, (f - 14) / 2.0, ultimate=True))
             elif f < 21:
-                # Phase 2: Grounded Supersonic Thunder-Spear Charge (deep horizontal spear lunge on the ground!)
-                u = (f - 5) / 15.0
-                cyc = math.sin(u * math.pi * 2.0)
-                cfgs.append(dict(
-                    pelvis_dx=0.0,
-                    pelvis_dy=102.0 + 12.0 * abs(cyc),
-                    torso_deg=38.0 + 6.0 * math.sin(u * math.pi),
-                    head_rel_deg=-18.0,
-                    mane_rel_deg=-34.0,
-                    mane_wave_phase=ph * 4.0,
-                    mane_wave_amp=12.5,
-                    l_thigh_deg=30.0 + 6.0 * cyc,
-                    l_shin_deg=24.0 + 6.0 * abs(cyc),
-                    l_foot_deg=16.0,
-                    r_thigh_deg=-34.0 - 4.0 * cyc,
-                    r_shin_deg=20.0 + 4.0 * abs(cyc),
-                    r_foot_deg=0.0,
-                    l_sode_rel_deg=16.0,
-                    l_fore_rel_deg=-30.0,
-                    r_sode_rel_deg=-46.0 - 4.0 * cyc,
-                    r_fore_rel_deg=-24.0,
-                    right_arm_in_front=True,
-                    grounded=True,
-                    odachi_deg=1.5 + 2.5 * cyc,
-                    odachi_len=30.0,
-                    drums_active=True,
-                    mach_cone=dict(len=42.0, intensity=1.1, ultimate=True),
-                    speedlines=7
-                ))
+                # Pass 6 (F17..F20): FINAL HEAVEN-SPLIT HEAD-FIRST THUNDER-SPEAR PLUNGE ('\\' +32 deg)
+                cfgs.append(make_spear_dive_cfg(32.0, ph, (f - 17) / 3.0, ultimate=True))
             elif f < 27:
                 # Phase 3: Cataclysmic Judgement Cross-Cleaving Impact
                 u = (f - 21) / 5.0
@@ -1433,8 +1584,8 @@ def render_vfx_cell_104(row_idx, f):
         if f < 18:
             su = f / 17.0
             tx = 32.0 + 54.0 * su
-            ty = 52.0
-            draw_mach_cone_104(arr, tx, ty, 0.0, length=34.0, intensity=0.95, ultimate=False)
+            ty = 34.0 + 34.0 * su
+            draw_mach_cone_104(arr, tx, ty, 28.0, length=34.0, intensity=0.95, ultimate=False)
         else:
             su = (f - 18) / 11.0
             draw_x_slash_104(arr, 52.0, 52.0, radius=34.0 * (1.0 - 0.35 * su), phase=ph, ultimate=False)
@@ -1443,8 +1594,8 @@ def render_vfx_cell_104(row_idx, f):
         if f < 18:
             su = f / 17.0
             tx = 28.0 + 58.0 * su
-            ty = 52.0
-            draw_mach_cone_104(arr, tx, ty, 0.0, length=42.0, intensity=1.15, ultimate=True)
+            ty = 26.0 + 48.0 * su
+            draw_mach_cone_104(arr, tx, ty, 36.0, length=42.0, intensity=1.15, ultimate=True)
         else:
             su = (f - 18) / 11.0
             draw_x_slash_104(arr, 52.0, 52.0, radius=38.0 * (1.0 - 0.25 * su), phase=ph, ultimate=True)
@@ -1537,8 +1688,35 @@ def main():
         vfx_dbg.resize(((COLS * CELL) // 2, (VFX_ROWS * CELL) // 2), Image.Resampling.NEAREST).save(
             os.path.join(ARTIFACT_DIR, "debug_ronin_30fps_vfx.png")
         )
-        print("Saved debug contact sheets to", ARTIFACT_DIR)
+        # Save 12-panel close-up pixel-art showcase (2x6 of 240x240 panels)
+        picks = [
+            (0, 0, "R0 IDLE F00"),
+            (1, 4, "R1 WALK F04"),
+            (1, 19, "R1 WALK F19"),
+            (2, 9, "R2 ATTACK F09"),
+            (3, 7, "R3 SKILL UP-DASH"),
+            (3, 13, "R3 SKILL DOWN-DIVE"),
+            (4, 2, "R4 ULT GROUND CAST"),
+            (4, 6, "R4 ULT UP-SPEAR"),
+            (4, 12, "R4 ULT HORIZ-BLITZ"),
+            (4, 18, "R4 ULT HEAVEN-DIVE"),
+            (4, 22, "R4 ULT IMPACT"),
+            (6, 10, "R6 SHUNPO DASH"),
+        ]
+        pw, ph_c = 236, 244
+        show = Image.new("RGBA", (pw * 6, ph_c * 2), (14, 17, 26, 255))
+        sdraw = ImageDraw.Draw(show)
+        for idx_p, (rr, cc, label) in enumerate(picks):
+            gx = (idx_p % 6) * pw
+            gy = (idx_p // 6) * ph_c
+            sdraw.line([(gx, gy + ph_c - 18), (gx + pw, gy + ph_c - 18)], fill=(48, 56, 86, 255), width=1)
+            tile = sheet.crop((cc * CELL, rr * CELL, (cc + 1) * CELL, (rr + 1) * CELL))
+            show.alpha_composite(tile, (gx + 14, gy + 26))
+            sdraw.text((gx + 8, gy + 6), label, fill=(135, 232, 255, 255))
+        show.save(os.path.join(ARTIFACT_DIR, "debug_ronin_9pass_showcase.png"))
+        print("Saved debug contact sheets & showcase to", ARTIFACT_DIR)
 
 
 if __name__ == "__main__":
     main()
+
