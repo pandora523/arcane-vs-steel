@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps38';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps38';
+import { Fighter } from './Fighter.js?v=30fps39';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps39';
 
 export class Titan extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -806,15 +806,11 @@ export class Titan extends Fighter {
     const h = 208;
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
 
-    const groundPlantOffset = 6;
-    const walkBob =
-      !isReflection && this.state === 'WALK'
-        ? Math.round(Math.abs(Math.sin(this.walkPhase * 4.0)) * 3)
-        : 0;
+    const groundPlantOffset = 4;
 
     ctx.translate(
       Math.round(this.x),
-      Math.round(this.y + groundPlantOffset - walkBob)
+      Math.round(this.y + groundPlantOffset)
     );
     ctx.scale(this.facing * scale, scale);
 

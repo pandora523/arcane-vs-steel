@@ -393,7 +393,7 @@ def draw_line_104(arr, x0, y0, x1, y1, col, thickness=1):
                         put_px(arr, x + dx, y + dy, col)
 
 
-def draw_valkyrie_wings_104(arr, back_x, back_y, torso_deg=0.0, flap_phase=0.0, mode="normal"):
+def draw_valkyrie_wings_104(arr, back_x, back_y, torso_deg=0.0, flap_phase=0.0, mode="normal", full_rot=False):
     """
     Renders Freyja's Lush 6-Pinion Crimson-and-Gold Valkyrie Wings in 104x104 space
     using strict MASTER_PALETTE cel shades and crisp 1px dark Selout separation!
@@ -414,7 +414,7 @@ def draw_valkyrie_wings_104(arr, back_x, back_y, torso_deg=0.0, flap_phase=0.0, 
         return
 
     flap = math.sin(flap_phase)
-    rad_t = math.radians(torso_deg * 0.65)
+    rad_t = math.radians(torso_deg if full_rot else torso_deg * 0.65)
     ct, st = math.cos(rad_t), math.sin(rad_t)
 
     def w_rot(dx, dy):
@@ -668,9 +668,9 @@ def render_pose_104(parts, cfg):
     """
     Renders a single 104x104 logical frame from Freyja's 512x512 13-part anatomical rig.
     """
-    canvas = Image.new("RGBA", (620, 560), (0, 0, 0, 0))
+    canvas = Image.new("RGBA", (860, 860), (0, 0, 0, 0))
     draw = ImageDraw.Draw(canvas)
-    OX, OY = 50, 20
+    OX, OY = 170, 170
 
     # All 512x512 joint pivots are exact 0.5x of 1024x1024 anatomical joint centers
     pelvis_src = (266.0, 280.0)
@@ -703,9 +703,14 @@ def render_pose_104(parts, cfg):
     r_hip_src = (304.0, 287.0)
     r_hip_dst = torso_joint(r_hip_src)
 
-    l_thigh_deg = cfg.get("l_thigh_deg", 0.0)
-    l_shin_deg = cfg.get("l_shin_deg", 0.0)
-    l_foot_deg = cfg.get("l_foot_deg", 0.0)
+    if cfg.get("legs_follow_torso", False):
+        l_thigh_deg = torso_deg + cfg.get("l_thigh_deg", 0.0)
+        l_shin_deg = l_thigh_deg + cfg.get("l_shin_deg", 0.0)
+        l_foot_deg = l_shin_deg + cfg.get("l_foot_deg", 0.0)
+    else:
+        l_thigh_deg = cfg.get("l_thigh_deg", 0.0)
+        l_shin_deg = cfg.get("l_shin_deg", 0.0)
+        l_foot_deg = cfg.get("l_foot_deg", 0.0)
     l_knee_src = (202.0, 352.0)
     l_knee_r = rot_pt(l_knee_src, l_hip_src, l_thigh_deg)
     l_knee_dst = (l_hip_dst[0] + (l_knee_r[0] - l_hip_src[0]), l_hip_dst[1] + (l_knee_r[1] - l_hip_src[1]))
@@ -713,9 +718,14 @@ def render_pose_104(parts, cfg):
     l_ank_r = rot_pt(l_ank_src, l_knee_src, l_shin_deg)
     l_ank_dst = (l_knee_dst[0] + (l_ank_r[0] - l_knee_src[0]), l_knee_dst[1] + (l_ank_r[1] - l_knee_src[1]))
 
-    r_thigh_deg = cfg.get("r_thigh_deg", 0.0)
-    r_shin_deg = cfg.get("r_shin_deg", 0.0)
-    r_foot_deg = cfg.get("r_foot_deg", 0.0)
+    if cfg.get("legs_follow_torso", False):
+        r_thigh_deg = torso_deg + cfg.get("r_thigh_deg", 0.0)
+        r_shin_deg = r_thigh_deg + cfg.get("r_shin_deg", 0.0)
+        r_foot_deg = r_shin_deg + cfg.get("r_foot_deg", 0.0)
+    else:
+        r_thigh_deg = cfg.get("r_thigh_deg", 0.0)
+        r_shin_deg = cfg.get("r_shin_deg", 0.0)
+        r_foot_deg = cfg.get("r_foot_deg", 0.0)
     r_knee_src = (348.0, 351.0)
     r_knee_r = rot_pt(r_knee_src, r_hip_src, r_thigh_deg)
     r_knee_dst = (r_hip_dst[0] + (r_knee_r[0] - r_hip_src[0]), r_hip_dst[1] + (r_knee_r[1] - r_hip_src[1]))
@@ -815,12 +825,24 @@ def render_pose_104(parts, cfg):
     c_xmax = float(bbox[2]) if bbox else float(cx)
     c_ymax = float(bbox[3]) if bbox else float(y_bot)
 
-    # Reserve left-side space for Freyja's 6-pinion Valkyrie wings
+    # Reserve space for Freyja's 6-pinion Valkyrie wings (including 360-deg backflip rotation!)
+    flip_blend = float(cfg.get("flip_air_blend", 0.0))
     wing_mode = cfg.get("wing_mode", "normal")
-    wing_pad_x = 175.0 if wing_mode in ("flare", "swept") else 145.0
-    wing_pad_y = 135.0 if wing_mode == "flare" else 100.0
-    c_xmin = min(c_xmin, back_wing_dst[0] - wing_pad_x)
-    c_ymin = min(c_ymin, back_wing_dst[1] - wing_pad_y)
+    if flip_blend > 0.0:
+        rad_w = math.radians(torso_deg if flip_blend > 0.25 else torso_deg * 0.65)
+        w_tip_x = back_wing_dst[0] + (-32.0 * math.cos(rad_w) - (-16.0) * math.sin(rad_w)) / scale
+        w_tip_y = back_wing_dst[1] + (-32.0 * math.sin(rad_w) + (-16.0) * math.cos(rad_w)) / scale
+        w_low_x = back_wing_dst[0] + (-20.0 * math.cos(rad_w) - 16.0 * math.sin(rad_w)) / scale
+        w_low_y = back_wing_dst[1] + (-20.0 * math.sin(rad_w) + 16.0 * math.cos(rad_w)) / scale
+        c_xmin = min(c_xmin, w_tip_x - 24.0, w_low_x - 24.0)
+        c_xmax = max(c_xmax, w_tip_x + 24.0, w_low_x + 24.0)
+        c_ymin = min(c_ymin, w_tip_y - 24.0, w_low_y - 24.0)
+        c_ymax = max(c_ymax, w_tip_y + 24.0, w_low_y + 24.0)
+    else:
+        wing_pad_x = 175.0 if wing_mode in ("flare", "swept") else 145.0
+        wing_pad_y = 135.0 if wing_mode == "flare" else 100.0
+        c_xmin = min(c_xmin, back_wing_dst[0] - wing_pad_x)
+        c_ymin = min(c_ymin, back_wing_dst[1] - wing_pad_y)
 
     if cfg.get("show_lance", True):
         hand_c = r_hand_dst if cfg.get("lance_hand", "right") == "right" else l_hand_dst
@@ -836,7 +858,32 @@ def render_pose_104(parts, cfg):
         c_ymin = min(c_ymin, tip_cy - pad_tip, pom_cy - 12)
         c_ymax = max(c_ymax, tip_cy + pad_tip, pom_cy + 12)
 
-    if cfg.get("spear_mode", False):
+    if flip_blend > 0.0:
+        span_x = c_xmax - c_xmin
+        span_y = c_ymax - c_ymin
+        req_S = int(round(max(span_x, span_y) / (82.0 / 104.0)))
+        S_flip = max(588, req_S)
+        S = int(round(S * (1.0 - flip_blend) + S_flip * flip_blend))
+        scale = 104.0 / S
+        g_x0 = cx - S * 0.50
+        g_y0 = y_bot - S * (99.0 / 104.0)
+        f_x0 = 0.5 * (c_xmin + c_xmax) - S * 0.50
+        f_y0 = 0.5 * (c_ymin + c_ymax) - S * 0.50
+        crop_x0 = int(round(g_x0 * (1.0 - flip_blend) + f_x0 * flip_blend))
+        crop_y0 = int(round(g_y0 * (1.0 - flip_blend) + f_y0 * flip_blend))
+        min_x104 = (c_xmin - crop_x0) * scale
+        max_x104 = (c_xmax - crop_x0) * scale
+        min_y104 = (c_ymin - crop_y0) * scale
+        max_y104 = (c_ymax - crop_y0) * scale
+        if max_x104 > 96.0:
+            crop_x0 += int(round((max_x104 - 96.0) / scale))
+        elif min_x104 < 7.0:
+            crop_x0 += int(round((min_x104 - 7.0) / scale))
+        if max_y104 > 96.0:
+            crop_y0 += int(round((max_y104 - 96.0) / scale))
+        elif min_y104 < 7.0:
+            crop_y0 += int(round((min_y104 - 7.0) / scale))
+    elif cfg.get("spear_mode", False):
         span_x = c_xmax - c_xmin
         span_y = c_ymax - c_ymin
         req_S = int(round(max(span_x, span_y) / (84.0 / 104.0)))
@@ -877,16 +924,18 @@ def render_pose_104(parts, cfg):
     l_hand_104 = to104(l_hand_dst)
     r_hand_104 = to104(r_hand_dst)
 
-    # Smooth continuous foot_y target (default 99.0 when grounded; gently 93..96 on low wing-glides — ZERO 1-frame snap!)
+    # Smooth continuous foot_y target (blended out mid-backflip when flip_air_blend == 1.0!)
     ys, xs = np.where(arr104[:, :, 3] > 0)
     dy_ground = 0
-    if len(ys) > 0:
+    if len(ys) > 0 and flip_blend < 0.99:
         cur_bot = int(ys.max())
         cur_top = int(ys.min())
         target_bot = int(round(cfg.get("foot_y", 99.0)))
-        dy_ground = target_bot - cur_bot
+        dy_ground = int(round((target_bot - cur_bot) * (1.0 - flip_blend)))
         if cur_top + dy_ground < 5:
             dy_ground = 5 - cur_top
+        if cur_bot + dy_ground > 99:
+            dy_ground = 99 - cur_bot
         if dy_ground != 0:
             shifted = np.zeros_like(arr104)
             y_src0 = max(0, -dy_ground)
@@ -911,7 +960,8 @@ def render_pose_104(parts, cfg):
         bg104, back_wing_104[0], back_wing_104[1],
         torso_deg=torso_deg,
         flap_phase=cfg.get("wing_phase", cfg.get("mane_wave_phase", 0.0)),
-        mode=wing_mode
+        mode=wing_mode,
+        full_rot=(flip_blend > 0.25)
     )
 
     out = bg104.copy()
@@ -1003,7 +1053,7 @@ POSE_NUMERIC_KEYS = [
     "mane_wave_amp", "l_thigh_deg", "l_shin_deg", "l_foot_deg",
     "r_thigh_deg", "r_shin_deg", "r_foot_deg",
     "l_sode_rel_deg", "l_fore_rel_deg", "r_sode_rel_deg", "r_fore_rel_deg",
-    "lance_deg", "lance_len", "lance_glow", "foot_y"
+    "lance_deg", "lance_len", "lance_glow", "foot_y", "flip_air_blend"
 ]
 
 POSE_DEFAULTS = dict(
@@ -1027,6 +1077,7 @@ POSE_DEFAULTS = dict(
     lance_len=31.0,
     lance_glow=1.0,
     foot_y=99.0,
+    flip_air_blend=0.0,
     wing_mode="normal",
     right_arm_in_front=False,
     right_leg_behind=False
@@ -1058,7 +1109,7 @@ def eval_pose_keyframes(f, keyframes, ph, wing_mult=2.0):
         out[k] = v0 + (v1 - v0) * u
 
     active_d = d0 if raw_u < 0.5 else d1
-    for meta_k in ("wing_mode", "right_arm_in_front", "right_leg_behind", "halo", "halo_spears", "speedlines", "speedline_deg", "resting_lance"):
+    for meta_k in ("wing_mode", "right_arm_in_front", "right_leg_behind", "halo", "halo_spears", "speedlines", "speedline_deg", "resting_lance", "legs_follow_torso"):
         if meta_k in active_d:
             out[meta_k] = active_d[meta_k]
 
@@ -1357,38 +1408,71 @@ def build_row_configs(row_idx):
             cfgs.append(eval_pose_keyframes(f, kfs, ph, wing_mult=3.0))
 
         elif row_idx == 7:
-            # Row 7: CROUCH (Grounded Sliding Valkyrie Wing-Backstep & Twin Horizontal Javelin Counter!)
+            # Row 7: CROUCH (Athletic -360 deg Backward Valkyrie Aerial Backflip & Mid-Flip Gungnir Counter!)
             kfs = [
-                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, foot_y=99.0)),
-                (6, dict(
-                    pelvis_dx=-10.0, pelvis_dy=72.0, torso_deg=12.0, head_rel_deg=-8.0, mane_rel_deg=-16.0,
-                    l_thigh_deg=-30.0, l_shin_deg=32.0, r_thigh_deg=28.0, r_shin_deg=-24.0,
-                    l_sode_rel_deg=-20.0, l_fore_rel_deg=-28.0, r_sode_rel_deg=-58.0, r_fore_rel_deg=-22.0,
-                    lance_deg=-12.0, foot_y=99.0, wing_mode="flare", right_arm_in_front=True
+                # F00: Grounded Valkyrie Guard
+                (0, dict(
+                    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-2.0, mane_rel_deg=-5.0,
+                    l_thigh_deg=-2.0, l_shin_deg=4.0, r_thigh_deg=2.0, r_shin_deg=-4.0,
+                    lance_deg=-16.0, foot_y=99.0, flip_air_blend=0.0, legs_follow_torso=True
                 )),
-                (12, dict(
-                    pelvis_dx=-6.0, pelvis_dy=68.0, torso_deg=18.0, head_rel_deg=-10.0, mane_rel_deg=-20.0,
-                    l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-22.0,
-                    l_sode_rel_deg=16.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=12.0, r_fore_rel_deg=-12.0,
-                    lance_deg=2.0, foot_y=99.0, wing_mode="flare", right_arm_in_front=True
+                # F02: Deep Athletic Takeoff Crouch Coil
+                (2, dict(
+                    pelvis_dx=-6.0, pelvis_dy=58.0, torso_deg=14.0, head_rel_deg=-8.0, mane_rel_deg=-12.0,
+                    l_thigh_deg=-32.0, l_shin_deg=54.0, r_thigh_deg=-18.0, r_shin_deg=44.0,
+                    l_sode_rel_deg=26.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=22.0, r_fore_rel_deg=-20.0,
+                    lance_deg=18.0, foot_y=99.0, flip_air_blend=0.0, wing_mode="flare", legs_follow_torso=True
                 )),
-                (17, dict(
-                    pelvis_dx=-8.0, pelvis_dy=68.0, torso_deg=10.0, head_rel_deg=-6.0, mane_rel_deg=-16.0,
-                    l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-22.0,
-                    l_sode_rel_deg=-16.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=-44.0, r_fore_rel_deg=-20.0,
-                    lance_deg=-10.0, foot_y=99.0, wing_mode="flare", right_arm_in_front=True
+                # F05: Explosive Backward Vault Launch (-48 deg, boots kicking up!)
+                (5, dict(
+                    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=-48.0, head_rel_deg=-14.0, mane_rel_deg=16.0,
+                    l_thigh_deg=-42.0, l_shin_deg=68.0, r_thigh_deg=-24.0, r_shin_deg=58.0,
+                    l_sode_rel_deg=-36.0, l_fore_rel_deg=-32.0, r_sode_rel_deg=-48.0, r_fore_rel_deg=-26.0,
+                    lance_deg=-52.0, foot_y=96.0, flip_air_blend=1.0, wing_mode="flare",
+                    right_arm_in_front=True, legs_follow_torso=True
                 )),
+                # F09: Rising Back-Layout into Tucked Somersault (-118 deg)
+                (9, dict(
+                    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=-118.0, head_rel_deg=-16.0, mane_rel_deg=22.0,
+                    l_thigh_deg=-56.0, l_shin_deg=82.0, r_thigh_deg=-36.0, r_shin_deg=72.0,
+                    l_sode_rel_deg=-28.0, l_fore_rel_deg=-38.0, r_sode_rel_deg=-52.0, r_fore_rel_deg=-28.0,
+                    lance_deg=-135.0, foot_y=96.0, flip_air_blend=1.0, wing_mode="flare",
+                    right_arm_in_front=True, legs_follow_torso=True
+                )),
+                # F13: Inverted Backflip Apex (-185 deg — tucked Valkyrie somersault + Gungnir whip!)
+                (13, dict(
+                    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=-185.0, head_rel_deg=-14.0, mane_rel_deg=24.0,
+                    l_thigh_deg=-58.0, l_shin_deg=84.0, r_thigh_deg=-38.0, r_shin_deg=74.0,
+                    l_sode_rel_deg=-24.0, l_fore_rel_deg=-36.0, r_sode_rel_deg=-155.0, r_fore_rel_deg=-18.0,
+                    lance_deg=-348.0, foot_y=96.0, flip_air_blend=1.0, wing_mode="flare",
+                    right_arm_in_front=True, legs_follow_torso=True
+                )),
+                # F18: Spotting the Ground & Extending Greaves (-275 deg, Gungnir aimed forward!)
+                (18, dict(
+                    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=-275.0, head_rel_deg=-10.0, mane_rel_deg=18.0,
+                    l_thigh_deg=-46.0, l_shin_deg=68.0, r_thigh_deg=-24.0, r_shin_deg=54.0,
+                    l_sode_rel_deg=-20.0, l_fore_rel_deg=-28.0, r_sode_rel_deg=-72.0, r_fore_rel_deg=-16.0,
+                    lance_deg=-354.0, foot_y=96.0, flip_air_blend=1.0, wing_mode="flare",
+                    right_arm_in_front=True, legs_follow_torso=True
+                )),
+                # F22: Wing-Cushioned Touchdown (-346 deg -> +14 deg forward lean!)
                 (22, dict(
-                    pelvis_dx=-4.0, pelvis_dy=64.0, torso_deg=18.0, head_rel_deg=-10.0, mane_rel_deg=-20.0,
-                    l_thigh_deg=-26.0, l_shin_deg=28.0, r_thigh_deg=24.0, r_shin_deg=-20.0,
-                    l_sode_rel_deg=18.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=14.0, r_fore_rel_deg=-10.0,
-                    lance_deg=4.0, foot_y=99.0, wing_mode="flare", right_arm_in_front=True
+                    pelvis_dx=-6.0, pelvis_dy=56.0, torso_deg=-346.0, head_rel_deg=-8.0, mane_rel_deg=-14.0,
+                    l_thigh_deg=-28.0, l_shin_deg=42.0, r_thigh_deg=12.0, r_shin_deg=18.0,
+                    l_sode_rel_deg=16.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=12.0, r_fore_rel_deg=-14.0,
+                    lance_deg=-356.0, foot_y=99.0, flip_air_blend=0.0, wing_mode="flare",
+                    right_arm_in_front=True, legs_follow_torso=True
                 )),
-                (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, foot_y=99.0)),
+                # F29: Seamless Return to Regal Valkyrie Guard (-357 deg == +3 deg!)
+                (29, dict(
+                    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=-357.0, head_rel_deg=-2.0, mane_rel_deg=-5.0,
+                    l_thigh_deg=-2.0, l_shin_deg=4.0, r_thigh_deg=2.0, r_shin_deg=-4.0,
+                    lance_deg=-376.0, foot_y=99.0, flip_air_blend=0.0, legs_follow_torso=True
+                )),
             ]
             cfg = eval_pose_keyframes(f, kfs, ph, wing_mult=2.5)
-            if f in (10, 11, 12, 20, 21, 22):
-                cfg["slash_arc"] = dict(r=26.0, a0=-48.0, a1=32.0, intensity=0.95)
+            if f in (13, 14, 15, 18, 19):
+                cfg["slash_arc"] = dict(r=26.0, a0=-42.0, a1=34.0, intensity=0.95)
             cfgs.append(cfg)
 
         elif row_idx == 8:

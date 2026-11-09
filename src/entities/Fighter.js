@@ -598,32 +598,44 @@ export class Fighter {
           // Between attacks (autoCooldown > 0), each champion exhibits their authentic combat archetype footwork!
           const isRangedArchetype = this.attackRange >= 300;
           if (isRangedArchetype) {
-            // Ranged Artillery / Marksman / Valkyrie Javelin Thrower / Sanctuary Weaver / Chronomancer:
-            // Actively kite backward to maintain their 355px-480px sweet-spot spacing (or stride toward center if near a wall)
-            const sweetSpotMin =
-              this.heroId === 'valkyrie'
-                ? 385
-                : this.heroId === 'archer'
+            if (this.backflipKiteTimer > 0) {
+              this.backflipKiteTimer = Math.max(0, this.backflipKiteTimer - dt);
+            }
+            // Freyja backs up using an athletic Aerial Backflip instead of backward moonwalking!
+            if (this.heroId === 'valkyrie') {
+              if (dist < 325 && (this.backflipKiteTimer || 0) <= 0 && this.startCrouch) {
+                this.backflipKiteTimer = 1.45;
+                this.startCrouch(enemy, game);
+                return;
+              }
+              this.state = 'IDLE';
+              this.moveDir = 0;
+            } else {
+              // Ranged Artillery / Marksman / Sanctuary Weaver / Chronomancer:
+              // Actively kite backward to maintain their 355px-480px sweet-spot spacing (or stride toward center if near a wall)
+              const sweetSpotMin =
+                this.heroId === 'archer'
                   ? 355
                   : this.heroId === 'priestess'
                     ? 365
                     : 345;
-            if (dist < sweetSpotMin) {
-              const nearLeft = this.x < 175;
-              const nearRight = this.x > ww - 175;
-              if (!nearLeft && !nearRight) {
-                this.state = 'WALK';
-                this.moveDir = -1;
-                this.walkPhase += dt * 4.2;
-                this.x -= this.facing * this.moveSpeed * 0.78 * dt;
-                this.headBob = Math.sin(this.walkPhase * 2) * 2.2;
+              if (dist < sweetSpotMin) {
+                const nearLeft = this.x < 175;
+                const nearRight = this.x > ww - 175;
+                if (!nearLeft && !nearRight) {
+                  this.state = 'WALK';
+                  this.moveDir = -1;
+                  this.walkPhase += dt * 4.2;
+                  this.x -= this.facing * this.moveSpeed * 0.78 * dt;
+                  this.headBob = Math.sin(this.walkPhase * 2) * 2.2;
+                } else {
+                  this.state = 'IDLE';
+                  this.moveDir = 0;
+                }
               } else {
                 this.state = 'IDLE';
                 this.moveDir = 0;
               }
-            } else {
-              this.state = 'IDLE';
-              this.moveDir = 0;
             }
           } else if (this.heroId === 'ronin') {
             // Storm-Blade Iaido Samurai (Kaze-Maru): Fast Suriashi in-and-out micro-footwork & pressure!

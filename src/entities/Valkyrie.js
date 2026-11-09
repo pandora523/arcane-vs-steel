@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps38';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps38';
+import { Fighter } from './Fighter.js?v=30fps39';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps39';
 
 export class Valkyrie extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -288,101 +288,142 @@ export class Valkyrie extends Fighter {
   startDodge(enemy, game) {
     this.dodgeCooldown = this.dodgeMaxCooldown * (0.85 + Math.random() * 0.26);
     const dist = enemy && !enemy.isDead ? Math.abs(enemy.x - this.x) : 999;
-    if (dist < 250) {
+    if (dist < 340) {
       this.startCrouch(enemy, game);
     } else {
       this.startJump(enemy, game);
     }
   }
 
+  startDash(enemy, game) {
+    const dist = enemy && !enemy.isDead ? Math.abs(enemy.x - this.x) : 999;
+    if (dist < 380) {
+      this.dashCooldown = this.dashMaxCooldown * (0.86 + Math.random() * 0.28);
+      this.startCrouch(enemy, game);
+      return;
+    }
+    super.startDash(enemy, game);
+  }
+
   startCrouch(_enemy, game) {
-    // Grounded Sliding Valkyrie Wing-Backstep (Row 7 CROUCH — 0 vertical pop!)
-    this.crouchDuration = 0.64;
+    // Athletic -360 deg Backward Valkyrie Aerial Backflip (Row 7 CROUCH + Parabolic Vault Arc!)
+    this.crouchDuration = 0.68;
     this.setState('CROUCH');
     this.isCrouching = true;
     this.isInvulnerable = true;
-    this.isFlipVault = false;
+    this.isFlipVault = true;
+    this._backflipStep = 0;
+    this._didBackflipLand = false;
 
-    const ww = game.renderer.worldWidth;
+    const ww = game && game.renderer ? game.renderer.worldWidth : 1200;
     let retreatDir = -this.facing;
     if (this.x < 220) retreatDir = 1;
     else if (this.x > ww - 220) retreatDir = -1;
 
     this.vaultStartX = this.x;
-    this.vaultTargetX = Math.max(85, Math.min(ww - 85, this.x + retreatDir * 185));
+    this.vaultTargetX = Math.max(85, Math.min(ww - 85, this.x + retreatDir * 210));
     this.vx = 0;
     this.vy = 0;
     this.heal(5, 'VALKYRIE GRACE');
-    this.spawnAfterimage(this.x, this.y, this.facing, 7, 4, 0.22);
+    this.spawnAfterimage(this.x, this.y, this.facing, 7, 2, 0.20);
 
     if (game && game.audio) game.audio.play('dash_whoosh', this.x);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(
         this.x,
-        this.y - 146,
+        this.y - 148,
         0,
-        false,
-        'VALKYRIE WING-BACKSTEP!',
+        true,
+        '★ VALKYRIE BACKFLIP! ★',
         '#fbbf24'
       );
-      game.vfx.spawnShockwave(this.x, this.groundY - 6, 96, '#f43f5e', 0.24, true);
+      game.vfx.spawnShockwave(this.x, this.groundY - 6, 98, '#f43f5e', 0.24, true);
+      game.vfx.spawnBurst(this.x, this.groundY - 24, 10, '#fbbf24', 185, { upBias: 115, size: 4 });
     }
   }
 
   updateCrouch(_dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.crouchDuration || 0.64;
+    const dur = this.crouchDuration || 0.68;
     const u = Math.min(1, t / dur);
 
-    // Pure horizontal grounded sliding backstep (y stays firmly on groundY!)
-    const easeU = 1 - Math.pow(1 - u, 2.0);
-    this.x = this.vaultStartX + (this.vaultTargetX - this.vaultStartX) * easeU;
-    this.y = this.groundY;
+    // Takeoff coil (u < 0.08), airborne -360 deg parabolic backflip (0.08..0.80), winged landing (0.80..1.0)
+    const moveU = u <= 0.06 ? 0 : u >= 0.82 ? 1 : (u - 0.06) / 0.76;
+    const easeMove = 1 - Math.pow(1 - moveU, 1.85);
+    this.x = this.vaultStartX + (this.vaultTargetX - this.vaultStartX) * easeMove;
+
+    if (u >= 0.08 && u <= 0.80) {
+      const airU = (u - 0.08) / 0.72;
+      this.y = this.groundY - Math.sin(airU * Math.PI) * 96;
+    } else {
+      this.y = this.groundY;
+    }
     this.vx = 0;
     this.vy = 0;
 
-    if (t >= 0.18 && !this.didActionFrame) {
+    if (enemy && !enemy.isDead) {
+      this.facing = enemy.x >= this.x ? 1 : -1;
+    }
+
+    // Crisp pixel afterimages along the airborne backflip somersault
+    const flipThresholds = [0.24, 0.44, 0.64];
+    if (this._backflipStep < flipThresholds.length && u >= flipThresholds[this._backflipStep]) {
+      this._backflipStep++;
+      this.spawnAfterimage(this.x, this.y, this.facing, 7, Math.min(29, Math.floor(u * 29)), 0.22);
+    }
+
+    if (t >= 0.26 && !this.didActionFrame) {
       this.didActionFrame = true;
       const tx = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 320;
       const ty = enemy && !enemy.isDead ? enemy.y - 74 : this.groundY - 74;
       this.spawnGungnirSkySpear(
-        this.x + this.facing * 28,
-        this.y - 84,
+        this.x + this.facing * 24,
+        this.y - 68,
         tx,
         ty,
         18,
         false,
-        -55,
-        -24
+        -45,
+        -22
       );
-      this.spawnVfxAnim(0, this.x + this.facing * 32, this.y - 80, 184, 184, 0.24, {
+      this.spawnVfxAnim(0, this.x + this.facing * 28, this.y - 68, 184, 184, 0.24, {
         vx: this.facing * 240,
         flipX: this.facing < 0,
         glowColor: 'crimson'
       });
-      if (game.audio) game.audio.play('holy_spear', this.x);
-      game.vfx.spawnDamageText(this.x, this.y - 150, 0, false, 'GUNGNIR JAVELIN!', '#fbbf24');
+      if (game && game.audio) game.audio.play('holy_spear', this.x);
+      if (game && game.vfx) {
+        game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, 'GUNGNIR JAVELIN!', '#fbbf24');
+      }
     }
 
-    if (t >= 0.35 && !this.didSecondaryAction) {
+    if (t >= 0.42 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
       const tx = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 340;
       const ty = enemy && !enemy.isDead ? enemy.y - 68 : this.groundY - 68;
       this.spawnGungnirSkySpear(
-        this.x + this.facing * 28,
-        this.y - 82,
+        this.x + this.facing * 24,
+        this.y - 72,
         tx,
         ty,
         19,
         false,
-        55,
+        45,
         16
       );
-      if (game.audio) game.audio.play('holy_spear', this.x);
+      if (game && game.audio) game.audio.play('holy_spear', this.x);
+    }
+
+    if (u >= 0.80 && !this._didBackflipLand) {
+      this._didBackflipLand = true;
+      if (game && game.vfx) {
+        game.vfx.spawnShockwave(this.x, this.groundY - 4, 82, '#fbbf24', 0.20, true);
+      }
     }
 
     if (t >= dur) {
       this.y = this.groundY;
+      this.isFlipVault = false;
       this.isInvulnerable = false;
       this.isCrouching = false;
       this.setState('IDLE');
@@ -437,15 +478,9 @@ export class Valkyrie extends Fighter {
     }
   }
 
-  onStartDash(enemy, game, _dir) {
+  onStartDash(_enemy, game, _dir) {
     this.isFlipVault = false;
-    if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 380) {
-      const ww = game.renderer.worldWidth;
-      let kiteDir = -this.facing;
-      if (this.x < 190) kiteDir = 1;
-      else if (this.x > ww - 190) kiteDir = -1;
-      this.dashDir = kiteDir;
-    }
+    this.dashDir = this.facing;
     if (game && game.audio) game.audio.play('dash_whoosh', this.x);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(

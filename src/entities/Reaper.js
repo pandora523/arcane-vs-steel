@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps38';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps38';
+import { Fighter } from './Fighter.js?v=30fps39';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps39';
 
 export class Reaper extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -1696,11 +1696,7 @@ export class Reaper extends Fighter {
     const h = 208;
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
 
-    const groundPlantOffset = 6;
-    const walkBob =
-      !isReflection && this.state === 'WALK'
-        ? Math.round(Math.abs(Math.sin(this.walkPhase * 4.0)) * 3)
-        : 0;
+    const groundPlantOffset = 4;
     const sinkOffset = showShadowPool
       ? Math.round((this.submergeDepth || 0.7) * 52)
       : 0;
@@ -1714,7 +1710,7 @@ export class Reaper extends Fighter {
 
     ctx.translate(
       Math.round(this.x),
-      Math.round(this.y + groundPlantOffset - walkBob + sinkOffset)
+      Math.round(this.y + groundPlantOffset + sinkOffset)
     );
     ctx.scale(this.facing, 1);
 

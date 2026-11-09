@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps38';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps38';
+import { Fighter } from './Fighter.js?v=30fps39';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps39';
 
 export class Warrior extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -813,7 +813,8 @@ export class Warrior extends Fighter {
     const h = 208;
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
 
-    ctx.translate(Math.round(this.x), Math.round(this.y));
+    const groundPlantOffset = 4;
+    ctx.translate(Math.round(this.x), Math.round(this.y + groundPlantOffset));
     ctx.scale(this.facing, 1);
 
     // Dynamic Pixel-Art Runeblade Speed-Lines & Sword Crescent Aura during Ultimate / Skill

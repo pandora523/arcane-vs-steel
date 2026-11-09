@@ -1,32 +1,40 @@
 {
   "project": "arcane-vs-steel",
-  "pipeline_version": "30fps-hd2d-v2",
+  "pipeline_version": "30fps-hd2d-v3-cel-clustered",
   "strict_rules": [
     "NEVER draw procedural stick-figures or polygon-from-scratch character bodies in Python.",
-    "ALWAYS generate the 16-bit HD-2D base character sprite (<hero>_v1_base.jpg, 1024x1024, facing +X right on pure #FFFFFF white background, empty hands at sides) and matching bust portrait (portrait_hd2d_<hero>.jpg) using generate_image FIRST.",
+    "ALWAYS generate the 16-bit HD-2D base character sprite (<hero>_v2_base.jpg, 1024x1024, facing +X right on pure #FFFFFF white background, empty hands at sides, no cape/weapon) and matching bust portrait using generate_image FIRST.",
     "NEVER pass another champion's base sprite in ImagePaths when generating a new champion's full-body sprite (to avoid copying their armor/silhouette); pass the new champion's own base sprite in ImagePaths when generating their matching portrait.",
-    "ALWAYS extract the 52x52 logical base sprite via BFS flood-fill from borders + enclosed white pockets + 3-pass anti-aliased fringe stripping (zero white halo).",
-    "NEVER bake a 1px black outline around the character in Python because PixelForge.js (ensureNormalMap + drawSheetFrame) dynamically renders the 1px comic ink outline and 1px exterior rim highlight at runtime.",
-    "ALWAYS neutralize baked static side-arms (neutralize_baked_side_arms) before articulating 2-bone IK arms + weapon so there are zero extra limbs or leftover hands.",
-    "ALWAYS enforce a 2px transparent safety margin (2 <= x <= 49, 2 <= y <= 49) on all 270 frames (0/270 boundary clips) and run fill_layer_pinholes to prevent 1px interior slits.",
+    "ALWAYS pre-flatten continuous AI gradients via MedianFilter (3x3 head / 5x5 body), segment into anatomical parts with 0 unassigned foreground pixels, quantize every 104x104 frame to a curated 20-color MASTER_PALETTE, run 2-pass cardinal orphan despeckling + interior pinhole fill, and apply a crisp 1px directional Selout outline.",
+    "ALWAYS plant grounded boots at y_104 = 99 (y_208 = 198..199) paired with groundPlantOffset = 4 in draw() so all 10 champions stand uniformly on their ground shadows.",
+    "ALWAYS enforce a 2px transparent safety margin in 104x104 (4px in 208x208) across all 270 frames (0/270 boundary clips) and 29/29 distinct frame transitions per row.",
+    "ALWAYS use multi-stage grounded death animations (F00..F06 impact stagger -> F07..F14 knee buckle -> F15..F22 progressive prone/supine laydown -> F23..F29 grounded rest).",
     "ALWAYS generate and visually inspect debug_<hero>_30fps_left_F00_F14.png, debug_<hero>_30fps_right_F15_F29.png, and debug_<hero>_30fps_vfx.png using view_file."
   ],
   "reference_scripts": {
+    "shared_core": "scripts/hd2d_rig_core.py",
     "sprite_sheet_builders": [
-      "scripts/build_priestess_30fps_sheet.py",
+      "scripts/build_warrior_30fps_sheet.py",
       "scripts/build_mage_30fps_sheet.py",
-      "scripts/build_valkyrie_30fps_sheet.py",
-      "scripts/build_ronin_30fps_sheet.py",
-      "scripts/build_titan_30fps_sheet.py",
+      "scripts/build_archer_30fps_sheet.py",
+      "scripts/build_priestess_30fps_sheet.py",
+      "scripts/build_reaper_30fps_sheet.py",
       "scripts/build_chronomancer_30fps_sheet.py",
+      "scripts/build_titan_30fps_sheet.py",
+      "scripts/build_ronin_30fps_sheet.py",
+      "scripts/build_valkyrie_30fps_sheet.py",
       "scripts/build_icemage_30fps_sheet.py"
     ],
     "vfx_sheet_builders": [
-      "scripts/build_priestess_30fps_vfx.py",
+      "scripts/build_warrior_30fps_vfx.py",
       "scripts/build_mage_30fps_vfx.py",
-      "scripts/build_valkyrie_30fps_vfx.py",
-      "scripts/build_ronin_30fps_vfx.py",
+      "scripts/build_archer_30fps_vfx.py",
+      "scripts/build_priestess_30fps_vfx.py",
+      "scripts/build_reaper_30fps_vfx.py",
       "scripts/build_chronomancer_30fps_vfx.py",
+      "scripts/build_titan_30fps_vfx.py",
+      "scripts/build_ronin_30fps_vfx.py",
+      "scripts/build_valkyrie_30fps_vfx.py",
       "scripts/build_icemage_30fps_vfx.py"
     ]
   },
@@ -34,7 +42,9 @@
     "warrior": {
       "name": "Aethelgard",
       "theme": "steel",
-      "base_source": "backups/warrior_sheet_before_30fps.png",
+      "base_source": "assets/sprites/warrior_v2_base.jpg",
+      "logical_res": "104x104 (2x NEAREST -> 208x208)",
+      "rig": "14-part cel-clustered Runic Vanguard skeletal rig (mane, head, torso, l_coat, r_coat, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + Runic Greatsword + Aegis Shield + Prone Knight Collapse",
       "script": "scripts/build_warrior_30fps_sheet.py",
       "vfx_script": "scripts/build_warrior_30fps_vfx.py"
     },
@@ -43,14 +53,16 @@
       "theme": "arcane",
       "base_source": "assets/sprites/mage_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "15-part pinhole-free hierarchical Black-Mage skeletal articulation (mane [wizard-hat tail], head [crimson wizard hat + pitch-black shadow face + dual stamped glowing flame eyes], torso, l_coat, r_coat, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + solid Solar Astrolabe halo + Helios Sun-Staff",
+      "rig": "15-part pinhole-free hierarchical Black-Mage skeletal articulation (mane, head [crimson wizard hat + pitch-black shadow face + glowing flame eyes], torso, l_coat, r_coat, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + Solar Astrolabe halo + Helios Sun-Staff + Supine Collapse",
       "script": "scripts/build_mage_30fps_sheet.py",
       "vfx_script": "scripts/build_mage_30fps_vfx.py"
     },
     "archer": {
       "name": "Sylvara",
       "theme": "emerald",
-      "base_source": "backups/archer_sheet_before_30fps.png",
+      "base_source": "assets/sprites/archer_v2_base.jpg",
+      "logical_res": "104x104 (2x NEAREST -> 208x208)",
+      "rig": "13-part cel-clustered Sylvan Elven Star-Ranger skeletal rig + Back Quiver + Articulated Recurve Star-Bow & Multi-Arrow Draw + Astral Ult Light-Wings + Supine Collapse",
       "script": "scripts/build_archer_30fps_sheet.py",
       "vfx_script": "scripts/build_archer_30fps_vfx.py"
     },
@@ -60,28 +72,34 @@
       "base_source": "assets/sprites/priestess_v2_base.jpg",
       "wing_base_source": "assets/sprites/seraphim_wings_v2_base.jpg",
       "logical_res": "104x104 character (2x -> 208x208) + 160x116 wings (2x -> 320x232)",
-      "rig": "16-part pinhole-free hierarchical High-Priestess skeletal articulation (mane, head, torso, stole, l_coat, r_coat, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + centered Apotheosis Nimbus + Portrait-Matched Sunburst Cathedral Scepter + 30fps HD-2D Feathered Archangel Wings (shoulder-locked at -6, -124) + Full Seraphic Flight Kit (20px Dawn Grace hover, 26px Radiant Wing Glide, 44px Sanctuary levitation, 86px Seraphic Wing Vault, 122px High-Sky Apotheosis ascension)",
+      "rig": "16-part pinhole-free hierarchical High-Priestess skeletal articulation + Sunburst Cathedral Scepter + 30fps HD-2D Feathered Archangel Wings + Full Seraphic Flight Kit + Supine Collapse",
       "script": "scripts/build_priestess_30fps_sheet.py",
       "vfx_script": "scripts/build_priestess_30fps_vfx.py"
     },
     "reaper": {
       "name": "Malakor",
       "theme": "abyssal",
-      "base_source": "backups/reaper_sheet_before_30fps.png",
+      "base_source": "assets/sprites/reaper_v2_base.jpg",
+      "logical_res": "104x104 (2x NEAREST -> 208x208)",
+      "rig": "14-part cel-clustered Horned Necropolis Dreadlord skeletal rig + Necrotic Halo + Crescent Great-Scythe + Spectral Chain + Prone Scythe-Plant Collapse",
       "script": "scripts/build_reaper_30fps_sheet.py",
       "vfx_script": "scripts/build_reaper_30fps_vfx.py"
     },
     "chronomancer": {
       "name": "Zephyros",
       "theme": "chrono",
-      "base_source": "chrono_v1_base_1794035937365.jpg",
+      "base_source": "assets/sprites/chronomancer_v2_base.jpg",
+      "logical_res": "104x104 (2x NEAREST -> 208x208)",
+      "rig": "14-part cel-clustered Temporal Scholar-Mage skeletal rig + Rotating Brass Astrolabe Halo + Chronos Scepter + Clockwork Parry Dial + Supine Collapse",
       "script": "scripts/build_chronomancer_30fps_sheet.py",
       "vfx_script": "scripts/build_chronomancer_30fps_vfx.py"
     },
     "titan": {
       "name": "Torgar",
       "theme": "forge",
-      "base_source": "titan_v1_base_1794101258946.jpg",
+      "base_source": "assets/sprites/titan_v2_base.jpg",
+      "logical_res": "104x104 (2x NEAREST -> 208x208)",
+      "rig": "13-part cel-clustered Runic Mountain Juggernaut skeletal rig (braided fiery beard + horned bronze plate) + Rune War-Maul synced to Colossal World-Breaker Hammer overlay + Prone Collapse",
       "script": "scripts/build_titan_30fps_sheet.py",
       "vfx_script": "scripts/build_titan_30fps_vfx.py"
     },
@@ -90,22 +108,25 @@
       "theme": "storm",
       "base_source": "assets/sprites/ronin_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part hierarchical skeletal articulation (mane, head, torso, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot)",
-      "script": "scripts/build_ronin_30fps_sheet.py"
+      "rig": "13-part cel-clustered Storm-Blade Iaido Samurai skeletal rig + Katana & Saya + Prone Sword-Plant Collapse",
+      "script": "scripts/build_ronin_30fps_sheet.py",
+      "vfx_script": "scripts/build_ronin_30fps_vfx.py"
     },
     "valkyrie": {
       "name": "Freyja",
       "theme": "crimson",
       "base_source": "assets/sprites/valkyrie_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part hierarchical skeletal articulation (mane, head, torso, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + 6-pinion Valkyrie wings",
+      "rig": "13-part cel-clustered Valkyrie skeletal rig + 6-pinion Crimson-Gold Valkyrie Wings + Gungnir War-Lance + -360-deg Aerial Backflip Retreat (Row 7) + Supine Collapse",
       "script": "scripts/build_valkyrie_30fps_sheet.py",
       "vfx_script": "scripts/build_valkyrie_30fps_vfx.py"
     },
     "icemage": {
-      "name": "Glacia",
+      "name": "Lyra",
       "theme": "glacial",
-      "base_source": "assets/sprites/icemage_v2_base.jpg",
+      "base_source": "assets/sprites/icemage_v4_base.jpg",
+      "logical_res": "104x104 (2x NEAREST -> 208x208)",
+      "rig": "15-part cel-clustered Cryo Sovereign skeletal rig + Fur Shoulder Mantle + Crystalline Frost Scepter + Cryo Prism Halo + Supine Collapse",
       "script": "scripts/build_icemage_30fps_sheet.py",
       "vfx_script": "scripts/build_icemage_30fps_vfx.py"
     }
