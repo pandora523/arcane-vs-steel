@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps19';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps19';
+import { Fighter } from './Fighter.js?v=30fps20';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps20';
 
 export class Reaper extends Fighter {
   constructor(x, groundY, facing = 1) {

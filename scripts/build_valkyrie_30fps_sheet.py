@@ -258,11 +258,18 @@ def extract_clean_base_sprite(
     cell[39:46, 28:38] = right_boot
     cell[38, 28:38] = right_boot[0, :]
 
-    # Strip the heavy ground-length left cape (x < 19, y = 20..41) and lower cape remnants
-    # so Freyja does NOT share the cape silhouette of Warrior/Titan!
+    # Strip the heavy ground-length left cape (x < 19, y = 20..41), upper-left cape overhang (y = 11..19, x < 20),
+    # and lower cape remnants so Freyja has zero horizontal cape cut-offs and a pure winged silhouette!
     cell[20:42, :19] = 0
     cell[21:27, 19:21] = 0
     cell[35:40, 25:28] = 0
+    for y in range(11, 20):
+        for x in range(0, 20):
+            if cell[y, x, 3] > 0:
+                r, g, b, _ = cell[y, x]
+                # Preserve only bright warm platinum-gold hair near neck (x >= 16)
+                if not (x >= 16 and r > 165 and g > 125 and b > 65 and (r - b) > 35):
+                    cell[y, x] = (0, 0, 0, 0)
     return fill_layer_pinholes(cell)
 
 
@@ -470,116 +477,130 @@ def draw_valkyrie_dragon_wings(
     attach_xy=(20, 17),
     wing_span=1.0,
     flap_phase=0.0,
-    top_min_y=6,
+    top_min_y=5,
     bot_max_y=32,
     seraph_mode=False,
     swept_back=False,
 ):
     """
-    Renders Freyja's Lush, Articulated 5-Pinion Feathered Crimson-and-Gold Valkyrie Wings (`x = 4..20, y = 6..32`)
-    (or Grand 6-Pinion Bahamut Seraph Wings when `seraph_mode=True` on Row 4 ULTIMATE):
-    - Gleaming `GOLD_WHITE` / `GOLD_BRIGHT` upper wing-arch feathers (`y = 6..13, x = 6..20`) with a golden wing-claw
-    - 5 (or 6) articulated layered `RUBY_CORE` / `CRIMSON_BRIGHT` / `GOLD_BRIGHT` flight pinions fanning across
-      `x = 4..20, y = 6..32` with distinct scalloped feather tips
-    - Painted BEHIND the character torso so her winged helm, platinum-gold hair, and armor pop cleanly in front.
+    Renders Freyja's Lush, Articulated Feathered Crimson-and-Gold Valkyrie Wings (`x = 3..20, y = 5..32`)
+    with a sweeping curved carpal arch, staggered crescent feather tips, and monotonic `x` Bezier curves
+    so every feather terminates in a pointed 1px tip with ZERO vertical or horizontal flat segments!
     """
     wings = np.zeros((52, 52, 4), dtype=np.uint8)
     ax, ay = int(round(attach_xy[0])), int(round(attach_xy[1]))
-    flap_dy = math.sin(flap_phase) * 1.6
+    flap_dy = math.sin(flap_phase) * 1.5
+    span_clamp = max(0.85, min(1.06, wing_span))
+
+    # 1. Curved Upper Golden Wing-Arch (Shoulder -> High Carpal Crest)
+    carpal_x = max(12, min(17, int(round(ax - 6.5 * span_clamp))))
+    carpal_y = max(top_min_y + 2, min(bot_max_y - 10, int(round(ay - 7.0 + flap_dy * 0.6))))
 
     if swept_back:
-        # Falcon Sky-Jet swept-back 5-pinion configuration for Row 6 DASH
+        # Falcon Sky-Jet swept-back 5-pinion configuration with staggered pointed tips
         pinions = [
-            (4, max(top_min_y + 2, ay - 6), 1.8, GOLD_WHITE, GOLD_BRIGHT),
-            (4, max(top_min_y + 5, ay - 2), 1.4, GOLD_BRIGHT, RUBY_CORE),
-            (5, ay + 2, 1.0, RUBY_CORE, CRIMSON_BRIGHT),
-            (6, min(bot_max_y - 3, ay + 6), 0.6, CRIMSON_BRIGHT, CRIMSON_MID),
-            (8, min(bot_max_y, ay + 10), 0.3, GOLD_BRIGHT, CRIMSON_DARK),
+            # (tx_base, ty_base, arch_lift_y, col_quill, col_vane)
+            (7, max(top_min_y + 1, ay - 8), 1.8, GOLD_WHITE, GOLD_BRIGHT),
+            (3, max(top_min_y + 4, ay - 4), 2.2, GOLD_WHITE, RUBY_CORE),
+            (5, ay + 1, 1.6, GOLD_BRIGHT, CRIMSON_BRIGHT),
+            (8, min(bot_max_y - 4, ay + 6), 1.1, RUBY_CORE, CRIMSON_MID),
+            (12, min(bot_max_y, ay + 10), 0.6, GOLD_BRIGHT, CRIMSON_DARK),
         ]
     elif seraph_mode:
-        # Grand 6-Pinion Golden-Crimson Bahamut Seraph Wings for Row 4 ULTIMATE
+        # Grand 6-Pinion Golden-Crimson Bahamut Seraph Wings with sweeping crescent profile
         pinions = [
-            (4, max(top_min_y, 6), 3.6, GOLD_WHITE, GOLD_LIGHT),
-            (4, max(top_min_y + 3, 10), 2.9, GOLD_WHITE, GOLD_BRIGHT),
-            (4, 15, 2.2, GOLD_BRIGHT, RUBY_CORE),
-            (5, 20, 1.5, RUBY_CORE, CRIMSON_BRIGHT),
-            (7, 25, 0.9, CRIMSON_BRIGHT, GOLD_MID),
-            (9, min(bot_max_y, 30), 0.4, GOLD_BRIGHT, CRIMSON_MID),
+            (7, max(top_min_y, 5), 1.8, GOLD_WHITE, GOLD_LIGHT),
+            (3, max(top_min_y + 3, 9), 2.5, GOLD_WHITE, GOLD_BRIGHT),
+            (4, 14, 2.2, GOLD_BRIGHT, RUBY_CORE),
+            (6, 19, 1.7, RUBY_CORE, CRIMSON_BRIGHT),
+            (9, 24, 1.2, CRIMSON_BRIGHT, GOLD_MID),
+            (13, min(bot_max_y, 29), 0.7, GOLD_BRIGHT, CRIMSON_MID),
         ]
     else:
-        # Standard Lush 5-Pinion Feathered Crimson-and-Gold Valkyrie Wings (x = 4..20, y = 6..32)
+        # Standard Lush 6-Pinion Feathered Crimson-and-Gold Valkyrie Wings with organic crescent profile
         pinions = [
-            # (tip_x_base, tip_y_base, arch_lift, col_quill, col_vane)
-            (4, max(top_min_y + 1, 7), 3.2, GOLD_WHITE, GOLD_BRIGHT),
-            (4, max(top_min_y + 5, 12), 2.5, GOLD_BRIGHT, GOLD_LIGHT),
-            (5, 17, 1.8, GOLD_BRIGHT, RUBY_CORE),
-            (6, 23, 1.1, RUBY_CORE, CRIMSON_BRIGHT),
-            (8, min(bot_max_y - 2, 28), 0.5, CRIMSON_BRIGHT, GOLD_MID),
+            (7, max(top_min_y, 6), 1.8, GOLD_WHITE, GOLD_BRIGHT),
+            (3, max(top_min_y + 3, 10), 2.4, GOLD_WHITE, GOLD_LIGHT),
+            (4, 15, 2.0, GOLD_BRIGHT, RUBY_CORE),
+            (6, 20, 1.5, RUBY_CORE, CRIMSON_BRIGHT),
+            (9, 25, 1.0, CRIMSON_BRIGHT, GOLD_MID),
+            (13, min(bot_max_y - 1, 29), 0.6, GOLD_BRIGHT, CRIMSON_DARK),
         ]
 
-    # 1. Upper Golden Valkyrie Wing-Arch & Covert Plumage Mantle (connects shoulder blade ax,ay to carpal arch)
-    carpal_x = max(5, min(18, int(round(ax - 7.5 * wing_span))))
-    carpal_y = max(top_min_y, min(bot_max_y - 6, int(round(ay - 8.0 + flap_dy * 0.7))))
-    draw_line_px(wings, ax, ay - 2, carpal_x, carpal_y, GOLD_WHITE)
-    draw_line_px(wings, ax, ay - 1, carpal_x, carpal_y + 1, GOLD_BRIGHT)
-    draw_line_px(wings, ax, ay, carpal_x + 1, carpal_y + 2, GOLD_MID)
-    draw_line_px(wings, ax, max(top_min_y, ay - 3), carpal_x, max(top_min_y, carpal_y - 1), OBSIDIAN_DEEP)
+    # Draw curved humeral wing-arch from shoulder (ax, ay) up to carpal crest (carpal_x, carpal_y)
+    arch_steps = 18
+    for s in range(arch_steps + 1):
+        u_a = s / float(arch_steps)
+        ctrl_ax = ax * 0.45 + carpal_x * 0.55
+        ctrl_ay = min(ay, carpal_y) - 1.8
+        bx = (1.0 - u_a) ** 2 * ax + 2.0 * (1.0 - u_a) * u_a * ctrl_ax + (u_a ** 2) * carpal_x
+        by = (1.0 - u_a) ** 2 * (ay - 1) + 2.0 * (1.0 - u_a) * u_a * ctrl_ay + (u_a ** 2) * carpal_y
+        set_px(wings, bx, max(top_min_y, by - 1.0), OBSIDIAN_DEEP)
+        set_px(wings, bx, by, GOLD_WHITE if u_a > 0.35 else GOLD_BRIGHT)
+        set_px(wings, bx, by + 1.0, GOLD_BRIGHT if u_a > 0.5 else RUBY_CORE)
+        set_px(wings, bx + 0.8, by + 2.0, CRIMSON_BRIGHT)
 
-    # 2. Render each articulated flight pinion with gleaming quill and layered crimson-ruby/gold feather vanes
+    # 2. Render each articulated flight pinion with monotonic X progression so tips are 100% pointed
     num_p = len(pinions)
-    for p_idx, (tx_base, ty_base, arch_lift, col_quill, col_vane) in enumerate(pinions):
-        tx = int(round(ax - (ax - tx_base) * wing_span))
-        tx = max(4, min(19, tx))
-        ty = int(round(ty_base + flap_dy * (1.0 - p_idx * 0.16)))
+    for p_idx, (tx_base, ty_base, arch_lift_y, col_quill, col_vane) in enumerate(pinions):
+        tx = int(round(ax - (ax - tx_base) * span_clamp))
+        min_x_pinion = [6, 3, 4, 6, 9, 12][min(p_idx, 5)]
+        tx = max(min_x_pinion, min(18, tx))
+        ty = int(round(ty_base + flap_dy * (1.0 - p_idx * 0.15)))
         ty = max(top_min_y, min(bot_max_y - 1, ty))
 
-        # Origin along the wing-arch for upper pinions vs inner scapular root for lower pinions
-        orig_x = carpal_x + int(round((ax - carpal_x) * (p_idx / float(max(1, num_p - 1))) * 0.7))
-        orig_y = carpal_y + int(round((ay - carpal_y + 2) * (p_idx / float(max(1, num_p - 1)))))
+        t_root = p_idx / float(max(1, num_p - 1))
+        orig_x = carpal_x + (ax - carpal_x) * (t_root * 0.82)
+        orig_y = carpal_y + (ay - carpal_y + 3.0) * t_root
 
-        steps = max(1, int(max(abs(orig_x - tx), abs(orig_y - ty)) * 2))
+        # Monotonic X control point strictly between orig_x and tx (NEVER overshoots left!)
+        ctrl_x = orig_x * 0.48 + tx * 0.52
+        ctrl_y = (orig_y + ty) * 0.5 - arch_lift_y
+
+        steps = max(16, int(max(abs(orig_x - tx), abs(orig_y - ty)) * 2.2))
         for s in range(steps + 1):
             u = s / float(steps)
-            wx = max(4.0, min(20.0, orig_x * (1.0 - u) + tx * u))
-            wy = max(
-                float(top_min_y),
-                min(float(bot_max_y - 1), orig_y * (1.0 - u) + ty * u - math.sin(u * math.pi) * arch_lift),
-            )
+            wx = (1.0 - u) ** 2 * orig_x + 2.0 * (1.0 - u) * u * ctrl_x + (u ** 2) * tx
+            wy = (1.0 - u) ** 2 * orig_y + 2.0 * (1.0 - u) * u * ctrl_y + (u ** 2) * ty
+            wx = max(3.0, min(20.0, wx))
+            wy = max(float(top_min_y), min(float(bot_max_y - 1), wy))
+
             # Gleaming leading-edge pinion quill
-            if u > 0.82:
+            if u > 0.72:
                 q_col = GOLD_WHITE if p_idx <= 2 else GOLD_BRIGHT
             else:
                 q_col = col_quill
             set_px(wings, wx, wy, q_col)
-            if p_idx == 0 and wy - 1.0 >= top_min_y:
+            if p_idx == 0 and u < 0.78 and wy - 1.0 >= top_min_y:
                 set_px(wings, wx, wy - 1.0, OBSIDIAN_DEEP)
 
-            # Layered covert & flight feathers hanging below each pinion quill
-            feather_depth = 4 if p_idx <= 2 else 3
+            # Tapered feather vane depth: lush covert overlap near body (u < 0.42), 1px mid-vane, 0px at pointed tip (u >= 0.72)
+            if u < 0.40:
+                feather_depth = 2
+            elif u < 0.70:
+                feather_depth = 1
+            else:
+                feather_depth = 0
+
             for m_dy in range(1, feather_depth + 1):
                 my = min(float(bot_max_y), wy + m_dy)
                 if m_dy == 1:
                     col_m = col_vane if (int(round(wx)) + p_idx) % 2 == 0 else RUBY_CORE
-                elif m_dy == 2:
-                    col_m = RUBY_BRIGHT if p_idx <= 1 else (CRIMSON_BRIGHT if (int(round(wx)) + m_dy) % 2 == 0 else CRIMSON_MID)
-                elif m_dy == 3:
-                    col_m = CRIMSON_MID if p_idx <= 2 else CRIMSON_DARK
                 else:
-                    col_m = OBSIDIAN_DARK
+                    col_m = RUBY_BRIGHT if p_idx <= 1 else CRIMSON_MID
                 set_px(wings, wx, my, col_m)
 
-        # Distinct bright feather-tip barb at (tx, ty) so all 5/6 pinions read unmistakably
+        # Crisp 1px pointed golden-white feather tip at (tx, ty)
         set_px(wings, tx, ty, GOLD_WHITE if p_idx <= 2 else GOLD_BRIGHT)
-        if tx + 1 <= 20:
-            set_px(wings, tx + 1, ty, GOLD_BRIGHT if p_idx <= 1 else RUBY_CORE)
 
     # 3. Gleaming Golden Valkyrie Wing-Claw Crest at Carpal Bend (carpal_x, carpal_y)
     set_px(wings, carpal_x, carpal_y, GOLD_WHITE)
-    set_px(wings, max(4, carpal_x - 1), max(top_min_y, carpal_y - 1), GOLD_BRIGHT)
+    set_px(wings, max(5, carpal_x - 1), max(top_min_y, carpal_y - 1), GOLD_BRIGHT)
     set_px(wings, min(20, carpal_x + 1), carpal_y, RUBY_CORE)
     set_px(wings, carpal_x, min(bot_max_y, carpal_y + 1), GOLD_LIGHT)
 
-    wings = fill_layer_pinholes(wings, x0=4, x1=21, y0=top_min_y, y1=bot_max_y + 1, require_3_neighbors=False)
+    # Only fill pinholes on the inner wing root (x >= 13) so outer feather blades & tips (x = 3..12) remain 100% separated!
+    wings = fill_layer_pinholes(wings, x0=13, x1=21, y0=top_min_y, y1=bot_max_y + 1, require_3_neighbors=True)
     return composite_over(wings, canvas)
 
 

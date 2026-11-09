@@ -1531,31 +1531,126 @@ html, body {
 }
 
 @media (max-width: 768px), (max-height: 560px) {
-  .hud-bottom {
-    bottom: max(2px, env(safe-area-inset-bottom));
-    padding: 0 4px;
-  }
-  .iron-bar {
-    gap: 3px;
-    padding: 2px 4px;
-    border-width: 1px;
-  }
-  .hud-bottom .iron-btn {
-    padding: 3px 6px;
-    font-size: 0.35rem;
-    letter-spacing: 0.02em;
-  }
   .hud-top {
-    padding: 4px 6px;
+    top: max(4px, env(safe-area-inset-top));
+    padding: 0 4px;
     gap: 4px;
+    grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   }
   .fighter-plate {
-    padding: 4px 6px;
-    gap: 6px;
+    padding: 0;
+    gap: 4px;
+    align-items: flex-start;
   }
   .portrait-frame {
-    width: 36px;
-    height: 36px;
+    width: 30px;
+    height: 30px;
+    border-width: 1px;
+  }
+  .bars-column {
+    gap: 2px;
+  }
+  .plate-header {
+    gap: 3px;
+  }
+  .fighter-name {
+    font-size: 0.42rem;
+    letter-spacing: 0.02em;
+  }
+  .hp-num {
+    font-size: 0.38rem;
+    flex-shrink: 0;
+  }
+  .hp-frame {
+    height: 11px;
+    border-width: 1px;
+  }
+  .ult-frame, .cd-box {
+    height: 10px;
+    padding: 0 3px;
+  }
+  .ult-label, .cd-label {
+    font-size: 0.28rem;
+  }
+  .partner-wing {
+    padding: 2px 3px;
+    gap: 4px;
+    margin-top: 1px;
+  }
+  .partner-mini-frame {
+    width: 18px;
+    height: 18px;
+  }
+  .partner-name {
+    font-size: 0.29rem;
+  }
+  .partner-badge {
+    font-size: 0.22rem;
+    padding: 0 2px;
+  }
+  .partner-hp-num {
+    font-size: 0.28rem;
+    flex-shrink: 0;
+  }
+  .partner-hp-track {
+    height: 4px;
+  }
+  .partner-ult-track {
+    height: 2px;
+  }
+  .center-emblem {
+    gap: 1px;
+  }
+  .crest-shield {
+    width: 20px;
+    height: 20px;
+    border-width: 1px;
+  }
+  .crest-shield span {
+    font-size: 0.33rem;
+  }
+  .clock-plate {
+    font-size: 0.35rem;
+    margin-top: 1px;
+  }
+  .hud-mode-tag {
+    font-size: 0.24rem;
+    padding: 1px 3px;
+  }
+  .hud-stage-tag {
+    display: none;
+  }
+  .hud-bottom {
+    bottom: max(3px, env(safe-area-inset-bottom));
+    width: 96vw;
+    max-width: 480px;
+    padding: 0;
+  }
+  .iron-bar {
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 3px;
+    padding: 3px 4px;
+    border-width: 1px;
+    width: 100%;
+  }
+  .hud-bottom .iron-btn {
+    padding: 4px 5px;
+    font-size: 0.31rem;
+    letter-spacing: 0.01em;
+    gap: 3px;
+    flex: 1 1 auto;
+    justify-content: center;
+    min-height: 22px;
+  }
+  .gem-indicator {
+    width: 4px;
+    height: 4px;
+  }
+  .victory-plaque {
+    padding: 14px 12px;
+    max-height: 92dvh;
+    overflow-y: auto;
   }
 }
 
@@ -1580,8 +1675,35 @@ html, body {
 }
 
 @media (max-width: 640px) {
-  .sub-row, .plate-right .sub-row { grid-template-columns: 1fr; gap: 3px; }
-  .cd-box { display: none; }
+  .sub-row, .plate-right .sub-row {
+    grid-template-columns: 1fr;
+    gap: 2px;
+  }
+  .cd-box {
+    display: none;
+  }
+  .partner-badge {
+    display: none;
+  }
+  .portrait-frame {
+    width: 26px;
+    height: 26px;
+  }
+  .fighter-name {
+    font-size: 0.38rem;
+  }
+  .hp-num {
+    font-size: 0.34rem;
+  }
+  .hud-bottom .iron-btn {
+    padding: 4px 4px;
+    font-size: 0.29rem;
+  }
+  .victory-telemetry {
+    gap: 6px;
+    padding: 6px 8px;
+  }
+  .telemetry-row {
+    font-size: 0.32rem;
+  }
 }
-
-
