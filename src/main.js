@@ -1,17 +1,17 @@
-import { Renderer } from './engine/Renderer.js?v=30fps37';
-import { VFXManager } from './engine/VFXManager.js?v=30fps37';
-import { PixelForge } from './engine/PixelForge.js?v=30fps37';
-import { AudioManager } from './engine/AudioManager.js?v=30fps37';
-import { Warrior } from './entities/Warrior.js?v=30fps37';
-import { FireMage } from './entities/FireMage.js?v=30fps37';
-import { Archer } from './entities/Archer.js?v=30fps37';
-import { Priestess } from './entities/Priestess.js?v=30fps37';
-import { Reaper } from './entities/Reaper.js?v=30fps37';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps37';
-import { Titan } from './entities/Titan.js?v=30fps37';
-import { Ronin } from './entities/Ronin.js?v=30fps37';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps37';
-import { IceMage } from './entities/IceMage.js?v=30fps37';
+import { Renderer } from './engine/Renderer.js?v=30fps38';
+import { VFXManager } from './engine/VFXManager.js?v=30fps38';
+import { PixelForge } from './engine/PixelForge.js?v=30fps38';
+import { AudioManager } from './engine/AudioManager.js?v=30fps38';
+import { Warrior } from './entities/Warrior.js?v=30fps38';
+import { FireMage } from './entities/FireMage.js?v=30fps38';
+import { Archer } from './entities/Archer.js?v=30fps38';
+import { Priestess } from './entities/Priestess.js?v=30fps38';
+import { Reaper } from './entities/Reaper.js?v=30fps38';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps38';
+import { Titan } from './entities/Titan.js?v=30fps38';
+import { Ronin } from './entities/Ronin.js?v=30fps38';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps38';
+import { IceMage } from './entities/IceMage.js?v=30fps38';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -1565,6 +1565,9 @@ class Game {
     this.stageEventTimer = 0;
     this.stageEventTickTimer = 0;
     this.isMatchOver = false;
+    this.victoryRevealPending = false;
+    this.deadMatchFighter = null;
+    this.postDeathHoldTimer = 0;
     this.victoryOverlay.classList.add('hidden');
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
     this.updateHUD();
@@ -1848,8 +1851,12 @@ class Game {
     }
 
     this.isMatchOver = true;
-    this.koSlowTimer = 1.15;
-    this.ultSlowTimer = 0.65;
+    // Crisp 0.48s impact slow-motion (0.32x) without stacking ultSlowTimer, so all 30 death frames play smoothly!
+    this.koSlowTimer = 0.48;
+    this.ultSlowTimer = 0;
+    this.deadMatchFighter = deadFighter;
+    this.victoryRevealPending = true;
+    this.postDeathHoldTimer = 0;
     this.updateHUD();
 
     const winningTeam = deadFighter.team === 1 ? 2 : 1;
@@ -1943,19 +1950,21 @@ class Game {
 
     clearTimeout(this.victoryTimeout);
     clearTimeout(this.autoNextTimeout);
-    this.victoryTimeout = setTimeout(() => {
-      if (this.isMatchOver && !this.isSimPaused) {
-        this.victoryOverlay.classList.remove('hidden');
-        if (this.audio) this.audio.play('victory_fanfare');
-        if (this.autoTourney && !this.isSimPaused) {
-          this.autoNextTimeout = setTimeout(() => {
-            if (this.isMatchOver && this.autoTourney && !this.isLandingOpen) {
-              this.advanceTourneyChallenger();
-            }
-          }, 3800);
+  }
+
+  revealVictoryOverlay() {
+    if (!this.isMatchOver || !this.victoryRevealPending) return;
+    this.victoryRevealPending = false;
+    this.victoryOverlay.classList.remove('hidden');
+    if (this.audio) this.audio.play('victory_fanfare');
+    if (this.autoTourney && !this.isSimPaused) {
+      clearTimeout(this.autoNextTimeout);
+      this.autoNextTimeout = setTimeout(() => {
+        if (this.isMatchOver && this.autoTourney && !this.isLandingOpen && !this.isSimPaused) {
+          this.advanceTourneyChallenger();
         }
-      }
-    }, 1650);
+      }, 4200);
+    }
   }
 
   triggerClashSpark(cx, cy, col1, col2, label = '★ CLASH! ★') {
@@ -2235,7 +2244,7 @@ class Game {
     let timeScale = 1.0;
     if (this.koSlowTimer > 0) {
       this.koSlowTimer = Math.max(0, this.koSlowTimer - rawDt);
-      timeScale = 0.18;
+      timeScale = 0.32;
     } else if (this.ultSlowTimer > 0) {
       this.ultSlowTimer = Math.max(0, this.ultSlowTimer - rawDt);
       timeScale = 0.25;
@@ -2314,6 +2323,20 @@ class Game {
       if (!f) continue;
       const target = this.getTargetFor(f);
       f.update(dt, target, this);
+    }
+
+    // Reveal the Victory / Rematch plaque ONLY after all 30 death frames (F00..F29) have finished
+    // AND the fallen champion has rested cleanly on the arena floor for ~0.95s!
+    if (this.isMatchOver && this.victoryRevealPending && !this.isSimPaused) {
+      const fallen = this.deadMatchFighter || this.fighters.find((f) => f && f.isDead);
+      const fullDeathDur = PixelForge.DEATH_DURATION || 1.55;
+      const onFloor = !fallen || fallen.y >= this.renderer.groundY - 2;
+      if (!fallen || ((fallen.deathTimer || 0) >= fullDeathDur && onFloor)) {
+        this.postDeathHoldTimer = (this.postDeathHoldTimer || 0) + rawDt;
+        if (this.postDeathHoldTimer >= 0.95) {
+          this.revealVictoryOverlay();
+        }
+      }
     }
 
     // Check Simultaneous Melee / Skill Blade Clash across opposing active fighters

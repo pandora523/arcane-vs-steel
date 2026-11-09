@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps37';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps37';
+import { Fighter } from './Fighter.js?v=30fps38';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps38';
 
 export class Titan extends Fighter {
   constructor(x, groundY, facing = 1) {

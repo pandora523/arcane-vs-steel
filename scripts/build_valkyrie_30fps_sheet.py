@@ -934,8 +934,8 @@ def render_pose_104(parts, cfg):
     if cfg.get("show_lance", True):
         if cfg.get("resting_lance", False):
             draw_gungnir_104(
-                out, 50.0, 96.0, lance_deg=2.0, lance_len=28.0,
-                glow=0.3, phase=0.0
+                out, 50.0, 94.5, lance_deg=2.0, lance_len=28.0,
+                glow=cfg.get("lance_glow", 0.30), phase=cfg.get("mane_wave_phase", 0.0)
             )
         else:
             draw_gungnir_104(
@@ -1058,7 +1058,7 @@ def eval_pose_keyframes(f, keyframes, ph, wing_mult=2.0):
         out[k] = v0 + (v1 - v0) * u
 
     active_d = d0 if raw_u < 0.5 else d1
-    for meta_k in ("wing_mode", "right_arm_in_front", "right_leg_behind", "halo", "halo_spears", "speedlines", "speedline_deg"):
+    for meta_k in ("wing_mode", "right_arm_in_front", "right_leg_behind", "halo", "halo_spears", "speedlines", "speedline_deg", "resting_lance"):
         if meta_k in active_d:
             out[meta_k] = active_d[meta_k]
 
@@ -1287,81 +1287,50 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 5:
-            # Row 5: DEATH & HURT (F00..F05 Hurt Stagger, F06..F15 Kneeling Collapse, F16..F29 Flat Prone Rest)
-            if f < 6:
-                u = f / 5.0
-                cfgs.append(dict(
-                    pelvis_dx=-16.0 * math.sin(u * math.pi),
-                    pelvis_dy=24.0 * u,
-                    torso_deg=-16.0 * math.sin(u * math.pi),
-                    head_rel_deg=-10.0 * math.sin(u * math.pi),
-                    mane_rel_deg=14.0 * u,
-                    mane_wave_phase=ph * 2.0,
-                    mane_wave_amp=9.0,
-                    wing_mode="flare",
-                    wing_phase=ph * 2.0,
-                    l_thigh_deg=14.0 * u,
-                    l_shin_deg=18.0 * u,
-                    r_thigh_deg=-14.0 * u,
-                    r_shin_deg=16.0 * u,
-                    l_sode_rel_deg=-26.0 * u,
-                    l_fore_rel_deg=-22.0 * u,
-                    r_sode_rel_deg=20.0 * u,
-                    r_fore_rel_deg=-16.0,
-                    foot_y=99.0,
-                    lance_deg=-26.0 - 16.0 * u,
-                    lance_len=30.0,
-                    lance_glow=0.5
-                ))
-            elif f < 16:
-                u = (f - 6) / 9.0
-                cfgs.append(dict(
-                    pelvis_dx=-10.0 * u,
-                    pelvis_dy=24.0 + 135.0 * u,
-                    torso_deg=-10.0 + 42.0 * u,
-                    head_rel_deg=16.0 * u,
-                    mane_rel_deg=-10.0 * u,
-                    mane_wave_phase=ph,
-                    mane_wave_amp=6.0 * (1.0 - u),
-                    wing_mode="normal",
-                    wing_phase=ph * (1.0 - u),
-                    l_thigh_deg=-48.0 * u,
-                    l_shin_deg=72.0 * u,
-                    r_thigh_deg=42.0 * u,
-                    r_shin_deg=68.0 * u,
-                    l_sode_rel_deg=22.0 * u,
-                    l_fore_rel_deg=-18.0,
-                    r_sode_rel_deg=26.0 * u,
-                    r_fore_rel_deg=14.0 * u,
-                    foot_y=99.0,
-                    lance_deg=-24.0 + 26.0 * u,
-                    lance_len=29.0,
-                    lance_glow=0.3
-                ))
-            else:
-                u = min(1.0, (f - 16) / 4.0)
-                cfgs.append(dict(
-                    pelvis_dx=0.0,
-                    pelvis_dy=210.0,
-                    torso_deg=32.0 + 54.0 * u,  # 86 deg flat horizontal prone rest!
-                    head_rel_deg=4.0,
-                    mane_rel_deg=-76.0 * u,
-                    mane_wave_phase=0.0,
-                    mane_wave_amp=1.0,
-                    wing_mode="folded",
-                    l_thigh_deg=56.0 * u,
-                    l_shin_deg=60.0 * u,
-                    l_foot_deg=58.0 * u,
-                    r_thigh_deg=96.0 * u,
-                    r_shin_deg=92.0 * u,
-                    r_foot_deg=86.0 * u,
-                    l_sode_rel_deg=14.0,
-                    l_fore_rel_deg=10.0,
-                    r_sode_rel_deg=12.0,
-                    r_fore_rel_deg=8.0,
-                    foot_y=99.0,
-                    resting_lance=True
-                ))
+            # Row 5: DEATH & HURT (F00..F05 Hurt Stagger -> F09..F13 Wounded L-Sit on Stone Floor -> F18..F29 Flat Supine Fallen Valkyrie Rest)
+            kfs = [
+                (0, dict(pelvis_dx=0.0, pelvis_dy=4.0, torso_deg=-4.0, head_rel_deg=-2.0, mane_rel_deg=4.0,
+                         l_thigh_deg=-4.0, l_shin_deg=6.0, r_thigh_deg=6.0, r_shin_deg=4.0,
+                         l_sode_rel_deg=-14.0, r_sode_rel_deg=8.0, lance_deg=-22.0, lance_glow=0.80, wing_mode="flare", foot_y=99.0)),
+                (5, dict(pelvis_dx=-16.0, pelvis_dy=28.0, torso_deg=-18.0, head_rel_deg=-8.0, mane_rel_deg=18.0,
+                         l_thigh_deg=-22.0, l_shin_deg=8.0, r_thigh_deg=-12.0, r_shin_deg=6.0,
+                         l_sode_rel_deg=-28.0, l_fore_rel_deg=-20.0, r_sode_rel_deg=22.0, r_fore_rel_deg=-14.0,
+                         lance_deg=-34.0, lance_glow=0.55, wing_mode="flare", foot_y=99.0)),
+                (9, dict(pelvis_dx=-14.0, pelvis_dy=95.0, torso_deg=10.0, head_rel_deg=14.0, mane_rel_deg=-10.0,
+                         l_thigh_deg=-72.0, l_shin_deg=-42.0, l_foot_deg=-28.0,
+                         r_thigh_deg=-38.0, r_shin_deg=-48.0, r_foot_deg=-30.0,
+                         l_sode_rel_deg=18.0, l_fore_rel_deg=8.0,
+                         r_sode_rel_deg=-18.0, r_fore_rel_deg=-12.0, right_arm_in_front=True,
+                         lance_deg=14.0, lance_glow=0.45, wing_mode="normal", mane_wave_amp=5.0, foot_y=99.0)),
+                (13, dict(pelvis_dx=-12.0, pelvis_dy=155.0, torso_deg=-8.0, head_rel_deg=18.0, mane_rel_deg=12.0,
+                          l_thigh_deg=-98.0, l_shin_deg=-96.0, l_foot_deg=-64.0,
+                          r_thigh_deg=-44.0, r_shin_deg=-78.0, r_foot_deg=-58.0,
+                          l_sode_rel_deg=20.0, l_fore_rel_deg=8.0,
+                          r_sode_rel_deg=-8.0, r_fore_rel_deg=-10.0, right_arm_in_front=True,
+                          lance_deg=4.0, lance_glow=0.35, wing_mode="folded", mane_wave_amp=3.0, resting_lance=False, foot_y=99.0)),
+                (18, dict(pelvis_dx=-8.0, pelvis_dy=190.0, torso_deg=-52.0, head_rel_deg=16.0, mane_rel_deg=68.0,
+                          l_thigh_deg=-106.0, l_shin_deg=-112.0, l_foot_deg=-74.0,
+                          r_thigh_deg=-46.0, r_shin_deg=-82.0, r_foot_deg=-66.0,
+                          l_sode_rel_deg=10.0, l_fore_rel_deg=-4.0,
+                          r_sode_rel_deg=2.0, r_fore_rel_deg=-8.0, right_arm_in_front=True,
+                          lance_glow=0.32, wing_mode="folded", mane_wave_amp=1.5, resting_lance=True, foot_y=99.0)),
+                (23, dict(pelvis_dx=-4.0, pelvis_dy=214.0, torso_deg=-83.0, head_rel_deg=13.0, mane_rel_deg=114.0,
+                          l_thigh_deg=-109.0, l_shin_deg=-118.0, l_foot_deg=-78.0,
+                          r_thigh_deg=-46.0, r_shin_deg=-84.0, r_foot_deg=-70.0,
+                          l_sode_rel_deg=6.0, l_fore_rel_deg=-6.0,
+                          r_sode_rel_deg=4.0, r_fore_rel_deg=-8.0, right_arm_in_front=True,
+                          lance_glow=0.28, wing_mode="folded", mane_wave_amp=0.5, resting_lance=True, foot_y=99.0)),
+                (29, dict(pelvis_dx=-4.0, pelvis_dy=218.0, torso_deg=-85.0, head_rel_deg=11.0, mane_rel_deg=118.0,
+                          l_thigh_deg=-110.0, l_shin_deg=-119.0, l_foot_deg=-80.0,
+                          r_thigh_deg=-48.0, r_shin_deg=-85.0, r_foot_deg=-72.0,
+                          l_sode_rel_deg=6.0, l_fore_rel_deg=-6.0,
+                          r_sode_rel_deg=4.0, r_fore_rel_deg=-8.0, right_arm_in_front=True,
+                          lance_glow=0.22, wing_mode="folded", mane_wave_amp=0.3, resting_lance=True, foot_y=99.0)),
+            ]
+            cfg = eval_pose_keyframes(f, kfs, ph, wing_mult=1.0)
+            if f >= 23:
+                cfg["lance_glow"] = 0.28 + 0.14 * math.sin(ph * 3.0)
+            cfgs.append(cfg)
 
         elif row_idx == 6:
             # Row 6: DASH (Smooth Ease-In / Ease-Out Low Horizontal Valkyrie Wing-Skim!)

@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps37';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps37';
+import { Fighter } from './Fighter.js?v=30fps38';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps38';
 
 export class Priestess extends Fighter {
   constructor(x, groundY, facing = -1) {
@@ -799,15 +799,20 @@ export class Priestess extends Fighter {
     const isDawnGraceAuto =
       this.state === 'AUTO_ATTACK' &&
       (this.shotCombo + (this.didActionFrame ? 0 : 1)) % 3 === 0;
+    const isDeathFade = this.isDead && (this.deathTimer || 0) < 0.46;
     const showWings =
-      this.isAngelicAscent ||
-      this.state === 'ULTIMATE' ||
-      this.state === 'SKILL' ||
-      isDawnGraceAuto;
+      isDeathFade ||
+      (!this.isDead &&
+        (this.isAngelicAscent ||
+          this.state === 'ULTIMATE' ||
+          this.state === 'SKILL' ||
+          isDawnGraceAuto));
     if (!showWings) return;
 
     let env = 1.0;
-    if (this.state === 'SKILL') {
+    if (isDeathFade) {
+      env = Math.max(0, 1 - (this.deathTimer || 0) / 0.46) * 0.82;
+    } else if (this.state === 'SKILL') {
       const dur = this.skillDuration || 0.98;
       const u = Math.min(1, this.stateTimer / dur);
       env = Math.min(1, Math.sin(u * Math.PI) * 1.65);

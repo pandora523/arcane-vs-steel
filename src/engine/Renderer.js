@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps37';
+import { PixelForge } from './PixelForge.js?v=30fps38';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -228,8 +228,8 @@ export class Renderer {
   triggerKOFinisher(x, y, color = '#facc15', winnerName = '', winnerHeroId = 'warrior') {
     this.koFocusX = x;
     this.koFocusY = y;
-    this.koZoomTimer = 1.35;
-    this.koMaxTimer = 1.35;
+    this.koZoomTimer = 1.95;
+    this.koMaxTimer = 1.95;
     this.koColor = color;
     this.koWinnerName = winnerName;
     this.koWinnerHeroId = winnerHeroId;
@@ -291,7 +291,7 @@ export class Renderer {
 
     if (validFighters.length >= 1) {
       const activePool = validFighters.filter(
-        (f) => !f.isBenched && (!f.isDead || (f.deathTimer || 0) < 1.1)
+        (f) => !f.isBenched && (!f.isDead || (f.deathTimer || 0) < 2.8)
       );
       const pool = activePool.length > 0 ? activePool : validFighters;
       let minX = pool[0].x;

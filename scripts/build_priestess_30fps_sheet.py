@@ -1117,7 +1117,18 @@ def render_pose_104(parts, cfg):
     fg_layer = np.zeros_like(arr104)
     scepter_head_pt = None
 
-    if cfg.get("show_staff", True):
+    if cfg.get("resting_staff", False):
+        scepter_head_pt = draw_sunburst_scepter_104(
+            fg_layer,
+            54.0,
+            94.0,
+            2.0,
+            staff_len=25.0,
+            pom_len=14.0,
+            glow=cfg.get("staff_glow", 0.24),
+            phase=cfg.get("fx_phase", 0.0),
+        )
+    elif cfg.get("show_staff", True):
         sh_pt = r_hand_104 if cfg.get("staff_hand", "right") == "right" else l_hand_104
         sx = max(8.0, min(95.0, sh_pt[0] + (cfg.get("staff_dx") or 0.0)))
         sy = max(8.0, min(97.0, sh_pt[1] + (cfg.get("staff_dy") or 0.0)))
@@ -1495,64 +1506,84 @@ def build_row_configs(row_idx):
                 cfg["slash_arc"] = (-48.0, 46.0, 31.0, pulse_i * (1.0 if f <= 20 else 1.0 - (f - 20) * 0.22))
 
         elif row_idx == 5:
-            # ROW 5: DEATH — Stagger recoil -> Kneeling fall -> Prone collapse with horizontal resting Scepter
-            if f <= 7:
-                u = smooth_u(f, 0, 7)
-                cfg["pelvis_dx"] = -14.0 * u
-                cfg["pelvis_dy"] = 6.0 * u
-                cfg["torso_deg"] = -16.0 * u
-                cfg["head_rel_deg"] = -10.0 * u
-                cfg["mane_rel_deg"] = 12.0 * u
-                cfg["l_thigh_deg"] = -12.0 * u
-                cfg["l_shin_deg"] = 18.0 * u
-                cfg["r_thigh_deg"] = 14.0 * u
-                cfg["r_shin_deg"] = 14.0 * u
-                cfg["r_sode_rel_deg"] = 18.0 * u
-                cfg["l_sode_rel_deg"] = -28.0 * u
-                cfg["staff_deg"] = -52.0 + 22.0 * u
-                cfg["blink"] = f >= 3
-            elif f <= 16:
-                u = smooth_u(f, 7, 16)
-                cfg["pelvis_dx"] = -14.0 + 8.0 * u
-                cfg["pelvis_dy"] = 6.0 + 38.0 * u
-                cfg["torso_deg"] = -16.0 + 40.0 * u
-                cfg["head_rel_deg"] = -10.0 + 24.0 * u
-                cfg["mane_rel_deg"] = 12.0 - 16.0 * u
-                cfg["l_thigh_deg"] = -12.0 + 38.0 * u
-                cfg["l_shin_deg"] = 18.0 + 50.0 * u
-                cfg["r_thigh_deg"] = 14.0 - 52.0 * u
-                cfg["r_shin_deg"] = 14.0 + 32.0 * u
-                cfg["l_coat_deg"] = 24.0 * u
-                cfg["r_coat_deg"] = -26.0 * u
-                cfg["r_sode_rel_deg"] = 18.0 - 34.0 * u
-                cfg["l_sode_rel_deg"] = -28.0 + 14.0 * u
-                cfg["staff_deg"] = -30.0 + 28.0 * u
-                cfg["staff_glow"] = 1.0 - 0.65 * u
-                cfg["halo_mode"] = "off" if f >= 12 else "normal"
-                cfg["blink"] = True
-            else:
-                u = smooth_u(f, 16, 24)
-                u_leg = u ** 0.78
-                cfg["pelvis_dx"] = -6.0 + 16.0 * u
-                cfg["pelvis_dy"] = 44.0 + 48.0 * u
-                cfg["torso_deg"] = 24.0 + 62.0 * u
-                cfg["head_rel_deg"] = 14.0 - 16.0 * u
-                cfg["l_thigh_deg"] = 26.0 + 56.0 * u_leg
-                cfg["l_shin_deg"] = 68.0 + 18.0 * u_leg
-                cfg["r_thigh_deg"] = -38.0 + 118.0 * u_leg
-                cfg["r_shin_deg"] = 46.0 + 40.0 * u_leg
-                cfg["l_coat_deg"] = 24.0 + 52.0 * u
-                cfg["r_coat_deg"] = -26.0 + 114.0 * u_leg
-                cfg["stole_deg"] = 20.0 + 64.0 * u
-                cfg["l_sode_rel_deg"] = -14.0 + 26.0 * u
-                cfg["r_sode_rel_deg"] = -16.0 + 16.0 * u
-                cfg["right_arm_in_front"] = True
-                cfg["halo_mode"] = "off"
-                cfg["staff_deg"] = -2.0 * (1.0 - u)
-                cfg["staff_dy"] = 3.5 * u
-                cfg["staff_glow"] = 0.25 + (0.08 * math.sin(p * 2.0) if f >= 24 else 0.0)
-                cfg["mane_rel_deg"] = math.sin(p * 2.0) * 1.5 if f >= 24 else -4.0
-                cfg["blink"] = True
+            # ROW 5: DEATH & HURT — F00..F05 Hurt Recoil -> F09..F13 Wounded Prayer L-Sit -> F18..F29 Serene Supine Rest + Resting Sunburst Scepter
+            kfs = [
+                (0, {
+                    "pelvis_dx": -2.0, "pelvis_dy": 2.0, "torso_deg": -4.0, "head_rel_deg": -2.0, "mane_rel_deg": 6.0,
+                    "l_thigh_deg": -4.0, "l_shin_deg": 6.0, "l_foot_deg": 0.0,
+                    "r_thigh_deg": 6.0, "r_shin_deg": 6.0, "r_foot_deg": 0.0,
+                    "l_coat_deg": -4.0, "r_coat_deg": 4.0, "stole_deg": -4.0,
+                    "l_sode_rel_deg": -16.0, "l_fore_rel_deg": -20.0,
+                    "r_sode_rel_deg": 4.0, "r_fore_rel_deg": -18.0, "right_arm_in_front": True,
+                    "staff_deg": -46.0, "staff_dy": 0.0, "staff_glow": 1.0,
+                    "halo_mode": "normal", "resting_staff": False, "blink": False,
+                }),
+                (5, {
+                    "pelvis_dx": -14.0, "pelvis_dy": 10.0, "torso_deg": -18.0, "head_rel_deg": -8.0, "mane_rel_deg": 18.0,
+                    "l_thigh_deg": -20.0, "l_shin_deg": 8.0, "l_foot_deg": 0.0,
+                    "r_thigh_deg": -8.0, "r_shin_deg": 8.0, "r_foot_deg": 0.0,
+                    "l_coat_deg": -14.0, "r_coat_deg": -10.0, "stole_deg": -14.0,
+                    "l_sode_rel_deg": -30.0, "l_fore_rel_deg": -34.0,
+                    "r_sode_rel_deg": 18.0, "r_fore_rel_deg": -14.0, "right_arm_in_front": True,
+                    "staff_deg": -30.0, "staff_dy": 0.0, "staff_glow": 0.85,
+                    "halo_mode": "normal", "resting_staff": False, "blink": True,
+                }),
+                (9, {
+                    "pelvis_dx": -14.0, "pelvis_dy": 45.0, "torso_deg": 10.0, "head_rel_deg": 14.0, "mane_rel_deg": -8.0,
+                    "l_thigh_deg": -68.0, "l_shin_deg": -38.0, "l_foot_deg": -24.0,
+                    "r_thigh_deg": -42.0, "r_shin_deg": -46.0, "r_foot_deg": -28.0,
+                    "l_coat_deg": -48.0, "r_coat_deg": -44.0, "stole_deg": -48.0,
+                    "l_sode_rel_deg": -18.0, "l_fore_rel_deg": -48.0,
+                    "r_sode_rel_deg": -14.0, "r_fore_rel_deg": -16.0, "right_arm_in_front": True,
+                    "staff_deg": 12.0, "staff_dy": 1.5, "staff_glow": 0.60,
+                    "halo_mode": "off", "resting_staff": False, "blink": True,
+                }),
+                (13, {
+                    "pelvis_dx": -12.0, "pelvis_dy": 72.0, "torso_deg": -6.0, "head_rel_deg": 18.0, "mane_rel_deg": 22.0,
+                    "l_thigh_deg": -88.0, "l_shin_deg": -82.0, "l_foot_deg": -56.0,
+                    "r_thigh_deg": -54.0, "r_shin_deg": -76.0, "r_foot_deg": -54.0,
+                    "l_coat_deg": -72.0, "r_coat_deg": -68.0, "stole_deg": -74.0,
+                    "l_sode_rel_deg": 18.0, "l_fore_rel_deg": 8.0,
+                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -14.0, "right_arm_in_front": True,
+                    "staff_deg": 4.0, "staff_dy": 3.0, "staff_glow": 0.40,
+                    "halo_mode": "off", "resting_staff": False, "blink": True,
+                }),
+                (18, {
+                    "pelvis_dx": -8.0, "pelvis_dy": 88.0, "torso_deg": -52.0, "head_rel_deg": 16.0, "mane_rel_deg": 82.0,
+                    "l_thigh_deg": -94.0, "l_shin_deg": -88.0, "l_foot_deg": -64.0,
+                    "r_thigh_deg": -58.0, "r_shin_deg": -82.0, "r_foot_deg": -60.0,
+                    "l_coat_deg": -80.0, "r_coat_deg": -76.0, "stole_deg": -82.0,
+                    "l_sode_rel_deg": 8.0, "l_fore_rel_deg": -8.0,
+                    "r_sode_rel_deg": 2.0, "r_fore_rel_deg": -10.0, "right_arm_in_front": True,
+                    "staff_deg": 2.0, "staff_dy": 3.0, "staff_glow": 0.30,
+                    "halo_mode": "off", "resting_staff": True, "blink": True,
+                }),
+                (23, {
+                    "pelvis_dx": -4.0, "pelvis_dy": 98.0, "torso_deg": -83.0, "head_rel_deg": 14.0, "mane_rel_deg": 134.0,
+                    "l_thigh_deg": -97.0, "l_shin_deg": -90.0, "l_foot_deg": -68.0,
+                    "r_thigh_deg": -60.0, "r_shin_deg": -85.0, "r_foot_deg": -64.0,
+                    "l_coat_deg": -86.0, "r_coat_deg": -84.0, "stole_deg": -88.0,
+                    "l_sode_rel_deg": 6.0, "l_fore_rel_deg": -8.0,
+                    "r_sode_rel_deg": 4.0, "r_fore_rel_deg": -8.0, "right_arm_in_front": True,
+                    "staff_deg": 2.0, "staff_dy": 3.0, "staff_glow": 0.24,
+                    "halo_mode": "off", "resting_staff": True, "blink": True,
+                }),
+                (29, {
+                    "pelvis_dx": -4.0, "pelvis_dy": 100.0, "torso_deg": -85.0, "head_rel_deg": 13.0, "mane_rel_deg": 138.0,
+                    "l_thigh_deg": -98.0, "l_shin_deg": -91.0, "l_foot_deg": -70.0,
+                    "r_thigh_deg": -62.0, "r_shin_deg": -86.0, "r_foot_deg": -66.0,
+                    "l_coat_deg": -88.0, "r_coat_deg": -86.0, "stole_deg": -89.0,
+                    "l_sode_rel_deg": 6.0, "l_fore_rel_deg": -8.0,
+                    "r_sode_rel_deg": 4.0, "r_fore_rel_deg": -8.0, "right_arm_in_front": True,
+                    "staff_deg": 2.0, "staff_dy": 3.0, "staff_glow": 0.20,
+                    "halo_mode": "off", "resting_staff": True, "blink": True,
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
+            cfg["blink"] = f >= 3
+            if f >= 23:
+                cfg["staff_glow"] = 0.30 + 0.22 * math.sin(p * 3.0)
+                cfg["mane_rel_deg"] += 1.4 * math.sin(p * 2.0)
 
         elif row_idx == 6:
             # ROW 6: DASH — Sleek Winged Radiant Glide with pointed floating feet & forward Scepter thrust

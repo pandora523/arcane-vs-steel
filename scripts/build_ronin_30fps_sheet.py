@@ -1285,79 +1285,83 @@ def build_row_configs(row_idx):
                 ))
 
         elif row_idx == 5:
-            # Row 5: DEATH (Honorable Samurai Fall: Stagger -> Kneel with Planted Odachi -> Collapse)
-            if f < 8:
-                u = f / 7.0
-                cfgs.append(dict(
-                    pelvis_dx=-20.0 * u,
-                    pelvis_dy=35.0 * u,
-                    torso_deg=-18.0 * u,
-                    head_rel_deg=12.0 * u,
-                    mane_rel_deg=18.0 * u,
-                    mane_wave_phase=ph,
-                    mane_wave_amp=8.0,
-                    l_thigh_deg=-14.0 * u,
-                    l_shin_deg=18.0 * u,
-                    r_thigh_deg=16.0 * u,
-                    r_shin_deg=12.0 * u,
-                    l_sode_rel_deg=22.0 * u,
-                    l_fore_rel_deg=-15.0 * u,
-                    r_sode_rel_deg=-28.0 * u,
-                    r_fore_rel_deg=-10.0 * u,
-                    odachi_deg=-32.0 + 95.0 * u,
-                    odachi_len=30.0,
-                    drums_active=(f % 2 == 0)
-                ))
-            elif f < 17:
-                # Drops to one knee, planting the Thunder-Odachi vertically into the ground
-                u = (f - 8) / 8.0
-                cfgs.append(dict(
-                    pelvis_dx=-20.0,
-                    pelvis_dy=35.0 + 115.0 * u,
-                    torso_deg=-18.0 * (1.0 - u) + 22.0 * u,
-                    head_rel_deg=12.0 * (1.0 - u) + 8.0 * u,
-                    mane_rel_deg=18.0 * (1.0 - u) - 12.0 * u,
-                    mane_wave_phase=ph,
-                    mane_wave_amp=6.0 * (1.0 - 0.5 * u),
-                    l_thigh_deg=-14.0 * (1.0 - u) + 32.0 * u,
-                    l_shin_deg=18.0 + 48.0 * u,
-                    r_thigh_deg=16.0 * (1.0 - u) - 34.0 * u,
-                    r_shin_deg=12.0 + 22.0 * u,
-                    l_sode_rel_deg=22.0 * (1.0 - u) - 18.0 * u,
-                    l_fore_rel_deg=-15.0 - 15.0 * u,
-                    r_sode_rel_deg=-28.0 - 12.0 * u,
-                    r_fore_rel_deg=-10.0 + 18.0 * u,
-                    planted_sword=True,
-                    plant_x=66.0,
-                    plant_y=62.0,
-                    drums_active=(f < 13)
-                ))
-            else:
-                # Collapses forward into fallen posture while planted sword stands in tribute
-                u = (f - 17) / 12.0
-                cfgs.append(dict(
-                    pelvis_dx=-20.0,
-                    pelvis_dy=150.0 + 80.0 * u,
-                    torso_deg=22.0 + 54.0 * u,
-                    head_rel_deg=8.0 - 18.0 * u,
-                    mane_rel_deg=-12.0 - 20.0 * u,
-                    mane_wave_phase=ph * 0.5,
-                    mane_wave_amp=3.0 * (1.0 - u),
-                    l_thigh_deg=32.0 + 38.0 * u,
-                    l_shin_deg=66.0 + 12.0 * u,
-                    r_thigh_deg=-34.0 * (1.0 - u) + 58.0 * u,
-                    r_shin_deg=34.0 + 36.0 * u,
-                    l_sode_rel_deg=-18.0 - 25.0 * u,
-                    l_fore_rel_deg=-30.0 - 15.0 * u,
-                    r_sode_rel_deg=-40.0 + 15.0 * u,
-                    r_fore_rel_deg=8.0 - 25.0 * u,
-                    planted_sword=True,
-                    plant_x=70.0,
-                    plant_y=62.0,
-                    show_drums=(f < 24),
-                    drums_active=False,
-                    odachi_glow=max(0.2, 1.0 - u)
-                ))
+            # Row 5: DEATH & HURT (F00..F05 Grounded Hurt Stagger -> F09..F14 Bushido Double-Knee Odachi Plant -> F18..F29 Flat Samurai Slump)
+            defaults_r5 = dict(
+                pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=0.0, head_rel_deg=0.0, mane_rel_deg=0.0,
+                mane_wave_phase=ph, mane_wave_amp=6.0,
+                l_thigh_deg=0.0, l_shin_deg=0.0, l_foot_deg=0.0,
+                r_thigh_deg=0.0, r_shin_deg=0.0, r_foot_deg=0.0,
+                l_sode_rel_deg=0.0, l_fore_rel_deg=-12.0,
+                r_sode_rel_deg=-14.0, r_fore_rel_deg=-16.0,
+                right_arm_in_front=False, right_leg_behind=False,
+                odachi_deg=-30.0, odachi_len=30.0, odachi_glow=1.0,
+                planted_sword=False, plant_x=80.0, plant_y=67.5,
+                show_drums=True, drums_active=False, saya_deg=155.0
+            )
+            kfs_r5 = [
+                # F00..F05: Grounded HURT stagger (non-lethal hit window)
+                (0, dict(pelvis_dx=0.0, pelvis_dy=5.0, torso_deg=-4.0, head_rel_deg=4.0, mane_rel_deg=6.0,
+                         l_thigh_deg=-4.0, l_shin_deg=8.0, r_thigh_deg=6.0, r_shin_deg=6.0,
+                         l_sode_rel_deg=10.0, r_sode_rel_deg=-18.0, odachi_deg=-20.0, drums_active=True, saya_deg=152.0)),
+                (5, dict(pelvis_dx=-16.0, pelvis_dy=28.0, torso_deg=-18.0, head_rel_deg=12.0, mane_rel_deg=16.0,
+                         l_thigh_deg=-14.0, l_shin_deg=20.0, r_thigh_deg=16.0, r_shin_deg=16.0,
+                         l_sode_rel_deg=24.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=-28.0, r_fore_rel_deg=-10.0,
+                         odachi_deg=46.0, drums_active=True, saya_deg=146.0)),
+                # F09..F14: Heavy Bushido drop onto BOTH knees, driving Thunder-Odachi upright into the stone floor!
+                (9, dict(pelvis_dx=-18.0, pelvis_dy=95.0, torso_deg=12.0, head_rel_deg=14.0, mane_rel_deg=-8.0,
+                         l_thigh_deg=-14.0, l_shin_deg=68.0, l_foot_deg=58.0,
+                         r_thigh_deg=-34.0, r_shin_deg=78.0, r_foot_deg=66.0,
+                         l_sode_rel_deg=-12.0, l_fore_rel_deg=-24.0,
+                         r_sode_rel_deg=-58.0, r_fore_rel_deg=-16.0, right_arm_in_front=True,
+                         planted_sword=True, plant_x=78.0, plant_y=67.5, odachi_glow=0.85, drums_active=True, saya_deg=164.0)),
+                (14, dict(pelvis_dx=-18.0, pelvis_dy=128.0, torso_deg=22.0, head_rel_deg=18.0, mane_rel_deg=-16.0,
+                          l_thigh_deg=-8.0, l_shin_deg=70.0, l_foot_deg=64.0,
+                          r_thigh_deg=-38.0, r_shin_deg=80.0, r_foot_deg=68.0,
+                          l_sode_rel_deg=-6.0, l_fore_rel_deg=-20.0,
+                          r_sode_rel_deg=-72.0, r_fore_rel_deg=-14.0, right_arm_in_front=True,
+                          planted_sword=True, plant_x=80.0, plant_y=67.5, odachi_glow=0.70, drums_active=False,
+                          mane_wave_amp=3.2, saya_deg=168.0)),
+                # F18..F29: Grip slips off hilt; right arm extends flat forward toward standing blade & torso settles flat on y=99!
+                (18, dict(pelvis_dx=-14.0, pelvis_dy=178.0, torso_deg=54.0, head_rel_deg=0.0, mane_rel_deg=-42.0,
+                          l_thigh_deg=38.0, l_shin_deg=73.0, l_foot_deg=74.0,
+                          r_thigh_deg=-54.0, r_shin_deg=84.0, r_foot_deg=76.0,
+                          l_sode_rel_deg=2.0, l_fore_rel_deg=-10.0,
+                          r_sode_rel_deg=-118.0, r_fore_rel_deg=-12.0, right_arm_in_front=True,
+                          planted_sword=True, plant_x=82.0, plant_y=67.5, odachi_glow=0.50, show_drums=True,
+                          mane_wave_amp=1.8, saya_deg=175.0)),
+                (23, dict(pelvis_dx=-10.0, pelvis_dy=220.0, torso_deg=84.0, head_rel_deg=-18.0, mane_rel_deg=-62.0,
+                          l_thigh_deg=74.0, l_shin_deg=76.0, l_foot_deg=82.0,
+                          r_thigh_deg=-68.0, r_shin_deg=86.0, r_foot_deg=82.0,
+                          l_sode_rel_deg=6.0, l_fore_rel_deg=-6.0,
+                          r_sode_rel_deg=-162.0, r_fore_rel_deg=-8.0, right_arm_in_front=True,
+                          planted_sword=True, plant_x=85.0, plant_y=67.5, odachi_glow=0.32, show_drums=False,
+                          mane_wave_amp=0.6, saya_deg=180.0)),
+                (29, dict(pelvis_dx=-10.0, pelvis_dy=222.0, torso_deg=85.0, head_rel_deg=-20.0, mane_rel_deg=-64.0,
+                          l_thigh_deg=75.0, l_shin_deg=76.0, l_foot_deg=82.0,
+                          r_thigh_deg=-68.0, r_shin_deg=86.0, r_foot_deg=82.0,
+                          l_sode_rel_deg=6.0, l_fore_rel_deg=-6.0,
+                          r_sode_rel_deg=-165.0, r_fore_rel_deg=-6.0, right_arm_in_front=True,
+                          planted_sword=True, plant_x=85.0, plant_y=67.5, odachi_glow=0.22, show_drums=False,
+                          mane_wave_amp=0.4, saya_deg=180.0)),
+            ]
+            cfg_r5 = dict(defaults_r5)
+            for idx_k in range(len(kfs_r5) - 1):
+                fk0, dk0 = kfs_r5[idx_k]
+                fk1, dk1 = kfs_r5[idx_k + 1]
+                if fk0 <= f <= fk1:
+                    uk_raw = 0.0 if fk1 <= fk0 else (f - fk0) / float(fk1 - fk0)
+                    uk = 0.5 - 0.5 * math.cos(uk_raw * math.pi)
+                    for kk in (set(dk0.keys()) | set(dk1.keys())):
+                        vk0 = dk0.get(kk, defaults_r5.get(kk, 0.0))
+                        vk1 = dk1.get(kk, defaults_r5.get(kk, 0.0))
+                        if isinstance(vk0, (bool, str)) or isinstance(vk1, (bool, str)) or vk0 is None or vk1 is None:
+                            cfg_r5[kk] = vk1 if uk >= 0.5 else vk0
+                        else:
+                            cfg_r5[kk] = float(vk0) + (float(vk1) - float(vk0)) * uk
+                    break
+            if f >= 23:
+                cfg_r5["odachi_glow"] = 0.24 + 0.10 * math.sin(ph * 3.0)
+            cfgs.append(cfg_r5)
 
         elif row_idx == 6:
             # Row 6: DASH (Shunpo Lightning Step — High-Speed Aerodynamic Sprint/Glide)

@@ -311,9 +311,16 @@ export class Fighter {
       this.isDead = true;
       this.state = 'DEATH';
       this.deathTimer = 0;
-      this.vy = -135;
-      this.vx = dir * 165;
-      this.torsoVel = dir * 14;
+      this.isFlipVault = false;
+      this.isAngelicAscent = false;
+      this.isBlinkTeleport = false;
+      this.isChronoWarp = false;
+      this.isOmnislashing = false;
+      this.isCrouching = false;
+      this.isDeflecting = false;
+      this.vy = this.y >= this.groundY - 4 ? 0 : Math.max(0, this.vy * 0.35);
+      this.vx = dir * 115;
+      this.torsoVel = dir * 10;
       if (this.game) {
         this.game.renderer.triggerShake(12, 0.25);
         this.game.renderer.triggerAberration(8);
