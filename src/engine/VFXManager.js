@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js?v=30fps24';
-import { PixelForge } from './PixelForge.js?v=30fps24';
+import { PixelFont } from './PixelFont.js?v=30fps25';
+import { PixelForge } from './PixelForge.js?v=30fps25';
 
 export class VFXManager {
   constructor() {
@@ -2231,12 +2231,29 @@ export class VFXManager {
         ctx.restore();
       } else if (proj.type === 'cryo_shard') {
         const iceVfx = assets.icemage?.vfx;
-        const ang = Math.atan2(proj.vy || 0, proj.vx || 1);
+        const dir = (proj.vx || 1) >= 0 ? 1 : -1;
+        const qx = Math.round(px / 4) * 4;
+        const qy = Math.round(py / 4) * 4;
         ctx.save();
-        ctx.translate(px, py);
-        ctx.rotate(ang);
+        ctx.imageSmoothingEnabled = false;
+        // Stepped 4x4 pixel-art frost slipstream blocks trailing behind the shard
+        if (!isReflection) {
+          for (let tStep = 1; tStep <= 4; tStep++) {
+            const tx = qx - dir * tStep * 12;
+            const ty = qy + ((tStep % 2 === 0 ? -1 : 1) * 4);
+            ctx.fillStyle = '#0c1226';
+            ctx.fillRect(tx - 6, ty - 6, 12, 12);
+            ctx.fillStyle = tStep % 2 === 0 ? '#38bdf8' : '#c084fc';
+            ctx.fillRect(tx - 4, ty - 4, 8, 8);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(tx - 2, ty - 2, 4, 4);
+          }
+        }
+        ctx.translate(qx, qy);
+        ctx.scale(dir, 1);
         if (iceVfx && iceVfx.complete && iceVfx.naturalWidth) {
-          const shardSize = 128;
+          // Exact 2x logical scale of 52x52 -> 104x104 so every pixel block is razor-sharp
+          const shardSize = 104;
           this.drawBloomedSprite(
             ctx,
             renderer,
@@ -2254,8 +2271,12 @@ export class VFXManager {
             isReflection
           );
         } else {
+          ctx.fillStyle = '#0c1226';
+          ctx.fillRect(-20, -12, 40, 24);
           ctx.fillStyle = '#67e8f9';
-          ctx.fillRect(-18, -10, 36, 20);
+          ctx.fillRect(-16, -8, 32, 16);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-12, -4, 24, 8);
         }
         ctx.restore();
       } else if (proj.type === 'arrow') {

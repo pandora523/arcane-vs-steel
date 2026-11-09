@@ -1,6 +1,6 @@
-import { Fighter } from './Fighter.js?v=30fps24';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps24';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps24';
+import { Fighter } from './Fighter.js?v=30fps25';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps25';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps25';
 
 export class IceMage extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -1071,146 +1071,262 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * Renders Shimmering Permafrost Ice-Rink Floor Zones & Figure-Skate Blade Ribbons
+   * Stepped 4x4 Pixel-Art Laser & Refraction Line Rasterizer (Zero anti-aliased vector strokes!)
    */
-  drawPermafrostZones(ctx, renderer = null) {
-    if (!this.permafrostZones.length && !this.skateRibbons.length) return;
+  drawSteppedPixelLine4x4(ctx, x0, y0, x1, y1, mainColor = '#38bdf8', coreColor = '#ffffff', fade = 1.0) {
+    const dx = x1 - x0;
+    const dy = y1 - y0;
+    const dist = Math.hypot(dx, dy);
+    const steps = Math.max(1, Math.ceil(dist / 4));
+    const animStep = Math.floor(performance.now() * 0.025);
+
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
 
-    for (const z of this.permafrostZones) {
-      const fade = Math.min(1, (z.maxLife - z.life) * 1.5) * Math.min(1, z.life / 0.15);
-      const rx = Math.round(z.x);
-      const ry = Math.round(z.y - 3);
-      const rad = Math.round(z.radius);
-
-      // Glowing mirror-ice floor strip
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.42;
-      ctx.fillStyle = '#0284c7';
-      ctx.fillRect(rx - rad, ry - 5, rad * 2, 10);
-
-      ctx.globalAlpha = fade * 0.72;
-      ctx.fillStyle = '#67e8f9';
-      ctx.fillRect(rx - Math.round(rad * 0.85), ry - 3, Math.round(rad * 1.7), 6);
-
-      ctx.globalAlpha = fade * 0.90;
-      ctx.fillStyle = '#f8fafc';
-      ctx.fillRect(rx - Math.round(rad * 0.6), ry - 1, Math.round(rad * 1.2), 2);
-
-      // Mini crystalline rime spires along the Permafrost edge
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.88;
-      for (let k = -4; k <= 4; k++) {
-        const sx = rx + k * Math.round(rad * 0.22);
-        const sh = (Math.abs(k) % 2 === 0 ? 10 : 15) * fade;
-        ctx.fillStyle = k % 2 === 0 ? '#67e8f9' : '#c084fc';
-        ctx.beginPath();
-        ctx.moveTo(sx - 4, ry);
-        ctx.lineTo(sx, ry - sh);
-        ctx.lineTo(sx + 4, ry);
-        ctx.closePath();
-        ctx.fill();
-      }
+    // Pass 1: Crisp #0c1226 16-bit dark pixel border (12x12 snapped to 4px grid)
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = fade * 0.92;
+    ctx.fillStyle = '#0c1226';
+    for (let s = 0; s <= steps; s++) {
+      const u = s / steps;
+      const gx = Math.round((x0 + dx * u) / 4) * 4;
+      const gy = Math.round((y0 + dy * u) / 4) * 4;
+      ctx.fillRect(gx - 6, gy - 6, 12, 12);
     }
 
-    // Figure-skating frost blade ribbons
-    ctx.globalCompositeOperation = 'lighter';
-    for (const sr of this.skateRibbons) {
-      const fade = Math.max(0, 1 - sr.life / sr.maxLife);
-      ctx.globalAlpha = fade * 0.75;
-      ctx.fillStyle = '#a5f3fc';
-      ctx.fillRect(Math.round(sr.x - 10), Math.round(sr.y - 2), 20, 3);
+    // Pass 2: Stepped 8x8 pixel elemental body
+    ctx.globalAlpha = fade * 0.96;
+    ctx.fillStyle = mainColor;
+    for (let s = 0; s <= steps; s++) {
+      const u = s / steps;
+      const gx = Math.round((x0 + dx * u) / 4) * 4;
+      const gy = Math.round((y0 + dy * u) / 4) * 4;
+      ctx.fillRect(gx - 4, gy - 4, 8, 8);
+    }
+
+    // Pass 3: Stepped 4x4 pixel diamond-white core + marching 4x4 pixel frost glints
+    for (let s = 0; s <= steps; s++) {
+      const u = s / steps;
+      const gx = Math.round((x0 + dx * u) / 4) * 4;
+      const gy = Math.round((y0 + dy * u) / 4) * 4;
+      ctx.fillStyle = coreColor;
+      ctx.fillRect(gx - 2, gy - 2, 4, 4);
+
+      if ((s + animStep) % 7 === 0) {
+        ctx.fillStyle = '#a5f3fc';
+        ctx.fillRect(gx - 2, gy - 6, 4, 4);
+        ctx.fillRect(gx - 2, gy + 2, 4, 4);
+        ctx.fillRect(gx - 6, gy - 2, 4, 4);
+        ctx.fillRect(gx + 2, gy - 2, 4, 4);
+      }
     }
 
     ctx.restore();
   }
 
   /**
-   * Renders Floating Hexagonal Cryo-Prism Mirrors on the battlefield + Refracted Borealis Laser Chains
+   * Stepped 4x4 Pixel-Art Faceted Diamond Crystal Rasterizer (Zero vector polygons!)
+   */
+  drawSteppedPixelDiamond4x4(ctx, cx, cy, radiusBlocks = 3, bodyColor = '#0284c7', facetColor = '#67e8f9', fade = 1.0) {
+    const gx = Math.round(cx / 4) * 4;
+    const gy = Math.round(cy / 4) * 4;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = fade;
+
+    for (let by = -radiusBlocks - 1; by <= radiusBlocks + 1; by++) {
+      const rem = radiusBlocks + 1 - Math.abs(by);
+      for (let bx = -rem; bx <= rem; bx++) {
+        const manhattan = Math.abs(bx) + Math.abs(by);
+        const px = gx + bx * 4 - 2;
+        const py = gy + by * 4 - 2;
+        if (manhattan === radiusBlocks + 1) {
+          ctx.fillStyle = '#0c1226';
+        } else if (bx === 0 && by === 0) {
+          ctx.fillStyle = '#ffffff';
+        } else if (manhattan === 1) {
+          ctx.fillStyle = '#e0f2fe';
+        } else if (bx <= 0 && by <= 0) {
+          ctx.fillStyle = facetColor;
+        } else {
+          ctx.fillStyle = bodyColor;
+        }
+        ctx.fillRect(px, py, 4, 4);
+      }
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Renders Shimmering Permafrost Ice-Rink Floor Zones & Figure-Skate Blade Ribbons (100% Stepped 4x4 Pixel Art!)
+   */
+  drawPermafrostZones(ctx, renderer = null) {
+    if (!this.permafrostZones.length && !this.skateRibbons.length) return;
+    const vfxSheet = PixelForge.initAssets().icemage?.vfx;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    for (const z of this.permafrostZones) {
+      const fade = Math.min(1, (z.maxLife - z.life) * 1.5) * Math.min(1, z.life / 0.15);
+      const rx = Math.round(z.x / 4) * 4;
+      const ry = Math.round((z.y - 4) / 4) * 4;
+      const rad = Math.round(z.radius / 4) * 4;
+
+      // 1. Stepped 4x4 pixel-art Permafrost floor tiles
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.94;
+      ctx.fillStyle = '#0c1226';
+      ctx.fillRect(rx - rad - 4, ry - 8, rad * 2 + 8, 16);
+
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(rx - rad, ry - 4, rad * 2, 8);
+
+      const innerRad = Math.round((rad * 0.82) / 4) * 4;
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(rx - innerRad, ry - 4, innerRad * 2, 4);
+
+      // Stepped 8x4 diamond-white specular ice tiles along the rink
+      const animShift = Math.floor(performance.now() * 0.015) % 2;
+      for (let tx = rx - innerRad + 8; tx <= rx + innerRad - 16; tx += 16) {
+        ctx.fillStyle = ((tx / 16 + animShift) % 2 === 0) ? '#ffffff' : '#a5f3fc';
+        ctx.fillRect(tx, ry - 4, 8, 4);
+      }
+
+      // 2. Stepped 4x4 pixel-art crystalline rime spires along the Permafrost rink
+      for (let k = -4; k <= 4; k++) {
+        const sx = Math.round((rx + k * (rad * 0.22)) / 4) * 4;
+        const spireBlocks = Math.abs(k) % 2 === 0 ? 3 : 4;
+        const bodyCol = k % 2 === 0 ? '#38bdf8' : '#c084fc';
+        for (let b = 0; b <= spireBlocks; b++) {
+          const halfW = b === spireBlocks ? 0 : (b >= spireBlocks - 1 ? 1 : 2);
+          const py = ry - 4 - b * 4;
+          ctx.fillStyle = '#0c1226';
+          ctx.fillRect(sx - (halfW + 1) * 4, py, (halfW * 2 + 3) * 4, 4);
+          if (b < spireBlocks) {
+            ctx.fillStyle = bodyCol;
+            ctx.fillRect(sx - halfW * 4, py, (halfW * 2 + 1) * 4, 4);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(sx - 2, py, 4, 4);
+          }
+        }
+      }
+
+      // 3. Flanking pixel-art Glacial Spires from Row 2 of icemage_vfx.png at exact 1x/2x pixel scale (52x52 -> 104x104)
+      if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+        const spireCol = Math.min(20, Math.floor((z.life * 18) % 16) + 5);
+        for (const side of [-1, 1]) {
+          const ex = Math.round((rx + side * (rad - 16)) / 4) * 4;
+          ctx.drawImage(vfxSheet, spireCol * 208, 416, 208, 208, ex - 26, ry - 48, 52, 52);
+        }
+      }
+    }
+
+    // 4. Figure-skating frost blade ribbons (stepped 4x4 pixel blocks)
+    ctx.globalCompositeOperation = 'source-over';
+    for (const sr of this.skateRibbons) {
+      const fade = Math.max(0, 1 - sr.life / sr.maxLife);
+      const sx = Math.round(sr.x / 4) * 4;
+      const sy = Math.round(sr.y / 4) * 4;
+      ctx.globalAlpha = fade * 0.92;
+      ctx.fillStyle = '#0c1226';
+      ctx.fillRect(sx - 12, sy - 4, 24, 8);
+      ctx.fillStyle = '#38bdf8';
+      ctx.fillRect(sx - 8, sy - 4, 16, 4);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(sx - 4, sy - 4, 8, 4);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders Floating Hexagonal Cryo-Prism Mirrors on the battlefield + Stepped 4x4 Pixel-Art Refracted Laser Chains
    */
   drawCryoPrismsAndBeams(ctx, renderer = null) {
     const vfxSheet = PixelForge.initAssets().icemage?.vfx;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Multi-segment Refracted Borealis Laser Chains
+    // 1. Multi-segment Refracted Borealis Laser Chains (100% Stepped 4x4 Pixel Blocks!)
     for (const b of this.prismBeams) {
       const fade = Math.max(0, 1 - b.life / b.maxLife);
       if (b.points.length < 2) continue;
-
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-
-      // Outer aurora glow beam
-      ctx.globalAlpha = fade * 0.55;
-      ctx.strokeStyle = b.color;
-      ctx.lineWidth = b.width * 2.2;
-      ctx.beginPath();
-      ctx.moveTo(b.points[0].x, b.points[0].y);
-      for (let i = 1; i < b.points.length; i++) {
-        ctx.lineTo(b.points[i].x, b.points[i].y);
+      for (let i = 0; i < b.points.length - 1; i++) {
+        this.drawSteppedPixelLine4x4(
+          ctx,
+          b.points[i].x,
+          b.points[i].y,
+          b.points[i + 1].x,
+          b.points[i + 1].y,
+          b.color || '#38bdf8',
+          '#ffffff',
+          fade
+        );
       }
-      ctx.stroke();
-
-      // Inner diamond-white laser core
-      ctx.globalAlpha = fade * 0.95;
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = Math.max(2, b.width * 0.65);
-      ctx.beginPath();
-      ctx.moveTo(b.points[0].x, b.points[0].y);
-      for (let i = 1; i < b.points.length; i++) {
-        ctx.lineTo(b.points[i].x, b.points[i].y);
+      // Stepped 4x4 pixel diamond flare at each refraction vertex
+      for (let i = 0; i < b.points.length; i++) {
+        this.drawSteppedPixelDiamond4x4(
+          ctx,
+          b.points[i].x,
+          b.points[i].y,
+          2,
+          b.color || '#38bdf8',
+          '#a5f3fc',
+          fade
+        );
       }
-      ctx.stroke();
-      ctx.restore();
     }
 
-    // 2. Active Tri-Beam Prism Matrix Laser Triangle
+    // 2. Active Tri-Beam Prism Matrix Laser Triangle (100% Stepped 4x4 Pixel Blocks + Row 3 Rose-Window Seal!)
     if (this.triMatrixCage) {
       const mc = this.triMatrixCage;
       const fade = Math.min(1, (mc.maxLife - mc.life) * 3.0);
       const nodes = mc.nodes;
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = mc.imploded ? '#e879f9' : '#67e8f9';
-      ctx.lineWidth = 5;
-      ctx.globalAlpha = fade * 0.78;
-      ctx.beginPath();
-      ctx.moveTo(nodes[0].x, nodes[0].y);
-      ctx.lineTo(nodes[1].x, nodes[1].y);
-      ctx.lineTo(nodes[2].x, nodes[2].y);
-      ctx.closePath();
-      ctx.stroke();
+      const beamCol = mc.imploded ? '#e879f9' : '#38bdf8';
 
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 2;
-      ctx.globalAlpha = fade * 0.95;
-      ctx.stroke();
-      ctx.restore();
+      // Center of the triangle: draw rotating 104x104 (2x logical) pixel-art Rose-Window Mandala from Row 3
+      const cx = Math.round(((nodes[0].x + nodes[1].x + nodes[2].x) / 3) / 4) * 4;
+      const cy = Math.round(((nodes[0].y + nodes[1].y + nodes[2].y) / 3) / 4) * 4;
+      if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+        const sealCol = Math.floor(performance.now() * 0.03) % 30;
+        ctx.save();
+        ctx.globalAlpha = fade * 0.90;
+        ctx.drawImage(vfxSheet, sealCol * 208, 624, 208, 208, cx - 52, cy - 52, 104, 104);
+        ctx.restore();
+      }
+
+      for (let i = 0; i < 3; i++) {
+        const n0 = nodes[i];
+        const n1 = nodes[(i + 1) % 3];
+        this.drawSteppedPixelLine4x4(ctx, n0.x, n0.y, n1.x, n1.y, beamCol, '#ffffff', fade);
+        if (mc.imploded) {
+          this.drawSteppedPixelLine4x4(ctx, n0.x, n0.y, cx, cy, '#e879f9', '#ffffff', fade);
+        }
+      }
     }
 
-    // 3. Battlefield Floating Hexagonal Cryo-Prism Mirrors (Row 1 of icemage_vfx.png)
+    // 3. Battlefield Floating Hexagonal Cryo-Prism Mirrors (Row 1 of icemage_vfx.png at exact 2x logical = 104x104!)
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
       const col = Math.floor(performance.now() * 0.03) % 30;
       for (const p of this.cryoPrisms) {
         const fade = Math.min(1, (p.maxLife - p.life) * 1.5) * Math.min(1, p.life / 0.14);
-        const size = Math.round(68 * p.pulse);
-        const half = Math.round(-size * 0.5);
+        // Exact 2x logical scale of 52x52 -> 104x104 so every pixel block is 100% crisp and unwarped!
+        const size = 104;
+        const half = -52;
+        const qx = Math.round(p.x / 4) * 4;
+        const qy = Math.round(p.y / 4) * 4;
 
         ctx.save();
-        ctx.translate(Math.round(p.x), Math.round(p.y));
+        ctx.translate(qx, qy);
         if (renderer && renderer.glowGlacial) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fade * 0.55;
-          ctx.drawImage(renderer.glowGlacial, -size * 1.15, -size * 1.15, size * 2.3, size * 2.3);
+          ctx.globalAlpha = fade * 0.45;
+          ctx.drawImage(renderer.glowGlacial, -96, -96, 192, 192);
         }
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.42;
-        ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, half - 4, half - 4, size + 8, size + 8);
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.96;
+        ctx.globalAlpha = fade * 0.98;
         ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, half, half, size, size);
         ctx.restore();
       }
@@ -1220,22 +1336,22 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * Renders Sculpted Solid Ice-Statue Decoy (Dodge) & Refractive Glacial Ice-Wall (Crouch) + Enemy Brittle Crystals
+   * Renders Sculpted Solid Ice-Statue Decoy (Dodge) & Refractive Glacial Ice-Wall (Crouch) + Stepped 4x4 Pixel Brittle Crystals
    */
   drawIceConstructsAndBrittle(ctx, renderer = null) {
     const sprites = PixelForge.initAssets().icemage;
     const vfxSheet = sprites?.vfx;
 
-    // 1. Sculpted Ice-Statue Decoy
+    // 1. Sculpted Ice-Statue Decoy (snapped to 4px grid)
     if (this.iceDecoy && sprites?.sheet && sprites.sheet.complete) {
       const d = this.iceDecoy;
       const fade = Math.min(1, (d.maxLife - d.life) * 3.5);
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      ctx.translate(Math.round(d.x), Math.round(d.y));
+      ctx.translate(Math.round(d.x / 4) * 4, Math.round(d.y / 4) * 4);
       ctx.scale(d.facing, 1);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.85;
+      ctx.globalAlpha = fade * 0.88;
       PixelForge.drawAfterimageFrame(ctx, sprites, d.frameIdx, 208, 208);
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = fade * 0.65;
@@ -1243,68 +1359,55 @@ export class IceMage extends Fighter {
       ctx.restore();
     }
 
-    // 2. Refractive Hexagonal Ice-Wall Monolith (Row 2 of icemage_vfx.png)
+    // 2. Refractive Hexagonal Ice-Wall Monolith (Row 2 of icemage_vfx.png at exact 3x logical = 156x156!)
     if (this.iceWall && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
       const iw = this.iceWall;
       const fade = Math.min(1, (iw.maxLife - iw.life) * 2.5);
-      const col = Math.min(22, Math.floor((iw.life / iw.maxLife) * 24));
-      const wSize = 148;
-      const half = Math.round(-wSize * 0.5);
+      const col = Math.min(21, Math.floor((iw.life / iw.maxLife) * 22));
+      const wSize = 156;
+      const half = -78;
+      const qx = Math.round(iw.x / 4) * 4;
+      const qy = Math.round((iw.y - 68) / 4) * 4;
 
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      ctx.translate(Math.round(iw.x), Math.round(iw.y - wSize * 0.45));
+      ctx.translate(qx, qy);
       if (renderer && renderer.glowGlacial) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.52;
+        ctx.globalAlpha = fade * 0.48;
         ctx.drawImage(renderer.glowGlacial, -wSize, -wSize, wSize * 2, wSize * 2);
       }
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.94;
-      ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half, half, wSize, wSize);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.38;
+      ctx.globalAlpha = fade * 0.98;
       ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half, half, wSize, wSize);
       ctx.restore();
     }
 
-    // 3. Render Brittle Frost Diamond Crystals on any chilled enemy (1..3 stacks)
+    // 3. Render Brittle Frost Diamond Crystals on any chilled enemy (1..3 stacks) as pure Stepped 4x4 Pixel Diamonds!
     if (this.game && this.game.fighters) {
       for (const f of this.game.fighters) {
         if (f !== this && !f.isDead && f.brittleStacks >= 1) {
           const count = Math.min(3, Math.floor(f.brittleStacks));
-          ctx.save();
           for (let k = 0; k < count; k++) {
-            const ox = (k - 1) * 22;
-            const oy = -24 - (k % 2) * 18;
-            const cx = Math.round(f.x + ox);
-            const cy = Math.round(f.y + oy);
-            ctx.fillStyle = '#0284c7';
-            ctx.beginPath();
-            ctx.moveTo(cx, cy - 16);
-            ctx.lineTo(cx + 8, cy);
-            ctx.lineTo(cx, cy + 12);
-            ctx.lineTo(cx - 8, cy);
-            ctx.closePath();
-            ctx.fill();
-
-            ctx.fillStyle = '#a5f3fc';
-            ctx.beginPath();
-            ctx.moveTo(cx, cy - 12);
-            ctx.lineTo(cx + 4, cy);
-            ctx.lineTo(cx, cy + 8);
-            ctx.lineTo(cx - 4, cy);
-            ctx.closePath();
-            ctx.fill();
+            const ox = (k - 1) * 24;
+            const oy = -28 - (k % 2) * 16;
+            this.drawSteppedPixelDiamond4x4(
+              ctx,
+              f.x + ox,
+              f.y + oy,
+              3,
+              k % 2 === 0 ? '#0284c7' : '#7e22ce',
+              k % 2 === 0 ? '#67e8f9' : '#e879f9',
+              0.96
+            );
           }
-          ctx.restore();
         }
       }
     }
   }
 
   /**
-   * Renders the Colossal Borealis Cathedral: Northern Lights Sky Curtain + Faceted Diamond Iceberg + 7-Prism Orbital Array!
+   * Renders the Colossal Borealis Cathedral: Stepped 4x4 Pixel Aurora Sky Pillars + Rose-Window Mandala + Faceted Glacier Monolith + 7-Prism Array!
    */
   drawBorealisCathedral(ctx, renderer = null) {
     if (!this.borealisCathedral) return;
@@ -1312,85 +1415,90 @@ export class IceMage extends Fighter {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
 
     const bc = this.borealisCathedral;
-    const pop = Math.min(1, bc.life / 0.20);
     const fade = Math.min(1, (bc.maxLife - bc.life) * 3.0);
-    const cx = Math.round(bc.x);
-    const cy = Math.round(bc.y);
+    const cx = Math.round(bc.x / 4) * 4;
+    const cy = Math.round(bc.y / 4) * 4;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Shimmering Northern Lights (Aurora Borealis) Sky Curtain above the Cathedral
-    ctx.globalCompositeOperation = 'lighter';
+    // 1. Stepped 4x4 Pixel-Art Northern Lights (Aurora Borealis) Sky Pillars above the Cathedral
     const t = performance.now() * 0.003;
-    for (let i = -8; i <= 8; i++) {
-      const rx = cx + i * 26;
-      const waveY = Math.sin(t + i * 0.55) * 18;
-      const col = i % 3 === 0 ? '#c084fc' : i % 2 === 0 ? '#67e8f9' : '#2dd4bf';
-      ctx.globalAlpha = fade * (0.28 + 0.14 * Math.sin(t * 1.3 + i));
+    for (let i = -7; i <= 7; i++) {
+      const rx = cx + i * 24;
+      const waveY = Math.round((Math.sin(t + i * 0.6) * 16) / 4) * 4;
+      const topY = cy - 336 + waveY;
+      const col = i % 3 === 0 ? '#c084fc' : i % 2 === 0 ? '#38bdf8' : '#2dd4bf';
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.85;
+      ctx.fillStyle = '#0c1226';
+      ctx.fillRect(rx - 8, topY - 4, 16, 144);
+
       ctx.fillStyle = col;
-      ctx.fillRect(rx - 10, Math.round(cy - 340 + waveY), 20, 155);
+      ctx.fillRect(rx - 4, topY, 8, 136);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(rx - 2, topY + 8, 4, 48);
     }
 
-    // 2. Sacred Borealis Snowflake Floor Halo
+    // 2. Grand 12-Pointed Borealis Snowflake Rose-Window Mandala suspended behind the Glacier Monolith (Row 3 at exact 4x logical = 208x208!)
     const sealCol = Math.floor(bc.life * 24) % 30;
-    const sealW = Math.round(320 * pop);
-    ctx.globalAlpha = fade * 0.72;
-    ctx.drawImage(vfxSheet, sealCol * 208, 624, 208, 208, cx - sealW * 0.5, cy - 36, sealW, 72);
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = fade * 0.94;
+    ctx.drawImage(vfxSheet, sealCol * 208, 624, 208, 208, cx - 104, cy - 260, 208, 208);
 
-    // 3. Colossal Faceted Diamond Iceberg Monolith encasing the enemy (Row 2 of icemage_vfx.png)
+    // 3. Colossal Faceted Diamond Iceberg Monolith encasing the enemy (Row 2 at exact 6x logical = 312x312!)
     const iceCol = bc.shattered
-      ? Math.min(29, 23 + Math.floor(((bc.life - 0.98) / 0.52) * 7))
-      : Math.min(22, Math.floor((bc.life / 0.98) * 22));
-    const iceW = Math.round(288 * (0.82 + 0.18 * pop));
-    const iceH = Math.round(304 * (0.82 + 0.18 * pop));
+      ? Math.min(29, 22 + Math.floor(((bc.life - 0.98) / 0.52) * 8))
+      : Math.min(21, Math.floor((bc.life / 0.98) * 21));
+    const iceSize = 312;
 
     if (renderer && renderer.glowGlacial) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.68;
-      ctx.drawImage(renderer.glowGlacial, cx - iceW * 0.9, cy - iceH * 1.1, iceW * 1.8, iceH * 1.4);
+      ctx.globalAlpha = fade * 0.58;
+      ctx.drawImage(renderer.glowGlacial, cx - 220, cy - 320, 440, 360);
     }
 
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * (bc.shattered ? 0.78 : 0.94);
+    ctx.globalAlpha = fade * (bc.shattered ? 0.86 : 0.98);
     ctx.drawImage(
       vfxSheet,
       iceCol * 208,
       416,
       208,
       208,
-      Math.round(cx - iceW * 0.5),
-      Math.round(cy - iceH + 16),
-      iceW,
-      iceH
+      cx - 156,
+      cy - iceSize + 24,
+      iceSize,
+      iceSize
     );
 
-    // 4. 7-Prism Orbital Refraction Crown hovering in a grand arch around the Iceberg
+    // 4. 7-Prism Orbital Refraction Crown hovering in a grand arch around the Iceberg (Row 1 at exact 2x logical = 104x104!)
     const prismCol = Math.floor(bc.life * 30) % 30;
     for (let k = 0; k < 7; k++) {
       const ang = -Math.PI * 0.92 + (k / 6) * (Math.PI * 0.84);
-      const px = Math.round(cx + Math.cos(ang) * 195);
-      const py = Math.round(cy - 125 + Math.sin(ang) * 165);
-      const pSize = 64;
+      const px = Math.round((cx + Math.cos(ang) * 196) / 4) * 4;
+      const py = Math.round((cy - 128 + Math.sin(ang) * 164) / 4) * 4;
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.95;
-      ctx.drawImage(vfxSheet, prismCol * 208, 208, 208, 208, px - 32, py - 32, pSize, pSize);
+      ctx.globalAlpha = fade * 0.98;
+      ctx.drawImage(vfxSheet, prismCol * 208, 208, 208, 208, px - 52, py - 52, 104, 104);
     }
 
-    // 5. Absolute Zero Shatter Starburst at Stage 3 detonation (Row 4 of icemage_vfx.png)
+    // 5. Absolute Zero Shatter Starburst at Stage 3 detonation (Row 4 at exact 6x logical = 312x312!)
     if (bc.shattered) {
       const novaCol = Math.min(29, Math.floor(((bc.life - 0.98) / 0.52) * 30));
-      const novaSize = 340;
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.88;
+      const novaSize = 312;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.96;
       ctx.drawImage(
         vfxSheet,
         novaCol * 208,
         832,
         208,
         208,
-        Math.round(cx - novaSize * 0.5),
-        Math.round(cy - 135 - novaSize * 0.5),
+        cx - 156,
+        cy - 136 - 156,
         novaSize,
         novaSize
       );

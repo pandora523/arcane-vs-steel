@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps24';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps24';
+import { Fighter } from './Fighter.js?v=30fps25';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps25';
 
 export class FireMage extends Fighter {
   constructor(x, groundY, facing = -1) {
