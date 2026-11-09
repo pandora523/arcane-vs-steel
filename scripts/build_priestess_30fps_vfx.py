@@ -12,14 +12,16 @@ Builds Seraphina's (Priestess) High-Precision 104x104 -> 208x208 30fps VFX Sprit
 - seraphim_wings.png: Pinhole-free 160x116 -> 320x232 6-Wing Golden-Alabaster Seraphim Flap Cycle with 1px Selout
 """
 
+from collections import deque
 import math
 import os
 import time
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 VFX_OUT_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "priestess_vfx.png")
+WINGS_BASE_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "seraphim_wings_v2_base.jpg")
 WINGS_OUT_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "seraphim_wings.png")
 ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
 
@@ -665,117 +667,264 @@ def build_row4_smite_wave():
 
 # ==============================================================================
 # 30FPS SERAPHIM WINGS SHEET (9600x232, 30 cols @ 320x232 from 160x116 logical)
-# Crisp Cel-Clustered 6-Pinion Alabaster-Gold Seraphim Angel Wings with 1px Selout
+# Authentic 16-Bit HD-2D Lush Feathered Archangel Wings articulated from
+# assets/sprites/seraphim_wings_v2_base.jpg + Cel-Flattened + Master Palette + 1px Selout
 # ==============================================================================
-def build_seraphim_wings_30fps():
-    sheet = Image.new("RGBA", (WING_CELL_W * COLS, WING_CELL_H), (0, 0, 0, 0))
-    W, H = WING_L_W, WING_L_H
-    cx, cy = 80.0, 68.0
+WING_MASTER_PALETTE = np.array([
+    [20, 18, 34],     # 0: Crisp dark indigo selective outline (Selout)
+    [84, 56, 22],     # 1: Deep bronze filigree contour inside covert arch
+    [152, 106, 36],   # 2: Burnished antique gold shadow
+    [220, 172, 58],   # 3: Royal champagne gold covert & primary tips
+    [252, 228, 118],  # 4: Sunlit celestial gold highlight
+    [136, 146, 188],  # 5: Deep lavender-sapphire feather tier shadow
+    [176, 190, 224],  # 6: Soft celestial ice-blue under-plumage
+    [214, 218, 236],  # 7: Cool pearl-silver feather midtone
+    [236, 228, 204],  # 8: Warm ivory covert plumage
+    [248, 245, 234],  # 9: Alabaster feather body
+    [255, 254, 248],  # 10: Pure starlight white highlight
+], dtype=np.uint8)
 
-    W_SELOUT = np.array([22, 18, 34, 255], dtype=np.uint8)
-    W_BRONZE = np.array([154, 104, 30, 255], dtype=np.uint8)
-    W_GOLD   = np.array([238, 186, 46, 255], dtype=np.uint8)
-    W_GLEAM  = np.array([254, 234, 118, 255], dtype=np.uint8)
-    W_SHAD   = np.array([196, 206, 232, 255], dtype=np.uint8)
-    W_CREAM  = np.array([244, 240, 224, 255], dtype=np.uint8)
-    W_WHITE  = np.array([255, 253, 246, 255], dtype=np.uint8)
+
+def extract_clean_right_wing():
+    im = Image.open(WINGS_BASE_PATH).convert("RGB")
+    arr = np.array(im)
+    mid_x = arr.shape[1] // 2
+    r_rgb = arr[:, mid_x:].copy()
+    rh, rw, _ = r_rgb.shape
+
+    white_cand = (r_rgb[:, :, 0] > 238) & (r_rgb[:, :, 1] > 238) & (r_rgb[:, :, 2] > 238)
+    bg = np.zeros((rh, rw), dtype=bool)
+    q = deque()
+    for x in range(rw):
+        if white_cand[0, x]:
+            bg[0, x] = True
+            q.append((0, x))
+        if white_cand[rh - 1, x]:
+            bg[rh - 1, x] = True
+            q.append((rh - 1, x))
+    for y in range(rh):
+        if white_cand[y, 0]:
+            bg[y, 0] = True
+            q.append((y, 0))
+        if white_cand[y, rw - 1]:
+            bg[y, rw - 1] = True
+            q.append((y, rw - 1))
+    while q:
+        cy, cx = q.popleft()
+        for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+            if 0 <= ny < rh and 0 <= nx < rw and not bg[ny, nx] and white_cand[ny, nx]:
+                bg[ny, nx] = True
+                q.append((ny, nx))
+
+    fg = ~bg
+    # Strip any anti-aliased pale white border fringe (zero white halo)
+    for _ in range(2):
+        b_up = np.pad(bg[:-1, :], ((1, 0), (0, 0)), constant_values=True)
+        b_dn = np.pad(bg[1:, :], ((0, 1), (0, 0)), constant_values=True)
+        b_lf = np.pad(bg[:, :-1], ((0, 0), (1, 0)), constant_values=True)
+        b_rt = np.pad(bg[:, 1:], ((0, 0), (0, 1)), constant_values=True)
+        edge = fg & (b_up | b_dn | b_lf | b_rt)
+        luma = 0.299 * r_rgb[:, :, 0] + 0.587 * r_rgb[:, :, 1] + 0.114 * r_rgb[:, :, 2]
+        cmax = r_rgb.max(axis=2).astype(np.float32)
+        cmin = r_rgb.min(axis=2).astype(np.float32)
+        sat = (cmax - cmin) / np.maximum(1.0, cmax)
+        halo = edge & (luma > 224.0) & (sat < 0.11)
+        fg[halo] = False
+        bg[halo] = True
+
+    # Keep largest 4-connected foreground component (100% dust-free)
+    visited = np.zeros((rh, rw), dtype=bool)
+    best_comp = []
+    for y in range(rh):
+        for x in range(rw):
+            if fg[y, x] and not visited[y, x]:
+                comp = []
+                dq = deque([(y, x)])
+                visited[y, x] = True
+                while dq:
+                    vy, vx = dq.popleft()
+                    comp.append((vy, vx))
+                    for ny, nx in ((vy - 1, vx), (vy + 1, vx), (vy, vx - 1), (vy, vx + 1)):
+                        if 0 <= ny < rh and 0 <= nx < rw and fg[ny, nx] and not visited[ny, nx]:
+                            visited[ny, nx] = True
+                            dq.append((ny, nx))
+                if len(comp) > len(best_comp):
+                    best_comp = comp
+    fg_clean = np.zeros((rh, rw), dtype=bool)
+    for vy, vx in best_comp:
+        fg_clean[vy, vx] = True
+
+    # Pre-segmentation cel-flattening to eliminate continuous AI micro-gradients
+    med_rgb = np.array(Image.fromarray(r_rgb, "RGB").filter(ImageFilter.MedianFilter(size=5)))
+    ys, xs = np.where(fg_clean)
+    x0, x1 = int(xs.min()), int(xs.max()) + 1
+    y0, y1 = int(ys.min()), int(ys.max()) + 1
+
+    # Inner shoulder root sits on the leftmost column of the wing
+    inner_ys = np.where(fg_clean[y0:y1, x0:x0 + 16])[0]
+    root_src_y = float(np.mean(inner_ys)) if len(inner_ys) > 0 else (285.0 - y0)
+
+    wing_rgba = np.zeros((y1 - y0, x1 - x0, 4), dtype=np.uint8)
+    sub_fg = fg_clean[y0:y1, x0:x1]
+    wing_rgba[sub_fg, :3] = med_rgb[y0:y1, x0:x1][sub_fg]
+    wing_rgba[sub_fg, 3] = 255
+
+    w_src = Image.fromarray(wing_rgba, "RGBA")
+    target_w = 236
+    sc = target_w / float(w_src.size[0])
+    w_rig = w_src.resize((target_w, int(round(w_src.size[1] * sc))), Image.Resampling.LANCZOS)
+    return np.array(w_rig), 2.0, root_src_y * sc
+
+
+def warp_archangel_wing(src_arr, root_x, root_y, angle_deg, span_scale, wave_phase, flap_val):
+    sh, sw, _ = src_arr.shape
+    out_w, out_h = 340, 350
+    piv_dst_x, piv_dst_y = 76.0, 134.0
+    yy, xx = np.mgrid[0:out_h, 0:out_w].astype(np.float32)
+    dx = (xx - piv_dst_x) / max(0.25, span_scale)
+    dy = yy - piv_dst_y
+
+    rad = math.radians(-angle_deg)
+    c, s = math.cos(rad), math.sin(rad)
+    rx = dx * c - dy * s
+    ry = dx * s + dy * c
+
+    u_dist = np.clip(np.hypot(np.maximum(0.0, rx), ry) / 235.0, 0.0, 1.45)
+    u_drop = np.clip(np.maximum(0.0, ry) / 190.0, 0.0, 1.35)
+
+    # Organic traveling feather wave along secondary & primary flight tips
+    ry_src = ry - 12.5 * np.sin(wave_phase - u_dist * 2.45) * (u_dist ** 1.35) + root_y
+    rx_src = rx + 9.0 * flap_val * (u_drop ** 1.35) + root_x
+
+    ix = np.rint(rx_src).astype(np.int32)
+    iy = np.rint(ry_src).astype(np.int32)
+    valid = (ix >= 0) & (ix < sw) & (iy >= 0) & (iy < sh)
+    out = np.zeros((out_h, out_w, 4), dtype=np.uint8)
+    out[valid] = src_arr[iy[valid], ix[valid]]
+    return Image.fromarray(out, "RGBA"), piv_dst_x, piv_dst_y
+
+
+def quantize_wing_160(pil_hi):
+    im160 = pil_hi.resize((WING_L_W, WING_L_H), Image.Resampling.BILINEAR)
+    arr160 = np.array(im160)
+    alpha = arr160[:, :, 3] > 116
+    out = np.zeros((WING_L_H, WING_L_W, 4), dtype=np.uint8)
+    if not np.any(alpha):
+        return out
+
+    rgb = arr160[alpha, :3].astype(np.int32)
+    diffs = rgb[:, None, :] - WING_MASTER_PALETTE[None, :, :].astype(np.int32)
+    weights = np.array([2, 4, 3], dtype=np.int32)
+    d2 = np.sum(diffs * diffs * weights[None, None, :], axis=2)
+    idx = np.argmin(d2, axis=1)
+
+    idx_map = np.full((WING_L_H, WING_L_W), -1, dtype=np.int32)
+    idx_map[alpha] = idx
+
+    # 2-Pass Cardinal Orphan Despeckling (preserves crisp cel clusters, eliminates 1px AI speckles)
+    for _ in range(2):
+        nmap = idx_map.copy()
+        for y in range(1, WING_L_H - 1):
+            for x in range(1, WING_L_W - 1):
+                c0 = idx_map[y, x]
+                if c0 <= 0:
+                    continue
+                nb = [idx_map[y - 1, x], idx_map[y + 1, x], idx_map[y, x - 1], idx_map[y, x + 1]]
+                vnb = [n for n in nb if n >= 0]
+                if len(vnb) >= 3 and sum(1 for n in vnb if n == c0) == 0:
+                    vals, cnts = np.unique(vnb, return_counts=True)
+                    nmap[y, x] = vals[np.argmax(cnts)]
+        idx_map = nmap
+
+    out[alpha, :3] = WING_MASTER_PALETTE[idx_map[alpha]]
+    out[alpha, 3] = 255
+
+    # Seal any 1px interior slits inside wing plumage
+    a = out[:, :, 3] > 128
+    up = np.pad(a[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+    dn = np.pad(a[1:, :], ((0, 1), (0, 0)), constant_values=False)
+    lf = np.pad(a[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+    rt = np.pad(a[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+    slits = (~a) & ((up.astype(int) + dn.astype(int) + lf.astype(int) + rt.astype(int)) >= 3)
+    if np.any(slits):
+        out[slits, :3] = WING_MASTER_PALETTE[9]
+        out[slits, 3] = 255
+
+    # Crisp 1px Dark Selective Outline (Selout) around wing silhouette
+    a = out[:, :, 3] > 128
+    up_a = np.pad(a[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+    dn_a = np.pad(a[1:, :], ((0, 1), (0, 0)), constant_values=False)
+    lf_a = np.pad(a[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+    rt_a = np.pad(a[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+    edge = a & (~(up_a & dn_a & lf_a & rt_a))
+    out[edge, :3] = WING_MASTER_PALETTE[0]
+    out[edge, 3] = 255
+
+    out[:2, :, :] = 0
+    out[-2:, :, :] = 0
+    out[:, :2, :] = 0
+    out[:, -2:, :] = 0
+    return out
+
+
+def build_seraphim_wings_30fps():
+    rig_arr, root_x, root_y = extract_clean_right_wing()
+    sheet = Image.new("RGBA", (WING_CELL_W * COLS, WING_CELL_H), (0, 0, 0, 0))
+
+    hi_w, hi_h = WING_L_W * 4, WING_L_H * 4  # 640x464 high-res composition canvas
+    cx_hi = hi_w // 2                        # 320 -> x=80 in 160x116 -> x=160 in 320x232
+    cy_hi = 176                              # 176 -> y=44 in 160x116 -> y=88 shoulder root in 320x232!
+
+    diffs = 0
+    prev = None
+    clips = 0
 
     for f in range(COLS):
         phase = 2.0 * math.pi * f / COLS
-        flap = math.sin(phase) - 0.22 * math.sin(2.0 * phase)
-        ripple = math.sin(phase - 0.85)
+        # Sweeping Seraphic wingbeat: graceful soaring lift -> wide majestic apex -> enveloping power downstroke
+        flap = math.sin(phase) - 0.24 * math.sin(2.0 * phase)
+        ang_deg = -2.5 - 12.5 * flap
+        span_x = 0.94 + 0.075 * math.sin(phase + 0.35)
+        wave_phase = phase - 0.90
 
-        buf = np.zeros((H, W, 4), dtype=np.uint8)
-        pil_im = Image.fromarray(buf, "RGBA")
-        draw = ImageDraw.Draw(pil_im)
+        w_right, piv_x, piv_y = warp_archangel_wing(
+            rig_arr, root_x, root_y, ang_deg, span_x, wave_phase, flap
+        )
+        w_left = w_right.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
 
-        # 3 Tiers of Seraphim Wings (Upper Archangel, Mid Seraph, Lower Cherub) x Left/Right
-        tiers = [
-            # (shoulder_dx, shoulder_dy, span_x, lift_y, num_primaries, flap_mul)
-            (8.0, -10.0, 66.0, -34.0, 7, 1.00),
-            (7.0,  -2.0, 56.0,  -6.0, 6, 0.82),
-            (6.0,   6.0, 40.0,  18.0, 5, 0.62),
-        ]
+        hi = Image.new("RGBA", (hi_w, hi_h), (0, 0, 0, 0))
+        rx_paste = int(round(cx_hi + 13.0 - piv_x))
+        ry_paste = int(round(cy_hi - piv_y))
+        lx_paste = int(round(cx_hi - 13.0 - (w_left.size[0] - piv_x)))
+        hi.alpha_composite(w_right, (rx_paste, ry_paste))
+        hi.alpha_composite(w_left, (lx_paste, ry_paste))
 
-        for side in (-1, 1):
-            for t_idx, (sdx, sdy, span_x, lift_y, n_prim, f_mul) in enumerate(tiers):
-                sx = cx + side * sdx
-                sy = cy + sdy
-                cur_lift = lift_y - flap * 15.0 * f_mul
-                cur_span = span_x * (0.94 + 0.06 * math.cos(phase))
-                elbow_x = sx + side * (cur_span * 0.44)
-                elbow_y = sy + cur_lift * 0.68 - 7.0
-                tip_x = sx + side * cur_span
-                tip_y = sy + cur_lift + ripple * 4.5 * f_mul
+        arr160 = quantize_wing_160(hi)
 
-                # Individual layered primary feathers fanning from covert ridge
-                for p_i in range(n_prim):
-                    u = p_i / float(max(1, n_prim - 1))
-                    # Root along shoulder -> elbow -> tip arch
-                    if u < 0.5:
-                        ru = u * 2.0
-                        rx = sx + (elbow_x - sx) * ru
-                        ry = sy + (elbow_y - sy) * ru
-                    else:
-                        ru = (u - 0.5) * 2.0
-                        rx = elbow_x + (tip_x - elbow_x) * (ru * 0.72)
-                        ry = elbow_y + (tip_y - elbow_y) * (ru * 0.72)
+        # Delicate drifting golden starlight motes trailing outer wingtips (kept well inside safe margins)
+        for m in range(4):
+            side = -1 if (m % 2 == 0) else 1
+            m_prog = ((f / float(COLS)) + m * 0.25) % 1.0
+            if 0.12 < m_prog < 0.88:
+                mx = int(round(80.0 + side * (56.0 + m_prog * 14.0)))
+                my = int(round(36.0 + (m // 2) * 34.0 + m_prog * 12.0 - flap * 4.0))
+                if 5 <= mx <= WING_L_W - 6 and 5 <= my <= WING_L_H - 6 and arr160[my, mx, 3] == 0:
+                    arr160[my, mx] = [252, 228, 118, 255] if m_prog > 0.45 else [255, 254, 248, 255]
 
-                    f_len = (22.0 + u * 24.0) * (1.0 - t_idx * 0.16)
-                    fan_ang = math.atan2(
-                        (tip_y - sy) + (1.0 - u) * 26.0 + t_idx * 8.0,
-                        side * (cur_span * (0.55 + 0.45 * u)),
-                    )
-                    fx = rx + math.cos(fan_ang) * f_len
-                    fy = ry + math.sin(fan_ang) * f_len + math.sin(phase - u * 2.2) * 2.5
+        if prev is not None and not np.array_equal(prev, arr160):
+            diffs += 1
+        prev = arr160.copy()
 
-                    # Outer golden-tipped feather silhouette -> alabaster body -> pearl quill
-                    w_px = 5 if t_idx == 0 else 4
-                    draw.line([(rx, ry), (fx, fy)], fill=tuple(W_SHAD if t_idx == 2 else W_CREAM), width=w_px)
-                    draw.line([(rx, ry - 1), (rx + (fx - rx) * 0.78, ry - 1 + (fy - ry) * 0.78)], fill=tuple(W_WHITE), width=max(2, w_px - 2))
-                    # Golden-gleam primary feather tips!
-                    tx0 = rx + (fx - rx) * 0.76
-                    ty0 = ry + (fy - ry) * 0.76
-                    draw.line([(tx0, ty0), (fx, fy)], fill=tuple(W_GOLD), width=max(2, w_px - 1))
-                    draw.line([( rx + (fx - rx) * 0.88, ry + (fy - ry) * 0.88), (fx, fy)], fill=tuple(W_GLEAM), width=2)
+        a = arr160[:, :, 3]
+        if a[:2, :].sum() + a[-2:, :].sum() + a[:, :2].sum() + a[:, -2:].sum() > 0:
+            clips += 1
 
-                # Golden-armored Seraphim Wing Leading-Edge Covert Arch
-                draw.line([(sx, sy), (elbow_x, elbow_y), ( sx + (tip_x - sx) * 0.78, sy + (tip_y - sy) * 0.78)], fill=tuple(W_BRONZE), width=5)
-                draw.line([(sx, sy - 1), (elbow_x, elbow_y - 1), ( sx + (tip_x - sx) * 0.76, sy - 1 + (tip_y - sy) * 0.76)], fill=tuple(W_GOLD), width=3)
-                draw.line([(sx, sy - 1), (elbow_x, elbow_y - 1)], fill=tuple(W_GLEAM), width=1)
-
-        arr = np.array(pil_im)
-        # Seal any 1px interior pinholes inside wing plumage
-        alpha = arr[:, :, 3] > 128
-        for _ in range(2):
-            up = np.pad(alpha[:-1, :], ((1, 0), (0, 0)), constant_values=False)
-            dn = np.pad(alpha[1:, :], ((0, 1), (0, 0)), constant_values=False)
-            lf = np.pad(alpha[:, :-1], ((0, 0), (1, 0)), constant_values=False)
-            rt = np.pad(alpha[:, 1:], ((0, 0), (0, 1)), constant_values=False)
-            slits = (~alpha) & ((up.astype(int) + dn.astype(int) + lf.astype(int) + rt.astype(int)) >= 3)
-            if np.any(slits):
-                arr[slits] = W_CREAM
-                alpha = arr[:, :, 3] > 128
-
-        # Crisp 1px Selective Outline (Selout) around wing silhouette
-        up_a = np.pad(alpha[:-1, :], ((1, 0), (0, 0)), constant_values=False)
-        dn_a = np.pad(alpha[1:, :], ((0, 1), (0, 0)), constant_values=False)
-        lf_a = np.pad(alpha[:, :-1], ((0, 0), (1, 0)), constant_values=False)
-        rt_a = np.pad(alpha[:, 1:], ((0, 0), (0, 1)), constant_values=False)
-        edge = alpha & (~(up_a & dn_a & lf_a & rt_a))
-        arr[edge] = W_SELOUT
-
-        arr[:2, :, :] = 0
-        arr[-2:, :, :] = 0
-        arr[:, :2, :] = 0
-        arr[:, -2:, :] = 0
-
-        cell_img = Image.fromarray(arr, "RGBA").resize((WING_CELL_W, WING_CELL_H), Image.Resampling.NEAREST)
+        cell_img = Image.fromarray(arr160, "RGBA").resize((WING_CELL_W, WING_CELL_H), Image.Resampling.NEAREST)
         sheet.paste(cell_img, (f * WING_CELL_W, 0))
 
     os.makedirs(os.path.dirname(WINGS_OUT_PATH), exist_ok=True)
     sheet.save(WINGS_OUT_PATH)
-    print(f"[SUCCESS] Saved {WINGS_OUT_PATH} ({sheet.size[0]}x{sheet.size[1]})")
+    print(f"[SUCCESS] Saved {WINGS_OUT_PATH} ({sheet.size[0]}x{sheet.size[1]}) | transitions={diffs}/29 | clips={clips}/30")
     return sheet
 
 
@@ -791,7 +940,7 @@ def save_vfx_contact_sheet(vfx_sheet, wings_sheet):
 
     contact = Image.new("RGBA", (w, h), (16, 16, 26, 255))
     draw = ImageDraw.Draw(contact)
-    draw.text((12, 10), "Seraphina (Priestess) 104x104->208x208 30fps VFX + 6-Pinion Seraphim Wings", fill=(254, 240, 138, 255))
+    draw.text((12, 10), "Seraphina (Priestess) 104x104->208x208 30fps VFX + HD-2D Feathered Archangel Wings", fill=(254, 240, 138, 255))
 
     labels = [
         "R0: holy_light (Star)",
@@ -799,7 +948,7 @@ def save_vfx_contact_sheet(vfx_sheet, wings_sheet):
         "R2: Judgment Pillar",
         "R3: Celestial Gate",
         "R4: Sanctuary Seal",
-        "Wings: 6-Pinion Flap",
+        "Wings: Archangel Flap",
     ]
     for c in range(COLS):
         draw.text((pad_left + c * thumb + 20, 20), f"F{c:02d}", fill=(185, 200, 230, 255))

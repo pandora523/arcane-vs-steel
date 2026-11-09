@@ -1,17 +1,17 @@
-import { Renderer } from './engine/Renderer.js?v=30fps36';
-import { VFXManager } from './engine/VFXManager.js?v=30fps36';
-import { PixelForge } from './engine/PixelForge.js?v=30fps36';
-import { AudioManager } from './engine/AudioManager.js?v=30fps36';
-import { Warrior } from './entities/Warrior.js?v=30fps36';
-import { FireMage } from './entities/FireMage.js?v=30fps36';
-import { Archer } from './entities/Archer.js?v=30fps36';
-import { Priestess } from './entities/Priestess.js?v=30fps36';
-import { Reaper } from './entities/Reaper.js?v=30fps36';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps36';
-import { Titan } from './entities/Titan.js?v=30fps36';
-import { Ronin } from './entities/Ronin.js?v=30fps36';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps36';
-import { IceMage } from './entities/IceMage.js?v=30fps36';
+import { Renderer } from './engine/Renderer.js?v=30fps37';
+import { VFXManager } from './engine/VFXManager.js?v=30fps37';
+import { PixelForge } from './engine/PixelForge.js?v=30fps37';
+import { AudioManager } from './engine/AudioManager.js?v=30fps37';
+import { Warrior } from './entities/Warrior.js?v=30fps37';
+import { FireMage } from './entities/FireMage.js?v=30fps37';
+import { Archer } from './entities/Archer.js?v=30fps37';
+import { Priestess } from './entities/Priestess.js?v=30fps37';
+import { Reaper } from './entities/Reaper.js?v=30fps37';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps37';
+import { Titan } from './entities/Titan.js?v=30fps37';
+import { Ronin } from './entities/Ronin.js?v=30fps37';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps37';
+import { IceMage } from './entities/IceMage.js?v=30fps37';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -1223,6 +1223,7 @@ class Game {
       let col = 0;
       let row = 0;
       let stateTag = 'IDLE';
+      let wingEnv = 0;
       if (cols === 30) {
         const cycle = (t + phaseOffset + (flipX ? 1.4 : 0)) % 6.0;
         if (cycle < 1.8) {
@@ -1231,16 +1232,22 @@ class Game {
           stateTag = 'IDLE • 30FPS';
         } else if (cycle < 2.8) {
           row = 2;
-          col = Math.min(29, Math.floor(((cycle - 1.8) / 1.0) * 30));
+          const u = (cycle - 1.8) / 1.0;
+          col = Math.min(29, Math.floor(u * 30));
           stateTag = 'ATTACK • 30FPS';
+          if (heroKey === 'priestess') wingEnv = Math.sin(u * Math.PI) * 0.88;
         } else if (cycle < 3.8) {
-          row = 7;
-          col = Math.min(29, Math.floor(((cycle - 2.8) / 1.0) * 30));
+          row = heroKey === 'priestess' ? 3 : 7;
+          const u = (cycle - 2.8) / 1.0;
+          col = Math.min(29, Math.floor(u * 30));
           stateTag = 'SKILL • 30FPS';
+          if (heroKey === 'priestess') wingEnv = Math.min(1, Math.sin(u * Math.PI) * 1.55);
         } else if (cycle < 4.8) {
-          row = 8;
-          col = Math.min(29, Math.floor(((cycle - 3.8) / 1.0) * 30));
+          row = heroKey === 'priestess' ? 4 : 8;
+          const u = (cycle - 3.8) / 1.0;
+          col = Math.min(29, Math.floor(u * 30));
           stateTag = '★ OVERDRIVE ULT';
+          if (heroKey === 'priestess') wingEnv = Math.min(1, Math.sin(u * Math.PI) * 1.7);
         } else {
           row = 1;
           col = Math.floor((t + phaseOffset) * 24) % 30;
@@ -1258,7 +1265,9 @@ class Game {
       }
       const hover =
         heroKey === 'priestess'
-          ? Math.round(Math.sin((t + phaseOffset) * 3.2) * 2) * 2
+          ? wingEnv > 0.02
+            ? -Math.round(wingEnv * (row === 4 ? 14 : row === 3 ? 10 : 5))
+            : Math.round(Math.sin((t + phaseOffset) * 3.2) * 2)
           : 0;
 
       // Grounded HD-2D Elemental Pedestal Rim & Rising Embers
@@ -1282,14 +1291,35 @@ class Game {
       }
       sctx.restore();
 
+      const wingSheet = heroKey === 'priestess' ? assets.priestess?.wings : null;
+      const drawHeroWithWings = () => {
+        if (wingEnv > 0.02 && wingSheet && wingSheet.complete && wingSheet.naturalWidth > 0) {
+          const sf = destSize / cell;
+          const wScale = (0.72 + 0.10 * wingEnv) * sf;
+          const wW = Math.round(320 * wScale);
+          const wH = Math.round(232 * wScale);
+          const sx = 98 * sf;
+          const sy = 74 * sf;
+          const wdx = Math.round(sx - wW * 0.5);
+          const wdy = Math.round(sy - wH * (88 / 232));
+          const wCol = Math.floor((t + phaseOffset) * 30) % 30;
+          sctx.save();
+          sctx.globalAlpha = alpha * Math.min(1, wingEnv * 0.98);
+          sctx.drawImage(wingSheet, wCol * 320, 0, 320, 232, wdx, wdy, wW, wH);
+          sctx.restore();
+        }
+        sctx.drawImage(sheet, col * cell, row * cell, cell, cell, 0, 0, destSize, destSize);
+      };
+
       sctx.save();
       sctx.globalAlpha = alpha;
       if (flipX) {
         sctx.translate(destX + destSize, destY + hover);
         sctx.scale(-1, 1);
-        sctx.drawImage(sheet, col * cell, row * cell, cell, cell, 0, 0, destSize, destSize);
+        drawHeroWithWings();
       } else {
-        sctx.drawImage(sheet, col * cell, row * cell, cell, cell, destX, destY + hover, destSize, destSize);
+        sctx.translate(destX, destY + hover);
+        drawHeroWithWings();
       }
       sctx.restore();
 
@@ -1300,7 +1330,7 @@ class Game {
         const tx = flipX ? 264 : 8;
         sctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
         sctx.fillText(stateTag, tx + 1, 13);
-        sctx.fillStyle = row === 8 ? '#facc15' : primaryCol;
+        sctx.fillStyle = stateTag === '★ OVERDRIVE ULT' ? '#facc15' : primaryCol;
         sctx.fillText(stateTag, tx, 12);
         sctx.restore();
       }

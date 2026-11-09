@@ -58,8 +58,9 @@
       "name": "Seraphina",
       "theme": "radiant",
       "base_source": "assets/sprites/priestess_v2_base.jpg",
-      "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "16-part pinhole-free hierarchical High-Priestess skeletal articulation (mane [flowing champagne-blonde hair], head [sunburst crown + stamped turquoise-emerald eyes], torso, stole [royal-sapphire stole], l_coat, r_coat, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + centered Apotheosis Nimbus + Portrait-Matched Sunburst Cathedral Scepter + 6-pinion Seraphim Wings",
+      "wing_base_source": "assets/sprites/seraphim_wings_v2_base.jpg",
+      "logical_res": "104x104 character (2x -> 208x208) + 160x116 wings (2x -> 320x232)",
+      "rig": "16-part pinhole-free hierarchical High-Priestess skeletal articulation (mane, head, torso, stole, l_coat, r_coat, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + centered Apotheosis Nimbus + Portrait-Matched Sunburst Cathedral Scepter + 30fps HD-2D Feathered Archangel Wings (shoulder-locked at -6, -124) + Full Seraphic Flight Kit (20px Dawn Grace hover, 26px Radiant Wing Glide, 44px Sanctuary levitation, 86px Seraphic Wing Vault, 122px High-Sky Apotheosis ascension)",
       "script": "scripts/build_priestess_30fps_sheet.py",
       "vfx_script": "scripts/build_priestess_30fps_vfx.py"
     },

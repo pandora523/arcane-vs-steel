@@ -1324,47 +1324,52 @@ def build_row_configs(row_idx):
             cfg["hand_orb_r"] = 1.4
 
         elif row_idx == 2:
-            # ROW 2: AUTO_ATTACK — Grounded Sacred Starlight Prayer Cast (0px vertical float!)
+            # ROW 2: AUTO_ATTACK — Graceful Seraphic Prayer-Cast Levitation (floats ~20px during cast apex!)
             kfs = [
                 (0, {
                     "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
-                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "l_foot_deg": 0.0,
+                    "r_thigh_deg": 0.0, "r_shin_deg": 0.0, "r_foot_deg": 0.0,
                     "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
                     "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
                     "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
-                    "halo_mode": "normal", "hand_orb_r": 1.8,
+                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8,
                 }),
                 (7, {
-                    "pelvis_dx": -10.0, "pelvis_dy": 5.0, "torso_deg": -8.0, "head_rel_deg": 6.0, "mane_rel_deg": 7.0,
-                    "l_thigh_deg": -14.0, "l_shin_deg": 14.0, "r_thigh_deg": 16.0, "r_shin_deg": 10.0,
-                    "r_sode_rel_deg": 20.0, "r_fore_rel_deg": -34.0,
-                    "l_sode_rel_deg": -38.0, "l_fore_rel_deg": -42.0, "coat_billow": 7.0,
+                    "pelvis_dx": -6.0, "pelvis_dy": 0.0, "torso_deg": -6.0, "head_rel_deg": 5.0, "mane_rel_deg": 7.0,
+                    "l_thigh_deg": 8.0, "l_shin_deg": 24.0, "l_foot_deg": 16.0,
+                    "r_thigh_deg": -12.0, "r_shin_deg": 14.0, "r_foot_deg": 14.0,
+                    "r_sode_rel_deg": 18.0, "r_fore_rel_deg": -34.0,
+                    "l_sode_rel_deg": -38.0, "l_fore_rel_deg": -42.0, "coat_billow": 9.0,
                     "right_arm_in_front": False, "staff_deg": -72.0, "staff_glow": 1.35,
-                    "halo_mode": "flare", "hand_orb_r": 3.2,
+                    "foot_y": 96.5, "halo_mode": "flare", "hand_orb_r": 3.2,
                 }),
                 (12, {
-                    "pelvis_dx": 14.0, "pelvis_dy": 7.0, "torso_deg": 12.0, "head_rel_deg": -8.0, "mane_rel_deg": -10.0,
-                    "l_thigh_deg": 20.0, "l_shin_deg": 16.0, "r_thigh_deg": -24.0, "r_shin_deg": 24.0,
+                    "pelvis_dx": 10.0, "pelvis_dy": 2.0, "torso_deg": 10.0, "head_rel_deg": -7.0, "mane_rel_deg": -9.0,
+                    "l_thigh_deg": 12.0, "l_shin_deg": 28.0, "l_foot_deg": 18.0,
+                    "r_thigh_deg": -16.0, "r_shin_deg": 18.0, "r_foot_deg": 16.0,
                     "r_sode_rel_deg": -38.0, "r_fore_rel_deg": -26.0,
                     "l_sode_rel_deg": -24.0, "l_fore_rel_deg": -18.0, "coat_billow": 13.0,
                     "right_arm_in_front": True, "staff_deg": -28.0, "staff_glow": 1.5,
-                    "halo_mode": "off", "hand_orb_r": 0.0,
+                    "foot_y": 96.5, "halo_mode": "off", "hand_orb_r": 0.0,
                 }),
                 (17, {
-                    "pelvis_dx": 11.0, "pelvis_dy": 6.0, "torso_deg": 9.0, "head_rel_deg": -6.0, "mane_rel_deg": -7.0,
-                    "l_thigh_deg": 16.0, "l_shin_deg": 12.0, "r_thigh_deg": -18.0, "r_shin_deg": 18.0,
+                    "pelvis_dx": 8.0, "pelvis_dy": 3.0, "torso_deg": 8.0, "head_rel_deg": -5.0, "mane_rel_deg": -6.0,
+                    "l_thigh_deg": 8.0, "l_shin_deg": 18.0, "l_foot_deg": 12.0,
+                    "r_thigh_deg": -10.0, "r_shin_deg": 14.0, "r_foot_deg": 10.0,
                     "r_sode_rel_deg": -28.0, "r_fore_rel_deg": -22.0,
                     "l_sode_rel_deg": -18.0, "l_fore_rel_deg": -22.0, "coat_billow": 9.0,
                     "right_arm_in_front": True, "staff_deg": -34.0, "staff_glow": 1.25,
-                    "halo_mode": "normal", "hand_orb_r": 0.0,
+                    "foot_y": 97.5, "halo_mode": "normal", "hand_orb_r": 0.0,
                 }),
                 (29, {
                     "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
-                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "l_foot_deg": 0.0,
+                    "r_thigh_deg": 0.0, "r_shin_deg": 0.0, "r_foot_deg": 0.0,
                     "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
                     "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
                     "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
-                    "halo_mode": "normal", "hand_orb_r": 1.8,
+                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8,
                 }),
             ]
             cfg.update(eval_pose_keyframes(f, kfs))
@@ -1372,114 +1377,119 @@ def build_row_configs(row_idx):
                 cfg["slash_arc"] = (-42.0, 40.0, 29.0, 1.0 - (f - 10) * 0.13)
 
         elif row_idx == 3:
-            # ROW 3: SKILL — Grounded Divine Sanctuary Consecration Slam & Heaven's Judgment Sweep
+            # ROW 3: SKILL — Airborne Winged Divine Sanctuary Levitation & Heaven's Judgment Sweep
             kfs = [
                 (0, {
                     "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
-                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "l_foot_deg": 0.0,
+                    "r_thigh_deg": 0.0, "r_shin_deg": 0.0, "r_foot_deg": 0.0,
                     "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
                     "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
                     "right_arm_in_front": True, "staff_deg": -52.0, "staff_pom_len": 14.0, "staff_glow": 1.0,
-                    "halo_mode": "normal", "hand_orb_r": 1.8,
+                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8,
                 }),
                 (5, {
-                    "pelvis_dx": -6.0, "pelvis_dy": 4.0, "torso_deg": -6.0, "head_rel_deg": -6.0, "mane_rel_deg": 6.0,
-                    "l_thigh_deg": -10.0, "l_shin_deg": 12.0, "r_thigh_deg": 12.0, "r_shin_deg": 10.0,
-                    "r_sode_rel_deg": -68.0, "r_fore_rel_deg": -26.0,
-                    "l_sode_rel_deg": -62.0, "l_fore_rel_deg": -28.0, "coat_billow": 9.0,
-                    "right_arm_in_front": True, "staff_deg": -80.0, "staff_pom_len": 18.0, "staff_glow": 1.4,
-                    "halo_mode": "flare", "hand_orb_r": 3.0,
+                    "pelvis_dx": -4.0, "pelvis_dy": 0.0, "torso_deg": -5.0, "head_rel_deg": -4.0, "mane_rel_deg": 7.0,
+                    "l_thigh_deg": 10.0, "l_shin_deg": 28.0, "l_foot_deg": 18.0,
+                    "r_thigh_deg": -14.0, "r_shin_deg": 18.0, "r_foot_deg": 18.0,
+                    "r_sode_rel_deg": -58.0, "r_fore_rel_deg": -24.0,
+                    "l_sode_rel_deg": -48.0, "l_fore_rel_deg": -36.0, "coat_billow": 12.0,
+                    "right_arm_in_front": True, "staff_deg": -76.0, "staff_pom_len": 15.0, "staff_glow": 1.45,
+                    "foot_y": 95.5, "halo_mode": "flare", "hand_orb_r": 3.2,
                 }),
-                (9, {
-                    "pelvis_dx": 8.0, "pelvis_dy": 14.0, "torso_deg": 9.0, "head_rel_deg": -4.0, "mane_rel_deg": -6.0,
-                    "l_thigh_deg": 18.0, "l_shin_deg": 22.0, "r_thigh_deg": -22.0, "r_shin_deg": 24.0,
-                    "r_sode_rel_deg": -24.0, "r_fore_rel_deg": 10.0,
-                    "l_sode_rel_deg": -26.0, "l_fore_rel_deg": -18.0, "coat_billow": 13.0,
-                    "right_arm_in_front": True, "staff_deg": -88.0, "staff_pom_len": 25.0, "staff_glow": 1.5,
-                    "halo_mode": "flare", "hand_orb_r": 2.4, "ground_slam": 1.0,
+                (10, {
+                    "pelvis_dx": -2.0, "pelvis_dy": 0.0, "torso_deg": -4.0, "head_rel_deg": -3.0, "mane_rel_deg": 8.0,
+                    "l_thigh_deg": 12.0, "l_shin_deg": 34.0, "l_foot_deg": 20.0,
+                    "r_thigh_deg": -16.0, "r_shin_deg": 20.0, "r_foot_deg": 20.0,
+                    "r_sode_rel_deg": -62.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -44.0, "l_fore_rel_deg": -38.0, "coat_billow": 14.0,
+                    "right_arm_in_front": True, "staff_deg": -78.0, "staff_pom_len": 15.0, "staff_glow": 1.5,
+                    "foot_y": 95.0, "halo_mode": "flare", "hand_orb_r": 3.4,
                 }),
-                (12, {
-                    "pelvis_dx": 8.0, "pelvis_dy": 12.0, "torso_deg": 8.0, "head_rel_deg": -4.0, "mane_rel_deg": -5.0,
-                    "l_thigh_deg": 16.0, "l_shin_deg": 20.0, "r_thigh_deg": -20.0, "r_shin_deg": 22.0,
-                    "r_sode_rel_deg": -28.0, "r_fore_rel_deg": -4.0,
-                    "l_sode_rel_deg": -28.0, "l_fore_rel_deg": -20.0, "coat_billow": 11.0,
-                    "right_arm_in_front": True, "staff_deg": -82.0, "staff_pom_len": 23.0, "staff_glow": 1.45,
-                    "halo_mode": "flare", "hand_orb_r": 2.0, "ground_slam": 0.65,
-                }),
-                (16, {
-                    "pelvis_dx": 14.0, "pelvis_dy": 8.0, "torso_deg": 13.0, "head_rel_deg": -8.0, "mane_rel_deg": -10.0,
-                    "l_thigh_deg": 20.0, "l_shin_deg": 16.0, "r_thigh_deg": -24.0, "r_shin_deg": 24.0,
-                    "r_sode_rel_deg": -40.0, "r_fore_rel_deg": -24.0,
-                    "l_sode_rel_deg": -20.0, "l_fore_rel_deg": -16.0, "coat_billow": 14.0,
-                    "right_arm_in_front": True, "staff_deg": -28.0, "staff_pom_len": 14.0, "staff_glow": 1.5,
-                    "halo_mode": "flare", "hand_orb_r": 0.0, "ground_slam": 0.0,
+                (15, {
+                    "pelvis_dx": 10.0, "pelvis_dy": 2.0, "torso_deg": 10.0, "head_rel_deg": -7.0, "mane_rel_deg": -9.0,
+                    "l_thigh_deg": 14.0, "l_shin_deg": 34.0, "l_foot_deg": 20.0,
+                    "r_thigh_deg": -18.0, "r_shin_deg": 20.0, "r_foot_deg": 18.0,
+                    "r_sode_rel_deg": -38.0, "r_fore_rel_deg": -24.0,
+                    "l_sode_rel_deg": -20.0, "l_fore_rel_deg": -16.0, "coat_billow": 15.0,
+                    "right_arm_in_front": True, "staff_deg": -26.0, "staff_pom_len": 14.0, "staff_glow": 1.55,
+                    "foot_y": 95.0, "halo_mode": "flare", "hand_orb_r": 0.0,
                 }),
                 (21, {
-                    "pelvis_dx": 11.0, "pelvis_dy": 6.0, "torso_deg": 10.0, "head_rel_deg": -6.0, "mane_rel_deg": -7.0,
-                    "l_thigh_deg": 16.0, "l_shin_deg": 12.0, "r_thigh_deg": -18.0, "r_shin_deg": 18.0,
-                    "r_sode_rel_deg": -30.0, "r_fore_rel_deg": -22.0,
-                    "l_sode_rel_deg": -16.0, "l_fore_rel_deg": -22.0, "coat_billow": 10.0,
+                    "pelvis_dx": 8.0, "pelvis_dy": 3.0, "torso_deg": 8.0, "head_rel_deg": -5.0, "mane_rel_deg": -6.0,
+                    "l_thigh_deg": 10.0, "l_shin_deg": 22.0, "l_foot_deg": 14.0,
+                    "r_thigh_deg": -12.0, "r_shin_deg": 16.0, "r_foot_deg": 14.0,
+                    "r_sode_rel_deg": -28.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -16.0, "l_fore_rel_deg": -22.0, "coat_billow": 11.0,
                     "right_arm_in_front": True, "staff_deg": -34.0, "staff_pom_len": 14.0, "staff_glow": 1.3,
-                    "halo_mode": "normal", "hand_orb_r": 0.0, "ground_slam": 0.0,
+                    "foot_y": 96.5, "halo_mode": "normal", "hand_orb_r": 0.0,
                 }),
                 (29, {
                     "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
-                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "l_foot_deg": 0.0,
+                    "r_thigh_deg": 0.0, "r_shin_deg": 0.0, "r_foot_deg": 0.0,
                     "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
                     "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
                     "right_arm_in_front": True, "staff_deg": -52.0, "staff_pom_len": 14.0, "staff_glow": 1.0,
-                    "halo_mode": "normal", "hand_orb_r": 1.8, "ground_slam": 0.0,
+                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8,
                 }),
             ]
             cfg.update(eval_pose_keyframes(f, kfs))
-            if 15 <= f <= 21:
-                cfg["slash_arc"] = (-46.0, 44.0, 31.0, 1.0 - (f - 15) * 0.12)
+            cfg["blink"] = 6 <= f <= 10
+            if 13 <= f <= 20:
+                cfg["slash_arc"] = (-46.0, 44.0, 31.0, 1.0 - (f - 13) * 0.11)
 
         elif row_idx == 4:
-            # ROW 4: ULTIMATE — Grounded Seraphic Apotheosis (0px awkward floating, full archangel majesty!)
+            # ROW 4: ULTIMATE — High-Sky Winged Archangel Ascension ("SERAPHIC APOTHEOSIS", 122px sky hover!)
             kfs = [
                 (0, {
                     "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
-                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "l_foot_deg": 0.0,
+                    "r_thigh_deg": 0.0, "r_shin_deg": 0.0, "r_foot_deg": 0.0,
                     "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
                     "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 3.0,
                     "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.1,
-                    "halo_mode": "apotheosis", "hand_orb_r": 2.0,
+                    "foot_y": 99.0, "halo_mode": "apotheosis", "hand_orb_r": 2.0,
                 }),
                 (7, {
-                    "pelvis_dx": -6.0, "pelvis_dy": 6.0, "torso_deg": -5.0, "head_rel_deg": -5.0, "mane_rel_deg": 8.0,
-                    "l_thigh_deg": 12.0, "l_shin_deg": 14.0, "r_thigh_deg": -16.0, "r_shin_deg": 16.0,
-                    "r_sode_rel_deg": -56.0, "r_fore_rel_deg": -24.0,
-                    "l_sode_rel_deg": -44.0, "l_fore_rel_deg": -36.0, "coat_billow": 14.0,
-                    "right_arm_in_front": True, "staff_deg": -66.0, "staff_glow": 1.5,
-                    "halo_mode": "apotheosis", "hand_orb_r": 3.6,
+                    "pelvis_dx": -4.0, "pelvis_dy": 0.0, "torso_deg": -5.0, "head_rel_deg": -4.0, "mane_rel_deg": 9.0,
+                    "l_thigh_deg": 12.0, "l_shin_deg": 36.0, "l_foot_deg": 22.0,
+                    "r_thigh_deg": -16.0, "r_shin_deg": 20.0, "r_foot_deg": 20.0,
+                    "r_sode_rel_deg": -58.0, "r_fore_rel_deg": -24.0,
+                    "l_sode_rel_deg": -46.0, "l_fore_rel_deg": -36.0, "coat_billow": 15.0,
+                    "right_arm_in_front": True, "staff_deg": -70.0, "staff_glow": 1.5,
+                    "foot_y": 94.5, "halo_mode": "apotheosis", "hand_orb_r": 3.6,
                 }),
-                (12, {
-                    "pelvis_dx": 14.0, "pelvis_dy": 8.0, "torso_deg": 12.0, "head_rel_deg": -8.0, "mane_rel_deg": -9.0,
-                    "l_thigh_deg": 20.0, "l_shin_deg": 16.0, "r_thigh_deg": -24.0, "r_shin_deg": 22.0,
-                    "r_sode_rel_deg": -38.0, "r_fore_rel_deg": -24.0,
-                    "l_sode_rel_deg": -26.0, "l_fore_rel_deg": -18.0, "coat_billow": 16.0,
-                    "right_arm_in_front": True, "staff_deg": -30.0, "staff_glow": 1.6,
-                    "halo_mode": "apotheosis", "hand_orb_r": 2.6,
+                (13, {
+                    "pelvis_dx": 10.0, "pelvis_dy": 1.0, "torso_deg": 9.0, "head_rel_deg": -6.0, "mane_rel_deg": -9.0,
+                    "l_thigh_deg": 14.0, "l_shin_deg": 38.0, "l_foot_deg": 22.0,
+                    "r_thigh_deg": -18.0, "r_shin_deg": 22.0, "r_foot_deg": 20.0,
+                    "r_sode_rel_deg": -36.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -26.0, "l_fore_rel_deg": -18.0, "coat_billow": 16.5,
+                    "right_arm_in_front": True, "staff_deg": -22.0, "staff_glow": 1.6,
+                    "foot_y": 94.5, "halo_mode": "apotheosis", "hand_orb_r": 2.6,
                 }),
                 (22, {
-                    "pelvis_dx": 12.0, "pelvis_dy": 7.0, "torso_deg": 10.0, "head_rel_deg": -7.0, "mane_rel_deg": -8.0,
-                    "l_thigh_deg": 18.0, "l_shin_deg": 14.0, "r_thigh_deg": -22.0, "r_shin_deg": 20.0,
-                    "r_sode_rel_deg": -34.0, "r_fore_rel_deg": -22.0,
-                    "l_sode_rel_deg": -22.0, "l_fore_rel_deg": -20.0, "coat_billow": 14.0,
-                    "right_arm_in_front": True, "staff_deg": -24.0, "staff_glow": 1.5,
-                    "halo_mode": "apotheosis", "hand_orb_r": 1.8,
+                    "pelvis_dx": 8.0, "pelvis_dy": 2.0, "torso_deg": 8.0, "head_rel_deg": -5.0, "mane_rel_deg": -8.0,
+                    "l_thigh_deg": 12.0, "l_shin_deg": 34.0, "l_foot_deg": 20.0,
+                    "r_thigh_deg": -16.0, "r_shin_deg": 20.0, "r_foot_deg": 18.0,
+                    "r_sode_rel_deg": -32.0, "r_fore_rel_deg": -20.0,
+                    "l_sode_rel_deg": -22.0, "l_fore_rel_deg": -20.0, "coat_billow": 15.0,
+                    "right_arm_in_front": True, "staff_deg": -18.0, "staff_glow": 1.5,
+                    "foot_y": 95.0, "halo_mode": "apotheosis", "hand_orb_r": 2.0,
                 }),
                 (29, {
                     "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
-                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "l_foot_deg": 0.0,
+                    "r_thigh_deg": 0.0, "r_shin_deg": 0.0, "r_foot_deg": 0.0,
                     "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
                     "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
                     "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
-                    "halo_mode": "normal", "hand_orb_r": 1.8,
+                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8,
                 }),
             ]
             cfg.update(eval_pose_keyframes(f, kfs))
+            cfg["blink"] = 5 <= f <= 9
             if 11 <= f <= 23:
                 pulse_i = 0.92 + 0.08 * math.sin((f - 11) * 1.1)
                 cfg["slash_arc"] = (-48.0, 46.0, 31.0, pulse_i * (1.0 if f <= 20 else 1.0 - (f - 20) * 0.22))
@@ -1540,56 +1550,53 @@ def build_row_configs(row_idx):
                 cfg["halo_mode"] = "off"
                 cfg["staff_deg"] = -2.0 * (1.0 - u)
                 cfg["staff_dy"] = 3.5 * u
-                cfg["staff_glow"] = 0.25 + (0.08 * math.sin(p * 3.0) if f >= 24 else 0.0)
+                cfg["staff_glow"] = 0.25 + (0.08 * math.sin(p * 2.0) if f >= 24 else 0.0)
                 cfg["mane_rel_deg"] = math.sin(p * 2.0) * 1.5 if f >= 24 else -4.0
                 cfg["blink"] = True
 
         elif row_idx == 6:
-            # ROW 6: DASH — Sleek Shallow Radiant Feather-Glide with hip-poised forward Scepter thrust
+            # ROW 6: DASH — Sleek Winged Radiant Glide with pointed floating feet & forward Scepter thrust
             kfs = [
                 (0, {
-                    "pelvis_dx": 0.0, "pelvis_dy": 4.0, "torso_deg": 5.0, "head_rel_deg": -3.0, "mane_rel_deg": -4.0,
-                    "l_thigh_deg": 8.0, "l_shin_deg": 10.0, "r_thigh_deg": -8.0, "r_shin_deg": 12.0,
+                    "pelvis_dx": 0.0, "pelvis_dy": 3.0, "torso_deg": 5.0, "head_rel_deg": -3.0, "mane_rel_deg": -4.0,
+                    "l_thigh_deg": 8.0, "l_shin_deg": 16.0, "l_foot_deg": 10.0,
+                    "r_thigh_deg": -8.0, "r_shin_deg": 14.0, "r_foot_deg": 10.0,
                     "r_sode_rel_deg": 4.0, "r_fore_rel_deg": -18.0,
                     "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -24.0, "coat_billow": 6.0,
                     "right_arm_in_front": True, "staff_deg": -46.0, "staff_glow": 1.1,
                     "foot_y": 99.0, "halo_mode": "swept",
                 }),
-                (4, {
-                    "pelvis_dx": 10.0, "pelvis_dy": 9.0, "torso_deg": 14.0, "head_rel_deg": -9.0, "mane_rel_deg": -9.0,
-                    "l_thigh_deg": 18.0, "l_shin_deg": 18.0, "r_thigh_deg": -20.0, "r_shin_deg": 18.0,
+                (5, {
+                    "pelvis_dx": 10.0, "pelvis_dy": 4.0, "torso_deg": 14.0, "head_rel_deg": -9.0, "mane_rel_deg": -10.0,
+                    "l_thigh_deg": 18.0, "l_shin_deg": 34.0, "l_foot_deg": 20.0,
+                    "r_thigh_deg": -16.0, "r_shin_deg": 22.0, "r_foot_deg": 18.0,
                     "r_sode_rel_deg": 12.0, "r_fore_rel_deg": -16.0,
-                    "l_sode_rel_deg": -26.0, "l_fore_rel_deg": -24.0, "coat_billow": 13.0,
+                    "l_sode_rel_deg": -26.0, "l_fore_rel_deg": -24.0, "coat_billow": 14.0,
                     "right_arm_in_front": True, "staff_deg": -40.0, "staff_glow": 1.25,
-                    "foot_y": 97.0, "halo_mode": "swept", "hand_orb_r": 2.2,
+                    "foot_y": 95.5, "halo_mode": "swept", "hand_orb_r": 2.2,
                 }),
-                (8, {
-                    "pelvis_dx": 15.0, "pelvis_dy": 11.0, "torso_deg": 16.5, "head_rel_deg": -11.0, "mane_rel_deg": -12.0,
-                    "l_thigh_deg": 23.0, "l_shin_deg": 22.0, "r_thigh_deg": -26.0, "r_shin_deg": 20.0,
-                    "r_sode_rel_deg": 16.0, "r_fore_rel_deg": -14.0,
-                    "l_sode_rel_deg": -32.0, "l_fore_rel_deg": -26.0, "coat_billow": 16.0,
-                    "right_arm_in_front": True, "staff_deg": -36.0, "staff_glow": 1.35,
-                    "foot_y": 96.5, "halo_mode": "swept", "hand_orb_r": 2.8,
-                }),
-                (12, {
-                    "pelvis_dx": 17.0, "pelvis_dy": 11.0, "torso_deg": 16.0, "head_rel_deg": -10.5, "mane_rel_deg": -11.0,
-                    "l_thigh_deg": 21.0, "l_shin_deg": 20.0, "r_thigh_deg": -24.0, "r_shin_deg": 21.0,
+                (10, {
+                    "pelvis_dx": 14.0, "pelvis_dy": 4.0, "torso_deg": 16.0, "head_rel_deg": -10.5, "mane_rel_deg": -12.0,
+                    "l_thigh_deg": 22.0, "l_shin_deg": 38.0, "l_foot_deg": 22.0,
+                    "r_thigh_deg": -18.0, "r_shin_deg": 24.0, "r_foot_deg": 20.0,
                     "r_sode_rel_deg": -18.0, "r_fore_rel_deg": -20.0,
-                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -16.0, "coat_billow": 15.0,
-                    "right_arm_in_front": True, "staff_deg": -30.0, "staff_glow": 1.4,
-                    "foot_y": 96.5, "halo_mode": "off", "hand_orb_r": 1.6,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -16.0, "coat_billow": 16.0,
+                    "right_arm_in_front": True, "staff_deg": -32.0, "staff_glow": 1.4,
+                    "foot_y": 95.0, "halo_mode": "off", "hand_orb_r": 1.6,
                 }),
                 (15, {
-                    "pelvis_dx": 18.0, "pelvis_dy": 11.0, "torso_deg": 15.5, "head_rel_deg": -10.0, "mane_rel_deg": -10.0,
-                    "l_thigh_deg": 20.0, "l_shin_deg": 18.0, "r_thigh_deg": -23.0, "r_shin_deg": 22.0,
+                    "pelvis_dx": 16.0, "pelvis_dy": 4.0, "torso_deg": 15.5, "head_rel_deg": -10.0, "mane_rel_deg": -10.0,
+                    "l_thigh_deg": 20.0, "l_shin_deg": 36.0, "l_foot_deg": 20.0,
+                    "r_thigh_deg": -18.0, "r_shin_deg": 22.0, "r_foot_deg": 18.0,
                     "r_sode_rel_deg": -36.0, "r_fore_rel_deg": -24.0,
-                    "l_sode_rel_deg": 14.0, "l_fore_rel_deg": 6.0, "coat_billow": 14.5,
+                    "l_sode_rel_deg": 14.0, "l_fore_rel_deg": 6.0, "coat_billow": 15.0,
                     "right_arm_in_front": True, "staff_deg": -26.0, "staff_glow": 1.48,
-                    "foot_y": 96.5, "halo_mode": "off", "hand_orb_r": 0.0,
+                    "foot_y": 95.0, "halo_mode": "off", "hand_orb_r": 0.0,
                 }),
                 (29, {
                     "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
-                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "l_foot_deg": 0.0,
+                    "r_thigh_deg": 0.0, "r_shin_deg": 0.0, "r_foot_deg": 0.0,
                     "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
                     "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
                     "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
@@ -1665,43 +1672,48 @@ def build_row_configs(row_idx):
                 cfg["slash_arc"] = (-35.0, 38.0, 27.0, 1.0 - (f - 12) * 0.16)
 
         elif row_idx == 8:
-            # ROW 8: JUMP — Sleek Shallow Seraphic Wing-Glide & Angled Aerial Starlight Smite (Zero steepness!)
+            # ROW 8: JUMP / DODGE — Soaring 86px Seraphic Wing Vault & Mid-Air Downward Starlight Smite!
             kfs = [
                 (0, {
-                    "pelvis_dx": 0.0, "pelvis_dy": 12.0, "torso_deg": 9.0, "head_rel_deg": -5.0, "mane_rel_deg": -4.0,
-                    "l_thigh_deg": 16.0, "l_shin_deg": 26.0, "r_thigh_deg": -20.0, "r_shin_deg": 26.0,
+                    "pelvis_dx": 0.0, "pelvis_dy": 10.0, "torso_deg": 8.0, "head_rel_deg": -4.0, "mane_rel_deg": -4.0,
+                    "l_thigh_deg": 14.0, "l_shin_deg": 24.0, "l_foot_deg": 8.0,
+                    "r_thigh_deg": -18.0, "r_shin_deg": 24.0, "r_foot_deg": 8.0,
                     "r_sode_rel_deg": 6.0, "r_fore_rel_deg": -8.0,
                     "l_sode_rel_deg": -16.0, "l_fore_rel_deg": -24.0, "coat_billow": 7.0,
                     "right_arm_in_front": True, "staff_deg": -44.0, "staff_glow": 1.1,
                     "foot_y": 99.0, "halo_mode": "normal",
                 }),
                 (8, {
-                    "pelvis_dx": 8.0, "pelvis_dy": 0.0, "torso_deg": 13.0, "head_rel_deg": -9.0, "mane_rel_deg": -9.0,
-                    "l_thigh_deg": 20.0, "l_shin_deg": 34.0, "r_thigh_deg": -24.0, "r_shin_deg": 30.0,
-                    "r_sode_rel_deg": -32.0, "r_fore_rel_deg": -22.0,
-                    "l_sode_rel_deg": -34.0, "l_fore_rel_deg": -28.0, "coat_billow": 14.0,
-                    "right_arm_in_front": True, "staff_deg": -38.0, "staff_glow": 1.35,
-                    "foot_y": 94.5, "halo_mode": "off", "hand_orb_r": 3.0,
+                    "pelvis_dx": 6.0, "pelvis_dy": 0.0, "torso_deg": 11.0, "head_rel_deg": -7.0, "mane_rel_deg": -9.0,
+                    "l_thigh_deg": 16.0, "l_shin_deg": 40.0, "l_foot_deg": 22.0,
+                    "r_thigh_deg": -20.0, "r_shin_deg": 26.0, "r_foot_deg": 20.0,
+                    "r_sode_rel_deg": -36.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -36.0, "l_fore_rel_deg": -30.0, "coat_billow": 15.0,
+                    "right_arm_in_front": True, "staff_deg": -44.0, "staff_glow": 1.4,
+                    "foot_y": 94.0, "halo_mode": "flare", "hand_orb_r": 3.0,
                 }),
                 (15, {
-                    "pelvis_dx": 14.0, "pelvis_dy": 2.0, "torso_deg": 15.0, "head_rel_deg": -9.0, "mane_rel_deg": -10.0,
-                    "l_thigh_deg": 18.0, "l_shin_deg": 30.0, "r_thigh_deg": -22.0, "r_shin_deg": 28.0,
+                    "pelvis_dx": 12.0, "pelvis_dy": 1.0, "torso_deg": 14.0, "head_rel_deg": -8.0, "mane_rel_deg": -10.0,
+                    "l_thigh_deg": 18.0, "l_shin_deg": 38.0, "l_foot_deg": 22.0,
+                    "r_thigh_deg": -18.0, "r_shin_deg": 24.0, "r_foot_deg": 20.0,
                     "r_sode_rel_deg": -28.0, "r_fore_rel_deg": -18.0,
-                    "l_sode_rel_deg": 16.0, "l_fore_rel_deg": 8.0, "coat_billow": 15.0,
-                    "right_arm_in_front": True, "staff_deg": -12.0, "staff_glow": 1.5,
-                    "foot_y": 94.5, "halo_mode": "off", "hand_orb_r": 0.0,
+                    "l_sode_rel_deg": 16.0, "l_fore_rel_deg": 8.0, "coat_billow": 16.0,
+                    "right_arm_in_front": True, "staff_deg": -8.0, "staff_glow": 1.55,
+                    "foot_y": 94.0, "halo_mode": "flare", "hand_orb_r": 0.0,
                 }),
                 (21, {
-                    "pelvis_dx": 10.0, "pelvis_dy": 4.0, "torso_deg": 12.0, "head_rel_deg": -7.0, "mane_rel_deg": -6.0,
-                    "l_thigh_deg": 14.0, "l_shin_deg": 22.0, "r_thigh_deg": -18.0, "r_shin_deg": 22.0,
+                    "pelvis_dx": 8.0, "pelvis_dy": 2.0, "torso_deg": 10.0, "head_rel_deg": -6.0, "mane_rel_deg": -6.0,
+                    "l_thigh_deg": 12.0, "l_shin_deg": 28.0, "l_foot_deg": 16.0,
+                    "r_thigh_deg": -14.0, "r_shin_deg": 20.0, "r_foot_deg": 16.0,
                     "r_sode_rel_deg": -20.0, "r_fore_rel_deg": -18.0,
-                    "l_sode_rel_deg": 6.0, "l_fore_rel_deg": -10.0, "coat_billow": 10.0,
-                    "right_arm_in_front": True, "staff_deg": -22.0, "staff_glow": 1.25,
-                    "foot_y": 96.5, "halo_mode": "normal", "hand_orb_r": 0.0,
+                    "l_sode_rel_deg": 6.0, "l_fore_rel_deg": -10.0, "coat_billow": 11.0,
+                    "right_arm_in_front": True, "staff_deg": -22.0, "staff_glow": 1.3,
+                    "foot_y": 96.0, "halo_mode": "normal", "hand_orb_r": 0.0,
                 }),
                 (26, {
-                    "pelvis_dx": 4.0, "pelvis_dy": 12.0, "torso_deg": 8.0, "head_rel_deg": -5.0, "mane_rel_deg": -3.0,
-                    "l_thigh_deg": 14.0, "l_shin_deg": 24.0, "r_thigh_deg": -18.0, "r_shin_deg": 24.0,
+                    "pelvis_dx": 3.0, "pelvis_dy": 10.0, "torso_deg": 7.0, "head_rel_deg": -4.0, "mane_rel_deg": -3.0,
+                    "l_thigh_deg": 12.0, "l_shin_deg": 22.0, "l_foot_deg": 6.0,
+                    "r_thigh_deg": -16.0, "r_shin_deg": 22.0, "r_foot_deg": 6.0,
                     "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -18.0,
                     "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -24.0, "coat_billow": 6.0,
                     "right_arm_in_front": True, "staff_deg": -38.0, "staff_glow": 1.05,
@@ -1709,7 +1721,8 @@ def build_row_configs(row_idx):
                 }),
                 (29, {
                     "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
-                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "l_foot_deg": 0.0,
+                    "r_thigh_deg": 0.0, "r_shin_deg": 0.0, "r_foot_deg": 0.0,
                     "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
                     "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
                     "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
@@ -1742,14 +1755,14 @@ def save_debug_sheets(sheet_im):
     picks = [
         (0, 0, "IDLE F00"),
         (1, 7, "WALK F07"),
-        (2, 7, "ATK PRAYER"),
+        (2, 7, "ATK HOVER"),
         (2, 12, "ATK CAST"),
-        (3, 9, "SKILL SLAM"),
-        (3, 16, "SKILL SWEEP"),
+        (3, 10, "SKILL FLOAT"),
+        (3, 15, "SKILL SMITE"),
         (4, 7, "ULT ASCEND"),
-        (4, 12, "ULT SMITE"),
+        (4, 13, "ULT SKY"),
         (7, 6, "CROUCH WARD"),
-        (8, 15, "JUMP GLIDE"),
+        (8, 15, "WING VAULT"),
     ]
     sw = len(picks) * CELL
     sh = CELL + 30

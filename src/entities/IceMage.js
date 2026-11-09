@@ -1,6 +1,6 @@
-import { Fighter } from './Fighter.js?v=30fps36';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps36';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps36';
+import { Fighter } from './Fighter.js?v=30fps37';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps37';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps37';
 
 export class IceMage extends Fighter {
   constructor(x, groundY, facing = 1) {

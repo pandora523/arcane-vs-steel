@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps36';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps36';
+import { Fighter } from './Fighter.js?v=30fps37';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps37';
 
 export class Priestess extends Fighter {
   constructor(x, groundY, facing = -1) {
@@ -45,7 +45,7 @@ export class Priestess extends Fighter {
   }
 
   startJump(enemy, game, customDir = null) {
-    // Sleek Shallow Seraphic Wing-Glide (Row 8 JUMP: max 34px skim — zero steep bounce!)
+    // Soaring 86px Seraphic Wing-Vault & Mid-Air Downward Starlight Smite (Row 8 JUMP!)
     this.dodgeCooldown = this.dodgeMaxCooldown * (0.86 + Math.random() * 0.28);
     this.setState('JUMP');
     this.isInvulnerable = true;
@@ -60,36 +60,36 @@ export class Priestess extends Fighter {
     else if (this.x > ww - 185) dir = -1;
 
     const dist = enemy ? Math.abs(enemy.x - this.x) : 300;
-    const retreatX = this.x - this.facing * 250;
+    const retreatX = this.x - this.facing * 260;
     const pressuredOrCornered =
-      this.x < 310 ||
-      this.x > ww - 310 ||
-      retreatX < 185 ||
-      retreatX > ww - 185 ||
-      dist < 235;
+      this.x < 330 ||
+      this.x > ww - 330 ||
+      retreatX < 190 ||
+      retreatX > ww - 190 ||
+      dist < 245;
 
     this.ascentStartX = this.x;
     this.wingSpearCount = 0;
 
     if (enemy && pressuredOrCornered) {
-      this.dashDuration = 0.58;
+      this.dashDuration = 0.64;
       const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
-      let target = enemy.x + openSideDir * 335;
-      if (Math.abs(target - this.x) < 245) {
+      let target = enemy.x + openSideDir * 355;
+      if (Math.abs(target - this.x) < 260) {
         const crossDir = this.x < enemy.x ? 1 : -1;
-        target = enemy.x + crossDir * 325;
+        target = enemy.x + crossDir * 345;
       }
-      this.ascentTargetX = Math.max(140, Math.min(ww - 140, target));
+      this.ascentTargetX = Math.max(145, Math.min(ww - 145, target));
       this.dashDir = Math.sign(this.ascentTargetX - this.ascentStartX) || 1;
       if (game.vfx) {
-        game.vfx.spawnDamageText(this.x, this.y - 140, 0, false, 'SERAPHIC WING GLIDE!', '#fef08a');
+        game.vfx.spawnDamageText(this.x, this.y - 146, 0, false, 'SERAPHIC WING VAULT!', '#fef08a');
       }
     } else {
-      this.dashDuration = 0.56;
-      this.ascentTargetX = Math.max(140, Math.min(ww - 140, this.x + dir * 315));
+      this.dashDuration = 0.60;
+      this.ascentTargetX = Math.max(145, Math.min(ww - 145, this.x + dir * 340));
       this.dashDir = dir;
       if (game.vfx) {
-        game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, 'SERAPHIC GLIDE!', '#fef08a');
+        game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'SERAPHIC GLIDE!', '#fef08a');
       }
     }
 
@@ -98,9 +98,9 @@ export class Priestess extends Fighter {
     if (game.audio) game.audio.play('holy_heal', this.x);
     this.heal(16, 'WINGS OF GRACE');
     if (game.vfx) {
-      game.vfx.spawnShockwave(this.x, this.groundY, 112, '#fde047', 0.32, true);
-      game.vfx.spawnBurst(this.x, this.y - 92, 14, '#fef9c3', 210, { upBias: 95 });
-      game.vfx.spawnGlyphBurst(this.x, this.y - 96, 7, 'radiant');
+      game.vfx.spawnShockwave(this.x, this.groundY, 118, '#fde047', 0.34, true);
+      game.vfx.spawnBurst(this.x, this.y - 95, 18, '#fef9c3', 230, { upBias: 120 });
+      game.vfx.spawnGlyphBurst(this.x, this.y - 100, 8, 'radiant');
     }
   }
 
@@ -122,144 +122,131 @@ export class Priestess extends Fighter {
   }
 
   onStartDodge(enemy, game, dir) {
-    // Grounded Sanctuary Blink-Glide (Row 6 DASH via isBlinkTeleport: 0px vertical lift!)
+    // Soaring 86px Seraphic Wing-Glide Vault (Row 8 JUMP: unfurls Archangel wings + apex Starlight Smite!)
     const ww = game.renderer.worldWidth;
     const dist = enemy ? Math.abs(enemy.x - this.x) : 300;
-    const retreatX = this.x + dir * 270;
-    const cornered =
-      this.x < 300 ||
-      this.x > ww - 300 ||
-      retreatX < 175 ||
-      retreatX > ww - 175 ||
-      dist < 220;
+    const retreatX = this.x - this.facing * 260;
+    const pressuredOrCornered =
+      this.x < 330 ||
+      this.x > ww - 330 ||
+      retreatX < 190 ||
+      retreatX > ww - 190 ||
+      dist < 245;
 
-    this.isBlinkTeleport = true;
-    this.isFlipVault = false;
-    this.isAngelicAscent = false;
-    this.dashDuration = 0.44;
+    this.isBlinkTeleport = false;
+    this.isAngelicAscent = true;
+    this.isFlipVault = true;
+    this.wallWingCooldown = 3.5;
     this.ascentStartX = this.x;
+    this.wingSpearCount = 0;
 
-    if (enemy && cornered) {
+    if (enemy && pressuredOrCornered) {
+      this.dashDuration = 0.64;
       const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
-      let target = enemy.x + openSideDir * 330;
-      if (Math.abs(target - this.x) < 235) {
+      let target = enemy.x + openSideDir * 355;
+      if (Math.abs(target - this.x) < 260) {
         const crossDir = this.x < enemy.x ? 1 : -1;
-        target = enemy.x + crossDir * 320;
+        target = enemy.x + crossDir * 345;
       }
-      this.ascentTargetX = Math.max(140, Math.min(ww - 140, target));
+      this.ascentTargetX = Math.max(145, Math.min(ww - 145, target));
       this.dashDir = Math.sign(this.ascentTargetX - this.ascentStartX) || 1;
       if (game.vfx) {
-        game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, 'SANCTUARY BLINK!', '#fef08a');
+        game.vfx.spawnDamageText(this.x, this.y - 146, 0, false, 'SERAPHIC WING VAULT!', '#fef08a');
       }
     } else {
-      this.ascentTargetX = Math.max(140, Math.min(ww - 140, this.x + dir * 295));
+      this.dashDuration = 0.60;
+      this.ascentTargetX = Math.max(145, Math.min(ww - 145, this.x + dir * 340));
       this.dashDir = dir;
       if (game.vfx) {
-        game.vfx.spawnDamageText(this.x, this.y - 136, 0, false, 'GRACE STEP!', '#fef08a');
+        game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'SERAPHIC GLIDE!', '#fef08a');
       }
     }
 
     this.vx = 0;
     this.vy = 0;
-    this.y = this.groundY;
     if (game.audio) game.audio.play('holy_heal', this.x);
     this.heal(16, 'WINGS OF GRACE');
     if (game.vfx) {
-      game.vfx.spawnShockwave(this.x, this.groundY, 108, '#fde047', 0.30, true);
-      game.vfx.spawnBurst(this.x, this.y - 92, 14, '#fef9c3', 195, { upBias: 85 });
-      game.vfx.spawnGlyphBurst(this.x, this.y - 96, 6, 'radiant');
+      game.vfx.spawnShockwave(this.x, this.groundY, 118, '#fde047', 0.34, true);
+      game.vfx.spawnBurst(this.x, this.y - 95, 18, '#fef9c3', 230, { upBias: 120 });
+      game.vfx.spawnGlyphBurst(this.x, this.y - 100, 8, 'radiant');
     }
   }
 
   onStartDash(enemy, game, dir) {
+    // Winged Forward Radiant Glide (Row 6 DASH with unfurled Archangel wings skimming 26px above floor!)
     this.isBlinkTeleport = false;
-    this.isAngelicAscent = false;
+    this.isAngelicAscent = true;
     this.isFlipVault = false;
-    this.dashDuration = 0.38;
+    this.dashDuration = 0.42;
     this.dashDir = dir;
     this.vx = dir * 365;
     if (game.audio) game.audio.play('holy_bolt', this.x);
     if (game.vfx) {
       game.vfx.spawnShockwave(this.x, this.y - 95, 76, '#fde047', 0.26, false, true);
       game.vfx.spawnGlyphBurst(this.x, this.y - 95, 5, 'radiant');
-      game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, 'RADIANT GLIDE!', '#fef08a');
+      game.vfx.spawnDamageText(this.x, this.y - 140, 0, false, 'RADIANT WING GLIDE!', '#fef08a');
     }
   }
 
   updateDashOrDodge(dt, enemy, game) {
     const t = this.stateTimer;
 
-    // 1. Grounded Sanctuary Blink-Glide (DODGE: 0px vertical lift, cosine-smoothed floor glide)
-    if (this.state === 'DODGE' && this.isBlinkTeleport) {
-      const u = Math.min(1, t / this.dashDuration);
-      const ease = 0.5 - 0.5 * Math.cos(u * Math.PI);
-      this.x = this.ascentStartX + (this.ascentTargetX - this.ascentStartX) * ease;
-      this.y = this.groundY;
-
-      if (enemy && !enemy.isDead) {
-        this.facing = enemy.x >= this.x ? 1 : -1;
-      }
-
-      if (u > 0.08 && u < 0.92 && game.vfx && Math.random() < 0.72) {
-        game.vfx.spawnParticle({
-          x: this.x + (Math.random() - 0.5) * 28,
-          y: this.groundY - 76 + (Math.random() - 0.5) * 34,
-          vx: -this.dashDir * 60,
-          vy: -24 - Math.random() * 26,
-          size: 4,
-          color: Math.random() > 0.38 ? '#fde047' : '#38bdf8',
-          maxLife: 0.28
-        });
-      }
-
-      if (t >= this.dashDuration) {
-        this.y = this.groundY;
-        this.vx = 0;
-        this.isBlinkTeleport = false;
-        this.isInvulnerable = false;
-        if (game.vfx) {
-          game.vfx.spawnShockwave(this.x, this.groundY, 92, '#fde047', 0.26, true);
-        }
-        this.setState('IDLE');
-      }
-      return;
-    }
-
-    // 2. Sleek Shallow Seraphic Wing-Glide (JUMP: max 34px smooth horizontal wing skim + angled Starlight Smite)
+    // 1. Soaring 86px Seraphic Wing-Vault & Apex Downward Starlight Smite (JUMP / DODGE, Row 8)
     if ((this.state === 'JUMP' || this.state === 'DODGE') && this.isFlipVault) {
       const u = Math.min(1, t / this.dashDuration);
-      const airU = Math.max(0, Math.min(1, (u - 0.06) / 0.86));
-      const horizEase = 0.5 - 0.5 * Math.cos(airU * Math.PI);
-      this.x = this.ascentStartX + (this.ascentTargetX - this.ascentStartX) * horizEase;
+      // F00..F03 (u < 0.10): graceful launch; F04..F24 (0.10 <= u <= 0.86): 86px soaring flight & apex smite; F25..F29: poised landing!
+      const airU = Math.max(0, Math.min(1, (u - 0.10) / 0.76));
 
-      const liftFrac = airU > 0 && airU < 1 ? Math.sin(airU * Math.PI) : 0;
-      this.y = this.groundY - liftFrac * 34;
+      // Smooth horizontal flight with brief apex hover hang-time while channeling downward Starlight Smite
+      const horizU = airU < 0.35
+        ? (airU / 0.35) * 0.44
+        : airU < 0.70
+          ? 0.44 + ((airU - 0.35) / 0.35) * 0.28
+          : 0.72 + ((airU - 0.70) / 0.30) * 0.28;
+      this.x = this.ascentStartX + (this.ascentTargetX - this.ascentStartX) * horizU;
+
+      let liftFrac = 0;
+      if (airU > 0 && airU < 1) {
+        if (airU < 0.28) {
+          const p = airU / 0.28;
+          liftFrac = 1 - Math.pow(1 - p, 2.2);
+        } else if (airU <= 0.68) {
+          const h = (airU - 0.28) / 0.40;
+          liftFrac = 1.0 - Math.sin(h * Math.PI) * 0.06;
+        } else {
+          const p = (airU - 0.68) / 0.32;
+          liftFrac = 1 - Math.pow(p, 1.85);
+        }
+      }
+      this.y = this.groundY - liftFrac * 86;
 
       if (enemy && !enemy.isDead) {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
 
-      if (airU > 0.06 && airU < 0.94 && game.vfx && Math.random() < 0.78) {
+      // Golden feather & starlight trail during flight
+      if (airU > 0.05 && airU < 0.95 && game.vfx && Math.random() < 0.84) {
         game.vfx.spawnParticle({
-          x: this.x + (Math.random() - 0.5) * 32,
-          y: this.y - 88 + (Math.random() - 0.5) * 24,
-          vx: -this.dashDir * 64 + (Math.random() - 0.5) * 24,
-          vy: 18 + Math.random() * 28,
-          size: 4,
+          x: this.x + (Math.random() - 0.5) * 36,
+          y: this.y - 94 + (Math.random() - 0.5) * 28,
+          vx: -this.dashDir * 68 + (Math.random() - 0.5) * 32,
+          vy: 28 + Math.random() * 38,
+          size: 5,
           color: Math.random() > 0.35 ? '#fde047' : '#ffffff',
-          maxLife: 0.30
+          maxLife: 0.34
         });
       }
 
-      // Synced with Row 8 F14..F16 scepter starburst cast (u >= 0.46)
-      if (u >= 0.46 && !this.didActionFrame && enemy && !enemy.isDead) {
+      // Apex downward (+35°) Starlight Smite (holy_light) during mid-air hover (Row 8 F14..F16, u >= 0.48)
+      if (u >= 0.48 && !this.didActionFrame && enemy && !enemy.isDead) {
         this.didActionFrame = true;
         this.wingSpearCount++;
         if (game.audio) game.audio.play('holy_bolt', this.x);
-        const sx = this.x + this.facing * 46;
-        const sy = this.y - 108;
+        const sx = this.x + this.facing * 44;
+        const sy = this.y - 110;
         const dx = enemy.x - sx;
-        const dy = (enemy.y - 98) - sy;
+        const dy = (enemy.y - 96) - sy;
         const d = Math.hypot(dx, dy) || 1;
         game.vfx.spawnProjectile({
           x: sx,
@@ -275,8 +262,8 @@ export class Priestess extends Fighter {
           isMeteor: false
         });
         const shotAng = Math.atan2(dy, dx);
-        game.vfx.spawnSlash(sx, sy, 52, shotAng - 0.75, shotAng + 0.75, '#fde047', 0.22);
-        game.vfx.spawnShockwave(sx, sy, 62, '#fde047', 0.22, false, false);
+        game.vfx.spawnSlash(sx, sy, 56, shotAng - 0.8, shotAng + 0.8, '#fde047', 0.24);
+        game.vfx.spawnShockwave(sx, sy, 64, '#fde047', 0.24, false, false);
         game.vfx.spawnGlyphBurst(sx, sy, 5, 'radiant');
       }
 
@@ -287,32 +274,33 @@ export class Priestess extends Fighter {
         this.isFlipVault = false;
         this.isInvulnerable = false;
         if (game.vfx) {
-          game.vfx.spawnShockwave(this.x, this.groundY, 88, '#fde047', 0.26, true);
+          game.vfx.spawnShockwave(this.x, this.groundY, 96, '#fde047', 0.28, true);
         }
         this.setState('IDLE');
       }
       return;
     }
 
-    // 3. Forward Radiant Feather-Skim Dash (Row 6 DASH: subtle 5px skim)
-    const uDash = Math.min(1, t / (this.dashDuration || 0.38));
-    this.x += this.dashDir * 355 * (1 - 0.25 * uDash) * dt;
-    this.y = this.groundY - Math.sin(uDash * Math.PI) * 5;
+    // 2. Forward Radiant Wing-Glide Dash (Row 6 DASH: smooth 26px winged flight skim)
+    const uDash = Math.min(1, t / (this.dashDuration || 0.42));
+    this.x += this.dashDir * 355 * (1 - 0.22 * uDash) * dt;
+    this.y = this.groundY - Math.sin(uDash * Math.PI) * 26;
 
-    if (game.vfx && Math.random() < 0.68) {
+    if (game.vfx && Math.random() < 0.72) {
       game.vfx.spawnParticle({
         x: this.x - this.dashDir * 16,
-        y: this.y - 88 + (Math.random() - 0.5) * 32,
-        vx: -this.dashDir * 68,
-        vy: -28 - Math.random() * 28,
-        size: 4,
-        color: Math.random() > 0.45 ? '#fde047' : '#38bdf8',
-        maxLife: 0.28
+        y: this.y - 94 + (Math.random() - 0.5) * 34,
+        vx: -this.dashDir * 70,
+        vy: -24 - Math.random() * 28,
+        size: 4.5,
+        color: Math.random() > 0.42 ? '#fde047' : '#38bdf8',
+        maxLife: 0.30
       });
     }
 
     if (t >= this.dashDuration) {
       this.y = this.groundY;
+      this.isAngelicAscent = false;
       this.isBlinkTeleport = false;
       this.isInvulnerable = false;
       this.setState('IDLE');
@@ -398,20 +386,7 @@ export class Priestess extends Fighter {
         game.vfx &&
         game.vfx.projectiles.some((p) => p.owner === enemy && Math.abs(p.x - this.x) < 145);
       if ((dist < 225 || (nearWall && dist < 295) || incomingProj) && this.dodgeCooldown <= 0) {
-        this.evadeToggle++;
-        // Alternate smoothly between Grounded Sanctuary Blink (DODGE) and Shallow 34px Wing-Glide (JUMP)
-        if (this.evadeToggle % 2 === 1 && !incomingProj) {
-          this.dodgeCooldown = this.dodgeMaxCooldown * (0.86 + Math.random() * 0.28);
-          this.setState('DODGE');
-          this.isInvulnerable = true;
-          let dir = -this.facing;
-          if (this.x < 185) dir = 1;
-          else if (this.x > ww - 185) dir = -1;
-          this.dashDir = dir;
-          this.onStartDodge(enemy, game, dir);
-        } else {
-          this.startJump(enemy, game);
-        }
+        this.startJump(enemy, game);
         return;
       }
 
@@ -436,30 +411,31 @@ export class Priestess extends Fighter {
   }
 
   updateAutoAttack(dt, enemy, game) {
-    // Grounded Sacred Starlight Prayer Cast (Row 2 AUTO_ATTACK: 0px vertical float!)
+    // Graceful Seraphic Prayer-Cast Levitation (floats 20px above the floor during cast apex, then settles smoothly!)
     const t = this.stateTimer;
-    this.y = this.groundY;
+    const castLift = t < 0.78 ? Math.sin((t / 0.78) * Math.PI) * 20 : 0;
+    this.y = this.groundY - castLift;
 
     if (t < 0.34) {
-      this.torsoAngle = -this.facing * 0.08 * (t / 0.34);
-      if (game.vfx && Math.random() < 0.60) {
+      this.torsoAngle = -this.facing * 0.12 * (t / 0.34);
+      if (game.vfx && Math.random() < 0.65) {
         const a = t * 22;
         game.vfx.spawnParticle({
           x: this.x + this.facing * 46 + Math.cos(a) * 20,
           y: this.y - 118 + Math.sin(a) * 20,
           vx: -Math.cos(a) * 42,
-          vy: -Math.sin(a) * 42 - 14,
-          size: 4,
+          vy: -Math.sin(a) * 42 - 16,
+          size: 4.5,
           color: Math.random() > 0.4 ? '#fef9c3' : '#fde047',
-          maxLife: 0.24
+          maxLife: 0.25
         });
       }
     } else if (t < 0.70) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.shotCombo++;
-        this.vx -= this.facing * 42;
-        this.torsoVel = -this.facing * 5;
+        this.vx -= this.facing * 44;
+        this.torsoVel = -this.facing * 6;
         if (game.audio) game.audio.play('holy_bolt', this.x);
 
         const spawnX = this.x + this.facing * 52;
@@ -487,7 +463,7 @@ export class Priestess extends Fighter {
           isMeteor: false
         });
 
-        // Every 3rd cast: "DAWN GRACE" — mends Seraphina's wounds, fires a twin Star-Bolt, and calls down a Heaven's Valkyrie Light-Spear!
+        // Every 3rd cast: "DAWN GRACE" — mends Seraphina's wounds, unfurls radiant wings, fires a twin Star-Bolt, and calls down a Heaven's Valkyrie Light-Spear!
         if (isGraceCast) {
           this.heal(17, 'DAWN GRACE');
           game.vfx.spawnProjectile({
@@ -534,20 +510,21 @@ export class Priestess extends Fighter {
 
   updateSkill(dt, enemy, game) {
     // SIGNATURE PRIESTESS SKILL: "DIVINE SANCTUARY & VALKYRIE SPEAR JUDGMENT"
-    // Grounded Sanctuary Consecration Slam (Row 3 F09) -> Forward Judgment Sweep (Row 3 F16) — 0px float!
+    // Graceful 44px Seraphic Winged Levitation above her Grounded Sanctuary Cathedral Seal!
     const t = this.stateTimer;
-    this.y = this.groundY;
+    const skillLift = t < 0.92 ? Math.sin((t / 0.92) * Math.PI) * 44 : 0;
+    this.y = this.groundY - skillLift;
 
-    if (t < 0.24) {
+    if (t < 0.18) {
       this.didSanctuaryHeal = false;
-    } else if (t >= 0.26 && !this.didSanctuaryHeal) {
-      // Synced with Row 3 F08..F09 Scepter-Pommel Sanctuary Floor Consecration Slam!
+    } else if (t >= 0.20 && !this.didSanctuaryHeal) {
+      // Synced with Row 3 F06..F10 Airborne Sanctuary Benediction!
       this.didSanctuaryHeal = true;
       if (game.audio) game.audio.play('holy_heal', this.x);
       this.heal(62, 'SANCTUARY');
       game.vfx.spawnShockwave(this.x, this.groundY, 165, '#4ade80', 0.44, true);
-      game.vfx.spawnShockwave(this.x, this.y - 95, 130, '#fde047', 0.38);
-      game.vfx.spawnGlyphBurst(this.x, this.y - 105, 10, 'heal');
+      game.vfx.spawnShockwave(this.x, this.y - 102, 130, '#fde047', 0.38);
+      game.vfx.spawnGlyphBurst(this.x, this.y - 110, 10, 'heal');
 
       // Sanctuary Repulsion Wave pushes encroaching melee attackers back!
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 215) {
@@ -556,8 +533,8 @@ export class Priestess extends Fighter {
       }
     }
 
-    if (t >= 0.48 && !this.didActionFrame && enemy) {
-      // Synced with Row 3 F15..F16 Forward Sunburst Scepter Judgment Sweep!
+    if (t >= 0.46 && !this.didActionFrame && enemy) {
+      // Synced with Row 3 F14..F15 Airborne Sunburst Scepter Judgment Sweep!
       this.didActionFrame = true;
       this.vx -= this.facing * 46;
       if (game.audio) game.audio.play('holy_smite', enemy.x);
@@ -649,8 +626,8 @@ export class Priestess extends Fighter {
   }
 
   updateUltimate(dt, enemy, game) {
-    // 3-STAGE GROUNDED ARCHANGEL ULTIMATE: "SERAPHIC APOTHEOSIS"
-    // Plays dedicated Row 4 ULTIMATE stance planted inside her Cathedral Sanctuary Seal (0px awkward float!)
+    // 3-STAGE HIGH-SKY WINGED ARCHANGEL ULTIMATE: "SERAPHIC APOTHEOSIS"
+    // Ascends 122px into the heavens on flapping Archangel wings while playing dedicated Row 4 ULTIMATE!
     const t = this.stateTimer;
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
     const targetX = enemy ? enemy.x : ww * 0.5;
@@ -659,14 +636,24 @@ export class Priestess extends Fighter {
     this.isAngelicAscent = false;
     this.vx = 0;
     this.vy = 0;
-    this.y = this.groundY;
 
     if (t < 0.08) {
       this.didUltMiracle = false;
       this.ultChakramStep = 0;
     }
 
-    // Stage 1: Miracle Benediction Self-Heal + Golden Sanctuary Rings as 6-Pinion Seraphim Wings unfurl!
+    // Majestic Archangel Ascension Curve (ascends 122px into the sky, hovers serenely, then glides down on feathered wings)
+    let lift = 0;
+    if (t < 0.38) {
+      lift = Math.sin((t / 0.38) * (Math.PI * 0.5)) * 122;
+    } else if (t < 1.18) {
+      lift = 122 + Math.sin((t - 0.38) * 8.0) * 7;
+    } else {
+      lift = Math.max(0, Math.cos(((t - 1.18) / 0.34) * (Math.PI * 0.5)) * 122);
+    }
+    this.y = this.groundY - lift;
+
+    // Stage 1: Miracle Benediction Self-Heal + Golden Sanctuary Rings while ascending on Archangel wings!
     if (t >= 0.16 && !this.didUltMiracle) {
       this.didUltMiracle = true;
       if (game.audio) game.audio.play('holy_heal', this.x);
@@ -808,9 +795,15 @@ export class Priestess extends Fighter {
   }
 
   drawSeraphimVFX(ctx, sprites, isReflection, renderer = null) {
-    if (isReflection) return;
+    if (isReflection || this.isDead) return;
+    const isDawnGraceAuto =
+      this.state === 'AUTO_ATTACK' &&
+      (this.shotCombo + (this.didActionFrame ? 0 : 1)) % 3 === 0;
     const showWings =
-      this.isAngelicAscent || this.state === 'ULTIMATE' || this.state === 'SKILL';
+      this.isAngelicAscent ||
+      this.state === 'ULTIMATE' ||
+      this.state === 'SKILL' ||
+      isDawnGraceAuto;
     if (!showWings) return;
 
     let env = 1.0;
@@ -823,20 +816,24 @@ export class Priestess extends Fighter {
       const u = Math.min(1, this.stateTimer / dur);
       env = Math.min(1, Math.sin(u * Math.PI) * 1.85);
     } else if (this.isAngelicAscent) {
-      const dur = this.dashDuration || 0.58;
+      const dur = this.dashDuration || 0.60;
       const u = Math.min(1, this.stateTimer / dur);
       env = Math.min(1, Math.sin(u * Math.PI) * 1.65);
+    } else if (isDawnGraceAuto) {
+      const dur = this.autoDuration || 0.90;
+      const u = Math.min(1, this.stateTimer / dur);
+      env = Math.min(0.88, Math.sin(u * Math.PI) * 1.35);
     }
     if (env <= 0.02) return;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     const isFullArchangel = this.isAngelicAscent || this.state === 'ULTIMATE';
-    const cx = -4;
-    const cy = -114;
+    const cx = -6;
+    const cy = -124;
     const vfxSheet = sprites && sprites.vfx;
 
-    // 0. Grounded Stepped 4x4 Pixel-Art Sacred Sanctuary Cathedral Floor Mandala (anchored at groundY!)
+    // 0. Grounded Stepped 4x4 Pixel-Art Sacred Sanctuary Cathedral Floor Mandala (stays anchored on groundY while Seraphina flies!)
     const groundDy = Math.round((this.groundY - this.y) / 4) * 4;
     ctx.save();
     ctx.translate(0, groundDy - 4);
@@ -884,7 +881,7 @@ export class Priestess extends Fighter {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const bigR = (isFullArchangel ? 255 : 205) * (0.85 + 0.15 * env);
-      ctx.globalAlpha = (isFullArchangel ? 0.42 : 0.34) * env;
+      ctx.globalAlpha = (isFullArchangel ? 0.40 : 0.32) * env;
       ctx.drawImage(renderer.glowGold, cx - bigR, cy - bigR, bigR * 2, bigR * 2);
       if (renderer.glowEmerald) {
         const graceR = (isFullArchangel ? 180 : 145) * (0.85 + 0.15 * env);
@@ -901,23 +898,28 @@ export class Priestess extends Fighter {
       const midY = dy + dh * 0.5;
       if (renderer && renderer.glowGold) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(1, alpha * 0.30);
-        const gR = Math.max(dw, dh) * 0.75;
+        ctx.globalAlpha = Math.min(1, alpha * 0.28);
+        const gR = Math.max(dw, dh) * 0.74;
         ctx.drawImage(renderer.glowGold, midX - gR, midY - gR, gR * 2, gR * 2);
       }
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.28);
+      ctx.globalAlpha = Math.min(1, alpha * 0.26);
       ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(midX - auraW * 0.5), Math.round(midY - auraH * 0.5), auraW, auraH);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(1, alpha * 0.96);
+      ctx.globalAlpha = Math.min(1, alpha * 0.94);
       ctx.drawImage(vfxSheet, sx, sy, sw, sh, Math.round(dx), Math.round(dy), Math.round(dw), Math.round(dh));
     };
 
     const col = Math.floor(this.stateTimer * 30) % 30;
 
-    // 2. 30fps Stained-Glass Cathedral Rose Mandala behind the wings (Row 3: col * 208, 624, 208, 208)
-    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
-      const haloSize = Math.round((isFullArchangel ? 276 : 228) * (0.86 + 0.14 * env));
+    // 2. 30fps Stained-Glass Cathedral Rose Mandala behind the wings during SKILL & ULTIMATE (Row 3: col * 208, 624, 208, 208)
+    if (
+      (this.state === 'SKILL' || this.state === 'ULTIMATE') &&
+      vfxSheet &&
+      vfxSheet.complete &&
+      vfxSheet.naturalWidth > 0
+    ) {
+      const haloSize = Math.round((this.state === 'ULTIMATE' ? 276 : 224) * (0.86 + 0.14 * env));
       const gateBob = Math.round(Math.sin(this.haloPhase * 2.4) * 4);
       ctx.save();
       ctx.translate(cx, cy + gateBob);
@@ -930,12 +932,12 @@ export class Priestess extends Fighter {
         -haloSize * 0.5,
         haloSize,
         haloSize,
-        (isFullArchangel ? 0.96 : 0.88) * env
+        (this.state === 'ULTIMATE' ? 0.95 : 0.84) * env
       );
       ctx.restore();
     }
 
-    // 3. Authentic 30-Frame 104x104 -> 2x HD-2D Pixel-Art Feathered Seraphim Angel Wings (320x232 per cell)
+    // 3. Authentic 30-Frame 16-Bit HD-2D Feathered Archangel Wings (320x232 per cell, root-locked to shoulder blades -6, -124!)
     const wingSheet = sprites && sprites.wings;
     if (wingSheet && wingSheet.complete && wingSheet.naturalWidth > 0) {
       const cellW = 320;
@@ -947,17 +949,20 @@ export class Priestess extends Fighter {
         recoilX = -6 + Math.round((Math.sin(this.hurtTimer * 60) * 4) / 2) * 2;
         recoilY = -2;
       }
-      const scaleW = 0.84 + 0.16 * env;
+      const scaleW = 0.86 + 0.14 * env;
+      const scaleH = 0.90 + 0.10 * env;
       const drawW = Math.round(cellW * scaleW);
-      const drawH = Math.round(cellH * (0.90 + 0.10 * env));
-      const dx = Math.round(-drawW * 0.5 + recoilX);
-      const dy = Math.round(-drawH - 16 + recoilY);
+      const drawH = Math.round(cellH * scaleH);
+      const shoulderX = -6 + recoilX;
+      const shoulderY = -124 + recoilY;
+      const dx = Math.round(shoulderX - drawW * 0.5);
+      const dy = Math.round(shoulderY - drawH * (88 / 232));
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.22 * env;
-      ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx - 4, dy - 4, drawW + 8, drawH + 8);
+      ctx.globalAlpha = 0.18 * env;
+      ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx - 2, dy - 2, drawW + 4, drawH + 4);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.98 * env;
+      ctx.globalAlpha = Math.min(1, 0.98 * env);
       ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, drawW, drawH);
     }
 
@@ -987,10 +992,10 @@ export class Priestess extends Fighter {
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.translate(Math.round(this.x / 4) * 4, Math.round((this.y - 110) / 4) * 4);
+    ctx.translate(Math.round(this.x / 4) * 4, Math.round((this.y - 120) / 4) * 4);
     ctx.scale(this.facing, 1);
 
-    const orbitR = 132 * (0.88 + 0.12 * env);
+    const orbitR = 136 * (0.88 + 0.12 * env);
 
     // 1. Spinning Double-Ringed Golden Ophanim Wheel around Seraphina (Stepped 4x4 Pixel-Art Ring!)
     ctx.save();
@@ -1064,7 +1069,7 @@ export class Priestess extends Fighter {
     const scaleDir = this.facing;
     const groundPlantOffset = 4;
 
-    // Crisp Golden-Sapphire Seraphic Echo Afterimages during Sanctuary Blink, Wing-Glide & Radiant Dash
+    // Crisp Golden-Sapphire Seraphic Echo Afterimages during Wing-Vault, Seraphic Glide & Radiant Dash
     if (
       !isReflection &&
       !this.isDead &&
@@ -1076,8 +1081,8 @@ export class Priestess extends Fighter {
         ctx.save();
         ctx.globalAlpha = g === 2 ? 0.16 : 0.28;
         ctx.translate(
-          Math.round(this.x - trailSign * g * 20),
-          Math.round(this.y + groundPlantOffset + (this.state === 'JUMP' ? g * 3 : 0))
+          Math.round(this.x - trailSign * g * 22),
+          Math.round(this.y + groundPlantOffset + (this.isFlipVault ? g * 4 : 0))
         );
         ctx.scale(scaleDir, 1);
         PixelForge.drawAfterimageFrame(ctx, sprites, Math.max(0, frameIdx - g), w, h);
