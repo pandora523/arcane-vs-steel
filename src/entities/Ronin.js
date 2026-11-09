@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps29';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps29';
+import { Fighter } from './Fighter.js?v=30fps30';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps30';
 
 export class Ronin extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -617,13 +617,12 @@ export class Ronin extends Fighter {
       return;
     }
 
-    // Phase 1 (0.18s .. 0.48s -> Row 3 F07..F15): 3 Continuous High-Velocity Aerodynamic Spear-Lunges!
-    // Each pass smoothly interpolates (this.x, this.y) through the enemy so Kaze-Maru's razor-sharp
-    // spear body glides continuously across the screen instead of teleporting in discrete jumps.
+    // Phase 1 (0.18s .. 0.48s -> Row 3 F07..F15): 3 Continuous High-Velocity Grounded Spear-Lunges!
+    // Each pass smoothly interpolates this.x across the ground through the enemy (zero lifting into the air).
     const passWaypoints = [
       { x: this._skillOriginX || this.x, y: this.groundY },
-      { x: Math.max(85, Math.min(ww - 85, center + 125)), y: this.groundY - 46 },
-      { x: Math.max(85, Math.min(ww - 85, center - 120)), y: this.groundY - 78 },
+      { x: Math.max(85, Math.min(ww - 85, center + 125)), y: this.groundY },
+      { x: Math.max(85, Math.min(ww - 85, center - 120)), y: this.groundY },
       { x: Math.max(85, Math.min(ww - 85, center + 102)), y: this.groundY }
     ];
 
@@ -637,37 +636,35 @@ export class Ronin extends Fighter {
       const p0 = passWaypoints[passIdx];
       const p1 = passWaypoints[passIdx + 1];
       this.x = p0.x + (p1.x - p0.x) * easeU;
-      this.y = p0.y + (p1.y - p0.y) * easeU;
+      this.y = this.groundY;
       this.vx = 0;
       this.vy = 0;
 
       const dx = p1.x - p0.x;
-      const dy = p1.y - p0.y;
       this.facing = dx >= 0 ? 1 : -1;
-      // Row 3 F07..F15 is hand-sculpted at a +10 deg forward spear angle; add dynamic pitch along vertical slope
-      this.divePitchRad = Math.max(-0.42, Math.min(0.45, Math.atan2(dy, Math.abs(dx)) * 0.85));
+      this.divePitchRad = 0;
 
-      // Spawn continuous ribbon of razor-sharp spear afterimages
+      // Spawn continuous ribbon of razor-sharp grounded spear afterimages
       this.afterimageSpawnAccum += dt;
       if (this.afterimageSpawnAccum >= 0.024) {
         this.afterimageSpawnAccum = 0;
         const col = Math.min(15, Math.max(7, 7 + Math.floor(spearProgress * 8)));
-        this.spawnAfterimage(this.x, this.y, this.facing, 3, col, 0.28, this.divePitchRad);
+        this.spawnAfterimage(this.x, this.y, this.facing, 3, col, 0.28, 0);
       }
 
       // Trigger slash lines, crescent waves, and multi-hit strikes at the start of each spear pass
       const targetStep = passIdx + 2; // 2, 3, 4
       if (this._zantetsuStep < targetStep) {
         this._zantetsuStep = targetStep;
-        this.addSlashLine(p0.x, p0.y - 68, p1.x, p1.y - 68, 0.64);
-        this.spawnVfxAnim(0, center, (p0.y + p1.y) * 0.5 - 72, 208, 208, 0.28, {
+        this.addSlashLine(p0.x, this.groundY - 68, p1.x, this.groundY - 68, 0.64);
+        this.spawnVfxAnim(0, center, this.groundY - 72, 208, 208, 0.28, {
           vx: this.facing * 280,
           flipX: this.facing < 0,
           glowColor: passIdx % 2 === 0 ? 'cyan' : 'purple'
         });
         this.spawnPixelShockwave(
           center,
-          (p0.y + p1.y) * 0.5 - 70,
+          this.groundY - 70,
           112,
           passIdx % 2 === 0 ? 'cyan' : 'purple',
           0.26,
@@ -684,7 +681,7 @@ export class Ronin extends Fighter {
     // Phase 2 (0.48s .. 0.64s -> Row 3 F16..F20): Deceleration Slide-Brake
     if (t >= 0.48 && t < 0.64) {
       this.y = this.groundY;
-      this.divePitchRad *= Math.pow(0.001, dt);
+      this.divePitchRad = 0;
       if (enemy && !enemy.isDead) {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
@@ -750,26 +747,26 @@ export class Ronin extends Fighter {
     this._ultTargetX = targetX;
     const dir = targetX >= (this._ultOriginX || this.x) ? 1 : -1;
 
-    // Continuous Omnislash Diving Waypoints around targetX (6 razor-sharp diagonal dives + high Heaven-Split apex)
+    // Continuous Grounded Omnislash Spear Waypoints around targetX (100% grounded on this.groundY — zero lifting!)
     const clampX = (xVal) => Math.max(85, Math.min(ww - 85, xVal));
     const diveWaypoints = [
-      { x: clampX(targetX - dir * 130), y: this.groundY - 125 }, // 0: Initial high dive perch
-      { x: clampX(targetX + dir * 130), y: this.groundY - 22 },  // 1: Dive 1 (top-left -> bottom-right)
-      { x: clampX(targetX - dir * 125), y: this.groundY - 140 }, // 2: Dive 2 (bottom-right -> high-left)
-      { x: clampX(targetX + dir * 125), y: this.groundY - 38 },  // 3: Dive 3 (high-left -> low-right)
-      { x: clampX(targetX - dir * 135), y: this.groundY - 30 },  // 4: Dive 4 (low-right -> low-left)
-      { x: clampX(targetX + dir * 130), y: this.groundY - 148 }, // 5: Dive 5 (low-left -> high-right)
-      { x: clampX(targetX - dir * 120), y: this.groundY - 45 }   // 6: Dive 6 (high-right -> low-left)
+      { x: clampX(targetX - dir * 130), y: this.groundY }, // 0: Grounded Iaido charge position
+      { x: clampX(targetX + dir * 130), y: this.groundY }, // 1: Grounded Spear Pass 1 (left -> right)
+      { x: clampX(targetX - dir * 125), y: this.groundY }, // 2: Grounded Spear Pass 2 (right -> left)
+      { x: clampX(targetX + dir * 125), y: this.groundY }, // 3: Grounded Spear Pass 3 (left -> right)
+      { x: clampX(targetX - dir * 135), y: this.groundY }, // 4: Grounded Spear Pass 4 (right -> left)
+      { x: clampX(targetX + dir * 130), y: this.groundY }, // 5: Grounded Spear Pass 5 (left -> right)
+      { x: clampX(targetX - dir * 120), y: this.groundY }  // 6: Grounded Spear Pass 6 (right -> left)
     ];
 
-    // Stage 0 (0.00s .. 0.26s -> Row 4 F00..F04): Susanoo Storm-God Awakening & Smooth Ascending Leap to Perch 0
+    // Stage 0 (0.00s .. 0.26s -> Row 4 F00..F04): Grounded Susanoo Storm-God Awakening & Coiled Slide to Waypoint 0
     if (t < 0.26) {
       if (this._omniStep === 0) {
         this._omniStep = 1;
         this._ultOriginX = this.x;
-        this._ultOriginY = this.y;
+        this._ultOriginY = this.groundY;
         // Manifest Row-3 Colossal Susanoo Storm-God Avatar & 8-Drum Halo behind Kaze-Maru!
-        this.spawnVfxAnim(3, this.x, this.y - 108, 248, 248, 1.55, {
+        this.spawnVfxAnim(3, this.x, this.groundY - 108, 248, 248, 1.55, {
           followOwner: true,
           offsetX: 0,
           offsetY: -108,
@@ -785,19 +782,17 @@ export class Ronin extends Fighter {
       const leapU = Math.min(1, t / 0.26);
       const easeLeap = 1 - Math.pow(1 - leapU, 2.2);
       this.x = this._ultOriginX + (diveWaypoints[0].x - this._ultOriginX) * easeLeap;
-      this.y = this._ultOriginY + (diveWaypoints[0].y - this._ultOriginY) * easeLeap;
+      this.y = this.groundY;
       this.vx = 0;
       this.vy = 0;
       this.facing = targetX >= this.x ? 1 : -1;
-      this.divePitchRad = leapU * 0.18;
+      this.divePitchRad = 0;
       return;
     }
 
-    // Stage 1 (0.26s .. 0.92s -> Row 4 F05..F15): 6 Continuous High-Velocity Diagonal Omnislash Dives!
-    // Kaze-Maru's entire body is in the hand-sculpted diagonal diving spear posture (Row 4 F05..F14) and glides
-    // continuously at high velocity through the enemy along each diagonal chord!
+    // Stage 1 (0.26s .. 0.92s -> Row 4 F05..F15): 6 Continuous High-Velocity Grounded Omnislash Spear-Lunges!
     if (t >= 0.26 && t < 0.92) {
-      const omniU = (t - 0.26) / 0.66; // 0..1 across 6 continuous dives
+      const omniU = (t - 0.26) / 0.66; // 0..1 across 6 continuous grounded passes
       const diveFloat = omniU * 6.0;
       const diveIdx = Math.min(5, Math.floor(diveFloat));
       const localU = diveFloat - diveIdx;
@@ -806,31 +801,28 @@ export class Ronin extends Fighter {
       const p0 = diveWaypoints[diveIdx];
       const p1 = diveWaypoints[diveIdx + 1];
       this.x = p0.x + (p1.x - p0.x) * easeDive;
-      this.y = p0.y + (p1.y - p0.y) * easeDive;
+      this.y = this.groundY;
       this.vx = 0;
       this.vy = 0;
 
       const dx = p1.x - p0.x;
-      const dy = p1.y - p0.y;
       this.facing = dx >= 0 ? 1 : -1;
-      // Row 4 F05..F14 is hand-sculpted at a +22 deg downward-right diagonal dive;
-      // dynamically adjust divePitchRad so the spear tip points strictly along (dx, dy)!
-      const desiredAngle = Math.atan2(dy, Math.abs(dx));
-      this.divePitchRad = Math.max(-0.65, Math.min(0.55, desiredAngle - 0.38));
+      this.divePitchRad = 0;
 
-      // Continuous ribbon of diving spear afterimages
+      // Continuous ribbon of grounded spear afterimages
       this.afterimageSpawnAccum += dt;
       if (this.afterimageSpawnAccum >= 0.022) {
         this.afterimageSpawnAccum = 0;
         const col = Math.min(14, Math.max(5, 5 + Math.floor(omniU * 9)));
-        this.spawnAfterimage(this.x, this.y, this.facing, 4, col, 0.30, this.divePitchRad);
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, col, 0.30, 0);
       }
 
-      // Trigger slash beam, crescent wave & damage as Kaze-Maru pierces through the center of each dive
+      // Trigger horizontal slash beam, crescent wave & damage as Kaze-Maru pierces through the enemy
       const stepTrigger = diveIdx + 2; // 2..7
       if (this._omniStep < stepTrigger && localU >= 0.25) {
         this._omniStep = stepTrigger;
-        this.addSlashLine(p0.x, p0.y - 54, p1.x, p1.y - 54, 0.52);
+        const slashYOffset = 58 + (diveIdx % 3) * 14;
+        this.addSlashLine(p0.x, this.groundY - slashYOffset, p1.x, this.groundY - slashYOffset, 0.52);
         this.spawnVfxAnim(0, targetX, this.groundY - 82, 212, 212, 0.26, {
           vx: this.facing * 260,
           flipX: this.facing < 0,
@@ -860,59 +852,54 @@ export class Ronin extends Fighter {
         }
       }
       this._ultApexStartX = this.x;
-      this._ultApexStartY = this.y;
+      this._ultApexStartY = this.groundY;
       return;
     }
 
-    // Stage 2A (0.92s .. 1.06s -> Row 4 F15..F17): High-Altitude Ascent to the Heaven-Split Apex!
+    // Stage 2A (0.92s .. 1.06s -> Row 4 F15..F17): Grounded Godspeed Coil before Final Pierce!
     const apexX = clampX(targetX - dir * 142);
-    const apexY = this.groundY - 215;
     const landX = clampX(targetX + dir * 58);
-    const landY = this.groundY;
 
     if (t >= 0.92 && t < 1.06) {
       const ascU = (t - 0.92) / 0.14;
       const easeAsc = 1 - Math.pow(1 - ascU, 2.0);
       this.x = (this._ultApexStartX || this.x) + (apexX - (this._ultApexStartX || this.x)) * easeAsc;
-      this.y = (this._ultApexStartY || this.y) + (apexY - (this._ultApexStartY || this.y)) * easeAsc;
+      this.y = this.groundY;
       this.facing = dir;
-      // Lock body into razor-sharp downward diving spear angle aiming straight at the enemy!
-      this.divePitchRad = 0.22 * easeAsc;
+      this.divePitchRad = 0;
       return;
     }
 
-    // Stage 2B (1.06s .. 1.32s -> Row 4 F18..F21): FULL-BODY RAZOR-SHARP HEAVEN-SPLIT DIVE (>--->>)!
-    // Kaze-Maru plunges continuously like a supersonic lightning spear from (apexX, apexY) straight
-    // through the enemy into the ground at (landX, landY)!
+    // Stage 2B (1.06s .. 1.32s -> Row 4 F18..F21): FULL-BODY GROUNDED GODSPEED THUNDER-SPEAR PIERCE (>--->>)!
+    // Kaze-Maru blasts horizontally across the floor like a supersonic lightning spear straight through the enemy!
     if (t >= 1.06 && t < 1.32) {
       const diveU = Math.min(1, (t - 1.06) / 0.26);
       const easePlunge = diveU * diveU * (3 - 2 * diveU);
       this.x = apexX + (landX - apexX) * easePlunge;
-      this.y = apexY + (landY - apexY) * easePlunge;
+      this.y = this.groundY;
       this.vx = 0;
       this.vy = 0;
       this.facing = dir;
-      // Row 4 F15..F21 is hand-sculpted at a +36 deg steep downward spear dive; add +0.18 rad pitch for razor alignment
-      this.divePitchRad = 0.18;
+      this.divePitchRad = 0;
 
       this.afterimageSpawnAccum += dt;
       if (this.afterimageSpawnAccum >= 0.018) {
         this.afterimageSpawnAccum = 0;
         const col = Math.min(21, Math.max(15, 15 + Math.floor(diveU * 6)));
-        this.spawnAfterimage(this.x, this.y, this.facing, 4, col, 0.36, this.divePitchRad);
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, col, 0.36, 0);
       }
       return;
     }
 
-    // Stage 3 (1.32s -> Row 4 F22..F25): SUSANOO HEAVEN-SPLIT IMPACT CRATER, SKY-ODACHI & LIGHTNING DRAGON!
+    // Stage 3 (1.32s -> Row 4 F22..F25): SUSANOO GROUNDED THUNDER-CLEAVE IMPACT, SKY-ODACHI & LIGHTNING DRAGON!
     if (t >= 1.32 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
       this.x = landX;
       this.y = this.groundY;
       this.divePitchRad = 0;
 
-      // Diagonal Heaven-Split spear beam + vertical lightning pillar line
-      this.addSlashLine(apexX, apexY - 36, landX, this.groundY - 12, 0.56);
+      // Horizontal Godspeed spear beam + vertical lightning pillar line
+      this.addSlashLine(apexX, this.groundY - 64, landX, this.groundY - 64, 0.56);
       this.addSlashLine(targetX, this.groundY - 265, targetX, this.groundY, 0.54);
 
       // Erupt Row-1 Impaled Raijin Sky-Odachi & 8-Drum Crater + Row-2 Coiling Lightning Dragon-Pillar!
@@ -1219,15 +1206,14 @@ export class Ronin extends Fighter {
 
     const isHeavenSplit = this.state === 'ULTIMATE' && this.stateTimer >= 1.06;
     const snap4 = (v) => Math.round(v / 4) * 4;
-    const baseAngle =
-      isHeavenSplit ? 0.68 : isUltDive ? 0.38 + this.divePitchRad : 0.16 + this.divePitchRad;
+    const baseAngle = 0.0;
     const ux = Math.cos(baseAngle) * this.facing;
     const uy = Math.sin(baseAngle);
     const nx = -uy;
     const ny = ux;
 
     const cx = this.x;
-    const cy = this.y - 68;
+    const cy = this.y - 62;
     const tipX = cx + ux * 68;
     const tipY = cy + uy * 68;
     const phase = this.stateTimer * 35.0;
@@ -1436,15 +1422,11 @@ export class Ronin extends Fighter {
     const h = 208;
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
 
-    const groundPlantOffset = 0;
-    const walkBob =
-      !isReflection && this.state === 'WALK'
-        ? Math.round(Math.abs(Math.sin(this.walkPhase * 4.0)) * 2)
-        : 0;
+    const groundPlantOffset = 4;
 
     ctx.translate(
       Math.round(this.x),
-      Math.round(this.y + groundPlantOffset - walkBob)
+      Math.round(this.y + groundPlantOffset)
     );
     ctx.scale(this.facing, 1);
 

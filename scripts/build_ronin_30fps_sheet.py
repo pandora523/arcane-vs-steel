@@ -502,12 +502,13 @@ def render_pose_104(parts, cfg):
     r_thigh_deg = cfg.get("r_thigh_deg", 0.0)
     r_shin_deg = cfg.get("r_shin_deg", 0.0)
     r_foot_deg = cfg.get("r_foot_deg", 0.0)
+    r_hip_dst = (r_hip_dst[0], r_hip_dst[1] + 5.0)
     r_knee_src = (337.5, 362.5)
     r_knee_r = rot_pt(r_knee_src, r_hip_src, r_thigh_deg)
-    r_knee_dst = (r_hip_dst[0] + (r_knee_r[0] - r_hip_src[0]), r_hip_dst[1] + (r_knee_r[1] - r_hip_src[1]))
+    r_knee_dst = (r_hip_dst[0] + (r_knee_r[0] - r_hip_src[0]), r_hip_dst[1] + (r_knee_r[1] - r_hip_src[1]) + 4.0)
     r_ank_src = (327.5, 439.0)
     r_ank_r = rot_pt(r_ank_src, r_knee_src, r_shin_deg)
-    r_ank_dst = (r_knee_dst[0] + (r_ank_r[0] - r_knee_src[0]), r_knee_dst[1] + (r_ank_r[1] - r_knee_src[1]))
+    r_ank_dst = (r_knee_dst[0] + (r_ank_r[0] - r_knee_src[0]), r_knee_dst[1] + (r_ank_r[1] - r_knee_src[1]) + 3.5)
 
     l_sode_deg = torso_deg + cfg.get("l_sode_rel_deg", 0.0)
     l_fore_deg = l_sode_deg + cfg.get("l_fore_rel_deg", 0.0)
@@ -589,7 +590,7 @@ def render_pose_104(parts, cfg):
     cx = 267.5 + OX
     y_bot = 494.0 + OY
     crop_x0 = int(round(cx - S * 0.50))
-    crop_y0 = int(round(y_bot - S * (91.0 / 104.0)))
+    crop_y0 = int(round(y_bot - S * (99.0 / 104.0)))
 
     bbox = canvas.getbbox()
     c_xmin = float(bbox[0]) if bbox else float(cx)
@@ -614,7 +615,7 @@ def render_pose_104(parts, cfg):
         S = int(round((c_xmax - c_xmin) / (89.0 / 104.0)))
         scale = 104.0 / S
         crop_x0 = int(round(0.5 * (c_xmin + c_xmax) - S * 0.50))
-        crop_y0 = int(round(y_bot - S * (91.0 / 104.0)))
+        crop_y0 = int(round(y_bot - S * (99.0 / 104.0)))
     elif max_104 > 97.0:
         crop_x0 += int(round((max_104 - 97.0) / scale))
     elif min_104 < 6.0:
@@ -640,10 +641,10 @@ def render_pose_104(parts, cfg):
         cur_bot = int(ys.max())
         cur_top = int(ys.min())
         if cfg.get("grounded", True):
-            target_bot = 91 + int(round(cfg.get("airborne_dy", 0)))
+            target_bot = 99 + int(round(cfg.get("airborne_dy", 0)))
             dy_ground = target_bot - cur_bot
         else:
-            target_bot = min(95, max(58, cur_bot + int(round(cfg.get("airborne_dy", 0)))))
+            target_bot = min(99, max(66, cur_bot + int(round(cfg.get("airborne_dy", 0)))))
             dy_ground = target_bot - cur_bot
         if cur_top + dy_ground < 5:
             dy_ground = 5 - cur_top
@@ -745,7 +746,7 @@ def render_pose_104(parts, cfg):
 
     # Final safety clamp to [3..100] and pinhole fill
     out[:3, :, :] = 0
-    out[101:, :, :] = 0
+    out[102:, :, :] = 0
     out[:, :3, :] = 0
     out[:, 101:, :] = 0
     a = out[:, :, 3] > 0
@@ -950,34 +951,33 @@ def build_row_configs(row_idx):
                     drums_active=True
                 ))
             elif f < 16:
-                # Phase 2: Supersonic Aerodynamic Spear-Dive (+24° to +30° Pitch)
+                # Phase 2: Grounded Supersonic Horizontal Spear-Lunge (100% grounded on floor, zero lifting!)
                 u = (f - 6) / 9.0
-                dive_pitch = 24.0 + 6.0 * math.sin(u * math.pi)
+                cyc = math.sin(u * math.pi)
                 cfgs.append(dict(
                     pelvis_dx=0.0,
-                    pelvis_dy=20.0,
-                    torso_deg=64.0 + 10.0 * math.sin(u * math.pi),
-                    head_rel_deg=-22.0,
-                    mane_rel_deg=-35.0,
+                    pelvis_dy=95.0 + 15.0 * cyc,
+                    torso_deg=34.0 + 8.0 * cyc,
+                    head_rel_deg=-16.0,
+                    mane_rel_deg=-30.0,
                     mane_wave_phase=ph * 3.0,
                     mane_wave_amp=11.0,
-                    l_thigh_deg=60.0 + 6.0 * u,
-                    l_shin_deg=66.0 + 6.0 * u,
-                    l_foot_deg=64.0,
-                    r_thigh_deg=52.0 + 6.0 * u,
-                    r_shin_deg=60.0 + 6.0 * u,
-                    r_foot_deg=58.0,
-                    l_sode_rel_deg=-58.0,
-                    l_fore_rel_deg=-42.0,
-                    r_sode_rel_deg=-48.0 - 8.0 * math.sin(u * math.pi),
-                    r_fore_rel_deg=-32.0,
+                    l_thigh_deg=28.0 + 6.0 * cyc,
+                    l_shin_deg=22.0 + 6.0 * cyc,
+                    l_foot_deg=14.0,
+                    r_thigh_deg=-32.0 - 4.0 * cyc,
+                    r_shin_deg=18.0 + 4.0 * cyc,
+                    r_foot_deg=0.0,
+                    l_sode_rel_deg=14.0,
+                    l_fore_rel_deg=-28.0,
+                    r_sode_rel_deg=-42.0 - 6.0 * cyc,
+                    r_fore_rel_deg=-22.0,
                     right_arm_in_front=True,
-                    grounded=False,
-                    airborne_dy=-10.0 + 14.0 * u,
-                    odachi_deg=dive_pitch,
+                    grounded=True,
+                    odachi_deg=2.0 + 3.0 * math.sin(u * 2.0 * math.pi),
                     odachi_len=30.0,
                     drums_active=True,
-                    mach_cone=dict(len=36.0, intensity=0.85 + 0.25 * math.sin(u * math.pi), ultimate=False),
+                    mach_cone=dict(len=36.0, intensity=0.85 + 0.25 * cyc, ultimate=False),
                     speedlines=5
                 ))
             elif f < 23:
@@ -1030,58 +1030,55 @@ def build_row_configs(row_idx):
                 ))
 
         elif row_idx == 4:
-            # Row 4: ULTIMATE (Amatsu-Ikazuchi: Heaven's Thunder Dive — Full-Body Supersonic Spear-Dive!)
+            # Row 4: ULTIMATE (Amatsu-Ikazuchi — 100% Grounded Godspeed Thunder-Spear Charge & Omnislash!)
             if f < 5:
-                # Phase 1: Ascending Raijin Awakening
+                # Phase 1: Deep Grounded Raijin Iaido Awakening (zero lifting off the floor!)
                 u = f / 4.0
                 cfgs.append(dict(
-                    pelvis_dx=0.0,
-                    pelvis_dy=0.0,
-                    torso_deg=-6.0 * u,
+                    pelvis_dx=-15.0 * u,
+                    pelvis_dy=110.0 * u,
+                    torso_deg=18.0 * u,
                     head_rel_deg=-8.0 * u,
                     mane_rel_deg=-16.0 * u,
                     mane_wave_phase=ph * 3.0,
                     mane_wave_amp=11.0,
-                    l_thigh_deg=12.0 * u,
-                    l_shin_deg=24.0 * u,
-                    r_thigh_deg=-18.0 * u,
-                    r_shin_deg=28.0 * u,
-                    l_sode_rel_deg=-45.0 * u,
-                    l_fore_rel_deg=-35.0 * u,
-                    r_sode_rel_deg=-14.0 - 82.0 * u,
-                    r_fore_rel_deg=-18.0 - 12.0 * u,
-                    grounded=(f == 0),
-                    airborne_dy=-14.0 * u,
-                    odachi_deg=-32.0 - 52.0 * u,
-                    odachi_len=30.0,
+                    l_thigh_deg=-30.0 * u,
+                    l_shin_deg=26.0 * u,
+                    r_thigh_deg=28.0 * u,
+                    r_shin_deg=-24.0 * u,
+                    l_sode_rel_deg=-10.0 * u,
+                    l_fore_rel_deg=-36.0 * u,
+                    r_sode_rel_deg=26.0 * u,
+                    r_fore_rel_deg=22.0 * u,
+                    grounded=True,
+                    sheathed=(f >= 1),
                     drums_active=True
                 ))
             elif f < 21:
-                # Phase 2: Full-Body Supersonic Thunder-Spear Dive (+24° steepening to +38° Pitch)
+                # Phase 2: Grounded Supersonic Thunder-Spear Charge (deep horizontal spear lunge on the ground!)
                 u = (f - 5) / 15.0
-                dive_pitch = 24.0 + 14.0 * u
+                cyc = math.sin(u * math.pi * 2.0)
                 cfgs.append(dict(
                     pelvis_dx=0.0,
-                    pelvis_dy=20.0,
-                    torso_deg=66.0 + 14.0 * u,
-                    head_rel_deg=-24.0,
-                    mane_rel_deg=-38.0,
+                    pelvis_dy=102.0 + 12.0 * abs(cyc),
+                    torso_deg=38.0 + 6.0 * math.sin(u * math.pi),
+                    head_rel_deg=-18.0,
+                    mane_rel_deg=-34.0,
                     mane_wave_phase=ph * 4.0,
                     mane_wave_amp=12.5,
-                    l_thigh_deg=62.0 + 10.0 * u,
-                    l_shin_deg=68.0 + 10.0 * u,
-                    l_foot_deg=66.0 + 8.0 * u,
-                    r_thigh_deg=54.0 + 10.0 * u,
-                    r_shin_deg=62.0 + 10.0 * u,
-                    r_foot_deg=60.0 + 8.0 * u,
-                    l_sode_rel_deg=-62.0,
-                    l_fore_rel_deg=-45.0,
-                    r_sode_rel_deg=-52.0,
-                    r_fore_rel_deg=-35.0,
+                    l_thigh_deg=30.0 + 6.0 * cyc,
+                    l_shin_deg=24.0 + 6.0 * abs(cyc),
+                    l_foot_deg=16.0,
+                    r_thigh_deg=-34.0 - 4.0 * cyc,
+                    r_shin_deg=20.0 + 4.0 * abs(cyc),
+                    r_foot_deg=0.0,
+                    l_sode_rel_deg=16.0,
+                    l_fore_rel_deg=-30.0,
+                    r_sode_rel_deg=-46.0 - 4.0 * cyc,
+                    r_fore_rel_deg=-24.0,
                     right_arm_in_front=True,
-                    grounded=False,
-                    airborne_dy=-16.0 + 22.0 * u,
-                    odachi_deg=dive_pitch,
+                    grounded=True,
+                    odachi_deg=1.5 + 2.5 * cyc,
                     odachi_len=30.0,
                     drums_active=True,
                     mach_cone=dict(len=42.0, intensity=1.1, ultimate=True),
@@ -1436,8 +1433,8 @@ def render_vfx_cell_104(row_idx, f):
         if f < 18:
             su = f / 17.0
             tx = 32.0 + 54.0 * su
-            ty = 34.0 + 34.0 * su
-            draw_mach_cone_104(arr, tx, ty, 28.0, length=34.0, intensity=0.95, ultimate=False)
+            ty = 52.0
+            draw_mach_cone_104(arr, tx, ty, 0.0, length=34.0, intensity=0.95, ultimate=False)
         else:
             su = (f - 18) / 11.0
             draw_x_slash_104(arr, 52.0, 52.0, radius=34.0 * (1.0 - 0.35 * su), phase=ph, ultimate=False)
@@ -1446,8 +1443,8 @@ def render_vfx_cell_104(row_idx, f):
         if f < 18:
             su = f / 17.0
             tx = 28.0 + 58.0 * su
-            ty = 26.0 + 48.0 * su
-            draw_mach_cone_104(arr, tx, ty, 36.0, length=42.0, intensity=1.15, ultimate=True)
+            ty = 52.0
+            draw_mach_cone_104(arr, tx, ty, 0.0, length=42.0, intensity=1.15, ultimate=True)
         else:
             su = (f - 18) / 11.0
             draw_x_slash_104(arr, 52.0, 52.0, radius=38.0 * (1.0 - 0.25 * su), phase=ph, ultimate=True)
