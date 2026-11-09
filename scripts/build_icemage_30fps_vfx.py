@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
 """
-Builds Glacia (IceMage - Cryo-Prism Sovereign) 30fps HD-2D Pixel-Art Skill & VFX Sprite Sheet:
+Builds Glacia (IceMage - Cryo-Prism Sovereign) 30fps HD-2D Pixel-Art Skill & VFX Sprite Sheet (Pass 6 Upgrade):
 - Output: assets/sprites/icemage_vfx.png (6240 x 1040, 5 rows x 30 cols at 208x208 per cell)
 - Logical canvas per cell: 52x52 upscaled 4x NEAREST to 208x208 (strictly clamped inside 2 <= x <= 49, 2 <= y <= 49)
-- ZERO baked black outline in Python (`PixelForge.js` adds runtime outlines).
+- ZERO dark navy (`#0c1226`) borders — uses luminous 6-tone crystalline shading + semi-transparent `C_FROST_AURA`
+  and `C_AURORA_AURA` envelopes so `VFXManager.drawBloomedSprite` produces breathtaking HD-2D additive bloom!
 - Rows:
-  Row 0 (F00..F29): SUPERSONIC CRYO-LANCE SPEARHEAD & DOUBLE-HELIX FROST WAVE (x = 6..46, y = 10..42)
-  Row 1 (F00..F29): ROTATING HEXAGONAL CRYO-PRISM LENS & REFRACTION STAR-SEAL (x = 6..46, y = 6..46)
-  Row 2 (F00..F29): ERUPTING GLACIAL PERMAFROST OBELISK SPIRE & SHATTER (y = 6..47, x = 11..41)
-  Row 3 (F00..F29): ABSOLUTE ZERO: BOREALIS SNOWFLAKE CATHEDRAL SEAL (y = 5..46, x = 5..47)
+  Row 0 (F00..F29): FACETED DIAMOND CRYO-PRISM COMET & DOUBLE-HELIX FROST WAVE (x = 6..46, y = 10..42)
+  Row 1 (F00..F29): ROTATING HEXAGONAL SNOWFLAKE-PRISM LENS TURRET (x = 6..46, y = 6..46)
+  Row 2 (F00..F29): ERUPTING CATHEDRAL GLACIER OBELISK SPIRE & SHATTER (y = 6..47, x = 10..42)
+  Row 3 (F00..F29): ABSOLUTE ZERO: 12-POINT BOREALIS SNOWFLAKE ROSE-WINDOW MANDALA (y = 5..47, x = 5..47)
   Row 4 (F00..F29): HOARFROST CRESCENT WAVE & 8-POINT SNOWFLAKE STAR-RING (y = 6..46, x = 6..46)
 """
 
@@ -23,14 +24,14 @@ CELL = LOGICAL * SCALE  # 208
 COLS = 30
 ROWS = 5
 
-# Clean, luminous Diamond-White / Frost-Cyan / Glacier-Sapphire / Aurora-Violet palette
+# Clean, luminous Diamond-White / Frost-Cyan / Glacier-Sapphire / Aurora-Violet palette (ZERO black/navy borders!)
 C_WHITE = (255, 255, 255, 255)
 C_DIAMOND_WHITE = (240, 249, 255, 255)
 C_FROST_LIGHT = (186, 230, 253, 255)
 C_FROST_BRIGHT = (125, 211, 252, 255)
 C_FROST_CYAN = (56, 189, 248, 255)
 C_GLACIER_MID = (22, 138, 198, 255)
-C_GLACIER_DEEP = (14, 92, 142, 255)
+C_GLACIER_DEEP = (14, 92, 142, 240)
 
 C_AURORA_WHITE = (245, 243, 255, 255)
 C_AURORA_LAVENDER = (196, 181, 253, 255)
@@ -39,12 +40,10 @@ C_AURORA_MINT = (110, 231, 183, 255)
 
 C_SAPPHIRE_BRIGHT = (56, 116, 203, 255)
 C_SAPPHIRE_MID = (37, 78, 148, 255)
-C_SAPPHIRE_DARK = (26, 49, 102, 255)
-C_SAPPHIRE_DEEP = (18, 32, 68, 245)
-C_ABYSS_NAVY = (12, 18, 38, 255)
+C_SAPPHIRE_DARK = (26, 49, 102, 240)
 
-C_FROST_AURA = (56, 189, 248, 150)
-C_AURORA_AURA = (139, 92, 246, 145)
+C_FROST_AURA = (56, 189, 248, 145)
+C_AURORA_AURA = (196, 181, 253, 140)
 
 
 def put(px, x, y, col):
@@ -69,6 +68,12 @@ def draw_line(px, x0, y0, x1, y1, col):
     for s in range(steps + 1):
         t = s / float(steps)
         put(px, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, col)
+
+
+def draw_circle(px, cx, cy, r, col, steps=48):
+    for s in range(steps):
+        a = (s / float(steps)) * math.pi * 2.0
+        put(px, cx + math.cos(a) * r, cy + math.sin(a) * r, col)
 
 
 def draw_star(px, cx, cy, r, col_core, col_ray, rot=0.0):
@@ -112,47 +117,47 @@ def draw_frost_diamond(px, cx, cy, r, col_core, col_edge):
 
 def build_row0_cryo_lance_frost_wave(f):
     """
-    Row 0: Faceted Diamond Cryo-Prism Shard & Snowflake Comet (`x = 6..46, y = 10..42`, 30 frames):
-    - Pure 52x52 pixel-art Faceted Hexagonal Diamond Prism Shard & Spinning 6-Pointed Snowflake Comet facing +X,
-      with crisp #0c1226 dark interior crystal bevels and trailing pixel-art diamond ice crystals (zero spear wings).
+    Row 0: Faceted Diamond Cryo-Prism Comet & Double-Helix Frost Wave (`x = 6..46, y = 10..42`, 30 frames):
+    - Multi-faceted hexagonal diamond crystal projectile facing +X with semi-transparent `C_FROST_AURA` halo,
+      double-helix frost wake, orbiting vertical crystal ring, and leading 8-point Snowflake Star.
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
     px = img.load()
     phase = (f / 30.0) * math.pi * 2.0
     cy = 26
 
-    # 1. Trailing Stepped Pixel-Art Frost Wake & Mini Diamond Shards (x = 6..22, y = 14..38)
+    # 1. Double-Helix Frost & Aurora Wake + Trailing Diamond Shards (x = 6..23, y = 13..39)
+    for x in range(6, 24):
+        u_x = (x - 6) / 18.0
+        wave_amp = 6.5 * (1.0 - u_x * 0.45)
+        y_h1 = cy + math.sin(phase * 2.0 - u_x * 4.5) * wave_amp
+        y_h2 = cy - math.sin(phase * 2.0 - u_x * 4.5) * wave_amp
+        put(px, x, y_h1, C_FROST_LIGHT if x % 2 == 0 else C_FROST_CYAN)
+        put(px, x, y_h1 + 1, C_FROST_AURA)
+        put(px, x, y_h2, C_AURORA_LAVENDER if x % 2 == 0 else C_AURORA_VIOLET)
+        put(px, x, y_h2 - 1, C_AURORA_AURA)
+
     for trail_i in range(4):
-        tx = 8 + ((trail_i * 4 - f) % 14)
-        ty = cy + (trail_i - 1.5) * 5.0 + round(math.sin(phase + trail_i * 1.4) * 1.5)
+        tx = 7 + ((trail_i * 4 - f) % 14)
+        ty = cy + (trail_i - 1.5) * 4.5 + round(math.sin(phase + trail_i * 1.4) * 1.5)
         draw_frost_diamond(
             px,
             tx,
             ty,
             2 if trail_i % 2 == 0 else 1,
             C_FROST_LIGHT if trail_i % 2 == 0 else C_AURORA_LAVENDER,
-            C_ABYSS_NAVY,
+            C_FROST_CYAN if trail_i % 2 == 0 else C_SAPPHIRE_BRIGHT,
         )
 
-    # Stepped pixel slipstream bars behind the crystal shard
-    for lane in (-6, -3, 0, 3, 6):
-        ly = cy + lane
-        x_start = 7 + ((abs(lane) + f) % 4)
-        for x in range(x_start, 22, 2):
-            col = C_FROST_CYAN if lane <= 0 else C_AURORA_VIOLET
-            put(px, x, ly, C_DIAMOND_WHITE if x >= 17 else col)
-            put(px, x, ly + (1 if lane >= 0 else -1), C_ABYSS_NAVY)
-
-    # 2. Orbiting Vertical Pixel-Art Hexagonal Frost Ring (x = 20..26, y = 11..41)
+    # 2. Orbiting Vertical Hexagonal Frost Ring (back pass, x = 20..26, y = 12..40)
     for s in range(28):
         a = (s / 28.0) * math.pi * 2.0 + phase
         rx = round(23.0 + math.cos(a) * 3.0)
-        ry = round(cy + math.sin(a) * 13.0)
+        ry = round(cy + math.sin(a) * 12.5)
         if math.cos(a) < 0.0:
-            put(px, rx, ry, C_SAPPHIRE_DARK if s % 2 == 0 else C_GLACIER_MID)
+            put(px, rx, ry, C_SAPPHIRE_MID if s % 2 == 0 else C_GLACIER_MID)
 
     # 3. Main Multi-Faceted Hexagonal Diamond Cryo-Prism Body (x = 16..45, y = 16..36)
-    # Crisp dark #0c1226 pixel border + stepped cyan/sapphire/lavender crystal bevels + white pixel spine
     for x in range(16, 46):
         if x < 24:
             half_h = int(round(1.0 + ((x - 16) / 8.0) * 7.0))
@@ -165,26 +170,25 @@ def build_row0_cryo_lance_frost_wave(f):
             wy = cy + dy
             ad = abs(dy)
             if ad == half_h + 1:
-                put(px, x, wy, C_ABYSS_NAVY)
+                put(px, x, wy, C_FROST_AURA if dy < 0 else C_AURORA_AURA)
             elif ad == half_h:
-                put(px, x, wy, C_DIAMOND_WHITE if dy < 0 else C_FROST_BRIGHT)
+                put(px, x, wy, C_DIAMOND_WHITE if dy < 0 else C_SAPPHIRE_BRIGHT)
             elif dy == 0:
                 put(px, x, wy, C_WHITE)
             elif ad == 1:
                 put(px, x, wy, C_DIAMOND_WHITE if (x + f) % 2 == 0 else C_FROST_LIGHT)
             elif (x - dy) % 6 == 0 or ad == half_h - 2:
-                # Internal stepped dark/bright crystal facet seam
-                put(px, x, wy, C_SAPPHIRE_DARK if dy > 0 else C_FROST_BRIGHT)
+                put(px, x, wy, C_FROST_BRIGHT if dy < 0 else C_SAPPHIRE_MID)
             elif dy < 0:
                 put(px, x, wy, C_FROST_CYAN if ad <= 4 else C_GLACIER_MID)
             else:
                 put(px, x, wy, C_AURORA_LAVENDER if ad <= 3 else C_SAPPHIRE_MID)
 
-    # 4. Foreground Pass of Vertical Hexagonal Frost Ring & Leading 8-Point Pixel Snowflake Star
+    # 4. Foreground Pass of Vertical Hexagonal Frost Ring & Leading 8-Point Snowflake Star
     for s in range(28):
         a = (s / 28.0) * math.pi * 2.0 + phase
         rx = round(23.0 + math.cos(a) * 3.0)
-        ry = round(cy + math.sin(a) * 13.0)
+        ry = round(cy + math.sin(a) * 12.5)
         if math.cos(a) >= 0.0:
             put(px, rx, ry, C_WHITE if s % 4 == 0 else C_FROST_LIGHT)
 
@@ -204,85 +208,91 @@ def build_row0_cryo_lance_frost_wave(f):
 
 def build_row1_cryo_prism_lens_turret(f):
     """
-    Row 1: Rotating Hexagonal Cryo-Prism Lens & Refraction Star-Seal (`x = 6..46, y = 6..46`, 30 frames):
-    - Glacia's signature deployable **Hexagonal Crystalline Snowflake-Prism Turret** that refracts Cryo-Lances
-      into a 3-way diamond laser fan and radiates sub-zero frost waves!
+    Row 1: Rotating Hexagonal Snowflake-Prism Lens Turret (`x = 6..46, y = 6..46`, 30 frames):
+    - Glacia's deployable Hexagonal Crystalline Snowflake-Prism Turret with soft `C_FROST_AURA` /
+      `C_AURORA_AURA` outer glow rings, 12 beveled crystal prism teeth, 6 dendritic snowflake spokes,
+      and a counter-rotating inner hexagonal diamond core!
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
     px = img.load()
     phase = (f / 30.0) * math.pi * 2.0
     cx, cy = 26.0, 26.0
 
-    # 1. Outer Counter-Rotating Stepped Octagonal/Hexagonal Frost Frame (r = 18.5)
-    ring_r = 18.0
-    for s in range(64):
-        a = (s / 64.0) * math.pi * 2.0 - phase
-        rx = round(cx + math.cos(a) * ring_r)
-        ry = round(cy + math.sin(a) * ring_r)
-        put(px, rx, ry, C_ABYSS_NAVY)
-        ix = round(cx + math.cos(a) * (ring_r - 1.2))
-        iy = round(cy + math.sin(a) * (ring_r - 1.2))
-        put(px, ix, iy, C_DIAMOND_WHITE if s % 8 == 0 else (C_FROST_CYAN if s % 2 == 0 else C_SAPPHIRE_BRIGHT))
+    # 1. Soft Frost-Cyan & Aurora-Lavender Radial Aura Rings
+    draw_circle(px, cx, cy, 18.5, C_FROST_AURA, steps=64)
+    draw_circle(px, cx, cy, 17.2, C_AURORA_AURA, steps=56)
 
-    # 2. 6 Faceted Hexagonal Snowflake-Prism Spokes & Outer Crystal Nodes
+    # 2. Concentric Beveled Crystalline Outer Rim (r = 14.5..16.8)
+    for r_i, col in [
+        (16.6, C_SAPPHIRE_BRIGHT),
+        (15.8, C_FROST_LIGHT),
+        (15.0, C_FROST_CYAN),
+    ]:
+        draw_circle(px, cx, cy, r_i, col, steps=60)
+
+    # 3. 6 Faceted Hexagonal Snowflake-Prism Spokes & Dendritic Side-Branches
     for k in range(6):
         ang = phase + k * (math.pi / 3.0)
         ca, sa = math.cos(ang), math.sin(ang)
         px_n, py_n = -sa, ca
 
-        for d in range(2, 17):
+        for d in range(3, 17):
             sx = cx + ca * d
             sy = cy + sa * d
-            half_w = 2 if (4 <= d <= 11) else 1
-            for w_i in range(-half_w - 1, half_w + 2):
+            half_w = 1
+            for w_i in range(-half_w, half_w + 1):
                 wx = sx + px_n * w_i
                 wy = sy + py_n * w_i
-                if abs(w_i) == half_w + 1:
-                    col = C_ABYSS_NAVY
-                elif w_i == 0:
-                    col = C_WHITE if d <= 9 else C_DIAMOND_WHITE
-                elif abs(w_i) == half_w:
-                    col = C_FROST_CYAN if k % 2 == 0 else C_AURORA_LAVENDER
+                if w_i == 0:
+                    col = C_WHITE if d <= 10 else C_DIAMOND_WHITE
                 else:
-                    col = C_FROST_LIGHT
+                    col = C_FROST_CYAN if k % 2 == 0 else C_AURORA_LAVENDER
                 put(px, wx, wy, col)
 
-        # Dendritic snowflake side-branches at d = 11
-        bx0 = cx + ca * 11.0
-        by0 = cy + sa * 11.0
+        # Dendritic snowflake side-branches at d = 10.5
+        bx0 = cx + ca * 10.5
+        by0 = cy + sa * 10.5
         for side in (-1, 1):
-            ba = ang + side * (math.pi / 4.5)
+            ba = ang + side * (math.pi / 4.2)
             for bd in range(1, 5):
                 bx = bx0 + math.cos(ba) * bd
                 by = by0 + math.sin(ba) * bd
-                put(px, bx, by, C_DIAMOND_WHITE if bd >= 3 else C_FROST_BRIGHT)
+                put(px, bx, by, C_WHITE if bd == 4 else (C_FROST_LIGHT if bd >= 2 else C_FROST_CYAN))
 
-        # Outer diamond crystal node at r = 16.0
+        # Outer beveled diamond crystal node at r = 16.2
         draw_frost_diamond(
             px,
-            cx + ca * 16.0,
-            cy + sa * 16.0,
-            3,
-            C_FROST_LIGHT if k % 2 == 0 else C_AURORA_LAVENDER,
-            C_ABYSS_NAVY,
+            cx + ca * 16.2,
+            cy + sa * 16.2,
+            2,
+            C_DIAMOND_WHITE if k % 2 == 0 else C_AURORA_LAVENDER,
+            C_FROST_CYAN if k % 2 == 0 else C_SAPPHIRE_BRIGHT,
         )
 
-    # 3. Inner Hexagonal Diamond-Faceted Prism Lens Core (r = 7)
-    for dy in range(-7, 8):
-        for dx in range(-7, 8):
-            dist = abs(dx) * 0.85 + abs(dy) * 0.85
-            if dist <= 7.2:
-                if dist >= 6.0:
-                    col = C_ABYSS_NAVY
-                elif dist <= 2.0:
-                    col = C_WHITE
-                elif dist <= 3.8:
-                    col = C_DIAMOND_WHITE if (dx + dy + f) % 2 == 0 else C_FROST_LIGHT
-                elif dist <= 5.0:
-                    col = C_FROST_CYAN if (dx * dy) >= 0 else C_AURORA_LAVENDER
-                else:
-                    col = C_SAPPHIRE_MID
-                put(px, cx + dx, cy + dy, col)
+    # 4. Inner Counter-Rotating Hexagonal Prism Ring (r = 8.5)
+    esc_rot = -phase * 1.5
+    draw_circle(px, cx, cy, 8.2, C_AURORA_LAVENDER, steps=40)
+    for e_i in range(6):
+        ea = esc_rot + e_i * (math.pi / 3.0)
+        draw_frost_diamond(
+            px,
+            cx + math.cos(ea) * 8.2,
+            cy + math.sin(ea) * 8.2,
+            1,
+            C_WHITE,
+            C_FROST_BRIGHT,
+        )
+
+    # 5. Glowing Diamond-White & Frost-Cyan Core Hub (r = 0..4.5)
+    for dy in range(-4, 5):
+        for dx in range(-4, 5):
+            d = math.hypot(dx, dy)
+            if d <= 1.8:
+                put(px, cx + dx, cy + dy, C_WHITE)
+            elif d <= 3.2:
+                put(px, cx + dx, cy + dy, C_DIAMOND_WHITE if (dx + dy) % 2 == 0 else C_FROST_LIGHT)
+            elif d <= 4.4:
+                put(px, cx + dx, cy + dy, C_FROST_CYAN)
 
     draw_star(px, cx, cy, 5, C_WHITE, C_FROST_LIGHT, rot=-phase * 1.5)
     return img
@@ -290,9 +300,9 @@ def build_row1_cryo_prism_lens_turret(f):
 
 def build_row2_glacial_permafrost_spire(f):
     """
-    Row 2: Erupting Glacial Permafrost Obelisk Spire (`y = 6..47, x = 11..41`, 30 frames):
-    - Multi-faceted Frost-Cyan, Aurora-Violet & Abyssal-Sapphire glacier crystal spire (`y = 6..47, x = 11..41`)
-      with crisp #0c1226 pixel borders, flanking basal ice-shards, and shattering diamond blocks on `F22..F29`.
+    Row 2: Erupting Cathedral Glacier Obelisk Spire & Shatter (`y = 6..47, x = 10..42`, 30 frames):
+    - Multi-faceted Frost-Cyan, Aurora-Lavender & Sapphire glacier crystal monolith (`y = 6..47, x = 10..42`)
+      with luminous `C_FROST_AURA` halo, 4 flanking crystal spires, and shattering snowflake stars on `F22..F29`.
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
     px = img.load()
@@ -300,29 +310,29 @@ def build_row2_glacial_permafrost_spire(f):
     gy = 45
     phase = (f / 30.0) * math.pi * 2.0
 
-    # 1. Persistent Glowing Snowflake Ground Seal (y = 42..47, x = 11..41)
+    # 1. Persistent Glowing Perspective Snowflake Ground Seal (y = 43..47, x = 10..42)
     seal_scale = ((f + 1) / 4.0) if f <= 3 else (1.0 if f <= 21 else max(0.25, 1.0 - (f - 21) / 9.0))
     rx_seal = int(round(15.0 * min(1.0, seal_scale)))
     for dx in range(-rx_seal - 1, rx_seal + 2):
         wx = max(10, min(42, cx + dx))
         ad = abs(dx)
         if ad == rx_seal + 1:
-            put(px, wx, gy, C_ABYSS_NAVY)
+            put(px, wx, gy, C_FROST_AURA)
         else:
-            put(px, wx, gy + 1, C_ABYSS_NAVY)
-            put(px, wx, gy, C_DIAMOND_WHITE if ad % 4 == 0 else C_FROST_CYAN)
+            put(px, wx, gy + 1, C_SAPPHIRE_BRIGHT if ad % 2 == 0 else C_FROST_AURA)
+            put(px, wx, gy, C_WHITE if ad % 4 == 0 else (C_FROST_LIGHT if ad % 2 == 0 else C_FROST_CYAN))
             if ad <= rx_seal - 2:
-                put(px, wx, gy - 1, C_FROST_LIGHT if ad % 3 == 0 else C_SAPPHIRE_MID)
+                put(px, wx, gy - 1, C_DIAMOND_WHITE if ad % 3 == 0 else C_AURORA_LAVENDER)
 
     if f <= 21:
         grow = ((f + 1) / 6.0) if f <= 5 else 1.0
 
-        # 2. Flanking Basal Glacier Crystal Shards (x = 11..41, y = 24..46)
+        # 2. Flanking Basal Glacier Crystal Shards (x = 10..42, y = 22..45)
         basal_shards = [
-            (-8.0, -4.5, 14.0, 3.0),
-            (-4.8, -4.0, 21.0, 4.0),
-            (+4.8, +4.0, 21.0, 4.0),
-            (+8.0, +4.5, 14.0, 3.0),
+            (-8.2, -4.2, 15.0, 3.0),
+            (-4.8, -3.8, 22.0, 4.0),
+            (+4.8, +3.8, 22.0, 4.0),
+            (+8.2, +4.2, 15.0, 3.0),
         ]
         for bx_off, tilt_dx, max_sh, base_w in basal_shards:
             sh = int(round(max_sh * grow))
@@ -334,15 +344,15 @@ def build_row2_glacial_permafrost_spire(f):
                 for dx in range(-hw - 1, hw + 2):
                     wx = max(10.0, min(42.0, scx + dx))
                     if abs(dx) == hw + 1:
-                        col = C_ABYSS_NAVY
+                        col = C_FROST_AURA
                     elif abs(dx) == hw:
-                        col = C_DIAMOND_WHITE if u_h > 0.5 else C_FROST_LIGHT
+                        col = C_DIAMOND_WHITE if (dx < 0 or u_h > 0.5) else C_SAPPHIRE_BRIGHT
                     elif dx == 0:
-                        col = C_WHITE if u_h > 0.4 else C_FROST_BRIGHT
+                        col = C_WHITE if u_h > 0.35 else C_FROST_LIGHT
                     elif dx < 0:
-                        col = C_FROST_CYAN if dx == -1 else C_GLACIER_MID
+                        col = C_FROST_BRIGHT if dx == -1 else C_FROST_CYAN
                     else:
-                        col = C_SAPPHIRE_MID if dx == 1 else C_SAPPHIRE_DARK
+                        col = C_AURORA_LAVENDER if dx == 1 else C_SAPPHIRE_MID
                     put(px, wx, sy, col)
 
         # 3. Towering Central Multi-Faceted Borealis Glacier Obelisk Spire (y = 6..45)
@@ -355,75 +365,90 @@ def build_row2_glacial_permafrost_spire(f):
             for dx in range(-hw - 1, hw + 2):
                 diag_seam = (h - abs(dx) * 2) % 7 == 0
                 if abs(dx) == hw + 1:
-                    col = C_ABYSS_NAVY
+                    col = C_FROST_AURA if dx <= 0 else C_AURORA_AURA
                 elif abs(dx) == hw:
-                    col = C_DIAMOND_WHITE if (dx < 0 or u_h > 0.45) else C_FROST_LIGHT
+                    col = C_WHITE if (dx < 0 or u_h > 0.5) else C_FROST_BRIGHT
                 elif dx == 0:
                     col = C_WHITE if (h + f) % 3 != 0 else C_DIAMOND_WHITE
                 elif diag_seam:
-                    col = C_ABYSS_NAVY if dx > 1 else C_FROST_BRIGHT
+                    col = C_DIAMOND_WHITE if dx < 0 else C_SAPPHIRE_BRIGHT
                 elif dx < 0:
-                    col = C_FROST_CYAN if dx >= -2 else C_GLACIER_MID
+                    col = C_FROST_LIGHT if dx >= -2 else C_FROST_CYAN
                 else:
-                    col = C_AURORA_LAVENDER if dx <= 2 else (C_SAPPHIRE_MID if dx <= 4 else C_SAPPHIRE_DARK)
+                    col = C_AURORA_LAVENDER if dx <= 2 else (C_GLACIER_MID if dx <= 4 else C_SAPPHIRE_MID)
                 put(px, cx + dx, sy, col)
-        put(px, cx, max(5, gy - main_h - 1), C_ABYSS_NAVY)
+        put(px, cx, max(6, gy - main_h - 1), C_WHITE)
 
         if f >= 5:
-            draw_star(px, cx, max(7, gy - main_h + 1), 3, C_WHITE, C_FROST_LIGHT, rot=phase)
-    else:
-        # F22..F29: Explosive Crystalline Glacier Shatter (within x = 11..41, y = 6..47)
-        u = (f - 22) / 7.0
-        for shard_i in range(12):
-            ang = -math.pi * 0.92 + (shard_i / 11.0) * math.pi * 0.84
-            base_y = gy - 6 - (shard_i % 4) * 8
-            dist = 3.0 + u * 13.0
-            sx = max(12.0, min(40.0, cx + math.cos(ang) * dist))
-            sy = max(7.0, min(45.0, base_y + math.sin(ang) * dist * 0.6 + u * u * 5.0))
-            r_sh = 3 if (u < 0.55 and shard_i % 2 == 0) else 2
-            draw_frost_diamond(
+            draw_8pt_snowflake_starcross(
                 px,
-                sx,
-                sy,
-                r_sh,
-                C_FROST_LIGHT if shard_i % 2 == 0 else C_FROST_CYAN,
-                C_ABYSS_NAVY,
+                cx,
+                max(8, gy - main_h + 2),
+                r_main=4.0,
+                r_diag=2.5,
+                col_core=C_WHITE,
+                col_cardinal=C_DIAMOND_WHITE,
+                col_diag=C_FROST_CYAN,
+                rot=phase,
             )
+    else:
+        # F22..F29: Explosive Crystalline Glacier Shatter into 8-Point Snowflake Stars & Faceted Shards
+        u = (f - 22) / 7.0
+        for shard_i in range(10):
+            ang = -math.pi * 0.92 + (shard_i / 9.0) * math.pi * 0.84
+            base_y = gy - 7 - (shard_i % 4) * 7
+            dist = 3.0 + u * 13.0
+            sx = max(11.0, min(41.0, cx + math.cos(ang) * dist))
+            sy = max(8.0, min(44.0, base_y + math.sin(ang) * dist * 0.55 + u * u * 4.5))
+            if shard_i % 2 == 0:
+                draw_8pt_snowflake_starcross(
+                    px,
+                    sx,
+                    sy,
+                    r_main=3.0 if u < 0.6 else 2.0,
+                    r_diag=2.0 if u < 0.6 else 1.0,
+                    col_core=C_WHITE,
+                    col_cardinal=C_FROST_LIGHT,
+                    col_diag=C_AURORA_LAVENDER,
+                    rot=phase + shard_i,
+                )
+            else:
+                draw_frost_diamond(
+                    px,
+                    sx,
+                    sy,
+                    2,
+                    C_DIAMOND_WHITE,
+                    C_FROST_CYAN if shard_i % 3 == 0 else C_AURORA_VIOLET,
+                )
 
     return img
 
 
 def build_row3_borealis_cathedral_seal(f):
     """
-    Row 3: Absolute Zero: Borealis Snowflake Cathedral Rose-Window Mandala (`y = 5..47, x = 5..47`, 30 frames):
-    - 100% Wingless Grand 12-Pointed Geometric Snowflake Rose-Window Mandala & Crystalline Astrolabe
-      with counter-rotating Borealis pixel-rune rings, 6 dendritic snowflake crystal arms, 6 Aurora-Violet
-      diamond spokes, and a blazing Absolute-Zero Star Core!
+    Row 3: Absolute Zero: 12-Point Borealis Snowflake Rose-Window Mandala (`y = 5..47, x = 5..47`, 30 frames):
+    - Grand 12-Pointed Geometric Snowflake Rose-Window Mandala & Crystalline Astrolabe with soft `C_FROST_AURA`
+      and `C_AURORA_AURA` rings, counter-rotating hexagonal crystal lattice, 6 dendritic snowflake arms,
+      and a blazing Absolute-Zero Star Core!
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
     px = img.load()
     phase = (f / 30.0) * math.pi * 2.0
     cx, cy = 26.0, 26.0
 
-    # 1. Outer Rotating Dodecagonal Borealis Snowflake Cathedral Ring (r = 19.5)
-    ring_r = 19.5
-    for s in range(72):
-        a = (s / 72.0) * math.pi * 2.0 + phase * 0.5
-        rx = round(cx + math.cos(a) * ring_r)
-        ry = round(cy + math.sin(a) * ring_r)
-        put(px, rx, ry, C_ABYSS_NAVY)
-        ix = round(cx + math.cos(a) * (ring_r - 1.2))
-        iy = round(cy + math.sin(a) * (ring_r - 1.2))
-        is_node = s % 6 == 0
-        put(px, ix, iy, C_WHITE if is_node else (C_FROST_CYAN if s % 2 == 0 else C_SAPPHIRE_BRIGHT))
+    # 1. Outer Aura & Rotating Dodecagonal Borealis Snowflake Cathedral Rim (r = 18.0..19.5)
+    draw_circle(px, cx, cy, 19.5, C_FROST_AURA, steps=72)
+    draw_circle(px, cx, cy, 18.5, C_SAPPHIRE_BRIGHT, steps=64)
+    draw_circle(px, cx, cy, 17.5, C_FROST_LIGHT, steps=64)
 
-    # 2. Inner Counter-Rotating Hexagonal Lattice Ring (r = 12.0)
+    # 2. Inner Counter-Rotating Hexagonal Crystal Lattice Ring (r = 11.8)
     for k in range(6):
         a0 = -phase + k * (math.pi / 3.0)
         a1 = -phase + (k + 1) * (math.pi / 3.0)
-        x0, y0 = cx + math.cos(a0) * 12.0, cy + math.sin(a0) * 12.0
-        x1, y1 = cx + math.cos(a1) * 12.0, cy + math.sin(a1) * 12.0
-        draw_line(px, x0, y0, x1, y1, C_AURORA_LAVENDER if k % 2 == 0 else C_FROST_LIGHT)
+        x0, y0 = cx + math.cos(a0) * 11.8, cy + math.sin(a0) * 11.8
+        x1, y1 = cx + math.cos(a1) * 11.8, cy + math.sin(a1) * 11.8
+        draw_line(px, x0, y0, x1, y1, C_AURORA_LAVENDER if k % 2 == 0 else C_FROST_BRIGHT)
 
     # 3. 12 Geometric Rose-Window Spokes (6 Primary Dendritic Snowflake Arms + 6 Secondary Aurora Spokes)
     for k in range(12):
@@ -431,7 +456,7 @@ def build_row3_borealis_cathedral_seal(f):
         ca, sa = math.cos(ang), math.sin(ang)
         px_n, py_n = -sa, ca
         is_primary = k % 2 == 0
-        max_d = 19 if is_primary else 15
+        max_d = 18 if is_primary else 15
 
         for d in range(4, max_d + 1):
             sx = cx + ca * d
@@ -440,12 +465,9 @@ def build_row3_borealis_cathedral_seal(f):
                 for w_i in (-1, 0, 1):
                     col = C_WHITE if w_i == 0 else C_FROST_CYAN
                     put(px, sx + px_n * w_i, sy + py_n * w_i, col)
-                put(px, sx + px_n * 2, sy + py_n * 2, C_ABYSS_NAVY)
-                put(px, sx - px_n * 2, sy - py_n * 2, C_ABYSS_NAVY)
             else:
                 put(px, sx, sy, C_AURORA_LAVENDER if d % 2 == 0 else C_AURORA_VIOLET)
 
-        # Dendritic snowflake crystal chevrons on the 6 primary arms at d = 9 and d = 14
         if is_primary:
             for branch_d, branch_len in ((9.0, 4), (14.0, 3)):
                 bx0 = cx + ca * branch_d
@@ -455,11 +477,11 @@ def build_row3_borealis_cathedral_seal(f):
                     for bd in range(1, branch_len + 1):
                         bx = bx0 + math.cos(ba) * bd
                         by = by0 + math.sin(ba) * bd
-                        put(px, bx, by, C_DIAMOND_WHITE if bd == branch_len else C_FROST_LIGHT)
-            draw_frost_diamond(px, cx + ca * 18.5, cy + sa * 18.5, 2, C_DIAMOND_WHITE, C_ABYSS_NAVY)
+                        put(px, bx, by, C_WHITE if bd == branch_len else C_FROST_LIGHT)
+            draw_frost_diamond(px, cx + ca * 18.0, cy + sa * 18.0, 2, C_DIAMOND_WHITE, C_FROST_CYAN)
 
     # 4. Central Sovereign Hexagonal Diamond Rose-Window Core
-    draw_frost_diamond(px, cx, cy, 6, C_SAPPHIRE_MID, C_ABYSS_NAVY)
+    draw_frost_diamond(px, cx, cy, 6, C_SAPPHIRE_BRIGHT, C_FROST_LIGHT)
     draw_frost_diamond(px, cx, cy, 4, C_FROST_CYAN, C_DIAMOND_WHITE)
     draw_8pt_snowflake_starcross(
         px,
@@ -479,7 +501,7 @@ def build_row3_borealis_cathedral_seal(f):
 def build_row4_hoarfrost_crescent_starring(f):
     """
     Row 4: Hoarfrost Crescent Wave & 8-Point Snowflake Star-Ring (`y = 6..46, x = 6..46`, 30 frames):
-    - Sweeping diamond-white, frost-cyan & aurora-violet pixel-art crescent wave with #0c1226 dark crystal border
+    - Sweeping 6-tone diamond-white, frost-cyan & aurora-lavender pixel-art crescent wave with `C_FROST_AURA`
       and 6 rotating 8-point Borealis Star-Crosses (`y = 6..46, x = 6..46`).
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
@@ -489,13 +511,14 @@ def build_row4_hoarfrost_crescent_starring(f):
 
     # 1. Inner Sacred Borealis Frost Ring (r = 14.5, within x = 11..41, y = 11..41)
     ring_r = 14.5
+    draw_circle(px, cx, cy, ring_r + 1.0, C_FROST_AURA, steps=56)
     for s in range(48):
         a = (s / 48.0) * math.pi * 2.0 - phase
         rx = round(cx + math.cos(a) * ring_r)
         ry = round(cy + math.sin(a) * ring_r)
-        put(px, rx, ry, C_FROST_LIGHT if s % 3 == 0 else (C_FROST_CYAN if s % 2 == 0 else C_SAPPHIRE_BRIGHT))
+        put(px, rx, ry, C_FROST_LIGHT if s % 3 == 0 else (C_FROST_CYAN if s % 2 == 0 else C_AURORA_LAVENDER))
 
-    # 2. Sweeping Diamond-Frost Crescent Slash Arc with #0c1226 Dark Crystal Edge (y = 6..46, x = 10..46)
+    # 2. Sweeping 6-Tone Diamond-Frost Crescent Slash Arc (y = 6..46, x = 10..46)
     pulse = 0.85 + 0.15 * math.sin(phase * 2.0)
     lead_x_apex = 44.0 + math.sin(phase) * 1.0
     for dy in range(-18, 19):
@@ -503,12 +526,12 @@ def build_row4_hoarfrost_crescent_starring(f):
         wy = round(cy + dy)
         lead_x = int(round(lead_x_apex - (u * u) * 17.0))
         thick = max(2, int(round((1.0 - u * u * 0.75) * 8.0 * pulse)))
-        put(px, min(47, lead_x + 1), wy, C_ABYSS_NAVY)
-        put(px, max(5, lead_x - thick - 1), wy, C_ABYSS_NAVY)
+        put(px, min(47, lead_x + 1), wy, C_FROST_AURA)
+        put(px, max(5, lead_x - thick - 1), wy, C_AURORA_AURA)
         for t_off in range(thick + 1):
             wx = max(6, min(46, lead_x - t_off))
             if abs(dy) == 18:
-                put(px, wx, wy, C_ABYSS_NAVY)
+                put(px, wx, wy, C_FROST_LIGHT)
             elif t_off == 0:
                 put(px, wx, wy, C_WHITE)
             elif t_off == 1:
@@ -518,7 +541,7 @@ def build_row4_hoarfrost_crescent_starring(f):
             elif t_off <= 5:
                 put(px, wx, wy, C_AURORA_LAVENDER if (dy + f) % 2 == 0 else C_GLACIER_MID)
             else:
-                put(px, wx, wy, C_SAPPHIRE_MID if t_off < thick else C_SAPPHIRE_DARK)
+                put(px, wx, wy, C_SAPPHIRE_BRIGHT if t_off < thick else C_SAPPHIRE_MID)
 
     # 3. Rotating 8-Point Borealis Snowflake Star-Crosses Orbiting in a Ring (`y = 6..46, x = 6..46`)
     num_crosses = 6
@@ -539,7 +562,6 @@ def build_row4_hoarfrost_crescent_starring(f):
             rot=-phase * 2.0 + c_i,
         )
 
-    # Central Sovereign 8-Point Borealis Snowflake Star-Cross at (24, 26)
     draw_8pt_snowflake_starcross(
         px,
         24.0,
@@ -582,10 +604,10 @@ def main():
     sheet = Image.new("RGBA", (sheet_w, sheet_h), (0, 0, 0, 0))
 
     builders = [
-        ("ROW 0: SUPERSONIC CRYO-LANCE & DOUBLE-HELIX FROST WAVE (30 FRAMES)", build_row0_cryo_lance_frost_wave),
-        ("ROW 1: ROTATING HEXAGONAL CRYO-PRISM LENS TURRET (30 FRAMES)", build_row1_cryo_prism_lens_turret),
-        ("ROW 2: ERUPTING GLACIAL PERMAFROST OBELISK SPIRE (30 FRAMES)", build_row2_glacial_permafrost_spire),
-        ("ROW 3: ABSOLUTE ZERO: BOREALIS CATHEDRAL SEAL (30 FRAMES)", build_row3_borealis_cathedral_seal),
+        ("ROW 0: FACETED DIAMOND CRYO-PRISM COMET & FROST WAVE (30 FRAMES)", build_row0_cryo_lance_frost_wave),
+        ("ROW 1: ROTATING HEXAGONAL SNOWFLAKE-PRISM LENS TURRET (30 FRAMES)", build_row1_cryo_prism_lens_turret),
+        ("ROW 2: ERUPTING CATHEDRAL GLACIER OBELISK SPIRE (30 FRAMES)", build_row2_glacial_permafrost_spire),
+        ("ROW 3: ABSOLUTE ZERO: 12-POINT BOREALIS CATHEDRAL SEAL (30 FRAMES)", build_row3_borealis_cathedral_seal),
         ("ROW 4: HOARFROST CRESCENT WAVE & SNOWFLAKE STAR-RING (30 FRAMES)", build_row4_hoarfrost_crescent_starring),
     ]
 
