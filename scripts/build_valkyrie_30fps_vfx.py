@@ -37,28 +37,18 @@ C_RUBY_BRIGHT = (225, 29, 72, 255)
 C_DRAGON_ORANGE = (249, 115, 22, 255)
 C_CRIMSON = (185, 28, 28, 255)
 C_CRIMSON_DARK = (127, 29, 29, 255)
-C_CRIMSON_DEEP = (68, 12, 18, 240)
-C_OBSIDIAN = (28, 32, 46, 255)
+C_CRIMSON_DEEP = (68, 12, 18, 255)
+C_OBSIDIAN = (28, 16, 28, 255)
 
-C_RUBY_AURA = (225, 29, 72, 145)
-C_GOLD_AURA = (251, 191, 36, 150)
+C_RUBY_AURA = (142, 26, 42, 255)
+C_GOLD_AURA = (194, 136, 36, 255)
 
 
 def put(px, x, y, col):
     ix = int(round(x))
     iy = int(round(y))
     if 2 <= ix <= 49 and 2 <= iy <= 49:
-        if col[3] < 255 and px[ix, iy][3] > 0:
-            dst = px[ix, iy]
-            a = col[3] / 255.0
-            inv = 1.0 - a
-            r = int(col[0] * a + dst[0] * inv)
-            g = int(col[1] * a + dst[1] * inv)
-            b = int(col[2] * a + dst[2] * inv)
-            na = max(dst[3], col[3])
-            px[ix, iy] = (r, g, b, na)
-        else:
-            px[ix, iy] = col
+        px[ix, iy] = (col[0], col[1], col[2], 255)
 
 
 def draw_line(px, x0, y0, x1, y1, col):
@@ -680,43 +670,51 @@ def build_row4_valhalla_crescent_starcross(f):
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)
 
 
-def apply_pass11_star_mote_polish(cell_img, row_idx, f):
+def apply_logical_selout_and_stars(cell_208, row_idx, f):
     """
-    Pass #11 HD-2D Specular Star-Mote & Aura Polish:
-    Adds orbiting 4-point specular star glints (3x3 white core + themed 1px rays,
-    strictly inside [16..191]) that revolve smoothly with frame index f (0..29).
+    Applies a crisp logical-grid-locked 1px dark Wine-Obsidian Selout around solid constructs
+    (Rows 1, 2, 3) and logical-grid-locked 4-point Valhalla star glints (ZERO 1x1 mixels!).
     """
-    px = cell_img.load()
+    im52 = cell_208.resize((LOGICAL, LOGICAL), Image.Resampling.NEAREST)
+    arr = np.array(im52, dtype=np.uint8)
+    alpha = arr[:, :, 3] > 0
+
+    if row_idx in (1, 2, 3):
+        up = np.pad(alpha[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+        dn = np.pad(alpha[1:, :], ((0, 1), (0, 0)), constant_values=False)
+        lf = np.pad(alpha[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+        rt = np.pad(alpha[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+        # Exterior 1px dark Selout ring strictly inside [2..49]
+        ext = (~alpha) & (up | dn | lf | rt)
+        ext[:2, :] = False
+        ext[50:, :] = False
+        ext[:, :2] = False
+        ext[:, 50:] = False
+        arr[ext] = C_OBSIDIAN
+
+    # Orbiting logical-grid 4-point Valhalla star glints (strictly inside [4..47])
     phase = (f / 30.0) * math.pi * 2.0
     for m_idx in range(3):
         ang = phase + m_idx * (math.pi * 2.0 / 3.0) + row_idx * 0.45
-        rx = 60.0 + 8.0 * math.sin(phase * 2.0 + m_idx * 1.7 + row_idx)
-        ry = 56.0 + 8.0 * math.cos(phase * 2.0 + m_idx * 1.3 + row_idx)
-        cx = max(24, min(183, int(round(104.0 + math.cos(ang) * rx))))
-        cy = max(24, min(183, int(round(104.0 + math.sin(ang) * ry))))
+        rx = 15.0 + 2.0 * math.sin(phase * 2.0 + m_idx * 1.7 + row_idx)
+        ry = 14.0 + 2.0 * math.cos(phase * 2.0 + m_idx * 1.3 + row_idx)
+        cx = max(5, min(46, int(round(26.0 + math.cos(ang) * rx))))
+        cy = max(5, min(46, int(round(26.0 + math.sin(ang) * ry))))
         ray_col = C_GOLD_LIGHT if (m_idx + row_idx) % 2 == 0 else C_ROSE_FLAME
-        ray_len = 5 + ((f + m_idx) % 3)
+        arr[cy, cx] = C_WHITE
+        if (f + m_idx) % 2 == 0:
+            for dx, dy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                arr[cy + dy, cx + dx] = ray_col
 
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
-                if abs(dx) + abs(dy) <= 1:
-                    x, y = cx + dx, cy + dy
-                    if 16 <= x <= 191 and 16 <= y <= 191:
-                        px[x, y] = C_WHITE
-                elif px[cx + dx, cy + dy][3] == 0:
-                    px[cx + dx, cy + dy] = C_RUBY_AURA
-
-        for d in range(2, ray_len + 1):
-            c_step = C_WHITE if d == 2 else ray_col
-            for dx, dy in ((-d, 0), (d, 0), (0, -d), (0, d)):
-                x, y = cx + dx, cy + dy
-                if 16 <= x <= 191 and 16 <= y <= 191:
-                    px[x, y] = c_step
-
-    return cell_img
+    arr[:2, :, :] = 0
+    arr[50:, :, :] = 0
+    arr[:, :2, :] = 0
+    arr[:, 50:, :] = 0
+    return Image.fromarray(arr, "RGBA").resize((CELL, CELL), Image.Resampling.NEAREST)
 
 
 def main():
+    root_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     sheet_w = COLS * CELL  # 6240
     sheet_h = ROWS * CELL  # 1040
     sheet = Image.new("RGBA", (sheet_w, sheet_h), (0, 0, 0, 0))
@@ -733,7 +731,7 @@ def main():
     for row_idx, (label, fn) in enumerate(builders):
         row_frames_208 = []
         for col_idx in range(COLS):
-            cell_img = apply_pass11_star_mote_polish(fn(col_idx), row_idx, col_idx)
+            cell_img = apply_logical_selout_and_stars(fn(col_idx), row_idx, col_idx)
             arr208 = np.array(cell_img, dtype=np.uint8)
             row_frames_208.append(arr208)
             if np.any(arr208[:8, :, 3] > 0):
@@ -751,22 +749,22 @@ def main():
     print(
         f"VFX boundary clip audit across 150 frames: TOP={top_clips}, BOT={bot_clips}, LEFT={left_clips}, RIGHT={right_clips}"
     )
-    out_path = "/home/antigravity/assets/sprites/valkyrie_vfx.png"
+    out_path = os.path.join(root_dir, "assets", "sprites", "valkyrie_vfx.png")
     sheet.save(out_path)
     print(f"Saved 30fps Valkyrie VFX sheet to {out_path} ({sheet.size[0]}x{sheet.size[1]})")
 
-    # Build contact sheet in caller artifact directory
-    art_dir = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/4f1fb80f-a88f-4496-9746-b4b9fe84f6d4"
+    art_dir = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
+    os.makedirs(art_dir, exist_ok=True)
     thumb = 80
     pad_top = 24
     cw = COLS * thumb
     ch = ROWS * (thumb + pad_top)
-    contact = Image.new("RGBA", (cw, ch), (13, 19, 32, 255))
+    contact = Image.new("RGBA", (cw, ch), (20, 22, 34, 255))
     draw = ImageDraw.Draw(contact)
 
     for r_idx, (label, _) in enumerate(builders):
         y0 = r_idx * (thumb + pad_top)
-        draw.rectangle([0, y0, cw, y0 + pad_top - 1], fill=(20, 30, 48, 255))
+        draw.rectangle([0, y0, cw, y0 + pad_top - 1], fill=(32, 24, 38, 255))
         draw.text((6, y0 + 2), label, fill=(251, 113, 133, 255))
         for c_idx in range(COLS):
             x0 = c_idx * thumb
@@ -774,7 +772,7 @@ def main():
             cell_crop = sheet.crop((c_idx * CELL, r_idx * CELL, (c_idx + 1) * CELL, (r_idx + 1) * CELL))
             cell_thumb = cell_crop.resize((thumb, thumb), Image.Resampling.NEAREST)
             contact.paste(cell_thumb, (x0, y0 + pad_top), cell_thumb)
-            draw.rectangle([x0, y0 + pad_top, x0 + thumb - 1, y0 + pad_top + thumb - 1], outline=(35, 52, 78, 255))
+            draw.rectangle([x0, y0 + pad_top, x0 + thumb - 1, y0 + pad_top + thumb - 1], outline=(52, 42, 64, 255))
 
     c_path = os.path.join(art_dir, "debug_valkyrie_30fps_vfx.png")
     contact.save(c_path)

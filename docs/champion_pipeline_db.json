@@ -86,8 +86,10 @@
     },
     "valkyrie": {
       "name": "Freyja",
-      "theme": "dragon",
-      "base_source": "valkyrie_v1_base_1794151227418.jpg",
+      "theme": "crimson",
+      "base_source": "assets/sprites/valkyrie_v2_base.jpg",
+      "logical_res": "104x104 (2x NEAREST -> 208x208)",
+      "rig": "13-part hierarchical skeletal articulation (mane, head, torso, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + 6-pinion Valkyrie wings",
       "script": "scripts/build_valkyrie_30fps_sheet.py",
       "vfx_script": "scripts/build_valkyrie_30fps_vfx.py"
     },
