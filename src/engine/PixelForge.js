@@ -17,50 +17,55 @@ export class PixelForge {
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps22'),
-        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps22'),
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps23'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps23'),
         portrait: loadImg('assets/sprites/warrior_portrait.png?v=2', () => this.refreshPortraits())
       },
       mage: {
-        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps22'),
-        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps22'),
+        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps23'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps23'),
         portrait: loadImg('assets/sprites/mage_portrait.png?v=2', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps22'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps22'),
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps23'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps23'),
         portrait: loadImg('assets/sprites/archer_portrait.png?v=2', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps22'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps22'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps22'),
+        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps23'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps23'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps23'),
         portrait: loadImg('assets/sprites/priestess_portrait.png?v=2', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps22'),
-        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps22'),
+        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps23'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps23'),
         portrait: loadImg('assets/sprites/reaper_portrait.png?v=2', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps22'),
-        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps22'),
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps23'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps23'),
         portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=2', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps22'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps22'),
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps23'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps23'),
         portrait: loadImg('assets/sprites/titan_portrait.png?v=2', () => this.refreshPortraits())
       },
       ronin: {
-        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps22'),
-        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps22'),
+        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps23'),
+        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps23'),
         portrait: loadImg('assets/sprites/ronin_portrait.png?v=2', () => this.refreshPortraits())
       },
       valkyrie: {
-        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps22'),
-        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps22'),
+        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps23'),
+        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps23'),
         portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=2', () => this.refreshPortraits())
+      },
+      icemage: {
+        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps23'),
+        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps23'),
+        portrait: loadImg('assets/sprites/icemage_portrait.png?v=2', () => this.refreshPortraits())
       }
     };
 
@@ -780,7 +785,10 @@ export class PixelForge {
       priestess: { bg0: '#191205', bg1: '#4d360b', rim: '#fde047', glow: '#fef9c3', gold: '#fbbf24' },
       reaper: { bg0: '#11061f', bg1: '#351052', rim: '#c084fc', glow: '#f43f5e', gold: '#e879f9' },
       chronomancer: { bg0: '#04181c', bg1: '#0d4248', rim: '#2dd4bf', glow: '#99f6e4', gold: '#f59e0b' },
-      titan: { bg0: '#1a0c04', bg1: '#4a2108', rim: '#f59e0b', glow: '#34d399', gold: '#fde047' }
+      titan: { bg0: '#1a0c04', bg1: '#4a2108', rim: '#f59e0b', glow: '#34d399', gold: '#fde047' },
+      ronin: { bg0: '#070a24', bg1: '#1e1b4b', rim: '#818cf8', glow: '#38bdf8', gold: '#facc15' },
+      valkyrie: { bg0: '#1f060d', bg1: '#590d22', rim: '#fb7185', glow: '#fef08a', gold: '#f59e0b' },
+      icemage: { bg0: '#051529', bg1: '#0c3a6e', rim: '#67e8f9', glow: '#a5f3fc', gold: '#e879f9' }
     };
     const th = themes[heroKey] || themes.warrior;
 
@@ -1130,6 +1138,34 @@ export class PixelForge {
         fillRectPx(11, 12, 2, 2, '#fef08a');
         fillRectPx(15, 12, 2, 2, '#fef08a');
         fillRectPx(13, 4, 2, 19, '#ffffff');
+      }
+    } else if (heroKey === 'icemage') {
+      if (slotIdx === 0) {
+        // CRYO-PRISM REFRACTION: Hexagonal Ice-Prism Mirror + Splitting Borealis Laser Rays
+        drawCirclePx(12, 14, 6, '#0284c7', true);
+        drawCirclePx(12, 14, 4, '#67e8f9', true);
+        drawLinePx(4, 18, 12, 14, '#ffffff', 2);
+        drawLinePx(12, 14, 24, 7, '#67e8f9', 2);
+        drawLinePx(12, 14, 24, 14, '#ffffff', 2);
+        drawLinePx(12, 14, 24, 21, '#e879f9', 2);
+        setPx(12, 14, '#ffffff');
+      } else if (slotIdx === 1) {
+        // TRI-BEAM PRISM MATRIX: 3 Floating Hexagonal Prisms in an Equilateral Laser Triangle
+        drawLinePx(14, 5, 6, 20, '#67e8f9', 2);
+        drawLinePx(6, 20, 22, 20, '#e879f9', 2);
+        drawLinePx(22, 20, 14, 5, '#67e8f9', 2);
+        drawCirclePx(14, 5, 3, '#a5f3fc', true);
+        drawCirclePx(6, 20, 3, '#a5f3fc', true);
+        drawCirclePx(22, 20, 3, '#a5f3fc', true);
+        drawCirclePx(14, 15, 2.5, '#ffffff', true);
+      } else {
+        // BOREALIS CATHEDRAL: Towering Diamond Iceberg Monolith + Northern Lights Aurora Crown
+        drawLinePx(4, 7, 14, 4, '#e879f9', 2);
+        drawLinePx(14, 4, 24, 7, '#67e8f9', 2);
+        fillRectPx(9, 10, 10, 13, '#0284c7');
+        fillRectPx(11, 8, 6, 15, '#67e8f9');
+        fillRectPx(13, 6, 2, 17, '#ffffff');
+        drawLinePx(5, 23, 23, 23, '#a5f3fc', 2);
       }
     }
 

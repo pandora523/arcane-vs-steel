@@ -176,7 +176,11 @@ export class AudioManager {
       death_knight: 'death_warrior',
       death_titan: 'death_warrior',
       death_ronin: 'death_warrior',
-      death_valkyrie: 'death_priestess'
+      death_valkyrie: 'death_priestess',
+      frost_cast: 'holy_bolt',
+      prism_beam: 'holy_smite',
+      ice_shatter: 'chrono_hit',
+      death_icemage: 'death_priestess'
     };
     const name = aliasMap[rawName] || rawName;
 

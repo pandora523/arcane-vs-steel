@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js?v=30fps22';
-import { PixelForge } from './PixelForge.js?v=30fps22';
+import { PixelFont } from './PixelFont.js?v=30fps23';
+import { PixelForge } from './PixelForge.js?v=30fps23';
 
 export class VFXManager {
   constructor() {
@@ -123,7 +123,9 @@ export class VFXManager {
                     ? '#38bdf8'
                     : theme === 'crimson'
                       ? '#fbbf24'
-                      : '#ea580c';
+                      : theme === 'glacial'
+                        ? '#e879f9'
+                        : '#ea580c';
     const dir = attacker ? Math.sign(x - attacker.x) || 1 : 1;
     if (this.hitImpacts.length > 22) this.hitImpacts.shift();
     this.hitImpacts.push({
@@ -210,6 +212,7 @@ export class VFXManager {
       forge: { shape: 'rune', col: '#d97706', core: '#10b981' },
       storm: { shape: 'rune', col: '#6366f1', core: '#38bdf8' },
       crimson: { shape: 'star', col: '#e11d48', core: '#fbbf24' },
+      glacial: { shape: 'star', col: '#0284c7', core: '#67e8f9' },
       heal: { shape: 'cross', col: '#16a34a', core: '#facc15' }
     };
     const cfg = sets[theme] || sets.steel;
@@ -444,7 +447,9 @@ export class VFXManager {
                     ? { main: '#818cf8', core: '#38bdf8', border: '#6366f1' }
                     : theme === 'crimson'
                       ? { main: '#f43f5e', core: '#fbbf24', border: '#e11d48' }
-                      : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
+                      : theme === 'glacial'
+                        ? { main: '#67e8f9', core: '#e879f9', border: '#0284c7' }
+                        : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
 
     this.castAuras.push({
       fighter,
@@ -918,6 +923,10 @@ export class VFXManager {
       if (f.bahamutAvatar) {
         pushLight(f.bahamutAvatar.x, f.bahamutAvatar.y - 148, 390, 'crimson', 1.94, 88);
         pushLight(f.bahamutAvatar.x, f.bahamutAvatar.y - 108, 290, 'gold', 1.52, 78);
+      }
+      if (f.borealisCathedral) {
+        pushLight(f.borealisCathedral.x, f.borealisCathedral.y - 135, 395, 'cyan', 1.95, 90);
+        pushLight(f.borealisCathedral.x, f.borealisCathedral.y - 95, 290, 'violet', 1.55, 78);
       }
     }
     for (const p of this.projectiles) {
@@ -2220,6 +2229,35 @@ export class VFXManager {
           ctx.fillRect(-20, -10, 40, 20);
         }
         ctx.restore();
+      } else if (proj.type === 'cryo_shard') {
+        const iceVfx = assets.icemage?.vfx;
+        const ang = Math.atan2(proj.vy || 0, proj.vx || 1);
+        ctx.save();
+        ctx.translate(px, py);
+        ctx.rotate(ang);
+        if (iceVfx && iceVfx.complete && iceVfx.naturalWidth) {
+          const shardSize = 128;
+          this.drawBloomedSprite(
+            ctx,
+            renderer,
+            iceVfx,
+            pCol * 208,
+            0,
+            208,
+            208,
+            -shardSize * 0.5,
+            -shardSize * 0.5,
+            shardSize,
+            shardSize,
+            '#67e8f9',
+            0.98,
+            isReflection
+          );
+        } else {
+          ctx.fillStyle = '#67e8f9';
+          ctx.fillRect(-18, -10, 36, 20);
+        }
+        ctx.restore();
       } else if (proj.type === 'arrow') {
         const archerVfx = assets.archer?.vfx;
         const ang = Math.atan2(proj.vy, proj.vx || 1);
@@ -2658,6 +2696,23 @@ export class VFXManager {
           crestSize * 1.08,
           crestSize * 1.08,
           '#f43f5e',
+          alpha,
+          false
+        );
+      } else if (ca.theme === 'glacial' && assets.icemage?.vfx?.complete) {
+        this.drawBloomedSprite(
+          ctx,
+          renderer,
+          assets.icemage.vfx,
+          sealCol * 208,
+          624,
+          208,
+          208,
+          -crestSize * 0.54,
+          -crestSize * 0.56,
+          crestSize * 1.08,
+          crestSize * 1.08,
+          '#67e8f9',
           alpha,
           false
         );

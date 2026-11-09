@@ -1,16 +1,17 @@
-import { Renderer } from './engine/Renderer.js?v=30fps22';
-import { VFXManager } from './engine/VFXManager.js?v=30fps22';
-import { PixelForge } from './engine/PixelForge.js?v=30fps22';
-import { AudioManager } from './engine/AudioManager.js?v=30fps22';
-import { Warrior } from './entities/Warrior.js?v=30fps22';
-import { FireMage } from './entities/FireMage.js?v=30fps22';
-import { Archer } from './entities/Archer.js?v=30fps22';
-import { Priestess } from './entities/Priestess.js?v=30fps22';
-import { Reaper } from './entities/Reaper.js?v=30fps22';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps22';
-import { Titan } from './entities/Titan.js?v=30fps22';
-import { Ronin } from './entities/Ronin.js?v=30fps22';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps22';
+import { Renderer } from './engine/Renderer.js?v=30fps23';
+import { VFXManager } from './engine/VFXManager.js?v=30fps23';
+import { PixelForge } from './engine/PixelForge.js?v=30fps23';
+import { AudioManager } from './engine/AudioManager.js?v=30fps23';
+import { Warrior } from './entities/Warrior.js?v=30fps23';
+import { FireMage } from './entities/FireMage.js?v=30fps23';
+import { Archer } from './entities/Archer.js?v=30fps23';
+import { Priestess } from './entities/Priestess.js?v=30fps23';
+import { Reaper } from './entities/Reaper.js?v=30fps23';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps23';
+import { Titan } from './entities/Titan.js?v=30fps23';
+import { Ronin } from './entities/Ronin.js?v=30fps23';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps23';
+import { IceMage } from './entities/IceMage.js?v=30fps23';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -298,6 +299,38 @@ const CHAMPION_ROSTER = {
         type: '★ OVERDRIVE ULT',
         vfxCell: 3,
         desc: 'Ascends high into the sky, raining 8 Gungnir Light-Spears before a Bahamut Supernova Dive!'
+      }
+    ]
+  },
+  icemage: {
+    id: 'icemage',
+    name: 'GLACIA',
+    role: 'CRYO-PRISM SOVEREIGN',
+    style: 'REFRACTIVE FROST WEAVER',
+    trait: 'PASSIVE: CRYO-PRISMS & PERMAFROST SKATE',
+    cls: IceMage,
+    theme: 'glacial',
+    color: '#67e8f9',
+    selectSfx: 'frost_cast',
+    victoryLine: 'Refracted through the Borealis Prisms, absolute zero shatters all resistance!',
+    skills: [
+      {
+        name: 'CRYO-PRISM REFRACTION',
+        type: 'AUTO + ICE STATUE DECOY',
+        vfxCell: 0,
+        desc: 'Deploys floating Hexagonal Cryo-Prisms that refract laser chains & leaves an exploding Ice-Statue Decoy on dodge.'
+      },
+      {
+        name: 'TRI-BEAM PRISM MATRIX',
+        type: 'SKILL • 5.1S CD',
+        vfxCell: 1,
+        desc: 'Surrounds the enemy with 3 Cryo-Prisms in a laser triangle that bounces around them before shattering Brittle Frost!'
+      },
+      {
+        name: 'BOREALIS CATHEDRAL',
+        type: '★ OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Encases the enemy in a Diamond Iceberg beneath the Northern Lights and slices it with a 7-Prism Orbital Laser Array!'
       }
     ]
   }
@@ -684,7 +717,8 @@ class Game {
       chronomancer: document.getElementById('card-chronomancer'),
       titan: document.getElementById('card-titan'),
       ronin: document.getElementById('card-ronin'),
-      valkyrie: document.getElementById('card-valkyrie')
+      valkyrie: document.getElementById('card-valkyrie'),
+      icemage: document.getElementById('card-icemage')
     };
     this.ribbons = {
       warrior: document.getElementById('ribbon-warrior'),
@@ -695,7 +729,8 @@ class Game {
       chronomancer: document.getElementById('ribbon-chronomancer'),
       titan: document.getElementById('ribbon-titan'),
       ronin: document.getElementById('ribbon-ronin'),
-      valkyrie: document.getElementById('ribbon-valkyrie')
+      valkyrie: document.getElementById('ribbon-valkyrie'),
+      icemage: document.getElementById('ribbon-icemage')
     };
     this.previewCanvases = {
       warrior: document.getElementById('preview-warrior'),
@@ -706,7 +741,8 @@ class Game {
       chronomancer: document.getElementById('preview-chronomancer'),
       titan: document.getElementById('preview-titan'),
       ronin: document.getElementById('preview-ronin'),
-      valkyrie: document.getElementById('preview-valkyrie')
+      valkyrie: document.getElementById('preview-valkyrie'),
+      icemage: document.getElementById('preview-icemage')
     };
 
     this.btnStartDuel = document.getElementById('btn-start-duel');
@@ -1635,10 +1671,12 @@ class Game {
                     : ally.heroId === 'ronin'
                       ? 'storm_wave'
                       : ally.heroId === 'valkyrie'
-                        ? 'crimson_lance'
-                        : ally.heroId === 'warrior'
-                          ? 'blade_wave'
-                          : 'fireball'
+                        ? 'dragon_lance'
+                        : ally.heroId === 'icemage'
+                          ? 'cryo_shard'
+                          : ally.heroId === 'warrior'
+                            ? 'blade_wave'
+                            : 'fireball'
       });
       if (!point.isDead) {
         point.heal(42, 'TAG GRACE');
@@ -2038,15 +2076,17 @@ class Game {
                   ? 'scythe_reap'
                   : p.type === 'clock_gear'
                     ? 'chrono_hit'
-                    : p.type === 'forge_wave'
-                      ? 'thunder_slam'
-                      : p.type === 'blade_wave'
-                        ? isCrit
-                          ? 'hit_crit'
-                          : 'heavy_cleave'
-                        : p.type === 'holy_light'
-                          ? 'holy_hit'
-                          : 'fire_hit';
+                    : p.type === 'cryo_shard'
+                      ? 'ice_shatter'
+                      : p.type === 'forge_wave'
+                        ? 'thunder_slam'
+                        : p.type === 'blade_wave'
+                          ? isCrit
+                            ? 'hit_crit'
+                            : 'heavy_cleave'
+                          : p.type === 'holy_light'
+                            ? 'holy_hit'
+                            : 'fire_hit';
             this.audio.play(impactSfx, hitTarget.x);
           }
           this.renderer.triggerHitStop(0.055);
@@ -2062,6 +2102,11 @@ class Game {
             }
           } else if (p.type === 'clock_gear') {
             this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'chrono');
+          } else if (p.type === 'cryo_shard') {
+            this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'glacial');
+            if (p.owner && typeof p.owner.applyBrittleFrost === 'function') {
+              p.owner.applyBrittleFrost(hitTarget, 1, this, p.x, p.y);
+            }
           } else if (p.type === 'forge_wave') {
             this.vfx.spawnSlash(p.x, p.y, 78, -1.1, 1.1, '#f59e0b', 0.26);
             this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'forge');
@@ -2085,11 +2130,13 @@ class Game {
                     ? 'scythe_reap'
                     : p.type === 'clock_gear'
                       ? 'chrono_hit'
-                      : p.type === 'forge_wave'
-                        ? 'thunder_slam'
-                        : p.type === 'blade_wave'
-                          ? 'clang'
-                          : 'fire_hit',
+                      : p.type === 'cryo_shard'
+                        ? 'ice_shatter'
+                        : p.type === 'forge_wave'
+                          ? 'thunder_slam'
+                          : p.type === 'blade_wave'
+                            ? 'clang'
+                            : 'fire_hit',
               p.x
             );
           }

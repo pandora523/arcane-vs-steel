@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps22';
+import { PixelForge } from './PixelForge.js?v=30fps23';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -9,6 +9,7 @@ const CHRONO_FIRE_PAL = ['#115e59', '#0d9488', '#14b8a6', '#eab308'];
 const FORGE_FIRE_PAL = ['#78350f', '#d97706', '#f59e0b', '#34d399'];
 const STORM_FIRE_PAL = ['#312e81', '#4f46e5', '#818cf8', '#38bdf8'];
 const CRIMSON_FIRE_PAL = ['#881337', '#be123c', '#f43f5e', '#fbbf24'];
+const GLACIAL_FIRE_PAL = ['#0369a1', '#0284c7', '#67e8f9', '#e879f9'];
 
 export const STAGE_ROSTER = [
   { id: 'cathedral', name: 'ECLIPSE CATHEDRAL NAVE', assetKey: 'arenaBg' },
@@ -128,11 +129,19 @@ export class Renderer {
       'rgba(225,29,72,0.58)',
       'rgba(159,18,57,0.24)'
     );
+    this.glowGlacial = makeGlow(
+      'rgba(103,232,249,0.88)',
+      'rgba(56,189,248,0.58)',
+      'rgba(168,85,247,0.26)'
+    );
     this.shadowTex = makeGlow('rgba(0,0,0,0.92)', 'rgba(0,0,0,0.52)', 'rgba(0,0,0,0.18)');
   }
 
   getGlowForColor(col) {
     if (!col) return this.glowCyan;
+    if (col === 'glacial' || col === '#67e8f9' || col === '#a5f3fc') {
+      return this.glowGlacial || this.glowCyan;
+    }
     if (col === 'emerald' || col === '#10b981' || col === '#34d399' || col === '#6ee7b7' || col === '#a7f3d0') {
       return this.glowEmerald;
     }
@@ -1204,6 +1213,7 @@ export class Renderer {
     const isForge = f.primaryColor === '#f59e0b';
     const isStorm = f.primaryColor === '#818cf8';
     const isCrimson = f.primaryColor === '#f43f5e';
+    const isGlacial = f.primaryColor === '#67e8f9';
     const pal = isBlue
       ? CYAN_FIRE_PAL
       : isEmerald
@@ -1220,7 +1230,9 @@ export class Renderer {
                   ? STORM_FIRE_PAL
                   : isCrimson
                     ? CRIMSON_FIRE_PAL
-                    : SOLAR_FIRE_PAL;
+                    : isGlacial
+                      ? GLACIAL_FIRE_PAL
+                      : SOLAR_FIRE_PAL;
     const glowTex = this.getGlowForColor(f.primaryColor);
     const isAction = f.state === 'SKILL' || f.state === 'ULTIMATE' || f.state === 'AUTO_ATTACK';
     const gy = f.groundY || this.groundY;
@@ -1252,6 +1264,7 @@ export class Renderer {
     const isForge = f.primaryColor === '#f59e0b';
     const isStorm = f.primaryColor === '#818cf8';
     const isCrimson = f.primaryColor === '#f43f5e';
+    const isGlacial = f.primaryColor === '#67e8f9';
     const pal = isBlue
       ? CYAN_FIRE_PAL
       : isEmerald
@@ -1268,7 +1281,9 @@ export class Renderer {
                   ? STORM_FIRE_PAL
                   : isCrimson
                     ? CRIMSON_FIRE_PAL
-                    : SOLAR_FIRE_PAL;
+                    : isGlacial
+                      ? GLACIAL_FIRE_PAL
+                      : SOLAR_FIRE_PAL;
     const glowTex = this.getGlowForColor(f.primaryColor);
     const t = this.time;
 
@@ -1552,6 +1567,25 @@ export class Renderer {
             26,
             0.52,
             isGold ? this.glowGold : this.glowTeal
+          );
+        }
+      } else if (isGlacial) {
+        // GLACIA: Orbiting Borealis Diamond Snowflakes & Cryo-Prism Shimmer around her Star-Prism Catalyst
+        for (let c = 0; c < 4; c++) {
+          const ca = t * 4.4 + (c * Math.PI) / 2;
+          const cx = Math.round((f.x + f.facing * 36 + Math.cos(ca) * 24) / 2) * 2;
+          const cy = Math.round((f.y - 98 + Math.sin(ca * 2) * 16) / 2) * 2;
+          const isLilac = c % 2 === 1;
+          emitGlowingParticle(
+            cx,
+            cy,
+            6,
+            6,
+            isLilac ? '#e879f9' : '#67e8f9',
+            '#ffffff',
+            26,
+            0.52,
+            this.glowGlacial
           );
         }
       } else {
