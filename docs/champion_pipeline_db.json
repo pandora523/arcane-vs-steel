@@ -1,0 +1,101 @@
+{
+  "project": "arcane-vs-steel",
+  "pipeline_version": "30fps-hd2d-v2",
+  "strict_rules": [
+    "NEVER draw procedural stick-figures or polygon-from-scratch character bodies in Python.",
+    "ALWAYS generate the 16-bit HD-2D base character sprite (<hero>_v1_base.jpg, 1024x1024, facing +X right on pure #FFFFFF white background, empty hands at sides) and matching bust portrait (portrait_hd2d_<hero>.jpg) using generate_image FIRST.",
+    "NEVER pass another champion's base sprite in ImagePaths when generating a new champion's full-body sprite (to avoid copying their armor/silhouette); pass the new champion's own base sprite in ImagePaths when generating their matching portrait.",
+    "ALWAYS extract the 52x52 logical base sprite via BFS flood-fill from borders + enclosed white pockets + 3-pass anti-aliased fringe stripping (zero white halo).",
+    "NEVER bake a 1px black outline around the character in Python because PixelForge.js (ensureNormalMap + drawSheetFrame) dynamically renders the 1px comic ink outline and 1px exterior rim highlight at runtime.",
+    "ALWAYS neutralize baked static side-arms (neutralize_baked_side_arms) before articulating 2-bone IK arms + weapon so there are zero extra limbs or leftover hands.",
+    "ALWAYS enforce a 2px transparent safety margin (2 <= x <= 49, 2 <= y <= 49) on all 270 frames (0/270 boundary clips) and run fill_layer_pinholes to prevent 1px interior slits.",
+    "ALWAYS generate and visually inspect debug_<hero>_30fps_left_F00_F14.png, debug_<hero>_30fps_right_F15_F29.png, and debug_<hero>_30fps_vfx.png using view_file."
+  ],
+  "reference_scripts": {
+    "sprite_sheet_builders": [
+      "scripts/build_valkyrie_30fps_sheet.py",
+      "scripts/build_ronin_30fps_sheet.py",
+      "scripts/build_titan_30fps_sheet.py",
+      "scripts/build_chronomancer_30fps_sheet.py",
+      "scripts/build_icemage_30fps_sheet.py"
+    ],
+    "vfx_sheet_builders": [
+      "scripts/build_valkyrie_30fps_vfx.py",
+      "scripts/build_ronin_30fps_vfx.py",
+      "scripts/build_chronomancer_30fps_vfx.py",
+      "scripts/build_icemage_30fps_vfx.py"
+    ]
+  },
+  "champions": {
+    "warrior": {
+      "name": "Aethelgard",
+      "theme": "steel",
+      "base_source": "backups/warrior_sheet_before_30fps.png",
+      "script": "scripts/build_warrior_30fps_sheet.py",
+      "vfx_script": "scripts/build_warrior_30fps_vfx.py"
+    },
+    "firemage": {
+      "name": "Ignis Sol",
+      "theme": "arcane",
+      "base_source": "backups/mage_sheet_before_30fps.png",
+      "script": "scripts/build_mage_30fps_sheet.py",
+      "vfx_script": "scripts/build_mage_30fps_vfx.py"
+    },
+    "archer": {
+      "name": "Sylvara",
+      "theme": "emerald",
+      "base_source": "backups/archer_sheet_before_30fps.png",
+      "script": "scripts/build_archer_30fps_sheet.py",
+      "vfx_script": "scripts/build_archer_30fps_vfx.py"
+    },
+    "priestess": {
+      "name": "Seraphina",
+      "theme": "radiant",
+      "base_source": "backups/priestess_sheet_before_30fps.png",
+      "script": "scripts/build_priestess_30fps_sheet.py",
+      "vfx_script": "scripts/build_priestess_30fps_vfx.py"
+    },
+    "reaper": {
+      "name": "Malakor",
+      "theme": "abyssal",
+      "base_source": "backups/reaper_sheet_before_30fps.png",
+      "script": "scripts/build_reaper_30fps_sheet.py",
+      "vfx_script": "scripts/build_reaper_30fps_vfx.py"
+    },
+    "chronomancer": {
+      "name": "Zephyros",
+      "theme": "chrono",
+      "base_source": "chrono_v1_base_1794035937365.jpg",
+      "script": "scripts/build_chronomancer_30fps_sheet.py",
+      "vfx_script": "scripts/build_chronomancer_30fps_vfx.py"
+    },
+    "titan": {
+      "name": "Torgar",
+      "theme": "forge",
+      "base_source": "titan_v1_base_1794101258946.jpg",
+      "script": "scripts/build_titan_30fps_sheet.py",
+      "vfx_script": "scripts/build_titan_30fps_vfx.py"
+    },
+    "ronin": {
+      "name": "Kaze-Maru",
+      "theme": "storm",
+      "base_source": "ronin_v1_base_1794151225087.jpg",
+      "script": "scripts/build_ronin_30fps_sheet.py",
+      "vfx_script": "scripts/build_ronin_30fps_vfx.py"
+    },
+    "valkyrie": {
+      "name": "Freyja",
+      "theme": "dragon",
+      "base_source": "valkyrie_v1_base_1794151227418.jpg",
+      "script": "scripts/build_valkyrie_30fps_sheet.py",
+      "vfx_script": "scripts/build_valkyrie_30fps_vfx.py"
+    },
+    "icemage": {
+      "name": "Glacia",
+      "theme": "glacial",
+      "base_source": "assets/sprites/icemage_v2_base.jpg",
+      "script": "scripts/build_icemage_30fps_sheet.py",
+      "vfx_script": "scripts/build_icemage_30fps_vfx.py"
+    }
+  }
+}

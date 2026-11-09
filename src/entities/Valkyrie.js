@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps23';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps23';
+import { Fighter } from './Fighter.js?v=30fps24';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps24';
 
 export class Valkyrie extends Fighter {
   constructor(x, groundY, facing = 1) {
