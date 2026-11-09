@@ -877,18 +877,14 @@ def render_pose_104(parts, cfg):
     l_hand_104 = to104(l_hand_dst)
     r_hand_104 = to104(r_hand_dst)
 
-    # Auto-grounding so sabaton boots sit cleanly on y = 99 when grounded
+    # Smooth continuous foot_y target (default 99.0 when grounded; gently 93..96 on low wing-glides — ZERO 1-frame snap!)
     ys, xs = np.where(arr104[:, :, 3] > 0)
     dy_ground = 0
-    if len(ys) > 0 and not cfg.get("spear_mode", False):
+    if len(ys) > 0:
         cur_bot = int(ys.max())
         cur_top = int(ys.min())
-        if cfg.get("grounded", True):
-            target_bot = 99 + int(round(cfg.get("airborne_dy", 0)))
-            dy_ground = target_bot - cur_bot
-        else:
-            target_bot = min(99, max(62, cur_bot + int(round(cfg.get("airborne_dy", 0)))))
-            dy_ground = target_bot - cur_bot
+        target_bot = int(round(cfg.get("foot_y", 99.0)))
+        dy_ground = target_bot - cur_bot
         if cur_top + dy_ground < 5:
             dy_ground = 5 - cur_top
         if dy_ground != 0:
@@ -926,14 +922,14 @@ def render_pose_104(parts, cfg):
     if cfg.get("halo", False):
         draw_valkyrie_halo_104(
             out, neck_104[0] + 2.0, max(18.0, neck_104[1] - 4.0),
-            rx=22.0, ry=13.0,
+            rx=22.0, ry=11.0,
             phase=cfg.get("mane_wave_phase", 0.0),
             num_spears=cfg.get("halo_spears", 6)
         )
 
     # 3. Render Ornate Winged Gungnir War-Lance
     hand_pt = r_hand_104 if cfg.get("lance_hand", "right") == "right" else l_hand_104
-    l_deg = cfg.get("lance_deg", -36.0)
+    l_deg = cfg.get("lance_deg", -16.0)
     l_len = cfg.get("lance_len", 31.0)
     if cfg.get("show_lance", True):
         if cfg.get("resting_lance", False):
@@ -949,7 +945,7 @@ def render_pose_104(parts, cfg):
                 phase=cfg.get("mane_wave_phase", 0.0)
             )
 
-    # 4. Optional Golden-Crimson Javelin Slash Arcs & Dragonfire Mach-Cone
+    # 4. Optional Golden-Crimson Javelin Slash Arcs & Sleek Shallow Dragonfire Mach-Cone
     if cfg.get("slash_arc") is not None:
         sa = cfg["slash_arc"]
         draw_slash_arc_104(
@@ -965,21 +961,21 @@ def render_pose_104(parts, cfg):
         tip_y = min(97.0, max(6.0, hand_pt[1] + math.sin(l_rad) * (l_len + 1.0)))
         draw_dragonfire_mach_cone_104(
             out, tip_x, tip_y, l_deg,
-            length=mc.get("len", 36.0),
-            intensity=mc.get("intensity", 1.0),
+            length=mc.get("len", 34.0),
+            intensity=mc.get("intensity", 0.95),
             ultimate=mc.get("ultimate", False)
         )
 
     if cfg.get("speedlines", 0) > 0:
         n_lines = cfg["speedlines"]
         ph = cfg.get("mane_wave_phase", 0.0)
-        sl_deg = l_deg if cfg.get("mach_cone") is not None else 0.0
+        sl_deg = cfg.get("speedline_deg", 0.0)
         sl_rad = math.radians(sl_deg)
         ux_s, uy_s = math.cos(sl_rad), math.sin(sl_rad)
         for k in range(n_lines):
-            ly = 24.0 + (k * 11 + int(ph * 5)) % 56
+            ly = 28.0 + (k * 11 + int(ph * 5)) % 52
             lx0 = 6.0 + (k * 7 + int(ph * 9)) % 18
-            slen = 10.0 + (k % 3) * 4.0
+            slen = 11.0 + (k % 3) * 4.0
             lx1 = min(96.0, max(5.0, lx0 + ux_s * slen))
             ly1 = min(96.0, max(5.0, ly + uy_s * slen))
             col = P_GOLD_GLEAM if k % 2 == 0 else P_ROSE_GEM
@@ -1002,45 +998,73 @@ def render_pose_104(parts, cfg):
     return out
 
 
-def make_valkyrie_spear_glide_cfg(p_deg, ph, u=0.5, ultimate=False):
+POSE_NUMERIC_KEYS = [
+    "pelvis_dx", "pelvis_dy", "torso_deg", "head_rel_deg", "mane_rel_deg",
+    "mane_wave_amp", "l_thigh_deg", "l_shin_deg", "l_foot_deg",
+    "r_thigh_deg", "r_shin_deg", "r_foot_deg",
+    "l_sode_rel_deg", "l_fore_rel_deg", "r_sode_rel_deg", "r_fore_rel_deg",
+    "lance_deg", "lance_len", "lance_glow", "foot_y"
+]
+
+POSE_DEFAULTS = dict(
+    pelvis_dx=0.0,
+    pelvis_dy=0.0,
+    torso_deg=3.0,
+    head_rel_deg=-2.0,
+    mane_rel_deg=-5.0,
+    mane_wave_amp=7.0,
+    l_thigh_deg=-2.0,
+    l_shin_deg=2.0,
+    l_foot_deg=0.0,
+    r_thigh_deg=2.0,
+    r_shin_deg=-2.0,
+    r_foot_deg=0.0,
+    l_sode_rel_deg=-6.0,
+    l_fore_rel_deg=-14.0,
+    r_sode_rel_deg=-14.0,
+    r_fore_rel_deg=-18.0,
+    lance_deg=-16.0,
+    lance_len=31.0,
+    lance_glow=1.0,
+    foot_y=99.0,
+    wing_mode="normal",
+    right_arm_in_front=False,
+    right_leg_behind=False
+)
+
+
+def eval_pose_keyframes(f, keyframes, ph, wing_mult=2.0):
     """
-    Constructs a 13-part articulated Winged Valkyrie Spear-Glide / Sky-Dive configuration
-    aligned along trajectory angle `p_deg` (negative = upward-diagonal '/', 0 = horizontal '--->',
-    positive = head-first downward-diagonal '\\'), with swept Falcon-Jet wings and Gungnir Mach-Cone!
+    Smoothly cosine-interpolates all anatomical joint angles & foot_y across keyframes `[(frame, dict), ...]`
+    so there are ZERO abrupt pose snaps and ZERO steep nose-dive pops!
     """
-    return dict(
-        pelvis_dx=0.0,
-        pelvis_dy=16.0,
-        torso_deg=56.0 + 0.68 * p_deg,
-        head_rel_deg=-22.0 - 0.15 * p_deg,
-        mane_rel_deg=-34.0,
-        mane_wave_phase=ph * (4.0 if ultimate else 3.0),
-        mane_wave_amp=11.0 if ultimate else 9.5,
-        wing_mode="swept",
-        wing_phase=ph * 3.0,
-        l_thigh_deg=54.0 + 0.70 * p_deg,
-        l_shin_deg=64.0 + 0.70 * p_deg,
-        l_foot_deg=60.0 + 0.65 * p_deg,
-        r_thigh_deg=76.0 + 0.70 * p_deg,
-        r_shin_deg=68.0 + 0.70 * p_deg,
-        r_foot_deg=64.0 + 0.65 * p_deg,
-        l_sode_rel_deg=-48.0,
-        l_fore_rel_deg=-36.0,
-        r_sode_rel_deg=-68.0 if p_deg < 0 else -48.0,
-        r_fore_rel_deg=-34.0 if p_deg < 0 else -28.0,
-        right_arm_in_front=True,
-        grounded=False,
-        spear_mode=True,
-        lance_deg=p_deg,
-        lance_len=29.0,
-        lance_glow=1.0,
-        mach_cone=dict(
-            len=38.0 if ultimate else 32.0,
-            intensity=1.08 if ultimate else (0.85 + 0.20 * math.sin(u * math.pi)),
-            ultimate=ultimate
-        ),
-        speedlines=6 if ultimate else 4
-    )
+    k0 = keyframes[0]
+    k1 = keyframes[-1]
+    for i in range(len(keyframes) - 1):
+        if keyframes[i][0] <= f <= keyframes[i + 1][0]:
+            k0 = keyframes[i]
+            k1 = keyframes[i + 1]
+            break
+
+    f0, d0 = k0
+    f1, d1 = k1
+    raw_u = 0.0 if f1 <= f0 else (f - f0) / float(f1 - f0)
+    u = 0.5 - 0.5 * math.cos(math.pi * max(0.0, min(1.0, raw_u)))
+
+    out = dict(POSE_DEFAULTS)
+    for k in POSE_NUMERIC_KEYS:
+        v0 = d0.get(k, POSE_DEFAULTS[k])
+        v1 = d1.get(k, POSE_DEFAULTS[k])
+        out[k] = v0 + (v1 - v0) * u
+
+    active_d = d0 if raw_u < 0.5 else d1
+    for meta_k in ("wing_mode", "right_arm_in_front", "right_leg_behind", "halo", "halo_spears", "speedlines", "speedline_deg"):
+        if meta_k in active_d:
+            out[meta_k] = active_d[meta_k]
+
+    out["mane_wave_phase"] = ph * wing_mult
+    out["wing_phase"] = ph * wing_mult
+    return out
 
 
 def build_row_configs(row_idx):
@@ -1050,15 +1074,15 @@ def build_row_configs(row_idx):
         ph = 2.0 * math.pi * t
 
         if row_idx == 0:
-            # Row 0: IDLE (100% Grounded Regal Valkyrie Stance + 6-Pinion Wing-Beat + Rippling Ponytail)
+            # Row 0: IDLE (100% Grounded Regal Valkyrie Stance + Sleek -16 deg Forward Gungnir Guard!)
             breath = math.sin(ph)
             sway = math.cos(ph)
             cfgs.append(dict(
-                pelvis_dx=sway * 3.5,
-                pelvis_dy=breath * 8.0,
-                torso_deg=2.0 + breath * 2.0,
-                head_rel_deg=-1.0 - breath * 1.4,
-                mane_rel_deg=-3.0 + sway * 4.0,
+                pelvis_dx=sway * 3.0,
+                pelvis_dy=breath * 7.5,
+                torso_deg=3.0 + breath * 1.8,
+                head_rel_deg=-2.0 - breath * 1.2,
+                mane_rel_deg=-5.0 + sway * 4.0,
                 mane_wave_phase=ph,
                 mane_wave_amp=6.5,
                 wing_mode="normal",
@@ -1067,348 +1091,200 @@ def build_row_configs(row_idx):
                 l_shin_deg=2.0 - sway * 1.8,
                 r_thigh_deg=2.0 - sway * 1.8,
                 r_shin_deg=-2.0 + sway * 1.8,
-                l_sode_rel_deg=-4.0 + breath * 3.0,
-                l_fore_rel_deg=-12.0 + sway * 4.0,
-                r_sode_rel_deg=-12.0 + breath * 3.5,
+                l_sode_rel_deg=-6.0 + breath * 3.0,
+                l_fore_rel_deg=-14.0 + sway * 3.5,
+                r_sode_rel_deg=-14.0 + breath * 3.0,
                 r_fore_rel_deg=-18.0 - sway * 3.0,
-                grounded=True,
-                lance_deg=-38.0 + breath * 3.5,
+                foot_y=99.0,
+                lance_deg=-16.0 + breath * 2.8,
                 lance_len=31.0
             ))
 
         elif row_idx == 1:
-            # Row 1: WALK (100% Grounded 2-Step Articulated Valkyrie Battle Stride — Zero Scanline Pulling!)
+            # Row 1: WALK (100% Grounded 2-Step Articulated Valkyrie Stride + Sleek Forward Lance!)
             stride = math.sin(ph)
             knee_lift = math.cos(ph)
             right_behind = (f >= 15)
             cfgs.append(dict(
                 pelvis_dx=0.0,
-                pelvis_dy=abs(stride) * 20.0,
-                torso_deg=7.5 + abs(stride) * 2.5,
-                head_rel_deg=-4.0,
-                mane_rel_deg=-8.0 - abs(stride) * 5.0,
+                pelvis_dy=abs(stride) * 18.0,
+                torso_deg=8.0 + abs(stride) * 2.2,
+                head_rel_deg=-4.5,
+                mane_rel_deg=-9.0 - abs(stride) * 4.5,
                 mane_wave_phase=ph * 2.0,
                 mane_wave_amp=8.5,
                 wing_mode="normal",
                 wing_phase=ph * 2.0,
                 right_leg_behind=right_behind,
-                l_thigh_deg=stride * 26.0,
-                l_shin_deg=max(0.0, stride * 28.0) + max(0.0, knee_lift * 15.0),
-                l_foot_deg=stride * 13.0,
-                r_thigh_deg=-stride * 26.0,
-                r_shin_deg=max(0.0, -stride * 28.0) + max(0.0, -knee_lift * 15.0),
-                r_foot_deg=-stride * 13.0,
-                l_sode_rel_deg=-stride * 20.0,
-                l_fore_rel_deg=-18.0 - abs(stride) * 8.0,
-                r_sode_rel_deg=stride * 16.0 - 8.0,
-                r_fore_rel_deg=-16.0 + stride * 6.0,
-                grounded=True,
-                lance_deg=-30.0 + stride * 10.0,
+                l_thigh_deg=stride * 25.0,
+                l_shin_deg=max(0.0, stride * 26.0) + max(0.0, knee_lift * 14.0),
+                l_foot_deg=stride * 12.0,
+                r_thigh_deg=-stride * 25.0,
+                r_shin_deg=max(0.0, -stride * 26.0) + max(0.0, -knee_lift * 14.0),
+                r_foot_deg=-stride * 12.0,
+                l_sode_rel_deg=-stride * 18.0,
+                l_fore_rel_deg=-16.0 - abs(stride) * 7.0,
+                r_sode_rel_deg=stride * 14.0 - 10.0,
+                r_fore_rel_deg=-16.0 + stride * 5.0,
+                foot_y=99.0,
+                lance_deg=-12.0 + stride * 6.0,
                 lance_len=31.0
             ))
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK (Handcrafted 3-Phase Celestial Gungnir Javelin Hurl Combo!)
-            if f < 7:
-                # Phase 1 (F00..F06): Rear-Coil Overhead Javelin Windup
-                u = f / 6.0
-                cfgs.append(dict(
-                    pelvis_dx=-10.0 * u,
-                    pelvis_dy=35.0 * u,
-                    torso_deg=-12.0 * u,
-                    head_rel_deg=8.0 * u,
-                    mane_rel_deg=6.0 * u,
-                    mane_wave_phase=ph,
-                    mane_wave_amp=7.5,
-                    wing_mode="flare" if f >= 3 else "normal",
-                    wing_phase=ph * 2.0,
-                    l_thigh_deg=-18.0 * u,
-                    l_shin_deg=16.0 * u,
-                    r_thigh_deg=18.0 * u,
-                    r_shin_deg=-14.0 * u,
-                    l_sode_rel_deg=-26.0 * u,
-                    l_fore_rel_deg=-28.0 * u,
-                    r_sode_rel_deg=-86.0 * u,
-                    r_fore_rel_deg=-24.0 * u,
-                    right_arm_in_front=True,
-                    grounded=True,
-                    lance_deg=-38.0 + 26.0 * u,  # Cocked overhead aiming forward (-12 deg)
-                    lance_len=31.0,
-                    lance_glow=1.0
-                ))
-            elif f < 16:
-                # Phase 2 (F07..F15): Explosive Overhead Javelin Hurl Whip + Golden Release Crescent!
-                u = (f - 7) / 8.0
-                cfgs.append(dict(
-                    pelvis_dx=8.0 * u,
-                    pelvis_dy=45.0,
-                    torso_deg=-10.0 + 30.0 * u,
-                    head_rel_deg=-10.0 * u,
-                    mane_rel_deg=-20.0 * u,
-                    mane_wave_phase=ph * 2.5,
-                    mane_wave_amp=10.0,
-                    wing_mode="flare",
-                    wing_phase=ph * 2.5,
-                    l_thigh_deg=20.0 * u,
-                    l_shin_deg=14.0 * u,
-                    r_thigh_deg=-22.0 * u,
-                    r_shin_deg=16.0 * u,
-                    l_sode_rel_deg=24.0 * u,
-                    l_fore_rel_deg=-24.0,
-                    r_sode_rel_deg=-86.0 + 102.0 * u,
-                    r_fore_rel_deg=-24.0 + 14.0 * u,
-                    right_arm_in_front=True,
-                    grounded=True,
-                    show_lance=(f <= 10 or f >= 14),  # Hurls javelin at F11..F13, reforms in golden light at F14!
-                    lance_deg=-12.0 + 28.0 * u,
-                    lance_len=31.0,
-                    slash_arc=dict(
-                        r=29.0, a0=-68.0 + 25.0 * u, a1=38.0 + 20.0 * u,
-                        intensity=math.sin(u * math.pi) * 1.2
-                    ) if 1 <= (f - 7) <= 6 else None
-                ))
-            elif f < 24:
-                # Phase 3 (F16..F23): Second Wing-Whip Javelin Projection!
-                u = (f - 16) / 7.0
-                cfgs.append(dict(
-                    pelvis_dx=4.0,
-                    pelvis_dy=40.0,
-                    torso_deg=18.0 - 6.0 * u,
-                    head_rel_deg=-8.0,
-                    mane_rel_deg=-18.0,
-                    mane_wave_phase=ph * 2.5,
-                    mane_wave_amp=9.5,
-                    wing_mode="normal",
-                    wing_phase=ph * 2.5,
-                    l_thigh_deg=18.0,
-                    l_shin_deg=12.0,
-                    r_thigh_deg=-20.0,
-                    r_shin_deg=14.0,
-                    l_sode_rel_deg=-35.0 * math.sin(u * math.pi),
-                    l_fore_rel_deg=-26.0,
-                    r_sode_rel_deg=16.0 - 44.0 * math.sin(u * math.pi),
-                    r_fore_rel_deg=-14.0 - 12.0 * math.sin(u * math.pi),
-                    right_arm_in_front=True,
-                    grounded=True,
-                    lance_deg=12.0 - 34.0 * u,
-                    lance_len=31.0,
-                    slash_arc=dict(
-                        r=27.0, a0=35.0 - 20.0 * u, a1=-52.0 - 15.0 * u,
-                        intensity=math.sin(u * math.pi) * 1.1
-                    ) if 1 <= (f - 16) <= 5 else None
-                ))
-            else:
-                # Phase 4 (F24..F29): Return to Grounded Valkyrie Guard
-                u = (f - 24) / 5.0
-                cfgs.append(dict(
-                    pelvis_dx=4.0 * (1.0 - u),
-                    pelvis_dy=40.0 * (1.0 - u),
-                    torso_deg=12.0 * (1.0 - u) + 2.0,
-                    head_rel_deg=-6.0 * (1.0 - u),
-                    mane_rel_deg=-14.0 * (1.0 - u) - 3.0,
-                    mane_wave_phase=ph,
-                    mane_wave_amp=7.0,
-                    wing_mode="normal",
-                    wing_phase=ph,
-                    l_thigh_deg=18.0 * (1.0 - u),
-                    l_shin_deg=12.0 * (1.0 - u),
-                    r_thigh_deg=-20.0 * (1.0 - u),
-                    r_shin_deg=14.0 * (1.0 - u),
-                    l_sode_rel_deg=-4.0,
-                    l_fore_rel_deg=-20.0 * (1.0 - u) - 12.0 * u,
-                    r_sode_rel_deg=-12.0,
-                    r_fore_rel_deg=-18.0,
-                    grounded=True,
-                    lance_deg=-22.0 * (1.0 - u) - 38.0 * u,
-                    lance_len=31.0
-                ))
+            # Row 2: AUTO_ATTACK (Smooth Continuous 3-Phase Horizontal Valkyrie Lance-Projection Combo!)
+            kfs = [
+                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, right_arm_in_front=False)),
+                # F05: Athletic rear-weight javelin draw (-10 deg sleek horizontal cock)
+                (5, dict(
+                    pelvis_dx=-10.0, pelvis_dy=28.0, torso_deg=-8.0, head_rel_deg=6.0, mane_rel_deg=4.0,
+                    l_thigh_deg=-16.0, l_shin_deg=14.0, r_thigh_deg=16.0, r_shin_deg=-12.0,
+                    l_sode_rel_deg=-22.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=-72.0, r_fore_rel_deg=-22.0,
+                    lance_deg=-10.0, wing_mode="flare", right_arm_in_front=True
+                )),
+                # F10: Crisp forward horizontal javelin whip-projection (+2 deg level forward!)
+                (10, dict(
+                    pelvis_dx=10.0, pelvis_dy=36.0, torso_deg=16.0, head_rel_deg=-8.0, mane_rel_deg=-18.0,
+                    l_thigh_deg=18.0, l_shin_deg=14.0, r_thigh_deg=-20.0, r_shin_deg=16.0,
+                    l_sode_rel_deg=18.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=14.0, r_fore_rel_deg=-10.0,
+                    lance_deg=2.0, wing_mode="flare", right_arm_in_front=True
+                )),
+                # F15: Fluid wing-coil reset for second projection (-12 deg)
+                (15, dict(
+                    pelvis_dx=-2.0, pelvis_dy=26.0, torso_deg=4.0, head_rel_deg=-2.0, mane_rel_deg=-10.0,
+                    l_thigh_deg=4.0, l_shin_deg=8.0, r_thigh_deg=-6.0, r_shin_deg=10.0,
+                    l_sode_rel_deg=-18.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=-48.0, r_fore_rel_deg=-20.0,
+                    lance_deg=-12.0, wing_mode="normal", right_arm_in_front=True
+                )),
+                # F20: Second sweeping horizontal lance-whip (+4 deg)
+                (20, dict(
+                    pelvis_dx=12.0, pelvis_dy=38.0, torso_deg=18.0, head_rel_deg=-10.0, mane_rel_deg=-20.0,
+                    l_thigh_deg=20.0, l_shin_deg=16.0, r_thigh_deg=-22.0, r_shin_deg=18.0,
+                    l_sode_rel_deg=22.0, l_fore_rel_deg=-20.0, r_sode_rel_deg=18.0, r_fore_rel_deg=-8.0,
+                    lance_deg=4.0, wing_mode="flare", right_arm_in_front=True
+                )),
+                # F29: Smooth return to regal grounded stance (-16 deg)
+                (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, right_arm_in_front=False)),
+            ]
+            cfg = eval_pose_keyframes(f, kfs, ph, wing_mult=2.0)
+            if 8 <= f <= 12:
+                u_s = (f - 8) / 4.0
+                cfg["slash_arc"] = dict(r=28.0, a0=-52.0 + 18.0 * u_s, a1=32.0 + 14.0 * u_s, intensity=math.sin((f - 7.5) / 5.0 * math.pi) * 1.15)
+            elif 18 <= f <= 22:
+                u_s = (f - 18) / 4.0
+                cfg["slash_arc"] = dict(r=27.0, a0=34.0 - 16.0 * u_s, a1=-46.0 - 12.0 * u_s, intensity=math.sin((f - 17.5) / 5.0 * math.pi) * 1.10)
+            cfgs.append(cfg)
 
         elif row_idx == 3:
-            # Row 3: SKILL (Gungnir Javelin Barrage — 100% Grounded Cast Startup + Winged Halo Volley + Command Thrust!)
-            if f < 6:
-                # Phase 0 (F00..F05): 100% Grounded Valkyrie Wing-Flare & Skyward Gungnir Invocation!
-                u = f / 5.0
-                cfgs.append(dict(
-                    pelvis_dx=-8.0 * u,
-                    pelvis_dy=65.0 * u,
-                    torso_deg=-8.0 * u,
-                    head_rel_deg=-10.0 * u,
-                    mane_rel_deg=-12.0 * u,
-                    mane_wave_phase=ph * 2.0,
-                    mane_wave_amp=8.5,
-                    wing_mode="flare",
-                    wing_phase=ph * 2.0,
-                    l_thigh_deg=-22.0 * u,
-                    l_shin_deg=22.0 * u,
-                    r_thigh_deg=22.0 * u,
-                    r_shin_deg=-18.0 * u,
-                    l_sode_rel_deg=-42.0 * u,
-                    l_fore_rel_deg=-34.0 * u,
-                    r_sode_rel_deg=-88.0 * u,
-                    r_fore_rel_deg=-22.0 * u,
-                    right_arm_in_front=True,
-                    grounded=True,
-                    halo=(f >= 3),
-                    halo_spears=6,
-                    lance_deg=-38.0 - 46.0 * u,  # Thrusts Gungnir skyward (-84 deg)
-                    lance_len=30.0
-                ))
-            elif f < 15:
-                # Phase 1 (F06..F14): Airborne Winged Valkyrie Halo Barrage (6 Curving Gungnir Javelins!)
-                u = (f - 6) / 8.0
-                osc = math.sin(u * math.pi * 3.0)
-                cfgs.append(dict(
-                    pelvis_dx=0.0,
-                    pelvis_dy=15.0,
-                    torso_deg=10.0 + osc * 6.0,
-                    head_rel_deg=-6.0,
-                    mane_rel_deg=-22.0,
-                    mane_wave_phase=ph * 3.0,
-                    mane_wave_amp=10.5,
-                    wing_mode="flare",
-                    wing_phase=ph * 3.5,
-                    l_thigh_deg=24.0,
-                    l_shin_deg=36.0,
-                    r_thigh_deg=-14.0,
-                    r_shin_deg=28.0,
-                    l_sode_rel_deg=-38.0 + osc * 16.0,
-                    l_fore_rel_deg=-28.0,
-                    r_sode_rel_deg=-54.0 + osc * 28.0,
-                    r_fore_rel_deg=-20.0,
-                    right_arm_in_front=True,
-                    grounded=False,
-                    airborne_dy=-10,
-                    halo=True,
-                    halo_spears=max(1, 6 - int(u * 5)),
-                    lance_deg=-22.0 + osc * 18.0,
-                    lance_len=30.0
-                ))
-            elif f < 19:
-                # Phase 2 (F15..F18): Diagonal Valkyrie Sky-Spear Command Thrust (+26 deg) to Erupt Dragonfire Obelisk!
-                cfgs.append(make_valkyrie_spear_glide_cfg(26.0, ph, (f - 15) / 3.0, ultimate=False))
-            else:
-                # Phase 3 (F19..F29): Crisp Grounded Valkyrie Touchdown & Stance Recovery
-                u = (f - 19) / 10.0
-                cfgs.append(dict(
-                    pelvis_dx=0.0,
-                    pelvis_dy=55.0 * (1.0 - u),
-                    torso_deg=16.0 * (1.0 - u) + 2.0,
-                    head_rel_deg=-8.0 * (1.0 - u),
-                    mane_rel_deg=-16.0 * (1.0 - u) - 3.0,
-                    mane_wave_phase=ph,
-                    mane_wave_amp=7.5,
-                    wing_mode="normal",
-                    wing_phase=ph,
-                    l_thigh_deg=-20.0 * (1.0 - u),
-                    l_shin_deg=20.0 * (1.0 - u),
-                    r_thigh_deg=18.0 * (1.0 - u),
-                    r_shin_deg=-16.0 * (1.0 - u),
-                    l_sode_rel_deg=-10.0 * (1.0 - u) - 4.0,
-                    l_fore_rel_deg=-20.0 * (1.0 - u) - 12.0 * u,
-                    r_sode_rel_deg=-12.0,
-                    r_fore_rel_deg=-18.0,
-                    grounded=True,
-                    lance_deg=14.0 * (1.0 - u) - 38.0 * u,
-                    lance_len=31.0
-                ))
+            # Row 3: SKILL (Gungnir Javelin Barrage — Grounded Wing-Flare -> Sleek Low Horizontal Wing-Skim -> Forward Command Thrust!)
+            kfs = [
+                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, foot_y=99.0)),
+                # F05: 100% Grounded Wing-Flare & Poised Diagonal Invocation (-28 deg, zero vertical pole!)
+                (5, dict(
+                    pelvis_dx=-8.0, pelvis_dy=48.0, torso_deg=-6.0, head_rel_deg=-6.0, mane_rel_deg=-12.0,
+                    l_thigh_deg=-20.0, l_shin_deg=20.0, r_thigh_deg=20.0, r_shin_deg=-16.0,
+                    l_sode_rel_deg=-36.0, l_fore_rel_deg=-30.0, r_sode_rel_deg=-64.0, r_fore_rel_deg=-22.0,
+                    lance_deg=-28.0, foot_y=99.0, wing_mode="flare", right_arm_in_front=True,
+                    halo=True, halo_spears=6
+                )),
+                # F10: Sleek Low Horizontal Wing-Glide Skim (torso +20 deg, lance -6 deg, gentle foot_y=95!)
+                (10, dict(
+                    pelvis_dx=4.0, pelvis_dy=22.0, torso_deg=20.0, head_rel_deg=-12.0, mane_rel_deg=-24.0,
+                    l_thigh_deg=24.0, l_shin_deg=34.0, l_foot_deg=20.0,
+                    r_thigh_deg=8.0, r_shin_deg=28.0, r_foot_deg=18.0,
+                    l_sode_rel_deg=-24.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=-34.0, r_fore_rel_deg=-18.0,
+                    lance_deg=-6.0, foot_y=95.0, wing_mode="swept", right_arm_in_front=True,
+                    halo=True, halo_spears=5, speedlines=4, speedline_deg=-4.0
+                )),
+                # F16: Sweeping Horizontal Wing-Barrage Follow-Through (torso +22 deg, lance +4 deg)
+                (16, dict(
+                    pelvis_dx=8.0, pelvis_dy=24.0, torso_deg=22.0, head_rel_deg=-14.0, mane_rel_deg=-26.0,
+                    l_thigh_deg=26.0, l_shin_deg=32.0, l_foot_deg=18.0,
+                    r_thigh_deg=-12.0, r_shin_deg=24.0, r_foot_deg=12.0,
+                    l_sode_rel_deg=16.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=-18.0, r_fore_rel_deg=-14.0,
+                    lance_deg=4.0, foot_y=96.0, wing_mode="flare", right_arm_in_front=True,
+                    halo=True, halo_spears=2, speedlines=4, speedline_deg=2.0
+                )),
+                # F20: 100% Grounded Sliding Valkyrie Command Thrust (0 deg straight horizontal spear point — erupts Obelisk!)
+                (20, dict(
+                    pelvis_dx=14.0, pelvis_dy=52.0, torso_deg=18.0, head_rel_deg=-10.0, mane_rel_deg=-20.0,
+                    l_thigh_deg=-24.0, l_shin_deg=24.0, r_thigh_deg=24.0, r_shin_deg=-18.0,
+                    l_sode_rel_deg=22.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=16.0, r_fore_rel_deg=-8.0,
+                    lance_deg=0.0, lance_len=32.0, foot_y=99.0, wing_mode="flare", right_arm_in_front=True
+                )),
+                # F29: Smooth grounded stance recovery
+                (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, foot_y=99.0)),
+            ]
+            cfg = eval_pose_keyframes(f, kfs, ph, wing_mult=3.0)
+            if 18 <= f <= 21:
+                cfg["mach_cone"] = dict(len=30.0, intensity=0.92, ultimate=False)
+            cfgs.append(cfg)
 
         elif row_idx == 4:
-            # Row 4: ULTIMATE (Valhalla Sky-Sanctuary — 100% Grounded Cast + Multi-Angle Winged Spear-Glides + Sovereign Judgment!)
-            if f < 5:
-                # Stage 0 (F00..F04): 100% GROUNDED Valhalla Awakening Cast (ZERO lifting / ZERO floating!)
-                u = f / 4.0
-                cfgs.append(dict(
-                    pelvis_dx=0.0,
-                    pelvis_dy=75.0 * u,
-                    torso_deg=-10.0 * u,
-                    head_rel_deg=-12.0 * u,
-                    mane_rel_deg=-18.0 * u,
-                    mane_wave_phase=ph * 3.0,
-                    mane_wave_amp=10.0,
-                    wing_mode="flare",
-                    wing_phase=ph * 3.0,
-                    l_thigh_deg=-24.0 * u,
-                    l_shin_deg=24.0 * u,
-                    r_thigh_deg=24.0 * u,
-                    r_shin_deg=-20.0 * u,
-                    l_sode_rel_deg=-52.0 * u,
-                    l_fore_rel_deg=-36.0 * u,
-                    r_sode_rel_deg=-96.0 * u,
-                    r_fore_rel_deg=-24.0 * u,
-                    right_arm_in_front=True,
-                    grounded=True,
-                    halo=(f >= 2),
-                    halo_spears=8,
-                    lance_deg=-40.0 - 48.0 * u,  # Skyward Valhalla Invocation (-88 deg)
-                    lance_len=30.0
-                ))
-            elif f < 9:
-                # Pass 1 (F05..F08): Up-Diagonal Winged Valkyrie Sky-Launch ('/' -22 deg)
-                cfgs.append(make_valkyrie_spear_glide_cfg(-22.0, ph, (f - 5) / 3.0, ultimate=True))
-            elif f < 14:
-                # Pass 2 (F09..F13): Celestial Sanctuary Crown Command Hover (12 Homing Gungnir Sky-Javelins!)
-                u = (f - 9) / 4.0
-                cfgs.append(dict(
-                    pelvis_dx=0.0,
-                    pelvis_dy=10.0,
-                    torso_deg=8.0 + math.sin(u * math.pi) * 6.0,
-                    head_rel_deg=-6.0,
-                    mane_rel_deg=-26.0,
-                    mane_wave_phase=ph * 4.0,
-                    mane_wave_amp=11.5,
-                    wing_mode="flare",
-                    wing_phase=ph * 4.0,
-                    l_thigh_deg=26.0,
-                    l_shin_deg=42.0,
-                    r_thigh_deg=-12.0,
-                    r_shin_deg=32.0,
-                    l_sode_rel_deg=-56.0,
-                    l_fore_rel_deg=-30.0,
-                    r_sode_rel_deg=-68.0 + 36.0 * u,
-                    r_fore_rel_deg=-18.0,
-                    right_arm_in_front=True,
-                    grounded=False,
-                    airborne_dy=-12,
-                    halo=True,
-                    halo_spears=8,
-                    lance_deg=-32.0 + 42.0 * u,
-                    lance_len=30.0,
-                    slash_arc=dict(
-                        r=30.0, a0=-70.0, a1=45.0,
-                        intensity=math.sin(u * math.pi) * 1.25
-                    ) if 1 <= (f - 9) <= 3 else None
-                ))
-            elif f < 18:
-                # Pass 3 (F14..F17): Cross-Sky Supersonic Valkyrie Glide ('--->' -6 deg)
-                cfgs.append(make_valkyrie_spear_glide_cfg(-6.0, ph, (f - 14) / 3.0, ultimate=True))
-            elif f < 23:
-                # Stage 2 (F18..F22): Final Sovereign Gungnir Sky-Spear Descent ('\\' +28 deg) & 5-Spire Cataclysm!
-                cfgs.append(make_valkyrie_spear_glide_cfg(28.0, ph, (f - 18) / 4.0, ultimate=True))
-            else:
-                # Stage 3 (F23..F29): 100% Grounded Sovereign Landing & Wing-Recovery
-                u = (f - 23) / 6.0
-                cfgs.append(dict(
-                    pelvis_dx=0.0,
-                    pelvis_dy=65.0 * (1.0 - u),
-                    torso_deg=18.0 * (1.0 - u) + 2.0,
-                    head_rel_deg=-8.0 * (1.0 - u),
-                    mane_rel_deg=-18.0 * (1.0 - u) - 3.0,
-                    mane_wave_phase=ph,
-                    mane_wave_amp=8.0,
-                    wing_mode="flare" if f < 25 else "normal",
-                    wing_phase=ph,
-                    l_thigh_deg=-22.0 * (1.0 - u),
-                    l_shin_deg=22.0 * (1.0 - u),
-                    r_thigh_deg=20.0 * (1.0 - u),
-                    r_shin_deg=-18.0 * (1.0 - u),
-                    l_sode_rel_deg=-12.0 * (1.0 - u) - 4.0,
-                    l_fore_rel_deg=-20.0 * (1.0 - u) - 12.0 * u,
-                    r_sode_rel_deg=-12.0,
-                    r_fore_rel_deg=-18.0,
-                    grounded=True,
-                    lance_deg=18.0 * (1.0 - u) - 38.0 * u,
-                    lance_len=31.0
-                ))
+            # Row 4: ULTIMATE (Valhalla Sky-Sanctuary — Grounded Cast -> Shallow Sweeping Wing-Glide -> Mid-Sky Command -> Shallow Falcon Touchdown!)
+            kfs = [
+                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, foot_y=99.0)),
+                # F04: 100% GROUNDED Valhalla Awakening Cast (regal -32 deg forward-skyward salute, ZERO floating!)
+                (4, dict(
+                    pelvis_dx=-6.0, pelvis_dy=56.0, torso_deg=-8.0, head_rel_deg=-8.0, mane_rel_deg=-16.0,
+                    l_thigh_deg=-22.0, l_shin_deg=22.0, r_thigh_deg=22.0, r_shin_deg=-18.0,
+                    l_sode_rel_deg=-44.0, l_fore_rel_deg=-32.0, r_sode_rel_deg=-72.0, r_fore_rel_deg=-22.0,
+                    lance_deg=-32.0, foot_y=99.0, wing_mode="flare", right_arm_in_front=True,
+                    halo=True, halo_spears=8
+                )),
+                # F08: Long Shallow Sweeping Wing-Glide Ascent (-10 deg sleek horizontal-upward glide, NEVER steep!)
+                (8, dict(
+                    pelvis_dx=8.0, pelvis_dy=18.0, torso_deg=26.0, head_rel_deg=-16.0, mane_rel_deg=-28.0,
+                    l_thigh_deg=32.0, l_shin_deg=42.0, l_foot_deg=28.0,
+                    r_thigh_deg=18.0, r_shin_deg=36.0, r_foot_deg=24.0,
+                    l_sode_rel_deg=-36.0, l_fore_rel_deg=-28.0, r_sode_rel_deg=-42.0, r_fore_rel_deg=-20.0,
+                    lance_deg=-10.0, foot_y=94.0, wing_mode="swept", right_arm_in_front=True,
+                    halo=True, halo_spears=8, speedlines=6, speedline_deg=-8.0
+                )),
+                # F13: Mid-Sky Valhalla Sanctuary Command Sweep (flared wings, sweeping horizontal javelin command -4 deg)
+                (13, dict(
+                    pelvis_dx=4.0, pelvis_dy=14.0, torso_deg=16.0, head_rel_deg=-10.0, mane_rel_deg=-26.0,
+                    l_thigh_deg=24.0, l_shin_deg=36.0, l_foot_deg=20.0,
+                    r_thigh_deg=-10.0, r_shin_deg=28.0, r_foot_deg=16.0,
+                    l_sode_rel_deg=-46.0, l_fore_rel_deg=-28.0, r_sode_rel_deg=-52.0, r_fore_rel_deg=-18.0,
+                    lance_deg=-14.0, foot_y=93.0, wing_mode="flare", right_arm_in_front=True,
+                    halo=True, halo_spears=8
+                )),
+                # F17: Forward Sanctuary Command Whip (+4 deg level horizontal sweep!)
+                (17, dict(
+                    pelvis_dx=10.0, pelvis_dy=16.0, torso_deg=24.0, head_rel_deg=-14.0, mane_rel_deg=-28.0,
+                    l_thigh_deg=28.0, l_shin_deg=38.0, l_foot_deg=24.0,
+                    r_thigh_deg=12.0, r_shin_deg=32.0, r_foot_deg=20.0,
+                    l_sode_rel_deg=18.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=-18.0, r_fore_rel_deg=-14.0,
+                    lance_deg=4.0, foot_y=94.0, wing_mode="swept", right_arm_in_front=True,
+                    halo=True, halo_spears=6, speedlines=5, speedline_deg=-2.0
+                )),
+                # F21: Shallow Falcon-Wing Touchdown Glide (torso +24 deg, lance +10 deg shallow forward point — ZERO 75 deg nose-dive!)
+                (21, dict(
+                    pelvis_dx=10.0, pelvis_dy=26.0, torso_deg=24.0, head_rel_deg=-12.0, mane_rel_deg=-26.0,
+                    l_thigh_deg=-14.0, l_shin_deg=20.0, l_foot_deg=8.0,
+                    r_thigh_deg=26.0, r_shin_deg=28.0, r_foot_deg=16.0,
+                    l_sode_rel_deg=-24.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=-12.0, r_fore_rel_deg=-12.0,
+                    lance_deg=10.0, foot_y=96.5, wing_mode="flare", right_arm_in_front=True,
+                    speedlines=5, speedline_deg=10.0
+                )),
+                # F24: 100% Grounded Sovereign Judgment Command Thrust (+2 deg forward spear point, boots planted at 99!)
+                (24, dict(
+                    pelvis_dx=14.0, pelvis_dy=56.0, torso_deg=18.0, head_rel_deg=-10.0, mane_rel_deg=-20.0,
+                    l_thigh_deg=-24.0, l_shin_deg=24.0, r_thigh_deg=24.0, r_shin_deg=-18.0,
+                    l_sode_rel_deg=22.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=18.0, r_fore_rel_deg=-8.0,
+                    lance_deg=2.0, lance_len=32.0, foot_y=99.0, wing_mode="flare", right_arm_in_front=True
+                )),
+                # F29: Smooth grounded sovereign recovery
+                (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, foot_y=99.0)),
+            ]
+            cfg = eval_pose_keyframes(f, kfs, ph, wing_mult=3.5)
+            if 6 <= f <= 9 or 16 <= f <= 23:
+                cfg["mach_cone"] = dict(len=34.0, intensity=1.0, ultimate=True)
+            if 13 <= f <= 16:
+                u_s = (f - 13) / 3.0
+                cfg["slash_arc"] = dict(r=29.0, a0=-58.0 + 15.0 * u_s, a1=38.0 + 12.0 * u_s, intensity=math.sin((f - 12.5) / 4.0 * math.pi) * 1.2)
+            cfgs.append(cfg)
 
         elif row_idx == 5:
             # Row 5: DEATH & HURT (F00..F05 Hurt Stagger, F06..F15 Kneeling Collapse, F16..F29 Flat Prone Rest)
@@ -1417,8 +1293,8 @@ def build_row_configs(row_idx):
                 cfgs.append(dict(
                     pelvis_dx=-16.0 * math.sin(u * math.pi),
                     pelvis_dy=24.0 * u,
-                    torso_deg=-18.0 * math.sin(u * math.pi),
-                    head_rel_deg=-12.0 * math.sin(u * math.pi),
+                    torso_deg=-16.0 * math.sin(u * math.pi),
+                    head_rel_deg=-10.0 * math.sin(u * math.pi),
                     mane_rel_deg=14.0 * u,
                     mane_wave_phase=ph * 2.0,
                     mane_wave_amp=9.0,
@@ -1428,12 +1304,12 @@ def build_row_configs(row_idx):
                     l_shin_deg=18.0 * u,
                     r_thigh_deg=-14.0 * u,
                     r_shin_deg=16.0 * u,
-                    l_sode_rel_deg=-28.0 * u,
-                    l_fore_rel_deg=-24.0 * u,
-                    r_sode_rel_deg=22.0 * u,
+                    l_sode_rel_deg=-26.0 * u,
+                    l_fore_rel_deg=-22.0 * u,
+                    r_sode_rel_deg=20.0 * u,
                     r_fore_rel_deg=-16.0,
-                    grounded=True,
-                    lance_deg=-52.0 - 18.0 * u,
+                    foot_y=99.0,
+                    lance_deg=-26.0 - 16.0 * u,
                     lance_len=30.0,
                     lance_glow=0.5
                 ))
@@ -1457,8 +1333,8 @@ def build_row_configs(row_idx):
                     l_fore_rel_deg=-18.0,
                     r_sode_rel_deg=26.0 * u,
                     r_fore_rel_deg=14.0 * u,
-                    grounded=True,
-                    lance_deg=-30.0 + 32.0 * u,
+                    foot_y=99.0,
+                    lance_deg=-24.0 + 26.0 * u,
                     lance_len=29.0,
                     lance_glow=0.3
                 ))
@@ -1483,215 +1359,106 @@ def build_row_configs(row_idx):
                     l_fore_rel_deg=10.0,
                     r_sode_rel_deg=12.0,
                     r_fore_rel_deg=8.0,
-                    grounded=True,
+                    foot_y=99.0,
                     resting_lance=True
                 ))
 
         elif row_idx == 6:
-            # Row 6: DASH (Aerodynamic Valkyrie Wing-Glide with Swept-Back Falcon Pinions!)
-            env = math.sin(t * math.pi)
-            cfgs.append(dict(
-                pelvis_dx=8.0 * env,
-                pelvis_dy=36.0 * env,
-                torso_deg=28.0 + 8.0 * env,
-                head_rel_deg=-16.0,
-                mane_rel_deg=-26.0,
-                mane_wave_phase=ph * 3.0,
-                mane_wave_amp=10.5,
-                wing_mode="swept",
-                wing_phase=ph * 3.0,
-                l_thigh_deg=34.0,
-                l_shin_deg=44.0,
-                l_foot_deg=32.0,
-                r_thigh_deg=14.0,
-                r_shin_deg=38.0,
-                r_foot_deg=28.0,
-                l_sode_rel_deg=22.0,
-                l_fore_rel_deg=-24.0,
-                r_sode_rel_deg=-32.0,
-                r_fore_rel_deg=-22.0,
-                right_arm_in_front=True,
-                grounded=False,
-                airborne_dy=-6,
-                lance_deg=-4.0,
-                lance_len=30.0,
-                speedlines=5
-            ))
+            # Row 6: DASH (Smooth Ease-In / Ease-Out Low Horizontal Valkyrie Wing-Skim!)
+            kfs = [
+                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=6.0, lance_deg=-14.0, foot_y=99.0)),
+                (7, dict(
+                    pelvis_dx=10.0, pelvis_dy=24.0, torso_deg=26.0, head_rel_deg=-16.0, mane_rel_deg=-26.0,
+                    l_thigh_deg=30.0, l_shin_deg=40.0, l_foot_deg=26.0,
+                    r_thigh_deg=14.0, r_shin_deg=34.0, r_foot_deg=22.0,
+                    l_sode_rel_deg=20.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=-28.0, r_fore_rel_deg=-20.0,
+                    lance_deg=-2.0, foot_y=95.0, wing_mode="swept", right_arm_in_front=True,
+                    speedlines=5, speedline_deg=0.0
+                )),
+                (22, dict(
+                    pelvis_dx=10.0, pelvis_dy=24.0, torso_deg=26.0, head_rel_deg=-16.0, mane_rel_deg=-26.0,
+                    l_thigh_deg=30.0, l_shin_deg=40.0, l_foot_deg=26.0,
+                    r_thigh_deg=14.0, r_shin_deg=34.0, r_foot_deg=22.0,
+                    l_sode_rel_deg=20.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=-28.0, r_fore_rel_deg=-20.0,
+                    lance_deg=-2.0, foot_y=95.0, wing_mode="swept", right_arm_in_front=True,
+                    speedlines=5, speedline_deg=0.0
+                )),
+                (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=6.0, lance_deg=-14.0, foot_y=99.0)),
+            ]
+            cfgs.append(eval_pose_keyframes(f, kfs, ph, wing_mult=3.0))
 
         elif row_idx == 7:
-            # Row 7: CROUCH (Articulated Valkyrie Wing-Backstep & Twin Gungnir Javelin Counter-Throw!)
-            if f < 8:
-                u = f / 7.0
-                cfgs.append(dict(
-                    pelvis_dx=-10.0 * u,
-                    pelvis_dy=95.0 * u,
-                    torso_deg=12.0 * u,
-                    head_rel_deg=-8.0 * u,
-                    mane_rel_deg=-14.0 * u,
-                    mane_wave_phase=ph * 2.0,
-                    mane_wave_amp=8.5,
-                    wing_mode="flare",
-                    wing_phase=ph * 2.0,
-                    l_thigh_deg=-34.0 * u,
-                    l_shin_deg=36.0 * u,
-                    r_thigh_deg=32.0 * u,
-                    r_shin_deg=-28.0 * u,
-                    l_sode_rel_deg=-22.0 * u,
-                    l_fore_rel_deg=-30.0 * u,
-                    r_sode_rel_deg=-74.0 * u,
-                    r_fore_rel_deg=-24.0 * u,
-                    right_arm_in_front=True,
-                    grounded=True,
-                    lance_deg=-36.0 + 22.0 * u,
-                    lance_len=30.0
-                ))
-            elif f < 22:
-                u = (f - 8) / 13.0
-                whip = math.sin(u * math.pi * 2.0)
-                cfgs.append(dict(
-                    pelvis_dx=-8.0,
-                    pelvis_dy=85.0,
-                    torso_deg=14.0 + whip * 10.0,
-                    head_rel_deg=-8.0,
-                    mane_rel_deg=-18.0,
-                    mane_wave_phase=ph * 2.5,
-                    mane_wave_amp=9.5,
-                    wing_mode="flare",
-                    wing_phase=ph * 2.5,
-                    l_thigh_deg=-30.0,
-                    l_shin_deg=34.0,
-                    r_thigh_deg=28.0,
-                    r_shin_deg=-24.0,
-                    l_sode_rel_deg=-18.0,
-                    l_fore_rel_deg=-28.0,
-                    r_sode_rel_deg=-42.0 + whip * 46.0,
-                    r_fore_rel_deg=-18.0,
-                    right_arm_in_front=True,
-                    grounded=True,
-                    lance_deg=-8.0 + whip * 20.0,
-                    lance_len=30.0,
-                    slash_arc=dict(
-                        r=26.0, a0=-55.0, a1=35.0,
-                        intensity=abs(whip) * 1.1
-                    ) if abs(whip) > 0.45 else None
-                ))
-            else:
-                u = (f - 22) / 7.0
-                cfgs.append(dict(
-                    pelvis_dx=-8.0 * (1.0 - u),
-                    pelvis_dy=85.0 * (1.0 - u),
-                    torso_deg=14.0 * (1.0 - u) + 2.0,
-                    head_rel_deg=-8.0 * (1.0 - u),
-                    mane_rel_deg=-16.0 * (1.0 - u) - 3.0,
-                    mane_wave_phase=ph,
-                    mane_wave_amp=7.0,
-                    wing_mode="normal",
-                    wing_phase=ph,
-                    l_thigh_deg=-30.0 * (1.0 - u),
-                    l_shin_deg=34.0 * (1.0 - u),
-                    r_thigh_deg=28.0 * (1.0 - u),
-                    r_shin_deg=-24.0 * (1.0 - u),
-                    l_sode_rel_deg=-4.0,
-                    l_fore_rel_deg=-12.0,
-                    r_sode_rel_deg=-12.0,
-                    r_fore_rel_deg=-18.0,
-                    grounded=True,
-                    lance_deg=-18.0 * (1.0 - u) - 38.0 * u,
-                    lance_len=31.0
-                ))
+            # Row 7: CROUCH (Grounded Sliding Valkyrie Wing-Backstep & Twin Horizontal Javelin Counter!)
+            kfs = [
+                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, foot_y=99.0)),
+                (6, dict(
+                    pelvis_dx=-10.0, pelvis_dy=72.0, torso_deg=12.0, head_rel_deg=-8.0, mane_rel_deg=-16.0,
+                    l_thigh_deg=-30.0, l_shin_deg=32.0, r_thigh_deg=28.0, r_shin_deg=-24.0,
+                    l_sode_rel_deg=-20.0, l_fore_rel_deg=-28.0, r_sode_rel_deg=-58.0, r_fore_rel_deg=-22.0,
+                    lance_deg=-12.0, foot_y=99.0, wing_mode="flare", right_arm_in_front=True
+                )),
+                (12, dict(
+                    pelvis_dx=-6.0, pelvis_dy=68.0, torso_deg=18.0, head_rel_deg=-10.0, mane_rel_deg=-20.0,
+                    l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-22.0,
+                    l_sode_rel_deg=16.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=12.0, r_fore_rel_deg=-12.0,
+                    lance_deg=2.0, foot_y=99.0, wing_mode="flare", right_arm_in_front=True
+                )),
+                (17, dict(
+                    pelvis_dx=-8.0, pelvis_dy=68.0, torso_deg=10.0, head_rel_deg=-6.0, mane_rel_deg=-16.0,
+                    l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-22.0,
+                    l_sode_rel_deg=-16.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=-44.0, r_fore_rel_deg=-20.0,
+                    lance_deg=-10.0, foot_y=99.0, wing_mode="flare", right_arm_in_front=True
+                )),
+                (22, dict(
+                    pelvis_dx=-4.0, pelvis_dy=64.0, torso_deg=18.0, head_rel_deg=-10.0, mane_rel_deg=-20.0,
+                    l_thigh_deg=-26.0, l_shin_deg=28.0, r_thigh_deg=24.0, r_shin_deg=-20.0,
+                    l_sode_rel_deg=18.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=14.0, r_fore_rel_deg=-10.0,
+                    lance_deg=4.0, foot_y=99.0, wing_mode="flare", right_arm_in_front=True
+                )),
+                (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, foot_y=99.0)),
+            ]
+            cfg = eval_pose_keyframes(f, kfs, ph, wing_mult=2.5)
+            if f in (10, 11, 12, 20, 21, 22):
+                cfg["slash_arc"] = dict(r=26.0, a0=-48.0, a1=32.0, intensity=0.95)
+            cfgs.append(cfg)
 
         elif row_idx == 8:
-            # Row 8: JUMP (Valkyrie Sky-Vault & Apex Downward-Angled Gungnir Javelin Volley!)
-            if f < 4:
-                u = f / 3.0
-                cfgs.append(dict(
-                    pelvis_dy=80.0 * u,
-                    torso_deg=14.0 * u,
-                    head_rel_deg=-8.0 * u,
-                    mane_wave_phase=ph,
-                    mane_wave_amp=7.5,
-                    wing_mode="flare",
-                    wing_phase=ph,
-                    l_thigh_deg=-28.0 * u,
-                    l_shin_deg=30.0 * u,
-                    r_thigh_deg=26.0 * u,
-                    r_shin_deg=-24.0 * u,
-                    grounded=True,
-                    lance_deg=-42.0,
-                    lance_len=30.0
-                ))
-            elif f < 13:
-                u = (f - 4) / 8.0
-                cfgs.append(dict(
-                    pelvis_dy=10.0,
-                    torso_deg=-8.0 + 16.0 * u,
-                    head_rel_deg=-6.0,
-                    mane_rel_deg=-24.0,
-                    mane_wave_phase=ph * 3.0,
-                    mane_wave_amp=10.5,
-                    wing_mode="flare",
-                    wing_phase=ph * 3.0,
-                    l_thigh_deg=26.0,
-                    l_shin_deg=44.0,
-                    r_thigh_deg=-18.0,
-                    r_shin_deg=36.0,
-                    l_sode_rel_deg=-36.0,
-                    l_fore_rel_deg=-28.0,
-                    r_sode_rel_deg=-82.0,
-                    r_fore_rel_deg=-22.0,
-                    right_arm_in_front=True,
-                    grounded=False,
-                    airborne_dy=-12,
-                    lance_deg=18.0,
-                    lance_len=30.0
-                ))
-            elif f < 22:
-                u = (f - 13) / 8.0
-                cfgs.append(dict(
-                    pelvis_dy=12.0,
-                    torso_deg=22.0,
-                    head_rel_deg=-8.0,
-                    mane_rel_deg=-28.0,
-                    mane_wave_phase=ph * 3.5,
-                    mane_wave_amp=11.0,
-                    wing_mode="flare",
-                    wing_phase=ph * 3.5,
-                    l_thigh_deg=30.0,
-                    l_shin_deg=42.0,
-                    r_thigh_deg=-14.0,
-                    r_shin_deg=32.0,
-                    l_sode_rel_deg=18.0,
-                    l_fore_rel_deg=-24.0,
-                    r_sode_rel_deg=-64.0 + 78.0 * u,
-                    r_fore_rel_deg=-18.0,
-                    right_arm_in_front=True,
-                    grounded=False,
-                    airborne_dy=-10,
-                    lance_deg=32.0,
-                    lance_len=30.0,
-                    slash_arc=dict(
-                        r=28.0, a0=-25.0, a1=68.0,
-                        intensity=math.sin(u * math.pi) * 1.2
-                    ) if 1 <= (f - 13) <= 6 else None
-                ))
-            else:
-                u = (f - 22) / 7.0
-                cfgs.append(dict(
-                    pelvis_dy=65.0 * (1.0 - u),
-                    torso_deg=16.0 * (1.0 - u) + 2.0,
-                    head_rel_deg=-8.0 * (1.0 - u),
-                    mane_wave_phase=ph,
-                    mane_wave_amp=7.5,
-                    wing_mode="normal",
-                    wing_phase=ph,
-                    l_thigh_deg=-22.0 * (1.0 - u),
-                    l_shin_deg=24.0 * (1.0 - u),
-                    r_thigh_deg=20.0 * (1.0 - u),
-                    r_shin_deg=-18.0 * (1.0 - u),
-                    grounded=True,
-                    lance_deg=16.0 * (1.0 - u) - 38.0 * u,
-                    lance_len=31.0
-                ))
+            # Row 8: JUMP (Wide Shallow Valkyrie Wing-Vault & Sleek +10 deg Javelin Volley — Zero Steep Drop!)
+            kfs = [
+                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, foot_y=99.0)),
+                (4, dict(
+                    pelvis_dx=-4.0, pelvis_dy=56.0, torso_deg=12.0, head_rel_deg=-8.0, mane_rel_deg=-14.0,
+                    l_thigh_deg=-24.0, l_shin_deg=26.0, r_thigh_deg=22.0, r_shin_deg=-20.0,
+                    lance_deg=-20.0, foot_y=99.0, wing_mode="flare"
+                )),
+                (10, dict(
+                    pelvis_dx=6.0, pelvis_dy=16.0, torso_deg=18.0, head_rel_deg=-10.0, mane_rel_deg=-24.0,
+                    l_thigh_deg=24.0, l_shin_deg=38.0, l_foot_deg=22.0,
+                    r_thigh_deg=-12.0, r_shin_deg=30.0, r_foot_deg=16.0,
+                    l_sode_rel_deg=-28.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=-58.0, r_fore_rel_deg=-20.0,
+                    lance_deg=4.0, foot_y=94.0, wing_mode="flare", right_arm_in_front=True,
+                    speedlines=4, speedline_deg=-6.0
+                )),
+                (18, dict(
+                    pelvis_dx=8.0, pelvis_dy=18.0, torso_deg=22.0, head_rel_deg=-12.0, mane_rel_deg=-26.0,
+                    l_thigh_deg=26.0, l_shin_deg=36.0, l_foot_deg=18.0,
+                    r_thigh_deg=-10.0, r_shin_deg=28.0, r_foot_deg=14.0,
+                    l_sode_rel_deg=18.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=14.0, r_fore_rel_deg=-12.0,
+                    lance_deg=10.0, foot_y=95.0, wing_mode="swept", right_arm_in_front=True,
+                    speedlines=4, speedline_deg=6.0
+                )),
+                (24, dict(
+                    pelvis_dx=6.0, pelvis_dy=48.0, torso_deg=14.0, head_rel_deg=-8.0, mane_rel_deg=-16.0,
+                    l_thigh_deg=-20.0, l_shin_deg=22.0, r_thigh_deg=18.0, r_shin_deg=-16.0,
+                    lance_deg=-8.0, foot_y=99.0, wing_mode="flare"
+                )),
+                (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, foot_y=99.0)),
+            ]
+            cfg = eval_pose_keyframes(f, kfs, ph, wing_mult=3.0)
+            if 13 <= f <= 18:
+                u_s = (f - 13) / 5.0
+                cfg["slash_arc"] = dict(r=27.0, a0=-32.0, a1=52.0, intensity=math.sin((f - 12.5) / 6.0 * math.pi) * 1.1)
+            cfgs.append(cfg)
 
     return cfgs
 
@@ -1726,14 +1493,14 @@ def save_debug_sheets(sheet_im):
 
     # 2. High-detail 208x208 8-panel key-pose showcase
     picks = [
-        (0, 0, "R0 IDLE GROUNDED"),
+        (0, 0, "R0 IDLE POISED"),
         (1, 4, "R1 WALK STRIDE"),
-        (2, 10, "R2 JAVELIN HURL"),
-        (3, 3, "R3 SKILL GROUND CAST"),
-        (3, 16, "R3 SKILL SPEAR THRUST"),
-        (4, 2, "R4 ULT GROUND CAST"),
-        (4, 6, "R4 ULT UP-GLIDE /"),
-        (4, 20, "R4 ULT DIVE \\"),
+        (2, 10, "R2 LEVEL JAVELIN WHIP"),
+        (3, 5, "R3 SKILL GROUND CAST"),
+        (3, 10, "R3 LOW WING-SKIM"),
+        (3, 20, "R3 FORWARD THRUST"),
+        (4, 8, "R4 SHALLOW WING-SWEEP"),
+        (4, 21, "R4 FALCON TOUCHDOWN"),
     ]
     sw = Image.new("RGBA", (4 * 220, 2 * 240), (22, 24, 36, 255))
     sd = ImageDraw.Draw(sw)
