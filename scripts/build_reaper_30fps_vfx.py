@@ -45,6 +45,7 @@ C_BONE_MID = (148, 163, 184, 255)       # #94a3b8
 C_BONE_DARK = (71, 85, 105, 255)        # #475569
 C_OBSIDIAN_MID = (51, 38, 74, 255)
 C_OBSIDIAN_DARK = (27, 18, 44, 255)
+C_INK = (12, 6, 22, 255)
 
 C_VIOLET_AURA = (168, 85, 247, 135)
 C_CRIMSON_AURA = (244, 63, 94, 135)
@@ -456,175 +457,145 @@ def build_row2_necropolis_tombstone(f):
 
 def build_row3_sovereign_of_death_avatar(f):
     """
-    Row 3 (F00..F29): GRIM HARVEST - COLOSSAL SOVEREIGN OF DEATH AVATAR
-    - Enriched with taller jagged abyssal crown horns, brighter crimson-violet eye sockets,
-      blazing ribcage soul-fire core, and wider crossed spectral scythe blades (strictly within 2 <= x <= 49, 2 <= y <= 49).
+    Row 3 (F00..F29): GRIM HARVEST - COLOSSAL HOODED GRIM REAPER SOVEREIGN & BLOOD-MOON ECLIPSE
+    - Deep pointed Gothic cowl hood over a shadowed abyssal void face with blazing crimson-white eye slits.
+    - Eclipsed Blood-Moon corona ring behind the Sovereign.
+    - Sweeping tattered obsidian-violet wraith mantle & pauldrons.
+    - Colossal Crescent Death Scythe sweeping across the Sovereign (strictly within 2 <= x <= 49, 2 <= y <= 49).
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
     px = img.load()
     phase = (f / 30.0) * math.pi * 2.0
     cx = 26.0
 
-    if f <= 7:
-        mat_u = (f + 1) / 8.0
+    if f <= 6:
+        mat_u = (f + 1) / 7.0
         diss_u = 0.0
-        roar_u = 0.25
+        slash_u = 0.0
     elif f <= 21:
         mat_u = 1.0
         diss_u = 0.0
-        roar_u = 0.35 + 0.65 * math.sin(((f - 8) / 13.0) * math.pi)
+        slash_u = (f - 6) / 15.0
     else:
         mat_u = 1.0
         diss_u = (f - 21) / 8.0
-        roar_u = 0.2
+        slash_u = 1.0
 
-    # 1. Volumetric Blood-Moon & Violet Halo Behind the Sovereign (r <= 20, strictly inside 4..48)
-    halo_r = 19.5 * mat_u * (1.0 - diss_u * 0.3)
-    for s in range(64):
-        a = (s / 64.0) * math.pi * 2.0 + phase * 1.5
-        rx = cx + math.cos(a) * halo_r
-        ry = 26.0 + math.sin(a) * halo_r
-        put(px, rx, ry, C_CRIMSON_BRIGHT if s % 4 == 0 else (C_VIOLET_PINK if s % 2 == 0 else C_VIOLET_DARK))
+    # 1. Pixel-Art Blood-Moon Eclipse Disc & Crimson Corona Ring Behind the Sovereign (centered at 26, 21)
+    moon_r = 16.5 * mat_u * (1.0 - diss_u * 0.25)
+    moon_cy = 20.5
+    if moon_r >= 4.0:
+        for y in range(max(3, int(moon_cy - moon_r - 2)), min(48, int(moon_cy + moon_r + 3))):
+            for x in range(max(3, int(cx - moon_r - 2)), min(48, int(cx + moon_r + 3))):
+                d = math.hypot(x - cx, y - moon_cy)
+                if moon_r - 1.8 <= d <= moon_r + 0.8:
+                    # Blazing Blood-Moon Eclipse Corona Rim
+                    put(px, x, y, C_WHITE if d <= moon_r - 0.8 and (x + y + f) % 3 == 0 else (C_CRIMSON_BRIGHT if d <= moon_r else C_VIOLET_PINK))
+                elif d < moon_r - 1.8 and diss_u < 0.75:
+                    # Dark Eclipsed Void Interior
+                    put(px, x, y, C_INK if d < moon_r - 3.2 else C_CRIMSON_DARK)
 
     if diss_u < 0.90:
-        bob_y = math.sin(phase) * 1.0 - diss_u * 3.0
-        head_y = 14.5 + (1.0 - mat_u) * 5.0 + bob_y
+        bob_y = math.sin(phase) * 0.8 - diss_u * 2.5
+        head_y = 14.0 + (1.0 - mat_u) * 4.0 + bob_y
 
-        # 2. Wider Crossed Spectral Scythe Blades & Hafts Behind the Sovereign (strictly inside 3..48)
-        sweep_off = math.sin(phase * 1.5) * 1.5
-        for side in (-1, 1):
-            # Long diagonal dark-bone & rune scythe haft crossing behind the chest
-            haft_x0 = cx - side * 10.0
-            haft_y0 = min(46.0, head_y + 27.0)
-            haft_x1 = cx + side * 14.0
-            haft_y1 = max(7.0, head_y - 4.0 + sweep_off * side)
-            draw_line(px, haft_x0, haft_y0, haft_x1, haft_y1, C_BONE_LIGHT)
-            draw_line(px, haft_x0, haft_y0 + 1, haft_x1, haft_y1 + 1, C_VIOLET_BRIGHT)
-
-            # Wide Sweeping Crescent Spectral Scythe Blade arcing outward from collar (haft_x1, haft_y1)
-            # Sweeps across x = 4..20 (left) and x = 32..48 (right), y = 6..30
-            steps_b = 24
-            for bi in range(steps_b + 1):
-                bu = bi / float(steps_b)
-                # Blade curves outward to the side then hooks sharply down and inward
-                bx_s = haft_x1 + side * (math.sin(bu * math.pi * 0.82) * 7.5 - (bu ** 2.2) * 3.5)
-                by_s = haft_y1 - math.sin(bu * math.pi * 0.5) * 2.0 + (bu ** 1.35) * 20.5
-                w_blade = max(1, int(round((1.0 - bu * 0.55) * 3.8)))
-                for bw in range(w_blade + 1):
-                    px_b = bx_s - side * bw
-                    if bw == 0:
-                        col_b = C_WHITE
-                    elif bw == 1:
-                        col_b = C_CRIMSON_BRIGHT if (bi + f) % 4 != 0 else C_SOUL_CORE
-                    elif bw == 2:
-                        col_b = C_VIOLET_PINK if side == -1 else C_SPECTRAL_MINT
-                    else:
-                        col_b = C_VIOLET
-                    put(px, px_b, by_s, col_b)
-
-        # 3. Towering Tattered Abyssal Shroud & Ribcage Soul-Fire Core (y = head_y+5 .. 47)
-        max_body_y = int(min(47, head_y + 5 + 27 * mat_u))
-        for y in range(int(head_y + 5), max_body_y + 1):
-            u_b = (y - (head_y + 5)) / 27.0
+        # 2. Sweeping Tattered Obsidian-Violet Grim Reaper Cloak & Pauldrons (y = head_y+4 .. 47)
+        max_body_y = int(min(47, head_y + 4 + 28 * mat_u))
+        for y in range(int(head_y + 4), max_body_y + 1):
+            u_b = (y - (head_y + 4)) / 28.0
             if diss_u > 0.45 and ((y + f) % 3 == 0):
                 continue
-            shroud_w = int(round((12.0 - u_b * 2.5 + math.sin(u_b * 5.0 - phase * 2.0) * 1.8) * (1.0 - diss_u * 0.4)))
-            sway_x = math.sin(u_b * 3.5 - phase * 2.0) * (1.2 + diss_u * 3.0)
+            # Broad armored wraith shoulders tapering into a billowing tattered hem
+            if u_b < 0.25:
+                base_w = 8.0 + (u_b / 0.25) * 5.5
+            else:
+                base_w = 13.5 - (u_b - 0.25) * 2.5 + math.sin(u_b * 6.0 - phase * 2.0) * 1.8
+            shroud_w = int(round(base_w * (1.0 - diss_u * 0.35)))
+            sway_x = math.sin(u_b * 3.0 - phase * 1.8) * (1.0 + diss_u * 2.5)
 
+            # Tattered vertical hem notches at the bottom of the cloak
             for dx in range(-shroud_w, shroud_w + 1):
+                if u_b > 0.78 and ((dx + f // 2) % 4 == 0):
+                    continue
                 px_x = cx + sway_x + dx
-                if abs(dx) == shroud_w:
-                    put(px, px_x, y, C_VIOLET_PINK if (y + dx) % 3 == 0 else C_CRIMSON_BRIGHT)
-                elif abs(dx) >= shroud_w - 2:
-                    put(px, px_x, y, C_VIOLET_DARK if (dx + y) % 2 == 0 else C_OBSIDIAN_MID)
+                dist_edge = shroud_w - abs(dx)
+                if dist_edge == 0:
+                    put(px, px_x, y, C_CRIMSON_BRIGHT if u_b < 0.35 else C_VIOLET_BRIGHT)
+                elif dist_edge == 1:
+                    put(px, px_x, y, C_VIOLET_DARK if (dx + y) % 2 == 0 else C_CRIMSON_DARK)
+                elif abs(dx) <= 1 and 0.12 <= u_b <= 0.62:
+                    # Vertical Abyssal Soul-Core Slit in the center of the cloak (no horizontal ladder ribs!)
+                    put(px, px_x, y, C_WHITE if dx == 0 and (y + f) % 2 == 0 else C_CRIMSON_BRIGHT)
+                elif abs(dx) == 2 and 0.10 <= u_b <= 0.65:
+                    put(px, px_x, y, C_VIOLET_PINK if (y + dx) % 2 == 0 else C_CRIMSON)
                 else:
-                    put(px, px_x, y, C_OBSIDIAN_DARK)
+                    # Deep obsidian-violet folds
+                    fold = (dx in (-5, -2, 2, 5)) and (u_b < 0.75)
+                    put(px, px_x, y, C_OBSIDIAN_MID if fold else C_OBSIDIAN_DARK)
 
-            # Blazing Ribcage Soul-Fire Core & High-Contrast Articulated Skeletal Ribs (u_b = 0.08..0.68)
-            if 0.08 <= u_b <= 0.68:
-                rib_rel = y - int(head_y + 5)
-                core_w = int(round(4.5 * math.sin(((u_b - 0.08) / 0.60) * math.pi)))
-                # Glowing Soul-Fire Core inside the chest cavity
-                for cdx in range(-core_w, core_w + 1):
-                    dist_c = abs(cdx)
-                    if dist_c == 0:
-                        col_c = C_WHITE
-                    elif dist_c == 1:
-                        col_c = C_CRIMSON_BRIGHT if (y + f) % 2 == 0 else C_SOUL_CORE
-                    elif dist_c == 2:
-                        col_c = C_VIOLET_PINK if (y + cdx + f) % 2 == 0 else C_SPECTRAL_MINT
-                    else:
-                        col_c = C_CRIMSON
-                    put(px, cx + sway_x + cdx, y, col_c)
+        # Jagged Dark-Iron & Crimson Pauldron Spikes on Shoulders
+        for sign in (-1, 1):
+            sh_x = cx + sign * 11.0
+            sh_y = head_y + 7.0
+            draw_line(px, sh_x - sign * 2, sh_y + 1, sh_x + sign * 4, sh_y - 3, C_VIOLET_PINK)
+            draw_line(px, sh_x - sign * 2, sh_y + 2, sh_x + sign * 3, sh_y - 2, C_CRIMSON_BRIGHT)
 
-                # Sculpted Bone Ribs arching over the Soul-Fire Core every 3 pixels
-                if rib_rel % 3 == 0:
-                    rib_w = int(round(7.5 * (1.0 - (u_b - 0.08) * 0.55)))
-                    for rdx in range(-rib_w, rib_w + 1):
-                        if abs(rdx) >= 2:
-                            put(px, cx + sway_x + rdx, y, C_BONE_WHITE if abs(rdx) < rib_w - 1 else C_BONE_MID)
-                        elif rdx == 0:
-                            # Sternum bone nexus with spectral gem
-                            put(px, cx + sway_x, y, C_SPECTRAL_MINT if (rib_rel // 3) % 2 == 0 else C_WHITE)
-
-        # 4. Hooded Skeletal Sovereign Skull, Taller Jagged Abyssal Crown Horns & Brighter Eye Sockets
-        for dy in range(-5, 6):
-            hood_w = int(round(7.0 - abs(dy) * 0.5))
+        # 3. Deep Pointed Gothic Grim Reaper Cowl Hood & Blazing Crimson Eye Slits
+        for dy in range(-7, 6):
+            if dy < -2:
+                # Pointed Gothic hood peak
+                hood_w = max(1, int(round((dy + 8) * 1.15)))
+            else:
+                hood_w = int(round(6.8 - max(0, dy - 1) * 0.6))
+            hood_shift = -1.0 if dy <= -4 else 0.0
             for dx in range(-hood_w, hood_w + 1):
-                if abs(dx) == hood_w or dy == -5:
-                    put(px, cx + dx, head_y + dy, C_VIOLET_PINK if dy < 0 else C_VIOLET_BRIGHT)
-                elif abs(dx) <= 4 and -3 <= dy <= 3:
-                    put(px, cx + dx, head_y + dy, C_BONE_WHITE if dy <= 0 else C_BONE_LIGHT)
+                hx = cx + dx + hood_shift * 0.5
+                hy = head_y + dy
+                if abs(dx) == hood_w or dy <= -6:
+                    put(px, hx, hy, C_CRIMSON_BRIGHT if dy <= -3 else C_VIOLET_BRIGHT)
+                elif abs(dx) == hood_w - 1 or dy == -5:
+                    put(px, hx, hy, C_VIOLET_DARK)
+                elif abs(dx) <= 4 and -2 <= dy <= 4:
+                    # Pitch-black abyssal void inside the hood cowl
+                    put(px, hx, hy, C_INK)
                 else:
-                    put(px, cx + dx, head_y + dy, C_OBSIDIAN_DARK)
+                    put(px, hx, hy, C_OBSIDIAN_DARK)
 
-        # Taller Jagged Abyssal Crown Horns (sweeping up to y = head_y - 10 >= 4)
+        # Fierce Glowing Angled Crimson Eye Slits & Trailing Eye-Flame inside the Dark Hood Void
         for sign in (-1, 1):
-            # Outer jagged great-horn with stepped abyssal barbs
-            for hd in range(1, 10):
-                jag = (1.0 if hd in (4, 7) else 0.0) * sign
-                hx_c = cx + sign * (3.5 + hd * 0.9) + jag
-                hy_c = max(3, head_y - 2.5 - hd * 0.85)
-                col_h = C_WHITE if hd == 9 else (C_CRIMSON_BRIGHT if hd >= 6 else (C_VIOLET_PINK if hd >= 4 else C_BONE_WHITE))
-                put(px, hx_c, hy_c, col_h)
-                put(px, hx_c - sign, hy_c, C_BONE_LIGHT if hd < 5 else C_CRIMSON)
-            # Inner secondary abyssal crown tine
-            for hd2 in range(1, 7):
-                put(px, cx + sign * (2.0 + hd2 * 0.35), max(3, head_y - 4.0 - hd2 * 0.9), C_VIOLET_PINK if hd2 >= 4 else C_BONE_WHITE)
-
-        # Towering Central Abyssal Crown Spike & Blood-Moon Star
-        for cd in range(1, 8):
-            put(px, cx, max(3, head_y - 4 - cd), C_WHITE if cd >= 6 else C_CRIMSON_BRIGHT)
-            if cd in (3, 5):
-                put(px, cx - 1, max(3, head_y - 4 - cd), C_VIOLET_PINK)
-                put(px, cx + 1, max(3, head_y - 4 - cd), C_VIOLET_PINK)
-
-        # Brighter Crimson-Violet Eye Sockets & Trailing Eye-Flame Wisps
-        for sign in (-1, 1):
-            # 3x2 Blazing eye socket
             put(px, cx + sign * 2, head_y, C_WHITE)
-            put(px, cx + sign * 3, head_y, C_CRIMSON_BRIGHT)
-            put(px, cx + sign * 1, head_y, C_CRIMSON_LIGHT)
-            put(px, cx + sign * 2, head_y - 1, C_CRIMSON_BRIGHT)
-            put(px, cx + sign * 3, head_y - 1, C_VIOLET_PINK)
-            put(px, cx + sign * 4, head_y - 2, C_VIOLET_PINK if f % 2 == 0 else C_SPECTRAL_MINT)
+            put(px, cx + sign * 3, head_y - 1, C_CRIMSON_BRIGHT)
+            put(px, cx + sign * 1, head_y, C_CRIMSON_BRIGHT)
+            put(px, cx + sign * 4, head_y - 2, C_VIOLET_PINK)
 
-        # Roaring Skeletal Jaw with Soul-Fire Breath
-        jaw_drop = int(round(1 + roar_u * 2.5))
-        for dx in range(-3, 4):
-            put(px, cx + dx, head_y + 3 + jaw_drop, C_BONE_WHITE if abs(dx) % 2 == 0 else C_BONE_MID)
-            if abs(dx) <= 2:
-                put(px, cx + dx, head_y + 2 + jaw_drop, C_WHITE if dx == 0 else C_CRIMSON_BRIGHT)
+        # 4. Colossal Sweeping Crescent Death Scythe & Execution Slash Arc in the Foreground
+        scythe_ang = -0.55 + math.sin(slash_u * math.pi) * 1.15
+        haft_cx = cx + 2.0
+        haft_cy = head_y + 11.0
+        cos_a = math.cos(scythe_ang)
+        sin_a = math.sin(scythe_ang)
+        # Long diagonal runic scythe shaft across the Sovereign
+        x0 = max(4.0, min(47.0, haft_cx - cos_a * 17.0))
+        y0 = max(4.0, min(47.0, haft_cy - sin_a * 17.0))
+        x1 = max(4.0, min(47.0, haft_cx + cos_a * 18.0))
+        y1 = max(4.0, min(47.0, haft_cy + sin_a * 18.0))
+        draw_line(px, x0, y0, x1, y1, C_BONE_LIGHT)
+        draw_line(px, x0, y0 + 1, x1, y1 + 1, C_OBSIDIAN_MID)
 
-    # 5. Blood-Moon Soul Vortex Dissolution (F22..F29)
-    if diss_u > 0.0:
-        for v_i in range(28):
-            u_v = v_i / 27.0
-            va = phase * 3.0 + u_v * math.pi * 4.0
-            vr = (1.0 - diss_u * 0.65) * 18.0 * math.sin(u_v * math.pi)
-            vx = cx + math.cos(va) * vr
-            vy = 26.0 + (u_v - 0.5) * 34.0 * (1.0 - diss_u * 0.35)
-            put(px, vx, vy, C_WHITE if v_i % 4 == 0 else (C_CRIMSON_BRIGHT if v_i % 2 == 0 else C_VIOLET_PINK))
+        # Massive Curved Crimson-Violet Crescent Scythe Blade sweeping from (x1, y1)
+        for bi in range(28):
+            bu = bi / 27.0
+            b_ang = scythe_ang + 1.35 + bu * 1.65
+            b_rad = 4.0 + math.sin(bu * math.pi * 0.85) * 16.5
+            bx = x1 + math.cos(b_ang) * b_rad
+            by = y1 + math.sin(b_ang) * b_rad * 0.85
+            w_b = max(1, int(round((1.0 - bu * 0.65) * 4.2)))
+            for bw in range(w_b + 1):
+                px_b = bx - math.cos(b_ang) * bw * 0.8
+                py_b = by - math.sin(b_ang) * bw * 0.8
+                if 3 <= round(px_b) <= 48 and 3 <= round(py_b) <= 48:
+                    col_b = C_WHITE if bw == 0 else (C_CRIMSON_BRIGHT if bw == 1 else (C_VIOLET_PINK if bw == 2 else C_VIOLET_DARK))
+                    put(px, px_b, py_b, col_b)
 
     return img.resize((CELL, CELL), Image.Resampling.NEAREST)
 

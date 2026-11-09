@@ -723,7 +723,13 @@ export class VFXManager {
         pil.erupted = true;
         if (renderer && pil.scaleWidth >= 0.95) renderer.triggerShake(8, 0.2);
         if (audio && pil.scaleWidth >= 0.95) {
-          audio.play(pil.theme === 'radiant' ? 'holy_hit' : 'fire_hit', pil.x);
+          const sfx =
+            pil.theme === 'radiant'
+              ? 'holy_hit'
+              : pil.theme === 'abyssal'
+                ? 'soul_drain'
+                : 'fire_hit';
+          audio.play(sfx, pil.x);
         }
         const col =
           pil.theme === 'emerald'
@@ -732,9 +738,19 @@ export class VFXManager {
               ? '#38bdf8'
               : pil.theme === 'radiant'
                 ? '#fde047'
-                : '#fb923c';
+                : pil.theme === 'abyssal'
+                  ? '#c084fc'
+                  : '#fb923c';
+        const shockCol =
+          pil.theme === 'abyssal'
+            ? '#f43f5e'
+            : pil.theme === 'emerald'
+              ? '#34d399'
+              : pil.theme === 'steel'
+                ? '#38bdf8'
+                : '#facc15';
         this.spawnDecal(pil.x, 110 * pil.scaleWidth, 'fissure', col, 4.8);
-        this.spawnShockwave(pil.x, groundY, 135 * pil.scaleWidth, '#facc15', 0.44, true);
+        this.spawnShockwave(pil.x, groundY, 135 * pil.scaleWidth, shockCol, 0.44, true);
         this.spawnGlyphBurst(pil.x, groundY - 40, 6, pil.theme);
       }
       if (pil.erupted && pil.life < pil.maxLife - 0.12) {
@@ -745,7 +761,10 @@ export class VFXManager {
               ? '#38bdf8'
               : pil.theme === 'radiant'
                 ? '#fde047'
-                : '#fb923c';
+                : pil.theme === 'abyssal'
+                  ? '#c084fc'
+                  : '#fb923c';
+        const colCore = pil.theme === 'abyssal' ? '#f43f5e' : '#fef9c3';
         for (let k = 0; k < 3; k++) {
           const spiral = Math.sin(pil.life * 22 + k * 2) * 42 * pil.scaleWidth;
           this.spawnParticle({
@@ -754,7 +773,7 @@ export class VFXManager {
             vx: (Math.random() - 0.5) * 44,
             vy: -300 - Math.random() * 210,
             size: (12 + Math.random() * 8) * pil.scaleWidth,
-            color: k % 2 === 0 ? colMain : '#fef9c3',
+            color: k % 2 === 0 ? colMain : colCore,
             maxLife: 0.44,
             gravity: -110
           });
@@ -1143,21 +1162,38 @@ export class VFXManager {
       ctx.restore();
     }
 
-    // 2. FLAME & ELEMENTAL PILLARS: Saturated Pixel Glowing Hellfire Magma Pillar & Sacred Cathedral Pillars
+    // 2. FLAME & ELEMENTAL PILLARS: Saturated Pixel Glowing Hellfire Magma Pillar, Sacred Cathedral Pillar & Abyssal Soul-Geyser
     for (const pil of this.pillars) {
       const isUltPil = !!pil.isUltimate;
       if (!isReflection && isUltPil !== ultimateOnly) continue;
       const p = Math.min(1, pil.life / Math.max(0.15, pil.delay));
-      const pxSize = 6;
+      const pxSize = 4;
       const baseX = Math.round(pil.x / pxSize) * pxSize;
       const baseY = Math.round(pil.groundY / pxSize) * pxSize;
       const isEmerald = pil.theme === 'emerald';
       const isSteel = pil.theme === 'steel';
       const isRadiant = pil.theme === 'radiant';
-      const sigilCol = isEmerald ? '#10b981' : isSteel ? '#0ea5e9' : isRadiant ? '#eab308' : '#ea580c';
-      const accentCol = isEmerald ? '#34d399' : isSteel ? '#38bdf8' : isRadiant ? '#facc15' : '#f97316';
+      const isAbyssal = pil.theme === 'abyssal';
+      const sigilCol = isEmerald
+        ? '#10b981'
+        : isSteel
+          ? '#0ea5e9'
+          : isRadiant
+            ? '#eab308'
+            : isAbyssal
+              ? '#9333ea'
+              : '#ea580c';
+      const accentCol = isEmerald
+        ? '#34d399'
+        : isSteel
+          ? '#38bdf8'
+          : isRadiant
+            ? '#facc15'
+            : isAbyssal
+              ? '#f43f5e'
+              : '#f97316';
 
-      // Ground Pixel Octagram Sigil
+      // Ground Pixel Octagram Sigil (stepped 4x4 pixel grid)
       ctx.save();
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = 0.9;
@@ -1169,7 +1205,7 @@ export class VFXManager {
         const sx = Math.round((baseX + Math.cos(a) * rX) / 4) * 4;
         const sy = Math.round((baseY + Math.sin(a) * rY) / 4) * 4;
         ctx.fillStyle = deg % 45 === 0 ? accentCol : sigilCol;
-        ctx.fillRect(sx - 3, sy - 2, 6, 4);
+        ctx.fillRect(sx - 4, sy - 2, 8, 4);
       }
       ctx.restore();
 
@@ -1186,13 +1222,14 @@ export class VFXManager {
 
         const mageVfx = assets.mage?.vfx;
         const priestVfx = assets.priestess?.vfx;
+        const reaperVfx = assets.reaper?.vfx;
         const flipWave = Math.floor(pil.life * 15) % 2 === 0 ? 1 : -1;
         const pilFrac = Math.min(1, Math.max(0, (pil.life - pil.delay) / Math.max(0.1, pil.maxLife - pil.delay)));
         const pilCol = Math.min(29, Math.floor(pilFrac * 30));
 
-        if (!isRadiant && !isEmerald && !isSteel && mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
-          const pilW = Math.round(248 * pil.scaleWidth);
-          const pilH = Math.round(328 * pil.scaleWidth * (0.35 + 0.65 * pop));
+        if (!isRadiant && !isEmerald && !isSteel && !isAbyssal && mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
+          const pilW = Math.round((248 * pil.scaleWidth) / 4) * 4;
+          const pilH = Math.round((328 * pil.scaleWidth * (0.35 + 0.65 * pop)) / 4) * 4;
           ctx.save();
           ctx.translate(baseX, baseY + 14);
           ctx.scale(flipWave, 1);
@@ -1214,11 +1251,12 @@ export class VFXManager {
           );
           ctx.restore();
         } else if (isRadiant && priestVfx && priestVfx.complete && priestVfx.naturalWidth) {
-          const haloSz = Math.round(224 * pil.scaleWidth);
-          const spearSz = Math.round(232 * pil.scaleWidth * pop);
+          const pilW = Math.round((236 * pil.scaleWidth) / 4) * 4;
+          const pilH = Math.round((312 * pil.scaleWidth * (0.35 + 0.65 * pop)) / 4) * 4;
+          const haloSz = Math.round((216 * pil.scaleWidth) / 4) * 4;
           const haloCol = Math.floor(pil.life * 30) % 30;
           ctx.save();
-          ctx.translate(baseX, baseY - 140 * pil.scaleWidth);
+          ctx.translate(baseX, Math.round(baseY - 140 * pil.scaleWidth));
           this.drawBloomedSprite(
             ctx,
             renderer,
@@ -1232,12 +1270,12 @@ export class VFXManager {
             haloSz,
             haloSz,
             '#fde047',
-            fade * (isReflection ? 0.45 : 0.94),
+            fade * (isReflection ? 0.45 : 0.92),
             isReflection
           );
           ctx.restore();
           ctx.save();
-          ctx.translate(baseX, baseY - 115 * pil.scaleWidth);
+          ctx.translate(baseX, baseY + 14);
           this.drawBloomedSprite(
             ctx,
             renderer,
@@ -1246,11 +1284,55 @@ export class VFXManager {
             416,
             208,
             208,
-            Math.round(-spearSz * 0.5),
-            Math.round(-spearSz * 0.5),
-            spearSz,
-            spearSz,
+            Math.round(-pilW * 0.5),
+            Math.round(-pilH),
+            pilW,
+            pilH,
             '#fde047',
+            fade * (isReflection ? 0.48 : 0.98),
+            isReflection
+          );
+          ctx.restore();
+        } else if (isAbyssal && reaperVfx && reaperVfx.complete && reaperVfx.naturalWidth) {
+          const pilW = Math.round((236 * pil.scaleWidth) / 4) * 4;
+          const pilH = Math.round((312 * pil.scaleWidth * (0.38 + 0.62 * pop)) / 4) * 4;
+          const sealSz = Math.round((212 * pil.scaleWidth) / 4) * 4;
+          const geyserCol = Math.min(29, 14 + Math.floor(pilFrac * 15));
+          ctx.save();
+          ctx.translate(baseX, Math.round(baseY - 120 * pil.scaleWidth));
+          this.drawBloomedSprite(
+            ctx,
+            renderer,
+            reaperVfx,
+            pilCol * 208,
+            832,
+            208,
+            208,
+            Math.round(-sealSz * 0.5),
+            Math.round(-sealSz * 0.5),
+            sealSz,
+            sealSz,
+            '#f43f5e',
+            fade * (isReflection ? 0.42 : 0.88),
+            isReflection
+          );
+          ctx.restore();
+          ctx.save();
+          ctx.translate(baseX, baseY + 14);
+          ctx.scale(flipWave, 1);
+          this.drawBloomedSprite(
+            ctx,
+            renderer,
+            reaperVfx,
+            geyserCol * 208,
+            416,
+            208,
+            208,
+            Math.round(-pilW * 0.5),
+            Math.round(-pilH),
+            pilW,
+            pilH,
+            '#c084fc',
             fade * (isReflection ? 0.48 : 0.98),
             isReflection
           );
@@ -1259,11 +1341,11 @@ export class VFXManager {
 
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = fade * (isReflection ? 0.35 : 0.85);
-        const rows = Math.round(42 * pil.scaleWidth);
-        const halfSpan = Math.max(2, Math.round(5 * pil.scaleWidth));
-        for (let row = 0; row < rows; row += 2) {
-          const ribCol = Math.round(Math.sin(pil.life * 24 - row * 0.38) * (halfSpan + 2));
-          ctx.fillStyle = row % 4 === 0 ? accentCol : sigilCol;
+        const rows = Math.round(56 * pil.scaleWidth);
+        const halfSpan = Math.max(2, Math.round(7 * pil.scaleWidth));
+        for (let row = 0; row < rows; row += 3) {
+          const ribCol = Math.round(Math.sin(pil.life * 24 - row * 0.28) * (halfSpan + 2));
+          ctx.fillStyle = row % 6 === 0 ? accentCol : sigilCol;
           ctx.fillRect(baseX + ribCol * pxSize, baseY - (row + 1) * pxSize, pxSize, pxSize);
         }
         ctx.restore();
@@ -1476,55 +1558,54 @@ export class VFXManager {
         }
       }
 
-      // 2. Smooth Tapered Volumetric Energy Lance & Helical Sine Ribbons (ZERO stepped square staircases!)
+      // 2. Authentic Stepped 4x4 Pixel-Art Tapered Energy Lance & Pixel Helical Motes
       const hMax = Math.max(8, b.width * 0.65 * env);
-      const beamGrad = ctx.createLinearGradient(tailX, 0, headX, 0);
-      beamGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-      beamGrad.addColorStop(0.18, b.color);
-      beamGrad.addColorStop(0.85, b.coreColor || '#ffffff');
-      beamGrad.addColorStop(1, '#ffffff');
+      const pxStep = 4;
+      const startCol = Math.floor(tailX / pxStep) * pxStep;
+      const endCol = Math.ceil(headX / pxStep) * pxStep;
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = beamAlpha * (isReflection ? 0.32 : 0.72);
-      ctx.fillStyle = beamGrad;
-      ctx.beginPath();
-      ctx.moveTo(tailX, 0);
-      ctx.quadraticCurveTo(tailX + spanLen * 0.55, -hMax * 1.25, headX, -hMax * 0.35);
-      ctx.lineTo(headX + 18, 0);
-      ctx.lineTo(headX, hMax * 0.35);
-      ctx.quadraticCurveTo(tailX + spanLen * 0.55, hMax * 1.25, tailX, 0);
-      ctx.closePath();
-      ctx.fill();
+      ctx.globalAlpha = beamAlpha * (isReflection ? 0.36 : 0.78);
+      ctx.fillStyle = b.color;
+      for (let x = startCol; x <= endCol; x += pxStep) {
+        const u = Math.max(0, Math.min(1, (x - tailX) / Math.max(1, spanLen)));
+        const taper = Math.sin(Math.pow(u, 0.75) * Math.PI);
+        const halfH = Math.max(4, Math.round((hMax * 0.95 * taper) / pxStep) * pxStep);
+        ctx.fillRect(x, -halfH, pxStep, halfH * 2);
+      }
 
-      // White-hot incandescent inner core lance
+      // Mid-tone Radiant/Arcane Pixel Band
+      ctx.globalAlpha = beamAlpha * (isReflection ? 0.45 : 0.88);
+      ctx.fillStyle = b.coreColor || '#fef08a';
+      for (let x = startCol + pxStep * 2; x <= endCol; x += pxStep) {
+        const u = Math.max(0, Math.min(1, (x - tailX) / Math.max(1, spanLen)));
+        const taper = Math.sin(Math.pow(u, 0.75) * Math.PI);
+        const halfH = Math.max(4, Math.round((hMax * 0.52 * taper) / pxStep) * pxStep);
+        ctx.fillRect(x, -halfH, pxStep, halfH * 2);
+      }
+
+      // White-Hot 4x4 Pixel Core Lance
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = beamAlpha;
       ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(tailX + spanLen * 0.08, 0);
-      ctx.quadraticCurveTo(tailX + spanLen * 0.58, -hMax * 0.42, headX, -hMax * 0.14);
-      ctx.lineTo(headX + 12, 0);
-      ctx.lineTo(headX, hMax * 0.14);
-      ctx.quadraticCurveTo(tailX + spanLen * 0.58, hMax * 0.42, tailX + spanLen * 0.08, 0);
-      ctx.closePath();
-      ctx.fill();
+      for (let x = startCol + pxStep * 3; x <= endCol + pxStep; x += pxStep) {
+        const u = Math.max(0, Math.min(1, (x - tailX) / Math.max(1, spanLen)));
+        const taper = Math.sin(Math.pow(u, 0.75) * Math.PI);
+        const halfH = Math.max(2, Math.round((hMax * 0.24 * taper) / 2) * 2);
+        ctx.fillRect(x, -halfH, pxStep, halfH * 2);
+      }
 
-      // Smooth dual-helix energy filaments wrapping the beam
+      // Stepped 4x4 Pixel-Art Dual-Helix Energy Motes wrapping the beam
       for (const sign of [-1, 1]) {
-        ctx.beginPath();
-        const segs = 24;
-        for (let s = 0; s <= segs; s++) {
-          const u = s / segs;
-          const x = tailX + spanLen * u;
+        ctx.fillStyle = sign > 0 ? b.coreColor || '#fef08a' : b.color;
+        ctx.globalAlpha = beamAlpha * 0.9;
+        for (let x = startCol; x <= endCol; x += pxStep * 2) {
+          const u = Math.max(0, Math.min(1, (x - tailX) / Math.max(1, spanLen)));
           const taper = Math.sin(u * Math.PI);
-          const y = sign * Math.sin(x * 0.045 - b.life * 34) * (hMax * 0.95 * taper);
-          if (s === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
+          const rawY = sign * Math.sin(x * 0.045 - b.life * 34) * (hMax * 0.95 * taper);
+          const py = Math.round(rawY / pxStep) * pxStep;
+          ctx.fillRect(x, py - 2, pxStep + 2, pxStep);
         }
-        ctx.strokeStyle = sign > 0 ? b.coreColor || '#fef08a' : b.color;
-        ctx.lineWidth = 2.5;
-        ctx.globalAlpha = beamAlpha * 0.85;
-        ctx.stroke();
       }
 
       const isEmeraldBeam = b.color === '#10b981' || b.color === '#34d399';
@@ -1534,9 +1615,14 @@ export class VFXManager {
         b.color === '#fef08a' ||
         b.color === '#ca8a04' ||
         b.color === '#eab308';
+      const isAbyssalBeam =
+        b.color === '#c084fc' ||
+        b.color === '#9333ea' ||
+        b.color === '#f43f5e';
       const isFireBeam = b.color === '#fb923c' || b.color === '#ea580c' || b.color === '#f97316';
       const archerVfx = assets.archer?.vfx;
       const priestVfx = assets.priestess?.vfx;
+      const reaperVfx = assets.reaper?.vfx;
       const mageVfx = assets.mage?.vfx;
       const bCol = Math.min(29, Math.floor(t * 30));
 
@@ -1608,6 +1694,27 @@ export class VFXManager {
           starSz,
           starSz,
           '#fde047',
+          1 - t * 0.25,
+          isReflection
+        );
+        ctx.restore();
+      } else if (isAbyssalBeam && reaperVfx) {
+        const scytheSz = 168;
+        ctx.save();
+        ctx.translate(Math.round(headX), 0);
+        this.drawBloomedSprite(
+          ctx,
+          renderer,
+          reaperVfx,
+          bCol * 208,
+          0,
+          208,
+          208,
+          Math.round(-scytheSz * 0.5),
+          Math.round(-scytheSz * 0.5),
+          scytheSz,
+          scytheSz,
+          '#c084fc',
           1 - t * 0.25,
           isReflection
         );
@@ -2202,7 +2309,7 @@ export class VFXManager {
       }
     }
 
-    // 9. LIGHTNINGS: Smooth Connected Skyward Thunderbolts with Radial Light Glow (Zero stepped square staircases!)
+    // 9. LIGHTNINGS: Authentic Stepped 4x4 Pixel-Art Skyward Thunderbolts with Radial Light Glow
     for (const l of isReflection || ultimateOnly ? this.lightnings : []) {
       if (!l.pts || l.pts.length < 2) continue;
       const t = l.life / l.maxLife;
@@ -2219,22 +2326,26 @@ export class VFXManager {
         }
       }
 
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.beginPath();
-      ctx.moveTo(l.pts[0].x, l.pts[0].y);
-      for (let idx = 1; idx < l.pts.length; idx++) {
-        ctx.lineTo(l.pts[idx].x, l.pts[idx].y);
+      const outerCol = l.color === '#ffffff' ? '#38bdf8' : l.color;
+      for (let idx = 0; idx < l.pts.length - 1; idx++) {
+        const p0 = l.pts[idx];
+        const p1 = l.pts[idx + 1];
+        const segLen = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+        const steps = Math.max(1, Math.ceil(segLen / 4));
+        for (let s = 0; s <= steps; s++) {
+          const u = s / steps;
+          const px = Math.round((p0.x + (p1.x - p0.x) * u) / 4) * 4;
+          const py = Math.round((p0.y + (p1.y - p0.y) * u) / 4) * 4;
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = fade * 0.78;
+          ctx.fillStyle = outerCol;
+          ctx.fillRect(px - 6, py - 2, 12, 8);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = fade;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(px - 2, py, 4, 4);
+        }
       }
-      ctx.strokeStyle = l.color === '#ffffff' ? '#38bdf8' : l.color;
-      ctx.lineWidth = Math.max(3, fade * 10);
-      ctx.globalAlpha = fade * 0.78;
-      ctx.stroke();
-
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = Math.max(1.5, fade * 3.5);
-      ctx.globalAlpha = fade;
-      ctx.stroke();
       ctx.restore();
     }
 

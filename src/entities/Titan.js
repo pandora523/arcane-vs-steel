@@ -616,101 +616,88 @@ export class Titan extends Fighter {
     const pivX = this.x + this.facing * 24;
     const pivY = this.y - 84;
     const localAngle = -2.05 * (1 - easeSwing) + 0.36 * easeSwing;
+    const worldAngle = this.facing >= 0 ? localAngle : Math.PI - localAngle;
+    const ux = Math.cos(worldAngle);
+    const uy = Math.sin(worldAngle);
+    const nx = -uy;
+    const ny = ux * this.facing;
 
     ctx.save();
-    ctx.translate(pivX, pivY);
-    ctx.scale(this.facing, 1);
-    ctx.rotate(localAngle);
+    ctx.imageSmoothingEnabled = false;
 
-    const shaftLen = 56 * hScale;
-    const headW = 28 * hScale;
-    const headH = 44 * hScale;
-    const headX = shaftLen;
+    const shaftLen = Math.round((56 * hScale) / 4) * 4;
+    const headW = Math.round((28 * hScale) / 4) * 4;
+    const headH = Math.round((44 * hScale) / 4) * 4;
 
-    // 1. Blazing Molten-Jade Swing Crescent Trail behind the growing hammerhead
-    if (swingProg > 0.18 && swingProg < 0.98) {
+    // 1. Stepped 4x4 Pixel-Art Molten-Jade Swing Crescent Trail behind the growing hammerhead
+    if (swingProg > 0.16 && swingProg < 0.98) {
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.62 * lingerAlpha;
-      ctx.strokeStyle = '#f59e0b';
-      ctx.lineWidth = 14 * (hScale * 0.55);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.arc(0, 0, shaftLen + headW * 0.35, -0.85, 0.05);
-      ctx.stroke();
-
-      ctx.strokeStyle = '#10b981';
-      ctx.lineWidth = 6 * (hScale * 0.55);
-      ctx.beginPath();
-      ctx.arc(0, 0, shaftLen + headW * 0.5, -0.75, 0.05);
-      ctx.stroke();
+      const arcR = shaftLen + headW * 0.45;
+      for (let s = 1; s <= 14; s++) {
+        const trailA = localAngle - s * 0.065;
+        const wA = this.facing >= 0 ? trailA : Math.PI - trailA;
+        const tx = Math.round((pivX + Math.cos(wA) * arcR) / 4) * 4;
+        const ty = Math.round((pivY + Math.sin(wA) * arcR) / 4) * 4;
+        const frac = 1 - s / 15;
+        ctx.globalAlpha = 0.72 * lingerAlpha * frac;
+        ctx.fillStyle = s % 3 === 0 ? '#10b981' : s <= 5 ? '#fef08a' : '#f59e0b';
+        const bSz = s <= 6 ? 12 : 8;
+        ctx.fillRect(tx - bSz * 0.5, ty - bSz * 0.5, bSz, bSz);
+      }
       ctx.restore();
     }
 
-    ctx.globalAlpha = Math.min(1, lingerAlpha * 0.96);
+    // Helper to place a stepped 4x4 pixel block in world space along the hammer's local axes
+    const putHammerPx = (along, perp, col, sz = 4, alpha = lingerAlpha * 0.98, additive = false) => {
+      const wx = pivX + ux * along + nx * perp;
+      const wy = pivY + uy * along + ny * perp;
+      const px = Math.round(wx / 4) * 4;
+      const py = Math.round(wy / 4) * 4;
+      ctx.globalCompositeOperation = additive ? 'lighter' : 'source-over';
+      ctx.globalAlpha = Math.min(1, alpha);
+      ctx.fillStyle = col;
+      ctx.fillRect(px - sz * 0.5, py - sz * 0.5, sz, sz);
+    };
 
-    // 2. Heavy Obsidian-Bronze Haft with Molten Gold Rings
-    ctx.fillStyle = '#27272a';
-    ctx.beginPath();
-    ctx.roundRect(-12, -4 * hScale * 0.55, shaftLen + 10, 8 * hScale * 0.55, 3);
-    ctx.fill();
-    ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = 2;
-    ctx.stroke();
+    // 2. Heavy Obsidian-Bronze Pixel Haft with Molten Gold Grip Rings
+    for (let d = -12; d <= shaftLen; d += 4) {
+      const isRing = Math.abs(d % 16) < 4;
+      putHammerPx(d, -4, isRing ? '#fbbf24' : '#18181b', 4);
+      putHammerPx(d, 0, isRing ? '#fef08a' : '#52525b', 4);
+      putHammerPx(d, 4, isRing ? '#d97706' : '#27272a', 4);
+    }
 
-    // 3. Colossal Growing Rectangular World-Breaker Anvil Hammerhead in front!
-    const hx0 = headX - headW * 0.35;
-    const hy0 = -headH * 0.52;
+    // 3. Colossal Growing Stepped 4x4 Pixel-Art World-Breaker Anvil Hammerhead in front!
+    const hx0 = Math.round((shaftLen - headW * 0.35) / 4) * 4;
+    const hx1 = hx0 + headW;
+    const halfH = Math.round((headH * 0.5) / 4) * 4;
 
-    // Soft radial magma glow around the giant hammerhead
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    const rad = ctx.createRadialGradient(
-      hx0 + headW * 0.5,
-      0,
-      4,
-      hx0 + headW * 0.5,
-      0,
-      headH * 0.85
-    );
-    rad.addColorStop(0, 'rgba(254, 240, 138, 0.75)');
-    rad.addColorStop(0.5, 'rgba(245, 158, 11, 0.42)');
-    rad.addColorStop(1, 'rgba(16, 185, 129, 0)');
-    ctx.fillStyle = rad;
-    ctx.beginPath();
-    ctx.arc(hx0 + headW * 0.5, 0, headH * 0.85, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    for (let d = hx0; d <= hx1; d += 4) {
+      for (let p = -halfH; p <= halfH; p += 4) {
+        // Chamfer the 4 outer corners of the pixel anvil head
+        if ((d === hx0 || d === hx1) && Math.abs(p) === halfH) continue;
 
-    // Outer Obsidian-Bronze Beveled Anvil Block
-    ctx.fillStyle = '#18181b';
-    ctx.strokeStyle = '#fbbf24';
-    ctx.lineWidth = Math.max(2.5, 2.2 * hScale * 0.6);
-    ctx.beginPath();
-    ctx.roundRect(hx0, hy0, headW, headH, 4 * hScale * 0.5);
-    ctx.fill();
-    ctx.stroke();
+        const isBorder = d === hx0 || d === hx1 || Math.abs(p) === halfH;
+        const isStrikeFace = p >= halfH - 8;
+        const isBackSpike = p <= -halfH + 4 && Math.abs(d - (hx0 + headW * 0.5)) <= 8;
+        const runeDist = Math.abs(d - (hx0 + headW * 0.5)) + Math.abs(p);
 
-    // Front Crushing Strike Face (Blazing White-Gold & Molten Orange)
-    ctx.fillStyle = '#fef08a';
-    ctx.beginPath();
-    ctx.roundRect(hx0 + headW * 0.72, hy0 + 2, headW * 0.28, headH - 4, 2);
-    ctx.fill();
-
-    // Glowing Emerald-Jade World-Forge Runic Core inside the Giant Hammerhead
-    ctx.fillStyle = '#10b981';
-    ctx.beginPath();
-    ctx.moveTo(hx0 + headW * 0.45, -headH * 0.26);
-    ctx.lineTo(hx0 + headW * 0.66, 0);
-    ctx.lineTo(hx0 + headW * 0.45, headH * 0.26);
-    ctx.lineTo(hx0 + headW * 0.24, 0);
-    ctx.closePath();
-    ctx.fill();
-
-    ctx.fillStyle = '#ecfdf5';
-    ctx.beginPath();
-    ctx.arc(hx0 + headW * 0.45, 0, 3.2 * hScale * 0.55, 0, Math.PI * 2);
-    ctx.fill();
+        let col = '#27272a';
+        let add = false;
+        if (runeDist <= Math.max(4, headW * 0.22)) {
+          col = runeDist <= 4 ? '#ecfdf5' : '#10b981';
+          add = true;
+        } else if (isStrikeFace) {
+          col = p === halfH ? '#fef08a' : '#f59e0b';
+        } else if (isBackSpike || isBorder) {
+          col = '#fbbf24';
+        } else if ((d + p) % 8 === 0) {
+          col = '#3f3f46';
+        }
+        putHammerPx(d, p, col, 4, lingerAlpha * 0.98, add);
+      }
+    }
 
     ctx.restore();
   }

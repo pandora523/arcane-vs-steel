@@ -698,160 +698,137 @@ export class Valkyrie extends Fighter {
   }
 
   drawForegroundOverlay(ctx) {
-    // 1. Aerial Vantage Jump Target Reticle (smooth ellipse, zero blocky rectangles)
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Aerial Vantage Jump Target Reticle (Stepped 4x4 Pixel-Art Ring)
     if (this.dragoonTargetX !== null && this.state === 'JUMP') {
-      const tx = Math.round(this.dragoonTargetX);
-      const ty = Math.round(this.groundY - 4);
+      const tx = Math.round(this.dragoonTargetX / 4) * 4;
+      const ty = Math.round((this.groundY - 4) / 4) * 4;
       const pulse = 0.7 + 0.3 * Math.sin(this.stateTimer * 28);
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.65 * pulse;
-      ctx.strokeStyle = '#f43f5e';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.ellipse(tx, ty, 46, 12, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.ellipse(tx, ty, 24, 6, 0, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // 2. Gungnir Javelin Barrage Skill: Smooth Celestial Halo Ring around Freyja (zero rectangular sprite boxes)
-    if (this.state === 'SKILL' && this.stateTimer < 0.72) {
-      const cx = this.x;
-      const cy = this.y - 84;
-      const env = Math.sin(Math.min(1, this.stateTimer / 0.72) * Math.PI);
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.68 * env;
-
-      const radGrad = ctx.createRadialGradient(cx, cy, 8, cx, cy, 88);
-      radGrad.addColorStop(0, 'rgba(254, 240, 138, 0.55)');
-      radGrad.addColorStop(0.55, 'rgba(244, 63, 94, 0.32)');
-      radGrad.addColorStop(1, 'rgba(244, 63, 94, 0)');
-      ctx.fillStyle = radGrad;
-      ctx.beginPath();
-      ctx.arc(cx, cy, 88, 0, Math.PI * 2);
-      ctx.fill();
-
-      ctx.strokeStyle = '#fbbf24';
-      ctx.lineWidth = 2.5;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, 66, 42, this.stateTimer * 4.5, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // 3. Curving Homing Gungnir Sky-Javelins with Smooth Quadratic Bezier Ribbons & Polygon Winged Spearheads
-    // (100% free of rotated square sprite cells or fillRect boxes!)
-    if (this.activeSkySpears.length > 0) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-
-      for (const sp of this.activeSkySpears) {
-        // 3A. Smooth Continuous Quadratic Bezier Ribbon Trail along sp.trail
-        if (sp.trail && sp.trail.length >= 2) {
-          // Outer crimson-rose celestial aura ribbon
-          ctx.save();
-          ctx.globalAlpha = sp.isUlt ? 0.58 : 0.48;
-          ctx.strokeStyle = '#f43f5e';
-          ctx.lineWidth = sp.isUlt ? 11 : 8;
-          ctx.beginPath();
-          ctx.moveTo(sp.trail[0].x, sp.trail[0].y);
-          for (let k = 1; k < sp.trail.length - 1; k++) {
-            const mx = (sp.trail[k].x + sp.trail[k + 1].x) * 0.5;
-            const my = (sp.trail[k].y + sp.trail[k + 1].y) * 0.5;
-            ctx.quadraticCurveTo(sp.trail[k].x, sp.trail[k].y, mx, my);
-          }
-          const lastPt = sp.trail[sp.trail.length - 1];
-          ctx.lineTo(lastPt.x, lastPt.y);
-          ctx.stroke();
-
-          // Inner sunlit gold core ribbon
-          ctx.globalAlpha = sp.isUlt ? 0.88 : 0.78;
-          ctx.strokeStyle = '#fbbf24';
-          ctx.lineWidth = sp.isUlt ? 5 : 3.5;
-          ctx.stroke();
-
-          // White-hot leading filament
-          ctx.globalAlpha = 0.92;
-          ctx.strokeStyle = '#fef9c3';
-          ctx.lineWidth = 1.8;
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        // 3B. Smooth Elliptical Target Ground Sigil for Ultimate Javelins
-        if (sp.isUlt) {
-          ctx.save();
-          ctx.globalAlpha = 0.42;
-          ctx.strokeStyle = '#fbbf24';
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.ellipse(sp.targetX, this.groundY - 4, 34, 9, 0, 0, Math.PI * 2);
-          ctx.stroke();
-          ctx.restore();
-        }
-
-        // 3C. Render the Winged Golden Gungnir Javelin via smooth vector polygons & circular radial halo (zero square boxes!)
-        ctx.save();
-        ctx.translate(sp.x, sp.y);
-        ctx.rotate(sp.angle);
-
-        const jScale = sp.isUlt ? 1.18 : 1.0;
-        ctx.scale(jScale, jScale);
-
-        // Soft circular radial glow around the spearhead
-        const glow = ctx.createRadialGradient(8, 0, 2, 8, 0, 32);
-        glow.addColorStop(0, 'rgba(254, 249, 195, 0.85)');
-        glow.addColorStop(0.45, 'rgba(251, 191, 36, 0.45)');
-        glow.addColorStop(1, 'rgba(244, 63, 94, 0)');
-        ctx.fillStyle = glow;
-        ctx.beginPath();
-        ctx.arc(8, 0, 32, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Tapered Crimson-Gold Javelin Shaft
-        ctx.fillStyle = '#f43f5e';
-        ctx.beginPath();
-        ctx.moveTo(-48, 0);
-        ctx.lineTo(12, -3.2);
-        ctx.lineTo(28, 0);
-        ctx.lineTo(12, 3.2);
-        ctx.closePath();
-        ctx.fill();
-
-        // Swept Valkyrie Wing-Flukes on Crossguard
-        ctx.fillStyle = '#fbbf24';
-        ctx.beginPath();
-        ctx.moveTo(4, 0);
-        ctx.lineTo(-10, -14);
-        ctx.lineTo(14, -4);
-        ctx.lineTo(42, 0);
-        ctx.lineTo(14, 4);
-        ctx.lineTo(-10, 14);
-        ctx.closePath();
-        ctx.fill();
-
-        // Brilliant White-Gold Diamond Spear Tip
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.moveTo(8, 0);
-        ctx.lineTo(20, -3.5);
-        ctx.lineTo(44, 0);
-        ctx.lineTo(20, 3.5);
-        ctx.closePath();
-        ctx.fill();
-
-        ctx.restore();
+      ctx.globalAlpha = 0.78 * pulse;
+      for (let deg = 0; deg < 360; deg += 15) {
+        const a = (deg * Math.PI) / 180 + this.stateTimer * 6;
+        const rx = Math.round((tx + Math.cos(a) * 44) / 4) * 4;
+        const ry = Math.round((ty + Math.sin(a) * 12) / 4) * 4;
+        ctx.fillStyle = deg % 45 === 0 ? '#fbbf24' : '#f43f5e';
+        ctx.fillRect(rx - 2, ry - 2, 4, 4);
       }
       ctx.restore();
     }
+
+    // 2. Gungnir Javelin Barrage Skill: Stepped 4x4 Pixel-Art Valhalla Crown Halo around Freyja
+    if (this.state === 'SKILL' && this.stateTimer < 0.72) {
+      const cx = Math.round(this.x / 4) * 4;
+      const cy = Math.round((this.y - 84) / 4) * 4;
+      const env = Math.sin(Math.min(1, this.stateTimer / 0.72) * Math.PI);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let deg = 0; deg < 360; deg += 12) {
+        const a = (deg * Math.PI) / 180 + this.stateTimer * 5.0;
+        const hx = Math.round((cx + Math.cos(a) * 68) / 4) * 4;
+        const hy = Math.round((cy + Math.sin(a) * 42) / 4) * 4;
+        ctx.globalAlpha = 0.82 * env;
+        ctx.fillStyle = deg % 36 === 0 ? '#ffffff' : deg % 24 === 0 ? '#fbbf24' : '#f43f5e';
+        ctx.fillRect(hx - 2, hy - 2, 4, 4);
+      }
+      ctx.restore();
+    }
+
+    // 3. Curving Homing Gungnir Sky-Javelins with Authentic Stepped 4x4 Pixel-Art Comet Trails & Pixel-Art Winged Spearheads
+    if (this.activeSkySpears.length > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+
+      for (const sp of this.activeSkySpears) {
+        // 3A. Stepped 4x4 Pixel-Art Curved Comet Trail along sp.trail
+        if (sp.trail && sp.trail.length >= 2) {
+          for (let k = 0; k < sp.trail.length - 1; k++) {
+            const p0 = sp.trail[k];
+            const p1 = sp.trail[k + 1];
+            const segDist = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+            const steps = Math.max(1, Math.ceil(segDist / 4));
+            for (let s = 0; s < steps; s++) {
+              const uSeg = (k + s / steps) / Math.max(1, sp.trail.length - 1);
+              const px = Math.round((p0.x + (p1.x - p0.x) * (s / steps)) / 4) * 4;
+              const py = Math.round((p0.y + (p1.y - p0.y) * (s / steps)) / 4) * 4;
+
+              // Outer crimson-rose pixel aura block
+              ctx.globalAlpha = (sp.isUlt ? 0.62 : 0.50) * uSeg;
+              ctx.fillStyle = '#f43f5e';
+              const auraSz = uSeg > 0.55 ? 12 : 8;
+              ctx.fillRect(px - auraSz * 0.5, py - auraSz * 0.5, auraSz, auraSz);
+
+              // Inner sunlit gold pixel block
+              if (uSeg > 0.25) {
+                ctx.globalAlpha = (sp.isUlt ? 0.90 : 0.82) * uSeg;
+                ctx.fillStyle = uSeg > 0.78 ? '#fef9c3' : '#fbbf24';
+                ctx.fillRect(px - 2, py - 2, 4, 4);
+              }
+            }
+          }
+        }
+
+        // 3B. Stepped 4x4 Pixel-Art Target Ground Sigil for Ultimate Javelins
+        if (sp.isUlt) {
+          const gtx = Math.round(sp.targetX / 4) * 4;
+          const gty = Math.round((this.groundY - 4) / 4) * 4;
+          ctx.globalAlpha = 0.58;
+          for (let deg = 0; deg < 360; deg += 30) {
+            const a = (deg * Math.PI) / 180;
+            const rx = Math.round((gtx + Math.cos(a) * 32) / 4) * 4;
+            const ry = Math.round((gty + Math.sin(a) * 8) / 4) * 4;
+            ctx.fillStyle = deg % 60 === 0 ? '#fbbf24' : '#f43f5e';
+            ctx.fillRect(rx - 2, ry - 2, 4, 4);
+          }
+        }
+
+        // 3C. Render the Winged Golden Gungnir Javelin on a World-Space Stepped 4x4 Pixel Grid!
+        // (Every block is snapped to 4px world coordinates — 100% authentic chunky pixel art at any flight angle and zero rotated square boxes!)
+        const ux = Math.cos(sp.angle);
+        const uy = Math.sin(sp.angle);
+        const nx = -uy;
+        const ny = ux;
+        const jScale = sp.isUlt ? 1.15 : 1.0;
+
+        const putJavelinPx = (localAlong, localPerp, col, sz = 4, alpha = 0.96, additive = false) => {
+          const wx = sp.x + (ux * localAlong + nx * localPerp) * jScale;
+          const wy = sp.y + (uy * localAlong + ny * localPerp) * jScale;
+          const px = Math.round(wx / 4) * 4;
+          const py = Math.round(wy / 4) * 4;
+          ctx.globalCompositeOperation = additive ? 'lighter' : 'source-over';
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = col;
+          ctx.fillRect(px - sz * 0.5, py - sz * 0.5, sz, sz);
+        };
+
+        // Crimson-Gold Pixel Shaft (-44 .. +8)
+        for (let d = -44; d <= 8; d += 4) {
+          putJavelinPx(d, 0, d < -20 ? '#e11d48' : '#fbbf24', 4, 0.95, false);
+        }
+
+        // Swept Valkyrie Wing-Flukes on Crossguard (-8 .. +12, perp -16 .. +16)
+        for (const sign of [-1, 1]) {
+          putJavelinPx(4, sign * 4, '#fbbf24', 4, 0.98, false);
+          putJavelinPx(0, sign * 8, '#fbbf24', 4, 0.98, false);
+          putJavelinPx(-4, sign * 12, '#f43f5e', 4, 0.95, false);
+          putJavelinPx(-8, sign * 16, '#fef08a', 4, 0.92, true);
+        }
+
+        // Broad Diamond Spearhead (+8 .. +40) with White-Hot Core & Golden Edge Pixels
+        for (let d = 8; d <= 40; d += 4) {
+          if (d <= 24) {
+            putJavelinPx(d, -4, '#fbbf24', 4, 0.95, true);
+            putJavelinPx(d, 4, '#fbbf24', 4, 0.95, true);
+          }
+          putJavelinPx(d, 0, '#ffffff', 4, 1.0, false);
+        }
+      }
+      ctx.restore();
+    }
+    ctx.restore();
   }
 
   draw(ctx, isReflection = false, renderer = null) {

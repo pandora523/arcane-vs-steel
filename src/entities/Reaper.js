@@ -1206,29 +1206,31 @@ export class Reaper extends Fighter {
    * Renders the Abyssal Floor Shadow Pool & Grasping Bone Hands when Malakor submerges underground!
    */
   drawShadowPool(ctx) {
-    const px = Math.round(this.x);
-    const py = Math.round(this.groundY);
+    const px = Math.round(this.x / 4) * 4;
+    const py = Math.round(this.groundY / 4) * 4;
     const vfxSheet = PixelForge.initAssets().reaper?.vfx;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    ctx.beginPath();
-    ctx.ellipse(px, py, 92, 12, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(88, 28, 135, 0.82)';
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.ellipse(px, py, 76, 8, 0, 0, Math.PI * 2);
-    ctx.fillStyle = 'rgba(192, 132, 252, 0.88)';
-    ctx.fill();
-
-    ctx.beginPath();
-    ctx.ellipse(px, py, 60, 5, 0, 0, Math.PI * 2);
-    ctx.fillStyle = '#090514';
-    ctx.fill();
+    // Stepped 4x4 Pixel-Art Abyssal Shadow Pool on the Floor
+    const layers = [
+      { rx: 92, ry: 12, col: 'rgba(88, 28, 135, 0.85)' },
+      { rx: 76, ry: 8, col: 'rgba(192, 132, 252, 0.90)' },
+      { rx: 60, ry: 4, col: '#090514' }
+    ];
+    for (const lay of layers) {
+      ctx.fillStyle = lay.col;
+      for (let dy = -lay.ry; dy <= lay.ry; dy += 4) {
+        const u = Math.min(1, Math.abs(dy) / Math.max(1, lay.ry));
+        const halfW = Math.round((lay.rx * Math.sqrt(Math.max(0, 1 - u * u))) / 4) * 4;
+        if (halfW >= 4) {
+          ctx.fillRect(px - halfW, py + dy, halfW * 2, 4);
+        }
+      }
+    }
 
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-      const col = Math.min(29, Math.max(0, Math.floor(((this.stateTimer * 28) % 30))));
+      const col = Math.min(29, Math.max(0, Math.floor((this.stateTimer * 28) % 30)));
       ctx.drawImage(vfxSheet, col * 208, 416 + 124, 208, 84, px - 72, py - 50, 144, 58);
     }
     ctx.restore();
@@ -1368,7 +1370,7 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Renders the Blood-Moon Eclipse, Necrotic Pentagram Execution Floor Seal, and Colossal 30fps Sovereign of Death Avatar BEHIND the fighters during GRIM HARVEST
+   * Renders the Pixel-Art Blood-Moon Eclipse, Necrotic Pentagram Execution Floor Seal, and Colossal 30fps Hooded Grim Reaper Sovereign BEHIND the fighters during GRIM HARVEST
    */
   drawDeathAvatar(ctx, renderer = null) {
     if (!this.deathAvatar) return;
@@ -1376,136 +1378,140 @@ export class Reaper extends Fighter {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
 
     const da = this.deathAvatar;
-    const col = Math.min(29, Math.floor(((1 - da.life / da.maxLife)) * 30));
+    const col = Math.min(29, Math.floor((1 - da.life / da.maxLife) * 30));
     const elapsed = da.maxLife - da.life;
     const rise = Math.min(1, elapsed / 0.26);
     const fade = Math.min(1, da.life * 3.2);
-    const ax = Math.round(da.x ?? this.x + this.facing * 115);
-    const ay = Math.round(this.groundY);
+    const ax = Math.round((da.x ?? this.x + this.facing * 115) / 4) * 4;
+    const ay = Math.round(this.groundY / 4) * 4;
     const phase = da.eclipsePhase || elapsed * 5.0;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Necrotic 5-Pointed Blood-Moon Pentagram Execution Seal on the Arena Floor (under the enemy!)
+    // 1. Stepped 4x4 Pixel-Art Necrotic Blood-Moon Pentagram Execution Seal on the Arena Floor (under the enemy!)
     ctx.save();
     ctx.translate(ax, ay - 2);
-    ctx.scale(1, 0.24);
-    const sealR = (165 + Math.sin(phase * 1.8) * 10) * rise;
+    const sealW = Math.round((272 * rise) / 4) * 4;
+    const sealH = Math.round((sealW * 0.42) / 4) * 4;
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.78;
-    ctx.strokeStyle = '#f43f5e';
-    ctx.lineWidth = 8;
-    ctx.beginPath();
-    ctx.arc(0, 0, sealR, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.globalAlpha = fade * 0.85;
+    ctx.drawImage(
+      vfxSheet,
+      col * 208,
+      832,
+      208,
+      208,
+      Math.round(-sealW * 0.5),
+      Math.round(-sealH * 0.56),
+      sealW,
+      sealH
+    );
 
-    ctx.strokeStyle = '#c084fc';
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(0, 0, sealR * 0.78, 0, Math.PI * 2);
-    ctx.stroke();
+    const sealRx = (164 + Math.sin(phase * 1.8) * 8) * rise;
+    const sealRy = sealRx * 0.24;
+    for (let deg = 0; deg < 360; deg += 10) {
+      const a = (deg * Math.PI) / 180 + phase * 0.75;
+      const sx1 = Math.round((Math.cos(a) * sealRx) / 4) * 4;
+      const sy1 = Math.round((Math.sin(a) * sealRy) / 4) * 4;
+      ctx.fillStyle = deg % 40 === 0 ? '#ffffff' : '#f43f5e';
+      ctx.fillRect(sx1 - 4, sy1 - 2, 8, 4);
 
-    // Rotating 5-pointed Necrotic Pentagram Star inside the floor seal
-    ctx.rotate(phase * 0.75);
-    ctx.strokeStyle = '#ffe4e6';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    for (let i = 0; i <= 5; i++) {
-      const a = (i * 4 * Math.PI) / 5 - Math.PI * 0.5;
-      const sx = Math.cos(a) * (sealR * 0.76);
-      const sy = Math.sin(a) * (sealR * 0.76);
-      if (i === 0) ctx.moveTo(sx, sy);
-      else ctx.lineTo(sx, sy);
+      if (deg % 20 === 0) {
+        const sx2 = Math.round((Math.cos(-a) * sealRx * 0.76) / 4) * 4;
+        const sy2 = Math.round((Math.sin(-a) * sealRy * 0.76) / 4) * 4;
+        ctx.fillStyle = '#c084fc';
+        ctx.fillRect(sx2 - 2, sy2 - 2, 4, 4);
+      }
     }
-    ctx.stroke();
+    // Rotating 5-Pointed Stepped 4x4 Pixel Pentagram Star inside the floor seal
+    const pentPts = [];
+    for (let i = 0; i <= 5; i++) {
+      const a = (i * 4 * Math.PI) / 5 - Math.PI * 0.5 + phase * 0.75;
+      pentPts.push({
+        x: Math.cos(a) * (sealRx * 0.76),
+        y: Math.sin(a) * (sealRy * 0.76)
+      });
+    }
+    ctx.fillStyle = '#ffe4e6';
+    for (let i = 0; i < 5; i++) {
+      const p0 = pentPts[i];
+      const p1 = pentPts[i + 1];
+      const steps = 14;
+      for (let s = 0; s <= steps; s++) {
+        const u = s / steps;
+        const px = Math.round((p0.x + (p1.x - p0.x) * u) / 4) * 4;
+        const py = Math.round((p0.y + (p1.y - p0.y) * u) / 4) * 4;
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+      }
+    }
     ctx.restore();
 
-    // 2. Towering Blood-Moon Eclipse & Sovereign of Death Avatar (clipped cleanly to the floor)
+    // 2. Towering Stepped 4x4 Pixel-Art Blood-Moon Eclipse & 30fps Hooded Grim Reaper Sovereign (clipped cleanly to the floor)
     ctx.save();
     ctx.beginPath();
     ctx.rect(ax - 320, ay - 460, 640, 464);
     ctx.clip();
 
     const moonX = ax;
-    const moonY = ay - 228;
-    const moonR = Math.round(108 * rise);
+    const moonY = ay - 224;
+    const moonR = Math.round((96 * rise) / 4) * 4;
 
-    if (moonR > 12) {
-      // Outer Crimson-Violet Blood-Moon Corona
-      const coronaGrad = ctx.createRadialGradient(moonX, moonY, moonR * 0.55, moonX, moonY, moonR * 1.85);
-      coronaGrad.addColorStop(0, 'rgba(244, 63, 94, 0.72)');
-      coronaGrad.addColorStop(0.5, 'rgba(168, 85, 247, 0.42)');
-      coronaGrad.addColorStop(1, 'rgba(15, 5, 29, 0)');
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade;
-      ctx.fillStyle = coronaGrad;
-      ctx.beginPath();
-      ctx.arc(moonX, moonY, moonR * 1.85, 0, Math.PI * 2);
-      ctx.fill();
-
-      // Rotating Eclipse Rim Rays
-      ctx.save();
-      ctx.translate(moonX, moonY);
-      ctx.rotate(-phase * 0.45);
-      ctx.strokeStyle = 'rgba(251, 113, 133, 0.65)';
-      ctx.lineWidth = 4;
-      for (let r = 0; r < 8; r++) {
-        const ra = (r * Math.PI) / 4;
-        ctx.beginPath();
-        ctx.moveTo(Math.cos(ra) * (moonR * 0.92), Math.sin(ra) * (moonR * 0.92));
-        ctx.lineTo(Math.cos(ra) * (moonR * 1.48), Math.sin(ra) * (moonR * 1.48));
-        ctx.stroke();
+    if (moonR >= 16) {
+      if (renderer && renderer.glowCrimson) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.56;
+        ctx.drawImage(renderer.glowCrimson, moonX - moonR * 1.9, moonY - moonR * 1.9, moonR * 3.8, moonR * 3.8);
       }
-      ctx.restore();
-
-      // Blazing Blood-Crimson Rim Ring + Abyssal Black Eclipse Disc
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.95;
-      ctx.strokeStyle = '#fb7185';
-      ctx.lineWidth = 8;
-      ctx.beginPath();
-      ctx.arc(moonX, moonY, moonR, 0, Math.PI * 2);
-      ctx.stroke();
-
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.92;
-      ctx.fillStyle = '#090314';
-      ctx.beginPath();
-      ctx.arc(moonX, moonY, moonR * 0.93, 0, Math.PI * 2);
-      ctx.fill();
+      // Stepped 4x4 Pixel-Art Eclipsed Blood-Moon Disc & Blazing Crimson Corona Rim
+      for (let dy = -moonR - 8; dy <= moonR + 8; dy += 4) {
+        const distY = Math.abs(dy);
+        if (distY <= moonR + 8) {
+          const outerW = Math.round(Math.sqrt(Math.max(0, (moonR + 8) * (moonR + 8) - dy * dy)) / 4) * 4;
+          const innerW =
+            distY < moonR - 8
+              ? Math.round(Math.sqrt(Math.max(0, (moonR - 8) * (moonR - 8) - dy * dy)) / 4) * 4
+              : 0;
+          if (outerW > 0) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = fade * 0.92;
+            ctx.fillStyle = (dy / 4) % 2 === 0 ? '#f43f5e' : '#c084fc';
+            ctx.fillRect(moonX - outerW, moonY + dy, outerW * 2, 4);
+          }
+          if (innerW > 0) {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = fade * 0.94;
+            ctx.fillStyle = '#090314';
+            ctx.fillRect(moonX - innerW, moonY + dy, innerW * 2, 4);
+          }
+        }
+      }
     }
 
-    const drawSize = 356;
-    const riseY = Math.round((1 - rise) * 190);
-    const floatBob = Math.round(Math.sin(elapsed * 6.5) * 6);
+    const drawSize = 336;
+    const riseY = Math.round(((1 - rise) * 180) / 4) * 4;
+    const floatBob = Math.round((Math.sin(elapsed * 6.5) * 6) / 4) * 4;
 
-    ctx.translate(ax, ay - drawSize * 0.5 + 10 + riseY + floatBob);
+    ctx.translate(ax, ay - drawSize * 0.5 + 12 + riseY + floatBob);
     ctx.scale(da.facing || this.facing, 1);
 
     if (renderer && renderer.glowViolet) {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = fade * 0.54;
-      ctx.drawImage(renderer.glowViolet, -230, -230, 460, 460);
-    }
-
-    if (da.swingProgress > 0) {
-      const lunge = Math.sin(da.swingProgress * Math.PI);
-      ctx.rotate(lunge * 0.14);
-      ctx.scale(1 + lunge * 0.12, 1 + lunge * 0.12);
+      ctx.drawImage(renderer.glowViolet, -220, -220, 440, 440);
     }
 
     const dHalf = Math.round(-drawSize * 0.5);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.36;
-    ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf - 10, dHalf - 10, drawSize + 20, drawSize + 20);
+    ctx.globalAlpha = fade * 0.38;
+    ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf - 8, dHalf - 8, drawSize + 16, drawSize + 16);
 
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.96;
+    ctx.globalAlpha = fade * 0.98;
     ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf, dHalf, drawSize, drawSize);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * (0.26 + Math.sin(da.swingProgress * Math.PI) * 0.18);
+    ctx.globalAlpha = fade * (0.28 + Math.sin((da.swingProgress || 0) * Math.PI) * 0.22);
     ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf, dHalf, drawSize, drawSize);
 
     ctx.restore();
@@ -1534,69 +1540,59 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Renders Smooth Sinuous Soul-Fire Comet Ribbons (zero blocky fillRect squares!) flying from the enemy into Malakor's chest
+   * Renders Authentic Stepped 4x4 Pixel-Art Soul-Fire Comet Trails & Pixel Skull-Motes flying from the enemy into Malakor's chest
    */
   drawSoulWisps(ctx, renderer = null) {
     if (!this.soulWisps.length) return;
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
     const tx = this.x;
     const ty = this.y - 96;
     for (const w of this.soulWisps) {
       if (w.life < 0) continue;
       const u = Math.min(1, w.life / w.maxLife);
-      const wx = w.startX + (tx - w.startX) * u;
-      const wy = w.startY + (ty - w.startY) * u + Math.sin(u * Math.PI) * w.arcHeight;
-      const uTail = Math.max(0, u - 0.22);
-      const tailX = w.startX + (tx - w.startX) * uTail;
-      const tailY = w.startY + (ty - w.startY) * uTail + Math.sin(uTail * Math.PI) * w.arcHeight;
-      const uMid = (u + uTail) * 0.5;
-      const midX = w.startX + (tx - w.startX) * uMid;
-      const midY =
-        w.startY +
-        (ty - w.startY) * uMid +
-        Math.sin(uMid * Math.PI) * w.arcHeight +
-        Math.cos(w.life * 24) * 10;
-
-      ctx.save();
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      const wx = Math.round((w.startX + (tx - w.startX) * u) / 4) * 4;
+      const wy =
+        Math.round((w.startY + (ty - w.startY) * u + Math.sin(u * Math.PI) * w.arcHeight) / 4) * 4;
 
       if (renderer && renderer.glowViolet) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.50;
+        ctx.globalAlpha = 0.48;
         ctx.drawImage(renderer.glowViolet, wx - 36, wy - 36, 72, 72);
       }
 
-      // Outer Crimson-Violet Soul-Comet Ribbon
+      // Stepped 4x4 Pixel-Art Comet Tail Blocks
+      const tailSteps = 8;
+      for (let s = tailSteps; s >= 1; s--) {
+        const uStep = Math.max(0, u - s * 0.028);
+        const sx = Math.round((w.startX + (tx - w.startX) * uStep) / 4) * 4;
+        const sy =
+          Math.round(
+            (w.startY +
+              (ty - w.startY) * uStep +
+              Math.sin(uStep * Math.PI) * w.arcHeight +
+              Math.cos(w.life * 24 - s * 0.5) * 6) /
+              4
+          ) * 4;
+        const frac = 1 - s / (tailSteps + 1);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.78 * frac;
+        ctx.fillStyle = s % 2 === 0 ? w.color || '#c084fc' : '#f43f5e';
+        const bSz = s <= 3 ? 8 : 4;
+        ctx.fillRect(sx - bSz * 0.5, sy - bSz * 0.5, bSz, bSz);
+      }
+
+      // Glowing 4x4 Pixel-Art Soul-Orb Head
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.68;
-      ctx.strokeStyle = w.color || '#c084fc';
-      ctx.lineWidth = 11;
-      ctx.beginPath();
-      ctx.moveTo(tailX, tailY);
-      ctx.quadraticCurveTo(midX, midY, wx, wy);
-      ctx.stroke();
-
-      // Inner White-Hot Soul-Comet Core Ribbon
-      ctx.globalAlpha = 0.94;
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.moveTo(tailX, tailY);
-      ctx.quadraticCurveTo(midX, midY, wx, wy);
-      ctx.stroke();
-
-      // Glowing Soul-Orb Head (smooth circular arc + diamond star glint, zero fillRect boxes!)
+      ctx.globalAlpha = 0.95;
       ctx.fillStyle = '#f43f5e';
-      ctx.beginPath();
-      ctx.arc(wx, wy, 7, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(wx - 8, wy - 4, 16, 8);
+      ctx.fillRect(wx - 4, wy - 8, 8, 16);
 
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 1.0;
       ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      ctx.arc(wx, wy, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
+      ctx.fillRect(wx - 4, wy - 4, 8, 8);
     }
     ctx.restore();
   }
@@ -1616,12 +1612,12 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Foreground Ultimate pass — Renders Spinning Abyssal Scythe Vortex Blades, Curved Guillotine Slash Ribbons & Soul-Comets
+   * Foreground Ultimate pass — Renders 30fps Pixel-Art Spinning Abyssal Scythe Vortex Blades, Stepped 4x4 Pixel-Art Guillotine Slash Arcs & Soul-Comets
    */
   drawUltimateForeground(ctx, renderer = null) {
     const vfxSheet = PixelForge.initAssets().reaper?.vfx;
 
-    // 1. Render Spinning Abyssal Scythe Vortex Waves (from Row 0 of reaper_vfx.png)
+    // 1. Render 30fps Pixel-Art Spinning Abyssal Scythe Vortex Waves (from Row 0 of reaper_vfx.png)
     if (this.ultScytheWaves && this.ultScytheWaves.length && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
       ctx.save();
       ctx.imageSmoothingEnabled = false;
@@ -1629,45 +1625,51 @@ export class Reaper extends Fighter {
         const u = Math.min(1, sw.life / sw.maxLife);
         const fade = Math.sin(u * Math.PI);
         const col = Math.floor((sw.life * 45) % 30);
-        const sz = sw.size || 158;
+        const sz = Math.round((sw.size || 160) / 4) * 4;
         const half = Math.round(-sz * 0.5);
         ctx.save();
-        ctx.translate(Math.round(sw.x), Math.round(sw.y));
+        ctx.translate(Math.round(sw.x / 4) * 4, Math.round(sw.y / 4) * 4);
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = fade * 0.44;
         ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, half - 8, half - 8, sz + 16, sz + 16);
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.95;
+        ctx.globalAlpha = fade * 0.96;
         ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, half, half, sz, sz);
         ctx.restore();
       }
       ctx.restore();
     }
 
-    // 2. Render Curved Crimson & Violet Guillotine Slash Ribbons
+    // 2. Render Stepped 4x4 Pixel-Art Crimson & Violet Guillotine Slash Arcs + Row 4 Blood-Moon Cleave Wave
     if (this.ultSlashRibbons && this.ultSlashRibbons.length) {
       ctx.save();
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
+      ctx.imageSmoothingEnabled = false;
       for (const sr of this.ultSlashRibbons) {
         const u = Math.min(1, sr.life / sr.maxLife);
         const fade = Math.pow(1 - u, 1.35);
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.78;
-        ctx.strokeStyle = sr.color;
-        ctx.lineWidth = sr.width * (1.15 - u * 0.45);
-        ctx.beginPath();
-        ctx.moveTo(sr.x1, sr.y1);
-        ctx.quadraticCurveTo(sr.cx, sr.cy, sr.x2, sr.y2);
-        ctx.stroke();
+        const steps = 36;
+        for (let s = 0; s <= steps; s++) {
+          const su = s / steps;
+          const inv = 1 - su;
+          const qx = inv * inv * sr.x1 + 2 * inv * su * sr.cx + su * su * sr.x2;
+          const qy = inv * inv * sr.y1 + 2 * inv * su * sr.cy + su * su * sr.y2;
+          const px = Math.round(qx / 4) * 4;
+          const py = Math.round(qy / 4) * 4;
+          const taper = Math.sin(su * Math.PI);
+          const halfThick = Math.max(4, Math.round((sr.width * 0.5 * taper * (1.1 - u * 0.4)) / 4) * 4);
 
-        ctx.globalAlpha = fade * 0.96;
-        ctx.strokeStyle = sr.core || '#ffffff';
-        ctx.lineWidth = Math.max(3, sr.width * 0.36 * (1 - u * 0.4));
-        ctx.beginPath();
-        ctx.moveTo(sr.x1, sr.y1);
-        ctx.quadraticCurveTo(sr.cx, sr.cy, sr.x2, sr.y2);
-        ctx.stroke();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = fade * 0.78;
+          ctx.fillStyle = sr.color;
+          ctx.fillRect(px - halfThick, py - halfThick, halfThick * 2, halfThick * 2);
+
+          if (halfThick >= 4) {
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = fade * 0.96;
+            ctx.fillStyle = sr.core || '#ffffff';
+            ctx.fillRect(px - 2, py - 2, 4, 4);
+          }
+        }
       }
       ctx.restore();
     }

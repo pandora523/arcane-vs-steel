@@ -406,23 +406,19 @@ export class Priestess extends Fighter {
           });
 
           if (enemy && !enemy.isDead) {
-            const skyX = enemy.x - this.facing * 55;
-            const skyY = -60;
-            const sdx = enemy.x - skyX;
-            const sdy = (enemy.y - 92) - skyY;
-            const sdist = Math.hypot(sdx, sdy) || 1;
-            game.vfx.spawnProjectile({
-              x: skyX,
-              y: skyY,
-              vx: (sdx / sdist) * 780,
-              vy: (sdy / sdist) * 780,
-              radius: 16,
+            game.vfx.spawnSkyStrike({
+              x: enemy.x - this.facing * 24,
+              y: -150,
+              groundY: this.groundY,
+              vx: this.facing * 85,
+              vy: 1180,
+              type: 'holy_spear',
               color: '#fde047',
               coreColor: '#ffffff',
               owner: this,
+              target: enemy,
               damage: 30,
-              type: 'holy_spear',
-              isMeteor: true
+              isUltimate: false
             });
           }
         }
@@ -510,25 +506,20 @@ export class Priestess extends Fighter {
 
       // 3. Rain 2 Descending Heaven's Valkyrie Light-Spears (`Row 1` of priestess_vfx.png) from the sky onto the enemy!
       for (const side of [-1, 1]) {
-        const skyX = enemy.x + side * 68;
-        const skyY = -75;
-        const tX = enemy.x + side * 18;
-        const tY = enemy.y - 88;
-        const sdx = tX - skyX;
-        const sdy = tY - skyY;
-        const sdist = Math.hypot(sdx, sdy) || 1;
-        game.vfx.spawnProjectile({
-          x: skyX,
-          y: skyY,
-          vx: (sdx / sdist) * 790,
-          vy: (sdy / sdist) * 790,
-          radius: 16,
+        game.vfx.spawnSkyStrike({
+          x: enemy.x + side * 44,
+          y: -160,
+          groundY: this.groundY,
+          vx: -side * 90,
+          vy: 1220,
+          type: 'holy_spear',
           color: '#fde047',
           coreColor: '#ffffff',
           owner: this,
+          target: enemy,
           damage: 14,
-          type: 'holy_spear',
-          isMeteor: true
+          delay: side < 0 ? 0 : 0.06,
+          isUltimate: false
         });
       }
 
@@ -623,22 +614,20 @@ export class Priestess extends Fighter {
         maxLife: 0.42
       });
 
-      // Also launch a physical Descending Heaven's Valkyrie Light-Spear (`Row 1` of priestess_vfx.png) along the ray!
-      const sdx = aimX - haloX;
-      const sdy = (enemy.y - 86) - haloY;
-      const sdist = Math.hypot(sdx, sdy) || 1;
-      game.vfx.spawnProjectile({
-        x: haloX,
-        y: haloY,
-        vx: (sdx / sdist) * 820,
-        vy: (sdy / sdist) * 820,
-        radius: 16,
+      // Also launch a physical Descending Heaven's Valkyrie Light-Spear (`Row 1` of priestess_vfx.png) from the heavens!
+      game.vfx.spawnSkyStrike({
+        x: aimX,
+        y: -160,
+        groundY: this.groundY,
+        vx: 0,
+        vy: 1260,
+        type: 'holy_spear',
         color: '#fde047',
         coreColor: '#ffffff',
         owner: this,
+        target: enemy,
         damage: 8,
-        type: 'holy_spear',
-        isMeteor: true
+        isUltimate: true
       });
 
       game.vfx.spawnShockwave(aimX, this.groundY, 96, '#fde047', 0.32, true);
@@ -765,42 +754,56 @@ export class Priestess extends Fighter {
     const cy = -124;
     const vfxSheet = sprites && sprites.vfx;
 
-    // 0. Grounded 3D Perspective Sacred Sanctuary Cathedral Floor Mandala (anchored at groundY even when Seraphina levitates!)
-    const groundDy = Math.round(this.groundY - this.y);
+    // 0. Grounded Stepped 4x4 Pixel-Art Sacred Sanctuary Cathedral Floor Mandala (anchored at groundY even when Seraphina levitates!)
+    const groundDy = Math.round((this.groundY - this.y) / 4) * 4;
     ctx.save();
     ctx.translate(0, groundDy - 2);
-    ctx.scale(1, 0.25);
-    const sancR = (isFullArchangel ? 164 : 138) * (0.85 + 0.15 * env);
+    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
+      const sealCol = Math.floor(this.stateTimer * 30) % 30;
+      const sealW = Math.round(((isFullArchangel ? 264 : 216) * (0.85 + 0.15 * env)) / 4) * 4;
+      const sealH = Math.round((sealW * 0.42) / 4) * 4;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = env * 0.82;
+      ctx.drawImage(
+        vfxSheet,
+        sealCol * 208,
+        832,
+        208,
+        208,
+        Math.round(-sealW * 0.5),
+        Math.round(-sealH * 0.58),
+        sealW,
+        sealH
+      );
+    }
+    const sancRx = (isFullArchangel ? 156 : 128) * (0.85 + 0.15 * env);
+    const sancRy = sancRx * 0.24;
+    const rot = this.haloPhase * 0.85;
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = env * 0.72;
-    ctx.strokeStyle = '#fde047';
-    ctx.lineWidth = 7;
-    ctx.beginPath();
-    ctx.arc(0, 0, sancR, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.globalAlpha = env * 0.88;
+    for (let deg = 0; deg < 360; deg += 10) {
+      const a = (deg * Math.PI) / 180 + rot;
+      const px1 = Math.round((Math.cos(a) * sancRx) / 4) * 4;
+      const py1 = Math.round((Math.sin(a) * sancRy) / 4) * 4;
+      ctx.fillStyle = deg % 45 === 0 ? '#ffffff' : '#fde047';
+      ctx.fillRect(px1 - 4, py1 - 2, 8, 4);
 
-    ctx.strokeStyle = '#4ade80';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(0, 0, sancR * 0.76, 0, Math.PI * 2);
-    ctx.stroke();
-
-    // Rotating 8-Pointed Cathedral Rose Star on the Sanctuary Floor
-    ctx.rotate(this.haloPhase * 0.85);
-    ctx.strokeStyle = '#ffffff';
-    ctx.lineWidth = 3.5;
-    for (let s = 0; s < 2; s++) {
-      ctx.save();
-      ctx.rotate((s * Math.PI) / 4);
-      ctx.beginPath();
-      const rSq = sancR * 0.54;
-      ctx.moveTo(-rSq, -rSq);
-      ctx.lineTo(rSq, -rSq);
-      ctx.lineTo(rSq, rSq);
-      ctx.lineTo(-rSq, rSq);
-      ctx.closePath();
-      ctx.stroke();
-      ctx.restore();
+      if (deg % 15 === 0) {
+        const px2 = Math.round((Math.cos(-a) * sancRx * 0.72) / 4) * 4;
+        const py2 = Math.round((Math.sin(-a) * sancRy * 0.72) / 4) * 4;
+        ctx.fillStyle = deg % 45 === 0 ? '#fde047' : '#4ade80';
+        ctx.fillRect(px2 - 2, py2 - 2, 4, 4);
+      }
+    }
+    // 8-Pointed Stepped 4x4 Pixel Star Spokes on the Sanctuary Floor
+    for (let k = 0; k < 8; k++) {
+      const sa = rot + (k * Math.PI) / 4;
+      for (let rStep = 0.25; rStep <= 0.95; rStep += 0.18) {
+        const sx = Math.round((Math.cos(sa) * sancRx * rStep) / 4) * 4;
+        const sy = Math.round((Math.sin(sa) * sancRy * rStep) / 4) * 4;
+        ctx.fillStyle = rStep > 0.7 ? '#ffffff' : '#fde047';
+        ctx.fillRect(sx - 2, sy - 2, 4, 4);
+      }
     }
     ctx.restore();
 
@@ -912,83 +915,73 @@ export class Priestess extends Fighter {
     const env = Math.min(1, Math.sin(u * Math.PI) * 1.75);
     if (env <= 0.02) return;
 
+    const sprites = PixelForge.initAssets().priestess;
+    const vfxSheet = sprites && sprites.vfx;
+    const hasVfx = !!(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
+
     ctx.save();
-    ctx.translate(Math.round(this.x), Math.round(this.y - 122));
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(Math.round(this.x / 4) * 4, Math.round((this.y - 122) / 4) * 4);
     ctx.scale(this.facing, 1);
-    ctx.lineCap = 'round';
-    ctx.lineJoin = 'round';
 
     const orbitR = 132 * (0.88 + 0.12 * env);
 
-    // 1. Spinning Double-Ringed Golden Ophanim Wheel around Seraphina
+    // 1. Spinning Double-Ringed Golden Ophanim Wheel around Seraphina (Stepped 4x4 Pixel-Art Ring!)
     ctx.save();
-    ctx.rotate(this.haloPhase * 1.4);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = env * 0.62;
-    ctx.strokeStyle = '#fde047';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.arc(0, 0, orbitR, 0, Math.PI * 2);
-    ctx.stroke();
+    const ringRot = this.haloPhase * 1.4;
+    for (let deg = 0; deg < 360; deg += 8) {
+      const a = (deg * Math.PI) / 180 + ringRot;
+      const rx1 = Math.round((Math.cos(a) * orbitR) / 4) * 4;
+      const ry1 = Math.round((Math.sin(a) * orbitR) / 4) * 4;
+      ctx.globalAlpha = env * 0.72;
+      ctx.fillStyle = deg % 24 === 0 ? '#ffffff' : '#fde047';
+      ctx.fillRect(rx1 - 2, ry1 - 2, 4, 4);
 
-    ctx.globalAlpha = env * 0.42;
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2.5;
-    ctx.beginPath();
-    ctx.arc(0, 0, orbitR * 0.84, 0, Math.PI * 2);
-    ctx.stroke();
+      if (deg % 16 === 0) {
+        const rx2 = Math.round((Math.cos(-a) * orbitR * 0.82) / 4) * 4;
+        const ry2 = Math.round((Math.sin(-a) * orbitR * 0.82) / 4) * 4;
+        ctx.globalAlpha = env * 0.56;
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(rx2 - 2, ry2 - 2, 4, 4);
+      }
+    }
     ctx.restore();
 
-    // 2. 6 Orbiting 8-Pointed Starlight Chakrams (pure crisp vector star polygons — zero rotated sprite-box borders!)
+    // 2. 6 Orbiting 30fps Pixel-Art Sacred Star Chakrams (`Row 0: holy_light`, unrotated so 4x4 pixels stay 100% crisp!)
     for (let i = 0; i < 6; i++) {
       const a = -this.haloPhase * 2.4 + (i * Math.PI * 2) / 6;
-      const ox = Math.cos(a) * orbitR;
-      const oy = Math.sin(a) * orbitR;
+      const ox = Math.round((Math.cos(a) * orbitR) / 4) * 4;
+      const oy = Math.round((Math.sin(a) * orbitR) / 4) * 4;
 
       ctx.save();
       ctx.translate(ox, oy);
-      ctx.rotate(-a * 1.5);
 
       if (renderer && renderer.glowGold) {
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = env * 0.44;
-        ctx.drawImage(renderer.glowGold, -42, -42, 84, 84);
+        ctx.drawImage(renderer.glowGold, -44, -44, 88, 88);
       }
 
-      // Outer Golden 4-Point Long Star + 4-Point Diagonal Star (8-Pointed Sacred Chakram)
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = env * 0.92;
-      ctx.fillStyle = i % 2 === 0 ? '#fde047' : '#7dd3fc';
-      ctx.beginPath();
-      const outerR = 22;
-      const diagR = 13;
-      const innerR = 5.5;
-      for (let p = 0; p < 16; p++) {
-        const pa = (p * Math.PI) / 8;
-        const r = p % 2 === 1 ? innerR : p % 4 === 0 ? outerR : diagR;
-        const px = Math.cos(pa) * r;
-        const py = Math.sin(pa) * r;
-        if (p === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
+      if (hasVfx) {
+        const starCol = (Math.floor(this.stateTimer * 30) + i * 5) % 30;
+        const sz = 112;
+        const half = -56;
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = env * 0.36;
+        ctx.drawImage(vfxSheet, starCol * 208, 0, 208, 208, half - 4, half - 4, sz + 8, sz + 8);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = env * 0.96;
+        ctx.drawImage(vfxSheet, starCol * 208, 0, 208, 208, half, half, sz, sz);
+      } else {
+        // Fallback stepped 4x4 pixel-art cross star
+        ctx.fillStyle = '#fde047';
+        ctx.fillRect(-16, -4, 32, 8);
+        ctx.fillRect(-4, -16, 8, 32);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(-8, -2, 16, 4);
+        ctx.fillRect(-2, -8, 4, 16);
       }
-      ctx.closePath();
-      ctx.fill();
-
-      // Brilliant Pure-White Star Core
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = env * 0.98;
-      ctx.fillStyle = '#ffffff';
-      ctx.beginPath();
-      for (let p = 0; p < 8; p++) {
-        const pa = (p * Math.PI) / 4;
-        const r = p % 2 === 0 ? 11 : 3.2;
-        const px = Math.cos(pa) * r;
-        const py = Math.sin(pa) * r;
-        if (p === 0) ctx.moveTo(px, py);
-        else ctx.lineTo(px, py);
-      }
-      ctx.closePath();
-      ctx.fill();
 
       ctx.restore();
     }

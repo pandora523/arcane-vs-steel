@@ -2050,40 +2050,33 @@ def build_row5_death(tpl):
 
 def draw_wraith_dash_ribbons(c, f, intensity=1.0):
     """
-    Renders trailing abyssal purple-crimson shadow-mist ribbons & wraith afterimage streaks
-    (`x = 4..14, y = 14..42`, connecting seamlessly into Malakor's cloak edge)
-    behind Malakor's cloak during Row 6 (DASH - Wraith Phase-Rush).
+    Renders organic tapered abyssal purple-crimson cloak wisps & shadow motes
+    trailing naturally from Malakor's cloak edge during Row 6 (DASH).
     """
     orig = c.copy()
-    for y in range(14, 43):
+    for y in range(18, 42):
         row_xs = np.where(orig[y, :, 3] > 0)[0]
-        body_edge_x = int(row_xs[0]) if len(row_xs) > 0 else 16
-        # Connect all the way to x=15 (or body_edge_x if > 15) so both upper (y=14..21) and lower (y=21..42)
-        # wraith ribbons & afterimages span x = 4..14 and merge seamlessly into his cloak!
-        x_end = max(14, min(18, body_edge_x + 2))
-
-        u_y = (y - 14) / 28.0
-        wave = math.sin(u_y * math.pi * 5.0 - f * 0.55)
-        lobe_len = int(round((7.5 + wave * 3.2) * float(intensity)))
-        x_start = max(4, min(11, 14 - lobe_len))
-
-        is_bright_ribbon = wave > 0.05
-        for x in range(x_start, x_end + 1):
-            if x > 14 and orig[y, x, 3] > 0:
-                break
-            u_x = (x - x_start) / max(1.0, float(14 - x_start))
-            if is_bright_ribbon:
-                if u_x > 0.62:
-                    col = C_BLADE_MAGENTA if ((y + f) % 2 == 0) else C_CRIMSON_GLOW
-                elif u_x > 0.28:
-                    col = C_CRIMSON_GLOW if ((x + y) % 2 == 0) else C_BLADE_VIOLET
-                else:
-                    col = VIOLET_MID if (x % 2 == 0) else CRIMSON_MID
+        if len(row_xs) == 0:
+            continue
+        body_edge_x = int(row_xs[0])
+        u_y = (y - 18) / 24.0
+        wave = math.sin(u_y * math.pi * 3.5 - f * 0.65)
+        if wave < -0.15:
+            continue
+        wisp_len = max(1, int(round((2.5 + wave * 3.5) * float(intensity))))
+        x_start = max(6, body_edge_x - wisp_len)
+        for x in range(x_start, body_edge_x):
+            if orig[y, x, 3] > 0:
+                continue
+            u_x = (x - x_start) / max(1.0, float(body_edge_x - x_start))
+            if u_x > 0.68:
+                col = C_BLADE_VIOLET if ((x + y) % 2 == 0) else C_CRIMSON_DARK
+            elif u_x > 0.35:
+                col = VIOLET_DEEP if ((y + f) % 2 == 0) else C_CLOAK_DARK
             else:
-                if u_x > 0.50:
-                    col = C_CRIMSON_DARK if ((x + y) % 2 == 0) else VIOLET_DEEP
-                else:
-                    col = C_CLOAK_DARK if ((x + f) % 2 == 0) else OBSIDIAN_DEEP
+                if (x + y + f) % 2 == 0:
+                    continue
+                col = OBSIDIAN_DEEP
             c[y, x] = col
     return c
 
