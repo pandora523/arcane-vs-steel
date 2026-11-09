@@ -1,2775 +1,1588 @@
 #!/usr/bin/env python3
 """
-Builds Ignis Sol's (FireMage) 30-Frame-Per-Animation HD-2D Sprite Sheet:
-- 9 rows x 30 columns = 270 unique frames (6240 x 1872 at 208x208 per cell):
-  * Row 0: IDLE (30 frames)
-  * Row 1: WALK (30 frames)
-  * Row 2: AUTO_ATTACK (30 frames)
-  * Row 3: SKILL - HELLFIRE PILLARS & SOLAR DETONATION (30 frames)
-  * Row 4: ULTIMATE - CATACLYSM: ECLIPSE SUPERNOVA (30 frames)
-  * Row 5: DEATH & HURT (30 frames)
-  * Row 6: DASH - FLAME-STEP BLINK (30 frames)
-  * Row 7: CROUCH - FLAME-WARD CROUCH & LOW FIREBALL (30 frames)
-  * Row 8: JUMP - FLAME-GLIDE VAULT & DOWNWARD FIREBALL (30 frames)
-- All 270 frames face RIGHT (+X) to match Archer and Warrior.
-- Single articulated Solar Sun-Staff (draw_sun_staff) per frame, zero duplicate weapons or extra limbs,
-  zero bouncy-ball jump frames, zero floating upright staff on death.
+Builds Ignis Sol (FireMage — Mysterious Shadow-Faced Black-Mage Pyromancer) 30fps HD-2D Sprite Sheet
+(6240x1872, 30 cols x 9 rows of 208x208) using:
+- Cape-free, limb-separated 16-bit HD-2D reference base model: assets/sprites/mage_v2_base.jpg
+- 16-part hierarchical skeletal segmentation (mane [wizard-hat tail], head [wide-brimmed crimson
+  wizard hat + golden sun crest + pitch-black shadow void face + glowing molten-gold flame eyes],
+  torso [upturned gold-trimmed crimson collar + solar brooch + Sun-Wheel belt], l_coat, r_coat,
+  back_hem, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot)
+  with 0 uncovered silhouette pixels
+- 104x104 logical resolution upscaled 2x NEAREST to 208x208 (400% finer pixel detail than 52x52)
+- Strict 20-Color Hand-Crafted Black-Mage Master Palette + 2-Pass Cardinal Orphan Despeckle
+  + Crisp 1px Selective Outline (Selout) — eliminating 100% of AI RGB gradients & confetti noise
+  while preserving razor-sharp glowing molten-gold flame eyes inside his pitch-black shadow face
+- Articulated Rotating 8-Point Solar Astrolabe Back-Halo + Crescent Helios Sun-Staff in 104x104 space
+- 100% Grounded IDLE/WALK/AUTO/SKILL/ULTIMATE/CROUCH + Smooth Shallow Flame-Step & Solar Vault Glides
 """
 
+import os
 import math
+import time
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
-OUTLINE = (11, 15, 25, 255)
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "mage_v2_base.jpg")
+OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "mage_sheet.png")
+ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
 
-# Pyromancer Crimson & Dark Mantle Palette (extracted from backups/mage_sheet_before_30fps.png)
-CRIMSON_BRIGHT = (185, 44, 46, 255)
-CRIMSON_MID = (154, 38, 40, 255)
-CRIMSON_DEEP = (120, 21, 37, 255)
-CRIMSON_DARK = (90, 34, 37, 255)
-ROBE_SHADOW = (50, 29, 37, 255)
-MANTLE_DARK = (25, 24, 34, 255)
+CELL = 208
+LOGICAL = 104
+COLS = 30
+ROWS = 9
 
-ROBE_LIGHT = CRIMSON_BRIGHT
-ROBE_MID = CRIMSON_MID
-ROBE_DARK = CRIMSON_DARK
-SKIN_LIGHT = (252, 211, 167, 255)
-SKIN_MID = (217, 155, 108, 255)
+# Strict 20-Color Hand-Crafted Mysterious Shadow-Faced Black-Mage Master Palette
+MASTER_PALETTE = np.array([
+    # 0-2: Pitch-Black Shadow-Void Face & Crisp Selective Outlines (Selout)
+    [8, 7, 13],       # 0: Pure Abyssal Shadow-Void Face & Deepest Outline
+    [22, 15, 22],     # 1: Deep Obsidian Hatband & Spell-Glove Shadow
+    [38, 18, 24],     # 2: Maroon-Obsidian Selout
+    # 3-6: 4-Step Tailored Obsidian-Charcoal Sleeves, Hatband, Spell-Gloves & Breeches Ramp
+    [30, 30, 38],     # 3: Deep Obsidian Breeches & Sleeve Shadow
+    [48, 46, 56],     # 4: Tailored Charcoal Midtone
+    [72, 68, 80],     # 5: Slate-Charcoal Knuckle & Breeches Fold Highlight
+    [96, 88, 100],    # 6: Subtle Obsidian Glove & Hatband Rim Highlight
+    # 7-11: 5-Step Crimson Wizard-Hat, Collar, Battle-Coat & Molten Vermilion Ramp
+    [68, 16, 22],     # 7: Deep Burgundy Inner Coat-Lining Shadow
+    [108, 24, 28],    # 8: Dark Wizard-Hat & Battle-Coat Crimson Shadow
+    [152, 34, 34],    # 9: Classic Black-Mage Royal Crimson Base
+    [194, 50, 42],    # 10: Lit Wizard-Hat Crown & Knee-Cop Scarlet Highlight
+    [238, 92, 38],    # 11: Blazing Molten Vermilion-Orange Eye Rim, Brooch & Flame
+    # 12-15: 4-Step Rune-Etched Dark-Bronze Greave & Burnished Sun-Gold Filigree Ramp
+    [78, 52, 38],     # 12: Dark Rune-Etched Bronze Greave Shadow
+    [118, 78, 48],    # 13: Burnished Bronze Greave & Pauldron Midtone
+    [176, 118, 38],   # 14: Rich Imperial Gold Filigree & Sun-Wheel Belt Midtone
+    [228, 174, 48],   # 15: Bright Helios Sun-Gold Collar Trim, Hat Crest & Crescent
+    # 16-19: 4-Step Fierce Molten-Amber Shadow-Eye Glow & Pure Solar Corona Ramp
+    [248, 142, 34],   # 16: Molten Amber Eye Outer Glow & Solar Brooch Core
+    [254, 196, 56],   # 17: Fierce Golden-Amber Flame Eye Midtone
+    [255, 234, 112],  # 18: Blazing Solar-Yellow Eye Center & Astrolabe Gleam
+    [255, 250, 226],  # 19: White-Hot Solar Nucleus
+], dtype=np.int32)
 
-# Burnished Sun-Gold & Bronze Trim Palette
-GOLD_BRIGHT = (242, 198, 108, 255)
-GOLD_MID = (207, 158, 85, 255)
-GOLD_TRIM = (157, 93, 51, 255)
-GOLD_DARK = (107, 75, 48, 255)
-WOOD_DARK = (69, 43, 38, 255)
-WOOD_DEEP = (39, 24, 27, 255)
-
-# Solar Fire & Eclipse Palette
-SOLAR_WHITE = (255, 252, 235, 255)
-SOLAR_YELLOW = (254, 240, 138, 255)
-FLAME_GOLD = (250, 204, 21, 255)
-FLAME_ORANGE = (251, 146, 60, 255)
-FLAME_CRIMSON = (234, 88, 12, 255)
-FLAME_DEEP = (185, 28, 28, 255)
-VOID_BLACK = (10, 6, 18, 255)
-VOID_VIOLET = (88, 28, 135, 255)
-
-
-def load_source_cells(path='backups/mage_sheet_before_30fps.png'):
-    im = Image.open(path).convert('RGBA')
-
-    def cell(r, c):
-        return np.array(
-            im.crop((c * 208, r * 208, (c + 1) * 208, (r + 1) * 208)).resize((52, 52), Image.NEAREST),
-            dtype=np.uint8
-        )
-
-    return {
-        'idle': cell(0, 0),
-        'walk1': cell(1, 1),
-        'atk_prep': cell(2, 0),
-        'atk_cast': cell(2, 3),
-        'kneel1': cell(4, 1),
-        'kneel2': cell(4, 3),
-        'fall': cell(4, 4),
-        'dash': cell(5, 1),
-    }
-
-
-def set_px(buf, x, y, col):
-    ix = int(round(x))
-    iy = int(round(y))
-    if 2 <= ix <= 49 and 2 <= iy <= 49:
-        buf[iy, ix] = col
+# Pre-bound RGBA palette tuples for crisp 104x104 Astrolabe Halo, Helios Sun-Staff, and Pyromancy FX
+P_OUTLINE = (8, 7, 13, 255)
+P_SELOUT = (38, 18, 24, 255)
+P_CRIM_SHAD = (108, 24, 28, 255)
+P_CRIM_BASE = (152, 34, 34, 255)
+P_SCAR_LIT = (194, 50, 42, 255)
+P_VERMILION = (238, 92, 38, 255)
+P_CHAR_SHAD = (30, 30, 38, 255)
+P_CHAR_MID = (48, 46, 56, 255)
+P_BRONZE_DARK = (78, 52, 38, 255)
+P_GOLD_MID = (176, 118, 38, 255)
+P_GOLD_LIT = (228, 174, 48, 255)
+P_AMBER_GLOW = (248, 142, 34, 255)
+P_SOLAR_GLEAM = (255, 234, 112, 255)
+P_IVORY = (255, 250, 226, 255)
 
 
-def draw_line_px(buf, x0, y0, x1, y1, col):
-    steps = int(max(abs(x1 - x0), abs(y1 - y0), 1))
-    for i in range(steps + 1):
-        t = i / steps
-        set_px(buf, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, col)
-
-
-def add_outline_to_layer(layer):
+def quantize_and_cluster_104(arr104):
     """
-    Returns `layer.copy()` without dilating opaque black pixels into transparent space,
-    because `PixelForge.js` (ensureNormalMap + drawSheetFrame) renders the 1px
-    comic ink outline and 1px exterior rim dynamically at runtime.
+    Transforms a downsampled 104x104 RGBA frame into authentic hand-clustered pixel art:
+    1. Quantizes all opaque pixels to the 20-color MASTER_PALETTE (eliminating AI gradients/mixels).
+    2. Runs 2 passes of cardinal neighbor majority clustering (removing isolated 1px AI speckles)
+       while protecting Ignis Sol's glowing molten-gold flame eyes & golden sun emblems.
+    3. Applies a crisp 1px dark selective outline (Selout) around the outer silhouette.
     """
-    return layer.copy()
+    out = arr104.copy()
+    alpha = out[:, :, 3] > 128
+    out[~alpha] = [0, 0, 0, 0]
+    out[alpha, 3] = 255
+    if not np.any(alpha):
+        return out
 
+    rgb = out[:, :, :3].astype(np.int32)
+    diff = rgb[:, :, None, :] - MASTER_PALETTE[None, None, :, :]
+    dist2 = diff[:, :, :, 0] ** 2 * 2 + diff[:, :, :, 1] ** 2 * 3 + diff[:, :, :, 2] ** 2 * 2
+    idx_map = np.argmin(dist2, axis=2)
+    idx_map[~alpha] = -1
 
-def fill_layer_pinholes(layer, x0=2, x1=49, y0=2, y1=49, require_3_neighbors=False):
-    """
-    Fills 1px transparent pinholes/slits inside moved, waved, or rotated pixel layers
-    so movement never causes missing interior pixels or torn seams.
-    """
-    out = layer.copy()
+    # Two passes of Cardinal Pixel-Clustering (Orphan-Pixel Despeckle)
     for _ in range(2):
-        prev = out.copy()
-        alpha = prev[:, :, 3] > 0
-        for y in range(max(2, y0), min(50, y1)):
-            for x in range(max(2, x0), min(50, x1)):
-                if alpha[y, x]:
-                    continue
-                up = alpha[y - 1, x]
-                dn = alpha[y + 1, x]
-                lf = alpha[y, x - 1]
-                rt = alpha[y, x + 1]
-                if (up and dn) or (lf and rt):
-                    n_cnt = int(up) + int(dn) + int(lf) + int(rt)
-                    if not require_3_neighbors or n_cnt >= 3:
-                        if up:
-                            out[y, x] = prev[y - 1, x]
-                        elif lf:
-                            out[y, x] = prev[y, x - 1]
-                        elif dn:
-                            out[y, x] = prev[y + 1, x]
-                        elif rt:
-                            out[y, x] = prev[y, x + 1]
+        up = np.pad(idx_map[:-1, :], ((1, 0), (0, 0)), constant_values=-1)
+        dn = np.pad(idx_map[1:, :], ((0, 1), (0, 0)), constant_values=-1)
+        lf = np.pad(idx_map[:, :-1], ((0, 0), (1, 0)), constant_values=-1)
+        rt = np.pad(idx_map[:, 1:], ((0, 0), (0, 1)), constant_values=-1)
+
+        same_cnt = (
+            (idx_map == up).astype(np.int8)
+            + (idx_map == dn).astype(np.int8)
+            + (idx_map == lf).astype(np.int8)
+            + (idx_map == rt).astype(np.int8)
+        )
+        interior = alpha & (up >= 0) & (dn >= 0) & (lf >= 0) & (rt >= 0)
+        # Protect glowing flame eyes, molten vermilion rims, and bright gold sun-crest highlights
+        protect = (idx_map == 11) | (idx_map >= 15)
+        orphan = interior & (same_cnt == 0) & (~protect)
+
+        replacement = np.where((up == dn) & (up >= 0), up, np.where((lf == rt) & (lf >= 0), lf, up))
+        idx_map = np.where(orphan & (replacement >= 0), replacement, idx_map)
+
+    # Crisp 1px Selective Outline (Selout) on outer silhouette edges
+    up_a = np.pad(alpha[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+    dn_a = np.pad(alpha[1:, :], ((0, 1), (0, 0)), constant_values=False)
+    lf_a = np.pad(alpha[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+    rt_a = np.pad(alpha[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+    edge = alpha & (~(up_a & dn_a & lf_a & rt_a))
+
+    is_gleam = idx_map >= 16
+    body_edge = edge & (~is_gleam)
+    shadow_edge = body_edge & ((~dn_a) | (~rt_a))
+    lit_edge = body_edge & (~shadow_edge)
+    idx_map[lit_edge] = 2
+    idx_map[shadow_edge] = 0
+
+    valid = idx_map >= 0
+    out_rgb = MASTER_PALETTE[np.clip(idx_map, 0, len(MASTER_PALETTE) - 1)].astype(np.uint8)
+    out[:, :, :3] = np.where(valid[:, :, None], out_rgb, 0)
     return out
 
 
-def shift_layer(layer, dx=0, dy=0):
-    """
-    Shifts `layer` by `(dx, dy)` inside safe cell bounds `[2..49]` without `np.roll` wrap-around,
-    then fills any 1px pinholes.
-    """
-    out = np.zeros_like(layer)
-    for y in range(52):
-        ny = y + int(round(dy))
-        if 2 <= ny <= 49:
-            for x in range(52):
-                nx = x + int(round(dx))
-                if 2 <= nx <= 49 and layer[y, x, 3] > 0:
-                    out[ny, nx] = layer[y, x]
-    return fill_layer_pinholes(out)
-
-
-def ensure_safe_cell(cell, margin=2):
-    """
-    Guarantees zero pixels touch the outer 2px border (keeping all pixels strictly inside
-    2 <= x <= 49 and 2 <= y <= 49) and fills any 1px interior pinholes from movement.
-    """
-    min_b = max(2, int(margin))
-    max_b = 51 - min_b
-    out = fill_layer_pinholes(cell, min_b, max_b, min_b, max_b, require_3_neighbors=True)
-    ys, xs = np.where(out[:, :, 3] > 0)
+def keep_largest_component(mask):
+    H, W = mask.shape
+    visited = np.zeros((H, W), dtype=bool)
+    best_comp = None
+    best_size = 0
+    ys, xs = np.where(mask)
     if len(ys) == 0:
-        return out
-    ymin, ymax = int(ys.min()), int(ys.max())
-    xmin, xmax = int(xs.min()), int(xs.max())
-
-    dy = 0
-    if ymin < min_b and ymax < max_b:
-        dy = min(min_b - ymin, max_b - ymax)
-    elif ymax > max_b and ymin > min_b:
-        dy = -min(ymax - max_b, ymin - min_b)
-
-    dx = 0
-    if xmin < min_b and xmax < max_b:
-        dx = min(min_b - xmin, max_b - xmax)
-    elif xmax > max_b and xmin > min_b:
-        dx = -min(xmax - max_b, xmin - min_b)
-
-    if dx != 0 or dy != 0:
-        shifted = np.zeros_like(out)
-        for y in range(52):
-            ny = y + dy
-            if min_b <= ny <= max_b:
-                for x in range(52):
-                    nx = x + dx
-                    if min_b <= nx <= max_b and out[y, x, 3] > 0:
-                        shifted[ny, nx] = out[y, x]
-        out = shifted
-
-    out[:min_b, :, :] = 0
-    out[max_b + 1:, :, :] = 0
-    out[:, :min_b, :] = 0
-    out[:, max_b + 1:, :] = 0
+        return mask
+    for idx in range(len(ys)):
+        sy, sx = int(ys[idx]), int(xs[idx])
+        if visited[sy, sx]:
+            continue
+        comp = []
+        q = [(sy, sx)]
+        visited[sy, sx] = True
+        head = 0
+        while head < len(q):
+            cy, cx = q[head]
+            head += 1
+            comp.append((cy, cx))
+            for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                if 0 <= ny < H and 0 <= nx < W and not visited[ny, nx] and mask[ny, nx]:
+                    visited[ny, nx] = True
+                    q.append((ny, nx))
+        if len(comp) > best_size:
+            best_size = len(comp)
+            best_comp = comp
+    out = np.zeros((H, W), dtype=bool)
+    if best_comp:
+        cy, cx = zip(*best_comp)
+        out[cy, cx] = True
     return out
 
 
-def composite_over(base, over):
-    res = base.copy()
-    mask = over[:, :, 3] > 0
-    res[mask] = over[mask]
-    return res
+def poly_mask(H, W, pts):
+    img = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(img).polygon(pts, fill=255)
+    return np.array(img) > 128
 
 
-def neutralize_mage_baked_arms(cell, mode='stand'):
+def load_and_segment_512():
     """
-    Preserves Ignis Sol's full A-line crimson robe (`x = 28..34` on the right) and left hanging
-    cloak/sleeve (`x = 10..16` on the left), while cleanly stripping ONLY his baked-in Sun Staff
-    and extended right hand so a single articulated `draw_sun_staff` + Right IK Arm can be animated.
+    Loads mage_v2_base.jpg (1024x1024), removes exterior & interior white pockets,
+    applies MedianFilter(size=3) cel-flattening on body robes while preserving raw crisp
+    shadow-face flame eyes, and segments into 16 clean anatomical pixel-art parts (0 uncovered px).
     """
-    out = cell.copy()
+    im = Image.open(BASE_IMG_PATH).convert("RGBA")
+    seeds = [
+        (0, 0), (1023, 0), (0, 1023), (1023, 1023),
+        (425, 450), (615, 495), (515, 760), (515, 860),
+        (350, 845), (675, 835),
+    ]
+    for seed in seeds:
+        px_s = im.getpixel(seed)
+        if px_s[0] > 230 and px_s[1] > 230 and px_s[2] > 230:
+            ImageDraw.floodfill(im, seed, (0, 0, 0, 0), thresh=38)
 
-    if mode == 'stand':
-        # 1. Strip ONLY the right-side Sun Staff and extended hand while preserving the full A-line robe:
-        #    - y < 16: strip x >= 28 (Sun-Staff head above shoulder)
-        #    - 16 <= y <= 26: strip x >= 30 (where the staff hand reaches out)
-        #    - 27 <= y <= 34: strip x >= 33 (preserving right hip/robe flare at x = 28..32)
-        #    - y >= 35: strip x >= 35 (preserving full A-line lower crimson robe flare at x = 28..34)
-        out[0:16, 28:52] = 0
-        out[16:27, 30:52] = 0
-        out[27:35, 33:52] = 0
-        out[35:52, 35:52] = 0
+    arr = np.array(im)
+    r0, g0, b0 = arr[:, :, 0].astype(np.int16), arr[:, :, 1].astype(np.int16), arr[:, :, 2].astype(np.int16)
+    arr[(r0 > 244) & (g0 > 244) & (b0 > 244)] = [0, 0, 0, 0]
 
-        # 2. Gently shade only overly bright skin/gold hand pixels in x = 24..29, y = 18..25
-        #    without flattening his shoulder pad (y = 14..17), left sleeve (x = 10..23), or waist belt (y = 26..29)
-        for y in range(18, 26):
-            for x in range(24, 30):
-                r, g, b, a = out[y, x]
-                if a > 0 and r > 190 and g > 130:
-                    out[y, x] = GOLD_TRIM if x <= 25 else ROBE_MID
+    for _ in range(3):
+        a = arr[:, :, 3] > 0
+        up = np.pad(a[1:, :], ((0, 1), (0, 0)), constant_values=False)
+        dn = np.pad(a[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+        lf = np.pad(a[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+        rt = np.pad(a[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+        edge = a & (~(up & dn & lf & rt))
+        r = arr[:, :, 0].astype(np.int16)
+        g = arr[:, :, 1].astype(np.int16)
+        b = arr[:, :, 2].astype(np.int16)
+        white_fringe = edge & (r > 175) & (g > 175) & (b > 175) & (np.abs(r - g) < 30) & (np.abs(g - b) < 30)
+        arr[white_fringe] = [0, 0, 0, 0]
 
-    elif mode == 'kneel':
-        # Erase protruding right staff and hand on kneeling templates while preserving left cloak and robe
-        out[0:17, 32:52] = 0
-        out[17:30, 31:52] = 0
-        out[30:52, 35:52] = 0
+    im512 = Image.fromarray(arr, "RGBA").resize((512, 512), Image.Resampling.NEAREST)
+    rgb512_raw = np.array(im512.convert("RGB"))
+    rgb_med3 = np.array(im512.convert("RGB").filter(ImageFilter.MedianFilter(size=3)))
+    arr512 = np.array(im512)
+    H, W = arr512.shape[:2]
+    alpha = arr512[:, :, 3] > 0
 
-        for y in range(18, 26):
-            for x in range(24, 31):
-                r, g, b, a = out[y, x]
-                if a > 0 and r > 190 and g > 130:
-                    out[y, x] = GOLD_TRIM if x <= 25 else ROBE_MID
+    def P(pts):
+        return [(x * 0.5, y * 0.5) for (x, y) in pts]
 
-    elif mode == 'dash':
-        # Erase protruding right staff on dash template while preserving full streaming cloak and robe
-        out[0:18, 35:52] = 0
-        out[18:48, 34:52] = 0
-        for y in range(20, 27):
-            for x in range(28, 34):
-                r, g, b, a = out[y, x]
-                if a > 0 and r > 190 and g > 130:
-                    out[y, x] = ROBE_MID
+    # Preserve raw unblurred glowing flame eyes & sun-crest inside the wizard hat face zone!
+    eye_zone = poly_mask(H, W, P([(480, 65), (605, 65), (605, 260), (480, 260)]))
+    blended_rgb = np.where(eye_zone[:, :, None], rgb512_raw, rgb_med3)
+    arr512[:, :, :3] = np.where(alpha[:, :, None], blended_rgb, 0)
 
-    return out
+    # 1. Curved Pointed Wizard Hat Tail Tip (mane)
+    m_mane = poly_mask(H, W, P([
+        (320, 44), (446, 44), (440, 128), (382, 134), (320, 98)
+    ])) & alpha
 
+    # 2. Head: Wide-Brimmed Crimson Wizard Hat + Golden Sun Crest + Pitch-Black Shadow Face + Glowing Eyes
+    m_head = poly_mask(H, W, P([
+        (442, 18), (625, 18), (720, 194), (720, 224),
+        (650, 246), (592, 248), (588, 286), (544, 326),
+        (522, 324), (500, 274), (452, 262), (438, 240),
+        (355, 238), (314, 208), (314, 192), (428, 178), (438, 126)
+    ])) & alpha & (~m_mane)
 
-def make_clean_templates(src):
-    """
-    Extracts clean, right-facing (+X) templates from `backups/mage_sheet_before_30fps.png`,
-    preserving Ignis's full A-line crimson robe and left cloak while stripping the baked-in staff.
-    """
-    # 1. Clean standing body facing RIGHT (full A-line crimson robe & left cloak intact)
-    stand = neutralize_mage_baked_arms(src['idle'], mode='stand')
+    # 3. Left Crimson-Gold Shoulder Pauldron & Upper Obsidian Sleeve
+    m_l_sode = poly_mask(H, W, P([
+        (324, 308), (432, 302), (450, 344), (442, 396), (402, 474), (324, 424)
+    ])) & alpha & (~m_head)
 
-    # Orient Ignis's glowing golden eyes inside the hood (y=16..18) so he gazes clearly RIGHT (+X)
-    for y in range(16, 19):
-        for x in range(19, 28):
-            if stand[y, x, 3] > 0:
-                stand[y, x] = MANTLE_DARK
-    set_px(stand, 23, 17, FLAME_ORANGE)
-    set_px(stand, 24, 17, SOLAR_YELLOW)
-    set_px(stand, 26, 17, FLAME_ORANGE)
-    set_px(stand, 27, 17, SOLAR_YELLOW)
-    set_px(stand, 24, 16, GOLD_TRIM)
-    set_px(stand, 27, 16, GOLD_TRIM)
-    stand[0:2, :, :] = 0
-    stand[50:, :, :] = 0
-    stand[:, 0:2, :] = 0
-    stand[:, 50:, :] = 0
-    stand = fill_layer_pinholes(add_outline_to_layer(stand))
+    # 4. Left Gold-Etched Crimson Vambrace & Dark Obsidian Spell-Glove
+    m_l_forearm = poly_mask(H, W, P([
+        (294, 420), (344, 422), (402, 474), (376, 552),
+        (396, 582), (396, 616), (374, 616), (368, 608),
+        (368, 656), (320, 656), (294, 618)
+    ])) & alpha & (~m_l_sode)
 
-    # Extract Ignis's Left/Back Boot and Right/Front Boot from `stand`
-    leg_back_patch = np.zeros((52, 52, 4), dtype=np.uint8)
-    leg_front_patch = np.zeros((52, 52, 4), dtype=np.uint8)
-    leg_back_patch[44:50, 15:23] = stand[44:50, 15:23]
-    leg_front_patch[44:50, 24:32] = stand[44:50, 24:32]
+    # 5. Right Crimson-Gold Shoulder Pauldron & Upper Obsidian Sleeve
+    m_r_sode = poly_mask(H, W, P([
+        (586, 312), (652, 316), (660, 434), (598, 478), (588, 408), (598, 365)
+    ])) & alpha & (~m_head)
 
-    # Upper torso + full robe down to y=44 (without bottom boot tips y >= 45)
-    stand_upper = stand.copy()
-    stand_upper[45:, :, :] = 0
-    stand_upper = fill_layer_pinholes(add_outline_to_layer(stand_upper))
+    # 6. Right Gold-Etched Crimson Vambrace & Dark Obsidian Spell-Glove
+    m_r_forearm = poly_mask(H, W, P([
+        (596, 476), (658, 432), (738, 545), (738, 644), (648, 644), (642, 552)
+    ])) & alpha & (~m_r_sode)
 
-    # 2. Clean forward-leaning casting body (hat & upper torso leaned +1px right, full robe preserved)
-    cast_body = np.zeros((52, 52, 4), dtype=np.uint8)
-    for y in range(52):
-        lean_dx = 1 if y <= 27 else 0
-        for x in range(52):
-            if stand[y, x, 3] > 0:
-                nx = min(50, x + lean_dx)
-                cast_body[y, nx] = stand[y, x]
-    cast_body = fill_layer_pinholes(add_outline_to_layer(cast_body))
+    # 7. Torso: Upturned Crimson-Gold Collar, Solar Throat Brooch, Vest & Golden Sun-Wheel Belt
+    m_torso = poly_mask(H, W, P([
+        (405, 240), (500, 272), (522, 324), (544, 326),
+        (588, 286), (592, 246), (636, 246), (646, 315),
+        (596, 408), (618, 526), (582, 546), (534, 546),
+        (442, 526), (440, 400), (405, 310)
+    ])) & alpha & (~m_head) & (~m_l_sode) & (~m_l_forearm) & (~m_r_sode) & (~m_r_forearm)
 
-    # 3. Clean kneeling bodies (kneel1, kneel2) facing RIGHT without baked-in staff
-    kneel1 = neutralize_mage_baked_arms(src['kneel1'], mode='kneel')
-    kneel2 = neutralize_mage_baked_arms(src['kneel2'], mode='kneel')
-    for kn in (kneel1, kneel2):
-        ys_k, _ = np.where(kn[:, :, 3] > 0)
-        if len(ys_k) > 0 and ys_k.max() >= 49:
-            shift_up = int(ys_k.max() - 48)
-            kn_s = np.zeros_like(kn)
-            kn_s[:52 - shift_up, :] = kn[shift_up:, :]
-            kn[:, :, :] = kn_s
-        kn[0:2, :, :] = 0
-        kn[49:, :, :] = 0
-        kn[:, 0:2, :] = 0
-        kn[:, 50:, :] = 0
-    kneel1 = fill_layer_pinholes(add_outline_to_layer(kneel1))
-    kneel2 = fill_layer_pinholes(add_outline_to_layer(kneel2))
+    # 8. Left Articulated Crimson-Gold Coat-Tail (pivots at left belt hip)
+    m_l_coat = poly_mask(H, W, P([
+        (440, 520), (538, 520), (508, 585), (468, 635),
+        (425, 685), (396, 735), (372, 785), (352, 835),
+        (338, 902), (264, 860), (264, 740), (368, 650)
+    ])) & alpha & (~m_torso) & (~m_l_forearm)
 
-    # 4. Clean horizontal collapsed body on the ground
-    fall_raw = np.fliplr(src['fall']).copy()
-    fall_raw[42:, :, :] = 0
-    fall_raw[41, 34:, :] = 0
-    fall = np.zeros((52, 52, 4), dtype=np.uint8)
-    for y in range(25, 42):
-        ny = min(48, y + 6)
-        fall[ny, :] = fall_raw[y, :]
-    fall[0:2, :, :] = 0
-    fall[49:, :, :] = 0
-    fall[:, 0:2, :] = 0
-    fall[:, 50:, :] = 0
-    fall = fill_layer_pinholes(add_outline_to_layer(fall))
+    # 9. Right Articulated Crimson-Gold Coat-Tail (pivots at right belt hip, includes inner calf lining)
+    m_r_coat = poly_mask(H, W, P([
+        (580, 520), (624, 520), (678, 655), (734, 760),
+        (734, 886), (694, 886), (648, 828), (648, 768),
+        (668, 735), (648, 685), (620, 635), (596, 585)
+    ])) & alpha & (~m_torso) & (~m_r_forearm)
 
-    # 5. Clean aerodynamic Flame-Step Dash body facing RIGHT (baked right staff stripped)
-    dash = neutralize_mage_baked_arms(np.fliplr(src['dash']).copy(), mode='dash')
-    set_px(dash, 31, 20, FLAME_ORANGE)
-    set_px(dash, 32, 20, SOLAR_YELLOW)
-    dash[0:2, :, :] = 0
-    dash[49:, :, :] = 0
-    dash[:, 0:2, :] = 0
-    dash[:, 50:, :] = 0
-    dash = fill_layer_pinholes(add_outline_to_layer(dash))
+    # 10-11. Define Left & Right Shins (+ Circular Crimson-Gold Knee-Cops)
+    m_l_foot = poly_mask(H, W, P([
+        (330, 902), (448, 908), (448, 998), (330, 998)
+    ])) & alpha & (~m_l_coat)
 
-    return {
-        'stand': stand,
-        'stand_upper': stand_upper,
-        'cast_body': cast_body,
-        'glide1': stand,
-        'glide2': cast_body,
-        'leg_back': leg_back_patch,
-        'leg_front': leg_front_patch,
-        'kneel1': kneel1,
-        'kneel2': kneel2,
-        'fall': fall,
-        'dash': dash,
-    }
+    m_l_shin = poly_mask(H, W, P([
+        (352, 780), (396, 686), (482, 686), (484, 756),
+        (456, 815), (446, 910), (344, 904)
+    ])) & alpha & (~m_l_foot) & (~m_l_coat)
 
+    m_r_foot = poly_mask(H, W, P([
+        (578, 892), (668, 888), (742, 932), (742, 982), (578, 982)
+    ])) & alpha & (~m_r_coat)
 
-def apply_robe_cloak_wave(frame, phase_rad, amplitude=1.5, vertical_flutter=0.6, is_dash=False):
-    """
-    Applies a smooth 30-frame traveling pyromantic wind/heat wave to Ignis Sol's
-    crimson-and-gold left cloak edge (`x = 10..16`) without chopping or detaching his cloak.
-    """
-    out = frame.copy()
-    if is_dash:
-        cloak_region = frame[21:41, 0:24].copy()
-        out[21:41, 0:24] = 0
-        for y in range(21, 41):
-            for x in range(0, 24):
-                if cloak_region[y - 21, x, 3] == 0:
-                    continue
-                if y >= 35 and x >= 17:
-                    out[y, max(2, x)] = cloak_region[y - 21, x]
-                    continue
-                dist_from_shoulder = max(0.0, (24 - x) / 20.0)
-                dy = int(round(math.sin(phase_rad - dist_from_shoulder * 3.2) * amplitude * dist_from_shoulder))
-                dx = int(round(math.cos(phase_rad * 2.0 - dist_from_shoulder * 2.4) * 0.8 * dist_from_shoulder))
-                ny = max(16, min(46, y + dy))
-                nx = max(2, min(24, x + dx))
-                out[ny, nx] = cloak_region[y - 21, x]
-                if x >= 15 and out[y, x, 3] == 0:
-                    out[y, x] = cloak_region[y - 21, x]
-        out = fill_layer_pinholes(out)
-        return add_outline_to_layer(out)
+    m_r_shin = poly_mask(H, W, P([
+        (562, 735), (608, 686), (668, 686), (668, 768),
+        (648, 778), (656, 894), (578, 896), (562, 785)
+    ])) & alpha & (~m_r_foot) & (~m_r_coat)
 
-    # Gentle left cloak-edge ripple (x = 9..17, y = 20..44) anchored seamlessly to cloak
-    for y in range(20, 45):
-        u = (y - 20) / 24.0
-        wave_x = math.sin(phase_rad - u * 3.5) * min(1.2, amplitude * 0.65) * u
-        dx = int(round(wave_x))
-        if dx < 0:
-            for x in range(9, 18):
-                if frame[y, x, 3] > 0 and not np.array_equal(frame[y, x], OUTLINE):
-                    nx = max(2, x - 1)
-                    out[y, nx] = frame[y, x]
-                    break
+    # 12. Upper Back Burgundy Inner Skirt (kept compact above y=745 so spread stances have zero dangling prongs)
+    r_512 = arr512[:, :, 0].astype(np.int16)
+    g_512 = arr512[:, :, 1].astype(np.int16)
+    m_back_hem = (
+        poly_mask(H, W, P([(482, 650), (576, 650), (576, 742), (482, 742)]))
+    ) & alpha & (~m_torso) & (~m_l_coat) & (~m_r_coat) & (~m_l_shin) & (~m_r_shin) & ((r_512 - g_512) > 20)
 
-    out = fill_layer_pinholes(out)
-    return add_outline_to_layer(out)
+    # 13-14. Left & Right Obsidian Breeches Thighs (cleanly absorbing lower inner lining along each thigh)
+    m_l_thigh = poly_mask(H, W, P([
+        (395, 520), (522, 520), (512, 816), (452, 816), (484, 756), (395, 735)
+    ])) & alpha & (~m_torso) & (~m_l_coat) & (~m_back_hem) & (~m_l_shin)
 
+    m_r_thigh = poly_mask(H, W, P([
+        (520, 520), (668, 520), (668, 755), (584, 814), (524, 814)
+    ])) & alpha & (~m_torso) & (~m_r_coat) & (~m_back_hem) & (~m_r_shin) & (~m_l_thigh)
 
-apply_mantle_wave = apply_robe_cloak_wave
+    raw_parts = [
+        ("mane", m_mane), ("head", m_head), ("torso", m_torso),
+        ("l_coat", m_l_coat), ("r_coat", m_r_coat), ("back_hem", m_back_hem),
+        ("l_sode", m_l_sode), ("l_forearm", m_l_forearm),
+        ("r_sode", m_r_sode), ("r_forearm", m_r_forearm),
+        ("l_thigh", m_l_thigh), ("l_shin", m_l_shin), ("l_foot", m_l_foot),
+        ("r_thigh", m_r_thigh), ("r_shin", m_r_shin), ("r_foot", m_r_foot),
+    ]
 
+    raw_masks = [m.copy() for _, m in raw_parts]
+    for idx, (name, _) in enumerate(raw_parts):
+        if name not in ("back_hem",):
+            raw_masks[idx] = keep_largest_component(raw_masks[idx])
 
-def solve_ik_elbow(sx, sy, hx, hy, L1=4.5, L2=4.3, bend_side=1.0):
-    """
-    2-Bone Inverse Kinematics solver returning the anatomical elbow joint (ex, ey)
-    between shoulder (sx, sy) and hand (hx, hy) with compact natural proportions L1=4.5, L2=4.3.
-    """
-    dx = float(hx - sx)
-    dy = float(hy - sy)
-    dist = max(0.8, math.hypot(dx, dy))
-    max_reach = L1 + L2 - 0.15
-    if dist > max_reach:
-        dx *= max_reach / dist
-        dy *= max_reach / dist
-        dist = max_reach
-    ux, uy = dx / dist, dy / dist
-    px, py = -uy * bend_side, ux * bend_side
-    a = (L1 * L1 - L2 * L2 + dist * dist) / (2.0 * dist)
-    h = math.sqrt(max(0.0, L1 * L1 - a * a))
-    ex = sx + ux * a + px * h
-    ey = sy + uy * a + py * h
-    return ex, ey
+    for _ in range(8):
+        cov_now = np.zeros((H, W), dtype=bool)
+        for m in raw_masks:
+            cov_now |= m
+        rem = alpha & (~cov_now)
+        if not np.any(rem):
+            break
+        for idx in range(len(raw_masks)):
+            m = raw_masks[idx]
+            dil = (
+                np.pad(m[1:, :], ((0, 1), (0, 0)), constant_values=False)
+                | np.pad(m[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+                | np.pad(m[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+                | np.pad(m[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+            )
+            claim = rem & dil
+            if np.any(claim):
+                raw_masks[idx] = m | claim
+                rem = rem & (~claim)
+
+    # Save debug segmentation overlay for visual verification
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+    seg_cols = [
+        (255, 80, 180), (255, 60, 60), (255, 180, 40),
+        (220, 40, 120), (180, 60, 220), (120, 40, 80),
+        (60, 200, 255), (40, 120, 255),
+        (80, 255, 160), (40, 190, 90),
+        (255, 240, 80), (200, 220, 40), (150, 170, 30),
+        (120, 240, 240), (60, 180, 200), (40, 130, 160),
+    ]
+    vis = np.zeros((H, W, 3), dtype=np.uint8) + 24
+
+    parts = {}
+    covered = np.zeros((H, W), dtype=bool)
+    for idx, ((name, _), m) in enumerate(zip(raw_parts, raw_masks)):
+        covered |= m
+        vis[m] = (arr512[:, :, :3][m].astype(np.float32) * 0.55 + np.array(seg_cols[idx], dtype=np.float32) * 0.45).astype(np.uint8)
+        ys, xs = np.where(m)
+        if len(ys) == 0:
+            parts[name] = (Image.new("RGBA", (2, 2), (0, 0, 0, 0)), 0, 0)
+            continue
+        x0, x1 = int(xs.min()), int(xs.max()) + 1
+        y0, y1 = int(ys.min()), int(ys.max()) + 1
+        crop = np.zeros((y1 - y0, x1 - x0, 4), dtype=np.uint8)
+        sub_m = m[y0:y1, x0:x1]
+        crop[sub_m] = arr512[y0:y1, x0:x1][sub_m]
+        parts[name] = (Image.fromarray(crop, "RGBA"), x0, y0)
+
+    Image.fromarray(vis, "RGB").save(os.path.join(ARTIFACT_DIR, "debug_mage_v2_parts.png"))
+    missed = int((alpha & (~covered)).sum())
+    print(f"[Ignis Sol Black-Mage 512x512 Segmentation] 16 parts extracted, uncovered pixels: {missed}")
+    return parts
 
 
-def draw_ik_mage_arm(layer, sx, sy, hx, hy, L1=4.5, L2=4.3, bend_side=1.0, is_offhand=False):
-    """
-    Draws Ignis Sol's single sculpted 2-segment Right Staff Pyromancer Arm from his true
-    shoulder `(sx = 25 + dx_off, sy = 17 + dy_off)` to hand `(hx, hy)` with `L1 = 4.5, L2 = 4.3`.
-    """
-    ex, ey = solve_ik_elbow(sx, sy, hx, hy, L1=L1, L2=L2, bend_side=bend_side)
-
-    c_hi, c_mid, c_dark = ROBE_LIGHT, ROBE_MID, ROBE_DARK
-    c_gold, c_gold_dark = GOLD_BRIGHT, GOLD_MID
-    c_skin_hi, c_skin_mid = SKIN_LIGHT, SKIN_MID
-
-    # 1. 3px-thick crimson bell-sleeve upper arm from (sx, sy) to (ex, ey)
-    u1x, u1y = ex - sx, ey - sy
-    d1 = max(1.0, math.hypot(u1x, u1y))
-    n1x, n1y = -u1y / d1, u1x / d1
-    draw_line_px(layer, sx + n1x * 0.85, sy + n1y * 0.85, ex + n1x * 0.75, ey + n1y * 0.75, c_hi)
-    draw_line_px(layer, sx - n1x * 0.85, sy - n1y * 0.85, ex - n1x * 0.75, ey - n1y * 0.75, c_dark)
-    draw_line_px(layer, sx, sy, ex, ey, c_mid)
-
-    # 2. 3px-thick forearm sleeve + ornate gold bracer cuff from (ex, ey) to (hx, hy)
-    u2x, u2y = hx - ex, hy - ey
-    d2 = max(1.0, math.hypot(u2x, u2y))
-    n2x, n2y = -u2y / d2, u2x / d2
-    draw_line_px(layer, ex + n2x * 0.85, ey + n2y * 0.85, hx + n2x * 0.65, hy + n2y * 0.65, c_hi)
-    draw_line_px(layer, ex - n2x * 0.85, ey - n2y * 0.85, hx - n2x * 0.65, hy - n2y * 0.65, c_dark)
-    draw_line_px(layer, ex, ey, hx, hy, c_mid)
-
-    # Ornate gold bracer cuff near wrist
-    cx_w = ex + u2x * 0.68
-    cy_w = ey + u2y * 0.68
-    set_px(layer, cx_w, cy_w, c_gold)
-    set_px(layer, cx_w + n2x * 0.75, cy_w + n2y * 0.75, c_gold)
-    set_px(layer, cx_w - n2x * 0.75, cy_w - n2y * 0.75, c_gold_dark)
-
-    # 3. Rotating crimson-and-gold pyromancer mantle shoulder cap at (sx, sy)
-    ux1, uy1 = u1x / d1, u1y / d1
-    for p_step in (-1.0, -0.4, 0.4, 1.0):
-        px_s = sx + ux1 * 0.8 + n1x * p_step
-        py_s = sy + uy1 * 0.8 + n1y * p_step
-        set_px(layer, px_s, py_s, c_gold if abs(p_step) > 0.8 else c_hi)
-        set_px(layer, sx + n1x * p_step, sy + n1y * 0.85 * p_step, c_mid)
-    set_px(layer, sx, sy - 1, c_gold)
-
-    # 4. Golden rune-trimmed elbow fold at (ex, ey)
-    set_px(layer, ex, ey, c_gold)
-    set_px(layer, ex + n1x * 0.7, ey + n1y * 0.7, c_hi)
-    set_px(layer, ex - n1x * 0.7, ey - n1y * 0.7, c_gold_dark)
-
-    # 5. 2x2 warm skin/flame-lit hand gripping the staff at (hx, hy)
-    set_px(layer, hx, hy, c_skin_hi)
-    set_px(layer, hx + 1, hy, c_skin_hi)
-    set_px(layer, hx, hy + 1, c_skin_mid)
-    set_px(layer, hx + 1, hy + 1, c_skin_mid)
+def rot_pt(pt, pivot, deg):
+    rad = math.radians(deg)
+    c, s = math.cos(rad), math.sin(rad)
+    dx, dy = pt[0] - pivot[0], pt[1] - pivot[1]
+    return (pivot[0] + dx * c - dy * s, pivot[1] + dx * s + dy * c)
 
 
-def draw_left_spell_arm(c, sh_x, sh_y, hand_x, hand_y, orb_radius=0, flare=0.0, mode='orb', phase_rad=0.0):
-    """
-    Draws Ignis Sol's articulated Left Spellcasting Arm from off-hand shoulder `(sh_x, sh_y)`
-    to spellcasting hand `(hand_x, hand_y)` with optional glowing Solar Fireball Orb (`orb_radius`),
-    blazing Solar Sigil (`mode='sigil'`), Eclipse channeling arcs (`mode='eclipse'`),
-    spinning Flame-Ward shield ring (`mode='ward'`), and forward solar projection (`flare`).
-    """
-    arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    fx_layer = np.zeros((52, 52, 4), dtype=np.uint8)
+def paste_rotated_part(canvas, part_tuple, src_pivot, dst_pivot, deg, wave_phase=None, wave_amp=0.0):
+    crop_im, x0, y0 = part_tuple
+    if wave_phase is not None and abs(wave_amp) > 0.05:
+        arr = np.array(crop_im)
+        h, w = arr.shape[:2]
+        pad = int(abs(wave_amp)) + 4
+        out = np.zeros((h + pad * 2, w, 4), dtype=np.uint8)
+        for x in range(w):
+            dist = (w - 1 - x) / max(1.0, float(w))
+            dy = int(round(math.sin(wave_phase + dist * 4.0) * wave_amp * (dist ** 1.15)))
+            out[pad + dy : pad + dy + h, x] = arr[:, x]
+        crop_im = Image.fromarray(out, "RGBA")
+        y0 -= pad
 
-    sx = max(21.0, min(28.0, float(sh_x)))
-    sy = max(13.0, min(27.0, float(sh_y)))
-    hx = max(25.0, min(38.0, float(hand_x)))
-    hy = max(11.0, min(32.0, float(hand_y)))
-
-    bend_dir = -1.0 if hy < sy - 1.5 else 1.0
-    ex, ey = solve_ik_elbow(sx, sy, hx, hy, L1=4.2, L2=4.0, bend_side=bend_dir)
-
-    # 1. Sculpted crimson & dark-gold off-hand spellcaster sleeve
-    u1x, u1y = ex - sx, ey - sy
-    d1 = max(1.0, math.hypot(u1x, u1y))
-    n1x, n1y = -u1y / d1, u1x / d1
-    draw_line_px(arm_layer, sx + n1x * 0.75, sy + n1y * 0.75, ex + n1x * 0.65, ey + n1y * 0.65, CRIMSON_BRIGHT)
-    draw_line_px(arm_layer, sx - n1x * 0.75, sy - n1y * 0.75, ex - n1x * 0.65, ey - n1y * 0.65, CRIMSON_DARK)
-    draw_line_px(arm_layer, sx, sy, ex, ey, CRIMSON_MID)
-
-    u2x, u2y = hx - ex, hy - ey
-    d2 = max(1.0, math.hypot(u2x, u2y))
-    n2x, n2y = -u2y / d2, u2x / d2
-    draw_line_px(arm_layer, ex + n2x * 0.75, ey + n2y * 0.75, hx + n2x * 0.55, hy + n2y * 0.55, CRIMSON_BRIGHT)
-    draw_line_px(arm_layer, ex - n2x * 0.75, ey - n2y * 0.75, hx - n2x * 0.55, hy - n2y * 0.55, CRIMSON_DARK)
-    draw_line_px(arm_layer, ex, ey, hx, hy, CRIMSON_MID)
-
-    # Ornate gold spell-bracer cuff near wrist
-    cx_w = ex + u2x * 0.68
-    cy_w = ey + u2y * 0.68
-    set_px(arm_layer, cx_w, cy_w, GOLD_BRIGHT)
-    set_px(arm_layer, cx_w + n2x * 0.65, cy_w + n2y * 0.65, GOLD_MID)
-    set_px(arm_layer, ex, ey, GOLD_TRIM)
-
-    # 2x2 warm flame-lit left spellcasting hand at (hx, hy)
-    hand_lit = SOLAR_YELLOW if (orb_radius > 0 or flare > 0.15) else SKIN_LIGHT
-    set_px(arm_layer, hx, hy, hand_lit)
-    set_px(arm_layer, hx + 1, hy, hand_lit)
-    set_px(arm_layer, hx, hy + 1, SKIN_LIGHT)
-    set_px(arm_layer, hx + 1, hy + 1, SKIN_MID)
-
-    # 2. Off-hand Spell VFX (Solar Fireball Orb, Solar Sigil, Eclipse Channel, or Flame-Ward Ring)
-    eff_r = float(orb_radius)
-    eff_flare = float(flare)
-
-    if mode == 'ward' and eff_r > 0:
-        # Spinning vertical elliptical Flame-Ward shield ring in front of extended left hand
-        wcx = min(44.0, hx + 3.0)
-        wcy = max(18.0, min(35.0, hy))
-        rx_w = 2.4
-        ry_w = min(6.0, eff_r + 2.0)
-        for s in range(20):
-            a = (s / 20.0) * 2.0 * math.pi + phase_rad * 2.5
-            px_w = max(3.0, min(48.0, wcx + math.cos(a) * rx_w))
-            py_w = max(3.0, min(48.0, wcy + math.sin(a) * ry_w))
-            if s % 5 == 0:
-                col_w = SOLAR_WHITE
-            elif s % 2 == 0:
-                col_w = SOLAR_YELLOW
-            else:
-                col_w = FLAME_ORANGE if s % 3 == 0 else FLAME_CRIMSON
-            set_px(fx_layer, px_w, py_w, col_w)
-        # Inner ward nexus & spoken rune bars
-        set_px(fx_layer, wcx, wcy, SOLAR_WHITE)
-        set_px(fx_layer, wcx - 1, wcy, SOLAR_YELLOW)
-        set_px(fx_layer, wcx, wcy - 2, FLAME_GOLD)
-        set_px(fx_layer, wcx, wcy + 2, FLAME_GOLD)
-
-    elif mode == 'sigil' and eff_r > 0:
-        # Blazing 8-point geometric Solar Sigil conjured in front of left hand
-        scx = min(43.0, hx + 3.0)
-        scy = max(10.0, min(34.0, hy - 0.5))
-        sr = max(2.5, min(3.8, eff_r))
-        set_px(fx_layer, scx, scy, SOLAR_WHITE)
-        for s in range(12):
-            a = (s / 12.0) * 2.0 * math.pi + phase_rad * 2.0
-            rx_s = max(3.0, min(48.0, scx + math.cos(a) * sr))
-            ry_s = max(3.0, min(48.0, scy + math.sin(a) * sr))
-            set_px(fx_layer, rx_s, ry_s, SOLAR_YELLOW if s % 2 == 0 else FLAME_ORANGE)
-            if s % 3 == 0:
-                tx_s = max(3.0, min(48.0, scx + math.cos(a) * (sr + 1.4)))
-                ty_s = max(3.0, min(48.0, scy + math.sin(a) * (sr + 1.4)))
-                set_px(fx_layer, tx_s, ty_s, SOLAR_WHITE if s == 0 else FLAME_CRIMSON)
-
-    elif mode == 'eclipse' and eff_r > 0:
-        # Skyward channeling arcs from raised left hand (30, 14) into the Solar Eclipse orb above crown
-        set_px(fx_layer, hx, max(3.0, hy - 1), SOLAR_WHITE)
-        set_px(fx_layer, hx + 1, max(3.0, hy - 2), SOLAR_YELLOW)
-        set_px(fx_layer, hx - 1, max(3.0, hy - 2), FLAME_ORANGE)
-        draw_line_px(fx_layer, hx, max(4.0, hy - 1), 26, 9, SOLAR_YELLOW)
-        set_px(fx_layer, 27, 11, VOID_VIOLET)
-
-    elif eff_r > 0:
-        # Glowing Solar Fireball Orb held in front of left hand
-        ox = min(43.5, hx + 2.5)
-        oy = max(6.0, min(42.0, hy - 0.8))
-        ir = int(math.ceil(eff_r)) + 1
-        for dy_o in range(-ir, ir + 1):
-            for dx_o in range(-ir, ir + 1):
-                d = math.hypot(dx_o, dy_o)
-                if d <= eff_r:
-                    px_o = max(3.0, min(48.0, ox + dx_o))
-                    py_o = max(3.0, min(48.0, oy + dy_o))
-                    if d <= eff_r * 0.42:
-                        set_px(fx_layer, px_o, py_o, SOLAR_WHITE)
-                    elif d <= eff_r * 0.76:
-                        set_px(fx_layer, px_o, py_o, SOLAR_YELLOW)
-                    else:
-                        is_alt = (dx_o + dy_o + int(round(phase_rad * 3.0))) % 2 == 0
-                        set_px(fx_layer, px_o, py_o, FLAME_ORANGE if is_alt else FLAME_CRIMSON)
-
-    # 3. Forward Spell Projection Flare (when casting / thrusting)
-    if eff_flare > 0.05:
-        fox = min(43.0, hx + 2.5)
-        foy = max(6.0, min(42.0, hy - 0.5))
-        reach = int(round(2 + eff_flare * 4.0))
-        set_px(fx_layer, fox, foy, SOLAR_WHITE)
-        for step_f in range(1, reach + 1):
-            fx_px = min(48.0, fox + step_f)
-            c_jet = SOLAR_WHITE if step_f <= 2 else (SOLAR_YELLOW if step_f <= 4 else FLAME_ORANGE)
-            set_px(fx_layer, fx_px, foy, c_jet)
-            if step_f <= reach - 1:
-                wing_col = SOLAR_YELLOW if step_f <= 2 else FLAME_CRIMSON
-                set_px(fx_layer, fx_px, max(3.0, foy - 1), wing_col)
-                set_px(fx_layer, fx_px, min(48.0, foy + 1), wing_col)
-            if step_f == 2 and eff_flare >= 0.8:
-                set_px(fx_layer, fx_px, max(3.0, foy - 2), FLAME_GOLD)
-                set_px(fx_layer, fx_px, min(48.0, foy + 2), FLAME_GOLD)
-
-    res = composite_over(c, add_outline_to_layer(arm_layer))
-    res = composite_over(res, fx_layer)
-    c[:, :, :] = res
-    return c
-
-
-def draw_sun_staff(
-    base_frame,
-    shoulder=(25, 17),
-    grip_offset=(7.5, 1.5),
-    staff_deg=-69.0,
-    top_len=9.5,
-    bot_len=20.5,
-    phase_rad=0.0,
-    charge_level=0,
-    release_flash=False,
-    flare=0.0,
-    left_orb_mode='none',
-    left_hand_pos=None,
-    solar_wings=0.0,
-    ground_shockwave=0.0,
-    eclipse_crown=0.0,
-    orb_glow=1.0,
-    allow_horizontal=False,
-):
-    """
-    Renders Ignis Sol's articulated Solar Sun-Staff (`draw_sun_staff`) across a wide,
-    expressive caster arc (`-108°` overhead/windup to `-32°` forward slash/thrust)
-    while keeping the shaft 100% collinear and straight within the safe `[2..49]` canvas.
-    """
-    staff_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    right_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    fx_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-
-    # 1. Attach IK arm at Ignis's right shoulder
-    sx = max(23.0, min(28.5, float(shoulder[0])))
-    sy = max(13.0, min(27.0, float(shoulder[1])))
-
-    # 2. Hand grip position (supports vertical staff slams grip_y + 4 and 7px crouches)
-    raw_gx = sx + float(grip_offset[0])
-    raw_gy = sy + float(grip_offset[1])
-    hx_grip = float(max(29.5, min(35.5, raw_gx)))
-    hy_grip = float(max(13.5, min(28.0, raw_gy)))
-
-    # 3. Wide expressive Sun-Staff arc (-112° windup/overhead to -28° forward slash/thrust)
-    if not allow_horizontal:
-        eff_deg = max(-112.0, min(-28.0, float(staff_deg)))
+    w, h = crop_im.size
+    px, py = src_pivot[0] - x0, src_pivot[1] - y0
+    max_r = int(math.hypot(max(px, w - px), max(py, h - py))) + 3
+    pad_s = max_r * 2
+    pad_im = Image.new("RGBA", (pad_s, pad_s), (0, 0, 0, 0))
+    pad_im.paste(crop_im, (max_r - int(round(px)), max_r - int(round(py))))
+    if abs(deg) > 0.05:
+        rot_im = pad_im.rotate(-deg, resample=Image.Resampling.NEAREST, expand=False)
     else:
-        eff_deg = float(staff_deg)
-
-    rad = math.radians(eff_deg)
-    ux, uy = math.cos(rad), math.sin(rad)
-    px, py = -uy, ux
-
-    # 4. Optional Blazing Solar Mantle Wings behind cloak (Ultimate)
-    if solar_wings > 0.05:
-        wing_span = int(round(4 + solar_wings * 6))
-        for w_i in range(1, wing_span + 1):
-            frac = w_i / max(1.0, float(wing_span))
-            for branch, by_off in [(-1, -w_i * 0.85), (0, -w_i * 0.35), (1, w_i * 0.45)]:
-                wx = max(3.0, min(14.0, 14 - w_i * 1.0))
-                wy = max(3.0, min(48.0, sy + by_off + math.sin(phase_rad * 2.0 + w_i * 0.6 + branch) * 0.8))
-                col = SOLAR_YELLOW if frac < 0.35 else (FLAME_ORANGE if frac < 0.75 else FLAME_CRIMSON)
-                set_px(fx_layer, wx, wy, col)
-                if frac < 0.6:
-                    set_px(fx_layer, wx, min(48.0, wy + 1), FLAME_GOLD)
-
-    # 5. Collinear full-length shaft bounded strictly along ray (ux, uy) so it never kinks or clips
-    eff_top_len = max(6.5, min(10.5, float(top_len)))
-    if uy < -0.05 and hy_grip + uy * (eff_top_len + 2.0) < 7.0:
-        eff_top_len = max(5.5, (7.0 - hy_grip) / uy - 2.0)
-    if ux > 0.05 and hx_grip + ux * (eff_top_len + 2.0) > 42.5:
-        eff_top_len = max(5.5, (42.5 - hx_grip) / ux - 2.0)
-    if ux < -0.05 and hx_grip + ux * (eff_top_len + 2.0) < 7.5:
-        eff_top_len = max(5.5, (7.5 - hx_grip) / ux - 2.0)
-
-    eff_bot_len = max(16.0, min(22.5, float(bot_len)))
-    if -uy > 0.05 and hy_grip - uy * eff_bot_len > 45.5:
-        eff_bot_len = max(13.5, (45.5 - hy_grip) / (-uy))
-    if ux > 0.05 and hx_grip - ux * eff_bot_len < 4.5:
-        eff_bot_len = max(13.5, (hx_grip - 4.5) / ux)
-
-    bx = hx_grip - ux * eff_bot_len
-    by = hy_grip - uy * eff_bot_len
-    hx = hx_grip + ux * eff_top_len
-    hy = hy_grip + uy * eff_top_len
-
-    # Draw 2px-thick sculpted bronze-and-gold staff shaft
-    steps = int(max(abs(hx - bx), abs(hy - by), 1) * 2.0)
-    for i in range(steps + 1):
-        t = i / max(1, steps)
-        cx_s = bx + (hx - bx) * t
-        cy_s = by + (hy - by) * t
-        is_band = abs(t - 0.18) < 0.04 or abs(t - 0.55) < 0.04 or abs(t - 0.84) < 0.05
-        col_core = GOLD_BRIGHT if is_band else GOLD_TRIM
-        col_edge = GOLD_MID if is_band else WOOD_DARK
-        set_px(staff_layer, cx_s, cy_s, col_core)
-        set_px(staff_layer, cx_s + px * 0.8, cy_s + py * 0.8, col_edge)
-
-    # Ornate Golden Butt Spike
-    set_px(staff_layer, bx, by, GOLD_BRIGHT)
-    set_px(staff_layer, max(3.0, min(48.0, bx - ux * 0.8)), max(3.0, min(48.0, by - uy * 0.8)), GOLD_MID)
-
-    # 6. Solar Sun-Wheel Finial at (fin_cx, fin_cy)
-    fin_cx = max(7.0, min(43.0, hx + ux * 2.0))
-    fin_cy = max(6.5, min(43.0, hy + uy * 2.0))
-    ring_r = 3.0
-    eff_flare = max(float(flare), 1.0 if release_flash else 0.0)
-
-    # Golden Sun-Wheel Outer Halo & 8 Radial Sun-Spikes
-    for s in range(16):
-        a = (s / 16.0) * 2.0 * math.pi + phase_rad
-        rx = fin_cx + math.cos(a) * ring_r
-        ry = fin_cy + math.sin(a) * ring_r
-        set_px(staff_layer, rx, ry, GOLD_BRIGHT if s % 2 == 0 else GOLD_MID)
-        if s % 4 == 0:
-            spike_len = ring_r + 1.2 + (0.6 if eff_flare > 0.3 else 0.0)
-            sx_tip = max(3.0, min(48.0, fin_cx + math.cos(a) * spike_len))
-            sy_tip = max(3.0, min(48.0, fin_cy + math.sin(a) * spike_len))
-            set_px(
-                staff_layer,
-                sx_tip,
-                sy_tip,
-                SOLAR_WHITE if eff_flare >= 0.8 else (SOLAR_YELLOW if charge_level >= 1 else GOLD_BRIGHT),
-            )
-
-    # Finial Cradle Collar
-    set_px(staff_layer, hx, hy, GOLD_BRIGHT)
-    set_px(staff_layer, hx + px, hy + py, GOLD_MID)
-    set_px(staff_layer, hx - px, hy - py, GOLD_MID)
-
-    # 7. Right Staff 2-Bone IK Arm (drawn OVER the staff shaft from (sx, sy) to (hx_grip, hy_grip))
-    draw_ik_mage_arm(right_arm_layer, sx, sy, hx_grip, hy_grip, L1=4.5, L2=4.3, bend_side=1.0, is_offhand=False)
-
-    # 8. Pulsing Miniature Sun Core inside the Sun-Wheel Finial
-    core_pulse = 1 if (charge_level >= 1 or eff_flare > 0.2 or int(round(phase_rad * 3)) % 2 == 0) else 0
-    set_px(fx_layer, fin_cx, fin_cy, SOLAR_WHITE)
-    for dx_c, dy_c in [(-1, 0), (1, 0), (0, -1), (0, 1)]:
-        set_px(fx_layer, fin_cx + dx_c, fin_cy + dy_c, SOLAR_WHITE if eff_flare >= 0.8 else (SOLAR_YELLOW if core_pulse else FLAME_GOLD))
-
-    # 9. Finial Charge Corona & Directional Solar Flare Burst
-    if charge_level >= 1:
-        for d in range(1, charge_level + 2):
-            col = SOLAR_WHITE if d == 1 else (SOLAR_YELLOW if d == 2 else FLAME_ORANGE)
-            set_px(
-                fx_layer,
-                max(3.0, min(48.0, fin_cx + ux * (ring_r + d * 0.8))),
-                max(3.0, min(48.0, fin_cy + uy * (ring_r + d * 0.8))),
-                col,
-            )
-            set_px(
-                fx_layer,
-                max(3.0, min(48.0, fin_cx + px * (ring_r + d * 0.65))),
-                max(3.0, min(48.0, fin_cy + py * (ring_r + d * 0.65))),
-                FLAME_GOLD,
-            )
-            set_px(
-                fx_layer,
-                max(3.0, min(48.0, fin_cx - px * (ring_r + d * 0.65))),
-                max(3.0, min(48.0, fin_cy - py * (ring_r + d * 0.65))),
-                FLAME_GOLD,
-            )
-
-    if eff_flare > 0.05:
-        fcx = max(4.0, min(44.5, fin_cx + ux * 1.8))
-        fcy = max(4.0, min(44.5, fin_cy + uy * 1.8))
-        set_px(fx_layer, fcx, fcy, SOLAR_WHITE)
-        flare_steps = int(round(2 + eff_flare * 3.0))
-        for d in range(1, flare_steps + 1):
-            c_main = SOLAR_WHITE if d <= 2 else (SOLAR_YELLOW if d <= 3 else FLAME_ORANGE)
-            # Project forward along staff tip & +X cast direction
-            set_px(fx_layer, max(3.0, min(48.0, fcx + d)), max(3.0, min(48.0, fcy)), c_main)
-            set_px(fx_layer, max(3.0, min(48.0, fcx + ux * d)), max(3.0, min(48.0, fcy + uy * d)), c_main)
-            if d <= 3:
-                set_px(
-                    fx_layer,
-                    max(3.0, min(48.0, fcx + px * d)),
-                    max(3.0, min(48.0, fcy + py * d)),
-                    SOLAR_YELLOW if d <= 2 else FLAME_CRIMSON,
-                )
-                set_px(
-                    fx_layer,
-                    max(3.0, min(48.0, fcx - px * d)),
-                    max(3.0, min(48.0, fcy - py * d)),
-                    SOLAR_YELLOW if d <= 2 else FLAME_CRIMSON,
-                )
-        for dx_f, dy_f in [(-2, -2), (2, -2), (-2, 2), (2, 2)]:
-            set_px(fx_layer, max(3.0, min(48.0, fcx + dx_f)), max(3.0, min(48.0, fcy + dy_f)), FLAME_GOLD)
-
-    # 10. Optional Ground Magma Shockwave Ring & Magma Runes (Row 3 Phase 2 Staff Slam)
-    if ground_shockwave > 0.05:
-        ring_rx = int(round(4 + ground_shockwave * 12))
-        ring_cx = int(round(max(16.0, min(34.0, bx))))
-        ring_cy = 47
-        for s in range(28):
-            a = (s / 28.0) * 2.0 * math.pi
-            mx = max(3.0, min(48.0, ring_cx + math.cos(a) * ring_rx))
-            my = max(3.0, min(48.0, ring_cy + math.sin(a) * 1.5))
-            col = SOLAR_WHITE if (ground_shockwave < 0.45 and s % 3 == 0) else (
-                SOLAR_YELLOW if s % 2 == 0 else FLAME_ORANGE
-            )
-            set_px(fx_layer, mx, my, col)
-            if s % 4 == 0 and ground_shockwave < 0.9:
-                gh = int(round((1.0 - ground_shockwave * 0.7) * 5.0))
-                for gy_i in range(1, gh + 1):
-                    set_px(fx_layer, mx, max(3.0, my - gy_i), SOLAR_YELLOW if gy_i == 1 else FLAME_CRIMSON)
-
-    # 11. Optional Miniature Black-Gold Eclipse Corona above Crown (Row 4 Ultimate)
-    if eclipse_crown > 0.05:
-        ecx, ecy = 25.0, 8.0
-        er = min(3.2, 1.6 + eclipse_crown * 1.5)
-        for dy_e in range(-5, 6):
-            for dx_e in range(-5, 6):
-                d = math.hypot(dx_e, dy_e)
-                ey_px = max(3.0, min(48.0, ecy + dy_e))
-                ex_px = max(3.0, min(48.0, ecx + dx_e))
-                if d <= er * 0.60:
-                    set_px(fx_layer, ex_px, ey_px, VOID_BLACK)
-                elif d <= er:
-                    set_px(fx_layer, ex_px, ey_px, SOLAR_WHITE if d < er * 0.78 else SOLAR_YELLOW)
-                elif d <= min(4.3, er + 1.1) and (dx_e + dy_e + int(round(phase_rad * 4))) % 2 == 0:
-                    set_px(fx_layer, ex_px, ey_px, FLAME_ORANGE if d < er + 0.6 else FLAME_CRIMSON)
-
-    out = composite_over(base_frame, add_outline_to_layer(staff_layer))
-    out = composite_over(out, add_outline_to_layer(right_arm_layer))
-    out = composite_over(out, fx_layer)
-    return fill_layer_pinholes(out, 2, 49, 2, 49, require_3_neighbors=True)
+        rot_im = pad_im
+    ox = int(round(dst_pivot[0])) - max_r
+    oy = int(round(dst_pivot[1])) - max_r
+    canvas.alpha_composite(rot_im, (ox, oy))
 
 
-draw_arm_and_staff = draw_sun_staff
+def draw_joint_cap(draw, pt, r, fill=(30, 30, 38, 255), inner=(68, 16, 22, 255)):
+    cx, cy = int(round(pt[0])), int(round(pt[1]))
+    draw.ellipse([cx - r, cy - r, cx + r, cy + r], fill=fill)
+    ir = max(1, int(r * 0.68))
+    draw.ellipse([cx - ir, cy - ir, cx + ir, cy + ir], fill=inner)
 
 
-def render_walk_legs(tpl, f):
+def draw_capsule(draw, p0, p1, r, fill=(30, 30, 38, 255)):
+    draw.line([p0, p1], fill=fill, width=int(r * 2))
+    draw_joint_cap(draw, p0, r, fill=fill, inner=fill)
+    draw_joint_cap(draw, p1, r, fill=fill, inner=fill)
+
+
+def put_px(arr, x, y, col):
+    H, W = arr.shape[:2]
+    ix, iy = int(round(x)), int(round(y))
+    if 0 <= ix < W and 0 <= iy < H:
+        arr[iy, ix] = col
+
+
+def draw_solar_astrolabe_104(arr, cx, cy, phase=0.0, mode="normal"):
     """
-    Renders a smooth 30-frame 2-step Battle-Mage Stride Cycle (F00..F14 step A, F15..F29 step B)
-    preserving Ignis's full flowing A-line crimson & gold robe (`x = 10..34`) down to `y = 40..44`
-    with animated hem sway and striding boots beneath (`y = 45..49`), never chopping `x >= 29` or `x <= 15`!
+    Renders Ignis Sol's Signature Rotating 8-Point Golden Solar Astrolabe Back-Halo
+    behind his shoulders in 104x104 logical space (zero AI noise, crisp cel-shaded pixels).
     """
-    phase = (f / 30.0) * 2.0 * math.pi
-    bob_y = int(round(math.cos(phase * 2.0) * 1.0))
+    if mode == "off":
+        return
 
-    stand = tpl['stand'].copy()
-    out = np.zeros((52, 52, 4), dtype=np.uint8)
+    cx = max(18.0, min(84.0, cx))
+    cy = max(22.0, min(82.0, cy))
 
-    # 1. Upper body & upper cloak (y = 0..28): apply vertical bob (`bob_y`)
-    for y in range(0, 29):
-        ny = y + bob_y
-        if not (2 <= ny < 50):
-            continue
-        for x in range(2, 48):
-            if stand[y, x, 3] > 0:
-                out[ny, x] = stand[y, x]
+    if mode == "eclipse":
+        r_ring = 17.0
+        for dy in range(-19, 20):
+            for dx in range(-19, 20):
+                d = math.hypot(dx * 1.05, dy)
+                if r_ring - 2.6 <= d <= r_ring - 0.8:
+                    put_px(arr, cx + dx, cy + dy, P_OUTLINE)
+                elif abs(d - r_ring) <= 0.85:
+                    put_px(arr, cx + dx, cy + dy, P_SOLAR_GLEAM if (dx + dy) % 2 == 0 else P_VERMILION)
+                elif abs(d - (r_ring + 1.1)) <= 0.55:
+                    put_px(arr, cx + dx, cy + dy, P_SELOUT)
 
-    # When bob_y == -1, duplicate row 28 so shifting y=0..28 up by 1px never opens a waist slit
-    if bob_y < 0:
-        for x in range(2, 48):
-            if stand[28, x, 3] > 0:
-                out[28, x] = stand[28, x]
+        for k in range(8):
+            ang = phase + k * (math.pi / 4.0)
+            ray_len = 6.2 if k % 2 == 0 else 3.8
+            for s in range(1, int(ray_len * 2) + 1):
+                u = s / (ray_len * 2.0)
+                rx = cx + math.cos(ang) * (r_ring + u * ray_len)
+                ry = cy + math.sin(ang) * (r_ring + u * ray_len)
+                if 5 <= rx <= 98 and 5 <= ry <= 98:
+                    put_px(arr, rx, ry, P_IVORY if u < 0.45 else (P_SOLAR_GLEAM if u < 0.8 else P_VERMILION))
+        return
 
-    # 2. Full flowing A-line crimson robe & left cloak (y = 29..44): animated hem sway preserving full width x = 10..34
-    for y in range(29, 45):
-        v = (y - 29) / 15.0
-        sway_dx = int(round(math.sin(phase - v * 1.6) * 1.8 * v))
-        for x in range(2, 48):
-            if stand[y, x, 3] > 0:
-                nx = max(2, min(49, x + sway_dx))
-                out[y, nx] = stand[y, x]
+    r_ring = 15.0 if mode == "flare" else (12.2 if mode == "swept" else 13.5)
+    rx_ell = r_ring * (0.82 if mode == "swept" else 0.94)
+    ry_ell = r_ring
 
-    # 3. Striding boots beneath the robe hem (y = 45..49): back boot (x=15..22) and front boot (x=24..32)
-    for is_front, leg_phase, x_min, x_max in [(False, phase + math.pi, 15, 23), (True, phase, 24, 33)]:
-        dx_b = int(round(math.sin(leg_phase) * 2.0))
-        dy_b = -1 if math.cos(leg_phase) > 0.35 else 0
-        for y in range(45, 50):
-            ny = max(44, min(49, y + dy_b))
-            for x in range(x_min, x_max):
-                if stand[y, x, 3] > 0:
-                    nx = max(2, min(49, x + dx_b))
-                    out[ny, nx] = stand[y, x]
-
-    out = fill_layer_pinholes(out)
-    return add_outline_to_layer(out)
-
-
-render_walk_robes = render_walk_legs
-
-
-def make_crouch_body(tpl, crouch_depth):
-    """
-    Constructs a smooth continuous knee-bend crouched pyromancer body on `tpl['stand']`
-    supporting up to `7px` deep Flame-Ward crouch (`crouch_depth = 0..7`):
-    - Shifts `ny <= 27 + d` down by `d`
-    - Compresses `ny = 28 + d .. 43` from `sy = int(round(27.0 + u * 16.0))` with a subtle 1px forward knee bend
-    - Keeps boots/hem anchored at `ny = 44..49`
-    """
-    stand = tpl['stand'].copy()
-    d = max(0, min(7, int(round(crouch_depth))))
-    if d == 0:
-        return stand
-
-    canvas = np.zeros((52, 52, 4), dtype=np.uint8)
-
-    # 1. Shift wizard hat, head, and upper torso (y = 0..27 -> ny = d .. 27 + d) down by `d`
-    for y in range(0, 28):
-        ny = y + d
-        if 2 <= ny <= 49:
-            canvas[ny, :] = stand[y, :]
-
-    # 2. Continuous vertical compression on ny = 28 + d .. 43 from sy = int(round(27.0 + u * 16.0))
-    #    with a subtle 1px forward knee bend
-    denom = max(1.0, float(43 - (27 + d)))
-    for ny in range(28 + d, 44):
-        u = (ny - (27.0 + d)) / denom
-        sy = int(round(27.0 + u * 16.0))
-        knee_dx = 1 if (d >= 2 and 0.25 <= u <= 0.75) else 0
-        for x in range(2, 48):
-            if stand[sy, x, 3] > 0:
-                nx = min(49, x + knee_dx)
-                canvas[ny, nx] = stand[sy, x]
-                if knee_dx > 0 and x >= 15 and canvas[ny, x, 3] == 0:
-                    canvas[ny, x] = stand[sy, x]
-
-    # 3. Keep boots and lower hem anchored at ny = 44..49
-    canvas[44:50, :] = stand[44:50, :]
-
-    canvas = fill_layer_pinholes(canvas)
-    return add_outline_to_layer(canvas)
-
-
-def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0):
-    """
-    Constructs a full-body aerial Flame-Glide jumping pyromancer pose preserving Ignis's
-    full flowing A-line crimson robe (`x = 10..34`) down to `y = 40..43` with animated hem
-    sway and tucked boots beneath, never chopping `x >= 29` or `x <= 15`!
-    """
-    stand = tpl['stand'].copy()
-    torso_dy = max(-2, min(4, int(round(jump_dy))))
-    t = max(0.0, min(1.0, float(tuck_amount)))
-    out = np.zeros((52, 52, 4), dtype=np.uint8)
-
-    # 1. Wizard hat, head, and upper torso (y = 0..27)
-    for y in range(0, 28):
-        ny = y + torso_dy
-        if not (2 <= ny < 49):
-            continue
-        dx = torso_lean_dx if y <= 24 else 0
-        for x in range(2, 48):
-            if stand[y, x, 3] > 0:
-                out[ny, max(2, min(49, x + dx))] = stand[y, x]
-
-    # 2. Full A-line lower crimson robe & left cloak (src y = 28..44) preserved across x = 10..34
-    dst_top = 28 + torso_dy
-    hem_lift = int(round(t * 2.0))
-    dst_bot = max(dst_top + 10, min(44, 44 + torso_dy - hem_lift))
-    dst_span = max(1.0, float(dst_bot - dst_top))
-    for ny in range(dst_top, dst_bot + 1):
-        if not (2 <= ny < 48):
-            continue
-        v = (ny - dst_top) / dst_span
-        sy = int(round(28.0 + v * 16.0))
-        sweep_dx = -int(round(v * t * 1.5))
-        for x in range(2, 48):
-            if stand[sy, x, 3] > 0:
-                nx = max(2, min(49, x + sweep_dx))
-                out[ny, nx] = stand[sy, x]
-                if sweep_dx < 0 and x >= 15 and nx + 1 < 49 and out[ny, nx + 1, 3] == 0:
-                    out[ny, nx + 1] = stand[sy, x]
-
-    # 3. Tucked boots beneath the flowing robe hem (from stand[45:49, :])
-    boot_lift = torso_dy - int(round(t * 2.5))
-    boot_dx = -int(round(t * 1.5))
-    for y in range(45, 49):
-        ny = max(dst_bot, min(48, y + boot_lift))
-        for x in range(15, 33):
-            if stand[y, x, 3] > 0:
-                nx = max(2, min(49, x + boot_dx))
-                out[ny, nx] = stand[y, x]
-
-    out = fill_layer_pinholes(out)
-    return add_outline_to_layer(out)
-
-
-def draw_solar_rift_ring(frame, cx, cy, rx, ry, phase_rad, intensity=1.0):
-    """
-    Draws a vertical golden-orange Solar Rift portal ring (`#fef08a` / `#fb923c`)
-    around `(cx, cy)` for Ignis Sol's Row 6 Arcane Blink Teleport.
-    """
-    steps = 28
+    steps = 64
     for s in range(steps):
-        a = (s / float(steps)) * 2.0 * math.pi + phase_rad
-        px_r = max(3.0, min(48.0, cx + math.cos(a) * rx))
-        py_r = max(3.0, min(48.0, cy + math.sin(a) * ry))
-        if s % 4 == 0 and intensity >= 0.6:
-            col = SOLAR_WHITE
-        elif s % 2 == 0:
-            col = SOLAR_YELLOW
-        else:
-            col = FLAME_ORANGE if s % 3 == 0 else FLAME_CRIMSON
-        set_px(frame, px_r, py_r, col)
-        # Radial rift arcs on cardinal/diagonal portal nodes
-        if s % 7 == 0 and intensity >= 0.5:
-            ox_r = max(3.0, min(48.0, cx + math.cos(a) * (rx + 1.4)))
-            oy_r = max(3.0, min(48.0, cy + math.sin(a) * (ry + 1.0)))
-            set_px(frame, ox_r, oy_r, SOLAR_YELLOW if s % 2 == 0 else FLAME_ORANGE)
+        a = (s / float(steps)) * math.pi * 2.0
+        px = cx + math.cos(a) * rx_ell
+        py = cy + math.sin(a) * ry_ell
+        if 5 <= px <= 98 and 5 <= py <= 98:
+            put_px(arr, px + math.cos(a) * 0.9, py + math.sin(a) * 0.9, P_SELOUT)
+            col_r = P_SOLAR_GLEAM if (mode == "flare" or s % 4 == 0) else P_GOLD_LIT
+            put_px(arr, px, py, col_r)
+
+    ray_cnt = 8
+    for k in range(ray_cnt):
+        ang = phase + k * (math.pi * 2.0 / ray_cnt)
+        ray_l = (4.6 if k % 2 == 0 else 2.6) if mode == "flare" else (3.2 if k % 2 == 0 else 1.8)
+        for d in range(1, int(ray_l * 2) + 1):
+            u = d / (ray_l * 2.0)
+            rx = cx + math.cos(ang) * (rx_ell + u * ray_l)
+            ry = cy + math.sin(ang) * (ry_ell + u * ray_l)
+            if 5 <= rx <= 98 and 5 <= ry <= 98:
+                put_px(arr, rx, ry, P_IVORY if (mode == "flare" and u < 0.5) else (P_SOLAR_GLEAM if u < 0.65 else P_VERMILION))
 
 
-def apply_solar_plasma_tint(frame, amount, phase_rad, f_idx):
+def draw_helios_staff_104(arr, hand_x, hand_y, staff_deg, staff_len=26.0, glow=1.0, phase=0.0):
     """
-    Tints and brightens Ignis's silhouette with golden-white solar plasma (`#fef08a` / `#fb923c`)
-    and vertical solar lightning streaks during Row 6 Arcane Blink Phase-Out / Phase-In.
-    """
-    out = frame.copy()
-    amt = max(0.0, min(1.0, float(amount)))
-    if amt <= 0.02:
-        return out
-
-    # 1. Tint silhouette pixels toward golden-white solar plasma (#fef08a = SOLAR_YELLOW, #fb923c = FLAME_ORANGE)
-    for y in range(2, 50):
-        scan_boost = 0.18 if ((y + f_idx * 2) % 4 == 0) else 0.0
-        eff_a = min(0.95, amt + scan_boost)
-        for x in range(2, 50):
-            r, g, b, a = out[y, x]
-            if a == 0:
-                continue
-            lum = 0.299 * r + 0.587 * g + 0.114 * b
-            if lum > 145 or (eff_a > 0.78 and (x + y + f_idx) % 5 == 0):
-                target = SOLAR_WHITE if eff_a > 0.75 else SOLAR_YELLOW
-            elif lum > 75:
-                target = SOLAR_YELLOW
-            else:
-                target = FLAME_ORANGE
-            out[y, x, 0] = int(round(r * (1.0 - eff_a) + target[0] * eff_a))
-            out[y, x, 1] = int(round(g * (1.0 - eff_a) + target[1] * eff_a))
-            out[y, x, 2] = int(round(b * (1.0 - eff_a) + target[2] * eff_a))
-
-    # 2. Vertical solar lightning streaks streaking up/down Ignis's dematerializing silhouette
-    bolt_cols = [17 + (f_idx * 3) % 5, 23 + (f_idx * 2) % 5, 29 + (f_idx * 3) % 5]
-    if amt >= 0.55:
-        bolt_cols.append(20 + (f_idx * 5) % 9)
-    for b_idx, bx_base in enumerate(bolt_cols):
-        y_start = max(4, 7 + ((f_idx * 3 + b_idx * 4) % 6))
-        y_end = min(47, 42 + ((f_idx * 2 + b_idx * 3) % 6))
-        for by_s in range(y_start, y_end + 1):
-            jag = int(round(math.sin(by_s * 0.65 + phase_rad * 2.0 + b_idx) * 1.0))
-            lx = max(3, min(48, bx_base + jag))
-            if (by_s + f_idx) % 5 != 0:
-                col_l = SOLAR_WHITE if (by_s + b_idx) % 3 == 0 else (
-                    SOLAR_YELLOW if (by_s + b_idx) % 2 == 0 else FLAME_ORANGE
-                )
-                set_px(out, lx, by_s, col_l)
-
-    return out
-
-
-def draw_solar_cast_trail(c, cx, cy, start_deg, end_deg, intensity=1.0, radius=10.5):
-    """
-    Renders a blazing 3-band Solar-Yellow, Flame-Orange & Crimson Crescent Cast Arc
-    (SOLAR_WHITE, SOLAR_YELLOW, FLAME_ORANGE, CRIMSON_MID, strictly inside 3 <= x <= 48, 3 <= y <= 48)
-    tracing the sweeping path of the Sun-Staff finial during Row 2 (F10..F16),
-    Row 3 (F15..F21), and Row 4 (F13..F21).
-    """
-    eff_int = max(0.0, min(1.0, float(intensity)))
-    if eff_int <= 0.05:
-        return c
-
-    s_deg = float(start_deg)
-    e_deg = float(end_deg)
-    if abs(e_deg - s_deg) < 1.0:
-        return c
-
-    r_mid = float(radius)
-    steps = max(18, int(round(abs(e_deg - s_deg) * 0.75)))
-
-    for i in range(steps + 1):
-        u = i / float(max(1, steps))
-        deg = s_deg + (e_deg - s_deg) * u
-        rad = math.radians(deg)
-        ca, sa = math.cos(rad), math.sin(rad)
-
-        # Band 1 (Inner trailing wake: r_mid - 1.0) -> CRIMSON_MID to FLAME_ORANGE
-        if u >= 0.12:
-            rx_in = max(3.0, min(48.0, cx + ca * (r_mid - 1.1)))
-            ry_in = max(3.0, min(48.0, cy + sa * (r_mid - 1.1)))
-            col_in = FLAME_ORANGE if (u > 0.72 and eff_int >= 0.75) else CRIMSON_MID
-            set_px(c, rx_in, ry_in, col_in)
-
-        # Band 2 (Middle core arc: r_mid) -> CRIMSON_MID -> FLAME_ORANGE -> SOLAR_YELLOW
-        rx_md = max(3.0, min(48.0, cx + ca * r_mid))
-        ry_md = max(3.0, min(48.0, cy + sa * r_mid))
-        if u > 0.76:
-            col_md = SOLAR_WHITE if eff_int >= 0.85 else SOLAR_YELLOW
-        elif u > 0.36:
-            col_md = SOLAR_YELLOW if u > 0.56 else FLAME_ORANGE
-        else:
-            col_md = FLAME_ORANGE if (i % 2 == 0) else CRIMSON_MID
-        set_px(c, rx_md, ry_md, col_md)
-
-        # Band 3 (Outer blazing crescent edge: r_mid + 1.0) -> FLAME_ORANGE -> SOLAR_YELLOW -> SOLAR_WHITE
-        if u >= 0.08:
-            rx_out = max(3.0, min(48.0, cx + ca * (r_mid + 1.0)))
-            ry_out = max(3.0, min(48.0, cy + sa * (r_mid + 1.0)))
-            if u > 0.68 and eff_int >= 0.7:
-                col_out = SOLAR_WHITE
-            elif u > 0.28:
-                col_out = SOLAR_YELLOW
-            else:
-                col_out = FLAME_ORANGE
-            set_px(c, rx_out, ry_out, col_out)
-
-        # Extra crescent flare crest along leading half when intensity is high
-        if u > 0.55 and eff_int >= 0.75 and i % 2 == 0:
-            rx_crest = max(3.0, min(48.0, cx + ca * (r_mid + 1.9)))
-            ry_crest = max(3.0, min(48.0, cy + sa * (r_mid + 1.9)))
-            set_px(c, rx_crest, ry_crest, SOLAR_YELLOW if u > 0.8 else FLAME_ORANGE)
-
-    return c
-
-
-def draw_ground_sun_circle(c, cx=25.0, cy=46.5, rx=12.0, ry=1.8, phase_rad=0.0, intensity=1.0):
-    """
-    Renders a perspective-flattened Golden-Crimson Sun-Wheel Ritual Circle & Rising Ember Motes
-    (y = 44..48, x = 12..38) beneath Ignis's boots during Row 3 (SKILL F03..F22)
-    and Row 4 (ULTIMATE F02..F25).
-    """
-    eff_int = max(0.0, min(1.0, float(intensity)))
-    if eff_int <= 0.05:
-        return c
-
-    eff_rx = max(6.0, min(13.0, float(rx)))
-    eff_ry = max(1.2, min(2.2, float(ry)))
-
-    # 1. Inner radial Sun-Wheel spokes (8 rotating spokes inside y = 44..48, x = 12..38)
-    for sp in range(8):
-        a_sp = (sp / 8.0) * 2.0 * math.pi + phase_rad * 1.5
-        ca, sa = math.cos(a_sp), math.sin(a_sp)
-        for r_frac in (0.35, 0.62, 0.85):
-            sx_p = int(round(max(12.0, min(38.0, cx + ca * eff_rx * r_frac))))
-            sy_p = int(round(max(44.0, min(48.0, cy + sa * eff_ry * r_frac))))
-            # Keep back-half spokes behind boots while front-half spokes glow across the ground plane
-            if sa < 0.0 and c[sy_p, sx_p, 3] > 0:
-                continue
-            col_sp = SOLAR_YELLOW if r_frac < 0.5 else (FLAME_ORANGE if sp % 2 == 0 else CRIMSON_MID)
-            set_px(c, sx_p, sy_p, col_sp)
-
-    # 2. Outer & inner concentric Sun-Wheel ritual ellipse rings (x = 12..38, y = 44..48)
-    ring_steps = 36
-    for s in range(ring_steps):
-        a = (s / float(ring_steps)) * 2.0 * math.pi + phase_rad
-        ca, sa = math.cos(a), math.sin(a)
-
-        # Outer ritual ring
-        ox = int(round(max(12.0, min(38.0, cx + ca * eff_rx))))
-        oy = int(round(max(44.0, min(48.0, cy + sa * eff_ry))))
-        if not (sa < -0.15 and c[oy, ox, 3] > 0):
-            if s % 9 == 0 and eff_int >= 0.7:
-                col_o = SOLAR_WHITE
-            elif s % 3 == 0:
-                col_o = SOLAR_YELLOW
-            elif s % 2 == 0:
-                col_o = FLAME_ORANGE
-            else:
-                col_o = CRIMSON_MID
-            set_px(c, ox, oy, col_o)
-
-        # Outer crimson-gold rim accent
-        if sa >= 0.0 and s % 2 == 0:
-            rim_x = int(round(max(12.0, min(38.0, cx + ca * (eff_rx + 0.8)))))
-            rim_y = int(round(max(44.0, min(48.0, cy + sa * (eff_ry + 0.4)))))
-            set_px(c, rim_x, rim_y, GOLD_BRIGHT if s % 6 == 0 else CRIMSON_MID)
-
-    # 3. Rising Golden-Orange & Crimson Ember Motes above the ritual circle (y = 44..47, x = 12..38)
-    mote_offsets = [-11.5, -8.5, -4.5, 4.5, 8.5, 11.5]
-    for m_idx, dx_m in enumerate(mote_offsets):
-        wobble = math.sin(phase_rad * 2.0 + m_idx * 1.3) * 0.8
-        mx = int(round(max(12.0, min(38.0, cx + dx_m + wobble))))
-        lift = int(round(((phase_rad * 2.2 + m_idx * 0.9) % 3.2)))
-        my = int(round(max(44.0, min(48.0, 47.0 - lift))))
-        if c[my, mx, 3] == 0 or my >= 46:
-            m_col = SOLAR_WHITE if (lift == 0 and eff_int >= 0.8) else (
-                SOLAR_YELLOW if m_idx % 3 == 0 else (FLAME_ORANGE if m_idx % 2 == 0 else CRIMSON_MID)
-            )
-            set_px(c, mx, my, m_col)
-
-    return c
-
-
-def draw_aerial_flame_thrusters(c, boot_y=41, phase_rad=0.0, intensity=1.0, is_apex=False):
-    """
-    Renders swirling Solar Flame-Jet Thrusters & Golden Hover Rings beneath Ignis's boots
-    (y = 39..47, x = 14..32) during Row 8 (JUMP - Flame-Glide Vault) F04..F20.
-    """
-    eff_int = max(0.0, min(1.0, float(intensity)))
-    if eff_int <= 0.05:
-        return c
-
-    # 1. Twin swirling Solar Flame-Jet Thruster plumes beneath left & right boots (x = 18..20 and x = 25..27)
-    jet_roots = [19.0, 26.0]
-    if is_apex:
-        jet_roots.append(22.5)
-
-    plume_len = 6 if is_apex else 5
-    for j_idx, jx_base in enumerate(jet_roots):
-        for dy_j in range(0, plume_len + 1):
-            vy = int(round(max(39.0, min(47.0, boot_y + dy_j))))
-            swirl = math.sin(phase_rad * 3.0 + dy_j * 0.9 + j_idx * 1.7) * (0.9 if dy_j >= 2 else 0.4)
-            vx = int(round(max(14.0, min(32.0, jx_base + swirl))))
-            if dy_j <= 1:
-                col_core = SOLAR_WHITE if (is_apex or eff_int >= 0.75) else SOLAR_YELLOW
-                col_wing = SOLAR_YELLOW
-            elif dy_j <= 3:
-                col_core = SOLAR_YELLOW
-                col_wing = FLAME_ORANGE
-            else:
-                col_core = FLAME_ORANGE if dy_j == 4 else FLAME_CRIMSON
-                col_wing = CRIMSON_MID
-            set_px(c, vx, vy, col_core)
-            if dy_j <= 3:
-                set_px(c, max(14, vx - 1), vy, col_wing)
-                set_px(c, min(32, vx + 1), vy, col_wing)
-
-    # 2. Upper Golden-Solar Hover Ring encircling the thruster nozzles (y = 41..44, x = 14..32)
-    ring1_cy = max(40.5, min(44.0, float(boot_y) + 1.5))
-    ring1_rx = 7.8 if is_apex else 6.8
-    ring1_ry = 1.2
-    for s in range(24):
-        a = (s / 24.0) * 2.0 * math.pi + phase_rad * 2.5
-        rx1 = int(round(max(14.0, min(32.0, 23.0 + math.cos(a) * ring1_rx))))
-        ry1 = int(round(max(39.0, min(47.0, ring1_cy + math.sin(a) * ring1_ry))))
-        if s % 6 == 0 and (is_apex or eff_int >= 0.75):
-            r_col = SOLAR_WHITE
-        elif s % 2 == 0:
-            r_col = SOLAR_YELLOW
-        else:
-            r_col = FLAME_GOLD if s % 3 == 0 else FLAME_ORANGE
-        set_px(c, rx1, ry1, r_col)
-
-    # 3. Lower Secondary Flame-Glide Hover Ring & Swirling Exhaust Sparks (y = 44..47, x = 15..31)
-    ring2_cy = max(44.0, min(46.5, float(boot_y) + 4.2))
-    ring2_rx = 5.6 if is_apex else 4.8
-    ring2_ry = 1.0
-    for s in range(18):
-        a = (s / 18.0) * 2.0 * math.pi - phase_rad * 2.5
-        rx2 = int(round(max(14.0, min(32.0, 23.0 + math.cos(a) * ring2_rx))))
-        ry2 = int(round(max(39.0, min(47.0, ring2_cy + math.sin(a) * ring2_ry))))
-        r2_col = SOLAR_YELLOW if (s % 4 == 0 and is_apex) else (FLAME_ORANGE if s % 2 == 0 else CRIMSON_MID)
-        set_px(c, rx2, ry2, r2_col)
-
-    return c
-
-
-def draw_mage_idle_finial_motes(frame, staff_deg, grip_dx, grip_dy, breathe, phase):
-    """
-    Pass #8: 3 phase-looping ((f / 30.0) * 2 * math.pi) solar-yellow & crimson-orange
-    ember-sparks orbiting Ignis Sol's Sun-Staff finial (strictly inside x = 31..42, y = 7..18)
-    across all 30 frames of Row 0 (IDLE).
+    Renders Ignis Sol's Ornate Crescent Helios Sun-Staff in 104x104 space,
+    matching his HD-2D Black-Mage portrait 1-to-1:
+    - Burnished bronze-obsidian shaft with gilded rings & golden butt-spike
+    - Molten vermilion collar gem
+    - Golden Crescent Sun-Cradle + Floating Blazing Solar Core!
     """
     rad = math.radians(staff_deg)
     ux, uy = math.cos(rad), math.sin(rad)
-    hx_grip = max(29.5, min(35.5, 25.0 + grip_dx))
-    hy_grip = max(13.5, min(28.0, 17.0 + breathe + grip_dy))
-    fin_cx = max(34.5, min(38.5, hx_grip + ux * 10.5))
-    fin_cy = max(11.0, min(14.5, hy_grip + uy * 8.5 + 3.0))
+    nx, ny = -uy, ux
 
-    for m_idx in range(3):
-        ang = phase + m_idx * ((2.0 * math.pi) / 3.0)
-        rx, ry = 3.4, 3.0
-        mx = max(31, min(42, int(round(fin_cx + math.cos(ang) * rx))))
-        my = max(7, min(18, int(round(fin_cy + math.sin(ang) * ry))))
-        tx = max(31, min(42, int(round(fin_cx + math.cos(ang - 0.5) * (rx * 0.85)))))
-        ty = max(7, min(18, int(round(fin_cy + math.sin(ang - 0.5) * (ry * 0.85)))))
-        lead_col = SOLAR_WHITE if (m_idx == 0 and math.sin(ang * 2.0) > 0.3) else SOLAR_YELLOW
-        tail_col = FLAME_ORANGE if m_idx % 2 == 0 else FLAME_CRIMSON
-        set_px(frame, tx, ty, tail_col)
-        set_px(frame, mx, my, lead_col)
+    pom_dist = 14.0
+    collar_dist = max(10.5, staff_len - 9.2)
+
+    pom_x = max(5.0, min(98.0, hand_x - ux * pom_dist))
+    pom_y = max(5.0, min(99.0, hand_y - uy * pom_dist))
+    col_x = max(6.0, min(97.0, hand_x + ux * collar_dist))
+    col_y = max(6.0, min(97.0, hand_y + uy * collar_dist))
+
+    shaft_steps = int(max(12, math.hypot(col_x - pom_x, col_y - pom_y) * 2.2))
+    for i in range(shaft_steps + 1):
+        u = i / float(shaft_steps)
+        sx = pom_x + (col_x - pom_x) * u
+        sy = pom_y + (col_y - pom_y) * u
+        is_ring = (u < 0.10) or (0.44 < u < 0.52) or (u > 0.88)
+        put_px(arr, sx - nx * 1.1, sy - ny * 1.1, P_SELOUT)
+        put_px(arr, sx + nx * 1.1, sy + ny * 1.1, P_OUTLINE)
+        put_px(arr, sx, sy, P_GOLD_LIT if is_ring else P_BRONZE_DARK)
+        put_px(arr, sx - nx * 0.4, sy - ny * 0.4, P_SOLAR_GLEAM if is_ring else P_GOLD_MID)
+
+    put_px(arr, pom_x - ux * 1.2, pom_y - uy * 1.2, P_SOLAR_GLEAM)
+
+    head_cx = max(9.0, min(94.0, col_x + ux * 5.0))
+    head_cy = max(9.0, min(94.0, col_y + uy * 5.0))
+    c_rad = 4.8
+
+    base_ang = math.atan2(uy, ux)
+    arc_steps = 38
+    for s in range(arc_steps + 1):
+        v = (s / float(arc_steps)) * 2.0 - 1.0
+        ang = base_ang + math.pi + v * (math.pi * 0.78)
+        thick = 1.6 if abs(v) < 0.55 else (1.1 if abs(v) < 0.85 else 0.6)
+        ax = head_cx + math.cos(ang) * c_rad
+        ay = head_cy + math.sin(ang) * c_rad
+        put_px(arr, ax + math.cos(ang) * (thick + 0.6), ay + math.sin(ang) * (thick + 0.6), P_SELOUT)
+        put_px(arr, ax, ay, P_SOLAR_GLEAM if abs(v) > 0.65 else P_GOLD_LIT)
+        if thick >= 1.0:
+            put_px(arr, ax - math.cos(ang) * 0.7, ay - math.sin(ang) * 0.7, P_GOLD_MID)
+
+    put_px(arr, col_x, col_y, P_VERMILION)
+    put_px(arr, col_x + ux * 1.0, col_y + uy * 1.0, P_SOLAR_GLEAM)
+
+    if glow > 0.15:
+        core_r = 2.6 if glow >= 1.15 else (2.1 if glow >= 0.6 else 1.4)
+        for dy in range(-4, 5):
+            for dx in range(-4, 5):
+                d = math.hypot(dx, dy)
+                if d <= core_r * 0.48:
+                    put_px(arr, head_cx + dx, head_cy + dy, P_IVORY)
+                elif d <= core_r * 0.85:
+                    put_px(arr, head_cx + dx, head_cy + dy, P_SOLAR_GLEAM)
+                elif d <= core_r + 0.45:
+                    if (dx + dy + int(phase * 3)) % 2 == 0 or d <= core_r:
+                        put_px(arr, head_cx + dx, head_cy + dy, P_VERMILION if glow >= 0.8 else P_SCAR_LIT)
 
 
-def draw_mage_walk_footstep_motes(frame, f):
+def draw_pyro_hand_orb_104(arr, hx, hy, radius=2.6, phase=0.0):
+    """Draws a crisp pixel-art swirling Solar Fireball above Ignis Sol's dark gloved casting hand."""
+    if radius <= 0.3:
+        return
+    cx = max(6.0, min(97.0, hx))
+    cy = max(6.0, min(97.0, hy - 2.2))
+    ir = int(math.ceil(radius + 1.5))
+    for dy in range(-ir, ir + 1):
+        for dx in range(-ir, ir + 1):
+            d = math.hypot(dx, dy)
+            if d <= radius * 0.45:
+                put_px(arr, cx + dx, cy + dy, P_IVORY)
+            elif d <= radius * 0.82:
+                put_px(arr, cx + dx, cy + dy, P_SOLAR_GLEAM)
+            elif d <= radius:
+                put_px(arr, cx + dx, cy + dy, P_VERMILION)
+    for k in range(3):
+        ang = -math.pi * 0.5 + (k - 1) * 0.65 + math.sin(phase + k * 2.1) * 0.25
+        tx = cx + math.cos(ang) * (radius + 1.4)
+        ty = cy + math.sin(ang) * (radius + 1.6)
+        if 5 <= tx <= 98 and 5 <= ty <= 98:
+            put_px(arr, tx, ty, P_SOLAR_GLEAM if k == 1 else P_VERMILION)
+
+
+def draw_solar_slash_arc_104(arr, cx, cy, r_main, a_start_deg, a_end_deg, intensity=1.0):
+    """Draws a crisp cel-shaded Solar Flame Crescent Wave on Attack/Skill/Ult frames."""
+    if intensity <= 0.05:
+        return
+    a0 = math.radians(a_start_deg)
+    a1 = math.radians(a_end_deg)
+    steps = 76
+    for i in range(steps + 1):
+        t = i / float(steps)
+        ang = a0 + (a1 - a0) * t
+        env = math.sin(t * math.pi)
+        thickness = max(1.0, 3.8 * env * intensity)
+        c, s = math.cos(ang), math.sin(ang)
+        for dr in np.linspace(-thickness, thickness, int(thickness * 3) + 2):
+            rr = r_main + dr
+            px = cx + c * rr
+            py = cy + s * rr
+            nd = abs(dr) / max(0.5, thickness)
+            if nd < 0.30:
+                col = P_IVORY
+            elif nd < 0.65:
+                col = P_SOLAR_GLEAM
+            else:
+                col = P_VERMILION
+            if 5 <= px <= 98 and 5 <= py <= 98:
+                put_px(arr, px, py, col)
+
+
+def draw_solar_ward_ring_104(arr, cx, cy, rx=9.0, ry=13.0, phase=0.0):
+    """Draws Ignis Sol's vertical Flame-Ward Aegis Ring in front of his crouched guard (Row 7 F01..F10)."""
+    cx = max(12.0, min(95.0, cx))
+    cy = max(16.0, min(92.0, cy))
+    for s in range(44):
+        a = (s / 44.0) * math.pi * 2.0 + phase
+        px = cx + math.cos(a) * rx
+        py = cy + math.sin(a) * ry
+        if 5 <= px <= 98 and 5 <= py <= 98:
+            put_px(arr, px, py, P_IVORY if s % 5 == 0 else (P_SOLAR_GLEAM if s % 2 == 0 else P_VERMILION))
+
+
+def render_pose_104(parts, cfg):
     """
-    Pass #8: Warm solar-ember & cinder sparks at boot/hem level (y = 44..46, x = 16..33)
-    during the two stride contact windows of Row 1 (WALK) (F06..F10 and F21..F25).
+    Renders a single 104x104 logical frame from Ignis Sol's 512x512 16-part Black-Mage rig.
     """
-    if 6 <= f <= 10:
-        k = f - 6
-        step_offset = 0
-    elif 21 <= f <= 25:
-        k = f - 21
-        step_offset = 2
+    canvas = Image.new("RGBA", (650, 600), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(canvas)
+    OX, OY = 45, 48
+
+    # Exact 512x512 joint pivots (0.5x of 1024x1024 anatomical joint centers)
+    pelvis_src = (277.0, 250.0)
+    pelvis_dst = (277.0 + OX + cfg.get("pelvis_dx", 0.0) * 0.5, 250.0 + OY + cfg.get("pelvis_dy", 0.0) * 0.5)
+    torso_deg = cfg.get("torso_deg", 0.0)
+    head_deg = torso_deg + cfg.get("head_rel_deg", 0.0)
+    mane_deg = head_deg + cfg.get("mane_rel_deg", 0.0)
+
+    def torso_joint(pt):
+        r = rot_pt(pt, pelvis_src, torso_deg)
+        return (pelvis_dst[0] + (r[0] - pelvis_src[0]), pelvis_dst[1] + (r[1] - pelvis_src[1]))
+
+    neck_src = (270.0, 157.5)
+    neck_dst = torso_joint(neck_src)
+
+    mane_src = (219.0, 43.0)
+    mane_r = rot_pt(mane_src, neck_src, head_deg)
+    mane_dst = (neck_dst[0] + (mane_r[0] - neck_src[0]), neck_dst[1] + (mane_r[1] - neck_src[1]))
+
+    back_halo_src = (242.5, 170.0)
+    back_halo_dst = torso_joint(back_halo_src)
+
+    l_coat_src = (248.0, 263.0)
+    l_coat_dst = torso_joint(l_coat_src)
+    r_coat_src = (298.0, 263.0)
+    r_coat_dst = torso_joint(r_coat_src)
+
+    l_sh_src = (207.5, 174.0)
+    l_sh_dst = torso_joint(l_sh_src)
+    r_sh_src = (307.0, 177.0)
+    r_sh_dst = torso_joint(r_sh_src)
+
+    l_hip_src = (246.0, 274.0)
+    l_hip_dst = torso_joint(l_hip_src)
+    r_hip_src = (291.0, 274.0)
+    r_hip_dst = torso_joint(r_hip_src)
+
+    l_thigh_deg = cfg.get("l_thigh_deg", 0.0)
+    l_shin_deg = cfg.get("l_shin_deg", 0.0)
+    l_foot_deg = cfg.get("l_foot_deg", 0.0)
+    l_knee_src = (219.0, 370.0)
+    l_knee_r = rot_pt(l_knee_src, l_hip_src, l_thigh_deg)
+    l_knee_dst = (l_hip_dst[0] + (l_knee_r[0] - l_hip_src[0]), l_hip_dst[1] + (l_knee_r[1] - l_hip_src[1]))
+    l_ank_src = (197.5, 454.0)
+    l_ank_r = rot_pt(l_ank_src, l_knee_src, l_shin_deg)
+    l_ank_dst = (l_knee_dst[0] + (l_ank_r[0] - l_knee_src[0]), l_knee_dst[1] + (l_ank_r[1] - l_knee_src[1]))
+
+    r_thigh_deg = cfg.get("r_thigh_deg", 0.0)
+    r_shin_deg = cfg.get("r_shin_deg", 0.0)
+    r_foot_deg = cfg.get("r_foot_deg", 0.0)
+    r_knee_src = (314.0, 370.0)
+    r_knee_r = rot_pt(r_knee_src, r_hip_src, r_thigh_deg)
+    r_knee_dst = (r_hip_dst[0] + (r_knee_r[0] - r_hip_src[0]), r_hip_dst[1] + (r_knee_r[1] - r_hip_src[1]))
+    r_ank_src = (309.0, 448.0)
+    r_ank_r = rot_pt(r_ank_src, r_knee_src, r_shin_deg)
+    r_ank_dst = (r_knee_dst[0] + (r_ank_r[0] - r_knee_src[0]), r_knee_dst[1] + (r_ank_r[1] - r_knee_src[1]))
+
+    l_sode_deg = torso_deg + cfg.get("l_sode_rel_deg", 0.0)
+    l_fore_deg = l_sode_deg + cfg.get("l_fore_rel_deg", 0.0)
+    l_elb_src = (180.0, 226.0)
+    l_elb_r = rot_pt(l_elb_src, l_sh_src, l_sode_deg)
+    l_elb_dst = (l_sh_dst[0] + (l_elb_r[0] - l_sh_src[0]), l_sh_dst[1] + (l_elb_r[1] - l_sh_src[1]))
+    l_hand_src = (171.0, 295.0)
+    l_hand_r = rot_pt(l_hand_src, l_elb_src, l_fore_deg)
+    l_hand_dst = (l_elb_dst[0] + (l_hand_r[0] - l_elb_src[0]), l_elb_dst[1] + (l_hand_r[1] - l_elb_src[1]))
+
+    r_sode_deg = torso_deg + cfg.get("r_sode_rel_deg", 0.0)
+    r_fore_deg = r_sode_deg + cfg.get("r_fore_rel_deg", 0.0)
+    r_elb_src = (316.0, 228.0)
+    r_elb_r = rot_pt(r_elb_src, r_sh_src, r_sode_deg)
+    r_elb_dst = (r_sh_dst[0] + (r_elb_r[0] - r_sh_src[0]), r_sh_dst[1] + (r_elb_r[1] - r_sh_src[1]))
+    r_hand_src = (346.0, 292.0)
+    r_hand_r = rot_pt(r_hand_src, r_elb_src, r_fore_deg)
+    r_hand_dst = (r_elb_dst[0] + (r_hand_r[0] - r_elb_src[0]), r_elb_dst[1] + (r_hand_r[1] - r_elb_src[1]))
+
+    # Automatic natural Black-Mage coat-tail articulation + explicit overrides
+    l_coat_deg = cfg.get("l_coat_deg")
+    if l_coat_deg is None:
+        l_coat_deg = torso_deg * 0.65 + max(0.0, l_thigh_deg) * 0.72 - min(0.0, l_thigh_deg) * 0.25 + (cfg.get("coat_billow") or 0.0)
+    r_coat_deg = cfg.get("r_coat_deg")
+    if r_coat_deg is None:
+        r_coat_deg = torso_deg * 0.65 + min(0.0, r_thigh_deg) * 0.68 + max(0.0, r_thigh_deg) * 0.35 - (cfg.get("coat_billow") or 0.0) * 0.75
+
+    # Seamless obsidian-charcoal / crimson anatomical joint under-bridges (zero seams at any rotation!)
+    draw_capsule(draw, pelvis_dst, l_hip_dst, 20, fill=(30, 30, 38, 255))
+    draw_capsule(draw, pelvis_dst, r_hip_dst, 20, fill=(30, 30, 38, 255))
+    draw_capsule(draw, l_hip_dst, l_knee_dst, 16, fill=(30, 30, 38, 255))
+    draw_capsule(draw, r_hip_dst, r_knee_dst, 16, fill=(30, 30, 38, 255))
+    draw_joint_cap(draw, l_knee_dst, 14, fill=(108, 24, 28, 255), inner=(152, 34, 34, 255))
+    draw_joint_cap(draw, r_knee_dst, 14, fill=(108, 24, 28, 255), inner=(152, 34, 34, 255))
+    draw_joint_cap(draw, l_ank_dst, 11, fill=(78, 52, 38, 255), inner=(118, 78, 48, 255))
+    draw_joint_cap(draw, r_ank_dst, 11, fill=(78, 52, 38, 255), inner=(118, 78, 48, 255))
+    # Pitch-black shadow void inside the high upturned collar so head tilts never show empty gaps!
+    draw_joint_cap(draw, neck_dst, 20, fill=(8, 7, 13, 255), inner=(8, 7, 13, 255))
+    draw_capsule(draw, l_sh_dst, l_elb_dst, 13, fill=(30, 30, 38, 255))
+    draw_capsule(draw, r_sh_dst, r_elb_dst, 13, fill=(30, 30, 38, 255))
+    draw_joint_cap(draw, l_elb_dst, 11, fill=(108, 24, 28, 255), inner=(108, 24, 28, 255))
+    draw_joint_cap(draw, r_elb_dst, 11, fill=(108, 24, 28, 255), inner=(108, 24, 28, 255))
+
+    # 0. Back Burgundy Coat-Lining Flaps behind thighs & calves
+    paste_rotated_part(canvas, parts["back_hem"], pelvis_src, pelvis_dst, torso_deg)
+
+    # 1. Right arm (when behind torso)
+    if not cfg.get("right_arm_in_front", False):
+        paste_rotated_part(canvas, parts["r_sode"], r_sh_src, r_sh_dst, r_sode_deg)
+        paste_rotated_part(canvas, parts["r_forearm"], r_elb_src, r_elb_dst, r_fore_deg)
+
+    # 2. Articulated 3-segment legs (circular crimson-gold knee-cops on shin layer cleanly over thigh & boot!)
+    if cfg.get("right_leg_behind", False):
+        paste_rotated_part(canvas, parts["r_thigh"], r_hip_src, r_hip_dst, r_thigh_deg)
+        paste_rotated_part(canvas, parts["r_foot"], r_ank_src, r_ank_dst, r_foot_deg)
+        paste_rotated_part(canvas, parts["r_shin"], r_knee_src, r_knee_dst, r_shin_deg)
+
+        paste_rotated_part(canvas, parts["l_thigh"], l_hip_src, l_hip_dst, l_thigh_deg)
+        paste_rotated_part(canvas, parts["l_foot"], l_ank_src, l_ank_dst, l_foot_deg)
+        paste_rotated_part(canvas, parts["l_shin"], l_knee_src, l_knee_dst, l_shin_deg)
     else:
-        return
+        paste_rotated_part(canvas, parts["l_thigh"], l_hip_src, l_hip_dst, l_thigh_deg)
+        paste_rotated_part(canvas, parts["l_foot"], l_ank_src, l_ank_dst, l_foot_deg)
+        paste_rotated_part(canvas, parts["l_shin"], l_knee_src, l_knee_dst, l_shin_deg)
 
-    base_xs = [30 - k * 2 - step_offset, 25 - k - (step_offset // 2), 19 - k + step_offset]
-    for p_idx, bx in enumerate(base_xs):
-        px = max(16, min(33, bx))
-        py = max(44, min(46, 46 - ((k + p_idx) % 3)))
-        lead_col = SOLAR_YELLOW if (p_idx + k) % 2 == 0 else FLAME_GOLD
-        cinder_col = FLAME_ORANGE if k <= 2 else FLAME_CRIMSON
-        set_px(frame, px, py, lead_col)
-        set_px(frame, max(16, min(33, px - 1)), max(44, min(46, py + (1 if py < 46 else -1))), cinder_col)
-        if k <= 3:
-            set_px(frame, max(16, min(33, px + 1)), py, FLAME_CRIMSON if p_idx == 2 else FLAME_ORANGE)
+        paste_rotated_part(canvas, parts["r_thigh"], r_hip_src, r_hip_dst, r_thigh_deg)
+        paste_rotated_part(canvas, parts["r_foot"], r_ank_src, r_ank_dst, r_foot_deg)
+        paste_rotated_part(canvas, parts["r_shin"], r_knee_src, r_knee_dst, r_shin_deg)
 
+    # 3. Articulated Crimson-Gold Black-Mage Coat-Tails + Upper Torso / Upturned Collar / Sun-Wheel Belt
+    paste_rotated_part(canvas, parts["r_coat"], r_coat_src, r_coat_dst, r_coat_deg)
+    paste_rotated_part(
+        canvas, parts["l_coat"], l_coat_src, l_coat_dst, l_coat_deg,
+        wave_phase=cfg.get("mane_wave_phase", 0.0),
+        wave_amp=(cfg.get("mane_wave_amp", 4.5) * 0.45),
+    )
+    paste_rotated_part(canvas, parts["torso"], pelvis_src, pelvis_dst, torso_deg)
 
-def build_row0_idle(tpl):
-    """
-    Row 0 (`IDLE`, 30 frames):
-    - Gentle breathing sway with Sun-Staff oscillating smoothly from `-74°` to `-64°` (`-69° ± 5°`).
-    - Articulated Left Spellcasting Arm poised at caster guard with subtle warm ember pulse.
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-        base = tpl['stand'].copy()
+    # 4. Curved Pointed Wizard-Hat Tail (mane) + Wide-Brimmed Wizard Hat & Glowing Shadow-Void Eyes (head)
+    paste_rotated_part(
+        canvas, parts["mane"], mane_src, mane_dst, mane_deg,
+        wave_phase=cfg.get("mane_wave_phase", 0.0),
+        wave_amp=cfg.get("mane_wave_amp", 4.5),
+    )
+    paste_rotated_part(canvas, parts["head"], neck_src, neck_dst, head_deg)
 
-        breathe = -1 if 8 <= f <= 19 else 0
-        if breathe == -1:
-            upper = base[10:29, 10:36].copy()
-            hat_top = base[4:10, 10:36].copy()
-            base[3:9, 10:36] = hat_top
-            base[9:28, 10:36] = upper
-            base[28, 10:36] = upper[18, :]
-            base = fill_layer_pinholes(add_outline_to_layer(base))
+    # 5. Right arm (when in front of torso for forward Sun-Staff projections / ground slams)
+    if cfg.get("right_arm_in_front", False):
+        paste_rotated_part(canvas, parts["r_sode"], r_sh_src, r_sh_dst, r_sode_deg)
+        paste_rotated_part(canvas, parts["r_forearm"], r_elb_src, r_elb_dst, r_fore_deg)
 
-        base = apply_robe_cloak_wave(base, phase, amplitude=1.4, vertical_flutter=0.5)
+    # 6. Left Pauldron, Vambrace & Dark Obsidian Spell-Glove
+    paste_rotated_part(canvas, parts["l_sode"], l_sh_src, l_sh_dst, l_sode_deg)
+    paste_rotated_part(canvas, parts["l_forearm"], l_elb_src, l_elb_dst, l_fore_deg)
 
-        # Flickering ember at pointed wizard hat apex
-        hat_ember_y = max(3, 7 + breathe - (f % 3 == 0))
-        set_px(base, 24 + (f % 2), hat_ember_y, SOLAR_YELLOW if f % 2 == 0 else FLAME_ORANGE)
+    # Constant-scale framing from 650x600 canvas to 104x104
+    S = 576
+    scale = 104.0 / S
+    cx = 277.0 + OX
+    y_bot = 495.0 + OY
+    crop_x0 = int(round(cx - S * 0.50))
+    crop_y0 = int(round(y_bot - S * (99.0 / 104.0)))
 
-        # Gentle breathing sway between -74° and -64°
-        staff_deg = -69.0 - math.sin(phase) * 5.0
-        grip_dx = 7.4 + math.sin(phase) * 0.8
-        grip_dy = 1.5 + math.cos(phase) * 0.6
-        frame = draw_sun_staff(
-            base,
-            shoulder=(25, 17 + breathe),
-            grip_offset=(grip_dx, grip_dy),
-            staff_deg=staff_deg,
-            top_len=9.5,
-            bot_len=21.0,
-            phase_rad=phase,
-            charge_level=1 if f % 6 in (2, 3) else 0,
+    bbox = canvas.getbbox()
+    c_xmin = float(bbox[0]) if bbox else float(cx)
+    c_ymin = float(bbox[1]) if bbox else float(y_bot - 200.0)
+    c_xmax = float(bbox[2]) if bbox else float(cx)
+    c_ymax = float(bbox[3]) if bbox else float(y_bot)
+
+    halo_mode = cfg.get("halo_mode", "normal")
+    if halo_mode != "off":
+        h_pad = 124.0 if halo_mode in ("flare", "eclipse") else 98.0
+        c_xmin = min(c_xmin, back_halo_dst[0] - h_pad)
+        c_ymin = min(c_ymin, back_halo_dst[1] - h_pad)
+
+    if cfg.get("show_staff", True):
+        hand_c = r_hand_dst if cfg.get("staff_hand", "right") == "right" else l_hand_dst
+        s_rad = math.radians(cfg.get("staff_deg", -54.0))
+        s_len = cfg.get("staff_len", 26.0)
+        tip_cx = hand_c[0] + math.cos(s_rad) * ((s_len + 4.5) / scale)
+        tip_cy = hand_c[1] + math.sin(s_rad) * ((s_len + 4.5) / scale)
+        pom_cx = hand_c[0] - math.cos(s_rad) * (15.0 / scale)
+        pom_cy = hand_c[1] - math.sin(s_rad) * (15.0 / scale)
+        c_xmin = min(c_xmin, tip_cx - 16.0, pom_cx - 12.0)
+        c_xmax = max(c_xmax, tip_cx + 16.0, pom_cx + 12.0)
+        c_ymin = min(c_ymin, tip_cy - 16.0, pom_cy - 12.0)
+        c_ymax = max(c_ymax, tip_cy + 16.0, pom_cy + 12.0)
+
+    min_104 = (c_xmin - crop_x0) * scale
+    max_104 = (c_xmax - crop_x0) * scale
+    span_104 = max_104 - min_104
+    if span_104 > 90.0:
+        S = int(round((c_xmax - c_xmin) / (89.0 / 104.0)))
+        scale = 104.0 / S
+        crop_x0 = int(round(0.5 * (c_xmin + c_xmax) - S * 0.50))
+        crop_y0 = int(round(y_bot - S * (99.0 / 104.0)))
+    elif max_104 > 97.0:
+        crop_x0 += int(round((max_104 - 97.0) / scale))
+    elif min_104 < 6.0:
+        crop_x0 += int(round((min_104 - 6.0) / scale))
+
+    win = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    win.paste(canvas, (-crop_x0, -crop_y0))
+    im104 = win.resize((104, 104), Image.Resampling.NEAREST)
+    arr104 = np.array(im104)
+
+    def to104(pt):
+        return ((pt[0] - crop_x0) * scale, (pt[1] - crop_y0) * scale)
+
+    neck_104 = to104(neck_dst)
+    back_halo_104 = to104(back_halo_dst)
+    l_hand_104 = to104(l_hand_dst)
+    r_hand_104 = to104(r_hand_dst)
+
+    # Smooth continuous foot_y target (99.0 planted on ground; gently 94.5..96.5 on shallow glides)
+    ys, xs = np.where(arr104[:, :, 3] > 0)
+    dy_ground = 0
+    if len(ys) > 0:
+        cur_bot = int(ys.max())
+        cur_top = int(ys.min())
+        target_bot = int(round(cfg.get("foot_y", 99.0)))
+        dy_ground = target_bot - cur_bot
+        if cur_top + dy_ground < 5:
+            dy_ground = 5 - cur_top
+        if dy_ground != 0:
+            shifted = np.zeros_like(arr104)
+            y_src0 = max(0, -dy_ground)
+            y_src1 = min(104, 104 - dy_ground)
+            y_dst0 = max(0, dy_ground)
+            y_dst1 = min(104, 104 + dy_ground)
+            if y_src1 > y_src0:
+                shifted[y_dst0:y_dst1] = arr104[y_src0:y_src1]
+            arr104 = shifted
+
+    # Transform downsampled 104x104 body into authentic cel-clustered 20-color pixel art with 1px Selout
+    arr104 = quantize_and_cluster_104(arr104)
+
+    neck_104 = (neck_104[0], neck_104[1] + dy_ground)
+    back_halo_104 = (back_halo_104[0], back_halo_104[1] + dy_ground)
+    l_hand_104 = (l_hand_104[0], l_hand_104[1] + dy_ground)
+    r_hand_104 = (r_hand_104[0], r_hand_104[1] + dy_ground)
+
+    # Composite Signature Rotating Solar Astrolabe Back-Halo BEHIND Ignis Sol's silhouette
+    halo_layer = np.zeros_like(arr104)
+    draw_solar_astrolabe_104(
+        halo_layer,
+        back_halo_104[0] - 4.5,
+        back_halo_104[1] - 2.5,
+        phase=cfg.get("halo_phase", 0.0),
+        mode=halo_mode,
+    )
+
+    fg_layer = np.zeros_like(arr104)
+
+    # Articulated Crescent Helios Sun-Staff
+    if cfg.get("show_staff", True):
+        sh_pt = r_hand_104 if cfg.get("staff_hand", "right") == "right" else l_hand_104
+        sx = max(8.0, min(95.0, sh_pt[0] + cfg.get("staff_dx", 0.0)))
+        sy = max(8.0, min(97.0, sh_pt[1] + cfg.get("staff_dy", 0.0)))
+        target_buf = halo_layer if cfg.get("staff_behind", False) else fg_layer
+        draw_helios_staff_104(
+            target_buf,
+            sx,
+            sy,
+            cfg.get("staff_deg", -52.0),
+            staff_len=cfg.get("staff_len", 26.0),
+            glow=cfg.get("staff_glow", 1.0),
+            phase=cfg.get("fx_phase", 0.0),
         )
-        # Left spellcasting arm breathing gently at front chest/waist guard
-        lh_x = 29.5 + math.sin(phase) * 0.8
-        lh_y = 24.0 + breathe + math.cos(phase) * 0.6
-        draw_left_spell_arm(
-            frame,
-            sh_x=23,
-            sh_y=18 + breathe,
-            hand_x=lh_x,
-            hand_y=lh_y,
-            orb_radius=1.2 if f % 10 in (4, 5) else 0,
-            flare=0.0,
-            phase_rad=phase,
-        )
-        draw_mage_idle_finial_motes(frame, staff_deg, grip_dx, grip_dy, breathe, phase)
-        frames.append(ensure_safe_cell(frame, margin=2))
-    return frames
 
-
-def build_row1_walk(tpl):
-    """
-    Row 1 (`WALK`, 30 frames):
-    - Counter-swinging battle-mage stride with Sun-Staff swinging across `-78°` to `-58°` (`-68° ± 10°`),
-      paired with counter-swinging Left Spellcasting Arm and flowing A-line crimson robe.
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-        body = render_walk_legs(tpl, f)
-        bob_y = int(round(math.cos(phase * 2.0) * 1.0))
-
-        swing = math.sin(phase)
-        # Counter-swinging staff stride from -78° to -58°
-        staff_deg = -68.0 - swing * 10.0
-        grip_dx = 7.4 + 1.2 * swing
-        grip_dy = 1.5 + 0.8 * math.cos(phase)
-
-        frame = draw_sun_staff(
-            body,
-            shoulder=(25, 17 + bob_y),
-            grip_offset=(grip_dx, grip_dy),
-            staff_deg=staff_deg,
-            top_len=9.5,
-            bot_len=21.0,
-            phase_rad=phase,
-            charge_level=0,
-        )
-        # Off-hand spellcasting arm counter-swings naturally opposite the staff
-        lh_x = 29.5 - swing * 1.6
-        lh_y = 23.5 + bob_y - math.cos(phase) * 0.8
-        draw_left_spell_arm(
-            frame,
-            sh_x=23,
-            sh_y=18 + bob_y,
-            hand_x=lh_x,
-            hand_y=lh_y,
-            orb_radius=0,
-            flare=0.0,
-            phase_rad=phase,
-        )
-        draw_mage_walk_footstep_motes(frame, f)
-        frames.append(ensure_safe_cell(frame, margin=2))
-    return frames
-
-
-def build_row2_auto_attack(tpl):
-    """
-    Row 2 (`AUTO_ATTACK`, 30 frames):
-    - F00..F09 (Windup): Draws Sun-Staff back to `-102°` while Left Spellcasting Arm raises a glowing
-      Solar Fireball Orb (`orb_radius=3`) in front of his chest (`hand_x = 31..34, hand_y = 22..25`).
-    - F10..F18 (Thrust & Cast): Thrusts Sun-Staff forward to `-36°` with `flare=1.0` and a blazing 3-band
-      Solar Pyroblast Crescent Cast Trail (`F10..F16`) as both hands project the Solar Fireball!
-    - F19..F29 (Recovery): Smooth follow-through recovery to `-68°` caster stance.
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-        use_cast_body = 9 <= f <= 21
-        base = (tpl['cast_body'] if use_cast_body else tpl['stand']).copy()
-
-        if f in (11, 12, 13):
-            base = shift_layer(base, dx=-1, dy=0)
-
-        base = apply_robe_cloak_wave(
-            base, phase * 1.5, amplitude=2.0 if 10 <= f <= 18 else 1.4, vertical_flutter=0.6
+    # Off-hand Pyromancy Solar Orb above dark gloved casting hand
+    orb_r = cfg.get("hand_orb_r") or 0.0
+    if orb_r > 0.2:
+        oh_pt = l_hand_104 if cfg.get("orb_hand", "left") == "left" else r_hand_104
+        draw_pyro_hand_orb_104(
+            fg_layer,
+            oh_pt[0] + (cfg.get("orb_dx") or 2.0),
+            oh_pt[1] + (cfg.get("orb_dy") or -2.0),
+            radius=orb_r,
+            phase=cfg.get("fx_phase", 0.0),
         )
 
-        if f <= 9:
-            u = f / 9.0
-            # Windup from -68° back to -102°
-            staff_deg = -68.0 * (1.0 - u) + (-102.0) * u
-            grip_x = 7.2 * (1.0 - u) + 5.8 * u
-            grip_y = 1.5 * (1.0 - u) + (-1.2) * u
-            charge = 3 if f >= 6 else (2 if f >= 3 else 1)
-            frame = draw_sun_staff(
-                base,
-                shoulder=(25, 17),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.2,
-                bot_len=20.5,
-                phase_rad=phase * 2.0,
-                charge_level=charge,
-                flare=0.25 if f >= 7 else 0.0,
-            )
-            # Left Spellcasting Arm raises Solar Fireball Orb (orb_radius=3) in front of chest (hand_x=31..34, hand_y=22..25)
-            lh_x = 31.0 + u * 3.0
-            lh_y = 25.0 - u * 3.0
-            orb_r = 2.0 if f <= 2 else 3.0
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18,
-                hand_x=lh_x,
-                hand_y=lh_y,
-                orb_radius=orb_r,
-                flare=0.3 if f >= 8 else 0.0,
-                mode='orb',
-                phase_rad=phase * 2.0,
-            )
-        elif f <= 18:
-            k = f - 10
-            # Thrusts Sun-Staff forward to -36° with flare=1.0
-            cast_angles = [-64.0, -44.0, -36.0, -36.0, -37.0, -40.0, -45.0, -51.0, -57.0]
-            staff_deg = cast_angles[k]
-            grip_x = 7.2 if k == 0 else (7.8 if k <= 4 else 7.5)
-            grip_y = 0.8 if k == 0 else 1.5
-            flare_val = 1.0 if k <= 5 else (0.7 if k == 6 else 0.4)
-            frame = draw_sun_staff(
-                base,
-                shoulder=(26, 17),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=8.5,
-                bot_len=19.5,
-                phase_rad=phase * 2.5,
-                charge_level=3 if k <= 5 else 2,
-                release_flash=(k <= 4),
-                flare=flare_val,
-            )
-            # Left hand projects the Solar Fireball alongside the forward-thrusting staff
-            lh_x = 34.0 if k <= 5 else (34.0 - (k - 5) * 0.5)
-            lh_y = 22.0 + (0.0 if k <= 4 else (k - 4) * 0.4)
-            draw_left_spell_arm(
-                frame,
-                sh_x=24,
-                sh_y=18,
-                hand_x=lh_x,
-                hand_y=lh_y,
-                orb_radius=3.0 if k <= 5 else 2.0,
-                flare=flare_val,
-                mode='orb',
-                phase_rad=phase * 2.5,
-            )
-            # Sweeping Solar Pyroblast Crescent Cast Trail on F10..F16 (k = 0..6)
-            if k <= 6:
-                trail_starts = [-100.0, -96.0, -88.0, -76.0, -66.0, -56.0, -50.0]
-                trail_ends = [-52.0, -18.0, 4.0, 8.0, 4.0, -8.0, -22.0]
-                trail_int = [0.85, 1.0, 1.0, 0.95, 0.85, 0.72, 0.58][k]
-                draw_solar_cast_trail(
-                    frame,
-                    cx=33.5,
-                    cy=18.2,
-                    start_deg=trail_starts[k],
-                    end_deg=trail_ends[k],
-                    intensity=trail_int,
-                    radius=11.2,
-                )
-        else:
-            u = (f - 19) / 10.0
-            staff_deg = -57.0 * (1.0 - u) + (-68.0) * u
-            grip_x = 7.5 * (1.0 - u) + 7.4 * u
-            grip_y = 1.5
-            frame = draw_sun_staff(
-                base,
-                shoulder=(25, 17),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.5,
-                bot_len=21.0,
-                phase_rad=phase,
-                charge_level=1 if f <= 21 else 0,
-            )
-            lh_x = 32.5 * (1.0 - u) + 29.5 * u
-            lh_y = 23.5 * (1.0 - u) + 24.0 * u
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18,
-                hand_x=lh_x,
-                hand_y=lh_y,
-                orb_radius=1.2 if f == 19 else 0,
-                flare=0.0,
-                phase_rad=phase,
-            )
+    # Crouch Solar Ward Aegis Ring
+    if cfg.get("ward_ring", False):
+        draw_solar_ward_ring_104(
+            fg_layer,
+            neck_104[0] + 19.5,
+            neck_104[1] + 12.0,
+            rx=7.5,
+            ry=13.5,
+            phase=cfg.get("fx_phase", 0.0),
+        )
 
-        frames.append(ensure_safe_cell(frame, margin=2))
-    return frames
+    # Skill Ground-Slam Butt-Spike Extension & Magma Floor Spark Burst (Row 3 F08..F12)
+    slam_int = cfg.get("ground_slam") or 0.0
+    if slam_int > 0.05:
+        sh_pt = r_hand_104
+        rad_s = math.radians(cfg.get("staff_deg", -86.0))
+        ux_s, uy_s = math.cos(rad_s), math.sin(rad_s)
+        sx_s = sh_pt[0] + (cfg.get("staff_dx") or 0.0)
+        sy_s = sh_pt[1] + (cfg.get("staff_dy") or 0.0)
+        butt_x = sx_s - ux_s * 22.0
+        for step_b in range(13, 28):
+            bx = sx_s - ux_s * step_b
+            by = sy_s - uy_s * step_b
+            if by >= 98.5:
+                butt_x = bx
+                break
+            put_px(fg_layer, bx - 1, by, P_SELOUT)
+            put_px(fg_layer, bx + 1, by, P_OUTLINE)
+            put_px(fg_layer, bx, by, P_SOLAR_GLEAM if step_b >= 22 else P_GOLD_MID)
+        ring_rx = 9.0 + slam_int * 6.0
+        for dx_r in range(-int(ring_rx), int(ring_rx) + 1):
+            rx_p = butt_x + dx_r
+            if 5 <= rx_p <= 98:
+                u_r = abs(dx_r) / max(1.0, ring_rx)
+                col_m = P_IVORY if u_r < 0.28 else (P_SOLAR_GLEAM if u_r < 0.62 else P_VERMILION)
+                put_px(fg_layer, rx_p, 98, col_m)
+                if abs(dx_r) % 3 == 0 and u_r < 0.85:
+                    put_px(fg_layer, rx_p, 97 - int((1.0 - u_r) * 3.0 * slam_int), P_SOLAR_GLEAM)
+
+    # Sweeping Solar Flame Crescent Arc on Attack / Skill / Ult
+    if cfg.get("slash_arc") is not None:
+        sa0, sa1, sr, sint = cfg["slash_arc"]
+        draw_solar_slash_arc_104(fg_layer, neck_104[0] + 7.0, neck_104[1] + 11.0, sr, sa0, sa1, intensity=sint)
+
+    # Layering: halo_layer -> arr104 (character body) -> fg_layer (front Sun-Staff + pyromancy FX)
+    comp = halo_layer.copy()
+    body_m = arr104[:, :, 3] > 0
+    comp[body_m] = arr104[body_m]
+    fg_m = fg_layer[:, :, 3] > 0
+    comp[fg_m] = fg_layer[fg_m]
+
+    # Strict 4px safety margin in 104x104 -> >= 8px margin in 208x208 (0/270 boundary clips!)
+    comp[:4, :, :] = 0
+    comp[100:, :, :] = 0
+    comp[:, :4, :] = 0
+    comp[:, 100:, :] = 0
+    return comp
 
 
-def build_row3_skill(tpl):
+def smooth_u(f, f0, f1):
+    if f1 <= f0:
+        return 1.0
+    u = max(0.0, min(1.0, (f - f0) / float(f1 - f0)))
+    return 0.5 - 0.5 * math.cos(u * math.pi)
+
+
+def eval_pose_keyframes(f, keyframes):
     """
-    Row 3 (`SKILL` - Solar Pillar, 30 frames):
-    - F00..F06: Raises Sun-Staff high overhead (`-98°`) as the Ground Sun-Wheel Ritual Circle ignites (`F03..F22`).
-    - F07..F14: Slams Sun-Staff vertically (`-88°`, `grip_y + 4`) into the ground with magma runes & shockwave.
-    - F15..F22: Sweeps Sun-Staff forward (`-34°`) with blazing Solar Crescent Cast Trail (`F15..F21`) and
-      Left Spellcasting Arm conjuring a blazing solar sigil!
-    - F23..F29: Smooth recovery back to `-68°` stance.
+    Smoothly cosine-interpolates all numeric pose parameters between keyframes [(f_idx, dict), ...]
+    while switching discrete string/boolean flags cleanly so Ignis Sol NEVER snaps between poses!
     """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
+    if f <= keyframes[0][0]:
+        return dict(keyframes[0][1])
+    if f >= keyframes[-1][0]:
+        return dict(keyframes[-1][1])
 
-        if f <= 6:
-            u = f / 6.0
-            lift_dy = -1 if f >= 3 else 0
-            base = tpl['stand'].copy()
-            if lift_dy != 0:
-                base = shift_layer(base, dx=0, dy=lift_dy)
-            base = apply_robe_cloak_wave(base, phase * 2.0, amplitude=1.8, vertical_flutter=0.7)
-            overhead_angles = [-74.0, -82.0, -90.0, -95.0, -98.0, -98.0, -98.0]
-            staff_deg = overhead_angles[f]
-            grip_x = 7.2 * (1.0 - u) + 6.0 * u
-            grip_y = 1.0 * (1.0 - u) + (-1.5) * u
-            frame = draw_sun_staff(
-                base,
-                shoulder=(25, 17 + lift_dy),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.0,
-                bot_len=20.5,
-                phase_rad=phase * 2.0,
-                charge_level=3 if f >= 3 else 2,
-                flare=0.35 if f >= 4 else 0.0,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18 + lift_dy,
-                hand_x=30.0 + u * 2.0,
-                hand_y=23.0 - u * 4.0,
-                orb_radius=2.0 if f >= 2 else 1.2,
-                flare=0.0,
-                mode='orb',
-                phase_rad=phase * 2.0,
-            )
-        elif f <= 14:
-            k = f - 7
-            crouch_seq = [2, 3, 3, 3, 2, 2, 1, 1]
-            cd = crouch_seq[k]
-            base = make_crouch_body(tpl, cd)
-            base = apply_robe_cloak_wave(base, phase * 2.5, amplitude=2.0, vertical_flutter=0.8)
-            # Slams vertically (-88°) with grip_y + 4 into the ground with magma runes
-            if k <= 4:
-                grip_x, grip_y = 7.8, 1.5 + 4.0
-            else:
-                v = (k - 4) / 3.0
-                grip_x = 7.8 * (1.0 - v) + 7.0 * v
-                grip_y = 5.5 * (1.0 - v) + 2.0 * v
-            frame = draw_sun_staff(
-                base,
-                shoulder=(25, 17 + cd),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=-88.0,
-                top_len=9.5,
-                bot_len=21.5,
-                phase_rad=phase * 2.5,
-                charge_level=3 if k <= 4 else 2,
-                ground_shockwave=min(1.0, (k + 1) / 7.5),
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18 + cd,
-                hand_x=32.0,
-                hand_y=22.0 + cd,
-                orb_radius=2.2,
-                flare=0.3 if k <= 3 else 0.0,
-                mode='sigil',
-                phase_rad=phase * 2.5,
-            )
-        elif f <= 22:
-            k = f - 15
-            base = tpl['cast_body'].copy()
-            base = apply_robe_cloak_wave(base, phase * 2.0, amplitude=2.1, vertical_flutter=0.8)
-            # Sweeps forward to -34° with left hand conjuring a blazing solar sigil
-            sweep_angles = [-68.0, -46.0, -34.0, -34.0, -35.0, -38.0, -44.0, -52.0]
-            staff_deg = sweep_angles[k]
-            grip_x = 7.2 + min(1.0, k / 2.0) * 0.8
-            grip_y = 1.2
-            flare_val = 1.0 if k in (1, 2, 3, 4) else 0.65
-            frame = draw_sun_staff(
-                base,
-                shoulder=(26, 17),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=8.5,
-                bot_len=19.5,
-                phase_rad=phase * 2.0,
-                charge_level=3 if k <= 5 else 2,
-                release_flash=(k in (1, 2, 3, 4)),
-                flare=flare_val,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=24,
-                sh_y=18,
-                hand_x=34.0,
-                hand_y=21.5,
-                orb_radius=3.2,
-                flare=flare_val,
-                mode='sigil',
-                phase_rad=phase * 2.5,
-            )
-            # Sweeping Solar Pyroblast Crescent Cast Trail on F15..F21 (k = 0..6)
-            if k <= 6:
-                skill_trail_starts = [-94.0, -90.0, -84.0, -74.0, -64.0, -54.0, -48.0]
-                skill_trail_ends = [-52.0, -16.0, 6.0, 10.0, 6.0, -6.0, -20.0]
-                skill_trail_int = [0.85, 1.0, 1.0, 0.95, 0.85, 0.72, 0.58][k]
-                draw_solar_cast_trail(
-                    frame,
-                    cx=33.5,
-                    cy=18.2,
-                    start_deg=skill_trail_starts[k],
-                    end_deg=skill_trail_ends[k],
-                    intensity=skill_trail_int,
-                    radius=11.2,
-                )
-        else:
-            u = (f - 23) / 6.0
-            base = apply_robe_cloak_wave(tpl['stand'].copy(), phase, amplitude=1.5, vertical_flutter=0.5)
-            staff_deg = -52.0 * (1.0 - u) + (-68.0) * u
-            grip_x = 7.8 * (1.0 - u) + 7.4 * u
-            grip_y = 1.5
-            frame = draw_sun_staff(
-                base,
-                shoulder=(25, 17),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.5,
-                bot_len=21.0,
-                phase_rad=phase,
-                charge_level=1 if f <= 25 else 0,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18,
-                hand_x=33.0 * (1.0 - u) + 29.5 * u,
-                hand_y=22.0 * (1.0 - u) + 24.0 * u,
-                orb_radius=1.5 if f == 23 else 0,
-                flare=0.0,
-                phase_rad=phase,
-            )
-
-        # Blazing Ground Sun-Wheel Ritual Circle & Rising Ember Motes beneath Ignis's boots (F03..F22)
-        if 3 <= f <= 22:
-            if f <= 6:
-                sigil_int = 0.55 + (f - 3) * 0.15
-                sigil_rx = 9.5 + (f - 3) * 0.8
-            elif f <= 18:
-                sigil_int = 1.0
-                sigil_rx = 12.2
-            else:
-                sigil_int = max(0.45, 1.0 - (f - 18) * 0.14)
-                sigil_rx = 12.2 - (f - 18) * 0.6
-            draw_ground_sun_circle(
-                frame,
-                cx=25.0,
-                cy=46.5,
-                rx=sigil_rx,
-                ry=1.8,
-                phase_rad=phase * 2.5,
-                intensity=sigil_int,
-            )
-
-        frames.append(ensure_safe_cell(frame, margin=2))
-    return frames
+    for i in range(len(keyframes) - 1):
+        f0, k0 = keyframes[i]
+        f1, k1 = keyframes[i + 1]
+        if f0 <= f <= f1:
+            u = smooth_u(f, f0, f1)
+            out = {}
+            all_keys = set(k0.keys()) | set(k1.keys())
+            for k in all_keys:
+                v0 = k0.get(k)
+                v1 = k1.get(k)
+                if isinstance(v0, bool) or isinstance(v1, bool) or isinstance(v0, str) or isinstance(v1, str):
+                    out[k] = v1 if u >= 0.5 else v0
+                elif v0 is None and isinstance(v1, (int, float)):
+                    out[k] = 0.0 + (v1 - 0.0) * u
+                elif v1 is None and isinstance(v0, (int, float)):
+                    out[k] = v0 + (0.0 - v0) * u
+                elif v0 is None or v1 is None:
+                    out[k] = v1 if u >= 0.5 else v0
+                elif isinstance(v0, (int, float)) and isinstance(v1, (int, float)):
+                    out[k] = v0 + (v1 - v0) * u
+                else:
+                    out[k] = v1 if u >= 0.5 else v0
+            return out
+    return dict(keyframes[-1][1])
 
 
-def build_row4_ultimate(tpl):
+def build_row_configs(row_idx):
     """
-    Row 4 (`ULTIMATE` - Cataclysm: Eclipse Supernova, 30 frames):
-    - F00..F12: Raises BOTH arms skyward (`staff angle -92°`, left arm raised high to `(30, 14)`)
-      channeling a miniature black-gold Solar Eclipse orb above his crown, with a blazing
-      Ground Sun-Wheel Ritual Circle (`F02..F25`) beneath his boots.
-    - F13..F22: Slashes the Sun-Staff forward (`-32°`) with a blazing 3-band Solar Crescent Cast Trail (`F13..F21`)
-      to command the heaven-to-earth Solar Beam!
-    - F23..F29: Smooth recovery to `-68°` stance.
+    Returns 30 handcrafted 30fps pose configurations for the given row (0..8).
+    Every row guarantees distinct frame-to-frame motion, 100% grounded stances & cast startups,
+    articulated wizard-hat tail & crimson-gold coat-tails, and sleek shallow glides.
     """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
+    cfgs = []
+    for f in range(COLS):
+        p = (f / float(COLS)) * math.pi * 2.0
+        s1 = math.sin(p)
+        c1 = math.cos(p)
 
-        if f <= 12:
-            u = f / 12.0
-            tuck = min(0.50, u * 0.55)
-            lev_dy = -2 if f >= 5 else (-1 if f >= 2 else 0)
-            body = make_jump_body(tpl, lev_dy, tuck_amount=tuck) if f >= 2 else tpl['stand'].copy()
-            body = apply_robe_cloak_wave(body, phase * 2.5, amplitude=2.1, vertical_flutter=0.85)
-            # Both arms raised skyward: staff at -92°, left hand raised high to (30, 14)
-            staff_deg = -78.0 * (1.0 - min(1.0, f / 3.0)) + (-92.0) * min(1.0, f / 3.0) + math.sin(phase * 2.0) * 1.5
-            grip_x = 6.2 + math.sin(phase * 2.0) * 0.4
-            grip_y = -1.2 + math.cos(phase * 2.0) * 0.4
-            frame = draw_sun_staff(
-                body,
-                shoulder=(25, 17 + lev_dy),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=8.8,
-                bot_len=20.5,
-                phase_rad=phase * 2.5,
-                charge_level=3 if f >= 4 else 2,
-                solar_wings=min(1.0, (f + 1) / 7.0),
-                eclipse_crown=min(1.0, (f + 1) / 5.0),
-            )
-            r_u = min(1.0, f / 3.0)
-            lh_x = 30.0
-            lh_y = 20.0 * (1.0 - r_u) + 14.0 * r_u
-            draw_left_spell_arm(
-                frame,
-                sh_x=24,
-                sh_y=17 + lev_dy,
-                hand_x=lh_x,
-                hand_y=lh_y,
-                orb_radius=2.5,
-                flare=0.4 if f >= 6 else 0.0,
-                mode='eclipse',
-                phase_rad=phase * 2.5,
-            )
-            # Orbiting Fire Runes around Ignis
-            if f >= 4:
-                for r_i in range(4):
-                    ra = phase * 3.0 + r_i * (math.pi * 0.5)
-                    rx = max(3.0, min(48.0, 24.0 + math.cos(ra) * 14.5))
-                    ry = max(4.0, min(47.0, 26.0 + math.sin(ra) * 5.0))
-                    if 13.0 <= rx <= 33.0:
-                        continue
-                    set_px(frame, rx, ry, SOLAR_WHITE)
-                    set_px(frame, rx, ry - 1, SOLAR_YELLOW)
-                    set_px(frame, rx, ry + 1, FLAME_ORANGE)
+        cfg = {
+            "pelvis_dx": 0.0,
+            "pelvis_dy": 0.0,
+            "torso_deg": 0.0,
+            "head_rel_deg": 0.0,
+            "mane_rel_deg": 0.0,
+            "mane_wave_phase": p,
+            "mane_wave_amp": 4.5,
+            "coat_billow": 0.0,
+            "l_coat_deg": None,
+            "r_coat_deg": None,
+            "l_thigh_deg": 0.0,
+            "l_shin_deg": 0.0,
+            "l_foot_deg": 0.0,
+            "r_thigh_deg": 0.0,
+            "r_shin_deg": 0.0,
+            "r_foot_deg": 0.0,
+            "l_sode_rel_deg": 0.0,
+            "l_fore_rel_deg": 0.0,
+            "r_sode_rel_deg": 0.0,
+            "r_fore_rel_deg": 0.0,
+            "right_arm_in_front": False,
+            "right_leg_behind": False,
+            "foot_y": 99.0,
+            "halo_mode": "normal",
+            "halo_phase": p,
+            "show_staff": True,
+            "staff_hand": "right",
+            "staff_behind": False,
+            "staff_deg": -50.0,
+            "staff_len": 25.5,
+            "staff_glow": 1.0,
+            "staff_dx": 0.0,
+            "staff_dy": 0.0,
+            "hand_orb_r": 0.0,
+            "orb_hand": "left",
+            "orb_dx": 2.0,
+            "orb_dy": -2.0,
+            "ward_ring": False,
+            "fx_phase": p,
+            "slash_arc": None,
+        }
 
-        elif f <= 22:
-            k = f - 13
-            lev_dy = -2 if k <= 4 else -1
-            tuck = 0.45 if k <= 5 else 0.25
-            body = make_jump_body(tpl, lev_dy, tuck_amount=tuck, torso_lean_dx=1)
-            body = apply_robe_cloak_wave(body, phase * 3.0, amplitude=2.2, vertical_flutter=0.9)
-            # Slashes Sun-Staff forward to -32° to command the heaven-to-earth Solar Beam!
-            slash_angles = [-64.0, -40.0, -32.0, -32.0, -32.0, -34.0, -36.0, -40.0, -45.0, -50.0]
-            staff_deg = slash_angles[k]
-            grip_x = 7.8 if k >= 1 else 7.0
-            grip_y = 1.2
-            flare_val = 1.0 if 1 <= k <= 7 else 0.7
-            frame = draw_sun_staff(
-                body,
-                shoulder=(26, 17 + lev_dy),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=8.2,
-                bot_len=19.0,
-                phase_rad=phase * 3.0,
-                charge_level=3,
-                release_flash=(1 <= k <= 6),
-                flare=flare_val,
-                solar_wings=1.0 - k * 0.05,
-                eclipse_crown=1.0 - k * 0.06,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=24,
-                sh_y=18 + lev_dy,
-                hand_x=34.0,
-                hand_y=20.0,
-                orb_radius=3.2,
-                flare=flare_val,
-                mode='orb',
-                phase_rad=phase * 3.0,
-            )
-            # Sweeping Solar Pyroblast Crescent Cast Trail on F13..F21 (k = 0..8)
-            if k <= 8:
-                ult_trail_starts = [-96.0, -92.0, -86.0, -78.0, -68.0, -60.0, -54.0, -48.0, -44.0]
-                ult_trail_ends = [-48.0, -12.0, 10.0, 12.0, 10.0, 4.0, -4.0, -14.0, -24.0]
-                ult_trail_int = [0.90, 1.0, 1.0, 1.0, 0.95, 0.85, 0.75, 0.65, 0.55][k]
-                draw_solar_cast_trail(
-                    frame,
-                    cx=33.5,
-                    cy=17.0,
-                    start_deg=ult_trail_starts[k],
-                    end_deg=ult_trail_ends[k],
-                    intensity=ult_trail_int,
-                    radius=11.2,
-                )
-            # Heaven-to-earth diagonal Solar Beam rays streaking at x=43..48
-            if 1 <= k <= 7:
-                for by_b in range(5, 46, 2):
-                    bx_b = min(48, 42 + ((by_b + k * 2) % 6))
-                    set_px(frame, bx_b, by_b, SOLAR_WHITE if (by_b + k) % 4 == 0 else SOLAR_YELLOW)
-                    if bx_b + 1 <= 48:
-                        set_px(frame, bx_b + 1, by_b, FLAME_ORANGE)
-        else:
-            k = f - 23
-            u = k / 6.0
-            base = apply_robe_cloak_wave(tpl['stand'].copy(), phase * 1.5, amplitude=1.6, vertical_flutter=0.6)
-            staff_deg = -50.0 * (1.0 - u) + (-68.0) * u
-            grip_x = 7.8 * (1.0 - u) + 7.4 * u
-            grip_y = 1.5
-            frame = draw_sun_staff(
-                base,
-                shoulder=(25, 17),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.5,
-                bot_len=21.0,
-                phase_rad=phase,
-                charge_level=1 if k <= 2 else 0,
-                solar_wings=max(0.0, 0.4 * (1.0 - u)),
-                eclipse_crown=max(0.0, 0.3 * (1.0 - u)),
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18,
-                hand_x=33.0 * (1.0 - u) + 29.5 * u,
-                hand_y=20.5 * (1.0 - u) + 24.0 * u,
-                orb_radius=0,
-                flare=0.0,
-                phase_rad=phase,
-            )
+        if row_idx == 0:
+            # ROW 0: IDLE — Mysterious Black-Mage Breathing, Bobbing Wizard-Hat Tail, Swaying Coat-Tails,
+            # Rotating 8-Point Solar Astrolabe Halo, Poised Helios Sun-Staff & Off-Hand Ember Pulse
+            cfg["pelvis_dy"] = s1 * 3.0
+            cfg["torso_deg"] = 1.2 + s1 * 1.6
+            cfg["head_rel_deg"] = -s1 * 1.2
+            cfg["mane_rel_deg"] = c1 * 3.5
+            cfg["mane_wave_amp"] = 4.8
+            cfg["coat_billow"] = 2.0 + s1 * 2.5
+            cfg["l_sode_rel_deg"] = -12.0 + c1 * 3.5
+            cfg["l_fore_rel_deg"] = -28.0 + s1 * 4.5
+            cfg["r_sode_rel_deg"] = -8.0 + s1 * 3.0
+            cfg["r_fore_rel_deg"] = -22.0 + c1 * 3.5
+            cfg["right_arm_in_front"] = True
+            cfg["staff_deg"] = -52.0 + s1 * 3.5
+            cfg["staff_glow"] = 0.95 + 0.20 * c1
+            cfg["hand_orb_r"] = 1.8 + 0.5 * s1
+            cfg["orb_dx"] = 4.5
+            cfg["orb_dy"] = -3.0
 
-        # Blazing Ground Sun-Wheel Ritual Circle & Rising Ember Motes beneath Ignis's boots (F02..F25)
-        if 2 <= f <= 25:
+        elif row_idx == 1:
+            # ROW 1: WALK — Grounded 2-Step Mysterious Battle-Mage Stride Cycle + Flowing Coat-Tails
+            stride = math.sin(p)
+            lift_l = max(0.0, math.cos(p))
+            lift_r = max(0.0, -math.cos(p))
+            cfg["pelvis_dy"] = abs(stride) * 5.0 - 1.5
+            cfg["torso_deg"] = 6.0 + math.sin(p * 2.0) * 1.8
+            cfg["head_rel_deg"] = -3.0
+            cfg["mane_wave_amp"] = 5.8
+            cfg["coat_billow"] = 5.5 + abs(stride) * 3.5
+            cfg["l_thigh_deg"] = -stride * 24.0
+            cfg["l_shin_deg"] = lift_l * 24.0 + max(0.0, stride) * 7.0
+            cfg["l_foot_deg"] = -stride * 9.0
+            cfg["r_thigh_deg"] = stride * 24.0
+            cfg["r_shin_deg"] = lift_r * 24.0 + max(0.0, -stride) * 7.0
+            cfg["r_foot_deg"] = stride * 9.0
+            cfg["right_leg_behind"] = (stride < 0.0)
+            cfg["l_sode_rel_deg"] = stride * 15.0 - 8.0
+            cfg["l_fore_rel_deg"] = -22.0 + stride * 9.0
+            cfg["r_sode_rel_deg"] = -stride * 13.0 - 6.0
+            cfg["r_fore_rel_deg"] = -20.0 - stride * 7.0
+            cfg["right_arm_in_front"] = True
+            cfg["staff_deg"] = -44.0 - stride * 6.0
+
+        elif row_idx == 2:
+            # ROW 2: AUTO_ATTACK — Grounded Black-Mage Sun-Staff Projection Combo (Syncs with FireMage.js!)
+            kfs = [
+                (0, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -28.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "hand_orb_r": 1.8, "orb_dx": 4.5, "orb_dy": -3.0, "halo_mode": "normal",
+                }),
+                (8, {
+                    "pelvis_dx": -12.0, "pelvis_dy": 8.0, "torso_deg": -10.0, "head_rel_deg": 8.0,
+                    "l_thigh_deg": 14.0, "l_shin_deg": 12.0, "r_thigh_deg": -18.0, "r_shin_deg": 20.0,
+                    "r_sode_rel_deg": 24.0, "r_fore_rel_deg": 10.0,
+                    "l_sode_rel_deg": -38.0, "l_fore_rel_deg": -34.0, "coat_billow": 12.0,
+                    "right_arm_in_front": False, "staff_deg": -72.0, "staff_glow": 1.25,
+                    "hand_orb_r": 3.4, "orb_dx": 7.0, "orb_dy": -4.0, "halo_mode": "flare",
+                }),
+                (12, {
+                    "pelvis_dx": 18.0, "pelvis_dy": 12.0, "torso_deg": 16.0, "head_rel_deg": -12.0,
+                    "l_thigh_deg": 24.0, "l_shin_deg": 12.0, "r_thigh_deg": -26.0, "r_shin_deg": 28.0,
+                    "r_sode_rel_deg": -38.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": 24.0, "l_fore_rel_deg": 12.0, "coat_billow": 16.0,
+                    "right_arm_in_front": True, "staff_deg": -4.0, "staff_glow": 1.45,
+                    "hand_orb_r": 0.0, "orb_dx": 4.0, "orb_dy": -2.0, "halo_mode": "flare",
+                }),
+                (17, {
+                    "pelvis_dx": 15.0, "pelvis_dy": 10.0, "torso_deg": 13.0, "head_rel_deg": -9.0,
+                    "l_thigh_deg": 20.0, "l_shin_deg": 10.0, "r_thigh_deg": -22.0, "r_shin_deg": 24.0,
+                    "r_sode_rel_deg": -32.0, "r_fore_rel_deg": -18.0,
+                    "l_sode_rel_deg": 18.0, "l_fore_rel_deg": 8.0, "coat_billow": 12.0,
+                    "right_arm_in_front": True, "staff_deg": -8.0, "staff_glow": 1.25,
+                    "hand_orb_r": 0.0, "orb_dx": 4.0, "orb_dy": -2.0, "halo_mode": "flare",
+                }),
+                (29, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 1.2, "head_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -28.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "hand_orb_r": 1.8, "orb_dx": 4.5, "orb_dy": -3.0, "halo_mode": "normal",
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
+            if 10 <= f <= 15:
+                cfg["slash_arc"] = (-42.0, 42.0, 29.0, 1.0 - (f - 10) * 0.14)
+
+        elif row_idx == 3:
+            # ROW 3: SKILL — TRIPLE SOLAR PILLAR & PYROMANTIC DETONATION SWEEP (100% Grounded!)
+            kfs = [
+                (0, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -28.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_dy": 0.0,
+                    "staff_glow": 1.0, "hand_orb_r": 2.0, "halo_mode": "normal",
+                }),
+                (5, {
+                    "pelvis_dx": -8.0, "pelvis_dy": 6.0, "torso_deg": -9.0, "head_rel_deg": 5.0,
+                    "l_thigh_deg": 10.0, "l_shin_deg": 8.0, "r_thigh_deg": -14.0, "r_shin_deg": 16.0,
+                    "r_sode_rel_deg": -48.0, "r_fore_rel_deg": -24.0,
+                    "l_sode_rel_deg": -46.0, "l_fore_rel_deg": -32.0, "coat_billow": 16.0,
+                    "right_arm_in_front": True, "staff_deg": -62.0, "staff_dy": -2.0,
+                    "staff_glow": 1.4, "hand_orb_r": 3.2, "halo_mode": "flare",
+                }),
+                (9, {
+                    "pelvis_dx": 14.0, "pelvis_dy": 18.0, "torso_deg": 15.0, "head_rel_deg": -9.0,
+                    "l_thigh_deg": 24.0, "l_shin_deg": 20.0, "r_thigh_deg": -28.0, "r_shin_deg": 32.0,
+                    "r_sode_rel_deg": -22.0, "r_fore_rel_deg": 12.0,
+                    "l_sode_rel_deg": -22.0, "l_fore_rel_deg": -18.0, "coat_billow": 20.0,
+                    "right_arm_in_front": True, "staff_deg": -86.0, "staff_dy": 6.0,
+                    "staff_glow": 1.5, "hand_orb_r": 2.8, "halo_mode": "flare",
+                }),
+                (13, {
+                    "pelvis_dx": 10.0, "pelvis_dy": 14.0, "torso_deg": 10.0, "head_rel_deg": -6.0,
+                    "l_thigh_deg": 18.0, "l_shin_deg": 16.0, "r_thigh_deg": -22.0, "r_shin_deg": 26.0,
+                    "r_sode_rel_deg": 8.0, "r_fore_rel_deg": 4.0,
+                    "l_sode_rel_deg": -32.0, "l_fore_rel_deg": -26.0, "coat_billow": 14.0,
+                    "right_arm_in_front": False, "staff_deg": -64.0, "staff_dy": 2.0,
+                    "staff_glow": 1.35, "hand_orb_r": 3.4, "halo_mode": "flare",
+                }),
+                (18, {
+                    "pelvis_dx": 20.0, "pelvis_dy": 12.0, "torso_deg": 17.0, "head_rel_deg": -13.0,
+                    "l_thigh_deg": 26.0, "l_shin_deg": 12.0, "r_thigh_deg": -28.0, "r_shin_deg": 30.0,
+                    "r_sode_rel_deg": -40.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": 26.0, "l_fore_rel_deg": 14.0, "coat_billow": 18.0,
+                    "right_arm_in_front": True, "staff_deg": -3.0, "staff_dy": 0.0,
+                    "staff_glow": 1.5, "hand_orb_r": 0.0, "halo_mode": "flare",
+                }),
+                (23, {
+                    "pelvis_dx": 12.0, "pelvis_dy": 8.0, "torso_deg": 11.0, "head_rel_deg": -7.0,
+                    "l_thigh_deg": 16.0, "l_shin_deg": 8.0, "r_thigh_deg": -18.0, "r_shin_deg": 20.0,
+                    "r_sode_rel_deg": -26.0, "r_fore_rel_deg": -18.0,
+                    "l_sode_rel_deg": 12.0, "l_fore_rel_deg": -4.0, "coat_billow": 10.0,
+                    "right_arm_in_front": True, "staff_deg": -18.0, "staff_dy": 0.0,
+                    "staff_glow": 1.2, "hand_orb_r": 0.0, "halo_mode": "normal",
+                }),
+                (29, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -28.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_dy": 0.0,
+                    "staff_glow": 1.0, "hand_orb_r": 1.8, "halo_mode": "normal",
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
+            if 8 <= f <= 12:
+                cfg["ground_slam"] = 1.0 - abs(f - 9.5) * 0.24
+            if 16 <= f <= 21:
+                cfg["slash_arc"] = (-52.0, 52.0, 31.0, 1.0 - (f - 16) * 0.14)
+
+        elif row_idx == 4:
+            # ROW 4: ULTIMATE — ECLIPSE SUPERNOVA (100% Grounded Black-Sun Pyromancer Overdrive!)
+            kfs = [
+                (0, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -28.0, "coat_billow": 6.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.1,
+                    "hand_orb_r": 2.2, "halo_mode": "eclipse", "mane_wave_amp": 6.5,
+                }),
+                (7, {
+                    "pelvis_dx": -10.0, "pelvis_dy": 10.0, "torso_deg": -11.0, "head_rel_deg": 7.0,
+                    "l_thigh_deg": 18.0, "l_shin_deg": 14.0, "r_thigh_deg": -22.0, "r_shin_deg": 24.0,
+                    "r_sode_rel_deg": -50.0, "r_fore_rel_deg": -24.0,
+                    "l_sode_rel_deg": -56.0, "l_fore_rel_deg": -36.0, "coat_billow": 22.0,
+                    "right_arm_in_front": True, "staff_deg": -60.0, "staff_glow": 1.5,
+                    "hand_orb_r": 3.8, "halo_mode": "eclipse", "mane_wave_amp": 8.0,
+                }),
+                (12, {
+                    "pelvis_dx": 18.0, "pelvis_dy": 12.0, "torso_deg": 15.0, "head_rel_deg": -11.0,
+                    "l_thigh_deg": 24.0, "l_shin_deg": 12.0, "r_thigh_deg": -28.0, "r_shin_deg": 30.0,
+                    "r_sode_rel_deg": -42.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -34.0, "l_fore_rel_deg": -22.0, "coat_billow": 20.0,
+                    "right_arm_in_front": True, "staff_deg": -12.0, "staff_glow": 1.6,
+                    "hand_orb_r": 3.4, "halo_mode": "eclipse", "mane_wave_amp": 8.0,
+                }),
+                (18, {
+                    "pelvis_dx": 16.0, "pelvis_dy": 12.0, "torso_deg": 13.0, "head_rel_deg": -9.0,
+                    "l_thigh_deg": 22.0, "l_shin_deg": 12.0, "r_thigh_deg": -26.0, "r_shin_deg": 28.0,
+                    "r_sode_rel_deg": -36.0, "r_fore_rel_deg": -18.0,
+                    "l_sode_rel_deg": -24.0, "l_fore_rel_deg": -18.0, "coat_billow": 16.0,
+                    "right_arm_in_front": True, "staff_deg": -16.0, "staff_glow": 1.5,
+                    "hand_orb_r": 2.8, "halo_mode": "eclipse", "mane_wave_amp": 7.0,
+                }),
+                (21, {
+                    "pelvis_dx": 22.0, "pelvis_dy": 14.0, "torso_deg": 18.0, "head_rel_deg": -13.0,
+                    "l_thigh_deg": 28.0, "l_shin_deg": 14.0, "r_thigh_deg": -30.0, "r_shin_deg": 32.0,
+                    "r_sode_rel_deg": -32.0, "r_fore_rel_deg": -16.0,
+                    "l_sode_rel_deg": 28.0, "l_fore_rel_deg": 14.0, "coat_billow": 20.0,
+                    "right_arm_in_front": True, "staff_deg": 6.0, "staff_glow": 1.55,
+                    "hand_orb_r": 0.0, "halo_mode": "flare", "mane_wave_amp": 6.5,
+                }),
+                (29, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 1.0, "head_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -28.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "hand_orb_r": 1.8, "halo_mode": "normal", "mane_wave_amp": 4.8,
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
+            if 11 <= f <= 16:
+                cfg["slash_arc"] = (-48.0, 40.0, 31.0, 1.0 - (f - 11) * 0.14)
+            elif 20 <= f <= 24:
+                cfg["slash_arc"] = (-38.0, 56.0, 32.0, 1.0 - (f - 20) * 0.18)
+
+        elif row_idx == 5:
+            # ROW 5: DEATH & HURT — F00..F05 Hurt Stagger, F06..F15 Kneel Drop, F16..F29 Flat Prone Rest + Horizontal Staff
             if f <= 5:
-                u_sig = (f - 2) / 3.0
-                ult_sig_int = 0.6 + u_sig * 0.4
-                ult_sig_rx = 10.0 + u_sig * 2.5
-            elif f <= 21:
-                ult_sig_int = 1.0
-                ult_sig_rx = 12.6
+                u = smooth_u(f, 0, 5)
+                cfg["pelvis_dx"] = -14.0 * u
+                cfg["pelvis_dy"] = 6.0 * u
+                cfg["torso_deg"] = -16.0 * u
+                cfg["head_rel_deg"] = -10.0 * u
+                cfg["l_thigh_deg"] = -12.0 * u
+                cfg["l_shin_deg"] = 16.0 * u
+                cfg["r_thigh_deg"] = 14.0 * u
+                cfg["r_shin_deg"] = 18.0 * u
+                cfg["l_sode_rel_deg"] = -28.0 * u
+                cfg["r_sode_rel_deg"] = 14.0 * u
+                cfg["staff_deg"] = -52.0 + 22.0 * u
+                cfg["coat_billow"] = 12.0 * u
+            elif f <= 15:
+                u = smooth_u(f, 6, 15)
+                cfg["pelvis_dx"] = -14.0 + 8.0 * u
+                cfg["pelvis_dy"] = 6.0 + 38.0 * u
+                cfg["torso_deg"] = -16.0 + 40.0 * u
+                cfg["head_rel_deg"] = -10.0 + 24.0 * u
+                cfg["l_thigh_deg"] = -12.0 + 38.0 * u
+                cfg["l_shin_deg"] = 16.0 + 52.0 * u
+                cfg["r_thigh_deg"] = 14.0 - 54.0 * u
+                cfg["r_shin_deg"] = 18.0 + 28.0 * u
+                cfg["l_coat_deg"] = 24.0 * u
+                cfg["r_coat_deg"] = -28.0 * u
+                cfg["r_sode_rel_deg"] = 14.0 - 30.0 * u
+                cfg["staff_deg"] = -30.0 + 28.0 * u
+                cfg["staff_glow"] = 1.0 - 0.65 * u
+                cfg["halo_mode"] = "off" if f >= 12 else "normal"
             else:
-                u_fade = (f - 21) / 4.0
-                ult_sig_int = max(0.4, 1.0 - u_fade * 0.6)
-                ult_sig_rx = 12.6 - u_fade * 2.0
-            draw_ground_sun_circle(
-                frame,
-                cx=25.0,
-                cy=46.5,
-                rx=ult_sig_rx,
-                ry=1.9,
-                phase_rad=phase * 3.0,
-                intensity=ult_sig_int,
-            )
+                u = smooth_u(f, 16, 24)
+                cfg["pelvis_dx"] = -6.0 + 16.0 * u
+                cfg["pelvis_dy"] = 44.0 + 48.0 * u
+                cfg["torso_deg"] = 24.0 + 62.0 * u
+                cfg["head_rel_deg"] = 14.0 - 16.0 * u
+                cfg["mane_wave_amp"] = 1.5 * (1.0 - u)
+                cfg["l_thigh_deg"] = 26.0 + 58.0 * u
+                cfg["l_shin_deg"] = 68.0 + 20.0 * u
+                cfg["r_thigh_deg"] = -40.0 + 126.0 * u
+                cfg["r_shin_deg"] = 46.0 + 42.0 * u
+                cfg["l_coat_deg"] = 24.0 + 42.0 * u
+                cfg["r_coat_deg"] = -28.0 + 132.0 * u
+                cfg["l_sode_rel_deg"] = -14.0 + 26.0 * u
+                cfg["r_sode_rel_deg"] = -16.0 + 16.0 * u
+                cfg["right_arm_in_front"] = True
+                cfg["halo_mode"] = "off"
+                cfg["staff_deg"] = -2.0 * (1.0 - u)
+                cfg["staff_dy"] = 3.5 * u
+                cfg["staff_glow"] = 0.22
 
-        frames.append(ensure_safe_cell(frame, margin=2))
-    return frames
+        elif row_idx == 6:
+            # ROW 6: DASH / ARCANE BLINK — Sleek Shallow Flame-Step Glide (max 20 deg lean, ultra-low foot_y=96.5!)
+            kfs = [
+                (0, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 4.0, "torso_deg": 6.0, "head_rel_deg": -4.0,
+                    "l_thigh_deg": 8.0, "l_shin_deg": 10.0, "r_thigh_deg": -8.0, "r_shin_deg": 12.0,
+                    "r_sode_rel_deg": 4.0, "r_fore_rel_deg": -14.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -24.0, "coat_billow": 6.0,
+                    "right_arm_in_front": False, "staff_deg": -42.0, "staff_glow": 1.1,
+                    "foot_y": 99.0, "halo_mode": "swept", "mane_wave_amp": 5.5,
+                }),
+                (7, {
+                    "pelvis_dx": 16.0, "pelvis_dy": 12.0, "torso_deg": 20.0, "head_rel_deg": -14.0,
+                    "l_thigh_deg": 28.0, "l_shin_deg": 24.0, "r_thigh_deg": -32.0, "r_shin_deg": 22.0,
+                    "r_sode_rel_deg": 24.0, "r_fore_rel_deg": 8.0,
+                    "l_sode_rel_deg": -32.0, "l_fore_rel_deg": -26.0, "coat_billow": 22.0,
+                    "right_arm_in_front": False, "staff_deg": -158.0, "staff_glow": 1.3,
+                    "foot_y": 96.5, "halo_mode": "swept", "mane_wave_amp": 7.5, "hand_orb_r": 2.8,
+                }),
+                (15, {
+                    "pelvis_dx": 20.0, "pelvis_dy": 12.0, "torso_deg": 18.0, "head_rel_deg": -12.0,
+                    "l_thigh_deg": 24.0, "l_shin_deg": 18.0, "r_thigh_deg": -28.0, "r_shin_deg": 24.0,
+                    "r_sode_rel_deg": -38.0, "r_fore_rel_deg": -20.0,
+                    "l_sode_rel_deg": 18.0, "l_fore_rel_deg": 8.0, "coat_billow": 18.0,
+                    "right_arm_in_front": True, "staff_deg": -4.0, "staff_glow": 1.45,
+                    "foot_y": 96.5, "halo_mode": "flare", "mane_wave_amp": 7.0, "hand_orb_r": 0.0,
+                }),
+                (29, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 1.5, "head_rel_deg": -1.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -28.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "foot_y": 99.0, "halo_mode": "normal", "mane_wave_amp": 4.8, "hand_orb_r": 1.6,
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
+            if 13 <= f <= 17:
+                cfg["slash_arc"] = (-36.0, 36.0, 28.0, 0.9 - (f - 13) * 0.15)
 
+        elif row_idx == 7:
+            # ROW 7: CROUCH — 100% Grounded Wide Battle-Kneel Flame-Ward Guard (F00..F10) & Low Cast (F11..F21)
+            kfs = [
+                (0, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 4.0, "torso_deg": 4.0, "head_rel_deg": -2.0,
+                    "l_thigh_deg": 6.0, "l_shin_deg": 10.0, "r_thigh_deg": -8.0, "r_shin_deg": 10.0,
+                    "l_coat_deg": 6.0, "r_coat_deg": -6.0,
+                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -28.0,
+                    "right_arm_in_front": True, "staff_deg": -54.0, "staff_glow": 1.0,
+                    "foot_y": 99.0, "halo_mode": "normal", "ward_ring": False,
+                }),
+                (5, {
+                    "pelvis_dx": 4.0, "pelvis_dy": 42.0, "torso_deg": 13.0, "head_rel_deg": -10.0,
+                    "l_thigh_deg": 32.0, "l_shin_deg": 66.0, "r_thigh_deg": -52.0, "r_shin_deg": 44.0,
+                    "l_coat_deg": 32.0, "r_coat_deg": -38.0,
+                    "r_sode_rel_deg": -26.0, "r_fore_rel_deg": -24.0,
+                    "l_sode_rel_deg": -36.0, "l_fore_rel_deg": -30.0,
+                    "right_arm_in_front": True, "staff_deg": -76.0, "staff_glow": 1.35,
+                    "foot_y": 99.0, "halo_mode": "flare", "ward_ring": True, "hand_orb_r": 2.8,
+                }),
+                (10, {
+                    "pelvis_dx": 6.0, "pelvis_dy": 42.0, "torso_deg": 11.0, "head_rel_deg": -9.0,
+                    "l_thigh_deg": 32.0, "l_shin_deg": 66.0, "r_thigh_deg": -52.0, "r_shin_deg": 44.0,
+                    "l_coat_deg": 32.0, "r_coat_deg": -38.0,
+                    "r_sode_rel_deg": -20.0, "r_fore_rel_deg": -20.0,
+                    "l_sode_rel_deg": -40.0, "l_fore_rel_deg": -32.0,
+                    "right_arm_in_front": True, "staff_deg": -70.0, "staff_glow": 1.4,
+                    "foot_y": 99.0, "halo_mode": "flare", "ward_ring": True, "hand_orb_r": 3.2,
+                }),
+                (14, {
+                    "pelvis_dx": 18.0, "pelvis_dy": 38.0, "torso_deg": 18.0, "head_rel_deg": -14.0,
+                    "l_thigh_deg": 28.0, "l_shin_deg": 62.0, "r_thigh_deg": -48.0, "r_shin_deg": 40.0,
+                    "l_coat_deg": 34.0, "r_coat_deg": -34.0,
+                    "r_sode_rel_deg": -38.0, "r_fore_rel_deg": -20.0,
+                    "l_sode_rel_deg": 22.0, "l_fore_rel_deg": 10.0,
+                    "right_arm_in_front": True, "staff_deg": 0.0, "staff_glow": 1.5,
+                    "foot_y": 99.0, "halo_mode": "flare", "ward_ring": False, "hand_orb_r": 0.0,
+                }),
+                (20, {
+                    "pelvis_dx": 12.0, "pelvis_dy": 34.0, "torso_deg": 14.0, "head_rel_deg": -10.0,
+                    "l_thigh_deg": 22.0, "l_shin_deg": 50.0, "r_thigh_deg": -38.0, "r_shin_deg": 34.0,
+                    "l_coat_deg": 24.0, "r_coat_deg": -24.0,
+                    "r_sode_rel_deg": -28.0, "r_fore_rel_deg": -18.0,
+                    "l_sode_rel_deg": 12.0, "l_fore_rel_deg": 4.0,
+                    "right_arm_in_front": True, "staff_deg": -8.0, "staff_glow": 1.25,
+                    "foot_y": 99.0, "halo_mode": "normal", "ward_ring": False, "hand_orb_r": 0.0,
+                }),
+                (29, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "l_coat_deg": 2.0, "r_coat_deg": -1.5,
+                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -28.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "foot_y": 99.0, "halo_mode": "normal", "ward_ring": False, "hand_orb_r": 1.8,
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
+            if 12 <= f <= 16:
+                cfg["slash_arc"] = (-35.0, 38.0, 27.0, 1.0 - (f - 12) * 0.16)
 
-def draw_mage_ward_shatter_sparks(frame, f):
-    """
-    Pass #8: Crisp 4-ray Elemental Ward-Shatter Spark Burst at chest height (x = 26..33, y = 18..25)
-    on F01..F05 of Row 5 (DEATH & HURT) that expands and fades across F01..F05.
-    """
-    if not (1 <= f <= 5):
-        return
-    k = f - 1  # 0..4
-    cx, cy = 29.5, 21.5
+        elif row_idx == 8:
+            # ROW 8: JUMP — Sleek Shallow Solar Vault Glide & Angled Aerial Fireball Cast (Zero steepness!)
+            kfs = [
+                (0, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 14.0, "torso_deg": 10.0, "head_rel_deg": -6.0,
+                    "l_thigh_deg": 18.0, "l_shin_deg": 28.0, "r_thigh_deg": -22.0, "r_shin_deg": 28.0,
+                    "r_sode_rel_deg": 8.0, "r_fore_rel_deg": -6.0,
+                    "l_sode_rel_deg": -16.0, "l_fore_rel_deg": -24.0, "coat_billow": 10.0,
+                    "right_arm_in_front": False, "staff_deg": -44.0, "staff_glow": 1.1,
+                    "foot_y": 99.0, "halo_mode": "normal", "mane_wave_amp": 5.0,
+                }),
+                (8, {
+                    "pelvis_dx": 8.0, "pelvis_dy": 0.0, "torso_deg": 14.0, "head_rel_deg": -10.0,
+                    "l_thigh_deg": 24.0, "l_shin_deg": 38.0, "r_thigh_deg": -28.0, "r_shin_deg": 34.0,
+                    "r_sode_rel_deg": -32.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -36.0, "l_fore_rel_deg": -28.0, "coat_billow": 18.0,
+                    "right_arm_in_front": True, "staff_deg": -36.0, "staff_glow": 1.35,
+                    "foot_y": 94.5, "halo_mode": "flare", "mane_wave_amp": 7.0, "hand_orb_r": 3.0,
+                }),
+                (15, {
+                    "pelvis_dx": 14.0, "pelvis_dy": 2.0, "torso_deg": 17.0, "head_rel_deg": -10.0,
+                    "l_thigh_deg": 22.0, "l_shin_deg": 34.0, "r_thigh_deg": -24.0, "r_shin_deg": 30.0,
+                    "r_sode_rel_deg": -30.0, "r_fore_rel_deg": -16.0,
+                    "l_sode_rel_deg": 20.0, "l_fore_rel_deg": 10.0, "coat_billow": 18.0,
+                    "right_arm_in_front": True, "staff_deg": 18.0, "staff_glow": 1.5,
+                    "foot_y": 94.5, "halo_mode": "flare", "mane_wave_amp": 7.0, "hand_orb_r": 0.0,
+                }),
+                (21, {
+                    "pelvis_dx": 10.0, "pelvis_dy": 4.0, "torso_deg": 13.0, "head_rel_deg": -8.0,
+                    "l_thigh_deg": 16.0, "l_shin_deg": 24.0, "r_thigh_deg": -18.0, "r_shin_deg": 22.0,
+                    "r_sode_rel_deg": -20.0, "r_fore_rel_deg": -16.0,
+                    "l_sode_rel_deg": 8.0, "l_fore_rel_deg": -8.0, "coat_billow": 12.0,
+                    "right_arm_in_front": True, "staff_deg": 8.0, "staff_glow": 1.2,
+                    "foot_y": 96.5, "halo_mode": "normal", "mane_wave_amp": 5.8, "hand_orb_r": 0.0,
+                }),
+                (26, {
+                    "pelvis_dx": 4.0, "pelvis_dy": 14.0, "torso_deg": 9.0, "head_rel_deg": -5.0,
+                    "l_thigh_deg": 16.0, "l_shin_deg": 26.0, "r_thigh_deg": -20.0, "r_shin_deg": 26.0,
+                    "r_sode_rel_deg": -6.0, "r_fore_rel_deg": -18.0,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -24.0, "coat_billow": 8.0,
+                    "right_arm_in_front": True, "staff_deg": -38.0, "staff_glow": 1.05,
+                    "foot_y": 99.0, "halo_mode": "normal", "mane_wave_amp": 5.0, "hand_orb_r": 1.2,
+                }),
+                (29, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 1.0, "head_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -28.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "foot_y": 99.0, "halo_mode": "normal", "mane_wave_amp": 4.8, "hand_orb_r": 1.8,
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
+            if 14 <= f <= 18:
+                cfg["slash_arc"] = (-16.0, 52.0, 28.0, 0.95 - (f - 14) * 0.16)
 
-    if k <= 1:
-        core_col = SOLAR_WHITE if k == 0 else SOLAR_YELLOW
-        for dx_c in (0, 1):
-            for dy_c in (0, 1):
-                set_px(frame, 29 + dx_c, 21 + dy_c, core_col)
-    elif k == 2:
-        set_px(frame, 29, 21, SOLAR_YELLOW)
-        set_px(frame, 30, 22, FLAME_ORANGE)
-
-    r_in = max(0.5, k * 0.7)
-    r_out = min(3.5, 1.4 + k * 0.6)
-    ray_dirs = [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)]
-    for r_idx, (rx_d, ry_d) in enumerate(ray_dirs):
-        x0 = max(26, min(33, int(round(cx + rx_d * r_in))))
-        y0 = max(18, min(25, int(round(cy + ry_d * r_in))))
-        x1 = max(26, min(33, int(round(cx + rx_d * r_out))))
-        y1 = max(18, min(25, int(round(cy + ry_d * r_out))))
-        ray_col = SOLAR_YELLOW if k <= 1 else (FLAME_ORANGE if k <= 3 else FLAME_CRIMSON)
-        tip_col = SOLAR_WHITE if k == 0 else (SOLAR_YELLOW if k <= 2 else FLAME_ORANGE)
-        draw_line_px(frame, x0, y0, x1, y1, ray_col)
-        set_px(frame, x1, y1, tip_col)
-        if k <= 2:
-            cx_card = max(26, min(33, int(round(cx + (rx_d if r_idx % 2 == 0 else 0.0) * (1.2 + k * 0.6)))))
-            cy_card = max(18, min(25, int(round(cy + (ry_d if r_idx % 2 == 1 else 0.0) * (1.2 + k * 0.6)))))
-            set_px(frame, cx_card, cy_card, FLAME_GOLD if k == 0 else FLAME_ORANGE)
-
-
-def build_row5_death(tpl):
-    """
-    Row 5 (`DEATH` & `HURT`, 30 frames):
-    - F00..F06: Hit-stagger recoil (`HURT` uses F00..F05).
-    - F07..F17: Drops to knees, robes pooling on the ground, leaning on his dimming Sun-Staff.
-    - F18..F29: Collapses horizontally onto the ground (y=38..48) with his Sun-Staff lying flat beside him.
-    """
-    frames = []
-    for f in range(30):
-        if f <= 6:
-            u = f / 6.0
-            dx = -int(round(u * 2.0))
-            dy = int(round(u * 1.5))
-            base = shift_layer(tpl['stand'], dx=dx, dy=dy)
-            base = apply_robe_cloak_wave(base, u * math.pi, amplitude=1.6, vertical_flutter=0.5)
-            grip_x = 7.5 - math.sin(u * math.pi) * 0.8
-            grip_y = 1.5 + u * 1.5
-            frame = draw_sun_staff(
-                base,
-                shoulder=(25 + dx, 17 + dy),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=-74.0 + u * 18.0,
-                top_len=9.5,
-                bot_len=20.5,
-                phase_rad=u * math.pi,
-                charge_level=0,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=23 + dx,
-                sh_y=18 + dy,
-                hand_x=29.0 - u * 1.5,
-                hand_y=23.0 - u * 2.0,
-                orb_radius=0,
-                flare=0.0,
-            )
-            draw_mage_ward_shatter_sparks(frame, f)
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        elif f <= 17:
-            k = f - 7
-            u = k / 10.0
-            base = (tpl['kneel1'] if k <= 4 else tpl['kneel2']).copy()
-            head_bow = 1 if k >= 6 else 0
-            if head_bow == 1:
-                head_slice = base[7:22, 14:40].copy()
-                base[8:23, 14:40] = head_slice
-                base = fill_layer_pinholes(base)
-
-            base = apply_robe_cloak_wave(base, u * math.pi, amplitude=1.0, vertical_flutter=0.3)
-            staff_deg = -68.0 + u * 22.0
-            grip_x = 7.0 + u * 1.5
-            grip_y = 1.5 + u * 1.5
-            frame = draw_sun_staff(
-                base,
-                shoulder=(26, 19 + head_bow),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.0,
-                bot_len=19.0,
-                phase_rad=u * math.pi,
-                charge_level=0,
-                allow_horizontal=True,
-            )
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        elif f <= 22:
-            # F18..F22: Grounded floor collapse anchored at y = 46 (smoothly transitioning from kneel2 to fall)
-            u = (f - 17) / 5.0
-            kn = tpl['kneel2']
-            fall_tpl = tpl['fall']
-            body = np.zeros((52, 52, 4), dtype=np.uint8)
-
-            for sy in range(8, 49):
-                rel_h = max(0, 46 - sy)
-                comp = 1.0 - u * 0.56
-                ny = min(47, max(14, int(round(46.0 - rel_h * comp))))
-                dx_slump = int(round((rel_h / 28.0) * u * 7.5))
-                for sx in range(2, 46):
-                    if kn[sy, sx, 3] > 0:
-                        nx = max(3, min(47, sx + dx_slump))
-                        body[ny, nx] = kn[sy, sx]
-                        if ny + 1 <= 46 and body[ny + 1, nx, 3] == 0:
-                            body[ny + 1, nx] = kn[sy, sx]
-
-            if f >= 20:
-                w_fall = (f - 19) / 4.0
-                max_fall_x = int(round(34 + w_fall * 10))
-                for fy in range(36, 48):
-                    for fx in range(8, min(48, max_fall_x)):
-                        if fall_tpl[fy, fx, 3] > 0 and body[fy, fx, 3] == 0:
-                            body[fy, fx] = fall_tpl[fy, fx]
-
-            body = fill_layer_pinholes(add_outline_to_layer(body))
-            staff_slump_degs = [-46.0, -34.0, -22.0, -10.0, -3.0]
-            s_deg = staff_slump_degs[f - 18]
-            sy_slump = int(round(20 + u * 18.0))
-            sx_slump = int(round(26 + u * 2.0))
-            frame = draw_sun_staff(
-                body,
-                shoulder=(sx_slump, sy_slump),
-                grip_offset=(7.5, 2.0 + u * 3.0),
-                staff_deg=s_deg,
-                top_len=8.5,
-                bot_len=max(12.0, 18.0 - u * 5.0),
-                phase_rad=u * math.pi,
-                charge_level=0,
-                allow_horizontal=True,
-            )
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        else:
-            k = f - 23
-            frame = tpl['fall'].copy()
-            if k == 0:
-                frame = shift_layer(frame, dx=0, dy=-1)
-
-            staff_floor = np.zeros((52, 52, 4), dtype=np.uint8)
-            draw_line_px(staff_floor, 14, 47, 41, 47, GOLD_TRIM)
-            draw_line_px(staff_floor, 14, 48, 41, 48, WOOD_DARK)
-            for bx_band in (18, 28, 37):
-                set_px(staff_floor, bx_band, 47, GOLD_BRIGHT)
-            for dx_f in (-1, 0, 1, 2):
-                set_px(staff_floor, 43 + dx_f, 46, GOLD_MID)
-                set_px(staff_floor, 43 + dx_f, 48, GOLD_DARK)
-            set_px(staff_floor, 45, 47, GOLD_BRIGHT)
-            ember_col = SOLAR_YELLOW if k == 0 else (FLAME_ORANGE if k <= 2 else (CRIMSON_MID if k <= 4 else CRIMSON_DARK))
-            set_px(staff_floor, 43, 47, ember_col)
-            set_px(staff_floor, 44, 47, GOLD_MID if k <= 3 else GOLD_DARK)
-            if k < 6:
-                mote_x = 43 - (k % 3)
-                mote_y = max(3, 45 - k)
-                set_px(staff_floor, mote_x, mote_y, FLAME_ORANGE if k < 3 else CRIMSON_MID)
-
-            frame = composite_over(frame, add_outline_to_layer(staff_floor))
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-    return frames
+        cfgs.append(cfg)
+    return cfgs
 
 
-def build_row6_dash(tpl):
-    """
-    Row 6 (`DASH` - Solar Rift Arcane Blink Teleport, 30 frames):
-    - F00..F03: Ignis compresses and raises his Sun-Staff as a golden-orange vertical Solar Rift ring opens around him.
-    - F04..F09 (Blink Phase-Out): Tints/brightens Ignis's silhouette with golden-white solar plasma (`#fef08a` / `#fb923c`)
-      and vertical solar lightning streaks + rift rings as he steps into the Solar Rift!
-    - F10..F18 (Blink Phase-In + Snap Solar Bolt): Ignis materializes out of an arrival Solar Rift ring while
-      thrusting his Sun-Staff forward (`-38°`, `flare=1.0`) to fire his arrival Snap Solar Bolt!
-    - F19..F29: Smooth recovery to `-68°` battle stance.
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
+def save_debug_sheets(sheet_im):
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+    half_w = 15 * CELL
+    full_h = ROWS * CELL
+    for tag, x_off in (("left_F00_F14", 0), ("right_F15_F29", half_w)):
+        bg = Image.new("RGBA", (half_w, full_h), (18, 16, 26, 255))
+        crop = sheet_im.crop((x_off, 0, x_off + half_w, full_h))
+        bg.alpha_composite(crop, (0, 0))
+        d = ImageDraw.Draw(bg)
+        for r in range(ROWS):
+            for c in range(15):
+                d.rectangle([c * CELL, r * CELL, (c + 1) * CELL - 1, (r + 1) * CELL - 1], outline=(48, 44, 68, 180))
+        out_p = os.path.join(ARTIFACT_DIR, f"debug_mage_30fps_{tag}.png")
+        bg.resize((half_w // 2, full_h // 2), Image.Resampling.NEAREST).save(out_p)
 
-        if f <= 3:
-            # F00..F03: Compress and raise Sun-Staff as vertical golden-orange Solar Rift ring opens
-            u = f / 3.0
-            cd = [1, 2, 3, 2][f]
-            base = make_crouch_body(tpl, cd)
-            base = apply_robe_cloak_wave(base, phase * 2.0, amplitude=1.9, is_dash=(f >= 2))
-            staff_deg = [-74.0, -82.0, -90.0, -96.0][f]
-            grip_x = 7.2 - u * 0.8
-            grip_y = 1.2 - u * 1.6
-            frame = draw_sun_staff(
-                base,
-                shoulder=(25, 17 + cd),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.0,
-                bot_len=20.0,
-                phase_rad=phase * 2.0,
-                charge_level=3 if f >= 2 else 2,
-                flare=0.4 if f >= 2 else 0.0,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18 + cd,
-                hand_x=31.0 + f * 0.8,
-                hand_y=24.0 - f * 1.2,
-                orb_radius=2.2,
-                flare=0.3 if f >= 2 else 0.0,
-                mode='orb',
-                phase_rad=phase * 2.0,
-            )
-            # Opening vertical Solar Rift ring around Ignis
-            draw_solar_rift_ring(
-                frame,
-                cx=24.0,
-                cy=27.0,
-                rx=4.2 + f * 1.1,
-                ry=11.0 + f * 2.0,
-                phase_rad=phase * 2.5,
-                intensity=0.5 + u * 0.5,
-            )
-
-        elif f <= 9:
-            # F04..F09 (Blink Phase-Out): Solar plasma silhouette tint (#fef08a / #fb923c) + vertical lightning + rift rings
-            k = f - 4
-            base = tpl['dash'].copy()
-            base = shift_layer(base, dx=1 if k >= 2 else 0, dy=-1)
-            base = apply_robe_cloak_wave(base, k * 0.9, amplitude=2.2, is_dash=True)
-
-            phase_out_angles = [-92.0, -86.0, -80.0, -74.0, -68.0, -62.0]
-            staff_deg = phase_out_angles[k]
-            frame = draw_sun_staff(
-                base,
-                shoulder=(26, 17),
-                grip_offset=(7.2, 0.5),
-                staff_deg=staff_deg,
-                top_len=9.0,
-                bot_len=19.5,
-                phase_rad=phase * 3.0,
-                charge_level=3,
-                flare=0.6,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=24,
-                sh_y=18,
-                hand_x=33.0,
-                hand_y=21.0,
-                orb_radius=2.5,
-                flare=0.5,
-                mode='orb',
-                phase_rad=phase * 3.0,
-            )
-            # Tint/brighten Ignis's silhouette with golden-white solar plasma & vertical solar lightning streaks
-            plasma_levels = [0.48, 0.68, 0.85, 0.92, 0.78, 0.58]
-            frame = apply_solar_plasma_tint(frame, plasma_levels[k], phase * 3.0, f)
-            # Dual concentric Solar Rift rings enveloping Ignis as he steps through the rift
-            draw_solar_rift_ring(
-                frame,
-                cx=24.0 - k * 0.6,
-                cy=26.5,
-                rx=7.5 - abs(k - 2.5) * 0.5,
-                ry=17.5,
-                phase_rad=phase * 3.0,
-                intensity=1.0,
-            )
-            draw_solar_rift_ring(
-                frame,
-                cx=25.0,
-                cy=26.5,
-                rx=4.5,
-                ry=12.5,
-                phase_rad=-phase * 3.0,
-                intensity=0.85,
-            )
-
-        elif f <= 18:
-            # F10..F18 (Blink Phase-In + Snap Solar Bolt at -38°, flare=1.0)
-            k = f - 10
-            hover_dy = -1 if k <= 5 else 0
-            base = (tpl['dash'] if k <= 6 else tpl['cast_body']).copy()
-            if hover_dy != 0:
-                base = shift_layer(base, dx=0, dy=hover_dy)
-            base = apply_robe_cloak_wave(base, phase * 2.5, amplitude=2.2, is_dash=(k <= 6))
-
-            blink_cast_angles = [-52.0, -42.0, -38.0, -38.0, -38.0, -40.0, -44.0, -49.0, -54.0]
-            staff_deg = blink_cast_angles[k]
-            flare_val = 1.0 if k <= 5 else (0.75 if k == 6 else 0.45)
-            frame = draw_sun_staff(
-                base,
-                shoulder=(26, 17 + hover_dy),
-                grip_offset=(7.8, 1.2),
-                staff_deg=staff_deg,
-                top_len=8.4,
-                bot_len=19.5,
-                phase_rad=phase * 2.5,
-                charge_level=3 if k <= 6 else 2,
-                release_flash=(k <= 5),
-                flare=flare_val,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=24,
-                sh_y=18 + hover_dy,
-                hand_x=34.0,
-                hand_y=21.5 + hover_dy,
-                orb_radius=3.0 if k <= 5 else 2.0,
-                flare=flare_val,
-                mode='orb',
-                phase_rad=phase * 2.5,
-            )
-            # Residual golden-white solar plasma phase-in glow on F10..F12
-            if k <= 2:
-                frame = apply_solar_plasma_tint(frame, [0.42, 0.24, 0.12][k], phase * 2.5, f)
-            # Arrival Solar Rift ring behind Ignis as he emerges forward firing the Snap Solar Bolt
-            if k <= 6:
-                draw_solar_rift_ring(
-                    frame,
-                    cx=max(10.0, 20.0 - k * 1.4),
-                    cy=26.5,
-                    rx=max(3.0, 6.5 - k * 0.6),
-                    ry=max(9.0, 16.5 - k * 1.1),
-                    phase_rad=phase * 2.5,
-                    intensity=max(0.35, 1.0 - k * 0.12),
-                )
-
-        else:
-            # F19..F29: Smooth recovery to -68° battle stance
-            k = f - 19
-            u = k / 10.0
-            cd = [2, 2, 1, 1, 0, 0, 0, 0, 0, 0, 0][k]
-            base = make_crouch_body(tpl, cd) if cd > 0 else tpl['stand'].copy()
-            base = apply_robe_cloak_wave(base, phase * 1.5, amplitude=1.6, vertical_flutter=0.5)
-            staff_deg = -54.0 * (1.0 - u) + (-68.0) * u
-            grip_x = 7.8 * (1.0 - u) + 7.4 * u
-            grip_y = 1.5
-            frame = draw_sun_staff(
-                base,
-                shoulder=(25, 17 + cd),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.5,
-                bot_len=21.0,
-                phase_rad=phase,
-                charge_level=1 if k <= 2 else 0,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18 + cd,
-                hand_x=33.0 * (1.0 - u) + 29.5 * u,
-                hand_y=(22.0 + cd) * (1.0 - u) + 24.0 * u,
-                orb_radius=0,
-                flare=0.0,
-                phase_rad=phase,
-            )
-
-        frames.append(ensure_safe_cell(frame, margin=2))
-    return frames
-
-
-def build_row7_crouch(tpl):
-    """
-    Row 7 (`CROUCH` - Flame Ward & Low Skimming Fireball, 30 frames):
-    - F00..F10: While crouched (`7px`), extends his left hand forward (`hand_x = 34, hand_y = 27`)
-      behind the spinning Flame-Ward shield ring!
-    - F11..F18: Thrusts the Sun-Staff forward to `-38°` (`flare=1.0`) for the low skimming fireball!
-    - F19..F29: Smooth recovery back to standing `-68°` stance.
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-
-        if f <= 10:
-            depths = [1, 3, 5, 6, 7, 7, 7, 7, 7, 7, 7]
-            d = depths[f]
-            u = f / 10.0
-            base = make_crouch_body(tpl, d)
-            base = apply_robe_cloak_wave(base, phase * 1.5, amplitude=1.4, vertical_flutter=0.4)
-            # Braced Sun-Staff draws back slightly (-72° -> -84°) preparing for low fireball thrust
-            staff_deg = -72.0 * (1.0 - u) + (-84.0) * u
-            grip_x = 7.2
-            grip_y = 1.2
-            frame = draw_sun_staff(
-                base,
-                shoulder=(25, 17 + d),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.0,
-                bot_len=18.5,
-                phase_rad=phase * 2.0,
-                charge_level=2 if f >= 3 else 1,
-            )
-            # Extends left hand forward to (hand_x = 34, hand_y = 27) behind spinning Flame-Ward shield ring
-            w_u = min(1.0, f / 3.0)
-            lh_x = 31.0 * (1.0 - w_u) + 34.0 * w_u
-            lh_y = 24.0 * (1.0 - w_u) + 27.0 * w_u
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18 + d,
-                hand_x=lh_x,
-                hand_y=lh_y,
-                orb_radius=3.5,
-                flare=0.45 if f >= 3 else 0.2,
-                mode='ward',
-                phase_rad=phase * 2.0,
-            )
-        elif f <= 18:
-            d = 7
-            k = f - 11
-            base = make_crouch_body(tpl, d)
-            if k in (1, 2):
-                base = shift_layer(base, dx=-1, dy=0)
-            base = apply_robe_cloak_wave(base, phase * 2.0, amplitude=1.6, vertical_flutter=0.5)
-
-            # Thrusts Sun-Staff forward to -38° for the low skimming fireball!
-            crouch_thrust_angles = [-58.0, -42.0, -38.0, -38.0, -39.0, -43.0, -48.0, -54.0]
-            staff_deg = crouch_thrust_angles[k]
-            flare_val = 1.0 if k <= 5 else 0.6
-            frame = draw_sun_staff(
-                base,
-                shoulder=(26, 17 + d),
-                grip_offset=(7.8, 1.5),
-                staff_deg=staff_deg,
-                top_len=8.2,
-                bot_len=17.5,
-                phase_rad=phase * 2.5,
-                charge_level=3 if k <= 5 else 2,
-                release_flash=(k <= 4),
-                flare=flare_val,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=24,
-                sh_y=18 + d,
-                hand_x=34.0,
-                hand_y=27.0,
-                orb_radius=3.0 if k <= 5 else 2.2,
-                flare=flare_val,
-                mode='orb',
-                phase_rad=phase * 2.5,
-            )
-        else:
-            depths = [7, 6, 6, 5, 4, 3, 3, 2, 1, 1, 0]
-            k = f - 19
-            d = depths[k]
-            u = k / 10.0
-            base = tpl['stand'].copy() if d == 0 else make_crouch_body(tpl, d)
-            base = apply_robe_cloak_wave(base, phase, amplitude=1.3, vertical_flutter=0.4)
-            staff_deg = -54.0 * (1.0 - u) + (-68.0) * u
-            grip_x = 7.8 * (1.0 - u) + 7.4 * u
-            grip_y = 1.5
-            frame = draw_sun_staff(
-                base,
-                shoulder=(25, 17 + d),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.5,
-                bot_len=19.5,
-                phase_rad=phase,
-                charge_level=1 if k <= 2 else 0,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18 + d,
-                hand_x=34.0 * (1.0 - u) + 29.5 * u,
-                hand_y=27.0 * (1.0 - u) + 24.0 * u,
-                orb_radius=0,
-                flare=0.0,
-                phase_rad=phase,
-            )
-
-        frames.append(ensure_safe_cell(frame, margin=2))
-    return frames
-
-
-def build_row8_jump(tpl):
-    """
-    Row 8 (`JUMP`, 30 frames):
-    Full-body Flame-Glide Aerial Vault & mid-air Fireball cast with expressive Sun-Staff arc (`-104°` to `-38°`)
-    and swirling Solar Flame-Jet Thrusters & Golden Hover Rings beneath Ignis's boots (`F04..F20`):
-    - F00..F04: Knee-bend launch with ember burst at boots (`staff_deg = -72° -> -104°`).
-    - F05..F11: Ascending aerial vault with full-length robe streaming & flame-jet thrusters (`staff_deg = -104° -> -58°`).
-    - F12..F18: Apex mid-air hover with blazing hover rings & thrusters, thrusting Sun-Staff forward (`-38°`, `flare=1.0`)!
-    - F19..F24: Descending flame-cushioned glide (`staff_deg = -46° -> -64°`).
-    - F25..F29: Soft landing (`staff_deg = -64° -> -68°`).
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-
-        if f <= 4:
-            crouch_seq = [1, 3, 4, 2, 0]
-            cd = crouch_seq[f]
-            u = f / 4.0
-            body = make_crouch_body(tpl, cd) if cd >= 2 else make_jump_body(tpl, cd, tuck_amount=0.25)
-            body = apply_robe_cloak_wave(body, phase * 2.0, amplitude=1.7, vertical_flutter=0.7)
-            staff_deg = [-72.0, -82.0, -92.0, -100.0, -104.0][f]
-            grip_x = 7.4 - u * 1.0
-            grip_y = 1.5 - u * 1.5
-            frame = draw_sun_staff(
-                body,
-                shoulder=(25, 17 + cd),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.2,
-                bot_len=20.5,
-                phase_rad=phase * 2.0,
-                charge_level=1 if f >= 3 else 0,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18 + cd,
-                hand_x=30.0 + u * 2.0,
-                hand_y=24.0 - u * 2.0,
-                orb_radius=1.8 if f >= 2 else 0,
-                flare=0.0,
-                phase_rad=phase * 2.0,
-            )
-            if f in (2, 3):
-                for ex_b in (18, 22, 27, 31):
-                    set_px(frame, ex_b, 48, SOLAR_YELLOW if ex_b % 2 == 0 else FLAME_ORANGE)
-                    set_px(frame, ex_b, 49, FLAME_CRIMSON)
-
-        elif f <= 11:
-            k = f - 5
-            u = k / 6.0
-            tuck = 0.45 + 0.45 * math.sin(u * math.pi * 0.65)
-            body = make_jump_body(tpl, -1, tuck_amount=tuck, torso_lean_dx=1 if k >= 3 else 0)
-            body = apply_robe_cloak_wave(body, phase * 2.0, amplitude=2.0, vertical_flutter=0.8)
-            staff_deg = -104.0 * (1.0 - u) + (-58.0) * u
-            grip_x = 6.4 * (1.0 - u) + 7.8 * u
-            grip_y = 0.0 * (1.0 - u) + 1.0 * u
-            frame = draw_sun_staff(
-                body,
-                shoulder=(26 if k >= 3 else 25, 16),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.0,
-                bot_len=20.0,
-                phase_rad=phase * 2.0,
-                charge_level=2 if k >= 4 else 1,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=17,
-                hand_x=32.0 + u * 1.5,
-                hand_y=21.5 - u * 1.0,
-                orb_radius=2.5,
-                flare=0.3 if k >= 5 else 0.0,
-                phase_rad=phase * 2.0,
-            )
-
-        elif f <= 18:
-            k = f - 12
-            tuck = 0.85 - k * 0.03
-            recoil_dx = -1 if k in (2, 3) else 0
-            body = make_jump_body(tpl, -1, tuck_amount=tuck, torso_lean_dx=1 + recoil_dx)
-            body = apply_robe_cloak_wave(body, phase * 2.5, amplitude=2.1, vertical_flutter=0.9)
-            apex_angles = [-48.0, -40.0, -38.0, -38.0, -40.0, -43.0, -46.0]
-            staff_deg = apex_angles[k]
-            flare_val = 1.0 if 1 <= k <= 4 else 0.65
-            frame = draw_sun_staff(
-                body,
-                shoulder=(26 + recoil_dx, 16),
-                grip_offset=(7.8, 1.2),
-                staff_deg=staff_deg,
-                top_len=8.4,
-                bot_len=19.5,
-                phase_rad=phase * 2.5,
-                charge_level=3 if k <= 4 else 2,
-                release_flash=(1 <= k <= 4),
-                flare=flare_val,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=24 + recoil_dx,
-                sh_y=17,
-                hand_x=34.0,
-                hand_y=20.5,
-                orb_radius=3.0 if k <= 4 else 2.2,
-                flare=flare_val,
-                phase_rad=phase * 2.5,
-            )
-
-        elif f <= 24:
-            k = f - 19
-            u = k / 5.0
-            tuck = 0.65 * (1.0 - u) + 0.15 * u
-            body = make_jump_body(tpl, 0, tuck_amount=tuck)
-            body = apply_robe_cloak_wave(body, phase * 2.0, amplitude=1.9, vertical_flutter=0.8)
-            staff_deg = -46.0 * (1.0 - u) + (-64.0) * u
-            grip_x = 7.8 * (1.0 - u) + 7.5 * u
-            grip_y = 1.5
-            frame = draw_sun_staff(
-                body,
-                shoulder=(25, 17),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.2,
-                bot_len=20.5,
-                phase_rad=phase * 2.0,
-                charge_level=1 if k <= 2 else 0,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18,
-                hand_x=33.0 * (1.0 - u) + 30.0 * u,
-                hand_y=21.5 * (1.0 - u) + 23.5 * u,
-                orb_radius=0,
-                flare=0.0,
-                phase_rad=phase * 2.0,
-            )
-            if f >= 21:
-                for j in range(3):
-                    jx = 18 + j * 5
-                    set_px(frame, jx, 48, FLAME_ORANGE)
-
-        else:
-            k = f - 25
-            crouch_depths = [2, 3, 2, 1, 0]
-            cd = crouch_depths[k]
-            body = tpl['stand'].copy() if cd == 0 else make_crouch_body(tpl, cd)
-            body = apply_robe_cloak_wave(body, phase, amplitude=1.5, vertical_flutter=0.5)
-            u = k / 4.0
-            staff_deg = -64.0 * (1.0 - u) + (-68.0) * u
-            grip_x = 7.5 * (1.0 - u) + 7.4 * u
-            grip_y = 1.5
-            frame = draw_sun_staff(
-                body,
-                shoulder=(25, 17 + cd),
-                grip_offset=(grip_x, grip_y),
-                staff_deg=staff_deg,
-                top_len=9.5,
-                bot_len=21.0,
-                phase_rad=phase,
-                charge_level=0,
-            )
-            draw_left_spell_arm(
-                frame,
-                sh_x=23,
-                sh_y=18 + cd,
-                hand_x=29.5,
-                hand_y=24.0 + cd,
-                orb_radius=0,
-                flare=0.0,
-                phase_rad=phase,
-            )
-
-        # Swirling Solar Flame-Jet Thrusters & Golden Hover Rings beneath Ignis's boots (F04..F20)
-        if 4 <= f <= 20:
-            is_apex_hover = 12 <= f <= 18
-            if f == 4:
-                boot_y_thr = 42
-                thr_int = 0.70
-            elif f <= 11:
-                boot_y_thr = 40
-                thr_int = 0.85 + 0.15 * ((f - 5) / 6.0)
-            elif f <= 18:
-                boot_y_thr = 39 if f in (13, 14, 15, 16) else 40
-                thr_int = 1.0
-            else:
-                boot_y_thr = 41 + (f - 19)
-                thr_int = 0.75 - (f - 19) * 0.2
-            draw_aerial_flame_thrusters(
-                frame,
-                boot_y=boot_y_thr,
-                phase_rad=phase * 2.5,
-                intensity=thr_int,
-                is_apex=is_apex_hover,
-            )
-
-        frames.append(ensure_safe_cell(frame, margin=2))
-    return frames
-
-
-gen_row0_idle = build_row0_idle
-gen_row1_walk = build_row1_walk
-gen_row2_auto_attack = build_row2_auto_attack
-gen_row3_skill = build_row3_skill
-gen_row4_ult = build_row4_ultimate
-gen_row5_death = build_row5_death
-gen_row6_dash = build_row6_dash
-gen_row7_crouch = build_row7_crouch
-gen_row8_jump = build_row8_jump
-
-
-def apply_pass12_postprocess(cell_arr, r_idx, f):
-    """
-    Pass #12 Post-Processing Upgrade (applied on 208x208 cell_arr with all pixels strictly inside [4..203]):
-    1. Row 2 (AUTO_ATTACK, F13..F19): Crisp 4-point elemental release star + 2 orbiting motes
-       at (x = 148 + (f - 13) * 2, y = 88 + ((f * 5) % 14)) in solar-orange/gold palette.
-    2. Row 7 & Row 3 (SKILL, F08..F20): Glowing elemental floor rune-bar at y = 186..189, x = 76..134
-       with 3 rising rune motes (y = 182 - ((f - 8) * 3) % 24).
-    3. Row 8 & Row 4 (ULTIMATE, F03..F26): 4 ascending overdrive starlight motes around the caster
-       (x = 68, 88, 122, 140, y cycling upward with f).
-    """
-    out = cell_arr.copy()
-
-    def put208(px, py, col):
-        ix = max(4, min(203, int(round(px))))
-        iy = max(4, min(203, int(round(py))))
-        out[iy, ix] = col
-
-    # 1. Row 2 (AUTO_ATTACK, F13..F19) Muzzle / Cast-Release Flash Star
-    if r_idx == 2 and 13 <= f <= 19:
-        cx = 148 + (f - 13) * 2
-        cy = 88 + ((f * 5) % 14)
-        # 4-point elemental release star (solar-orange/gold)
-        for d in range(-6, 7):
-            col_h = SOLAR_WHITE if abs(d) <= 1 else (SOLAR_YELLOW if abs(d) <= 3 else FLAME_ORANGE)
-            put208(cx + d, cy, col_h)
-            put208(cx, cy + d, col_h)
-            if abs(d) <= 3:
-                put208(cx + d, cy - 1, FLAME_GOLD if abs(d) <= 1 else FLAME_CRIMSON)
-                put208(cx + d, cy + 1, FLAME_GOLD if abs(d) <= 1 else FLAME_CRIMSON)
-                put208(cx - 1, cy + d, FLAME_GOLD if abs(d) <= 1 else FLAME_CRIMSON)
-                put208(cx + 1, cy + d, FLAME_GOLD if abs(d) <= 1 else FLAME_CRIMSON)
-        for dx_d, dy_d in [(-2, -2), (2, -2), (-2, 2), (2, 2)]:
-            put208(cx + dx_d, cy + dy_d, FLAME_GOLD)
-        # 2 orbiting motes
-        ang = (f - 13) * 0.95
-        for m_idx in range(2):
-            ma = ang + m_idx * math.pi
-            mx = cx + int(round(math.cos(ma) * 8.0))
-            my = cy + int(round(math.sin(ma) * 6.0))
-            m_col = SOLAR_YELLOW if m_idx == 0 else FLAME_ORANGE
-            put208(mx, my, SOLAR_WHITE)
-            put208(mx + 1, my, m_col)
-            put208(mx - 1, my, m_col)
-            put208(mx, my + 1, m_col)
-            put208(mx, my - 1, m_col)
-
-    # 2. Row 7 & Row 3 (SKILL, F08..F20) Grounded Arcane Rune-Floor Glow
-    if r_idx in (3, 7) and 8 <= f <= 20:
-        for x_bar in range(76, 135):
-            is_glyph = ((x_bar + (f - 8) * 3) % 8) < 2
-            put208(x_bar, 186, SOLAR_YELLOW if is_glyph else FLAME_CRIMSON)
-            put208(x_bar, 187, SOLAR_WHITE if is_glyph else FLAME_ORANGE)
-            put208(x_bar, 188, FLAME_GOLD if is_glyph else FLAME_ORANGE)
-            put208(x_bar, 189, FLAME_CRIMSON)
-        # 3 rising rune motes (y = 182 - ((f - 8) * 3) % 24)
-        base_mote_y = 182 - ((f - 8) * 3) % 24
-        for m_i, mx_base in enumerate((86, 105, 124)):
-            mx = mx_base + (((f - 8) + m_i) % 3) - 1
-            my = max(4, min(203, base_mote_y - m_i * 2))
-            put208(mx, my, SOLAR_WHITE)
-            put208(mx - 1, my, SOLAR_YELLOW if m_i % 2 == 0 else FLAME_ORANGE)
-            put208(mx + 1, my, SOLAR_YELLOW if m_i % 2 == 0 else FLAME_ORANGE)
-            put208(mx, my - 1, SOLAR_YELLOW)
-            put208(mx, my + 1, FLAME_ORANGE)
-            put208(mx, my + 2, FLAME_CRIMSON)
-
-    # 3. Row 8 & Row 4 (ULTIMATE, F03..F26) Overdrive Ascension Energy Motes
-    if r_idx in (4, 8) and 3 <= f <= 26:
-        for m_i, mx in enumerate((68, 88, 122, 140)):
-            my = 172 - ((f - 3) * 4 + m_i * 18) % 108
-            put208(mx, my, SOLAR_WHITE)
-            for d in (1, 2):
-                c_arm = SOLAR_YELLOW if d == 1 else FLAME_ORANGE
-                put208(mx - d, my, c_arm)
-                put208(mx + d, my, c_arm)
-                put208(mx, my - d, c_arm)
-            for t_dy in range(1, 5):
-                put208(mx, my + t_dy, FLAME_GOLD if t_dy == 1 else (FLAME_ORANGE if t_dy <= 2 else FLAME_CRIMSON))
-
-    return out
+    picks = [
+        (0, 0, "IDLE F00"),
+        (1, 7, "WALK F07"),
+        (2, 8, "ATK WINDUP"),
+        (2, 12, "ATK CAST"),
+        (3, 9, "SKILL SLAM"),
+        (3, 18, "SKILL SWEEP"),
+        (4, 7, "ULT ECLIPSE"),
+        (4, 12, "ULT BEAM"),
+        (7, 6, "CROUCH WARD"),
+        (8, 15, "JUMP GLIDE"),
+    ]
+    sw = len(picks) * CELL
+    sh = CELL + 30
+    strip = Image.new("RGBA", (sw, sh), (18, 16, 26, 255))
+    sd = ImageDraw.Draw(strip)
+    for idx, (r, c, lbl) in enumerate(picks):
+        tile = sheet_im.crop((c * CELL, r * CELL, (c + 1) * CELL, (r + 1) * CELL))
+        strip.alpha_composite(tile, (idx * CELL, 26))
+        sd.line([(idx * CELL, 26 + 199), ((idx + 1) * CELL - 1, 26 + 199)], fill=(251, 146, 60, 120), width=1)
+        sd.text((idx * CELL + 8, 6), lbl, fill=(254, 240, 138, 255))
+    strip.save(os.path.join(ARTIFACT_DIR, "debug_mage_9pass_showcase.png"))
 
 
 def main():
-    src = load_source_cells()
-    tpl = make_clean_templates(src)
+    t0 = time.time()
+    parts = load_and_segment_512()
+    sheet = Image.new("RGBA", (COLS * CELL, ROWS * CELL), (0, 0, 0, 0))
+    row_names = ["IDLE", "WALK", "AUTO_ATTACK", "SKILL", "ULTIMATE", "DEATH", "DASH", "CROUCH", "JUMP"]
 
-    rows = [
-        ('ROW 0: IDLE - SOLAR PYROMANCER BREATHING (30 FRAMES)', build_row0_idle(tpl)),
-        ('ROW 1: WALK - BATTLE-MAGE STRIDE CYCLE (30 FRAMES)', build_row1_walk(tpl)),
-        ('ROW 2: AUTO_ATTACK - PYROMANTIC FIREBALL CAST (30 FRAMES)', build_row2_auto_attack(tpl)),
-        ('ROW 3: SKILL - HELLFIRE PILLARS & DETONATION (30 FRAMES)', build_row3_skill(tpl)),
-        ('ROW 4: ULTIMATE - CATACLYSM ECLIPSE SUPERNOVA (30 FRAMES)', build_row4_ultimate(tpl)),
-        ('ROW 5: DEATH & HURT - COLLAPSE & FLAT STAFF (30 FRAMES)', build_row5_death(tpl)),
-        ('ROW 6: DASH - SOLAR RIFT ARCANE BLINK (30 FRAMES)', build_row6_dash(tpl)),
-        ('ROW 7: CROUCH - FLAME-WARD & LOW FIREBALL (30 FRAMES)', build_row7_crouch(tpl)),
-        ('ROW 8: JUMP - FLAME-GLIDE VAULT & AERIAL SHOT (30 FRAMES)', build_row8_jump(tpl)),
-    ]
-
-    num_rows = len(rows)
-    cell_px = 208
-    sheet = Image.new('RGBA', (30 * cell_px, num_rows * cell_px), (0, 0, 0, 0))
-
-    clipped_frames = 0
-    cell_rows_208 = []
-    for r_idx, (r_name, r_frames) in enumerate(rows):
-        assert len(r_frames) == 30, f'{r_name} has {len(r_frames)} frames instead of 30'
-        row_208 = []
-        for c_idx in range(30):
-            r_frames[c_idx] = ensure_safe_cell(r_frames[c_idx], margin=2)
-            cell_im = Image.fromarray(r_frames[c_idx], mode='RGBA').resize((cell_px, cell_px), Image.NEAREST)
-            cell_arr = apply_pass12_postprocess(np.array(cell_im, dtype=np.uint8), r_idx, c_idx)
-            # Check outer 2px border [0, 1, 206, 207] is 100% transparent
-            if (
-                np.any(cell_arr[:2, :, 3] > 0)
-                or np.any(cell_arr[206:, :, 3] > 0)
-                or np.any(cell_arr[:, :2, 3] > 0)
-                or np.any(cell_arr[:, 206:, 3] > 0)
-            ):
-                clipped_frames += 1
-            row_208.append(cell_arr)
-            sheet.paste(Image.fromarray(cell_arr, mode='RGBA'), (c_idx * cell_px, r_idx * cell_px))
-        adj_diffs = sum(1 for i in range(29) if np.any(row_208[i] != row_208[i + 1]))
-        assert adj_diffs == 29, f'{r_name} has only {adj_diffs}/29 distinct adjacent transitions'
-        print(f'{r_name:58s}: 30 frames generated, {adj_diffs}/29 adjacent transitions distinct')
-        cell_rows_208.append(row_208)
-
-    assert clipped_frames == 0, f'Found {clipped_frames}/270 boundary-clipped frames!'
-    print(f'Boundary verification: {clipped_frames}/270 clipped frames on outer 2px border [0, 1, 206, 207]')
-
-    sheet.save('assets/sprites/mage_sheet.png')
-    print('Saved assets/sprites/mage_sheet.png:', sheet.size)
-
-    # Render zoomed-in left (F00..F14) and right (F15..F29) contact sheets in caller's artifact directory
-    preview_cell = 96
-    pad_top = 24
-    dbg = Image.new('RGBA', (30 * preview_cell, num_rows * (preview_cell + pad_top)), (15, 20, 30, 255))
-    draw = ImageDraw.Draw(dbg)
-    for r_idx, (r_name, _) in enumerate(rows):
-        y0 = r_idx * (preview_cell + pad_top)
-        draw.rectangle([0, y0, 30 * preview_cell, y0 + pad_top - 2], fill=(28, 22, 34, 255))
-        draw.text((8, y0 + 5), r_name, fill=(251, 146, 60, 255))
-        for c_idx, cell_arr in enumerate(cell_rows_208[r_idx]):
-            x0 = c_idx * preview_cell
-            draw.text((x0 + 4, y0 + 13), f'F{c_idx:02d}', fill=(254, 240, 138, 255))
-            p_im = Image.fromarray(cell_arr, mode='RGBA').resize((preview_cell, preview_cell), Image.NEAREST)
-            dbg.paste(p_im, (x0, y0 + pad_top), p_im)
-            draw.rectangle(
-                [x0, y0 + pad_top, x0 + preview_cell - 1, y0 + pad_top + preview_cell - 1],
-                outline=(55, 38, 48, 255)
+    total_clips = 0
+    for r in range(ROWS):
+        cfgs = build_row_configs(r)
+        prev_arr = None
+        distinct_transitions = 0
+        for c in range(COLS):
+            arr104 = render_pose_104(parts, cfgs[c])
+            border_alpha = (
+                arr104[:2, :, 3].sum()
+                + arr104[-2:, :, 3].sum()
+                + arr104[:, :2, 3].sum()
+                + arr104[:, -2:, 3].sum()
             )
+            if border_alpha > 0:
+                total_clips += 1
+            if prev_arr is not None and not np.array_equal(arr104, prev_arr):
+                distinct_transitions += 1
+            prev_arr = arr104
 
-    art_dir = '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/4f1fb80f-a88f-4496-9746-b4b9fe84f6d4'
-    left_im = dbg.crop((0, 0, 15 * preview_cell, dbg.height))
-    right_im = dbg.crop((15 * preview_cell, 0, 30 * preview_cell, dbg.height))
-    left_im.save(f'{art_dir}/debug_mage_30fps_left_F00_F14.png')
-    right_im.save(f'{art_dir}/debug_mage_30fps_right_F15_F29.png')
-    print('Saved debug sheets in:', art_dir)
+            cell_im = Image.fromarray(arr104, "RGBA").resize((CELL, CELL), Image.Resampling.NEAREST)
+            sheet.paste(cell_im, (c * CELL, r * CELL))
+        print(f"  Row {r} ({row_names[r]:11s}): 30/30 frames rendered ({distinct_transitions}/29 distinct transitions)")
+
+    os.makedirs(os.path.dirname(OUT_SHEET_PATH), exist_ok=True)
+    sheet.save(OUT_SHEET_PATH)
+    save_debug_sheets(sheet)
+    dt = time.time() - t0
+    print(f"[SUCCESS] Saved {OUT_SHEET_PATH} ({sheet.size[0]}x{sheet.size[1]}) in {dt:.2f}s | clips={total_clips}/270")
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-
-
-

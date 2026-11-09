@@ -13,6 +13,7 @@
   ],
   "reference_scripts": {
     "sprite_sheet_builders": [
+      "scripts/build_mage_30fps_sheet.py",
       "scripts/build_valkyrie_30fps_sheet.py",
       "scripts/build_ronin_30fps_sheet.py",
       "scripts/build_titan_30fps_sheet.py",
@@ -20,6 +21,7 @@
       "scripts/build_icemage_30fps_sheet.py"
     ],
     "vfx_sheet_builders": [
+      "scripts/build_mage_30fps_vfx.py",
       "scripts/build_valkyrie_30fps_vfx.py",
       "scripts/build_ronin_30fps_vfx.py",
       "scripts/build_chronomancer_30fps_vfx.py",
@@ -37,7 +39,9 @@
     "firemage": {
       "name": "Ignis Sol",
       "theme": "arcane",
-      "base_source": "backups/mage_sheet_before_30fps.png",
+      "base_source": "assets/sprites/mage_v2_base.jpg",
+      "logical_res": "104x104 (2x NEAREST -> 208x208)",
+      "rig": "16-part hierarchical Black-Mage skeletal articulation (mane [wizard-hat tail], head [crimson wizard hat + pitch-black shadow face + glowing flame eyes], torso, l_coat, r_coat, back_hem, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + 8-point Solar Astrolabe halo + Helios Sun-Staff",
       "script": "scripts/build_mage_30fps_sheet.py",
       "vfx_script": "scripts/build_mage_30fps_vfx.py"
     },

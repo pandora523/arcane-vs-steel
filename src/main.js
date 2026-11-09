@@ -1,17 +1,17 @@
-import { Renderer } from './engine/Renderer.js?v=30fps33';
-import { VFXManager } from './engine/VFXManager.js?v=30fps33';
-import { PixelForge } from './engine/PixelForge.js?v=30fps33';
-import { AudioManager } from './engine/AudioManager.js?v=30fps33';
-import { Warrior } from './entities/Warrior.js?v=30fps33';
-import { FireMage } from './entities/FireMage.js?v=30fps33';
-import { Archer } from './entities/Archer.js?v=30fps33';
-import { Priestess } from './entities/Priestess.js?v=30fps33';
-import { Reaper } from './entities/Reaper.js?v=30fps33';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps33';
-import { Titan } from './entities/Titan.js?v=30fps33';
-import { Ronin } from './entities/Ronin.js?v=30fps33';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps33';
-import { IceMage } from './entities/IceMage.js?v=30fps33';
+import { Renderer } from './engine/Renderer.js?v=30fps34';
+import { VFXManager } from './engine/VFXManager.js?v=30fps34';
+import { PixelForge } from './engine/PixelForge.js?v=30fps34';
+import { AudioManager } from './engine/AudioManager.js?v=30fps34';
+import { Warrior } from './entities/Warrior.js?v=30fps34';
+import { FireMage } from './entities/FireMage.js?v=30fps34';
+import { Archer } from './entities/Archer.js?v=30fps34';
+import { Priestess } from './entities/Priestess.js?v=30fps34';
+import { Reaper } from './entities/Reaper.js?v=30fps34';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps34';
+import { Titan } from './entities/Titan.js?v=30fps34';
+import { Ronin } from './entities/Ronin.js?v=30fps34';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps34';
+import { IceMage } from './entities/IceMage.js?v=30fps34';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -1257,7 +1257,7 @@ class Game {
         row = (frameIdx / cols) | 0;
       }
       const hover =
-        heroKey === 'mage' || heroKey === 'priestess'
+        heroKey === 'priestess'
           ? Math.round(Math.sin((t + phaseOffset) * 3.2) * 2) * 2
           : 0;
 

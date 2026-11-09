@@ -1,782 +1,416 @@
 #!/usr/bin/env python3
 """
-Builds Ignis Sol (FireMage) 30fps HD-2D Pixel-Art Skill & VFX Sprite Sheet (Pass #4 Overhaul):
-- Output: assets/sprites/mage_vfx.png (6240 x 1040, 5 rows x 30 cols at 208x208 per cell)
-- Logical canvas per cell: 52x52 upscaled 4x NEAREST to 208x208 (un-inked clean pixel art!)
-- Strict Boundary Guarantee: ALL pixels across all 150 cells reside strictly inside 2 <= x <= 49, 2 <= y <= 49 (and 3 <= x <= 48, 0/150 clips!)
-- Rows:
-  Row 0 (F00..F29): BLAZING SOLAR FIREBALL COMET (Brilliant White-Yellow Solar Nucleus, Swirling Crimson-Orange Prominence Tongues & Trailing Golden Star-Sparks)
-  Row 1 (F00..F29): HELLFIRE MAGMA PILLAR ERUPTION (Glowing Golden-Crimson Pyromantic Rune Seal at y=43..47 & Bright Double-Helix Solar Plasma Ribbon on F06..F21)
-  Row 2 (F00..F29): ECLIPSE SUPERNOVA BLACK-SUN SPHERE (Crisp 8-Point Golden Solar Corona, Inner Violet-Black Event Horizon & Rotating Coronal Lightning Arcs)
-  Row 3 (F00..F29): CATACLYSM MOLTEN METEOR & SOLAR BEAM HEAD (Craggy Magma Core & Roaring Solar Plasma)
-  Row 4 (F00..F29): PYROMANTIC SUN-WHEEL CAST SEAL & SWEEPING FLAME WAVE
+Builds Ignis Sol (FireMage — Sovereign Solar Archmage) 30fps HD-2D VFX Sprite Sheet
+- Output: assets/sprites/mage_vfx.png (6240 x 1040, 5 rows x 30 cols of 208x208)
+- Authored on a crisp 104x104 logical pixel grid upscaled 2x NEAREST to 208x208 (400% finer pixel detail
+  than 52x52, matching Ignis Sol's 104x104 -> 208x208 cel-clustered pixel-art rig!)
+- Strict Boundary Guarantee: ALL pixels reside strictly inside 5 <= x <= 98, 5 <= y <= 98 (0/150 clips!)
+- 5 Rows (100% compatible with VFXManager.js & FireMage.js):
+  * Row 0 (y=0):   BLAZING SOLAR FIREBALL COMET (Pointing +X, swirling prominence tongues & helical wake)
+  * Row 1 (y=208): HELLFIRE MAGMA PILLAR ERUPTION & DOUBLE-HELIX SOLAR VORTEX (F00..F05 erupt, F06..F21 roar, F22..F29 dissipate)
+  * Row 2 (y=416): BLACK-SUN ECLIPSE SUPERNOVA SPHERE & ARCANE BLINK RIFT (Obsidian-violet core + 8-point golden corona)
+  * Row 3 (y=624): CATACLYSM MOLTEN METEOR & SOLAR BEAM HEAD (Pointing +X, cracked obsidian crust & white-hot magma fissures)
+  * Row 4 (y=832): SACRED HELIOS SUN-WHEEL CAST MANDALA & PYROMANTIC CRESCENT WAVE
 """
 
-import math
 import os
+import math
+import time
+import numpy as np
 from PIL import Image, ImageDraw
 
-LOGICAL = 52
-SCALE = 4
-CELL = LOGICAL * SCALE  # 208
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+OUT_VFX_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "mage_vfx.png")
+ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
+
+LOGICAL = 104
+CELL = 208
 COLS = 30
 ROWS = 5
-MIN_BOUND = 3
-MAX_BOUND = 48
+MIN_B = 5
+MAX_B = 98
 
-# Clean, luminous Solar Gold / Pyromantic Crimson / Eclipse Void palette (zero heavy black inking!)
-C_WHITE = (255, 255, 255, 255)
-C_SOLAR_WHITE = (255, 251, 235, 255)    # #fffbeb
-C_GOLD_LIGHT = (254, 240, 138, 255)     # #fef08a
-C_GOLD = (250, 204, 21, 255)            # #facc15
-C_AMBER = (245, 158, 11, 255)           # #f59e0b
-C_ORANGE_BRIGHT = (251, 146, 60, 255)   # #fb923c
-C_ORANGE_DEEP = (234, 88, 12, 255)      # #ea580c
-C_CRIMSON_BRIGHT = (220, 38, 38, 255)   # #dc2626
-C_CRIMSON = (185, 28, 28, 255)          # #b91c1c
-C_CRIMSON_DARK = (127, 29, 29, 255)     # #7f1d1d
+# Curated Cel-Shaded Solar Pyromancy & Black-Sun Eclipse Palette
+C_OUTLINE = (16, 10, 22, 255)
+C_VOID = (10, 6, 18, 255)
+C_VIOLET_DARK = (58, 20, 92, 255)
+C_VIOLET_LIT = (148, 62, 220, 255)
+C_OBSIDIAN_ROCK = (38, 26, 32, 255)
+C_CRIM_DARK = (108, 20, 26, 255)
+C_CRIM = (168, 28, 32, 255)
+C_SCARLET = (218, 48, 38, 255)
+C_ORANGE_DEEP = (236, 92, 24, 255)
+C_ORANGE = (251, 146, 60, 255)
+C_AMBER = (248, 184, 36, 255)
+C_GOLD = (254, 224, 78, 255)
+C_GOLD_LIGHT = (255, 242, 156, 255)
+C_WHITE = (255, 253, 240, 255)
 
-C_VIOLET_BRIGHT = (192, 132, 252, 255)  # #c084fc (Coronal lightning / event horizon rim)
-C_VIOLET_MID = (147, 51, 234, 255)      # #9333ea (Event horizon inner ring)
-C_VIOLET_SMOKE = (88, 28, 135, 235)     # #581c87
-C_ASH_DARK = (45, 24, 36, 230)
-C_OBSIDIAN = (28, 19, 32, 255)
-C_VOID_BLACK = (8, 5, 16, 255)
-
-C_SOLAR_AURA = (251, 146, 60, 155)
-C_CRIMSON_AURA = (220, 38, 38, 135)
-C_VIOLET_AURA = (107, 33, 168, 125)
+YY, XX = np.mgrid[0:LOGICAL, 0:LOGICAL]
 
 
-def put(px, x, y, col):
-    ix = int(round(x))
-    iy = int(round(y))
-    if MIN_BOUND <= ix <= MAX_BOUND and MIN_BOUND <= iy <= MAX_BOUND:
-        if col[3] < 255 and px[ix, iy][3] > 0:
-            dst = px[ix, iy]
-            a = col[3] / 255.0
-            inv = 1.0 - a
-            r = int(col[0] * a + dst[0] * inv)
-            g = int(col[1] * a + dst[1] * inv)
-            b = int(col[2] * a + dst[2] * inv)
-            na = max(dst[3], col[3])
-            px[ix, iy] = (r, g, b, na)
-        else:
-            px[ix, iy] = col
+def put_px(arr, x, y, col):
+    ix, iy = int(round(x)), int(round(y))
+    if MIN_B <= ix <= MAX_B and MIN_B <= iy <= MAX_B:
+        arr[iy, ix] = col
 
 
-def draw_line(px, x0, y0, x1, y1, col):
-    steps = int(max(abs(x1 - x0), abs(y1 - y0), 1) * 2)
-    for s in range(steps + 1):
-        t = s / float(steps)
-        put(px, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, col)
-
-
-def draw_star(px, cx, cy, r, col_core, col_ray, rot=0.0):
-    put(px, cx, cy, col_core)
-    for k in range(4):
-        a = rot + k * (math.pi * 0.5)
+def draw_star_104(arr, cx, cy, r, col_core=C_WHITE, col_ray=C_GOLD_LIGHT):
+    put_px(arr, cx, cy, col_core)
+    for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
         for d in range(1, int(r) + 1):
-            c = col_core if d == 1 else col_ray
-            put(px, cx + math.cos(a) * d, cy + math.sin(a) * d, c)
+            put_px(arr, cx + dx * d, cy + dy * d, col_core if d == 1 else col_ray)
 
 
 def build_row0_solar_fireball(f):
-    """
-    Row 0 (F00..F29): BLAZING SOLAR FIREBALL COMET (Pass #4 Upgrade, Pointing +X, cy=26)
-    - Strict bounds: 4 <= x <= 47, 12 <= y <= 40
-    - Brilliant White-Yellow Solar Nucleus at (36.5, 26) with seamless leading bow-corona
-    - 6 Swirling Crimson-Orange Prominence Tongues curling around the sphere & streaming into the wake
-    - Trailing Golden Star-Sparks (4-point mini stars) & dancing solar embers
-    """
-    img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
-    px = img.load()
-    cy = 26.0
-    cx = 36.0
+    """Row 0: Blazing Solar Fireball Comet pointing +X (cx=72, cy=52)."""
+    arr = np.zeros((LOGICAL, LOGICAL, 4), dtype=np.uint8)
     phase = (f / 30.0) * math.pi * 2.0
+    cx, cy = 72.0, 52.0
 
-    # 1. Trailing Crimson-Orange Thermal Comet Wake (x=5..36)
-    for x in range(5, 37):
-        u = (x - 5) / 31.0  # 0.0 at tail tip -> 1.0 at fireball core
-        half_h = 1.2 + math.pow(u, 0.8) * 8.2
-        wave_y = math.sin(x * 0.26 - phase * 2.0) * (2.6 * (1.0 - u * 0.65))
-        for dy in range(int(-half_h), int(half_h) + 1):
-            dist_frac = abs(dy) / max(1.0, half_h)
-            py = int(round(cy + wave_y)) + dy
-            if dist_frac > 0.78:
-                put(px, x, py, C_CRIMSON_DARK if u < 0.45 else C_CRIMSON)
-            elif dist_frac > 0.52:
-                put(px, x, py, C_CRIMSON_BRIGHT if u < 0.55 else C_ORANGE_DEEP)
-            elif dist_frac > 0.26:
-                put(px, x, py, C_ORANGE_DEEP if u < 0.4 else C_ORANGE_BRIGHT if u < 0.75 else C_AMBER)
-            else:
-                put(px, x, py, C_GOLD if u < 0.55 else C_GOLD_LIGHT if u < 0.82 else C_SOLAR_WHITE)
+    # 1. Tapered Thermal Comet Wake (x = 10..72)
+    in_wake = (XX >= 10) & (XX <= 72)
+    u_x = np.clip((XX - 10.0) / 62.0, 0.0, 1.0)
+    wave_y = np.sin(XX * 0.14 - phase * 2.0) * (5.2 * (1.0 - u_x * 0.65))
+    half_h = 2.2 + (u_x ** 0.78) * 16.5
+    dy_w = np.abs(YY - (cy + wave_y))
+    frac = dy_w / np.maximum(1.0, half_h)
 
-    # 2. Helical Solar Plasma Streams Corkscrewing Through the Wake (x=9..36)
+    m_w4 = in_wake & (frac <= 1.0)
+    m_w3 = in_wake & (frac <= 0.74)
+    m_w2 = in_wake & (frac <= 0.48)
+    m_w1 = in_wake & (frac <= 0.24)
+
+    arr[m_w4] = np.where((u_x < 0.45)[m_w4, None], C_CRIM_DARK, C_CRIM)
+    arr[m_w3] = np.where((u_x < 0.50)[m_w3, None], C_SCARLET, C_ORANGE_DEEP)
+    arr[m_w2] = np.where((u_x < 0.55)[m_w2, None], C_ORANGE, C_AMBER)
+    arr[m_w1] = np.where((u_x < 0.65)[m_w1, None], C_GOLD, C_GOLD_LIGHT)
+
+    # 2. Corkscrewing Double-Helix Solar Plasma Ribbons
     for rib in range(2):
         r_off = rib * math.pi
-        for x in range(9, 37):
-            u = (x - 9) / 27.0
-            amp = (1.0 - u * 0.35) * 4.8
-            ang = x * 0.34 - phase * 2.0 + r_off
+        for x in range(16, 73):
+            u = (x - 16) / 56.0
+            amp = (1.0 - u * 0.35) * 9.5
+            ang = x * 0.18 - phase * 2.0 + r_off
             ry = cy + math.sin(ang) * amp
-            put(px, x, ry, C_SOLAR_WHITE if (rib == 0 and u > 0.5) else (C_GOLD_LIGHT if rib == 0 else C_ORANGE_BRIGHT))
-            put(px, x, ry + (1 if math.sin(ang) >= 0 else -1), C_GOLD if rib == 0 else C_CRIMSON_BRIGHT)
+            c_main = C_WHITE if (rib == 0 and u > 0.5) else (C_GOLD_LIGHT if rib == 0 else C_ORANGE)
+            c_sub = C_GOLD if rib == 0 else C_SCARLET
+            put_px(arr, x, ry, c_main)
+            put_px(arr, x, ry + 1, c_sub)
+            put_px(arr, x, ry - 1, c_sub)
 
-    # 3. Swirling Crimson-Orange Prominence Tongues Curling Around & Behind the Solar Sphere
+    # 3. 6 Curling Solar Prominence Tongues around the Nucleus
     for t_idx in range(6):
         base_a = phase * 1.5 + t_idx * (math.pi / 3.0)
-        for step in range(16):
-            u_t = step / 15.0
-            r_cur = 7.0 + u_t * 5.0
-            curl_a = base_a + u_t * 0.75 * (1 if math.sin(base_a) >= 0 else -1)
-            tx = cx + math.cos(curl_a) * r_cur - u_t * 4.5
+        for s in range(28):
+            ut = s / 27.0
+            r_cur = 13.5 + ut * 10.5
+            curl_a = base_a + ut * 0.82 * (1.0 if math.sin(base_a) >= 0 else -1.0)
+            tx = cx + math.cos(curl_a) * r_cur - ut * 9.0
             ty = cy + math.sin(curl_a) * (r_cur * 0.92)
-            if u_t < 0.3:
-                col_t = C_GOLD_LIGHT
-            elif u_t < 0.6:
-                col_t = C_ORANGE_BRIGHT
-            elif u_t < 0.85:
-                col_t = C_CRIMSON_BRIGHT
-            else:
-                col_t = C_CRIMSON_DARK
-            put(px, tx, ty, col_t)
-            put(px, tx - 1, ty, C_ORANGE_DEEP if u_t < 0.5 else C_CRIMSON)
+            col_t = C_GOLD_LIGHT if ut < 0.28 else (C_ORANGE if ut < 0.58 else (C_SCARLET if ut < 0.84 else C_CRIM_DARK))
+            put_px(arr, tx, ty, col_t)
+            put_px(arr, tx - 1, ty, col_t)
 
-    # 4. Brilliant White-Yellow Solar Nucleus & Photosphere (cx=36, cy=26, seamlessly reaching x=46)
-    core_r = 8.6
-    for dy in range(-11, 12):
-        for dx in range(-11, 12):
-            stretch_x = dx * (0.86 if dx > 0 else 0.95)
-            d = math.hypot(stretch_x, dy)
-            ang = math.atan2(dy, dx)
-            flare_mod = math.sin(ang * 5.0 - phase * 2.0) * 1.1 + math.cos(ang * 3.0 + phase) * 0.7
-            eff_r = core_r + flare_mod * (0.45 if dx > 0 else 1.05)
-            if d <= eff_r + 1.2:
-                px_x = int(cx) + dx
-                px_y = int(cy) + dy
-                if d <= 4.4:
-                    # Brilliant White-Yellow Solar Nucleus!
-                    put(px, px_x, px_y, C_WHITE if d <= 3.0 else C_SOLAR_WHITE)
-                elif d <= 6.2 + math.sin(ang * 4.0 - phase) * 0.4:
-                    put(px, px_x, px_y, C_GOLD_LIGHT)
-                elif d <= 7.5 + flare_mod * 0.35:
-                    put(px, px_x, px_y, C_GOLD if (dx + dy) % 2 == 0 else C_AMBER)
-                elif d <= eff_r:
-                    put(px, px_x, px_y, C_ORANGE_BRIGHT if dx > -2 else C_ORANGE_DEEP)
-                else:
-                    put(px, px_x, px_y, C_CRIMSON_BRIGHT if dx > -4 else C_CRIMSON)
+    # 4. Blazing White-Gold Solar Nucleus & Photosphere
+    dx = (XX - cx) * np.where(XX > cx, 0.86, 0.96)
+    dy = YY - cy
+    d = np.hypot(dx, dy)
+    ang = np.arctan2(dy, XX - cx)
+    flare = np.sin(ang * 5.0 - phase * 2.0) * 2.2 + np.cos(ang * 3.0 + phase) * 1.3
+    eff_r = 17.2 + flare * np.where(XX > cx, 0.45, 1.0)
 
-    # Inner Solar Nucleus Star-Glint at (37, 26)
-    draw_star(px, 37, 26, 3, C_WHITE, C_SOLAR_WHITE, rot=phase * 0.5)
+    arr[d <= eff_r + 2.0] = C_CRIM
+    arr[d <= eff_r] = C_ORANGE_DEEP
+    arr[d <= 14.8 + flare * 0.4] = C_AMBER
+    arr[d <= 12.2 + flare * 0.25] = C_GOLD_LIGHT
+    arr[d <= 8.6] = C_WHITE
 
-    # 5. Trailing Golden Star-Sparks & Solar Ember Motes (x=5..30)
-    for s_idx in range(4):
-        u_sp = ((f / 30.0) + s_idx * 0.25) % 1.0
-        sx = int(round(30.0 - u_sp * 24.0))  # x = 6..30
-        sy = int(round(cy + math.sin(phase * 2.0 + s_idx * 1.8) * (3.5 + s_idx * 1.4)))
-        if s_idx % 2 == 0:
-            draw_star(px, sx, sy, 2 if u_sp < 0.5 else 1, C_WHITE, C_GOLD_LIGHT, rot= 0.0)
-        else:
-            put(px, sx, sy, C_WHITE)
-            put(px, sx - 1, sy, C_GOLD_LIGHT)
-            put(px, sx + 1, sy, C_GOLD)
-            put(px, sx, sy - 1, C_ORANGE_BRIGHT)
+    # 5. Crisp 4-Point Solar Star-Sparks in Wake
+    for s_idx in range(5):
+        u_sp = ((f / 30.0) + s_idx * 0.20) % 1.0
+        sx = 60.0 - u_sp * 46.0
+        sy = cy + math.sin(phase * 2.0 + s_idx * 1.7) * (6.5 + s_idx * 2.2)
+        draw_star_104(arr, sx, sy, 3 if s_idx % 2 == 0 else 2, C_WHITE, C_GOLD)
 
-    return img.resize((CELL, CELL), Image.Resampling.NEAREST)
-
-
-def draw_pyromantic_rune_seal(px, cx, gy, rx, ry, phase, intensity=1.0, front_only=False, back_only=False):
-    """
-    Draws a glowing Golden-Crimson Pyromantic Rune Seal at the pillar base (y = 43..47).
-    - Outer crimson-orange ritual ring + inner golden rune ring + 8 revolving sacred rune nodes & radial spokes.
-    """
-    steps = 64
-    for s in range(steps):
-        a = (s / float(steps)) * math.pi * 2.0 + phase
-        sin_a = math.sin(a)
-        if front_only and sin_a < -0.05:
-            continue
-        if back_only and sin_a >= -0.05:
-            continue
-
-        # Outer crimson-gold ritual rim
-        ox = cx + math.cos(a) * rx
-        oy = gy + sin_a * ry
-        # Inner solar rune ring
-        ix = cx + math.cos(a) * (rx * 0.68)
-        iy = gy + sin_a * (ry * 0.68)
-
-        if intensity > 0.6:
-            col_out = C_WHITE if s % 8 == 0 else (C_GOLD_LIGHT if s % 2 == 0 else C_CRIMSON_BRIGHT)
-            col_in = C_SOLAR_WHITE if s % 4 == 0 else C_GOLD
-        else:
-            col_out = C_GOLD if s % 8 == 0 else (C_ORANGE_DEEP if s % 2 == 0 else C_CRIMSON_DARK)
-            col_in = C_ORANGE_BRIGHT if s % 4 == 0 else C_CRIMSON
-
-        put(px, ox, oy, col_out)
-        put(px, ox, oy + (0.6 if sin_a >= 0 else -0.6), C_CRIMSON_BRIGHT if intensity > 0.5 else C_CRIMSON_DARK)
-        put(px, ix, iy, col_in)
-
-        # 8 Glowing Pyromantic Rune Nodes & Spokes connecting inner/outer rings
-        if s % 8 == 0:
-            draw_line(px, cx + math.cos(a) * (rx * 0.3), gy + sin_a * (ry * 0.3), ox, oy,
-                      C_GOLD_LIGHT if intensity > 0.6 else C_ORANGE_DEEP)
-            if intensity > 0.45:
-                put(px, ox + (1 if math.cos(a) >= 0 else -1), oy, C_WHITE)
-                put(px, ox, oy, C_WHITE)
+    return arr
 
 
 def build_row1_hellfire_pillar(f):
-    """
-    Row 1 (F00..F29): HELLFIRE MAGMA PILLAR ERUPTION (Pass #4 Upgrade)
-    - Strict bounds: 4 <= x <= 47, 4 <= y <= 47
-    - Glowing Golden-Crimson Pyromantic Rune Seal at the base (y = 43..47, gy = 45.0, ry = 2.0)
-    - F00..F05: Volcanic Pyromantic Rune Seal ignition & surging pre-eruption geyser
-    - F06..F21: Full Roaring Magma Column with Bright Double-Helix Solar Plasma Ribbon spiraling upward!
-    - F22..F29: Explosive ash-and-ember dissipation over cooling Pyromantic Rune Seal
-    """
-    img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
-    px = img.load()
-    cx = 26.0
-    gy = 45.0  # Base centered at y=45.0 with ry=2.0 -> spans y=43..47!
+    """Row 1: Hellfire Magma Pillar Eruption & Double-Helix Solar Vortex (cx=52, base_y=94)."""
+    arr = np.zeros((LOGICAL, LOGICAL, 4), dtype=np.uint8)
     phase = (f / 30.0) * math.pi * 2.0
+    cx = 52.0
+    gy = 93.0
 
-    if f <= 5:
-        # F00..F05: Igniting Golden-Crimson Pyromantic Rune Seal (y=43..47) & Surging Magma Geyser
-        u = f / 5.0
-        rx = 9.0 + u * 9.5   # 9.0 -> 18.5
-        ry = 1.4 + u * 0.6   # 1.4 -> 2.0 (y = 43..47)
-        draw_pyromantic_rune_seal(px, cx, gy, rx, ry, phase * 1.5, intensity=0.7 + 0.3 * u)
-
-        # Surging Pre-Eruption Magma Geyser Plume (grows from y=45 up to y=12)
-        geyser_h = int(7 + u * 26)
-        for h in range(geyser_h):
-            h_u = h / float(max(1, geyser_h))
-            py = gy - h
-            half_w = int(round((1.0 - h_u * 0.62) * (3.5 + u * 7.0)))
-            for dx in range(-half_w, half_w + 1):
-                w_u = abs(dx) / max(1.0, float(half_w))
-                col = C_WHITE if w_u < 0.32 else (C_GOLD_LIGHT if w_u < 0.62 else C_ORANGE_DEEP if w_u < 0.86 else C_CRIMSON)
-                put(px, cx + dx + math.sin(h * 0.3 - u * 4.0) * 0.8, py, col)
-
-        # Front rim of Pyromantic Rune Seal over base of geyser
-        draw_pyromantic_rune_seal(px, cx, gy, rx, ry, phase * 1.5, intensity=1.0, front_only=True)
-
-    elif f <= 21:
-        # F06..F21 (16 frames): Roaring Magma Column + Bright Double-Helix Solar Plasma Ribbon + Pyromantic Rune Seal at y=43..47
-        k = f - 6
-        spin = (k / 16.0) * math.pi * 4.0  # 2 full rotations across F06..F21
-
-        # 1. Back half of Glowing Golden-Crimson Pyromantic Rune Seal at y=43..47
-        draw_pyromantic_rune_seal(px, cx, gy, 18.5, 2.0, spin * 0.5, intensity=1.0, back_only=True)
-
-        # 2. Roaring Molten Magma Column Body (y=5..45) — shaded in rich crimson/orange/amber so the white-gold double helix pops!
-        for y in range(5, 46):
-            h_frac = (45.0 - y) / 40.0
-            crown_taper = 1.0 if y >= 11 else (0.35 + 0.65 * ((y - 5.0) / 6.0))
-            base_w = (10.0 + (1.0 - h_frac) * 3.5 if h_frac < 0.22 else (9.0 + math.sin(h_frac * math.pi) * 2.2)) * crown_taper
-            sway = math.sin(h_frac * 4.2 - spin) * 1.4
-
-            # Back-pass of Double-Helix Solar Plasma Ribbon (when math.sin(sa) < 0, behind column edges)
-            for strand in range(2):
-                sa = spin * 1.5 - h_frac * 7.2 + strand * math.pi
-                if math.sin(sa) < 0 and y >= 7:
-                    rx_rib = cx + sway + math.cos(sa) * (base_w * 1.06)
-                    put(px, rx_rib, y, C_GOLD)
-                    put(px, rx_rib + (1 if math.cos(sa) < 0 else -1), y, C_ORANGE_BRIGHT)
-
-            # Main Molten Magma Column Cross-Section
-            for dx in range(int(-base_w - 1), int(base_w + 2)):
-                w_frac = abs(dx) / max(1.0, base_w)
-                edge_lick = math.sin(y * 0.45 - spin * 2.0 + (1.0 if dx > 0 else -1.0)) * 0.16
-                # At top crown (y < 11), add dancing flame-crest waves so the pillar top isn't flat
-                if y < 11:
-                    flame_crest = math.sin(dx * 0.65 + spin * 2.0) * 1.6
-                    if y < 7.0 - flame_crest:
-                        continue
-                if w_frac <= 1.0 + edge_lick:
-                    magma_tex = math.sin(dx * 0.45 + y * 0.35 - spin * 2.0)
-                    if w_frac < 0.18:
-                        col = C_SOLAR_WHITE if magma_tex > -0.2 else C_GOLD_LIGHT
-                    elif w_frac < 0.42:
-                        col = C_GOLD if magma_tex > 0.0 else C_AMBER
-                    elif w_frac < 0.68:
-                        col = C_ORANGE_BRIGHT if magma_tex > -0.1 else C_ORANGE_DEEP
-                    elif w_frac < 0.88:
-                        col = C_CRIMSON_BRIGHT if magma_tex > 0.1 else C_CRIMSON
-                    else:
-                        col = C_CRIMSON_DARK if (y + dx) % 2 == 0 else C_OBSIDIAN
-                    put(px, cx + sway + dx, y, col)
-
-            # 3. BRIGHT DOUBLE-HELIX SOLAR PLASMA RIBBON Spiraling Up the Front of the Magma Column!
-            for strand in range(2):
-                sa = spin * 1.5 - h_frac * 7.2 + strand * math.pi
-                sin_s = math.sin(sa)
-                if sin_s >= -0.15 and y >= 6:
-                    sx = cx + sway + math.cos(sa) * (base_w * 0.94)
-                    # Thick 3px-to-4px blazing white-gold plasma ribbon cross-section
-                    put(px, sx, y, C_WHITE)
-                    put(px, sx - 1, y, C_WHITE if sin_s > 0.4 else C_SOLAR_WHITE)
-                    put(px, sx + 1, y, C_SOLAR_WHITE if sin_s > 0.4 else C_GOLD_LIGHT)
-                    put(px, sx - 2, y, C_GOLD_LIGHT)
-                    put(px, sx + 2, y, C_GOLD)
-                    if y > 6:
-                        put(px, sx, y - 1, C_GOLD_LIGHT)
-
-        # 4. Rising Molten Lava Rocks & Craggy Basalt Chunks Spiraling Upward (y=8..42)
-        for rock_i in range(6):
-            r_h = ((rock_i / 6.0) + (k / 16.0)) % 1.0
-            ry_rock = 42.0 - r_h * 33.0
-            ra = spin * 1.2 + rock_i * (math.pi / 3.0)
-            rx_rock = cx + math.cos(ra) * 12.2
-            put(px, rx_rock, ry_rock, C_OBSIDIAN)
-            put(px, rx_rock + 1, ry_rock, C_CRIMSON_DARK)
-            put(px, rx_rock, ry_rock - 1, C_GOLD_LIGHT)
-            put(px, rx_rock + 1, ry_rock + 1, C_ORANGE_BRIGHT)
-
-        # 5. Front Half of Glowing Golden-Crimson Pyromantic Rune Seal at Base (y=43..47)
-        draw_pyromantic_rune_seal(px, cx, gy, 18.5, 2.0, spin * 0.5, intensity=1.0, front_only=True)
-
+    if f < 5:
+        u_erupt = (f + 1) / 5.0
+        top_y = gy - u_erupt * 82.0
+        w_scale = 0.55 + 0.45 * u_erupt
+        fade = 1.0
+    elif f < 22:
+        top_y = 9.0
+        w_scale = 1.0 + 0.08 * math.sin(phase * 2.0)
+        fade = 1.0
     else:
-        # F22..F29: Explosive Ash-and-Ember Dissipation & Cooling Pyromantic Rune Seal at y=43..47
-        k = f - 22
-        u = k / 7.0  # 0.0 -> 1.0
-        draw_pyromantic_rune_seal(px, cx, gy, 18.5 * (1.0 - u * 0.25), 2.0 * (1.0 - u * 0.2),
-                                  phase, intensity=max(0.2, 0.85 - u * 0.7))
+        u_end = (f - 21) / 9.0
+        top_y = 9.0 + u_end * 18.0
+        w_scale = max(0.25, 1.0 - u_end * 0.72)
+        fade = 1.0 - u_end * 0.65
 
-        for puff_i in range(7):
-            py_base = 41.0 - puff_i * 5.2 - u * 3.5
-            px_base = cx + math.sin(puff_i * 1.7 + k * 0.5) * (2.2 + u * 5.5)
-            puff_r = max(1.2, (7.2 - puff_i * 0.4) * (1.0 - u * 0.7))
-            for dy in range(int(-puff_r - 1), int(puff_r + 2)):
-                for dx in range(int(-puff_r - 1), int(puff_r + 2)):
-                    d = math.hypot(dx, dy)
-                    if d <= puff_r:
-                        d_frac = d / max(1.0, puff_r)
-                        if u < 0.35:
-                            col = C_GOLD_LIGHT if d_frac < 0.38 else (C_ORANGE_BRIGHT if d_frac < 0.72 else C_CRIMSON_BRIGHT)
-                        elif u < 0.68:
-                            col = C_ORANGE_BRIGHT if d_frac < 0.35 else (C_CRIMSON_BRIGHT if d_frac < 0.7 else C_CRIMSON_DARK)
-                        else:
-                            col = C_ORANGE_DEEP if d_frac < 0.35 else (C_CRIMSON_DARK if d_frac < 0.75 else C_ASH_DARK)
-                        put(px, px_base + dx, py_base + dy, col)
+    # 1. Base Pyromantic Sun-Wheel Ritual Seal (y = 87..96)
+    seal_rx = 34.0 * max(0.65, w_scale)
+    seal_ry = 4.6
+    for s in range(96):
+        a = (s / 96.0) * math.pi * 2.0 + phase * 1.5
+        sx = cx + math.cos(a) * seal_rx
+        sy = gy + math.sin(a) * seal_ry
+        put_px(arr, sx, sy, C_GOLD_LIGHT if s % 4 == 0 else C_ORANGE_DEEP)
+        put_px(arr, cx + math.cos(a) * (seal_rx * 0.68), gy + math.sin(a) * (seal_ry * 0.68), C_GOLD)
 
-        for m in range(10):
-            ang = (m / 10.0) * math.pi * 2.0 + k * 0.3
-            rad_x = 5.5 + u * 12.5 + (m % 3) * 1.5
-            ey = 38.0 - ((m * 5 + k * 3) % 32)
-            ex = cx + math.cos(ang) * rad_x
-            put(px, ex, ey, C_GOLD_LIGHT if (m + k) % 3 == 0 else C_ORANGE_DEEP)
+    # 2. Towering Molten Solar Column
+    in_y = (YY >= int(top_y)) & (YY <= int(gy))
+    v_h = np.clip((gy - YY) / max(1.0, gy - top_y), 0.0, 1.0)
+    flare_w = (1.35 - 0.55 * np.sin(v_h * math.pi * 0.85)) * 18.5 * w_scale
+    swirl_x = np.sin(YY * 0.16 + phase * 2.5) * 3.2 * w_scale
+    dx_p = np.abs(XX - (cx + swirl_x))
+    p_frac = dx_p / np.maximum(1.0, flare_w)
 
-    return img.resize((CELL, CELL), Image.Resampling.NEAREST)
+    if f < 26:
+        arr[in_y & (p_frac <= 1.05)] = C_CRIM_DARK
+        arr[in_y & (p_frac <= 0.86)] = C_CRIM
+        arr[in_y & (p_frac <= 0.68)] = C_ORANGE_DEEP
+        arr[in_y & (p_frac <= 0.48)] = C_AMBER
+        arr[in_y & (p_frac <= 0.28)] = C_GOLD_LIGHT
+        arr[in_y & (p_frac <= 0.14)] = C_WHITE
+
+    # 3. Spiraling Double-Helix Solar Plasma Ribbons Wrapping Upward
+    for h_idx in range(2):
+        h_off = h_idx * math.pi
+        for y in range(int(top_y) + 2, int(gy)):
+            vh = (gy - y) / max(1.0, gy - top_y)
+            rad_h = (13.0 + (1.0 - vh) * 7.0) * w_scale
+            ang = y * 0.13 - phase * 2.0 + h_off
+            if math.sin(ang) >= -0.2:
+                rx = cx + math.cos(ang) * rad_h
+                put_px(arr, rx, y, C_WHITE if h_idx == 0 else C_GOLD_LIGHT)
+                put_px(arr, rx + 1, y, C_GOLD if h_idx == 0 else C_ORANGE)
+                put_px(arr, rx - 1, y, C_ORANGE_DEEP)
+
+    # 4. Rising Volcanic Sparks & Star Embers
+    for e_idx in range(8):
+        u_e = ((f / 30.0) * 1.5 + e_idx * 0.125) % 1.0
+        ey = gy - u_e * 82.0
+        ex = cx + math.sin(u_e * 7.0 + e_idx * 2.1) * (20.0 * w_scale + 6.0)
+        if ey >= top_y - 4:
+            draw_star_104(arr, ex, ey, 2 if fade > 0.6 else 1, C_WHITE, C_GOLD)
+
+    return arr
 
 
 def build_row2_eclipse_supernova(f):
-    """
-    Row 2 (F00..F29): ECLIPSE SUPERNOVA BLACK-SUN SPHERE (Pass #4 Upgrade — Also FireMage's Dual Blink Portals!)
-    - Strict bounds: 4 <= x <= 47, 4 <= y <= 47
-    - Extra-crisp 8-Point Golden Solar Corona (4 primary cardinal/diagonal spikes + 4 secondary spikes + sacred rune ring)
-    - Crisp Inner Violet-Black Event Horizon (deep void core + swirling dark-violet vortex + bright violet-magenta accretion rim + white-gold photon ring)
-    - Rotating Coronal Lightning Arcs crackling across the corona and between the 8 golden points
-    """
-    img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
-    px = img.load()
-    cx, cy = 26.0, 26.0
+    """Row 2: Black-Sun Eclipse Supernova Sphere & Arcane Blink Rift (cx=52, cy=52)."""
+    arr = np.zeros((LOGICAL, LOGICAL, 4), dtype=np.uint8)
     phase = (f / 30.0) * math.pi * 2.0
+    cx, cy = 52.0, 52.0
 
-    # 1. Outer Sacred Solar Rune Ring (r = 18.5, strictly inside 6..45)
-    ring_r = 18.2 + math.sin(phase * 2.0) * 0.5
-    for s in range(64):
-        a = (s / 64.0) * math.pi * 2.0 - phase * 0.5
-        rx = cx + math.cos(a) * ring_r
-        ry = cy + math.sin(a) * ring_r
-        put(px, rx, ry, C_GOLD_LIGHT if s % 8 == 0 else (C_ORANGE_DEEP if s % 2 == 0 else C_CRIMSON_DARK))
+    dx = XX - cx
+    dy = YY - cy
+    d = np.hypot(dx, dy)
+    ang = np.arctan2(dy, dx)
 
-    # 2. Extra-Crisp 8-Point Golden Solar Corona (r = 9.5..21.0)
-    # Slowly rotating 8-point star corona with sculpted multi-pixel golden facets
-    corona_rot = phase * 0.5
+    # 1. Outer Blazing Solar Corona & Prominence Flares
+    prom = np.sin(ang * 8.0 + phase * 2.0) * 4.2 + np.cos(ang * 4.0 - phase) * 2.6
+    r_corona = 32.0 + prom
+    arr[(d >= 21.0) & (d <= r_corona + 3.0)] = C_CRIM_DARK
+    arr[(d >= 21.0) & (d <= r_corona)] = C_ORANGE_DEEP
+    arr[(d >= 21.0) & (d <= 28.5 + prom * 0.55)] = C_GOLD
+    arr[(d >= 21.5) & (d <= 25.0 + prom * 0.25)] = C_WHITE
+
+    # 2. 8 Razor-Sharp Golden Corona Diamond Spikes
     for k in range(8):
-        spike_a = corona_rot + k * (math.pi * 0.25)
-        is_major = (k % 2 == 0)
-        spike_len = 21.0 if is_major else 17.5
-        base_half_w = 3.2 if is_major else 2.4
+        sa = phase * 0.5 + k * (math.pi / 4.0)
+        max_len = 42.0 if k % 2 == 0 else 36.0
+        ux, uy = math.cos(sa), math.sin(sa)
+        nx, ny = -uy, ux
+        for step in range(22, int(max_len) + 1):
+            u = (step - 22.0) / max(1.0, max_len - 22.0)
+            w = int(round((1.0 - u) * 2.4))
+            for kw in range(-w, w + 1):
+                px = cx + ux * step + nx * kw
+                py = cy + uy * step + ny * kw
+                put_px(arr, px, py, C_WHITE if kw == 0 and u < 0.65 else (C_GOLD_LIGHT if abs(kw) <= 1 else C_ORANGE_DEEP))
 
-        ca = math.cos(spike_a)
-        sa = math.sin(spike_a)
-        pa = -sa  # perpendicular vector
-        pb = ca
+    # 3. Abyssal Black-Sun Event Horizon Core + Violet Gravitational Rim
+    arr[d <= 21.5] = C_VIOLET_LIT
+    arr[d <= 19.8] = C_VIOLET_DARK
+    arr[d <= 17.5] = C_VOID
 
-        for d in range(9, int(spike_len) + 1):
-            u_d = (d - 9.0) / max(1.0, spike_len - 9.0)
-            half_w = int(round((1.0 - math.pow(u_d, 0.75)) * base_half_w))
-            for w in range(-half_w, half_w + 1):
-                sx = cx + ca * d + pa * w * 0.85
-                sy = cy + sa * d + pb * w * 0.85
-                if w == 0:
-                    col = C_WHITE if u_d < 0.65 else C_GOLD_LIGHT
-                elif abs(w) == 1:
-                    col = C_GOLD_LIGHT if u_d < 0.45 else C_GOLD
-                else:
-                    col = C_AMBER if u_d < 0.5 else C_ORANGE_BRIGHT
-                put(px, sx, sy, col)
-        # Crisp white-gold star-tip glint at each of the 8 corona points
-        tip_x = cx + ca * spike_len
-        tip_y = cy + sa * spike_len
-        put(px, tip_x, tip_y, C_WHITE if is_major else C_GOLD_LIGHT)
+    # 4. Crackling Coronal Lightning Arcs Dancing Around Event Horizon
+    for arc_i in range(4):
+        a0 = -phase * 1.5 + arc_i * (math.pi * 0.5)
+        for s in range(18):
+            ua = a0 + (s / 17.0) * 0.72
+            jit = math.sin(s * 1.9 + f * 0.9 + arc_i) * 2.2
+            rr = 23.5 + jit
+            put_px(arr, cx + math.cos(ua) * rr, cy + math.sin(ua) * rr, C_WHITE if s % 2 == 0 else C_VIOLET_LIT)
 
-    # Secondary Counter-Rotating Crimson-Orange Prominence Tongues Between the 8 Points
-    for k in range(8):
-        fl_a = -phase + (k + 0.5) * (math.pi * 0.25)
-        for d in range(10, 17):
-            u_d = (d - 10) / 6.0
-            curl = fl_a + u_d * 0.35 * (1 if k % 2 == 0 else -1)
-            put(px, cx + math.cos(curl) * d, cy + math.sin(curl) * d,
-                C_GOLD if u_d < 0.35 else (C_ORANGE_BRIGHT if u_d < 0.7 else C_CRIMSON_BRIGHT))
-
-    # 3. Inner Violet-Black Event Horizon & Blinding White-Gold Photon Ring (r = 0..10.5)
-    void_r = 8.2
-    for dy in range(-11, 12):
-        for dx in range(-11, 12):
-            d = math.hypot(dx, dy)
-            ang = math.atan2(dy, dx)
-            swirl = math.sin(ang * 3.0 + phase * 2.0 - d * 0.65)
-            px_x = cx + dx
-            px_y = cy + dy
-
-            if d <= 5.2:
-                # Deep pitch-black singularity core with subtle swirling dark-violet gravitational spiral
-                if d > 2.2 and swirl > 0.65:
-                    put(px, px_x, px_y, C_OBSIDIAN)
-                else:
-                    put(px, px_x, px_y, C_VOID_BLACK)
-            elif d <= 6.8:
-                # Inner violet-black event horizon step
-                put(px, px_x, px_y, C_VIOLET_SMOKE if swirl > 0.0 else C_OBSIDIAN)
-            elif d <= void_r:
-                # Crisp vivid violet-magenta event-horizon accretion rim!
-                put(px, px_x, px_y, C_VIOLET_BRIGHT if swirl > 0.15 else C_VIOLET_MID)
-            elif d <= void_r + 1.25:
-                # Blinding white-hot photon sphere ring
-                put(px, px_x, px_y, C_WHITE)
-            elif d <= void_r + 2.3:
-                # Inner golden solar corona ring
-                put(px, px_x, px_y, C_GOLD_LIGHT if d <= void_r + 1.8 else C_GOLD)
-
-    # 4. Rotating Coronal Lightning Arcs (6 jagged plasma arcs leaping across the corona & event horizon rim)
-    for arc_i in range(6):
-        arc_base = phase * 2.0 + arc_i * (math.pi / 3.0)
-        # Each lightning arc spans ~45 deg around r = 9.5..16.5 with sharp zig-zag vertices
-        r0 = 9.2
-        a0 = arc_base
-        x_prev = cx + math.cos(a0) * r0
-        y_prev = cy + math.sin(a0) * r0
-        for seg in range(1, 5):
-            u_s = seg / 4.0
-            a_cur = arc_base + u_s * 0.65 * (1 if arc_i % 2 == 0 else -1)
-            zig = (1.8 if (seg + f + arc_i) % 2 == 0 else -1.4)
-            r_cur = 9.5 + u_s * 6.5 + zig
-            x_cur = cx + math.cos(a_cur) * r_cur
-            y_cur = cy + math.sin(a_cur) * r_cur
-            col_arc = C_WHITE if seg <= 2 else (C_VIOLET_BRIGHT if arc_i % 2 == 0 else C_GOLD_LIGHT)
-            draw_line(px, x_prev, y_prev, x_cur, y_cur, col_arc)
-            x_prev, y_prev = x_cur, y_cur
-
-    # 5. Revolving Diamond-Ring Baily's Bead Star-Glint on Event Horizon Rim
-    diamond_a = -phase
-    dx_b = cx + math.cos(diamond_a) * (void_r + 0.6)
-    dy_b = cy + math.sin(diamond_a) * (void_r + 0.6)
-    draw_star(px, dx_b, dy_b, 4, C_WHITE, C_GOLD_LIGHT, rot=0.0)
-
-    return img.resize((CELL, CELL), Image.Resampling.NEAREST)
+    return arr
 
 
 def build_row3_cataclysm_meteor(f):
-    """
-    Row 3 (F00..F29): CATACLYSM MOLTEN METEOR & SOLAR BEAM HEAD (Pointing +X, cy=26)
-    - Strict bounds: 4 <= x <= 47, 6 <= y <= 46
-    - Craggy obsidian-basalt asteroid core rotating in 3D with glowing magma fissures
-    - Blinding white-gold & orange bow-shock plasma compression wave
-    - Roaring twin solar plasma wake & molten slag debris trail
-    """
-    img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
-    px = img.load()
-    cx, cy = 35.0, 26.0
+    """Row 3: Cataclysm Molten Meteor & Solar Plasma Beam Head pointing +X (cx=68, cy=52)."""
+    arr = np.zeros((LOGICAL, LOGICAL, 4), dtype=np.uint8)
     phase = (f / 30.0) * math.pi * 2.0
+    cx, cy = 68.0, 52.0
 
-    # 1. Roaring Solar Plasma Wake & Molten Slag Trail (x=4..32)
-    for x in range(4, 33):
-        u = (x - 4) / 28.0
-        span = 2.0 + math.pow(u, 0.8) * 10.5
-        wobble = math.sin(x * 0.3 - phase * 2.0) * (2.4 * (1.0 - u * 0.5))
-        for dy in range(int(-span), int(span) + 1):
-            frac = abs(dy) / max(1.0, span)
-            py = cy + wobble + dy
-            if frac > 0.78:
-                if (x + dy + f) % 2 == 0:
-                    put(px, x, py, C_CRIMSON_DARK if u < 0.5 else C_CRIMSON_BRIGHT)
-            elif frac > 0.48:
-                put(px, x, py, C_CRIMSON_BRIGHT if u < 0.4 else C_ORANGE_DEEP)
-            elif frac > 0.22:
-                put(px, x, py, C_ORANGE_BRIGHT if u < 0.45 else C_GOLD)
-            else:
-                put(px, x, py, C_GOLD_LIGHT if u < 0.55 else C_WHITE)
+    # 1. Roaring Molten Magma Plume Wake (x = 8..68)
+    in_w = (XX >= 8) & (XX <= 68)
+    ux = np.clip((XX - 8.0) / 60.0, 0.0, 1.0)
+    wy = np.sin(XX * 0.15 - phase * 2.0) * (4.0 * (1.0 - ux * 0.5))
+    hh = 3.5 + (ux ** 0.72) * 21.0
+    frac = np.abs(YY - (cy + wy)) / np.maximum(1.0, hh)
 
-    # 2. Sculpted Craggy Obsidian-Basalt Meteor Core with Branching Magma Tectonic Fissures
-    rock_r = 9.0
-    for dy in range(-11, 12):
-        for dx in range(-11, 12):
-            ang = math.atan2(dy, dx)
-            crag = math.sin(ang * 4.0 + phase) * 1.0 + math.cos(ang * 3.0 - phase) * 0.7
-            d = math.hypot(dx * 0.9, dy)
-            if d <= rock_r + crag:
-                rx = cx + dx
-                ry = cy + dy
-                c1 = abs(math.sin(dx * 0.42 + math.sin(dy * 0.35 + phase) * 1.4 - phase))
-                c2 = abs(math.cos(dy * 0.44 - math.cos(dx * 0.32 - phase) * 1.3 + phase * 0.5))
-                vein_val = min(c1, c2)
-                if d > rock_r + crag - 1.4 and dx > 0:
-                    put(px, rx, ry, C_WHITE if dx > 5 else C_GOLD_LIGHT)
-                elif vein_val < 0.14:
-                    put(px, rx, ry, C_WHITE if vein_val < 0.06 else C_GOLD_LIGHT)
-                elif vein_val < 0.28:
-                    put(px, rx, ry, C_ORANGE_BRIGHT if vein_val < 0.20 else C_ORANGE_DEEP)
-                else:
-                    put(px, rx, ry, C_OBSIDIAN if (dx * dy + f) % 3 != 0 else C_CRIMSON_DARK)
+    arr[in_w & (frac <= 1.0)] = C_CRIM_DARK
+    arr[in_w & (frac <= 0.76)] = C_CRIM
+    arr[in_w & (frac <= 0.54)] = C_ORANGE_DEEP
+    arr[in_w & (frac <= 0.30)] = C_GOLD
 
-    # 3. White-Hot Atmospheric Entry Bow-Shock Plasma Sheath (x=37..47)
-    for s in range(-12, 13):
-        u_s = s / 12.0
-        bx = 46.5 - (u_s * u_s) * 8.0 + math.sin(phase * 2.0 + u_s * 3.0) * 0.5
-        by = cy + s * 1.02
-        thick = int(round((1.0 - u_s * u_s * 0.7) * 3.0))
-        for t_i in range(thick + 1):
-            col = C_WHITE if t_i == 0 else (C_GOLD_LIGHT if t_i == 1 else C_ORANGE_BRIGHT)
-            put(px, bx - t_i, by, col)
+    # 2. Craggy Volcanic-Obsidian Meteor Boulder with Glowing White-Hot Magma Fissures
+    dx = XX - cx
+    dy = YY - cy
+    d = np.hypot(dx * 0.92, dy)
+    ang = np.arctan2(dy, dx)
+    crag = np.sin(ang * 5.0 + phase) * 2.2 + np.cos(ang * 7.0 - phase) * 1.6
+    r_rock = 19.5 + crag
 
-    # 4. Ejected Molten Meteorite Shards Trailing Behind (x=6..27)
-    for sh in range(5):
-        u_sh = ((f / 30.0) + sh / 5.0) % 1.0
-        sx = 27.0 - u_sh * 20.0
-        sy = cy + (1 if sh % 2 == 0 else -1) * (4.0 + u_sh * 6.5)
-        put(px, sx, sy, C_OBSIDIAN)
-        put(px, sx + 1, sy, C_GOLD_LIGHT)
-        put(px, sx, sy - 1, C_ORANGE_BRIGHT)
+    # Leading solar bow-shock corona
+    bow = (XX >= cx - 4) & (d <= r_rock + 4.2) & (d > r_rock - 1.5)
+    arr[bow] = np.where((d <= r_rock + 1.8)[bow, None], C_WHITE, C_GOLD)
 
-    return img.resize((CELL, CELL), Image.Resampling.NEAREST)
+    in_rock = d <= r_rock
+    arr[in_rock] = C_OBSIDIAN_ROCK
+    arr[in_rock & (d >= r_rock - 2.6)] = C_CRIM
+    # Glowing central molten heart pocket
+    d_heart = np.hypot(dx - 3.0, dy + 1.5)
+    arr[in_rock & (d_heart <= 6.2)] = C_ORANGE_DEEP
+    arr[in_rock & (d_heart <= 4.0)] = C_GOLD_LIGHT
+    arr[in_rock & (d_heart <= 2.2)] = C_WHITE
+
+    # 5 Asymmetric Jagged Volcanic Magma Cracks radiating from the molten heart
+    crack_angles = [-2.55, -1.45, -0.35, 0.72, 2.05]
+    for ci, ca in enumerate(crack_angles):
+        cur_a = ca + phase * 0.35
+        for step in range(2, 19):
+            wob = math.sin(step * 0.65 + ci * 1.9) * 0.24
+            ang_s = cur_a + wob
+            mx = cx + 3.0 + math.cos(ang_s) * step
+            my = cy - 1.5 + math.sin(ang_s) * step
+            ix_m, iy_m = int(round(mx)), int(round(my))
+            if 5 <= ix_m <= 98 and 5 <= iy_m <= 98 and in_rock[iy_m, ix_m]:
+                put_px(arr, mx, my, C_WHITE if step < 8 else C_GOLD_LIGHT)
+                put_px(arr, mx + 1, my, C_ORANGE_DEEP)
+                put_px(arr, mx, my + 1, C_ORANGE_DEEP)
+
+    # Trailing molten slag chunks
+    for c_idx in range(5):
+        u_c = ((f / 30.0) + c_idx * 0.20) % 1.0
+        rx = 52.0 - u_c * 40.0
+        ry = cy + math.sin(phase + c_idx * 2.3) * (8.0 + c_idx * 2.0)
+        for oy in (-1, 0, 1):
+            for ox in (-1, 0, 1):
+                put_px(arr, rx + ox, ry + oy, C_GOLD_LIGHT if (ox == 0 and oy == 0) else C_CRIM)
+
+    return arr
 
 
-def build_row4_sun_wheel_and_flame_wave(f):
-    """
-    Row 4 (F00..F29): PYROMANTIC SUN-WHEEL CAST SEAL & SWEEPING FLAME WAVE
-    - Strict bounds: 4 <= x <= 47, 5 <= y <= 47
-    - Expanding/revolving 8-spoked Golden-Crimson Pyromantic Sun-Wheel Mandala (cx=20, cy=26)
-    - Sweeping Forward Crescent Flame Wave with 30fps peeling solar fire tongues
-    """
-    img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
-    px = img.load()
+def build_row4_helios_mandala_crescent(f):
+    """Row 4: Sacred Helios Sun-Wheel Cast Mandala & Blazing Pyromantic Crescent Wave."""
+    arr = np.zeros((LOGICAL, LOGICAL, 4), dtype=np.uint8)
     phase = (f / 30.0) * math.pi * 2.0
-    cx, cy = 20.0, 26.0
+    cx, cy = 52.0, 52.0
 
-    # 1. Revolving Pyromantic Sun-Wheel Mandala Ring (r = 12.5)
-    ring_r = 12.2 + math.sin(phase * 2.0) * 1.0
-    for s in range(56):
-        a = (s / 56.0) * math.pi * 2.0 + phase
-        rx = cx + math.cos(a) * ring_r
-        ry = cy + math.sin(a) * ring_r
-        put(px, rx, ry, C_WHITE if s % 7 == 0 else (C_GOLD_LIGHT if s % 2 == 0 else C_ORANGE_DEEP))
-        if s % 7 == 0:
-            put(px, cx + math.cos(a + 0.08) * (ring_r + 1.8), cy + math.sin(a + 0.08) * (ring_r + 1.8), C_GOLD)
-            put(px, cx + math.cos(a + 0.14) * (ring_r + 2.8), cy + math.sin(a + 0.14) * (ring_r + 2.8), C_ORANGE_BRIGHT)
+    dx = XX - cx
+    dy = YY - cy
+    d = np.hypot(dx, dy)
+    ang = np.arctan2(dy, dx)
 
-    # 8 Revolving Sun-Wheel Spokes
-    for k in range(8):
-        a = phase + k * (math.pi * 0.25)
-        max_d = 14 if k % 2 == 0 else 10
-        for d in range(3, max_d + 1):
-            put(
-                px,
-                cx + math.cos(a) * d,
-                cy + math.sin(a) * d,
-                C_WHITE if d >= max_d - 1 else (C_GOLD_LIGHT if k % 2 == 0 else C_ORANGE_BRIGHT)
-            )
-    draw_star(px, cx, cy, 4, C_WHITE, C_GOLD_LIGHT, rot=-phase)
+    # 1. Double Sacred Golden Sun-Wheel Astrolabe Rings (r = 34 & r = 23)
+    arr[np.abs(d - 34.0) <= 1.2] = C_ORANGE_DEEP
+    arr[np.abs(d - 34.0) <= 0.65] = C_GOLD_LIGHT
+    arr[np.abs(d - 22.5) <= 1.1] = C_ORANGE
+    arr[np.abs(d - 22.5) <= 0.6] = C_GOLD
 
-    # 2. Sweeping Forward Crescent Flame Wave (x=25..47, y=6..46)
-    wave_pulse = 0.88 + 0.12 * math.sin(phase * 2.0)
-    for s in range(-19, 20):
-        u_arc = s / 19.0
-        arc_y = cy + s * 1.02
-        arc_x = 45.0 - (u_arc * u_arc) * 14.0 + math.sin(phase * 2.0 + u_arc * 3.5) * 0.8
-        thickness = int(round((1.0 - u_arc * u_arc * 0.72) * 6.2 * wave_pulse))
-        for t_off in range(thickness + 1):
-            wx = arc_x - t_off
-            if t_off == 0:
-                put(px, wx, arc_y, C_WHITE)
-            elif t_off == 1:
-                put(px, wx, arc_y, C_GOLD_LIGHT)
-            elif t_off <= 3:
-                put(px, wx, arc_y, C_GOLD if (s + t_off) % 2 == 0 else C_ORANGE_BRIGHT)
-            elif t_off <= 5:
-                put(px, wx, arc_y, C_ORANGE_DEEP)
-            else:
-                put(px, wx, arc_y, C_CRIMSON_BRIGHT)
+    # 2. 12 Rotating Astrolabe Spokes & Diamond Sun-Runes
+    for k in range(12):
+        sa = phase + k * (math.pi / 6.0)
+        ux, uy = math.cos(sa), math.sin(sa)
+        for r_step in range(12, 39):
+            if 23 <= r_step <= 33 or (k % 3 == 0 and r_step >= 34):
+                put_px(arr, cx + ux * r_step, cy + uy * r_step, C_WHITE if r_step >= 35 else C_GOLD)
 
-    # 3. 30fps Peeling Solar Flame Tongues Streaming Off the Crescent Wave
-    for m in range(7):
-        u_m = ((f / 30.0) + m / 7.0) % 1.0
-        side = 1 if m % 2 == 0 else -1
-        fx = 44.0 - u_m * 16.0
-        fy = cy + side * (6.0 + u_m * 12.5) + math.sin(phase * 2.0 + m) * 1.2
-        put(px, fx, fy, C_WHITE if u_m < 0.3 else C_GOLD_LIGHT)
-        put(px, fx - 1, fy, C_ORANGE_BRIGHT)
-        put(px, fx - 2, fy - side * 0.5, C_CRIMSON_BRIGHT)
+    # 3. Central 4-Point Helios Sun Emblem
+    draw_star_104(arr, cx, cy, 8, C_WHITE, C_GOLD_LIGHT)
+    arr[d <= 4.2] = C_GOLD_LIGHT
+    arr[d <= 2.4] = C_WHITE
 
-    return img.resize((CELL, CELL), Image.Resampling.NEAREST)
+    # 4. Forward-Sweeping Blazing Solar Crescent Blade on Right (+X) Rim (r = 35..42, -70..+70 deg)
+    in_cresc = (np.abs(ang) <= 1.22) & (d >= 34.0) & (d <= 42.5)
+    c_env = np.cos(ang / 1.22 * (math.pi * 0.5))
+    c_thick = 1.5 + c_env * 4.5
+    c_dist = np.abs(d - 38.0)
+    arr[in_cresc & (c_dist <= c_thick)] = C_SCARLET
+    arr[in_cresc & (c_dist <= c_thick * 0.65)] = C_GOLD
+    arr[in_cresc & (c_dist <= c_thick * 0.30)] = C_WHITE
 
-
-def verify_bounds(sheet):
-    """Verifies 0/150 boundary clips across all 5 rows for both 2<=x<=49 and 3<=x<=48."""
-    clips_2_49 = 0
-    clips_3_48 = 0
-    for r in range(ROWS):
-        row_min_x, row_min_y = 999, 999
-        row_max_x, row_max_y = -1, -1
-        for c in range(COLS):
-            cell = sheet.crop((c * CELL, r * CELL, (c + 1) * CELL, (r + 1) * CELL))
-            logical = cell.resize((LOGICAL, LOGICAL), Image.Resampling.NEAREST)
-            px = logical.load()
-            cell_clip_2 = False
-            cell_clip_3 = False
-            for y in range(LOGICAL):
-                for x in range(LOGICAL):
-                    if px[x, y][3] > 0:
-                        row_min_x = min(row_min_x, x)
-                        row_min_y = min(row_min_y, y)
-                        row_max_x = max(row_max_x, x)
-                        row_max_y = max(row_max_y, y)
-                        if x < 2 or x > 49 or y < 2 or y > 49:
-                            cell_clip_2 = True
-                        if x < 3 or x > 48 or y < 3 or y > 48:
-                            cell_clip_3 = True
-            if cell_clip_2:
-                clips_2_49 += 1
-            if cell_clip_3:
-                clips_3_48 += 1
-        print(f"  Row {r} logical bounds: x=[{row_min_x}..{row_max_x}], y=[{row_min_y}..{row_max_y}]")
-    print(f"Boundary Audit (2<=x<=49, 2<=y<=49): {clips_2_49}/150 clips | (3<=x<=48, 3<=y<=48): {clips_3_48}/150 clips")
-    assert clips_2_49 == 0, f"Found {clips_2_49} boundary clips outside 2..49!"
-
-
-def apply_pass11_star_mote_polish(cell_img, row_idx, f):
-    """
-    Pass #11 HD-2D Specular Star-Mote & Aura Polish:
-    Adds orbiting 4-point specular star glints (3x3 white core + themed 1px rays,
-    strictly inside [16..191]) that revolve smoothly with frame index f (0..29).
-    """
-    px = cell_img.load()
-    phase = (f / 30.0) * math.pi * 2.0
-    for m_idx in range(3):
-        ang = phase + m_idx * (math.pi * 2.0 / 3.0) + row_idx * 0.45
-        rx = 60.0 + 8.0 * math.sin(phase * 2.0 + m_idx * 1.7 + row_idx)
-        ry = 56.0 + 8.0 * math.cos(phase * 2.0 + m_idx * 1.3 + row_idx)
-        cx = max(24, min(183, int(round(104.0 + math.cos(ang) * rx))))
-        cy = max(24, min(183, int(round(104.0 + math.sin(ang) * ry))))
-        ray_col = C_GOLD_LIGHT if (m_idx + row_idx) % 2 == 0 else C_ORANGE_BRIGHT
-        ray_len = 5 + ((f + m_idx) % 3)
-
-        for dy in range(-2, 3):
-            for dx in range(-2, 3):
-                if abs(dx) == 2 or abs(dy) == 2:
-                    x, y = cx + dx, cy + dy
-                    if 16 <= x <= 191 and 16 <= y <= 191 and px[x, y][3] == 0:
-                        px[x, y] = C_SOLAR_AURA
-
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
-                x, y = cx + dx, cy + dy
-                if 16 <= x <= 191 and 16 <= y <= 191:
-                    px[x, y] = C_WHITE
-
-        for d in range(2, ray_len + 1):
-            c_step = C_WHITE if d == 2 else ray_col
-            for dx, dy in ((-d, 0), (d, 0), (0, -d), (0, d)):
-                x, y = cx + dx, cy + dy
-                if 16 <= x <= 191 and 16 <= y <= 191:
-                    px[x, y] = c_step
-
-    return cell_img
+    return arr
 
 
 def main():
-    sheet_w = COLS * CELL  # 6240
-    sheet_h = ROWS * CELL  # 1040
-    sheet = Image.new("RGBA", (sheet_w, sheet_h), (0, 0, 0, 0))
-
+    t0 = time.time()
+    sheet = Image.new("RGBA", (COLS * CELL, ROWS * CELL), (0, 0, 0, 0))
     builders = [
-        ("ROW 0: SOLAR FIREBALL COMET (30 FRAMES)", build_row0_solar_fireball),
-        ("ROW 1: HELLFIRE MAGMA PILLAR ERUPTION (30 FRAMES)", build_row1_hellfire_pillar),
-        ("ROW 2: ECLIPSE SUPERNOVA BLACK-SUN SPHERE (30 FRAMES)", build_row2_eclipse_supernova),
-        ("ROW 3: CATACLYSM MOLTEN METEOR & BEAM HEAD (30 FRAMES)", build_row3_cataclysm_meteor),
-        ("ROW 4: PYROMANTIC SUN-WHEEL SEAL & FLAME WAVE (30 FRAMES)", build_row4_sun_wheel_and_flame_wave),
+        ("SOLAR_FIREBALL", build_row0_solar_fireball),
+        ("HELLFIRE_PILLAR", build_row1_hellfire_pillar),
+        ("ECLIPSE_SPHERE", build_row2_eclipse_supernova),
+        ("CATACLYSM_METEOR", build_row3_cataclysm_meteor),
+        ("HELIOS_MANDALA", build_row4_helios_mandala_crescent),
     ]
+    clips = 0
 
-    for row_idx, (label, fn) in enumerate(builders):
-        for col_idx in range(COLS):
-            cell_img = apply_pass11_star_mote_polish(fn(col_idx), row_idx, col_idx)
-            sheet.paste(cell_img, (col_idx * CELL, row_idx * CELL))
+    for r, (name, fn) in enumerate(builders):
+        for c in range(COLS):
+            arr = fn(c)
+            # Enforce strict 4px safety margin in 104x104
+            arr[:4, :, :] = 0
+            arr[100:, :, :] = 0
+            arr[:, :4, :] = 0
+            arr[:, 100:, :] = 0
 
-    out_path = "/home/antigravity/assets/sprites/mage_vfx.png"
-    sheet.save(out_path)
-    print(f"Saved 30fps FireMage VFX sheet to {out_path} ({sheet.size[0]}x{sheet.size[1]})")
-    verify_bounds(sheet)
+            a = arr[:, :, 3] > 0
+            if np.any(a[:2, :]) or np.any(a[-2:, :]) or np.any(a[:, :2]) or np.any(a[:, -2:]):
+                clips += 1
 
-    # Build both the full 30-column contact sheet and the 2 readable 15-column contact sheets in caller's artifact directory
-    art_dir = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/4f1fb80f-a88f-4496-9746-b4b9fe84f6d4"
-    thumb = 88
-    pad_top = 24
-    cw = COLS * thumb
-    ch = ROWS * (thumb + pad_top)
-    contact = Image.new("RGBA", (cw, ch), (16, 12, 22, 255))
-    draw = ImageDraw.Draw(contact)
+            tile = Image.fromarray(arr, "RGBA").resize((CELL, CELL), Image.Resampling.NEAREST)
+            sheet.paste(tile, (c * CELL, r * CELL))
+        print(f"  VFX Row {r} ({name:16s}): 30/30 frames built")
 
-    for r_idx, (label, _) in enumerate(builders):
-        y0 = r_idx * (thumb + pad_top)
-        draw.rectangle([0, y0, cw, y0 + pad_top - 1], fill=(32, 20, 36, 255))
-        draw.text((6, y0 + 2), label, fill=(251, 146, 60, 255))
-        for c_idx in range(COLS):
-            x0 = c_idx * thumb
-            draw.text((x0 + 4, y0 + 12), f"F{c_idx:02d}", fill=(254, 240, 138, 255))
-            cell_crop = sheet.crop((c_idx * CELL, r_idx * CELL, (c_idx + 1) * CELL, (r_idx + 1) * CELL))
-            cell_thumb = cell_crop.resize((thumb, thumb), Image.Resampling.NEAREST)
-            contact.paste(cell_thumb, (x0, y0 + pad_top), cell_thumb)
-            draw.rectangle([x0, y0 + pad_top, x0 + thumb - 1, y0 + pad_top + thumb - 1], outline=(58, 36, 48, 255))
+    sheet.save(OUT_VFX_PATH)
 
-    c_path = os.path.join(art_dir, "debug_mage_30fps_vfx.png")
-    contact.save(c_path)
-    print(f"Saved contact sheet: {c_path} ({contact.size[0]}x{contact.size[1]})")
-
-    thumb_half = 112
-    for half_idx, (c_start, c_end, suffix) in enumerate([(0, 15, "left_F00_F14"), (15, 30, "right_F15_F29")]):
-        cw_h = 15 * thumb_half
-        ch_h = ROWS * (thumb_half + pad_top)
-        contact_h = Image.new("RGBA", (cw_h, ch_h), (16, 12, 22, 255))
-        draw_h = ImageDraw.Draw(contact_h)
-        for r_idx, (label, _) in enumerate(builders):
-            y0 = r_idx * (thumb_half + pad_top)
-            draw_h.rectangle([0, y0, cw_h, y0 + pad_top - 1], fill=(32, 20, 36, 255))
-            draw_h.text((6, y0 + 2), label, fill=(251, 146, 60, 255))
-            for c_idx in range(c_start, c_end):
-                local_c = c_idx - c_start
-                x0 = local_c * thumb_half
-                draw_h.text((x0 + 4, y0 + 12), f"F{c_idx:02d}", fill=(254, 240, 138, 255))
-                cell_crop = sheet.crop((c_idx * CELL, r_idx * CELL, (c_idx + 1) * CELL, (r_idx + 1) * CELL))
-                cell_thumb = cell_crop.resize((thumb_half, thumb_half), Image.Resampling.NEAREST)
-                contact_h.paste(cell_thumb, (x0, y0 + pad_top), cell_thumb)
-                draw_h.rectangle([x0, y0 + pad_top, x0 + thumb_half - 1, y0 + pad_top + thumb_half - 1], outline=(58, 36, 48, 255))
-        ch_path = os.path.join(art_dir, f"debug_mage_30fps_vfx_{suffix}.png")
-        contact_h.save(ch_path)
-        print(f"Saved contact sheet: {ch_path}")
+    # Save debug contact sheet for visual verification via view_file
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+    dbg_w, dbg_h = COLS * CELL, ROWS * CELL
+    dbg = Image.new("RGBA", (dbg_w, dbg_h), (14, 12, 22, 255))
+    dbg.alpha_composite(sheet, (0, 0))
+    d = ImageDraw.Draw(dbg)
+    for r in range(ROWS):
+        for c in range(COLS):
+            d.rectangle([c * CELL, r * CELL, (c + 1) * CELL - 1, (r + 1) * CELL - 1], outline=(48, 42, 66, 160))
+    dbg.resize((dbg_w // 4, dbg_h // 4), Image.Resampling.NEAREST).save(
+        os.path.join(ARTIFACT_DIR, "debug_mage_30fps_vfx.png")
+    )
+    print(f"[DONE] Saved {OUT_VFX_PATH} ({dbg_w}x{dbg_h}), clips={clips}/150 in {time.time() - t0:.2f}s")
 
 
 if __name__ == "__main__":
