@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps34';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps34';
+import { Fighter } from './Fighter.js?v=30fps35';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps35';
 
 export class FireMage extends Fighter {
   constructor(x, groundY, facing = -1) {
@@ -990,30 +990,35 @@ export class FireMage extends Fighter {
   }
 
   drawPixelFlameWard4x4(ctx, renderer = null) {
-    if (this.state !== 'CROUCH' || !this.isDeflecting) return;
-    const wx = Math.round((this.x + this.facing * 48) / 4) * 4;
-    const wy = Math.round((this.y - 84) / 4) * 4;
-    const rx = 20;
+    if (this.state !== 'CROUCH' || !this.isDeflecting || this.stateTimer > 0.36) return;
+    const wx = Math.round((this.x + this.facing * 42) / 4) * 4;
+    const wy = Math.round((this.y - 82) / 4) * 4;
+    const rx = 24;
     const ry = 42;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     if (renderer && renderer.glowGold) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.36;
+      ctx.globalAlpha = 0.34;
       ctx.drawImage(renderer.glowGold, wx - 56, wy - 68, 112, 136);
     }
 
+    // Continuous stepped 4x4 pixel-art Crescent Flame-Ward Barrier facing the opponent
     ctx.globalCompositeOperation = 'source-over';
-    const nodes = 16;
-    for (let i = 0; i < nodes; i++) {
-      const a = this.stateTimer * 10.0 + (i / nodes) * Math.PI * 2;
-      const px = Math.round((wx + Math.cos(a) * rx) / 4) * 4;
-      const py = Math.round((wy + Math.sin(a) * ry) / 4) * 4;
-      ctx.fillStyle = i % 2 === 0 ? '#fb923c' : '#facc15';
-      ctx.fillRect(px - 2, py - 2, 4, 4);
-      if (i % 4 === 0) {
-        ctx.fillStyle = '#ffffff';
+    const steps = 28;
+    for (let i = 0; i <= steps; i++) {
+      const u = i / steps;
+      const localAng = (-0.42 + 0.84 * u) * Math.PI;
+      const env = Math.sin(u * Math.PI);
+      const px = Math.round((wx + this.facing * Math.cos(localAng) * rx) / 4) * 4;
+      const py = Math.round((wy + Math.sin(localAng) * ry) / 4) * 4;
+      ctx.fillStyle = '#7f1d1d';
+      ctx.fillRect(px - 4, py - 4, 8, 8);
+      ctx.fillStyle = env > 0.35 ? '#fb923c' : '#ea580c';
+      ctx.fillRect(px - 2, py - 2, 6, 4);
+      if (env > 0.55) {
+        ctx.fillStyle = i % 3 === 0 ? '#ffffff' : '#fef08a';
         ctx.fillRect(px - 2, py - 2, 4, 4);
       }
     }
@@ -1064,13 +1069,12 @@ export class FireMage extends Fighter {
     ctx.imageSmoothingEnabled = false;
     ctx.globalAlpha = Math.max(0, env * 0.88);
 
-    // 4x4 Stepped Sacred Eclipse Floor Astrolabe Ellipse
-    const segs = 36;
+    const segs = 44;
     for (let i = 0; i < segs; i++) {
       const a = dom.life * 2.4 + (i / segs) * Math.PI * 2;
       const px = Math.round((cx + Math.cos(a) * rx) / 4) * 4;
       const py = Math.round((gy + Math.sin(a) * 14) / 4) * 4;
-      ctx.fillStyle = i % 3 === 0 ? '#fef08a' : '#ea580c';
+      ctx.fillStyle = i % 4 === 0 ? '#fef08a' : '#ea580c';
       ctx.fillRect(px - 4, py - 2, 8, 4);
     }
     ctx.restore();
@@ -1086,7 +1090,7 @@ export class FireMage extends Fighter {
       const fade = Math.max(0, 1 - u);
       const r = sw.maxRadius * (1 - Math.pow(1 - u, 2.6));
       const ryScale = sw.isGround ? 0.22 : 0.92;
-      const pts = sw.isGround ? 20 : 16;
+      const pts = sw.isGround ? 32 : 24;
 
       ctx.globalAlpha = fade * 0.92;
       for (let i = 0; i < pts; i++) {
@@ -1094,10 +1098,10 @@ export class FireMage extends Fighter {
         const px = Math.round((sw.x + Math.cos(a) * r) / 4) * 4;
         const py = Math.round((sw.y + Math.sin(a) * r * ryScale) / 4) * 4;
         ctx.fillStyle = sw.color;
-        ctx.fillRect(px - 2, py - 2, 4, 4);
-        if (i % 2 === 0) {
+        ctx.fillRect(px - 4, py - 2, 6, 4);
+        if (i % 3 === 0) {
           ctx.fillStyle = '#ffffff';
-          ctx.fillRect(px - 2, py - 2, 2, 2);
+          ctx.fillRect(px - 2, py - 2, 4, 2);
         }
       }
     }

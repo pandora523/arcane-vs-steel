@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js?v=30fps34';
-import { PixelForge } from './PixelForge.js?v=30fps34';
+import { PixelFont } from './PixelFont.js?v=30fps35';
+import { PixelForge } from './PixelForge.js?v=30fps35';
 
 export class VFXManager {
   constructor() {
@@ -1237,11 +1237,12 @@ export class VFXManager {
         const pilCol = Math.min(29, Math.floor(pilFrac * 30));
 
         if (!isRadiant && !isEmerald && !isSteel && !isAbyssal && mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
-          const pilW = Math.round((248 * pil.scaleWidth) / 4) * 4;
-          const pilH = Math.round((328 * pil.scaleWidth * (0.35 + 0.65 * pop)) / 4) * 4;
+          const pilW = Math.round((252 * pil.scaleWidth) / 4) * 4;
+          const pilH = Math.round((344 * pil.scaleWidth * (0.38 + 0.62 * pop)) / 4) * 4;
+          const pilDir = Math.round(pil.x / 8) % 2 === 0 ? 1 : -1;
           ctx.save();
           ctx.translate(baseX, baseY + 14);
-          ctx.scale(flipWave, 1);
+          ctx.scale(pilDir, 1);
           this.drawBloomedSprite(
             ctx,
             renderer,
@@ -1259,6 +1260,25 @@ export class VFXManager {
             isReflection
           );
           ctx.restore();
+
+          // Rising 4x4 Pixel-Art Crown Flame Tongues & Solar Star-Embers ascending above the pillar crest
+          if (!isReflection && fade > 0.2) {
+            ctx.save();
+            ctx.imageSmoothingEnabled = false;
+            ctx.globalAlpha = fade * 0.92;
+            for (let k = 0; k < 5; k++) {
+              const uC = ((pil.life * 2.1 + k * 0.2) % 1);
+              const spreadX = (k - 2) * 18 * pil.scaleWidth + Math.sin(pil.life * 9 + k * 1.7) * 8;
+              const cxC = Math.round((baseX + spreadX) / 4) * 4;
+              const cyC = Math.round((baseY - pilH * (0.84 + uC * 0.24)) / 4) * 4;
+              const hFlame = uC < 0.55 ? 12 : 8;
+              ctx.fillStyle = '#ea580c';
+              ctx.fillRect(cxC - 2, cyC - hFlame, 4, hFlame);
+              ctx.fillStyle = uC < 0.4 ? '#ffffff' : '#fef08a';
+              ctx.fillRect(cxC - 2, cyC - 4, 4, 4);
+            }
+            ctx.restore();
+          }
         } else if (isRadiant && priestVfx && priestVfx.complete && priestVfx.naturalWidth) {
           const pilW = Math.round((236 * pil.scaleWidth) / 4) * 4;
           const pilH = Math.round((312 * pil.scaleWidth * (0.35 + 0.65 * pop)) / 4) * 4;
