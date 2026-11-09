@@ -1,138 +1,96 @@
 #!/usr/bin/env python3
 """
-Build the Priestess (Seraphina) 30fps VFX Sprite Sheet (5 rows x 30 columns = 150 frames)
-and 30fps Seraphim Wings Sprite Sheet (1 row x 30 columns = 30 frames).
+Builds Seraphina's (Priestess) High-Precision 104x104 -> 208x208 30fps VFX Sprite Sheet
+(assets/sprites/priestess_vfx.png, 6240x1040, 5 rows x 30 cols) AND 30fps Seraphim Wings Sheet
+(assets/sprites/seraphim_wings.png, 9600x232, 1 row x 30 cols @ 320x232):
 
-Outputs:
-1. /home/antigravity/assets/sprites/priestess_vfx.png (6240x1040, 208x208 per cell, 52x52 logical upscaled 4x NEAREST)
-   - Row 0 (holy_light projectile & orbiting Ultimate stars, 30 frames):
-     Sacred 8-Point Starlight Orb with rotating golden filigree points, diamond-white core, and trailing feather sparkles.
-   - Row 1 (holy_spear Valkyrie Spear Sky-Strike, 30 frames):
-     F00..F11: Ornate winged golden Valkyrie Spear of Light plummeting point-down from the heavens.
-     F12..F29: Spear planted upright in a glowing stained-glass cathedral rose-window ground sigil with rising golden light pillars and floating feathers.
-   - Row 2 (priestess Cathedral Judgment Pillar & Ophanim Halo, 30 frames):
-     Towering column of golden-white divine light wrapped in rotating winged Ophanim rings and gothic cathedral arches (F00..F05 eruption, F06..F21 full rotating pillar, F22..F29 ascension dissolve).
-   - Row 3 (Seraphic Apotheosis Celestial Gate / 6-Winged Archangel Mandala, 30 frames):
-     Grand 30fps rotating Stained-Glass Cathedral Rose Mandala & 6-Winged Seraphim Crest (F00..F29).
-   - Row 4 (priestess Radiant Smite Wave & Sanctuary Rose Seal, 30 frames):
-     Expanding golden-white crescent smite wave & consecrated rose sigil (F00..F29).
-2. /home/antigravity/assets/sprites/seraphim_wings.png (9600x232, 30 cols x 1 row at 320x232 per cell, 80x58 logical upscaled 4x NEAREST)
-   - Silky-smooth 30fps 6-wing Seraphim flap cycle (upstroke -> apex -> power downstroke -> feather ripple -> glide recovery) with golden-tipped white primary feathers and drifting light motes.
-3. Contact sheet in /home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/4f1fb80f-a88f-4496-9746-b4b9fe84f6d4/debug_priestess_30fps_vfx.png
+- Row 0 (holy_light): Sacred 8-Point Sunburst Starlight Orb & Orbiting Ultimate Chakrams
+- Row 1 (holy_spear): Descending Winged Cathedral Light-Spear (F00..F11) + Tapered Spire Impact Beam (F12..F29)
+- Row 2 (Judgment Pillar): Towering Cathedral Sanctum Pillar with 7-Spire Organic Gothic Light Crown (ZERO flat top cutoff!)
+- Row 3 (Celestial Gate): 12-Spoke Stained-Glass Cathedral Rose Mandala & 6-Winged Seraphim Crest
+- Row 4 (Smite Wave & Sanctuary Rose Seal): Consecrated Sanctuary Seal & Crescent Starlight Wave
+- seraphim_wings.png: Pinhole-free 160x116 -> 320x232 6-Wing Golden-Alabaster Seraphim Flap Cycle with 1px Selout
 """
 
-import base64
 import math
 import os
-import zlib
+import time
 import numpy as np
 from PIL import Image, ImageDraw
 
-VFX_OUT_PATH = "/home/antigravity/assets/sprites/priestess_vfx.png"
-WINGS_OUT_PATH = "/home/antigravity/assets/sprites/seraphim_wings.png"
-ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/4f1fb80f-a88f-4496-9746-b4b9fe84f6d4"
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+VFX_OUT_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "priestess_vfx.png")
+WINGS_OUT_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "seraphim_wings.png")
+ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
 
 CELL = 208
-L = 52
-SCALE = 4
+L = 104
 COLS = 30
 ROWS = 5
 
-WING_L_W = 80
-WING_L_H = 58
+WING_L_W = 160
+WING_L_H = 116
 WING_CELL_W = 320
 WING_CELL_H = 232
 
-# Base64-compressed original 80x58 RGBA cell 0 of seraphim_wings.png for idempotent 30fps generation
-WING_CELL0_B64 = (
-    "eNrt27+rLWcVxvH0FqnzBwj2ASNiYytJKss02lhYpNBGsLIRbmUgRot0VxQEbTSkSClaXC2CjaYOhNsYQiBVimO+w/0cluO+"
-    "Nzn7zMw5uZwNw+w9e/a7nnf9fNY7737mmbvX3evudfe6e9297l5P8+srzz53sT5ucpwvk95e/vrzF6+/+vLFu/dfuXj/3d8s"
-    "R++7fpWxfvidF/5vjMbt+tOmx+Zjvh8++NHlfHvf+Q/3vr98f1X9sYNxGtf7p0WP/C0d/f2tX/6Pr7z2vW8u8+yeq86VTToa"
-    "Z/o0m3Ttqn59233O3JqXuV8n/00bNC4ZHz38x5fWF0/pzlyW+X73xUvdXdc/+j0dNm7vp1x2u46djtad2HTwid6/8ZMfLIeY"
-    "u+6c+OB67CnTsYW8o+rr9Dt1sfOffvXTSz+5as14Ui2hn8af8tY4zsm1R8bsH+//4tL2M+els9/e+/Fy8M+tcvs3vvq1S/2R"
-    "kbxTOMJ3G/Mhv5v6y+a4SXH11ps/W/xDfG01h8ZR0xu/I3nJTb7cS3+3rS5nfxxFDVz7nnk9+PMbu+rvn+/8epGTrZK7xgPj"
-    "bdFh2KfesnXc4ZIXfzaHfCG879z/+cIBcbUt8x/9/eX39xY5asnU4eQ0MN90HIsRvpZ+pi/QX+/zPfXDPVtguLTHIz9PTgf7"
-    "9X7mw8lDt7LhuTlvcpGl7n2Gs9jJ1sUM+3dfftEx/XUL/kIX1Y3pf/T3wb/eXvCIaVhxnvLPTcRtWMOUz/GvcL73t99dfPrJ"
-    "v5fr6kZzS5/NrfvC3+ct+HPjNF7jNn6fk5fc5Hc9POH6z/t/XT6Hd+I/Mo6TRQf0Fr6Js7N6GMZ8oevNzW/5zXX6N37ceOkh"
-    "GR30hw+GJ9kTJz3S/RE6zP+zcXZPdrHREZ6PHz5Yztm4s9zXvJoL3+uzOlw+775zc2+/b5ywGDc5/EoNKS7gghP27ms+/e6l"
-    "b337Yk+/K1fo0cieOoOts3zeXPhdv+l9Zz54Ti1uvn4Li3GT03ucif4mTufwwzLnt3f8hi8drXMenGFSO7q3XJOP9NkccZn8"
-    "Rw57Un81+8PuV7f4XTppfLmte6b/TXzhDX+/7dxvjsqB4WFrdpw1gz7Fr9qBU/Rd9/CTyS3mmtPj1pun3zUWmZ0bn58nl/7E"
-    "iTO86Y7vnptHzqkdyQ0r/bFrsQof/eEr4czObB/m5lPesabQfX1Oj/wBR8F9rIHJp2KhceVkuqM/NoMP3n5XjKsne/tg8cPe"
-    "yRWL6bGjOal15sjn6L3fzPv45uRmXcPLOovvyYnV2pnHxGTX2UK8sK9awk+7zxh79nTZJnvmC+FgezlQ7WNX/IUOzc+86R0v"
-    "kzPX/fHsb/Hh5E4+1zV+zf+Si7+oa3y234kFMZCM5reXD5pH2Nm2Y/qguhDW2Xc0H7xM7NIlvfce157rxdZIu54+uo8eZi6Q"
-    "U/Dn2YeITzjFUPdUa+Y6zV76m30rLPIK+4ZLTmytKGxd64xP4NH0N2Ou49Q6Mc40OTgf1CvSf0fyHOHAWWbdUOfUa3xqq758"
-    "vUY119jMdfLndV3DJ/KF9NM5rM2PL5oDLim/PS73eo7n/uSse8MpL6zhYF/4Jn8OU78PFx1u2RPrkzyjIW/mL5jWPLr4aQ58"
-    "gd+KGz0/3tH7J/G/ubYyf49fGoO/i911b7Tuh5uP9SJrSlvEMc5qLGtR/GetP7jwA7WSjzjzl8bCq3GeJ+kPF8GTO6wZGB+2"
-    "fLD78RU1eK0/suE4Ne8tud+UJXdP/5s2F5P8ge/oSfQJepXPw9v3yzOMR5xkjiE/8He9N99j76k/NWdyiT3rL98LIzzr9YPw"
-    "zJoiZ6qJ/FG8wPxFcbsXZ8QH1Cl5L/3BRU/r9QP5U07fs4/T9871Ndjm+kb+geeL4bm+Yf2mexrz3DUPsW4/g3HJEbt4M0zh"
-    "VP/DHd6ZV47gf8lLrjyHt/RZvOqPYTLfyeu2wjX9kpzkig81ip1xVPEipxzB/6wNTR+TC3svH/U9HR79rCv/U9usn83eKPvD"
-    "jpeeu5fuqmtu6REvhiE88uDkhuHyzPVI/Xnep0fHu+W9qT+8CvfbS3/6UmvPc+0IJxYbYRI7N/GcMHlsGg725pNz7UPd4B97"
-    "2Fru05fi0DiCugfTui85On5n7Zjr0nyPPuU9ddc649b2rp/hR1N/XZM78sGu6zf1WeZwlA+qHWptusIL9I94orpLf7Oeb4ln"
-    "7nfw7JL++H8HXoP/4Viehxzle+TjKdauwue5mz7GOi77ekawJT+Yc5/PDdU264Gzdlgz6vvZz+29vqtfE7NqBmzpasaMPRNT"
-    "X3vuc+OPycTb1Q+1ZG133LR42hMXvrnmK/Oz+uGsZhxZ4+TZzmLXGtxcH558C3fc43l/48396ZOP0idc8t3SP455HL33BZeR"
-    "CzvTmXVpcYwDzmdsW+9fM659iHONb/qenBLeOY+j+RW5c8189kzT3nLf3Ju8BS+cuXjuT5+8xSG24VVn9+zZPg/35EzyXHGh"
-    "ZxdPsze33/K6eWfmYfuB5xoHuZNPqRnzfw03we/TgZwx91J4Vn1qj4Ycvuf/3+Y6ADzrfS6+s0bfPI7ewzb3iUw/4Iv05Znu"
-    "3F+wVy9sv/3cn5D8eW32aBP/TewBPLm28Oi/QOs6sdbh1vUumVNP+sy539R/nm6iXnzRfAj3rLXy0tThHvV3+p3nF/N/T54j"
-    "34Z9z4/zAbE55zSvzfjeev/z+r9u87prW/7vZA8fDN+aY5/qjbbe/7z+P8K038wVt/l/cGLm1BxO7SfA1a7re6d0MveVH9XX"
-    "7rnmegrzWt/n5ozHjX1kX/Zfa3QP8A=="
-)
+# Crisp Cel-Shaded Radiant Sanctuary VFX Palette
+C_SELOUT       = (24, 18, 34, 255)
+C_BRONZE_RIM   = (124, 78, 22, 255)
+C_GOLD_DEEP    = (184, 124, 28, 255)
+C_GOLD_MID     = (234, 179, 38, 255)
+C_GOLD_BRIGHT  = (253, 224, 71, 255)
+C_PEARL_LIGHT  = (255, 248, 214, 255)
+C_CORE_WHITE   = (255, 255, 252, 255)
+C_ROSE_BRIGHT  = (251, 182, 206, 245)
+C_ROSE_GLASS   = (224, 112, 152, 225)
+C_AZURE_BRIGHT = (147, 218, 255, 245)
+C_AZURE_GLASS  = (59, 130, 246, 225)
+C_SAPPHIRE_SHAD= (30, 64, 175, 235)
+C_GOLD_GLOW    = (253, 224, 71, 175)
+C_GOLD_SOFT    = (234, 179, 38, 110)
 
-# Sacred Celestial Palette (un-inked divine gold, cathedral white, stained-glass rose/amber)
-C_CORE_WHITE  = (255, 255, 252, 255)
-C_PEARL_LIGHT = (255, 252, 232, 255)
-C_GOLD_BRIGHT = (255, 236, 148, 255)
-C_GOLD_MID    = (242, 198, 78, 255)
-C_GOLD_DEEP   = (204, 148, 42, 255)
-C_AMBER_SHADOW= (158, 102, 28, 255)
-C_ROSE_BRIGHT = (255, 196, 212, 255)
-C_ROSE_GLASS  = (232, 132, 164, 215)
-C_AZURE_GLASS = (168, 224, 255, 210)
-C_GOLD_GLOW   = (255, 228, 128, 155)
-C_GOLD_SOFT   = (245, 204, 96, 95)
-C_GOLD_FAINT  = (230, 178, 72, 50)
-C_WHITE_GLOW  = (255, 252, 235, 185)
+YY, XX = np.mgrid[0:L, 0:L].astype(np.float32)
 
 
 def put_px(canvas, x, y, rgba):
-    x = int(round(x))
-    y = int(round(y))
+    ix = int(round(x))
+    iy = int(round(y))
     h, w = canvas.shape[:2]
-    # Enforce strict 2 <= x <= 49, 2 <= y <= 49 margin for 52x52 VFX cells
-    if w == L and h == L:
-        if not (2 <= x <= 49 and 2 <= y <= 49):
-            return
-    if 0 <= x < w and 0 <= y < h:
-        sa = rgba[3] / 255.0
-        if sa <= 0:
-            return
-        if sa >= 0.999 or canvas[y, x, 3] == 0:
-            canvas[y, x] = rgba
-        else:
-            da = canvas[y, x, 3] / 255.0
-            out_a = sa + da * (1.0 - sa)
-            for c in range(3):
-                canvas[y, x, c] = int(round((rgba[c] * sa + canvas[y, x, c] * da * (1.0 - sa)) / out_a))
-            canvas[y, x, 3] = int(round(out_a * 255))
+    margin = 4 if (w == L and h == L) else 2
+    if not (margin <= ix < w - margin and margin <= iy < h - margin):
+        return
+    sa = rgba[3] / 255.0
+    if sa <= 0.0:
+        return
+    if sa >= 0.999 or canvas[iy, ix, 3] == 0:
+        canvas[iy, ix] = rgba
+    else:
+        da = canvas[iy, ix, 3] / 255.0
+        out_a = sa + da * (1.0 - sa)
+        for c in range(3):
+            canvas[iy, ix, c] = int(round((rgba[c] * sa + canvas[iy, ix, c] * da * (1.0 - sa)) / out_a))
+        canvas[iy, ix, 3] = int(round(out_a * 255))
 
 
-def draw_line(canvas, x0, y0, x1, y1, rgba, thickness=1):
-    steps = max(abs(int(round(x1 - x0))), abs(int(round(y1 - y0))), 1) * 2
+def draw_line(canvas, x0, y0, x1, y1, rgba, thickness=1.0):
+    steps = max(int(math.hypot(x1 - x0, y1 - y0) * 2.2), 1)
+    r = thickness * 0.5
+    r_int = int(math.ceil(r))
     for i in range(steps + 1):
-        t = i / steps
-        x = x0 + (x1 - x0) * t
-        y = y0 + (y1 - y0) * t
-        if thickness <= 1:
-            put_px(canvas, x, y, rgba)
+        t = i / float(steps)
+        cx = x0 + (x1 - x0) * t
+        cy = y0 + (y1 - y0) * t
+        if thickness <= 1.05:
+            put_px(canvas, cx, cy, rgba)
         else:
-            r = thickness / 2.0
-            for dy in range(int(-r - 1), int(r + 2)):
-                for dx in range(int(-r - 1), int(r + 2)):
-                    if dx * dx + dy * dy <= r * r + 0.35:
-                        put_px(canvas, x + dx, y + dy, rgba)
+            for dy in range(-r_int, r_int + 1):
+                for dx in range(-r_int, r_int + 1):
+                    if dx * dx + dy * dy <= r * r + 0.25:
+                        put_px(canvas, cx + dx, cy + dy, rgba)
 
 
-def draw_circle(canvas, cx, cy, radius, rgba, fill=False):
-    r_int = int(math.ceil(radius + 1))
+def draw_circle(canvas, cx, cy, radius, rgba, fill=False, ring_w=1.2):
+    r_int = int(math.ceil(radius + ring_w + 1))
     for dy in range(-r_int, r_int + 1):
         for dx in range(-r_int, r_int + 1):
             d = math.hypot(dx, dy)
@@ -140,832 +98,738 @@ def draw_circle(canvas, cx, cy, radius, rgba, fill=False):
                 if d <= radius:
                     put_px(canvas, cx + dx, cy + dy, rgba)
             else:
-                if abs(d - radius) <= 0.65:
+                if abs(d - radius) <= ring_w * 0.5:
                     put_px(canvas, cx + dx, cy + dy, rgba)
 
 
-def draw_ellipse_ring(canvas, cx, cy, rx, ry, rgba, rot_rad=0.0, thickness=0.75):
-    steps = max(36, int((rx + ry) * 6))
+def draw_ellipse_ring(canvas, cx, cy, rx, ry, rgba, rot_rad=0.0, thickness=1.4):
+    if rx < 0.8 or ry < 0.5:
+        return
+    steps = max(72, int((rx + ry) * 5.0))
+    c_r, s_r = math.cos(rot_rad), math.sin(rot_rad)
     for i in range(steps):
-        ang = 2.0 * math.pi * i / steps
+        ang = 2.0 * math.pi * i / float(steps)
         ex = math.cos(ang) * rx
         ey = math.sin(ang) * ry
-        rx_p = ex * math.cos(rot_rad) - ey * math.sin(rot_rad)
-        ry_p = ex * math.sin(rot_rad) + ey * math.cos(rot_rad)
-        put_px(canvas, cx + rx_p, cy + ry_p, rgba)
-        if thickness > 1.0:
-            put_px(canvas, cx + rx_p * 0.94, cy + ry_p * 0.94, rgba)
+        px = cx + ex * c_r - ey * s_r
+        py = cy + ex * s_r + ey * c_r
+        draw_line(canvas, px, py, px, py, rgba, thickness=thickness)
 
 
-def draw_feather_mote(canvas, cx, cy, angle_rad, size, bright=True):
-    """Draws a tiny angelic light feather / sparkle mote."""
-    dx = math.cos(angle_rad)
-    dy = math.sin(angle_rad)
-    px = -dy
-    py = dx
-    c_main = C_CORE_WHITE if bright else C_GOLD_BRIGHT
-    c_edge = C_GOLD_BRIGHT if bright else C_GOLD_MID
-    for s in range(-size, size + 1):
-        put_px(canvas, cx + dx * s, cy + dy * s, c_main if abs(s) <= 1 else c_edge)
-        if abs(s) < size - 1:
-            put_px(canvas, cx + dx * s + px, cy + dy * s + py, C_GOLD_GLOW)
-
-
-def draw_angel_feather(canvas, cx, cy, tilt_rad=0.3, alpha_scale=1.0, bright=True):
-    """Draws an ornate ascending Golden Angel Feather with pearl quill and golden barbs."""
+def draw_star_glint(canvas, cx, cy, arm_len=4, ray_col=C_GOLD_BRIGHT, alpha_scale=1.0):
     def sc(col):
         return (col[0], col[1], col[2], int(round(col[3] * alpha_scale)))
 
-    dx = math.cos(tilt_rad)
-    dy = math.sin(tilt_rad)
-    nx = -dy
-    ny = dx
-    # Quill shaft (-3..+3) and asymmetric golden feather barbs
-    for s in range(-3, 4):
-        qx = cx + dx * s
-        qy = cy + dy * s
-        put_px(canvas, qx, qy, sc(C_CORE_WHITE if s <= 1 else C_GOLD_BRIGHT))
-        if -2 <= s <= 2:
-            put_px(canvas, qx + nx, qy + ny, sc(C_GOLD_BRIGHT if bright else C_GOLD_MID))
-            put_px(canvas, qx - nx, qy - ny, sc(C_PEARL_LIGHT if s <= 0 else C_GOLD_DEEP))
-        if -1 <= s <= 1:
-            put_px(canvas, qx + nx * 2, qy + ny * 2, sc(C_GOLD_GLOW))
+    put_px(canvas, cx, cy, sc(C_CORE_WHITE))
+    for d in range(1, arm_len + 1):
+        col = sc(C_CORE_WHITE if d == 1 else (C_PEARL_LIGHT if d == 2 else ray_col))
+        put_px(canvas, cx - d, cy, col)
+        put_px(canvas, cx + d, cy, col)
+        put_px(canvas, cx, cy - d, col)
+        put_px(canvas, cx, cy + d, col)
+    for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+        put_px(canvas, cx + dx, cy + dy, sc(C_GOLD_BRIGHT))
 
 
-def draw_four_point_star_mote(canvas, cx, cy, size=2, rot_rad=0.0, rose_tint=False):
-    """Draws a crisp 4-point starlight mote."""
-    put_px(canvas, cx, cy, C_CORE_WHITE)
-    c_ray = C_ROSE_BRIGHT if rose_tint else C_GOLD_BRIGHT
-    c_tip = C_ROSE_GLASS if rose_tint else C_GOLD_MID
-    for k in range(4):
-        ang = rot_rad + k * (math.pi / 2.0)
-        for d in range(1, size + 1):
-            px = cx + math.cos(ang) * d
-            py = cy + math.sin(ang) * d
-            put_px(canvas, px, py, c_ray if d < size else c_tip)
+def draw_angel_feather_104(canvas, cx, cy, tilt_rad=-0.8, length=5.5, alpha_scale=1.0):
+    def sc(col):
+        return (col[0], col[1], col[2], int(round(col[3] * alpha_scale)))
+
+    ux, uy = math.cos(tilt_rad), math.sin(tilt_rad)
+    nx, ny = -uy, ux
+    steps = int(round(length * 2))
+    for i in range(-steps, steps + 1):
+        u = i / float(max(1, steps))
+        px = cx + ux * (u * length)
+        py = cy + uy * (u * length)
+        w = max(0.0, (1.0 - u * u) * 2.1)
+        put_px(canvas, px, py, sc(C_CORE_WHITE if u < 0.3 else C_PEARL_LIGHT))
+        if w >= 0.8:
+            put_px(canvas, px + nx, py + ny, sc(C_PEARL_LIGHT if u < 0.0 else C_GOLD_BRIGHT))
+            put_px(canvas, px - nx, py - ny, sc(C_GOLD_MID if u > 0.1 else C_GOLD_BRIGHT))
+        if w >= 1.6:
+            put_px(canvas, px + nx * 2, py + ny * 2, sc(C_GOLD_DEEP))
 
 
-def draw_starburst(canvas, cx, cy, r_long, r_short, rot_rad=0.0, num_points=8):
-    """Draws an 8-point sacred starburst with golden filigree and diamond-white core."""
+def draw_starburst_104(canvas, cx, cy, r_long, r_short, rot_rad=0.0, num_points=8, alpha_scale=1.0):
+    def sc(col):
+        return (col[0], col[1], col[2], int(round(col[3] * alpha_scale)))
+
     for i in range(num_points):
         ang = rot_rad + i * (2.0 * math.pi / num_points)
         r = r_long if (i % 2 == 0) else r_short
-        col = C_CORE_WHITE if (i % 2 == 0) else C_GOLD_BRIGHT
-        draw_line(canvas, cx, cy, cx + math.cos(ang) * r, cy + math.sin(ang) * r, C_GOLD_MID, thickness=1.5 if i % 2 == 0 else 1)
-        draw_line(canvas, cx, cy, cx + math.cos(ang) * (r * 0.85), cy + math.sin(ang) * (r * 0.85), col, thickness=1)
+        tx = cx + math.cos(ang) * r
+        ty = cy + math.sin(ang) * r
+        draw_line(canvas, cx, cy, tx, ty, sc(C_GOLD_DEEP), thickness=2.6 if i % 2 == 0 else 1.8)
+        draw_line(canvas, cx, cy, cx + math.cos(ang) * (r * 0.90), cy + math.sin(ang) * (r * 0.90), sc(C_GOLD_BRIGHT), thickness=1.6 if i % 2 == 0 else 1.0)
+        draw_line(canvas, cx, cy, cx + math.cos(ang) * (r * 0.68), cy + math.sin(ang) * (r * 0.68), sc(C_CORE_WHITE), thickness=1.0)
+
+
+def enforce_safe_104(canvas):
+    canvas[:4, :, :] = 0
+    canvas[L - 4 :, :, :] = 0
+    canvas[:, :4, :] = 0
+    canvas[:, L - 4 :, :] = 0
+    return canvas
 
 
 # ==============================================================================
-# ROW 0: holy_light projectile & orbiting Ultimate stars (30 frames)
-# Sacred 8-Point Starlight Orb with rotating golden filigree points,
-# diamond-white core, and trailing feather sparkles.
+# ROW 0: holy_light — Sacred 8-Point Sunburst Starlight Orb & Orbiting Chakrams
 # ==============================================================================
 def build_row0_holy_light():
     frames = []
     for f in range(COLS):
         canvas = np.zeros((L, L, 4), dtype=np.uint8)
         phase = 2.0 * math.pi * f / COLS
-        cx, cy = 28.0 + math.sin(phase) * 1.0, 26.0 + math.cos(phase * 2) * 1.0
+        cx = 58.0 + math.sin(phase) * 1.5
+        cy = 52.0 + math.cos(phase * 2.0) * 1.2
 
-        # Trailing sacred light wake & feather sparkles to the left (x=4..22)
-        for t_idx in range(6):
-            tx = cx - 4.0 - t_idx * 3.4 - ((f * 0.9) % 3.4)
-            if tx < 3:
-                tx += 20.4
-            ty = cy + math.sin(phase * 2.0 + t_idx * 1.3) * (1.5 + t_idx * 0.35)
-            alpha = max(35, int(215 - (cx - tx) * 8))
-            put_px(canvas, tx, ty, (255, 236, 148, alpha))
-            put_px(canvas, tx + 1, ty, (255, 255, 252, min(255, alpha + 30)))
-            if t_idx % 2 == 0:
-                put_px(canvas, tx, ty - 1, (242, 198, 78, alpha // 2))
-                put_px(canvas, tx, ty + 1, (242, 198, 78, alpha // 2))
+        # Tapered sacred comet wake streaming left (-X)
+        wake_len = 42.0
+        for step in range(44):
+            u = step / 43.0
+            wx = cx - 6.0 - u * wake_len
+            wy = cy + math.sin(phase * 2.0 + u * 5.2) * (1.5 + u * 3.2)
+            half_h = max(0.6, (1.0 - u) ** 1.25 * 9.5)
+            ih = int(math.ceil(half_h))
+            for dy in range(-ih, ih + 1):
+                frac = abs(dy) / max(0.5, half_h)
+                if frac <= 1.0:
+                    if frac < 0.32 and u < 0.55:
+                        col = C_CORE_WHITE
+                    elif frac < 0.65 and u < 0.78:
+                        col = C_PEARL_LIGHT if u < 0.35 else C_GOLD_BRIGHT
+                    else:
+                        col = C_GOLD_MID if u < 0.65 else C_GOLD_DEEP
+                    alpha = int(round(245 * ((1.0 - u) ** 0.85) * (1.0 - frac * 0.45)))
+                    put_px(canvas, wx, wy + dy, (col[0], col[1], col[2], alpha))
 
-        # Soft radial halo
-        r_pulse = 10.5 + 1.5 * math.sin(phase * 2.0)
-        draw_circle(canvas, cx, cy, r_pulse + 2.5, C_GOLD_FAINT, fill=True)
-        draw_circle(canvas, cx, cy, r_pulse, C_GOLD_SOFT, fill=True)
-        draw_circle(canvas, cx, cy, r_pulse * 0.68, C_GOLD_GLOW, fill=True)
-
-        # Rotating filigree outer ring with 4 cardinal beads
-        draw_circle(canvas, cx, cy, 8.5 + 0.6 * math.cos(phase), C_GOLD_MID, fill=False)
+        # Outer sacred filigree halo ring
+        r_ring = 17.5 + 1.0 * math.cos(phase * 2.0)
+        draw_circle(canvas, cx, cy, r_ring + 1.0, C_BRONZE_RIM, fill=False, ring_w=1.4)
+        draw_circle(canvas, cx, cy, r_ring, C_GOLD_BRIGHT, fill=False, ring_w=1.8)
         for b in range(8):
             bang = -phase + b * (math.pi / 4.0)
-            bx = cx + math.cos(bang) * 8.8
-            by = cy + math.sin(bang) * 8.8
-            put_px(canvas, bx, by, C_PEARL_LIGHT if b % 2 == 0 else C_GOLD_DEEP)
+            bx = cx + math.cos(bang) * r_ring
+            by = cy + math.sin(bang) * r_ring
+            draw_circle(canvas, bx, by, 2.1, C_CORE_WHITE if b % 2 == 0 else C_AZURE_BRIGHT, fill=True)
 
-        # Rotating 8-point sacred starlight spikes
-        r_major = 15.0 + 2.0 * math.sin(phase * 2.0)
-        r_minor = 9.5 + 1.2 * math.cos(phase * 2.0)
-        draw_starburst(canvas, cx, cy, r_major, r_minor, rot_rad=phase, num_points=8)
+        # Rotating 8-point sunburst starlight spikes
+        r_major = 29.5 + 2.5 * math.sin(phase * 2.0)
+        r_minor = 19.0 + 1.8 * math.cos(phase * 2.0)
+        draw_starburst_104(canvas, cx, cy, r_major, r_minor, rot_rad=phase, num_points=8)
 
-        # Counter-rotating inner stained-glass rose diamond
+        # Counter-rotating inner stained-glass sapphire/rose prism
         for d_idx in range(4):
             dang = -phase * 1.5 + d_idx * (math.pi / 2.0)
-            put_px(canvas, cx + math.cos(dang) * 5.0, cy + math.sin(dang) * 5.0, C_ROSE_BRIGHT)
+            px = cx + math.cos(dang) * 10.5
+            py = cy + math.sin(dang) * 10.5
+            draw_circle(canvas, px, py, 2.4, C_ROSE_BRIGHT if d_idx % 2 == 0 else C_AZURE_BRIGHT, fill=True)
 
-        # Diamond-white core
-        draw_circle(canvas, cx, cy, 4.2, C_GOLD_BRIGHT, fill=True)
-        draw_circle(canvas, cx, cy, 2.8, C_CORE_WHITE, fill=True)
+        # Solid diamond-white & sunlit-gold nucleus
+        draw_circle(canvas, cx, cy, 10.5, C_GOLD_MID, fill=True)
+        draw_circle(canvas, cx, cy, 8.2, C_GOLD_BRIGHT, fill=True)
+        draw_circle(canvas, cx, cy, 5.6, C_CORE_WHITE, fill=True)
 
-        # Orbiting feather sparkles
+        # Trailing golden angel feathers
         for m in range(3):
-            mang = phase * 2.0 + m * (2.0 * math.pi / 3.0)
-            mx = cx + math.cos(mang) * 12.5
-            my = cy + math.sin(mang) * 10.5
-            draw_feather_mote(canvas, mx, my, mang + math.pi / 2, 2, bright=(m == f % 3))
+            u_m = ((f / float(COLS)) + m / 3.0) % 1.0
+            fx = cx - 12.0 - u_m * 34.0
+            fy = cy + math.sin(phase * 2.0 + m * 2.1) * 9.0
+            draw_angel_feather_104(canvas, fx, fy, tilt_rad=-0.25 + 0.2 * math.sin(phase + m), length=4.5, alpha_scale=1.0 - u_m * 0.65)
 
-        frames.append(canvas)
+        frames.append(enforce_safe_104(canvas))
     return frames
 
 
 # ==============================================================================
-# ROW 1: holy_spear Valkyrie Spear Sky-Strike (30 frames)
-# Pass #4 Upgrade:
-# - F00..F11: Descending Valkyrie Spear with wider Golden Seraphim Winged Crossguards
-#             and trailing helical starlight ribbons.
-# - F12..F29: Impact beam (especially F12..F25) enriched with ascending golden
-#             angel feathers and a double cathedral ground halo!
+# ROW 1: holy_spear — Winged Cathedral Light-Spear Sky-Strike & Tapered Spire Impact
 # ==============================================================================
-def draw_valkyrie_spear(canvas, cx, tip_y, length=31, wing_span=13.5, alpha_scale=1.0):
-    """Draws an ornate Valkyrie Spear with wide Golden Seraphim Winged Crossguards."""
+def draw_cathedral_spear_104(canvas, cx, tip_y, length=58.0, wing_span=25.0, alpha_scale=1.0):
     def sc(col):
         return (col[0], col[1], col[2], int(round(col[3] * alpha_scale)))
 
-    pommel_y = max(3, tip_y - length)
-    guard_y = max(7, tip_y - 10)
+    pommel_y = max(7.0, tip_y - length)
+    guard_y = max(15.0, tip_y - 20.0)
 
-    # Glowing aura behind spear shaft
-    draw_line(canvas, cx, pommel_y, cx, tip_y, sc(C_GOLD_GLOW), thickness=3)
+    # Shaft with bronze-gold contrast rim & diamond-white core
+    draw_line(canvas, cx, pommel_y + 3, cx, guard_y, sc(C_BRONZE_RIM), thickness=4.2)
+    draw_line(canvas, cx, pommel_y + 2, cx, guard_y, sc(C_GOLD_BRIGHT), thickness=2.4)
+    draw_line(canvas, cx, pommel_y, cx, tip_y - 1, sc(C_CORE_WHITE), thickness=1.2)
 
-    # Golden shaft with pearl core highlight and rose-gold ring bands
-    draw_line(canvas, cx - 1, pommel_y + 2, cx - 1, guard_y, sc(C_GOLD_DEEP), thickness=1)
-    draw_line(canvas, cx + 1, pommel_y + 2, cx + 1, guard_y, sc(C_GOLD_MID), thickness=1)
-    draw_line(canvas, cx, pommel_y, cx, tip_y - 1, sc(C_CORE_WHITE), thickness=1)
-
-    # Diamond Valkyrie spearhead below guard (guard_y to tip_y)
-    for dy in range(0, int(tip_y - guard_y) + 1):
+    # Tapered diamond spearhead below guard_y
+    blade_h = max(2.0, tip_y - guard_y)
+    for dy in range(int(round(blade_h)) + 1):
         y = guard_y + dy
-        t = 1.0 - (dy / max(1.0, (tip_y - guard_y)))
-        half_w = int(round(t * 3.6))
-        for dx in range(-half_w, half_w + 1):
+        u = 1.0 - (dy / blade_h)
+        hw = int(round((u ** 0.85) * 6.8))
+        for dx in range(-hw, hw + 1):
             if dx == 0:
                 put_px(canvas, cx + dx, y, sc(C_CORE_WHITE))
-            elif abs(dx) == half_w:
+            elif abs(dx) == hw:
+                put_px(canvas, cx + dx, y, sc(C_BRONZE_RIM))
+            elif abs(dx) == hw - 1:
                 put_px(canvas, cx + dx, y, sc(C_GOLD_MID))
             else:
-                put_px(canvas, cx + dx, y, sc(C_GOLD_BRIGHT))
+                put_px(canvas, cx + dx, y, sc(C_PEARL_LIGHT if abs(dx) <= 2 else C_GOLD_BRIGHT))
 
-    # Wide Multi-Tiered Golden Seraphim Winged Crossguard at guard_y
+    # Sweeping 6-Pinion Golden Seraphim Winged Crossguard
     w_int = int(round(wing_span))
     for s in range(1, w_int + 1):
-        u_w = s / max(1.0, float(wing_span))
-        # Sweeping Seraphim wing arch curving upward then flaring out
-        arch_lift = int(round((u_w ** 0.8) * 6.5 - (u_w ** 2.2) * 1.5))
-        wy = max(3, guard_y - arch_lift)
+        u_w = s / float(max(1, w_int))
+        arch_lift = (u_w ** 0.78) * 13.0 - (u_w ** 2.1) * 3.0
+        wy = max(7.0, guard_y - arch_lift)
         for side in (-1, 1):
             wx = cx + side * s
-            # Leading white-gold wing ridge
-            put_px(canvas, wx, wy, sc(C_CORE_WHITE if s <= w_int - 2 else C_GOLD_BRIGHT))
-            # Secondary golden covert layer
-            put_px(canvas, wx, wy + 1, sc(C_GOLD_BRIGHT if s % 2 == 0 else C_PEARL_LIGHT))
+            put_px(canvas, wx, wy - 1, sc(C_BRONZE_RIM))
+            put_px(canvas, wx, wy, sc(C_CORE_WHITE if u_w < 0.75 else C_GOLD_BRIGHT))
+            put_px(canvas, wx, wy + 1, sc(C_PEARL_LIGHT))
             put_px(canvas, wx, wy + 2, sc(C_GOLD_MID))
-
-            # Distinct layered primary Seraphim feathers hanging & fanning from the crossguard
-            if s in (3, 5, 7, 9, 11, 13):
-                f_len = 5 - (s // 4)
-                for fd in range(1, f_len + 1):
-                    fx = wx + side * (fd // 2)
+            if s in (5, 9, 13, 17, 21, 24):
+                flen = 9 - (s // 4)
+                for fd in range(1, flen + 1):
+                    fx = wx + side * (fd * 0.35)
                     fy = wy + 2 + fd
-                    col_f = C_CORE_WHITE if fd == f_len else (C_GOLD_BRIGHT if fd == 1 else C_PEARL_LIGHT)
-                    put_px(canvas, fx, fy, sc(col_f))
+                    put_px(canvas, fx, fy, sc(C_CORE_WHITE if fd >= flen - 1 else C_PEARL_LIGHT))
                     put_px(canvas, fx - side, fy, sc(C_GOLD_DEEP))
 
-    # Central Cathedral Rose Jewel at the Crossguard Nexus
-    for dy in range(-2, 3):
-        for dx in range(-2, 3):
-            if abs(dx) + abs(dy) <= 2:
-                col_g = C_CORE_WHITE if (dx == 0 and dy == 0) else (C_ROSE_BRIGHT if abs(dx) + abs(dy) == 1 else C_GOLD_BRIGHT)
-                put_px(canvas, cx + dx, guard_y + dy, sc(col_g))
+    # Sapphire-and-Rose Cathedral Nexus Gem
+    draw_circle(canvas, cx, guard_y, 4.2, sc(C_GOLD_DEEP), fill=True)
+    draw_circle(canvas, cx, guard_y, 2.8, sc(C_AZURE_BRIGHT), fill=True)
+    put_px(canvas, cx, guard_y, sc(C_CORE_WHITE))
 
-    # Pommel Halo Ring near top of shaft
-    if pommel_y >= 4:
-        draw_circle(canvas, cx, pommel_y + 2, 3.2, sc(C_GOLD_BRIGHT), fill=False)
-        put_px(canvas, cx, pommel_y, sc(C_CORE_WHITE))
+    if pommel_y >= 8.0:
+        draw_circle(canvas, cx, pommel_y + 4.0, 5.2, sc(C_GOLD_BRIGHT), fill=False, ring_w=1.5)
+        draw_star_glint(canvas, cx, pommel_y + 1.0, arm_len=3, alpha_scale=alpha_scale)
 
 
 def build_row1_holy_spear():
     frames = []
-    gy = 43.0
-    cx = 26.0
+    gy = 86.0
+    cx = 52.0
     for f in range(COLS):
         canvas = np.zeros((L, L, 4), dtype=np.uint8)
         if f < 12:
-            # F00..F11: Plummeting from heavens toward ground at gy=43
             t = f / 11.0
-            tip_y = 14.0 + (gy - 14.0) * (t ** 1.2)
-            guard_y = max(7.0, tip_y - 10.0)
+            tip_y = 28.0 + (gy - 28.0) * (t ** 1.18)
+            guard_y = max(14.0, tip_y - 20.0)
 
-            # Target preview double cathedral rose-sigil expanding on ground as spear approaches
-            sigil_rx = 4.0 + t * 12.0
-            sigil_ry = 1.4 + t * 3.0
-            draw_ellipse_ring(canvas, cx, gy, sigil_rx, sigil_ry, C_GOLD_SOFT, rot_rad=0.0)
-            draw_ellipse_ring(canvas, cx, gy, sigil_rx * 0.62, sigil_ry * 0.62, C_ROSE_GLASS, rot_rad=0.0)
+            sigil_rx = 9.0 + t * 24.0
+            sigil_ry = 2.6 + t * 5.6
+            draw_ellipse_ring(canvas, cx, gy, sigil_rx, sigil_ry, C_GOLD_SOFT, thickness=1.5)
+            draw_ellipse_ring(canvas, cx, gy, sigil_rx * 0.62, sigil_ry * 0.62, C_AZURE_GLASS, thickness=1.2)
 
-            # Trailing Helical Starlight Ribbons streaming upward from the winged crossguard (y = 3..guard_y)
-            for ry in range(3, int(guard_y) + 1):
-                u_rib = (guard_y - ry) / max(1.0, guard_y - 3.0)
-                amp = 4.5 + u_rib * 7.5
-                ang_r = ry * 0.28 - f * 0.65
-                rx_a = cx + math.sin(ang_r) * amp
-                rx_b = cx - math.sin(ang_r) * amp
-                # Ribbon A: Golden-White Starlight Ribbon
-                put_px(canvas, rx_a, ry, C_CORE_WHITE)
-                put_px(canvas, rx_a - 1, ry, C_GOLD_BRIGHT)
-                put_px(canvas, rx_a + 1, ry, C_GOLD_GLOW)
-                # Ribbon B: Rose-Gold Celestial Ribbon
-                put_px(canvas, rx_b, ry, C_ROSE_BRIGHT)
-                put_px(canvas, rx_b + 1, ry, C_GOLD_MID)
-                # Periodic 4-point starlight motes along the ribbons
-                if (ry + f) % 6 == 0 and ry >= 5:
-                    draw_four_point_star_mote(canvas, rx_a, ry, size=2, rot_rad=0.0, rose_tint=False)
+            # Tapered helical starlight ribbons above crossguard (tapers cleanly to 0 at y = 8!)
+            top_rib = max(8, int(round(tip_y - 58.0)))
+            for ry in range(top_rib, int(round(guard_y)) + 1):
+                u_top = (ry - top_rib) / max(1.0, float(guard_y - top_rib))
+                taper = min(1.0, u_top * 2.4)
+                amp = (6.0 + (1.0 - u_top) * 12.0) * taper
+                ang_r = ry * 0.16 - f * 0.65
+                for sgn, col_a, col_b in ((1.0, C_CORE_WHITE, C_GOLD_BRIGHT), (-1.0, C_ROSE_BRIGHT, C_GOLD_MID)):
+                    rx_s = cx + sgn * math.sin(ang_r) * amp
+                    a_s = int(round(240 * taper))
+                    put_px(canvas, rx_s, ry, (col_a[0], col_a[1], col_a[2], a_s))
+                    put_px(canvas, rx_s + 1, ry, (col_b[0], col_b[1], col_b[2], a_s))
 
-            # Speed streaks / descending heaven beam behind spear
-            for s_idx in range(5):
-                sx = cx + (s_idx - 2) * 3.0
-                sy0 = max(3, tip_y - 32 - s_idx * 2)
-                sy1 = max(4, tip_y - 6)
-                draw_line(canvas, sx, sy0, sx, sy1, C_GOLD_SOFT if s_idx != 2 else C_WHITE_GLOW, thickness=1)
-
-            # Wider Golden Seraphim Winged Crossguard (wing_span = 13.5..15.0)
-            draw_valkyrie_spear(canvas, cx, tip_y, length=29, wing_span=13.0 + math.sin(t * math.pi) * 2.0)
-
-            # Bright starlight flash at spear tip
-            draw_starburst(canvas, cx, tip_y, 5.5 + t * 3.5, 2.8 + t * 1.8, rot_rad=f * 0.4, num_points=8)
+            draw_cathedral_spear_104(canvas, cx, tip_y, length=54.0, wing_span=24.0 + math.sin(t * math.pi) * 3.0)
+            draw_starburst_104(canvas, cx, tip_y, 10.0 + t * 6.0, 5.0 + t * 3.0, rot_rad=f * 0.4, num_points=8)
         else:
-            # F12..F29: Impact beam (F12..F25) + Double Cathedral Ground Halo + Ascending Golden Angel Feathers
             imp_f = f - 12
             imp_t = imp_f / 17.0
-            fade = 1.0 if imp_f <= 13 else max(0.22, 1.0 - (imp_f - 13) / 5.0)
+            fade = 1.0 if imp_f <= 12 else max(0.20, 1.0 - (imp_f - 12) / 5.5)
 
             def sc(col):
                 return (col[0], col[1], col[2], int(round(col[3] * fade)))
 
-            # 1. Double Cathedral Ground Halo at gy=43 (strictly within y <= 49)
-            rx_outer = min(21.5, 15.0 + imp_t * 6.5)
-            ry_outer = min(5.2, 3.8 + imp_t * 1.4)
-            rx_inner = rx_outer * 0.62
-            ry_inner = ry_outer * 0.62
+            rx_outer = min(41.0, 28.0 + imp_t * 13.0)
+            ry_outer = min(9.5, 6.8 + imp_t * 2.7)
+            draw_ellipse_ring(canvas, cx, gy, rx_outer + 1.2, ry_outer + 0.6, sc(C_BRONZE_RIM), thickness=1.5)
+            draw_ellipse_ring(canvas, cx, gy, rx_outer, ry_outer, sc(C_GOLD_BRIGHT), thickness=2.2)
+            draw_ellipse_ring(canvas, cx, gy, rx_outer * 0.62, ry_outer * 0.62, sc(C_ROSE_BRIGHT), thickness=1.6)
+            draw_ellipse_ring(canvas, cx, gy, rx_outer * 0.35, ry_outer * 0.35, sc(C_CORE_WHITE), thickness=1.4)
 
-            # Outer Cathedral Halo (beveled gold + rose glass cusps)
-            draw_ellipse_ring(canvas, cx, gy, rx_outer + 0.8, ry_outer + 0.4, sc(C_GOLD_DEEP), thickness=1.0)
-            draw_ellipse_ring(canvas, cx, gy, rx_outer, ry_outer, sc(C_GOLD_BRIGHT), thickness=1.5)
-            for cusp in range(12):
-                c_ang = imp_f * 0.14 + cusp * (math.pi / 6.0)
-                cx_p = cx + math.cos(c_ang) * (rx_outer + 1.2)
-                cy_p = gy + math.sin(c_ang) * (ry_outer + 0.6)
-                put_px(canvas, cx_p, cy_p, sc(C_CORE_WHITE if cusp % 3 == 0 else C_ROSE_BRIGHT))
+            # Tapered Gothic Light Spire Impact Beam (NO flat cutoff at top — tapers to pointed spire at y=8..24!)
+            max_w = max(3.5, 20.0 - imp_t * 12.5)
+            spire_top = 8 + int(imp_t * 12.0)
+            for py in range(spire_top, int(gy) + 1):
+                v_up = (gy - py) / max(1.0, gy - spire_top)  # 0 at base -> 1 at apex
+                crown_taper = 1.0 if v_up < 0.55 else max(0.0, (1.0 - (v_up - 0.55) / 0.45) ** 1.35)
+                ray_mod = 1.0 + 0.22 * math.cos((py - imp_f * 3.5) * 0.22)
+                w_here = max_w * crown_taper * ray_mod
+                iw = int(math.ceil(w_here))
+                for dx in range(-iw, iw + 1):
+                    dn = abs(dx) / max(0.5, w_here)
+                    if dn <= 0.36:
+                        put_px(canvas, cx + dx, py, sc(C_CORE_WHITE))
+                    elif dn <= 0.68:
+                        put_px(canvas, cx + dx, py, sc(C_PEARL_LIGHT if dx % 2 == 0 else C_GOLD_BRIGHT))
+                    elif dn <= 1.0:
+                        put_px(canvas, cx + dx, py, sc(C_GOLD_MID))
 
-            # Inner Cathedral Sanctuary Halo (counter-rotating rose-white ring + 8 gothic spokes)
-            draw_ellipse_ring(canvas, cx, gy, rx_inner, ry_inner, sc(C_ROSE_BRIGHT), thickness=1.5)
-            draw_ellipse_ring(canvas, cx, gy, rx_inner * 0.58, ry_inner * 0.58, sc(C_CORE_WHITE), thickness=1.0)
-            for sp in range(8):
-                ang = -imp_f * 0.18 + sp * (math.pi / 4.0)
-                sx0 = cx + math.cos(ang) * (rx_inner * 0.55)
-                sy0 = gy + math.sin(ang) * (ry_inner * 0.55)
-                sx1 = cx + math.cos(ang) * rx_outer
-                sy1 = gy + math.sin(ang) * ry_outer
-                draw_line(canvas, sx0, sy0, sx1, sy1, sc(C_GOLD_BRIGHT if sp % 2 == 0 else C_ROSE_GLASS), thickness=1)
-                put_px(canvas, sx1, sy1, sc(C_CORE_WHITE))
+            draw_cathedral_spear_104(canvas, cx, gy, length=62.0, wing_span=26.0, alpha_scale=fade)
+            for m in range(7):
+                m_ang = imp_t * 3.0 + m * 0.9
+                mx = cx + math.sin(m_ang * 1.6 + m) * (13.0 + (m % 3) * 7.5)
+                my = gy - 8.0 - ((imp_f * 3.8 + m * 9.5) % 66.0)
+                if 10 <= my <= gy - 6:
+                    draw_angel_feather_104(canvas, mx, my, tilt_rad=-1.1 + 0.3 * math.sin(m_ang), length=5.0, alpha_scale=fade)
 
-            # 2. Enriched Impact Beam (F12..F25 prominent cathedral light shaft with ascending ring pulses)
-            pillar_w = max(2.5, (11.5 - imp_t * 6.5))
-            for py in range(3, int(gy) + 1):
-                flute = math.cos((py - imp_f * 2.2) * 0.35)
-                for dx in range(-int(pillar_w) - 1, int(pillar_w) + 2):
-                    dist_norm = abs(dx) / pillar_w
-                    if dist_norm <= 0.38:
-                        put_px(canvas, cx + dx, py, sc(C_CORE_WHITE if flute > -0.2 else C_PEARL_LIGHT))
-                    elif dist_norm <= 0.72:
-                        put_px(canvas, cx + dx, py, sc(C_GOLD_BRIGHT if dx % 2 == 0 else C_ROSE_GLASS))
-                    elif dist_norm <= 1.0:
-                        put_px(canvas, cx + dx, py, sc(C_GOLD_GLOW))
-                    else:
-                        put_px(canvas, cx + dx, py, sc(C_GOLD_FAINT))
-
-            # Ascending ring pulses up the impact beam during F12..F25
-            if imp_f <= 13:
-                for p_idx in range(2):
-                    ring_y = gy - ((imp_f * 2.8 + p_idx * 16.0) % 36.0)
-                    if 5 <= ring_y <= gy - 2:
-                        draw_ellipse_ring(canvas, cx, ring_y, pillar_w + 3.0, 2.2, sc(C_CORE_WHITE), thickness=1.0)
-                        draw_ellipse_ring(canvas, cx, ring_y + 1, pillar_w + 3.5, 2.4, sc(C_GOLD_BRIGHT), thickness=1.0)
-
-            # Impact shockwave starburst on F12..F16
-            if imp_f <= 4:
-                burst_r = 11.0 + imp_f * 2.5
-                draw_starburst(canvas, cx, gy - 3, burst_r, burst_r * 0.55, rot_rad=imp_f * 0.3, num_points=8)
-
-            # 3. Planted Valkyrie Spear with wide Golden Seraphim Winged Crossguard
-            draw_valkyrie_spear(canvas, cx, gy, length=33, wing_span=14.0, alpha_scale=fade)
-
-            # 4. Ascending Golden Angel Feathers spiraling around the impact beam
-            for m in range(8):
-                m_phase = imp_t * 2.6 + m * 0.785
-                rad_m = 7.5 + (m % 3) * 4.2
-                mx = cx + math.sin(m_phase * 1.8 + m) * rad_m
-                my = gy - 4.0 - ((imp_f * 2.0 + m * 4.5) % 34.0)
-                if 6 <= my <= gy - 3:
-                    draw_angel_feather(canvas, mx, my, tilt_rad=-0.9 + 0.3 * math.sin(m_phase), alpha_scale=fade, bright=(m % 2 == 0))
-
-        frames.append(canvas)
+        frames.append(enforce_safe_104(canvas))
     return frames
 
 
 # ==============================================================================
-# ROW 2: priestess Cathedral Judgment Pillar & Ophanim Halo (30 frames)
-# Pass #4 Upgrade:
-# - Vertical rose-gold & pure-white stained-glass light fluting inside the pillar core
-# - Spiraling golden seraphim ribbons wrapping the column
-# - Ornate 8-point Cathedral Sanctuary Seal at the base (y = 43..47)
+# ROW 2: Judgment Pillar — Towering Cathedral Sanctum Pillar with Organic 7-Spire Light Crown
+# ZERO flat horizontal top cutoff on any frame F00..F29!
 # ==============================================================================
 def build_row2_judgment_pillar():
     frames = []
-    cx = 26.0
-    base_y = 45.0  # Base seal spans y = 42..48 (centered on y = 45, covering y = 43..47 cleanly)
-    top_y = 3.0
+    cx = 52.0
+    base_y = 90.0
+    max_erupt_h = 81.0  # Reaches up to y ~ 9 with pointed gothic light spires (strictly inside y >= 4!)
+
+    spire_specs = [
+        (-0.74, 0.48, 2.0, 0.4),
+        (-0.48, 0.72, 2.0, 1.5),
+        (-0.22, 0.90, 2.0, 2.7),
+        ( 0.00, 1.04, 1.0, 0.9),
+        ( 0.23, 0.88, 2.0, 3.8),
+        ( 0.49, 0.70, 2.0, 5.0),
+        ( 0.75, 0.46, 2.0, 2.1),
+    ]
+
     for f in range(COLS):
         canvas = np.zeros((L, L, 4), dtype=np.uint8)
         phase = 2.0 * math.pi * f / COLS
 
         if f <= 5:
             erupt_t = (f + 1) / 6.0
-            cur_top = base_y - (base_y - top_y) * (erupt_t ** 0.75)
-            col_radius = 4.5 + erupt_t * 8.0
-            alpha_mult = 0.78 + 0.22 * erupt_t
+            erupt_h = max_erupt_h * (0.34 + 0.66 * (erupt_t ** 0.72))
+            base_r = 10.0 + erupt_t * 13.5
+            alpha_mult = 0.82 + 0.18 * erupt_t
         elif f <= 21:
-            cur_top = top_y
+            erupt_h = max_erupt_h
             pulse = math.sin((f - 6) * math.pi / 4.0)
-            col_radius = 12.0 + pulse * 1.3
+            base_r = 23.0 + pulse * 2.0
             alpha_mult = 1.0
         else:
             diss_t = (f - 21) / 8.0
-            cur_top = top_y
-            col_radius = max(3.0, 12.0 * (1.0 - diss_t * 0.75))
-            alpha_mult = max(0.24, 1.0 - diss_t * 0.78)
+            erupt_h = max_erupt_h * (1.0 - diss_t * 0.18)
+            base_r = max(6.5, 23.0 * (1.0 - diss_t * 0.74))
+            alpha_mult = max(0.24, 1.0 - diss_t * 0.76)
 
         def sc(col):
             return (col[0], col[1], col[2], int(round(col[3] * alpha_mult)))
 
-        # 1. Ornate 8-Point Cathedral Sanctuary Seal at the Base (y = 43..47, centered at base_y = 45.0)
-        seal_rx = min(21.0, col_radius * 1.52 + 3.5)
-        seal_ry = 3.5  # spans y = 41.5 .. 48.5 (strictly <= 49)
-        draw_ellipse_ring(canvas, cx, base_y, seal_rx + 0.8, seal_ry + 0.4, sc(C_GOLD_DEEP), thickness=1.0)
-        draw_ellipse_ring(canvas, cx, base_y, seal_rx, seal_ry, sc(C_GOLD_BRIGHT), thickness=1.5)
-        draw_ellipse_ring(canvas, cx, base_y, seal_rx * 0.68, seal_ry * 0.68, sc(C_ROSE_BRIGHT), thickness=1.0)
-        draw_ellipse_ring(canvas, cx, base_y, seal_rx * 0.38, seal_ry * 0.38, sc(C_CORE_WHITE), thickness=1.0)
+        # 1. Unified Radiant Thermal/Light Field (Fluted Trunk + 7 Soaring Gothic Light-Spires)
+        trunk_h = erupt_h * 0.82
+        dy_up = base_y - YY
+        in_vert = (dy_up >= -2.0) & (dy_up <= erupt_h + 4.0)
+        v_trunk = np.clip(dy_up / max(1.0, trunk_h), 0.0, 1.5)
+        upper_frac = np.clip((v_trunk - 0.54) / 0.46, 0.0, 1.0)
+        flute_sway = np.sin(v_trunk * 6.0 - phase * 2.0) * 1.4 * np.clip(v_trunk, 0.0, 1.0)
+        trunk_w = base_r * (1.08 - 0.20 * np.clip(v_trunk, 0.0, 1.0) - 0.76 * (upper_frac ** 1.35))
+        trunk_w = np.maximum(0.5, trunk_w)
 
-        # 8-Point Star-Octagram & Cathedral Spokes on the ground plane (y = 42..48)
-        pts_8 = []
+        dx_c = XX - (cx + flute_sway)
+        flute_rib = 0.10 * np.cos((dx_c / np.maximum(3.0, trunk_w)) * math.pi * 4.0 + phase * 2.0)
+        trunk_field = np.where(
+            (dy_up >= -1.0) & (dy_up <= trunk_h),
+            1.16 - (np.abs(dx_c) / trunk_w) + flute_rib,
+            0.0,
+        )
+
+        # Superimpose 7 soaring pointed Gothic Cathedral Light-Spires crowning the top!
+        spire_base_y = base_y - trunk_h * 0.52
+        spire_span = max(8.0, erupt_h - trunk_h * 0.52)
+        crown_field = np.zeros_like(trunk_field)
+        for x_frac, h_mul, freq, p_off in spire_specs:
+            sh = spire_span * h_mul * (0.90 + 0.10 * math.sin(phase * freq + p_off))
+            sv = (spire_base_y - YY) / max(1.0, sh)
+            valid_s = (sv >= 0.0) & (sv <= 1.0)
+            sx_c = (
+                cx
+                + x_frac * base_r * (0.92 - 0.18 * np.clip(sv, 0.0, 1.0))
+                + np.sin(sv * 4.5 - phase * 2.0 + p_off) * 1.3 * np.clip(sv, 0.0, 1.0)
+            )
+            sw = max(1.6, base_r * 0.30) * ((1.0 - np.clip(sv, 0.0, 1.0)) ** 1.25) + 0.45
+            s_val = np.where(valid_s, (1.14 - np.abs(XX - sx_c) / sw) * (1.0 - 0.14 * sv), 0.0)
+            crown_field = np.maximum(crown_field, s_val)
+
+        field = np.where(in_vert, np.maximum(trunk_field, crown_field), 0.0)
+
+        # Crisp Cel-Quantized Stained-Glass & Sacred Gold Bands (with dark bronze-gold outer definition!)
+        m_rim   = field >= 0.16
+        m_deep  = field >= 0.30
+        m_mid   = field >= 0.48
+        m_lit   = field >= 0.68
+        m_pearl = field >= 0.88
+        m_core  = field >= 1.04
+
+        # Subtle stained-glass rose/azure vertical lancet tint in mid/lit zones
+        lancet_rose = (np.sin((XX - cx) * 0.38 + phase * 2.0) > 0.35) & (dy_up < trunk_h * 0.78)
+        canvas[m_rim]   = sc(C_BRONZE_RIM)
+        canvas[m_deep]  = sc(C_GOLD_DEEP)
+        canvas[m_mid]   = sc(C_GOLD_MID)
+        canvas[m_mid & lancet_rose] = sc(C_ROSE_GLASS)
+        canvas[m_lit]   = sc(C_GOLD_BRIGHT)
+        canvas[m_lit & lancet_rose] = sc(C_ROSE_BRIGHT)
+        canvas[m_pearl] = sc(C_PEARL_LIGHT)
+        canvas[m_core]  = sc(C_CORE_WHITE)
+
+        # 2. Ornate 8-Point Cathedral Sanctuary Base Seal (centered at base_y = 90.0)
+        seal_rx = min(42.0, base_r * 1.62 + 5.0)
+        seal_ry = 6.2
+        draw_ellipse_ring(canvas, cx, base_y, seal_rx + 1.2, seal_ry + 0.5, sc(C_BRONZE_RIM), thickness=1.5)
+        draw_ellipse_ring(canvas, cx, base_y, seal_rx, seal_ry, sc(C_GOLD_BRIGHT), thickness=2.2)
+        draw_ellipse_ring(canvas, cx, base_y, seal_rx * 0.66, seal_ry * 0.66, sc(C_AZURE_BRIGHT), thickness=1.5)
+        draw_ellipse_ring(canvas, cx, base_y, seal_rx * 0.36, seal_ry * 0.36, sc(C_CORE_WHITE), thickness=1.4)
         for sp in range(8):
             ang = phase + sp * (math.pi / 4.0)
-            px_s = cx + math.cos(ang) * (seal_rx * 1.04)
-            py_s = base_y + math.sin(ang) * (seal_ry * 1.04)
-            pts_8.append((px_s, py_s))
+            px_s = cx + math.cos(ang) * seal_rx
+            py_s = base_y + math.sin(ang) * seal_ry
+            draw_line(canvas, cx, base_y, px_s, py_s, sc(C_CORE_WHITE if sp % 2 == 0 else C_GOLD_BRIGHT), thickness=1.2)
+            draw_circle(canvas, px_s, py_s, 1.8, sc(C_CORE_WHITE), fill=True)
 
-        # Octagram star chords connecting every 3rd vertex
-        for sp in range(8):
-            x0, y0 = pts_8[sp]
-            x1, y1 = pts_8[(sp + 3) % 8]
-            draw_line(canvas, x0, y0, x1, y1, sc(C_GOLD_MID if sp % 2 == 0 else C_ROSE_GLASS), thickness=1)
+        # 3. Double Helical Seraphim Light Ribbons wrapping the lower/mid trunk
+        rib_top = int(round(base_y - trunk_h * 0.85))
+        for y in range(max(12, rib_top), int(base_y) - 2):
+            v_r = (base_y - y) / max(1.0, trunk_h)
+            taper_r = min(1.0, (1.0 - v_r) * 2.2)
+            span_r = (base_r * (1.12 - 0.35 * v_r) + 2.5) * taper_r
+            for strand in (0, 1):
+                r_ang = (base_y - y) * 0.13 - phase * 2.0 + strand * math.pi
+                if math.cos(r_ang) >= -0.15:
+                    rx_rib = cx + math.sin(r_ang) * span_r
+                    put_px(canvas, rx_rib - 2, y, sc(C_BRONZE_RIM))
+                    put_px(canvas, rx_rib + 2, y, sc(C_BRONZE_RIM))
+                    put_px(canvas, rx_rib - 1, y, sc(C_GOLD_BRIGHT))
+                    put_px(canvas, rx_rib + 1, y, sc(C_GOLD_BRIGHT))
+                    put_px(canvas, rx_rib, y, sc(C_CORE_WHITE if strand == 0 else C_AZURE_BRIGHT))
 
-        # 8 radial spokes & diamond star tips
-        for sp, (px_s, py_s) in enumerate(pts_8):
-            draw_line(canvas, cx, base_y, px_s, py_s, sc(C_CORE_WHITE if sp % 2 == 0 else C_GOLD_BRIGHT), thickness=1)
-            put_px(canvas, px_s, py_s, sc(C_CORE_WHITE))
-            put_px(canvas, px_s, py_s - 1, sc(C_ROSE_BRIGHT if sp % 2 == 0 else C_GOLD_BRIGHT))
+        # 4. Rotating Winged Ophanim Ring at mid-altitude + Ascending Angel Feathers & Star Glints
+        if trunk_h > 26.0:
+            ry_oph = base_y - trunk_h * 0.48
+            orx = min(40.0, base_r * 1.36 + 3.5)
+            ory = 5.4
+            tilt = 0.18 * math.sin(phase)
+            draw_ellipse_ring(canvas, cx, ry_oph, orx + 1.0, ory + 0.5, sc(C_BRONZE_RIM), rot_rad=tilt, thickness=1.6)
+            draw_ellipse_ring(canvas, cx, ry_oph, orx, ory, sc(C_CORE_WHITE), rot_rad=tilt, thickness=1.8)
 
-        # 2. Towering Vertical Column with Rose-Gold & Pure-White Stained-Glass Light Fluting
-        r_int = int(math.ceil(col_radius))
-        for y in range(int(cur_top), int(base_y) + 1):
-            v_ratio = (y - cur_top) / max(1.0, (base_y - cur_top))
-            flare = 1.0 + 0.16 * math.cos(v_ratio * math.pi * 2.0)
-            eff_r = col_radius * flare
-            for dx in range(-r_int - 2, r_int + 3):
-                adx = abs(dx)
-                if adx <= eff_r:
-                    norm = adx / max(1.0, eff_r)
-                    # Multi-channel vertical cathedral stained-glass fluting rotating smoothly
-                    flute_angle = (dx / max(1.0, eff_r)) * math.pi * 3.0 + phase * 2.0
-                    flute_val = math.cos(flute_angle)
-                    is_mullion = abs(math.sin(flute_angle)) < 0.22
-                    if norm < 0.26:
-                        put_px(canvas, cx + dx, y, sc(C_CORE_WHITE))
-                    elif is_mullion and norm < 0.85:
-                        # Golden lead-came mullion separating the vertical stained-glass flutes
-                        put_px(canvas, cx + dx, y, sc(C_GOLD_BRIGHT if (y % 4 != 0) else C_CORE_WHITE))
-                    elif norm < 0.56:
-                        # Alternating Pure-White and Rose-Gold inner stained-glass flutes
-                        col_flute = C_CORE_WHITE if flute_val > 0 else C_ROSE_BRIGHT
-                        put_px(canvas, cx + dx, y, sc(col_flute))
-                    elif norm < 0.86:
-                        # Outer stained-glass flutes (Rose-Gold & Celestial Gold-Pearl)
-                        col_outer = C_ROSE_GLASS if flute_val > 0 else C_PEARL_LIGHT
-                        put_px(canvas, cx + dx, y, sc(col_outer))
-                    else:
-                        put_px(canvas, cx + dx, y, sc(C_GOLD_MID if y % 2 == 0 else C_GOLD_GLOW))
+        for m in range(6):
+            u_f = ((f / float(COLS)) * 1.5 + m / 6.0) % 1.0
+            fy = base_y - 8.0 - u_f * (erupt_h * 0.90)
+            fx = cx + math.sin(phase * 2.0 + m * 1.35) * min(38.0, base_r * (1.05 - 0.45 * u_f) + 5.0)
+            if 9.0 <= fy <= base_y - 5.0:
+                draw_angel_feather_104(canvas, fx, fy, tilt_rad=-1.15 + 0.25 * math.sin(phase + m), length=5.0, alpha_scale=alpha_mult * (1.0 - 0.35 * u_f))
 
-        # 3. Gothic Cathedral Tracery Lancet Arches inside the pillar
-        if base_y - cur_top > 20:
-            for arch_i in range(-1, 2):
-                arch_cx = cx + math.sin(phase + arch_i * 2.09) * (col_radius * 0.52)
-                arch_top = cur_top + 6
-                arch_bot = base_y - 3
-                draw_line(canvas, arch_cx, arch_top, arch_cx, arch_bot, sc(C_GOLD_DEEP), thickness=1)
-                draw_line(canvas, arch_cx - 3, arch_top + 5, arch_cx, arch_top, sc(C_CORE_WHITE), thickness=1)
-                draw_line(canvas, arch_cx + 3, arch_top + 5, arch_cx, arch_top, sc(C_CORE_WHITE), thickness=1)
+        for s_i in range(5):
+            u_s = ((f / float(COLS)) * 2.0 + s_i / 5.0) % 1.0
+            sy = base_y - trunk_h * 0.58 - u_s * (erupt_h * 0.42)
+            sx = cx + math.sin(phase + s_i * 1.9) * (base_r * 0.55 * (1.0 - u_s * 0.5))
+            if 8.0 <= sy <= 84.0:
+                draw_star_glint(canvas, sx, sy, arm_len=3 if u_s < 0.6 else 2, alpha_scale=alpha_mult * (1.0 - u_s * 0.5))
 
-        # 4. Double Spiraling Golden Seraphim Ribbons helically wrapping the pillar
-        if base_y - cur_top > 10:
-            for y in range(int(cur_top + 2), int(base_y - 1)):
-                v_ratio = (y - cur_top) / max(1.0, (base_y - cur_top))
-                eff_r = col_radius * (1.0 + 0.16 * math.cos(v_ratio * math.pi * 2.0))
-                rib_span = min(21.0, eff_r * 1.18 + 1.5)
-                for strand in (0, 1):
-                    r_ang = (y - base_y) * 0.24 - phase * 2.0 + strand * math.pi
-                    rx_rib = cx + math.sin(r_ang) * rib_span
-                    front = math.cos(r_ang) >= -0.15
-                    if front:
-                        put_px(canvas, rx_rib, y, sc(C_CORE_WHITE if strand == 0 else C_ROSE_BRIGHT))
-                        put_px(canvas, rx_rib - 1, y, sc(C_GOLD_BRIGHT))
-                        put_px(canvas, rx_rib + 1, y, sc(C_GOLD_BRIGHT))
-                        put_px(canvas, rx_rib - 2, y, sc(C_GOLD_DEEP))
-                        put_px(canvas, rx_rib + 2, y, sc(C_GOLD_MID))
-                    else:
-                        # Subtle edge glimpse when ribbon passes behind column
-                        if abs(rx_rib - cx) > eff_r * 0.9:
-                            put_px(canvas, rx_rib, y, sc(C_GOLD_MID))
-
-        # 5. Rotating Winged Ophanim Rings wrapping the pillar at 2 altitudes
-        ring_altitudes = [
-            cur_top + (base_y - cur_top) * 0.33,
-            cur_top + (base_y - cur_top) * 0.66,
-        ]
-        for idx, ry_pos in enumerate(ring_altitudes):
-            if ry_pos < cur_top + 4 or ry_pos > base_y - 3:
-                continue
-            tilt = 0.20 * math.sin(phase + idx * math.pi)
-            orx = min(20.5, col_radius * 1.38 + 2.5)
-            ory = 3.5
-            draw_ellipse_ring(canvas, cx, ry_pos, orx, ory, sc(C_GOLD_DEEP), rot_rad=tilt, thickness=1.5)
-            draw_ellipse_ring(canvas, cx, ry_pos, orx * 0.92, ory * 0.92, sc(C_CORE_WHITE), rot_rad=tilt, thickness=1.0)
-            for e_i in range(6):
-                e_ang = phase * (1.5 if idx == 0 else -1.5) + e_i * (math.pi / 3.0)
-                ex = math.cos(e_ang) * orx
-                ey = math.sin(e_ang) * ory
-                rx_p = ex * math.cos(tilt) - ey * math.sin(tilt)
-                ry_p = ex * math.sin(tilt) + ey * math.cos(tilt)
-                put_px(canvas, cx + rx_p, ry_pos + ry_p, sc(C_CORE_WHITE))
-                put_px(canvas, cx + rx_p, ry_pos + ry_p - 1, sc(C_ROSE_BRIGHT if e_i % 2 == 0 else C_GOLD_BRIGHT))
-
-            # Mini cherubim wing tips flanking each Ophanim ring
-            for side in (-1, 1):
-                wx = min(48, max(3, cx + side * (orx + 1.5)))
-                wy = ry_pos - 2.0 + math.sin(phase * 2.0 + idx) * 1.5
-                draw_line(canvas, cx + side * (orx - 1), ry_pos, wx, wy - 2, sc(C_PEARL_LIGHT), thickness=1)
-                draw_line(canvas, cx + side * (orx - 1), ry_pos + 1, wx, wy + 1, sc(C_GOLD_BRIGHT), thickness=1)
-
-        # 6. Crown starburst & ascending golden angel feathers
-        draw_starburst(canvas, cx, max(5.0, cur_top + 2.5), 6.0, 3.2, rot_rad=phase, num_points=8)
-        for m in range(5):
-            my = base_y - 2.0 - ((f * 2.1 + m * 8.0) % max(8.0, (base_y - cur_top - 4.0)))
-            mx = cx + math.sin(phase * 2.0 + m * 1.4) * min(19.0, col_radius + 4.0)
-            draw_angel_feather(canvas, mx, my, tilt_rad=phase * 0.5 + m, alpha_scale=alpha_mult, bright=(m % 2 == 0))
-
-        frames.append(canvas)
+        frames.append(enforce_safe_104(canvas))
     return frames
 
 
 # ==============================================================================
-# ROW 3: Seraphic Apotheosis Celestial Gate / 6-Winged Archangel Mandala (30 frames)
-# Pass #4 Upgrade:
-# - Intricate 12-spoke gothic cathedral rose-window tracery (pointed trefoil arches,
-#   rosette mullions, alternating rose/azure stained glass)
-# - Orbiting 4-point starlight motes
-# - Strictly within 2 <= x <= 49, 2 <= y <= 49
+# ROW 3: Celestial Gate — 12-Spoke Stained-Glass Cathedral Rose Mandala & 6 Wings
 # ==============================================================================
 def build_row3_celestial_gate():
     frames = []
-    cx, cy = 26.0, 26.0
+    cx, cy = 52.0, 52.0
     for f in range(COLS):
         canvas = np.zeros((L, L, 4), dtype=np.uint8)
         phase = 2.0 * math.pi * f / COLS
         pulse = math.sin(phase * 2.0)
 
-        # 1. Outer soft divine aura (max radius 21.5 -> 26 +- 21.5 = 4.5..47.5, strictly inside 2..49)
-        draw_circle(canvas, cx, cy, 21.5, C_GOLD_FAINT, fill=True)
-        draw_circle(canvas, cx, cy, 18.5 + pulse * 0.6, C_GOLD_SOFT, fill=True)
-
-        # 2. 6-Winged Seraphim Crest radiating behind the mandala (3 pairs: upper, mid, lower; max span 21.5)
+        # 6-Winged Seraphim Crest behind mandala
         flap = math.sin(phase * 2.0)
         wing_pairs = [
-            (-0.62 + 0.08 * flap, 21.0, C_PEARL_LIGHT),  # Upper Archangel pair
-            (0.02 + 0.10 * flap, 21.5, C_GOLD_BRIGHT),   # Middle Seraph pair
-            (0.58 - 0.06 * flap, 19.5, C_GOLD_MID),      # Lower Cherub pair
+            (-0.62 + 0.08 * flap, 42.0, C_PEARL_LIGHT),
+            ( 0.02 + 0.10 * flap, 43.0, C_GOLD_BRIGHT),
+            ( 0.58 - 0.06 * flap, 39.0, C_GOLD_MID),
         ]
         for base_ang, span, w_col in wing_pairs:
             for side in (-1, 1):
                 ang = base_ang if side == 1 else (math.pi - base_ang)
-                tip_x = cx + math.cos(ang) * span
-                tip_y = cy + math.sin(ang) * span
-                draw_line(canvas, cx, cy, tip_x, tip_y, w_col, thickness=2)
-                for pf in range(1, 5):
-                    frac = 0.42 + pf * 0.12
+                tx = cx + math.cos(ang) * span
+                ty = cy + math.sin(ang) * span
+                draw_line(canvas, cx, cy, tx, ty, C_BRONZE_RIM, thickness=4.2)
+                draw_line(canvas, cx, cy, tx, ty, w_col, thickness=2.4)
+                for pf in range(1, 6):
+                    frac = 0.38 + pf * 0.11
                     bx = cx + math.cos(ang) * (span * frac)
                     by = cy + math.sin(ang) * (span * frac)
-                    f_ang = ang + side * (0.28 + pf * 0.06)
-                    fx = bx + math.cos(f_ang) * (4.5 - pf * 0.4)
-                    fy = by + math.sin(f_ang) * (4.5 - pf * 0.4)
-                    draw_line(canvas, bx, by, fx, fy, C_CORE_WHITE if pf % 2 == 0 else C_GOLD_BRIGHT, thickness=1)
+                    f_ang = ang + side * (0.30 + pf * 0.05)
+                    fx = bx + math.cos(f_ang) * (9.5 - pf * 0.8)
+                    fy = by + math.sin(f_ang) * (9.5 - pf * 0.8)
+                    draw_line(canvas, bx, by, fx, fy, C_BRONZE_RIM, thickness=2.4)
+                    draw_line(canvas, bx, by, fx, fy, C_CORE_WHITE if pf % 2 == 0 else C_GOLD_BRIGHT, thickness=1.2)
 
-        # 3. Intricate 12-Spoke Gothic Cathedral Rose-Window Tracery
+        # 12-Spoke Gothic Cathedral Rose-Window Mandala
+        r_outer = 34.0 + pulse * 0.8
+        r_mid = 25.0
+        r_inner = 14.0
+        draw_circle(canvas, cx, cy, r_outer + 1.5, C_BRONZE_RIM, fill=False, ring_w=2.0)
+        draw_circle(canvas, cx, cy, r_outer, C_GOLD_BRIGHT, fill=False, ring_w=2.2)
+        draw_circle(canvas, cx, cy, r_mid, C_PEARL_LIGHT, fill=False, ring_w=1.8)
+        draw_circle(canvas, cx, cy, r_inner, C_GOLD_MID, fill=False, ring_w=1.8)
+
         num_petals = 12
-        r_outer = 17.2 + pulse * 0.4
-        r_mid_arch = 13.0
-        r_inner = 7.2
         for p in range(num_petals):
             pang = phase + p * (2.0 * math.pi / num_petals)
             pang_next = phase + (p + 1) * (2.0 * math.pi / num_petals)
             pang_mid = 0.5 * (pang + pang_next)
 
-            # Rich stained-glass lancet & trefoil fill (alternating Cathedral Rose and Celestial Azure)
             glass_col = C_ROSE_GLASS if (p % 2 == 0) else C_AZURE_GLASS
-            glass_hi = C_ROSE_BRIGHT if (p % 2 == 0) else C_CORE_WHITE
-            for rad in (9.2, 11.2, 14.2, 15.8):
+            glass_hi = C_ROSE_BRIGHT if (p % 2 == 0) else C_AZURE_BRIGHT
+            for rad in (18.5, 22.0, 28.5, 31.5):
                 gx = cx + math.cos(pang_mid) * rad
                 gy = cy + math.sin(pang_mid) * rad
-                put_px(canvas, gx, gy, glass_col)
-                if rad in (11.2, 14.2):
-                    # Trefoil rosette jewel inside each stained-glass bay
-                    put_px(canvas, gx, gy, glass_hi if rad == 14.2 else glass_col)
+                draw_circle(canvas, gx, gy, 2.2 if rad < 25 else 2.6, glass_hi if rad in (22.0, 31.5) else glass_col, fill=True)
 
-            # 12 Primary Golden Gothic Tracery Spokes (r_inner -> r_outer)
-            sx0 = cx + math.cos(pang) * r_inner
-            sy0 = cy + math.sin(pang) * r_inner
-            sx_mid = cx + math.cos(pang) * r_mid_arch
-            sy_mid = cy + math.sin(pang) * r_mid_arch
-            sx1 = cx + math.cos(pang) * r_outer
-            sy1 = cy + math.sin(pang) * r_outer
-            draw_line(canvas, sx0, sy0, sx1, sy1, C_GOLD_BRIGHT if p % 2 == 0 else C_GOLD_MID, thickness=1)
-            # Spoke mullion boss node
-            put_px(canvas, sx_mid, sy_mid, C_CORE_WHITE)
+            sx0, sy0 = cx + math.cos(pang) * r_inner, cy + math.sin(pang) * r_inner
+            sx1, sy1 = cx + math.cos(pang) * r_outer, cy + math.sin(pang) * r_outer
+            draw_line(canvas, sx0, sy0, sx1, sy1, C_GOLD_BRIGHT if p % 2 == 0 else C_GOLD_MID, thickness=1.6)
 
-            # Inner Gothic Pointed Trefoil Arch connecting adjacent spokes at r_mid_arch
-            sx_mid_next = cx + math.cos(pang_next) * r_mid_arch
-            sy_mid_next = cy + math.sin(pang_next) * r_mid_arch
-            arch_apex_in_x = cx + math.cos(pang_mid) * (r_mid_arch + 1.6)
-            arch_apex_in_y = cy + math.sin(pang_mid) * (r_mid_arch + 1.6)
-            draw_line(canvas, sx_mid, sy_mid, arch_apex_in_x, arch_apex_in_y, C_GOLD_MID, thickness=1)
-            draw_line(canvas, sx_mid_next, sy_mid_next, arch_apex_in_x, arch_apex_in_y, C_GOLD_MID, thickness=1)
-
-            # Outer Pointed Cathedral Lancet Arch & Finial Cusp
-            sx1_next = cx + math.cos(pang_next) * r_outer
-            sy1_next = cy + math.sin(pang_next) * r_outer
-            mx = cx + math.cos(pang_mid) * (r_outer + 1.8)
-            my = cy + math.sin(pang_mid) * (r_outer + 1.8)
-            draw_line(canvas, sx1, sy1, mx, my, C_GOLD_BRIGHT, thickness=1)
-            draw_line(canvas, sx1_next, sy1_next, mx, my, C_GOLD_BRIGHT, thickness=1)
+            sx1_n, sy1_n = cx + math.cos(pang_next) * r_outer, cy + math.sin(pang_next) * r_outer
+            mx, my = cx + math.cos(pang_mid) * (r_outer + 3.8), cy + math.sin(pang_mid) * (r_outer + 3.8)
+            draw_line(canvas, sx1, sy1, mx, my, C_GOLD_BRIGHT, thickness=1.5)
+            draw_line(canvas, sx1_n, sy1_n, mx, my, C_GOLD_BRIGHT, thickness=1.5)
             put_px(canvas, mx, my, C_CORE_WHITE)
 
-        # 4. Concentric Golden Mandala Rings & Counter-Rotating Central Sacred Star
-        draw_circle(canvas, cx, cy, r_outer + 0.8, C_GOLD_DEEP, fill=False)
-        draw_circle(canvas, cx, cy, r_outer, C_GOLD_BRIGHT, fill=False)
-        draw_circle(canvas, cx, cy, r_mid_arch, C_PEARL_LIGHT, fill=False)
-        draw_circle(canvas, cx, cy, r_inner, C_GOLD_MID, fill=False)
+        draw_starburst_104(canvas, cx, cy, 21.0 + pulse * 1.2, 13.0, rot_rad=-phase * 1.5, num_points=8)
+        draw_circle(canvas, cx, cy, 7.2, C_CORE_WHITE, fill=True)
+        draw_circle(canvas, cx, cy, 4.2, C_GOLD_BRIGHT, fill=False, ring_w=1.4)
 
-        draw_starburst(canvas, cx, cy, 10.5 + pulse * 0.6, 6.5, rot_rad=-phase * 1.5, num_points=8)
-        draw_circle(canvas, cx, cy, 3.6, C_CORE_WHITE, fill=True)
-        draw_circle(canvas, cx, cy, 2.0, C_GOLD_BRIGHT, fill=False)
-
-        # 5. Orbiting 4-Point Starlight Motes (strictly inside 2 <= x <= 49, 2 <= y <= 49)
         for m in range(8):
             m_ang = -phase * 1.25 + m * (math.pi / 4.0)
-            m_rad = 20.0 + 0.6 * math.sin(phase * 2.0 + m)
-            mx = cx + math.cos(m_ang) * m_rad
-            my = cy + math.sin(m_ang) * m_rad
-            draw_four_point_star_mote(
-                canvas,
-                mx,
-                my,
-                size=2 if (m + f) % 2 == 0 else 1,
-                rot_rad=0.0,
-                rose_tint=(m % 2 == 1),
-            )
+            m_rad = 40.5 + 1.0 * math.sin(phase * 2.0 + m)
+            draw_star_glint(canvas, cx + math.cos(m_ang) * m_rad, cy + math.sin(m_ang) * m_rad, arm_len=2, ray_col=C_ROSE_BRIGHT if m % 2 else C_GOLD_BRIGHT)
 
-        frames.append(canvas)
+        frames.append(enforce_safe_104(canvas))
     return frames
 
 
 # ==============================================================================
-# ROW 4: priestess Radiant Smite Wave & Sanctuary Rose Seal (30 frames)
-# Expanding golden-white crescent smite wave & consecrated rose sigil (F00..F29)
-# Strictly within 2 <= x <= 49, 2 <= y <= 49
+# ROW 4: Smite Wave & Consecrated Cathedral Sanctuary Rose Seal
 # ==============================================================================
 def build_row4_smite_wave():
     frames = []
+    cx, cy = 52.0, 52.0
     for f in range(COLS):
         canvas = np.zeros((L, L, 4), dtype=np.uint8)
-        t = f / (COLS - 1.0)
         phase = 2.0 * math.pi * f / COLS
+        pulse = math.sin(phase * 2.0)
 
-        alpha_mult = 1.0 if f < 22 else max(0.22, 1.0 - (f - 21) / 9.0)
+        # Full symmetric rotating Cathedral Sanctuary Seal (used as floor seal & smite burst!)
+        r_out = 39.0 + pulse * 1.2
+        r_mid = 27.5 - pulse * 0.8
+        r_in = 15.0
+        draw_circle(canvas, cx, cy, r_out + 1.4, C_BRONZE_RIM, fill=False, ring_w=1.8)
+        draw_circle(canvas, cx, cy, r_out, C_GOLD_BRIGHT, fill=False, ring_w=2.4)
+        draw_circle(canvas, cx, cy, r_mid, C_AZURE_BRIGHT, fill=False, ring_w=1.8)
+        draw_circle(canvas, cx, cy, r_in, C_ROSE_BRIGHT, fill=False, ring_w=1.6)
 
-        def sc(col):
-            return (col[0], col[1], col[2], int(round(col[3] * alpha_mult)))
+        pts8 = []
+        for sp in range(8):
+            ang = phase + sp * (math.pi / 4.0)
+            pts8.append((cx + math.cos(ang) * r_out, cy + math.sin(ang) * r_out))
+        for sp in range(8):
+            x0, y0 = pts8[sp]
+            x1, y1 = pts8[(sp + 3) % 8]
+            draw_line(canvas, x0, y0, x1, y1, C_GOLD_MID if sp % 2 == 0 else C_ROSE_GLASS, thickness=1.3)
+        for sp, (px_s, py_s) in enumerate(pts8):
+            draw_line(canvas, cx, cy, px_s, py_s, C_PEARL_LIGHT if sp % 2 == 0 else C_GOLD_BRIGHT, thickness=1.3)
+            draw_star_glint(canvas, px_s, py_s, arm_len=2, ray_col=C_GOLD_BRIGHT)
 
-        # 1. Consecrated Sanctuary Rose Seal on the ground / lower-center
-        seal_cx = 22.0 + t * 3.0
-        seal_cy = 40.0
-        seal_rx = 7.5 + t * 12.5
-        seal_ry = 2.4 + t * 3.4
-        draw_ellipse_ring(canvas, seal_cx, seal_cy, seal_rx, seal_ry, sc(C_GOLD_MID), thickness=1.5)
-        draw_ellipse_ring(canvas, seal_cx, seal_cy, seal_rx * 0.65, seal_ry * 0.65, sc(C_ROSE_BRIGHT), thickness=1.0)
-        for sp in range(6):
-            ang = phase + sp * (math.pi / 3.0)
-            put_px(canvas, seal_cx + math.cos(ang) * seal_rx * 0.85, seal_cy + math.sin(ang) * seal_ry * 0.85, sc(C_CORE_WHITE))
-
-        # 2. Forward-sweeping Golden-White Crescent Smite Wave (strictly within x <= 48)
-        arc_cx = 11.0 + t * 11.0
-        arc_cy = 24.0
-        arc_r = 9.5 + (t ** 0.7) * 11.5
-        arc_span = 1.15 + 0.12 * math.sin(phase)
-
-        steps = 64
-        for i in range(steps + 1):
-            u = (i / steps) * 2.0 - 1.0
+        # Forward-sweeping luminous Seraphim Crescent Arc on right side
+        arc_span = 1.18
+        for i in range(96):
+            u = (i / 95.0) * 2.0 - 1.0
             ang = u * arc_span
-            w_thick = max(1.0, (1.0 - u * u) * (4.8 - t * 1.4))
-            bx = arc_cx + math.cos(ang) * arc_r
-            by = arc_cy + math.sin(ang) * (arc_r * 0.90)
+            w_th = max(1.0, (1.0 - u * u) * 5.2)
+            bx = cx + math.cos(ang) * r_out
+            by = cy + math.sin(ang) * r_out
+            draw_circle(canvas, bx, by, w_th, C_GOLD_BRIGHT, fill=True)
+            draw_circle(canvas, bx, by, w_th * 0.55, C_CORE_WHITE, fill=True)
 
-            for dr in np.linspace(-w_thick, w_thick * 0.6, 7):
-                px = arc_cx + math.cos(ang) * (arc_r + dr)
-                py = arc_cy + math.sin(ang) * ((arc_r + dr) * 0.90)
-                if abs(dr) < w_thick * 0.28:
-                    put_px(canvas, px, py, sc(C_CORE_WHITE))
-                elif abs(dr) < w_thick * 0.62:
-                    put_px(canvas, px, py, sc(C_GOLD_BRIGHT))
-                else:
-                    put_px(canvas, px, py, sc(C_GOLD_MID if dr < 0 else C_ROSE_GLASS))
-
-            if i % 8 == 0 and abs(u) < 0.85:
-                sx = arc_cx + math.cos(ang) * (arc_r + w_thick + 3.0)
-                sy = arc_cy + math.sin(ang) * ((arc_r + w_thick + 3.0) * 0.90)
-                draw_line(canvas, bx, by, sx, sy, sc(C_CORE_WHITE), thickness=1)
-
-        # 3. Trailing rose-gold starlight motes & feathers behind the crescent
-        for m in range(6):
-            mang = ((m - 2.5) / 3.0) * (arc_span * 0.8)
-            mr = arc_r - 3.5 - ((f * 1.4 + m * 2.7) % 8.5)
-            if mr > 3.0:
-                mx = arc_cx + math.cos(mang) * mr
-                my = arc_cy + math.sin(mang) * (mr * 0.90)
-                draw_feather_mote(canvas, mx, my, mang, 2, bright=(m % 2 == 0))
-
-        frames.append(canvas)
+        draw_circle(canvas, cx, cy, 5.0, C_CORE_WHITE, fill=True)
+        frames.append(enforce_safe_104(canvas))
     return frames
 
 
 # ==============================================================================
-# 30FPS SERAPHIM WINGS PREVIEW FOR CONTACT SHEET (in-memory or loaded from disk)
+# 30FPS SERAPHIM WINGS SHEET (9600x232, 30 cols @ 320x232 from 160x116 logical)
+# Crisp Cel-Clustered 6-Pinion Alabaster-Gold Seraphim Angel Wings with 1px Selout
 # ==============================================================================
 def build_seraphim_wings_30fps():
-    if os.path.exists(WINGS_OUT_PATH):
-        return Image.open(WINGS_OUT_PATH).convert("RGBA")
-    raw_bytes = zlib.decompress(base64.b64decode(WING_CELL0_B64))
-    base_wing = np.frombuffer(raw_bytes, dtype=np.uint8).reshape((WING_L_H, WING_L_W, 4)).copy()
-    xc = 39.5
     sheet = Image.new("RGBA", (WING_CELL_W * COLS, WING_CELL_H), (0, 0, 0, 0))
+    W, H = WING_L_W, WING_L_H
+    cx, cy = 80.0, 68.0
+
+    W_SELOUT = np.array([22, 18, 34, 255], dtype=np.uint8)
+    W_BRONZE = np.array([154, 104, 30, 255], dtype=np.uint8)
+    W_GOLD   = np.array([238, 186, 46, 255], dtype=np.uint8)
+    W_GLEAM  = np.array([254, 234, 118, 255], dtype=np.uint8)
+    W_SHAD   = np.array([196, 206, 232, 255], dtype=np.uint8)
+    W_CREAM  = np.array([244, 240, 224, 255], dtype=np.uint8)
+    W_WHITE  = np.array([255, 253, 246, 255], dtype=np.uint8)
+
     for f in range(COLS):
         phase = 2.0 * math.pi * f / COLS
-        flap_primary = math.sin(phase) - 0.25 * math.sin(2.0 * phase)
-        wave_phase = phase - 0.85
-        warped = np.zeros((WING_L_H, WING_L_W, 4), dtype=np.uint8)
-        for y in range(WING_L_H):
-            for x in range(WING_L_W):
-                dx = abs(x - xc)
-                dist_norm = dx / 39.5
-                span_scale = 1.0 + 0.065 * math.sin(phase + 0.4) * (dist_norm ** 0.8)
-                src_dx = dx / span_scale
-                tip_lift = -5.2 * flap_primary * (dist_norm ** 1.25)
-                feather_ripple = 1.65 * math.sin(wave_phase - dist_norm * 3.2) * (dist_norm ** 1.4)
-                arch_dy = -1.2 * math.cos(phase) * math.sin(dist_norm * math.pi)
-                src_x = int(round(xc + (1.0 if x >= xc else -1.0) * src_dx))
-                src_y = int(round(y - (tip_lift + feather_ripple + arch_dy)))
-                if 0 <= src_x < WING_L_W and 0 <= src_y < WING_L_H:
-                    warped[y, x] = base_wing[src_y, src_x]
-        cell_img = Image.fromarray(warped, mode="RGBA").resize(
-            (WING_CELL_W, WING_CELL_H), resample=Image.Resampling.NEAREST
-        )
+        flap = math.sin(phase) - 0.22 * math.sin(2.0 * phase)
+        ripple = math.sin(phase - 0.85)
+
+        buf = np.zeros((H, W, 4), dtype=np.uint8)
+        pil_im = Image.fromarray(buf, "RGBA")
+        draw = ImageDraw.Draw(pil_im)
+
+        # 3 Tiers of Seraphim Wings (Upper Archangel, Mid Seraph, Lower Cherub) x Left/Right
+        tiers = [
+            # (shoulder_dx, shoulder_dy, span_x, lift_y, num_primaries, flap_mul)
+            (8.0, -10.0, 66.0, -34.0, 7, 1.00),
+            (7.0,  -2.0, 56.0,  -6.0, 6, 0.82),
+            (6.0,   6.0, 40.0,  18.0, 5, 0.62),
+        ]
+
+        for side in (-1, 1):
+            for t_idx, (sdx, sdy, span_x, lift_y, n_prim, f_mul) in enumerate(tiers):
+                sx = cx + side * sdx
+                sy = cy + sdy
+                cur_lift = lift_y - flap * 15.0 * f_mul
+                cur_span = span_x * (0.94 + 0.06 * math.cos(phase))
+                elbow_x = sx + side * (cur_span * 0.44)
+                elbow_y = sy + cur_lift * 0.68 - 7.0
+                tip_x = sx + side * cur_span
+                tip_y = sy + cur_lift + ripple * 4.5 * f_mul
+
+                # Individual layered primary feathers fanning from covert ridge
+                for p_i in range(n_prim):
+                    u = p_i / float(max(1, n_prim - 1))
+                    # Root along shoulder -> elbow -> tip arch
+                    if u < 0.5:
+                        ru = u * 2.0
+                        rx = sx + (elbow_x - sx) * ru
+                        ry = sy + (elbow_y - sy) * ru
+                    else:
+                        ru = (u - 0.5) * 2.0
+                        rx = elbow_x + (tip_x - elbow_x) * (ru * 0.72)
+                        ry = elbow_y + (tip_y - elbow_y) * (ru * 0.72)
+
+                    f_len = (22.0 + u * 24.0) * (1.0 - t_idx * 0.16)
+                    fan_ang = math.atan2(
+                        (tip_y - sy) + (1.0 - u) * 26.0 + t_idx * 8.0,
+                        side * (cur_span * (0.55 + 0.45 * u)),
+                    )
+                    fx = rx + math.cos(fan_ang) * f_len
+                    fy = ry + math.sin(fan_ang) * f_len + math.sin(phase - u * 2.2) * 2.5
+
+                    # Outer golden-tipped feather silhouette -> alabaster body -> pearl quill
+                    w_px = 5 if t_idx == 0 else 4
+                    draw.line([(rx, ry), (fx, fy)], fill=tuple(W_SHAD if t_idx == 2 else W_CREAM), width=w_px)
+                    draw.line([(rx, ry - 1), (rx + (fx - rx) * 0.78, ry - 1 + (fy - ry) * 0.78)], fill=tuple(W_WHITE), width=max(2, w_px - 2))
+                    # Golden-gleam primary feather tips!
+                    tx0 = rx + (fx - rx) * 0.76
+                    ty0 = ry + (fy - ry) * 0.76
+                    draw.line([(tx0, ty0), (fx, fy)], fill=tuple(W_GOLD), width=max(2, w_px - 1))
+                    draw.line([( rx + (fx - rx) * 0.88, ry + (fy - ry) * 0.88), (fx, fy)], fill=tuple(W_GLEAM), width=2)
+
+                # Golden-armored Seraphim Wing Leading-Edge Covert Arch
+                draw.line([(sx, sy), (elbow_x, elbow_y), ( sx + (tip_x - sx) * 0.78, sy + (tip_y - sy) * 0.78)], fill=tuple(W_BRONZE), width=5)
+                draw.line([(sx, sy - 1), (elbow_x, elbow_y - 1), ( sx + (tip_x - sx) * 0.76, sy - 1 + (tip_y - sy) * 0.76)], fill=tuple(W_GOLD), width=3)
+                draw.line([(sx, sy - 1), (elbow_x, elbow_y - 1)], fill=tuple(W_GLEAM), width=1)
+
+        arr = np.array(pil_im)
+        # Seal any 1px interior pinholes inside wing plumage
+        alpha = arr[:, :, 3] > 128
+        for _ in range(2):
+            up = np.pad(alpha[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+            dn = np.pad(alpha[1:, :], ((0, 1), (0, 0)), constant_values=False)
+            lf = np.pad(alpha[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+            rt = np.pad(alpha[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+            slits = (~alpha) & ((up.astype(int) + dn.astype(int) + lf.astype(int) + rt.astype(int)) >= 3)
+            if np.any(slits):
+                arr[slits] = W_CREAM
+                alpha = arr[:, :, 3] > 128
+
+        # Crisp 1px Selective Outline (Selout) around wing silhouette
+        up_a = np.pad(alpha[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+        dn_a = np.pad(alpha[1:, :], ((0, 1), (0, 0)), constant_values=False)
+        lf_a = np.pad(alpha[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+        rt_a = np.pad(alpha[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+        edge = alpha & (~(up_a & dn_a & lf_a & rt_a))
+        arr[edge] = W_SELOUT
+
+        arr[:2, :, :] = 0
+        arr[-2:, :, :] = 0
+        arr[:, :2, :] = 0
+        arr[:, -2:, :] = 0
+
+        cell_img = Image.fromarray(arr, "RGBA").resize((WING_CELL_W, WING_CELL_H), Image.Resampling.NEAREST)
         sheet.paste(cell_img, (f * WING_CELL_W, 0))
+
+    os.makedirs(os.path.dirname(WINGS_OUT_PATH), exist_ok=True)
+    sheet.save(WINGS_OUT_PATH)
+    print(f"[SUCCESS] Saved {WINGS_OUT_PATH} ({sheet.size[0]}x{sheet.size[1]})")
     return sheet
 
 
-def save_vfx_contact_sheet(all_rows, wings_sheet):
-    """Creates a comprehensive contact sheet showing all 5 VFX rows (F00..F29) plus Seraphim Wings."""
+def save_vfx_contact_sheet(vfx_sheet, wings_sheet):
     os.makedirs(ARTIFACT_DIR, exist_ok=True)
-    thumb = 64
-    pad_left = 190
-    pad_top = 42
-    row_h = thumb + 16
-    total_rows = ROWS + 1  # 5 VFX rows + 1 Seraphim Wings preview row
-    width = pad_left + COLS * thumb + 16
-    height = pad_top + total_rows * row_h + 16
+    thumb = 68
+    pad_left = 185
+    pad_top = 36
+    row_h = thumb + 10
+    total_rows = ROWS + 1
+    w = pad_left + COLS * thumb + 16
+    h = pad_top + total_rows * row_h + 16
 
-    contact = Image.new("RGBA", (width, height), (18, 20, 28, 255))
+    contact = Image.new("RGBA", (w, h), (16, 16, 26, 255))
     draw = ImageDraw.Draw(contact)
+    draw.text((12, 10), "Seraphina (Priestess) 104x104->208x208 30fps VFX + 6-Pinion Seraphim Wings", fill=(254, 240, 138, 255))
 
-    draw.text(
-        (12, 12),
-        "Priestess 30fps VFX Sheet (5x30 @ 208x208) + Seraphim Wings (1x30 @ 320x232)",
-        fill=(255, 235, 160, 255),
-    )
-
-    for c in range(COLS):
-        draw.text((pad_left + c * thumb + 18, 26), f"F{c:02d}", fill=(190, 205, 230, 255))
-
-    row_labels = [
+    labels = [
         "R0: holy_light (Star)",
         "R1: holy_spear (Sky)",
         "R2: Judgment Pillar",
         "R3: Celestial Gate",
-        "R4: Smite Wave & Seal",
-        "Wings: 6-Wing Flap",
+        "R4: Sanctuary Seal",
+        "Wings: 6-Pinion Flap",
     ]
+    for c in range(COLS):
+        draw.text((pad_left + c * thumb + 20, 20), f"F{c:02d}", fill=(185, 200, 230, 255))
 
-    for r_idx, r_frames in enumerate(all_rows):
-        y0 = pad_top + r_idx * row_h
-        draw.text((10, y0 + 22), row_labels[r_idx], fill=(255, 230, 150, 255))
-        for c_idx in range(COLS):
-            x0 = pad_left + c_idx * thumb
-            draw.rectangle([x0, y0, x0 + thumb - 2, y0 + thumb - 2], fill=(28, 32, 44, 255), outline=(62, 68, 88, 255))
-            cell_pil = Image.fromarray(r_frames[c_idx], mode="RGBA").resize((thumb - 4, thumb - 4), resample=Image.Resampling.NEAREST)
-            contact.alpha_composite(cell_pil, (x0 + 2, y0 + 2))
+    for r in range(ROWS):
+        y0 = pad_top + r * row_h
+        draw.text((10, y0 + 24), labels[r], fill=(254, 240, 138, 255))
+        for c in range(COLS):
+            x0 = pad_left + c * thumb
+            draw.rectangle([x0, y0, x0 + thumb - 2, y0 + thumb - 2], fill=(24, 24, 38, 255), outline=(58, 62, 86, 255))
+            tile = vfx_sheet.crop((c * CELL, r * CELL, (c + 1) * CELL, (r + 1) * CELL)).resize((thumb - 4, thumb - 4), Image.Resampling.NEAREST)
+            contact.alpha_composite(tile, (x0 + 2, y0 + 2))
 
-    # Row 5 in contact sheet: Seraphim Wings 30fps
-    y_w = pad_top + ROWS * row_h
-    draw.text((10, y_w + 22), row_labels[5], fill=(255, 230, 150, 255))
-    w_thumb_w = thumb - 4
-    w_thumb_h = int(round(w_thumb_w * (WING_CELL_H / float(WING_CELL_W))))
-    for c_idx in range(COLS):
-        x0 = pad_left + c_idx * thumb
-        draw.rectangle([x0, y_w, x0 + thumb - 2, y_w + thumb - 2], fill=(28, 32, 44, 255), outline=(62, 68, 88, 255))
-        w_crop = wings_sheet.crop((c_idx * WING_CELL_W, 0, (c_idx + 1) * WING_CELL_W, WING_CELL_H))
-        w_small = w_crop.resize((w_thumb_w, w_thumb_h), resample=Image.Resampling.NEAREST)
-        contact.alpha_composite(w_small, (x0 + 2, y_w + (thumb - w_thumb_h) // 2))
+    yw = pad_top + ROWS * row_h
+    draw.text((10, yw + 24), labels[5], fill=(254, 240, 138, 255))
+    wt_w = thumb - 4
+    wt_h = int(round(wt_w * (WING_CELL_H / float(WING_CELL_W))))
+    for c in range(COLS):
+        x0 = pad_left + c * thumb
+        draw.rectangle([x0, yw, x0 + thumb - 2, yw + thumb - 2], fill=(24, 24, 38, 255), outline=(58, 62, 86, 255))
+        wc = wings_sheet.crop((c * WING_CELL_W, 0, (c + 1) * WING_CELL_W, WING_CELL_H)).resize((wt_w, wt_h), Image.Resampling.NEAREST)
+        contact.alpha_composite(wc, (x0 + 2, yw + (thumb - wt_h) // 2))
 
-    out_debug = os.path.join(ARTIFACT_DIR, "debug_priestess_30fps_vfx.png")
-    contact.save(out_debug)
-    print(f"Saved contact sheet: {out_debug} ({contact.size[0]}x{contact.size[1]})")
-
-
-def apply_pass11_star_mote_polish(cell_img, row_idx, f):
-    """
-    Pass #11 HD-2D Specular Star-Mote & Aura Polish:
-    Adds orbiting 4-point specular star glints (3x3 white core + themed 1px rays,
-    strictly inside [16..191]) that revolve smoothly with frame index f (0..29).
-    """
-    px = cell_img.load()
-    phase = (f / 30.0) * math.pi * 2.0
-    for m_idx in range(3):
-        ang = phase + m_idx * (math.pi * 2.0 / 3.0) + row_idx * 0.45
-        rx = 60.0 + 8.0 * math.sin(phase * 2.0 + m_idx * 1.7 + row_idx)
-        ry = 56.0 + 8.0 * math.cos(phase * 2.0 + m_idx * 1.3 + row_idx)
-        cx = max(24, min(183, int(round(104.0 + math.cos(ang) * rx))))
-        cy = max(24, min(183, int(round(104.0 + math.sin(ang) * ry))))
-        ray_col = C_GOLD_BRIGHT if (m_idx + row_idx) % 2 == 0 else C_ROSE_BRIGHT
-        ray_len = 5 + ((f + m_idx) % 3)
-
-        for dy in (-1, 0, 1):
-            for dx in (-1, 0, 1):
-                if abs(dx) + abs(dy) <= 1:
-                    x, y = cx + dx, cy + dy
-                    if 16 <= x <= 191 and 16 <= y <= 191:
-                        px[x, y] = (255, 255, 255, 255)
-                elif px[cx + dx, cy + dy][3] == 0:
-                    px[cx + dx, cy + dy] = C_GOLD_GLOW
-
-        for d in range(2, ray_len + 1):
-            c_step = (255, 255, 255, 255) if d == 2 else ray_col
-            for dx, dy in ((-d, 0), (d, 0), (0, -d), (0, d)):
-                x, y = cx + dx, cy + dy
-                if 16 <= x <= 191 and 16 <= y <= 191:
-                    px[x, y] = c_step
-
-    return cell_img
+    out_p = os.path.join(ARTIFACT_DIR, "debug_priestess_30fps_vfx.png")
+    contact.save(out_p)
+    print(f"[SUCCESS] Saved debug VFX contact sheet: {out_p}")
 
 
 def main():
+    t0 = time.time()
     all_rows = [
         build_row0_holy_light(),
         build_row1_holy_spear(),
@@ -975,40 +839,28 @@ def main():
     ]
 
     vfx_sheet = Image.new("RGBA", (CELL * COLS, CELL * ROWS), (0, 0, 0, 0))
-    boundary_clips = 0
+    clips = 0
     for r_idx, r_frames in enumerate(all_rows):
         diffs = 0
-        prev_arr208 = None
-        for c_idx, frame_arr in enumerate(r_frames):
-            cell_img = Image.fromarray(frame_arr, mode="RGBA").resize(
-                (CELL, CELL), resample=Image.Resampling.NEAREST
-            )
-            cell_img = apply_pass11_star_mote_polish(cell_img, r_idx, c_idx)
-            arr208 = np.array(cell_img, dtype=np.uint8)
-            if prev_arr208 is not None and not np.array_equal(prev_arr208, arr208):
+        prev = None
+        for c_idx, arr104 in enumerate(r_frames):
+            if prev is not None and not np.array_equal(prev, arr104):
                 diffs += 1
-            prev_arr208 = arr208
-            # Verify 2px outer border (and 8px logical border) is 100% transparent
-            alpha = arr208[:, :, 3]
-            if (
-                np.any(alpha[:8, :] > 0)
-                or np.any(alpha[200:, :] > 0)
-                or np.any(alpha[:, :8] > 0)
-                or np.any(alpha[:, 200:] > 0)
-            ):
-                boundary_clips += 1
-            vfx_sheet.paste(cell_img, (c_idx * CELL, r_idx * CELL))
-        print(f"VFX Row {r_idx}: {diffs}/29 distinct adjacent frame transitions")
+            prev = arr104
+            a = arr104[:, :, 3]
+            if a[:2, :].sum() + a[-2:, :].sum() + a[:, :2].sum() + a[:, -2:].sum() > 0:
+                clips += 1
+            cell208 = Image.fromarray(arr104, "RGBA").resize((CELL, CELL), Image.Resampling.NEAREST)
+            vfx_sheet.paste(cell208, (c_idx * CELL, r_idx * CELL))
+        print(f"  VFX Row {r_idx}: {diffs}/29 distinct transitions")
 
-    print(f"Priestess VFX Boundary Clips (outside 2<=x<=49, 2<=y<=49): {boundary_clips}/150")
     os.makedirs(os.path.dirname(VFX_OUT_PATH), exist_ok=True)
     vfx_sheet.save(VFX_OUT_PATH)
-    print(f"Saved {VFX_OUT_PATH} ({vfx_sheet.size[0]}x{vfx_sheet.size[1]})")
+    print(f"[SUCCESS] Saved {VFX_OUT_PATH} ({vfx_sheet.size[0]}x{vfx_sheet.size[1]}) in {time.time() - t0:.2f}s | clips={clips}/150")
 
     wings_sheet = build_seraphim_wings_30fps()
-    save_vfx_contact_sheet(all_rows, wings_sheet)
+    save_vfx_contact_sheet(vfx_sheet, wings_sheet)
 
 
 if __name__ == "__main__":
     main()
-

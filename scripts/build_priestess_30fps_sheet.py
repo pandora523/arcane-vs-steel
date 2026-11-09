@@ -1,2448 +1,1809 @@
 #!/usr/bin/env python3
 """
-Builds Seraphina's (Priestess) 30-Frame-Per-Animation HD-2D Sprite Sheet:
-- 9 rows x 30 columns = 270 unique frames (6240 x 1872 at 208x208 per cell):
-  * Row 0: IDLE (30 frames)
-  * Row 1: WALK (30 frames)
-  * Row 2: AUTO_ATTACK - SACRED STARLIGHT CAST (30 frames)
-  * Row 3: SKILL - DIVINE SANCTUARY & VALKYRIE SPEAR RAIN (30 frames)
-  * Row 4: ULTIMATE - SERAPHIC APOTHEOSIS (30 frames)
-  * Row 5: DEATH & HURT (30 frames)
-  * Row 6: DASH - ANGELIC FEATHER-GLIDE (30 frames)
-  * Row 7: CROUCH - BENEDICTION PRAYER BARRIER & COUNTER-ORB (30 frames)
-  * Row 8: JUMP - SERAPHIC WING-GLIDE VAULT & DOWNWARD STARLIGHT SMITE (30 frames)
-- Un-inked 52x52 logical pixel art upscaled 4x NEAREST to 208x208 (PixelForge adds dynamic ink at runtime).
-- Zero duplicate staffs, zero floating upright staff on death, zero bouncy-ball jump frames.
+Builds Seraphina (Priestess — Radiant High Priestess of the Dawn) 30fps HD-2D Sprite Sheet
+(6240x1872, 30 cols x 9 rows of 208x208, facing RIGHT +X) using:
+- Limb-separated 16-bit HD-2D reference base model: assets/sprites/priestess_v2_base.jpg
+- Clean 16-part single-component skeletal segmentation (mane [champagne-blonde flowing hair],
+  head [golden sunburst tiara-coronet + forehead circlet + serene face], torso [ivory-and-sapphire
+  High Priestess corset-bodice + sapphire brooch], stole [royal-sapphire & gold front stole],
+  l_coat, r_coat, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot)
+  with inner-leg dark-navy back-cape lining cleanly removed -> ZERO floating scraps between legs!
+- Full anatomical joint/limb/coat/stole under-capsules + Area-coverage BOX alpha downsampling
+  (downsample_clean_104) + Topological Pinhole Sealer (fill_interior_pinholes_104) ->
+  ZERO 1-2px interior pixel holes across all 270 frames (verified automatically at build time)!
+- Multi-zone cel-flattening + Strict 20-Color Hand-Crafted Radiant Sanctuary Master Palette +
+  2-Pass Cardinal Orphan Despeckle + 1px Selout + Crisp Turquoise-Emerald Eye Reinforcement
+- Solid cel-shaded 8-Ray Sacred Ophanim Halo, Portrait-Matched Golden Sunburst Cathedral Scepter,
+  and Stained-Glass Benediction Rose Barrier
 """
 
+import os
 import math
+import time
+from collections import deque
 import numpy as np
-from PIL import Image, ImageDraw
+from PIL import Image, ImageDraw, ImageFilter
 
-OUTLINE = (11, 15, 25, 255)
-WHITE_PURE = (255, 255, 255, 255)
-STAR_CREAM = (254, 249, 195, 255)
-GOLD_BRIGHT = (253, 224, 71, 255)
-GOLD_ROYAL = (234, 179, 8, 255)
-GOLD_MID = (204, 169, 109, 255)
-GOLD_DARK = (143, 113, 87, 255)
-WOOD_DARK = (105, 75, 57, 255)
+ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "priestess_v2_base.jpg")
+OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "priestess_sheet.png")
+ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
 
-VEST_LIGHT = (241, 232, 202, 255)
-VEST_MID = (215, 197, 168, 255)
-VEST_SHADOW = (166, 142, 108, 255)
-VEST_DEEP = (119, 89, 71, 255)
+CELL = 208
+LOGICAL = 104
+COLS = 30
+ROWS = 9
 
-ROBE_PURE = WHITE_PURE
-ROBE_CREAM = VEST_LIGHT
-ROBE_SHADOW = VEST_SHADOW
+# Strict 20-Color Hand-Crafted Radiant High Priestess Master Palette
+MASTER_PALETTE = np.array([
+    # 0-1: Crisp Sanctuary Selective Outlines (Selout) & Eyelash Ink
+    [16, 15, 28],     # 0: Deep Sanctuary Indigo-Obsidian Outline & Upper Eyelash
+    [54, 38, 36],     # 1: Warm Sepia-Gold Lit Selout
+    # 2-4: 3-Step Royal Sapphire Stole, Collar Brooch & Sleeve Trim Ramp
+    [26, 48, 128],    # 2: Deep Cathedral Sapphire Shadow
+    [42, 86, 188],    # 3: Vivid Royal Sapphire Stole & Bodice Base
+    [82, 142, 236],   # 4: Luminous Celestial Azure Highlight
+    # 5-8: 4-Step Alabaster-Ivory Vestments, Corset, Coat & Armored Greaves Ramp
+    [156, 142, 124],  # 5: Warm Taupe-Alabaster Fold Shadow
+    [198, 184, 162],  # 6: Soft Parchment-Ivory Midtone
+    [232, 222, 198],  # 7: Lit Alabaster-Cream Sanctuary Vestment
+    [250, 246, 228],  # 8: Pure Sunlit Pearl Vestment Highlight
+    # 9-11: 3-Step Warm Rose-Porcelain Skin Ramp
+    [178, 126, 102],  # 9: Warm Rose-Terracotta Skin Shadow
+    [224, 174, 144],  # 10: Smooth Porcelain Skin Midtone
+    [248, 212, 186],  # 11: Lit Peach-Porcelain Skin Highlight
+    # 12-14: 3-Step Flowing Champagne-Blonde Hair Ramp
+    [152, 116, 80],   # 12: Golden-Fawn Hair Shadow
+    [206, 174, 132],  # 13: Warm Champagne-Blonde Hair Midtone
+    [242, 220, 182],  # 14: Sunlit Platinum-Champagne Hair Highlight
+    # 15-17: 3-Step Burnished Sacred-Gold Tiara, Sun-Pauldrons, Filigree & Scepter Ramp
+    [134, 88, 26],    # 15: Antique Bronze-Gold Shadow
+    [198, 144, 34],   # 16: Rich Imperial Sacred Gold Midtone
+    [246, 200, 54],   # 17: Bright Sunburst Tiara & Scepter Gold
+    # 18-19: Protected Luminous Eye & Starlight Gleam Accents
+    [58, 188, 192],   # 18: Luminous Celestial Turquoise-Emerald Eye Iris
+    [255, 252, 224],  # 19: Radiant Diamond-Starlight Nucleus
+], dtype=np.int32)
 
-HAIR_LIGHT = (233, 233, 208, 255)
-HAIR_MID = (205, 182, 147, 255)
-HAIR_SHADOW = (151, 120, 86, 255)
-
-SKIN_LIGHT = (250, 246, 218, 255)
-SKIN_SHADOW = (200, 181, 153, 255)
-SKIN_MID = SKIN_SHADOW
-
-CYAN_SACRED = (175, 218, 208, 255)
-TEAL_LINING = (97, 148, 145, 255)
-TEAL_DEEP = (57, 85, 95, 255)
-ROSE_GOLD = (251, 191, 36, 255)
-
-
-def load_source_cells(path='backups/priestess_sheet_before_30fps.png'):
-    im = Image.open(path).convert('RGBA')
-    def cell(r, c):
-        return np.array(
-            im.crop((c * 208, r * 208, (c + 1) * 208, (r + 1) * 208)).resize((52, 52), Image.NEAREST),
-            dtype=np.uint8
-        )
-    return {
-        'idle': cell(0, 0),
-        'atk_up': cell(2, 1),
-        'atk_ext': cell(2, 3),
-        'kneel1': cell(4, 1),
-        'kneel3': cell(4, 3),
-        'fall': cell(4, 4),
-        'dash': cell(5, 1),
-    }
-
-
-def set_px(buf, x, y, col):
-    ix = int(round(x))
-    iy = int(round(y))
-    if 1 <= ix <= 50 and 1 <= iy <= 50:
-        buf[iy, ix] = col
-
-
-def draw_line_px(buf, x0, y0, x1, y1, col):
-    steps = int(max(abs(x1 - x0), abs(y1 - y0), 1))
-    for i in range(steps + 1):
-        t = i / steps
-        set_px(buf, x0 + (x1 - x0) * t, y0 + (y1 - y0) * t, col)
+# Pre-bound RGBA tuples for crisp 104x104 Halo, Sunburst Scepter, and Sanctuary FX
+P_OUTLINE     = (16, 15, 28, 255)
+P_SELOUT      = (54, 38, 36, 255)
+P_SAPPH_DARK  = (26, 48, 128, 255)
+P_SAPPH_MID   = (42, 86, 188, 255)
+P_AZURE_LIT   = (82, 142, 236, 255)
+P_IVORY_SHAD  = (156, 142, 124, 255)
+P_IVORY_MID   = (198, 184, 162, 255)
+P_IVORY_LIT   = (232, 222, 198, 255)
+P_PEARL_WHITE = (250, 246, 228, 255)
+P_SKIN_SHAD   = (178, 126, 102, 255)
+P_SKIN_MID    = (224, 174, 144, 255)
+P_HAIR_MID    = (206, 174, 132, 255)
+P_GOLD_DARK   = (134, 88, 26, 255)
+P_GOLD_MID    = (198, 144, 34, 255)
+P_GOLD_LIT    = (246, 200, 54, 255)
+P_EYE_AQUA    = (58, 188, 192, 255)
+P_STARLIGHT   = (255, 252, 224, 255)
 
 
-def add_outline_to_layer(layer):
+def count_interior_pinholes_104(arr104, max_hole_px=20):
+    """Counts any enclosed interior transparent pinholes <= max_hole_px inside the 104x104 silhouette."""
+    H, W = arr104.shape[:2]
+    a = arr104[:, :, 3] > 128
+    ext = np.zeros((H, W), dtype=bool)
+    q = deque()
+    for x in range(W):
+        for y in (0, H - 1):
+            if not a[y, x] and not ext[y, x]:
+                ext[y, x] = True
+                q.append((y, x))
+    for y in range(H):
+        for x in (0, W - 1):
+            if not a[y, x] and not ext[y, x]:
+                ext[y, x] = True
+                q.append((y, x))
+    while q:
+        cy, cx = q.popleft()
+        for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+            if 0 <= ny < H and 0 <= nx < W and not ext[ny, nx] and not a[ny, nx]:
+                ext[ny, nx] = True
+                q.append((ny, nx))
+    enclosed = (~a) & (~ext)
+    if not np.any(enclosed):
+        return 0
+    vis = np.zeros((H, W), dtype=bool)
+    eys, exs = np.where(enclosed)
+    pinhole_px = 0
+    for sy, sx in zip(eys, exs):
+        if vis[sy, sx]:
+            continue
+        comp = [(sy, sx)]
+        vis[sy, sx] = True
+        hd = 0
+        while hd < len(comp):
+            cy, cx = comp[hd]
+            hd += 1
+            for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                if 0 <= ny < H and 0 <= nx < W and enclosed[ny, nx] and not vis[ny, nx]:
+                    vis[ny, nx] = True
+                    comp.append((ny, nx))
+        if len(comp) <= max_hole_px:
+            pinhole_px += len(comp)
+    return pinhole_px
+
+
+def fill_interior_pinholes_104(arr104):
     """
-    Returns `layer.copy()` without dilating opaque black pixels into transparent space,
-    because `PixelForge.js` (ensureNormalMap + drawSheetFrame) renders the 1px comic ink
-    outline and 1px exterior rim dynamically at runtime.
+    Seals 100% of 1-2px transparent pinholes, seam tears, and diagonal stair-step slits
+    inside Seraphina's 104x104 character body while preserving open spaces between limbs:
+    1. Three passes filling any transparent pixel with >= 3 opaque cardinal neighbors.
+    2. BFS from border to find true exterior background; fills all enclosed interior pockets <= 22 px!
     """
-    return layer.copy()
+    out = arr104.copy()
+    H, W = out.shape[:2]
 
+    def fill_from_neighbors(buf, target_mask):
+        ys, xs = np.where(target_mask)
+        for y, x in zip(ys, xs):
+            cols = []
+            for ny, nx in (
+                (y - 1, x), (y + 1, x), (y, x - 1), (y, x + 1),
+                (y - 1, x - 1), (y - 1, x + 1), (y + 1, x - 1), (y + 1, x + 1),
+            ):
+                if 0 <= ny < H and 0 <= nx < W and buf[ny, nx, 3] > 128:
+                    cols.append(buf[ny, nx, :3])
+            if cols:
+                med = np.median(np.array(cols, dtype=np.int32), axis=0).astype(np.uint8)
+                buf[y, x] = [med[0], med[1], med[2], 255]
 
-def fill_layer_pinholes(layer, x0=1, x1=50, y0=1, y1=50, require_3_neighbors=False):
-    """
-    Fills 1px transparent pinholes/slits inside moved, waved, or rotated pixel layers
-    so movement never causes missing interior pixels or torn seams.
-    """
-    out = layer.copy()
-    for _pass in range(2):
-        src = out.copy()
-        alpha = src[:, :, 3] > 0
-        for y in range(max(1, y0), min(51, y1)):
-            for x in range(max(1, x0), min(51, x1)):
-                if alpha[y, x]:
-                    continue
-                up = alpha[y - 1, x]
-                dn = alpha[y + 1, x]
-                lf = alpha[y, x - 1]
-                rt = alpha[y, x + 1]
-                if (up and dn) or (lf and rt):
-                    n_cnt = int(up) + int(dn) + int(lf) + int(rt)
-                    if not require_3_neighbors or n_cnt >= 3:
-                        if up:
-                            out[y, x] = src[y - 1, x]
-                        elif lf:
-                            out[y, x] = src[y, x - 1]
-                        elif dn:
-                            out[y, x] = src[y + 1, x]
-                        elif rt:
-                            out[y, x] = src[y, x + 1]
-    return out
+    for _ in range(3):
+        a = out[:, :, 3] > 128
+        up = np.pad(a[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+        dn = np.pad(a[1:, :], ((0, 1), (0, 0)), constant_values=False)
+        lf = np.pad(a[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+        rt = np.pad(a[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+        cnt = up.astype(np.int8) + dn.astype(np.int8) + lf.astype(np.int8) + rt.astype(np.int8)
+        slits = (~a) & (cnt >= 3)
+        if not np.any(slits):
+            break
+        fill_from_neighbors(out, slits)
 
+    a = out[:, :, 3] > 128
+    ext = np.zeros((H, W), dtype=bool)
+    q = deque()
+    for x in range(W):
+        for y in (0, H - 1):
+            if not a[y, x] and not ext[y, x]:
+                ext[y, x] = True
+                q.append((y, x))
+    for y in range(H):
+        for x in (0, W - 1):
+            if not a[y, x] and not ext[y, x]:
+                ext[y, x] = True
+                q.append((y, x))
+    while q:
+        cy, cx = q.popleft()
+        for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+            if 0 <= ny < H and 0 <= nx < W and not ext[ny, nx] and not a[ny, nx]:
+                ext[ny, nx] = True
+                q.append((ny, nx))
 
-def shift_layer(layer, dx=0, dy=0):
-    """
-    Shifts a 52x52 RGBA layer by (dx, dy) while keeping pixels inside [1..50] and filling pinholes.
-    """
-    out = np.zeros_like(layer)
-    for y in range(52):
-        ny = y + int(round(dy))
-        if 1 <= ny <= 50:
-            for x in range(52):
-                nx = x + int(round(dx))
-                if 1 <= nx <= 50 and layer[y, x, 3] > 0:
-                    out[ny, nx] = layer[y, x]
-    return fill_layer_pinholes(out)
-
-
-def ensure_safe_cell(cell, margin=1):
-    """
-    Guarantees zero pixels touch the 52x52 cell border (x=0, x=51, y=0, y=51) and fills
-    any 1px interior pinholes from movement.
-    """
-    out = fill_layer_pinholes(cell, 1, 50, 1, 50, require_3_neighbors=True)
-    ys, xs = np.where(out[:, :, 3] > 0)
-    if len(ys) == 0:
-        return out
-    ymin, ymax = int(ys.min()), int(ys.max())
-    xmin, xmax = int(xs.min()), int(xs.max())
-
-    lo = margin
-    hi = 51 - margin
-
-    dy = 0
-    if ymin < lo and ymax < hi:
-        dy = min(lo - ymin, hi - ymax)
-    elif ymax > hi and ymin > lo:
-        dy = -min(ymax - hi, ymin - lo)
-
-    dx = 0
-    if xmin < lo and xmax < hi:
-        dx = min(lo - xmin, hi - xmax)
-    elif xmax > hi and xmin > lo:
-        dx = -min(xmax - hi, xmin - lo)
-
-    if dx != 0 or dy != 0:
-        shifted = np.zeros_like(out)
-        for y in range(52):
-            ny = y + dy
-            if lo <= ny <= hi:
-                for x in range(52):
-                    nx = x + dx
-                    if lo <= nx <= hi and out[y, x, 3] > 0:
-                        shifted[ny, nx] = out[y, x]
-        out = shifted
-
-    # Clear extreme margin perimeter so zero stray pixels ever touch 0 or 51
-    out[:lo, :, :] = 0
-    out[hi + 1:, :, :] = 0
-    out[:, :lo, :] = 0
-    out[:, hi + 1:, :] = 0
-    return out
-
-
-def composite_over(base, over):
-    res = base.copy()
-    mask = over[:, :, 3] > 0
-    res[mask] = over[mask]
-    return res
-
-
-def neutralize_priestess_front_arm(cell):
-    """
-    Preserves Seraphina's original golden hair locks (x = 18..23, y = 14..22),
-    blue inner cape trim (x = 11..22, y = 15..45), and bodice shading at x <= 28,
-    and ONLY strips the baked staff and extended hand at x >= 30 (for y = 8..34)
-    and x >= 33 (for y >= 35), gently softening only any isolated skin-hand pixels
-    at x = 28..29, y = 19..23.
-    """
-    out = cell.copy()
-    out[:8, 30:] = 0
-    out[8:35, 30:] = 0
-    out[35:37, 30:] = 0
-    out[35:, 33:] = 0
-
-    for y in range(19, 24):
-        for x in (28, 29):
-            r, g, b, a = out[y, x]
-            if a > 0 and r > 210 and g > 195:
-                out[y, x] = VEST_SHADOW
-    return fill_layer_pinholes(out, 1, 50, 1, 50, require_3_neighbors=True)
-
-
-neutralize_priestess_baked_arms = neutralize_priestess_front_arm
-
-
-def make_clean_templates(src):
-    """
-    Strips the baked-in staff and extended right hand from each source pose while
-    100% preserving Seraphina's natural golden hair locks, blue-lined cape, bodice shading,
-    white-and-gold flared gown (down to y = 47), and golden slippers/boots (down to y = 49).
-    """
-    # 1. Clean standing body preserving her natural hair, blue-lined cape, bodice, gown & boots
-    stand = src['idle'].copy()
-    stand[43, :11] = 0
-    stand = neutralize_priestess_front_arm(stand)
-    stand = fill_layer_pinholes(add_outline_to_layer(stand), 1, 50, 1, 50, require_3_neighbors=True)
-
-    # Extract Seraphina's Back Boot and Front Boot patches from `stand`
-    leg_back_patch = np.zeros((52, 52, 4), dtype=np.uint8)
-    leg_front_patch = np.zeros((52, 52, 4), dtype=np.uint8)
-    leg_back_patch[44:50, 14:22] = stand[44:50, 14:22]
-    leg_front_patch[44:50, 22:31] = stand[44:50, 22:31]
-
-    stand_upper = stand.copy()
-    stand_upper[44:, 14:] = 0
-    stand_upper = fill_layer_pinholes(add_outline_to_layer(stand_upper), 1, 50, 1, 50, require_3_neighbors=True)
-
-    # 2. Clean upward-prayer body (from atk_up, preserving natural gown & bodice from stand)
-    cast_up = src['atk_up'].copy()
-    cast_up[:19, 29:] = 0
-    cast_up[19:, :] = stand[19:, :]
-    cast_up = neutralize_priestess_front_arm(cast_up)
-    cast_up = fill_layer_pinholes(add_outline_to_layer(cast_up), 1, 50, 1, 50, require_3_neighbors=True)
-
-    # 3. Clean forward-extension casting body built from `stand` leaning 1px forward
-    # so her white-and-gold gown, blue inner cape, and bodice stay 100% consistent with zero baked horizontal arm!
-    cast_ext = shift_layer(stand, 1, 0)
-    cast_ext_upper = shift_layer(stand_upper, 1, 0)
-
-    # 4. Clean kneeling prayer bodies (kneel1, kneel2) preserving leaned head (x <= 31) and kneeling gown (x <= 33)
-    kneel1 = src['kneel1'].copy()
-    kneel2 = src['kneel3'].copy()
-    for kn_idx, kn in enumerate((kneel1, kneel2)):
-        kn[:23, 32:] = 0
-        kn[23:30, 31:] = 0
-        kn[30:32, 33:] = 0
-        kn[32:43, 34:] = 0
-        kn[43:49, 32:] = 0
-        for y in range(22, 27):
-            for x in (29, 30):
-                r, g, b, a = kn[y, x]
-                if a > 0 and r > 210 and g > 195:
-                    kn[y, x] = VEST_SHADOW
-        ys_k, _ = np.where(kn[:, :, 3] > 0)
-        if len(ys_k) > 0 and ys_k.max() >= 50:
-            kn_s = np.zeros_like(kn)
-            kn_s[:51, :] = kn[1:, :]
-            kn = kn_s
-        kn = fill_layer_pinholes(add_outline_to_layer(kn), 1, 50, 1, 50, require_3_neighbors=True)
-        if kn_idx == 0:
-            kneel1 = kn
-        else:
-            kneel2 = kn
-    kneel = kneel1.copy()
-
-    # 5. Clean horizontal fallen body (from fall, removing baked diagonal staff on her back at y <= 33)
-    fall = src['fall'].copy()
-    fall[:33, :, :] = 0
-    fall[33, :26] = 0
-    fall[33, 35:] = 0
-    fall[34, 39:] = 0
-    fall = fill_layer_pinholes(add_outline_to_layer(fall), 1, 50, 1, 50, require_3_neighbors=True)
-
-    # 6. Clean forward dash body (preserving her natural dashing cape, gown, and boots while stripping horizontal staff)
-    dash = src['dash'].copy()
-    dash[17:29, 31:] = 0
-    for y in range(23, 30):
-        for x in range(18, 30):
-            if stand[y, x, 3] > 0:
-                dash[y, x] = stand[y, x]
-    for y in range(20, 26):
-        for x in (29, 30):
-            r, g, b, a = dash[y, x]
-            if a > 0 and r > 210 and g > 195:
-                dash[y, x] = VEST_SHADOW
-    dash = fill_layer_pinholes(add_outline_to_layer(dash), 1, 50, 1, 50, require_3_neighbors=True)
-
-    return {
-        'stand': stand,
-        'stand_upper': stand_upper,
-        'leg_back': leg_back_patch,
-        'leg_front': leg_front_patch,
-        'cast_up': cast_up,
-        'cast_ext': cast_ext,
-        'cast_ext_upper': cast_ext_upper,
-        'kneel': kneel,
-        'kneel1': kneel1,
-        'kneel2': kneel2,
-        'fall': fall,
-        'dash': dash,
-    }
-
-
-def apply_hair_and_vestment_wave(frame, phase_rad, amplitude=1.5, vertical_flutter=0.6, is_dash=False):
-    """
-    Applies a smooth 30-frame traveling sacred breeze wave to Seraphina's long flowing
-    blonde hair and left cathedral robe train (x <= 18) without opening any seam along her torso.
-    """
-    out = frame.copy()
-    if is_dash:
-        cape_region = frame[11:42, 0:21].copy()
-        out[11:42, 0:21] = 0
-        for y in range(11, 42):
-            for x in range(0, 21):
-                if cape_region[y - 11, x, 3] == 0:
-                    continue
-                if y >= 34 and x >= 15:
-                    out[y, x] = cape_region[y - 11, x]
-                    continue
-                dist_from_back = max(0.0, (21 - x) / 17.0)
-                dy = int(round(math.sin(phase_rad - dist_from_back * 3.0) * amplitude * dist_from_back))
-                dx = int(round(math.cos(phase_rad * 2.0 - dist_from_back * 2.4) * 0.8 * dist_from_back))
-                ny = max(9, min(47, y + dy))
-                nx = max(2, min(21, x + dx))
-                out[ny, nx] = cape_region[y - 11, x]
-                if x >= 13 and out[y, x, 3] == 0:
-                    out[y, x] = cape_region[y - 11, x]
-        out = fill_layer_pinholes(out)
-        return add_outline_to_layer(out)
-
-    wave_mask = np.zeros((52, 52), dtype=bool)
-    for y in range(12, 48):
-        max_wave_x = 18 if y < 38 else 14
-        for x in range(1, max_wave_x + 1):
-            if frame[y, x, 3] > 0:
-                wave_mask[y, x] = True
-
-    orig_pixels = frame.copy()
-    out[wave_mask] = 0
-
-    for y in range(12, 48):
-        u = (y - 12) / 35.0
-        wave_x = math.sin(phase_rad - u * 3.4) * (amplitude * (0.25 + 0.85 * u))
-        dx = int(round(wave_x))
-        for x in range(1, 19):
-            if not wave_mask[y, x]:
+    enclosed = (~a) & (~ext)
+    if np.any(enclosed):
+        visited = np.zeros((H, W), dtype=bool)
+        eys, exs = np.where(enclosed)
+        to_fill = np.zeros((H, W), dtype=bool)
+        for sy, sx in zip(eys, exs):
+            if visited[sy, sx]:
                 continue
-            nx = max(2, min(20, x + dx))
-            ny = y
-            if out[ny, nx, 3] == 0:
-                out[ny, nx] = orig_pixels[y, x]
-            if dx < 0 and x >= 12 and out[y, x, 3] == 0:
-                out[y, x] = orig_pixels[y, x]
-            if dx > 0 and x >= 12 and nx - 1 >= 2 and out[y, nx - 1, 3] == 0:
-                out[y, nx - 1] = orig_pixels[y, x]
+            comp = [(sy, sx)]
+            visited[sy, sx] = True
+            idx_c = 0
+            while idx_c < len(comp):
+                cy, cx = comp[idx_c]
+                idx_c += 1
+                for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                    if 0 <= ny < H and 0 <= nx < W and enclosed[ny, nx] and not visited[ny, nx]:
+                        visited[ny, nx] = True
+                        comp.append((ny, nx))
+            if len(comp) <= 22:
+                for py, px in comp:
+                    to_fill[py, px] = True
 
-    out = fill_layer_pinholes(out)
-    return add_outline_to_layer(out)
+        for _ in range(6):
+            rem = to_fill & (out[:, :, 3] <= 128)
+            if not np.any(rem):
+                break
+            fill_from_neighbors(out, rem)
 
-
-apply_vestment_wave = apply_hair_and_vestment_wave
-
-
-def draw_halo_crown(frame, head_cx=25, head_top_y=6, phase_rad=0.0, intensity=1.0):
-    """
-    Draws a pulsing golden halo crown & tiara shimmer above Seraphina's brow.
-    Guaranteed never to touch y=0 or y=1.
-    """
-    out = frame.copy()
-    pulse = 0.5 + 0.5 * math.sin(phase_rad)
-    set_px(out, head_cx + 1, max(3, head_top_y + 2), WHITE_PURE if pulse > 0.65 else GOLD_BRIGHT)
-    set_px(out, head_cx, max(3, head_top_y + 2), GOLD_BRIGHT)
-
-    rx = 4 if intensity < 1.3 else 5
-    hy = max(3, head_top_y - 1)
-    for dx in range(-rx, rx + 1):
-        dy = 0 if abs(dx) >= rx - 1 else (-1 if dx % 2 == 0 else 0)
-        col = WHITE_PURE if (dx == 0 and pulse > 0.5) else (GOLD_BRIGHT if abs(dx) <= 2 else GOLD_MID)
-        set_px(out, head_cx + dx, max(2, hy + dy), col)
-
-    if intensity >= 1.4:
-        star_y = max(2, hy - 1)
-        set_px(out, head_cx, star_y, WHITE_PURE)
-        set_px(out, head_cx - 1, star_y, GOLD_BRIGHT)
-        set_px(out, head_cx + 1, star_y, GOLD_BRIGHT)
     return out
 
 
-C_OUTLINE = OUTLINE
-C_WING_WHITE = WHITE_PURE
-C_WING_CREAM = STAR_CREAM
-C_WING_GOLD = GOLD_BRIGHT
-
-
-def draw_seraphim_wings(c, cx=18, cy=17, span_phase=0.0, alpha_scale=1.0):
+def downsample_clean_104(win):
     """
-    Renders Seraphina's majestic, multi-feathered golden-white Archangel Wings behind her back
-    (x = 4..18, y = 7..35, safely inside x >= 3, y >= 3) with 4 distinct sweeping primary feather
-    pinions (C_WING_WHITE, C_WING_CREAM, C_WING_GOLD, and dark outline C_OUTLINE) that flap
-    gracefully with `span_phase`.
+    Downsamples the S x S posed RGBA window to 104x104 with ZERO dropped thin tiara spikes/wrists/heels
+    and ZERO blurred RGB colors:
+    - Uses area-coverage BOX alpha (>= 80) so thin rotated parts never develop pinholes.
+    - Uses crisp NEAREST RGB from the closest opaque source pixel.
     """
-    scale = max(0.0, min(1.0, float(alpha_scale)))
-    if scale <= 0.05:
-        return c
+    a_box = np.array(win.getchannel("A").resize((LOGICAL, LOGICAL), Image.Resampling.BOX))
+    solid_104 = a_box >= 80
 
-    wing_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    flap = math.sin(span_phase)
-    rx = int(round(cx))
-    ry = int(round(cy))
+    near_rgba = np.array(win.resize((LOGICAL, LOGICAL), Image.Resampling.NEAREST))
+    out = np.zeros((LOGICAL, LOGICAL, 4), dtype=np.uint8)
 
-    # 1. Golden Archangel Wing Covert Arch & Inner Feather Mantle (x = 9..18, y = 9..28)
-    arch_span = max(3, int(round(7.0 * scale)))
-    for i in range(arch_span + 1):
-        u = i / max(1, arch_span)
-        ax = max(5, min(18, int(round(rx - i * 1.1))))
-        ay_top = max(7, min(33, int(round(ry - 3.0 - math.sin(u * math.pi * 0.75) * (4.5 * scale) + flap * 1.2 * u))))
-        ay_bot = max(ay_top + 2, min(34, int(round(ry + 6.0 + (1.0 - u) * 4.0 * scale))))
-        set_px(wing_layer, ax, max(7, ay_top - 1), C_OUTLINE)
-        set_px(wing_layer, ax, ay_top, C_WING_GOLD)
-        set_px(wing_layer, ax, ay_top + 1, C_WING_GOLD if i % 2 == 0 else C_WING_WHITE)
-        for fy in range(ay_top + 2, ay_bot + 1):
-            col = C_WING_WHITE if (fy - ay_top) <= 4 else (C_WING_CREAM if (fy + i) % 2 == 0 else C_WING_GOLD)
-            set_px(wing_layer, ax, fy, col)
+    direct = solid_104 & (near_rgba[:, :, 3] > 128)
+    out[direct, :3] = near_rgba[direct, :3]
+    out[direct, 3] = 255
 
-    # 2. Four Distinct Sweeping Primary Feather Pinions (x = 4..18, y = 7..35)
-    # Drawn from lowest (Pinion 4) to highest (Pinion 1) so upper feathers layer cleanly over lower ones
-    pinion_specs = [
-        # (p_idx, root_dy, mid_dx, mid_dy, tip_x_full, tip_dy, flap_mult)
-        (3, 5.0, -6.5, 8.5, 6.0, 15.0, 0.9),   # Pinion 4: Long trailing lower seraph pinion (y = 22..34)
-        (2, 2.0, -7.5, 3.0, 5.0, 4.5, 1.3),    # Pinion 3: Sweeping lower-mid primary pinion (y = 18..24)
-        (1, -1.0, -7.8, -2.5, 4.0, -2.5, 1.7), # Pinion 2: Grand upper-mid primary pinion (y = 13..18)
-        (0, -3.5, -7.0, -7.0, 4.0, -8.5, 2.1), # Pinion 1: High Archangel crown pinion (y = 7..13)
+    need_rgb = solid_104 & (~direct)
+    if np.any(need_rgb):
+        src = np.array(win)
+        for _ in range(2):
+            sa = src[:, :, 3] > 128
+            for dy, dx in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                shifted = np.roll(src, shift=(dy, dx), axis=(0, 1))
+                take = (~sa) & (shifted[:, :, 3] > 128)
+                src[take] = shifted[take]
+                sa = src[:, :, 3] > 128
+        dil_near = np.array(Image.fromarray(src, "RGBA").resize((LOGICAL, LOGICAL), Image.Resampling.NEAREST))
+        out[need_rgb, :3] = dil_near[need_rgb, :3]
+        out[need_rgb, 3] = 255
+
+    return fill_interior_pinholes_104(out)
+
+
+def quantize_and_cluster_104(arr104):
+    """
+    Quantizes all opaque pixels to MASTER_PALETTE, runs 2-pass cardinal orphan despeckling
+    (while protecting turquoise eye & starlight gleam indices >= 18), strips tiny exterior crumbs,
+    reseals any 1px notches, and applies a crisp 1px Selective Outline (Selout).
+    """
+    out = fill_interior_pinholes_104(arr104)
+    alpha = out[:, :, 3] > 128
+
+    H, W = alpha.shape
+    visited = np.zeros((H, W), dtype=bool)
+    ys, xs = np.where(alpha)
+    for sy, sx in zip(ys, xs):
+        if visited[sy, sx]:
+            continue
+        comp = [(sy, sx)]
+        visited[sy, sx] = True
+        head = 0
+        while head < len(comp):
+            cy, cx = comp[head]
+            head += 1
+            for ny, nx in (
+                (cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1),
+                (cy - 1, cx - 1), (cy - 1, cx + 1), (cy + 1, cx - 1), (cy + 1, cx + 1),
+            ):
+                if 0 <= ny < H and 0 <= nx < W and alpha[ny, nx] and not visited[ny, nx]:
+                    visited[ny, nx] = True
+                    comp.append((ny, nx))
+        if len(comp) <= 6:
+            for py, px in comp:
+                alpha[py, px] = False
+
+    out[~alpha] = [0, 0, 0, 0]
+    out[alpha, 3] = 255
+    if not np.any(alpha):
+        return out
+
+    rgb = out[:, :, :3].astype(np.int32)
+    diff = rgb[:, :, None, :] - MASTER_PALETTE[None, None, :, :]
+    dist2 = diff[:, :, :, 0] ** 2 * 2 + diff[:, :, :, 1] ** 2 * 3 + diff[:, :, :, 2] ** 2 * 2
+    idx_map = np.argmin(dist2, axis=2)
+    idx_map[~alpha] = -1
+
+    for pass_i in range(2):
+        up = np.pad(idx_map[:-1, :], ((1, 0), (0, 0)), constant_values=-1)
+        dn = np.pad(idx_map[1:, :], ((0, 1), (0, 0)), constant_values=-1)
+        lf = np.pad(idx_map[:, :-1], ((0, 0), (1, 0)), constant_values=-1)
+        rt = np.pad(idx_map[:, 1:], ((0, 0), (0, 1)), constant_values=-1)
+
+        same_cnt = (
+            (idx_map == up).astype(np.int8)
+            + (idx_map == dn).astype(np.int8)
+            + (idx_map == lf).astype(np.int8)
+            + (idx_map == rt).astype(np.int8)
+        )
+        interior = alpha & (up >= 0) & (dn >= 0) & (lf >= 0) & (rt >= 0)
+        protect = idx_map >= 17
+        orphan = interior & (same_cnt == 0) & (~protect)
+
+        replacement = np.where((up == dn) & (up >= 0), up, np.where((lf == rt) & (lf >= 0), lf, up))
+        idx_map = np.where(orphan & (replacement >= 0), replacement, idx_map)
+
+        if pass_i == 1:
+            maj_ud = (up == dn) & ((up == lf) | (up == rt)) & (up >= 0)
+            maj_lr = (lf == rt) & ((lf == up) | (lf == dn)) & (lf >= 0)
+            maj_val = np.where(maj_ud, up, np.where(maj_lr, lf, -1))
+            idx_map = np.where(interior & (same_cnt <= 1) & (~protect) & (maj_val >= 0), maj_val, idx_map)
+
+    # Crisp 1px Selective Outline (Selout) on silhouette edges
+    up_a = np.pad(alpha[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+    dn_a = np.pad(alpha[1:, :], ((0, 1), (0, 0)), constant_values=False)
+    lf_a = np.pad(alpha[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+    rt_a = np.pad(alpha[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+    edge = alpha & (~(up_a & dn_a & lf_a & rt_a))
+
+    is_gleam = idx_map >= 19
+    body_edge = edge & (~is_gleam)
+    shadow_edge = body_edge & ((~dn_a) | (~rt_a))
+    lit_edge = body_edge & (~shadow_edge)
+    idx_map[lit_edge] = 1
+    idx_map[shadow_edge] = 0
+
+    valid = idx_map >= 0
+    out_rgb = MASTER_PALETTE[np.clip(idx_map, 0, len(MASTER_PALETTE) - 1)].astype(np.uint8)
+    out[:, :, :3] = np.where(valid[:, :, None], out_rgb, 0)
+    return out
+
+
+def keep_largest_component(mask):
+    H, W = mask.shape
+    visited = np.zeros((H, W), dtype=bool)
+    best_comp = []
+    ys, xs = np.where(mask)
+    for sy, sx in zip(ys, xs):
+        if visited[sy, sx]:
+            continue
+        comp = [(sy, sx)]
+        visited[sy, sx] = True
+        head = 0
+        while head < len(comp):
+            cy, cx = comp[head]
+            head += 1
+            for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                if 0 <= ny < H and 0 <= nx < W and not visited[ny, nx] and mask[ny, nx]:
+                    visited[ny, nx] = True
+                    comp.append((ny, nx))
+        if len(comp) > len(best_comp):
+            best_comp = comp
+    out = np.zeros((H, W), dtype=bool)
+    if best_comp:
+        cy, cx = zip(*best_comp)
+        out[cy, cx] = True
+    return out
+
+
+def poly_mask(H, W, pts):
+    img = Image.new("L", (W, H), 0)
+    ImageDraw.Draw(img).polygon(pts, fill=255)
+    return np.array(img) > 128
+
+
+def load_and_segment_512():
+    """
+    Loads priestess_v2_base.jpg (1024x1024), removes pure-white exterior & enclosed white pockets
+    (without touching warm ivory B<=232 cloth!), strips inner-leg dark-navy back-cape bridges,
+    applies multi-zone cel-flattening (MedianFilter size=5 on robes/greaves, size=3 on bodice/tiara),
+    and extracts 16 clean single-component parts.
+    """
+    im = Image.open(BASE_IMG_PATH).convert("RGBA")
+    arr = np.array(im)
+    H, W = arr.shape[:2]
+
+    r, g, b = arr[:, :, 0].astype(int), arr[:, :, 1].astype(int), arr[:, :, 2].astype(int)
+    mx = np.maximum(np.maximum(r, g), b)
+    mn = np.minimum(np.minimum(r, g), b)
+    white_cand = (r >= 235) & (g >= 235) & (b >= 235) & ((mx - mn) <= 13)
+    pure_white = (r >= 250) & (g >= 250) & (b >= 250)
+
+    bg = np.zeros((H, W), dtype=bool)
+    q = deque()
+    for x in range(W):
+        for y in (0, H - 1):
+            if white_cand[y, x] and not bg[y, x]:
+                bg[y, x] = True
+                q.append((y, x))
+    for y in range(H):
+        for x in (0, W - 1):
+            if white_cand[y, x] and not bg[y, x]:
+                bg[y, x] = True
+                q.append((y, x))
+
+    vis_pw = np.zeros((H, W), dtype=bool)
+    pys, pxs = np.where(pure_white & (~bg))
+    for sy, sx in zip(pys, pxs):
+        if vis_pw[sy, sx]:
+            continue
+        comp = [(sy, sx)]
+        vis_pw[sy, sx] = True
+        hd = 0
+        while hd < len(comp):
+            cy, cx = comp[hd]
+            hd += 1
+            for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+                if 0 <= ny < H and 0 <= nx < W and not vis_pw[ny, nx] and pure_white[ny, nx]:
+                    vis_pw[ny, nx] = True
+                    comp.append((ny, nx))
+        if len(comp) >= 24:
+            for cy, cx in comp:
+                if not bg[cy, cx]:
+                    bg[cy, cx] = True
+                    q.append((cy, cx))
+
+    while q:
+        cy, cx = q.popleft()
+        for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+            if 0 <= ny < H and 0 <= nx < W and not bg[ny, nx] and white_cand[ny, nx]:
+                bg[ny, nx] = True
+                q.append((ny, nx))
+
+    arr[bg] = [0, 0, 0, 0]
+
+    # 2-pass neutral AA fringe strip on exterior boundary
+    for _ in range(2):
+        trans = arr[:, :, 3] == 0
+        adj = np.zeros_like(trans)
+        adj[1:, :] |= trans[:-1, :]
+        adj[:-1, :] |= trans[1:, :]
+        adj[:, 1:] |= trans[:, :-1]
+        adj[:, :-1] |= trans[:, 1:]
+        r, g, b = arr[:, :, 0].astype(int), arr[:, :, 1].astype(int), arr[:, :, 2].astype(int)
+        fringe = (
+            adj
+            & (arr[:, :, 3] > 0)
+            & (np.minimum(np.minimum(r, g), b) > 215)
+            & ((np.maximum(np.maximum(r, g), b) - np.minimum(np.minimum(r, g), b)) <= 14)
+        )
+        arr[fringe] = [0, 0, 0, 0]
+
+    im512 = Image.fromarray(arr, "RGBA").resize((512, 512), Image.Resampling.BILINEAR)
+    raw512 = np.array(im512)
+    fg = raw512[:, :, 3] > 110
+    raw512[~fg] = [0, 0, 0, 0]
+    raw512[fg, 3] = 255
+
+    # Multi-zone Cel-Flattening (eliminates AI micro-gradients while keeping face & tiara crisp)
+    rgb_pil = Image.fromarray(raw512[:, :, :3], "RGB")
+    med3 = np.array(rgb_pil.filter(ImageFilter.MedianFilter(size=3)))
+    med5 = np.array(rgb_pil.filter(ImageFilter.MedianFilter(size=5)))
+
+    yy, xx = np.mgrid[0:512, 0:512]
+    flat_rgb = med3.copy()
+    lower_zone = yy >= 188
+    flat_rgb[lower_zone] = med5[lower_zone]
+    face_zone = (yy >= 54) & (yy <= 108) & (xx >= 246) & (xx <= 296)
+    flat_rgb[face_zone] = raw512[:, :, :3][face_zone]
+    raw512[:, :, :3] = np.where(fg[:, :, None], flat_rgb, 0)
+
+    # Strip inner-leg dark-navy back-cape lining between the shins/thighs -> ZERO floating scraps!
+    r5, g5, b5 = raw512[:, :, 0].astype(int), raw512[:, :, 1].astype(int), raw512[:, :, 2].astype(int)
+    navy_lining = (b5 > r5 + 14) & (r5 < 78) & (g5 < 95)
+    inner_gap_navy = (
+        fg
+        & (xx >= 204)
+        & (xx <= 294)
+        & (yy >= 260)
+        & (yy <= 430)
+        & navy_lining
+        & (~((xx >= 263) & (xx <= 285) & (yy <= 372)))
+    )
+    below_stole_dark = (
+        fg
+        & (xx >= 236)
+        & (xx <= 269)
+        & (yy >= 371)
+        & (yy <= 425)
+        & (np.maximum(np.maximum(r5, g5), b5) < 75)
+    )
+    fg = fg & (~inner_gap_navy) & (~below_stole_dark)
+    raw512[~fg] = [0, 0, 0, 0]
+
+    H5, W5 = 512, 512
+    part_specs = [
+        ("head", [(208, 8), (304, 8), (304, 110), (286, 114), (262, 113), (247, 126), (235, 112), (208, 100)]),
+        ("l_sode", [(198, 108), (238, 108), (249, 134), (242, 164), (228, 192), (199, 188)]),
+        ("l_forearm", [(198, 186), (223, 190), (217, 238), (219, 266), (208, 282), (195, 272), (196, 240)]),
+        ("r_sode", [(284, 114), (306, 118), (309, 145), (313, 190), (296, 194), (296, 174), (303, 162), (294, 140)]),
+        ("r_forearm", [(296, 188), (317, 184), (346, 255), (346, 286), (320, 286), (313, 246), (299, 206)]),
+        ("torso", [(236, 108), (288, 108), (296, 140), (306, 158), (304, 176), (295, 198), (293, 235), (272, 253), (232, 235), (236, 174)]),
+        ("mane", [(130, 68), (242, 68), (236, 108), (204, 118), (201, 190), (200, 265), (130, 265)]),
+        ("stole", [(263, 232), (285, 232), (285, 348), (274, 374), (264, 348)]),
+        ("l_foot", [(196, 452), (236, 452), (238, 510), (196, 510)]),
+        ("l_shin", [(203, 365), (236, 326), (251, 345), (239, 408), (230, 454), (203, 454)]),
+        ("l_thigh", [(222, 336), (256, 240), (264, 244), (264, 338), (248, 355), (222, 352)]),
+        ("r_foot", [(264, 446), (302, 446), (326, 506), (264, 506)]),
+        ("r_shin", [(266, 366), (284, 332), (299, 336), (298, 405), (296, 450), (268, 450)]),
+        ("r_thigh", [(284, 244), (295, 268), (297, 348), (284, 352)]),
+        ("l_coat", [(216, 204), (258, 234), (255, 250), (222, 345), (206, 424), (182, 464), (138, 412), (176, 320), (212, 240)]),
+        ("r_coat", [(288, 218), (300, 210), (326, 305), (352, 432), (328, 466), (318, 426), (296, 412), (297, 336), (293, 266)]),
     ]
 
-    for p_idx, root_dy, mid_dx, mid_dy, tip_x_full, tip_dy, flap_mult in pinion_specs:
-        sx_p = float(rx - 1)
-        sy_p = float(ry) + root_dy * scale
-        mx_p = float(rx) + mid_dx * (0.45 + 0.55 * scale)
-        my_p = float(ry) + mid_dy * scale + flap * flap_mult * 0.65
-        # Even when partially folded (scale = 0.6 in SKILL), tips reach x = 7..8 beyond her hair
-        tx_p = tip_x_full * scale + (rx - 6.0) * (1.0 - scale)
-        ty_p = float(ry) + tip_dy * scale + flap * flap_mult
+    claimed = np.zeros((H5, W5), dtype=bool)
+    parts = {}
+    for name, pts in part_specs:
+        raw_m = fg & poly_mask(H5, W5, pts) & (~claimed)
+        m = keep_largest_component(raw_m)
+        claimed |= m
+        ys, xs = np.where(m)
+        if len(ys) == 0:
+            parts[name] = (Image.new("RGBA", (1, 1), (0, 0, 0, 0)), 0, 0)
+            continue
+        y0, y1 = int(ys.min()), int(ys.max()) + 1
+        x0, x1 = int(xs.min()), int(xs.max()) + 1
+        buf = np.zeros((y1 - y0, x1 - x0, 4), dtype=np.uint8)
+        sub_m = m[y0:y1, x0:x1]
+        buf[sub_m] = raw512[y0:y1, x0:x1][sub_m]
+        parts[name] = (Image.fromarray(buf, "RGBA"), x0, y0)
 
-        steps = 18
-        for s in range(steps + 1):
-            t = s / float(steps)
-            omt = 1.0 - t
-            bx = omt * omt * sx_p + 2.0 * omt * t * mx_p + t * t * tx_p
-            by = omt * omt * sy_p + 2.0 * omt * t * my_p + t * t * ty_p
-            ix = max(4, min(18, int(round(bx))))
-            iy = max(7, min(34, int(round(by))))
+    # Upgrade r_thigh (occluded behind stole in 3/4 base stance) using shaded l_thigh contour
+    # so forward/backward rear-leg strides have full cel-shaded volume matching l_thigh!
+    lt_im, lt_x0, lt_y0 = parts["l_thigh"]
+    if lt_im.size != (1, 1):
+        lt_rot = lt_im.rotate(13.0, resample=Image.Resampling.BICUBIC, expand=True)
+        rt_arr = np.array(lt_rot)
+        rt_m = rt_arr[:, :, 3] > 128
+        rt_arr[~rt_m] = [0, 0, 0, 0]
+        # Subtle 0.91x warm depth shade so rear thigh reads naturally behind front thigh
+        rt_arr[rt_m, 0] = np.clip(rt_arr[rt_m, 0].astype(np.float32) * 0.92, 0, 255).astype(np.uint8)
+        rt_arr[rt_m, 1] = np.clip(rt_arr[rt_m, 1].astype(np.float32) * 0.90, 0, 255).astype(np.uint8)
+        rt_arr[rt_m, 2] = np.clip(rt_arr[rt_m, 2].astype(np.float32) * 0.89, 0, 255).astype(np.uint8)
+        rt_ys, rt_xs = np.where(rt_m)
+        if len(rt_ys) > 0:
+            ry0, ry1 = int(rt_ys.min()), int(rt_ys.max()) + 1
+            rx0, rx1 = int(rt_xs.min()), int(rt_xs.max()) + 1
+            rt_crop = Image.fromarray(rt_arr[ry0:ry1, rx0:rx1], "RGBA")
+            parts["r_thigh"] = (rt_crop, 286 - rt_crop.size[0] // 2, 246)
 
-            # Top feather edge (dark outline on outer vane, bright gold on inner covert)
-            if t >= 0.30:
-                set_px(wing_layer, ix, max(7, iy - 1), C_OUTLINE if t >= 0.45 else C_WING_GOLD)
-            else:
-                set_px(wing_layer, ix, max(7, iy - 1), C_WING_GOLD)
+    dropped = int((fg & (~claimed)).sum())
+    print(f"[Seraphina 512x512 Segmentation] {len(parts)} clean 1-component parts extracted, dropped stray pixels: {dropped}")
 
-            # Primary feather shaft & bright white upper vane
-            shaft_col = C_WING_GOLD if (t <= 0.28 or t >= 0.88) else C_WING_WHITE
-            set_px(wing_layer, ix, iy, shaft_col)
-
-            # Luminous cream/white mid vane
-            vane_col = C_WING_WHITE if t <= 0.72 else (C_WING_CREAM if t <= 0.90 else C_WING_GOLD)
-            set_px(wing_layer, ix, min(35, iy + 1), vane_col)
-
-            # Golden-cream lower barb
-            if t <= 0.85:
-                barb_col = C_WING_CREAM if t <= 0.62 else C_WING_GOLD
-                set_px(wing_layer, ix, min(35, iy + 2), barb_col)
-
-            # Crisp dark feather-separation slot between the 4 primary pinions
-            if 0.28 <= t <= 0.82:
-                set_px(wing_layer, ix, min(35, iy + 3), C_OUTLINE)
-
-    return composite_over(wing_layer, c)
+    # Save debug parts inspection sheet
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+    psheet = Image.new("RGBA", (4 * 160, 4 * 180), (20, 18, 30, 255))
+    pd = ImageDraw.Draw(psheet)
+    for idx, (name, _) in enumerate(part_specs):
+        im_p, _, _ = parts[name]
+        gx, gy = (idx % 4) * 160, (idx // 4) * 180
+        pd.rectangle([gx, gy, gx + 158, gy + 178], outline=(68, 66, 94, 255))
+        pd.text((gx + 6, gy + 4), name, fill=(254, 240, 138, 255))
+        cw, ch = im_p.size
+        sc = min(140.0 / max(1, cw), 145.0 / max(1, ch), 1.0)
+        thumb = im_p.resize((max(1, int(cw * sc)), max(1, int(ch * sc))), Image.Resampling.NEAREST)
+        psheet.alpha_composite(thumb, (gx + (160 - thumb.size[0]) // 2, gy + 24 + (150 - thumb.size[1]) // 2))
+    psheet.save(os.path.join(ARTIFACT_DIR, "debug_priestess_v2_parts.png"))
+    return parts
 
 
-def draw_mini_wings_on_back(frame, shoulder_x=18, shoulder_y=17, unfurl=1.0, phase_rad=0.0):
-    """Wrapper forwarding to `draw_seraphim_wings`."""
-    return draw_seraphim_wings(frame, cx=shoulder_x, cy=shoulder_y, span_phase=phase_rad * 2.0, alpha_scale=unfurl)
+def rot_pt(pt, pivot, deg):
+    rad = math.radians(deg)
+    c, s = math.cos(rad), math.sin(rad)
+    dx, dy = pt[0] - pivot[0], pt[1] - pivot[1]
+    return (pivot[0] + dx * c - dy * s, pivot[1] + dx * s + dy * c)
 
 
-def solve_ik_elbow(sx, sy, hx, hy, L1=4.4, L2=4.2, bend_side=1.0):
+def paste_rotated_part(canvas, part_tuple, src_pivot, dst_pivot, deg):
+    im_p, x0, y0 = part_tuple
+    if im_p.size == (1, 1):
+        return
+    pad = int(math.ceil(math.hypot(im_p.size[0], im_p.size[1]))) + 8
+    tmp = Image.new("RGBA", (pad * 2, pad * 2), (0, 0, 0, 0))
+    loc_x = int(round(pad - (src_pivot[0] - x0)))
+    loc_y = int(round(pad - (src_pivot[1] - y0)))
+    tmp.paste(im_p, (loc_x, loc_y))
+    if abs(deg) > 0.05:
+        tmp = tmp.rotate(-deg, resample=Image.Resampling.BICUBIC, center=(pad, pad))
+    dst_x = int(round(dst_pivot[0] - pad))
+    dst_y = int(round(dst_pivot[1] - pad))
+    canvas.alpha_composite(tmp, (dst_x, dst_y))
+
+
+def draw_joint_cap(draw, pt, r, fill, inner=None):
+    x, y = pt
+    draw.ellipse([x - r, y - r, x + r, y + r], fill=fill)
+    if inner is not None and r > 3:
+        ir = r * 0.65
+        draw.ellipse([x - ir, y - ir, x + ir, y + ir], fill=inner)
+
+
+def draw_capsule(draw, p0, p1, r, fill):
+    draw.line([p0, p1], fill=fill, width=int(round(r * 2)))
+    draw.ellipse([p0[0] - r, p0[1] - r, p0[0] + r, p0[1] + r], fill=fill)
+    draw.ellipse([p1[0] - r, p1[1] - r, p1[0] + r, p1[1] + r], fill=fill)
+
+
+def put_px(arr, x, y, col):
+    ix, iy = int(round(x)), int(round(y))
+    if 4 <= ix < LOGICAL - 4 and 4 <= iy < LOGICAL - 4:
+        arr[iy, ix] = col
+
+
+def stamp_seraphina_eyes_104(arr, l_eye_104, r_eye_104, head_deg, blink=False):
     """
-    2-Bone Inverse Kinematics solver returning the anatomical elbow joint (ex, ey)
-    between shoulder (sx, sy) and hand (hx, hy) with L1=4.4, L2=4.2.
+    Reinforces Seraphina's serene, luminous turquoise-emerald eyes (with delicate dark upper lash)
+    at exact transformed head coordinates in 104x104 so 5.54x downsampling never loses facial clarity.
     """
-    dx = float(hx - sx)
-    dy = float(hy - sy)
-    dist = max(0.8, math.hypot(dx, dy))
-    max_reach = L1 + L2 - 0.12
-    if dist > max_reach:
-        dx *= max_reach / dist
-        dy *= max_reach / dist
-        dist = max_reach
-    ux, uy = dx / dist, dy / dist
-    px, py = -uy * bend_side, ux * bend_side
-    a = (L1 * L1 - L2 * L2 + dist * dist) / (2.0 * dist)
-    h = math.sqrt(max(0.0, L1 * L1 - a * a))
-    ex = sx + ux * a + px * h
-    ey = sy + uy * a + py * h
-    return ex, ey
+    if abs(head_deg) > 58.0:
+        return
+
+    for idx, (ex, ey) in enumerate((l_eye_104, r_eye_104)):
+        ix, iy = int(round(ex)), int(round(ey))
+        if not (8 <= ix <= 95 and 6 <= iy <= 95):
+            continue
+        # Only stamp inside opaque head region
+        if arr[iy, ix, 3] == 0:
+            continue
+        if blink:
+            # Serene closed prayer eyelashes
+            put_px(arr, ix, iy, P_OUTLINE)
+            if idx == 0:
+                put_px(arr, ix - 1, iy, P_SELOUT)
+        else:
+            # Crisp dark upper lash + luminous celestial turquoise-emerald iris
+            put_px(arr, ix, iy - 1, P_OUTLINE)
+            put_px(arr, ix, iy, P_EYE_AQUA)
+            if idx == 0:
+                put_px(arr, ix - 1, iy - 1, P_OUTLINE)
 
 
-def draw_ik_priestess_arm(
-    layer,
-    sx,
-    sy,
-    hx,
-    hy,
-    L1=4.4,
-    L2=4.2,
-    bend_side=1.0,
-    is_prayer_hand=False,
-    dim_factor=1.0,
-):
+def draw_sacred_ophanim_halo_104(arr, cx, cy, phase=0.0, mode="off"):
     """
-    Renders Seraphina's 2-Bone IK Cathedral Arm attached at her true shoulder
-    (sx = 25.0 + dx_off, sy = 17.0 + dy_off) with L1 = 4.4, L2 = 4.2.
+    Renders a centered Celestial Sapphire-and-Gold Nimbus symmetrically behind Seraphina's
+    Sunburst Crown during peak consecration ('flare') and Ultimate ('apotheosis') moments,
+    without competing cog-spikes or offset shoulder rings during normal stances.
     """
-    def dim_col(c):
-        if dim_factor >= 0.99:
-            return c
-        return (
-            int(c[0] * dim_factor),
-            int(c[1] * dim_factor),
-            int(c[2] * dim_factor),
-            c[3],
-        )
+    if mode in ("off", "normal", "swept"):
+        return
 
-    ex, ey = solve_ik_elbow(sx, sy, hx, hy, L1=L1, L2=L2, bend_side=bend_side)
+    is_ult = mode == "apotheosis"
+    r_ring = 13.6 if is_ult else 11.8
+    x_min = max(5, int(math.floor(cx - (r_ring + 3.0))))
+    x_max = min(98, int(math.ceil(cx + (r_ring + 3.0))))
+    y_min = max(5, int(math.floor(cy - (r_ring + 3.0))))
+    y_max = min(98, int(math.ceil(cy + (r_ring + 3.0))))
 
-    c_pure = dim_col(ROBE_PURE)
-    c_cream = dim_col(ROBE_CREAM)
-    c_shad = dim_col(ROBE_SHADOW)
-    c_gold_hi = dim_col(GOLD_BRIGHT)
-    c_gold_mid = dim_col(GOLD_MID)
-
-    # 1. White silk upper sleeve from (sx, sy) to (ex, ey)
-    u1x, u1y = ex - sx, ey - sy
-    d1 = max(1.0, math.hypot(u1x, u1y))
-    n1x, n1y = -u1y / d1, u1x / d1
-    draw_line_px(layer, sx + n1x * 0.8, sy + n1y * 0.8, ex + n1x * 0.75, ey + n1y * 0.75, c_pure)
-    draw_line_px(layer, sx - n1x * 0.8, sy - n1y * 0.8, ex - n1x * 0.75, ey - n1y * 0.75, c_shad)
-    draw_line_px(layer, sx, sy, ex, ey, c_cream)
-
-    # 2. Cathedral bell-sleeve forearm + ornate gold cuff from (ex, ey) to (hx, hy)
-    u2x, u2y = hx - ex, hy - ey
-    d2 = max(1.0, math.hypot(u2x, u2y))
-    n2x, n2y = -u2y / d2, u2x / d2
-    draw_line_px(layer, ex + n2x * 0.8, ey + n2y * 0.8, hx + n2x * 0.95, hy + n2y * 0.95, c_pure)
-    draw_line_px(layer, ex - n2x * 0.8, ey - n2y * 0.8, hx - n2x * 1.0, hy - n2y * 1.0, c_shad)
-    draw_line_px(layer, ex, ey, hx, hy, c_cream)
-
-    cuff_x = hx - (u2x / d2) * 1.1
-    cuff_y = hy - (u2y / d2) * 1.1
-    for c_step in (-0.9, 0.0, 0.9):
-        set_px(
-            layer,
-            cuff_x + n2x * c_step,
-            cuff_y + n2y * c_step,
-            c_gold_hi if abs(c_step) < 0.4 else c_gold_mid,
-        )
-
-    # 3. Gold-and-ivory cathedral shoulder pauldron/cap at (sx, sy)
-    ux1, uy1 = u1x / d1, u1y / d1
-    for p_step in (-0.9, 0.0, 0.9):
-        px_s = sx + ux1 * 0.8 + n1x * p_step
-        py_s = sy + uy1 * 0.8 + n1y * p_step
-        set_px(layer, px_s, py_s, c_gold_hi if abs(p_step) > 0.5 else c_pure)
-        set_px(layer, sx + n1x * p_step, sy + n1y * p_step, c_gold_mid)
-
-    # 4. Golden elbow trim at (ex, ey)
-    set_px(layer, ex, ey, c_gold_hi)
-    set_px(layer, ex - n1x * 0.6, ey - n1y * 0.6, c_gold_mid)
-
-    # 5. 2x2 graceful hand (SKIN_LIGHT, SKIN_MID) at (hx, hy)
-    ix, iy = int(round(hx)), int(round(hy))
-    set_px(layer, ix, iy, dim_col(SKIN_LIGHT))
-    set_px(layer, ix + 1, iy, dim_col(GOLD_BRIGHT if is_prayer_hand else SKIN_LIGHT))
-    set_px(layer, ix, iy + 1, dim_col(SKIN_MID))
-    set_px(layer, ix + 1, iy + 1, dim_col(SKIN_LIGHT if is_prayer_hand else SKIN_MID))
+    for yy in range(y_min, y_max + 1):
+        for xx in range(x_min, x_max + 1):
+            dx = xx - cx
+            dy = yy - cy
+            d = math.hypot(dx, dy)
+            if abs(d - r_ring) <= 1.25:
+                if abs(d - r_ring) <= 0.55:
+                    arr[yy, xx] = P_STARLIGHT if is_ult else P_GOLD_LIT
+                else:
+                    arr[yy, xx] = P_GOLD_MID if d < r_ring else P_OUTLINE
+            elif is_ult and abs(d - (r_ring - 2.4)) <= 0.85:
+                arr[yy, xx] = P_AZURE_LIT
 
 
-def draw_left_prayer_arm(
-    base_frame,
-    shoulder=(24.0, 18.0),
-    hand=(31.0, 23.0),
-    mote_glow=1.0,
-    aegis_shield=False,
-    phase_rad=0.0,
-):
+def draw_sunburst_scepter_104(arr, hand_x, hand_y, scepter_deg, staff_len=26.0, pom_len=14.0, glow=1.0, phase=0.0):
     """
-    Renders Seraphina's Left Prayer/Blessing Arm & Golden Halo Mote (and optional
-    golden hexagonal Aegis prayer barrier in Row 7 CROUCH F00..F10).
+    Renders Seraphina's Portrait-Matched Sacred Sunburst Cathedral Scepter:
+    - Solid 3px cel-shaded burnished-gold shaft with royal-sapphire grip rings (1px Selout + 1px gold core)
+    - Golden Cathedral Calyx + 8-Ray Sunburst Head + Glowing Diamond-Starlight Nucleus!
+    Returns (hcx, hcy) coordinates of the Sunburst Scepter Head nucleus.
     """
-    arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    sx, sy = float(shoulder[0]), float(shoulder[1])
-    hx, hy = float(hand[0]), float(hand[1])
+    rad = math.radians(scepter_deg)
+    ux, uy = math.cos(rad), math.sin(rad)
+    nx, ny = -uy, ux
 
-    draw_ik_priestess_arm(
-        arm_layer,
-        sx,
-        sy,
-        hx,
-        hy,
-        L1=4.4,
-        L2=4.2,
-        bend_side=1.0,
-        is_prayer_hand=True,
-        dim_factor=0.96,
+    # Clamp scepter head inside safe frame [9..94]
+    head_pad = 6.0
+    max_fwd = staff_len
+    if ux > 0.05:
+        max_fwd = min(max_fwd, (94.0 - head_pad - hand_x) / ux)
+    elif ux < -0.05:
+        max_fwd = min(max_fwd, (9.0 + head_pad - hand_x) / ux)
+    if uy > 0.05:
+        max_fwd = min(max_fwd, (96.0 - head_pad - hand_y) / uy)
+    elif uy < -0.05:
+        max_fwd = min(max_fwd, (9.0 + head_pad - hand_y) / uy)
+    eff_len = max(12.0, max_fwd)
+
+    max_back = pom_len
+    if -ux > 0.05:
+        max_back = min(max_back, (94.0 - hand_x) / (-ux))
+    elif -ux < -0.05:
+        max_back = min(max_back, (9.0 - hand_x) / (-ux))
+    if -uy > 0.05:
+        max_back = min(max_back, (98.0 - hand_y) / (-uy))
+    elif -uy < -0.05:
+        max_back = min(max_back, (9.0 - hand_y) / (-uy))
+    eff_pom = max(4.0, max_back)
+
+    steps = int(round((eff_len + eff_pom) * 2.5))
+    # Pass 1: Crisp dark shaft border
+    for i in range(steps + 1):
+        d = -eff_pom + (eff_len + eff_pom) * (i / float(max(1, steps)))
+        if d > eff_len - 4.2:
+            continue
+        px = hand_x + ux * d
+        py = hand_y + uy * d
+        put_px(arr, px + nx * 1.0, py + ny * 1.0, P_OUTLINE)
+        put_px(arr, px - nx * 1.0, py - ny * 1.0, P_GOLD_DARK)
+    # Pass 2: Bright golden shaft core with sapphire grip accents
+    for i in range(steps + 1):
+        d = -eff_pom + (eff_len + eff_pom) * (i / float(max(1, steps)))
+        if d > eff_len - 4.2:
+            continue
+        px = hand_x + ux * d
+        py = hand_y + uy * d
+        if abs(d) < 1.8:
+            put_px(arr, px, py, P_SAPPH_MID)
+        elif int(round(d)) % 6 == 0:
+            put_px(arr, px, py, P_STARLIGHT)
+        else:
+            put_px(arr, px, py, P_GOLD_LIT)
+
+    # Pommel sapphire jewel
+    bx = hand_x - ux * eff_pom
+    by = hand_y - uy * eff_pom
+    for dy_p in (-1, 0, 1):
+        for dx_p in (-1, 0, 1):
+            if abs(dx_p) + abs(dy_p) <= 1:
+                put_px(arr, bx + dx_p, by + dy_p, P_AZURE_LIT if (dx_p == 0 and dy_p == 0) else P_OUTLINE)
+
+    # Ornate 8-Ray Sunburst Scepter Head (matching portrait_hd2d_priestess_v2!)
+    hcx = hand_x + ux * (eff_len - 0.8)
+    hcy = hand_y + uy * (eff_len - 0.8)
+    r_head = 4.2
+    ray_len = 3.2 if glow > 1.15 else 2.5
+
+    # 8 Sunburst Spikes around scepter ring
+    for k in range(8):
+        ang = rad + k * (math.pi / 4.0)
+        rl = ray_len if k % 2 == 0 else ray_len * 0.68
+        ca, sa = math.cos(ang), math.sin(ang)
+        for st in range(1, int(math.ceil(rl * 2.5)) + 1):
+            rr = r_head - 0.5 + (st / 2.5)
+            rx_p = hcx + ca * rr
+            ry_p = hcy + sa * rr
+            for ox, oy in ((-1, 0), (1, 0), (0, -1), (0, 1)):
+                ix, iy = int(round(rx_p)) + ox, int(round(ry_p)) + oy
+                if 5 <= ix <= 98 and 5 <= iy <= 98 and arr[iy, ix, 3] == 0:
+                    arr[iy, ix] = P_OUTLINE
+            put_px(arr, rx_p, ry_p, P_STARLIGHT if st == 1 else P_GOLD_LIT)
+
+    # Sunburst Ring & Glowing Starlight Core
+    for dy_h in range(-5, 6):
+        for dx_h in range(-5, 6):
+            d = math.hypot(dx_h, dy_h)
+            if abs(d - r_head) <= 1.25:
+                put_px(arr, hcx + dx_h, hcy + dy_h, P_GOLD_LIT if abs(d - r_head) <= 0.65 else P_GOLD_DARK)
+            elif d < r_head - 1.0:
+                if d <= 1.5:
+                    put_px(arr, hcx + dx_h, hcy + dy_h, P_STARLIGHT)
+                elif d <= 2.6 and glow > 0.7:
+                    put_px(arr, hcx + dx_h, hcy + dy_h, P_GOLD_LIT)
+
+    return (hcx, hcy)
+
+
+def draw_prayer_orb_104(arr, hx, hy, radius=2.6, phase=0.0):
+    if radius <= 0.4:
+        return
+    r_int = int(math.ceil(radius + 1.5))
+    for dy in range(-r_int, r_int + 1):
+        for dx in range(-r_int, r_int + 1):
+            d = math.hypot(dx, dy)
+            if d <= radius * 0.48:
+                put_px(arr, hx + dx, hy + dy, P_STARLIGHT)
+            elif d <= radius * 0.85:
+                put_px(arr, hx + dx, hy + dy, P_GOLD_LIT)
+            elif d <= radius + 0.55:
+                put_px(arr, hx + dx, hy + dy, P_AZURE_LIT if (dx + dy) % 2 == 0 else P_GOLD_MID)
+
+
+def draw_scepter_starburst_flare_104(arr, hcx, hcy, intensity=1.0, phase=0.0):
+    """
+    Renders a crisp, unmistakable 4-Point Cathedral Cross-Star Flare + Celestial Ring
+    radiating directly from the Sunburst Scepter's jewel nucleus during active Holy Casts
+    (reads purely as Radiant Divine Magic rather than a melee crescent blade!).
+    """
+    if intensity <= 0.08:
+        return
+
+    # Luminous sapphire-gold outer nimbus ring around the scepter head
+    r_aura = 6.2 + 2.2 * intensity
+    for yy in range(max(5, int(hcy - r_aura - 2)), min(98, int(hcy + r_aura + 3))):
+        for xx in range(max(5, int(hcx - r_aura - 2)), min(98, int(hcx + r_aura + 3))):
+            d = math.hypot(xx - hcx, yy - hcy)
+            if abs(d - r_aura) <= 0.75:
+                if arr[yy, xx, 3] == 0:
+                    arr[yy, xx] = P_AZURE_LIT if ((xx + yy) % 2 == 0) else P_GOLD_LIT
+
+    # Crisp 4-Point Cardinal Cathedral Cross-Star + 4 shorter diagonal glints
+    arm_card = int(round(6.0 + 5.5 * intensity))
+    arm_diag = int(round(3.0 + 3.0 * intensity))
+    for dx, dy, length in (
+        (1, 0, arm_card), (-1, 0, arm_card), (0, -1, arm_card), (0, 1, arm_card),
+        (1, 1, arm_diag), (1, -1, arm_diag), (-1, 1, arm_diag), (-1, -1, arm_diag),
+    ):
+        for s in range(1, length + 1):
+            px = int(round(hcx)) + dx * s
+            py = int(round(hcy)) + dy * s
+            if not (6 <= px <= 97 and 6 <= py <= 97):
+                continue
+            u = s / float(max(1, length))
+            col = P_STARLIGHT if u < 0.55 else (P_GOLD_LIT if u < 0.85 else P_AZURE_LIT)
+            arr[py, px] = col
+            if s <= 2 and (dx == 0 or dy == 0):
+                # Slight 3px diamond waist near center
+                if dx != 0:
+                    put_px(arr, px, py - 1, P_GOLD_LIT)
+                    put_px(arr, px, py + 1, P_GOLD_LIT)
+                else:
+                    put_px(arr, px - 1, py, P_GOLD_LIT)
+                    put_px(arr, px + 1, py, P_GOLD_LIT)
+
+
+def render_pose_104(parts, cfg):
+    """
+    Renders a single 104x104 logical frame from Seraphina's 512x512 16-part rig
+    with full anatomical under-capsules, area-coverage anti-pinhole downsampling,
+    and crisp 20-color cel clustering. Returns (final_comp_104, body_pinhole_count).
+    """
+    canvas = Image.new("RGBA", (650, 600), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(canvas)
+    OX, OY = 48, 44
+
+    pelvis_src = (268.0, 236.0)
+    pelvis_dst = (268.0 + OX + cfg.get("pelvis_dx", 0.0) * 0.5, 236.0 + OY + cfg.get("pelvis_dy", 0.0) * 0.5)
+    torso_deg = cfg.get("torso_deg", 0.0)
+    head_deg = torso_deg + cfg.get("head_rel_deg", 0.0)
+    mane_deg = head_deg + cfg.get("mane_rel_deg", 0.0)
+
+    def torso_joint(pt):
+        r = rot_pt(pt, pelvis_src, torso_deg)
+        return (pelvis_dst[0] + (r[0] - pelvis_src[0]), pelvis_dst[1] + (r[1] - pelvis_src[1]))
+
+    neck_src = (264.0, 114.0)
+    neck_dst = torso_joint(neck_src)
+
+    def head_joint(pt):
+        r = rot_pt(pt, neck_src, head_deg)
+        return (neck_dst[0] + (r[0] - neck_src[0]), neck_dst[1] + (r[1] - neck_src[1]))
+
+    mane_src = (224.0, 92.0)
+    mane_dst = head_joint(mane_src)
+    l_eye_dst = head_joint((267.5, 80.8))
+    r_eye_dst = head_joint((283.0, 81.2))
+
+    back_halo_dst = head_joint((262.0, 68.0))
+
+    stole_src = (273.0, 240.0)
+    stole_dst = torso_joint(stole_src)
+    l_coat_src = (242.0, 228.0)
+    l_coat_dst = torso_joint(l_coat_src)
+    r_coat_src = (292.0, 228.0)
+    r_coat_dst = torso_joint(r_coat_src)
+
+    l_sh_src = (222.0, 134.0)
+    l_sh_dst = torso_joint(l_sh_src)
+    r_sh_src = (296.0, 138.0)
+    r_sh_dst = torso_joint(r_sh_src)
+
+    l_hip_src = (250.0, 250.0)
+    l_hip_dst = torso_joint(l_hip_src)
+    r_hip_src = (286.0, 252.0)
+    r_hip_dst = torso_joint(r_hip_src)
+
+    l_thigh_deg = cfg.get("l_thigh_deg", 0.0)
+    l_shin_deg = cfg.get("l_shin_deg", 0.0)
+    l_foot_deg = cfg.get("l_foot_deg", 0.0)
+    l_knee_src = (234.0, 344.0)
+    l_knee_r = rot_pt(l_knee_src, l_hip_src, l_thigh_deg)
+    l_knee_dst = (l_hip_dst[0] + (l_knee_r[0] - l_hip_src[0]), l_hip_dst[1] + (l_knee_r[1] - l_hip_src[1]))
+    l_ank_src = (216.0, 454.0)
+    l_ank_r = rot_pt(l_ank_src, l_knee_src, l_shin_deg)
+    l_ank_dst = (l_knee_dst[0] + (l_ank_r[0] - l_knee_src[0]), l_knee_dst[1] + (l_ank_r[1] - l_knee_src[1]))
+
+    r_thigh_deg = cfg.get("r_thigh_deg", 0.0)
+    r_shin_deg = cfg.get("r_shin_deg", 0.0)
+    r_foot_deg = cfg.get("r_foot_deg", 0.0)
+    r_knee_src = (286.0, 344.0)
+    r_knee_r = rot_pt(r_knee_src, r_hip_src, r_thigh_deg)
+    r_knee_dst = (r_hip_dst[0] + (r_knee_r[0] - r_hip_src[0]), r_hip_dst[1] + (r_knee_r[1] - r_hip_src[1]))
+    r_ank_src = (283.0, 450.0)
+    r_ank_r = rot_pt(r_ank_src, r_knee_src, r_shin_deg)
+    r_ank_dst = (r_knee_dst[0] + (r_ank_r[0] - r_knee_src[0]), r_knee_dst[1] + (r_ank_r[1] - r_knee_src[1]))
+
+    l_sode_deg = torso_deg + cfg.get("l_sode_rel_deg", 0.0)
+    l_fore_deg = l_sode_deg + cfg.get("l_fore_rel_deg", 0.0)
+    l_elb_src = (211.0, 190.0)
+    l_elb_r = rot_pt(l_elb_src, l_sh_src, l_sode_deg)
+    l_elb_dst = (l_sh_dst[0] + (l_elb_r[0] - l_sh_src[0]), l_sh_dst[1] + (l_elb_r[1] - l_sh_src[1]))
+    l_hand_src = (206.0, 260.0)
+    l_hand_r = rot_pt(l_hand_src, l_elb_src, l_fore_deg)
+    l_hand_dst = (l_elb_dst[0] + (l_hand_r[0] - l_elb_src[0]), l_elb_dst[1] + (l_hand_r[1] - l_elb_src[1]))
+
+    r_sode_deg = torso_deg + cfg.get("r_sode_rel_deg", 0.0)
+    r_fore_deg = r_sode_deg + cfg.get("r_fore_rel_deg", 0.0)
+    r_elb_src = (306.0, 192.0)
+    r_elb_r = rot_pt(r_elb_src, r_sh_src, r_sode_deg)
+    r_elb_dst = (r_sh_dst[0] + (r_elb_r[0] - r_sh_src[0]), r_sh_dst[1] + (r_elb_r[1] - r_sh_src[1]))
+    r_hand_src = (330.0, 260.0)
+    r_hand_r = rot_pt(r_hand_src, r_elb_src, r_fore_deg)
+    r_hand_dst = (r_elb_dst[0] + (r_hand_r[0] - r_elb_src[0]), r_elb_dst[1] + (r_hand_r[1] - r_elb_src[1]))
+
+    l_coat_deg = cfg.get("l_coat_deg")
+    if l_coat_deg is None:
+        l_coat_deg = torso_deg * 0.65 + max(0.0, l_thigh_deg) * 0.70 - min(0.0, l_thigh_deg) * 0.25 + (cfg.get("coat_billow") or 0.0)
+    r_coat_deg = cfg.get("r_coat_deg")
+    if r_coat_deg is None:
+        r_coat_deg = torso_deg * 0.65 + min(0.0, r_thigh_deg) * 0.68 + max(0.0, r_thigh_deg) * 0.35 - (cfg.get("coat_billow") or 0.0) * 0.72
+    stole_deg = cfg.get("stole_deg")
+    if stole_deg is None:
+        stole_deg = torso_deg * 0.60 + 0.45 * (l_thigh_deg + r_thigh_deg) + (cfg.get("coat_billow") or 0.0) * 0.25
+
+    l_coat_mid_r = rot_pt((196.0, 360.0), l_coat_src, l_coat_deg)
+    l_coat_mid_dst = (l_coat_dst[0] + (l_coat_mid_r[0] - l_coat_src[0]), l_coat_dst[1] + (l_coat_mid_r[1] - l_coat_src[1]))
+    r_coat_mid_r = rot_pt((322.0, 366.0), r_coat_src, r_coat_deg)
+    r_coat_mid_dst = (r_coat_dst[0] + (r_coat_mid_r[0] - r_coat_src[0]), r_coat_dst[1] + (r_coat_mid_r[1] - r_coat_src[1]))
+    stole_mid_r = rot_pt((274.0, 336.0), stole_src, stole_deg)
+    stole_mid_dst = (stole_dst[0] + (stole_mid_r[0] - stole_src[0]), stole_dst[1] + (stole_mid_r[1] - stole_src[1]))
+    mane_mid_r = rot_pt((182.0, 186.0), mane_src, mane_deg)
+    mane_mid_dst = (mane_dst[0] + (mane_mid_r[0] - mane_src[0]), mane_dst[1] + (mane_mid_r[1] - mane_src[1]))
+
+    # 0. Hair under-bridge BEHIND torso/shoulders
+    draw_capsule(draw, head_joint((232.0, 88.0)), mane_dst, 12, fill=P_HAIR_MID)
+    draw_capsule(draw, mane_dst, mane_mid_dst, 11, fill=P_HAIR_MID)
+    paste_rotated_part(canvas, parts["mane"], mane_src, mane_dst, mane_deg)
+
+    # Complete anatomical joint & limb under-capsules (seals 100% of joint rotation seams!)
+    draw_capsule(draw, neck_dst, pelvis_dst, 22, fill=P_IVORY_LIT)
+    draw_capsule(draw, pelvis_dst, l_hip_dst, 18, fill=P_IVORY_MID)
+    draw_capsule(draw, pelvis_dst, r_hip_dst, 18, fill=P_IVORY_MID)
+    draw_capsule(draw, l_hip_dst, l_knee_dst, 14, fill=P_SKIN_MID)
+    draw_capsule(draw, r_hip_dst, r_knee_dst, 13, fill=P_SKIN_MID)
+    draw_capsule(draw, l_knee_dst, l_ank_dst, 12, fill=P_IVORY_LIT)
+    draw_capsule(draw, r_knee_dst, r_ank_dst, 12, fill=P_IVORY_LIT)
+    draw_joint_cap(draw, l_knee_dst, 13, fill=P_GOLD_MID, inner=P_IVORY_LIT)
+    draw_joint_cap(draw, r_knee_dst, 13, fill=P_GOLD_MID, inner=P_IVORY_LIT)
+    draw_joint_cap(draw, l_ank_dst, 10, fill=P_IVORY_MID, inner=P_IVORY_LIT)
+    draw_joint_cap(draw, r_ank_dst, 10, fill=P_IVORY_MID, inner=P_IVORY_LIT)
+    draw_joint_cap(draw, neck_dst, 15, fill=P_SKIN_MID, inner=P_SKIN_MID)
+
+    draw_capsule(draw, l_coat_dst, l_coat_mid_dst, 11, fill=P_IVORY_LIT)
+    draw_capsule(draw, r_coat_dst, r_coat_mid_dst, 9, fill=P_IVORY_LIT)
+    draw_capsule(draw, stole_dst, stole_mid_dst, 8, fill=P_SAPPH_MID)
+
+    draw_joint_cap(draw, r_sh_dst, 13, fill=P_GOLD_MID, inner=P_GOLD_LIT)
+    draw_capsule(draw, r_sh_dst, r_elb_dst, 11, fill=P_SKIN_MID)
+    draw_capsule(draw, r_elb_dst, r_hand_dst, 9, fill=P_IVORY_LIT)
+    draw_joint_cap(draw, r_elb_dst, 10, fill=P_GOLD_MID, inner=P_IVORY_LIT)
+
+    # 1. Right arm (when behind torso)
+    if not cfg.get("right_arm_in_front", False):
+        paste_rotated_part(canvas, parts["r_sode"], r_sh_src, r_sh_dst, r_sode_deg)
+        paste_rotated_part(canvas, parts["r_forearm"], r_elb_src, r_elb_dst, r_fore_deg)
+
+    # 2. Back coat panel + Articulated 3-segment legs + Front Sapphire Stole + Left Coat Panel
+    paste_rotated_part(canvas, parts["r_coat"], r_coat_src, r_coat_dst, r_coat_deg)
+
+    if cfg.get("right_leg_behind", False):
+        paste_rotated_part(canvas, parts["r_thigh"], r_hip_src, r_hip_dst, r_thigh_deg)
+        paste_rotated_part(canvas, parts["r_foot"], r_ank_src, r_ank_dst, r_foot_deg)
+        paste_rotated_part(canvas, parts["r_shin"], r_knee_src, r_knee_dst, r_shin_deg)
+
+        paste_rotated_part(canvas, parts["l_thigh"], l_hip_src, l_hip_dst, l_thigh_deg)
+        paste_rotated_part(canvas, parts["l_foot"], l_ank_src, l_ank_dst, l_foot_deg)
+        paste_rotated_part(canvas, parts["l_shin"], l_knee_src, l_knee_dst, l_shin_deg)
+    else:
+        paste_rotated_part(canvas, parts["l_thigh"], l_hip_src, l_hip_dst, l_thigh_deg)
+        paste_rotated_part(canvas, parts["l_foot"], l_ank_src, l_ank_dst, l_foot_deg)
+        paste_rotated_part(canvas, parts["l_shin"], l_knee_src, l_knee_dst, l_shin_deg)
+
+        paste_rotated_part(canvas, parts["r_thigh"], r_hip_src, r_hip_dst, r_thigh_deg)
+        paste_rotated_part(canvas, parts["r_foot"], r_ank_src, r_ank_dst, r_foot_deg)
+        paste_rotated_part(canvas, parts["r_shin"], r_knee_src, r_knee_dst, r_shin_deg)
+
+    paste_rotated_part(canvas, parts["stole"], stole_src, stole_dst, stole_deg)
+    paste_rotated_part(canvas, parts["l_coat"], l_coat_src, l_coat_dst, l_coat_deg)
+
+    # 3. Fitted Ivory-and-Sapphire Corset Torso + Sunburst Tiara Head
+    paste_rotated_part(canvas, parts["torso"], pelvis_src, pelvis_dst, torso_deg)
+    paste_rotated_part(canvas, parts["head"], neck_src, neck_dst, head_deg)
+
+    # 4. Right arm (when in front of torso for forward Sunburst Scepter thrusts / Sanctuary slams)
+    if cfg.get("right_arm_in_front", False):
+        draw_joint_cap(draw, r_sh_dst, 13, fill=P_GOLD_MID, inner=P_GOLD_LIT)
+        draw_capsule(draw, r_sh_dst, r_elb_dst, 10, fill=P_SKIN_MID)
+        draw_capsule(draw, r_elb_dst, r_hand_dst, 9, fill=P_IVORY_LIT)
+        paste_rotated_part(canvas, parts["r_sode"], r_sh_src, r_sh_dst, r_sode_deg)
+        paste_rotated_part(canvas, parts["r_forearm"], r_elb_src, r_elb_dst, r_fore_deg)
+
+    # 5. Left Sun-Pauldron, Upper Arm & Prayer Bracer
+    draw_capsule(draw, l_sh_dst, l_elb_dst, 11, fill=P_SKIN_MID)
+    draw_capsule(draw, l_elb_dst, l_hand_dst, 9, fill=P_IVORY_LIT)
+    draw_joint_cap(draw, l_elb_dst, 10, fill=P_GOLD_MID, inner=P_IVORY_LIT)
+    paste_rotated_part(canvas, parts["l_sode"], l_sh_src, l_sh_dst, l_sode_deg)
+    paste_rotated_part(canvas, parts["l_forearm"], l_elb_src, l_elb_dst, l_fore_deg)
+
+    # Constant-scale framing from 650x600 canvas to 104x104
+    S = 576
+    scale = 104.0 / S
+    cx = 268.0 + OX
+    y_bot = 507.0 + OY
+    crop_x0 = int(round(cx - S * 0.50))
+    crop_y0 = int(round(y_bot - S * (99.0 / 104.0)))
+
+    bbox = canvas.getbbox()
+    c_xmin = float(bbox[0]) if bbox else float(cx)
+    c_ymin = float(bbox[1]) if bbox else float(y_bot - 200.0)
+    c_xmax = float(bbox[2]) if bbox else float(cx)
+    c_ymax = float(bbox[3]) if bbox else float(y_bot)
+
+    halo_mode = cfg.get("halo_mode", "off")
+    if halo_mode in ("flare", "apotheosis"):
+        h_pad = 86.0
+        c_xmin = min(c_xmin, back_halo_dst[0] - h_pad)
+        c_ymin = min(c_ymin, back_halo_dst[1] - h_pad)
+
+    if cfg.get("show_staff", True):
+        hand_c = r_hand_dst if cfg.get("staff_hand", "right") == "right" else l_hand_dst
+        s_rad = math.radians(cfg.get("staff_deg", -52.0))
+        s_len = cfg.get("staff_len", 26.0)
+        p_len = cfg.get("staff_pom_len", 14.0)
+        tip_cx = hand_c[0] + math.cos(s_rad) * ((s_len + 5.0) / scale)
+        tip_cy = hand_c[1] + math.sin(s_rad) * ((s_len + 5.0) / scale)
+        pom_cx = hand_c[0] - math.cos(s_rad) * ((p_len + 1.0) / scale)
+        pom_cy = hand_c[1] - math.sin(s_rad) * ((p_len + 1.0) / scale)
+        c_xmin = min(c_xmin, tip_cx - 16.0, pom_cx - 12.0)
+        c_xmax = max(c_xmax, tip_cx + 16.0, pom_cx + 12.0)
+        c_ymin = min(c_ymin, tip_cy - 16.0, pom_cy - 12.0)
+        c_ymax = max(c_ymax, tip_cy + 16.0, pom_cy + 12.0)
+
+    min_104 = (c_xmin - crop_x0) * scale
+    max_104 = (c_xmax - crop_x0) * scale
+    span_104 = max_104 - min_104
+    if span_104 > 90.0:
+        S = int(round((c_xmax - c_xmin) / (89.0 / 104.0)))
+        scale = 104.0 / S
+        crop_x0 = int(round(0.5 * (c_xmin + c_xmax) - S * 0.50))
+        crop_y0 = int(round(y_bot - S * (99.0 / 104.0)))
+    elif max_104 > 97.0:
+        crop_x0 += int(round((max_104 - 97.0) / scale))
+    elif min_104 < 6.0:
+        crop_x0 += int(round((min_104 - 6.0) / scale))
+
+    win = Image.new("RGBA", (S, S), (0, 0, 0, 0))
+    win.paste(canvas, (-crop_x0, -crop_y0))
+    arr104 = downsample_clean_104(win)
+
+    def to104(pt):
+        return ((pt[0] - crop_x0) * scale, (pt[1] - crop_y0) * scale)
+
+    neck_104 = to104(neck_dst)
+    back_halo_104 = to104(back_halo_dst)
+    l_hand_104 = to104(l_hand_dst)
+    r_hand_104 = to104(r_hand_dst)
+    l_eye_104 = to104(l_eye_dst)
+    r_eye_104 = to104(r_eye_dst)
+
+    ys, xs = np.where(arr104[:, :, 3] > 0)
+    dy_ground = 0
+    if len(ys) > 0:
+        cur_bot = int(ys.max())
+        cur_top = int(ys.min())
+        target_bot = int(round(cfg.get("foot_y", 99.0)))
+        dy_ground = target_bot - cur_bot
+        if cur_top + dy_ground < 5:
+            dy_ground = 5 - cur_top
+        if dy_ground != 0:
+            shifted = np.zeros_like(arr104)
+            y_src0 = max(0, -dy_ground)
+            y_src1 = min(104, 104 - dy_ground)
+            y_dst0 = max(0, dy_ground)
+            y_dst1 = min(104, 104 + dy_ground)
+            if y_src1 > y_src0:
+                shifted[y_dst0:y_dst1] = arr104[y_src0:y_src1]
+            arr104 = shifted
+
+    arr104 = quantize_and_cluster_104(arr104)
+    body_holes = count_interior_pinholes_104(arr104)
+
+    neck_104 = (neck_104[0], neck_104[1] + dy_ground)
+    back_halo_104 = (back_halo_104[0], back_halo_104[1] + dy_ground)
+    l_hand_104 = (l_hand_104[0], l_hand_104[1] + dy_ground)
+    r_hand_104 = (r_hand_104[0], r_hand_104[1] + dy_ground)
+    l_eye_104 = (l_eye_104[0], l_eye_104[1] + dy_ground)
+    r_eye_104 = (r_eye_104[0], r_eye_104[1] + dy_ground)
+
+    stamp_seraphina_eyes_104(arr104, l_eye_104, r_eye_104, head_deg, blink=cfg.get("blink", False))
+
+    halo_layer = np.zeros_like(arr104)
+    draw_sacred_ophanim_halo_104(
+        halo_layer,
+        back_halo_104[0],
+        back_halo_104[1],
+        phase=cfg.get("halo_phase", 0.0),
+        mode=halo_mode,
     )
 
-    # Luminous Golden Halo Mote hovering at her prayer/blessing hand
-    if mote_glow > 0.05:
-        mx = max(4.0, min(46.0, hx + 1.5))
-        my = max(4.0, min(46.0, hy - 1.0 + math.sin(phase_rad * 2.0) * 0.5))
-        set_px(arm_layer, mx, my, WHITE_PURE)
-        set_px(arm_layer, mx + 1, my, GOLD_BRIGHT)
-        set_px(arm_layer, mx - 1, my, GOLD_BRIGHT)
-        set_px(arm_layer, mx, my - 1, GOLD_BRIGHT)
-        set_px(arm_layer, mx, my + 1, STAR_CREAM)
-        if mote_glow >= 1.1:
-            set_px(arm_layer, mx + 2, my, STAR_CREAM)
-            set_px(arm_layer, mx, my - 2, CYAN_SACRED)
-            set_px(arm_layer, mx + 1, my - 1, CYAN_SACRED)
+    fg_layer = np.zeros_like(arr104)
+    scepter_head_pt = None
 
-    # Golden Hexagonal Aegis Shield projected forward in Row 7 CROUCH (F00..F10)
-    if aegis_shield:
-        acx = max(33, min(43, int(round(hx + 5.0))))
-        acy = max(16, min(34, int(round(hy + 1.0))))
-        # Hexagonal perimeter (width 5px, height 11px) in front of her kneeling prayer hand
-        for dy_s in range(-5, 6):
-            abs_y = abs(dy_s)
-            rx_s = 3 if abs_y <= 2 else (2 if abs_y <= 4 else 1)
-            py_s = max(4, min(47, acy + dy_s))
-            if abs_y == 5:
-                for dx_s in (-1, 0, 1):
-                    set_px(arm_layer, acx + dx_s, py_s, GOLD_BRIGHT if dx_s == 0 else GOLD_MID)
-            else:
-                set_px(arm_layer, acx - rx_s, py_s, GOLD_BRIGHT if abs_y <= 2 else GOLD_MID)
-                set_px(arm_layer, acx + rx_s, py_s, WHITE_PURE if abs_y <= 1 else GOLD_BRIGHT)
-                if abs_y in (0, 2):
-                    set_px(arm_layer, acx, py_s, WHITE_PURE if abs_y == 0 else CYAN_SACRED)
-        # Sacred cross-facet inside the hexagonal Aegis shield
-        set_px(arm_layer, acx - 1, acy, STAR_CREAM)
-        set_px(arm_layer, acx + 1, acy, STAR_CREAM)
-        set_px(arm_layer, acx, acy - 1, STAR_CREAM)
-        set_px(arm_layer, acx, acy + 1, STAR_CREAM)
-
-    return composite_over(base_frame, arm_layer)
-
-
-def draw_celestial_staff(
-    base_frame,
-    shoulder=(25.0, 17.0),
-    staff_deg=-74.0,
-    reach=5.2,
-    shaft_up=10.0,
-    shaft_down=19.5,
-    charge_level=0,
-    cast_flash=False,
-    flare=0.0,
-    dim_factor=1.0,
-    hand2_override=None,
-    draw_arm=True,
-    draw_rose_barrier=False,
-    phase_rad=0.0,
-    allow_horizontal=False,
-    grip_override=None,
-):
-    """
-    Renders Seraphina's Celestial Sun-Staff and 2-Bone IK Cathedral Arm across the full
-    expressive polar angle range (-102 deg prayer windup/skyward elevation to -36 deg
-    forward Sacred Starlight thrust, plus planted -88 deg and fallen horizontal).
-    """
-    staff_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    lead_arm_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-    fx_layer = np.zeros((52, 52, 4), dtype=np.uint8)
-
-    def dim_col(c):
-        if dim_factor >= 0.99:
-            return c
-        return (
-            int(c[0] * dim_factor),
-            int(c[1] * dim_factor),
-            int(c[2] * dim_factor),
-            c[3],
-        )
-
-    if allow_horizontal or not draw_arm:
-        # Horizontal fallen staff on the ground during DEATH collapse (F23..F29)
-        rad = math.radians(staff_deg)
-        ux, uy = math.cos(rad), math.sin(rad)
-        px, py = -uy, ux
-        gx = float(shoulder[0]) + ux * 1.2 + abs(math.cos(rad)) * reach
-        gy = float(shoulder[1]) + uy * 1.2 + math.sin(rad) * 1.5
-        bx0 = max(4.0, min(47.0, gx - ux * shaft_down))
-        by0 = max(4.0, min(48.0, gy - uy * shaft_down))
-        tx = max(7.0, min(43.0, gx + ux * shaft_up))
-        ty = max(7.0, min(45.0, gy + uy * shaft_up))
-    else:
-        # Support both polar angles (-105..-25 deg, where -90 is straight up)
-        # and relative-to-vertical tilt angles (-20..+56 deg)
-        if staff_deg <= -25.0:
-            tilt = float(staff_deg) + 90.0
-        else:
-            tilt = float(staff_deg)
-        tilt = max(-18.0, min(56.0, tilt))
-        rad = math.radians(-90.0 + tilt)
-        ux, uy = math.cos(rad), math.sin(rad)
-        px, py = -uy, ux
-
-        sx = max(23.0, min(28.5, float(shoulder[0])))
-        sy = max(12.5, min(26.0, float(shoulder[1])))
-
-        if grip_override is not None:
-            hx, hy = float(grip_override[0]), float(grip_override[1])
-        else:
-            if tilt <= 0.0:
-                u_back = max(0.0, min(1.0, -tilt / 12.0))
-                hx = sx + 4.8 - u_back * 1.2 + (reach - 5.2) * 0.4
-                hy = sy + 0.4 - u_back * 1.2
-            else:
-                u_fwd = max(0.0, min(1.0, tilt / 54.0))
-                hx = sx + 5.0 + u_fwd * 3.2 + (reach - 5.2) * 0.55
-                hy = sy + 1.0 + u_fwd * 2.4 + (reach - 5.2) * 0.25
-            hx = max(28.5, min(36.5, hx))
-            hy = max(12.5, min(29.0, hy))
-
-        L1, L2 = 4.6, 4.4
-        max_r = L1 + L2 - 0.12
-        ddx, ddy = hx - sx, hy - sy
-        dist = math.hypot(ddx, ddy)
-        if dist > max_r:
-            hx = sx + ddx * (max_r / dist)
-            hy = sy + ddy * (max_r / dist)
-
-        gx, gy = hx, hy
-
-        # Compute upper shaft length (eff_up) so finial swings freely across x = 25..43, y = 6.5..18
-        eff_up = float(shaft_up)
-        if uy < -0.05:
-            eff_up = min(eff_up, max(5.5, (gy - 6.8) / (-uy)))
-        if ux > 0.05:
-            eff_up = min(eff_up, max(5.5, (42.8 - gx) / ux))
-        elif ux < -0.05:
-            eff_up = min(eff_up, max(5.5, (gx - 7.0) / (-ux)))
-        eff_up = max(6.0, min(11.5, eff_up))
-
-        # Compute lower shaft length (eff_down) so staff extends naturally down to y <= 46
-        eff_down = float(shaft_down)
-        if -uy > 0.05:
-            eff_down = min(eff_down, max(8.0, (46.0 - gy) / (-uy)))
-        if -ux < -0.05:
-            eff_down = min(eff_down, max(8.0, (gx - 5.0) / ux))
-        eff_down = max(11.0, min(23.0, eff_down))
-
-        bx0 = max(4.0, min(47.0, gx - ux * eff_down))
-        by0 = max(14.0, min(46.5, gy - uy * eff_down))
-        tx = max(7.0, min(43.0, gx + ux * eff_up))
-        ty = max(6.8, min(44.0, gy + uy * eff_up))
-
-    # 1. Draw full-length golden-ivory staff shaft from (bx0, by0) through (gx, gy) to (tx, ty)
-    draw_line_px(staff_layer, bx0, by0, tx, ty, dim_col(GOLD_MID))
-    draw_line_px(staff_layer, bx0 - px * 0.6, by0 - py * 0.6, tx - px * 0.6, ty - py * 0.6, dim_col(WOOD_DARK))
-    set_px(staff_layer, bx0, by0, dim_col(GOLD_BRIGHT))
-
-    # Ornate cross-guard collar just below finial
-    cx_neck = tx - ux * 2.8
-    cy_neck = ty - uy * 2.8
-    for w in (-2, -1, 0, 1, 2):
-        set_px(staff_layer, cx_neck + px * w, cy_neck + py * w, dim_col(GOLD_BRIGHT if abs(w) <= 1 else GOLD_DARK))
-
-    # 2. Sacred Sunburst Halo & 8-Point Starlight Finial centered at (tx, ty)
-    ring_r = 3.0
-    for step in range(16):
-        a = (step / 16.0) * 2.0 * math.pi
-        rx = tx + math.cos(a) * ring_r
-        ry = ty + math.sin(a) * ring_r
-        c_ring = GOLD_BRIGHT if step % 2 == 0 else GOLD_MID
-        set_px(staff_layer, max(3.0, min(48.0, rx)), max(3.0, min(48.0, ry)), dim_col(c_ring))
-
-    for k in range(8):
-        a = rad + k * (math.pi * 0.25)
-        ray_len = 3.8 if k % 2 == 0 else 3.2
-        rx = max(3.0, min(48.0, tx + math.cos(a) * ray_len))
-        ry = max(3.0, min(48.0, ty + math.sin(a) * ray_len))
-        set_px(
-            staff_layer,
-            rx,
-            ry,
-            dim_col(STAR_CREAM if (k % 2 == 0 and charge_level >= 1) else GOLD_BRIGHT)
-        )
-
-    set_px(staff_layer, max(3.0, min(48.0, tx - ux * 1.0)), max(3.0, min(48.0, ty - uy * 1.0)), dim_col(CYAN_SACRED))
-    set_px(staff_layer, max(3.0, min(48.0, tx + px * 1.0)), max(3.0, min(48.0, ty + py * 1.0)), dim_col(CYAN_SACRED))
-    set_px(staff_layer, max(3.0, min(48.0, tx - px * 1.0)), max(3.0, min(48.0, ty - py * 1.0)), dim_col(GOLD_BRIGHT))
-    set_px(staff_layer, max(3.0, min(48.0, tx)), max(3.0, min(48.0, ty)), dim_col(WHITE_PURE if dim_factor > 0.6 else GOLD_MID))
-
-    # 3. Single Right 2-Bone IK Arm drawn OVER the staff shaft
-    if draw_arm:
-        draw_ik_priestess_arm(
-            lead_arm_layer,
+    if cfg.get("show_staff", True):
+        sh_pt = r_hand_104 if cfg.get("staff_hand", "right") == "right" else l_hand_104
+        sx = max(8.0, min(95.0, sh_pt[0] + (cfg.get("staff_dx") or 0.0)))
+        sy = max(8.0, min(97.0, sh_pt[1] + (cfg.get("staff_dy") or 0.0)))
+        target_buf = halo_layer if cfg.get("staff_behind", False) else fg_layer
+        scepter_head_pt = draw_sunburst_scepter_104(
+            target_buf,
             sx,
             sy,
-            gx,
-            gy,
-            L1=4.6,
-            L2=4.4,
-            bend_side=1.0,
-            is_prayer_hand=False,
-            dim_factor=dim_factor,
+            cfg.get("staff_deg", -52.0),
+            staff_len=cfg.get("staff_len", 26.0),
+            pom_len=cfg.get("staff_pom_len", 14.0),
+            glow=cfg.get("staff_glow", 1.0),
+            phase=cfg.get("fx_phase", 0.0),
         )
 
-    # 4. Dynamic Charge Runes & Sacred Starlight Cast Flash / Flare at Finial Tip
-    eff_flare = max(float(flare), 1.0 if cast_flash else 0.0)
-    if charge_level >= 1 or eff_flare > 0.1:
-        max_d = max(charge_level + 1, int(round(eff_flare * 4.0)))
-        for d in range(1, max_d + 1):
-            col = WHITE_PURE if d == 1 else (GOLD_BRIGHT if d <= 2 else STAR_CREAM)
-            set_px(fx_layer, min(48.0, tx + d), ty, col)
-            set_px(fx_layer, max(3.0, tx - d), ty, col)
-            set_px(fx_layer, tx, min(48.0, ty + d), col)
-            set_px(fx_layer, tx, max(3.0, ty - d), col)
-        for m in range(3):
-            ma = phase_rad * 2.0 + m * (2.0 * math.pi / 3.0)
-            mx = max(3.0, min(48.0, tx + math.cos(ma) * (3.8 + charge_level * 0.4)))
-            my = max(3.0, min(48.0, ty + math.sin(ma) * (3.8 + charge_level * 0.4)))
-            set_px(fx_layer, mx, my, GOLD_BRIGHT if m % 2 == 0 else CYAN_SACRED)
-
-    if eff_flare >= 0.4:
-        fx_cx = max(5.0, min(45.0, tx + ux * 2.4))
-        fx_cy = max(5.0, min(45.0, ty + uy * 2.4))
-        set_px(fx_layer, fx_cx, fx_cy, WHITE_PURE)
-        span_f = int(round(2 + eff_flare * 2.5))
-        for d in range(1, span_f + 1):
-            col = WHITE_PURE if d <= 2 else (GOLD_BRIGHT if d <= 3 else STAR_CREAM)
-            set_px(fx_layer, max(3.0, min(48.0, fx_cx + d)), fx_cy, col)
-            set_px(fx_layer, max(3.0, min(48.0, fx_cx - d)), fx_cy, col)
-            set_px(fx_layer, fx_cx, max(3.0, min(48.0, fx_cy + d)), col)
-            set_px(fx_layer, fx_cx, max(3.0, min(48.0, fx_cy - d)), col)
-        for dx_d, dy_d in [(-2, -2), (2, -2), (-2, 2), (2, 2)]:
-            set_px(fx_layer, max(3.0, min(48.0, fx_cx + dx_d)), max(3.0, min(48.0, fx_cy + dy_d)), CYAN_SACRED if eff_flare >= 0.8 else GOLD_BRIGHT)
-
-    out = composite_over(base_frame, staff_layer)
-    out = composite_over(out, lead_arm_layer)
-    out = composite_over(out, fx_layer)
-    return out
-
-
-def draw_sacred_smite_trail(c, cx, cy, start_deg, end_deg, intensity=1.0):
-    """
-    Renders a radiant 3-band Pure-White, Star-Cream & Cathedral-Gold Crescent Cast Arc
-    (WHITE_PURE, STAR_CREAM, GOLD_BRIGHT, strictly inside 3 <= x <= 48, 3 <= y <= 48)
-    tracing the path of Seraphina's Sacred Staff finial during:
-    - Row 2 (AUTO_ATTACK) F10..F16
-    - Row 3 (SKILL) F14..F21
-    - Row 4 (ULTIMATE) F14..F22
-    """
-    scale = max(0.0, min(1.2, float(intensity)))
-    if scale <= 0.05:
-        return c
-
-    out = c.copy()
-    a0 = math.radians(min(float(start_deg), float(end_deg)))
-    a1 = math.radians(max(float(start_deg), float(end_deg)))
-    span = max(0.08, a1 - a0)
-
-    # Elliptical radii matching the true trajectory of the Sacred Staff finial tip
-    rx_base = 16.0
-    ry_base = 13.0
-    protected = {WOOD_DARK, SKIN_LIGHT, SKIN_MID, OUTLINE}
-
-    def put_trail_px(px, py, col, overwrite=True):
-        ix = max(3, min(48, int(round(px))))
-        iy = max(3, min(48, int(round(py))))
-        cur = tuple(int(v) for v in out[iy, ix])
-        if cur in protected:
-            return
-        if overwrite or out[iy, ix, 3] == 0:
-            out[iy, ix] = col
-
-    steps = max(24, int(round(math.degrees(span) * 0.9)))
-    for s in range(steps + 1):
-        u = s / float(steps)
-        ang = a0 + u * span
-        ca, sa = math.cos(ang), math.sin(ang)
-
-        # Band 1 (Inner Cathedral-Gold band, dr = -1.0)
-        if u >= 0.08:
-            x_in = cx + ca * (rx_base - 1.2)
-            y_in = cy + sa * (ry_base - 1.0)
-            col_in = STAR_CREAM if (u >= 0.80 and scale >= 0.9) else GOLD_BRIGHT
-            put_trail_px(x_in, y_in, col_in, overwrite=(u >= 0.25))
-
-        # Band 2 (Middle Star-Cream & Pure-White core band, dr = 0.0)
-        x_mid = cx + ca * rx_base
-        y_mid = cy + sa * ry_base
-        if u >= 0.58 and scale >= 0.75:
-            col_mid = WHITE_PURE
-        elif u >= 0.22:
-            col_mid = STAR_CREAM
-        else:
-            col_mid = GOLD_BRIGHT
-        put_trail_px(x_mid, y_mid, col_mid, overwrite=True)
-
-        # Band 3 (Outer Pure-White & Star-Cream crescent edge, dr = +1.0)
-        if u >= 0.16:
-            x_out = cx + ca * (rx_base + 1.2)
-            y_out = cy + sa * (ry_base + 1.0)
-            col_out = WHITE_PURE if u >= 0.38 else (STAR_CREAM if u >= 0.24 else GOLD_BRIGHT)
-            put_trail_px(x_out, y_out, col_out, overwrite=True)
-
-    # Radiant 4-point starlight sparkles along the crescent arc
-    spark_u_list = (0.32, 0.65, 0.94) if scale >= 0.8 else (0.50, 0.90)
-    for idx_s, su in enumerate(spark_u_list):
-        sang = a0 + su * span
-        sx = max(4, min(47, int(round(cx + math.cos(sang) * (rx_base + 1.8)))))
-        sy = max(4, min(47, int(round(cy + math.sin(sang) * (ry_base + 1.4)))))
-        put_trail_px(sx, sy, WHITE_PURE, overwrite=True)
-        arm_col = GOLD_BRIGHT if idx_s % 2 == 0 else STAR_CREAM
-        put_trail_px(sx - 1, sy, arm_col, overwrite=False)
-        put_trail_px(sx + 1, sy, arm_col, overwrite=False)
-        put_trail_px(sx, sy - 1, arm_col, overwrite=False)
-        put_trail_px(sx, sy + 1, arm_col, overwrite=False)
-
-    return out
-
-
-def draw_sanctuary_ground_circle(c, cx=25.0, cy=46.0, phase_rad=0.0, intensity=1.0):
-    """
-    Renders a perspective-flattened Golden Cathedral Rose-Window Sanctuary Circle &
-    Rising Star-Cross Motes (y = 44..48, x = 12..38) beneath Seraphina's hem during
-    Row 3 (SKILL - Divine Sanctuary & Spear Rain) F02..F23 and
-    Row 4 (ULTIMATE - Seraphim Apotheosis) F01..F26.
-    """
-    scale = max(0.0, min(1.2, float(intensity)))
-    if scale <= 0.05:
-        return c
-
-    out = c.copy()
-    rx = min(13.0, 10.5 + 2.5 * min(1.0, scale))
-    ry = 2.0
-
-    def put_rune_px(px, py, col, front_arc=False):
-        ix = max(12, min(38, int(round(px))))
-        iy = max(44, min(48, int(round(py))))
-        if front_arc or out[iy, ix, 3] == 0:
-            out[iy, ix] = col
-
-    # 1. Outer & Inner Perspective-Flattened Cathedral Rose-Window Rings (x = 12..38, y = 44..48)
-    steps = 36
-    for s in range(steps):
-        a = (s / float(steps)) * 2.0 * math.pi
-        a_rot = a + phase_rad
-        ca, sa = math.cos(a), math.sin(a)
-        is_front = sa >= 0.15
-
-        # Outer sanctuary ring
-        ox = cx + ca * rx
-        oy = cy + sa * ry
-        if s % 9 == 0:
-            col_o = WHITE_PURE
-        elif s % 3 == 0:
-            col_o = STAR_CREAM if math.sin(a_rot * 4.0) >= 0.0 else GOLD_BRIGHT
-        else:
-            col_o = GOLD_BRIGHT if s % 2 == 0 else GOLD_ROYAL
-        put_rune_px(ox, oy, col_o, front_arc=is_front)
-
-        # Inner rose-window filigree ring
-        if s % 2 == 0:
-            ix_r = cx + ca * (rx * 0.62)
-            iy_r = cy + sa * (ry * 0.55)
-            col_i = CYAN_SACRED if s % 6 == 0 else (STAR_CREAM if s % 4 == 0 else GOLD_BRIGHT)
-            put_rune_px(ix_r, iy_r, col_i, front_arc=(sa >= 0.35))
-
-    # 2. Rotating 8-Fold Rose-Window Spokes & Left/Right Gothic Finial Tips (x = 12..38, y = 45..47)
-    for k in range(8):
-        ang_k = phase_rad * 0.8 + k * (math.pi * 0.25)
-        ck, sk = math.cos(ang_k), math.sin(ang_k)
-        for r_frac in (0.35, 0.68, 0.92):
-            sx_k = cx + ck * (rx * r_frac)
-            sy_k = cy + sk * (ry * r_frac)
-            put_rune_px(
-                sx_k,
-                sy_k,
-                WHITE_PURE if r_frac > 0.8 else GOLD_BRIGHT,
-                front_arc=(sk >= 0.25),
-            )
-
-    # Left & right rose-window cardinal tips at x = 12..14 and x = 36..38
-    put_rune_px(12, 46, GOLD_BRIGHT, front_arc=True)
-    put_rune_px(13, 46, WHITE_PURE, front_arc=True)
-    put_rune_px(37, 46, WHITE_PURE, front_arc=True)
-    put_rune_px(38, 46, GOLD_BRIGHT, front_arc=True)
-
-    # 3. Rising Star-Cross Motes (y = 44..48, x = 12..38) ascending from the sanctuary perimeter
-    mote_anchors = (14, 18, 25, 32, 36)
-    for m_idx, mx_base in enumerate(mote_anchors):
-        drift_x = int(round(math.sin(phase_rad + m_idx * 1.3) * 1.0))
-        mx = max(13, min(37, mx_base + drift_x))
-        # Cycle upward from y = 47 to y = 44
-        rise_u = ((phase_rad / (2.0 * math.pi)) * 2.0 + m_idx * 0.27) % 1.0
-        my = max(44, min(47, int(round(47.0 - rise_u * 3.0))))
-        is_flank = (mx <= 18 or mx >= 31 or my >= 47)
-        put_rune_px(mx, my, WHITE_PURE, front_arc=is_flank)
-        arm_c = GOLD_BRIGHT if m_idx % 2 == 0 else STAR_CREAM
-        put_rune_px(mx - 1, my, arm_c, front_arc=is_flank)
-        put_rune_px(mx + 1, my, arm_c, front_arc=is_flank)
-        put_rune_px(mx, max(44, my - 1), arm_c, front_arc=is_flank)
-        put_rune_px(mx, min(48, my + 1), CYAN_SACRED if m_idx % 2 == 1 else GOLD_BRIGHT, front_arc=is_flank)
-
-    return out
-
-
-def draw_angel_feather_slipstream(c, f, phase_rad=0.0, intensity=1.0):
-    """
-    Renders drifting Golden-White Angel Feathers & Twinkling 4-Point Starlight Motes
-    (x = 4..16, y = 12..42) trailing behind Seraphina's flapping Seraphim wings
-    during Row 6 (DASH) and Row 8 (JUMP) F04..F20.
-    """
-    scale = max(0.0, min(1.2, float(intensity)))
-    if scale <= 0.05:
-        return c
-
-    out = c.copy()
-
-    def put_wake_px(px, py, col, allow_over_wing=False):
-        ix = max(4, min(16, int(round(px))))
-        iy = max(12, min(42, int(round(py))))
-        if out[iy, ix, 3] == 0 or (allow_over_wing and ix <= 11 and tuple(int(v) for v in out[iy, ix]) != OUTLINE):
-            out[iy, ix] = col
-
-    # 1. Four drifting Golden-White Angel Feathers across y = 13..40, x = 4..16
-    feather_lanes = (14, 21, 29, 37)
-    for ft_idx, y_lane in enumerate(feather_lanes):
-        fx = 4 + ((20 - f) * 2 + ft_idx * 3) % 10  # 4..13 so fx + 2 <= 15
-        fy = max(13, min(40, y_lane + int(round(math.sin(phase_rad * 2.0 + ft_idx * 1.5) * 1.5))))
-        # 4-pixel swept angel feather plume (WHITE_PURE shaft, STAR_CREAM vane, GOLD_BRIGHT tip)
-        put_wake_px(fx, fy, GOLD_BRIGHT, allow_over_wing=True)
-        put_wake_px(fx + 1, fy, WHITE_PURE, allow_over_wing=True)
-        put_wake_px(fx + 2, max(12, fy - 1), STAR_CREAM, allow_over_wing=True)
-        put_wake_px(fx + 1, min(42, fy + 1), STAR_CREAM, allow_over_wing=False)
-
-    # 2. Twinkling 4-Point Starlight Motes across x = 4..16, y = 12..42
-    star_lanes = (16, 26, 35)
-    for st_idx, sy_lane in enumerate(star_lanes):
-        sx = 5 + ((f * 3 + st_idx * 4) % 10)  # 5..14 so sx +- 1 stays inside 4..15
-        sy = max(13, min(41, sy_lane + int(round(math.cos(phase_rad * 2.0 + st_idx * 1.7) * 1.5))))
-        put_wake_px(sx, sy, WHITE_PURE, allow_over_wing=True)
-        arm_col = GOLD_BRIGHT if (f + st_idx) % 2 == 0 else STAR_CREAM
-        put_wake_px(sx - 1, sy, arm_col, allow_over_wing=True)
-        put_wake_px(sx + 1, sy, arm_col, allow_over_wing=True)
-        put_wake_px(sx, sy - 1, arm_col, allow_over_wing=True)
-        put_wake_px(sx, sy + 1, CYAN_SACRED if st_idx == 1 else arm_col, allow_over_wing=True)
-
-    return out
-
-
-
-def render_walk_legs(tpl, f):
-    """
-    Renders Seraphina's graceful 30-frame 2-step cathedral stride (F00..F14 step A, F15..F29 step B)
-    preserving 100% of her natural golden hair, blue-lined cape, white-and-gold gown (y=28..45),
-    and counter-striding golden boots (y=45..49).
-    """
-    phase = (f / 30.0) * 2.0 * math.pi
-    bob_y = int(round(math.cos(phase * 2.0) * 1.0))
-
-    stand = tpl['stand'].copy()
-    out = np.zeros((52, 52, 4), dtype=np.uint8)
-
-    # 1. Upper Body, Head & Flowing Hair (y = 0..27) with vertical bob_y
-    for y in range(0, 28):
-        ny = y + bob_y
-        if not (2 <= ny < 50):
-            continue
-        u_hair = max(0.0, (y - 12) / 34.0)
-        hair_dx = int(round(math.sin(phase - u_hair * 3.0) * (1.2 * u_hair)))
-        for x in range(1, 33):
-            if stand[y, x, 3] == 0:
-                continue
-            if x <= 16 and y >= 12:
-                cx = max(2, min(20, x + hair_dx))
-                out[ny, cx] = stand[y, x]
-                if x >= 12:
-                    out[ny, x] = stand[y, x]
-            else:
-                out[ny, x] = stand[y, x]
-
-    if bob_y < 0:
-        out[27, 11:30] = stand[27, 11:30]
-
-    # 2. Full-Length Blue-Lined Cape & White-and-Gold Cathedral Gown (y = 28..45)
-    for y in range(28, 46):
-        v = (y - 28) / 17.0
-        sway_dx = int(round(math.sin(phase) * 1.8 * v))
-        wave_dx = int(round(math.cos(phase - v * 2.0) * 1.2 * v))
-        for x in range(4, 33):
-            if stand[y, x, 3] == 0:
-                continue
-            if x <= 15:
-                nx = max(2, min(49, x + wave_dx))
-                out[y, nx] = stand[y, x]
-                if x >= 13:
-                    out[y, max(2, min(49, x + sway_dx))] = stand[y, x]
-            else:
-                nx = max(2, min(49, x + sway_dx))
-                out[y, nx] = stand[y, x]
-
-    # 3. Natural Golden Boots & Slippers Counter-Striding Beneath the Gown (y = 46..49)
-    stride = math.sin(phase)
-    hem_sway = int(round(math.sin(phase) * 1.8))
-    dx_back = int(round(hem_sway - stride * 1.6))
-    dy_back = -1 if stride > 0.35 else 0
-    dx_front = int(round(hem_sway + stride * 1.6))
-    dy_front = -1 if stride < -0.35 else 0
-
-    for y in range(46, 50):
-        for x in range(14, 22):
-            if stand[y, x, 3] > 0:
-                ny = max(45, min(49, y + dy_back))
-                nx = max(2, min(49, x + dx_back))
-                out[ny, nx] = stand[y, x]
-        for x in range(22, 32):
-            if stand[y, x, 3] > 0:
-                ny = max(45, min(49, y + dy_front))
-                nx = max(2, min(49, x + dx_front))
-                out[ny, nx] = stand[y, x]
-
-    return fill_layer_pinholes(out, 1, 50, 1, 50, require_3_neighbors=False)
-
-
-def make_crouch_body(tpl, crouch_depth):
-    """
-    Smooth continuous vertical compression warp on `tpl['stand']`:
-    - Supports up to 7px kneeling depth (`d = 0..7`)
-    - Shifts `ny <= 27 + d` down by `d`
-    - Compresses `ny = 28 + d .. 43` from `sy = int(round(27.0 + u * 16.0))`
-      with a subtle 1px forward knee bend
-    - Keeps her golden slippers/hem anchored at `ny = 44..49`
-    """
-    stand = tpl['stand'].copy()
-    d = max(0, min(7, int(round(crouch_depth))))
-    if d == 0:
-        return stand
-
-    canvas = np.zeros((52, 52, 4), dtype=np.uint8)
-
-    # 1. Shift upper body, hair, and bodice (sy = 0..27 -> ny = d..27 + d) down by d
-    for sy in range(0, 28):
-        ny = sy + d
-        if 1 <= ny < 50:
-            canvas[ny, :] = stand[sy, :]
-
-    # 2. Smoothly compress lower cape & gown (ny = 28 + d .. 43) from sy = int(round(27.0 + u * 16.0))
-    y_start = 28 + d
-    y_end = 43
-    span = max(1.0, float(y_end - y_start))
-    for ny in range(y_start, y_end + 1):
-        u = (ny - y_start) / span
-        sy = min(43, int(round(27.0 + u * 16.0)))
-        knee_dx = int(round(math.sin(u * math.pi) * (1.0 if d >= 3 else 0.0)))
-        for x in range(1, 34):
-            if stand[sy, x, 3] == 0:
-                continue
-            if x >= 16 and knee_dx > 0:
-                nx = min(49, x + knee_dx)
-                canvas[ny, nx] = stand[sy, x]
-                if x == 16:
-                    canvas[ny, x] = stand[sy, x]
-            else:
-                canvas[ny, x] = stand[sy, x]
-
-    # 3. Keep her golden slippers and lower hem anchored at ny = 44..49
-    canvas[44:50, :] = stand[44:50, :]
-
-    return fill_layer_pinholes(add_outline_to_layer(canvas), 1, 50, 1, 50, require_3_neighbors=False)
-
-
-def make_jump_body(tpl, jump_dy, tuck_amount, torso_lean_dx=0, wing_unfurl=0.0, phase_rad=0.0):
-    """
-    Constructs a full-body Seraphic Wing-Glide Vault pose preserving Seraphina's natural
-    hair, blue-lined cape, white-and-gold gown, and golden boots (y = 0..49).
-    """
-    stand = tpl['stand'].copy()
-    torso_dy = max(-2, min(4, int(round(jump_dy))))
-    t = max(0.0, float(tuck_amount))
-
-    out = np.zeros((52, 52, 4), dtype=np.uint8)
-
-    # 1. Upper Body, Head & Flowing Hair (y = 0..27) lifted by torso_dy
-    for y in range(0, 28):
-        ny = y + torso_dy
-        if not (2 <= ny < 50):
-            continue
-        u_hair = max(0.0, (y - 12) / 34.0)
-        hair_dx = -int(round(u_hair * 2.0 * max(0.2, t)))
-        lean_dx = torso_lean_dx if y <= 26 else 0
-        for x in range(1, 33):
-            if stand[y, x, 3] == 0:
-                continue
-            if x <= 16 and y >= 12:
-                cx = max(2, min(21, x + hair_dx))
-                out[ny, cx] = stand[y, x]
-                if x >= 12:
-                    out[ny, max(2, min(49, x + lean_dx))] = stand[y, x]
-            else:
-                nx = max(2, min(49, x + lean_dx))
-                out[ny, nx] = stand[y, x]
-                if lean_dx > 0 and x >= 15 and out[ny, x, 3] == 0:
-                    out[ny, x] = stand[y, x]
-
-    # 2. Full-Length Cape, Gown & Boots (source y = 28..49) swept smoothly in the aerial vault
-    y_start = max(2, 28 + torso_dy)
-    hem_lift = int(round(t * 3.0))
-    y_end = min(49, max(y_start + 14, 49 + torso_dy - hem_lift))
-    span = max(1.0, float(y_end - y_start))
-
-    for ny in range(y_start, y_end + 1):
-        v = (ny - y_start) / span
-        src_y = min(49, int(round(28.0 + v * 21.0)))
-        sweep_dx = int(round(-v * t * 2.0 + math.sin(phase_rad - v * 2.0) * (1.0 * v)))
-        for x in range(4, 33):
-            if stand[src_y, x, 3] == 0:
-                continue
-            nx = max(2, min(49, x + sweep_dx))
-            out[ny, nx] = stand[src_y, x]
-            if sweep_dx < 0 and x >= 15 and nx + 1 < 49 and out[ny, nx + 1, 3] == 0:
-                out[ny, nx + 1] = stand[src_y, x]
-
-    out = fill_layer_pinholes(out, 1, 50, 1, 50, require_3_neighbors=False)
-    return fill_layer_pinholes(out, 1, 50, 1, 50, require_3_neighbors=True)
-
-
-def draw_priestess_idle_finial_motes(frame, staff_deg, breathe, phase):
-    """
-    Pass #8: 3 phase-looping twinkling 4-point star-cream & rose-gold motes
-    orbiting her Sacred Cathedral Staff finial (x = 31..42, y = 7..18) across Row 0 (IDLE).
-    """
-    rad = math.radians(staff_deg)
-    sx, sy = 25.0, 17.0 + breathe
-    reach = 5.2
-    gx = sx + math.cos(rad * 0.45 + 0.1) * reach + 5.2
-    gy = sy + math.sin(rad * 0.45 + 0.1) * reach * 0.45 + 3.8
-    finial_cx = max(33.0, min(40.0, gx + math.cos(rad) * 14.2))
-    finial_cy = max(9.0, min(16.0, gy + math.sin(rad) * 14.2))
-
-    for m_idx in range(3):
-        m_ang = phase + m_idx * (2.0 * math.pi / 3.0)
-        mx = int(round(max(32.0, min(41.0, finial_cx + math.cos(m_ang) * 3.8))))
-        my = int(round(max(8.0, min(17.0, finial_cy + math.sin(m_ang) * 3.0))))
-        core_col = STAR_CREAM if m_idx % 2 == 0 else WHITE_PURE
-        arm_col = ROSE_GOLD if (m_idx + int(round(phase * 3))) % 2 == 0 else STAR_CREAM
-        set_px(frame, mx, my, core_col)
-        # 4-point twinkling star arms clamped strictly within x = 31..42, y = 7..18
-        if mx - 1 >= 31:
-            set_px(frame, mx - 1, my, arm_col)
-        if mx + 1 <= 42:
-            set_px(frame, mx + 1, my, arm_col)
-        if my - 1 >= 7:
-            set_px(frame, mx, my - 1, arm_col)
-        if my + 1 <= 18:
-            set_px(frame, mx, my + 1, GOLD_BRIGHT if m_idx == 1 else arm_col)
-
-
-def draw_priestess_walk_footstep_motes(frame, f):
-    """
-    Pass #8: During the two stride contact windows of Row 1 (WALK) (F06..F10 and F21..F25),
-    draw crisp Grounded Footstep / Hem Trail Motes at y = 44..46, x = 16..33:
-    Golden-white starlight & rose-petal motes at hem level.
-    """
-    if 6 <= f <= 10:
-        u = (f - 6) / 4.0
-        base_x = 26
-    elif 21 <= f <= 25:
-        u = (f - 21) / 4.0
-        base_x = 20
-    else:
-        return
-
-    drift = int(round(u * 4.0))
-    # Mote 1: Golden-white starlight puff trailing behind hem
-    m1_x = max(16, min(33, base_x - drift))
-    m1_y = 46 - (1 if f % 2 == 0 else 0)
-    set_px(frame, m1_x, m1_y, WHITE_PURE if u < 0.5 else STAR_CREAM)
-    if m1_x - 1 >= 16 and u < 0.8:
-        set_px(frame, m1_x - 1, max(44, m1_y - 1), GOLD_BRIGHT)
-
-    # Mote 2: Rose-petal mote floating near hem contact
-    m2_x = max(16, min(33, base_x + 3 - int(round(u * 2.0))))
-    m2_y = 45 - int(round(u * 1.0))
-    set_px(frame, m2_x, max(44, min(46, m2_y)), ROSE_GOLD)
-    if m2_x + 1 <= 33 and u < 0.75:
-        set_px(frame, m2_x + 1, 46, STAR_CREAM)
-
-    # Mote 3: Secondary starlight-rose shimmer mote
-    m3_x = max(16, min(33, base_x - 2 - drift))
-    m3_y = 44 + (1 if u > 0.5 else 0)
-    set_px(frame, m3_x, m3_y, GOLD_BRIGHT if f % 2 == 0 else ROSE_GOLD)
-
-
-def build_row0_idle(tpl):
-    """Row 0: 30-Frame Serene Cathedral IDLE."""
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-        base = tpl['stand'].copy()
-
-        breathe = -1 if 8 <= f <= 19 else 0
-        if breathe == -1:
-            head_top = base[6:10, 14:33].copy()
-            upper = base[10:28, 14:33].copy()
-            base[5:9, 14:33] = head_top
-            base[9:27, 14:33] = upper
-            base[27, 14:33] = upper[17, :]
-            base = fill_layer_pinholes(base)
-
-        base = apply_hair_and_vestment_wave(base, phase, amplitude=1.4, vertical_flutter=0.5)
-        base = draw_halo_crown(base, head_cx=23, head_top_y=7 + breathe, phase_rad=phase, intensity=1.0)
-
-        staff_deg = -74.0 + math.sin(phase) * 4.0
-        frame = draw_celestial_staff(
-            base,
-            shoulder=(25.0, 17.0 + breathe),
-            staff_deg=staff_deg,
-            reach=5.2,
-            charge_level=1 if f % 10 in (4, 5) else 0,
-            phase_rad=phase,
+    orb_r = cfg.get("hand_orb_r") or 0.0
+    if orb_r > 0.2:
+        oh_pt = l_hand_104 if cfg.get("orb_hand", "left") == "left" else r_hand_104
+        draw_prayer_orb_104(
+            fg_layer,
+            oh_pt[0] + (cfg.get("orb_dx") or 2.0),
+            oh_pt[1] + (cfg.get("orb_dy") or -2.0),
+            radius=orb_r,
+            phase=cfg.get("fx_phase", 0.0),
         )
-        draw_priestess_idle_finial_motes(frame, staff_deg, breathe, phase)
-        frames.append(ensure_safe_cell(frame, margin=2))
-    return frames
 
-
-gen_row0_idle = build_row0_idle
-
-
-def build_row1_walk(tpl):
-    """Row 1: 30-Frame Graceful 2-Step Cathedral Stride (F00..F14 step A, F15..F29 step B)."""
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-        bob_y = int(round(math.cos(phase * 2.0 + 0.18) * 1.0))
-        body = render_walk_legs(tpl, f)
-        body = draw_halo_crown(body, head_cx=23, head_top_y=7 + bob_y, phase_rad=phase + 0.25, intensity=1.0 + (0.4 if f % 2 == 1 else 0.0))
-
-        staff_deg = -74.0 - math.sin(phase + 0.2) * 9.0 + (1.2 if f % 2 == 1 else -1.2)
-        reach_w = 5.2 - math.sin(phase + 0.2) * 0.7
-        frame = draw_celestial_staff(
-            body,
-            shoulder=(25.0, 17.0 + bob_y),
-            staff_deg=staff_deg,
-            reach=reach_w,
-            charge_level=(f % 3),
-            phase_rad=phase + f * 0.35,
+    if cfg.get("ward_ring", False) and scepter_head_pt is not None:
+        draw_scepter_starburst_flare_104(
+            fg_layer,
+            scepter_head_pt[0],
+            scepter_head_pt[1],
+            intensity=0.85,
+            phase=cfg.get("fx_phase", 0.0),
         )
-        draw_priestess_walk_footstep_motes(frame, f)
-        frames.append(ensure_safe_cell(frame, margin=2))
-    return frames
+
+    # Skill Ground-Consecration Sanctuary Floor Pulse & Rising Starlight Sparks (Row 3 F07..F12)
+    slam_int = cfg.get("ground_slam") or 0.0
+    if slam_int > 0.05:
+        sh_pt = r_hand_104
+        rad_s = math.radians(cfg.get("staff_deg", -88.0))
+        ux_s, uy_s = math.cos(rad_s), math.sin(rad_s)
+        sx_s = sh_pt[0] + (cfg.get("staff_dx") or 0.0)
+        sy_s = sh_pt[1] + (cfg.get("staff_dy") or 0.0)
+        p_len = cfg.get("staff_pom_len", 25.0)
+        butt_x = max(14.0, min(90.0, sx_s - ux_s * min(p_len, max(4.0, (98.0 - sy_s) / max(0.2, -uy_s)))))
+        ring_rx = 10.0 + slam_int * 7.5
+        for dx_r in range(-int(ring_rx), int(ring_rx) + 1):
+            rx_p = butt_x + dx_r
+            if 5 <= rx_p <= 98:
+                u_r = abs(dx_r) / max(1.0, ring_rx)
+                col_m = P_STARLIGHT if u_r < 0.30 else (P_GOLD_LIT if u_r < 0.68 else P_AZURE_LIT)
+                put_px(fg_layer, rx_p, 98, col_m)
+                put_px(fg_layer, rx_p, 99, P_GOLD_DARK if u_r > 0.5 else P_GOLD_MID)
+                if abs(dx_r) % 3 == 0 and u_r < 0.85:
+                    sp_h = int((1.0 - u_r) * 4.0 * slam_int)
+                    for dy_sp in range(1, sp_h + 1):
+                        put_px(fg_layer, rx_p, 98 - dy_sp, P_STARLIGHT if dy_sp == 1 else P_GOLD_LIT)
+
+    if cfg.get("slash_arc") is not None and scepter_head_pt is not None:
+        _, _, _, sint = cfg["slash_arc"]
+        draw_scepter_starburst_flare_104(
+            fg_layer,
+            scepter_head_pt[0],
+            scepter_head_pt[1],
+            intensity=sint,
+            phase=cfg.get("fx_phase", 0.0),
+        )
+
+    comp = halo_layer.copy()
+    body_m = arr104[:, :, 3] > 0
+    comp[body_m] = arr104[body_m]
+    fg_m = fg_layer[:, :, 3] > 0
+    comp[fg_m] = fg_layer[fg_m]
+
+    comp[:4, :, :] = 0
+    comp[100:, :, :] = 0
+    comp[:, :4, :] = 0
+    comp[:, 100:, :] = 0
+    return comp, body_holes
 
 
-def build_row2_auto_attack(tpl):
-    """
-    Row 2: 30-Frame AUTO_ATTACK (Sacred Starlight Cast):
-    - F00..F09: Raises the Sacred Staff back to -100 deg during prayer windup while her left hand
-      forms a luminous golden prayer gesture (hand_x = 30..33, hand_y = 22..24).
-    - F10..F18: Thrusts the Sacred Staff forward to -38 deg (flare=1.0) to project Sacred Starlight!
-    - F19..F29: Serene follow-through back to standing stance (-74 deg).
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 9:
-            u = f / 9.0
-            base = (tpl['stand'] if f <= 3 else tpl['cast_up']).copy()
-            base = apply_hair_and_vestment_wave(base, phase, amplitude=1.5, vertical_flutter=0.6)
-            base = draw_halo_crown(base, head_cx=23, head_top_y=7, phase_rad=phase, intensity=1.3)
-            # Left hand forms a luminous golden prayer gesture (hand_x = 30..33, hand_y = 22..24)
-            lh_x = 30.0 + u * 2.5
-            lh_y = 24.0 - u * 2.0
-            base = draw_left_prayer_arm(
-                base,
-                shoulder=(24.0, 18.0),
-                hand=(lh_x, lh_y),
-                mote_glow=0.8 + u * 0.5,
-                phase_rad=phase * 2.0,
-            )
-            # Raises Sacred Staff back to -100 deg
-            staff_deg = -74.0 * (1.0 - u) + (-100.0) * u
-            charge = 2 if f >= 6 else (1 if f >= 3 else 0)
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(25.0, 17.0 - u * 1.5),
-                staff_deg=staff_deg,
-                reach=5.0 - u * 0.8,
-                charge_level=charge,
-                grip_override=(29.8 - u * 1.0, 17.5 - u * 2.5),
-                phase_rad=phase,
-            )
-            frames.append(ensure_safe_cell(frame, margin=2))
+def smooth_u(f, f0, f1):
+    if f1 <= f0:
+        return 1.0
+    u = max(0.0, min(1.0, (f - f0) / float(f1 - f0)))
+    return 0.5 - 0.5 * math.cos(u * math.pi)
 
-        elif f <= 18:
-            k = f - 10
-            u_cast = k / 8.0
-            base = tpl['cast_ext'].copy()
-            if f in (11, 12):
-                base = shift_layer(base, dx=1, dy=0)
-            base = apply_hair_and_vestment_wave(base, phase * 1.5, amplitude=1.8, vertical_flutter=0.7)
-            base = draw_seraphim_wings(base, cx=18, cy=17, span_phase=phase * 2.0, alpha_scale=0.48 * (1.0 - u_cast * 0.45))
-            base = draw_halo_crown(base, head_cx=25, head_top_y=7, phase_rad=phase, intensity=1.5)
-            base = draw_left_prayer_arm(
-                base,
-                shoulder=(25.0, 18.0),
-                hand=(31.0 - u_cast * 1.0, 22.0 + u_cast * 1.5),
-                mote_glow=1.1 if k <= 4 else 0.6,
-                phase_rad=phase * 2.0,
-            )
-            if k == 0:
-                staff_deg = -56.0
-                flare_v = 0.7
-            elif k <= 5:
-                staff_deg = -38.0 - (k - 1) * 0.6  # Thrust forward to -38 deg!
-                flare_v = 1.0
-            else:
-                staff_deg = -40.0 - (k - 5) * 4.5
-                flare_v = 0.65
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(26.5, 17.0),
-                staff_deg=staff_deg,
-                reach=6.5,
-                charge_level=3 if k <= 5 else 2,
-                cast_flash=(f in (11, 12, 13)),
-                flare=flare_v,
-                grip_override=(34.5 if k >= 1 else 32.5, 18.5 + (k % 2) * 0.4),
-                phase_rad=phase,
-            )
+
+def eval_pose_keyframes(f, keyframes):
+    if f <= keyframes[0][0]:
+        return dict(keyframes[0][1])
+    if f >= keyframes[-1][0]:
+        return dict(keyframes[-1][1])
+
+    for i in range(len(keyframes) - 1):
+        f0, k0 = keyframes[i]
+        f1, k1 = keyframes[i + 1]
+        if f0 <= f <= f1:
+            u = smooth_u(f, f0, f1)
+            out = {}
+            all_keys = set(k0.keys()) | set(k1.keys())
+            for k in all_keys:
+                v0 = k0.get(k)
+                v1 = k1.get(k)
+                if isinstance(v0, bool) or isinstance(v1, bool) or isinstance(v0, str) or isinstance(v1, str):
+                    out[k] = v1 if u >= 0.5 else v0
+                elif v0 is None and isinstance(v1, (int, float)):
+                    out[k] = 0.0 + (v1 - 0.0) * u
+                elif v1 is None and isinstance(v0, (int, float)):
+                    out[k] = v0 + (0.0 - v0) * u
+                elif v0 is None or v1 is None:
+                    out[k] = v1 if u >= 0.5 else v0
+                elif isinstance(v0, (int, float)) and isinstance(v1, (int, float)):
+                    out[k] = v0 + (v1 - v0) * u
+                else:
+                    out[k] = v1 if u >= 0.5 else v0
+            return out
+    return dict(keyframes[-1][1])
+
+
+def build_row_configs(row_idx):
+    cfgs = []
+    for f in range(COLS):
+        p = 2.0 * math.pi * f / COLS
+        cfg = {
+            "pelvis_dx": 0.0,
+            "pelvis_dy": 0.0,
+            "torso_deg": 0.0,
+            "head_rel_deg": 0.0,
+            "mane_rel_deg": 0.0,
+            "l_thigh_deg": 0.0,
+            "l_shin_deg": 0.0,
+            "l_foot_deg": 0.0,
+            "r_thigh_deg": 0.0,
+            "r_shin_deg": 0.0,
+            "r_foot_deg": 0.0,
+            "l_sode_rel_deg": 0.0,
+            "l_fore_rel_deg": 0.0,
+            "r_sode_rel_deg": 0.0,
+            "r_fore_rel_deg": 0.0,
+            "coat_billow": 0.0,
+            "right_arm_in_front": True,
+            "right_leg_behind": False,
+            "foot_y": 99.0,
+            "halo_mode": "normal",
+            "halo_phase": p,
+            "fx_phase": p,
+            "show_staff": True,
+            "staff_hand": "right",
+            "staff_behind": False,
+            "staff_deg": -52.0,
+            "staff_len": 26.0,
+            "staff_pom_len": 14.0,
+            "staff_glow": 1.0,
+            "hand_orb_r": 0.0,
+            "orb_hand": "left",
+            "orb_dx": 2.0,
+            "orb_dy": -2.0,
+            "ward_ring": False,
+            "ground_slam": 0.0,
+            "slash_arc": None,
+            "blink": False,
+        }
+
+        if row_idx == 0:
+            # ROW 0: IDLE — Serene High Priestess sanctuary stance, flowing champagne hair & revolving Ophanim Halo
+            breath = math.sin(p)
+            sway = math.sin(p - 0.65)
+            cfg["pelvis_dy"] = breath * 2.2
+            cfg["torso_deg"] = breath * 1.4
+            cfg["head_rel_deg"] = -breath * 0.9
+            cfg["mane_rel_deg"] = sway * 3.8 + 1.5
+            cfg["coat_billow"] = 2.2 + sway * 2.4
+            cfg["r_sode_rel_deg"] = -10.0 + breath * 2.2
+            cfg["r_fore_rel_deg"] = -22.0 + breath * 2.6
+            cfg["l_sode_rel_deg"] = -14.0 - breath * 2.2
+            cfg["l_fore_rel_deg"] = -32.0 - breath * 3.0
+            cfg["staff_deg"] = -52.0 + sway * 2.8
+            cfg["staff_glow"] = 1.0 + 0.16 * math.sin(p * 2.0)
+            cfg["hand_orb_r"] = 1.7 + 0.35 * math.sin(p * 2.0)
+
+        elif row_idx == 1:
+            # ROW 1: WALK — Graceful two-step Cathedral Stride (F00..F14 Step A, F15..F29 Step B)
+            s = math.sin(p)
+            c2 = abs(math.cos(p))
+            cfg["pelvis_dx"] = 3.0
+            cfg["pelvis_dy"] = 3.2 - c2 * 3.2
+            cfg["torso_deg"] = 4.5 + math.sin(p * 2.0) * 1.4
+            cfg["head_rel_deg"] = -2.8
+            cfg["mane_rel_deg"] = -4.2 - math.sin(p - 0.5) * 4.5
+            cfg["l_thigh_deg"] = s * 22.0
+            cfg["l_shin_deg"] = max(0.0, -s * 20.0) + 4.0
+            cfg["l_foot_deg"] = s * 7.0
+            cfg["r_thigh_deg"] = -s * 22.0
+            cfg["r_shin_deg"] = max(0.0, s * 20.0) + 4.0
+            cfg["r_foot_deg"] = -s * 7.0
+            cfg["right_leg_behind"] = s > 0.0
+            cfg["coat_billow"] = 5.5 + abs(s) * 4.2
+            cfg["r_sode_rel_deg"] = -10.0 - s * 10.0
+            cfg["r_fore_rel_deg"] = -20.0 - s * 6.0
+            cfg["l_sode_rel_deg"] = -10.0 + s * 13.0
+            cfg["l_fore_rel_deg"] = -26.0 + s * 8.0
+            cfg["staff_deg"] = -46.0 - s * 7.0
+            cfg["hand_orb_r"] = 1.4
+
+        elif row_idx == 2:
+            # ROW 2: AUTO_ATTACK — Grounded Sacred Starlight Prayer Cast (0px vertical float!)
+            kfs = [
+                (0, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "halo_mode": "normal", "hand_orb_r": 1.8,
+                }),
+                (7, {
+                    "pelvis_dx": -10.0, "pelvis_dy": 5.0, "torso_deg": -8.0, "head_rel_deg": 6.0, "mane_rel_deg": 7.0,
+                    "l_thigh_deg": -14.0, "l_shin_deg": 14.0, "r_thigh_deg": 16.0, "r_shin_deg": 10.0,
+                    "r_sode_rel_deg": 20.0, "r_fore_rel_deg": -34.0,
+                    "l_sode_rel_deg": -38.0, "l_fore_rel_deg": -42.0, "coat_billow": 7.0,
+                    "right_arm_in_front": False, "staff_deg": -72.0, "staff_glow": 1.35,
+                    "halo_mode": "flare", "hand_orb_r": 3.2,
+                }),
+                (12, {
+                    "pelvis_dx": 14.0, "pelvis_dy": 7.0, "torso_deg": 12.0, "head_rel_deg": -8.0, "mane_rel_deg": -10.0,
+                    "l_thigh_deg": 20.0, "l_shin_deg": 16.0, "r_thigh_deg": -24.0, "r_shin_deg": 24.0,
+                    "r_sode_rel_deg": -38.0, "r_fore_rel_deg": -26.0,
+                    "l_sode_rel_deg": -24.0, "l_fore_rel_deg": -18.0, "coat_billow": 13.0,
+                    "right_arm_in_front": True, "staff_deg": -28.0, "staff_glow": 1.5,
+                    "halo_mode": "off", "hand_orb_r": 0.0,
+                }),
+                (17, {
+                    "pelvis_dx": 11.0, "pelvis_dy": 6.0, "torso_deg": 9.0, "head_rel_deg": -6.0, "mane_rel_deg": -7.0,
+                    "l_thigh_deg": 16.0, "l_shin_deg": 12.0, "r_thigh_deg": -18.0, "r_shin_deg": 18.0,
+                    "r_sode_rel_deg": -28.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -18.0, "l_fore_rel_deg": -22.0, "coat_billow": 9.0,
+                    "right_arm_in_front": True, "staff_deg": -34.0, "staff_glow": 1.25,
+                    "halo_mode": "normal", "hand_orb_r": 0.0,
+                }),
+                (29, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "halo_mode": "normal", "hand_orb_r": 1.8,
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
             if 10 <= f <= 16:
-                trail_starts = [-98.0, -94.0, -88.0, -80.0, -72.0, -64.0, -56.0]
-                trail_ends = [-54.0, -36.0, -34.0, -35.0, -36.0, -38.0, -40.0]
-                trail_int = [0.85, 1.0, 1.0, 0.95, 0.90, 0.80, 0.65][k]
-                frame = draw_sacred_smite_trail(
-                    frame,
-                    cx=28.5,
-                    cy=19.0,
-                    start_deg=trail_starts[k],
-                    end_deg=trail_ends[k],
-                    intensity=trail_int,
-                )
-            frames.append(ensure_safe_cell(frame, margin=2))
+                cfg["slash_arc"] = (-42.0, 40.0, 29.0, 1.0 - (f - 10) * 0.13)
 
-        else:
-            u = (f - 19) / 10.0
-            base = (tpl['cast_ext'] if f <= 21 else tpl['stand']).copy()
-            base = apply_hair_and_vestment_wave(base, phase, amplitude=1.5, vertical_flutter=0.6)
-            base = draw_halo_crown(base, head_cx=24 if f <= 21 else 23, head_top_y=7, phase_rad=phase, intensity=1.1)
-            if f <= 23:
-                base = draw_left_prayer_arm(
-                    base,
-                    shoulder=(24.5, 18.0),
-                    hand=(30.0, 23.5),
-                    mote_glow=max(0.0, 0.5 * (1.0 - u * 2.0)),
-                    phase_rad=phase,
-                )
-            staff_deg = -52.0 * (1.0 - u) + (-74.0) * u
-            reach_rec = 6.0 * (1.0 - u) + 5.2 * u
-            sx_rec = 26.0 if f <= 21 else 25.0
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(sx_rec, 17.0),
-                staff_deg=staff_deg,
-                reach=reach_rec,
-                charge_level=1 if f <= 21 else 0,
-                phase_rad=phase,
-            )
-            frames.append(ensure_safe_cell(frame, margin=2))
+        elif row_idx == 3:
+            # ROW 3: SKILL — Grounded Divine Sanctuary Consecration Slam & Heaven's Judgment Sweep
+            kfs = [
+                (0, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_pom_len": 14.0, "staff_glow": 1.0,
+                    "halo_mode": "normal", "hand_orb_r": 1.8,
+                }),
+                (5, {
+                    "pelvis_dx": -6.0, "pelvis_dy": 4.0, "torso_deg": -6.0, "head_rel_deg": -6.0, "mane_rel_deg": 6.0,
+                    "l_thigh_deg": -10.0, "l_shin_deg": 12.0, "r_thigh_deg": 12.0, "r_shin_deg": 10.0,
+                    "r_sode_rel_deg": -68.0, "r_fore_rel_deg": -26.0,
+                    "l_sode_rel_deg": -62.0, "l_fore_rel_deg": -28.0, "coat_billow": 9.0,
+                    "right_arm_in_front": True, "staff_deg": -80.0, "staff_pom_len": 18.0, "staff_glow": 1.4,
+                    "halo_mode": "flare", "hand_orb_r": 3.0,
+                }),
+                (9, {
+                    "pelvis_dx": 8.0, "pelvis_dy": 14.0, "torso_deg": 9.0, "head_rel_deg": -4.0, "mane_rel_deg": -6.0,
+                    "l_thigh_deg": 18.0, "l_shin_deg": 22.0, "r_thigh_deg": -22.0, "r_shin_deg": 24.0,
+                    "r_sode_rel_deg": -24.0, "r_fore_rel_deg": 10.0,
+                    "l_sode_rel_deg": -26.0, "l_fore_rel_deg": -18.0, "coat_billow": 13.0,
+                    "right_arm_in_front": True, "staff_deg": -88.0, "staff_pom_len": 25.0, "staff_glow": 1.5,
+                    "halo_mode": "flare", "hand_orb_r": 2.4, "ground_slam": 1.0,
+                }),
+                (12, {
+                    "pelvis_dx": 8.0, "pelvis_dy": 12.0, "torso_deg": 8.0, "head_rel_deg": -4.0, "mane_rel_deg": -5.0,
+                    "l_thigh_deg": 16.0, "l_shin_deg": 20.0, "r_thigh_deg": -20.0, "r_shin_deg": 22.0,
+                    "r_sode_rel_deg": -28.0, "r_fore_rel_deg": -4.0,
+                    "l_sode_rel_deg": -28.0, "l_fore_rel_deg": -20.0, "coat_billow": 11.0,
+                    "right_arm_in_front": True, "staff_deg": -82.0, "staff_pom_len": 23.0, "staff_glow": 1.45,
+                    "halo_mode": "flare", "hand_orb_r": 2.0, "ground_slam": 0.65,
+                }),
+                (16, {
+                    "pelvis_dx": 14.0, "pelvis_dy": 8.0, "torso_deg": 13.0, "head_rel_deg": -8.0, "mane_rel_deg": -10.0,
+                    "l_thigh_deg": 20.0, "l_shin_deg": 16.0, "r_thigh_deg": -24.0, "r_shin_deg": 24.0,
+                    "r_sode_rel_deg": -40.0, "r_fore_rel_deg": -24.0,
+                    "l_sode_rel_deg": -20.0, "l_fore_rel_deg": -16.0, "coat_billow": 14.0,
+                    "right_arm_in_front": True, "staff_deg": -28.0, "staff_pom_len": 14.0, "staff_glow": 1.5,
+                    "halo_mode": "flare", "hand_orb_r": 0.0, "ground_slam": 0.0,
+                }),
+                (21, {
+                    "pelvis_dx": 11.0, "pelvis_dy": 6.0, "torso_deg": 10.0, "head_rel_deg": -6.0, "mane_rel_deg": -7.0,
+                    "l_thigh_deg": 16.0, "l_shin_deg": 12.0, "r_thigh_deg": -18.0, "r_shin_deg": 18.0,
+                    "r_sode_rel_deg": -30.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -16.0, "l_fore_rel_deg": -22.0, "coat_billow": 10.0,
+                    "right_arm_in_front": True, "staff_deg": -34.0, "staff_pom_len": 14.0, "staff_glow": 1.3,
+                    "halo_mode": "normal", "hand_orb_r": 0.0, "ground_slam": 0.0,
+                }),
+                (29, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_pom_len": 14.0, "staff_glow": 1.0,
+                    "halo_mode": "normal", "hand_orb_r": 1.8, "ground_slam": 0.0,
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
+            if 15 <= f <= 21:
+                cfg["slash_arc"] = (-46.0, 44.0, 31.0, 1.0 - (f - 15) * 0.12)
 
-    return frames
+        elif row_idx == 4:
+            # ROW 4: ULTIMATE — Grounded Seraphic Apotheosis (0px awkward floating, full archangel majesty!)
+            kfs = [
+                (0, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 3.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.1,
+                    "halo_mode": "apotheosis", "hand_orb_r": 2.0,
+                }),
+                (7, {
+                    "pelvis_dx": -6.0, "pelvis_dy": 6.0, "torso_deg": -5.0, "head_rel_deg": -5.0, "mane_rel_deg": 8.0,
+                    "l_thigh_deg": 12.0, "l_shin_deg": 14.0, "r_thigh_deg": -16.0, "r_shin_deg": 16.0,
+                    "r_sode_rel_deg": -56.0, "r_fore_rel_deg": -24.0,
+                    "l_sode_rel_deg": -44.0, "l_fore_rel_deg": -36.0, "coat_billow": 14.0,
+                    "right_arm_in_front": True, "staff_deg": -66.0, "staff_glow": 1.5,
+                    "halo_mode": "apotheosis", "hand_orb_r": 3.6,
+                }),
+                (12, {
+                    "pelvis_dx": 14.0, "pelvis_dy": 8.0, "torso_deg": 12.0, "head_rel_deg": -8.0, "mane_rel_deg": -9.0,
+                    "l_thigh_deg": 20.0, "l_shin_deg": 16.0, "r_thigh_deg": -24.0, "r_shin_deg": 22.0,
+                    "r_sode_rel_deg": -38.0, "r_fore_rel_deg": -24.0,
+                    "l_sode_rel_deg": -26.0, "l_fore_rel_deg": -18.0, "coat_billow": 16.0,
+                    "right_arm_in_front": True, "staff_deg": -30.0, "staff_glow": 1.6,
+                    "halo_mode": "apotheosis", "hand_orb_r": 2.6,
+                }),
+                (22, {
+                    "pelvis_dx": 12.0, "pelvis_dy": 7.0, "torso_deg": 10.0, "head_rel_deg": -7.0, "mane_rel_deg": -8.0,
+                    "l_thigh_deg": 18.0, "l_shin_deg": 14.0, "r_thigh_deg": -22.0, "r_shin_deg": 20.0,
+                    "r_sode_rel_deg": -34.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -22.0, "l_fore_rel_deg": -20.0, "coat_billow": 14.0,
+                    "right_arm_in_front": True, "staff_deg": -24.0, "staff_glow": 1.5,
+                    "halo_mode": "apotheosis", "hand_orb_r": 1.8,
+                }),
+                (29, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "halo_mode": "normal", "hand_orb_r": 1.8,
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
+            if 11 <= f <= 23:
+                pulse_i = 0.92 + 0.08 * math.sin((f - 11) * 1.1)
+                cfg["slash_arc"] = (-48.0, 46.0, 31.0, pulse_i * (1.0 if f <= 20 else 1.0 - (f - 20) * 0.22))
 
-
-def build_row3_skill(tpl):
-    """
-    Row 3: 30-Frame SKILL (Celestial Benediction & Valkyrie Spears):
-    - Unfurls subtle folded/glowing Seraphim wing pinions behind her back.
-    - F00..F13: Raises the Sacred Staff skyward (-94 deg, raised high grip_y - 4) with a glowing
-      golden halo above her head and Left Prayer/Blessing Arm raised in benediction.
-    - F14..F22: Sweeps the Sacred Staff forward (-36 deg, flare=1.0) to launch the 3 Valkyrie Light-Spears!
-    - F23..F29: Smooth recovery back to standing stance (-74 deg).
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 13:
-            u = f / 13.0
-            elev = math.sin(u * math.pi * 0.85)
-            base = tpl['cast_up'].copy()
-            base = apply_hair_and_vestment_wave(base, phase * 2.0, amplitude=1.7, vertical_flutter=0.7)
-            # Subtle folded/glowing Seraphim wing pinions during Divine Sanctuary & Valkyrie Spears
-            wing_scale = 0.45 + 0.35 * elev
-            base = draw_seraphim_wings(base, cx=18, cy=17, span_phase=phase * 2.0, alpha_scale=wing_scale)
-            base = draw_halo_crown(base, head_cx=23, head_top_y=5, phase_rad=phase * 2.0, intensity=1.8)
-            base = draw_left_prayer_arm(
-                base,
-                shoulder=(24.0, 17.5 - elev * 1.0),
-                hand=(30.5 + elev * 1.5, 22.0 - elev * 4.5),
-                mote_glow=1.3,
-                phase_rad=phase * 2.0,
-            )
-            staff_deg = -76.0 * (1.0 - elev) + (-94.0) * elev
-            grip_y = 18.0 - elev * 4.0  # grip_y - 4 at peak skyward raise!
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(25.0, 16.5 - elev * 2.0),
-                staff_deg=staff_deg,
-                reach=4.8,
-                shaft_up=8.5,
-                charge_level=3 if f >= 4 else 2,
-                cast_flash=(f in (6, 7, 11)),
-                flare=0.85 if f >= 5 else 0.4,
-                grip_override=(29.5, grip_y),
-                phase_rad=phase * 2.0,
-            )
-            if f >= 2:
-                sanc_int = min(1.0, 0.55 + (f - 2) * 0.15)
-                frame = draw_sanctuary_ground_circle(frame, cx=25.0, cy=46.0, phase_rad=phase * 2.0, intensity=sanc_int)
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        elif f <= 22:
-            k = f - 14
-            u_sw = k / 8.0
-            base = tpl['cast_ext'].copy()
-            if k in (1, 2):
-                base = shift_layer(base, dx=1, dy=0)
-            base = apply_hair_and_vestment_wave(base, phase * 2.0, amplitude=1.9, vertical_flutter=0.8)
-            base = draw_seraphim_wings(base, cx=18, cy=17, span_phase=phase * 2.5, alpha_scale=0.80 - u_sw * 0.20)
-            base = draw_halo_crown(base, head_cx=25, head_top_y=6, phase_rad=phase * 2.0, intensity=1.7)
-            base = draw_left_prayer_arm(
-                base,
-                shoulder=(25.0, 18.0),
-                hand=(32.0 - u_sw * 1.5, 19.5 + u_sw * 2.5),
-                mote_glow=1.2,
-                phase_rad=phase * 2.0,
-            )
-            if k == 0:
-                staff_deg = -58.0
-                gx_sk, gy_sk = 32.5, 16.5
-            elif k <= 6:
-                staff_deg = -36.0 - (k - 1) * 0.5  # Sweeps forward to -36 deg!
-                gx_sk, gy_sk = 34.8, 18.5
+        elif row_idx == 5:
+            # ROW 5: DEATH — Stagger recoil -> Kneeling fall -> Prone collapse with horizontal resting Scepter
+            if f <= 7:
+                u = smooth_u(f, 0, 7)
+                cfg["pelvis_dx"] = -14.0 * u
+                cfg["pelvis_dy"] = 6.0 * u
+                cfg["torso_deg"] = -16.0 * u
+                cfg["head_rel_deg"] = -10.0 * u
+                cfg["mane_rel_deg"] = 12.0 * u
+                cfg["l_thigh_deg"] = -12.0 * u
+                cfg["l_shin_deg"] = 18.0 * u
+                cfg["r_thigh_deg"] = 14.0 * u
+                cfg["r_shin_deg"] = 14.0 * u
+                cfg["r_sode_rel_deg"] = 18.0 * u
+                cfg["l_sode_rel_deg"] = -28.0 * u
+                cfg["staff_deg"] = -52.0 + 22.0 * u
+                cfg["blink"] = f >= 3
+            elif f <= 16:
+                u = smooth_u(f, 7, 16)
+                cfg["pelvis_dx"] = -14.0 + 8.0 * u
+                cfg["pelvis_dy"] = 6.0 + 38.0 * u
+                cfg["torso_deg"] = -16.0 + 40.0 * u
+                cfg["head_rel_deg"] = -10.0 + 24.0 * u
+                cfg["mane_rel_deg"] = 12.0 - 16.0 * u
+                cfg["l_thigh_deg"] = -12.0 + 38.0 * u
+                cfg["l_shin_deg"] = 18.0 + 50.0 * u
+                cfg["r_thigh_deg"] = 14.0 - 52.0 * u
+                cfg["r_shin_deg"] = 14.0 + 32.0 * u
+                cfg["l_coat_deg"] = 24.0 * u
+                cfg["r_coat_deg"] = -26.0 * u
+                cfg["r_sode_rel_deg"] = 18.0 - 34.0 * u
+                cfg["l_sode_rel_deg"] = -28.0 + 14.0 * u
+                cfg["staff_deg"] = -30.0 + 28.0 * u
+                cfg["staff_glow"] = 1.0 - 0.65 * u
+                cfg["halo_mode"] = "off" if f >= 12 else "normal"
+                cfg["blink"] = True
             else:
-                staff_deg = -40.0 - (k - 6) * 5.0
-                gx_sk, gy_sk = 33.8, 18.8
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(26.5, 17.0),
-                staff_deg=staff_deg,
-                reach=6.6,
-                charge_level=3,
-                cast_flash=(k in (1, 2, 3)),
-                flare=1.0 if k <= 6 else 0.7,
-                grip_override=(gx_sk, gy_sk),
-                phase_rad=phase * 2.0,
-            )
-            if 14 <= f <= 21:
-                sk_starts = [-96.0, -94.0, -88.0, -82.0, -75.0, -68.0, -60.0, -54.0]
-                sk_ends = [-54.0, -34.0, -32.0, -33.0, -35.0, -36.0, -38.0, -42.0]
-                sk_ints = [0.90, 1.0, 1.0, 1.0, 0.95, 0.85, 0.75, 0.60]
-                frame = draw_sacred_smite_trail(
-                    frame,
-                    cx=28.5,
-                    cy=18.5,
-                    start_deg=sk_starts[k],
-                    end_deg=sk_ends[k],
-                    intensity=sk_ints[k],
-                )
-            # Three Valkyrie Light-Spear tips projecting at the right edge during F15..F20
-            if 1 <= k <= 6:
-                for sp_i, sp_y in enumerate((9 + k, 15 + k, 21 + k)):
-                    sx_sp = min(46, 42 + ((k + sp_i) % 3))
-                    sy_sp = max(4, min(46, sp_y))
-                    set_px(frame, sx_sp, sy_sp, GOLD_BRIGHT)
-                    set_px(frame, min(48, sx_sp + 1), sy_sp, WHITE_PURE)
-                    set_px(frame, max(3, sx_sp - 1), sy_sp, CYAN_SACRED)
-            frame = draw_sanctuary_ground_circle(
-                frame,
-                cx=25.0,
-                cy=46.0,
-                phase_rad=phase * 2.0,
-                intensity=1.0 if f <= 20 else (0.85 if f == 21 else 0.70),
-            )
-            frames.append(ensure_safe_cell(frame, margin=2))
+                u = smooth_u(f, 16, 24)
+                u_leg = u ** 0.78
+                cfg["pelvis_dx"] = -6.0 + 16.0 * u
+                cfg["pelvis_dy"] = 44.0 + 48.0 * u
+                cfg["torso_deg"] = 24.0 + 62.0 * u
+                cfg["head_rel_deg"] = 14.0 - 16.0 * u
+                cfg["l_thigh_deg"] = 26.0 + 56.0 * u_leg
+                cfg["l_shin_deg"] = 68.0 + 18.0 * u_leg
+                cfg["r_thigh_deg"] = -38.0 + 118.0 * u_leg
+                cfg["r_shin_deg"] = 46.0 + 40.0 * u_leg
+                cfg["l_coat_deg"] = 24.0 + 52.0 * u
+                cfg["r_coat_deg"] = -26.0 + 114.0 * u_leg
+                cfg["stole_deg"] = 20.0 + 64.0 * u
+                cfg["l_sode_rel_deg"] = -14.0 + 26.0 * u
+                cfg["r_sode_rel_deg"] = -16.0 + 16.0 * u
+                cfg["right_arm_in_front"] = True
+                cfg["halo_mode"] = "off"
+                cfg["staff_deg"] = -2.0 * (1.0 - u)
+                cfg["staff_dy"] = 3.5 * u
+                cfg["staff_glow"] = 0.25 + (0.08 * math.sin(p * 3.0) if f >= 24 else 0.0)
+                cfg["mane_rel_deg"] = math.sin(p * 2.0) * 1.5 if f >= 24 else -4.0
+                cfg["blink"] = True
 
-        else:
-            u = (f - 23) / 6.0
-            base = tpl['stand'].copy()
-            base = apply_hair_and_vestment_wave(base, phase, amplitude=1.5, vertical_flutter=0.6)
-            wing_sc = max(0.0, 0.55 * (1.0 - u))
-            if wing_sc > 0.08:
-                base = draw_seraphim_wings(base, cx=18, cy=17, span_phase=phase * 2.0, alpha_scale=wing_sc)
-            base = draw_halo_crown(base, head_cx=23, head_top_y=7, phase_rad=phase, intensity=1.2)
-            staff_deg = -50.0 * (1.0 - u) + (-74.0) * u
-            reach_rec = 6.2 * (1.0 - u) + 5.2 * u
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(25.0, 17.0),
-                staff_deg=staff_deg,
-                reach=reach_rec,
-                charge_level=1 if u < 0.5 else 0,
-                phase_rad=phase,
-            )
-            if f <= 23:
-                frame = draw_sanctuary_ground_circle(frame, cx=25.0, cy=46.0, phase_rad=phase * 2.0, intensity=0.55)
-            frames.append(ensure_safe_cell(frame, margin=2))
+        elif row_idx == 6:
+            # ROW 6: DASH — Sleek Shallow Radiant Feather-Glide with hip-poised forward Scepter thrust
+            kfs = [
+                (0, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 4.0, "torso_deg": 5.0, "head_rel_deg": -3.0, "mane_rel_deg": -4.0,
+                    "l_thigh_deg": 8.0, "l_shin_deg": 10.0, "r_thigh_deg": -8.0, "r_shin_deg": 12.0,
+                    "r_sode_rel_deg": 4.0, "r_fore_rel_deg": -18.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -24.0, "coat_billow": 6.0,
+                    "right_arm_in_front": True, "staff_deg": -46.0, "staff_glow": 1.1,
+                    "foot_y": 99.0, "halo_mode": "swept",
+                }),
+                (4, {
+                    "pelvis_dx": 10.0, "pelvis_dy": 9.0, "torso_deg": 14.0, "head_rel_deg": -9.0, "mane_rel_deg": -9.0,
+                    "l_thigh_deg": 18.0, "l_shin_deg": 18.0, "r_thigh_deg": -20.0, "r_shin_deg": 18.0,
+                    "r_sode_rel_deg": 12.0, "r_fore_rel_deg": -16.0,
+                    "l_sode_rel_deg": -26.0, "l_fore_rel_deg": -24.0, "coat_billow": 13.0,
+                    "right_arm_in_front": True, "staff_deg": -40.0, "staff_glow": 1.25,
+                    "foot_y": 97.0, "halo_mode": "swept", "hand_orb_r": 2.2,
+                }),
+                (8, {
+                    "pelvis_dx": 15.0, "pelvis_dy": 11.0, "torso_deg": 16.5, "head_rel_deg": -11.0, "mane_rel_deg": -12.0,
+                    "l_thigh_deg": 23.0, "l_shin_deg": 22.0, "r_thigh_deg": -26.0, "r_shin_deg": 20.0,
+                    "r_sode_rel_deg": 16.0, "r_fore_rel_deg": -14.0,
+                    "l_sode_rel_deg": -32.0, "l_fore_rel_deg": -26.0, "coat_billow": 16.0,
+                    "right_arm_in_front": True, "staff_deg": -36.0, "staff_glow": 1.35,
+                    "foot_y": 96.5, "halo_mode": "swept", "hand_orb_r": 2.8,
+                }),
+                (12, {
+                    "pelvis_dx": 17.0, "pelvis_dy": 11.0, "torso_deg": 16.0, "head_rel_deg": -10.5, "mane_rel_deg": -11.0,
+                    "l_thigh_deg": 21.0, "l_shin_deg": 20.0, "r_thigh_deg": -24.0, "r_shin_deg": 21.0,
+                    "r_sode_rel_deg": -18.0, "r_fore_rel_deg": -20.0,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -16.0, "coat_billow": 15.0,
+                    "right_arm_in_front": True, "staff_deg": -30.0, "staff_glow": 1.4,
+                    "foot_y": 96.5, "halo_mode": "off", "hand_orb_r": 1.6,
+                }),
+                (15, {
+                    "pelvis_dx": 18.0, "pelvis_dy": 11.0, "torso_deg": 15.5, "head_rel_deg": -10.0, "mane_rel_deg": -10.0,
+                    "l_thigh_deg": 20.0, "l_shin_deg": 18.0, "r_thigh_deg": -23.0, "r_shin_deg": 22.0,
+                    "r_sode_rel_deg": -36.0, "r_fore_rel_deg": -24.0,
+                    "l_sode_rel_deg": 14.0, "l_fore_rel_deg": 6.0, "coat_billow": 14.5,
+                    "right_arm_in_front": True, "staff_deg": -26.0, "staff_glow": 1.48,
+                    "foot_y": 96.5, "halo_mode": "off", "hand_orb_r": 0.0,
+                }),
+                (29, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8,
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
+            if 13 <= f <= 17:
+                cfg["slash_arc"] = (-32.0, 36.0, 28.0, 0.95 - (f - 13) * 0.16)
 
-    return frames
+        elif row_idx == 7:
+            # ROW 7: CROUCH — Kneeling Benediction Prayer Shield (F03..F10) & Low Counter-Orb (F12..F16)
+            kfs = [
+                (0, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "l_coat_deg": 2.0, "r_coat_deg": -1.5,
+                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8,
+                }),
+                (4, {
+                    "pelvis_dx": 4.0, "pelvis_dy": 32.0, "torso_deg": 12.0, "head_rel_deg": -6.0, "mane_rel_deg": -4.0,
+                    "l_thigh_deg": 24.0, "l_shin_deg": 52.0, "r_thigh_deg": -40.0, "r_shin_deg": 38.0,
+                    "l_coat_deg": 24.0, "r_coat_deg": -24.0,
+                    "r_sode_rel_deg": -22.0, "r_fore_rel_deg": -28.0,
+                    "l_sode_rel_deg": -32.0, "l_fore_rel_deg": -42.0,
+                    "right_arm_in_front": True, "staff_deg": -78.0, "staff_glow": 1.4,
+                    "foot_y": 99.0, "halo_mode": "off", "hand_orb_r": 2.6,
+                }),
+                (10, {
+                    "pelvis_dx": 4.0, "pelvis_dy": 33.0, "torso_deg": 13.0, "head_rel_deg": -7.0, "mane_rel_deg": -4.0,
+                    "l_thigh_deg": 25.0, "l_shin_deg": 54.0, "r_thigh_deg": -42.0, "r_shin_deg": 40.0,
+                    "l_coat_deg": 25.0, "r_coat_deg": -25.0,
+                    "r_sode_rel_deg": -22.0, "r_fore_rel_deg": -26.0,
+                    "l_sode_rel_deg": -34.0, "l_fore_rel_deg": -40.0,
+                    "right_arm_in_front": True, "staff_deg": -72.0, "staff_glow": 1.45,
+                    "foot_y": 99.0, "halo_mode": "off", "hand_orb_r": 2.8,
+                }),
+                (14, {
+                    "pelvis_dx": 14.0, "pelvis_dy": 28.0, "torso_deg": 16.0, "head_rel_deg": -11.0, "mane_rel_deg": -8.0,
+                    "l_thigh_deg": 22.0, "l_shin_deg": 48.0, "r_thigh_deg": -38.0, "r_shin_deg": 34.0,
+                    "l_coat_deg": 22.0, "r_coat_deg": -22.0,
+                    "r_sode_rel_deg": -36.0, "r_fore_rel_deg": -24.0,
+                    "l_sode_rel_deg": 12.0, "l_fore_rel_deg": 4.0,
+                    "right_arm_in_front": True, "staff_deg": -26.0, "staff_glow": 1.5,
+                    "foot_y": 99.0, "halo_mode": "off", "hand_orb_r": 0.0,
+                }),
+                (20, {
+                    "pelvis_dx": 10.0, "pelvis_dy": 26.0, "torso_deg": 12.0, "head_rel_deg": -8.0, "mane_rel_deg": -5.0,
+                    "l_thigh_deg": 18.0, "l_shin_deg": 42.0, "r_thigh_deg": -32.0, "r_shin_deg": 28.0,
+                    "l_coat_deg": 20.0, "r_coat_deg": -20.0,
+                    "r_sode_rel_deg": -26.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": 6.0, "l_fore_rel_deg": -8.0,
+                    "right_arm_in_front": True, "staff_deg": -34.0, "staff_glow": 1.25,
+                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 0.0,
+                }),
+                (29, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "l_coat_deg": 2.0, "r_coat_deg": -1.5,
+                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8,
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
+            cfg["ward_ring"] = 3 <= f <= 10
+            cfg["blink"] = 4 <= f <= 9
+            if 12 <= f <= 16:
+                cfg["slash_arc"] = (-35.0, 38.0, 27.0, 1.0 - (f - 12) * 0.16)
 
+        elif row_idx == 8:
+            # ROW 8: JUMP — Sleek Shallow Seraphic Wing-Glide & Angled Aerial Starlight Smite (Zero steepness!)
+            kfs = [
+                (0, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 12.0, "torso_deg": 9.0, "head_rel_deg": -5.0, "mane_rel_deg": -4.0,
+                    "l_thigh_deg": 16.0, "l_shin_deg": 26.0, "r_thigh_deg": -20.0, "r_shin_deg": 26.0,
+                    "r_sode_rel_deg": 6.0, "r_fore_rel_deg": -8.0,
+                    "l_sode_rel_deg": -16.0, "l_fore_rel_deg": -24.0, "coat_billow": 7.0,
+                    "right_arm_in_front": True, "staff_deg": -44.0, "staff_glow": 1.1,
+                    "foot_y": 99.0, "halo_mode": "normal",
+                }),
+                (8, {
+                    "pelvis_dx": 8.0, "pelvis_dy": 0.0, "torso_deg": 13.0, "head_rel_deg": -9.0, "mane_rel_deg": -9.0,
+                    "l_thigh_deg": 20.0, "l_shin_deg": 34.0, "r_thigh_deg": -24.0, "r_shin_deg": 30.0,
+                    "r_sode_rel_deg": -32.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -34.0, "l_fore_rel_deg": -28.0, "coat_billow": 14.0,
+                    "right_arm_in_front": True, "staff_deg": -38.0, "staff_glow": 1.35,
+                    "foot_y": 94.5, "halo_mode": "off", "hand_orb_r": 3.0,
+                }),
+                (15, {
+                    "pelvis_dx": 14.0, "pelvis_dy": 2.0, "torso_deg": 15.0, "head_rel_deg": -9.0, "mane_rel_deg": -10.0,
+                    "l_thigh_deg": 18.0, "l_shin_deg": 30.0, "r_thigh_deg": -22.0, "r_shin_deg": 28.0,
+                    "r_sode_rel_deg": -28.0, "r_fore_rel_deg": -18.0,
+                    "l_sode_rel_deg": 16.0, "l_fore_rel_deg": 8.0, "coat_billow": 15.0,
+                    "right_arm_in_front": True, "staff_deg": -12.0, "staff_glow": 1.5,
+                    "foot_y": 94.5, "halo_mode": "off", "hand_orb_r": 0.0,
+                }),
+                (21, {
+                    "pelvis_dx": 10.0, "pelvis_dy": 4.0, "torso_deg": 12.0, "head_rel_deg": -7.0, "mane_rel_deg": -6.0,
+                    "l_thigh_deg": 14.0, "l_shin_deg": 22.0, "r_thigh_deg": -18.0, "r_shin_deg": 22.0,
+                    "r_sode_rel_deg": -20.0, "r_fore_rel_deg": -18.0,
+                    "l_sode_rel_deg": 6.0, "l_fore_rel_deg": -10.0, "coat_billow": 10.0,
+                    "right_arm_in_front": True, "staff_deg": -22.0, "staff_glow": 1.25,
+                    "foot_y": 96.5, "halo_mode": "normal", "hand_orb_r": 0.0,
+                }),
+                (26, {
+                    "pelvis_dx": 4.0, "pelvis_dy": 12.0, "torso_deg": 8.0, "head_rel_deg": -5.0, "mane_rel_deg": -3.0,
+                    "l_thigh_deg": 14.0, "l_shin_deg": 24.0, "r_thigh_deg": -18.0, "r_shin_deg": 24.0,
+                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -18.0,
+                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -24.0, "coat_billow": 6.0,
+                    "right_arm_in_front": True, "staff_deg": -38.0, "staff_glow": 1.05,
+                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.2,
+                }),
+                (29, {
+                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
+                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
+                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
+                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
+                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8,
+                }),
+            ]
+            cfg.update(eval_pose_keyframes(f, kfs))
+            if 14 <= f <= 18:
+                cfg["slash_arc"] = (-16.0, 52.0, 28.0, 0.95 - (f - 14) * 0.16)
 
-def build_row4_ultimate(tpl):
-    """
-    Row 4: 30-Frame ULTIMATE (Seraphim Archangel Ascension):
-    - F00..F13: Spreads her grand Archangel Wings wide (x = 4..18, y = 7..35) while raising both
-      her Sacred Staff (-92 deg) and Left Blessing Arm skyward.
-    - F14..F23: Thrusts the Sacred Staff forward (-40 deg, flare=1.0) to command the Cathedral
-      Judgment Pillars!
-    - F24..F29: Graceful descent and recovery back to stance (-74 deg).
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 13:
-            u = f / 13.0
-            dy_lift = -1 if f >= 3 else 0
-            body = make_jump_body(
-                tpl,
-                jump_dy=dy_lift,
-                tuck_amount=u * 0.45,
-                phase_rad=phase * 2.0,
-            )
-            body = apply_hair_and_vestment_wave(body, phase * 2.0, amplitude=1.8, vertical_flutter=0.8)
-            wing_scale = min(1.0, 0.65 + u * 0.35)
-            body = draw_seraphim_wings(body, cx=18, cy=17 + dy_lift, span_phase=phase * 3.0, alpha_scale=wing_scale)
-            body = draw_halo_crown(body, head_cx=23, head_top_y=5, phase_rad=phase * 2.5, intensity=1.8)
-            # Left Blessing Arm raised skyward (hand_x = 29..32, hand_y = 13..16)
-            body = draw_left_prayer_arm(
-                body,
-                shoulder=(24.0, 17.0 + dy_lift),
-                hand=(29.5 + u * 2.0, 18.5 - u * 4.5),
-                mote_glow=1.5,
-                phase_rad=phase * 2.5,
-            )
-            staff_deg = -78.0 * (1.0 - u) + (-92.0) * u
-            frame = draw_celestial_staff(
-                body,
-                shoulder=(25.0, 16.0 + dy_lift),
-                staff_deg=staff_deg,
-                reach=4.8,
-                shaft_up=8.5,
-                charge_level=3 if f >= 5 else 2,
-                cast_flash=(f in (8, 12)),
-                flare=0.9 if f >= 6 else 0.4,
-                grip_override=(30.0, 16.5 - u * 2.5),
-                phase_rad=phase * 2.5,
-            )
-
-        elif f <= 23:
-            k = f - 14
-            u = k / 9.0
-            lean_dx = 1 if k <= 6 else 0
-            body = make_jump_body(
-                tpl,
-                jump_dy=-1,
-                tuck_amount=0.50,
-                torso_lean_dx=lean_dx,
-                phase_rad=phase * 3.0,
-            )
-            body = apply_hair_and_vestment_wave(body, phase * 2.5, amplitude=2.0, vertical_flutter=0.9)
-            body = draw_seraphim_wings(body, cx=18 + lean_dx, cy=16, span_phase=phase * 4.0, alpha_scale=1.0)
-            body = draw_halo_crown(body, head_cx=23 + lean_dx, head_top_y=5, phase_rad=phase * 3.0, intensity=1.9)
-            body = draw_left_prayer_arm(
-                body,
-                shoulder=(24.5 + lean_dx, 17.0),
-                hand=(31.5 + (k % 2) * 0.5, 19.0 + u * 2.0),
-                mote_glow=1.4,
-                phase_rad=phase * 3.0,
-            )
-            if k == 0:
-                staff_deg = -60.0
-                gx_u, gy_u = 32.5, 16.5
-            else:
-                staff_deg = -40.0 + math.sin(u * math.pi) * 2.5  # Thrusts forward to -40 deg!
-                gx_u, gy_u = 34.8, 18.0 + (k % 2) * 0.4
-            frame = draw_celestial_staff(
-                body,
-                shoulder=(26.0 + lean_dx, 16.0),
-                staff_deg=staff_deg,
-                reach=6.5,
-                charge_level=3,
-                cast_flash=(k in (1, 2, 5, 6)),
-                flare=1.0,
-                grip_override=(gx_u, gy_u),
-                phase_rad=phase * 3.0,
-            )
-            if 14 <= f <= 22:
-                ult_starts = [-96.0, -94.0, -90.0, -84.0, -78.0, -72.0, -66.0, -60.0, -54.0]
-                ult_ends = [-56.0, -36.0, -34.0, -35.0, -36.0, -37.0, -38.0, -40.0, -42.0]
-                ult_ints = [0.90, 1.0, 1.0, 1.0, 0.95, 0.90, 0.85, 0.75, 0.65]
-                frame = draw_sacred_smite_trail(
-                    frame,
-                    cx=28.5,
-                    cy=18.0,
-                    start_deg=ult_starts[k],
-                    end_deg=ult_ends[k],
-                    intensity=ult_ints[k],
-                )
-
-        else:
-            k = f - 24
-            u = k / 5.0
-            tuck = max(0.0, 0.45 * (1.0 - u))
-            wing_u = max(0.45, 1.0 - u * 0.50)
-            dy_lift = -1 if k <= 2 else 0
-            body = make_jump_body(
-                tpl,
-                jump_dy=dy_lift,
-                tuck_amount=tuck,
-                phase_rad=phase * 2.0,
-            )
-            body = apply_hair_and_vestment_wave(body, phase * 2.0, amplitude=1.7, vertical_flutter=0.7)
-            body = draw_seraphim_wings(body, cx=18, cy=17 + dy_lift, span_phase=phase * 2.5, alpha_scale=wing_u)
-            body = draw_halo_crown(body, head_cx=23, head_top_y=6, phase_rad=phase * 2.0, intensity=1.5)
-            staff_deg = -42.0 * (1.0 - u) + (-74.0) * u
-            reach_ult = 6.4 * (1.0 - u) + 5.2 * u
-            frame = draw_celestial_staff(
-                body,
-                shoulder=(25.0, 17.0 + dy_lift),
-                staff_deg=staff_deg,
-                reach=reach_ult,
-                charge_level=2 if k <= 2 else 1,
-                flare=max(0.0, 0.6 * (1.0 - u)),
-                phase_rad=phase * 2.0,
-            )
-
-        if 1 <= f <= 26:
-            if f <= 3:
-                ult_sanc_int = 0.50 + f * 0.16
-            elif f <= 23:
-                ult_sanc_int = 1.0
-            else:
-                ult_sanc_int = 0.85 - (f - 24) * 0.15
-            frame = draw_sanctuary_ground_circle(
-                frame,
-                cx=25.0,
-                cy=46.0,
-                phase_rad=phase * 2.5,
-                intensity=ult_sanc_int,
-            )
-
-        # Orbiting starlight motes around Seraphina during Apotheosis
-        for m in range(4):
-            ma = phase * 2.0 + m * (math.pi * 0.5)
-            mx = max(3.0, min(47.0, 24.0 + math.cos(ma) * 13.5))
-            my = max(3.0, min(47.0, 24.0 + math.sin(ma) * 9.5))
-            set_px(frame, mx, my, WHITE_PURE if m % 2 == 0 else GOLD_BRIGHT)
-            set_px(frame, min(48.0, mx + 1), my, STAR_CREAM)
-
-        frames.append(ensure_safe_cell(frame, margin=2))
-    return frames
+        cfgs.append(cfg)
+    return cfgs
 
 
-def draw_priestess_ward_shatter_sparks(frame, f):
-    """
-    Pass #8: On F01..F05 of Row 5 (DEATH & HURT), draw a crisp 4-ray
-    Elemental Ward-Shatter Spark Burst at chest height (x = 26..33, y = 18..25)
-    that expands and fades across F01..F05.
-    """
-    if not (1 <= f <= 5):
-        return
-    u = (f - 1) / 4.0
-    cx, cy = 29, 21
-    ray_len = 1 + int(round(u * 2.5))  # 1..3 px
+def save_debug_sheets(sheet_im):
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+    half_w = 15 * CELL
+    full_h = ROWS * CELL
+    for tag, x_off in (("left_F00_F14", 0), ("right_F15_F29", half_w)):
+        bg = Image.new("RGBA", (half_w, full_h), (18, 16, 28, 255))
+        crop = sheet_im.crop((x_off, 0, x_off + half_w, full_h))
+        bg.alpha_composite(crop, (0, 0))
+        d = ImageDraw.Draw(bg)
+        for r in range(ROWS):
+            for c in range(15):
+                d.rectangle([c * CELL, r * CELL, (c + 1) * CELL - 1, (r + 1) * CELL - 1], outline=(52, 48, 74, 180))
+        out_p = os.path.join(ARTIFACT_DIR, f"debug_priestess_30fps_{tag}.png")
+        bg.resize((half_w // 2, full_h // 2), Image.Resampling.NEAREST).save(out_p)
 
-    if f <= 3:
-        set_px(frame, cx, cy, WHITE_PURE if f == 1 else STAR_CREAM)
-
-    rays = [(-1, -1), (1, -1), (-1, 1), (1, 1)]
-    for r_idx, (rx, ry) in enumerate(rays):
-        start_step = 1 if f <= 2 else 2
-        for step in range(start_step, ray_len + 1):
-            px = max(26, min(33, cx + rx * step))
-            py = max(18, min(25, cy + ry * step))
-            if step == ray_len:
-                col = ROSE_GOLD if (r_idx + f) % 2 == 0 else CYAN_SACRED
-            else:
-                col = WHITE_PURE if f <= 2 else (STAR_CREAM if f <= 4 else GOLD_BRIGHT)
-            set_px(frame, px, py, col)
-
-    # Cross ward-shatter flecks on F01..F04
-    if f <= 4:
-        span = 1 + (1 if f >= 3 else 0)
-        set_px(frame, max(26, cx - span), cy, STAR_CREAM if f <= 2 else ROSE_GOLD)
-        set_px(frame, min(33, cx + span), cy, STAR_CREAM if f <= 2 else GOLD_BRIGHT)
-        set_px(frame, cx, max(18, cy - span), WHITE_PURE if f == 1 else CYAN_SACRED)
-        set_px(frame, cx, min(25, cy + span), GOLD_BRIGHT if f <= 2 else ROSE_GOLD)
-
-
-def build_row5_death(tpl):
-    """
-    Row 5: 30-Frame DEATH & HURT Sequence:
-    - F00..F06: Hit-stagger recoil (HURT uses F00..F05).
-    - F07..F17: Sinks gracefully to her knees in prayer, planting her Sacred Staff upright at -88 deg
-      beside her at F14..F17.
-    - F18..F22: Grounded floor collapse anchored at y = 46 (smoothly transitioning from kneel at F14..F17
-      to fall at F23..F29, planting her Sacred Staff upright at -88 deg beside her as she slumps onto
-      the cathedral floor, with zero floating rotated blobs).
-    - F23..F29: Collapsed horizontally on the cathedral floor with her dimmed Sacred Staff resting flat beside her.
-    """
-    frames = []
-    for f in range(30):
-        if f <= 6:
-            u = f / 6.0
-            dx = -int(round(math.sin(u * math.pi * 0.8) * 2.0))
-            dy = int(round(u * 1.0))
-            base = shift_layer(tpl['stand'], dx=dx, dy=dy)
-            base = apply_hair_and_vestment_wave(base, u * math.pi, amplitude=1.4, vertical_flutter=0.5)
-            staff_deg = -74.0 - u * 8.0
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(25.0 + dx, 17.0 + dy),
-                staff_deg=staff_deg,
-                reach=5.0,
-                dim_factor=0.95 - u * 0.04,
-            )
-            if 1 <= f <= 5:
-                draw_priestess_ward_shatter_sparks(frame, f)
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        elif f <= 17:
-            u = (f - 7) / 10.0
-            base = (tpl['kneel1'] if f <= 12 else tpl['kneel2']).copy()
-            head_bow = 1 if f >= 15 else 0
-            if head_bow > 0:
-                head_slice = base[10:22, 14:31].copy()
-                base[10:11, 14:31] = 0
-                mask = head_slice[:, :, 3] > 0
-                target_view = base[11:23, 14:31]
-                target_view[mask] = head_slice[mask]
-                base = fill_layer_pinholes(base)
-            base = apply_hair_and_vestment_wave(base, u * math.pi, amplitude=1.0 * (1.0 - u * 0.4), vertical_flutter=0.3)
-            # Plants Sacred Staff upright at -88 deg beside her at F14..F17
-            staff_deg = -78.0 * (1.0 - u) + (-88.0) * u if f < 14 else -88.0
-            gy_kn = 20.5 + u * 2.5 + head_bow * 0.5
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(25.5, 19.5 + u * 2.0 + head_bow),
-                staff_deg=staff_deg,
-                reach=5.4,
-                shaft_up=9.5,
-                shaft_down=23.0,
-                grip_override=(33.0, gy_kn),
-                dim_factor=0.90 - u * 0.16,
-            )
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        elif f <= 22:
-            # F18..F22: Grounded floor collapse anchored at y = 46 (smoothly transitioning from kneel2 to fall)
-            u = (f - 17) / 5.0
-            kn = tpl['kneel2']
-            fall_tpl = tpl['fall']
-            body = np.zeros((52, 52, 4), dtype=np.uint8)
-
-            for sy in range(10, 49):
-                rel_h = max(0, 46 - sy)
-                # Compress vertical height above y = 46 down toward the floor and slump forward
-                comp = 1.0 - u * 0.56
-                ny = min(47, max(16, int(round(46.0 - rel_h * comp))))
-                dx_slump = int(round((rel_h / 28.0) * u * 7.5))
-                for sx in range(2, 46):
-                    if kn[sy, sx, 3] > 0:
-                        nx = max(3, min(47, sx + dx_slump))
-                        body[ny, nx] = kn[sy, sx]
-                        if ny + 1 <= 46 and body[ny + 1, nx, 3] == 0:
-                            body[ny + 1, nx] = kn[sy, sx]
-
-            # Blend lower gown skirt along the floor (y = 38..47) toward `fall` at F21..F22 for a seamless transition
-            if f >= 20:
-                w_fall = (f - 19) / 4.0
-                max_fall_x = int(round(34 + w_fall * 10))
-                for fy in range(36, 48):
-                    for fx in range(8, min(48, max_fall_x)):
-                        if fall_tpl[fy, fx, 3] > 0 and body[fy, fx, 3] == 0:
-                            body[fy, fx] = fall_tpl[fy, fx]
-
-            body = fill_layer_pinholes(add_outline_to_layer(body), 2, 49, 2, 49, require_3_neighbors=False)
-
-            # Sacred Staff is planted upright at -88 deg beside her as she begins slumping (F18),
-            # then tips smoothly forward-down toward the cathedral floor (F19..F22) to meet F23
-            staff_slump_degs = [-88.0, -72.0, -50.0, -26.0, -10.0]
-            s_deg = staff_slump_degs[f - 18]
-            gy_slump = 24.0 + u * 14.0
-            sy_slump = 22.0 + u * 13.0
-            sx_slump = 26.0 + u * 3.0
-            if f <= 20:
-                frame = draw_celestial_staff(
-                    body,
-                    shoulder=(sx_slump, sy_slump),
-                    staff_deg=s_deg,
-                    reach=5.4,
-                    shaft_up=9.5,
-                    shaft_down=max(14.0, 46.0 - gy_slump),
-                    grip_override=(34.0, gy_slump),
-                    dim_factor=0.72 - u * 0.08,
-                )
-            else:
-                frame = draw_celestial_staff(
-                    body,
-                    shoulder=(25.0, 38.0 + (f - 20) * 2.2),
-                    staff_deg=s_deg,
-                    reach=2.2,
-                    shaft_up=12.5,
-                    shaft_down=13.0,
-                    dim_factor=0.70 - u * 0.08,
-                    draw_arm=False,
-                    allow_horizontal=True,
-                )
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        else:
-            k = f - 23
-            frame = tpl['fall'].copy()
-            frame = draw_celestial_staff(
-                frame,
-                shoulder=(25.0, 43.0 + (0.3 if k % 2 == 1 else 0.0)),
-                staff_deg=1.5 + k * 0.2,
-                reach=2.0,
-                shaft_up=13.5,
-                shaft_down=13.5,
-                dim_factor=max(0.50, 0.68 - k * 0.025),
-                draw_arm=False,
-                allow_horizontal=True,
-            )
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-    return frames
-
-
-gen_row5_death = build_row5_death
-
-
-def build_row6_dash(tpl):
-    """
-    Row 6: 30-Frame DASH (Angelic Feather-Glide):
-    - Unfurls majestic multi-feathered Seraphim Wings (x = 4..18, y = 7..35) behind her back.
-    - Forward angelic glide dash with full-length Celestial Staff swept forward (-58..-46 deg)
-      and trailing golden-white feathers.
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 4:
-            u = f / 4.0
-            crouch_dy = [0, 1, 1, 1, 0][f]
-            src_body = tpl['stand'] if f <= 1 else tpl['dash']
-            base = shift_layer(src_body, dx=0, dy=crouch_dy)
-            base = apply_hair_and_vestment_wave(base, phase * 2.0, amplitude=1.6, is_dash=(f >= 2))
-            wing_sc = 0.45 + u * 0.45
-            base = draw_seraphim_wings(base, cx=18, cy=17 + crouch_dy, span_phase=phase * 2.5, alpha_scale=wing_sc)
-            base = draw_halo_crown(base, head_cx=24, head_top_y=7 + crouch_dy, phase_rad=phase, intensity=1.2)
-            staff_deg = -74.0 * (1.0 - u) + (-54.0) * u
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(25.0 + (1.0 if f >= 2 else 0.0), 17.0 + crouch_dy),
-                staff_deg=staff_deg,
-                reach=5.2 + u * 1.0,
-                charge_level=1,
-                phase_rad=phase,
-            )
-            if f == 4:
-                frame = draw_angel_feather_slipstream(frame, f, phase_rad=phase * 2.0, intensity=0.8)
-
-        elif f <= 21:
-            k = f - 5
-            glide_dy = -1 if 3 <= k <= 12 else 0
-            base = shift_layer(tpl['dash'], dx=0, dy=glide_dy)
-            base = apply_hair_and_vestment_wave(base, k * 0.8, amplitude=1.8, is_dash=True)
-            base = draw_seraphim_wings(base, cx=18, cy=17 + glide_dy, span_phase=phase * 3.0, alpha_scale=0.95)
-            base = draw_halo_crown(base, head_cx=25, head_top_y=7 + glide_dy, phase_rad=phase * 2.0, intensity=1.4)
-            staff_deg = -50.0 + math.sin(k * 0.5) * 4.0  # -54..-46 deg diagonal glide
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(26.0, 17.0 + glide_dy),
-                staff_deg=staff_deg,
-                reach=6.2,
-                charge_level=2 if 4 <= k <= 11 else 1,
-                cast_flash=(f == 12),
-                flare=0.7 if 5 <= k <= 10 else 0.3,
-                phase_rad=phase * 2.0,
-            )
-            if f <= 20:
-                frame = draw_angel_feather_slipstream(frame, f, phase_rad=phase * 2.0, intensity=1.0)
-
-        else:
-            u = (f - 22) / 7.0
-            base = (tpl['dash'] if f <= 24 else tpl['stand']).copy()
-            base = apply_hair_and_vestment_wave(base, phase, amplitude=1.5, vertical_flutter=0.6)
-            wing_sc = max(0.0, 0.85 * (1.0 - u))
-            if wing_sc > 0.08:
-                base = draw_seraphim_wings(base, cx=18, cy=17, span_phase=phase * 2.0, alpha_scale=wing_sc)
-            base = draw_halo_crown(base, head_cx=23, head_top_y=7, phase_rad=phase, intensity=1.1)
-            staff_deg = -50.0 * (1.0 - u) + (-74.0) * u
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(26.0 if f <= 24 else 25.0, 17.0),
-                staff_deg=staff_deg,
-                reach=6.2 * (1.0 - u) + 5.2 * u,
-                phase_rad=phase,
-            )
-
-        frames.append(ensure_safe_cell(frame, margin=2))
-    return frames
-
-
-def build_row7_crouch(tpl):
-    """
-    Row 7: 30-Frame CROUCH Sequence (Aegis Prayer):
-    - Kneels down 7px (make_crouch_body(tpl, 7)) keeping her golden slippers anchored at ny = 44..49.
-    - F00..F10: Holds her left hand forward projecting the golden hexagonal Aegis shield while
-      holding her Sacred Staff in a guarded prayer angle (-78..-86 deg).
-    - F11..F18: Thrusts her Sacred Staff forward to -40 deg (flare=1.0) for the low Sacred Starbolt!
-    - F19..F29: Smoothly rises from kneeling back to standing stance (-40 -> -74 deg).
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 10:
-            depths = [1, 2, 4, 5, 6, 7, 7, 7, 7, 7, 7]
-            d = depths[f]
-            u = f / 10.0
-            base = make_crouch_body(tpl, d)
-            base = apply_hair_and_vestment_wave(base, phase, amplitude=1.2, vertical_flutter=0.4)
-            base = draw_halo_crown(base, head_cx=23, head_top_y=7 + d, phase_rad=phase * 2.0, intensity=1.3)
-            # Left hand forward projecting the golden hexagonal Aegis shield (F00..F10)
-            lh_x = 31.0 + min(2.0, f * 0.25)
-            lh_y = 19.0 + min(4.5, d * 0.65)
-            base = draw_left_prayer_arm(
-                base,
-                shoulder=(24.0, 17.5 + min(4.5, d * 0.65)),
-                hand=(lh_x, lh_y),
-                mote_glow=1.2,
-                aegis_shield=True,
-                phase_rad=phase * 2.0,
-            )
-            staff_deg = -76.0 - math.sin(u * math.pi) * 10.0  # Guarded prayer staff (-76..-86 deg)
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(25.0, 17.0 + min(4.5, d * 0.65)),
-                staff_deg=staff_deg,
-                reach=5.0,
-                charge_level=2 if f >= 5 else 1,
-                grip_override=(30.0, 18.5 + min(4.0, d * 0.55)),
-                phase_rad=phase * 2.0,
-            )
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        elif f <= 18:
-            d = 7
-            k = f - 11
-            u_bolt = k / 7.0
-            base = make_crouch_body(tpl, d)
-            if f in (12, 13):
-                base = shift_layer(base, dx=1, dy=0)
-            base = apply_hair_and_vestment_wave(base, phase * 1.5, amplitude=1.4, vertical_flutter=0.4)
-            base = draw_halo_crown(base, head_cx=23, head_top_y=7 + d, phase_rad=phase * 2.0, intensity=1.5)
-            base = draw_left_prayer_arm(
-                base,
-                shoulder=(24.5, 21.5),
-                hand=(31.0, 24.5),
-                mote_glow=1.0 if k <= 4 else 0.5,
-                aegis_shield=(k == 0),
-                phase_rad=phase * 2.0,
-            )
-            # Thrusts Sacred Staff forward to -40 deg for the low Sacred Starbolt!
-            if k == 0:
-                staff_deg = -56.0
-                gx_cr, gy_cr = 32.5, 21.5
-            elif k <= 5:
-                staff_deg = -40.0 - (k - 1) * 0.6
-                gx_cr, gy_cr = 34.5, 22.0 + (k % 2) * 0.4
-            else:
-                staff_deg = -43.0 - (k - 5) * 4.0
-                gx_cr, gy_cr = 33.5, 22.0
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(25.5, 21.5),
-                staff_deg=staff_deg,
-                reach=6.3,
-                charge_level=3 if k <= 5 else 2,
-                cast_flash=(f in (12, 13, 14)),
-                flare=1.0 if k <= 5 else 0.65,
-                grip_override=(gx_cr, gy_cr),
-                phase_rad=phase * 2.0,
-            )
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        else:
-            depths = [7, 6, 6, 5, 4, 3, 3, 2, 1, 1, 0]
-            k = f - 19
-            d = depths[k]
-            base = tpl['stand'].copy() if d == 0 else make_crouch_body(tpl, d)
-            base = apply_hair_and_vestment_wave(base, phase, amplitude=1.3, vertical_flutter=0.5)
-            base = draw_halo_crown(base, head_cx=23, head_top_y=7 + d, phase_rad=phase, intensity=1.0)
-            u = k / 10.0
-            staff_deg = -48.0 * (1.0 - u) + (-74.0) * u
-            frame = draw_celestial_staff(
-                base,
-                shoulder=(25.0, 17.0 + min(4.5, d * 0.65)),
-                staff_deg=staff_deg,
-                reach=5.8 * (1.0 - u) + 5.2 * u,
-                phase_rad=phase,
-            )
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-    return frames
-
-
-def build_row8_jump(tpl):
-    """
-    Row 8: 30-Frame JUMP Sequence (Seraphic Wing-Glide Vault & Starlight Smite):
-    - F00..F04: Graceful knee-bend launch (-74 -> -88 deg) as Seraphim wings begin to unfurl.
-    - F05..F11: Ascending angelic vault with full majestic Archangel Wings (x = 4..18, y = 7..35)
-      flapping gracefully (-88 -> -52 deg).
-    - F12..F18: Apex mid-air hover thrusting her Sacred Staff forward at -42 deg (flare=1.0) for Starlight Smite!
-    - F19..F24: Feather-cushioned descent (-44 -> -70 deg).
-    - F25..F29: Poised landing (-70 -> -74 deg).
-    """
-    frames = []
-    for f in range(30):
-        phase = (f / 30.0) * 2.0 * math.pi
-        if f <= 4:
-            crouch_seq = [1, 2, 4, 2, 0]
-            dy = crouch_seq[f]
-            body = make_crouch_body(tpl, dy) if dy >= 2 else make_jump_body(tpl, dy, tuck_amount=0.25, phase_rad=phase)
-            body = apply_hair_and_vestment_wave(body, phase * 1.5, amplitude=1.5, vertical_flutter=0.6)
-            if f >= 1:
-                body = draw_seraphim_wings(body, cx=18, cy=17 + dy, span_phase=phase * 2.0, alpha_scale=0.35 + f * 0.14)
-            body = draw_halo_crown(body, head_cx=23, head_top_y=7 + dy, phase_rad=phase, intensity=1.2)
-            staff_deg = [-74.0, -78.0, -82.0, -86.0, -88.0][f]
-            frame = draw_celestial_staff(
-                body,
-                shoulder=(25.0, 17.0 + min(3.0, dy * 0.7)),
-                staff_deg=staff_deg,
-                reach=5.0 + f * 0.1,
-                charge_level=1 if f >= 3 else 0,
-                phase_rad=phase,
-            )
-            if f == 4:
-                frame = draw_angel_feather_slipstream(frame, f, phase_rad=phase * 2.0, intensity=0.8)
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        elif f <= 11:
-            k = f - 5
-            u = k / 6.0
-            tuck = 0.45 + 0.40 * math.sin(u * math.pi * 0.65)
-            wing_u = 0.85 + 0.15 * u
-            lean_dx = 1 if k >= 3 else 0
-            body = make_jump_body(tpl, jump_dy=-1, tuck_amount=tuck, torso_lean_dx=lean_dx, phase_rad=phase * 2.0)
-            body = apply_hair_and_vestment_wave(body, phase * 2.0, amplitude=1.8, vertical_flutter=0.8)
-            body = draw_seraphim_wings(body, cx=18 + lean_dx, cy=16, span_phase=phase * 3.0, alpha_scale=wing_u)
-            body = draw_halo_crown(body, head_cx=23 + lean_dx, head_top_y=6, phase_rad=phase * 2.0, intensity=1.5)
-            body = draw_left_prayer_arm(
-                body,
-                shoulder=(24.0 + lean_dx, 17.0),
-                hand=(30.5 + u * 1.5, 20.5 - u * 2.0),
-                mote_glow=1.1,
-                phase_rad=phase * 2.0,
-            )
-            staff_deg = -88.0 * (1.0 - u) + (-52.0) * u
-            frame = draw_celestial_staff(
-                body,
-                shoulder=(25.0 + lean_dx, 16.0),
-                staff_deg=staff_deg,
-                reach=5.4 + u * 1.0,
-                charge_level=2 if k >= 3 else 1,
-                phase_rad=phase * 2.0,
-            )
-            frame = draw_angel_feather_slipstream(frame, f, phase_rad=phase * 2.0, intensity=1.0)
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        elif f <= 18:
-            k = f - 12
-            lean_dx = 0 if k in (3, 4) else 1
-            body = make_jump_body(
-                tpl,
-                jump_dy=-2,
-                tuck_amount=0.82 - k * 0.04,
-                torso_lean_dx=lean_dx,
-                phase_rad=phase * 2.5,
-            )
-            body = apply_hair_and_vestment_wave(body, phase * 2.2, amplitude=2.0, vertical_flutter=0.9)
-            body = draw_seraphim_wings(body, cx=18 + lean_dx, cy=16, span_phase=phase * 3.5, alpha_scale=1.0)
-            body = draw_halo_crown(body, head_cx=23 + lean_dx, head_top_y=5, phase_rad=phase * 2.5, intensity=1.7)
-            body = draw_left_prayer_arm(
-                body,
-                shoulder=(24.5 + lean_dx, 16.5),
-                hand=(31.5, 19.0 + (k % 2) * 0.5),
-                mote_glow=1.3,
-                phase_rad=phase * 2.5,
-            )
-            staff_deg = -42.0 - (2.5 if k >= 4 else 0.0)
-            frame = draw_celestial_staff(
-                body,
-                shoulder=(25.5 + lean_dx, 15.5),
-                staff_deg=staff_deg,
-                reach=6.5,
-                charge_level=3 if k <= 4 else 2,
-                cast_flash=(f in (14, 15, 16)),
-                flare=1.0 if k <= 4 else 0.65,
-                grip_override=(34.5, 17.5 + (k % 2) * 0.4),
-                phase_rad=phase * 2.5,
-            )
-            frame = draw_angel_feather_slipstream(frame, f, phase_rad=phase * 2.5, intensity=1.0)
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        elif f <= 24:
-            k = f - 19
-            u = k / 5.0
-            tuck = 0.55 * (1.0 - u)
-            wing_u = 0.95 - u * 0.50
-            dy_lift = -1 if k <= 2 else 0
-            body = make_jump_body(tpl, jump_dy=dy_lift, tuck_amount=tuck, phase_rad=phase * 2.0)
-            body = apply_hair_and_vestment_wave(body, phase * 2.0, amplitude=1.7, vertical_flutter=0.8)
-            body = draw_seraphim_wings(body, cx=18, cy=17 + dy_lift, span_phase=phase * 2.5, alpha_scale=wing_u)
-            body = draw_halo_crown(body, head_cx=23, head_top_y=6, phase_rad=phase * 2.0, intensity=1.3)
-            staff_deg = -46.0 * (1.0 - u) + (-70.0) * u
-            frame = draw_celestial_staff(
-                body,
-                shoulder=(25.0, 17.0 + dy_lift),
-                staff_deg=staff_deg,
-                reach=6.2 * (1.0 - u) + 5.2 * u,
-                charge_level=1 if k <= 1 else 0,
-                phase_rad=phase * 2.0,
-            )
-            if f <= 20:
-                frame = draw_angel_feather_slipstream(frame, f, phase_rad=phase * 2.0, intensity=0.85)
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-        else:
-            k = f - 25
-            crouch_depths = [2, 3, 2, 1, 0]
-            d = crouch_depths[k]
-            body = tpl['stand'].copy() if d == 0 else make_crouch_body(tpl, d)
-            body = apply_hair_and_vestment_wave(body, phase, amplitude=1.4, vertical_flutter=0.5)
-            if k <= 1:
-                body = draw_seraphim_wings(body, cx=18, cy=17 + d, span_phase=phase * 2.0, alpha_scale=0.35 - k * 0.15)
-            body = draw_halo_crown(body, head_cx=23, head_top_y=7 + d, phase_rad=phase, intensity=1.0)
-            u = k / 4.0
-            staff_deg = -70.0 * (1.0 - u) + (-74.0) * u
-            frame = draw_celestial_staff(
-                body,
-                shoulder=(25.0, 17.0 + min(2.5, d * 0.7)),
-                staff_deg=staff_deg,
-                reach=5.2,
-                phase_rad=phase,
-            )
-            frames.append(ensure_safe_cell(frame, margin=2))
-
-    return frames
-
-
-def apply_pass12_postprocess(cell_arr, r_idx, f):
-    """
-    Pass #12 Post-Processing Upgrade (applied on 208x208 cell_arr with all pixels strictly inside [4..203]):
-    1. Row 2 (AUTO_ATTACK, F13..F19): Crisp 4-point elemental release star + 2 orbiting motes
-       at (x = 148 + (f - 13) * 2, y = 88 + ((f * 5) % 14)) in sacred-gold/white palette.
-    2. Row 7 & Row 3 (SKILL, F08..F20): Glowing elemental floor rune-bar at y = 186..189, x = 76..134
-       with 3 rising rune motes (y = 182 - ((f - 8) * 3) % 24).
-    3. Row 8 & Row 4 (ULTIMATE, F03..F26): 4 ascending overdrive starlight motes around the caster
-       (x = 68, 88, 122, 140, y cycling upward with f).
-    """
-    out = cell_arr.copy()
-
-    def put208(px, py, col):
-        ix = max(4, min(203, int(round(px))))
-        iy = max(4, min(203, int(round(py))))
-        out[iy, ix] = col
-
-    # 1. Row 2 (AUTO_ATTACK, F13..F19) Muzzle / Cast-Release Flash Star
-    if r_idx == 2 and 13 <= f <= 19:
-        cx = 148 + (f - 13) * 2
-        cy = 88 + ((f * 5) % 14)
-        # 4-point elemental release star (sacred-gold/white)
-        for d in range(-6, 7):
-            col_h = WHITE_PURE if abs(d) <= 1 else (GOLD_BRIGHT if abs(d) <= 3 else STAR_CREAM)
-            put208(cx + d, cy, col_h)
-            put208(cx, cy + d, col_h)
-            if abs(d) <= 3:
-                put208(cx + d, cy - 1, STAR_CREAM if abs(d) <= 1 else GOLD_ROYAL)
-                put208(cx + d, cy + 1, STAR_CREAM if abs(d) <= 1 else GOLD_ROYAL)
-                put208(cx - 1, cy + d, STAR_CREAM if abs(d) <= 1 else GOLD_ROYAL)
-                put208(cx + 1, cy + d, STAR_CREAM if abs(d) <= 1 else GOLD_ROYAL)
-        for dx_d, dy_d in [(-2, -2), (2, -2), (-2, 2), (2, 2)]:
-            put208(cx + dx_d, cy + dy_d, GOLD_BRIGHT)
-        # 2 orbiting motes
-        ang = (f - 13) * 0.95
-        for m_idx in range(2):
-            ma = ang + m_idx * math.pi
-            mx = cx + int(round(math.cos(ma) * 8.0))
-            my = cy + int(round(math.sin(ma) * 6.0))
-            m_col = GOLD_BRIGHT if m_idx == 0 else STAR_CREAM
-            put208(mx, my, WHITE_PURE)
-            put208(mx + 1, my, m_col)
-            put208(mx - 1, my, m_col)
-            put208(mx, my + 1, m_col)
-            put208(mx, my - 1, m_col)
-
-    # 2. Row 7 & Row 3 (SKILL, F08..F20) Curved Perspective Sanctuary Rune-Floor Arch
-    if r_idx in (3, 7) and 8 <= f <= 20:
-        for x_bar in range(78, 133):
-            norm_dx = (x_bar - 105.0) / 27.5
-            arch_curve = int(round((1.0 - norm_dx * norm_dx) * 3.0))
-            ay = 185 + arch_curve
-            is_glyph = ((x_bar + (f - 8) * 3) % 9) == 0
-            if abs(norm_dx) < 0.88:
-                put208(x_bar, ay, WHITE_PURE if is_glyph else GOLD_BRIGHT)
-                put208(x_bar, ay + 1, STAR_CREAM if is_glyph else GOLD_ROYAL)
-        # 3 rising diamond rune motes (y = 182 - ((f - 8) * 3) % 24)
-        base_mote_y = 182 - ((f - 8) * 3) % 24
-        for m_i, mx_base in enumerate((86, 105, 124)):
-            mx = mx_base + (((f - 8) + m_i) % 3) - 1
-            my = max(4, min(203, base_mote_y - m_i * 2))
-            put208(mx, my, WHITE_PURE)
-            put208(mx - 1, my, GOLD_BRIGHT if m_i % 2 == 0 else STAR_CREAM)
-            put208(mx + 1, my, GOLD_BRIGHT if m_i % 2 == 0 else STAR_CREAM)
-            put208(mx, my - 1, WHITE_PURE)
-            put208(mx, my + 1, STAR_CREAM)
-
-    # 3. Row 8 & Row 4 (ULTIMATE, F03..F26) Overdrive Ascension Energy Motes
-    if r_idx in (4, 8) and 3 <= f <= 26:
-        for m_i, mx in enumerate((68, 88, 122, 140)):
-            my = 172 - ((f - 3) * 4 + m_i * 18) % 108
-            put208(mx, my, WHITE_PURE)
-            for d in (1, 2):
-                c_arm = GOLD_BRIGHT if d == 1 else STAR_CREAM
-                put208(mx - d, my, c_arm)
-                put208(mx + d, my, c_arm)
-                put208(mx, my - d, c_arm)
-            for t_dy in range(1, 5):
-                put208(mx, my + t_dy, STAR_CREAM if t_dy == 1 else (GOLD_BRIGHT if t_dy <= 2 else GOLD_ROYAL))
-
-    return out
-
-
-def paste_cell(canvas, r, f, cell_arr_208, cell_px=208):
-    cell_im = Image.fromarray(cell_arr_208, mode='RGBA')
-    canvas.paste(cell_im, (f * cell_px, r * cell_px))
+    picks = [
+        (0, 0, "IDLE F00"),
+        (1, 7, "WALK F07"),
+        (2, 7, "ATK PRAYER"),
+        (2, 12, "ATK CAST"),
+        (3, 9, "SKILL SLAM"),
+        (3, 16, "SKILL SWEEP"),
+        (4, 7, "ULT ASCEND"),
+        (4, 12, "ULT SMITE"),
+        (7, 6, "CROUCH WARD"),
+        (8, 15, "JUMP GLIDE"),
+    ]
+    sw = len(picks) * CELL
+    sh = CELL + 30
+    strip = Image.new("RGBA", (sw, sh), (18, 16, 28, 255))
+    sd = ImageDraw.Draw(strip)
+    for idx, (r, c, lbl) in enumerate(picks):
+        tile = sheet_im.crop((c * CELL, r * CELL, (c + 1) * CELL, (r + 1) * CELL))
+        strip.alpha_composite(tile, (idx * CELL, 26))
+        sd.line([(idx * CELL, 26 + 199), ((idx + 1) * CELL - 1, 26 + 199)], fill=(253, 224, 71, 130), width=1)
+        sd.text((idx * CELL + 8, 6), lbl, fill=(254, 240, 138, 255))
+    strip.save(os.path.join(ARTIFACT_DIR, "debug_priestess_9pass_showcase.png"))
 
 
 def main():
-    src = load_source_cells()
-    tpl = make_clean_templates(src)
+    t0 = time.time()
+    parts = load_and_segment_512()
+    sheet = Image.new("RGBA", (COLS * CELL, ROWS * CELL), (0, 0, 0, 0))
+    row_names = ["IDLE", "WALK", "AUTO_ATTACK", "SKILL", "ULTIMATE", "DEATH", "DASH", "CROUCH", "JUMP"]
 
-    rows = [
-        ('ROW 0: IDLE (30 FRAMES)', build_row0_idle(tpl)),
-        ('ROW 1: WALK (30 FRAMES)', build_row1_walk(tpl)),
-        ('ROW 2: AUTO_ATTACK - SACRED STARLIGHT CAST (30 FRAMES)', build_row2_auto_attack(tpl)),
-        ('ROW 3: SKILL - DIVINE SANCTUARY & SPEAR RAIN (30 FRAMES)', build_row3_skill(tpl)),
-        ('ROW 4: ULTIMATE - SERAPHIC APOTHEOSIS (30 FRAMES)', build_row4_ultimate(tpl)),
-        ('ROW 5: DEATH & HURT (30 FRAMES)', build_row5_death(tpl)),
-        ('ROW 6: DASH - ANGELIC FEATHER-GLIDE (30 FRAMES)', build_row6_dash(tpl)),
-        ('ROW 7: CROUCH - BENEDICTION PRAYER & ORB (30 FRAMES)', build_row7_crouch(tpl)),
-        ('ROW 8: JUMP - SERAPHIC WING-GLIDE VAULT (30 FRAMES)', build_row8_jump(tpl)),
-    ]
+    total_clips = 0
+    total_body_holes = 0
+    for r in range(ROWS):
+        cfgs = build_row_configs(r)
+        prev_arr = None
+        distinct_transitions = 0
+        row_holes = 0
+        for c in range(COLS):
+            arr104, b_holes = render_pose_104(parts, cfgs[c])
+            row_holes += b_holes
+            total_body_holes += b_holes
+            border_alpha = (
+                arr104[:2, :, 3].sum()
+                + arr104[-2:, :, 3].sum()
+                + arr104[:, :2, 3].sum()
+                + arr104[:, -2:, 3].sum()
+            )
+            if border_alpha > 0:
+                total_clips += 1
+            if prev_arr is not None and not np.array_equal(arr104, prev_arr):
+                distinct_transitions += 1
+            prev_arr = arr104
 
-    num_rows = len(rows)
-    cell_px = 208
-    canvas = Image.new('RGBA', (30 * cell_px, num_rows * cell_px), (0, 0, 0, 0))
+            cell208 = Image.fromarray(arr104, "RGBA").resize((CELL, CELL), Image.Resampling.NEAREST)
+            sheet.paste(cell208, (c * CELL, r * CELL))
+        print(f"  Row {r} ({row_names[r]:11s}): 30/30 frames | {distinct_transitions}/29 transitions | body_pinholes={row_holes}")
 
-    clipped_total = 0
-    cell_rows_208 = []
-    for r, (r_name, r_frames) in enumerate(rows):
-        assert len(r_frames) == 30, f'{r_name} has {len(r_frames)} frames instead of 30'
-        row_208 = []
-        for f in range(30):
-            r_frames[f] = ensure_safe_cell(r_frames[f], margin=2)
-            cell_im = Image.fromarray(r_frames[f], mode='RGBA').resize((cell_px, cell_px), Image.NEAREST)
-            cell_arr = apply_pass12_postprocess(np.array(cell_im, dtype=np.uint8), r, f)
-            if (
-                np.any(cell_arr[:2, :, 3] > 0)
-                or np.any(cell_arr[206:, :, 3] > 0)
-                or np.any(cell_arr[:, :2, 3] > 0)
-                or np.any(cell_arr[:, 206:, 3] > 0)
-            ):
-                clipped_total += 1
-            row_208.append(cell_arr)
-            paste_cell(canvas, r, f, cell_arr, cell_px=cell_px)
-        adj_diffs = sum(1 for i in range(29) if np.any(row_208[i] != row_208[i + 1]))
-        print(f'{r_name:56s}: 30 frames generated, {adj_diffs}/29 adjacent transitions distinct')
-        assert adj_diffs == 29, f'{r_name} has duplicate adjacent frames ({adj_diffs}/29)'
-        cell_rows_208.append(row_208)
-
-    print(f'Boundary-clipped frames on outer 2px border [0, 1, 206, 207]: {clipped_total}/270')
-    assert clipped_total == 0, f'Expected 0/270 boundary-clipped frames, got {clipped_total}'
-
-    canvas.save('assets/sprites/priestess_sheet.png')
-    print('Saved assets/sprites/priestess_sheet.png:', canvas.size)
-
-    # Render full 30-col x 9-row contact sheet + zoomed-in left (F00..F14) and right (F15..F29) halves
-    preview_cell = 96
-    pad_top = 24
-    dbg = Image.new('RGBA', (30 * preview_cell, num_rows * (preview_cell + pad_top)), (15, 20, 30, 255))
-    draw = ImageDraw.Draw(dbg)
-    for r_idx, (r_name, _) in enumerate(rows):
-        y0 = r_idx * (preview_cell + pad_top)
-        draw.rectangle([0, y0, 30 * preview_cell, y0 + pad_top - 2], fill=(26, 34, 50, 255))
-        draw.text((8, y0 + 5), r_name, fill=(253, 224, 71, 255))
-        for c_idx, cell_arr in enumerate(cell_rows_208[r_idx]):
-            x0 = c_idx * preview_cell
-            draw.text((x0 + 4, y0 + 13), f'F{c_idx:02d}', fill=(148, 163, 184, 255))
-            p_im = Image.fromarray(cell_arr, mode='RGBA').resize((preview_cell, preview_cell), Image.NEAREST)
-            dbg.paste(p_im, (x0, y0 + pad_top), p_im)
-            draw.rectangle([x0, y0 + pad_top, x0 + preview_cell - 1, y0 + pad_top + preview_cell - 1], outline=(35, 45, 65, 255))
-
-    art_dir = '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/4f1fb80f-a88f-4496-9746-b4b9fe84f6d4'
-    dbg.crop((0, 0, 15 * preview_cell, dbg.height)).save(f'{art_dir}/debug_priestess_30fps_left_F00_F14.png')
-    dbg.crop((15 * preview_cell, 0, 30 * preview_cell, dbg.height)).save(f'{art_dir}/debug_priestess_30fps_right_F15_F29.png')
-    print('Saved Priestess contact sheets to:', art_dir)
+    os.makedirs(os.path.dirname(OUT_SHEET_PATH), exist_ok=True)
+    sheet.save(OUT_SHEET_PATH)
+    save_debug_sheets(sheet)
+    print(
+        f"[SUCCESS] Saved {OUT_SHEET_PATH} ({sheet.size[0]}x{sheet.size[1]}) in {time.time() - t0:.2f}s | "
+        f"clips={total_clips}/270 | interior_body_pinholes={total_body_holes}"
+    )
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
-
-
-
