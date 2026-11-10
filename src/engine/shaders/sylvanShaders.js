@@ -1763,6 +1763,567 @@ export const roaringWindDragonHead = {
   }
 };
 
+// ============================================================================
+// 13. SYLVARA V3 8-ROW BAKED VFX SUITE (`archer_vfx.png`, 6240x1664, 0/240 clips)
+//     Row 0: Piercing Emerald Wind-Arrow (`sylvanSupersonicArrowLoop`)
+//     Row 1: Homing Starfall Seeker Arrow (`starfallSeekerArrowCell`)
+//     Row 2: Verdant Bramble-Star Snare Sigil (`verdantBrambleSnareCell`)
+//     Row 3: Tempest Wind-Dragon Vortex (`tempestWindDragonVortexCell`)
+//     Row 4: Emerald Star-Cross Impact Burst (`emeraldStarCrossBurstCell`)
+//     Row 5: Yggdrasil World-Tree & Sagittarius Constellation Canopy Seal (`yggdrasilConstellationSealCell`)
+//     Row 6: Colossal Drawn Golden-Emerald Celestial Greatbow Muzzle (`colossalCelestialGreatbowCell`)
+//     Row 7: World-Piercing Supernova Dragon-Arrow Beam Segment (`supernovaDragonBeamSegmentCell`)
+// ============================================================================
+
+export const starfallSeekerArrowCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: {
+    palette: SYLVAN_STARLIGHT_PALETTE,
+    seed: 109
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const emRamp = buildColorRamp(SYLVAN_EMERALD_PALETTE, 8);
+    return {
+      renderFront(pen, loopT) {
+        const phase = loopT * TWO_PI;
+
+        // 1. Back half of twin orbiting Sagittarius astrolabe seeker rings
+        drawOrientedMachRing(pen, -4, 0, 1, 0, 12.5, 0.34, 1.5, ramp[5], emRamp[4], 0.86, (a) => Math.cos(a) < 0);
+        drawOrientedMachRing(pen, 10, 0, 1, 0, 8.5, 0.32, 1.3, ramp[6], ramp[3], 0.82, (a) => Math.cos(a) < 0);
+
+        // 2. Spiraling Starlight-Gold & Mint Comet Wake (`x = -36 .. 14`)
+        for (let rib = 0; rib < 2; rib++) {
+          const rOff = rib * Math.PI;
+          for (let x = -36; x <= 14; x++) {
+            const u = (x + 36) / 50;
+            const amp = (1 - u * 0.62) * 7.5;
+            const ang = x * 0.22 - phase * 3 + rOff;
+            const sy = Math.sin(ang) * amp;
+            const col = rib === 0 ? (Math.cos(ang) >= 0 ? ramp[6] : ramp[5]) : emRamp[5];
+            pen.stipple(x, sy, col, 0.45 + 0.5 * u);
+          }
+        }
+
+        // 3. Swept Crescent Astral Wing-Vanes (`x = -12 .. 12`)
+        for (const sign of [-1, 1]) {
+          for (let s = 0; s <= 18; s++) {
+            const su = s / 18;
+            const wx = 12 - su * 25;
+            const wy = sign * (2.5 + Math.pow(su, 0.78) * 15.5 + Math.sin(phase * 2) * 1.4);
+            pen.line(wx, wy * 0.55, wx - 3, wy, su < 0.45 ? PURE_WHITE : ramp[5], 0.94);
+            pen.stipple(wx - 4, wy + sign * 1.1, emRamp[5], 0.85);
+          }
+        }
+
+        // 4. Blazing Starlight-Gold & Emerald Seeker Shaft + Crescent Broadhead (`x = -30 .. 35`)
+        pen.line(-30, -1, 24, -1, emRamp[4], 0.94);
+        pen.line(-30, 0, 34, 0, PURE_WHITE, 1.0);
+        pen.line(-30, 1, 24, 1, ramp[5], 0.96);
+
+        // Diamond-Crescent Astral Seeker Head (`x = 16 .. 36`)
+        for (let x = 16; x <= 36; x++) {
+          const u = (x - 16) / 20;
+          const w = (1 - u) * 8.8;
+          for (let dy = -Math.ceil(w); dy <= Math.ceil(w); dy++) {
+            if (Math.abs(dy) > w + 0.25) continue;
+            if (u < 0.28 && Math.abs(dy) < w * 0.48) continue;
+            const edge = Math.abs(dy) / Math.max(0.5, w);
+            pen.pixel(x, dy, edge > 0.72 ? PURE_WHITE : edge > 0.4 ? ramp[6] : emRamp[5]);
+          }
+        }
+
+        // 5. Front half of seeker lock-rings & tip starburst
+        drawOrientedMachRing(pen, -4, 0, 1, 0, 12.5, 0.34, 1.6, PURE_WHITE, ramp[5], 0.94, (a) => Math.cos(a) >= 0);
+        drawOrientedMachRing(pen, 10, 0, 1, 0, 8.5, 0.32, 1.4, PURE_WHITE, emRamp[5], 0.92, (a) => Math.cos(a) >= 0);
+        drawStarburstFlare(pen, 31, 0, 9.5, 0.95, ramp);
+        pen.radialGlow(20, 0, 20, ramp[5], 0.46);
+        pen.radialGlow(-4, 0, 18, emRamp[4], 0.32);
+      }
+    };
+  }
+};
+
+export const verdantBrambleSnareCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: {
+    palette: SYLVAN_EMERALD_PALETTE,
+    seed: 127
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const goldRamp = buildColorRamp(SYLVAN_STARLIGHT_PALETTE, 8);
+    return {
+      renderFront(pen, loopT) {
+        const phase = loopT * TWO_PI;
+        const pulse = 0.92 + 0.08 * Math.sin(phase * 2);
+        const rOuter = 35 * pulse;
+        const rInner = 21 * pulse;
+
+        // 1. Deep Verdant Forest Glow & Concentric Root-Sigil Rings
+        pen.radialGlow(0, 0, 34, ramp[3], 0.36);
+        pen.strokeRing(0, 0, rOuter, 2.0, ramp[4], 0.92);
+        pen.strokeRing(0, 0, rOuter - 2.2, 1.2, goldRamp[5], 0.88);
+        pen.strokeRing(0, 0, rInner, 1.6, ramp[5], 0.9);
+
+        // 2. Coiling Thorny Emerald Bramble Vines Weaving Around the Snare Perimeter
+        const vineSteps = 72;
+        for (let v = 0; v < 2; v++) {
+          const vOff = v * Math.PI;
+          let prevX = 0;
+          let prevY = 0;
+          for (let i = 0; i <= vineSteps; i++) {
+            const a = (i / vineSteps) * TWO_PI;
+            const wave = Math.sin(a * 6 + phase + vOff) * 3.6;
+            const rr = rOuter - 3.5 + wave;
+            const vx = Math.cos(a) * rr;
+            const vy = Math.sin(a) * rr;
+            if (i > 0) {
+              pen.line(prevX, prevY, vx, vy, v === 0 ? ramp[5] : ramp[3], 0.94);
+            }
+            // Sharp golden-emerald bramble thorns jutting inward & outward
+            if (i % 6 === 0) {
+              const dir = i % 12 === 0 ? 1 : -1;
+              const tx = Math.cos(a + 0.14) * (rr + dir * 4.8);
+              const ty = Math.sin(a + 0.14) * (rr + dir * 4.8);
+              pen.line(vx, vy, tx, ty, dir > 0 ? goldRamp[5] : ramp[6], 0.95);
+              pen.stipple(tx, ty, PURE_WHITE, 0.9);
+            }
+            prevX = vx;
+            prevY = vy;
+          }
+        }
+
+        // 3. Counter-Rotating 8-Point Bramble-Star Octagram & Root Claws
+        drawElvenStarCompass(pen, 0, 0, rOuter * 0.94, rInner * 0.62, 1.0, phase * 0.5, goldRamp[5], ramp[5], 0.94);
+        drawElvenStarCompass(pen, 0, 0, rInner * 0.96, 8.5, 1.0, -phase * 0.5 + Math.PI / 8, PURE_WHITE, ramp[4], 0.9);
+
+        // 4. Blooming Golden-Emerald Sylvan Core Flower
+        for (let k = 0; k < 8; k++) {
+          const ka = -phase + (k * TWO_PI) / 8;
+          drawSylvanLeaf(
+            pen,
+            Math.cos(ka) * 10.5,
+            Math.sin(ka) * 10.5,
+            ka,
+            k % 2 === 0 ? goldRamp[6] : ramp[6],
+            ramp[4],
+            0.95
+          );
+        }
+        drawStarburstFlare(pen, 0, 0, 10.5, 0.95, goldRamp);
+        pen.radialGlow(0, 0, 16, ramp[5], 0.48);
+      }
+    };
+  }
+};
+
+export const tempestWindDragonVortexCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: {
+    palette: SYLVAN_EMERALD_PALETTE,
+    seed: 137
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const dragonHead = roaringWindDragonHead.create({ palette: cfg.palette, seed: cfg.seed });
+    return {
+      renderFront(pen, loopT) {
+        const phase = loopT * TWO_PI;
+
+        // 1. Back half of Swirling Razor-Leaf Cyclone Rings Coiling Around the Wind-Dragon
+        for (let rIdx = 0; rIdx < 3; rIdx++) {
+          const rx = -22 + rIdx * 18;
+          const rad = 28 - rIdx * 3.5 + Math.sin(phase * 2 + rIdx) * 2.0;
+          drawOrientedMachRing(pen, rx, 0, 1, 0, rad, 0.36, 1.8, ramp[6], ramp[3], 0.85, (a) => Math.cos(a) < 0);
+        }
+
+        // 2. Sculpted Roaring Astral Wind-Dragon Head & Serpentine Neck (`+X`)
+        dragonHead.renderFront(pen, loopT);
+
+        // 3. Front half of Cyclone Vortex Rings + Orbiting Sylvan Razor-Leaves
+        for (let rIdx = 0; rIdx < 3; rIdx++) {
+          const rx = -22 + rIdx * 18;
+          const rad = 28 - rIdx * 3.5 + Math.sin(phase * 2 + rIdx) * 2.0;
+          drawOrientedMachRing(pen, rx, 0, 1, 0, rad, 0.36, 1.9, PURE_WHITE, ramp[5], 0.94, (a) => Math.cos(a) >= 0);
+        }
+        for (let i = 0; i < 6; i++) {
+          const la = phase * 2 + (i * TWO_PI) / 6;
+          const lx = -18 + ((i * 11 + loopT * 44) % 52);
+          const ly = Math.sin(la) * 24;
+          if (Math.cos(la) >= -0.2) {
+            drawSylvanLeaf(pen, lx, ly, la + 0.6, ramp[6], ramp[4], 0.92);
+          }
+        }
+      }
+    };
+  }
+};
+
+export const emeraldStarCrossBurstCell = {
+  duration: 1.0,
+  loop: false,
+  defaults: {
+    palette: SYLVAN_EMERALD_PALETTE,
+    seed: 149
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const goldRamp = buildColorRamp(SYLVAN_STARLIGHT_PALETTE, 8);
+    return {
+      renderFront(pen, t) {
+        const u = clamp01(t / 1.0);
+        const expand = Easing.outExpo(Math.min(1, u * 1.55));
+        const fade = u < 0.22 ? 1.0 : clamp01(1 - (u - 0.22) / 0.78);
+        if (fade <= 0.02) return;
+
+        // 1. Expanding Supersonic Emerald & Starlight-Gold Shockwave Rings
+        const rMain = 7 + 31 * expand;
+        pen.strokeRing(0, 0, rMain, Math.max(1.0, 2.6 * fade), u < 0.22 ? PURE_WHITE : ramp[5], 0.95 * fade);
+        pen.strokeRing(0, 0, rMain * 0.68, Math.max(1.0, 1.8 * fade), goldRamp[5], 0.88 * fade);
+
+        // 2. 8-Point Emerald & Gold Star-Cross Detonation Lances
+        const mainLance = (12 + 27 * expand) * (0.45 + 0.55 * fade);
+        const diagLance = mainLance * 0.76;
+        for (let k = 0; k < 8; k++) {
+          const isCard = k % 2 === 0;
+          const ang = (k * Math.PI) / 4 + u * 0.18;
+          const ca = Math.cos(ang);
+          const sa = Math.sin(ang);
+          const nx = -sa;
+          const ny = ca;
+          const reach = isCard ? mainLance : diagLance;
+          const halfW = (isCard ? 4.2 : 2.8) * fade;
+
+          const steps = Math.max(8, Math.ceil(reach));
+          for (let s = 0; s <= steps; s++) {
+            const su = s / steps;
+            const w = halfW * (1 - su);
+            const bx = ca * (su * reach);
+            const by = sa * (su * reach);
+            for (let d = -Math.ceil(w); d <= Math.ceil(w); d++) {
+              if (Math.abs(d) > w + 0.25) continue;
+              const col = Math.abs(d) < 0.75 ? PURE_WHITE : isCard ? ramp[5] : goldRamp[5];
+              pen.stipple(bx + nx * d, by + ny * d, col, fade * (1 - su * 0.22));
+            }
+          }
+        }
+
+        // 3. Scattering Sylvan Razor-Leaves & Star-Sparks
+        for (let i = 0; i < 8; i++) {
+          const la = (i * TWO_PI) / 8 + 0.39 + u * 0.9;
+          const dist = (6 + 29 * expand) * (0.82 + (i % 2) * 0.16);
+          drawSylvanLeaf(
+            pen,
+            Math.cos(la) * dist,
+            Math.sin(la) * dist,
+            la * 2,
+            i % 2 === 0 ? goldRamp[6] : ramp[6],
+            ramp[4],
+            fade * 0.92
+          );
+        }
+
+        if (u < 0.55) {
+          drawStarburstFlare(pen, 0, 0, 20 * (1 - u / 0.55), 0.98 * fade, ramp);
+        }
+        pen.radialGlow(0, 0, 28 * fade, ramp[4], 0.52 * fade);
+      }
+    };
+  }
+};
+
+export const yggdrasilConstellationSealCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: {
+    palette: SYLVAN_EMERALD_PALETTE,
+    seed: 163
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const starRamp = buildColorRamp(SYLVAN_STARLIGHT_PALETTE, 8);
+    return {
+      renderFront(pen, loopT) {
+        const phase = loopT * TWO_PI;
+        const rWheel = 38.5;
+
+        // 1. Outer Rotating Sagittarius Constellation Astrolabe Wheel
+        pen.radialGlow(0, 0, 38, ramp[3], 0.36);
+        pen.strokeRing(0, 0, rWheel, 2.0, starRamp[5], 0.95);
+        pen.strokeRing(0, 0, rWheel - 4.5, 1.2, ramp[5], 0.88);
+        drawElvenStarCompass(pen, 0, 0, rWheel - 1.5, 24.5, 1.0, phase * 0.5, starRamp[5], ramp[4], 0.84);
+
+        // 12 Zodiac Star Nodes around the Canopy Rim
+        for (let k = 0; k < 12; k++) {
+          const a = phase + (k * TWO_PI) / 12;
+          const sx = Math.cos(a) * (rWheel - 2.2);
+          const sy = Math.sin(a) * (rWheel - 2.2);
+          pen.fillCircle(sx, sy, k % 3 === 0 ? 2.1 : 1.4, k % 3 === 0 ? PURE_WHITE : starRamp[6], 0.96);
+        }
+
+        // 2. Sacred Yggdrasil World-Tree Roots, Carved Golden Trunk, & Lush Emerald Star-Canopy
+        // Intertwined roots (`y = 14 .. 31`)
+        for (const sign of [-1, 1]) {
+          pen.line(sign * 2, 13, sign * 12, 26, starRamp[5], 0.94);
+          pen.line(sign * 4, 16, sign * 20, 23, ramp[5], 0.9);
+          pen.line(0, 15, sign * 6, 29, starRamp[6], 0.92);
+        }
+        // Golden-Emerald World-Tree Trunk (`y = -8 .. 16`)
+        for (let y = -8; y <= 16; y++) {
+          const u = (y + 8) / 24;
+          const halfT = 2.4 + Math.pow(Math.abs(u - 0.45), 1.4) * 3.8;
+          for (let dx = -Math.ceil(halfT); dx <= Math.ceil(halfT); dx++) {
+            if (Math.abs(dx) > halfT) continue;
+            const col = Math.abs(dx) < 1.1 ? PURE_WHITE : Math.abs(dx) < 2.2 ? starRamp[5] : ramp[4];
+            pen.pixel(dx, y, col);
+          }
+        }
+        // Spreading Yggdrasil Boughs & Luminous Emerald-Starlight Canopy (`y = -31 .. -4`)
+        const boughs = [
+          [0, -6, -18, -18],
+          [0, -6, 18, -18],
+          [0, -10, -11, -26],
+          [0, -10, 11, -26],
+          [0, -12, 0, -29]
+        ];
+        for (const [x0, y0, x1, y1] of boughs) {
+          pen.line(x0, y0, x1, y1, starRamp[6], 0.95);
+          pen.fillCircle(x1, y1, 7.5, ramp[3], 0.68);
+          pen.strokeRing(x1, y1, 7.5, 1.3, ramp[5], 0.88);
+          const shimmer = 0.7 + 0.3 * Math.sin(phase * 2 + x1 * 0.2);
+          pen.fillCircle(x1, y1, 2.4, PURE_WHITE, shimmer);
+        }
+
+        // 3. Glowing Sagittarius Constellation Bow-and-Arrow Sigil Inscribed Over the Heart of Yggdrasil
+        const bowRot = Math.sin(phase) * 0.08;
+        const cb = Math.cos(bowRot);
+        const sb = Math.sin(bowRot);
+        const rPt = (lx, ly) => [lx * cb - ly * sb, lx * sb + ly * cb];
+        const [bx0, by0] = rPt(-4, -18);
+        const [bxm, bym] = rPt(12, 0);
+        const [bx1, by1] = rPt(-4, 18);
+        const [ax0, ay0] = rPt(-18, 0);
+        const [ax1, ay1] = rPt(22, 0);
+        pen.line(bx0, by0, bxm, bym, PURE_WHITE, 0.95);
+        pen.line(bxm, bym, bx1, by1, PURE_WHITE, 0.95);
+        pen.line(bx0, by0, ax0, ay0, starRamp[5], 0.9);
+        pen.line(bx1, by1, ax0, ay0, starRamp[5], 0.9);
+        pen.line(ax0, ay0, ax1, ay1, PURE_WHITE, 1.0);
+        drawStarburstFlare(pen, ax1, ay1, 7.5, 0.95, starRamp);
+        pen.radialGlow(0, -6, 22, ramp[5], 0.42);
+      }
+    };
+  }
+};
+
+export const colossalCelestialGreatbowCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: {
+    palette: SYLVAN_STARLIGHT_PALETTE,
+    seed: 179
+  },
+  create(cfg) {
+    const goldRamp = buildColorRamp(cfg.palette, 8);
+    const emRamp = buildColorRamp(SYLVAN_EMERALD_PALETTE, 8);
+    return {
+      renderFront(pen, loopT) {
+        const phase = loopT * TWO_PI;
+        const tension = 0.88 + 0.12 * Math.sin(phase * 2);
+        const riserX = 8;
+        const nockX = -32 - tension * 3;
+        const tipX = 39;
+
+        // 1. Converging Emerald-Gold Astral Wind-Streams Into the Riser Core
+        for (let i = 0; i < 6; i++) {
+          const a = phase * 2 + (i * TWO_PI) / 6;
+          const u = ((loopT * 2 + i / 6) % 1);
+          const dist = (1 - u) * 34;
+          const sx = riserX + Math.cos(a) * dist * 0.75;
+          const sy = Math.sin(a) * dist;
+          pen.line(sx, sy, mixScalar(sx, riserX + 4, 0.42), sy * 0.58, i % 2 === 0 ? goldRamp[5] : emRamp[5], 0.85 * u);
+        }
+
+        // 2. Colossal Curved Golden-Emerald Yggdrasil Greatbow Limbs (`y = -38 .. +38`, facing `+X`)
+        let upperTip = [riserX - 18, -37];
+        let lowerTip = [riserX - 18, 37];
+        for (const sign of [-1, 1]) {
+          let prevX = riserX;
+          let prevY = 0;
+          const steps = 26;
+          for (let s = 1; s <= steps; s++) {
+            const u = s / steps;
+            const ly = sign * u * 37.5;
+            const recurve = u > 0.76 ? Math.pow((u - 0.76) / 0.24, 2) * 5.5 : 0;
+            const lx = riserX - Math.pow(u, 1.42) * (24 * tension) + recurve;
+            const limbW = mixScalar(4.4, 1.5, u);
+
+            for (let dx = -Math.ceil(limbW); dx <= Math.ceil(limbW + 1.5); dx++) {
+              if (dx < -limbW || dx > limbW + 1.4) continue;
+              // Outer `+X` bladed edge = gleaming starlight-emerald bow-blade; spine = royal gold!
+              const col =
+                dx > limbW * 0.55
+                  ? PURE_WHITE
+                  : dx > 0
+                    ? goldRamp[5]
+                    : dx > -limbW * 0.55
+                      ? emRamp[5]
+                      : emRamp[2];
+              pen.pixel(lx + dx, ly, col);
+            }
+            pen.line(prevX, prevY, lx, ly, goldRamp[6], 0.98);
+            prevX = lx;
+            prevY = ly;
+          }
+          if (sign < 0) upperTip = [prevX, prevY];
+          else lowerTip = [prevX, prevY];
+          drawStarburstFlare(pen, prevX, prevY, 6.5, 0.9, emRamp);
+        }
+
+        // 3. Taut Blazing Emerald-Starlight Bowstring Pulled to `nockX`
+        pen.line(upperTip[0], upperTip[1], nockX, 0, emRamp[5], 0.96);
+        pen.line(lowerTip[0], lowerTip[1], nockX, 0, emRamp[5], 0.96);
+        pen.line(upperTip[0] + 1, upperTip[1], nockX + 1, 0, PURE_WHITE, 0.95);
+        pen.line(lowerTip[0] + 1, lowerTip[1], nockX + 1, 0, PURE_WHITE, 0.95);
+
+        // 4. Nocked Colossal Supernova Dragon-Arrow (`nockX` -> `tipX`)
+        // Swept golden-emerald fletching at `nockX`
+        for (const sign of [-1, 1]) {
+          pen.line(nockX, 0, nockX - 5, sign * 7, goldRamp[5], 0.95);
+          pen.line(nockX + 4, 0, nockX - 2, sign * 6, PURE_WHITE, 0.95);
+        }
+        // Blazing multi-band arrow shaft
+        pen.line(nockX, -2, tipX - 12, -2, emRamp[4], 0.92);
+        pen.line(nockX, -1, tipX - 8, -1, goldRamp[5], 0.98);
+        pen.line(nockX, 0, tipX, 0, PURE_WHITE, 1.0);
+        pen.line(nockX, 1, tipX - 8, 1, emRamp[5], 0.98);
+        pen.line(nockX, 2, tipX - 12, 2, goldRamp[4], 0.92);
+
+        // Supernova Dragon Broadhead (`tipX - 15 .. tipX`)
+        for (let x = tipX - 15; x <= tipX; x++) {
+          const u = (x - (tipX - 15)) / 15;
+          const w = (1 - u) * 9.5;
+          for (let dy = -Math.ceil(w); dy <= Math.ceil(w); dy++) {
+            if (Math.abs(dy) > w + 0.2) continue;
+            if (u < 0.25 && Math.abs(dy) < w * 0.48) continue;
+            const edge = Math.abs(dy) / Math.max(0.5, w);
+            pen.pixel(x, dy, edge > 0.72 ? PURE_WHITE : edge > 0.38 ? goldRamp[5] : emRamp[5]);
+          }
+        }
+
+        // 5. Riser Yggdrasil Core Singularity & Broadhead Flare
+        drawOrientedMachRing(pen, riserX + 3, 0, 1, 0, 13.5, 0.32, 1.6, PURE_WHITE, goldRamp[5], 0.94);
+        drawStarburstFlare(pen, riserX + 3, 0, 11.5, 0.95, goldRamp);
+        drawStarburstFlare(pen, tipX - 3, 0, 9.5, 0.95, emRamp);
+        pen.radialGlow(riserX + 4, 0, 24, emRamp[4], 0.48);
+        pen.radialGlow(tipX - 6, 0, 18, goldRamp[5], 0.44);
+      }
+    };
+  }
+};
+
+export const supernovaDragonBeamSegmentCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: {
+    palette: SYLVAN_EMERALD_PALETTE,
+    seed: 193
+  },
+  create(cfg) {
+    const emRamp = buildColorRamp(cfg.palette, 8);
+    const goldRamp = buildColorRamp(SYLVAN_STARLIGHT_PALETTE, 8);
+    return {
+      renderFront(pen, loopT) {
+        const phase = loopT * TWO_PI;
+        const x0 = -42;
+        const x1 = 42;
+
+        // 1. Back Half of Spiraling Emerald-Gold Dragon-Scale Helices & Mach Shock-Rings
+        for (let rIdx = 0; rIdx < 2; rIdx++) {
+          const ur = (loopT * 2 + rIdx * 0.5) % 1;
+          const rx = mixScalar(x0 + 8, x1 - 8, ur);
+          const rad = 18 + Math.sin(ur * Math.PI) * 5;
+          drawOrientedMachRing(pen, rx, 0, 1, 0, rad, 0.3, 1.6, goldRamp[5], emRamp[3], 0.86, (a) => Math.cos(a) < 0);
+        }
+        for (let h = 0; h < 2; h++) {
+          const hOff = h * Math.PI;
+          for (let x = x0; x <= x1; x++) {
+            const u = (x - x0) / (x1 - x0);
+            const endEnv = Math.sin(u * Math.PI) * 0.35 + 0.65;
+            const ang = u * TWO_PI * 2 - phase * 2 + hOff;
+            if (Math.cos(ang) < 0) {
+              const hy = Math.sin(ang) * 20 * endEnv;
+              pen.line(x, hy - 1.5, x, hy + 1.5, h === 0 ? emRamp[3] : goldRamp[4], 0.86);
+            }
+          }
+        }
+
+        // 2. Horizontal Supernova Arrow-Beam Core Wave (`x = -42 .. +42`)
+        for (let x = x0; x <= x1; x++) {
+          const u = (x - x0) / (x1 - x0);
+          // Smooth edge taper near cell boundaries so 0/240 border clips while tiling seamlessly
+          const edgeEnv = smoothStep(0.0, 0.14, u) * smoothStep(1.0, 0.86, u);
+          const wave = 1 + 0.16 * Math.sin(u * TWO_PI * 3 - phase * 3);
+          const halfH = (3.5 + 8.5 * edgeEnv) * wave;
+          for (let dy = -Math.ceil(halfH); dy <= Math.ceil(halfH); dy++) {
+            const q = Math.abs(dy) / Math.max(0.5, halfH);
+            if (q > 1) continue;
+            const col =
+              q < 0.28
+                ? PURE_WHITE
+                : q < 0.54
+                  ? goldRamp[6]
+                  : q < 0.78
+                    ? emRamp[5]
+                    : emRamp[3];
+            pen.stipple(x, dy, col, 0.45 + 0.55 * edgeEnv);
+          }
+        }
+
+        // 3. Front Half of Braided Dragon-Arrow Helices + Forward Chevron Surge Waves
+        for (let h = 0; h < 2; h++) {
+          const hOff = h * Math.PI;
+          for (let x = x0; x <= x1; x++) {
+            const u = (x - x0) / (x1 - x0);
+            const edgeEnv = smoothStep(0.0, 0.12, u) * smoothStep(1.0, 0.88, u);
+            const ang = u * TWO_PI * 2 - phase * 2 + hOff;
+            if (Math.cos(ang) >= 0) {
+              const hy = Math.sin(ang) * (6 + 15 * edgeEnv);
+              pen.pixel(x, hy, PURE_WHITE);
+              pen.stipple(x, hy + 1.3, h === 0 ? goldRamp[5] : emRamp[5], 0.95);
+              pen.stipple(x, hy - 1.3, emRamp[4], 0.9);
+            }
+          }
+        }
+
+        // Forward `+X` arrowhead surge chevrons racing down the beam
+        for (let c = 0; c < 3; c++) {
+          const cu = (loopT * 2 + c / 3) % 1;
+          const cx = mixScalar(x0 + 10, x1 - 10, cu);
+          const cAlpha = Math.sin(cu * Math.PI) * 0.95;
+          pen.line(cx, 0, cx - 9, -12, PURE_WHITE, cAlpha);
+          pen.line(cx, 0, cx - 9, 12, PURE_WHITE, cAlpha);
+          pen.line(cx - 2, 0, cx - 11, -12, goldRamp[5], cAlpha * 0.9);
+          pen.line(cx - 2, 0, cx - 11, 12, emRamp[5], cAlpha * 0.9);
+        }
+
+        for (let rIdx = 0; rIdx < 2; rIdx++) {
+          const ur = (loopT * 2 + rIdx * 0.5) % 1;
+          const rx = mixScalar(x0 + 8, x1 - 8, ur);
+          const rad = 18 + Math.sin(ur * Math.PI) * 5;
+          drawOrientedMachRing(pen, rx, 0, 1, 0, rad, 0.3, 1.7, PURE_WHITE, goldRamp[5], 0.94, (a) => Math.cos(a) >= 0);
+        }
+
+        pen.radialGlow(0, 0, 28, emRamp[4], 0.44);
+      }
+    };
+  }
+};
+
 export const SYLVAN_EFFECT_REGISTRY = {
   sylvanBowDrawVortex,
   sonicBowReleaseWave,
@@ -1777,5 +2338,13 @@ export const SYLVAN_EFFECT_REGISTRY = {
   sylvanArrowImpactBurst,
   sylvanSupersonicArrowLoop,
   sylvanStarfallSkyCell,
-  roaringWindDragonHead
+  roaringWindDragonHead,
+  starfallSeekerArrowCell,
+  verdantBrambleSnareCell,
+  tempestWindDragonVortexCell,
+  emeraldStarCrossBurstCell,
+  yggdrasilConstellationSealCell,
+  colossalCelestialGreatbowCell,
+  supernovaDragonBeamSegmentCell
 };
+

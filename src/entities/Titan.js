@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps62';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps62';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps62';
+import { Fighter } from './Fighter.js?v=30fps63';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps63';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps63';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps62';
+} from '../engine/shaders/forgeShaders.js?v=30fps63';
 
 /**
  * Torgar (`titan`) — World-Forge Juggernaut & Runic Anvil Sovereign.
@@ -28,7 +28,13 @@ export class Titan extends Fighter {
     this.heroId = 'titan';
     this.deathSfx = 'death_titan';
     this.skillName = 'ANVIL CANNONBALL';
-    this.ultName = 'WORLD-FORGE RAGNAROK';
+    this.ultName = 'RAGNAROK FORGE';
+    this.hasTrueUltimate = true;
+    this.trueUltName = 'GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER';
+    this.trueUltDuration = 4.55;
+    this._trueUltStep = 0;
+    this._trueUltAnvilX = 600;
+    this._trueUltGeyserTimer = 0;
     this.theme = 'forge';
     this.hasPoise = true;
     this.unstoppablePoise = false;
@@ -65,24 +71,31 @@ export class Titan extends Fighter {
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
       if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps53')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps62';
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps63';
       }
     }
   }
 
   setState(newState) {
     super.setState(newState);
-    if (newState !== 'ULTIMATE') {
+    if (newState !== 'ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
       this.giantScale = 1.0;
+      this.isInvulnerable = false;
       this._ultCastTriggered = false;
       this._ultWaveStep = 0;
       this.trueUltFrameOverride = null;
+    }
+    if (newState === 'TRUE_ULTIMATE') {
+      this._trueUltStep = 0;
+      this._trueUltGeyserTimer = 0;
+      this.isInvulnerable = true;
     }
     this.unstoppablePoise =
       newState === 'AUTO_ATTACK' ||
       newState === 'SKILL' ||
       newState === 'CROUCH' ||
-      newState === 'ULTIMATE';
+      newState === 'ULTIMATE' ||
+      newState === 'TRUE_ULTIMATE';
   }
 
   getEffectiveAttackRange() {
@@ -931,6 +944,319 @@ export class Titan extends Fighter {
     }
   }
 
+  /**
+   * 3-Overdrive Supreme Ultimate (`state === 'TRUE_ULTIMATE'`, `4.55s`):
+   * "GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER"
+   * - Never changes the stage background image (`overrideArena` / `setStageTransformation` is NEVER called).
+   * - Phase 1 (`0.00s .. 1.20s`): Summons the Colossal World-Forge Crucible Anvil Altar (`Row 5`, `320x320`),
+   *   grows Torgar into a `2.45x` World-Forge Avatar beside `this._trueUltAnvilX - this.facing * 95`,
+   *   grants `this.forgeArmorTimer = 6.0`, and draws the enemy toward the Crucible Anvil.
+   * - Phase 2 (`t >= 1.45s` Strike 1 & `t >= 2.25s` Strike 2): Rhythmic God-Hammer Tempering Strikes
+   *   with `Row 6` (`340x340`) slamming onto the Crucible Anvil (zero chip damage ticks).
+   * - Phase 3 (`t >= 3.20s`): Torgar leaps (`2.20s .. 3.18s`) and brings the God-Hammer down at `t = 3.20s`
+   *   (`Row 4` frame `21..25`), shattering the Crucible Anvil, triggering anime impact frame (`'forge'`),
+   *   healing Torgar for `18%` Max HP (`'WORLD-FORGE TEMPER'`), refreshing `this.forgeArmorTimer = 4.5`,
+   *   dealing a SINGLE CATACLYSMIC INSTANT BURST of `385` Crit damage (`isCrit = true, knockX = 340, knockY = -290`),
+   *   and erupting 7 full-stage `Row 7` Continental Sunder Volcanic Rune Geysers (`240x340`) across the `1200px` arena!
+   * - Phase 4 (`3.20s .. 4.55s`): Smoothly eases `this.giantScale` back to `1.0` and returns to `IDLE`.
+   */
+  updateTrueUltimate(dt, enemy, game) {
+    const t = this.stateTimer;
+    const dur = this.trueUltDuration || 4.55;
+    this.isInvulnerable = true;
+    this.vx = 0;
+    this.vy = 0;
+    this.hasPoise = true;
+    this.unstoppablePoise = true;
+
+    if (this._trueUltStep >= 4 && this._trueUltGeyserTimer > 0) {
+      this._trueUltGeyserTimer = Math.max(0, this._trueUltGeyserTimer - dt);
+    }
+
+    // Phase 1 (`0.00s .. 1.20s` — Summoning the World-Forge Crucible Anvil Altar)
+    if (this._trueUltStep < 1) {
+      this._trueUltAnvilX = enemy
+        ? Math.max(240, Math.min(960, enemy.x))
+        : Math.max(240, Math.min(960, this.x + this.facing * 190));
+    }
+
+    if (t >= 0.04 && this._trueUltStep < 1) {
+      this._trueUltStep = 1;
+      this.forgeArmorTimer = 6.0;
+      game?.audio?.play?.('ult_titan', this.x);
+      game?.audio?.play?.('anvil_ring', this._trueUltAnvilX);
+      game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#f97316');
+      game?.vfx?.spawnSpecialCastAura?.(
+        this,
+        this.trueUltName,
+        '★ GOD-HAMMER MJOLNIR! ★',
+        'forge',
+        true
+      );
+      game?.vfx?.spawnDamageText?.(
+        this.x,
+        this.y - 180,
+        0,
+        true,
+        '★ GOD-HAMMER MJOLNIR! ★',
+        '#f97316'
+      );
+
+      this.fx?.spawn('runicBulwarkDome', this.x, this.y - 125, {
+        follow: this,
+        offsetX: 0,
+        offsetY: -125,
+        flip: this.facing < 0,
+        palette: FORGE_GOLD_PALETTE,
+        light: 1.45,
+        maxDuration: 4.4
+      });
+      this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
+        flip: this.facing < 0,
+        palette: FORGE_GOLD_PALETTE,
+        light: 1.42,
+        extra: { maxRx: 165 }
+      });
+      this.spawnSheetBurst(5, this._trueUltAnvilX, this.groundY - 110, {
+        w: 320,
+        h: 320,
+        maxLife: 3.16,
+        flipX: this.facing < 0,
+        glowColor: 'gold',
+        inFront: false
+      });
+    }
+
+    if (t < 3.20 && enemy && !enemy.isDead) {
+      enemy.x += (this._trueUltAnvilX - enemy.x) * Math.min(1, dt * 6);
+      this.facing = this._trueUltAnvilX >= this.x ? 1 : -1;
+    }
+
+    if (t < 1.20) {
+      const u = Math.max(0, Math.min(1, t / 0.65));
+      const ease = u * u * (3 - 2 * u);
+      this.giantScale = 1.0 + 1.45 * ease;
+      const standX = Math.max(95, Math.min(1105, this._trueUltAnvilX - this.facing * 95));
+      this.x += (standX - this.x) * Math.min(1, dt * 10);
+      this.y = this.groundY;
+      this.trueUltFrameOverride = 120 + Math.min(7, Math.floor((t / 1.20) * 8));
+      return;
+    }
+
+    // Phase 2 (`t >= 1.45s` Strike 1 & `t >= 2.25s` Strike 2 — Rhythmic God-Hammer Tempering Strikes)
+    if (t < 3.20) {
+      this.giantScale = 2.45;
+      const standX = Math.max(95, Math.min(1105, this._trueUltAnvilX - this.facing * 95));
+      this.x += (standX - this.x) * Math.min(1, dt * 10);
+
+      if (t >= 1.45 && this._trueUltStep < 2) {
+        this._trueUltStep = 2;
+        game?.audio?.play?.('anvil_ring', this._trueUltAnvilX);
+        game?.audio?.play?.('hammer_slam', this._trueUltAnvilX);
+        game?.renderer?.shake?.(14, 0.25);
+        game?.renderer?.triggerShake?.(14, 0.25);
+        game?.vfx?.spawnDamageText?.(
+          this._trueUltAnvilX,
+          this.groundY - 190,
+          0,
+          true,
+          'TEMPERING STRIKE I!',
+          '#fbbf24'
+        );
+        this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
+          flip: this.facing < 0,
+          palette: FORGE_GOLD_PALETTE,
+          light: 1.4,
+          extra: { maxRx: 155 }
+        });
+        this.fx?.spawn('moltenAnvilSparks', this._trueUltAnvilX, this.groundY - 82, {
+          flip: this.facing < 0,
+          palette: FORGE_GOLD_PALETTE,
+          light: 1.38
+        });
+        this.spawnSheetBurst(6, this._trueUltAnvilX, this.groundY - 120, {
+          w: 340,
+          h: 340,
+          maxLife: 0.56,
+          flipX: this.facing < 0,
+          glowColor: 'gold',
+          inFront: true
+        });
+      }
+
+      if (t >= 2.25 && this._trueUltStep < 3) {
+        this._trueUltStep = 3;
+        game?.audio?.play?.('anvil_ring', this._trueUltAnvilX);
+        game?.audio?.play?.('hammer_slam', this._trueUltAnvilX);
+        game?.renderer?.shake?.(14, 0.25);
+        game?.renderer?.triggerShake?.(14, 0.25);
+        game?.vfx?.spawnDamageText?.(
+          this._trueUltAnvilX,
+          this.groundY - 195,
+          0,
+          true,
+          'TEMPERING STRIKE II!',
+          '#f97316'
+        );
+        this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
+          flip: this.facing < 0,
+          palette: FORGE_JADE_PALETTE,
+          light: 1.44,
+          extra: { maxRx: 168 }
+        });
+        this.fx?.spawn('moltenAnvilSparks', this._trueUltAnvilX, this.groundY - 86, {
+          flip: this.facing < 0,
+          palette: FORGE_JADE_PALETTE,
+          light: 1.42
+        });
+        this.spawnSheetBurst(6, this._trueUltAnvilX, this.groundY - 120, {
+          w: 340,
+          h: 340,
+          maxLife: 0.62,
+          flipX: this.facing < 0,
+          glowColor: 'emerald',
+          inFront: true
+        });
+      }
+
+      // Leap (`2.20s .. 3.18s`) before bringing the God-Hammer down at `t = 3.20s`
+      if (t >= 2.20 && t < 3.18) {
+        const leapU = Math.max(0, Math.min(1, (t - 2.20) / 0.98));
+        this.y = this.groundY - Math.sin(leapU * Math.PI) * 138;
+        this.trueUltFrameOverride = 136 + Math.min(4, Math.floor(leapU * 5));
+      } else {
+        this.y = this.groundY;
+        const strikeU = Math.max(0, Math.min(1, (t - 1.20) / 1.0));
+        this.trueUltFrameOverride = 128 + Math.min(7, Math.floor(strikeU * 8));
+      }
+      return;
+    }
+
+    // Phase 3 (`t >= 3.20s`, `_trueUltStep < 4` — 3rd Apocalyptic Blow: Continental Sunder)
+    if (this._trueUltStep < 4) {
+      this._trueUltStep = 4;
+      this._trueUltGeyserTimer = 1.05;
+      this.y = this.groundY;
+      this.trueUltFrameOverride = 120 + 21;
+
+      game?.renderer?.triggerImpactFrame?.(0.12, this._trueUltAnvilX, this.groundY - 96, 'forge');
+      if (game?.renderer && game.renderer.impactFrameTimer > 1) {
+        game.renderer.triggerImpactFrame?.(this._trueUltAnvilX, this.groundY - 96, 0.12, 'forge');
+      }
+      game?.renderer?.shake?.(30, 0.80);
+      game?.renderer?.triggerShake?.(30, 0.80);
+      game?.renderer?.flash?.(0.32, '#fff7ed');
+      game?.renderer?.triggerAberration?.(16);
+      game?.renderer?.triggerHitStop?.(0.09);
+
+      game?.audio?.play?.('ult_titan', this._trueUltAnvilX);
+      game?.audio?.play?.('earth_crack', this._trueUltAnvilX);
+      game?.audio?.play?.('anvil_ring', this._trueUltAnvilX);
+
+      this.heal(Math.round(this.maxHp * 0.18), 'WORLD-FORGE TEMPER');
+      this.forgeArmorTimer = 4.5;
+
+      this.fx?.spawn('ragnarokWorldForgeWave', this._trueUltAnvilX, this.groundY - 4, {
+        flip: this.facing < 0,
+        palette: FORGE_GOLD_PALETTE,
+        light: 1.55,
+        extra: { stage: 3 }
+      });
+      this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
+        flip: this.facing < 0,
+        palette: FORGE_JADE_PALETTE,
+        light: 1.52,
+        extra: { maxRx: 215 }
+      });
+
+      for (let i = 0; i < 7; i++) {
+        const gx = 120 + i * 160;
+        this.spawnSheetBurst(7, gx, this.groundY - 145, {
+          w: 240,
+          h: 340,
+          maxLife: 1.05,
+          flipX: i % 2 === 1,
+          glowColor: i % 2 === 0 ? 'gold' : 'emerald',
+          inFront: i % 2 === 0
+        });
+      }
+
+      game?.vfx?.spawnDamageText?.(
+        this._trueUltAnvilX,
+        this.groundY - 210,
+        0,
+        true,
+        '★ CONTINENTAL SUNDER! ★',
+        '#f97316'
+      );
+
+      // Deal a SINGLE CATACLYSMIC INSTANT BURST of 385 Crit damage to all active enemies!
+      const targets = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+      for (const t of targets) {
+        if (t && !t.isDead && !t.isBenched) {
+          t.takeDamage(385, this, true, 340, -290);
+        }
+      }
+    }
+
+    // Phase 4 (`3.20s .. 4.55s` — Smoothly ease `giantScale` back to `1.0` and return to `IDLE`)
+    this.y = this.groundY;
+    const postU = Math.max(0, Math.min(1, (t - 3.20) / Math.max(0.01, dur - 3.20)));
+    const easeBack = postU * postU * (3 - 2 * postU);
+    this.giantScale = 2.45 - 1.45 * easeBack;
+
+    if (t < 3.85) {
+      const slamFrameU = Math.max(0, Math.min(1, (t - 3.20) / 0.65));
+      this.trueUltFrameOverride = 120 + 21 + Math.min(4, Math.floor(slamFrameU * 5)); // Row 4 frame 21..25
+    } else {
+      const recU = Math.max(0, Math.min(1, (t - 3.85) / Math.max(0.01, dur - 3.85)));
+      this.trueUltFrameOverride = 120 + 26 + Math.min(3, Math.floor(recU * 4)); // Row 4 frame 26..29
+    }
+
+    if (t >= dur) {
+      this.y = this.groundY;
+      this.giantScale = 1.0;
+      this.isInvulnerable = false;
+      this.trueUltFrameOverride = null;
+      this._trueUltGeyserTimer = 0;
+      this.setState('IDLE');
+    }
+  }
+
+  drawBehind(ctx, renderer = null) {
+    if (this.state !== 'TRUE_ULTIMATE') return;
+    const t = this.stateTimer || 0;
+    if (t >= 3.20) return;
+
+    const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.titan : null;
+    const vfxSheet = sprites?.vfx;
+    const col = Math.floor(t * 30) % 30;
+    const ax = this._trueUltAnvilX || 600;
+    const ay = this.groundY - 110;
+
+    // Render `titan_vfx.png` Row 5 (Colossal World-Forge Crucible Anvil Altar, 320x320) at `this._trueUltAnvilX, this.groundY - 110`
+    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        5,
+        col,
+        ax,
+        ay,
+        320,
+        320,
+        0.96,
+        this.facing < 0,
+        renderer,
+        'gold'
+      );
+    } else if (vfxSheet && ctx?.drawImage) {
+      ctx.save();
+      ctx.drawImage(vfxSheet, col * 208, 5 * 208, 208, 208, ax - 160, ay - 160, 320, 320);
+      ctx.restore();
+    }
+  }
+
   drawBloomedVfxCell(
     ctx,
     vfxSheet,
@@ -948,7 +1274,7 @@ export class Titan extends Fighter {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
     const cell = 208;
     const sx = Math.max(0, Math.min(29, Math.floor(col))) * cell;
-    const sy = Math.max(0, Math.min(4, Math.floor(row))) * cell;
+    const sy = Math.max(0, Math.min(7, Math.floor(row))) * cell;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -985,6 +1311,9 @@ export class Titan extends Fighter {
    * - Row 2: Colossal Sky-Falling God-Hammer & 5-Spire Volcanic Basalt-Jade Eruption
    * - Row 3: 8-Cog Interlocking Dwarven World-Forge Crucible Gear Mandala & Glowing Horned Anvil
    * - Row 4: Tectonic Basalt Plate Split & 8-Spoke Magma-Jade Star-Crater Nova
+   * - Row 5: Colossal World-Forge Crucible Anvil Altar (`320x320`)
+   * - Row 6: God-Hammer Lightning-Magma Strike Arc (`340x340`)
+   * - Row 7: Continental Sunder Volcanic Rune Geysers (`240x340`)
    */
   drawActiveAnvilAndQuakes(ctx, vfxSheet = null, renderer = null, inFront = false) {
     const sheet =
@@ -1120,6 +1449,8 @@ export class Titan extends Fighter {
     const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.titan : null;
     const vfxSheet = sprites?.vfx;
 
+    this.drawBehind(ctx, renderer);
+
     if (vfxSheet?.complete) {
       this.drawActiveAnvilAndQuakes(ctx, vfxSheet, renderer, false);
     }
@@ -1144,6 +1475,7 @@ export class Titan extends Fighter {
   draw(ctx, isReflection = false, renderer = null) {
     const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.titan : null;
     if (!sprites) return;
+    const vfxSheet = sprites.vfx;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -1169,5 +1501,67 @@ export class Titan extends Fighter {
     }
 
     ctx.restore();
+
+    if (!isReflection && this.state === 'TRUE_ULTIMATE') {
+      const t = this.stateTimer || 0;
+      const ax = this._trueUltAnvilX || 600;
+      // Render Row 6 (God-Hammer Lightning-Magma Strike Arc, 340x340) slamming onto the Crucible Anvil during Phase 2
+      if (t >= 1.45 && t < 3.20) {
+        const col = Math.floor(t * 30) % 30;
+        const ay = this.groundY - 120;
+        if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+          this.drawBloomedVfxCell(
+            ctx,
+            vfxSheet,
+            6,
+            col,
+            ax,
+            ay,
+            340,
+            340,
+            0.95,
+            this.facing < 0,
+            renderer,
+            this._trueUltStep >= 3 ? 'emerald' : 'gold'
+          );
+        } else if (vfxSheet && ctx?.drawImage) {
+          ctx.save();
+          ctx.drawImage(vfxSheet, col * 208, 6 * 208, 208, 208, ax - 170, ay - 170, 340, 340);
+          ctx.restore();
+        }
+      }
+    }
+
+    // Erupt 7 full-stage `titan_vfx.png` Row 7 (Continental Sunder Volcanic Rune Geysers, 240x340) spaced across the 1200px arena
+    if (!isReflection && this._trueUltGeyserTimer > 0) {
+      const u = Math.max(0, Math.min(1, 1 - this._trueUltGeyserTimer / 1.05));
+      const baseCol = Math.min(29, Math.floor(u * 30));
+      const fade = this._trueUltGeyserTimer < 0.22 ? this._trueUltGeyserTimer / 0.22 : 1.0;
+      for (let i = 0; i < 7; i++) {
+        const gx = 120 + i * 160;
+        const gy = this.groundY - 145;
+        const col = (baseCol + i * 2) % 30;
+        if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+          this.drawBloomedVfxCell(
+            ctx,
+            vfxSheet,
+            7,
+            col,
+            gx,
+            gy,
+            240,
+            340,
+            fade * 0.96,
+            i % 2 === 1,
+            renderer,
+            i % 2 === 0 ? 'gold' : 'emerald'
+          );
+        } else if (vfxSheet && ctx?.drawImage) {
+          ctx.save();
+          ctx.drawImage(vfxSheet, col * 208, 7 * 208, 208, 208, gx - 120, gy - 170, 240, 340);
+          ctx.restore();
+        }
+      }
+    }
   }
 }

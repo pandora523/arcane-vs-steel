@@ -6,10 +6,10 @@
   <title>Arcane vs. Steel — HD-2D Pixel Auto-Battler</title>
   <meta name="description" content="HD-2D pixel-art idle auto-battler featuring articulated 40-frame sprite animations, dynamic lighting, floor reflections, and cinematic ultimates." />
   <link rel="preload" href="assets/fonts/pixel_art.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="style.css?v=30fps62" />
+  <link rel="stylesheet" href="style.css?v=30fps63" />
 </head>
 <body>
-  <main id="app">
+  <main id="app" class="is-landing-open" data-landing-step="title">
     <canvas id="arena-canvas"></canvas>
 
     <!-- Authentic Dark-Fantasy Arcade HUD (Dynamically Bound to Fighter 1 & Fighter 2) -->
@@ -38,7 +38,7 @@
             </div>
             <div class="cd-box" id="left-cd-pill">
               <div class="cd-fill" id="left-skill-cd"></div>
-              <span class="cd-label" id="left-skill-text">WHIRLWIND</span>
+              <span class="cd-label" id="left-skill-text">TEMPEST VANGUARD</span>
             </div>
           </div>
           <!-- Supreme Finishing Move Gauge ("ULTIMATE" — higher tier above Overdrive!) -->
@@ -54,13 +54,13 @@
             </div>
             <div class="partner-bars">
               <div class="partner-header">
-                <span class="partner-name" id="left-partner-name">SERAPHINA</span>
+                <span class="partner-name" id="left-partner-name">TORGAR</span>
                 <span class="partner-badge" id="left-partner-badge">ALLY ACTIVE</span>
-                <span class="partner-hp-num" id="left-partner-hp-text">1080</span>
+                <span class="partner-hp-num" id="left-partner-hp-text">1520</span>
               </div>
               <div class="partner-bar-stack">
                 <div class="partner-hp-track">
-                  <div class="partner-hp-fill fill-radiant" id="left-partner-hp-bar" style="width: 100%"></div>
+                  <div class="partner-hp-fill fill-forge" id="left-partner-hp-bar" style="width: 100%"></div>
                 </div>
                 <div class="partner-ult-track">
                   <div class="partner-ult-fill" id="left-partner-mana-bar" style="width: 0%"></div>
@@ -74,7 +74,7 @@
 
       <!-- Center Crest & Clock -->
       <div class="center-emblem">
-        <h1 class="sr-only">Arcane vs Steel</h1>
+        <span class="sr-only">Arcane vs Steel</span>
         <div class="crest-shield"><span id="crest-vs-text">2V2</span></div>
         <div class="clock-plate" id="match-timer">00:00</div>
         <div class="hud-mode-tag" id="hud-mode-badge">CHAOS BRAWL</div>
@@ -85,20 +85,20 @@
       <section class="fighter-plate plate-right" id="hud-right">
         <div class="bars-column">
           <div class="plate-header">
-            <span class="hp-num" id="right-hp-text">1180</span>
+            <span class="hp-num" id="right-hp-text">1235</span>
             <div class="name-row name-row-right">
-              <h2 class="fighter-name" id="right-name">SYLVARA</h2>
+              <h2 class="fighter-name" id="right-name">MALAKOR</h2>
             </div>
           </div>
           <div class="hp-frame">
             <div class="hp-ghost" id="right-hp-dmg" style="width: 100%"></div>
-            <div class="hp-fill fill-emerald" id="right-hp-bar" style="width: 100%"></div>
+            <div class="hp-fill fill-abyssal" id="right-hp-bar" style="width: 100%"></div>
             <div class="hp-notches"></div>
           </div>
           <div class="sub-row">
             <div class="cd-box" id="right-cd-pill">
               <div class="cd-fill" id="right-skill-cd"></div>
-              <span class="cd-label" id="right-skill-text">STARFALL VOLLEY</span>
+              <span class="cd-label" id="right-skill-text">DEATH'S GRASP</span>
             </div>
             <div class="ult-frame">
               <div class="ult-fill" id="right-mana-bar" style="width: 0%"></div>
@@ -180,370 +180,781 @@
       </div>
     </footer>
 
-    <!-- HD-2D Portrait-First Versus Selector & Visual Skill Showcase Landing Page -->
-    <section id="landing-overlay" class="landing-overlay" aria-label="Champion Roster Selection">
-      <div class="landing-shell">
-        <header class="landing-header">
-          <div class="landing-title-block">
-            <div class="landing-eyebrow">ECLIPSE SANCTUARY CHRONICLES • 11-CHAMPION ROSTER</div>
-            <h1 class="landing-title">ARCANE <span>VS.</span> STEEL</h1>
+    <!-- AAA HD-2D 3-Stage Arcade Flow: 01 Title Sanctum • 02 Mode & Arena • 03 Champion Select -->
+    <section
+      id="landing-overlay"
+      class="landing-overlay"
+      data-active-step="title"
+      aria-label="Arcane vs. Steel Arcade Flow"
+    >
+      <!-- Persistent Top Forged-Brass Arcade Step Bar -->
+      <nav class="arcade-step-nav" aria-label="Arcade Setup Navigation">
+        <div class="step-nav-brand" id="step-nav-brand">ARCANE <span>VS.</span> STEEL</div>
+
+        <div class="step-tab-strip" role="tablist" aria-label="Setup Stages">
+          <button
+            type="button"
+            class="step-tab active-step-tab"
+            id="step-tab-title"
+            data-landing-step="title"
+            role="tab"
+            aria-selected="true"
+          >
+            <span class="step-num">01</span>
+            <span class="step-label">TITLE</span>
+          </button>
+          <span class="step-divider" aria-hidden="true">▸</span>
+          <button
+            type="button"
+            class="step-tab"
+            id="step-tab-mode"
+            data-landing-step="mode"
+            role="tab"
+            aria-selected="false"
+          >
+            <span class="step-num">02</span>
+            <span class="step-label">MODE &amp; ARENA</span>
+          </button>
+          <span class="step-divider" aria-hidden="true">▸</span>
+          <button
+            type="button"
+            class="step-tab"
+            id="step-tab-roster"
+            data-landing-step="roster"
+            role="tab"
+            aria-selected="false"
+          >
+            <span class="step-num">03</span>
+            <span class="step-label">CHAMPION SELECT</span>
+          </button>
+        </div>
+
+        <button
+          type="button"
+          class="step-nav-quick-btn"
+          id="btn-nav-commence"
+          title="Launch straight into the arena with the active lineup"
+        >
+          <span>⚔ QUICK LAUNCH</span>
+        </button>
+      </nav>
+
+      <!-- =========================================================================
+           STEP 1: TITLE SANCTUM (#landing-step-title)
+           Live HD-2D battle arena breathes clearly behind the Forged Sanctum Plaque
+           ========================================================================= -->
+      <div
+        id="landing-step-title"
+        class="landing-step-panel step-panel-title is-active-step"
+        role="tabpanel"
+        aria-labelledby="step-tab-title"
+      >
+        <div class="sanctum-plaque">
+          <!-- Ornate Pixel-Crisp Crossed Runeblade & Sanctuary Crest Divider -->
+          <div class="sanctum-crest-divider" aria-hidden="true">
+            <span class="crest-line crest-line-left"></span>
+            <svg
+              class="sanctum-crest-svg"
+              width="52"
+              height="26"
+              viewBox="0 0 52 26"
+              shape-rendering="crispEdges"
+            >
+              <!-- Outer brass diamond frame -->
+              <rect x="24" y="1" width="4" height="2" fill="#d4af37" />
+              <rect x="22" y="3" width="8" height="2" fill="#d4af37" />
+              <rect x="20" y="5" width="12" height="2" fill="#9a762d" />
+              <rect x="18" y="7" width="16" height="12" fill="#090c14" />
+              <rect x="16" y="9" width="2" height="8" fill="#d4af37" />
+              <rect x="34" y="9" width="2" height="8" fill="#d4af37" />
+              <rect x="20" y="19" width="12" height="2" fill="#9a762d" />
+              <rect x="22" y="21" width="8" height="2" fill="#d4af37" />
+              <rect x="24" y="23" width="4" height="2" fill="#d4af37" />
+              <!-- Left & Right Forged Blade Wings -->
+              <rect x="2" y="12" width="12" height="2" fill="#785c28" />
+              <rect x="6" y="10" width="8" height="2" fill="#d4af37" />
+              <rect x="38" y="12" width="12" height="2" fill="#785c28" />
+              <rect x="38" y="10" width="8" height="2" fill="#d4af37" />
+              <!-- Central Vertical Runeblade & Ivory Core -->
+              <rect x="25" y="4" width="2" height="18" fill="#f4f1ea" />
+              <rect x="21" y="12" width="10" height="2" fill="#d4af37" />
+              <rect x="24" y="11" width="4" height="4" fill="#38bdf8" />
+            </svg>
+            <span class="crest-line crest-line-right"></span>
           </div>
-          <div class="header-controls-stack">
-            <div class="test-mode-bar" role="group" aria-label="Test Mode Unlimited HP Toggle">
+
+          <h1 class="sanctum-title">ARCANE <span>VS.</span> STEEL</h1>
+          <p class="sanctum-subtitle">
+            HD-2D AUTONOMOUS ARENA BATTLER • 11 SOVEREIGN CHAMPIONS
+          </p>
+
+          <div class="sanctum-rule" aria-hidden="true"></div>
+
+          <div class="sanctum-actions">
+            <button type="button" class="sanctum-btn sanctum-btn-gold" id="btn-go-mode">
+              <span class="sanctum-btn-mark">01</span>
+              <span class="sanctum-btn-body">
+                <strong class="sanctum-btn-title">ENTER BATTLE SETUP</strong>
+                <span class="sanctum-btn-sub">CHOOSE FORMAT, SANDBOX RULES &amp; ARENA REALM</span>
+              </span>
+              <span class="sanctum-btn-arrow">→</span>
+            </button>
+
+            <button type="button" class="sanctum-btn sanctum-btn-iron" id="btn-go-roster">
+              <span class="sanctum-btn-mark">02</span>
+              <span class="sanctum-btn-body">
+                <strong class="sanctum-btn-title">CHAMPION SELECT</strong>
+                <span class="sanctum-btn-sub">DRAFT LINEUP &amp; INSPECT SUPREME ULTIMATES</span>
+              </span>
+              <span class="sanctum-btn-arrow">→</span>
+            </button>
+
+            <button type="button" class="sanctum-btn sanctum-btn-spectate" id="btn-title-quick-duel">
+              <span class="sanctum-btn-mark">⚔</span>
+              <span class="sanctum-btn-body">
+                <strong class="sanctum-btn-title">QUICK SPECTATE / RANDOM DUEL</strong>
+                <span class="sanctum-btn-sub">RANDOMIZE CHAMPIONS &amp; ENTER THE ARENA INSTANTLY</span>
+              </span>
+              <span class="sanctum-btn-arrow">▸</span>
+            </button>
+          </div>
+
+          <footer class="sanctum-footer" id="title-status-footer">
+            MODE: 2V2 BRAWL • ARENA: AUTO REALM • SANDBOX ∞ HP: ON
+          </footer>
+        </div>
+      </div>
+
+      <!-- =========================================================================
+           STEP 2: SELECT BATTLE MODE & ARENA (#landing-step-mode)
+           3 Spacious Forged Mode Cards + Sandbox Bar + 6-Stage Pixel Thumbnail Gallery
+           ========================================================================= -->
+      <div
+        id="landing-step-mode"
+        class="landing-step-panel step-panel-mode"
+        role="tabpanel"
+        aria-labelledby="step-tab-mode"
+        hidden
+      >
+        <div class="mode-arena-shell">
+          <!-- Section A: Choose Battle Format -->
+          <section class="setup-section" aria-label="Choose Battle Format">
+            <div class="setup-section-head">
+              <span class="setup-kicker">SECTION I • BATTLE FORMAT</span>
+              <h2 class="setup-heading">SELECT COMBAT PROTOCOL</h2>
+            </div>
+
+            <div class="mode-cards-grid" role="group" aria-label="Battle Mode Selector">
+              <button type="button" class="forged-mode-card mode-pill" id="mode-btn-1v1" data-mode="1v1">
+                <div class="mode-card-top">
+                  <span class="mode-roman">FORMAT I</span>
+                  <span class="mode-active-seal">SELECTED</span>
+                </div>
+                <div class="mode-card-title">1V1 SOVEREIGN DUEL</div>
+                <div class="mode-card-meta">2 CHAMPIONS • PURE HEAD-TO-HEAD</div>
+                <p class="mode-card-desc">
+                  Focused 1-on-1 arena duel showcasing blade parries, tactical skills, Overdrives &amp; 3-Overdrive Supreme Ultimates.
+                </p>
+              </button>
+
               <button
                 type="button"
-                class="test-mode-pill active-test-mode"
+                class="forged-mode-card mode-pill active-mode"
+                id="mode-btn-2v2-brawl"
+                data-mode="2v2_brawl"
+              >
+                <div class="mode-card-top">
+                  <span class="mode-roman">FORMAT II • SIGNATURE</span>
+                  <span class="mode-active-seal">SELECTED</span>
+                </div>
+                <div class="mode-card-title">2V2 CHAOS BRAWL</div>
+                <div class="mode-card-meta">4 CHAMPIONS • SIMULTANEOUS WARFARE</div>
+                <p class="mode-card-desc">
+                  All four champions clash on-screen at once with synchronized Twin-Soul Assists &amp; Avenger Overdrive surges.
+                </p>
+              </button>
+
+              <button type="button" class="forged-mode-card mode-pill" id="mode-btn-2v2-tag" data-mode="2v2_tag">
+                <div class="mode-card-top">
+                  <span class="mode-roman">FORMAT III</span>
+                  <span class="mode-active-seal">SELECTED</span>
+                </div>
+                <div class="mode-card-title">2V2 TAG RELAY</div>
+                <div class="mode-card-meta">4 CHAMPIONS • POINT &amp; RESERVE TAG</div>
+                <p class="mode-card-desc">
+                  Point champions duel while partners recover on Sanctuary pedestals, firing cover volleys &amp; leaping in on Tag Swaps.
+                </p>
+              </button>
+            </div>
+          </section>
+
+          <!-- Section B: Match Rules & Test Sandbox Bar -->
+          <section class="setup-section" aria-label="Match Rules and Test Sandbox">
+            <div class="setup-section-head">
+              <span class="setup-kicker">SECTION II • SANCTUARY RULES</span>
+              <h2 class="setup-heading">COMBAT PARAMETERS &amp; SANDBOX</h2>
+            </div>
+
+            <div class="rules-sandbox-grid">
+              <button
+                type="button"
+                class="rule-toggle-card test-mode-pill active-test-mode"
                 id="landing-btn-test-mode"
                 aria-pressed="true"
-                title="Toggle Test Mode (Default ON): Unlimited HP so champions never die and you can test full fights &amp; Ultimates!"
+                title="Toggle Test Sandbox (Default ON): Unlimited HP so champions regenerate and never KO"
               >
-                <span class="mode-pill-icon">🧪</span>
-                <span id="landing-test-mode-label">TEST MODE: ∞ HP ON</span>
-                <span class="test-mode-tag" id="landing-test-mode-tag">ON</span>
-              </button>
-            </div>
-            <div class="mode-selector-bar" role="group" aria-label="Battle Mode Selector">
-              <button type="button" class="mode-pill" id="mode-btn-1v1" data-mode="1v1">
-                <span class="mode-pill-icon">⚔</span>
-                <span class="mode-pill-text">1V1 DUEL</span>
-              </button>
-              <button type="button" class="mode-pill active-mode" id="mode-btn-2v2-brawl" data-mode="2v2_brawl">
-                <span class="mode-pill-icon">🔥</span>
-                <span class="mode-pill-text">2V2 CHAOS BRAWL</span>
-                <span class="mode-new-tag">HOT</span>
-              </button>
-              <button type="button" class="mode-pill" id="mode-btn-2v2-tag" data-mode="2v2_tag">
-                <span class="mode-pill-icon">⚡</span>
-                <span class="mode-pill-text">2V2 TAG RELAY</span>
-              </button>
-            </div>
-            <div class="stage-selector-bar" role="group" aria-label="Arena Stage Selector">
-              <span class="stage-bar-label">ARENA:</span>
-              <button type="button" class="stage-pill active-stage" id="stage-btn-auto" data-stage="auto">AUTO</button>
-              <button type="button" class="stage-pill" id="stage-btn-cathedral" data-stage="cathedral">CATHEDRAL</button>
-              <button type="button" class="stage-pill" id="stage-btn-sylvan" data-stage="sylvan">SYLVAN</button>
-              <button type="button" class="stage-pill" id="stage-btn-boneyard" data-stage="boneyard">NECROPOLIS</button>
-              <button type="button" class="stage-pill" id="stage-btn-clocktower" data-stage="clocktower">CLOCKTOWER</button>
-            </div>
-          </div>
-        </header>
-
-        <div class="versus-layout">
-          <!-- LEFT PANEL: FIGHTER 1 / TEAM 1 PROFILE & VISUAL SKILL BREAKDOWN -->
-          <aside class="fighter-profile profile-steel" id="profile-left">
-            <div class="profile-top-bar">
-              <div class="profile-corner-tag tag-p1" id="p1-corner-tag">★ TEAM 1 • LEFT DUO</div>
-              <div class="duo-tab-row" id="p1-duo-tabs">
-                <button type="button" class="duo-tab-btn active-tab" id="p1-tab-lead" data-inspect-left="lead">★ P1 LEAD</button>
-                <button type="button" class="duo-tab-btn" id="p1-tab-partner" data-inspect-left="partner">★ P1B ALLY</button>
-              </div>
-              <span class="profile-style-pill" id="p1-profile-style">MELEE VANGUARD</span>
-            </div>
-
-            <div class="profile-hero-showcase">
-              <div class="profile-stage" id="p1-stage">
-                <div class="stage-halo halo-steel" id="p1-halo"></div>
-                <canvas id="p1-sprite-canvas" width="208" height="208"></canvas>
-              </div>
-              <div class="profile-identity">
-                <div class="profile-role" id="p1-profile-role">RUNEBLADE KNIGHT</div>
-                <h2 class="profile-name" id="p1-profile-name">AETHELGARD</h2>
-                <div class="profile-trait-badge" id="p1-profile-trait">PASSIVE: AEGIS SPELL DEFLECT</div>
-              </div>
-            </div>
-
-            <div class="profile-skills-header">COMBAT ARSENAL &amp; SKILL EFFECTS</div>
-            <div class="profile-skill-list" id="p1-skill-list">
-              <div class="skill-card">
-                <div class="skill-icon-box"><canvas id="p1-skill-icon-0" width="56" height="56"></canvas></div>
-                <div class="skill-info">
-                  <div class="skill-title-row">
-                    <strong class="skill-name" id="p1-skill-name-0">FROST CRESCENT</strong>
-                    <span class="skill-type-badge badge-auto" id="p1-skill-type-0">AUTO + PASSIVE</span>
+                <div class="rule-copy">
+                  <div class="rule-title-line">
+                    <strong class="rule-name" id="landing-test-mode-label">TEST SANDBOX: ∞ HP</strong>
                   </div>
-                  <p class="skill-desc" id="p1-skill-desc-0">Cleaves with frost waves &amp; raises an Aegis barrier that deflects projectiles.</p>
+                  <p class="rule-desc">
+                    Fighters regenerate HP &amp; never KO so you can test full kits &amp; 3-Overdrive Supreme Ultimates.
+                  </p>
                 </div>
-              </div>
+                <div class="forged-switch-wrap">
+                  <span class="forged-switch-track"><span class="forged-switch-thumb"></span></span>
+                  <span class="test-mode-tag" id="landing-test-mode-tag">ON</span>
+                </div>
+              </button>
 
-              <div class="skill-card">
-                <div class="skill-icon-box"><canvas id="p1-skill-icon-1" width="56" height="56"></canvas></div>
-                <div class="skill-info">
-                  <div class="skill-title-row">
-                    <strong class="skill-name" id="p1-skill-name-1">TEMPEST VANGUARD</strong>
-                    <span class="skill-type-badge badge-skill" id="p1-skill-type-1">SKILL • 4.5S CD</span>
+              <button
+                type="button"
+                class="rule-toggle-card active-rule-card"
+                id="landing-btn-auto-tourney"
+                aria-pressed="true"
+                title="Toggle Auto-Tourney Gauntlet: Winner automatically advances against a new challenger"
+              >
+                <div class="rule-copy">
+                  <div class="rule-title-line">
+                    <strong class="rule-name" id="landing-auto-tourney-label">AUTO-TOURNEY GAUNTLET</strong>
                   </div>
-                  <p class="skill-desc" id="p1-skill-desc-1">3-hit spinning cryo-cyclone that pulls foes inward and shatters armor.</p>
+                  <p class="rule-desc">
+                    Reigning victors automatically advance to face a fresh challenger squad when mortal HP is active.
+                  </p>
                 </div>
-              </div>
-
-              <div class="skill-card skill-card-ult">
-                <div class="skill-icon-box icon-box-ult"><canvas id="p1-skill-icon-2" width="56" height="56"></canvas></div>
-                <div class="skill-info">
-                  <div class="skill-title-row">
-                    <strong class="skill-name" id="p1-skill-name-2">HEAVENLY EARTHSHATTER</strong>
-                    <span class="skill-type-badge badge-ult" id="p1-skill-type-2">★ OVERDRIVE ULT</span>
-                  </div>
-                  <p class="skill-desc" id="p1-skill-desc-2">Leaps skyward and slams a colossal Runeblade monolith, erupting 5 glacial spires.</p>
+                <div class="forged-switch-wrap">
+                  <span class="forged-switch-track"><span class="forged-switch-thumb"></span></span>
+                  <span class="test-mode-tag" id="landing-auto-tourney-tag">ON</span>
                 </div>
-              </div>
+              </button>
             </div>
-          </aside>
+          </section>
 
-          <!-- CENTER COLUMN: 7-CHAMPION PORTRAIT SELECTOR & DUEL LAUNCHER -->
-          <div class="versus-center-col">
-            <div class="matchup-banner" id="matchup-banner">
-              <div class="team-slot-col">
-                <button type="button" class="slot-pill slot-left active-slot" id="slot-btn-left" title="Click to select a Champion for P1 Lead (Left Team)">
-                  <span class="slot-tag" id="slot-left-tag">★ P1 LEAD</span>
-                  <strong class="slot-hero-name" id="slot-left-name">TORGAR</strong>
-                </button>
-                <button type="button" class="slot-pill slot-left-partner" id="slot-btn-left-partner" title="Click to select a Partner Champion for P1B Ally (Left Team)">
-                  <span class="slot-tag" id="slot-left-partner-tag">★ P1B ALLY</span>
-                  <strong class="slot-hero-name" id="slot-left-partner-name">SERAPHINA</strong>
-                </button>
-              </div>
+          <!-- Section C: Visual Arena Stage Gallery -->
+          <section class="setup-section" aria-label="Arena Stage Selector">
+            <div class="setup-section-head">
+              <span class="setup-kicker">SECTION III • BATTLEGROUND REALM</span>
+              <h2 class="setup-heading">CHOOSE ARENA STAGE</h2>
+            </div>
+
+            <div class="stage-gallery-grid" role="group" aria-label="Arena Stage Gallery">
+              <button type="button" class="stage-card stage-pill active-stage" id="stage-btn-auto" data-stage="auto">
+                <div class="stage-thumb-wrap stage-thumb-auto">
+                  <img src="assets/sprites/arena_bg.png" alt="Auto Rotating Realm" loading="eager" />
+                  <span class="stage-auto-emblem">❖</span>
+                </div>
+                <div class="stage-card-meta">
+                  <strong class="stage-card-name">AUTO REALM</strong>
+                  <span class="stage-card-sub">ROTATING SANCTUARY</span>
+                </div>
+              </button>
+
+              <button type="button" class="stage-card stage-pill" id="stage-btn-cathedral" data-stage="cathedral">
+                <div class="stage-thumb-wrap">
+                  <img src="assets/sprites/arena_bg.png" alt="Eclipse Cathedral" loading="eager" />
+                </div>
+                <div class="stage-card-meta">
+                  <strong class="stage-card-name">ECLIPSE CATHEDRAL</strong>
+                  <span class="stage-card-sub">+55% OVERDRIVE SURGE</span>
+                </div>
+              </button>
+
+              <button type="button" class="stage-card stage-pill" id="stage-btn-sanctuary" data-stage="sanctuary">
+                <div class="stage-thumb-wrap">
+                  <img src="assets/sprites/arena_sanctuary.png" alt="Radiant Sanctuary" loading="eager" />
+                </div>
+                <div class="stage-card-meta">
+                  <strong class="stage-card-name">RADIANT SANCTUARY</strong>
+                  <span class="stage-card-sub">HALLS OF JUSTICE</span>
+                </div>
+              </button>
+
+              <button type="button" class="stage-card stage-pill" id="stage-btn-sylvan" data-stage="sylvan">
+                <div class="stage-thumb-wrap">
+                  <img src="assets/sprites/arena_sylvan.png" alt="Sylvan Starwood" loading="eager" />
+                </div>
+                <div class="stage-card-meta">
+                  <strong class="stage-card-name">SYLVAN STARWOOD</strong>
+                  <span class="stage-card-sub">+180 HP MONSOON REGEN</span>
+                </div>
+              </button>
+
+              <button type="button" class="stage-card stage-pill" id="stage-btn-boneyard" data-stage="boneyard">
+                <div class="stage-thumb-wrap">
+                  <img src="assets/sprites/arena_boneyard.png" alt="Abyssal Necropolis" loading="eager" />
+                </div>
+                <div class="stage-card-meta">
+                  <strong class="stage-card-name">ABYSSAL NECROPOLIS</strong>
+                  <span class="stage-card-sub">+18% BLOOD MOON ATK</span>
+                </div>
+              </button>
+
+              <button type="button" class="stage-card stage-pill" id="stage-btn-clocktower" data-stage="clocktower">
+                <div class="stage-thumb-wrap">
+                  <img src="assets/sprites/arena_clocktower.png" alt="Astral Clocktower" loading="eager" />
+                </div>
+                <div class="stage-card-meta">
+                  <strong class="stage-card-name">ASTRAL CLOCKTOWER</strong>
+                  <span class="stage-card-sub">+35% OVERCLOCK HASTE</span>
+                </div>
+              </button>
+            </div>
+          </section>
+
+          <!-- Step 2 Footer Navigation -->
+          <footer class="mode-step-footer">
+            <button type="button" class="forged-back-btn" id="btn-mode-back">
+              <span>← BACK TO TITLE</span>
+            </button>
+            <div class="mode-footer-status" id="mode-step-summary">
+              2V2 CHAOS BRAWL • AUTO REALM • SANDBOX ∞ HP: ON
+            </div>
+            <button type="button" class="forged-next-cta" id="btn-mode-next">
+              <span>PROCEED TO CHAMPION SELECT →</span>
+            </button>
+          </footer>
+        </div>
+      </div>
+
+      <!-- =========================================================================
+           STEP 3: CHAMPION SELECT / VERSUS DRAFT (#landing-step-roster)
+           Top Matchup Slot Strip + Dual 30fps Showcase Pedestals + 11-Hero Medallion Grid
+           ========================================================================= -->
+      <div
+        id="landing-step-roster"
+        class="landing-step-panel step-panel-roster"
+        role="tabpanel"
+        aria-labelledby="step-tab-roster"
+        hidden
+      >
+        <div class="roster-draft-shell">
+          <!-- Top Matchup & Active Slot Bar -->
+          <header class="matchup-banner" id="matchup-banner">
+            <div class="team-slot-group team-slot-left">
+              <button
+                type="button"
+                class="slot-pill slot-left"
+                id="slot-btn-left"
+                title="Select Champion for P1 Lead (Left Team)"
+              >
+                <span class="slot-tag" id="slot-left-tag">★ P1 LEAD</span>
+                <strong class="slot-hero-name" id="slot-left-name">AETHELGARD</strong>
+              </button>
+              <button
+                type="button"
+                class="slot-pill slot-left-partner"
+                id="slot-btn-left-partner"
+                title="Select Partner Champion for P1B Ally (Left Team)"
+              >
+                <span class="slot-tag" id="slot-left-partner-tag">★ P1B ALLY</span>
+                <strong class="slot-hero-name" id="slot-left-partner-name">TORGAR</strong>
+              </button>
+            </div>
+
+            <div class="matchup-center-crest">
               <div class="matchup-vs-badge" id="matchup-vs-text">2V2</div>
-              <div class="team-slot-col">
-                <button type="button" class="slot-pill slot-right" id="slot-btn-right" title="Click to select a Champion for P2 Lead (Right Team)">
-                  <span class="slot-tag" id="slot-right-tag">★ P2 LEAD</span>
-                  <strong class="slot-hero-name" id="slot-right-name">SYLVARA</strong>
-                </button>
-                <button type="button" class="slot-pill slot-right-partner" id="slot-btn-right-partner" title="Click to select a Partner Champion for P2B Ally (Right Team)">
-                  <span class="slot-tag" id="slot-right-partner-tag">★ P2B ALLY</span>
-                  <strong class="slot-hero-name" id="slot-right-partner-name">MALAKOR</strong>
-                </button>
-              </div>
+              <button
+                type="button"
+                class="roster-config-chip"
+                id="btn-roster-config-badge"
+                title="Click to adjust Battle Mode, Sandbox ∞ HP, or Arena Stage"
+              >
+                <span id="roster-config-badge-text">2V2 BRAWL • AUTO REALM • ∞ HP ON</span>
+              </button>
             </div>
 
-            <div class="portrait-grid-label" id="portrait-grid-label">CLICK A PORTRAIT TO ASSIGN TO ACTIVE SLOT</div>
+            <div class="team-slot-group team-slot-right">
+              <button
+                type="button"
+                class="slot-pill slot-right active-slot"
+                id="slot-btn-right"
+                title="Select Champion for P2 Lead (Right Team)"
+              >
+                <span class="slot-tag" id="slot-right-tag">★ P2 LEAD</span>
+                <strong class="slot-hero-name" id="slot-right-name">MALAKOR</strong>
+              </button>
+              <button
+                type="button"
+                class="slot-pill slot-right-partner"
+                id="slot-btn-right-partner"
+                title="Select Partner Champion for P2B Ally (Right Team)"
+              >
+                <span class="slot-tag" id="slot-right-partner-tag">★ P2B ALLY</span>
+                <strong class="slot-hero-name" id="slot-right-partner-name">IGNIS SOL</strong>
+              </button>
+            </div>
+          </header>
 
-            <div class="champion-grid">
-              <!-- 1. Warrior -->
-              <article class="champ-card card-steel selected-p1" id="card-warrior" data-hero="warrior" tabindex="0">
-                <div class="card-Selected-ribbon" id="ribbon-warrior">★ P1</div>
-                <div class="portrait-tile-frame stage-steel">
-                  <canvas id="preview-warrior" width="128" height="128"></canvas>
+          <!-- Main 3-Column Fighting-Game Versus Draft Layout -->
+          <div class="versus-layout">
+            <!-- LEFT P1 SHOWCASE PEDESTAL -->
+            <aside class="fighter-profile profile-steel" id="profile-left">
+              <div class="profile-top-bar">
+                <div class="profile-corner-tag tag-p1" id="p1-corner-tag">★ TEAM 1</div>
+                <div class="duo-tab-row" id="p1-duo-tabs">
+                  <button type="button" class="duo-tab-btn active-tab" id="p1-tab-lead" data-inspect-left="lead">
+                    ★ P1 LEAD
+                  </button>
+                  <button type="button" class="duo-tab-btn" id="p1-tab-partner" data-inspect-left="partner">
+                    P1B ALLY
+                  </button>
                 </div>
-                <h2 class="champ-name">AETHELGARD</h2>
-                <div class="champ-role">RUNE KNIGHT</div>
-                <div class="slot-assign-row">
-                  <button type="button" class="assign-btn" data-assign-p1="warrior">P1</button>
-                  <button type="button" class="assign-btn" data-assign-p2="warrior">P2</button>
-                </div>
-              </article>
+                <span class="profile-style-pill" id="p1-profile-style">RUNIC VANGUARD</span>
+              </div>
 
-              <!-- 2. Archer -->
-              <article class="champ-card card-emerald selected-p2" id="card-archer" data-hero="archer" tabindex="0">
-                <div class="card-Selected-ribbon" id="ribbon-archer">★ P2</div>
-                <div class="portrait-tile-frame stage-emerald">
-                  <canvas id="preview-archer" width="128" height="128"></canvas>
+              <div class="profile-hero-showcase">
+                <div class="profile-stage" id="p1-stage">
+                  <div class="stage-halo halo-steel" id="p1-halo"></div>
+                  <canvas id="p1-sprite-canvas" width="272" height="208"></canvas>
+                  <div class="stage-pedestal-plinth" aria-hidden="true"></div>
                 </div>
-                <h2 class="champ-name">SYLVARA</h2>
-                <div class="champ-role">BOWMASTER</div>
-                <div class="slot-assign-row">
-                  <button type="button" class="assign-btn" data-assign-p1="archer">P1</button>
-                  <button type="button" class="assign-btn" data-assign-p2="archer">P2</button>
+                <div class="profile-identity">
+                  <div class="profile-role" id="p1-profile-role">SOVEREIGN RUNE PALADIN</div>
+                  <h2 class="profile-name" id="p1-profile-name">AETHELGARD</h2>
+                  <div class="profile-trait-badge" id="p1-profile-trait">PASSIVE: AEGIS SPELL DEFLECT</div>
                 </div>
-              </article>
+              </div>
 
-              <!-- 3. Fire Mage -->
-              <article class="champ-card card-arcane" id="card-mage" data-hero="mage" tabindex="0">
-                <div class="card-Selected-ribbon" id="ribbon-mage">PICK</div>
-                <div class="portrait-tile-frame stage-arcane">
-                  <canvas id="preview-mage" width="128" height="128"></canvas>
+              <div class="profile-skills-header">4-SLOT SOVEREIGN KIT &amp; SUPREME ULTIMATE</div>
+              <div class="profile-skill-list" id="p1-skill-list">
+                <div class="skill-card">
+                  <div class="skill-icon-box"><canvas id="p1-skill-icon-0" width="56" height="56"></canvas></div>
+                  <div class="skill-info">
+                    <div class="skill-title-row">
+                      <strong class="skill-name" id="p1-skill-name-0">FROST CRESCENT</strong>
+                      <span class="skill-type-badge badge-auto" id="p1-skill-type-0">AUTO + PASSIVE</span>
+                    </div>
+                    <p class="skill-desc" id="p1-skill-desc-0">
+                      Cleaves with 2H Celestial Claymore frost waves &amp; raises an Aegis spell-reflect barrier.
+                    </p>
+                  </div>
                 </div>
-                <h2 class="champ-name">IGNIS SOL</h2>
-                <div class="champ-role">SOLAR MAGE</div>
-                <div class="slot-assign-row">
-                  <button type="button" class="assign-btn" data-assign-p1="mage">P1</button>
-                  <button type="button" class="assign-btn" data-assign-p2="mage">P2</button>
-                </div>
-              </article>
 
-              <!-- 4. Priestess -->
-              <article class="champ-card card-radiant" id="card-priestess" data-hero="priestess" tabindex="0">
-                <div class="card-Selected-ribbon" id="ribbon-priestess">PICK</div>
-                <div class="portrait-tile-frame stage-radiant">
-                  <canvas id="preview-priestess" width="128" height="128"></canvas>
+                <div class="skill-card">
+                  <div class="skill-icon-box"><canvas id="p1-skill-icon-1" width="56" height="56"></canvas></div>
+                  <div class="skill-info">
+                    <div class="skill-title-row">
+                      <strong class="skill-name" id="p1-skill-name-1">TEMPEST VANGUARD</strong>
+                      <span class="skill-type-badge badge-skill" id="p1-skill-type-1">SKILL • 5.4S CD</span>
+                    </div>
+                    <p class="skill-desc" id="p1-skill-desc-1">
+                      360° spinning Runeblade cyclone rush that pulls foes inward before a grounded crystal slam.
+                    </p>
+                  </div>
                 </div>
-                <h2 class="champ-name">SERAPHINA</h2>
-                <div class="champ-role">PRIESTESS</div>
-                <div class="slot-assign-row">
-                  <button type="button" class="assign-btn" data-assign-p1="priestess">P1</button>
-                  <button type="button" class="assign-btn" data-assign-p2="priestess">P2</button>
-                </div>
-              </article>
 
-              <!-- 5. Reaper -->
-              <article class="champ-card card-abyssal" id="card-reaper" data-hero="reaper" tabindex="0">
-                <div class="card-Selected-ribbon" id="ribbon-reaper">PICK</div>
-                <div class="portrait-tile-frame stage-abyssal">
-                  <canvas id="preview-reaper" width="128" height="128"></canvas>
+                <div class="skill-card skill-card-ult">
+                  <div class="skill-icon-box icon-box-ult"><canvas id="p1-skill-icon-2" width="56" height="56"></canvas></div>
+                  <div class="skill-info">
+                    <div class="skill-title-row">
+                      <strong class="skill-name" id="p1-skill-name-2">HEAVENLY EARTHSHATTER</strong>
+                      <span class="skill-type-badge badge-ult" id="p1-skill-type-2">★ OVERDRIVE ULT</span>
+                    </div>
+                    <p class="skill-desc" id="p1-skill-desc-2">
+                      Leaps skyward and slams a colossal Runeblade monolith, erupting 5 glacial spires.
+                    </p>
+                  </div>
                 </div>
-                <h2 class="champ-name">MALAKOR</h2>
-                <div class="champ-role">SOULREAPER</div>
-                <div class="slot-assign-row">
-                  <button type="button" class="assign-btn" data-assign-p1="reaper">P1</button>
-                  <button type="button" class="assign-btn" data-assign-p2="reaper">P2</button>
-                </div>
-              </article>
 
-              <!-- 6. Chronomancer -->
-              <article class="champ-card card-chrono" id="card-chronomancer" data-hero="chronomancer" tabindex="0">
-                <div class="card-Selected-ribbon" id="ribbon-chronomancer">PICK</div>
-                <div class="portrait-tile-frame stage-chrono">
-                  <canvas id="preview-chronomancer" width="128" height="128"></canvas>
+                <!-- 4th Row: Supreme Ultimate Finisher -->
+                <div class="skill-card skill-card-supreme" id="p1-true-ult-box">
+                  <div class="supreme-crest-box" aria-hidden="true">
+                    <span class="supreme-star">★</span>
+                    <span class="supreme-tier">III</span>
+                  </div>
+                  <div class="skill-info">
+                    <div class="skill-title-row">
+                      <strong class="skill-name supreme-ult-title" id="p1-true-ult-name">
+                        CELESTIAL JUSTICE: SWORD OF THE SANCTUARY
+                      </strong>
+                      <span class="skill-type-badge badge-supreme">★ SUPREME ULTIMATE ★</span>
+                    </div>
+                    <p class="skill-desc" id="p1-true-ult-desc">
+                      Ascends on Seraphim wings, consecrates the Radiant Sanctuary, locks a pixel reticle &amp; cleaves from the heavens!
+                    </p>
+                  </div>
                 </div>
-                <h2 class="champ-name">CHRONOS</h2>
-                <div class="champ-role">CLOCK-BLADE</div>
-                <div class="slot-assign-row">
-                  <button type="button" class="assign-btn" data-assign-p1="chronomancer">P1</button>
-                  <button type="button" class="assign-btn" data-assign-p2="chronomancer">P2</button>
-                </div>
-              </article>
+              </div>
+            </aside>
 
-              <!-- 7. Titan-Forger -->
-              <article class="champ-card card-forge" id="card-titan" data-hero="titan" tabindex="0">
-                <div class="card-Selected-ribbon" id="ribbon-titan">PICK</div>
-                <div class="portrait-tile-frame stage-forge">
-                  <canvas id="preview-titan" width="128" height="128"></canvas>
-                </div>
-                <h2 class="champ-name">TORGAR</h2>
-                <div class="champ-role">TITAN-FORGER</div>
-                <div class="slot-assign-row">
-                  <button type="button" class="assign-btn" data-assign-p1="titan">P1</button>
-                  <button type="button" class="assign-btn" data-assign-p2="titan">P2</button>
-                </div>
-              </article>
+            <!-- CENTER COLUMN: 11-CHAMPION SYMMETRICAL PORTRAIT MEDALLION GRID -->
+            <div class="versus-center-col">
+              <div class="portrait-grid-label" id="portrait-grid-label">
+                SELECT A CHAMPION FOR ★ P2 LEAD — OR CLICK P1 / P2 ON ANY MEDALLION
+              </div>
 
-              <!-- 8. Storm Ronin (NEW) -->
-              <article class="champ-card card-storm" id="card-ronin" data-hero="ronin" tabindex="0">
-                <div class="card-Selected-ribbon" id="ribbon-ronin">NEW</div>
-                <div class="portrait-tile-frame stage-storm">
-                  <canvas id="preview-ronin" width="128" height="128"></canvas>
-                </div>
-                <h2 class="champ-name">KAZE-MARU</h2>
-                <div class="champ-role">STORM RONIN • NEW</div>
-                <div class="slot-assign-row">
-                  <button type="button" class="assign-btn" data-assign-p1="ronin">P1</button>
-                  <button type="button" class="assign-btn" data-assign-p2="ronin">P2</button>
-                </div>
-              </article>
+              <div class="champion-grid">
+                <!-- 1. Warrior: AETHELGARD -->
+                <article class="champ-card card-steel selected-p1" id="card-warrior" data-hero="warrior" tabindex="0">
+                  <div class="card-Selected-ribbon" id="ribbon-warrior">★ P1 LEAD</div>
+                  <div class="portrait-tile-frame stage-steel">
+                    <canvas id="preview-warrior" width="128" height="128"></canvas>
+                  </div>
+                  <h2 class="champ-name">AETHELGARD</h2>
+                  <div class="champ-role">RUNE PALADIN</div>
+                  <div class="slot-assign-row">
+                    <button type="button" class="assign-btn" data-assign-p1="warrior">P1</button>
+                    <button type="button" class="assign-btn" data-assign-p2="warrior">P2</button>
+                  </div>
+                </article>
 
-              <!-- 9. Sky Valkyrie (NEW) -->
-              <article class="champ-card card-crimson" id="card-valkyrie" data-hero="valkyrie" tabindex="0">
-                <div class="card-Selected-ribbon" id="ribbon-valkyrie">NEW</div>
-                <div class="portrait-tile-frame stage-crimson">
-                  <canvas id="preview-valkyrie" width="128" height="128"></canvas>
-                </div>
-                <h2 class="champ-name">FREYJA</h2>
-                <div class="champ-role">SKY VALKYRIE • NEW</div>
-                <div class="slot-assign-row">
-                  <button type="button" class="assign-btn" data-assign-p1="valkyrie">P1</button>
-                  <button type="button" class="assign-btn" data-assign-p2="valkyrie">P2</button>
-                </div>
-              </article>
+                <!-- 2. Fire Mage: IGNIS SOL -->
+                <article class="champ-card card-arcane" id="card-mage" data-hero="mage" tabindex="0">
+                  <div class="card-Selected-ribbon" id="ribbon-mage">SET P2</div>
+                  <div class="portrait-tile-frame stage-arcane">
+                    <canvas id="preview-mage" width="128" height="128"></canvas>
+                  </div>
+                  <h2 class="champ-name">IGNIS SOL</h2>
+                  <div class="champ-role">SOLAR ARCHMAGE</div>
+                  <div class="slot-assign-row">
+                    <button type="button" class="assign-btn" data-assign-p1="mage">P1</button>
+                    <button type="button" class="assign-btn" data-assign-p2="mage">P2</button>
+                  </div>
+                </article>
 
-              <!-- 10. Cryo-Prism Sovereign -->
-              <article class="champ-card card-glacial" id="card-icemage" data-hero="icemage" tabindex="0">
-                <div class="card-Selected-ribbon" id="ribbon-icemage">NEW</div>
-                <div class="portrait-tile-frame stage-glacial">
-                  <canvas id="preview-icemage" width="128" height="128"></canvas>
-                </div>
-                <h2 class="champ-name">GLACIA</h2>
-                <div class="champ-role">CRYO SOVEREIGN</div>
-                <div class="slot-assign-row">
-                  <button type="button" class="assign-btn" data-assign-p1="icemage">P1</button>
-                  <button type="button" class="assign-btn" data-assign-p2="icemage">P2</button>
-                </div>
-              </article>
+                <!-- 3. Priestess: SERAPHINA -->
+                <article class="champ-card card-radiant" id="card-priestess" data-hero="priestess" tabindex="0">
+                  <div class="card-Selected-ribbon" id="ribbon-priestess">SET P2</div>
+                  <div class="portrait-tile-frame stage-radiant">
+                    <canvas id="preview-priestess" width="128" height="128"></canvas>
+                  </div>
+                  <h2 class="champ-name">SERAPHINA</h2>
+                  <div class="champ-role">HIGH PRIESTESS</div>
+                  <div class="slot-assign-row">
+                    <button type="button" class="assign-btn" data-assign-p1="priestess">P1</button>
+                    <button type="button" class="assign-btn" data-assign-p2="priestess">P2</button>
+                  </div>
+                </article>
 
-              <!-- 11. Cybernetic Valkyrie -->
-              <article class="champ-card card-cyber card-featured-pair" id="card-android" data-hero="android" tabindex="0">
-                <div class="card-Selected-ribbon" id="ribbon-android">NEW</div>
-                <div class="portrait-tile-frame stage-cyber">
-                  <canvas id="preview-android" width="128" height="128"></canvas>
-                </div>
-                <div class="champ-wide-meta">
+                <!-- 4. Chronomancer: CHRONOS -->
+                <article class="champ-card card-chrono" id="card-chronomancer" data-hero="chronomancer" tabindex="0">
+                  <div class="card-Selected-ribbon" id="ribbon-chronomancer">SET P2</div>
+                  <div class="portrait-tile-frame stage-chrono">
+                    <canvas id="preview-chronomancer" width="128" height="128"></canvas>
+                  </div>
+                  <h2 class="champ-name">CHRONOS</h2>
+                  <div class="champ-role">CLOCK-BLADE</div>
+                  <div class="slot-assign-row">
+                    <button type="button" class="assign-btn" data-assign-p1="chronomancer">P1</button>
+                    <button type="button" class="assign-btn" data-assign-p2="chronomancer">P2</button>
+                  </div>
+                </article>
+
+                <!-- 5. Valkyrie: FREYJA -->
+                <article class="champ-card card-crimson" id="card-valkyrie" data-hero="valkyrie" tabindex="0">
+                  <div class="card-Selected-ribbon" id="ribbon-valkyrie">SET P2</div>
+                  <div class="portrait-tile-frame stage-crimson">
+                    <canvas id="preview-valkyrie" width="128" height="128"></canvas>
+                  </div>
+                  <h2 class="champ-name">FREYJA</h2>
+                  <div class="champ-role">SKY VALKYRIE</div>
+                  <div class="slot-assign-row">
+                    <button type="button" class="assign-btn" data-assign-p1="valkyrie">P1</button>
+                    <button type="button" class="assign-btn" data-assign-p2="valkyrie">P2</button>
+                  </div>
+                </article>
+
+                <!-- 6. Storm Ronin: KAZE-MARU -->
+                <article class="champ-card card-storm" id="card-ronin" data-hero="ronin" tabindex="0">
+                  <div class="card-Selected-ribbon" id="ribbon-ronin">SET P2</div>
+                  <div class="portrait-tile-frame stage-storm">
+                    <canvas id="preview-ronin" width="128" height="128"></canvas>
+                  </div>
+                  <h2 class="champ-name">KAZE-MARU</h2>
+                  <div class="champ-role">STORM RONIN</div>
+                  <div class="slot-assign-row">
+                    <button type="button" class="assign-btn" data-assign-p1="ronin">P1</button>
+                    <button type="button" class="assign-btn" data-assign-p2="ronin">P2</button>
+                  </div>
+                </article>
+
+                <!-- 7. Archer: SYLVARA -->
+                <article class="champ-card card-emerald" id="card-archer" data-hero="archer" tabindex="0">
+                  <div class="card-Selected-ribbon" id="ribbon-archer">SET P2</div>
+                  <div class="portrait-tile-frame stage-emerald">
+                    <canvas id="preview-archer" width="128" height="128"></canvas>
+                  </div>
+                  <h2 class="champ-name">SYLVARA</h2>
+                  <div class="champ-role">STAR-HUNTRESS</div>
+                  <div class="slot-assign-row">
+                    <button type="button" class="assign-btn" data-assign-p1="archer">P1</button>
+                    <button type="button" class="assign-btn" data-assign-p2="archer">P2</button>
+                  </div>
+                </article>
+
+                <!-- 8. Reaper: MALAKOR -->
+                <article class="champ-card card-abyssal selected-p2" id="card-reaper" data-hero="reaper" tabindex="0">
+                  <div class="card-Selected-ribbon" id="ribbon-reaper">★ P2 LEAD</div>
+                  <div class="portrait-tile-frame stage-abyssal">
+                    <canvas id="preview-reaper" width="128" height="128"></canvas>
+                  </div>
+                  <h2 class="champ-name">MALAKOR</h2>
+                  <div class="champ-role">DREAD NECROMANCER</div>
+                  <div class="slot-assign-row">
+                    <button type="button" class="assign-btn" data-assign-p1="reaper">P1</button>
+                    <button type="button" class="assign-btn" data-assign-p2="reaper">P2</button>
+                  </div>
+                </article>
+
+                <!-- 9. Titan: TORGAR -->
+                <article class="champ-card card-forge" id="card-titan" data-hero="titan" tabindex="0">
+                  <div class="card-Selected-ribbon" id="ribbon-titan">★ P1B ALLY</div>
+                  <div class="portrait-tile-frame stage-forge">
+                    <canvas id="preview-titan" width="128" height="128"></canvas>
+                  </div>
+                  <h2 class="champ-name">TORGAR</h2>
+                  <div class="champ-role">WORLD-FORGE WARLORD</div>
+                  <div class="slot-assign-row">
+                    <button type="button" class="assign-btn" data-assign-p1="titan">P1</button>
+                    <button type="button" class="assign-btn" data-assign-p2="titan">P2</button>
+                  </div>
+                </article>
+
+                <!-- 10. Ice Mage: LYRA -->
+                <article class="champ-card card-glacial" id="card-icemage" data-hero="icemage" tabindex="0">
+                  <div class="card-Selected-ribbon" id="ribbon-icemage">SET P2</div>
+                  <div class="portrait-tile-frame stage-glacial">
+                    <canvas id="preview-icemage" width="128" height="128"></canvas>
+                  </div>
+                  <h2 class="champ-name">LYRA</h2>
+                  <div class="champ-role">CRYO-PRISM EMPRESS</div>
+                  <div class="slot-assign-row">
+                    <button type="button" class="assign-btn" data-assign-p1="icemage">P1</button>
+                    <button type="button" class="assign-btn" data-assign-p2="icemage">P2</button>
+                  </div>
+                </article>
+
+                <!-- 11. Android: VEX-09 -->
+                <article class="champ-card card-cyber" id="card-android" data-hero="android" tabindex="0">
+                  <div class="card-Selected-ribbon" id="ribbon-android">SET P2</div>
+                  <div class="portrait-tile-frame stage-cyber">
+                    <canvas id="preview-android" width="128" height="128"></canvas>
+                  </div>
                   <h2 class="champ-name">VEX-09</h2>
-                  <div class="champ-role">CYBER VALKYRIE • NEW</div>
-                </div>
-                <div class="slot-assign-row">
-                  <button type="button" class="assign-btn" data-assign-p1="android">P1</button>
-                  <button type="button" class="assign-btn" data-assign-p2="android">P2</button>
-                </div>
-              </article>
+                  <div class="champ-role">CYBER VALKYRIE</div>
+                  <div class="slot-assign-row">
+                    <button type="button" class="assign-btn" data-assign-p1="android">P1</button>
+                    <button type="button" class="assign-btn" data-assign-p2="android">P2</button>
+                  </div>
+                </article>
+              </div>
+
+              <footer class="landing-actions">
+                <button id="btn-roster-back-mode" class="iron-btn roster-nav-btn" type="button">
+                  <span>← MODE &amp; ARENA</span>
+                </button>
+                <button id="btn-random-duel" class="iron-btn roster-nav-btn" type="button">
+                  <span>❖ RANDOMIZE</span>
+                </button>
+                <button id="btn-start-duel" class="landing-cta-btn" type="button">
+                  <span class="cta-headline">⚔ COMMENCE BATTLE</span>
+                  <span class="cta-subline" id="start-duel-text">
+                    AETHELGARD + TORGAR VS. MALAKOR + IGNIS SOL
+                  </span>
+                </button>
+              </footer>
             </div>
 
-            <footer class="landing-actions">
-              <button id="btn-start-duel" class="landing-cta-btn" type="button">
-                <span id="start-duel-text">WATCH DUEL: AETHELGARD VS. SYLVARA</span>
-              </button>
-              <button id="btn-random-duel" class="iron-btn landing-spectate-btn" type="button">
-                <span>RANDOMIZE MATCHUP</span>
-              </button>
-            </footer>
+            <!-- RIGHT P2 SHOWCASE PEDESTAL -->
+            <aside class="fighter-profile profile-abyssal" id="profile-right">
+              <div class="profile-top-bar">
+                <div class="profile-corner-tag tag-p2" id="p2-corner-tag">★ TEAM 2</div>
+                <div class="duo-tab-row" id="p2-duo-tabs">
+                  <button type="button" class="duo-tab-btn active-tab" id="p2-tab-lead" data-inspect-right="lead">
+                    ★ P2 LEAD
+                  </button>
+                  <button type="button" class="duo-tab-btn" id="p2-tab-partner" data-inspect-right="partner">
+                    P2B ALLY
+                  </button>
+                </div>
+                <span class="profile-style-pill" id="p2-profile-style">NECROTIC HARVESTER</span>
+              </div>
+
+              <div class="profile-hero-showcase">
+                <div class="profile-stage" id="p2-stage">
+                  <div class="stage-halo halo-abyssal" id="p2-halo"></div>
+                  <canvas id="p2-sprite-canvas" width="272" height="208"></canvas>
+                  <div class="stage-pedestal-plinth" aria-hidden="true"></div>
+                </div>
+                <div class="profile-identity">
+                  <div class="profile-role" id="p2-profile-role">DREAD NECROMANCER</div>
+                  <h2 class="profile-name" id="p2-profile-name">MALAKOR</h2>
+                  <div class="profile-trait-badge" id="p2-profile-trait">PASSIVE: GRAVE-SUBMERGE &amp; SOUL LEECH</div>
+                </div>
+              </div>
+
+              <div class="profile-skills-header">4-SLOT SOVEREIGN KIT &amp; SUPREME ULTIMATE</div>
+              <div class="profile-skill-list" id="p2-skill-list">
+                <div class="skill-card">
+                  <div class="skill-icon-box"><canvas id="p2-skill-icon-0" width="56" height="56"></canvas></div>
+                  <div class="skill-info">
+                    <div class="skill-title-row">
+                      <strong class="skill-name" id="p2-skill-name-0">SOUL HOOK &amp; BOOMERANG</strong>
+                      <span class="skill-type-badge badge-auto" id="p2-skill-type-0">AUTO + GRAVE SUBMERGE</span>
+                    </div>
+                    <p class="skill-desc" id="p2-skill-desc-0">
+                      Hooks foes inward, hurls returning phantom scythes &amp; submerges underground to erupt.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="skill-card">
+                  <div class="skill-icon-box"><canvas id="p2-skill-icon-1" width="56" height="56"></canvas></div>
+                  <div class="skill-info">
+                    <div class="skill-title-row">
+                      <strong class="skill-name" id="p2-skill-name-1">DEATH'S GRASP</strong>
+                      <span class="skill-type-badge badge-skill" id="p2-skill-type-1">SKILL • 4.9S CD</span>
+                    </div>
+                    <p class="skill-desc" id="p2-skill-desc-1">
+                      Erupts a Cursed Ossuary Bone-Cage &amp; drags foes through necrotic soul-crystal spires.
+                    </p>
+                  </div>
+                </div>
+
+                <div class="skill-card skill-card-ult">
+                  <div class="skill-icon-box icon-box-ult"><canvas id="p2-skill-icon-2" width="56" height="56"></canvas></div>
+                  <div class="skill-info">
+                    <div class="skill-title-row">
+                      <strong class="skill-name" id="p2-skill-name-2">GRIM HARVEST</strong>
+                      <span class="skill-type-badge badge-ult" id="p2-skill-type-2">★ OVERDRIVE ULT</span>
+                    </div>
+                    <p class="skill-desc" id="p2-skill-desc-2">
+                      Rises as the colossal Sovereign of Death to execute an abyssal cross-reap blitz.
+                    </p>
+                  </div>
+                </div>
+
+                <!-- 4th Row: Supreme Ultimate Finisher -->
+                <div class="skill-card skill-card-supreme" id="p2-true-ult-box">
+                  <div class="supreme-crest-box" aria-hidden="true">
+                    <span class="supreme-star">★</span>
+                    <span class="supreme-tier">III</span>
+                  </div>
+                  <div class="skill-info">
+                    <div class="skill-title-row">
+                      <strong class="skill-name supreme-ult-title" id="p2-true-ult-name">
+                        MEMENTO MORI: GATES OF THE NECROPOLIS
+                      </strong>
+                      <span class="skill-type-badge badge-supreme">★ SUPREME ULTIMATE ★</span>
+                    </div>
+                    <p class="skill-desc" id="p2-true-ult-desc">
+                      Unseals the Abyssal Necropolis gates, flooding the arena in spectral chains &amp; final soul-reap!
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </aside>
           </div>
-
-          <!-- RIGHT PANEL: FIGHTER 2 / TEAM 2 PROFILE & VISUAL SKILL BREAKDOWN -->
-          <aside class="fighter-profile profile-emerald" id="profile-right">
-            <div class="profile-top-bar">
-              <div class="profile-corner-tag tag-p2" id="p2-corner-tag">★ TEAM 2 • RIGHT DUO</div>
-              <div class="duo-tab-row" id="p2-duo-tabs">
-                <button type="button" class="duo-tab-btn active-tab" id="p2-tab-lead" data-inspect-right="lead">★ P2 LEAD</button>
-                <button type="button" class="duo-tab-btn" id="p2-tab-partner" data-inspect-right="partner">★ P2B ALLY</button>
-              </div>
-              <span class="profile-style-pill" id="p2-profile-style">RANGED MARKSMAN</span>
-            </div>
-
-            <div class="profile-hero-showcase">
-              <div class="profile-stage" id="p2-stage">
-                <div class="stage-halo halo-emerald" id="p2-halo"></div>
-                <canvas id="p2-sprite-canvas" width="208" height="208"></canvas>
-              </div>
-              <div class="profile-identity">
-                <div class="profile-role" id="p2-profile-role">TEMPEST BOWMASTER</div>
-                <h2 class="profile-name" id="p2-profile-name">SYLVARA</h2>
-                <div class="profile-trait-badge" id="p2-profile-trait">PASSIVE: ZEPHYR VAULT EVASION</div>
-              </div>
-            </div>
-
-            <div class="profile-skills-header">COMBAT ARSENAL &amp; SKILL EFFECTS</div>
-            <div class="profile-skill-list" id="p2-skill-list">
-              <div class="skill-card">
-                <div class="skill-icon-box"><canvas id="p2-skill-icon-0" width="56" height="56"></canvas></div>
-                <div class="skill-info">
-                  <div class="skill-title-row">
-                    <strong class="skill-name" id="p2-skill-name-0">ASTRAL LONGBOW</strong>
-                    <span class="skill-type-badge badge-auto" id="p2-skill-type-0">AUTO + PASSIVE</span>
-                  </div>
-                  <p class="skill-desc" id="p2-skill-desc-0">Fires high-velocity piercing arrows &amp; vaults over cornering enemies with Zephyr Backflip.</p>
-                </div>
-              </div>
-
-              <div class="skill-card">
-                <div class="skill-icon-box"><canvas id="p2-skill-icon-1" width="56" height="56"></canvas></div>
-                <div class="skill-info">
-                  <div class="skill-title-row">
-                    <strong class="skill-name" id="p2-skill-name-1">STARFALL VOLLEY</strong>
-                    <span class="skill-type-badge badge-skill" id="p2-skill-type-1">SKILL • 4.2S CD</span>
-                  </div>
-                  <p class="skill-desc" id="p2-skill-desc-1">Rains 5 emerald starlight arrows from the heavens onto the enemy's position.</p>
-                </div>
-              </div>
-
-              <div class="skill-card skill-card-ult">
-                <div class="skill-icon-box icon-box-ult"><canvas id="p2-skill-icon-2" width="56" height="56"></canvas></div>
-                <div class="skill-info">
-                  <div class="skill-title-row">
-                    <strong class="skill-name" id="p2-skill-name-2">ASTRAL HURRICANE</strong>
-                    <span class="skill-type-badge badge-ult" id="p2-skill-type-2">★ OVERDRIVE ULT</span>
-                  </div>
-                  <p class="skill-desc" id="p2-skill-desc-2">Unleashes an Emerald Wind-Dragon and 10-beam orbital starlight bombardment.</p>
-                </div>
-              </div>
-            </div>
-          </aside>
         </div>
       </div>
     </section>
@@ -590,6 +1001,6 @@
     </div>
   </main>
 
-  <script type="module" src="src/main.js?v=30fps62"></script>
+  <script type="module" src="src/main.js?v=30fps63"></script>
 </body>
 </html>

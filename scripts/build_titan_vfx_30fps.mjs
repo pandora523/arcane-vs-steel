@@ -4,8 +4,8 @@
  * Powered natively by `src/engine/ArcaneShaderFX.js` + `src/engine/shaders/forgeShaders.js`.
  *
  * Outputs:
- *   1. `assets/sprites/titan_vfx.png` (6240x1040, 5 rows x 30 cols @ 208x208, 0/150 border clips)
- *   2. `<artifactDir>/debug_titan_30fps_vfx.png` (5x30 contact sheet for visual verification)
+ *   1. `assets/sprites/titan_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208, 0/240 border clips)
+ *   2. `<artifactDir>/debug_titan_30fps_vfx.png` (8x30 contact sheet for visual verification)
  */
 
 import fs from 'node:fs';
@@ -19,22 +19,22 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps62';
 
 import {
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE,
   FORGE_EFFECT_REGISTRY
-} from '../src/engine/shaders/forgeShaders.js?v=30fps55';
+} from '../src/engine/shaders/forgeShaders.js?v=30fps62';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const ARTIFACT_DIRS = [
-  '/home/antigravity/.gemini/jetski/brain/457cab14523e9f91b8aa1df550649774',
-  '/home/antigravity/.gemini/jetski/brain/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088',
   '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088',
-  '/home/antigravity/.gemini/jetski/brain/3ca6dcb9dc75b0760b03bc50164c6cb1'
+  '/home/antigravity/.gemini/jetski/brain/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088'
 ];
+const LOCAL_SCRATCH_DIR =
+  '/home/antigravity/.gemini/jetski/brain/a815757550227923da36a43fb00c80f0/scratch';
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -106,6 +106,24 @@ function enforceSafeCellMargin104(rgba, w = 104, h = 104) {
   }
 }
 
+function enforceSafeCellMargin208(rgba, w = 208, h = 208) {
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
+      const o = (y * w + x) * 4;
+      if (distEdge < 4) {
+        rgba[o] = 0;
+        rgba[o + 1] = 0;
+        rgba[o + 2] = 0;
+        rgba[o + 3] = 0;
+      } else if (distEdge < 12 && rgba[o + 3] > 0) {
+        const k = (distEdge - 3.5) / 8.5;
+        rgba[o + 3] = Math.round(rgba[o + 3] * k);
+      }
+    }
+  }
+}
+
 function blitUpscaledNearest(srcRgba, srcW, srcH, scale, dstRgba, dstW, dstX, dstY) {
   for (let sy = 0; sy < srcH; sy++) {
     for (let sx = 0; sx < srcW; sx++) {
@@ -126,6 +144,36 @@ function blitUpscaledNearest(srcRgba, srcW, srcH, scale, dstRgba, dstW, dstX, ds
           dstRgba[to + 3] = a;
         }
       }
+    }
+  }
+}
+
+function downsample2xTo104(src208, dst104) {
+  dst104.fill(0);
+  for (let y = 0; y < 104; y++) {
+    for (let x = 0; x < 104; x++) {
+      // Max-alpha / bright-preserving 2x2 downsample for crisp contact-sheet inspection
+      let bestA = 0;
+      let bestR = 0;
+      let bestG = 0;
+      let bestB = 0;
+      for (let dy = 0; dy < 2; dy++) {
+        for (let dx = 0; dx < 2; dx++) {
+          const so = ((y * 2 + dy) * 208 + (x * 2 + dx)) * 4;
+          const a = src208[so + 3];
+          if (a > bestA) {
+            bestA = a;
+            bestR = src208[so];
+            bestG = src208[so + 1];
+            bestB = src208[so + 2];
+          }
+        }
+      }
+      const to = (y * 104 + x) * 4;
+      dst104[to] = bestR;
+      dst104[to + 1] = bestG;
+      dst104[to + 2] = bestB;
+      dst104[to + 3] = bestA;
     }
   }
 }
@@ -151,7 +199,7 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
 }
 
 function bakeVfxSheet() {
-  const ROWS = 5;
+  const ROWS = 8;
   const COLS = 30;
   const LOGICAL = 104;
   const CELL = 208;
@@ -170,67 +218,126 @@ function bakeVfxSheet() {
     dbgRgba[i * 4 + 3] = 255;
   }
 
+  // 1:1 208x208 closeup contact sheet for Rows 5, 6, 7 (6 sampled frames per row: F00, F05, F10, F15, F20, F25)
+  const sampleCols = [0, 5, 10, 15, 20, 25];
+  const closePad = 8;
+  const closeW = sampleCols.length * (CELL + closePad) + closePad;
+  const closeH = 3 * (CELL + closePad) + closePad;
+  const closeRgba = new Uint8Array(closeW * closeH * 4);
+  for (let i = 0; i < closeW * closeH; i++) {
+    closeRgba[i * 4] = 18;
+    closeRgba[i * 4 + 1] = 12;
+    closeRgba[i * 4 + 2] = 10;
+    closeRgba[i * 4 + 3] = 255;
+  }
+
   const rowSpecs = [
     {
-      name: 'Row 0: Spinning Flaming Horned Dwarven Forge-Anvil Projectile (F00..F29)',
+      name: 'Row 0: Tectonic Magma Wave (F00..F29)',
       windowSec: 1.0,
+      native208: false,
       layers: [
         {
-          def: FORGE_EFFECT_REGISTRY.moltenSlagBoulderCell,
+          def: FORGE_EFFECT_REGISTRY.tectonicMagmaWaveCell,
           warmup: 0,
-          cfg: { x: 52, y: 52, palette: FORGE_GOLD_PALETTE }
+          cfg: { x: 52, y: 52, palette: FORGE_GOLD_PALETTE, seed: 201 }
         }
       ]
     },
     {
-      name: 'Row 1: Khazad Dwarven Octagonal Ram-Horn, Crossed-Warhammer & Diamond Boss Crest (F00..F29)',
+      name: 'Row 1: Runic Iron Forge-Anvil (F00..F29)',
       windowSec: 1.0,
+      native208: false,
       layers: [
         {
-          def: FORGE_EFFECT_REGISTRY.runicBulwarkShieldCell,
+          def: FORGE_EFFECT_REGISTRY.runicIronForgeAnvilCell,
           warmup: 0,
-          cfg: { x: 52, y: 52, palette: FORGE_GOLD_PALETTE }
+          cfg: { x: 52, y: 52, palette: FORGE_GOLD_PALETTE, seed: 213 }
         }
       ]
     },
     {
-      name: 'Row 2: 2.5D Volcanic Caldera, Fanning Diagonal Jade-Magma Fangs & Swinging God-Maul Arc (F00..F29)',
+      name: 'Row 2: Erupting Magma-Jade Rune Pillar (F00..F29)',
       windowSec: 1.0,
+      native208: false,
       layers: [
         {
           def: FORGE_EFFECT_REGISTRY.tectonicMagmaPillarCell,
           warmup: 0,
-          cfg: { x: 52, y: 52, palette: FORGE_GOLD_PALETTE }
+          cfg: { x: 52, y: 52, palette: FORGE_GOLD_PALETTE, seed: 227 }
         }
       ]
     },
     {
-      name: 'Row 3: 8-Cog Interlocking Dwarven World-Forge Crucible Gear Mandala & Glowing Horned Anvil (F00..F29)',
+      name: 'Row 3: World-Forge Sovereign Seal (F00..F29)',
       windowSec: 1.0,
+      native208: false,
       layers: [
         {
           def: FORGE_EFFECT_REGISTRY.worldForgeAnvilSealCell,
           warmup: 0,
-          cfg: { x: 52, y: 52, palette: FORGE_GOLD_PALETTE }
+          cfg: { x: 52, y: 52, palette: FORGE_GOLD_PALETTE, seed: 239 }
         }
       ]
     },
     {
-      name: 'Row 4: Tectonic Basalt Plate Split & 8-Spoke Magma-Jade Star-Crater Nova (F00..F29)',
+      name: 'Row 4: Molten Hammer Shock-Ring (F00..F29)',
       windowSec: 1.0,
+      native208: false,
       layers: [
         {
           def: FORGE_EFFECT_REGISTRY.cataclysmCraterNovaCell,
           warmup: 0,
-          cfg: { x: 52, y: 52, palette: FORGE_GOLD_PALETTE, jadePalette: FORGE_JADE_PALETTE }
+          cfg: { x: 52, y: 52, palette: FORGE_GOLD_PALETTE, jadePalette: FORGE_JADE_PALETTE, seed: 251 }
+        }
+      ]
+    },
+    {
+      name: 'Row 5: Native 208x208 Colossal World-Forge Crucible Anvil Altar (F00..F29)',
+      windowSec: 1.0,
+      native208: true,
+      layers: [
+        {
+          def: FORGE_EFFECT_REGISTRY.worldForgeCrucibleAltarCell,
+          warmup: 0,
+          cfg: { x: 104, y: 104, palette: FORGE_GOLD_PALETTE, seed: 307 }
+        }
+      ]
+    },
+    {
+      name: 'Row 6: Native 208x208 God-Hammer Lightning-Magma Strike Arc (F00..F29)',
+      windowSec: 1.0,
+      native208: true,
+      layers: [
+        {
+          def: FORGE_EFFECT_REGISTRY.godHammerLightningStrikeCell,
+          warmup: 0,
+          cfg: { x: 104, y: 104, palette: FORGE_GOLD_PALETTE, seed: 331 }
+        }
+      ]
+    },
+    {
+      name: 'Row 7: Native 208x208 Continental Sunder Volcanic Rune Geyser (F00..F29)',
+      windowSec: 1.0,
+      native208: true,
+      layers: [
+        {
+          def: FORGE_EFFECT_REGISTRY.continentalSunderGeyserCell,
+          warmup: 0,
+          cfg: { x: 104, y: 104, palette: FORGE_GOLD_PALETTE, seed: 359 }
         }
       ]
     }
   ];
 
-  const surface = createPixelSurface(LOGICAL, LOGICAL);
-  const pen = new ShaderPen(surface);
-  const cellRgba = new Uint8Array(LOGICAL * LOGICAL * 4);
+  const surface104 = createPixelSurface(LOGICAL, LOGICAL);
+  const pen104 = new ShaderPen(surface104);
+  const cell104 = new Uint8Array(LOGICAL * LOGICAL * 4);
+
+  const surface208 = createPixelSurface(CELL, CELL);
+  const pen208 = new ShaderPen(surface208);
+  const cell208 = new Uint8Array(CELL * CELL * 4);
+
   let borderClips = 0;
 
   for (let r = 0; r < ROWS; r++) {
@@ -244,36 +351,6 @@ function bakeVfxSheet() {
     let activeFrames = 0;
 
     for (let c = 0; c < COLS; c++) {
-      clearPixelSurface(surface);
-      for (const inst of instances) inst.render(pen, 'back');
-      for (const inst of instances) inst.render(pen, 'front');
-      resolveSurfaceToRGBA(surface, cellRgba, 1.12);
-
-      for (let i = 0; i < LOGICAL; i++) {
-        if (
-          cellRgba[(0 * LOGICAL + i) * 4 + 3] > 0 ||
-          cellRgba[((LOGICAL - 1) * LOGICAL + i) * 4 + 3] > 0 ||
-          cellRgba[(i * LOGICAL + 0) * 4 + 3] > 0 ||
-          cellRgba[(i * LOGICAL + (LOGICAL - 1)) * 4 + 3] > 0
-        ) {
-          borderClips++;
-          break;
-        }
-      }
-
-      enforceSafeCellMargin104(cellRgba, LOGICAL, LOGICAL);
-
-      let hasPixels = false;
-      for (let i = 3; i < cellRgba.length; i += 4) {
-        if (cellRgba[i] > 0) {
-          hasPixels = true;
-          break;
-        }
-      }
-      if (hasPixels) activeFrames++;
-
-      blitUpscaledNearest(cellRgba, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
-
       const dx = dbgPad + c * (LOGICAL + dbgPad);
       const dy = dbgPad + r * (LOGICAL + dbgPad);
       for (let yy = 0; yy < LOGICAL; yy++) {
@@ -286,10 +363,82 @@ function bakeVfxSheet() {
           dbgRgba[o + 3] = 255;
         }
       }
-      alphaCompositeOnto(cellRgba, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
+
+      if (spec.native208) {
+        clearPixelSurface(surface208);
+        for (const inst of instances) inst.render(pen208, 'back');
+        for (const inst of instances) inst.render(pen208, 'front');
+        resolveSurfaceToRGBA(surface208, cell208, 1.12);
+
+        for (let i = 0; i < CELL; i++) {
+          if (
+            cell208[(0 * CELL + i) * 4 + 3] > 0 ||
+            cell208[((CELL - 1) * CELL + i) * 4 + 3] > 0 ||
+            cell208[(i * CELL + 0) * 4 + 3] > 0 ||
+            cell208[(i * CELL + (CELL - 1)) * 4 + 3] > 0
+          ) {
+            borderClips++;
+            break;
+          }
+        }
+
+        enforceSafeCellMargin208(cell208, CELL, CELL);
+
+        let hasPixels = false;
+        for (let i = 3; i < cell208.length; i += 4) {
+          if (cell208[i] > 0) {
+            hasPixels = true;
+            break;
+          }
+        }
+        if (hasPixels) activeFrames++;
+
+        blitUpscaledNearest(cell208, CELL, CELL, 1, sheetRgba, sheetW, c * CELL, r * CELL);
+        downsample2xTo104(cell208, cell104);
+        alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
+
+        const sIdx = sampleCols.indexOf(c);
+        if (sIdx !== -1 && r >= 5) {
+          const cx = closePad + sIdx * (CELL + closePad);
+          const cy = closePad + (r - 5) * (CELL + closePad);
+          alphaCompositeOnto(cell208, CELL, CELL, closeRgba, closeW, cx, cy);
+        }
+      } else {
+        clearPixelSurface(surface104);
+        for (const inst of instances) inst.render(pen104, 'back');
+        for (const inst of instances) inst.render(pen104, 'front');
+        resolveSurfaceToRGBA(surface104, cell104, 1.12);
+
+        for (let i = 0; i < LOGICAL; i++) {
+          if (
+            cell104[(0 * LOGICAL + i) * 4 + 3] > 0 ||
+            cell104[((LOGICAL - 1) * LOGICAL + i) * 4 + 3] > 0 ||
+            cell104[(i * LOGICAL + 0) * 4 + 3] > 0 ||
+            cell104[(i * LOGICAL + (LOGICAL - 1)) * 4 + 3] > 0
+          ) {
+            borderClips++;
+            break;
+          }
+        }
+
+        enforceSafeCellMargin104(cell104, LOGICAL, LOGICAL);
+
+        let hasPixels = false;
+        for (let i = 3; i < cell104.length; i += 4) {
+          if (cell104[i] > 0) {
+            hasPixels = true;
+            break;
+          }
+        }
+        if (hasPixels) activeFrames++;
+
+        blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
+        alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
+      }
 
       for (const inst of instances) inst.step(dt);
     }
+
     console.log(`[titan-vfx] Baked ${spec.name} (active=${activeFrames}/${COLS})`);
     if (activeFrames !== COLS) {
       throw new Error(`Expected ${COLS}/${COLS} active frames on row ${r}, got ${activeFrames}`);
@@ -298,7 +447,7 @@ function bakeVfxSheet() {
 
   const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'titan_vfx.png');
   fs.writeFileSync(outVfxPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  console.log(`[titan-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/150`);
+  console.log(`[titan-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/240`);
   if (borderClips !== 0) {
     throw new Error(`Expected 0 borderClips on titan_vfx.png, got ${borderClips}`);
   }
@@ -313,6 +462,16 @@ function bakeVfxSheet() {
     } catch {
       // Ignore if secondary artifact directory is inaccessible
     }
+  }
+
+  try {
+    fs.mkdirSync(LOCAL_SCRATCH_DIR, { recursive: true });
+    fs.writeFileSync(
+      path.join(LOCAL_SCRATCH_DIR, 'debug_titan_ult_208_closeup.png'),
+      encodeRgbaPng(closeW, closeH, closeRgba)
+    );
+  } catch {
+    // Optional scratch closeup
   }
 }
 

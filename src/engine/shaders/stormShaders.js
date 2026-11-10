@@ -4,7 +4,7 @@
  *
  * Powers both:
  *   1. Live 120Hz `ArcaneShaderFX` (`back` + `front` 2.5D depth wraps around Kaze-Maru & opponents)
- *   2. Offline 30fps `assets/sprites/ronin_vfx.png` (`6240x1040`, 5 rows x 30 cols @ 208x208)
+ *   2. Offline 30fps `assets/sprites/ronin_vfx.png` (`6240x1664`, 8 rows x 30 cols @ 208x208)
  */
 
 import {
@@ -1104,6 +1104,374 @@ export const thousandBladeSlashCell = {
   }
 };
 
+/**
+ * Row 5 (`y = 1040`): Raijin Thunder-Drum Eye Seal (`F00..F29` seamless 30fps loop).
+ * Rotating 8-drum indigo-cyan Raijin storm wheel, lightning ring, and central Storm-Eye.
+ */
+export const raijinThunderDrumEyeSealCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: { palette: STORM_CYAN_PALETTE, seed: 457 },
+  create(cfg) {
+    const storm = buildColorRamp(cfg.palette, 8);
+    const raijin = buildColorRamp(RAIJIN_VIOLET_BRASS_PALETTE, 8);
+    const band4 = [storm[2], storm[5], raijin[4], PURE_WHITE];
+    const innerBand = [raijin[1], raijin[4], raijin[6], PURE_WHITE];
+
+    return {
+      step() {},
+      renderFront(pen, localT) {
+        const ph = localT * Math.PI * 2;
+        const pulse = 0.5 + 0.5 * Math.sin(ph * 2);
+        const outerR = 34.5;
+        const innerR = 22.0;
+
+        // 1. Outer & Inner Counter-Rotating Indigo-Cyan Raijin Storm Wheel Rings
+        drawTiltedOrbitBand(pen, 0, 0, outerR, 1.0, 1.85, 0.96, band4, () => true, false);
+        drawTiltedOrbitBand(pen, 0, 0, innerR, 1.0, 1.35, 0.9, innerBand, () => true, false);
+
+        // 2. 8-Segment Polygonal Crackling Lightning Ring & Inward Thunder-Fang Spokes
+        const boltRng = new DeterministicRng((cfg.seed || 457) + Math.floor(localT * 30) * 19);
+        for (let d = 0; d < 8; d++) {
+          const a0 = ph + (d * Math.PI) / 4;
+          const a1 = ph + ((d + 1) * Math.PI) / 4;
+          const x0 = Math.cos(a0) * outerR;
+          const y0 = Math.sin(a0) * outerR;
+          const x1 = Math.cos(a1) * outerR;
+          const y1 = Math.sin(a1) * outerR;
+
+          const rimBolt = buildLightningChain(boltRng, x0, y0, x1, y1, 0.14, 2);
+          pen.polyline(rimBolt, d % 2 === 0 ? storm[6] : raijin[4], 0.88);
+
+          // Counter-rotating inner spoke teeth
+          const sa = -ph + (d * Math.PI) / 4;
+          const sxIn = Math.cos(sa) * 15.2;
+          const syIn = Math.sin(sa) * 15.2;
+          const sxOut = Math.cos(sa) * innerR;
+          const syOut = Math.sin(sa) * innerR;
+          pen.line(sxIn, syIn, sxOut, syOut, d % 2 === 0 ? raijin[6] : storm[5], 0.9);
+          pen.stipple(sxIn, syIn, PURE_WHITE, 0.96);
+        }
+
+        // 3. 8 Rotating Ornate Raijin Taiko Drums (`r = 34.5`, drumR = 4.2 -> max extent ~39.5)
+        for (let d = 0; d < 8; d++) {
+          const a = ph + (d * Math.PI) / 4;
+          const dx = Math.cos(a) * outerR;
+          const dy = Math.sin(a) * outerR;
+          pen.fillCircle(dx, dy, 4.8, storm[0], 0.96);
+          pen.fillCircle(dx, dy, 3.9, raijin[5], 0.98);
+          pen.fillCircle(dx, dy, 2.7, d % 2 === 0 ? storm[1] : raijin[1], 0.98);
+          // Miniature 3-dot Mitsudomoe emblem spinning inside each Taiko drum!
+          for (let tIdx = 0; tIdx < 3; tIdx++) {
+            const ta = -ph * 2 + (tIdx * Math.PI * 2) / 3;
+            pen.stipple(
+              dx + Math.cos(ta) * 1.35,
+              dy + Math.sin(ta) * 1.35,
+              tIdx === 0 ? PURE_WHITE : storm[6],
+              1.0
+            );
+          }
+        }
+
+        // 4. Central Blazing Raijin Storm-Eye (`rx = 13.5, ry = 6.8`)
+        const eyeRx = 13.5;
+        const eyeRy = 6.2 + pulse * 1.1;
+        pen.shadeBox(-15, -9, 15, 9, (lx, ly, out) => {
+          const nx = lx / eyeRx;
+          const lidCurve = (1 - nx * nx) * eyeRy;
+          if (Math.abs(nx) > 1.04 || Math.abs(ly) > lidCurve + 1.1) return 0;
+
+          // 1px Dark Storm-Indigo Almond Eyelid Outline (`Selout`) & Golden Raijin Rim
+          if (Math.abs(ly) >= lidCurve - 0.85) {
+            out.alpha = 0.98;
+            return Math.abs(ly) >= lidCurve - 0.15 ? storm[0] : raijin[5];
+          }
+
+          const rIris = Math.hypot(lx, ly * 1.08);
+          out.alpha = 0.98;
+          // Vertical Slit Lightning Pupil
+          if (Math.abs(lx) <= 1.25 && Math.abs(ly) <= eyeRy * 0.78) {
+            out.glowColor = storm[6];
+            out.glowStrength = 0.65;
+            return PURE_WHITE;
+          }
+          // Golden-Brass Inner Pupil Ring & Electric-Cyan / Violet Iris
+          if (rIris <= 2.9) {
+            out.glowColor = raijin[6];
+            out.glowStrength = 0.4;
+            return raijin[6];
+          }
+          if (rIris <= 5.8) {
+            const angI = Math.atan2(ly, lx) + ph;
+            out.glowColor = storm[5];
+            out.glowStrength = 0.34;
+            return Math.sin(angI * 6) > 0 ? storm[6] : raijin[4];
+          }
+          if (rIris <= 6.7) {
+            return storm[0];
+          }
+          return storm[1];
+        });
+
+        // Ornate Golden-Brass Upper & Lower Raijin Brow Markings + Katana Pupil Glint
+        for (const sgn of [-1, 1]) {
+          pen.line(-9, sgn * (eyeRy + 2.4), 0, sgn * (eyeRy + 3.8), raijin[6], 0.92);
+          pen.line(0, sgn * (eyeRy + 3.8), 9, sgn * (eyeRy + 2.4), raijin[6], 0.92);
+        }
+        pen.line(-8.5, 0, 8.5, 0, PURE_WHITE, 0.85 + pulse * 0.15);
+        pen.radialGlow(0, 0, 24, storm[5], 0.36);
+      }
+    };
+  }
+};
+
+/**
+ * Row 6 (`y = 1248`): Spatial Judgment-Cut Rift (`F00..F29` seamless 30fps loop).
+ * Razor-sharp cyan-violet dimensional katana slash tear crackling with electricity.
+ */
+export const spatialJudgmentCutRiftCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: { palette: STORM_CYAN_PALETTE, seed: 467 },
+  create(cfg) {
+    const storm = buildColorRamp(cfg.palette, 8);
+    const raijin = buildColorRamp(RAIJIN_VIOLET_BRASS_PALETTE, 8);
+
+    return {
+      step() {},
+      renderFront(pen, localT) {
+        const ph = localT * Math.PI * 2;
+        const pulse = 0.5 + 0.5 * Math.sin(ph * 2);
+
+        // Primary rift axis `(-35, -20)` -> `(+35, +20)` (`halfLen = 40.3`, angle ~ `29.7°`)
+        const ang = Math.atan2(20, 35);
+        const cosA = Math.cos(ang);
+        const sinA = Math.sin(ang);
+        const halfLen = 39.5;
+
+        // 1. Dimensional Void Fissure & Chromatic Cyan/Violet Prism Lips (`shadeBox` inside `[-37, +37]`)
+        pen.shadeBox(-37, -26, 37, 26, (px, py, out) => {
+          const u = px * cosA + py * sinA;
+          const v = -px * sinA + py * cosA;
+          const nu = Math.abs(u) / halfLen;
+          if (nu > 1.0) return 0;
+
+          const jag = fbm2D(u * 0.22 + Math.cos(ph) * 1.4, v * 0.35 + Math.sin(ph) * 1.4, 2) * 1.65;
+          const maxW = Math.pow(1 - nu * nu, 1.18) * (5.4 + pulse * 1.3) + 0.65;
+          const av = Math.abs(v + jag * (1 - nu));
+          if (av > maxW + 1.05) return 0;
+
+          out.alpha = 0.98;
+          // Incandescent 1px White Katana Cut-Horizon Spine along `v = 0`
+          if (Math.abs(v) <= 0.72) {
+            out.glowColor = storm[6];
+            out.glowStrength = 0.62;
+            return PURE_WHITE;
+          }
+          // Deep Torn Dimensional Void Interior (`#080c24`)
+          if (av < maxW * 0.52) {
+            return storm[0];
+          }
+          // Chromatic Prism Rift Lips: Upper lip Electric-Cyan, Lower lip Raijin-Violet
+          if (av < maxW - 0.35) {
+            const isCyanLip = v < 0;
+            out.glowColor = isCyanLip ? storm[5] : raijin[4];
+            out.glowStrength = 0.42;
+            return av < maxW * 0.74
+              ? isCyanLip
+                ? storm[6]
+                : raijin[4]
+              : isCyanLip
+                ? storm[4]
+                : raijin[3];
+          }
+          // Outer 1px Dark Storm-Indigo Selout
+          return storm[0];
+        });
+
+        // 2. Secondary Intersecting Cross-Slash Scar (`(-19, +14)` -> `(+19, -14)`)
+        pen.line(-19, 14, 19, -14, raijin[4], 0.88);
+        pen.line(-15, 11, 15, -11, storm[6], 0.94);
+        pen.line(-11, 8, 11, -8, PURE_WHITE, 0.98);
+
+        // Razor-sharp Pure-White Katana Cut-Line from tip to tip
+        pen.line(-35, -20, 35, 20, PURE_WHITE, 1.0);
+
+        // 3. Crackling Cyan & Violet Electricity Dancing Along the Torn Rift
+        const boltRng = new DeterministicRng((cfg.seed || 467) + Math.floor(localT * 30) * 23);
+        const lipBoltA = buildLightningChain(boltRng, -33, -19, 33, 19, 0.16, 3);
+        const lipBoltB = buildLightningChain(boltRng, -28, -14, 28, 18, 0.18, 3);
+        const crossBolt = buildLightningChain(boltRng, -17, 13, 17, -13, 0.16, 2);
+        pen.polyline(lipBoltA, storm[6], 0.94);
+        pen.polyline(lipBoltB, raijin[6], 0.88);
+        pen.polyline(crossBolt, raijin[4], 0.86);
+
+        // 4. Focal Dimensional Glint Starburst at `(0, 0)` + Tip Glints
+        drawStarburstFlare(pen, 0, 0, 9.0 + pulse * 2.5, 0.96, [storm[4], storm[6], raijin[6], PURE_WHITE]);
+        pen.stipple(-35, -20, PURE_WHITE, 1.0);
+        pen.stipple(35, 20, PURE_WHITE, 1.0);
+        pen.radialGlow(0, 0, 23, storm[5], 0.38);
+      }
+    };
+  }
+};
+
+/**
+ * Row 7 (`y = 1456`): Amakakeru Heaven-Splitting Thunder Cleave (`F00..F29` cataclysmic column).
+ * Colossal screen-tall cyan-indigo lightning sword detonation.
+ */
+export const amakakeruThunderCleaveCell = {
+  duration: 1.0,
+  loop: false,
+  defaults: { palette: STORM_CYAN_PALETTE, seed: 479 },
+  create(cfg) {
+    const storm = buildColorRamp(cfg.palette, 8);
+    const raijin = buildColorRamp(RAIJIN_VIOLET_BRASS_PALETTE, 8);
+    const band4 = [storm[2], storm[5], raijin[4], PURE_WHITE];
+    const brassBand4 = [raijin[2], raijin[5], raijin[6], PURE_WHITE];
+
+    return {
+      step() {},
+      renderFront(pen, localT) {
+        const u = clamp01(localT);
+        const floorY = 36;
+        const erupt = smoothStep(0, 0.14, u);
+        const fade = u > 0.76 ? (1 - u) / 0.24 : 1.0;
+        if (fade <= 0.02) return;
+
+        // 1. Expanding Ground Raijin Thunder-Crater Ring (`floorY = 36`, `rx <= 34`)
+        const baseRx = (12 + 22 * erupt) * (1 - Math.max(0, u - 0.8) * 0.45);
+        drawTiltedOrbitBand(pen, 0, floorY, baseRx, 0.22, 1.9, 0.96 * fade, band4, () => true, u < 0.26);
+        drawTiltedOrbitBand(pen, 0, floorY, baseRx * 0.62, 0.22, 1.35, 0.9 * fade, brassBand4, () => true, false);
+        for (let d = 0; d < 6; d++) {
+          const da = u * 5.2 + (d * Math.PI) / 3;
+          if (Math.sin(da) < 0) continue;
+          drawTaikoDrumNode(
+            pen,
+            Math.cos(da) * baseRx,
+            floorY + Math.sin(da) * baseRx * 0.22,
+            2.2,
+            raijin[5],
+            PURE_WHITE,
+            fade
+          );
+        }
+
+        // 2. Colossal Vertical Heaven-Splitting Lightning Sword / Plasma Column (`y = -39 .. +36`)
+        const colH = 75 * (0.35 + 0.65 * erupt);
+        const yTop = floorY - colH;
+        const coreScale = u < 0.72 ? 1.0 : Math.max(0.24, 1 - (u - 0.72) / 0.28);
+        const maxHalfW = 15.5 * coreScale;
+
+        pen.shadeBox(-21, yTop - 1, 21, floorY + 1, (px, py, out) => {
+          if (py > floorY || py < yTop) return 0;
+          const hf = (floorY - py) / Math.max(1, colH); // 0 at ground, 1 at heaven apex
+          // Sword-blade silhouette: wide base flare + crisp tapered katana kissaki crown near `hf > 0.84`
+          const tipTaper = hf > 0.84 ? Math.pow(Math.max(0, (1 - hf) / 0.16), 0.72) : 1 - hf * 0.14;
+          const baseFlare = 1 + 0.22 * Math.exp(-hf * 7);
+          const halfW = maxHalfW * tipTaper * baseFlare;
+          const ax = Math.abs(px);
+          if (ax > halfW + 0.85) return 0;
+
+          const turb = fbm2D(px * 0.22, py * 0.16 + u * 18, 2);
+          const norm = ax / Math.max(0.55, halfW) - turb * 0.16;
+          if (norm > 1.02) return 0;
+
+          out.alpha = fade * (0.98 - hf * 0.08);
+          if (ax >= halfW - 0.85 && fade > 0.35) {
+            return storm[0];
+          }
+          // Incandescent Vertical Katana Edge Core (`ax <= 2.4`)
+          if (ax <= 2.2 * coreScale || norm < 0.28) {
+            out.glowColor = storm[6];
+            out.glowStrength = 0.58 * fade;
+            return PURE_WHITE;
+          }
+          if (norm < 0.56) {
+            out.glowColor = storm[5];
+            out.glowStrength = 0.38 * fade;
+            return storm[6];
+          }
+          if (norm < 0.82) {
+            out.glowColor = raijin[4];
+            out.glowStrength = 0.26 * fade;
+            return px < 0 ? storm[4] : raijin[4];
+          }
+          return storm[2];
+        });
+
+        // Ornate Golden-Brass & Cyan Heaven-Splitting Tsuba Crossguard near `yTop + 16`
+        if (colH > 36) {
+          const tsubaY = yTop + 15;
+          const tsubaW = 19 * coreScale;
+          pen.line(-tsubaW, tsubaY - 1, tsubaW, tsubaY - 1, storm[0], 0.95 * fade);
+          pen.line(-tsubaW, tsubaY + 1, tsubaW, tsubaY + 1, storm[0], 0.95 * fade);
+          pen.line(-tsubaW, tsubaY, tsubaW, tsubaY, raijin[5], 0.98 * fade);
+          pen.line(-tsubaW * 0.68, tsubaY, tsubaW * 0.68, tsubaY, raijin[6], 1.0 * fade);
+          drawStarburstFlare(pen, 0, tsubaY, 7.5 * coreScale, 0.94 * fade, [storm[5], storm[6], raijin[6], PURE_WHITE]);
+        }
+
+        // 3. Twin Coiling Cyan-Violet Raijin Lightning Helices & Ascending Shock-Rings
+        for (let hIdx = 0; hIdx < 2; hIdx++) {
+          const off = hIdx * Math.PI;
+          let prevX = 0;
+          let prevY = floorY;
+          for (let s = 0; s <= 20; s++) {
+            const sf = s / 20;
+            const sy = floorY - sf * colH;
+            const amp = (13.5 + 4.5 * (1 - sf)) * coreScale;
+            const ang = sf * Math.PI * 3.4 - u * 18 + off;
+            const sx = Math.sin(ang) * amp;
+            if (s > 0 && Math.cos(ang) >= -0.25) {
+              pen.line(prevX, prevY, sx, sy, hIdx === 0 ? storm[6] : raijin[6], 0.94 * fade);
+              pen.stipple(sx, sy, PURE_WHITE, 0.95 * fade);
+            }
+            prevX = sx;
+            prevY = sy;
+          }
+        }
+
+        for (let rIdx = 0; rIdx < 3; rIdx++) {
+          const ru = (u * 2.5 + rIdx / 3) % 1;
+          const ry = floorY - ru * colH * 0.88;
+          const rr = (14 + (1 - ru) * 11) * erupt;
+          drawTiltedOrbitBand(
+            pen,
+            0,
+            ry,
+            rr,
+            0.24,
+            1.45,
+            (1 - ru * 0.55) * 0.9 * fade,
+            rIdx % 2 === 0 ? band4 : brassBand4,
+            () => true,
+            false
+          );
+        }
+
+        // 4. Branching Sky-to-Earth Thunderbolts & Ground Impact Starburst
+        const boltRng = new DeterministicRng((cfg.seed || 479) + Math.floor(u * 30) * 29);
+        const mainBoltL = buildLightningChain(boltRng, -8, yTop + 2, -2, floorY - 1, 0.18, 4);
+        const mainBoltR = buildLightningChain(boltRng, 8, yTop + 2, 2, floorY - 1, 0.18, 4);
+        pen.polyline(mainBoltL, PURE_WHITE, 0.96 * fade);
+        pen.polyline(mainBoltR, raijin[6], 0.92 * fade);
+
+        if (u < 0.36) {
+          drawStarburstFlare(
+            pen,
+            0,
+            floorY - 4,
+            19 * (1 - u / 0.36),
+            0.98 * fade,
+            [storm[4], storm[6], raijin[6], PURE_WHITE]
+          );
+        }
+        pen.radialGlow(0, floorY - colH * 0.45, 28 * fade, storm[5], 0.44 * fade);
+      }
+    };
+  }
+};
+
 export const STORM_EFFECT_REGISTRY = {
   iaidoSayaGlint,
   sereneMindParryWard,
@@ -1116,5 +1484,8 @@ export const STORM_EFFECT_REGISTRY = {
   raijinSkyOdachiCell,
   raijinDragonPillarCell,
   raijinTaikoCrestCell,
-  thousandBladeSlashCell
+  thousandBladeSlashCell,
+  raijinThunderDrumEyeSealCell,
+  spatialJudgmentCutRiftCell,
+  amakakeruThunderCleaveCell
 };

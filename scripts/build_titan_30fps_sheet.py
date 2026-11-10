@@ -28,7 +28,7 @@ from hd2d_rig_core import (
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "titan_v3_base.jpg")
+BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "titan_v4_base.jpg")
 OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "titan_sheet.png")
 VFX_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "titan_vfx.png")
 ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
@@ -367,7 +367,7 @@ def load_and_segment_512():
         arr, patched_masks,
         custom_part_arrays={"torso": torso_arr, "l_thigh": l_thigh_arr, "r_thigh": r_thigh_arr},
     )
-    save_debug_parts_sheet(parts, os.path.join(ARTIFACT_DIR, "debug_titan_v3_parts.png"))
+    save_debug_parts_sheet(parts, os.path.join(ARTIFACT_DIR, "debug_titan_v4_parts.png"))
     return parts
 
 

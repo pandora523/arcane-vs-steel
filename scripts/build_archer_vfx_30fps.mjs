@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * First-Party 30fps VFX Sprite Sheet Builder for Sylvara (`archer`).
+ * First-Party 30fps 8-Row VFX Sprite Sheet Builder for Sylvara v3 (`archer`).
  * Powered natively by `src/engine/ArcaneShaderFX.js` + `src/engine/shaders/sylvanShaders.js`.
  *
  * Outputs:
- *   1. `assets/sprites/archer_vfx.png` (6240x1040, 5 rows x 30 cols @ 208x208, 0/150 border clips)
- *   2. `<artifactDir>/debug_archer_30fps_vfx.png` (5x30 contact sheet for visual verification)
+ *   1. `assets/sprites/archer_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208, 0/240 border clips)
+ *   2. `<artifactDir>/debug_archer_30fps_vfx.png` (8x30 contact sheet for visual verification)
+ *   3. `<artifactDir>/debug_archer_ult_208_closeup.png` (Rows 5..7 208x208 Supreme Ultimate closeup)
  */
 
 import fs from 'node:fs';
@@ -19,13 +20,13 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps62';
 
 import {
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE,
   SYLVAN_EFFECT_REGISTRY
-} from '../src/engine/shaders/sylvanShaders.js?v=30fps55';
+} from '../src/engine/shaders/sylvanShaders.js?v=30fps62';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -108,6 +109,16 @@ function enforceSafeCellMargin104(rgba, w = 104, h = 104) {
   }
 }
 
+function has4pxBorderClip208(rgba208, cell = 208, margin = 4) {
+  for (let y = 0; y < cell; y++) {
+    for (let x = 0; x < cell; x++) {
+      if (x >= margin && x < cell - margin && y >= margin && y < cell - margin) continue;
+      if (rgba208[(y * cell + x) * 4 + 3] > 0) return true;
+    }
+  }
+  return false;
+}
+
 function blitUpscaledNearest(srcRgba, srcW, srcH, scale, dstRgba, dstW, dstX, dstY) {
   for (let sy = 0; sy < srcH; sy++) {
     for (let sx = 0; sx < srcW; sx++) {
@@ -153,7 +164,7 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
 }
 
 function bakeVfxSheet() {
-  const ROWS = 5;
+  const ROWS = 8;
   const COLS = 30;
   const LOGICAL = 104;
   const CELL = 208;
@@ -172,111 +183,95 @@ function bakeVfxSheet() {
     dbgRgba[i * 4 + 3] = 255;
   }
 
+  const sampleCols = [0, 6, 12, 18, 24, 29];
+  const closePad = 8;
+  const closeW = sampleCols.length * (CELL + closePad) + closePad;
+  const closeH = 3 * (CELL + closePad) + closePad;
+  const closeRgba = new Uint8Array(closeW * closeH * 4);
+  for (let i = 0; i < closeW * closeH; i++) {
+    closeRgba[i * 4] = 12;
+    closeRgba[i * 4 + 1] = 24;
+    closeRgba[i * 4 + 2] = 24;
+    closeRgba[i * 4 + 3] = 255;
+  }
+
   const rowSpecs = [
     {
-      name: 'Row 0: Supersonic Tempest Arrow (F00..F29)',
+      name: 'Row 0: Piercing Emerald Wind-Arrow (F00..F29)',
       windowSec: 0.50,
-      layers: [
-        {
-          def: SYLVAN_EFFECT_REGISTRY.sylvanSupersonicArrowLoop,
-          warmup: 0,
-          cfg: { x: 52, y: 52, length: 72, palette: SYLVAN_EMERALD_PALETTE, seed: 83 }
-        }
-      ]
+      def: SYLVAN_EFFECT_REGISTRY.sylvanSupersonicArrowLoop,
+      cfg: { x: 52, y: 52, length: 70, palette: SYLVAN_EMERALD_PALETTE, seed: 83 }
     },
     {
-      name: 'Row 1: Starfall Comet-Arrow Flight (F00..F11) & Ground Star-Geyser (F12..F29)',
+      name: 'Row 1: Homing Starfall Seeker Arrow (F00..F29)',
       windowSec: 1.00,
-      layers: [
-        {
-          def: SYLVAN_EFFECT_REGISTRY.sylvanStarfallSkyCell,
-          warmup: 0,
-          cfg: { x: 52, y: 52, palette: SYLVAN_STARLIGHT_PALETTE, seed: 89 }
-        }
-      ]
+      def: SYLVAN_EFFECT_REGISTRY.starfallSeekerArrowCell,
+      cfg: { x: 52, y: 52, palette: SYLVAN_STARLIGHT_PALETTE, seed: 109 }
     },
     {
-      name: 'Row 2: Swirling Emerald Tempest Cyclone (F00..F29)',
-      windowSec: 0.90,
-      layers: [
-        {
-          def: SYLVAN_EFFECT_REGISTRY.emeraldTempestCyclone,
-          warmup: 0.16,
-          cfg: {
-            x: 52,
-            y: 92,
-            baseRadius: 11,
-            topRadius: 31,
-            height: 78,
-            isUltimate: true,
-            palette: SYLVAN_EMERALD_PALETTE,
-            seed: 53
-          }
-        }
-      ]
-    },
-    {
-      name: 'Row 3: Roaring Astral Wind-Dragon Head (F00..F29)',
+      name: 'Row 2: Verdant Bramble-Star Snare Sigil (F00..F29)',
       windowSec: 1.00,
-      layers: [
-        {
-          def: SYLVAN_EFFECT_REGISTRY.roaringWindDragonHead,
-          warmup: 0,
-          cfg: { x: 52, y: 56, palette: SYLVAN_EMERALD_PALETTE, seed: 97 }
-        }
-      ]
+      def: SYLVAN_EFFECT_REGISTRY.verdantBrambleSnareCell,
+      cfg: { x: 52, y: 52, palette: SYLVAN_EMERALD_PALETTE, seed: 127 }
     },
     {
-      name: 'Row 4: Sonic Bow-Release Crescent Wave & Starburst (F00..F29)',
-      windowSec: 0.40,
-      layers: [
-        {
-          def: SYLVAN_EFFECT_REGISTRY.sonicBowReleaseWave,
-          warmup: 0.01,
-          cfg: { x: 34, y: 52, radius: 34, twin: true, palette: SYLVAN_EMERALD_PALETTE, seed: 23 }
-        }
-      ]
+      name: 'Row 3: Tempest Wind-Dragon Vortex (F00..F29)',
+      windowSec: 1.00,
+      def: SYLVAN_EFFECT_REGISTRY.tempestWindDragonVortexCell,
+      cfg: { x: 52, y: 55, palette: SYLVAN_EMERALD_PALETTE, seed: 137 }
+    },
+    {
+      name: 'Row 4: Emerald Star-Cross Impact Burst (F00..F29)',
+      windowSec: 1.00,
+      def: SYLVAN_EFFECT_REGISTRY.emeraldStarCrossBurstCell,
+      cfg: { x: 52, y: 52, palette: SYLVAN_EMERALD_PALETTE, seed: 149 }
+    },
+    {
+      name: 'Row 5: Yggdrasil World-Tree & Sagittarius Constellation Canopy Seal (F00..F29)',
+      windowSec: 1.00,
+      def: SYLVAN_EFFECT_REGISTRY.yggdrasilConstellationSealCell,
+      cfg: { x: 52, y: 52, palette: SYLVAN_EMERALD_PALETTE, seed: 163 }
+    },
+    {
+      name: 'Row 6: Colossal Drawn Golden-Emerald Celestial Greatbow Muzzle (F00..F29)',
+      windowSec: 1.00,
+      def: SYLVAN_EFFECT_REGISTRY.colossalCelestialGreatbowCell,
+      cfg: { x: 52, y: 52, palette: SYLVAN_STARLIGHT_PALETTE, seed: 179 }
+    },
+    {
+      name: 'Row 7: World-Piercing Supernova Dragon-Arrow Beam Segment (F00..F29)',
+      windowSec: 1.00,
+      def: SYLVAN_EFFECT_REGISTRY.supernovaDragonBeamSegmentCell,
+      cfg: { x: 52, y: 52, palette: SYLVAN_EMERALD_PALETTE, seed: 193 }
     }
   ];
 
-  const surface = createPixelSurface(LOGICAL, LOGICAL);
-  const pen = new ShaderPen(surface);
-  const cellRgba = new Uint8Array(LOGICAL * LOGICAL * 4);
+  const surface104 = createPixelSurface(LOGICAL, LOGICAL);
+  const pen104 = new ShaderPen(surface104);
+  const cell104 = new Uint8Array(LOGICAL * LOGICAL * 4);
+  const cell208 = new Uint8Array(CELL * CELL * 4);
   let borderClips = 0;
 
   for (let r = 0; r < ROWS; r++) {
     const spec = rowSpecs[r];
     const dt = spec.windowSec / COLS;
-    const instances = spec.layers.map((l) => {
-      const inst = instantiateShaderEffect(l.def, l.cfg);
-      if (l.warmup > 0) inst.step(l.warmup);
-      return inst;
-    });
+    const inst = instantiateShaderEffect(spec.def, spec.cfg);
 
     for (let c = 0; c < COLS; c++) {
-      clearPixelSurface(surface);
-      for (const inst of instances) {
-        inst.render(pen, 'back');
-      }
-      for (const inst of instances) {
-        inst.render(pen, 'front');
-      }
-      resolveSurfaceToRGBA(surface, cellRgba, 1.1);
-      enforceSafeCellMargin104(cellRgba, LOGICAL, LOGICAL);
+      clearPixelSurface(surface104);
+      inst.render(pen104, 'back');
+      inst.render(pen104, 'front');
+      resolveSurfaceToRGBA(surface104, cell104, 1.12);
+      enforceSafeCellMargin104(cell104, LOGICAL, LOGICAL);
 
-      for (let i = 0; i < LOGICAL; i++) {
-        if (
-          cellRgba[(0 * LOGICAL + i) * 4 + 3] > 0 ||
-          cellRgba[((LOGICAL - 1) * LOGICAL + i) * 4 + 3] > 0 ||
-          cellRgba[(i * LOGICAL + 0) * 4 + 3] > 0 ||
-          cellRgba[(i * LOGICAL + (LOGICAL - 1)) * 4 + 3] > 0
-        ) {
-          borderClips++;
-          break;
-        }
+      cell208.fill(0);
+      blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, cell208, CELL, 0, 0);
+
+      if (has4pxBorderClip208(cell208, CELL, 4)) {
+        borderClips++;
       }
 
-      blitUpscaledNearest(cellRgba, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
+      blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
 
       const dx = dbgPad + c * (LOGICAL + dbgPad);
       const dy = dbgPad + r * (LOGICAL + dbgPad);
@@ -290,23 +285,35 @@ function bakeVfxSheet() {
           dbgRgba[o + 3] = 255;
         }
       }
-      alphaCompositeOnto(cellRgba, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
+      alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
 
-      for (const inst of instances) {
-        inst.step(dt);
+      const sIdx = sampleCols.indexOf(c);
+      if (sIdx !== -1 && r >= 5) {
+        const cx = closePad + sIdx * (CELL + closePad);
+        const cy = closePad + (r - 5) * (CELL + closePad);
+        alphaCompositeOnto(cell208, CELL, CELL, closeRgba, closeW, cx, cy);
       }
+
+      inst.step(dt);
     }
     console.log(`[archer-vfx] Baked ${spec.name} (30 frames)`);
   }
 
   const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'archer_vfx.png');
   fs.writeFileSync(outVfxPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  console.log(`[archer-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/150`);
 
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
   const outDbgPath = path.join(ARTIFACT_DIR, 'debug_archer_30fps_vfx.png');
+  const outClosePath = path.join(ARTIFACT_DIR, 'debug_archer_ult_208_closeup.png');
   fs.writeFileSync(outDbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
-  console.log(`[archer-vfx] Wrote contact sheet -> ${outDbgPath}`);
+  fs.writeFileSync(outClosePath, encodeRgbaPng(closeW, closeH, closeRgba));
+
+  console.log(
+    `[archer-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), ${outDbgPath} (${dbgW}x${dbgH}), ${outClosePath} (${closeW}x${closeH}) | borderClips=${borderClips}/240`
+  );
+  if (borderClips > 0) {
+    process.exitCode = 1;
+  }
 }
 
 bakeVfxSheet();

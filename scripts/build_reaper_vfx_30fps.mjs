@@ -4,8 +4,8 @@
  * Powered natively by `src/engine/ArcaneShaderFX.js` + `src/engine/shaders/abyssalShaders.js`.
  *
  * Outputs:
- *   1. `assets/sprites/reaper_vfx.png` (6240x1040, 5 rows x 30 cols @ 208x208, 0/150 border clips)
- *   2. `<artifactDir>/debug_reaper_30fps_vfx.png` (5x30 contact sheet for visual verification)
+ *   1. `assets/sprites/reaper_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208, 0/240 border clips)
+ *   2. `<artifactDir>/debug_reaper_30fps_vfx.png` (8x30 contact sheet for visual verification)
  */
 
 import fs from 'node:fs';
@@ -153,7 +153,7 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
 }
 
 function bakeVfxSheet() {
-  const ROWS = 5;
+  const ROWS = 8;
   const COLS = 30;
   const LOGICAL = 104;
   const CELL = 208;
@@ -174,7 +174,7 @@ function bakeVfxSheet() {
 
   const rowSpecs = [
     {
-      name: 'Row 0: 360-Deg Twin-Blade Soul Scythe Wave (F00..F29)',
+      name: 'Row 0: Spinning Twin-Crescent Phantom Scythe (F00..F29)',
       windowSec: 1.00,
       layers: [
         {
@@ -185,7 +185,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 1: Floating Abyssal Skull Wisp & Soul-Fire Orb (F00..F29)',
+      name: 'Row 1: Homing Soul-Leech Wisp (F00..F29)',
       windowSec: 1.00,
       layers: [
         {
@@ -196,7 +196,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 2: Erupting Necrotic Bone Spire & Gothic Tombstone (F00..F29)',
+      name: 'Row 2: Erupting Ossuary Bone-Spire (F00..F29)',
       windowSec: 1.00,
       layers: [
         {
@@ -207,7 +207,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 3: Revolving Thanatos Blood-Moon Pentagram Seal (F00..F29)',
+      name: 'Row 3: Crimson-Violet Necropolis Sovereign Halo (F00..F29)',
       windowSec: 1.00,
       layers: [
         {
@@ -218,13 +218,46 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 4: Abyssal Reap Crescent Slash & Blood-Moon Nova (F00..F29)',
+      name: 'Row 4: Soul-Slash Crescent (F00..F29)',
       windowSec: 1.00,
       layers: [
         {
           def: ABYSSAL_EFFECT_REGISTRY.abyssalReapNovaCell,
           warmup: 0,
           cfg: { x: 52, y: 52, palette: BLOOD_MOON_CRIMSON_PALETTE, seed: 547 }
+        }
+      ]
+    },
+    {
+      name: 'Row 5: Twin Obsidian Gates of the Necropolis (F00..F29)',
+      windowSec: 1.00,
+      layers: [
+        {
+          def: ABYSSAL_EFFECT_REGISTRY.necropolisObsidianGatesCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: ABYSSAL_VIOLET_PALETTE, seed: 563 }
+        }
+      ]
+    },
+    {
+      name: 'Row 6: Abyssal Grave-Chain Altar Bind (F00..F29)',
+      windowSec: 1.00,
+      layers: [
+        {
+          def: ABYSSAL_EFFECT_REGISTRY.graveChainAltarBindCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: ABYSSAL_VIOLET_PALETTE, seed: 577 }
+        }
+      ]
+    },
+    {
+      name: 'Row 7: Memento Mori Death-God Guillotine Crescent (F00..F29)',
+      windowSec: 1.00,
+      layers: [
+        {
+          def: ABYSSAL_EFFECT_REGISTRY.mementoMoriGuillotineCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: BLOOD_MOON_CRIMSON_PALETTE, seed: 593 }
         }
       ]
     }
@@ -255,17 +288,21 @@ function bakeVfxSheet() {
       resolveSurfaceToRGBA(surface, cellRgba, 1.1);
       enforceSafeCellMargin104(cellRgba, LOGICAL, LOGICAL);
 
-      for (let i = 0; i < LOGICAL; i++) {
-        if (
-          cellRgba[(0 * LOGICAL + i) * 4 + 3] > 0 ||
-          cellRgba[((LOGICAL - 1) * LOGICAL + i) * 4 + 3] > 0 ||
-          cellRgba[(i * LOGICAL + 0) * 4 + 3] > 0 ||
-          cellRgba[(i * LOGICAL + (LOGICAL - 1)) * 4 + 3] > 0
-        ) {
-          borderClips++;
-          break;
+      let clipped = false;
+      for (let m = 0; m < 2 && !clipped; m++) {
+        for (let i = 0; i < LOGICAL; i++) {
+          if (
+            cellRgba[(m * LOGICAL + i) * 4 + 3] > 0 ||
+            cellRgba[((LOGICAL - 1 - m) * LOGICAL + i) * 4 + 3] > 0 ||
+            cellRgba[(i * LOGICAL + m) * 4 + 3] > 0 ||
+            cellRgba[(i * LOGICAL + (LOGICAL - 1 - m)) * 4 + 3] > 0
+          ) {
+            clipped = true;
+            break;
+          }
         }
       }
+      if (clipped) borderClips++;
 
       blitUpscaledNearest(cellRgba, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
 
@@ -290,9 +327,13 @@ function bakeVfxSheet() {
     console.log(`[reaper-vfx] Baked ${spec.name} (30 frames)`);
   }
 
+  if (borderClips !== 0) {
+    throw new Error(`[reaper-vfx] Expected 0/240 border clips, got ${borderClips}/240`);
+  }
+
   const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'reaper_vfx.png');
   fs.writeFileSync(outVfxPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  console.log(`[reaper-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/150`);
+  console.log(`[reaper-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/240`);
 
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
   const outDbgPath = path.join(ARTIFACT_DIR, 'debug_reaper_30fps_vfx.png');

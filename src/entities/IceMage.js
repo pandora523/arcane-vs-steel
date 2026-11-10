@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps62';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps62';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps62';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps62';
+import { Fighter } from './Fighter.js?v=30fps63';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps63';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps63';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps63';
 
 /**
  * Glacia / Lyra (`icemage`) — Cryo Sovereign & Borealis Prism Weaver.
@@ -13,7 +13,7 @@ export class IceMage extends Fighter {
     const opts = typeof x === 'object' && x !== null ? x : { x, groundY, facing };
     super({
       ...opts,
-      name: opts.name || 'Glacia',
+      name: opts.name || 'Lyra',
       maxHp: 1190,
       attackRange: 505,
       moveSpeed: 172,
@@ -27,7 +27,13 @@ export class IceMage extends Fighter {
     this.skillMaxCooldown = 5.10;
     this.skillTriggerRange = 545;
     this.skillName = 'TRI-BEAM PRISM MATRIX';
-    this.ultName = 'BOREALIS CATHEDRAL';
+    this.ultName = 'BOREALIS PRISM CATHEDRAL';
+    this.hasTrueUltimate = true;
+    this.trueUltName = 'ABSOLUTE ZERO: DIAMOND DUST ETERNITY';
+    this.trueUltDuration = 4.45;
+    this._trueUltStep = 0;
+    this._trueUltCoffinX = 600;
+    this._trueUltShatterTimer = 0;
     this.comboStep = 0;
     this.stepDustTimer = 0;
 
@@ -67,7 +73,7 @@ export class IceMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
       if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps50')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps62';
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps63';
       }
     }
   }
@@ -75,6 +81,9 @@ export class IceMage extends Fighter {
   setState(newState) {
     super.setState(newState);
     this._drewScepterFocus = false;
+    if (newState === 'TRUE_ULTIMATE') {
+      this._trueUltStep = 0;
+    }
     if (newState !== 'JUMP' && newState !== 'DODGE' && newState !== 'DASH') {
       this.fx?.stopByKey('glacialSkateRibbon');
     }
@@ -241,6 +250,10 @@ export class IceMage extends Fighter {
       game.vfx.spawnGlyphBurst(clampedX, clampedY, 4, 'glacial');
     }
     return prism;
+  }
+
+  spawnCryoPrism(x, y, game = this.game, duration = 6.8) {
+    return this.deployCryoPrism(x, y, game, duration);
   }
 
   /**
@@ -741,6 +754,9 @@ export class IceMage extends Fighter {
   update(dt, enemy, game) {
     if (this.wallFlipCooldown > 0) this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
     if (this.crouchCooldown > 0) this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
+    if (this._trueUltShatterTimer > 0) {
+      this._trueUltShatterTimer = Math.max(0, this._trueUltShatterTimer - dt);
+    }
 
     // 1. Update Floating Hexagonal Cryo-Prism Mirrors
     for (let i = this.cryoPrisms.length - 1; i >= 0; i--) {
@@ -1264,12 +1280,188 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * Renders any cell from `icemage_vfx.png` with 3-Pass HD-2D Bloom.
+   * ★ 3-OVERDRIVE SUPREME ULTIMATE (`state === 'TRUE_ULTIMATE'`):
+   * "ABSOLUTE ZERO: DIAMOND DUST ETERNITY" (4.45s)
+   * Never changes the stage background image.
+   */
+  updateTrueUltimate(dt, enemy, game) {
+    const t = this.stateTimer;
+    this.isInvulnerable = true;
+    this.vx = 0;
+    this.vy = 0;
+
+    if (t < 0.04) {
+      this._trueUltStep = 0;
+    }
+
+    const targets = game?.fighters
+      ? game.fighters.filter(
+          (f) => f && f !== this && !f.isDead && !f.isBenched && (!this.team || !f.team || f.team !== this.team)
+        )
+      : [];
+    if (enemy && !enemy.isDead && !enemy.isBenched && !targets.includes(enemy)) {
+      targets.push(enemy);
+    }
+
+    // =========================================================================
+    // PHASE 1 (0.00s .. 1.10s — Sovereign Aurora Ascension & Mandala Seal)
+    // =========================================================================
+    if (t < 1.10) {
+      this._trueUltCoffinX = enemy
+        ? Math.max(220, Math.min(980, enemy.x))
+        : Math.max(220, Math.min(980, this.x + this.facing * 240));
+      if (Math.abs(this._trueUltCoffinX - this.x) > 8) {
+        this.facing = this._trueUltCoffinX >= this.x ? 1 : -1;
+      }
+
+      // Levitate 58px above this.groundY
+      const liftU = Math.min(1, t / 0.28);
+      this.y = this.groundY - 58 * (1 - Math.pow(1 - liftU, 2));
+      this.trueUltFrameOverride = 120 + Math.min(9, Math.floor((t / 1.10) * 10));
+
+      if (t >= 0.04 && this._trueUltStep < 1) {
+        this._trueUltStep = 1;
+        game?.audio?.play?.('ult_icemage', this.x);
+        game?.audio?.play?.('ice_crystallize', this.x);
+        game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#38bdf8');
+        game?.vfx?.spawnDamageText?.(
+          this.x,
+          this.y - 168,
+          0,
+          true,
+          '★ ABSOLUTE ZERO: DIAMOND DUST! ★',
+          '#38bdf8'
+        );
+        this.spawnPermafrostZone(this._trueUltCoffinX, 260, 5.5);
+        this.spawnCryoPrism(this._trueUltCoffinX - 165, this.groundY - 175, game, 7.2);
+        this.spawnCryoPrism(this._trueUltCoffinX, this.groundY - 225, game, 7.2);
+        this.spawnCryoPrism(this._trueUltCoffinX + 165, this.groundY - 175, game, 7.2);
+      }
+      return;
+    }
+
+    // =========================================================================
+    // PHASE 2 (1.10s .. 3.15s — Crystalline Diamond-Coffin Monolith & 8-Prism Borealis Refraction)
+    // =========================================================================
+    if (t >= 1.10 && this._trueUltStep < 2) {
+      this._trueUltStep = 2;
+      game?.audio?.play?.('ice_crystallize', this._trueUltCoffinX);
+      game?.audio?.play?.('prism_chime', this._trueUltCoffinX);
+      game?.vfx?.spawnDamageText?.(
+        this._trueUltCoffinX,
+        this.groundY - 224,
+        0,
+        true,
+        'DIAMOND COFFIN SEAL!',
+        '#67e8f9'
+      );
+    }
+
+    // Encase active enemies at this._trueUltCoffinX from 1.10s .. 3.18s (ZERO micro-DoT damage ticks during charge!)
+    if (t >= 1.10 && t <= 3.18) {
+      this.y = this.groundY - 58;
+      this.trueUltFrameOverride = 130 + (Math.floor((t - 1.10) * 14) % 10);
+
+      if (enemy && !enemy.isDead) {
+        enemy.x += (this._trueUltCoffinX - enemy.x) * Math.min(1, dt * 18);
+        enemy.vx = 0;
+        enemy.vy = 0;
+        enemy.chronoTimeStopTimer = Math.max(enemy.chronoTimeStopTimer || 0, 0.15);
+      }
+      for (const foe of targets) {
+        if (foe && !foe.isDead) {
+          foe.x += (this._trueUltCoffinX - foe.x) * Math.min(1, dt * 18);
+          foe.vx = 0;
+          foe.vy = 0;
+          foe.chronoTimeStopTimer = Math.max(foe.chronoTimeStopTimer || 0, 0.15);
+        }
+      }
+    }
+
+    if (t < 3.20) {
+      return;
+    }
+
+    // =========================================================================
+    // PHASE 3 (t >= 3.20s, _trueUltStep < 3 — Scepter Tap & Instantaneous Diamond Dust Shatter)
+    // =========================================================================
+    if (t >= 3.20 && this._trueUltStep < 3) {
+      this._trueUltStep = 3;
+      this._trueUltShatterTimer = 0.95;
+
+      if (enemy) enemy.chronoTimeStopTimer = 0;
+      for (const foe of targets) {
+        if (foe) foe.chronoTimeStopTimer = 0;
+      }
+
+      game?.renderer?.triggerImpactFrame?.(0.12, this._trueUltCoffinX, this.groundY - 110, 'glacial');
+      game?.renderer?.triggerImpactFrame?.(this._trueUltCoffinX, this.groundY - 110, 0.12, 'glacial');
+      game?.renderer?.shake?.(26, 0.70);
+      game?.renderer?.triggerShake?.(26, 0.70);
+      game?.renderer?.flash?.(0.32, '#f0f9ff');
+      game?.renderer?.triggerAberration?.(16);
+      game?.renderer?.triggerHitStop?.(0.09);
+
+      game?.audio?.play?.('ult_icemage', this._trueUltCoffinX);
+      game?.audio?.play?.('glass_shatter', this._trueUltCoffinX);
+      game?.audio?.play?.('ice_shatter', this._trueUltCoffinX);
+
+      this.heal(Math.round(this.maxHp * 0.18), 'AURORA SOVEREIGNTY');
+
+      this.spawnPixelFrostRing(this._trueUltCoffinX, this.groundY - 128, 260, '#67e8f9', 0.48, false, true);
+      this.fx?.burst(this._trueUltCoffinX, this.groundY - 128, {
+        count: 42,
+        speedMin: 90,
+        speedMax: 350,
+        lifeMin: 0.24,
+        lifeMax: 0.56,
+        gravity: 85,
+        colors: ['#ffffff', '#f0f9ff', '#bae6fd', '#67e8f9', '#38bdf8', '#e879f9']
+      });
+      game?.vfx?.spawnGlyphBurst?.(this._trueUltCoffinX, this.groundY - 128, 16, 'glacial');
+      game?.vfx?.spawnDamageText?.(
+        this._trueUltCoffinX,
+        this.groundY - 260,
+        0,
+        true,
+        '★ DIAMOND DUST ETERNITY! ★',
+        '#f0f9ff'
+      );
+
+      // Deal a SINGLE INSTANTANEOUS SHATTER BURST of 370 Crit damage (isCrit = true, knockX = 310, knockY = -250)
+      for (const t of targets) {
+        if (t && !t.isDead) {
+          t.chronoTimeStopTimer = 0;
+          t.takeDamage(370, this, true, 310, -250);
+        }
+      }
+    }
+
+    // =========================================================================
+    // PHASE 4 (3.20s .. 4.45s — Smooth Descent & Return to IDLE)
+    // =========================================================================
+    const descU = Math.min(1, Math.max(0, (t - 3.20) / Math.max(0.01, this.trueUltDuration - 3.20)));
+    const smoothDesc = descU * descU * (3 - 2 * descU);
+    this.y = this.groundY - 58 * (1 - smoothDesc);
+    this.trueUltFrameOverride = 140 + Math.min(9, Math.floor(descU * 10));
+
+    if (t >= this.trueUltDuration) {
+      this.y = this.groundY;
+      this.vy = 0;
+      this.isInvulnerable = false;
+      this.trueUltFrameOverride = null;
+      if (enemy) enemy.chronoTimeStopTimer = 0;
+      this.setState('IDLE');
+    }
+  }
+
+  /**
+   * Renders any cell from `icemage_vfx.png` (rows 0..7, cols 0..29) with 3-Pass HD-2D Bloom.
    */
   drawBloomedVfxCell(ctx, vfxSheet, rowIdx, colIdx, x, y, size, fade = 1.0, renderer = null, glowScale = 1.9) {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
     const c = Math.max(0, Math.min(29, Math.floor(colIdx)));
-    const r = Math.max(0, Math.min(4, Math.floor(rowIdx)));
+    const r = Math.max(0, Math.min(7, Math.floor(rowIdx)));
     const drawSize = Math.round(size / 4) * 4;
     const half = Math.round(-drawSize * 0.5);
     const gx = Math.round(x / 4) * 4;
@@ -1299,6 +1491,97 @@ export class IceMage extends Fighter {
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, half, half, drawSize, drawSize);
 
     ctx.restore();
+  }
+
+  /**
+   * Renders a rectangular `(w, h)` cell from `icemage_vfx.png` (rows 0..7, cols 0..29) with 3-Pass HD-2D Bloom.
+   */
+  drawBloomedVfxRect(
+    ctx,
+    vfxSheet,
+    rowIdx,
+    colIdx,
+    x,
+    y,
+    w,
+    h,
+    fade = 1.0,
+    renderer = null,
+    glowScale = 1.6,
+    angleRad = 0
+  ) {
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth || fade <= 0.01) return;
+    const c = Math.max(0, Math.min(29, Math.floor(colIdx)));
+    const r = Math.max(0, Math.min(7, Math.floor(rowIdx)));
+    const drawW = Math.round(w / 4) * 4;
+    const drawH = Math.round(h / 4) * 4;
+    const halfW = Math.round(-drawW * 0.5);
+    const halfH = Math.round(-drawH * 0.5);
+    const gx = Math.round(x / 4) * 4;
+    const gy = Math.round(y / 4) * 4;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(gx, gy);
+    if (angleRad) ctx.rotate(angleRad);
+
+    if (renderer && renderer.glowGlacial && glowScale > 0) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.44;
+      const gW = drawW * glowScale;
+      const gH = drawH * glowScale;
+      ctx.drawImage(renderer.glowGlacial, -gW * 0.5, -gH * 0.5, gW, gH);
+    }
+
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = fade * 0.36;
+    ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, halfW - 6, halfH - 6, drawW + 12, drawH + 12);
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = fade * 0.99;
+    ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, halfW, halfH, drawW, drawH);
+
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = fade * 0.28;
+    ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, halfW, halfH, drawW, drawH);
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders `icemage_vfx.png` Row 5 (Aurora Borealis Sovereign Snowflake Mandala, 320x320)
+   * spinning behind Lyra during her 3-Overdrive Supreme Ultimate (`TRUE_ULTIMATE`).
+   */
+  drawBehind(ctx, renderer = null) {
+    if (this.state !== 'TRUE_ULTIMATE' && this._trueUltShatterTimer <= 0) return;
+    const vfxSheet = PixelForge.initAssets()?.icemage?.vfx;
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
+
+    const t = this.stateTimer || 0;
+    const dur = this.trueUltDuration || 4.45;
+    const fadeIn = Math.min(1, t / 0.18);
+    const fadeOut = this.state === 'TRUE_ULTIMATE'
+      ? Math.min(1, Math.max(0, (dur - t) / 0.35))
+      : Math.min(1, this._trueUltShatterTimer / 0.35);
+    const fade = fadeIn * fadeOut;
+    if (fade <= 0.01) return;
+
+    const col = Math.floor(t * 30) % 30;
+    const spinAngle = t * 1.45;
+    this.drawBloomedVfxRect(
+      ctx,
+      vfxSheet,
+      5,
+      col,
+      this.x,
+      this.y - 104,
+      320,
+      320,
+      fade * 0.94,
+      renderer,
+      1.65,
+      spinAngle
+    );
   }
 
   /**
@@ -1550,8 +1833,10 @@ export class IceMage extends Fighter {
   draw(ctx, isReflection = false, renderer = null) {
     const sprites = PixelForge.initAssets().icemage;
     if (!sprites) return;
+    const vfxSheet = sprites.vfx;
 
     if (!isReflection) {
+      this.drawBehind(ctx, renderer);
       this.drawOrbitingCryoPrisms(ctx, renderer);
     }
 
@@ -1575,5 +1860,113 @@ export class IceMage extends Fighter {
     }
 
     ctx.restore();
+
+    // Supreme Ultimate (`TRUE_ULTIMATE`) Phase 2 Diamond-Coffin Monolith (Row 6, 280x320) & 8-Prism Borealis Refraction,
+    // plus Phase 3 Diamond Dust Prismatic Starburst Shatter (Row 7, 420x360)
+    if (!isReflection && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+      const t = this.stateTimer || 0;
+      const coffinX = Math.round((this._trueUltCoffinX || 600) / 4) * 4;
+      const coffinY = Math.round((this.groundY - 148) / 4) * 4;
+
+      if (this.state === 'TRUE_ULTIMATE' && t >= 1.10 && t <= 3.18) {
+        const sealProgress = Math.max(0, Math.min(1, (t - 1.10) / 2.08));
+        const row6Col = Math.min(29, Math.floor(sealProgress * 30));
+        const fade = Math.min(1, (t - 1.10) / 0.14);
+
+        // Row 6: Absolute Zero Crystalline Diamond-Coffin Monolith (280x320)
+        this.drawBloomedVfxRect(
+          ctx,
+          vfxSheet,
+          6,
+          row6Col,
+          coffinX,
+          coffinY,
+          280,
+          320,
+          fade * 0.96,
+          renderer,
+          1.85,
+          0
+        );
+
+        // 8 orbiting Borealis laser refraction lines bouncing across the Diamond Coffin (1.10s .. 3.18s)
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const prismCol = Math.floor(t * 30) % 30;
+        for (let i = 0; i < 8; i++) {
+          const ang = t * 3.4 + (i * Math.PI * 2) / 8;
+          const nextAng = ang + Math.PI * 0.75 + Math.sin(t * 6.0 + i) * 0.25;
+          const px = Math.round(coffinX + Math.cos(ang) * 168);
+          const py = Math.round(coffinY + Math.sin(ang) * 134);
+          const bx = Math.round(coffinX + Math.cos(nextAng) * 58);
+          const by = Math.round(coffinY + Math.sin(nextAng) * 86);
+          const tx = Math.round(coffinX - Math.cos(ang) * 112);
+          const ty = Math.round(coffinY - Math.sin(ang) * 96);
+          const beamColor = i % 2 === 0 ? '#38bdf8' : '#e879f9';
+
+          ctx.strokeStyle = beamColor;
+          ctx.lineWidth = 5;
+          ctx.globalAlpha = fade * 0.68;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(bx, by);
+          ctx.lineTo(tx, ty);
+          ctx.stroke();
+
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 2;
+          ctx.globalAlpha = fade * 0.92;
+          ctx.beginPath();
+          ctx.moveTo(px, py);
+          ctx.lineTo(bx, by);
+          ctx.lineTo(tx, ty);
+          ctx.stroke();
+
+          this.drawBloomedVfxCell(ctx, vfxSheet, 1, (prismCol + i * 3) % 30, px, py, 56, fade * 0.88, renderer, 1.3);
+        }
+        ctx.restore();
+      }
+
+      // Phase 3: Row 7 (Diamond Dust Prismatic Starburst Shatter, 420x360) at _trueUltCoffinX and across the stage
+      if (this._trueUltShatterTimer > 0) {
+        const uShatter = 1 - Math.max(0, Math.min(1, this._trueUltShatterTimer / 0.95));
+        const row7Col = Math.min(29, Math.floor(uShatter * 30));
+        const shatterFade = Math.min(1, this._trueUltShatterTimer / 0.25);
+
+        this.drawBloomedVfxRect(
+          ctx,
+          vfxSheet,
+          7,
+          row7Col,
+          coffinX,
+          coffinY,
+          420,
+          360,
+          shatterFade * 0.98,
+          renderer,
+          2.1,
+          0
+        );
+
+        for (const side of [-1, 1]) {
+          const stageX = Math.max(160, Math.min(1040, coffinX + side * 260));
+          const subCol = Math.min(29, Math.max(0, row7Col - 2));
+          this.drawBloomedVfxRect(
+            ctx,
+            vfxSheet,
+            7,
+            subCol,
+            stageX,
+            coffinY - 12,
+            320,
+            280,
+            shatterFade * 0.82,
+            renderer,
+            1.7,
+            0
+          );
+        }
+      }
+    }
   }
 }

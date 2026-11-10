@@ -1606,6 +1606,832 @@ export const chakramVortexDisc = {
   }
 };
 
+// ============================================================================
+// 13. HF PLASMA CRESCENT WAVE (`hfPlasmaCrescentWave`) — Row 0 30fps VFX
+// ============================================================================
+export const hfPlasmaCrescentWave = {
+  duration: 0.6,
+  loop: true,
+  defaults: {
+    palette: CYBER_NEON_PALETTE,
+    radius: 30,
+    seed: 21
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const magCol = packHexColor('#ff2e93');
+    const magHi = packHexColor('#ff92d8');
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, ramp[4], magCol] });
+    let emitAcc = 0;
+
+    return {
+      step(dt) {
+        emitAcc += dt;
+        while (emitAcc >= 0.028) {
+          emitAcc -= 0.028;
+          const ang = rng.between(-1.12, 1.12);
+          const rx = (cfg.radius ?? 30) * 0.82;
+          const ry = (cfg.radius ?? 30) * 1.18;
+          motes.emit(
+            'streak',
+            -6 + Math.cos(ang) * rx,
+            Math.sin(ang) * ry,
+            -rng.between(75, 155),
+            rng.between(-18, 18),
+            rng.between(0.08, 0.17),
+            rng.chance(0.45) ? magCol : ramp[4]
+          );
+        }
+        motes.step(dt);
+      },
+      renderFront(pen, loopT) {
+        const phase = (loopT / 0.6) * TWO_PI;
+        const R = cfg.radius ?? 30;
+        const cx = -8;
+        const rx = R * 0.92;
+        const ry = R * 1.24;
+
+        pen.shadeBox(-42, -42, 42, 42, (px, py, out) => {
+          const dx = (px - cx) / rx;
+          const dy = py / ry;
+          if (dx < -0.15) return 0;
+          const dist = Math.hypot(dx, dy);
+          const ang = Math.atan2(dy, dx);
+          if (Math.abs(ang) > 1.28) return 0;
+
+          const taper = Math.cos((ang / 1.28) * Math.PI * 0.5);
+          const outerEdge = 1.02 + 0.03 * Math.sin(ang * 6 - phase * 2);
+          const thickness = 0.34 * Math.pow(Math.max(0, taper), 0.65);
+          const innerEdge = outerEdge - thickness - 0.04 * Math.sin(ang * 10 + phase * 3);
+          if (dist > outerEdge || dist < innerEdge) return 0;
+
+          const across = (outerEdge - dist) / Math.max(0.04, outerEdge - innerEdge);
+          if (across < 0.24) {
+            out.glowStrength = 0.3;
+            out.glowColor = ramp[4];
+            return PURE_WHITE;
+          }
+          if (across < 0.56) {
+            return ramp[4];
+          }
+          if (across < 0.8) {
+            const hfWave = Math.sin(ang * 14 - phase * 4);
+            return hfWave > 0.15 ? magHi : ramp[3];
+          }
+          return magCol;
+        });
+
+        // Crackling HF arc along crescent spine
+        const boltRng = new DeterministicRng(cfg.seed * 29 + Math.floor(loopT * 30));
+        const a0 = -0.85;
+        const a1 = 0.85;
+        const pts = buildLightningChain(
+          boltRng,
+          cx + Math.cos(a0) * rx * 0.86,
+          Math.sin(a0) * ry * 0.86,
+          cx + Math.cos(a1) * rx * 0.86,
+          Math.sin(a1) * ry * 0.86,
+          0.22,
+          3
+        );
+        pen.polyline(pts, PURE_WHITE, 0.82);
+        pen.radialGlow(cx + rx * 0.92, 0, 18, ramp[4], 0.42);
+        pen.radialGlow(cx + rx * 0.65, 0, 14, magCol, 0.28);
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 14. AUTONOMOUS FIN-FUNNEL DRONE POD (`finFunnelDronePod`) — Row 1 30fps VFX
+// ============================================================================
+export const finFunnelDronePod = {
+  duration: 0.6,
+  loop: true,
+  defaults: {
+    palette: CYBER_NEON_PALETTE,
+    seed: 25
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const pearlHi = packHexColor('#f8fbff');
+    const pearlMid = packHexColor('#b2bed8');
+    const carbDark = packHexColor('#14182a');
+    const selout = packHexColor('#090b16');
+    const magCol = packHexColor('#ff2e93');
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, ramp[4], magCol] });
+    let emitAcc = 0;
+
+    return {
+      step(dt) {
+        emitAcc += dt;
+        while (emitAcc >= 0.03) {
+          emitAcc -= 0.03;
+          motes.emit(
+            'spark',
+            -14,
+            rng.between(-3, 3),
+            -rng.between(75, 140),
+            rng.between(-16, 16),
+            rng.between(0.09, 0.18),
+            rng.chance(0.5) ? ramp[4] : magCol
+          );
+        }
+        motes.step(dt);
+      },
+      renderBack(pen, loopT) {
+        const phase = (loopT / 0.6) * TWO_PI;
+        const bobY = Math.sin(phase) * 2.0;
+        drawTiltedOrbitBand(
+          pen,
+          2,
+          bobY,
+          24,
+          0.34,
+          1.4,
+          0.75,
+          [ramp[1], ramp[3], magCol, PURE_WHITE],
+          (ang) => Math.sin(ang) < 0,
+          false
+        );
+      },
+      renderFront(pen, loopT) {
+        const phase = (loopT / 0.6) * TWO_PI;
+        const bobY = Math.sin(phase) * 2.0;
+
+        // Twin rear Mach shock-diamond thruster plumes (-14 .. -35)
+        const plumeLen = 19 + 3 * Math.sin(phase * 3);
+        for (const side of [-1, 1]) {
+          const py0 = bobY + side * 4.5;
+          for (let d = 0; d <= plumeLen; d += 0.7) {
+            const u = d / plumeLen;
+            const hw = (1 - u) * 2.4 + 0.4;
+            for (let dy = -hw; dy <= hw; dy += 0.65) {
+              const heat = (1 - u) - Math.abs(dy) / (hw + 0.2);
+              const col = heat > 0.55 ? PURE_WHITE : side < 0 ? ramp[4] : magCol;
+              pen.pixel(-13 - d, py0 + dy, col);
+            }
+          }
+          pen.pixel(-18 - Math.sin(phase * 2) * 1.5, py0, PURE_WHITE);
+        }
+
+        // Sleek V-Fin Autonomous Bit-Drone Chassis (-13 .. +22)
+        pen.shadeBox(-15, Math.round(bobY - 13), 24, Math.round(bobY + 13), (px, py, out) => {
+          const ly = py - bobY;
+          const ay = Math.abs(ly);
+          const u = (px + 13) / 35;
+          if (u < 0 || u > 1) return 0;
+
+          // Split twin-prong rail-fin silhouette with open glowing accelerator channel
+          const outerHalf = u < 0.35 ? 6.5 + u * 11 : 10.4 * (1 - (u - 0.35) * 0.72);
+          if (ay > outerHalf) return 0;
+
+          // Central plasma rail slot
+          if (ay < 2.1 && u > 0.14 && u < 0.92) {
+            out.glowStrength = 0.22;
+            out.glowColor = ramp[4];
+            return ((Math.floor(px - phase * 6) & 3) === 0) ? PURE_WHITE : u < 0.45 ? magCol : ramp[4];
+          }
+          if (ay > outerHalf - 1.1 || u < 0.04 || u > 0.96) return selout;
+          if (ay < 3.2) return carbDark;
+          return ly < 0 ? pearlHi : pearlMid;
+        });
+
+        // Reactor core + forward sensor glint + front orbit band
+        pen.fillCircle(-5, bobY, 2.8, magCol);
+        pen.fillCircle(-5, bobY, 1.5, PURE_WHITE);
+        drawStarburstFlare(pen, 21, bobY, 6 + 2 * Math.sin(phase * 2), 0.85, ramp);
+        pen.radialGlow(4, bobY, 20, ramp[3], 0.36);
+
+        drawTiltedOrbitBand(
+          pen,
+          2,
+          bobY,
+          24,
+          0.34,
+          1.5,
+          0.9,
+          [ramp[1], ramp[3], ramp[4], PURE_WHITE],
+          (ang) => Math.sin(ang) >= 0,
+          false
+        );
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 15. EMP GRAVITY TETHER SPIRE (`empGravityTetherSpire`) — Row 2 30fps VFX
+// ============================================================================
+export const empGravityTetherSpire = {
+  duration: 1.0,
+  loop: true,
+  defaults: {
+    palette: CYBER_NEON_PALETTE,
+    radius: 38,
+    seed: 31
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const magCol = packHexColor('#ff2e93');
+    const pearlHi = packHexColor('#dce4f4');
+    const selout = packHexColor('#090b16');
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, ramp[4], magCol], floorY: 0 });
+    let emitAcc = 0;
+
+    return {
+      step(dt) {
+        emitAcc += dt;
+        while (emitAcc >= 0.035) {
+          emitAcc -= 0.035;
+          const a = rng.between(0, TWO_PI);
+          const dist = rng.between(20, 38);
+          const life = 0.18;
+          motes.emit(
+            'streak',
+            Math.cos(a) * dist,
+            -18 + Math.sin(a) * 10,
+            (-Math.cos(a) * dist) / life,
+            (-Math.sin(a) * 10) / life,
+            life,
+            rng.chance(0.5) ? magCol : ramp[4]
+          );
+        }
+        motes.step(dt);
+      },
+      renderBack(pen, loopT) {
+        const R = cfg.radius ?? 38;
+        drawTiltedOrbitBand(
+          pen,
+          0,
+          0,
+          R,
+          0.22,
+          2.0,
+          0.85,
+          [ramp[1], ramp[3], magCol, PURE_WHITE],
+          (ang) => Math.sin(ang) < 0,
+          false
+        );
+      },
+      renderFront(pen, loopT) {
+        const phase = loopT * TWO_PI;
+        const R = cfg.radius ?? 38;
+
+        // Rising gravity-well containment rings
+        for (let k = 0; k < 3; k++) {
+          const u = (loopT * 1.5 + k / 3) % 1;
+          const ry = -6 - u * 52;
+          const rr = mixScalar(R * 0.82, 11, u);
+          drawTiltedOrbitBand(
+            pen,
+            0,
+            ry,
+            rr,
+            0.2,
+            1.4,
+            (1 - u * 0.65) * 0.9,
+            [ramp[1], ramp[3], k % 2 === 0 ? ramp[4] : magCol, PURE_WHITE],
+            () => true,
+            false
+          );
+        }
+
+        // Central Magnetic EMP Spire Pylon (y = -4 .. -58)
+        for (let y = -56; y <= -3; y++) {
+          const v = (-y - 3) / 53;
+          const hw = Math.max(1.6, 5.2 * (1 - v * 0.62));
+          for (let x = -Math.ceil(hw); x <= Math.ceil(hw); x++) {
+            const ax = Math.abs(x);
+            if (ax > hw) continue;
+            const col =
+              ax > hw - 1.0
+                ? selout
+                : ax < 1.2
+                  ? ((y + Math.floor(loopT * 30)) & 3) === 0
+                    ? PURE_WHITE
+                    : v > 0.5
+                      ? magCol
+                      : ramp[4]
+                  : x < 0
+                    ? pearlHi
+                    : ramp[2];
+            pen.pixel(x, y, col);
+          }
+        }
+
+        // Crown Singularity Node at y = -60 + Radial Tether Lightning Chains
+        const orbY = -60 + Math.sin(phase * 2) * 1.5;
+        pen.fillCircle(0, orbY, 5.5, magCol);
+        pen.fillCircle(0, orbY, 3.2, ramp[4]);
+        pen.fillCircle(0, orbY, 1.8, PURE_WHITE);
+        pen.radialGlow(0, orbY, 18, magCol, 0.52);
+        pen.radialGlow(0, -28, 24, ramp[3], 0.36);
+
+        const boltRng = new DeterministicRng(cfg.seed * 37 + Math.floor(loopT * 30));
+        for (let i = 0; i < 4; i++) {
+          const ang = phase + (i * TWO_PI) / 4;
+          const tx = Math.cos(ang) * (R * 0.86);
+          const ty = Math.sin(ang) * (R * 0.2);
+          const pts = buildLightningChain(boltRng, 0, orbY + 4, tx, ty, 0.26, 3);
+          pen.polyline(pts, i % 2 === 0 ? PURE_WHITE : magCol, 0.88);
+        }
+
+        drawTiltedOrbitBand(
+          pen,
+          0,
+          0,
+          R,
+          0.22,
+          2.0,
+          0.95,
+          [ramp[1], ramp[3], ramp[4], PURE_WHITE],
+          (ang) => Math.sin(ang) >= 0,
+          false
+        );
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 16. CYBER SINGULARITY CORE (`cyberSingularityCore`) — Row 3 30fps VFX
+// ============================================================================
+export const cyberSingularityCore = {
+  duration: 1.0,
+  loop: true,
+  defaults: {
+    palette: CYBER_NEON_PALETTE,
+    radius: 34,
+    seed: 37
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const magCol = packHexColor('#ff2e93');
+    const voidCol = packHexColor('#090b1c');
+
+    const strokeHex = (pen, rad, rot, col) => {
+      let px0 = 0;
+      let py0 = 0;
+      for (let i = 0; i <= 6; i++) {
+        const a = rot + (i * TWO_PI) / 6;
+        const x = Math.cos(a) * rad;
+        const y = Math.sin(a) * rad;
+        if (i > 0) pen.line(px0, py0, x, y, col, 0.95);
+        if (i < 6) pen.pixel(x, y, PURE_WHITE);
+        px0 = x;
+        py0 = y;
+      }
+    };
+
+    return {
+      renderBack(pen, loopT) {
+        const R = cfg.radius ?? 34;
+        drawTiltedOrbitBand(
+          pen,
+          0,
+          0,
+          R * 1.05,
+          0.32,
+          2.2,
+          0.85,
+          [ramp[1], magCol, ramp[4], PURE_WHITE],
+          (ang) => Math.sin(ang) < 0,
+          false
+        );
+      },
+      renderFront(pen, loopT) {
+        const phase = loopT * TWO_PI;
+        const R = cfg.radius ?? 34;
+
+        strokeHex(pen, R * 0.88, phase, ramp[4]);
+        strokeHex(pen, R * 0.62, -phase * 1.5 + 0.4, magCol);
+
+        // Dark event-horizon core + blazing photon ring
+        const coreR = 10.5 + 1.4 * Math.sin(phase * 3);
+        pen.fillCircle(0, 0, coreR + 3.2, magCol);
+        pen.fillCircle(0, 0, coreR + 1.6, PURE_WHITE);
+        pen.fillCircle(0, 0, coreR, voidCol);
+        drawStarburstFlare(pen, 0, 0, 14 + 3 * Math.cos(phase * 2), 0.9, ramp);
+
+        const boltRng = new DeterministicRng(cfg.seed * 43 + Math.floor(loopT * 30));
+        for (let i = 0; i < 4; i++) {
+          const a = phase * 1.2 + (i * TWO_PI) / 4;
+          const pts = buildLightningChain(
+            boltRng,
+            Math.cos(a) * (coreR + 1),
+            Math.sin(a) * (coreR + 1),
+            Math.cos(a + 0.45) * (R * 0.88),
+            Math.sin(a + 0.45) * (R * 0.88),
+            0.28,
+            3
+          );
+          pen.polyline(pts, i % 2 === 0 ? PURE_WHITE : ramp[4], 0.9);
+        }
+
+        drawTiltedOrbitBand(
+          pen,
+          0,
+          0,
+          R * 1.05,
+          0.32,
+          2.2,
+          0.95,
+          [ramp[1], ramp[3], ramp[4], PURE_WHITE],
+          (ang) => Math.sin(ang) >= 0,
+          false
+        );
+        pen.radialGlow(0, 0, 30, ramp[3], 0.44);
+        pen.radialGlow(0, 0, 18, magCol, 0.36);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 17. HEX-GLITCH CROSS-SLASH BURST (`hexGlitchCrossSlash`) — Row 4 30fps VFX
+// ============================================================================
+export const hexGlitchCrossSlash = {
+  duration: 0.6,
+  loop: false,
+  defaults: {
+    palette: CYBER_NEON_PALETTE,
+    seed: 41
+  },
+  create(cfg) {
+    const cyanRamp = buildColorRamp(CYBER_NEON_PALETTE, 8);
+    const magRamp = buildColorRamp(CYBER_MAGENTA_PALETTE, 8);
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, cyanRamp[4], magRamp[4]] });
+
+    const cutA = makeLinearCutArc(0, 0, 0.68, 32, {
+      width: 9.5,
+      startAt: 0.0,
+      sweepDur: 0.08,
+      holdDur: 0.22,
+      trailDur: 0.28,
+      ramp: cyanRamp
+    });
+    const cutB = makeLinearCutArc(0, 0, 2.46, 32, {
+      width: 9.5,
+      startAt: 0.04,
+      sweepDur: 0.08,
+      holdDur: 0.22,
+      trailDur: 0.26,
+      ramp: magRamp
+    });
+
+    let t = 0;
+    let burst = false;
+
+    return {
+      step(dt) {
+        t += dt;
+        if (!burst && t >= 0.06) {
+          burst = true;
+          for (let i = 0; i < 20; i++) {
+            const a = (i / 20) * TWO_PI + rng.between(-0.1, 0.1);
+            const sp = rng.between(85, 195);
+            motes.emit(
+              'spark',
+              0,
+              0,
+              Math.cos(a) * sp,
+              Math.sin(a) * sp,
+              rng.between(0.18, 0.42),
+              i % 2 === 0 ? cyanRamp[4] : magRamp[4]
+            );
+          }
+        }
+        motes.step(dt);
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 0.6);
+        const fade = 1 - Math.pow(u, 1.8);
+        const hot = t >= 0.04 && t <= 0.16;
+
+        advanceArcStroke(pen, cutA, t, hot);
+        advanceArcStroke(pen, cutB, t, hot);
+
+        // Expanding hexagonal shock-ring
+        const hexR = 8 + 29 * Easing.outCubic(u);
+        if (fade > 0.08) {
+          let px0 = 0;
+          let py0 = 0;
+          for (let i = 0; i <= 6; i++) {
+            const a = u * 1.4 + (i * TWO_PI) / 6;
+            const x = Math.cos(a) * hexR;
+            const y = Math.sin(a) * hexR;
+            if (i > 0) pen.line(px0, py0, x, y, i % 2 === 0 ? cyanRamp[4] : magRamp[4], 0.88 * fade);
+            px0 = x;
+            py0 = y;
+          }
+        }
+
+        // RGB Hex-Glitch Tear Bars
+        const slot = Math.floor(t * 30);
+        for (let i = 0; i < 5; i++) {
+          const gx = Math.round((hashFloat(cfg.seed, slot, i, 1) - 0.5) * 44);
+          const gy = Math.round((hashFloat(cfg.seed, slot, i, 2) - 0.5) * 44);
+          const gw = 5 + Math.floor(hashFloat(cfg.seed, slot, i, 3) * 10);
+          pen.line(gx - gw * 0.5, gy, gx + gw * 0.5, gy, i % 2 === 0 ? cyanRamp[4] : magRamp[4], 0.82 * fade);
+        }
+
+        if (fade > 0.12) {
+          drawStarburstFlare(pen, 0, 0, 22 * fade, 0.95 * fade, cyanRamp);
+          pen.radialGlow(0, 0, 28, magRamp[4], 0.42 * fade);
+        }
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 18. ORBITAL SATELLITE TARGET-LOCK HEX RETICLE (`orbitalTargetLockHex`) — Row 5
+// ============================================================================
+export const orbitalTargetLockHex = {
+  duration: 1.0,
+  loop: true,
+  defaults: {
+    palette: CYBER_NEON_PALETTE,
+    radius: 38,
+    seed: 53
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const magCol = packHexColor('#ff2e93');
+    const magHi = packHexColor('#ff92d8');
+
+    const drawHexRing = (pen, rx, ry, rot, col, highlightVertices = true) => {
+      let px0 = 0;
+      let py0 = 0;
+      for (let i = 0; i <= 6; i++) {
+        const a = rot + (i * TWO_PI) / 6;
+        const x = Math.cos(a) * rx;
+        const y = Math.sin(a) * ry;
+        if (i > 0) pen.line(px0, py0, x, y, col, 0.95);
+        if (highlightVertices && i < 6) {
+          pen.fillCircle(x, y, 1.4, PURE_WHITE);
+          pen.radialGlow(x, y, 5, col, 0.28);
+        }
+        px0 = x;
+        py0 = y;
+      }
+    };
+
+    return {
+      renderFront(pen, loopT) {
+        const phase = loopT * TWO_PI;
+        const R = cfg.radius ?? 38;
+        const squash = cfg.squashY ?? 0.88;
+        const pulse = 0.94 + 0.06 * Math.sin(phase * 2);
+
+        // Outer Cyan Tactical Hex + Inner Counter-Rotating Magenta Hex
+        drawHexRing(pen, R * pulse, R * squash * pulse, phase * 0.5, ramp[4], true);
+        drawHexRing(pen, R * 0.62, R * squash * 0.62, -phase + 0.52, magCol, true);
+
+        // 4 Snapping Tactical HUD Corner Brackets
+        const bx = R * 0.95;
+        const by = R * squash * 0.95;
+        const blen = 7;
+        for (const sx of [-1, 1]) {
+          for (const sy of [-1, 1]) {
+            const cx = sx * bx;
+            const cy = sy * by;
+            pen.line(cx, cy, cx - sx * blen, cy, PURE_WHITE, 0.95);
+            pen.line(cx, cy, cx, cy - sy * blen, PURE_WHITE, 0.95);
+          }
+        }
+
+        // Cardinal Satellite Crosshair Ticks
+        pen.line(-R * 1.02, 0, -R * 0.72, 0, PURE_WHITE, 0.92);
+        pen.line(R * 0.72, 0, R * 1.02, 0, PURE_WHITE, 0.92);
+        pen.line(0, -R * squash * 1.02, 0, -R * squash * 0.72, PURE_WHITE, 0.92);
+        pen.line(0, R * squash * 0.72, 0, R * squash * 1.02, PURE_WHITE, 0.92);
+
+        // Sweeping Satellite Telemetry Scanline
+        const scanY = Math.sin(phase) * (R * squash * 0.68);
+        pen.line(-R * 0.7, scanY, R * 0.7, scanY, magHi, 0.72);
+
+        // Central Target-Lock Bullseye Diamond
+        const dr = 5.5 + Math.sin(phase * 3) * 0.8;
+        pen.line(0, -dr, dr, 0, PURE_WHITE, 0.95);
+        pen.line(dr, 0, 0, dr, PURE_WHITE, 0.95);
+        pen.line(0, dr, -dr, 0, PURE_WHITE, 0.95);
+        pen.line(-dr, 0, 0, -dr, PURE_WHITE, 0.95);
+        pen.pixel(0, 0, magCol);
+        pen.radialGlow(0, 0, 20, ramp[4], 0.34);
+        pen.radialGlow(0, 0, 12, magCol, 0.3);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 19. FIN-FUNNEL ALL-RANGE CONVERGENCE LASER NODE (`finFunnelLaserNode`) — Row 6
+// ============================================================================
+export const finFunnelLaserNode = {
+  duration: 0.6,
+  loop: true,
+  defaults: {
+    palette: CYBER_NEON_PALETTE,
+    beamLength: 66,
+    seed: 61
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const pearlHi = packHexColor('#f8fbff');
+    const pearlMid = packHexColor('#b2bed8');
+    const selout = packHexColor('#090b16');
+    const magCol = packHexColor('#ff2e93');
+    const magHi = packHexColor('#ff92d8');
+
+    return {
+      renderFront(pen, loopT) {
+        const phase = (loopT / 0.6) * TWO_PI;
+        const beamLen = cfg.beamLength ?? 66;
+
+        // 1. Rear Magenta-Cyan Stabilizer Plume (-14 .. -5)
+        const pLen = 9 + 2 * Math.sin(phase * 3);
+        for (let d = 0; d <= pLen; d += 0.7) {
+          const u = d / pLen;
+          pen.pixel(-6 - d, 0, u < 0.35 ? PURE_WHITE : magCol);
+          if (u < 0.6) {
+            pen.pixel(-6 - d, -1, ramp[4]);
+            pen.pixel(-6 - d, 1, ramp[4]);
+          }
+        }
+
+        // 2. Focused Cyan-White-Magenta All-Range Convergence Beam (+10 .. +beamLen)
+        const baseW = 3.4 + 0.55 * Math.sin(phase * 2);
+        for (let x = 10; x <= beamLen; x += 0.65) {
+          const u = (x - 10) / Math.max(1, beamLen - 10);
+          const w = baseW * (1 - u * 0.18);
+          for (let y = -w * 1.3; y <= w * 1.3; y += 0.6) {
+            const q = Math.abs(y) / Math.max(0.4, w);
+            const col =
+              q < 0.34
+                ? PURE_WHITE
+                : q < 0.72
+                  ? ramp[4]
+                  : q < 1.05
+                    ? magCol
+                    : ramp[2];
+            pen.pixel(x, y, col);
+          }
+          // Double-helix orbital plasma ribbon along beam
+          const hY = Math.sin(x * 0.24 - phase * 3) * (w * 1.15);
+          pen.pixel(x, hY, Math.cos(x * 0.24 - phase * 3) > 0 ? PURE_WHITE : magHi);
+          if ((Math.round(x) & 7) === 0) {
+            pen.radialGlow(x, 0, 9, ramp[4], 0.26);
+          }
+        }
+
+        // 3. Hovering Fin-Funnel Bit-Drone Chassis (-6 .. +11)
+        pen.shadeBox(-7, -9, 12, 9, (px, py) => {
+          const ay = Math.abs(py);
+          const u = (px + 6) / 17;
+          if (u < 0 || u > 1) return 0;
+          const outer = u < 0.4 ? 5.2 + u * 6 : 7.6 * (1 - (u - 0.4) * 0.65);
+          if (ay > outer) return 0;
+          if (ay > outer - 1.0 || u < 0.06 || u > 0.94) return selout;
+          if (ay < 1.6) return u < 0.5 ? magCol : PURE_WHITE;
+          return py < 0 ? pearlHi : pearlMid;
+        });
+
+        // 4. Muzzle Star-Flare at (+11, 0) & Convergence Tip Flare at (+beamLen, 0)
+        drawStarburstFlare(pen, 11, 0, 8 + 2 * Math.sin(phase * 2), 0.92, ramp);
+        pen.fillCircle(beamLen, 0, 3.2, magCol);
+        pen.fillCircle(beamLen, 0, 1.8, PURE_WHITE);
+        pen.radialGlow(11, 0, 14, ramp[4], 0.45);
+        pen.radialGlow(beamLen, 0, 12, magCol, 0.42);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 20. PROJECT GUNG-09 ORBITAL SATELLITE BUSTER COLUMN (`orbitalBusterColumn`) — Row 7
+// ============================================================================
+export const orbitalBusterColumn = {
+  duration: 0.6,
+  loop: true,
+  defaults: {
+    palette: CYBER_NEON_PALETTE,
+    halfWidth: 21,
+    halfHeight: 43,
+    seed: 71
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const magCol = packHexColor('#ff2e93');
+    const magHi = packHexColor('#ff92d8');
+    const deepIndigo = packHexColor('#162256');
+
+    return {
+      renderBack(pen, loopT) {
+        const hw = cfg.halfWidth ?? 21;
+        const hh = cfg.halfHeight ?? 43;
+        for (let k = 0; k < 2; k++) {
+          const u = (loopT / 0.6 + k * 0.5) % 1;
+          const ry = -hh * 0.72 + u * (hh * 1.44);
+          drawTiltedOrbitBand(
+            pen,
+            0,
+            ry,
+            hw * 1.52,
+            0.22,
+            2.0,
+            0.85,
+            [deepIndigo, magCol, ramp[4], PURE_WHITE],
+            (ang) => Math.sin(ang) < 0,
+            false
+          );
+        }
+      },
+      renderFront(pen, loopT) {
+        const phase = (loopT / 0.6) * TWO_PI;
+        const hw = cfg.halfWidth ?? 21;
+        const hh = cfg.halfHeight ?? 43;
+
+        // Colossal Vertical Cyan-White-Magenta Orbital Satellite Plasma Pillar
+        pen.shadeBox(-hw - 3, -hh, hw + 3, hh, (px, py, out) => {
+          const ay = Math.abs(py) / hh;
+          // Soft vertical edge taper only in outer 12% so stacked/tiled cells fuse seamlessly!
+          const vEnv = ay > 0.86 ? Math.cos(((ay - 0.86) / 0.14) * Math.PI * 0.46) : 1.0;
+          const pulseW = hw * vEnv * (0.94 + 0.06 * Math.sin(py * 0.18 - phase * 3));
+          const ax = Math.abs(px);
+          if (ax > pulseW) return 0;
+
+          const q = ax / Math.max(1, pulseW);
+          const scroll = fbmNoise2D(px * 0.16, py * 0.12 - loopT * 18, cfg.seed);
+
+          if (q < 0.36 + scroll * 0.05) {
+            out.glowStrength = 0.34;
+            out.glowColor = ramp[4];
+            return PURE_WHITE;
+          }
+          if (q < 0.64 + scroll * 0.06) {
+            return ramp[4];
+          }
+          if (q < 0.86) {
+            return ((Math.floor(py - phase * 8) & 3) === 0) ? magHi : magCol;
+          }
+          return ramp[2];
+        });
+
+        // Counter-twisting double-helix orbital ribbons descending the column
+        for (let s = 0; s < 2; s++) {
+          let prevX = null;
+          let prevY = null;
+          for (let y = -hh + 2; y <= hh - 2; y += 2) {
+            const ang = y * 0.13 - phase * 2 + s * Math.PI;
+            const x = Math.sin(ang) * (hw * 0.92);
+            if (prevX !== null && Math.cos(ang) > -0.25) {
+              pen.line(prevX, prevY, x, y, s === 0 ? PURE_WHITE : magHi, 0.92);
+            }
+            prevX = x;
+            prevY = y;
+          }
+        }
+
+        // Descending Supersonic Mach Shock-Rings (front half)
+        for (let k = 0; k < 2; k++) {
+          const u = (loopT / 0.6 + k * 0.5) % 1;
+          const ry = -hh * 0.72 + u * (hh * 1.44);
+          drawTiltedOrbitBand(
+            pen,
+            0,
+            ry,
+            hw * 1.52,
+            0.22,
+            2.2,
+            0.95,
+            [deepIndigo, ramp[3], k === 0 ? ramp[4] : magCol, PURE_WHITE],
+            (ang) => Math.sin(ang) >= 0,
+            u < 0.2
+          );
+        }
+
+        // Crackling vertical orbital lightning arc
+        const boltRng = new DeterministicRng(cfg.seed * 59 + Math.floor(loopT * 30));
+        const pts = buildLightningChain(boltRng, boltRng.between(-8, 8), -hh + 3, boltRng.between(-8, 8), hh - 3, 0.2, 3);
+        pen.polyline(pts, PURE_WHITE, 0.9);
+        pen.radialGlow(0, 0, 34, ramp[4], 0.42);
+        pen.radialGlow(0, -18, 24, magCol, 0.3);
+        pen.radialGlow(0, 18, 24, magCol, 0.3);
+      }
+    };
+  }
+};
+
 export const CYBER_EFFECT_REGISTRY = {
   plasmaCrescentSlash,
   twinCrossSlash,
@@ -1618,5 +2444,14 @@ export const CYBER_EFFECT_REGISTRY = {
   orbitalHelixBeam,
   rgbGlitchTear,
   cyberImpactSpark,
-  chakramVortexDisc
+  chakramVortexDisc,
+  hfPlasmaCrescentWave,
+  finFunnelDronePod,
+  empGravityTetherSpire,
+  cyberSingularityCore,
+  hexGlitchCrossSlash,
+  orbitalTargetLockHex,
+  finFunnelLaserNode,
+  orbitalBusterColumn
 };
+

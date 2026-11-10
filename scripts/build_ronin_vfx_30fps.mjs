@@ -4,8 +4,8 @@
  * Powered natively by `src/engine/ArcaneShaderFX.js` + `src/engine/shaders/stormShaders.js`.
  *
  * Outputs:
- *   1. `assets/sprites/ronin_vfx.png` (6240x1040, 5 rows x 30 cols @ 208x208, 0/150 border clips)
- *   2. `<artifactDir>/debug_ronin_30fps_vfx.png` (5x30 contact sheet for visual verification)
+ *   1. `assets/sprites/ronin_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208, 0/240 border clips)
+ *   2. `<artifactDir>/debug_ronin_30fps_vfx.png` (8x30 contact sheet for visual verification)
  */
 
 import fs from 'node:fs';
@@ -142,7 +142,7 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
 }
 
 function bakeVfxSheet() {
-  const ROWS = 5;
+  const ROWS = 8;
   const COLS = 30;
   const LOGICAL = 104;
   const CELL = 208;
@@ -216,6 +216,39 @@ function bakeVfxSheet() {
           cfg: { x: 52, y: 52, palette: STORM_CYAN_PALETTE, seed: 443 }
         }
       ]
+    },
+    {
+      name: 'Row 5: Raijin Thunder-Drum Eye Seal (F00..F29)',
+      windowSec: 1.0,
+      layers: [
+        {
+          def: STORM_EFFECT_REGISTRY.raijinThunderDrumEyeSealCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: STORM_CYAN_PALETTE, seed: 457 }
+        }
+      ]
+    },
+    {
+      name: 'Row 6: Spatial Judgment-Cut Rift (F00..F29)',
+      windowSec: 1.0,
+      layers: [
+        {
+          def: STORM_EFFECT_REGISTRY.spatialJudgmentCutRiftCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: STORM_CYAN_PALETTE, seed: 467 }
+        }
+      ]
+    },
+    {
+      name: 'Row 7: Amakakeru Heaven-Splitting Thunder Cleave (F00..F29)',
+      windowSec: 1.0,
+      layers: [
+        {
+          def: STORM_EFFECT_REGISTRY.amakakeruThunderCleaveCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: STORM_CYAN_PALETTE, seed: 479 }
+        }
+      ]
     }
   ];
 
@@ -256,10 +289,21 @@ function bakeVfxSheet() {
       blitUpscaledNearest(cellRgba, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
       const dx = dbgPad + c * (LOGICAL + dbgPad);
       const dy = dbgPad + r * (LOGICAL + dbgPad);
+      for (let yy = 0; yy < LOGICAL; yy++) {
+        for (let xx = 0; xx < LOGICAL; xx++) {
+          const isEdge = xx === 0 || yy === 0 || xx === LOGICAL - 1 || yy === LOGICAL - 1;
+          const o = ((dy + yy) * dbgW + (dx + xx)) * 4;
+          dbgRgba[o] = isEdge ? 24 : 12;
+          dbgRgba[o + 1] = isEdge ? 42 : 16;
+          dbgRgba[o + 2] = isEdge ? 82 : 34;
+          dbgRgba[o + 3] = 255;
+        }
+      }
       alphaCompositeOnto(cellRgba, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
 
       for (const inst of instances) inst.step(dt);
     }
+    console.log(`[ronin-vfx] Baked ${spec.name} (30 frames)`);
   }
 
   const outSheetPath = path.join(REPO_ROOT, 'assets', 'sprites', 'ronin_vfx.png');
@@ -270,7 +314,7 @@ function bakeVfxSheet() {
   fs.writeFileSync(outDbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
 
   console.log(
-    `[build_ronin_vfx_30fps] Wrote ${outSheetPath} (${sheetW}x${sheetH}) & ${outDbgPath} (${dbgW}x${dbgH}) | borderClips=${borderClips}/150`
+    `[build_ronin_vfx_30fps] Wrote ${outSheetPath} (${sheetW}x${sheetH}) & ${outDbgPath} (${dbgW}x${dbgH}) | borderClips=${borderClips}/240`
   );
   if (borderClips > 0) {
     process.exitCode = 1;

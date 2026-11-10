@@ -1,19 +1,19 @@
-import { Renderer } from './engine/Renderer.js?v=30fps62';
-import { VFXManager } from './engine/VFXManager.js?v=30fps62';
-import { PixelForge } from './engine/PixelForge.js?v=30fps62';
-import { AudioManager } from './engine/AudioManager.js?v=30fps62';
-import { Fighter } from './entities/Fighter.js?v=30fps62';
-import { Warrior } from './entities/Warrior.js?v=30fps62';
-import { FireMage } from './entities/FireMage.js?v=30fps62';
-import { Archer } from './entities/Archer.js?v=30fps62';
-import { Priestess } from './entities/Priestess.js?v=30fps62';
-import { Reaper } from './entities/Reaper.js?v=30fps62';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps62';
-import { Titan } from './entities/Titan.js?v=30fps62';
-import { Ronin } from './entities/Ronin.js?v=30fps62';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps62';
-import { IceMage } from './entities/IceMage.js?v=30fps62';
-import { Android } from './entities/Android.js?v=30fps62';
+import { Renderer } from './engine/Renderer.js?v=30fps63';
+import { VFXManager } from './engine/VFXManager.js?v=30fps63';
+import { PixelForge } from './engine/PixelForge.js?v=30fps63';
+import { AudioManager } from './engine/AudioManager.js?v=30fps63';
+import { Fighter } from './entities/Fighter.js?v=30fps63';
+import { Warrior } from './entities/Warrior.js?v=30fps63';
+import { FireMage } from './entities/FireMage.js?v=30fps63';
+import { Archer } from './entities/Archer.js?v=30fps63';
+import { Priestess } from './entities/Priestess.js?v=30fps63';
+import { Reaper } from './entities/Reaper.js?v=30fps63';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps63';
+import { Titan } from './entities/Titan.js?v=30fps63';
+import { Ronin } from './entities/Ronin.js?v=30fps63';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps63';
+import { IceMage } from './entities/IceMage.js?v=30fps63';
+import { Android } from './entities/Android.js?v=30fps63';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -27,6 +27,9 @@ const CHAMPION_ROSTER = {
     color: '#38bdf8',
     selectSfx: 'slash',
     victoryLine: 'Sacred Seraphim steel consecrates the arena in celestial frost!',
+    trueUltName: 'CELESTIAL JUSTICE: SWORD OF THE SANCTUARY',
+    trueUltDesc:
+      'Ascends on Seraphim wings, consecrates the Radiant Sanctuary, locks a pixel reticle & cleaves from the heavens!',
     skills: [
       {
         name: 'FROST CRESCENT',
@@ -41,17 +44,17 @@ const CHAMPION_ROSTER = {
         desc: '360° spinning Runeblade cyclone rush that pulls foes in before a grounded crystal slam.'
       },
       {
-        name: 'CELESTIAL SWORD OF JUSTICE',
-        type: '★ OVERDRIVE & SUPREME ULT',
+        name: 'HEAVENLY EARTHSHATTER',
+        type: '★ OVERDRIVE ULT',
         vfxCell: 2,
-        desc: '3-Overdrive Supreme Ult: Ascends high into the sky on Seraphim wings, locks on with a cut pixel reticle & cleaves!'
+        desc: 'Leaps skyward and slams a colossal Runeblade monolith, erupting 5 glacial spires across the stage.'
       }
     ]
   },
   archer: {
     id: 'archer',
     name: 'SYLVARA',
-    role: 'TEMPEST BOWMASTER',
+    role: 'STAR-HUNTRESS',
     style: 'RANGED MARKSMAN',
     trait: 'PASSIVE: ZEPHYR VAULT EVASION',
     cls: Archer,
@@ -59,6 +62,9 @@ const CHAMPION_ROSTER = {
     color: '#34d399',
     selectSfx: 'arrow_shoot',
     victoryLine: 'Supersonic astral arrows pierce through the tempest!',
+    trueUltName: 'ARROW OF YGGDRASIL: SUPERNOVA PIERCE',
+    trueUltDesc:
+      'Draws the celestial World-Tree Greatbow and looses a star-splitting Supernova Arrow through every enemy!',
     skills: [
       {
         name: 'ASTRAL LONGBOW',
@@ -67,10 +73,10 @@ const CHAMPION_ROSTER = {
         desc: 'Fires Mach-ring piercing arrows, cloaks in a 2.5D Leaf-Veil Dome & vaults over foes.'
       },
       {
-        name: 'STARFALL VOLLEY',
+        name: 'VERDANT SNARE & SEEKERS',
         type: 'SKILL • 4.2S CD',
         vfxCell: 1,
-        desc: 'Locks an elven astrolabe seal, trapping foes in a 2.5D Tempest Cyclone under 5 starfall arrows.'
+        desc: 'Binds foes in sylvan starlight roots while launching homing astral seeker volleys from above.'
       },
       {
         name: 'ASTRAL HURRICANE',
@@ -90,7 +96,10 @@ const CHAMPION_ROSTER = {
     theme: 'arcane',
     color: '#fb923c',
     selectSfx: 'fireball',
-    victoryLine: 'Astral Meteor Cataclysm reduces the arena to a Laywaste of Inferno!',
+    victoryLine: 'Cataclysmic solar fire reduces the arena to a Laywaste of Inferno!',
+    trueUltName: 'CATACLYSM: LAYWASTE OF INFERNO',
+    trueUltDesc:
+      'Calls down a planetary extinction meteor with impact frame & scorches the arena into a Laywaste of Inferno!',
     skills: [
       {
         name: 'SOLAR FIREBALL',
@@ -106,9 +115,9 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'ASTRAL METEOR CATACLYSM',
-        type: '★ OVERDRIVE & SUPREME ULT',
+        type: '★ OVERDRIVE ULT',
         vfxCell: 0,
-        desc: 'Black-Sun Supernova + Limit Break III: Summons a colossal Meteor with Impact Frame, White-Out Deletion & Laywaste of Inferno stage!'
+        desc: 'Ignites a Black-Sun Supernova overhead and hurls a colossal burning meteor into the arena.'
       }
     ]
   },
@@ -123,6 +132,9 @@ const CHAMPION_ROSTER = {
     color: '#fde047',
     selectSfx: 'holy_heal',
     victoryLine: 'Sacred light and Final Grace purify the sanctuary!',
+    trueUltName: 'FINAL GRACE',
+    trueUltDesc:
+      'Invulnerable 3s winged bloom charge (+30% Max HP heal) unleashing all absorbed damage in one purifying beam of Final Grace!',
     skills: [
       {
         name: 'SACRED STARLIGHT',
@@ -137,42 +149,45 @@ const CHAMPION_ROSTER = {
         desc: 'Consecrates a 2.5D Cathedral Seal, healing HP & smiting foes with Sanctum spires & Valkyrie spears.'
       },
       {
-        name: 'FINAL GRACE',
-        type: '★ OVERDRIVE & SUPREME ULT',
+        name: 'SERAPHIC CATHEDRAL',
+        type: '★ OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Supreme Ult: Invulnerable 3s winged bloom charge (+30% Max HP heal) unleashing all tanked damage in one instant beam!'
+        desc: 'Ascends on radiant Seraphim wings, restoring sanctuary vitality while raining pillars of holy judgment.'
       }
     ]
   },
   reaper: {
     id: 'reaper',
     name: 'MALAKOR',
-    role: 'ABYSSAL SOULREAPER',
-    style: 'NECROTIC HOOK HARVESTER',
-    trait: 'PASSIVE: GRAVE-SUBMERGE & SOUL HOOK',
+    role: 'DREAD NECROMANCER',
+    style: 'NECROTIC HARVESTER',
+    trait: 'PASSIVE: GRAVE-SUBMERGE & SOUL LEECH',
     cls: Reaper,
     theme: 'abyssal',
-    color: '#c084fc',
+    color: '#fb7185',
     selectSfx: 'scythe_reap',
-    victoryLine: 'The Abyssal Scythe hooks every soul into the graveyard!',
+    victoryLine: 'The Gates of the Necropolis claim every soul in the arena!',
+    trueUltName: 'MEMENTO MORI: GATES OF THE NECROPOLIS',
+    trueUltDesc:
+      'Unseals the Abyssal Necropolis gates, flooding the arena in spectral soul-chains & executing the final reap!',
     skills: [
       {
         name: 'SOUL HOOK & BOOMERANG',
         type: 'AUTO + GRAVE SUBMERGE',
         vfxCell: 0,
-        desc: 'Hooks foes inward with scythe pulls, hurls returning boomerang scythes & submerges underground to erupt!'
+        desc: 'Hooks foes inward with scythe pulls, hurls returning phantom scythes & submerges underground to erupt!'
       },
       {
-        name: 'SPECTRAL CHAIN PRISON',
+        name: "DEATH'S GRASP",
         type: 'SKILL • 4.8S CD',
         vfxCell: 1,
-        desc: 'Drags ranged foes into melee with a bone-claw chain & cages them between two Haunted Tombstones.'
+        desc: 'Erupts a Cursed Ossuary Bone-Cage & drags foes through necrotic soul-crystal spires!'
       },
       {
         name: 'GRIM HARVEST',
         type: '★ OVERDRIVE ULT',
         vfxCell: 3,
-        desc: 'Summons the colossal Death-Avatar & gothic tombstones to execute a cross-reap blitz.'
+        desc: 'Summons the colossal Death-Avatar & gothic tombstones to execute an abyssal cross-reap blitz.'
       }
     ]
   },
@@ -187,6 +202,9 @@ const CHAMPION_ROSTER = {
     color: '#2dd4bf',
     selectSfx: 'clock_gear',
     victoryLine: 'The Twelfth Bell tolls—every timeline converges in Eternal Zero!',
+    trueUltName: 'ETERNAL ZERO: TWELFTH BELL',
+    trueUltDesc:
+      'Freezes all enemies in stopped time, surrounds them with 6 Clock-Hand Spears & shatters the timeline on the Twelfth Bell!',
     skills: [
       {
         name: 'TWIN HANDS OF FATE',
@@ -201,24 +219,27 @@ const CHAMPION_ROSTER = {
         desc: 'Drops a Past Anchor, warps in to carve an X-Rift & Stasis Field, then rewinds back restoring lost HP!'
       },
       {
-        name: 'ETERNAL ZERO: TWELFTH BELL',
-        type: '★ OVERDRIVE & SUPREME ULT',
+        name: 'GRAND HOROLOGIUM',
+        type: '★ OVERDRIVE ULT',
         vfxCell: 3,
-        desc: 'Supreme Ult: Freezes enemies in stopped time, surrounds them with 6 Clock-Hand Spears & shatters time in one burst!'
+        desc: 'Manifests the Astral Clocktower dial & paradox echoes to cleave across converging timelines.'
       }
     ]
   },
   titan: {
     id: 'titan',
     name: 'TORGAR',
-    role: 'RUNIC TITAN-FORGER',
+    role: 'WORLD-FORGE WARLORD',
     style: 'UNSTOPPABLE JUGGERNAUT',
     trait: 'PASSIVE: SUPER-ARMOR & MAGMA SHELL',
     cls: Titan,
     theme: 'forge',
     color: '#f59e0b',
     selectSfx: 'thunder_slam',
-    victoryLine: 'The World-Breaker War-Hammer crushes the arena under molten iron and stone!',
+    victoryLine: 'God-Hammer Mjolnir sunders the arena under molten iron and stone!',
+    trueUltName: 'GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER',
+    trueUltDesc:
+      'Forges the colossal God-Hammer Mjolnir mid-air and slams the continent apart in a cataclysmic magma eruption!',
     skills: [
       {
         name: 'TECTONIC EARTH-SHAKER',
@@ -227,7 +248,7 @@ const CHAMPION_ROSTER = {
         desc: 'Slams ground fissures that suck foes inward & encases himself in 62% Damage-Reduction Magma Armor.'
       },
       {
-        name: 'ANVIL CANNONBALL SMASH',
+        name: 'ANVIL CANNONBALL',
         type: 'SKILL • 4.7S CD',
         vfxCell: 1,
         desc: 'Summons a physical Iron Anvil obstacle, then batters it horizontally across the stage for a Wall-Crush!'
@@ -248,9 +269,12 @@ const CHAMPION_ROSTER = {
     trait: 'PASSIVE: SERENE MIND COUNTER-BLINK',
     cls: Ronin,
     theme: 'storm',
-    color: '#818cf8',
+    color: '#60a5fa',
     selectSfx: 'slash',
     victoryLine: 'You were already cut before the Odachi clicked back into its scabbard!',
+    trueUltName: 'AMAKAKERU: THOUSAND THUNDER JUDGMENTS',
+    trueUltDesc:
+      'Draws the storm-odachi across reality in a thousand instantaneous thunder-cuts that detonate on the scabbard click!',
     skills: [
       {
         name: 'SANDAN IAIDO & COUNTER',
@@ -282,7 +306,10 @@ const CHAMPION_ROSTER = {
     theme: 'crimson',
     color: '#f43f5e',
     selectSfx: 'holy_spear',
-    victoryLine: 'From the skies of Valhalla, the Gungnir War-Lance pierces the earth!',
+    victoryLine: 'From the skies of Valhalla, Gungnir pierces the realm in Twilight of Ragnarok!',
+    trueUltName: 'TWILIGHT OF RAGNAROK: GUNGNIR',
+    trueUltDesc:
+      'Ascends above Asgard on blazing Valkyrie wings and hurls the divine World-Spear Gungnir to sunder the realm!',
     skills: [
       {
         name: 'GUNGNIR LANCE & BACKFLIP',
@@ -306,15 +333,18 @@ const CHAMPION_ROSTER = {
   },
   icemage: {
     id: 'icemage',
-    name: 'GLACIA',
-    role: 'CRYO-PRISM SOVEREIGN',
+    name: 'LYRA',
+    role: 'CRYO-PRISM EMPRESS',
     style: 'REFRACTIVE FROST WEAVER',
     trait: 'PASSIVE: CRYO-PRISMS & PERMAFROST SKATE',
     cls: IceMage,
     theme: 'glacial',
     color: '#67e8f9',
     selectSfx: 'frost_cast',
-    victoryLine: 'Refracted through the Borealis Prisms, absolute zero shatters all resistance!',
+    victoryLine: 'Refracted through Borealis Prisms, Lyra freezes eternity in Diamond Dust!',
+    trueUltName: 'ABSOLUTE ZERO: DIAMOND DUST ETERNITY',
+    trueUltDesc:
+      'Crystallizes the entire atmosphere to Absolute Zero and shatters frozen space into a million refractive diamond prisms!',
     skills: [
       {
         name: 'CRYO-PRISM REFRACTION',
@@ -339,14 +369,17 @@ const CHAMPION_ROSTER = {
   android: {
     id: 'android',
     name: 'VEX-09',
-    role: 'CYBER VALKYRIE ANDROID',
+    role: 'CYBER VALKYRIE',
     style: 'CYBERNETIC VALKYRIE • SKIRMISHER',
     trait: 'PASSIVE: HEX MATRIX DEFLECT',
     cls: Android,
     theme: 'cyber',
     color: '#00f0ff',
     selectSfx: 'cyber_slash',
-    victoryLine: 'Singularity Protocol complete — VEX-09 plasma harmonics achieve total target lock!',
+    victoryLine: 'Project GUNG-09 orbital lock confirmed — target eradicated at maximum output!',
+    trueUltName: 'PROJECT GUNG-09: ORBITAL SATELLITE BUSTER',
+    trueUltDesc:
+      'Paints the arena with an orbital targeting matrix and calls down a full-stage Project GUNG-09 satellite plasma beam!',
     skills: [
       {
         name: 'HF PLASMA KATANA',
@@ -408,8 +441,15 @@ class Game {
     this.inspectRightRole = 'lead'; // 'lead' | 'partner'
     this.activeAssignSlot = 2; // 1 = P1 Lead, 2 = P2 Lead, 3 = P1B Partner, 4 = P2B Partner
     this.isLandingOpen = true;
+    this.landingStep = 'title'; // 'title' | 'mode' | 'roster'
 
     const params = new URLSearchParams(window.location.search);
+    const stepParam = params.get('step');
+    if (stepParam === 'title' || stepParam === 'mode' || stepParam === 'roster') {
+      this.landingStep = stepParam;
+    } else if (params.get('roster')) {
+      this.landingStep = 'roster';
+    }
     const testModeParam = params.get('testmode');
     this.testModeUnlimitedHp =
       testModeParam === '0' || testModeParam === 'false'
@@ -449,6 +489,7 @@ class Game {
     this.ensureDistinctTeamPartners();
 
     this.bindUI();
+    this.setLandingStep(this.landingStep, false);
     this.syncRosterSelectionUI(false);
     this.resetMatch();
 
@@ -1013,23 +1054,79 @@ class Game {
     if (this.btnStartDuel) {
       this.btnStartDuel.addEventListener('click', () => this.startDuel(true));
     }
+    const triggerRandomizeAndStart = () => {
+      const keys = [...Object.keys(CHAMPION_ROSTER)].sort(() => Math.random() - 0.5);
+      this.slot1Hero = keys[0];
+      this.slot2Hero = keys[1];
+      this.slot1PartnerHero = keys[2];
+      this.slot2PartnerHero = keys[3];
+      this.syncRosterSelectionUI(true);
+      this.startDuel(true);
+    };
     if (this.btnRandomDuel) {
-      this.btnRandomDuel.addEventListener('click', () => {
-        const keys = [...Object.keys(CHAMPION_ROSTER)].sort(() => Math.random() - 0.5);
-        this.slot1Hero = keys[0];
-        this.slot2Hero = keys[1];
-        this.slot1PartnerHero = keys[2];
-        this.slot2PartnerHero = keys[3];
-        this.syncRosterSelectionUI(true);
-        this.startDuel(true);
-      });
+      this.btnRandomDuel.addEventListener('click', triggerRandomizeAndStart);
     }
     if (this.btnOpenSelect) {
-      this.btnOpenSelect.addEventListener('click', () => this.openLanding());
+      this.btnOpenSelect.addEventListener('click', () => this.openLanding('roster'));
     }
     if (this.btnVictorySelect) {
-      this.btnVictorySelect.addEventListener('click', () => this.openLanding());
+      this.btnVictorySelect.addEventListener('click', () => this.openLanding('roster'));
     }
+
+    // 3-Step Arcade Flow Navigation (01 Title -> 02 Mode & Arena -> 03 Champion Select)
+    this.appEl = document.getElementById('app');
+    this.stepTabBtns = document.querySelectorAll('.step-tab[data-landing-step]');
+    this.stepPanels = {
+      title: document.getElementById('landing-step-title'),
+      mode: document.getElementById('landing-step-mode'),
+      roster: document.getElementById('landing-step-roster')
+    };
+    this.stepTabBtns.forEach((tabBtn) => {
+      tabBtn.addEventListener('click', () => {
+        const targetStep = tabBtn.getAttribute('data-landing-step');
+        this.setLandingStep(targetStep, true);
+      });
+    });
+
+    const stepNavBrand = document.getElementById('step-nav-brand');
+    if (stepNavBrand) {
+      stepNavBrand.addEventListener('click', () => this.setLandingStep('title', true));
+    }
+    const btnNavCommence = document.getElementById('btn-nav-commence');
+    if (btnNavCommence) {
+      btnNavCommence.addEventListener('click', () => this.startDuel(true));
+    }
+    const btnGoMode = document.getElementById('btn-go-mode');
+    if (btnGoMode) {
+      btnGoMode.addEventListener('click', () => this.setLandingStep('mode', true));
+    }
+    const btnGoRoster = document.getElementById('btn-go-roster');
+    if (btnGoRoster) {
+      btnGoRoster.addEventListener('click', () => this.setLandingStep('roster', true));
+    }
+    const btnTitleQuickDuel = document.getElementById('btn-title-quick-duel');
+    if (btnTitleQuickDuel) {
+      btnTitleQuickDuel.addEventListener('click', triggerRandomizeAndStart);
+    }
+    const btnModeBack = document.getElementById('btn-mode-back');
+    if (btnModeBack) {
+      btnModeBack.addEventListener('click', () => this.setLandingStep('title', true));
+    }
+    const btnModeNext = document.getElementById('btn-mode-next');
+    if (btnModeNext) {
+      btnModeNext.addEventListener('click', () => this.setLandingStep('roster', true));
+    }
+    const btnRosterBackMode = document.getElementById('btn-roster-back-mode');
+    if (btnRosterBackMode) {
+      btnRosterBackMode.addEventListener('click', () => this.setLandingStep('mode', true));
+    }
+    const btnRosterConfigBadge = document.getElementById('btn-roster-config-badge');
+    if (btnRosterConfigBadge) {
+      btnRosterConfigBadge.addEventListener('click', () => this.setLandingStep('mode', true));
+    }
+
+    this.landingBtnAutoTourney = document.getElementById('landing-btn-auto-tourney');
+    this.landingAutoTourneyTag = document.getElementById('landing-auto-tourney-tag');
 
     if (this.btnSfx) {
       this.btnSfx.addEventListener('click', () => {
@@ -1058,20 +1155,37 @@ class Game {
       });
     }
 
-    if (this.btnAutoTourney) {
-      this.btnAutoTourney.addEventListener('click', () => {
-        this.autoTourney = !this.autoTourney;
+    const toggleAutoTourney = () => {
+      this.autoTourney = !this.autoTourney;
+      if (this.btnAutoTourney) {
         this.btnAutoTourney.setAttribute('aria-pressed', String(this.autoTourney));
-        const autoLabel = document.getElementById('victory-auto-next');
-        if (autoLabel) {
-          autoLabel.textContent = this.autoTourney
-            ? 'AUTO-TOURNEY: NEXT CHALLENGER IN 4S...'
-            : 'AUTO-TOURNEY PAUSED • SELECT NEXT ACTION';
-        }
-        if (!this.autoTourney) {
-          clearTimeout(this.autoNextTimeout);
-        }
-      });
+      }
+      if (this.landingBtnAutoTourney) {
+        this.landingBtnAutoTourney.classList.toggle('active-rule-card', this.autoTourney);
+        this.landingBtnAutoTourney.setAttribute('aria-pressed', String(this.autoTourney));
+      }
+      if (this.landingAutoTourneyTag) {
+        this.landingAutoTourneyTag.textContent = this.autoTourney ? 'ON' : 'OFF';
+      }
+      const autoLabel = document.getElementById('victory-auto-next');
+      if (autoLabel) {
+        autoLabel.textContent = this.autoTourney
+          ? 'AUTO-TOURNEY: NEXT CHALLENGER IN 4S...'
+          : 'AUTO-TOURNEY PAUSED • SELECT NEXT ACTION';
+      }
+      if (!this.autoTourney) {
+        clearTimeout(this.autoNextTimeout);
+      }
+      if (this.audio) {
+        this.audio.play('reflect', 600);
+      }
+    };
+
+    if (this.btnAutoTourney) {
+      this.btnAutoTourney.addEventListener('click', toggleAutoTourney);
+    }
+    if (this.landingBtnAutoTourney) {
+      this.landingBtnAutoTourney.addEventListener('click', toggleAutoTourney);
     }
 
     if (this.btnNextChallenger) {
@@ -1080,6 +1194,35 @@ class Game {
 
     this.btnReset.addEventListener('click', () => this.resetMatch());
     this.btnPlayAgain.addEventListener('click', () => this.resetMatch());
+  }
+
+  setLandingStep(step, playSound = true) {
+    const validStep = step === 'mode' || step === 'roster' ? step : 'title';
+    this.landingStep = validStep;
+    if (this.landingOverlay) {
+      this.landingOverlay.setAttribute('data-active-step', validStep);
+    }
+    if (this.appEl) {
+      this.appEl.setAttribute('data-landing-step', validStep);
+    }
+    if (this.stepTabBtns) {
+      this.stepTabBtns.forEach((btn) => {
+        const active = btn.getAttribute('data-landing-step') === validStep;
+        btn.classList.toggle('active-step-tab', active);
+        btn.setAttribute('aria-selected', String(active));
+      });
+    }
+    if (this.stepPanels) {
+      Object.entries(this.stepPanels).forEach(([k, panel]) => {
+        if (!panel) return;
+        const active = k === validStep;
+        panel.classList.toggle('is-active-step', active);
+        panel.hidden = !active;
+      });
+    }
+    if (playSound && this.audio) {
+      this.audio.play('clock_gear', 600);
+    }
   }
 
   advanceTourneyChallenger() {
@@ -1196,6 +1339,44 @@ class Game {
     }
     this.syncTestModeUI();
 
+    const modeTitleStr =
+      this.gameMode === '2v2_brawl'
+        ? '2V2 CHAOS BRAWL'
+        : this.gameMode === '2v2_tag'
+          ? '2V2 TAG RELAY'
+          : '1V1 SOVEREIGN DUEL';
+    const stageNames = {
+      auto: 'AUTO REALM',
+      cathedral: 'ECLIPSE CATHEDRAL',
+      sanctuary: 'RADIANT SANCTUARY',
+      sylvan: 'SYLVAN STARWOOD',
+      boneyard: 'ABYSSAL NECROPOLIS',
+      clocktower: 'ASTRAL CLOCKTOWER'
+    };
+    const stageTitleStr = stageNames[this.forcedStage || 'auto'] || 'AUTO REALM';
+    const hpStr = this.testModeUnlimitedHp ? '∞ HP: ON' : 'MORTAL HP';
+    const summaryStr = `${modeTitleStr} • ${stageTitleStr} • SANDBOX ${hpStr}`;
+
+    const titleFooterEl = document.getElementById('title-status-footer');
+    if (titleFooterEl) titleFooterEl.textContent = summaryStr;
+    const modeSummaryEl = document.getElementById('mode-step-summary');
+    if (modeSummaryEl) modeSummaryEl.textContent = summaryStr;
+    const rosterBadgeTextEl = document.getElementById('roster-config-badge-text');
+    if (rosterBadgeTextEl) rosterBadgeTextEl.textContent = summaryStr;
+    const matchupVsEl = document.getElementById('matchup-vs-text');
+    if (matchupVsEl) matchupVsEl.textContent = is2v2 ? '2V2' : '1V1';
+
+    const slotLabelMap = {
+      1: '★ P1 LEAD',
+      2: '★ P2 LEAD',
+      3: '★ P1B ALLY',
+      4: '★ P2B ALLY'
+    };
+    const gridPromptEl = document.getElementById('portrait-grid-label');
+    if (gridPromptEl) {
+      gridPromptEl.textContent = `SELECT A CHAMPION FOR ${slotLabelMap[this.activeAssignSlot] || '★ P1 LEAD'} — OR CLICK P1 / P2 ON ANY MEDALLION`;
+    }
+
     // 2. Matchup Banner 4-Slot Names & Active Slot Highlight
     if (this.slotLeftName) this.slotLeftName.textContent = c1.name;
     if (this.slotLeftPartnerName) this.slotLeftPartnerName.textContent = c1b.name;
@@ -1217,18 +1398,22 @@ class Game {
     if (this.p1TabLead) {
       this.p1TabLead.textContent = `★ P1: ${c1.name}`;
       this.p1TabLead.classList.toggle('active-duo-tab', this.inspectLeftRole === 'lead');
+      this.p1TabLead.classList.toggle('active-tab', this.inspectLeftRole === 'lead');
     }
     if (this.p1TabPartner) {
       this.p1TabPartner.textContent = `P1B: ${c1b.name}`;
       this.p1TabPartner.classList.toggle('active-duo-tab', this.inspectLeftRole === 'partner');
+      this.p1TabPartner.classList.toggle('active-tab', this.inspectLeftRole === 'partner');
     }
     if (this.p2TabLead) {
       this.p2TabLead.textContent = `★ P2: ${c2.name}`;
       this.p2TabLead.classList.toggle('active-duo-tab', this.inspectRightRole === 'lead');
+      this.p2TabLead.classList.toggle('active-tab', this.inspectRightRole === 'lead');
     }
     if (this.p2TabPartner) {
       this.p2TabPartner.textContent = `P2B: ${c2b.name}`;
       this.p2TabPartner.classList.toggle('active-duo-tab', this.inspectRightRole === 'partner');
+      this.p2TabPartner.classList.toggle('active-tab', this.inspectRightRole === 'partner');
     }
 
     // 3. Roster Card Badges & Quick-Assign Buttons
@@ -1280,13 +1465,17 @@ class Game {
     });
 
     // 4. Populate Left (P1 / P1B) and Right (P2 / P2B) Fighter Profile & Skill Breakdown Panels
-    const syncProfilePanel = (prefix, cfg, partnerCfg) => {
+    const syncProfilePanel = (prefix, sideName, cfg, partnerCfg) => {
       if (!cfg) return;
+      const asideEl = document.getElementById(`profile-${sideName}`);
       const nameEl = document.getElementById(`${prefix}-profile-name`);
       const roleEl = document.getElementById(`${prefix}-profile-role`);
       const styleEl = document.getElementById(`${prefix}-profile-style`);
       const traitEl = document.getElementById(`${prefix}-profile-trait`);
       const haloEl = document.getElementById(`${prefix}-halo`);
+      const trueUltNameEl = document.getElementById(`${prefix}-true-ult-name`);
+      const trueUltDescEl = document.getElementById(`${prefix}-true-ult-desc`);
+      if (asideEl) asideEl.className = `fighter-profile profile-${cfg.theme}`;
       if (nameEl) nameEl.textContent = cfg.name;
       if (roleEl) {
         roleEl.textContent =
@@ -1295,6 +1484,8 @@ class Game {
       if (styleEl) styleEl.textContent = cfg.style;
       if (traitEl) traitEl.textContent = cfg.trait;
       if (haloEl) haloEl.className = `stage-halo halo-${cfg.theme}`;
+      if (trueUltNameEl && cfg.trueUltName) trueUltNameEl.textContent = cfg.trueUltName;
+      if (trueUltDescEl && cfg.trueUltDesc) trueUltDescEl.textContent = cfg.trueUltDesc;
 
       if (Array.isArray(cfg.skills)) {
         cfg.skills.forEach((sk, idx) => {
@@ -1313,16 +1504,16 @@ class Game {
     const rightInspected = is2v2 && this.inspectRightRole === 'partner' ? c2b : c2;
     const rightOther = is2v2 && this.inspectRightRole === 'partner' ? c2 : c2b;
 
-    syncProfilePanel('p1', leftInspected, leftOther);
-    syncProfilePanel('p2', rightInspected, rightOther);
+    syncProfilePanel('p1', 'left', leftInspected, leftOther);
+    syncProfilePanel('p2', 'right', rightInspected, rightOther);
 
     if (this.startDuelText) {
       if (this.gameMode === '2v2_brawl') {
-        this.startDuelText.textContent = `LAUNCH 2V2 CHAOS BRAWL: ${c1.name} + ${c1b.name} VS. ${c2.name} + ${c2b.name}`;
+        this.startDuelText.textContent = `${c1.name} + ${c1b.name} VS. ${c2.name} + ${c2b.name}`;
       } else if (this.gameMode === '2v2_tag') {
-        this.startDuelText.textContent = `LAUNCH 2V2 TAG RELAY: ${c1.name} + ${c1b.name} VS. ${c2.name} + ${c2b.name}`;
+        this.startDuelText.textContent = `${c1.name} + ${c1b.name} VS. ${c2.name} + ${c2b.name}`;
       } else {
-        this.startDuelText.textContent = `WATCH DUEL: ${c1.name} VS. ${c2.name}`;
+        this.startDuelText.textContent = `${c1.name} VS. ${c2.name}`;
       }
     }
 
@@ -1335,17 +1526,22 @@ class Game {
   startDuel(playSound = true) {
     this.isLandingOpen = false;
     if (this.landingOverlay) this.landingOverlay.classList.add('hidden');
+    if (this.appEl) this.appEl.classList.remove('is-landing-open');
     this.resetMatch();
     if (playSound && this.audio) {
       this.audio.play('ult_cast', 600);
     }
   }
 
-  openLanding() {
+  openLanding(targetStep = 'roster') {
     this.isLandingOpen = true;
     clearTimeout(this.autoNextTimeout);
     this.victoryOverlay.classList.add('hidden');
     if (this.landingOverlay) this.landingOverlay.classList.remove('hidden');
+    if (this.appEl) this.appEl.classList.add('is-landing-open');
+    if (targetStep) {
+      this.setLandingStep(targetStep, false);
+    }
   }
 
   renderChampionPreviews(now) {

@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps62';
+import { PixelForge } from './PixelForge.js?v=30fps63';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -1526,16 +1526,21 @@ export class Renderer {
     const cx = Math.round((this.impactFrameFocusX ?? ww * 0.5) / 4) * 4;
     const cy = Math.round((this.impactFrameFocusY ?? gy - 90) / 4) * 4;
     const isInverted = p < 0.42;
-    const isJustice = this.impactFrameStyle === 'justice';
-    const isRadiant = this.impactFrameStyle === 'radiant';
-    const isChrono = this.impactFrameStyle === 'chrono';
-    const accentCol = isRadiant
-      ? '#fde047'
-      : isChrono
-        ? '#2dd4bf'
-        : isJustice
-          ? '#38bdf8'
-          : '#fb923c';
+    const IMPACT_STYLE_PALETTES = {
+      inferno: { accent: '#fb923c', alt: '#fde047', bg: '#090302' },
+      justice: { accent: '#38bdf8', alt: '#fde047', bg: '#03060d' },
+      radiant: { accent: '#fde047', alt: '#38bdf8', bg: '#0a0702' },
+      chrono: { accent: '#2dd4bf', alt: '#fde047', bg: '#02090d' },
+      crimson: { accent: '#f43f5e', alt: '#fde047', bg: '#0c0205' },
+      storm: { accent: '#818cf8', alt: '#38bdf8', bg: '#03040e' },
+      emerald: { accent: '#34d399', alt: '#fde047', bg: '#020a06' },
+      abyssal: { accent: '#c084fc', alt: '#f43f5e', bg: '#08020d' },
+      forge: { accent: '#f59e0b', alt: '#34d399', bg: '#0b0502' },
+      glacial: { accent: '#67e8f9', alt: '#818cf8', bg: '#02080e' },
+      cyber: { accent: '#00f0ff', alt: '#f43f5e', bg: '#02060c' }
+    };
+    const pal = IMPACT_STYLE_PALETTES[this.impactFrameStyle] || IMPACT_STYLE_PALETTES.inferno;
+    const accentCol = pal.accent;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -1543,13 +1548,7 @@ export class Renderer {
     // 1. Full-Arena Stark High-Contrast Backdrop Flash
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 0.96;
-    ctx.fillStyle = isInverted
-      ? '#ffffff'
-      : isRadiant
-        ? '#0a0702'
-        : isChrono
-          ? '#02090d'
-          : '#03040a';
+    ctx.fillStyle = isInverted ? '#ffffff' : pal.bg;
     ctx.fillRect(-1200, -1000, ww + 2400, 2400);
 
     // 2. 48 Pixel-Stepped Radial Anime Impact Speed-Rays bursting from `(cx, cy)`
@@ -1560,26 +1559,13 @@ export class Renderer {
       const cosA = Math.cos(a);
       const sinA = Math.sin(a);
       const innerR = 32 + (i % 5) * 18 + p * 48;
-      ctx.fillStyle = isRadiant
-        ? i % 4 === 0
-          ? '#fde047'
+      ctx.fillStyle =
+        i % 4 === 0
+          ? pal.accent
           : i % 4 === 2
-            ? '#38bdf8'
+            ? pal.alt
             : isInverted
-              ? '#090602'
-              : '#ffffff'
-        : isChrono
-          ? i % 4 === 0
-            ? '#2dd4bf'
-            : i % 4 === 2
-              ? '#fde047'
-              : isInverted
-                ? '#02090d'
-                : '#ffffff'
-          : i % 3 === 0
-            ? accentCol
-            : isInverted
-              ? '#03040a'
+              ? pal.bg
               : '#ffffff';
 
       for (let r = innerR; r <= 960; r += 18) {

@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps62';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps62';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps62';
+import { Fighter } from './Fighter.js?v=30fps63';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps63';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps63';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps62';
+} from '../engine/shaders/abyssalShaders.js?v=30fps63';
 
 /**
  * Malakor (`reaper`) — Abyssal Necropolis Harvester & Sovereign of Death.
@@ -24,7 +24,10 @@ export class Reaper extends Fighter {
       moveSpeed: 188,
       autoInterval: 1.06,
       lightColor: 'rgba(192, 132, 252, 1)',
-      primaryColor: '#c084fc'
+      primaryColor: '#c084fc',
+      hasTrueUltimate: true,
+      trueUltName: 'MEMENTO MORI: GATES OF THE NECROPOLIS',
+      trueUltDuration: 4.50
     });
     this.heroId = 'reaper';
     this.theme = 'abyssal';
@@ -38,11 +41,18 @@ export class Reaper extends Fighter {
     this.skillDuration = 1.12;
     this.ultDuration = 1.68;
     this.skillName = "DEATH'S GRASP";
-    this.ultName = 'GRIM HARVEST: SOVEREIGN OF DEATH';
+    this.ultName = 'GRIM HARVEST';
+    this.hasTrueUltimate = true;
+    this.trueUltName = 'MEMENTO MORI: GATES OF THE NECROPOLIS';
+    this.trueUltDuration = 4.50;
+    this._trueUltStep = 0;
+    this._trueUltAltarX = 600;
+    this._trueUltSlashFlash = 0;
+    this._trueUltEnemy = null;
     this.comboStep = 0;
     this.stepDustTimer = 0;
 
-    // Colossal Lich Sovereign scale (1.0 normal -> 2.25 during GRIM HARVEST: SOVEREIGN OF DEATH)
+    // Colossal Lich Sovereign scale (1.0 normal -> 2.25 during GRIM HARVEST, 2.55 during MEMENTO MORI)
     this.giantScale = 1.0;
 
     // 100% Bespoke Soulreaper Harvester Systems
@@ -54,7 +64,7 @@ export class Reaper extends Fighter {
     this.activeScytheBoomerang = null; // Returning Twin-Blade Phantom Scythe Boomerang
     this.activeBoomerangScythe = null; // Alias kept in sync with activeScytheBoomerang
     this.afterimages = []; // Crisp HD-2D Wraith Afterimages
-    this.activeVfxAnims = []; // Active 30fps reaper_vfx.png cell animations (Rows 0..4)
+    this.activeVfxAnims = []; // Active 30fps reaper_vfx.png cell animations (Rows 0..7)
 
     // Underground Grave-Submerge & Spectral Wraith Float state
     this.isSubmerged = false;
@@ -85,7 +95,7 @@ export class Reaper extends Fighter {
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
       if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps57')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps62';
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps63';
       }
     }
   }
@@ -100,8 +110,12 @@ export class Reaper extends Fighter {
     ) {
       this.fx?.stopByKey('abyssalWraithMantle');
     }
-    if (newState !== 'ULTIMATE') {
+    if (newState === 'TRUE_ULTIMATE') {
+      this._trueUltStep = 0;
+      this._trueUltSlashFlash = 0;
+    } else if (newState !== 'ULTIMATE') {
       this.giantScale = 1.0;
+      this.isInvulnerable = false;
       this.deathAvatar = null;
       this.fx?.stopByKey('deathAvatarCathedral');
       this.fx?.stopByKey('necropolisBoneyardDomain');
@@ -109,13 +123,33 @@ export class Reaper extends Fighter {
     this.unstoppablePoise =
       newState === 'SKILL' ||
       newState === 'ULTIMATE' ||
+      newState === 'TRUE_ULTIMATE' ||
       (newState === 'AUTO_ATTACK' && this.comboStep % 3 === 2);
     if (newState === 'DEATH') {
       this.giantScale = 1.0;
+      this.isInvulnerable = false;
+      this._trueUltSlashFlash = 0;
       this.boneCage = null;
       this.faultSpireQueue = [];
       this.fx?.clear();
     }
+  }
+
+  spawnSoulWisp(fromX = null, fromY = null, glowColor = null) {
+    const idx = this.soulWisps.length;
+    const sx =
+      fromX !== null
+        ? fromX
+        : (this._trueUltAltarX || this.x + this.facing * 140) + ((idx % 2 === 0 ? -1 : 1) * (65 + (idx % 3) * 35));
+    const sy = fromY !== null ? fromY : this.groundY - 78 - (idx % 4) * 24;
+    this.soulWisps.push({
+      startX: sx,
+      startY: sy,
+      arcHeight: -55 - Math.random() * 60 + (idx % 2 === 0 ? -25 : 25),
+      life: -(idx % 4) * 0.04,
+      maxLife: 0.56 + Math.random() * 0.16,
+      glowColor: glowColor || (idx % 2 === 0 ? 'violet' : 'crimson')
+    });
   }
 
   /**
@@ -750,6 +784,12 @@ export class Reaper extends Fighter {
   update(dt, enemy, game) {
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
+    if (this._trueUltSlashFlash > 0) {
+      this._trueUltSlashFlash = Math.max(0, this._trueUltSlashFlash - dt);
+    }
+    if (enemy) {
+      this._trueUltEnemy = enemy;
+    }
 
     // 1. Step Wraith Afterimages
     for (let i = this.afterimages.length - 1; i >= 0; i--) {
@@ -1541,6 +1581,236 @@ export class Reaper extends Fighter {
   }
 
   /**
+   * 3-OVERDRIVE SUPREME ULTIMATE (`state === 'TRUE_ULTIMATE'`, `4.50s`):
+   * "MEMENTO MORI: GATES OF THE NECROPOLIS"
+   * - Never overrides or replaces the stage background image (`overrideArena` is NEVER called).
+   * - Phase 1 (`0.00s .. 1.25s`): Erection of the Twin Obsidian Gates of the Necropolis (`reaper_vfx.png` Row 5, `320x320`
+   *   flanking `this._trueUltAltarX - 150` and `this._trueUltAltarX + 150` in `drawBehind(ctx)`), summoning 4 Soul Wisps,
+   *   and ascending as a `2.55x` Death-God Sovereign (`this.giantScale = 1.0 + 1.55 * ease`).
+   * - Phase 2 (`1.25s .. 3.10s`): Abyssal Grave-Chain Altar Bind & Soul-Bell Toll (`reaper_vfx.png` Row 6, `310x310`
+   *   around the enemy in `draw(ctx)`), pulling and rooting active enemies to `this._trueUltAltarX` with zero micro-tick damage.
+   * - Phase 3 (`t >= 3.15s`): Instantaneous Death-God Guillotine Execution (`reaper_vfx.png` Row 7, `460x360` across
+   *   `this._trueUltAltarX` in `draw(ctx)` while `this._trueUltSlashFlash > 0`), dealing a single instantaneous `360` Crit
+   *   burst (`knockX = 290, knockY = -260`) to all active enemies and healing Malakor for `25%` of his Max HP!
+   * - Phase 4 (`3.15s .. 4.50s`): Smoothly eases `this.giantScale` back to `1.0` and `this.y` back to `this.groundY`.
+   */
+  updateTrueUltimate(dt, enemy, game) {
+    const elapsed = this.stateTimer;
+    this.isInvulnerable = true;
+    this.unstoppablePoise = true;
+    this.isSubmerged = false;
+    this.isFlipVault = false;
+    this.isCrouching = false;
+    this.vx = 0;
+    this.vy = 0;
+
+    if (enemy) {
+      this._trueUltEnemy = enemy;
+    }
+
+    const targets = game?.getEnemiesOf
+      ? game.getEnemiesOf(this)
+      : enemy
+        ? [enemy]
+        : [];
+
+    if (elapsed < 0.04 && this._trueUltStep === 0) {
+      this._trueUltAltarX = enemy
+        ? Math.max(260, Math.min(940, enemy.x))
+        : Math.max(260, Math.min(940, this.x + this.facing * 220));
+      if (Math.abs(this._trueUltAltarX - this.x) > 8) {
+        this.facing = this._trueUltAltarX >= this.x ? 1 : -1;
+      }
+    }
+
+    // Sustain Abyssal Necropolis twilight dim without ever changing the arena background image
+    if (game?.renderer && elapsed < 4.10) {
+      const dimTarget =
+        elapsed <= 3.35 ? 0.52 : 0.52 * Math.max(0, 1 - (elapsed - 3.35) / 0.75);
+      game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, dimTarget);
+    }
+
+    // =========================================================================
+    // PHASE 1 (0.00s .. 1.25s): Erection of the Twin Obsidian Gates of the Necropolis
+    // =========================================================================
+    if (elapsed < 1.25) {
+      if (elapsed >= 0.04 && this._trueUltStep < 1) {
+        this._trueUltStep = 1;
+        this._trueUltAltarX = enemy
+          ? Math.max(260, Math.min(940, enemy.x))
+          : Math.max(260, Math.min(940, this.x + this.facing * 220));
+
+        game?.audio?.play?.('ult_reaper', this.x);
+        game?.audio?.play?.('grave_bell', this._trueUltAltarX);
+        game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#a855f7');
+        game?.vfx?.spawnDamageText?.(
+          this._trueUltAltarX,
+          this.groundY - 248,
+          0,
+          true,
+          '★ GATES OF THE NECROPOLIS! ★',
+          '#a855f7'
+        );
+
+        for (let i = 0; i < 4; i++) {
+          this.spawnSoulWisp();
+        }
+
+        this.fx?.spawn('necropolisBoneyardDomain', this._trueUltAltarX, this.groundY - 4, {
+          light: 1.46
+        });
+        this.fx?.spawn('necroticGraveyardSigil', this._trueUltAltarX, this.groundY - 4, {
+          palette: ABYSSAL_VIOLET_PALETTE,
+          light: 1.40,
+          extra: { radius: 56, isPrison: true, isCrimson: false, customDuration: 3.30 }
+        });
+      }
+
+      const u = Math.min(1, Math.max(0, elapsed / 1.25));
+      const ease = 1 - Math.pow(1 - u, 3);
+      this.y = this.groundY - 48 * ease;
+      this.giantScale = 1.0 + 1.55 * ease;
+      this.trueUltFrameOverride = 120 + Math.min(9, Math.floor(u * 10));
+      return;
+    }
+
+    // =========================================================================
+    // PHASE 2 (1.25s .. 3.10s): Abyssal Grave-Chain Altar Bind & Soul-Bell Toll
+    // =========================================================================
+    if (elapsed < 3.15) {
+      if (elapsed >= 1.25 && this._trueUltStep < 2) {
+        this._trueUltStep = 2;
+        game?.audio?.play?.('chain_yank', this._trueUltAltarX);
+        game?.audio?.play?.('soul_wail', this._trueUltAltarX);
+        game?.vfx?.spawnDamageText?.(
+          this._trueUltAltarX,
+          this.groundY - 224,
+          0,
+          true,
+          'MEMENTO MORI: CHAIN BIND!',
+          '#e879f9'
+        );
+
+        for (const side of [-1, 1]) {
+          const gateX = this._trueUltAltarX + side * 150;
+          this.fx?.spawn('skeletalChainTetherBeam', gateX, this.groundY - 118, {
+            light: 1.38,
+            extra: {
+              dx: this._trueUltAltarX - gateX,
+              dy: 22,
+              arcH: -18,
+              isCrimson: side > 0,
+              showClaw: true,
+              customDuration: 1.85
+            }
+          });
+        }
+      }
+
+      this.y = this.groundY - 48;
+      this.giantScale = 2.55;
+      const uBind = Math.min(1, Math.max(0, (elapsed - 1.25) / 1.85));
+      this.trueUltFrameOverride = 130 + Math.min(5, Math.floor(uBind * 6));
+
+      // Pull and root active enemies toward this._trueUltAltarX (zero micro-tick damage during bind!)
+      if (enemy && !enemy.isDead) {
+        enemy.x += (this._trueUltAltarX - enemy.x) * Math.min(1, dt * 8);
+        enemy.vx = 0;
+      }
+      for (const tgt of targets) {
+        if (tgt && !tgt.isDead && !tgt.isBenched && tgt !== enemy) {
+          tgt.x += (this._trueUltAltarX - tgt.x) * Math.min(1, dt * 8);
+          tgt.vx = 0;
+        }
+      }
+      return;
+    }
+
+    // =========================================================================
+    // PHASE 3 (t >= 3.15s): Instantaneous Death-God Guillotine Execution
+    // =========================================================================
+    if (elapsed >= 3.15 && this._trueUltStep < 3) {
+      this._trueUltStep = 3;
+      this._trueUltSlashFlash = 0.90;
+
+      const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+      if (Math.abs(this._trueUltAltarX - this.x) > 8) {
+        this.facing = this._trueUltAltarX >= this.x ? 1 : -1;
+      }
+      this.x = Math.max(95, Math.min(ww - 95, this._trueUltAltarX - this.facing * 90));
+      this.y = this.groundY - 48;
+      this.giantScale = 2.55;
+
+      game?.renderer?.triggerImpactFrame?.(
+        0.12,
+        this._trueUltAltarX,
+        this.groundY - 110,
+        'abyssal'
+      );
+      if (game?.renderer && game.renderer.impactFrameTimer > 1) {
+        game.renderer.impactFrameFocusX = this._trueUltAltarX;
+        game.renderer.impactFrameFocusY = this.groundY - 110;
+        game.renderer.impactFrameMaxTimer = 0.12;
+        game.renderer.impactFrameTimer = 0.12;
+      }
+      game?.renderer?.shake?.(26, 0.70);
+      game?.renderer?.triggerShake?.(26, 0.70);
+      game?.renderer?.flash?.(0.30, '#f3e8ff');
+
+      game?.audio?.play?.('ult_reaper', this._trueUltAltarX);
+      game?.audio?.play?.('scythe_reap', this._trueUltAltarX);
+      game?.audio?.play?.('grave_bell', this._trueUltAltarX);
+
+      this.fx?.spawn('deathAvatarCathedral', this._trueUltAltarX, this.groundY - 4, {
+        light: 1.50
+      });
+      this.fx?.spawn('soulHarvestScytheArc', this._trueUltAltarX, this.groundY - 112, {
+        flip: this.facing < 0,
+        light: 1.50,
+        extra: { radiusWorld: 184, isCrimson: true, isCross: true, isUppercut: false }
+      });
+      this.spawnGroundedBoneSpire(this._trueUltAltarX, 240, 0.76, {
+        flipX: this.facing < 0,
+        glowColor: 'crimson',
+        inFront: false
+      });
+
+      // SINGLE INSTANTANEOUS EXECUTION BURST of 360 Crit damage + 25% Max HP heal!
+      for (const t of targets) {
+        if (t && !t.isDead && !t.isBenched) {
+          t.takeDamage(360, this, true, 290, -260);
+        }
+      }
+      this.heal(Math.round(this.maxHp * 0.25), 'MEMENTO MORI HARVEST');
+    }
+
+    // =========================================================================
+    // PHASE 4 (3.15s .. 4.50s): Cleave Follow-Through & Sovereign Return to 1.0x
+    // =========================================================================
+    const cleaveSpan = Math.min(1, Math.max(0, (elapsed - 3.15) / 0.55));
+    if (elapsed < 3.70) {
+      // Row 4 frames 16..24
+      this.trueUltFrameOverride = 136 + Math.min(8, Math.floor(cleaveSpan * 9));
+    } else {
+      const recFrameSpan = Math.min(1, Math.max(0, (elapsed - 3.70) / 0.80));
+      this.trueUltFrameOverride = 145 + Math.min(4, Math.floor(recFrameSpan * 5));
+    }
+
+    const uDown = Math.min(1, Math.max(0, (elapsed - 3.15) / (this.trueUltDuration - 3.15)));
+    const easeDown = uDown * uDown * (3 - 2 * uDown);
+    this.giantScale = 2.55 - 1.55 * easeDown;
+    this.y = this.groundY - 48 * (1 - easeDown);
+
+    if (elapsed >= this.trueUltDuration) {
+      this.y = this.groundY;
+      this.giantScale = 1.0;
+      this.isInvulnerable = false;
+      this.trueUltFrameOverride = null;
+      this.setState('IDLE');
+    }
+  }
+
+  /**
    * 3-Pass HD-2D Additive Bloom Renderer for Malakor's 208x208 VFX Sheet (`assets/sprites/reaper_vfx.png`).
    */
   drawBloomedVfxCell(
@@ -1560,7 +1830,7 @@ export class Reaper extends Fighter {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
     const cell = 208;
     const sx = Math.max(0, Math.min(29, Math.floor(col))) * cell;
-    const sy = Math.max(0, Math.min(4, Math.floor(row))) * cell;
+    const sy = Math.max(0, Math.min(7, Math.floor(row))) * cell;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -1591,12 +1861,65 @@ export class Reaper extends Fighter {
   }
 
   /**
+   * Renders Twin Obsidian Gates of the Necropolis (`reaper_vfx.png` Row 5, `320x320`)
+   * flanking `this._trueUltAltarX - 150` and `this._trueUltAltarX + 150` behind fighters during `TRUE_ULTIMATE`.
+   */
+  drawBehind(ctx, renderer = null) {
+    if (this.state !== 'TRUE_ULTIMATE') return;
+    const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.reaper : null;
+    const vfxSheet = sprites?.vfx;
+    if (!vfxSheet?.complete) return;
+
+    const t = this.stateTimer || 0;
+    const dur = this.trueUltDuration || 4.50;
+    const fadeIn = Math.min(1, Math.max(0.15, t / 0.35));
+    const fadeOut = t > dur - 0.55 ? Math.max(0, (dur - t) / 0.55) : 1.0;
+    const gateAlpha = fadeIn * fadeOut * 0.96;
+    if (gateAlpha <= 0.02) return;
+
+    const col = Math.min(29, Math.floor((t * 24) % 30));
+    const gateY = this.groundY - 128;
+
+    this.drawBloomedVfxCell(
+      ctx,
+      vfxSheet,
+      5,
+      col,
+      this._trueUltAltarX - 150,
+      gateY,
+      320,
+      320,
+      gateAlpha,
+      false,
+      renderer,
+      'violet'
+    );
+    this.drawBloomedVfxCell(
+      ctx,
+      vfxSheet,
+      5,
+      col,
+      this._trueUltAltarX + 150,
+      gateY,
+      320,
+      320,
+      gateAlpha,
+      true,
+      renderer,
+      'crimson'
+    );
+  }
+
+  /**
    * Background 2.5D Shader Pass (`back`) + Grounded `reaper_vfx.png` Necrotic Bone Spires (Row 2),
-   * Pentagram Seals (Row 3) & Wraith Afterimages
+   * Pentagram Seals (Row 3), Twin Obsidian Gates (Row 5) & Wraith Afterimages
    */
   drawForegroundOverlay(ctx, renderer = null) {
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
+
+    // 0. Twin Obsidian Gates of the Necropolis (`Row 5`, 320x320) flanking _trueUltAltarX - 150 and + 150
+    this.drawBehind(ctx, renderer);
 
     const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.reaper : null;
     const vfxSheet = sprites?.vfx;
@@ -1818,5 +2141,56 @@ export class Reaper extends Fighter {
     }
 
     ctx.restore();
+
+    if (!isReflection && sprites.vfx?.complete) {
+      const vfxSheet = sprites.vfx;
+
+      // Phase 2 (`1.25s .. 3.10s`): Abyssal Grave-Chain Altar Bind (`reaper_vfx.png` Row 6, `310x310`) around the enemy
+      if (this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 1.25 && this.stateTimer <= 3.30) {
+        const bindX =
+          this._trueUltEnemy && !this._trueUltEnemy.isDead
+            ? this._trueUltEnemy.x
+            : this._trueUltAltarX;
+        const bindY = this.groundY - 104;
+        const bindCol = Math.min(29, Math.floor(((this.stateTimer - 1.25) * 24) % 30));
+        const bindFade =
+          this.stateTimer > 3.10 ? Math.max(0, 1 - (this.stateTimer - 3.10) / 0.20) : 0.96;
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          6,
+          bindCol,
+          bindX,
+          bindY,
+          310,
+          310,
+          bindFade,
+          false,
+          renderer,
+          'violet'
+        );
+      }
+
+      // Phase 3 (`this._trueUltSlashFlash > 0`): Memento Mori Death-God Guillotine Crescent (`reaper_vfx.png` Row 7, `460x360`) across `this._trueUltAltarX`
+      if (this._trueUltSlashFlash > 0) {
+        const uSlash = Math.min(1, Math.max(0, 1 - this._trueUltSlashFlash / 0.90));
+        const slashCol = Math.min(29, Math.floor(uSlash * 30));
+        const slashAlpha = Math.min(1, (this._trueUltSlashFlash / 0.24) * 0.98);
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          7,
+          slashCol,
+          this._trueUltAltarX,
+          this.groundY - 126,
+          460,
+          360,
+          slashAlpha,
+          this.facing < 0,
+          renderer,
+          'crimson'
+        );
+      }
+    }
   }
 }

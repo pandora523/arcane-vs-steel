@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps62';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps62';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps62';
+import { Fighter } from './Fighter.js?v=30fps63';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps63';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps63';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps62';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps63';
 
 /**
  * Freyja (`valkyrie`) — Dragon-Lance Valkyrie & Valhalla Sky-Sovereign.
@@ -29,6 +29,9 @@ export class Valkyrie extends Fighter {
     this.deathSfx = 'death_valkyrie';
     this.skillName = 'GUNGNIR JAVELIN BARRAGE';
     this.ultName = 'VALHALLA SKY-SANCTUARY';
+    this.hasTrueUltimate = true;
+    this.trueUltName = 'TWILIGHT OF RAGNAROK: GUNGNIR';
+    this.trueUltDuration = 4.35;
     this.theme = 'crimson';
     this.hasPoise = true;
     this.skillTriggerRange = 620;
@@ -53,6 +56,16 @@ export class Valkyrie extends Fighter {
     this._ultTargetX = 600;
     this.stepTimer = 0;
 
+    // Supreme Ultimate (`TWILIGHT OF RAGNAROK: GUNGNIR`) state
+    this._trueUltInit = false;
+    this._trueUltStep = 0;
+    this._trueUltLancesSpawned = 0;
+    this._trueUltTargetX = 600;
+    this.ragnarokSeal = null;
+    this.einherjarSkyLances = [];
+    this.ragnarokDiveBeam = null;
+    this.ragnarokPillars = [];
+
     // Native 120Hz dual-buffer HD-2D Crimson-Gold Valkyrie shader & particle runtime (`back` + `front` 2.5D layers)
     this.fx = new ArcaneShaderFX(VALKYRIE_EFFECT_REGISTRY, {
       pixelScale: 3,
@@ -62,8 +75,8 @@ export class Valkyrie extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const valkyrieAssets = PixelForge.initAssets()?.valkyrie;
-      if (valkyrieAssets?.vfx?.src && !valkyrieAssets.vfx.src.includes('v=30fps47')) {
-        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps62';
+      if (valkyrieAssets?.vfx?.src && !valkyrieAssets.vfx.src.includes('v=30fps63')) {
+        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps63';
       }
     }
 
@@ -74,7 +87,12 @@ export class Valkyrie extends Fighter {
 
   setState(newState) {
     super.setState(newState);
-    if (newState !== 'SKILL' && newState !== 'ULTIMATE' && newState !== 'DASH') {
+    if (
+      newState !== 'SKILL' &&
+      newState !== 'ULTIMATE' &&
+      newState !== 'TRUE_ULTIMATE' &&
+      newState !== 'DASH'
+    ) {
       this.divePitchRad = 0;
     }
     if (
@@ -82,14 +100,20 @@ export class Valkyrie extends Fighter {
       newState !== 'JUMP' &&
       newState !== 'DASH' &&
       newState !== 'SKILL' &&
-      newState !== 'ULTIMATE'
+      newState !== 'ULTIMATE' &&
+      newState !== 'TRUE_ULTIMATE'
     ) {
       this.fx?.stopByKey('valkyrieSlipstreamTrail');
     }
-    if (newState !== 'SKILL' && newState !== 'ULTIMATE') {
+    if (newState !== 'SKILL' && newState !== 'ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
       this.fx?.stopByKey('valkyrieHaloArray');
     }
-    if (newState !== 'JUMP' && newState !== 'SKILL' && newState !== 'ULTIMATE') {
+    if (
+      newState !== 'JUMP' &&
+      newState !== 'SKILL' &&
+      newState !== 'ULTIMATE' &&
+      newState !== 'TRUE_ULTIMATE'
+    ) {
       this.fx?.stopByKey('valkyrieWingPlume');
     }
 
@@ -108,6 +132,25 @@ export class Valkyrie extends Fighter {
       this._ultStep = 0;
       this._ultPassCone1 = false;
       this._ultPassCone3 = false;
+    }
+    if (newState === 'TRUE_ULTIMATE') {
+      this._trueUltInit = false;
+      this._trueUltStep = 0;
+      this._trueUltLancesSpawned = 0;
+      this.ragnarokSeal = null;
+      this.einherjarSkyLances = [];
+      this.ragnarokDiveBeam = null;
+      this.ragnarokPillars = [];
+      this.trueUltFrameOverride = 120;
+    } else {
+      this._trueUltInit = false;
+      this.trueUltFrameOverride = null;
+      this.ragnarokSeal = null;
+      this.einherjarSkyLances = [];
+      this.ragnarokDiveBeam = null;
+      this.ragnarokPillars = [];
+      this.cameraAirLift = 0;
+      this.unstoppablePoise = false;
     }
   }
 
@@ -263,12 +306,15 @@ export class Valkyrie extends Fighter {
       }
     }
 
-    // 3. Step Colossal Bahamut Sovereign Avatar during ULTIMATE
+    // 3. Step Colossal Bahamut Sovereign Avatar during ULTIMATE / TRUE_ULTIMATE
     if (this.bahamutAvatar) {
       this.bahamutAvatar.life += dt;
       this.bahamutAvatar.x = this.x;
       this.bahamutAvatar.y = this.y;
-      if (this.bahamutAvatar.life >= this.bahamutAvatar.maxLife || this.state !== 'ULTIMATE') {
+      if (
+        this.bahamutAvatar.life >= this.bahamutAvatar.maxLife ||
+        (this.state !== 'ULTIMATE' && this.state !== 'TRUE_ULTIMATE')
+      ) {
         this.bahamutAvatar = null;
       }
     }
@@ -1437,6 +1483,572 @@ export class Valkyrie extends Fighter {
     }
   }
 
+  updateTrueUltimate(dt, enemy, game) {
+    const t = this.stateTimer;
+    const ww = game?.renderer?.worldWidth || 1600;
+
+    // Guarantee PixelForge.getFrameIndex honors trueUltFrameOverride and gravity never overrides sky hover
+    this.isInvulnerable = true;
+    this.unstoppablePoise = true;
+    this.isFlipVault = false;
+    this.isCrouching = false;
+    this.isBlinkTeleport = false;
+    this.vx = 0;
+    this.vy = 0;
+
+    // Resolve active enemy target (supports 1v1 & 3v3 tag modes)
+    const foes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+    let focusEnemy = enemy && !enemy.isDead && !enemy.isBenched ? enemy : null;
+    if (!focusEnemy && foes.length > 0) {
+      let bestDist = Infinity;
+      for (const f of foes) {
+        if (f && !f.isDead && !f.isBenched) {
+          const d = Math.abs(f.x - this.x);
+          if (d < bestDist) {
+            bestDist = d;
+            focusEnemy = f;
+          }
+        }
+      }
+    }
+
+    if (!this._trueUltInit) {
+      this._trueUltInit = true;
+      this._trueUltStep = 0;
+      this._trueUltLancesSpawned = 0;
+      this._trueUltOriginX = this.x;
+      this._trueUltDiveStartX = this.x;
+      this._trueUltLandX = this.x;
+      this._trueUltAfterimageAcc = 0;
+
+      const initTargetX = focusEnemy
+        ? Math.max(150, Math.min(ww - 150, focusEnemy.x))
+        : Math.max(150, Math.min(ww - 150, this.x + this.facing * 320));
+      this._trueUltTargetX = initTargetX;
+      if (Math.abs(initTargetX - this.x) > 8) {
+        this.facing = initTargetX >= this.x ? 1 : -1;
+      }
+
+      if (game?.audio) {
+        game.audio.play('ult_cast', this.x);
+        game.audio.play('holy_spear', initTargetX);
+      }
+      if (game?.renderer) {
+        game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, 0.48);
+        game.renderer.triggerShake(8, 0.22);
+      }
+
+      this.bahamutAvatar = {
+        x: this.x,
+        y: this.y,
+        life: 0,
+        maxLife: 3.16
+      };
+      this.ragnarokSeal = {
+        x: initTargetX,
+        y: this.groundY - 4,
+        age: 0,
+        skyAlpha: 1.0,
+        shattered: false
+      };
+      this.einherjarSkyLances = [];
+      this.ragnarokDiveBeam = null;
+      this.ragnarokPillars = [];
+
+      // Unfurl 2.5D crimson-gold Valkyrie wings, halo array & slipstream
+      this.fx.spawn('valkyrieWingPlume', this.x, this.y - 102, {
+        key: 'valkyrieWingPlume',
+        follow: this,
+        offsetX: -12,
+        offsetY: -102,
+        flip: this.facing < 0,
+        palette: VALKYRIE_CRIMSON_PALETTE,
+        light: 1.35,
+        extra: { span: 38, duration: 4.35 }
+      });
+      this.fx.spawn('valkyrieHaloArray', this.x, this.y - 108, {
+        key: 'valkyrieHaloArray',
+        follow: this,
+        offsetX: -4,
+        offsetY: -108,
+        flip: false,
+        palette: VALKYRIE_GOLD_PALETTE,
+        light: 1.28,
+        extra: { rx: 30, ry: 16 }
+      });
+      this.fx.spawn('valkyrieSlipstreamTrail', this.x, this.y - 92, {
+        key: 'valkyrieSlipstreamTrail',
+        follow: this,
+        offsetX: -18,
+        offsetY: -92,
+        flip: this.facing < 0,
+        palette: VALKYRIE_CRIMSON_PALETTE,
+        light: 1.15,
+        extra: { length: 38, tilt: -0.22 }
+      });
+      this.fx.spawn('valhallaGroundBurst', this.x, this.groundY, {
+        palette: VALKYRIE_GOLD_PALETTE,
+        light: 1.25,
+        extra: { radius: 34 }
+      });
+      this.fx.spawn('valhallaTargetReticle', initTargetX, this.groundY, {
+        palette: VALKYRIE_GOLD_PALETTE,
+        light: 1.25,
+        extra: { radius: 44, beaconH: 68, duration: 2.95 }
+      });
+
+      if (game?.vfx) {
+        game.vfx.spawnShockwave(this.x, this.groundY - 4, 155, '#fbbf24', 0.34, true);
+        game.vfx.spawnShockwave(initTargetX, this.groundY - 4, 165, '#f43f5e', 0.36, true);
+        game.vfx.spawnDamageText(
+          this.x,
+          this.groundY - 168,
+          0,
+          true,
+          '★ TWILIGHT OF RAGNAROK: GUNGNIR ★',
+          '#fbbf24'
+        );
+      }
+    }
+
+    // Sustain dramatic 0.48 Ult Dim through the sky siege & Gungnir dive, fading out smoothly post-impact
+    if (game?.renderer && t < 3.60) {
+      const dimTarget = t <= 3.10 ? 0.48 : 0.48 * Math.max(0, 1 - (t - 3.10) / 0.50);
+      game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, dimTarget);
+    }
+
+    // Track active target during Phase 1..2 and keep them locked inside the Bifrost Einherjar Target Seal
+    if (t < 2.65 && focusEnemy && !focusEnemy.isDead) {
+      const desiredX = Math.max(150, Math.min(ww - 150, focusEnemy.x));
+      const trackSpeed = t < 1.10 ? 9.5 : 4.2;
+      this._trueUltTargetX += (desiredX - this._trueUltTargetX) * Math.min(1, dt * trackSpeed);
+      if (Math.abs(this._trueUltTargetX - this.x) > 12) {
+        this.facing = this._trueUltTargetX >= this.x ? 1 : -1;
+      }
+    }
+    const targetX = this._trueUltTargetX;
+
+    if (this.ragnarokSeal) {
+      this.ragnarokSeal.age += dt;
+      if (!this.ragnarokSeal.shattered) {
+        this.ragnarokSeal.x = targetX;
+      }
+      this.ragnarokSeal.skyAlpha = t < 2.82 ? Math.min(1, t / 0.35) : Math.max(0, 1 - (t - 2.82) / 0.24);
+    }
+
+    // Step active Row 6 Colossal Einherjar Sky-Lances (plunging -> pinned upright in a glowing 6-spear cage)
+    for (let i = this.einherjarSkyLances.length - 1; i >= 0; i--) {
+      const lance = this.einherjarSkyLances[i];
+      lance.age += dt;
+      if (!lance.impacted) {
+        const uFall = Math.min(1, lance.age / lance.fallDuration);
+        const easeFall = uFall * uFall * (0.4 + 0.6 * uFall);
+        lance.x = lance.startX + (lance.targetX - lance.startX) * easeFall;
+        lance.y = lance.startY + (lance.pinY - lance.startY) * easeFall;
+        if (uFall >= 1) {
+          lance.impacted = true;
+          lance.x = lance.targetX;
+          lance.y = lance.pinY;
+          if (game?.audio) game.audio.play('holy_spear', lance.targetX);
+          if (game?.renderer) {
+            game.renderer.triggerShake(6, 0.14);
+            game.renderer.triggerHitStop(0.02);
+          }
+          this.fx.spawn('gungnirImpactStarburst', lance.targetX, this.groundY - 58, {
+            flip: false,
+            palette: lance.index % 2 === 0 ? VALKYRIE_GOLD_PALETTE : VALKYRIE_CRIMSON_PALETTE,
+            light: 1.22,
+            extra: { aimAngle: Math.PI * 0.5, isCrit: true }
+          });
+          if (game?.vfx) {
+            game.vfx.spawnShockwave(lance.targetX, this.groundY - 4, 118, '#fbbf24', 0.24, true);
+            game.vfx.spawnBurst(lance.targetX, this.groundY - 44, 10, '#f43f5e', 210, {
+              upBias: 95,
+              size: 4
+            });
+          }
+          // 6 x 24 rapid pinning strikes keeping the target locked inside the glowing spear-ring!
+          let hitAny = false;
+          for (const foe of foes) {
+            if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - targetX) < 190) {
+              foe.takeDamage(24, this, false, 18, -32);
+              foe.vx = (targetX - foe.x) * 3.2;
+              foe.x += (targetX - foe.x) * 0.34;
+              hitAny = true;
+            }
+          }
+          if (!hitAny && focusEnemy && !focusEnemy.isDead) {
+            focusEnemy.takeDamage(24, this, false, 18, -32);
+            focusEnemy.vx = (targetX - focusEnemy.x) * 3.2;
+            focusEnemy.x += (targetX - focusEnemy.x) * 0.34;
+          }
+        }
+      }
+      if (lance.shatterAge !== undefined) {
+        lance.shatterAge += dt;
+        if (lance.shatterAge >= 0.30) {
+          this.einherjarSkyLances.splice(i, 1);
+        }
+      }
+    }
+
+    // Keep pinned enemy anchored inside the glowing 6-spear ring during Phase 2..pre-impact
+    if (t >= 1.14 && t < 3.10 && focusEnemy && !focusEnemy.isDead && this.einherjarSkyLances.length > 0) {
+      const drift = focusEnemy.x - targetX;
+      if (Math.abs(drift) > 44) {
+        focusEnemy.x -= Math.sign(drift) * Math.min(Math.abs(drift) - 44, dt * 360);
+      }
+      focusEnemy.vx *= 0.2;
+    }
+
+    // Step Row 7 Gungnir Ragnarok Dragon-Pillars (post-impact)
+    for (let i = this.ragnarokPillars.length - 1; i >= 0; i--) {
+      const p = this.ragnarokPillars[i];
+      p.age += dt;
+      if (p.age >= p.maxLife) {
+        this.ragnarokPillars.splice(i, 1);
+      }
+    }
+
+    // Step crimson-gold Gungnir dive beam fade
+    if (this.ragnarokDiveBeam) {
+      this.ragnarokDiveBeam.age += dt;
+      if (this.ragnarokDiveBeam.age >= this.ragnarokDiveBeam.maxLife) {
+        this.ragnarokDiveBeam = null;
+      }
+    }
+
+    // =========================================================================
+    // PHASE 1 (0.00s..1.10s): Ascend 410px into the Heavens & Lock Row 5 Seal
+    // =========================================================================
+    if (t < 1.10) {
+      if (t < 0.22) {
+        const uPrep = t / 0.22;
+        this.y = this.groundY;
+        this.cameraAirLift = 0;
+        this.trueUltFrameOverride = 120 + Math.min(4, Math.floor(uPrep * 5));
+      } else {
+        const uAsc = Math.min(1, (t - 0.22) / 0.88);
+        const easeAsc = 1 - Math.pow(1 - uAsc, 3);
+        const lift = 410 * easeAsc;
+        this.y = this.groundY - lift;
+        this.cameraAirLift = lift;
+        const driftTowardArena = this._trueUltOriginX + (targetX - this.facing * 235 - this._trueUltOriginX) * (easeAsc * 0.65);
+        this.x = Math.max(105, Math.min(ww - 105, driftTowardArena));
+        this.trueUltFrameOverride = 125 + Math.min(10, Math.floor(uAsc * 11));
+
+        this._trueUltAfterimageAcc += dt;
+        if (this._trueUltAfterimageAcc >= 0.05) {
+          this._trueUltAfterimageAcc = 0;
+          this.spawnAfterimage(this.x, this.y, this.facing, 4, 6 + (Math.floor(uAsc * 9) % 9), 0.24);
+        }
+      }
+
+      if (t >= 0.36 && this._trueUltStep < 1) {
+        this._trueUltStep = 1;
+        if (game?.audio) game.audio.play('holy_spear', targetX);
+        if (game?.vfx) {
+          game.vfx.spawnShockwave(targetX, this.groundY - 4, 195, '#fbbf24', 0.32, true);
+        }
+      }
+      return;
+    }
+
+    // =========================================================================
+    // PHASE 2 (1.10s..2.55s): Rain 6 Colossal Row 6 Einherjar Sky-Lances (6x24)
+    // =========================================================================
+    if (t < 2.55) {
+      const hoverT = t - 1.10;
+      this.y = this.groundY - 410 + Math.sin(hoverT * 6.5) * 6;
+      this.cameraAirLift = 410;
+      this.trueUltFrameOverride = 131 + (Math.floor(hoverT * 14) % 7); // Row 4 F11..F17 winged sky command
+
+      const lanceSchedule = [1.14, 1.36, 1.58, 1.80, 2.02, 2.24];
+      const ringOffsets = [-94, 94, -58, 58, -24, 24];
+      const ringDepths = [-6, -6, 4, 4, -2, 6]; // < 0 behind enemy, > 0 in front of enemy for 2.5D cage wrap!
+
+      while (
+        this._trueUltLancesSpawned < 6 &&
+        t >= lanceSchedule[this._trueUltLancesSpawned]
+      ) {
+        const idx = this._trueUltLancesSpawned;
+        this._trueUltLancesSpawned++;
+        const offsetX = ringOffsets[idx];
+        const depthY = ringDepths[idx];
+        const pinX = Math.max(95, Math.min(ww - 95, targetX + offsetX));
+        const startX = pinX + (idx % 2 === 0 ? -38 : 38);
+        const startY = this.groundY - 485;
+        const pinY = this.groundY - 92 + depthY;
+
+        this.einherjarSkyLances.push({
+          index: idx,
+          startX,
+          startY,
+          targetX: pinX,
+          pinY,
+          x: startX,
+          y: startY,
+          inFront: depthY > 0,
+          age: 0,
+          fallDuration: 0.16,
+          impacted: false
+        });
+
+        // Muzzle flash at Freyja's raised Gungnir in the heavens
+        this.fx.spawn('gungnirImpactStarburst', this.x + this.facing * 26, this.y - 98, {
+          flip: false,
+          palette: VALKYRIE_GOLD_PALETTE,
+          light: 1.15,
+          extra: { aimAngle: Math.PI * 0.5, isCrit: false }
+        });
+      }
+      return;
+    }
+
+    // =========================================================================
+    // PHASE 3 (2.55s..4.35s): Gungnir Ragnarok Spear-Dive, 3x Row 7 Pillars,
+    //                         20% Max HP Heal, 245 Crit Finisher & Backflip!
+    // =========================================================================
+    if (t < 2.80) {
+      // 2.55s..2.80s: Apex Gungnir Convergence in the Heavens
+      if (this._trueUltStep < 2) {
+        this._trueUltStep = 2;
+        this._trueUltDiveStartX = this.x;
+        this._trueUltLandX = Math.max(105, Math.min(ww - 105, targetX - this.facing * 52));
+        this.facing = targetX >= this._trueUltDiveStartX ? 1 : -1;
+        if (game?.audio) {
+          game.audio.play('ult_cast', this.x);
+          game.audio.play('storm_leap', this.x);
+        }
+        this.fx.spawn('gungnirSpearFocus', this.x + this.facing * 32, this.y - 98, {
+          follow: this,
+          offsetX: 32,
+          offsetY: -98,
+          flip: this.facing < 0,
+          palette: VALKYRIE_GOLD_PALETTE,
+          light: 1.4,
+          extra: { charge: 1.0, twin: true }
+        });
+        this.spawnVfxAnim(4, this.x + this.facing * 24, this.y - 98, 224, 224, 0.28, {
+          glowColor: 'gold',
+          inFront: true
+        });
+      }
+      const uCharge = (t - 2.55) / 0.25;
+      this.y = this.groundY - 410 - Math.sin(uCharge * Math.PI) * 14;
+      this.cameraAirLift = 410;
+      this.trueUltFrameOverride = 136 + Math.min(2, Math.floor(uCharge * 3)); // Row 4 F16..F18
+      return;
+    }
+
+    if (t < 3.10) {
+      // 2.80s..3.10s: Cataclysmic Diagonal/Vertical Gungnir Spear-Dive wrapped in crimson-gold energy!
+      if (this._trueUltStep < 3) {
+        this._trueUltStep = 3;
+        if (game?.audio) game.audio.play('dash_whoosh', this.x);
+        const dxDive = targetX - this._trueUltDiveStartX;
+        const dyDive = 410;
+        const diveAng = Math.atan2(dyDive, dxDive);
+        this.fx.spawn('gungnirSpearThrustCone', this.x, this.y - 78, {
+          follow: this,
+          offsetX: 28,
+          offsetY: -78,
+          flip: false,
+          palette: VALKYRIE_GOLD_PALETTE,
+          light: 1.4,
+          extra: { aimAngle: diveAng, radius: 34, twin: true }
+        });
+        this.ragnarokDiveBeam = {
+          x0: this._trueUltDiveStartX,
+          y0: this.groundY - 430,
+          x1: targetX,
+          y1: this.groundY - 8,
+          headX: this._trueUltDiveStartX,
+          headY: this.groundY - 410,
+          age: 0,
+          maxLife: 0.54
+        };
+      }
+
+      const uDive = Math.min(1, (t - 2.80) / 0.30);
+      const easeDive = uDive * uDive * (0.35 + 0.65 * uDive);
+      this.x = this._trueUltDiveStartX + (this._trueUltLandX - this._trueUltDiveStartX) * easeDive;
+      this.y = this.groundY - 410 * (1 - easeDive);
+      this.cameraAirLift = 410 * (1 - easeDive);
+      this.trueUltFrameOverride = 138 + Math.min(4, Math.floor(uDive * 5)); // Row 4 F18..F22 articulated falcon spear-dive!
+
+      if (this.ragnarokDiveBeam) {
+        this.ragnarokDiveBeam.headX = this.x + this.facing * 42;
+        this.ragnarokDiveBeam.headY = this.y - 44;
+      }
+
+      this._trueUltAfterimageAcc += dt;
+      if (this._trueUltAfterimageAcc >= 0.025) {
+        this._trueUltAfterimageAcc = 0;
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, 19 + (Math.floor(uDive * 4) % 4), 0.26);
+      }
+      return;
+    }
+
+    // t >= 3.10s: GROUND-ZERO GUNGNIR RAGNAROK DETONATION!
+    if (this._trueUltStep < 4) {
+      this._trueUltStep = 4;
+      this.x = this._trueUltLandX;
+      this.y = this.groundY;
+      this.cameraAirLift = 0;
+      this.facing = targetX >= this.x ? 1 : -1;
+
+      if (this.ragnarokDiveBeam) {
+        this.ragnarokDiveBeam.headX = targetX;
+        this.ragnarokDiveBeam.headY = this.groundY - 6;
+      }
+      if (this.ragnarokSeal) {
+        this.ragnarokSeal.shattered = true;
+      }
+      for (const lance of this.einherjarSkyLances) {
+        lance.impacted = true;
+        lance.shatterAge = 0;
+      }
+
+      if (game?.audio) {
+        game.audio.play('dragon_dive', targetX);
+        game.audio.play('thunder_slam', targetX);
+        game.audio.play('hit_crit', targetX);
+      }
+      if (game?.renderer) {
+        game.renderer.triggerImpactFrame?.(targetX, this.groundY - 90, 0.15, 'crimson');
+        game.renderer.triggerShake(22, 0.38);
+        game.renderer.triggerAberration(12);
+        game.renderer.triggerHitStop(0.08);
+      }
+
+      // Erupt 3 towering Row 7 Gungnir Ragnarok Dragon-Pillars!
+      const pillarSpecs = [
+        { x: targetX, w: 284, h: 428, maxLife: 0.96, glow: 'gold', inFront: true },
+        { x: Math.max(90, targetX - 118), w: 232, h: 360, maxLife: 0.88, glow: 'crimson', inFront: false },
+        { x: Math.min(ww - 90, targetX + 118), w: 232, h: 360, maxLife: 0.88, glow: 'crimson', inFront: false }
+      ];
+      for (const ps of pillarSpecs) {
+        this.ragnarokPillars.push({
+          x: ps.x,
+          groundY: this.groundY,
+          w: ps.w,
+          h: ps.h,
+          age: 0,
+          maxLife: ps.maxLife,
+          glowColor: ps.glow,
+          inFront: ps.inFront
+        });
+        this.fx.spawn('dragonfireObeliskPillar', ps.x, this.groundY, {
+          palette: ps.glow === 'gold' ? VALKYRIE_GOLD_PALETTE : VALKYRIE_CRIMSON_PALETTE,
+          light: 1.4,
+          extra: { baseRadius: ps.glow === 'gold' ? 22 : 16, height: ps.glow === 'gold' ? 98 : 82, isUltimate: true }
+        });
+      }
+
+      this.fx.spawn('valhallaGroundBurst', targetX, this.groundY, {
+        palette: VALKYRIE_GOLD_PALETTE,
+        light: 1.35,
+        extra: { radius: 42 }
+      });
+      this.fx.spawn('gungnirSpearThrustCone', this.x + this.facing * 48, this.groundY - 88, {
+        flip: false,
+        palette: VALKYRIE_GOLD_PALETTE,
+        light: 1.35,
+        extra: { aimAngle: this.facing >= 0 ? 0 : Math.PI, radius: 36, twin: true }
+      });
+
+      if (game?.vfx) {
+        game.vfx.spawnShockwave(targetX, this.groundY - 6, 320, '#fbbf24', 0.48, true);
+        game.vfx.spawnShockwave(targetX, this.groundY - 6, 220, '#f43f5e', 0.36, true);
+        game.vfx.spawnSlash(targetX, this.groundY - 84, 220, -Math.PI, Math.PI, '#fbbf24', 0.42);
+        game.vfx.spawnBurst(targetX, this.groundY - 64, 34, '#f43f5e', 350, {
+          upBias: 220,
+          size: 6
+        });
+        game.vfx.spawnDamageText(
+          targetX,
+          this.groundY - 196,
+          0,
+          true,
+          '★ TWILIGHT OF RAGNAROK! ★',
+          '#fbbf24'
+        );
+      }
+
+      // Heal Freyja for 20% Max HP ("VALHALLA GRACE")
+      this.heal(Math.round(this.maxHp * 0.20), 'VALHALLA GRACE');
+
+      // Deal ONE massive 245 Crit Finisher burst!
+      let hitFinisher = false;
+      for (const foe of foes) {
+        if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - targetX) < 250) {
+          foe.takeDamage(245, this, true, 265, -275);
+          hitFinisher = true;
+        }
+      }
+      if (!hitFinisher && focusEnemy && !focusEnemy.isDead) {
+        focusEnemy.takeDamage(245, this, true, 265, -275);
+      }
+    }
+
+    if (t < 3.34) {
+      // 3.10s..3.34s: Sovereign Gungnir Grounded Judgment Hold (Row 4 F23..F26)
+      const uHold = (t - 3.10) / 0.24;
+      this.y = this.groundY;
+      this.trueUltFrameOverride = 143 + Math.min(3, Math.floor(uHold * 4));
+      return;
+    }
+
+    if (t < 4.06) {
+      // 3.34s..4.06s: Articulated Valkyrie Aerial Backflip cleanly away to neutral (Row 7 F02..F22, ZERO ctx.rotate!)
+      if (this._trueUltStep < 5) {
+        this._trueUltStep = 5;
+        this._trueUltFlipStartX = this.x;
+        this._trueUltFlipEndX = Math.max(95, Math.min(ww - 95, this.x - this.facing * 150));
+        if (game?.audio) game.audio.play('dash_whoosh', this.x);
+        this.fx.spawn('valhallaGroundBurst', this.x, this.groundY, {
+          palette: VALKYRIE_CRIMSON_PALETTE,
+          light: 1.05,
+          extra: { radius: 22 }
+        });
+      }
+      const uFlip = Math.min(1, (t - 3.34) / 0.72);
+      const easeX = 1 - Math.pow(1 - uFlip, 2);
+      this.x = this._trueUltFlipStartX + (this._trueUltFlipEndX - this._trueUltFlipStartX) * easeX;
+      this.y = this.groundY - Math.sin(uFlip * Math.PI) * 94;
+      this.trueUltFrameOverride = 212 + Math.min(20, Math.floor(uFlip * 21)); // Row 7 F02..F22 articulated somersault
+
+      this._trueUltAfterimageAcc += dt;
+      if (this._trueUltAfterimageAcc >= 0.06 && uFlip < 0.85) {
+        this._trueUltAfterimageAcc = 0;
+        this.spawnAfterimage(this.x, this.y, this.facing, 7, 2 + Math.min(18, Math.floor(uFlip * 19)), 0.20);
+      }
+      return;
+    }
+
+    // 4.06s..4.35s: Wing-cushioned touchdown & regal neutral recovery
+    this.y = this.groundY;
+    this.cameraAirLift = 0;
+    const uRec = Math.min(1, (t - 4.06) / 0.29);
+    this.trueUltFrameOverride = 233 + Math.min(6, Math.floor(uRec * 7)); // Row 7 F23..F29 neutral guard
+
+    if (t >= this.trueUltDuration) {
+      this.y = this.groundY;
+      this.divePitchRad = 0;
+      this.cameraAirLift = 0;
+      this.isInvulnerable = false;
+      this.unstoppablePoise = false;
+      this.trueUltFrameOverride = null;
+      this.bahamutAvatar = null;
+      this.ragnarokSeal = null;
+      this.einherjarSkyLances = [];
+      this.ragnarokDiveBeam = null;
+      this.ragnarokPillars = [];
+      this.setState('IDLE');
+    }
+  }
+
   drawBloomedVfxCell(
     ctx,
     vfxSheet,
@@ -1449,16 +2061,18 @@ export class Valkyrie extends Fighter {
     alpha = 1.0,
     flipX = false,
     renderer = null,
-    glowColor = 'crimson'
+    glowColor = 'crimson',
+    angleRad = 0
   ) {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
     const cell = 208;
     const sx = Math.max(0, Math.min(29, Math.floor(col))) * cell;
-    const sy = Math.max(0, Math.min(4, Math.floor(row))) * cell;
+    const sy = Math.max(0, Math.min(7, Math.floor(row))) * cell;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.translate(Math.round(x), Math.round(y));
+    if (angleRad) ctx.rotate(angleRad);
     if (flipX) ctx.scale(-1, 1);
 
     const glowSprite =
@@ -1482,12 +2096,136 @@ export class Valkyrie extends Fighter {
     ctx.restore();
   }
 
+  drawRagnarokLancesLayer(ctx, vfxSheet, renderer, inFrontPass) {
+    if (!this.einherjarSkyLances || this.einherjarSkyLances.length === 0 || !vfxSheet?.complete) return;
+    for (const lance of this.einherjarSkyLances) {
+      if (Boolean(lance.inFront) !== inFrontPass) continue;
+      const col = Math.floor(lance.age * 30) % 30;
+      const shatterFade =
+        lance.shatterAge !== undefined ? Math.max(0, 1 - lance.shatterAge / 0.30) : 1.0;
+      if (shatterFade <= 0.02) continue;
+
+      // Vertical sky-wake pillar streak while plunging or newly pinned
+      if (lance.age < 0.42) {
+        const wakeAlpha = (1 - lance.age / 0.42) * 0.72 * shatterFade;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.45)';
+        ctx.fillRect(Math.round(lance.x - 10), Math.round(lance.startY), 20, Math.max(8, Math.round(lance.y - lance.startY + 46)));
+        ctx.fillStyle = 'rgba(253, 224, 71, 0.85)';
+        ctx.globalAlpha = wakeAlpha;
+        ctx.fillRect(Math.round(lance.x - 3), Math.round(lance.startY), 6, Math.max(8, Math.round(lance.y - lance.startY + 46)));
+        ctx.restore();
+      }
+
+      const angleRad = !lance.impacted
+        ? Math.atan2(lance.pinY - lance.startY, lance.targetX - lance.startX) - Math.PI * 0.5
+        : 0;
+      const scalePulse = lance.shatterAge !== undefined ? 1 + lance.shatterAge * 1.2 : 1.0;
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        6,
+        col,
+        lance.x,
+        lance.y,
+        Math.round(212 * scalePulse),
+        Math.round(236 * scalePulse),
+        0.95 * shatterFade,
+        lance.index % 2 === 1,
+        renderer,
+        lance.index % 2 === 0 ? 'gold' : 'crimson',
+        angleRad
+      );
+    }
+  }
+
+  drawRagnarokPillarsLayer(ctx, vfxSheet, renderer, inFrontPass) {
+    if (!this.ragnarokPillars || this.ragnarokPillars.length === 0 || !vfxSheet?.complete) return;
+    for (const p of this.ragnarokPillars) {
+      if (Boolean(p.inFront) !== inFrontPass) continue;
+      const u = Math.min(1, Math.max(0, p.age / p.maxLife));
+      const col = Math.min(29, Math.floor(u * 30));
+      const fade = u > 0.78 ? (1 - u) / 0.22 : 1.0;
+      // Row 7 floorY is at logical y = +37 (out of [-52, +52]), so anchor center at groundY - h * (37/104)
+      const anchorY = p.groundY - p.h * (37 / 104);
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        7,
+        col,
+        p.x,
+        anchorY,
+        p.w,
+        p.h,
+        fade * 0.96,
+        false,
+        renderer,
+        p.glowColor
+      );
+    }
+  }
+
   drawForegroundOverlay(ctx, renderer = null) {
     const sprites = PixelForge.initAssets().valkyrie;
     const vfxSheet = sprites?.vfx;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
+
+    // 0. Supreme Ultimate Row 5 Bifrost Einherjar Target Seal (2.5D floor mandala beneath enemy + sky mandala behind Freyja)
+    if (this.ragnarokSeal && vfxSheet?.complete) {
+      const s = this.ragnarokSeal;
+      const col = Math.floor(s.age * 30) % 30;
+      const deploy = Math.min(1, s.age / 0.22);
+      const sealAlpha = s.shattered ? Math.max(0, 1 - (this.stateTimer - 3.10) / 0.35) : 0.94 * deploy;
+
+      if (sealAlpha > 0.02) {
+        const cell = 208;
+        const sx = col * cell;
+        const sy = 5 * cell;
+        const sealW = Math.round(330 * (0.55 + 0.45 * deploy));
+        const sealH = Math.round(330 * (0.55 + 0.45 * deploy));
+
+        ctx.save();
+        ctx.translate(Math.round(s.x), Math.round(s.y));
+        ctx.scale(1, 0.34); // Crisp 2.5D arena floor perspective squash
+        if (renderer?.glowCrimson) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = sealAlpha * 0.42;
+          ctx.drawImage(renderer.glowCrimson, -sealW * 0.6, -sealH * 0.6, sealW * 1.2, sealH * 1.2);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = sealAlpha;
+        ctx.drawImage(vfxSheet, sx, sy, cell, cell, -sealW * 0.5, -sealH * 0.5, sealW, sealH);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = sealAlpha * 0.55;
+        ctx.drawImage(vfxSheet, sx, sy, cell, cell, -sealW * 0.5, -sealH * 0.5, sealW, sealH);
+        ctx.restore();
+      }
+
+      // Upright Einherjar Sovereign Mandala behind airborne Freyja in the heavens
+      if (s.skyAlpha > 0.03 && this.y < this.groundY - 40) {
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          5,
+          (col + 15) % 30,
+          this.x,
+          this.y - 102,
+          236,
+          236,
+          s.skyAlpha * 0.84,
+          false,
+          renderer,
+          'gold'
+        );
+      }
+    }
+
+    // Back-half Row 6 Einherjar Sky-Lances & Back-flank Row 7 Ragnarok Dragon-Pillars
+    this.drawRagnarokLancesLayer(ctx, vfxSheet, renderer, false);
+    this.drawRagnarokPillarsLayer(ctx, vfxSheet, renderer, false);
 
     // 1. Colossal Bahamut / Valhalla Sovereign Crest (`Row 3` of `valkyrie_vfx.png`) behind Freyja
     if (this.bahamutAvatar && vfxSheet?.complete) {
@@ -1510,7 +2248,7 @@ export class Valkyrie extends Fighter {
       );
     }
 
-    // 2. Crisp Un-Rotated Crimson-Gold Valkyrie Afterimages (`CROUCH`, `JUMP`, `DASH`, `SKILL`, `ULTIMATE`)
+    // 2. Crisp Un-Rotated Crimson-Gold Valkyrie Afterimages (`CROUCH`, `JUMP`, `DASH`, `SKILL`, `ULTIMATE`, `TRUE_ULTIMATE`)
     if (this.afterimages.length > 0 && sprites?.sheet?.complete) {
       for (const img of this.afterimages) {
         const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.50);
@@ -1562,9 +2300,63 @@ export class Valkyrie extends Fighter {
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
 
-    // 2. Foreground 30fps `valkyrie_vfx.png` cell bursts
+    // 2. Foreground 30fps `valkyrie_vfx.png` cell bursts + Supreme Ultimate front lances/beam/pillars
     const sprites = PixelForge.initAssets().valkyrie;
     const vfxSheet = sprites?.vfx;
+
+    // Crimson-Gold Gungnir Ragnarok Dive Spear-Beam (`2.80s..3.34s`, crisp straight polygon layers)
+    if (this.ragnarokDiveBeam) {
+      const b = this.ragnarokDiveBeam;
+      const u = Math.min(1, b.age / b.maxLife);
+      const fade = u > 0.55 ? (1 - u) / 0.45 : 1.0;
+      const dx = b.headX - b.x0;
+      const dy = b.headY - b.y0;
+      const len = Math.hypot(dx, dy);
+      if (fade > 0.02 && len > 8) {
+        const nx = -dy / len;
+        const ny = dx / len;
+        const drawBeamBand = (halfW, color, alpha) => {
+          ctx.fillStyle = color;
+          ctx.globalAlpha = alpha;
+          ctx.beginPath();
+          ctx.moveTo(Math.round(b.x0 + nx * halfW * 0.55), Math.round(b.y0 + ny * halfW * 0.55));
+          ctx.lineTo(Math.round(b.headX + nx * halfW), Math.round(b.headY + ny * halfW));
+          ctx.lineTo(Math.round(b.headX - nx * halfW), Math.round(b.headY - ny * halfW));
+          ctx.lineTo(Math.round(b.x0 - nx * halfW * 0.55), Math.round(b.y0 - ny * halfW * 0.55));
+          ctx.closePath();
+          ctx.fill();
+        };
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        drawBeamBand(28 * fade, '#e11d48', 0.36 * fade);
+        drawBeamBand(15 * fade, '#fbbf24', 0.68 * fade);
+        drawBeamBand(6 * fade, '#ffffff', 0.95 * fade);
+        ctx.restore();
+
+        if (vfxSheet?.complete && b.age < 0.32) {
+          const diveAng = Math.atan2(dy, dx) - Math.PI * 0.5;
+          this.drawBloomedVfxCell(
+            ctx,
+            vfxSheet,
+            6,
+            Math.floor(b.age * 30) % 30,
+            b.headX,
+            b.headY,
+            232,
+            256,
+            0.94 * fade,
+            false,
+            renderer,
+            'gold',
+            diveAng
+          );
+        }
+      }
+    }
+
+    this.drawRagnarokLancesLayer(ctx, vfxSheet, renderer, true);
+    this.drawRagnarokPillarsLayer(ctx, vfxSheet, renderer, true);
+
     if (this.activeVfxAnims.length > 0 && vfxSheet?.complete) {
       for (const v of this.activeVfxAnims) {
         if (!v.inFront) continue;

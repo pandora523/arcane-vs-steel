@@ -4,8 +4,8 @@
  * Powered natively by `src/engine/ArcaneShaderFX.js` + `src/engine/shaders/valkyrieShaders.js`.
  *
  * Outputs:
- *   1. `assets/sprites/valkyrie_vfx.png` (6240x1040, 5 rows x 30 cols @ 208x208, 0/150 border clips)
- *   2. `<artifactDir>/debug_valkyrie_30fps_vfx.png` (5x30 contact sheet for visual verification)
+ *   1. `assets/sprites/valkyrie_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208, 0/240 border clips)
+ *   2. `<artifactDir>/debug_valkyrie_30fps_vfx.png` (8x30 contact sheet for visual verification)
  */
 
 import fs from 'node:fs';
@@ -153,7 +153,7 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
 }
 
 function bakeVfxSheet() {
-  const ROWS = 5;
+  const ROWS = 8;
   const COLS = 30;
   const LOGICAL = 104;
   const CELL = 208;
@@ -227,6 +227,39 @@ function bakeVfxSheet() {
           cfg: { x: 34, y: 52, radius: 34, palette: VALKYRIE_CRIMSON_PALETTE, seed: 101 }
         }
       ]
+    },
+    {
+      name: 'Row 5: Bifrost Einherjar Target Seal (F00..F29)',
+      windowSec: 1.00,
+      layers: [
+        {
+          def: VALKYRIE_EFFECT_REGISTRY.bifrostEinherjarSealCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: VALKYRIE_CRIMSON_PALETTE, seed: 109 }
+        }
+      ]
+    },
+    {
+      name: 'Row 6: Colossal Einherjar Sky-Lance (F00..F29)',
+      windowSec: 1.00,
+      layers: [
+        {
+          def: VALKYRIE_EFFECT_REGISTRY.einherjarSkyLanceCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: VALKYRIE_CRIMSON_PALETTE, seed: 113 }
+        }
+      ]
+    },
+    {
+      name: 'Row 7: Gungnir Ragnarok Dragon-Pillar (F00..F29)',
+      windowSec: 1.00,
+      layers: [
+        {
+          def: VALKYRIE_EFFECT_REGISTRY.gungnirRagnarokPillarCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: VALKYRIE_CRIMSON_PALETTE, seed: 127 }
+        }
+      ]
     }
   ];
 
@@ -292,12 +325,16 @@ function bakeVfxSheet() {
 
   const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'valkyrie_vfx.png');
   fs.writeFileSync(outVfxPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  console.log(`[valkyrie-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/150`);
+  console.log(`[valkyrie-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/240`);
 
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
   const outDbgPath = path.join(ARTIFACT_DIR, 'debug_valkyrie_30fps_vfx.png');
   fs.writeFileSync(outDbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
   console.log(`[valkyrie-vfx] Wrote contact sheet -> ${outDbgPath}`);
+
+  if (borderClips > 0) {
+    process.exitCode = 1;
+  }
 }
 
 bakeVfxSheet();

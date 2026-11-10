@@ -4,7 +4,7 @@
  *
  * Powers both:
  *   1. Live 120Hz `ArcaneShaderFX` (`back` + `front` 2.5D depth wraps around Malakor & opponents)
- *   2. Offline 30fps `assets/sprites/reaper_vfx.png` (`6240x1040`, 5 rows x 30 cols @ 208x208, 0/150 border clips)
+ *   2. Offline 30fps `assets/sprites/reaper_vfx.png` (`6240x1664`, 8 rows x 30 cols @ 208x208, 0/240 border clips)
  */
 
 import {
@@ -1425,6 +1425,590 @@ export const abyssalReapNovaCell = {
   }
 };
 
+// ============================================================================
+// 6. LIVE 2.5D MEMENTO MORI: TWIN GATES OF THE NECROPOLIS (`mementoMoriNecropolisGates`)
+// ============================================================================
+/**
+ * Shared HD-2D renderer: Twin Gothic Obsidian-and-Bone Gates of the Necropolis anchored at `baseY`
+ * with a curved 2.5D ossuary threshold (`botCurve = baseY + sqrt(1 - normX^2) * 3.8 * scale`),
+ * fluted obsidian pillars, pointed horned-skull archway, swirling violet-crimson underworld soul-mist,
+ * and twin barred wrought-iron doors swinging open in 2.5D perspective (`openU` in `0..1`).
+ */
+function drawNecropolisGates25D(pen, cx, baseY, scale, openU, progress, env, abyss, blood, bone, rng) {
+  if (env <= 0.02) return;
+  const DARK_OUTLINE = '#090314';
+  const halfW = 32.5 * scale;
+  const pillarOff = 24.0 * scale;
+  const pillarHalfW = 4.8 * scale;
+  const apertureHalfW = pillarOff - pillarHalfW; // 19.2 * scale
+  const archSpringY = baseY - 43.0 * scale;
+  const archApexY = baseY - 64.0 * scale;
+
+  // 1. 2.5D Underworld Threshold Floor Ring at baseY
+  drawTiltedOrbitBand(
+    pen,
+    cx,
+    baseY,
+    halfW * 0.98,
+    0.16,
+    1.7,
+    0.92 * env,
+    [abyss[1], abyss[5], blood[5], PURE_WHITE],
+    null,
+    openU > 0.25 && progress < 0.45
+  );
+
+  // 2. Swirling Violet-Crimson Underworld Soul-Mist Vortex inside the Gothic Portal Aperture
+  const mistAlpha = (0.35 + 0.65 * openU) * env;
+  pen.shadeBox(
+    cx - apertureHalfW - 1,
+    archApexY + 3 * scale,
+    cx + apertureHalfW + 1,
+    baseY + 2 * scale,
+    (lx, ly, out) => {
+      const dx = lx - cx;
+      const adx = Math.abs(dx);
+      if (adx > apertureHalfW) return 0;
+
+      // Pointed Gothic arch roof boundary inside aperture
+      let roofY = archSpringY;
+      if (ly < archSpringY) {
+        const archU = 1 - adx / Math.max(1, apertureHalfW);
+        roofY = archSpringY - Math.pow(clamp01(archU), 0.78) * (archSpringY - (archApexY + 5.5 * scale));
+        if (ly < roofY) return 0;
+      }
+      if (ly > baseY) return 0;
+
+      const n1 = fbmNoise2D(lx * 0.13, ly * 0.13 - progress * 5.2, 607, 2);
+      const swirlAngle = Math.atan2((ly - (baseY - 26 * scale)) * 0.85, dx);
+      const vortexR = Math.hypot(dx / Math.max(1, apertureHalfW), (ly - (baseY - 26 * scale)) / (28 * scale));
+      const spiral = Math.sin(swirlAngle * 3 - vortexR * 5.5 + progress * Math.PI * 6) * 0.5 + 0.5;
+      const intensity = clamp01((1 - vortexR * 0.68) * 0.72 + n1 * 0.34 + spiral * 0.28 * openU);
+
+      if (intensity > 0.82 && openU > 0.2) {
+        out.color = PURE_WHITE;
+      } else if (intensity > 0.64) {
+        out.color = spiral > 0.52 ? abyss[6] : blood[5];
+      } else if (intensity > 0.44) {
+        out.color = abyss[4];
+      } else {
+        out.color = abyss[1];
+      }
+      out.alpha = mistAlpha * 0.95;
+      if (intensity > 0.6) {
+        out.glowColor = spiral > 0.5 ? abyss[5] : blood[5];
+        out.glowStrength = 0.36 * mistAlpha;
+      }
+      return out.color;
+    }
+  );
+
+  // Floating spectral wraith micro-skulls rising inside the open portal mist
+  if (openU > 0.18) {
+    for (let s = 0; s < 3; s++) {
+      const su = (progress * 1.6 + s * 0.33) % 1;
+      const sx = cx + Math.sin(su * Math.PI * 2 + s * 2.1) * (9.5 * scale * openU);
+      const sy = baseY - 6 * scale - su * 38 * scale;
+      drawPixelSkullOrb(
+        pen,
+        sx,
+        sy,
+        2.3 * scale,
+        s % 2 === 0 ? abyss[6] : bone[6],
+        PURE_WHITE,
+        Math.sin(su * Math.PI) * openU * env
+      );
+    }
+  }
+
+  // 3. Twin Wrought-Iron & Bone Barred Portal Doors Swinging Open in 2.5D Perspective
+  const leafClosedW = apertureHalfW - 0.4 * scale;
+  const leafProjW = leafClosedW * (1 - openU * 0.72);
+  const perspTilt = openU * 4.4 * scale;
+
+  for (const side of [-1, 1]) {
+    const hingeX = cx + side * apertureHalfW;
+    const freeX = hingeX - side * leafProjW;
+    const xMin = Math.min(hingeX, freeX);
+    const xMax = Math.max(hingeX, freeX);
+    const spanX = Math.max(1.2, xMax - xMin);
+
+    pen.shadeBox(
+      xMin - 1,
+      archSpringY - 12 * scale,
+      xMax + 1,
+      baseY + 2 * scale,
+      (lx, ly, out) => {
+        if (lx < xMin || lx > xMax) return 0;
+        const leafU = clamp01(Math.abs(lx - hingeX) / spanX); // 0 at pillar hinge -> 1 at swinging edge
+        const topDoorY =
+          archSpringY -
+          Math.pow(leafU, 0.85) * 9.5 * scale -
+          leafU * perspTilt;
+        const botDoorY = baseY - 1.5 * scale - leafU * perspTilt * 0.55;
+        if (ly < topDoorY || ly > botDoorY) return 0;
+
+        // Outer wrought-iron door frame & crossbeams
+        const onOuterEdge =
+          Math.abs(lx - freeX) <= 1.2 * scale ||
+          Math.abs(ly - topDoorY) <= 1.3 * scale ||
+          Math.abs(ly - botDoorY) <= 1.3 * scale;
+        const midBeam1 = Math.abs(ly - (botDoorY - 14 * scale)) <= 1.25 * scale;
+        const midBeam2 = Math.abs(ly - (botDoorY - 29 * scale)) <= 1.25 * scale;
+        // 3 vertical iron-and-bone spear bars per door leaf
+        const barPhase = (leafU * 3.5) % 1;
+        const onBar = barPhase > 0.34 && barPhase < 0.68;
+
+        if (!onOuterEdge && !midBeam1 && !midBeam2 && !onBar) return 0;
+
+        if (Math.abs(lx - freeX) <= 0.85 * scale || Math.abs(ly - topDoorY) <= 0.85 * scale) {
+          out.color = DARK_OUTLINE;
+          out.alpha = 0.98 * env;
+          return out.color;
+        }
+        if (midBeam1 || midBeam2) {
+          out.color = leafU > 0.78 ? blood[5] : bone[4];
+          out.alpha = 0.96 * env;
+          return out.color;
+        }
+        out.color = barPhase < 0.5 ? bone[5] : abyss[1];
+        out.alpha = 0.96 * env;
+        return out.color;
+      }
+    );
+
+    // Glowing lock-ring / skull clasp on each swinging door edge
+    const claspY = baseY - 21 * scale - perspTilt * 0.8;
+    drawPixelSkullOrb(pen, freeX, claspY, 2.2 * scale, bone[6], blood[5], env * 0.96);
+  }
+
+  // 4. Twin Fluted Obsidian-and-Bone Gothic Pillars + Curved Ossuary Threshold + Pointed Archway
+  pen.shadeBox(
+    cx - halfW - 2,
+    archApexY - 4 * scale,
+    cx + halfW + 2,
+    baseY + 4.5 * scale,
+    (lx, ly, out) => {
+      const dx = lx - cx;
+      const adx = Math.abs(dx);
+      if (adx > halfW) return 0;
+
+      // Curved 2.5D ossuary stone threshold at baseY (NEVER a flat horizontal cut!)
+      const normX = dx / Math.max(1e-3, halfW);
+      const botCurve = baseY + Math.sqrt(Math.max(0, 1 - normX * normX)) * 3.8 * scale;
+      if (ly > botCurve) return 0;
+
+      if (ly >= baseY - 3.2 * scale) {
+        if (ly >= botCurve - 1.1 * scale || adx >= halfW - 1.1 * scale) {
+          out.color = DARK_OUTLINE;
+          out.alpha = 0.98 * env;
+          return out.color;
+        }
+        const isStepRune = Math.abs(ly - (baseY - 1.4 * scale)) < 0.9 * scale && Math.floor(adx) % 4 !== 0;
+        out.color = isStepRune ? abyss[6] : bone[3];
+        out.alpha = 0.98 * env;
+        return out.color;
+      }
+
+      // Twin Fluted Obsidian-Bone Pillars (centered at ±pillarOff)
+      const pDist = Math.abs(adx - pillarOff);
+      const pinnacleTopY = archSpringY - 14.5 * scale;
+      if (ly >= pinnacleTopY && pDist <= pillarHalfW + 0.8 * scale) {
+        // Tapered Gothic spire pinnacle above archSpringY
+        let curPW = pillarHalfW;
+        if (ly < archSpringY) {
+          const pinU = clamp01((archSpringY - ly) / (14.5 * scale));
+          curPW = pillarHalfW * (1 - pinU * 0.85);
+        }
+        if (pDist <= curPW) {
+          if (pDist >= curPW - 1.05 * scale || ly <= pinnacleTopY + 1.1 * scale) {
+            out.color = DARK_OUTLINE;
+            out.alpha = 0.98 * env;
+            return out.color;
+          }
+          const isCapital = Math.abs(ly - archSpringY) <= 2.4 * scale || Math.abs(ly - (baseY - 5.5 * scale)) <= 2.0 * scale;
+          const isRuneSlot =
+            ly > archSpringY + 4 * scale &&
+            ly < baseY - 8 * scale &&
+            pDist < 1.15 * scale &&
+            Math.floor(Math.abs(ly)) % 5 !== 0;
+          if (isRuneSlot) {
+            out.color = pDist < 0.55 * scale ? PURE_WHITE : blood[5];
+            out.alpha = env;
+            out.glowColor = blood[5];
+            out.glowStrength = 0.42 * env;
+            return out.color;
+          }
+          if (isCapital) {
+            out.color = bone[5];
+            out.alpha = 0.98 * env;
+            return out.color;
+          }
+          out.color = adx < pillarOff ? bone[4] : abyss[1];
+          out.alpha = 0.98 * env;
+          return out.color;
+        }
+      }
+
+      // Pointed Gothic Underworld Archway spanning between the Twin Pillars
+      if (ly <= archSpringY + 2.0 * scale && adx <= pillarOff + pillarHalfW * 0.6) {
+        const archSpan = pillarOff + pillarHalfW * 0.4;
+        const archU = clamp01(1 - adx / Math.max(1, archSpan));
+        const outerArchY = archSpringY - Math.pow(archU, 0.78) * (archSpringY - archApexY);
+        const innerArchY = outerArchY + 6.2 * scale;
+        if (ly >= outerArchY && ly <= innerArchY) {
+          if (ly <= outerArchY + 1.1 * scale || ly >= innerArchY - 1.1 * scale) {
+            out.color = DARK_OUTLINE;
+            out.alpha = 0.98 * env;
+            return out.color;
+          }
+          const archMid = Math.abs(ly - (outerArchY + 3.1 * scale)) < 1.0 * scale;
+          out.color = archMid ? (Math.floor(adx) % 3 === 0 ? blood[5] : abyss[6]) : bone[4];
+          out.alpha = 0.98 * env;
+          return out.color;
+        }
+      }
+
+      return 0;
+    }
+  );
+
+  // 5. Pillar Skull Capitals + Horned Sovereign Skull Keystone at the Arch Apex + Lightning Arc
+  for (const side of [-1, 1]) {
+    drawPixelSkullOrb(
+      pen,
+      cx + side * pillarOff,
+      archSpringY - 0.5 * scale,
+      3.1 * scale,
+      bone[6],
+      blood[5],
+      env
+    );
+  }
+  const keyY = archApexY + 3.2 * scale;
+  drawPixelSkullOrb(pen, cx, keyY, 4.4 * scale, bone[6], PURE_WHITE, env);
+  pen.line(cx - 3.5 * scale, keyY - 2 * scale, cx - 9.5 * scale, keyY - 6.5 * scale, bone[5], 0.96 * env);
+  pen.line(cx + 3.5 * scale, keyY - 2 * scale, cx + 9.5 * scale, keyY - 6.5 * scale, bone[5], 0.96 * env);
+
+  if (openU > 0.3 && rng) {
+    const bolt = buildLightningChain(
+      rng,
+      cx - apertureHalfW * 0.85,
+      archSpringY + 8 * scale,
+      cx + apertureHalfW * 0.85,
+      archSpringY + 12 * scale,
+      0.14,
+      3
+    );
+    pen.polyline(bolt, openU > 0.7 ? PURE_WHITE : abyss[6], 0.88 * env * openU);
+  }
+}
+
+export const mementoMoriNecropolisGates = {
+  duration: 3.6,
+  loop: false,
+  defaults: {
+    palette: ABYSSAL_VIOLET_PALETTE,
+    seed: 173,
+    customDuration: 3.6
+  },
+  create(cfg) {
+    const abyss = buildColorRamp(cfg.palette, 8);
+    const blood = buildColorRamp(BLOOD_MOON_CRIMSON_PALETTE, 8);
+    const bone = buildColorRamp(NECROPOLIS_BONE_PALETTE, 8);
+    const band4 = [blood[2], abyss[4], blood[5], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({
+      rng,
+      sparkRamp: [PURE_WHITE, abyss[6], blood[5], bone[6]],
+      floorY: 0
+    });
+    let t = 0;
+    let acc = 0;
+
+    return {
+      step(dt) {
+        t += dt;
+        acc += dt * 48;
+        const dur = cfg.customDuration || 3.6;
+        while (acc >= 1 && t < dur - 0.25) {
+          acc -= 1;
+          const a = rng.between(0, Math.PI * 2);
+          const r = rng.between(8, 64);
+          motes.emit(
+            rng.chance(0.5) ? 'glint' : 'spark',
+            Math.cos(a) * r,
+            Math.sin(a) * r * 0.24 - 2,
+            rng.between(-18, 18),
+            rng.between(-92, -28),
+            rng.between(0.24, 0.48),
+            rng.chance(0.5) ? blood[5] : abyss[6],
+            1.1,
+            -14
+          );
+        }
+        motes.step(dt);
+      },
+      renderBack(pen) {
+        const dur = cfg.customDuration || 3.6;
+        const u = clamp01(t / dur);
+        const pop = smoothStep(0, 0.14, u);
+        const openU = smoothStep(0.08, 0.36, u);
+        const fade = 1 - smoothStep(0.86, 1.0, u);
+        const env = pop * fade;
+        if (env <= 0.02) return;
+
+        // Colossal Twin Obsidian Gates of the Necropolis rising behind the Execution Altar
+        drawNecropolisGates25D(pen, 0, 2, 1.24 * pop, openU, u, env, abyss, blood, bone, rng);
+
+        // Back half of the 2.5D Execution Altar Pentagram Floor Seal
+        const rx = 62 * pop;
+        drawTiltedOrbitBand(pen, 0, 0, rx, 0.24, 1.8, 0.92 * env, band4, BACK_HALF, false);
+        drawThanatosPentagram(pen, 0, 0, rx * 0.84, 0.24, u * 4.8, blood[5], abyss[5], env * 0.9, BACK_HALF);
+      },
+      renderFront(pen) {
+        const dur = cfg.customDuration || 3.6;
+        const u = clamp01(t / dur);
+        const pop = smoothStep(0, 0.14, u);
+        const fade = 1 - smoothStep(0.86, 1.0, u);
+        const env = pop * fade;
+        if (env <= 0.02) return;
+
+        // Front half of the 2.5D Execution Altar Pentagram Floor Seal wrapping in front of the victim's boots
+        const rx = 62 * pop;
+        drawTiltedOrbitBand(pen, 0, 0, rx, 0.24, 2.0, 0.96 * env, band4, FRONT_HALF, u > 0.3);
+        drawThanatosPentagram(pen, 0, 0, rx * 0.84, 0.24, u * 4.8, blood[5], PURE_WHITE, env * 0.95, FRONT_HALF);
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// BAKED 30FPS `reaper_vfx.png` Rows 5..7 (`104x104` logical -> `208x208` crisp 2x)
+// Strictly bounded within `[-40, +40]` (`[-44, +44]` safe envelope) for 0/240 border clips!
+//   Row 5 (`y=1040`): Twin Obsidian Gates of the Necropolis (`necropolisObsidianGatesCell`)
+//   Row 6 (`y=1248`): Abyssal Grave-Chain Altar Bind (`graveChainAltarBindCell`)
+//   Row 7 (`y=1456`): Memento Mori Death-God Guillotine Crescent (`mementoMoriGuillotineCell`)
+// ============================================================================
+
+/**
+ * Row 5 (`sy = 1040`): Twin Obsidian Gates of the Necropolis (`F00..F29` portal swing-open).
+ * Anchored on `baseY = 33` (`this.groundY - Math.round(h * (33 / 104))`) with curved 2.5D ossuary
+ * threshold, fluted obsidian-bone pillars, horned skull archway, and barred underworld iron gates
+ * swinging open with swirling violet-crimson soul-mist!
+ */
+export const necropolisObsidianGatesCell = {
+  duration: 1.0,
+  loop: false,
+  defaults: { palette: ABYSSAL_VIOLET_PALETTE, seed: 563 },
+  create(cfg) {
+    const abyss = buildColorRamp(cfg.palette, 8);
+    const blood = buildColorRamp(BLOOD_MOON_CRIMSON_PALETTE, 8);
+    const bone = buildColorRamp(NECROPOLIS_BONE_PALETTE, 8);
+    const rng = new DeterministicRng(cfg.seed);
+
+    return {
+      step() {},
+      renderFront(pen, localT) {
+        const u = clamp01(localT);
+        const pop = 0.82 + 0.18 * smoothStep(0, 0.14, u);
+        const openU = smoothStep(0.06, 0.68, u);
+        const env = 0.92 + 0.08 * smoothStep(0, 0.12, u);
+        drawNecropolisGates25D(pen, 0, 33, pop * 0.96, openU, u, env, abyss, blood, bone, rng);
+      }
+    };
+  }
+};
+
+/**
+ * Row 6 (`sy = 1248`): Abyssal Grave-Chain Altar Bind (`F00..F29` cross-locked spectral chains
+ * & skull sigil pinning the victim).
+ */
+export const graveChainAltarBindCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: { palette: ABYSSAL_VIOLET_PALETTE, seed: 577 },
+  create(cfg) {
+    const abyss = buildColorRamp(cfg.palette, 8);
+    const blood = buildColorRamp(BLOOD_MOON_CRIMSON_PALETTE, 8);
+    const bone = buildColorRamp(NECROPOLIS_BONE_PALETTE, 8);
+    const band4 = [abyss[2], abyss[5], blood[5], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed);
+
+    return {
+      step() {},
+      renderFront(pen, localT) {
+        const u = clamp01(localT);
+        const ph = u * Math.PI * 2;
+        const snapU = smoothStep(0, 0.22, u);
+        const DARK_OUTLINE = '#090314';
+
+        // 1. Revolving Altar Shackle Rings & Pentagram Seal (strictly inside [-35, +35])
+        drawTiltedOrbitBand(pen, 0, 0, 30, 0.88, 1.5, 0.92, band4, null, u < 0.2);
+        drawTiltedOrbitBand(pen, 0, 0, 18, 0.88, 1.3, 0.88, band4, null, false);
+        drawThanatosPentagram(pen, 0, 0, 27, 0.88, ph * 0.5, blood[5], abyss[6], 0.9, null);
+
+        // 2. 4 Cross-Locked Spectral Iron-and-Bone Grave-Chains pinning the victim
+        const chainPairs = [
+          [-32, -28, 32, 28],
+          [-32, 28, 32, -28],
+          [-34, -7, 34, 7],
+          [-34, 7, 34, -7]
+        ];
+        for (let c = 0; c < chainPairs.length; c++) {
+          const [x0, y0, x1, y1] = chainPairs[c];
+          const reach = 0.45 + 0.55 * snapU;
+          const ex = x0 + (x1 - x0) * reach;
+          const ey = y0 + (y1 - y0) * reach;
+          const links = 13;
+          for (let i = 0; i <= links; i++) {
+            const lu = i / links;
+            const vib = Math.sin(lu * Math.PI * 3 + ph * 2 + c) * (1 - snapU * 0.7) * 1.4;
+            const lx = x0 + (ex - x0) * lu;
+            const ly = y0 + (ey - y0) * lu + vib;
+            pen.fillCircle(lx, ly, 2.3, DARK_OUTLINE, 0.96);
+            pen.fillCircle(
+              lx,
+              ly,
+              1.55,
+              i % 2 === 0 ? bone[6] : c % 2 === 0 ? abyss[6] : blood[5],
+              0.98
+            );
+            if (i % 3 === 0) {
+              pen.stipple(lx, ly, PURE_WHITE, 0.95);
+            }
+          }
+        }
+
+        // 3. 4 Articulated Skeletal Bone-Claws clamping inward onto the victim
+        const clawAngles = [0.68, Math.PI - 0.68, -0.68, -Math.PI + 0.68];
+        for (let k = 0; k < 4; k++) {
+          const ang = clawAngles[k];
+          const dist = 21 - snapU * 4.5;
+          const cx = -Math.cos(ang) * dist;
+          const cy = -Math.sin(ang) * dist;
+          drawSkeletalBoneClawHead(
+            pen,
+            cx,
+            cy,
+            ang,
+            0.35 + 0.65 * snapU,
+            bone,
+            k % 2 === 0 ? blood[5] : abyss[6],
+            0.96
+          );
+        }
+
+        // 4. Crackling Soul-Chain Lightning + Central Horned Execution Skull Lock Sigil
+        const bolt = buildLightningChain(rng, -24, -18, 24, 18, 0.13, 3);
+        pen.polyline(bolt, PURE_WHITE, 0.88);
+        drawPixelSkullOrb(pen, 0, 0, 7.2, bone[6], blood[5], 1.0);
+        pen.line(-5.5, -3.5, -12.5, -11.5, bone[5], 0.96);
+        pen.line(5.5, -3.5, 12.5, -11.5, bone[5], 0.96);
+        drawStarburstFlare(pen, 0, 0, 11.5, 0.94, [abyss[4], blood[5], abyss[6], PURE_WHITE]);
+      }
+    };
+  }
+};
+
+/**
+ * Row 7 (`sy = 1456`): Memento Mori Death-God Guillotine Crescent (`F00..F29` colossal
+ * crimson-violet execution scythe arc & skull burst).
+ */
+export const mementoMoriGuillotineCell = {
+  duration: 1.0,
+  loop: false,
+  defaults: { palette: BLOOD_MOON_CRIMSON_PALETTE, seed: 593 },
+  create(cfg) {
+    const blood = buildColorRamp(cfg.palette, 8);
+    const abyss = buildColorRamp(ABYSSAL_VIOLET_PALETTE, 8);
+    const bone = buildColorRamp(NECROPOLIS_BONE_PALETTE, 8);
+    const band4 = [blood[2], abyss[5], blood[5], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed);
+
+    return {
+      step() {},
+      renderFront(pen, localT) {
+        const u = clamp01(localT);
+        const pop = 0.68 + 0.32 * smoothStep(0, 0.16, u);
+        const fade = 1 - smoothStep(0.78, 1.0, u);
+        const env = (0.92 + 0.08 * smoothStep(0, 0.1, u)) * fade;
+        if (env <= 0.02) return;
+        const DARK_OUTLINE = '#090314';
+
+        // 1. Shockwave Halo & Crossed Execution Rift Lightning (strictly within [-37, +37])
+        drawTiltedOrbitBand(pen, 0, 0, 32 * pop, 1.0, 1.8, 0.92 * env, band4, null, u < 0.32);
+
+        // 2. Colossal Overhead Crimson-Violet Guillotine Crescent Cleave Arc
+        const headA = 0.92 + u * 0.58;
+        const tailA = -2.28;
+        drawMultiLayerCrescentArc(pen, {
+          cx: -2,
+          cy: 0,
+          radius: 30 * pop,
+          width: 12.5,
+          eccentricity: 0.94,
+          headAngle: headA,
+          tailAngle: tailA,
+          fade: env,
+          ramp: blood,
+          seed: cfg.seed || 593,
+          t: u,
+          flashHot: u < 0.42
+        });
+
+        drawMultiLayerCrescentArc(pen, {
+          cx: 1,
+          cy: 0,
+          radius: 26.5 * pop,
+          width: 10.0,
+          eccentricity: 0.94,
+          headAngle: -headA + 0.3,
+          tailAngle: -tailA + 0.3,
+          fade: env * 0.94,
+          ramp: abyss,
+          seed: (cfg.seed || 593) + 31,
+          t: u,
+          flashHot: u < 0.38
+        });
+
+        // 3. Serrated Obsidian-and-Bone Guillotine Dorsal Spine sweeping along the outer crescent
+        const spineSteps = 22;
+        for (let s = 0; s <= spineSteps; s++) {
+          const su = s / spineSteps;
+          const ang = mixScalar(tailA + 0.25, headA, su);
+          const sr = (31.5 + (s % 3 === 0 ? 1.8 : 0)) * pop;
+          const sx = -1 + Math.cos(ang) * sr;
+          const sy = Math.sin(ang) * sr * 0.94;
+          const thick = (1 - Math.abs(su - 0.55) * 0.7) * 2.4 * pop + 0.7;
+          pen.fillCircle(sx, sy, thick + 0.8, DARK_OUTLINE, 0.96 * env);
+          pen.fillCircle(sx, sy, thick, s % 2 === 0 ? bone[5] : blood[5], 0.98 * env);
+          if (s % 3 === 0) {
+            pen.stipple(sx, sy, PURE_WHITE, 0.96 * env);
+          }
+        }
+
+        // 4. Crowning Horned Death-God Skull & Scissoring Scythe Burst at Guillotine Center
+        drawHornedLichSkullGuillotine(pen, 0, 1, 0.72 * pop, u, env * 0.96, abyss, blood, bone);
+
+        // 5. Vertical Execution Rift Slash & White-Hot Starburst Nova
+        const vBolt = buildLightningChain(rng, 0, -34 * pop, 0, 34 * pop, 0.12, 4);
+        pen.polyline(vBolt, PURE_WHITE, 0.95 * env);
+        const xBolt = buildLightningChain(rng, -28 * pop, -26 * pop, 28 * pop, 26 * pop, 0.14, 3);
+        pen.polyline(xBolt, abyss[6], 0.9 * env);
+
+        drawStarburstFlare(pen, 0, -2, 16 * env, 0.98 * env, [
+          blood[4],
+          abyss[5],
+          blood[6],
+          PURE_WHITE
+        ]);
+      }
+    };
+  }
+};
+
 export const ABYSSAL_EFFECT_REGISTRY = {
   abyssalWraithMantle,
   wraithShadowMantle,
@@ -1433,9 +2017,14 @@ export const ABYSSAL_EFFECT_REGISTRY = {
   necroticGraveyardSigil,
   deathAvatarCathedral,
   necropolisBoneyardDomain,
+  mementoMoriNecropolisGates,
   soulScytheWaveCell,
   abyssalSkullWispCell,
   necroticBoneSpireCell,
   thanatosPentagramSealCell,
-  abyssalReapNovaCell
+  abyssalReapNovaCell,
+  necropolisObsidianGatesCell,
+  graveChainAltarBindCell,
+  mementoMoriGuillotineCell
 };
+

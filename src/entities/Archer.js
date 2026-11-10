@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps62';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps62';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps62';
+import { Fighter } from './Fighter.js?v=30fps63';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps63';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps63';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps62';
+} from '../engine/shaders/sylvanShaders.js?v=30fps63';
 
 /**
  * Sylvara (`archer`) — Elven Tempest Bowmaster & Astral Star-Ranger.
@@ -30,7 +30,10 @@ export class Archer extends Fighter {
     this.deathSfx = 'death_archer';
     this.skillMaxCooldown = 4.25;
     this.ultName = 'ASTRAL HURRICANE';
-    this.skillName = 'STARFALL VOLLEY';
+    this.skillName = 'VERDANT SNARE & SEEKERS';
+    this.hasTrueUltimate = true;
+    this.trueUltName = 'ARROW OF YGGDRASIL: SUPERNOVA PIERCE';
+    this.trueUltDuration = 4.35;
     this.windPhase = 0;
     this.shotCombo = 0;
     this.stepTimer = 0;
@@ -45,13 +48,20 @@ export class Archer extends Fighter {
     this.flipTargetX = this.x;
     this.flipAngle = 0;
 
+    this.activeVfxAnims = [];
+    this._trueUltStep = 0;
+    this._trueUltBeamTimer = 0;
+    this._trueUltMoteTimer = 0;
+    this._trueUltTargetX = this.x + this.facing * 320;
+    this.brambleSnareZones = [];
+
     // Native 120Hz dual-buffer HD-2D Sylvan shader & particle runtime (`back` + `front` 2.5D layers)
     this.fx = new ArcaneShaderFX(SYLVAN_EFFECT_REGISTRY, { pixelScale: 3, viewW: 440, viewH: 220 });
 
     if (typeof Image !== 'undefined') {
       const archerAssets = PixelForge.initAssets()?.archer;
-      if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps45')) {
-        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps62';
+      if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps62')) {
+        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps63';
       }
     }
 
@@ -71,12 +81,46 @@ export class Archer extends Fighter {
     if (newState !== 'DASH' && newState !== 'JUMP' && newState !== 'DODGE') {
       this.fx?.stopByKey('zephyrVaultSlipstream');
     }
-    if (newState !== 'ULTIMATE') {
+    if (newState !== 'ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
       this.fx?.stopByKey('astralWingPlume');
+    }
+    if (newState === 'TRUE_ULTIMATE') {
+      this._trueUltStep = 0;
+      this._trueUltBeamTimer = 0;
+      this._trueUltMoteTimer = 0;
+      this._trueUltTargetX = this.x + this.facing * 320;
+      this.trueUltFrameOverride = 124;
+    } else {
+      this._trueUltStep = 0;
+      this._trueUltBeamTimer = 0;
+      this._trueUltMoteTimer = 0;
+      this.trueUltFrameOverride = null;
     }
     this._drewBowVortex = false;
     this._skillLockSpawned = false;
     this._afterimageTimer = 0;
+  }
+
+  spawnVfxAnim(row, x, y, w = 208, h = 208, maxLife = 0.55, opts = {}) {
+    this.activeVfxAnims.push({
+      row,
+      x,
+      y,
+      w,
+      h,
+      age: 0,
+      maxLife,
+      vx: opts.vx || 0,
+      vy: opts.vy || 0,
+      flipX: opts.flipX !== undefined ? Boolean(opts.flipX) : this.facing < 0,
+      followOwner: Boolean(opts.followOwner),
+      offsetX: opts.offsetX || 0,
+      offsetY: opts.offsetY || 0,
+      inFront: opts.inFront !== undefined ? Boolean(opts.inFront) : row !== 2 && row !== 5,
+      isSeeker: Boolean(opts.isSeeker),
+      startFrame: opts.startFrame || 0,
+      endFrame: opts.endFrame !== undefined ? opts.endFrame : 29
+    });
   }
 
   spawnAfterimage(x, y, facing, row = 8, col = 14, maxLife = 0.24) {
@@ -468,8 +512,48 @@ export class Archer extends Fighter {
     this.windPhase += dt * 3.0;
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
+    if (this._trueUltBeamTimer > 0) {
+      this._trueUltBeamTimer = Math.max(0, this._trueUltBeamTimer - dt);
+    }
 
     this.fx.update(dt);
+
+    for (let i = this.activeVfxAnims.length - 1; i >= 0; i--) {
+      const v = this.activeVfxAnims[i];
+      v.age += dt;
+      if (v.followOwner) {
+        v.x = this.x + v.offsetX * this.facing;
+        v.y = this.y + v.offsetY;
+      } else {
+        if (v.isSeeker && enemy && !enemy.isDead) {
+          const tx = enemy.x;
+          const ty = enemy.y - 96;
+          const dx = tx - v.x;
+          const dy = ty - v.y;
+          const dist = Math.hypot(dx, dy) || 1;
+          const desiredVx = (dx / dist) * 680;
+          const desiredVy = (dy / dist) * 680;
+          v.vx += (desiredVx - v.vx) * Math.min(1, dt * 9.0);
+          v.vy += (desiredVy - v.vy) * Math.min(1, dt * 9.0);
+        }
+        v.x += (v.vx || 0) * dt;
+        v.y += (v.vy || 0) * dt;
+      }
+      if (v.age >= v.maxLife) {
+        this.activeVfxAnims.splice(i, 1);
+      }
+    }
+
+    for (let i = this.brambleSnareZones.length - 1; i >= 0; i--) {
+      const z = this.brambleSnareZones[i];
+      z.age += dt;
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - z.x) <= z.radius) {
+        enemy.vx *= 0.25;
+      }
+      if (z.age >= z.maxLife) {
+        this.brambleSnareZones.splice(i, 1);
+      }
+    }
 
     for (let i = this.afterimages.length - 1; i >= 0; i--) {
       this.afterimages[i].age += dt;
@@ -528,24 +612,40 @@ export class Archer extends Fighter {
       this.torsoAngle = -this.facing * 0.12 * (t / 0.48);
       if (t >= 0.08 && !this._drewBowVortex) {
         this._drewBowVortex = true;
-        const willBeTwin = (this.shotCombo + 1) % 3 === 0;
+        const willBeDragonPiercer = this.shotCombo % 3 === 2;
         this.fx.spawn('sylvanBowDrawVortex', this.x + this.facing * 54, this.y - 120, {
           follow: this,
           offsetX: 54,
           offsetY: -120,
-          palette: willBeTwin ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
+          palette: willBeDragonPiercer ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
           maxDuration: 0.38,
           light: 1.05,
-          extra: { radius: willBeTwin ? 24 : 20 }
+          extra: { radius: willBeDragonPiercer ? 24 : 20 }
         });
       }
     } else if (t < 0.74) {
-      // Row 2 Frame F19: High-velocity Tempest Piercer arrow release + 3D Mach shock-cones
+      // Row 2 Frame F19: High-velocity Tempest Piercer arrow release + 3-stage Ranged Combo + Close-Range Star-Blade Vault Shot
       if (!this.didActionFrame) {
         this.didActionFrame = true;
+        const comboStage = this.shotCombo % 3;
         this.shotCombo++;
         this.vx -= this.facing * 50;
         if (game?.audio) game.audio.play('arrow_shoot', this.x);
+
+        // Close-Range < 165px ("Star-Blade Vault Shot"): slash with twin bladed bow limbs + 95px backward slide + point-blank emerald arrow!
+        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 165) {
+          const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+          enemy.takeDamage(28, this, false, 140, -60);
+          this.spawnVfxAnim(0, enemy.x, (enemy.groundY || this.groundY) - 96, 196, 196, 0.36, {
+            flipX: this.facing < 0,
+            inFront: true
+          });
+          this.x = Math.max(80, Math.min(ww - 80, this.x - this.facing * 95));
+          this.vx = -this.facing * 185;
+          if (game?.vfx) {
+            game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'STAR-BLADE VAULT SHOT!', '#34d399');
+          }
+        }
 
         const spawnX = this.x + this.facing * 54;
         const spawnY = this.y - 120;
@@ -555,28 +655,57 @@ export class Archer extends Fighter {
         const dist = Math.hypot(dx, dy) || 1;
         const speed = 705;
         const shotAng = Math.atan2(dy, dx);
-        const isTwinShot = this.shotCombo % 3 === 0;
+        const isTwinShot = comboStage === 1;
+        const isDragonPiercer = comboStage === 2;
+        const baseDamage = 96;
+
+        // Stage 0 / Muzzle Flash (`archer_vfx.png` Row 0)
+        this.spawnVfxAnim(0, spawnX, spawnY, 188, 188, 0.34, {
+          flipX: this.facing < 0,
+          inFront: true
+        });
+
+        // Stage 2: Charged Dragon-Piercer (`isCrit = true`, `1.30x` damage, `spawnVfxAnim(3, ...)`)
+        if (isDragonPiercer) {
+          this.spawnVfxAnim(3, this.x + this.facing * 56, this.y - 96, 208, 208, 0.42, {
+            flipX: this.facing < 0,
+            inFront: true
+          });
+          if (game?.vfx) {
+            game.vfx.spawnDamageText(this.x, this.y - 148, 0, true, 'DRAGON-PIERCER!', '#fde047');
+          }
+        }
 
         if (game?.vfx) {
+          const isCrit = isDragonPiercer;
+          const mainDmg = isDragonPiercer
+            ? Math.round(baseDamage * 1.30)
+            : isTwinShot
+              ? 84
+              : baseDamage;
+
           game.vfx.spawnProjectile({
             x: spawnX,
             y: spawnY,
-            vx: (dx / dist) * speed,
-            vy: (dy / dist) * speed,
-            radius: 14,
+            vx: (dx / dist) * (isDragonPiercer ? speed * 1.08 : speed),
+            vy: (dy / dist) * (isDragonPiercer ? speed * 1.08 : speed) + (isTwinShot ? -16 : 0),
+            radius: isDragonPiercer ? 16 : 14,
             color: '#10b981',
             coreColor: '#fef08a',
             owner: this,
-            damage: isTwinShot ? 84 : 96,
+            damage: mainDmg,
+            isCrit,
+            pierce: isDragonPiercer,
             type: 'arrow'
           });
 
+          // Stage 1: Twin Split-Arc Volley (2 arrows angled slightly high/low)
           if (isTwinShot) {
             game.vfx.spawnProjectile({
               x: spawnX - this.facing * 18,
               y: spawnY - 12,
               vx: (dx / dist) * (speed * 0.94),
-              vy: (dy / dist) * (speed * 0.94) - 18,
+              vy: (dy / dist) * (speed * 0.94) + 18,
               radius: 13,
               color: '#34d399',
               coreColor: '#fef08a',
@@ -589,12 +718,12 @@ export class Archer extends Fighter {
 
         this.fx.spawn('sonicBowReleaseWave', spawnX, spawnY, {
           flip: false,
-          palette: isTwinShot ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
-          light: isTwinShot ? 1.25 : 1.12,
+          palette: isDragonPiercer || isTwinShot ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
+          light: isDragonPiercer ? 1.3 : isTwinShot ? 1.25 : 1.12,
           extra: {
             aimAngle: shotAng,
-            radius: isTwinShot ? 28 : 23,
-            twin: isTwinShot
+            radius: isDragonPiercer ? 30 : isTwinShot ? 28 : 23,
+            twin: isTwinShot || isDragonPiercer
           }
         });
       }
@@ -607,6 +736,8 @@ export class Archer extends Fighter {
     const t = this.stateTimer;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const centerTargetX = Math.max(120, Math.min(ww - 120, enemy ? enemy.x : this.x + this.facing * 320));
+    const targetX = enemy ? enemy.x : centerTargetX;
+    const groundY = enemy?.groundY || this.groundY;
 
     if (t < 0.36) {
       if (t >= 0.04 && !this._skillLockSpawned) {
@@ -625,6 +756,52 @@ export class Archer extends Fighter {
           light: 1.1,
           extra: { radius: 34, beaconH: 60 }
         });
+
+        // Plant Verdant Bramble-Star Snare (`archer_vfx.png` Row 2) at `enemy.x, enemy.groundY - 84`
+        this.spawnVfxAnim(2, targetX, groundY - 84, 220, 220, 1.35, {
+          flipX: false,
+          inFront: false
+        });
+        this.brambleSnareZones.push({
+          x: targetX,
+          groundY,
+          radius: 135,
+          age: 0,
+          maxLife: 1.35
+        });
+        if (enemy && !enemy.isDead) {
+          enemy.vx *= 0.25;
+        }
+
+        // Fire 2 extra curving emerald seeker arrows (`archer_vfx.png` Row 1)
+        const bowX = this.x + this.facing * 48;
+        const bowY = this.y - 120;
+        const dx = targetX - bowX;
+        const dy = (groundY - 96) - bowY;
+        const dist = Math.hypot(dx, dy) || 1;
+        for (const arcSign of [-1, 1]) {
+          this.spawnVfxAnim(1, bowX, bowY + arcSign * 14, 176, 176, 0.52, {
+            vx: (dx / dist) * 560,
+            vy: (dy / dist) * 560 + arcSign * 135,
+            flipX: this.facing < 0,
+            inFront: true,
+            isSeeker: true
+          });
+          if (game?.vfx) {
+            game.vfx.spawnProjectile({
+              x: bowX,
+              y: bowY + arcSign * 12,
+              vx: (dx / dist) * 650,
+              vy: (dy / dist) * 650 + arcSign * 45,
+              radius: 12,
+              color: '#10b981',
+              coreColor: '#fef08a',
+              owner: this,
+              damage: 24,
+              type: 'arrow'
+            });
+          }
+        }
       }
     } else if (t >= 0.36 && !this.didActionFrame) {
       // Row 3 Frame F11 (`t = 0.38s`): Release 3 Direct Fan-Spread Wind Arrows horizontally!
@@ -881,8 +1058,236 @@ export class Archer extends Fighter {
     }
   }
 
+  /**
+   * 3-Overdrive Supreme Ultimate (`state === 'TRUE_ULTIMATE'`, `4.35s`):
+   * "ARROW OF YGGDRASIL: SUPERNOVA PIERCE"
+   * - Never changes the stage background image.
+   * - Phase 1 (`0.00s .. 2.85s`): World-Tree Ascension (up to `64px` above `groundY`), Row 5 Yggdrasil Seal,
+   *   and continuous Row 6 Colossal Celestial Greatbow Muzzle charge (`280x280`) with zero damage ticks.
+   * - Phase 2 (`t >= 2.85s`): Instantaneous full-screen horizontal Row 7 Supernova Dragon-Arrow Pierce (`365` Crit + `18%` Max HP heal).
+   * - Phase 3 (`2.85s .. 4.35s`): Smooth descent back to `groundY` and return to `IDLE`.
+   */
+  updateTrueUltimate(dt, enemy, game) {
+    const t = this.stateTimer;
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+
+    this.isInvulnerable = true;
+    this.unstoppablePoise = true;
+    this.hurtTimer = 0;
+    this.isFlipVault = false;
+    this.isCrouching = false;
+    this.vx = 0;
+    this.vy = 0;
+
+    const targets = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+    const primaryTarget =
+      enemy && !enemy.isDead ? enemy : targets.find((foe) => foe && !foe.isDead && !foe.isBenched) || null;
+
+    if (t < 2.85 && primaryTarget) {
+      this._trueUltTargetX = Math.max(110, Math.min(ww - 110, primaryTarget.x));
+      if (Math.abs(primaryTarget.x - this.x) > 8) {
+        this.facing = primaryTarget.x >= this.x ? 1 : -1;
+      }
+    }
+
+    // Phase 1 (`0.00s .. 2.85s` — World-Tree Ascension & Constellation Bow Charge)
+    if (t < 2.85) {
+      const ascU = Math.min(1, t / 1.15);
+      this.y = this.groundY - 64 * Math.sin(ascU * (Math.PI * 0.5));
+      // Row 4 (`ULTIMATE` bow-draw pose frames `4..13` -> indices `124..133`)
+      this.trueUltFrameOverride = 120 + 4 + Math.min(9, Math.floor((t / 2.85) * 10));
+
+      if (t >= 0.04 && this._trueUltStep < 1) {
+        this._trueUltStep = 1;
+        if (game?.audio) {
+          game.audio.play('archer_ult', this.x);
+          game.audio.play('arrow_shoot', this.x);
+        }
+        game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#34d399');
+        if (game?.vfx) {
+          game.vfx.spawnDamageText(
+            this.x,
+            this.y - 164,
+            0,
+            true,
+            '★ ARROW OF YGGDRASIL! ★',
+            '#34d399'
+          );
+        }
+
+        // Spawn `archer_vfx.png` Row 5 (Yggdrasil World-Tree & Constellation Seal) beneath Sylvara & under target enemy
+        this.spawnVfxAnim(5, this.x, this.groundY - 72, 340, 220, 2.85, {
+          flipX: false,
+          inFront: false
+        });
+        this.spawnVfxAnim(5, this._trueUltTargetX, this.groundY - 72, 340, 220, 2.85, {
+          flipX: false,
+          inFront: false
+        });
+
+        this.fx.spawn('astralWingPlume', this.x - this.facing * 16, this.y - 124, {
+          follow: this,
+          offsetX: -16,
+          offsetY: -124,
+          flip: this.facing < 0,
+          palette: SYLVAN_STARLIGHT_PALETTE,
+          maxDuration: 3.9,
+          light: 1.3,
+          extra: { wingSpan: 34 }
+        });
+        this.fx.spawn('sylvanBowDrawVortex', this.x + this.facing * 38, this.y - 96, {
+          follow: this,
+          offsetX: 38,
+          offsetY: -96,
+          palette: SYLVAN_STARLIGHT_PALETTE,
+          maxDuration: 2.75,
+          light: 1.3,
+          extra: { radius: 28 }
+        });
+      }
+
+      // During `0.20s .. 2.80s`: converging emerald/gold star-motes toward the drawn Celestial Greatbow Muzzle (zero damage ticks!)
+      if (t >= 0.20 && t <= 2.80) {
+        this._trueUltMoteTimer += dt;
+        if (this._trueUltMoteTimer >= 0.08) {
+          this._trueUltMoteTimer = 0;
+          const muzzleX = this.x + this.facing * 38;
+          const muzzleY = this.y - 96;
+          if (game?.vfx?.spawnParticles) {
+            game.vfx.spawnParticles(muzzleX, muzzleY, 4, '#34d399');
+          } else if (game?.vfx?.spawnParticle) {
+            for (let i = 0; i < 4; i++) {
+              const ang = (Math.PI * 2 * i) / 4 + t * 5.0;
+              const rad = 76;
+              game.vfx.spawnParticle({
+                x: muzzleX + Math.cos(ang) * rad,
+                y: muzzleY + Math.sin(ang) * rad,
+                vx: -Math.cos(ang) * 190,
+                vy: -Math.sin(ang) * 190,
+                size: 5,
+                color: i % 2 === 0 ? '#34d399' : '#fef08a',
+                maxLife: 0.36
+              });
+            }
+          }
+        }
+      }
+      return;
+    }
+
+    // Phase 2 (`t >= 2.85s`, `_trueUltStep < 2` — Instant Full-Screen Supernova Dragon-Arrow Pierce)
+    if (this._trueUltStep < 2) {
+      this._trueUltStep = 2;
+      this._trueUltBeamTimer = 0.95;
+
+      game?.renderer?.triggerImpactFrame?.(0.11, this.x, this.y - 96, 'emerald');
+      if (game?.renderer && game.renderer.impactFrameTimer > 1.0) {
+        game.renderer.triggerImpactFrame(this.x, this.y - 96, 0.11, 'emerald');
+      }
+      game?.renderer?.shake?.(24, 0.65);
+      game?.renderer?.triggerShake?.(24, 0.65);
+      game?.renderer?.flash?.(0.28, '#ecfdf5');
+      game?.renderer?.triggerAberration?.(15);
+      game?.renderer?.triggerHitStop?.(0.09);
+
+      if (game?.audio) {
+        game.audio.play('archer_ult', this.x);
+        game.audio.play('solar_beam', this.x);
+        game.audio.play('arrow_hit', this.x);
+      }
+
+      // Heal Sylvara for 18% Max HP
+      this.heal(Math.round(this.maxHp * 0.18), 'WORLD-TREE GRACE');
+
+      const startX = this.x + this.facing * 42;
+      const startY = this.y - 96;
+      const endX = this.facing >= 0 ? ww + 120 : -120;
+      this.fx.spawn('astralHurricaneLance', startX, startY, {
+        flip: false,
+        palette: SYLVAN_STARLIGHT_PALETTE,
+        light: 1.4,
+        extra: {
+          dx: (endX - startX) / 3,
+          dy: 0,
+          width: 9.5
+        }
+      });
+
+      // Single instantaneous massive burst of 365 Crit damage to all active enemies in front of or near the beam!
+      let hitAny = false;
+      for (const tFoe of targets) {
+        if (tFoe && !tFoe.isDead && !tFoe.isBenched) {
+          const relX = (tFoe.x - this.x) * this.facing;
+          if (relX >= -110 || Math.abs(tFoe.x - this._trueUltTargetX) <= 260) {
+            tFoe.takeDamage(365, this, true, 320, -240);
+            hitAny = true;
+            this.spawnVfxAnim(3, tFoe.x, (tFoe.groundY || this.groundY) - 96, 236, 236, 0.48, {
+              flipX: this.facing < 0,
+              inFront: true
+            });
+            this.fx.spawn('sylvanArrowImpactBurst', tFoe.x, (tFoe.groundY || this.groundY) - 96, {
+              flip: false,
+              palette: SYLVAN_STARLIGHT_PALETTE,
+              light: 1.38,
+              extra: { aimAngle: this.facing === 1 ? 0 : Math.PI, isCrit: true }
+            });
+          }
+        }
+      }
+      if (!hitAny && primaryTarget && !primaryTarget.isDead) {
+        primaryTarget.takeDamage(365, this, true, 320, -240);
+      }
+    }
+
+    // Phase 3 (`2.85s .. 4.35s` — Smooth Descent & Recovery to IDLE)
+    const descU = Math.min(1, Math.max(0, (t - 2.85) / (this.trueUltDuration - 2.85)));
+    this.y = this.groundY - 64 * Math.cos(descU * (Math.PI * 0.5));
+    this.trueUltFrameOverride = 120 + Math.min(29, 18 + Math.floor(descU * 11));
+
+    if (t >= this.trueUltDuration) {
+      this.y = this.groundY;
+      this.vy = 0;
+      this.isInvulnerable = false;
+      this.unstoppablePoise = false;
+      this.trueUltFrameOverride = null;
+      this._trueUltBeamTimer = 0;
+      this.setState('IDLE');
+    }
+  }
+
+  drawBehind(ctx, _renderer = null) {
+    const vfxSheet = PixelForge.initAssets()?.archer?.vfx;
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (const v of this.activeVfxAnims) {
+      if (v.inFront) continue;
+      const u = Math.min(1, Math.max(0, v.age / Math.max(0.05, v.maxLife)));
+      const span = Math.max(1, (v.endFrame ?? 29) - (v.startFrame ?? 0) + 1);
+      const col = Math.min(29, (v.startFrame ?? 0) + Math.floor(u * span));
+      const sx = col * 208;
+      const sy = v.row * 208;
+      const alpha = u < 0.10 ? u / 0.10 : u > 0.80 ? (1 - u) / 0.20 : 1.0;
+
+      ctx.save();
+      ctx.translate(Math.round(v.x), Math.round(v.y));
+      if (v.flipX) ctx.scale(-1, 1);
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.94));
+      ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.42));
+      ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   drawForegroundOverlay(ctx, renderer = null) {
-    const sprites = PixelForge.initAssets().archer;
+    const sprites = PixelForge.initAssets()?.archer;
+
+    // 0. Background 30fps `archer_vfx.png` animations (Row 2 Bramble Snares & Row 5 Yggdrasil World-Tree Seals)
+    this.drawBehind(ctx, renderer);
 
     // 1. Crisp Emerald-Starlight Zephyr Afterimages (`JUMP` Vault & `DASH` Gale Stride)
     if (this.afterimages.length > 0 && sprites?.sheet?.complete) {
@@ -911,7 +1316,7 @@ export class Archer extends Fighter {
   }
 
   draw(ctx, isReflection = false, renderer = null) {
-    const sprites = PixelForge.initAssets().archer;
+    const sprites = PixelForge.initAssets()?.archer;
     if (!sprites) return;
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -930,6 +1335,92 @@ export class Archer extends Fighter {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.5;
       PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);
+    }
+
+    ctx.restore();
+
+    if (isReflection) return;
+
+    const vfxSheet = PixelForge.initAssets()?.archer?.vfx;
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Foreground 30fps `archer_vfx.png` animations (Row 0 Muzzle/Slash, Row 1 Seekers, Row 3 Dragon-Piercer)
+    for (const v of this.activeVfxAnims) {
+      if (!v.inFront) continue;
+      const u = Math.min(1, Math.max(0, v.age / Math.max(0.05, v.maxLife)));
+      const span = Math.max(1, (v.endFrame ?? 29) - (v.startFrame ?? 0) + 1);
+      const col = Math.min(29, (v.startFrame ?? 0) + Math.floor(u * span));
+      const sx = col * 208;
+      const sy = v.row * 208;
+      const alpha = u < 0.08 ? u / 0.08 : u > 0.78 ? (1 - u) / 0.22 : 1.0;
+
+      ctx.save();
+      ctx.translate(Math.round(v.x), Math.round(v.y));
+      if (v.flipX) ctx.scale(-1, 1);
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.96));
+      ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.45));
+      ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
+      ctx.restore();
+    }
+
+    // 2. Supreme Ultimate Phase 1 (`0.20s .. 2.80s`): Colossal Drawn Golden-Emerald Celestial Greatbow Muzzle (`Row 6`, 280x280)
+    if (this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 0.20 && this.stateTimer <= 2.80) {
+      const chargeU = Math.min(1, Math.max(0, (this.stateTimer - 0.20) / 2.60));
+      const col = Math.min(29, Math.floor(chargeU * 30));
+      const sx = col * 208;
+      const sy = 6 * 208;
+      const bowX = Math.round(this.x + this.facing * 38);
+      const bowY = Math.round(this.y - 96);
+
+      ctx.save();
+      ctx.translate(bowX, bowY);
+      ctx.scale(this.facing, 1);
+      ctx.globalAlpha = 0.96;
+      ctx.drawImage(vfxSheet, sx, sy, 208, 208, -140, -140, 280, 280);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.48;
+      ctx.drawImage(vfxSheet, sx, sy, 208, 208, -140, -140, 280, 280);
+      ctx.restore();
+    }
+
+    // 3. Supreme Ultimate Phase 2 (`this._trueUltBeamTimer > 0`): Full-Screen Horizontal Row 7 Supernova Dragon-Arrow Beam Segment tiled across 1200px arena!
+    if (this._trueUltBeamTimer > 0) {
+      const beamProg = Math.min(1, Math.max(0, 1 - this._trueUltBeamTimer / 0.95));
+      const col = Math.min(29, Math.floor(beamProg * 30));
+      const sx = col * 208;
+      const sy = 7 * 208;
+      const env = this._trueUltBeamTimer < 0.22 ? this._trueUltBeamTimer / 0.22 : 1.0;
+      const muzzleX = Math.round(this.x + this.facing * 38);
+      const beamY = Math.round(this.y - 96);
+      const segStep = 156;
+      const segCount = 9; // 9 * 156 = 1404px (> 1200px full arena width!)
+
+      ctx.save();
+      ctx.translate(muzzleX, beamY);
+      ctx.scale(this.facing, 1);
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = Math.max(0, Math.min(1, env * 0.98));
+      for (let i = 0; i < segCount; i++) {
+        const segX = i * segStep;
+        ctx.drawImage(vfxSheet, sx, sy, 208, 208, segX, -112, 208, 224);
+      }
+      ctx.drawImage(vfxSheet, sx, 6 * 208, 208, 208, -140, -140, 280, 280);
+
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.max(0, Math.min(1, env * 0.46));
+      for (let i = 0; i < segCount; i++) {
+        const segX = i * segStep;
+        ctx.drawImage(vfxSheet, sx, sy, 208, 208, segX, -120, 208, 240);
+      }
+      ctx.drawImage(vfxSheet, sx, 6 * 208, 208, 208, -140, -140, 280, 280);
+
+      ctx.restore();
     }
 
     ctx.restore();

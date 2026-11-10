@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 /**
- * First-Party 30fps VFX Sprite Sheet Builder for Glacia / Lyra (`icemage` / `IceMage.js`).
+ * First-Party 30fps 8-Row VFX Sprite Sheet Builder for Lyra (`icemage` / `IceMage.js`).
  * Powered natively by `src/engine/ArcaneShaderFX.js` + `src/engine/shaders/glacialShaders.js`.
  *
  * Outputs:
- *   1. `assets/sprites/icemage_vfx.png` (6240x1040, 5 rows x 30 cols @ 208x208, 0/150 border clips)
- *   2. `<artifactDir>/debug_icemage_30fps_vfx.png` (5x30 contact sheet for visual verification)
+ *   1. `assets/sprites/icemage_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208, 0/240 border clips)
+ *   2. `<artifactDir>/debug_icemage_30fps_vfx.png` (8x30 contact sheet for visual verification)
  */
 
 import fs from 'node:fs';
@@ -19,12 +19,12 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps62';
 
 import {
   GLACIAL_CRYO_PALETTE,
   GLACIAL_EFFECT_REGISTRY
-} from '../src/engine/shaders/glacialShaders.js?v=30fps55';
+} from '../src/engine/shaders/glacialShaders.js?v=30fps62';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -89,8 +89,8 @@ function enforceSafeCellMargin104(rgba, w = 104, h = 104) {
         rgba[o + 1] = 0;
         rgba[o + 2] = 0;
         rgba[o + 3] = 0;
-      } else if (distEdge < 7 && rgba[o + 3] > 0) {
-        const k = (distEdge - 1.5) / 5.5;
+      } else if (distEdge < 6 && rgba[o + 3] > 0) {
+        const k = (distEdge - 1.5) / 4.5;
         rgba[o + 3] = Math.round(rgba[o + 3] * k);
       }
     }
@@ -142,10 +142,11 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
 }
 
 function bakeVfxSheet() {
-  const ROWS = 5;
+  const ROWS = 8;
   const COLS = 30;
   const LOGICAL = 104;
   const CELL = 208;
+  const TOTAL_CELLS = ROWS * COLS;
   const sheetW = COLS * CELL;
   const sheetH = ROWS * CELL;
   const sheetRgba = new Uint8Array(sheetW * sheetH * 4);
@@ -163,7 +164,7 @@ function bakeVfxSheet() {
 
   const rowSpecs = [
     {
-      name: 'Row 0: Hexagonal Cryo-Prism Shard Bolt (F00..F29)',
+      name: 'Row 0: Cryo-Shard Comet Bolt (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -174,7 +175,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 1: Floating Hexagonal Snowflake-Prism Mirror (F00..F29)',
+      name: 'Row 1: Floating Hexagonal Cryo-Prism Mirror (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -185,7 +186,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 2: Faceted Cathedral Glacier Monolith (F00..F21) & Shatter (F22..F29)',
+      name: 'Row 2: Erupting Jagged Glacier Spire (F00..F21) & Shatter (F22..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -196,7 +197,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 3: 12-Pointed Borealis Snowflake Rose-Window Mandala Seal (F00..F29)',
+      name: 'Row 3: Borealis Aurora Crown Seal (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -207,11 +208,44 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 4: Absolute Zero Hoarfrost Shatter Starburst Nova (F00..F29)',
+      name: 'Row 4: Hoarfrost Starburst Nova (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
           def: GLACIAL_EFFECT_REGISTRY.hoarfrostShatterNovaCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: GLACIAL_CRYO_PALETTE }
+        }
+      ]
+    },
+    {
+      name: 'Row 5: Aurora Borealis Sovereign Snowflake Mandala (F00..F29)',
+      windowSec: 1.0,
+      layers: [
+        {
+          def: GLACIAL_EFFECT_REGISTRY.auroraSovereignMandalaCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: GLACIAL_CRYO_PALETTE }
+        }
+      ]
+    },
+    {
+      name: 'Row 6: Absolute Zero Crystalline Diamond-Coffin Monolith (F00..F29)',
+      windowSec: 1.0,
+      layers: [
+        {
+          def: GLACIAL_EFFECT_REGISTRY.diamondCoffinMonolithCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: GLACIAL_CRYO_PALETTE }
+        }
+      ]
+    },
+    {
+      name: 'Row 7: Diamond Dust Prismatic Starburst Shatter (F00..F29)',
+      windowSec: 1.0,
+      layers: [
+        {
+          def: GLACIAL_EFFECT_REGISTRY.diamondDustStarburstCell,
           warmup: 0,
           cfg: { x: 52, y: 52, palette: GLACIAL_CRYO_PALETTE }
         }
@@ -275,7 +309,9 @@ function bakeVfxSheet() {
 
   const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'icemage_vfx.png');
   fs.writeFileSync(outVfxPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  console.log(`[icemage-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/150`);
+  console.log(
+    `[icemage-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/${TOTAL_CELLS}`
+  );
   if (borderClips !== 0) {
     throw new Error(`Expected 0 borderClips on icemage_vfx.png, got ${borderClips}`);
   }

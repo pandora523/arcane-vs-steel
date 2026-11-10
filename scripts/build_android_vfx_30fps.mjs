@@ -1,12 +1,19 @@
 #!/usr/bin/env node
 /**
- * First-Party 30fps VFX Sprite Sheet & Thruster Strip Builder for VEX-09 (`android`).
+ * First-Party 8-Row x 30-Col 30fps VFX Sprite Sheet Builder for VEX-09 v2 (`android`).
  * Powered natively by `src/engine/ArcaneShaderFX.js` + `src/engine/shaders/cyberShaders.js`.
  *
  * Outputs:
- *   1. `assets/sprites/android_vfx.png` (6240x1040, 5 rows x 30 cols @ 208x208, 0/150 border clips)
- *   2. `<artifactDir>/debug_android_30fps_vfx.png` (5x30 contact sheet for visual verification)
- *   3. `<artifactDir>/scratch/android_thruster_strip.png` (48x48 x 30 wing-pylon thruster strip)
+ *   1. `assets/sprites/android_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208, 0/240 border clips)
+ *      - Row 0: HF Plasma Crescent Wave
+ *      - Row 1: Autonomous Fin-Funnel Drone Pod
+ *      - Row 2: EMP Gravity Tether Spire
+ *      - Row 3: Cyber Singularity Core
+ *      - Row 4: Hex-Glitch Cross-Slash Burst
+ *      - Row 5: Orbital Satellite Target-Lock Hex Reticle
+ *      - Row 6: Fin-Funnel All-Range Convergence Laser Node
+ *      - Row 7: Project GUNG-09 Orbital Satellite Buster Column
+ *   2. `/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088/debug_android_30fps_vfx.png`
  */
 
 import fs from 'node:fs';
@@ -20,19 +27,18 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps62';
 
 import {
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE,
   CYBER_EFFECT_REGISTRY
-} from '../src/engine/shaders/cyberShaders.js?v=30fps55';
+} from '../src/engine/shaders/cyberShaders.js?v=30fps62';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const ARTIFACT_DIR =
   '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088';
-const SCRATCH_DIR = path.join(ARTIFACT_DIR, 'scratch');
 
 // ============================================================================
 // Self-Contained Pure Node RGBA PNG Encoder (CRC32 + zlib deflate)
@@ -71,14 +77,14 @@ function encodeRgbaPng(width, height, rgba) {
   const raw = Buffer.alloc((stride + 1) * height);
   for (let y = 0; y < height; y++) {
     const rowOff = y * (stride + 1);
-    raw[rowOff] = 0; // filter = None
+    raw[rowOff] = 0;
     Buffer.from(rgba.buffer, rgba.byteOffset + y * stride, stride).copy(raw, rowOff + 1);
   }
   const ihdr = Buffer.alloc(13);
   ihdr.writeUInt32BE(width, 0);
   ihdr.writeUInt32BE(height, 4);
-  ihdr[8] = 8; // 8-bit depth
-  ihdr[9] = 6; // RGBA color type
+  ihdr[8] = 8;
+  ihdr[9] = 6;
   ihdr[10] = 0;
   ihdr[11] = 0;
   ihdr[12] = 0;
@@ -96,18 +102,18 @@ function encodeRgbaPng(width, height, rgba) {
 // Cell Post-Processing & Nearest-Neighbor Blit Helpers
 // ============================================================================
 function enforceSafeCellMargin104(rgba, w = 104, h = 104) {
-  // Smooth outer 6px edge fade + strict 2px transparent safety margin (4px at 208x208)
+  // Smooth outer 6px edge fade + strict 3px transparent safety margin (6px at 208x208 -> 0/240 clips)
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
       const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
       const o = (y * w + x) * 4;
-      if (distEdge < 2) {
+      if (distEdge < 3) {
         rgba[o] = 0;
         rgba[o + 1] = 0;
         rgba[o + 2] = 0;
         rgba[o + 3] = 0;
       } else if (distEdge < 7 && rgba[o + 3] > 0) {
-        const k = (distEdge - 1.5) / 5.5;
+        const k = (distEdge - 2.5) / 4.5;
         rgba[o + 3] = Math.round(rgba[o + 3] * k);
       }
     }
@@ -159,10 +165,10 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
 }
 
 // ============================================================================
-// Bake 5-Row x 30-Col 30fps VFX Sheet (`android_vfx.png`) + Contact Sheet
+// Bake 8-Row x 30-Col 30fps VFX Sheet (`android_vfx.png`, 6240x1664)
 // ============================================================================
 function bakeVfxSheet() {
-  const ROWS = 5;
+  const ROWS = 8;
   const COLS = 30;
   const LOGICAL = 104;
   const CELL = 208;
@@ -183,62 +189,95 @@ function bakeVfxSheet() {
 
   const rowSpecs = [
     {
-      name: 'Row 0: Chakram Vortex Disc',
-      windowSec: 0.50,
-      layers: [
-        {
-          def: CYBER_EFFECT_REGISTRY.chakramVortexDisc,
-          warmup: 0.25,
-          cfg: { x: 56, y: 52, radius: 15, blades: 8, palette: CYBER_NEON_PALETTE, seed: 11 }
-        }
-      ]
-    },
-    {
-      name: 'Row 1: Holo-Target Reticle',
-      windowSec: 0.66,
-      layers: [
-        {
-          def: CYBER_EFFECT_REGISTRY.holoTargetReticle,
-          warmup: 0.01,
-          cfg: { x: 52, y: 84, boxW: 20, boxH: 54, palette: CYBER_NEON_PALETTE, seed: 9 }
-        }
-      ]
-    },
-    {
-      name: 'Row 2: EMP Overload Dome',
-      windowSec: 1.32,
-      layers: [
-        {
-          def: CYBER_EFFECT_REGISTRY.empOverloadDome,
-          warmup: 0.36,
-          cfg: { x: 52, y: 86, radius: 40, fringe: '#ff2e93', palette: CYBER_NEON_PALETTE, seed: 33 }
-        }
-      ]
-    },
-    {
-      name: 'Row 3: Singularity Reactor Core',
-      windowSec: 1.82,
-      layers: [
-        {
-          def: CYBER_EFFECT_REGISTRY.singularityReactor,
-          warmup: 0.02,
-          cfg: { x: 52, y: 84, radius: 36, coreY: -30, palette: CYBER_NEON_PALETTE, seed: 19 }
-        }
-      ]
-    },
-    {
-      name: 'Row 4: Plasma Crescent Slash + Impact Spark',
+      name: 'Row 0: HF Plasma Crescent Wave',
       windowSec: 0.60,
       layers: [
         {
-          def: CYBER_EFFECT_REGISTRY.plasmaCrescentSlash,
+          def: CYBER_EFFECT_REGISTRY.hfPlasmaCrescentWave,
+          warmup: 0.18,
+          cfg: { x: 50, y: 52, radius: 30, palette: CYBER_NEON_PALETTE, seed: 21 }
+        }
+      ]
+    },
+    {
+      name: 'Row 1: Autonomous Fin-Funnel Drone Pod',
+      windowSec: 0.60,
+      layers: [
+        {
+          def: CYBER_EFFECT_REGISTRY.finFunnelDronePod,
+          warmup: 0.18,
+          cfg: { x: 54, y: 52, palette: CYBER_NEON_PALETTE, seed: 25 }
+        }
+      ]
+    },
+    {
+      name: 'Row 2: EMP Gravity Tether Spire',
+      windowSec: 1.00,
+      layers: [
+        {
+          def: CYBER_EFFECT_REGISTRY.empGravityTetherSpire,
+          warmup: 0.20,
+          cfg: { x: 52, y: 84, radius: 38, palette: CYBER_NEON_PALETTE, seed: 31 }
+        }
+      ]
+    },
+    {
+      name: 'Row 3: Cyber Singularity Core',
+      windowSec: 1.00,
+      layers: [
+        {
+          def: CYBER_EFFECT_REGISTRY.cyberSingularityCore,
           warmup: 0.02,
-          cfg: { x: 42, y: 78, radius: 36, palette: CYBER_NEON_PALETTE, seed: 5 }
+          cfg: { x: 52, y: 52, radius: 34, palette: CYBER_NEON_PALETTE, seed: 37 }
+        }
+      ]
+    },
+    {
+      name: 'Row 4: Hex-Glitch Cross-Slash Burst',
+      windowSec: 0.56,
+      layers: [
+        {
+          def: CYBER_EFFECT_REGISTRY.hexGlitchCrossSlash,
+          warmup: 0.02,
+          cfg: { x: 52, y: 52, palette: CYBER_NEON_PALETTE, seed: 41 }
         },
         {
           def: CYBER_EFFECT_REGISTRY.cyberImpactSpark,
           warmup: 0.01,
-          cfg: { x: 68, y: 50, palette: CYBER_MAGENTA_PALETTE, seed: 13 }
+          cfg: { x: 52, y: 52, palette: CYBER_MAGENTA_PALETTE, seed: 13 }
+        }
+      ]
+    },
+    {
+      name: 'Row 5: Orbital Satellite Target-Lock Hex Reticle',
+      windowSec: 1.00,
+      layers: [
+        {
+          def: CYBER_EFFECT_REGISTRY.orbitalTargetLockHex,
+          warmup: 0.02,
+          cfg: { x: 52, y: 52, radius: 38, squashY: 0.88, palette: CYBER_NEON_PALETTE, seed: 53 }
+        }
+      ]
+    },
+    {
+      name: 'Row 6: Fin-Funnel All-Range Convergence Laser Node',
+      windowSec: 0.60,
+      layers: [
+        {
+          def: CYBER_EFFECT_REGISTRY.finFunnelLaserNode,
+          warmup: 0.05,
+          cfg: { x: 24, y: 52, beamLength: 66, palette: CYBER_NEON_PALETTE, seed: 61 }
+        }
+      ]
+    },
+    {
+      name: 'Row 7: Project GUNG-09 Orbital Satellite Buster Column',
+      windowSec: 0.60,
+      layers: [
+        {
+          def: CYBER_EFFECT_REGISTRY.orbitalBusterColumn,
+          warmup: 0.04,
+          cfg: { x: 52, y: 52, halfWidth: 21, halfHeight: 43, palette: CYBER_NEON_PALETTE, seed: 71 }
         }
       ]
     }
@@ -266,34 +305,38 @@ function bakeVfxSheet() {
       for (const inst of instances) {
         inst.render(pen, 'front');
       }
-      resolveSurfaceToRGBA(surface, cellRgba, 1.1);
+      resolveSurfaceToRGBA(surface, cellRgba, 1.12);
       enforceSafeCellMargin104(cellRgba, LOGICAL, LOGICAL);
 
-      // Verify zero border clips
-      for (let i = 0; i < LOGICAL; i++) {
-        if (
-          cellRgba[(0 * LOGICAL + i) * 4 + 3] > 0 ||
-          cellRgba[((LOGICAL - 1) * LOGICAL + i) * 4 + 3] > 0 ||
-          cellRgba[(i * LOGICAL + 0) * 4 + 3] > 0 ||
-          cellRgba[(i * LOGICAL + (LOGICAL - 1)) * 4 + 3] > 0
-        ) {
-          borderClips++;
-          break;
+      // Verify zero border clips across outer 2px margin (4px in 208x208)
+      let clipped = false;
+      for (let m = 0; m < 2 && !clipped; m++) {
+        for (let i = 0; i < LOGICAL; i++) {
+          if (
+            cellRgba[(m * LOGICAL + i) * 4 + 3] > 0 ||
+            cellRgba[((LOGICAL - 1 - m) * LOGICAL + i) * 4 + 3] > 0 ||
+            cellRgba[(i * LOGICAL + m) * 4 + 3] > 0 ||
+            cellRgba[(i * LOGICAL + (LOGICAL - 1 - m)) * 4 + 3] > 0
+          ) {
+            clipped = true;
+            borderClips++;
+            break;
+          }
         }
       }
 
       blitUpscaledNearest(cellRgba, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
 
-      // Draw subtle cell border + composite onto debug contact sheet
+      // Draw subtle cell border + composite onto 8x30 debug contact sheet
       const dx = dbgPad + c * (LOGICAL + dbgPad);
       const dy = dbgPad + r * (LOGICAL + dbgPad);
       for (let yy = 0; yy < LOGICAL; yy++) {
         for (let xx = 0; xx < LOGICAL; xx++) {
           const isEdge = xx === 0 || yy === 0 || xx === LOGICAL - 1 || yy === LOGICAL - 1;
           const o = ((dy + yy) * dbgW + (dx + xx)) * 4;
-          dbgRgba[o] = isEdge ? 44 : 22;
-          dbgRgba[o + 1] = isEdge ? 54 : 27;
-          dbgRgba[o + 2] = isEdge ? 84 : 46;
+          dbgRgba[o] = isEdge ? 44 : 20;
+          dbgRgba[o + 1] = isEdge ? 54 : 25;
+          dbgRgba[o + 2] = isEdge ? 84 : 44;
           dbgRgba[o + 3] = 255;
         }
       }
@@ -308,7 +351,7 @@ function bakeVfxSheet() {
 
   const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'android_vfx.png');
   fs.writeFileSync(outVfxPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  console.log(`[android-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/150`);
+  console.log(`[android-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/240`);
 
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
   const outDbgPath = path.join(ARTIFACT_DIR, 'debug_android_30fps_vfx.png');
@@ -316,53 +359,4 @@ function bakeVfxSheet() {
   console.log(`[android-vfx] Wrote contact sheet -> ${outDbgPath}`);
 }
 
-// ============================================================================
-// Bake 48x48 x 30 Tankless Wing-Pylon Thruster Strip for Sheet Builder
-// ============================================================================
-function bakeThrusterStrip() {
-  const W = 48;
-  const H = 48;
-  const COLS = 30;
-  const stripW = W * COLS;
-  const stripRgba = new Uint8Array(stripW * H * 4);
-
-  const surface = createPixelSurface(W, H);
-  const pen = new ShaderPen(surface);
-  const cellRgba = new Uint8Array(W * H * 4);
-
-  const inst = instantiateShaderEffect(CYBER_EFFECT_REGISTRY.wingPylonThruster, {
-    x: 35,
-    y: 13,
-    length: 16,
-    tilt: -0.95,
-    frontOnly: true,
-    palette: CYBER_NEON_PALETTE,
-    seed: 30
-  });
-  inst.step(0.30);
-
-  for (let c = 0; c < COLS; c++) {
-    clearPixelSurface(surface);
-    inst.render(pen, 'front');
-    resolveSurfaceToRGBA(surface, cellRgba, 1.05);
-    // Keep 2px outer border clean so thruster strip never touches 104x104 edge
-    for (let y = 0; y < H; y++) {
-      for (let x = 0; x < W; x++) {
-        if (x < 2 || y < 2 || x >= W - 2 || y >= H - 2) {
-          const o = (y * W + x) * 4;
-          cellRgba[o + 3] = 0;
-        }
-      }
-    }
-    blitUpscaledNearest(cellRgba, W, H, 1, stripRgba, stripW, c * W, 0);
-    inst.step(1 / 30);
-  }
-
-  fs.mkdirSync(SCRATCH_DIR, { recursive: true });
-  const outStripPath = path.join(SCRATCH_DIR, 'android_thruster_strip.png');
-  fs.writeFileSync(outStripPath, encodeRgbaPng(stripW, H, stripRgba));
-  console.log(`[android-vfx] Wrote wing-pylon thruster strip -> ${outStripPath}`);
-}
-
 bakeVfxSheet();
-bakeThrusterStrip();

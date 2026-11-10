@@ -1844,6 +1844,440 @@ export const valhallaCrescentSlashCell = {
   }
 };
 
+/**
+ * Row 5 (`sy = 1040`): Bifrost Einherjar Target Seal (`F00..F29` seamless 30fps loop).
+ * Spinning crimson-gold Nordic Valkyrie rune mandala & lock-on crosshairs.
+ */
+export const bifrostEinherjarSealCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: {
+    palette: VALKYRIE_CRIMSON_PALETTE,
+    seed: 109
+  },
+  create(cfg) {
+    const crim = buildColorRamp(cfg.palette, 8);
+    const gold = buildColorRamp(VALKYRIE_GOLD_PALETTE, 8);
+
+    return {
+      step() {},
+      renderFront(pen, loopT) {
+        const ph = loopT * TWO_PI;
+        const pulse = 0.5 + 0.5 * Math.sin(ph * 2);
+
+        // 1. Dark Crimson-Obsidian Selective Outline Rings (`r = 35` & `r = 24`, well inside [-43, +43])
+        pen.strokeRing(0, 0, 35.5, 2.4, crim[0], 0.94);
+        pen.strokeRing(0, 0, 24.5, 2.0, crim[0], 0.9);
+
+        // 2. Counter-Rotating Bifrost Gold & Crimson Runic Bands
+        drawTiltedOrbitBand(
+          pen,
+          0,
+          0,
+          35,
+          1.0,
+          1.75,
+          0.96,
+          [crim[2], crim[4], gold[6], PURE_WHITE],
+          null,
+          false
+        );
+        drawTiltedOrbitBand(
+          pen,
+          0,
+          0,
+          24.5,
+          1.0,
+          1.35,
+          0.92,
+          [gold[2], crim[5], gold[6], PURE_WHITE],
+          null,
+          false
+        );
+
+        // 3. Spinning 8-Point Valhalla Star-Cross Mandala & Counter-Spinning Inner Valknut Triangles
+        drawValhallaStarCross(pen, 0, 0, 33, 15.5, 1.0, ph, crim[4], gold[6], 0.95);
+        drawValhallaStarCross(pen, 0, 0, 21, 9.5, 1.0, -ph * 0.5 + Math.PI / 8, gold[5], PURE_WHITE, 0.9);
+
+        for (let tri = 0; tri < 2; tri++) {
+          const baseRot = -ph + tri * (Math.PI / 3);
+          for (let v = 0; v < 3; v++) {
+            const a0 = baseRot + (v * TWO_PI) / 3;
+            const a1 = baseRot + ((v + 1) * TWO_PI) / 3;
+            pen.line(
+              Math.cos(a0) * 16.5,
+              Math.sin(a0) * 16.5,
+              Math.cos(a1) * 16.5,
+              Math.sin(a1) * 16.5,
+              tri === 0 ? gold[6] : crim[5],
+              0.92
+            );
+          }
+        }
+
+        // 4. 8 Orbiting Elder-Futhark Einherjar Rune Jewels on the Outer Mandala
+        for (let rIdx = 0; rIdx < 8; rIdx++) {
+          const a = ph + (rIdx * Math.PI) / 4;
+          const rx = Math.cos(a) * 30;
+          const ry = Math.sin(a) * 30;
+          pen.fillCircle(rx, ry, 2.5, crim[0], 0.95);
+          pen.fillCircle(rx, ry, 1.6, rIdx % 2 === 0 ? gold[6] : crim[5], 0.98);
+          pen.stipple(rx, ry, PURE_WHITE, 1.0);
+        }
+
+        // 5. 4 Cardinal Nordic Lock-On Crosshair Brackets & Converging Target Ticks (strictly <= 39px)
+        const lockR = 36.5 - pulse * 2.2;
+        for (let k = 0; k < 4; k++) {
+          const ca = (k * Math.PI) / 2;
+          const ux = Math.cos(ca);
+          const uy = Math.sin(ca);
+          const nx = -uy;
+          const ny = ux;
+
+          // Inner lock-on needle pointing straight at target center
+          pen.line(ux * 11, uy * 11, ux * (lockR + 2), uy * (lockR + 2), crim[0], 0.94);
+          pen.line(ux * 12, uy * 12, ux * (lockR + 1.5), uy * (lockR + 1.5), gold[6], 0.98);
+          pen.line(ux * 14, uy * 14, ux * (lockR - 2), uy * (lockR - 2), PURE_WHITE, 0.98);
+
+          // Winged Nordic crosshair bracket arms
+          for (const s of [-1, 1]) {
+            const bx = ux * lockR + nx * s * 6.5;
+            const by = uy * lockR + ny * s * 6.5;
+            const tx = ux * (lockR - 4.5) + nx * s * 9.5;
+            const ty = uy * (lockR - 4.5) + ny * s * 9.5;
+            pen.line(ux * lockR, uy * lockR, bx, by, gold[6], 0.98);
+            pen.line(bx, by, tx, ty, crim[5], 0.95);
+            pen.stipple(bx, by, PURE_WHITE, 1.0);
+          }
+        }
+
+        // 6. Central Gungnir Bullseye Core & Orbiting Valkyrie Feathers
+        for (let f = 0; f < 4; f++) {
+          const fa = -ph + f * (Math.PI * 0.5) + 0.35;
+          drawValkyrieFeather(
+            pen,
+            Math.cos(fa) * 19.5,
+            Math.sin(fa) * 19.5,
+            fa + Math.PI * 0.5,
+            gold[6],
+            crim[4],
+            0.94
+          );
+        }
+
+        drawStarburstFlare(pen, 0, 0, 9.5 + pulse * 2.5, 0.96, gold);
+        pen.radialGlow(0, 0, 26, crim[4], 0.44);
+      }
+    };
+  }
+};
+
+/**
+ * Row 6 (`sy = 1248`): Colossal Einherjar Sky-Lance (`F00..F29` seamless 30fps loop).
+ * Giant downward-plunging crimson-gold winged Valkyrie javelin with lightning wake.
+ */
+export const einherjarSkyLanceCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: {
+    palette: VALKYRIE_CRIMSON_PALETTE,
+    seed: 113
+  },
+  create(cfg) {
+    const crim = buildColorRamp(cfg.palette, 8);
+    const gold = buildColorRamp(VALKYRIE_GOLD_PALETTE, 8);
+
+    return {
+      step() {},
+      renderFront(pen, loopT) {
+        const ph = loopT * TWO_PI;
+        const yTop = -39;
+        const yTip = 39;
+        const guardY = -2;
+
+        // 1. Back half of Ascending Supersonic Mach Shock-Rings
+        for (let rIdx = 0; rIdx < 2; rIdx++) {
+          const ur = (loopT * 2 + rIdx * 0.5) % 1;
+          const ry = mixScalar(yTip - 14, yTop + 8, ur);
+          const rad = 9.5 + Math.sin(ur * Math.PI) * 11.5;
+          drawOrientedMachRing(
+            pen,
+            0,
+            ry,
+            0,
+            1,
+            rad,
+            0.26,
+            1.6,
+            gold[6],
+            crim[4],
+            0.88,
+            (a) => Math.cos(a) < 0
+          );
+        }
+
+        // 2. Sculpted 6-Pinion Crimson-Gold Valkyrie Wing-Crossguard (`x = -26 .. +26, y = -28 .. +4`)
+        for (const side of [-1, 1]) {
+          for (let p = 0; p < 4; p++) {
+            const rootX = side * 3;
+            const rootY = guardY + p * 2.4;
+            const tipX = side * (25 - p * 3.6);
+            const tipY = guardY - 21 + p * 4.5;
+            pen.line(rootX, rootY + 1, tipX, tipY + 1, crim[0], 0.96);
+            pen.line(rootX, rootY - 1, tipX, tipY - 1, crim[0], 0.94);
+            pen.line(rootX, rootY, tipX, tipY, p === 0 ? PURE_WHITE : gold[6], 0.98);
+            pen.line(rootX, rootY + 0.8, tipX - side * 1.5, tipY + 1.2, crim[4], 0.94);
+            pen.stipple(tipX, tipY, PURE_WHITE, 1.0);
+          }
+        }
+
+        // 3. Colossal Gungnir Einherjar War-Shaft (`yTop .. guardY + 12`) with Selout
+        pen.line(-3.5, yTop + 4, -3.5, guardY + 12, crim[0], 0.96);
+        pen.line(3.5, yTop + 4, 3.5, guardY + 12, crim[0], 0.96);
+        pen.line(-2.5, yTop + 2, -2.5, guardY + 12, crim[3], 0.95);
+        pen.line(-1.2, yTop + 1, -1.2, guardY + 14, gold[6], 0.98);
+        pen.line(0, yTop, 0, yTip, PURE_WHITE, 1.0);
+        pen.line(1.2, yTop + 1, 1.2, guardY + 14, gold[6], 0.98);
+        pen.line(2.5, yTop + 2, 2.5, guardY + 12, crim[4], 0.95);
+
+        // 4. Giant Faceted Diamond-Barbed Einherjar Spearhead (`y = +6 .. +39`)
+        const headStart = 6;
+        const maxBarbW = 11.5;
+        for (let y = headStart; y <= yTip; y++) {
+          const prog = (y - headStart) / (yTip - headStart);
+          const halfW =
+            prog < 0.24
+              ? mixScalar(4.2, maxBarbW, prog / 0.24)
+              : maxBarbW * Math.pow(Math.max(0, (1 - prog) / 0.76), 0.82);
+          for (let dx = -Math.ceil(halfW) - 1; dx <= Math.ceil(halfW) + 1; dx++) {
+            const adx = Math.abs(dx);
+            if (adx > halfW + 0.65) continue;
+            if (adx >= halfW - 0.35 && prog < 0.92) {
+              pen.pixel(dx, y, crim[0]);
+              continue;
+            }
+            if (prog < 0.2 && adx > 2.2 && adx < halfW * 0.56) continue;
+            const edge = adx / Math.max(0.5, halfW);
+            const col =
+              adx <= 1.1 || prog > 0.88
+                ? PURE_WHITE
+                : edge > 0.68
+                  ? gold[6]
+                  : dx < 0
+                    ? crim[5]
+                    : crim[3];
+            pen.pixel(dx, y, col);
+          }
+        }
+
+        // Ornate Golden Valhalla Star-Gem at the Crossguard Heart
+        drawValhallaStarCross(pen, 0, guardY + 2, 8.5, 3.8, 1.0, ph, crim[5], gold[6], 0.98);
+
+        // 5. Double-Helix Dragonfire Wake & Crackling Einherjar Lightning Chains (`yTop .. yTip`)
+        for (let rib = 0; rib < 2; rib++) {
+          const rOff = rib * Math.PI;
+          for (let y = yTop + 2; y <= yTip - 10; y++) {
+            const u = (y - yTop) / Math.max(1, yTip - 10 - yTop);
+            const amp = 4.2 + (1 - u) * 8.5;
+            const ang = y * 0.2 - ph * 2 + rOff;
+            if (Math.cos(ang) >= -0.2) {
+              const rx = Math.sin(ang) * amp;
+              pen.stipple(rx, y, rib === 0 ? PURE_WHITE : gold[6], 0.94);
+              pen.stipple(rx + (rx >= 0 ? 1 : -1), y, crim[4], 0.84);
+            }
+          }
+        }
+
+        const boltRng = new DeterministicRng((cfg.seed || 113) + Math.floor(loopT * 30) * 17);
+        const boltL = buildLightningChain(boltRng, -9, yTop + 4, -2, yTip - 6, 0.16, 3);
+        const boltR = buildLightningChain(boltRng, 9, yTop + 4, 2, yTip - 6, 0.16, 3);
+        pen.polyline(boltL, gold[6], 0.92);
+        pen.polyline(boltR, crim[5], 0.9);
+
+        // 6. Front half of Mach Rings + Incandescent Tip Starburst
+        for (let rIdx = 0; rIdx < 2; rIdx++) {
+          const ur = (loopT * 2 + rIdx * 0.5) % 1;
+          const ry = mixScalar(yTip - 14, yTop + 8, ur);
+          const rad = 9.5 + Math.sin(ur * Math.PI) * 11.5;
+          drawOrientedMachRing(
+            pen,
+            0,
+            ry,
+            0,
+            1,
+            rad,
+            0.26,
+            1.6,
+            gold[6],
+            crim[4],
+            0.96,
+            (a) => Math.cos(a) >= 0
+          );
+        }
+
+        drawStarburstFlare(pen, 0, yTip - 2, 10.5, 0.96, gold);
+        pen.radialGlow(0, yTip - 9, 20, crim[4], 0.48);
+        pen.radialGlow(0, guardY, 22, gold[5], 0.34);
+      }
+    };
+  }
+};
+
+/**
+ * Row 7 (`sy = 1456`): Gungnir Ragnarok Dragon-Pillar (`F00..F29` cataclysmic column).
+ * Towering crimson-gold Valkyrie dragon-fire & feather shockwave column.
+ */
+export const gungnirRagnarokPillarCell = {
+  duration: 1.0,
+  loop: false,
+  defaults: {
+    palette: VALKYRIE_CRIMSON_PALETTE,
+    seed: 127
+  },
+  create(cfg) {
+    const crim = buildColorRamp(cfg.palette, 8);
+    const gold = buildColorRamp(VALKYRIE_GOLD_PALETTE, 8);
+
+    return {
+      step() {},
+      renderFront(pen, localT) {
+        const u = clamp01(localT);
+        const floorY = 37;
+        const erupt = Easing.outExpo(clamp01(u / 0.16));
+        const fade = u > 0.76 ? (1 - u) / 0.24 : 1.0;
+        if (fade <= 0.02) return;
+
+        // 1. Expanding Ground Ragnarok Star-Cross Crater Ring (`floorY = 37`, rx <= 35)
+        const baseRx = (12 + 23 * erupt) * (1 - Math.max(0, u - 0.8) * 0.5);
+        drawTiltedOrbitBand(
+          pen,
+          0,
+          floorY,
+          baseRx,
+          0.22,
+          2.0,
+          0.96 * fade,
+          [crim[1], crim[4], gold[6], PURE_WHITE],
+          null,
+          u < 0.24
+        );
+        drawValhallaStarCross(
+          pen,
+          0,
+          floorY,
+          baseRx * 0.92,
+          baseRx * 0.46,
+          0.22,
+          u * 4.5,
+          crim[5],
+          gold[6],
+          0.92 * fade
+        );
+
+        // 2. Towering Ragnarok Dragon-Fire Plasma Column (`y = +37` up to `y = -39`)
+        const colH = 76 * erupt;
+        const yTop = floorY - colH;
+        const coreScale = u < 0.72 ? 1.0 : Math.max(0.25, 1 - (u - 0.72) / 0.28);
+        const maxHalfW = 16.5 * coreScale;
+
+        pen.shadeBox(-22, yTop - 1, 22, floorY + 1, (px, py, out) => {
+          if (py > floorY || py < yTop) return 0;
+          const hf = (floorY - py) / Math.max(1, colH);
+          const flare = 1 + 0.24 * Math.exp(-hf * 7) + 0.12 * Math.sin(hf * 9 - u * 22);
+          const halfW = maxHalfW * flare * (1 - hf * 0.18);
+          const ax = Math.abs(px);
+          if (ax > halfW + 0.8) return 0;
+
+          const turb = fbmNoise2D(px * 0.22, py * 0.16 + u * 16, cfg.seed);
+          const norm = ax / Math.max(0.6, halfW) - turb * 0.18;
+          if (norm > 1.02) return 0;
+
+          out.alpha = fade * (0.98 - hf * 0.1);
+          if (ax >= halfW - 0.85 && fade > 0.35) {
+            return crim[0];
+          }
+          if (norm < 0.28) {
+            out.glowColor = gold[6];
+            out.glowStrength = 0.52 * fade;
+            return PURE_WHITE;
+          }
+          if (norm < 0.56) {
+            out.glowColor = gold[5];
+            out.glowStrength = 0.36 * fade;
+            return gold[6];
+          }
+          if (norm < 0.8) {
+            out.glowColor = crim[4];
+            out.glowStrength = 0.24 * fade;
+            return crim[5];
+          }
+          return crim[3];
+        });
+
+        // 3. Twin Coiling S-Curve Dragon-Fire Helices & Ascending Mach Shock-Rings
+        for (let d = 0; d < 2; d++) {
+          const off = d * Math.PI;
+          let prevX = 0;
+          let prevY = floorY;
+          for (let s = 0; s <= 20; s++) {
+            const sf = s / 20;
+            const sy = floorY - sf * colH;
+            const amp = (14 + 5 * (1 - sf)) * coreScale;
+            const ang = sf * TWO_PI * 1.65 - u * 16 + off;
+            const sx = Math.sin(ang) * amp;
+            if (s > 0 && Math.cos(ang) >= -0.25) {
+              pen.line(prevX, prevY, sx, sy, d === 0 ? gold[6] : crim[5], 0.94 * fade);
+              pen.stipple(sx, sy, PURE_WHITE, 0.95 * fade);
+            }
+            prevX = sx;
+            prevY = sy;
+          }
+        }
+
+        for (let rIdx = 0; rIdx < 3; rIdx++) {
+          const ru = ((u * 2.4 + rIdx / 3) % 1);
+          const ry = floorY - ru * colH * 0.92;
+          const rr = (15 + (1 - ru) * 11) * erupt;
+          drawOrientedMachRing(
+            pen,
+            0,
+            ry,
+            0,
+            -1,
+            rr,
+            0.22,
+            1.6,
+            gold[6],
+            crim[4],
+            (1 - ru * 0.55) * 0.9 * fade
+          );
+        }
+
+        // 4. Crackling Valhalla Lightning Spine & Swirling Valkyrie Feathers (strictly inside [-36, +36])
+        const boltRng = new DeterministicRng((cfg.seed || 127) + Math.floor(u * 30) * 23);
+        const bolt1 = buildLightningChain(boltRng, -5, floorY - 2, 4, yTop + 3, 0.18, 3);
+        const bolt2 = buildLightningChain(boltRng, 6, floorY - 2, -4, yTop + 3, 0.18, 3);
+        pen.polyline(bolt1, PURE_WHITE, 0.94 * fade);
+        pen.polyline(bolt2, gold[6], 0.9 * fade);
+
+        for (let f = 0; f < 8; f++) {
+          const fu = ((u * 1.8 + f / 8) % 1);
+          const fa = f * 1.9 + u * 11;
+          const fr = 12 + (1 - fu) * 16;
+          const fx = Math.cos(fa) * fr;
+          const fy = floorY - 4 - fu * (colH - 6);
+          drawValkyrieFeather(pen, fx, fy, fa, gold[6], crim[4], fade * 0.95);
+        }
+
+        if (u < 0.34) {
+          drawStarburstFlare(pen, 0, floorY - 5, 19 * (1 - u / 0.34), 0.98 * fade, gold);
+        }
+        pen.radialGlow(0, floorY - colH * 0.45, 29 * fade, crim[4], 0.46 * fade);
+      }
+    };
+  }
+};
+
 export const VALKYRIE_EFFECT_REGISTRY = {
   gungnirSpearFocus,
   gungnirSpearThrustCone,
@@ -1859,5 +2293,9 @@ export const VALKYRIE_EFFECT_REGISTRY = {
   gungnirSkyLanceCell,
   dragonfireObeliskCell,
   bahamutAvatarCell,
-  valhallaCrescentSlashCell
+  valhallaCrescentSlashCell,
+  bifrostEinherjarSealCell,
+  einherjarSkyLanceCell,
+  gungnirRagnarokPillarCell
 };
+

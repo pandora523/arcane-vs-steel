@@ -1,96 +1,99 @@
 #!/usr/bin/env python3
 """
-Builds Malakor (Reaper — Abyssal Necropolis Dreadlord & Sovereign of Death)
+Builds Malakor v4 (Reaper — Horned Dread Necromancer Sovereign & Harvester of the Necropolis)
 30fps HD-2D Sprite Sheet (`assets/sprites/reaper_sheet.png`, 6240x1872, 30 cols x 9 rows of 208x208)
-and HD-2D Portrait (`assets/portraits/reaper.png`, 128x128) using `reaper_v3_base` + `hd2d_rig_core`.
+using `assets/sprites/reaper_v4_base.jpg` + `hd2d_rig_core`.
 
 Key Features:
-- Clean 15-part skeletal segmentation of `reaper_v3_base`:
-  * `head`: hooded skull with glowing magenta eye sockets & spiked dark-iron crown
-  * `torso`: glowing crimson-magenta ribcage & soul-core breastplate + skull belt
-  * `l_sode` / `r_sode` (`l_pauldron` / `r_pauldron`): horned skull pauldrons
-  * `l_forearm` / `r_forearm` (`l_arm` / `r_arm`): bone-plated gauntlets
-  * `l_thigh`, `l_shin`, `l_foot` / `r_thigh`, `r_shin`, `r_foot` (`l_leg` / `r_leg`): dark steel greaves planted at y=99
-  * `mane` (`cloak`): tattered abyssal necropolis cloak
-- Analytical 2-Bone Two-Handed IK (`apply_2h_scythe_ik`) locking BOTH of Malakor's bone-plated
-  gauntlets onto a Colossal 2H Cursed Bone-and-Obsidian Soul-Reaper Great-Scythe
-  (`draw_2h_soulreaper_greatscythe_104`).
-- 0/270 boundary clips and 29/29 distinct transitions across all 9 rows.
+- Extracts from `assets/sprites/reaper_v4_base.jpg` (`1024x1024`) via BFS exterior + interior pocket
+  white removal, 3-pass anti-aliased fringe stripping, and multi-zone `MedianFilter` cel-flattening.
+- Clean 14-part Dread Necromancer Sovereign skeletal rig (`0` unassigned foreground pixels):
+  * `head`: horned obsidian-crimson skull-helm & spiked dread crown with glowing amethyst eye sockets
+  * `torso`: obsidian-crimson ribbed breastplate with glowing amethyst rune, belt & jagged front tabard
+  * `mane`: tattered crimson-obsidian necropolis cape streaming behind shoulders/waist
+  * `l_coat`: left amethyst-rune hip tasset & crimson side-fauld
+  * `l_sode`, `l_forearm` / `r_sode`, `r_forearm`: rune-etched obsidian pauldrons & gauntlets
+  * `l_thigh`, `l_shin`, `l_foot` / `r_thigh`, `r_shin`, `r_foot`: separated rune-armored greaves & sabatons
+- Curated 20-color Obsidian / Crimson / Amethyst-Violet / Bone `MASTER_PALETTE` + 2-pass cardinal orphan
+  despeckle + interior pinhole fill + 1px dark directional Selout outline.
+- Back attachment: Floating **Abyssal Soul-Lantern & Necrotic Halo** behind shoulders.
+- Articulated 2H weapon: **Cursed Bone-and-Obsidian Crescent Great-Scythe** with per-frame 2-Bone Analytical IK
+  locking both gauntlets cleanly onto the long shaft across sweeping reaps, overhead guillotines, chain-casts,
+  and horizontal floor rest on `Row 5 DEATH F18..F29`.
+- Grounded boots planted at `y_104 = 99`, `0/270` border clips, `29/29` distinct frame transitions per row.
 """
 
 import os
 import math
-import shutil
+from collections import deque
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 from hd2d_rig_core import (
-    COLS, P, BASE_NUMERIC_KEYS, poly_mask, keep_largest_component, clean_base_512,
+    COLS, P, BASE_NUMERIC_KEYS, poly_mask, keep_largest_component,
     assign_remaining_geodesic, extract_parts_512, rot_pt,
-    put_px, draw_line_104, draw_slash_arc_104, render_rig_104,
+    draw_line_104, draw_slash_arc_104, render_rig_104,
     make_prone_knight_death_kfs, eval_pose_keyframes, build_and_save_30fps_sheet,
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
 
-V3_BASE_ARTIFACT = os.path.join(ARTIFACT_DIR, "reaper_v3_base_1794302628800.jpg")
-V3_PORTRAIT_ARTIFACT = os.path.join(ARTIFACT_DIR, "portrait_hd2d_reaper_v3_clean_1794302628767.jpg")
-BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "reaper_v3_base.jpg")
+BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "reaper_v4_base.jpg")
 OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "reaper_sheet.png")
-OUT_PORTRAIT_PATH = os.path.join(ROOT_DIR, "assets", "portraits", "reaper.png")
 VFX_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "reaper_vfx.png")
 
-# Strict 20-Color Hand-Crafted Abyssal Necropolis & Soul-Reaper Master Palette
+# Strict 20-Color Curated Obsidian / Crimson / Amethyst-Violet / Bone Master Palette
 MASTER_PALETTE = np.array([
-    [13, 4, 20],      # 0: Abyssal Void Outline (#0d0414)
-    [22, 14, 34],     # 1: Dark Necropolis Selout
-    [32, 24, 50],     # 2: Tattered Cloak & Dark-Iron Deep Shadow
-    [48, 38, 74],     # 3: Abyssal Hood & Cloak Base
-    [66, 54, 102],    # 4: Lit Hood & Cloak Fold Midtone
-    [92, 76, 136],    # 5: Cloak Rim & Dark-Steel Highlight
-    [46, 38, 52],     # 6: Cursed Bone & Greave Deep Shadow
-    [72, 60, 80],     # 7: Aged Skull-Pauldron & Gauntlet Base
-    [106, 90, 114],   # 8: Sculpted Bone & Greave Midtone
-    [148, 130, 152],  # 9: Lit Cranium & Skull-Pauldron Highlight
-    [194, 178, 198],  # 10: Polished Bone Fang & Edge Gleam
-    [232, 220, 238],  # 11: Specular Bone & Razor-Edge Highlight
-    [64, 14, 68],     # 12: Deep Necrotic Ribcage Shadow
-    [104, 24, 118],   # 13: Abyssal Amethyst Soul-Steel Base
-    [142, 44, 194],   # 14: Vibrant Violet Soul-Blade Bevel
-    [168, 85, 247],   # 15: Luminous Soul-Violet Glow (#a855f7)
-    [216, 180, 254],  # 16: Pale Lavender Soul-Crystal Highlight
-    [156, 20, 76],    # 17: Deep Blood-Crimson Ribcage Core
-    [255, 42, 133],   # 18: Blazing Rose-Magenta Eye & Soul-Rune Glow (#ff2a85)
-    [255, 228, 244],  # 19: White-Hot Soul Core & Cutting Edge
+    [8, 4, 14],       # 0: Abyssal Void Outline (#08040e)
+    [22, 10, 26],     # 1: Dark Obsidian-Plum Selout (#160a1a)
+    [37, 22, 42],     # 2: Deep Obsidian Dread-Plate Shadow (#25162a)
+    [58, 38, 72],     # 3: Forged Obsidian-Steel Base (#3a2648)
+    [84, 58, 98],     # 4: Lit Obsidian-Slate Midtone (#543a62)
+    [122, 92, 138],   # 5: Specular Obsidian Rim Gleam (#7a5c8a)
+    [62, 14, 32],     # 6: Deep Dried-Blood Mantle Shadow (#3e0e20)
+    [96, 24, 48],     # 7: Sovereign Crimson Cape & Armor Trim Base (#601830)
+    [142, 42, 66],    # 8: Lit Blood-Crimson Trim & Tabard Midtone (#8e2a42)
+    [192, 64, 92],    # 9: Blazing Crimson Edge Highlight (#c0405c)
+    [82, 68, 64],     # 10: Deep Cranium & Jaw Cavity Bone Shadow (#524440)
+    [126, 108, 98],   # 11: Aged Necropolis Skull & Vertebra Base (#7e6c62)
+    [174, 156, 138],  # 12: Lit Skull-Helm & Scythe-Bone Highlight (#ae9c8a)
+    [222, 208, 192],  # 13: Polished Ivory-Bone Fang & Razor Spine (#ded0c0)
+    [76, 24, 118],    # 14: Deep Amethyst Soul-Channel (#4c1876)
+    [118, 46, 178],   # 15: Sovereign Amethyst Rune & Lantern Base (#762eb2)
+    [164, 82, 232],   # 16: Luminous Amethyst-Violet Eye & Armor Rune (#a452e8)
+    [212, 142, 252],  # 17: Radiant Lavender Soul-Blade Bevel (#d48efc)
+    [244, 63, 128],   # 18: Crimson-Rose Execution Spark & Soul Gem (#f43f80)
+    [250, 236, 255],  # 19: White-Hot Soul-Core & Razor Cutting Edge (#faecff)
 ], dtype=np.int32)
 
-C_OUT = (13, 4, 20, 255)
-C_SEL = (22, 14, 34, 255)
-C_CLOAK_DARK = (32, 24, 50, 255)
-C_CLOAK_BASE = (48, 38, 74, 255)
-C_CLOAK_LIT = (66, 54, 102, 255)
-C_IRON_DARK = (46, 38, 52, 255)
-C_IRON_MID = (72, 60, 80, 255)
-C_BONE_MID = (106, 90, 114, 255)
-C_BONE_LIT = (148, 130, 152, 255)
-C_BONE_SPEC = (194, 178, 198, 255)
-C_RAZOR_WHITE = (232, 220, 238, 255)
-C_VIO_DARK = (64, 14, 68, 255)
-C_VIO_BASE = (104, 24, 118, 255)
-C_VIO_MID = (142, 44, 194, 255)
-C_VIO_LIT = (168, 85, 247, 255)
-C_VIO_SPEC = (216, 180, 254, 255)
-C_CRIM_DARK = (156, 20, 76, 255)
-C_ROSE = (255, 42, 133, 255)
-C_CORE = (255, 228, 244, 255)
+C_OUT = (8, 4, 14, 255)
+C_SEL = (22, 10, 26, 255)
+C_OBS_DARK = (37, 22, 42, 255)
+C_OBS_BASE = (58, 38, 72, 255)
+C_OBS_MID = (84, 58, 98, 255)
+C_OBS_LIT = (122, 92, 138, 255)
+C_CRIM_DARK = (62, 14, 32, 255)
+C_CRIM_BASE = (96, 24, 48, 255)
+C_CRIM_MID = (142, 42, 66, 255)
+C_CRIM_LIT = (192, 64, 92, 255)
+C_BONE_DARK = (82, 68, 64, 255)
+C_BONE_MID = (126, 108, 98, 255)
+C_BONE_LIT = (174, 156, 138, 255)
+C_BONE_SPEC = (222, 208, 192, 255)
+C_VIO_DARK = (76, 24, 118, 255)
+C_VIO_BASE = (118, 46, 178, 255)
+C_VIO_LIT = (164, 82, 232, 255)
+C_VIO_SPEC = (212, 142, 252, 255)
+C_ROSE = (244, 63, 128, 255)
+C_CORE = (250, 236, 255, 255)
 
-# Skeletal pivots in 512x512 rig space (0.5x of 1024x1024 reaper_v3_base.jpg)
+# Skeletal pivots in 512x512 rig space (0.5x of 1024x1024 reaper_v4_base.jpg)
 PIVOTS = dict(
-    pelvis=(268.0, 240.0), neck=(264.0, 114.0), mane=(208.0, 196.0),
-    l_sh=(196.0, 125.0), l_elb=(174.0, 198.0), l_hand=(198.0, 274.0),
-    r_sh=(309.0, 134.0), r_elb=(318.0, 202.0), r_hand=(344.0, 268.0),
-    l_hip=(225.0, 270.0), l_knee=(213.0, 348.0), l_ank=(192.0, 448.0),
-    r_hip=(288.0, 270.0), r_knee=(303.0, 348.0), r_ank=(294.0, 442.0),
+    pelvis=(265.0, 240.0), neck=(265.0, 122.0), mane=(206.0, 272.0),
+    l_sh=(208.0, 128.0), l_elb=(176.0, 196.0), l_hand=(179.0, 274.0),
+    r_sh=(299.0, 137.0), r_elb=(309.0, 202.0), r_hand=(336.0, 268.0),
+    l_hip=(229.0, 270.0), l_knee=(211.0, 343.0), l_ank=(180.0, 438.0),
+    r_hip=(294.0, 270.0), r_knee=(312.0, 338.0), r_ank=(307.0, 431.0),
 )
 
 # Precompute 2-Bone IK rest lengths & angles for BOTH arms in 512-space
@@ -106,17 +109,17 @@ _AR2 = math.degrees(math.atan2(PIVOTS["r_hand"][1] - PIVOTS["r_elb"][1], PIVOTS[
 
 PALETTE_CFG = dict(
     palette=MASTER_PALETTE,
-    protect_indices=(10, 11, 14, 15, 16, 17, 18, 19),
-    hair_indices=(2, 3, 4, 5),
+    protect_indices=(9, 12, 13, 15, 16, 17, 18, 19),
+    hair_indices=(6, 7, 8),
     lit_selout=1,
     shad_selout=0,
     hair_selout=0,
-    joint_fill=(26, 20, 40, 255),
-    joint_inner=(42, 34, 62, 255),
+    joint_fill=(22, 10, 26, 255),
+    joint_inner=(37, 22, 42, 255),
     hip_r=20,
     thigh_r=16,
     arm_r=14,
-    pinhole_fill=(32, 24, 50, 255),
+    pinhole_fill=(37, 22, 42, 255),
 )
 
 
@@ -125,23 +128,6 @@ def put_px_safe(arr, x, y, col):
     ix, iy = int(round(x)), int(round(y))
     if 4 <= ix <= 99 and 4 <= iy <= 99:
         arr[iy, ix] = col
-
-
-def build_portrait():
-    """
-    Builds `assets/portraits/reaper.png` (128x128) from `portrait_hd2d_reaper_v3_clean_1794302628767.jpg`
-    using MedianFilter(size=5) cel-flattening + 20-color FASTOCTREE quantization (zero dithering).
-    """
-    src_path = V3_PORTRAIT_ARTIFACT
-    if not os.path.exists(src_path):
-        raise FileNotFoundError(f"Missing v3 portrait source: {src_path}")
-    im = Image.open(src_path).convert("RGB")
-    im_flat = im.filter(ImageFilter.MedianFilter(size=5))
-    im_128 = im_flat.resize((128, 128), Image.Resampling.NEAREST)
-    im_q = im_128.quantize(colors=20, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).convert("RGBA")
-    os.makedirs(os.path.dirname(OUT_PORTRAIT_PATH), exist_ok=True)
-    im_q.save(OUT_PORTRAIT_PATH)
-    print(f"Built {OUT_PORTRAIT_PATH} (128x128, 20-color FASTOCTREE + MedianFilter(5))")
 
 
 def solve_arm_ik(sh_w, target_w, L1, L2, a1_rest, a2_rest, torso_deg, elbow_clockwise=True):
@@ -179,16 +165,16 @@ def solve_arm_ik(sh_w, target_w, L1, L2, a1_rest, a2_rest, torso_deg, elbow_cloc
 
 def apply_2h_scythe_ik(cfg):
     """
-    Solves per-frame 2-Bone IK so BOTH of Malakor's bone-plated gauntlets lock onto the
-    Colossal 2H Soul-Reaper Great-Scythe snath (`r_hand` main grip + `l_hand` secondary grip),
-    or in `chain_cast_mode` (`Row 3 F01..F14`), extends `l_hand` forward to hurl/yank the
-    Spectral Bone-Chain while `r_hand` cocks the Great-Scythe!
+    Solves per-frame 2-Bone IK so BOTH of Malakor's rune-etched gauntlets lock cleanly onto the
+    long shaft of his Cursed Bone-and-Obsidian Crescent Great-Scythe (`r_hand` main grip +
+    `l_hand` secondary grip along `-u`), or in `chain_cast_mode` (`Row 3 F01..F14`), extends
+    `l_hand` forward to fire/yank the serrated Grave-Chain while `r_hand` cocks the Great-Scythe!
     """
     if not cfg.get("two_handed_ik", True):
         return cfg
 
     torso_deg = cfg.get("torso_deg", 0.0)
-    grip_x = cfg.get("grip_x", 50.0)
+    grip_x = cfg.get("grip_x", 48.0)
     grip_y = cfg.get("grip_y", -10.0)
     scythe_deg = cfg.get("weapon_deg", -40.0)
     grip_sep = cfg.get("grip_sep", 36.0)
@@ -203,8 +189,8 @@ def apply_2h_scythe_ik(cfg):
     r_target = (pel[0] + grip_x, pel[1] + grip_y)
     if cfg.get("chain_cast_mode", False):
         l_target = (
-            pel[0] + cfg.get("chain_lx", 88.0),
-            pel[1] + cfg.get("chain_ly", -42.0),
+            pel[0] + cfg.get("chain_lx", 90.0),
+            pel[1] + cfg.get("chain_ly", -40.0),
         )
     else:
         l_target = (r_target[0] - ux * grip_sep, r_target[1] - uy * grip_sep)
@@ -221,7 +207,7 @@ def apply_2h_scythe_ik(cfg):
     cfg["l_sode_rel_deg"] = l_sode_rel
     cfg["l_fore_rel_deg"] = l_fore_rel
     if "right_arm_in_front" not in cfg:
-        cfg["right_arm_in_front"] = (grip_y < -65.0) or (grip_x > 56.0)
+        cfg["right_arm_in_front"] = (grip_y < -62.0) or (grip_x > 54.0)
     return cfg
 
 
@@ -259,9 +245,8 @@ def eval_2h_keyframes(f, keyframes, ph, defaults, extra_meta_keys=(), wave_mult=
     all_meta = (
         "right_arm_in_front", "right_leg_behind", "mane_in_front",
         "show_weapon", "planted_weapon", "resting_weapon", "centered_mode",
-        "halo_active", "halo_grand", "speedlines", "speedline_deg",
-        "two_handed_ik", "chain_cast_mode", "chain_active", "hook_sign",
-        "shadow_mantle",
+        "halo_active", "halo_grand", "two_handed_ik", "chain_cast_mode",
+        "chain_active", "hook_sign", "shadow_mantle", "resting_scythe_floor",
     ) + tuple(extra_meta_keys)
     for mk in all_meta:
         if mk in active_d:
@@ -272,26 +257,26 @@ def eval_2h_keyframes(f, keyframes, ph, defaults, extra_meta_keys=(), wave_mult=
 
 
 def save_debug_parts_sheet(parts, out_path):
-    """Saves a 5x3 contact sheet of all 15 segmented rig parts on a contrasting slate-indigo grid."""
+    """Saves a 5x3 contact sheet of all 14 segmented rig parts on a contrasting slate-indigo grid."""
     names = [
-        "mane", "head", "torso", "l_coat", "r_coat",
-        "l_sode", "l_forearm", "r_sode", "r_forearm", "l_thigh",
-        "l_shin", "l_foot", "r_thigh", "r_shin", "r_foot",
+        "mane", "head", "torso", "l_coat", "l_sode",
+        "l_forearm", "r_sode", "r_forearm", "l_thigh", "l_shin",
+        "l_foot", "r_thigh", "r_shin", "r_foot",
     ]
     cw, ch = 220, 220
     pad = 16
-    im = Image.new("RGBA", (5 * (cw + pad) + pad, 3 * (ch + pad + 20) + pad), (22, 18, 36, 255))
+    im = Image.new("RGBA", (5 * (cw + pad) + pad, 3 * (ch + pad + 20) + pad), (20, 14, 30, 255))
     d = ImageDraw.Draw(im)
     for idx, nm in enumerate(names):
         c = idx % 5
         r = idx // 5
         ox = pad + c * (cw + pad)
         oy = pad + 20 + r * (ch + pad + 20)
-        d.rectangle([ox, oy, ox + cw, oy + ch], fill=(40, 32, 64, 255), outline=(96, 80, 142, 255), width=1)
+        d.rectangle([ox, oy, ox + cw, oy + ch], fill=(38, 26, 56, 255), outline=(104, 72, 148, 255), width=1)
         if nm in parts:
             pim, _, _ = parts[nm]
             pw, ph = pim.size
-            d.text((ox + 2, oy - 16), f"{nm} ({pw}x{ph})", fill=(255, 220, 245, 255))
+            d.text((ox + 2, oy - 16), f"{nm} ({pw}x{ph})", fill=(248, 225, 255, 255))
             scale = min(1.0, (cw - 16) / max(1, pw), (ch - 16) / max(1, ph))
             if scale < 1.0:
                 pim = pim.resize((max(1, int(pw * scale)), max(1, int(ph * scale))), Image.Resampling.NEAREST)
@@ -302,212 +287,307 @@ def save_debug_parts_sheet(parts, out_path):
     im.save(out_path)
 
 
-def load_and_segment_512():
-    if os.path.exists(V3_BASE_ARTIFACT) and not os.path.exists(BASE_IMG_PATH):
-        os.makedirs(os.path.dirname(BASE_IMG_PATH), exist_ok=True)
-        shutil.copyfile(V3_BASE_ARTIFACT, BASE_IMG_PATH)
-    elif os.path.exists(V3_BASE_ARTIFACT):
-        shutil.copyfile(V3_BASE_ARTIFACT, BASE_IMG_PATH)
+def extract_clean_v4_base_512(img_path):
+    """
+    Loads `assets/sprites/reaper_v4_base.jpg` (`1024x1024` on `#FFFFFF`), strips all exterior
+    and enclosed interior white background pockets via BFS + 3-pass anti-aliased fringe stripping,
+    downsamples 2x NEAREST to `512x512`, and applies multi-zone `MedianFilter` cel-flattening
+    while keeping the skull-helm, dread crown, and glowing amethyst armor runes razor-sharp.
+    """
+    if not os.path.exists(img_path):
+        raise FileNotFoundError(f"Missing reference base sprite: {img_path}")
 
-    # Use head_y_split=220 so both the hooded skull face AND the glowing crimson-magenta ribcage
-    # get crisp 3x3 MedianFilter cel-flattening while cloak & greaves get smooth 5x5 cel-flattening.
-    arr = clean_base_512(BASE_IMG_PATH, head_y_split=220)
+    im = Image.open(img_path).convert("RGBA")
+    arr = np.array(im)
+    H0, W0 = arr.shape[:2]
+
+    r0 = arr[:, :, 0].astype(np.int16)
+    g0 = arr[:, :, 1].astype(np.int16)
+    b0 = arr[:, :, 2].astype(np.int16)
+    max_rgb = np.maximum(np.maximum(r0, g0), b0)
+    min_rgb = np.minimum(np.minimum(r0, g0), b0)
+
+    is_white_bg = (
+        ((r0 >= 232) & (g0 >= 232) & (b0 >= 232))
+        | ((min_rgb >= 205) & ((max_rgb - min_rgb) < 28))
+    )
+    seed_mask = (r0 >= 242) & (g0 >= 242) & (b0 >= 242)
+
+    visited = np.zeros((H0, W0), dtype=bool)
+    q = deque()
+
+    # Seed from all 4 image borders
+    for x in range(W0):
+        for y in (0, H0 - 1):
+            if is_white_bg[y, x] and not visited[y, x]:
+                visited[y, x] = True
+                q.append((y, x))
+    for y in range(H0):
+        for x in (0, W0 - 1):
+            if is_white_bg[y, x] and not visited[y, x]:
+                visited[y, x] = True
+                q.append((y, x))
+
+    # Also seed from all enclosed pure-white pockets (between arms/torso, thumb gap, tattered skirt slits)
+    sys_y, sys_x = np.where(seed_mask & (~visited))
+    for sy, sx in zip(sys_y, sys_x):
+        visited[sy, sx] = True
+        q.append((int(sy), int(sx)))
+
+    while q:
+        cy, cx = q.popleft()
+        for ny, nx in ((cy - 1, cx), (cy + 1, cx), (cy, cx - 1), (cy, cx + 1)):
+            if 0 <= ny < H0 and 0 <= nx < W0 and not visited[ny, nx] and is_white_bg[ny, nx]:
+                visited[ny, nx] = True
+                q.append((ny, nx))
+
+    arr[visited] = [0, 0, 0, 0]
+
+    # 3-Pass Anti-Aliased Fringe Strip (zero white/gray halo)
+    for _ in range(3):
+        a0 = arr[:, :, 3] > 0
+        up = np.pad(a0[1:, :], ((0, 1), (0, 0)), constant_values=False)
+        dn = np.pad(a0[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+        lf = np.pad(a0[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+        rt = np.pad(a0[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+        edge = a0 & (~(up & dn & lf & rt))
+        r = arr[:, :, 0].astype(np.int16)
+        g = arr[:, :, 1].astype(np.int16)
+        b = arr[:, :, 2].astype(np.int16)
+        mx = np.maximum(np.maximum(r, g), b)
+        mn = np.minimum(np.minimum(r, g), b)
+        fringe = edge & (mn > 160) & ((mx - mn) < 34)
+        arr[fringe] = [0, 0, 0, 0]
+
+    im512 = Image.fromarray(arr, "RGBA").resize((512, 512), Image.Resampling.NEAREST)
+    rgb512 = im512.convert("RGB")
+    rgb_med3 = np.array(rgb512.filter(ImageFilter.MedianFilter(size=3)))
+    rgb_med5 = np.array(rgb512.filter(ImageFilter.MedianFilter(size=5)))
+
+    arr512 = np.array(im512)
+    alpha = keep_largest_component(arr512[:, :, 3] > 0)
+    arr512[~alpha] = [0, 0, 0, 0]
+
+    # Preserve crisp 3x3 cel detail on horned skull-helm/chest AND glowing amethyst/crimson armor runes!
+    raw_r = arr512[:, :, 0].astype(np.int16)
+    raw_g = arr512[:, :, 1].astype(np.int16)
+    raw_b = arr512[:, :, 2].astype(np.int16)
+    is_rune_detail = ((raw_b > 135) & ((raw_b - raw_g) > 40)) | ((raw_r > 135) & ((raw_r - raw_g) > 55))
+    yy = np.arange(512)[:, None]
+    use_med3 = (yy < 185) | is_rune_detail
+    cel_rgb = np.where(use_med3[:, :, None], rgb_med3, rgb_med5)
+    arr512[:, :, :3] = np.where(alpha[:, :, None], cel_rgb, 0)
+    return arr512
+
+
+def load_and_segment_512():
+    arr = extract_clean_v4_base_512(BASE_IMG_PATH)
     H, W = 512, 512
 
-    # Trim the dark lower background cloak webbing between the ankles (x=456..548, y=700..900 in 1024)
-    # so the two dark-steel greave legs stride cleanly without dragging a black block between them.
-    trim_between_legs = poly_mask(H, W, P([
-        (456, 705), (546, 705), (538, 900), (446, 900)
+    # Trim only the low inner-cloak shadow pocket deep between the lower shins (y=748..875 in 1024)
+    # while preserving 100% of the jagged crimson-violet front tabard and sweeping rear cape!
+    trim_between_ankles = poly_mask(H, W, P([
+        (444, 748), (572, 748), (572, 875), (432, 875)
     ]))
-    arr[trim_between_legs] = [0, 0, 0, 0]
+    arr[trim_between_ankles] = [0, 0, 0, 0]
     a = keep_largest_component(arr[:, :, 3] > 0)
     arr[~a] = [0, 0, 0, 0]
 
-    # Enhance glowing magenta eye sockets & crimson-magenta ribcage soul-core before extraction
+    # Boost luminous amethyst-violet eye sockets, crown gem, and armor runes so they read crisply at 104x104
     r_ch = arr[:, :, 0].astype(np.int16)
     g_ch = arr[:, :, 1].astype(np.int16)
     b_ch = arr[:, :, 2].astype(np.int16)
-    mag_glow = a & (r_ch > 125) & ((r_ch - g_ch) > 48) & (b_ch > 70)
-    hot_eye = mag_glow & (r_ch > 195)
-    arr[mag_glow] = [255, 42, 133, 255]
-    arr[hot_eye] = [255, 228, 244, 255]
+    vio_glow = a & (b_ch > 142) & ((b_ch - g_ch) > 45)
+    vio_hot = vio_glow & (b_ch > 205)
+    arr[vio_glow] = [164, 82, 232, 255]
+    arr[vio_hot] = [212, 142, 252, 255]
 
-    # 1. Head: Hooded Skull with Glowing Magenta Eye Sockets & Spiked Dark-Iron Crown
+    # Pinpoint white-lavender specular glint inside the skull-helm eye sockets & crown amethyst gem
+    head_zone = poly_mask(H, W, P([(480, 125), (580, 125), (580, 205), (480, 205)]))
+    eye_hot = head_zone & a & (b_ch > 168) & ((b_ch - g_ch) > 52)
+    arr[eye_hot] = [250, 236, 255, 255]
+
+    # 1. Head: Horned Obsidian-Crimson Skull-Helm & Spiked Dread Crown
     m_head = poly_mask(H, W, P([
-        (415, 20), (610, 20), (610, 248), (568, 266), (485, 266), (448, 220), (415, 175)
+        (444, 74), (610, 74), (610, 195), (582, 208),
+        (576, 254), (512, 258), (482, 232), (474, 192), (444, 178)
     ])) & a
 
-    # 2. Left Horned Skull Pauldron (`l_sode` / `l_pauldron`) & Bone-Plated Gauntlet (`l_forearm` / `l_arm`)
+    # 2. Left Rune-Etched Pauldron (`l_sode`) & Spiked Vambrace/Gauntlet (`l_forearm`)
     m_l_sode = poly_mask(H, W, P([
-        (315, 165), (455, 165), (468, 250), (452, 315), (425, 385), (325, 365), (315, 250)
+        (334, 188), (480, 188), (486, 275), (455, 350), (408, 396), (334, 382)
     ])) & a & (~m_head)
     m_l_forearm = poly_mask(H, W, P([
-        (295, 338), (422, 378), (442, 525), (440, 592), (345, 592), (295, 435)
+        (296, 332), (408, 388), (404, 594), (322, 594), (296, 445)
     ])) & a & (~m_l_sode) & (~m_head)
 
-    # 3. Right Horned Skull Pauldron (`r_sode` / `r_pauldron`) & Bone-Plated Gauntlet (`r_forearm` / `r_arm`)
+    # 3. Right Rune-Etched Pauldron (`r_sode`) & Vambrace/Gauntlet (`r_forearm`)
     m_r_sode = poly_mask(H, W, P([
-        (595, 190), (685, 190), (685, 355), (655, 395), (595, 385)
+        (582, 200), (646, 200), (646, 402), (585, 406)
     ])) & a & (~m_head)
     m_r_forearm = poly_mask(H, W, P([
-        (600, 380), (685, 365), (740, 520), (740, 585), (630, 585), (600, 445)
+        (586, 396), (656, 392), (710, 515), (710, 588), (628, 588), (586, 462)
     ])) & a & (~m_r_sode) & (~m_head)
 
-    # 4. Tattered Abyssal Necropolis Cloak (`mane` / `cloak`) streaming on the left
+    # 4. Tattered Crimson-Obsidian Necropolis Cape (`mane`) streaming behind left hip/leg
     m_mane = poly_mask(H, W, P([
-        (160, 415), (348, 415), (355, 588), (402, 595), (362, 745), (328, 928), (160, 928)
+        (268, 575), (402, 575), (412, 650), (355, 760), (336, 845), (268, 845)
     ])) & a & (~m_l_sode) & (~m_l_forearm)
 
-    # 5. Left & Right Hip Tassets / Coat Tails (`l_coat`, `r_coat`)
+    # 5. Left Amethyst-Rune Hip Tasset & Crimson Side-Fauld (`l_coat`)
     m_l_coat = poly_mask(H, W, P([
-        (415, 425), (502, 445), (498, 568), (432, 590), (415, 515)
+        (386, 445), (498, 462), (494, 570), (435, 655), (382, 655)
     ])) & a & (~m_l_forearm) & (~m_l_sode) & (~m_mane)
-    m_r_coat = poly_mask(H, W, P([
-        (606, 445), (636, 445), (692, 680), (692, 875), (638, 875), (622, 645), (606, 555)
-    ])) & a & (~m_r_forearm) & (~m_r_sode)
 
-    # 6. Torso: Glowing Crimson-Magenta Ribcage & Soul-Core Breastplate + Skull Belt + Central Tabard
+    # 6. Torso: Obsidian-Crimson Ribbed Breastplate, Glowing Amethyst Chest Rune, Belt & Jagged Front Tabard
     m_torso = poly_mask(H, W, P([
-        (425, 235), (605, 235), (605, 455), (576, 555), (572, 690),
-        (500, 690), (496, 565), (425, 440)
-    ])) & a & (~m_head) & (~m_l_sode) & (~m_l_forearm) & (~m_r_sode) & (~m_r_forearm) & (~m_l_coat) & (~m_r_coat)
+        (432, 200), (596, 200), (592, 475), (586, 750),
+        (490, 750), (492, 480), (432, 445)
+    ])) & a & (~m_head) & (~m_l_sode) & (~m_l_forearm) & (~m_r_sode) & (~m_r_forearm) & (~m_l_coat)
 
-    # 7. Left & Right Dark-Steel Greave Legs (`l_thigh`, `l_shin`, `l_foot`, `r_thigh`, `r_shin`, `r_foot`)
-    m_l_foot = poly_mask(H, W, P([(330, 875), (442, 875), (442, 1004), (330, 1004)])) & a & (~m_mane)
-    m_l_shin = poly_mask(H, W, P([(345, 650), (478, 650), (452, 882), (345, 882)])) & a & (~m_l_foot) & (~m_mane) & (~m_torso)
-    m_l_thigh = poly_mask(H, W, P([(385, 545), (505, 545), (502, 710), (365, 710)])) & a & (~m_torso) & (~m_l_coat) & (~m_l_forearm) & (~m_l_shin) & (~m_l_foot) & (~m_mane)
+    # 7. Separated Rune-Armored Greave Legs (`l_thigh`, `l_shin`, `l_foot`, `r_thigh`, `r_shin`, `r_foot`)
+    m_l_foot = poly_mask(H, W, P([(304, 868), (412, 868), (412, 962), (304, 962)])) & a & (~m_mane)
+    m_l_shin = poly_mask(H, W, P([(326, 652), (456, 652), (432, 872), (326, 872)])) & a & (~m_l_foot) & (~m_mane) & (~m_torso)
+    m_l_thigh = poly_mask(H, W, P([(405, 535), (500, 535), (495, 682), (395, 682)])) & a & (~m_torso) & (~m_l_coat) & (~m_l_forearm) & (~m_l_shin) & (~m_l_foot) & (~m_mane)
 
-    m_r_foot = poly_mask(H, W, P([(535, 868), (706, 868), (706, 985), (535, 985)])) & a & (~m_r_coat)
-    m_r_shin = poly_mask(H, W, P([(532, 668), (642, 668), (636, 875), (532, 875)])) & a & (~m_r_foot) & (~m_r_coat) & (~m_torso)
-    m_r_thigh = poly_mask(H, W, P([(535, 540), (632, 540), (636, 685), (535, 685)])) & a & (~m_torso) & (~m_r_coat) & (~m_r_forearm) & (~m_r_shin) & (~m_r_foot)
+    m_r_foot = poly_mask(H, W, P([(570, 852), (738, 852), (738, 936), (570, 936)])) & a
+    m_r_shin = poly_mask(H, W, P([(572, 638), (678, 638), (676, 858), (572, 858)])) & a & (~m_r_foot) & (~m_torso)
+    m_r_thigh = poly_mask(H, W, P([(574, 465), (655, 465), (664, 665), (574, 665)])) & a & (~m_torso) & (~m_r_forearm) & (~m_r_shin) & (~m_r_foot)
 
+    # 14-Part Dread Necromancer Sovereign Rig (0 unassigned foreground pixels!)
     masks = assign_remaining_geodesic(a, [
         ("mane", m_mane), ("head", m_head), ("torso", m_torso),
-        ("l_coat", m_l_coat), ("r_coat", m_r_coat),
+        ("l_coat", m_l_coat),
         ("l_sode", m_l_sode), ("l_forearm", m_l_forearm),
         ("r_sode", m_r_sode), ("r_forearm", m_r_forearm),
         ("l_thigh", m_l_thigh), ("l_shin", m_l_shin), ("l_foot", m_l_foot),
         ("r_thigh", m_r_thigh), ("r_shin", m_r_shin), ("r_foot", m_r_foot),
     ])
 
-    # Paint a Spiked Dark-Iron Crown along the top brow ridge of `head` so the hooded skull
-    # displays a menacing dark-iron crown silhouette!
-    head_arr = arr.copy()
-    head_mask_extra = np.zeros((H, W), dtype=bool)
-    crown_spikes = [
-        (246, 24, -3, 10),
-        (264, 20, 0, 13),
-        (281, 24, 3, 10),
-    ]
-    for sx, sy, lean, sh in crown_spikes:
-        for dy in range(sh):
-            u = dy / float(max(1, sh - 1))
-            cx = int(round(sx + lean * (1.0 - u)))
-            cy = sy - dy
-            hw = max(0, int(round(2.2 * (1.0 - u))))
-            for dx in range(-hw, hw + 1):
-                px, py = cx + dx, cy
-                if 0 <= px < W and 0 <= py < H:
-                    head_mask_extra[py, px] = True
-                    if dy >= sh - 2 or abs(dx) == hw:
-                        head_arr[py, px] = [13, 4, 20, 255]
-                    elif dx <= 0:
-                        head_arr[py, px] = [148, 130, 152, 255]
-                    else:
-                        head_arr[py, px] = [72, 60, 80, 255]
-
-    patched_masks = []
-    for nm, m in masks:
-        if nm == "head":
-            patched_masks.append((nm, m | head_mask_extra))
-        else:
-            patched_masks.append((nm, m))
-
-    parts = extract_parts_512(
-        arr, patched_masks,
-        custom_part_arrays={"head": head_arr},
-    )
-    # Provide explicit semantic aliases for inspection/compatibility
-    parts["cloak"] = parts["mane"]
-    parts["l_pauldron"] = parts["l_sode"]
-    parts["r_pauldron"] = parts["r_sode"]
-    parts["l_arm"] = parts["l_forearm"]
-    parts["r_arm"] = parts["r_forearm"]
-    parts["l_leg"] = parts["l_shin"]
-    parts["r_leg"] = parts["r_shin"]
-
-    save_debug_parts_sheet(parts, os.path.join(ARTIFACT_DIR, "debug_reaper_v3_parts.png"))
+    parts = extract_parts_512(arr, masks)
+    save_debug_parts_sheet(parts, os.path.join(ARTIFACT_DIR, "debug_reaper_v4_parts.png"))
     return parts
 
 
-def draw_necro_halo_104(arr, nx, ny, ph, grand=False):
-    """Draws a revolving Abyssal Soul-Ring & Spiked Necropolis Halo behind Malakor's hooded skull."""
-    cx, cy = nx - 1.5, ny - 4.0
-    rx = 15.5 if grand else 13.8
-    ry = 12.0 if grand else 10.6
-    n_pts = 36 if grand else 28
+def draw_abyssal_lantern_and_halo_104(arr, nx, ny, ph, grand=False):
+    """
+    Draws Malakor's Back Attachment behind his shoulders:
+    1. Revolving Spiked **Necrotic Halo** framing his horned skull-helm.
+    2. Floating **Abyssal Soul-Lantern** hovering behind his rear shoulder on a wrought-iron
+       chain, housing a flickering amethyst-violet & white-hot soul-flame core!
+    """
+    # 1. Spiked Necrotic Halo behind head & shoulders
+    cx = max(18.0, min(84.0, nx - 1.8))
+    cy = max(16.0, min(82.0, ny - 3.5))
+    rx = 15.2 if grand else 13.4
+    ry = 11.6 if grand else 10.2
+    n_pts = 40 if grand else 32
     for k in range(n_pts):
         ang = (k / float(n_pts)) * 2.0 * math.pi + ph * 0.5
         px = cx + math.cos(ang) * rx
         py = cy + math.sin(ang) * ry
-        put_px_safe(arr, px, py, C_VIO_LIT if k % 3 == 0 else C_VIO_DARK)
+        col = C_VIO_LIT if k % 3 == 0 else (C_CRIM_MID if k % 5 == 0 else C_OBS_DARK)
+        put_px_safe(arr, px, py, col)
+
     for k in range(6):
         ang = ph + k * (math.pi / 3.0)
-        sx = cx + math.cos(ang) * (rx + 2.2)
-        sy = cy + math.sin(ang) * (ry + 1.8)
-        put_px_safe(arr, sx, sy, C_CORE if (grand and k % 2 == 0) else (C_ROSE if k % 2 == 0 else C_VIO_LIT))
+        sx = cx + math.cos(ang) * (rx + 2.0)
+        sy = cy + math.sin(ang) * (ry + 1.6)
         put_px_safe(arr, sx + 1, sy, C_OUT)
         put_px_safe(arr, sx - 1, sy, C_OUT)
+        put_px_safe(arr, sx, sy - 1, C_OUT)
+        put_px_safe(arr, sx, sy + 1, C_OUT)
+        put_px_safe(arr, sx, sy, C_CORE if (grand and k % 2 == 0) else (C_ROSE if k % 2 == 0 else C_VIO_LIT))
+
+    # 2. Floating Abyssal Soul-Lantern hovering behind rear (left) shoulder
+    bob = math.sin(ph) * 1.4
+    sway = math.cos(ph) * 0.8
+    lx = max(11.0, min(86.0, nx - 14.5 + sway))
+    ly = max(15.0, min(82.0, ny + 3.5 + bob))
+
+    # Curved obsidian-iron crook & hanging chain above lantern
+    put_px_safe(arr, lx + 2, ly - 7, C_OUT)
+    put_px_safe(arr, lx + 1, ly - 7, C_BONE_MID)
+    put_px_safe(arr, lx, ly - 6, C_OBS_MID)
+    put_px_safe(arr, lx, ly - 5, C_BONE_LIT)
+    put_px_safe(arr, lx, ly - 4, C_OUT)
+
+    # Pointed Gothic iron-and-bone lantern roof cap (y = ly-3 .. ly-2)
+    for dx in range(-2, 3):
+        put_px_safe(arr, lx + dx, ly - 3, C_OUT if abs(dx) == 2 else C_CRIM_MID)
+    for dx in range(-3, 4):
+        put_px_safe(arr, lx + dx, ly - 2, C_OUT if abs(dx) == 3 else (C_BONE_LIT if dx == 0 else C_OBS_BASE))
+
+    # Wrought-iron barred lantern cage housing blazing Amethyst Soul-Flame (y = ly-1 .. ly+3)
+    flicker = 1 if math.sin(ph * 2.0) >= 0.0 else 0
+    for dy in range(-1, 4):
+        for dx in range(-3, 4):
+            adx = abs(dx)
+            if adx == 3:
+                col = C_OUT
+            elif adx == 2:
+                col = C_OBS_MID if dy % 2 == 0 else C_OBS_DARK
+            elif dy == 1 and dx == 0:
+                col = C_CORE
+            elif adx <= 1 and (-1 + flicker * 0 <= dy <= 2):
+                col = C_CORE if (dy == 0 and dx == 0 and grand) else (C_VIO_SPEC if adx == 0 else C_VIO_LIT)
+            else:
+                col = C_VIO_BASE if adx <= 1 else C_OBS_DARK
+            put_px_safe(arr, lx + dx, ly + dy, col)
+
+    # Lantern base plate & pointed bone finial spike (y = ly+4 .. ly+6)
+    for dx in range(-3, 4):
+        put_px_safe(arr, lx + dx, ly + 4, C_OUT if abs(dx) == 3 else C_CRIM_BASE)
+    for dx in range(-1, 2):
+        put_px_safe(arr, lx + dx, ly + 5, C_OUT if abs(dx) == 1 else C_BONE_LIT)
+    put_px_safe(arr, lx, ly + 6, C_OUT)
+
+    # Rising spectral wisp motes above the Soul-Lantern
+    wisp_y = ly - 8 - (int(ph * 2.0) % 3)
+    put_px_safe(arr, lx - 2, wisp_y, C_VIO_LIT)
+    if grand:
+        put_px_safe(arr, lx + 2, wisp_y - 1, C_ROSE)
 
 
 def draw_2h_soulreaper_greatscythe_104(
-    arr, hx, hy, scythe_deg, hook_sign=1.0, glow=1.0, phase=0.0, show_gauntlets=True, scale_len=1.0
+    arr, hx, hy, scythe_deg, hook_sign=1.0, glow=1.0, phase=0.0, show_gauntlets=True, scale_len=1.0, blade_flat=1.0
 ):
     """
-    Draws Malakor's COLOSSAL 2H CURSED BONE-AND-OBSIDIAN SOUL-REAPER GREAT-SCYTHE
-    in continuous rotated `(da, dp)` coordinates:
-    1. Long curved dark-iron & vertebrated-bone snath shaft (`da` from `-16` to `+34`)
-       with bone-ring joints and pommel spike.
-    2. Horned Demon-Skull Collar at the blade junction (`da in [28..35]`) with a glowing
-       `#ff2a85` / `#a855f7` Abyssal Soul-Gem eye.
-    3. Massive Curved Obsidian-and-Magenta Crescent Great-Scythe Blade sweeping from the
-       skull collar (`dp` from `-4` to `+38`, curving forward and inward like a true Grim
-       Reaper war-scythe), with dark obsidian spine, violet-magenta soul-steel bevels,
-       glowing crimson/magenta soul-runes along the fuller, razor-white cutting edge,
-       and a 1px `#0d0414` dark selective outline.
+    Draws Malakor's articulated 2H **Cursed Bone-and-Obsidian Crescent Great-Scythe**:
+    1. Long curved obsidian-iron & vertebrated-bone shaft (`da` from `-16` to `+34`) with bone
+       vertebra rings and spiked soul-gem pommel.
+    2. Horned Demon-Skull Collar at the blade junction (`da in [28..35]`) with blazing soul-gem eye.
+    3. Massive Curved Bone-and-Obsidian Crescent Great-Scythe Blade (`dp` from `-4` to `+38`),
+       with serrated bone dorsal spine, obsidian fuller, glowing crimson/amethyst soul-runes,
+       razor-white inner cutting edge, and crisp 1px `#08040e` dark selective outline.
+    4. Two rune-etched armored gauntlet clasps locked onto the shaft (`da = 0.0` and `da = -7.2`).
     """
     rad = math.radians(scythe_deg)
     ux, uy = math.cos(rad), math.sin(rad)
     nx, ny = -uy * hook_sign, ux * hook_sign
 
-    # Keep the grip origin safely inside the 104x104 canvas so even extreme overhead/forward
-    # swings remain 100% inside x in [4..99], y in [4..99] with zero border clips!
     hx = max(18.0, min(72.0, hx))
-    hy = max(18.0, min(88.0, hy))
+    hy = max(18.0, min(95.0, hy))
 
     # -------------------------------------------------------------------------
-    # 1. Curved Dark-Iron & Vertebrated-Bone Snath Shaft (da from -16 to +34)
+    # 1. Curved Obsidian-Iron & Vertebrated-Bone Snath Shaft (da from -16 to +34)
     # -------------------------------------------------------------------------
     for da_raw in np.linspace(-16.0, 34.0, 102):
         da = da_raw * scale_len
-        # Subtle ergonomic Grim-Reaper snath S-curve
-        dp_center = math.sin((da_raw + 4.0) * 0.11) * 1.35
+        dp_center = math.sin((da_raw + 4.0) * 0.11) * 1.35 * blade_flat
         if da_raw < -12.5:
-            # Jagged Obsidian & Bone Pommel Spike (da in [-16..-12.5])
             u_pom = (da_raw + 16.0) / 3.5
             half_w = 0.55 + 1.85 * max(0.0, min(1.0, u_pom))
         elif da_raw > 27.5:
-            # Flared Socket Neck into the Demon-Skull Collar
             u_neck = (da_raw - 27.5) / 6.5
             half_w = 1.65 + 1.15 * max(0.0, min(1.0, u_neck))
         else:
-            # Vertebrated Bone-Ring Joints spaced along the dark-iron snath
             is_bone_ring = abs((da_raw + 10.5) % 4.8) < 0.72
             half_w = 2.05 if is_bone_ring else 1.48
 
         is_bone_ring = abs((da_raw + 10.5) % 4.8) < 0.72
         for dp_rel in np.linspace(-half_w, half_w, 9):
-            dp = (dp_center + dp_rel) * scale_len
+            dp = dp_center + dp_rel * scale_len
             px = hx + ux * da + nx * dp
             py = hy + uy * da + ny * dp
             adp = abs(dp_rel)
@@ -519,21 +599,19 @@ def draw_2h_soulreaper_greatscythe_104(
             elif adp >= half_w - 0.48:
                 col = C_OUT
             elif adp <= 0.44:
-                col = C_BONE_SPEC if is_bone_ring else (C_VIO_LIT if (glow > 0.5 and int(abs(da_raw)) % 3 == 0) else C_IRON_MID)
+                col = C_BONE_SPEC if is_bone_ring else (C_VIO_LIT if (glow > 0.5 and int(abs(da_raw)) % 3 == 0) else C_OBS_MID)
             elif dp_rel < 0.0:
-                col = C_BONE_LIT if is_bone_ring else C_BONE_MID
+                col = C_BONE_LIT if is_bone_ring else C_CRIM_MID
             else:
-                col = C_BONE_MID if is_bone_ring else C_IRON_DARK
+                col = C_BONE_MID if is_bone_ring else C_OBS_DARK
             put_px_safe(arr, px, py, col)
 
     # -------------------------------------------------------------------------
-    # 2. Massive Curved Obsidian-and-Magenta Crescent Great-Scythe Blade
-    #    Sweeping from the skull collar (dp from -4 to +38), curving forward & inward
+    # 2. Massive Curved Bone-and-Obsidian Crescent Great-Scythe Blade
     # -------------------------------------------------------------------------
     for dp_raw in np.linspace(-4.0, 38.0, 96):
-        dp = dp_raw * scale_len
+        dp = dp_raw * scale_len * blade_flat
         if dp_raw < 0.0:
-            # Rear Obsidian & Bone Counter-Spur jutting behind the Demon-Skull Collar (dp in [-4..0])
             u_back = abs(dp_raw) / 4.0
             da_mid = 31.2 - 1.4 * u_back
             half_da = 2.6 * (1.0 - 0.75 * u_back)
@@ -542,14 +620,12 @@ def draw_2h_soulreaper_greatscythe_104(
                 px = hx + ux * da + nx * dp
                 py = hy + uy * da + ny * dp
                 on_edge = (u_back > 0.82) or (abs(da_raw - da_mid) >= half_da - 0.55)
-                col = C_OUT if on_edge else (C_ROSE if abs(da_raw - da_mid) < 0.6 else C_IRON_MID)
+                col = C_OUT if on_edge else (C_CRIM_LIT if abs(da_raw - da_mid) < 0.6 else C_OBS_MID)
                 put_px_safe(arr, px, py, col)
             continue
 
         u = dp_raw / 38.0
-        # Sweeps slightly forward out of the collar, then hooks deeply inward toward the wielder
         da_outer_raw = 34.8 + 1.8 * math.sin(u * math.pi * 0.58) - 22.8 * (u ** 1.68)
-        # Dorsal bone-saw serrations along outer spine
         if 0.14 < u < 0.76 and abs((u * 100.0) % 14.0 - 7.0) < 2.2:
             da_outer_raw += 1.15
 
@@ -562,48 +638,36 @@ def draw_2h_soulreaper_greatscythe_104(
         n_da = max(7, int(chord_raw * 2.4) + 3)
         for da_raw in np.linspace(da_inner_raw, da_outer_raw, n_da):
             da = da_raw * scale_len
-            px = hx + ux * da + nx * dp
-            py = hy + uy * da + ny * dp
-            # Clamp inside [5..98] so the crescent arc stays 100% intact with a crisp dark outline
-            px = max(5.0, min(98.0, px))
-            py = max(5.0, min(98.0, py))
+            px = max(5.0, min(98.0, hx + ux * da + nx * dp))
+            py = max(5.0, min(98.0, hy + uy * da + ny * dp))
 
-            v = (da_raw - da_inner_raw) / max(0.6, chord_raw)  # 0.0 = inner cutting edge, 1.0 = outer spine
+            v = (da_raw - da_inner_raw) / max(0.6, chord_raw)
             is_rune = (0.38 <= v <= 0.68) and (0.08 <= u <= 0.84) and (abs((dp_raw - 2.0) % 4.6 - 2.3) < 0.85)
 
             if u >= 0.96 or v >= 0.89:
-                # 1px #0d0414 dark selective outline along outer dorsal spine & reaper tip
                 col = C_OUT
             elif v < 0.14:
-                # Razor-white inner cutting edge
-                col = C_CORE if glow > 0.35 else C_RAZOR_WHITE
+                col = C_CORE if glow > 0.35 else C_BONE_SPEC
             elif v < 0.27:
-                # Blazing rose-magenta cutting bevel
                 col = C_ROSE if glow > 0.3 else C_VIO_LIT
             elif v < 0.44:
-                # Violet-magenta soul-steel bevel
                 col = C_VIO_SPEC if (u < 0.55 and v < 0.34) else C_VIO_LIT
             elif is_rune and glow > 0.3:
-                # Glowing crimson/magenta soul-runes carved along the fuller
-                col = C_CORE if abs(v - 0.52) < 0.08 else C_ROSE
+                col = C_CORE if abs(v - 0.52) < 0.08 else C_CRIM_LIT
             elif v < 0.68:
-                # Deep abyssal fuller channel
-                col = C_VIO_BASE if u < 0.65 else C_VIO_DARK
+                col = C_OBS_BASE if u < 0.65 else C_OBS_DARK
             else:
-                # Heavy dark obsidian spine bevel
-                col = C_IRON_MID if v < 0.78 else C_IRON_DARK
+                col = C_BONE_LIT if v < 0.78 else C_BONE_MID
 
             put_px_safe(arr, px, py, col)
 
     # -------------------------------------------------------------------------
-    # 3. Horned Demon-Skull Collar at Blade Junction (da in [28..35], dp in [-3.4..+3.8])
-    #    with a glowing #ff2a85 / #a855f7 Abyssal Soul-Gem Eye
+    # 3. Horned Demon-Skull Collar at Blade Junction (da in [28..35])
     # -------------------------------------------------------------------------
     for da_raw in np.linspace(28.0, 35.0, 19):
         for dp_raw in np.linspace(-3.4, 3.8, 19):
             da = da_raw * scale_len
-            dp = dp_raw * scale_len
-            # Sculpted Demon-Skull silhouette with swept-back upper horns
+            dp = dp_raw * scale_len * max(0.55, blade_flat)
             u_sk = (da_raw - 28.0) / 7.0
             max_dp = 3.2 - 0.8 * abs(u_sk - 0.45)
             is_horn = (da_raw >= 32.0) and (-3.4 <= dp_raw <= -1.2)
@@ -634,7 +698,7 @@ def draw_2h_soulreaper_greatscythe_104(
             put_px_safe(arr, px, py, col)
 
     # -------------------------------------------------------------------------
-    # 4. Two Bone-Plated Gauntlet Clasps (r_hand at da=0.0 + l_hand at da=-7.2)
+    # 4. Two Rune-Etched Obsidian-Crimson Gauntlet Clasps (da=0.0 + da=-7.2)
     # -------------------------------------------------------------------------
     if show_gauntlets:
         for proj_raw, is_lower in ((0.0, False), (-7.2, True)):
@@ -649,18 +713,18 @@ def draw_2h_soulreaper_greatscythe_104(
                     if abs(n_off) >= 1.75:
                         col = C_OUT
                     elif abs(u_off) >= 0.9:
-                        col = C_BONE_SPEC if n_off <= 0 else C_BONE_MID
+                        col = C_CRIM_LIT if n_off <= 0 else C_CRIM_BASE
                     elif abs(n_off) <= 0.5:
-                        col = C_ROSE if is_lower else C_BONE_LIT
+                        col = C_VIO_LIT if is_lower else C_ROSE
                     else:
-                        col = C_BONE_LIT if n_off < 0 else C_IRON_MID
+                        col = C_OBS_LIT if n_off < 0 else C_OBS_BASE
                     put_px_safe(arr, px, py, col)
 
 
 def draw_spectral_bone_chain_104(arr, lh_x, lh_y, reach_px, phase=0.0):
     """
-    Draws Malakor's Vertebrated Bone-Chain & Articulated Skeletal Claw launched from `l_hand`
-    during Row 3 (SKILL — Death's Grasp Chain-Hook)!
+    Draws Malakor's Serrated Spectral Grave-Chain & Articulated Skeletal Claw launched from
+    `l_hand` during Row 3 (`DEATH'S GRASP: CHAIN-YANK & OSSUARY CAGE`)!
     """
     x0 = max(8.0, min(88.0, lh_x))
     y0 = max(12.0, min(88.0, lh_y))
@@ -671,17 +735,15 @@ def draw_spectral_bone_chain_104(arr, lh_x, lh_y, reach_px, phase=0.0):
     for i in range(n_links + 1):
         u = i / float(n_links)
         cx = x0 + (x1 - x0) * u
-        cy = y0 + (y1 - y0) * u + math.sin(u * math.pi * 2.0 + phase) * 2.2 * (1.0 - 0.35 * u)
+        cy = y0 + (y1 - y0) * u + math.sin(u * math.pi * 2.0 + phase) * 2.0 * (1.0 - 0.35 * u)
         if i % 2 == 0:
-            # Bone vertebra link with dark selout
             put_px_safe(arr, cx, cy - 1, C_OUT)
             put_px_safe(arr, cx, cy + 1, C_OUT)
             put_px_safe(arr, cx, cy, C_BONE_SPEC)
         else:
-            # Glowing crimson/violet soul-chain link
             put_px_safe(arr, cx, cy, C_ROSE if (i % 4 == 1) else C_VIO_LIT)
 
-    # Articulated 3-Finger Skeletal Bone-Claw at the chain tip (x1, y1)
+    # Articulated 3-Finger Skeletal Bone-Claw at chain tip
     for dy_c in (-1, 0, 1):
         for dx_c in (-1, 0, 1):
             put_px_safe(arr, x1 + dx_c, y1 + dy_c, C_ROSE if (dx_c == 0 and dy_c == 0) else C_BONE_SPEC)
@@ -696,7 +758,7 @@ def draw_spectral_bone_chain_104(arr, lh_x, lh_y, reach_px, phase=0.0):
 
 
 def draw_shadow_mantle_pool_104(arr, cx, foot_y, phase=0.0, intensity=1.0):
-    """Draws a 2.5D Necrotic Shadow Pool & Rising Soul-Fangs at Malakor's feet during Grave-Submerge."""
+    """Draws a 2.5D Necrotic Shadow Pool at Malakor's feet during Grave-Submerge."""
     icx = max(22.0, min(82.0, cx))
     by = min(97.0, foot_y - 1.0)
     rx = 15.0 * intensity
@@ -711,32 +773,33 @@ def draw_shadow_mantle_pool_104(arr, cx, foot_y, phase=0.0, intensity=1.0):
 
 def extra_extents(joints_c, cfg, scale):
     """
-    Reports all extreme points of the 2H Soul-Reaper Great-Scythe (pommel spike, Demon-Skull
-    collar, and curved Crescent Blade tip) to `render_rig_104` so the camera window frames
-    every single pose inside [6..97] with ZERO border clips!
+    Reports extreme points of both the Floating Abyssal Soul-Lantern / Necrotic Halo AND
+    the 2H Cursed Bone-and-Obsidian Crescent Great-Scythe to `render_rig_104` so every single
+    frame stays cleanly inside `[5..98]` with `0/270` border clips!
     """
     pts = []
-    if cfg.get("show_weapon", True) and not cfg.get("planted_weapon", False):
+    if cfg.get("halo_active", True):
+        nk = joints_c["neck"]
+        pts.append((nk[0] - 20.5 / scale, nk[1] - 17.5 / scale))
+        pts.append((nk[0] + 15.5 / scale, nk[1] - 17.5 / scale))
+
+    if cfg.get("show_weapon", True) and not cfg.get("planted_weapon", False) and not cfg.get("resting_scythe_floor", False):
         rh = joints_c["r_hand"]
         rad = math.radians(cfg.get("weapon_deg", -40.0))
         ux, uy = math.cos(rad), math.sin(rad)
         hs = cfg.get("hook_sign", 1.0)
         nx, ny = -uy * hs, ux * hs
-        sl = cfg.get("weapon_scale", 1.0)
+        sl = cfg.get("weapon_scale", 0.90)
 
-        # 1. Pommel spike (da = -16.5)
         pts.append((rh[0] - ux * (16.5 * sl / scale), rh[1] - uy * (16.5 * sl / scale)))
-        # 2. Demon-Skull Collar & rear spur (da = +35.5, dp = -4.2)
         pts.append((
             rh[0] + ux * (35.5 * sl / scale) - nx * (4.2 * sl / scale),
             rh[1] + uy * (35.5 * sl / scale) - ny * (4.2 * sl / scale),
         ))
-        # 3. Outer belly of the Crescent Scythe Blade (da = +32.0, dp = +20.0)
         pts.append((
             rh[0] + ux * (32.0 * sl / scale) + nx * (20.0 * sl / scale),
             rh[1] + uy * (32.0 * sl / scale) + ny * (20.0 * sl / scale),
         ))
-        # 4. Inward-hooked Reaper Blade Tip (da = +12.0, dp = +38.5)
         pts.append((
             rh[0] + ux * (12.0 * sl / scale) + nx * (38.5 * sl / scale),
             rh[1] + uy * (12.0 * sl / scale) + ny * (38.5 * sl / scale),
@@ -748,7 +811,7 @@ def draw_back(bg104, joints104, cfg):
     ph = cfg.get("mane_wave_phase", 0.0)
     if cfg.get("halo_active", True):
         nk = joints104["neck"]
-        draw_necro_halo_104(bg104, nk[0], nk[1], ph, grand=cfg.get("halo_grand", False))
+        draw_abyssal_lantern_and_halo_104(bg104, nk[0], nk[1], ph, grand=cfg.get("halo_grand", False))
 
 
 def draw_front(out, joints104, cfg):
@@ -770,15 +833,22 @@ def draw_front(out, joints104, cfg):
             C_CORE, C_ROSE, C_VIO_LIT, intensity=sa.get("intensity", 1.0),
         )
 
-    if cfg.get("planted_weapon", False):
-        # Rest Malakor's 2H Soul-Reaper Great-Scythe flat beside him on the arena floor
+    if cfg.get("resting_scythe_floor", False):
+        # Row 5 DEATH F18..F29: Horizontal floor rest beside fallen Malakor (zero floating upright weapon!)
+        draw_2h_soulreaper_greatscythe_104(
+            out, 38.0, 94.0,
+            scythe_deg=1.5, hook_sign=-1.0, glow=cfg.get("weapon_glow", 0.25),
+            phase=ph, show_gauntlets=False, scale_len=0.76, blade_flat=0.30,
+        )
+    elif cfg.get("planted_weapon", False):
+        # Row 5 DEATH F08..F17: Kneeling collapse lowering the Great-Scythe onto the stone floor
         rh = joints104["r_hand"]
-        px_plant = max(36.0, min(56.0, rh[0] - 4.0))
-        py_plant = max(82.0, min(91.0, rh[1] + 2.0))
+        px_plant = max(34.0, min(52.0, rh[0] - 4.0))
+        py_plant = max(84.0, min(93.0, rh[1] + 2.0))
         draw_2h_soulreaper_greatscythe_104(
             out, px_plant, py_plant,
-            scythe_deg=6.0, hook_sign=-1.0, glow=cfg.get("weapon_glow", 0.45),
-            phase=ph, show_gauntlets=True, scale_len=0.78,
+            scythe_deg=8.0, hook_sign=-1.0, glow=cfg.get("weapon_glow", 0.45),
+            phase=ph, show_gauntlets=True, scale_len=0.78, blade_flat=0.65,
         )
     elif cfg.get("show_weapon", True):
         rh = joints104["r_hand"]
@@ -800,12 +870,6 @@ def draw_front(out, joints104, cfg):
             phase=ph,
         )
 
-    if cfg.get("speedlines", 0) > 0:
-        for k in range(cfg["speedlines"]):
-            ly = 28.0 + (k * 12 + int(ph * 5)) % 52
-            lx0 = 6.0 + (k * 7 + int(ph * 9)) % 14
-            draw_line_104(out, lx0, ly, lx0 + 12.0, ly, C_ROSE if k % 2 == 0 else C_VIO_LIT, 1)
-
 
 DEFAULTS = dict(
     pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5, mane_rel_deg=-2.0,
@@ -815,21 +879,21 @@ DEFAULTS = dict(
     l_sode_rel_deg=12.0, l_fore_rel_deg=8.0, r_sode_rel_deg=10.0, r_fore_rel_deg=-8.0,
     l_coat_rel_deg=0.0, r_coat_rel_deg=0.0,
     grip_x=48.0, grip_y=-10.0, grip_sep=36.0,
-    chain_lx=84.0, chain_ly=-38.0, chain_reach=26.0,
+    chain_lx=86.0, chain_ly=-38.0, chain_reach=26.0,
     weapon_deg=-40.0, weapon_len=24.0, weapon_scale=0.90, weapon_glow=1.0, foot_y=99.0,
     show_weapon=True, two_handed_ik=True, chain_cast_mode=False, chain_active=False,
     halo_active=True, halo_grand=False, right_arm_in_front=False, right_leg_behind=False,
-    hook_sign=1.0, shadow_mantle=0.0,
+    hook_sign=1.0, shadow_mantle=0.0, resting_scythe_floor=False,
 )
 
 
 def render_frame(parts, cfg):
     out = render_rig_104(
         parts, PIVOTS, cfg, PALETTE_CFG,
-        y_bot_base=497.0, default_S=612,
+        y_bot_base=478.0, default_S=556,
         extra_extent_fn=extra_extents, draw_back_fn=draw_back, draw_front_fn=draw_front,
     )
-    # Enforce 4px safe margin on all 4 edges so 0/270 frames ever touch the cell boundary
+    # Enforce 4px safe margin on all 4 edges in 104x104 (8px in 208x208) -> 0/270 boundary clips
     out[:4, :, :] = 0
     out[100:, :, :] = 0
     out[:, :4, :] = 0
@@ -844,54 +908,51 @@ def build_row_configs(row_idx):
         ph = 2.0 * math.pi * t
 
         if row_idx == 0:
-            # Row 0: IDLE (Predatory 2H Great-Scythe guard stance, breathing soul-ribcage pulse,
-            # billowing tattered cloak, subtle scythe hover)
+            # Row 0: IDLE — Sovereign 2H Great-Scythe Guard, hovering Soul-Lantern & Necrotic Halo
             b = math.sin(ph)
             s = math.cos(ph)
             cfg = dict(DEFAULTS)
             cfg.update(
-                pelvis_dx=s * 2.5, pelvis_dy=b * 7.5, torso_deg=3.0 + b * 2.0,
+                pelvis_dx=s * 2.5, pelvis_dy=b * 7.0, torso_deg=3.0 + b * 2.0,
                 head_rel_deg=-1.5 - b * 1.2, mane_rel_deg=-2.0 + s * 3.0,
                 mane_wave_phase=ph, mane_wave_amp=5.5,
                 grip_x=48.0 + s * 2.5, grip_y=-10.0 + b * 4.0,
                 weapon_deg=-40.0 + b * 3.5, weapon_glow=0.85 + 0.15 * b,
+                foot_y=99.0,
             )
             cfgs.append(apply_2h_scythe_ik(cfg))
 
         elif row_idx == 1:
-            # Row 1: WALK (Stalking Grim-Reaper prowl with 2H Great-Scythe held across the body
-            # and sweeping cloak stride)
+            # Row 1: WALK — Relentless Dread-Sovereign Two-Step Armored Stride
             st = math.sin(ph)
             kl = math.cos(ph)
             cfg = dict(DEFAULTS)
             cfg.update(
-                pelvis_dy=abs(st) * 18.0, torso_deg=8.0 + abs(st) * 2.5, head_rel_deg=-4.0,
+                pelvis_dy=abs(st) * 16.0, torso_deg=7.5 + abs(st) * 2.5, head_rel_deg=-3.5,
                 mane_rel_deg=-5.0 - abs(st) * 4.0, mane_wave_phase=ph * 2.0, mane_wave_amp=6.5,
                 right_leg_behind=(f >= 15),
-                l_thigh_deg=st * 25.0, l_shin_deg=max(0.0, st * 26.0) + max(0.0, kl * 14.0), l_foot_deg=st * 12.0,
-                r_thigh_deg=-st * 25.0, r_shin_deg=max(0.0, -st * 26.0) + max(0.0, -kl * 14.0), r_foot_deg=-st * 12.0,
+                l_thigh_deg=st * 24.0, l_shin_deg=max(0.0, st * 25.0) + max(0.0, kl * 13.0), l_foot_deg=st * 11.0,
+                r_thigh_deg=-st * 24.0, r_shin_deg=max(0.0, -st * 25.0) + max(0.0, -kl * 13.0), r_foot_deg=-st * 11.0,
                 grip_x=50.0 + st * 4.5, grip_y=-8.0 + abs(st) * 4.5,
-                weapon_deg=-36.0 + st * 8.0,
+                weapon_deg=-36.0 + st * 8.0, foot_y=99.0,
             )
             cfgs.append(apply_2h_scythe_ik(cfg))
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK — 2H Figure-8 Soul-Harvest Combo:
-            # F00..F06 Wide 2H windup behind the back -> F07..F14 Massive horizontal/diagonal front reap ->
-            # F15..F22 Upward reverse backhand harvest cleave -> F23..F29 Follow-through recovery
+            # Row 2: AUTO_ATTACK — 2H Soul-Harvester Scythe Combo (Wide Reap & Overhead Guillotine)
             kfs = [
                 (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5,
                          l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
                          grip_x=48.0, grip_y=-10.0, weapon_deg=-40.0, grip_sep=36.0, hook_sign=1.0)),
-                (6, dict(pelvis_dx=-14.0, pelvis_dy=28.0, torso_deg=-14.0, head_rel_deg=8.0,
+                (6, dict(pelvis_dx=-14.0, pelvis_dy=26.0, torso_deg=-14.0, head_rel_deg=8.0,
                          l_thigh_deg=-18.0, l_shin_deg=18.0, r_thigh_deg=18.0, r_shin_deg=-12.0,
                          grip_x=16.0, grip_y=-46.0, weapon_deg=-102.0, grip_sep=32.0,
                          halo_grand=True, hook_sign=1.0)),
-                (13, dict(pelvis_dx=14.0, pelvis_dy=44.0, torso_deg=22.0, head_rel_deg=-10.0,
+                (13, dict(pelvis_dx=14.0, pelvis_dy=42.0, torso_deg=22.0, head_rel_deg=-10.0,
                           l_thigh_deg=22.0, l_shin_deg=18.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
                           grip_x=62.0, grip_y=-6.0, weapon_deg=14.0, grip_sep=36.0,
                           halo_grand=True, hook_sign=1.0)),
-                (20, dict(pelvis_dx=10.0, pelvis_dy=26.0, torso_deg=-6.0, head_rel_deg=6.0,
+                (20, dict(pelvis_dx=10.0, pelvis_dy=24.0, torso_deg=-6.0, head_rel_deg=6.0,
                           l_thigh_deg=-10.0, l_shin_deg=14.0, r_thigh_deg=14.0, r_shin_deg=-10.0,
                           grip_x=54.0, grip_y=-58.0, weapon_deg=-64.0, grip_sep=34.0,
                           halo_grand=True, hook_sign=-1.0)),
@@ -910,33 +971,30 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 3:
-            # Row 3: SKILL — Death's Grasp Chain-Hook & 360° Whirlwind Execution:
-            # F00..F10 Left hand hurls spectral bone-chain forward while right hand cocks Great-Scythe ->
-            # F11..F15 Violently yanks chain back ->
-            # F16..F29 Spins into a full-body 2H Great-Scythe Execution Cleave!
+            # Row 3: SKILL — Death's Grasp Chain-Yank & Execution Reap
             kfs = [
                 (0, dict(torso_deg=3.0, grip_x=48.0, grip_y=-10.0, weapon_deg=-40.0,
                          chain_cast_mode=False, chain_active=False)),
-                (5, dict(pelvis_dx=10.0, pelvis_dy=32.0, torso_deg=14.0, head_rel_deg=-8.0,
+                (5, dict(pelvis_dx=10.0, pelvis_dy=30.0, torso_deg=14.0, head_rel_deg=-8.0,
                          l_thigh_deg=18.0, l_shin_deg=16.0, r_thigh_deg=-18.0, r_shin_deg=16.0,
                          grip_x=-14.0, grip_y=-38.0, weapon_deg=-118.0,
                          chain_cast_mode=True, chain_active=True,
-                         chain_lx=96.0, chain_ly=-42.0, chain_reach=30.0, halo_grand=True)),
-                (9, dict(pelvis_dx=12.0, pelvis_dy=34.0, torso_deg=16.0, head_rel_deg=-8.0,
+                         chain_lx=96.0, chain_ly=-40.0, chain_reach=30.0, halo_grand=True)),
+                (9, dict(pelvis_dx=12.0, pelvis_dy=32.0, torso_deg=16.0, head_rel_deg=-8.0,
                          l_thigh_deg=20.0, l_shin_deg=18.0, r_thigh_deg=-20.0, r_shin_deg=16.0,
                          grip_x=-18.0, grip_y=-42.0, weapon_deg=-124.0,
                          chain_cast_mode=True, chain_active=True,
-                         chain_lx=102.0, chain_ly=-40.0, chain_reach=34.0, halo_grand=True)),
-                (14, dict(pelvis_dx=-12.0, pelvis_dy=40.0, torso_deg=-12.0, head_rel_deg=8.0,
+                         chain_lx=102.0, chain_ly=-38.0, chain_reach=34.0, halo_grand=True)),
+                (14, dict(pelvis_dx=-12.0, pelvis_dy=38.0, torso_deg=-12.0, head_rel_deg=8.0,
                           l_thigh_deg=-20.0, l_shin_deg=22.0, r_thigh_deg=20.0, r_shin_deg=-14.0,
                           grip_x=18.0, grip_y=-46.0, weapon_deg=-98.0,
                           chain_cast_mode=True, chain_active=True,
                           chain_lx=42.0, chain_ly=-26.0, chain_reach=18.0, halo_grand=True)),
-                (19, dict(pelvis_dx=16.0, pelvis_dy=50.0, torso_deg=24.0, head_rel_deg=-12.0,
+                (19, dict(pelvis_dx=16.0, pelvis_dy=48.0, torso_deg=24.0, head_rel_deg=-12.0,
                           l_thigh_deg=-24.0, l_shin_deg=24.0, r_thigh_deg=24.0, r_shin_deg=-18.0,
                           grip_x=62.0, grip_y=-4.0, weapon_deg=18.0, grip_sep=36.0,
                           chain_cast_mode=False, chain_active=False, halo_grand=True)),
-                (24, dict(pelvis_dx=10.0, pelvis_dy=30.0, torso_deg=12.0, head_rel_deg=-6.0,
+                (24, dict(pelvis_dx=10.0, pelvis_dy=28.0, torso_deg=12.0, head_rel_deg=-6.0,
                           grip_x=54.0, grip_y=-22.0, weapon_deg=-22.0, grip_sep=36.0,
                           chain_cast_mode=False, chain_active=False, halo_grand=True)),
                 (29, dict(torso_deg=3.0, grip_x=48.0, grip_y=-10.0, weapon_deg=-40.0,
@@ -949,31 +1007,28 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 4:
-            # Row 4: ULTIMATE — Grim Harvest: Sovereign of Death:
-            # F00..F09 Ascends with arms and 2H Great-Scythe raised overhead, skull pauldrons flaring ->
-            # F10..F17 High-speed wraith cross-reap pose ->
-            # F18..F29 Colossal two-handed overhead Guillotine drop slam (strictly inside x <= 98!)
+            # Row 4: ULTIMATE / TRUE_ULTIMATE — Sovereign Ascension & Overhead Memento Mori Guillotine
             kfs = [
-                (0, dict(pelvis_dx=0.0, pelvis_dy=36.0, torso_deg=-6.0, head_rel_deg=4.0,
+                (0, dict(pelvis_dx=0.0, pelvis_dy=32.0, torso_deg=-6.0, head_rel_deg=4.0,
                          grip_x=38.0, grip_y=-32.0, weapon_deg=-68.0, grip_sep=34.0,
                          foot_y=99.0, halo_grand=True)),
                 (6, dict(pelvis_dx=-4.0, pelvis_dy=12.0, torso_deg=-14.0, head_rel_deg=10.0,
                          l_thigh_deg=18.0, l_shin_deg=26.0, r_thigh_deg=-14.0, r_shin_deg=22.0,
-                         grip_x=28.0, grip_y=-96.0, weapon_deg=-102.0, grip_sep=32.0,
-                         foot_y=92.0, halo_grand=True)),
-                (13, dict(pelvis_dx=12.0, pelvis_dy=30.0, torso_deg=18.0, head_rel_deg=-8.0,
+                         grip_x=28.0, grip_y=-94.0, weapon_deg=-102.0, grip_sep=32.0,
+                         foot_y=93.0, halo_grand=True)),
+                (13, dict(pelvis_dx=12.0, pelvis_dy=28.0, torso_deg=18.0, head_rel_deg=-8.0,
                           l_thigh_deg=22.0, l_shin_deg=20.0, r_thigh_deg=-22.0, r_shin_deg=18.0,
                           grip_x=58.0, grip_y=-14.0, weapon_deg=8.0, grip_sep=36.0,
-                          foot_y=95.0, halo_grand=True, speedlines=4)),
+                          foot_y=95.0, halo_grand=True)),
                 (17, dict(pelvis_dx=-6.0, pelvis_dy=14.0, torso_deg=-16.0, head_rel_deg=10.0,
                           l_thigh_deg=20.0, l_shin_deg=28.0, r_thigh_deg=-16.0, r_shin_deg=24.0,
-                          grip_x=24.0, grip_y=-102.0, weapon_deg=-108.0, grip_sep=32.0,
-                          foot_y=91.0, halo_grand=True)),
-                (22, dict(pelvis_dx=14.0, pelvis_dy=54.0, torso_deg=24.0, head_rel_deg=-12.0,
+                          grip_x=24.0, grip_y=-98.0, weapon_deg=-106.0, grip_sep=32.0,
+                          foot_y=92.0, halo_grand=True)),
+                (22, dict(pelvis_dx=14.0, pelvis_dy=52.0, torso_deg=24.0, head_rel_deg=-12.0,
                           l_thigh_deg=-24.0, l_shin_deg=26.0, r_thigh_deg=24.0, r_shin_deg=-18.0,
                           grip_x=58.0, grip_y=-2.0, weapon_deg=16.0, grip_sep=36.0,
                           foot_y=99.0, halo_grand=True, shadow_mantle=0.95)),
-                (26, dict(pelvis_dx=10.0, pelvis_dy=42.0, torso_deg=16.0, head_rel_deg=-8.0,
+                (26, dict(pelvis_dx=10.0, pelvis_dy=40.0, torso_deg=16.0, head_rel_deg=-8.0,
                           grip_x=54.0, grip_y=-6.0, weapon_deg=6.0, grip_sep=36.0,
                           foot_y=99.0, halo_grand=True, shadow_mantle=0.55)),
                 (29, dict(torso_deg=3.0, grip_x=48.0, grip_y=-10.0, weapon_deg=-40.0,
@@ -985,10 +1040,10 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 5:
-            # Row 5: DEATH — Collapses to knees (F00..F11), falls prone onto the arena floor
-            # (F12..F29) with his 2H Great-Scythe resting flat beside him
+            # Row 5: DEATH — Grounded stagger (F00..F06), knee buckle (F07..F17),
+            # horizontal prone rest with Great-Scythe resting horizontally on floor (F18..F29)
             kfs = make_prone_knight_death_kfs(
-                idle_weapon_deg=-40.0, plant_x=54.0, plant_y=88.0, use_planted_weapon=True, mane_front=False
+                idle_weapon_deg=-40.0, plant_x=52.0, plant_y=90.0, use_planted_weapon=True, mane_front=False
             )
             cfg = eval_pose_keyframes(f, kfs, ph, DEFAULTS, extra_meta_keys=("plant_x", "plant_y"), wave_mult=1.0)
             cfg["halo_active"] = (f <= 6)
@@ -1001,21 +1056,23 @@ def build_row_configs(row_idx):
                 apply_2h_scythe_ik(cfg)
             else:
                 cfg["two_handed_ik"] = False
+            if f >= 18:
+                cfg["resting_scythe_floor"] = True
+                cfg["planted_weapon"] = False
             cfgs.append(cfg)
 
         elif row_idx == 6:
-            # Row 6: DASH — Wraith Shadow-Rush:
-            # Low, aggressive forward phantom-glide with cloak streaming behind and 2H Great-Scythe poised to impale
+            # Row 6: DASH — Aerodynamic Wraith Shadow-Rush (zero baked stick-speedlines!)
             kfs = [
                 (0, dict(torso_deg=5.0, grip_x=48.0, grip_y=-10.0, weapon_deg=-40.0, foot_y=99.0)),
-                (6, dict(pelvis_dx=12.0, pelvis_dy=28.0, torso_deg=24.0, head_rel_deg=-12.0, mane_rel_deg=-14.0,
+                (6, dict(pelvis_dx=12.0, pelvis_dy=26.0, torso_deg=24.0, head_rel_deg=-12.0, mane_rel_deg=-14.0,
                          l_thigh_deg=26.0, l_shin_deg=32.0, r_thigh_deg=-18.0, r_shin_deg=24.0,
                          grip_x=56.0, grip_y=-16.0, weapon_deg=-18.0, grip_sep=36.0,
-                         halo_grand=True, speedlines=5, foot_y=96.0)),
-                (23, dict(pelvis_dx=12.0, pelvis_dy=28.0, torso_deg=24.0, head_rel_deg=-12.0, mane_rel_deg=-14.0,
+                         halo_grand=True, foot_y=96.0)),
+                (23, dict(pelvis_dx=12.0, pelvis_dy=26.0, torso_deg=24.0, head_rel_deg=-12.0, mane_rel_deg=-14.0,
                           l_thigh_deg=26.0, l_shin_deg=32.0, r_thigh_deg=-18.0, r_shin_deg=24.0,
                           grip_x=56.0, grip_y=-16.0, weapon_deg=-18.0, grip_sep=36.0,
-                          halo_grand=True, speedlines=5, foot_y=96.0)),
+                          halo_grand=True, foot_y=96.0)),
                 (29, dict(torso_deg=5.0, grip_x=48.0, grip_y=-10.0, weapon_deg=-40.0, foot_y=99.0)),
             ]
             cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
@@ -1026,22 +1083,20 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 7:
-            # Row 7: CROUCH — Grave-Submerge & Rising Scythe Uppercut:
-            # Crouches low into a necrotic shadow mantle (F00..F10), then erupts upward with a
-            # rising 2H Great-Scythe uppercut (F11..F29)
+            # Row 7: CROUCH — Grave-Submerge & Rising 2H Great-Scythe Uppercut
             kfs = [
                 (0, dict(torso_deg=3.0, grip_x=48.0, grip_y=-10.0, weapon_deg=-40.0, shadow_mantle=0.0)),
-                (7, dict(pelvis_dx=-6.0, pelvis_dy=82.0, torso_deg=18.0, head_rel_deg=-8.0,
+                (7, dict(pelvis_dx=-6.0, pelvis_dy=78.0, torso_deg=18.0, head_rel_deg=-8.0,
                          l_thigh_deg=-34.0, l_shin_deg=36.0, r_thigh_deg=32.0, r_shin_deg=-26.0,
                          grip_x=52.0, grip_y=-4.0, weapon_deg=16.0, grip_sep=34.0,
                          shadow_mantle=1.0, halo_grand=True)),
-                (11, dict(pelvis_dx=-4.0, pelvis_dy=76.0, torso_deg=14.0, head_rel_deg=-6.0,
+                (11, dict(pelvis_dx=-4.0, pelvis_dy=72.0, torso_deg=14.0, head_rel_deg=-6.0,
                           l_thigh_deg=-32.0, l_shin_deg=34.0, r_thigh_deg=30.0, r_shin_deg=-24.0,
                           grip_x=54.0, grip_y=-8.0, weapon_deg=20.0, grip_sep=34.0,
                           shadow_mantle=0.9, halo_grand=True)),
                 (18, dict(pelvis_dx=12.0, pelvis_dy=16.0, torso_deg=-10.0, head_rel_deg=-6.0,
                           l_thigh_deg=18.0, l_shin_deg=16.0, r_thigh_deg=-20.0, r_shin_deg=16.0,
-                          grip_x=56.0, grip_y=-68.0, weapon_deg=-68.0, grip_sep=34.0,
+                          grip_x=56.0, grip_y=-66.0, weapon_deg=-68.0, grip_sep=34.0,
                           shadow_mantle=0.4, halo_grand=True)),
                 (29, dict(torso_deg=3.0, grip_x=48.0, grip_y=-10.0, weapon_deg=-40.0, shadow_mantle=0.0)),
             ]
@@ -1051,15 +1106,14 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 8:
-            # Row 8: JUMP — Spectral Wraith Float-Leap & Aerial Guillotine:
-            # Leaps into the air with tattered cloak wings flared and cleaves downward with the 2H Great-Scythe
+            # Row 8: JUMP — Spectral Wraith Float-Leap & Downward Aerial Guillotine
             kfs = [
                 (0, dict(torso_deg=3.0, grip_x=48.0, grip_y=-10.0, weapon_deg=-40.0, foot_y=99.0)),
                 (11, dict(pelvis_dx=4.0, pelvis_dy=12.0, torso_deg=-12.0, head_rel_deg=8.0, mane_rel_deg=-12.0,
                           l_thigh_deg=24.0, l_shin_deg=34.0, r_thigh_deg=-14.0, r_shin_deg=26.0,
-                          grip_x=28.0, grip_y=-94.0, weapon_deg=-98.0, grip_sep=32.0,
+                          grip_x=28.0, grip_y=-92.0, weapon_deg=-98.0, grip_sep=32.0,
                           foot_y=92.0, halo_grand=True)),
-                (19, dict(pelvis_dx=14.0, pelvis_dy=48.0, torso_deg=22.0, head_rel_deg=-10.0,
+                (19, dict(pelvis_dx=14.0, pelvis_dy=46.0, torso_deg=22.0, head_rel_deg=-10.0,
                           l_thigh_deg=-22.0, l_shin_deg=24.0, r_thigh_deg=22.0, r_shin_deg=-18.0,
                           grip_x=58.0, grip_y=-4.0, weapon_deg=16.0, grip_sep=36.0,
                           foot_y=99.0, halo_grand=True)),
@@ -1074,16 +1128,15 @@ def build_row_configs(row_idx):
 
 
 def main():
-    build_portrait()
     parts = load_and_segment_512()
     picks = [
         (0, 0, "R0 2H SCYTHE GUARD"),
         (1, 4, "R1 NECROPOLIS PROWL"),
         (2, 13, "R2 2H SOUL-HARVEST"),
         (3, 6, "R3 DEATH'S GRASP CHAIN"),
-        (4, 22, "R4 GRIM GUILLOTINE"),
+        (4, 22, "R4 MEMENTO GUILLOTINE"),
         (5, 12, "R5 KNEE COLLAPSE"),
-        (5, 25, "R5 PRONE COLLAPSE"),
+        (5, 25, "R5 PRONE FLOOR REST"),
         (7, 16, "R7 GRAVE ERUPTION"),
     ]
     build_and_save_30fps_sheet(

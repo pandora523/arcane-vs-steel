@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps62';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps62';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps62';
+import { Fighter } from './Fighter.js?v=30fps63';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps63';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps63';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps62';
+} from '../engine/shaders/cyberShaders.js?v=30fps63';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 
@@ -32,6 +32,9 @@ export class Android extends Fighter {
     this.deathSfx = 'death_android';
     this.skillName = 'EMP OVERLOAD BLITZ';
     this.ultName = 'SINGULARITY PROTOCOL';
+    this.hasTrueUltimate = true;
+    this.trueUltName = 'PROJECT GUNG-09: ORBITAL SATELLITE BUSTER';
+    this.trueUltDuration = 4.45;
     this.theme = 'cyber';
     this.hasPoise = false;
     this.skillTriggerRange = 460;
@@ -48,16 +51,27 @@ export class Android extends Fighter {
     // Native 120Hz dual-buffer HD-2D shader & particle engine (`back` & `front` 2.5D layers)
     this.fx = new ArcaneShaderFX(CYBER_EFFECT_REGISTRY, { pixelScale: 3, viewW: 440, viewH: 220 });
 
-    // Ensure browser always fetches latest v=30fps44 VEX-09 sprite & VFX sheets
+    // Ensure browser always fetches latest v=30fps62 VEX-09 sprite & VFX sheets
     if (typeof Image !== 'undefined') {
       const androidAssets = PixelForge.initAssets()?.android;
-      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps44')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps62';
+      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps62')) {
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps63';
       }
-      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps44')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps62';
+      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps62')) {
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps63';
       }
     }
+
+    // Autonomous Fin-Funnel Drones & Supreme Ultimate state
+    this.funnelDrones = [
+      { angle: 0, x: this.x, y: this.y - 120 },
+      { angle: Math.PI * 0.5, x: this.x, y: this.y - 120 },
+      { angle: Math.PI, x: this.x, y: this.y - 120 },
+      { angle: Math.PI * 1.5, x: this.x, y: this.y - 120 }
+    ];
+    this._trueUltStep = 0;
+    this._trueUltTargetX = 600;
+    this._trueUltBusterTimer = 0;
 
     // Baked 30fps `android_vfx.png` constructs & holographic afterimages
     this.afterimages = [];
@@ -75,7 +89,12 @@ export class Android extends Fighter {
       this.isDeflecting = false;
       this.fx?.stopByKey('aegisHexDome');
     }
-    if (newState !== 'DASH' && newState !== 'JUMP' && newState !== 'ULTIMATE') {
+    if (
+      newState !== 'DASH' &&
+      newState !== 'JUMP' &&
+      newState !== 'ULTIMATE' &&
+      newState !== 'TRUE_ULTIMATE'
+    ) {
       this.fx?.stopByKey('wingPylonThruster');
     }
     if (newState === 'SKILL') {
@@ -84,6 +103,9 @@ export class Android extends Fighter {
     if (newState === 'ULTIMATE') {
       this._ultStep = 0;
       this._ultCoreFx = null;
+    }
+    if (newState === 'TRUE_ULTIMATE') {
+      this._trueUltStep = 0;
     }
   }
 
@@ -379,10 +401,12 @@ export class Android extends Fighter {
 
     if (!this.didActionFrame && u >= 0.30) {
       this.didActionFrame = true;
-      const step = this.comboStep % 3;
+      const combo = this.comboStep % 3;
+      const step = combo;
       this.comboStep++;
+      const hitX = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 155;
 
-      if (step === 2) {
+      if (combo === 2) {
         // 3rd Hit Finisher: `twinCrossSlash` has built-in `X = +34 (+102px), Y = -23 (-69px)`
         this.fx.spawn('twinCrossSlash', this.x - this.facing * 14, this.groundY - 24, {
           flip: this.facing < 0,
@@ -403,6 +427,27 @@ export class Android extends Fighter {
             type: 'cyber_disc'
           });
         }
+        // Command 2 of her autonomous Fin-Funnel Drones (android_vfx.png Row 6, 150x150) to fire converging cyan-magenta laser pulses at the target
+        for (let dIdx = 0; dIdx < 2; dIdx++) {
+          const drone = this.funnelDrones?.[dIdx];
+          const droneX = drone ? drone.x : this.x + this.facing * (dIdx === 0 ? -36 : 42);
+          const droneY = drone ? drone.y : this.y - (dIdx === 0 ? 148 : 122);
+          this.spawnVfxAnim(6, droneX, droneY, 150, 150, 0.30, {
+            flipX: this.facing < 0,
+            foreground: true
+          });
+          this.fx.spawn('orbitalHelixBeam', droneX, droneY, {
+            flip: false,
+            palette: dIdx === 0 ? CYBER_NEON_PALETTE : CYBER_MAGENTA_PALETTE,
+            light: 1.18,
+            extra: {
+              dx: (hitX - droneX) / 3,
+              dy: (this.groundY - 96 - droneY) / 3,
+              width: 3.8
+            }
+          });
+        }
+        this.spawnVfxAnim(6, hitX, this.groundY - 96, 176, 176, 0.34, { foreground: true });
       } else {
         // `plasmaCrescentSlash` has built-in `cx = +6 (+18px), cy = -26 (-78px)` & floor sparks at `y = 0` (`groundY`)
         this.fx.spawn('plasmaCrescentSlash', this.x + this.facing * 44, this.groundY - 8, {
@@ -683,8 +728,184 @@ export class Android extends Fighter {
     }
   }
 
+  /**
+   * 3-Overdrive Supreme Ultimate (`state === 'TRUE_ULTIMATE'`) —
+   * "PROJECT GUNG-09: ORBITAL SATELLITE BUSTER" (`4.45s`)
+   * Note: Never changes stage background image (`overrideArena` is never called).
+   */
+  updateTrueUltimate(dt, enemy, game) {
+    const t = this.stateTimer;
+    this.isInvulnerable = true;
+    this.vx = 0;
+    this.vy = 0;
+
+    const targets = game?.fighters
+      ? game.fighters.filter(
+          (f) => f && !f.isDead && !f.isBenched && f !== this && (!this.team || f.team !== this.team)
+        )
+      : enemy && !enemy.isDead
+        ? [enemy]
+        : [];
+
+    // Track target X during 0.00s .. 2.75s
+    if (t <= 2.75) {
+      this._trueUltTargetX = enemy
+        ? Math.max(200, Math.min(1000, enemy.x))
+        : Math.max(200, Math.min(1000, this.x + this.facing * 240));
+      if (Math.abs(this._trueUltTargetX - this.x) > 8) {
+        this.facing = this._trueUltTargetX >= this.x ? 1 : -1;
+      }
+    }
+
+    // Phase 1 (0.00s .. 1.15s — Wing-Pylon Ascension & Orbital Satellite Target-Lock)
+    if (t < 1.15) {
+      const uAsc = Math.min(1, t / 1.15);
+      const ease = 1 - Math.pow(1 - uAsc, 2.4);
+      this.y = this.groundY - 72 * ease;
+
+      if (t >= 0.04 && this._trueUltStep < 1) {
+        this._trueUltStep = 1;
+        game?.audio?.play?.('ult_android', this.x);
+        game?.audio?.play?.('emp_discharge', this.x);
+        game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#00f0ff');
+        game?.vfx?.spawnDamageText?.(
+          this.x,
+          this.y - 190,
+          0,
+          true,
+          '★ PROJECT GUNG-09: ORBITAL LOCK! ★',
+          '#00f0ff'
+        );
+        this.fx.spawn('wingPylonThruster', this.x - this.facing * 18, this.y - 146, {
+          follow: this,
+          offsetX: -18,
+          offsetY: -146,
+          flip: this.facing < 0,
+          palette: CYBER_NEON_PALETTE,
+          maxDuration: 3.15,
+          light: 1.15,
+          extra: { length: 22, tilt: -0.58 }
+        });
+        this.fx.spawn('holoTargetReticle', this._trueUltTargetX, this.groundY, {
+          palette: CYBER_NEON_PALETTE,
+          light: 1.2,
+          extra: { boxW: 26, boxH: 66 }
+        });
+      }
+      return;
+    }
+
+    // Phase 2 (1.15s .. 3.00s — 8-Drone All-Range Octagonal Convergence Grid, zero micro-tick damage)
+    if (t < 3.05) {
+      this.y = this.groundY - 72 + Math.sin((t - 1.15) * 6.0) * 4;
+
+      if (t >= 1.15 && this._trueUltStep < 2) {
+        this._trueUltStep = 2;
+        game?.audio?.play?.('laser_beam', this._trueUltTargetX);
+        game?.audio?.play?.('blink', this.x);
+        game?.vfx?.spawnDamageText?.(
+          this._trueUltTargetX,
+          this.groundY - 196,
+          0,
+          true,
+          'ALL-RANGE FUNNEL LOCK!',
+          '#ff2e93'
+        );
+      }
+
+      if (t <= 3.00) {
+        if (enemy && !enemy.isDead) {
+          enemy.x += (this._trueUltTargetX - enemy.x) * Math.min(1, dt * 7);
+          enemy.vx *= 0.2;
+        }
+        for (const foe of targets) {
+          if (foe !== enemy) {
+            foe.x += (this._trueUltTargetX - foe.x) * Math.min(1, dt * 7);
+            foe.vx *= 0.2;
+          }
+        }
+      }
+      return;
+    }
+
+    // Phase 3 (t >= 3.05s, _trueUltStep < 3 — Instantaneous Orbital Satellite Buster Beam)
+    if (t >= 3.05 && this._trueUltStep < 3) {
+      this._trueUltStep = 3;
+      this._trueUltBusterTimer = 1.00;
+
+      game?.renderer?.triggerImpactFrame?.(0.12, this._trueUltTargetX, this.groundY - 110, 'cyber');
+      if (game?.renderer && game.renderer.impactFrameTimer > 1.0) {
+        game.renderer.triggerImpactFrame(this._trueUltTargetX, this.groundY - 110, 0.12, 'cyber');
+      }
+      game?.renderer?.shake?.(28, 0.75);
+      game?.renderer?.triggerShake?.(28, 0.75);
+      game?.renderer?.flash?.(0.32, '#ecfeff');
+      game?.renderer?.triggerAberration?.(12);
+      game?.renderer?.triggerHitStop?.(0.08);
+
+      game?.audio?.play?.('ult_android', this._trueUltTargetX);
+      game?.audio?.play?.('laser_beam', this._trueUltTargetX);
+      game?.audio?.play?.('emp_discharge', this._trueUltTargetX);
+
+      this.heal(Math.round(this.maxHp * 0.18), 'NANO-CORE OVERCLOCK');
+
+      this.fx.spawn('supernovaExplosion', this._trueUltTargetX, this.groundY - 96, {
+        palette: CYBER_NEON_PALETTE,
+        light: 1.35
+      });
+      this.fx.spawn('empOverloadDome', this._trueUltTargetX, this.groundY, {
+        palette: CYBER_MAGENTA_PALETTE,
+        warmup: 0.42,
+        light: 1.3,
+        extra: { radius: 56, fringe: '#00f0ff' }
+      });
+
+      {
+        const isCrit = true;
+        const knockX = 330;
+        const knockY = -270;
+        for (const t of targets) {
+          t.takeDamage(380, this, isCrit, knockX, knockY);
+          this.fx.spawn('rgbGlitchTear', t.x, t.groundY, {
+            follow: t,
+            offsetX: 0,
+            offsetY: 0,
+            palette: CYBER_NEON_PALETTE,
+            maxDuration: 0.52,
+            light: 1.1
+          });
+        }
+      }
+    }
+
+    // Phase 4 (3.05s .. 4.45s — Smoothly descend back to groundY & return to IDLE)
+    const uDesc = Math.min(1, Math.max(0, (t - 3.05) / (this.trueUltDuration - 3.05)));
+    const easeDesc = uDesc * uDesc * (3 - 2 * uDesc);
+    this.y = this.groundY - 72 * (1 - easeDesc);
+
+    if (t >= this.trueUltDuration) {
+      this.y = this.groundY;
+      this.isInvulnerable = false;
+      this._trueUltStep = 0;
+      this.setState('IDLE');
+    }
+  }
+
   update(dt, enemy, game) {
     this.fx.update(dt);
+
+    if (this._trueUltBusterTimer > 0) {
+      this._trueUltBusterTimer = Math.max(0, this._trueUltBusterTimer - dt);
+    }
+
+    if (Array.isArray(this.funnelDrones)) {
+      for (let i = 0; i < this.funnelDrones.length; i++) {
+        const d = this.funnelDrones[i];
+        d.angle += dt * 2.6;
+        d.x = this.x + Math.cos(d.angle) * 64;
+        d.y = this.y - 126 + Math.sin(d.angle * 2) * 14;
+      }
+    }
 
     for (let i = this.afterimages.length - 1; i >= 0; i--) {
       this.afterimages[i].age += dt;
@@ -714,7 +935,7 @@ export class Android extends Fighter {
   drawBloomedVfxCell(ctx, vfxSheet, row, col, x, y, w, h, alpha = 0.95, flipX = false, renderer = null) {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth || alpha <= 0.01) return;
     const sx = Math.max(0, Math.min(29, col)) * 208;
-    const sy = Math.max(0, Math.min(4, row)) * 208;
+    const sy = Math.max(0, Math.min(7, row)) * 208;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -737,9 +958,47 @@ export class Android extends Fighter {
     ctx.restore();
   }
 
+  /**
+   * Stamps `android_vfx.png` Row 5 (Orbital Satellite Target-Lock Hex Reticle, `310x240`)
+   * on the arena floor under `this._trueUltTargetX` during `TRUE_ULTIMATE`.
+   */
+  drawBehind(ctx, renderer = null) {
+    if (this.state !== 'TRUE_ULTIMATE' && this._trueUltBusterTimer <= 0) return;
+    const sprites = PixelForge.initAssets().android;
+    const vfxSheet = sprites?.vfx;
+    if (!vfxSheet?.complete || !vfxSheet.naturalWidth) return;
+
+    const t = this.stateTimer || 0;
+    const col = Math.floor(t * 30) % 30;
+    const fadeIn = Math.min(1, t / 0.22);
+    const fadeOut =
+      this.state === 'TRUE_ULTIMATE' && t > 3.25
+        ? Math.max(0, 1 - (t - 3.25) / 0.85)
+        : 1.0;
+    const alpha = fadeIn * fadeOut * 0.94;
+    if (alpha <= 0.02) return;
+
+    this.drawBloomedVfxCell(
+      ctx,
+      vfxSheet,
+      5,
+      col,
+      this._trueUltTargetX,
+      this.groundY - 6,
+      310,
+      240,
+      alpha,
+      false,
+      renderer
+    );
+  }
+
   drawForegroundOverlay(ctx, renderer = null) {
     const sprites = PixelForge.initAssets().android;
     const vfxSheet = sprites?.vfx;
+
+    // 0. Supreme Ultimate Row 5 Orbital Satellite Target-Lock Hex Reticle (`310x240`) on arena floor
+    this.drawBehind(ctx, renderer);
 
     // 1. Holographic Cyber Afterimages
     if (this.afterimages.length > 0 && sprites?.sheet?.complete) {
@@ -818,5 +1077,96 @@ export class Android extends Fighter {
     }
 
     ctx.restore();
+
+    if (isReflection) return;
+    const vfxSheet = sprites?.vfx;
+    if (!vfxSheet?.complete || !vfxSheet.naturalWidth) return;
+
+    // Supreme Ultimate Phase 2 (1.15s .. 3.00s): 8 Orbiting Row 6 Fin-Funnel Nodes (156x156) in an Octagonal Ring
+    // around (this._trueUltTargetX, this.groundY - 110) with converging cyan/magenta targeting lasers
+    if (this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 1.15 && this.stateTimer < 3.05) {
+      const cx = this._trueUltTargetX;
+      const cy = this.groundY - 110;
+      const baseCol = Math.floor(this.stateTimer * 30) % 30;
+      const ringProgress = Math.min(1, (this.stateTimer - 1.15) / 0.25);
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < 8; i++) {
+        const ang = i * (Math.PI * 0.25) + this.stateTimer * 2.8;
+        const rx = 168 * ringProgress;
+        const ry = 114 * ringProgress;
+        const dx = cx + Math.cos(ang) * rx;
+        const dy = cy + Math.sin(ang) * ry;
+        const beamCol = i % 2 === 0 ? '#00f0ff' : '#ff2e93';
+
+        ctx.strokeStyle = beamCol;
+        ctx.globalAlpha = 0.68;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(Math.round(dx), Math.round(dy));
+        ctx.lineTo(Math.round(cx), Math.round(cy));
+        ctx.stroke();
+
+        ctx.strokeStyle = '#ffffff';
+        ctx.globalAlpha = 0.92;
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.moveTo(Math.round(dx), Math.round(dy));
+        ctx.lineTo(Math.round(cx), Math.round(cy));
+        ctx.stroke();
+      }
+      ctx.restore();
+
+      for (let i = 0; i < 8; i++) {
+        const ang = i * (Math.PI * 0.25) + this.stateTimer * 2.8;
+        const dx = cx + Math.cos(ang) * (168 * ringProgress);
+        const dy = cy + Math.sin(ang) * (114 * ringProgress);
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          6,
+          (baseCol + i * 3) % 30,
+          dx,
+          dy,
+          156,
+          156,
+          0.95 * ringProgress,
+          Math.cos(ang) < 0,
+          renderer
+        );
+      }
+    }
+
+    // Supreme Ultimate Phase 3 (this._trueUltBusterTimer > 0): Colossal full-height vertical column of tiled
+    // Row 7 (Project GUNG-09 Orbital Satellite Buster Column, 340px wide from sky y = groundY - 540 down to groundY + 20)
+    if (this._trueUltBusterTimer > 0) {
+      const busterProg = 1.0 - Math.max(0, Math.min(1, this._trueUltBusterTimer / 1.0));
+      const col = Math.min(29, Math.floor(busterProg * 30));
+      const alpha =
+        this._trueUltBusterTimer < 0.28
+          ? this._trueUltBusterTimer / 0.28
+          : 0.98;
+      const topY = this.groundY - 540;
+      const botY = this.groundY + 20;
+      const colW = 340;
+      const tileH = 190;
+
+      for (let yCenter = botY - tileH * 0.5; yCenter >= topY - tileH * 0.4; yCenter -= tileH * 0.72) {
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          7,
+          col,
+          this._trueUltTargetX,
+          yCenter,
+          colW,
+          tileH,
+          alpha,
+          false,
+          renderer
+        );
+      }
+    }
   }
 }

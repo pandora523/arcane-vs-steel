@@ -62,9 +62,9 @@
     "archer": {
       "name": "Sylvara",
       "theme": "emerald",
-      "base_source": "assets/sprites/archer_v2_base.jpg",
+      "base_source": "assets/sprites/archer_v3_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part cel-clustered Sylvan Elven Star-Ranger skeletal rig + Back Quiver + Articulated Recurve Star-Bow & Multi-Arrow Draw + 6-Pinion Astral Ult Light-Wings + ArcaneShaderFX 120Hz 2.5D Sylvan Shader Suite + Supine Collapse",
+      "rig": "13-part cel-clustered Sylvan Elven Star-Huntress skeletal rig + Back Quiver + Articulated Recurve Star-Bow & Multi-Arrow Draw + 6-Pinion Astral Ult Light-Wings + 8-Row Yggdrasil & Supernova Dragon-Arrow VFX Suite + Supine Collapse",
       "script": "scripts/build_archer_30fps_sheet.py",
       "vfx_script": "scripts/build_archer_vfx_30fps.mjs"
     },
@@ -81,9 +81,9 @@
     "reaper": {
       "name": "Malakor",
       "theme": "abyssal",
-      "base_source": "assets/sprites/reaper_v3_base.jpg",
+      "base_source": "assets/sprites/reaper_v4_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "14-part cel-clustered Horned Necropolis Dreadlord skeletal rig + Necrotic Halo + Crescent Great-Scythe + Spectral Chain + 8-Row Abyssal VFX Suite + Prone Scythe-Plant Collapse",
+      "rig": "14-part cel-clustered Horned Necropolis Dreadlord skeletal rig + Necrotic Halo + Crescent Great-Scythe + Spectral Chain + 8-Row Abyssal & Gates of the Necropolis Memento Mori VFX Suite + Prone Scythe-Plant Collapse",
       "script": "scripts/build_reaper_30fps_sheet.py",
       "vfx_script": "scripts/build_reaper_vfx_30fps.mjs"
     },
@@ -99,9 +99,9 @@
     "titan": {
       "name": "Torgar",
       "theme": "forge",
-      "base_source": "assets/sprites/titan_v3_base.jpg",
+      "base_source": "assets/sprites/titan_v4_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part cel-clustered Runic Mountain Juggernaut skeletal rig + 2H World-Breaker Hammer IK + 8-Row World-Forge VFX Suite + Prone Collapse",
+      "rig": "14-part cel-clustered Runic World-Forge Warlord skeletal rig + 2H World-Breaker Hammer IK + 8-Row God-Hammer Mjolnir & Continental Sunder VFX Suite + Prone Collapse",
       "script": "scripts/build_titan_30fps_sheet.py",
       "vfx_script": "scripts/build_titan_vfx_30fps.mjs"
     },
@@ -110,7 +110,7 @@
       "theme": "storm",
       "base_source": "assets/sprites/ronin_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part cel-clustered Storm-Blade Iaido Samurai skeletal rig + Katana & Saya + ArcaneShaderFX 120Hz 2.5D Storm-Blade & Raijin Shader Suite + Prone Sword-Plant Collapse",
+      "rig": "13-part cel-clustered Storm-Blade Iaido Samurai skeletal rig + Katana & Saya + 8-Row Amakakeru Thousand Thunder Judgments & Raijin Shader VFX Suite + Prone Sword-Plant Collapse",
       "script": "scripts/build_ronin_30fps_sheet.py",
       "vfx_script": "scripts/build_ronin_vfx_30fps.mjs"
     },
@@ -119,25 +119,25 @@
       "theme": "crimson",
       "base_source": "assets/sprites/valkyrie_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part cel-clustered Valkyrie skeletal rig + 6-pinion Crimson-Gold Valkyrie Wings + Gungnir War-Lance + -360-deg Aerial Backflip Retreat (Row 7) + ArcaneShaderFX 120Hz 2.5D Crimson-Gold Valkyrie Shader Suite + Supine Collapse",
+      "rig": "13-part cel-clustered Valkyrie skeletal rig + 6-pinion Crimson-Gold Valkyrie Wings + Gungnir War-Lance + -360-deg Aerial Backflip Retreat (Row 7) + 8-Row Twilight of Ragnarok Gungnir & Valkyrie Shader VFX Suite + Supine Collapse",
       "script": "scripts/build_valkyrie_30fps_sheet.py",
       "vfx_script": "scripts/build_valkyrie_vfx_30fps.mjs"
     },
     "icemage": {
       "name": "Lyra",
       "theme": "glacial",
-      "base_source": "assets/sprites/icemage_v4_base.jpg",
+      "base_source": "assets/sprites/icemage_v5_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "15-part cel-clustered Cryo Sovereign skeletal rig + Fur Shoulder Mantle + Crystalline Frost Scepter + Cryo Prism Halo + ArcaneShaderFX 120Hz 2.5D Cryo-Prism & Borealis Shader Suite + Supine Collapse",
+      "rig": "15-part cel-clustered Cryo-Prism Empress skeletal rig + Fur Shoulder Mantle + Crystalline Frost Scepter + Cryo Prism Halo + 8-Row Absolute Zero Diamond Dust & Borealis Shader VFX Suite + Supine Collapse",
       "script": "scripts/build_icemage_30fps_sheet.py",
       "vfx_script": "scripts/build_icemage_vfx_30fps.mjs"
     },
     "android": {
       "name": "VEX-09",
       "theme": "cyber",
-      "base_source": "assets/sprites/android_v1_base.jpg",
+      "base_source": "assets/sprites/android_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "8-part cel-clustered Cybernetic Valkyrie skeletal rig + 2-Bone Analytical IK Robotic Arms + Muramasa-09 Cyan-Magenta HF Plasma Katana + Aero-Thruster Wing-Pylons + ArcaneShaderFX 120Hz 2.5D Shader Engine + Prone Shutdown Collapse",
+      "rig": "8-part cel-clustered Cybernetic Valkyrie skeletal rig + 2-Bone Analytical IK Robotic Arms + Muramasa-09 Cyan-Magenta HF Plasma Katana + Aero-Thruster Wing-Pylons + 8-Row Project GUNG-09 Orbital Satellite Buster VFX Suite + Prone Shutdown Collapse",
       "script": "scripts/build_android_30fps_sheet.py",
       "vfx_script": "scripts/build_android_vfx_30fps.mjs"
     }
