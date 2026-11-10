@@ -29,8 +29,10 @@ import {
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
-const ARTIFACT_DIR =
-  '/home/antigravity/.gemini/jetski/brain/8fc50de8883d7773cd17e6d942b425a5';
+const ARTIFACT_DIRS = [
+  '/home/antigravity/.gemini/jetski/brain/457cab14523e9f91b8aa1df550649774',
+  '/home/antigravity/.gemini/jetski/brain/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088'
+];
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -168,7 +170,7 @@ function bakeVfxSheet() {
 
   const rowSpecs = [
     {
-      name: 'Row 0: Molten Slag & Runic Anvil Boulder (F00..F29)',
+      name: 'Row 0: Spinning Flaming Horned Dwarven Forge-Anvil Projectile (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -179,7 +181,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 1: Runic World-Forge Shield Crest & Magma Aegis (F00..F29)',
+      name: 'Row 1: Khazad Dwarven Octagonal Ram-Horn & Crossed-Warhammer Aegis Crest (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -190,7 +192,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 2: Erupting Tectonic Basalt-Jade & Magma Pillar (F00..F29)',
+      name: 'Row 2: Colossal Sky-Falling God-Hammer & 5-Spire Volcanic Basalt-Jade Eruption (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -201,7 +203,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 3: Colossal World-Forge Runic Anvil & Crucible Seal (F00..F29)',
+      name: 'Row 3: 8-Cog Interlocking Dwarven World-Forge Crucible Gear Mandala & Glowing Horned Anvil (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -212,7 +214,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 4: Cataclysm Crater Nova & World-Breaker Cleave (F00..F29)',
+      name: 'Row 4: Tectonic Basalt Plate Split & 8-Spoke Magma-Jade Star-Crater Nova (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -285,10 +287,17 @@ function bakeVfxSheet() {
     throw new Error(`Expected 0 borderClips on titan_vfx.png, got ${borderClips}`);
   }
 
-  fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
-  const outDbgPath = path.join(ARTIFACT_DIR, 'debug_titan_30fps_vfx.png');
-  fs.writeFileSync(outDbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
-  console.log(`[titan-vfx] Wrote contact sheet -> ${outDbgPath}`);
+  const dbgPng = encodeRgbaPng(dbgW, dbgH, dbgRgba);
+  for (const dir of ARTIFACT_DIRS) {
+    try {
+      fs.mkdirSync(dir, { recursive: true });
+      const outDbgPath = path.join(dir, 'debug_titan_30fps_vfx.png');
+      fs.writeFileSync(outDbgPath, dbgPng);
+      console.log(`[titan-vfx] Wrote contact sheet -> ${outDbgPath}`);
+    } catch {
+      // Ignore if secondary artifact directory is inaccessible
+    }
+  }
 }
 
 bakeVfxSheet();

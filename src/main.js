@@ -1,6 +1,6 @@
 import { Renderer } from './engine/Renderer.js?v=30fps42';
 import { VFXManager } from './engine/VFXManager.js?v=30fps50';
-import { PixelForge } from './engine/PixelForge.js?v=30fps53';
+import { PixelForge } from './engine/PixelForge.js?v=30fps54';
 import { AudioManager } from './engine/AudioManager.js?v=30fps42';
 import { Warrior } from './entities/Warrior.js?v=30fps53';
 import { FireMage } from './entities/FireMage.js?v=30fps53';
@@ -8,7 +8,7 @@ import { Archer } from './entities/Archer.js?v=30fps53';
 import { Priestess } from './entities/Priestess.js?v=30fps53';
 import { Reaper } from './entities/Reaper.js?v=30fps53';
 import { Chronomancer } from './entities/Chronomancer.js?v=30fps53';
-import { Titan } from './entities/Titan.js?v=30fps53';
+import { Titan } from './entities/Titan.js?v=30fps54';
 import { Ronin } from './entities/Ronin.js?v=30fps53';
 import { Valkyrie } from './entities/Valkyrie.js?v=30fps53';
 import { IceMage } from './entities/IceMage.js?v=30fps53';

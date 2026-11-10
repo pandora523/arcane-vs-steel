@@ -50,9 +50,9 @@ export class PixelForge {
         portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps41', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps41'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps53'),
-        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps41', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps54'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps54'),
+        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps54', () => this.refreshPortraits())
       },
       ronin: {
         sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps41'),
