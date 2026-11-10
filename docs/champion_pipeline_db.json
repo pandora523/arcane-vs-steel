@@ -44,7 +44,7 @@
       "theme": "steel",
       "base_source": "assets/sprites/warrior_v3_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "14-part cel-clustered Dark-Cobalt & Cyan Elder-Rune Knight skeletal rig + Winged Frost-Runeblade + Elder-Rune Halo + Row 3 360-deg Cyclone Spin-Slash & Slam + Row 4 Left/Right/Top Rune-Blink Omnislash + Prone Knight Collapse",
+      "rig": "14-part cel-clustered Dark-Cobalt & Cyan Elder-Rune Knight skeletal rig + Two-Handed Winged Frost-Runeblade Greatsword (per-frame 2-Bone Analytical IK locking both gauntlets) + Elder-Rune Halo + Row 3 360-deg 2H Cyclone Spin-Slash & Slam + Row 4 Left/Right/Top 2H Rune-Blink Omnislash + Prone Knight Collapse",
       "script": "scripts/build_warrior_30fps_sheet.py",
       "vfx_script": "scripts/build_warrior_30fps_vfx.py"
     },

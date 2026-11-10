@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps40';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps40';
+import { Fighter } from './Fighter.js?v=30fps41';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps41';
 
 export class Warrior extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -390,7 +390,7 @@ export class Warrior extends Fighter {
       this.reflectNearbyProjectiles(game);
     }
 
-    // Frames F05..F12 (0.16s <= t < 0.42s): Bracing behind glowing Frost-Gold Aegis Greatshield
+    // Frames F05..F12 (0.16s <= t < 0.42s): Bracing in Two-Handed Runeblade Cross-Guard Elder-Rune Ward
     if (t >= 0.16 && t < 0.42) {
       if (Math.random() < 0.7) {
         const a = t * 24;
@@ -407,7 +407,7 @@ export class Warrior extends Fighter {
         });
       }
     } else if (t >= 0.42 && !this.didActionFrame) {
-      // Frame F13 (t = 0.42s): Low horizontal Frost-Crescent Counter-Slash from behind Aegis Greatshield!
+      // Frame F13 (t = 0.42s): Low Two-Handed Frost-Crescent Counter-Slash out of Cross-Guard Parry!
       this.didActionFrame = true;
       this.vx += this.facing * 95;
       if (game.audio) game.audio.play('blade_wave', this.x);
