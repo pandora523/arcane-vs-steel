@@ -34,7 +34,7 @@
       "scripts/build_reaper_30fps_vfx.py",
       "scripts/build_chronomancer_30fps_vfx.py",
       "scripts/build_titan_30fps_vfx.py",
-      "scripts/build_ronin_30fps_vfx.py",
+      "scripts/build_ronin_vfx_30fps.mjs",
       "scripts/build_valkyrie_vfx_30fps.mjs",
       "scripts/build_icemage_vfx_30fps.mjs",
       "scripts/build_android_vfx_30fps.mjs"
@@ -110,9 +110,9 @@
       "theme": "storm",
       "base_source": "assets/sprites/ronin_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part cel-clustered Storm-Blade Iaido Samurai skeletal rig + Katana & Saya + Prone Sword-Plant Collapse",
+      "rig": "13-part cel-clustered Storm-Blade Iaido Samurai skeletal rig + Katana & Saya + ArcaneShaderFX 120Hz 2.5D Storm-Blade & Raijin Shader Suite + Prone Sword-Plant Collapse",
       "script": "scripts/build_ronin_30fps_sheet.py",
-      "vfx_script": "scripts/build_ronin_30fps_vfx.py"
+      "vfx_script": "scripts/build_ronin_vfx_30fps.mjs"
     },
     "valkyrie": {
       "name": "Freyja",

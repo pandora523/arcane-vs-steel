@@ -56,7 +56,7 @@ export class PixelForge {
       },
       ronin: {
         sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps41'),
-        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps41'),
+        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps51'),
         portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps41', () => this.refreshPortraits())
       },
       valkyrie: {

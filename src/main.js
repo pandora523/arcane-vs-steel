@@ -1,5 +1,5 @@
 import { Renderer } from './engine/Renderer.js?v=30fps42';
-import { VFXManager } from './engine/VFXManager.js?v=30fps42';
+import { VFXManager } from './engine/VFXManager.js?v=30fps50';
 import { PixelForge } from './engine/PixelForge.js?v=30fps41';
 import { AudioManager } from './engine/AudioManager.js?v=30fps42';
 import { Warrior } from './entities/Warrior.js?v=30fps41';
@@ -9,9 +9,9 @@ import { Priestess } from './entities/Priestess.js?v=30fps48';
 import { Reaper } from './entities/Reaper.js?v=30fps41';
 import { Chronomancer } from './entities/Chronomancer.js?v=30fps41';
 import { Titan } from './entities/Titan.js?v=30fps41';
-import { Ronin } from './entities/Ronin.js?v=30fps41';
+import { Ronin } from './entities/Ronin.js?v=30fps51';
 import { Valkyrie } from './entities/Valkyrie.js?v=30fps47';
-import { IceMage } from './entities/IceMage.js?v=30fps41';
+import { IceMage } from './entities/IceMage.js?v=30fps50';
 import { Android } from './entities/Android.js?v=30fps46';
 
 const CHAMPION_ROSTER = {

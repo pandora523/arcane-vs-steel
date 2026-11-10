@@ -1,6 +1,13 @@
 import { Fighter } from './Fighter.js?v=30fps41';
 import { PixelForge } from '../engine/PixelForge.js?v=30fps41';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps46';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps51';
 
+/**
+ * Kaze-Maru (`ronin`) — Storm-Blade Iaido Samurai & Raijin Thunder Vanguard.
+ * Powered natively by `ArcaneShaderFX` (dual-buffer 120Hz HD-2D shader & particle engine)
+ * + `assets/sprites/ronin_sheet.png` & `assets/sprites/ronin_vfx.png`.
+ */
 export class Ronin extends Fighter {
   constructor(x, groundY, facing = 1) {
     const opts = typeof x === 'object' && x !== null ? x : { x, groundY, facing };
@@ -37,7 +44,7 @@ export class Ronin extends Fighter {
     // 1. Lightning Afterimage Clones left behind during Shunpo / Flash-Through / Zantetsuken / Omnislash
     this.afterimages = [];
     this.afterimageSpawnAccum = 0;
-    // 2. Active Persistent Judgment-Cut Slash Lines (rendered as stepped 4x4 pixel-art lightning beams)
+    // 2. Active Persistent Judgment-Cut Slash Lines (tracked for Zantetsuken Noto Sheath Detonation)
     this.activeSlashLines = [];
     // 3. Queued Delayed Judgment-Cut Sheath Detonations
     this.delayedJudgmentCuts = [];
@@ -45,16 +52,35 @@ export class Ronin extends Fighter {
     this.iaidoCounterActive = false;
     // 5. Active 30fps HD-2D VFX sheet animations (Row 0..4 of assets/sprites/ronin_vfx.png)
     this.activeVfxAnims = [];
-    // 6. Pure 4x4 Pixel-Art Raijin Shockwave Rings & Sky-Splitting Pixel Lightning Bolts (zero smooth vector arcs!)
-    this.activePixelShockwaves = [];
-    this.activeLightningBolts = [];
     this._ultTargetX = 600;
+    this.susanooAvatar = null;
+
+    this.fx = new ArcaneShaderFX(STORM_EFFECT_REGISTRY, {
+      pixelScale: 3,
+      viewW: 440,
+      viewH: 220
+    });
+
+    if (typeof Image !== 'undefined') {
+      const roninAssets = PixelForge.initAssets()?.ronin;
+      if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps51')) {
+        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps51';
+      }
+    }
   }
 
   setState(newState) {
     super.setState(newState);
     if (newState !== 'CROUCH') {
       this.iaidoCounterActive = false;
+      this.fx?.stopByKey('sereneMindParryWard');
+    }
+    if (newState !== 'SKILL' && newState !== 'ULTIMATE') {
+      this.fx?.stopByKey('shunpoSpearMachCone');
+    }
+    if (newState !== 'ULTIMATE') {
+      this.susanooAvatar = null;
+      this.fx?.stopByKey('susanooStormDomain');
     }
     if (newState !== 'SKILL' && newState !== 'ULTIMATE' && newState !== 'DASH' && newState !== 'WALK') {
       this.divePitchRad = 0;
@@ -71,6 +97,18 @@ export class Ronin extends Fighter {
       this._ultApexStartX = this.x;
       this._ultApexStartY = this.y;
     }
+    if (newState === 'DEATH') {
+      this.fx?.clear();
+    }
+  }
+
+  spawnSayaGlint(isSheath = false) {
+    if (!this.fx) return;
+    this.fx.spawn('iaidoSayaGlint', this.x - this.facing * 14, this.y - 68, {
+      flip: this.facing < 0,
+      light: isSheath ? 1.42 : 1.22,
+      extra: { isSheath }
+    });
   }
 
   spawnAfterimage(x, y, facing, row = 6, col = 14, maxLife = 0.28, pitch = 0) {
@@ -107,30 +145,35 @@ export class Ronin extends Fighter {
   }
 
   spawnPixelShockwave(x, y, maxR = 135, colorType = 'cyan', maxLife = 0.32, isGround = false) {
-    this.activePixelShockwaves.push({
-      x,
-      y,
-      maxR,
-      colorType,
-      age: 0,
-      maxLife,
-      isGround
+    if (!this.fx) return;
+    this.fx.spawn('raijinTaikoShockwave', x, y, {
+      flip: false,
+      light: colorType === 'gold' ? 1.38 : 1.24,
+      maxDuration: maxLife,
+      extra: { maxRWorld: maxR, colorType, isGround }
     });
   }
 
   spawnPixelLightningBolt(x, topY, botY, colorType = 'cyan', maxLife = 0.34) {
-    this.activeLightningBolts.push({
-      x,
-      topY,
-      botY,
-      colorType,
-      age: 0,
-      maxLife,
-      seed: Math.floor(Math.random() * 1000)
+    if (!this.fx) return;
+    this.fx.spawn('raijinSkyThunderbolt', x, botY, {
+      flip: false,
+      light: colorType === 'gold' ? 1.42 : 1.28,
+      maxDuration: maxLife,
+      extra: { spanWorldY: Math.max(90, botY - topY), colorType }
+    });
+    this.fx.burst(x, botY - 8, {
+      count: 8,
+      speedMin: 45,
+      speedMax: 155,
+      lifeMin: 0.14,
+      lifeMax: 0.28,
+      gravity: 65,
+      colors: colorType === 'gold' ? ['#ffffff', '#fef08a', '#eab308'] : ['#ffffff', '#67e8f9', '#a78bfa']
     });
   }
 
-  addSlashLine(x1, y1, x2, y2, maxLife = 0.65) {
+  addSlashLine(x1, y1, x2, y2, maxLife = 0.65, detonated = false) {
     this.activeSlashLines.push({
       x1,
       y1,
@@ -138,15 +181,53 @@ export class Ronin extends Fighter {
       y2,
       age: 0,
       maxLife,
-      detonated: false,
-      seed: Math.floor(Math.random() * 1000)
+      detonated
     });
+    if (this.fx) {
+      this.fx.spawn('judgmentSlashBeam', x1, y1, {
+        flip: false,
+        light: detonated ? 1.44 : 1.24,
+        maxDuration: maxLife,
+        extra: {
+          dx: x2 - x1,
+          dy: y2 - y1,
+          detonated,
+          customDuration: maxLife
+        }
+      });
+    }
+  }
+
+  syncSpearMachCone() {
+    if (!this.fx) return;
+    const isSkillDive = this.state === 'SKILL' && this.stateTimer >= 0.18 && this.stateTimer < 0.48;
+    const isUltDive = this.state === 'ULTIMATE' && this.stateTimer >= 0.30 && this.stateTimer < 1.26;
+    if (isSkillDive || isUltDive) {
+      const isHeavenSplit = this.state === 'ULTIMATE' && this.stateTimer >= 1.02;
+      let slot = this.fx.active.find((s) => s.key === 'shunpoSpearMachCone');
+      if (!slot) {
+        slot = this.fx.spawn('shunpoSpearMachCone', this.x, this.y - 72, {
+          follow: this,
+          offsetX: 0,
+          offsetY: -72,
+          flip: this.facing < 0,
+          light: isHeavenSplit ? 1.42 : 1.28,
+          extra: { pitchAngle: this.divePitchRad || 0, isHeavenSplit }
+        });
+      } else {
+        slot.inst.cfg.pitchAngle = this.divePitchRad || 0;
+        slot.inst.cfg.isHeavenSplit = isHeavenSplit;
+      }
+    } else {
+      this.fx.stopByKey('shunpoSpearMachCone');
+    }
   }
 
   triggerIaidoCounterBlink(attacker, game) {
     if (!attacker || attacker.isDead) return;
     this.iaidoCounterActive = false;
     this.isDeflecting = false;
+    this.fx?.stopByKey('sereneMindParryWard');
     const oldX = this.x;
     this.spawnAfterimage(oldX, this.y, this.facing, 7, 10, 0.34);
 
@@ -157,16 +238,18 @@ export class Ronin extends Fighter {
     this.y = this.groundY;
     this.facing = attacker.x >= this.x ? 1 : -1;
     this.spawnAfterimage((oldX + this.x) * 0.5, this.y - 12, this.facing, 6, 12, 0.28);
+    this.spawnSayaGlint(true);
 
     // Add X-shaped Judgment Cut slash lines + Row-3 Raijin Ring + Row-1 Cross-Slash seal across attacker
-    this.addSlashLine(attacker.x - 62, attacker.y - 138, attacker.x + 62, attacker.y - 22, 0.42);
-    this.addSlashLine(attacker.x - 62, attacker.y - 22, attacker.x + 62, attacker.y - 138, 0.42);
+    this.addSlashLine(attacker.x - 62, attacker.y - 138, attacker.x + 62, attacker.y - 22, 0.42, true);
+    this.addSlashLine(attacker.x - 62, attacker.y - 22, attacker.x + 62, attacker.y - 138, 0.42, true);
     this.spawnVfxAnim(3, attacker.x, attacker.y - 78, 216, 216, 0.42, { glowColor: 'cyan' });
     this.spawnVfxAnim(1, attacker.x, attacker.groundY - 92, 208, 208, 0.44, {
       startFrame: 18,
       endFrame: 29,
       glowColor: 'purple'
     });
+    this.spawnVfxAnim(4, attacker.x, attacker.y - 80, 196, 196, 0.34, { glowColor: 'cyan' });
     this.spawnPixelShockwave(attacker.x, attacker.y - 80, 128, 'cyan', 0.30, false);
     this.spawnPixelLightningBolt(attacker.x, attacker.groundY - 260, attacker.groundY, 'cyan', 0.34);
 
@@ -226,20 +309,6 @@ export class Ronin extends Fighter {
       }
     }
 
-    // 3b. Update Pure 4x4 Pixel-Art Shockwave Rings & Sky Lightning Bolts
-    for (let i = this.activePixelShockwaves.length - 1; i >= 0; i--) {
-      this.activePixelShockwaves[i].age += dt;
-      if (this.activePixelShockwaves[i].age >= this.activePixelShockwaves[i].maxLife) {
-        this.activePixelShockwaves.splice(i, 1);
-      }
-    }
-    for (let i = this.activeLightningBolts.length - 1; i >= 0; i--) {
-      this.activeLightningBolts[i].age += dt;
-      if (this.activeLightningBolts[i].age >= this.activeLightningBolts[i].maxLife) {
-        this.activeLightningBolts.splice(i, 1);
-      }
-    }
-
     // 4. Update Delayed Judgment-Cut Sheath Detonations (from 3rd Auto-Attack Flash-Through)
     for (let i = this.delayedJudgmentCuts.length - 1; i >= 0; i--) {
       const jc = this.delayedJudgmentCuts[i];
@@ -248,14 +317,16 @@ export class Ronin extends Fighter {
         this.delayedJudgmentCuts.splice(i, 1);
         const t = jc.target;
         if (t && !t.isDead && game) {
-          this.addSlashLine(t.x - 56, t.y - 134, t.x + 56, t.y - 26, 0.34);
-          this.addSlashLine(t.x - 56, t.y - 26, t.x + 56, t.y - 134, 0.34);
+          this.spawnSayaGlint(true);
+          this.addSlashLine(t.x - 56, t.y - 134, t.x + 56, t.y - 26, 0.34, true);
+          this.addSlashLine(t.x - 56, t.y - 26, t.x + 56, t.y - 134, 0.34, true);
           this.spawnVfxAnim(2, t.x, t.groundY - 94, 208, 208, 0.44, {
             startFrame: 18,
             endFrame: 29,
             glowColor: 'cyan'
           });
           this.spawnVfxAnim(3, t.x, t.y - 78, 188, 188, 0.34, { glowColor: 'purple' });
+          this.spawnVfxAnim(4, t.x, t.y - 80, 184, 184, 0.32, { glowColor: 'cyan' });
           this.spawnPixelShockwave(t.x, t.y - 80, 118, 'cyan', 0.28, false);
           this.spawnPixelLightningBolt(t.x, t.groundY - 240, t.groundY, 'purple', 0.30);
           if (game.audio) game.audio.play('slash', t.x);
@@ -268,17 +339,19 @@ export class Ronin extends Fighter {
     }
 
     if (!this.isDead && this.state === 'WALK') {
-      // Subtle smooth forward Suriashi/Hayagake dash lean
       this.divePitchRad = 0.05;
       this.stepDustTimer += dt;
       if (this.stepDustTimer >= 0.24) {
         this.stepDustTimer = 0;
         if (game.audio) game.audio.play('footstep_steel', this.x);
-        game.vfx.spawnBurst(this.x - this.facing * 14, this.groundY - 2, 4, '#38bdf8', 65, {
-          upBias: 28,
-          size: 4,
-          life: 0.28,
-          additive: true
+        this.fx?.burst(this.x - this.facing * 14, this.groundY - 2, {
+          count: 4,
+          speedMin: 30,
+          speedMax: 85,
+          lifeMin: 0.14,
+          lifeMax: 0.26,
+          gravity: 35,
+          colors: ['#ffffff', '#67e8f9', '#818cf8']
         });
       }
     } else if (this.state === 'IDLE') {
@@ -286,6 +359,8 @@ export class Ronin extends Fighter {
     }
 
     super.update(dt, enemy, game);
+    this.syncSpearMachCone();
+    this.fx.update(dt);
   }
 
   startDodge(enemy, game) {
@@ -304,6 +379,15 @@ export class Ronin extends Fighter {
     this.iaidoCounterActive = true;
     this.isDeflecting = true;
     this.vx = 0;
+    this.spawnSayaGlint(false);
+    this.fx?.spawn('sereneMindParryWard', this.x, this.groundY - 4, {
+      follow: this,
+      useGroundY: true,
+      offsetX: 0,
+      offsetY: -4,
+      flip: false,
+      light: 1.24
+    });
     this.spawnPixelShockwave(this.x, this.groundY - 4, 88, 'purple', 0.26, true);
     if (game && game.audio) game.audio.play('clang', this.x);
     if (game && game.vfx) {
@@ -356,10 +440,12 @@ export class Ronin extends Fighter {
       this.didActionFrame = true;
       this.iaidoCounterActive = false;
       this.isDeflecting = false;
+      this.fx?.stopByKey('sereneMindParryWard');
       const oldX = this.x;
-      const ww = game.renderer.worldWidth;
+      const ww = game?.renderer ? game.renderer.worldWidth : 1200;
       this.spawnAfterimage(oldX, this.y, this.facing, 7, 14, 0.28);
       this.x = Math.max(85, Math.min(ww - 85, this.x + this.facing * 165));
+      this.spawnSayaGlint(false);
       this.addSlashLine(oldX, this.y - 68, this.x, this.y - 68, 0.32);
       this.spawnVfxAnim(0, this.x + this.facing * 32, this.y - 74, 196, 196, 0.30, {
         vx: this.facing * 240,
@@ -367,7 +453,7 @@ export class Ronin extends Fighter {
         glowColor: 'cyan'
       });
       this.spawnPixelShockwave(this.x, this.y - 72, 108, 'cyan', 0.26, false);
-      if (game.audio) game.audio.play('slash', this.x);
+      if (game?.audio) game.audio.play('slash', this.x);
       if (enemy && !enemy.isDead && Math.abs(enemy.x - (oldX + this.x) * 0.5) < 145) {
         enemy.takeDamage(34, this, true, 125, -135);
       }
@@ -386,7 +472,7 @@ export class Ronin extends Fighter {
     this.setState('JUMP');
     this.isInvulnerable = true;
     this.isFlipVault = true;
-    const ww = game.renderer.worldWidth;
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const dir = enemy && !enemy.isDead ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
     this.dashDir = dir;
     this.vaultStartX = this.x;
@@ -398,6 +484,7 @@ export class Ronin extends Fighter {
     this.vx = 0;
     this.vy = 0;
     this.spawnAfterimage(this.x, this.y, this.facing, 8, 4, 0.26);
+    this.spawnPixelShockwave(this.x, this.groundY - 4, 84, 'cyan', 0.24, true);
     if (game && game.audio) game.audio.play('dash_whoosh', this.x);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(
@@ -415,6 +502,7 @@ export class Ronin extends Fighter {
     this.isFlipVault = false;
     this.dashStartX = this.x;
     this.spawnAfterimage(this.x, this.y, this.facing, 6, 6, 0.28, 0.12);
+    this.spawnSayaGlint(false);
     this.spawnPixelShockwave(this.x, this.groundY - 4, 78, 'cyan', 0.22, true);
     if (game && game.audio) game.audio.play('dash_whoosh', this.x);
     if (game && game.vfx) {
@@ -447,7 +535,7 @@ export class Ronin extends Fighter {
 
       if (u >= 0.36 && !this.didActionFrame) {
         this.didActionFrame = true;
-        if (game.audio) game.audio.play('slash', this.x);
+        if (game?.audio) game.audio.play('slash', this.x);
         this.addSlashLine(this.x - 45, this.y - 110, this.x + this.facing * 75, this.y - 20, 0.28);
         this.spawnVfxAnim(0, this.x + this.facing * 28, this.y - 68, 192, 192, 0.26, {
           vx: this.facing * 210,
@@ -462,7 +550,7 @@ export class Ronin extends Fighter {
 
       if (u >= 0.58 && !this.didSecondaryAction) {
         this.didSecondaryAction = true;
-        if (game.audio) game.audio.play('slash', this.x);
+        if (game?.audio) game.audio.play('slash', this.x);
         this.addSlashLine(this.x - 45, this.y - 20, this.x + this.facing * 75, this.y - 110, 0.28);
         this.spawnVfxAnim(0, this.x + this.facing * 32, this.y - 64, 196, 196, 0.28, {
           vx: this.facing * 230,
@@ -500,6 +588,11 @@ export class Ronin extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
+    if (t >= 0.04 && !this._drewAutoGlint) {
+      this._drewAutoGlint = true;
+      this.spawnSayaGlint(false);
+    }
+
     if (t >= 0.18 && !this.didActionFrame) {
       this.didActionFrame = true;
       const step = this.comboStep;
@@ -507,7 +600,7 @@ export class Ronin extends Fighter {
 
       if (step < 2) {
         this.vx = this.facing * 255;
-        if (game.audio) game.audio.play('slash', this.x);
+        if (game?.audio) game.audio.play('slash', this.x);
         this.spawnVfxAnim(0, this.x + this.facing * 44, this.y - 82, 196, 196, 0.28, {
           vx: this.facing * 260,
           flipX: this.facing < 0,
@@ -538,7 +631,7 @@ export class Ronin extends Fighter {
       } else {
         // Step 2 (3rd Hit): IAIDO FLASH-THROUGH SLASH & DELAYED JUDGMENT CUT!
         const oldX = this.x;
-        const ww = game.renderer.worldWidth;
+        const ww = game?.renderer ? game.renderer.worldWidth : 1200;
         this.spawnAfterimage(oldX, this.y, this.facing, 2, 16, 0.30);
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 215) {
@@ -553,11 +646,11 @@ export class Ronin extends Fighter {
           });
           this.spawnPixelShockwave(enemy.x, enemy.y - 78, 112, 'cyan', 0.26, false);
 
-          if (game.audio) {
+          if (game?.audio) {
             game.audio.play('dash_whoosh', this.x);
             game.audio.play('slash', enemy.x);
           }
-          game.vfx.spawnDamageText(
+          game?.vfx?.spawnDamageText(
             this.x,
             this.y - 148,
             0,
@@ -580,12 +673,13 @@ export class Ronin extends Fighter {
             flipX: this.facing < 0,
             glowColor: 'cyan'
           });
-          if (game.audio) game.audio.play('slash', this.x);
+          if (game?.audio) game.audio.play('slash', this.x);
         }
       }
     }
 
     if (t >= 0.44) {
+      this._drewAutoGlint = false;
       this.setState('IDLE');
     }
   }
@@ -613,6 +707,7 @@ export class Ronin extends Fighter {
         this._zantetsuStep = 1;
         this._skillOriginX = this.x;
         this._skillOriginY = this.groundY;
+        this.spawnSayaGlint(false);
         this.spawnVfxAnim(3, this.x, this.groundY - 76, 176, 176, 0.24, {
           followOwner: true,
           offsetX: 0,
@@ -625,9 +720,6 @@ export class Ronin extends Fighter {
     }
 
     // Phase 1 (0.18s .. 0.48s -> Row 3 F06..F15): 3 Frame-Locked Multi-Angle Spear-Dashes!
-    //   Pass 0 (0.18..0.27s, F06..F08): Up-Diagonal Spear-Dash ('/' -18 deg) from ground through enemy
-    //   Pass 1 (0.27..0.36s, F09..F11): Cross-Air Horizontal Spear-Blitz ('--->' +2 deg)
-    //   Pass 2 (0.36..0.48s, F12..F15): Head-First Down-Diagonal Spear-Dive ('\\' +26 deg) back to ground
     const passWindows = [
       {
         t0: 0.18,
@@ -669,7 +761,6 @@ export class Ronin extends Fighter {
       this.facing = dx >= 0 ? 1 : -1;
       this.divePitchRad = Math.atan2(dy, Math.max(1, Math.abs(dx)));
 
-      // Spawn continuous ribbon of crisp un-rotated multi-angle spear afterimages
       this.afterimageSpawnAccum += dt;
       if (this.afterimageSpawnAccum >= 0.024) {
         this.afterimageSpawnAccum = 0;
@@ -677,7 +768,6 @@ export class Ronin extends Fighter {
         this.spawnAfterimage(this.x, this.y, this.facing, 3, col, 0.28, 0);
       }
 
-      // Trigger diagonal slash lines, crescent waves, and multi-hit strikes on each spear pass
       const targetStep = passIdx + 2; // 2, 3, 4
       if (this._zantetsuStep < targetStep) {
         this._zantetsuStep = targetStep;
@@ -696,7 +786,7 @@ export class Ronin extends Fighter {
           0.26,
           false
         );
-        if (game.audio) game.audio.play('dash_whoosh', center);
+        if (game?.audio) game.audio.play('dash_whoosh', center);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - center) < 235) {
           enemy.takeDamage(20, this, passIdx === 2, 22, -98);
         }
@@ -718,11 +808,12 @@ export class Ronin extends Fighter {
       this.didSecondaryAction = true;
       this.y = this.groundY;
       this.divePitchRad = 0;
-      if (game.audio) game.audio.play('slash', this.x);
-      game.renderer.triggerShake(11, 0.22);
-      game.renderer.triggerAberration(6);
-      game.renderer.triggerHitStop(0.05);
-      game.vfx.spawnDamageText(
+      this.spawnSayaGlint(true);
+      if (game?.audio) game.audio.play('slash', this.x);
+      game?.renderer?.triggerShake(11, 0.22);
+      game?.renderer?.triggerAberration(6);
+      game?.renderer?.triggerHitStop(0.05);
+      game?.vfx?.spawnDamageText(
         this.x,
         this.y - 156,
         0,
@@ -735,7 +826,26 @@ export class Ronin extends Fighter {
         line.detonated = true;
         const mx = (line.x1 + line.x2) * 0.5;
         const my = (line.y1 + line.y2) * 0.5;
-        game.vfx.spawnBurst(mx, my, 8, '#38bdf8', 210, { upBias: 60, size: 5 });
+        this.fx?.spawn('judgmentSlashBeam', line.x1, line.y1, {
+          flip: false,
+          light: 1.45,
+          maxDuration: 0.34,
+          extra: {
+            dx: line.x2 - line.x1,
+            dy: line.y2 - line.y1,
+            detonated: true,
+            customDuration: 0.34
+          }
+        });
+        this.fx?.burst(mx, my, {
+          count: 8,
+          speedMin: 55,
+          speedMax: 185,
+          lifeMin: 0.14,
+          lifeMax: 0.28,
+          gravity: 40,
+          colors: ['#ffffff', '#fef08a', '#67e8f9', '#a78bfa']
+        });
       }
 
       const strikeX = enemy && !enemy.isDead ? enemy.x : center;
@@ -748,6 +858,9 @@ export class Ronin extends Fighter {
         startFrame: 18,
         endFrame: 29,
         glowColor: 'purple'
+      });
+      this.spawnVfxAnim(4, strikeX, this.groundY - 86, 212, 212, 0.36, {
+        glowColor: 'cyan'
       });
       this.spawnPixelShockwave(strikeX, this.groundY - 6, 155, 'cyan', 0.34, true);
       this.spawnPixelLightningBolt(strikeX, this.groundY - 270, this.groundY, 'cyan', 0.36);
@@ -775,6 +888,7 @@ export class Ronin extends Fighter {
     const originX = this._ultOriginX !== undefined ? this._ultOriginX : this.x;
     const targetX = enemy && !enemy.isDead ? enemy.x : ww * 0.5;
     this._ultTargetX = targetX;
+    this.susanooAvatar = { x: targetX, y: this.groundY };
     const dir = targetX >= originX ? 1 : -1;
     const landX = clampX(targetX - dir * 68);
 
@@ -784,14 +898,17 @@ export class Ronin extends Fighter {
         this._omniStep = 1;
         this._ultOriginX = this.x;
         this._ultOriginY = this.groundY;
-        // Manifest Row-3 Raijin Storm Ring around the target!
+        this.spawnSayaGlint(false);
+        this.fx?.spawn('susanooStormDomain', targetX, this.groundY - 4, {
+          flip: false,
+          light: 1.34
+        });
         this.spawnVfxAnim(3, targetX, this.groundY - 82, 236, 236, 1.32, {
           glowColor: 'cyan'
         });
         this.spawnPixelShockwave(this.x, this.groundY - 4, 145, 'purple', 0.34, true);
         this.spawnPixelLightningBolt(this.x, this.groundY - 280, this.groundY, 'cyan', 0.36);
       }
-      // Stay 100% planted on the ground in place during the entire Ultimate cast startup!
       this.x = this._ultOriginX;
       this.y = this.groundY;
       this.vx = 0;
@@ -802,12 +919,6 @@ export class Ronin extends Fighter {
     }
 
     // Stage 1 & 2 (0.30s .. 1.26s -> Row 4 F05..F20): 6 Continuous Frame-Locked Multi-Angle Spear-Dashes!
-    //   Pass 0 (0.30..0.48s, F05..F07): Ground-Launch Up-Diagonal Spear-Dash ('/' -20 deg)
-    //   Pass 1 (0.48..0.60s, F08..F09): Head-First Down-Diagonal Cross-Dive ('\\' +24 deg)
-    //   Pass 2 (0.60..0.72s, F10..F11): Up-Diagonal Sky-Slash ('/' -22 deg)
-    //   Pass 3 (0.72..0.84s, F12..F13): Horizontal Supersonic Mid-Air Blitz ('--->' +4 deg)
-    //   Pass 4 (0.84..1.02s, F14..F16): Steep Up-Diagonal Ascension Slash to Heaven-Split Apex ('/' -24 deg)
-    //   Pass 5 (1.02..1.26s, F17..F20): FINAL HEAVEN-SPLIT HEAD-FIRST THUNDER-SPEAR PLUNGE ('\\' +32 deg) to ground!
     const omniPasses = [
       {
         t0: 0.30,
@@ -876,7 +987,6 @@ export class Ronin extends Fighter {
       this.facing = dx >= 0 ? 1 : -1;
       this.divePitchRad = Math.atan2(dy, Math.max(1, Math.abs(dx)));
 
-      // Continuous ribbon of crisp un-rotated multi-angle spear afterimages
       this.afterimageSpawnAccum += dt;
       const spawnInterval = passIdx === 5 ? 0.018 : 0.022;
       if (this.afterimageSpawnAccum >= spawnInterval) {
@@ -885,7 +995,6 @@ export class Ronin extends Fighter {
         this.spawnAfterimage(this.x, this.y, this.facing, 4, col, 0.32, 0);
       }
 
-      // Trigger multi-angle diagonal slash beam, crescent wave & damage on passes 0..4 (pass 5 detonates on landing!)
       if (passIdx < 5) {
         const stepTrigger = passIdx + 2; // 2..6
         if (this._omniStep < stepTrigger && localU >= 0.25) {
@@ -914,8 +1023,8 @@ export class Ronin extends Fighter {
               0.28
             );
           }
-          if (game.audio) game.audio.play('slash', targetX);
-          game.renderer.triggerShake(8, 0.12);
+          if (game?.audio) game.audio.play('slash', targetX);
+          game?.renderer?.triggerShake(8, 0.12);
           if (enemy && !enemy.isDead) {
             enemy.takeDamage(25, this, true, 16, -95);
           }
@@ -931,13 +1040,13 @@ export class Ronin extends Fighter {
       this.y = this.groundY;
       this.facing = targetX >= this.x ? 1 : -1;
       this.divePitchRad = 0;
+      this.spawnSayaGlint(true);
 
-      // Diagonal Heaven-Split spear beam from sky apex straight to ground + vertical lightning pillar line
       const apexPt = omniPasses[5].p0;
-      this.addSlashLine(apexPt.x, apexPt.y - 62, landX, this.groundY - 42, 0.58);
-      this.addSlashLine(targetX, this.groundY - 275, targetX, this.groundY, 0.54);
+      this.addSlashLine(apexPt.x, apexPt.y - 62, landX, this.groundY - 42, 0.58, true);
+      this.addSlashLine(targetX, this.groundY - 275, targetX, this.groundY, 0.54, true);
 
-      // Erupt Row-1 Cross-Slash Detonation + Row-2 Judgement Thunder Pillar + Row-3 Raijin Storm Ring!
+      // Erupt Row-1 Cross-Slash Detonation + Row-2 Judgement Thunder Pillar + Row-3 Raijin Storm Ring + Row-4 Slash Ring!
       this.spawnVfxAnim(1, targetX, this.groundY - 98, 248, 248, 0.52, {
         startFrame: 18,
         endFrame: 29,
@@ -951,24 +1060,27 @@ export class Ronin extends Fighter {
       this.spawnVfxAnim(3, targetX, this.groundY - 84, 244, 244, 0.48, {
         glowColor: 'cyan'
       });
-      // Pure 4x4 Pixel-Art Heaven-Split Shockwaves & Twin Sky-Splitting Raijin Thunderbolts!
+      this.spawnVfxAnim(4, targetX, this.groundY - 92, 232, 232, 0.42, {
+        glowColor: 'cyan'
+      });
+
       this.spawnPixelShockwave(targetX, this.groundY - 6, 235, 'cyan', 0.44, true);
       this.spawnPixelShockwave(targetX, this.groundY - 82, 175, 'gold', 0.38, false);
       this.spawnPixelLightningBolt(targetX, this.groundY - 310, this.groundY, 'gold', 0.44);
       this.spawnPixelLightningBolt(targetX - 56, this.groundY - 270, this.groundY, 'cyan', 0.38);
       this.spawnPixelLightningBolt(targetX + 56, this.groundY - 270, this.groundY, 'purple', 0.38);
 
-      if (game.audio) {
+      if (game?.audio) {
         game.audio.play('thunder_slam', targetX);
       }
-      game.renderer.triggerShake(15, 0.28);
-      game.renderer.triggerAberration(9);
-      game.renderer.triggerHitStop(0.06);
-      game.vfx.spawnBurst(targetX, this.groundY - 68, 32, '#818cf8', 320, {
+      game?.renderer?.triggerShake(15, 0.28);
+      game?.renderer?.triggerAberration(9);
+      game?.renderer?.triggerHitStop(0.06);
+      game?.vfx?.spawnBurst(targetX, this.groundY - 68, 32, '#818cf8', 320, {
         upBias: 175,
         size: 7
       });
-      game.vfx.spawnDamageText(
+      game?.vfx?.spawnDamageText(
         targetX,
         this.groundY - 176,
         0,
@@ -987,15 +1099,13 @@ export class Ronin extends Fighter {
       this.y = this.groundY;
       this.divePitchRad = 0;
       this.isInvulnerable = false;
+      this.susanooAvatar = null;
       this.setState('IDLE');
     }
   }
 
   /**
-   * 3-Pass HD-2D Additive Bloom Renderer for Kaze-Maru's 208x208 VFX Sheet (assets/sprites/ronin_vfx.png):
-   * - Pass 1: Soft radial cyan/purple lighting halo from renderer.glowCyan / renderer.glowPurple
-   * - Pass 2: Crisp nearest-neighbor base pixel-art cell
-   * - Pass 3: Additive ('lighter') bloom overlay for white-hot electric-cyan & violet-storm luminance
+   * 3-Pass HD-2D Additive Bloom Renderer for Kaze-Maru's 208x208 VFX Sheet (`assets/sprites/ronin_vfx.png`).
    */
   drawBloomedVfxCell(
     ctx,
@@ -1014,14 +1124,13 @@ export class Ronin extends Fighter {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
     const cell = 208;
     const sx = Math.max(0, Math.min(29, Math.floor(col))) * cell;
-    const sy = Math.max(0, Math.min(3, Math.floor(row))) * cell;
+    const sy = Math.max(0, Math.min(4, Math.floor(row))) * cell;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.translate(Math.round(x), Math.round(y));
     if (flipX) ctx.scale(-1, 1);
 
-    // Pass 1: Soft HD-2D radial glow halo behind pixel art
     const glowSprite =
       glowColor === 'purple' ? renderer?.glowPurple || renderer?.glowCyan : renderer?.glowCyan;
     if (glowSprite) {
@@ -1032,12 +1141,10 @@ export class Ronin extends Fighter {
       ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
     }
 
-    // Pass 2: Base nearest-neighbor pixel-art cell
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = Math.min(1, alpha);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
-    // Pass 3: Additive HD-2D bloom pass
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = Math.min(1, alpha * 0.52);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
@@ -1045,306 +1152,14 @@ export class Ronin extends Fighter {
     ctx.restore();
   }
 
-  /**
-   * Renders a Judgment-Cut Slash Line as a Stepped 4x4 Pixel-Art Lightning Beam with Dual-Helix Sparks
-   * (zero smooth anti-aliased vector strokes).
-   */
-  drawSteppedPixelSlash4x4(ctx, line) {
-    const alpha = Math.max(0, 1 - line.age / line.maxLife);
-    if (alpha <= 0.01) return;
-
-    const snap4 = (v) => Math.round(v / 4) * 4;
-    const x1 = snap4(line.x1);
-    const y1 = snap4(line.y1);
-    const x2 = snap4(line.x2);
-    const y2 = snap4(line.y2);
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const dist = Math.hypot(dx, dy);
-    const steps = Math.max(1, Math.floor(dist / 4));
-    const nx = dist > 0 ? -dy / dist : 0;
-    const ny = dist > 0 ? dx / dist : -1;
-
-    const outerCol = line.detonated ? '#a855f7' : '#6366f1';
-    const midCol = line.detonated ? '#fde047' : '#22d3ee';
-    const coreCol = '#ffffff';
-    const phase = line.age * 28.0 + (line.seed || 0);
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-
-    // 1. Outer Indigo/Violet Aura Pixels & Crackling Dual-Helix Lightning Zigzags (4x4 blocks)
-    ctx.globalAlpha = alpha * 0.78;
-    ctx.fillStyle = outerCol;
-    for (let s = 0; s <= steps; s++) {
-      const u = s / steps;
-      const px = snap4(x1 + dx * u);
-      const py = snap4(y1 + dy * u);
-      ctx.fillRect(px - 2, py - 6, 4, 12);
-      if (s % 2 === 0) {
-        const zig = Math.round(Math.sin(u * Math.PI * 5 + phase) * 2.5) * 4;
-        const zx = snap4(px + nx * zig);
-        const zy = snap4(py + ny * zig);
-        ctx.fillStyle = s % 4 === 0 ? midCol : outerCol;
-        ctx.fillRect(zx - 2, zy - 2, 4, 4);
-      }
-    }
-
-    // 2. Electric-Cyan / Golden-Storm Inner Beam (4x4 blocks)
-    ctx.globalAlpha = alpha * 0.92;
-    ctx.fillStyle = midCol;
-    for (let s = 0; s <= steps; s++) {
-      const u = s / steps;
-      const px = snap4(x1 + dx * u);
-      const py = snap4(y1 + dy * u);
-      ctx.fillRect(px - 2, py - 4, 4, 8);
-    }
-
-    // 3. White-Hot Razor Core (4x4 blocks)
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = coreCol;
-    for (let s = 0; s <= steps; s++) {
-      const u = s / steps;
-      const px = snap4(x1 + dx * u);
-      const py = snap4(y1 + dy * u);
-      ctx.fillRect(px - 2, py - 2, 4, 4);
-    }
-
-    // 4. 4x4 Pixel Star Cross Glints at Midpoint & Endpoints
-    const mx = snap4((x1 + x2) * 0.5);
-    const my = snap4((y1 + y2) * 0.5);
-    ctx.fillStyle = midCol;
-    ctx.fillRect(mx - 10, my - 2, 20, 4);
-    ctx.fillRect(mx - 2, my - 10, 4, 20);
-    ctx.fillStyle = coreCol;
-    ctx.fillRect(mx - 2, my - 2, 4, 4);
-
-    ctx.restore();
-  }
-
-  /**
-   * Renders an Expanding 4x4-Snapped Pixel-Art Raijin Shockwave Ring with 8 Orbiting Taiko Drum Nodes.
-   */
-  drawPixelShockwave4x4(ctx, sw) {
-    const u = Math.min(1, sw.age / sw.maxLife);
-    const alpha = Math.max(0, 1 - u);
-    if (alpha <= 0.02) return;
-
-    const snap4 = (v) => Math.round(v / 4) * 4;
-    const ease = 1 - Math.pow(1 - u, 2.2);
-    const rx = sw.maxR * (0.22 + 0.78 * ease);
-    const ry = sw.isGround ? rx * 0.24 : rx * 0.88;
-
-    const midCol =
-      sw.colorType === 'gold' ? '#fef08a' : sw.colorType === 'purple' ? '#a78bfa' : '#22d3ee';
-    const outerCol =
-      sw.colorType === 'gold' ? '#eab308' : sw.colorType === 'purple' ? '#7c3aed' : '#4f46e5';
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-
-    const steps = 36;
-    for (let i = 0; i < steps; i++) {
-      const ang = (i / steps) * Math.PI * 2 + u * 2.5;
-      const px = snap4(sw.x + Math.cos(ang) * rx);
-      const py = snap4(sw.y + Math.sin(ang) * ry);
-
-      ctx.globalAlpha = alpha * 0.65;
-      ctx.fillStyle = outerCol;
-      ctx.fillRect(px - 4, py - 4, 8, 8);
-
-      ctx.globalAlpha = alpha * 0.95;
-      ctx.fillStyle = i % 3 === 0 ? '#ffffff' : midCol;
-      ctx.fillRect(px - 2, py - 2, 4, 4);
-    }
-
-    // 8 Raijin Taiko Drum Nodes around the perimeter
-    for (let d = 0; d < 8; d++) {
-      const da = (d / 8) * Math.PI * 2 - u * 3.0;
-      const dx = snap4(sw.x + Math.cos(da) * rx);
-      const dy = snap4(sw.y + Math.sin(da) * ry);
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = '#eab308';
-      ctx.fillRect(dx - 4, dy - 4, 8, 8);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(dx - 2, dy - 2, 4, 4);
-    }
-
-    ctx.restore();
-  }
-
-  /**
-   * Renders a Sky-Splitting 4x4-Snapped Jagged Pixel-Art Raijin Thunderbolt (`x, topY -> botY`).
-   */
-  drawPixelLightningBolt4x4(ctx, bolt) {
-    const u = Math.min(1, bolt.age / bolt.maxLife);
-    const alpha = Math.max(0, 1 - u);
-    if (alpha <= 0.02) return;
-
-    const snap4 = (v) => Math.round(v / 4) * 4;
-    const midCol =
-      bolt.colorType === 'gold' ? '#fef08a' : bolt.colorType === 'purple' ? '#c084fc' : '#67e8f9';
-    const outerCol =
-      bolt.colorType === 'gold' ? '#eab308' : bolt.colorType === 'purple' ? '#7c3aed' : '#0284c7';
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-
-    const spanY = Math.max(16, bolt.botY - bolt.topY);
-    const segs = Math.max(8, Math.floor(spanY / 8));
-    const phase = bolt.age * 36.0 + (bolt.seed || 0);
-
-    for (let s = 0; s <= segs; s++) {
-      const t = s / segs;
-      const py = snap4(bolt.topY + spanY * t);
-      const zig =
-        s === 0 || s === segs
-          ? 0
-          : Math.round(Math.sin(t * Math.PI * 6 + phase) * 3.5 + Math.cos(t * 13 + phase) * 2.0) * 4;
-      const px = snap4(bolt.x + zig);
-
-      // Outer storm jacket (12x8 pixel block)
-      ctx.globalAlpha = alpha * 0.58;
-      ctx.fillStyle = outerCol;
-      ctx.fillRect(px - 6, py - 4, 12, 8);
-
-      // Mid cyan/gold plasma (8x8 pixel block)
-      ctx.globalAlpha = alpha * 0.88;
-      ctx.fillStyle = midCol;
-      ctx.fillRect(px - 4, py - 4, 8, 8);
-
-      // White-hot 4x4 pixel spine
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(px - 2, py - 4, 4, 8);
-
-      // Branching lightning forks at 35% and 68% height
-      if (s === Math.floor(segs * 0.35) || s === Math.floor(segs * 0.68)) {
-        const dir = s % 2 === 0 ? 1 : -1;
-        for (let b = 1; b <= 5; b++) {
-          ctx.globalAlpha = alpha * (1 - b * 0.16);
-          ctx.fillStyle = b <= 2 ? '#ffffff' : midCol;
-          ctx.fillRect(px + dir * b * 4, py + b * 4, 4, 4);
-        }
-      }
-    }
-
-    ctx.restore();
-  }
-
-  /**
-   * Renders a Real-Time 4x4-Snapped Pixel-Art Supersonic Mach-Cone & Double-Helix Contrail around Kaze-Maru
-   * whenever he is in his aerodynamic multi-angle diving spear posture (`SKILL` F06..F15 or `ULTIMATE` F05..F20).
-   */
-  drawPixelSpearMachCone4x4(ctx) {
-    const isSkillDive = this.state === 'SKILL' && this.stateTimer >= 0.18 && this.stateTimer < 0.48;
-    const isUltDive = this.state === 'ULTIMATE' && this.stateTimer >= 0.30 && this.stateTimer < 1.26;
-    if (!isSkillDive && !isUltDive) return;
-
-    const isHeavenSplit = this.state === 'ULTIMATE' && this.stateTimer >= 1.02;
-    const snap4 = (v) => Math.round(v / 4) * 4;
-    const baseAngle = this.divePitchRad || 0;
-    const ux = Math.cos(baseAngle) * this.facing;
-    const uy = Math.sin(baseAngle);
-    const nx = -uy;
-    const ny = ux;
-
-    const cx = this.x;
-    const cy = this.y - 72;
-    const tipX = cx + ux * 68;
-    const tipY = cy + uy * 68;
-    const phase = this.stateTimer * 35.0;
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-
-    // 1. V-Shaped 4x4 Pixel Mach-Cone Shockwings Sweeping Back from the Spear Tip
-    for (const side of [-1, 1]) {
-      for (let step = 0; step <= 18; step++) {
-        const backDist = step * 6.5;
-        const spread = 4 + step * (isHeavenSplit ? 3.1 : 2.5);
-        const wx = snap4(tipX - ux * backDist + nx * side * spread);
-        const wy = snap4(tipY - uy * backDist + ny * side * spread);
-
-        ctx.globalAlpha = Math.max(0.15, 0.92 - step * 0.042);
-        ctx.fillStyle =
-          step <= 3
-            ? '#ffffff'
-            : isHeavenSplit && step % 2 === 0
-              ? '#fef08a'
-              : step % 2 === 0
-                ? '#67e8f9'
-                : '#a78bfa';
-        ctx.fillRect(wx - 2, wy - 2, 4, 4);
-      }
-    }
-
-    // 2. Spiraling 4x4 Pixel Lightning Helix Contrail Behind the Spear Body
-    for (let h = 0; h <= 20; h++) {
-      const dist = h * 6.0;
-      const wave = Math.sin(h * 0.65 - phase) * (10 + h * 0.7);
-      const hx = snap4(tipX - ux * dist + nx * wave);
-      const hy = snap4(tipY - uy * dist + ny * wave);
-      ctx.globalAlpha = Math.max(0.15, 0.85 - h * 0.038);
-      ctx.fillStyle = h % 3 === 0 ? '#ffffff' : h % 2 === 0 ? '#22d3ee' : '#c084fc';
-      ctx.fillRect(hx - 2, hy - 2, 4, 4);
-    }
-
-    ctx.restore();
-  }
-
-  /**
-   * Renders a 4x4-Snapped Pixel-Art Raijin Storm-Domain Ground Seal beneath the Ultimate Target (`ULTIMATE`).
-   */
-  drawPixelStormDomain4x4(ctx) {
-    if (this.state !== 'ULTIMATE') return;
-    const snap4 = (v) => Math.round(v / 4) * 4;
-    const cx = this._ultTargetX || this.x;
-    const gy = this.groundY - 4;
-    const phase = this.stateTimer * 8.0;
-    const rx = 152;
-    const ry = 18;
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-
-    for (let i = 0; i < 44; i++) {
-      const ang = (i / 44) * Math.PI * 2 + phase;
-      const px = snap4(cx + Math.cos(ang) * rx);
-      const py = snap4(gy + Math.sin(ang) * ry);
-      ctx.globalAlpha = 0.75;
-      ctx.fillStyle = i % 3 === 0 ? '#ffffff' : i % 2 === 0 ? '#22d3ee' : '#a78bfa';
-      ctx.fillRect(px - 2, py - 2, 4, 4);
-    }
-
-    // 8 Rotating Pixel Taiko Drums & Rising 4x4 Storm Motes
-    for (let d = 0; d < 8; d++) {
-      const da = (d / 8) * Math.PI * 2 - phase * 1.2;
-      const dx = snap4(cx + Math.cos(da) * rx);
-      const dy = snap4(gy + Math.sin(da) * ry);
-      ctx.globalAlpha = 0.92;
-      ctx.fillStyle = '#eab308';
-      ctx.fillRect(dx - 4, dy - 4, 8, 8);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(dx - 2, dy - 2, 4, 4);
-
-      const moteY = snap4(gy - ((this.stateTimer * 140 + d * 28) % 120));
-      ctx.globalAlpha = 0.65;
-      ctx.fillStyle = d % 2 === 0 ? '#67e8f9' : '#fef08a';
-      ctx.fillRect(dx - 2, moteY - 2, 4, 4);
-    }
-
-    ctx.restore();
-  }
-
   drawForegroundOverlay(ctx, renderer = null) {
+    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
+
     const sprites = PixelForge.initAssets().ronin;
     const vfxSheet = sprites?.vfx;
 
-    // 0. Render 4x4 Pixel-Art Raijin Storm-Domain Ground Seal during ULTIMATE
-    this.drawPixelStormDomain4x4(ctx);
-
-    // 1. Render Indigo-Cyan Lightning Afterimage Clones (pure un-rotated 4x4 pixel-art frames!)
+    // 1. Render Indigo-Cyan Lightning Afterimage Clones (pure un-rotated HD-2D frames!)
     if (this.afterimages.length > 0 && sprites && sprites.sheet && sprites.sheet.complete) {
       for (const img of this.afterimages) {
         const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.58);
@@ -1359,10 +1174,10 @@ export class Ronin extends Fighter {
       }
     }
 
-    // 2. Render Background/Midground 3-Pass Bloomed 30fps Ronin VFX Sheet Animations (Rows 0..2: Crescent Waves, Dragon Pillar, Sky-Odachi)
+    // 2. Render Background/Midground 3-Pass Bloomed 30fps Ronin VFX Sheet Animations (Rows 0..2: Crescent Waves, Sky-Odachi, Dragon Pillar)
     if (this.activeVfxAnims.length > 0 && vfxSheet && vfxSheet.complete) {
       for (const v of this.activeVfxAnims) {
-        if (v.row === 3) continue; // Row 3 Storm Impact & Raijin Ring renders in front of characters in drawUltimateForeground!
+        if (v.row >= 3) continue;
         const u = Math.min(1, Math.max(0, v.age / v.maxLife));
         const span = Math.max(1, v.endFrame - v.startFrame + 1);
         const col = Math.min(29, v.startFrame + Math.floor(u * span));
@@ -1383,28 +1198,16 @@ export class Ronin extends Fighter {
         );
       }
     }
-
-    // 3. Render Floor-Plane 4x4 Pixel-Art Raijin Shockwave Rings
-    if (this.activePixelShockwaves.length > 0) {
-      for (const sw of this.activePixelShockwaves) {
-        if (sw.isGround) {
-          this.drawPixelShockwave4x4(ctx, sw);
-        }
-      }
-    }
   }
 
   drawUltimateForeground(ctx, renderer = null) {
     const sprites = PixelForge.initAssets().ronin;
     const vfxSheet = sprites?.vfx;
 
-    // 1. Render Real-Time 4x4 Pixel-Art Supersonic Mach-Cone & Spear Contrail IN FRONT of characters during SKILL / ULTIMATE dives!
-    this.drawPixelSpearMachCone4x4(ctx);
-
-    // 2. Render Foreground Row-3 Raijin Storm Impact & Ring IN FRONT of characters!
+    // 1. Render Foreground Row-3 Raijin Halo Crest & Row-4 Thousand-Blade Slash Ring IN FRONT of characters!
     if (this.activeVfxAnims.length > 0 && vfxSheet && vfxSheet.complete) {
       for (const v of this.activeVfxAnims) {
-        if (v.row !== 3) continue;
+        if (v.row < 3) continue;
         const u = Math.min(1, Math.max(0, v.age / v.maxLife));
         const span = Math.max(1, v.endFrame - v.startFrame + 1);
         const col = Math.min(29, v.startFrame + Math.floor(u * span));
@@ -1426,26 +1229,9 @@ export class Ronin extends Fighter {
       }
     }
 
-    // 3. Render Radial 4x4 Pixel-Art Raijin Shockwave Rings & Sky-Splitting Lightning Bolts
-    if (this.activePixelShockwaves.length > 0) {
-      for (const sw of this.activePixelShockwaves) {
-        if (!sw.isGround) {
-          this.drawPixelShockwave4x4(ctx, sw);
-        }
-      }
-    }
-    if (this.activeLightningBolts.length > 0) {
-      for (const bolt of this.activeLightningBolts) {
-        this.drawPixelLightningBolt4x4(ctx, bolt);
-      }
-    }
-
-    // 4. Render Persistent Judgment-Cut Lightning Slash Lines as Stepped 4x4 Pixel-Art Beams in Foreground
-    if (this.activeSlashLines.length > 0) {
-      for (const line of this.activeSlashLines) {
-        this.drawSteppedPixelSlash4x4(ctx, line);
-      }
-    }
+    // 2. Render 120Hz ArcaneShaderFX `front` layer (Mach-Cone, Judgment Beams, Sky Thunderbolts, Front Raijin Rings & Motes)
+    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
   }
 
   draw(ctx, isReflection = false, renderer = null) {
