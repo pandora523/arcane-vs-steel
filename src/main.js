@@ -5,7 +5,7 @@ import { AudioManager } from './engine/AudioManager.js?v=30fps42';
 import { Warrior } from './entities/Warrior.js?v=30fps41';
 import { FireMage } from './entities/FireMage.js?v=30fps41';
 import { Archer } from './entities/Archer.js?v=30fps46';
-import { Priestess } from './entities/Priestess.js?v=30fps41';
+import { Priestess } from './entities/Priestess.js?v=30fps48';
 import { Reaper } from './entities/Reaper.js?v=30fps41';
 import { Chronomancer } from './entities/Chronomancer.js?v=30fps41';
 import { Titan } from './entities/Titan.js?v=30fps41';
@@ -125,21 +125,21 @@ const CHAMPION_ROSTER = {
     skills: [
       {
         name: 'SACRED STARLIGHT',
-        type: 'AUTO + PASSIVE',
-        vfxCell: 1,
-        desc: 'Fires purifying light bolts & soars high across the stage to the far side when pressured.'
+        type: 'AUTO + BENEDICTION',
+        vfxCell: 0,
+        desc: 'Fires Mach-ring star-cross bolts, raises a 2.5D Stained-Glass Rose Ward & soars across the stage.'
       },
       {
         name: 'DIVINE SANCTUARY',
-        type: 'SKILL • 5.0S CD',
-        vfxCell: 2,
-        desc: 'Consecrates the floor, repelling melee foes, restoring HP & smiting with Valkyrie spears.'
+        type: 'SKILL • 5.5S CD',
+        vfxCell: 1,
+        desc: 'Consecrates a 2.5D Cathedral Seal, healing HP & smiting foes with Sanctum spires & Valkyrie spears.'
       },
       {
         name: 'SERAPHIC APOTHEOSIS',
         type: '★ OVERDRIVE ULT',
-        vfxCell: 0,
-        desc: 'Ascends in full Archangel form, calling down 7 pillars of heavenly judgment.'
+        vfxCell: 2,
+        desc: 'Ascends in full Archangel form inside a 2.5D Ophanim Chakram Wheel to rain 3 Cathedral Sanctum spires.'
       }
     ]
   },
@@ -2075,9 +2075,11 @@ class Game {
       p.y += p.vy * dt;
 
       const hasSylvanShaderFX = p.type === 'arrow' && Boolean(p.owner?.fx);
+      const hasCustomShaderFX = typeof p.owner?.onProjectileTrail === 'function' && Boolean(p.owner?.fx);
 
       if (
         !hasSylvanShaderFX &&
+        !hasCustomShaderFX &&
         (p.type === 'arrow' || p.type === 'blade_wave' || p.type === 'forge_wave' || p.type === 'holy_light') &&
         p.ringTimer >= 0.085
       ) {
@@ -2099,7 +2101,9 @@ class Game {
         );
       }
 
-      if (hasSylvanShaderFX) {
+      if (hasCustomShaderFX) {
+        p.owner.onProjectileTrail(p, this);
+      } else if (hasSylvanShaderFX) {
         if (p.ringTimer >= 0.045) {
           p.ringTimer = 0;
           p.owner.fx.burst?.(p.x - Math.sign(p.vx || 1) * 18, p.y, {
@@ -2149,6 +2153,9 @@ class Game {
           if (this.audio) this.audio.play('meteor_impact', p.x);
           this.renderer.triggerShake(22, 0.52);
           this.renderer.triggerAberration(14);
+          if (typeof p.owner?.onProjectileHit === 'function') {
+            p.owner.onProjectileHit(p, hitTarget, true, this);
+          }
           this.vfx.spawnShockwave(p.x, gy, 290, '#fb923c', 0.6, true);
           this.vfx.spawnShockwave(p.x, gy - 35, 220, '#fef08a', 0.46, false);
           this.vfx.spawnDecal(p.x, 165, 'fissure', '#fb923c', 6.0);
@@ -2187,7 +2194,16 @@ class Game {
             this.audio.play(impactSfx, hitTarget.x);
           }
           this.renderer.triggerHitStop(0.055);
-          if (hasSylvanShaderFX) {
+          // Preserve gameplay side-effects (leech / brittle frost) before visual impact handler
+          if (p.type === 'phantom_scythe' && p.owner && typeof p.owner.leechLife === 'function') {
+            p.owner.leechLife(18, hitTarget, this, 'SOUL LEECH');
+          } else if (p.type === 'cryo_shard' && p.owner && typeof p.owner.applyBrittleFrost === 'function') {
+            p.owner.applyBrittleFrost(hitTarget, 1, this, p.x, p.y);
+          }
+
+          if (typeof p.owner?.onProjectileHit === 'function' && p.owner.onProjectileHit(p, hitTarget, isCrit, this)) {
+            // Handled by first-party ArcaneShaderFX impact shader & burst
+          } else if (hasSylvanShaderFX) {
             p.owner.fx.spawn('sylvanArrowImpactBurst', p.x, p.y, {
               flip: false,
               light: isCrit ? 1.32 : 1.15,
@@ -2216,16 +2232,10 @@ class Game {
               this.vfx.spawnGlyphBurst(p.x, p.y, 5, 'emerald');
             } else if (p.type === 'phantom_scythe') {
               this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'abyssal');
-              if (p.owner && typeof p.owner.leechLife === 'function') {
-                p.owner.leechLife(18, hitTarget, this, 'SOUL LEECH');
-              }
             } else if (p.type === 'clock_gear') {
               this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'chrono');
             } else if (p.type === 'cryo_shard') {
               this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'glacial');
-              if (p.owner && typeof p.owner.applyBrittleFrost === 'function') {
-                p.owner.applyBrittleFrost(hitTarget, 1, this, p.x, p.y);
-              }
             } else if (p.type === 'cyber_disc') {
               this.vfx.spawnSlash(p.x, p.y, 70, -1.1, 1.1, '#00f0ff', 0.24);
               this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'cyber');

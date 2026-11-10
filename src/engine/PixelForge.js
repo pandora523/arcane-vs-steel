@@ -36,7 +36,7 @@ export class PixelForge {
       priestess: {
         sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps41'),
         wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps41'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps41'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps48'),
         portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps41', () => this.refreshPortraits())
       },
       reaper: {
