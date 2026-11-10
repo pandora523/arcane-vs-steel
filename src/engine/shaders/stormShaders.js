@@ -17,8 +17,9 @@ import {
   MotePool,
   buildLightningChain,
   drawTiltedOrbitBand,
-  drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps53';
+  drawStarburstFlare,
+  drawMultiLayerCrescentArc
+} from '../ArcaneShaderFX.js?v=30fps55';
 
 export const STORM_CYAN_PALETTE = [
   '#080c24',
@@ -51,6 +52,170 @@ function drawTaikoDrumNode(pen, cx, cy, r, brassCol, innerCol, alpha = 1) {
   pen.fillCircle(cx, cy, Math.max(1.1, r * 0.55), innerCol, alpha);
   pen.stipple(cx, cy, PURE_WHITE, alpha);
 }
+
+/**
+ * Render a rotating 3-Comma Raijin Mitsudomoe Thunder-Drum Halo (`drawMitsudomoeDrumHalo`).
+ */
+function drawMitsudomoeDrumHalo(pen, cx, cy, r, rot, storm, raijin, alpha = 1) {
+  if (alpha <= 0.03 || r <= 4) return;
+  const band4 = [storm[2], storm[5], raijin[4], PURE_WHITE];
+  drawTiltedOrbitBand(pen, cx, cy, r, 1.0, 1.55, 0.92 * alpha, band4, () => true, false);
+  drawTiltedOrbitBand(pen, cx, cy, r * 0.64, 1.0, 1.15, 0.82 * alpha, [raijin[1], raijin[4], raijin[5], PURE_WHITE], () => true, false);
+
+  // 3 Swirling Raijin Tomoe Commas (`Mitsudomoe`) inside the inner drum ring
+  const commaOrbitR = r * 0.36;
+  for (let k = 0; k < 3; k++) {
+    const baseA = rot + (k * Math.PI * 2) / 3;
+    const headX = cx + Math.cos(baseA) * commaOrbitR;
+    const headY = cy + Math.sin(baseA) * commaOrbitR;
+    const headR = Math.max(2.0, r * 0.125);
+    pen.fillCircle(headX, headY, headR + 0.8, storm[0], alpha * 0.94);
+    pen.fillCircle(headX, headY, headR, k % 2 === 0 ? raijin[5] : storm[5], alpha * 0.98);
+    pen.stipple(headX, headY, PURE_WHITE, alpha);
+
+    // Curved tapering Tomoe comma tail swirling behind the head
+    for (let s = 1; s <= 9; s++) {
+      const su = s / 9;
+      const tailA = baseA - su * 1.35;
+      const tailR = commaOrbitR * (1 + su * 0.42);
+      const tx = cx + Math.cos(tailA) * tailR;
+      const ty = cy + Math.sin(tailA) * tailR;
+      const tr = headR * (1 - su * 0.78);
+      pen.fillCircle(tx, ty, tr + 0.5, storm[0], alpha * 0.88);
+      pen.fillCircle(tx, ty, tr, su < 0.5 ? raijin[6] : raijin[4], alpha * 0.94);
+    }
+  }
+
+  // 8 Orbiting Raijin Taiko Drum Nodes around the outer ring
+  for (let d = 0; d < 8; d++) {
+    const a = -rot * 0.75 + (d * Math.PI) / 4;
+    drawTaikoDrumNode(
+      pen,
+      cx + Math.cos(a) * r,
+      cy + Math.sin(a) * r,
+      2.3,
+      d % 2 === 0 ? raijin[5] : storm[5],
+      d % 2 === 0 ? raijin[6] : PURE_WHITE,
+      alpha
+    );
+  }
+}
+
+/**
+ * Render a curved Japanese Inazuma Odachi / Katana (`drawDiagonalInazumaOdachi`)
+ * slicing at a diagonal angle `angleRad` (e.g. `±38°`), with its complete diamond-wrapped
+ * tsuka hilt, brass tsuba handguard, curved sori blade, hamon temper line, and kissaki tip
+ * 100% inside the cell bounds.
+ */
+function drawDiagonalInazumaOdachi(pen, cx, cy, totalLen, angleRad, curveSign, storm, raijin, alpha = 1) {
+  if (alpha <= 0.03 || totalLen <= 10) return;
+  const ux = Math.sin(angleRad);
+  const uy = Math.cos(angleRad); // points downward-diagonal from hilt `(-halfL)` to tip `(+halfL)`
+  const nx = Math.cos(angleRad) * curveSign;
+  const ny = -Math.sin(angleRad) * curveSign;
+
+  const halfL = totalLen * 0.5;
+  const tsubaS = -halfL + totalLen * 0.25;
+
+  // 1. Tsuka-Ito Diamond-Wrapped Katana Hilt (`s = -halfL .. tsubaS`) & Kashira Pommel Cap
+  for (let s = -halfL; s <= tsubaS; s += 0.65) {
+    const isKashira = s < -halfL + 2.2;
+    const bx = cx + ux * s;
+    const by = cy + uy * s;
+    const hiltW = isKashira ? 2.1 : 1.55;
+    const isBrassMenuki = Math.floor((s + halfL) * 0.62) % 2 === 0;
+    for (let q = -hiltW - 0.5; q <= hiltW + 0.5; q += 0.55) {
+      const aq = Math.abs(q);
+      if (aq > hiltW + 0.35) continue;
+      const col =
+        aq >= hiltW - 0.45
+          ? storm[0]
+          : isKashira
+            ? raijin[6]
+            : isBrassMenuki
+              ? raijin[5]
+              : raijin[2];
+      pen.stipple(bx + nx * q, by + ny * q, col, alpha * 0.98);
+    }
+  }
+
+  // 2. Curved Single-Edged Sori Odachi Blade (`s = tsubaS .. +halfL`) with Kissaki Tip
+  const bladeLen = halfL - tsubaS;
+  for (let s = tsubaS; s <= halfL; s += 0.6) {
+    const bFrac = (s - tsubaS) / Math.max(1, bladeLen); // 0 at habaki collar, 1 at kissaki point
+    // Authentic Japanese sori (graceful parabolic katana curvature)
+    const soriOffset = Math.sin(bFrac * Math.PI) * 3.4 + bFrac * bFrac * 1.4;
+    const halfW =
+      bFrac < 0.1
+        ? 2.65 // Brass habaki collar
+        : bFrac < 0.82
+          ? 2.35 * (1 - (bFrac - 0.1) * 0.16)
+          : 2.08 * Math.pow(Math.max(0, (1 - bFrac) / 0.18), 0.72); // Razor-sharp geometric kissaki tip
+
+    const bx = cx + ux * s + nx * soriOffset;
+    const by = cy + uy * s + ny * soriOffset;
+
+    for (let q = -halfW - 0.6; q <= halfW + 0.6; q += 0.5) {
+      const aq = Math.abs(q);
+      if (aq > halfW + 0.25) continue;
+      const px = bx + nx * q;
+      const py = by + ny * q;
+
+      // 1px Dark Storm-Indigo Selective Outline (`Selout`)
+      if (aq >= halfW - 0.65 || bFrac > 0.96) {
+        pen.stipple(px, py, bFrac > 0.94 ? PURE_WHITE : storm[0], alpha * 0.98);
+        continue;
+      }
+
+      // Golden-Brass Habaki Blade Collar (`bFrac < 0.09`)
+      if (bFrac < 0.09) {
+        pen.stipple(px, py, q > 0 ? raijin[6] : raijin[5], alpha);
+        continue;
+      }
+
+      // Wavy Inazuma Hamon Temper Line & Incandescent Ha Cutting Edge (`q > 0`) vs Mune Spine (`q < 0`)
+      const hamonWave = Math.sin(bFrac * 22) * 0.35;
+      if (q >= hamonWave) {
+        const edgeCol = q > halfW * 0.35 ? PURE_WHITE : storm[6];
+        pen.stipple(px, py, edgeCol, alpha);
+      } else {
+        pen.stipple(px, py, curveSign > 0 ? storm[4] : raijin[4], alpha * 0.96);
+      }
+    }
+  }
+
+  // 3. Ornate Brass & Violet Tsuba Handguard Disk at `s = tsubaS`
+  const tx = cx + ux * tsubaS;
+  const ty = cy + uy * tsubaS;
+  const tsubaSpan = 6.2;
+  pen.line(
+    tx - nx * tsubaSpan - ux * 0.6,
+    ty - ny * tsubaSpan - uy * 0.6,
+    tx + nx * tsubaSpan - ux * 0.6,
+    ty + ny * tsubaSpan - uy * 0.6,
+    storm[0],
+    alpha * 0.98
+  );
+  pen.line(
+    tx - nx * tsubaSpan + ux * 0.6,
+    ty - ny * tsubaSpan + uy * 0.6,
+    tx + nx * tsubaSpan + ux * 0.6,
+    ty + ny * tsubaSpan + uy * 0.6,
+    storm[0],
+    alpha * 0.98
+  );
+  pen.line(tx - nx * tsubaSpan, ty - ny * tsubaSpan, tx + nx * tsubaSpan, ty + ny * tsubaSpan, raijin[5], alpha);
+  pen.line(
+    tx - nx * (tsubaSpan * 0.65),
+    ty - ny * (tsubaSpan * 0.65),
+    tx + nx * (tsubaSpan * 0.65),
+    ty + ny * (tsubaSpan * 0.65),
+    raijin[6],
+    alpha
+  );
+  pen.stipple(tx, ty, PURE_WHITE, alpha);
+}
+
 
 // ============================================================================
 // 1. IAIDO KOIGUCHI SAYA GLINT (`iaidoSayaGlint`)
@@ -604,78 +769,62 @@ export const raijinSkyOdachiCell = {
       step() {},
       renderFront(pen, localT) {
         const u = clamp01(localT);
-        // F00..F11 (`u < 0.40`): Descending Colossal Raijin Sky-Odachi!
-        if (u < 0.4) {
-          const fu = u / 0.4;
-          pen.shadeBox(-12, -40, 12, 38, (lx, ly, out) => {
-            if (ly < -36 || ly > 36) return 0;
-            // Tsuba handguard at y = -16
-            if (ly >= -18 && ly <= -14 && Math.abs(lx) <= 9) {
-              out.color = Math.abs(lx) > 7 ? storm[0] : raijin[5];
-              out.alpha = 1;
-              return out.color;
-            }
-            // Hilt above tsuba
-            if (ly < -18) {
-              if (Math.abs(lx) > 2.6) return 0;
-              out.color = Math.abs(ly) % 4 < 2 ? raijin[5] : storm[2];
-              out.alpha = 1;
-              return out.color;
-            }
-            // Tapered Odachi blade pointing down to y = +36
-            const bFrac = (ly + 14) / 50;
-            const halfW = (1 - bFrac * 0.65) * 4.8;
-            if (Math.abs(lx) > halfW) return 0;
-            if (Math.abs(lx) > halfW - 1.2) {
-              out.color = storm[0];
-              out.alpha = 0.98;
-              return out.color;
-            }
-            out.color = Math.abs(lx) < 1.5 ? PURE_WHITE : lx < 0 ? storm[6] : raijin[4];
-            out.alpha = 1;
-            out.glowColor = storm[5];
-            out.glowStrength = 0.4;
-            return out.color;
-          });
-          const bolt = buildLightningChain(rng, 0, -34, 0, 34, 0.15 + 0.04 * Math.sin(fu * 12), 3);
-          pen.polyline(bolt, raijin[6], 0.9);
-        } else {
-          // F12..F29 (`u >= 0.40`): Impaled Odachi + X-Shaped Judgment Cross-Slash & 8-Drum Raijin Crater!
-          const iu = clamp01((u - 0.4) / 0.6);
-          const pop = 0.72 + 0.28 * smoothStep(0, 0.2, iu);
-          const fade = 1 - smoothStep(0.76, 1.0, iu);
-          const env = (0.9 + 0.1 * smoothStep(0, 0.15, iu)) * fade;
-          if (env <= 0.02) return;
+        const pop = 0.76 + 0.24 * smoothStep(0, 0.18, u);
+        const fade = 1 - smoothStep(0.82, 1.0, u);
+        const env = (0.9 + 0.1 * Math.sin(u * Math.PI)) * fade;
+        if (env <= 0.02) return;
 
-          const baseY = 30;
-          drawTiltedOrbitBand(pen, 0, baseY, 34 * pop, 0.24, 1.6, 0.94 * env, band4, () => true, false);
-          for (let d = 0; d < 8; d++) {
-            const a = iu * 3 + (d * Math.PI) / 4;
-            drawTaikoDrumNode(
-              pen,
-              Math.cos(a) * 34 * pop,
-              baseY + Math.sin(a) * 34 * pop * 0.24,
-              2.2,
-              raijin[5],
-              PURE_WHITE,
-              env
-            );
-          }
+        const rot = u * Math.PI * 2.2;
+        const slashAngle = (38 * Math.PI) / 180; // ±38° diagonal crossed twin-odachi cleave
 
-          // Impaled Odachi blade at center
-          pen.line(0, -34, 0, baseY, PURE_WHITE, env);
-          pen.line(-1.5, -30, -1.5, baseY, storm[5], env * 0.92);
-          pen.line(1.5, -30, 1.5, baseY, raijin[4], env * 0.92);
-          pen.line(-8, -22, 8, -22, raijin[5], env);
+        // 1. Rotating 3-Comma Raijin Tomoe Thunder-Drum Halo (`r = 26 * pop`, strictly inside `[-35, +35]`)
+        drawMitsudomoeDrumHalo(pen, 0, 0, 26 * pop, rot, storm, raijin, env * 0.94);
 
-          // X-Shaped Judgment Cross-Slash across the cell!
-          const span = 32 * pop;
-          pen.line(-span, -span + 4, span, span + 4, storm[5], env * 0.92);
-          pen.line(-span, span + 4, span, -span + 4, raijin[4], env * 0.92);
-          pen.line(-span * 0.86, -span * 0.86 + 4, span * 0.86, span * 0.86 + 4, PURE_WHITE, env);
-          pen.line(-span * 0.86, span * 0.86 + 4, span * 0.86, -span * 0.86 + 4, PURE_WHITE, env);
-          drawStarburstFlare(pen, 0, 4, 15 * pop, env * 0.95, [storm[4], storm[6], raijin[6], PURE_WHITE]);
-        }
+        // 2. Sweeping Diagonal Inazuma Crescent Slash Waves (`drawMultiLayerCrescentArc`)
+        drawMultiLayerCrescentArc(pen, {
+          cx: -2,
+          cy: 1,
+          radius: 23 * pop,
+          width: 7.2,
+          eccentricity: 0.86,
+          headAngle: 0.88 + u * 0.35,
+          tailAngle: -0.95 + u * 0.35,
+          fade: env * 0.92,
+          ramp: storm,
+          seed: cfg.seed || 413,
+          t: u,
+          flashHot: u < 0.38
+        });
+        drawMultiLayerCrescentArc(pen, {
+          cx: 2,
+          cy: 1,
+          radius: 21 * pop,
+          width: 6.4,
+          eccentricity: 0.86,
+          headAngle: Math.PI - 0.88 - u * 0.35,
+          tailAngle: Math.PI + 0.95 - u * 0.35,
+          fade: env * 0.88,
+          ramp: raijin,
+          seed: (cfg.seed || 413) + 29,
+          t: u,
+          flashHot: u < 0.38
+        });
+
+        // 3. Diagonal Crossed Inazuma Twin-Odachi Blades slicing at `±38°` (complete hilts & kissaki tips inside cell!)
+        const odachiLen = 58 * pop;
+        drawDiagonalInazumaOdachi(pen, 0, 0, odachiLen, slashAngle, 1, storm, raijin, env);
+        drawDiagonalInazumaOdachi(pen, 0, 0, odachiLen, -slashAngle, -1, storm, raijin, env);
+
+        // 4. Crackling Diagonal Inazuma Lightning Chains & 2.5D Thunder Shock-Ring
+        const diagX = 21 * pop;
+        const diagY = 25 * pop;
+        const boltA = buildLightningChain(rng, -diagX, -diagY, diagX, diagY, 0.14, 3);
+        const boltB = buildLightningChain(rng, diagX, -diagY, -diagX, diagY, 0.14, 3);
+        pen.polyline(boltA, storm[6], 0.9 * env);
+        pen.polyline(boltB, raijin[6], 0.9 * env);
+
+        drawTiltedOrbitBand(pen, 0, 2, 28 * pop, 0.32, 1.5, 0.92 * env, band4, FRONT_HALF, u < 0.35);
+        drawStarburstFlare(pen, 0, 1, 11.5 * pop, env * 0.96, [storm[4], storm[6], raijin[6], PURE_WHITE]);
       }
     };
   }
@@ -689,52 +838,193 @@ export const raijinDragonPillarCell = {
     const storm = buildColorRamp(cfg.palette, 8);
     const raijin = buildColorRamp(RAIJIN_VIOLET_BRASS_PALETTE, 8);
     const band4 = [storm[2], storm[5], raijin[4], PURE_WHITE];
+    const violetBand4 = [raijin[1], raijin[4], raijin[6], PURE_WHITE];
     const rng = new DeterministicRng(cfg.seed);
 
     return {
       step() {},
-      renderFront(pen, localT) {
-        const u = clamp01(localT);
-        const pop = 0.62 + 0.38 * smoothStep(0, 0.18, u);
-        const fade = 1 - smoothStep(0.82, 1.0, u);
-        const env = (0.9 + 0.1 * smoothStep(0, 0.12, u)) * fade;
+      renderBack(pen, localT) {
+        const p = clamp01(localT);
+        const pop = 0.72 + 0.28 * smoothStep(0, 0.18, p);
+        const fade = 1 - smoothStep(0.82, 1.0, p);
+        const env = (0.9 + 0.1 * smoothStep(0, 0.12, p)) * fade;
         if (env <= 0.02) return;
 
-        const baseY = 40;
-        const topY = baseY - 78 * pop;
-        const halfW = 14 * (0.85 + 0.15 * Math.sin(u * Math.PI));
+        const baseY = 28;
+        // Back half of the curved 2.5D elliptical storm-cloud vortex at the base
+        drawTiltedOrbitBand(pen, 0, baseY, 26 * pop, 0.24, 1.6, 0.9 * env, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, baseY, 17 * pop, 0.24, 1.3, 0.84 * env, violetBand4, BACK_HALF, false);
+      },
+      renderFront(pen, localT) {
+        const p = clamp01(localT);
+        const pop = 0.72 + 0.28 * smoothStep(0, 0.18, p);
+        const fade = 1 - smoothStep(0.82, 1.0, p);
+        const env = (0.9 + 0.1 * smoothStep(0, 0.12, p)) * fade;
+        if (env <= 0.02) return;
 
-        pen.shadeBox(-24, topY - 4, 24, baseY + 4, (lx, ly, out) => {
-          if (ly > baseY || ly < topY) return 0;
-          const hFrac = (baseY - ly) / Math.max(1, baseY - topY);
-          const coilShift = Math.sin(hFrac * 8.5 - u * 12) * 3.5;
-          const ax = Math.abs(lx - coilShift * 0.45);
-          const maxW = halfW * (1 - hFrac * 0.28);
-          if (ax > maxW) return 0;
-          if (ax > maxW - 1.5) {
-            out.color = storm[0];
-            out.alpha = 0.96 * env;
-            return out.color;
-          }
-          if (ax < 3.0) {
-            out.color = PURE_WHITE;
-            out.alpha = env;
-            out.glowColor = storm[6];
-            out.glowStrength = 0.48;
-            return out.color;
-          }
-          out.color = ax < maxW * 0.56 ? storm[6] : lx < 0 ? storm[4] : raijin[3];
-          out.alpha = 0.94 * env;
-          return out.color;
-        });
+        const baseY = 28;
+        const dragonH = 50 * pop; // Top neck at `y = 28 - 50 = -22`, dragon head & horns stay inside `[-35, +35]`
 
-        const dragonChain = buildLightningChain(rng, 0, topY, 0, baseY, 0.16, 4);
+        // 1. Billowing Storm-Cloud Vortex Puffs at the Base (`baseY = 28`)
+        for (let k = 0; k < 8; k++) {
+          const ca = p * 4.5 + (k * Math.PI) / 4;
+          const cx = Math.cos(ca) * 20 * pop;
+          const cy = baseY + Math.sin(ca) * 20 * pop * 0.24;
+          const cr = (2.8 + (k % 2) * 1.1) * pop;
+          pen.fillCircle(cx, cy, cr + 0.8, storm[0], env * 0.92);
+          pen.fillCircle(cx, cy, cr, k % 2 === 0 ? raijin[2] : storm[2], env * 0.94);
+          pen.stipple(cx, cy - 0.8, k % 2 === 0 ? raijin[5] : storm[5], env * 0.9);
+        }
+
+        // 2. Coiling S-Curve Raijin Thunder-Dragon Body (`spineX = Math.sin(dy * 0.09 + p * 8) * 22 * taper`)
+        const spinePts = [];
+        for (let dy = 0; dy <= dragonH; dy += 0.9) {
+          const hFrac = dy / Math.max(1, dragonH);
+          const taper = (0.34 + 0.66 * Math.sin(hFrac * Math.PI)) * (1 - hFrac * 0.26);
+          const spineX = Math.sin(dy * 0.09 + p * 8) * 22 * taper;
+          const sy = baseY - dy;
+          spinePts.push([spineX, sy, hFrac, taper]);
+        }
+
+        // First pass along S-curve: 1px Dark Storm-Indigo Selective Outline (`Selout`) + Dorsal Fin Spikes
+        for (let i = 0; i < spinePts.length; i++) {
+          const [sx, sy, hFrac] = spinePts[i];
+          const bodyR = (1 - hFrac * 0.36) * 4.6 + 1.8;
+          pen.fillCircle(sx, sy, bodyR + 1.0, storm[0], env * 0.96);
+
+          // Golden-Brass & Violet Dorsal Spine Fins protruding along the outer curve of the S-bend
+          if (i % 4 === 2 && hFrac > 0.08 && hFrac < 0.92) {
+            const nextPt = spinePts[Math.min(spinePts.length - 1, i + 1)];
+            const prevPt = spinePts[Math.max(0, i - 1)];
+            const dx = nextPt[0] - prevPt[0];
+            const dy = nextPt[1] - prevPt[1];
+            const len = Math.hypot(dx, dy) || 1;
+            const outSign = sx >= 0 ? 1 : -1;
+            const nx = (-dy / len) * outSign;
+            const ny = (dx / len) * outSign;
+            const finLen = bodyR + 3.4;
+            const fx = sx + nx * finLen;
+            const fy = sy + ny * finLen - 1.2;
+            pen.line(sx + nx * (bodyR * 0.5), sy, fx, fy, storm[0], env * 0.96);
+            pen.line(sx + nx * (bodyR * 0.5), sy - 0.6, fx, fy, raijin[6], env * 0.98);
+            pen.stipple(fx, fy, PURE_WHITE, env);
+          }
+        }
+
+        // Second pass along S-curve: Segmented Violet-Cyan Dragon Scales, Belly Plates & Incandescent Spine Core
+        for (let i = 0; i < spinePts.length; i++) {
+          const [sx, sy, hFrac] = spinePts[i];
+          const bodyR = (1 - hFrac * 0.36) * 4.6 + 1.8;
+          const isBellyBand = i % 3 === 0;
+          pen.fillCircle(sx, sy, bodyR, isBellyBand ? raijin[4] : storm[4], env * 0.98);
+          pen.fillCircle(sx - 0.6, sy - 0.4, bodyR * 0.68, isBellyBand ? raijin[6] : storm[6], env);
+          pen.fillCircle(sx, sy, Math.max(1.1, bodyR * 0.36), PURE_WHITE, env);
+        }
+
+        // Two Clawed Raijin Dragon Forelegs grasping outward from the S-coils
+        for (const [coilIdx, side] of [
+          [Math.floor(spinePts.length * 0.38), -1],
+          [Math.floor(spinePts.length * 0.68), 1]
+        ]) {
+          const pt = spinePts[coilIdx];
+          if (!pt) continue;
+          const [cx, cy] = pt;
+          const elbowX = cx + side * 6.5;
+          const elbowY = cy + 1.5;
+          const wristX = cx + side * 11.0;
+          const wristY = cy - 1.5;
+          pen.line(cx, cy, elbowX, elbowY, storm[0], env * 0.98);
+          pen.line(elbowX, elbowY, wristX, wristY, storm[5], env * 0.98);
+          pen.line(cx, cy - 0.8, elbowX, elbowY - 0.8, raijin[5], env * 0.96);
+          // 3 Golden-White Dragon Talons
+          for (let c = -1; c <= 1; c++) {
+            const tx = wristX + side * 3.4;
+            const ty = wristY + c * 2.4 - 0.8;
+            pen.line(wristX, wristY, tx, ty, raijin[6], env * 0.98);
+            pen.stipple(tx, ty, PURE_WHITE, env);
+          }
+        }
+
+        // 3. Fierce Horned Dragon Jaws & Whiskers Head at the Top Apex!
+        const topPt = spinePts[spinePts.length - 1] || [0, baseY - dragonH];
+        const headX = topPt[0];
+        const headY = topPt[1] - 1.5;
+
+        // Twin Swept Golden-Brass & Violet Dragon Antler Horns (strictly inside `y >= -35`)
+        for (const side of [-1, 1]) {
+          const h1x = headX + side * 8.5;
+          const h1y = Math.max(-34, headY - 8.5);
+          const h2x = headX + side * 5.2;
+          const h2y = Math.max(-34, headY - 10.0);
+          pen.line(headX + side * 2.5, headY - 2.5, h1x, h1y, storm[0], env * 0.98);
+          pen.line(headX + side * 2.0, headY - 3.0, h1x, h1y, raijin[5], env);
+          pen.line(headX + side * 1.8, headY - 3.2, h2x, h2y, raijin[6], env);
+          pen.stipple(h1x, h1y, PURE_WHITE, env);
+          pen.stipple(h2x, h2y, PURE_WHITE, env);
+        }
+
+        // Armored Dragon Cranium, Upper Snout & Open Lower Fang-Jaw
+        pen.fillCircle(headX, headY, 6.2, storm[0], env * 0.98);
+        pen.fillCircle(headX, headY, 5.1, storm[5], env);
+        pen.fillCircle(headX, headY - 1.0, 3.6, storm[6], env);
+        // Upper Snout extending forward-right (`+X, -Y`) & Lower Fang-Jaw (`+X, +Y`)
+        const snoutX = headX + 8.5;
+        const snoutY = headY - 2.2;
+        const jawX = headX + 7.8;
+        const jawY = headY + 3.4;
+        pen.line(headX + 1, headY - 2.5, snoutX, snoutY, storm[0], env * 0.98);
+        pen.line(headX + 1, headY - 1.5, snoutX, snoutY, storm[6], env);
+        pen.line(headX + 1, headY + 2.5, jawX, jawY, storm[0], env * 0.98);
+        pen.line(headX + 1, headY + 1.6, jawX, jawY, raijin[4], env);
+        // Razor-sharp Pure-White Dragon Fangs & Roaring Lightning Breath Pearl in Jaws
+        pen.stipple(snoutX - 1.2, snoutY + 1.4, PURE_WHITE, env);
+        pen.stipple(snoutX - 3.2, snoutY + 1.2, PURE_WHITE, env);
+        pen.stipple(jawX - 1.2, jawY - 1.4, PURE_WHITE, env);
+        pen.fillCircle(headX + 5.6, headY + 0.5, 2.0, PURE_WHITE, env);
+        // Blazing Raijin Dragon Eye under Armored Brow
+        pen.line(headX - 2.5, headY - 2.2, headX + 1.8, headY - 1.4, raijin[6], env);
+        pen.stipple(headX - 0.5, headY - 1.5, PURE_WHITE, env);
+
+        // Flowing Sinuous Lightning Whiskers streaming outward from the Dragon Snout
+        for (const side of [-1, 1]) {
+          const wPts = [];
+          for (let w = 0; w <= 6; w++) {
+            const wu = w / 6;
+            const wx = headX + side * (3.5 + wu * 11.5);
+            const wy = headY + 0.5 + Math.sin(wu * Math.PI * 1.6 + p * 10 + side) * 3.2;
+            wPts.push([wx, wy]);
+          }
+          pen.polyline(wPts, side > 0 ? raijin[6] : storm[6], env * 0.95);
+          pen.stipple(wPts[wPts.length - 1][0], wPts[wPts.length - 1][1], PURE_WHITE, env);
+        }
+
+        // 4. Crackling S-Curve Lightning Arcs & Front Half of Curved 2.5D Elliptical Storm-Cloud Vortex
+        const dragonChain = buildLightningChain(rng, 0, baseY - 2, headX, headY + 2, 0.15, 4);
         pen.polyline(dragonChain, raijin[6], 0.92 * env);
-        drawTiltedOrbitBand(pen, 0, baseY, 26 * pop, 0.22, 1.5, 0.92 * env, band4, () => true, false);
+        pen.polyline(dragonChain, PURE_WHITE, 0.9 * env);
+
+        drawTiltedOrbitBand(pen, 0, baseY, 26 * pop, 0.24, 1.75, 0.96 * env, band4, FRONT_HALF, p < 0.35);
+        drawTiltedOrbitBand(pen, 0, baseY, 17 * pop, 0.24, 1.35, 0.9 * env, violetBand4, FRONT_HALF, false);
+        for (let d = 0; d < 4; d++) {
+          const a = p * 3.6 + (d * Math.PI) / 2;
+          if (Math.sin(a) < 0) continue;
+          drawTaikoDrumNode(
+            pen,
+            Math.cos(a) * 26 * pop,
+            baseY + Math.sin(a) * 26 * pop * 0.24,
+            2.1,
+            raijin[5],
+            PURE_WHITE,
+            env
+          );
+        }
+
+        drawStarburstFlare(pen, headX + 4, headY, 8.5 * pop, 0.94 * env, [storm[4], storm[6], raijin[6], PURE_WHITE]);
       }
     };
   }
 };
+
 
 export const raijinTaikoCrestCell = {
   duration: 1.0,

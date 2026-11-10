@@ -19,19 +19,21 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps53';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
 
 import {
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE,
   FORGE_EFFECT_REGISTRY
-} from '../src/engine/shaders/forgeShaders.js?v=30fps53';
+} from '../src/engine/shaders/forgeShaders.js?v=30fps55';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const ARTIFACT_DIRS = [
   '/home/antigravity/.gemini/jetski/brain/457cab14523e9f91b8aa1df550649774',
-  '/home/antigravity/.gemini/jetski/brain/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088'
+  '/home/antigravity/.gemini/jetski/brain/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088',
+  '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088',
+  '/home/antigravity/.gemini/jetski/brain/3ca6dcb9dc75b0760b03bc50164c6cb1'
 ];
 
 const CRC_TABLE = (() => {
@@ -181,18 +183,18 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 1: Khazad Dwarven Octagonal Ram-Horn & Crossed-Warhammer Aegis Crest (F00..F29)',
+      name: 'Row 1: Khazad Dwarven Octagonal Ram-Horn, Crossed-Warhammer & Diamond Boss Crest (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
-          def: FORGE_EFFECT_REGISTRY.forgeRuneShieldCrestCell,
+          def: FORGE_EFFECT_REGISTRY.runicBulwarkShieldCell,
           warmup: 0,
           cfg: { x: 52, y: 52, palette: FORGE_GOLD_PALETTE }
         }
       ]
     },
     {
-      name: 'Row 2: Colossal Sky-Falling God-Hammer & 5-Spire Volcanic Basalt-Jade Eruption (F00..F29)',
+      name: 'Row 2: 2.5D Volcanic Caldera, Fanning Diagonal Jade-Magma Fangs & Swinging God-Maul Arc (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -239,13 +241,13 @@ function bakeVfxSheet() {
       if (l.warmup > 0) inst.step(l.warmup);
       return inst;
     });
+    let activeFrames = 0;
 
     for (let c = 0; c < COLS; c++) {
       clearPixelSurface(surface);
       for (const inst of instances) inst.render(pen, 'back');
       for (const inst of instances) inst.render(pen, 'front');
       resolveSurfaceToRGBA(surface, cellRgba, 1.12);
-      enforceSafeCellMargin104(cellRgba, LOGICAL, LOGICAL);
 
       for (let i = 0; i < LOGICAL; i++) {
         if (
@@ -258,6 +260,17 @@ function bakeVfxSheet() {
           break;
         }
       }
+
+      enforceSafeCellMargin104(cellRgba, LOGICAL, LOGICAL);
+
+      let hasPixels = false;
+      for (let i = 3; i < cellRgba.length; i += 4) {
+        if (cellRgba[i] > 0) {
+          hasPixels = true;
+          break;
+        }
+      }
+      if (hasPixels) activeFrames++;
 
       blitUpscaledNearest(cellRgba, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
 
@@ -277,7 +290,10 @@ function bakeVfxSheet() {
 
       for (const inst of instances) inst.step(dt);
     }
-    console.log(`[titan-vfx] Baked ${spec.name} (30 frames)`);
+    console.log(`[titan-vfx] Baked ${spec.name} (active=${activeFrames}/${COLS})`);
+    if (activeFrames !== COLS) {
+      throw new Error(`Expected ${COLS}/${COLS} active frames on row ${r}, got ${activeFrames}`);
+    }
   }
 
   const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'titan_vfx.png');

@@ -22,7 +22,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps53';
+} from '../ArcaneShaderFX.js?v=30fps55';
 
 export const ABYSSAL_VIOLET_PALETTE = [
   '#090314',
@@ -141,6 +141,288 @@ function drawSkeletalBoneClawHead(pen, cx, cy, aimAngle, grip, boneRamp, glowCol
 // ============================================================================
 // 1. LIVE 2.5D ABYSSAL WRAITH MANTLE & SHADOW POOL (`abyssalWraithMantle`)
 // ============================================================================
+/**
+ * Shared HD-2D renderer: Colossal Floating 3D Horned Lich Skull & Scissoring X-Crossed Twin Great-Scythes Guillotine.
+ * Zero upright cone, zero bottom ring — features scissoring twin obsidian-and-magenta great-scythes
+ * sweeping from wide open (±55°) to a lethal X-cross guillotine snap (±18°), swept-back curved ram/demon horns (±30px),
+ * detailed 2.5D cranium (rx=16, ry=18) with deep void nasal cavity, blazing magenta-white eye sockets with trailing soul-fire,
+ * and an articulated lower mandible jaw that opens in a demonic roar as the scythes scissor shut.
+ */
+function drawHornedLichSkullGuillotine(pen, cx, cy, scale, progress, env, abyss, blood, bone) {
+  if (env <= 0.02) return;
+  const DARK_OUTLINE = '#090314';
+
+  // Scissor progression: sweeps from wide open (±55° = 0.96 rad) to lethal X-cross guillotine snap (±18° = 0.314 rad)
+  const snapU = smoothStep(0.06, 0.56, progress);
+  const scissorDeg = 55 - snapU * 37 + Math.sin(progress * Math.PI * 4) * 2.5;
+  const scissorRad = (scissorDeg * Math.PI) / 180;
+  const jawOpen = (1.2 + snapU * 5.8) * scale;
+
+  pen.radialGlow(cx, cy - 2 * scale, 28 * scale * env, abyss[5], 0.32 * env);
+
+  // -------------------------------------------------------------------------
+  // 1. Twin Colossal Scissoring X-Crossed Great-Scythes (Behind the Skull)
+  // -------------------------------------------------------------------------
+  const pivotX = cx;
+  const pivotY = cy + 2 * scale;
+  for (const side of [-1, 1]) {
+    // Scythe shaft axis tilted by side * scissorRad from vertical
+    const ang = -Math.PI * 0.5 + side * scissorRad;
+    const ux = Math.cos(ang);
+    const uy = Math.sin(ang);
+    const nx = -uy * side; // points outward away from center
+    const ny = ux * side;
+
+    // Crossed lower haft handle -> upper scythe blade collar
+    const haftBotX = pivotX - ux * 24 * scale;
+    const haftBotY = pivotY - uy * 24 * scale;
+    const collarX = pivotX + ux * 20 * scale;
+    const collarY = pivotY + uy * 20 * scale;
+
+    // Obsidian haft with dark selout & glowing soul-runes
+    pen.line(haftBotX - nx * 1.1, haftBotY - ny * 1.1, collarX - nx * 1.1, collarY - ny * 1.1, DARK_OUTLINE, 0.95 * env);
+    pen.line(haftBotX + nx * 1.1, haftBotY + ny * 1.1, collarX + nx * 1.1, collarY + ny * 1.1, DARK_OUTLINE, 0.95 * env);
+    pen.line(haftBotX, haftBotY, collarX, collarY, bone[3], 0.96 * env);
+    for (let r = 0; r < 5; r++) {
+      const ru = (r + 0.5) / 5;
+      const rx = haftBotX + (collarX - haftBotX) * ru;
+      const ry = haftBotY + (collarY - haftBotY) * ru;
+      pen.stipple(rx, ry, r % 2 === 0 ? abyss[6] : blood[5], 0.96 * env);
+    }
+    // Pommel spike at bottom of crossed haft
+    pen.fillCircle(haftBotX, haftBotY, 2.0 * scale, DARK_OUTLINE, 0.95 * env);
+    pen.fillCircle(haftBotX, haftBotY, 1.3 * scale, blood[5], 0.96 * env);
+
+    // Colossal curved crescent guillotine blade hooking inward & across from collar
+    const bladeSteps = 16;
+    for (let s = 0; s <= bladeSteps; s++) {
+      const su = s / bladeSteps;
+      // Curve sweeps outward slightly then hooks sharply inward & downward like a guillotine crescent
+      const bAng = ang - side * (0.28 + su * 1.85);
+      const bRad = (4 + Math.sin(su * Math.PI * 0.88) * 24) * scale;
+      const bx = collarX + Math.cos(bAng) * bRad;
+      const by = collarY + Math.sin(bAng) * bRad;
+      const thick = (1 - su * 0.62) * 3.4 * scale + 0.7;
+
+      // Outer obsidian spine + dark selout
+      pen.fillCircle(bx, by, thick + 0.9, DARK_OUTLINE, 0.96 * env);
+      pen.fillCircle(bx, by, thick, su < 0.25 ? bone[4] : abyss[2], 0.96 * env);
+
+      // Inner razor-sharp magenta/crimson bevel edge
+      const inX = bx - Math.cos(bAng - side * 1.2) * (thick * 0.55);
+      const inY = by - Math.sin(bAng - side * 1.2) * (thick * 0.55);
+      pen.fillCircle(
+        inX,
+        inY,
+        thick * 0.58,
+        su < 0.75 ? (s % 2 === 0 ? abyss[6] : blood[5]) : PURE_WHITE,
+        0.98 * env
+      );
+      if (s % 3 === 0 && su < 0.85) {
+        pen.stipple(bx, by, PURE_WHITE, 0.96 * env);
+      }
+    }
+  }
+
+  // Guillotine X-snap spark flare above skull when blades cross
+  if (snapU > 0.65) {
+    drawStarburstFlare(pen, cx, cy - 22 * scale, 9 * scale * env, 0.92 * env, [
+      abyss[4],
+      blood[5],
+      abyss[6],
+      PURE_WHITE
+    ]);
+  }
+
+  // -------------------------------------------------------------------------
+  // 2. Swept-Back Curved Obsidian Ram / Demon Horns (reaching ±30px)
+  // -------------------------------------------------------------------------
+  for (const side of [-1, 1]) {
+    const hRootX = cx + side * 10.5 * scale;
+    const hRootY = cy - 9.5 * scale;
+    const hornSegs = 12;
+    for (let h = 0; h <= hornSegs; h++) {
+      const hu = h / hornSegs;
+      // Curves wide out to ±29*scale, sweeps high to -24*scale, then hooks inward at tip
+      const hx =
+        hRootX +
+        side * (Math.sin(hu * Math.PI * 0.72) * 18.5 * scale - Math.pow(hu, 2.4) * 4.5 * scale);
+      const hy = hRootY - hu * 14.5 * scale + Math.sin(hu * Math.PI) * 3.2 * scale;
+      const hr = (1 - hu * 0.72) * 3.8 * scale + 0.7;
+
+      pen.fillCircle(hx, hy, hr + 0.85, DARK_OUTLINE, 0.96 * env);
+      pen.fillCircle(
+        hx,
+        hy,
+        hr,
+        hu > 0.82 ? blood[5] : h % 2 === 0 ? bone[3] : abyss[1],
+        0.98 * env
+      );
+      if (h % 2 === 0 && hu < 0.75) {
+        pen.stipple(hx - side * 0.6, hy - 0.6, bone[5], 0.92 * env);
+      }
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 3. Detailed 2.5D Pixel-Art Horned Abyssal Lich Skull Cranium (rx=16, ry=18)
+  // -------------------------------------------------------------------------
+  const skullCy = cy - 3.5 * scale;
+  const craniumRx = 15.5 * scale;
+  const craniumRy = 14.5 * scale;
+
+  // Roaring Demonic Mouth Void between Upper Maxilla and Lower Mandible Jaw
+  const mouthTopY = skullCy + 8.0 * scale;
+  const jawCy = mouthTopY + jawOpen;
+  pen.shadeBox(cx - 10 * scale, mouthTopY - 1, cx + 10 * scale, jawCy + 6 * scale, (lx, ly, out) => {
+    const dx = Math.abs(lx - cx);
+    const maxJawW = 9.2 * scale * (1 - clamp01((ly - mouthTopY) / (11 * scale)) * 0.32);
+    if (dx > maxJawW) return 0;
+
+    // Inside open roaring mouth cavity
+    if (ly >= mouthTopY && ly <= jawCy + 1.2 * scale) {
+      if (dx > maxJawW - 1.2 * scale) {
+        out.color = DARK_OUTLINE;
+        out.alpha = 0.96 * env;
+        return out.color;
+      }
+      const coreDist = Math.hypot(dx / (6 * scale), (ly - (mouthTopY + jawOpen * 0.5)) / Math.max(1, jawOpen * 0.7));
+      out.color = coreDist < 0.48 ? PURE_WHITE : coreDist < 0.82 ? abyss[6] : blood[4];
+      out.alpha = 0.96 * env;
+      out.glowColor = blood[5];
+      out.glowStrength = 0.42 * env;
+      return out.color;
+    }
+
+    // Articulated U-shaped Lower Mandible Jawbone
+    if (ly > jawCy + 1.2 * scale) {
+      const chinCurve = Math.sqrt(Math.max(0, 1 - Math.pow(dx / Math.max(1, maxJawW), 2))) * 4.5 * scale;
+      if (ly > jawCy + 1.2 * scale + chinCurve) return 0;
+      if (dx > maxJawW - 1.2 * scale || ly > jawCy + chinCurve) {
+        out.color = DARK_OUTLINE;
+        out.alpha = 0.98 * env;
+        return out.color;
+      }
+      out.color = dx < 3.5 * scale ? bone[6] : bone[4];
+      out.alpha = 0.98 * env;
+      return out.color;
+    }
+    return 0;
+  });
+
+  // Upper Cranium Dome + Flared Zygomatic Cheekbones + Upper Maxilla
+  pen.shadeBox(
+    cx - craniumRx - 2,
+    skullCy - craniumRy - 2,
+    cx + craniumRx + 2,
+    mouthTopY + 2,
+    (lx, ly, out) => {
+      const dx = lx - cx;
+      const adx = Math.abs(dx);
+      const dy = ly - skullCy;
+
+      // Sculpted skull silhouette width at vertical offset dy
+      let halfW = 0;
+      if (dy < -1.5 * scale) {
+        // Rounded upper cranium dome
+        const uY = clamp01(-dy / craniumRy);
+        if (uY > 1) return 0;
+        halfW = Math.sqrt(1 - uY * uY) * craniumRx;
+      } else if (dy <= 4.5 * scale) {
+        // Flared zygomatic cheekbones
+        const cheekU = (dy + 1.5 * scale) / (6.0 * scale);
+        halfW = (14.2 + Math.sin(cheekU * Math.PI) * 1.8 - cheekU * 2.4) * scale;
+      } else if (dy <= 8.2 * scale) {
+        // Upper maxilla jaw & teeth row
+        halfW = 9.5 * scale;
+      } else {
+        return 0;
+      }
+
+      if (adx > halfW) return 0;
+
+      // Crisp 1px dark selective outline around skull silhouette & temple sutures
+      const topDist = craniumRy + dy;
+      if (adx > halfW - 1.3 * scale || topDist < 1.3 * scale) {
+        out.color = DARK_OUTLINE;
+        out.alpha = 0.98 * env;
+        return out.color;
+      }
+
+      // Deep Void Nasal Cavity (inverted Gothic triangle at center)
+      if (dy >= 0.2 * scale && dy <= 4.8 * scale) {
+        const nasalW = ((dy - 0.2 * scale) / (4.6 * scale)) * 2.8 * scale + 0.4 * scale;
+        if (adx <= nasalW && adx > 0.35 * scale) {
+          out.color = DARK_OUTLINE;
+          out.alpha = 0.98 * env;
+          return out.color;
+        }
+      }
+
+      // Upper Maxilla Teeth Row (individual carved fangs separated by dark gaps)
+      if (dy >= 5.6 * scale) {
+        const toothSlot = Math.floor((adx / scale + 0.5) / 2.2);
+        const inGap = Math.abs((adx / scale) - toothSlot * 2.2) < 0.42 || dy < 6.2 * scale;
+        out.color = inGap ? DARK_OUTLINE : bone[6];
+        out.alpha = 0.98 * env;
+        return out.color;
+      }
+
+      // Glowing Forehead Lich Crown Rune
+      if (dy >= -10.5 * scale && dy <= -3.5 * scale) {
+        const inRuneV = adx < 1.2 * scale;
+        const inRuneH = Math.abs(dy + 7.2 * scale) < 1.1 * scale && adx < 4.5 * scale;
+        if (inRuneV || inRuneH) {
+          out.color = adx < 0.6 * scale ? PURE_WHITE : abyss[6];
+          out.alpha = env;
+          out.glowColor = blood[5];
+          out.glowStrength = 0.45 * env;
+          return out.color;
+        }
+      }
+
+      // 2.5D Cel-Shaded Bone Lighting across Cranium & Cheekbones
+      const light = (1 - adx / halfW) * 0.65 + (1 - (dy + craniumRy) / (craniumRy * 1.7)) * 0.45;
+      out.color =
+        light > 0.74
+          ? PURE_WHITE
+          : light > 0.56
+            ? bone[6]
+            : light > 0.38
+              ? bone[5]
+              : bone[3];
+      out.alpha = 0.98 * env;
+      return out.color;
+    }
+  );
+
+  // Lower Mandible Fangs pointing upward
+  for (let t = -2; t <= 2; t++) {
+    const tx = cx + t * 3.2 * scale;
+    pen.line(tx, jawCy + 1.2 * scale, tx, jawCy - 0.8 * scale, bone[6], 0.98 * env);
+  }
+
+  // -------------------------------------------------------------------------
+  // 4. Blazing Magenta-White Eye Sockets with Trailing Soul-Fire
+  // -------------------------------------------------------------------------
+  for (const side of [-1, 1]) {
+    const ex = cx + side * 6.0 * scale;
+    const ey = skullCy - 1.2 * scale;
+    pen.fillCircle(ex, ey, 3.8 * scale, DARK_OUTLINE, 0.98 * env);
+    pen.fillCircle(ex, ey, 2.6 * scale, blood[5], 0.98 * env);
+    pen.fillCircle(ex, ey, 1.7 * scale, abyss[6], 1.0 * env);
+    pen.fillCircle(ex - side * 0.4 * scale, ey - 0.3 * scale, 1.0 * scale, PURE_WHITE, 1.0 * env);
+
+    // Trailing soul-fire wisps streaming from outer eye corners
+    for (let w = 1; w <= 5; w++) {
+      const wu = w / 5;
+      const wx = ex + side * (2.2 + wu * 6.5) * scale;
+      const wy = ey - wu * 5.8 * scale + Math.sin(progress * Math.PI * 6 + w) * 1.2 * scale;
+      pen.fillCircle(wx, wy, (1 - wu * 0.55) * 1.6 * scale, w <= 2 ? PURE_WHITE : w <= 4 ? abyss[6] : blood[5], (1 - wu * 0.3) * env);
+    }
+  }
+}
+
 export const abyssalWraithMantle = {
   duration: 0.85,
   loop: true,
@@ -155,9 +437,6 @@ export const abyssalWraithMantle = {
     const abyss = buildColorRamp(cfg.palette, 8);
     const blood = buildColorRamp(BLOOD_MOON_CRIMSON_PALETTE, 8);
     const bone = buildColorRamp(NECROPOLIS_BONE_PALETTE, 8);
-    const band4 = cfg.isCrimson
-      ? [blood[1], blood[4], abyss[5], PURE_WHITE]
-      : [abyss[1], abyss[4], blood[5], abyss[6]];
     const rng = new DeterministicRng(cfg.seed);
     const motes = new MotePool({
       rng,
@@ -191,69 +470,19 @@ export const abyssalWraithMantle = {
       },
       renderBack(pen) {
         const rx = cfg.radius || 28;
-        drawTiltedOrbitBand(pen, 0, 0, rx, 0.22, 1.8, 0.9, band4, BACK_HALF, false);
-        drawTiltedOrbitBand(pen, 0, 0, rx * 0.66, 0.22, 1.3, 0.82, band4, BACK_HALF, false);
-
-        // FBM-eroded abyssal shadow pool & rising wraith mantle tendrils behind Malakor
-        const topH = cfg.isSubmerged ? -12 : -36;
-        pen.shadeBox(-rx, topH, rx, 4, (lx, ly, out) => {
-          if (ly >= -4) {
-            const d = Math.hypot(lx / rx, ly / 5.5);
-            if (d > 1) return 0;
-            const n = fbmNoise2D(lx * 0.2 + phase * 3.2, ly * 0.35, cfg.seed, 2);
-            out.color = d < 0.52 ? abyss[0] : n > 0.06 ? blood[3] : abyss[2];
-            out.alpha = 0.92 * (1 - d * 0.35);
-            out.glowColor = abyss[4];
-            out.glowStrength = 0.22;
-            return out.color;
-          }
-          const hFrac = clamp01(-ly / Math.abs(topH));
-          const maxW = rx * 0.68 * (1 - hFrac * 0.55);
-          if (Math.abs(lx) > maxW) return 0;
-          const n = fbmNoise2D(lx * 0.18, ly * 0.16 + phase * 4.5, cfg.seed + 11, 2);
-          if (n + (1 - hFrac) * 0.45 < 0.38) return 0;
-          out.color = n > 0.24 ? abyss[4] : abyss[1];
-          out.alpha = 0.78 * (1 - hFrac * 0.6);
-          return out.color;
-        });
-
-        for (let k = 0; k < 4; k++) {
-          const a = phase * 3.6 + (k * Math.PI) / 2;
-          if (Math.sin(a) >= 0) continue;
-          drawPixelSkullOrb(
-            pen,
-            Math.cos(a) * rx,
-            Math.sin(a) * rx * 0.22 - 1,
-            2.2,
-            bone[5],
-            blood[5],
-            0.9
-          );
+        const u = (phase % 0.85) / 0.85;
+        if (!cfg.isSubmerged) {
+          drawHornedLichSkullGuillotine(pen, 0, -24, (rx / 28) * 0.78, u, 0.88, abyss, blood, bone);
         }
       },
       renderFront(pen) {
-        const rx = cfg.radius || 28;
-        drawTiltedOrbitBand(pen, 0, 0, rx, 0.22, 1.9, 0.95, band4, FRONT_HALF, true);
-        drawTiltedOrbitBand(pen, 0, 0, rx * 0.66, 0.22, 1.4, 0.86, band4, FRONT_HALF, false);
-
-        for (let k = 0; k < 4; k++) {
-          const a = phase * 3.6 + (k * Math.PI) / 2;
-          if (Math.sin(a) < 0) continue;
-          drawPixelSkullOrb(
-            pen,
-            Math.cos(a) * rx,
-            Math.sin(a) * rx * 0.22 - 1,
-            2.4,
-            bone[6],
-            blood[5],
-            0.96
-          );
-        }
         motes.render(pen);
       }
     };
   }
 };
+
+export const wraithShadowMantle = abyssalWraithMantle;
 
 // ============================================================================
 // 2. LIVE 2.5D SOUL-HARVEST SCYTHE CLEAVE ARC (`soulHarvestScytheArc`)
@@ -718,51 +947,9 @@ export const deathAvatarCathedral = {
           return out.color;
         });
 
-        // 2. Gothic Cathedral Rib-Spires & Colossal Hooded Sovereign of Death looming behind the arena
-        const sovY = -44 + (1 - pop) * 18;
-        pen.shadeBox(-26, sovY - 28, 26, sovY + 34, (lx, ly, out) => {
-          const dy = ly - (sovY - 26);
-          if (dy < 0 || dy > 60) return 0;
-          const v = dy / 60;
-          const cloakW = v < 0.28 ? 7 + (v / 0.28) * 15 : 22 * (1 - (v - 0.28) * 0.28);
-          const ax = Math.abs(lx);
-          if (ax > cloakW) return 0;
-          if (ax > cloakW - 1.6) {
-            out.color = abyss[0];
-            out.alpha = 0.94 * env;
-            return out.color;
-          }
-          if (dy >= 22 && dy <= 42 && ax <= 9 && Math.floor(dy) % 4 < 2) {
-            out.color = ax < 2.5 ? blood[5] : bone[5];
-            out.alpha = env * 0.96;
-            out.glowColor = blood[5];
-            out.glowStrength = 0.36 * env;
-            return out.color;
-          }
-          out.color = lx < 0 ? abyss[2] : abyss[1];
-          out.alpha = 0.9 * env;
-          return out.color;
-        });
-
-        drawPixelSkullOrb(pen, 0, sovY - 12, 6.5, bone[6], blood[5], env);
-        pen.line(-6, sovY - 15, -14, sovY - 26, bone[5], env);
-        pen.line(6, sovY - 15, 14, sovY - 26, bone[5], env);
-
-        // Sweeping Sovereign Execution Great-Scythe behind the fighters
-        const swingA = -0.55 + Math.sin(u * Math.PI * 2) * 0.5;
-        const sx0 = -28 * Math.cos(swingA);
-        const sy0 = sovY - 2 - 28 * Math.sin(swingA);
-        const sx1 = 30 * Math.cos(swingA);
-        const sy1 = sovY - 2 + 30 * Math.sin(swingA);
-        pen.line(sx0, sy0, sx1, sy1, bone[5], env);
-        for (let k = 0; k <= 10; k++) {
-          const ku = k / 10;
-          const ba = swingA + 1.35 + ku * 1.1;
-          const bx = sx1 + Math.cos(ba) * (4 + ku * 20);
-          const by = sy1 + Math.sin(ba) * (4 + ku * 20);
-          pen.fillCircle(bx, by, (1 - ku * 0.5) * 3.0, k % 2 === 0 ? blood[5] : abyss[5], env);
-          pen.stipple(bx, by, PURE_WHITE, env);
-        }
+        // 2. Colossal Floating 3D Horned Lich Skull & Scissoring X-Crossed Twin Great-Scythes Guillotine
+        const sovY = -42 + (1 - pop) * 14;
+        drawHornedLichSkullGuillotine(pen, 0, sovY, 1.05 * pop, u, env, abyss, blood, bone);
 
         // 3. Back half of the 2.5D Blood-Moon Pentagram Execution Floor Seal
         const rx = 58 * pop;
@@ -820,7 +1007,7 @@ export const deathAvatarCathedral = {
 // Strictly bounded within `[-40, +40]` (`[-44, +44]` safe envelope) for 0/150 border clips!
 //   Row 0 (`y=0`):   360-Deg Twin-Blade Soul Scythe Wave (`soulScytheWaveCell`)
 //   Row 1 (`y=208`): Floating Abyssal Skull Wisp & Soul-Fire Orb (`abyssalSkullWispCell`)
-//   Row 2 (`y=416`): Erupting Necrotic Bone Spire & Gothic Tombstone (`necroticBoneSpireCell`)
+//   Row 2 (`y=416`): Colossal Floating 3D Horned Lich Skull & Scissoring Twin Great-Scythes Guillotine (`necroticBoneSpireCell`)
 //   Row 3 (`y=624`): Revolving Thanatos Blood-Moon Pentagram Seal (`thanatosPentagramSealCell`)
 //   Row 4 (`y=832`): Abyssal Reap Crescent Slash & Starburst Nova (`abyssalReapNovaCell`)
 // ============================================================================
@@ -961,7 +1148,7 @@ export const abyssalSkullWispCell = {
   }
 };
 
-/** Row 2 (`sy = 416`): Erupting Necrotic Bone Spire & Haunted Gothic Tombstone (`F00..F29` one-shot). */
+/** Row 2 (`sy = 416`): Colossal Floating 3D Horned Lich Skull & Scissoring X-Crossed Twin Great-Scythes Guillotine (`F00..F29` one-shot). */
 export const necroticBoneSpireCell = {
   duration: 1.0,
   loop: false,
@@ -970,65 +1157,18 @@ export const necroticBoneSpireCell = {
     const abyss = buildColorRamp(cfg.palette, 8);
     const blood = buildColorRamp(BLOOD_MOON_CRIMSON_PALETTE, 8);
     const bone = buildColorRamp(NECROPOLIS_BONE_PALETTE, 8);
-    const band4 = [abyss[2], abyss[5], blood[5], PURE_WHITE];
-    const rng = new DeterministicRng(cfg.seed);
 
     return {
       step() {},
       renderFront(pen, localT) {
         const u = clamp01(localT);
-        const pop = 0.68 + 0.32 * smoothStep(0, 0.16, u);
+        const pop = 0.74 + 0.26 * smoothStep(0, 0.14, u);
         const fade = 1 - smoothStep(0.84, 1.0, u);
         const env = (0.9 + 0.1 * smoothStep(0, 0.12, u)) * fade;
         if (env <= 0.02) return;
 
-        // Strictly inside [-36, +36]
-        const baseY = 33;
-        const topY = baseY - 65 * pop;
-        const halfW = 16;
-
-        // Arched Gothic Tombstone & Carved Necrotic Cross
-        pen.shadeBox(-halfW - 4, topY - 3, halfW + 4, baseY + 3, (lx, ly, out) => {
-          if (ly > baseY || ly < topY) return 0;
-          const archY = topY + 15;
-          const maxW =
-            ly < archY
-              ? Math.sqrt(Math.max(0, 1 - Math.pow((archY - ly) / 15, 2))) * halfW
-              : halfW;
-          const ax = Math.abs(lx);
-          if (ax > maxW) return 0;
-          if (ax > maxW - 1.6 || ly < topY + 1.6 || ly > baseY - 1.6) {
-            out.color = abyss[0];
-            out.alpha = 0.98 * env;
-            return out.color;
-          }
-          const inCrossV = ax < 2.0 && ly > topY + 8 && ly < baseY - 11;
-          const inCrossH = Math.abs(ly - (topY + 20)) < 1.8 && ax < 8.5;
-          if (inCrossV || inCrossH) {
-            out.color = ax < 0.9 ? PURE_WHITE : u > 0.45 ? blood[5] : abyss[5];
-            out.alpha = env;
-            out.glowColor = blood[5];
-            out.glowStrength = 0.46 * env;
-            return out.color;
-          }
-          out.color = lx < 0 ? bone[3] : bone[2];
-          out.alpha = 0.96 * env;
-          return out.color;
-        });
-
-        // Base Soul-Vortex & Grasping Skeletal Bone Spires (r <= 25)
-        drawTiltedOrbitBand(pen, 0, baseY - 1, 24 * pop, 0.22, 1.5, 0.94 * env, band4, null, false);
-        for (const side of [-1, 1]) {
-          const hx = side * 16;
-          const hy = baseY - 10 - Math.sin(u * Math.PI * 2 + side) * 3.5;
-          pen.line(side * 10, baseY - 1, hx, hy, bone[5], 0.95 * env);
-          pen.line(hx, hy, hx - side * 3.5, hy - 5.5, PURE_WHITE, 0.95 * env);
-          pen.line(hx, hy, hx + side * 2.5, hy - 6, bone[6], 0.95 * env);
-        }
-
-        const bolt = buildLightningChain(rng, -4, baseY - 4, 4, topY + 4, 0.14, 3);
-        pen.polyline(bolt, blood[5], 0.86 * env);
-        drawPixelSkullOrb(pen, 0, topY + 20, 3.8, bone[6], blood[5], env);
+        const bobY = Math.sin(u * Math.PI * 2) * 1.8;
+        drawHornedLichSkullGuillotine(pen, 0, 2 + bobY, pop * 0.95, u, env, abyss, blood, bone);
       }
     };
   }

@@ -19,7 +19,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps53';
+} from '../ArcaneShaderFX.js?v=30fps55';
 
 export const RUNIC_CYAN_PALETTE = [
   '#061228',
@@ -78,6 +78,260 @@ function drawElderStarCross(pen, cx, cy, rOuter, rInner, aspectY, rot, colMain, 
     }
   }
 }
+
+/**
+ * Render Aethelgard's Pointed Runic Broadsword (`drawRunicGreatswordSilhouette`) with its
+ * complete ornate pommel jewel, wire-wrapped hilt, swept Valkyrie-steel winged crossguard,
+ * and diamond-tapered fuller blade 100% inside the canvas/cell bounds.
+ *
+ * `tipX, tipY`: Pointed tip of the greatsword blade (`d = 0`).
+ * `totalLen`: Total length from pointed tip (`d = 0`) to top of pommel jewel (`d = totalLen`).
+ * `angleRad`: Tilt angle from vertical (`0` = vertical point-down, `±0.4887` = `±28°` diagonal phalanx).
+ */
+export function drawRunicGreatswordSilhouette(
+  pen,
+  tipX,
+  tipY,
+  totalLen,
+  bladeHalfW,
+  angleRad,
+  cyan,
+  gold,
+  alpha = 1,
+  isPhantom = false
+) {
+  if (alpha <= 0.03 || totalLen <= 8 || bladeHalfW <= 0.8) return;
+  const ux = Math.sin(angleRad);
+  const uy = -Math.cos(angleRad);
+  const nx = Math.cos(angleRad);
+  const ny = Math.sin(angleRad);
+
+  const bladeLen = totalLen * 0.67;
+  const guardD = bladeLen;
+  const hiltEndD = totalLen * 0.90;
+  const pommelD = totalLen * 0.94;
+
+  // 1. Pointed Diamond-Tip & Broad Double-Edged Runic Fuller Blade (`d = 0 .. bladeLen`)
+  const stepD = 0.65;
+  for (let d = 0; d <= bladeLen; d += stepD) {
+    const bFrac = d / Math.max(1, bladeLen);
+    let halfW;
+    if (bFrac < 0.28) {
+      // Razor-sharp pointed diamond tip at bottom (`d = 0`)
+      halfW = bladeHalfW * Math.pow(bFrac / 0.28, 0.78);
+    } else if (bFrac < 0.86) {
+      // Broad fuller blade body widening slightly toward crossguard
+      halfW = bladeHalfW * (0.92 + 0.12 * ((bFrac - 0.28) / 0.58));
+    } else {
+      // Flared ricasso collar below the crossguard
+      halfW = bladeHalfW * 1.14;
+    }
+
+    const cx = tipX + ux * d;
+    const cy = tipY + uy * d;
+    const maxQ = Math.ceil(halfW * 2) * 0.5;
+
+    for (let q = -maxQ; q <= maxQ; q += 0.55) {
+      const aq = Math.abs(q);
+      if (aq > halfW + 0.25) continue;
+      const px = cx + nx * q;
+      const py = cy + ny * q;
+
+      // Crisp 1px dark runic-steel selective outline (`Selout`)
+      if (aq >= halfW - 0.85 || d < 1.1) {
+        pen.stipple(px, py, cyan[0], alpha * 0.96);
+        continue;
+      }
+
+      // Central Engraved Elder-Rune Fuller Channel
+      if (bFrac > 0.16 && bFrac < 0.92 && aq <= Math.max(0.85, bladeHalfW * 0.24)) {
+        const isRuneNode = Math.floor(d * 0.42) % 3 === 0;
+        const fullerCol = isPhantom
+          ? isRuneNode
+            ? PURE_WHITE
+            : cyan[6]
+          : aq < 0.55
+            ? PURE_WHITE
+            : isRuneNode
+              ? gold[6]
+              : cyan[5];
+        pen.stipple(px, py, fullerCol, alpha);
+        continue;
+      }
+
+      // Specular bevel highlight on left blade face (`q < 0`) vs deep sapphire steel on right face (`q > 0`)
+      const edgeRatio = aq / Math.max(0.5, halfW);
+      let bladeCol;
+      if (isPhantom) {
+        bladeCol = q < 0 ? (edgeRatio > 0.62 ? PURE_WHITE : cyan[6]) : cyan[4];
+      } else {
+        bladeCol =
+          q < 0
+            ? edgeRatio > 0.66
+              ? PURE_WHITE
+              : cyan[6]
+            : edgeRatio > 0.68
+              ? cyan[5]
+              : cyan[3];
+      }
+      pen.stipple(px, py, bladeCol, alpha * (isPhantom ? 0.88 : 0.98));
+    }
+  }
+
+  // 2. Wire-Wrapped Royal Hilt (`d = guardD .. hiltEndD`)
+  for (let d = guardD; d <= hiltEndD; d += 0.65) {
+    const cx = tipX + ux * d;
+    const cy = tipY + uy * d;
+    const hiltW = isPhantom ? 1.4 : 1.85;
+    const isGoldWrap = Math.floor(d * 0.6) % 2 === 0;
+    for (let q = -hiltW - 0.6; q <= hiltW + 0.6; q += 0.55) {
+      const aq = Math.abs(q);
+      if (aq > hiltW + 0.4) continue;
+      const col = aq >= hiltW - 0.45 ? cyan[0] : isGoldWrap ? gold[5] : cyan[2];
+      pen.stipple(cx + nx * q, cy + ny * q, col, alpha * 0.96);
+    }
+  }
+
+  // 3. Swept Valkyrie-Steel Winged Crossguard (`d = guardD`)
+  const gx = tipX + ux * (guardD + 1.2);
+  const gy = tipY + uy * (guardD + 1.2);
+  const wingSpan = bladeHalfW * (isPhantom ? 2.15 : 2.65);
+  for (const side of [-1, 1]) {
+    for (let p = 0; p < 3; p++) {
+      const pSpan = wingSpan * (1 - p * 0.2);
+      const liftD = (3.8 - p * 1.1) * (isPhantom ? 0.8 : 1.0);
+      const wx = gx + nx * side * pSpan + ux * liftD;
+      const wy = gy + ny * side * pSpan + uy * liftD;
+      const rootX = gx + nx * side * 1.4 - ux * (p * 0.9);
+      const rootY = gy + ny * side * 1.4 - uy * (p * 0.9);
+      pen.line(rootX, rootY, wx, wy, cyan[0], alpha * 0.95);
+      pen.line(
+        rootX + ux * 0.8,
+        rootY + uy * 0.8,
+        wx + ux * 0.6,
+        wy + uy * 0.6,
+        p === 0 ? PURE_WHITE : p === 1 ? gold[6] : gold[4],
+        alpha * 0.98
+      );
+      pen.stipple(wx, wy, PURE_WHITE, alpha);
+    }
+  }
+  drawPixelElderRune(pen, gx, gy, isPhantom ? 1.8 : 2.5, gold[5], PURE_WHITE, alpha);
+
+  // 4. Complete Ornate Faceted Pommel Jewel at Top (`d = pommelD`, NEVER cut off!)
+  const pxPommel = tipX + ux * pommelD;
+  const pyPommel = tipY + uy * pommelD;
+  const pommelR = isPhantom ? 2.2 : 3.1;
+  pen.fillCircle(pxPommel, pyPommel, pommelR + 0.9, cyan[0], alpha * 0.96);
+  pen.fillCircle(pxPommel, pyPommel, pommelR, gold[5], alpha * 0.98);
+  pen.fillCircle(pxPommel, pyPommel, pommelR * 0.55, cyan[6], alpha);
+  pen.stipple(pxPommel, pyPommel, PURE_WHITE, alpha);
+  // Pommel crown finial tip at `d = totalLen`
+  const finialX = tipX + ux * totalLen;
+  const finialY = tipY + uy * totalLen;
+  pen.line(pxPommel, pyPommel, finialX, finialY, gold[6], alpha);
+  pen.stipple(finialX, finialY, PURE_WHITE, alpha);
+
+  if (!isPhantom) {
+    pen.radialGlow(tipX + ux * (bladeLen * 0.45), tipY + uy * (bladeLen * 0.45), bladeHalfW * 2.4, cyan[5], 0.34 * alpha);
+  }
+}
+
+/**
+ * Render Aethelgard's Faceted Octagonal Runic Aegis Kite-Shield (`drawFacetedAegisKiteShield`)
+ * with stepped crown brow, Valkyrie side-pinions, gilded octagonal bezel, and central Elder Star-Boss.
+ */
+function drawFacetedAegisKiteShield(pen, cx, cy, scale, cyan, gold, alpha = 1) {
+  if (alpha <= 0.03 || scale <= 0.2) return;
+  const topY = -20 * scale;
+  const botY = 23 * scale;
+  const maxHalfW = 18.5 * scale;
+
+  // Swept Valkyrie-Steel Upper Shoulder Pinions flanking the Kite-Shield
+  for (const side of [-1, 1]) {
+    for (let p = 0; p < 3; p++) {
+      const sx0 = cx + side * (13 - p * 1.5) * scale;
+      const sy0 = cy + (-9 + p * 3.5) * scale;
+      const sx1 = cx + side * (25 - p * 2.4) * scale;
+      const sy1 = cy + (-18 + p * 3.2) * scale;
+      pen.line(sx0, sy0, sx1, sy1, cyan[0], alpha * 0.95);
+      pen.line(sx0, sy0 - 0.8, sx1, sy1 - 0.8, p === 0 ? PURE_WHITE : gold[6], alpha * 0.98);
+      pen.stipple(sx1, sy1, PURE_WHITE, alpha);
+    }
+  }
+
+  // Scanline-rasterized Faceted Octagonal Kite-Shield Plate (zero vertical pole boxes)
+  for (let dy = Math.floor(topY); dy <= Math.ceil(botY); dy++) {
+    const v = (dy - topY) / Math.max(1, botY - topY); // 0 at top crown, 1 at bottom kite point
+    let halfW;
+    if (v < 0.14) {
+      // Stepped octagonal top brow
+      halfW = maxHalfW * (0.58 + (v / 0.14) * 0.42);
+    } else if (v < 0.46) {
+      // Broad upper kite-shield shoulders
+      halfW = maxHalfW * (1.0 - (v - 0.14) * 0.12);
+    } else {
+      // Polygonal kite taper to a sharp bottom point at `v = 1`
+      const kv = (v - 0.46) / 0.54;
+      halfW = maxHalfW * 0.96 * Math.pow(Math.max(0, 1 - kv), 0.82);
+    }
+
+    const py = cy + dy;
+    const limX = Math.ceil(halfW);
+    for (let dx = -limX; dx <= limX; dx++) {
+      const adx = Math.abs(dx);
+      if (adx > halfW + 0.25) continue;
+      const px = cx + dx;
+      const distEdge = Math.min(halfW - adx, dy - topY, botY - dy);
+
+      // 1px Dark Runic-Steel Selective Outline (`Selout`)
+      if (distEdge < 1.15) {
+        pen.stipple(px, py, cyan[0], alpha * 0.98);
+        continue;
+      }
+
+      // Gilded Royal Bevel Frame & Inner Octagonal Trim
+      if (distEdge < 3.4) {
+        const isInnerLine = distEdge >= 2.55;
+        const rimCol = isInnerLine ? cyan[0] : distEdge < 2.0 && (dx < 0 || dy < 0) ? gold[6] : gold[4];
+        pen.stipple(px, py, rimCol, alpha * 0.98);
+        continue;
+      }
+
+      // Raised Central Golden-Sapphire Chevron & Cross Ribs
+      const inVertRib = adx <= 1.35 * scale;
+      const inHorizRib = Math.abs(dy + 2 * scale) <= 1.25 * scale;
+      const inChevron = Math.abs(adx - Math.abs(dy + 2 * scale) * 0.85) <= 1.2 * scale && dy > -2 * scale;
+      if (inVertRib || inHorizRib || inChevron) {
+        const ribCol = adx < 0.6 * scale || Math.abs(dy + 2 * scale) < 0.6 * scale ? PURE_WHITE : gold[5];
+        pen.stipple(px, py, ribCol, alpha);
+        continue;
+      }
+
+      // Quad-Faceted Sapphire Armor Plates
+      const facetCol =
+        dx < 0 && dy < -2 * scale
+          ? cyan[5]
+          : dx < 0 || dy < -2 * scale
+            ? cyan[4]
+            : cyan[2];
+      pen.stipple(px, py, facetCol, alpha * 0.96);
+    }
+  }
+
+  // Central Faceted Sapphire-Gold Aegis Boss & 4 Corner Rivets
+  drawElderStarCross(pen, cx, cy - 2 * scale, 11 * scale, 4.8 * scale, 1.0, 0, cyan[6], gold[6], alpha);
+  drawPixelElderRune(pen, cx, cy - 2 * scale, 3.6 * scale, gold[5], PURE_WHITE, alpha);
+  for (const [rx, ry] of [
+    [-12, -11],
+    [12, -11],
+    [-11, 5],
+    [11, 5]
+  ]) {
+    drawPixelElderRune(pen, cx + rx * scale, cy + ry * scale, 1.6 * scale, cyan[6], PURE_WHITE, alpha);
+  }
+}
+
 
 // ============================================================================
 // 1. 2.5D RUNIC VANGUARD AURA (`runicVanguardAura`)
@@ -529,63 +783,79 @@ export const blinkTeleportPillar = {
           return;
         }
 
-        const colH = Math.min(74, Math.max(36, (cfg.heightWorld || 188) / 3)) * (0.7 + 0.3 * (1 - u));
+        const swordLen = Math.min(58, Math.max(40, (cfg.heightWorld || 168) / 3)) * (0.82 + 0.18 * pop);
         const baseY = cfg.isSky ? 4 : 0;
-        const topY = baseY - colH;
-        const halfW = Math.max(2.5, 11 * (1 - u * 0.62));
+        const tipY = baseY - 1;
+        const tiltRad = (28 * Math.PI) / 180;
 
-        pen.shadeBox(-halfW - 2, topY - 2, halfW + 2, baseY + 2, (lx, ly, out) => {
-          if (ly < topY || ly > baseY) return 0;
-          const ax = Math.abs(lx);
-          const hFrac = (baseY - ly) / Math.max(1, colH);
-          const localW = halfW * (1 - hFrac * 0.22);
-          if (ax > localW) return 0;
-          if (ax > localW - 1.1) {
-            out.color = cyan[0];
-            out.alpha = 0.92 * env;
-            return out.color;
-          }
-          if (ax < 1.8) {
-            out.color = PURE_WHITE;
-            out.alpha = env;
-            out.glowColor = cyan[6];
-            out.glowStrength = 0.48 * env;
-            return out.color;
-          }
-          const n = fbmNoise2D(lx * 0.25, ly * 0.16 - t * 14, cfg.seed || 157, 2);
-          out.color = ax < localW * 0.52 ? cyan[6] : n > 0.08 ? gold[5] : cyan[4];
-          out.alpha = 0.92 * env;
-          out.glowColor = cyan[5];
-          out.glowStrength = 0.26 * env;
-          return out.color;
+        // Sweeping X-Cross Runic Crescent Shockwave Wings
+        drawMultiLayerCrescentArc(pen, {
+          cx: -3,
+          cy: baseY - swordLen * 0.36,
+          radius: 22 * pop,
+          width: 7.2,
+          eccentricity: 0.78,
+          headAngle: 0.92 + u * 0.25,
+          tailAngle: -0.92 + u * 0.25,
+          fade: env * 0.92,
+          ramp: cyan,
+          seed: cfg.seed || 157,
+          t,
+          flashHot: u < 0.35
+        });
+        drawMultiLayerCrescentArc(pen, {
+          cx: 3,
+          cy: baseY - swordLen * 0.36,
+          radius: 20 * pop,
+          width: 6.4,
+          eccentricity: 0.78,
+          headAngle: Math.PI - 0.92 - u * 0.25,
+          tailAngle: Math.PI + 0.92 - u * 0.25,
+          fade: env * 0.88,
+          ramp: gold,
+          seed: (cfg.seed || 157) + 23,
+          t,
+          flashHot: false
         });
 
-        const bolt = buildLightningChain(rng, 0, topY, 0, baseY, 0.14, 3);
+        // 2 Flanking Angled Diagonal Phantom Runeblades (`±28°` tilt)
+        drawRunicGreatswordSilhouette(pen, -6, tipY - 2, swordLen * 0.84, 3.6, -tiltRad, cyan, gold, env * 0.9, true);
+        drawRunicGreatswordSilhouette(pen, 6, tipY - 2, swordLen * 0.84, 3.6, tiltRad, cyan, gold, env * 0.9, true);
+
+        // Central Colossal Pointed Runic Broadsword (complete pommel jewel at top, pointed tip at bottom)
+        drawRunicGreatswordSilhouette(pen, 0, tipY, swordLen, 5.2, 0, cyan, gold, env, false);
+
+        const bolt = buildLightningChain(rng, 0, tipY - swordLen * 0.92, 0, baseY, 0.14, 3);
         pen.polyline(bolt, gold[6], 0.9 * env);
         pen.polyline(bolt, PURE_WHITE, 0.95 * env);
 
-        const ringY = cfg.isSky ? -24 : 0;
-        const ringR = (16 + u * 10) * pop;
-        drawTiltedOrbitBand(pen, 0, ringY, ringR, 0.25, 1.65, 0.95 * env, band4, FRONT_HALF, u < 0.35);
+        // Curved 2.5D Elliptical Runic Crater Base
+        const ringY = cfg.isSky ? baseY : 0;
+        const ringR = (18 + u * 8) * pop;
+        drawTiltedOrbitBand(pen, 0, ringY, ringR, 0.24, 1.65, 0.95 * env, band4, FRONT_HALF, u < 0.35);
+        drawElderStarCross(pen, 0, ringY, ringR * 0.88, ringR * 0.42, 0.24, u * 2.8, cyan[5], gold[5], 0.88 * env, FRONT_HALF);
         for (let i = 0; i < 4; i++) {
           const a = u * 5.2 + (i * Math.PI) / 2;
           if (Math.sin(a) < 0) continue;
           drawPixelElderRune(
             pen,
             Math.cos(a) * ringR,
-            ringY + Math.sin(a) * ringR * 0.25,
+            ringY + Math.sin(a) * ringR * 0.24,
             2.2,
             i % 2 === 0 ? cyan[6] : gold[5],
             PURE_WHITE,
             env
           );
         }
-        drawStarburstFlare(pen, 0, ringY, 9.5 * env, 0.94 * env, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
+        drawStarburstFlare(pen, 0, ringY - 2, 9.5 * env, 0.94 * env, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
         motes.render(pen);
       }
     };
   }
 };
+
+export const skyJudgmentPillar = blinkTeleportPillar;
+
 
 // ============================================================================
 // 5. 2.5D EARTHSHATTER JUDGMENT WAVE (`earthshatterJudgmentWave`)
@@ -799,99 +1069,107 @@ export const aegisRuneCrestCell = {
     const cyan = buildColorRamp(cfg.palette, 8);
     const gold = buildColorRamp(RUNIC_GOLD_PALETTE, 8);
     const band4 = [cyan[2], cyan[5], gold[6], PURE_WHITE];
+    const goldBand4 = [gold[2], gold[5], cyan[6], PURE_WHITE];
     const rng = new DeterministicRng(cfg.seed);
 
     return {
       step() {},
       renderFront(pen, localT) {
         const u = clamp01(localT);
+        const pop = 0.78 + 0.22 * smoothStep(0, 0.18, u);
+        const fade = 1 - smoothStep(0.82, 1.0, u);
+        const env = (0.9 + 0.1 * Math.sin(u * Math.PI)) * fade;
+        if (env <= 0.02) return;
 
-        // F00..F11 (`u < 0.40`): Descending Heavenly Runeblade + Winged Aegis Shield Crest (inside `[-38, +38]`)
-        if (u < 0.4) {
-          const fu = u / 0.4;
-          const pulse = 0.88 + 0.12 * Math.sin(fu * Math.PI);
+        // 1. Sapphire-Gold Runic Halo & Elder Star-Cross Backing (strictly inside `[-36, +36]`)
+        drawTiltedOrbitBand(pen, 0, 0, 29 * pop, 0.92, 1.5, 0.9 * env, band4, null, false);
+        drawElderStarCross(pen, 0, 0, 27 * pop, 12 * pop, 0.92, u * 2.2, cyan[5], gold[5], 0.86 * env);
 
-          // Winged Sapphire-Gold Aegis Shield Backing
-          drawTiltedOrbitBand(pen, 0, 0, 24 * pulse, 0.92, 1.5, 0.92, band4, null, false);
-          drawElderStarCross(pen, 0, 0, 22 * pulse, 10 * pulse, 0.92, fu * 1.6, cyan[5], gold[5], 0.88);
+        // 2. Crossed Diagonal Runic Greatswords (`±38°` X-cross behind the Kite-Shield, 100% inside cell!)
+        const crossAngle = (38 * Math.PI) / 180;
+        const swordLen = 52 * pop;
+        // Sword 1: Tip at bottom-right `(+16, +20)` -> Pommel at top-left `(-16, -21)`
+        drawRunicGreatswordSilhouette(
+          pen,
+          16 * pop,
+          20 * pop,
+          swordLen,
+          3.8 * pop,
+          -crossAngle,
+          cyan,
+          gold,
+          env * 0.95,
+          false
+        );
+        // Sword 2: Tip at bottom-left `(-16, +20)` -> Pommel at top-right `(+16, -21)`
+        drawRunicGreatswordSilhouette(
+          pen,
+          -16 * pop,
+          20 * pop,
+          swordLen,
+          3.8 * pop,
+          crossAngle,
+          cyan,
+          gold,
+          env * 0.95,
+          false
+        );
 
-          // Central Faceted Runeblade Greatsword pointing down inside `[-34, +34]`
-          pen.shadeBox(-13, -35, 13, 35, (lx, ly, out) => {
-            if (ly < -33 || ly > 33) return 0;
-            // Winged Golden Crossguard at y = -15..-11
-            if (ly >= -15 && ly <= -11 && Math.abs(lx) <= 11) {
-              out.color = Math.abs(lx) > 9 ? cyan[0] : Math.abs(lx) < 3 ? PURE_WHITE : gold[5];
-              out.alpha = 1;
-              return out.color;
-            }
-            // Pommel & hilt above crossguard (`-32..-15`)
-            if (ly < -15) {
-              const isPommel = ly < -27;
-              const maxHiltW = isPommel ? 4.2 : 2.6;
-              if (Math.abs(lx) > maxHiltW) return 0;
-              out.color = isPommel ? gold[6] : Math.abs(ly) % 4 < 2 ? gold[5] : cyan[2];
-              out.alpha = 1;
-              return out.color;
-            }
-            // Broad Tapered Runeblade Greatsword (`-11..+33`)
-            const bFrac = (ly + 11) / 44;
-            const halfW = (1 - bFrac * 0.62) * 5.6;
-            const ax = Math.abs(lx);
-            if (ax > halfW) return 0;
-            if (ax > halfW - 1.2) {
-              out.color = cyan[0];
-              out.alpha = 0.98;
-              return out.color;
-            }
-            out.color = ax < 1.6 ? PURE_WHITE : lx < 0 ? cyan[6] : cyan[4];
-            out.alpha = 1;
-            out.glowColor = cyan[5];
-            out.glowStrength = 0.38;
-            return out.color;
+        // 3. Sweeping Aegis Shockwave Crescent Wings during impact pulse (`u >= 0.35`)
+        if (u >= 0.32) {
+          const wu = clamp01((u - 0.32) / 0.68);
+          const wFade = (1 - wu * 0.65) * env;
+          drawMultiLayerCrescentArc(pen, {
+            cx: -2,
+            cy: 0,
+            radius: (22 + wu * 8) * pop,
+            width: 6.8,
+            eccentricity: 0.88,
+            headAngle: 0.95,
+            tailAngle: -0.95,
+            fade: wFade * 0.9,
+            ramp: cyan,
+            seed: cfg.seed || 513,
+            t: u,
+            flashHot: wu < 0.35
           });
-
-          const bolt = buildLightningChain(rng, 0, -30, 0, 30, 0.14, 3);
-          pen.polyline(bolt, gold[6], 0.9);
-          drawStarburstFlare(pen, 0, -13, 8.5, 0.92, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
-        } else {
-          // F12..F29 (`u >= 0.40`): Impaled Runeblade + Expanding Aegis Greatshield & 8-Rune Crater Seal!
-          const iu = clamp01((u - 0.4) / 0.6);
-          const pop = 0.74 + 0.26 * smoothStep(0, 0.22, iu);
-          const fade = 1 - smoothStep(0.76, 1.0, iu);
-          const env = (0.9 + 0.1 * smoothStep(0, 0.14, iu)) * fade;
-          if (env <= 0.02) return;
-
-          const baseY = 24;
-          drawTiltedOrbitBand(pen, 0, baseY, 31 * pop, 0.23, 1.6, 0.94 * env, band4, null, false);
-          drawTiltedOrbitBand(pen, 0, -2, 25 * pop, 0.88, 1.5, 0.88 * env, band4, null, iu < 0.35);
-
-          for (let d = 0; d < 8; d++) {
-            const a = iu * 2.8 + (d * Math.PI) / 4;
-            drawPixelElderRune(
-              pen,
-              Math.cos(a) * 31 * pop,
-              baseY + Math.sin(a) * 31 * pop * 0.23,
-              2.1,
-              d % 2 === 0 ? cyan[5] : gold[5],
-              PURE_WHITE,
-              env
-            );
-          }
-
-          // Impaled Runeblade Greatsword at center
-          pen.line(0, -32, 0, baseY, PURE_WHITE, env);
-          pen.line(-2, -28, -2, baseY, cyan[5], env * 0.92);
-          pen.line(2, -28, 2, baseY, gold[5], env * 0.92);
-          pen.line(-9, -20, 9, -20, gold[5], env);
-
-          // X-Shaped Runic Cross-Cleave inside `[-28, +28]`
-          const span = 27 * pop;
-          pen.line(-span, -span + 2, span, span + 2, cyan[5], env * 0.92);
-          pen.line(-span, span + 2, span, -span + 2, gold[5], env * 0.92);
-          pen.line(-span * 0.84, -span * 0.84 + 2, span * 0.84, span * 0.84 + 2, PURE_WHITE, env);
-          pen.line(-span * 0.84, span * 0.84 + 2, span * 0.84, -span * 0.84 + 2, PURE_WHITE, env);
-          drawStarburstFlare(pen, 0, 2, 11.5 * pop, env * 0.95, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
+          drawMultiLayerCrescentArc(pen, {
+            cx: 2,
+            cy: 0,
+            radius: (22 + wu * 8) * pop,
+            width: 6.8,
+            eccentricity: 0.88,
+            headAngle: Math.PI - 0.95,
+            tailAngle: Math.PI + 0.95,
+            fade: wFade * 0.9,
+            ramp: gold,
+            seed: (cfg.seed || 513) + 19,
+            t: u,
+            flashHot: wu < 0.35
+          });
         }
+
+        // 4. Central Faceted Octagonal Runic Aegis Kite-Shield Emblem
+        drawFacetedAegisKiteShield(pen, 0, 1, 0.92 * pop, cyan, gold, env);
+
+        // 5. Front 2.5D Tilted Aegis Orbit Band & 6 Orbiting Elder Runes
+        drawTiltedOrbitBand(pen, 0, 4, 28 * pop, 0.34, 1.5, 0.94 * env, goldBand4, FRONT_HALF, u > 0.3 && u < 0.65);
+        for (let d = 0; d < 6; d++) {
+          const a = u * 3.2 + (d * Math.PI) / 3;
+          drawPixelElderRune(
+            pen,
+            Math.cos(a) * 29 * pop,
+            Math.sin(a) * 29 * pop * 0.92,
+            2.1,
+            d % 2 === 0 ? cyan[6] : gold[5],
+            PURE_WHITE,
+            env
+          );
+        }
+
+        const bolt = buildLightningChain(rng, -18 * pop, -16 * pop, 18 * pop, 16 * pop, 0.12, 3);
+        pen.polyline(bolt, gold[6], 0.86 * env);
+        drawStarburstFlare(pen, 0, -1, 10.5 * pop, env * 0.95, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
       }
     };
   }
@@ -905,58 +1183,114 @@ export const skyJudgmentBladePillarCell = {
     const cyan = buildColorRamp(cfg.palette, 8);
     const gold = buildColorRamp(RUNIC_GOLD_PALETTE, 8);
     const band4 = [cyan[2], cyan[5], gold[6], PURE_WHITE];
+    const goldBand4 = [gold[2], gold[5], cyan[6], PURE_WHITE];
     const rng = new DeterministicRng(cfg.seed);
 
     return {
       step() {},
-      renderFront(pen, localT) {
+      renderBack(pen, localT) {
         const u = clamp01(localT);
-        const pop = 0.64 + 0.36 * smoothStep(0, 0.18, u);
+        const pop = 0.72 + 0.28 * smoothStep(0, 0.18, u);
         const fade = 1 - smoothStep(0.82, 1.0, u);
         const env = (0.9 + 0.1 * smoothStep(0, 0.12, u)) * fade;
         if (env <= 0.02) return;
 
-        // Strictly inside `[-39, +39]` so top spire tip & bottom orbit band never clip cell edges
-        const baseY = 32;
-        const topY = baseY - 66 * pop;
-        const halfW = 14.5 * (0.86 + 0.14 * Math.sin(u * Math.PI));
+        const baseY = 26;
+        // Back half of the curved 2.5D elliptical runic crater base
+        drawTiltedOrbitBand(pen, 0, baseY, 27 * pop, 0.23, 1.6, 0.9 * env, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, baseY, 17 * pop, 0.23, 1.3, 0.84 * env, goldBand4, BACK_HALF, false);
+        drawElderStarCross(pen, 0, baseY, 25 * pop, 12 * pop, 0.23, u * 2.4, cyan[5], gold[5], 0.85 * env, BACK_HALF);
+      },
+      renderFront(pen, localT) {
+        const u = clamp01(localT);
+        const pop = 0.72 + 0.28 * smoothStep(0, 0.18, u);
+        const fade = 1 - smoothStep(0.82, 1.0, u);
+        const env = (0.9 + 0.1 * smoothStep(0, 0.12, u)) * fade;
+        if (env <= 0.02) return;
 
-        pen.shadeBox(-22, topY - 2, 22, baseY + 2, (lx, ly, out) => {
-          if (ly > baseY || ly < topY) return 0;
-          const hFrac = (baseY - ly) / Math.max(1, baseY - topY);
-          // Faceted crystalline spire taper + twin flanking crystal shards
-          const mainMaxW = halfW * (1 - Math.pow(hFrac, 0.88) * 0.78);
-          const flankH = hFrac < 0.58 ? (1 - hFrac / 0.58) * (halfW * 0.92) : 0;
-          const maxW = Math.max(mainMaxW, flankH);
-          const ax = Math.abs(lx);
-          if (ax > maxW) return 0;
-          if (ax > maxW - 1.3) {
-            out.color = cyan[0];
-            out.alpha = 0.96 * env;
-            return out.color;
-          }
-          if (ax < 2.4) {
-            out.color = PURE_WHITE;
-            out.alpha = env;
-            out.glowColor = cyan[6];
-            out.glowStrength = 0.46;
-            return out.color;
-          }
-          const facet = Math.sin(lx * 0.45 + ly * 0.12);
-          out.color = ax < maxW * 0.48 ? cyan[6] : facet > 0.2 ? gold[5] : lx < 0 ? cyan[5] : cyan[3];
-          out.alpha = 0.95 * env;
-          return out.color;
+        // Strictly bounded inside `[-36, +36]`:
+        // Tip at `tipY = 25`, totalLen = `55 * pop` -> pommel finial at `y = -30` (100% inside cell!)
+        const baseY = 26;
+        const tipY = 25;
+        const mainLen = 55 * pop;
+        const flankLen = 45 * pop;
+        const tiltRad = (28 * Math.PI) / 180;
+
+        // 1. Sweeping X-Cross Runic Crescent Shockwave Wings (`drawMultiLayerCrescentArc`)
+        drawMultiLayerCrescentArc(pen, {
+          cx: -4,
+          cy: 2,
+          radius: 23 * pop,
+          width: 7.4,
+          eccentricity: 0.78,
+          headAngle: 0.96 + u * 0.22,
+          tailAngle: -0.96 + u * 0.22,
+          fade: env * 0.94,
+          ramp: cyan,
+          seed: cfg.seed || 523,
+          t: u,
+          flashHot: u < 0.38
+        });
+        drawMultiLayerCrescentArc(pen, {
+          cx: 4,
+          cy: 2,
+          radius: 21 * pop,
+          width: 6.8,
+          eccentricity: 0.78,
+          headAngle: Math.PI - 0.96 - u * 0.22,
+          tailAngle: Math.PI + 0.96 - u * 0.22,
+          fade: env * 0.90,
+          ramp: gold,
+          seed: (cfg.seed || 523) + 29,
+          t: u,
+          flashHot: u < 0.38
         });
 
-        const spireChain = buildLightningChain(rng, 0, topY + 2, 0, baseY - 2, 0.14, 4);
+        // Diagonal X-Cross Cleave Rays behind the Runeblade Phalanx
+        const xSpan = 24 * pop;
+        pen.line(-xSpan, -xSpan * 0.75 + 2, xSpan, xSpan * 0.75 + 2, cyan[5], env * 0.88);
+        pen.line(-xSpan, xSpan * 0.75 + 2, xSpan, -xSpan * 0.75 + 2, gold[5], env * 0.88);
+        pen.line(-xSpan * 0.8, -xSpan * 0.6 + 2, xSpan * 0.8, xSpan * 0.6 + 2, PURE_WHITE, env * 0.94);
+        pen.line(-xSpan * 0.8, xSpan * 0.6 + 2, xSpan * 0.8, -xSpan * 0.6 + 2, PURE_WHITE, env * 0.94);
+
+        // 2. Two Angled Diagonal Phantom Runeblades (`±28°` tilt) flanking the central broadsword
+        drawRunicGreatswordSilhouette(pen, -7, tipY - 2, flankLen, 3.8 * pop, -tiltRad, cyan, gold, env * 0.92, true);
+        drawRunicGreatswordSilhouette(pen, 7, tipY - 2, flankLen, 3.8 * pop, tiltRad, cyan, gold, env * 0.92, true);
+
+        // 3. Central Colossal Pointed Runic Broadsword (`drawRunicGreatswordSilhouette`)
+        //    Pointed tip at bottom (`y = +25`), complete ornate pommel jewel at top (`y = -30`)
+        drawRunicGreatswordSilhouette(pen, 0, tipY, mainLen, 5.4 * pop, 0, cyan, gold, env, false);
+
+        // 4. Crackling Sapphire-Gold Runic Lightning Arcs along the Greatsword Phalanx
+        const spireChain = buildLightningChain(rng, 0, tipY - mainLen * 0.9, 0, baseY - 1, 0.14, 4);
         pen.polyline(spireChain, gold[6], 0.92 * env);
         pen.polyline(spireChain, PURE_WHITE, 0.96 * env);
-        drawTiltedOrbitBand(pen, 0, baseY, 24 * pop, 0.22, 1.5, 0.92 * env, band4, null, false);
-        drawStarburstFlare(pen, 0, topY + 4, 7.5 * pop, 0.9 * env, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
+
+        // 5. Front half of the Curved 2.5D Elliptical Runic Crater Base at `baseY = 26`
+        drawTiltedOrbitBand(pen, 0, baseY, 27 * pop, 0.23, 1.75, 0.96 * env, band4, FRONT_HALF, u < 0.35);
+        drawTiltedOrbitBand(pen, 0, baseY, 17 * pop, 0.23, 1.4, 0.90 * env, goldBand4, FRONT_HALF, false);
+        drawElderStarCross(pen, 0, baseY, 25 * pop, 12 * pop, 0.23, u * 2.4, cyan[5], gold[5], 0.92 * env, FRONT_HALF);
+
+        for (let d = 0; d < 6; d++) {
+          const a = u * 3.0 + (d * Math.PI) / 3;
+          if (Math.sin(a) < 0) continue;
+          drawPixelElderRune(
+            pen,
+            Math.cos(a) * 27 * pop,
+            baseY + Math.sin(a) * 27 * pop * 0.23,
+            2.1,
+            d % 2 === 0 ? cyan[6] : gold[5],
+            PURE_WHITE,
+            env
+          );
+        }
+
+        drawStarburstFlare(pen, 0, tipY - 2, 9.5 * pop, 0.95 * env, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
       }
     };
   }
 };
+
 
 export const elderRunicSanctuarySealCell = {
   duration: 1.0,
@@ -1056,6 +1390,7 @@ export const RUNIC_STEEL_EFFECT_REGISTRY = {
   runebladeCrescentSlash,
   tempestCycloneRing,
   blinkTeleportPillar,
+  skyJudgmentPillar,
   earthshatterJudgmentWave,
   runebladeWaveArcCell,
   aegisRuneCrestCell,

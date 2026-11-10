@@ -22,7 +22,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   MotePool
-} from '../ArcaneShaderFX.js?v=30fps53';
+} from '../ArcaneShaderFX.js?v=30fps55';
 
 const TWO_PI = Math.PI * 2;
 const BACK_HALF = (theta) => Math.sin(theta) < 0;
@@ -739,23 +739,92 @@ export const cathedralSanctumPillar = {
 
         drawTiltedOrbitBand(pen, 0, 0, 34 * scale * pop, 0.25, 1.6, 0.94 * env, goldRamp4, BACK_HALF, false);
 
-        const colH = 104 * pop;
-        const colR = 16 * scale;
-        pen.shadeBox(-colR - 3, -colH, colR + 3, 2, (px, py, out) => {
-          const dx = Math.abs(px);
-          const hFrac = clamp01(-py / Math.max(1, colH));
-          const spireTaper = hFrac > 0.78 ? 1 - (hFrac - 0.78) / 0.22 : 1;
-          const localR = colR * spireTaper;
-          if (dx > localR) return 0;
-          const edge = dx / Math.max(0.5, localR);
-          const n = fbmNoise2D(px * 0.18, py * 0.09 + u * 8, 2);
-          out.alpha = clamp01((1 - edge * 0.65) * 0.76 * env);
-          if (edge < 0.34) {
-            out.glowStrength = 0.34 * env;
-            out.glowColor = gold[6];
-            return PURE_WHITE;
+        const archH = 68 * pop;
+        const maxW = 24 * scale * (0.72 + 0.28 * pop);
+        const roseCy = -archH * 0.44;
+        const roseR = 11.5 * scale * pop;
+        const rot = u * TWO_PI * 1.5;
+
+        // 6 Unfurling Golden Feathered Seraphim Wings (3 pairs flanking left & right)
+        for (const side of [-1, 1]) {
+          for (let w = 0; w < 3; w++) {
+            const wy0 = -archH * (0.24 + w * 0.22);
+            const spanX = (22 + (2 - w) * 7) * scale * pop;
+            const liftY = (14 + (2 - w) * 6) * pop + Math.sin(u * 10 + w) * 2.5;
+            for (let f = 0; f < 6; f++) {
+              const fu = f / 5;
+              const fx0 = side * (maxW * (0.55 - w * 0.12));
+              const fy0 = wy0 + f * 2.2;
+              const fx1 = side * (maxW * 0.45 + spanX * (0.55 + 0.45 * Math.sin(fu * 1.35)));
+              const fy1 = wy0 - liftY * (1 - fu * 0.55) + fu * 7;
+              pen.line(fx0, fy0, fx1, fy1, f % 2 === 0 ? gold[5] : stained[3], 0.86 * env);
+              drawSeraphicFeather(
+                pen,
+                fx1,
+                fy1,
+                side > 0 ? -0.35 + fu * 0.45 : Math.PI + 0.35 - fu * 0.45,
+                gold[5],
+                f < 2 ? PURE_WHITE : gold[6],
+                0.9 * env
+              );
+            }
           }
-          const useSapphire = Math.sin(px * 0.65) > 0.35 && n > 0.45;
+        }
+
+        // Pointed Gothic Ogee Lancet Arch + Rotating Rose Window + Curved 2.5D Elliptical Base
+        pen.shadeBox(-maxW - 4, -archH - 4, maxW + 4, 9, (px, py, out) => {
+          const dx = Math.abs(px);
+          if (dx > maxW) return 0;
+          const baseCurveY = Math.sqrt(Math.max(0, 1 - Math.pow(dx / Math.max(1, maxW), 2))) * 6.5;
+          const dy = baseCurveY - py;
+          if (dy < 0 || dy > archH) return 0;
+          const absDy = dy;
+          const archW = maxW * Math.pow(Math.max(0, 1 - absDy / Math.max(1, archH)), 0.65);
+          if (dx > archW) return 0;
+
+          const edge = dx / Math.max(0.5, archW);
+          const botEdge = dy / Math.max(1, archH);
+
+          // Rotating Stained-Glass Rose Window Mandala in the heart of the dome
+          const rDist = Math.hypot(px, py - roseCy);
+          if (rDist <= roseR && roseR > 2) {
+            const ra = Math.atan2(py - roseCy, px) + rot;
+            const normA = ((ra % TWO_PI) + TWO_PI) % TWO_PI;
+            const sector = Math.floor((normA / TWO_PI) * 8);
+            const sectorAng = (normA / TWO_PI) * 8 - sector - 0.5;
+            if (Math.abs(rDist - roseR) < 1.2 || Math.abs(rDist - roseR * 0.52) < 1.0 || Math.abs(sectorAng) > 0.38) {
+              out.alpha = 0.96 * env;
+              out.glowStrength = 0.32 * env;
+              out.glowColor = gold[6];
+              return PURE_WHITE;
+            }
+            const paneCol = sector % 2 === 0 ? stained[3] : gold[5];
+            out.alpha = 0.88 * env;
+            out.glowStrength = 0.24 * env;
+            out.glowColor = paneCol;
+            return paneCol;
+          }
+
+          // Pointed Gothic Lancet Tracery Border & Curved 2.5D Base Rim
+          if (edge > 0.78 || dy < 2.2) {
+            out.alpha = 0.94 * env;
+            out.glowStrength = 0.3 * env;
+            out.glowColor = gold[6];
+            return edge > 0.9 ? gold[4] : PURE_WHITE;
+          }
+
+          // Inner Gothic Trefoil Rib Vaulting
+          const rib = Math.abs(dx - archW * 0.48);
+          if (rib < 1.15) {
+            out.alpha = 0.9 * env;
+            out.glowStrength = 0.26 * env;
+            out.glowColor = gold[6];
+            return gold[6];
+          }
+
+          const n = fbmNoise2D(px * 0.16, py * 0.12 + u * 6, 2);
+          out.alpha = clamp01((0.82 - edge * 0.25) * (0.75 + 0.25 * botEdge) * env);
+          const useSapphire = (Math.floor((px + maxW) / 5) + Math.floor(dy / 9)) % 2 === 0 || n > 0.48;
           out.glowStrength = 0.22 * env;
           out.glowColor = useSapphire ? stained[3] : gold[5];
           return useSapphire ? stained[3] : gold[5];
@@ -770,25 +839,16 @@ export const cathedralSanctumPillar = {
         const scale = cfg.scaleWidth || 1.0;
 
         drawTiltedOrbitBand(pen, 0, 0, 34 * scale * pop, 0.25, 1.6, 0.94 * env, goldRamp4, FRONT_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, 22 * scale * pop, 0.25, 1.3, 0.88 * env, goldRamp4, FRONT_HALF, false);
 
-        const colH = 104 * pop;
-        const colR = 16 * scale;
-        for (let s = 0; s < 2; s++) {
-          const ramp = s === 0 ? gold : stained;
-          for (let i = 0; i < 28; i++) {
-            const f = i / 27;
-            const a = s * Math.PI + u * 14 - f * 5.8;
-            const sinA = Math.sin(a);
-            if (sinA < 0) continue;
-            const px = Math.cos(a) * (colR + 4) * (1 - f * 0.25);
-            const py = -f * colH + sinA * 3;
-            pen.stipple(px, py, s === 0 ? ramp[6] : ramp[3], 0.92 * env);
-            if (i % 3 === 0) pen.stipple(px, py - 1, PURE_WHITE, 0.88 * env);
-          }
-        }
-        const bolt = buildLightningChain(rng, 0, 0, 0, -colH * 0.95, 0.14 * scale, 3);
-        pen.polyline(bolt, gold[6], 0.82 * env);
-        drawSacredCross(pen, 0, -colH * 0.55, 11 * scale * env, stained[3], gold[6], 0.92 * env, u * 2.5);
+        const archH = 68 * pop;
+        const roseCy = -archH * 0.44;
+        drawSacredCross(pen, 0, roseCy, 8.5 * scale * env, stained[3], PURE_WHITE, 0.95 * env, u * 3.2);
+
+        // Celestial Sunburst Cross Finial crowning the pointed Gothic apex
+        const finialY = -archH - 3;
+        drawSacredCross(pen, 0, finialY, 10.5 * scale * env, gold[5], PURE_WHITE, 0.98 * env, 0);
+        drawStarburstFlare(pen, 0, finialY, 8 * scale * env, 0.94 * env, gold);
         motes.render(pen);
       }
     };
@@ -953,7 +1013,7 @@ export const sacredStarOrbCell = {
   }
 };
 
-/** Row 1: `F00..F11` Descending Heaven's Valkyrie Light-Spear -> `F12..F29` Upright Cathedral Star-Sigil & Holy Geyser! */
+/** Row 1: `F00..F11` Diagonal Descending Seraphic Caduceus Staff -> `F12..F29` Twin Dove-Wing Halo Burst! */
 export const holyValkyrieSpearCell = {
   duration: 1.0,
   loop: false,
@@ -974,64 +1034,136 @@ export const holyValkyrieSpearCell = {
         if (progress < 0.399) {
           const u = progress / 0.399;
           const spin = u * TWO_PI * 2;
-          const tipY = 33;
-          const tailY = -38;
-          pen.radialGlow(0, 10, 22, gold[5], 0.34);
+          // Diagonal descent vector from top-left (-X, -Y) toward bottom-right (+X, +Y)
+          const shift = (u - 0.5) * 8;
+          const tailX = -20 + shift * 0.62;
+          const tailY = -24 + shift * 0.78;
+          const tipX = 16 + shift * 0.62;
+          const tipY = 21 + shift * 0.78;
+          const dx = tipX - tailX;
+          const dy = tipY - tailY;
+          const len = Math.hypot(dx, dy);
+          const ux = dx / len;
+          const uy = dy / len;
+          const nx = -uy;
+          const ny = ux;
 
+          pen.radialGlow(tipX * 0.4, tipY * 0.4, 24, gold[5], 0.34);
+
+          // Twin counter-spiraling Caduceus serpent-ribbons wrapping the diagonal staff
           for (let s = 0; s < 2; s++) {
             const col = s === 0 ? gold[6] : stained[3];
-            for (let i = 0; i < 24; i++) {
-              const f = i / 23;
-              const sy = tailY + f * (tipY - tailY - 10);
-              const sx = Math.sin(spin + s * Math.PI + f * 6.5) * (9 * (1 - f * 0.45));
-              pen.stipple(sx, sy, col, 0.9);
+            for (let i = 0; i < 26; i++) {
+              const f = i / 25;
+              const along = f * (len - 6);
+              const amp = (8.5 - f * 3.5) * Math.sin(spin + s * Math.PI + f * 6.8);
+              const sx = tailX + ux * along + nx * amp;
+              const sy = tailY + uy * along + ny * amp;
+              pen.stipple(sx, sy, col, 0.94);
+              if (i % 4 === 0) pen.stipple(sx, sy, PURE_WHITE, 0.88);
             }
           }
 
+          // Twin Dove-Wings unfurled from the Caduceus cross-guard hub
+          const hubX = tailX + ux * (len * 0.36);
+          const hubY = tailY + uy * (len * 0.36);
           for (const side of [-1, 1]) {
-            pen.line(0, 10, side * 16, -4, gold[5], 0.96);
-            pen.line(0, 8, side * 13, -2, gold[6], 0.98);
-            pen.line(side * 4, 6, side * 10, -8, stained[3], 0.9);
-            pen.stipple(side * 16, -4, PURE_WHITE, 0.95);
+            for (let f = 0; f < 5; f++) {
+              const fu = f / 4;
+              const wx = hubX + side * (12 + fu * 12) - ux * (fu * 6);
+              const wy = hubY - (10 - fu * 9) + side * ny * 3;
+              pen.line(hubX, hubY, wx, wy, f % 2 === 0 ? gold[6] : stained[3], 0.94);
+              drawSeraphicFeather(
+                pen,
+                wx,
+                wy,
+                side > 0 ? -0.45 + fu * 0.35 : Math.PI + 0.45 - fu * 0.35,
+                gold[5],
+                f < 2 ? PURE_WHITE : gold[6],
+                0.92
+              );
+            }
           }
 
-          pen.line(-1, tailY, -1, tipY - 4, gold[5], 0.95);
-          pen.line(1, tailY, 1, tipY - 4, gold[5], 0.95);
-          pen.line(0, tailY + 4, 0, tipY, PURE_WHITE, 1.0);
-          pen.line(-5, 18, 0, tipY, gold[6], 0.98);
-          pen.line(5, 18, 0, tipY, gold[6], 0.98);
+          // Diagonal Caduceus Staff shaft + Diamond-Cross Spearhead
+          pen.line(tailX + nx, tailY + ny, tipX - ux * 4 + nx, tipY - uy * 4 + ny, gold[5], 0.95);
+          pen.line(tailX - nx, tailY - ny, tipX - ux * 4 - nx, tipY - uy * 4 - ny, gold[5], 0.95);
+          pen.line(tailX, tailY, tipX, tipY, PURE_WHITE, 1.0);
+          pen.line(tipX - ux * 10 + nx * 5, tipY - uy * 10 + ny * 5, tipX, tipY, gold[6], 0.98);
+          pen.line(tipX - ux * 10 - nx * 5, tipY - uy * 10 - ny * 5, tipX, tipY, gold[6], 0.98);
+          drawSacredCross(pen, hubX, hubY, 8.5, stained[3], PURE_WHITE, 0.96, Math.atan2(uy, ux));
           return;
         }
 
+        // F12..F29: Twin Dove-Wing Halo Burst & Diagonal Planted Caduceus Shrine (zero vertical pole!)
         const impU = clamp01((progress - 0.40) / 0.60);
-        const pop = 0.58 + 0.42 * smoothStep(0, 0.16, impU);
-        const fade = 1 - smoothStep(0.56, 1.0, impU);
+        const pop = 0.62 + 0.38 * smoothStep(0, 0.16, impU);
+        const fade = 1 - smoothStep(0.62, 1.0, impU);
         const env = pop * fade;
-        const gy = 32;
+        if (env <= 0.02) return;
+        const gy = 21;
+        const haloCy = -3;
 
-        pen.radialGlow(0, gy - 18, 28 * env, gold[5], 0.38 * env);
-        drawTiltedOrbitBand(pen, 0, gy, 34 * pop, 0.24, 1.6, 0.95 * env, goldRamp4, null, impU < 0.08);
-        drawTiltedOrbitBand(pen, 0, gy, 22 * pop, 0.24, 1.4, 0.88 * env, graceRamp4, null, false);
+        pen.radialGlow(0, haloCy, 28 * env, gold[5], 0.36 * env);
 
-        const geyserH = 66 * pop;
-        pen.shadeBox(-10, gy - geyserH, 10, gy, (px, py, out) => {
-          const dx = Math.abs(px);
-          const hFrac = clamp01((gy - py) / Math.max(1, geyserH));
-          const w = 9 * (1 - hFrac * 0.65);
-          if (dx > w) return 0;
-          const edge = dx / Math.max(0.5, w);
-          out.alpha = (1 - edge * 0.7) * env;
-          out.glowStrength = 0.28 * env;
-          out.glowColor = gold[6];
-          return edge < 0.35 ? PURE_WHITE : gold[5];
-        });
-        drawSacredCross(pen, 0, gy - geyserH * 0.58, 12 * env, stained[3], gold[6], 0.94 * env, 0);
+        // Curved 2.5D Elliptical Sanctuary Base Rings
+        drawTiltedOrbitBand(pen, 0, gy, 30 * pop, 0.25, 1.6, 0.95 * env, goldRamp4, null, impU < 0.1);
+        drawTiltedOrbitBand(pen, 0, gy, 19 * pop, 0.25, 1.3, 0.88 * env, graceRamp4, null, false);
+
+        // Sweeping Twin Dove-Wing Halo Burst (left & right layered feathered wings)
+        for (const side of [-1, 1]) {
+          for (let tier = 0; tier < 2; tier++) {
+            for (let f = 0; f < 6; f++) {
+              const fu = f / 5;
+              const ang = (tier === 0 ? -0.62 : -0.18) + fu * 0.72;
+              const reach = (16 + (1 - Math.abs(fu - 0.35)) * 15 - tier * 4) * pop;
+              const x0 = side * 4;
+              const y0 = haloCy + tier * 4;
+              const x1 = side * (6 + Math.cos(ang) * reach);
+              const y1 = y0 + Math.sin(ang) * reach * 0.78 - (1 - fu) * 6 * pop;
+              pen.line(x0, y0, x1, y1, f % 2 === 0 ? gold[6] : tier === 0 ? stained[3] : grace[4], 0.9 * env);
+              drawSeraphicFeather(
+                pen,
+                x1,
+                y1,
+                side > 0 ? ang : Math.PI - ang,
+                gold[5],
+                f < 2 ? PURE_WHITE : gold[6],
+                0.92 * env
+              );
+            }
+          }
+        }
+
+        // Revolving Rose-Gold Halo Ring + Diagonal Planted Caduceus Staff
+        drawTiltedOrbitBand(pen, 0, haloCy, 15 * pop, 0.88, 1.4, 0.92 * env, goldRamp4, null, false);
+
+        const topX = -9 * pop;
+        const topY = -23 * pop;
+        const botX = 7 * pop;
+        const botY = gy;
+        pen.line(topX, topY, botX, botY, gold[5], 0.96 * env);
+        pen.line(topX + 1, topY, botX + 1, botY, PURE_WHITE, 0.98 * env);
+
+        for (let s = 0; s < 2; s++) {
+          const col = s === 0 ? gold[6] : stained[3];
+          for (let i = 0; i < 18; i++) {
+            const f = i / 17;
+            const lx = topX + (botX - topX) * f;
+            const ly = topY + (botY - topY) * f;
+            const wave = Math.sin(impU * 14 + s * Math.PI + f * 5.6) * (6.5 * (1 - f * 0.35));
+            pen.stipple(lx + wave, ly - wave * 0.35, col, 0.92 * env);
+          }
+        }
+
+        drawSacredCross(pen, topX, topY, 9.5 * env, stained[3], PURE_WHITE, 0.96 * env, -0.34 + impU * 1.5);
+        drawStarburstFlare(pen, 0, haloCy, 9 * env, 0.92 * env, gold);
       }
     };
   }
 };
 
-/** Row 2: 30-frame 7-Spire Gothic Stained-Glass Cathedral Sanctum Pillar (`F00..F05` erupt, `F06..F21` active, `F22..F29` dissolve). */
+/** Row 2: 30-frame 6-Winged Seraphic Rose-Window Dome & Pointed Gothic Lancet Arch (`F00..F05` erupt, `F06..F21` active, `F22..F29` dissolve). */
 export const cathedralLightPillarCell = {
   duration: 1.0,
   loop: false,
@@ -1043,65 +1175,122 @@ export const cathedralLightPillarCell = {
     const stained = buildColorRamp(SERAPHIC_STAINED_PALETTE, 8);
     const grace = buildColorRamp(SERAPHIC_GRACE_PALETTE, 8);
     const goldRamp4 = [gold[2], gold[4], gold[6], PURE_WHITE];
+    const graceRamp4 = [grace[1], grace[3], grace[5], PURE_WHITE];
 
     return {
       step() {},
       renderFront(pen, localT) {
         const progress = clamp01(localT / 1.0);
-        const gy = 38;
-        const pop = 0.34 + 0.66 * smoothStep(0, 0.18, progress);
-        const fade = 1 - smoothStep(0.74, 1.0, progress);
+        const baseY = 22;
+        const pop = 0.56 + 0.44 * smoothStep(0, 0.18, progress);
+        const fade = 1 - smoothStep(0.76, 1.0, progress);
         const env = pop * fade;
         if (env <= 0.02) return;
 
-        pen.radialGlow(0, gy - 40 * pop, 34 * env, gold[5], 0.36 * env);
+        const archH = 48 * pop;
+        const maxW = 20 * pop;
+        const roseCy = baseY - archH * 0.46;
+        const roseR = 10.5 * pop;
+        const rot = progress * TWO_PI * 1.5;
 
-        const spireDefs = [
-          { dx: 0, w: 7.5, h: 76, col: gold[6] },
-          { dx: -9, w: 5.5, h: 64, col: stained[3] },
-          { dx: 9, w: 5.5, h: 64, col: stained[3] },
-          { dx: -17, w: 4.5, h: 50, col: grace[4] },
-          { dx: 17, w: 4.5, h: 50, col: grace[4] },
-          { dx: -24, w: 3.5, h: 36, col: stained[4] },
-          { dx: 24, w: 3.5, h: 36, col: stained[4] }
-        ];
+        pen.radialGlow(0, roseCy, 28 * env, gold[5], 0.34 * env);
 
-        for (const sp of spireDefs) {
-          const sh = sp.h * pop;
-          const sx = sp.dx;
-          if (progress > 0.74) {
-            for (let m = 0; m < 8; m++) {
-              const mu = m / 7;
-              const my = gy - mu * sh - (progress - 0.74) * 28;
-              pen.stipple(sx + Math.sin(m * 2.1 + progress * 18) * 2.5, my, m % 2 === 0 ? gold[6] : sp.col, env * 0.92);
+        // 1. Back half of curved 2.5D elliptical sanctuary floor rings
+        drawTiltedOrbitBand(pen, 0, baseY, 31 * pop, 0.24, 1.5, 0.9 * env, goldRamp4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, baseY, 20 * pop, 0.24, 1.3, 0.84 * env, graceRamp4, BACK_HALF, false);
+
+        // 2. 6 Unfurling Golden Feathered Seraphim Wings (3 pairs flanking left & right)
+        for (const side of [-1, 1]) {
+          for (let w = 0; w < 3; w++) {
+            const wy0 = baseY - archH * (0.28 + w * 0.22);
+            const spanX = (14 + (2 - w) * 4.5) * pop;
+            const liftY = (8 + (2 - w) * 3.5) * pop + Math.sin(progress * 12 + w) * 1.8;
+            for (let f = 0; f < 5; f++) {
+              const fu = f / 4;
+              const fx0 = side * (maxW * (0.58 - w * 0.12));
+              const fy0 = wy0 + f * 1.8;
+              const fx1 = side * Math.min(34, maxW * 0.45 + spanX * (0.58 + 0.42 * Math.sin(fu * 1.35)));
+              const fy1 = wy0 - liftY * (1 - fu * 0.55) + fu * 5.5;
+              pen.line(fx0, fy0, fx1, fy1, f % 2 === 0 ? gold[5] : w === 1 ? grace[4] : stained[3], 0.88 * env);
+              drawSeraphicFeather(
+                pen,
+                fx1,
+                fy1,
+                side > 0 ? -0.32 + fu * 0.42 : Math.PI + 0.32 - fu * 0.42,
+                gold[5],
+                f < 2 ? PURE_WHITE : gold[6],
+                0.92 * env
+              );
             }
-            continue;
           }
-          pen.shadeBox(sx - sp.w, gy - sh, sx + sp.w, gy, (px, py, out) => {
-            const dx = Math.abs(px - sx);
-            const hFrac = clamp01((gy - py) / Math.max(1, sh));
-            const archW = hFrac > 0.74 ? sp.w * (1 - (hFrac - 0.74) / 0.26) : sp.w;
-            if (dx > archW) return 0;
-            const edge = dx / Math.max(0.5, archW);
-            out.alpha = (0.94 - hFrac * 0.1) * env;
-            if (edge > 0.74) {
-              out.glowStrength = 0.26 * env;
-              out.glowColor = gold[5];
-              return gold[5];
-            }
-            if (edge < 0.28) {
-              out.glowStrength = 0.34 * env;
-              out.glowColor = gold[6];
-              return PURE_WHITE;
-            }
-            out.glowStrength = 0.22 * env;
-            out.glowColor = sp.col;
-            return sp.col;
-          });
-          drawSacredCross(pen, sx, gy - sh - 2, 3.2 * env, gold[5], PURE_WHITE, 0.92 * env, 0);
         }
 
-        drawTiltedOrbitBand(pen, 0, gy, 32 * pop, 0.22, 1.5, 0.94 * env, goldRamp4, null, false);
+        // 3. Pointed Gothic Ogee Lancet Arch + Rotating Stained-Glass Rose Window + Curved 2.5D Base
+        pen.shadeBox(-maxW - 3, baseY - archH - 3, maxW + 3, baseY + 8, (px, py, out) => {
+          const dx = Math.abs(px);
+          if (dx > maxW) return 0;
+          const botCurveY = baseY + Math.sqrt(Math.max(0, 1 - Math.pow(dx / Math.max(1, maxW), 2))) * 6.0;
+          const dy = botCurveY - py;
+          if (dy < 0 || dy > archH) return 0;
+          const absDy = dy;
+          const archW = maxW * Math.pow(Math.max(0, 1 - absDy / Math.max(1, archH)), 0.65);
+          if (dx > archW) return 0;
+
+          const edge = dx / Math.max(0.5, archW);
+
+          // Central Rotating Stained-Glass Rose Window Mandala
+          const rDist = Math.hypot(px, py - roseCy);
+          if (rDist <= roseR && roseR > 2) {
+            const ra = Math.atan2(py - roseCy, px) + rot;
+            const normA = ((ra % TWO_PI) + TWO_PI) % TWO_PI;
+            const sector = Math.floor((normA / TWO_PI) * 8);
+            const sectorAng = (normA / TWO_PI) * 8 - sector - 0.5;
+            if (Math.abs(rDist - roseR) < 1.15 || Math.abs(rDist - roseR * 0.52) < 1.0 || Math.abs(sectorAng) > 0.36) {
+              out.alpha = 0.96 * env;
+              out.glowStrength = 0.32 * env;
+              out.glowColor = gold[6];
+              return rDist < 2.2 ? PURE_WHITE : gold[6];
+            }
+            const paneCols = [stained[3], gold[5], grace[4], stained[4]];
+            const pCol = paneCols[sector % 4];
+            out.alpha = 0.9 * env;
+            out.glowStrength = 0.24 * env;
+            out.glowColor = pCol;
+            return pCol;
+          }
+
+          // Pointed Gothic Ogee Arch Frame & Elliptical Base Rim
+          if (edge > 0.78 || dy < 2.0) {
+            out.alpha = 0.95 * env;
+            out.glowStrength = 0.28 * env;
+            out.glowColor = gold[6];
+            return edge > 0.9 ? gold[4] : gold[6];
+          }
+
+          // Gothic Lancet Tracery Ribs
+          if (Math.abs(dx - archW * 0.46) < 1.05) {
+            out.alpha = 0.92 * env;
+            out.glowStrength = 0.26 * env;
+            out.glowColor = gold[6];
+            return PURE_WHITE;
+          }
+
+          const paneIdx = (Math.floor((px + maxW) / 5) + Math.floor(dy / 8)) % 3;
+          const col = paneIdx === 0 ? stained[3] : paneIdx === 1 ? gold[5] : grace[4];
+          out.alpha = (0.86 - edge * 0.2) * env;
+          out.glowStrength = 0.2 * env;
+          out.glowColor = col;
+          return col;
+        });
+
+        // 4. Celestial Sunburst Cross Finial at the pointed Gothic apex + Front 2.5D Sanctuary Rings
+        const finialY = baseY - archH - 3;
+        drawSacredCross(pen, 0, finialY, 7.5 * env, stained[3], PURE_WHITE, 0.98 * env, 0);
+        drawStarburstFlare(pen, 0, finialY, 6.5 * env, 0.94 * env, gold);
+        drawSacredCross(pen, 0, roseCy, 6.8 * env, gold[5], PURE_WHITE, 0.96 * env, rot * 0.5);
+
+        drawTiltedOrbitBand(pen, 0, baseY, 31 * pop, 0.24, 1.6, 0.96 * env, goldRamp4, FRONT_HALF, progress < 0.15);
+        drawTiltedOrbitBand(pen, 0, baseY, 20 * pop, 0.24, 1.3, 0.88 * env, graceRamp4, FRONT_HALF, false);
       }
     };
   }

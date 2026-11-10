@@ -19,13 +19,13 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps46';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
 
 import {
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE,
   VALKYRIE_EFFECT_REGISTRY
-} from '../src/engine/shaders/valkyrieShaders.js?v=30fps47';
+} from '../src/engine/shaders/valkyrieShaders.js?v=30fps55';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');

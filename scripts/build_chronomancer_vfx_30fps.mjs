@@ -19,12 +19,12 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps53';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
 
 import {
   CHRONO_TEAL_PALETTE,
   CHRONO_EFFECT_REGISTRY
-} from '../src/engine/shaders/chronoShaders.js?v=30fps53';
+} from '../src/engine/shaders/chronoShaders.js?v=30fps55';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');

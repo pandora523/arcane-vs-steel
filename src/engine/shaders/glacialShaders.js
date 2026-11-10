@@ -19,7 +19,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps53';
+} from '../ArcaneShaderFX.js?v=30fps55';
 
 export const GLACIAL_CRYO_PALETTE = [
   '#061224',
@@ -658,18 +658,20 @@ export const facetedGlacierMonolithCell = {
             const topY = baseY - spH;
             const maxHalfW = 18 * pop * sp.wScale;
 
-            pen.shadeBox(-36, topY - 2, 36, baseY + 2, (lx, ly, out) => {
-              if (ly > baseY || ly < topY) return 0;
-              const hFrac = (baseY - ly) / Math.max(1, spH);
+            pen.shadeBox(-38, topY - 2, 38, baseY + 6, (lx, ly, out) => {
+              if (ly < topY) return 0;
+              const hFrac = Math.max(0, (baseY - ly) / Math.max(1, spH));
               const centerX = sp.ox + (ly - baseY) * sp.tilt;
               const dx = lx - centerX;
               const profile = hFrac < 0.58 ? 0.72 + (hFrac / 0.58) * 0.28 : Math.max(0.06, 1 - (hFrac - 0.58) / 0.42);
               const halfW = maxHalfW * profile;
               const ax = Math.abs(dx);
               if (ax > halfW) return 0;
+              const botCurve = baseY + Math.sqrt(Math.max(0, 1 - Math.pow(ax / Math.max(1, halfW), 2))) * 4.2;
+              if (ly > botCurve) return 0;
 
               // Crisp dark sapphire pixel outline & facet seams
-              if (ax > halfW - 1.5 || ly > baseY - 1.5 || Math.abs(ax - halfW * 0.46) < 0.75) {
+              if (ax > halfW - 1.5 || ly > botCurve - 1.5 || Math.abs(ax - halfW * 0.46) < 0.75) {
                 out.color = cryo[0];
                 out.alpha = 0.98;
                 return out.color;

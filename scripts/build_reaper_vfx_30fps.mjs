@@ -19,17 +19,18 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps53';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
 
 import {
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   ABYSSAL_EFFECT_REGISTRY
-} from '../src/engine/shaders/abyssalShaders.js?v=30fps53';
+} from '../src/engine/shaders/abyssalShaders.js?v=30fps55';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
-const ARTIFACT_DIR = '/home/antigravity/.gemini/jetski/brain/4b28b4525783386742ae26b295f986b5';
+const ARTIFACT_DIR =
+  '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088';
 
 // ============================================================================
 // Self-Contained Pure Node RGBA PNG Encoder (CRC32 + zlib deflate)

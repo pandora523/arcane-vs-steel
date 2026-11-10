@@ -19,12 +19,12 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps46';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
 
 import {
   STORM_CYAN_PALETTE,
   STORM_EFFECT_REGISTRY
-} from '../src/engine/shaders/stormShaders.js?v=30fps51';
+} from '../src/engine/shaders/stormShaders.js?v=30fps55';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');

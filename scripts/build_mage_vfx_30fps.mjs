@@ -19,13 +19,13 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps46';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
 
 import {
   SOLAR_CORONA_PALETTE,
   ECLIPSE_ABYSS_PALETTE,
   SOLAR_EFFECT_REGISTRY
-} from '../src/engine/shaders/solarShaders.js?v=30fps49';
+} from '../src/engine/shaders/solarShaders.js?v=30fps55';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
