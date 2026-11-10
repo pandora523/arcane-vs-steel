@@ -19,7 +19,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps59';
+} from '../ArcaneShaderFX.js?v=30fps60';
 
 export const SOLAR_CORONA_PALETTE = [
   '#18080a',
@@ -1427,7 +1427,7 @@ export const heliosSunCrestSlashCell = {
 };
 
 // ============================================================================
-// ROW 5 (`y=1040`): DIMENSIONAL HEAVENSFALL SKY BREACH PORTAL (`astralSkyBreachPortalCell`)
+// ROW 5 (`y=1040`, NATIVE `208x208`): DIMENSIONAL HEAVENSFALL SKY BREACH PORTAL
 // ============================================================================
 export const astralSkyBreachPortalCell = {
   duration: 1.0,
@@ -1436,6 +1436,10 @@ export const astralSkyBreachPortalCell = {
   create(cfg) {
     const abyss = buildColorRamp(cfg.palette, 8);
     const solar = buildColorRamp(SOLAR_CORONA_PALETTE, 8);
+    const voidDeep = packHexColor('#05020b');
+    const voidMid = packHexColor('#130622');
+    const voidNebula = packHexColor('#3b0764');
+    const selout = packHexColor('#120509');
     const bandOuter = [solar[1], solar[4], solar[6], PURE_WHITE];
     const bandInner = [abyss[2], solar[5], solar[7], PURE_WHITE];
     const rng = new DeterministicRng(cfg.seed);
@@ -1444,98 +1448,122 @@ export const astralSkyBreachPortalCell = {
 
     return {
       step(dt) {
-        acc += dt * 42;
+        acc += dt * 64;
         while (acc >= 1) {
           acc -= 1;
           const a = rng.between(0, Math.PI * 2);
-          const rx = rng.between(18, 36);
+          const rx = rng.between(28, 72);
           motes.emit(
-            rng.chance(0.4) ? 'glint' : 'spark',
+            rng.chance(0.45) ? 'glint' : 'spark',
             Math.cos(a) * rx,
-            Math.sin(a) * rx * 0.44,
-            -Math.cos(a) * 24,
-            rng.between(12, 42),
-            0.22,
+            Math.sin(a) * rx * 0.38,
+            -Math.cos(a) * 32,
+            rng.between(18, 56),
+            0.24,
             rng.chance(0.5) ? solar[7] : solar[5],
-            1.1,
-            18
+            1.2,
+            24
           );
         }
         motes.step(dt);
       },
       renderBack(pen, localT) {
         const ph = localT * Math.PI * 2;
-        drawTiltedOrbitBand(pen, 0, 0, 39, 0.44, 1.9, 0.92, bandOuter, BACK_HALF, false);
-        drawTiltedOrbitBand(pen, 0, 0, 29, 0.44, 1.5, 0.88, bandInner, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, 84, 0.37, 2.6, 0.92, bandOuter, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, 62, 0.37, 2.0, 0.88, bandInner, BACK_HALF, false);
 
-        // Dimensional Astral Rift Tear (`rx = 38, ry = 18`) with 1px Selout + Swirling Magma Nebula
-        pen.shadeBox(-41, -26, 41, 26, (lx, ly, out) => {
+        // High-Heavens Dimensional Star-Abyss Gate (`rx = 78, ry = 29`, 100% enclosed inside `208x208`)
+        pen.shadeBox(-94, -48, 94, 48, (lx, ly, out) => {
           const ang = Math.atan2(ly, lx);
           const jag =
-            Math.sin(ang * 8 + ph * 2) * 0.08 +
-            Math.cos(ang * 5 - ph * 3) * 0.06 +
-            fbm2D(lx * 0.16 + Math.cos(ph), ly * 0.24 + Math.sin(ph), 2) * 0.12;
-          const er = Math.hypot(lx / 37.5, ly / 16.5) + jag;
+            Math.sin(ang * 10 + ph * 2) * 0.055 +
+            Math.cos(ang * 7 - ph * 3) * 0.045 +
+            fbm2D(lx * 0.09 + Math.cos(ph), ly * 0.16 + Math.sin(ph), 2) * 0.09;
+          const er = Math.hypot(lx / 78, ly / 29) + jag;
 
-          if (er > 1.08) return 0;
+          if (er > 1.06) return 0;
 
-          // 1px Dark Selective Outline around outer coronal tear
-          if (er >= 0.98) {
-            out.color = solar[0];
-            out.alpha = 0.96;
+          // 1px Crisp Dark Selective Outline around outer coronal tear
+          if (er >= 0.99) {
+            out.color = selout;
+            out.alpha = 1.0;
             return out.color;
           }
-          // Blazing Accretion Rim (`0.72 <= er < 0.98`)
-          if (er >= 0.72) {
-            const u = (er - 0.72) / 0.26;
-            out.color = u < 0.32 ? PURE_WHITE : u < 0.62 ? solar[7] : u < 0.84 ? solar[5] : solar[3];
-            out.alpha = 0.98;
+
+          // Blazing Solar-Eclipse Accretion Rim (`0.74 <= er < 0.99`)
+          if (er >= 0.74) {
+            const u = (er - 0.74) / 0.25;
+            out.color =
+              u < 0.26
+                ? PURE_WHITE
+                : u < 0.52
+                  ? solar[7]
+                  : u < 0.76
+                    ? solar[5]
+                    : solar[3];
+            out.alpha = 1.0;
             out.glowColor = solar[6];
-            out.glowStrength = 0.48 * (1 - u);
+            out.glowStrength = 0.44 * (1 - u);
             return out.color;
           }
-          // Abyssal Void Core with swirling crimson-gold vortex filaments (`er < 0.72`)
-          const swirl = fbm2D(lx * 0.18 - Math.sin(ph), ly * 0.28 + Math.cos(ph), 2);
-          if (er < 0.22 && swirl > 0.08) {
-            out.color = solar[6];
-            out.alpha = 0.95;
+
+          // Deep Cosmic Star-Abyss Event Horizon with Inward Spiral Filaments (`er < 0.74`)
+          const spiralA = ang + er * 4.2 - ph * 2;
+          const arm = Math.sin(spiralA * 3) * 0.5 + 0.5;
+          const swirl = fbm2D(lx * 0.1 - Math.sin(ph), ly * 0.18 + Math.cos(ph), 2);
+
+          // Deterministic twinkling deep-space stars inside the void tear
+          const starHash = Math.sin(Math.floor(lx * 0.5) * 127.1 + Math.floor(ly * 0.5) * 311.7) * 43758.5453;
+          const starFrac = starHash - Math.floor(starHash);
+          if (er < 0.62 && starFrac > 0.986 && Math.sin(ph * 2 + starFrac * 40) > -0.2) {
+            out.color = starFrac > 0.993 ? PURE_WHITE : solar[7];
+            out.alpha = 1.0;
+            return out.color;
+          }
+
+          if (er < 0.20) {
+            out.color = er < 0.09 ? PURE_WHITE : solar[6];
+            out.alpha = 1.0;
             out.glowColor = solar[5];
-            out.glowStrength = 0.35;
-          } else if (swirl > 0.22) {
-            out.color = abyss[4];
-            out.alpha = 0.96;
-          } else {
-            out.color = er < 0.42 ? abyss[0] : abyss[1];
+            out.glowStrength = 0.38;
+          } else if (arm * 0.65 + swirl * 0.45 > 0.58) {
+            out.color = er < 0.42 ? solar[4] : abyss[3];
             out.alpha = 0.98;
+          } else if (swirl > 0.12) {
+            out.color = voidNebula;
+            out.alpha = 0.98;
+          } else {
+            out.color = er < 0.46 ? voidDeep : voidMid;
+            out.alpha = 1.0;
           }
           return out.color;
         });
       },
       renderFront(pen, localT) {
         const ph = localT * Math.PI * 2;
-        drawTiltedOrbitBand(pen, 0, 0, 39, 0.44, 2.0, 0.96, bandOuter, FRONT_HALF, true);
-        drawTiltedOrbitBand(pen, 0, 0, 29, 0.44, 1.6, 0.92, bandInner, FRONT_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, 84, 0.37, 2.8, 0.96, bandOuter, FRONT_HALF, true);
+        drawTiltedOrbitBand(pen, 0, 0, 62, 0.37, 2.1, 0.92, bandInner, FRONT_HALF, false);
 
-        // 8 Rotating Astral Prominence Spikes around the breach
-        for (let k = 0; k < 8; k++) {
-          const a = ph + (k * Math.PI) / 4;
-          const x0 = Math.cos(a) * 26;
-          const y0 = Math.sin(a) * 11.5;
-          const x1 = Math.cos(a) * 39;
-          const y1 = Math.sin(a) * 17.5;
-          pen.line(x0, y0, x1, y1, k % 2 === 0 ? PURE_WHITE : solar[6], 0.92);
+        // 12 Rotating Celestial Prominence Spikes around the Heavensfall Gate
+        for (let k = 0; k < 12; k++) {
+          const a = ph + (k * Math.PI) / 6;
+          const x0 = Math.cos(a) * 58;
+          const y0 = Math.sin(a) * 21.5;
+          const x1 = Math.cos(a) * (k % 2 === 0 ? 88 : 76);
+          const y1 = Math.sin(a) * (k % 2 === 0 ? 33 : 28);
+          pen.line(x0, y0, x1, y1, k % 2 === 0 ? PURE_WHITE : solar[6], 0.94);
         }
 
-        // Crackling Pixel Lightning Chains arcing across the dimensional breach
-        for (let b = 0; b < 2; b++) {
-          const a = ph * 1.5 + b * Math.PI;
-          const sx = Math.cos(a) * 32;
-          const sy = Math.sin(a) * 13;
+        // 3 Crackling Pixel Lightning Chains arcing into the Abyssal Gate
+        for (let b = 0; b < 3; b++) {
+          const a = ph * 1.5 + (b * Math.PI * 2) / 3;
+          const sx = Math.cos(a) * 68;
+          const sy = Math.sin(a) * 25;
           const bolt = buildLightningChain(rng, sx, sy, 0, 0, 0.22, 3);
-          pen.polyline(bolt, b === 0 ? PURE_WHITE : solar[7], 0.94);
+          pen.polyline(bolt, b === 0 ? PURE_WHITE : solar[7], 0.95);
         }
 
-        drawHeliosStar(pen, 0, 0, 12, PURE_WHITE, solar[6], 0.95, -ph * 2);
+        drawHeliosStar(pen, 0, 0, 22, PURE_WHITE, solar[6], 0.96, -ph * 2);
         motes.render(pen);
       }
     };
@@ -1543,175 +1571,450 @@ export const astralSkyBreachPortalCell = {
 };
 
 // ============================================================================
-// ROW 6 (`y=1248`): COLOSSAL FF14 LIMIT BREAK III ASTEROID CORE (`astralMeteorColossusCell`)
+// ROW 6 (`y=1248`, NATIVE `208x208`): COLOSSAL FF14 LIMIT BREAK III ASTRAL DREADNOUGHT METEOR
+//   - Chunky, jagged, asymmetric 3D-tumbling shattered asteroid (`rockR ∈ [31..55]`) with
+//     domain-warped tectonic magma canyons (ZERO straight soccer-ball Voronoi lines!),
+//     chiseled 6-step obsidian-basalt cliff facets, and glowing caldera craters.
+//   - Crag-hugging solar re-entry corona (`d - rockR`), swept parabolic Mach bow-wave (no round hoop!),
+//     massive shoulder-wrapping 5-plume comet flame mane, and 5 craggy orbiting mini-meteoroids!
+//   - 100% enclosed inside `r <= 96` (`>= 8px` radial margin on `208x208`; ZERO square cutoff).
 // ============================================================================
 export const astralMeteorColossusCell = {
   duration: 1.0,
   loop: true,
   defaults: { palette: SOLAR_CORONA_PALETTE, seed: 263 },
   create(cfg) {
-    const ramp = buildColorRamp(cfg.palette, 8);
-    const band4 = [ramp[1], ramp[4], ramp[6], PURE_WHITE];
+    const fireRamp = buildColorRamp(cfg.palette, 8);
+    // Curated 7-step HD-2D volcanic obsidian-basalt & scorched cliff cel-ramp
+    const rockSelout = packHexColor('#0b0408');
+    const rockAbyss = packHexColor('#160b18');
+    const rockShadow = packHexColor('#271528');
+    const rockMid = packHexColor('#42263b');
+    const rockLight = packHexColor('#663e54');
+    const rockHighlight = packHexColor('#8c596d');
+    const rockRimWarm = packHexColor('#ad4532');
+    const smokeDark = packHexColor('#280c14');
+    const flameSelout = packHexColor('#160508');
+
+    // Steep celestial diagonal descent axis (`+0.4472, +0.8944`), tail streams `(-0.4472, -0.8944)`
+    const dirX = 0.4472136;
+    const dirY = 0.8944272;
+    const tailX = -dirX;
+    const tailY = -dirY;
+    const perpX = 0.8944272;
+    const perpY = -0.4472136;
+    const headX = 18;
+    const headY = 27;
+
+    // 18 asymmetric 3D asteroid boulder/horn/crater seeds in body-fixed coordinates `(sx, sy, sz)`
+    const seedRng = new DeterministicRng(cfg.seed + 79);
+    const NUM_PLATES = 18;
+    const plateSeeds = [];
+    const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+    for (let i = 0; i < NUM_PLATES; i++) {
+      const yBase = 1 - (i / (NUM_PLATES - 1)) * 2;
+      const rad = Math.sqrt(Math.max(0, 1 - yBase * yBase));
+      const theta = goldenAngle * i + seedRng.between(-0.48, 0.48);
+      let sx = Math.cos(theta) * rad + seedRng.between(-0.22, 0.22);
+      let sy = yBase + seedRng.between(-0.22, 0.22);
+      let sz = Math.sin(theta) * rad + seedRng.between(-0.22, 0.22);
+      const invL = 1 / (Math.hypot(sx, sy, sz) || 1);
+      sx *= invL;
+      sy *= invL;
+      sz *= invL;
+      const isCrater = i === 2 || i === 9 || i === 15;
+      const isHornCrag = i === 0 || i === 5 || i === 11 || i === 14 || i === 17;
+      plateSeeds.push({
+        sx,
+        sy,
+        sz,
+        weight: seedRng.between(0.82, 1.25),
+        bulge: isCrater
+          ? seedRng.between(-5.8, -2.6)
+          : isHornCrag
+            ? seedRng.between(5.2, 9.2)
+            : seedRng.between(-3.2, 4.4),
+        tiltX: seedRng.between(-0.55, 0.55),
+        tiltY: seedRng.between(-0.55, 0.55),
+        magmaRichness: seedRng.between(0.0, 1.0),
+        isCrater
+      });
+    }
+
     const rng = new DeterministicRng(cfg.seed);
-    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, ramp[7], ramp[5], ramp[3]] });
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, fireRamp[7], fireRamp[5], fireRamp[3]] });
     let acc = 0;
 
-    function drawOrbitingBoulders(pen, ph, isFront) {
-      for (let i = 0; i < 6; i++) {
-        const a = ph * 2 + (i * Math.PI) / 3;
+    function drawOrbitingMeteoroids(pen, ph, isFront) {
+      for (let i = 0; i < 5; i++) {
+        const a = ph * 2 + (i * Math.PI * 2) / 5;
         const sinA = Math.sin(a);
         if ((sinA >= 0) !== isFront) continue;
-        const rx = i % 2 === 0 ? 37.5 : 34.5;
-        const ry = i % 2 === 0 ? 15.5 : -14.5;
-        const bx = Math.cos(a) * rx;
-        const by = sinA * ry;
-        const br = i % 2 === 0 ? 3.8 : 3.1;
-        // 1px dark selective outline (`ramp[0]`) + molten magma core
-        pen.fillCircle(bx, by, br, ramp[0], 0.98);
-        pen.fillCircle(bx, by, br - 1.1, ramp[3], 0.98);
-        pen.fillCircle(bx - 0.4, by - 0.4, Math.max(1.1, br - 2.0), ramp[6], 1.0);
-        pen.pixel(bx - 0.5, by - 0.5, PURE_WHITE, 1.0);
+        const uOrbit = Math.cos(a) * 64;
+        const vOrbit = sinA * 21;
+        const bx = headX + perpX * uOrbit + dirX * (vOrbit - 6);
+        const by = headY + perpY * uOrbit + dirY * (vOrbit - 6);
+        const br = i % 2 === 0 ? 6.8 : 5.2;
+
+        // Mini pixel flame wake streaming behind each jagged shard
+        for (let t = 1; t <= 4; t++) {
+          const tx = bx + tailX * (t * 3.3);
+          const ty = by + tailY * (t * 3.3);
+          pen.fillCircle(
+            tx,
+            ty,
+            Math.max(1.1, br * (0.8 - t * 0.15)),
+            t === 1 ? fireRamp[7] : t === 2 ? fireRamp[5] : fireRamp[3],
+            0.94 - t * 0.16
+          );
+        }
+        // Jagged stepped pixel rock shard (overlapping offset blocks instead of a single smooth circle)
+        pen.fillCircle(bx, by, br, rockSelout, 1.0);
+        pen.fillCircle(bx - 1.2, by + 0.6, br * 0.72, rockSelout, 1.0);
+        pen.fillCircle(bx - 0.6, by - 0.5, br - 1.2, rockAbyss, 1.0);
+        pen.fillCircle(bx + 0.5, by - 0.7, Math.max(1.6, br - 2.1), rockMid, 1.0);
+        pen.fillCircle(bx - 0.8, by - 1.2, Math.max(1.2, br - 3.1), rockLight, 1.0);
+        pen.fillCircle(bx + 1.2, by + 1.1, Math.max(1.3, br - 3.2), fireRamp[6], 1.0);
+        pen.pixel(bx + 1.5, by + 1.4, PURE_WHITE);
       }
     }
 
     return {
       step(dt) {
-        acc += dt * 64;
+        acc += dt * 82;
         while (acc >= 1) {
           acc -= 1;
-          const a = rng.between(0, Math.PI * 2);
-          const dist = rng.between(24, 36);
+          const spread = rng.between(-46, 46);
+          const back = rng.between(-10, 62);
+          const sx = headX + perpX * spread + tailX * back;
+          const sy = headY + perpY * spread + tailY * back;
+          const spd = rng.between(36, 88);
           motes.emit(
-            rng.chance(0.4) ? 'glint' : 'spark',
-            Math.cos(a) * dist,
-            Math.sin(a) * dist,
-            rng.between(-32, 32),
-            rng.between(-48, -14),
+            rng.chance(0.42) ? 'glint' : 'spark',
+            sx,
+            sy,
+            tailX * spd + rng.between(-18, 18),
+            tailY * spd + rng.between(-18, 18),
             0.22,
-            rng.chance(0.5) ? ramp[7] : ramp[5],
+            rng.chance(0.5) ? fireRamp[7] : fireRamp[5],
             1.2,
-            -12
+            0
           );
         }
         motes.step(dt);
       },
       renderBack(pen, localT) {
         const ph = localT * Math.PI * 2;
-        drawTiltedOrbitBand(pen, 0, 0, 39, 0.38, 1.8, 0.88, band4, BACK_HALF, false);
-        drawOrbitingBoulders(pen, ph, false);
+        drawOrbitingMeteoroids(pen, ph, false);
       },
       renderFront(pen, localT) {
         const ph = localT * Math.PI * 2;
+        const cosP = Math.cos(ph);
+        const sinP = Math.sin(ph);
 
-        // Colossal 3D-Rotating Tectonic Obsidian & Magma Asteroid (`rockR = 29..34.5`)
-        pen.shadeBox(-39, -39, 39, 39, (lx, ly, out) => {
-          const d = Math.hypot(lx, ly);
-          if (d > 38) return 0;
+        // Full `208x208`-safe scan (`-98..+98`); 100% enclosed organically inside `r <= 96.5`!
+        pen.shadeBox(-98, -98, 98, 98, (lx, ly, out) => {
+          const rCellSq = lx * lx + ly * ly;
+          if (rCellSq > 97 * 97) return 0;
 
-          const ang = Math.atan2(ly, lx);
-          const crag =
-            Math.sin(ang * 6 + ph) * 1.9 +
-            Math.cos(ang * 9 - ph * 2) * 1.5 +
-            Math.sin(ang * 4 - ph) * 1.2 +
-            fbm2D(lx * 0.15 + Math.cos(ph), ly * 0.15 + Math.sin(ph), 2) * 3.6;
-          const rockR = 29.2 + crag;
+          const relX = lx - headX;
+          const relY = ly - headY;
+          const d = Math.hypot(relX, relY);
+          const s = relX * tailX + relY * tailY; // backward along comet tail (`-58` at nose .. `+124` at tips)
+          const p = relX * perpX + relY * perpY; // signed perpendicular width (`-72..+72`)
 
-          if (d <= rockR) {
-            // 1. Crisp 1px Dark Selective Outline (`Selout`, `#18080a`) around the asteroid silhouette
-            if (d >= rockR - 1.5) {
-              out.color = ramp[0];
+          // ===================================================================
+          // PART A: CHUNKY DOMAIN-WARPED 3D VOLCANIC ASTEROID (`d <= 66`)
+          //   - Evaluate `rockR` for all `d <= 66` so BOTH the jagged rock silhouette
+          //     AND the crag-hugging re-entry plasma sheath follow every rocky horn!
+          // ===================================================================
+          let rockR = 42.0;
+          let insideRock = false;
+
+          if (d <= 66.0) {
+            const refR = 47.5;
+            const clampD = Math.min(refR * 0.985, d);
+            const rawNx = d > 0.001 ? (relX / Math.max(refR, d)) : 0;
+            const rawNy = d > 0.001 ? (relY / Math.max(refR, d)) : 0;
+            const rawNz = Math.sqrt(Math.max(0.02, 1 - (clampD * clampD) / (refR * refR)));
+            const invN = 1 / (Math.hypot(rawNx, rawNy, rawNz) || 1);
+            const snx = rawNx * invN;
+            const sny = rawNy * invN;
+            const snz = rawNz * invN;
+
+            // Transform pixel's 3D unit vector into the tumbling asteroid's body-fixed frame `(bx, by, bz)`
+            const uPerp = snx * perpX + sny * perpY;
+            const uDir = snx * dirX + sny * dirY;
+            const rDir = uDir * cosP + snz * sinP;
+            const rz1 = -uDir * sinP + snz * cosP;
+            const bx = uPerp * cosP - rz1 * sinP * 0.38;
+            const by = rDir;
+            const bz = rz1 * cosP + uPerp * sinP * 0.38;
+
+            // Macro 3D irregular asteroid silhouette lobes (chunky asymmetric celestial rock!)
+            const angA = Math.atan2(by, bx);
+            const macroLobes =
+              Math.sin(angA * 3 + 0.65) * 3.4 +
+              Math.cos(angA * 5 - bz * 2.8) * 2.9 +
+              Math.sin(bz * 4.2 + angA * 2) * 2.1;
+
+            // Strong 3-octave FBM domain-warping so tectonic fissures are jagged lightning canyons, NEVER straight lines!
+            const warpX = fbm2D(bx * 2.7 + 3.7, by * 2.7 + bz * 2.1, 41, 3) * 0.34;
+            const warpY = fbm2D(by * 2.7 - 2.3, bz * 2.7 + bx * 1.9, 73, 3) * 0.34;
+            const warpZ = fbm2D(bz * 2.7 + 5.1, bx * 2.7 - by * 2.2, 109, 3) * 0.34;
+            const wx = bx + warpX;
+            const wy = by + warpY;
+            const wz = bz + warpZ;
+
+            let d1 = 999;
+            let d2 = 999;
+            let best = plateSeeds[0];
+            let second = plateSeeds[0];
+            for (let i = 0; i < NUM_PLATES; i++) {
+              const ps = plateSeeds[i];
+              const dx = wx - ps.sx;
+              const dy = wy - ps.sy;
+              const dz = wz - ps.sz;
+              const dist = Math.sqrt(dx * dx + dy * dy + dz * dz) * ps.weight;
+              if (dist < d1) {
+                d2 = d1;
+                second = best;
+                d1 = dist;
+                best = ps;
+              } else if (dist < d2) {
+                d2 = dist;
+                second = ps;
+              }
+            }
+
+            // Sharp folded 3-octave ridged crags for chiseled rocky cliffs & jagged silhouette steps
+            const cragFbm = fbm2D(bx * 3.6 + bz * 2.2, by * 3.6 - bz * 1.8, 137, 3);
+            const ridgeCrag = (0.58 - Math.abs(cragFbm)) * 8.4;
+            const boulderCrown = best.isCrater
+              ? -Math.max(0, 0.30 - d1) * 15.0
+              : Math.max(0, 0.36 - d1) * 12.5;
+
+            rockR = 40.8 + macroLobes + best.bulge * 0.85 + boulderCrown + ridgeCrag;
+
+            if (d <= rockR) {
+              insideRock = true;
+
+              // 1. Crisp 1px Dark Selective Outline (`#0b0408`) around every jagged rocky horn & canyon!
+              if (d >= rockR - 1.65) {
+                out.color = rockSelout;
+                out.alpha = 1.0;
+                return out.color;
+              }
+
+              // 2. Jagged Domain-Warped Tectonic Magma Canyons + Branching Secondary Lava Veins
+              const pairMagma = (best.magmaRichness + second.magmaRichness) * 0.5;
+              const noseAlign = (snx * dirX + sny * dirY) * 0.78 + snz * 0.42;
+              const faultMask = fbm2D(bx * 1.9 - 1.7, by * 1.9 + bz * 1.6, 173, 2) * 0.5 + 0.5;
+              const lavaActivity = clamp01(pairMagma * 0.68 + faultMask * 0.52 + Math.max(0, noseAlign) * 0.45 - 0.16);
+
+              const gap = d2 - d1;
+              const lavaWidth = 0.115 * lavaActivity;
+
+              // Fine branching secondary magma cracks cutting into dark basalt boulders
+              const fineCrack = Math.abs(fbm2D(wx * 5.4 + 1.2, wy * 5.4 - wz * 3.6, 211, 3));
+              const isBranchVein = fineCrack < 0.045 && lavaActivity > 0.48 && d1 < 0.34;
+
+              // Glowing Volcanic Caldera Pit + Molten Core Breach near leading impact face
+              const inCraterPit = best.isCrater && d1 < 0.17 + cragFbm * 0.035;
+              const heartDist = Math.hypot(snx - dirX * 0.26, sny - dirY * 0.26);
+              const inImpactHeart = heartDist < 0.19 + Math.sin(ph * 2) * 0.02 && gap < 0.16;
+
+              if (inCraterPit || inImpactHeart || (lavaActivity > 0.40 && gap < lavaWidth * 0.40)) {
+                out.color =
+                  gap < lavaWidth * 0.20 || (best.isCrater && d1 < 0.085) || heartDist < 0.095
+                    ? PURE_WHITE
+                    : fireRamp[7];
+                out.alpha = 1.0;
+                out.glowColor = fireRamp[6];
+                out.glowStrength = 0.52;
+                return out.color;
+              }
+              if ((best.isCrater && d1 < 0.23) || (lavaActivity > 0.28 && gap < lavaWidth * 0.76) || isBranchVein) {
+                out.color = gap < lavaWidth * 0.56 && !isBranchVein ? fireRamp[6] : fireRamp[5];
+                out.alpha = 1.0;
+                out.glowColor = fireRamp[5];
+                out.glowStrength = 0.30;
+                return out.color;
+              }
+              if (lavaActivity > 0.20 && gap < lavaWidth * 1.08) {
+                out.color = fireRamp[3];
+                out.alpha = 1.0;
+                return out.color;
+              }
+
+              // 3. Deep Chiseled Obsidian Canyon Seam between boulders
+              if (gap < Math.max(0.048, lavaWidth + 0.032)) {
+                out.color = gap < 0.026 ? rockSelout : rockAbyss;
+                out.alpha = 1.0;
+                return out.color;
+              }
+
+              // 4. Incandescent Atmospheric Re-Entry Rim-Scorch hugging jagged leading horns!
+              const rimDepth = rockR - d;
+              if (rimDepth <= 5.4 && noseAlign > 0.26) {
+                out.color =
+                  rimDepth <= 2.4 && noseAlign > 0.56
+                    ? fireRamp[7]
+                    : noseAlign > 0.42
+                      ? fireRamp[5]
+                      : rockRimWarm;
+                out.alpha = 1.0;
+                out.glowColor = fireRamp[5];
+                out.glowStrength = 0.24;
+                return out.color;
+              }
+
+              // 5. Hand-Clustered 6-Step Cel-Shaded Volcanic Obsidian-Basalt Cliff Planes
+              const strata = fbm2D(wx * 4.4 - wz * 2.1, wy * 4.4 + wx * 1.8, 251, 3);
+              const fnx = snx + best.tiltX + cragFbm * 0.38 + strata * 0.22;
+              const fny = sny + best.tiltY - cragFbm * 0.32 + strata * 0.18;
+              const facetLight =
+                fnx * (dirX * 0.38 - perpX * 0.34) +
+                fny * (dirY * 0.38 - perpY * 0.34) +
+                snz * 0.56 +
+                (0.28 - d1) * 0.58 +
+                ridgeCrag * 0.038;
+
+              // Warm molten under-bounce on cliff ledges overhanging active magma canyons
+              if (lavaActivity > 0.36 && gap < lavaWidth + 0.068 && facetLight > 0.22) {
+                out.color = gap < lavaWidth + 0.044 ? fireRamp[2] : rockRimWarm;
+              } else if (facetLight > 0.82) {
+                out.color = rockHighlight;
+              } else if (facetLight > 0.62) {
+                out.color = rockLight;
+              } else if (facetLight > 0.40) {
+                out.color = rockMid;
+              } else if (facetLight > 0.20) {
+                out.color = rockShadow;
+              } else {
+                out.color = rockAbyss;
+              }
               out.alpha = 1.0;
               return out.color;
             }
-
-            // 2. 3D Spherical Projection & Rotation for Tectonic Plates & Lava Fissures
-            const nx = lx / Math.max(1, rockR);
-            const ny = ly / Math.max(1, rockR);
-            const nz = Math.sqrt(Math.max(0.04, 1 - nx * nx - ny * ny));
-
-            // Rotate sphere coordinates around diagonal axis by `ph`
-            const cosP = Math.cos(ph);
-            const sinP = Math.sin(ph);
-            const rx = nx * cosP + nz * sinP;
-            const rz = -nx * sinP + nz * cosP;
-            const ry = ny * cosP - rz * 0.25 * sinP;
-
-            const tectonic = fbm2D(rx * 2.8 + 3.1, ry * 2.8 + rz * 1.7, 2);
-            const fissure = Math.abs(fbm2D(rx * 3.6 - 1.4, ry * 3.6 - rz * 2.2, 2));
-            const subCrack = Math.abs(fbm2D(rx * 6.2 + 0.8, ry * 6.2, 2));
-
-            // Incandescent White-Gold & Solar-Orange Magma Rivers (`fissure < 0.22`)
-            if (fissure < 0.085 || (d < 8.5 && tectonic > 0.05)) {
-              out.color = fissure < 0.045 || d < 4.5 ? PURE_WHITE : ramp[7];
-              out.alpha = 1.0;
-              out.glowColor = ramp[6];
-              out.glowStrength = 0.58;
-              return out.color;
-            }
-            if (fissure < 0.17 || subCrack < 0.07) {
-              out.color = fissure < 0.125 ? ramp[6] : ramp[5];
-              out.alpha = 1.0;
-              out.glowColor = ramp[5];
-              out.glowStrength = 0.36;
-              return out.color;
-            }
-            if (fissure < 0.25) {
-              out.color = ramp[3];
-              out.alpha = 0.98;
-              return out.color;
-            }
-
-            // Stepped Cel-Clustered Obsidian Armor Plates with Bottom-Right Atmospheric Entry Rim Heating
-            const noseHeat = (lx * 0.45 + ly * 0.55) / rockR + tectonic * 0.35;
-            if (d >= rockR - 3.6 && noseHeat > 0.18) {
-              out.color = noseHeat > 0.42 ? ramp[5] : ramp[3];
-              out.alpha = 0.98;
-              return out.color;
-            }
-
-            // 1px internal plate seam (`Selout` inside tectonic boundaries)
-            if (fissure < 0.295) {
-              out.color = ramp[0];
-              out.alpha = 0.98;
-              return out.color;
-            }
-
-            // Cel-shaded obsidian basalt plates
-            const plateLight = nz * 0.65 - ny * 0.25 + tectonic * 0.45;
-            out.color = plateLight > 0.58 ? ramp[2] : plateLight > 0.28 ? ramp[1] : ramp[0];
-            out.alpha = 0.99;
-            return out.color;
           }
 
-          // 3. Outer Solar Prominence Rim & 4x4 Bayer Stipple Corona (`rockR < d <= rockR + 4.8`)
-          const coronaDist = d - rockR;
-          if (coronaDist <= 4.6) {
-            const coronaU = 1 - coronaDist / 4.6;
-            const flk = fbm2D(lx * 0.24 - ph * 2, ly * 0.24 + ph * 2, 2);
-            if (coronaU + flk * 0.35 > 0.42) {
-              out.color = coronaU > 0.68 ? ramp[6] : coronaU > 0.38 ? ramp[4] : ramp[0];
-              out.alpha = clamp01(coronaU * 0.92);
-              out.glowColor = ramp[5];
-              out.glowStrength = 0.32 * coronaU;
+          // ===================================================================
+          // PART B: CRAG-HUGGING RE-ENTRY CORONA, SWEPT PARABOLIC BOW-WAVE &
+          //         MASSIVE 5-PLUME VOLCANIC COMET FLAME CROWN (ZERO ROUND HOOP!)
+          // ===================================================================
+          if (!insideRock && s >= -62 && s <= 126) {
+            const rFade = smoothStep(96.5, 80.0, Math.sqrt(rCellSq));
+            if (rFade <= 0.01) return 0;
+
+            // 1. Crag-Hugging Solar Re-Entry Corona (`shellDist = d - rockR`, follows every jagged horn!)
+            let noseCoronaHeat = 0;
+            if (d <= 65.5 && d >= rockR) {
+              const noseFactor = clamp01((32 - s) / 84);
+              const shellDist = d - rockR;
+              const lick =
+                (fbm2D(lx * 0.11 - cosP * 0.9, ly * 0.11 - sinP * 0.9, 281, 3) * 0.5 + 0.5) * 6.5;
+              const flareW = 4.2 + noseFactor * 6.8 + lick;
+              if (shellDist < flareW) {
+                noseCoronaHeat = (1 - shellDist / flareW) * (0.48 + 0.56 * noseFactor);
+              }
+            }
+
+            // 2. Swept-Back Parabolic Hypersonic Plasma Bow-Wave (sweeps back around flanks, NEVER a circle!)
+            let bowShockHeat = 0;
+            if (Math.abs(p) <= 64 && s <= 26) {
+              const sParabola =
+                -48.5 +
+                (p * p) * 0.0185 +
+                fbm2D(p * 0.09 + cosP * 0.6, s * 0.09 - localT * 4.2, 313, 2) * 3.4;
+              const distBow = Math.abs(s - sParabola);
+              const wingFade = clamp01(1 - Math.pow(Math.abs(p) / 64, 1.85));
+              const bowThick = 4.6 * wingFade + 1.2;
+              if (distBow < bowThick && wingFade > 0.05) {
+                bowShockHeat = (1 - distBow / bowThick) * (0.55 + 0.45 * wingFade);
+              }
+            }
+
+            // 3. Massive Voluminous 5-Plume Comet Flame Mane & Volcanic Smoke Billows (`s >= -22..+126`)
+            let maneHeat = 0;
+            if (s >= -22) {
+              const sWave = clamp01((s + 22) / 146);
+              const whip = Math.sin(sWave * 6.4 - ph * 2) * (7.5 * sWave);
+              const pShifted = p - whip;
+              const absP = Math.abs(pShifted);
+
+              // Broad `65px` shoulder-wrapping span tapering organically into curling fire tongues
+              const shoulderSpan = 65 * (1 - 0.30 * Math.pow(sWave, 1.12));
+              if (absP <= shoulderSpan + 16) {
+                const latU = absP / Math.max(8, shoulderSpan);
+                const chord = Math.sqrt(Math.max(0, 42 * 42 - Math.min(42, absP) * Math.min(42, absP)));
+                const sRoot = chord * 0.82 - 10;
+
+                // 5 jagged, curling pixel-art flame plumes (`58..92px` beyond the boulder!)
+                const forkFbm = fbm2D(pShifted * 0.062 + cosP * 0.4, s * 0.046 - localT * 4.0, 347, 3);
+                const forkWave =
+                  Math.cos((pShifted / 14.0) * Math.PI) * 0.36 +
+                  Math.sin((pShifted / 22.0) * Math.PI + 0.7) * 0.24 +
+                  forkFbm * 0.38;
+
+                const plumeLen =
+                  (74 + forkWave * 22) * Math.pow(Math.max(0.08, 1 - Math.pow(latU, 1.9)), 0.46);
+
+                if (s >= sRoot - 12 && plumeLen > 6) {
+                  const alongU = clamp01(Math.max(0, s - sRoot) / plumeLen);
+                  if (alongU < 1.12) {
+                    const boil =
+                      fbm2D(s * 0.082 - localT * 4.8, pShifted * 0.088 + sinP * 0.45, 389, 3) *
+                      0.28 *
+                      smoothStep(1.16, 0.48, latU) *
+                      smoothStep(1.06, 0.65, alongU);
+                    maneHeat =
+                      (1 - Math.pow(clamp01(alongU), 1.12)) *
+                        (1 - Math.pow(clamp01(latU), 1.85) * 0.86) *
+                        1.12 +
+                      boil;
+                  }
+                }
+              }
+            }
+
+            const totalHeat = Math.max(noseCoronaHeat, bowShockHeat, maneHeat) * rFade;
+            if (totalHeat > 0.135) {
+              if (totalHeat < 0.205) {
+                out.color = flameSelout;
+                out.alpha = 0.96;
+                return out.color;
+              }
+              if (totalHeat < 0.275) {
+                // Dark volcanic smoke-ash billow rim framing the roaring flames!
+                out.color = smokeDark;
+                out.alpha = 0.98;
+                return out.color;
+              }
+              if (totalHeat > 0.78) {
+                out.color = PURE_WHITE;
+              } else if (totalHeat > 0.63) {
+                out.color = fireRamp[7];
+              } else if (totalHeat > 0.49) {
+                out.color = fireRamp[6];
+              } else if (totalHeat > 0.38) {
+                out.color = fireRamp[5];
+              } else if (totalHeat > 0.32) {
+                out.color = fireRamp[3];
+              } else {
+                out.color = fireRamp[2];
+              }
+              out.alpha = 1.0;
+              out.glowColor = fireRamp[5];
+              out.glowStrength = 0.28 * clamp01(totalHeat);
               return out.color;
             }
           }
+
           return 0;
         });
 
-        // 3 Rotating Volcanic Caldera Vents that flare with Helios stars across the front hemisphere
-        for (let v = 0; v < 3; v++) {
-          const va = ph + (v * Math.PI * 2) / 3;
-          const sinV = Math.sin(va);
-          if (sinV > -0.15) {
-            const vx = Math.cos(va) * 14.5;
-            const vy = (v - 1) * 7.5 + sinV * 4.5;
-            drawHeliosStar(pen, vx, vy, 7.5 + sinV * 3.5, PURE_WHITE, ramp[6], 0.92, ph * 2 + v);
-          }
-        }
-
-        drawTiltedOrbitBand(pen, 0, 0, 39, 0.38, 1.9, 0.95, band4, FRONT_HALF, true);
-        drawOrbitingBoulders(pen, ph, true);
+        drawOrbitingMeteoroids(pen, ph, true);
         motes.render(pen);
       }
     };
@@ -1719,7 +2022,9 @@ export const astralMeteorColossusCell = {
 };
 
 // ============================================================================
-// ROW 7 (`y=1456`): ROARING ASTRAL CATACLYSM PLASMA WAKE (`astralCataclysmWakeCell`)
+// ROW 7 (`y=1456`, NATIVE `208x208`): VOLUMINOUS BILLOWING VOLCANIC COMET WAKE & MACH RINGS
+//   - Wide (`halfW = 48`), roaring volcanic fire-and-smoke comet plume aligned to `tailDir`
+//     (`(-0.4472, -0.8944)`), 100% enclosed inside `r <= 94` (`ZERO` flat chop or square edge)!
 // ============================================================================
 export const astralCataclysmWakeCell = {
   duration: 1.0,
@@ -1727,76 +2032,156 @@ export const astralCataclysmWakeCell = {
   defaults: { palette: SOLAR_CORONA_PALETTE, seed: 277 },
   create(cfg) {
     const ramp = buildColorRamp(cfg.palette, 8);
-    const band4 = [ramp[2], ramp[4], ramp[6], PURE_WHITE];
+    const flameSelout = packHexColor('#160508');
+    const smokeDark = packHexColor('#280c14');
+    const dirX = 0.4472136;
+    const dirY = 0.8944272;
+    const tailX = -dirX;
+    const tailY = -dirY;
+    const perpX = 0.8944272;
+    const perpY = -0.4472136;
+    const baseX = 24;
+    const baseY = 48;
+
     const rng = new DeterministicRng(cfg.seed);
     const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, ramp[7], ramp[5], ramp[3]] });
     let acc = 0;
 
+    function drawWakeMachRing(pen, localT, isFront) {
+      const ringSlide = (localT * 74) % 74;
+      const cx = baseX + tailX * (14 + ringSlide);
+      const cy = baseY + tailY * (14 + ringSlide);
+      const fade = Math.sin((ringSlide / 74) * Math.PI);
+      if (fade <= 0.05) return;
+      const rx = 48 * (0.76 + 0.30 * (ringSlide / 74));
+      const ry = 14 * (0.76 + 0.30 * (ringSlide / 74));
+      const steps = 36;
+      for (let k = 0; k < steps; k++) {
+        const a = (k / steps) * Math.PI * 2;
+        const sinA = Math.sin(a);
+        if ((sinA >= 0) !== isFront) continue;
+        const u = Math.cos(a) * rx;
+        const v = sinA * ry;
+        const px = cx + perpX * u + dirX * v;
+        const py = cy + perpY * u + dirY * v;
+        if (px * px + py * py < 90 * 90) {
+          pen.fillCircle(
+            px,
+            py,
+            isFront ? 2.0 : 1.4,
+            isFront && Math.abs(u) < 20 ? PURE_WHITE : ramp[6],
+            0.9 * fade
+          );
+        }
+      }
+    }
+
     return {
       step(dt) {
-        acc += dt * 56;
+        acc += dt * 68;
         while (acc >= 1) {
           acc -= 1;
+          const along = rng.between(0, 82);
+          const spread = rng.between(-32, 32);
+          const sx = baseX + tailX * along + perpX * spread;
+          const sy = baseY + tailY * along + perpY * spread;
+          const spd = rng.between(40, 96);
           motes.emit(
-            rng.chance(0.4) ? 'streak' : 'spark',
-            rng.between(-18, 18),
-            rng.between(-10, 26),
-            rng.between(-24, 24),
-            rng.between(-84, -28),
+            rng.chance(0.42) ? 'glint' : 'spark',
+            sx,
+            sy,
+            tailX * spd + rng.between(-18, 18),
+            tailY * spd + rng.between(-18, 18),
             0.22,
             rng.chance(0.5) ? ramp[7] : ramp[5],
             1.15,
-            -15
+            0
           );
         }
         motes.step(dt);
       },
       renderBack(pen, localT) {
         const ph = localT * Math.PI * 2;
-        const ringY = -8 + ((localT * 28) % 28);
-        drawTiltedOrbitBand(pen, 0, ringY, 34, 0.32, 1.6, 0.86, band4, BACK_HALF, false);
-        drawTiltedOrbitBand(pen, 0, -ringY * 0.6, 26, 0.32, 1.4, 0.82, band4, BACK_HALF, false);
+        drawWakeMachRing(pen, localT, false);
+        drawWakeMachRing(pen, (localT + 0.5) % 1, false);
 
-        // Multi-tongue roaring FBM solar plasma wake column with 1px `#18080a` Selout
-        pen.shadeBox(-36, -39, 36, 39, (lx, ly, out) => {
-          const v = clamp01((38 - ly) / 76); // 0 at bottom (+38, meteor side), 1 at top (-38, wake tail)
-          const sway = Math.sin(v * 6.5 - ph * 2) * 4.5 * v;
-          const halfW = (1 - v * 0.58) * 28 + Math.sin(v * 9 + ph) * 3.2;
-          const dx = Math.abs(lx - sway);
-          if (dx > halfW) return 0;
+        // 100% Enclosed Voluminous Billowing Comet Plume (`s ∈ [-30, +124]`, `halfW = 48`, `r <= 94`)
+        pen.shadeBox(-96, -96, 96, 96, (lx, ly, out) => {
+          const rSq = lx * lx + ly * ly;
+          if (rSq > 94 * 94) return 0;
+          const rFade = smoothStep(94.0, 78.0, Math.sqrt(rSq));
 
-          const nx = (lx - sway) / Math.max(1, halfW);
-          const tongue =
-            Math.cos(nx * Math.PI * 2.5) * 0.22 +
-            fbm2D(lx * 0.16 + Math.cos(ph), ly * 0.14 + ph * 2.2, 2) * 0.42;
-          const heat = (1 - Math.pow(dx / halfW, 1.45)) * (1 - v * 0.48) + tongue;
+          const relX = lx - baseX;
+          const relY = ly - baseY;
+          const s = relX * tailX + relY * tailY;
+          const p = relX * perpX + relY * perpY;
 
-          if (heat <= 0.16) return 0;
-          // 1px Dark Selective Outline (`ramp[0]`) on outer ash/cinder boundary
-          if (heat < 0.26 || dx >= halfW - 1.5) {
-            out.color = ramp[0];
-            out.alpha = 0.94;
+          if (s < -32 || s > 126) return 0;
+
+          let halfW;
+          if (s < 0) {
+            // Broad rounded volcanic front cap (`s ∈ [-32, 0]`) — overlaps seamlessly behind Row 6 boulder!
+            const capU = clamp01(1 + s / 30);
+            halfW = 48 * Math.sqrt(capU);
+          } else {
+            // Wide billowing 5-tongue volcanic tail (`s ∈ [0, 124]`) tapering organically to sharp flame tips
+            const tailU = clamp01(s / 122);
+            halfW = 48 * Math.pow(1 - tailU, 0.78);
+          }
+          if (halfW <= 0.8 || Math.abs(p) > halfW + 20) return 0;
+
+          const v = clamp01((s + 30) / 152);
+          const sway = Math.sin(v * 6.8 - ph * 2) * 6.5 * v;
+          const billow = fbm2D(s * 0.068 - localT * 4.4, p * 0.072 + Math.cos(ph) * 0.45, 409, 3);
+          const adjP = Math.abs(p - sway) - billow * 7.5 * smoothStep(1.0, 0.75, v);
+          const radialFrac = Math.max(0, adjP) / Math.max(1.5, halfW);
+          const edgeFade = smoothStep(1.28, 0.65, radialFrac) * smoothStep(1.0, 0.82, v);
+
+          const normP = (p - sway) / Math.max(2, halfW);
+          const coreStream =
+            (Math.cos(normP * Math.PI * 2.5) * 0.20 * v +
+              fbm2D(s * 0.095 - localT * 5.0, p * 0.095 - Math.sin(ph) * 0.45, 443, 3) * 0.30) *
+            edgeFade;
+          const heat =
+            ((1 - Math.pow(clamp01(radialFrac), 1.45)) * (1 - v * 0.72) * 1.08 + coreStream) *
+            rFade;
+
+          if (heat <= 0.14) return 0;
+          if (heat < 0.205) {
+            out.color = flameSelout;
+            out.alpha = 0.96;
             return out.color;
           }
-          if (heat > 0.82) {
-            out.color = PURE_WHITE;
-            out.alpha = 1.0;
-          } else {
-            const idx = Math.min(7, Math.max(1, Math.floor(heat * 8.2)));
-            out.color = ramp[idx];
+          if (heat < 0.275) {
+            out.color = smokeDark;
             out.alpha = 0.98;
+            return out.color;
           }
-          out.glowColor = ramp[6];
-          out.glowStrength = 0.38 * (1 - v * 0.6);
+          if (heat > 0.76) {
+            out.color = PURE_WHITE;
+          } else {
+            const idx = Math.min(7, Math.max(2, Math.floor(heat * 8.5)));
+            out.color = ramp[idx];
+          }
+          out.alpha = 0.98;
+          out.glowColor = ramp[5];
+          out.glowStrength = 0.28 * (1 - v * 0.68);
           return out.color;
         });
       },
       renderFront(pen, localT) {
-        const ringY = -8 + ((localT * 28) % 28);
-        drawTiltedOrbitBand(pen, 0, ringY, 34, 0.32, 1.7, 0.94, band4, FRONT_HALF, true);
-        drawTiltedOrbitBand(pen, 0, -ringY * 0.6, 26, 0.32, 1.5, 0.9, band4, FRONT_HALF, false);
+        drawWakeMachRing(pen, localT, true);
+        drawWakeMachRing(pen, (localT + 0.5) % 1, true);
 
-        const bolt = buildLightningChain(rng, -12, 28, 12, -28, 0.24, 3);
+        const bolt = buildLightningChain(
+          rng,
+          baseX + tailX * 6,
+          baseY + tailY * 6,
+          baseX + tailX * 92,
+          baseY + tailY * 92,
+          0.22,
+          3
+        );
         pen.polyline(bolt, ramp[7], 0.9);
         motes.render(pen);
       }

@@ -901,11 +901,12 @@ export function instantiateShaderEffect(def, userCfg = {}) {
  * ArcaneShaderFX — Arena-wide 2.5D (`back` + `front`) pixel-shader VFX runtime for Arcane vs. Steel.
  */
 export class ArcaneShaderFX {
-  constructor(registry = {}, { pixelScale = 3, viewW = 440, viewH = 220 } = {}) {
+  constructor(registry = {}, { pixelScale = 3, viewW = 440, viewH = 220, topRatio = 0.78 } = {}) {
     this.registry = registry;
     this.pixelScale = pixelScale;
     this.viewW = viewW;
     this.viewH = viewH;
+    this.topRatio = topRatio;
 
     this.surfaceBack = createPixelSurface(viewW, viewH);
     this.surfaceFront = createPixelSurface(viewW, viewH);
@@ -979,7 +980,7 @@ export class ArcaneShaderFX {
     const worldW = this.viewW * scale;
     const worldH = this.viewH * scale;
     const worldLeft = Math.round((centerWorldX - worldW * 0.5) / scale) * scale;
-    const worldTop = Math.round((groundWorldY - worldH * 0.78) / scale) * scale;
+    const worldTop = Math.round((groundWorldY - worldH * this.topRatio) / scale) * scale;
     return { scale, worldW, worldH, worldLeft, worldTop };
   }
 
@@ -1173,6 +1174,28 @@ export class ArcaneShaderFX {
     if (drewAny) {
       resolveSurfaceToRGBA(surface, rgba, 1.15);
       resolveSurfaceToSplitRGBA(surface, albedoRgba, emissiveRgba, 1.22);
+      const w = this.viewW;
+      const h = this.viewH;
+      const m = 8;
+      for (let y = 0; y < h; y++) {
+        const yEdge = Math.min(y, h - 1 - y);
+        const fullRow = yEdge < m;
+        for (let x = 0; x < w; x++) {
+          if (!fullRow && x >= m && x < w - m) {
+            x = w - m - 1;
+            continue;
+          }
+          const d = Math.min(yEdge, x, w - 1 - x);
+          const k = d <= 0 ? 0 : d / m;
+          const o = (y * w + x) * 4;
+          rgba[o + 3] = (rgba[o + 3] * k) | 0;
+          albedoRgba[o + 3] = (albedoRgba[o + 3] * k) | 0;
+          emissiveRgba[o] = (emissiveRgba[o] * k) | 0;
+          emissiveRgba[o + 1] = (emissiveRgba[o + 1] * k) | 0;
+          emissiveRgba[o + 2] = (emissiveRgba[o + 2] * k) | 0;
+          emissiveRgba[o + 3] = (emissiveRgba[o + 3] * k) | 0;
+        }
+      }
     }
     return { drewAny, worldLeft, worldTop, worldW, worldH, rgba, albedoRgba, emissiveRgba };
   }

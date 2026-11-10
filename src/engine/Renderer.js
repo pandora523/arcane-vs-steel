@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps59';
+import { PixelForge } from './PixelForge.js?v=30fps60';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -404,11 +404,14 @@ export class Renderer {
       let minX = pool[0].x;
       let maxX = pool[0].x;
       let maxAirLift = 0;
+      let maxSkyFocus = 0;
       for (const f of pool) {
         if (f.x < minX) minX = f.x;
         if (f.x > maxX) maxX = f.x;
         const lift = Math.max(0, this.groundY - f.y);
         if (lift > maxAirLift) maxAirLift = lift;
+        const skyFocus = Math.max(0, f.cameraAirLift || 0);
+        if (skyFocus > maxSkyFocus) maxSkyFocus = skyFocus;
       }
       const midX = (minX + maxX) * 0.5;
       const horizSpan = Math.abs(maxX - minX) + (validFighters.length > 2 ? 380 : 340);
@@ -422,6 +425,15 @@ export class Renderer {
       let targetX = midX;
       let targetY = this.groundY - 95 - Math.min(285, maxAirLift * 0.62);
 
+      // Wide-cosmos framing for grounded celestial finishers (e.g. Ignis Sol's Heavensfall Meteor)
+      // Keeps the arena floor (`groundY`) visible near the bottom while revealing `groundY - 720+` high in the sky!
+      if (maxSkyFocus > 0) {
+        const skyZoom = Math.max(0.66, (this.height * 0.80) / Math.max(500, maxSkyFocus + 165));
+        targetZoom = Math.min(targetZoom, skyZoom);
+        const skyTargetY = this.groundY - Math.min(232, 95 + maxSkyFocus * 0.22);
+        targetY = Math.min(targetY, skyTargetY);
+      }
+
       if (this.koZoomTimer > 0) {
         // Dramatic K.O. Finisher zoom toward the fatal impact
         targetZoom *= 1.12;
@@ -430,7 +442,7 @@ export class Renderer {
         }
       } else if (this.clashZoomTimer > 0) {
         targetZoom *= 1.045;
-      } else if (this.ultZoomTimer > 0) {
+      } else if (this.ultZoomTimer > 0 && maxSkyFocus <= 0) {
         // Gentle 2.5% cinematic breathe without jerking the camera away from the arena center
         targetZoom *= 1.025;
       }
@@ -445,7 +457,8 @@ export class Renderer {
         targetX = this.worldWidth * 0.5;
       }
 
-      const lerpFactor = Math.min(1, Math.max(0, rawDt * 6));
+      const camSpeed = maxSkyFocus > 0 ? 7.5 : 6;
+      const lerpFactor = Math.min(1, Math.max(0, rawDt * camSpeed));
       this.zoom += (targetZoom - this.zoom) * lerpFactor;
       this.camX += (targetX - this.camX) * lerpFactor;
       this.camY += (targetY - this.camY) * lerpFactor;
@@ -481,7 +494,7 @@ export class Renderer {
 
     if (this.ultDim > 0.01) {
       ctx.fillStyle = `rgba(2, 3, 10, ${this.ultDim * 0.78})`;
-      ctx.fillRect(-600, -800, ww + 1200, 2000);
+      ctx.fillRect(-800, -1400, ww + 1600, 2800);
       this.drawUltimateAwakeningWorld(ctx, gy);
     }
 
@@ -690,6 +703,26 @@ export class Renderer {
       if (!img || !img.complete || img.naturalWidth <= 0 || alpha <= 0.005) return;
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+
+      // Seamless upper-sky vertical mirror above `drawY` (`gy - 775`) for high-cosmos camera shots
+      ctx.save();
+      ctx.translate(drawX, drawY);
+      ctx.scale(-1, -1);
+      ctx.drawImage(img, 0, 0, drawW, drawH);
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(drawX + drawW * 2, drawY);
+      ctx.scale(-1, -1);
+      ctx.drawImage(img, 0, 0, drawW, drawH);
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(drawX, drawY);
+      ctx.scale(1, -1);
+      ctx.drawImage(img, 0, 0, drawW, drawH);
+      ctx.restore();
+
       ctx.save();
       ctx.translate(drawX, drawY);
       ctx.scale(-1, 1);

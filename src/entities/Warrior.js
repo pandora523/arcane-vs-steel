@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps59';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps59';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps59';
+import { Fighter } from './Fighter.js?v=30fps60';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps60';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps60';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps59';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps60';
 
 /**
  * Aethelgard (`warrior`) — Elder Rune Knight & Runic Vanguard.
@@ -87,7 +87,7 @@ export class Warrior extends Fighter {
     if (typeof Image !== 'undefined') {
       const warriorAssets = PixelForge.initAssets()?.warrior;
       if (warriorAssets?.vfx?.src && !warriorAssets.vfx.src.includes('v=30fps53')) {
-        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps59';
+        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps60';
       }
     }
   }

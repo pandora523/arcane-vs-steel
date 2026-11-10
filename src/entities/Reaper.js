@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps59';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps59';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps59';
+import { Fighter } from './Fighter.js?v=30fps60';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps60';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps60';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps59';
+} from '../engine/shaders/abyssalShaders.js?v=30fps60';
 
 /**
  * Malakor (`reaper`) — Abyssal Necropolis Harvester & Sovereign of Death.
@@ -85,7 +85,7 @@ export class Reaper extends Fighter {
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
       if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps57')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps59';
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps60';
       }
     }
   }

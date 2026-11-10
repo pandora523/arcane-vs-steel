@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps59';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps59';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps59';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps59';
+import { Fighter } from './Fighter.js?v=30fps60';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps60';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps60';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps60';
 
 /**
  * Ignis Sol (`mage`) — Solar Archmage & Black-Sun Eclipse Sovereign.
@@ -63,15 +63,17 @@ export class FireMage extends Fighter {
     this._trueUltInit = false;
     this._trueUltStage = 0;
     this._trueUltTick = 0;
+    this.cameraAirLift = 0;
     this.trueUltMeteor = {
       active: false,
       phase: 'none',
+      dir: this.facing || 1,
       x: this.x,
-      y: this.groundY - 480,
+      y: this.groundY - 665,
       startX: this.x,
-      startY: this.groundY - 480,
+      startY: this.groundY - 665,
       targetX: this.x + this.facing * 320,
-      targetY: this.groundY - 34,
+      targetY: this.groundY - 30,
       progress: 0,
       riftScale: 0,
       rot: 0,
@@ -80,14 +82,14 @@ export class FireMage extends Fighter {
 
     this.fx = new ArcaneShaderFX(SOLAR_EFFECT_REGISTRY, {
       pixelScale: 3,
-      viewW: 440,
-      viewH: 240
+      viewW: 480,
+      viewH: 340
     });
 
     if (typeof Image !== 'undefined') {
       const mageAssets = PixelForge.initAssets()?.mage;
-      if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps59')) {
-        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps59';
+      if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps60')) {
+        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps60';
       }
     }
   }
@@ -101,6 +103,7 @@ export class FireMage extends Fighter {
       this._trueUltTick = 0;
     } else {
       this._overrideFrameIdx = null;
+      this.cameraAirLift = 0;
       if (this.trueUltMeteor) {
         this.trueUltMeteor.active = false;
         this.trueUltMeteor.phase = 'none';
@@ -983,13 +986,15 @@ export class FireMage extends Fighter {
   /**
    * ★ SUPREME ULTIMATE FINISHER (`TRUE_ULTIMATE`):
    * "ASTRAL METEOR CATACLYSM" — FF14 Black Mage Limit Break III:
-   * - Phase 1 (`0.00s - 1.55s`): Sol levitates in grand Astral Stasis invocation, consecrating
-   *   Ley-Lines while a colossal 680px Dimensional Sky Breach tears open high above the arena.
-   * - Phase 2 (`1.55s - 3.20s`): A gargantuan Obsidian & Solar-Magma Meteor (`meteor_cataclysm.png`)
-   *   descends from the heavens with roaring Mach shock-rings, atmospheric plasma cone, and crushing gravity.
-   * - Phase 3 (`3.20s - 5.20s`): Cataclysmic ground detonation triggers a High-Contrast Anime Impact Frame,
-   *   a Full-Stage White-Out Deletion Screen where every fighter erodes in dissolving ash silhouettes,
-   *   7 arena-wide Hellfire Solar Pillars, and permanently transforms the stage into "LAYWASTE OF INFERNO".
+   * - Phase 1 (`0.00s - 1.55s`): Sol channels grand Black Mage Ley-Lines on the arena floor while
+   *   the camera zooms out into the upper cosmos (`groundY - 670`) as a 620px Dimensional Heavensfall
+   *   Sky Breach tears open and the jagged volcanic nose of the Dreadnought Meteor emerges.
+   * - Phase 2 (`1.55s - 3.22s`): The native `208x208` 30fps 3D-tumbling Obsidian-Magma Dreadnought
+   *   Meteor (`mage_vfx.png` Row 6) plunges `635+` world units along a steep `(1, 2)` celestial diagonal
+   *   with 6 staggered `Row 7` comet wake plumes and live 120Hz `ArcaneShaderFX` slipstream wakes.
+   * - Phase 3 (`3.22s - 5.20s`): Cataclysmic ground detonation triggers a High-Contrast Pixel Impact Frame,
+   *   a Full-Stage White-Out Deletion Screen with dissolving pixel-ash silhouettes, 7 Hellfire Solar Pillars,
+   *   and permanently transforms the stage into "LAYWASTE OF INFERNO".
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
@@ -1008,23 +1013,31 @@ export class FireMage extends Fighter {
 
       const rawTargetX = enemy ? enemy.x : this.x + this.facing * 360;
       const targetX = Math.max(250, Math.min(ww - 250, rawTargetX));
-      const startX = Math.max(180, Math.min(ww - 180, targetX - this.facing * 150));
-      const startY = this.groundY - 465;
+
+      // Steep `(1, 2)` celestial diagonal (`|dx| = 310, dy = 635`) matching the baked Row 6 & Row 7 angle!
+      let meteorDir = targetX >= this.x ? 1 : -1;
+      if (targetX - meteorDir * 310 < 150) meteorDir = -1;
+      else if (targetX - meteorDir * 310 > ww - 150) meteorDir = 1;
+
+      const startX = Math.max(145, Math.min(ww - 145, targetX - meteorDir * 315));
+      const startY = this.groundY - 680;
 
       this.trueUltMeteor = {
         active: true,
         phase: 'rift',
+        dir: meteorDir,
         x: startX,
-        y: startY,
+        y: startY + 4,
         startX,
         startY,
         targetX,
-        targetY: this.groundY - 34,
+        targetY: this.groundY - 30,
         progress: 0,
-        riftScale: 0.12,
+        riftScale: 0.14,
         rot: 0,
         trailNodes: []
       };
+      this.cameraAirLift = 280;
 
       if (game.audio) game.audio.play('eclipse_charge', this.x);
       if (game.renderer) {
@@ -1071,10 +1084,12 @@ export class FireMage extends Fighter {
     const m = this.trueUltMeteor;
     const targetX = m ? m.targetX : enemy ? enemy.x : ww * 0.5;
 
-    // PHASE 1 (0.00s - 1.55s): Grounded Black Mage Ley-Lines Invocation & Dimensional Sky Breach
+    // PHASE 1 (0.00s - 1.55s): Grounded Black Mage Ley-Lines Invocation & High-Cosmos Heavensfall Breach
     if (t < 1.55) {
       const u = Math.min(1, t / 1.55);
       this.y = this.groundY;
+      this.cameraAirLift = 635 * Math.min(1, 0.35 + u * 0.85);
+
       // Smoothly raise staff skyward (`120..124`) then channel high-staff invocation (`124..128`, 100% grounded Row 4)
       if (t < 0.42) {
         this._overrideFrameIdx = 120 + Math.min(4, Math.floor((t / 0.42) * 5));
@@ -1087,10 +1102,11 @@ export class FireMage extends Fighter {
       if (m) {
         m.active = true;
         m.phase = 'rift';
-        m.riftScale = Math.min(1, u * 1.18);
+        m.riftScale = Math.min(1, u * 1.22);
         m.progress = u * 0.14;
-        m.x = m.startX + (m.targetX - m.startX) * (u * 0.08);
-        m.y = m.startY + 38 * u;
+        // Dreadnought asteroid nose slowly pushes down out of the Dimensional Sky Breach!
+        m.x = m.startX + (m.targetX - m.startX) * (u * 0.085);
+        m.y = m.startY + 4 + 52 * u;
       }
 
       if (game.renderer) {
@@ -1102,8 +1118,10 @@ export class FireMage extends Fighter {
         this._trueUltStage = 1;
         if (game.audio) game.audio.play('solar_beam', targetX);
         if (game.renderer) game.renderer.triggerShake(16, 0.42);
-        game.vfx.spawnLightning(targetX - 135, this.groundY - 460, targetX - 35, this.groundY, '#fb923c', 0.44);
-        game.vfx.spawnLightning(targetX + 135, this.groundY - 460, targetX + 35, this.groundY, '#fef08a', 0.44);
+        const breachX = m ? m.startX : targetX;
+        const breachY = m ? m.startY - 18 : this.groundY - 698;
+        game.vfx.spawnLightning(breachX - 95, breachY + 12, targetX - 45, this.groundY, '#fb923c', 0.48);
+        game.vfx.spawnLightning(breachX + 95, breachY + 12, targetX + 45, this.groundY, '#fef08a', 0.48);
         this.fx.spawn('eclipseSupernovaDomain', targetX, this.groundY, {
           light: 1.62
         });
@@ -1113,11 +1131,14 @@ export class FireMage extends Fighter {
         });
       }
     }
-    // PHASE 2 (1.55s - 3.20s): Colossal 30fps Pixel-Art Asteroid Descent & Slipstream Shaders
-    else if (t < 3.20) {
-      const u = Math.max(0, Math.min(1, (t - 1.55) / 1.65));
-      const eased = u * u * (0.62 + 0.38 * u);
+    // PHASE 2 (1.55s - 3.22s): Colossal 30fps Pixel-Art Dreadnought Meteor Plunging Across 650px of Sky!
+    else if (t < 3.22) {
+      const u = Math.max(0, Math.min(1, (t - 1.55) / 1.67));
+      const eased = u * u * (0.58 + 0.42 * u);
       this.y = this.groundY;
+      // Hold wide cosmos framing while smoothly sweeping down into the ground impact!
+      this.cameraAirLift = Math.max(0, 635 * (1 - Math.pow(eased, 1.45)));
+
       // Sweep staff downward in commanding arc (`129..136`) and hold active command stance (`134..136`)
       if (u < 0.38) {
         this._overrideFrameIdx = 129 + Math.min(7, Math.floor((u / 0.38) * 8));
@@ -1146,36 +1167,40 @@ export class FireMage extends Fighter {
       }
 
       if (m) {
+        const launchX = m.startX + (m.targetX - m.startX) * 0.085;
+        const launchY = m.startY + 56;
         m.active = true;
         m.phase = 'descent';
-        m.riftScale = 1.0;
+        m.riftScale = 1.0 - 0.18 * eased;
         m.progress = u;
-        m.x = m.startX + (m.targetX - m.startX) * eased;
-        m.y = m.startY + 38 + (m.targetY - (m.startY + 38)) * eased;
+        m.x = launchX + (m.targetX - launchX) * eased;
+        m.y = launchY + (m.targetY - launchY) * eased;
         m.rot += dt * 1.55;
 
         this._trueUltTick += dt;
         if (this._trueUltTick >= 0.065) {
           this._trueUltTick = 0;
           m.trailNodes.push({
-            x: m.x,
-            y: m.y,
-            size: 220 + u * 150,
+            x: m.x - m.dir * 26,
+            y: m.y - 52,
+            size: 215 + u * 115,
             frameOffset: m.trailNodes.length * 4
           });
-          if (m.trailNodes.length > 9) m.trailNodes.shift();
+          if (m.trailNodes.length > 8) m.trailNodes.shift();
 
-          // Spawn live 120Hz `ArcaneShaderFX` pixel-grid slipstream wake along the meteor trajectory!
-          this.fx.spawn('astralMeteorSlipstreamWake', m.x, m.y, {
-            light: 1.48,
-            extra: { scale: 0.85 + u * 0.55 }
-          });
+          // Spawn live 120Hz `ArcaneShaderFX` pixel-grid slipstream wake safely inside `worldTop`
+          if (m.y > this.groundY - 680) {
+            this.fx.spawn('astralMeteorSlipstreamWake', m.x - m.dir * 18, m.y - 36, {
+              light: 1.48,
+              extra: { scale: 0.88 + u * 0.52 }
+            });
+          }
 
-          game.vfx.spawnShockwave(m.x, m.y + 38, 135 + u * 95, '#fb923c', 0.24, true, true);
+          game.vfx.spawnShockwave(m.x, m.y + 34, 145 + u * 95, '#fb923c', 0.24, true, true);
           this.fx.burst(m.x + (Math.random() - 0.5) * 140, m.y + (Math.random() - 0.5) * 90, {
-            count: 7,
+            count: 8,
             speedMin: 65,
-            speedMax: 210,
+            speedMax: 220,
             lifeMin: 0.22,
             lifeMax: 0.45,
             gravity: -65,
@@ -1198,10 +1223,11 @@ export class FireMage extends Fighter {
         }
       }
     }
-    // PHASE 3 (3.20s - 5.20s): Cataclysmic Ground Impact, Pixel Impact Frame, White-Out Deletion Screen & Permanent LAYWASTE OF INFERNO Stage!
+    // PHASE 3 (3.22s - 5.20s): Cataclysmic Ground Impact, Pixel Impact Frame, White-Out Deletion Screen & Permanent LAYWASTE OF INFERNO Stage!
     else if (t < dur) {
       this.y = this.groundY;
-      const postU = Math.max(0, Math.min(1, (t - 3.20) / (dur - 3.20)));
+      this.cameraAirLift = 0;
+      const postU = Math.max(0, Math.min(1, (t - 3.22) / (dur - 3.22)));
       this._overrideFrameIdx = 137 + Math.min(12, Math.floor(postU * 13));
 
       if (this._trueUltStage < 3) {
@@ -1294,6 +1320,7 @@ export class FireMage extends Fighter {
       }
     } else {
       this.y = this.groundY;
+      this.cameraAirLift = 0;
       this._overrideFrameIdx = null;
       this.isInvulnerable = false;
       if (m) {
@@ -1305,10 +1332,11 @@ export class FireMage extends Fighter {
   }
 
   /**
-   * Renders the FF14 Black Mage Limit Break III Dimensional Heavensfall Sky Breach,
-   * 2.5D Ground Cataclysm Target Seal, Multi-Node Pixel-Art Plasma Wake Trail, and
-   * Colossal 30fps 3D-Rotating Pixel-Art Asteroid Core (`mage_vfx.png` Rows 2..7).
-   * 100% authentic nearest-neighbor 30fps pixel animation powered by our `ArcaneShaderFX` VFX pipeline.
+   * Renders the FF14 Black Mage Limit Break III High-Cosmos Heavensfall Sky Breach (`groundY - 673`),
+   * 2.5D Ground Cataclysm Target Seal, Multi-Node Enclosed Diagonal Comet Wake (`Row 7`), and
+   * Native `208x208` 30fps Jagged 3D-Tumbling Astral Dreadnought Meteor (`Row 6`).
+   * - ZERO `ctx.rotate(...)` calls (uses horizontal `ctx.scale(meteorDir, 1)` on the baked `(1, 2)`
+   *   celestial diagonal so 100% of pixels stay crisp and axis-aligned with ZERO diamond/square cutoffs!).
    */
   drawTrueUltimateMeteor(ctx, renderer = null) {
     const m = this.trueUltMeteor;
@@ -1320,31 +1348,32 @@ export class FireMage extends Fighter {
     const now = performance.now() * 0.001;
     const baseCol = Math.floor(now * 30) % 30;
     const revCol = (30 - baseCol) % 30;
+    const meteorDir = m.dir || 1;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
     // =========================================================================
-    // 1. 2.5D PIXEL-ART GROUND CATACLYSM TARGET SEAL (`mage_vfx.png` Rows 5, 4, 2)
+    // 1. 2.5D PIXEL-ART GROUND CATACLYSM TARGET SEAL (`mage_vfx.png` Rows 5, 4, 1)
     // =========================================================================
     const gx = Math.round(m.targetX);
     const gy = Math.round(this.groundY - 6);
-    const ringScale = m.phase === 'descent' ? 0.92 + 0.38 * m.progress : Math.max(0.25, m.riftScale);
-    const sealW = Math.round(460 * ringScale);
-    const sealH = Math.round(135 * ringScale);
+    const ringScale = m.phase === 'descent' ? 0.94 + 0.36 * m.progress : Math.max(0.25, m.riftScale);
+    const sealW = Math.round(480 * ringScale);
+    const sealH = Math.round(140 * ringScale);
 
     ctx.save();
     ctx.translate(gx, gy);
 
     if (renderer && renderer.glowOrange) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.55 * ringScale;
-      ctx.drawImage(renderer.glowOrange, -sealW * 0.65, -sealH * 0.9, sealW * 1.3, sealH * 1.8);
+      ctx.globalAlpha = 0.42 * Math.min(1, ringScale);
+      ctx.drawImage(renderer.glowOrange, -sealW * 0.58, -sealH * 0.85, sealW * 1.16, sealH * 1.7);
     }
 
-    // Outer 2.5D Accretion Target Seal (Row 5 `y = 1040`, `astralSkyBreachPortalCell`)
+    // Outer 2.5D Accretion Target Seal (Row 5 `y = 1040`, native `208x208` `astralSkyBreachPortalCell`)
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = 0.94 * Math.min(1, ringScale * 1.15);
+    ctx.globalAlpha = 0.95 * Math.min(1, ringScale * 1.15);
     ctx.drawImage(
       vfxSheet,
       baseCol * 208,
@@ -1361,7 +1390,7 @@ export class FireMage extends Fighter {
     const innerW = Math.round(sealW * 0.72);
     const innerH = Math.round(sealH * 0.72);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.92 * Math.min(1, ringScale * 1.15);
+    ctx.globalAlpha = 0.9 * Math.min(1, ringScale * 1.15);
     ctx.drawImage(
       vfxSheet,
       ((baseCol + 9) % 30) * 208,
@@ -1374,10 +1403,10 @@ export class FireMage extends Fighter {
       innerH
     );
 
-    // Stepped Pixel-Art Catastrophe Lock-On Pillars rising from the Target Seal
+    // Stepped Pixel-Art Catastrophe Lock-On Flare rising from the Target Seal (Row 1 `y = 208`)
     const pillarCol = (baseCol + 4) % 30;
-    const pillarW = Math.round(96 * ringScale);
-    const pillarH = Math.round(148 * ringScale);
+    const pillarW = Math.round(104 * ringScale);
+    const pillarH = Math.round(164 * ringScale);
     ctx.drawImage(
       vfxSheet,
       pillarCol * 208,
@@ -1392,26 +1421,48 @@ export class FireMage extends Fighter {
     ctx.restore();
 
     // =========================================================================
-    // 2. 30FPS PIXEL-ART DIMENSIONAL HEAVENSFALL SKY BREACH (`mage_vfx.png` Rows 5, 2, 7)
+    // 2. HIGH-COSMOS DIMENSIONAL HEAVENSFALL SKY BREACH (`ry = startY - 18`, `~698px` high!)
     // =========================================================================
     const rx = Math.round(m.startX);
-    const ry = Math.round(this.groundY - 432);
-    const riftScale = Math.max(0.22, m.riftScale);
-    const breachW = Math.round(520 * riftScale);
-    const breachH = Math.round(240 * riftScale);
+    const ry = Math.round(m.startY - 18);
+    const riftScale = Math.max(0.24, m.riftScale);
+    const breachW = Math.round(620 * riftScale);
+    const breachH = Math.round(256 * riftScale);
+
+    // Stepped Pixel-Art Starfall Lock-On Motes pulsing along the `(rx, ry) -> (gx, gy)` trajectory
+    const guideFade = m.phase === 'rift' ? riftScale * 0.78 : Math.max(0, (1 - m.progress * 1.15) * 0.65);
+    if (guideFade > 0.04) {
+      const moteCount = 9;
+      const scroll = (now * 2.4) % 1;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (let i = 0; i < moteCount; i++) {
+        const uGuide = (i + scroll) / moteCount;
+        if (uGuide < 0.08 || uGuide > 0.94) continue;
+        const px = Math.round((rx + (gx - rx) * uGuide) / 2) * 2;
+        const py = Math.round((ry + (gy - ry) * uGuide) / 2) * 2;
+        const env = Math.sin(uGuide * Math.PI) * guideFade;
+        ctx.globalAlpha = env * 0.85;
+        ctx.fillStyle = i % 2 === 0 ? '#fef08a' : '#fb923c';
+        ctx.fillRect(px - 2, py - 6, 4, 12);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 1, py - 3, 2, 6);
+      }
+      ctx.restore();
+    }
 
     ctx.save();
     ctx.translate(rx, ry);
 
     if (renderer && renderer.glowOrange) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.68 * riftScale;
-      ctx.drawImage(renderer.glowOrange, -breachW * 0.65, -breachH * 0.65, breachW * 1.3, breachH * 1.3);
+      ctx.globalAlpha = 0.44 * riftScale;
+      ctx.drawImage(renderer.glowOrange, -breachW * 0.56, -breachH * 0.6, breachW * 1.12, breachH * 1.2);
     }
 
-    // Primary 30fps Pixel-Art Dimensional Sky Breach Portal (Row 5 `y = 1040`, `astralSkyBreachPortalCell`)
+    // Primary Native `208x208` 30fps Dimensional Sky Breach Portal (Row 5 `y = 1040`)
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = Math.min(1, riftScale * 1.12);
+    ctx.globalAlpha = Math.min(1, riftScale * 1.15);
     ctx.drawImage(
       vfxSheet,
       baseCol * 208,
@@ -1424,11 +1475,11 @@ export class FireMage extends Fighter {
       breachH
     );
 
-    // Counter-Rotating Black-Sun Eclipse Singularity Core inside the Breach (Row 2 `y = 416`, `blackSunEclipseSphereCell`)
-    const coreW = Math.round(310 * riftScale);
-    const coreH = Math.round(180 * riftScale);
+    // Counter-Rotating Black-Sun Eclipse Singularity Core inside the Breach (Row 2 `y = 416`)
+    const coreW = Math.round(340 * riftScale);
+    const coreH = Math.round(188 * riftScale);
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.9 * riftScale;
+    ctx.globalAlpha = 0.88 * riftScale;
     ctx.drawImage(
       vfxSheet,
       revCol * 208,
@@ -1443,164 +1494,73 @@ export class FireMage extends Fighter {
     ctx.restore();
 
     // =========================================================================
-    // 3. MULTI-NODE 30FPS PIXEL-ART PLASMA WAKE & SUPERSONIC MACH RINGS (`Rows 7 & 3`)
+    // 3. AXIS-ALIGNED 30FPS PIXEL-ART COMET WAKE PLUMES (`Row 7`, ZERO `ctx.rotate`!)
     // =========================================================================
     const mx = Math.round(m.x);
     const my = Math.round(m.y);
-    const trajAng = Math.atan2(m.targetY - m.startY, m.targetX - m.startX);
 
     if (m.phase === 'descent') {
       const wakeNodes = 7;
-      for (let i = 0; i < wakeNodes; i++) {
-        const uNode = (i + 1) / (wakeNodes + 1);
+      for (let i = wakeNodes - 1; i >= 0; i--) {
+        const uNode = (i + 0.65) / (wakeNodes + 0.6);
         const wx = Math.round(mx + (rx - mx) * uNode);
         const wy = Math.round(my + (ry - my) * uNode);
-        const wSize = Math.round((310 - uNode * 135) * (0.85 + 0.35 * m.progress));
+        const wSize = Math.round((384 - uNode * 146) * (0.88 + 0.3 * m.progress));
         const wCol = (baseCol + i * 4) % 30;
+        // Anchor Row 7's rounded plume base `(baseX=+24, baseY=+48)` smoothly along the wake!
+        const wOffX = Math.round(-wSize * ((104 + 24) / 208));
+        const wOffY = Math.round(-wSize * ((104 + 48) / 208));
 
         ctx.save();
         ctx.translate(wx, wy);
-        ctx.rotate(trajAng - Math.PI * 0.5);
+        ctx.scale(meteorDir, 1);
         ctx.imageSmoothingEnabled = false;
-        ctx.globalCompositeOperation = i < 3 ? 'source-over' : 'lighter';
+        ctx.globalCompositeOperation = i < 4 ? 'source-over' : 'lighter';
         ctx.globalAlpha = (1 - uNode * 0.62) * 0.95;
-        // Row 7 (`y = 1456`, `astralCataclysmWakeCell`): 30fps roaring FBM solar plasma wake & Mach rings
-        ctx.drawImage(
-          vfxSheet,
-          wCol * 208,
-          1456,
-          208,
-          208,
-          Math.round(-wSize * 0.5),
-          Math.round(-wSize * 0.5),
-          wSize,
-          wSize
-        );
-        ctx.restore();
-      }
-
-      // Secondary trailing molten meteor wake nodes (`m.trailNodes` using Row 3 `y = 624`)
-      for (let idx = 0; idx < m.trailNodes.length; idx++) {
-        const tn = m.trailNodes[idx];
-        const ageU = (idx + 1) / m.trailNodes.length;
-        const tCol = (baseCol + (tn.frameOffset || idx * 3)) % 30;
-        const tSize = Math.round(tn.size * (0.55 + 0.45 * ageU));
-
-        ctx.save();
-        ctx.translate(Math.round(tn.x), Math.round(tn.y));
-        ctx.rotate(trajAng);
-        ctx.imageSmoothingEnabled = false;
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = ageU * 0.78;
-        ctx.drawImage(
-          vfxSheet,
-          tCol * 208,
-          624,
-          208,
-          208,
-          Math.round(-tSize * 0.5),
-          Math.round(-tSize * 0.5),
-          tSize,
-          tSize
-        );
+        ctx.drawImage(vfxSheet, wCol * 208, 1456, 208, 208, wOffX, wOffY, wSize, wSize);
         ctx.restore();
       }
     }
 
     // =========================================================================
-    // 4. COLOSSAL 30FPS 3D-ROTATING PIXEL-ART ASTEROID CORE (`Row 6`, `y = 1248`)
+    // 4. COLOSSAL NATIVE `208x208` 30FPS ASTRAL DREADNOUGHT METEOR (`Row 6`, `y = 1248`)
+    //    - ZERO `ctx.rotate`: crisp HD-2D integer pixels via `ctx.scale(meteorDir, 1)`!
     // =========================================================================
     const meteorScale =
       m.phase === 'rift'
-        ? 0.72 + 0.46 * m.riftScale
-        : 1.22 + 0.56 * m.progress;
-    const meteorSize = Math.round(268 * meteorScale);
-    const halfMeteor = Math.round(-meteorSize * 0.5);
+        ? 0.82 + 0.66 * m.riftScale
+        : 1.54 + 0.72 * m.progress; // 320px at breach -> 470px world-ender at impact!
+    const meteorSize = Math.round(208 * meteorScale);
+    // Align Row 6's boulder center `(headX = +18, headY = +27)` directly onto `(mx, my)`
+    const drawOffX = Math.round(-meteorSize * ((104 + 18) / 208));
+    const drawOffY = Math.round(-meteorSize * ((104 + 27) / 208));
 
     ctx.save();
     ctx.translate(mx, my);
+    ctx.scale(meteorDir, 1);
     ctx.imageSmoothingEnabled = false;
 
-    if (renderer) {
+    // Soft tight atmospheric core bloom (kept well inside `meteorSize` so zero quad border can ever show)
+    if (renderer && renderer.glowOrange) {
       ctx.globalCompositeOperation = 'lighter';
-      if (renderer.glowOrange) {
-        ctx.globalAlpha = 0.78;
-        ctx.drawImage(
-          renderer.glowOrange,
-          -meteorSize * 0.85,
-          -meteorSize * 0.85,
-          meteorSize * 1.7,
-          meteorSize * 1.7
-        );
-      }
-      if (renderer.glowWhite) {
-        ctx.globalAlpha = 0.48;
-        ctx.drawImage(
-          renderer.glowWhite,
-          -meteorSize * 0.52,
-          -meteorSize * 0.52,
-          meteorSize * 1.04,
-          meteorSize * 1.04
-        );
-      }
+      ctx.globalAlpha = 0.36;
+      const glowR = Math.round(meteorSize * 0.48);
+      ctx.drawImage(renderer.glowOrange, -glowR, -glowR, glowR * 2, glowR * 2);
     }
 
-    // Layer A: Roaring 30fps Pixel-Art Plasma Plume Crown behind the Asteroid (`Row 7`, `y = 1456`)
-    if (m.phase === 'descent') {
-      const crownSize = Math.round(meteorSize * 1.24);
-      ctx.save();
-      ctx.rotate(trajAng - Math.PI * 0.5);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.95;
-      ctx.drawImage(
-        vfxSheet,
-        ((baseCol + 5) % 30) * 208,
-        1456,
-        208,
-        208,
-        Math.round(-crownSize * 0.5),
-        Math.round(-crownSize * 0.62),
-        crownSize,
-        crownSize
-      );
-      ctx.restore();
-    }
-
-    // Layer B: Colossal 30fps 3D-Rotating Tectonic Obsidian & Magma Asteroid Core (`Row 6`, `y = 1248`, `astralMeteorColossusCell`)
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = m.phase === 'rift' ? Math.min(1, m.riftScale * 1.18) : 1.0;
+    ctx.globalAlpha = m.phase === 'rift' ? Math.min(1, m.riftScale * 1.25) : 1.0;
     ctx.drawImage(
       vfxSheet,
       baseCol * 208,
       1248,
       208,
       208,
-      halfMeteor,
-      halfMeteor,
+      drawOffX,
+      drawOffY,
       meteorSize,
       meteorSize
     );
-
-    // Layer C: Supersonic 30fps Pixel-Art Bow-Shock & Mach Ring Overlay (`Row 3`, `y = 624`, `cataclysmSolarMeteorCell`)
-    if (m.phase === 'descent') {
-      const shockSize = Math.round(meteorSize * 1.08);
-      ctx.save();
-      ctx.rotate(trajAng);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.82;
-      ctx.drawImage(
-        vfxSheet,
-        ((baseCol + 11) % 30) * 208,
-        624,
-        208,
-        208,
-        Math.round(-shockSize * 0.5),
-        Math.round(-shockSize * 0.5),
-        shockSize,
-        shockSize
-      );
-      ctx.restore();
-    }
 
     ctx.restore();
     ctx.restore();
