@@ -9,6 +9,7 @@
 
 import {
   PURE_WHITE,
+  packHexColor,
   buildColorRamp,
   clamp01,
   smoothStep,
@@ -19,7 +20,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps55';
+} from '../ArcaneShaderFX.js?v=30fps56';
 
 export const RUNIC_CYAN_PALETTE = [
   '#061228',
@@ -677,6 +678,229 @@ export const tempestCycloneRing = {
   }
 };
 
+/**
+ * Render a sharp, multi-faceted HD-2D Glacial Frost-Crystal / Runic Ice Spire (`drawRunicGlacialCrystalSpire`)
+ * erupting from `(baseX, baseY)` with a curved 2.5D elliptical frost-crater base (`botCurve`),
+ * 1px `#06182c` dark sapphire selective outline, stepped hexagonal crystal facets (`cyan[2..6]`),
+ * internal diagonal frost-refraction seams, central prism ridge, and glowing golden Elder-Rune engravings.
+ */
+export function drawRunicGlacialCrystalSpire(
+  pen,
+  baseX,
+  baseY,
+  height,
+  baseW,
+  tiltX,
+  cyan,
+  gold,
+  env = 1
+) {
+  if (env <= 0.02 || height <= 3.5 || baseW <= 2.0) return;
+  const DARK_SAPPHIRE = packHexColor('#06182c');
+  const halfBaseW = baseW * 0.5;
+  const topY = baseY - height;
+  const botMaxY = baseY + 4.2;
+  const isCell = pen.w === 104 && pen.h === 104;
+
+  const yMin = Math.floor(topY - 1);
+  const yMax = Math.ceil(botMaxY + 1);
+
+  for (let ly = yMin; ly <= yMax; ly++) {
+    let hFrac = 0;
+    let spireCx = baseX;
+    let halfW = halfBaseW;
+
+    if (ly <= baseY) {
+      hFrac = clamp01((baseY - ly) / Math.max(1, height));
+      spireCx = baseX + tiltX * hFrac;
+      if (hFrac < 0.62) {
+        // Faceted hexagonal crystal shaft with subtle stepped shoulder taper
+        halfW = halfBaseW * (1.0 - hFrac * 0.28);
+      } else {
+        // Razor-sharp pyramidal diamond crystal point (`hFrac = 0.62 .. 1.0`)
+        const tipU = (hFrac - 0.62) / 0.38;
+        halfW = halfBaseW * 0.826 * Math.pow(Math.max(0, 1 - tipU), 0.86);
+      }
+    } else {
+      // Below `baseY`: curved 2.5D elliptical frost-crater base
+      hFrac = 0;
+      spireCx = baseX;
+      halfW = halfBaseW;
+    }
+
+    const maxDx = Math.ceil(halfW + 1);
+    for (let dx = -maxDx; dx <= maxDx; dx++) {
+      const adx = Math.abs(dx);
+      if (adx > halfW + 0.25) continue;
+
+      const lx = spireCx + dx;
+      const baseDx = lx - baseX;
+      const normBaseDx = Math.min(1, (baseDx / Math.max(1, halfBaseW)) ** 2);
+      const botCurve = baseY + Math.sqrt(Math.max(0, 1 - normBaseDx)) * 4.2;
+      if (ly > botCurve || ly < topY) continue;
+
+      const sx = pen.gridX(lx, ly);
+      const sy = pen.gridY(lx, ly);
+      if (isCell && (sx < 4 || sx > 99 || sy < 4 || sy > 99)) continue;
+
+      // 1. Crisp 1px `#06182c` dark sapphire selective outline (`Selout`)
+      const isOutline =
+        adx >= halfW - 0.95 ||
+        ly <= topY + 1.15 ||
+        ly >= botCurve - 0.95;
+      if (isOutline) {
+        pen.writeRawStipple(sx, sy, DARK_SAPPHIRE, env * 0.98);
+        continue;
+      }
+
+      // 2. Central bright white/cyan prism ridge along the crystal spine
+      const ridgeW = Math.max(0.72, halfW * 0.16);
+      if (adx <= ridgeW) {
+        const ridgeCol = hFrac > 0.52 || adx < 0.45 ? PURE_WHITE : cyan[5];
+        pen.writeRawStipple(sx, sy, ridgeCol, env);
+        pen.writeRawGlow(sx, sy, cyan[5], 0.22 * env);
+        continue;
+      }
+
+      // 3. Glowing golden Elder-Rune engravings near the lower third (`0.12 <= hFrac <= 0.44`)
+      if (hFrac >= 0.12 && hFrac <= 0.44 && adx <= halfW * 0.56) {
+        const runeRow = Math.floor((hFrac - 0.12) * 28);
+        const isRuneBand =
+          (runeRow % 3 === 0 && adx >= ridgeW + 0.5 && adx <= halfW * 0.48) ||
+          (runeRow % 3 === 1 && Math.abs(adx - halfW * 0.34) < 0.65);
+        if (isRuneBand) {
+          const runeCol = runeRow % 6 === 0 ? PURE_WHITE : dx < 0 ? gold[5] : gold[4];
+          pen.writeRawStipple(sx, sy, runeCol, env * 0.98);
+          pen.writeRawGlow(sx, sy, gold[5], 0.24 * env);
+          continue;
+        }
+      }
+
+      // 4. Internal diagonal frost-refraction seams across the crystal facets
+      const seamVal = (((lx * 0.72 + ly * 0.46) % 6.5) + 6.5) % 6.5;
+      if (Math.abs(seamVal - 3.25) < 0.55 && hFrac > 0.08 && hFrac < 0.88) {
+        const seamCol = dx < 0 ? PURE_WHITE : cyan[5];
+        pen.writeRawStipple(sx, sy, seamCol, env * 0.96);
+        continue;
+      }
+
+      // 5. Basal frost-rime snow glow where the spire erupts out of the ground crater (`hFrac < 0.09`)
+      if (hFrac < 0.09 && ly <= baseY + 2.2) {
+        const rimeCol = dx < 0 ? cyan[6] : cyan[4];
+        pen.writeRawStipple(sx, sy, rimeCol, env * 0.96);
+        continue;
+      }
+
+      // 6. Stepped left/right polygonal crystal prism facets
+      let facetCol;
+      if (dx < 0) {
+        // Left sunlit glacial facets (`cyan[4]` electric frost highlight & `cyan[6]` bright ice bevel)
+        facetCol = adx > halfW * 0.52 ? cyan[4] : hFrac > 0.66 ? PURE_WHITE : cyan[6];
+      } else {
+        // Right shaded sapphire facets (`cyan[3]` glacial blue mid-facet & `cyan[2]` deep sapphire shadow)
+        facetCol = adx < halfW * 0.48 ? cyan[3] : cyan[2];
+      }
+      pen.writeRawStipple(sx, sy, facetCol, env * 0.97);
+    }
+  }
+
+  // Specular frost glint at the crystal apex & radial core glow
+  const tipX = baseX + tiltX;
+  const tipGlintY = Math.max(isCell ? -44 : topY, topY + 1);
+  pen.stipple(tipX, tipGlintY, PURE_WHITE, env);
+  pen.radialGlow(
+    baseX + tiltX * 0.45,
+    baseY - height * 0.42,
+    Math.max(4, halfBaseW * 1.45),
+    cyan[5],
+    0.26 * env
+  );
+}
+
+/**
+ * Shared 5-Spire Faceted Glacial Frost-Crystal Monolith Cluster + Curved 2.5D Frost-Rune Crater Base.
+ * Used by both `skyJudgmentBladePillarCell` (Row 2 of `warrior_vfx.png`, `baseY = 34`)
+ * and `blinkTeleportPillar` (`skyJudgmentPillar`).
+ */
+function drawGlacialCrystalMonolithCluster(
+  pen,
+  baseY,
+  pop,
+  u,
+  env,
+  cyan,
+  gold,
+  band4,
+  goldBand4,
+  rng,
+  isBack = false,
+  heightScale = 1.0
+) {
+  if (env <= 0.02) return;
+  const craterRx = 28 * pop;
+  const innerRx = 18 * pop;
+  const aspectY = 0.20;
+
+  if (isBack) {
+    drawTiltedOrbitBand(pen, 0, baseY, craterRx, aspectY, 1.65, 0.9 * env, band4, BACK_HALF, false);
+    drawTiltedOrbitBand(pen, 0, baseY, innerRx, aspectY, 1.35, 0.84 * env, goldBand4, BACK_HALF, false);
+    drawElderStarCross(pen, 0, baseY, 25 * pop, 12 * pop, aspectY, u * 2.4, cyan[5], gold[5], 0.85 * env, BACK_HALF);
+    return;
+  }
+
+  const hScale = pop * heightScale;
+  // 1. Outer flanking Glacial Frost-Crystal Spires (`tilts: -16, +16`, height `32px`)
+  drawRunicGlacialCrystalSpire(pen, -14 * pop, baseY, 32 * hScale, 10.0 * pop, -16 * pop, cyan, gold, env * 0.94);
+  drawRunicGlacialCrystalSpire(pen, 14 * pop, baseY, 32 * hScale, 10.0 * pop, 16 * pop, cyan, gold, env * 0.94);
+
+  // 2. Inner flanking Glacial Frost-Crystal Spires (`tilts: -8, +8`, height `48px`)
+  drawRunicGlacialCrystalSpire(pen, -7 * pop, baseY, 48 * hScale, 13.0 * pop, -8 * pop, cyan, gold, env * 0.97);
+  drawRunicGlacialCrystalSpire(pen, 7 * pop, baseY, 48 * hScale, 13.0 * pop, 8 * pop, cyan, gold, env * 0.97);
+
+  // 3. Towering Central Glacial Frost-Crystal Monolith Spire (`tilt: 0`, height `68px`)
+  drawRunicGlacialCrystalSpire(pen, 0, baseY, 68 * hScale, 16.5 * pop, 0, cyan, gold, env);
+
+  // 4. Crackling Sapphire-Gold Runic Frost Lightning along the central crystal monolith
+  const mainH = 68 * hScale;
+  const spireChain = buildLightningChain(rng, 0, baseY - mainH * 0.92, 0, baseY - 2, 0.14, 4);
+  pen.polyline(spireChain, gold[6], 0.88 * env);
+  pen.polyline(spireChain, PURE_WHITE, 0.95 * env);
+
+  // 5. Erupting Frost-Shard Debris orbiting & rising around the crystal spires
+  const DARK_SAPPHIRE = packHexColor('#06182c');
+  for (let s = 0; s < 8; s++) {
+    const su = (u * 1.65 + s / 8) % 1;
+    const side = s % 2 === 0 ? -1 : 1;
+    const sx = side * (9 + (s % 4) * 5.2) * pop + Math.sin(u * 8 + s) * 2.0;
+    const sy = baseY - 6 - su * (mainH * 0.78);
+    if (pen.w === 104 && (sy < -42 || sy > 42 || Math.abs(sx) > 40)) continue;
+    pen.fillCircle(sx, sy, 2.1, DARK_SAPPHIRE, env * (1 - su * 0.5));
+    pen.fillCircle(sx, sy, 1.3, s % 3 === 0 ? gold[5] : cyan[5], env * (1 - su * 0.45));
+    pen.stipple(sx, sy - 0.5, PURE_WHITE, env * (1 - su * 0.45));
+  }
+
+  // 6. Front half of the Curved 2.5D Frost-Rune Crater Base at `cy: baseY`
+  drawTiltedOrbitBand(pen, 0, baseY, craterRx, aspectY, 1.8, 0.96 * env, band4, FRONT_HALF, u < 0.35);
+  drawTiltedOrbitBand(pen, 0, baseY, innerRx, aspectY, 1.4, 0.90 * env, goldBand4, FRONT_HALF, false);
+  drawElderStarCross(pen, 0, baseY, 25 * pop, 12 * pop, aspectY, u * 2.4, cyan[5], gold[5], 0.92 * env, FRONT_HALF);
+
+  for (let d = 0; d < 6; d++) {
+    const a = u * 3.0 + (d * Math.PI) / 3;
+    if (Math.sin(a) < 0) continue;
+    drawPixelElderRune(
+      pen,
+      Math.cos(a) * craterRx,
+      baseY + Math.sin(a) * craterRx * aspectY,
+      2.1,
+      d % 2 === 0 ? cyan[6] : gold[5],
+      PURE_WHITE,
+      env
+    );
+  }
+
+  drawStarburstFlare(pen, 0, baseY - 2, 9.5 * pop, 0.95 * env, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
+}
+
 // ============================================================================
 // 4. 2.5D ELDER-RUNE BLINK TELEPORT PILLAR & DOMAIN (`blinkTeleportPillar`)
 // ============================================================================
@@ -707,13 +931,13 @@ export const blinkTeleportPillar = {
         acc += dt * (cfg.isDomain ? 40 : 54);
         while (acc >= 1 && t < totalDur * 0.86) {
           acc -= 1;
-          const maxR = cfg.isDomain ? 52 : 18;
+          const maxR = cfg.isDomain ? 52 : 22;
           const a = rng.between(0, Math.PI * 2);
           const r = rng.between(4, maxR);
           motes.emit(
             rng.chance(0.55) ? 'glint' : 'spark',
             Math.cos(a) * r,
-            Math.sin(a) * r * 0.22 - (cfg.isSky ? 22 : 2),
+            Math.sin(a) * r * 0.22 - 2,
             rng.between(-14, 14),
             rng.between(-95, -28),
             rng.between(0.18, 0.36),
@@ -751,9 +975,8 @@ export const blinkTeleportPillar = {
           return;
         }
 
-        const ringY = cfg.isSky ? -24 : 0;
-        const ringR = (16 + u * 10) * pop;
-        drawTiltedOrbitBand(pen, 0, ringY, ringR, 0.25, 1.5, 0.86 * env, band4, BACK_HALF, false);
+        const baseY = pen.w === 104 ? 34 : 1;
+        drawGlacialCrystalMonolithCluster(pen, baseY, pop, u, env, cyan, gold, band4, goldBand4, rng, true);
       },
       renderFront(pen) {
         const u = clamp01(t / totalDur);
@@ -783,71 +1006,9 @@ export const blinkTeleportPillar = {
           return;
         }
 
-        const swordLen = Math.min(58, Math.max(40, (cfg.heightWorld || 168) / 3)) * (0.82 + 0.18 * pop);
-        const baseY = cfg.isSky ? 4 : 0;
-        const tipY = baseY - 1;
-        const tiltRad = (28 * Math.PI) / 180;
-
-        // Sweeping X-Cross Runic Crescent Shockwave Wings
-        drawMultiLayerCrescentArc(pen, {
-          cx: -3,
-          cy: baseY - swordLen * 0.36,
-          radius: 22 * pop,
-          width: 7.2,
-          eccentricity: 0.78,
-          headAngle: 0.92 + u * 0.25,
-          tailAngle: -0.92 + u * 0.25,
-          fade: env * 0.92,
-          ramp: cyan,
-          seed: cfg.seed || 157,
-          t,
-          flashHot: u < 0.35
-        });
-        drawMultiLayerCrescentArc(pen, {
-          cx: 3,
-          cy: baseY - swordLen * 0.36,
-          radius: 20 * pop,
-          width: 6.4,
-          eccentricity: 0.78,
-          headAngle: Math.PI - 0.92 - u * 0.25,
-          tailAngle: Math.PI + 0.92 - u * 0.25,
-          fade: env * 0.88,
-          ramp: gold,
-          seed: (cfg.seed || 157) + 23,
-          t,
-          flashHot: false
-        });
-
-        // 2 Flanking Angled Diagonal Phantom Runeblades (`±28°` tilt)
-        drawRunicGreatswordSilhouette(pen, -6, tipY - 2, swordLen * 0.84, 3.6, -tiltRad, cyan, gold, env * 0.9, true);
-        drawRunicGreatswordSilhouette(pen, 6, tipY - 2, swordLen * 0.84, 3.6, tiltRad, cyan, gold, env * 0.9, true);
-
-        // Central Colossal Pointed Runic Broadsword (complete pommel jewel at top, pointed tip at bottom)
-        drawRunicGreatswordSilhouette(pen, 0, tipY, swordLen, 5.2, 0, cyan, gold, env, false);
-
-        const bolt = buildLightningChain(rng, 0, tipY - swordLen * 0.92, 0, baseY, 0.14, 3);
-        pen.polyline(bolt, gold[6], 0.9 * env);
-        pen.polyline(bolt, PURE_WHITE, 0.95 * env);
-
-        // Curved 2.5D Elliptical Runic Crater Base
-        const ringY = cfg.isSky ? baseY : 0;
-        const ringR = (18 + u * 8) * pop;
-        drawTiltedOrbitBand(pen, 0, ringY, ringR, 0.24, 1.65, 0.95 * env, band4, FRONT_HALF, u < 0.35);
-        drawElderStarCross(pen, 0, ringY, ringR * 0.88, ringR * 0.42, 0.24, u * 2.8, cyan[5], gold[5], 0.88 * env, FRONT_HALF);
-        for (let i = 0; i < 4; i++) {
-          const a = u * 5.2 + (i * Math.PI) / 2;
-          if (Math.sin(a) < 0) continue;
-          drawPixelElderRune(
-            pen,
-            Math.cos(a) * ringR,
-            ringY + Math.sin(a) * ringR * 0.24,
-            2.2,
-            i % 2 === 0 ? cyan[6] : gold[5],
-            PURE_WHITE,
-            env
-          );
-        }
-        drawStarburstFlare(pen, 0, ringY - 2, 9.5 * env, 0.94 * env, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
+        const baseY = pen.w === 104 ? 34 : 1;
+        const hScale = Math.min(1.15, Math.max(0.75, (cfg.heightWorld || 188) / 188));
+        drawGlacialCrystalMonolithCluster(pen, baseY, pop, u, env, cyan, gold, band4, goldBand4, rng, false, hScale);
         motes.render(pen);
       }
     };
@@ -870,7 +1031,8 @@ export const earthshatterJudgmentWave = {
     const band4 = [cyan[2], cyan[5], gold[6], PURE_WHITE];
     const goldBand4 = [gold[2], gold[5], cyan[6], PURE_WHITE];
     const rng = new DeterministicRng(cfg.seed);
-    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, cyan[6], gold[5], cyan[4]], floorY: 0 });
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, cyan[6], gold[5], cyan[4]], floorY: 2 });
+    const DARK_SAPPHIRE = packHexColor('#06182c');
     let t = 0;
     let burstDone = false;
 
@@ -879,12 +1041,12 @@ export const earthshatterJudgmentWave = {
         if (!burstDone) {
           burstDone = true;
           for (let i = 0; i < 28; i++) {
-            const rx = rng.between(-46, 46);
+            const rx = rng.between(-44, 62);
             motes.emit(
               i % 2 === 0 ? 'glint' : 'spark',
               rx,
-              -2,
-              rx * 2.6,
+              0,
+              rx * 2.2,
               rng.between(-135, -48),
               rng.between(0.24, 0.52),
               i % 3 === 0 ? gold[5] : cyan[5],
@@ -898,49 +1060,75 @@ export const earthshatterJudgmentWave = {
       },
       renderBack(pen) {
         const u = clamp01(t / 0.72);
-        const pop = smoothStep(0, 0.18, u);
+        const pop = smoothStep(0, 0.16, u);
         const fade = 1 - Math.pow(u, 1.45);
         if (fade <= 0.02) return;
 
+        // Curved 2.5D Frost Shockwaves anchored directly on the ground (`cy: 0`)
         drawTiltedOrbitBand(pen, 0, 0, 56 * pop, 0.22, 2.0, 0.88 * fade, band4, BACK_HALF, false);
         drawTiltedOrbitBand(pen, 0, 0, 36 * pop, 0.22, 1.6, 0.82 * fade, goldBand4, BACK_HALF, false);
         drawElderStarCross(pen, 0, 0, 48 * pop, 22 * pop, 0.22, u * 2.2, cyan[5], gold[5], 0.82 * fade, BACK_HALF);
+
+        // Glowing Frost-Fissure Crack tearing along `y = 0..+8` from `x = -44` to `x = +66`
+        const reachU = smoothStep(0, 0.42, u);
+        const maxX = -44 + 110 * reachU;
+        const fissureChain = buildLightningChain(rng, -44, 3, maxX, 4, 0.08, 4);
+        for (let i = 1; i < fissureChain.length; i++) {
+          const [x0, y0] = fissureChain[i - 1];
+          const [x1, y1] = fissureChain[i];
+          const cy0 = Math.max(0, Math.min(8, y0));
+          const cy1 = Math.max(0, Math.min(8, y1));
+          pen.line(x0, cy0 + 2, x1, cy1 + 2, DARK_SAPPHIRE, 0.96 * fade);
+          pen.line(x0, cy0 - 1, x1, cy1 - 1, DARK_SAPPHIRE, 0.94 * fade);
+          pen.line(x0, cy0 + 1, x1, cy1 + 1, cyan[4], 0.95 * fade);
+          pen.line(x0, cy0, x1, cy1, i % 2 === 0 ? PURE_WHITE : gold[5], 0.98 * fade);
+        }
       },
       renderFront(pen) {
         const u = clamp01(t / 0.72);
-        const pop = smoothStep(0, 0.18, u);
+        const pop = smoothStep(0, 0.16, u);
         const fade = 1 - Math.pow(u, 1.45);
         if (fade <= 0.02) return;
 
-        drawMultiLayerCrescentArc(pen, {
-          cx: 0,
-          cy: -18,
-          radius: 36,
-          width: 11.5,
-          eccentricity: 0.78,
-          headAngle: 1.45,
-          tailAngle: -1.45,
-          fade,
-          ramp: cyan,
-          seed: cfg.seed || 193,
-          t,
-          flashHot: u < 0.35
-        });
-        drawMultiLayerCrescentArc(pen, {
-          cx: -2,
-          cy: -18,
-          radius: 26,
-          width: 8.0,
-          eccentricity: 0.78,
-          headAngle: 1.32,
-          tailAngle: -1.32,
-          fade: fade * 0.85,
-          ramp: gold,
-          seed: (cfg.seed || 193) + 29,
-          t,
-          flashHot: false
-        });
+        // Chaining 7-Spire Faceted Glacial Frost-Crystal Wave erupting directly out of `y = 0` (`baseY = 2`)
+        // marching forward (`x` from `-44` to `+66` as `u` progresses)
+        const spireHeights = cfg.isUltimate !== false
+          ? [38, 48, 58, 68, 62, 52, 42]
+          : [30, 38, 46, 56, 50, 42, 34];
+        const spireWidths = [10.5, 12.0, 14.0, 16.5, 15.0, 13.0, 11.0];
 
+        for (let i = 0; i < 7; i++) {
+          const spireX = -44 + i * (110 / 6);
+          const delayU = i * 0.052;
+          if (u <= delayU) continue;
+          const localU = clamp01((u - delayU) / Math.max(0.18, 0.92 - delayU));
+          const spirePop = smoothStep(0, 0.22, localU);
+          const spireFade = 1 - smoothStep(0.76, 1.0, localU);
+          const spireEnv = spirePop * spireFade * fade;
+          if (spireEnv <= 0.02) continue;
+
+          const h = spireHeights[i] * spirePop;
+          const w = spireWidths[i] * (0.65 + 0.35 * spirePop);
+          const tiltX = (-6 + i * 3.8) * spirePop;
+
+          // Secondary basal frost-crystal shard flanking the main spire
+          drawRunicGlacialCrystalSpire(
+            pen,
+            spireX + (i % 2 === 0 ? -5.5 : 5.5),
+            3,
+            h * 0.52,
+            w * 0.65,
+            tiltX * 1.25,
+            cyan,
+            gold,
+            spireEnv * 0.92
+          );
+
+          // Primary multi-faceted Glacial Frost-Crystal Spire erupting out of `y = 2`
+          drawRunicGlacialCrystalSpire(pen, spireX, 2, h, w, tiltX, cyan, gold, spireEnv);
+        }
+
+        // Front half of the Curved 2.5D Frost Shockwaves anchored at `cy: 0`
         drawTiltedOrbitBand(pen, 0, 0, 56 * pop, 0.22, 2.2, 0.96 * fade, band4, FRONT_HALF, true);
         drawTiltedOrbitBand(pen, 0, 0, 36 * pop, 0.22, 1.7, 0.90 * fade, goldBand4, FRONT_HALF, false);
         drawElderStarCross(pen, 0, 0, 48 * pop, 22 * pop, 0.22, u * 2.2, cyan[5], gold[5], 0.90 * fade, FRONT_HALF);
@@ -960,7 +1148,7 @@ export const earthshatterJudgmentWave = {
         }
 
         if (u < 0.68) {
-          const bolt = buildLightningChain(rng, 0, -68, 0, 0, 0.15, 4);
+          const bolt = buildLightningChain(rng, 11, -64, 11, 2, 0.15, 4);
           pen.polyline(bolt, cyan[5], fade * 0.92);
           pen.polyline(
             bolt.map((p) => [p[0] + 1, p[1]]),
@@ -969,7 +1157,7 @@ export const earthshatterJudgmentWave = {
           );
           pen.polyline(bolt, PURE_WHITE, fade * 0.98);
         }
-        drawStarburstFlare(pen, 0, -2, 13.5 * fade, fade * 0.96, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
+        drawStarburstFlare(pen, 0, 0, 12.5 * fade, fade * 0.96, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
         motes.render(pen);
       }
     };
@@ -1195,11 +1383,8 @@ export const skyJudgmentBladePillarCell = {
         const env = (0.9 + 0.1 * smoothStep(0, 0.12, u)) * fade;
         if (env <= 0.02) return;
 
-        const baseY = 26;
-        // Back half of the curved 2.5D elliptical runic crater base
-        drawTiltedOrbitBand(pen, 0, baseY, 27 * pop, 0.23, 1.6, 0.9 * env, band4, BACK_HALF, false);
-        drawTiltedOrbitBand(pen, 0, baseY, 17 * pop, 0.23, 1.3, 0.84 * env, goldBand4, BACK_HALF, false);
-        drawElderStarCross(pen, 0, baseY, 25 * pop, 12 * pop, 0.23, u * 2.4, cyan[5], gold[5], 0.85 * env, BACK_HALF);
+        const baseY = 34;
+        drawGlacialCrystalMonolithCluster(pen, baseY, pop, u, env, cyan, gold, band4, goldBand4, rng, true);
       },
       renderFront(pen, localT) {
         const u = clamp01(localT);
@@ -1208,84 +1393,11 @@ export const skyJudgmentBladePillarCell = {
         const env = (0.9 + 0.1 * smoothStep(0, 0.12, u)) * fade;
         if (env <= 0.02) return;
 
-        // Strictly bounded inside `[-36, +36]`:
-        // Tip at `tipY = 25`, totalLen = `55 * pop` -> pommel finial at `y = -30` (100% inside cell!)
-        const baseY = 26;
-        const tipY = 25;
-        const mainLen = 55 * pop;
-        const flankLen = 45 * pop;
-        const tiltRad = (28 * Math.PI) / 180;
-
-        // 1. Sweeping X-Cross Runic Crescent Shockwave Wings (`drawMultiLayerCrescentArc`)
-        drawMultiLayerCrescentArc(pen, {
-          cx: -4,
-          cy: 2,
-          radius: 23 * pop,
-          width: 7.4,
-          eccentricity: 0.78,
-          headAngle: 0.96 + u * 0.22,
-          tailAngle: -0.96 + u * 0.22,
-          fade: env * 0.94,
-          ramp: cyan,
-          seed: cfg.seed || 523,
-          t: u,
-          flashHot: u < 0.38
-        });
-        drawMultiLayerCrescentArc(pen, {
-          cx: 4,
-          cy: 2,
-          radius: 21 * pop,
-          width: 6.8,
-          eccentricity: 0.78,
-          headAngle: Math.PI - 0.96 - u * 0.22,
-          tailAngle: Math.PI + 0.96 - u * 0.22,
-          fade: env * 0.90,
-          ramp: gold,
-          seed: (cfg.seed || 523) + 29,
-          t: u,
-          flashHot: u < 0.38
-        });
-
-        // Diagonal X-Cross Cleave Rays behind the Runeblade Phalanx
-        const xSpan = 24 * pop;
-        pen.line(-xSpan, -xSpan * 0.75 + 2, xSpan, xSpan * 0.75 + 2, cyan[5], env * 0.88);
-        pen.line(-xSpan, xSpan * 0.75 + 2, xSpan, -xSpan * 0.75 + 2, gold[5], env * 0.88);
-        pen.line(-xSpan * 0.8, -xSpan * 0.6 + 2, xSpan * 0.8, xSpan * 0.6 + 2, PURE_WHITE, env * 0.94);
-        pen.line(-xSpan * 0.8, xSpan * 0.6 + 2, xSpan * 0.8, -xSpan * 0.6 + 2, PURE_WHITE, env * 0.94);
-
-        // 2. Two Angled Diagonal Phantom Runeblades (`±28°` tilt) flanking the central broadsword
-        drawRunicGreatswordSilhouette(pen, -7, tipY - 2, flankLen, 3.8 * pop, -tiltRad, cyan, gold, env * 0.92, true);
-        drawRunicGreatswordSilhouette(pen, 7, tipY - 2, flankLen, 3.8 * pop, tiltRad, cyan, gold, env * 0.92, true);
-
-        // 3. Central Colossal Pointed Runic Broadsword (`drawRunicGreatswordSilhouette`)
-        //    Pointed tip at bottom (`y = +25`), complete ornate pommel jewel at top (`y = -30`)
-        drawRunicGreatswordSilhouette(pen, 0, tipY, mainLen, 5.4 * pop, 0, cyan, gold, env, false);
-
-        // 4. Crackling Sapphire-Gold Runic Lightning Arcs along the Greatsword Phalanx
-        const spireChain = buildLightningChain(rng, 0, tipY - mainLen * 0.9, 0, baseY - 1, 0.14, 4);
-        pen.polyline(spireChain, gold[6], 0.92 * env);
-        pen.polyline(spireChain, PURE_WHITE, 0.96 * env);
-
-        // 5. Front half of the Curved 2.5D Elliptical Runic Crater Base at `baseY = 26`
-        drawTiltedOrbitBand(pen, 0, baseY, 27 * pop, 0.23, 1.75, 0.96 * env, band4, FRONT_HALF, u < 0.35);
-        drawTiltedOrbitBand(pen, 0, baseY, 17 * pop, 0.23, 1.4, 0.90 * env, goldBand4, FRONT_HALF, false);
-        drawElderStarCross(pen, 0, baseY, 25 * pop, 12 * pop, 0.23, u * 2.4, cyan[5], gold[5], 0.92 * env, FRONT_HALF);
-
-        for (let d = 0; d < 6; d++) {
-          const a = u * 3.0 + (d * Math.PI) / 3;
-          if (Math.sin(a) < 0) continue;
-          drawPixelElderRune(
-            pen,
-            Math.cos(a) * 27 * pop,
-            baseY + Math.sin(a) * 27 * pop * 0.23,
-            2.1,
-            d % 2 === 0 ? cyan[6] : gold[5],
-            PURE_WHITE,
-            env
-          );
-        }
-
-        drawStarburstFlare(pen, 0, tipY - 2, 9.5 * pop, 0.95 * env, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
+        // 5-Spire Faceted Glacial Frost-Crystal Monolith Cluster (`tilts: -16, -8, 0, +8, +16`,
+        // heights up to 68px for the central spire, 48px and 32px for the flanking spires)
+        // anchored at `baseY = 34` (`y = 86` in `104x104`), with curved 2.5D frost-rune crater base & frost-shard debris!
+        const baseY = 34;
+        drawGlacialCrystalMonolithCluster(pen, baseY, pop, u, env, cyan, gold, band4, goldBand4, rng, false, 1.0);
       }
     };
   }

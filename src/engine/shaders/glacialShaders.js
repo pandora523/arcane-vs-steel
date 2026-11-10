@@ -19,7 +19,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps55';
+} from '../ArcaneShaderFX.js?v=30fps56';
 
 export const GLACIAL_CRYO_PALETTE = [
   '#061224',

@@ -223,12 +223,17 @@ export class Renderer {
     this.ultDim = 0.65;
   }
 
-  triggerUltimateCutIn(caster) {
-    this.cutInTimer = 1.05;
-    this.cutInMaxTimer = 1.05;
+  triggerUltimateCutIn(caster, isTrueUlt = false) {
+    this.cutInTimer = isTrueUlt ? 1.45 : 1.05;
+    this.cutInMaxTimer = isTrueUlt ? 1.45 : 1.05;
     this.cutInHeroId = caster.heroId || 'warrior';
     this.cutInName = caster.name || 'CHAMPION';
-    this.cutInUltName = caster.ultName || 'ULTIMATE ART';
+    this.cutInUltName = isTrueUlt
+      ? caster.trueUltName || 'CELESTIAL SWORD OF JUSTICE'
+      : caster.ultName || 'ULTIMATE ART';
+    this.cutInEyebrow = isTrueUlt
+      ? `★ ${(caster.name || 'CHAMPION').toUpperCase()} • SUPREME ULTIMATE FINISHER ★`
+      : `★ ${(caster.name || 'CHAMPION').toUpperCase()} • OVERDRIVE ART ★`;
     this.cutInColor = caster.primaryColor || '#38bdf8';
     this.cutInFacing = caster.facing || 1;
   }
@@ -321,7 +326,7 @@ export class Renderer {
       targetZoom = Math.max(0.52, Math.min(this.isMobile ? 0.85 : 1.15, targetZoom));
 
       let targetX = midX;
-      let targetY = this.groundY - 95 - Math.min(95, maxAirLift * 0.32);
+      let targetY = this.groundY - 95 - Math.min(155, maxAirLift * 0.46);
 
       if (this.koZoomTimer > 0) {
         // Dramatic K.O. Finisher zoom toward the fatal impact
@@ -2174,7 +2179,8 @@ export class Renderer {
       const textShiftX = cutPort ? Math.round(pR * 0.55) : 0;
       ctx.textAlign = 'center';
       ctx.font = `${this.isMobile ? 7 : 10}px "Press Start 2P", monospace`;
-      const eyebrow = `★ ${(this.cutInName || 'CHAMPION').toUpperCase()} • OVERDRIVE ART ★`;
+      const eyebrow =
+        this.cutInEyebrow || `★ ${(this.cutInName || 'CHAMPION').toUpperCase()} • OVERDRIVE ART ★`;
       ctx.fillStyle = '#020617';
       ctx.fillText(eyebrow, textShiftX + 2, -9);
       ctx.fillText(eyebrow, textShiftX - 2, -9);

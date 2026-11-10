@@ -12,6 +12,13 @@ export class Fighter {
     this.hp = this.maxHp;
     this.mana = 0;
     this.maxMana = 100;
+    // Supreme Finishing Move Gauge ("ULTIMATE" — higher tier above Overdrive!)
+    this.finisherGauge = 0;
+    this.maxFinisherGauge = 100;
+    this.hasTrueUltimate = Boolean(opts.hasTrueUltimate);
+    this.trueUltName = opts.trueUltName || 'CELESTIAL SWORD OF JUSTICE';
+    this.trueUltDuration = opts.trueUltDuration || 4.35;
+    this.trueUltFrameOverride = null;
     this.isDead = false;
     this.deathTimer = 0;
 
@@ -20,7 +27,7 @@ export class Fighter {
     this.lightColor = opts.lightColor || 'rgba(56, 189, 248, 1)';
     this.primaryColor = opts.primaryColor || '#38bdf8';
 
-    // State Machine: IDLE, WALK, DASH, DODGE, AUTO_ATTACK, SKILL, ULTIMATE, DEATH
+    // State Machine: IDLE, WALK, DASH, DODGE, AUTO_ATTACK, SKILL, ULTIMATE (Overdrive), TRUE_ULTIMATE (Supreme Finisher), DEATH
     this.state = 'IDLE';
     this.stateTimer = 0;
     this.didActionFrame = false;
@@ -72,26 +79,46 @@ export class Fighter {
     this.stateTimer = 0;
     this.didActionFrame = false;
     this.didSecondaryAction = false;
-    if (newState !== 'DODGE' && newState !== 'JUMP') {
+    if (newState !== 'TRUE_ULTIMATE') {
+      this.trueUltFrameOverride = null;
+    }
+    if (newState !== 'DODGE' && newState !== 'JUMP' && newState !== 'TRUE_ULTIMATE') {
       this.isInvulnerable = false;
     }
     if (newState !== 'CROUCH') {
       this.isCrouching = false;
     }
-    if (newState !== 'DODGE' && newState !== 'JUMP' && newState !== 'ULTIMATE') {
+    if (
+      newState !== 'DODGE' &&
+      newState !== 'JUMP' &&
+      newState !== 'ULTIMATE' &&
+      newState !== 'TRUE_ULTIMATE'
+    ) {
       this.isFlipVault = false;
       this.isAngelicAscent = false;
       this.isOmnislashing = false;
     }
   }
 
+  gainFinisher(amount) {
+    if (!this.hasTrueUltimate || this.isDead || this.state === 'TRUE_ULTIMATE') return;
+    let mult = this.isBerserk ? 1.35 : 1.0;
+    if (this.game && this.game.stageEventTimer > 0 && this.game.renderer?.stageId === 'cathedral') {
+      mult *= 1.45;
+    }
+    this.finisherGauge = Math.min(this.maxFinisherGauge, this.finisherGauge + amount * mult);
+  }
+
   gainMana(amount) {
-    if (this.isDead || this.state === 'ULTIMATE') return;
+    if (this.isDead || this.state === 'ULTIMATE' || this.state === 'TRUE_ULTIMATE') return;
     let mult = this.isBerserk ? 1.28 : 1.0;
     if (this.game && this.game.stageEventTimer > 0 && this.game.renderer?.stageId === 'cathedral') {
       mult *= 1.55;
     }
     this.mana = Math.min(this.maxMana, this.mana + amount * mult);
+    if (this.hasTrueUltimate) {
+      this.gainFinisher(amount * 0.58);
+    }
   }
 
   heal(amount, label = '') {
@@ -422,12 +449,23 @@ export class Fighter {
       return;
     }
 
-    if (!this.isDead && this.state !== 'ULTIMATE') {
+    if (!this.isDead && this.state !== 'ULTIMATE' && this.state !== 'TRUE_ULTIMATE') {
       this.gainMana(dt * 4.5);
+      if (this.hasTrueUltimate) {
+        this.gainFinisher(dt * 3.8);
+      }
     }
 
     // Personal-space repulsion so characters never crowd on top of each other
-    if (enemy && !this.isDead && !enemy.isDead && this.state !== 'ULTIMATE' && this.state !== 'DASH' && this.state !== 'DODGE') {
+    if (
+      enemy &&
+      !this.isDead &&
+      !enemy.isDead &&
+      this.state !== 'ULTIMATE' &&
+      this.state !== 'TRUE_ULTIMATE' &&
+      this.state !== 'DASH' &&
+      this.state !== 'DODGE'
+    ) {
       const dx = this.x - enemy.x;
       const absDx = Math.abs(dx);
       const minSep = 110;
@@ -443,6 +481,7 @@ export class Fighter {
       game.gameMode === '2v2_brawl' &&
       !this.isDead &&
       this.state !== 'ULTIMATE' &&
+      this.state !== 'TRUE_ULTIMATE' &&
       this.state !== 'DASH' &&
       this.state !== 'DODGE'
     ) {
@@ -497,7 +536,7 @@ export class Fighter {
       return;
     }
 
-    if (enemy && this.state !== 'ULTIMATE') {
+    if (enemy && this.state !== 'ULTIMATE' && this.state !== 'TRUE_ULTIMATE') {
       this.facing = enemy.x >= this.x ? 1 : -1;
     }
 
@@ -535,7 +574,25 @@ export class Fighter {
 
     if (this.state === 'IDLE' || this.state === 'WALK') {
       if (enemy && !enemy.isDead) {
-        // 1. Smart Archetype Ultimate Timing (don't waste Ultimate into an invulnerable dodge or from out of effective range!)
+        // 0. SUPREME FINISHING MOVE ("ULTIMATE" Gauge — higher tier than Overdrive!)
+        if (
+          this.hasTrueUltimate &&
+          this.finisherGauge >= this.maxFinisherGauge &&
+          !enemy.isInvulnerable &&
+          typeof this.updateTrueUltimate === 'function'
+        ) {
+          this.finisherGauge = 0;
+          if (this.stats) this.stats.ultsUsed++;
+          this.setState('TRUE_ULTIMATE');
+          if (typeof game.triggerTrueUltimateCinematic === 'function') {
+            game.triggerTrueUltimateCinematic(this);
+          } else {
+            game.triggerUltimateCinematic(this);
+          }
+          return;
+        }
+
+        // 1. Smart Archetype Overdrive Timing (don't waste Overdrive into an invulnerable dodge or from out of effective range!)
         const ultRangeOk =
           this.heroId === 'warrior'
             ? dist <= 400
@@ -546,6 +603,9 @@ export class Fighter {
                 : true;
         if (this.mana >= this.maxMana && !enemy.isInvulnerable && ultRangeOk) {
           this.mana = 0;
+          if (this.hasTrueUltimate) {
+            this.gainFinisher(24);
+          }
           if (this.stats) this.stats.ultsUsed++;
           this.setState('ULTIMATE');
           game.triggerUltimateCinematic(this);
@@ -723,6 +783,12 @@ export class Fighter {
       this.updateSkill(dt, enemy, game);
     } else if (this.state === 'ULTIMATE') {
       this.updateUltimate(dt, enemy, game);
+    } else if (this.state === 'TRUE_ULTIMATE') {
+      if (typeof this.updateTrueUltimate === 'function') {
+        this.updateTrueUltimate(dt, enemy, game);
+      } else {
+        this.updateUltimate(dt, enemy, game);
+      }
     }
 
     // Dynamic Forward-Lean Momentum Physics (leans upper body toward enemy when advancing, keeps boots planted!)

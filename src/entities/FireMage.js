@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps55';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps55';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps55';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps55';
+import { Fighter } from './Fighter.js?v=30fps56';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps56';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps56';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps56';
 
 /**
  * Ignis Sol (`mage`) — Solar Archmage & Black-Sun Eclipse Sovereign.
@@ -67,7 +67,7 @@ export class FireMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const mageAssets = PixelForge.initAssets()?.mage;
       if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps49')) {
-        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps55';
+        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps56';
       }
     }
   }
@@ -765,7 +765,7 @@ export class FireMage extends Fighter {
             maxLife: pl.maxLife,
             scaleWidth: pl.scaleWidth
           });
-          this.fx.spawn('hellfireSolarPillar', pl.x, this.groundY, {
+          this.fx.spawn('hellfireSolarPillar', pl.x, this.groundY - 4, {
             light: pl.scaleWidth > 1 ? 1.38 : 1.24,
             extra: { scaleWidth: pl.scaleWidth }
           });
@@ -924,7 +924,7 @@ export class FireMage extends Fighter {
           scaleWidth: idx === 1 ? 1.05 : 0.72,
           isUltimate: true
         });
-        this.fx.spawn('hellfireSolarPillar', px, this.groundY, {
+        this.fx.spawn('hellfireSolarPillar', px, this.groundY - 4, {
           light: idx === 1 ? 1.42 : 1.28,
           extra: { scaleWidth: idx === 1 ? 1.05 : 0.72 }
         });

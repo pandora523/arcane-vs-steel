@@ -1246,7 +1246,7 @@ export class VFXManager {
           const pilH = Math.round((344 * pil.scaleWidth * (0.38 + 0.62 * pop)) / 4) * 4;
           const pilDir = Math.round(pil.x / 8) % 2 === 0 ? 1 : -1;
           ctx.save();
-          ctx.translate(baseX, baseY + 14);
+          ctx.translate(baseX, baseY - Math.round(pilH * (36 / 104)));
           ctx.scale(pilDir, 1);
           this.drawBloomedSprite(
             ctx,
@@ -1257,7 +1257,7 @@ export class VFXManager {
             208,
             208,
             Math.round(-pilW * 0.5),
-            Math.round(-pilH),
+            Math.round(-pilH * 0.5),
             pilW,
             pilH,
             '#fb923c',

@@ -1,18 +1,18 @@
-import { Renderer } from './engine/Renderer.js?v=30fps55';
-import { VFXManager } from './engine/VFXManager.js?v=30fps55';
-import { PixelForge } from './engine/PixelForge.js?v=30fps55';
-import { AudioManager } from './engine/AudioManager.js?v=30fps55';
-import { Warrior } from './entities/Warrior.js?v=30fps55';
-import { FireMage } from './entities/FireMage.js?v=30fps55';
-import { Archer } from './entities/Archer.js?v=30fps55';
-import { Priestess } from './entities/Priestess.js?v=30fps55';
-import { Reaper } from './entities/Reaper.js?v=30fps55';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps55';
-import { Titan } from './entities/Titan.js?v=30fps55';
-import { Ronin } from './entities/Ronin.js?v=30fps55';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps55';
-import { IceMage } from './entities/IceMage.js?v=30fps55';
-import { Android } from './entities/Android.js?v=30fps55';
+import { Renderer } from './engine/Renderer.js?v=30fps56';
+import { VFXManager } from './engine/VFXManager.js?v=30fps56';
+import { PixelForge } from './engine/PixelForge.js?v=30fps56';
+import { AudioManager } from './engine/AudioManager.js?v=30fps56';
+import { Warrior } from './entities/Warrior.js?v=30fps56';
+import { FireMage } from './entities/FireMage.js?v=30fps56';
+import { Archer } from './entities/Archer.js?v=30fps56';
+import { Priestess } from './entities/Priestess.js?v=30fps56';
+import { Reaper } from './entities/Reaper.js?v=30fps56';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps56';
+import { Titan } from './entities/Titan.js?v=30fps56';
+import { Ronin } from './entities/Ronin.js?v=30fps56';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps56';
+import { IceMage } from './entities/IceMage.js?v=30fps56';
+import { Android } from './entities/Android.js?v=30fps56';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -399,10 +399,10 @@ class Game {
     // Team 1 (Arcane & Sanctuary): Torgar (Titan-Forger) + Seraphina (High Priestess)
     // Team 2 (Challenger Duo): Sylvara (Tempest Bowmaster) + Malakor (Abyssal Soulreaper)
     this.gameMode = '2v2_brawl'; // '1v1' | '2v2_brawl' | '2v2_tag'
-    this.slot1Hero = 'titan';
-    this.slot1PartnerHero = 'priestess';
-    this.slot2Hero = 'archer';
-    this.slot2PartnerHero = 'reaper';
+    this.slot1Hero = 'warrior';
+    this.slot1PartnerHero = 'titan';
+    this.slot2Hero = 'reaper';
+    this.slot2PartnerHero = 'mage';
     this.inspectLeftRole = 'lead'; // 'lead' | 'partner'
     this.inspectRightRole = 'lead'; // 'lead' | 'partner'
     this.activeAssignSlot = 2; // 1 = P1 Lead, 2 = P2 Lead, 3 = P1B Partner, 4 = P2B Partner
@@ -446,6 +446,7 @@ class Game {
     const killTarget = params.get('kill');
     const ultParam = params.get('ult');
     const forceUlt = ultParam === '1' || ultParam === 'both';
+    const forceTrueUlt = params.get('trueult') === '1';
     const skillParam = params.get('skill');
     const forceSkill = skillParam === '1' || skillParam === 'both';
     const forceCrouch = params.get('crouch') === '1';
@@ -470,6 +471,7 @@ class Game {
       simSec > 0 ||
       killTarget ||
       forceUlt ||
+      forceTrueUlt ||
       forceSkill ||
       forceCrouch ||
       forceJump ||
@@ -589,6 +591,12 @@ class Game {
       if (ultParam === 'both') {
         this.rightFighter.mana = this.rightFighter.maxMana;
       }
+    }
+
+    if (forceTrueUlt && this.leftFighter) {
+      this.leftFighter.x = 380;
+      this.rightFighter.x = 740;
+      this.leftFighter.finisherGauge = this.leftFighter.maxFinisherGauge;
     }
 
     if (simSec > 0) {
@@ -794,6 +802,9 @@ class Game {
       state: document.getElementById(`${side}-state`),
       manaBar: document.getElementById(`${side}-mana-bar`),
       ultLabel: document.getElementById(`${side}-ult-label`),
+      finisherFrame: document.getElementById(`${side}-finisher-frame`),
+      finisherBar: document.getElementById(`${side}-finisher-bar`),
+      finisherLabel: document.getElementById(`${side}-finisher-label`),
       skillCd: document.getElementById(`${side}-skill-cd`),
       skillText: document.getElementById(`${side}-skill-text`),
       partnerWing: document.getElementById(`${side}-partner-wing`),
@@ -811,6 +822,22 @@ class Game {
       modeBadge: document.getElementById('hud-mode-badge'),
       stageBadge: document.getElementById('hud-stage-badge')
     };
+    this.btnTestUlt = document.getElementById('btn-test-ult');
+    if (this.btnTestUlt) {
+      this.btnTestUlt.addEventListener('click', () => {
+        const candidate =
+          this.fighters.find((f) => f && !f.isDead && !f.isBenched && f.hasTrueUltimate) ||
+          this.fighters.find((f) => f && !f.isDead && f.hasTrueUltimate);
+        if (candidate && typeof candidate.updateTrueUltimate === 'function') {
+          if (candidate.isBenched) candidate.isBenched = false;
+          candidate.finisherGauge = 0;
+          if (candidate.stats) candidate.stats.ultsUsed++;
+          candidate.setState('TRUE_ULTIMATE');
+          this.triggerTrueUltimateCinematic(candidate);
+          this.updateHUD();
+        }
+      });
+    }
 
     if (this.slotBtnLeft) {
       this.slotBtnLeft.addEventListener('click', () => {
@@ -1781,13 +1808,29 @@ class Game {
     this.ultSlowTimer = 0.55;
     this.renderer.triggerUltimateCamera(caster.x, caster.y - 60);
     if (typeof this.renderer.triggerUltimateCutIn === 'function') {
-      this.renderer.triggerUltimateCutIn(caster);
+      this.renderer.triggerUltimateCutIn(caster, false);
     }
 
     this.vfx.spawnSpecialCastAura(
       caster,
       caster.ultName,
-      '★ ULTIMATE ART ★',
+      '★ OVERDRIVE ART ★',
+      caster.theme || 'steel',
+      true
+    );
+  }
+
+  triggerTrueUltimateCinematic(caster) {
+    this.ultSlowTimer = 0.42;
+    this.renderer.triggerUltimateCamera(caster.x, caster.y - 68);
+    if (typeof this.renderer.triggerUltimateCutIn === 'function') {
+      this.renderer.triggerUltimateCutIn(caster, true);
+    }
+
+    this.vfx.spawnSpecialCastAura(
+      caster,
+      caster.trueUltName || 'CELESTIAL SWORD OF JUSTICE',
+      '★ SUPREME ULTIMATE FINISHER ★',
       caster.theme || 'steel',
       true
     );
@@ -2305,6 +2348,24 @@ class Game {
 
       els.manaBar.style.width = `${manaPct}%`;
       els.ultLabel.textContent = `OVERDRIVE ${Math.floor(manaPct)}%`;
+
+      if (els.finisherFrame && els.finisherBar && els.finisherLabel) {
+        if (f.hasTrueUltimate) {
+          els.finisherFrame.classList.remove('hidden');
+          const finPct =
+            f.state === 'TRUE_ULTIMATE'
+              ? 100
+              : Math.min(100, Math.max(0, (f.finisherGauge / Math.max(1, f.maxFinisherGauge)) * 100));
+          els.finisherBar.style.width = `${finPct}%`;
+          els.finisherFrame.classList.toggle('finisher-ready', finPct >= 99 || f.state === 'TRUE_ULTIMATE');
+          els.finisherLabel.textContent =
+            f.state === 'TRUE_ULTIMATE'
+              ? `★ ULTIMATE: ${f.trueUltName || 'SWORD OF JUSTICE'}! ★`
+              : `★ ULTIMATE ${Math.floor(finPct)}% ★`;
+        } else {
+          els.finisherFrame.classList.add('hidden');
+        }
+      }
 
       const cdPct = Math.max(0, (f.skillCooldown / f.skillMaxCooldown) * 100);
       els.skillCd.style.width = `${cdPct}%`;

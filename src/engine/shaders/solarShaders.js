@@ -19,7 +19,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps55';
+} from '../ArcaneShaderFX.js?v=30fps56';
 
 export const SOLAR_CORONA_PALETTE = [
   '#18080a',
@@ -585,215 +585,250 @@ export const magmaFissureCrack = {
 // 8. 2.5D MOLTEN HELLFIRE SOLAR PILLAR (`hellfireSolarPillar`)
 // ============================================================================
 /**
- * Shared HD-2D renderer: Soaring Diagonal Solar Phoenix Firebird in Flight.
- * Zero upright cone, zero bottom ring — pure diagonal winged firebird silhouette with flapping wings,
- * sculpted phoenix head + hooked golden beak + 3-plume crown crest facing upper-right (+x, -y),
- * and 3 long sinusoidal tail-plume ribbons trailing toward lower-left (-x, +y).
+ * Shared HD-2D renderer: Colossal Multi-Layered Swirling Solar Hellfire & Magma Pillar.
+ * - Anchored at `baseY` (`baseY = 36` in 104x104 cell coordinates, `y = 88`), with a curved
+ *   2.5D elliptical volcanic caldera base (`botCurve`) and 2.5D `drawTiltedOrbitBand` magma crater ring.
+ * - Towering swirling FBM solar hellfire column sculpted into 5 Jagged Roaring Flame-Tongue Peaks
+ *   (`topCrown`) so the top looks like roaring pixel-art flames leaping skyward with zero flat box cut.
+ * - Double-Helix Spiraling Solar Prominence Ribbons (`helix1`, `helix2` in `#ffffff` and `#fef08a`)
+ *   twisting up the fire column, plus rising molten magma chunks with 1px `#220500` obsidian-ash selout.
  */
-function drawSoaringSolarPhoenix(pen, cx, cy, scale, progress, env, ramp) {
+function drawSwirlingSolarHellfirePillar(pen, baseX, baseY, pop, u, env, ramp, seed = 97, scaleWidth = 1.0) {
   if (env <= 0.02) return;
   const DARK_OUTLINE = '#220500';
-  // Diagonal flight axis facing upper-right (+x, -y)
-  const fx = 0.78;
-  const fy = -0.625;
-  // Perpendicular wing axis (upper-left is +px,+py; lower-right is -px,-py)
-  const px = -0.625;
-  const py = -0.78;
+  const BRIGHT_GOLD = '#fef08a';
+  const sc = scaleWidth || 1.0;
 
-  // 2 full wingbeats across the 30-frame cycle
-  const flapPhase = progress * Math.PI * 4;
-  const flap = Math.sin(flapPhase);
-  const bob = -flap * 2.2 * scale;
-
-  const bodyX = cx + 2 * scale + fx * bob * 0.3;
-  const bodyY = cy - 2 * scale + bob;
-
-  pen.radialGlow(bodyX, bodyY, 26 * scale * env, ramp[5], 0.34 * env);
+  // Ambient volcanic core glow along the column
+  pen.radialGlow(baseX, baseY - 28 * pop, 34 * pop * sc, ramp[5], 0.36 * env);
+  pen.radialGlow(baseX, baseY - 2 * pop, 28 * pop * sc, ramp[4], 0.28 * env);
 
   // -------------------------------------------------------------------------
-  // 1. 3 Long Flowing Sinusoidal Phoenix Tail-Plume Ribbons (lower-left -x, +y)
+  // 1. Back-Half of 2.5D Magma Crater Ring & Volcanic Caldera Base (`cy: baseY`)
   // -------------------------------------------------------------------------
-  const tailRootX = bodyX - fx * 8 * scale;
-  const tailRootY = bodyY - fy * 8 * scale;
-  for (let tIdx = -1; tIdx <= 1; tIdx++) {
-    const ribbonLen = (tIdx === 0 ? 25 : 21) * scale;
-    const spreadAng = tIdx * 0.26;
-    const ca = Math.cos(spreadAng);
-    const sa = Math.sin(spreadAng);
-    const txDir = (-fx * ca - -fy * sa);
-    const tyDir = (-fx * sa + -fy * ca);
-    const nxDir = -tyDir;
-    const nyDir = txDir;
+  const calderaRx = 26 * pop * sc;
+  const calderaRy = 7.5 * pop;
+  const calderaAspect = calderaRy / Math.max(1, calderaRx);
 
-    let prevX = tailRootX + px * tIdx * 2.5 * scale;
-    let prevY = tailRootY + py * tIdx * 2.5 * scale;
-    const steps = 14;
-    for (let s = 1; s <= steps; s++) {
-      const u = s / steps;
-      const dist = u * ribbonLen;
-      const wave = Math.sin(u * 5.8 - progress * Math.PI * 6 + tIdx * 1.6) * (1.5 + u * 4.2) * scale;
-      const curX = tailRootX + px * tIdx * 2.5 * scale + txDir * dist + nxDir * wave;
-      const curY = tailRootY + py * tIdx * 2.5 * scale + tyDir * dist + nyDir * wave;
-      const thick = (1 - u * 0.65) * (tIdx === 0 ? 2.4 : 1.8) * scale;
-
-      pen.fillCircle(curX, curY, thick + 0.9, DARK_OUTLINE, 0.92 * env);
-      pen.line(prevX, prevY, curX, curY, u < 0.35 ? ramp[6] : u < 0.72 ? ramp[4] : ramp[2], 0.96 * env);
-      pen.fillCircle(curX, curY, thick, u < 0.3 ? ramp[6] : u < 0.68 ? ramp[4] : ramp[2], 0.95 * env);
-      if (tIdx === 0 && u < 0.55) {
-        pen.stipple(curX, curY, PURE_WHITE, 0.95 * env);
+  // Scorched obsidian-ash & molten caldera bed
+  pen.shadeBox(
+    baseX - calderaRx - 3,
+    baseY - calderaRy - 3,
+    baseX + calderaRx + 3,
+    baseY + calderaRy + 5,
+    (lx, ly, out) => {
+      const dx = (lx - baseX) / Math.max(1, calderaRx + 1.5);
+      const dy = (ly - baseY) / Math.max(1, calderaRy + 1.5);
+      const d = Math.hypot(dx, dy);
+      if (d > 1.0) return 0;
+      if (d > 0.84) {
+        out.color = DARK_OUTLINE;
+        out.alpha = 0.94 * env;
+        return out.color;
       }
-      prevX = curX;
-      prevY = curY;
-    }
-    // Glowing solar peacock-ocellus near tail tip
-    pen.fillCircle(prevX, prevY, 2.2 * scale, ramp[2], 0.94 * env);
-    pen.fillCircle(prevX, prevY, 1.3 * scale, ramp[6], 0.98 * env);
-    pen.stipple(prevX, prevY, PURE_WHITE, 0.95 * env);
-  }
-
-  // -------------------------------------------------------------------------
-  // 2. Huge Articulated Left & Right Flame-Feathered Wings (flapping cycle)
-  // -------------------------------------------------------------------------
-  for (const side of [-1, 1]) {
-    // side = 1: upper-left wing (+px, +py); side = -1: lower-right wing (-px, -py)
-    const wxDir = px * side;
-    const wyDir = py * side;
-    const shX = bodyX + wxDir * 3.5 * scale + fx * 1.5 * scale;
-    const shY = bodyY + wyDir * 3.5 * scale + fy * 1.5 * scale;
-
-    // Wing flap articulates both the forward sweep and vertical lift of the wing-arm & pinions
-    const flapSweep = flap * 0.48;
-    const wingSpan = (side === 1 ? 29 : 27) * scale;
-
-    // Wing wrist/elbow joint along leading edge
-    const elbowX = shX + (wxDir * 0.52 + fx * (0.28 + flapSweep * 0.35)) * wingSpan;
-    const elbowY = shY + (wyDir * 0.52 + fy * (0.28 + flapSweep * 0.35) - flap * 0.22) * wingSpan;
-    const tipLeadX = shX + (wxDir * 0.92 + fx * (0.14 + flapSweep * 0.55)) * wingSpan;
-    const tipLeadY = shY + (wyDir * 0.92 + fy * (0.14 + flapSweep * 0.55) - flap * 0.38) * wingSpan;
-
-    // Draw 9 layered primary & secondary feather pinions from inner covert to outer primary
-    const numFeathers = 9;
-    for (let f = numFeathers - 1; f >= 0; f--) {
-      const fu = f / (numFeathers - 1); // 0 = outer leading primary, 1 = inner covert
-      // Root point along the articulated two-bone wing arm
-      const rootX =
-        fu < 0.5
-          ? elbowX + (tipLeadX - elbowX) * (1 - fu * 2) * 0.65
-          : shX + (elbowX - shX) * (1 - (fu - 0.5) * 2);
-      const rootY =
-        fu < 0.5
-          ? elbowY + (tipLeadY - elbowY) * (1 - fu * 2) * 0.65
-          : shY + (elbowY - shY) * (1 - (fu - 0.5) * 2);
-
-      // Feather tip fans outward & trails backward toward (-fx, -fy)
-      const fLen = (1 - fu * 0.48) * 16.5 * scale;
-      const trailMix = 0.22 + fu * 0.68 - flapSweep * 0.25;
-      const outMix = 1 - fu * 0.35;
-      const dirX = wxDir * outMix - fx * trailMix;
-      const dirY = wyDir * outMix - fy * trailMix - flap * 0.28 * (1 - fu * 0.5);
-      const dLen = Math.max(0.001, Math.hypot(dirX, dirY));
-      const ux = dirX / dLen;
-      const uy = dirY / dLen;
-
-      const fTipX = rootX + ux * fLen;
-      const fTipY = rootY + uy * fLen;
-      const fMidX = (rootX + fTipX) * 0.5 + wxDir * 1.5 * scale;
-      const fMidY = (rootY + fTipY) * 0.5 + wyDir * 1.5 * scale;
-
-      // 1) Dark #220500 selout outline along feather pinion
-      for (let s = 0; s <= 7; s++) {
-        const su = s / 7;
-        const qx = (1 - su) * (1 - su) * rootX + 2 * (1 - su) * su * fMidX + su * su * fTipX;
-        const qy = (1 - su) * (1 - su) * rootY + 2 * (1 - su) * su * fMidY + su * su * fTipY;
-        const r = (1 - su * 0.55) * 2.4 * scale + 0.6;
-        pen.fillCircle(qx, qy, r + 0.85, DARK_OUTLINE, 0.94 * env);
-      }
-
-      // 2) Layered cel-shaded feather ramp: PURE_WHITE leading edge -> ramp[6] gold -> ramp[4] orange -> ramp[2] crimson
-      for (let s = 0; s <= 7; s++) {
-        const su = s / 7;
-        const qx = (1 - su) * (1 - su) * rootX + 2 * (1 - su) * su * fMidX + su * su * fTipX;
-        const qy = (1 - su) * (1 - su) * rootY + 2 * (1 - su) * su * fMidY + su * su * fTipY;
-        const r = (1 - su * 0.55) * 2.3 * scale + 0.5;
-        const col =
-          f === 0 && su < 0.65
-            ? PURE_WHITE
-            : su < 0.34
-              ? ramp[6]
-              : su < 0.68
-                ? ramp[4]
-                : ramp[2];
-        pen.fillCircle(qx, qy, r, col, 0.98 * env);
-      }
-      pen.line(rootX, rootY, fMidX, fMidY, f <= 1 ? PURE_WHITE : ramp[6], 0.98 * env);
-      pen.line(fMidX, fMidY, fTipX, fTipY, f === 0 ? ramp[6] : ramp[4], 0.95 * env);
-    }
-
-    // Leading-edge white-hot wing bone (shoulder -> elbow -> primary tip)
-    pen.line(shX, shY, elbowX, elbowY, PURE_WHITE, 1.0 * env);
-    pen.line(elbowX, elbowY, tipLeadX, tipLeadY, PURE_WHITE, 1.0 * env);
-    pen.fillCircle(elbowX, elbowY, 2.0 * scale, PURE_WHITE, 1.0 * env);
-  }
-
-  // -------------------------------------------------------------------------
-  // 3. Sculpted Diagonal Phoenix Torso / Solar Heart (aligned along fx, fy)
-  // -------------------------------------------------------------------------
-  const torsoR = 11 * scale;
-  pen.shadeBox(bodyX - torsoR, bodyY - torsoR, bodyX + torsoR, bodyY + torsoR, (lx, ly, out) => {
-    const dx = lx - bodyX;
-    const dy = ly - bodyY;
-    const along = dx * fx + dy * fy;
-    const across = dx * px + dy * py;
-    const d = Math.hypot(along / (8.5 * scale), across / (5.2 * scale));
-    if (d > 1.0) return 0;
-    if (d > 0.82) {
-      out.color = DARK_OUTLINE;
+      const lavaNoise = fbm2D(lx * 0.18 + u * 4, ly * 0.25 - u * 3, seed + 5, 2);
+      out.color = d < 0.42 ? PURE_WHITE : d < 0.64 || lavaNoise > 0.62 ? BRIGHT_GOLD : d < 0.76 ? ramp[5] : ramp[2];
       out.alpha = 0.96 * env;
       return out.color;
     }
-    out.color = d < 0.36 ? PURE_WHITE : d < 0.62 ? ramp[6] : d < 0.74 ? ramp[4] : ramp[2];
-    out.alpha = 0.98 * env;
-    out.glowColor = ramp[5];
-    out.glowStrength = 0.38 * (1 - d) * env;
-    return out.color;
+  );
+
+  // -------------------------------------------------------------------------
+  // 2. Towering Swirling FBM Solar Hellfire Column with 5 Jagged Flame-Tongue Peaks
+  // -------------------------------------------------------------------------
+  const topY = Math.max(-44, baseY - 76 * pop);
+  // Keep peak tips below y = -43 in 104x104 so all 5 jagged flame peaks remain razor-sharp with 0 border clips
+  const crownBaseY = topY + 10.5;
+  const colHalfBound = Math.ceil(25 * pop * sc) + 5;
+
+  pen.shadeBox(
+    baseX - colHalfBound,
+    Math.max(-45, topY - 2),
+    baseX + colHalfBound,
+    Math.min(45, baseY + 6),
+    (px, py, out) => {
+      const lx = px - baseX;
+      const ly = py;
+      const colHeight = Math.max(1, baseY - crownBaseY);
+      const hFrac = clamp01((baseY - ly) / colHeight);
+
+      // Sinusoidal helical spine sway & FBM flame-lick width modulation
+      const spineSway =
+        Math.sin(hFrac * 7.5 - u * Math.PI * 6) * 2.2 * pop +
+        Math.cos(hFrac * 13.0 + u * Math.PI * 4) * 1.2 * pop;
+      const fbmEdge = fbm2D(lx * 0.14 + u * 3.2, ly * 0.11 + u * 8.5, seed + 13, 3);
+
+      // Flared volcanic base -> muscular mid-column -> roaring flared upper crown
+      const baseFlare = Math.pow(1 - hFrac, 1.8) * 5.2;
+      const crownFlare = Math.sin(hFrac * Math.PI * 0.92) * 3.4 + Math.pow(hFrac, 2.2) * 2.4;
+      const effW = Math.max(
+        4,
+        (14.5 + baseFlare + crownFlare + (fbmEdge - 0.5) * 5.2) * pop * sc
+      );
+
+      const d = Math.abs(lx - spineSway);
+      if (d > effW) return 0;
+
+      // Curved 2.5D elliptical volcanic caldera base (never a flat horizontal bottom cut)
+      const botCurve =
+        baseY + Math.sqrt(Math.max(0, 1 - Math.min(1, (d / effW) ** 2))) * 4.5;
+      if (ly > botCurve) return 0;
+
+      // 5 Jagged Roaring Flame-Tongue Peaks at the crown (never a flat horizontal top cut)
+      const topCrown =
+        crownBaseY +
+        Math.sin(lx * 0.42 + u * 18) * 6.5 +
+        Math.cos(lx * 0.24 - u * 14) * 5.0 +
+        ((d / effW) ** 2) * 10.0;
+      if (ly < topCrown) return 0;
+
+      // 1px #220500 obsidian-ash selective outline around flame peaks, sides, and caldera rim
+      const distSide = effW - d;
+      const distTop = ly - topCrown;
+      const distBot = botCurve - ly;
+      if (distSide < 1.35 || distTop < 1.55 || distBot < 1.15) {
+        out.color = DARK_OUTLINE;
+        out.alpha = 0.96 * env;
+        return out.color;
+      }
+
+      // Multi-layered upward-scrolling FBM solar hellfire turbulence inside column
+      const swirlX = lx * 0.14 + Math.sin(hFrac * 8.0 - u * Math.PI * 6) * 1.8;
+      const swirlY = ly * 0.11 + u * 10.5;
+      const fbmCore = fbm2D(swirlX, swirlY, seed + 29, 3);
+      const ridge = Math.sin(lx * 0.36 + fbmCore * 4.2 - u * Math.PI * 4) * 0.12;
+      const coreRatio = d / effW;
+      const heat =
+        (1 - Math.pow(coreRatio, 1.35)) * 0.66 +
+        fbmCore * 0.42 +
+        ridge +
+        (1 - hFrac) * 0.14;
+
+      if (heat > 0.86 || (coreRatio < 0.24 && distTop > 5.0)) {
+        out.color = PURE_WHITE;
+      } else if (heat > 0.70) {
+        out.color = BRIGHT_GOLD;
+      } else if (heat > 0.54) {
+        out.color = ramp[5];
+      } else if (heat > 0.38) {
+        out.color = ramp[4];
+      } else if (heat > 0.24) {
+        out.color = ramp[2];
+      } else {
+        out.color = ramp[1];
+      }
+      out.alpha = 0.98 * env;
+      out.glowColor = heat > 0.68 ? BRIGHT_GOLD : ramp[5];
+      out.glowStrength = (0.24 + 0.28 * Math.min(1, heat)) * env;
+      return out.color;
+    }
+  );
+
+  // -------------------------------------------------------------------------
+  // 3. Double-Helix Spiraling Solar Prominence Ribbons (`helix1`, `helix2`)
+  // -------------------------------------------------------------------------
+  const helixTopY = Math.max(-38, crownBaseY + 2);
+  const helixSpan = Math.max(12, baseY - helixTopY);
+  const helixSteps = 26;
+  for (let hIdx = 0; hIdx < 2; hIdx++) {
+    const phaseOffset = hIdx * Math.PI; // helix1 = 0, helix2 = PI
+    let prevHx = 0;
+    let prevHy = 0;
+    for (let s = 0; s <= helixSteps; s++) {
+      const su = s / helixSteps;
+      const ly = baseY - 2 - su * helixSpan;
+      const angle = su * Math.PI * 4.2 - u * Math.PI * 6 + phaseOffset;
+      const sinA = Math.sin(angle);
+      const cosA = Math.cos(angle);
+      const radiusX = (15.5 * (1 - su * 0.18) + Math.sin(su * Math.PI) * 3.2) * pop * sc;
+      const hx = baseX + sinA * radiusX;
+      const hy = Math.max(-43, Math.min(43, ly + cosA * 3.0 * pop));
+
+      // Front-facing pass of the double-helix ribbons (cosA > -0.35) gets bold cel-shaded prominence
+      if (cosA > -0.35) {
+        const thick = (1.75 - su * 0.55) * pop;
+        const frontBoost = 0.75 + 0.25 * Math.max(0, cosA);
+        pen.fillCircle(hx, hy, thick + 0.85, DARK_OUTLINE, 0.92 * env * frontBoost);
+        pen.fillCircle(hx, hy, thick + 0.2, ramp[4], 0.95 * env * frontBoost);
+        pen.fillCircle(
+          hx,
+          hy,
+          thick * 0.72,
+          hIdx === 0 ? PURE_WHITE : BRIGHT_GOLD,
+          0.98 * env * frontBoost
+        );
+        if (s > 0) {
+          pen.line(
+            prevHx,
+            prevHy,
+            hx,
+            hy,
+            hIdx === 0 ? PURE_WHITE : BRIGHT_GOLD,
+            0.96 * env * frontBoost
+          );
+        }
+      }
+      prevHx = hx;
+      prevHy = hy;
+    }
+  }
+
+  // -------------------------------------------------------------------------
+  // 4. 2.5D Tilted Magma Crater Ring (`drawTiltedOrbitBand` at `cy: baseY`)
+  // -------------------------------------------------------------------------
+  drawTiltedOrbitBand(pen, {
+    cx: baseX,
+    cy: baseY,
+    radius: calderaRx,
+    aspectY: calderaAspect,
+    thickness: 2.1 * pop,
+    roll: 0,
+    spin: u * Math.PI * 4,
+    colorA: PURE_WHITE,
+    colorB: BRIGHT_GOLD,
+    alpha: 0.96 * env,
+    frontOnly: null
+  });
+  drawTiltedOrbitBand(pen, {
+    cx: baseX,
+    cy: baseY,
+    radius: calderaRx * 0.68,
+    aspectY: calderaAspect,
+    thickness: 1.5 * pop,
+    roll: 0,
+    spin: -u * Math.PI * 6,
+    colorA: BRIGHT_GOLD,
+    colorB: ramp[5],
+    alpha: 0.94 * env,
+    frontOnly: true
   });
 
   // -------------------------------------------------------------------------
-  // 4. Sculpted Phoenix Head, 3-Plume Crown Crest & Hooked Golden Beak (+x, -y)
+  // 5. Rising Molten Magma Chunks with 1px `#220500` Obsidian-Ash Selective Outlines
   // -------------------------------------------------------------------------
-  const headX = bodyX + fx * 10.5 * scale;
-  const headY = bodyY + fy * 10.5 * scale;
+  const numChunks = 8;
+  for (let i = 0; i < numChunks; i++) {
+    const cu = ((i / numChunks) + u * 1.5) % 1;
+    const side = i % 2 === 0 ? 1 : -1;
+    const lane = ((i * 7) % 5) - 2;
+    const spreadX =
+      side * (10 + (i % 3) * 5.2) * pop * sc +
+      Math.sin(cu * Math.PI * 3 + i) * 3.0 * pop +
+      lane * 1.2;
+    const chunkX = Math.max(-43, Math.min(43, baseX + spreadX));
+    const chunkY = Math.max(-42, Math.min(41, baseY - 4 - cu * 72 * pop));
+    const chunkFade = Math.sin(cu * Math.PI);
+    if (chunkFade <= 0.12) continue;
 
-  // 3-Plume Royal Crown Crest sweeping back from head
-  for (let c = 0; c < 3; c++) {
-    const cu = c / 2;
-    const cLen = (9.5 - c * 1.8) * scale;
-    const cAng = Math.atan2(-fy, -fx) - 0.55 - cu * 0.28 + flap * 0.12;
-    const cx1 = headX + Math.cos(cAng) * cLen;
-    const cy1 = headY + Math.sin(cAng) * cLen;
-    pen.line(headX, headY, cx1, cy1, DARK_OUTLINE, 0.92 * env);
-    pen.line(headX, headY, cx1, cy1, c === 0 ? PURE_WHITE : c === 1 ? ramp[6] : ramp[4], 0.98 * env);
-    pen.fillCircle(cx1, cy1, 1.2 * scale, c === 0 ? ramp[6] : ramp[4], 0.95 * env);
+    const rChunk = (1.6 + (i % 3) * 0.55) * pop * Math.min(1, chunkFade * 1.35);
+    // 1px #220500 obsidian-ash selective outline
+    pen.fillCircle(chunkX, chunkY, rChunk + 0.95, DARK_OUTLINE, 0.96 * env);
+    // Molten crimson-orange magma crust
+    pen.fillCircle(chunkX, chunkY, rChunk, i % 2 === 0 ? ramp[4] : ramp[3], 0.98 * env);
+    // Incandescent gold/white magma core
+    pen.fillCircle(chunkX - 0.3 * side, chunkY - 0.3, rChunk * 0.55, BRIGHT_GOLD, 0.98 * env);
+    pen.stipple(chunkX, chunkY, PURE_WHITE, 0.95 * env);
   }
-
-  // Head cranium with dark outline & golden-white plumage
-  pen.fillCircle(headX, headY, 4.6 * scale, DARK_OUTLINE, 0.96 * env);
-  pen.fillCircle(headX, headY, 3.6 * scale, ramp[4], 0.98 * env);
-  pen.fillCircle(headX + fx * 0.6, headY + fy * 0.6, 2.5 * scale, ramp[6], 0.98 * env);
-
-  // Hooked Golden Raptor Beak facing upper-right (+x, -y) with sharp downward hook
-  const beakTipX = headX + fx * 6.8 * scale - px * 1.2 * scale;
-  const beakTipY = headY + fy * 6.8 * scale - py * 1.2 * scale;
-  const hookX = beakTipX - px * 2.4 * scale - fx * 1.2 * scale;
-  const hookY = beakTipY - py * 2.4 * scale - fy * 1.2 * scale;
-  pen.line(headX + fx * 2 * scale, headY + fy * 2 * scale, beakTipX, beakTipY, DARK_OUTLINE, 0.96 * env);
-  pen.line(headX + fx * 2 * scale, headY + fy * 2 * scale, beakTipX, beakTipY, PURE_WHITE, 1.0 * env);
-  pen.line(headX + fx * 1.5 * scale - px * 1.2 * scale, headY + fy * 1.5 * scale - py * 1.2 * scale, beakTipX, beakTipY, ramp[6], 0.98 * env);
-  pen.line(beakTipX, beakTipY, hookX, hookY, ramp[6], 0.98 * env);
-  pen.stipple(beakTipX, beakTipY, PURE_WHITE, 1.0 * env);
-
-  // Blazing Phoenix Eye
-  pen.stipple(headX + fx * 1.2 * scale + px * 0.8 * scale, headY + fy * 1.2 * scale + py * 0.8 * scale, PURE_WHITE, 1.0 * env);
 }
 
 export const hellfireSolarPillar = {
@@ -807,7 +842,7 @@ export const hellfireSolarPillar = {
   create(cfg) {
     const ramp = buildColorRamp(cfg.palette, 8);
     const rng = new DeterministicRng(cfg.seed);
-    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, ramp[7], ramp[5], ramp[3]], floorY: 20 });
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, ramp[7], ramp[5], ramp[3]], floorY: 36 });
     let t = 0;
     let acc = 0;
 
@@ -820,27 +855,27 @@ export const hellfireSolarPillar = {
           acc -= 1;
           motes.emit(
             rng.chance(0.35) ? 'glint' : 'spark',
-            rng.between(-18 * sc, 16 * sc),
-            rng.between(-42, -8),
-            rng.between(-32, -8),
-            rng.between(8, 34),
+            rng.between(-18 * sc, 18 * sc),
+            rng.between(-36, 12),
+            rng.between(-24, 24),
+            rng.between(-58, -18),
             rng.between(0.18, 0.34),
             rng.chance(0.45) ? ramp[7] : ramp[5],
             1.0,
-            12
+            -25
           );
         }
         motes.step(dt);
       },
       renderBack(pen) {
         const u = clamp01(t / 0.88);
-        const pop = 0.58 + 0.42 * smoothStep(0, 0.16, u);
-        const fade = 1 - smoothStep(0.72, 1.0, u);
+        const pop = 0.64 + 0.36 * smoothStep(0, 0.16, u);
+        const fade = 1 - smoothStep(0.74, 1.0, u);
         const env = pop * fade;
         if (env <= 0.02) return;
-        const sc = (cfg.scaleWidth || 1.0) * pop;
-        const flightShift = (u - 0.5) * 14;
-        drawSoaringSolarPhoenix(pen, flightShift * 0.75, -28 - flightShift * 0.6, sc, u, env, ramp);
+        const sc = cfg.scaleWidth || 1.0;
+        const baseY = pen.w === 104 ? 36 : 2;
+        drawSwirlingSolarHellfirePillar(pen, 0, baseY, pop, u, env, ramp, cfg.seed || 97, sc);
       },
       renderFront(pen) {
         motes.render(pen);
@@ -1115,14 +1150,14 @@ export const hellfireMagmaPillarCell = {
           acc -= 1;
           motes.emit(
             'spark',
-            rng.between(-12, 12),
-            rng.between(-10, 10),
-            rng.between(-28, -8),
-            rng.between(8, 26),
+            rng.between(-14, 14),
+            rng.between(-8, 28),
+            rng.between(-18, 18),
+            rng.between(-36, -12),
             0.22,
             rng.chance(0.5) ? ramp[7] : ramp[5],
             1,
-            10
+            -18
           );
         }
         motes.step(dt);
@@ -1135,7 +1170,7 @@ export const hellfireMagmaPillarCell = {
         const env = (0.9 + 0.1 * smoothStep(0, 0.12, u)) * fade;
         if (env <= 0.02) return;
 
-        drawSoaringSolarPhoenix(pen, 0, 0, pop * 0.96, u, env, ramp);
+        drawSwirlingSolarHellfirePillar(pen, 0, 36, pop, u, env, ramp, cfg.seed || 211, 1.0);
         motes.render(pen);
       }
     };

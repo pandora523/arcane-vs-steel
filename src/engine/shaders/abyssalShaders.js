@@ -22,7 +22,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps55';
+} from '../ArcaneShaderFX.js?v=30fps56';
 
 export const ABYSSAL_VIOLET_PALETTE = [
   '#090314',
@@ -877,6 +877,137 @@ export const necroticGraveyardSigil = {
   }
 };
 
+/**
+ * Shared HD-2D renderer: Ground-Erupting Jagged Necrotic Bone & Soul-Crystal Fangs
+ * anchored at `baseY` (default `34` in 104x104 cell space) with a curved 2.5D ossuary crater base:
+ *   `botCurve = baseY + Math.sqrt(Math.max(0, 1 - (dx/halfW)^2)) * 4.2` (never a flat horizontal cut!)
+ * so when spawned on `this.groundY`, jagged bone ribs and violet/magenta soul-crystals burst
+ * directly out of the arena floor!
+ */
+function drawGroundBoneCrystalEruption(pen, cx, baseY, scale, progress, env, abyss, blood, bone) {
+  if (env <= 0.02) return;
+  const DARK_OUTLINE = '#090314';
+  const pop = smoothStep(0, 0.18, progress);
+  const halfW = 28.5 * scale * (0.78 + 0.22 * pop);
+  const maxH = 48.0 * scale * pop;
+  if (halfW <= 2 || maxH <= 2) return;
+
+  // 2.5D Ossuary Crater Floor Ring at baseY
+  drawTiltedOrbitBand(
+    pen,
+    cx,
+    baseY,
+    halfW * 0.96,
+    0.16,
+    1.6,
+    0.92 * env,
+    [abyss[1], abyss[5], blood[5], PURE_WHITE],
+    null,
+    progress < 0.28
+  );
+
+  // 7 Ground-Erupting Jagged Bone Ribs & Faceted Violet/Magenta Soul-Crystal Fangs
+  // Rising from baseY=34 all the way into the crowning Horned Lich Skull & Twin Great-Scythes!
+  const fangs = [
+    { bOff: -0.74, lean: -0.88, hFrac: 0.56, w: 5.2 * scale, isCrystal: true },
+    { bOff: -0.46, lean: -0.58, hFrac: 0.78, w: 5.8 * scale, isCrystal: false },
+    { bOff: -0.20, lean: -0.26, hFrac: 0.92, w: 6.4 * scale, isCrystal: true },
+    { bOff: 0.0, lean: 0.0, hFrac: 1.0, w: 8.2 * scale, isCrystal: false },
+    { bOff: 0.20, lean: 0.26, hFrac: 0.92, w: 6.4 * scale, isCrystal: true },
+    { bOff: 0.46, lean: 0.58, hFrac: 0.78, w: 5.8 * scale, isCrystal: false },
+    { bOff: 0.74, lean: 0.88, hFrac: 0.56, w: 5.2 * scale, isCrystal: true }
+  ];
+
+  pen.shadeBox(
+    cx - halfW - 2,
+    baseY - maxH - 2,
+    cx + halfW + 2,
+    baseY + 5.0 * scale,
+    (lx, ly, out) => {
+      const dx = lx - cx;
+      const adx = Math.abs(dx);
+      if (adx > halfW) return 0;
+
+      // Curved 2.5D ossuary crater base — NEVER a flat horizontal cut!
+      const normX = dx / Math.max(1e-3, halfW);
+      const botCurve = baseY + Math.sqrt(Math.max(0, 1 - normX * normX)) * 4.2 * scale;
+      if (ly > botCurve) return 0;
+
+      // Ossuary crater base rim & jagged bone-rubble collar right at the ground line
+      const craterTop = baseY - (2.8 + Math.cos(normX * Math.PI * 3) * 1.4) * scale * pop;
+      if (ly >= craterTop) {
+        if (ly >= botCurve - 1.2 * scale || adx >= halfW - 1.2 * scale) {
+          out.color = DARK_OUTLINE;
+          out.alpha = 0.98 * env;
+          return out.color;
+        }
+        const rimGlow = Math.abs(ly - (craterTop + 1.4 * scale)) < 1.1 * scale;
+        out.color = rimGlow ? (Math.floor(Math.abs(dx)) % 3 === 0 ? PURE_WHITE : blood[5]) : abyss[2];
+        out.alpha = 0.96 * env;
+        if (rimGlow) {
+          out.glowColor = blood[5];
+          out.glowStrength = 0.38 * env;
+        }
+        return out.color;
+      }
+
+      // Evaluate the 5 erupting Necrotic Bone & Soul-Crystal Fangs above the crater base
+      for (let i = 0; i < fangs.length; i++) {
+        const fg = fangs[i];
+        const fh = maxH * fg.hFrac;
+        const fy = botCurve - ly; // distance above curved base
+        if (fy < 0 || fy > fh) continue;
+        const uH = clamp01(fy / Math.max(1, fh));
+        const fangCx =
+          cx +
+          (fg.bOff * (1 - uH * 0.35) + fg.lean * uH * 0.65) * halfW +
+          Math.sin(uH * Math.PI) * (fg.lean * 2.4 * scale);
+        // Jagged rib/crystal serrations along the fang profile
+        const serration =
+          uH > 0.18 && uH < 0.85 && Math.sin(uH * Math.PI * 5) > 0.55 ? 1.15 * scale : 0;
+        const fangHalfW = Math.max(0.65, fg.w * (1 - Math.pow(uH, 1.22)) + serration);
+        const fdx = lx - fangCx;
+        const afdx = Math.abs(fdx);
+        if (afdx > fangHalfW) continue;
+
+        if (afdx >= fangHalfW - 0.95 || uH >= 0.94) {
+          out.color = DARK_OUTLINE;
+          out.alpha = 0.98 * env;
+          return out.color;
+        }
+
+        if (fg.isCrystal) {
+          // Faceted Violet/Magenta Soul-Crystal Fang with white-hot core & crimson bevels
+          const facet = fdx / Math.max(0.5, fangHalfW);
+          out.color =
+            Math.abs(facet) < 0.26
+              ? PURE_WHITE
+              : facet < 0
+                ? abyss[6]
+                : uH > 0.55
+                  ? blood[5]
+                  : abyss[4];
+          out.alpha = 0.98 * env;
+          out.glowColor = blood[5];
+          out.glowStrength = 0.42 * env;
+          return out.color;
+        } else {
+          // Sculpted Necrotic Bone Rib-Fang with carved magenta soul-vein
+          const vein = afdx < 0.75 * scale && ((Math.floor(fy) + i) % 4 !== 0);
+          out.color = vein
+            ? blood[5]
+            : fdx < 0
+              ? bone[6]
+              : bone[4];
+          out.alpha = 0.98 * env;
+          return out.color;
+        }
+      }
+      return 0;
+    }
+  );
+}
+
 // ============================================================================
 // 5. LIVE 2.5D DEATH AVATAR CATHEDRAL & BLOOD-MOON ECLIPSE (`deathAvatarCathedral`)
 // ============================================================================
@@ -947,11 +1078,16 @@ export const deathAvatarCathedral = {
           return out.color;
         });
 
-        // 2. Colossal Floating 3D Horned Lich Skull & Scissoring X-Crossed Twin Great-Scythes Guillotine
-        const sovY = -42 + (1 - pop) * 14;
+        // 2. Ground-Erupting Jagged Necrotic Bone & Soul-Crystal Fangs anchored on the arena floor
+        //    with a curved 2.5D ossuary crater base (`botCurve = baseY + sqrt(1 - (dx/halfW)^2) * 4.2`)
+        drawGroundBoneCrystalEruption(pen, 0, 2, 1.18 * pop, u, env, abyss, blood, bone);
+
+        // 3. Colossal Floating 3D Horned Lich Skull & Scissoring X-Crossed Twin Great-Scythes Guillotine
+        //    crowning the bone-and-crystal eruption!
+        const sovY = -44 + (1 - pop) * 14;
         drawHornedLichSkullGuillotine(pen, 0, sovY, 1.05 * pop, u, env, abyss, blood, bone);
 
-        // 3. Back half of the 2.5D Blood-Moon Pentagram Execution Floor Seal
+        // 4. Back half of the 2.5D Blood-Moon Pentagram Execution Floor Seal
         const rx = 58 * pop;
         drawTiltedOrbitBand(pen, 0, 0, rx, 0.24, 1.8, 0.92 * env, band4, BACK_HALF, false);
         drawTiltedOrbitBand(pen, 0, 0, 38 * pop, 0.24, 1.3, 0.84 * env, band4, BACK_HALF, false);
@@ -1002,12 +1138,14 @@ export const deathAvatarCathedral = {
   }
 };
 
+export const necropolisBoneyardDomain = deathAvatarCathedral;
+
 // ============================================================================
 // BAKED 30FPS `reaper_vfx.png` 5-ROW CELLS (`104x104` logical -> `208x208` crisp 2x)
 // Strictly bounded within `[-40, +40]` (`[-44, +44]` safe envelope) for 0/150 border clips!
 //   Row 0 (`y=0`):   360-Deg Twin-Blade Soul Scythe Wave (`soulScytheWaveCell`)
 //   Row 1 (`y=208`): Floating Abyssal Skull Wisp & Soul-Fire Orb (`abyssalSkullWispCell`)
-//   Row 2 (`y=416`): Colossal Floating 3D Horned Lich Skull & Scissoring Twin Great-Scythes Guillotine (`necroticBoneSpireCell`)
+//   Row 2 (`y=416`): Ground-Erupting Necrotic Bone & Soul-Crystal Fangs + Horned Lich Skull Guillotine (`necroticBoneSpireCell`)
 //   Row 3 (`y=624`): Revolving Thanatos Blood-Moon Pentagram Seal (`thanatosPentagramSealCell`)
 //   Row 4 (`y=832`): Abyssal Reap Crescent Slash & Starburst Nova (`abyssalReapNovaCell`)
 // ============================================================================
@@ -1148,7 +1286,11 @@ export const abyssalSkullWispCell = {
   }
 };
 
-/** Row 2 (`sy = 416`): Colossal Floating 3D Horned Lich Skull & Scissoring X-Crossed Twin Great-Scythes Guillotine (`F00..F29` one-shot). */
+/**
+ * Row 2 (`sy = 416`): Ground-Erupting Jagged Necrotic Bone & Soul-Crystal Fangs anchored at `baseY = 34`
+ * with a curved 2.5D ossuary crater base (`botCurve = baseY + Math.sqrt(Math.max(0, 1 - (dx/halfW)^2)) * 4.2`),
+ * crowned by the Colossal Horned Lich Skull & Scissoring X-Crossed Twin Great-Scythes (`F00..F29` one-shot).
+ */
 export const necroticBoneSpireCell = {
   duration: 1.0,
   loop: false,
@@ -1167,8 +1309,13 @@ export const necroticBoneSpireCell = {
         const env = (0.9 + 0.1 * smoothStep(0, 0.12, u)) * fade;
         if (env <= 0.02) return;
 
-        const bobY = Math.sin(u * Math.PI * 2) * 1.8;
-        drawHornedLichSkullGuillotine(pen, 0, 2 + bobY, pop * 0.95, u, env, abyss, blood, bone);
+        // 1. Ground-Erupting Jagged Necrotic Bone & Soul-Crystal Fangs anchored at baseY = 34
+        //    with curved 2.5D ossuary crater base (never a flat horizontal cut!)
+        drawGroundBoneCrystalEruption(pen, 0, 34, pop * 0.96, u, env, abyss, blood, bone);
+
+        // 2. Crowning Colossal Horned Lich Skull & Scissoring X-Crossed Twin Great-Scythes
+        const bobY = Math.sin(u * Math.PI * 2) * 1.5;
+        drawHornedLichSkullGuillotine(pen, 0, -6 + bobY, pop * 0.78, u, env, abyss, blood, bone);
       }
     };
   }
@@ -1280,10 +1427,12 @@ export const abyssalReapNovaCell = {
 
 export const ABYSSAL_EFFECT_REGISTRY = {
   abyssalWraithMantle,
+  wraithShadowMantle,
   soulHarvestScytheArc,
   skeletalChainTetherBeam,
   necroticGraveyardSigil,
   deathAvatarCathedral,
+  necropolisBoneyardDomain,
   soulScytheWaveCell,
   abyssalSkullWispCell,
   necroticBoneSpireCell,
