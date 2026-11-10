@@ -1,23 +1,39 @@
 #!/usr/bin/env python3
 """
-Builds Aethelgard (Warrior — Elder Rune Knight) 30fps HD-2D Sprite Sheet
-(6240x1872, 30 cols x 9 rows of 208x208) using warrior_v3_base.jpg + hd2d_rig_core.
+Builds Aethelgard v4 (Warrior — Sovereign Paladin of Celestial Frost & Runic Steel)
+30fps HD-2D Sprite Sheet (`assets/sprites/warrior_sheet.png`, 6240x1872, 30 cols x 9 rows of 208x208)
+and HD-2D Portrait (`assets/portraits/warrior.png`, 128x128) using `warrior_v4_base.jpg` + `hd2d_rig_core`.
 
 Key Features:
-- 14-part dark midnight-cobalt & glowing cyan Elder-Rune Knight skeletal rig
-- True Two-Handed Elder-Rune Greatsword (Claymore) with per-frame 2-Bone Analytical IK
-  locking BOTH armored gauntlets (upper far hand behind winged crossguard + lower near hand
-  above diamond rune pommel) across all combat stances, strides, swings, parries, dashes, & jumps!
-- Row 3 (SKILL — TEMPEST VANGUARD): 2.5-revolution 360-degree Two-Handed Whirlwind Spin-Slash
-  (genuine front -> side -> dorsal back-plate -> side -> front yaw + 3D Runic Cyclone ring)
-  into a leaping two-handed Thunder-Breaker Overhead Slam!
-- Row 4 (ULTIMATE — HEAVENLY EARTHSHATTER): Multi-directional Two-Handed Rune-Blink Omnislash
-  (Left Cleave -> Right Cross-Slash -> Flank Launch -> Mid-Air TOP Two-Handed Sky Charge ->
-  Meteoric Top-Down Two-Handed Vertical Plunge Slash & Earthshatter!)
+- High-contrast Regal Silver-Platinum, Sovereign Gold, & Royal-Sapphire Paladin Plate Armor
+  with Winged Greathelm, Blazing Ice-Cyan T-Visor, & Flowing White-Ice Horsehair Plume (`warrior_v4_base.jpg`)
+- Clean 14-part skeletal segmentation with 0 background white halos and 0 unassigned foreground pixels
+- Colossal Two-Handed Winged Celestial Claymore (`draw_2h_runeblade_104`) with per-frame 2-Bone Analytical IK
+  locking BOTH silver-and-gold gauntlets onto the hilt across all 9 animation rows
+- Zero cheesy stick-lines / speedlines baked into sprite cells:
+  * Row 0 (IDLE): Sovereign Two-Handed High-Guard with breathing, flowing white plume, & rune shimmer
+  * Row 1 (WALK): Heavy Paladin Vanguard two-step armored march
+  * Row 2 (AUTO_ATTACK): Coiled 2H back-shoulder windup -> explosive lunging 2H Runic Claymore cleave
+  * Row 3 (SKILL — TEMPEST VANGUARD): 2.5-rev 360-deg 2H Whirlwind Spin-Slash (with silver-gold dorsal backplate)
+    into Leaping 2H Thunder-Breaker Overhead Slam
+  * Row 4 (ULTIMATE — SACRED VOW & HEAVENLY EARTHSHATTER):
+    - F00..F05: Solemn 2H Sacred Vow Sword-Aloft Consecration Stance (vertical Claymore before visor)
+    - F06..F16: Multi-angle 2H Omnislash cleaves
+    - F17..F21: High-sky 2H Overhead Judgment Charge
+    - F22..F29: Meteoric Top-Down 2H Plunge Slash & Earthshatter Impact
+  * Row 5 (DEATH & HURT): 2H stagger -> double-knee 2H Claymore ground plant -> noble prone collapse
+  * Row 6 (DASH): Pure aerodynamic forward Paladin Drag-Rush trailing the 2H Claymore
+  * Row 7 (CROUCH): Braced 2H Cross-Guard Spell Parry -> low sweeping Frost-Counter
+  * Row 8 (JUMP & ARCHANGEL JUSTICE AIM):
+    - F00..F10: Crouch coil & airborne vault
+    - F11..F19: Dedicated Archangel Sky-Hover Pose with BOTH hands thrusting the 2H Claymore
+      diagonally downward (+38..+44 deg) pointing straight at the grounded enemy!
+    - F20..F29: Supersonic downward diving cleave & grounded shockwave absorption
 """
 
 import os
 import math
+import shutil
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 from hd2d_rig_core import (
@@ -28,59 +44,64 @@ from hd2d_rig_core import (
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "warrior_v3_base.jpg")
-OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "warrior_sheet.png")
-VFX_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "warrior_vfx.png")
 ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
 
-# Strict 20-Color Hand-Crafted Dark Cobalt & Glowing Cyan Elder-Rune Knight Master Palette
+V4_BASE_ARTIFACT = os.path.join(ARTIFACT_DIR, "warrior_v4_base_1794329386108.jpg")
+V4_PORTRAIT_ARTIFACT = os.path.join(ARTIFACT_DIR, "portrait_hd2d_warrior_v4_1794329420234.jpg")
+BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "warrior_v4_base.jpg")
+OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "warrior_sheet.png")
+OUT_PORTRAIT_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "warrior_portrait.png")
+OUT_PORTRAIT_LEGACY_PATH = os.path.join(ROOT_DIR, "assets", "portraits", "warrior.png")
+VFX_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "warrior_vfx.png")
+
+# Strict 20-Color Hand-Crafted Silver-Platinum, Sovereign Gold & Celestial Frost-Sapphire Master Palette
 MASTER_PALETTE = np.array([
-    [8, 11, 22],      # 0: Abyssal Obsidian Outline
-    [15, 22, 40],     # 1: Deep Midnight-Cobalt Selout
-    [24, 35, 60],     # 2: Dark Rune-Plate Shadow
-    [38, 56, 92],     # 3: Midnight Cobalt Plate Base
-    [60, 88, 136],    # 4: Lit Cobalt-Steel Midtone
-    [98, 138, 192],   # 5: Polished Frost-Steel Highlight
-    [164, 204, 240],  # 6: Specular Plume & Blade Rim
-    [22, 46, 102],    # 7: Royal Rune-Tabard Deep Indigo
-    [34, 74, 152],    # 8: Royal Rune-Tabard & Plume Midtone
-    [64, 122, 206],   # 9: Lit Azure Plume & Tabard Crest
-    [86, 58, 24],     # 10: Antique Rune-Gold Shadow
-    [138, 96, 36],    # 11: Burnished Trim Gold Midtone
-    [198, 148, 52],   # 12: Imperial Rune-Gold Highlight
-    [246, 208, 92],   # 13: Specular Gold Gleam
-    [32, 28, 36],     # 14: Dark Under-Armor Mail/Joint Shadow
-    [54, 48, 62],     # 15: Charcoal Mail/Grip Midtone
-    [88, 82, 98],     # 16: Steel Chain/Rivet Highlight
-    [22, 132, 204],   # 17: Deep Carved Elder-Rune Cyan
-    [56, 208, 252],   # 18: Luminous Elder-Rune & T-Visor Cyan
-    [228, 252, 255],  # 19: Blazing White-Ice Rune Core
+    [10, 14, 28],     # 0: Abyssal Obsidian Outline (#0a0e1c)
+    [20, 28, 52],     # 1: Deep Midnight-Sapphire Selout (#141c34)
+    [44, 38, 48],     # 2: Dark Leather Strap & Under-Armor Joint Shadow (#2c2630)
+    [64, 78, 108],    # 3: Deep Slate-Steel Plate Shadow (#404e6c)
+    [102, 120, 154],  # 4: Cool Moon-Steel Plate Base (#66789a)
+    [148, 166, 198],  # 5: Polished Silver-Steel Midtone (#94a6c6)
+    [198, 214, 236],  # 6: Gleaming Platinum Plate Highlight (#c6d6ec)
+    [242, 248, 255],  # 7: Pure Specular White-Silver Plume & Razor Edge (#f2f8ff)
+    [152, 196, 224],  # 8: Soft Ice-Silver Plume Shadow (#98c4e0)
+    [206, 236, 250],  # 9: Luminous Pale-Ice Plume Midtone (#ceecfa)
+    [20, 44, 96],     # 10: Deep Royal-Sapphire Tabard Shadow (#142c60)
+    [32, 72, 148],    # 11: Sovereign Sapphire Tabard & Cuisse Base (#204894)
+    [54, 110, 196],   # 12: Lit Royal-Azure Tabard Fold (#366ec4)
+    [96, 62, 18],     # 13: Antique Bronze-Gold Shadow (#603e12)
+    [156, 106, 28],   # 14: Burnished Royal-Gold Trim Base (#9c6a1c)
+    [218, 164, 48],   # 15: Radiant Sovereign Gold Highlight (#daa430)
+    [252, 222, 98],   # 16: Specular Sun-Gold Gleam (#fcde62)
+    [14, 132, 212],   # 17: Deep Carved Sapphire-Rune Glow (#0e84d4)
+    [56, 208, 252],   # 18: Blazing Ice-Cyan T-Visor & Runic Fuller (#38d0fc)
+    [224, 252, 255],  # 19: White-Hot Celestial Ice Core (#e0fcff)
 ], dtype=np.int32)
 
-C_OUT = (8, 11, 22, 255)
-C_SEL = (15, 22, 40, 255)
-C_STEEL_DARK = (24, 35, 60, 255)
-C_STEEL_BASE = (38, 56, 92, 255)
-C_STEEL_MID = (60, 88, 136, 255)
-C_STEEL_LIT = (98, 138, 192, 255)
-C_STEEL_SPEC = (164, 204, 240, 255)
-C_PLUME_DARK = (22, 46, 102, 255)
-C_PLUME_MID = (34, 74, 152, 255)
-C_PLUME_LIT = (64, 122, 206, 255)
-C_GOLD_DARK = (86, 58, 24, 255)
-C_GOLD_MID = (138, 96, 36, 255)
-C_GOLD_LIT = (198, 148, 52, 255)
-C_GOLD_SPEC = (246, 208, 92, 255)
-C_CYAN_DEEP = (22, 132, 204, 255)
+C_OUT = (10, 14, 28, 255)
+C_SEL = (20, 28, 52, 255)
+C_STEEL_DARK = (64, 78, 108, 255)
+C_STEEL_BASE = (102, 120, 154, 255)
+C_STEEL_MID = (148, 166, 198, 255)
+C_STEEL_LIT = (198, 214, 236, 255)
+C_STEEL_SPEC = (242, 248, 255, 255)
+C_SAPPH_DARK = (20, 44, 96, 255)
+C_SAPPH_MID = (32, 72, 148, 255)
+C_GOLD_DARK = (96, 62, 18, 255)
+C_GOLD_MID = (156, 106, 28, 255)
+C_GOLD_LIT = (218, 164, 48, 255)
+C_GOLD_SPEC = (252, 222, 98, 255)
+C_CYAN_DEEP = (14, 132, 212, 255)
 C_CYAN_LIT = (56, 208, 252, 255)
-C_ICE_CORE = (228, 252, 255, 255)
+C_ICE_CORE = (224, 252, 255, 255)
 
+# Skeletal pivots in 512x512 rig space (0.5x of 1024x1024 warrior_v4_base.jpg)
 PIVOTS = dict(
-    pelvis=(262.5, 280.0), neck=(256.0, 134.0), mane=(247.5, 51.0),
-    l_sh=(194.0, 146.0), l_elb=(171.0, 215.0), l_hand=(174.0, 314.0),
-    r_sh=(311.0, 152.5), r_elb=(322.5, 219.0), r_hand=(346.0, 308.0),
-    l_hip=(222.5, 290.0), l_knee=(209.0, 362.5), l_ank=(187.5, 452.5),
-    r_hip=(295.0, 290.0), r_knee=(304.0, 362.5), r_ank=(297.5, 447.5),
+    pelvis=(264.0, 260.0), neck=(263.0, 136.0), mane=(247.5, 46.0),
+    l_sh=(204.0, 152.0), l_elb=(178.0, 222.0), l_hand=(188.0, 304.0),
+    r_sh=(308.0, 158.0), r_elb=(322.0, 223.0), r_hand=(346.0, 301.0),
+    l_hip=(226.0, 290.0), l_knee=(222.0, 368.0), l_ank=(209.0, 454.0),
+    r_hip=(298.0, 290.0), r_knee=(303.0, 368.0), r_ank=(296.0, 449.0),
 )
 
 # Precompute 2-Bone IK rest lengths & angles for BOTH arms in 512-space
@@ -96,18 +117,70 @@ _AR2 = math.degrees(math.atan2(PIVOTS["r_hand"][1] - PIVOTS["r_elb"][1], PIVOTS[
 
 PALETTE_CFG = dict(
     palette=MASTER_PALETTE,
-    protect_indices=(12, 13, 17, 18, 19),
-    hair_indices=(6, 8, 9),
+    protect_indices=(6, 7, 15, 16, 17, 18, 19),
+    hair_indices=(7, 8, 9),
     lit_selout=1,
     shad_selout=0,
-    hair_selout=7,
-    joint_fill=(18, 26, 46, 255),
-    joint_inner=(28, 42, 72, 255),
+    hair_selout=3,
+    joint_fill=(20, 44, 96, 255),
+    joint_inner=(32, 72, 148, 255),
     hip_r=22,
     thigh_r=17,
     arm_r=15,
-    pinhole_fill=(24, 35, 60, 255),
+    pinhole_fill=(64, 78, 108, 255),
 )
+
+
+def put_px_safe(arr, x, y, col):
+    """Strictly clamps drawn pixels inside x in [4..99], y in [4..99] on the 104x104 canvas."""
+    ix, iy = int(round(x)), int(round(y))
+    if 4 <= ix <= 99 and 4 <= iy <= 99:
+        arr[iy, ix] = col
+
+
+def build_portrait():
+    """
+    Builds `assets/sprites/warrior_portrait.png` (128x128) from `portrait_hd2d_warrior_v4`
+    using MedianFilter(size=5) cel-flattening + 20-color FASTOCTREE quantization (zero dithering).
+    """
+    if os.path.exists(V4_BASE_ARTIFACT) and not os.path.exists(BASE_IMG_PATH):
+        os.makedirs(os.path.dirname(BASE_IMG_PATH), exist_ok=True)
+        shutil.copyfile(V4_BASE_ARTIFACT, BASE_IMG_PATH)
+    elif os.path.exists(V4_BASE_ARTIFACT):
+        shutil.copyfile(V4_BASE_ARTIFACT, BASE_IMG_PATH)
+
+    if not os.path.exists(V4_PORTRAIT_ARTIFACT):
+        print(f"Skipping portrait build (artifact not found at {V4_PORTRAIT_ARTIFACT})")
+        return
+
+    im = Image.open(V4_PORTRAIT_ARTIFACT).convert("RGB")
+    im_flat = im.filter(ImageFilter.MedianFilter(size=5))
+    im_128 = im_flat.resize((128, 128), Image.Resampling.NEAREST)
+    raw_128 = np.array(Image.open(V4_PORTRAIT_ARTIFACT).convert("RGB").resize((128, 128), Image.Resampling.BILINEAR))
+    im_q = im_128.quantize(colors=20, method=Image.Quantize.FASTOCTREE, dither=Image.Dither.NONE).convert("RGBA")
+    q_arr = np.array(im_q)
+    rr = raw_128[:, :, 0].astype(np.int16)
+    rg = raw_128[:, :, 1].astype(np.int16)
+    rb = raw_128[:, :, 2].astype(np.int16)
+    # Restore crisp 3-step cel-shaded glow on T-visor, brow gem, chest core, & crossguard gem
+    gem_core = (rb >= 235) & (rg >= 215) & ((rb - rr) >= 75)
+    gem_lit = (~gem_core) & (rb >= 205) & (rg >= 150) & ((rb - rr) >= 95)
+    gem_mid = (~gem_core) & (~gem_lit) & (rb >= 165) & (rg >= 105) & ((rb - rr) >= 90)
+    q_arr[gem_mid] = [14, 132, 212, 255]
+    q_arr[gem_lit] = [56, 208, 252, 255]
+    q_arr[gem_core] = [214, 250, 255, 255]
+    im_final = Image.fromarray(q_arr, "RGBA")
+    os.makedirs(os.path.dirname(OUT_PORTRAIT_PATH), exist_ok=True)
+    im_final.save(OUT_PORTRAIT_PATH)
+    os.makedirs(os.path.dirname(OUT_PORTRAIT_LEGACY_PATH), exist_ok=True)
+    im_final.save(OUT_PORTRAIT_LEGACY_PATH)
+
+    # Save 3x zoomed QA preview in ARTIFACT_DIR
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+    im_final.resize((384, 384), Image.Resampling.NEAREST).save(
+        os.path.join(ARTIFACT_DIR, "debug_warrior_v4_portrait.png")
+    )
+    print(f"Built {OUT_PORTRAIT_PATH} (128x128, 20-color FASTOCTREE + glowing cyan visor/gems)")
 
 
 def solve_arm_ik(sh_w, target_w, L1, L2, a1_rest, a2_rest, torso_deg, elbow_clockwise=True):
@@ -145,18 +218,18 @@ def solve_arm_ik(sh_w, target_w, L1, L2, a1_rest, a2_rest, torso_deg, elbow_cloc
 
 def apply_2h_sword_ik(cfg):
     """
-    Solves per-frame 2-Bone IK so BOTH of Aethelgard's gauntlets lock onto the
-    Two-Handed Elder-Rune Greatsword hilt (r_hand on upper grip near crossguard,
-    l_hand on lower grip above pommel) with zero mid-swing drift!
+    Solves per-frame 2-Bone IK so BOTH of Aethelgard's silver-and-gold gauntlets lock onto the
+    Two-Handed Celestial Claymore hilt (`r_hand` on upper grip near winged crossguard,
+    `l_hand` on lower grip above pommel) with zero mid-swing drift!
     """
     if not cfg.get("two_handed_ik", True):
         return cfg
 
     torso_deg = cfg.get("torso_deg", 0.0)
-    grip_x = cfg.get("grip_x", 58.0)
-    grip_y = cfg.get("grip_y", -18.0)
+    grip_x = cfg.get("grip_x", 56.0)
+    grip_y = cfg.get("grip_y", -14.0)
     blade_deg = cfg.get("weapon_deg", -40.0)
-    grip_sep = cfg.get("grip_sep", 32.0)
+    grip_sep = cfg.get("grip_sep", 33.0)
 
     pel = PIVOTS["pelvis"]
     l_sh_w = rot_pt(PIVOTS["l_sh"], pel, torso_deg)
@@ -179,13 +252,11 @@ def apply_2h_sword_ik(cfg):
     cfg["r_fore_rel_deg"] = r_fore_rel
     cfg["l_sode_rel_deg"] = l_sode_rel
     cfg["l_fore_rel_deg"] = l_fore_rel
-    # Keep far arm behind torso in low/mid stances so breastplate occludes inner elbow cleanly,
-    # and bring it forward during high overhead charges or deep forward reaches!
-    cfg["right_arm_in_front"] = (grip_y < -85.0) or (grip_x > 63.0)
+    cfg["right_arm_in_front"] = bool(cfg.get("force_right_arm_front", False)) or (grip_y < -88.0) or (grip_x > 64.0)
     return cfg
 
 
-TWO_HAND_NUMERIC_KEYS = tuple(BASE_NUMERIC_KEYS) + ("grip_x", "grip_y", "grip_sep")
+TWO_HAND_NUMERIC_KEYS = tuple(BASE_NUMERIC_KEYS) + ("grip_x", "grip_y", "grip_sep", "weapon_len")
 
 
 def eval_2h_keyframes(f, keyframes, ph, defaults, extra_meta_keys=(), wave_mult=2.0):
@@ -215,9 +286,9 @@ def eval_2h_keyframes(f, keyframes, ph, defaults, extra_meta_keys=(), wave_mult=
 
     active_d = d0 if raw_u < 0.5 else d1
     all_meta = (
-        "right_arm_in_front", "right_leg_behind", "mane_in_front",
+        "right_arm_in_front", "force_right_arm_front", "right_leg_behind", "mane_in_front",
         "show_weapon", "planted_weapon", "resting_weapon", "centered_mode",
-        "rune_ward", "halo_active", "speedlines", "speedline_deg", "two_handed_ik",
+        "halo_active", "halo_grand", "two_handed_ik",
     ) + tuple(extra_meta_keys)
     for mk in all_meta:
         if mk in active_d:
@@ -228,19 +299,32 @@ def eval_2h_keyframes(f, keyframes, ph, defaults, extra_meta_keys=(), wave_mult=
 
 
 def load_and_segment_512():
+    if os.path.exists(V4_BASE_ARTIFACT) and not os.path.exists(BASE_IMG_PATH):
+        os.makedirs(os.path.dirname(BASE_IMG_PATH), exist_ok=True)
+        shutil.copyfile(V4_BASE_ARTIFACT, BASE_IMG_PATH)
+
     im = Image.open(BASE_IMG_PATH).convert("RGBA")
-    for sx, sy in ((0, 0), (1023, 0), (0, 1023), (1023, 1023), (400, 500)):
-        ImageDraw.floodfill(im, (sx, sy), (0, 0, 0, 0), thresh=38)
+    # Floodfill exterior + enclosed background white pockets while preserving 100% of the white horsehair plume!
+    bg_seeds = (
+        (0, 0), (1023, 0), (0, 1023), (1023, 1023), (512, 995),
+        (395, 215), (425, 212), (416, 480), (642, 550), (652, 585), (656, 602),
+    )
+    for sx, sy in bg_seeds:
+        px = im.getpixel((sx, sy))
+        if px[3] > 0 and px[0] > 220 and px[1] > 220 and px[2] > 220:
+            ImageDraw.floodfill(im, (sx, sy), (0, 0, 0, 0), thresh=42)
+
     arr = np.array(im)
-
-    r = arr[:, :, 0].astype(np.int16)
-    g = arr[:, :, 1].astype(np.int16)
-    b = arr[:, :, 2].astype(np.int16)
+    # Also strip any remaining enclosed pure-white background pockets below y=175 (plume highlight is y < 165)
+    r0 = arr[:, :, 0].astype(np.int16)
+    g0 = arr[:, :, 1].astype(np.int16)
+    b0 = arr[:, :, 2].astype(np.int16)
     a0 = arr[:, :, 3] > 0
-    pure_w = a0 & (r >= 246) & (g >= 246) & (b >= 246)
-    pure_w[325:430, 520:590] = False
-    arr[pure_w] = [0, 0, 0, 0]
+    yy1024 = np.arange(1024)[:, None]
+    lower_pure_white = a0 & (yy1024 > 175) & (r0 >= 246) & (g0 >= 246) & (b0 >= 246)
+    arr[lower_pure_white] = [0, 0, 0, 0]
 
+    # 3-Pass Anti-Aliased White Fringe Stripping
     for _ in range(3):
         a0 = arr[:, :, 3] > 0
         up = np.pad(a0[1:, :], ((0, 1), (0, 0)), constant_values=False)
@@ -251,59 +335,75 @@ def load_and_segment_512():
         r = arr[:, :, 0].astype(np.int16)
         g = arr[:, :, 1].astype(np.int16)
         b = arr[:, :, 2].astype(np.int16)
-        wf = edge & (r > 175) & (g > 175) & (b > 175) & (np.abs(r - g) < 28) & (np.abs(g - b) < 28)
+        wf = edge & (r > 180) & (g > 180) & (b > 180) & (np.abs(r - g) < 24) & (np.abs(g - b) < 24)
         arr[wf] = [0, 0, 0, 0]
 
     im512 = Image.fromarray(arr, "RGBA").resize((512, 512), Image.Resampling.NEAREST)
-    rgb_med3 = np.array(im512.convert("RGB").filter(ImageFilter.MedianFilter(size=3)))
+    rgb512 = im512.convert("RGB")
+    rgb_med3 = np.array(rgb512.filter(ImageFilter.MedianFilter(size=3)))
+    rgb_med5 = np.array(rgb512.filter(ImageFilter.MedianFilter(size=5)))
     arr512 = np.array(im512)
     alpha = keep_largest_component(arr512[:, :, 3] > 0)
     arr512[~alpha] = [0, 0, 0, 0]
-    arr512[:, :, :3] = np.where(alpha[:, :, None], rgb_med3, 0)
+    yy = np.arange(512)[:, None]
+    cel_rgb = np.where(yy[:, :, None] < 155, rgb_med3, rgb_med5)
+    arr512[:, :, :3] = np.where(alpha[:, :, None], cel_rgb, 0)
 
     H, W = 512, 512
     a = arr512[:, :, 3] > 0
 
     m_head = poly_mask(H, W, P([
-        (386, 42), (445, 130), (482, 100), (548, 95), (568, 42),
-        (592, 120), (595, 255), (548, 302), (475, 295), (435, 255), (432, 215), (385, 145)
+        (394, 44), (458, 128), (495, 108), (556, 106), (584, 44),
+        (608, 152), (602, 260), (565, 304), (482, 295), (452, 250), (448, 210), (394, 150)
     ])) & a
     m_mane = poly_mask(H, W, P([
-        (188, 22), (552, 22), (548, 106), (482, 106), (445, 135), (430, 214), (188, 265)
+        (244, 24), (562, 24), (558, 115), (492, 115), (458, 134), (448, 215), (382, 275), (340, 332), (244, 332)
     ])) & a & (~m_head)
 
     m_l_sode = poly_mask(H, W, P([
-        (288, 216), (462, 216), (465, 345), (402, 435), (288, 425)
+        (310, 222), (485, 222), (492, 355), (438, 455), (318, 455)
     ])) & a & (~m_head) & (~m_mane)
     m_l_forearm = poly_mask(H, W, P([
-        (246, 388), (330, 418), (394, 438), (394, 640), (310, 640), (246, 520)
+        (274, 374), (342, 424), (416, 452), (412, 565), (420, 608), (406, 654), (326, 654), (274, 510)
     ])) & a & (~m_l_sode)
 
     m_r_sode = poly_mask(H, W, P([
-        (614, 272), (690, 258), (690, 445), (602, 455), (594, 355)
+        (594, 232), (684, 250), (684, 448), (604, 458), (594, 345)
     ])) & a & (~m_head)
     m_r_forearm = poly_mask(H, W, P([
-        (605, 445), (668, 392), (736, 392), (736, 635), (645, 635), (608, 495)
+        (632, 448), (684, 418), (740, 560), (740, 660), (658, 660), (650, 545)
     ])) & a & (~m_r_sode)
 
     m_l_coat = poly_mask(H, W, P([
-        (365, 488), (488, 505), (486, 655), (365, 662)
+        (392, 495), (500, 505), (486, 588), (452, 642), (402, 674), (384, 652)
     ])) & a & (~m_l_forearm)
     m_r_coat = poly_mask(H, W, P([
-        (588, 492), (652, 492), (652, 662), (590, 655)
+        (602, 495), (644, 505), (664, 678), (636, 678), (618, 590)
     ])) & a & (~m_r_forearm)
 
     m_torso = poly_mask(H, W, P([
-        (395, 235), (622, 230), (618, 520), (592, 768), (486, 768), (410, 505)
+        (418, 238), (616, 238), (612, 520), (604, 816), (500, 816), (498, 540), (435, 510)
     ])) & a & (~m_head) & (~m_l_sode) & (~m_l_forearm) & (~m_r_sode) & (~m_r_forearm) & (~m_l_coat) & (~m_r_coat)
 
-    m_l_foot = poly_mask(H, W, P([(312, 882), (425, 882), (425, 1008), (312, 1008)])) & a
-    m_l_shin = poly_mask(H, W, P([(332, 680), (475, 680), (455, 892), (332, 892)])) & a & (~m_l_foot) & (~m_torso) & (~m_l_coat)
-    m_l_thigh = poly_mask(H, W, P([(365, 555), (505, 555), (495, 705), (365, 705)])) & a & (~m_torso) & (~m_l_coat) & (~m_l_shin) & (~m_l_foot)
+    m_l_foot = poly_mask(H, W, P([
+        (332, 845), (378, 845), (384, 884), (478, 884), (478, 1008), (332, 1008)
+    ])) & a
+    m_l_shin = poly_mask(H, W, P([
+        (350, 694), (496, 694), (482, 886), (350, 886)
+    ])) & a & (~m_l_foot) & (~m_torso) & (~m_l_coat)
+    m_l_thigh = poly_mask(H, W, P([
+        (388, 555), (504, 555), (502, 712), (388, 712)
+    ])) & a & (~m_torso) & (~m_l_coat) & (~m_l_shin) & (~m_l_foot)
 
-    m_r_foot = poly_mask(H, W, P([(550, 875), (712, 875), (712, 995), (550, 995)])) & a
-    m_r_shin = poly_mask(H, W, P([(535, 682), (655, 682), (650, 885), (535, 885)])) & a & (~m_r_foot) & (~m_torso)
-    m_r_thigh = poly_mask(H, W, P([(535, 560), (645, 560), (645, 705), (535, 705)])) & a & (~m_torso) & (~m_r_coat) & (~m_r_shin) & (~m_r_foot)
+    m_r_foot = poly_mask(H, W, P([
+        (496, 838), (546, 845), (554, 882), (698, 882), (698, 992), (496, 992)
+    ])) & a
+    m_r_shin = poly_mask(H, W, P([
+        (522, 694), (656, 694), (650, 884), (522, 884)
+    ])) & a & (~m_r_foot) & (~m_torso)
+    m_r_thigh = poly_mask(H, W, P([
+        (535, 555), (650, 555), (650, 712), (535, 712)
+    ])) & a & (~m_torso) & (~m_r_coat) & (~m_r_shin) & (~m_r_foot)
 
     masks = assign_remaining_geodesic(a, [
         ("mane", m_mane), ("head", m_head), ("torso", m_torso),
@@ -316,126 +416,125 @@ def load_and_segment_512():
     return extract_parts_512(arr512, masks)
 
 
-def draw_rune_halo_104(arr, nk_x, nk_y, radius=15.0, phase=0.0, grand=False):
+def draw_rune_halo_104(arr, nk_x, nk_y, radius=15.5, phase=0.0, grand=False):
     cx = nk_x - 3.0
     cy = nk_y + 3.0
-    n_pts = 44 if grand else 32
+    n_pts = 48 if grand else 36
     for i in range(n_pts):
         ang = (i / float(n_pts)) * 2.0 * math.pi + phase * 0.5
         px = cx + math.cos(ang) * radius
         py = cy + math.sin(ang) * (radius * 0.88)
         if grand or i % 2 == 0:
-            col = C_CYAN_LIT if (i % 4 == 0) else C_CYAN_DEEP
-            put_px(arr, px, py, col)
+            col = C_GOLD_SPEC if (grand and i % 6 == 0) else (C_CYAN_LIT if (i % 4 == 0) else C_CYAN_DEEP)
+            put_px_safe(arr, px, py, col)
 
     n_nodes = 8 if grand else 6
     for k in range(n_nodes):
         ang = (k / float(n_nodes)) * 2.0 * math.pi - phase * 0.65
         gx = cx + math.cos(ang) * radius
         gy = cy + math.sin(ang) * (radius * 0.88)
-        put_px(arr, gx, gy, C_ICE_CORE if k % 2 == 0 else C_GOLD_SPEC)
-        put_px(arr, gx + 1, gy, C_CYAN_LIT)
-        put_px(arr, gx - 1, gy, C_CYAN_LIT)
-        put_px(arr, gx, gy - 1, C_GOLD_LIT)
-        put_px(arr, gx, gy + 1, C_GOLD_LIT)
+        put_px_safe(arr, gx, gy, C_ICE_CORE if k % 2 == 0 else C_GOLD_SPEC)
+        put_px_safe(arr, gx + 1, gy, C_CYAN_LIT)
+        put_px_safe(arr, gx - 1, gy, C_CYAN_LIT)
+        put_px_safe(arr, gx, gy - 1, C_GOLD_LIT)
+        put_px_safe(arr, gx, gy + 1, C_GOLD_LIT)
 
 
-def draw_2h_runeblade_104(arr, hx, hy, blade_deg, blade_len=33.5, glow=1.0, phase=0.0, show_gauntlets=True):
+def draw_2h_runeblade_104(arr, hx, hy, blade_deg, blade_len=35.5, glow=1.0, phase=0.0, show_gauntlets=True):
     """
-    Draws Aethelgard's Two-Handed Winged Frost-Runeblade Greatsword (Claymore) with:
-    - Extended two-handed gold-ribbed grip (-9.2..+3.0 px along blade axis)
-    - Heavy diamond Elder-Rune pommel protruding below the lower hand
-    - Broad winged gold & cyan-crystal crossguard
-    - Wide rune-inscribed greatsword blade with glowing cyan Elder Runes
-    - Crisp cobalt-and-gold armored gauntlet finger clasps for BOTH hands on the handle!
+    Draws Aethelgard v4's Colossal Two-Handed Winged Celestial Claymore (`Excalibur of Frost-Justice`):
+    - Royal-sapphire & gold wire-wrapped two-handed grip (-9.4..+3.2 px)
+    - Faceted sovereign-gold & sapphire-crystal pommel
+    - Sweeping Seraphim-Winged Gold & Silver Crossguard with blazing Ice-Sapphire center gem
+    - Broad gleaming Silver-Platinum greatsword blade (`half_w = 3.1`) with engraved Ice-Cyan Elder Runes
+    - Crisp Silver-Platinum & Gold armored gauntlet clasps for BOTH hands locked on the hilt!
     """
     rad = math.radians(blade_deg)
     ux, uy = math.cos(rad), math.sin(rad)
     nx, ny = -uy, ux
 
-    pom_x, pom_y = hx - ux * 9.0, hy - uy * 9.0
-    grd_x, grd_y = hx + ux * 3.0, hy + uy * 3.0
+    pom_x, pom_y = hx - ux * 9.2, hy - uy * 9.2
+    grd_x, grd_y = hx + ux * 3.2, hy + uy * 3.2
 
-    # Long Two-Handed Hilt
-    draw_line_104(arr, pom_x, pom_y, grd_x, grd_y, C_STEEL_DARK, 2)
-    for d in np.linspace(-8.0, 2.2, 12):
+    # 1. Extended Two-Handed Royal-Sapphire & Gold Ribbed Hilt
+    draw_line_104(arr, pom_x, pom_y, grd_x, grd_y, C_OUT, 2)
+    for d in np.linspace(-8.4, 2.4, 14):
         rx, ry = hx + ux * d, hy + uy * d
-        put_px(arr, rx, ry, C_GOLD_MID if int(round(d)) % 2 == 0 else C_STEEL_MID)
+        put_px_safe(arr, rx, ry, C_GOLD_LIT if int(round(d)) % 2 == 0 else C_SAPPH_MID)
 
-    # Heavy Diamond Elder-Rune Pommel
+    # 2. Faceted Sovereign-Gold & Ice-Sapphire Pommel
     for dy in (-1, 0, 1):
         for dx in (-1, 0, 1):
             if abs(dx) + abs(dy) <= 1:
-                put_px(arr, pom_x + dx, pom_y + dy, C_GOLD_SPEC if (dx == 0 and dy == 0) else C_GOLD_LIT)
-    put_px(arr, pom_x - ux * 1.1, pom_y - uy * 1.1, C_CYAN_LIT)
+                put_px_safe(arr, pom_x + dx, pom_y + dy, C_ICE_CORE if (dx == 0 and dy == 0) else C_GOLD_SPEC)
+    put_px_safe(arr, pom_x - ux * 1.2, pom_y - uy * 1.2, C_GOLD_LIT)
 
-    # Broad Winged Gold & Rune-Crystal Crossguard
-    for d in np.linspace(-5.8, 5.8, 19):
-        wing = abs(d) * 0.36
+    # 3. Broad Sweeping Seraphim-Winged Gold & Platinum Crossguard
+    for d in np.linspace(-6.6, 6.6, 23):
+        ad = abs(d)
+        wing = (ad ** 1.15) * 0.34
         gx = grd_x + nx * d + ux * wing
         gy = grd_y + ny * d + uy * wing
-        put_px(arr, gx, gy, C_GOLD_SPEC if abs(d) < 2.0 else C_GOLD_LIT)
-        put_px(arr, gx - ux * 1.0, gy - uy * 1.0, C_GOLD_DARK)
-    put_px(arr, grd_x, grd_y, C_ICE_CORE)
-    put_px(arr, grd_x + ux * 1.0, grd_y + uy * 1.0, C_CYAN_LIT)
+        top_col = C_STEEL_SPEC if ad > 4.6 else (C_GOLD_SPEC if ad < 2.2 else C_GOLD_LIT)
+        put_px_safe(arr, gx, gy, top_col)
+        put_px_safe(arr, gx - ux * 1.0, gy - uy * 1.0, C_GOLD_MID if ad < 4.6 else C_STEEL_MID)
+        put_px_safe(arr, gx - ux * 1.9, gy - uy * 1.9, C_OUT)
+    # Crossguard Ricasso Jewel
+    for r_off in (0.0, 1.1, 2.1):
+        put_px_safe(arr, grd_x + ux * r_off, grd_y + uy * r_off, C_ICE_CORE if r_off < 0.5 else C_CYAN_LIT)
 
-    # Broad Two-Handed Greatsword Blade
-    steps = int(blade_len * 2.6)
+    # 4. Broad Gleaming Silver-Platinum & Ice-Rune Claymore Blade
+    steps = int(blade_len * 2.8)
     for i in range(steps + 1):
         t = i / max(1, steps)
-        dist = 3.5 + t * blade_len
-        half_w = 2.7 * (1.0 - 0.72 * (t ** 2.4))
+        dist = 3.8 + t * blade_len
+        # Slight ricasso flare near base, broad parallel paladin blade, crisp diamond point taper
+        if t < 0.12:
+            half_w = 2.9 + (0.12 - t) * 3.5
+        else:
+            half_w = 3.05 * (1.0 - 0.78 * (max(0.0, (t - 0.12) / 0.88) ** 2.35))
         bx = hx + ux * dist
         by = hy + uy * dist
-        put_px(arr, bx - nx * half_w, by - ny * half_w, C_OUT)
-        put_px(arr, bx + nx * half_w, by + ny * half_w, C_STEEL_SPEC)
-        put_px(arr, bx - nx * (half_w * 0.54), by - ny * (half_w * 0.54), C_STEEL_BASE)
-        put_px(arr, bx + nx * (half_w * 0.54), by + ny * (half_w * 0.54), C_STEEL_LIT)
-        if t < 0.85:
-            glyph = ((i + int(phase * 3)) % 5)
+
+        put_px_safe(arr, bx - nx * half_w, by - ny * half_w, C_OUT)
+        put_px_safe(arr, bx + nx * half_w, by + ny * half_w, C_OUT)
+        if half_w >= 1.2:
+            put_px_safe(arr, bx - nx * (half_w - 0.85), by - ny * (half_w - 0.85), C_STEEL_BASE)
+            put_px_safe(arr, bx + nx * (half_w - 0.85), by + ny * (half_w - 0.85), C_STEEL_SPEC)
+        if half_w >= 2.0:
+            put_px_safe(arr, bx - nx * (half_w * 0.42), by - ny * (half_w * 0.42), C_STEEL_MID)
+            put_px_safe(arr, bx + nx * (half_w * 0.42), by + ny * (half_w * 0.42), C_STEEL_LIT)
+
+        if t < 0.84:
+            glyph = (i + int(phase * 3)) % 5
             if glow > 0.45 and glyph in (0, 1, 3):
                 r_col = C_ICE_CORE if (glow > 0.85 and glyph == 0) else C_CYAN_LIT
-                put_px(arr, bx, by, r_col)
-                if glyph == 1 and half_w > 1.5:
-                    put_px(arr, bx + nx * 0.75, by + ny * 0.75, C_CYAN_DEEP)
+                put_px_safe(arr, bx, by, r_col)
+                if glyph == 1 and half_w > 1.7:
+                    put_px_safe(arr, bx + nx * 0.75, by + ny * 0.75, C_CYAN_DEEP)
             else:
-                put_px(arr, bx, by, C_STEEL_DARK)
+                put_px_safe(arr, bx, by, C_CYAN_DEEP if glow > 0.6 else C_STEEL_DARK)
         else:
-            put_px(arr, bx, by, C_ICE_CORE if glow > 0.5 else C_STEEL_SPEC)
+            put_px_safe(arr, bx, by, C_ICE_CORE if glow > 0.5 else C_STEEL_SPEC)
 
-    # Two Distinct Armored Gauntlet Clasps (Upper r_hand near guard + Lower l_hand above pommel!)
+    # 5. Two Silver-Platinum & Sovereign-Gold Armored Gauntlet Clasps (Upper r_hand + Lower l_hand)
     if show_gauntlets:
-        for proj, is_near in ((0.2, False), (-5.3, True)):
+        for proj, is_near in ((0.3, False), (-5.4, True)):
             cx = hx + ux * proj
             cy = hy + uy * proj
             for u_off in (-0.9, 0.0, 0.9):
-                for n_off in (-1.4, -0.5, 0.5, 1.4):
+                for n_off in (-1.5, -0.5, 0.5, 1.5):
                     px = cx + ux * u_off + nx * n_off
                     py = cy + uy * u_off + ny * n_off
-                    if abs(n_off) > 1.1:
+                    if abs(n_off) > 1.2:
                         col = C_OUT
                     elif abs(u_off) > 0.6 and n_off > 0:
-                        col = C_GOLD_LIT
+                        col = C_GOLD_SPEC
                     elif n_off > 0.0:
-                        col = C_CYAN_LIT if (is_near and abs(u_off) < 0.3) else C_STEEL_LIT
+                        col = C_STEEL_SPEC if (is_near and abs(u_off) < 0.3) else C_STEEL_LIT
                     else:
                         col = C_STEEL_BASE
-                    put_px(arr, px, py, col)
-
-
-def draw_rune_ward_arc_104(arr, cx, cy):
-    """
-    Draws a glowing cyan & gold Elder-Rune Aegis Spell-Deflection Arc projected ahead
-    of Aethelgard's two-handed Runeblade during Row 6 (Dash) & Row 7 (Two-Handed Sword Parry)!
-    """
-    for i in range(-13, 14):
-        ang = (i / 13.0) * 0.95
-        rx = cx + math.cos(ang) * 9.0
-        ry = cy + math.sin(ang) * 14.0
-        put_px(arr, rx, ry, C_ICE_CORE if abs(i) % 4 == 0 else C_CYAN_LIT)
-        put_px(arr, rx - 1.0, ry, C_CYAN_DEEP)
-        if abs(i) in (0, 6, 12):
-            put_px(arr, rx + 1.0, ry, C_GOLD_SPEC)
+                    put_px_safe(arr, px, py, col)
 
 
 def draw_cyclone_ring_half_104(arr, cx, cy, rx, ry, spin_ang, is_front):
@@ -454,7 +553,7 @@ def draw_cyclone_ring_half_104(arr, cx, cy, rx, ry, spin_ang, is_front):
         wake = 1.0 - (rel / 5.0)
         ca = math.cos(a)
 
-        thick = 3.4 * (wake ** 0.75)
+        thick = 3.5 * (wake ** 0.75)
         n_dr = max(3, int(thick * 3.2) + 2)
         for dr in np.linspace(-thick, thick, n_dr):
             px = cx + ca * (rx + dr * 1.55)
@@ -470,13 +569,13 @@ def draw_cyclone_ring_half_104(arr, cx, cy, rx, ry, spin_ang, is_front):
                 if i % 3 != 0 or nd > 0.55:
                     continue
                 col = C_GOLD_SPEC if (i % 9 == 0) else C_CYAN_DEEP
-            put_px(arr, px, py, col)
+            put_px_safe(arr, px, py, col)
 
         if wake > 0.35 and i % 2 == 0:
             ux = cx + math.cos(a + 0.55) * (rx * 0.74)
             uy = cy - 9.5 + math.sin(a + 0.55) * (ry * 0.72)
             if 7.0 <= ux <= 96.0:
-                put_px(arr, ux, uy, C_ICE_CORE if wake > 0.72 else C_CYAN_LIT)
+                put_px_safe(arr, ux, uy, C_ICE_CORE if wake > 0.72 else C_GOLD_SPEC)
 
 
 def extra_extents(joints_c, cfg, scale):
@@ -493,9 +592,9 @@ def extra_extents(joints_c, cfg, scale):
             return pts
         h = joints_c["r_hand"]
         rad = math.radians(cfg.get("weapon_deg", -40.0))
-        wlen = cfg.get("weapon_len", 33.5)
-        pts.append((h[0] + math.cos(rad) * ((wlen + 5.5) / scale), h[1] + math.sin(rad) * ((wlen + 5.5) / scale)))
-        pts.append((h[0] - math.cos(rad) * (11.5 / scale), h[1] - math.sin(rad) * (11.5 / scale)))
+        wlen = cfg.get("weapon_len", 35.5)
+        pts.append((h[0] + math.cos(rad) * ((wlen + 5.8) / scale), h[1] + math.sin(rad) * ((wlen + 5.8) / scale)))
+        pts.append((h[0] - math.cos(rad) * (11.8 / scale), h[1] - math.sin(rad) * (11.8 / scale)))
     return pts
 
 
@@ -517,7 +616,7 @@ def draw_back(bg, joints104, cfg):
             bx = 52.0 + math.cos(spin_ang) * 11.0
             by = pel[1] - 4.0 + math.sin(spin_ang) * 3.5
             b_deg = math.degrees(math.atan2(math.sin(spin_ang) * 10.5, math.cos(spin_ang) * 38.0))
-            draw_2h_runeblade_104(bg, bx, by, blade_deg=b_deg, blade_len=28.5, glow=1.0, phase=ph, show_gauntlets=True)
+            draw_2h_runeblade_104(bg, bx, by, blade_deg=b_deg, blade_len=29.5, glow=1.0, phase=ph, show_gauntlets=True)
 
 
 def draw_front(out, joints104, cfg):
@@ -530,15 +629,15 @@ def draw_front(out, joints104, cfg):
             bx = 52.0 + math.cos(spin_ang) * 10.5
             by = pel[1] - 4.0 + math.sin(spin_ang) * 3.5
             b_deg = math.degrees(math.atan2(math.sin(spin_ang) * 10.5, math.cos(spin_ang) * 38.0))
-            draw_2h_runeblade_104(out, bx, by, blade_deg=b_deg, blade_len=28.5, glow=1.0, phase=ph, show_gauntlets=True)
+            draw_2h_runeblade_104(out, bx, by, blade_deg=b_deg, blade_len=29.5, glow=1.0, phase=ph, show_gauntlets=True)
         draw_cyclone_ring_half_104(out, 52.0, pel[1] - 4.0, 38.0, 10.5, spin_ang, is_front=True)
         return
 
     if cfg.get("show_weapon", True):
         if cfg.get("planted_weapon", False):
             draw_2h_runeblade_104(
-                out, cfg.get("plant_x", 80.0), cfg.get("plant_y", 65.5),
-                blade_deg=89.0, blade_len=27.5, glow=cfg.get("weapon_glow", 0.5),
+                out, cfg.get("plant_x", 80.0), cfg.get("plant_y", 64.5),
+                blade_deg=89.0, blade_len=28.5, glow=cfg.get("weapon_glow", 0.55),
                 phase=ph, show_gauntlets=False,
             )
         else:
@@ -546,16 +645,13 @@ def draw_front(out, joints104, cfg):
             draw_2h_runeblade_104(
                 out, rh[0], rh[1],
                 blade_deg=cfg.get("weapon_deg", -40.0),
-                blade_len=cfg.get("weapon_len", 33.5),
+                blade_len=cfg.get("weapon_len", 35.5),
                 glow=cfg.get("weapon_glow", 1.0),
                 phase=ph,
                 show_gauntlets=True,
             )
 
-    if cfg.get("rune_ward", False):
-        nk = joints104["neck"]
-        draw_rune_ward_arc_104(out, min(90.0, nk[0] + 22.0), nk[1] + 10.0)
-
+    # Clean cel-shaded blade-motion arc ONLY on peak auto/slam cleaves (zero cheesy stick-lines!)
     if cfg.get("slash_arc") is not None:
         sa = cfg["slash_arc"]
         nk = joints104["neck"]
@@ -565,31 +661,12 @@ def draw_front(out, joints104, cfg):
             C_ICE_CORE, C_CYAN_LIT, C_CYAN_DEEP, intensity=sa.get("intensity", 1.0),
         )
 
-    if cfg.get("x_slash", False):
-        nk = joints104["neck"]
-        cx, cy = min(78.0, nk[0] + 20.0), min(74.0, nk[1] + 12.0)
-        for ang in (-34.0, 34.0):
-            rad = math.radians(ang)
-            for d in np.linspace(-20.0, 20.0, 48):
-                put_px(out, cx + math.cos(rad) * d, cy + math.sin(rad) * d, C_ICE_CORE)
-                put_px(out, cx + math.cos(rad) * d, cy + math.sin(rad) * d + 1.0, C_CYAN_LIT)
-
-    if cfg.get("blink_pillars", False):
-        nk = joints104["neck"]
-        for k, ox in enumerate((-16.0, -9.0, 10.0, 17.0)):
-            lx = max(8.0, min(95.0, nk[0] + ox))
-            y0 = 12.0 + (k * 7) % 14
-            y1 = min(96.0, y0 + 58.0)
-            draw_line_104(out, lx, y0, lx, y1, C_ICE_CORE if k % 2 == 0 else C_CYAN_LIT, 1)
-
-    if cfg.get("speedlines", 0) > 0:
-        for k in range(cfg["speedlines"]):
-            ly = 28.0 + (k * 12 + int(ph * 5)) % 52
-            lx0 = 6.0 + (k * 7 + int(ph * 9)) % 16
-            draw_line_104(out, lx0, ly, lx0 + 13.0, ly, C_CYAN_LIT if k % 2 == 0 else C_GOLD_SPEC, 1)
-
 
 def apply_back_turn_armor_104(body_arr104, mirror_x=False):
+    """
+    Converts front T-visor/chest-gem pixels into Aethelgard v4's Silver-Platinum & Sovereign-Gold
+    Dorsal Back-Plate during the dorsal frames of his 360-deg Whirlwind Spin-Slash!
+    """
     out = body_arr104.copy()
     if mirror_x:
         ys, xs = np.where(out[:, :, 3] > 0)
@@ -609,41 +686,42 @@ def apply_back_turn_armor_104(body_arr104, mirror_x=False):
     y_top = int(ys.min())
     cx = int(round(np.mean(xs)))
 
-    for y in range(max(4, y_top + 6), min(98, y_top + 48)):
+    # Replace cyan front visor/gem with sculpted silver-platinum back-helm & dorsal cuirass
+    for y in range(max(4, y_top + 10), min(98, y_top + 48)):
         row_xs = np.where(a[y])[0]
         if len(row_xs) < 4:
             continue
         x0, x1 = int(row_xs.min()) + 1, int(row_xs.max()) - 1
         for x in range(x0, x1 + 1):
             r, g, b, _ = out[y, x]
-            if b > 195 and g > 175:
-                out[y, x] = C_STEEL_BASE if ((x + y) % 3 != 0) else C_STEEL_DARK
+            if b > 210 and r < 90:
+                out[y, x] = C_STEEL_MID if ((x + y) % 2 == 0) else C_STEEL_BASE
 
     spine_y0 = max(8, y_top + 22)
     spine_y1 = min(92, y_top + 44)
     for y in range(spine_y0, spine_y1):
         if a[y, cx]:
-            out[y, cx] = C_GOLD_LIT if (y % 3 != 0) else C_GOLD_DARK
+            out[y, cx] = C_GOLD_SPEC if (y % 3 != 0) else C_GOLD_MID
         if y in (spine_y0 + 5, spine_y0 + 6, spine_y0 + 9) and 4 <= cx - 2 and cx + 2 <= 99:
             if a[y, cx - 1]:
-                out[y, cx - 1] = C_CYAN_LIT
+                out[y, cx - 1] = C_STEEL_LIT
             if a[y, cx + 1]:
-                out[y, cx + 1] = C_CYAN_LIT
+                out[y, cx + 1] = C_STEEL_LIT
     if spine_y0 + 7 < 98 and a[spine_y0 + 7, cx]:
         out[spine_y0 + 7, cx] = C_ICE_CORE
     return out
 
 
 DEFAULTS = dict(
-    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=5.0, head_rel_deg=-2.5, mane_rel_deg=-4.0,
-    mane_wave_amp=6.0, l_thigh_deg=-2.0, l_shin_deg=2.0, l_foot_deg=0.0,
+    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=4.5, head_rel_deg=-2.0, mane_rel_deg=-4.0,
+    mane_wave_amp=6.5, l_thigh_deg=-2.0, l_shin_deg=2.0, l_foot_deg=0.0,
     r_thigh_deg=2.0, r_shin_deg=-2.0, r_foot_deg=0.0,
     l_sode_rel_deg=-6.0, l_fore_rel_deg=-14.0, r_sode_rel_deg=-16.0, r_fore_rel_deg=-18.0,
     l_coat_rel_deg=0.0, r_coat_rel_deg=0.0,
-    grip_x=58.0, grip_y=-18.0, grip_sep=32.0,
-    weapon_deg=-40.0, weapon_len=33.5, weapon_glow=1.0, foot_y=99.0,
+    grip_x=56.0, grip_y=-14.0, grip_sep=33.0,
+    weapon_deg=-38.0, weapon_len=35.5, weapon_glow=1.0, foot_y=99.0,
     show_weapon=True, two_handed_ik=True, right_arm_in_front=False, right_leg_behind=False,
-    halo_active=False, rune_ward=False,
+    halo_active=False, halo_grand=False,
 )
 
 
@@ -659,7 +737,7 @@ def render_frame(parts, cfg):
 
         body_only = render_rig_104(
             parts, PIVOTS, body_cfg, PALETTE_CFG,
-            y_bot_base=500.0, default_S=604,
+            y_bot_base=501.0, default_S=600,
             extra_extent_fn=extra_extents, draw_back_fn=cap_back, draw_front_fn=None,
         )
         if cfg.get("back_turn", False):
@@ -680,7 +758,7 @@ def render_frame(parts, cfg):
 
     return render_rig_104(
         parts, PIVOTS, cfg, PALETTE_CFG,
-        y_bot_base=500.0, default_S=604,
+        y_bot_base=501.0, default_S=600,
         extra_extent_fn=extra_extents, draw_back_fn=draw_back, draw_front_fn=draw_front,
     )
 
@@ -692,87 +770,87 @@ def build_row_configs(row_idx):
         ph = 2.0 * math.pi * t
 
         if row_idx == 0:
-            # Row 0: IDLE (Commanding Two-Handed Elder-Rune Greatsword Guard!)
+            # Row 0: IDLE (Commanding Sovereign Paladin Two-Handed Greatsword High-Guard!)
             b = math.sin(ph)
             s = math.cos(ph)
             cfg = dict(DEFAULTS)
             cfg.update(
-                pelvis_dx=s * 2.5, pelvis_dy=b * 8.0, torso_deg=5.0 + b * 1.6,
-                head_rel_deg=-2.5 - b * 1.1, mane_rel_deg=-4.0 + s * 3.5,
-                mane_wave_phase=ph,
-                grip_x=58.0 + s * 2.0, grip_y=-18.0 + b * 3.5,
-                weapon_deg=-40.0 + b * 3.0, weapon_glow=0.82 + 0.18 * b,
+                pelvis_dx=s * 2.5, pelvis_dy=b * 7.5, torso_deg=4.5 + b * 1.6,
+                head_rel_deg=-2.0 - b * 1.1, mane_rel_deg=-4.0 + s * 4.0,
+                mane_wave_phase=ph, mane_wave_amp=7.0,
+                grip_x=56.0 + s * 2.0, grip_y=-14.0 + b * 3.5,
+                weapon_deg=-38.0 + b * 3.0, weapon_glow=0.84 + 0.16 * b,
             )
             cfgs.append(apply_2h_sword_ik(cfg))
 
         elif row_idx == 1:
-            # Row 1: WALK (Heavy Armored Two-Handed Greatsword Vanguard Stride!)
+            # Row 1: WALK (Heavy Armored Two-Handed Celestial Claymore Vanguard March!)
             st = math.sin(ph)
             kl = math.cos(ph)
             cfg = dict(DEFAULTS)
             cfg.update(
-                pelvis_dy=abs(st) * 20.0, torso_deg=9.0 + abs(st) * 2.2, head_rel_deg=-4.5,
-                mane_rel_deg=-8.0 - abs(st) * 4.0, mane_wave_phase=ph * 2.0, mane_wave_amp=8.0,
+                pelvis_dy=abs(st) * 19.0, torso_deg=8.5 + abs(st) * 2.4, head_rel_deg=-4.0,
+                mane_rel_deg=-8.0 - abs(st) * 4.5, mane_wave_phase=ph * 2.0, mane_wave_amp=8.5,
                 right_leg_behind=(f >= 15),
-                l_thigh_deg=st * 26.0, l_shin_deg=max(0.0, st * 28.0) + max(0.0, kl * 14.0), l_foot_deg=st * 12.0,
-                r_thigh_deg=-st * 26.0, r_shin_deg=max(0.0, -st * 28.0) + max(0.0, -kl * 14.0), r_foot_deg=-st * 12.0,
-                grip_x=60.0 + st * 4.0, grip_y=-14.0 + abs(st) * 5.0,
-                weapon_deg=-34.0 + st * 7.0,
+                l_thigh_deg=st * 27.0, l_shin_deg=max(0.0, st * 29.0) + max(0.0, kl * 14.0), l_foot_deg=st * 12.0,
+                r_thigh_deg=-st * 27.0, r_shin_deg=max(0.0, -st * 29.0) + max(0.0, -kl * 14.0), r_foot_deg=-st * 12.0,
+                grip_x=58.0 + st * 4.5, grip_y=-11.0 + abs(st) * 5.0,
+                weapon_deg=-33.0 + st * 7.5,
             )
             cfgs.append(apply_2h_sword_ik(cfg))
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK (Coiled Back-Shoulder 2H Windup -> Full-Extension Forward 2H Lunge Cleave -> Weighty Recovery!)
+            # Row 2: AUTO_ATTACK (Coiled Back-Shoulder 2H Windup -> Full-Extension Lunging 2H Cleave -> Weighty Recovery!)
             kfs = [
-                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=5.0, head_rel_deg=-2.5, mane_rel_deg=-4.0,
+                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=4.5, head_rel_deg=-2.0, mane_rel_deg=-4.0,
                          l_thigh_deg=-2.0, l_shin_deg=2.0, l_foot_deg=0.0,
                          r_thigh_deg=2.0, r_shin_deg=-2.0, r_foot_deg=0.0,
-                         grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0, halo_active=False)),
-                (3, dict(pelvis_dx=-115.0, pelvis_dy=18.0, torso_deg=-4.0, head_rel_deg=5.0, mane_rel_deg=-6.0,
+                         grip_x=56.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=33.0, halo_active=False)),
+                (3, dict(pelvis_dx=-110.0, pelvis_dy=18.0, torso_deg=-5.0, head_rel_deg=5.0, mane_rel_deg=-6.0,
                          l_thigh_deg=-8.0, l_shin_deg=12.0, l_foot_deg=-3.0,
                          r_thigh_deg=12.0, r_shin_deg=4.0, r_foot_deg=4.0,
-                         grip_x=22.0, grip_y=-92.0, weapon_deg=-92.0, grip_sep=29.0, halo_active=True)),
-                (7, dict(pelvis_dx=-186.0, pelvis_dy=34.0, torso_deg=-12.0, head_rel_deg=12.0, mane_rel_deg=-10.0,
-                         l_thigh_deg=-12.0, l_shin_deg=18.0, l_foot_deg=-4.0,
+                         grip_x=22.0, grip_y=-88.0, weapon_deg=-92.0, grip_sep=30.0, halo_active=True)),
+                (7, dict(pelvis_dx=-182.0, pelvis_dy=34.0, torso_deg=-13.0, head_rel_deg=12.0, mane_rel_deg=-10.0,
+                         l_thigh_deg=-14.0, l_shin_deg=18.0, l_foot_deg=-4.0,
                          r_thigh_deg=18.0, r_shin_deg=8.0, r_foot_deg=6.0,
-                         grip_x=-8.0, grip_y=-124.0, weapon_deg=-136.0, grip_sep=27.0, halo_active=True)),
-                (9, dict(pelvis_dx=-202.0, pelvis_dy=40.0, torso_deg=13.0, head_rel_deg=-8.0, mane_rel_deg=-12.0,
-                         l_thigh_deg=14.0, l_shin_deg=14.0, l_foot_deg=6.0,
+                         grip_x=-8.0, grip_y=-122.0, weapon_deg=-136.0, grip_sep=28.0, halo_active=True)),
+                (9, dict(pelvis_dx=-198.0, pelvis_dy=40.0, torso_deg=14.0, head_rel_deg=-8.0, mane_rel_deg=-14.0,
+                         l_thigh_deg=16.0, l_shin_deg=14.0, l_foot_deg=6.0,
                          r_thigh_deg=-22.0, r_shin_deg=12.0, r_foot_deg=-6.0,
-                         grip_x=140.0, grip_y=-100.0, weapon_deg=-54.0, grip_sep=30.0, halo_active=True)),
-                (11, dict(pelvis_dx=-200.0, pelvis_dy=48.0, torso_deg=21.0, head_rel_deg=-14.0, mane_rel_deg=-18.0,
-                          l_thigh_deg=20.0, l_shin_deg=16.0, l_foot_deg=10.0,
+                         grip_x=136.0, grip_y=-96.0, weapon_deg=-52.0, grip_sep=31.0, halo_active=True)),
+                (11, dict(pelvis_dx=-196.0, pelvis_dy=48.0, torso_deg=22.0, head_rel_deg=-14.0, mane_rel_deg=-20.0,
+                          l_thigh_deg=22.0, l_shin_deg=16.0, l_foot_deg=10.0,
                           r_thigh_deg=-30.0, r_shin_deg=14.0, r_foot_deg=-8.0,
-                          grip_x=144.0, grip_y=-66.0, weapon_deg=4.0, grip_sep=30.5, halo_active=True)),
-                (13, dict(pelvis_dx=-188.0, pelvis_dy=54.0, torso_deg=23.0, head_rel_deg=-16.0, mane_rel_deg=-20.0,
-                          l_thigh_deg=23.0, l_shin_deg=18.0, l_foot_deg=12.0,
+                          grip_x=142.0, grip_y=-62.0, weapon_deg=5.0, grip_sep=31.5, halo_active=True)),
+                (13, dict(pelvis_dx=-184.0, pelvis_dy=54.0, torso_deg=24.0, head_rel_deg=-16.0, mane_rel_deg=-22.0,
+                          l_thigh_deg=24.0, l_shin_deg=18.0, l_foot_deg=12.0,
                           r_thigh_deg=-32.0, r_shin_deg=16.0, r_foot_deg=-8.0,
-                          grip_x=148.0, grip_y=-42.0, weapon_deg=20.0, grip_sep=31.0, halo_active=True)),
-                (16, dict(pelvis_dx=-156.0, pelvis_dy=58.0, torso_deg=24.0, head_rel_deg=-16.0, mane_rel_deg=-18.0,
-                          l_thigh_deg=25.0, l_shin_deg=18.0, l_foot_deg=12.0,
+                          grip_x=146.0, grip_y=-38.0, weapon_deg=21.0, grip_sep=32.0, halo_active=True)),
+                (16, dict(pelvis_dx=-152.0, pelvis_dy=58.0, torso_deg=25.0, head_rel_deg=-16.0, mane_rel_deg=-18.0,
+                          l_thigh_deg=26.0, l_shin_deg=18.0, l_foot_deg=12.0,
                           r_thigh_deg=-33.0, r_shin_deg=18.0, r_foot_deg=-8.0,
-                          grip_x=158.0, grip_y=-24.0, weapon_deg=38.0, grip_sep=31.0, halo_active=True)),
-                (19, dict(pelvis_dx=-148.0, pelvis_dy=54.0, torso_deg=22.0, head_rel_deg=-14.0, mane_rel_deg=-14.0,
+                          grip_x=154.0, grip_y=-20.0, weapon_deg=38.0, grip_sep=32.0, halo_active=True)),
+                (19, dict(pelvis_dx=-144.0, pelvis_dy=54.0, torso_deg=22.0, head_rel_deg=-14.0, mane_rel_deg=-14.0,
                           l_thigh_deg=23.0, l_shin_deg=16.0, l_foot_deg=10.0,
                           r_thigh_deg=-30.0, r_shin_deg=16.0, r_foot_deg=-6.0,
-                          grip_x=150.0, grip_y=-22.0, weapon_deg=35.0, grip_sep=31.0, halo_active=True)),
-                (24, dict(pelvis_dx=-82.0, pelvis_dy=24.0, torso_deg=12.0, head_rel_deg=-7.0, mane_rel_deg=-8.0,
+                          grip_x=146.0, grip_y=-18.0, weapon_deg=34.0, grip_sep=32.0, halo_active=True)),
+                (24, dict(pelvis_dx=-80.0, pelvis_dy=24.0, torso_deg=12.0, head_rel_deg=-7.0, mane_rel_deg=-8.0,
                           l_thigh_deg=10.0, l_shin_deg=8.0, l_foot_deg=4.0,
                           r_thigh_deg=-12.0, r_shin_deg=6.0, r_foot_deg=-2.0,
-                          grip_x=82.0, grip_y=-20.0, weapon_deg=-8.0, grip_sep=31.5, halo_active=False)),
-                (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=5.0, head_rel_deg=-2.5, mane_rel_deg=-4.0,
+                          grip_x=80.0, grip_y=-16.0, weapon_deg=-8.0, grip_sep=32.5, halo_active=False)),
+                (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=4.5, head_rel_deg=-2.0, mane_rel_deg=-4.0,
                           l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
-                          grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0, halo_active=False)),
+                          grip_x=56.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=33.0, halo_active=False)),
             ]
             cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.0)
             cfg["full_ext_swing"] = True
             cfg["right_arm_in_front"] = False
-            if 9 <= f <= 15:
-                a0_tab = (-88.0, -70.0, -52.0, -34.0, -16.0, 2.0, 14.0)
-                a1_tab = (-20.0, 8.0, 25.0, 38.0, 44.0, 47.0, 49.0)
-                dx_tab = (18.0, 18.0, 17.5, 17.0, 17.0, 16.5, 16.5)
-                r_tab = (32.0, 31.5, 31.0, 31.0, 31.0, 30.5, 30.5)
-                int_tab = (0.95, 1.22, 1.30, 1.24, 1.08, 0.84, 0.58)
+            if 9 <= f <= 14:
+                a0_tab = (-88.0, -68.0, -50.0, -32.0, -14.0, 4.0)
+                a1_tab = (-18.0, 10.0, 26.0, 38.0, 44.0, 47.0)
+                dx_tab = (18.0, 18.0, 17.5, 17.0, 17.0, 16.5)
+                r_tab = (31.5, 31.5, 31.0, 31.0, 30.5, 30.5)
+                int_tab = (0.95, 1.20, 1.28, 1.20, 1.00, 0.72)
                 idx = f - 9
                 cfg["slash_arc"] = dict(
                     dx=dx_tab[idx], dy=11.5, r=r_tab[idx],
@@ -784,20 +862,19 @@ def build_row_configs(row_idx):
             # Row 3: SKILL (TEMPEST VANGUARD — Two-Handed 360° Whirlwind Spin-Slash -> Two-Handed Thunder Slam!)
             if f <= 2:
                 kfs_coil = [
-                    (0, dict(torso_deg=5.0, grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0, foot_y=99.0)),
+                    (0, dict(torso_deg=4.5, grip_x=56.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=33.0, foot_y=99.0)),
                     (2, dict(pelvis_dx=-10.0, pelvis_dy=48.0, torso_deg=-12.0,
                              l_thigh_deg=-22.0, l_shin_deg=22.0, r_thigh_deg=20.0, r_shin_deg=-16.0,
-                             grip_x=14.0, grip_y=-12.0, weapon_deg=-152.0, grip_sep=28.0,
+                             grip_x=14.0, grip_y=-10.0, weapon_deg=-152.0, grip_sep=28.0,
                              halo_active=True, foot_y=99.0)),
                 ]
                 cfgs.append(eval_2h_keyframes(f, kfs_coil, ph, DEFAULTS, wave_mult=3.0))
             elif 3 <= f <= 17:
-                # 15 frames = 2.5 full 360-degree revolutions with BOTH hands locked onto the orbiting hilt!
                 step6 = (f - 3) % 6
                 spin_ang = ((f - 3) / 6.0) * 2.0 * math.pi + 0.35
                 b_deg = math.degrees(math.atan2(math.sin(spin_ang) * 10.5, math.cos(spin_ang) * 38.0))
                 gx_orb = math.cos(spin_ang) * 58.0
-                gy_orb = -24.0 + math.sin(spin_ang) * 18.0
+                gy_orb = -22.0 + math.sin(spin_ang) * 18.0
 
                 yaw_poses = [
                     dict(pelvis_dx=4.0, pelvis_dy=38.0, torso_deg=14.0, l_thigh_deg=-20.0, l_shin_deg=20.0,
@@ -818,248 +895,218 @@ def build_row_configs(row_idx):
                 cfg = dict(DEFAULTS)
                 cfg.update(yaw_poses[step6])
                 cfg.update(
-                    grip_x=gx_orb, grip_y=gy_orb, weapon_deg=b_deg, grip_sep=26.0,
+                    grip_x=gx_orb, grip_y=gy_orb, weapon_deg=b_deg, grip_sep=27.0,
                     spin_slash=True, spin_ang=spin_ang, halo_active=True, halo_r=16.5,
                     mane_wave_phase=spin_ang, mane_wave_amp=9.5, foot_y=98.0,
                 )
                 cfgs.append(apply_2h_sword_ik(cfg))
             else:
-                # F18..F29: Leaping Two-Handed Thunder-Breaker Overhead Slam -> Recovery
                 slam_kfs = [
                     (18, dict(pelvis_dx=4.0, pelvis_dy=18.0, torso_deg=-16.0, head_rel_deg=10.0,
                               l_thigh_deg=22.0, l_shin_deg=32.0, r_thigh_deg=-16.0, r_shin_deg=24.0,
-                              grip_x=18.0, grip_y=-196.0, weapon_deg=-136.0, grip_sep=26.0,
+                              grip_x=18.0, grip_y=-190.0, weapon_deg=-134.0, grip_sep=27.0, weapon_len=33.0,
                               foot_y=93.0, halo_active=True)),
-                    (21, dict(pelvis_dx=18.0, pelvis_dy=66.0, torso_deg=28.0, head_rel_deg=-14.0,
+                    (21, dict(pelvis_dx=18.0, pelvis_dy=64.0, torso_deg=28.0, head_rel_deg=-14.0,
                               l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=28.0, r_shin_deg=-22.0,
-                              grip_x=68.0, grip_y=-14.0, weapon_deg=34.0, grip_sep=32.0,
+                              grip_x=66.0, grip_y=-12.0, weapon_deg=32.0, grip_sep=32.0, weapon_len=34.0,
                               foot_y=99.0, halo_active=True)),
-                    (24, dict(pelvis_dx=16.0, pelvis_dy=62.0, torso_deg=25.0, head_rel_deg=-10.0,
+                    (24, dict(pelvis_dx=16.0, pelvis_dy=60.0, torso_deg=25.0, head_rel_deg=-10.0,
                               l_thigh_deg=-24.0, l_shin_deg=26.0, r_thigh_deg=24.0, r_shin_deg=-18.0,
-                              grip_x=64.0, grip_y=-16.0, weapon_deg=28.0, grip_sep=32.0,
+                              grip_x=62.0, grip_y=-14.0, weapon_deg=26.0, grip_sep=32.0, weapon_len=34.5,
                               foot_y=99.0, halo_active=True)),
-                    (29, dict(torso_deg=5.0, grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0,
-                              grip_sep=32.0, foot_y=99.0, halo_active=False)),
+                    (29, dict(torso_deg=4.5, grip_x=56.0, grip_y=-14.0, weapon_deg=-38.0,
+                              grip_sep=33.0, weapon_len=35.5, foot_y=99.0, halo_active=False)),
                 ]
                 cfg = eval_2h_keyframes(f, slam_kfs, ph, DEFAULTS, wave_mult=3.0)
-                if 20 <= f <= 24:
-                    u = (f - 20) / 4.0
-                    cfg["slash_arc"] = dict(dx=0.5, dy=11.0, r=28.5, a0=-104.0 + 22.0 * u, a1=50.0 + 12.0 * u, intensity=1.28)
+                if 20 <= f <= 23:
+                    u = (f - 20) / 3.0
+                    cfg["slash_arc"] = dict(dx=0.5, dy=11.0, r=28.0, a0=-102.0 + 22.0 * u, a1=48.0 + 12.0 * u, intensity=1.22)
                 cfgs.append(cfg)
 
         elif row_idx == 4:
-            # Row 4: ULTIMATE (HEAVENLY EARTHSHATTER — Two-Handed Left/Right/Flank/TOP Omnislash!)
+            # Row 4: ULTIMATE (F00..F05: Solemn 2H Sacred Vow Consecration Pose -> F06..F16: 2H Omnislash -> F17..F29: Sky Charge & Earthshatter!)
             kfs = [
-                (0, dict(pelvis_dy=40.0, torso_deg=-8.0, head_rel_deg=6.0,
-                         grip_x=42.0, grip_y=-92.0, weapon_deg=-84.0, grip_sep=28.0,
-                         foot_y=99.0, halo_active=True)),
-                (2, dict(pelvis_dy=52.0, torso_deg=-14.0, l_thigh_deg=-22.0, l_shin_deg=24.0,
-                         r_thigh_deg=20.0, r_shin_deg=-18.0,
-                         grip_x=22.0, grip_y=-182.0, weapon_deg=-126.0, grip_sep=26.0,
-                         foot_y=99.0, halo_active=True)),
-                # Teleport 1 (LEFT): Two-Handed Horizontal Cleave
-                (3, dict(pelvis_dx=-8.0, pelvis_dy=44.0, torso_deg=-10.0,
-                         grip_x=28.0, grip_y=-138.0, weapon_deg=-104.0, grip_sep=28.0,
-                         foot_y=99.0, halo_active=True, speedlines=4)),
-                (5, dict(pelvis_dx=16.0, pelvis_dy=48.0, torso_deg=24.0, head_rel_deg=-12.0,
+                # F00..F05: Noble Paladin Two-Handed Sacred Vow (Claymore held vertically upright before his T-Visor!)
+                (0, dict(pelvis_dx=-2.0, pelvis_dy=12.0, torso_deg=1.5, head_rel_deg=8.0, mane_rel_deg=-3.0,
+                         l_thigh_deg=-6.0, l_shin_deg=8.0, r_thigh_deg=8.0, r_shin_deg=-6.0,
+                         grip_x=48.0, grip_y=-54.0, weapon_deg=-89.0, grip_sep=30.0, weapon_len=33.5,
+                         force_right_arm_front=True, foot_y=99.0, halo_active=True, halo_grand=True)),
+                (2, dict(pelvis_dx=-2.0, pelvis_dy=18.0, torso_deg=0.0, head_rel_deg=10.0, mane_rel_deg=-5.0,
+                         l_thigh_deg=-8.0, l_shin_deg=10.0, r_thigh_deg=10.0, r_shin_deg=-8.0,
+                         grip_x=46.0, grip_y=-68.0, weapon_deg=-90.0, grip_sep=30.0, weapon_len=33.5,
+                         force_right_arm_front=True, foot_y=99.0, halo_active=True, halo_grand=True)),
+                (5, dict(pelvis_dx=0.0, pelvis_dy=8.0, torso_deg=-5.0, head_rel_deg=-10.0, mane_rel_deg=-9.0,
+                         l_thigh_deg=-6.0, l_shin_deg=8.0, r_thigh_deg=8.0, r_shin_deg=-6.0,
+                         grip_x=44.0, grip_y=-92.0, weapon_deg=-90.0, grip_sep=30.0, weapon_len=33.0,
+                         force_right_arm_front=True, foot_y=99.0, halo_active=True, halo_grand=True)),
+                # F06..F08: Teleport 1 (LEFT): Explosive Two-Handed Horizontal Cleave!
+                (6, dict(pelvis_dx=16.0, pelvis_dy=46.0, torso_deg=24.0, head_rel_deg=-12.0,
                          l_thigh_deg=24.0, l_shin_deg=20.0, r_thigh_deg=-26.0, r_shin_deg=20.0,
-                         grip_x=68.0, grip_y=-24.0, weapon_deg=18.0, grip_sep=32.0,
-                         foot_y=99.0, halo_active=True, speedlines=5)),
-                (7, dict(pelvis_dx=12.0, pelvis_dy=46.0, torso_deg=18.0,
-                         grip_x=64.0, grip_y=-22.0, weapon_deg=10.0, grip_sep=32.0,
+                         grip_x=66.0, grip_y=-20.0, weapon_deg=18.0, grip_sep=32.0, weapon_len=34.5,
                          foot_y=99.0, halo_active=True)),
-                # Teleport 2 (RIGHT): Two-Handed Low Coil -> Rising Cross-Slash!
-                (8, dict(pelvis_dx=-6.0, pelvis_dy=54.0, torso_deg=18.0,
-                         grip_x=52.0, grip_y=-6.0, weapon_deg=44.0, grip_sep=30.0,
-                         foot_y=99.0, halo_active=True, speedlines=4)),
+                (8, dict(pelvis_dx=-6.0, pelvis_dy=52.0, torso_deg=18.0,
+                         grip_x=52.0, grip_y=-6.0, weapon_deg=42.0, grip_sep=30.0, weapon_len=34.0,
+                         foot_y=99.0, halo_active=True)),
+                # F09..F12: Teleport 2 (RIGHT): Rising Cross-Slash!
                 (10, dict(pelvis_dx=10.0, pelvis_dy=34.0, torso_deg=-10.0, head_rel_deg=8.0,
                           l_thigh_deg=-20.0, l_shin_deg=20.0, r_thigh_deg=22.0, r_shin_deg=-16.0,
-                          grip_x=48.0, grip_y=-132.0, weapon_deg=-84.0, grip_sep=28.0,
-                          foot_y=99.0, halo_active=True, speedlines=5)),
-                (12, dict(pelvis_dx=6.0, pelvis_dy=36.0, torso_deg=-6.0,
-                          grip_x=50.0, grip_y=-112.0, weapon_deg=-72.0, grip_sep=28.0,
+                          grip_x=48.0, grip_y=-128.0, weapon_deg=-84.0, grip_sep=28.0, weapon_len=33.5,
                           foot_y=99.0, halo_active=True)),
-                # Teleport 3 (FLANK): Two-Handed Heavy Launching Cross-Cleave!
                 (13, dict(pelvis_dx=-8.0, pelvis_dy=46.0, torso_deg=-8.0,
-                          grip_x=34.0, grip_y=-108.0, weapon_deg=-92.0, grip_sep=28.0,
+                          grip_x=34.0, grip_y=-104.0, weapon_deg=-92.0, grip_sep=28.0, weapon_len=33.5,
                           foot_y=99.0, halo_active=True)),
+                # F14..F16: Teleport 3 (FLANK): Heavy Launching Cross-Cleave!
                 (15, dict(pelvis_dx=18.0, pelvis_dy=50.0, torso_deg=25.0, head_rel_deg=-12.0,
                           l_thigh_deg=26.0, l_shin_deg=22.0, r_thigh_deg=-26.0, r_shin_deg=20.0,
-                          grip_x=68.0, grip_y=-26.0, weapon_deg=8.0, grip_sep=32.0,
-                          foot_y=99.0, halo_active=True, speedlines=5)),
-                # Teleport 4 (TOP — Directly Overhead!): Hovering Two-Handed Overhead Sky Charge!
+                          grip_x=66.0, grip_y=-22.0, weapon_deg=8.0, grip_sep=32.0, weapon_len=34.5,
+                          foot_y=99.0, halo_active=True)),
+                # F17..F21: Teleport 4 (TOP): Hovering Two-Handed Overhead Sky Charge!
                 (17, dict(pelvis_dx=0.0, pelvis_dy=10.0, torso_deg=-16.0, head_rel_deg=14.0,
                           l_thigh_deg=28.0, l_shin_deg=42.0, r_thigh_deg=-16.0, r_shin_deg=34.0,
-                          grip_x=18.0, grip_y=-196.0, weapon_deg=-130.0, grip_sep=26.0,
-                          foot_y=91.0, halo_active=True)),
+                          grip_x=18.0, grip_y=-190.0, weapon_deg=-130.0, grip_sep=26.0, weapon_len=33.0,
+                          foot_y=91.0, halo_active=True, halo_grand=True)),
                 (21, dict(pelvis_dx=2.0, pelvis_dy=6.0, torso_deg=-20.0, head_rel_deg=18.0,
                           l_thigh_deg=32.0, l_shin_deg=44.0, r_thigh_deg=-18.0, r_shin_deg=36.0,
-                          grip_x=16.0, grip_y=-202.0, weapon_deg=-136.0, grip_sep=26.0,
-                          foot_y=90.0, halo_active=True)),
-                # Meteoric Top-Down Two-Handed Vertical Plunge Slash & Earthshatter!
+                          grip_x=16.0, grip_y=-196.0, weapon_deg=-136.0, grip_sep=26.0, weapon_len=33.0,
+                          foot_y=90.0, halo_active=True, halo_grand=True)),
+                # F22..F29: Meteoric Top-Down Two-Handed Plunge Slash & Earthshatter!
                 (23, dict(pelvis_dx=14.0, pelvis_dy=24.0, torso_deg=28.0, head_rel_deg=-8.0,
                           l_thigh_deg=24.0, l_shin_deg=30.0, r_thigh_deg=-22.0, r_shin_deg=26.0,
-                          grip_x=64.0, grip_y=-20.0, weapon_deg=60.0, grip_sep=28.0,
-                          foot_y=94.0, halo_active=True)),
-                (25, dict(pelvis_dx=18.0, pelvis_dy=68.0, torso_deg=28.0, head_rel_deg=-16.0,
+                          grip_x=62.0, grip_y=-18.0, weapon_deg=56.0, grip_sep=28.0, weapon_len=33.5,
+                          foot_y=94.0, halo_active=True, halo_grand=True)),
+                (25, dict(pelvis_dx=18.0, pelvis_dy=66.0, torso_deg=28.0, head_rel_deg=-16.0,
                           l_thigh_deg=-30.0, l_shin_deg=32.0, r_thigh_deg=28.0, r_shin_deg=-22.0,
-                          grip_x=68.0, grip_y=-12.0, weapon_deg=40.0, grip_sep=32.0,
-                          foot_y=99.0, halo_active=True)),
-                (29, dict(torso_deg=5.0, grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0,
-                          grip_sep=32.0, foot_y=99.0, halo_active=False)),
+                          grip_x=66.0, grip_y=-12.0, weapon_deg=36.0, grip_sep=32.0, weapon_len=34.0,
+                          foot_y=99.0, halo_active=True, halo_grand=True)),
+                (29, dict(torso_deg=4.5, grip_x=56.0, grip_y=-14.0, weapon_deg=-38.0,
+                          grip_sep=33.0, weapon_len=35.5, foot_y=99.0, halo_active=False)),
             ]
-            cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.5)
-            cfg["halo_grand"] = (17 <= f <= 25)
-            if f in (2, 3, 8, 13, 17):
-                cfg["blink_pillars"] = True
-            if 4 <= f <= 6:
-                cfg["slash_arc"] = dict(dx=1.5, r=28.0, a0=-65.0, a1=42.0, intensity=1.18)
-            elif 9 <= f <= 11:
-                cfg["slash_arc"] = dict(dx=1.5, r=28.0, a0=-98.0, a1=18.0, intensity=1.18)
-                if f == 10:
-                    cfg["x_slash"] = True
-            elif 14 <= f <= 16:
-                cfg["slash_arc"] = dict(dx=1.0, r=28.0, a0=-48.0, a1=48.0, intensity=1.22)
-                if f == 15:
-                    cfg["x_slash"] = True
-            elif 22 <= f <= 26:
-                cfg["slash_arc"] = dict(dx=0.0, dy=12.0, r=28.5, a0=-96.0, a1=76.0, intensity=1.32)
-                if f in (23, 24):
-                    cfg["x_slash"] = True
+            cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
             cfgs.append(cfg)
 
         elif row_idx == 5:
-            # Row 5: DEATH (2H Stagger -> Double-Knee Two-Handed Sword Plant -> Prone Collapse!)
-            kfs = make_prone_knight_death_kfs(idle_weapon_deg=-40.0, plant_x=80.0, plant_y=65.5, use_planted_weapon=True)
+            # Row 5: DEATH (2H Stagger -> Double-Knee Two-Handed Claymore Ground Plant -> Noble Prone Collapse!)
+            kfs = make_prone_knight_death_kfs(idle_weapon_deg=-38.0, plant_x=80.0, plant_y=64.5, use_planted_weapon=True)
             cfg = eval_pose_keyframes(f, kfs, ph, DEFAULTS, extra_meta_keys=("plant_x", "plant_y"), wave_mult=1.0)
             cfg["halo_active"] = False
             if f <= 7:
-                # Keep BOTH hands clutching the Two-Handed Greatsword during initial fatal stagger!
                 u = f / 7.0
                 cfg["two_handed_ik"] = True
-                cfg["grip_x"] = 58.0 - 8.0 * u
-                cfg["grip_y"] = -18.0 + 14.0 * u
+                cfg["grip_x"] = 56.0 - 8.0 * u
+                cfg["grip_y"] = -14.0 + 14.0 * u
                 cfg["grip_sep"] = 30.0
                 apply_2h_sword_ik(cfg)
             else:
                 cfg["two_handed_ik"] = False
                 if f <= 15:
-                    # Both hands reach forward onto the planted Two-Handed Runeblade!
                     cfg["l_sode_rel_deg"] = -58.0
                     cfg["l_fore_rel_deg"] = -24.0
             cfgs.append(cfg)
 
         elif row_idx == 6:
-            # Row 6: DASH (Two-Handed Greatsword Vanguard Drag-Rush + Elder-Rune Aegis Ward!)
+            # Row 6: DASH (Pure Aerodynamic Paladin Vanguard Drag-Rush — ZERO baked horizontal stick-lines!)
             kfs = [
-                (0, dict(torso_deg=5.0, grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0, foot_y=99.0)),
-                (7, dict(pelvis_dx=12.0, pelvis_dy=38.0, torso_deg=25.0, head_rel_deg=-13.0, mane_rel_deg=-24.0,
-                         l_thigh_deg=28.0, l_shin_deg=32.0, r_thigh_deg=-24.0, r_shin_deg=22.0,
-                         grip_x=22.0, grip_y=8.0, weapon_deg=158.0, grip_sep=30.0,
-                         rune_ward=True, halo_active=True, speedlines=5, foot_y=99.0)),
-                (22, dict(pelvis_dx=12.0, pelvis_dy=38.0, torso_deg=25.0, head_rel_deg=-13.0, mane_rel_deg=-24.0,
-                          l_thigh_deg=28.0, l_shin_deg=32.0, r_thigh_deg=-24.0, r_shin_deg=22.0,
-                          grip_x=22.0, grip_y=8.0, weapon_deg=158.0, grip_sep=30.0,
-                          rune_ward=True, halo_active=True, speedlines=5, foot_y=99.0)),
-                (29, dict(torso_deg=5.0, grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0, foot_y=99.0)),
+                (0, dict(torso_deg=4.5, grip_x=56.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=33.0, foot_y=99.0)),
+                (7, dict(pelvis_dx=14.0, pelvis_dy=40.0, torso_deg=27.0, head_rel_deg=-14.0, mane_rel_deg=-26.0,
+                         l_thigh_deg=30.0, l_shin_deg=34.0, r_thigh_deg=-26.0, r_shin_deg=24.0,
+                         grip_x=20.0, grip_y=10.0, weapon_deg=160.0, grip_sep=30.0, weapon_len=33.5,
+                         halo_active=True, foot_y=99.0)),
+                (22, dict(pelvis_dx=14.0, pelvis_dy=38.0, torso_deg=27.0, head_rel_deg=-14.0, mane_rel_deg=-26.0,
+                          l_thigh_deg=28.0, l_shin_deg=32.0, r_thigh_deg=-28.0, r_shin_deg=26.0,
+                          grip_x=22.0, grip_y=8.0, weapon_deg=158.0, grip_sep=30.0, weapon_len=33.5,
+                          halo_active=True, foot_y=99.0)),
+                (29, dict(torso_deg=4.5, grip_x=56.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=33.0, weapon_len=35.5, foot_y=99.0)),
             ]
             cfgs.append(eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0))
 
         elif row_idx == 7:
-            # Row 7: CROUCH (Two-Handed Greatsword Cross-Guard Spell Parry -> Low 2H Frost-Crescent Counter!)
+            # Row 7: CROUCH (Ironclad 2H Cross-Guard Spell Parry -> Low Sweeping 2H Frost-Counter!)
             kfs = [
-                (0, dict(torso_deg=5.0, grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0)),
-                (5, dict(pelvis_dx=-6.0, pelvis_dy=64.0, torso_deg=10.0, head_rel_deg=-6.0,
+                (0, dict(torso_deg=4.5, grip_x=56.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=33.0)),
+                (5, dict(pelvis_dx=-6.0, pelvis_dy=62.0, torso_deg=10.0, head_rel_deg=-6.0,
                          l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-22.0,
-                         grip_x=56.0, grip_y=-64.0, weapon_deg=-74.0, grip_sep=32.0,
-                         rune_ward=True, halo_active=True)),
-                (12, dict(pelvis_dx=-6.0, pelvis_dy=66.0, torso_deg=10.0, head_rel_deg=-6.0,
+                         grip_x=54.0, grip_y=-62.0, weapon_deg=-74.0, grip_sep=32.0, weapon_len=33.5,
+                         force_right_arm_front=True, halo_active=True)),
+                (12, dict(pelvis_dx=-6.0, pelvis_dy=64.0, torso_deg=10.0, head_rel_deg=-6.0,
                           l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-22.0,
-                          grip_x=54.0, grip_y=-68.0, weapon_deg=-78.0, grip_sep=32.0,
-                          rune_ward=True, halo_active=True)),
-                (17, dict(pelvis_dx=14.0, pelvis_dy=62.0, torso_deg=22.0, head_rel_deg=-12.0,
+                          grip_x=52.0, grip_y=-66.0, weapon_deg=-78.0, grip_sep=32.0, weapon_len=33.5,
+                          force_right_arm_front=True, halo_active=True)),
+                (17, dict(pelvis_dx=16.0, pelvis_dy=60.0, torso_deg=23.0, head_rel_deg=-12.0,
                           l_thigh_deg=-24.0, l_shin_deg=26.0, r_thigh_deg=24.0, r_shin_deg=-20.0,
-                          grip_x=68.0, grip_y=-18.0, weapon_deg=14.0, grip_sep=32.0,
-                          rune_ward=False, halo_active=True)),
-                (29, dict(torso_deg=5.0, grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0)),
+                          grip_x=66.0, grip_y=-16.0, weapon_deg=14.0, grip_sep=32.0, weapon_len=34.5,
+                          halo_active=True)),
+                (29, dict(torso_deg=4.5, grip_x=56.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=33.0, weapon_len=35.5)),
             ]
             cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.0)
-            if 14 <= f <= 19:
-                cfg["slash_arc"] = dict(dx=1.5, r=27.0, a0=-45.0, a1=38.0, intensity=1.1, dy=16.0)
+            if 15 <= f <= 18:
+                cfg["slash_arc"] = dict(dx=1.5, r=27.0, a0=-42.0, a1=36.0, intensity=1.08, dy=16.0)
             cfgs.append(cfg)
 
         elif row_idx == 8:
-            # Row 8: JUMP (Two-Handed Runic Aerial Vault & Mid-Air Downward Frost-Greatsword Cleave!)
+            # Row 8: JUMP & ARCHANGEL SKY JUSTICE AIM + PLUNGE!
+            # F00..F10: Crouch coil & airborne ascent raising the 2H Claymore
+            # F11..F19: Dedicated Archangel Sky-Hover Pose with BOTH hands thrusting the 2H Claymore
+            #           diagonally downward (+38..+44 deg) pointing straight toward the grounded enemy!
+            # F20..F29: Supersonic downward diving cleave & grounded shockwave absorption!
             kfs = [
-                (0, dict(torso_deg=5.0, grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0, foot_y=99.0)),
-                (4, dict(pelvis_dy=56.0, torso_deg=14.0, l_thigh_deg=-26.0, l_shin_deg=28.0,
+                (0, dict(torso_deg=4.5, grip_x=56.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=33.0, foot_y=99.0)),
+                (3, dict(pelvis_dy=54.0, torso_deg=14.0, l_thigh_deg=-26.0, l_shin_deg=28.0,
                          r_thigh_deg=24.0, r_shin_deg=-22.0,
-                         grip_x=48.0, grip_y=-12.0, weapon_deg=-54.0, grip_sep=32.0, foot_y=99.0)),
-                (11, dict(pelvis_dx=6.0, pelvis_dy=14.0, torso_deg=-12.0, head_rel_deg=8.0,
-                          l_thigh_deg=24.0, l_shin_deg=38.0, r_thigh_deg=-14.0, r_shin_deg=30.0,
-                          grip_x=20.0, grip_y=-188.0, weapon_deg=-128.0, grip_sep=26.0,
-                          foot_y=94.0, halo_active=True)),
-                (16, dict(pelvis_dx=10.0, pelvis_dy=18.0, torso_deg=22.0,
-                          l_thigh_deg=26.0, l_shin_deg=34.0, r_thigh_deg=-12.0, r_shin_deg=26.0,
-                          grip_x=66.0, grip_y=-20.0, weapon_deg=28.0, grip_sep=32.0,
-                          foot_y=95.0, halo_active=True)),
-                (24, dict(pelvis_dy=50.0, torso_deg=14.0, l_thigh_deg=-22.0, l_shin_deg=24.0,
-                          r_thigh_deg=20.0, r_shin_deg=-18.0,
-                          grip_x=60.0, grip_y=-14.0, weapon_deg=-22.0, grip_sep=32.0, foot_y=99.0)),
-                (29, dict(torso_deg=5.0, grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0, foot_y=99.0)),
+                         grip_x=48.0, grip_y=-10.0, weapon_deg=-52.0, grip_sep=32.0, foot_y=99.0)),
+                (9, dict(pelvis_dx=4.0, pelvis_dy=12.0, torso_deg=-12.0, head_rel_deg=8.0,
+                         l_thigh_deg=24.0, l_shin_deg=38.0, r_thigh_deg=-14.0, r_shin_deg=30.0,
+                         grip_x=20.0, grip_y=-186.0, weapon_deg=-126.0, grip_sep=26.0, weapon_len=33.0,
+                         foot_y=93.0, halo_active=True)),
+                # F12..F19: Regal Levitating Archangel Sword-Pointing-At-Enemy Justice Stance!
+                (12, dict(pelvis_dx=6.0, pelvis_dy=10.0, torso_deg=17.0, head_rel_deg=-6.0, mane_rel_deg=-16.0,
+                          l_thigh_deg=-26.0, l_shin_deg=42.0, l_foot_deg=16.0,
+                          r_thigh_deg=20.0, r_shin_deg=24.0, r_foot_deg=18.0,
+                          grip_x=66.0, grip_y=-34.0, weapon_deg=36.0, grip_sep=31.0, weapon_len=34.0,
+                          force_right_arm_front=True, foot_y=91.0, halo_active=True, halo_grand=True)),
+                (16, dict(pelvis_dx=8.0, pelvis_dy=8.0, torso_deg=19.0, head_rel_deg=-5.0, mane_rel_deg=-18.0,
+                          l_thigh_deg=-28.0, l_shin_deg=44.0, l_foot_deg=18.0,
+                          r_thigh_deg=22.0, r_shin_deg=26.0, r_foot_deg=20.0,
+                          grip_x=68.0, grip_y=-28.0, weapon_deg=42.0, grip_sep=31.0, weapon_len=34.0,
+                          force_right_arm_front=True, foot_y=90.0, halo_active=True, halo_grand=True)),
+                (19, dict(pelvis_dx=10.0, pelvis_dy=10.0, torso_deg=21.0, head_rel_deg=-4.0, mane_rel_deg=-20.0,
+                          l_thigh_deg=-24.0, l_shin_deg=40.0, l_foot_deg=16.0,
+                          r_thigh_deg=24.0, r_shin_deg=28.0, r_foot_deg=20.0,
+                          grip_x=68.0, grip_y=-24.0, weapon_deg=45.0, grip_sep=31.0, weapon_len=34.0,
+                          force_right_arm_front=True, foot_y=91.0, halo_active=True, halo_grand=True)),
+                # F21..F25: Supersonic Downward Diving Cleave -> F26..F29: Landing Absorption!
+                (22, dict(pelvis_dx=14.0, pelvis_dy=22.0, torso_deg=26.0, head_rel_deg=-10.0, mane_rel_deg=-22.0,
+                          l_thigh_deg=22.0, l_shin_deg=32.0, r_thigh_deg=-18.0, r_shin_deg=26.0,
+                          grip_x=66.0, grip_y=-16.0, weapon_deg=48.0, grip_sep=30.0, weapon_len=33.5,
+                          foot_y=94.0, halo_active=True, halo_grand=True)),
+                (25, dict(pelvis_dx=12.0, pelvis_dy=56.0, torso_deg=20.0, head_rel_deg=-10.0,
+                          l_thigh_deg=-24.0, l_shin_deg=26.0, r_thigh_deg=22.0, r_shin_deg=-20.0,
+                          grip_x=62.0, grip_y=-12.0, weapon_deg=22.0, grip_sep=32.0, weapon_len=34.5, foot_y=99.0)),
+                (29, dict(torso_deg=4.5, grip_x=56.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=33.0, weapon_len=35.5, foot_y=99.0)),
             ]
             cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.5)
-            if 13 <= f <= 17:
-                cfg["slash_arc"] = dict(dx=1.0, r=28.0, a0=-78.0, a1=46.0, intensity=1.15)
             cfgs.append(cfg)
 
     return cfgs
 
 
 def main():
+    build_portrait()
     parts = load_and_segment_512()
     picks = [
-        (0, 0, "R0 2H RUNE GUARD"),
-        (1, 4, "R1 2H RUNIC STRIDE"),
-        (2, 11, "R2 2H CLEAVE"),
-        (3, 5, "R3 2H 360 SPIN"),
-        (3, 21, "R3 2H THUNDER SLAM"),
-        (4, 19, "R4 2H SKY TOP"),
-        (6, 12, "R6 2H DRAG-RUSH"),
-        (7, 8, "R7 2H SWORD PARRY"),
+        (0, 0, "R0 SOVEREIGN GUARD"),
+        (1, 4, "R1 PALADIN STRIDE"),
+        (2, 11, "R2 2H CLAYMORE CLEAVE"),
+        (3, 5, "R3 360 WHIRLWIND"),
+        (4, 2, "R4 SACRED VOW"),
+        (8, 16, "R8 SKY JUSTICE AIM"),
+        (6, 12, "R6 PALADIN RUSH"),
+        (7, 8, "R7 AEGIS PARRY"),
     ]
     build_and_save_30fps_sheet(
         "warrior", parts, build_row_configs, render_frame,
         OUT_SHEET_PATH, VFX_SHEET_PATH, ARTIFACT_DIR,
         shimmer_cols=(C_CYAN_LIT, C_GOLD_SPEC), showcase_picks=picks,
     )
-
-    # Save zoomed 2x strip of Row 2 (AUTO_ATTACK, F00..F29) for visual QA
-    sheet_im = Image.open(OUT_SHEET_PATH).convert("RGBA")
-    cell_src = 208
-    cell_zoom = cell_src * 2  # 416x416 (2x zoom of 208x208 sheet cells)
-    pad_x, pad_y = 8, 28
-    cols_strip, rows_strip = 10, 3
-    strip = Image.new(
-        "RGBA",
-        (cols_strip * (cell_zoom + pad_x) + pad_x, rows_strip * (cell_zoom + pad_y) + pad_y),
-        (20, 22, 34, 255),
-    )
-    sd = ImageDraw.Draw(strip)
-    for f in range(COLS):
-        c_idx = f % cols_strip
-        r_idx = f // cols_strip
-        ox = pad_x + c_idx * (cell_zoom + pad_x)
-        oy = pad_y + r_idx * (cell_zoom + pad_y)
-        tile = sheet_im.crop((f * cell_src, 2 * cell_src, (f + 1) * cell_src, 3 * cell_src)).resize(
-            (cell_zoom, cell_zoom), Image.Resampling.NEAREST
-        )
-        sd.rectangle([ox - 1, oy - 1, ox + cell_zoom, oy + cell_zoom], outline=(56, 64, 92, 255), width=2)
-        sd.line([(ox, oy + 199 * 2), (ox + cell_zoom, oy + 199 * 2)], fill=(110, 68, 86, 255), width=2)
-        strip.alpha_composite(tile, (ox, oy))
-        sd.text((ox + 6, oy - 20), f"R2 AUTO F{f:02d}", fill=(255, 230, 140, 255))
-    os.makedirs(ARTIFACT_DIR, exist_ok=True)
-    strip.save(os.path.join(ARTIFACT_DIR, "scratch_warrior_row2_swing.png"))
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps60';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps60';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps60';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps60';
+import { Fighter } from './Fighter.js?v=30fps61';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps61';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps61';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps61';
 
 /**
  * Ignis Sol (`mage`) — Solar Archmage & Black-Sun Eclipse Sovereign.
@@ -89,7 +89,7 @@ export class FireMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const mageAssets = PixelForge.initAssets()?.mage;
       if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps60')) {
-        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps60';
+        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps61';
       }
     }
   }
@@ -1111,7 +1111,6 @@ export class FireMage extends Fighter {
 
       if (game.renderer) {
         game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, 0.72);
-        game.renderer.setStageTransformation?.('inferno', u * 0.44, false, 6.0);
       }
 
       if (t >= 0.82 && this._trueUltStage < 1) {
@@ -1211,7 +1210,6 @@ export class FireMage extends Fighter {
 
       if (game.renderer) {
         game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, 0.78);
-        game.renderer.setStageTransformation?.('inferno', 0.44 + u * 0.46, false, 6.0);
       }
 
       // Crushing Astral Gravity pulls all active enemies into the Meteor Impact Epicenter!

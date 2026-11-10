@@ -4,8 +4,9 @@
  * Powered natively by `src/engine/ArcaneShaderFX.js` + `src/engine/shaders/runicSteelShaders.js`.
  *
  * Outputs:
- *   1. `assets/sprites/warrior_vfx.png` (6240x1040, 5 rows x 30 cols @ 208x208, 0/150 border clips)
- *   2. `<artifactDir>/debug_warrior_30fps_vfx.png` (5x30 contact sheet for visual verification)
+ *   1. `assets/sprites/warrior_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208, 0/240 border clips)
+ *   2. `<artifactDir>/debug_warrior_30fps_vfx.png` (8x30 contact sheet for visual verification)
+ *   3. `<artifactDir>/debug_warrior_ult_208_closeup.png` (1:1 208x208 closeup of Rows 5, 6, 7)
  */
 
 import fs from 'node:fs';
@@ -19,18 +20,16 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
+} from '../src/engine/ArcaneShaderFX.js';
 
 import {
   RUNIC_CYAN_PALETTE,
   RUNIC_STEEL_EFFECT_REGISTRY
-} from '../src/engine/shaders/runicSteelShaders.js?v=30fps55';
+} from '../src/engine/shaders/runicSteelShaders.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const ARTIFACT_DIR =
-  '/home/antigravity/.gemini/jetski/brain/37699f2db13d1725832e2f0743114ed9';
-const PARENT_ARTIFACT_DIR =
   '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088';
 
 const CRC_TABLE = (() => {
@@ -99,6 +98,27 @@ function enforceSafeCellMargin104(rgba, w = 104, h = 104) {
   }
 }
 
+function enforceCircularCellMargin208(rgba, w = 208, h = 208) {
+  const cx = (w - 1) * 0.5;
+  const cy = (h - 1) * 0.5;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
+      const r = Math.hypot(x - cx, y - cy);
+      const o = (y * w + x) * 4;
+      if (distEdge < 3 || r >= 98) {
+        rgba[o] = 0;
+        rgba[o + 1] = 0;
+        rgba[o + 2] = 0;
+        rgba[o + 3] = 0;
+      } else if (r > 90 && rgba[o + 3] > 0) {
+        const k = Math.max(0, (98 - r) / 8);
+        rgba[o + 3] = Math.round(rgba[o + 3] * k);
+      }
+    }
+  }
+}
+
 function blitUpscaledNearest(srcRgba, srcW, srcH, scale, dstRgba, dstW, dstX, dstY) {
   for (let sy = 0; sy < srcH; sy++) {
     for (let sx = 0; sx < srcW; sx++) {
@@ -143,8 +163,22 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
   }
 }
 
+function downsample2xTo104(src208, dst104) {
+  dst104.fill(0);
+  for (let y = 0; y < 104; y++) {
+    for (let x = 0; x < 104; x++) {
+      const so = (y * 2 * 208 + x * 2) * 4;
+      const to = (y * 104 + x) * 4;
+      dst104[to] = src208[so];
+      dst104[to + 1] = src208[so + 1];
+      dst104[to + 2] = src208[so + 2];
+      dst104[to + 3] = src208[so + 3];
+    }
+  }
+}
+
 function bakeVfxSheet() {
-  const ROWS = 5;
+  const ROWS = 8;
   const COLS = 30;
   const LOGICAL = 104;
   const CELL = 208;
@@ -163,10 +197,24 @@ function bakeVfxSheet() {
     dbgRgba[i * 4 + 3] = 255;
   }
 
+  // 1:1 208x208 closeup contact sheet for Rows 5, 6, 7 (6 sampled frames per row: F00, F05, F10, F15, F20, F25)
+  const sampleCols = [0, 5, 10, 15, 20, 25];
+  const closePad = 8;
+  const closeW = sampleCols.length * (CELL + closePad) + closePad;
+  const closeH = 3 * (CELL + closePad) + closePad;
+  const closeRgba = new Uint8Array(closeW * closeH * 4);
+  for (let i = 0; i < closeW * closeH; i++) {
+    closeRgba[i * 4] = 8;
+    closeRgba[i * 4 + 1] = 17;
+    closeRgba[i * 4 + 2] = 34;
+    closeRgba[i * 4 + 3] = 255;
+  }
+
   const rowSpecs = [
     {
       name: 'Row 0: Frost-Crescent Runeblade Wave Arc (F00..F29)',
       windowSec: 1.0,
+      native208: false,
       layers: [
         {
           def: RUNIC_STEEL_EFFECT_REGISTRY.runebladeWaveArcCell,
@@ -178,6 +226,7 @@ function bakeVfxSheet() {
     {
       name: 'Row 1: Winged Sapphire-Gold Aegis Rune Crest & Runeblade Impact (F00..F29)',
       windowSec: 1.0,
+      native208: false,
       layers: [
         {
           def: RUNIC_STEEL_EFFECT_REGISTRY.aegisRuneCrestCell,
@@ -189,6 +238,7 @@ function bakeVfxSheet() {
     {
       name: 'Row 2: Sky-Judgment Glacial Runeblade Spire Pillar (F00..F29)',
       windowSec: 1.0,
+      native208: false,
       layers: [
         {
           def: RUNIC_STEEL_EFFECT_REGISTRY.skyJudgmentBladePillarCell,
@@ -200,6 +250,7 @@ function bakeVfxSheet() {
     {
       name: 'Row 3: Grand 8-Rune Elder Runic Sanctuary Seal (F00..F29)',
       windowSec: 1.0,
+      native208: false,
       layers: [
         {
           def: RUNIC_STEEL_EFFECT_REGISTRY.elderRunicSanctuarySealCell,
@@ -211,6 +262,7 @@ function bakeVfxSheet() {
     {
       name: 'Row 4: Omnislash Cross-Cleave & Starburst Nova (F00..F29)',
       windowSec: 1.0,
+      native208: false,
       layers: [
         {
           def: RUNIC_STEEL_EFFECT_REGISTRY.omnislashStarburstNovaCell,
@@ -218,12 +270,53 @@ function bakeVfxSheet() {
           cfg: { x: 52, y: 52, palette: RUNIC_CYAN_PALETTE, seed: 547 }
         }
       ]
+    },
+    {
+      name: 'Row 5: Native 208x208 Celestial Sword-of-Justice Diagonal Great-Slash (F00..F29)',
+      windowSec: 1.0,
+      native208: true,
+      layers: [
+        {
+          def: RUNIC_STEEL_EFFECT_REGISTRY.celestialJusticeGreatSlashCell,
+          warmup: 0,
+          cfg: { x: 104, y: 104, palette: RUNIC_CYAN_PALETTE, seed: 569 }
+        }
+      ]
+    },
+    {
+      name: 'Row 6: Native 208x208 Consecrated Cathedral Light-Column & Sword Seal (F00..F29)',
+      windowSec: 1.0,
+      native208: true,
+      layers: [
+        {
+          def: RUNIC_STEEL_EFFECT_REGISTRY.celestialJusticeCathedralPillarCell,
+          warmup: 0,
+          cfg: { x: 104, y: 104, palette: RUNIC_CYAN_PALETTE, seed: 577 }
+        }
+      ]
+    },
+    {
+      name: 'Row 7: Native 208x208 30fps Fluttering Seraphim Pinion Feather (F00..F29)',
+      windowSec: 1.0,
+      native208: true,
+      layers: [
+        {
+          def: RUNIC_STEEL_EFFECT_REGISTRY.celestialSeraphimFeatherCell,
+          warmup: 0,
+          cfg: { x: 104, y: 104, palette: RUNIC_CYAN_PALETTE, seed: 587 }
+        }
+      ]
     }
   ];
 
-  const surface = createPixelSurface(LOGICAL, LOGICAL);
-  const pen = new ShaderPen(surface);
-  const cellRgba = new Uint8Array(LOGICAL * LOGICAL * 4);
+  const surface104 = createPixelSurface(LOGICAL, LOGICAL);
+  const pen104 = new ShaderPen(surface104);
+  const cell104 = new Uint8Array(LOGICAL * LOGICAL * 4);
+
+  const surface208 = createPixelSurface(CELL, CELL);
+  const pen208 = new ShaderPen(surface208);
+  const cell208 = new Uint8Array(CELL * CELL * 4);
+
   let borderClips = 0;
 
   for (let r = 0; r < ROWS; r++) {
@@ -236,29 +329,63 @@ function bakeVfxSheet() {
     });
 
     for (let c = 0; c < COLS; c++) {
-      clearPixelSurface(surface);
-      for (const inst of instances) inst.render(pen, 'back');
-      for (const inst of instances) inst.render(pen, 'front');
-      resolveSurfaceToRGBA(surface, cellRgba, 1.15);
-      enforceSafeCellMargin104(cellRgba, LOGICAL, LOGICAL);
+      if (spec.native208) {
+        clearPixelSurface(surface208);
+        for (const inst of instances) inst.render(pen208, 'back');
+        for (const inst of instances) inst.render(pen208, 'front');
+        resolveSurfaceToRGBA(surface208, cell208, 1.12);
+        enforceCircularCellMargin208(cell208, CELL, CELL);
 
-      let clipped = false;
-      for (let i = 0; i < LOGICAL && !clipped; i++) {
-        if (
-          cellRgba[(0 * LOGICAL + i) * 4 + 3] > 0 ||
-          cellRgba[((LOGICAL - 1) * LOGICAL + i) * 4 + 3] > 0 ||
-          cellRgba[(i * LOGICAL + 0) * 4 + 3] > 0 ||
-          cellRgba[(i * LOGICAL + (LOGICAL - 1)) * 4 + 3] > 0
-        ) {
-          clipped = true;
+        let clipped = false;
+        for (let i = 0; i < CELL && !clipped; i++) {
+          if (
+            cell208[(0 * CELL + i) * 4 + 3] > 0 ||
+            cell208[((CELL - 1) * CELL + i) * 4 + 3] > 0 ||
+            cell208[(i * CELL + 0) * 4 + 3] > 0 ||
+            cell208[(i * CELL + (CELL - 1)) * 4 + 3] > 0
+          ) {
+            clipped = true;
+          }
         }
-      }
-      if (clipped) borderClips++;
+        if (clipped) borderClips++;
 
-      blitUpscaledNearest(cellRgba, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
-      const dx = dbgPad + c * (LOGICAL + dbgPad);
-      const dy = dbgPad + r * (LOGICAL + dbgPad);
-      alphaCompositeOnto(cellRgba, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
+        blitUpscaledNearest(cell208, CELL, CELL, 1, sheetRgba, sheetW, c * CELL, r * CELL);
+        downsample2xTo104(cell208, cell104);
+        const dx = dbgPad + c * (LOGICAL + dbgPad);
+        const dy = dbgPad + r * (LOGICAL + dbgPad);
+        alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
+
+        const sIdx = sampleCols.indexOf(c);
+        if (sIdx !== -1 && r >= 5) {
+          const cx = closePad + sIdx * (CELL + closePad);
+          const cy = closePad + (r - 5) * (CELL + closePad);
+          alphaCompositeOnto(cell208, CELL, CELL, closeRgba, closeW, cx, cy);
+        }
+      } else {
+        clearPixelSurface(surface104);
+        for (const inst of instances) inst.render(pen104, 'back');
+        for (const inst of instances) inst.render(pen104, 'front');
+        resolveSurfaceToRGBA(surface104, cell104, 1.15);
+        enforceSafeCellMargin104(cell104, LOGICAL, LOGICAL);
+
+        let clipped = false;
+        for (let i = 0; i < LOGICAL && !clipped; i++) {
+          if (
+            cell104[(0 * LOGICAL + i) * 4 + 3] > 0 ||
+            cell104[((LOGICAL - 1) * LOGICAL + i) * 4 + 3] > 0 ||
+            cell104[(i * LOGICAL + 0) * 4 + 3] > 0 ||
+            cell104[(i * LOGICAL + (LOGICAL - 1)) * 4 + 3] > 0
+          ) {
+            clipped = true;
+          }
+        }
+        if (clipped) borderClips++;
+
+        blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
+        const dx = dbgPad + c * (LOGICAL + dbgPad);
+        const dy = dbgPad + r * (LOGICAL + dbgPad);
+        alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
+      }
 
       for (const inst of instances) inst.step(dt);
     }
@@ -267,20 +394,14 @@ function bakeVfxSheet() {
   const outSheetPath = path.join(REPO_ROOT, 'assets', 'sprites', 'warrior_vfx.png');
   fs.writeFileSync(outSheetPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
 
-  const dbgPng = encodeRgbaPng(dbgW, dbgH, dbgRgba);
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
   const outDbgPath = path.join(ARTIFACT_DIR, 'debug_warrior_30fps_vfx.png');
-  fs.writeFileSync(outDbgPath, dbgPng);
-
-  try {
-    fs.mkdirSync(PARENT_ARTIFACT_DIR, { recursive: true });
-    fs.writeFileSync(path.join(PARENT_ARTIFACT_DIR, 'debug_warrior_30fps_vfx.png'), dbgPng);
-  } catch {
-    // ignore if parent artifact dir is not writable
-  }
+  const outClosePath = path.join(ARTIFACT_DIR, 'debug_warrior_ult_208_closeup.png');
+  fs.writeFileSync(outDbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
+  fs.writeFileSync(outClosePath, encodeRgbaPng(closeW, closeH, closeRgba));
 
   console.log(
-    `[build_warrior_vfx_30fps] Wrote ${outSheetPath} (${sheetW}x${sheetH}) & ${outDbgPath} (${dbgW}x${dbgH}) | borderClips=${borderClips}/150`
+    `[build_warrior_vfx_30fps] Wrote ${outSheetPath} (${sheetW}x${sheetH}), ${outDbgPath} (${dbgW}x${dbgH}), ${outClosePath} (${closeW}x${closeH}) | borderClips=${borderClips}/240`
   );
   if (borderClips > 0) {
     process.exitCode = 1;

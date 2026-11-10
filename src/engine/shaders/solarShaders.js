@@ -19,7 +19,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps60';
+} from '../ArcaneShaderFX.js?v=30fps61';
 
 export const SOLAR_CORONA_PALETTE = [
   '#18080a',

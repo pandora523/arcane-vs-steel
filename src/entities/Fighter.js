@@ -102,9 +102,10 @@ export class Fighter {
 
   gainFinisher(amount) {
     if (!this.hasTrueUltimate || this.isDead || this.state === 'TRUE_ULTIMATE') return;
-    let mult = this.isBerserk ? 1.35 : 1.0;
-    if (this.game && this.game.stageEventTimer > 0 && this.game.renderer?.stageId === 'cathedral') {
-      mult *= 1.45;
+    const unlimitedHp = Boolean(this.game && this.game.testModeUnlimitedHp);
+    let mult = !unlimitedHp && this.isBerserk ? 1.65 : 1.0;
+    if (!unlimitedHp && this.game && this.game.stageEventTimer > 0 && this.game.renderer?.stageId === 'cathedral') {
+      mult *= 1.25;
     }
     this.finisherGauge = Math.min(this.maxFinisherGauge, this.finisherGauge + amount * mult);
   }
@@ -115,9 +116,11 @@ export class Fighter {
     if (this.game && this.game.stageEventTimer > 0 && this.game.renderer?.stageId === 'cathedral') {
       mult *= 1.55;
     }
+    const prevMana = this.mana;
     this.mana = Math.min(this.maxMana, this.mana + amount * mult);
-    if (this.hasTrueUltimate) {
-      this.gainFinisher(amount * 0.58);
+    const actualGain = Math.max(0, this.mana - prevMana);
+    if (this.hasTrueUltimate && actualGain > 0) {
+      this.gainFinisher(actualGain * 0.08);
     }
   }
 
@@ -268,9 +271,14 @@ export class Fighter {
       knockX *= 0.35;
       knockY *= 0.35;
     }
+    const unlimitedHp = Boolean(this.game && this.game.testModeUnlimitedHp);
     const prevHp = this.hp;
-    this.hp = Math.max(0, this.hp - amount);
-    const dealt = Math.max(1, Math.round(prevHp - this.hp));
+    this.hp = unlimitedHp ? Math.max(1, this.hp - amount) : Math.max(0, this.hp - amount);
+    this.timeSinceLastHit = 0;
+    if (unlimitedHp && this.hp <= Math.max(2, this.maxHp * 0.08)) {
+      this._testModeRefillTimer = 0.55;
+    }
+    const dealt = Math.max(1, Math.round(unlimitedHp ? amount : prevHp - this.hp));
     if (attacker && attacker.stats) {
       attacker.stats.damageDealt += dealt;
       if (isCrit) attacker.stats.critsLanded++;
@@ -287,6 +295,9 @@ export class Fighter {
     if (this.hp > 0 && !this.isBerserk && this.hp / this.maxHp <= 0.28) {
       this.isBerserk = true;
       this.gainMana(18);
+      if (!unlimitedHp && this.hasTrueUltimate) {
+        this.gainFinisher(22);
+      }
       if (this.game && this.game.vfx) {
         this.game.vfx.spawnDamageText(
           this.x,
@@ -449,10 +460,26 @@ export class Fighter {
       return;
     }
 
+    // Test Mode (Unlimited HP): smoothly restore HP after brief impact hold or out-of-combat window
+    if (game && game.testModeUnlimitedHp && !this.isDead) {
+      this.timeSinceLastHit = (this.timeSinceLastHit || 0) + dt;
+      if (this._testModeRefillTimer > 0) {
+        this._testModeRefillTimer = Math.max(0, this._testModeRefillTimer - dt);
+      }
+      const needsLowRefill = this.hp <= Math.max(2, this.maxHp * 0.08) && (this._testModeRefillTimer || 0) <= 0;
+      const needsIdleRefill = this.timeSinceLastHit >= 1.8 && this.hp < this.maxHp;
+      if (needsLowRefill || needsIdleRefill) {
+        this.hp = Math.min(this.maxHp, this.hp + this.maxHp * 0.85 * dt);
+        if (this.isBerserk && this.hp / this.maxHp > 0.55) {
+          this.isBerserk = false;
+        }
+      }
+    }
+
     if (!this.isDead && this.state !== 'ULTIMATE' && this.state !== 'TRUE_ULTIMATE') {
       this.gainMana(dt * 4.5);
       if (this.hasTrueUltimate) {
-        this.gainFinisher(dt * 3.8);
+        this.gainFinisher(dt * 0.25);
       }
     }
 

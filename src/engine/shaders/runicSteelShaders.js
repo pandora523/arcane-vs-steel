@@ -20,7 +20,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps60';
+} from '../ArcaneShaderFX.js?v=30fps61';
 
 export const RUNIC_CYAN_PALETTE = [
   '#061228',
@@ -1497,6 +1497,574 @@ export const omnislashStarburstNovaCell = {
   }
 };
 
+// ============================================================================
+// LIVE 120HZ CONSECRATED CATHEDRAL SKY-RAYS & ELDER-RUNE DOMAIN
+// Gives Aethelgard epic arena-wide sacred atmosphere WITHOUT overwriting the stage background!
+// ============================================================================
+export const celestialCathedralConsecration = {
+  duration: 2.45,
+  loop: false,
+  defaults: {
+    palette: RUNIC_CYAN_PALETTE,
+    seed: 557,
+    spanScale: 1.0
+  },
+  create(cfg) {
+    const cyan = buildColorRamp(cfg.palette, 8);
+    const gold = buildColorRamp(RUNIC_GOLD_PALETTE, 8);
+    const band4 = [cyan[2], cyan[5], gold[6], PURE_WHITE];
+    const goldBand4 = [gold[2], gold[5], cyan[6], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed || 557);
+    const motes = new MotePool(48);
+    let emitAcc = 0;
+
+    return {
+      step(dt, localT) {
+        motes.step(dt);
+        if (localT < 2.1) {
+          emitAcc += dt * 26;
+          while (emitAcc >= 1) {
+            emitAcc -= 1;
+            const ang = rng.range(0, Math.PI * 2);
+            const r = rng.range(8, 56 * (cfg.spanScale || 1));
+            motes.spawn({
+              x: Math.cos(ang) * r,
+              y: Math.sin(ang) * r * 0.28,
+              vx: rng.range(-8, 8),
+              vy: rng.range(-54, -22),
+              life: rng.range(0.45, 0.92),
+              gravity: -12,
+              drag: 0.95,
+              color: rng.chance(0.32) ? gold[6] : rng.chance(0.5) ? PURE_WHITE : cyan[6],
+              bright: true
+            });
+          }
+        }
+      },
+      renderBack(pen, localT) {
+        const u = clamp01(localT / 2.45);
+        const fade = smoothStep(0, 0.12, u) * (1 - smoothStep(0.82, 1.0, u));
+        if (fade <= 0.02) return;
+        const sc = cfg.spanScale || 1.0;
+
+        // 5 Pixel-Stepped Diagonal Heavenly Sapphire-White Cathedral Light-Shafts
+        const shafts = [-44, -22, 0, 22, 44];
+        for (let i = 0; i < shafts.length; i++) {
+          const baseX = shafts[i] * sc;
+          const topX = baseX * 0.72 - 8;
+          const halfW = (i === 2 ? 7.5 : 4.8) * (0.85 + 0.15 * Math.sin(localT * 5.2 + i));
+          for (let y = -168; y <= 4; y += 2) {
+            const vFrac = (y + 168) / 172;
+            const cx = topX + (baseX - topX) * vFrac;
+            const vAlpha = fade * (0.18 + 0.54 * vFrac) * (i === 2 ? 0.85 : 0.58);
+            const wCur = halfW * (0.62 + 0.48 * vFrac);
+            pen.line(cx - wCur, y, cx + wCur, y, cyan[3], vAlpha * 0.55);
+            pen.line(cx - wCur * 0.55, y, cx + wCur * 0.55, y, cyan[6], vAlpha * 0.72);
+            if (i === 2 || y % 4 === 0) {
+              pen.line(cx - wCur * 0.22, y, cx + wCur * 0.22, y, PURE_WHITE, vAlpha * 0.85);
+            }
+          }
+        }
+
+        // Back halves of 2.5D Consecrated Elder-Rune Floor Rings
+        drawTiltedOrbitBand(pen, 0, 0, 52 * sc, 0.28, 1.8, 0.9 * fade, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, 32 * sc, 0.28, 1.4, 0.86 * fade, goldBand4, BACK_HALF, false);
+        drawElderStarCross(pen, 0, 0, 48 * sc, 21 * sc, 0.28, localT * 1.4, cyan[5], gold[5], 0.82 * fade, BACK_HALF);
+      },
+      renderFront(pen, localT) {
+        const u = clamp01(localT / 2.45);
+        const fade = smoothStep(0, 0.12, u) * (1 - smoothStep(0.82, 1.0, u));
+        if (fade <= 0.02) return;
+        const sc = cfg.spanScale || 1.0;
+
+        drawTiltedOrbitBand(pen, 0, 0, 52 * sc, 0.28, 1.8, 0.95 * fade, band4, FRONT_HALF, u < 0.25);
+        drawTiltedOrbitBand(pen, 0, 0, 32 * sc, 0.28, 1.4, 0.9 * fade, goldBand4, FRONT_HALF, false);
+        drawElderStarCross(pen, 0, 0, 48 * sc, 21 * sc, 0.28, localT * 1.4, cyan[5], gold[5], 0.88 * fade, FRONT_HALF);
+
+        for (let d = 0; d < 8; d++) {
+          const a = localT * 1.8 + (d * Math.PI) / 4;
+          if (Math.sin(a) < 0) continue;
+          drawPixelElderRune(
+            pen,
+            Math.cos(a) * 52 * sc,
+            Math.sin(a) * 52 * sc * 0.28,
+            2.2,
+            d % 2 === 0 ? gold[5] : cyan[5],
+            PURE_WHITE,
+            fade * 0.96
+          );
+        }
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// NATIVE `208x208` 30FPS SUPREME ULTIMATE CELLS (ROWS 5, 6, 7 OF `warrior_vfx.png`)
+// Drawn directly at 1:1 `208x208` resolution (`center = (104, 104)`, bounded `r <= 95` -> 0 border clips!)
+//   Row 5 (`y=1040`): `celestialJusticeGreatSlashCell`      — Colossal Diagonal (`/`) Celestial Sword-of-Justice Cleave
+//   Row 6 (`y=1248`): `celestialJusticeCathedralPillarCell` — Consecrated Cathedral Light-Column & Sword-Cross Seal
+//   Row 7 (`y=1456`): `celestialSeraphimFeatherCell`        — 30fps Fluttering White & Ice-Sapphire Seraphim Pinion Feather
+// ============================================================================
+
+function applySelectiveOutlineOnSurface(surface, seloutPacked, alphaByte = 242) {
+  const { width: w, height: h, albedo } = surface;
+  const edgeMask = new Uint8Array(w * h);
+  for (let y = 2; y < h - 2; y++) {
+    for (let x = 2; x < w - 2; x++) {
+      const idx = y * w + x;
+      if ((albedo[idx] >>> 24) > 28) continue;
+      if (
+        (albedo[idx - 1] >>> 24) > 96 ||
+        (albedo[idx + 1] >>> 24) > 96 ||
+        (albedo[idx - w] >>> 24) > 96 ||
+        (albedo[idx + w] >>> 24) > 96
+      ) {
+        edgeMask[idx] = 1;
+      }
+    }
+  }
+  const packedEdge = (((alphaByte & 255) << 24) | (seloutPacked & 0x00ffffff)) >>> 0;
+  for (let i = 0; i < w * h; i++) {
+    if (edgeMask[i]) {
+      albedo[i] = packedEdge;
+    }
+  }
+}
+
+export const celestialJusticeGreatSlashCell = {
+  duration: 1.0,
+  loop: false,
+  defaults: { palette: RUNIC_CYAN_PALETTE, seed: 569 },
+  create(cfg) {
+    const cyan = buildColorRamp(cfg.palette, 8);
+    const gold = buildColorRamp(RUNIC_GOLD_PALETTE, 8);
+    const rng = new DeterministicRng(cfg.seed || 569);
+    const seloutPacked = packHexColor('#051329');
+    const colPaleIce = packHexColor('#e0f2fe');
+    const colSkyIce = packHexColor('#7dd3fc');
+    const colBrightSky = packHexColor('#38bdf8');
+    const colDeepSapphire = packHexColor('#0284c7');
+    const colRoyalGoldLight = packHexColor('#fef08a');
+
+    // Precompute deterministic ice-diamond & wing-feather glint shards bursting off the slash arc
+    const shards = Array.from({ length: 18 }, (_, i) => ({
+      sPos: -0.78 + (i / 17) * 1.56,
+      nVel: (i % 2 === 0 ? 1 : -1) * (10 + (i % 4) * 5.5),
+      tVel: ((i % 3) - 1) * 8,
+      size: i % 3 === 0 ? 3.2 : 2.2,
+      isGold: i % 4 === 1
+    }));
+
+    return {
+      step() {},
+      renderFront(pen, localT) {
+        const u = clamp01(localT);
+        const pop = 0.58 + 0.42 * smoothStep(0, 0.16, u);
+        const fade = 1 - smoothStep(0.74, 1.0, u);
+        const env = smoothStep(0, 0.05, u) * fade;
+        if (env <= 0.02) return;
+
+        // Sweeping diagonal (`/`) Sword-of-Justice Crescent from `(-70, -68)` to `(+70, +68)`
+        // Bowed forward toward `(+0.699, -0.715)` so flipping X (`ctx.scale(-1, 1)`) creates the exact `\` mirror X-slash with ZERO `ctx.rotate`!
+        const span = 70 * pop;
+        const invDiag = 1 / Math.hypot(0.715, 0.699);
+        const tx = 0.715 * invDiag;
+        const ty = 0.699 * invDiag;
+        const nx = ty;
+        const ny = -tx;
+        const bowPeak = (23 + 7 * smoothStep(0, 0.45, u)) * pop;
+        const maxHalfThick = (17.5 - 5.8 * smoothStep(0.35, 1.0, u)) * pop;
+
+        // 1. Gap-Free Per-Pixel Cel-Shaded Crescent Blade + Feathered Trailing Plume Serrations
+        for (let py = -88; py <= 88; py++) {
+          for (let px = -88; px <= 88; px++) {
+            if (px * px + py * py > 88 * 88) continue;
+
+            const uAlong = px * tx + py * ty;
+            const vPerp = px * nx + py * ny;
+            const s = uAlong / Math.max(1, span);
+            const absS = Math.abs(s);
+
+            // Progressive slash reveal in early frames (`u < 0.22`)
+            const sweepGate = clamp01(u * 6.4 - (s + 1) * 0.48);
+            if (sweepGate <= 0.02) continue;
+
+            // Main Celestial Sword-of-Justice Crescent
+            if (absS <= 1.0) {
+              const profile = Math.pow(Math.max(0, 1 - s * s), 1.08);
+              const bow = bowPeak * (1 - s * s);
+              const wOff = vPerp - bow;
+              const fbm = fbmNoise2D(px * 0.08 + u * 2.2, py * 0.08 - u * 1.6, cfg.seed || 569, 3);
+              // Wing-plume serrations along the trailing wake edge (`wOff < 0`)
+              const plumeWave = Math.sin(s * 26 - u * 9.0) * 0.14 + (fbm - 0.5) * 0.22;
+              const trailThick = maxHalfThick * profile * sweepGate * (1.05 + plumeWave);
+              const leadThick = maxHalfThick * profile * sweepGate * 0.74;
+
+              if (wOff >= -trailThick && wOff <= leadThick && leadThick > 0.45) {
+                const normW = wOff >= 0 ? (wOff / leadThick) * 0.74 : wOff / Math.max(0.6, trailThick);
+                let col;
+                let aMul = env;
+                let glowK = 0;
+                if (normW > 0.36) {
+                  col = PURE_WHITE;
+                  glowK = 0.34;
+                } else if (normW > 0.10) {
+                  col = colPaleIce;
+                  glowK = 0.22;
+                } else if (normW > -0.16 && absS < 0.70) {
+                  // Engraved Royal-Gold Fuller Harmonic Spine inside the blade crescent!
+                  col = normW > -0.03 ? colRoyalGoldLight : gold[5];
+                  glowK = 0.26;
+                } else if (normW > -0.44) {
+                  col = colSkyIce;
+                  glowK = 0.14;
+                } else if (normW > -0.74) {
+                  col = colBrightSky;
+                } else {
+                  col = colDeepSapphire;
+                  aMul *= 0.90;
+                }
+                pen.blend(px, py, col, aMul);
+                if (glowK > 0) {
+                  pen.writeRawGlow(pen.gridX(px, py), pen.gridY(px, py), col, glowK * env);
+                }
+                continue;
+              }
+            }
+
+            // Secondary Counter-Harmonic Inner Wing-Slash Ribbon
+            if (absS < 0.84) {
+              const sSub = s / 0.84;
+              const subBow = -10.5 * pop * (1 - sSub * sSub);
+              const subDist = Math.abs(vPerp - subBow);
+              const subHalfT = 3.2 * (1 - sSub * sSub) * sweepGate;
+              if (subDist <= subHalfT && subHalfT > 0.45) {
+                const subCol = subDist < subHalfT * 0.48 ? PURE_WHITE : Math.abs(Math.sin(s * 14)) > 0.65 ? gold[6] : colBrightSky;
+                pen.blend(px, py, subCol, env * 0.94);
+                pen.writeRawGlow(pen.gridX(px, py), pen.gridY(px, py), subCol, 0.18 * env);
+              }
+            }
+          }
+        }
+
+        // 2. Crisp 1px Midnight-Sapphire Selective Outline around the sculpted pixel crescent!
+        applySelectiveOutlineOnSurface(pen.surface, seloutPacked, Math.round(240 * env));
+
+        // 3. Crackling Celestial Lightning Filaments & Engraved Elder Runes along the Crescent Spine
+        if (u < 0.80) {
+          const arcBolt = buildLightningChain(
+            rng,
+            -span * 0.52 + nx * bowPeak * 0.65,
+            -span * 0.50 + ny * bowPeak * 0.65,
+            span * 0.52 + nx * bowPeak * 0.65,
+            span * 0.50 + ny * bowPeak * 0.65,
+            0.14,
+            4
+          );
+          pen.polyline(arcBolt, cyan[6], env * 0.9);
+          pen.polyline(
+            arcBolt.map((p) => [p[0] + 1, p[1] - 1]),
+            PURE_WHITE,
+            env * 0.96
+          );
+        }
+
+        for (let rIdx = -2; rIdx <= 2; rIdx++) {
+          const rs = rIdx * 0.32;
+          const rBow = bowPeak * (1 - rs * rs) * 0.88;
+          const rx = tx * rs * span + nx * rBow;
+          const ry = ty * rs * span + ny * rBow;
+          drawPixelElderRune(
+            pen,
+            rx,
+            ry,
+            rIdx === 0 ? 3.2 : 2.3,
+            rIdx % 2 === 0 ? gold[5] : cyan[5],
+            PURE_WHITE,
+            env * 0.95
+          );
+        }
+
+        // 4. Detaching Faceted Ice-Diamond Shards & Travelling Sword-Edge Starburst Glint
+        for (const sh of shards) {
+          const baseBow = bowPeak * (1 - sh.sPos * sh.sPos);
+          const sx = tx * (sh.sPos * span + sh.tVel * u) + nx * (baseBow + sh.nVel * u);
+          const sy = ty * (sh.sPos * span + sh.tVel * u) + ny * (baseBow + sh.nVel * u);
+          if (sx * sx + sy * sy > 86 * 86) continue;
+          const sCol = sh.isGold ? gold[5] : colBrightSky;
+          pen.fillCircle(sx, sy, sh.size + 0.8, seloutPacked, env * 0.88);
+          pen.fillCircle(sx, sy, sh.size, sCol, env * 0.94);
+          pen.stipple(sx, sy, PURE_WHITE, env);
+        }
+
+        const glintS = -0.65 + 1.35 * smoothStep(0, 0.58, u);
+        const glintBow = bowPeak * (1 - glintS * glintS);
+        const gx = tx * glintS * span + nx * (glintBow + 2);
+        const gy = ty * glintS * span + ny * (glintBow + 2);
+        drawStarburstFlare(pen, gx, gy, 18 * pop, env * 0.98, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
+        drawStarburstFlare(pen, nx * bowPeak, ny * bowPeak, 14 * pop, env * 0.92, [cyan[5], gold[6], PURE_WHITE, PURE_WHITE]);
+      }
+    };
+  }
+};
+
+export const celestialJusticeCathedralPillarCell = {
+  duration: 1.0,
+  loop: false,
+  defaults: { palette: RUNIC_CYAN_PALETTE, seed: 577 },
+  create(cfg) {
+    const cyan = buildColorRamp(cfg.palette, 8);
+    const gold = buildColorRamp(RUNIC_GOLD_PALETTE, 8);
+    const band4 = [cyan[2], cyan[5], gold[6], PURE_WHITE];
+    const goldBand4 = [gold[2], gold[5], cyan[6], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed || 577);
+    const seloutPacked = packHexColor('#051329');
+    const colPaleIce = packHexColor('#e0f2fe');
+    const colSkyIce = packHexColor('#7dd3fc');
+
+    return {
+      step() {},
+      renderBack(pen, localT) {
+        const u = clamp01(localT);
+        const pop = 0.72 + 0.28 * smoothStep(0, 0.16, u);
+        const fade = 1 - smoothStep(0.78, 1.0, u);
+        const env = smoothStep(0, 0.06, u) * fade;
+        if (env <= 0.02) return;
+
+        const baseY = 64;
+        drawTiltedOrbitBand(pen, 0, baseY, 54 * pop, 0.30, 2.2, 0.92 * env, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -6, 38 * pop, 0.28, 1.8, 0.86 * env, goldBand4, BACK_HALF, false);
+      },
+      renderFront(pen, localT) {
+        const u = clamp01(localT);
+        const pop = 0.72 + 0.28 * smoothStep(0, 0.16, u);
+        const fade = 1 - smoothStep(0.78, 1.0, u);
+        const env = smoothStep(0, 0.06, u) * fade;
+        if (env <= 0.02) return;
+
+        const baseY = 64;
+        const topY = -74 * pop;
+        const colHalfW = (24 - 7 * smoothStep(0.55, 1.0, u)) * pop;
+
+        // 1. Stepped Cel-Shaded Fluted Cathedral Light-Column (`topY .. baseY`)
+        for (let y = Math.round(topY); y <= baseY; y++) {
+          const v = (y - topY) / Math.max(1, baseY - topY);
+          const taper = (0.72 + 0.36 * Math.sin(v * Math.PI * 0.85)) * (v < 0.12 ? v / 0.12 : 1);
+          const hw = colHalfW * taper;
+          if (hw <= 1) continue;
+
+          for (let x = -Math.ceil(hw); x <= Math.ceil(hw); x++) {
+            if (x * x + y * y > 88 * 88) continue;
+            const nx = Math.abs(x) / hw;
+            const flute = 0.5 + 0.5 * Math.cos(x * 0.42 + u * 8.0);
+            const fbm = fbmNoise2D(x * 0.12, y * 0.07 + u * 3.6, cfg.seed || 577, 3);
+            const val = (1 - nx) * 0.76 + flute * 0.14 + fbm * 0.16;
+
+            let col;
+            let aMul = env * (0.74 + 0.26 * Math.sin(v * Math.PI));
+            let glowK = 0;
+            if (val > 0.74) {
+              col = PURE_WHITE;
+              glowK = 0.30;
+            } else if (val > 0.56) {
+              col = colPaleIce;
+              glowK = 0.18;
+            } else if (val > 0.40) {
+              col = colSkyIce;
+            } else if (val > 0.24) {
+              col = cyan[5];
+            } else {
+              col = cyan[2];
+              aMul *= 0.78;
+            }
+            pen.blend(x, y, col, aMul);
+            if (glowK > 0) {
+              pen.writeRawGlow(pen.gridX(x, y), pen.gridY(x, y), col, glowK * env);
+            }
+          }
+        }
+
+        // 2. Descending Luminous Runic Sword-of-Justice Silhouette inside the Cathedral Beam!
+        const swordTipY = baseY - 6;
+        drawRunicGreatswordSilhouette(
+          pen,
+          0,
+          swordTipY,
+          118 * pop,
+          7.2 * pop,
+          0,
+          cyan,
+          gold,
+          env * 0.96,
+          false
+        );
+
+        applySelectiveOutlineOnSurface(pen.surface, seloutPacked, Math.round(224 * env));
+
+        // 3. Front 2.5D Consecrated Elder-Rune Halos & Rising Sanctuary Runes
+        drawTiltedOrbitBand(pen, 0, baseY, 54 * pop, 0.30, 2.2, 0.96 * env, band4, FRONT_HALF, u < 0.32);
+        drawTiltedOrbitBand(pen, 0, -6, 38 * pop, 0.28, 1.8, 0.92 * env, goldBand4, FRONT_HALF, u < 0.32);
+        drawElderStarCross(pen, 0, baseY, 48 * pop, 20 * pop, 0.30, u * 2.6, cyan[5], gold[5], 0.9 * env);
+
+        for (let r = 0; r < 6; r++) {
+          const ry = baseY - ((u * 130 + r * 24) % 130);
+          const rx = Math.sin(u * 6 + r * 1.3) * 18 * pop;
+          drawPixelElderRune(pen, rx, ry, 2.4, r % 2 === 0 ? gold[5] : cyan[6], PURE_WHITE, env * 0.95);
+        }
+
+        if (u < 0.72) {
+          const bolt = buildLightningChain(rng, -8, topY + 10, 6, baseY - 4, 0.14, 4);
+          pen.polyline(bolt, gold[6], env * 0.88);
+          pen.polyline(bolt.map((p) => [p[0] + 1, p[1]]), PURE_WHITE, env * 0.95);
+        }
+        drawStarburstFlare(pen, 0, baseY - 4, 16 * pop, env * 0.96, [cyan[4], gold[5], cyan[6], PURE_WHITE]);
+      }
+    };
+  }
+};
+
+export const celestialSeraphimFeatherCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: { palette: RUNIC_CYAN_PALETTE, seed: 587 },
+  create() {
+    const seloutPacked = packHexColor('#071a36');
+    const colQuillGold = packHexColor('#fef08a');
+    const colPearlIce = packHexColor('#f0f9ff');
+    const colPaleIce = packHexColor('#bae6fd');
+    const colSkyIce = packHexColor('#7dd3fc');
+    const colBrightSapphire = packHexColor('#38bdf8');
+    const colDeepSapphire = packHexColor('#0284c7');
+    const flareRamp1 = [colBrightSapphire, colQuillGold, colPearlIce, PURE_WHITE];
+    const flareRamp2 = [colBrightSapphire, colSkyIce, PURE_WHITE, PURE_WHITE];
+
+    return {
+      step() {},
+      renderFront(pen, localT) {
+        const ph = localT * Math.PI * 2;
+
+        // Seamless 30-frame 3D floating & gently rocking Seraphim Pinion Feather (`208x208` native cell)
+        // Tilt rocks smoothly (`25°..45°`) while `vaneRoll` foreshortens the broad vane in 3D perspective!
+        const tilt = 0.62 + 0.22 * Math.sin(ph);
+        const cosT = Math.cos(tilt);
+        const sinT = Math.sin(tilt);
+        const vaneRoll = 0.72 + 0.28 * Math.cos(ph);
+        const archSign = 0.82 + 0.28 * Math.sin(ph + 0.7);
+        const halfLen = 55; // ~112px feather inside 208x208 -> crisp barb detail + 0 border clips!
+
+        // Evaluate every pixel inside `[-76, +76]` in feather-local coordinates `(s, v)`
+        for (let py = -76; py <= 76; py++) {
+          for (let px = -76; px <= 76; px++) {
+            const uAlong = px * cosT + py * sinT;
+            const vRaw = -px * sinT + py * cosT;
+
+            const s = (uAlong + halfLen * 0.84) / (halfLen * 1.84); // -0.13 (calamus stem) .. +1.01 (feather tip)
+            if (s < -0.14 || s > 1.01) continue;
+
+            // Graceful S-curved central rachis / quill spine
+            const spineCurve = Math.sin(Math.max(0, s) * Math.PI * 0.92) * 6.8 * archSign;
+            const v = vRaw - spineCurve;
+            const absV = Math.abs(v);
+
+            // A. Bare Ivory-Gold Calamus Quill Stem at base (`s in [-0.13, 0.05]`)
+            if (s < 0.05) {
+              const stemHalfW = s < -0.09 ? 0.95 : 1.55;
+              if (absV <= stemHalfW) {
+                const stemCol = absV < 0.8 ? PURE_WHITE : colQuillGold;
+                pen.pixel(px, py, stemCol);
+                pen.writeRawGlow(pen.gridX(px, py), pen.gridY(px, py), PURE_WHITE, 0.22);
+              }
+              continue;
+            }
+
+            // B. Asymmetric Barbed Feather Vanes (`s in [0.05, 1.0]`)
+            // Upper outer vane (`v < 0`) is sleek & aerodynamic; lower inner vane (`v >= 0`) is fuller & notched!
+            const tipTaper = Math.pow(Math.max(0, 1 - s), 0.66);
+            const baseRamp = smoothStep(0.04, 0.24, s);
+            const downyBase = s < 0.20 ? Math.sin(s * 54) * 1.5 * vaneRoll : 0;
+            const maxVaneW = (v < 0 ? 14.5 : 21.0) * vaneRoll * baseRamp * tipTaper + downyBase;
+
+            if (absV > maxVaneW + 0.6) continue;
+
+            // Diagonal feather barb coordinate (`~38°` from central rachis toward feather tip)
+            const barbCoord = s - (absV / Math.max(4, maxVaneW)) * 0.165;
+
+            // Natural V-shaped feather barb splits along the fuller edges so silhouette reads 100% as a real feather!
+            let notchDepth = 0;
+            if (v > 0) {
+              const d1 = Math.abs(barbCoord - 0.33);
+              const d2 = Math.abs(barbCoord - 0.58);
+              const d3 = Math.abs(barbCoord - 0.79);
+              if (d1 < 0.034) notchDepth = (1 - d1 / 0.034) * 0.44;
+              else if (d2 < 0.038) notchDepth = (1 - d2 / 0.038) * 0.50;
+              else if (d3 < 0.030) notchDepth = (1 - d3 / 0.030) * 0.38;
+            } else {
+              const u1 = Math.abs(barbCoord - 0.47);
+              const u2 = Math.abs(barbCoord - 0.73);
+              if (u1 < 0.030) notchDepth = (1 - u1 / 0.030) * 0.36;
+              else if (u2 < 0.028) notchDepth = (1 - u2 / 0.028) * 0.32;
+            }
+
+            const effectiveMaxW = maxVaneW * (1 - notchDepth);
+            if (absV > effectiveMaxW) continue;
+
+            // Central Rachis Quill Shaft running almost to the tip (`s < 0.90`)
+            if (absV <= 1.3 && s < 0.90) {
+              const qCol = s < 0.24 && absV > 0.65 ? colQuillGold : PURE_WHITE;
+              pen.pixel(px, py, qCol);
+              pen.writeRawGlow(pen.gridX(px, py), pen.gridY(px, py), PURE_WHITE, 0.28);
+              continue;
+            }
+
+            // Delicate diagonal barb texture & luminous Pure-White -> Pearl-Ice -> Sky-Sapphire cel shading!
+            const wFrac = absV / Math.max(1, effectiveMaxW); // 0 at quill -> 1 at outer barb tip
+            const barbRidge = Math.sin(barbCoord * 105) * 0.055;
+            const shade = wFrac + barbRidge - (s < 0.32 ? 0.08 : 0) + (s > 0.72 ? (s - 0.72) * 0.42 : 0);
+
+            let col;
+            let glowK = 0;
+            if (shade < 0.42) {
+              col = PURE_WHITE;
+              glowK = 0.24;
+            } else if (shade < 0.62) {
+              col = colPearlIce;
+              glowK = 0.16;
+            } else if (shade < 0.78) {
+              col = colPaleIce;
+            } else if (shade < 0.90) {
+              col = colSkyIce;
+            } else if (shade < 0.97) {
+              col = colBrightSapphire;
+            } else {
+              col = colDeepSapphire;
+            }
+            pen.pixel(px, py, col);
+            if (glowK > 0) {
+              pen.writeRawGlow(pen.gridX(px, py), pen.gridY(px, py), col, glowK);
+            }
+          }
+        }
+
+        // Crisp 1px Midnight-Sapphire Selective Outline around the entire feather & V-notches!
+        applySelectiveOutlineOnSurface(pen.surface, seloutPacked, 242);
+
+        // 2 Twinkling Celestial Starlight Glints orbiting gently around the feather
+        const g1x = Math.cos(ph) * 26 - 8;
+        const g1y = Math.sin(ph) * 18 - 16;
+        const g1Pulse = 0.45 + 0.55 * (0.5 + 0.5 * Math.sin(ph * 2));
+        drawStarburstFlare(pen, g1x, g1y, 5.4 * g1Pulse, 0.90 * g1Pulse, flareRamp1);
+
+        const g2x = -Math.cos(ph + 1.8) * 24 + 10;
+        const g2y = -Math.sin(ph + 1.8) * 16 + 18;
+        const g2Pulse = 0.45 + 0.55 * (0.5 + 0.5 * Math.cos(ph * 2 + 1.1));
+        drawStarburstFlare(pen, g2x, g2y, 4.6 * g2Pulse, 0.86 * g2Pulse, flareRamp2);
+      }
+    };
+  }
+};
+
 export const RUNIC_STEEL_EFFECT_REGISTRY = {
   runicVanguardAura,
   runebladeCrescentSlash,
@@ -1504,11 +2072,15 @@ export const RUNIC_STEEL_EFFECT_REGISTRY = {
   blinkTeleportPillar,
   skyJudgmentPillar,
   earthshatterJudgmentWave,
+  celestialCathedralConsecration,
   runebladeWaveArcCell,
   aegisRuneCrestCell,
   skyJudgmentBladePillarCell,
   elderRunicSanctuarySealCell,
-  omnislashStarburstNovaCell
+  omnislashStarburstNovaCell,
+  celestialJusticeGreatSlashCell,
+  celestialJusticeCathedralPillarCell,
+  celestialSeraphimFeatherCell
 };
 
 export const RUNIC_STEEL_SHADER_PACK = RUNIC_STEEL_EFFECT_REGISTRY;

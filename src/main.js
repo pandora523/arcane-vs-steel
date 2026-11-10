@@ -1,49 +1,49 @@
-import { Renderer } from './engine/Renderer.js?v=30fps60';
-import { VFXManager } from './engine/VFXManager.js?v=30fps60';
-import { PixelForge } from './engine/PixelForge.js?v=30fps60';
-import { AudioManager } from './engine/AudioManager.js?v=30fps60';
-import { Warrior } from './entities/Warrior.js?v=30fps60';
-import { FireMage } from './entities/FireMage.js?v=30fps60';
-import { Archer } from './entities/Archer.js?v=30fps60';
-import { Priestess } from './entities/Priestess.js?v=30fps60';
-import { Reaper } from './entities/Reaper.js?v=30fps60';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps60';
-import { Titan } from './entities/Titan.js?v=30fps60';
-import { Ronin } from './entities/Ronin.js?v=30fps60';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps60';
-import { IceMage } from './entities/IceMage.js?v=30fps60';
-import { Android } from './entities/Android.js?v=30fps60';
+import { Renderer } from './engine/Renderer.js?v=30fps61';
+import { VFXManager } from './engine/VFXManager.js?v=30fps61';
+import { PixelForge } from './engine/PixelForge.js?v=30fps61';
+import { AudioManager } from './engine/AudioManager.js?v=30fps61';
+import { Warrior } from './entities/Warrior.js?v=30fps61';
+import { FireMage } from './entities/FireMage.js?v=30fps61';
+import { Archer } from './entities/Archer.js?v=30fps61';
+import { Priestess } from './entities/Priestess.js?v=30fps61';
+import { Reaper } from './entities/Reaper.js?v=30fps61';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps61';
+import { Titan } from './entities/Titan.js?v=30fps61';
+import { Ronin } from './entities/Ronin.js?v=30fps61';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps61';
+import { IceMage } from './entities/IceMage.js?v=30fps61';
+import { Android } from './entities/Android.js?v=30fps61';
 
 const CHAMPION_ROSTER = {
   warrior: {
     id: 'warrior',
     name: 'AETHELGARD',
-    role: 'ELDER RUNE KNIGHT',
+    role: 'SOVEREIGN RUNE PALADIN',
     style: 'RUNIC VANGUARD',
     trait: 'PASSIVE: AEGIS SPELL DEFLECT',
     cls: Warrior,
     theme: 'steel',
     color: '#38bdf8',
     selectSfx: 'slash',
-    victoryLine: 'Elder runes blaze as Frost-Runeblade steel cleaves the tempest!',
+    victoryLine: 'Sacred Seraphim steel consecrates the arena in celestial frost!',
     skills: [
       {
         name: 'FROST CRESCENT',
         type: 'AUTO + PASSIVE',
         vfxCell: 0,
-        desc: 'Cleaves with runic frost waves & raises an Aegis barrier that deflects spells.'
+        desc: 'Cleaves with 2H Celestial Claymore frost waves & raises an Aegis spell-reflect barrier.'
       },
       {
         name: 'TEMPEST VANGUARD',
         type: 'SKILL • 5.4S CD',
         vfxCell: 1,
-        desc: '360° spinning Runeblade cyclone rush that pulls foes in before a thunderous slam.'
+        desc: '360° spinning Runeblade cyclone rush that pulls foes in before a grounded crystal slam.'
       },
       {
         name: 'CELESTIAL SWORD OF JUSTICE',
         type: '★ OVERDRIVE & SUPREME ULT',
         vfxCell: 2,
-        desc: 'Overdrive Omnislash + Supreme Ultimate: Ascends with white Seraphim wings, locks on with a cut-line reticle & cleaves the sanctuary!'
+        desc: '3-Overdrive Supreme Ult: Ascends high into the sky on Seraphim wings, locks on with a cut pixel reticle & cleaves!'
       }
     ]
   },
@@ -409,6 +409,15 @@ class Game {
     this.isLandingOpen = true;
 
     const params = new URLSearchParams(window.location.search);
+    const testModeParam = params.get('testmode');
+    this.testModeUnlimitedHp =
+      testModeParam === '0' || testModeParam === 'false'
+        ? false
+        : testModeParam === '1' || testModeParam === 'true'
+          ? true
+          : Boolean(params.get('kill'))
+            ? false
+            : true;
     this.forcedStage = params.get('stage') || null;
     const modeParam = params.get('mode');
     if (modeParam === '1v1' || modeParam === 'duel') {
@@ -670,6 +679,62 @@ class Game {
     this.setGameMode(next, true);
   }
 
+  formatModeBadgeText() {
+    const base =
+      this.gameMode === '2v2_brawl'
+        ? 'CHAOS BRAWL'
+        : this.gameMode === '2v2_tag'
+          ? 'TAG RELAY'
+          : '1V1 DUEL';
+    return this.testModeUnlimitedHp ? `${base} • ∞ HP` : base;
+  }
+
+  syncTestModeUI() {
+    const active = Boolean(this.testModeUnlimitedHp);
+    if (this.landingBtnTestMode) {
+      this.landingBtnTestMode.classList.toggle('active-test-mode', active);
+      this.landingBtnTestMode.setAttribute('aria-pressed', String(active));
+    }
+    if (this.landingTestModeLabel) {
+      this.landingTestModeLabel.textContent = active ? 'TEST MODE: ∞ HP ON' : 'TEST MODE: ∞ HP OFF';
+    }
+    if (this.landingTestModeTag) {
+      this.landingTestModeTag.textContent = active ? 'ON' : 'OFF';
+    }
+    if (this.btnTestMode) {
+      this.btnTestMode.setAttribute('aria-pressed', String(active));
+    }
+    if (this.hudTestModeLabel) {
+      this.hudTestModeLabel.textContent = active ? '∞ HP: ON' : '∞ HP: OFF';
+    }
+    if (this.hudEls?.modeBadge) {
+      this.hudEls.modeBadge.textContent = this.formatModeBadgeText();
+    }
+  }
+
+  setTestModeUnlimitedHp(enabled, playSound = true) {
+    this.testModeUnlimitedHp = Boolean(enabled);
+    if (this.testModeUnlimitedHp && Array.isArray(this.fighters)) {
+      for (const f of this.fighters) {
+        if (f && !f.isDead) {
+          f.hp = f.maxHp;
+          f.isBerserk = false;
+        }
+      }
+    }
+    this.syncTestModeUI();
+    if (playSound && this.audio) {
+      this.audio.play(this.testModeUnlimitedHp ? 'reflect' : 'slash', 600);
+    }
+    if (this.fighters && this.hudEls) {
+      this.updateHUD();
+    }
+  }
+
+  toggleTestModeUnlimitedHp(playSound = true) {
+    this.setTestModeUnlimitedHp(!this.testModeUnlimitedHp, playSound);
+  }
+
   bindUI() {
     this.btnSfx = document.getElementById('btn-sfx');
     this.sfxLabel = document.getElementById('sfx-label');
@@ -678,6 +743,11 @@ class Game {
     this.modeCycleLabel = document.getElementById('mode-cycle-label');
     this.btnTagAssist = document.getElementById('btn-tag-assist');
     this.tagAssistLabel = document.getElementById('tag-assist-label');
+    this.btnTestMode = document.getElementById('btn-test-mode');
+    this.hudTestModeLabel = document.getElementById('hud-test-mode-label');
+    this.landingBtnTestMode = document.getElementById('landing-btn-test-mode');
+    this.landingTestModeLabel = document.getElementById('landing-test-mode-label');
+    this.landingTestModeTag = document.getElementById('landing-test-mode-tag');
     this.btnAutoTourney = document.getElementById('btn-auto-tourney');
     this.btnNextChallenger = document.getElementById('btn-next-challenger');
     this.btnReset = document.getElementById('btn-reset');
@@ -687,6 +757,13 @@ class Game {
     this.victoryOverlay = document.getElementById('victory-overlay');
     this.landingOverlay = document.getElementById('landing-overlay');
     this.timerEl = document.getElementById('match-timer');
+
+    if (this.btnTestMode) {
+      this.btnTestMode.addEventListener('click', () => this.toggleTestModeUnlimitedHp(true));
+    }
+    if (this.landingBtnTestMode) {
+      this.landingBtnTestMode.addEventListener('click', () => this.toggleTestModeUnlimitedHp(true));
+    }
 
     this.modeBtns = {
       '1v1': document.getElementById('mode-btn-1v1'),
@@ -1107,6 +1184,7 @@ class Game {
           this.gameMode === '2v2_tag' ? '⚡ TAG SWAP' : '⚡ TWIN ASSIST';
       }
     }
+    this.syncTestModeUI();
 
     // 2. Matchup Banner 4-Slot Names & Active Slot Highlight
     if (this.slotLeftName) this.slotLeftName.textContent = c1.name;
@@ -1599,13 +1677,9 @@ class Game {
       this.hudEls.crestVs.textContent = is2v2 ? '2V2' : 'VS';
     }
     if (this.hudEls.modeBadge) {
-      this.hudEls.modeBadge.textContent =
-        this.gameMode === '2v2_brawl'
-          ? 'CHAOS BRAWL'
-          : this.gameMode === '2v2_tag'
-            ? 'TAG RELAY'
-            : '1V1 DUEL';
+      this.hudEls.modeBadge.textContent = this.formatModeBadgeText();
     }
+    this.syncTestModeUI();
     if (this.hudEls.stageBadge) {
       const stgNames = {
         cathedral: 'GOTHIC SANCTUARY',
@@ -2343,7 +2417,7 @@ class Game {
       const manaPct = Math.min(100, (f.mana / f.maxMana) * 100);
       els.hpBar.style.width = `${hpPct}%`;
       els.hpDmg.style.width = `${hpPct}%`;
-      els.hpText.textContent = `${Math.ceil(f.hp)}`;
+      els.hpText.textContent = this.testModeUnlimitedHp ? `∞ ${Math.ceil(f.hp)}` : `${Math.ceil(f.hp)}`;
       els.state.textContent = f.isDead ? 'DEFEATED' : f.state;
 
       els.manaBar.style.width = `${manaPct}%`;
@@ -2361,7 +2435,7 @@ class Game {
           els.finisherLabel.textContent =
             f.state === 'TRUE_ULTIMATE'
               ? `★ ULTIMATE: ${f.trueUltName || 'SWORD OF JUSTICE'}! ★`
-              : `★ ULTIMATE ${Math.floor(finPct)}% ★`;
+              : `★ ULTIMATE ${Math.floor(finPct)}% (${Math.min(3, Math.floor((finPct + 0.5) / 33.33))}/3 OD) ★`;
         } else {
           els.finisherFrame.classList.add('hidden');
         }
@@ -2377,7 +2451,11 @@ class Game {
         const pManaPct = Math.min(100, (partner.mana / partner.maxMana) * 100);
         if (els.partnerHpBar) els.partnerHpBar.style.width = `${pHpPct}%`;
         if (els.partnerManaBar) els.partnerManaBar.style.width = `${pManaPct}%`;
-        if (els.partnerHpText) els.partnerHpText.textContent = `${Math.ceil(partner.hp)}`;
+        if (els.partnerHpText) {
+          els.partnerHpText.textContent = this.testModeUnlimitedHp
+            ? `∞ ${Math.ceil(partner.hp)}`
+            : `${Math.ceil(partner.hp)}`;
+        }
         if (els.partnerStatus) {
           els.partnerStatus.textContent = partner.isDead
             ? 'FALLEN'

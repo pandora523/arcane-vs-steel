@@ -27,13 +27,13 @@
       "scripts/build_android_30fps_sheet.py"
     ],
     "vfx_sheet_builders": [
-      "scripts/build_warrior_30fps_vfx.py",
+      "scripts/build_warrior_vfx_30fps.mjs",
       "scripts/build_mage_vfx_30fps.mjs",
       "scripts/build_archer_vfx_30fps.mjs",
       "scripts/build_priestess_vfx_30fps.mjs",
-      "scripts/build_reaper_30fps_vfx.py",
-      "scripts/build_chronomancer_30fps_vfx.py",
-      "scripts/build_titan_30fps_vfx.py",
+      "scripts/build_reaper_vfx_30fps.mjs",
+      "scripts/build_chronomancer_vfx_30fps.mjs",
+      "scripts/build_titan_vfx_30fps.mjs",
       "scripts/build_ronin_vfx_30fps.mjs",
       "scripts/build_valkyrie_vfx_30fps.mjs",
       "scripts/build_icemage_vfx_30fps.mjs",
@@ -44,11 +44,11 @@
     "warrior": {
       "name": "Aethelgard",
       "theme": "steel",
-      "base_source": "assets/sprites/warrior_v3_base.jpg",
+      "base_source": "assets/sprites/warrior_v4_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "14-part cel-clustered Dark-Cobalt & Cyan Elder-Rune Knight skeletal rig + Two-Handed Winged Frost-Runeblade Greatsword (per-frame 2-Bone Analytical IK locking both gauntlets) + Elder-Rune Halo + Row 3 360-deg 2H Cyclone Spin-Slash & Slam + Row 4 Left/Right/Top 2H Rune-Blink Omnislash + Prone Knight Collapse",
+      "rig": "14-part cel-clustered Silver-Platinum & Gold Sovereign Paladin skeletal rig + Colossal Two-Handed Winged Celestial Claymore (per-frame 2-Bone Analytical IK locking both gauntlets) + Sacred Vow (Row 4 F00..F05) + Sky-Hover Sword-Pointing Stance (Row 8 F12..F19) & Supersonic Dive (Row 8 F20..F24) + 8-Row 30fps Runic Steel & Cathedral VFX Suite + Prone Paladin Collapse",
       "script": "scripts/build_warrior_30fps_sheet.py",
-      "vfx_script": "scripts/build_warrior_30fps_vfx.py"
+      "vfx_script": "scripts/build_warrior_vfx_30fps.mjs"
     },
     "firemage": {
       "name": "Ignis Sol",
