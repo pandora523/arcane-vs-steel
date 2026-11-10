@@ -68,6 +68,11 @@ export class PixelForge {
         sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps41'),
         vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps41'),
         portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps41', () => this.refreshPortraits())
+      },
+      android: {
+        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps44'),
+        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps44'),
+        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps44', () => this.refreshPortraits())
       }
     };
 
@@ -775,7 +780,8 @@ export class PixelForge {
       titan: { bg0: '#1a0c04', bg1: '#4a2108', rim: '#f59e0b', glow: '#34d399', gold: '#fde047' },
       ronin: { bg0: '#070a24', bg1: '#1e1b4b', rim: '#818cf8', glow: '#38bdf8', gold: '#facc15' },
       valkyrie: { bg0: '#1f060d', bg1: '#590d22', rim: '#fb7185', glow: '#fef08a', gold: '#f59e0b' },
-      icemage: { bg0: '#051529', bg1: '#0c3a6e', rim: '#67e8f9', glow: '#a5f3fc', gold: '#e879f9' }
+      icemage: { bg0: '#051529', bg1: '#0c3a6e', rim: '#67e8f9', glow: '#a5f3fc', gold: '#e879f9' },
+      android: { bg0: '#07091a', bg1: '#152254', rim: '#00f0ff', glow: '#7df9ff', gold: '#ff2e93' }
     };
     const th = themes[heroKey] || themes.warrior;
 
@@ -1153,6 +1159,37 @@ export class PixelForge {
         fillRectPx(11, 8, 6, 15, '#67e8f9');
         fillRectPx(13, 6, 2, 17, '#ffffff');
         drawLinePx(5, 23, 23, 23, '#a5f3fc', 2);
+      }
+    } else if (heroKey === 'android') {
+      if (slotIdx === 0) {
+        // HF PLASMA KATANA + HEX DEFLECT: Dual-Tone Cyan-Magenta Blade + Hexagonal Force-Field Arc
+        drawCirclePx(13, 15, 8, '#0092d6', false);
+        drawCirclePx(13, 15, 5, '#00f0ff', false);
+        drawLinePx(5, 22, 23, 4, '#ff2e93', 2);
+        drawLinePx(6, 22, 23, 5, '#00f0ff', 2);
+        drawLinePx(7, 21, 23, 5, '#ffffff', 1);
+        drawLinePx(7, 17, 11, 21, '#9eafd4', 2);
+      } else if (slotIdx === 1) {
+        // EMP OVERLOAD BLITZ: Holo-Scanner Target Reticle + Hemispherical EMP Scanline Dome
+        drawCirclePx(14, 18, 9, '#00f0ff', false);
+        drawLinePx(6, 15, 22, 15, '#ff2e93', 1);
+        drawLinePx(7, 12, 21, 12, '#7df9ff', 1);
+        drawLinePx(5, 19, 23, 19, '#ffffff', 2);
+        // Scanner corner brackets
+        drawLinePx(6, 5, 10, 5, '#00f0ff', 1);
+        drawLinePx(6, 5, 6, 9, '#00f0ff', 1);
+        drawLinePx(18, 5, 22, 5, '#00f0ff', 1);
+        drawLinePx(22, 5, 22, 9, '#00f0ff', 1);
+        drawCirclePx(14, 15, 3, '#ffffff', true);
+      } else {
+        // SINGULARITY PROTOCOL: Counter-Rotating Cyber Hex Core + Magenta-Cyan Orbital Beams
+        fillRectPx(5, 4, 2, 20, '#ff2e93');
+        fillRectPx(21, 4, 2, 20, '#ff2e93');
+        drawCirclePx(14, 14, 8, '#00f0ff', false);
+        drawCirclePx(14, 14, 5, '#ff2e93', true);
+        drawCirclePx(14, 14, 3, '#00f0ff', true);
+        drawCirclePx(14, 14, 1.5, '#ffffff', true);
+        drawLinePx(4, 22, 24, 22, '#7df9ff', 2);
       }
     }
 

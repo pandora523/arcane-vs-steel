@@ -134,11 +134,19 @@ export class Renderer {
       'rgba(56,189,248,0.58)',
       'rgba(168,85,247,0.26)'
     );
+    this.glowCyber = makeGlow(
+      'rgba(0,240,255,0.88)',
+      'rgba(255,46,147,0.56)',
+      'rgba(22,34,86,0.26)'
+    );
     this.shadowTex = makeGlow('rgba(0,0,0,0.92)', 'rgba(0,0,0,0.52)', 'rgba(0,0,0,0.18)');
   }
 
   getGlowForColor(col) {
     if (!col) return this.glowCyan;
+    if (col === 'cyber' || col === '#00f0ff' || col === '#ff2e93' || col === '#7df9ff') {
+      return this.glowCyber || this.glowCyan;
+    }
     if (col === 'glacial' || col === '#67e8f9' || col === '#a5f3fc') {
       return this.glowGlacial || this.glowCyan;
     }

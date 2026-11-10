@@ -247,6 +247,10 @@ html, body {
   background: linear-gradient(180deg, #e0f2fe 0%, #67e8f9 48%, #0284c7 100%);
 }
 
+.fill-cyber {
+  background: linear-gradient(180deg, #7df9ff 0%, #00f0ff 48%, #ff2e93 100%);
+}
+
 .frame-steel {
   border-color: #38bdf8;
 }
@@ -285,6 +289,10 @@ html, body {
 
 .frame-glacial {
   border-color: #67e8f9;
+}
+
+.frame-cyber {
+  border-color: #00f0ff;
 }
 
 /* 10% Segmented Tick Notches */
@@ -1094,6 +1102,7 @@ html, body {
 .halo-storm { background: radial-gradient(circle, #818cf8 0%, #38bdf8 45%, transparent 72%); }
 .halo-crimson { background: radial-gradient(circle, #f43f5e 0%, #fbbf24 45%, transparent 72%); }
 .halo-glacial { background: radial-gradient(circle, #67e8f9 0%, #c084fc 45%, transparent 72%); }
+.halo-cyber { background: radial-gradient(circle, #00f0ff 0%, #ff2e93 45%, transparent 72%); }
 
 .profile-identity {
   display: flex;
@@ -1360,6 +1369,15 @@ html, body {
   border-color: rgba(245, 158, 11, 0.62);
 }
 
+.champ-card.card-featured-pair {
+  grid-column: span 2;
+  flex-direction: row;
+  justify-content: center;
+  gap: 10px;
+  padding: 3px 8px;
+  border-color: rgba(0, 240, 255, 0.62);
+}
+
 .champ-wide-meta {
   display: flex;
   flex-direction: column;
@@ -1383,6 +1401,7 @@ html, body {
 .card-storm:hover { border-color: #818cf8; }
 .card-crimson:hover { border-color: #f43f5e; }
 .card-glacial:hover { border-color: #67e8f9; }
+.card-cyber:hover { border-color: #00f0ff; }
 
 .champ-card.selected-p1 {
   border-color: #38bdf8;

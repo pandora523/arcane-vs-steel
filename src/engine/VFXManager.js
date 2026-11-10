@@ -125,7 +125,9 @@ export class VFXManager {
                       ? '#fbbf24'
                       : theme === 'glacial'
                         ? '#e879f9'
-                        : '#ea580c';
+                        : theme === 'cyber'
+                          ? '#ff2e93'
+                          : '#ea580c';
     const dir = attacker ? Math.sign(x - attacker.x) || 1 : 1;
     if (this.hitImpacts.length > 22) this.hitImpacts.shift();
     this.hitImpacts.push({
@@ -213,6 +215,7 @@ export class VFXManager {
       storm: { shape: 'rune', col: '#6366f1', core: '#38bdf8' },
       crimson: { shape: 'star', col: '#e11d48', core: '#fbbf24' },
       glacial: { shape: 'star', col: '#0284c7', core: '#67e8f9' },
+      cyber: { shape: 'cog', col: '#ff2e93', core: '#00f0ff' },
       heal: { shape: 'cross', col: '#16a34a', core: '#facc15' }
     };
     const cfg = sets[theme] || sets.steel;
@@ -449,7 +452,9 @@ export class VFXManager {
                       ? { main: '#f43f5e', core: '#fbbf24', border: '#e11d48' }
                       : theme === 'glacial'
                         ? { main: '#67e8f9', core: '#e879f9', border: '#0284c7' }
-                        : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
+                        : theme === 'cyber'
+                          ? { main: '#00f0ff', core: '#ff2e93', border: '#0068e6' }
+                          : { main: '#38bdf8', core: '#e0f2fe', border: '#0284c7' };
 
     this.castAuras.push({
       fighter,
@@ -2318,6 +2323,42 @@ export class VFXManager {
           ctx.fillRect(-12, -4, 24, 8);
         }
         ctx.restore();
+      } else if (proj.type === 'cyber_disc') {
+        const androidVfx = assets.android?.vfx;
+        const dir = proj.vx >= 0 ? 1 : -1;
+        const qx = Math.round(px / 4) * 4;
+        const qy = Math.round(py / 4) * 4;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.translate(qx, qy);
+        ctx.scale(dir, 1);
+        if (androidVfx && androidVfx.complete && androidVfx.naturalWidth) {
+          const discSize = 132;
+          this.drawBloomedSprite(
+            ctx,
+            renderer,
+            androidVfx,
+            pCol * 208,
+            0,
+            208,
+            208,
+            -discSize * 0.5,
+            -discSize * 0.5,
+            discSize,
+            discSize,
+            '#00f0ff',
+            0.98,
+            isReflection
+          );
+        } else {
+          ctx.fillStyle = '#ff2e93';
+          ctx.fillRect(-18, -10, 36, 20);
+          ctx.fillStyle = '#00f0ff';
+          ctx.fillRect(-14, -6, 28, 12);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(-10, -3, 20, 6);
+        }
+        ctx.restore();
       } else if (proj.type === 'arrow') {
         const archerVfx = assets.archer?.vfx;
         const ang = Math.atan2(proj.vy, proj.vx || 1);
@@ -2773,6 +2814,23 @@ export class VFXManager {
           crestSize * 1.08,
           crestSize * 1.08,
           '#67e8f9',
+          alpha,
+          false
+        );
+      } else if (ca.theme === 'cyber' && assets.android?.vfx?.complete) {
+        this.drawBloomedSprite(
+          ctx,
+          renderer,
+          assets.android.vfx,
+          sealCol * 208,
+          624,
+          208,
+          208,
+          -crestSize * 0.54,
+          -crestSize * 0.56,
+          crestSize * 1.08,
+          crestSize * 1.08,
+          '#00f0ff',
           alpha,
           false
         );

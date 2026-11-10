@@ -23,7 +23,8 @@
       "scripts/build_titan_30fps_sheet.py",
       "scripts/build_ronin_30fps_sheet.py",
       "scripts/build_valkyrie_30fps_sheet.py",
-      "scripts/build_icemage_30fps_sheet.py"
+      "scripts/build_icemage_30fps_sheet.py",
+      "scripts/build_android_30fps_sheet.py"
     ],
     "vfx_sheet_builders": [
       "scripts/build_warrior_30fps_vfx.py",
@@ -35,7 +36,8 @@
       "scripts/build_titan_30fps_vfx.py",
       "scripts/build_ronin_30fps_vfx.py",
       "scripts/build_valkyrie_30fps_vfx.py",
-      "scripts/build_icemage_30fps_vfx.py"
+      "scripts/build_icemage_30fps_vfx.py",
+      "scripts/build_android_vfx_30fps.mjs"
     ]
   },
   "champions": {
@@ -129,6 +131,15 @@
       "rig": "15-part cel-clustered Cryo Sovereign skeletal rig + Fur Shoulder Mantle + Crystalline Frost Scepter + Cryo Prism Halo + Supine Collapse",
       "script": "scripts/build_icemage_30fps_sheet.py",
       "vfx_script": "scripts/build_icemage_30fps_vfx.py"
+    },
+    "android": {
+      "name": "VEX-09",
+      "theme": "cyber",
+      "base_source": "assets/sprites/android_v1_base.jpg",
+      "logical_res": "104x104 (2x NEAREST -> 208x208)",
+      "rig": "8-part cel-clustered Cybernetic Valkyrie skeletal rig + 2-Bone Analytical IK Robotic Arms + Muramasa-09 Cyan-Magenta HF Plasma Katana + Aero-Thruster Wing-Pylons + ArcaneShaderFX 120Hz 2.5D Shader Engine + Prone Shutdown Collapse",
+      "script": "scripts/build_android_30fps_sheet.py",
+      "vfx_script": "scripts/build_android_vfx_30fps.mjs"
     }
   }
 }

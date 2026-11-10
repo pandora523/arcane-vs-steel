@@ -180,7 +180,11 @@ export class AudioManager {
       frost_cast: 'holy_bolt',
       prism_beam: 'holy_smite',
       ice_shatter: 'chrono_hit',
-      death_icemage: 'death_priestess'
+      death_icemage: 'death_priestess',
+      cyber_slash: 'blade_wave',
+      emp_blast: 'thunder_slam',
+      cyber_beam: 'solar_beam',
+      death_android: 'death_priestess'
     };
     const name = aliasMap[rawName] || rawName;
 

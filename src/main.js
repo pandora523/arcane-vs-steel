@@ -1,7 +1,7 @@
-import { Renderer } from './engine/Renderer.js?v=30fps41';
-import { VFXManager } from './engine/VFXManager.js?v=30fps41';
+import { Renderer } from './engine/Renderer.js?v=30fps42';
+import { VFXManager } from './engine/VFXManager.js?v=30fps42';
 import { PixelForge } from './engine/PixelForge.js?v=30fps41';
-import { AudioManager } from './engine/AudioManager.js?v=30fps41';
+import { AudioManager } from './engine/AudioManager.js?v=30fps42';
 import { Warrior } from './entities/Warrior.js?v=30fps41';
 import { FireMage } from './entities/FireMage.js?v=30fps41';
 import { Archer } from './entities/Archer.js?v=30fps41';
@@ -12,6 +12,7 @@ import { Titan } from './entities/Titan.js?v=30fps41';
 import { Ronin } from './entities/Ronin.js?v=30fps41';
 import { Valkyrie } from './entities/Valkyrie.js?v=30fps41';
 import { IceMage } from './entities/IceMage.js?v=30fps41';
+import { Android } from './entities/Android.js?v=30fps44';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -331,6 +332,38 @@ const CHAMPION_ROSTER = {
         type: '★ OVERDRIVE ULT',
         vfxCell: 2,
         desc: 'Encases the enemy in a Diamond Iceberg beneath the Northern Lights and slices it with a 7-Prism Orbital Laser Array!'
+      }
+    ]
+  },
+  android: {
+    id: 'android',
+    name: 'VEX-09',
+    role: 'CYBER VALKYRIE ANDROID',
+    style: 'CYBERNETIC VALKYRIE • SKIRMISHER',
+    trait: 'PASSIVE: HEX MATRIX DEFLECT',
+    cls: Android,
+    theme: 'cyber',
+    color: '#00f0ff',
+    selectSfx: 'cyber_slash',
+    victoryLine: 'Singularity Protocol complete — VEX-09 plasma harmonics achieve total target lock!',
+    skills: [
+      {
+        name: 'HF PLASMA KATANA',
+        type: 'AUTO + HEX DEFLECT',
+        vfxCell: 0,
+        desc: '3-step cyan-magenta plasma katana combo that hurls Cyber Chakram discs & raises a hexagonal force-field.'
+      },
+      {
+        name: 'EMP OVERLOAD BLITZ',
+        type: 'SKILL • 4.6S CD',
+        vfxCell: 1,
+        desc: 'Locks onto foes with a holographic scanner, jetpack-rushes through, and detonates a scanline EMP dome.'
+      },
+      {
+        name: 'SINGULARITY PROTOCOL',
+        type: '★ OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Ascends on twin aero-thrusters, deploys a laser-grid Cyber Singularity Core, and fires 3 orbital plasma sweeps!'
       }
     ]
   }
@@ -718,7 +751,8 @@ class Game {
       titan: document.getElementById('card-titan'),
       ronin: document.getElementById('card-ronin'),
       valkyrie: document.getElementById('card-valkyrie'),
-      icemage: document.getElementById('card-icemage')
+      icemage: document.getElementById('card-icemage'),
+      android: document.getElementById('card-android')
     };
     this.ribbons = {
       warrior: document.getElementById('ribbon-warrior'),
@@ -730,7 +764,8 @@ class Game {
       titan: document.getElementById('ribbon-titan'),
       ronin: document.getElementById('ribbon-ronin'),
       valkyrie: document.getElementById('ribbon-valkyrie'),
-      icemage: document.getElementById('ribbon-icemage')
+      icemage: document.getElementById('ribbon-icemage'),
+      android: document.getElementById('ribbon-android')
     };
     this.previewCanvases = {
       warrior: document.getElementById('preview-warrior'),
@@ -742,7 +777,8 @@ class Game {
       titan: document.getElementById('preview-titan'),
       ronin: document.getElementById('preview-ronin'),
       valkyrie: document.getElementById('preview-valkyrie'),
-      icemage: document.getElementById('preview-icemage')
+      icemage: document.getElementById('preview-icemage'),
+      android: document.getElementById('preview-android')
     };
 
     this.btnStartDuel = document.getElementById('btn-start-duel');
@@ -1707,9 +1743,11 @@ class Game {
                         ? 'dragon_lance'
                         : ally.heroId === 'icemage'
                           ? 'cryo_shard'
-                          : ally.heroId === 'warrior'
-                            ? 'blade_wave'
-                            : 'fireball'
+                          : ally.heroId === 'android'
+                            ? 'cyber_disc'
+                            : ally.heroId === 'warrior'
+                              ? 'blade_wave'
+                              : 'fireball'
       });
       if (!point.isDead) {
         point.heal(42, 'TAG GRACE');
@@ -2146,6 +2184,9 @@ class Game {
             if (p.owner && typeof p.owner.applyBrittleFrost === 'function') {
               p.owner.applyBrittleFrost(hitTarget, 1, this, p.x, p.y);
             }
+          } else if (p.type === 'cyber_disc') {
+            this.vfx.spawnSlash(p.x, p.y, 70, -1.1, 1.1, '#00f0ff', 0.24);
+            this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'cyber');
           } else if (p.type === 'forge_wave') {
             this.vfx.spawnSlash(p.x, p.y, 78, -1.1, 1.1, '#f59e0b', 0.26);
             this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'forge');
@@ -2171,11 +2212,13 @@ class Game {
                       ? 'chrono_hit'
                       : p.type === 'cryo_shard'
                         ? 'ice_shatter'
-                        : p.type === 'forge_wave'
-                          ? 'thunder_slam'
-                          : p.type === 'blade_wave'
-                            ? 'clang'
-                            : 'fire_hit',
+                        : p.type === 'cyber_disc'
+                          ? 'cyber_slash'
+                          : p.type === 'forge_wave'
+                            ? 'thunder_slam'
+                            : p.type === 'blade_wave'
+                              ? 'clang'
+                              : 'fire_hit',
               p.x
             );
           }
