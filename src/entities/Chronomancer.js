@@ -1,18 +1,23 @@
-import { Fighter } from './Fighter.js?v=30fps52';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps52';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps52';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
-import { CHRONO_EFFECT_REGISTRY } from '../engine/shaders/chronoShaders.js?v=30fps52';
+import { Fighter } from './Fighter.js?v=30fps53';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps53';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps53';
+import {
+  CHRONO_EFFECT_REGISTRY,
+  CHRONO_TEAL_PALETTE,
+  CHRONO_BRASS_PALETTE
+} from '../engine/shaders/chronoShaders.js?v=30fps53';
 
-const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
-
+/**
+ * Zephyros (`chronomancer`) — Grand Horologist & Temporal Sovereign.
+ * Powered natively by `ArcaneShaderFX` (dual-buffer 120Hz HD-2D 2.5D shader & particle engine)
+ * + `assets/sprites/chronomancer_sheet.png` & `assets/sprites/chronomancer_vfx.png`.
+ */
 export class Chronomancer extends Fighter {
   constructor(x, groundY, facing = 1) {
+    const opts = typeof x === 'object' && x !== null ? x : { x, groundY, facing };
     super({
-      name: 'Zephyros',
-      x,
-      groundY,
-      facing,
+      ...opts,
+      name: opts.name || 'Zephyros',
       maxHp: 1205,
       attackRange: 510,
       moveSpeed: 168,
@@ -29,20 +34,28 @@ export class Chronomancer extends Fighter {
     this.ultName = 'DOOMSDAY MIDNIGHT';
     this.comboStep = 0;
     this.stepDustTimer = 0;
+    this.chronoPhase = 0;
 
-    // 100% Bespoke Chronomancer Visual Systems (Zero recycled VFX from other champions)
-    this.stasisHourglass = null; // 16-bit HD-2D Brass & Teal Stasis Hourglass encasing the enemy
-    this.doomsdayClock = null; // Colossal 320x320 16-bit HD-2D Astral Clockface + spinning hands
-    this.temporalEchoes = []; // Frozen golden-teal Temporal Echo silhouettes & astrolabe dials
-    this.rewindRibbons = []; // Reverse-flowing golden-teal Roman numeral streams rewinding into Zephyros
+    // 100% Bespoke Chronomancer Visual State (rendered via ArcaneShaderFX 2.5D layers + chronomancer_vfx.png)
+    this.stasisHourglass = null;
+    this.doomsdayClock = null;
+    this.temporalEchoes = [];
+    this.rewindRibbons = [];
+    this.activeVfxAnims = [];
 
-    // Multi-Layer 3-Pass Albedo/Emissive Chrono Pixel-Shader Engine
+    // Native 120Hz dual-buffer HD-2D Horological Shader & Particle Runtime (`back` + `front` 2.5D layers)
     this.fx = new ArcaneShaderFX(CHRONO_EFFECT_REGISTRY, {
       pixelScale: 3,
       viewW: 440,
       viewH: 220
     });
-    this.haloFxInstance = null;
+
+    if (typeof Image !== 'undefined') {
+      const chronoAssets = PixelForge.initAssets()?.chronomancer;
+      if (chronoAssets?.vfx?.src && !chronoAssets.vfx.src.includes('v=30fps53')) {
+        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps53';
+      }
+    }
 
     this.didStasisCast = false;
     this.didStasisShatter = false;
@@ -51,17 +64,123 @@ export class Chronomancer extends Fighter {
     this.dashMaxCooldown = 3.10;
     this.isChronoWarp = false;
     this.didChronoWarp = false;
-    this.warpOriginX = x;
-    this.warpTargetX = x;
+    this.warpOriginX = this.x;
+    this.warpTargetX = this.x;
     this.warpPortalTimer = 0;
     this.wallFlipCooldown = 0;
     this.crouchCooldown = 0;
     this.crouchDuration = 0.96;
     this.isCrouching = false;
     this.isFlipVault = false;
-    this.flipStartX = x;
-    this.flipTargetX = x;
+    this.flipStartX = this.x;
+    this.flipTargetX = this.x;
     this.flipAngle = 0;
+    this._deathBurstTriggered = false;
+  }
+
+  ensureAstrolabeAura() {
+    if (!this.fx || this.isDead) return;
+    if (!this.fx.active.some((s) => s.key === 'chronoAstrolabeAura')) {
+      this.fx.spawn('chronoAstrolabeAura', this.x, this.y - 102, {
+        follow: this,
+        offsetX: 0,
+        offsetY: -102,
+        flip: this.facing < 0,
+        palette: CHRONO_TEAL_PALETTE,
+        light: 1.16
+      });
+    }
+  }
+
+  spawnVfxAnim(row, x, y, w = 208, h = 208, maxLife = 0.36, opts = {}) {
+    this.activeVfxAnims.push({
+      row,
+      x,
+      y,
+      vx: opts.vx || 0,
+      vy: opts.vy || 0,
+      w,
+      h,
+      age: 0,
+      maxLife,
+      flipX: Boolean(opts.flipX),
+      startFrame: opts.startFrame || 0,
+      endFrame: opts.endFrame !== undefined ? opts.endFrame : 29,
+      glowColor: opts.glowColor || 'teal',
+      followOwner: Boolean(opts.followOwner),
+      offsetX: opts.offsetX || 0,
+      offsetY: opts.offsetY || 0,
+      inFront: opts.inFront !== undefined ? Boolean(opts.inFront) : true
+    });
+  }
+
+  onProjectileTrail(p) {
+    if (!this.fx || p.type !== 'clock_gear') return;
+    if ((p.ringTimer || 0) >= 0.05) {
+      p.ringTimer = 0;
+      this.fx.burst(p.x - Math.sign(p.vx || 1) * 14, p.y, {
+        count: 3,
+        speedMin: 24,
+        speedMax: 74,
+        lifeMin: 0.16,
+        lifeMax: 0.28,
+        gravity: -16,
+        spread: 1.1,
+        angle: Math.atan2(-(p.vy || 0), -(p.vx || 1)),
+        colors: ['#ffffff', '#99f6e4', '#2dd4bf', '#facc15']
+      });
+    }
+  }
+
+  onProjectileHit(p, _hitTarget, isCrit, game) {
+    if (!this.fx) return false;
+    const hitAngle = Math.atan2(p.vy || 0, p.vx || 1);
+    this.fx.spawn('temporalCrescentRift', p.x, p.y, {
+      flip: (p.vx || 1) < 0,
+      palette: isCrit ? CHRONO_BRASS_PALETTE : CHRONO_TEAL_PALETTE,
+      light: isCrit ? 1.32 : 1.18,
+      extra: {
+        aimAngle: hitAngle,
+        isGold: isCrit,
+        radius: isCrit ? 28 : 22,
+        width: isCrit ? 11 : 8
+      }
+    });
+    this.spawnVfxAnim(4, p.x, p.y, isCrit ? 196 : 168, isCrit ? 196 : 168, 0.28, {
+      flipX: (p.vx || 1) < 0,
+      glowColor: isCrit ? 'gold' : 'teal',
+      inFront: true
+    });
+    this.fx.burst(p.x, p.y, {
+      count: isCrit ? 18 : 12,
+      speedMin: 56,
+      speedMax: isCrit ? 215 : 168,
+      lifeMin: 0.18,
+      lifeMax: 0.38,
+      gravity: 72,
+      colors: ['#ffffff', '#fde047', '#2dd4bf', '#14b8a6']
+    });
+    if (game?.vfx) {
+      game.vfx.spawnGlyphBurst(p.x, p.y, 5, 'chrono');
+    }
+    return true;
+  }
+
+  takeDamage(amount, attacker, isCrit = false, knockX = 95, knockY = 0) {
+    super.takeDamage(amount, attacker, isCrit, knockX, knockY);
+    if (this.isDead && !this._deathBurstTriggered) {
+      this._deathBurstTriggered = true;
+      this.fx?.stopByKey('chronoAstrolabeAura');
+      this.fx?.spawn('warpPortalPairRift', this.x, this.groundY - 76, {
+        palette: CHRONO_BRASS_PALETTE,
+        light: 1.2,
+        extra: { isArrival: true }
+      });
+      this.spawnVfxAnim(4, this.x, this.groundY - 76, 208, 208, 0.38, {
+        glowColor: 'gold',
+        inFront: true
+      });
+    }
   }
 
   startJump(enemy, game, customDir = null) {
@@ -113,6 +232,12 @@ export class Chronomancer extends Fighter {
     this.vx = 0;
     this.vy = 0;
     this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
+    this.fx?.spawn('warpPortalPairRift', this.x, this.y - 88, {
+      flip: this.facing < 0,
+      palette: CHRONO_TEAL_PALETTE,
+      light: 1.18,
+      extra: { isArrival: false }
+    });
     if (game && game.audio) game.audio.play('time_rewind', this.x);
     if (game && game.vfx) {
       game.vfx.spawnShockwave(this.x, this.groundY, 96, '#2dd4bf', 0.32, true);
@@ -127,6 +252,15 @@ export class Chronomancer extends Fighter {
     this.isCrouching = true;
     this.isDeflecting = true;
     this.vx = 0;
+    this.fx?.spawn('warpPortalPairRift', this.x + this.facing * 36, this.y - 92, {
+      follow: this,
+      offsetX: 36,
+      offsetY: -92,
+      flip: this.facing < 0,
+      palette: CHRONO_BRASS_PALETTE,
+      light: 1.22,
+      extra: { isArrival: true }
+    });
     if (game && game.vfx) {
       game.vfx.spawnShockwave(this.x, this.groundY - 2, 66, '#2dd4bf', 0.24, true);
       game.vfx.spawnDamageText(this.x, this.y - 122, 0, false, 'ESCAPEMENT SHIELD!', '#facc15');
@@ -134,7 +268,7 @@ export class Chronomancer extends Fighter {
   }
 
   /**
-   * Rewinds Zephyros's personal timeline to restore lost HP with reverse-flowing Roman numeral ribbons
+   * Rewinds Zephyros's personal timeline to restore lost HP with 2.5D shader bursts & rewind streams
    */
   rewindTimeline(amount, sourceX, sourceY, game, label = 'TIME REWIND') {
     if (this.isDead || amount <= 0) return 0;
@@ -149,14 +283,35 @@ export class Chronomancer extends Fighter {
 
     const fromX = sourceX ?? this.x - this.facing * 110;
     const fromY = sourceY ?? this.y - 98;
+    if (this.fx) {
+      this.fx.spawn('temporalCrescentRift', this.x, this.y - 98, {
+        follow: this,
+        offsetX: 0,
+        offsetY: -98,
+        flip: this.facing < 0,
+        palette: CHRONO_BRASS_PALETTE,
+        light: 1.22,
+        extra: { isGold: true, radius: 24, width: 9 }
+      });
+      this.fx.burst(fromX, fromY, {
+        count: 10,
+        speedMin: 45,
+        speedMax: 135,
+        lifeMin: 0.18,
+        lifeMax: 0.36,
+        gravity: -28,
+        colors: ['#ffffff', '#fde047', '#2dd4bf', '#14b8a6']
+      });
+    }
+
     for (let i = 0; i < 5; i++) {
       this.rewindRibbons.push({
         startX: fromX + (Math.random() - 0.5) * 44,
         startY: fromY + (Math.random() - 0.5) * 44,
         arcHeight: (i % 2 === 0 ? -1 : 1) * (40 + Math.random() * 45),
-        numeral: ROMAN_NUMERALS[(i * 3 + Math.floor(Math.random() * 12)) % 12],
         life: -i * 0.04,
-        maxLife: 0.48 + Math.random() * 0.12
+        maxLife: 0.48 + Math.random() * 0.12,
+        sparkTimer: 0
       });
     }
     return this.hp - prevHp;
@@ -181,11 +336,19 @@ export class Chronomancer extends Fighter {
     this.isChronoWarp = false;
     this.isFlipVault = false;
     this.flipAngle = 0;
-    // If backed near a wall, surge toward the open arena center!
     const escapeDir = this.x < 240 ? 1 : this.x > ww - 240 ? -1 : dir;
     this.dashDir = escapeDir;
     this.vx = escapeDir * 395;
     this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
+    this.fx?.spawn('temporalCrescentRift', this.x, this.y - 96, {
+      follow: this,
+      offsetX: 12,
+      offsetY: -96,
+      flip: escapeDir < 0,
+      palette: CHRONO_TEAL_PALETTE,
+      light: 1.18,
+      extra: { isGold: false, radius: 24, width: 9 }
+    });
     if (game.audio) game.audio.play('time_rewind', this.x);
     game.vfx.spawnGlyphBurst(this.x, this.y - 88, 6, 'chrono');
     game.vfx.spawnDamageText(this.x, this.y - 144, 0, false, 'CHRONO SURGE!', '#2dd4bf');
@@ -226,6 +389,18 @@ export class Chronomancer extends Fighter {
       this.warpTargetX = Math.max(140, Math.min(ww - 140, targetX));
       this.dashDir = Math.sign(this.warpTargetX - this.warpOriginX) || 1;
 
+      this.fx?.spawn('warpPortalPairRift', this.warpOriginX, this.groundY - 96, {
+        flip: this.facing < 0,
+        palette: CHRONO_TEAL_PALETTE,
+        light: 1.28,
+        extra: { isArrival: false }
+      });
+      this.spawnVfxAnim(4, this.warpOriginX, this.groundY - 96, 184, 184, 0.30, {
+        flipX: this.facing < 0,
+        glowColor: 'teal',
+        inFront: true
+      });
+
       game.vfx.spawnShockwave(this.x, this.y - 96, 118, '#2dd4bf', 0.36, false, true);
       game.vfx.spawnShockwave(this.x, this.groundY, 132, '#facc15', 0.34, true);
       game.vfx.spawnBurst(this.x, this.y - 96, 18, '#2dd4bf', 235);
@@ -239,13 +414,7 @@ export class Chronomancer extends Fighter {
         game.vfx.spawnDamageText(enemy.x, enemy.y - 136, 0, false, 'STASIS MINE!', '#2dd4bf');
       }
 
-      this.rewindTimeline(
-        13,
-        this.x,
-        this.y - 96,
-        game,
-        'TIME SLIP'
-      );
+      this.rewindTimeline(13, this.x, this.y - 96, game, 'TIME SLIP');
       return;
     }
 
@@ -255,13 +424,7 @@ export class Chronomancer extends Fighter {
     this.dashDir = smartDir;
     this.vx = smartDir * 355;
 
-    this.rewindTimeline(
-      13,
-      this.x,
-      this.y - 96,
-      game,
-      'TIME SLIP'
-    );
+    this.rewindTimeline(13, this.x, this.y - 96, game, 'TIME SLIP');
     game.vfx.spawnGlyphBurst(this.x, this.y - 88, 7, 'chrono');
 
     if (enemy && !enemy.isDead) {
@@ -283,6 +446,12 @@ export class Chronomancer extends Fighter {
         owner: this,
         damage: gearDmg,
         type: 'clock_gear'
+      });
+      this.fx?.spawn('temporalCrescentRift', spawnX, spawnY, {
+        flip: aimDir < 0,
+        palette: CHRONO_TEAL_PALETTE,
+        light: 1.2,
+        extra: { aimAngle: Math.atan2(dy, Math.abs(dx)), isGold: false, radius: 24, width: 9 }
       });
     }
   }
@@ -322,18 +491,6 @@ export class Chronomancer extends Fighter {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
 
-      if (airU > 0.05 && airU < 0.95 && Math.random() < 0.8) {
-        game.vfx.spawnParticle({
-          x: this.x + (Math.random() - 0.5) * 24,
-          y: this.y - 70 + (Math.random() - 0.5) * 24,
-          vx: -this.dashDir * 70,
-          vy: 25,
-          size: 5,
-          color: Math.random() > 0.4 ? '#2dd4bf' : '#facc15',
-          maxLife: 0.28
-        });
-      }
-
       // Apex downward Clock-Gear volley at Frame F15 (u >= 0.50)
       if (u >= 0.50 && !this.didActionFrame && enemy && !enemy.isDead) {
         this.didActionFrame = true;
@@ -360,6 +517,19 @@ export class Chronomancer extends Fighter {
           damage: gearDmg,
           type: 'clock_gear'
         });
+
+        this.fx?.spawn('temporalCrescentRift', sx, sy, {
+          flip: this.facing < 0,
+          palette: CHRONO_BRASS_PALETTE,
+          light: 1.24,
+          extra: { aimAngle: Math.atan2(dy, Math.abs(dx)), isGold: true, radius: 26, width: 10 }
+        });
+        this.spawnVfxAnim(4, sx, sy, 184, 184, 0.28, {
+          flipX: this.facing < 0,
+          glowColor: 'gold',
+          inFront: true
+        });
+
         const shotAng = Math.atan2(dy, dx);
         game.vfx.spawnSlash(sx, sy, 58, shotAng - 0.85, shotAng + 0.85, '#2dd4bf', 0.24);
         game.vfx.spawnShockwave(sx, sy, 64, '#facc15', 0.24, false, false);
@@ -372,6 +542,13 @@ export class Chronomancer extends Fighter {
         this.isFlipVault = false;
         this.flipAngle = 0;
         this.isInvulnerable = false;
+        this.fx?.burst(this.x, this.groundY - 6, {
+          count: 10,
+          speedMin: 40,
+          speedMax: 120,
+          gravity: 80,
+          colors: ['#ffffff', '#fde047', '#2dd4bf', '#14b8a6']
+        });
         game.vfx.spawnShockwave(this.x, this.groundY, 76, '#2dd4bf', 0.26, true);
         this.setState('IDLE');
       }
@@ -388,6 +565,18 @@ export class Chronomancer extends Fighter {
         this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
 
         // Arrival Dimensional Clockface Rift + Counter Saw-Gear!
+        this.fx?.spawn('warpPortalPairRift', this.x, this.groundY - 96, {
+          flip: this.facing < 0,
+          palette: CHRONO_BRASS_PALETTE,
+          light: 1.32,
+          extra: { isArrival: true }
+        });
+        this.spawnVfxAnim(4, this.x, this.groundY - 96, 196, 196, 0.32, {
+          flipX: this.facing < 0,
+          glowColor: 'gold',
+          inFront: true
+        });
+
         game.vfx.spawnShockwave(this.x, this.y - 96, 118, '#facc15', 0.36, false, true);
         game.vfx.spawnShockwave(this.x, this.groundY, 132, '#2dd4bf', 0.34, true);
         game.vfx.spawnBurst(this.x, this.y - 96, 20, '#facc15', 250);
@@ -415,6 +604,12 @@ export class Chronomancer extends Fighter {
             damage: gearDmg,
             type: 'clock_gear'
           });
+          this.fx?.spawn('temporalCrescentRift', sx, sy, {
+            flip: this.facing < 0,
+            palette: CHRONO_TEAL_PALETTE,
+            light: 1.22,
+            extra: { aimAngle: Math.atan2(dy, Math.abs(dx)), isGold: false, radius: 24, width: 9 }
+          });
         }
       }
 
@@ -430,18 +625,6 @@ export class Chronomancer extends Fighter {
     const speed = this.state === 'DASH' ? 380 : 335;
     this.x += this.dashDir * speed * dt;
 
-    if (Math.random() < 0.78) {
-      game.vfx.spawnParticle({
-        x: this.x + (Math.random() - 0.5) * 48,
-        y: this.y - 40 - Math.random() * 90,
-        vx: -this.dashDir * 85,
-        vy: -25 + (Math.random() - 0.5) * 40,
-        size: 5,
-        color: Math.random() > 0.45 ? '#2dd4bf' : '#facc15',
-        maxLife: 0.28
-      });
-    }
-
     if (t >= this.dashDuration) {
       this.isDeflecting = false;
       this.isInvulnerable = false;
@@ -456,23 +639,7 @@ export class Chronomancer extends Fighter {
     this.isCrouching = t < dur * 0.80;
     this.isDeflecting = this.isCrouching;
 
-    // Frames F02..F10: Spinning Escapement Shield calibration in front of crouched Zephyros
-    if (t >= 0.08 && t < 0.36) {
-      if (Math.random() < 0.7) {
-        const a = t * 26;
-        const tipX = this.x + this.facing * 50;
-        const tipY = this.y - 92;
-        game.vfx.spawnParticle({
-          x: tipX + Math.cos(a) * 22,
-          y: tipY + Math.sin(a) * 22,
-          vx: -Math.cos(a) * 55,
-          vy: -Math.sin(a) * 55,
-          size: 4.5,
-          color: Math.random() > 0.4 ? '#2dd4bf' : '#facc15',
-          maxLife: 0.22
-        });
-      }
-    } else if (t >= 0.36 && !this.didActionFrame) {
+    if (t >= 0.36 && !this.didActionFrame) {
       // Frame F11 (t = 0.36s): High-velocity low Saw-Gear launch from crouched stance!
       this.didActionFrame = true;
       this.comboStep++;
@@ -505,6 +672,18 @@ export class Chronomancer extends Fighter {
         type: 'clock_gear'
       });
 
+      this.fx?.spawn('temporalCrescentRift', spawnX, spawnY, {
+        flip: this.facing < 0,
+        palette: CHRONO_BRASS_PALETTE,
+        light: 1.25,
+        extra: { aimAngle: Math.atan2(dy, Math.abs(dx)), isGold: true, radius: 26, width: 10 }
+      });
+      this.spawnVfxAnim(4, spawnX, spawnY, 180, 180, 0.26, {
+        flipX: this.facing < 0,
+        glowColor: 'gold',
+        inFront: true
+      });
+
       const cAng = this.facing === 1 ? 0 : Math.PI;
       game.vfx.spawnSlash(spawnX, spawnY, 60, cAng - 0.9, cAng + 0.9, '#2dd4bf', 0.24);
       game.vfx.spawnShockwave(spawnX, spawnY, 64, '#2dd4bf', 0.26, false, true);
@@ -520,26 +699,34 @@ export class Chronomancer extends Fighter {
   }
 
   update(dt, enemy, game) {
+    this.chronoPhase += dt * 2.8;
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
     this.warpPortalTimer = Math.max(0, this.warpPortalTimer - dt);
 
     if (this.fx) {
-      if (!this.isDead && !this.haloFxInstance) {
-        this.haloFxInstance = this.fx.spawn('chronoAstrolabeHalo', {
-          follow: this,
-          facing: this.facing,
-          layer: 'back'
-        });
-      }
-      if (this.haloFxInstance) {
-        this.haloFxInstance.facing = this.facing;
-        if (this.isDead) {
-          this.haloFxInstance.dead = true;
-          this.haloFxInstance = null;
-        }
+      if (!this.isDead) {
+        this.ensureAstrolabeAura();
+      } else {
+        this.fx.stopByKey('chronoAstrolabeAura');
       }
       this.fx.update(dt);
+    }
+
+    // Advance Active 30fps `chronomancer_vfx.png` Cell Animations
+    for (let i = this.activeVfxAnims.length - 1; i >= 0; i--) {
+      const v = this.activeVfxAnims[i];
+      v.age += dt;
+      if (v.followOwner) {
+        v.x = this.x + v.offsetX * this.facing;
+        v.y = this.y + v.offsetY;
+      } else {
+        v.x += v.vx * dt;
+        v.y += v.vy * dt;
+      }
+      if (v.age >= v.maxLife) {
+        this.activeVfxAnims.splice(i, 1);
+      }
     }
 
     // Advance Temporal Echoes
@@ -551,10 +738,28 @@ export class Chronomancer extends Fighter {
       }
     }
 
-    // Advance Rewind Ribbons
+    // Advance Rewind Streams (emitting 120Hz shader glints along the rewind trajectory)
     for (let i = this.rewindRibbons.length - 1; i >= 0; i--) {
       const rr = this.rewindRibbons[i];
       rr.life += dt;
+      if (rr.life >= 0 && this.fx) {
+        rr.sparkTimer = (rr.sparkTimer || 0) + dt;
+        if (rr.sparkTimer >= 0.045) {
+          rr.sparkTimer = 0;
+          const u = Math.min(1, rr.life / rr.maxLife);
+          const rx = rr.startX + (this.x - rr.startX) * u;
+          const ry = rr.startY + (this.y - 98 - rr.startY) * u + Math.sin(u * Math.PI) * rr.arcHeight;
+          this.fx.burst(rx, ry, {
+            count: 2,
+            speedMin: 18,
+            speedMax: 52,
+            lifeMin: 0.14,
+            lifeMax: 0.24,
+            gravity: -16,
+            colors: ['#ffffff', '#fde047', '#2dd4bf']
+          });
+        }
+      }
       if (rr.life >= rr.maxLife) {
         this.rewindRibbons.splice(i, 1);
       }
@@ -654,17 +859,6 @@ export class Chronomancer extends Fighter {
 
     if (t < 0.28) {
       this.torsoAngle = -this.facing * 0.16 * (t / 0.28);
-      if (Math.random() < 0.55) {
-        game.vfx.spawnParticle({
-          x: this.x + this.facing * 34 + (Math.random() - 0.5) * 24,
-          y: this.y - 106 + (Math.random() - 0.5) * 24,
-          vx: this.facing * 45,
-          vy: -60,
-          size: 5,
-          color: mode === 2 ? '#facc15' : '#2dd4bf',
-          maxLife: 0.24
-        });
-      }
     } else if (t < 0.62) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
@@ -682,15 +876,23 @@ export class Chronomancer extends Fighter {
         game.vfx.spawnGlyphBurst(spawnX, spawnY, 5, 'chrono');
 
         if (this.fx) {
-          this.fx.spawn('chronoPendulumSlash', {
-            x: spawnX,
-            y: spawnY,
-            facing: this.facing,
-            radius: mode === 2 ? 78 : 66,
-            thickness: mode === 2 ? 18 : 15,
-            layer: 'front'
+          this.fx.spawn('temporalCrescentRift', spawnX, spawnY, {
+            flip: this.facing < 0,
+            palette: mode === 2 ? CHRONO_BRASS_PALETTE : CHRONO_TEAL_PALETTE,
+            light: mode === 2 ? 1.3 : 1.2,
+            extra: {
+              aimAngle: Math.atan2(dy, Math.abs(dx)),
+              isGold: mode === 2,
+              radius: mode === 2 ? 30 : 25,
+              width: mode === 2 ? 11 : 9
+            }
           });
         }
+        this.spawnVfxAnim(4, spawnX, spawnY, mode === 2 ? 196 : 172, mode === 2 ? 196 : 172, 0.28, {
+          flipX: this.facing < 0,
+          glowColor: mode === 2 ? 'gold' : 'teal',
+          inFront: true
+        });
 
         const isVanguard = enemy && enemy.hasPoise && enemy.attackRange <= 160;
         const isHarvester = enemy && enemy.hasPoise && enemy.attackRange > 160;
@@ -703,7 +905,7 @@ export class Chronomancer extends Fighter {
               ? mode === 2 ? 63 : 54
               : mode === 2 ? 67 : 57;
 
-        // Launch 16-bit HD-2D Razor-Edged Brass Clockwork Saw-Gear!
+        // Launch 16-bit HD-2D Razor-Edged Brass Clockwork Saw-Gear (`Row 0` of `chronomancer_vfx.png`)!
         game.vfx.spawnProjectile({
           x: spawnX,
           y: spawnY,
@@ -771,21 +973,23 @@ export class Chronomancer extends Fighter {
         };
 
         if (this.fx) {
-          this.fx.spawn('stasisHourglassMatrix', {
-            x: tx,
-            y: ty - 98,
-            facing: this.facing,
-            layer: 'front'
+          this.fx.spawn('stasisHourglassPrison', tx, ty, {
+            follow: enemy || null,
+            offsetX: 0,
+            offsetY: 0,
+            useGroundY: true,
+            palette: CHRONO_TEAL_PALETTE,
+            light: 1.3
+          });
+          this.fx.spawn('temporalCrescentRift', this.x + this.facing * 48, this.y - 104, {
+            flip: this.facing < 0,
+            palette: CHRONO_BRASS_PALETTE,
+            light: 1.24,
+            extra: { isGold: true, radius: 28, width: 10 }
           });
         }
 
-        this.rewindTimeline(
-          28,
-          tx,
-          ty - 98,
-          game,
-          'CHRONO REWIND'
-        );
+        this.rewindTimeline(28, tx, ty - 98, game, 'CHRONO REWIND');
 
         if (enemy && !enemy.isDead) {
           if (!enemy.hasPoise) enemy.vx *= 0.25;
@@ -799,7 +1003,23 @@ export class Chronomancer extends Fighter {
     } else if (!this.didStasisShatter && t >= 0.68) {
       this.didStasisShatter = true;
       this.isDeflecting = false;
+      if (this.stasisHourglass) {
+        this.stasisHourglass.shattered = true;
+      }
       if (game.audio) game.audio.play('chrono_hit', enemy ? enemy.x : this.x);
+
+      const shX = enemy ? enemy.x : this.stasisHourglass ? this.stasisHourglass.x : this.x + this.facing * 260;
+      const shY = (enemy ? enemy.y : this.groundY) - 96;
+      this.fx?.spawn('temporalCrescentRift', shX, shY, {
+        flip: false,
+        palette: CHRONO_BRASS_PALETTE,
+        light: 1.36,
+        extra: { isGold: true, radius: 34, width: 12 }
+      });
+      this.spawnVfxAnim(4, shX, shY, 224, 224, 0.36, {
+        glowColor: 'gold',
+        inFront: true
+      });
 
       if (enemy && !enemy.isDead) {
         const isVanguard = enemy.hasPoise && enemy.attackRange <= 160;
@@ -820,7 +1040,7 @@ export class Chronomancer extends Fighter {
   updateUltimate(dt, enemy, game) {
     // 100% BESPOKE CHRONOMANCER ULTIMATE: "DOOMSDAY MIDNIGHT — GRAND ASTRAL CLOCKTOWER"
     const t = this.stateTimer;
-    const ww = game.renderer.worldWidth;
+    const ww = game.renderer ? game.renderer.worldWidth : 1200;
     const centerX = Math.max(
       260,
       Math.min(ww - 260, this.x * 0.65 + (enemy ? enemy.x : ww * 0.5) * 0.35)
@@ -852,11 +1072,18 @@ export class Chronomancer extends Fighter {
       };
 
       if (this.fx) {
-        this.fx.spawn('doomsdayAstralDomain', {
-          x: centerX,
-          y: this.groundY - 195,
-          facing: this.facing,
-          layer: 'front'
+        this.fx.spawn('doomsdayGrandHorologium', centerX, this.groundY, {
+          palette: CHRONO_TEAL_PALETTE,
+          light: 1.38
+        });
+        this.fx.spawn('warpPortalPairRift', this.x, this.y - 104, {
+          follow: this,
+          offsetX: 0,
+          offsetY: -104,
+          flip: this.facing < 0,
+          palette: CHRONO_BRASS_PALETTE,
+          light: 1.28,
+          extra: { isArrival: true }
         });
       }
 
@@ -885,6 +1112,18 @@ export class Chronomancer extends Fighter {
       if (game.audio) game.audio.play('clock_gear', centerX);
       game.renderer.triggerShake(16, 0.28);
 
+      const strikeX = enemy && !enemy.isDead ? enemy.x : centerX;
+      const strikeY = (enemy && !enemy.isDead ? enemy.y : this.groundY) - 96;
+      this.fx?.spawn('temporalCrescentRift', strikeX, strikeY, {
+        palette: CHRONO_TEAL_PALETTE,
+        light: 1.32,
+        extra: { isGold: false, radius: 32, width: 11 }
+      });
+      this.spawnVfxAnim(4, strikeX, strikeY, 208, 208, 0.34, {
+        glowColor: 'teal',
+        inFront: true
+      });
+
       if (enemy && !enemy.isDead) {
         const d2 = isVanguard ? 33 : isHarvester ? 35 : isGroundedCaster ? 37 : 39;
         enemy.takeDamage(d2, this, true, -40, -50);
@@ -905,6 +1144,16 @@ export class Chronomancer extends Fighter {
 
       const cx = this.doomsdayClock ? this.doomsdayClock.x : centerX;
       const cy = this.groundY - 195;
+      this.fx?.spawn('temporalCrescentRift', cx, cy, {
+        palette: CHRONO_BRASS_PALETTE,
+        light: 1.44,
+        extra: { isGold: true, radius: 38, width: 13 }
+      });
+      this.spawnVfxAnim(4, cx, cy, 256, 256, 0.42, {
+        glowColor: 'gold',
+        inFront: true
+      });
+
       game.vfx.spawnDamageText(cx, this.groundY - 380, 0, true, 'MIDNIGHT XII — SHATTER!', '#facc15');
       game.vfx.spawnGlyphBurst(cx, cy, 14, 'chrono');
       game.vfx.spawnBurst(cx, cy, 26, '#2dd4bf', 320, { upBias: 80, size: 7 });
@@ -913,6 +1162,10 @@ export class Chronomancer extends Fighter {
       if (enemy && !enemy.isDead) {
         const d3 = isVanguard ? 99 : isHarvester ? 104 : isGroundedCaster ? 112 : 118;
         enemy.takeDamage(d3, this, true, 175, -220);
+        this.spawnVfxAnim(4, enemy.x, enemy.y - 96, 224, 224, 0.38, {
+          glowColor: 'gold',
+          inFront: true
+        });
         this.rewindTimeline(
           isVanguard ? 38 : isHarvester ? 40 : isGroundedCaster ? 39 : 42,
           enemy.x,
@@ -931,365 +1184,261 @@ export class Chronomancer extends Fighter {
     }
   }
 
-  /**
-   * Renders the Colossal 320x320 16-bit HD-2D Gothic Astral Clockface & Sleek Tapered Clock Hands (Zero Stepped Square Blocks!)
-   */
-  drawDoomsdayClock(ctx, renderer = null) {
-    if (!this.doomsdayClock) return;
-    const vfxSheet = PixelForge.initAssets().chronomancer?.vfx;
+  drawBloomedVfxCell(
+    ctx,
+    vfxSheet,
+    row,
+    col,
+    x,
+    y,
+    w = 208,
+    h = 208,
+    alpha = 1.0,
+    flipX = false,
+    renderer = null,
+    glowColor = 'teal'
+  ) {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
-
-    const dc = this.doomsdayClock;
-    const pop = Math.min(1, dc.life / 0.22);
-    const fade = Math.min(1, (dc.maxLife - dc.life) * 3.0);
-    const cx = Math.round(dc.x);
-    const cy = Math.round(dc.y);
-    const size = Math.round(344 * (0.78 + 0.22 * pop));
+    const cell = 208;
+    const sx = Math.max(0, Math.min(29, Math.floor(col))) * cell;
+    const sy = Math.max(0, Math.min(4, Math.floor(row))) * cell;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.translate(cx, cy);
+    ctx.translate(Math.round(x), Math.round(y));
+    if (flipX) ctx.scale(-1, 1);
 
-    if (renderer) {
+    const glowSprite =
+      glowColor === 'gold'
+        ? renderer?.glowGold || renderer?.glowTeal
+        : renderer?.glowTeal || renderer?.glowGold;
+    if (glowSprite) {
       ctx.globalCompositeOperation = 'lighter';
-      if (renderer.glowTeal) {
-        ctx.globalAlpha = fade * 0.68;
-        ctx.drawImage(renderer.glowTeal, -size * 1.15, -size * 1.15, size * 2.3, size * 2.3);
-      }
-      if (renderer.glowGold) {
-        ctx.globalAlpha = fade * 0.62;
-        ctx.drawImage(renderer.glowGold, -size * 0.85, -size * 0.85, size * 1.7, size * 1.7);
-      }
+      ctx.globalAlpha = Math.min(1, alpha * 0.4);
+      const gw = Math.round(w * 1.16);
+      const gh = Math.round(h * 1.16);
+      ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
     }
 
-    const dHalf = Math.round(-size * 0.5);
-    const col = Math.max(0, Math.min(29, Math.floor(((1 - dc.life / dc.maxLife)) * 30)));
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.42;
-    ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf - 12, dHalf - 12, size + 24, size + 24);
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * (dc.shattered ? 0.92 : 0.98);
-    ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf, dHalf, size, size);
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
+
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.34;
-    ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf, dHalf, size, size);
+    ctx.globalAlpha = Math.min(1, alpha * 0.42);
+    ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
-    const progressToMidnight = Math.min(1, dc.life / 0.96);
-    const ease = 1 - Math.pow(1 - progressToMidnight, 2.4);
-    const minuteAngle = -Math.PI * 0.5 - (1 - ease) * Math.PI * 4.0;
-    const hourAngle = -Math.PI * 0.5 - (1 - ease) * Math.PI * 1.35;
+    ctx.restore();
+  }
 
-    const drawTaperedClockHand = (angle, length, isMinute) => {
-      ctx.save();
-      ctx.rotate(angle);
-      const baseW = isMinute ? 7 : 10;
+  /**
+   * 2.5D Background & Mid-Ground Pass (rendered behind fighters)
+   */
+  drawForegroundOverlay(ctx, renderer = null) {
+    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    const sprites = PixelForge.initAssets().chronomancer;
+    const vfxSheet = sprites?.vfx;
 
-      // 1. Smooth additive bloom along the clock hand
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.48;
-      ctx.fillStyle = isMinute ? '#2dd4bf' : '#facc15';
-      ctx.beginPath();
-      ctx.moveTo(-14, -baseW * 1.2);
-      ctx.lineTo(length * 0.78, -baseW * 0.65);
-      ctx.lineTo(length + 8, 0);
-      ctx.lineTo(length * 0.78, baseW * 0.65);
-      ctx.lineTo(-14, baseW * 1.2);
-      ctx.closePath();
-      ctx.fill();
+    // 1. Live 120Hz `ArcaneShaderFX` "back" layer (2.5D Astrolabe Aura, Warp Portals, Stasis Prison & Grand Horologium Back Rings)
+    this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
 
-      // 2. Dark obsidian-bronze bevel outline
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.98;
-      ctx.fillStyle = '#0b0f19';
-      ctx.beginPath();
-      ctx.moveTo(-12, -baseW);
-      ctx.lineTo(length * 0.76, -baseW * 0.45);
-      ctx.lineTo(length + 4, 0);
-      ctx.lineTo(length * 0.76, baseW * 0.45);
-      ctx.lineTo(-12, baseW);
-      ctx.closePath();
-      ctx.fill();
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
 
-      // 3. Radiant gold/teal inner blade & white core line
-      ctx.fillStyle = isMinute ? '#5eead4' : '#facc15';
-      ctx.beginPath();
-      ctx.moveTo(-8, -(baseW - 3));
-      ctx.lineTo(length * 0.76, -2.5);
-      ctx.lineTo(length, 0);
-      ctx.lineTo(length * 0.76, 2.5);
-      ctx.lineTo(-8, baseW - 3);
-      ctx.closePath();
-      ctx.fill();
-
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-4, -1.5, length * 0.85, 3);
-      ctx.restore();
-    };
-
-    drawTaperedClockHand(hourAngle, Math.round(size * 0.27), false);
-    drawTaperedClockHand(minuteAngle, Math.round(size * 0.39), true);
-
-    // Central Brass & Cyan Escapement Pivot Hub
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade;
-    ctx.fillStyle = '#0b0f19';
-    ctx.beginPath();
-    ctx.arc(0, 0, 12, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#facc15';
-    ctx.beginPath();
-    ctx.arc(0, 0, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#2dd4bf';
-    ctx.beginPath();
-    ctx.arc(0, 0, 4, 0, Math.PI * 2);
-    ctx.fill();
-
-    // Midnight XII bloom pulse at detonation
-    if (dc.shattered) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.48;
-      ctx.drawImage(
+    // 2. Colossal XII-Hour Doomsday Clock Face (`Row 3` of `chronomancer_vfx.png`: `horologiumClockFaceCell`)
+    if (this.doomsdayClock && vfxSheet?.complete) {
+      const dc = this.doomsdayClock;
+      const pop = Math.min(1, dc.life / 0.22);
+      const fade = Math.min(1, (dc.maxLife - dc.life) * 3.0);
+      const size = Math.round(336 * (0.78 + 0.22 * pop));
+      const col = Math.max(0, Math.min(29, Math.floor((dc.life / dc.maxLife) * 30)));
+      this.drawBloomedVfxCell(
+        ctx,
         vfxSheet,
-        col * 208,
-        624,
-        208,
-        208,
-        Math.round(-size * 0.54),
-        Math.round(-size * 0.54),
-        Math.round(size * 1.08),
-        Math.round(size * 1.08)
+        3,
+        col,
+        dc.x,
+        dc.y,
+        size,
+        size,
+        fade * 0.95,
+        false,
+        renderer,
+        dc.shattered ? 'gold' : 'teal'
       );
     }
 
-    ctx.restore();
-  }
-
-  /**
-   * Renders Zephyros's Frozen Golden-Teal Temporal Echo Silhouettes left behind during Dash/Dodge
-   */
-  drawTemporalEchoes(ctx) {
-    if (!this.temporalEchoes.length) return;
-    const sprites = PixelForge.initAssets().chronomancer;
-    if (!sprites || !sprites.sheet || !sprites.sheet.complete) return;
-
-    for (const ec of this.temporalEchoes) {
-      const fade = Math.max(0, 1 - ec.life / ec.maxLife);
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.translate(Math.round(ec.x), Math.round(ec.y));
-      ctx.scale(ec.facing, 1);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.42;
-      PixelForge.drawAfterimageFrame(ctx, sprites, ec.frameIdx, 208, 208);
-      ctx.restore();
+    // 3. Departure & Arrival Temporal Wormhole Portals (`Row 3` of `chronomancer_vfx.png`: `horologiumClockFaceCell`)
+    if ((this.warpPortalTimer > 0 || this.isChronoWarp) && vfxSheet?.complete) {
+      const fade = Math.min(1, Math.max(0.15, this.warpPortalTimer / 0.22));
+      const col = Math.floor(this.chronoPhase * 10) % 30;
+      const portals = [
+        { x: this.warpOriginX, y: this.groundY - 96, size: 168, glow: 'teal', flip: false },
+        { x: this.warpTargetX, y: this.groundY - 96, size: 184, glow: 'gold', flip: true }
+      ];
+      for (const p of portals) {
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          3,
+          col,
+          p.x,
+          p.y,
+          p.size,
+          p.size,
+          fade * 0.9,
+          p.flip,
+          renderer,
+          p.glow
+        );
+      }
     }
-  }
 
-  /**
-   * Renders 2 Counter-Rotating Chunky-Pixel Glowing Brass Clockwork Satellite Gears behind Zephyros's shoulders
-   */
-  drawOrbitingGears(ctx, renderer = null) {
-    if (this.isDead) return;
-    const vfxSheet = PixelForge.initAssets().chronomancer?.vfx;
-    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
-
-    const t = performance.now() * 0.001;
-    const col = Math.floor(this.stateTimer * 30) % 30;
-    const gears = [
-      { ox: -this.facing * 42, oy: -128 + Math.round(Math.sin(t * 3.2) * 3) * 2, size: 54, dir: 1 },
-      { ox: this.facing * 36, oy: -146 + Math.round(Math.cos(t * 3.2) * 3) * 2, size: 46, dir: -1 }
-    ];
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    for (const g of gears) {
-      ctx.save();
-      ctx.translate(Math.round((this.x + g.ox) / 2) * 2, Math.round((this.y + g.oy) / 2) * 2);
-      if (renderer && renderer.glowTeal) {
+    // 4. Frozen Golden-Teal Temporal Echo Silhouettes (`PixelForge.drawAfterimageFrame`)
+    if (this.temporalEchoes.length > 0 && sprites?.sheet?.complete) {
+      for (const ec of this.temporalEchoes) {
+        const fade = Math.max(0, 1 - ec.life / ec.maxLife);
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.translate(Math.round(ec.x / 4) * 4, Math.round((ec.y + 4) / 4) * 4);
+        ctx.scale(ec.facing, 1);
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.45;
-        ctx.drawImage(renderer.glowTeal, -g.size * 1.1, -g.size * 1.1, g.size * 2.2, g.size * 2.2);
+        ctx.globalAlpha = fade * 0.44;
+        PixelForge.drawAfterimageFrame(ctx, sprites, ec.frameIdx, 208, 208);
+        ctx.restore();
       }
-      // Step rotation in exact 90-degree (Math.PI * 0.5) mechanical escapement ticks so pixels stay 100% orthogonal!
-      const tickStep = Math.floor(t * 5.0) * (Math.PI * 0.5) * g.dir;
-      ctx.rotate(tickStep);
-      const gh = Math.round(-g.size * 0.5);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.42;
-      ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, gh - 4, gh - 4, g.size + 8, g.size + 8);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.98;
-      ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, gh, gh, g.size, g.size);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.34;
-      ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, gh, gh, g.size, g.size);
-      ctx.restore();
     }
+
+    // 5. 2 Counter-Rotating Astrolabe Escapement Gear Wheels (`Row 1` of `chronomancer_vfx.png`: `astrolabeGearWheelCell`)
+    if (!this.isDead && vfxSheet?.complete) {
+      const col = Math.floor(this.chronoPhase * 10) % 30;
+      const gears = [
+        {
+          ox: -this.facing * 42,
+          oy: -128 + Math.round(Math.sin(this.chronoPhase * 1.2) * 3) * 2,
+          size: 72,
+          flip: false,
+          glow: 'teal'
+        },
+        {
+          ox: this.facing * 36,
+          oy: -146 + Math.round(Math.cos(this.chronoPhase * 1.2) * 3) * 2,
+          size: 62,
+          flip: true,
+          glow: 'gold'
+        }
+      ];
+      for (const g of gears) {
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          1,
+          col,
+          this.x + g.ox,
+          this.y + g.oy,
+          g.size,
+          g.size,
+          0.92,
+          g.flip,
+          renderer,
+          g.glow
+        );
+      }
+    }
+
+    // 6. Background 30fps `chronomancer_vfx.png` cell animations
+    if (this.activeVfxAnims.length > 0 && vfxSheet?.complete) {
+      for (const v of this.activeVfxAnims) {
+        if (v.inFront) continue;
+        const u = Math.min(1, Math.max(0, v.age / v.maxLife));
+        const span = Math.max(1, v.endFrame - v.startFrame + 1);
+        const col = Math.min(29, v.startFrame + Math.floor(u * span));
+        const fade = u < 0.12 ? u / 0.12 : u > 0.78 ? (1 - u) / 0.22 : 1.0;
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          v.row,
+          col,
+          v.x,
+          v.y,
+          v.w,
+          v.h,
+          fade * 0.9,
+          v.flipX,
+          renderer,
+          v.glowColor
+        );
+      }
+    }
+
     ctx.restore();
   }
 
   /**
-   * Renders the Chunky-Pixel Glowing Ornate Brass & Teal Stasis Hourglass encasing the enemy
-   */
-  drawStasisHourglass(ctx, renderer = null) {
-    if (!this.stasisHourglass) return;
-    const vfxSheet = PixelForge.initAssets().chronomancer?.vfx;
-    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
-
-    const hg = this.stasisHourglass;
-    const pop = Math.min(1, hg.life / 0.14);
-    const fade = Math.min(1, (hg.maxLife - hg.life) * 3.2);
-    const vibrateX = Math.round(Math.sin(hg.life * 28) * 2) * 2;
-    const hx = Math.round(hg.x / 4) * 4 + vibrateX;
-    const hy = Math.round(hg.y / 4) * 4;
-    const drawW = Math.round((204 * (0.82 + 0.18 * pop)) / 4) * 4;
-    const drawH = Math.round((220 * (0.82 + 0.18 * pop)) / 4) * 4;
-    const col = Math.max(0, Math.min(29, Math.floor(((1 - hg.life / hg.maxLife)) * 30)));
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    ctx.translate(hx, hy - drawH * 0.5 + 8);
-
-    // 1. Luminous Dual-Layer Gold + Teal Radial Light Halos around the Stasis Hourglass!
-    if (renderer) {
-      ctx.globalCompositeOperation = 'lighter';
-      if (renderer.glowGold) {
-        ctx.globalAlpha = fade * 0.65;
-        ctx.drawImage(renderer.glowGold, -drawW * 1.15, -drawH * 1.05, drawW * 2.3, drawH * 2.1);
-      }
-      if (renderer.glowTeal) {
-        ctx.globalAlpha = fade * 0.58;
-        ctx.drawImage(renderer.glowTeal, -drawW * 0.95, -drawH * 0.9, drawW * 1.9, drawH * 1.8);
-      }
-    }
-
-    const hw = Math.round(-drawW * 0.5);
-    const hh = Math.round(-drawH * 0.5);
-    // Stepped outer teal-gold pixel bloom aura
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.46;
-    ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, hw - 12, hh - 12, drawW + 24, drawH + 24);
-    // Main chunky-pixel hourglass (orthogonal, zero diagonal rotation)
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.98;
-    ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, hw, hh, drawW, drawH);
-    // Boosted inner sand & rune bloom pass
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.38;
-    ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, hw, hh, drawW, drawH);
-    ctx.restore();
-  }
-
-  /**
-   * Renders Reverse-Flowing Golden-Teal Roman Numeral Ribbons flying into Zephyros during Temporal Rewind
-   */
-  drawRewindRibbons(ctx) {
-    if (!this.rewindRibbons.length) return;
-    ctx.save();
-    const tx = this.x;
-    const ty = this.y - 98;
-    for (const rr of this.rewindRibbons) {
-      if (rr.life < 0) continue;
-      const u = Math.min(1, rr.life / rr.maxLife);
-      const rx = Math.round((rr.startX + (tx - rr.startX) * u) / 4) * 4;
-      const ry = Math.round((rr.startY + (ty - rr.startY) * u + Math.sin(u * Math.PI) * rr.arcHeight) / 4) * 4;
-
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (let tail = 4; tail >= 1; tail--) {
-        const tu = Math.max(0, u - tail * 0.045);
-        const tlx = Math.round((rr.startX + (tx - rr.startX) * tu) / 4) * 4;
-        const tly = Math.round((rr.startY + (ty - rr.startY) * tu + Math.sin(tu * Math.PI) * rr.arcHeight) / 4) * 4;
-        ctx.fillStyle = tail % 2 === 0 ? '#2dd4bf' : '#facc15';
-        ctx.globalAlpha = ((5 - tail) / 5) * 0.65;
-        ctx.fillRect(tlx - 4, tly - 4, 8, 8);
-      }
-      ctx.globalAlpha = 0.95;
-      PixelFont.drawCentered(ctx, rr.numeral, rx, ry, 1, '#2dd4bf', '#fef08a', true);
-      ctx.restore();
-    }
-    ctx.restore();
-  }
-
-  /**
-   * Normal skill pass (behind fighters)
-   */
-  drawForegroundOverlay(ctx, renderer = null) {
-    if (this.fx && !this.isDead) {
-      this.fx.renderLayer(ctx, 'back', this.x, this.y - 88);
-    }
-    this.drawStasisHourglass(ctx, renderer);
-    this.drawRewindRibbons(ctx);
-  }
-
-  /**
-   * Ultimate pass (rendered IN FRONT of all fighters!)
+   * 2.5D Foreground & Ultimate Pass (rendered in front of fighters)
    */
   drawUltimateForeground(ctx, renderer = null) {
-    this.drawDoomsdayClock(ctx, renderer);
-    if (this.fx && !this.isDead) {
-      const fxX = this.doomsdayClock ? this.doomsdayClock.x : this.x;
-      this.fx.renderLayer(ctx, 'front', fxX, this.groundY - 120);
+    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    const sprites = PixelForge.initAssets().chronomancer;
+    const vfxSheet = sprites?.vfx;
+
+    // 1. Ornate Brass & Teal Stasis Hourglass Monolith (`Row 2` of `chronomancer_vfx.png`: `stasisHourglassMonolithCell`)
+    if (this.stasisHourglass && vfxSheet?.complete) {
+      const hg = this.stasisHourglass;
+      const pop = Math.min(1, hg.life / 0.14);
+      const fade = Math.min(1, (hg.maxLife - hg.life) * 3.2);
+      const vibrateX = Math.round(Math.sin(hg.life * 28) * 2) * 2;
+      const drawW = Math.round((208 * (0.84 + 0.16 * pop)) / 4) * 4;
+      const drawH = Math.round((224 * (0.84 + 0.16 * pop)) / 4) * 4;
+      const col = Math.max(0, Math.min(29, Math.floor((hg.life / hg.maxLife) * 30)));
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        2,
+        col,
+        hg.x + vibrateX,
+        hg.y - drawH * 0.46,
+        drawW,
+        drawH,
+        fade * 0.96,
+        false,
+        renderer,
+        hg.shattered ? 'gold' : 'teal'
+      );
     }
-  }
 
-  /**
-   * Renders Dual 12-Hour Clockface Temporal Rift Wormhole Portals (Row 2 of chronomancer_vfx.png) at departure & arrival coordinates during CHRONO PORTAL WARP!
-   */
-  drawWarpPortals(ctx, renderer = null) {
-    if (this.warpPortalTimer <= 0 && !this.isChronoWarp) return;
-    const vfxSheet = PixelForge.initAssets().chronomancer?.vfx;
-    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
+    // 2. Live 120Hz `ArcaneShaderFX` "front" layer (Front Astrolabe Aura, Multi-Layer Temporal Crescent Rifts, Front Stasis Prison & Grand Horologium)
+    this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
 
-    const fade = Math.min(1, this.warpPortalTimer / 0.22);
-    const col = Math.floor(performance.now() * 0.035) % 30;
-    const portals = [
-      { x: this.warpOriginX, y: this.groundY - 96, scale: 0.94 },
-      { x: this.warpTargetX, y: this.groundY - 96, scale: 1.04 }
-    ];
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    for (const p of portals) {
-      const size = Math.round(176 * p.scale);
-      const half = Math.round(-size * 0.5);
-      ctx.save();
-      ctx.translate(Math.round(p.x), Math.round(p.y));
-      if (renderer) {
-        ctx.globalCompositeOperation = 'lighter';
-        if (renderer.glowTeal) {
-          ctx.globalAlpha = fade * 0.56;
-          ctx.drawImage(renderer.glowTeal, -size * 1.15, -size * 1.15, size * 2.3, size * 2.3);
-        }
-        if (renderer.glowGold) {
-          ctx.globalAlpha = fade * 0.48;
-          ctx.drawImage(renderer.glowGold, -size * 0.85, -size * 0.85, size * 1.7, size * 1.7);
-        }
+    // 3. Foreground 30fps `chronomancer_vfx.png` cell bursts (`Row 4`: `timeShatterNovaCell`)
+    if (this.activeVfxAnims.length > 0 && vfxSheet?.complete) {
+      for (const v of this.activeVfxAnims) {
+        if (!v.inFront) continue;
+        const u = Math.min(1, Math.max(0, v.age / v.maxLife));
+        const span = Math.max(1, v.endFrame - v.startFrame + 1);
+        const col = Math.min(29, v.startFrame + Math.floor(u * span));
+        const fade = u < 0.12 ? u / 0.12 : u > 0.78 ? (1 - u) / 0.22 : 1.0;
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          v.row,
+          col,
+          v.x,
+          v.y,
+          v.w,
+          v.h,
+          fade * 0.94,
+          v.flipX,
+          renderer,
+          v.glowColor
+        );
       }
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.45;
-      ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half - 8, half - 8, size + 16, size + 16);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.94;
-      ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half, half, size, size);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.36;
-      ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half, half, size, size);
-      ctx.restore();
     }
-    ctx.restore();
   }
 
   draw(ctx, isReflection = false, renderer = null) {
     const sprites = PixelForge.initAssets().chronomancer;
     if (!sprites) return;
-
-    if (!isReflection) {
-      this.drawWarpPortals(ctx, renderer);
-      this.drawTemporalEchoes(ctx);
-      this.drawOrbitingGears(ctx, renderer);
-    }
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -1297,8 +1446,27 @@ export class Chronomancer extends Fighter {
     const w = 208;
     const h = 208;
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
-
     const groundPlantOffset = 4;
+
+    if (
+      !isReflection &&
+      !this.isDead &&
+      (this.state === 'DODGE' || this.state === 'JUMP' || this.state === 'DASH')
+    ) {
+      const trailSign = this.dashDir || this.facing;
+      for (let g = 2; g >= 1; g--) {
+        ctx.save();
+        ctx.globalAlpha = g === 2 ? 0.16 : 0.28;
+        ctx.translate(
+          Math.round(this.x - trailSign * g * 22),
+          Math.round(this.y + groundPlantOffset + (this.isFlipVault ? g * 4 : 0))
+        );
+        ctx.scale(this.facing, 1);
+        PixelForge.drawAfterimageFrame(ctx, sprites, Math.max(0, frameIdx - g), w, h);
+        ctx.restore();
+      }
+    }
+
     ctx.translate(Math.round(this.x), Math.round(this.y + groundPlantOffset));
     ctx.scale(this.facing, 1);
 

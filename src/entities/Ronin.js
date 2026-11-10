@@ -1,7 +1,7 @@
 import { Fighter } from './Fighter.js?v=30fps41';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps52';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps52';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps53';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps53';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps53';
 
 /**
  * Kaze-Maru (`ronin`) — Storm-Blade Iaido Samurai & Raijin Thunder Vanguard.
@@ -52,9 +52,6 @@ export class Ronin extends Fighter {
     this.iaidoCounterActive = false;
     // 5. Active 30fps HD-2D VFX sheet animations (Row 0..4 of assets/sprites/ronin_vfx.png)
     this.activeVfxAnims = [];
-    // 6. Active 4x4 Pixel-Art Raijin Shockwave Rings & Sky-Splitting Lightning Bolts
-    this.activePixelShockwaves = [];
-    this.activeLightningBolts = [];
     this._ultTargetX = 600;
     this.susanooAvatar = null;
 
@@ -148,15 +145,6 @@ export class Ronin extends Fighter {
   }
 
   spawnPixelShockwave(x, y, maxR = 135, colorType = 'cyan', maxLife = 0.32, isGround = false) {
-    this.activePixelShockwaves.push({
-      x,
-      y,
-      maxR,
-      colorType,
-      age: 0,
-      maxLife,
-      isGround
-    });
     if (!this.fx) return;
     this.fx.spawn('raijinTaikoShockwave', x, y, {
       flip: false,
@@ -167,15 +155,6 @@ export class Ronin extends Fighter {
   }
 
   spawnPixelLightningBolt(x, topY, botY, colorType = 'cyan', maxLife = 0.34) {
-    this.activeLightningBolts.push({
-      x,
-      topY,
-      botY,
-      colorType,
-      age: 0,
-      maxLife,
-      seed: Math.random() * 100
-    });
     if (!this.fx) return;
     this.fx.spawn('raijinSkyThunderbolt', x, botY, {
       flip: false,
@@ -306,23 +285,11 @@ export class Ronin extends Fighter {
       }
     }
 
-    // 2. Update Persistent Slash Lines & 4x4 Shockwaves / Lightning Bolts
+    // 2. Update Persistent Slash Lines
     for (let i = this.activeSlashLines.length - 1; i >= 0; i--) {
       this.activeSlashLines[i].age += dt;
       if (this.activeSlashLines[i].age >= this.activeSlashLines[i].maxLife) {
         this.activeSlashLines.splice(i, 1);
-      }
-    }
-    for (let i = this.activePixelShockwaves.length - 1; i >= 0; i--) {
-      this.activePixelShockwaves[i].age += dt;
-      if (this.activePixelShockwaves[i].age >= this.activePixelShockwaves[i].maxLife) {
-        this.activePixelShockwaves.splice(i, 1);
-      }
-    }
-    for (let i = this.activeLightningBolts.length - 1; i >= 0; i--) {
-      this.activeLightningBolts[i].age += dt;
-      if (this.activeLightningBolts[i].age >= this.activeLightningBolts[i].maxLife) {
-        this.activeLightningBolts.splice(i, 1);
       }
     }
 
@@ -1185,278 +1152,12 @@ export class Ronin extends Fighter {
     ctx.restore();
   }
 
-  drawSteppedPixelSlash4x4(ctx, line) {
-    const alpha = Math.max(0, 1 - line.age / line.maxLife);
-    if (alpha <= 0.01) return;
-
-    const snap4 = (v) => Math.round(v / 4) * 4;
-    const x1 = snap4(line.x1);
-    const y1 = snap4(line.y1);
-    const x2 = snap4(line.x2);
-    const y2 = snap4(line.y2);
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const dist = Math.hypot(dx, dy);
-    const steps = Math.max(1, Math.floor(dist / 4));
-    const nx = dist > 0 ? -dy / dist : 0;
-    const ny = dist > 0 ? dx / dist : -1;
-
-    const outerCol = line.detonated ? '#a855f7' : '#6366f1';
-    const midCol = line.detonated ? '#fde047' : '#22d3ee';
-    const coreCol = '#ffffff';
-    const phase = line.age * 28.0 + (line.seed || 0);
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-
-    ctx.globalAlpha = alpha * 0.78;
-    ctx.fillStyle = outerCol;
-    for (let s = 0; s <= steps; s++) {
-      const u = s / steps;
-      const px = snap4(x1 + dx * u);
-      const py = snap4(y1 + dy * u);
-      ctx.fillRect(px - 2, py - 6, 4, 12);
-      if (s % 2 === 0) {
-        const zig = Math.round(Math.sin(u * Math.PI * 5 + phase) * 2.5) * 4;
-        const zx = snap4(px + nx * zig);
-        const zy = snap4(py + ny * zig);
-        ctx.fillStyle = s % 4 === 0 ? midCol : outerCol;
-        ctx.fillRect(zx - 2, zy - 2, 4, 4);
-      }
-    }
-
-    ctx.globalAlpha = alpha * 0.92;
-    ctx.fillStyle = midCol;
-    for (let s = 0; s <= steps; s++) {
-      const u = s / steps;
-      const px = snap4(x1 + dx * u);
-      const py = snap4(y1 + dy * u);
-      ctx.fillRect(px - 2, py - 4, 4, 8);
-    }
-
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = coreCol;
-    for (let s = 0; s <= steps; s++) {
-      const u = s / steps;
-      const px = snap4(x1 + dx * u);
-      const py = snap4(y1 + dy * u);
-      ctx.fillRect(px - 2, py - 2, 4, 4);
-    }
-
-    const mx = snap4((x1 + x2) * 0.5);
-    const my = snap4((y1 + y2) * 0.5);
-    ctx.fillStyle = midCol;
-    ctx.fillRect(mx - 10, my - 2, 20, 4);
-    ctx.fillRect(mx - 2, my - 10, 4, 20);
-    ctx.fillStyle = coreCol;
-    ctx.fillRect(mx - 2, my - 2, 4, 4);
-
-    ctx.restore();
-  }
-
-  drawPixelShockwave4x4(ctx, sw) {
-    const u = Math.min(1, sw.age / sw.maxLife);
-    const alpha = Math.max(0, 1 - u);
-    if (alpha <= 0.02) return;
-
-    const snap4 = (v) => Math.round(v / 4) * 4;
-    const ease = 1 - Math.pow(1 - u, 2.2);
-    const rx = sw.maxR * (0.22 + 0.78 * ease);
-    const ry = sw.isGround ? rx * 0.24 : rx * 0.88;
-
-    const midCol =
-      sw.colorType === 'gold' ? '#fef08a' : sw.colorType === 'purple' ? '#a78bfa' : '#22d3ee';
-    const outerCol =
-      sw.colorType === 'gold' ? '#eab308' : sw.colorType === 'purple' ? '#7c3aed' : '#4f46e5';
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-
-    const steps = 36;
-    for (let i = 0; i < steps; i++) {
-      const ang = (i / steps) * Math.PI * 2 + u * 2.5;
-      const px = snap4(sw.x + Math.cos(ang) * rx);
-      const py = snap4(sw.y + Math.sin(ang) * ry);
-
-      ctx.globalAlpha = alpha * 0.65;
-      ctx.fillStyle = outerCol;
-      ctx.fillRect(px - 4, py - 4, 8, 8);
-
-      ctx.globalAlpha = alpha * 0.95;
-      ctx.fillStyle = i % 3 === 0 ? '#ffffff' : midCol;
-      ctx.fillRect(px - 2, py - 2, 4, 4);
-    }
-
-    for (let d = 0; d < 8; d++) {
-      const da = (d / 8) * Math.PI * 2 - u * 3.0;
-      const dx = snap4(sw.x + Math.cos(da) * rx);
-      const dy = snap4(sw.y + Math.sin(da) * ry);
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = '#eab308';
-      ctx.fillRect(dx - 4, dy - 4, 8, 8);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(dx - 2, dy - 2, 4, 4);
-    }
-
-    ctx.restore();
-  }
-
-  drawPixelLightningBolt4x4(ctx, bolt) {
-    const u = Math.min(1, bolt.age / bolt.maxLife);
-    const alpha = Math.max(0, 1 - u);
-    if (alpha <= 0.02) return;
-
-    const snap4 = (v) => Math.round(v / 4) * 4;
-    const midCol =
-      bolt.colorType === 'gold' ? '#fef08a' : bolt.colorType === 'purple' ? '#c084fc' : '#67e8f9';
-    const outerCol =
-      bolt.colorType === 'gold' ? '#eab308' : bolt.colorType === 'purple' ? '#7c3aed' : '#0284c7';
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-
-    const spanY = Math.max(16, bolt.botY - bolt.topY);
-    const segs = Math.max(8, Math.floor(spanY / 8));
-    const phase = bolt.age * 36.0 + (bolt.seed || 0);
-
-    for (let s = 0; s <= segs; s++) {
-      const t = s / segs;
-      const py = snap4(bolt.topY + spanY * t);
-      const zig =
-        s === 0 || s === segs
-          ? 0
-          : Math.round(Math.sin(t * Math.PI * 6 + phase) * 3.5 + Math.cos(t * 13 + phase) * 2.0) * 4;
-      const px = snap4(bolt.x + zig);
-
-      ctx.globalAlpha = alpha * 0.58;
-      ctx.fillStyle = outerCol;
-      ctx.fillRect(px - 6, py - 4, 12, 8);
-
-      ctx.globalAlpha = alpha * 0.88;
-      ctx.fillStyle = midCol;
-      ctx.fillRect(px - 4, py - 4, 8, 8);
-
-      ctx.globalAlpha = alpha;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(px - 2, py - 4, 4, 8);
-
-      if (s === Math.floor(segs * 0.35) || s === Math.floor(segs * 0.68)) {
-        const dir = s % 2 === 0 ? 1 : -1;
-        for (let b = 1; b <= 5; b++) {
-          ctx.globalAlpha = alpha * (1 - b * 0.16);
-          ctx.fillStyle = b <= 2 ? '#ffffff' : midCol;
-          ctx.fillRect(px + dir * b * 4, py + b * 4, 4, 4);
-        }
-      }
-    }
-
-    ctx.restore();
-  }
-
-  drawPixelSpearMachCone4x4(ctx) {
-    const isSkillDive = this.state === 'SKILL' && this.stateTimer >= 0.18 && this.stateTimer < 0.48;
-    const isUltDive = this.state === 'ULTIMATE' && this.stateTimer >= 0.30 && this.stateTimer < 1.26;
-    if (!isSkillDive && !isUltDive) return;
-
-    const isHeavenSplit = this.state === 'ULTIMATE' && this.stateTimer >= 1.02;
-    const snap4 = (v) => Math.round(v / 4) * 4;
-    const baseAngle = this.divePitchRad || 0;
-    const ux = Math.cos(baseAngle) * this.facing;
-    const uy = Math.sin(baseAngle);
-    const nx = -uy;
-    const ny = ux;
-
-    const cx = this.x;
-    const cy = this.y - 72;
-    const tipX = cx + ux * 68;
-    const tipY = cy + uy * 68;
-    const phase = this.stateTimer * 35.0;
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-
-    for (const side of [-1, 1]) {
-      for (let step = 0; step <= 18; step++) {
-        const backDist = step * 6.5;
-        const spread = 4 + step * (isHeavenSplit ? 3.1 : 2.5);
-        const wx = snap4(tipX - ux * backDist + nx * side * spread);
-        const wy = snap4(tipY - uy * backDist + ny * side * spread);
-
-        ctx.globalAlpha = Math.max(0.15, 0.92 - step * 0.042);
-        ctx.fillStyle =
-          step <= 3
-            ? '#ffffff'
-            : isHeavenSplit && step % 2 === 0
-              ? '#fef08a'
-              : step % 2 === 0
-                ? '#67e8f9'
-                : '#a78bfa';
-        ctx.fillRect(wx - 2, wy - 2, 4, 4);
-      }
-    }
-
-    for (let h = 0; h <= 20; h++) {
-      const dist = h * 6.0;
-      const wave = Math.sin(h * 0.65 - phase) * (10 + h * 0.7);
-      const hx = snap4(tipX - ux * dist + nx * wave);
-      const hy = snap4(tipY - uy * dist + ny * wave);
-      ctx.globalAlpha = Math.max(0.15, 0.85 - h * 0.038);
-      ctx.fillStyle = h % 3 === 0 ? '#ffffff' : h % 2 === 0 ? '#22d3ee' : '#c084fc';
-      ctx.fillRect(hx - 2, hy - 2, 4, 4);
-    }
-
-    ctx.restore();
-  }
-
-  drawPixelStormDomain4x4(ctx) {
-    if (this.state !== 'ULTIMATE') return;
-    const snap4 = (v) => Math.round(v / 4) * 4;
-    const cx = this._ultTargetX || this.x;
-    const gy = this.groundY - 4;
-    const phase = this.stateTimer * 8.0;
-    const rx = 152;
-    const ry = 18;
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-
-    for (let i = 0; i < 44; i++) {
-      const ang = (i / 44) * Math.PI * 2 + phase;
-      const px = snap4(cx + Math.cos(ang) * rx);
-      const py = snap4(gy + Math.sin(ang) * ry);
-      ctx.globalAlpha = 0.75;
-      ctx.fillStyle = i % 3 === 0 ? '#ffffff' : i % 2 === 0 ? '#22d3ee' : '#a78bfa';
-      ctx.fillRect(px - 2, py - 2, 4, 4);
-    }
-
-    for (let d = 0; d < 8; d++) {
-      const da = (d / 8) * Math.PI * 2 - phase * 1.2;
-      const dx = snap4(cx + Math.cos(da) * rx);
-      const dy = snap4(gy + Math.sin(da) * ry);
-      ctx.globalAlpha = 0.92;
-      ctx.fillStyle = '#eab308';
-      ctx.fillRect(dx - 4, dy - 4, 8, 8);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(dx - 2, dy - 2, 4, 4);
-
-      const moteY = snap4(gy - ((this.stateTimer * 140 + d * 28) % 120));
-      ctx.globalAlpha = 0.65;
-      ctx.fillStyle = d % 2 === 0 ? '#67e8f9' : '#fef08a';
-      ctx.fillRect(dx - 2, moteY - 2, 4, 4);
-    }
-
-    ctx.restore();
-  }
-
   drawForegroundOverlay(ctx, renderer = null) {
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
 
     const sprites = PixelForge.initAssets().ronin;
     const vfxSheet = sprites?.vfx;
-
-    // 0. Render 4x4 Pixel-Art Raijin Storm-Domain Ground Seal during ULTIMATE
-    this.drawPixelStormDomain4x4(ctx);
 
     // 1. Render Indigo-Cyan Lightning Afterimage Clones (pure un-rotated HD-2D frames!)
     if (this.afterimages.length > 0 && sprites && sprites.sheet && sprites.sheet.complete) {
@@ -1497,23 +1198,11 @@ export class Ronin extends Fighter {
         );
       }
     }
-
-    // 3. Render Floor-Plane 4x4 Pixel-Art Raijin Shockwave Rings
-    if (this.activePixelShockwaves.length > 0) {
-      for (const sw of this.activePixelShockwaves) {
-        if (sw.isGround) {
-          this.drawPixelShockwave4x4(ctx, sw);
-        }
-      }
-    }
   }
 
   drawUltimateForeground(ctx, renderer = null) {
     const sprites = PixelForge.initAssets().ronin;
     const vfxSheet = sprites?.vfx;
-
-    // 0. Render Real-Time 4x4 Pixel-Art Supersonic Mach-Cone & Spear Contrail IN FRONT of characters during SKILL / ULTIMATE dives!
-    this.drawPixelSpearMachCone4x4(ctx);
 
     // 1. Render Foreground Row-3 Raijin Halo Crest & Row-4 Thousand-Blade Slash Ring IN FRONT of characters!
     if (this.activeVfxAnims.length > 0 && vfxSheet && vfxSheet.complete) {
@@ -1540,26 +1229,7 @@ export class Ronin extends Fighter {
       }
     }
 
-    // 2. Render Radial 4x4 Pixel-Art Raijin Shockwave Rings, Sky-Splitting Lightning Bolts & Stepped Slash Beams
-    if (this.activePixelShockwaves.length > 0) {
-      for (const sw of this.activePixelShockwaves) {
-        if (!sw.isGround) {
-          this.drawPixelShockwave4x4(ctx, sw);
-        }
-      }
-    }
-    if (this.activeLightningBolts.length > 0) {
-      for (const bolt of this.activeLightningBolts) {
-        this.drawPixelLightningBolt4x4(ctx, bolt);
-      }
-    }
-    if (this.activeSlashLines.length > 0) {
-      for (const line of this.activeSlashLines) {
-        this.drawSteppedPixelSlash4x4(ctx, line);
-      }
-    }
-
-    // 3. Render 120Hz ArcaneShaderFX `front` layer (3-Pass Albedo/Emissive Multi-Layer Shaders)
+    // 2. Render 120Hz ArcaneShaderFX `front` layer (Mach-Cone, Judgment Beams, Sky Thunderbolts, Front Raijin Rings & Motes)
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
   }

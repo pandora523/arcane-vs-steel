@@ -1,12 +1,12 @@
 import { Fighter } from './Fighter.js?v=30fps41';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps52';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps52';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps53';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps53';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps53';
 
 /**
  * Glacia / Lyra (`icemage`) — Cryo Sovereign & Borealis Prism Weaver.
- * Multi-Layer HD-2D Engine: Combines `ArcaneShaderFX` (3-pass Albedo + Additive Emissive 120Hz 2.5D shaders)
- * WITH Glacia's multi-pass 4x4 pixel-art constructs & `52x52 -> 4x NEAREST (208x208)` `icemage_vfx.png`.
+ * Powered natively by `ArcaneShaderFX` (dual-buffer 120Hz HD-2D shader & particle engine)
+ * + `assets/sprites/icemage_sheet.png` & `assets/sprites/icemage_vfx.png`.
  */
 export class IceMage extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -39,8 +39,8 @@ export class IceMage extends Fighter {
     this.iceWall = null; // Angled Refractive Glacial Ice-Wall Monolith erected on Crouch that splits enemy projectiles
     this.triMatrixCage = null; // Geometric 3-Prism Triangular Laser Matrix around the enemy during SKILL
     this.borealisCathedral = null; // Colossal Diamond Iceberg Prison + 7-Prism Orbital Array + Aurora Sky Curtain during ULTIMATE
-    this.skateRibbons = []; // Crystalline figure-skating blade ribbons left behind as Glacia glides
-    this.activeFrostRings = []; // Pure 4x4 pixel-art expanding crystalline snowflake shockwaves + Row-4 Hoarfrost Starbursts
+    this.skateRibbons = []; // Legacy array preserved for telemetry/compatibility
+    this.activeFrostRings = []; // Tracks Hoarfrost Shatter Novas that stamp Row-4 bloomed sprite cells
 
     this.dodgeMaxCooldown = 3.08;
     this.dashMaxCooldown = 3.05;
@@ -66,8 +66,8 @@ export class IceMage extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
-      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps52')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps52';
+      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps50')) {
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps50';
       }
     }
   }
@@ -94,7 +94,7 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * Spawns BOTH a 120Hz Multi-Layer `ArcaneShaderFX` Hoarfrost Shatter Burst AND a 4x4 Pixel Crystalline Shockwave Ring.
+   * Spawns a 120Hz `ArcaneShaderFX` Hoarfrost Shatter Burst + optional Row-4 bloomed Hoarfrost Nova sprite.
    */
   spawnPixelFrostRing(x, y, maxRadius = 110, color = '#67e8f9', maxLife = 0.30, isFloor = false, hasSpikes = false) {
     if (this.fx) {
@@ -103,16 +103,18 @@ export class IceMage extends Fighter {
         extra: { isLarge: maxRadius >= 115 || hasSpikes }
       });
     }
-    this.activeFrostRings.push({
-      x,
-      y,
-      maxRadius,
-      color,
-      life: 0,
-      maxLife,
-      isFloor,
-      hasSpikes
-    });
+    if (hasSpikes) {
+      this.activeFrostRings.push({
+        x,
+        y,
+        maxRadius,
+        color,
+        life: 0,
+        maxLife,
+        isFloor,
+        hasSpikes
+      });
+    }
   }
 
   /**
@@ -1279,148 +1281,33 @@ export class IceMage extends Fighter {
 
     if (renderer && renderer.glowGlacial && glowScale > 0) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.52;
+      ctx.globalAlpha = fade * (r === 2 ? 0.32 : 0.48);
       const gSize = drawSize * glowScale;
       ctx.drawImage(renderer.glowGlacial, -gSize * 0.5, -gSize * 0.5, gSize, gSize);
     }
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.44;
+    ctx.globalAlpha = fade * (r === 2 ? 0.28 : 0.42);
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, half - 8, half - 8, drawSize + 16, drawSize + 16);
 
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.98;
+    ctx.globalAlpha = fade * 0.99;
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, half, half, drawSize, drawSize);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.36;
+    ctx.globalAlpha = fade * (r === 2 ? 0.14 : 0.28);
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, half, half, drawSize, drawSize);
 
     ctx.restore();
   }
 
   /**
-   * Stepped 4x4 Pixel-Art Borealis Laser & Dual-Helix Refraction Beam Rasterizer
-   */
-  drawSteppedPixelLine4x4(ctx, x0, y0, x1, y1, mainColor = '#38bdf8', coreColor = '#ffffff', fade = 1.0, renderer = null) {
-    const dx = x1 - x0;
-    const dy = y1 - y0;
-    const dist = Math.hypot(dx, dy);
-    const steps = Math.max(1, Math.ceil(dist / 4));
-    const nx = dist > 0.001 ? -dy / dist : 0;
-    const ny = dist > 0.001 ? dx / dist : -1;
-    const tNow = performance.now() * 0.012;
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-
-    if (renderer && renderer.glowGlacial) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.34;
-      const haloSteps = Math.max(2, Math.min(6, Math.ceil(dist / 72)));
-      for (let h = 0; h <= haloSteps; h++) {
-        const u = h / haloSteps;
-        const hx = x0 + dx * u;
-        const hy = y0 + dy * u;
-        ctx.drawImage(renderer.glowGlacial, hx - 56, hy - 56, 112, 112);
-      }
-    }
-
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.36;
-    ctx.fillStyle = mainColor === '#e879f9' ? '#a855f7' : '#0284c7';
-    for (let s = 0; s <= steps; s++) {
-      const u = s / steps;
-      const gx = Math.round((x0 + dx * u) / 4) * 4;
-      const gy = Math.round((y0 + dy * u) / 4) * 4;
-      ctx.fillRect(gx - 6, gy - 6, 12, 12);
-    }
-
-    ctx.globalAlpha = fade * 0.78;
-    ctx.fillStyle = mainColor;
-    for (let s = 0; s <= steps; s++) {
-      const u = s / steps;
-      const gx = Math.round((x0 + dx * u) / 4) * 4;
-      const gy = Math.round((y0 + dy * u) / 4) * 4;
-      ctx.fillRect(gx - 4, gy - 4, 8, 8);
-    }
-
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.98;
-    for (let s = 0; s <= steps; s++) {
-      const u = s / steps;
-      const bx = x0 + dx * u;
-      const by = y0 + dy * u;
-      const gx = Math.round(bx / 4) * 4;
-      const gy = Math.round(by / 4) * 4;
-      ctx.fillStyle = coreColor;
-      ctx.fillRect(gx - 2, gy - 2, 4, 4);
-
-      if (s % 3 === 0) {
-        const helixOff = Math.sin(u * 10.0 - tNow) * 7.5;
-        const hx1 = Math.round((bx + nx * helixOff) / 4) * 4;
-        const hy1 = Math.round((by + ny * helixOff) / 4) * 4;
-        ctx.fillStyle = '#a5f3fc';
-        ctx.fillRect(hx1 - 2, hy1 - 2, 4, 4);
-
-        const hx2 = Math.round((bx - nx * helixOff) / 4) * 4;
-        const hy2 = Math.round((by - ny * helixOff) / 4) * 4;
-        ctx.fillStyle = '#e879f9';
-        ctx.fillRect(hx2 - 2, hy2 - 2, 4, 4);
-      }
-    }
-
-    ctx.restore();
-  }
-
-  /**
-   * Stepped 4x4 Pixel-Art Faceted Diamond Crystal Star Rasterizer
-   */
-  drawSteppedPixelDiamond4x4(ctx, cx, cy, radiusBlocks = 2, bodyColor = '#38bdf8', facetColor = '#a5f3fc', fade = 1.0) {
-    const gx = Math.round(cx / 4) * 4;
-    const gy = Math.round(cy / 4) * 4;
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.55;
-    ctx.fillStyle = bodyColor;
-    ctx.fillRect(gx - (radiusBlocks + 1) * 4, gy - 2, (radiusBlocks * 2 + 2) * 4, 4);
-    ctx.fillRect(gx - 2, gy - (radiusBlocks + 1) * 4, 4, (radiusBlocks * 2 + 2) * 4);
-
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.96;
-    for (let by = -radiusBlocks; by <= radiusBlocks; by++) {
-      const rem = radiusBlocks - Math.abs(by);
-      for (let bx = -rem; bx <= rem; bx++) {
-        const manhattan = Math.abs(bx) + Math.abs(by);
-        const px = gx + bx * 4 - 2;
-        const py = gy + by * 4 - 2;
-        if (bx === 0 && by === 0) {
-          ctx.fillStyle = '#ffffff';
-        } else if (manhattan === 1) {
-          ctx.fillStyle = '#e0f2fe';
-        } else if (bx <= 0 && by <= 0) {
-          ctx.fillStyle = facetColor;
-        } else {
-          ctx.fillStyle = bodyColor;
-        }
-        ctx.fillRect(px, py, 4, 4);
-      }
-    }
-    ctx.restore();
-  }
-
-  /**
-   * Multi-Layer Permafrost Rink: Combines 8Rotating 4x4 Pixel Dendritic Snowflake Spokes,
-   * 8 Outer Diamond Nodes, Rising 4x4 Diamond Snowflakes, & Flanking 7-Spire Crystal Clusters
-   * WITH 120Hz `permafrostSnowflakeSigil` 2.5D orbital rings.
+   * Renders soft Glacial Floor Bloom & Flanking Row-2 Glacier Crystal Spires for active Permafrost Zones
+   * (while 120Hz `permafrostSnowflakeSigil` renders the 2.5D back/front perspective rings & rising glints).
    */
   drawPermafrostZones(ctx, renderer = null) {
-    if (!this.permafrostZones.length && !this.skateRibbons.length) return;
+    if (!this.permafrostZones.length) return;
     const vfxSheet = PixelForge.initAssets().icemage?.vfx;
-    const tNow = performance.now() * 0.0022;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -1430,105 +1317,27 @@ export class IceMage extends Fighter {
       const rx = Math.round(z.x / 4) * 4;
       const ry = Math.round((z.y - 2) / 4) * 4;
       const rX = Math.round((z.radius * 0.92) / 4) * 4;
-      const rY = 18;
 
       if (renderer && renderer.glowGlacial) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.52;
+        ctx.globalAlpha = fade * 0.42;
         ctx.drawImage(renderer.glowGlacial, rx - rX * 1.25, ry - 48, rX * 2.5, 96);
-      }
-
-      ctx.globalCompositeOperation = 'lighter';
-      const ringSteps = 44;
-      for (let s = 0; s < ringSteps; s++) {
-        const aOut = (s / ringSteps) * Math.PI * 2 + tNow;
-        const ox = Math.round((rx + Math.cos(aOut) * rX) / 4) * 4;
-        const oy = Math.round((ry + Math.sin(aOut) * rY) / 4) * 4;
-        ctx.globalAlpha = fade * (s % 4 === 0 ? 0.95 : 0.72);
-        ctx.fillStyle = s % 4 === 0 ? '#ffffff' : s % 2 === 0 ? '#38bdf8' : '#c084fc';
-        ctx.fillRect(ox - 2, oy - 2, 4, 4);
-
-        const aIn = -(s / ringSteps) * Math.PI * 2 + tNow * 1.4;
-        const ix = Math.round((rx + Math.cos(aIn) * (rX * 0.58)) / 4) * 4;
-        const iy = Math.round((ry + Math.sin(aIn) * (rY * 0.58)) / 4) * 4;
-        if (s % 2 === 0) {
-          ctx.globalAlpha = fade * 0.78;
-          ctx.fillStyle = s % 4 === 0 ? '#a5f3fc' : '#38bdf8';
-          ctx.fillRect(ix - 2, iy - 2, 4, 4);
-        }
-      }
-
-      for (let k = 0; k < 8; k++) {
-        const ang = tNow * 0.65 + k * (Math.PI * 0.25);
-        const ca = Math.cos(ang);
-        const sa = Math.sin(ang);
-        const spokeSteps = 8;
-        for (let d = 1; d <= spokeSteps; d++) {
-          const u = d / spokeSteps;
-          const sx = Math.round((rx + ca * rX * u) / 4) * 4;
-          const sy = Math.round((ry + sa * rY * u) / 4) * 4;
-          ctx.globalAlpha = fade * (d === spokeSteps ? 0.96 : 0.68);
-          ctx.fillStyle = d === spokeSteps ? '#ffffff' : k % 2 === 0 ? '#67e8f9' : '#e879f9';
-          ctx.fillRect(sx - 2, sy - 2, 4, 4);
-        }
-        const vx = Math.round((rx + ca * (rX + 6)) / 4) * 4;
-        const vy = Math.round((ry + sa * (rY + 2)) / 4) * 4;
-        this.drawSteppedPixelDiamond4x4(
-          ctx,
-          vx,
-          vy,
-          1,
-          k % 2 === 0 ? '#38bdf8' : '#c084fc',
-          '#ffffff',
-          fade * 0.9
-        );
-      }
-
-      const numFlakes = 7;
-      for (let fIdx = 0; fIdx < numFlakes; fIdx++) {
-        const fAng = tNow * 0.9 + fIdx * ((Math.PI * 2) / numFlakes);
-        const riseU = (z.life * 0.85 + fIdx * 0.19) % 1.0;
-        const fx = Math.round((rx + Math.cos(fAng) * (rX * 0.76)) / 4) * 4;
-        const fy = Math.round((ry + Math.sin(fAng) * (rY * 0.5) - riseU * 36) / 4) * 4;
-        const flakeAlpha = fade * (1.0 - riseU * 0.75);
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = flakeAlpha;
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(fx - 2, fy - 2, 4, 4);
-        ctx.fillStyle = fIdx % 2 === 0 ? '#67e8f9' : '#e879f9';
-        ctx.fillRect(fx - 6, fy - 2, 4, 4);
-        ctx.fillRect(fx + 2, fy - 2, 4, 4);
-        ctx.fillRect(fx - 2, fy - 6, 4, 4);
-        ctx.fillRect(fx - 2, fy + 2, 4, 4);
       }
 
       if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
         const spireCol = Math.min(20, Math.floor((z.life * 18) % 16) + 5);
         for (const side of [-1, 1]) {
           const ex = Math.round((rx + side * (rX - 12)) / 4) * 4;
-          this.drawBloomedVfxCell(ctx, vfxSheet, 2, spireCol, ex, ry - 28, 76, fade * 0.92, renderer, 1.4);
+          this.drawBloomedVfxCell(ctx, vfxSheet, 2, spireCol, ex, ry - 28, 68, fade * 0.92, renderer, 1.4);
         }
       }
-    }
-
-    ctx.globalCompositeOperation = 'lighter';
-    for (const sr of this.skateRibbons) {
-      const fade = Math.max(0, 1 - sr.life / sr.maxLife);
-      const sx = Math.round(sr.x / 4) * 4;
-      const sy = Math.round((sr.y - sr.life * 18) / 4) * 4;
-      ctx.globalAlpha = fade * 0.88;
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(sx - 8, sy - 2, 16, 4);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(sx - 4, sy - 2, 8, 4);
-      ctx.fillRect(sx - 2, sy - 6, 4, 12);
     }
 
     ctx.restore();
   }
 
   /**
-   * Renders 2 Counter-Rotating Bloomed 6-Spoke Dendritic Snowflake-Prism Satellites behind Glacia's shoulders.
+   * Renders 2 Counter-Rotating Bloomed Snowflake-Prism Satellites behind Glacia's shoulders.
    */
   drawOrbitingCryoPrisms(ctx, renderer = null) {
     if (this.isDead) return;
@@ -1559,8 +1368,7 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * Multi-Layer Prisms & Beams: Renders Stepped 4x4 Pixel Dual-Helix Laser Chains + Diamond Nodes,
-   * Tri-Matrix Rose-Window Seal (Row 3), and 6-Spoke Dendritic Snowflake-Prism Turrets (Row 1).
+   * Renders Floating Hexagonal Cryo-Prism Mirrors (Row 1) & Tri-Matrix Rose-Window Seal (Row 3).
    */
   drawCryoPrismsAndMatrixSeal(ctx, renderer = null) {
     const vfxSheet = PixelForge.initAssets().icemage?.vfx;
@@ -1569,53 +1377,14 @@ export class IceMage extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    for (const b of this.prismBeams) {
-      const fade = Math.max(0, 1 - b.life / b.maxLife);
-      if (b.points.length < 2) continue;
-      for (let i = 0; i < b.points.length - 1; i++) {
-        this.drawSteppedPixelLine4x4(
-          ctx,
-          b.points[i].x,
-          b.points[i].y,
-          b.points[i + 1].x,
-          b.points[i + 1].y,
-          b.color || '#38bdf8',
-          '#ffffff',
-          fade,
-          renderer
-        );
-      }
-      for (let i = 0; i < b.points.length; i++) {
-        this.drawSteppedPixelDiamond4x4(
-          ctx,
-          b.points[i].x,
-          b.points[i].y,
-          2,
-          b.color || '#38bdf8',
-          '#a5f3fc',
-          fade
-        );
-      }
-    }
-
     if (this.triMatrixCage) {
       const mc = this.triMatrixCage;
       const fade = Math.min(1, (mc.maxLife - mc.life) * 3.0);
       const nodes = mc.nodes;
-      const beamCol = mc.imploded ? '#e879f9' : '#38bdf8';
       const cx = Math.round(((nodes[0].x + nodes[1].x + nodes[2].x) / 3) / 4) * 4;
       const cy = Math.round(((nodes[0].y + nodes[1].y + nodes[2].y) / 3) / 4) * 4;
       const sealCol = Math.floor(mc.life * 30) % 30;
       this.drawBloomedVfxCell(ctx, vfxSheet, 3, sealCol, cx, cy, 128, fade * 0.92, renderer, 1.8);
-
-      for (let i = 0; i < 3; i++) {
-        const n0 = nodes[i];
-        const n1 = nodes[(i + 1) % 3];
-        this.drawSteppedPixelLine4x4(ctx, n0.x, n0.y, n1.x, n1.y, beamCol, '#ffffff', fade, renderer);
-        if (mc.imploded) {
-          this.drawSteppedPixelLine4x4(ctx, n0.x, n0.y, cx, cy, '#e879f9', '#ffffff', fade, renderer);
-        }
-      }
     }
 
     const col = Math.floor(this.stateTimer * 30) % 30;
@@ -1628,7 +1397,7 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * Renders Sculpted Ice-Statue Decoy (Dodge), 7-Spire Refractive Glacial Ice-Wall (Crouch), & 4x4 Brittle Frost Diamonds.
+   * Renders Sculpted Ice-Statue Decoy (Dodge), Refractive Glacial Ice-Wall (Crouch), & Brittle Frost Crystals.
    */
   drawIceConstructsAndBrittle(ctx, renderer = null) {
     const sprites = PixelForge.initAssets().icemage;
@@ -1657,21 +1426,25 @@ export class IceMage extends Fighter {
       this.drawBloomedVfxCell(ctx, vfxSheet, 2, col, iw.x, iw.y - 68, 160, fade, renderer, 1.9);
     }
 
-    if (this.game && this.game.fighters) {
+    if (this.game && this.game.fighters && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+      const baseCol = Math.floor(this.stateTimer * 30) % 30;
       for (const f of this.game.fighters) {
         if (f !== this && !f.isDead && f.brittleStacks >= 1) {
           const count = Math.min(3, Math.floor(f.brittleStacks));
           for (let k = 0; k < count; k++) {
-            const ox = (k - 1) * 24;
-            const oy = -28 - (k % 2) * 16;
-            this.drawSteppedPixelDiamond4x4(
+            const ox = (k - 1) * 26;
+            const oy = -32 - (k % 2) * 18;
+            this.drawBloomedVfxCell(
               ctx,
+              vfxSheet,
+              1,
+              (baseCol + k * 7) % 30,
               f.x + ox,
               f.y + oy,
-              2,
-              k % 2 === 0 ? '#38bdf8' : '#c084fc',
-              '#ffffff',
-              0.96
+              36,
+              0.92,
+              renderer,
+              1.2
             );
           }
         }
@@ -1680,14 +1453,8 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * Multi-Layer Borealis Cathedral Ultimate:
-   *  - Layer 1: Additive stepped 4x4 pixel Aurora Borealis (Northern Lights) sky curtains
-   *  - Layer 2: 280x280 12-Point Borealis Snowflake Rose-Window Mandala (Row 3)
-   *  - Layer 3: 3 Multi-Spire 4x4 Pixel Glacier Crystal Clusters (Row 2) — two flanking 148x148 crystal clusters
-   *             + one central native 208x208 (1:1 4x4 pixel scale!) crystal cluster so every crystal facet is crisp pixel art!
-   *  - Layer 4: 7 Orbiting 104x104 6-Spoke Dendritic Snowflake-Prism Turrets (Row 1) + Converging 4x4 Pixel Laser Rays
-   *  - Layer 5: Stage 3 312x312 Hoarfrost Crescent Star-Ring Shatter Nova (Row 4)
-   *  (Layered with 120Hz `borealisCathedralDomain` back & front multi-layer shaders!)
+   * Renders the Colossal Borealis Cathedral Ultimate constructs (Rose Mandala, Faceted Diamond Iceberg,
+   * 7 Orbiting Snowflake-Prism Turrets, & Stage 3 Hoarfrost Shatter Starburst), layered with `borealisCathedralDomain`.
    */
   drawBorealisCathedral(ctx, renderer = null) {
     if (!this.borealisCathedral) return;
@@ -1702,140 +1469,67 @@ export class IceMage extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Stepped 4x4 Pixel Aurora Borealis Arch Ribbon & Falling 4x4 Diamond Snowflakes above the Cathedral
-    const t = performance.now() * 0.003;
-    ctx.globalCompositeOperation = 'lighter';
-    for (let i = -14; i <= 14; i++) {
-      const u = i / 14;
-      const rx = Math.round((cx + i * 16) / 4) * 4;
-      const archY = Math.round((cy - 284 + u * u * 72 + Math.sin(t * 1.8 + i * 0.45) * 8) / 4) * 4;
-      const col = i % 3 === 0 ? '#818cf8' : i % 2 === 0 ? '#38bdf8' : '#2dd4bf';
-      ctx.globalAlpha = fade * 0.62;
-      ctx.fillStyle = col;
-      ctx.fillRect(rx - 4, archY - 4, 8, 8);
-      ctx.globalAlpha = fade * 0.9;
-      ctx.fillStyle = '#e0f2fe';
-      ctx.fillRect(rx - 2, archY - 2, 4, 4);
-    }
-    for (let fIdx = 0; fIdx < 9; fIdx++) {
-      const fallU = (bc.life * 0.95 + fIdx * 0.17) % 1.0;
-      const sx = Math.round((cx + (fIdx - 4) * 44 + Math.sin(t + fIdx) * 12) / 4) * 4;
-      const sy = Math.round((cy - 295 + fallU * 195) / 4) * 4;
-      this.drawSteppedPixelDiamond4x4(
-        ctx,
-        sx,
-        sy,
-        1,
-        fIdx % 2 === 0 ? '#38bdf8' : '#67e8f9',
-        '#ffffff',
-        fade * (1 - fallU * 0.55)
-      );
-    }
-
-    // 2. Grand 12-Pointed Borealis Snowflake Rose-Window Mandala behind the Crystal Sanctuary (Row 3)
     const sealCol = Math.floor(bc.life * 24) % 30;
     this.drawBloomedVfxCell(ctx, vfxSheet, 3, sealCol, cx, cy - 156, 280, fade * 0.94, renderer, 2.0);
 
-    // 3. Multi-Spire 4x4 Pixel Glacier Crystal Sanctuary (Row 2: Flanking 148x148 Spires + Central Native 208x208 Cluster)
     const iceCol = bc.shattered
       ? Math.min(29, 22 + Math.floor(((bc.life - 0.98) / 0.52) * 8))
       : Math.min(21, Math.floor((bc.life / 0.98) * 21));
-    const flankCol = bc.shattered ? iceCol : Math.min(21, Math.max(3, iceCol - 2));
-    this.drawBloomedVfxCell(ctx, vfxSheet, 2, flankCol, cx - 104, cy - 76, 148, fade * 0.92, renderer, 1.6);
-    this.drawBloomedVfxCell(ctx, vfxSheet, 2, flankCol, cx + 104, cy - 76, 148, fade * 0.92, renderer, 1.6);
     this.drawBloomedVfxCell(
       ctx,
       vfxSheet,
       2,
       iceCol,
       cx,
-      cy - 104,
-      208,
-      fade * (bc.shattered ? 0.92 : 0.96),
+      cy - 132,
+      312,
+      fade * (bc.shattered ? 0.88 : 0.98),
       renderer,
-      1.95
+      2.1
     );
 
-    // 4. 7-Prism Orbital Refraction Crown (Row 1 Dendritic Snowflake Turrets) + Converging Stepped 4x4 Laser Rays
     const prismCol = Math.floor(bc.life * 30) % 30;
     for (let k = 0; k < 7; k++) {
       const ang = -Math.PI * 0.92 + (k / 6) * (Math.PI * 0.84);
       const px = Math.round((cx + Math.cos(ang) * 196) / 4) * 4;
       const py = Math.round((cy - 128 + Math.sin(ang) * 164) / 4) * 4;
-      if (bc.life >= 0.35 && !bc.shattered && k % 2 === 0) {
-        this.drawSteppedPixelLine4x4(
-          ctx,
-          px,
-          py,
-          cx,
-          cy - 116,
-          k % 4 === 0 ? '#38bdf8' : '#e879f9',
-          '#ffffff',
-          fade * 0.65,
-          renderer
-        );
-      }
       this.drawBloomedVfxCell(ctx, vfxSheet, 1, prismCol, px, py, 104, fade * 0.96, renderer, 1.6);
     }
 
-    // 5. Absolute Zero Hoarfrost Crescent Star-Ring Shatter at Stage 3 detonation (Row 4)
     if (bc.shattered) {
       const novaCol = Math.min(29, Math.floor(((bc.life - 0.98) / 0.52) * 30));
-      this.drawBloomedVfxCell(ctx, vfxSheet, 4, novaCol, cx, cy - 128, 312, fade * 0.96, renderer, 2.2);
+      this.drawBloomedVfxCell(ctx, vfxSheet, 4, novaCol, cx, cy - 136, 328, fade * 0.96, renderer, 2.2);
     }
 
     ctx.restore();
   }
 
   /**
-   * Pure 4x4 Pixel-Art Expanding Crystalline Snowflake Shockwave Rings + Row-4 Hoarfrost Starburst Novas.
+   * Stamps Row-4 Hoarfrost Shatter Starburst sprites for spiked shatter detonations.
    */
-  drawPixelFrostRings4x4(ctx, renderer = null) {
+  drawFrostShatterNovas(ctx, renderer = null) {
     if (!this.activeFrostRings.length) return;
     const vfxSheet = PixelForge.initAssets().icemage?.vfx;
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
 
     for (const r of this.activeFrostRings) {
+      if (!r.hasSpikes) continue;
       const u = Math.min(1, r.life / r.maxLife);
       const fade = Math.max(0, 1 - u);
-      const rad = r.maxRadius * (0.20 + 0.80 * Math.pow(u, 0.65));
-      const rx = Math.round(r.x / 4) * 4;
-      const ry = Math.round(r.y / 4) * 4;
-      const rX = rad;
-      const rY = r.isFloor ? rad * 0.24 : rad;
-
-      if (renderer && renderer.glowGlacial) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.45;
-        ctx.drawImage(renderer.glowGlacial, rx - rX * 1.15, ry - rY * 1.15, rX * 2.3, rY * 2.3);
-      }
-
-      if (r.hasSpikes && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-        const col = Math.min(29, Math.floor(u * 30));
-        this.drawBloomedVfxCell(ctx, vfxSheet, 4, col, rx, ry, Math.round(r.maxRadius * 1.45), fade * 0.88, renderer, 1.6);
-      }
-
-      ctx.globalCompositeOperation = 'lighter';
-      const steps = Math.max(24, Math.min(64, Math.round(rad * 0.55)));
-      for (let s = 0; s < steps; s++) {
-        const ang = (s / steps) * Math.PI * 2;
-        const spikeBoost = r.hasSpikes && s % 4 === 0 ? 1.22 : 1.0;
-        const px = Math.round((rx + Math.cos(ang) * rX * spikeBoost) / 4) * 4;
-        const py = Math.round((ry + Math.sin(ang) * rY * spikeBoost) / 4) * 4;
-
-        ctx.globalAlpha = fade * 0.58;
-        ctx.fillStyle = s % 3 === 0 ? '#e879f9' : r.color;
-        ctx.fillRect(px - 4, py - 4, 8, 8);
-
-        ctx.globalAlpha = fade * 0.95;
-        ctx.fillStyle = s % 2 === 0 ? '#ffffff' : '#a5f3fc';
-        ctx.fillRect(px - 2, py - 2, 4, 4);
-      }
+      const col = Math.min(29, Math.floor(u * 30));
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        4,
+        col,
+        r.x,
+        r.y,
+        Math.round(r.maxRadius * 1.45),
+        fade * 0.88,
+        renderer,
+        1.6
+      );
     }
-
-    ctx.restore();
   }
 
   drawForegroundOverlay(ctx, renderer = null) {
@@ -1844,11 +1538,11 @@ export class IceMage extends Fighter {
     this.drawPermafrostZones(ctx, renderer);
     this.drawIceConstructsAndBrittle(ctx, renderer);
     this.drawCryoPrismsAndMatrixSeal(ctx, renderer);
-    this.drawPixelFrostRings4x4(ctx, renderer);
   }
 
   drawUltimateForeground(ctx, renderer = null) {
     this.drawBorealisCathedral(ctx, renderer);
+    this.drawFrostShatterNovas(ctx, renderer);
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
   }

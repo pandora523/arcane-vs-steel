@@ -1,8 +1,17 @@
 import { Fighter } from './Fighter.js?v=30fps41';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps41';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
-import { ABYSSAL_EFFECT_REGISTRY } from '../engine/shaders/abyssalShaders.js?v=30fps52';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps53';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps53';
+import {
+  ABYSSAL_EFFECT_REGISTRY,
+  ABYSSAL_VIOLET_PALETTE,
+  BLOOD_MOON_CRIMSON_PALETTE
+} from '../engine/shaders/abyssalShaders.js?v=30fps53';
 
+/**
+ * Malakor (`reaper`) — Abyssal Necropolis Harvester & Sovereign of Death.
+ * Powered natively by `ArcaneShaderFX` (dual-buffer 120Hz HD-2D 2.5D shader & particle engine)
+ * + `assets/sprites/reaper_sheet.png` & `assets/sprites/reaper_vfx.png`.
+ */
 export class Reaper extends Fighter {
   constructor(x, groundY, facing = 1) {
     const opts = typeof x === 'object' && x !== null ? x : { x, groundY, facing };
@@ -32,12 +41,12 @@ export class Reaper extends Fighter {
     this.stepDustTimer = 0;
 
     // 100% Bespoke Soulreaper Harvester Systems
-    this.soulWisps = []; // Homing Soul-Skull Orbs ripped from enemy into Malakor
-    this.tombstones = []; // Haunted Gothic Gravestones & Tombstone Prison Cages on the arena floor
-    this.chainClaw = null; // Segmented Iron Chain + Giant Skeletal Bone Claw grapple
-    this.deathAvatar = null; // Towering Hooded Grim Reaper Specter looming behind the execution zone
-    this.wraithEchoes = []; // Crimson-Violet Wraith Afterimages left during Phantom Blitz & Wraith Float
-    this.activeBoomerangScythe = null; // Returning Twin-Blade Phantom Scythe Boomerang (outbound -> hover buzzsaw -> return)
+    this.soulWisps = []; // Homing Soul-Skull Wisps (Row 1 of reaper_vfx.png) ripped from enemy into Malakor
+    this.tombstones = []; // Haunted Gothic Tombstone Spires & Prison Cages (Row 2 of reaper_vfx.png)
+    this.deathAvatar = null; // Sovereign of Death state during GRIM HARVEST
+    this.activeBoomerangScythe = null; // Returning Twin-Blade Phantom Scythe Boomerang (Row 0 of reaper_vfx.png)
+    this.afterimages = []; // Crisp HD-2D Wraith Afterimages
+    this.activeVfxAnims = []; // Active 30fps reaper_vfx.png cell animations (Rows 0..4)
 
     // Underground Grave-Submerge & Spectral Wraith Float state
     this.isSubmerged = false;
@@ -64,16 +73,65 @@ export class Reaper extends Fighter {
       viewW: 440,
       viewH: 220
     });
+
+    if (typeof Image !== 'undefined') {
+      const reaperAssets = PixelForge.initAssets()?.reaper;
+      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps53')) {
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps53';
+      }
+    }
   }
 
   setState(newState) {
     super.setState(newState);
-    if (newState !== 'CROUCH') {
-      this.fx?.stopByKey('abyssalShadowPool');
+    if (
+      newState !== 'CROUCH' &&
+      newState !== 'DODGE' &&
+      newState !== 'DASH' &&
+      newState !== 'JUMP'
+    ) {
+      this.fx?.stopByKey('abyssalWraithMantle');
+    }
+    if (newState !== 'ULTIMATE') {
+      this.deathAvatar = null;
+      this.fx?.stopByKey('deathAvatarCathedral');
     }
     if (newState === 'DEATH') {
       this.fx?.clear();
     }
+  }
+
+  spawnAfterimage(x, y, facing, row = 6, col = 14, maxLife = 0.28) {
+    this.afterimages.push({
+      x,
+      y,
+      facing,
+      frameIdx: row * 30 + col,
+      age: 0,
+      maxLife
+    });
+  }
+
+  spawnVfxAnim(row, x, y, w = 208, h = 208, maxLife = 0.44, opts = {}) {
+    this.activeVfxAnims.push({
+      row,
+      x,
+      y,
+      vx: opts.vx || 0,
+      vy: opts.vy || 0,
+      w,
+      h,
+      age: 0,
+      maxLife,
+      flipX: Boolean(opts.flipX),
+      startFrame: opts.startFrame || 0,
+      endFrame: opts.endFrame !== undefined ? opts.endFrame : 29,
+      glowColor: opts.glowColor || 'violet',
+      followOwner: Boolean(opts.followOwner),
+      offsetX: opts.offsetX || 0,
+      offsetY: opts.offsetY || 0,
+      inFront: Boolean(opts.inFront)
+    });
   }
 
   getEffectiveAttackRange() {
@@ -83,7 +141,8 @@ export class Reaper extends Fighter {
 
   /**
    * Bespoke Necrotic Soul-Siphon
-   * Rips homing crimson-violet Soul-Skull Orbs out of the enemy that curve into Malakor's chest.
+   * Rips homing crimson-violet Soul-Skull Wisps (Row 1 of `reaper_vfx.png` + `skeletalChainTetherBeam` comet)
+   * out of the enemy that curve into Malakor's chest.
    */
   leechLife(amount, sourceEntity, game, label = 'SOUL LEECH') {
     if (this.isDead || amount <= 0) return 0;
@@ -98,7 +157,7 @@ export class Reaper extends Fighter {
 
     const fromX = sourceEntity ? sourceEntity.x : this.x + this.facing * 120;
     const fromY = sourceEntity ? sourceEntity.y - 96 : this.y - 96;
-    const count = Math.min(7, Math.max(3, Math.round(actual / 9)));
+    const count = Math.min(5, Math.max(2, Math.round(actual / 9)));
     for (let i = 0; i < count; i++) {
       this.soulWisps.push({
         startX: fromX + (Math.random() - 0.5) * 36,
@@ -106,17 +165,20 @@ export class Reaper extends Fighter {
         arcHeight: -45 - Math.random() * 65 + (i % 2 === 0 ? -25 : 25),
         life: -i * 0.045,
         maxLife: 0.48 + Math.random() * 0.14,
-        color: i % 2 === 0 ? '#c084fc' : '#f43f5e'
+        glowColor: i % 2 === 0 ? 'violet' : 'crimson'
       });
     }
     if (this.fx) {
-      this.fx.spawn('soulSiphonComet', fromX, fromY, {
+      this.fx.spawn('skeletalChainTetherBeam', fromX, fromY, {
         light: 1.26,
         extra: {
           dx: this.x - fromX,
           dy: this.y - 96 - fromY,
           arcH: -60,
-          isCrimson: count % 2 === 0
+          isCrimson: count % 2 === 0,
+          isComet: true,
+          showClaw: false,
+          customDuration: 0.48
         }
       });
     }
@@ -142,6 +204,11 @@ export class Reaper extends Fighter {
         seed: i * 1.7
       });
     }
+    this.fx?.spawn('necroticGraveyardSigil', centerX, this.groundY, {
+      palette: ABYSSAL_VIOLET_PALETTE,
+      light: 1.24,
+      extra: { radius: 42, isPrison: false, customDuration: 1.1 }
+    });
   }
 
   /**
@@ -165,13 +232,18 @@ export class Reaper extends Fighter {
         seed: i * 2.3
       });
     }
+    this.fx?.spawn('necroticGraveyardSigil', enemyX, this.groundY, {
+      palette: ABYSSAL_VIOLET_PALETTE,
+      light: 1.3,
+      extra: { radius: 34, isPrison: true, isCrimson: true, customDuration: 1.45 }
+    });
   }
 
   /**
    * Spawns a Returning Twin-Blade Phantom Scythe Boomerang that flies out 385px,
    * buzz-saws in place for 0.24s, and then reverses back to Malakor's hand!
    */
-  spawnBoomerangScythe(game) {
+  spawnBoomerangScythe() {
     const startX = this.x + this.facing * 54;
     const startY = this.y - 102;
     this.activeBoomerangScythe = {
@@ -220,12 +292,18 @@ export class Reaper extends Fighter {
     this.submergeDir = enemy ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
     this.facing = this.submergeDir;
     this.vx = 0;
-    this.fx?.spawn('abyssalShadowPool', this.x, this.groundY, {
+    this.fx?.spawn('abyssalWraithMantle', this.x, this.groundY, {
       follow: this,
       offsetX: 0,
       offsetY: 0,
       useGroundY: true,
-      light: 1.24
+      light: 1.28,
+      extra: { radius: 30, isSubmerged: true }
+    });
+    this.fx?.spawn('necroticGraveyardSigil', this.x, this.groundY, {
+      palette: ABYSSAL_VIOLET_PALETTE,
+      light: 1.2,
+      extra: { radius: 26, isPrison: false, customDuration: 0.48 }
     });
     if (game && game.audio) game.audio.play('soul_drain', this.x);
     if (game && game.vfx) {
@@ -244,6 +322,15 @@ export class Reaper extends Fighter {
     this.submergeDepth = 0.45;
     this.isWraithPhase = false;
     this.vx = dir * 485;
+    this.fx?.spawn('abyssalWraithMantle', this.x, this.groundY, {
+      follow: this,
+      offsetX: 0,
+      offsetY: 0,
+      useGroundY: true,
+      maxDuration: 0.38,
+      light: 1.22,
+      extra: { radius: 24, isSubmerged: false }
+    });
     if (game.audio) game.audio.play('scythe_reap', this.x);
     game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 6, 'abyssal');
     game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'SHADOW STALK!', '#c084fc');
@@ -279,6 +366,19 @@ export class Reaper extends Fighter {
 
       this.vx = 0;
       this.vy = 0;
+      this.fx?.spawn('abyssalWraithMantle', this.x, this.y - 44, {
+        follow: this,
+        offsetX: 0,
+        offsetY: -44,
+        maxDuration: 0.58,
+        light: 1.24,
+        extra: { radius: 26, isSubmerged: false, isCrimson: true }
+      });
+      this.fx?.spawn('necroticGraveyardSigil', this.x, this.groundY, {
+        palette: ABYSSAL_VIOLET_PALETTE,
+        light: 1.18,
+        extra: { radius: 24, isPrison: false, customDuration: 0.42 }
+      });
       if (game.audio) game.audio.play('soul_drain', this.x);
       game.vfx.spawnShockwave(this.x, this.groundY, 92, '#c084fc', 0.30, true);
       game.vfx.spawnGlyphBurst(this.x, this.y - 60, 7, 'abyssal');
@@ -303,6 +403,15 @@ export class Reaper extends Fighter {
       this.phaseTargetX = Math.max(95, Math.min(ww - 95, behindX));
       this.dashDir = Math.sign(this.phaseTargetX - this.phaseStartX) || passDir;
       this.vx = 0;
+      this.fx?.spawn('abyssalWraithMantle', this.x, this.groundY, {
+        follow: this,
+        offsetX: 0,
+        offsetY: 0,
+        useGroundY: true,
+        maxDuration: 0.34,
+        light: 1.28,
+        extra: { radius: 28, isSubmerged: true, isCrimson: true }
+      });
       if (game.audio) game.audio.play('soul_drain', this.x);
       game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 8, 'abyssal');
       game.vfx.spawnDamageText(this.x, this.y - 144, 0, false, 'WRAITH PHASE!', '#e879f9');
@@ -318,6 +427,15 @@ export class Reaper extends Fighter {
     const smartDir = enemy && dist > 195 ? this.facing : dir;
     this.dashDir = smartDir;
     this.vx = smartDir * 445;
+    this.fx?.spawn('abyssalWraithMantle', this.x, this.groundY, {
+      follow: this,
+      offsetX: 0,
+      offsetY: 0,
+      useGroundY: true,
+      maxDuration: 0.36,
+      light: 1.22,
+      extra: { radius: 24, isSubmerged: false }
+    });
     if (game.audio) game.audio.play('soul_drain', this.x);
     game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 7, 'abyssal');
     game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'GRAVE MELD!', '#e879f9');
@@ -349,16 +467,9 @@ export class Reaper extends Fighter {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
 
-      // Leave spectral wraith echoes while floating across the sky
+      // Leave spectral wraith afterimages while floating across the sky
       if (u < 0.62 && Math.random() < 0.45) {
-        this.wraithEchoes.push({
-          x: this.x,
-          y: this.y,
-          facing: this.facing,
-          frameIdx: 248,
-          life: 0,
-          maxLife: 0.26
-        });
+        this.spawnAfterimage(this.x, this.y, this.facing, 8, Math.min(29, Math.floor(u * 29)), 0.26);
       }
 
       // At u >= 0.58: Executioner Guillotine Cleave (Missing-HP Execute Damage!)
@@ -369,6 +480,17 @@ export class Reaper extends Fighter {
         const cy = this.y - 82;
         const sA = this.facing === 1 ? -1.95 : Math.PI - 1.25;
         const eA = this.facing === 1 ? 1.25 : Math.PI + 1.95;
+
+        this.fx?.spawn('soulHarvestScytheArc', cx, cy, {
+          flip: this.facing < 0,
+          light: 1.38,
+          extra: { radiusWorld: 138, isCrimson: true, isCross: true, isUppercut: false }
+        });
+        this.spawnVfxAnim(4, cx, cy, 208, 208, 0.34, {
+          flipX: this.facing < 0,
+          glowColor: 'crimson',
+          inFront: true
+        });
         game.vfx.spawnSlash(cx, cy, 138, sA, eA, '#f43f5e', 0.32);
         game.vfx.spawnSlash(cx, cy, 114, sA, eA, '#c084fc', 0.26);
         game.vfx.spawnGlyphBurst(cx, cy, 7, 'abyssal');
@@ -389,6 +511,11 @@ export class Reaper extends Fighter {
         this.isFlipVault = false;
         this.wraithAlpha = 1.0;
         this.isInvulnerable = false;
+        this.fx?.spawn('necroticGraveyardSigil', this.x, this.groundY, {
+          palette: ABYSSAL_VIOLET_PALETTE,
+          light: 1.18,
+          extra: { radius: 24, isPrison: false, customDuration: 0.38 }
+        });
         game.vfx.spawnShockwave(this.x, this.groundY, 84, '#c084fc', 0.26, true);
         this.setState('IDLE');
       }
@@ -453,6 +580,11 @@ export class Reaper extends Fighter {
       enemy.takeDamage(34, this, false, -58, -65);
       this.leechLife(10, enemy, game, 'SOUL HOOK');
       if (game.audio) game.audio.play('scythe_reap', enemy.x);
+      this.fx?.spawn('soulHarvestScytheArc', this.x + this.facing * 44, this.y - 96, {
+        flip: this.facing < 0,
+        light: 1.24,
+        extra: { radiusWorld: 118, isCrimson: false, isUppercut: false }
+      });
       game.vfx.spawnSlash(this.x + this.facing * 44, this.y - 96, 118, -1.3, 1.2, '#c084fc', 0.28);
     }
 
@@ -508,6 +640,7 @@ export class Reaper extends Fighter {
       this.isSubmerged = false;
       this.submergeDepth = 0;
       this.comboStep++;
+      this.fx?.stopByKey('abyssalWraithMantle');
       if (enemy && !enemy.isDead) {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
@@ -521,6 +654,22 @@ export class Reaper extends Fighter {
       const eruptY = this.groundY - 96;
       const sA = this.facing === 1 ? 1.45 : Math.PI - 1.45;
       const eA = this.facing === 1 ? -1.75 : Math.PI + 1.75;
+
+      this.fx?.spawn('soulHarvestScytheArc', eruptX, eruptY, {
+        flip: this.facing < 0,
+        light: 1.38,
+        extra: { radiusWorld: 138, isCrimson: true, isUppercut: true }
+      });
+      this.fx?.spawn('necroticGraveyardSigil', this.x, this.groundY, {
+        palette: BLOOD_MOON_CRIMSON_PALETTE,
+        light: 1.28,
+        extra: { radius: 30, isPrison: false, isCrimson: true, customDuration: 0.56 }
+      });
+      this.spawnVfxAnim(4, eruptX, eruptY, 208, 208, 0.34, {
+        flipX: this.facing < 0,
+        glowColor: 'crimson',
+        inFront: true
+      });
       game.vfx.spawnSlash(eruptX, eruptY, 136, sA, eA, '#c084fc', 0.34);
       game.vfx.spawnSlash(eruptX, eruptY, 112, sA, eA, '#f43f5e', 0.28);
       game.vfx.spawnShockwave(this.x, this.groundY, 118, '#c084fc', 0.32, true);
@@ -548,7 +697,31 @@ export class Reaper extends Fighter {
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
 
-    // Advance Returning Boomerang Phantom Scythe
+    // 1. Step Wraith Afterimages
+    for (let i = this.afterimages.length - 1; i >= 0; i--) {
+      this.afterimages[i].age += dt;
+      if (this.afterimages[i].age >= this.afterimages[i].maxLife) {
+        this.afterimages.splice(i, 1);
+      }
+    }
+
+    // 2. Step Active 30fps `reaper_vfx.png` Animations
+    for (let i = this.activeVfxAnims.length - 1; i >= 0; i--) {
+      const v = this.activeVfxAnims[i];
+      v.age += dt;
+      if (v.followOwner) {
+        v.x = this.x + v.offsetX * this.facing;
+        v.y = this.y + v.offsetY;
+      } else {
+        v.x += v.vx * dt;
+        v.y += v.vy * dt;
+      }
+      if (v.age >= v.maxLife) {
+        this.activeVfxAnims.splice(i, 1);
+      }
+    }
+
+    // 3. Advance Returning Boomerang Phantom Scythe (rendered via Row 0 `soulScytheWaveCell`)
     if (this.activeBoomerangScythe) {
       const bs = this.activeBoomerangScythe;
       bs.timer += dt;
@@ -556,7 +729,13 @@ export class Reaper extends Fighter {
 
       if (bs.phase === 'outbound') {
         bs.x += bs.dir * 680 * dt;
-        if (!bs.hitOutbound && enemy && !enemy.isDead && Math.abs(enemy.x - bs.x) < 54 && Math.abs((enemy.y - 96) - bs.y) < 84) {
+        if (
+          !bs.hitOutbound &&
+          enemy &&
+          !enemy.isDead &&
+          Math.abs(enemy.x - bs.x) < 54 &&
+          Math.abs(enemy.y - 96 - bs.y) < 84
+        ) {
           bs.hitOutbound = true;
           enemy.takeDamage(28, this, false, -38, -50);
           this.leechLife(7, enemy, game, 'SCYTHE REAP');
@@ -576,14 +755,31 @@ export class Reaper extends Fighter {
         if (bs.timer >= 0.24) {
           bs.phase = 'return';
           bs.timer = 0;
+          this.fx?.spawn('skeletalChainTetherBeam', this.x + this.facing * 36, this.y - 96, {
+            light: 1.24,
+            extra: {
+              dx: bs.x - (this.x + this.facing * 36),
+              dy: bs.y - (this.y - 96),
+              arcH: -18,
+              isCrimson: true,
+              showClaw: false,
+              customDuration: 0.28
+            }
+          });
         }
       } else if (bs.phase === 'return') {
         const dx = this.x - bs.x;
-        const dy = (this.y - 98) - bs.y;
+        const dy = this.y - 98 - bs.y;
         const dist = Math.hypot(dx, dy) || 1;
         bs.x += (dx / dist) * 760 * dt;
         bs.y += (dy / dist) * 760 * dt;
-        if (!bs.hitReturn && enemy && !enemy.isDead && Math.abs(enemy.x - bs.x) < 58 && Math.abs((enemy.y - 96) - bs.y) < 84) {
+        if (
+          !bs.hitReturn &&
+          enemy &&
+          !enemy.isDead &&
+          Math.abs(enemy.x - bs.x) < 58 &&
+          Math.abs(enemy.y - 96 - bs.y) < 84
+        ) {
           bs.hitReturn = true;
           // Return hit pulls the enemy INWARD toward Malakor!
           enemy.takeDamage(32, this, true, -95, -80);
@@ -597,7 +793,7 @@ export class Reaper extends Fighter {
       }
     }
 
-    // Advance Homing Soul-Wisp Orbs
+    // 4. Advance Homing Soul-Wisp Orbs (rendered via Row 1 `abyssalSkullWispCell`)
     for (let i = this.soulWisps.length - 1; i >= 0; i--) {
       const w = this.soulWisps[i];
       w.life += dt;
@@ -606,7 +802,7 @@ export class Reaper extends Fighter {
       }
     }
 
-    // Advance Haunted Tombstones & apply Tombstone Prison Cage slow/soul-drain to trapped enemies!
+    // 5. Advance Haunted Tombstones & apply Tombstone Prison Cage slow/soul-drain to trapped enemies!
     for (let i = this.tombstones.length - 1; i >= 0; i--) {
       const ts = this.tombstones[i];
       if (ts.delay > 0) {
@@ -624,20 +820,11 @@ export class Reaper extends Fighter {
       }
     }
 
-    // Advance Giant Grim Reaper Death Avatar
+    // 6. Advance Giant Grim Reaper Death Avatar state
     if (this.deathAvatar) {
       this.deathAvatar.life -= dt;
       if (this.deathAvatar.life <= 0) {
         this.deathAvatar = null;
-      }
-    }
-
-    // Advance Wraith Afterimage Echoes
-    for (let i = this.wraithEchoes.length - 1; i >= 0; i--) {
-      const ec = this.wraithEchoes[i];
-      ec.life += dt;
-      if (ec.life >= ec.maxLife) {
-        this.wraithEchoes.splice(i, 1);
       }
     }
 
@@ -677,14 +864,18 @@ export class Reaper extends Fighter {
       if (this.stepDustTimer >= 0.32) {
         this.stepDustTimer = 0;
         if (game.audio) game.audio.play('footstep_steel', this.x);
-        game.vfx.spawnBurst(this.x - this.facing * 14, this.groundY - 2, 4, '#c084fc', 65, {
-          upBias: 28,
-          size: 4,
-          life: 0.34,
-          additive: true
+        this.fx?.burst(this.x - this.facing * 14, this.groundY - 2, {
+          count: 4,
+          speedMin: 30,
+          speedMax: 80,
+          lifeMin: 0.14,
+          lifeMax: 0.28,
+          gravity: 25,
+          colors: ['#ffffff', '#c084fc', '#f43f5e']
         });
       }
     }
+
     this.fx?.update(dt);
     super.update(dt, enemy, game);
   }
@@ -724,11 +915,16 @@ export class Reaper extends Fighter {
           if (game.audio) game.audio.play('scythe_reap', this.x);
           game.vfx.spawnDamageText(this.x, this.y - 146, 0, false, 'BOOMERANG SCYTHE!', '#e879f9');
           this.spawnBoomerangScythe(game);
+          this.spawnVfxAnim(4, cx, cy, 200, 200, 0.32, {
+            flipX: this.facing < 0,
+            glowColor: 'crimson',
+            inFront: true
+          });
         } else {
           if (game.audio) game.audio.play('scythe_reap', this.x);
         }
 
-        this.fx?.spawn('reaperScytheCleaveArc', cx, cy, {
+        this.fx?.spawn('soulHarvestScytheArc', cx, cy, {
           flip: this.facing < 0,
           light: mode === 2 ? 1.38 : 1.22,
           extra: { radiusWorld: 132, isCrimson: mode === 2, isUppercut: mode === 1 }
@@ -769,11 +965,6 @@ export class Reaper extends Fighter {
       this.didReapFinisher = false;
       this.torsoAngle = -this.facing * 0.22;
       this.isDeflecting = enemy ? Math.abs(enemy.x - this.x) > 195 : false;
-      this.chainClaw = {
-        targetX: enemy ? enemy.x : this.x + this.facing * 320,
-        targetY: enemy ? enemy.y - 96 : this.y - 96,
-        phase: 'extend'
-      };
     } else if (t < 0.44) {
       if (!this.didChainPull) {
         this.didChainPull = true;
@@ -781,16 +972,21 @@ export class Reaper extends Fighter {
 
         const targetX = enemy ? enemy.x : this.x + this.facing * 320;
         const targetY = enemy ? enemy.y - 96 : this.y - 96;
-        this.chainClaw = { targetX, targetY, phase: 'drag' };
 
-        this.fx?.spawn('spectralChainTether', this.x + this.facing * 44, this.y - 94, {
-          light: 1.28,
+        this.fx?.spawn('skeletalChainTetherBeam', this.x + this.facing * 44, this.y - 94, {
+          light: 1.32,
           extra: {
             dx: targetX - (this.x + this.facing * 44),
             dy: targetY - (this.y - 94),
+            arcH: 14,
             isCrimson: false,
-            customDuration: 0.34
+            showClaw: true,
+            customDuration: 0.36
           }
+        });
+        this.spawnVfxAnim(3, targetX, targetY, 184, 184, 0.34, {
+          glowColor: 'violet',
+          inFront: false
         });
         game.vfx.spawnGlyphBurst(targetX, targetY, 8, 'abyssal');
 
@@ -807,16 +1003,10 @@ export class Reaper extends Fighter {
         }
         const desiredX = Math.max(95, Math.min(ww - 95, this.x + this.facing * 124));
         enemy.x += (desiredX - enemy.x) * Math.min(1, dt * 5.5);
-        this.chainClaw = {
-          targetX: enemy.x,
-          targetY: enemy.y - 96,
-          phase: 'drag'
-        };
       }
     } else if (!this.didReapFinisher) {
       this.didReapFinisher = true;
       this.isDeflecting = false;
-      this.chainClaw = null;
       if (game.audio) game.audio.play('scythe_reap', this.x);
       game.renderer.triggerShake(14, 0.28);
       game.renderer.triggerHitStop(0.06);
@@ -824,10 +1014,15 @@ export class Reaper extends Fighter {
       const reapX = this.x + this.facing * 56;
       const startA = this.facing === 1 ? -1.85 : Math.PI - 1.35;
       const endA = this.facing === 1 ? 1.35 : Math.PI + 1.85;
-      this.fx?.spawn('reaperScytheCleaveArc', reapX, this.y - 98, {
+      this.fx?.spawn('soulHarvestScytheArc', reapX, this.y - 98, {
         flip: this.facing < 0,
-        light: 1.36,
-        extra: { radiusWorld: 146, isCrimson: true, isUppercut: false }
+        light: 1.38,
+        extra: { radiusWorld: 146, isCrimson: true, isCross: true, isUppercut: false }
+      });
+      this.spawnVfxAnim(4, reapX, this.y - 98, 212, 212, 0.36, {
+        flipX: this.facing < 0,
+        glowColor: 'crimson',
+        inFront: true
       });
       game.vfx.spawnSlash(reapX, this.y - 98, 142, startA, endA, '#c084fc', 0.34);
       game.vfx.spawnSlash(reapX, this.y - 98, 114, startA, endA, '#f43f5e', 0.28);
@@ -843,23 +1038,22 @@ export class Reaper extends Fighter {
       }
     } else if (t >= 0.88) {
       this.isDeflecting = false;
-      this.chainClaw = null;
       this.setState('IDLE');
     }
   }
 
   spawnWraithTrail(fromX, fromY, toX, toY, facing, count = 4) {
-    const frames = [188, 72, 74, 192];
+    const cols = [8, 12, 16, 20];
     for (let i = 0; i < count; i++) {
       const u = i / Math.max(1, count);
-      this.wraithEchoes.push({
-        x: fromX + (toX - fromX) * u,
-        y: fromY + (toY - fromY) * u,
+      this.spawnAfterimage(
+        fromX + (toX - fromX) * u,
+        fromY + (toY - fromY) * u,
         facing,
-        frameIdx: frames[i % frames.length],
-        life: 0,
-        maxLife: 0.34 + i * 0.05
-      });
+        4,
+        cols[i % cols.length],
+        0.34 + i * 0.04
+      );
     }
   }
 
@@ -878,39 +1072,15 @@ export class Reaper extends Fighter {
       this.y = this.groundY;
       this.ultPassStartX = this.x;
       this.ultPassTargetX = targetX;
-      this.ultScytheWaves = [];
-      this.ultSlashRibbons = [];
     }
 
-    // Advance active Ultimate Scythe Vortex Waves & Guillotine Slash Ribbons
-    if (this.ultScytheWaves) {
-      for (let i = this.ultScytheWaves.length - 1; i >= 0; i--) {
-        const sw = this.ultScytheWaves[i];
-        sw.x += sw.vx * dt;
-        sw.y += sw.vy * dt;
-        sw.life += dt;
-        if (sw.life >= sw.maxLife) {
-          this.ultScytheWaves.splice(i, 1);
-        }
-      }
-    }
-    if (this.ultSlashRibbons) {
-      for (let i = this.ultSlashRibbons.length - 1; i >= 0; i--) {
-        const sr = this.ultSlashRibbons[i];
-        sr.life += dt;
-        if (sr.life >= sr.maxLife) {
-          this.ultSlashRibbons.splice(i, 1);
-        }
-      }
-    }
-
-    // STAGE 1 (t >= 0.04s): Blood-Moon Eclipse Domain, Flanking Crypt Obelisks & Sovereign of Death Awakening
+    // STAGE 1 (t >= 0.04s): Blood-Moon Eclipse Cathedral, Flanking Crypt Obelisks & Sovereign of Death Awakening
     if (t >= 0.04 && this.ultStage === 0) {
       this.ultStage = 1;
       if (game.audio) game.audio.play('soul_drain', targetX);
       game.renderer.triggerShake(15, 0.28);
 
-      // Spawn 2 flanking Haunted Crypt Obelisks framing the execution arena (never cluttering center!)
+      // Spawn 2 flanking Haunted Crypt Obelisks framing the execution arena (rendered via Row 2 of reaper_vfx.png!)
       this.tombstones = [];
       for (const side of [-1, 1]) {
         const tx = Math.max(85, Math.min(ww - 85, targetX + side * 185));
@@ -932,13 +1102,15 @@ export class Reaper extends Fighter {
         y: this.groundY,
         facing: this.facing,
         life: 1.52,
-        maxLife: 1.52,
-        swingProgress: 0,
-        eclipsePhase: 0
+        maxLife: 1.52
       };
 
-      this.fx?.spawn('bloodMoonEclipseDomain', targetX, this.groundY, {
+      this.fx?.spawn('deathAvatarCathedral', targetX, this.groundY, {
         light: 1.42
+      });
+      this.spawnVfxAnim(3, targetX, this.groundY - 104, 240, 240, 1.48, {
+        glowColor: 'crimson',
+        inFront: false
       });
       game.vfx.spawnShockwave(targetX, this.groundY, 210, '#f43f5e', 0.42, true);
       game.vfx.spawnShockwave(targetX, this.groundY, 155, '#c084fc', 0.36, true);
@@ -961,27 +1133,22 @@ export class Reaper extends Fighter {
       this.facing = -dir;
 
       this.spawnWraithTrail(this.ultPassStartX, this.groundY, this.ultPassTargetX, this.groundY, dir, 5);
-      this.ultSlashRibbons.push({
-        x1: targetX - dir * 185,
-        y1: this.groundY - 58,
-        cx: targetX,
-        cy: this.groundY - 142,
-        x2: targetX + dir * 185,
-        y2: this.groundY - 118,
-        color: '#c084fc',
-        core: '#ffffff',
-        width: 22,
-        life: 0,
-        maxLife: 0.36
+      this.fx?.spawn('soulHarvestScytheArc', targetX, this.groundY - 102, {
+        flip: dir < 0,
+        light: 1.38,
+        extra: { radiusWorld: 156, isCrimson: false, isCross: false, isUppercut: false }
       });
-      this.ultScytheWaves.push({
-        x: targetX - dir * 85,
-        y: this.groundY - 98,
-        vx: dir * 320,
-        vy: -20,
-        size: 158,
-        life: 0,
-        maxLife: 0.44
+      this.spawnVfxAnim(0, targetX - dir * 65, this.groundY - 98, 192, 192, 0.42, {
+        vx: dir * 290,
+        vy: -18,
+        flipX: dir < 0,
+        glowColor: 'violet',
+        inFront: true
+      });
+      this.spawnVfxAnim(4, targetX, this.groundY - 102, 208, 208, 0.34, {
+        flipX: dir < 0,
+        glowColor: 'violet',
+        inFront: true
       });
 
       const sA = this.facing === 1 ? -1.85 : Math.PI - 1.35;
@@ -1023,27 +1190,22 @@ export class Reaper extends Fighter {
         dir,
         5
       );
-      this.ultSlashRibbons.push({
-        x1: targetX - dir * 190,
-        y1: this.groundY - 195,
-        cx: targetX,
-        cy: this.groundY - 82,
-        x2: targetX + dir * 190,
-        y2: this.groundY - 32,
-        color: '#f43f5e',
-        core: '#ffe4e6',
-        width: 24,
-        life: 0,
-        maxLife: 0.38
+      this.fx?.spawn('soulHarvestScytheArc', targetX, this.groundY - 116, {
+        flip: dir < 0,
+        light: 1.4,
+        extra: { radiusWorld: 162, isCrimson: true, isCross: false, isUppercut: false }
       });
-      this.ultScytheWaves.push({
-        x: targetX - dir * 75,
-        y: this.groundY - 124,
-        vx: dir * 290,
-        vy: 45,
-        size: 164,
-        life: 0,
-        maxLife: 0.44
+      this.spawnVfxAnim(0, targetX - dir * 60, this.groundY - 118, 196, 196, 0.42, {
+        vx: dir * 265,
+        vy: 38,
+        flipX: dir < 0,
+        glowColor: 'crimson',
+        inFront: true
+      });
+      this.spawnVfxAnim(4, targetX, this.groundY - 114, 212, 212, 0.36, {
+        flipX: dir < 0,
+        glowColor: 'crimson',
+        inFront: true
       });
 
       const sA = this.facing === 1 ? -1.95 : Math.PI - 1.45;
@@ -1078,18 +1240,21 @@ export class Reaper extends Fighter {
       this.facing = dir;
 
       this.spawnWraithTrail(this.ultPassStartX, this.groundY - 38, this.ultPassTargetX, this.groundY, dir, 4);
-      this.ultSlashRibbons.push({
-        x1: targetX - 145,
-        y1: this.groundY - 24,
-        cx: targetX,
-        cy: this.groundY - 215,
-        x2: targetX + 145,
-        y2: this.groundY - 24,
-        color: '#a855f7',
-        core: '#ffffff',
-        width: 24,
-        life: 0,
-        maxLife: 0.40
+      this.fx?.spawn('soulHarvestScytheArc', targetX, this.groundY - 104, {
+        flip: dir < 0,
+        light: 1.4,
+        extra: { radiusWorld: 152, isCrimson: false, isCross: true, isUppercut: true }
+      });
+      this.fx?.spawn('skeletalChainTetherBeam', this.x, this.y - 84, {
+        light: 1.34,
+        extra: {
+          dx: targetX - this.x,
+          dy: this.groundY - 96 - (this.y - 84),
+          arcH: -22,
+          isCrimson: true,
+          showClaw: true,
+          customDuration: 0.32
+        }
       });
 
       game.vfx.spawnShockwave(targetX, this.groundY - 96, 145, '#c084fc', 0.34, false, true);
@@ -1111,10 +1276,6 @@ export class Reaper extends Fighter {
 
     if (this.deathAvatar) {
       this.deathAvatar.x = targetX;
-      this.deathAvatar.eclipsePhase = t * 5.2;
-      if (t >= 0.78) {
-        this.deathAvatar.swingProgress = Math.min(1, (t - 0.78) / 0.30);
-      }
     }
 
     // STAGE 5 (t >= 1.00s): Synchronized Sovereign X-Guillotine Cataclysm & 3 Abyssal Soul-Geysers!
@@ -1126,35 +1287,25 @@ export class Reaper extends Fighter {
       game.renderer.triggerAberration(16);
       game.renderer.triggerHitStop(0.095);
 
-      // Giant Crisscrossing Crimson & Violet X-Guillotine Ribbons across the enemy!
-      this.ultSlashRibbons.push(
-        {
-          x1: targetX - 235,
-          y1: this.groundY - 265,
-          cx: targetX,
-          cy: this.groundY - 115,
-          x2: targetX + 235,
-          y2: this.groundY - 10,
-          color: '#f43f5e',
-          core: '#ffffff',
-          width: 32,
-          life: 0,
-          maxLife: 0.52
-        },
-        {
-          x1: targetX + 235,
-          y1: this.groundY - 265,
-          cx: targetX,
-          cy: this.groundY - 115,
-          x2: targetX - 235,
-          y2: this.groundY - 10,
-          color: '#c084fc',
-          core: '#ffffff',
-          width: 32,
-          life: 0,
-          maxLife: 0.52
-        }
-      );
+      // Giant Crisscrossing Crimson & Violet X-Guillotine Crescent Arcs + Row-4 Reap Nova + Row-3 Pentagram Seal
+      this.fx?.spawn('soulHarvestScytheArc', targetX, this.groundY - 108, {
+        flip: false,
+        light: 1.48,
+        extra: { radiusWorld: 162, isCrimson: true, isCross: true, isUppercut: false }
+      });
+      this.fx?.spawn('necroticGraveyardSigil', targetX, this.groundY, {
+        palette: BLOOD_MOON_CRIMSON_PALETTE,
+        light: 1.42,
+        extra: { radius: 46, isPrison: true, isCrimson: true, customDuration: 0.62 }
+      });
+      this.spawnVfxAnim(3, targetX, this.groundY - 96, 236, 236, 0.48, {
+        glowColor: 'crimson',
+        inFront: true
+      });
+      this.spawnVfxAnim(4, targetX, this.groundY - 102, 244, 244, 0.46, {
+        glowColor: 'crimson',
+        inFront: true
+      });
 
       // Erupt 3 towering Abyssal Soul-Geyser Pillars (center + flanking)
       const geyserOffsets = [0, -130, 130];
@@ -1215,543 +1366,223 @@ export class Reaper extends Fighter {
       this.isDeflecting = false;
       this.isInvulnerable = false;
       this.deathAvatar = null;
-      this.ultScytheWaves = [];
-      this.ultSlashRibbons = [];
       this.setState('IDLE');
     }
   }
 
   /**
-   * Renders the Returning Twin-Blade Phantom Scythe Boomerang (from Row 0 of reaper_vfx.png)
+   * 3-Pass HD-2D Additive Bloom Renderer for Malakor's 208x208 VFX Sheet (`assets/sprites/reaper_vfx.png`).
    */
-  drawBoomerangScythe(ctx) {
-    if (!this.activeBoomerangScythe) return;
-    const bs = this.activeBoomerangScythe;
-    const vfxSheet = PixelForge.initAssets().reaper?.vfx;
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    const bx = Math.round(bs.x);
-    const by = Math.round(bs.y);
-
-    // Tether soul-thread connecting Malakor's hand to the returning Boomerang Scythe
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = bs.phase === 'return' ? 'rgba(244, 63, 94, 0.55)' : 'rgba(192, 132, 252, 0.38)';
-    ctx.lineWidth = 4;
-    ctx.beginPath();
-    ctx.moveTo(this.x + this.facing * 36, this.y - 96);
-    ctx.lineTo(bx, by);
-    ctx.stroke();
-    ctx.restore();
-
-    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-      const col = Math.floor((bs.timer * 38) % 30);
-      const size = 148;
-      const half = Math.round(-size * 0.5);
-      ctx.translate(bx, by);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.36;
-      ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, half - 6, half - 6, size + 12, size + 12);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.96;
-      ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, half, half, size, size);
-    }
-    ctx.restore();
-  }
-
-  /**
-   * Renders the Abyssal Floor Shadow Pool & Grasping Bone Hands when Malakor submerges underground!
-   */
-  drawShadowPool(ctx) {
-    const px = Math.round(this.x / 4) * 4;
-    const py = Math.round(this.groundY / 4) * 4;
-    const vfxSheet = PixelForge.initAssets().reaper?.vfx;
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-
-    // Stepped 4x4 Pixel-Art Abyssal Shadow Pool on the Floor
-    const layers = [
-      { rx: 92, ry: 12, col: 'rgba(88, 28, 135, 0.85)' },
-      { rx: 76, ry: 8, col: 'rgba(192, 132, 252, 0.90)' },
-      { rx: 60, ry: 4, col: '#090514' }
-    ];
-    for (const lay of layers) {
-      ctx.fillStyle = lay.col;
-      for (let dy = -lay.ry; dy <= lay.ry; dy += 4) {
-        const u = Math.min(1, Math.abs(dy) / Math.max(1, lay.ry));
-        const halfW = Math.round((lay.rx * Math.sqrt(Math.max(0, 1 - u * u))) / 4) * 4;
-        if (halfW >= 4) {
-          ctx.fillRect(px - halfW, py + dy, halfW * 2, 4);
-        }
-      }
-    }
-
-    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-      const col = Math.min(29, Math.max(0, Math.floor((this.stateTimer * 28) % 30)));
-      ctx.drawImage(vfxSheet, col * 208, 416 + 124, 208, 84, px - 72, py - 50, 144, 58);
-    }
-    ctx.restore();
-  }
-
-  /**
-   * Renders Authentic 16-bit HD-2D Haunted Gothic Crypt Tombstones & Soul Vortex (from Row 2 of reaper_vfx.png)
-   */
-  drawTombstones(ctx) {
-    if (!this.tombstones.length) return;
-    const vfxSheet = PixelForge.initAssets().reaper?.vfx;
+  drawBloomedVfxCell(
+    ctx,
+    vfxSheet,
+    row,
+    col,
+    x,
+    y,
+    w = 208,
+    h = 208,
+    alpha = 1.0,
+    flipX = false,
+    renderer = null,
+    glowColor = 'violet'
+  ) {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
+    const cell = 208;
+    const sx = Math.max(0, Math.min(29, Math.floor(col))) * cell;
+    const sy = Math.max(0, Math.min(4, Math.floor(row))) * cell;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    for (const ts of this.tombstones) {
-      if (ts.delay > 0 || ts.life <= 0) continue;
-      const col = Math.min(29, Math.floor(((1 - ts.life / ts.maxLife)) * 30));
-      const elapsed = ts.maxLife - ts.life;
-      const pop = Math.min(1, elapsed / 0.18);
-      const fade = Math.min(1, ts.life * 3.0);
-      const bx = Math.round(ts.x);
-      const by = Math.round(ts.groundY ?? ts.y ?? this.groundY);
+    ctx.translate(Math.round(x), Math.round(y));
+    if (flipX) ctx.scale(-1, 1);
 
-      ctx.save();
-      ctx.globalAlpha = fade;
-
-      ctx.beginPath();
-      ctx.rect(bx - 110, by - 210, 220, 218);
-      ctx.clip();
-
-      const drawW = 156 + ((ts.height ?? 112) - 96) * 0.75;
-      const drawH = drawW;
-      const riseOffset = Math.round((1 - pop) * (drawH * 0.65));
-
-      const dx = Math.round(bx - drawW * 0.5);
-      const dy = Math.round(by - drawH + 12 + riseOffset);
-      const dw = Math.round(drawW);
-      const dh = Math.round(drawH);
-
+    const glowSprite =
+      glowColor === 'crimson'
+        ? renderer?.glowCrimson || renderer?.glowViolet || renderer?.glowPurple
+        : renderer?.glowViolet || renderer?.glowPurple || renderer?.glowCrimson;
+    if (glowSprite) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.28;
-      ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, dx - 6, dy - 6, dw + 12, dh + 12);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.96;
-      ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, dx, dy, dw, dh);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.24;
-      ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, dx, dy, dw, dh);
-      ctx.restore();
+      ctx.globalAlpha = Math.min(1, alpha * 0.42);
+      const gw = Math.round(w * 1.15);
+      const gh = Math.round(h * 1.15);
+      ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
     }
-    ctx.restore();
-  }
-
-  /**
-   * Renders the Taut Dark-Iron Spectral Chain & Authentic 30fps Demonic Skeletal Bone-Gauntlet Claw clamping the enemy (from Row 1 of reaper_vfx.png)
-   */
-  drawSkeletalChainClaw(ctx) {
-    if (!this.chainClaw) return;
-    const vfxSheet = PixelForge.initAssets().reaper?.vfx;
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    const x1 = Math.round(this.x + this.facing * 44);
-    const y1 = Math.round(this.y - 94);
-    const x2 = Math.round(this.chainClaw.targetX);
-    const y2 = Math.round(this.chainClaw.targetY);
-    const dx = x2 - x1;
-    const dy = y2 - y1;
-    const dist = Math.hypot(dx, dy) || 1;
-    const angle = Math.atan2(dy, dx);
-
-    ctx.save();
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = 'rgba(168, 85, 247, 0.42)';
-    ctx.lineWidth = 14;
-    ctx.lineCap = 'round';
-    ctx.beginPath();
-    for (let s = 0; s <= 18; s++) {
-      const u = s / 18;
-      const sag = Math.sin(u * Math.PI) * 14 + Math.sin(u * Math.PI * 3 + this.stateTimer * 28) * 3;
-      const px = x1 + dx * u;
-      const py = y1 + dy * u + sag;
-      if (s === 0) ctx.moveTo(px, py);
-      else ctx.lineTo(px, py);
-    }
-    ctx.stroke();
-    ctx.restore();
-
-    const numLinks = Math.max(8, Math.min(22, Math.round(dist / 18)));
-    for (let i = 0; i <= numLinks; i++) {
-      const u = i / numLinks;
-      const sag = Math.sin(u * Math.PI) * 14 + Math.sin(u * Math.PI * 3 + this.stateTimer * 28) * 3;
-      const lx = Math.round((x1 + dx * u) / 2) * 2;
-      const ly = Math.round((y1 + dy * u + sag) / 2) * 2;
-
-      ctx.save();
-      ctx.translate(lx, ly);
-      ctx.rotate(angle + (i % 2 === 0 ? 0.18 : -0.18));
-
-      ctx.fillStyle = '#090514';
-      ctx.fillRect(-9, -5, 18, 10);
-      ctx.fillStyle = i % 2 === 0 ? '#64748b' : '#9333ea';
-      ctx.fillRect(-7, -3, 14, 6);
-      ctx.fillStyle = i % 2 === 0 ? '#cbd5e1' : '#e879f9';
-      ctx.fillRect(-5, -3, 10, 2);
-      if (i % 2 === 0) {
-        ctx.fillStyle = '#090514';
-        ctx.fillRect(-3, -1, 6, 2);
-      }
-      ctx.restore();
-    }
-
-    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-      const dir = Math.sign(dx) || this.facing;
-      const clawSize = 156;
-      const col = Math.min(29, Math.max(0, Math.floor((this.stateTimer / 0.44) * 30)));
-      ctx.save();
-      ctx.translate(x2, y2);
-      ctx.scale(dir, 1);
-      const gripRot = Math.sin(this.stateTimer * 32) * 0.08;
-      ctx.rotate(gripRot);
-      const cdx = Math.round(-clawSize * 0.56);
-      const cdy = Math.round(-clawSize * 0.5);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.28;
-      ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, cdx - 8, cdy - 8, clawSize + 16, clawSize + 16);
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.96;
-      ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, cdx, cdy, clawSize, clawSize);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.24;
-      ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, cdx, cdy, clawSize, clawSize);
-      ctx.restore();
-    }
-    ctx.restore();
-  }
-
-  /**
-   * Renders the Pixel-Art Blood-Moon Eclipse, Necrotic Pentagram Execution Floor Seal, and Colossal 30fps Hooded Grim Reaper Sovereign BEHIND the fighters during GRIM HARVEST
-   */
-  drawDeathAvatar(ctx, renderer = null) {
-    if (!this.deathAvatar) return;
-    const vfxSheet = PixelForge.initAssets().reaper?.vfx;
-    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
-
-    const da = this.deathAvatar;
-    const col = Math.min(29, Math.floor((1 - da.life / da.maxLife) * 30));
-    const elapsed = da.maxLife - da.life;
-    const rise = Math.min(1, elapsed / 0.26);
-    const fade = Math.min(1, da.life * 3.2);
-    const ax = Math.round((da.x ?? this.x + this.facing * 115) / 4) * 4;
-    const ay = Math.round(this.groundY / 4) * 4;
-    const phase = da.eclipsePhase || elapsed * 5.0;
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-
-    // 1. Stepped 4x4 Pixel-Art Necrotic Blood-Moon Pentagram Execution Seal on the Arena Floor (under the enemy!)
-    ctx.save();
-    ctx.translate(ax, ay - 2);
-    const sealW = Math.round((272 * rise) / 4) * 4;
-    const sealH = Math.round((sealW * 0.42) / 4) * 4;
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.85;
-    ctx.drawImage(
-      vfxSheet,
-      col * 208,
-      832,
-      208,
-      208,
-      Math.round(-sealW * 0.5),
-      Math.round(-sealH * 0.56),
-      sealW,
-      sealH
-    );
-
-    const sealRx = (164 + Math.sin(phase * 1.8) * 8) * rise;
-    const sealRy = sealRx * 0.24;
-    for (let deg = 0; deg < 360; deg += 10) {
-      const a = (deg * Math.PI) / 180 + phase * 0.75;
-      const sx1 = Math.round((Math.cos(a) * sealRx) / 4) * 4;
-      const sy1 = Math.round((Math.sin(a) * sealRy) / 4) * 4;
-      ctx.fillStyle = deg % 40 === 0 ? '#ffffff' : '#f43f5e';
-      ctx.fillRect(sx1 - 4, sy1 - 2, 8, 4);
-
-      if (deg % 20 === 0) {
-        const sx2 = Math.round((Math.cos(-a) * sealRx * 0.76) / 4) * 4;
-        const sy2 = Math.round((Math.sin(-a) * sealRy * 0.76) / 4) * 4;
-        ctx.fillStyle = '#c084fc';
-        ctx.fillRect(sx2 - 2, sy2 - 2, 4, 4);
-      }
-    }
-    // Rotating 5-Pointed Stepped 4x4 Pixel Pentagram Star inside the floor seal
-    const pentPts = [];
-    for (let i = 0; i <= 5; i++) {
-      const a = (i * 4 * Math.PI) / 5 - Math.PI * 0.5 + phase * 0.75;
-      pentPts.push({
-        x: Math.cos(a) * (sealRx * 0.76),
-        y: Math.sin(a) * (sealRy * 0.76)
-      });
-    }
-    ctx.fillStyle = '#ffe4e6';
-    for (let i = 0; i < 5; i++) {
-      const p0 = pentPts[i];
-      const p1 = pentPts[i + 1];
-      const steps = 14;
-      for (let s = 0; s <= steps; s++) {
-        const u = s / steps;
-        const px = Math.round((p0.x + (p1.x - p0.x) * u) / 4) * 4;
-        const py = Math.round((p0.y + (p1.y - p0.y) * u) / 4) * 4;
-        ctx.fillRect(px - 2, py - 2, 4, 4);
-      }
-    }
-    ctx.restore();
-
-    // 2. Towering Stepped 4x4 Pixel-Art Blood-Moon Eclipse & 30fps Hooded Grim Reaper Sovereign (clipped cleanly to the floor)
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(ax - 320, ay - 460, 640, 464);
-    ctx.clip();
-
-    const moonX = ax;
-    const moonY = ay - 224;
-    const moonR = Math.round((96 * rise) / 4) * 4;
-
-    if (moonR >= 16) {
-      if (renderer && renderer.glowCrimson) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.56;
-        ctx.drawImage(renderer.glowCrimson, moonX - moonR * 1.9, moonY - moonR * 1.9, moonR * 3.8, moonR * 3.8);
-      }
-      // Stepped 4x4 Pixel-Art Eclipsed Blood-Moon Disc & Blazing Crimson Corona Rim
-      for (let dy = -moonR - 8; dy <= moonR + 8; dy += 4) {
-        const distY = Math.abs(dy);
-        if (distY <= moonR + 8) {
-          const outerW = Math.round(Math.sqrt(Math.max(0, (moonR + 8) * (moonR + 8) - dy * dy)) / 4) * 4;
-          const innerW =
-            distY < moonR - 8
-              ? Math.round(Math.sqrt(Math.max(0, (moonR - 8) * (moonR - 8) - dy * dy)) / 4) * 4
-              : 0;
-          if (outerW > 0) {
-            ctx.globalCompositeOperation = 'lighter';
-            ctx.globalAlpha = fade * 0.92;
-            ctx.fillStyle = (dy / 4) % 2 === 0 ? '#f43f5e' : '#c084fc';
-            ctx.fillRect(moonX - outerW, moonY + dy, outerW * 2, 4);
-          }
-          if (innerW > 0) {
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.globalAlpha = fade * 0.94;
-            ctx.fillStyle = '#090314';
-            ctx.fillRect(moonX - innerW, moonY + dy, innerW * 2, 4);
-          }
-        }
-      }
-    }
-
-    const drawSize = 336;
-    const riseY = Math.round(((1 - rise) * 180) / 4) * 4;
-    const floatBob = Math.round((Math.sin(elapsed * 6.5) * 6) / 4) * 4;
-
-    ctx.translate(ax, ay - drawSize * 0.5 + 12 + riseY + floatBob);
-    ctx.scale(da.facing || this.facing, 1);
-
-    if (renderer && renderer.glowViolet) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.54;
-      ctx.drawImage(renderer.glowViolet, -220, -220, 440, 440);
-    }
-
-    const dHalf = Math.round(-drawSize * 0.5);
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.38;
-    ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf - 8, dHalf - 8, drawSize + 16, drawSize + 16);
 
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.98;
-    ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf, dHalf, drawSize, drawSize);
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * (0.28 + Math.sin((da.swingProgress || 0) * Math.PI) * 0.22);
-    ctx.drawImage(vfxSheet, col * 208, 624, 208, 208, dHalf, dHalf, drawSize, drawSize);
+    ctx.globalAlpha = Math.min(1, alpha * 0.48);
+    ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
-    ctx.restore();
     ctx.restore();
   }
 
   /**
-   * Renders Malakor's Crimson-Violet Wraith Afterimage Silhouettes
+   * Background 2.5D Shader Pass (`back`) + `reaper_vfx.png` Tombstone Spires (Row 2), Pentagram Seals (Row 3) & Wraith Afterimages
    */
-  drawWraithEchoes(ctx) {
-    if (!this.wraithEchoes || !this.wraithEchoes.length) return;
-    const sprites = PixelForge.initAssets().reaper;
-    if (!sprites || !sprites.sheet || !sprites.sheet.complete) return;
+  drawForegroundOverlay(ctx, renderer = null) {
+    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
 
-    for (const ec of this.wraithEchoes) {
-      const fade = Math.max(0, 1 - ec.life / ec.maxLife);
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.translate(Math.round(ec.x), Math.round(ec.y + 6));
-      ctx.scale(ec.facing, 1);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.46;
-      PixelForge.drawAfterimageFrame(ctx, sprites, ec.frameIdx, 208, 208);
-      ctx.restore();
+    const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.reaper : null;
+    const vfxSheet = sprites?.vfx;
+
+    // 1. Crisp Un-Rotated HD-2D Wraith Afterimage Silhouettes
+    if (this.afterimages.length > 0 && sprites?.sheet?.complete) {
+      for (const img of this.afterimages) {
+        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.52);
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.translate(Math.round(img.x / 4) * 4, Math.round((img.y + 4) / 4) * 4);
+        ctx.scale(img.facing, 1);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha;
+        PixelForge.drawAfterimageFrame(ctx, sprites, img.frameIdx || 190, 208, 208);
+        ctx.restore();
+      }
+    }
+
+    if (!vfxSheet?.complete) return;
+
+    // 2. Haunted Gothic Tombstone Spires (`Row 2: necroticBoneSpireCell`)
+    for (const ts of this.tombstones) {
+      if (ts.delay > 0 || ts.life <= 0) continue;
+      const u = Math.min(1, Math.max(0, 1 - ts.life / ts.maxLife));
+      const col = Math.min(29, Math.floor(u * 30));
+      const pop = Math.min(1, (ts.maxLife - ts.life) / 0.18);
+      const fade = Math.min(1, ts.life * 3.0);
+      const sz = Math.round(164 + ((ts.height ?? 100) - 96) * 0.65);
+      const by = (ts.groundY ?? this.groundY) - sz * 0.34 + (1 - pop) * 32;
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        2,
+        col,
+        ts.x,
+        by,
+        sz,
+        sz,
+        fade * 0.94,
+        false,
+        renderer,
+        ts.isPrison ? 'crimson' : 'violet'
+      );
+    }
+
+    // 3. Background 30fps `reaper_vfx.png` Cell Animations (Row 3 Pentagram Seals, etc.)
+    for (const v of this.activeVfxAnims) {
+      if (v.inFront) continue;
+      const u = Math.min(1, Math.max(0, v.age / v.maxLife));
+      const span = Math.max(1, v.endFrame - v.startFrame + 1);
+      const col = Math.min(29, v.startFrame + Math.floor(u * span));
+      const fade = u < 0.12 ? u / 0.12 : u > 0.78 ? (1 - u) / 0.22 : 1.0;
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        v.row,
+        col,
+        v.x,
+        v.y,
+        v.w,
+        v.h,
+        fade * 0.9,
+        v.flipX,
+        renderer,
+        v.glowColor
+      );
     }
   }
 
   /**
-   * Renders Authentic Stepped 4x4 Pixel-Art Soul-Fire Comet Trails & Pixel Skull-Motes flying from the enemy into Malakor's chest
+   * Foreground 2.5D Shader Pass (`front`) + `reaper_vfx.png` Boomerang Scythe (Row 0), Floating Skull Wisps (Row 1) & Reap Novas (Row 4)
    */
-  drawSoulWisps(ctx, renderer = null) {
-    if (!this.soulWisps.length) return;
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
+  drawUltimateForeground(ctx, renderer = null) {
+    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
+
+    const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.reaper : null;
+    const vfxSheet = sprites?.vfx;
+    if (!vfxSheet?.complete) return;
+
+    // 1. Returning Twin-Blade Phantom Scythe Boomerang (`Row 0: soulScytheWaveCell`)
+    if (this.activeBoomerangScythe) {
+      const bs = this.activeBoomerangScythe;
+      const col = Math.floor((bs.timer * 38) % 30);
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        0,
+        col,
+        bs.x,
+        bs.y,
+        156,
+        156,
+        0.96,
+        bs.dir < 0,
+        renderer,
+        bs.phase === 'return' ? 'crimson' : 'violet'
+      );
+    }
+
+    // 2. Homing Necrotic Skull Wisps (`Row 1: abyssalSkullWispCell`) curving into Malakor's chest
     const tx = this.x;
     const ty = this.y - 96;
     for (const w of this.soulWisps) {
       if (w.life < 0) continue;
       const u = Math.min(1, w.life / w.maxLife);
-      const wx = Math.round((w.startX + (tx - w.startX) * u) / 4) * 4;
-      const wy =
-        Math.round((w.startY + (ty - w.startY) * u + Math.sin(u * Math.PI) * w.arcHeight) / 4) * 4;
-
-      if (renderer && renderer.glowViolet) {
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.48;
-        ctx.drawImage(renderer.glowViolet, wx - 36, wy - 36, 72, 72);
-      }
-
-      // Stepped 4x4 Pixel-Art Comet Tail Blocks
-      const tailSteps = 8;
-      for (let s = tailSteps; s >= 1; s--) {
-        const uStep = Math.max(0, u - s * 0.028);
-        const sx = Math.round((w.startX + (tx - w.startX) * uStep) / 4) * 4;
-        const sy =
-          Math.round(
-            (w.startY +
-              (ty - w.startY) * uStep +
-              Math.sin(uStep * Math.PI) * w.arcHeight +
-              Math.cos(w.life * 24 - s * 0.5) * 6) /
-              4
-          ) * 4;
-        const frac = 1 - s / (tailSteps + 1);
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.78 * frac;
-        ctx.fillStyle = s % 2 === 0 ? w.color || '#c084fc' : '#f43f5e';
-        const bSz = s <= 3 ? 8 : 4;
-        ctx.fillRect(sx - bSz * 0.5, sy - bSz * 0.5, bSz, bSz);
-      }
-
-      // Glowing 4x4 Pixel-Art Soul-Orb Head
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.95;
-      ctx.fillStyle = '#f43f5e';
-      ctx.fillRect(wx - 8, wy - 4, 16, 8);
-      ctx.fillRect(wx - 4, wy - 8, 8, 16);
-
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 1.0;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(wx - 4, wy - 4, 8, 8);
-    }
-    ctx.restore();
-  }
-
-  /**
-   * Background skill & Ultimate pass
-   */
-  drawForegroundOverlay(ctx, renderer = null) {
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
-    this.fx?.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
-
-    this.drawTombstones(ctx);
-    this.drawDeathAvatar(ctx, renderer);
-    this.drawWraithEchoes(ctx);
-    this.drawSkeletalChainClaw(ctx);
-    this.drawBoomerangScythe(ctx);
-    if (this.state !== 'ULTIMATE' && !this.deathAvatar) {
-      this.drawSoulWisps(ctx, renderer);
-    }
-  }
-
-  /**
-   * Foreground Ultimate pass — Renders 30fps Pixel-Art Spinning Abyssal Scythe Vortex Blades, Stepped 4x4 Pixel-Art Guillotine Slash Arcs & Soul-Comets
-   */
-  drawUltimateForeground(ctx, renderer = null) {
-    const vfxSheet = PixelForge.initAssets().reaper?.vfx;
-
-    // 1. Render 30fps Pixel-Art Spinning Abyssal Scythe Vortex Waves (from Row 0 of reaper_vfx.png)
-    if (this.ultScytheWaves && this.ultScytheWaves.length && vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      for (const sw of this.ultScytheWaves) {
-        const u = Math.min(1, sw.life / sw.maxLife);
-        const fade = Math.sin(u * Math.PI);
-        const col = Math.floor((sw.life * 45) % 30);
-        const sz = Math.round((sw.size || 160) / 4) * 4;
-        const half = Math.round(-sz * 0.5);
-        ctx.save();
-        ctx.translate(Math.round(sw.x / 4) * 4, Math.round(sw.y / 4) * 4);
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.44;
-        ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, half - 8, half - 8, sz + 16, sz + 16);
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.96;
-        ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, half, half, sz, sz);
-        ctx.restore();
-      }
-      ctx.restore();
+      const wx = w.startX + (tx - w.startX) * u;
+      const wy = w.startY + (ty - w.startY) * u + Math.sin(u * Math.PI) * w.arcHeight;
+      const col = Math.min(29, Math.floor(u * 30));
+      const fade = Math.sin(u * Math.PI);
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        1,
+        col,
+        wx,
+        wy,
+        96,
+        96,
+        fade * 0.94,
+        tx < w.startX,
+        renderer,
+        w.glowColor || 'violet'
+      );
     }
 
-    // 2. Render Stepped 4x4 Pixel-Art Crimson & Violet Guillotine Slash Arcs + Row 4 Blood-Moon Cleave Wave
-    if (this.ultSlashRibbons && this.ultSlashRibbons.length) {
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      for (const sr of this.ultSlashRibbons) {
-        const u = Math.min(1, sr.life / sr.maxLife);
-        const fade = Math.pow(1 - u, 1.35);
-        const steps = 36;
-        for (let s = 0; s <= steps; s++) {
-          const su = s / steps;
-          const inv = 1 - su;
-          const qx = inv * inv * sr.x1 + 2 * inv * su * sr.cx + su * su * sr.x2;
-          const qy = inv * inv * sr.y1 + 2 * inv * su * sr.cy + su * su * sr.y2;
-          const px = Math.round(qx / 4) * 4;
-          const py = Math.round(qy / 4) * 4;
-          const taper = Math.sin(su * Math.PI);
-          const halfThick = Math.max(4, Math.round((sr.width * 0.5 * taper * (1.1 - u * 0.4)) / 4) * 4);
-
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fade * 0.78;
-          ctx.fillStyle = sr.color;
-          ctx.fillRect(px - halfThick, py - halfThick, halfThick * 2, halfThick * 2);
-
-          if (halfThick >= 4) {
-            ctx.globalCompositeOperation = 'source-over';
-            ctx.globalAlpha = fade * 0.96;
-            ctx.fillStyle = sr.core || '#ffffff';
-            ctx.fillRect(px - 2, py - 2, 4, 4);
-          }
-        }
-      }
-      ctx.restore();
+    // 3. Foreground 30fps `reaper_vfx.png` Cell Animations (Row 0 Scythe Waves, Row 3 Pentagrams & Row 4 Reap Novas)
+    for (const v of this.activeVfxAnims) {
+      if (!v.inFront) continue;
+      const u = Math.min(1, Math.max(0, v.age / v.maxLife));
+      const span = Math.max(1, v.endFrame - v.startFrame + 1);
+      const col = Math.min(29, v.startFrame + Math.floor(u * span));
+      const fade = u < 0.12 ? u / 0.12 : u > 0.78 ? (1 - u) / 0.22 : 1.0;
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        v.row,
+        col,
+        v.x,
+        v.y,
+        v.w,
+        v.h,
+        fade * 0.95,
+        v.flipX,
+        renderer,
+        v.glowColor
+      );
     }
-
-    if (this.state === 'ULTIMATE' || this.deathAvatar) {
-      this.drawSoulWisps(ctx, renderer);
-    }
-
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
-    this.fx?.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
   }
 
   draw(ctx, isReflection = false, renderer = null) {
-    const sprites = PixelForge.initAssets().reaper;
+    const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.reaper : null;
     if (!sprites) return;
 
     const showShadowPool =
       !isReflection && (this.isSubmerged || ((this.state === 'DODGE' || this.state === 'DASH') && !this.isFlipVault));
-    if (showShadowPool) {
-      this.drawShadowPool(ctx);
-    }
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;

@@ -1,8 +1,17 @@
-import { Fighter } from './Fighter.js?v=30fps52';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps52';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
-import { FORGE_EFFECT_REGISTRY } from '../engine/shaders/forgeShaders.js?v=30fps52';
+import { Fighter } from './Fighter.js?v=30fps53';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps53';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps53';
+import {
+  FORGE_EFFECT_REGISTRY,
+  FORGE_GOLD_PALETTE,
+  FORGE_JADE_PALETTE
+} from '../engine/shaders/forgeShaders.js?v=30fps53';
 
+/**
+ * Torgar (`titan`) — World-Forge Juggernaut & Runic Anvil Sovereign.
+ * Powered natively by `ArcaneShaderFX` (dual-buffer 120Hz HD-2D shader & particle engine)
+ * + `assets/sprites/titan_sheet.png` & `assets/sprites/titan_vfx.png`.
+ */
 export class Titan extends Fighter {
   constructor(x, groundY, facing = 1) {
     const opts = typeof x === 'object' && x !== null ? x : { x, groundY, facing };
@@ -35,28 +44,37 @@ export class Titan extends Fighter {
     this.stepDustTimer = 0;
 
     // Torgar Unique Juggernaut Mechanics:
-    // 1. Magma Armor Fortify timer (62% damage reduction + molten thorn reflection)
+    // 1. Magma Armor Fortify timer (damage reduction + molten thorn reflection in Fighter.js)
     this.forgeArmorTimer = 0;
     // 2. Physical Runic Anvil (summoned on floor, then smashed horizontally like a cannonball!)
     this.activeAnvil = null;
-    // 3. Expanding Tectonic Ground Quake rings
-    this.activeGroundQuakes = [];
-    // 4. Giant Titan Scale during Ragnarok Ultimate
+    // 3. Giant Titan Scale during Ragnarok Ultimate
     this.giantScale = 1.0;
+    // 4. Active 30fps `titan_vfx.png` cell animations
+    this.activeVfxAnims = [];
 
-    // Multi-Layer 3-Pass Albedo/Emissive Forge Pixel-Shader Engine
+    // Native 120Hz dual-buffer HD-2D World-Forge shader & particle runtime (`back` + `front` 2.5D layers)
     this.fx = new ArcaneShaderFX(FORGE_EFFECT_REGISTRY, {
       pixelScale: 3,
       viewW: 440,
       viewH: 220
     });
-    this.haloFxInstance = null;
+    this._mantleSlot = null;
+    this._ultCastTriggered = false;
+
+    if (typeof Image !== 'undefined') {
+      const titanAssets = PixelForge.initAssets()?.titan;
+      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps53')) {
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps53';
+      }
+    }
   }
 
   setState(newState) {
     super.setState(newState);
     if (newState !== 'ULTIMATE') {
       this.giantScale = 1.0;
+      this._ultCastTriggered = false;
     }
     this.unstoppablePoise =
       newState === 'AUTO_ATTACK' ||
@@ -70,45 +88,100 @@ export class Titan extends Fighter {
     return this.comboStep === 2 ? 225 : 195;
   }
 
+  spawnVfxAnim(row, x, y, w = 208, h = 208, maxLife = 0.44, opts = {}) {
+    this.activeVfxAnims.push({
+      row,
+      x,
+      y,
+      vx: opts.vx || 0,
+      vy: opts.vy || 0,
+      w,
+      h,
+      age: 0,
+      maxLife,
+      flipX: Boolean(opts.flipX),
+      startFrame: opts.startFrame || 0,
+      endFrame: opts.endFrame !== undefined ? opts.endFrame : 29,
+      glowColor: opts.glowColor || 'gold',
+      followOwner: Boolean(opts.followOwner),
+      offsetX: opts.offsetX || 0,
+      offsetY: opts.offsetY || 0,
+      inFront: Boolean(opts.inFront)
+    });
+  }
+
+  ensureForgeMagmaMantle() {
+    if (!this.fx) return;
+    if (this.isDead || this.state === 'DEATH') {
+      this.fx.stopByKey('forgeMagmaMantle');
+      this._mantleSlot = null;
+      return;
+    }
+    const isFortified = this.forgeArmorTimer > 0;
+    let slot = this.fx.active.find((s) => s.key === 'forgeMagmaMantle');
+    if (!slot) {
+      slot = this.fx.spawn('forgeMagmaMantle', this.x, this.y - 78, {
+        follow: this,
+        offsetX: 0,
+        offsetY: -78,
+        flip: false,
+        palette: FORGE_GOLD_PALETTE,
+        light: 1.16,
+        extra: { fortified: isFortified }
+      });
+    } else if (slot.inst?.cfg) {
+      slot.inst.cfg.fortified = isFortified;
+    }
+    this._mantleSlot = slot;
+  }
+
   update(dt, enemy, game) {
     if (this.forgeArmorTimer > 0) {
       this.forgeArmorTimer = Math.max(0, this.forgeArmorTimer - dt);
     }
 
+    // 1. Step Active 30fps `titan_vfx.png` Cell Animations
+    for (let i = this.activeVfxAnims.length - 1; i >= 0; i--) {
+      const v = this.activeVfxAnims[i];
+      v.age += dt;
+      if (v.followOwner) {
+        v.x = this.x + v.offsetX * this.facing;
+        v.y = this.y + v.offsetY;
+      } else {
+        v.x += v.vx * dt;
+        v.y += v.vy * dt;
+      }
+      if (v.age >= v.maxLife) {
+        this.activeVfxAnims.splice(i, 1);
+      }
+    }
+
+    // 2. Maintain 2.5D Orbiting Forge Magma Mantle & Step 120Hz `ArcaneShaderFX`
+    this.ensureForgeMagmaMantle();
     if (this.fx) {
-      if (!this.isDead && !this.haloFxInstance) {
-        this.haloFxInstance = this.fx.spawn('forgeMagmaMantle', {
-          follow: this,
-          facing: this.facing,
-          layer: 'back'
-        });
-      }
-      if (this.haloFxInstance) {
-        this.haloFxInstance.facing = this.facing;
-        if (this.isDead) {
-          this.haloFxInstance.dead = true;
-          this.haloFxInstance = null;
-        }
-      }
       this.fx.update(dt);
     }
 
-    // Update Physical Runic Forge Anvil (sits on floor, then flies horizontally when smashed!)
+    // 3. Update Physical Runic Forge Anvil (sits on floor, then flies horizontally when smashed!)
     if (this.activeAnvil && game) {
       const a = this.activeAnvil;
       a.age += dt;
       if (a.state === 'flying') {
         a.x += a.vx * dt;
         a.rot += a.dir * dt * 11.5;
-        if (Math.random() < 0.75) {
-          game.vfx.spawnParticle({
-            x: a.x - a.dir * 18,
-            y: a.y - 28 + (Math.random() - 0.5) * 20,
-            vx: -a.vx * 0.25,
-            vy: -35 - Math.random() * 45,
-            size: 5,
-            color: Math.random() < 0.5 ? '#f59e0b' : '#10b981',
-            maxLife: 0.35
+        a.trailAccum = (a.trailAccum || 0) + dt;
+        if (a.trailAccum >= 0.032) {
+          a.trailAccum = 0;
+          this.fx.burst(a.x - a.dir * 20, a.y - 38, {
+            count: 3,
+            speedMin: 35,
+            speedMax: 110,
+            lifeMin: 0.14,
+            lifeMax: 0.28,
+            gravity: 45,
+            angle: a.dir >= 0 ? Math.PI : 0,
+            spread: 0.85,
+            colors: ['#ffffff', '#fde047', '#f59e0b', '#10b981']
           });
         }
         const targets = game.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
@@ -123,6 +196,18 @@ export class Titan extends Fighter {
               game.vfx.spawnShockwave(t.x, t.y - 45, 145, '#f59e0b', 0.32);
               game.vfx.spawnBurst(t.x, t.y - 55, 22, '#fef08a', 280, { upBias: 95, size: 6 });
 
+              this.fx.spawn('tectonicCraterShockwave', t.x, this.groundY - 6, {
+                flip: a.dir < 0,
+                palette: FORGE_GOLD_PALETTE,
+                light: 1.28,
+                extra: { maxRx: 120 }
+              });
+              this.spawnVfxAnim(4, t.x, t.y - 68, 212, 212, 0.38, {
+                flipX: a.dir < 0,
+                glowColor: 'gold',
+                inFront: true
+              });
+
               // Check if enemy is slammed into or near the arena wall for WALL CRUSH bonus!
               const ww = game.renderer ? game.renderer.worldWidth : 1200;
               if (t.x <= 185 || t.x >= ww - 185) {
@@ -136,6 +221,10 @@ export class Titan extends Fighter {
                   '#fef08a'
                 );
                 game.vfx.spawnShockwave(t.x, t.y - 55, 185, '#10b981', 0.38);
+                this.spawnVfxAnim(2, t.x, this.groundY - 78, 216, 216, 0.44, {
+                  glowColor: 'emerald',
+                  inFront: false
+                });
               }
             }
           }
@@ -144,6 +233,11 @@ export class Titan extends Fighter {
         if (a.x < 40 || a.x > ww - 40 || a.age > 1.65) {
           game.vfx.spawnShockwave(a.x, a.y - 28, 120, '#f59e0b', 0.28);
           game.vfx.spawnBurst(a.x, a.y - 28, 16, '#f59e0b', 220, { upBias: 90, size: 5 });
+          this.spawnVfxAnim(4, a.x, a.y - 52, 188, 188, 0.32, {
+            flipX: a.dir < 0,
+            glowColor: 'gold',
+            inFront: true
+          });
           this.activeAnvil = null;
         }
       } else if (a.state === 'planted') {
@@ -157,21 +251,18 @@ export class Titan extends Fighter {
       }
     }
 
-    // Update Expanding Ground Quakes
-    for (let i = this.activeGroundQuakes.length - 1; i >= 0; i--) {
-      const q = this.activeGroundQuakes[i];
-      q.age += dt;
-      q.radius += q.speed * dt;
-      if (q.age >= q.maxAge) {
-        this.activeGroundQuakes.splice(i, 1);
-      }
-    }
-
     if (!this.isDead && this.state === 'WALK') {
       this.stepDustTimer += dt;
       if (this.stepDustTimer >= 0.36) {
         this.stepDustTimer = 0;
         if (game.audio) game.audio.play('footstep_steel', this.x);
+        this.fx.burst(this.x - this.facing * 14, this.groundY - 2, {
+          count: 5,
+          speedMin: 25,
+          speedMax: 75,
+          gravity: 65,
+          colors: ['#fde047', '#f59e0b', '#10b981']
+        });
         game.vfx.spawnBurst(this.x - this.facing * 14, this.groundY - 2, 5, '#f59e0b', 65, {
           upBias: 30,
           size: 4.5,
@@ -194,7 +285,7 @@ export class Titan extends Fighter {
     }
   }
 
-  startCrouch(enemy, game) {
+  startCrouch(_enemy, game) {
     this.crouchDuration = 0.82;
     this.setState('CROUCH');
     this.isCrouching = true;
@@ -203,6 +294,22 @@ export class Titan extends Fighter {
     this.heal(30, 'FORGE TEMPER');
     this.vx = 0;
     const frontX = this.x + this.facing * 118;
+
+    this.fx.spawn('tectonicCraterShockwave', this.x, this.groundY - 4, {
+      flip: this.facing < 0,
+      palette: FORGE_GOLD_PALETTE,
+      light: 1.18,
+      extra: { maxRx: 96 }
+    });
+    this.spawnVfxAnim(1, this.x + this.facing * 26, this.y - 78, 196, 196, 0.52, {
+      followOwner: true,
+      offsetX: 26,
+      offsetY: -78,
+      flipX: this.facing < 0,
+      glowColor: 'gold',
+      inFront: true
+    });
+
     if (game && game.audio) game.audio.play('clang', frontX);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(
@@ -243,6 +350,11 @@ export class Titan extends Fighter {
           if (game.audio) game.audio.play('clang', proj.x);
           game.vfx.spawnShockwave(proj.x, proj.y, 88, '#fef08a', 0.24);
           game.vfx.spawnDamageText(this.x, this.y - 156, 0, false, 'ANVIL DEFLECT!', '#fef08a');
+          this.spawnVfxAnim(1, proj.x, proj.y, 176, 176, 0.28, {
+            flipX: this.facing < 0,
+            glowColor: 'gold',
+            inFront: true
+          });
         }
       }
     }
@@ -253,24 +365,23 @@ export class Titan extends Fighter {
       const slamX = this.x + this.facing * 124;
       if (game.audio) game.audio.play('thunder_slam', slamX);
       game.renderer.triggerShake(8, 0.18);
-      this.activeGroundQuakes.push({
-        x: slamX,
-        y: this.groundY - 4,
-        radius: 28,
-        speed: 480,
-        age: 0,
-        maxAge: 0.42,
-        color: '#f59e0b'
+
+      this.fx.spawn('tectonicCraterShockwave', slamX, this.groundY - 6, {
+        flip: this.facing < 0,
+        palette: FORGE_GOLD_PALETTE,
+        light: 1.24,
+        extra: { maxRx: 112 }
       });
-      if (this.fx) {
-        this.fx.spawn('tectonicCraterShockwave', {
-          x: slamX,
-          y: this.groundY - 8,
-          facing: this.facing,
-          maxRx: 108,
-          layer: 'back'
-        });
-      }
+      this.spawnVfxAnim(2, slamX, this.groundY - 76, 196, 196, 0.42, {
+        glowColor: 'gold',
+        inFront: false
+      });
+      this.spawnVfxAnim(4, slamX, this.groundY - 64, 204, 204, 0.36, {
+        flipX: this.facing < 0,
+        glowColor: 'gold',
+        inFront: true
+      });
+
       game.vfx.spawnShockwave(slamX, this.groundY - 6, 195, '#f59e0b', 0.36, true);
       game.vfx.spawnBurst(slamX, this.groundY - 24, 24, '#f97316', 250, {
         upBias: 110,
@@ -305,6 +416,14 @@ export class Titan extends Fighter {
     this.vaultTargetX = Math.max(85, Math.min(ww - 85, this.x + dir * targetDist));
     this.vx = 0;
     this.vy = 0;
+
+    this.fx.spawn('tectonicCraterShockwave', this.x, this.groundY - 4, {
+      flip: this.facing < 0,
+      palette: FORGE_GOLD_PALETTE,
+      light: 1.12,
+      extra: { maxRx: 92 }
+    });
+
     if (game && game.audio) game.audio.play('dash_whoosh', this.x);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(
@@ -319,9 +438,17 @@ export class Titan extends Fighter {
     }
   }
 
-  onStartDash(enemy, game, dir) {
+  onStartDash(_enemy, game, _dir) {
     this.isFlipVault = false;
     this.unstoppablePoise = true;
+
+    this.fx.spawn('tectonicCraterShockwave', this.x, this.groundY - 4, {
+      flip: this.facing < 0,
+      palette: FORGE_GOLD_PALETTE,
+      light: 1.1,
+      extra: { maxRx: 86 }
+    });
+
     if (game && game.audio) game.audio.play('dash_whoosh', this.x);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(
@@ -336,7 +463,7 @@ export class Titan extends Fighter {
     }
   }
 
-  updateDashOrDodge(dt, enemy, game) {
+  updateDashOrDodge(_dt, enemy, game) {
     const t = this.stateTimer;
     const dur = Math.max(0.01, this.dashDuration || 0.44);
     const u = Math.min(1, t / dur);
@@ -355,24 +482,29 @@ export class Titan extends Fighter {
         const slamX = this.x + this.facing * 128;
         if (game.audio) game.audio.play('thunder_slam', slamX);
         game.renderer.triggerShake(10, 0.22);
-        this.activeGroundQuakes.push({
-          x: slamX,
-          y: this.groundY - 4,
-          radius: 26,
-          speed: 540,
-          age: 0,
-          maxAge: 0.44,
-          color: '#10b981'
+
+        this.fx.spawn('worldBreakerAnvilCleave', this.x + this.facing * 64, this.y - 84, {
+          flip: this.facing < 0,
+          palette: FORGE_GOLD_PALETTE,
+          light: 1.24,
+          extra: { radius: 32, width: 12, isFinisher: true }
         });
-        if (this.fx) {
-          this.fx.spawn('tectonicCraterShockwave', {
-            x: slamX,
-            y: this.groundY - 8,
-            facing: this.facing,
-            maxRx: 120,
-            layer: 'back'
-          });
-        }
+        this.fx.spawn('tectonicCraterShockwave', slamX, this.groundY - 6, {
+          flip: this.facing < 0,
+          palette: FORGE_JADE_PALETTE,
+          light: 1.28,
+          extra: { maxRx: 124 }
+        });
+        this.spawnVfxAnim(2, slamX, this.groundY - 78, 208, 208, 0.44, {
+          glowColor: 'emerald',
+          inFront: false
+        });
+        this.spawnVfxAnim(4, slamX, this.groundY - 68, 212, 212, 0.38, {
+          flipX: this.facing < 0,
+          glowColor: 'gold',
+          inFront: true
+        });
+
         game.vfx.spawnShockwave(slamX, this.groundY - 4, 210, '#f59e0b', 0.36, true);
         game.vfx.spawnDecal(slamX, 180, 'fissure', '#f59e0b', 4.5);
         game.vfx.spawnBurst(slamX, this.groundY - 18, 22, '#fbbf24', 250, {
@@ -402,6 +534,17 @@ export class Titan extends Fighter {
       if (game.audio) game.audio.play('heavy_cleave', this.x);
       game.renderer.triggerShake(7, 0.16);
       game.vfx.spawnDamageText(enemy.x, enemy.y - 150, 0, false, 'SHOULDER RAM!', '#fbbf24');
+      this.fx.spawn('worldBreakerAnvilCleave', this.x + this.facing * 52, this.y - 82, {
+        flip: this.facing < 0,
+        palette: FORGE_GOLD_PALETTE,
+        light: 1.2,
+        extra: { radius: 28, width: 10.5, isFinisher: false }
+      });
+      this.spawnVfxAnim(1, enemy.x, enemy.y - 78, 184, 184, 0.32, {
+        flipX: this.facing < 0,
+        glowColor: 'gold',
+        inFront: true
+      });
     }
 
     if (t >= dur) {
@@ -410,7 +553,7 @@ export class Titan extends Fighter {
     }
   }
 
-  updateAutoAttack(dt, enemy, game) {
+  updateAutoAttack(_dt, enemy, game) {
     const t = this.stateTimer;
     if (t < 0.30) {
       this.armAngle = -2.35;
@@ -427,33 +570,48 @@ export class Titan extends Fighter {
       if (game.audio) game.audio.play('thunder_slam', slamX);
       game.renderer.triggerShake(step === 2 ? 10 : 7, 0.18);
 
-      this.activeGroundQuakes.push({
-        x: slamX,
-        y: slamY,
-        radius: 22,
-        speed: step === 2 ? 560 : 460,
-        age: 0,
-        maxAge: 0.42,
-        color: step === 2 ? '#10b981' : '#f59e0b'
+      this.fx.spawn('worldBreakerAnvilCleave', this.x + this.facing * 64, this.y - 86, {
+        flip: this.facing < 0,
+        palette: step === 2 ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
+        light: step === 2 ? 1.32 : 1.18,
+        extra: {
+          radius: step === 2 ? 34 : 29,
+          width: step === 2 ? 12.5 : 10.5,
+          isFinisher: step === 2
+        }
+      });
+      this.fx.spawn('tectonicCraterShockwave', slamX, slamY, {
+        flip: this.facing < 0,
+        palette: step === 2 ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
+        light: step === 2 ? 1.28 : 1.16,
+        extra: { maxRx: step === 2 ? 128 : 98 }
       });
 
-      if (this.fx) {
-        this.fx.spawn('worldBreakerAnvilCleave', {
-          x: this.x + this.facing * 64,
-          y: this.y - 86,
-          facing: this.facing,
-          radius: step === 2 ? 92 : 78,
-          thickness: step === 2 ? 22 : 18,
-          layer: 'front'
-        });
-        this.fx.spawn('tectonicCraterShockwave', {
-          x: slamX,
-          y: slamY,
-          facing: this.facing,
-          maxRx: step === 2 ? 128 : 98,
-          layer: 'back'
-        });
-      }
+      this.spawnVfxAnim(
+        2,
+        slamX,
+        slamY - 72,
+        step === 2 ? 212 : 188,
+        step === 2 ? 212 : 188,
+        0.42,
+        {
+          glowColor: step === 2 ? 'emerald' : 'gold',
+          inFront: false
+        }
+      );
+      this.spawnVfxAnim(
+        4,
+        slamX,
+        slamY - 64,
+        step === 2 ? 216 : 188,
+        step === 2 ? 216 : 188,
+        0.36,
+        {
+          flipX: this.facing < 0,
+          glowColor: step === 2 ? 'emerald' : 'gold',
+          inFront: true
+        }
+      );
 
       const sA = this.facing === 1 ? -1.85 : Math.PI - 1.25;
       const eA = this.facing === 1 ? 1.25 : Math.PI + 1.85;
@@ -486,7 +644,7 @@ export class Titan extends Fighter {
     }
   }
 
-  updateSkill(dt, enemy, game) {
+  updateSkill(_dt, enemy, game) {
     const t = this.stateTimer;
     if (t >= 0.16 && !this.didActionFrame) {
       this.didActionFrame = true;
@@ -498,20 +656,26 @@ export class Titan extends Fighter {
         dir: this.facing,
         rot: 0,
         age: 0,
+        trailAccum: 0,
         state: 'planted',
         hitTargets: new Set()
       };
-      if (this.fx) {
-        this.fx.spawn('tectonicCraterShockwave', {
-          x: anvilX,
-          y: this.groundY - 8,
-          facing: this.facing,
-          maxRx: 92,
-          layer: 'back'
-        });
-      }
+
+      this.fx.spawn('tectonicCraterShockwave', anvilX, this.groundY - 6, {
+        flip: this.facing < 0,
+        palette: FORGE_JADE_PALETTE,
+        light: 1.24,
+        extra: { maxRx: 96 }
+      });
+      this.spawnVfxAnim(3, anvilX, this.groundY - 58, 204, 204, 0.42, {
+        flipX: this.facing < 0,
+        glowColor: 'emerald',
+        inFront: false
+      });
+
       if (game.audio) game.audio.play('skill_cast', anvilX);
       game.renderer.triggerShake(7, 0.14);
+      game.vfx.spawnSpecialCastAura(this, this.skillName, '✦ WORLD-FORGE ANVIL ✦', 'forge', false);
       game.vfx.spawnShockwave(anvilX, this.groundY - 8, 125, '#10b981', 0.28, true);
       game.vfx.spawnDamageText(anvilX, this.groundY - 115, 0, false, 'FORGE ANVIL!', '#10b981');
 
@@ -526,16 +690,25 @@ export class Titan extends Fighter {
       const slamX = this.x + this.facing * 128;
       if (game.audio) game.audio.play('thunder_slam', slamX);
       game.renderer.triggerShake(11, 0.22);
-      if (this.fx) {
-        this.fx.spawn('worldBreakerAnvilCleave', {
-          x: this.x + this.facing * 68,
-          y: this.y - 88,
-          facing: this.facing,
-          radius: 90,
-          thickness: 22,
-          layer: 'front'
-        });
-      }
+
+      this.fx.spawn('worldBreakerAnvilCleave', this.x + this.facing * 68, this.y - 88, {
+        flip: this.facing < 0,
+        palette: FORGE_GOLD_PALETTE,
+        light: 1.32,
+        extra: { radius: 33, width: 12.5, isFinisher: true }
+      });
+      this.fx.spawn('tectonicCraterShockwave', slamX, this.groundY - 6, {
+        flip: this.facing < 0,
+        palette: FORGE_GOLD_PALETTE,
+        light: 1.25,
+        extra: { maxRx: 112 }
+      });
+      this.spawnVfxAnim(4, slamX, this.groundY - 68, 212, 212, 0.38, {
+        flipX: this.facing < 0,
+        glowColor: 'gold',
+        inFront: true
+      });
+
       const sA = this.facing === 1 ? -1.6 : Math.PI - 1.2;
       const eA = this.facing === 1 ? 1.2 : Math.PI + 1.6;
       game.vfx.spawnSlash(this.x + this.facing * 68, this.y - 88, 152, sA, eA, '#fef08a', 0.32);
@@ -569,6 +742,21 @@ export class Titan extends Fighter {
     this.giantScale = 1.0 + 0.25 * Math.min(1, t / 0.28);
     this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.5);
 
+    if (!this._ultCastTriggered) {
+      this._ultCastTriggered = true;
+      if (game?.vfx) {
+        game.vfx.spawnSpecialCastAura(this, this.ultName, '★ WORLD-FORGE RAGNAROK ★', 'forge', true);
+      }
+      this.spawnVfxAnim(3, this.x, this.groundY - 82, 232, 232, 0.54, {
+        followOwner: true,
+        offsetX: 0,
+        offsetY: -82,
+        flipX: this.facing < 0,
+        glowColor: 'gold',
+        inFront: false
+      });
+    }
+
     if (enemy && !enemy.isDead) {
       this.facing = enemy.x >= this.x ? 1 : -1;
       const dist = Math.abs(enemy.x - this.x);
@@ -586,23 +774,34 @@ export class Titan extends Fighter {
       }
       game.renderer.triggerShake(13 + waveIdx * 2, 0.26);
       game.renderer.triggerAberration(6 + waveIdx * 2);
-      this.activeGroundQuakes.push({
-        x: slamX,
-        y: this.groundY - 4,
-        radius: 32,
-        speed: 640,
-        age: 0,
-        maxAge: 0.52,
-        color: waveIdx % 2 === 0 ? '#f59e0b' : '#10b981'
+
+      this.fx.spawn('ragnarokWorldForgeWave', slamX, this.groundY - 8, {
+        flip: this.facing < 0,
+        palette: waveIdx % 2 === 0 ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
+        light: 1.38
       });
-      if (this.fx) {
-        this.fx.spawn('ragnarokWorldForgeWave', {
-          x: slamX,
-          y: this.groundY - 8,
-          facing: this.facing,
-          layer: 'front'
-        });
-      }
+      this.fx.spawn('worldBreakerAnvilCleave', this.x + this.facing * 72, this.y - 96, {
+        flip: this.facing < 0,
+        palette: waveIdx === 3 ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
+        light: 1.35,
+        extra: { radius: 36, width: 13, isFinisher: true }
+      });
+
+      this.spawnVfxAnim(2, slamX, this.groundY - 82, 228, 228, 0.48, {
+        glowColor: waveIdx % 2 === 0 ? 'emerald' : 'gold',
+        inFront: false
+      });
+      this.spawnVfxAnim(3, slamX, this.groundY - 62, 212, 212, 0.44, {
+        flipX: this.facing < 0,
+        glowColor: 'gold',
+        inFront: false
+      });
+      this.spawnVfxAnim(4, slamX, this.groundY - 72, 232, 232, 0.42, {
+        flipX: this.facing < 0,
+        glowColor: waveIdx === 3 ? 'emerald' : 'gold',
+        inFront: true
+      });
+
       game.vfx.spawnDecal(slamX, 220, 'fissure', '#f59e0b', 5.5);
       game.vfx.spawnShockwave(slamX, this.groundY - 6, 260, '#fbbf24', 0.38, true);
       game.vfx.spawnBurst(slamX, this.groundY - 36, 28, '#fef08a', 310, {
@@ -617,6 +816,10 @@ export class Titan extends Fighter {
           game.vfx.spawnBurst(target.x, this.groundY - 42, 20, '#f97316', 260, {
             upBias: 185,
             size: 6
+          });
+          this.spawnVfxAnim(2, target.x, this.groundY - 78, 208, 208, 0.42, {
+            glowColor: 'emerald',
+            inFront: false
           });
           target.takeDamage(
             waveIdx === 3 ? 68 : 48,
@@ -649,249 +852,192 @@ export class Titan extends Fighter {
     }
   }
 
-  drawGrowingWorldBreakerHammer(ctx) {
-    // Renders Torgar's World-Breaker Hammer visibly GROWING HUGE (up to 2.25x - 2.65x!) as he slams it down IN FRONT of him!
-    let swingProg = -1;
-    let maxGrowth = 2.15;
-    let lingerAlpha = 0;
-
-    const t = this.stateTimer;
-    if (this.state === 'AUTO_ATTACK' && t >= 0.10 && t <= 0.56) {
-      maxGrowth = this.comboStep === 0 ? 2.25 : 1.95;
-      if (t <= 0.34) {
-        swingProg = (t - 0.10) / 0.24;
-        lingerAlpha = 1.0;
-      } else {
-        swingProg = 1.0;
-        lingerAlpha = Math.max(0, 1.0 - (t - 0.34) / 0.22);
-      }
-    } else if (this.state === 'SKILL' && t >= 0.22 && t <= 0.64) {
-      maxGrowth = 2.05;
-      if (t <= 0.44) {
-        swingProg = (t - 0.22) / 0.22;
-        lingerAlpha = 1.0;
-      } else {
-        swingProg = 1.0;
-        lingerAlpha = Math.max(0, 1.0 - (t - 0.44) / 0.20);
-      }
-    } else if (this.state === 'JUMP' && this.isFlipVault) {
-      const u = Math.min(1, t / Math.max(0.01, this.dashDuration || 0.62));
-      if (u >= 0.45 && u <= 0.96) {
-        maxGrowth = 2.15;
-        swingProg = Math.min(1.0, (u - 0.45) / 0.37);
-        lingerAlpha = u <= 0.82 ? 1.0 : Math.max(0, 1.0 - (u - 0.82) / 0.14);
-      }
-    } else if (this.state === 'ULTIMATE' && t >= 0.20 && t <= 1.72) {
-      maxGrowth = 2.55;
-      // 3 colossal slam cycles peaking at 0.45s, 0.92s, and 1.40s
-      const slamPeaks = [0.45, 0.92, 1.40];
-      for (const pk of slamPeaks) {
-        if (t >= pk - 0.24 && t <= pk + 0.22) {
-          if (t <= pk) {
-            swingProg = (t - (pk - 0.24)) / 0.24;
-            lingerAlpha = 1.0;
-          } else {
-            swingProg = 1.0;
-            lingerAlpha = Math.max(0, 1.0 - (t - pk) / 0.22);
-          }
-          break;
-        }
-      }
-    }
-
-    if (swingProg < 0 || lingerAlpha <= 0.02) return;
-
-    const easeSwing = Math.pow(swingProg, 1.65);
-    // Hammer grows dramatically from 0.95x at overhead windup to maxGrowth (2.15x - 2.55x!) as it slams into the ground in front!
-    const hScale = 0.95 + (maxGrowth - 0.95) * easeSwing;
-    // Pivot in front of Titan's chest/shoulder so the colossal hammerhead lands at x + facing * 130, y = groundY - 12
-    const pivX = this.x + this.facing * 24;
-    const pivY = this.y - 84;
-    const localAngle = -2.05 * (1 - easeSwing) + 0.36 * easeSwing;
-    const worldAngle = this.facing >= 0 ? localAngle : Math.PI - localAngle;
-    const ux = Math.cos(worldAngle);
-    const uy = Math.sin(worldAngle);
-    const nx = -uy;
-    const ny = ux * this.facing;
+  drawBloomedVfxCell(
+    ctx,
+    vfxSheet,
+    row,
+    col,
+    x,
+    y,
+    w = 208,
+    h = 208,
+    alpha = 1.0,
+    flipX = false,
+    renderer = null,
+    glowColor = 'gold'
+  ) {
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
+    const cell = 208;
+    const sx = Math.max(0, Math.min(29, Math.floor(col))) * cell;
+    const sy = Math.max(0, Math.min(4, Math.floor(row))) * cell;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
+    ctx.translate(Math.round(x), Math.round(y));
+    if (flipX) ctx.scale(-1, 1);
 
-    const shaftLen = Math.round((56 * hScale) / 4) * 4;
-    const headW = Math.round((28 * hScale) / 4) * 4;
-    const headH = Math.round((44 * hScale) / 4) * 4;
-
-    // 1. Stepped 4x4 Pixel-Art Molten-Jade Swing Crescent Trail behind the growing hammerhead
-    if (swingProg > 0.16 && swingProg < 0.98) {
-      ctx.save();
+    const glowSprite =
+      glowColor === 'emerald'
+        ? renderer?.glowEmerald || renderer?.glowGold || renderer?.glowOrange
+        : renderer?.glowGold || renderer?.glowOrange;
+    if (glowSprite) {
       ctx.globalCompositeOperation = 'lighter';
-      const arcR = shaftLen + headW * 0.45;
-      for (let s = 1; s <= 14; s++) {
-        const trailA = localAngle - s * 0.065;
-        const wA = this.facing >= 0 ? trailA : Math.PI - trailA;
-        const tx = Math.round((pivX + Math.cos(wA) * arcR) / 4) * 4;
-        const ty = Math.round((pivY + Math.sin(wA) * arcR) / 4) * 4;
-        const frac = 1 - s / 15;
-        ctx.globalAlpha = 0.72 * lingerAlpha * frac;
-        ctx.fillStyle = s % 3 === 0 ? '#10b981' : s <= 5 ? '#fef08a' : '#f59e0b';
-        const bSz = s <= 6 ? 12 : 8;
-        ctx.fillRect(tx - bSz * 0.5, ty - bSz * 0.5, bSz, bSz);
-      }
-      ctx.restore();
+      ctx.globalAlpha = Math.min(1, alpha * 0.38);
+      const gw = Math.round(w * 1.15);
+      const gh = Math.round(h * 1.15);
+      ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
     }
 
-    // Helper to place a stepped 4x4 pixel block in world space along the hammer's local axes
-    const putHammerPx = (along, perp, col, sz = 4, alpha = lingerAlpha * 0.98, additive = false) => {
-      const wx = pivX + ux * along + nx * perp;
-      const wy = pivY + uy * along + ny * perp;
-      const px = Math.round(wx / 4) * 4;
-      const py = Math.round(wy / 4) * 4;
-      ctx.globalCompositeOperation = additive ? 'lighter' : 'source-over';
-      ctx.globalAlpha = Math.min(1, alpha);
-      ctx.fillStyle = col;
-      ctx.fillRect(px - sz * 0.5, py - sz * 0.5, sz, sz);
-    };
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
-    // 2. Heavy Obsidian-Bronze Pixel Haft with Molten Gold Grip Rings
-    for (let d = -12; d <= shaftLen; d += 4) {
-      const isRing = Math.abs(d % 16) < 4;
-      putHammerPx(d, -4, isRing ? '#fbbf24' : '#18181b', 4);
-      putHammerPx(d, 0, isRing ? '#fef08a' : '#52525b', 4);
-      putHammerPx(d, 4, isRing ? '#d97706' : '#27272a', 4);
-    }
-
-    // 3. Colossal Growing Stepped 4x4 Pixel-Art World-Breaker Anvil Hammerhead in front!
-    const hx0 = Math.round((shaftLen - headW * 0.35) / 4) * 4;
-    const hx1 = hx0 + headW;
-    const halfH = Math.round((headH * 0.5) / 4) * 4;
-
-    for (let d = hx0; d <= hx1; d += 4) {
-      for (let p = -halfH; p <= halfH; p += 4) {
-        // Chamfer the 4 outer corners of the pixel anvil head
-        if ((d === hx0 || d === hx1) && Math.abs(p) === halfH) continue;
-
-        const isBorder = d === hx0 || d === hx1 || Math.abs(p) === halfH;
-        const isStrikeFace = p >= halfH - 8;
-        const isBackSpike = p <= -halfH + 4 && Math.abs(d - (hx0 + headW * 0.5)) <= 8;
-        const runeDist = Math.abs(d - (hx0 + headW * 0.5)) + Math.abs(p);
-
-        let col = '#27272a';
-        let add = false;
-        if (runeDist <= Math.max(4, headW * 0.22)) {
-          col = runeDist <= 4 ? '#ecfdf5' : '#10b981';
-          add = true;
-        } else if (isStrikeFace) {
-          col = p === halfH ? '#fef08a' : '#f59e0b';
-        } else if (isBackSpike || isBorder) {
-          col = '#fbbf24';
-        } else if ((d + p) % 8 === 0) {
-          col = '#3f3f46';
-        }
-        putHammerPx(d, p, col, 4, lingerAlpha * 0.98, add);
-      }
-    }
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = Math.min(1, alpha * 0.44);
+    ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.restore();
   }
 
-  drawForegroundOverlay(ctx) {
-    if (this.fx && !this.isDead) {
-      this.fx.renderLayer(ctx, 'back', this.x + this.facing * 56, this.groundY - 64);
-    }
+  drawForegroundOverlay(ctx, renderer = null) {
+    const sprites = PixelForge.initAssets().titan;
+    const vfxSheet = sprites?.vfx;
 
-    const vfxSheet = PixelForge.initAssets().titan?.vfx;
-    const hasVfx = !!(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
-
-    // 1. Render Torgar's Visibly Growing Colossal World-Breaker Hammer in front during slams!
-    this.drawGrowingWorldBreakerHammer(ctx);
-
-    // 2. Forward Ground Quakes & 30fps Molten Magma Crater Eruption at slamX (in front of Titan, never on his feet!)
-    if (this.activeGroundQuakes.length > 0) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      for (const q of this.activeGroundQuakes) {
-        const u = Math.min(1, q.age / Math.max(0.01, q.maxAge));
-        const alpha = Math.max(0, 1 - u);
-
-        // Render the 30fps Molten Magma Crater & Geyser (Row 2 of titan_vfx.png) at the forward impact point!
-        if (hasVfx) {
-          const fCol = Math.min(29, Math.floor(u * 29));
-          ctx.save();
-          ctx.imageSmoothingEnabled = false;
-          ctx.globalAlpha = Math.min(1, alpha * 1.15);
-          const cW = 192;
-          const cH = 164;
-          ctx.drawImage(
-            vfxSheet,
-            fCol * 208,
-            2 * 208,
-            208,
-            208,
-            Math.round(q.x - cW * 0.5),
-            Math.round(q.y - cH + 18),
-            cW,
-            cH
-          );
-          ctx.restore();
-        }
-
-        // Smooth elliptical tectonic shockwave ring expanding from the forward impact point
-        ctx.save();
-        ctx.globalAlpha = alpha * 0.85;
-        ctx.strokeStyle = q.color;
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.ellipse(q.x, q.y - 2, q.radius, Math.max(6, q.radius * 0.18), 0, 0, Math.PI * 2);
-        ctx.stroke();
-
-        ctx.strokeStyle = '#fef08a';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.ellipse(q.x, q.y - 2, q.radius * 0.72, Math.max(4, q.radius * 0.12), 0, 0, Math.PI * 2);
-        ctx.stroke();
-        ctx.restore();
+    if (vfxSheet?.complete) {
+      // 1. Background 30fps `titan_vfx.png` cell animations (Row 2 Magma Pillars & Row 3 Anvil Seals)
+      for (const v of this.activeVfxAnims) {
+        if (v.inFront) continue;
+        const u = Math.min(1, Math.max(0, v.age / v.maxLife));
+        const span = Math.max(1, v.endFrame - v.startFrame + 1);
+        const col = Math.min(29, v.startFrame + Math.floor(u * span));
+        const fade = u < 0.12 ? u / 0.12 : u > 0.78 ? (1 - u) / 0.22 : 1.0;
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          v.row,
+          col,
+          v.x,
+          v.y,
+          v.w,
+          v.h,
+          fade * 0.92,
+          v.flipX,
+          renderer,
+          v.glowColor
+        );
       }
-      ctx.restore();
-    }
 
-    if (this.activeAnvil && hasVfx) {
-      const a = this.activeAnvil;
-      const cellW = 208;
-      const cellH = 208;
-      const frameIdx = Math.floor(a.age * 30) % 30;
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.translate(Math.round(a.x), Math.round(a.y - 46));
-      ctx.rotate(a.rot);
-      ctx.drawImage(vfxSheet, frameIdx * cellW, 1 * cellH, cellW, cellH, -64, -64, 128, 128);
-      ctx.restore();
-    }
-
-    if (this.forgeArmorTimer > 0 && !this.isDead) {
-      const pulse = 0.65 + 0.35 * Math.sin(this.walkPhase * 4);
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, this.forgeArmorTimer * 1.5) * 0.82;
-      for (let i = 0; i < 4; i++) {
-        const ang = this.walkPhase * 2.4 + (i * Math.PI) / 2;
-        const ox = this.x + Math.cos(ang) * 44;
-        const oy = this.y - 74 + Math.sin(ang) * 18;
-        ctx.fillStyle = i % 2 === 0 ? '#f59e0b' : '#10b981';
-        ctx.beginPath();
-        ctx.moveTo(ox, oy - 9 * pulse);
-        ctx.lineTo(ox + 6, oy);
-        ctx.lineTo(ox, oy + 9 * pulse);
-        ctx.lineTo(ox - 6, oy);
-        ctx.closePath();
-        ctx.fill();
+      // 2. Planted Runic World-Forge Anvil Seal (`Row 3` of `titan_vfx.png`)
+      if (this.activeAnvil && this.activeAnvil.state === 'planted') {
+        const a = this.activeAnvil;
+        const col = Math.floor(a.age * 30) % 30;
+        const fade = a.age > 1.25 ? Math.max(0, (1.5 - a.age) / 0.25) : 1.0;
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          3,
+          col,
+          a.x,
+          a.y - 46,
+          176,
+          176,
+          fade * 0.96,
+          a.dir < 0,
+          renderer,
+          'emerald'
+        );
       }
-      ctx.restore();
     }
+
+    // 3. Live 120Hz `ArcaneShaderFX` "back" layer (2.5D Orbiting Magma Mantle, Crater Shockwaves, Ragnarok Waves)
+    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
   }
 
   drawUltimateForeground(ctx, renderer = null) {
-    if (this.fx && !this.isDead) {
-      this.fx.renderLayer(ctx, 'front', this.x + this.facing * 72, this.groundY - 78);
+    // 1. Live 120Hz `ArcaneShaderFX` "front" layer (World-Breaker Anvil Cleaves, Front 2.5D Rings & Sparks)
+    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
+
+    const sprites = PixelForge.initAssets().titan;
+    const vfxSheet = sprites?.vfx;
+    if (!vfxSheet?.complete) return;
+
+    // 2. Active Magma Armor Fortify Runic Shield Crest (`Row 1` of `titan_vfx.png`)
+    if (this.forgeArmorTimer > 0 && !this.isDead) {
+      const col = Math.floor((this.walkPhase || 0) * 12) % 30;
+      const alpha = Math.min(1, this.forgeArmorTimer * 1.5) * 0.78;
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        1,
+        col,
+        this.x + this.facing * 20,
+        this.y - 78,
+        168,
+        168,
+        alpha,
+        this.facing < 0,
+        renderer,
+        'gold'
+      );
+    }
+
+    // 3. Flying Anvil Cannonball (`Row 0` Molten Slag Boulder + `Row 3` Runic Anvil Seal)
+    if (this.activeAnvil && this.activeAnvil.state === 'flying') {
+      const a = this.activeAnvil;
+      const col = Math.floor(a.age * 30) % 30;
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        0,
+        col,
+        a.x - a.dir * 12,
+        a.y - 44,
+        184,
+        184,
+        0.92,
+        a.dir < 0,
+        renderer,
+        'gold'
+      );
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        3,
+        col,
+        a.x,
+        a.y - 44,
+        156,
+        156,
+        0.96,
+        a.dir < 0,
+        renderer,
+        'emerald'
+      );
+    }
+
+    // 4. Foreground 30fps `titan_vfx.png` cell bursts (`Row 1` Shield Crest & `Row 4` Cataclysm Crater Nova)
+    for (const v of this.activeVfxAnims) {
+      if (!v.inFront) continue;
+      const u = Math.min(1, Math.max(0, v.age / v.maxLife));
+      const span = Math.max(1, v.endFrame - v.startFrame + 1);
+      const col = Math.min(29, v.startFrame + Math.floor(u * span));
+      const fade = u < 0.12 ? u / 0.12 : u > 0.78 ? (1 - u) / 0.22 : 1.0;
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        v.row,
+        col,
+        v.x,
+        v.y,
+        v.w,
+        v.h,
+        fade * 0.94,
+        v.flipX,
+        renderer,
+        v.glowColor
+      );
     }
   }
 
@@ -906,7 +1052,6 @@ export class Titan extends Fighter {
     const w = 208;
     const h = 208;
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
-
     const groundPlantOffset = 4;
 
     ctx.translate(
