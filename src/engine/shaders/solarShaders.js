@@ -19,7 +19,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps58';
+} from '../ArcaneShaderFX.js?v=30fps59';
 
 export const SOLAR_CORONA_PALETTE = [
   '#18080a',
@@ -1249,81 +1249,137 @@ export const cataclysmSolarMeteorCell = {
   defaults: { palette: SOLAR_CORONA_PALETTE, seed: 233 },
   create(cfg) {
     const ramp = buildColorRamp(cfg.palette, 8);
+    const band4 = [ramp[2], ramp[4], ramp[6], PURE_WHITE];
     const rng = new DeterministicRng(cfg.seed);
     const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, ramp[7], ramp[5], ramp[3]] });
     let acc = 0;
 
     return {
       step(dt) {
-        acc += dt * 44;
+        acc += dt * 52;
         while (acc >= 1) {
           acc -= 1;
           motes.emit(
-            'spark',
-            rng.between(-10, 10),
-            rng.between(-10, 10),
-            rng.between(-78, -24),
-            rng.between(-22, 22),
+            rng.chance(0.35) ? 'glint' : 'spark',
+            rng.between(-12, 14),
+            rng.between(-14, 14),
+            rng.between(-82, -26),
+            rng.between(-24, 24),
             0.24,
             rng.chance(0.5) ? ramp[7] : ramp[5],
-            1.1,
+            1.15,
             0
           );
         }
         motes.step(dt);
       },
+      renderBack(pen, localT) {
+        const ph = localT * Math.PI * 2;
+        drawTiltedOrbitBand(pen, 8, 0, 29, 0.36, 1.5, 0.85, band4, BACK_HALF, false);
+        const bx = 8 + Math.cos(ph + Math.PI) * 26;
+        const by = Math.sin(ph + Math.PI) * 9.5;
+        if (Math.sin(ph + Math.PI) < 0) {
+          pen.fillCircle(bx, by, 3.2, ramp[0], 0.98);
+          pen.fillCircle(bx, by, 2.0, ramp[5], 0.98);
+          pen.pixel(bx, by, ramp[7], 1);
+        }
+      },
       renderFront(pen, localT) {
         const ph = localT * Math.PI * 2;
-        const headX = 10;
+        const headX = 8;
 
-        // Craggy Obsidian Meteor + Molten Lava Veins + Bow Shockwave (`+X` heading)
-        pen.shadeBox(-42, -28, 40, 28, (lx, ly, out) => {
-          if (lx < headX) {
-            const tailU = clamp01((headX - lx) / 48);
-            const halfH = (1 - tailU) * 17 + 2;
-            if (Math.abs(ly) < halfH) {
-              const n = fbm2D(lx * 0.15 + ph * 2, ly * 0.18, 2);
-              const heat = (1 - Math.abs(ly) / halfH) * (1 - tailU * 0.72) + n * 0.25;
-              if (heat > 0.24) {
-                out.color = ramp[Math.min(7, Math.max(2, Math.floor(heat * 7.5)))];
-                out.alpha = clamp01(heat * 1.2);
-                out.glowColor = ramp[5];
-                out.glowStrength = 0.28 * (1 - tailU);
-                return out.color;
-              }
-            }
-          }
+        // Craggy 3D-Rotating Obsidian Meteor + Molten Lava Veins + 1px Selout (`+X` heading)
+        pen.shadeBox(-41, -34, 40, 34, (lx, ly, out) => {
+          const dx = lx - headX;
+          const d = Math.hypot(dx, ly);
+          const ang = Math.atan2(ly, dx);
+          const crag =
+            Math.sin(ang * 5 + ph) * 1.8 +
+            Math.cos(ang * 7 - ph * 2) * 1.4 +
+            fbm2D(dx * 0.22 + Math.cos(ph), ly * 0.22 + Math.sin(ph), 2) * 3.8;
+          const rockR = 20.5 + crag;
 
-          const d = Math.hypot(lx - headX, ly);
-          const crag = fbm2D((lx - headX) * 0.24 + Math.cos(ph), ly * 0.24 + Math.sin(ph), 2) * 4.2;
-          const rockR = 15.5 + crag;
           if (d <= rockR) {
-            const vein = Math.abs(fbm2D(lx * 0.32 - ph * 0.5, ly * 0.32, 2));
-            if (vein < 0.14 || d < 4.8) {
-              out.color = d < 3.5 ? PURE_WHITE : ramp[7];
+            // 1px Dark Selective Outline (Selout) on asteroid edge
+            if (d >= rockR - 1.45) {
+              out.color = ramp[0];
+              out.alpha = 0.98;
+              return out.color;
+            }
+            // 3D Spherical coordinates for rotating tectonic magma veins
+            const nx = dx / Math.max(1, rockR);
+            const ny = ly / Math.max(1, rockR);
+            const nz = Math.sqrt(Math.max(0.05, 1 - nx * nx - ny * ny));
+            const rotX = nx * Math.cos(ph) + nz * Math.sin(ph);
+            const rotZ = -nx * Math.sin(ph) + nz * Math.cos(ph);
+            const vein = Math.abs(fbm2D(rotX * 3.4 + 1.7, ny * 3.4 - rotZ * 1.9, 2));
+
+            if (vein < 0.13 || d < 5.5) {
+              out.color = d < 3.8 || vein < 0.06 ? PURE_WHITE : ramp[7];
               out.alpha = 1;
               out.glowColor = ramp[6];
-              out.glowStrength = 0.48;
-            } else if (vein < 0.26) {
-              out.color = ramp[5];
+              out.glowStrength = 0.52;
+            } else if (vein < 0.25) {
+              out.color = vein < 0.19 ? ramp[6] : ramp[5];
+              out.alpha = 0.98;
+              out.glowColor = ramp[5];
+              out.glowStrength = 0.28;
+            } else if (vein < 0.36) {
+              out.color = ramp[3];
               out.alpha = 0.98;
             } else {
-              out.color = d > rockR - 2.4 ? ramp[3] : ramp[0];
+              out.color = ny + rotZ * 0.35 < 0 ? ramp[2] : ramp[1];
               out.alpha = 0.98;
             }
             return out.color;
           }
+
+          // Roaring Pixel-Clustered FBM Plasma Wake streaming left (`-X`)
+          if (lx < headX + 4) {
+            const tailU = clamp01((headX + 4 - lx) / 45);
+            const wave = Math.sin(tailU * 8 - ph * 2) * 2.4 * tailU;
+            const halfH = (1 - tailU * 0.72) * 22 + 3;
+            const absY = Math.abs(ly - wave);
+            if (absY < halfH) {
+              const n = fbm2D(lx * 0.16 + ph * 2, ly * 0.18, 2);
+              const heat = (1 - absY / halfH) * (1 - tailU * 0.68) + n * 0.28;
+              if (heat > 0.18) {
+                if (heat < 0.27) {
+                  // 1px dark selective outline on outer ash/flame clusters
+                  out.color = ramp[0];
+                  out.alpha = 0.92;
+                  return out.color;
+                }
+                const idx = Math.min(7, Math.max(2, Math.floor(heat * 7.8)));
+                out.color = ramp[idx];
+                out.alpha = clamp01(heat * 1.25);
+                out.glowColor = ramp[5];
+                out.glowStrength = 0.3 * (1 - tailU);
+                return out.color;
+              }
+            }
+          }
           return 0;
         });
 
+        drawTiltedOrbitBand(pen, headX, 0, 29, 0.36, 1.6, 0.92, band4, FRONT_HALF, true);
+
+        const bx = headX + Math.cos(ph + Math.PI) * 26;
+        const by = Math.sin(ph + Math.PI) * 9.5;
+        if (Math.sin(ph + Math.PI) >= 0) {
+          pen.fillCircle(bx, by, 3.4, ramp[0], 0.98);
+          pen.fillCircle(bx, by, 2.2, ramp[5], 0.98);
+          pen.pixel(bx, by, PURE_WHITE, 1);
+        }
+
         // White-gold atmospheric entry bow-shock arc ahead of meteor (`+X`)
-        for (let i = -12; i <= 12; i++) {
-          const f = i / 12;
-          const ang = f * 1.15;
+        for (let i = -14; i <= 14; i++) {
+          const f = i / 14;
+          const ang = f * 1.18;
           const env = Math.cos(f * Math.PI * 0.5);
-          const bx = headX + Math.cos(ang) * 21;
-          const by = Math.sin(ang) * 21;
-          pen.fillCircle(bx, by, 1.4 * env + 0.5, Math.abs(i) < 5 ? PURE_WHITE : ramp[6], 0.92);
+          const sx = headX + Math.cos(ang) * 26.5;
+          const sy = Math.sin(ang) * 26.5;
+          pen.fillCircle(sx, sy, 1.5 * env + 0.5, Math.abs(i) < 5 ? PURE_WHITE : ramp[6], 0.94);
         }
         motes.render(pen);
       }
@@ -1370,6 +1426,693 @@ export const heliosSunCrestSlashCell = {
   }
 };
 
+// ============================================================================
+// ROW 5 (`y=1040`): DIMENSIONAL HEAVENSFALL SKY BREACH PORTAL (`astralSkyBreachPortalCell`)
+// ============================================================================
+export const astralSkyBreachPortalCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: { palette: ECLIPSE_ABYSS_PALETTE, seed: 251 },
+  create(cfg) {
+    const abyss = buildColorRamp(cfg.palette, 8);
+    const solar = buildColorRamp(SOLAR_CORONA_PALETTE, 8);
+    const bandOuter = [solar[1], solar[4], solar[6], PURE_WHITE];
+    const bandInner = [abyss[2], solar[5], solar[7], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, solar[7], solar[5], abyss[4]] });
+    let acc = 0;
+
+    return {
+      step(dt) {
+        acc += dt * 42;
+        while (acc >= 1) {
+          acc -= 1;
+          const a = rng.between(0, Math.PI * 2);
+          const rx = rng.between(18, 36);
+          motes.emit(
+            rng.chance(0.4) ? 'glint' : 'spark',
+            Math.cos(a) * rx,
+            Math.sin(a) * rx * 0.44,
+            -Math.cos(a) * 24,
+            rng.between(12, 42),
+            0.22,
+            rng.chance(0.5) ? solar[7] : solar[5],
+            1.1,
+            18
+          );
+        }
+        motes.step(dt);
+      },
+      renderBack(pen, localT) {
+        const ph = localT * Math.PI * 2;
+        drawTiltedOrbitBand(pen, 0, 0, 39, 0.44, 1.9, 0.92, bandOuter, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, 29, 0.44, 1.5, 0.88, bandInner, BACK_HALF, false);
+
+        // Dimensional Astral Rift Tear (`rx = 38, ry = 18`) with 1px Selout + Swirling Magma Nebula
+        pen.shadeBox(-41, -26, 41, 26, (lx, ly, out) => {
+          const ang = Math.atan2(ly, lx);
+          const jag =
+            Math.sin(ang * 8 + ph * 2) * 0.08 +
+            Math.cos(ang * 5 - ph * 3) * 0.06 +
+            fbm2D(lx * 0.16 + Math.cos(ph), ly * 0.24 + Math.sin(ph), 2) * 0.12;
+          const er = Math.hypot(lx / 37.5, ly / 16.5) + jag;
+
+          if (er > 1.08) return 0;
+
+          // 1px Dark Selective Outline around outer coronal tear
+          if (er >= 0.98) {
+            out.color = solar[0];
+            out.alpha = 0.96;
+            return out.color;
+          }
+          // Blazing Accretion Rim (`0.72 <= er < 0.98`)
+          if (er >= 0.72) {
+            const u = (er - 0.72) / 0.26;
+            out.color = u < 0.32 ? PURE_WHITE : u < 0.62 ? solar[7] : u < 0.84 ? solar[5] : solar[3];
+            out.alpha = 0.98;
+            out.glowColor = solar[6];
+            out.glowStrength = 0.48 * (1 - u);
+            return out.color;
+          }
+          // Abyssal Void Core with swirling crimson-gold vortex filaments (`er < 0.72`)
+          const swirl = fbm2D(lx * 0.18 - Math.sin(ph), ly * 0.28 + Math.cos(ph), 2);
+          if (er < 0.22 && swirl > 0.08) {
+            out.color = solar[6];
+            out.alpha = 0.95;
+            out.glowColor = solar[5];
+            out.glowStrength = 0.35;
+          } else if (swirl > 0.22) {
+            out.color = abyss[4];
+            out.alpha = 0.96;
+          } else {
+            out.color = er < 0.42 ? abyss[0] : abyss[1];
+            out.alpha = 0.98;
+          }
+          return out.color;
+        });
+      },
+      renderFront(pen, localT) {
+        const ph = localT * Math.PI * 2;
+        drawTiltedOrbitBand(pen, 0, 0, 39, 0.44, 2.0, 0.96, bandOuter, FRONT_HALF, true);
+        drawTiltedOrbitBand(pen, 0, 0, 29, 0.44, 1.6, 0.92, bandInner, FRONT_HALF, false);
+
+        // 8 Rotating Astral Prominence Spikes around the breach
+        for (let k = 0; k < 8; k++) {
+          const a = ph + (k * Math.PI) / 4;
+          const x0 = Math.cos(a) * 26;
+          const y0 = Math.sin(a) * 11.5;
+          const x1 = Math.cos(a) * 39;
+          const y1 = Math.sin(a) * 17.5;
+          pen.line(x0, y0, x1, y1, k % 2 === 0 ? PURE_WHITE : solar[6], 0.92);
+        }
+
+        // Crackling Pixel Lightning Chains arcing across the dimensional breach
+        for (let b = 0; b < 2; b++) {
+          const a = ph * 1.5 + b * Math.PI;
+          const sx = Math.cos(a) * 32;
+          const sy = Math.sin(a) * 13;
+          const bolt = buildLightningChain(rng, sx, sy, 0, 0, 0.22, 3);
+          pen.polyline(bolt, b === 0 ? PURE_WHITE : solar[7], 0.94);
+        }
+
+        drawHeliosStar(pen, 0, 0, 12, PURE_WHITE, solar[6], 0.95, -ph * 2);
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// ROW 6 (`y=1248`): COLOSSAL FF14 LIMIT BREAK III ASTEROID CORE (`astralMeteorColossusCell`)
+// ============================================================================
+export const astralMeteorColossusCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: { palette: SOLAR_CORONA_PALETTE, seed: 263 },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const band4 = [ramp[1], ramp[4], ramp[6], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, ramp[7], ramp[5], ramp[3]] });
+    let acc = 0;
+
+    function drawOrbitingBoulders(pen, ph, isFront) {
+      for (let i = 0; i < 6; i++) {
+        const a = ph * 2 + (i * Math.PI) / 3;
+        const sinA = Math.sin(a);
+        if ((sinA >= 0) !== isFront) continue;
+        const rx = i % 2 === 0 ? 37.5 : 34.5;
+        const ry = i % 2 === 0 ? 15.5 : -14.5;
+        const bx = Math.cos(a) * rx;
+        const by = sinA * ry;
+        const br = i % 2 === 0 ? 3.8 : 3.1;
+        // 1px dark selective outline (`ramp[0]`) + molten magma core
+        pen.fillCircle(bx, by, br, ramp[0], 0.98);
+        pen.fillCircle(bx, by, br - 1.1, ramp[3], 0.98);
+        pen.fillCircle(bx - 0.4, by - 0.4, Math.max(1.1, br - 2.0), ramp[6], 1.0);
+        pen.pixel(bx - 0.5, by - 0.5, PURE_WHITE, 1.0);
+      }
+    }
+
+    return {
+      step(dt) {
+        acc += dt * 64;
+        while (acc >= 1) {
+          acc -= 1;
+          const a = rng.between(0, Math.PI * 2);
+          const dist = rng.between(24, 36);
+          motes.emit(
+            rng.chance(0.4) ? 'glint' : 'spark',
+            Math.cos(a) * dist,
+            Math.sin(a) * dist,
+            rng.between(-32, 32),
+            rng.between(-48, -14),
+            0.22,
+            rng.chance(0.5) ? ramp[7] : ramp[5],
+            1.2,
+            -12
+          );
+        }
+        motes.step(dt);
+      },
+      renderBack(pen, localT) {
+        const ph = localT * Math.PI * 2;
+        drawTiltedOrbitBand(pen, 0, 0, 39, 0.38, 1.8, 0.88, band4, BACK_HALF, false);
+        drawOrbitingBoulders(pen, ph, false);
+      },
+      renderFront(pen, localT) {
+        const ph = localT * Math.PI * 2;
+
+        // Colossal 3D-Rotating Tectonic Obsidian & Magma Asteroid (`rockR = 29..34.5`)
+        pen.shadeBox(-39, -39, 39, 39, (lx, ly, out) => {
+          const d = Math.hypot(lx, ly);
+          if (d > 38) return 0;
+
+          const ang = Math.atan2(ly, lx);
+          const crag =
+            Math.sin(ang * 6 + ph) * 1.9 +
+            Math.cos(ang * 9 - ph * 2) * 1.5 +
+            Math.sin(ang * 4 - ph) * 1.2 +
+            fbm2D(lx * 0.15 + Math.cos(ph), ly * 0.15 + Math.sin(ph), 2) * 3.6;
+          const rockR = 29.2 + crag;
+
+          if (d <= rockR) {
+            // 1. Crisp 1px Dark Selective Outline (`Selout`, `#18080a`) around the asteroid silhouette
+            if (d >= rockR - 1.5) {
+              out.color = ramp[0];
+              out.alpha = 1.0;
+              return out.color;
+            }
+
+            // 2. 3D Spherical Projection & Rotation for Tectonic Plates & Lava Fissures
+            const nx = lx / Math.max(1, rockR);
+            const ny = ly / Math.max(1, rockR);
+            const nz = Math.sqrt(Math.max(0.04, 1 - nx * nx - ny * ny));
+
+            // Rotate sphere coordinates around diagonal axis by `ph`
+            const cosP = Math.cos(ph);
+            const sinP = Math.sin(ph);
+            const rx = nx * cosP + nz * sinP;
+            const rz = -nx * sinP + nz * cosP;
+            const ry = ny * cosP - rz * 0.25 * sinP;
+
+            const tectonic = fbm2D(rx * 2.8 + 3.1, ry * 2.8 + rz * 1.7, 2);
+            const fissure = Math.abs(fbm2D(rx * 3.6 - 1.4, ry * 3.6 - rz * 2.2, 2));
+            const subCrack = Math.abs(fbm2D(rx * 6.2 + 0.8, ry * 6.2, 2));
+
+            // Incandescent White-Gold & Solar-Orange Magma Rivers (`fissure < 0.22`)
+            if (fissure < 0.085 || (d < 8.5 && tectonic > 0.05)) {
+              out.color = fissure < 0.045 || d < 4.5 ? PURE_WHITE : ramp[7];
+              out.alpha = 1.0;
+              out.glowColor = ramp[6];
+              out.glowStrength = 0.58;
+              return out.color;
+            }
+            if (fissure < 0.17 || subCrack < 0.07) {
+              out.color = fissure < 0.125 ? ramp[6] : ramp[5];
+              out.alpha = 1.0;
+              out.glowColor = ramp[5];
+              out.glowStrength = 0.36;
+              return out.color;
+            }
+            if (fissure < 0.25) {
+              out.color = ramp[3];
+              out.alpha = 0.98;
+              return out.color;
+            }
+
+            // Stepped Cel-Clustered Obsidian Armor Plates with Bottom-Right Atmospheric Entry Rim Heating
+            const noseHeat = (lx * 0.45 + ly * 0.55) / rockR + tectonic * 0.35;
+            if (d >= rockR - 3.6 && noseHeat > 0.18) {
+              out.color = noseHeat > 0.42 ? ramp[5] : ramp[3];
+              out.alpha = 0.98;
+              return out.color;
+            }
+
+            // 1px internal plate seam (`Selout` inside tectonic boundaries)
+            if (fissure < 0.295) {
+              out.color = ramp[0];
+              out.alpha = 0.98;
+              return out.color;
+            }
+
+            // Cel-shaded obsidian basalt plates
+            const plateLight = nz * 0.65 - ny * 0.25 + tectonic * 0.45;
+            out.color = plateLight > 0.58 ? ramp[2] : plateLight > 0.28 ? ramp[1] : ramp[0];
+            out.alpha = 0.99;
+            return out.color;
+          }
+
+          // 3. Outer Solar Prominence Rim & 4x4 Bayer Stipple Corona (`rockR < d <= rockR + 4.8`)
+          const coronaDist = d - rockR;
+          if (coronaDist <= 4.6) {
+            const coronaU = 1 - coronaDist / 4.6;
+            const flk = fbm2D(lx * 0.24 - ph * 2, ly * 0.24 + ph * 2, 2);
+            if (coronaU + flk * 0.35 > 0.42) {
+              out.color = coronaU > 0.68 ? ramp[6] : coronaU > 0.38 ? ramp[4] : ramp[0];
+              out.alpha = clamp01(coronaU * 0.92);
+              out.glowColor = ramp[5];
+              out.glowStrength = 0.32 * coronaU;
+              return out.color;
+            }
+          }
+          return 0;
+        });
+
+        // 3 Rotating Volcanic Caldera Vents that flare with Helios stars across the front hemisphere
+        for (let v = 0; v < 3; v++) {
+          const va = ph + (v * Math.PI * 2) / 3;
+          const sinV = Math.sin(va);
+          if (sinV > -0.15) {
+            const vx = Math.cos(va) * 14.5;
+            const vy = (v - 1) * 7.5 + sinV * 4.5;
+            drawHeliosStar(pen, vx, vy, 7.5 + sinV * 3.5, PURE_WHITE, ramp[6], 0.92, ph * 2 + v);
+          }
+        }
+
+        drawTiltedOrbitBand(pen, 0, 0, 39, 0.38, 1.9, 0.95, band4, FRONT_HALF, true);
+        drawOrbitingBoulders(pen, ph, true);
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// ROW 7 (`y=1456`): ROARING ASTRAL CATACLYSM PLASMA WAKE (`astralCataclysmWakeCell`)
+// ============================================================================
+export const astralCataclysmWakeCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: { palette: SOLAR_CORONA_PALETTE, seed: 277 },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const band4 = [ramp[2], ramp[4], ramp[6], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, ramp[7], ramp[5], ramp[3]] });
+    let acc = 0;
+
+    return {
+      step(dt) {
+        acc += dt * 56;
+        while (acc >= 1) {
+          acc -= 1;
+          motes.emit(
+            rng.chance(0.4) ? 'streak' : 'spark',
+            rng.between(-18, 18),
+            rng.between(-10, 26),
+            rng.between(-24, 24),
+            rng.between(-84, -28),
+            0.22,
+            rng.chance(0.5) ? ramp[7] : ramp[5],
+            1.15,
+            -15
+          );
+        }
+        motes.step(dt);
+      },
+      renderBack(pen, localT) {
+        const ph = localT * Math.PI * 2;
+        const ringY = -8 + ((localT * 28) % 28);
+        drawTiltedOrbitBand(pen, 0, ringY, 34, 0.32, 1.6, 0.86, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -ringY * 0.6, 26, 0.32, 1.4, 0.82, band4, BACK_HALF, false);
+
+        // Multi-tongue roaring FBM solar plasma wake column with 1px `#18080a` Selout
+        pen.shadeBox(-36, -39, 36, 39, (lx, ly, out) => {
+          const v = clamp01((38 - ly) / 76); // 0 at bottom (+38, meteor side), 1 at top (-38, wake tail)
+          const sway = Math.sin(v * 6.5 - ph * 2) * 4.5 * v;
+          const halfW = (1 - v * 0.58) * 28 + Math.sin(v * 9 + ph) * 3.2;
+          const dx = Math.abs(lx - sway);
+          if (dx > halfW) return 0;
+
+          const nx = (lx - sway) / Math.max(1, halfW);
+          const tongue =
+            Math.cos(nx * Math.PI * 2.5) * 0.22 +
+            fbm2D(lx * 0.16 + Math.cos(ph), ly * 0.14 + ph * 2.2, 2) * 0.42;
+          const heat = (1 - Math.pow(dx / halfW, 1.45)) * (1 - v * 0.48) + tongue;
+
+          if (heat <= 0.16) return 0;
+          // 1px Dark Selective Outline (`ramp[0]`) on outer ash/cinder boundary
+          if (heat < 0.26 || dx >= halfW - 1.5) {
+            out.color = ramp[0];
+            out.alpha = 0.94;
+            return out.color;
+          }
+          if (heat > 0.82) {
+            out.color = PURE_WHITE;
+            out.alpha = 1.0;
+          } else {
+            const idx = Math.min(7, Math.max(1, Math.floor(heat * 8.2)));
+            out.color = ramp[idx];
+            out.alpha = 0.98;
+          }
+          out.glowColor = ramp[6];
+          out.glowStrength = 0.38 * (1 - v * 0.6);
+          return out.color;
+        });
+      },
+      renderFront(pen, localT) {
+        const ringY = -8 + ((localT * 28) % 28);
+        drawTiltedOrbitBand(pen, 0, ringY, 34, 0.32, 1.7, 0.94, band4, FRONT_HALF, true);
+        drawTiltedOrbitBand(pen, 0, -ringY * 0.6, 26, 0.32, 1.5, 0.9, band4, FRONT_HALF, false);
+
+        const bolt = buildLightningChain(rng, -12, 28, 12, -28, 0.24, 3);
+        pen.polyline(bolt, ramp[7], 0.9);
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 11. LIVE 120HZ BLACK MAGE LEY-LINES INVOCATION CIRCLE (`astralBlackMageLeyLines`)
+// ============================================================================
+export const astralBlackMageLeyLines = {
+  duration: 3.25,
+  loop: false,
+  defaults: {
+    palette: SOLAR_CORONA_PALETTE,
+    seed: 307
+  },
+  create(cfg) {
+    const solar = buildColorRamp(cfg.palette, 8);
+    const abyss = buildColorRamp(ECLIPSE_ABYSS_PALETTE, 8);
+    const bandOuter = [solar[1], solar[4], solar[6], PURE_WHITE];
+    const bandInner = [abyss[3], solar[5], solar[7], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, solar[7], solar[5], solar[3]], floorY: 0 });
+    let t = 0;
+    let acc = 0;
+
+    function drawHelixRibbons(pen, u, env, isFront) {
+      const turns = 2.5;
+      const steps = 28;
+      for (let strand = 0; strand < 2; strand++) {
+        for (let s = 0; s < steps; s++) {
+          const f = s / steps;
+          const a = f * Math.PI * 2 * turns - t * 5.2 + strand * Math.PI;
+          const sinA = Math.sin(a);
+          if ((sinA >= 0) !== isFront) continue;
+          const rx = (1 - f * 0.35) * 32 + 8;
+          const hx = Math.cos(a) * rx;
+          const hy = -4 - f * 86 + sinA * 4.5;
+          const r = (1 - f * 0.55) * 2.2 + 0.8;
+          pen.fillCircle(hx, hy, r + 0.8, solar[0], 0.88 * env);
+          pen.fillCircle(hx, hy, r, s % 3 === 0 ? PURE_WHITE : strand === 0 ? solar[7] : solar[5], 0.96 * env);
+        }
+      }
+    }
+
+    return {
+      step(dt) {
+        t += dt;
+        acc += dt * 54;
+        while (acc >= 1 && t < 3.0) {
+          acc -= 1;
+          const a = rng.between(0, Math.PI * 2);
+          const rx = rng.between(16, 66);
+          motes.emit(
+            rng.chance(0.4) ? 'glint' : 'spark',
+            Math.cos(a) * rx,
+            Math.sin(a) * rx * 0.22 - 2,
+            rng.between(-14, 14),
+            rng.between(-78, -26),
+            rng.between(0.24, 0.44),
+            rng.chance(0.5) ? solar[7] : solar[5],
+            1.15,
+            -18
+          );
+        }
+        motes.step(dt);
+      },
+      renderBack(pen) {
+        const u = clamp01(t / 3.25);
+        const pop = smoothStep(0, 0.1, u);
+        const fade = 1 - smoothStep(0.88, 1.0, u);
+        const env = pop * fade;
+        if (env <= 0.02) return;
+
+        drawTiltedOrbitBand(pen, 0, 0, 68 * pop, 0.22, 1.9, 0.9 * env, bandOuter, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, 44 * pop, 0.22, 1.5, 0.86 * env, bandInner, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, 22 * pop, 0.22, 1.2, 0.82 * env, bandOuter, BACK_HALF, false);
+        drawHelixRibbons(pen, u, env, false);
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 3.25);
+        const pop = smoothStep(0, 0.1, u);
+        const fade = 1 - smoothStep(0.88, 1.0, u);
+        const env = pop * fade;
+        if (env <= 0.02) return;
+
+        drawTiltedOrbitBand(pen, 0, 0, 68 * pop, 0.22, 2.0, 0.96 * env, bandOuter, FRONT_HALF, true);
+        drawTiltedOrbitBand(pen, 0, 0, 44 * pop, 0.22, 1.6, 0.92 * env, bandInner, FRONT_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, 22 * pop, 0.22, 1.3, 0.88 * env, bandOuter, FRONT_HALF, false);
+
+        // 8 Consecrated Black Mage Ley-Line Rune Pillars around the circle perimeter
+        for (let k = 0; k < 8; k++) {
+          const a = t * 2.4 + (k * Math.PI) / 4;
+          const x0 = Math.cos(a) * 22 * pop;
+          const y0 = Math.sin(a) * 22 * 0.22 * pop;
+          const x1 = Math.cos(a) * 68 * pop;
+          const y1 = Math.sin(a) * 68 * 0.22 * pop;
+          pen.line(x0, y0, x1, y1, k % 2 === 0 ? PURE_WHITE : solar[6], 0.9 * env);
+          if (Math.sin(a) >= 0) {
+            drawHeliosStar(pen, x1, y1 - 3, 5.5 * pop, PURE_WHITE, solar[5], 0.92 * env, t * 4 + k);
+          }
+        }
+
+        drawHelixRibbons(pen, u, env, true);
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 12. LIVE 120HZ METEOR SLIPSTREAM WAKE (`astralMeteorSlipstreamWake`)
+// ============================================================================
+export const astralMeteorSlipstreamWake = {
+  duration: 0.46,
+  loop: false,
+  defaults: {
+    palette: SOLAR_CORONA_PALETTE,
+    seed: 317,
+    scale: 1.0
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const band4 = [ramp[1], ramp[4], ramp[6], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, ramp[7], ramp[5], ramp[3]] });
+    let t = 0;
+    let emitted = false;
+
+    return {
+      step(dt) {
+        if (!emitted) {
+          emitted = true;
+          for (let i = 0; i < 18; i++) {
+            const a = rng.between(-Math.PI * 0.85, -Math.PI * 0.15);
+            const spd = rng.between(48, 155);
+            motes.emit(
+              i % 3 === 0 ? 'streak' : 'spark',
+              rng.between(-18, 18),
+              rng.between(-12, 12),
+              Math.cos(a) * spd,
+              Math.sin(a) * spd,
+              rng.between(0.18, 0.38),
+              i % 2 === 0 ? ramp[7] : ramp[5],
+              1.2,
+              -20
+            );
+          }
+        }
+        t += dt;
+        motes.step(dt);
+      },
+      renderBack(pen) {
+        const u = clamp01(t / 0.46);
+        const fade = 1 - u;
+        if (fade <= 0.02) return;
+        const sc = (cfg.scale || 1.0) * (0.75 + 0.55 * smoothStep(0, 0.65, u));
+        drawTiltedOrbitBand(pen, 0, 0, 38 * sc, 0.34, 1.8, fade * 0.9, band4, BACK_HALF, false);
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 0.46);
+        const fade = 1 - u;
+        if (fade <= 0.02) return;
+        const sc = (cfg.scale || 1.0) * (0.75 + 0.55 * smoothStep(0, 0.65, u));
+        drawTiltedOrbitBand(pen, 0, 0, 38 * sc, 0.34, 1.9, fade * 0.95, band4, FRONT_HALF, u < 0.3);
+
+        // Crackling slipstream plasma bolt
+        if (u < 0.65) {
+          const bolt = buildLightningChain(rng, -22 * sc, -16 * sc, 22 * sc, 14 * sc, 0.22, 3);
+          pen.polyline(bolt, u < 0.25 ? PURE_WHITE : ramp[7], fade * 0.92);
+        }
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 13. LIVE 120HZ THERMONUCLEAR CATACLYSM IMPACT DOME (`astralCataclysmImpactDome`)
+// ============================================================================
+export const astralCataclysmImpactDome = {
+  duration: 1.85,
+  loop: false,
+  defaults: {
+    palette: SOLAR_CORONA_PALETTE,
+    seed: 331
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const band4 = [ramp[1], ramp[4], ramp[6], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, ramp[7], ramp[5], ramp[3]], floorY: 0 });
+    let t = 0;
+    let acc = 0;
+    let burstDone = false;
+
+    return {
+      step(dt) {
+        if (!burstDone) {
+          burstDone = true;
+          for (let i = 0; i < 42; i++) {
+            const a = rng.between(-Math.PI * 0.95, -Math.PI * 0.05);
+            const spd = rng.between(65, 220);
+            motes.emit(
+              i % 3 === 0 ? 'glint' : 'spark',
+              rng.between(-32, 32),
+              rng.between(-12, 0),
+              Math.cos(a) * spd,
+              Math.sin(a) * spd,
+              rng.between(0.32, 0.72),
+              i % 2 === 0 ? ramp[7] : ramp[5],
+              1.35,
+              95
+            );
+          }
+        }
+        t += dt;
+        acc += dt * 48;
+        while (acc >= 1 && t < 1.35) {
+          acc -= 1;
+          motes.emit(
+            'spark',
+            rng.between(-88, 88),
+            rng.between(-6, 2),
+            rng.between(-28, 28),
+            rng.between(-96, -32),
+            rng.between(0.24, 0.45),
+            rng.chance(0.5) ? ramp[7] : ramp[5],
+            1.2,
+            -18
+          );
+        }
+        motes.step(dt);
+      },
+      renderBack(pen) {
+        const u = clamp01(t / 1.85);
+        const pop = smoothStep(0, 0.14, u);
+        const fade = 1 - smoothStep(0.68, 1.0, u);
+        const env = pop * fade;
+        if (env <= 0.02) return;
+
+        const r1 = (45 + 72 * smoothStep(0, 0.55, u)) * pop;
+        const r2 = (28 + 48 * smoothStep(0, 0.45, u)) * pop;
+        drawTiltedOrbitBand(pen, 0, 0, r1, 0.22, 2.2, 0.92 * env, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, r2, 0.22, 1.8, 0.88 * env, band4, BACK_HALF, false);
+
+        // Colossal Pixel-Shader Thermonuclear Magma Hemisphere Dome (`shadeBox` with 1px Selout)
+        const domeW = Math.round((38 + 68 * smoothStep(0, 0.38, u)) * pop);
+        const domeH = Math.round((34 + 66 * smoothStep(0, 0.38, u)) * pop);
+        if (domeW >= 8 && domeH >= 8) {
+          pen.shadeBox(-domeW - 4, -domeH - 4, domeW + 4, 8, (lx, ly, out) => {
+            if (ly > 4) return 0;
+            const nx = lx / domeW;
+            const ny = ly / domeH;
+            const d = Math.hypot(nx, ny);
+            const crag = fbm2D(lx * 0.1 + t * 2.4, ly * 0.1 - t * 3.1, 2) * 0.12;
+            const effD = d + crag;
+            if (effD > 1.04) return 0;
+
+            // 1px Dark Selective Outline (`ramp[0]`) on outer dome crust
+            if (effD >= 0.94) {
+              out.color = ramp[0];
+              out.alpha = 0.95 * env;
+              return out.color;
+            }
+
+            // Cellular magma cracks across the expanding explosion dome
+            const cell = Math.abs(fbm2D(lx * 0.14 - t * 1.8, ly * 0.14 + t * 2.6, 2));
+            const coreHeat = (1 - effD * 0.82) * fade + (cell < 0.14 ? 0.35 : 0);
+            if (coreHeat < 0.22) return 0;
+
+            if (coreHeat > 0.78 || effD < 0.36) {
+              out.color = PURE_WHITE;
+            } else if (coreHeat > 0.58) {
+              out.color = ramp[7];
+            } else if (coreHeat > 0.42) {
+              out.color = ramp[5];
+            } else if (coreHeat > 0.28) {
+              out.color = ramp[3];
+            } else {
+              out.color = ramp[1];
+            }
+            out.alpha = clamp01(env * 0.98);
+            out.glowColor = ramp[6];
+            out.glowStrength = 0.48 * env;
+            return out.color;
+          });
+        }
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 1.85);
+        const pop = smoothStep(0, 0.14, u);
+        const fade = 1 - smoothStep(0.68, 1.0, u);
+        const env = pop * fade;
+        if (env <= 0.02) return;
+
+        const r1 = (45 + 72 * smoothStep(0, 0.55, u)) * pop;
+        const r2 = (28 + 48 * smoothStep(0, 0.45, u)) * pop;
+        drawTiltedOrbitBand(pen, 0, 0, r1, 0.22, 2.3, 0.96 * env, band4, FRONT_HALF, u < 0.28);
+        drawTiltedOrbitBand(pen, 0, 0, r2, 0.22, 1.9, 0.92 * env, band4, FRONT_HALF, false);
+
+        // 6 Ground-to-Sky Jagged Solar Lightning Pillars
+        if (u < 0.72) {
+          const boltEnv = Math.sin((u / 0.72) * Math.PI);
+          for (const bx of [-64, -36, -12, 12, 36, 64]) {
+            const bolt = buildLightningChain(rng, bx * pop, -118 * pop, bx * 0.65 * pop, 0, 0.18, 3);
+            pen.polyline(bolt, Math.abs(bx) < 20 ? PURE_WHITE : ramp[7], 0.94 * boltEnv);
+          }
+        }
+        motes.render(pen);
+      }
+    };
+  }
+};
+
 export const SOLAR_EFFECT_REGISTRY = {
   heliosOrbitingSuns,
   heliosPalmFocus,
@@ -1381,9 +2124,16 @@ export const SOLAR_EFFECT_REGISTRY = {
   hellfireSolarPillar,
   eclipseSupernovaDomain,
   solarMeteorImpactBurst,
+  astralBlackMageLeyLines,
+  astralMeteorSlipstreamWake,
+  astralCataclysmImpactDome,
   solarFireballOrbCell,
   hellfireMagmaPillarCell,
   blackSunEclipseSphereCell,
   cataclysmSolarMeteorCell,
-  heliosSunCrestSlashCell
+  heliosSunCrestSlashCell,
+  astralSkyBreachPortalCell,
+  astralMeteorColossusCell,
+  astralCataclysmWakeCell
 };
+

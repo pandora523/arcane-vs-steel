@@ -19,13 +19,13 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps59';
 
 import {
   SOLAR_CORONA_PALETTE,
   ECLIPSE_ABYSS_PALETTE,
   SOLAR_EFFECT_REGISTRY
-} from '../src/engine/shaders/solarShaders.js?v=30fps55';
+} from '../src/engine/shaders/solarShaders.js?v=30fps59';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -147,7 +147,7 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
 }
 
 function bakeVfxSheet() {
-  const ROWS = 5;
+  const ROWS = 8;
   const COLS = 30;
   const LOGICAL = 104;
   const CELL = 208;
@@ -201,7 +201,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 3: Craggy Cataclysm Solar Meteor (F00..F29)',
+      name: 'Row 3: Craggy 3D-Rotating Cataclysm Solar Meteor (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -218,6 +218,39 @@ function bakeVfxSheet() {
         {
           def: SOLAR_EFFECT_REGISTRY.heliosSunCrestSlashCell,
           warmup: 0,
+          cfg: { x: 52, y: 52, palette: SOLAR_CORONA_PALETTE }
+        }
+      ]
+    },
+    {
+      name: 'Row 5: Dimensional Heavensfall Sky Breach Portal (F00..F29)',
+      windowSec: 1.0,
+      layers: [
+        {
+          def: SOLAR_EFFECT_REGISTRY.astralSkyBreachPortalCell,
+          warmup: 0.1,
+          cfg: { x: 52, y: 52, palette: ECLIPSE_ABYSS_PALETTE }
+        }
+      ]
+    },
+    {
+      name: 'Row 6: Colossal FF14 Limit Break III 3D-Rotating Asteroid Core (F00..F29)',
+      windowSec: 1.0,
+      layers: [
+        {
+          def: SOLAR_EFFECT_REGISTRY.astralMeteorColossusCell,
+          warmup: 0.1,
+          cfg: { x: 52, y: 52, palette: SOLAR_CORONA_PALETTE }
+        }
+      ]
+    },
+    {
+      name: 'Row 7: Roaring Astral Cataclysm Plasma Wake & Mach Rings (F00..F29)',
+      windowSec: 1.0,
+      layers: [
+        {
+          def: SOLAR_EFFECT_REGISTRY.astralCataclysmWakeCell,
+          warmup: 0.1,
           cfg: { x: 52, y: 52, palette: SOLAR_CORONA_PALETTE }
         }
       ]
@@ -280,7 +313,7 @@ function bakeVfxSheet() {
 
   const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'mage_vfx.png');
   fs.writeFileSync(outVfxPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  console.log(`[mage-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/150`);
+  console.log(`[mage-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/240`);
   if (borderClips !== 0) {
     throw new Error(`Expected 0 borderClips on mage_vfx.png, got ${borderClips}`);
   }

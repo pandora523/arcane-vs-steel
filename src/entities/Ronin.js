@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps58';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps58';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps58';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps58';
+import { Fighter } from './Fighter.js?v=30fps59';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps59';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps59';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps59';
 
 /**
  * Kaze-Maru (`ronin`) — Storm-Blade Iaido Samurai & Raijin Thunder Vanguard.
@@ -64,7 +64,7 @@ export class Ronin extends Fighter {
     if (typeof Image !== 'undefined') {
       const roninAssets = PixelForge.initAssets()?.ronin;
       if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps51')) {
-        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps58';
+        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps59';
       }
     }
   }

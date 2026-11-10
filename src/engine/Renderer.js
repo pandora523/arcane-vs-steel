@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps58';
+import { PixelForge } from './PixelForge.js?v=30fps59';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -1490,8 +1490,8 @@ export class Renderer {
    */
   drawImpactFrameWorld(ctx, fighters, ww, gy) {
     const p = 1 - this.impactFrameTimer / (this.impactFrameMaxTimer || 0.15);
-    const cx = this.impactFrameFocusX ?? ww * 0.5;
-    const cy = this.impactFrameFocusY ?? gy - 90;
+    const cx = Math.round((this.impactFrameFocusX ?? ww * 0.5) / 4) * 4;
+    const cy = Math.round((this.impactFrameFocusY ?? gy - 90) / 4) * 4;
     const isInverted = p < 0.42;
     const isJustice = this.impactFrameStyle === 'justice';
     const accentCol = isJustice ? '#38bdf8' : '#fb923c';
@@ -1505,35 +1505,36 @@ export class Renderer {
     ctx.fillStyle = isInverted ? '#ffffff' : '#03040a';
     ctx.fillRect(-1200, -1000, ww + 2400, 2400);
 
-    // 2. 48 Radial Anime Impact Speed-Spikes bursting from the impact epicenter `(cx, cy)`
+    // 2. 48 Pixel-Stepped Radial Anime Impact Speed-Rays bursting from `(cx, cy)`
     const spikeCount = 48;
+    const pxGrid = 6;
     for (let i = 0; i < spikeCount; i++) {
       const a = (i / spikeCount) * Math.PI * 2 + (i % 2 === 0 ? 0.03 : -0.02);
-      const innerR = 28 + (i % 5) * 18 + p * 45;
-      const outerR = 1400;
-      const halfAng = (i % 3 === 0 ? 0.042 : 0.022) * (1 - p * 0.25);
+      const cosA = Math.cos(a);
+      const sinA = Math.sin(a);
+      const innerR = 32 + (i % 5) * 18 + p * 48;
+      ctx.fillStyle =
+        i % 3 === 0 ? accentCol : isInverted ? '#03040a' : '#ffffff';
 
-      ctx.fillStyle = isInverted
-        ? i % 3 === 0
-          ? accentCol
-          : '#03040a'
-        : i % 3 === 0
-          ? accentCol
-          : '#ffffff';
-      ctx.beginPath();
-      ctx.moveTo(cx + Math.cos(a) * innerR, cy + Math.sin(a) * innerR);
-      ctx.lineTo(cx + Math.cos(a - halfAng) * outerR, cy + Math.sin(a - halfAng) * outerR);
-      ctx.lineTo(cx + Math.cos(a + halfAng) * outerR, cy + Math.sin(a + halfAng) * outerR);
-      ctx.closePath();
-      ctx.fill();
+      for (let r = innerR; r <= 960; r += 18) {
+        const bx = Math.round((cx + cosA * r) / pxGrid) * pxGrid;
+        const by = Math.round((cy + sinA * r) / pxGrid) * pxGrid;
+        const bw = r > 360 ? 18 : 12;
+        const bh = r > 360 ? 12 : 6;
+        ctx.fillRect(bx - (bw >> 1), by - (bh >> 1), bw, bh);
+      }
     }
 
-    // 3. Blinding Core Shock-Ring at `(cx, cy)`
-    ctx.strokeStyle = isInverted ? '#03040a' : '#ffffff';
-    ctx.lineWidth = 10;
-    ctx.beginPath();
-    ctx.arc(cx, cy, 55 + p * 260, 0, Math.PI * 2);
-    ctx.stroke();
+    // 3. Pixel-Stepped Octagonal Block Shock-Ring at `(cx, cy)`
+    const ringR = 56 + p * 260;
+    const ringSteps = 64;
+    ctx.fillStyle = isInverted ? '#03040a' : '#ffffff';
+    for (let s = 0; s < ringSteps; s++) {
+      const a = (s / ringSteps) * Math.PI * 2;
+      const rx = Math.round((cx + Math.cos(a) * ringR) / pxGrid) * pxGrid;
+      const ry = Math.round((cy + Math.sin(a) * ringR) / pxGrid) * pxGrid;
+      ctx.fillRect(rx - 6, ry - 6, 12, 12);
+    }
 
     // 4. Stark High-Contrast Fighter Silhouettes (so every character stands out in dramatic anime impact silhouette!)
     const assets = PixelForge.initAssets();
@@ -1576,16 +1577,16 @@ export class Renderer {
 
   /**
    * Renders the FF14 Black Mage Limit Break 3 Full-Stage White-Out Deletion Screen (`this.whiteoutTimer > 0`):
-   *   - Expanding thermonuclear white dome swallows the entire stage into pure blinding white light
-   *   - Every fighter on the stage appears to get vaporized / deleted in dissolving high-contrast ash silhouettes
-   *     with horizontal disintegration strips before vanishing into the pure white screen
+   *   - Stepped cel-banded pixel-art thermonuclear white dome swallows the entire stage into pure blinding white light
+   *   - Every fighter on the stage appears to get vaporized / deleted in dissolving high-contrast pixel ash silhouettes
+   *     with horizontal pixel disintegration strips before vanishing into the pure white screen
    *   - Smoothly clears over the final 0.55s to reveal the transformed "LAYWASTE OF INFERNO" stage!
    */
   drawWhiteoutDeletionWorld(ctx, fighters, ww, gy) {
     const maxT = this.whiteoutMaxTimer || 1.35;
     const p = Math.max(0, Math.min(1, 1 - this.whiteoutTimer / maxT));
-    const cx = this.whiteoutFocusX ?? ww * 0.5;
-    const cy = this.whiteoutFocusY ?? gy - 60;
+    const cx = Math.round((this.whiteoutFocusX ?? ww * 0.5) / 8) * 8;
+    const cy = Math.round((this.whiteoutFocusY ?? gy - 60) / 8) * 8;
 
     // Envelope: rapid expansion (0..0.16), blinding total whiteout hold (0.16..0.58), smooth clearing reveal (0.58..1.0)
     const whiteAlpha =
@@ -1598,21 +1599,30 @@ export class Renderer {
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-
-    // 1. Expanding Thermonuclear Solar-Gold & Pure-White Cataclysm Dome
-    const domeRadius = p < 0.22 ? 120 + (p / 0.22) * 1650 : 1800;
-    const domeGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, domeRadius);
-    domeGrad.addColorStop(0, '#ffffff');
-    domeGrad.addColorStop(0.68, '#ffffff');
-    domeGrad.addColorStop(0.88, '#fef08a');
-    domeGrad.addColorStop(1, 'rgba(251, 146, 60, 0)');
-
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = Math.min(1, whiteAlpha);
-    ctx.fillStyle = domeGrad;
-    ctx.beginPath();
-    ctx.arc(cx, cy, domeRadius, 0, Math.PI * 2);
-    ctx.fill();
+
+    // 1. Stepped Cel-Banded Pixel-Art Thermonuclear Cataclysm Dome (Horizontal Pixel Scanline Spans)
+    const domeRadius = p < 0.22 ? 140 + (p / 0.22) * 1450 : 1600;
+    const stepH = 12;
+    const bands = [
+      { scale: 1.0, col: '#ea580c' },
+      { scale: 0.92, col: '#fb923c' },
+      { scale: 0.82, col: '#fef08a' },
+      { scale: 0.68, col: '#ffffff' }
+    ];
+    for (const band of bands) {
+      const rBand = domeRadius * band.scale;
+      ctx.fillStyle = band.col;
+      const minY = Math.max(-720, Math.floor((cy - rBand) / stepH) * stepH);
+      const maxY = Math.min(gy + 220, Math.ceil((cy + rBand) / stepH) * stepH);
+      for (let sy = minY; sy <= maxY; sy += stepH) {
+        const dy = sy - cy;
+        if (Math.abs(dy) >= rBand) continue;
+        const halfW = Math.round(Math.sqrt(rBand * rBand - dy * dy) / stepH) * stepH;
+        ctx.fillRect(cx - halfW, sy, halfW * 2, stepH);
+      }
+    }
 
     // Full-Stage Pure White Screen Veil during peak deletion (`0.12 <= p <= 0.68`)
     if (p >= 0.10) {
@@ -1621,8 +1631,7 @@ export class Renderer {
       ctx.fillRect(-1200, -1000, ww + 2400, 2400);
     }
 
-    // 2. "Everyone Looks Like They Get Deleted" — Dissolving Vaporized Fighter Silhouettes & Ash Disintegration Strips!
-    // Visible during the first half of the white-out (`p < 0.54`) as characters erode into pure white light!
+    // 2. "Everyone Looks Like They Get Deleted" — Dissolving Vaporized Fighter Silhouettes & Pixel Ash Disintegration!
     if (p < 0.54) {
       const deleteProg = Math.min(1, p / 0.50);
       const silhouetteAlpha = Math.max(0, 1 - deleteProg * deleteProg);
@@ -1635,7 +1644,7 @@ export class Renderer {
         const frameIdx = PixelForge.getFrameIndex(f, f.walkPhase || f.runeOrbit || 0);
         const groundPlantOffset = 4;
         const pushDir = f.x >= cx ? 1 : -1;
-        const vaporShiftX = pushDir * deleteProg * 28;
+        const vaporShiftX = Math.round((pushDir * deleteProg * 28) / 4) * 4;
 
         ctx.save();
         ctx.translate(
@@ -1647,27 +1656,28 @@ export class Renderer {
         PixelForge.drawSilhouetteFrame(ctx, sprites, frameIdx, 208, 208, '#090d16');
         ctx.restore();
 
-        // Horizontal White-Hot Deletion Scanline Slices cutting through the fighter's silhouette
+        // Horizontal White-Hot Pixel Deletion Scanline Slices cutting through the fighter's silhouette
         ctx.save();
         ctx.fillStyle = '#ffffff';
         ctx.globalAlpha = Math.min(1, 0.55 + deleteProg * 0.45);
         const sliceCount = 12;
         for (let s = 0; s < sliceCount; s++) {
-          const sy = f.y - 185 + s * 15 + ((s * 7) % 5);
-          const sw = 130 + deleteProg * 90;
-          const sh = Math.round(2 + deleteProg * 11);
-          ctx.fillRect(Math.round(f.x - sw * 0.5), Math.round(sy), Math.round(sw), sh);
+          const sy = Math.round((f.y - 185 + s * 15 + ((s * 7) % 5)) / 4) * 4;
+          const sw = Math.round((130 + deleteProg * 90) / 4) * 4;
+          const sh = Math.round((2 + deleteProg * 11) / 2) * 2;
+          ctx.fillRect(Math.round(f.x - sw * 0.5), sy, sw, sh);
         }
 
-        // Streaming Vaporized Ash Pixels tearing away from the fighter's body into the white-out!
+        // Streaming Vaporized Pixel-Ash Blocks tearing away from the fighter's body into the white-out!
         ctx.fillStyle = '#1e293b';
         ctx.globalAlpha = silhouetteAlpha * 0.85;
-        for (let a = 0; a < 18; a++) {
-          const ax = Math.round(
-            f.x + pushDir * (14 + deleteProg * (45 + (a % 6) * 22)) + ((a % 5) - 2) * 12
-          );
-          const ay = Math.round(f.y - 24 - (a / 18) * 150 - deleteProg * 36);
-          const asz = a % 3 === 0 ? 6 : 4;
+        for (let a = 0; a < 22; a++) {
+          const ax =
+            Math.round(
+              (f.x + pushDir * (14 + deleteProg * (48 + (a % 6) * 24)) + ((a % 5) - 2) * 12) / 4
+            ) * 4;
+          const ay = Math.round((f.y - 24 - (a / 22) * 155 - deleteProg * 36) / 4) * 4;
+          const asz = a % 3 === 0 ? 8 : 4;
           ctx.fillRect(ax, ay, asz, asz);
         }
         ctx.restore();

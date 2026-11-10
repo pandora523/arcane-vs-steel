@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps58';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps58';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps58';
+import { Fighter } from './Fighter.js?v=30fps59';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps59';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps59';
 import {
   SERAPHIC_EFFECT_REGISTRY,
   SERAPHIC_GOLD_PALETTE,
   SERAPHIC_GRACE_PALETTE,
   SERAPHIC_STAINED_PALETTE
-} from '../engine/shaders/seraphicShaders.js?v=30fps58';
+} from '../engine/shaders/seraphicShaders.js?v=30fps59';
 
 /**
  * Seraphina (`priestess`) — High Priestess & Sanctuary Archangel Weaver.
@@ -65,7 +65,7 @@ export class Priestess extends Fighter {
     if (typeof Image !== 'undefined') {
       const priestessAssets = PixelForge.initAssets()?.priestess;
       if (priestessAssets?.vfx?.src && !priestessAssets.vfx.src.includes('v=30fps48')) {
-        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps58';
+        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps59';
       }
     }
   }
