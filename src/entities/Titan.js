@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps56';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps56';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps56';
+import { Fighter } from './Fighter.js?v=30fps57';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps57';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps57';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps56';
+} from '../engine/shaders/forgeShaders.js?v=30fps57';
 
 /**
  * Torgar (`titan`) — World-Forge Juggernaut & Runic Anvil Sovereign.
@@ -37,7 +37,7 @@ export class Titan extends Fighter {
     this.dashMaxCooldown = 2.65;
     this.autoDuration = 0.86;
     this.skillDuration = 0.94;
-    this.ultDuration = 1.75;
+    this.ultDuration = 5.0;
     this.crouchDuration = 0.78;
     this.dashDuration = 0.42;
     this.comboStep = 0;
@@ -65,7 +65,7 @@ export class Titan extends Fighter {
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
       if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps53')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps56';
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps57';
       }
     }
   }
@@ -75,6 +75,8 @@ export class Titan extends Fighter {
     if (newState !== 'ULTIMATE') {
       this.giantScale = 1.0;
       this._ultCastTriggered = false;
+      this._ultWaveStep = 0;
+      this.trueUltFrameOverride = null;
     }
     this.unstoppablePoise =
       newState === 'AUTO_ATTACK' ||
@@ -801,14 +803,18 @@ export class Titan extends Fighter {
    */
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.ultDuration || 1.75;
+    const dur = this.ultDuration || 5.0;
     const dir = this.facing;
-    // Grow smoothly to 3.0x colossal World-Forge Juggernaut size, then return smoothly at the end
-    const grow = Math.min(1, t / 0.22);
-    const shrink = t > dur - 0.22 ? Math.max(0, (dur - t) / 0.22) : 1;
+    // Grow smoothly to 3.0x colossal World-Forge Juggernaut size across the full 5.0-second Overdrive!
+    const grow = Math.min(1, t / 0.28);
+    const shrink = t > dur - 0.32 ? Math.max(0, (dur - t) / 0.32) : 1;
     const smoothGrow = grow * grow * (3 - 2 * grow);
     this.giantScale = 1.0 + 2.0 * smoothGrow * shrink;
-    this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.65);
+    this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.85);
+
+    // Cycle Row 4 (120..149) smoothly across 3 full World-Breaker slam cycles over the 5.0s Overdrive!
+    const cycleStep = Math.min(29, Math.floor(((t * 18) % 30)));
+    this.trueUltFrameOverride = 120 + cycleStep;
 
     if (enemy && !enemy.isDead) {
       this.facing = enemy.x >= this.x ? 1 : -1;
@@ -823,8 +829,9 @@ export class Titan extends Fighter {
     // 1. Initial Anvil Ignition (`t >= 0.06`): spawns colossal `runicBulwarkDome` & ground crater under 3x Titan
     if (t >= 0.06 && !this._ultCastTriggered) {
       this._ultCastTriggered = true;
+      this._ultWaveStep = 0;
       if (game?.vfx) {
-        game.vfx.spawnSpecialCastAura(this, this.ultName, '★ COLOSSAL WORLD-FORGE RAGNAROK ★', 'forge', true);
+        game.vfx.spawnSpecialCastAura(this, this.ultName, '★ COLOSSAL WORLD-FORGE RAGNAROK (5S) ★', 'forge', true);
       }
       if (game?.renderer) {
         game.renderer.triggerShake(16, 0.28);
@@ -836,7 +843,8 @@ export class Titan extends Fighter {
         offsetY: -140,
         flip: dir < 0,
         palette: FORGE_GOLD_PALETTE,
-        light: 1.48
+        light: 1.48,
+        maxDuration: 4.8
       });
       this.fx.spawn('tectonicCraterSlam', this.x, this.groundY - 4, {
         flip: dir < 0,
@@ -847,21 +855,23 @@ export class Titan extends Fighter {
     }
 
     const triggerCataclysmicFaultEruption = (waveIdx) => {
-      const stride = 165 + (waveIdx - 1) * 95;
-      const impactX = this.x + this.facing * stride;
+      const localWave = ((waveIdx - 1) % 3) + 1;
+      const stride = 165 + (localWave - 1) * 95;
+      const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+      const impactX = Math.max(95, Math.min(ww - 95, this.x + this.facing * stride));
       const impactY = this.groundY - 4;
-      if (game.audio) {
+      if (game?.audio) {
         game.audio.play('thunder_slam', impactX);
       }
-      game.renderer.triggerShake(22 + waveIdx * 4, 0.36);
-      game.renderer.triggerAberration(8 + waveIdx * 2);
+      game?.renderer?.triggerShake(22 + localWave * 4, 0.36);
+      game?.renderer?.triggerAberration(8 + localWave * 2);
 
       // Central Ragnarok World-Forge Wave at `(impactX, impactY)` + flanking fault waves
       this.fx.spawn('ragnarokWorldForgeWave', impactX, impactY, {
         flip: this.facing < 0,
         palette: waveIdx % 2 === 0 ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
         light: 1.5,
-        extra: { stage: waveIdx }
+        extra: { stage: localWave }
       });
       this.fx.spawn('tectonicCraterSlam', impactX, impactY, {
         flip: this.facing < 0,
@@ -876,7 +886,7 @@ export class Titan extends Fighter {
       this.spawnSheetBurst(2, impactX + this.facing * leftOffset, impactY - 98, {
         w: 320,
         h: 320,
-        maxLife: 0.54,
+        maxLife: 0.58,
         flipX: this.facing < 0,
         glowColor: 'emerald',
         inFront: false
@@ -884,46 +894,38 @@ export class Titan extends Fighter {
       this.spawnSheetBurst(4, impactX + this.facing * rightOffset, impactY - 92, {
         w: 336,
         h: 336,
-        maxLife: 0.50,
+        maxLife: 0.54,
         flipX: this.facing < 0,
         glowColor: 'gold',
         inFront: true
       });
 
-      const targets = game.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+      const targets = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
       for (const target of targets) {
         if (target && !target.isDead && !target.isBenched) {
           target.takeDamage(
-            waveIdx >= 2 ? 78 : 70,
+            waveIdx >= 5 ? 56 : 44,
             this,
             true,
-            waveIdx >= 2 ? 295 : -75,
-            waveIdx >= 2 ? -275 : -195
+            waveIdx >= 5 ? 295 : -75,
+            waveIdx >= 5 ? -275 : -175
           );
         }
       }
     };
 
-    // 2. Cataclysmic Impact 1 (`t >= 0.46`)
-    if (t >= 0.46 && !this.didActionFrame) {
-      this.didActionFrame = true;
-      triggerCataclysmicFaultEruption(1);
-    }
-
-    // 3. Meteoric Fault-Line Aftershock 2 (`t >= 0.88`)
-    if (t >= 0.88 && !this.didSecondaryAction) {
-      this.didSecondaryAction = true;
-      triggerCataclysmicFaultEruption(2);
-    }
-
-    // 4. Final World-Breaker Cataclysm Wave 3 (`t >= 1.28`)
-    if (t >= 1.28 && !this.didWave3) {
-      this.didWave3 = true;
-      triggerCataclysmicFaultEruption(3);
+    // 6 Colossal World-Breaker Fault-Line Eruptions across the 5.0-second Overdrive!
+    const waveTimes = [0.52, 1.25, 1.98, 2.72, 3.48, 4.24];
+    for (let i = 0; i < waveTimes.length; i++) {
+      if (t >= waveTimes[i] && (this._ultWaveStep || 0) < i + 1) {
+        this._ultWaveStep = i + 1;
+        triggerCataclysmicFaultEruption(i + 1);
+      }
     }
 
     if (t >= dur) {
-      this.didWave3 = false;
+      this._ultWaveStep = 0;
+      this.trueUltFrameOverride = null;
       this.giantScale = 1.0;
       this.setState('IDLE');
     }

@@ -318,7 +318,7 @@ export class Renderer {
       }
       const midX = (minX + maxX) * 0.5;
       const horizSpan = Math.abs(maxX - minX) + (validFighters.length > 2 ? 380 : 340);
-      const dist = Math.max(horizSpan, maxAirLift * 1.35 + 340);
+      const dist = Math.max(horizSpan, maxAirLift * 1.48 + 340);
 
       const fitScaleX = this.width / Math.max(620, Math.min(this.worldWidth, dist));
       const fitScaleY = this.height / 720;
@@ -326,7 +326,7 @@ export class Renderer {
       targetZoom = Math.max(0.52, Math.min(this.isMobile ? 0.85 : 1.15, targetZoom));
 
       let targetX = midX;
-      let targetY = this.groundY - 95 - Math.min(155, maxAirLift * 0.46);
+      let targetY = this.groundY - 95 - Math.min(285, maxAirLift * 0.62);
 
       if (this.koZoomTimer > 0) {
         // Dramatic K.O. Finisher zoom toward the fatal impact
