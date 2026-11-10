@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps41';
+import { PixelForge } from './PixelForge.js?v=30fps58';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -17,6 +17,11 @@ export const STAGE_ROSTER = [
   { id: 'boneyard', name: 'ABYSSAL NECROPOLIS CITADEL', assetKey: 'arenaBoneyard' },
   { id: 'clocktower', name: 'CELESTIAL CLOCKTOWER OBSERVATORY', assetKey: 'arenaClocktower' }
 ];
+
+export const ULTIMATE_STAGE_MAP = {
+  sanctuary: { id: 'sanctuary', name: 'CELESTIAL SANCTUARY OF JUSTICE', assetKey: 'arenaSanctuary' },
+  inferno: { id: 'inferno', name: 'LAYWASTE OF INFERNO', assetKey: 'arenaInferno' }
+};
 
 export class Renderer {
   constructor(canvas) {
@@ -40,6 +45,22 @@ export class Renderer {
     this.zoom = 1;
     this.time = 0;
 
+    // Supreme Finisher Stage Transformation, Impact Frame & White-Out Deletion State
+    this.trueUltStageOverride = null;
+    this.trueUltStageAlpha = 0;
+    this.trueUltStageTimer = 0;
+    this.permanentStageOverride = null;
+    this.impactFrameTimer = 0;
+    this.impactFrameMaxTimer = 0.15;
+    this.impactFrameFocusX = 600;
+    this.impactFrameFocusY = 420;
+    this.impactFrameStyle = 'inferno';
+    this.whiteoutTimer = 0;
+    this.whiteoutMaxTimer = 1.35;
+    this.whiteoutFocusX = 600;
+    this.whiteoutFocusY = 420;
+    this.whiteoutStyle = 'inferno';
+
     this.stageId = 'cathedral';
     this.pickRandomStage();
 
@@ -57,7 +78,54 @@ export class Renderer {
     window.addEventListener('resize', () => this.resize());
   }
 
+  resetStageOverrides() {
+    this.trueUltStageOverride = null;
+    this.trueUltStageAlpha = 0;
+    this.trueUltStageTimer = 0;
+    this.permanentStageOverride = null;
+    this.impactFrameTimer = 0;
+    this.whiteoutTimer = 0;
+  }
+
+  setStageTransformation(stageKey, alpha = 1.0, permanent = false, holdDuration = 0) {
+    if (permanent && ULTIMATE_STAGE_MAP[stageKey]) {
+      this.permanentStageOverride = stageKey;
+      this.trueUltStageOverride = stageKey;
+      this.trueUltStageAlpha = 1.0;
+      this.trueUltStageTimer = Math.max(this.trueUltStageTimer, holdDuration);
+      return;
+    }
+    if (!stageKey) {
+      this.trueUltStageOverride = null;
+      this.trueUltStageAlpha = 0;
+      this.trueUltStageTimer = 0;
+      return;
+    }
+    this.trueUltStageOverride = stageKey;
+    this.trueUltStageAlpha = Math.max(0, Math.min(1, alpha));
+    if (holdDuration > 0) {
+      this.trueUltStageTimer = Math.max(this.trueUltStageTimer, holdDuration);
+    }
+  }
+
+  triggerImpactFrame(x, y, duration = 0.15, style = 'inferno') {
+    this.impactFrameFocusX = Number.isFinite(x) ? x : this.worldWidth * 0.5;
+    this.impactFrameFocusY = Number.isFinite(y) ? y : this.groundY - 95;
+    this.impactFrameMaxTimer = Math.max(0.06, duration);
+    this.impactFrameTimer = this.impactFrameMaxTimer;
+    this.impactFrameStyle = style;
+  }
+
+  triggerWhiteoutDeletion(x, y, duration = 1.35, style = 'inferno') {
+    this.whiteoutFocusX = Number.isFinite(x) ? x : this.worldWidth * 0.5;
+    this.whiteoutFocusY = Number.isFinite(y) ? y : this.groundY - 60;
+    this.whiteoutMaxTimer = Math.max(0.25, duration);
+    this.whiteoutTimer = this.whiteoutMaxTimer;
+    this.whiteoutStyle = style;
+  }
+
   pickRandomStage(forcedStage = null) {
+    this.resetStageOverrides();
     if (forcedStage && STAGE_ROSTER.some((s) => s.id === forcedStage)) {
       this.stageId = forcedStage;
       return this.stageId;
@@ -70,6 +138,9 @@ export class Renderer {
   }
 
   getCurrentStageMeta() {
+    if (this.permanentStageOverride && ULTIMATE_STAGE_MAP[this.permanentStageOverride]) {
+      return ULTIMATE_STAGE_MAP[this.permanentStageOverride];
+    }
     return STAGE_ROSTER.find((s) => s.id === this.stageId) || STAGE_ROSTER[0];
   }
 
@@ -89,6 +160,11 @@ export class Renderer {
       return c;
     };
     // Rich, deeply saturated jewel-tone radial bloom textures (no white center stop so additive passes never wash out!)
+    this.glowWhite = makeGlow(
+      'rgba(255,255,255,0.92)',
+      'rgba(224,242,254,0.62)',
+      'rgba(56,189,248,0.24)'
+    );
     this.glowCyan = makeGlow(
       'rgba(56,189,248,0.85)',
       'rgba(14,165,233,0.56)',
@@ -293,6 +369,24 @@ export class Renderer {
     if (this.stageEventBannerTimer > 0) {
       this.stageEventBannerTimer = Math.max(0, this.stageEventBannerTimer - rawDt);
     }
+    if (this.impactFrameTimer > 0) {
+      this.impactFrameTimer = Math.max(0, this.impactFrameTimer - rawDt);
+    }
+    if (this.whiteoutTimer > 0) {
+      this.whiteoutTimer = Math.max(0, this.whiteoutTimer - rawDt);
+    }
+    if (this.trueUltStageTimer > 0) {
+      this.trueUltStageTimer = Math.max(0, this.trueUltStageTimer - rawDt);
+      if (!this.permanentStageOverride) {
+        if (this.trueUltStageTimer < 0.85) {
+          this.trueUltStageAlpha = Math.min(this.trueUltStageAlpha, Math.max(0, this.trueUltStageTimer / 0.85));
+        }
+        if (this.trueUltStageTimer === 0) {
+          this.trueUltStageOverride = null;
+          this.trueUltStageAlpha = 0;
+        }
+      }
+    }
 
     if (!Number.isFinite(this.zoom) || this.zoom <= 0) this.zoom = 1;
     if (!Number.isFinite(this.camX)) this.camX = this.worldWidth * 0.5;
@@ -485,6 +579,14 @@ export class Renderer {
       this.drawKOFinisherWorld(ctx, gy);
     }
 
+    // 7.25. Supreme Finisher High-Contrast Anime Impact Frame & Full-Stage White-Out Deletion Screen!
+    if (this.impactFrameTimer > 0) {
+      this.drawImpactFrameWorld(ctx, sorted, ww, gy);
+    }
+    if (this.whiteoutTimer > 0) {
+      this.drawWhiteoutDeletionWorld(ctx, sorted, ww, gy);
+    }
+
     // 7.5. In-World 2v2 Overhead Team & Mini-HP Badges (when 4 fighters are present)
     if (fighters.length > 2) {
       for (const f of sorted) {
@@ -584,27 +686,47 @@ export class Renderer {
     const drawX = Math.round((ww - drawW) * 0.5);
     const drawY = Math.round(gy - drawH * 0.82);
 
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    if (bg && bg.complete && bg.naturalWidth > 0) {
-      // Seamless mirrored side wings for ultra-wide viewports or extreme camera shake so no vertical cutoff ever appears
+    const drawStageImageWithWings = (img, alpha = 1.0) => {
+      if (!img || !img.complete || img.naturalWidth <= 0 || alpha <= 0.005) return;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
       ctx.save();
       ctx.translate(drawX, drawY);
       ctx.scale(-1, 1);
-      ctx.drawImage(bg, 0, 0, drawW, drawH);
+      ctx.drawImage(img, 0, 0, drawW, drawH);
       ctx.restore();
 
       ctx.save();
       ctx.translate(drawX + drawW * 2, drawY);
       ctx.scale(-1, 1);
-      ctx.drawImage(bg, 0, 0, drawW, drawH);
+      ctx.drawImage(img, 0, 0, drawW, drawH);
       ctx.restore();
 
-      // Main 16-bit HD-2D Stage Diorama
-      ctx.drawImage(bg, drawX, drawY, drawW, drawH);
+      ctx.drawImage(img, drawX, drawY, drawW, drawH);
+      ctx.restore();
+    };
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    if (bg && bg.complete && bg.naturalWidth > 0) {
+      drawStageImageWithWings(bg, 1.0);
     } else {
       ctx.fillStyle = '#070a14';
       ctx.fillRect(-1200, -700, ww + 2400, gy + 1400);
+    }
+
+    // Dynamic or Permanent Supreme Ultimate Stage Transformation Overlay (`arenaSanctuary` / `arenaInferno`)
+    const overrideKey = this.trueUltStageOverride;
+    const overrideMeta = overrideKey ? ULTIMATE_STAGE_MAP[overrideKey] : null;
+    const overrideImg = overrideMeta ? assets[overrideMeta.assetKey] : null;
+    if (
+      overrideImg &&
+      overrideImg !== bg &&
+      this.trueUltStageAlpha > 0.01 &&
+      overrideImg.complete &&
+      overrideImg.naturalWidth > 0
+    ) {
+      drawStageImageWithWings(overrideImg, this.trueUltStageAlpha);
     }
 
     // Subtle Pixel-Stepped Flagstone Seams & Specular Trim
@@ -615,11 +737,18 @@ export class Renderer {
     }
 
     // Dispatch Bespoke Live Animated Pixel-Art Stage Effects Above Each Stage Image!
-    if (this.stageId === 'sylvan') {
+    const activeStageId = this.permanentStageOverride || this.stageId;
+    if (activeStageId === 'inferno') {
+      this.drawInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
+    } else if (this.trueUltStageOverride === 'inferno' && this.trueUltStageAlpha > 0.12) {
+      this.drawInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
+    } else if (this.trueUltStageOverride === 'sanctuary' && this.trueUltStageAlpha > 0.12) {
+      this.drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
+    } else if (activeStageId === 'sylvan') {
       this.drawSylvanStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy);
-    } else if (this.stageId === 'boneyard') {
+    } else if (activeStageId === 'boneyard') {
       this.drawBoneyardStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy);
-    } else if (this.stageId === 'clocktower') {
+    } else if (activeStageId === 'clocktower') {
       this.drawClocktowerStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy);
     } else {
       this.drawStagePixelFlames(ctx, bg, drawX, drawY, drawW, drawH, gy);
@@ -1213,6 +1342,338 @@ export class Renderer {
       ctx.fillStyle = n % 2 === 0 ? '#fde047' : '#2dd4bf';
       ctx.fillRect(nx - 2, ny - 2, 3, 4);
     }
+    ctx.restore();
+  }
+
+  /**
+   * Live HD-2D Stage Effects for Aethelgard's Supreme Finisher Stage Transformation:
+   * "CELESTIAL SANCTUARY OF JUSTICE" (`arena_sanctuary.png`)
+   */
+  drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
+    const t = this.time;
+    const sanctuaryCx = drawX + drawW * 0.50;
+    const roseY = drawY + drawH * 0.28;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Radiant Celestial Rose-Window & Sapphire-Gold Sky Halo
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = (0.46 + 0.12 * Math.sin(t * 3.8)) * alpha;
+    if (this.glowCyan) ctx.drawImage(this.glowCyan, sanctuaryCx - 360, roseY - 260, 720, 520);
+    ctx.globalAlpha = (0.38 + 0.10 * Math.cos(t * 3.1)) * alpha;
+    if (this.glowWhite) ctx.drawImage(this.glowWhite, sanctuaryCx - 260, roseY - 200, 520, 400);
+    ctx.globalAlpha = (0.28 + 0.08 * Math.sin(t * 2.4)) * alpha;
+    if (this.glowGold) ctx.drawImage(this.glowGold, sanctuaryCx - 210, roseY - 160, 420, 320);
+
+    // 2. 5 Diagonal Heavenly Sanctuary God-Ray Shafts Streaming Down from the Sky Breach
+    for (let i = -2; i <= 2; i++) {
+      const topX = sanctuaryCx + i * 115;
+      const botX = sanctuaryCx + i * 185 + Math.sin(t * 1.8 + i) * 18;
+      const rayW = i === 0 ? 96 : 68;
+      const rayGrad = ctx.createLinearGradient(topX, drawY + 40, botX, gy);
+      rayGrad.addColorStop(0, i === 0 ? 'rgba(255, 255, 255, 0.36)' : 'rgba(125, 211, 252, 0.26)');
+      rayGrad.addColorStop(0.55, 'rgba(56, 189, 248, 0.14)');
+      rayGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      ctx.globalAlpha = alpha * (0.78 + 0.22 * Math.sin(t * 3.2 + i * 1.3));
+      ctx.fillStyle = rayGrad;
+      ctx.beginPath();
+      ctx.moveTo(topX - rayW * 0.45, drawY + 40);
+      ctx.lineTo(topX + rayW * 0.45, drawY + 40);
+      ctx.lineTo(botX + rayW * 0.85, gy + 12);
+      ctx.lineTo(botX - rayW * 0.85, gy + 12);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 3. Consecrated Sapphire & White-Gold Runic Floor Seal Glow across the Marble Sanctuary Floor
+    for (let k = -2; k <= 2; k++) {
+      const poolX = sanctuaryCx + k * 210;
+      const glow = k % 2 === 0 ? this.glowCyan : this.glowGold;
+      if (glow) {
+        ctx.globalAlpha = (0.34 + 0.09 * Math.sin(t * 4.5 + k)) * alpha;
+        ctx.drawImage(glow, poolX - 160, gy - 26, 320, 68);
+      }
+    }
+
+    // 4. Ascending Sacred White & Ice-Blue Censer Motes across the Sanctuary Nave
+    for (let m = 0; m < 24; m++) {
+      const life = (t * (0.65 + (m % 4) * 0.16) + m * 0.29) % 1;
+      const mx = Math.round((sanctuaryCx + (m - 11.5) * 46 + Math.sin(t * 3.4 + m) * 14) / 3) * 3;
+      const my = Math.round((gy - 8 - life * 380) / 3) * 3;
+      const fade = Math.sin(life * Math.PI) * alpha;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.92;
+      ctx.fillStyle = m % 3 === 0 ? '#fef08a' : m % 2 === 0 ? '#ffffff' : '#7dd3fc';
+      ctx.fillRect(mx - 2, my - 4, 4, 8);
+      ctx.fillRect(mx - 4, my - 2, 8, 4);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Live HD-2D Stage Effects for Ignis Sol's Supreme Finisher Stage Transformation:
+   * "LAYWASTE OF INFERNO" (`arena_inferno.png`) — Shattered Volcanic Caldera Wasteland!
+   */
+  drawInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
+    const t = this.time;
+    const centerCx = drawX + drawW * 0.50;
+    const calderaY = drawY + drawH * 0.34;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Apocalyptic Solar-Magma & Crimson Caldera Sky Horizon Pulse
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = (0.52 + 0.14 * Math.sin(t * 4.2)) * alpha;
+    if (this.glowOrange) ctx.drawImage(this.glowOrange, centerCx - 420, calderaY - 260, 840, 520);
+    ctx.globalAlpha = (0.38 + 0.10 * Math.cos(t * 3.5)) * alpha;
+    if (this.glowCrimson) ctx.drawImage(this.glowCrimson, centerCx - 340, calderaY - 220, 680, 440);
+    ctx.globalAlpha = (0.34 + 0.10 * Math.sin(t * 5.1)) * alpha;
+    if (this.glowGold) ctx.drawImage(this.glowGold, centerCx - 240, calderaY - 160, 480, 320);
+
+    // 2. Pulsing Molten Magma Rivers & Cracked Basalt Fissures across the Wasteland Floor (`gy`)
+    const fissures = [-440, -290, -145, 0, 145, 290, 440];
+    for (let i = 0; i < fissures.length; i++) {
+      const fx = centerCx + fissures[i];
+      const pulse = 0.72 + 0.28 * Math.sin(t * 6.5 + i * 1.4);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.44 * pulse * alpha;
+      if (this.glowOrange) ctx.drawImage(this.glowOrange, fx - 140, gy - 32, 280, 74);
+      if (i % 2 === 0 && this.glowGold) {
+        ctx.globalAlpha = 0.32 * pulse * alpha;
+        ctx.drawImage(this.glowGold, fx - 95, gy - 22, 190, 52);
+      }
+
+      // Stepped Pixel-Art Glowing Lava Crack Vein along the floor
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.92 * alpha;
+      const crackW = Math.round((56 + (i % 3) * 18) * pulse);
+      ctx.fillStyle = '#9a3412';
+      ctx.fillRect(Math.round(fx - crackW * 0.6), gy - 2, Math.round(crackW * 1.2), 6);
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(Math.round(fx - crackW * 0.45), gy - 1, Math.round(crackW * 0.9), 4);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(Math.round(fx - crackW * 0.25), gy, Math.round(crackW * 0.5), 2);
+    }
+
+    // 3. Roaring Volcanic Ash, Cinders & Rising Magma Sparks across the entire Laywaste of Inferno!
+    for (let e = 0; e < 36; e++) {
+      const life = (t * (0.95 + (e % 5) * 0.22) + e * 0.31) % 1;
+      const laneX = centerCx + ((e - 17.5) * 34) + Math.sin(t * 4.8 + e * 1.7) * 22;
+      const ex = Math.round(laneX / 3) * 3;
+      const ey = Math.round((gy + 8 - life * 460) / 3) * 3;
+      const fade = Math.sin(life * Math.PI) * alpha;
+      const sz = life < 0.35 ? 6 : 4;
+
+      if (e % 2 === 0 && this.glowOrange) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.38;
+        ctx.drawImage(this.glowOrange, ex - 18, ey - 18, 36, 36);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.95;
+      ctx.fillStyle =
+        life < 0.22 ? '#ffffff' : life < 0.50 ? '#fef08a' : life < 0.78 ? '#f97316' : '#dc2626';
+      ctx.fillRect(ex - sz * 0.5, ey - sz * 0.5, sz, sz);
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders a High-Contrast Anime / FF14 Limit Break 3 Impact Frame (`this.impactFrameTimer > 0`):
+   *   - Alternates stark inverted White-on-Black / Black-on-White high-contrast flash
+   *   - 48 razor-sharp radial speed-spikes bursting from `(impactFrameFocusX, impactFrameFocusY)`
+   *   - Stark high-contrast silhouettes of every active fighter on the stage!
+   */
+  drawImpactFrameWorld(ctx, fighters, ww, gy) {
+    const p = 1 - this.impactFrameTimer / (this.impactFrameMaxTimer || 0.15);
+    const cx = this.impactFrameFocusX ?? ww * 0.5;
+    const cy = this.impactFrameFocusY ?? gy - 90;
+    const isInverted = p < 0.42;
+    const isJustice = this.impactFrameStyle === 'justice';
+    const accentCol = isJustice ? '#38bdf8' : '#fb923c';
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Full-Arena Stark High-Contrast Backdrop Flash
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 0.96;
+    ctx.fillStyle = isInverted ? '#ffffff' : '#03040a';
+    ctx.fillRect(-1200, -1000, ww + 2400, 2400);
+
+    // 2. 48 Radial Anime Impact Speed-Spikes bursting from the impact epicenter `(cx, cy)`
+    const spikeCount = 48;
+    for (let i = 0; i < spikeCount; i++) {
+      const a = (i / spikeCount) * Math.PI * 2 + (i % 2 === 0 ? 0.03 : -0.02);
+      const innerR = 28 + (i % 5) * 18 + p * 45;
+      const outerR = 1400;
+      const halfAng = (i % 3 === 0 ? 0.042 : 0.022) * (1 - p * 0.25);
+
+      ctx.fillStyle = isInverted
+        ? i % 3 === 0
+          ? accentCol
+          : '#03040a'
+        : i % 3 === 0
+          ? accentCol
+          : '#ffffff';
+      ctx.beginPath();
+      ctx.moveTo(cx + Math.cos(a) * innerR, cy + Math.sin(a) * innerR);
+      ctx.lineTo(cx + Math.cos(a - halfAng) * outerR, cy + Math.sin(a - halfAng) * outerR);
+      ctx.lineTo(cx + Math.cos(a + halfAng) * outerR, cy + Math.sin(a + halfAng) * outerR);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 3. Blinding Core Shock-Ring at `(cx, cy)`
+    ctx.strokeStyle = isInverted ? '#03040a' : '#ffffff';
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(cx, cy, 55 + p * 260, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // 4. Stark High-Contrast Fighter Silhouettes (so every character stands out in dramatic anime impact silhouette!)
+    const assets = PixelForge.initAssets();
+    for (const f of fighters) {
+      if (!f || f.isBenched) continue;
+      const sprites = assets[f.heroId || 'warrior'];
+      if (!sprites || !sprites.sheet || !sprites.sheet.complete) continue;
+      const frameIdx = PixelForge.getFrameIndex(f, f.walkPhase || f.runeOrbit || 0);
+      const groundPlantOffset = 4;
+
+      // Chromatic Offset Rim Silhouette
+      ctx.save();
+      ctx.translate(
+        Math.round(f.x + (f.x >= cx ? 8 : -8)),
+        Math.round(f.y + groundPlantOffset)
+      );
+      ctx.scale(f.facing, 1);
+      ctx.globalAlpha = 0.88;
+      PixelForge.drawSilhouetteFrame(ctx, sprites, frameIdx, 208, 208, accentCol);
+      ctx.restore();
+
+      // Primary Stark Black or White Impact Silhouette
+      ctx.save();
+      ctx.translate(Math.round(f.x), Math.round(f.y + groundPlantOffset));
+      ctx.scale(f.facing, 1);
+      ctx.globalAlpha = 1.0;
+      PixelForge.drawSilhouetteFrame(
+        ctx,
+        sprites,
+        frameIdx,
+        208,
+        208,
+        isInverted ? '#03040a' : '#ffffff'
+      );
+      ctx.restore();
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders the FF14 Black Mage Limit Break 3 Full-Stage White-Out Deletion Screen (`this.whiteoutTimer > 0`):
+   *   - Expanding thermonuclear white dome swallows the entire stage into pure blinding white light
+   *   - Every fighter on the stage appears to get vaporized / deleted in dissolving high-contrast ash silhouettes
+   *     with horizontal disintegration strips before vanishing into the pure white screen
+   *   - Smoothly clears over the final 0.55s to reveal the transformed "LAYWASTE OF INFERNO" stage!
+   */
+  drawWhiteoutDeletionWorld(ctx, fighters, ww, gy) {
+    const maxT = this.whiteoutMaxTimer || 1.35;
+    const p = Math.max(0, Math.min(1, 1 - this.whiteoutTimer / maxT));
+    const cx = this.whiteoutFocusX ?? ww * 0.5;
+    const cy = this.whiteoutFocusY ?? gy - 60;
+
+    // Envelope: rapid expansion (0..0.16), blinding total whiteout hold (0.16..0.58), smooth clearing reveal (0.58..1.0)
+    const whiteAlpha =
+      p < 0.14
+        ? p / 0.14
+        : p < 0.58
+          ? 1.0
+          : Math.max(0, 1 - (p - 0.58) / 0.42);
+    if (whiteAlpha <= 0.005) return;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Expanding Thermonuclear Solar-Gold & Pure-White Cataclysm Dome
+    const domeRadius = p < 0.22 ? 120 + (p / 0.22) * 1650 : 1800;
+    const domeGrad = ctx.createRadialGradient(cx, cy, 10, cx, cy, domeRadius);
+    domeGrad.addColorStop(0, '#ffffff');
+    domeGrad.addColorStop(0.68, '#ffffff');
+    domeGrad.addColorStop(0.88, '#fef08a');
+    domeGrad.addColorStop(1, 'rgba(251, 146, 60, 0)');
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = Math.min(1, whiteAlpha);
+    ctx.fillStyle = domeGrad;
+    ctx.beginPath();
+    ctx.arc(cx, cy, domeRadius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Full-Stage Pure White Screen Veil during peak deletion (`0.12 <= p <= 0.68`)
+    if (p >= 0.10) {
+      ctx.globalAlpha = Math.min(1, whiteAlpha * 0.98);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-1200, -1000, ww + 2400, 2400);
+    }
+
+    // 2. "Everyone Looks Like They Get Deleted" — Dissolving Vaporized Fighter Silhouettes & Ash Disintegration Strips!
+    // Visible during the first half of the white-out (`p < 0.54`) as characters erode into pure white light!
+    if (p < 0.54) {
+      const deleteProg = Math.min(1, p / 0.50);
+      const silhouetteAlpha = Math.max(0, 1 - deleteProg * deleteProg);
+      const assets = PixelForge.initAssets();
+
+      for (const f of fighters) {
+        if (!f || f.isBenched) continue;
+        const sprites = assets[f.heroId || 'warrior'];
+        if (!sprites || !sprites.sheet || !sprites.sheet.complete) continue;
+        const frameIdx = PixelForge.getFrameIndex(f, f.walkPhase || f.runeOrbit || 0);
+        const groundPlantOffset = 4;
+        const pushDir = f.x >= cx ? 1 : -1;
+        const vaporShiftX = pushDir * deleteProg * 28;
+
+        ctx.save();
+        ctx.translate(
+          Math.round(f.x + vaporShiftX),
+          Math.round(f.y + groundPlantOffset)
+        );
+        ctx.scale(f.facing, 1);
+        ctx.globalAlpha = silhouetteAlpha * 0.92;
+        PixelForge.drawSilhouetteFrame(ctx, sprites, frameIdx, 208, 208, '#090d16');
+        ctx.restore();
+
+        // Horizontal White-Hot Deletion Scanline Slices cutting through the fighter's silhouette
+        ctx.save();
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = Math.min(1, 0.55 + deleteProg * 0.45);
+        const sliceCount = 12;
+        for (let s = 0; s < sliceCount; s++) {
+          const sy = f.y - 185 + s * 15 + ((s * 7) % 5);
+          const sw = 130 + deleteProg * 90;
+          const sh = Math.round(2 + deleteProg * 11);
+          ctx.fillRect(Math.round(f.x - sw * 0.5), Math.round(sy), Math.round(sw), sh);
+        }
+
+        // Streaming Vaporized Ash Pixels tearing away from the fighter's body into the white-out!
+        ctx.fillStyle = '#1e293b';
+        ctx.globalAlpha = silhouetteAlpha * 0.85;
+        for (let a = 0; a < 18; a++) {
+          const ax = Math.round(
+            f.x + pushDir * (14 + deleteProg * (45 + (a % 6) * 22)) + ((a % 5) - 2) * 12
+          );
+          const ay = Math.round(f.y - 24 - (a / 18) * 150 - deleteProg * 36);
+          const asz = a % 3 === 0 ? 6 : 4;
+          ctx.fillRect(ax, ay, asz, asz);
+        }
+        ctx.restore();
+      }
+    }
+
     ctx.restore();
   }
 

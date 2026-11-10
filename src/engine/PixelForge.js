@@ -18,62 +18,65 @@ export class PixelForge {
       arenaSylvan: loadImg('assets/sprites/arena_sylvan.png'),
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
+      arenaInferno: loadImg('assets/sprites/arena_inferno.png?v=30fps58'),
+      arenaSanctuary: loadImg('assets/sprites/arena_sanctuary.png?v=30fps58'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps57'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps57'),
-        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps57'),
-        portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps57', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps58'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps58'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps58'),
+        portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps58', () => this.refreshPortraits())
       },
       mage: {
-        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps57'),
-        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps57'),
-        portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps57', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps58'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps58'),
+        meteor: loadImg('assets/sprites/meteor_cataclysm.png?v=30fps58'),
+        portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps58', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps57'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps57'),
-        portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps57', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps58'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps58'),
+        portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps58', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps57'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps57'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps57'),
-        portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps57', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps58'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps58'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps58'),
+        portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps58', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps57'),
-        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps57'),
-        portrait: loadImg('assets/sprites/reaper_portrait.png?v=30fps57', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps58'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps58'),
+        portrait: loadImg('assets/sprites/reaper_portrait.png?v=30fps58', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps57'),
-        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps57'),
-        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps57', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps58'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps58'),
+        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps58', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps57'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps57'),
-        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps57', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps58'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps58'),
+        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps58', () => this.refreshPortraits())
       },
       ronin: {
-        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps57'),
-        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps57'),
-        portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps57', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps58'),
+        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps58'),
+        portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps58', () => this.refreshPortraits())
       },
       valkyrie: {
-        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps57'),
-        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps57'),
-        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps57', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps58'),
+        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps58'),
+        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps58', () => this.refreshPortraits())
       },
       icemage: {
-        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps57'),
-        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps57'),
-        portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps57', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps58'),
+        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps58'),
+        portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps58', () => this.refreshPortraits())
       },
       android: {
-        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps57'),
-        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps57'),
-        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps57', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps58'),
+        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps58'),
+        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps58', () => this.refreshPortraits())
       }
     };
 
@@ -185,8 +188,9 @@ export class PixelForge {
       return 90 + step;
     }
 
-    if (fighter.trueUltFrameOverride !== undefined && fighter.trueUltFrameOverride !== null) {
-      return fighter.trueUltFrameOverride;
+    const frameOverride = fighter.trueUltFrameOverride ?? fighter._overrideFrameIdx;
+    if (frameOverride !== undefined && frameOverride !== null) {
+      return frameOverride;
     }
 
     if (st === 'TRUE_ULTIMATE') {
@@ -735,6 +739,41 @@ export class PixelForge {
     const sx = col * cell;
     const sy = row * cell;
     const baseY = -h + 10;
+    ctx.drawImage(sheet, sx, sy, cell, cell, Math.round(-w * 0.5), Math.round(baseY), w, h);
+  }
+
+  static drawSilhouetteFrame(ctx, charSet, frameIdx, w, h, color = '#03040a') {
+    const sheet = charSet?.sheet;
+    if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
+    const cell = 208;
+    const cols = Math.max(1, Math.round(sheet.naturalWidth / cell));
+    const safeIdx = Math.max(0, frameIdx | 0);
+    const col = safeIdx % cols;
+    const row = (safeIdx / cols) | 0;
+    const sx = col * cell;
+    const sy = row * cell;
+    const baseY = -h + 10;
+
+    if (typeof document !== 'undefined') {
+      if (!this._silCanvas) {
+        this._silCanvas = document.createElement('canvas');
+        this._silCanvas.width = cell;
+        this._silCanvas.height = cell;
+        this._silCtx = this._silCanvas.getContext('2d');
+      }
+      const sCtx = this._silCtx;
+      if (sCtx) {
+        sCtx.imageSmoothingEnabled = false;
+        sCtx.globalCompositeOperation = 'source-over';
+        sCtx.clearRect(0, 0, cell, cell);
+        sCtx.drawImage(sheet, sx, sy, cell, cell, 0, 0, cell, cell);
+        sCtx.globalCompositeOperation = 'source-in';
+        sCtx.fillStyle = color;
+        sCtx.fillRect(0, 0, cell, cell);
+        ctx.drawImage(this._silCanvas, 0, 0, cell, cell, Math.round(-w * 0.5), Math.round(baseY), w, h);
+        return;
+      }
+    }
     ctx.drawImage(sheet, sx, sy, cell, cell, Math.round(-w * 0.5), Math.round(baseY), w, h);
   }
 

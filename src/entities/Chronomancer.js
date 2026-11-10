@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps57';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps57';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps57';
+import { Fighter } from './Fighter.js?v=30fps58';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps58';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps58';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps57';
+} from '../engine/shaders/chronoShaders.js?v=30fps58';
 
 /**
  * Zephyros (`chronomancer`) — Grand Horologist & Temporal Sovereign.
@@ -53,7 +53,7 @@ export class Chronomancer extends Fighter {
     if (typeof Image !== 'undefined') {
       const chronoAssets = PixelForge.initAssets()?.chronomancer;
       if (chronoAssets?.vfx?.src && !chronoAssets.vfx.src.includes('v=30fps53')) {
-        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps57';
+        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps58';
       }
     }
 

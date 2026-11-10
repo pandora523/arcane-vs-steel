@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps57';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps57';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps57';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps57';
+import { Fighter } from './Fighter.js?v=30fps58';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps58';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps58';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps58';
 
 /**
  * Ignis Sol (`mage`) — Solar Archmage & Black-Sun Eclipse Sovereign.
@@ -19,7 +19,10 @@ export class FireMage extends Fighter {
       moveSpeed: 138,
       autoInterval: 1.18,
       lightColor: 'rgba(251, 146, 60, 1)',
-      primaryColor: '#fb923c'
+      primaryColor: '#fb923c',
+      hasTrueUltimate: true,
+      trueUltName: 'ASTRAL METEOR CATACLYSM',
+      trueUltDuration: 5.20
     });
     this.heroId = 'mage';
     this.theme = 'arcane';
@@ -57,6 +60,23 @@ export class FireMage extends Fighter {
     this.didSkillAura = false;
     this._drewPalmFocus = false;
     this._orbitSlot = null;
+    this._trueUltInit = false;
+    this._trueUltStage = 0;
+    this._trueUltTick = 0;
+    this.trueUltMeteor = {
+      active: false,
+      phase: 'none',
+      x: this.x,
+      y: this.groundY - 480,
+      startX: this.x,
+      startY: this.groundY - 480,
+      targetX: this.x + this.facing * 320,
+      targetY: this.groundY - 34,
+      progress: 0,
+      riftScale: 0,
+      rot: 0,
+      trailNodes: []
+    };
 
     this.fx = new ArcaneShaderFX(SOLAR_EFFECT_REGISTRY, {
       pixelScale: 3,
@@ -66,8 +86,8 @@ export class FireMage extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const mageAssets = PixelForge.initAssets()?.mage;
-      if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps49')) {
-        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps57';
+      if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps58')) {
+        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps58';
       }
     }
   }
@@ -75,6 +95,17 @@ export class FireMage extends Fighter {
   setState(newState) {
     super.setState(newState);
     this._drewPalmFocus = false;
+    if (newState === 'TRUE_ULTIMATE') {
+      this._trueUltInit = false;
+      this._trueUltStage = 0;
+      this._trueUltTick = 0;
+    } else {
+      this._overrideFrameIdx = null;
+      if (this.trueUltMeteor) {
+        this.trueUltMeteor.active = false;
+        this.trueUltMeteor.phase = 'none';
+      }
+    }
     if (newState !== 'JUMP' && newState !== 'DODGE' && newState !== 'DASH') {
       this.fx?.stopByKey('solarGlideTrail');
     }
@@ -586,7 +617,13 @@ export class FireMage extends Fighter {
       }
     }
 
-    if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
+    const trueUltReady =
+      this.hasTrueUltimate &&
+      typeof this.updateTrueUltimate === 'function' &&
+      this.finisherGauge >= this.maxFinisherGauge &&
+      !(enemy && enemy.isInvulnerable);
+
+    if (!trueUltReady && enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const dist = Math.abs(enemy.x - this.x);
       const ww = game.renderer.worldWidth;
       const nearWall = this.x < 260 || this.x > ww - 260;
@@ -943,6 +980,533 @@ export class FireMage extends Fighter {
     }
   }
 
+  /**
+   * ★ SUPREME ULTIMATE FINISHER (`TRUE_ULTIMATE`):
+   * "ASTRAL METEOR CATACLYSM" — FF14 Black Mage Limit Break III:
+   * - Phase 1 (`0.00s - 1.55s`): Sol levitates in grand Astral Stasis invocation, consecrating
+   *   Ley-Lines while a colossal 680px Dimensional Sky Breach tears open high above the arena.
+   * - Phase 2 (`1.55s - 3.20s`): A gargantuan Obsidian & Solar-Magma Meteor (`meteor_cataclysm.png`)
+   *   descends from the heavens with roaring Mach shock-rings, atmospheric plasma cone, and crushing gravity.
+   * - Phase 3 (`3.20s - 5.20s`): Cataclysmic ground detonation triggers a High-Contrast Anime Impact Frame,
+   *   a Full-Stage White-Out Deletion Screen where every fighter erodes in dissolving ash silhouettes,
+   *   7 arena-wide Hellfire Solar Pillars, and permanently transforms the stage into "LAYWASTE OF INFERNO".
+   */
+  updateTrueUltimate(dt, enemy, game) {
+    const t = this.stateTimer;
+    const dur = this.trueUltDuration || 5.20;
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    this.vx = 0;
+    this.vy = 0;
+    this.isInvulnerable = true;
+    this.runeOrbit += dt * 11.5;
+
+    if (!this._trueUltInit) {
+      this._trueUltInit = true;
+      this._trueUltStage = 0;
+      this._trueUltTick = 0;
+
+      const rawTargetX = enemy ? enemy.x : this.x + this.facing * 360;
+      const targetX = Math.max(250, Math.min(ww - 250, rawTargetX));
+      const startX = Math.max(180, Math.min(ww - 180, targetX - this.facing * 150));
+      const startY = this.groundY - 510;
+
+      this.trueUltMeteor = {
+        active: true,
+        phase: 'rift',
+        x: startX,
+        y: startY,
+        startX,
+        startY,
+        targetX,
+        targetY: this.groundY - 34,
+        progress: 0,
+        riftScale: 0.08,
+        rot: 0,
+        trailNodes: []
+      };
+
+      if (game.audio) game.audio.play('eclipse_charge', this.x);
+      if (game.renderer) {
+        game.renderer.triggerShake(14, 0.55);
+        game.renderer.triggerAberration(10);
+      }
+
+      this.fx.spawn('solarFlameWard', this.x, this.groundY - 92, {
+        follow: this,
+        offsetX: 0,
+        offsetY: -92,
+        light: 1.48
+      });
+      this.fx.spawn('heliosPalmFocus', this.x + this.facing * 26, this.y - 116, {
+        follow: this,
+        offsetX: 26,
+        offsetY: -116,
+        flip: this.facing < 0,
+        light: 1.45
+      });
+      this.fx.spawn('eclipseSupernovaDomain', targetX, this.groundY, {
+        light: 1.52
+      });
+      this.fx.spawn('eclipseSupernovaDomain', this.x, this.groundY, {
+        light: 1.38
+      });
+
+      game.vfx.spawnShockwave(this.x, this.groundY - 12, 220, '#fb923c', 0.52, true);
+      game.vfx.spawnGlyphBurst(this.x, this.groundY - 96, 12, 'arcane');
+      game.vfx.spawnDamageText(
+        this.x,
+        this.groundY - 212,
+        0,
+        true,
+        '★ LIMIT BREAK III: ASTRAL METEOR! ★',
+        '#fef08a'
+      );
+    }
+
+    const m = this.trueUltMeteor;
+    const targetX = m ? m.targetX : enemy ? enemy.x : ww * 0.5;
+
+    // PHASE 1 (0.00s - 1.55s): Black Mage Astral Stasis Invocation & Dimensional Sky Breach
+    if (t < 1.55) {
+      const u = Math.min(1, t / 1.55);
+      const hover = Math.sin(u * Math.PI * 0.5) * 36;
+      this.y = this.groundY - hover;
+      this._overrideFrameIdx = 94 + (Math.floor(t * 15) % 10);
+
+      if (m) {
+        m.active = true;
+        m.phase = 'rift';
+        m.riftScale = Math.min(1, u * 1.18);
+        m.progress = u * 0.14;
+        m.x = m.startX + (m.targetX - m.startX) * (u * 0.08);
+        m.y = m.startY + 42 * u;
+      }
+
+      if (game.renderer) {
+        game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, 0.72);
+        game.renderer.setStageTransformation?.('inferno', u * 0.44, false, 6.0);
+      }
+
+      if (t >= 0.82 && this._trueUltStage < 1) {
+        this._trueUltStage = 1;
+        if (game.audio) game.audio.play('solar_beam', targetX);
+        if (game.renderer) game.renderer.triggerShake(16, 0.42);
+        game.vfx.spawnLightning(targetX - 135, this.groundY - 460, targetX - 35, this.groundY, '#fb923c', 0.44);
+        game.vfx.spawnLightning(targetX + 135, this.groundY - 460, targetX + 35, this.groundY, '#fef08a', 0.44);
+        this.fx.spawn('magmaFissureCrack', this.x, this.groundY, {
+          light: 1.42,
+          extra: { spanX: targetX - this.x }
+        });
+      }
+    }
+    // PHASE 2 (1.55s - 3.20s): Colossal FF14 Limit Break 3 Meteor Descent
+    else if (t < 3.20) {
+      const u = Math.max(0, Math.min(1, (t - 1.55) / 1.65));
+      const eased = u * u * (0.62 + 0.38 * u);
+      this.y = this.groundY - 36 * (1 - u * 0.35);
+      this._overrideFrameIdx = 126 + Math.min(12, Math.floor(u * 13));
+
+      if (this._trueUltStage < 2) {
+        this._trueUltStage = 2;
+        if (game.audio) game.audio.play('fireball', targetX);
+        if (game.renderer) {
+          game.renderer.triggerShake(20, 1.65);
+          game.renderer.triggerAberration(14);
+        }
+        game.vfx.spawnDamageText(
+          targetX,
+          this.groundY - 258,
+          0,
+          true,
+          '★ HEAVENSFALL METEOR DESCENT! ★',
+          '#fb923c'
+        );
+      }
+
+      if (m) {
+        m.active = true;
+        m.phase = 'descent';
+        m.riftScale = 1.0;
+        m.progress = u;
+        m.x = m.startX + (m.targetX - m.startX) * eased;
+        m.y = m.startY + 42 + (m.targetY - (m.startY + 42)) * eased;
+        m.rot += dt * 1.55;
+
+        this._trueUltTick += dt;
+        if (this._trueUltTick >= 0.065) {
+          this._trueUltTick = 0;
+          m.trailNodes.push({
+            x: m.x,
+            y: m.y,
+            size: 240 + u * 160,
+            alpha: 1.0
+          });
+          if (m.trailNodes.length > 8) m.trailNodes.shift();
+
+          game.vfx.spawnShockwave(m.x, m.y + 38, 135 + u * 95, '#fb923c', 0.24, true, true);
+          this.fx.burst(m.x + (Math.random() - 0.5) * 140, m.y + (Math.random() - 0.5) * 90, {
+            count: 6,
+            speedMin: 65,
+            speedMax: 210,
+            lifeMin: 0.22,
+            lifeMax: 0.45,
+            gravity: -65,
+            colors: ['#ffffff', '#fef08a', '#fb923c', '#ea580c', '#dc2626']
+          });
+        }
+      }
+
+      if (game.renderer) {
+        game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, 0.78);
+        game.renderer.setStageTransformation?.('inferno', 0.44 + u * 0.46, false, 6.0);
+      }
+
+      // Crushing Astral Gravity pulls all active enemies into the Meteor Impact Epicenter!
+      const enemies = game.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+      for (const cand of enemies) {
+        if (cand && !cand.isDead && !cand.isBenched) {
+          const pullDir = Math.sign(targetX - cand.x);
+          cand.x += pullDir * 165 * dt;
+        }
+      }
+    }
+    // PHASE 3 (3.20s - 5.20s): Cataclysmic Ground Impact, Anime Impact Frame, White-Out Deletion Screen & Permanent LAYWASTE OF INFERNO Stage!
+    else if (t < dur) {
+      this.y = this.groundY;
+      this._overrideFrameIdx = 136 + (Math.floor((t - 3.20) * 10) % 6);
+
+      if (this._trueUltStage < 3) {
+        this._trueUltStage = 3;
+        if (m) {
+          m.phase = 'detonated';
+          m.active = false;
+        }
+
+        if (game.audio) {
+          game.audio.play('meteor_impact', targetX);
+          game.audio.play('supernova_detonate', targetX);
+        }
+
+        if (game.renderer) {
+          // 1. High-Contrast Black & White Anime Impact Frame (0.16s)
+          game.renderer.triggerImpactFrame?.(targetX, this.groundY - 90, 0.16, 'inferno');
+          // 2. Full-Stage White-Out Deletion Screen (1.45s) where everyone looks deleted in dissolving ash silhouettes
+          game.renderer.triggerWhiteoutDeletion?.(targetX, this.groundY - 64, 1.45, 'inferno');
+          // 3. Permanent Stage Transformation into "LAYWASTE OF INFERNO"
+          game.renderer.setStageTransformation?.('inferno', 1.0, true, 0);
+          game.renderer.triggerShake(42, 1.25);
+          game.renderer.triggerAberration(26);
+          game.renderer.triggerHitStop(0.14);
+        }
+        if (game?.hudEls?.stageBadge) {
+          game.hudEls.stageBadge.textContent = 'LAYWASTE OF INFERNO';
+        }
+
+        // Massive Multi-Node Solar Meteor Impact Bursts & 7 Arena-Wide Hellfire Pillars
+        [-190, 0, 190].forEach((off, idx) => {
+          const bx = Math.max(120, Math.min(ww - 120, targetX + off));
+          this.fx.spawn('solarMeteorImpactBurst', bx, this.groundY - 78, {
+            light: idx === 1 ? 1.65 : 1.42,
+            extra: { isMeteor: true }
+          });
+        });
+
+        [-360, -240, -120, 0, 120, 240, 360].forEach((off, idx) => {
+          const px = Math.max(95, Math.min(ww - 95, targetX + off));
+          const isCenter = idx === 3;
+          game.vfx.spawnFlamePillar(px, this.groundY, this, enemy, {
+            theme: 'arcane',
+            delay: Math.abs(idx - 3) * 0.06,
+            maxLife: 1.75,
+            scaleWidth: isCenter ? 1.38 : 0.95,
+            isUltimate: true
+          });
+          this.fx.spawn('hellfireSolarPillar', px, this.groundY - 4, {
+            light: isCenter ? 1.55 : 1.32,
+            extra: { scaleWidth: isCenter ? 1.38 : 0.95 }
+          });
+        });
+
+        this.fx.spawn('magmaFissureCrack', 140, this.groundY, {
+          light: 1.5,
+          extra: { spanX: ww - 280 }
+        });
+
+        game.vfx.spawnShockwave(targetX, this.groundY - 12, 480, '#fef08a', 0.85, true);
+        game.vfx.spawnShockwave(targetX, this.groundY - 42, 380, '#fb923c', 0.68, false);
+        game.vfx.spawnDecal(targetX, 280, 'fissure', '#fb923c', 12.0);
+        game.vfx.spawnBurst(targetX, this.groundY - 24, 52, '#fef08a', 460, { upBias: 210, size: 10 });
+        game.vfx.spawnBurst(targetX, this.groundY - 24, 44, '#ea580c', 420, { upBias: 185, size: 9 });
+        game.vfx.spawnGlyphBurst(targetX, this.groundY - 72, 16, 'arcane');
+
+        const enemies = game.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+        for (const cand of enemies) {
+          if (cand && !cand.isDead && !cand.isBenched) {
+            cand.takeDamage(235, this, true, 320, -380);
+          }
+        }
+
+        game.vfx.spawnDamageText(
+          targetX,
+          this.groundY - 224,
+          0,
+          true,
+          '★ ASTRAL METEOR CATACLYSM! ★',
+          '#fef08a'
+        );
+      }
+    } else {
+      this.y = this.groundY;
+      this._overrideFrameIdx = null;
+      this.isInvulnerable = false;
+      if (m) {
+        m.active = false;
+        m.phase = 'none';
+      }
+      this.setState('IDLE');
+    }
+  }
+
+  /**
+   * Renders the FF14 Black Mage Limit Break III Dimensional Astral Sky Breach,
+   * Ground Cataclysm Target Seal, Atmospheric Entry Plasma Wake, and the colossal
+   * `meteor_cataclysm.png` (`assets.mage.meteor`) sprite.
+   */
+  drawTrueUltimateMeteor(ctx, renderer = null) {
+    const m = this.trueUltMeteor;
+    if (!m || !m.active) return;
+
+    const assets = PixelForge.initAssets();
+    const meteorImg = assets.mage?.meteor;
+    const vfxSheet = assets.mage?.vfx;
+    const now = performance.now() * 0.001;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Ground Cataclysm Target Reticle & Gravity Rings at (m.targetX, this.groundY - 6)
+    const gx = Math.round(m.targetX);
+    const gy = Math.round(this.groundY - 6);
+    const ringScale = m.phase === 'descent' ? 0.85 + 0.35 * m.progress : m.riftScale;
+    const outerRx = Math.round(215 * ringScale);
+    const outerRy = Math.round(42 * ringScale);
+
+    ctx.save();
+    ctx.translate(gx, gy);
+    ctx.globalCompositeOperation = 'lighter';
+
+    if (renderer && renderer.glowOrange) {
+      ctx.globalAlpha = 0.55 * ringScale;
+      ctx.drawImage(renderer.glowOrange, -outerRx * 1.25, -outerRy * 2.2, outerRx * 2.5, outerRy * 4.4);
+    }
+
+    // Concentric target rings
+    const rings = [
+      { rx: outerRx, ry: outerRy, col: '#ea580c', w: 4, dash: [18, 10] },
+      { rx: outerRx * 0.72, ry: outerRy * 0.72, col: '#fb923c', w: 3, dash: [12, 8] },
+      { rx: outerRx * 0.42, ry: outerRy * 0.42, col: '#fef08a', w: 3, dash: [] }
+    ];
+    rings.forEach((rg, idx) => {
+      ctx.save();
+      ctx.strokeStyle = rg.col;
+      ctx.lineWidth = rg.w;
+      ctx.globalAlpha = 0.88;
+      if (rg.dash.length) {
+        ctx.setLineDash(rg.dash);
+        ctx.lineDashOffset = (idx % 2 === 0 ? -1 : 1) * now * 95;
+      }
+      ctx.beginPath();
+      ctx.ellipse(0, 0, Math.max(4, rg.rx), Math.max(2, rg.ry), 0, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    });
+
+    // 8 radial catastrophe lock-on spokes on the ground
+    for (let i = 0; i < 8; i++) {
+      const ang = (i / 8) * Math.PI * 2 + now * 1.4;
+      const x1 = Math.cos(ang) * outerRx * 0.25;
+      const y1 = Math.sin(ang) * outerRy * 0.25;
+      const x2 = Math.cos(ang) * outerRx * 1.04;
+      const y2 = Math.sin(ang) * outerRy * 1.04;
+      ctx.strokeStyle = i % 2 === 0 ? '#fef08a' : '#fb923c';
+      ctx.lineWidth = 2.5;
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    // 2. Dimensional Astral Sky Breach (Heavensfall Rift) at the top of the stage
+    const rx = Math.round(m.startX);
+    const ry = Math.round(this.groundY - 438);
+    const riftW = Math.round(360 * Math.max(0.15, m.riftScale));
+    const riftH = Math.round(68 * Math.max(0.15, m.riftScale));
+
+    ctx.save();
+    ctx.translate(rx, ry);
+
+    if (renderer && renderer.glowOrange) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.72 * m.riftScale;
+      ctx.drawImage(renderer.glowOrange, -riftW * 1.3, -riftH * 2.6, riftW * 2.6, riftH * 5.2);
+    }
+
+    // Abyssal void core of the sky tear
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.fillStyle = '#09040e';
+    ctx.beginPath();
+    ctx.ellipse(0, 0, riftW, riftH, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Rim of molten solar fire & crimson lightning around the sky breach
+    ctx.globalCompositeOperation = 'lighter';
+    const rimLayers = [
+      { rx: riftW * 1.06, ry: riftH * 1.12, col: '#dc2626', w: 7, a: 0.78 },
+      { rx: riftW * 0.96, ry: riftH * 0.96, col: '#fb923c', w: 5, a: 0.92 },
+      { rx: riftW * 0.82, ry: riftH * 0.78, col: '#fef08a', w: 3, a: 0.95 }
+    ];
+    for (const rl of rimLayers) {
+      ctx.strokeStyle = rl.col;
+      ctx.lineWidth = rl.w;
+      ctx.globalAlpha = rl.a * m.riftScale;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, rl.rx, rl.ry, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    // Rotating Black-Sun Eclipse sigil inside the breach from mage_vfx.png Row 0
+    if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
+      const vCol = Math.floor(now * 30) % 30;
+      const eSize = Math.round(250 * m.riftScale);
+      ctx.globalAlpha = 0.85 * m.riftScale;
+      ctx.drawImage(vfxSheet, vCol * 208, 0, 208, 208, -eSize * 0.5, -eSize * 0.42, eSize, eSize * 0.84);
+    }
+    ctx.restore();
+
+    // 3. Atmospheric Entry Plasma Wake & Colossal Meteor (`meteor_cataclysm.png`)
+    const mx = Math.round(m.x);
+    const my = Math.round(m.y);
+    const meteorScale =
+      m.phase === 'rift'
+        ? 0.65 + 0.45 * m.riftScale
+        : 1.12 + 0.52 * m.progress;
+    const meteorSize = Math.round(290 * meteorScale);
+
+    // Draw atmospheric plasma wake cone connecting Sky Breach -> Meteor during descent
+    if (m.phase === 'descent') {
+      const dx = mx - rx;
+      const dy = my - ry;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len;
+      const ny = dx / len;
+      const headW = meteorSize * 0.44;
+      const tailW = riftW * 0.68;
+
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      const wakeGrad = ctx.createLinearGradient(rx, ry, mx, my);
+      wakeGrad.addColorStop(0, 'rgba(153, 27, 27, 0.08)');
+      wakeGrad.addColorStop(0.45, 'rgba(234, 88, 12, 0.52)');
+      wakeGrad.addColorStop(0.82, 'rgba(251, 146, 60, 0.82)');
+      wakeGrad.addColorStop(1, 'rgba(254, 240, 138, 0.95)');
+
+      ctx.fillStyle = wakeGrad;
+      ctx.beginPath();
+      ctx.moveTo(rx + nx * tailW, ry + ny * tailW);
+      ctx.lineTo(mx + nx * headW, my + ny * headW);
+      ctx.lineTo(mx - nx * headW, my - ny * headW);
+      ctx.lineTo(rx - nx * tailW, ry - ny * tailW);
+      ctx.closePath();
+      ctx.fill();
+
+      // Inner white-gold superheated core stream
+      const coreW = headW * 0.46;
+      ctx.fillStyle = 'rgba(254, 249, 195, 0.78)';
+      ctx.beginPath();
+      ctx.moveTo(rx + nx * (tailW * 0.32), ry + ny * (tailW * 0.32));
+      ctx.lineTo(mx + nx * coreW, my + ny * coreW);
+      ctx.lineTo(mx - nx * coreW, my - ny * coreW);
+      ctx.lineTo(rx - nx * (tailW * 0.32), ry - ny * (tailW * 0.32));
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    // Draw the Colossal `meteor_cataclysm.png` Sprite + Solar Corona & Mach Shock-Rings
+    ctx.save();
+    ctx.translate(mx, my);
+
+    if (renderer) {
+      ctx.globalCompositeOperation = 'lighter';
+      if (renderer.glowOrange) {
+        ctx.globalAlpha = 0.88;
+        ctx.drawImage(
+          renderer.glowOrange,
+          -meteorSize * 0.95,
+          -meteorSize * 0.95,
+          meteorSize * 1.9,
+          meteorSize * 1.9
+        );
+      }
+      if (renderer.glowWhite) {
+        ctx.globalAlpha = 0.62;
+        ctx.drawImage(
+          renderer.glowWhite,
+          -meteorSize * 0.58,
+          -meteorSize * 0.58,
+          meteorSize * 1.16,
+          meteorSize * 1.16
+        );
+      }
+    }
+
+    // Crisp 16-bit Pixel-Art Meteor Body (`assets/sprites/meteor_cataclysm.png`)
+    if (meteorImg && meteorImg.complete && meteorImg.naturalWidth > 0) {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = m.phase === 'rift' ? Math.min(1, m.riftScale * 1.15) : 1.0;
+      const half = Math.round(-meteorSize * 0.5);
+      ctx.drawImage(meteorImg, 0, 0, meteorImg.naturalWidth, meteorImg.naturalHeight, half, half, meteorSize, meteorSize);
+    }
+
+    // Supersonic Atmospheric Mach Compression Rings & Orbiting Molten Boulders around the Meteor Nose
+    if (m.phase === 'descent') {
+      ctx.globalCompositeOperation = 'lighter';
+      const trajAng = Math.atan2(m.targetY - m.startY, m.targetX - m.startX);
+
+      for (let r = 0; r < 2; r++) {
+        const ringPulse = ((now * 2.8 + r * 0.5) % 1);
+        const rxRing = meteorSize * (0.46 + ringPulse * 0.36);
+        const ryRing = meteorSize * (0.16 + ringPulse * 0.12);
+        ctx.save();
+        ctx.rotate(trajAng + Math.PI * 0.5);
+        ctx.strokeStyle = r === 0 ? '#fef08a' : '#fb923c';
+        ctx.lineWidth = 4 - r;
+        ctx.globalAlpha = (1 - ringPulse) * 0.9;
+        ctx.beginPath();
+        ctx.ellipse(0, -meteorSize * 0.12, rxRing, ryRing, 0, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
+
+      // 4 orbiting molten rock fragments
+      for (let b = 0; b < 4; b++) {
+        const bAng = now * 4.2 + (b * Math.PI * 0.5);
+        const bx = Math.cos(bAng) * (meteorSize * 0.54);
+        const by = Math.sin(bAng) * (meteorSize * 0.28);
+        ctx.fillStyle = '#1c1218';
+        ctx.fillRect(Math.round(bx - 9), Math.round(by - 9), 18, 18);
+        ctx.fillStyle = '#fb923c';
+        ctx.fillRect(Math.round(bx - 6), Math.round(by - 6), 12, 12);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(Math.round(bx - 3), Math.round(by - 3), 6, 6);
+      }
+    }
+
+    ctx.restore();
+    ctx.restore();
+  }
+
   drawSolarEchoes(ctx) {
     if (!this.solarEchoes.length) return;
     const sprites = PixelForge.initAssets().mage;
@@ -1006,6 +1570,7 @@ export class FireMage extends Fighter {
   drawUltimateForeground(ctx, renderer = null) {
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
+    this.drawTrueUltimateMeteor(ctx, renderer);
   }
 
   draw(ctx, isReflection = false, renderer = null) {

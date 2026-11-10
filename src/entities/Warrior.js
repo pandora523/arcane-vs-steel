@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps57';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps57';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps57';
+import { Fighter } from './Fighter.js?v=30fps58';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps58';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps58';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps57';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps58';
 
 /**
  * Aethelgard (`warrior`) — Elder Rune Knight & Runic Vanguard.
@@ -87,7 +87,7 @@ export class Warrior extends Fighter {
     if (typeof Image !== 'undefined') {
       const warriorAssets = PixelForge.initAssets()?.warrior;
       if (warriorAssets?.vfx?.src && !warriorAssets.vfx.src.includes('v=30fps53')) {
-        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps57';
+        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps58';
       }
     }
   }
@@ -1339,8 +1339,9 @@ export class Warrior extends Fighter {
   }
 
   /**
-   * Spawns a colossal multi-layered Pixel-Art "Slash of Justice" across `(x1, y1) -> (x2, y2)`
-   * accompanied by 30fps `warrior_vfx.png` Row 0 Sword-Waves, Row 4 Starburst Novas, and `VFXManager` slashes/beams/sparks!
+   * Spawns a colossal multi-layered "Slash of Justice" across `(x1, y1) -> (x2, y2)`
+   * using a 3-node cascade of 30fps `warrior_vfx.png` Row 0 Crescent Blade Waves & Row 4 Starburst Novas
+   * (ZERO straight laser beams or old stepped rectangle blocks!).
    */
   spawnJusticeGreatSlash(x1, y1, x2, y2, maxLife = 0.58, isGoldAccent = false, game = null) {
     const mx = (x1 + x2) * 0.5;
@@ -1360,38 +1361,41 @@ export class Warrior extends Fighter {
       maxLife,
       isGoldAccent
     });
-    this.spawnSlashBeam(x1, y1, x2, y2, maxLife, isGoldAccent);
 
-    // Multi-layer 30fps `warrior_vfx.png` Row 0 (Runic Crescent Wave) & Row 4 (Omnislash Starburst Nova) along the slash!
-    this.spawnVfxAnim(0, mx, my, 276, 276, maxLife, {
+    // 3-Node Cascade of 30fps `warrior_vfx.png` Row 0 (Runic Crescent Wave) & Row 4 (Starburst Nova) along the slash!
+    const glowCol = isGoldAccent ? 'gold' : 'cyan';
+    for (const uPos of [0.22, 0.50, 0.78]) {
+      const sx = x1 + (x2 - x1) * uPos;
+      const sy = y1 + (y2 - y1) * uPos;
+      const sz = uPos === 0.50 ? 292 : 236;
+      this.spawnVfxAnim(0, sx, sy, sz, sz, maxLife, {
+        flipX,
+        glowColor: glowCol,
+        foreground: true
+      });
+    }
+    this.spawnVfxAnim(4, mx, my, 264, 264, maxLife * 0.90, {
       flipX,
-      glowColor: isGoldAccent ? 'gold' : 'cyan',
-      foreground: true
-    });
-    this.spawnVfxAnim(4, mx, my, 248, 248, maxLife * 0.88, {
-      flipX,
-      glowColor: isGoldAccent ? 'gold' : 'cyan',
+      glowColor: glowCol,
       foreground: true
     });
     this.fx?.burst(mx, my, {
-      count: 16,
-      speedMin: 60,
-      speedMax: 210,
+      count: 20,
+      speedMin: 65,
+      speedMax: 225,
       lifeMin: 0.18,
-      lifeMax: 0.38,
+      lifeMax: 0.40,
       gravity: -20,
       colors: ['#ffffff', '#e0f2fe', '#7dd3fc', '#38bdf8', '#fef08a']
     });
 
     if (game?.vfx) {
       const col = isGoldAccent ? '#fef08a' : '#7dd3fc';
-      game.vfx.spawnBeam?.(x1, y1, x2, y2, '#ffffff', 22, maxLife * 0.72);
-      game.vfx.spawnBeam?.(x1, y1, x2, y2, col, 38, maxLife * 0.85);
-      game.vfx.spawnSlash?.(mx, my, 175, angle - 1.15, angle + 1.15, '#ffffff', maxLife * 0.78);
-      game.vfx.spawnSlash?.(mx, my, 205, angle - 1.30, angle + 1.30, '#38bdf8', maxLife * 0.88);
-      game.vfx.spawnShockwave?.(mx, my, 145, col, 0.36, false, true);
-      game.vfx.spawnBurst?.(mx, my, 20, '#e0f2fe', 260, { upBias: 60, size: 7, additive: true });
-      game.vfx.spawnGlyphBurst?.(mx, my, 7, 'steel');
+      game.vfx.spawnSlash?.(mx, my, 195, angle - 1.25, angle + 1.25, '#ffffff', maxLife * 0.82);
+      game.vfx.spawnSlash?.(mx, my, 230, angle - 1.38, angle + 1.38, '#38bdf8', maxLife * 0.92);
+      game.vfx.spawnShockwave?.(mx, my, 155, col, 0.38, false, true);
+      game.vfx.spawnBurst?.(mx, my, 22, '#e0f2fe', 270, { upBias: 65, size: 7, additive: true });
+      game.vfx.spawnGlyphBurst?.(mx, my, 8, 'steel');
     }
   }
 
@@ -1425,13 +1429,15 @@ export class Warrior extends Fighter {
 
   /**
    * SUPREME FINISHING MOVE ("ULTIMATE" Gauge): "CELESTIAL SWORD OF JUSTICE" (`trueUltDuration = 4.50s`)
-   *   1. Phase 1 (`0.00s - 2.35s`): 2.35-Second Sacred Knight's Vow Pose on the ground (`this.groundY`),
-   *      with grounded Sanctuary Seals, lightning bolts, shockwaves, and unfurling White-Blue Archangel Wings.
+   *   1. Phase 1 (`0.00s - 2.35s`): 2.35-Second Sacred Knight's Vow Choreography on the ground (`this.groundY`),
+   *      transforming the stage into the "CELESTIAL SANCTUARY OF JUSTICE" (`arena_sanctuary.png`), erupting
+   *      flanking Frost-Crystal Spires, and unfurling authentic 30fps Feathered Archangel Wings (`seraphim_wings.png`).
    *   2. Phase 2 (`2.35s - 3.45s`): Teleports HIGH TO THE TOP OF THE STAGE (`this.groundY - 410`), unfurls
    *      Colossal 30fps Feathered White-Blue Archangel Wings (`seraphim_wings.png`), angles his body & glowing
-   *      Greatsword directly toward the enemy, and unleashes Epic Multi-Layered Slashes of Justice across the stage!
+   *      Greatsword directly toward the enemy with a Cut Blue Lock-On Trajectory Line & Reticle, and unleashes
+   *      Epic Multi-Layered Crescent Slashes of Justice across the stage!
    *   3. Phase 3 (`3.45s - 4.50s`): Launches a supersonic winged dive-attack straight down his sword vector
-   *      into the enemy, lands on `this.groundY` with cataclysmic X-Crossed Slashes of Justice & 6 grounded Glacial
+   *      into the enemy, triggers a high-contrast Anime Impact Frame on touchdown, erupts 6 grounded Glacial
    *      Frost-Crystal Spire clusters, and fills the WHOLE STAGE with floating White-Blue Feathers for 5.2 seconds!
    */
   updateTrueUltimate(dt, enemy, game) {
@@ -1459,6 +1465,10 @@ export class Warrior extends Fighter {
       this.y = this.groundY;
       this.facing = targetX >= this.x ? 1 : -1;
 
+      if (game?.hudEls?.stageBadge) {
+        game.hudEls.stageBadge.textContent = 'CELESTIAL SANCTUARY';
+      }
+
       // Grounded Sanctuary Seal + Elder-Rune Domain + VFX Shockwaves under Aethelgard during his 2.35s Sacred Pose
       this.fx?.spawn('blinkTeleportPillar', this.x, this.groundY - 4, {
         flip: false,
@@ -1470,23 +1480,23 @@ export class Warrior extends Fighter {
           customDuration: 2.35
         }
       });
-      this.spawnVfxAnim(3, this.x, this.groundY - 18, 300, 142, 2.35, {
+      this.spawnVfxAnim(3, this.x, this.groundY - 18, 320, 148, 2.35, {
         glowColor: 'cyan',
         foreground: false
       });
-      this.spawnVfxAnim(1, this.x, this.groundY - 98, 232, 232, 0.56, {
+      this.spawnVfxAnim(1, this.x, this.groundY - 98, 240, 240, 0.58, {
         startFrame: 10,
         endFrame: 29,
         flipX: this.facing < 0,
         glowColor: 'cyan',
         foreground: true
       });
-      this.spawnRuneBlinkPillar(this.x, this.groundY, 0.56, 224, false);
+      this.spawnRuneBlinkPillar(this.x, this.groundY, 0.58, 232, false);
       if (game?.audio) game.audio.play('skill_cast', this.x);
       if (game?.vfx) {
-        game.vfx.spawnShockwave?.(this.x, this.groundY - 4, 185, '#7dd3fc', 0.42, true);
-        game.vfx.spawnBurst?.(this.x, this.groundY - 90, 26, '#e0f2fe', 260, { upBias: 120, size: 7, additive: true });
-        game.vfx.spawnGlyphBurst?.(this.x, this.groundY - 96, 10, 'steel');
+        game.vfx.spawnShockwave?.(this.x, this.groundY - 4, 195, '#7dd3fc', 0.44, true);
+        game.vfx.spawnBurst?.(this.x, this.groundY - 90, 28, '#e0f2fe', 270, { upBias: 125, size: 7, additive: true });
+        game.vfx.spawnGlyphBurst?.(this.x, this.groundY - 96, 12, 'steel');
         game.vfx.spawnLightning?.(this.x, this.groundY - 420, this.groundY, '#ffffff', '#38bdf8');
         game.vfx.spawnDamageText?.(
           this.x,
@@ -1500,57 +1510,82 @@ export class Warrior extends Fighter {
     }
 
     // =========================================================================
-    // PHASE 1 (0.00s - 2.35s): 2.35-SECOND SACRED POSE ON THE GROUND
+    // PHASE 1 (0.00s - 2.35s): 2.35-SECOND MULTI-STAGE SACRED VOW & SANCTUARY STAGE TRANSFORMATION
     // =========================================================================
     if (t < 2.35) {
       this.y = this.groundY;
       this.facing = targetX >= this.x ? 1 : -1;
-      // Unfurl White-Blue Archangel Wings progressively on the ground starting at t = 0.85s!
-      this.justiceWingsActive = t >= 0.85;
-      this.justiceWingSpread = t >= 0.85 ? Math.min(0.82, (t - 0.85) / 1.45) : 0;
+      // Smoothly transform the stage into the Celestial Sanctuary (`arena_sanctuary.png`)!
+      const stgAlpha = Math.min(1.0, t / 1.25);
+      game?.renderer?.setStageTransformation?.('sanctuary', stgAlpha, false, 6.2);
+
+      // Unfurl White-Blue Archangel Wings progressively on the ground starting at t = 0.75s!
+      this.justiceWingsActive = t >= 0.75;
+      this.justiceWingSpread = t >= 0.75 ? Math.min(0.95, (t - 0.75) / 1.40) : 0;
       this.justiceSwordPointActive = false;
 
-      // Hold heroic 2H Greatsword Vow / Cross-Guard Pose (frames 212..217 of Row 7 / Row 4)
-      if (t < 0.45) {
-        this.trueUltFrameOverride = 120 + Math.min(4, Math.floor((t / 0.45) * 5));
+      // Sophisticated 4-Stage Sacred Vow Choreography across 2.35s:
+      // 0.00s..0.55s: Low Runic Cross-Guard Vow (Row 7 F02..F07)
+      // 0.55s..1.15s: Sweeping 2H Greatsword Invocation Arc (Row 2 F00..F11)
+      // 1.15s..1.80s: Archangel Wing Awakening & Overhead Greatsword Raise (Row 4 F00..F08)
+      // 1.80s..2.35s: Ascension Coil & Skyward Launch Stance (Row 8 F00..F07)
+      if (t < 0.55) {
+        this.trueUltFrameOverride = 212 + Math.min(5, Math.floor((t / 0.55) * 6));
+      } else if (t < 1.15) {
+        this.trueUltFrameOverride = 60 + Math.min(11, Math.floor(((t - 0.55) / 0.60) * 12));
+      } else if (t < 1.80) {
+        this.trueUltFrameOverride = 120 + Math.min(8, Math.floor(((t - 1.15) / 0.65) * 9));
       } else {
-        this.trueUltFrameOverride = 212 + (Math.floor((t - 0.45) * 5) % 4);
+        this.trueUltFrameOverride = 240 + Math.min(7, Math.floor(((t - 1.80) / 0.55) * 8));
       }
 
       // Continuous rising white-cyan holy aura particles during the 2.35s pose
-      if (Math.random() < 0.65) {
-        this.fx?.burst(this.x + (Math.random() - 0.5) * 70, this.groundY - 12, {
+      if (Math.random() < 0.72) {
+        this.fx?.burst(this.x + (Math.random() - 0.5) * 85, this.groundY - 10, {
           count: 2,
-          speedMin: 40,
-          speedMax: 110,
+          speedMin: 45,
+          speedMax: 120,
           lifeMin: 0.18,
-          lifeMax: 0.36,
-          gravity: -95,
-          colors: ['#ffffff', '#e0f2fe', '#7dd3fc', '#38bdf8']
+          lifeMax: 0.38,
+          gravity: -105,
+          colors: ['#ffffff', '#e0f2fe', '#7dd3fc', '#38bdf8', '#fef08a']
         });
       }
 
-      // Periodic Sacred Pose energy pulses at 0.55s, 1.10s, 1.65s, and 2.10s
+      // Periodic Sacred Pose energy pulses & flanking ground spires at 0.55s, 1.10s, 1.65s, and 2.10s
       const wantPulse = Math.floor(t / 0.55);
       if (wantPulse > this._trueUltPosePulse && wantPulse <= 4) {
         this._trueUltPosePulse = wantPulse;
         if (game?.audio) game.audio.play('reflect', this.x);
         game?.renderer?.triggerShake(9 + wantPulse * 2, 0.18);
-        this.spawnVfxAnim(1, this.x, this.groundY - 98, 236, 236, 0.46, {
+        this.spawnVfxAnim(1, this.x, this.groundY - 98, 244, 244, 0.48, {
           startFrame: 10,
           endFrame: 29,
           flipX: this.facing < 0,
           glowColor: wantPulse % 2 === 0 ? 'gold' : 'cyan',
           foreground: true
         });
-        this.spawnVfxAnim(3, this.x, this.groundY - 18, 280, 134, 0.58, {
+        this.spawnVfxAnim(3, this.x, this.groundY - 18, 300, 140, 0.62, {
           glowColor: 'cyan',
           foreground: false
         });
+        if (wantPulse === 1 || wantPulse === 3) {
+          // Flanking Ground-Planted Frost-Crystal Spires erupting beside Aethelgard during his Vow!
+          const spireOff = wantPulse === 1 ? 125 : 195;
+          for (const side of [-1, 1]) {
+            const sx = clampX(this.x + side * spireOff);
+            const sh = 216;
+            this.spawnVfxAnim(2, sx, this.groundY - Math.round(sh * 0.32), sh, sh, 0.58, {
+              flipX: side < 0,
+              glowColor: wantPulse === 3 ? 'gold' : 'cyan',
+              foreground: false
+            });
+          }
+        }
         if (game?.vfx) {
-          game.vfx.spawnShockwave?.(this.x, this.groundY - 4, 155 + wantPulse * 20, '#7dd3fc', 0.34, true);
-          game.vfx.spawnBurst?.(this.x, this.groundY - 96, 16, '#ffffff', 220, { upBias: 95, size: 6, additive: true });
-          game.vfx.spawnGlyphBurst?.(this.x, this.groundY - 96, 6, 'steel');
+          game.vfx.spawnShockwave?.(this.x, this.groundY - 4, 165 + wantPulse * 24, '#7dd3fc', 0.36, true);
+          game.vfx.spawnBurst?.(this.x, this.groundY - 96, 18, '#ffffff', 235, { upBias: 105, size: 6, additive: true });
+          game.vfx.spawnGlyphBurst?.(this.x, this.groundY - 96, 7, 'steel');
           if (wantPulse === 2) {
             game.vfx.spawnLightning?.(this.x, this.groundY - 420, this.groundY, '#ffffff', '#7dd3fc');
             game.vfx.spawnDamageText?.(
@@ -1569,13 +1604,14 @@ export class Warrior extends Fighter {
 
     // =========================================================================
     // PHASE 2 (2.35s - 3.45s): TELEPORT HIGH TO THE TOP OF THE STAGE (y = groundY - 410)
-    // + BEAUTIFUL WHITE-BLUE FEATHERED WINGS + BODY & SWORD POINTING AT ENEMY
-    // + EPIC MULTI-LAYERED SLASHES OF JUSTICE!
+    // + BEAUTIFUL WHITE-BLUE FEATHERED WINGS + CUT BLUE LOCK-ON LINE & RETICLE
+    // + EPIC MULTI-LAYERED CRESCENT SLASHES OF JUSTICE!
     // =========================================================================
     if (t < 3.45) {
       const hoverU = (t - 2.35) / 1.10;
       const skyX = clampX(targetX - (targetX >= ww * 0.5 ? 185 : -185));
       const skyY = topOfStageY - Math.sin(hoverU * Math.PI) * 18;
+      game?.renderer?.setStageTransformation?.('sanctuary', 1.0, false, 5.8);
 
       if (this._trueUltStage < 1) {
         this._trueUltStage = 1;
@@ -1598,7 +1634,7 @@ export class Warrior extends Fighter {
           foreground: true
         });
         this.spawnRuneBlinkPillar(targetX, this.groundY, 0.56, 208, true);
-        this.spawnVfxAnim(3, targetX, this.groundY - 18, 290, 138, 1.10, {
+        this.spawnVfxAnim(3, targetX, this.groundY - 18, 310, 144, 1.15, {
           glowColor: 'gold',
           foreground: false
         });
@@ -1635,13 +1671,24 @@ export class Warrior extends Fighter {
       this.justiceWingsActive = true;
       this.justiceWingSpread = 1.18 + Math.sin(hoverU * Math.PI * 3) * 0.08;
       this.justiceSwordPointActive = true;
+      this._justiceLockTargetX = targetX;
+      this._justiceLockTargetY = targetY;
 
       // Angle body & Greatsword directly toward the enemy below!
       const dx = (targetX - this.x) * this.facing;
       const dy = targetY - (this.y - 84);
       this.justiceSwordAimAngle = Math.max(0.15, Math.min(1.18, Math.atan2(dy, Math.max(36, dx))));
-      // Use aerial forward-thrusting Greatsword frame (Row 8 F15)
-      this.trueUltFrameOverride = 255;
+
+      // Dynamic aerial Greatsword cleave animation synchronized with each Slash of Justice!
+      if (t < 2.52) {
+        this.trueUltFrameOverride = 252 + Math.min(3, Math.floor(((t - 2.35) / 0.17) * 4));
+      } else if (t < 2.82) {
+        this.trueUltFrameOverride = 68 + Math.min(6, Math.floor(((t - 2.52) / 0.30) * 7));
+      } else if (t < 3.12) {
+        this.trueUltFrameOverride = 130 + Math.min(6, Math.floor(((t - 2.82) / 0.30) * 7));
+      } else {
+        this.trueUltFrameOverride = 254 + Math.min(5, Math.floor(((t - 3.12) / 0.33) * 6));
+      }
 
       // Unleashing 3 Colossal Multi-Layered "Slashes of Justice" from the high sky across the enemy!
       if (t >= 2.52 && this._trueUltStage < 2) {
@@ -1764,6 +1811,8 @@ export class Warrior extends Fighter {
       this.justiceWingsActive = true;
       this.justiceWingSpread = 1.28;
       this.justiceSwordPointActive = true;
+      this._justiceLockTargetX = targetX;
+      this._justiceLockTargetY = targetY;
       this.trueUltFrameOverride = 142 + Math.min(3, Math.floor(diveU * 4));
 
       const wantDiveGhost = Math.floor(diveU * 7) + 1;
@@ -1787,7 +1836,7 @@ export class Warrior extends Fighter {
     }
 
     // =========================================================================
-    // PHASE 3B (3.74s - 4.45s): LANDING IMPACT & 5-SECOND WHOLE-STAGE FEATHERS!
+    // PHASE 3B (3.74s - 4.45s): LANDING IMPACT, ANIME IMPACT FRAME & 5-SECOND WHOLE-STAGE FEATHERS!
     // =========================================================================
     this.y = this.groundY;
     this.justiceSwordPointActive = false;
@@ -1798,16 +1847,18 @@ export class Warrior extends Fighter {
 
     if (this._trueUltStage < 5) {
       this._trueUltStage = 5;
-      // Refresh the Stage-Wide Floating White & Ice-Blue Feathers for a full 5.2 seconds from landing!
+      const dir = this.facing;
+      const slamX = this.x + dir * 48;
+
+      // Refresh the Stage-Wide Floating White & Ice-Blue Feathers & Sanctuary Stage Transformation for 5.2s!
       this.triggerStageWideBluishFeathers(5.2, ww);
+      game?.renderer?.setStageTransformation?.('sanctuary', 1.0, false, 5.2);
+      game?.renderer?.triggerImpactFrame?.(slamX, this.groundY - 90, 0.12, 'justice');
 
       if (game?.audio) game.audio.play('earthshatter', this.x);
       game?.renderer?.triggerShake?.(34, 0.72);
       game?.renderer?.triggerAberration?.(20);
       game?.renderer?.triggerHitStop?.(0.095);
-
-      const dir = this.facing;
-      const slamX = this.x + dir * 48;
 
       // Colossal X-Crossed Big Slashes of Justice across the stage on touchdown!
       this.spawnJusticeGreatSlash(
@@ -1915,134 +1966,96 @@ export class Warrior extends Fighter {
 
   /**
    * Draws Aethelgard's Colossal Luminous White & Ice-Blue Feathered Archangel Wings of Justice:
-   * Uses the authentic 30-frame 16-bit HD-2D feathered wing sprite sheet (`seraphim_wings.png`, 320x232 per cell)
-   * scaled up to colossal Archangel proportions (`440x320`) with a radiant White + Ice-Blue celestial halo and
-   * articulated White-and-Sapphire primary feather pinions anchored to his shoulder blades `(this.x, this.y - 108)`.
+   * Uses ONLY the authentic 30-frame 16-bit HD-2D feathered wing sprite sheet (`seraphim_wings.png`, 320x232 per cell)
+   * anchored cleanly to his shoulder blades `(this.x - this.facing * 6, this.y - 120)` with a radiant White + Ice-Blue
+   * celestial halo and `Row 1` Sacred Sanctuary Crest behind the wings (ZERO old procedural rectangle pinions!).
    */
   drawArchangelJusticeWings(ctx, renderer = null) {
     if (!this.justiceWingsActive || this.justiceWingSpread <= 0.02) return;
     const spread = this.justiceWingSpread;
-    const cx = Math.round(this.x);
-    const cy = Math.round(this.y - 108);
-    const flap = Math.sin((this.stateTimer || 0) * 12.0) * 6;
-    const px = 4;
+    const groundPlantOffset = 4;
+    const shoulderX = -6;
+    const shoulderY = -122;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
+    ctx.translate(Math.round(this.x), Math.round(this.y + groundPlantOffset));
+    ctx.scale(this.facing, 1);
 
     // 1. Radiant Pure-White + Ice-Blue Celestial Archangel Halo behind the wings
     if (renderer?.glowWhite || renderer?.glowCyan) {
       ctx.globalCompositeOperation = 'lighter';
       if (renderer.glowCyan) {
-        ctx.globalAlpha = 0.68 * Math.min(1, spread);
-        ctx.drawImage(renderer.glowCyan, cx - 260, cy - 190, 520, 360);
+        ctx.globalAlpha = 0.44 * Math.min(1, spread);
+        ctx.drawImage(renderer.glowCyan, shoulderX - 240, shoulderY - 180, 480, 340);
       }
       if (renderer.glowWhite) {
-        ctx.globalAlpha = 0.72 * Math.min(1, spread);
-        ctx.drawImage(renderer.glowWhite, cx - 220, cy - 160, 440, 310);
+        ctx.globalAlpha = 0.52 * Math.min(1, spread);
+        ctx.drawImage(renderer.glowWhite, shoulderX - 195, shoulderY - 150, 390, 290);
       }
       if (renderer.glowGold) {
-        ctx.globalAlpha = 0.35 * Math.min(1, spread);
-        ctx.drawImage(renderer.glowGold, cx - 140, cy - 120, 280, 220);
+        ctx.globalAlpha = 0.24 * Math.min(1, spread);
+        ctx.drawImage(renderer.glowGold, shoulderX - 135, shoulderY - 115, 270, 210);
       }
     }
 
     // 2. 30fps Sacred Sanctuary Halo Crest behind the Archangel Wings (`Row 1` of `warrior_vfx.png`)
-    const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.warrior : null;
+    const assets = typeof Image !== 'undefined' ? PixelForge.initAssets() : null;
+    const sprites = assets?.warrior;
     const vfxSheet = sprites?.vfx;
     const col = Math.floor((this.stateTimer || 0) * 30) % 30;
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
-      const haloSz = Math.round(268 * Math.min(1.15, spread));
+      const haloSz = Math.round(248 * Math.min(1.12, spread));
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, spread * 0.55);
-      ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, cx - haloSz * 0.5, cy - haloSz * 0.5, haloSz, haloSz);
+      ctx.globalAlpha = Math.min(1, spread * 0.36);
+      ctx.drawImage(
+        vfxSheet,
+        col * 208,
+        208,
+        208,
+        208,
+        shoulderX - haloSz * 0.5,
+        shoulderY - haloSz * 0.5,
+        haloSz,
+        haloSz
+      );
     }
 
     // 3. Authentic 30-Frame 16-Bit HD-2D Feathered Archangel Wings (`seraphim_wings.png`, 320x232 per cell)
-    //    Rendered with a crisp Pure-White + Ice-Blue Archangel bloom pass so the feathers gleam brilliant white!
-    const wingSheet = sprites?.wings || (typeof Image !== 'undefined' ? PixelForge.initAssets()?.priestess?.wings : null);
+    const wingSheet = sprites?.wings || assets?.priestess?.wings;
     if (wingSheet && wingSheet.complete && wingSheet.naturalWidth > 0) {
       const cellW = 320;
       const cellH = 232;
       const wingFrame = Math.floor((this.stateTimer || 0) * 30) % 30;
-      const scaleW = (1.12 + 0.24 * Math.min(1.2, spread));
-      const scaleH = (1.10 + 0.22 * Math.min(1.2, spread));
+      const scaleW = 0.96 + 0.22 * Math.min(1.25, spread);
+      const scaleH = 0.96 + 0.20 * Math.min(1.25, spread);
       const drawW = Math.round(cellW * scaleW);
       const drawH = Math.round(cellH * scaleH);
-      const dx = Math.round(cx - drawW * 0.5);
-      const dy = Math.round(cy - drawH * (96 / 232) + flap * 0.5);
+      const dx = Math.round(shoulderX - drawW * 0.5);
+      const dy = Math.round(shoulderY - drawH * (88 / 232));
 
-      // Outer Ice-Blue & White Feathered Aura Pass
+      // Subtle Outer Ice-Blue & White Feathered Aura Pass
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, 0.52 * spread);
-      ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx - 6, dy - 6, drawW + 12, drawH + 12);
+      ctx.globalAlpha = Math.min(1, 0.24 * spread);
+      ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx - 3, dy - 3, drawW + 6, drawH + 6);
 
-      // Main Crisp Feathered Wing Albedo Pass
+      // Main Crisp Feathered Wing Albedo Pass (`seraphim_wings.png` 100% unobstructed!)
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = Math.min(1, 0.98 * spread);
       ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, drawW, drawH);
 
-      // Brilliant White-Hot Archangel Feather Over-Bloom Pass (makes the wings gleam pure celestial white!)
+      // Subtle White-Hot Feather Highlight Pass (keeps individual feather barbs crisp while gleaming white!)
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, 0.64 * spread);
+      ctx.globalAlpha = Math.min(1, 0.22 * spread);
       ctx.drawImage(wingSheet, wingFrame * cellW, 0, cellW, cellH, dx, dy, drawW, drawH);
-    }
-
-    // 4. Articulated Pure-White & Ice-Blue Outer Archangel Primary Pinions (layered feathered silhouette)
-    ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = Math.min(1, spread);
-    const pinions = [
-      { ang: -0.62, len: 42, w: 4, drop: 5 },
-      { ang: -0.38, len: 38, w: 4, drop: 5 },
-      { ang: -0.14, len: 34, w: 3, drop: 4 },
-      { ang: 0.10, len: 29, w: 3, drop: 4 },
-      { ang: 0.34, len: 24, w: 3, drop: 3 },
-      { ang: 0.58, len: 19, w: 2, drop: 3 }
-    ];
-
-    for (const side of [-1, 1]) {
-      const rootX = cx + side * 16;
-      const rootY = cy - 8 + Math.round(flap * 0.4);
-
-      for (let pIdx = 0; pIdx < pinions.length; pIdx++) {
-        const pin = pinions[pIdx];
-        const totalLen = Math.round(pin.len * spread);
-        const a = pin.ang + flap * 0.012;
-        const cosA = Math.cos(a) * side;
-        const sinA = Math.sin(a);
-
-        for (let s = 0; s <= totalLen; s++) {
-          const u = s / Math.max(1, totalLen);
-          const arch = Math.sin(u * Math.PI) * 16;
-          const bx = Math.round((rootX + cosA * s * px) / px) * px;
-          const by = Math.round((rootY + sinA * s * px - arch) / px) * px;
-
-          // 1px Dark Sapphire Selective Outline (`#082f49`)
-          ctx.fillStyle = '#082f49';
-          ctx.fillRect(bx - px, by - px, px * 3, px * (pin.w + 1));
-
-          // Brilliant White Archangel Primary Rachis Spine (`#ffffff` -> `#f0f9ff`)
-          ctx.fillStyle = u < 0.75 ? '#ffffff' : '#e0f2fe';
-          ctx.fillRect(bx, by, px * 2, px * Math.max(1, pin.w - 1));
-
-          // Hanging White & Ice-Blue Secondary Feather Barbs below each pinion
-          if (s % 2 === 0 && s > 3) {
-            const barbH = Math.max(1, Math.round((1 - u * 0.55) * pin.drop));
-            for (let b = 1; b <= barbH; b++) {
-              const barbY = by + b * px;
-              ctx.fillStyle = b === barbH ? '#38bdf8' : b === barbH - 1 ? '#bae6fd' : '#ffffff';
-              ctx.fillRect(bx, barbY, px, px);
-            }
-          }
-        }
-      }
     }
 
     ctx.restore();
   }
 
   /**
-   * Draws Aethelgard's Pointing Sword of Justice & Celestial Lock-On Ray when hovering at the top of the stage!
+   * Draws Aethelgard's Pointing Sword of Justice & Cut/Segmented Blue Lock-On Trajectory Indicator
+   * (with marching cut blue dashes, directional chevron ticks, and a rotating target reticle on the enemy!).
    */
   drawPointingSwordOfJustice(ctx, renderer = null) {
     if (!this.justiceSwordPointActive) return;
@@ -2057,25 +2070,90 @@ export class Warrior extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Celestial Justice Lock-On Ray pointing straight down the sword vector to the enemy
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.strokeStyle = 'rgba(56, 189, 248, 0.52)';
-    ctx.lineWidth = 8;
-    ctx.beginPath();
-    ctx.moveTo(handX, handY);
-    ctx.lineTo(handX + cosA * 560, handY + sinA * 560);
-    ctx.stroke();
+    // 1. Cut / Segmented Blue Lock-On Trajectory Line & Target Reticle (NEVER a continuous laser beam!)
+    const bladeSteps = 44;
+    const tipX = handX + cosA * bladeSteps * px;
+    const tipY = handY + sinA * bladeSteps * px;
+    const lockX = this._justiceLockTargetX !== undefined ? this._justiceLockTargetX : tipX + cosA * 420;
+    const lockY = this._justiceLockTargetY !== undefined ? this._justiceLockTargetY : this.groundY - 88;
+    const rayDx = lockX - tipX;
+    const rayDy = lockY - tipY;
+    const rayDist = Math.hypot(rayDx, rayDy) || 1;
+    const ux = rayDx / rayDist;
+    const uy = rayDy / rayDist;
+    const nx = -uy;
+    const ny = ux;
 
-    ctx.strokeStyle = 'rgba(255, 255, 255, 0.90)';
+    // March discrete cut dashes (`dashLen = 22px`, `gapLen = 20px`) along the trajectory vector
+    const dashLen = 22;
+    const gapLen = 20;
+    const stride = dashLen + gapLen;
+    const marchOffset = ((this.stateTimer || 0) * 160) % stride;
+
+    ctx.globalCompositeOperation = 'lighter';
+    let segIdx = 0;
+    for (let d = marchOffset - stride; d < rayDist - 18; d += stride) {
+      segIdx++;
+      const d0 = Math.max(8, d);
+      const d1 = Math.min(rayDist - 22, d + dashLen);
+      if (d1 <= d0 + 4) continue;
+
+      const x0 = tipX + ux * d0;
+      const y0 = tipY + uy * d0;
+      const x1 = tipX + ux * d1;
+      const y1 = tipY + uy * d1;
+
+      // Outer Cut Sapphire Segment Glow
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.72)';
+      ctx.lineWidth = 5;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+
+      // Crisp Inner White-Ice Cut Segment Core
+      ctx.strokeStyle = '#e0f2fe';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+
+      // Forward-pointing Cut Lock-On Chevron (`>`) at the head of every 2nd segment
+      if (segIdx % 2 === 0 && d1 < rayDist - 36) {
+        const chevX = x1 + ux * 6;
+        const chevY = y1 + uy * 6;
+        ctx.strokeStyle = '#38bdf8';
+        ctx.lineWidth = 2.5;
+        ctx.beginPath();
+        ctx.moveTo(chevX - ux * 8 + nx * 7, chevY - uy * 8 + ny * 7);
+        ctx.lineTo(chevX, chevY);
+        ctx.lineTo(chevX - ux * 8 - nx * 7, chevY - uy * 8 - ny * 7);
+        ctx.stroke();
+      }
+    }
+
+    // Rotating 4-Bracket Celestial Target Lock-On Reticle on the Enemy
+    ctx.save();
+    ctx.translate(Math.round(lockX), Math.round(lockY));
+    ctx.rotate((this.stateTimer || 0) * 2.4);
+    const brkR = 34 + Math.sin((this.stateTimer || 0) * 12) * 4;
+    ctx.strokeStyle = '#38bdf8';
     ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(handX, handY);
-    ctx.lineTo(handX + cosA * 560, handY + sinA * 560);
-    ctx.stroke();
+    for (let q = 0; q < 4; q++) {
+      ctx.save();
+      ctx.rotate((q * Math.PI) / 2);
+      ctx.beginPath();
+      ctx.moveTo(brkR - 12, -brkR);
+      ctx.lineTo(brkR, -brkR);
+      ctx.lineTo(brkR, -brkR + 12);
+      ctx.stroke();
+      ctx.restore();
+    }
+    ctx.restore();
 
     // 2. Colossal Luminous Pixel-Art Runic Greatsword of Justice pointing directly at the enemy
     ctx.globalCompositeOperation = 'source-over';
-    const bladeSteps = 44;
     for (let s = -4; s <= bladeSteps; s++) {
       const bx = Math.round((handX + cosA * s * px) / px) * px;
       const by = Math.round((handY + sinA * s * px) / px) * px;
@@ -2119,23 +2197,21 @@ export class Warrior extends Fighter {
 
     if (renderer?.glowCyan) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.78;
-      const tipX = handX + cosA * bladeSteps * px;
-      const tipY = handY + sinA * bladeSteps * px;
-      ctx.drawImage(renderer.glowCyan, tipX - 84, tipY - 84, 168, 168);
+      ctx.globalAlpha = 0.72;
+      ctx.drawImage(renderer.glowCyan, tipX - 76, tipY - 76, 152, 152);
     }
 
     ctx.restore();
   }
 
   /**
-   * Draws the Epic Multi-Layered Big Slashes of Justice (with rotated 30fps `warrior_vfx.png` Crescent Wave overlays,
-   * white-hot curved sword arcs, and 8-point celestial cross-flares) and the 5-Second Whole-Stage Floating Feathers!
+   * Draws the Epic Multi-Layered Big Slashes of Justice (using a 3-wave cascade of rotated 30fps `warrior_vfx.png`
+   * Crescent Blade Waves + smooth tapered crescent sword-arcs—ZERO old stepped rectangle blocks!)
+   * and the 5-Second Whole-Stage Floating Feathers!
    */
   drawJusticeSlashesAndFeathers(ctx, renderer = null) {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    const px = 4;
     const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.warrior : null;
     const vfxSheet = sprites?.vfx;
 
@@ -2146,88 +2222,68 @@ export class Warrior extends Fighter {
       const dx = s.x2 - s.x1;
       const dy = s.y2 - s.y1;
       const dist = Math.hypot(dx, dy) || 1;
-      const steps = Math.min(120, Math.max(32, Math.floor(dist / 4)));
       const nx = -dy / dist;
       const ny = dx / dist;
+      const bow = 42 * (s.isGoldAccent ? -1 : 1);
+      const ctrlX = s.mx + nx * bow;
+      const ctrlY = s.my + ny * bow;
 
       // Sub-Pass A: Wide Additive Celestial Bloom Halo along the slash
       if (renderer?.glowCyan) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = alpha * 0.55;
-        ctx.drawImage(renderer.glowCyan, s.mx - 220, s.my - 140, 440, 280);
+        ctx.globalAlpha = alpha * 0.58;
+        ctx.drawImage(renderer.glowCyan, s.mx - 240, s.my - 150, 480, 300);
         if (renderer.glowWhite) {
-          ctx.globalAlpha = alpha * 0.48;
-          ctx.drawImage(renderer.glowWhite, s.mx - 160, s.my - 100, 320, 200);
+          ctx.globalAlpha = alpha * 0.50;
+          ctx.drawImage(renderer.glowWhite, s.mx - 175, s.my - 110, 350, 220);
         }
       }
 
-      // Sub-Pass B: Rotated 30fps `warrior_vfx.png` Row 0 Crescent Blade Wave stamped along the slash angle!
+      // Sub-Pass B: 3-Wave Cascade of Rotated 30fps `warrior_vfx.png` Row 0 Crescent Blade Waves + Row 4 Starburst Nova!
       if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0) {
         const col = Math.min(29, Math.floor(u * 30));
-        ctx.save();
-        ctx.translate(Math.round(s.mx), Math.round(s.my));
-        ctx.rotate(s.angle || 0);
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = alpha * 0.85;
-        ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, -190, -140, 380, 280);
-        ctx.restore();
+        for (const offsetU of [-0.24, 0, 0.24]) {
+          const wx = s.mx + dx * offsetU + nx * bow * (1 - Math.abs(offsetU) * 1.8) * 0.45;
+          const wy = s.my + dy * offsetU + ny * bow * (1 - Math.abs(offsetU) * 1.8) * 0.45;
+          const scale = offsetU === 0 ? 1.08 : 0.84;
+          const wSz = Math.round(390 * scale);
+          const hSz = Math.round(285 * scale);
+
+          ctx.save();
+          ctx.translate(Math.round(wx), Math.round(wy));
+          ctx.rotate(s.angle || 0);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = alpha * 0.92;
+          ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, -wSz * 0.5, -hSz * 0.5, wSz, hSz);
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = alpha * 0.78;
+          ctx.drawImage(vfxSheet, col * 208, 0, 208, 208, -wSz * 0.5, -hSz * 0.5, wSz, hSz);
+          ctx.restore();
+        }
       }
 
-      // Sub-Pass C: Stepped Pixel-Art Crescent Sword-Arc of Justice with White-Hot Core & Cross-Flares
+      // Sub-Pass C: Sleek Tapered Crescent Sword-Arc of Justice (smooth curved crescent blade silhouette, ZERO blocky fillRect steps!)
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = alpha * 0.95;
+      ctx.fillStyle = s.isGoldAccent ? '#facc15' : '#38bdf8';
+      ctx.beginPath();
+      ctx.moveTo(s.x1, s.y1);
+      ctx.quadraticCurveTo(ctrlX + nx * 18, ctrlY + ny * 18, s.x2, s.y2);
+      ctx.quadraticCurveTo(ctrlX - nx * 8, ctrlY - ny * 8, s.x1, s.y1);
+      ctx.closePath();
+      ctx.fill();
+
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = alpha;
-
-      for (let i = 0; i <= steps; i++) {
-        const v = i / steps;
-        if (v > Math.min(1, u * 5.0)) break;
-        const env = Math.sin(v * Math.PI);
-        const curve = env * 28 * (s.isGoldAccent ? -1 : 1);
-        const cx = Math.round((s.x1 + dx * v + nx * curve) / px) * px;
-        const cy = Math.round((s.y1 + dy * v + ny * curve) / px) * px;
-        const halfThick = Math.max(1, Math.round(env * 4.5));
-
-        // 1px Dark Sapphire Selective Outline
-        ctx.fillStyle = '#06182c';
-        ctx.fillRect(
-          cx - px * (halfThick + 1),
-          cy - px * (halfThick + 1),
-          px * (halfThick * 2 + 3),
-          px * (halfThick * 2 + 3)
-        );
-
-        // Outer Sapphire & Electric Cyan Blade Aura
-        ctx.fillStyle = '#0284c7';
-        ctx.fillRect(
-          cx - px * halfThick,
-          cy - px * halfThick,
-          px * (halfThick * 2 + 1),
-          px * (halfThick * 2 + 1)
-        );
-
-        // Inner Ice-Blue & Celestial Gold Bevel
-        ctx.fillStyle = s.isGoldAccent ? '#fef08a' : '#7dd3fc';
-        ctx.fillRect(
-          cx - px * Math.max(1, halfThick - 1),
-          cy - px * Math.max(1, halfThick - 1),
-          px * Math.max(2, halfThick * 2 - 1),
-          px * Math.max(2, halfThick * 2 - 1)
-        );
-
-        // Incandescent Pure-White Core of Justice
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(cx - px, cy - px, px * 3, px * 3);
-      }
-
-      // Sub-Pass D: Pixel-Art 4-Point Celestial Cross-Flare at the slash midpoint
-      const mx = Math.round(s.mx / px) * px;
-      const my = Math.round(s.my / px) * px;
-      const flareLen = Math.round(14 * (1 - u * 0.5));
-      ctx.fillStyle = '#7dd3fc';
-      ctx.fillRect(mx - flareLen * px, my - px, flareLen * 2 * px, px * 2);
-      ctx.fillRect(mx - px, my - flareLen * px, px * 2, flareLen * 2 * px);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(mx - Math.round(flareLen * 0.6) * px, my - px, Math.round(flareLen * 1.2) * px, px * 2);
-      ctx.fillRect(mx - px, my - Math.round(flareLen * 0.6) * px, px * 2, Math.round(flareLen * 1.2) * px);
+      ctx.beginPath();
+      ctx.moveTo(s.x1, s.y1);
+      ctx.quadraticCurveTo(ctrlX + nx * 9, ctrlY + ny * 9, s.x2, s.y2);
+      ctx.quadraticCurveTo(ctrlX - nx * 3, ctrlY - ny * 3, s.x1, s.y1);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
     }
 
     // 2. Render 5-Second Stage-Wide Floating White & Ice-Blue Archangel Feathers across the entire 1200px stage!

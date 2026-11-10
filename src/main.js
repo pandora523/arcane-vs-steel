@@ -1,18 +1,18 @@
-import { Renderer } from './engine/Renderer.js?v=30fps57';
-import { VFXManager } from './engine/VFXManager.js?v=30fps57';
-import { PixelForge } from './engine/PixelForge.js?v=30fps57';
-import { AudioManager } from './engine/AudioManager.js?v=30fps57';
-import { Warrior } from './entities/Warrior.js?v=30fps57';
-import { FireMage } from './entities/FireMage.js?v=30fps57';
-import { Archer } from './entities/Archer.js?v=30fps57';
-import { Priestess } from './entities/Priestess.js?v=30fps57';
-import { Reaper } from './entities/Reaper.js?v=30fps57';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps57';
-import { Titan } from './entities/Titan.js?v=30fps57';
-import { Ronin } from './entities/Ronin.js?v=30fps57';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps57';
-import { IceMage } from './entities/IceMage.js?v=30fps57';
-import { Android } from './entities/Android.js?v=30fps57';
+import { Renderer } from './engine/Renderer.js?v=30fps58';
+import { VFXManager } from './engine/VFXManager.js?v=30fps58';
+import { PixelForge } from './engine/PixelForge.js?v=30fps58';
+import { AudioManager } from './engine/AudioManager.js?v=30fps58';
+import { Warrior } from './entities/Warrior.js?v=30fps58';
+import { FireMage } from './entities/FireMage.js?v=30fps58';
+import { Archer } from './entities/Archer.js?v=30fps58';
+import { Priestess } from './entities/Priestess.js?v=30fps58';
+import { Reaper } from './entities/Reaper.js?v=30fps58';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps58';
+import { Titan } from './entities/Titan.js?v=30fps58';
+import { Ronin } from './entities/Ronin.js?v=30fps58';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps58';
+import { IceMage } from './entities/IceMage.js?v=30fps58';
+import { Android } from './entities/Android.js?v=30fps58';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -40,10 +40,10 @@ const CHAMPION_ROSTER = {
         desc: '360° spinning Runeblade cyclone rush that pulls foes in before a thunderous slam.'
       },
       {
-        name: 'HEAVENLY EARTHSHATTER',
-        type: '★ OVERDRIVE ULT',
+        name: 'CELESTIAL SWORD OF JUSTICE',
+        type: '★ OVERDRIVE & SUPREME ULT',
         vfxCell: 2,
-        desc: 'Rune-blinks left and right in an omnislash blitz, then teleports overhead to cleave straight down!'
+        desc: 'Overdrive Omnislash + Supreme Ultimate: Ascends with white Seraphim wings, locks on with a cut-line reticle & cleaves the sanctuary!'
       }
     ]
   },
@@ -89,7 +89,7 @@ const CHAMPION_ROSTER = {
     theme: 'arcane',
     color: '#fb923c',
     selectSfx: 'fireball',
-    victoryLine: 'Solar cataclysm reduces all opposition to molten ash!',
+    victoryLine: 'Astral Meteor Cataclysm reduces the arena to a Laywaste of Inferno!',
     skills: [
       {
         name: 'SOLAR FIREBALL',
@@ -104,10 +104,10 @@ const CHAMPION_ROSTER = {
         desc: 'Erupts 3 sequential columns of molten hellfire beneath the enemy.'
       },
       {
-        name: 'ECLIPSE SUPERNOVA',
-        type: '★ OVERDRIVE ULT',
+        name: 'ASTRAL METEOR CATACLYSM',
+        type: '★ OVERDRIVE & SUPREME ULT',
         vfxCell: 0,
-        desc: 'Summons the Black-Sun Eclipse, raining meteors before a cataclysmic solar beam.'
+        desc: 'Black-Sun Supernova + Limit Break III: Summons a colossal Meteor with Impact Frame, White-Out Deletion & Laywaste of Inferno stage!'
       }
     ]
   },
