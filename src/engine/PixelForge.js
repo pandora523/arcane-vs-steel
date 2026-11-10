@@ -66,7 +66,7 @@ export class PixelForge {
       },
       icemage: {
         sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps41'),
-        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps41'),
+        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps50'),
         portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps41', () => this.refreshPortraits())
       },
       android: {

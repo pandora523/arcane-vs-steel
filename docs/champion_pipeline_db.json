@@ -36,7 +36,7 @@
       "scripts/build_titan_30fps_vfx.py",
       "scripts/build_ronin_30fps_vfx.py",
       "scripts/build_valkyrie_vfx_30fps.mjs",
-      "scripts/build_icemage_30fps_vfx.py",
+      "scripts/build_icemage_vfx_30fps.mjs",
       "scripts/build_android_vfx_30fps.mjs"
     ]
   },
@@ -128,9 +128,9 @@
       "theme": "glacial",
       "base_source": "assets/sprites/icemage_v4_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "15-part cel-clustered Cryo Sovereign skeletal rig + Fur Shoulder Mantle + Crystalline Frost Scepter + Cryo Prism Halo + Supine Collapse",
+      "rig": "15-part cel-clustered Cryo Sovereign skeletal rig + Fur Shoulder Mantle + Crystalline Frost Scepter + Cryo Prism Halo + ArcaneShaderFX 120Hz 2.5D Cryo-Prism & Borealis Shader Suite + Supine Collapse",
       "script": "scripts/build_icemage_30fps_sheet.py",
-      "vfx_script": "scripts/build_icemage_30fps_vfx.py"
+      "vfx_script": "scripts/build_icemage_vfx_30fps.mjs"
     },
     "android": {
       "name": "VEX-09",

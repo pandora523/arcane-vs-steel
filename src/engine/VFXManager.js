@@ -2280,8 +2280,8 @@ export class VFXManager {
         const qy = Math.round(py / 4) * 4;
         ctx.save();
         ctx.imageSmoothingEnabled = false;
-        // Stepped 4x4 pixel-art frost slipstream blocks trailing behind the shard
-        if (!isReflection) {
+        // Stepped 4x4 pixel-art frost slipstream blocks trailing behind the shard (skipped when ArcaneShaderFX renders trail)
+        if (!isReflection && !proj.owner?.fx) {
           for (let tStep = 1; tStep <= 4; tStep++) {
             const tx = qx - dir * tStep * 12;
             const ty = qy + ((tStep % 2 === 0 ? -1 : 1) * 4);
