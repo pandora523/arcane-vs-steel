@@ -1,48 +1,48 @@
-import { Renderer } from './engine/Renderer.js?v=30fps39';
-import { VFXManager } from './engine/VFXManager.js?v=30fps39';
-import { PixelForge } from './engine/PixelForge.js?v=30fps39';
-import { AudioManager } from './engine/AudioManager.js?v=30fps39';
-import { Warrior } from './entities/Warrior.js?v=30fps39';
-import { FireMage } from './entities/FireMage.js?v=30fps39';
-import { Archer } from './entities/Archer.js?v=30fps39';
-import { Priestess } from './entities/Priestess.js?v=30fps39';
-import { Reaper } from './entities/Reaper.js?v=30fps39';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps39';
-import { Titan } from './entities/Titan.js?v=30fps39';
-import { Ronin } from './entities/Ronin.js?v=30fps39';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps39';
-import { IceMage } from './entities/IceMage.js?v=30fps39';
+import { Renderer } from './engine/Renderer.js?v=30fps40';
+import { VFXManager } from './engine/VFXManager.js?v=30fps40';
+import { PixelForge } from './engine/PixelForge.js?v=30fps40';
+import { AudioManager } from './engine/AudioManager.js?v=30fps40';
+import { Warrior } from './entities/Warrior.js?v=30fps40';
+import { FireMage } from './entities/FireMage.js?v=30fps40';
+import { Archer } from './entities/Archer.js?v=30fps40';
+import { Priestess } from './entities/Priestess.js?v=30fps40';
+import { Reaper } from './entities/Reaper.js?v=30fps40';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps40';
+import { Titan } from './entities/Titan.js?v=30fps40';
+import { Ronin } from './entities/Ronin.js?v=30fps40';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps40';
+import { IceMage } from './entities/IceMage.js?v=30fps40';
 
 const CHAMPION_ROSTER = {
   warrior: {
     id: 'warrior',
     name: 'AETHELGARD',
-    role: 'RUNEBLADE KNIGHT',
-    style: 'MELEE VANGUARD',
+    role: 'ELDER RUNE KNIGHT',
+    style: 'RUNIC VANGUARD',
     trait: 'PASSIVE: AEGIS SPELL DEFLECT',
     cls: Warrior,
     theme: 'steel',
     color: '#38bdf8',
     selectSfx: 'slash',
-    victoryLine: 'Runeblade steel cleaves through the sanctuary tempest!',
+    victoryLine: 'Elder runes blaze as Frost-Runeblade steel cleaves the tempest!',
     skills: [
       {
         name: 'FROST CRESCENT',
         type: 'AUTO + PASSIVE',
         vfxCell: 0,
-        desc: 'Cleaves with frost waves & raises an Aegis barrier that deflects projectiles.'
+        desc: 'Cleaves with runic frost waves & raises an Aegis barrier that deflects spells.'
       },
       {
         name: 'TEMPEST VANGUARD',
-        type: 'SKILL • 4.5S CD',
+        type: 'SKILL • 5.4S CD',
         vfxCell: 1,
-        desc: '3-hit spinning cryo-cyclone that pulls foes inward and shatters armor.'
+        desc: '360° spinning Runeblade cyclone rush that pulls foes in before a thunderous slam.'
       },
       {
         name: 'HEAVENLY EARTHSHATTER',
         type: '★ OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Leaps skyward and slams a colossal Runeblade monolith, erupting 5 glacial spires.'
+        desc: 'Rune-blinks left and right in an omnislash blitz, then teleports overhead to cleave straight down!'
       }
     ]
   },

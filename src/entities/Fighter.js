@@ -391,7 +391,9 @@ export class Fighter {
 
   update(dt, enemy, game) {
     this.game = game;
-    this.groundY = game.renderer.groundY;
+    if (game?.renderer && Number.isFinite(game.renderer.groundY)) {
+      this.groundY = game.renderer.groundY;
+    }
 
     if (this.hitFlash > 0) this.hitFlash = Math.max(0, this.hitFlash - dt);
     if (this.hurtTimer > 0) this.hurtTimer = Math.max(0, this.hurtTimer - dt);

@@ -42,9 +42,9 @@
     "warrior": {
       "name": "Aethelgard",
       "theme": "steel",
-      "base_source": "assets/sprites/warrior_v2_base.jpg",
+      "base_source": "assets/sprites/warrior_v3_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "14-part cel-clustered Runic Vanguard skeletal rig (mane, head, torso, l_coat, r_coat, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + Runic Greatsword + Aegis Shield + Prone Knight Collapse",
+      "rig": "14-part cel-clustered Dark-Cobalt & Cyan Elder-Rune Knight skeletal rig + Winged Frost-Runeblade + Elder-Rune Halo + Row 3 360-deg Cyclone Spin-Slash & Slam + Row 4 Left/Right/Top Rune-Blink Omnislash + Prone Knight Collapse",
       "script": "scripts/build_warrior_30fps_sheet.py",
       "vfx_script": "scripts/build_warrior_30fps_vfx.py"
     },

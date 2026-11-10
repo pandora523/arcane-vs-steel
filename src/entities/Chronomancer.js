@@ -1,6 +1,6 @@
-import { Fighter } from './Fighter.js?v=30fps39';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps39';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps39';
+import { Fighter } from './Fighter.js?v=30fps40';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps40';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps40';
 
 const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
