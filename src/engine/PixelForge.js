@@ -30,7 +30,7 @@ export class PixelForge {
       },
       archer: {
         sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps41'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps41'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps45'),
         portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps41', () => this.refreshPortraits())
       },
       priestess: {

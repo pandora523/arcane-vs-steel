@@ -29,7 +29,7 @@
     "vfx_sheet_builders": [
       "scripts/build_warrior_30fps_vfx.py",
       "scripts/build_mage_30fps_vfx.py",
-      "scripts/build_archer_30fps_vfx.py",
+      "scripts/build_archer_vfx_30fps.mjs",
       "scripts/build_priestess_30fps_vfx.py",
       "scripts/build_reaper_30fps_vfx.py",
       "scripts/build_chronomancer_30fps_vfx.py",
@@ -64,9 +64,9 @@
       "theme": "emerald",
       "base_source": "assets/sprites/archer_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part cel-clustered Sylvan Elven Star-Ranger skeletal rig + Back Quiver + Articulated Recurve Star-Bow & Multi-Arrow Draw + Astral Ult Light-Wings + Supine Collapse",
+      "rig": "13-part cel-clustered Sylvan Elven Star-Ranger skeletal rig + Back Quiver + Articulated Recurve Star-Bow & Multi-Arrow Draw + 6-Pinion Astral Ult Light-Wings + ArcaneShaderFX 120Hz 2.5D Sylvan Shader Suite + Supine Collapse",
       "script": "scripts/build_archer_30fps_sheet.py",
-      "vfx_script": "scripts/build_archer_30fps_vfx.py"
+      "vfx_script": "scripts/build_archer_vfx_30fps.mjs"
     },
     "priestess": {
       "name": "Seraphina",

@@ -4,7 +4,7 @@ import { PixelForge } from './engine/PixelForge.js?v=30fps41';
 import { AudioManager } from './engine/AudioManager.js?v=30fps42';
 import { Warrior } from './entities/Warrior.js?v=30fps41';
 import { FireMage } from './entities/FireMage.js?v=30fps41';
-import { Archer } from './entities/Archer.js?v=30fps41';
+import { Archer } from './entities/Archer.js?v=30fps45';
 import { Priestess } from './entities/Priestess.js?v=30fps41';
 import { Reaper } from './entities/Reaper.js?v=30fps41';
 import { Chronomancer } from './entities/Chronomancer.js?v=30fps41';
@@ -57,25 +57,25 @@ const CHAMPION_ROSTER = {
     theme: 'emerald',
     color: '#34d399',
     selectSfx: 'arrow_shoot',
-    victoryLine: 'Supersonic astral arrows pierce through the eclipse!',
+    victoryLine: 'Supersonic astral arrows pierce through the tempest!',
     skills: [
       {
         name: 'ASTRAL LONGBOW',
-        type: 'AUTO + PASSIVE',
+        type: 'AUTO + ZEPHYR VAULT',
         vfxCell: 0,
-        desc: 'Fires high-velocity piercing arrows & vaults over cornering foes with Zephyr Backflip.'
+        desc: 'Fires Mach-ring piercing arrows, cloaks in a 2.5D Leaf-Veil Dome & vaults over foes.'
       },
       {
         name: 'STARFALL VOLLEY',
         type: 'SKILL • 4.2S CD',
         vfxCell: 1,
-        desc: 'Rains 5 emerald starlight arrows from the heavens onto the enemy position.'
+        desc: 'Locks an elven astrolabe seal, trapping foes in a 2.5D Tempest Cyclone under 5 starfall arrows.'
       },
       {
         name: 'ASTRAL HURRICANE',
         type: '★ OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Unleashes an Emerald Wind-Dragon and 10-beam orbital starlight bombardment.'
+        desc: 'Unfurls 6-pinion Astral Light-Wings to fire a Wind-Dragon Hurricane Lance & 10-beam starfall.'
       }
     ]
   },
@@ -2074,7 +2074,10 @@ class Game {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
 
+      const hasSylvanShaderFX = p.type === 'arrow' && Boolean(p.owner?.fx);
+
       if (
+        !hasSylvanShaderFX &&
         (p.type === 'arrow' || p.type === 'blade_wave' || p.type === 'forge_wave' || p.type === 'holy_light') &&
         p.ringTimer >= 0.085
       ) {
@@ -2096,16 +2099,33 @@ class Game {
         );
       }
 
-      for (let k = 0; k < 2; k++) {
-        this.vfx.spawnParticle({
-          x: p.x + (Math.random() - 0.5) * p.radius * 1.25,
-          y: p.y + (Math.random() - 0.5) * p.radius * 1.25,
-          vx: -p.vx * 0.16 + (Math.random() - 0.5) * 55,
-          vy: -p.vy * 0.16 - 28 + (Math.random() - 0.5) * 30,
-          size: p.isMeteor ? 16 : 7,
-          color: k === 0 ? p.color : p.coreColor || '#fef08a',
-          maxLife: p.isMeteor ? 0.52 : 0.34
-        });
+      if (hasSylvanShaderFX) {
+        if (p.ringTimer >= 0.045) {
+          p.ringTimer = 0;
+          p.owner.fx.burst(p.x - Math.sign(p.vx || 1) * 18, p.y, {
+            count: 3,
+            speedMin: 24,
+            speedMax: 72,
+            lifeMin: 0.16,
+            lifeMax: 0.28,
+            gravity: -16,
+            spread: 1.1,
+            angle: Math.atan2(-(p.vy || 0), -(p.vx || 1)),
+            colors: ['#ffffff', '#a7f3d0', '#34d399', '#fef08a']
+          });
+        }
+      } else {
+        for (let k = 0; k < 2; k++) {
+          this.vfx.spawnParticle({
+            x: p.x + (Math.random() - 0.5) * p.radius * 1.25,
+            y: p.y + (Math.random() - 0.5) * p.radius * 1.25,
+            vx: -p.vx * 0.16 + (Math.random() - 0.5) * 55,
+            vy: -p.vy * 0.16 - 28 + (Math.random() - 0.5) * 30,
+            size: p.isMeteor ? 16 : 7,
+            color: k === 0 ? p.color : p.coreColor || '#fef08a',
+            maxLife: p.isMeteor ? 0.52 : 0.34
+          });
+        }
       }
 
       const enemies = p.owner ? this.getEnemiesOf(p.owner) : [this.rightFighter];
@@ -2167,37 +2187,60 @@ class Game {
             this.audio.play(impactSfx, hitTarget.x);
           }
           this.renderer.triggerHitStop(0.055);
-          this.vfx.spawnShockwave(p.x, p.y, 76, p.color, 0.26);
-          this.vfx.spawnBurst(p.x, p.y, 14, p.color, 220);
-          if (p.type === 'arrow') {
-            this.vfx.spawnSlash(p.x, p.y, 58, -0.9, 0.9, '#34d399', 0.22);
-            this.vfx.spawnGlyphBurst(p.x, p.y, 5, 'emerald');
-          } else if (p.type === 'phantom_scythe') {
-            this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'abyssal');
-            if (p.owner && typeof p.owner.leechLife === 'function') {
-              p.owner.leechLife(18, hitTarget, this, 'SOUL LEECH');
-            }
-          } else if (p.type === 'clock_gear') {
-            this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'chrono');
-          } else if (p.type === 'cryo_shard') {
-            this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'glacial');
-            if (p.owner && typeof p.owner.applyBrittleFrost === 'function') {
-              p.owner.applyBrittleFrost(hitTarget, 1, this, p.x, p.y);
-            }
-          } else if (p.type === 'cyber_disc') {
-            this.vfx.spawnSlash(p.x, p.y, 70, -1.1, 1.1, '#00f0ff', 0.24);
-            this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'cyber');
-          } else if (p.type === 'forge_wave') {
-            this.vfx.spawnSlash(p.x, p.y, 78, -1.1, 1.1, '#f59e0b', 0.26);
-            this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'forge');
-          } else if (p.type === 'blade_wave') {
-            this.vfx.spawnSlash(p.x, p.y, 72, -1.2, 1.2, '#38bdf8', 0.25);
-            this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'steel');
-          } else if (p.type === 'holy_light') {
-            this.vfx.spawnShockwave(p.x, p.y, 64, '#ffffff', 0.22);
-            this.vfx.spawnGlyphBurst(p.x, p.y, 5, 'radiant');
+          if (hasSylvanShaderFX) {
+            p.owner.fx.spawn('sylvanArrowImpactBurst', p.x, p.y, {
+              flip: false,
+              light: isCrit ? 1.32 : 1.15,
+              extra: {
+                aimAngle: Math.atan2(p.vy || 0, p.vx || 1),
+                isCrit
+              }
+            });
+            p.owner.fx.burst(p.x, p.y, {
+              count: isCrit ? 18 : 12,
+              speedMin: 60,
+              speedMax: isCrit ? 225 : 175,
+              lifeMin: 0.2,
+              lifeMax: 0.42,
+              gravity: 95,
+              colors: isCrit
+                ? ['#ffffff', '#fef08a', '#6ee7b7', '#34d399']
+                : ['#ffffff', '#a7f3d0', '#34d399', '#10b981']
+            });
+            this.vfx.spawnGlyphBurst(p.x, p.y, 4, 'emerald');
           } else {
-            this.vfx.spawnGlyphBurst(p.x, p.y, 4, 'arcane');
+            this.vfx.spawnShockwave(p.x, p.y, 76, p.color, 0.26);
+            this.vfx.spawnBurst(p.x, p.y, 14, p.color, 220);
+            if (p.type === 'arrow') {
+              this.vfx.spawnSlash(p.x, p.y, 58, -0.9, 0.9, '#34d399', 0.22);
+              this.vfx.spawnGlyphBurst(p.x, p.y, 5, 'emerald');
+            } else if (p.type === 'phantom_scythe') {
+              this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'abyssal');
+              if (p.owner && typeof p.owner.leechLife === 'function') {
+                p.owner.leechLife(18, hitTarget, this, 'SOUL LEECH');
+              }
+            } else if (p.type === 'clock_gear') {
+              this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'chrono');
+            } else if (p.type === 'cryo_shard') {
+              this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'glacial');
+              if (p.owner && typeof p.owner.applyBrittleFrost === 'function') {
+                p.owner.applyBrittleFrost(hitTarget, 1, this, p.x, p.y);
+              }
+            } else if (p.type === 'cyber_disc') {
+              this.vfx.spawnSlash(p.x, p.y, 70, -1.1, 1.1, '#00f0ff', 0.24);
+              this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'cyber');
+            } else if (p.type === 'forge_wave') {
+              this.vfx.spawnSlash(p.x, p.y, 78, -1.1, 1.1, '#f59e0b', 0.26);
+              this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'forge');
+            } else if (p.type === 'blade_wave') {
+              this.vfx.spawnSlash(p.x, p.y, 72, -1.2, 1.2, '#38bdf8', 0.25);
+              this.vfx.spawnGlyphBurst(p.x, p.y, 6, 'steel');
+            } else if (p.type === 'holy_light') {
+              this.vfx.spawnShockwave(p.x, p.y, 64, '#ffffff', 0.22);
+              this.vfx.spawnGlyphBurst(p.x, p.y, 5, 'radiant');
+            } else {
+              this.vfx.spawnGlyphBurst(p.x, p.y, 4, 'arcane');
+            }
           }
         } else {
           if (this.audio) {
@@ -2222,8 +2265,16 @@ class Game {
               p.x
             );
           }
-          this.vfx.spawnDecal(p.x, 42, 'scorch', p.color, 3.5);
-          this.vfx.spawnBurst(p.x, gy, 8, p.color, 150, { upBias: 70 });
+          if (hasSylvanShaderFX) {
+            p.owner.fx.spawn('sylvanArrowImpactBurst', p.x, gy - 6, {
+              flip: false,
+              light: 1.05,
+              extra: { aimAngle: Math.atan2(p.vy || 0, p.vx || 1), isCrit: false }
+            });
+          } else {
+            this.vfx.spawnDecal(p.x, 42, 'scorch', p.color, 3.5);
+            this.vfx.spawnBurst(p.x, gy, 8, p.color, 150, { upBias: 70 });
+          }
         }
         this.vfx.projectiles.splice(i, 1);
       } else if (p.x < -300 || p.x > ww + 300) {
