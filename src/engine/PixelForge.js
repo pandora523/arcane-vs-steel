@@ -19,7 +19,7 @@ export class PixelForge {
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps41'),
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps42'),
         vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps41'),
         portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps41', () => this.refreshPortraits())
       },

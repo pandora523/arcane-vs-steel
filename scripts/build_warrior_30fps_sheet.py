@@ -481,6 +481,8 @@ def draw_cyclone_ring_half_104(arr, cx, cy, rx, ry, spin_ang, is_front):
 
 def extra_extents(joints_c, cfg, scale):
     pts = []
+    if cfg.get("full_ext_swing", False):
+        return pts
     if cfg.get("spin_slash", False):
         p = joints_c["pelvis"]
         pts.append((p[0] - 42.0 / scale, p[1]))
@@ -720,30 +722,62 @@ def build_row_configs(row_idx):
             cfgs.append(apply_2h_sword_ik(cfg))
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK (Two-Handed Overhead Coil -> Crushing 2H Cleave -> 2H Cross-Sweep!)
+            # Row 2: AUTO_ATTACK (Coiled Back-Shoulder 2H Windup -> Full-Extension Forward 2H Lunge Cleave -> Weighty Recovery!)
             kfs = [
-                (0, dict(torso_deg=5.0, grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0)),
-                (7, dict(pelvis_dx=-12.0, pelvis_dy=36.0, torso_deg=-12.0, head_rel_deg=8.0,
-                         l_thigh_deg=-20.0, l_shin_deg=18.0, r_thigh_deg=18.0, r_shin_deg=-14.0,
-                         grip_x=18.0, grip_y=-192.0, weapon_deg=-134.0, grip_sep=26.0, halo_active=True)),
-                (13, dict(pelvis_dx=14.0, pelvis_dy=52.0, torso_deg=24.0, head_rel_deg=-12.0,
-                          l_thigh_deg=24.0, l_shin_deg=16.0, r_thigh_deg=-26.0, r_shin_deg=18.0,
-                          grip_x=66.0, grip_y=-24.0, weapon_deg=26.0, grip_sep=30.0, halo_active=True)),
-                (17, dict(pelvis_dx=4.0, pelvis_dy=40.0, torso_deg=8.0,
-                          l_thigh_deg=14.0, l_shin_deg=12.0, r_thigh_deg=-16.0, r_shin_deg=14.0,
-                          grip_x=44.0, grip_y=-56.0, weapon_deg=-66.0, grip_sep=30.0)),
-                (22, dict(pelvis_dx=12.0, pelvis_dy=48.0, torso_deg=22.0, head_rel_deg=-10.0,
-                          l_thigh_deg=22.0, l_shin_deg=16.0, r_thigh_deg=-24.0, r_shin_deg=16.0,
-                          grip_x=66.0, grip_y=-20.0, weapon_deg=14.0, grip_sep=30.0)),
-                (29, dict(torso_deg=5.0, grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0)),
+                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=5.0, head_rel_deg=-2.5, mane_rel_deg=-4.0,
+                         l_thigh_deg=-2.0, l_shin_deg=2.0, l_foot_deg=0.0,
+                         r_thigh_deg=2.0, r_shin_deg=-2.0, r_foot_deg=0.0,
+                         grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0, halo_active=False)),
+                (3, dict(pelvis_dx=-115.0, pelvis_dy=18.0, torso_deg=-4.0, head_rel_deg=5.0, mane_rel_deg=-6.0,
+                         l_thigh_deg=-8.0, l_shin_deg=12.0, l_foot_deg=-3.0,
+                         r_thigh_deg=12.0, r_shin_deg=4.0, r_foot_deg=4.0,
+                         grip_x=22.0, grip_y=-92.0, weapon_deg=-92.0, grip_sep=29.0, halo_active=True)),
+                (7, dict(pelvis_dx=-186.0, pelvis_dy=34.0, torso_deg=-12.0, head_rel_deg=12.0, mane_rel_deg=-10.0,
+                         l_thigh_deg=-12.0, l_shin_deg=18.0, l_foot_deg=-4.0,
+                         r_thigh_deg=18.0, r_shin_deg=8.0, r_foot_deg=6.0,
+                         grip_x=-8.0, grip_y=-124.0, weapon_deg=-136.0, grip_sep=27.0, halo_active=True)),
+                (9, dict(pelvis_dx=-202.0, pelvis_dy=40.0, torso_deg=13.0, head_rel_deg=-8.0, mane_rel_deg=-12.0,
+                         l_thigh_deg=14.0, l_shin_deg=14.0, l_foot_deg=6.0,
+                         r_thigh_deg=-22.0, r_shin_deg=12.0, r_foot_deg=-6.0,
+                         grip_x=140.0, grip_y=-100.0, weapon_deg=-54.0, grip_sep=30.0, halo_active=True)),
+                (11, dict(pelvis_dx=-200.0, pelvis_dy=48.0, torso_deg=21.0, head_rel_deg=-14.0, mane_rel_deg=-18.0,
+                          l_thigh_deg=20.0, l_shin_deg=16.0, l_foot_deg=10.0,
+                          r_thigh_deg=-30.0, r_shin_deg=14.0, r_foot_deg=-8.0,
+                          grip_x=144.0, grip_y=-66.0, weapon_deg=4.0, grip_sep=30.5, halo_active=True)),
+                (13, dict(pelvis_dx=-188.0, pelvis_dy=54.0, torso_deg=23.0, head_rel_deg=-16.0, mane_rel_deg=-20.0,
+                          l_thigh_deg=23.0, l_shin_deg=18.0, l_foot_deg=12.0,
+                          r_thigh_deg=-32.0, r_shin_deg=16.0, r_foot_deg=-8.0,
+                          grip_x=148.0, grip_y=-42.0, weapon_deg=20.0, grip_sep=31.0, halo_active=True)),
+                (16, dict(pelvis_dx=-156.0, pelvis_dy=58.0, torso_deg=24.0, head_rel_deg=-16.0, mane_rel_deg=-18.0,
+                          l_thigh_deg=25.0, l_shin_deg=18.0, l_foot_deg=12.0,
+                          r_thigh_deg=-33.0, r_shin_deg=18.0, r_foot_deg=-8.0,
+                          grip_x=158.0, grip_y=-24.0, weapon_deg=38.0, grip_sep=31.0, halo_active=True)),
+                (19, dict(pelvis_dx=-148.0, pelvis_dy=54.0, torso_deg=22.0, head_rel_deg=-14.0, mane_rel_deg=-14.0,
+                          l_thigh_deg=23.0, l_shin_deg=16.0, l_foot_deg=10.0,
+                          r_thigh_deg=-30.0, r_shin_deg=16.0, r_foot_deg=-6.0,
+                          grip_x=150.0, grip_y=-22.0, weapon_deg=35.0, grip_sep=31.0, halo_active=True)),
+                (24, dict(pelvis_dx=-82.0, pelvis_dy=24.0, torso_deg=12.0, head_rel_deg=-7.0, mane_rel_deg=-8.0,
+                          l_thigh_deg=10.0, l_shin_deg=8.0, l_foot_deg=4.0,
+                          r_thigh_deg=-12.0, r_shin_deg=6.0, r_foot_deg=-2.0,
+                          grip_x=82.0, grip_y=-20.0, weapon_deg=-8.0, grip_sep=31.5, halo_active=False)),
+                (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=5.0, head_rel_deg=-2.5, mane_rel_deg=-4.0,
+                          l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
+                          grip_x=58.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=32.0, halo_active=False)),
             ]
             cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.0)
-            if 9 <= f <= 14:
-                u = (f - 9) / 5.0
-                cfg["slash_arc"] = dict(dx=1.5, r=28.5, a0=-85.0 + 25.0 * u, a1=42.0 + 18.0 * u, intensity=1.15)
-            elif 19 <= f <= 23:
-                u = (f - 19) / 4.0
-                cfg["slash_arc"] = dict(dx=1.5, r=27.0, a0=-52.0 + 15.0 * u, a1=38.0 + 14.0 * u, intensity=1.05)
+            cfg["full_ext_swing"] = True
+            cfg["right_arm_in_front"] = False
+            if 9 <= f <= 15:
+                a0_tab = (-88.0, -70.0, -52.0, -34.0, -16.0, 2.0, 14.0)
+                a1_tab = (-20.0, 8.0, 25.0, 38.0, 44.0, 47.0, 49.0)
+                dx_tab = (18.0, 18.0, 17.5, 17.0, 17.0, 16.5, 16.5)
+                r_tab = (32.0, 31.5, 31.0, 31.0, 31.0, 30.5, 30.5)
+                int_tab = (0.95, 1.22, 1.30, 1.24, 1.08, 0.84, 0.58)
+                idx = f - 9
+                cfg["slash_arc"] = dict(
+                    dx=dx_tab[idx], dy=11.5, r=r_tab[idx],
+                    a0=a0_tab[idx], a1=a1_tab[idx], intensity=int_tab[idx],
+                )
             cfgs.append(cfg)
 
         elif row_idx == 3:
@@ -987,7 +1021,7 @@ def main():
     picks = [
         (0, 0, "R0 2H RUNE GUARD"),
         (1, 4, "R1 2H RUNIC STRIDE"),
-        (2, 12, "R2 2H CLEAVE"),
+        (2, 11, "R2 2H CLEAVE"),
         (3, 5, "R3 2H 360 SPIN"),
         (3, 21, "R3 2H THUNDER SLAM"),
         (4, 19, "R4 2H SKY TOP"),
@@ -999,6 +1033,33 @@ def main():
         OUT_SHEET_PATH, VFX_SHEET_PATH, ARTIFACT_DIR,
         shimmer_cols=(C_CYAN_LIT, C_GOLD_SPEC), showcase_picks=picks,
     )
+
+    # Save zoomed 2x strip of Row 2 (AUTO_ATTACK, F00..F29) for visual QA
+    sheet_im = Image.open(OUT_SHEET_PATH).convert("RGBA")
+    cell_src = 208
+    cell_zoom = cell_src * 2  # 416x416 (2x zoom of 208x208 sheet cells)
+    pad_x, pad_y = 8, 28
+    cols_strip, rows_strip = 10, 3
+    strip = Image.new(
+        "RGBA",
+        (cols_strip * (cell_zoom + pad_x) + pad_x, rows_strip * (cell_zoom + pad_y) + pad_y),
+        (20, 22, 34, 255),
+    )
+    sd = ImageDraw.Draw(strip)
+    for f in range(COLS):
+        c_idx = f % cols_strip
+        r_idx = f // cols_strip
+        ox = pad_x + c_idx * (cell_zoom + pad_x)
+        oy = pad_y + r_idx * (cell_zoom + pad_y)
+        tile = sheet_im.crop((f * cell_src, 2 * cell_src, (f + 1) * cell_src, 3 * cell_src)).resize(
+            (cell_zoom, cell_zoom), Image.Resampling.NEAREST
+        )
+        sd.rectangle([ox - 1, oy - 1, ox + cell_zoom, oy + cell_zoom], outline=(56, 64, 92, 255), width=2)
+        sd.line([(ox, oy + 199 * 2), (ox + cell_zoom, oy + 199 * 2)], fill=(110, 68, 86, 255), width=2)
+        strip.alpha_composite(tile, (ox, oy))
+        sd.text((ox + 6, oy - 20), f"R2 AUTO F{f:02d}", fill=(255, 230, 140, 255))
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+    strip.save(os.path.join(ARTIFACT_DIR, "scratch_warrior_row2_swing.png"))
 
 
 if __name__ == "__main__":
