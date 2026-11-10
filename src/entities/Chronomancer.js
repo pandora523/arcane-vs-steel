@@ -1,6 +1,8 @@
-import { Fighter } from './Fighter.js?v=30fps41';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps41';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps41';
+import { Fighter } from './Fighter.js?v=30fps52';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps52';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps52';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
+import { CHRONO_EFFECT_REGISTRY } from '../engine/shaders/chronoShaders.js?v=30fps52';
 
 const ROMAN_NUMERALS = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI', 'XII'];
 
@@ -33,6 +35,14 @@ export class Chronomancer extends Fighter {
     this.doomsdayClock = null; // Colossal 320x320 16-bit HD-2D Astral Clockface + spinning hands
     this.temporalEchoes = []; // Frozen golden-teal Temporal Echo silhouettes & astrolabe dials
     this.rewindRibbons = []; // Reverse-flowing golden-teal Roman numeral streams rewinding into Zephyros
+
+    // Multi-Layer 3-Pass Albedo/Emissive Chrono Pixel-Shader Engine
+    this.fx = new ArcaneShaderFX(CHRONO_EFFECT_REGISTRY, {
+      pixelScale: 3,
+      viewW: 440,
+      viewH: 220
+    });
+    this.haloFxInstance = null;
 
     this.didStasisCast = false;
     this.didStasisShatter = false;
@@ -514,6 +524,24 @@ export class Chronomancer extends Fighter {
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
     this.warpPortalTimer = Math.max(0, this.warpPortalTimer - dt);
 
+    if (this.fx) {
+      if (!this.isDead && !this.haloFxInstance) {
+        this.haloFxInstance = this.fx.spawn('chronoAstrolabeHalo', {
+          follow: this,
+          facing: this.facing,
+          layer: 'back'
+        });
+      }
+      if (this.haloFxInstance) {
+        this.haloFxInstance.facing = this.facing;
+        if (this.isDead) {
+          this.haloFxInstance.dead = true;
+          this.haloFxInstance = null;
+        }
+      }
+      this.fx.update(dt);
+    }
+
     // Advance Temporal Echoes
     for (let i = this.temporalEchoes.length - 1; i >= 0; i--) {
       const ec = this.temporalEchoes[i];
@@ -653,6 +681,17 @@ export class Chronomancer extends Fighter {
         const speed = 665;
         game.vfx.spawnGlyphBurst(spawnX, spawnY, 5, 'chrono');
 
+        if (this.fx) {
+          this.fx.spawn('chronoPendulumSlash', {
+            x: spawnX,
+            y: spawnY,
+            facing: this.facing,
+            radius: mode === 2 ? 78 : 66,
+            thickness: mode === 2 ? 18 : 15,
+            layer: 'front'
+          });
+        }
+
         const isVanguard = enemy && enemy.hasPoise && enemy.attackRange <= 160;
         const isHarvester = enemy && enemy.hasPoise && enemy.attackRange > 160;
         const isGroundedCaster = enemy && !enemy.hasPoise && enemy.moveSpeed <= 122;
@@ -731,6 +770,15 @@ export class Chronomancer extends Fighter {
           shattered: false
         };
 
+        if (this.fx) {
+          this.fx.spawn('stasisHourglassMatrix', {
+            x: tx,
+            y: ty - 98,
+            facing: this.facing,
+            layer: 'front'
+          });
+        }
+
         this.rewindTimeline(
           28,
           tx,
@@ -802,6 +850,15 @@ export class Chronomancer extends Fighter {
         maxLife: 1.52,
         shattered: false
       };
+
+      if (this.fx) {
+        this.fx.spawn('doomsdayAstralDomain', {
+          x: centerX,
+          y: this.groundY - 195,
+          facing: this.facing,
+          layer: 'front'
+        });
+      }
 
       game.vfx.spawnDamageText(centerX, this.groundY - 365, 0, false, 'TIME STOP — IX... X... XI...', '#2dd4bf');
       if (enemy && !enemy.isDead) {
@@ -1159,6 +1216,9 @@ export class Chronomancer extends Fighter {
    * Normal skill pass (behind fighters)
    */
   drawForegroundOverlay(ctx, renderer = null) {
+    if (this.fx && !this.isDead) {
+      this.fx.renderLayer(ctx, 'back', this.x, this.y - 88);
+    }
     this.drawStasisHourglass(ctx, renderer);
     this.drawRewindRibbons(ctx);
   }
@@ -1168,6 +1228,10 @@ export class Chronomancer extends Fighter {
    */
   drawUltimateForeground(ctx, renderer = null) {
     this.drawDoomsdayClock(ctx, renderer);
+    if (this.fx && !this.isDead) {
+      const fxX = this.doomsdayClock ? this.doomsdayClock.x : this.x;
+      this.fx.renderLayer(ctx, 'front', fxX, this.groundY - 120);
+    }
   }
 
   /**

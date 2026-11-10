@@ -1,7 +1,7 @@
 import { Fighter } from './Fighter.js?v=30fps41';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps41';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps46';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps49';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps52';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps52';
 
 /**
  * Ignis Sol (`mage`) — Solar Archmage & Black-Sun Eclipse Sovereign.
@@ -57,6 +57,12 @@ export class FireMage extends Fighter {
     this.didSkillAura = false;
     this._drewPalmFocus = false;
     this._orbitSlot = null;
+
+    // Bespoke 4x4 Pixel-Art Solar Archmage Visual Systems
+    this.activeSolarRings = [];
+    this.activeMagmaFissures = [];
+    this.activeSolarBolts = [];
+    this.eclipseDomain = null;
 
     this.fx = new ArcaneShaderFX(SOLAR_EFFECT_REGISTRY, {
       pixelScale: 3,
@@ -128,6 +134,47 @@ export class FireMage extends Fighter {
       life: 0,
       maxLife
     });
+  }
+
+  spawnPixelSolarRing(x, y, maxRadius = 88, color = '#fb923c', maxLife = 0.28, isGround = false) {
+    if (this.activeSolarRings.length > 16) this.activeSolarRings.shift();
+    this.activeSolarRings.push({
+      x,
+      y,
+      maxRadius,
+      color,
+      isGround,
+      life: 0,
+      maxLife
+    });
+  }
+
+  spawnMagmaFissure(x1, x2, maxLife = 1.15) {
+    if (this.activeMagmaFissures.length > 3) this.activeMagmaFissures.shift();
+    this.activeMagmaFissures.push({
+      x1,
+      x2,
+      y: this.groundY,
+      seed: Math.random() * 100,
+      life: 0,
+      maxLife
+    });
+  }
+
+  spawnPixelSolarBolt(x1, y1, x2, y2, color = '#fef08a', maxLife = 0.30) {
+    const pts = [{ x: x1, y: y1 }];
+    const segs = 7;
+    for (let i = 1; i < segs; i++) {
+      const u = i / segs;
+      const jx = (Math.random() - 0.5) * 28;
+      pts.push({
+        x: Math.round((x1 + (x2 - x1) * u + jx) / 4) * 4,
+        y: Math.round((y1 + (y2 - y1) * u) / 4) * 4
+      });
+    }
+    pts.push({ x: x2, y: y2 });
+    if (this.activeSolarBolts.length > 8) this.activeSolarBolts.shift();
+    this.activeSolarBolts.push({ pts, color, life: 0, maxLife });
   }
 
   onProjectileTrail(p) {
@@ -564,6 +611,27 @@ export class FireMage extends Fighter {
       ec.life += dt;
       if (ec.life >= ec.maxLife) this.solarEchoes.splice(i, 1);
     }
+    for (let i = this.activeSolarRings.length - 1; i >= 0; i--) {
+      const sw = this.activeSolarRings[i];
+      sw.life += dt;
+      if (sw.life >= sw.maxLife) this.activeSolarRings.splice(i, 1);
+    }
+    for (let i = this.activeMagmaFissures.length - 1; i >= 0; i--) {
+      const fis = this.activeMagmaFissures[i];
+      fis.life += dt;
+      if (fis.life >= fis.maxLife) this.activeMagmaFissures.splice(i, 1);
+    }
+    for (let i = this.activeSolarBolts.length - 1; i >= 0; i--) {
+      const b = this.activeSolarBolts[i];
+      b.life += dt;
+      if (b.life >= b.maxLife) this.activeSolarBolts.splice(i, 1);
+    }
+    if (this.eclipseDomain) {
+      this.eclipseDomain.life += dt;
+      if (this.eclipseDomain.life >= this.eclipseDomain.maxLife) {
+        this.eclipseDomain = null;
+      }
+    }
 
     this.ensureOrbitingSuns();
     this.fx.update(dt);
@@ -714,6 +782,7 @@ export class FireMage extends Fighter {
           );
         }
 
+        this.spawnPixelSolarRing(spawnX, spawnY, isTwinFlare ? 64 : 48, '#facc15', 0.22, false);
         game.vfx.spawnGlyphBurst(spawnX, spawnY, 4, 'arcane');
       }
     } else if (t >= this.autoDuration) {
@@ -730,6 +799,7 @@ export class FireMage extends Fighter {
       this.didSkillAura = true;
       this.vx = 0;
       game.vfx.spawnSpecialCastAura(this, this.skillName, '✦ SOLAR ARCHMAGE ✦', 'arcane', false);
+      this.spawnPixelSolarRing(this.x, this.groundY - 2, 96, '#fb923c', 0.28, true);
       this.fx.spawn('heliosPalmFocus', this.x + this.facing * 26, this.y - 108, {
         follow: this,
         offsetX: 26,
@@ -746,6 +816,8 @@ export class FireMage extends Fighter {
       if (game.renderer) game.renderer.triggerShake(8, 0.18);
 
       const slamX = this.x + this.facing * 26;
+      this.spawnPixelSolarRing(slamX, this.groundY - 2, 122, '#fef08a', 0.34, true);
+      this.spawnMagmaFissure(slamX, targetX, 1.25);
       this.fx.spawn('magmaFissureCrack', slamX, this.groundY, {
         light: 1.28,
         extra: { spanX: targetX - slamX }
@@ -780,6 +852,7 @@ export class FireMage extends Fighter {
       const sy = this.y - 106;
       const fAng = this.facing === 1 ? 0 : Math.PI;
       game.vfx.spawnSlash(sx, sy, 68, fAng - 1.0, fAng + 1.0, '#fb923c', 0.26);
+      this.spawnPixelSolarRing(sx, sy, 68, '#fef08a', 0.26, false);
       this.fx.spawn('solarFireballMachCone', sx, sy, {
         flip: this.facing < 0,
         light: 1.32,
@@ -831,6 +904,14 @@ export class FireMage extends Fighter {
         if (game.audio) game.audio.play('eclipse_charge', eclipseX);
         game.vfx.spawnSpecialCastAura(this, this.ultName, '★ ECLIPSE SUPERNOVA ★', 'arcane', true);
 
+        this.eclipseDomain = {
+          cx: targetX,
+          y: this.groundY,
+          radius: 195,
+          life: 0,
+          maxLife: 1.50
+        };
+
         game.vfx.spawnEclipseSupernova({
           x: eclipseX,
           y: eclipseY,
@@ -840,6 +921,10 @@ export class FireMage extends Fighter {
           coreColor: '#fef08a',
           maxLife: 1.55
         });
+
+        this.spawnPixelSolarRing(this.x, this.groundY - 2, 138, '#fb923c', 0.36, true);
+        this.spawnPixelSolarRing(targetX, this.groundY - 2, 175, '#facc15', 0.44, true);
+        this.spawnPixelSolarBolt(eclipseX, eclipseY, targetX, this.groundY, '#fef08a', 0.34);
 
         this.fx.spawn('eclipseSupernovaDomain', targetX, this.groundY, {
           light: 1.42
@@ -879,6 +964,13 @@ export class FireMage extends Fighter {
         coreColor: '#fef08a',
         maxLife: 0.68
       });
+
+      for (let r = 0; r < 4; r++) {
+        const u = (r + 1) / 4;
+        const rx = eclipseX + (targetX - eclipseX) * u;
+        const ry = eclipseY + (this.groundY - 24 - eclipseY) * u;
+        this.spawnPixelSolarRing(rx, ry, 86 + r * 18, r % 2 === 0 ? '#fef08a' : '#fb923c', 0.38, r === 3);
+      }
 
       this.fx.spawn('solarMeteorImpactBurst', targetX, this.groundY - 78, {
         light: 1.42,
@@ -929,6 +1021,9 @@ export class FireMage extends Fighter {
           extra: { scaleWidth: idx === 1 ? 1.05 : 0.72 }
         });
       });
+      this.spawnPixelSolarBolt(targetX - 56, 20, targetX - 48, this.groundY, '#fef08a', 0.34);
+      this.spawnPixelSolarBolt(targetX + 56, 20, targetX + 48, this.groundY, '#fb923c', 0.34);
+      this.spawnPixelSolarRing(targetX, this.groundY - 2, 220, '#fef08a', 0.42, true);
       game.vfx.spawnDamageText(
         targetX,
         this.groundY - 178,
@@ -952,13 +1047,209 @@ export class FireMage extends Fighter {
       const fade = Math.max(0, 1 - ec.life / ec.maxLife) * (ec.alphaScale || 1.0);
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      ctx.translate(Math.round(ec.x), Math.round(ec.y + 4));
+      ctx.translate(Math.round(ec.x / 4) * 4, Math.round((ec.y + 4) / 4) * 4);
       ctx.scale(ec.facing, 1);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.42;
+      ctx.globalAlpha = fade * 0.46;
       PixelForge.drawAfterimageFrame(ctx, sprites, ec.frameIdx, 208, 208);
       ctx.restore();
     }
+  }
+
+  drawOrbitingSolarCores(ctx, inFront = false, renderer = null) {
+    if (this.isDead || this.state === 'DEATH') return;
+    const isPrimed = (this.castCombo + 1) % 3 === 0;
+    const count = isPrimed ? 3 : 2;
+    const rx = isPrimed ? 44 : 38;
+    const ry = 13;
+    const centerY = this.y - 98;
+    const vfxSheet = PixelForge.initAssets().mage?.vfx;
+    const col = Math.floor(this.runeOrbit * 10) % 30;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (let i = 0; i < count; i++) {
+      const a = this.runeOrbit * 1.45 + (i / count) * Math.PI * 2;
+      const sinA = Math.sin(a);
+      const frontHalf = sinA >= 0;
+      if (frontHalf !== inFront) continue;
+
+      const ox = Math.round((this.x + Math.cos(a) * rx) / 2) * 2;
+      const oy = Math.round((centerY + sinA * ry) / 2) * 2;
+
+      if (renderer && renderer.glowOrange) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = isPrimed ? 0.42 : 0.28;
+        ctx.drawImage(renderer.glowOrange, ox - 20, oy - 20, 40, 40);
+        ctx.restore();
+      }
+
+      if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 0.88;
+        ctx.drawImage(vfxSheet, col * 208, 208, 208, 208, ox - 22, oy - 22, 44, 44);
+        ctx.restore();
+      }
+
+      // Crisp 2x2 / 4x4 Pixel-Art Helios Diamond Sun-Mote
+      ctx.fillStyle = '#140c18';
+      ctx.fillRect(ox - 6, oy - 2, 12, 4);
+      ctx.fillRect(ox - 2, oy - 6, 4, 12);
+      ctx.fillStyle = isPrimed ? '#ea580c' : '#fb923c';
+      ctx.fillRect(ox - 4, oy - 4, 8, 8);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(ox - 4, oy - 2, 8, 4);
+      ctx.fillRect(ox - 2, oy - 4, 4, 8);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(ox - 2, oy - 2, 4, 4);
+    }
+    ctx.restore();
+  }
+
+  drawPixelFlameWard4x4(ctx, renderer = null) {
+    if (this.state !== 'CROUCH' || !this.isDeflecting || this.stateTimer > 0.36) return;
+    const wx = Math.round((this.x + this.facing * 42) / 4) * 4;
+    const wy = Math.round((this.y - 82) / 4) * 4;
+    const rx = 24;
+    const ry = 42;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    if (renderer && renderer.glowGold) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.34;
+      ctx.drawImage(renderer.glowGold, wx - 56, wy - 68, 112, 136);
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    const steps = 28;
+    for (let i = 0; i <= steps; i++) {
+      const u = i / steps;
+      const localAng = (-0.42 + 0.84 * u) * Math.PI;
+      const env = Math.sin(u * Math.PI);
+      const px = Math.round((wx + this.facing * Math.cos(localAng) * rx) / 4) * 4;
+      const py = Math.round((wy + Math.sin(localAng) * ry) / 4) * 4;
+      ctx.fillStyle = '#7f1d1d';
+      ctx.fillRect(px - 4, py - 4, 8, 8);
+      ctx.fillStyle = env > 0.35 ? '#fb923c' : '#ea580c';
+      ctx.fillRect(px - 2, py - 2, 6, 4);
+      if (env > 0.55) {
+        ctx.fillStyle = i % 3 === 0 ? '#ffffff' : '#fef08a';
+        ctx.fillRect(px - 2, py - 2, 4, 4);
+      }
+    }
+    ctx.restore();
+  }
+
+  drawPixelMagmaFissures4x4(ctx) {
+    if (!this.activeMagmaFissures.length) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (const fis of this.activeMagmaFissures) {
+      const u = fis.life / fis.maxLife;
+      const reach = Math.min(1, fis.life / 0.16);
+      const fade = u > 0.72 ? (1 - u) / 0.28 : 1.0;
+      const curX2 = fis.x1 + (fis.x2 - fis.x1) * reach;
+      const span = Math.abs(curX2 - fis.x1);
+      const steps = Math.max(2, Math.floor(span / 8));
+
+      ctx.globalAlpha = Math.max(0, fade * 0.92);
+      for (let s = 0; s <= steps; s++) {
+        const p = s / steps;
+        const fx = Math.round((fis.x1 + (curX2 - fis.x1) * p) / 4) * 4;
+        const jitY = Math.round(Math.sin(s * 1.7 + fis.seed) * 1) * 4;
+        const fy = Math.round(fis.y / 4) * 4 + jitY;
+        ctx.fillStyle = '#7f1d1d';
+        ctx.fillRect(fx - 4, fy - 4, 12, 8);
+        ctx.fillStyle = '#fb923c';
+        ctx.fillRect(fx - 2, fy - 2, 8, 4);
+        if ((s + Math.floor(fis.life * 20)) % 3 === 0) {
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(fx, fy - 2, 4, 4);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  drawPixelEclipseDomain4x4(ctx) {
+    if (!this.eclipseDomain) return;
+    const dom = this.eclipseDomain;
+    const u = dom.life / dom.maxLife;
+    const env = u < 0.12 ? u / 0.12 : u > 0.80 ? (1 - u) / 0.20 : 1.0;
+    const gy = Math.round(dom.y / 4) * 4;
+    const cx = Math.round(dom.cx / 4) * 4;
+    const rx = Math.round((dom.radius * (0.75 + 0.25 * env)) / 4) * 4;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalAlpha = Math.max(0, env * 0.88);
+
+    const segs = 44;
+    for (let i = 0; i < segs; i++) {
+      const a = dom.life * 2.4 + (i / segs) * Math.PI * 2;
+      const px = Math.round((cx + Math.cos(a) * rx) / 4) * 4;
+      const py = Math.round((gy + Math.sin(a) * 14) / 4) * 4;
+      ctx.fillStyle = i % 4 === 0 ? '#fef08a' : '#ea580c';
+      ctx.fillRect(px - 4, py - 2, 8, 4);
+    }
+    ctx.restore();
+  }
+
+  drawPixelSolarRings4x4(ctx, groundOnly = false) {
+    if (!this.activeSolarRings.length) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (const sw of this.activeSolarRings) {
+      if (!!sw.isGround !== groundOnly) continue;
+      const u = sw.life / sw.maxLife;
+      const fade = Math.max(0, 1 - u);
+      const r = sw.maxRadius * (1 - Math.pow(1 - u, 2.6));
+      const ryScale = sw.isGround ? 0.22 : 0.92;
+      const pts = sw.isGround ? 32 : 24;
+
+      ctx.globalAlpha = fade * 0.92;
+      for (let i = 0; i < pts; i++) {
+        const a = (i / pts) * Math.PI * 2 + u * 1.2;
+        const px = Math.round((sw.x + Math.cos(a) * r) / 4) * 4;
+        const py = Math.round((sw.y + Math.sin(a) * r * ryScale) / 4) * 4;
+        ctx.fillStyle = sw.color;
+        ctx.fillRect(px - 4, py - 2, 6, 4);
+        if (i % 3 === 0) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(px - 2, py - 2, 4, 2);
+        }
+      }
+    }
+    ctx.restore();
+  }
+
+  drawPixelSolarBolts4x4(ctx) {
+    if (!this.activeSolarBolts.length) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (const bolt of this.activeSolarBolts) {
+      const fade = Math.max(0, 1 - bolt.life / bolt.maxLife);
+      for (let i = 0; i < bolt.pts.length - 1; i++) {
+        const p0 = bolt.pts[i];
+        const p1 = bolt.pts[i + 1];
+        const steps = Math.max(1, Math.ceil(Math.hypot(p1.x - p0.x, p1.y - p0.y) / 4));
+        for (let s = 0; s <= steps; s++) {
+          const u = s / steps;
+          const bx = Math.round((p0.x + (p1.x - p0.x) * u) / 4) * 4;
+          const by = Math.round((p0.y + (p1.y - p0.y) * u) / 4) * 4;
+          ctx.globalAlpha = fade * 0.85;
+          ctx.fillStyle = bolt.color;
+          ctx.fillRect(bx - 4, by - 2, 8, 4);
+          ctx.globalAlpha = fade;
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(bx - 2, by - 2, 4, 4);
+        }
+      }
+    }
+    ctx.restore();
   }
 
   drawBlinkPortals(ctx, renderer = null) {
@@ -974,25 +1265,44 @@ export class FireMage extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     for (let idx = 0; idx < portals.length; idx++) {
-      const px = Math.round(portals[idx]);
-      const py = Math.round(this.groundY - 96);
-      const size = Math.round(164 * (0.84 + 0.16 * fade));
+      const px = Math.round(portals[idx] / 4) * 4;
+      const py = Math.round((this.groundY - 96) / 4) * 4;
+      const size = Math.round((168 * (0.82 + 0.18 * fade)) / 4) * 4;
       const half = Math.round(-size * 0.5);
 
       ctx.save();
       ctx.translate(px, py);
 
-      if (renderer && renderer.glowOrange) {
+      if (renderer) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.42;
-        ctx.drawImage(renderer.glowOrange, -size * 0.95, -size * 0.95, size * 1.9, size * 1.9);
+        if (renderer.glowOrange) {
+          ctx.globalAlpha = fade * 0.58;
+          ctx.drawImage(renderer.glowOrange, -size * 1.05, -size * 1.05, size * 2.1, size * 2.1);
+        }
+        if (renderer.glowGold) {
+          ctx.globalAlpha = fade * 0.48;
+          ctx.drawImage(renderer.glowGold, -size * 0.8, -size * 0.8, size * 1.6, size * 1.6);
+        }
       }
 
       if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.44;
+        ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half - 8, half - 8, size + 16, size + 16);
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.92;
+        ctx.globalAlpha = fade * 0.94;
         ctx.drawImage(vfxSheet, col * 208, 416, 208, 208, half, half, size, size);
       }
+
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.85;
+      ctx.fillStyle = '#fb923c';
+      ctx.fillRect(-8, -72, 16, 144);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(-4, -64, 8, 128);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(-2, -52, 4, 104);
+
       ctx.restore();
     }
     ctx.restore();
@@ -1001,9 +1311,18 @@ export class FireMage extends Fighter {
   drawForegroundOverlay(ctx, renderer = null) {
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
+
+    this.drawPixelEclipseDomain4x4(ctx);
+    this.drawPixelMagmaFissures4x4(ctx);
+    this.drawPixelSolarRings4x4(ctx, true);
+    this.drawOrbitingSolarCores(ctx, true, renderer);
+    this.drawPixelFlameWard4x4(ctx, renderer);
+    this.drawPixelSolarRings4x4(ctx, false);
   }
 
   drawUltimateForeground(ctx, renderer = null) {
+    this.drawPixelSolarBolts4x4(ctx);
+
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
   }
@@ -1015,6 +1334,7 @@ export class FireMage extends Fighter {
     if (!isReflection) {
       this.drawBlinkPortals(ctx, renderer);
       this.drawSolarEchoes(ctx);
+      this.drawOrbitingSolarCores(ctx, false, renderer);
     }
 
     ctx.save();

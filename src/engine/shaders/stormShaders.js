@@ -18,7 +18,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps46';
+} from '../ArcaneShaderFX.js?v=30fps52';
 
 export const STORM_CYAN_PALETTE = [
   '#080c24',

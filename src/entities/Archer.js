@@ -1,11 +1,11 @@
 import { Fighter } from './Fighter.js?v=30fps41';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps41';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps46';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps52';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps46';
+} from '../engine/shaders/sylvanShaders.js?v=30fps52';
 
 /**
  * Sylvara (`archer`) — Elven Tempest Bowmaster & Astral Star-Ranger.

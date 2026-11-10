@@ -1,5 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps41';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps41';
+import { Fighter } from './Fighter.js?v=30fps52';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps52';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
+import { RUNIC_STEEL_EFFECT_REGISTRY } from '../engine/shaders/runicSteelShaders.js?v=30fps52';
 
 export class Warrior extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -48,6 +50,14 @@ export class Warrior extends Fighter {
     this.runeBlinkPillars = [];
     this.activeVfxAnims = [];
     this.slashBeams = [];
+
+    // Multi-Layer 3-Pass Albedo/Emissive Runic Steel Pixel-Shader Engine
+    this.fx = new ArcaneShaderFX(RUNIC_STEEL_EFFECT_REGISTRY, {
+      pixelScale: 3,
+      viewW: 440,
+      viewH: 220
+    });
+    this.haloFxInstance = null;
   }
 
   setState(newState) {
@@ -479,6 +489,24 @@ export class Warrior extends Fighter {
     this.vaultCooldown = Math.max(0, this.vaultCooldown - dt);
     this.updateCustomVfx(dt);
 
+    if (this.fx) {
+      if (!this.isDead && !this.haloFxInstance) {
+        this.haloFxInstance = this.fx.spawn('runicVanguardAura', {
+          follow: this,
+          facing: this.facing,
+          layer: 'back'
+        });
+      }
+      if (this.haloFxInstance) {
+        this.haloFxInstance.facing = this.facing;
+        if (this.isDead) {
+          this.haloFxInstance.dead = true;
+          this.haloFxInstance = null;
+        }
+      }
+      this.fx.update(dt);
+    }
+
     if (!this.isDead && this.state === 'WALK') {
       this.stepDustTimer += dt;
       if (this.stepDustTimer >= 0.32) {
@@ -561,6 +589,17 @@ export class Warrior extends Fighter {
         const startA = this.facing === 1 ? -1.65 : Math.PI - 0.95;
         const endA = this.facing === 1 ? 1.05 : Math.PI + 1.65;
 
+        if (this.fx) {
+          this.fx.spawn('runebladeCrescentSlash', {
+            x: cx,
+            y: cy,
+            facing: this.facing,
+            radius: mode === 2 ? 90 : 76,
+            thickness: mode === 2 ? 22 : 18,
+            layer: 'front'
+          });
+        }
+
         if (mode === 2) {
           // Combo Finisher (Strike 3): Launches a Ranged Glacial Crescent Sword-Wave across the arena!
           if (game.audio) game.audio.play('blade_wave', this.x);
@@ -636,6 +675,13 @@ export class Warrior extends Fighter {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         if (game.audio) game.audio.play('whirlwind', this.x);
+        if (this.fx) {
+          this.fx.spawn('tempestCycloneRing', {
+            follow: this,
+            facing: this.facing,
+            layer: 'front'
+          });
+        }
         game.vfx.spawnDamageText(this.x, this.y - 148, 0, false, 'CYCLONE SLASH!', '#38bdf8');
         game.vfx.spawnGlyphBurst(this.x, this.y - 95, 8, 'steel');
         game.vfx.spawnSlash(this.x, this.y - 96, 128, 0, Math.PI * 2, '#38bdf8', 0.28);
@@ -702,6 +748,17 @@ export class Warrior extends Fighter {
       game.renderer.triggerHitStop(0.055);
 
       const slamX = this.x + this.facing * 52;
+      if (this.fx) {
+        this.fx.spawn('runebladeCrescentSlash', {
+          x: slamX,
+          y: this.groundY - 88,
+          facing: this.facing,
+          radius: 92,
+          thickness: 22,
+          dirY: 0.2,
+          layer: 'front'
+        });
+      }
       this.spawnVfxAnim(4, slamX, this.groundY - 96, 212, 212, 0.34, {
         flipX: this.facing < 0,
         foreground: true
@@ -811,6 +868,16 @@ export class Warrior extends Fighter {
           flipX: false,
           foreground: true
         });
+        if (this.fx) {
+          this.fx.spawn('runebladeCrescentSlash', {
+            x: targetX,
+            y: this.groundY - 98,
+            facing: 1,
+            radius: 86,
+            thickness: 20,
+            layer: 'front'
+          });
+        }
         if (game.audio) game.audio.play('slash', targetX);
         game.renderer.triggerShake(10, 0.14);
         game.vfx.spawnSlash(targetX, this.groundY - 100, 122, -0.95, 0.85, '#38bdf8', 0.30);
@@ -848,6 +915,16 @@ export class Warrior extends Fighter {
           flipX: true,
           foreground: true
         });
+        if (this.fx) {
+          this.fx.spawn('runebladeCrescentSlash', {
+            x: targetX,
+            y: this.groundY - 104,
+            facing: -1,
+            radius: 88,
+            thickness: 20,
+            layer: 'front'
+          });
+        }
         if (game.audio) game.audio.play('heavy_cleave', targetX);
         game.renderer.triggerShake(12, 0.16);
         game.vfx.spawnSlash(targetX, this.groundY - 106, 128, Math.PI - 0.9, Math.PI + 0.95, '#7dd3fc', 0.32);
@@ -966,6 +1043,14 @@ export class Warrior extends Fighter {
       game.renderer.triggerHitStop(0.095);
 
       const slamX = this.x + this.facing * 44;
+      if (this.fx) {
+        this.fx.spawn('earthshatterJudgmentWave', {
+          x: slamX,
+          y: this.groundY - 8,
+          facing: this.facing,
+          layer: 'front'
+        });
+      }
       const startA = this.facing === 1 ? -1.65 : Math.PI - 1.45;
       const endA = this.facing === 1 ? 1.45 : Math.PI + 1.65;
       game.vfx.spawnSlash(slamX, this.groundY - 92, 155, startA, endA, '#38bdf8', 0.42);
@@ -1198,6 +1283,10 @@ export class Warrior extends Fighter {
   }
 
   drawForegroundOverlay(ctx) {
+    if (this.fx && !this.isDead) {
+      this.fx.renderLayer(ctx, 'back', this.x, this.y - 88);
+    }
+
     const sprites = PixelForge.initAssets().warrior;
     const vfxSheet = sprites?.vfx;
 
@@ -1253,6 +1342,11 @@ export class Warrior extends Fighter {
     // 3. Stepped 4x4 Pixel Omnislash & Top-Down Judgment Slash Beams
     for (const beam of this.slashBeams) {
       this.drawPixelSlashBeam4x4(ctx, beam);
+    }
+
+    if (this.fx && !this.isDead) {
+      const fxX = this.state === 'ULTIMATE' && this._ultTargetX !== undefined ? this._ultTargetX : this.x + this.facing * 42;
+      this.fx.renderLayer(ctx, 'front', fxX, this.groundY - 96);
     }
   }
 

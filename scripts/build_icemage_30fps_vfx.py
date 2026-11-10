@@ -300,9 +300,10 @@ def build_row1_cryo_prism_lens_turret(f):
 
 def build_row2_glacial_permafrost_spire(f):
     """
-    Row 2: Erupting Cathedral Glacier Obelisk Spire & Shatter (`y = 6..47, x = 10..42`, 30 frames):
-    - Multi-faceted Frost-Cyan, Aurora-Lavender & Sapphire glacier crystal monolith (`y = 6..47, x = 10..42`)
-      with luminous `C_FROST_AURA` halo, 4 flanking crystal spires, and shattering snowflake stars on `F22..F29`.
+    Row 2: Erupting 7-Spire Cathedral Glacier Crystal Cluster & Shatter (`y = 6..47, x = 8..44`, 30 frames):
+    - Intricate 52x52 -> 4x NEAREST (208x208) multi-spire pixel-art crystal cluster with 6 angled flanking
+      diamond-cut crystal shards, 1 central jagged spire with stepped internal chevron facets, dark-sapphire
+      pixel facet seams, internal star-glint refraction windows, and 12-shard snowflake shatter on `F22..F29`.
     """
     img = Image.new("RGBA", (LOGICAL, LOGICAL), (0, 0, 0, 0))
     px = img.load()
@@ -310,76 +311,108 @@ def build_row2_glacial_permafrost_spire(f):
     gy = 45
     phase = (f / 30.0) * math.pi * 2.0
 
-    # 1. Persistent Glowing Perspective Snowflake Ground Seal (y = 43..47, x = 10..42)
+    # 1. Persistent Glowing Perspective Snowflake Ground Seal (y = 43..47, x = 9..43)
     seal_scale = ((f + 1) / 4.0) if f <= 3 else (1.0 if f <= 21 else max(0.25, 1.0 - (f - 21) / 9.0))
-    rx_seal = int(round(15.0 * min(1.0, seal_scale)))
+    rx_seal = int(round(16.0 * min(1.0, seal_scale)))
     for dx in range(-rx_seal - 1, rx_seal + 2):
-        wx = max(10, min(42, cx + dx))
+        wx = max(8, min(44, cx + dx))
         ad = abs(dx)
         if ad == rx_seal + 1:
             put(px, wx, gy, C_FROST_AURA)
         else:
-            put(px, wx, gy + 1, C_SAPPHIRE_BRIGHT if ad % 2 == 0 else C_FROST_AURA)
+            put(px, wx, gy + 1, C_SAPPHIRE_DARK if ad % 2 == 0 else C_FROST_AURA)
             put(px, wx, gy, C_WHITE if ad % 4 == 0 else (C_FROST_LIGHT if ad % 2 == 0 else C_FROST_CYAN))
-            if ad <= rx_seal - 2:
-                put(px, wx, gy - 1, C_DIAMOND_WHITE if ad % 3 == 0 else C_AURORA_LAVENDER)
+            if ad <= rx_seal - 2 and ad % 2 == 0:
+                put(px, wx, gy - 1, C_DIAMOND_WHITE if ad % 4 == 0 else C_AURORA_LAVENDER)
 
     if f <= 21:
-        grow = ((f + 1) / 6.0) if f <= 5 else 1.0
+        grow = ((f + 1) / 5.0) if f <= 4 else 1.0
 
-        # 2. Flanking Basal Glacier Crystal Shards (x = 10..42, y = 22..45)
-        basal_shards = [
-            (-8.2, -4.2, 15.0, 3.0),
-            (-4.8, -3.8, 22.0, 4.0),
-            (+4.8, +3.8, 22.0, 4.0),
-            (+8.2, +4.2, 15.0, 3.0),
+        # 2. 6 Angled Flanking Multi-Faceted Crystal Spires (Outer, Mid, Inner pairs)
+        # (bx_off, tilt_dx, max_sh, base_w, tint_mode)
+        flanking_spires = [
+            (-11.0, -4.5, 14.0, 2.2, 0),
+            (+11.0, +4.5, 14.0, 2.2, 1),
+            (-7.5, -3.5, 22.0, 2.8, 1),
+            (+7.5, +3.5, 22.0, 2.8, 0),
+            (-3.8, -2.2, 29.0, 3.0, 0),
+            (+3.8, +2.2, 29.0, 3.0, 1),
         ]
-        for bx_off, tilt_dx, max_sh, base_w in basal_shards:
+        for bx_off, tilt_dx, max_sh, base_w, tint_mode in flanking_spires:
             sh = int(round(max_sh * grow))
             for h in range(sh + 1):
                 u_h = h / float(max(1, sh))
                 sy = gy - h
                 scx = cx + bx_off + tilt_dx * u_h
-                hw = max(0, int(round(base_w * (1.0 - u_h * 0.88))))
+                # Stepped diamond taper: widens slightly at 30% height, then tapers to a 1px needle tip
+                taper = (0.75 + 0.25 * (u_h / 0.3)) if u_h < 0.3 else (1.0 - (u_h - 0.3) / 0.7)
+                hw = max(0, int(round(base_w * taper)))
                 for dx in range(-hw - 1, hw + 2):
-                    wx = max(10.0, min(42.0, scx + dx))
-                    if abs(dx) == hw + 1:
-                        col = C_FROST_AURA
-                    elif abs(dx) == hw:
-                        col = C_DIAMOND_WHITE if (dx < 0 or u_h > 0.5) else C_SAPPHIRE_BRIGHT
+                    wx = max(7.0, min(45.0, scx + dx))
+                    ad = abs(dx)
+                    chevron = (h + ad * 2) % 6 == 0
+                    if ad == hw + 1:
+                        if h % 2 == 0:
+                            put(px, wx, sy, C_FROST_AURA if tint_mode == 0 else C_AURORA_AURA)
+                        continue
+                    elif ad == hw:
+                        # Crisp dark-sapphire outer crystal edge on shadow side, diamond-white on lit side
+                        col = C_DIAMOND_WHITE if (dx < 0 or u_h > 0.72) else C_SAPPHIRE_DARK
                     elif dx == 0:
-                        col = C_WHITE if u_h > 0.35 else C_FROST_LIGHT
+                        col = C_WHITE if (u_h > 0.45 or chevron) else C_FROST_LIGHT
+                    elif chevron:
+                        col = C_WHITE if dx < 0 else C_FROST_BRIGHT
                     elif dx < 0:
-                        col = C_FROST_BRIGHT if dx == -1 else C_FROST_CYAN
+                        col = C_FROST_BRIGHT if tint_mode == 0 else C_AURORA_LAVENDER
                     else:
-                        col = C_AURORA_LAVENDER if dx == 1 else C_SAPPHIRE_MID
+                        col = C_GLACIER_MID if tint_mode == 0 else C_AURORA_VIOLET
                     put(px, wx, sy, col)
+            # Crisp white pixel tip glint on each secondary spire
+            tip_x = max(7.0, min(45.0, cx + bx_off + tilt_dx))
+            put(px, tip_x, max(6, gy - sh - 1), C_WHITE)
 
-        # 3. Towering Central Multi-Faceted Borealis Glacier Obelisk Spire (y = 6..45)
-        main_h = int(round(38.0 * grow))
+        # 3. Central Jagged Diamond-Cut Sovereign Spire (y = 7..45) with stepped internal facets
+        main_h = int(round(37.0 * grow))
         for h in range(main_h + 1):
             u_h = h / float(max(1, main_h))
             sy = max(6, gy - h)
-            profile = (0.78 + 0.22 * (u_h / 0.25)) if u_h < 0.25 else (1.0 - (u_h - 0.25) / 0.75)
-            hw = max(0, int(round(7.2 * profile)))
+            # Multi-tier stepped crystal silhouette (not a flat pentagon!)
+            if u_h < 0.28:
+                profile = 0.65 + 0.35 * (u_h / 0.28)
+            elif u_h < 0.58:
+                profile = 1.0 - 0.28 * ((u_h - 0.28) / 0.30) + (0.08 if (h % 5 == 0) else 0.0)
+            else:
+                profile = 0.72 * (1.0 - (u_h - 0.58) / 0.42)
+            hw = max(0, int(round(5.2 * profile)))
             for dx in range(-hw - 1, hw + 2):
-                diag_seam = (h - abs(dx) * 2) % 7 == 0
-                if abs(dx) == hw + 1:
-                    col = C_FROST_AURA if dx <= 0 else C_AURORA_AURA
-                elif abs(dx) == hw:
-                    col = C_WHITE if (dx < 0 or u_h > 0.5) else C_FROST_BRIGHT
+                ad = abs(dx)
+                chevron_up = (h - ad * 2) % 6 == 0
+                chevron_dn = (h + ad * 2) % 7 == 0
+                if ad == hw + 1:
+                    if h % 3 == 0:
+                        put(px, cx + dx, sy, C_FROST_AURA)
+                    continue
+                elif ad == hw:
+                    col = C_WHITE if (dx < 0 and u_h > 0.35) else (C_FROST_BRIGHT if dx < 0 else C_SAPPHIRE_DARK)
                 elif dx == 0:
-                    col = C_WHITE if (h + f) % 3 != 0 else C_DIAMOND_WHITE
-                elif diag_seam:
-                    col = C_DIAMOND_WHITE if dx < 0 else C_SAPPHIRE_BRIGHT
+                    col = C_WHITE if (h + f) % 4 != 0 else C_FROST_BRIGHT
+                elif chevron_up:
+                    col = C_WHITE if dx < 0 else C_DIAMOND_WHITE
+                elif chevron_dn:
+                    col = C_SAPPHIRE_BRIGHT if dx > 0 else C_FROST_CYAN
+                elif ad == 1 and 0.25 < u_h < 0.68 and (h + f) % 3 == 0:
+                    # Shimmering internal Borealis prism core
+                    col = C_AURORA_LAVENDER if dx > 0 else C_DIAMOND_WHITE
                 elif dx < 0:
-                    col = C_FROST_LIGHT if dx >= -2 else C_FROST_CYAN
+                    col = C_FROST_LIGHT if ad == 1 else C_FROST_CYAN
                 else:
-                    col = C_AURORA_LAVENDER if dx <= 2 else (C_GLACIER_MID if dx <= 4 else C_SAPPHIRE_MID)
+                    col = C_AURORA_VIOLET if (h % 4 == 0 and ad == 2) else (C_GLACIER_MID if ad <= 2 else C_SAPPHIRE_MID)
                 put(px, cx + dx, sy, col)
+
         put(px, cx, max(6, gy - main_h - 1), C_WHITE)
 
-        if f >= 5:
+        # 4. Orbiting 4x4 Pixel Frost Diamonds & Apex Snowflake Star
+        if f >= 4:
             draw_8pt_snowflake_starcross(
                 px,
                 cx,
@@ -391,14 +424,26 @@ def build_row2_glacial_permafrost_spire(f):
                 col_diag=C_FROST_CYAN,
                 rot=phase,
             )
+            for orb_i in range(3):
+                oa = phase + orb_i * (math.pi * 2.0 / 3.0)
+                ox = cx + math.cos(oa) * 12.5
+                oy = gy - 18.0 + math.sin(oa) * 5.0
+                draw_frost_diamond(
+                    px,
+                    ox,
+                    oy,
+                    1,
+                    C_WHITE,
+                    C_FROST_CYAN if orb_i % 2 == 0 else C_AURORA_LAVENDER,
+                )
     else:
-        # F22..F29: Explosive Crystalline Glacier Shatter into 8-Point Snowflake Stars & Faceted Shards
+        # F22..F29: Explosive Crystalline Glacier Shatter into 12 Snowflake Stars & Faceted Shards
         u = (f - 22) / 7.0
-        for shard_i in range(10):
-            ang = -math.pi * 0.92 + (shard_i / 9.0) * math.pi * 0.84
-            base_y = gy - 7 - (shard_i % 4) * 7
-            dist = 3.0 + u * 13.0
-            sx = max(11.0, min(41.0, cx + math.cos(ang) * dist))
+        for shard_i in range(12):
+            ang = -math.pi * 0.94 + (shard_i / 11.0) * math.pi * 0.88
+            base_y = gy - 8 - (shard_i % 4) * 7
+            dist = 3.5 + u * 13.5
+            sx = max(9.0, min(43.0, cx + math.cos(ang) * dist))
             sy = max(8.0, min(44.0, base_y + math.sin(ang) * dist * 0.55 + u * u * 4.5))
             if shard_i % 2 == 0:
                 draw_8pt_snowflake_starcross(
@@ -417,7 +462,7 @@ def build_row2_glacial_permafrost_spire(f):
                     px,
                     sx,
                     sy,
-                    2,
+                    2 if u < 0.65 else 1,
                     C_DIAMOND_WHITE,
                     C_FROST_CYAN if shard_i % 3 == 0 else C_AURORA_VIOLET,
                 )

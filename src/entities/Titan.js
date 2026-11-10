@@ -1,5 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps41';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps41';
+import { Fighter } from './Fighter.js?v=30fps52';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps52';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
+import { FORGE_EFFECT_REGISTRY } from '../engine/shaders/forgeShaders.js?v=30fps52';
 
 export class Titan extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -41,6 +43,14 @@ export class Titan extends Fighter {
     this.activeGroundQuakes = [];
     // 4. Giant Titan Scale during Ragnarok Ultimate
     this.giantScale = 1.0;
+
+    // Multi-Layer 3-Pass Albedo/Emissive Forge Pixel-Shader Engine
+    this.fx = new ArcaneShaderFX(FORGE_EFFECT_REGISTRY, {
+      pixelScale: 3,
+      viewW: 440,
+      viewH: 220
+    });
+    this.haloFxInstance = null;
   }
 
   setState(newState) {
@@ -63,6 +73,24 @@ export class Titan extends Fighter {
   update(dt, enemy, game) {
     if (this.forgeArmorTimer > 0) {
       this.forgeArmorTimer = Math.max(0, this.forgeArmorTimer - dt);
+    }
+
+    if (this.fx) {
+      if (!this.isDead && !this.haloFxInstance) {
+        this.haloFxInstance = this.fx.spawn('forgeMagmaMantle', {
+          follow: this,
+          facing: this.facing,
+          layer: 'back'
+        });
+      }
+      if (this.haloFxInstance) {
+        this.haloFxInstance.facing = this.facing;
+        if (this.isDead) {
+          this.haloFxInstance.dead = true;
+          this.haloFxInstance = null;
+        }
+      }
+      this.fx.update(dt);
     }
 
     // Update Physical Runic Forge Anvil (sits on floor, then flies horizontally when smashed!)
@@ -234,6 +262,15 @@ export class Titan extends Fighter {
         maxAge: 0.42,
         color: '#f59e0b'
       });
+      if (this.fx) {
+        this.fx.spawn('tectonicCraterShockwave', {
+          x: slamX,
+          y: this.groundY - 8,
+          facing: this.facing,
+          maxRx: 108,
+          layer: 'back'
+        });
+      }
       game.vfx.spawnShockwave(slamX, this.groundY - 6, 195, '#f59e0b', 0.36, true);
       game.vfx.spawnBurst(slamX, this.groundY - 24, 24, '#f97316', 250, {
         upBias: 110,
@@ -327,6 +364,15 @@ export class Titan extends Fighter {
           maxAge: 0.44,
           color: '#10b981'
         });
+        if (this.fx) {
+          this.fx.spawn('tectonicCraterShockwave', {
+            x: slamX,
+            y: this.groundY - 8,
+            facing: this.facing,
+            maxRx: 120,
+            layer: 'back'
+          });
+        }
         game.vfx.spawnShockwave(slamX, this.groundY - 4, 210, '#f59e0b', 0.36, true);
         game.vfx.spawnDecal(slamX, 180, 'fissure', '#f59e0b', 4.5);
         game.vfx.spawnBurst(slamX, this.groundY - 18, 22, '#fbbf24', 250, {
@@ -391,6 +437,24 @@ export class Titan extends Fighter {
         color: step === 2 ? '#10b981' : '#f59e0b'
       });
 
+      if (this.fx) {
+        this.fx.spawn('worldBreakerAnvilCleave', {
+          x: this.x + this.facing * 64,
+          y: this.y - 86,
+          facing: this.facing,
+          radius: step === 2 ? 92 : 78,
+          thickness: step === 2 ? 22 : 18,
+          layer: 'front'
+        });
+        this.fx.spawn('tectonicCraterShockwave', {
+          x: slamX,
+          y: slamY,
+          facing: this.facing,
+          maxRx: step === 2 ? 128 : 98,
+          layer: 'back'
+        });
+      }
+
       const sA = this.facing === 1 ? -1.85 : Math.PI - 1.25;
       const eA = this.facing === 1 ? 1.25 : Math.PI + 1.85;
       game.vfx.spawnSlash(this.x + this.facing * 64, this.y - 86, 148, sA, eA, '#f59e0b', 0.30);
@@ -437,6 +501,15 @@ export class Titan extends Fighter {
         state: 'planted',
         hitTargets: new Set()
       };
+      if (this.fx) {
+        this.fx.spawn('tectonicCraterShockwave', {
+          x: anvilX,
+          y: this.groundY - 8,
+          facing: this.facing,
+          maxRx: 92,
+          layer: 'back'
+        });
+      }
       if (game.audio) game.audio.play('skill_cast', anvilX);
       game.renderer.triggerShake(7, 0.14);
       game.vfx.spawnShockwave(anvilX, this.groundY - 8, 125, '#10b981', 0.28, true);
@@ -453,6 +526,16 @@ export class Titan extends Fighter {
       const slamX = this.x + this.facing * 128;
       if (game.audio) game.audio.play('thunder_slam', slamX);
       game.renderer.triggerShake(11, 0.22);
+      if (this.fx) {
+        this.fx.spawn('worldBreakerAnvilCleave', {
+          x: this.x + this.facing * 68,
+          y: this.y - 88,
+          facing: this.facing,
+          radius: 90,
+          thickness: 22,
+          layer: 'front'
+        });
+      }
       const sA = this.facing === 1 ? -1.6 : Math.PI - 1.2;
       const eA = this.facing === 1 ? 1.2 : Math.PI + 1.6;
       game.vfx.spawnSlash(this.x + this.facing * 68, this.y - 88, 152, sA, eA, '#fef08a', 0.32);
@@ -512,6 +595,14 @@ export class Titan extends Fighter {
         maxAge: 0.52,
         color: waveIdx % 2 === 0 ? '#f59e0b' : '#10b981'
       });
+      if (this.fx) {
+        this.fx.spawn('ragnarokWorldForgeWave', {
+          x: slamX,
+          y: this.groundY - 8,
+          facing: this.facing,
+          layer: 'front'
+        });
+      }
       game.vfx.spawnDecal(slamX, 220, 'fissure', '#f59e0b', 5.5);
       game.vfx.spawnShockwave(slamX, this.groundY - 6, 260, '#fbbf24', 0.38, true);
       game.vfx.spawnBurst(slamX, this.groundY - 36, 28, '#fef08a', 310, {
@@ -704,6 +795,10 @@ export class Titan extends Fighter {
   }
 
   drawForegroundOverlay(ctx) {
+    if (this.fx && !this.isDead) {
+      this.fx.renderLayer(ctx, 'back', this.x + this.facing * 56, this.groundY - 64);
+    }
+
     const vfxSheet = PixelForge.initAssets().titan?.vfx;
     const hasVfx = !!(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
 
@@ -791,6 +886,12 @@ export class Titan extends Fighter {
         ctx.fill();
       }
       ctx.restore();
+    }
+  }
+
+  drawUltimateForeground(ctx, renderer = null) {
+    if (this.fx && !this.isDead) {
+      this.fx.renderLayer(ctx, 'front', this.x + this.facing * 72, this.groundY - 78);
     }
   }
 

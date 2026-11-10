@@ -1,13 +1,14 @@
 import { Fighter } from './Fighter.js?v=30fps41';
 import { PixelForge } from '../engine/PixelForge.js?v=30fps41';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
+import { ABYSSAL_EFFECT_REGISTRY } from '../engine/shaders/abyssalShaders.js?v=30fps52';
 
 export class Reaper extends Fighter {
   constructor(x, groundY, facing = 1) {
+    const opts = typeof x === 'object' && x !== null ? x : { x, groundY, facing };
     super({
-      name: 'Malakor',
-      x,
-      groundY,
-      facing,
+      ...opts,
+      name: opts.name || 'Malakor',
       maxHp: 1235,
       attackRange: 182,
       moveSpeed: 188,
@@ -54,9 +55,25 @@ export class Reaper extends Fighter {
     this.crouchDuration = 0.86;
     this.isCrouching = false;
     this.isFlipVault = false;
-    this.flipStartX = x;
-    this.flipTargetX = x;
+    this.flipStartX = this.x;
+    this.flipTargetX = this.x;
     this.flipAngle = 0;
+
+    this.fx = new ArcaneShaderFX(ABYSSAL_EFFECT_REGISTRY, {
+      pixelScale: 3,
+      viewW: 440,
+      viewH: 220
+    });
+  }
+
+  setState(newState) {
+    super.setState(newState);
+    if (newState !== 'CROUCH') {
+      this.fx?.stopByKey('abyssalShadowPool');
+    }
+    if (newState === 'DEATH') {
+      this.fx?.clear();
+    }
   }
 
   getEffectiveAttackRange() {
@@ -90,6 +107,17 @@ export class Reaper extends Fighter {
         life: -i * 0.045,
         maxLife: 0.48 + Math.random() * 0.14,
         color: i % 2 === 0 ? '#c084fc' : '#f43f5e'
+      });
+    }
+    if (this.fx) {
+      this.fx.spawn('soulSiphonComet', fromX, fromY, {
+        light: 1.26,
+        extra: {
+          dx: this.x - fromX,
+          dy: this.y - 96 - fromY,
+          arcH: -60,
+          isCrimson: count % 2 === 0
+        }
       });
     }
     return this.hp - prevHp;
@@ -192,6 +220,13 @@ export class Reaper extends Fighter {
     this.submergeDir = enemy ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
     this.facing = this.submergeDir;
     this.vx = 0;
+    this.fx?.spawn('abyssalShadowPool', this.x, this.groundY, {
+      follow: this,
+      offsetX: 0,
+      offsetY: 0,
+      useGroundY: true,
+      light: 1.24
+    });
     if (game && game.audio) game.audio.play('soul_drain', this.x);
     if (game && game.vfx) {
       game.vfx.spawnShockwave(this.x, this.groundY - 2, 82, '#c084fc', 0.28, true);
@@ -650,6 +685,7 @@ export class Reaper extends Fighter {
         });
       }
     }
+    this.fx?.update(dt);
     super.update(dt, enemy, game);
   }
 
@@ -692,6 +728,11 @@ export class Reaper extends Fighter {
           if (game.audio) game.audio.play('scythe_reap', this.x);
         }
 
+        this.fx?.spawn('reaperScytheCleaveArc', cx, cy, {
+          flip: this.facing < 0,
+          light: mode === 2 ? 1.38 : 1.22,
+          extra: { radiusWorld: 132, isCrimson: mode === 2, isUppercut: mode === 1 }
+        });
         game.vfx.spawnSlash(cx, cy, 128, startA, endA, '#9333ea', 0.30);
         game.vfx.spawnSlash(cx, cy, 104, startA, endA, '#c084fc', 0.24);
         game.vfx.spawnGlyphBurst(cx, cy, 5, 'abyssal');
@@ -742,6 +783,15 @@ export class Reaper extends Fighter {
         const targetY = enemy ? enemy.y - 96 : this.y - 96;
         this.chainClaw = { targetX, targetY, phase: 'drag' };
 
+        this.fx?.spawn('spectralChainTether', this.x + this.facing * 44, this.y - 94, {
+          light: 1.28,
+          extra: {
+            dx: targetX - (this.x + this.facing * 44),
+            dy: targetY - (this.y - 94),
+            isCrimson: false,
+            customDuration: 0.34
+          }
+        });
         game.vfx.spawnGlyphBurst(targetX, targetY, 8, 'abyssal');
 
         if (enemy && !enemy.isDead) {
@@ -774,6 +824,11 @@ export class Reaper extends Fighter {
       const reapX = this.x + this.facing * 56;
       const startA = this.facing === 1 ? -1.85 : Math.PI - 1.35;
       const endA = this.facing === 1 ? 1.35 : Math.PI + 1.85;
+      this.fx?.spawn('reaperScytheCleaveArc', reapX, this.y - 98, {
+        flip: this.facing < 0,
+        light: 1.36,
+        extra: { radiusWorld: 146, isCrimson: true, isUppercut: false }
+      });
       game.vfx.spawnSlash(reapX, this.y - 98, 142, startA, endA, '#c084fc', 0.34);
       game.vfx.spawnSlash(reapX, this.y - 98, 114, startA, endA, '#f43f5e', 0.28);
       game.vfx.spawnGlyphBurst(reapX, this.y - 98, 9, 'abyssal');
@@ -882,6 +937,9 @@ export class Reaper extends Fighter {
         eclipsePhase: 0
       };
 
+      this.fx?.spawn('bloodMoonEclipseDomain', targetX, this.groundY, {
+        light: 1.42
+      });
       game.vfx.spawnShockwave(targetX, this.groundY, 210, '#f43f5e', 0.42, true);
       game.vfx.spawnShockwave(targetX, this.groundY, 155, '#c084fc', 0.36, true);
       game.vfx.spawnDamageText(targetX, this.groundY - 268, 0, false, '★ BLOOD-MOON ECLIPSE! ★', '#f43f5e');
@@ -1601,6 +1659,9 @@ export class Reaper extends Fighter {
    * Background skill & Ultimate pass
    */
   drawForegroundOverlay(ctx, renderer = null) {
+    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    this.fx?.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
+
     this.drawTombstones(ctx);
     this.drawDeathAvatar(ctx, renderer);
     this.drawWraithEchoes(ctx);
@@ -1677,6 +1738,9 @@ export class Reaper extends Fighter {
     if (this.state === 'ULTIMATE' || this.deathAvatar) {
       this.drawSoulWisps(ctx, renderer);
     }
+
+    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    this.fx?.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
   }
 
   draw(ctx, isReflection = false, renderer = null) {

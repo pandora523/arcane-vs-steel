@@ -1,12 +1,12 @@
 import { Fighter } from './Fighter.js?v=30fps41';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps41';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps46';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps52';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
 import {
   SERAPHIC_EFFECT_REGISTRY,
   SERAPHIC_GOLD_PALETTE,
   SERAPHIC_GRACE_PALETTE,
   SERAPHIC_STAINED_PALETTE
-} from '../engine/shaders/seraphicShaders.js?v=30fps48';
+} from '../engine/shaders/seraphicShaders.js?v=30fps52';
 
 /**
  * Seraphina (`priestess`) — High Priestess & Sanctuary Archangel Weaver.
@@ -1080,7 +1080,78 @@ export class Priestess extends Fighter {
   }
 
   drawUltimateForeground(ctx, renderer = null) {
-    // Live 120Hz `ArcaneShaderFX` "front" layer across ALL states (Front Sanctuary Seal, Benediction Rose Ward, Ophanim Chakram Wheel, Scepter Cones & Sanctum Pillars)
+    if (this.state === 'ULTIMATE') {
+      const u = Math.min(1, this.stateTimer / (this.ultDuration || 1.52));
+      const env = Math.min(1, Math.sin(u * Math.PI) * 1.75);
+      if (env > 0.02) {
+        const sprites = PixelForge.initAssets().priestess;
+        const vfxSheet = sprites && sprites.vfx;
+        const hasVfx = !!(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
+
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.translate(Math.round(this.x / 4) * 4, Math.round((this.y - 120) / 4) * 4);
+        ctx.scale(this.facing, 1);
+
+        const orbitR = 136 * (0.88 + 0.12 * env);
+
+        // 1. Spinning Double-Ringed Golden Ophanim Wheel around Seraphina (Stepped 4x4 Pixel-Art Ring!)
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const ringRot = this.haloPhase * 1.4;
+        for (let deg = 0; deg < 360; deg += 8) {
+          const a = (deg * Math.PI) / 180 + ringRot;
+          const rx1 = Math.round((Math.cos(a) * orbitR) / 4) * 4;
+          const ry1 = Math.round((Math.sin(a) * orbitR) / 4) * 4;
+          ctx.globalAlpha = env * 0.72;
+          ctx.fillStyle = deg % 24 === 0 ? '#ffffff' : '#fde047';
+          ctx.fillRect(rx1 - 2, ry1 - 2, 4, 4);
+
+          if (deg % 16 === 0) {
+            const rx2 = Math.round((Math.cos(-a) * orbitR * 0.82) / 4) * 4;
+            const ry2 = Math.round((Math.sin(-a) * orbitR * 0.82) / 4) * 4;
+            ctx.globalAlpha = env * 0.56;
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(rx2 - 2, ry2 - 2, 4, 4);
+          }
+        }
+        ctx.restore();
+
+        // 2. 6 Orbiting 30fps Pixel-Art Sacred Star Chakrams (`Row 0: holy_light` of `priestess_vfx.png`)
+        for (let i = 0; i < 6; i++) {
+          const a = -this.haloPhase * 2.4 + (i * Math.PI * 2) / 6;
+          const ox = Math.round((Math.cos(a) * orbitR) / 4) * 4;
+          const oy = Math.round((Math.sin(a) * orbitR) / 4) * 4;
+
+          ctx.save();
+          ctx.translate(ox, oy);
+
+          if (renderer && renderer.glowGold) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = env * 0.42;
+            ctx.drawImage(renderer.glowGold, -42, -42, 84, 84);
+          }
+
+          if (hasVfx) {
+            const starCol = (Math.floor(this.stateTimer * 30) + i * 5) % 30;
+            const sz = 108;
+            const half = -54;
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = env * 0.34;
+            ctx.drawImage(vfxSheet, starCol * 208, 0, 208, 208, half - 4, half - 4, sz + 8, sz + 8);
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = env * 0.96;
+            ctx.drawImage(vfxSheet, starCol * 208, 0, 208, 208, half, half, sz, sz);
+          }
+
+          ctx.restore();
+        }
+
+        ctx.restore();
+      }
+    }
+
+    // 3. Live 120Hz `ArcaneShaderFX` "front" layer across ALL states
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
   }
@@ -1118,7 +1189,31 @@ export class Priestess extends Fighter {
     ctx.translate(Math.round(this.x), Math.round(this.y + groundPlantOffset));
     ctx.scale(scaleDir, 1);
 
+    if (isReflection) {
+      this.drawSeraphimVFX(ctx, sprites, true, renderer);
+    }
+
     PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.haloPhase, isReflection, renderer);
+
+    // Crisp 4x4 Pixel-Art Sanctuary Rose-Gold Benediction Ward during CROUCH parry window (t < 0.42s)
+    if (!isReflection && this.state === 'CROUCH' && this.stateTimer < 0.42) {
+      const wardEnv = Math.sin((this.stateTimer / 0.42) * Math.PI);
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, wardEnv * 1.15);
+      for (let i = -8; i <= 8; i++) {
+        const u = i / 8;
+        const wx = Math.round((52 + Math.cos(u * 1.25) * 14) / 4) * 4;
+        const wy = Math.round((-88 + u * 48) / 4) * 4;
+        ctx.fillStyle = Math.abs(i) % 3 === 0 ? '#38bdf8' : '#f59e0b';
+        ctx.fillRect(wx - 2, wy - 2, 8, 4);
+        if (Math.abs(i) <= 6) {
+          ctx.fillStyle = Math.abs(i) <= 2 ? '#ffffff' : '#fde047';
+          ctx.fillRect(wx + 2, wy - 2, 4, 4);
+        }
+      }
+      ctx.restore();
+    }
 
     ctx.restore();
   }

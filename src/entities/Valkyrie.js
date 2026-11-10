@@ -1,11 +1,11 @@
 import { Fighter } from './Fighter.js?v=30fps41';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps41';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps46';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps52';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps47';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps52';
 
 /**
  * Freyja (`valkyrie`) — Dragon-Lance Valkyrie & Valhalla Sky-Sovereign.
@@ -1482,12 +1482,108 @@ export class Valkyrie extends Fighter {
     ctx.restore();
   }
 
+  drawPixelValhallaSeal4x4(ctx) {
+    if (this.state !== 'ULTIMATE') return;
+    const snap4 = (v) => Math.round(v / 4) * 4;
+    const cx = this._ultTargetX || this.x;
+    const gy = this.groundY - 4;
+    const phase = this.stateTimer * 7.5;
+    const rx = 148;
+    const ry = 18;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let i = 0; i < 40; i++) {
+      const ang = (i / 40) * Math.PI * 2 + phase;
+      const px = snap4(cx + Math.cos(ang) * rx);
+      const py = snap4(gy + Math.sin(ang) * ry);
+      ctx.globalAlpha = 0.76;
+      ctx.fillStyle = i % 4 === 0 ? '#ffffff' : i % 2 === 0 ? '#fbbf24' : '#f43f5e';
+      ctx.fillRect(px - 2, py - 2, 4, 4);
+    }
+    for (let d = 0; d < 8; d++) {
+      const da = (d / 8) * Math.PI * 2 - phase * 1.15;
+      const dx = snap4(cx + Math.cos(da) * rx);
+      const dy = snap4(gy + Math.sin(da) * ry);
+      ctx.globalAlpha = 0.92;
+      ctx.fillStyle = '#f43f5e';
+      ctx.fillRect(dx - 4, dy - 4, 8, 8);
+      ctx.fillStyle = '#fef9c3';
+      ctx.fillRect(dx - 2, dy - 2, 4, 4);
+    }
+    ctx.restore();
+  }
+
+  drawPixelValkyrieMachCone4x4(ctx) {
+    const isSkillThrust = this.state === 'SKILL' && this.stateTimer >= 0.54 && this.stateTimer < 0.68;
+    const isUltSweep =
+      this.state === 'ULTIMATE' &&
+      ((this.stateTimer >= 0.32 && this.stateTimer < 0.66) ||
+        (this.stateTimer >= 1.10 && this.stateTimer < 1.44));
+    if (!isSkillThrust && !isUltSweep) return;
+
+    const isSovereignGlide = this.state === 'ULTIMATE' && this.stateTimer >= 1.10;
+    const snap4 = (v) => Math.round(v / 4) * 4;
+    const baseAngle = this.divePitchRad || 0;
+    const ux = Math.cos(baseAngle) * this.facing;
+    const uy = Math.sin(baseAngle);
+    const nx = -uy;
+    const ny = ux;
+
+    const cx = this.x;
+    const cy = this.y - 82;
+    const tipX = cx + ux * 68;
+    const tipY = cy + uy * 68;
+    const phase = this.stateTimer * 32.0;
+
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+
+    for (const side of [-1, 1]) {
+      for (let step = 0; step <= 16; step++) {
+        const backDist = step * 6.5;
+        const spread = 4 + step * (isSovereignGlide ? 2.4 : 2.0);
+        const wx = snap4(tipX - ux * backDist + nx * side * spread);
+        const wy = snap4(tipY - uy * backDist + ny * side * spread);
+
+        ctx.globalAlpha = Math.max(0.14, 0.88 - step * 0.045);
+        ctx.fillStyle =
+          step <= 3
+            ? '#ffffff'
+            : step % 2 === 0
+              ? '#fbbf24'
+              : isSovereignGlide
+                ? '#fda4af'
+                : '#f43f5e';
+        ctx.fillRect(wx - 2, wy - 2, 4, 4);
+      }
+    }
+
+    for (let h = 0; h <= 16; h++) {
+      const dist = h * 6.5;
+      const wave = Math.sin(h * 0.65 - phase) * (8 + h * 0.5);
+      const hx = snap4(tipX - ux * dist + nx * wave);
+      const hy = snap4(tipY - uy * dist + ny * wave);
+      ctx.globalAlpha = Math.max(0.14, 0.80 - h * 0.042);
+      ctx.fillStyle = h % 3 === 0 ? '#fef9c3' : h % 2 === 0 ? '#fbbf24' : '#f43f5e';
+      ctx.fillRect(hx - 2, hy - 2, 4, 4);
+    }
+
+    ctx.restore();
+  }
+
   drawForegroundOverlay(ctx, renderer = null) {
+    // 0. Live 120Hz `ArcaneShaderFX` "back" layer (2.5D Light-Wings, Slipstreams, Back Seal/Obelisk Halves)
+    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
+
     const sprites = PixelForge.initAssets().valkyrie;
     const vfxSheet = sprites?.vfx;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
+
+    this.drawPixelValhallaSeal4x4(ctx);
 
     // 1. Colossal Bahamut / Valhalla Sovereign Crest (`Row 3` of `valkyrie_vfx.png`) behind Freyja
     if (this.bahamutAvatar && vfxSheet?.complete) {
@@ -1550,19 +1646,50 @@ export class Valkyrie extends Fighter {
       }
     }
 
-    ctx.restore();
+    // 4. 4x4 Pixel-Art Gungnir Light-Javelins & Trails (`activeSkySpears`)
+    if (this.activeSkySpears.length > 0) {
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      for (const sp of this.activeSkySpears) {
+        const ux = Math.cos(sp.angle);
+        const uy = Math.sin(sp.angle);
+        const nx = -uy;
+        const ny = ux;
+        const jScale = sp.isUlt ? 1.15 : 1.0;
 
-    // 4. Live 120Hz `ArcaneShaderFX` "back" layer (2.5D Light-Wings, Slipstreams, Back Seal/Obelisk Halves)
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
-    this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
+        const putJavelinPx = (localAlong, localPerp, col, sz = 4, alpha = 0.96, additive = false) => {
+          const wx = sp.x + (ux * localAlong + nx * localPerp) * jScale;
+          const wy = sp.y + (uy * localAlong + ny * localPerp) * jScale;
+          const px = Math.round(wx / 4) * 4;
+          const py = Math.round(wy / 4) * 4;
+          ctx.globalCompositeOperation = additive ? 'lighter' : 'source-over';
+          ctx.globalAlpha = alpha;
+          ctx.fillStyle = col;
+          ctx.fillRect(px - sz * 0.5, py - sz * 0.5, sz, sz);
+        };
+
+        for (let d = -40; d <= 8; d += 4) {
+          putJavelinPx(d, 0, d < -18 ? '#e11d48' : '#fbbf24', 4, 0.95, false);
+        }
+        for (const sign of [-1, 1]) {
+          putJavelinPx(4, sign * 4, '#fbbf24', 4, 0.98, false);
+          putJavelinPx(0, sign * 8, '#fbbf24', 4, 0.98, false);
+          putJavelinPx(-4, sign * 12, '#f43f5e', 4, 0.95, false);
+        }
+        for (let d = 8; d <= 36; d += 4) {
+          putJavelinPx(d, 0, '#ffffff', 4, 1.0, false);
+        }
+      }
+      ctx.restore();
+    }
+
+    ctx.restore();
   }
 
   drawUltimateForeground(ctx, renderer = null) {
-    // 1. Live 120Hz `ArcaneShaderFX` "front" layer (Spear Mach Cones, Bezier Gungnir Javelins & Front 2.5D Obelisks)
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
-    this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
+    this.drawPixelValkyrieMachCone4x4(ctx);
 
-    // 2. Foreground 30fps `valkyrie_vfx.png` cell bursts
+    // 1. Foreground 30fps `valkyrie_vfx.png` cell bursts
     const sprites = PixelForge.initAssets().valkyrie;
     const vfxSheet = sprites?.vfx;
     if (this.activeVfxAnims.length > 0 && vfxSheet?.complete) {
@@ -1588,6 +1715,10 @@ export class Valkyrie extends Fighter {
         );
       }
     }
+
+    // 2. Live 120Hz `ArcaneShaderFX` "front" layer (Spear Mach Cones, Bezier Gungnir Javelins & Front 2.5D Obelisks)
+    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
   }
 
   draw(ctx, isReflection = false, renderer = null) {

@@ -1,11 +1,11 @@
 import { Fighter } from './Fighter.js?v=30fps41';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps41';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps46';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps52';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps52';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps46';
+} from '../engine/shaders/cyberShaders.js?v=30fps52';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 

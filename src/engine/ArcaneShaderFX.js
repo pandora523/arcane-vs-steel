@@ -260,6 +260,75 @@ export function resolveSurfaceToRGBA(surface, outRgba, emissiveGain = 1.08) {
   return outRgba;
 }
 
+/**
+ * Resolve `surface` into TWO separate multi-layer RGBA buffers:
+ *  1. `outAlbedoRgba`: Crisp palette-indexed pixel art (`source-over`)
+ *  2. `outEmissiveRgba`: Pure additive HDR bloom + specular core (`lighter`)
+ */
+export function resolveSurfaceToSplitRGBA(surface, outAlbedoRgba, outEmissiveRgba, emissiveGain = 1.18) {
+  const total = surface.width * surface.height;
+  const alb = surface.albedo;
+  const emi = surface.emissive;
+  for (let i = 0; i < total; i++) {
+    const c = alb[i];
+    const l = emi[i] & 0xffffff;
+    const o = i * 4;
+
+    if (!c) {
+      outAlbedoRgba[o] = 0;
+      outAlbedoRgba[o + 1] = 0;
+      outAlbedoRgba[o + 2] = 0;
+      outAlbedoRgba[o + 3] = 0;
+    } else {
+      outAlbedoRgba[o] = c & 255;
+      outAlbedoRgba[o + 1] = (c >>> 8) & 255;
+      outAlbedoRgba[o + 2] = (c >>> 16) & 255;
+      outAlbedoRgba[o + 3] = c >>> 24;
+    }
+
+    if (!l && !c) {
+      outEmissiveRgba[o] = 0;
+      outEmissiveRgba[o + 1] = 0;
+      outEmissiveRgba[o + 2] = 0;
+      outEmissiveRgba[o + 3] = 0;
+      continue;
+    }
+
+    let lr = (l & 255) * emissiveGain;
+    let lg = ((l >>> 8) & 255) * emissiveGain;
+    let lb = ((l >>> 16) & 255) * emissiveGain;
+
+    if (c) {
+      const cr = c & 255;
+      const cg = (c >>> 8) & 255;
+      const cb = (c >>> 16) & 255;
+      const ca = (c >>> 24) / 255;
+      const peak = Math.max(cr, cg, cb);
+      if (peak > 150) {
+        const boost = ((peak - 150) / 105) * 0.42 * ca;
+        lr += cr * boost;
+        lg += cg * boost;
+        lb += cb * boost;
+      }
+    }
+
+    const maxL = Math.max(lr, lg, lb);
+    if (maxL < 2) {
+      outEmissiveRgba[o] = 0;
+      outEmissiveRgba[o + 1] = 0;
+      outEmissiveRgba[o + 2] = 0;
+      outEmissiveRgba[o + 3] = 0;
+    } else {
+      const aEmi = Math.min(255, Math.round(maxL));
+      const scale = 255 / Math.max(1, aEmi);
+      outEmissiveRgba[o] = Math.min(255, Math.round(lr * scale));
+      outEmissiveRgba[o + 1] = Math.min(255, Math.round(lg * scale));
+      outEmissiveRgba[o + 2] = Math.min(255, Math.round(lb * scale));
+      outEmissiveRgba[o + 3] = aEmi;
+    }
+  }
+}
+
 const PIXEL_OUT = { color: 0, alpha: 1, glowColor: 0, glowStrength: 0 };
 
 /**
@@ -537,11 +606,13 @@ export function drawTiltedOrbitBand(pen, cx, cy, rx, aspectY, thickness, alpha, 
     const theta = Math.atan2(ly - cy, dx);
     if (anglePred && !anglePred(theta)) return 0;
     const q = 1 - delta / Math.max(0.6, thickness);
-    out.alpha = alpha * Math.min(1, q * 1.35);
-    out.glowStrength = 0.22 * q * alpha;
+    const turb = fbmNoise2D(lx * 0.14, ly * 0.14, 19, 2);
+    if (q < 0.36 && q + turb * 0.18 < 0.24) return 0;
+    out.alpha = 1;
+    out.glowStrength = 0.28 * q * alpha;
     out.glowColor = ramp4[2];
-    if (flashHot && q > 0.45) return PURE_WHITE;
-    return q > 0.72 ? ramp4[3] : q > 0.42 ? ramp4[2] : q > 0.2 ? ramp4[1] : ramp4[0];
+    if (flashHot && q > 0.48) return PURE_WHITE;
+    return q > 0.72 ? ramp4[3] : q > 0.44 ? ramp4[2] : q > 0.22 ? ramp4[1] : ramp4[0];
   });
 }
 
@@ -571,6 +642,118 @@ export function drawStarburstFlare(pen, cx, cy, radius, alpha, ramp) {
 
   pen.fillCircle(cx, cy, Math.max(1.2, radius * 0.16), coreCol, alpha);
   pen.radialGlow(cx, cy, radius * 0.95, midCol, 0.42 * alpha);
+}
+
+/**
+ * Multi-Layer Procedural ArcaneShaderFX Crescent Slash & Vortex Arc (`drawMultiLayerCrescentArc`).
+ * Renders 3 distinct layered passes in a single sweep:
+ *  - Layer 1 (Outer Elemental Shroud): FBM-eroded organic elemental wake & outer aura
+ *  - Layer 2 (Secondary Echo Smear): Offset inner trailing ribbon that gives depth & motion-blur weight
+ *  - Layer 3 (Primary Razor Blade Core): 8-step palette-quantized crescent with pure-white hot rim & FBM tail dissolution
+ */
+export function drawMultiLayerCrescentArc(
+  pen,
+  {
+    cx = 0,
+    cy = 0,
+    radius = 28,
+    width = 11,
+    eccentricity = 0.68,
+    headAngle = 0,
+    tailAngle = -2.2,
+    fade = 1,
+    ramp = [],
+    seed = 17,
+    t = 0,
+    flashHot = false
+  } = {}
+) {
+  if (fade <= 0.02 || radius <= 2 || width <= 1 || !ramp.length) return;
+  const maxR = radius + width * 1.25 + 4;
+  const minY = Math.max(8, maxR * eccentricity + 4);
+  const sweepSpan = headAngle - tailAngle;
+  if (Math.abs(sweepSpan) < 0.05) return;
+  const dir = sweepSpan >= 0 ? 1 : -1;
+  const absSpan = Math.abs(sweepSpan);
+
+  const normalizeAngleDelta = (ang, ref) => {
+    let d = (ang - ref) * dir;
+    while (d > Math.PI) d -= Math.PI * 2;
+    while (d < -Math.PI) d += Math.PI * 2;
+    return d;
+  };
+
+  pen.shadeBox(cx - maxR, cy - minY, cx + maxR, cy + minY, (lx, ly, out) => {
+    const dx = lx - cx;
+    const dy = (ly - cy) / Math.max(0.22, eccentricity);
+    const r = Math.hypot(dx, dy);
+    if (r < Math.max(1, radius - width * 1.35) || r > radius + width * 1.15) return 0;
+
+    const ang = Math.atan2(dy, dx);
+    // Distance behind headAngle along the sweep direction: `0` at leading tip, `1` at tail
+    const behindHead = normalizeAngleDelta(headAngle, ang);
+    if (behindHead < 0 || behindHead > absSpan) return 0;
+    const uAlong = clamp01(behindHead / Math.max(0.08, absSpan));
+
+    // Pointed blade tip at `uAlong = 0`, widest around `uAlong = 0.22`, tapering to a sharp tail at `uAlong = 1`
+    const tipTaper = Math.min(1, uAlong / 0.14);
+    const tailTaper = Math.pow(1 - uAlong, 0.78);
+    const bladeProfile = tipTaper * tailTaper;
+    if (bladeProfile <= 0.04) return 0;
+
+    // Angular streak noise creates serrated pixel-art sword-wind teeth along the arc
+    const streakNoise = fbmNoise2D(ang * 7.5 - t * 8, r * 0.12, seed, 2);
+    const detailNoise = fbmNoise2D(lx * 0.18 + t * 6, ly * 0.18 - t * 5, seed + 37, 2);
+
+    const halfW = Math.max(0.9, width * 0.44 * bladeProfile * (1 + streakNoise * 0.28));
+    const centerShift = streakNoise * 1.35 * uAlong;
+    const signedRadial = r - (radius + centerShift);
+    const distFromBlade = Math.abs(signedRadial);
+
+    // Layer 3: Primary Razor Crescent Core (biased toward the outer leading rim)
+    if (distFromBlade <= halfW) {
+      const qCross = 1 - distFromBlade / halfW;
+      const serration = (streakNoise * 0.5 + 0.5) * 0.48 + (detailNoise * 0.5 + 0.5) * 0.25;
+      if (qCross + serration > uAlong * 0.85) {
+        const isOuterEdge = signedRadial >= -halfW * 0.15 && signedRadial <= halfW * 0.55;
+        const heat = clamp01(qCross * (1 - uAlong * 0.48) + (isOuterEdge ? 0.26 : 0) + detailNoise * 0.12);
+        out.alpha = 1;
+        out.glowColor = ramp[Math.min(ramp.length - 1, 5)];
+        out.glowStrength = (0.18 + 0.28 * heat) * fade;
+        if ((flashHot && heat > 0.62) || (heat > 0.84 && uAlong < 0.32)) return PURE_WHITE;
+        const idx = Math.min(ramp.length - 1, Math.max(2, Math.floor(heat * ramp.length)));
+        return ramp[idx];
+      }
+    }
+
+    // Layer 2: Secondary Inner Sonic-Wind Echo Ribbon (separated by a clean gap from the outer blade!)
+    const echoRadius = radius - width * 0.58;
+    const echoHalfW = Math.max(0.7, width * 0.22 * bladeProfile);
+    const distFromEcho = Math.abs(r - echoRadius + streakNoise * 1.2);
+    if (uAlong > 0.12 && uAlong < 0.82 && distFromEcho <= echoHalfW) {
+      const qEcho = 1 - distFromEcho / echoHalfW;
+      if (qEcho + streakNoise * 0.35 > uAlong * 0.65) {
+        out.alpha = 1;
+        out.glowColor = ramp[Math.min(ramp.length - 1, 4)];
+        out.glowStrength = 0.16 * qEcho * fade;
+        return qEcho > 0.65 ? ramp[Math.min(ramp.length - 1, 5)] : ramp[Math.min(ramp.length - 1, 3)];
+      }
+    }
+
+    // Layer 1: Jagged Elemental Slipstream Teeth & Detached Pixel Shards
+    const shroudHalfW = width * 0.78 * bladeProfile;
+    if (distFromBlade <= shroudHalfW && streakNoise > 0.18) {
+      const qShroud = 1 - distFromBlade / shroudHalfW;
+      if (qShroud + streakNoise * 0.45 > 0.58 + uAlong * 0.25) {
+        out.alpha = 1;
+        out.glowColor = ramp[Math.min(ramp.length - 1, 3)];
+        out.glowStrength = 0.12 * qShroud * fade;
+        return ramp[Math.min(ramp.length - 1, 2)];
+      }
+    }
+
+    return 0;
+  });
 }
 
 /**
@@ -730,6 +913,10 @@ export class ArcaneShaderFX {
     this.penFront = new ShaderPen(this.surfaceFront);
     this.rgbaBack = new Uint8ClampedArray(viewW * viewH * 4);
     this.rgbaFront = new Uint8ClampedArray(viewW * viewH * 4);
+    this.albedoRgbaBack = new Uint8ClampedArray(viewW * viewH * 4);
+    this.emissiveRgbaBack = new Uint8ClampedArray(viewW * viewH * 4);
+    this.albedoRgbaFront = new Uint8ClampedArray(viewW * viewH * 4);
+    this.emissiveRgbaFront = new Uint8ClampedArray(viewW * viewH * 4);
 
     this.active = [];
     this.worldMotes = [];
@@ -741,9 +928,16 @@ export class ArcaneShaderFX {
     this.backCanvas = null;
     this.backCtx = null;
     this.backImageData = null;
+    this.backGlowCanvas = null;
+    this.backGlowCtx = null;
+    this.backGlowImageData = null;
+
     this.frontCanvas = null;
     this.frontCtx = null;
     this.frontImageData = null;
+    this.frontGlowCanvas = null;
+    this.frontGlowCtx = null;
+    this.frontGlowImageData = null;
 
     if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
       this.backCanvas = document.createElement('canvas');
@@ -754,12 +948,28 @@ export class ArcaneShaderFX {
         this.backImageData = this.backCtx.createImageData(viewW, viewH);
       }
 
+      this.backGlowCanvas = document.createElement('canvas');
+      this.backGlowCanvas.width = viewW;
+      this.backGlowCanvas.height = viewH;
+      this.backGlowCtx = this.backGlowCanvas.getContext('2d');
+      if (this.backGlowCtx?.createImageData) {
+        this.backGlowImageData = this.backGlowCtx.createImageData(viewW, viewH);
+      }
+
       this.frontCanvas = document.createElement('canvas');
       this.frontCanvas.width = viewW;
       this.frontCanvas.height = viewH;
       this.frontCtx = this.frontCanvas.getContext('2d');
       if (this.frontCtx?.createImageData) {
         this.frontImageData = this.frontCtx.createImageData(viewW, viewH);
+      }
+
+      this.frontGlowCanvas = document.createElement('canvas');
+      this.frontGlowCanvas.width = viewW;
+      this.frontGlowCanvas.height = viewH;
+      this.frontGlowCtx = this.frontGlowCanvas.getContext('2d');
+      if (this.frontGlowCtx?.createImageData) {
+        this.frontGlowImageData = this.frontGlowCtx.createImageData(viewW, viewH);
       }
     }
   }
@@ -915,6 +1125,8 @@ export class ArcaneShaderFX {
     const surface = isBack ? this.surfaceBack : this.surfaceFront;
     const pen = isBack ? this.penBack : this.penFront;
     const rgba = isBack ? this.rgbaBack : this.rgbaFront;
+    const albedoRgba = isBack ? this.albedoRgbaBack : this.albedoRgbaFront;
+    const emissiveRgba = isBack ? this.emissiveRgbaBack : this.emissiveRgbaFront;
     const { scale, worldW, worldH, worldLeft, worldTop } = this.computeViewport(centerWorldX, groundWorldY);
 
     clearPixelSurface(surface);
@@ -947,20 +1159,22 @@ export class ArcaneShaderFX {
           pen.stipple(mx + 1, my, m.color, pulse * 0.85);
           pen.stipple(mx, my - 1, m.color, pulse * 0.85);
           pen.stipple(mx, my + 1, m.color, pulse * 0.85);
+          pen.radialGlow(mx, my, 3.2, m.color, 0.28 * pulse);
         } else {
           const tx = mx - (m.vx * 0.022) / scale;
           const ty = my - (m.vy * 0.022) / scale;
           pen.line(tx, ty, mx, my, u < 0.25 ? PURE_WHITE : m.color, fade);
-          pen.radialGlow(mx, my, 3.0, m.color, 0.2 * fade);
+          pen.radialGlow(mx, my, 3.2, m.color, 0.24 * fade);
         }
         drewAny = true;
       }
     }
 
     if (drewAny) {
-      resolveSurfaceToRGBA(surface, rgba, 1.08);
+      resolveSurfaceToRGBA(surface, rgba, 1.15);
+      resolveSurfaceToSplitRGBA(surface, albedoRgba, emissiveRgba, 1.22);
     }
-    return { drewAny, worldLeft, worldTop, worldW, worldH, rgba };
+    return { drewAny, worldLeft, worldTop, worldW, worldH, rgba, albedoRgba, emissiveRgba };
   }
 
   renderLayer(ctx, passName, centerWorldX = 600, groundWorldY = 580, alpha = 1.0) {
@@ -969,23 +1183,51 @@ export class ArcaneShaderFX {
     const canvasEl = isBack ? this.backCanvas : this.frontCanvas;
     const canvasCtx = isBack ? this.backCtx : this.frontCtx;
     const imgData = isBack ? this.backImageData : this.frontImageData;
+    const glowCanvasEl = isBack ? this.backGlowCanvas : this.frontGlowCanvas;
+    const glowCanvasCtx = isBack ? this.backGlowCtx : this.frontGlowCtx;
+    const glowImgData = isBack ? this.backGlowImageData : this.frontGlowImageData;
     if (!canvasEl || !canvasCtx || !imgData) return;
 
-    const { drewAny, worldLeft, worldTop, worldW, worldH, rgba } = this.rasterizeLayer(
+    const { drewAny, worldLeft, worldTop, worldW, worldH, rgba, albedoRgba, emissiveRgba } = this.rasterizeLayer(
       passName,
       centerWorldX,
       groundWorldY
     );
     if (!drewAny) return;
 
-    imgData.data.set(rgba);
-    canvasCtx.putImageData(imgData, 0, 0);
-
     const prevSmooth = ctx.imageSmoothingEnabled;
     const prevAlpha = ctx.globalAlpha;
+    const prevComp = ctx.globalCompositeOperation;
     ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = prevAlpha * alpha;
-    ctx.drawImage(canvasEl, 0, 0, this.viewW, this.viewH, worldLeft, worldTop, worldW, worldH);
+
+    if (glowCanvasEl && glowCanvasCtx && glowImgData) {
+      imgData.data.set(albedoRgba);
+      canvasCtx.putImageData(imgData, 0, 0);
+      glowImgData.data.set(emissiveRgba);
+      glowCanvasCtx.putImageData(glowImgData, 0, 0);
+
+      // Multi-Layer Sub-Pass 1: Wide Additive Emissive Under-Bloom (`lighter`)
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = prevAlpha * alpha * 0.48;
+      ctx.drawImage(glowCanvasEl, 0, 0, this.viewW, this.viewH, worldLeft - 4, worldTop - 4, worldW + 8, worldH + 8);
+
+      // Multi-Layer Sub-Pass 2: Crisp Stepped Pixel-Art Albedo (`source-over`)
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = prevAlpha * alpha;
+      ctx.drawImage(canvasEl, 0, 0, this.viewW, this.viewH, worldLeft, worldTop, worldW, worldH);
+
+      // Multi-Layer Sub-Pass 3: Pixel-Aligned Specular Emissive Over-Bloom (`lighter`)
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = prevAlpha * alpha * 0.76;
+      ctx.drawImage(glowCanvasEl, 0, 0, this.viewW, this.viewH, worldLeft, worldTop, worldW, worldH);
+    } else {
+      imgData.data.set(rgba);
+      canvasCtx.putImageData(imgData, 0, 0);
+      ctx.globalAlpha = prevAlpha * alpha;
+      ctx.drawImage(canvasEl, 0, 0, this.viewW, this.viewH, worldLeft, worldTop, worldW, worldH);
+    }
+
+    ctx.globalCompositeOperation = prevComp;
     ctx.imageSmoothingEnabled = prevSmooth;
     ctx.globalAlpha = prevAlpha;
   }
