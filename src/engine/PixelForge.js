@@ -25,7 +25,7 @@ export class PixelForge {
       },
       mage: {
         sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps41'),
-        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps41'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps49'),
         portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps41', () => this.refreshPortraits())
       },
       archer: {

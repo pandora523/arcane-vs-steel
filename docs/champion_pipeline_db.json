@@ -28,7 +28,7 @@
     ],
     "vfx_sheet_builders": [
       "scripts/build_warrior_30fps_vfx.py",
-      "scripts/build_mage_30fps_vfx.py",
+      "scripts/build_mage_vfx_30fps.mjs",
       "scripts/build_archer_vfx_30fps.mjs",
       "scripts/build_priestess_vfx_30fps.mjs",
       "scripts/build_reaper_30fps_vfx.py",
@@ -55,9 +55,9 @@
       "theme": "arcane",
       "base_source": "assets/sprites/mage_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "15-part pinhole-free hierarchical Black-Mage skeletal articulation (mane, head [crimson wizard hat + pitch-black shadow face + glowing flame eyes], torso, l_coat, r_coat, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + Solar Astrolabe halo + Helios Sun-Staff + Supine Collapse",
+      "rig": "15-part pinhole-free hierarchical Black-Mage skeletal articulation (mane, head [crimson wizard hat + pitch-black shadow face + glowing flame eyes], torso, l_coat, r_coat, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + Solar Astrolabe halo + Helios Sun-Staff + ArcaneShaderFX 120Hz 2.5D Solar & Black-Sun Eclipse Shader Suite + Supine Collapse",
       "script": "scripts/build_mage_30fps_sheet.py",
-      "vfx_script": "scripts/build_mage_30fps_vfx.py"
+      "vfx_script": "scripts/build_mage_vfx_30fps.mjs"
     },
     "archer": {
       "name": "Sylvara",
