@@ -732,6 +732,8 @@ export class ArcaneShaderFX {
     this.rgbaFront = new Uint8ClampedArray(viewW * viewH * 4);
 
     this.active = [];
+    this.worldMotes = [];
+    this.rng = new DeterministicRng(733);
     this.seedSeq = 211;
     this.arenaCenterX = 600;
     this.groundWorldY = 580;
@@ -815,6 +817,46 @@ export class ArcaneShaderFX {
     return slot;
   }
 
+  /**
+   * Emit crisp world-space pixel sparks & star-glints onto the shader surface
+   * (used for supersonic projectile wakes, deflections, and impact bursts).
+   */
+  burst(worldX, worldY, opts = {}) {
+    if (!Number.isFinite(worldX) || !Number.isFinite(worldY)) return;
+    const count = Math.max(1, Math.min(32, opts.count ?? 8));
+    const speedMin = opts.speedMin ?? 40;
+    const speedMax = opts.speedMax ?? 150;
+    const lifeMin = opts.lifeMin ?? 0.16;
+    const lifeMax = opts.lifeMax ?? 0.34;
+    const gravity = opts.gravity ?? 90;
+    const baseAngle = opts.angle ?? 0;
+    const hasDir = typeof opts.angle === 'number';
+    const spread = opts.spread ?? Math.PI * 2;
+    const palette = Array.isArray(opts.colors) && opts.colors.length > 0 ? opts.colors : ['#ffffff'];
+
+    for (let i = 0; i < count; i++) {
+      if (this.worldMotes.length >= 140) {
+        this.worldMotes.shift();
+      }
+      const ang = hasDir
+        ? baseAngle + this.rng.between(-spread * 0.5, spread * 0.5)
+        : this.rng.between(0, Math.PI * 2);
+      const spd = this.rng.between(speedMin, speedMax);
+      const rawCol = palette[i % palette.length];
+      this.worldMotes.push({
+        kind: i % 3 === 0 ? 'glint' : 'spark',
+        worldX: worldX + this.rng.between(-4, 4),
+        worldY: worldY + this.rng.between(-4, 4),
+        vx: Math.cos(ang) * spd,
+        vy: Math.sin(ang) * spd,
+        age: 0,
+        maxLife: Math.max(0.06, this.rng.between(lifeMin, lifeMax)),
+        color: typeof rawCol === 'string' ? packHexColor(rawCol) : rawCol,
+        gravity
+      });
+    }
+  }
+
   stopByKey(effectKey) {
     for (let i = 0; i < this.active.length; i++) {
       if (this.active[i].key === effectKey) {
@@ -825,6 +867,7 @@ export class ArcaneShaderFX {
 
   clear() {
     this.active.length = 0;
+    this.worldMotes.length = 0;
   }
 
   update(dt) {
@@ -850,6 +893,19 @@ export class ArcaneShaderFX {
         this.active.splice(i, 1);
       }
     }
+
+    for (let i = this.worldMotes.length - 1; i >= 0; i--) {
+      const m = this.worldMotes[i];
+      m.age += clampedDt;
+      if (m.age >= m.maxLife) {
+        this.worldMotes.splice(i, 1);
+        continue;
+      }
+      m.vy += m.gravity * clampedDt;
+      m.worldX += m.vx * clampedDt;
+      m.worldY += m.vy * clampedDt;
+      m.vx *= 1 - 1.5 * clampedDt;
+    }
   }
 
   rasterizeLayer(passName, centerWorldX = 600, groundWorldY = 580) {
@@ -874,6 +930,33 @@ export class ArcaneShaderFX {
       drewAny = true;
     }
 
+    if (!isBack && this.worldMotes.length > 0) {
+      pen.configure(0, 0, false, 0, 1, 1.05);
+      pen.pass = 'front';
+      for (let i = 0; i < this.worldMotes.length; i++) {
+        const m = this.worldMotes[i];
+        const mx = (m.worldX - worldLeft) / scale;
+        const my = (m.worldY - worldTop) / scale;
+        if (mx < -8 || mx > this.viewW + 8 || my < -8 || my > this.viewH + 8) continue;
+        const u = clamp01(m.age / m.maxLife);
+        const fade = 1 - u;
+        if (m.kind === 'glint') {
+          const pulse = Math.sin(u * Math.PI);
+          pen.stipple(mx, my, PURE_WHITE, pulse);
+          pen.stipple(mx - 1, my, m.color, pulse * 0.85);
+          pen.stipple(mx + 1, my, m.color, pulse * 0.85);
+          pen.stipple(mx, my - 1, m.color, pulse * 0.85);
+          pen.stipple(mx, my + 1, m.color, pulse * 0.85);
+        } else {
+          const tx = mx - (m.vx * 0.022) / scale;
+          const ty = my - (m.vy * 0.022) / scale;
+          pen.line(tx, ty, mx, my, u < 0.25 ? PURE_WHITE : m.color, fade);
+          pen.radialGlow(mx, my, 3.0, m.color, 0.2 * fade);
+        }
+        drewAny = true;
+      }
+    }
+
     if (drewAny) {
       resolveSurfaceToRGBA(surface, rgba, 1.08);
     }
@@ -881,7 +964,7 @@ export class ArcaneShaderFX {
   }
 
   renderLayer(ctx, passName, centerWorldX = 600, groundWorldY = 580, alpha = 1.0) {
-    if (!this.active.length || !ctx) return;
+    if ((!this.active.length && !this.worldMotes.length) || !ctx) return;
     const isBack = passName === 'back';
     const canvasEl = isBack ? this.backCanvas : this.frontCanvas;
     const canvasCtx = isBack ? this.backCtx : this.frontCtx;

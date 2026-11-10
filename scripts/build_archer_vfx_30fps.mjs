@@ -19,13 +19,13 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps44';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps46';
 
 import {
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE,
   SYLVAN_EFFECT_REGISTRY
-} from '../src/engine/shaders/sylvanShaders.js?v=30fps45';
+} from '../src/engine/shaders/sylvanShaders.js?v=30fps46';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');

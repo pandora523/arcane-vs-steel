@@ -4,7 +4,7 @@ import { PixelForge } from './engine/PixelForge.js?v=30fps41';
 import { AudioManager } from './engine/AudioManager.js?v=30fps42';
 import { Warrior } from './entities/Warrior.js?v=30fps41';
 import { FireMage } from './entities/FireMage.js?v=30fps41';
-import { Archer } from './entities/Archer.js?v=30fps45';
+import { Archer } from './entities/Archer.js?v=30fps46';
 import { Priestess } from './entities/Priestess.js?v=30fps41';
 import { Reaper } from './entities/Reaper.js?v=30fps41';
 import { Chronomancer } from './entities/Chronomancer.js?v=30fps41';
@@ -12,7 +12,7 @@ import { Titan } from './entities/Titan.js?v=30fps41';
 import { Ronin } from './entities/Ronin.js?v=30fps41';
 import { Valkyrie } from './entities/Valkyrie.js?v=30fps41';
 import { IceMage } from './entities/IceMage.js?v=30fps41';
-import { Android } from './entities/Android.js?v=30fps44';
+import { Android } from './entities/Android.js?v=30fps46';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -2102,7 +2102,7 @@ class Game {
       if (hasSylvanShaderFX) {
         if (p.ringTimer >= 0.045) {
           p.ringTimer = 0;
-          p.owner.fx.burst(p.x - Math.sign(p.vx || 1) * 18, p.y, {
+          p.owner.fx.burst?.(p.x - Math.sign(p.vx || 1) * 18, p.y, {
             count: 3,
             speedMin: 24,
             speedMax: 72,
@@ -2196,7 +2196,7 @@ class Game {
                 isCrit
               }
             });
-            p.owner.fx.burst(p.x, p.y, {
+            p.owner.fx.burst?.(p.x, p.y, {
               count: isCrit ? 18 : 12,
               speedMin: 60,
               speedMax: isCrit ? 225 : 175,
@@ -2475,6 +2475,8 @@ class Game {
   }
 
   loop(now) {
+    requestAnimationFrame((t) => this.loop(t));
+
     const rawDt = Math.min(0.05, Math.max(0.001, (now - this.lastTime) / 1000));
     this.lastTime = now;
 
@@ -2486,8 +2488,6 @@ class Game {
       this.stepSimulation(rawDt);
     }
     this.renderer.render(this.fighters, this.vfx);
-
-    requestAnimationFrame((t) => this.loop(t));
   }
 }
 
