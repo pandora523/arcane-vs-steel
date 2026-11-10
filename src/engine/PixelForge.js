@@ -61,7 +61,7 @@ export class PixelForge {
       },
       valkyrie: {
         sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps41'),
-        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps41'),
+        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps47'),
         portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps41', () => this.refreshPortraits())
       },
       icemage: {

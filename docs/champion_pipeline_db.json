@@ -35,7 +35,7 @@
       "scripts/build_chronomancer_30fps_vfx.py",
       "scripts/build_titan_30fps_vfx.py",
       "scripts/build_ronin_30fps_vfx.py",
-      "scripts/build_valkyrie_30fps_vfx.py",
+      "scripts/build_valkyrie_vfx_30fps.mjs",
       "scripts/build_icemage_30fps_vfx.py",
       "scripts/build_android_vfx_30fps.mjs"
     ]
@@ -119,9 +119,9 @@
       "theme": "crimson",
       "base_source": "assets/sprites/valkyrie_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part cel-clustered Valkyrie skeletal rig + 6-pinion Crimson-Gold Valkyrie Wings + Gungnir War-Lance + -360-deg Aerial Backflip Retreat (Row 7) + Supine Collapse",
+      "rig": "13-part cel-clustered Valkyrie skeletal rig + 6-pinion Crimson-Gold Valkyrie Wings + Gungnir War-Lance + -360-deg Aerial Backflip Retreat (Row 7) + ArcaneShaderFX 120Hz 2.5D Crimson-Gold Valkyrie Shader Suite + Supine Collapse",
       "script": "scripts/build_valkyrie_30fps_sheet.py",
-      "vfx_script": "scripts/build_valkyrie_30fps_vfx.py"
+      "vfx_script": "scripts/build_valkyrie_vfx_30fps.mjs"
     },
     "icemage": {
       "name": "Lyra",

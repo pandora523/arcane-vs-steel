@@ -10,7 +10,7 @@ import { Reaper } from './entities/Reaper.js?v=30fps41';
 import { Chronomancer } from './entities/Chronomancer.js?v=30fps41';
 import { Titan } from './entities/Titan.js?v=30fps41';
 import { Ronin } from './entities/Ronin.js?v=30fps41';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps41';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps47';
 import { IceMage } from './entities/IceMage.js?v=30fps41';
 import { Android } from './entities/Android.js?v=30fps46';
 
@@ -275,8 +275,8 @@ const CHAMPION_ROSTER = {
     id: 'valkyrie',
     name: 'FREYJA',
     role: 'DRAGON-LANCE VALKYRIE',
-    style: 'AERIAL SKY-DRAGOON',
-    trait: 'PASSIVE: VALKYRIE WINGS & HIGH JUMP',
+    style: 'VALHALLA SKY-SOVEREIGN',
+    trait: 'PASSIVE: VALKYRIE WINGS & AERIAL BACKFLIP',
     cls: Valkyrie,
     theme: 'crimson',
     color: '#f43f5e',
@@ -284,22 +284,22 @@ const CHAMPION_ROSTER = {
     victoryLine: 'From the skies of Valhalla, the Gungnir War-Lance pierces the earth!',
     skills: [
       {
-        name: 'DOUBLE IMPALE & JAVELIN',
-        type: 'AUTO + WING BACKSTEP',
+        name: 'GUNGNIR LANCE & BACKFLIP',
+        type: 'AUTO + AERIAL VAULT',
         vfxCell: 0,
-        desc: 'Hovers on Valkyrie wings with rapid double-impales & flaps backward into mid-air hurling 2 javelins.'
+        desc: 'Hurls curving Gungnir light-javelins & executes a -360° aerial backflip firing twin counter-spears.'
       },
       {
-        name: 'WYVERN CORKSCREW DRILL',
-        type: 'SKILL • 4.4S CD',
+        name: 'GUNGNIR JAVELIN BARRAGE',
+        type: 'SKILL • 4.75S CD',
         vfxCell: 1,
-        desc: 'Flies horizontally across the arena in a dragonfire drill vortex, skewering & dragging foes!'
+        desc: 'Skims across the arena unleashing a 6-javelin halo volley before erupting a Dragonfire Obelisk!'
       },
       {
         name: 'VALHALLA SKY-SANCTUARY',
         type: '★ OVERDRIVE ULT',
         vfxCell: 3,
-        desc: 'Ascends high into the sky, raining 8 Gungnir Light-Spears before a Bahamut Supernova Dive!'
+        desc: 'Sweeps across the heavens raining 12 Gungnir Light-Javelins before 5 Sovereign Judgment Obelisks!'
       }
     ]
   },
