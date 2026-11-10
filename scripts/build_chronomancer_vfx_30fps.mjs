@@ -1,11 +1,12 @@
 #!/usr/bin/env node
 /**
- * First-Party 30fps VFX Sprite Sheet Builder for Zephyros (`chronomancer`).
+ * First-Party 30fps VFX Sprite Sheet Builder for Chronos (`chronomancer` / `Chronomancer.js`).
  * Powered natively by `src/engine/ArcaneShaderFX.js` + `src/engine/shaders/chronoShaders.js`.
  *
  * Outputs:
- *   1. `assets/sprites/chronomancer_vfx.png` (6240x1040, 5 rows x 30 cols @ 208x208, 0/150 border clips)
- *   2. `<artifactDir>/debug_chronomancer_30fps_vfx.png` (5x30 contact sheet for visual verification)
+ *   1. `assets/sprites/chronomancer_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208, 0/240 4px-border clips)
+ *   2. `<artifactDir>/debug_chronomancer_30fps_vfx.png` (8x30 contact sheet for visual verification)
+ *   3. `<artifactDir>/debug_chronos_ult_208_closeup.png` (1:1 208x208 closeup of Rows 5, 6, 7)
  */
 
 import fs from 'node:fs';
@@ -19,25 +20,23 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
+} from '../src/engine/ArcaneShaderFX.js';
 
 import {
   CHRONO_TEAL_PALETTE,
   CHRONO_EFFECT_REGISTRY
-} from '../src/engine/shaders/chronoShaders.js?v=30fps55';
+} from '../src/engine/shaders/chronoShaders.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const ARTIFACT_DIR =
-  '/home/antigravity/.gemini/jetski/brain/5afe9895097f1c56dd97fc22f963c674';
+  '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088';
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
   for (let n = 0; n < 256; n++) {
     let c = n;
-    for (let k = 0; k < 8; k++) {
-      c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
-    }
+    for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
     table[n] = c >>> 0;
   }
   return table;
@@ -45,9 +44,7 @@ const CRC_TABLE = (() => {
 
 function crc32(buf) {
   let c = 0xffffffff;
-  for (let i = 0; i < buf.length; i++) {
-    c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
-  }
+  for (let i = 0; i < buf.length; i++) c = CRC_TABLE[(c ^ buf[i]) & 0xff] ^ (c >>> 8);
   return (c ^ 0xffffffff) >>> 0;
 }
 
@@ -73,9 +70,6 @@ function encodeRgbaPng(width, height, rgba) {
   ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8;
   ihdr[9] = 6;
-  ihdr[10] = 0;
-  ihdr[11] = 0;
-  ihdr[12] = 0;
 
   const compressed = zlib.deflateSync(raw, { level: 6 });
   return Buffer.concat([
@@ -92,12 +86,13 @@ function enforceSafeCellMargin104(rgba, w = 104, h = 104) {
       const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
       const o = (y * w + x) * 4;
       if (distEdge < 2) {
+        // 2px margin at 104x104 -> strict 4px transparent border margin at 208x208
         rgba[o] = 0;
         rgba[o + 1] = 0;
         rgba[o + 2] = 0;
         rgba[o + 3] = 0;
-      } else if (distEdge < 7 && rgba[o + 3] > 0) {
-        const k = (distEdge - 1.5) / 5.5;
+      } else if (distEdge < 6 && rgba[o + 3] > 0) {
+        const k = (distEdge - 1.5) / 4.5;
         rgba[o + 3] = Math.round(rgba[o + 3] * k);
       }
     }
@@ -108,11 +103,11 @@ function blitUpscaledNearest(srcRgba, srcW, srcH, scale, dstRgba, dstW, dstX, ds
   for (let sy = 0; sy < srcH; sy++) {
     for (let sx = 0; sx < srcW; sx++) {
       const so = (sy * srcW + sx) * 4;
+      const a = srcRgba[so + 3];
+      if (!a) continue;
       const r = srcRgba[so];
       const g = srcRgba[so + 1];
       const b = srcRgba[so + 2];
-      const a = srcRgba[so + 3];
-      if (!a) continue;
       for (let dy = 0; dy < scale; dy++) {
         const ty = dstY + sy * scale + dy;
         for (let dx = 0; dx < scale; dx++) {
@@ -148,8 +143,20 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
   }
 }
 
+function has4pxBorderClip208(cellRgba, cell = 208, margin = 4) {
+  for (let y = 0; y < cell; y++) {
+    for (let x = 0; x < cell; x++) {
+      if (x >= margin && x < cell - margin && y >= margin && y < cell - margin) continue;
+      if (cellRgba[(y * cell + x) * 4 + 3] > 0) {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
 function bakeVfxSheet() {
-  const ROWS = 5;
+  const ROWS = 8;
   const COLS = 30;
   const LOGICAL = 104;
   const CELL = 208;
@@ -162,138 +169,134 @@ function bakeVfxSheet() {
   const dbgH = ROWS * (LOGICAL + dbgPad) + dbgPad;
   const dbgRgba = new Uint8Array(dbgW * dbgH * 4);
   for (let i = 0; i < dbgW * dbgH; i++) {
-    dbgRgba[i * 4] = 14;
-    dbgRgba[i * 4 + 1] = 16;
-    dbgRgba[i * 4 + 2] = 28;
+    dbgRgba[i * 4] = 6;
+    dbgRgba[i * 4 + 1] = 15;
+    dbgRgba[i * 4 + 2] = 24;
     dbgRgba[i * 4 + 3] = 255;
+  }
+
+  // 1:1 208x208 closeup contact sheet for Rows 5, 6, 7 (6 sampled frames per row: F00, F05, F10, F15, F20, F25)
+  const sampleCols = [0, 5, 10, 15, 20, 25];
+  const closePad = 8;
+  const closeW = sampleCols.length * (CELL + closePad) + closePad;
+  const closeH = 3 * (CELL + closePad) + closePad;
+  const closeRgba = new Uint8Array(closeW * closeH * 4);
+  for (let i = 0; i < closeW * closeH; i++) {
+    closeRgba[i * 4] = 8;
+    closeRgba[i * 4 + 1] = 18;
+    closeRgba[i * 4 + 2] = 30;
+    closeRgba[i * 4 + 3] = 255;
   }
 
   const rowSpecs = [
     {
-      name: 'Row 0: Razor-Edged Brass & Teal Clockwork Saw-Gear Bolt (F00..F29)',
+      name: 'Row 0: +X Minute-Blade Crescent Sonic Wave & Gear-Teeth Arc (F00..F29)',
       windowSec: 1.0,
-      layers: [
-        {
-          def: CHRONO_EFFECT_REGISTRY.chronoBoltCell,
-          warmup: 0,
-          cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE }
-        }
-      ]
+      def: CHRONO_EFFECT_REGISTRY.chronoGearWaveCell,
+      cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 601 }
     },
     {
-      name: 'Row 1: Interlocking Brass & Teal Astrolabe Gear Wheel (F00..F29)',
+      name: 'Row 1: Spinning 2.5D Brass & Cyan Past-Timeline Anchor / Astrolabe Wheel (F00..F29)',
       windowSec: 1.0,
-      layers: [
-        {
-          def: CHRONO_EFFECT_REGISTRY.astrolabeGearWheelCell,
-          warmup: 0,
-          cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE }
-        }
-      ]
+      def: CHRONO_EFFECT_REGISTRY.chronoAstrolabeWheelCell,
+      cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 613 }
     },
     {
-      name: 'Row 2: Ornate 16-Bit Brass & Teal Stasis Hourglass Monolith (F00..F29)',
+      name: 'Row 2: Erupting Time-Dilation Stasis Hourglass Pillar & Temporal Rift (F00..F29)',
       windowSec: 1.0,
-      layers: [
-        {
-          def: CHRONO_EFFECT_REGISTRY.stasisHourglassMonolithCell,
-          warmup: 0,
-          cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE }
-        }
-      ]
+      def: CHRONO_EFFECT_REGISTRY.chronoHourglassMonolithCell,
+      cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 623 }
     },
     {
-      name: 'Row 3: Grand XII-Hour Horologium Astral Clock Face (F00..F29)',
+      name: 'Row 3: Grand 12-Spoke Roman Numeral XII Horologium Clockface (F00..F29)',
       windowSec: 1.0,
-      layers: [
-        {
-          def: CHRONO_EFFECT_REGISTRY.horologiumClockFaceCell,
-          warmup: 0,
-          cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE }
-        }
-      ]
+      def: CHRONO_EFFECT_REGISTRY.chronoHorologiumSealCell,
+      cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 633 }
     },
     {
-      name: 'Row 4: Multi-Layer Time-Shatter Crescent & Gear Nova (F00..F29)',
+      name: 'Row 4: Temporal Glass-Clock Shatter Star-Burst (F00..F29)',
       windowSec: 1.0,
-      layers: [
-        {
-          def: CHRONO_EFFECT_REGISTRY.timeShatterNovaCell,
-          warmup: 0.02,
-          cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE }
-        }
-      ]
+      def: CHRONO_EFFECT_REGISTRY.chronoShatterBurstCell,
+      cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 647 }
+    },
+    {
+      name: 'Row 5: Twin Clock-Hand X-Scissor Cleave (+28 deg Cyan x -28 deg Gold) (F00..F29)',
+      windowSec: 1.0,
+      def: CHRONO_EFFECT_REGISTRY.paradoxTwinScissorCell,
+      cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 659 }
+    },
+    {
+      name: 'Row 6: Colossal Horizontal +X Golden-Brass & Cyan-Crystal Clock-Hand Spear (F00..F29)',
+      windowSec: 1.0,
+      def: CHRONO_EFFECT_REGISTRY.suspendedClockSpearCell,
+      cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 673 }
+    },
+    {
+      name: 'Row 7: Massive Twelfth Bell Midnight Shatter Nova (F00..F29)',
+      windowSec: 1.0,
+      def: CHRONO_EFFECT_REGISTRY.twelfthBellCataclysmCell,
+      cfg: { x: 52, y: 52, palette: CHRONO_TEAL_PALETTE, seed: 691 }
     }
   ];
 
-  const surface = createPixelSurface(LOGICAL, LOGICAL);
-  const pen = new ShaderPen(surface);
-  const cellRgba = new Uint8Array(LOGICAL * LOGICAL * 4);
+  const surface104 = createPixelSurface(LOGICAL, LOGICAL);
+  const pen104 = new ShaderPen(surface104);
+  const cell104 = new Uint8Array(LOGICAL * LOGICAL * 4);
+  const cell208 = new Uint8Array(CELL * CELL * 4);
+
   let borderClips = 0;
 
   for (let r = 0; r < ROWS; r++) {
     const spec = rowSpecs[r];
     const dt = spec.windowSec / COLS;
-    const instances = spec.layers.map((l) => {
-      const inst = instantiateShaderEffect(l.def, l.cfg);
-      if (l.warmup > 0) inst.step(l.warmup);
-      return inst;
-    });
+    const inst = instantiateShaderEffect(spec.def, spec.cfg);
 
     for (let c = 0; c < COLS; c++) {
-      clearPixelSurface(surface);
-      for (const inst of instances) {
-        inst.render(pen, 'back');
-      }
-      for (const inst of instances) {
-        inst.render(pen, 'front');
-      }
-      resolveSurfaceToRGBA(surface, cellRgba, 1.1);
-      enforceSafeCellMargin104(cellRgba, LOGICAL, LOGICAL);
+      clearPixelSurface(surface104);
+      inst.render(pen104, 'back');
+      inst.render(pen104, 'front');
+      resolveSurfaceToRGBA(surface104, cell104, 1.15);
+      enforceSafeCellMargin104(cell104, LOGICAL, LOGICAL);
 
-      for (let i = 0; i < LOGICAL; i++) {
-        if (
-          cellRgba[(0 * LOGICAL + i) * 4 + 3] > 0 ||
-          cellRgba[((LOGICAL - 1) * LOGICAL + i) * 4 + 3] > 0 ||
-          cellRgba[(i * LOGICAL + 0) * 4 + 3] > 0 ||
-          cellRgba[(i * LOGICAL + (LOGICAL - 1)) * 4 + 3] > 0
-        ) {
-          borderClips++;
-          break;
-        }
+      cell208.fill(0);
+      blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, cell208, CELL, 0, 0);
+
+      if (has4pxBorderClip208(cell208, CELL, 4)) {
+        borderClips++;
       }
 
-      blitUpscaledNearest(cellRgba, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
+      blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
 
       const dx = dbgPad + c * (LOGICAL + dbgPad);
       const dy = dbgPad + r * (LOGICAL + dbgPad);
-      for (let yy = 0; yy < LOGICAL; yy++) {
-        for (let xx = 0; xx < LOGICAL; xx++) {
-          const isEdge = xx === 0 || yy === 0 || xx === LOGICAL - 1 || yy === LOGICAL - 1;
-          const o = ((dy + yy) * dbgW + (dx + xx)) * 4;
-          dbgRgba[o] = isEdge ? 26 : 20;
-          dbgRgba[o + 1] = isEdge ? 68 : 22;
-          dbgRgba[o + 2] = isEdge ? 64 : 36;
-          dbgRgba[o + 3] = 255;
-        }
-      }
-      alphaCompositeOnto(cellRgba, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
+      alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
 
-      for (const inst of instances) {
-        inst.step(dt);
+      const sIdx = sampleCols.indexOf(c);
+      if (sIdx !== -1 && r >= 5) {
+        const cx = closePad + sIdx * (CELL + closePad);
+        const cy = closePad + (r - 5) * (CELL + closePad);
+        alphaCompositeOnto(cell208, CELL, CELL, closeRgba, closeW, cx, cy);
       }
+
+      inst.step(dt);
     }
-    console.log(`[chronomancer-vfx] Baked ${spec.name} (30 frames)`);
   }
 
-  const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'chronomancer_vfx.png');
-  fs.writeFileSync(outVfxPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  console.log(`[chronomancer-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/150`);
+  const outSheetPath = path.join(REPO_ROOT, 'assets', 'sprites', 'chronomancer_vfx.png');
+  fs.writeFileSync(outSheetPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
 
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
   const outDbgPath = path.join(ARTIFACT_DIR, 'debug_chronomancer_30fps_vfx.png');
+  const outClosePath = path.join(ARTIFACT_DIR, 'debug_chronos_ult_208_closeup.png');
   fs.writeFileSync(outDbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
-  console.log(`[chronomancer-vfx] Wrote contact sheet -> ${outDbgPath}`);
+  fs.writeFileSync(outClosePath, encodeRgbaPng(closeW, closeH, closeRgba));
+
+  console.log(
+    `[build_chronomancer_vfx_30fps] Wrote ${outSheetPath} (${sheetW}x${sheetH}), ${outDbgPath} (${dbgW}x${dbgH}), ${outClosePath} (${closeW}x${closeH}) | borderClips=${borderClips}/240`
+  );
+  if (borderClips > 0) {
+    process.exitCode = 1;
+  }
 }
 
 bakeVfxSheet();

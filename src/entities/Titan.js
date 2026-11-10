@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps61';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps61';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps61';
+import { Fighter } from './Fighter.js?v=30fps62';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps62';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps62';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps61';
+} from '../engine/shaders/forgeShaders.js?v=30fps62';
 
 /**
  * Torgar (`titan`) — World-Forge Juggernaut & Runic Anvil Sovereign.
@@ -26,7 +26,7 @@ export class Titan extends Fighter {
       primaryColor: '#f59e0b'
     });
     this.heroId = 'titan';
-    this.deathSfx = 'death_knight';
+    this.deathSfx = 'death_titan';
     this.skillName = 'ANVIL CANNONBALL';
     this.ultName = 'WORLD-FORGE RAGNAROK';
     this.theme = 'forge';
@@ -65,7 +65,7 @@ export class Titan extends Fighter {
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
       if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps53')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps61';
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps62';
       }
     }
   }

@@ -19,6 +19,7 @@ export class Fighter {
     this.trueUltName = opts.trueUltName || 'CELESTIAL SWORD OF JUSTICE';
     this.trueUltDuration = opts.trueUltDuration || 4.35;
     this.trueUltFrameOverride = null;
+    this.tankedDamage = 0;
     this.isDead = false;
     this.deathTimer = 0;
 
@@ -279,6 +280,7 @@ export class Fighter {
       this._testModeRefillTimer = 0.55;
     }
     const dealt = Math.max(1, Math.round(unlimitedHp ? amount : prevHp - this.hp));
+    this.tankedDamage = (this.tankedDamage || 0) + dealt;
     if (attacker && attacker.stats) {
       attacker.stats.damageDealt += dealt;
       if (isCrit) attacker.stats.critsLanded++;
@@ -435,6 +437,21 @@ export class Fighter {
 
     if (this.hitFlash > 0) this.hitFlash = Math.max(0, this.hitFlash - dt);
     if (this.hurtTimer > 0) this.hurtTimer = Math.max(0, this.hurtTimer - dt);
+
+    // Chronos "ETERNAL ZERO" Time-Stop Freeze: freezes enemies mid-frame & mid-air in stopped time!
+    if (this.chronoTimeStopTimer > 0 && !this.isDead && this.state !== 'TRUE_ULTIMATE') {
+      this.chronoTimeStopTimer = Math.max(0, this.chronoTimeStopTimer - dt);
+      if (Number.isFinite(this._timeStopLockX)) this.x = this._timeStopLockX;
+      if (Number.isFinite(this._timeStopLockY)) this.y = this._timeStopLockY;
+      this.vx = 0;
+      this.vy = 0;
+      if (this.chronoTimeStopTimer <= 0) {
+        this.chronoTimeStopFrame = null;
+        this._timeStopLockX = null;
+        this._timeStopLockY = null;
+      }
+      return;
+    }
 
     // Benched Reserve Fighter on the Sanctuary Tag Pedestal (in 2v2 Tag Relay mode)
     if (this.isBenched && !this.isDead) {

@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps61';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps61';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps61';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps61';
+import { Fighter } from './Fighter.js?v=30fps62';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps62';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps62';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps62';
 
 /**
  * Kaze-Maru (`ronin`) — Storm-Blade Iaido Samurai & Raijin Thunder Vanguard.
@@ -22,7 +22,7 @@ export class Ronin extends Fighter {
       primaryColor: '#818cf8'
     });
     this.heroId = 'ronin';
-    this.deathSfx = 'death_knight';
+    this.deathSfx = 'death_ronin';
     this.skillName = 'ZANTETSUKEN FLASH';
     this.ultName = 'SUSANOO OMNISLASH';
     this.theme = 'storm';
@@ -64,7 +64,7 @@ export class Ronin extends Fighter {
     if (typeof Image !== 'undefined') {
       const roninAssets = PixelForge.initAssets()?.ronin;
       if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps51')) {
-        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps61';
+        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps62';
       }
     }
   }
@@ -329,7 +329,7 @@ export class Ronin extends Fighter {
           this.spawnVfxAnim(4, t.x, t.y - 80, 184, 184, 0.32, { glowColor: 'cyan' });
           this.spawnPixelShockwave(t.x, t.y - 80, 118, 'cyan', 0.28, false);
           this.spawnPixelLightningBolt(t.x, t.groundY - 240, t.groundY, 'purple', 0.30);
-          if (game.audio) game.audio.play('slash', t.x);
+          if (game.audio) game.audio.play('raijin_slash', t.x);
           game.renderer.triggerShake(7, 0.15);
           game.vfx.spawnBurst(t.x, t.y - 82, 16, '#818cf8', 235, { upBias: 95, size: 5 });
           game.vfx.spawnDamageText(t.x, t.y - 156, 0, true, 'JUDGMENT SHEATH!', '#38bdf8');

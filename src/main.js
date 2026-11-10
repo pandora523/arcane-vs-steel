@@ -1,18 +1,19 @@
-import { Renderer } from './engine/Renderer.js?v=30fps61';
-import { VFXManager } from './engine/VFXManager.js?v=30fps61';
-import { PixelForge } from './engine/PixelForge.js?v=30fps61';
-import { AudioManager } from './engine/AudioManager.js?v=30fps61';
-import { Warrior } from './entities/Warrior.js?v=30fps61';
-import { FireMage } from './entities/FireMage.js?v=30fps61';
-import { Archer } from './entities/Archer.js?v=30fps61';
-import { Priestess } from './entities/Priestess.js?v=30fps61';
-import { Reaper } from './entities/Reaper.js?v=30fps61';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps61';
-import { Titan } from './entities/Titan.js?v=30fps61';
-import { Ronin } from './entities/Ronin.js?v=30fps61';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps61';
-import { IceMage } from './entities/IceMage.js?v=30fps61';
-import { Android } from './entities/Android.js?v=30fps61';
+import { Renderer } from './engine/Renderer.js?v=30fps62';
+import { VFXManager } from './engine/VFXManager.js?v=30fps62';
+import { PixelForge } from './engine/PixelForge.js?v=30fps62';
+import { AudioManager } from './engine/AudioManager.js?v=30fps62';
+import { Fighter } from './entities/Fighter.js?v=30fps62';
+import { Warrior } from './entities/Warrior.js?v=30fps62';
+import { FireMage } from './entities/FireMage.js?v=30fps62';
+import { Archer } from './entities/Archer.js?v=30fps62';
+import { Priestess } from './entities/Priestess.js?v=30fps62';
+import { Reaper } from './entities/Reaper.js?v=30fps62';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps62';
+import { Titan } from './entities/Titan.js?v=30fps62';
+import { Ronin } from './entities/Ronin.js?v=30fps62';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps62';
+import { IceMage } from './entities/IceMage.js?v=30fps62';
+import { Android } from './entities/Android.js?v=30fps62';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -116,18 +117,18 @@ const CHAMPION_ROSTER = {
     name: 'SERAPHINA',
     role: 'HIGH PRIESTESS',
     style: 'SANCTUARY WEAVER',
-    trait: 'PASSIVE: HIGH SERAPHIC WING FLIGHT',
+    trait: 'PASSIVE: SERAPHIC FLIGHT & GRACE COUNTER',
     cls: Priestess,
     theme: 'radiant',
     color: '#fde047',
     selectSfx: 'holy_heal',
-    victoryLine: 'Sacred light and divine grace purify the sanctuary!',
+    victoryLine: 'Sacred light and Final Grace purify the sanctuary!',
     skills: [
       {
         name: 'SACRED STARLIGHT',
-        type: 'AUTO + BENEDICTION',
+        type: 'AUTO + WING FLIGHT',
         vfxCell: 0,
-        desc: 'Fires Mach-ring star-cross bolts, raises a 2.5D Stained-Glass Rose Ward & soars across the stage.'
+        desc: 'Grounded star-cross casts, 2.5D Stained-Glass Rose Ward & winged cross-stage flight.'
       },
       {
         name: 'DIVINE SANCTUARY',
@@ -136,10 +137,10 @@ const CHAMPION_ROSTER = {
         desc: 'Consecrates a 2.5D Cathedral Seal, healing HP & smiting foes with Sanctum spires & Valkyrie spears.'
       },
       {
-        name: 'SERAPHIC APOTHEOSIS',
-        type: '★ OVERDRIVE ULT',
+        name: 'FINAL GRACE',
+        type: '★ OVERDRIVE & SUPREME ULT',
         vfxCell: 2,
-        desc: 'Ascends in full Archangel form inside a 2.5D Ophanim Chakram Wheel to rain 3 Cathedral Sanctum spires.'
+        desc: 'Supreme Ult: Invulnerable 3s winged bloom charge (+30% Max HP heal) unleashing all tanked damage in one instant beam!'
       }
     ]
   },
@@ -177,33 +178,33 @@ const CHAMPION_ROSTER = {
   },
   chronomancer: {
     id: 'chronomancer',
-    name: 'ZEPHYROS',
-    role: 'GRAND CHRONOMANCER',
-    style: 'TEMPORAL TACTICIAN',
-    trait: 'PASSIVE: CHRONO PORTAL WARP & REWIND',
+    name: 'CHRONOS',
+    role: 'CLOCK-BLADE SOVEREIGN',
+    style: 'TEMPORAL PARADOX BLADE',
+    trait: 'PASSIVE: PARADOX CLONES & TIME REWIND',
     cls: Chronomancer,
     theme: 'chrono',
     color: '#2dd4bf',
     selectSfx: 'clock_gear',
-    victoryLine: 'The Grand Astral Clocktower locks all timelines in stasis!',
+    victoryLine: 'The Twelfth Bell tolls—every timeline converges in Eternal Zero!',
     skills: [
       {
-        name: 'ESCAPEMENT SAW-GEAR',
-        type: 'AUTO + PASSIVE',
-        vfxCell: 1,
-        desc: 'Hurls clockwork saw-gears & warps to the far side leaving a Stasis Time-Mine when cornered.'
-      },
-      {
-        name: 'HOURGLASS STASIS',
-        type: 'SKILL • 4.6S CD',
+        name: 'TWIN HANDS OF FATE',
+        type: '3-HIT BLADE & CLONE',
         vfxCell: 0,
-        desc: 'Materializes a golden hourglass prison that freezes the enemy in time.'
+        desc: 'Minute-Glaive sonic wave, Future-Clone pincer back-slash & XII-Chime scissor detonation!'
       },
       {
-        name: 'DOOMSDAY MIDNIGHT',
-        type: '★ OVERDRIVE ULT',
-        vfxCell: 2,
-        desc: 'Manifests the Celestial Astrolabe Clock, striking 12 chimes of temporal judgment.'
+        name: 'CHRONO-SCHISM REWIND',
+        type: 'SKILL • 5.2S CD',
+        vfxCell: 1,
+        desc: 'Drops a Past Anchor, warps in to carve an X-Rift & Stasis Field, then rewinds back restoring lost HP!'
+      },
+      {
+        name: 'ETERNAL ZERO: TWELFTH BELL',
+        type: '★ OVERDRIVE & SUPREME ULT',
+        vfxCell: 3,
+        desc: 'Supreme Ult: Freezes enemies in stopped time, surrounds them with 6 Clock-Hand Spears & shatters time in one burst!'
       }
     ]
   },
@@ -900,18 +901,27 @@ class Game {
       stageBadge: document.getElementById('hud-stage-badge')
     };
     this.btnTestUlt = document.getElementById('btn-test-ult');
+    this._testUltRoundRobinIdx = 0;
     if (this.btnTestUlt) {
       this.btnTestUlt.addEventListener('click', () => {
-        const candidate =
-          this.fighters.find((f) => f && !f.isDead && !f.isBenched && f.hasTrueUltimate) ||
-          this.fighters.find((f) => f && !f.isDead && f.hasTrueUltimate);
-        if (candidate && typeof candidate.updateTrueUltimate === 'function') {
-          if (candidate.isBenched) candidate.isBenched = false;
-          candidate.finisherGauge = 0;
-          if (candidate.stats) candidate.stats.ultsUsed++;
-          candidate.setState('TRUE_ULTIMATE');
-          this.triggerTrueUltimateCinematic(candidate);
-          this.updateHUD();
+        const readyPool = this.fighters.filter(
+          (f) => f && !f.isDead && !f.isBenched && f.hasTrueUltimate && f.state !== 'TRUE_ULTIMATE'
+        );
+        const fallbackPool = this.fighters.filter(
+          (f) => f && !f.isDead && f.hasTrueUltimate && f.state !== 'TRUE_ULTIMATE'
+        );
+        const pool = readyPool.length > 0 ? readyPool : fallbackPool;
+        if (pool.length > 0) {
+          const candidate = pool[this._testUltRoundRobinIdx % pool.length];
+          this._testUltRoundRobinIdx = (this._testUltRoundRobinIdx + 1) % pool.length;
+          if (candidate && typeof candidate.updateTrueUltimate === 'function') {
+            if (candidate.isBenched) candidate.isBenched = false;
+            candidate.finisherGauge = 0;
+            if (candidate.stats) candidate.stats.ultsUsed++;
+            candidate.setState('TRUE_ULTIMATE');
+            this.triggerTrueUltimateCinematic(candidate);
+            this.updateHUD();
+          }
         }
       });
     }
@@ -2186,6 +2196,7 @@ class Game {
 
     for (let i = this.vfx.projectiles.length - 1; i >= 0; i--) {
       const p = this.vfx.projectiles[i];
+      if (p.owner && p.owner.chronoTimeStopTimer > 0) continue;
       p.age = (p.age || 0) + dt;
       p.ringTimer = (p.ringTimer || 0) + dt;
       p.x += p.vx * dt;
@@ -2565,7 +2576,11 @@ class Game {
     for (const f of this.fighters) {
       if (!f) continue;
       const target = this.getTargetFor(f);
-      f.update(dt, target, this);
+      if (f.chronoTimeStopTimer > 0 && !f.isDead && f.state !== 'TRUE_ULTIMATE') {
+        Fighter.prototype.update.call(f, dt, target, this);
+      } else {
+        f.update(dt, target, this);
+      }
     }
 
     // Reveal the Victory / Rematch plaque ONLY after all 30 death frames (F00..F29) have finished

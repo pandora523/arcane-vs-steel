@@ -22,7 +22,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   MotePool
-} from '../ArcaneShaderFX.js?v=30fps61';
+} from '../ArcaneShaderFX.js?v=30fps62';
 
 const TWO_PI = Math.PI * 2;
 const BACK_HALF = (theta) => Math.sin(theta) < 0;
@@ -1420,6 +1420,446 @@ export const sacredStarCrescentCell = {
   }
 };
 
+/**
+ * Live 120Hz 2.5D Final Grace Charge Vortex (`TRUE_ULTIMATE` 3.0s charge aura).
+ */
+export const seraphicFinalGraceCharge = {
+  duration: 0.65,
+  defaults: {
+    palette: SERAPHIC_GOLD_PALETTE
+  },
+  create(cfg) {
+    const dur = 0.65;
+    const gold = buildColorRamp(cfg.palette, 8);
+    const stained = buildColorRamp(SERAPHIC_STAINED_PALETTE, 8);
+    const grace = buildColorRamp(SERAPHIC_GRACE_PALETTE, 8);
+    const chargeU = clamp01(cfg.chargeU ?? cfg.extra?.chargeU ?? 0.5);
+
+    return {
+      step() {},
+      renderBack(pen, localT) {
+        const progress = clamp01(localT / dur);
+        const env = Math.sin(progress * Math.PI);
+        const rOuter = (22 + chargeU * 26) * (1.15 - progress * 0.35);
+        pen.radialGlow(0, -18, (26 + chargeU * 28) * env, gold[5], (0.28 + chargeU * 0.24) * env);
+        drawTiltedOrbitBand(pen, 0, -18, rOuter, 0.34, 1.5, 0.86 * env, [gold[2], stained[3], gold[5], PURE_WHITE], BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -4, rOuter * 0.78, 0.28, 1.3, 0.8 * env, [grace[2], grace[4], gold[6], PURE_WHITE], BACK_HALF, false);
+      },
+      renderFront(pen, localT) {
+        const progress = clamp01(localT / dur);
+        const env = Math.sin(progress * Math.PI);
+        const rOuter = (22 + chargeU * 26) * (1.15 - progress * 0.35);
+        drawTiltedOrbitBand(pen, 0, -18, rOuter, 0.34, 1.6, 0.94 * env, [gold[2], stained[3], gold[5], PURE_WHITE], FRONT_HALF, chargeU > 0.65);
+        drawTiltedOrbitBand(pen, 0, -4, rOuter * 0.78, 0.28, 1.4, 0.9 * env, [grace[2], grace[4], gold[6], PURE_WHITE], FRONT_HALF, false);
+
+        // Inward-converging prismatic star motes
+        const moteCount = 8;
+        for (let i = 0; i < moteCount; i++) {
+          const a = (i * TWO_PI) / moteCount + progress * 2.6 + chargeU * TWO_PI;
+          const dist = (1 - progress) * (28 + chargeU * 22) + 4;
+          const mx = Math.cos(a) * dist;
+          const my = -16 + Math.sin(a) * dist * 0.68;
+          const mCol = i % 3 === 0 ? stained[3] : i % 3 === 1 ? grace[4] : gold[6];
+          drawSacredCross(pen, mx, my, (2.6 + chargeU * 2.0) * env, mCol, PURE_WHITE, 0.95 * env, a);
+        }
+      }
+    };
+  }
+};
+
+/**
+ * Live 120Hz 2.5D Sanctuary Nova Burst (`FINAL GRACE` instant counter-beam target detonation).
+ */
+export const sanctuaryNovaBurst = {
+  duration: 0.56,
+  defaults: {
+    palette: SERAPHIC_GOLD_PALETTE
+  },
+  create(cfg) {
+    const dur = 0.56;
+    const gold = buildColorRamp(cfg.palette, 8);
+    const stained = buildColorRamp(SERAPHIC_STAINED_PALETTE, 8);
+    const grace = buildColorRamp(SERAPHIC_GRACE_PALETTE, 8);
+
+    return {
+      step() {},
+      renderBack(pen, localT) {
+        const progress = clamp01(localT / dur);
+        const grow = Easing.outCubic(progress);
+        const fade = progress < 0.25 ? 1.0 : 1 - Easing.inQuad((progress - 0.25) / 0.75);
+        if (fade <= 0.02) return;
+        pen.radialGlow(0, 0, (24 + grow * 34) * fade, gold[5], 0.42 * fade);
+        drawTiltedOrbitBand(
+          pen,
+          0,
+          0,
+          14 + grow * 36,
+          0.36,
+          1.8,
+          0.9 * fade,
+          [gold[2], stained[4], gold[6], PURE_WHITE],
+          BACK_HALF,
+          progress < 0.35
+        );
+      },
+      renderFront(pen, localT) {
+        const progress = clamp01(localT / dur);
+        const grow = Easing.outCubic(progress);
+        const fade = progress < 0.25 ? 1.0 : 1 - Easing.inQuad((progress - 0.25) / 0.75);
+        if (fade <= 0.02) return;
+
+        drawTiltedOrbitBand(
+          pen,
+          0,
+          0,
+          14 + grow * 36,
+          0.36,
+          2.0,
+          0.96 * fade,
+          [gold[2], stained[4], gold[6], PURE_WHITE],
+          FRONT_HALF,
+          progress < 0.35
+        );
+        drawTiltedOrbitBand(
+          pen,
+          0,
+          0,
+          9 + grow * 24,
+          0.62,
+          1.5,
+          0.88 * fade,
+          [grace[2], grace[4], stained[3], PURE_WHITE],
+          () => true,
+          false
+        );
+
+        for (let i = 0; i < 8; i++) {
+          const a = (i * TWO_PI) / 8 + grow * 0.85;
+          const r = 8 + grow * 32;
+          const mx = Math.cos(a) * r;
+          const my = Math.sin(a) * r * 0.76;
+          const col = i % 3 === 0 ? stained[4] : i % 3 === 1 ? grace[4] : gold[6];
+          drawSeraphicFeather(pen, mx, my, a, col, PURE_WHITE, 0.92 * fade);
+        }
+
+        drawSacredCross(pen, 0, 0, (20 - grow * 6) * fade, gold[5], PURE_WHITE, fade, progress * 0.6);
+        drawStarburstFlare(pen, 0, 0, 14 * fade, fade, gold);
+      }
+    };
+  }
+};
+
+/**
+ * Row 5: 30-frame Final Grace Prismatic Sunburst Scepter Charge Core (`F00..F29`, seamless loop).
+ * Safe logical bounds strictly inside `[-44..+44]` (`0` border clips on `104x104 -> 208x208`).
+ */
+export const finalGraceChargeSphereCell = {
+  duration: 1.0,
+  loop: true,
+  defaults: {
+    palette: SERAPHIC_GOLD_PALETTE
+  },
+  create(cfg) {
+    const gold = buildColorRamp(cfg.palette, 8);
+    const stained = buildColorRamp(SERAPHIC_STAINED_PALETTE, 8);
+    const grace = buildColorRamp(SERAPHIC_GRACE_PALETTE, 8);
+
+    return {
+      step() {},
+      renderFront(pen, localT) {
+        const progress = clamp01(localT / 1.0);
+        const rot = progress * TWO_PI;
+        const pulse = 0.92 + 0.08 * Math.sin(rot * 2);
+
+        pen.radialGlow(0, 0, 36 * pulse, gold[5], 0.36);
+
+        // 1. Prismatic Stained-Glass Outer Refraction Ring & Inner Solar Core
+        const maxR = 35 * pulse;
+        pen.shadeBox(-38, -38, 38, 38, (px, py, out) => {
+          const r = Math.hypot(px, py);
+          if (r > maxR) return 0;
+
+          // Blinding Solar-White & Imperial-Gold Core
+          if (r <= 11.5 * pulse) {
+            out.alpha = 1.0;
+            out.glowStrength = 0.38;
+            out.glowColor = gold[6];
+            if (r <= 6.2 * pulse) return PURE_WHITE;
+            if (r <= 9.2 * pulse) return gold[6];
+            return gold[5];
+          }
+
+          // Counter-rotating Prismatic Cathedral Lens Ring (`r = 21..27`)
+          if (r >= 20.5 * pulse && r <= 27.5 * pulse) {
+            const a = Math.atan2(py, px) - rot;
+            const normA = ((a % TWO_PI) + TWO_PI) % TWO_PI;
+            const seg = Math.floor((normA / TWO_PI) * 12);
+            const segFrac = (normA / TWO_PI) * 12 - seg;
+            out.alpha = 1.0;
+            if (Math.abs(r - 20.8 * pulse) < 1.0 || Math.abs(r - 27.2 * pulse) < 1.0 || segFrac < 0.14) {
+              out.glowStrength = 0.24;
+              out.glowColor = gold[5];
+              return r > 26.2 * pulse ? gold[2] : gold[6];
+            }
+            const prismCols = [gold[5], stained[4], grace[4], stained[3]];
+            const pCol = prismCols[seg % 4];
+            out.glowStrength = 0.24;
+            out.glowColor = pCol;
+            return pCol;
+          }
+
+          // Outer thin golden astrolabe ring (`r = 32..35`)
+          if (Math.abs(r - 33.2 * pulse) < 1.15) {
+            const a2 = Math.atan2(py, px) + rot * 1.5;
+            if (Math.sin(a2 * 8) > -0.35) {
+              out.alpha = 1.0;
+              out.glowStrength = 0.22;
+              out.glowColor = gold[6];
+              return Math.sin(a2 * 8) > 0.55 ? PURE_WHITE : gold[5];
+            }
+          }
+          return 0;
+        });
+
+        // 2. 8 Inward-Spiraling Light Runes Converging into the Scepter Core
+        for (let i = 0; i < 8; i++) {
+          const u = (((i / 8) - progress) % 1 + 1) % 1;
+          const spiralA = (i * TWO_PI) / 8 + (1 - u) * 1.65 + rot * 0.5;
+          const sr = 9 + u * 31;
+          const sx = Math.cos(spiralA) * sr;
+          const sy = Math.sin(spiralA) * sr;
+          const env = Math.sin(u * Math.PI);
+          const sCol = i % 3 === 0 ? stained[4] : i % 3 === 1 ? stained[3] : grace[4];
+          drawSacredCross(pen, sx, sy, 2.4 + (1 - u) * 2.2, sCol, PURE_WHITE, env > 0.25 ? 1.0 : env * 3, spiralA);
+        }
+
+        // 3. Crisp Horizontal-Dominant Final Grace Focal Crossflare (`———` + `|`)
+        pen.line(-41, -1, 41, -1, gold[5], 1.0);
+        pen.line(-41, 1, 41, 1, gold[5], 1.0);
+        pen.line(-41, 0, 41, 0, gold[6], 1.0);
+        pen.line(-32, 0, 32, 0, PURE_WHITE, 1.0);
+        pen.line(-1, -34, -1, 34, gold[5], 1.0);
+        pen.line(1, -34, 1, 34, gold[5], 1.0);
+        pen.line(0, -34, 0, 34, gold[6], 1.0);
+        pen.line(0, -22, 0, 22, PURE_WHITE, 1.0);
+        drawStarburstFlare(pen, 0, 0, 12 * pulse, 1.0, gold);
+      }
+    };
+  }
+};
+
+/**
+ * Shared envelope for Row 6 & Row 7 so Muzzle exit height matches Beam segment height 1-to-1 on every frame `0..29`!
+ */
+function getFinalGraceBeamHalfH(progress) {
+  const expand = progress < 0.1 ? Easing.outCubic(progress / 0.1) : 1.0;
+  const collapse = progress > 0.74 ? 1 - Easing.inQuad((progress - 0.74) / 0.26) : 1.0;
+  const env = clamp01(expand * collapse);
+  const pulse = 1.0 + 0.05 * Math.sin(progress * TWO_PI * 4);
+  return { env, halfH: Math.max(2.5, Math.min(26.5, 25.0 * env * pulse)) };
+}
+
+/**
+ * Row 6: 30-frame Final Grace Prismatic Focusing Cannon Muzzle (`|===>>>`, facing `+X` right).
+ * Safe logical bounds strictly inside `[-44..+44]` (`0` border clips on `104x104 -> 208x208`).
+ */
+export const finalGraceMuzzlePrismCell = {
+  duration: 1.0,
+  loop: false,
+  defaults: {
+    palette: SERAPHIC_GOLD_PALETTE
+  },
+  create(cfg) {
+    const gold = buildColorRamp(cfg.palette, 8);
+    const stained = buildColorRamp(SERAPHIC_STAINED_PALETTE, 8);
+    const grace = buildColorRamp(SERAPHIC_GRACE_PALETTE, 8);
+
+    return {
+      step() {},
+      renderFront(pen, localT) {
+        const progress = clamp01(localT / 1.0);
+        const { env, halfH } = getFinalGraceBeamHalfH(progress);
+        if (env <= 0.02) return;
+
+        const rot = progress * TWO_PI * 2;
+        const lensH1 = Math.min(42, 40 * env);
+        const lensH2 = Math.min(35, 33 * env);
+        const flowCycles = progress * 6;
+        const kFreq = TWO_PI / 74;
+
+        pen.radialGlow(-8, 0, 36 * env, gold[5], 0.36 * env);
+
+        // 1. Twin Vertical 2.5D Stained-Glass Focusing Portals + Seamlessly Welded Rightward Beam Exit (`px = -26 .. +44`)
+        pen.shadeBox(-43, -44, 44, 44, (px, py, out) => {
+          const ay = Math.abs(py);
+
+          // Back Focusing Portal Ring at x = -25
+          const dPortal1 = Math.hypot((px + 25) / 7.5, py / Math.max(2, lensH1));
+          if (dPortal1 >= 0.72 && dPortal1 <= 1.04) {
+            const ang = Math.atan2(py, (px + 25) * 4.5) + rot;
+            const seg = Math.floor((((ang % TWO_PI) + TWO_PI) % TWO_PI) / (TWO_PI / 10));
+            out.alpha = 1.0;
+            out.glowStrength = 0.28 * env;
+            out.glowColor = gold[6];
+            if (dPortal1 > 0.94 || dPortal1 < 0.78) return dPortal1 > 0.98 ? gold[1] : gold[6];
+            return seg % 3 === 0 ? stained[4] : seg % 3 === 1 ? stained[3] : grace[4];
+          }
+
+          // Front Primary Focusing Portal Ring at x = -9
+          const dPortal2 = Math.hypot((px + 9) / 6.5, py / Math.max(2, lensH2));
+          if (dPortal2 >= 0.68 && dPortal2 <= 1.04) {
+            const ang2 = Math.atan2(py, (px + 9) * 4.5) - rot * 1.2;
+            const seg2 = Math.floor((((ang2 % TWO_PI) + TWO_PI) % TWO_PI) / (TWO_PI / 8));
+            out.alpha = 1.0;
+            out.glowStrength = 0.32 * env;
+            out.glowColor = PURE_WHITE;
+            if (dPortal2 < 0.8) return PURE_WHITE;
+            if (dPortal2 > 0.95) return gold[2];
+            return seg2 % 2 === 0 ? gold[5] : stained[4];
+          }
+
+          // Forward Horizontal Beam Ignition Jet (`px = -26 .. +44`), reaching exact `halfH` by `px >= 2`
+          if (px >= -26 && px <= 44) {
+            const funnelScale = px < 2 ? 0.56 + 0.44 * ((px + 26) / 28) : 1.0;
+            const localHalfH = halfH * funnelScale;
+            const phaseX = px + 41; // Aligns phase with Segment 0 stamped +82px (`+41` logical px) to the right!
+            const helixY1 = Math.sin(phaseX * kFreq - flowCycles * TWO_PI) * (localHalfH * 0.84);
+            const helixY2 = -helixY1;
+            const onHelix1 = px >= 0 && Math.abs(py - helixY1) <= 1.8 * env;
+            const onHelix2 = px >= 0 && Math.abs(py - helixY2) <= 1.6 * env;
+
+            if (ay <= localHalfH || onHelix1 || onHelix2) {
+              out.alpha = 1.0;
+              if (onHelix1 && ay > localHalfH * 0.42) {
+                out.glowStrength = 0.32 * env;
+                out.glowColor = stained[4];
+                return Math.abs(py - helixY1) < 0.85 ? PURE_WHITE : stained[4];
+              }
+              if (onHelix2 && ay > localHalfH * 0.42) {
+                out.glowStrength = 0.3 * env;
+                out.glowColor = stained[3];
+                return Math.abs(py - helixY2) < 0.8 ? PURE_WHITE : stained[3];
+              }
+              const uY = ay / Math.max(1, localHalfH);
+              out.glowStrength = (0.38 - uY * 0.18) * env;
+              out.glowColor = gold[6];
+              if (uY <= 0.36) return PURE_WHITE;
+              if (uY <= 0.58) return gold[6];
+              if (uY <= 0.8) {
+                const bandPhase = (((phaseX / 74) - flowCycles) % 1 + 1) % 1;
+                const bandIdx = Math.floor(bandPhase * 8 + (py > 0 ? 2 : 0)) % 4;
+                return bandIdx === 0 ? gold[5] : bandIdx === 1 ? stained[4] : bandIdx === 2 ? grace[4] : stained[3];
+              }
+              if (uY <= 0.91) return gold[4];
+              return gold[1];
+            }
+          }
+          return 0;
+        });
+
+        // 2. Swept-Back Seraphic Shock-Feathers & Blinding Muzzle Starflare
+        for (const side of [-1, 1]) {
+          drawSeraphicFeather(pen, -17, side * (23 * env), side * 0.48, gold[5], PURE_WHITE, 1.0);
+          drawSeraphicFeather(pen, -3, side * (28 * env), side * 0.32, stained[4], gold[6], 1.0);
+        }
+        drawSacredCross(pen, -9, 0, 15 * env, gold[5], PURE_WHITE, 1.0, 0);
+      }
+    };
+  }
+};
+
+/**
+ * Row 7: 30-frame Straight Horizontal Pixel-Art Final Grace Beam Segment (`———`).
+ * Exact `74` logical pixel (`148px` in `208x208`) periodic phase so stamping segments every `148px`
+ * welds into ONE 100% seamless, pinhole-free, razor-straight full-stage Final Grace beam (`0/240` clips)!
+ */
+export const finalGraceHorizonBeamCell = {
+  duration: 1.0,
+  loop: false,
+  defaults: {
+    palette: SERAPHIC_GOLD_PALETTE
+  },
+  create(cfg) {
+    const gold = buildColorRamp(cfg.palette, 8);
+    const stained = buildColorRamp(SERAPHIC_STAINED_PALETTE, 8);
+    const grace = buildColorRamp(SERAPHIC_GRACE_PALETTE, 8);
+
+    return {
+      step() {},
+      renderFront(pen, localT) {
+        const progress = clamp01(localT / 1.0);
+        const { env: beamEnv, halfH } = getFinalGraceBeamHalfH(progress);
+        if (beamEnv <= 0.02) return;
+
+        const flowCycles = progress * 6;
+        const kFreq = TWO_PI / 74; // Exact 74 logical px = 148px screen period!
+
+        // 1. Pinhole-Free Cel-Clustered Straight Horizontal Final Grace Plasma Column (`px = -44 .. +44`)
+        pen.shadeBox(-44, -34, 44, 34, (px, py, out) => {
+          if (Math.abs(px) > 44) return 0;
+          const ay = Math.abs(py);
+
+          // Periodic helical pixel-ribbon wrapping around the horizontal beam
+          const helixY1 = Math.sin(px * kFreq - flowCycles * TWO_PI) * (halfH * 0.84);
+          const helixY2 = -helixY1;
+          const onHelix1 = Math.abs(py - helixY1) <= 1.8 * beamEnv;
+          const onHelix2 = Math.abs(py - helixY2) <= 1.6 * beamEnv;
+
+          if (ay > halfH && !onHelix1 && !onHelix2) return 0;
+
+          out.alpha = 1.0;
+          if (onHelix1 && ay > halfH * 0.42) {
+            out.glowStrength = 0.32 * beamEnv;
+            out.glowColor = stained[4];
+            return Math.abs(py - helixY1) < 0.85 ? PURE_WHITE : stained[4];
+          }
+          if (onHelix2 && ay > halfH * 0.42) {
+            out.glowStrength = 0.3 * beamEnv;
+            out.glowColor = stained[3];
+            return Math.abs(py - helixY2) < 0.8 ? PURE_WHITE : stained[3];
+          }
+
+          const uY = ay / Math.max(1, halfH);
+          out.glowStrength = (0.38 - uY * 0.18) * beamEnv;
+          out.glowColor = gold[6];
+
+          // Core 1: Solid Pure Blinding White Sacred Beam Core (`uY <= 0.36`)
+          if (uY <= 0.36) return PURE_WHITE;
+          // Core 2: Incandescent Ivory-Gold Plasma (`uY <= 0.58`)
+          if (uY <= 0.58) return gold[6];
+          // Shell 3: Exact-74px-Periodic Prismatic Stained-Glass Energy Bands (`uY <= 0.80`)
+          if (uY <= 0.8) {
+            const bandPhase = (((px / 74) - flowCycles) % 1 + 1) % 1;
+            const bandIdx = Math.floor(bandPhase * 8 + (py > 0 ? 2 : 0)) % 4;
+            return bandIdx === 0 ? gold[5] : bandIdx === 1 ? stained[4] : bandIdx === 2 ? grace[4] : stained[3];
+          }
+          // Shell 4: Imperial Gold Outer Rail (`uY <= 0.91`)
+          if (uY <= 0.91) return gold[4];
+          // Crisp 1px Dark Selective-Contrast Rim (`uY > 0.91`)
+          return gold[1];
+        });
+
+        // 2. Periodic Horizontal Pixel Shock-Streaks & Sacred Star Glints (exact 74px period!)
+        for (let s = 0; s < 2; s++) {
+          const uS = (((s * 0.5 + flowCycles) % 1) + 1) % 1;
+          const sx = Math.round(-37 + uS * 74);
+          const sy = Math.round((s % 2 === 0 ? 1 : -1) * (halfH + 3.5));
+          if (Math.abs(sy) <= 41 && Math.abs(sx) <= 36) {
+            const sCol = s % 2 === 0 ? gold[6] : stained[4];
+            pen.line(sx - 5, sy, sx + 5, sy, sCol, 1.0);
+            pen.line(sx - 3, sy + (s % 2 === 0 ? -1 : 1), sx + 3, sy + (s % 2 === 0 ? -1 : 1), PURE_WHITE, 1.0);
+          }
+        }
+        if (beamEnv > 0.35) {
+          const uG = ((flowCycles % 1) + 1) % 1;
+          const glintX = Math.round(-32 + uG * 64);
+          drawSacredCross(pen, glintX, 0, 5.5 * beamEnv, gold[5], PURE_WHITE, 1.0, 0);
+        }
+      }
+    };
+  }
+};
+
 export const SERAPHIC_EFFECT_REGISTRY = {
   scepterStarFocus,
   scepterStarburstCone,
@@ -1431,9 +1871,15 @@ export const SERAPHIC_EFFECT_REGISTRY = {
   cathedralSanctumPillar,
   holySpearReticle,
   holyStarImpactBurst,
+  seraphicFinalGraceCharge,
+  sanctuaryNovaBurst,
   sacredStarOrbCell,
   holyValkyrieSpearCell,
   cathedralLightPillarCell,
   stainedGlassRoseMandalaCell,
-  sacredStarCrescentCell
+  sacredStarCrescentCell,
+  finalGraceChargeSphereCell,
+  finalGraceMuzzlePrismCell,
+  finalGraceHorizonBeamCell
 };
+

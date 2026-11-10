@@ -1,12 +1,13 @@
-// Realistic Elemental & Weapon Foley Audio Engine
-// Plays 38 physically modeled 44.1kHz 16-bit stereo WAV assets:
-// - SWORD & STEEL: High-velocity blade air-whips ("SWISH"), friction-excited tempered steel edge
-//   scrapes ("SHING" at 2.4kHz-9.5kHz), and visceral armor/body impact thuds.
-// - ARROW & BOW: Taut recurve bowstring snap, wooden shaft click, supersonic fletching air-zip,
-//   and authentic bodkin "THWACK / THUNK" leather/wood penetration + damped wooden shaft shudder.
-// - FIRE & PYROMANCY: Explosive gas/torch ignition ("FWOOSH"), turbulent combustion roar,
-//   searing thermal hiss, and crackling charcoal/ember snaps for both cast and impact (`fire_hit`).
-// - HOLY LIGHT & HEALING: Crystalline prism shimmer, angelic harp strings, and sanctuary resonance.
+// Studio Physical-Foley & Anime Combat VFX Audio Engine
+// Plays 69 dedicated 44.1kHz 16-bit stereo physical-foley WAV assets (zero musical chords/synths):
+// - TEMPERED STEEL & RONIN IAIDO: Aerodynamic blade air-cuts, friction-excited steel edge slices,
+//   steel-on-steel parry sparks, high-voltage Raijin arcs, and visceral counter-hit sub-drops.
+// - BOW & TEMPEST WIND: Dry recurve bowstring snaps, bodkin penetration thwacks, arrow-rain salvos,
+//   and supersonic wind-vortex sonic booms.
+// - PYROMANCY, CRYOMANCY & RADIANT LIGHT: Pressurized napalm roars, seismic meteor impacts,
+//   sub-zero glacier crystal shatters, and Lux-style prismatic laser cannon discharges.
+// - ABYSSAL, HOROLOGY, WORLD-FORGE & CYBER: Iron chain whip-cracks, warped 'Eternal Zero'
+//   time-stop tape plunges, stained-glass clockface shatters, anvil slams, and plasma railguns.
 
 export class AudioManager {
   constructor() {
@@ -20,55 +21,98 @@ export class AudioManager {
     this.lastImpactTime = 0;
 
     this.volumes = {
-      slash: 0.68,
-      heavy_cleave: 0.78,
-      blade_wave: 0.72,
-      storm_leap: 0.70,
-      thunder_slam: 0.82,
-      clang: 0.76,
-      hit_crit: 0.84,
-      hurt_hit: 0.42,
-      whirlwind: 0.72,
-      fireball: 0.74,
-      fire_hit: 0.78,
-      flame_pillar: 0.78,
-      solar_beam: 0.84,
-      eclipse_charge: 0.72,
-      supernova_detonate: 0.88,
-      earthshatter: 0.86,
-      meteor: 0.72,
-      meteor_impact: 0.86,
-      blink: 0.68,
+      // Tempered Steel & Paladin
+      slash: 0.70,
+      heavy_cleave: 0.80,
+      blade_wave: 0.74,
+      clang: 0.78,
+      parry_clang: 0.82,
+      reflect: 0.76,
+      hit_crit: 0.88,
+      hurt_hit: 0.44,
+      footstep_steel: 0.22,
+
+      // Storm Ronin & Mobility
+      raijin_slash: 0.78,
+      dash_whoosh: 0.68,
+      storm_leap: 0.72,
+      blink: 0.70,
+
+      // Bow & Tempest Wind
+      arrow_shoot: 0.72,
+      arrow_hit: 0.80,
+      arrow_rain: 0.76,
       zephyr_flip: 0.68,
-      reflect: 0.74,
-      skill_cast: 0.56,
-      ult_cast: 0.80,
+      archer_ult: 0.86,
+
+      // Pyromancy & Astral Meteor
+      fireball: 0.75,
+      fire_hit: 0.80,
+      flame_pillar: 0.80,
+      eclipse_charge: 0.74,
+      solar_beam: 0.86,
+      meteor: 0.74,
+      meteor_impact: 0.88,
+      supernova_detonate: 0.90,
+
+      // Radiant Light / Seraphina
+      holy_bolt: 0.70,
+      holy_hit: 0.76,
+      holy_heal: 0.76,
+      holy_smite: 0.80,
+      final_grace_charge: 0.76,
+      final_grace_beam: 0.88,
+      priestess_ult: 0.88,
+
+      // Valkyrie Sky-Lance
+      holy_spear: 0.76,
+      dragon_dive: 0.88,
+
+      // Cryomancy / Lyra
+      frost_cast: 0.72,
+      ice_shatter: 0.82,
+      prism_beam: 0.84,
+
+      // Abyssal Reaper
+      scythe_reap: 0.78,
+      chain_hook: 0.80,
+      soul_drain: 0.76,
+      reaper_ult: 0.88,
+
+      // Chronos / Horology
+      clock_gear: 0.74,
+      chrono_hit: 0.78,
+      hourglass_trap: 0.80,
+      time_rewind: 0.78,
+      chrono_ult: 0.88,
+      time_stop: 0.88,
+      time_shatter: 0.90,
+
+      // Titan World-Forge
+      thunder_slam: 0.84,
+      earthshatter: 0.88,
+      whirlwind: 0.74,
+
+      // Cyber Android VEX-09
+      cyber_slash: 0.76,
+      emp_blast: 0.84,
+      cyber_beam: 0.88,
+
+      // Universal Cast, Victory & Champion Deaths
+      skill_cast: 0.58,
+      ult_cast: 0.82,
+      victory_fanfare: 0.84,
       death_warrior: 0.82,
+      death_titan: 0.84,
+      death_ronin: 0.80,
       death_mage: 0.80,
       death_archer: 0.80,
       death_priestess: 0.80,
-      victory_fanfare: 0.82,
-      footstep_steel: 0.22,
-      arrow_shoot: 0.72,
-      arrow_hit: 0.80,
-      arrow_rain: 0.74,
-      archer_ult: 0.84,
-      holy_bolt: 0.68,
-      holy_hit: 0.74,
-      holy_heal: 0.76,
-      holy_smite: 0.78,
-      priestess_ult: 0.84,
-      scythe_reap: 0.78,
-      chain_hook: 0.80,
-      soul_drain: 0.74,
-      reaper_ult: 0.86,
-      death_reaper: 0.80,
-      clock_gear: 0.74,
-      chrono_hit: 0.78,
-      time_rewind: 0.76,
-      hourglass_trap: 0.80,
-      chrono_ult: 0.86,
-      death_chrono: 0.80
+      death_valkyrie: 0.82,
+      death_icemage: 0.80,
+      death_reaper: 0.82,
+      death_chrono: 0.82,
+      death_android: 0.82
     };
 
     this.wavKeys = Object.keys(this.volumes);
@@ -91,29 +135,29 @@ export class AudioManager {
     if (!AudioCtx) return;
     this.ctx = new AudioCtx({ latencyHint: 'interactive' });
 
-    // 1. Clean 52Hz High-Pass Filter (eliminates sub-bass rumble on phone/laptop speakers)
+    // 1. Clean 36Hz High-Pass Filter (preserves 38-55Hz cinematic sub-drops while blocking DC/rumble)
     const hpf = this.ctx.createBiquadFilter();
     hpf.type = 'highpass';
-    hpf.frequency.value = 52;
+    hpf.frequency.value = 36;
     hpf.Q.value = 0.707;
 
-    // 2. Wide 15.5kHz Studio Low-Pass Filter (preserves crisp sword shing, arrow thwack & fire crackle)
+    // 2. Wide 16.5kHz Studio Low-Pass Filter (preserves crisp katana shing, crystal shatter & electric arcs)
     const lpf = this.ctx.createBiquadFilter();
     lpf.type = 'lowpass';
-    lpf.frequency.value = 15500;
+    lpf.frequency.value = 16500;
     lpf.Q.value = 0.707;
 
-    // 3. Transparent Studio Peak Limiter (gentle ratio, no pumping)
+    // 3. Transparent Studio Peak Limiter (gentle ratio, fast transient catch, zero pumping)
     const limiter = this.ctx.createDynamicsCompressor();
-    limiter.threshold.value = -4.0;
+    limiter.threshold.value = -3.5;
     limiter.knee.value = 6;
     limiter.ratio.value = 4.0;
     limiter.attack.value = 0.003;
-    limiter.release.value = 0.12;
+    limiter.release.value = 0.11;
 
     // 4. Master Output Gain
     const masterGain = this.ctx.createGain();
-    masterGain.gain.value = 0.88;
+    masterGain.gain.value = 0.90;
 
     hpf.connect(lpf);
     lpf.connect(limiter);
@@ -149,7 +193,7 @@ export class AudioManager {
     await Promise.all(
       this.wavKeys.map(async (key) => {
         try {
-          const res = await fetch(`assets/sfx/${key}.wav?v=2`);
+          const res = await fetch(`assets/sfx/${key}.wav?v=sfx3`);
           if (!res.ok) return;
           const arr = await res.arrayBuffer();
           this.buffers[key] = await this.ctx.decodeAudioData(arr);
@@ -168,23 +212,7 @@ export class AudioManager {
     if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
 
     const aliasMap = {
-      holy_spear: 'holy_smite',
-      dash_whoosh: 'storm_leap',
-      parry_clang: 'reflect',
-      raijin_slash: 'blade_wave',
-      dragon_dive: 'earthshatter',
-      death_knight: 'death_warrior',
-      death_titan: 'death_warrior',
-      death_ronin: 'death_warrior',
-      death_valkyrie: 'death_priestess',
-      frost_cast: 'holy_bolt',
-      prism_beam: 'holy_smite',
-      ice_shatter: 'chrono_hit',
-      death_icemage: 'death_priestess',
-      cyber_slash: 'blade_wave',
-      emp_blast: 'thunder_slam',
-      cyber_beam: 'solar_beam',
-      death_android: 'death_priestess'
+      death_knight: 'death_warrior'
     };
     const name = aliasMap[rawName] || rawName;
 
@@ -194,20 +222,32 @@ export class AudioManager {
     // skip redundant hurt_hit thuds so each element's impact foley stays 100% distinct.
     const isImpact =
       name === 'clang' ||
+      name === 'parry_clang' ||
       name === 'heavy_cleave' ||
+      name === 'raijin_slash' ||
+      name === 'holy_spear' ||
+      name === 'dragon_dive' ||
       name === 'scythe_reap' ||
       name === 'chain_hook' ||
       name === 'chrono_hit' ||
       name === 'hourglass_trap' ||
+      name === 'time_shatter' ||
+      name === 'ice_shatter' ||
+      name === 'cyber_slash' ||
+      name === 'emp_blast' ||
+      name === 'cyber_beam' ||
       name === 'arrow_hit' ||
       name === 'fire_hit' ||
       name === 'holy_hit' ||
+      name === 'holy_smite' ||
       name === 'hit_crit' ||
       name === 'thunder_slam' ||
       name === 'meteor_impact' ||
       name === 'earthshatter' ||
       name === 'supernova_detonate' ||
       name === 'solar_beam' ||
+      name === 'prism_beam' ||
+      name === 'final_grace_beam' ||
       name === 'archer_ult' ||
       name === 'priestess_ult' ||
       name === 'reaper_ult' ||
@@ -227,7 +267,7 @@ export class AudioManager {
           ? 140
           : name === 'meteor' || name === 'meteor_impact'
             ? 110
-            : 52;
+            : 48;
     if (this.lastPlayed[name] && now - this.lastPlayed[name] < minGap) return;
     this.lastPlayed[name] = now;
 
@@ -236,39 +276,33 @@ export class AudioManager {
       name === 'meteor_impact' ||
       name === 'supernova_detonate' ||
       name === 'solar_beam' ||
+      name === 'prism_beam' ||
+      name === 'dragon_dive' ||
+      name === 'emp_blast' ||
+      name === 'cyber_beam' ||
+      name === 'final_grace_beam' ||
       name === 'archer_ult' ||
       name === 'priestess_ult' ||
       name === 'reaper_ult' ||
       name === 'chrono_ult' ||
+      name === 'time_stop' ||
+      name === 'time_shatter' ||
       name === 'ult_cast' ||
       name === 'thunder_slam';
-
-    const isTonalOrCinematic =
-      isBigCinematic ||
-      name === 'victory_fanfare' ||
-      name === 'holy_bolt' ||
-      name === 'holy_hit' ||
-      name === 'holy_heal' ||
-      name === 'holy_smite' ||
-      name === 'soul_drain' ||
-      name === 'chrono_hit' ||
-      name === 'time_rewind' ||
-      name === 'hourglass_trap' ||
-      name === 'skill_cast';
 
     const isMatchEndSound = name === 'victory_fanfare' || name.startsWith('death_');
 
     // Duck older voices when a major cinematic sound arrives, or fade out combat voices on match end
     this.pruneAndDuckVoices(now, isBigCinematic, isMatchEndSound);
 
-    const baseVol = this.volumes[name] || 0.68;
+    const baseVol = this.volumes[name] || 0.70;
     const voiceGain = this.ctx.createGain();
     voiceGain.gain.setValueAtTime(baseVol, this.ctx.currentTime);
 
-    // Full-bandwidth natural air filter
+    // Full-bandwidth natural studio air filter
     const warmthFilter = this.ctx.createBiquadFilter();
     warmthFilter.type = 'lowpass';
-    warmthFilter.frequency.value = isTonalOrCinematic ? 15500 : 13500 + Math.random() * 1800;
+    warmthFilter.frequency.value = isBigCinematic || isMatchEndSound ? 16400 : 14600 + Math.random() * 1800;
     warmthFilter.Q.value = 0.65;
 
     voiceGain.connect(warmthFilter);
@@ -282,14 +316,14 @@ export class AudioManager {
       warmthFilter.connect(this.master);
     }
 
-    // Play the studio-mastered 44.1kHz stereo acoustic WAV buffer
+    // Play the studio-mastered 44.1kHz stereo physical-foley WAV buffer
     const buf = this.buffers[name];
     if (buf) {
       try {
         const src = this.ctx.createBufferSource();
         src.buffer = buf;
-        // Never detune tonal, ultimate, or victory fanfare sounds!
-        const rateSpread = isTonalOrCinematic || isMatchEndSound ? 0.0 : 0.035;
+        // Subtle organic foley variation on repeatable attacks; exact 1.0x timing on ultimates & match end
+        const rateSpread = isBigCinematic || isMatchEndSound ? 0.0 : 0.045;
         src.playbackRate.value =
           rateSpread > 0 ? 1.0 - rateSpread * 0.5 + Math.random() * rateSpread : 1.0;
         src.connect(voiceGain);
@@ -305,7 +339,7 @@ export class AudioManager {
       } catch (_) {}
     }
 
-    // Warm, non-harsh fallback only if triggered in the first ~50ms before WAVs finish decoding
+    // Punchy physical transient + swept turbulence fallback if triggered in the first ~30ms before WAV decode
     this.playWarmFallback(name, voiceGain);
   }
 
@@ -330,7 +364,7 @@ export class AudioManager {
       return;
     }
 
-    while (this.activeVoices.length > 7) {
+    while (this.activeVoices.length > 8) {
       const oldest = this.activeVoices.shift();
       if (oldest && oldest.gainNode) {
         try {
@@ -358,20 +392,50 @@ export class AudioManager {
   playWarmFallback(name, dest) {
     if (!this.ctx || !this.pinkNoiseBuffer) return;
     const t = this.ctx.currentTime;
+
+    // 1. Swept aerodynamic / elemental noise burst (zero stationary tone)
     const src = this.ctx.createBufferSource();
     src.buffer = this.pinkNoiseBuffer;
+    src.playbackRate.value = 0.92 + Math.random() * 0.22;
+
     const bp = this.ctx.createBiquadFilter();
     bp.type = 'bandpass';
-    bp.frequency.setValueAtTime(name.includes('arrow') ? 1600 : name.includes('fire') ? 680 : 1200, t);
-    bp.Q.value = 1.4;
+    const isSharp =
+      name.includes('slash') ||
+      name.includes('clang') ||
+      name.includes('ice') ||
+      name.includes('frost') ||
+      name.includes('cyber') ||
+      name.includes('holy') ||
+      name.includes('arrow');
+    const fStart = isSharp ? 3400 : name.includes('fire') || name.includes('meteor') ? 1350 : 2200;
+    const fEnd = isSharp ? 720 : 280;
+    bp.frequency.setValueAtTime(fStart, t);
+    bp.frequency.exponentialRampToValueAtTime(fEnd, t + 0.16);
+    bp.Q.value = isSharp ? 1.8 : 1.1;
+
     const g = this.ctx.createGain();
     g.gain.setValueAtTime(0.001, t);
-    g.gain.linearRampToValueAtTime(0.28, t + 0.012);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.16);
+    g.gain.linearRampToValueAtTime(0.42, t + 0.005);
+    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+
     src.connect(bp);
     bp.connect(g);
     g.connect(dest);
     src.start(t);
-    src.stop(t + 0.17);
+    src.stop(t + 0.19);
+
+    // 2. Crisp 18ms physical transient snap + fast sub-punch drop (125Hz -> 42Hz)
+    const punchOsc = this.ctx.createOscillator();
+    const punchGain = this.ctx.createGain();
+    punchOsc.type = 'triangle';
+    punchOsc.frequency.setValueAtTime(125, t);
+    punchOsc.frequency.exponentialRampToValueAtTime(42, t + 0.075);
+    punchGain.gain.setValueAtTime(0.28, t);
+    punchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+    punchOsc.connect(punchGain);
+    punchGain.connect(dest);
+    punchOsc.start(t);
+    punchOsc.stop(t + 0.085);
   }
 }

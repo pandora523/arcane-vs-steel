@@ -19,7 +19,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps61';
+} from '../ArcaneShaderFX.js?v=30fps62';
 
 export const STORM_CYAN_PALETTE = [
   '#080c24',

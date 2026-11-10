@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps61';
+import { PixelForge } from './PixelForge.js?v=30fps62';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -1527,7 +1527,15 @@ export class Renderer {
     const cy = Math.round((this.impactFrameFocusY ?? gy - 90) / 4) * 4;
     const isInverted = p < 0.42;
     const isJustice = this.impactFrameStyle === 'justice';
-    const accentCol = isJustice ? '#38bdf8' : '#fb923c';
+    const isRadiant = this.impactFrameStyle === 'radiant';
+    const isChrono = this.impactFrameStyle === 'chrono';
+    const accentCol = isRadiant
+      ? '#fde047'
+      : isChrono
+        ? '#2dd4bf'
+        : isJustice
+          ? '#38bdf8'
+          : '#fb923c';
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -1535,7 +1543,13 @@ export class Renderer {
     // 1. Full-Arena Stark High-Contrast Backdrop Flash
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 0.96;
-    ctx.fillStyle = isInverted ? '#ffffff' : '#03040a';
+    ctx.fillStyle = isInverted
+      ? '#ffffff'
+      : isRadiant
+        ? '#0a0702'
+        : isChrono
+          ? '#02090d'
+          : '#03040a';
     ctx.fillRect(-1200, -1000, ww + 2400, 2400);
 
     // 2. 48 Pixel-Stepped Radial Anime Impact Speed-Rays bursting from `(cx, cy)`
@@ -1546,8 +1560,27 @@ export class Renderer {
       const cosA = Math.cos(a);
       const sinA = Math.sin(a);
       const innerR = 32 + (i % 5) * 18 + p * 48;
-      ctx.fillStyle =
-        i % 3 === 0 ? accentCol : isInverted ? '#03040a' : '#ffffff';
+      ctx.fillStyle = isRadiant
+        ? i % 4 === 0
+          ? '#fde047'
+          : i % 4 === 2
+            ? '#38bdf8'
+            : isInverted
+              ? '#090602'
+              : '#ffffff'
+        : isChrono
+          ? i % 4 === 0
+            ? '#2dd4bf'
+            : i % 4 === 2
+              ? '#fde047'
+              : isInverted
+                ? '#02090d'
+                : '#ffffff'
+          : i % 3 === 0
+            ? accentCol
+            : isInverted
+              ? '#03040a'
+              : '#ffffff';
 
       for (let r = innerR; r <= 960; r += 18) {
         const bx = Math.round((cx + cosA * r) / pxGrid) * pxGrid;

@@ -4,8 +4,9 @@
  * Powered natively by `src/engine/ArcaneShaderFX.js` + `src/engine/shaders/seraphicShaders.js`.
  *
  * Outputs:
- *   1. `assets/sprites/priestess_vfx.png` (6240x1040, 5 rows x 30 cols @ 208x208, 0/150 border clips)
- *   2. `<artifactDir>/debug_priestess_30fps_vfx.png` (5x30 contact sheet for visual verification)
+ *   1. `assets/sprites/priestess_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208, 0/240 border clips)
+ *   2. `<artifactDir>/debug_priestess_30fps_vfx.png` (8x30 contact sheet for visual verification)
+ *   3. `<artifactDir>/debug_seraphina_ult_208_closeup.png` (208x208 closeup + welded Lux beam preview)
  */
 
 import fs from 'node:fs';
@@ -19,12 +20,12 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
+} from '../src/engine/ArcaneShaderFX.js';
 
 import {
   SERAPHIC_GOLD_PALETTE,
   SERAPHIC_EFFECT_REGISTRY
-} from '../src/engine/shaders/seraphicShaders.js?v=30fps55';
+} from '../src/engine/shaders/seraphicShaders.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
@@ -149,7 +150,7 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
 }
 
 function bakeVfxSheet() {
-  const ROWS = 5;
+  const ROWS = 8;
   const COLS = 30;
   const LOGICAL = 104;
   const CELL = 208;
@@ -223,6 +224,39 @@ function bakeVfxSheet() {
           cfg: { x: 52, y: 52, palette: SERAPHIC_GOLD_PALETTE }
         }
       ]
+    },
+    {
+      name: 'Row 5: Final Grace Prismatic Sunburst Scepter Charge Core (F00..F29)',
+      windowSec: 1.0,
+      layers: [
+        {
+          def: SERAPHIC_EFFECT_REGISTRY.finalGraceChargeSphereCell,
+          warmup: 0,
+          cfg: { x: 52, y: 52, palette: SERAPHIC_GOLD_PALETTE }
+        }
+      ]
+    },
+    {
+      name: 'Row 6: Final Grace Prismatic Focusing Cannon Muzzle (F00..F29)',
+      windowSec: 1.0,
+      layers: [
+        {
+          def: SERAPHIC_EFFECT_REGISTRY.finalGraceMuzzlePrismCell,
+          warmup: 0.02,
+          cfg: { x: 52, y: 52, palette: SERAPHIC_GOLD_PALETTE }
+        }
+      ]
+    },
+    {
+      name: 'Row 7: Final Grace Straight Horizontal Pixel-Art Beam Segment (F00..F29)',
+      windowSec: 1.0,
+      layers: [
+        {
+          def: SERAPHIC_EFFECT_REGISTRY.finalGraceHorizonBeamCell,
+          warmup: 0.02,
+          cfg: { x: 52, y: 52, palette: SERAPHIC_GOLD_PALETTE }
+        }
+      ]
     }
   ];
 
@@ -272,7 +306,7 @@ function bakeVfxSheet() {
           const isEdge = xx === 0 || yy === 0 || xx === LOGICAL - 1 || yy === LOGICAL - 1;
           const o = ((dy + yy) * dbgW + (dx + xx)) * 4;
           dbgRgba[o] = isEdge ? 68 : 20;
-          dbgRgba[o + 1] = isEdge ? 58 : 22;
+          dbgRgba[o + 1] = isEdge ? 58 : 26;
           dbgRgba[o + 2] = isEdge ? 26 : 36;
           dbgRgba[o + 3] = 255;
         }
@@ -288,12 +322,55 @@ function bakeVfxSheet() {
 
   const outVfxPath = path.join(REPO_ROOT, 'assets', 'sprites', 'priestess_vfx.png');
   fs.writeFileSync(outVfxPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  console.log(`[priestess-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/150`);
+  console.log(`[priestess-vfx] Wrote ${outVfxPath} (${sheetW}x${sheetH}), borderClips=${borderClips}/${ROWS * COLS}`);
 
   fs.mkdirSync(ARTIFACT_DIR, { recursive: true });
   const outDbgPath = path.join(ARTIFACT_DIR, 'debug_priestess_30fps_vfx.png');
   fs.writeFileSync(outDbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
   console.log(`[priestess-vfx] Wrote contact sheet -> ${outDbgPath}`);
+
+  // Also bake a 1:1 208x208 closeup + welded horizontal Lux beam preview (`debug_seraphina_ult_208_closeup.png`)
+  const closeW = 1140;
+  const closeH = 720;
+  const closeRgba = new Uint8Array(closeW * closeH * 4);
+  for (let i = 0; i < closeW * closeH; i++) {
+    closeRgba[i * 4] = 12;
+    closeRgba[i * 4 + 1] = 15;
+    closeRgba[i * 4 + 2] = 28;
+    closeRgba[i * 4 + 3] = 255;
+  }
+  const extractCell208 = (r, c) => {
+    const out = new Uint8Array(CELL * CELL * 4);
+    for (let yy = 0; yy < CELL; yy++) {
+      const srcOff = ((r * CELL + yy) * sheetW + c * CELL) * 4;
+      out.set(sheetRgba.subarray(srcOff, srcOff + CELL * 4), yy * CELL * 4);
+    }
+    return out;
+  };
+  // Top strip: Row 5 F04, F14; Row 6 F08; Row 7 F08, F16
+  const sampleSpecs = [
+    [5, 4],
+    [5, 14],
+    [6, 8],
+    [7, 8],
+    [7, 16]
+  ];
+  sampleSpecs.forEach(([r, c], idx) => {
+    const cellBuf = extractCell208(r, c);
+    alphaCompositeOnto(cellBuf, CELL, CELL, closeRgba, closeW, 20 + idx * 222, 24);
+  });
+  // Bottom strip: Welded Full-Stage Horizontal Final Grace Beam (`Row 6` F10 Muzzle + 6x synchronized `Row 7` F10 Beam Segments at 148px step!)
+  const muzzleBuf = extractCell208(6, 10);
+  const segBuf = extractCell208(7, 10);
+  for (let seg = 0; seg < 6; seg++) {
+    alphaCompositeOnto(segBuf, CELL, CELL, closeRgba, closeW, 110 + seg * 148, 360);
+  }
+  alphaCompositeOnto(muzzleBuf, CELL, CELL, closeRgba, closeW, 28, 360);
+
+  const outClosePath = path.join(ARTIFACT_DIR, 'debug_seraphina_ult_208_closeup.png');
+  fs.writeFileSync(outClosePath, encodeRgbaPng(closeW, closeH, closeRgba));
+  console.log(`[priestess-vfx] Wrote closeup welded beam preview -> ${outClosePath}`);
 }
 
 bakeVfxSheet();
+

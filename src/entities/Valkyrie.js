@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps61';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps61';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps61';
+import { Fighter } from './Fighter.js?v=30fps62';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps62';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps62';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps61';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps62';
 
 /**
  * Freyja (`valkyrie`) — Dragon-Lance Valkyrie & Valhalla Sky-Sovereign.
@@ -26,7 +26,7 @@ export class Valkyrie extends Fighter {
       primaryColor: '#f43f5e'
     });
     this.heroId = 'valkyrie';
-    this.deathSfx = 'death_priestess';
+    this.deathSfx = 'death_valkyrie';
     this.skillName = 'GUNGNIR JAVELIN BARRAGE';
     this.ultName = 'VALHALLA SKY-SANCTUARY';
     this.theme = 'crimson';
@@ -63,7 +63,7 @@ export class Valkyrie extends Fighter {
     if (typeof Image !== 'undefined') {
       const valkyrieAssets = PixelForge.initAssets()?.valkyrie;
       if (valkyrieAssets?.vfx?.src && !valkyrieAssets.vfx.src.includes('v=30fps47')) {
-        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps61';
+        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps62';
       }
     }
 
@@ -1348,7 +1348,7 @@ export class Valkyrie extends Fighter {
       const impactX = Math.max(90, Math.min(ww - 90, enemy && !enemy.isDead ? enemy.x : ww * 0.5));
 
       if (game?.audio) {
-        game.audio.play('thunder_slam', impactX);
+        game.audio.play('dragon_dive', impactX);
       }
       if (game?.renderer) {
         game.renderer.triggerShake(16, 0.30);
