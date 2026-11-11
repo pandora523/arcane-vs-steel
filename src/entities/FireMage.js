@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps64';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps64';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps64';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps64';
+import { Fighter } from './Fighter.js?v=30fps65';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps65';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps65';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps65';
 
 /**
  * Ignis Sol (`mage`) — Solar Archmage & Black-Sun Eclipse Sovereign.
@@ -89,7 +89,7 @@ export class FireMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const mageAssets = PixelForge.initAssets()?.mage;
       if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps60')) {
-        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps64';
+        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps65';
       }
     }
   }

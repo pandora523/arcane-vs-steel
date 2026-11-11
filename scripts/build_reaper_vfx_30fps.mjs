@@ -19,13 +19,13 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps55';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps65';
 
 import {
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   ABYSSAL_EFFECT_REGISTRY
-} from '../src/engine/shaders/abyssalShaders.js?v=30fps55';
+} from '../src/engine/shaders/abyssalShaders.js?v=30fps65';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');

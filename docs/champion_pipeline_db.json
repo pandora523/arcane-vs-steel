@@ -81,9 +81,9 @@
     "reaper": {
       "name": "Malakor",
       "theme": "abyssal",
-      "base_source": "assets/sprites/reaper_v4_base.jpg",
+      "base_source": "assets/sprites/reaper_v5_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "14-part cel-clustered Horned Necropolis Dreadlord skeletal rig + Necrotic Halo + Crescent Great-Scythe + Spectral Chain + 8-Row Abyssal & Gates of the Necropolis Memento Mori VFX Suite + Prone Scythe-Plant Collapse",
+      "rig": "14-part cel-clustered Gothic Arch-Reaper & Sovereign of Severed Souls skeletal rig (crimson-rimmed obsidian hood, silver-bone crown horns, stark white skull visage, sculpted ivory ribcage cuirass, silver plate greaves) + Ferryman Soul-Lantern & Wraith Ribbons + 2H Cursed Eclipse Great-Scythe ('Thanatos') + Articulated Soul-Sever Chain + 8-Row Thanatos Stand, Severed Soul Effigy & Oblivion Gates VFX Suite + Prone Collapse",
       "script": "scripts/build_reaper_30fps_sheet.py",
       "vfx_script": "scripts/build_reaper_vfx_30fps.mjs"
     },

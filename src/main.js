@@ -1,19 +1,19 @@
-import { Renderer } from './engine/Renderer.js?v=30fps64';
-import { VFXManager } from './engine/VFXManager.js?v=30fps64';
-import { PixelForge } from './engine/PixelForge.js?v=30fps64';
-import { AudioManager } from './engine/AudioManager.js?v=30fps64';
-import { Fighter } from './entities/Fighter.js?v=30fps64';
-import { Warrior } from './entities/Warrior.js?v=30fps64';
-import { FireMage } from './entities/FireMage.js?v=30fps64';
-import { Archer } from './entities/Archer.js?v=30fps64';
-import { Priestess } from './entities/Priestess.js?v=30fps64';
-import { Reaper } from './entities/Reaper.js?v=30fps64';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps64';
-import { Titan } from './entities/Titan.js?v=30fps64';
-import { Ronin } from './entities/Ronin.js?v=30fps64';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps64';
-import { IceMage } from './entities/IceMage.js?v=30fps64';
-import { Android } from './entities/Android.js?v=30fps64';
+import { Renderer } from './engine/Renderer.js?v=30fps65';
+import { VFXManager } from './engine/VFXManager.js?v=30fps65';
+import { PixelForge } from './engine/PixelForge.js?v=30fps65';
+import { AudioManager } from './engine/AudioManager.js?v=30fps65';
+import { Fighter } from './entities/Fighter.js?v=30fps65';
+import { Warrior } from './entities/Warrior.js?v=30fps65';
+import { FireMage } from './entities/FireMage.js?v=30fps65';
+import { Archer } from './entities/Archer.js?v=30fps65';
+import { Priestess } from './entities/Priestess.js?v=30fps65';
+import { Reaper } from './entities/Reaper.js?v=30fps65';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps65';
+import { Titan } from './entities/Titan.js?v=30fps65';
+import { Ronin } from './entities/Ronin.js?v=30fps65';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps65';
+import { IceMage } from './entities/IceMage.js?v=30fps65';
+import { Android } from './entities/Android.js?v=30fps65';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -159,35 +159,35 @@ const CHAMPION_ROSTER = {
   reaper: {
     id: 'reaper',
     name: 'MALAKOR',
-    role: 'DREAD NECROMANCER',
-    style: 'NECROTIC HARVESTER',
-    trait: 'PASSIVE: GRAVE-SUBMERGE & SOUL LEECH',
+    role: 'ARCH-REAPER SOVEREIGN',
+    style: 'SOUL-SEVER EXECUTIONER',
+    trait: 'PASSIVE: SOUL HARVESTER & WRAITH STEP',
     cls: Reaper,
     theme: 'abyssal',
-    color: '#fb7185',
+    color: '#d946ef',
     selectSfx: 'scythe_reap',
-    victoryLine: 'The Gates of the Necropolis claim every soul in the arena!',
-    trueUltName: 'MEMENTO MORI: GATES OF THE NECROPOLIS',
+    victoryLine: 'Every severed soul answers the toll of Oblivion!',
+    trueUltName: 'MEMENTO MORI: OBLIVION GUILLOTINE',
     trueUltDesc:
-      'Unseals the Abyssal Necropolis gates, flooding the arena in spectral soul-chains & executing the final reap!',
+      'Unseals the Twin Cathedral Gates of Oblivion, binds foes in the Six-Scythe Death-Clock & cleaves reality in one strike!',
     skills: [
       {
-        name: 'SOUL HOOK & BOOMERANG',
-        type: 'AUTO + GRAVE SUBMERGE',
+        name: 'TRINITY OF THE SCYTHE',
+        type: '3-HIT STAND & SOUL-DISC',
         vfxCell: 0,
-        desc: 'Hooks foes inward with scythe pulls, hurls returning phantom scythes & submerges underground to erupt!'
+        desc: 'Crescent soul-wave, Ferryman hook-pull & Thanatos Death-God Stand cross-reap with returning soul-disc!'
       },
       {
-        name: "DEATH'S GRASP",
+        name: 'SOUL SEVER',
         type: 'SKILL • 4.5S CD',
         vfxCell: 1,
-        desc: 'Erupts a Cursed Ossuary Bone-Cage & drags foes through necrotic soul-crystal spires!'
+        desc: 'Rips a captive Soul Effigy from the foe that echoes resonance damage, then shadow-lunges for an X-Guillotine!'
       },
       {
-        name: 'GRIM HARVEST',
+        name: "DEATH'S SOVEREIGNTY",
         type: '★ OVERDRIVE ULT',
         vfxCell: 3,
-        desc: 'Summons the colossal Death-Avatar & gothic tombstones to execute an abyssal cross-reap blitz.'
+        desc: 'Summons the towering Thanatos Stand & Twin Wraith Clones for a 3-way phantom pincer and cross-guillotine.'
       }
     ]
   },
