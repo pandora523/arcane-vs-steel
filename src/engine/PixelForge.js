@@ -18,65 +18,66 @@ export class PixelForge {
       arenaSylvan: loadImg('assets/sprites/arena_sylvan.png'),
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
-      arenaInferno: loadImg('assets/sprites/arena_inferno.png?v=30fps66'),
-      arenaSanctuary: loadImg('assets/sprites/arena_sanctuary.png?v=30fps66'),
+      arenaInferno: loadImg('assets/sprites/arena_inferno.png?v=30fps68'),
+      arenaSanctuary: loadImg('assets/sprites/arena_sanctuary.png?v=30fps68'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps66'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps66'),
-        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps66'),
-        portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps66', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps68'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps68'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps68'),
+        portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps68', () => this.refreshPortraits())
       },
       mage: {
-        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps66'),
-        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps66'),
-        meteor: loadImg('assets/sprites/meteor_cataclysm.png?v=30fps66'),
-        portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps66', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps68'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps68'),
+        meteor: loadImg('assets/sprites/meteor_cataclysm.png?v=30fps68'),
+        portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps68', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps66'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps66'),
-        portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps66', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps68'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps68'),
+        portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps68', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps66'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps66'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps66'),
-        portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps66', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps68'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps68'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps68'),
+        portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps68', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps66'),
-        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps66'),
-        portrait: loadImg('assets/sprites/reaper_portrait.png?v=30fps66', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps68'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps68'),
+        companions: loadImg('assets/sprites/reaper_companions.png?v=30fps68'),
+        portrait: loadImg('assets/sprites/reaper_portrait.png?v=30fps68', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps66'),
-        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps66'),
-        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps66', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps68'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps68'),
+        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps68', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps66'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps66'),
-        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps66', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps68'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps68'),
+        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps68', () => this.refreshPortraits())
       },
       ronin: {
-        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps66'),
-        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps66'),
-        portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps66', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps68'),
+        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps68'),
+        portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps68', () => this.refreshPortraits())
       },
       valkyrie: {
-        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps66'),
-        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps66'),
-        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps66', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps68'),
+        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps68'),
+        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps68', () => this.refreshPortraits())
       },
       icemage: {
-        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps66'),
-        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps66'),
-        portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps66', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps68'),
+        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps68'),
+        portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps68', () => this.refreshPortraits())
       },
       android: {
-        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps66'),
-        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps66'),
-        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps66', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps68'),
+        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps68'),
+        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps68', () => this.refreshPortraits())
       }
     };
 
@@ -1037,21 +1038,25 @@ export class PixelForge {
         drawCirclePx(18, 10, 2, '#ffffff', true);
         drawCirclePx(18, 10, 8, '#d946ef', false);
       } else {
-        // DEATH'S SOVEREIGNTY: Horned Thanatos Death-God Stand + Crossed Eclipse Scythes
-        drawLinePx(4, 23, 23, 4, '#d946ef', 2);
-        drawLinePx(23, 23, 4, 4, '#f43f5e', 2);
-        // Sweeping silver-bone crown horns
-        drawLinePx(8, 10, 5, 5, '#e2e8f0', 2);
-        drawLinePx(19, 10, 22, 5, '#e2e8f0', 2);
-        // Dark obsidian hood & stark white skull visage
-        drawCirclePx(14, 13, 6.5, '#241f33', true);
-        fillRectPx(10, 10, 8, 7, '#f8fafc');
-        fillRectPx(11, 16, 6, 3, '#cbd5e1');
-        // Glowing magenta-crimson eye sockets
-        fillRectPx(11, 12, 2, 2, '#d946ef');
-        fillRectPx(15, 12, 2, 2, '#f43f5e');
-        setPx(11, 12, '#ffffff');
-        setPx(15, 12, '#ffffff');
+        // DEATH'S SOVEREIGNTY: Sovereign Skull + Summoned Death-Mage Void Sigil (Left) & Soul-Healer Cross (Right)
+        drawLinePx(5, 22, 22, 5, '#9333ea', 2);
+        drawLinePx(22, 22, 5, 5, '#f43f5e', 2);
+        // Sweeping silver-bone crown horns & Sovereign skull center
+        drawLinePx(9, 9, 6, 4, '#e2e8f0', 2);
+        drawLinePx(18, 9, 21, 4, '#e2e8f0', 2);
+        drawCirclePx(14, 12, 5.5, '#1e1630', true);
+        fillRectPx(11, 9, 6, 6, '#f8fafc');
+        fillRectPx(12, 15, 4, 2, '#cbd5e1');
+        fillRectPx(11, 11, 2, 2, '#d946ef');
+        fillRectPx(15, 11, 2, 2, '#34d399');
+        // Left Companion Emblem: Abyssal Death-Mage Dark-Matter Orb
+        drawCirclePx(6, 19, 3.5, '#9333ea', true);
+        drawCirclePx(6, 19, 2.0, '#05020d', true);
+        setPx(6, 19, '#f43f5e');
+        // Right Companion Emblem: Ossuary Soul-Healer Necro-Emerald Cross
+        drawCirclePx(22, 19, 3.5, '#065f46', true);
+        fillRectPx(21, 17, 2, 5, '#6ee7b7');
+        fillRectPx(20, 18, 4, 2, '#ffffff');
       }
     } else if (heroKey === 'chronomancer') {
       // CHRONOMANCER

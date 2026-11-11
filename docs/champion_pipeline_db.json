@@ -82,9 +82,15 @@
       "name": "Malakor",
       "theme": "abyssal",
       "base_source": "assets/sprites/reaper_v5_base.jpg",
-      "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "14-part cel-clustered Gothic Arch-Reaper & Sovereign of Severed Souls skeletal rig (crimson-rimmed obsidian hood, silver-bone crown horns, stark white skull visage, sculpted ivory ribcage cuirass, silver plate greaves) + Ferryman Soul-Lantern & Wraith Ribbons + 2H Cursed Eclipse Great-Scythe ('Thanatos') + Articulated Soul-Sever Chain + 8-Row Thanatos Stand, Severed Soul Effigy & Oblivion Gates VFX Suite + Prone Collapse",
+      "companion_sources": [
+        "assets/sprites/reaper_mage_companion_base.jpg",
+        "assets/sprites/reaper_healer_companion_base.jpg"
+      ],
+      "companions_sheet": "assets/sprites/reaper_companions.png",
+      "logical_res": "104x104 (2x NEAREST -> 208x208) + 4x30 Companion Sheet (208x208)",
+      "rig": "14-part cel-clustered Gothic Arch-Reaper & Sovereign of the Death Covenant skeletal rig + True 1.72s Underground Shadow Burrow (1.26s 100% submerged Pitch-Black Abyssal Shadow Pool, Predator Eye-Slits & Surprise Attack Eruption) + 11.5s Summoned Living Death-Mage (230 HP, Dark-Matter Void Orbs) & Soul-Healer (185 HP, Luminous Soul-Mend Tethers & Halos) + 8-Row Thanatos Stand & Oblivion Gates VFX Suite + Prone Collapse",
       "script": "scripts/build_reaper_30fps_sheet.py",
+      "companions_script": "scripts/build_reaper_companions_sheet.py",
       "vfx_script": "scripts/build_reaper_vfx_30fps.mjs"
     },
     "chronomancer": {

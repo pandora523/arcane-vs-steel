@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps66';
+import { PixelForge } from './PixelForge.js?v=30fps68';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -510,7 +510,7 @@ export class Renderer {
     ctx.scale(1, -0.42);
     ctx.globalAlpha = 0.26;
     for (const f of fighters) {
-      if (f.isBenched) continue;
+      if (f.isBenched || f.isFullyBurrowed) continue;
       f.draw(ctx, true, this);
     }
     vfx.renderMainPass(ctx, true, this);
@@ -531,6 +531,7 @@ export class Renderer {
       if (f.isBenched && !f.isDead) {
         this.drawTagPedestalWorld(ctx, f);
       }
+      if (f.isFullyBurrowed) continue;
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const deathFade = f.isDead ? Math.min(1, Math.max(0.08, 1 - (f.deathTimer || 0) * 0.65)) : 1;
@@ -2848,6 +2849,7 @@ export class Renderer {
 
   drawDynamicShadows(ctx, fighters, lights, gy) {
     for (const f of fighters) {
+      if (f.isFullyBurrowed) continue;
       const jumpH = Math.max(0, gy - f.y);
       const scale = Math.max(0.25, 1 - jumpH / 320);
       const deadStretch = f.isDead ? 1 + Math.min(0.45, (f.deathTimer || 0) * 0.38) : 1;

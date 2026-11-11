@@ -13,6 +13,7 @@ import {
   clamp01,
   mixScalar,
   smoothStep,
+  packHexColor,
   buildColorRamp,
   fbmNoise2D,
   DeterministicRng,
@@ -21,7 +22,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps66';
+} from '../ArcaneShaderFX.js?v=30fps68';
 
 export const ABYSSAL_VIOLET_PALETTE = [
   '#080412',
@@ -1744,6 +1745,752 @@ export const mementoMoriGuillotineCell = {
   }
 };
 
+export const NECRO_SOUL_EMERALD_PALETTE = [
+  '#04090c',
+  '#064e3b',
+  '#047857',
+  '#059669',
+  '#10b981',
+  '#34d399',
+  '#a7f3d0',
+  '#ffffff'
+];
+
+// ============================================================================
+// 9. PITCH-BLACK UNDERGROUND BURROW INDICATOR (`abyssalShadowBurrowPool`)
+// ============================================================================
+export const abyssalShadowBurrowPool = {
+  duration: 0.34,
+  loop: false,
+  defaults: {
+    palette: ABYSSAL_VIOLET_PALETTE,
+    seed: 613,
+    radius: 34,
+    facing: 1,
+    isWarning: false,
+    progress: 0.5
+  },
+  create(cfg) {
+    const abyss = buildColorRamp(cfg.palette, 8);
+    const blood = buildColorRamp(BLOOD_MOON_CRIMSON_PALETTE, 8);
+    const PITCH_BLACK = packHexColor('#020106');
+    const INK_VOID = packHexColor('#080312');
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({
+      rng,
+      sparkRamp: [PITCH_BLACK, abyss[1], abyss[5], blood[5]],
+      floorY: 2
+    });
+    const maxDur = cfg.customDuration || 0.34;
+    let t = 0;
+    let spawned = false;
+
+    return {
+      step(dt) {
+        if (!spawned) {
+          spawned = true;
+          const cnt = cfg.isWarning ? 14 : 9;
+          for (let i = 0; i < cnt; i++) {
+            const rx = rng.between(-(cfg.radius || 34) * 0.82, (cfg.radius || 34) * 0.82);
+            motes.emit(
+              i % 3 === 0 ? 'glint' : 'spark',
+              rx,
+              rng.between(-3, 2),
+              rng.between(-14, 14),
+              rng.between(-52, -18),
+              rng.between(0.16, 0.30),
+              i % 2 === 0 ? PITCH_BLACK : cfg.isWarning ? blood[5] : abyss[4],
+              1,
+              -8
+            );
+          }
+        }
+        t += dt;
+        motes.step(dt);
+      },
+      renderBack(pen) {
+        const u = clamp01(t / maxDur);
+        const env = (1 - smoothStep(0.68, 1.0, u)) * (0.85 + 0.15 * smoothStep(0, 0.15, u));
+        if (env <= 0.02) return;
+
+        const rx = (cfg.radius || 34) * (cfg.isWarning ? 1.14 : 1.0);
+        const ry = rx * 0.30;
+
+        // Strict elliptical pitch-black void puddle with >= 8px feathered margin (ZERO box edges!)
+        pen.shadeBox(-rx - 8, -ry - 8, rx + 8, ry + 8, (lx, ly, out) => {
+          const nx = lx / Math.max(1, rx);
+          const ny = ly / Math.max(1, ry);
+          const d = Math.hypot(nx, ny);
+          if (d >= 1.0) return 0;
+
+          const noise = fbmNoise2D(lx * 0.14 + (cfg.progress || 0) * 6.0, ly * 0.32 - t * 5.0, 613, 2);
+          const edgeWarp = d + noise * 0.12;
+          if (edgeWarp >= 0.96) return 0;
+
+          const rimFade = 1 - smoothStep(0.70, 0.96, edgeWarp);
+          if (edgeWarp > 0.78) {
+            out.color = cfg.isWarning ? blood[4] : abyss[2];
+            out.alpha = 0.88 * env * rimFade;
+            return out.color;
+          }
+          if (edgeWarp > 0.56) {
+            out.color = INK_VOID;
+            out.alpha = 0.96 * env;
+            return out.color;
+          }
+          out.color = PITCH_BLACK;
+          out.alpha = 0.98 * env;
+          return out.color;
+        });
+
+        // Writhing pitch-black shadow tentacles rising out of the underground pool
+        const tendrilCount = cfg.isWarning ? 7 : 5;
+        for (let k = 0; k < tendrilCount; k++) {
+          const frac = (k / Math.max(1, tendrilCount - 1)) * 2 - 1;
+          const baseTx = frac * rx * 0.72;
+          const baseTy = Math.sin(frac * 2.2) * ry * 0.35;
+          const hMax = (cfg.isWarning ? 16 : 11) * (1 - Math.abs(frac) * 0.35) * env;
+          for (let s = 0; s <= 6; s++) {
+            const su = s / 6;
+            const sway = Math.sin((cfg.progress || 0) * 14 + k * 1.7 + su * 3.1) * (2.6 * su);
+            const tx = baseTx + sway;
+            const ty = baseTy - su * hMax;
+            const tr = (1 - su * 0.72) * 2.4 + 0.5;
+            pen.fillCircle(tx, ty, tr + 0.6, PITCH_BLACK, 0.95 * env * (1 - su * 0.35));
+            if (cfg.isWarning && s >= 4) {
+              pen.stipple(tx, ty, blood[5], 0.85 * env);
+            }
+          }
+        }
+      },
+      renderFront(pen) {
+        const u = clamp01(t / maxDur);
+        const env = 1 - smoothStep(0.68, 1.0, u);
+        if (env <= 0.02) return;
+        const rx = cfg.radius || 34;
+        const dir = cfg.facing >= 0 ? 1 : -1;
+
+        // Twin Sinister Predator Eye-Slits peering up from the pitch-black floor shadow!
+        const eyeBaseX = dir * 5.5;
+        const eyeBaseY = -1.5;
+        for (const side of [-1, 1]) {
+          const ex = eyeBaseX + side * 4.2;
+          const ey = eyeBaseY + (side > 0 ? 0.4 : -0.3);
+          pen.line(ex - 2.2, ey, ex + 2.2, ey - 0.6 * dir, PITCH_BLACK, 0.98 * env);
+          pen.line(
+            ex - 1.6,
+            ey,
+            ex + 1.6,
+            ey - 0.5 * dir,
+            cfg.isWarning ? PURE_WHITE : blood[5],
+            0.98 * env
+          );
+          pen.stipple(ex, ey, cfg.isWarning ? blood[5] : PURE_WHITE, env);
+        }
+
+        // Pre-Eruption Lock-On Target Ring & Contracting Abyssal Maw Warning!
+        if (cfg.isWarning) {
+          drawTiltedOrbitBand(
+            pen,
+            0,
+            -1,
+            rx * (1.05 - u * 0.22),
+            0.28,
+            2.0,
+            0.94 * env,
+            [PITCH_BLACK, blood[3], blood[5], PURE_WHITE],
+            FRONT_HALF,
+            true
+          );
+          drawThanatosPentagram(
+            pen,
+            0,
+            -1,
+            rx * 0.78,
+            0.28,
+            -(cfg.progress || 0) * 5.0,
+            blood[5],
+            abyss[5],
+            0.90 * env
+          );
+        } else {
+          drawTiltedOrbitBand(
+            pen,
+            0,
+            0,
+            rx * 0.86,
+            0.26,
+            1.6,
+            0.86 * env,
+            [PITCH_BLACK, INK_VOID, abyss[3], abyss[5]],
+            FRONT_HALF,
+            false
+          );
+        }
+
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 10. SURPRISE AMBUSH SHADOW ERUPTION PILLAR (`abyssalShadowEruptionPillar`)
+// ============================================================================
+export const abyssalShadowEruptionPillar = {
+  duration: 0.52,
+  loop: false,
+  defaults: {
+    palette: BLOOD_MOON_CRIMSON_PALETTE,
+    seed: 631,
+    facing: 1
+  },
+  create(cfg) {
+    const blood = buildColorRamp(cfg.palette, 8);
+    const abyss = buildColorRamp(ABYSSAL_VIOLET_PALETTE, 8);
+    const bone = buildColorRamp(NECROPOLIS_BONE_PALETTE, 8);
+    const PITCH_BLACK = packHexColor('#030108');
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({
+      rng,
+      sparkRamp: [PURE_WHITE, blood[5], abyss[5], PITCH_BLACK],
+      floorY: 2
+    });
+    let t = 0;
+    let burstDone = false;
+
+    return {
+      step(dt) {
+        if (!burstDone) {
+          burstDone = true;
+          for (let i = 0; i < 24; i++) {
+            const ang = rng.between(-Math.PI * 0.86, -Math.PI * 0.14);
+            const spd = rng.between(65, 195);
+            motes.emit(
+              i % 2 === 0 ? 'streak' : 'glint',
+              rng.between(-16, 16),
+              rng.between(-6, 0),
+              Math.cos(ang) * spd,
+              Math.sin(ang) * spd,
+              rng.between(0.20, 0.42),
+              i % 3 === 0 ? PITCH_BLACK : i % 2 === 0 ? blood[5] : abyss[6],
+              1,
+              28
+            );
+          }
+        }
+        t += dt;
+        motes.step(dt);
+      },
+      renderBack(pen) {
+        const u = clamp01(t / 0.52);
+        const rise = smoothStep(0, 0.22, u);
+        const fade = 1 - smoothStep(0.56, 1.0, u);
+        const env = rise * fade;
+        if (env <= 0.02) return;
+
+        const halfW = 24 * (1 - u * 0.28);
+        const topY = -66 * rise;
+
+        // Tapered pitch-black & crimson shadow spindle geyser (fades smoothly to 0 on all sides!)
+        pen.shadeBox(-halfW - 8, topY - 8, halfW + 8, 8, (lx, ly, out) => {
+          if (ly > 3 || ly < topY) return 0;
+          const uY = clamp01(-ly / Math.max(1, -topY));
+          const curW = halfW * (1 - Math.pow(uY, 1.35)) * (0.85 + 0.15 * Math.sin(uY * 9 - u * 12));
+          const adx = Math.abs(lx);
+          if (adx >= curW) return 0;
+
+          const edgeRatio = adx / Math.max(0.5, curW);
+          const topFade = 1 - smoothStep(0.78, 1.0, uY);
+          const botFade = smoothStep(-3, 0, -ly + 2);
+          const aFade = env * topFade * (0.85 + 0.15 * botFade);
+          if (aFade <= 0.02) return 0;
+
+          if (edgeRatio < 0.24) {
+            out.color = u < 0.26 ? PURE_WHITE : blood[5];
+            out.alpha = 0.96 * aFade;
+            return out.color;
+          }
+          if (edgeRatio < 0.56) {
+            out.color = PITCH_BLACK;
+            out.alpha = 0.96 * aFade;
+            return out.color;
+          }
+          out.color = edgeRatio < 0.80 ? abyss[2] : PITCH_BLACK;
+          out.alpha = (1 - smoothStep(0.72, 1.0, edgeRatio)) * 0.92 * aFade;
+          return out.color;
+        });
+
+        // 6 Jagged Pitch-Black Shadow Jaws erupting outward from groundY
+        for (let k = 0; k < 6; k++) {
+          const side = k % 2 === 0 ? -1 : 1;
+          const rank = Math.floor(k / 2);
+          const bx = side * (8 + rank * 9.5);
+          const spikeH = (36 - rank * 7) * rise * fade;
+          const tipX = bx + side * (5 + rank * 3);
+          const tipY = -spikeH;
+          pen.line(bx - 1.5, 0, tipX, tipY, PITCH_BLACK, 0.96 * env);
+          pen.line(bx + 1.5, 0, tipX, tipY, PITCH_BLACK, 0.96 * env);
+          pen.line(bx, 0, tipX, tipY, rank === 0 ? blood[5] : abyss[5], 0.94 * env);
+          pen.fillCircle(tipX, tipY, 1.4, bone[6], 0.92 * env);
+        }
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 0.52);
+        const fade = 1 - smoothStep(0.58, 1.0, u);
+        if (fade <= 0.02) return;
+        const dir = cfg.facing >= 0 ? 1 : -1;
+
+        drawMultiLayerCrescentArc(pen, {
+          cx: dir * 6,
+          cy: -28 - u * 14,
+          radius: 26 * (0.8 + 0.25 * u),
+          width: 9.5,
+          eccentricity: 0.84,
+          headAngle: dir > 0 ? -1.45 : -1.69,
+          tailAngle: dir > 0 ? 1.15 : 1.99,
+          fade,
+          ramp: blood,
+          seed: cfg.seed || 631,
+          t: u,
+          flashHot: u < 0.32
+        });
+
+        const bolt = buildLightningChain(rng, 0, 0, dir * 8, -58 * fade, 0.14, 4);
+        pen.polyline(bolt, PURE_WHITE, 0.92 * fade);
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 11. DEATH COMPANION RIFT PORTAL (`companionSummonRiftPortal`)
+// ============================================================================
+export const companionSummonRiftPortal = {
+  duration: 0.68,
+  loop: false,
+  defaults: {
+    palette: ABYSSAL_VIOLET_PALETTE,
+    seed: 653,
+    isHealer: false
+  },
+  create(cfg) {
+    const mainRamp = buildColorRamp(
+      cfg.isHealer ? NECRO_SOUL_EMERALD_PALETTE : ABYSSAL_VIOLET_PALETTE,
+      8
+    );
+    const accentRamp = buildColorRamp(
+      cfg.isHealer ? ABYSSAL_VIOLET_PALETTE : BLOOD_MOON_CRIMSON_PALETTE,
+      8
+    );
+    const bone = buildColorRamp(NECROPOLIS_BONE_PALETTE, 8);
+    const DARK = packHexColor('#04020a');
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({
+      rng,
+      sparkRamp: [PURE_WHITE, mainRamp[6], mainRamp[4], accentRamp[5]],
+      floorY: 2
+    });
+    let t = 0;
+    let emitted = false;
+
+    return {
+      step(dt) {
+        if (!emitted) {
+          emitted = true;
+          for (let i = 0; i < 20; i++) {
+            const a = rng.between(0, Math.PI * 2);
+            const spd = rng.between(32, 115);
+            motes.emit(
+              i % 2 === 0 ? 'glint' : 'spark',
+              Math.cos(a) * 8,
+              -26 + Math.sin(a) * 18,
+              Math.cos(a) * spd,
+              Math.sin(a) * spd - 18,
+              rng.between(0.24, 0.48),
+              i % 3 === 0 ? accentRamp[5] : mainRamp[5],
+              1,
+              -10
+            );
+          }
+        }
+        t += dt;
+        motes.step(dt);
+      },
+      renderBack(pen) {
+        const u = clamp01(t / 0.68);
+        const openU = smoothStep(0, 0.24, u) * (1 - smoothStep(0.62, 1.0, u));
+        if (openU <= 0.02) return;
+
+        const cx = 0;
+        const cy = -28;
+        const rx = 18 * openU;
+        const ry = 32 * (0.75 + 0.25 * openU);
+
+        pen.radialGlow(cx, cy, 26 * openU, mainRamp[5], 0.34 * openU);
+
+        // Diamond-spindle dimensional tear behind the summoned companion (0 box clipping!)
+        pen.shadeBox(cx - rx - 7, cy - ry - 7, cx + rx + 7, cy + ry + 7, (lx, ly, out) => {
+          const dy = Math.abs(ly - cy) / Math.max(1, ry);
+          if (dy >= 1.0) return 0;
+          const halfSpan = rx * Math.pow(1 - dy, 0.78);
+          const dx = Math.abs(lx - cx);
+          if (dx >= halfSpan) return 0;
+
+          const rFrac = dx / Math.max(0.5, halfSpan);
+          if (rFrac < 0.28) {
+            out.color = u < 0.28 ? PURE_WHITE : DARK;
+            out.alpha = 0.96 * openU;
+            return out.color;
+          }
+          if (rFrac < 0.66) {
+            out.color = mainRamp[5];
+            out.alpha = 0.92 * openU;
+            return out.color;
+          }
+          out.color = accentRamp[4];
+          out.alpha = (1 - smoothStep(0.66, 1.0, rFrac)) * 0.88 * openU;
+          return out.color;
+        });
+
+        drawThanatosPentagram(
+          pen,
+          0,
+          0,
+          24 * openU,
+          0.28,
+          u * 4.5,
+          mainRamp[5],
+          bone[5],
+          0.90 * openU,
+          BACK_HALF
+        );
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 0.68);
+        const openU = smoothStep(0, 0.24, u) * (1 - smoothStep(0.62, 1.0, u));
+        if (openU > 0.02) {
+          drawThanatosPentagram(
+            pen,
+            0,
+            0,
+            24 * openU,
+            0.28,
+            u * 4.5,
+            mainRamp[6],
+            accentRamp[5],
+            0.92 * openU,
+            FRONT_HALF
+          );
+          drawStarburstFlare(pen, 0, -28, 13 * openU, 0.92 * openU, [
+            mainRamp[4],
+            accentRamp[5],
+            mainRamp[6],
+            PURE_WHITE
+          ]);
+        }
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 12. DEATH-MAGE DARK MAGIC CAST SIGIL & IMPACT (`darkMageVoidCastSigil`, `darkMageHexImpactNova`)
+// ============================================================================
+export const darkMageVoidCastSigil = {
+  duration: 0.42,
+  loop: false,
+  defaults: {
+    palette: ABYSSAL_VIOLET_PALETTE,
+    seed: 677,
+    isEmpowered: false
+  },
+  create(cfg) {
+    const abyss = buildColorRamp(cfg.palette, 8);
+    const blood = buildColorRamp(BLOOD_MOON_CRIMSON_PALETTE, 8);
+    const PITCH_BLACK = packHexColor('#030108');
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({
+      rng,
+      sparkRamp: [PURE_WHITE, abyss[6], blood[5], PITCH_BLACK]
+    });
+    let t = 0;
+    let emitted = false;
+
+    return {
+      step(dt) {
+        if (!emitted) {
+          emitted = true;
+          for (let i = 0; i < 12; i++) {
+            const a = rng.between(0, Math.PI * 2);
+            const r = rng.between(10, 20);
+            motes.emit(
+              'glint',
+              Math.cos(a) * r,
+              Math.sin(a) * r,
+              -Math.cos(a) * 38,
+              -Math.sin(a) * 38,
+              rng.between(0.18, 0.34),
+              cfg.isEmpowered && i % 2 === 0 ? blood[5] : abyss[5],
+              1,
+              0
+            );
+          }
+        }
+        t += dt;
+        motes.step(dt);
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 0.42);
+        const env = smoothStep(0, 0.18, u) * (1 - smoothStep(0.65, 1.0, u));
+        if (env <= 0.02) return;
+
+        const r = (cfg.isEmpowered ? 15 : 12.5) * (0.82 + 0.24 * Math.sin(u * Math.PI));
+        pen.radialGlow(0, 0, r * 1.35, cfg.isEmpowered ? blood[5] : abyss[5], 0.34 * env);
+        drawThanatosPentagram(
+          pen,
+          0,
+          0,
+          r,
+          0.86,
+          u * Math.PI * 1.6,
+          abyss[6],
+          cfg.isEmpowered ? blood[5] : abyss[4],
+          0.95 * env
+        );
+        // Tight pitch-black dark-matter singularity core with hot rim!
+        pen.fillCircle(0, 0, r * 0.32, abyss[5], 0.94 * env);
+        pen.fillCircle(0, 0, r * 0.21, PITCH_BLACK, 0.96 * env);
+        pen.stipple(0, 0, PURE_WHITE, 0.96 * env);
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+export const darkMageHexImpactNova = {
+  duration: 0.40,
+  loop: false,
+  defaults: {
+    palette: ABYSSAL_VIOLET_PALETTE,
+    seed: 701,
+    isEmpowered: false
+  },
+  create(cfg) {
+    const abyss = buildColorRamp(cfg.palette, 8);
+    const blood = buildColorRamp(BLOOD_MOON_CRIMSON_PALETTE, 8);
+    const bone = buildColorRamp(NECROPOLIS_BONE_PALETTE, 8);
+    const PITCH_BLACK = packHexColor('#030108');
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({
+      rng,
+      sparkRamp: [PURE_WHITE, abyss[6], blood[5], PITCH_BLACK]
+    });
+    let t = 0;
+    let burstDone = false;
+
+    return {
+      step(dt) {
+        if (!burstDone) {
+          burstDone = true;
+          for (let i = 0; i < 18; i++) {
+            const a = (i / 18) * Math.PI * 2 + rng.between(-0.15, 0.15);
+            const spd = rng.between(55, 165);
+            motes.emit(
+              i % 2 === 0 ? 'streak' : 'glint',
+              0,
+              0,
+              Math.cos(a) * spd,
+              Math.sin(a) * spd,
+              rng.between(0.16, 0.34),
+              i % 3 === 0 ? PITCH_BLACK : cfg.isEmpowered || i % 2 === 0 ? blood[5] : abyss[6],
+              1,
+              14
+            );
+          }
+        }
+        t += dt;
+        motes.step(dt);
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 0.40);
+        const pop = 0.65 + 0.45 * smoothStep(0, 0.25, u);
+        const fade = 1 - smoothStep(0.55, 1.0, u);
+        if (fade <= 0.02) return;
+
+        pen.radialGlow(0, 0, 20 * pop, abyss[5], 0.36 * fade);
+        // Tight pitch-black gravitational implosion pin + 6-point hex burst
+        pen.fillCircle(0, 0, 6.2 * pop * fade, abyss[5], 0.90 * fade);
+        pen.fillCircle(0, 0, 3.8 * pop * fade, PITCH_BLACK, 0.96 * fade);
+        drawThanatosPentagram(
+          pen,
+          0,
+          0,
+          19 * pop,
+          0.92,
+          -u * 2.4,
+          cfg.isEmpowered ? blood[5] : abyss[6],
+          PURE_WHITE,
+          0.92 * fade
+        );
+        drawPixelSkullOrb(pen, 0, -1, 4.4 * fade, bone[6], blood[5], fade);
+        drawStarburstFlare(pen, 0, 0, 14 * fade, 0.95 * fade, [
+          abyss[4],
+          blood[5],
+          abyss[6],
+          PURE_WHITE
+        ]);
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 13. SOUL-HEALER NECRO-MEND TETHER & 2.5D HALO (`necroHealerSoulTether`, `necroHealerMendHalo`)
+// ============================================================================
+export const necroHealerSoulTether = {
+  duration: 0.44,
+  loop: false,
+  defaults: {
+    palette: NECRO_SOUL_EMERALD_PALETTE,
+    seed: 733,
+    dx: 90,
+    dy: 0
+  },
+  create(cfg) {
+    const soul = buildColorRamp(cfg.palette, 8);
+    const abyss = buildColorRamp(ABYSSAL_VIOLET_PALETTE, 8);
+    let t = 0;
+
+    return {
+      step(dt) {
+        t += dt;
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 0.44);
+        const fade = smoothStep(0, 0.14, u) * (1 - smoothStep(0.68, 1.0, u));
+        if (fade <= 0.02) return;
+
+        // Convert world pixel delta (dx, dy) into ArcaneShaderFX 3px pen space
+        const tx = (cfg.dx || 90) / 3;
+        const ty = (cfg.dy || 0) / 3;
+        const steps = 18;
+        let prevAx = 0;
+        let prevAy = 0;
+        let prevBx = 0;
+        let prevBy = 0;
+
+        for (let i = 0; i <= steps; i++) {
+          const s = i / steps;
+          const arcLift = -Math.sin(s * Math.PI) * 6.5;
+          const wave = Math.sin(s * Math.PI * 3 - u * Math.PI * 5) * 2.6 * Math.sin(s * Math.PI);
+          const bx = tx * s;
+          const by = ty * s + arcLift;
+
+          const ax = bx;
+          const ay = by + wave;
+          const cx = bx;
+          const cy = by - wave;
+
+          if (i > 0) {
+            pen.line(prevAx, prevAy, ax, ay, soul[5], 0.94 * fade);
+            pen.line(prevBx, prevBy, cx, cy, abyss[6], 0.82 * fade);
+          }
+          if (i % 4 === 0) {
+            pen.fillCircle(ax, ay, 1.3, PURE_WHITE, 0.94 * fade);
+          }
+          prevAx = ax;
+          prevAy = ay;
+          prevBx = cx;
+          prevBy = cy;
+        }
+
+        // Traveling Luminous Soul-Cross Mote gliding from Soul-Healer -> Death-Mage!
+        const orbU = clamp01(u * 1.18);
+        const ox = tx * orbU;
+        const oy = ty * orbU - Math.sin(orbU * Math.PI) * 6.5;
+        pen.radialGlow(ox, oy, 9, soul[5], 0.42 * fade);
+        pen.line(ox - 3.5, oy, ox + 3.5, oy, soul[6], 0.98 * fade);
+        pen.line(ox, oy - 3.5, ox, oy + 3.5, soul[6], 0.98 * fade);
+        pen.fillCircle(ox, oy, 1.6, PURE_WHITE, 0.98 * fade);
+      }
+    };
+  }
+};
+
+export const necroHealerMendHalo = {
+  duration: 0.56,
+  loop: false,
+  defaults: {
+    palette: NECRO_SOUL_EMERALD_PALETTE,
+    seed: 757
+  },
+  create(cfg) {
+    const soul = buildColorRamp(cfg.palette, 8);
+    const abyss = buildColorRamp(ABYSSAL_VIOLET_PALETTE, 8);
+    const haloRamp = [soul[2], abyss[5], soul[5], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({
+      rng,
+      sparkRamp: [PURE_WHITE, soul[6], soul[5], abyss[6]],
+      floorY: 2
+    });
+    let t = 0;
+    let emitted = false;
+
+    return {
+      step(dt) {
+        if (!emitted) {
+          emitted = true;
+          for (let i = 0; i < 14; i++) {
+            const rx = rng.between(-16, 16);
+            motes.emit(
+              i % 2 === 0 ? 'glint' : 'spark',
+              rx,
+              rng.between(-8, 0),
+              rng.between(-10, 10),
+              rng.between(-64, -26),
+              rng.between(0.26, 0.48),
+              i % 3 === 0 ? abyss[6] : soul[5],
+              1,
+              -10
+            );
+          }
+        }
+        t += dt;
+        motes.step(dt);
+      },
+      renderBack(pen) {
+        const u = clamp01(t / 0.56);
+        const fade = smoothStep(0, 0.16, u) * (1 - smoothStep(0.62, 1.0, u));
+        if (fade <= 0.02) return;
+        const liftY = -8 - u * 24;
+        drawTiltedOrbitBand(pen, 0, liftY, 20, 0.28, 2.0, 0.88 * fade, haloRamp, BACK_HALF, false);
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 0.56);
+        const fade = smoothStep(0, 0.16, u) * (1 - smoothStep(0.62, 1.0, u));
+        if (fade <= 0.02) return;
+        const liftY = -8 - u * 24;
+        drawTiltedOrbitBand(pen, 0, liftY, 20, 0.28, 2.2, 0.95 * fade, haloRamp, FRONT_HALF, u < 0.25);
+
+        // Floating Pixel Restoration Crosses ascending around the Death-Mage!
+        for (let k = -1; k <= 1; k++) {
+          const cx = k * 11;
+          const cy = -16 - u * 26 - (k === 0 ? 6 : 0);
+          pen.line(cx - 2.5, cy, cx + 2.5, cy, soul[5], 0.94 * fade);
+          pen.line(cx, cy - 2.5, cx, cy + 2.5, soul[5], 0.94 * fade);
+          pen.stipple(cx, cy, PURE_WHITE, 0.98 * fade);
+        }
+        motes.render(pen);
+      }
+    };
+  }
+};
+
 export const ABYSSAL_EFFECT_REGISTRY = {
   abyssalWraithMantle,
   wraithShadowMantle,
@@ -1753,6 +2500,13 @@ export const ABYSSAL_EFFECT_REGISTRY = {
   deathAvatarCathedral,
   necropolisBoneyardDomain,
   mementoMoriNecropolisGates,
+  abyssalShadowBurrowPool,
+  abyssalShadowEruptionPillar,
+  companionSummonRiftPortal,
+  darkMageVoidCastSigil,
+  darkMageHexImpactNova,
+  necroHealerSoulTether,
+  necroHealerMendHalo,
   soulScytheWaveCell,
   abyssalSkullWispCell,
   necroticBoneSpireCell,
@@ -1762,3 +2516,4 @@ export const ABYSSAL_EFFECT_REGISTRY = {
   graveChainAltarBindCell,
   mementoMoriGuillotineCell
 };
+

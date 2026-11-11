@@ -515,7 +515,9 @@ export class Fighter {
       this.state !== 'ULTIMATE' &&
       this.state !== 'TRUE_ULTIMATE' &&
       this.state !== 'DASH' &&
-      this.state !== 'DODGE'
+      this.state !== 'DODGE' &&
+      !this.isFullyBurrowed &&
+      !enemy.isFullyBurrowed
     ) {
       const dx = this.x - enemy.x;
       const absDx = Math.abs(dx);
@@ -608,7 +610,7 @@ export class Fighter {
     this.torsoAngle += this.torsoVel * dt;
 
     // Ambient Aura & Desperation Overdrive Particles
-    if (Math.random() < (this.isBerserk ? 0.56 : 0.28)) {
+    if (!this.isFullyBurrowed && Math.random() < (this.isBerserk ? 0.56 : 0.28)) {
       game.vfx.spawnParticle({
         x: this.x + (Math.random() - 0.5) * (this.isBerserk ? 48 : 34),
         y: this.y - Math.random() * (this.isBerserk ? 85 : 60),
