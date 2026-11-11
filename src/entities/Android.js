@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps63';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps63';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps63';
+import { Fighter } from './Fighter.js?v=30fps64';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps64';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps64';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps63';
+} from '../engine/shaders/cyberShaders.js?v=30fps64';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 
@@ -55,10 +55,10 @@ export class Android extends Fighter {
     if (typeof Image !== 'undefined') {
       const androidAssets = PixelForge.initAssets()?.android;
       if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps62')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps63';
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps64';
       }
       if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps62')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps63';
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps64';
       }
     }
 
@@ -765,8 +765,8 @@ export class Android extends Fighter {
 
       if (t >= 0.04 && this._trueUltStep < 1) {
         this._trueUltStep = 1;
-        game?.audio?.play?.('ult_android', this.x);
-        game?.audio?.play?.('emp_discharge', this.x);
+        game?.audio?.play?.('ult_cast', this.x);
+        game?.audio?.play?.('emp_blast', this.x);
         game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#00f0ff');
         game?.vfx?.spawnDamageText?.(
           this.x,
@@ -801,7 +801,7 @@ export class Android extends Fighter {
 
       if (t >= 1.15 && this._trueUltStep < 2) {
         this._trueUltStep = 2;
-        game?.audio?.play?.('laser_beam', this._trueUltTargetX);
+        game?.audio?.play?.('cyber_beam', this._trueUltTargetX);
         game?.audio?.play?.('blink', this.x);
         game?.vfx?.spawnDamageText?.(
           this._trueUltTargetX,
@@ -843,9 +843,9 @@ export class Android extends Fighter {
       game?.renderer?.triggerAberration?.(12);
       game?.renderer?.triggerHitStop?.(0.08);
 
-      game?.audio?.play?.('ult_android', this._trueUltTargetX);
-      game?.audio?.play?.('laser_beam', this._trueUltTargetX);
-      game?.audio?.play?.('emp_discharge', this._trueUltTargetX);
+      game?.audio?.play?.('ult_cast', this._trueUltTargetX);
+      game?.audio?.play?.('cyber_beam', this._trueUltTargetX);
+      game?.audio?.play?.('emp_blast', this._trueUltTargetX);
 
       this.heal(Math.round(this.maxHp * 0.18), 'NANO-CORE OVERCLOCK');
 
@@ -1138,8 +1138,8 @@ export class Android extends Fighter {
       }
     }
 
-    // Supreme Ultimate Phase 3 (this._trueUltBusterTimer > 0): Colossal full-height vertical column of tiled
-    // Row 7 (Project GUNG-09 Orbital Satellite Buster Column, 340px wide from sky y = groundY - 540 down to groundY + 20)
+    // Supreme Ultimate Phase 3 (this._trueUltBusterTimer > 0): Seamless full-height vertical column of Row 7
+    // (Project GUNG-09 Orbital Satellite Buster Column, 340px wide from sky y = groundY - 640 down to groundY + 24)
     if (this._trueUltBusterTimer > 0) {
       const busterProg = 1.0 - Math.max(0, Math.min(1, this._trueUltBusterTimer / 1.0));
       const col = Math.min(29, Math.floor(busterProg * 30));
@@ -1147,26 +1147,47 @@ export class Android extends Fighter {
         this._trueUltBusterTimer < 0.28
           ? this._trueUltBusterTimer / 0.28
           : 0.98;
-      const topY = this.groundY - 540;
-      const botY = this.groundY + 20;
+      const sx = col * 208;
+      const sy = 7 * 208;
+      const cx = Math.round(this._trueUltTargetX);
       const colW = 340;
-      const tileH = 190;
+      const halfW = Math.round(colW * 0.5);
+      // Slice the exact 3-ring 144px vertical period (`sy + 32 .. sy + 176`) stacked directly above
+      // a single non-overlapping base segment (`sy + 32 .. sy + 208`, height 176) anchored at groundY + 24!
+      const coreSliceY = sy + 32;
+      const coreSliceH = 144;
+      const baseSliceH = 176;
+      const stepH = 180;
+      const baseH = 220;
+      const baseBotY = Math.round(this.groundY + 24);
+      const trunkBotY = baseBotY - baseH;
 
-      for (let yCenter = botY - tileH * 0.5; yCenter >= topY - tileH * 0.4; yCenter -= tileH * 0.72) {
-        this.drawBloomedVfxCell(
-          ctx,
-          vfxSheet,
-          7,
-          col,
-          this._trueUltTargetX,
-          yCenter,
-          colW,
-          tileH,
-          alpha,
-          false,
-          renderer
-        );
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+
+      if (renderer?.glowCyber || renderer?.glowCyan) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(1, alpha * 0.34);
+        ctx.drawImage(renderer.glowCyber || renderer.glowCyan, cx - colW * 0.85, this.groundY - 680, colW * 1.7, 740);
       }
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = Math.min(1, alpha * 0.96);
+      ctx.drawImage(vfxSheet, sx, coreSliceY, 208, baseSliceH, cx - halfW, trunkBotY, colW, baseH);
+      for (let seg = 0; seg < 4; seg++) {
+        const yTop = trunkBotY - (seg + 1) * stepH;
+        ctx.drawImage(vfxSheet, sx, coreSliceY, 208, coreSliceH, cx - halfW, yTop, colW, stepH);
+      }
+
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, alpha * 0.34);
+      ctx.drawImage(vfxSheet, sx, coreSliceY, 208, baseSliceH, cx - halfW, trunkBotY, colW, baseH);
+      for (let seg = 0; seg < 4; seg++) {
+        const yTop = trunkBotY - (seg + 1) * stepH;
+        ctx.drawImage(vfxSheet, sx, coreSliceY, 208, coreSliceH, cx - halfW, yTop, colW, stepH);
+      }
+
+      ctx.restore();
     }
   }
 }

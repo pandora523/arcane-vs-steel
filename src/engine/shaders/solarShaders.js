@@ -19,7 +19,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps62';
+} from '../ArcaneShaderFX.js?v=30fps64';
 
 export const SOLAR_CORONA_PALETTE = [
   '#18080a',
@@ -2429,15 +2429,17 @@ export const astralCataclysmImpactDome = {
         drawTiltedOrbitBand(pen, 0, 0, r1, 0.22, 2.2, 0.92 * env, band4, BACK_HALF, false);
         drawTiltedOrbitBand(pen, 0, 0, r2, 0.22, 1.8, 0.88 * env, band4, BACK_HALF, false);
 
-        // Colossal Pixel-Shader Thermonuclear Magma Hemisphere Dome (`shadeBox` with 1px Selout)
+        // Colossal Pixel-Shader Thermonuclear Magma Hemisphere Dome (`shadeBox` with curved 2.5D elliptical base & 1px Selout)
         const domeW = Math.round((38 + 68 * smoothStep(0, 0.38, u)) * pop);
         const domeH = Math.round((34 + 66 * smoothStep(0, 0.38, u)) * pop);
         if (domeW >= 8 && domeH >= 8) {
-          pen.shadeBox(-domeW - 4, -domeH - 4, domeW + 4, 8, (lx, ly, out) => {
-            if (ly > 4) return 0;
+          pen.shadeBox(-domeW - 6, -domeH - 6, domeW + 6, 16, (lx, ly, out) => {
             const nx = lx / domeW;
-            const ny = ly / domeH;
-            const d = Math.hypot(nx, ny);
+            if (Math.abs(nx) > 1.08) return 0;
+            const baseCurveY = Math.sqrt(Math.max(0, 1 - Math.min(1, nx * nx))) * 10 * pop;
+            if (ly > baseCurveY) return 0;
+            const ny = (ly - baseCurveY * 0.35) / domeH;
+            const d = Math.hypot(nx, Math.min(0, ny));
             const crag = fbm2D(lx * 0.1 + t * 2.4, ly * 0.1 - t * 3.1, 2) * 0.12;
             const effD = d + crag;
             if (effD > 1.04) return 0;

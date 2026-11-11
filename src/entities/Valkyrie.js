@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps63';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps63';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps63';
+import { Fighter } from './Fighter.js?v=30fps64';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps64';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps64';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps63';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps64';
 
 /**
  * Freyja (`valkyrie`) — Dragon-Lance Valkyrie & Valhalla Sky-Sovereign.
@@ -76,7 +76,7 @@ export class Valkyrie extends Fighter {
     if (typeof Image !== 'undefined') {
       const valkyrieAssets = PixelForge.initAssets()?.valkyrie;
       if (valkyrieAssets?.vfx?.src && !valkyrieAssets.vfx.src.includes('v=30fps63')) {
-        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps63';
+        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps64';
       }
     }
 
@@ -2105,16 +2105,34 @@ export class Valkyrie extends Fighter {
         lance.shatterAge !== undefined ? Math.max(0, 1 - lance.shatterAge / 0.30) : 1.0;
       if (shatterFade <= 0.02) continue;
 
-      // Vertical sky-wake pillar streak while plunging or newly pinned
+      // Tapered needle sky-wake streak while plunging or newly pinned (zero rectangular blocks!)
       if (lance.age < 0.42) {
         const wakeAlpha = (1 - lance.age / 0.42) * 0.72 * shatterFade;
+        const x0 = Math.round(lance.startX ?? lance.x);
+        const y0 = Math.round(lance.startY);
+        const x1 = Math.round(lance.x);
+        const y1 = Math.round(lance.y + 24);
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.fillStyle = 'rgba(244, 63, 94, 0.45)';
-        ctx.fillRect(Math.round(lance.x - 10), Math.round(lance.startY), 20, Math.max(8, Math.round(lance.y - lance.startY + 46)));
-        ctx.fillStyle = 'rgba(253, 224, 71, 0.85)';
-        ctx.globalAlpha = wakeAlpha;
-        ctx.fillRect(Math.round(lance.x - 3), Math.round(lance.startY), 6, Math.max(8, Math.round(lance.y - lance.startY + 46)));
+        ctx.globalAlpha = wakeAlpha * 0.52;
+        ctx.fillStyle = '#f43f5e';
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1 - 9, y1);
+        ctx.lineTo(x1, y1 + 14);
+        ctx.lineTo(x1 + 9, y1);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.globalAlpha = wakeAlpha * 0.90;
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        ctx.moveTo(x0, y0);
+        ctx.lineTo(x1 - 3, y1);
+        ctx.lineTo(x1, y1 + 10);
+        ctx.lineTo(x1 + 3, y1);
+        ctx.closePath();
+        ctx.fill();
         ctx.restore();
       }
 

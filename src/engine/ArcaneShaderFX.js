@@ -901,23 +901,23 @@ export function instantiateShaderEffect(def, userCfg = {}) {
  * ArcaneShaderFX — Arena-wide 2.5D (`back` + `front`) pixel-shader VFX runtime for Arcane vs. Steel.
  */
 export class ArcaneShaderFX {
-  constructor(registry = {}, { pixelScale = 3, viewW = 440, viewH = 220, topRatio = 0.78 } = {}) {
+  constructor(registry = {}, { pixelScale = 3, viewW = 640, viewH = 420, topRatio = 0.72 } = {}) {
     this.registry = registry;
     this.pixelScale = pixelScale;
-    this.viewW = viewW;
-    this.viewH = viewH;
-    this.topRatio = topRatio;
+    this.viewW = Math.max(640, viewW);
+    this.viewH = Math.max(420, viewH);
+    this.topRatio = Math.min(0.74, Math.max(0.68, topRatio));
 
-    this.surfaceBack = createPixelSurface(viewW, viewH);
-    this.surfaceFront = createPixelSurface(viewW, viewH);
+    this.surfaceBack = createPixelSurface(this.viewW, this.viewH);
+    this.surfaceFront = createPixelSurface(this.viewW, this.viewH);
     this.penBack = new ShaderPen(this.surfaceBack);
     this.penFront = new ShaderPen(this.surfaceFront);
-    this.rgbaBack = new Uint8ClampedArray(viewW * viewH * 4);
-    this.rgbaFront = new Uint8ClampedArray(viewW * viewH * 4);
-    this.albedoRgbaBack = new Uint8ClampedArray(viewW * viewH * 4);
-    this.emissiveRgbaBack = new Uint8ClampedArray(viewW * viewH * 4);
-    this.albedoRgbaFront = new Uint8ClampedArray(viewW * viewH * 4);
-    this.emissiveRgbaFront = new Uint8ClampedArray(viewW * viewH * 4);
+    this.rgbaBack = new Uint8ClampedArray(this.viewW * this.viewH * 4);
+    this.rgbaFront = new Uint8ClampedArray(this.viewW * this.viewH * 4);
+    this.albedoRgbaBack = new Uint8ClampedArray(this.viewW * this.viewH * 4);
+    this.emissiveRgbaBack = new Uint8ClampedArray(this.viewW * this.viewH * 4);
+    this.albedoRgbaFront = new Uint8ClampedArray(this.viewW * this.viewH * 4);
+    this.emissiveRgbaFront = new Uint8ClampedArray(this.viewW * this.viewH * 4);
 
     this.active = [];
     this.worldMotes = [];
@@ -942,35 +942,35 @@ export class ArcaneShaderFX {
 
     if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
       this.backCanvas = document.createElement('canvas');
-      this.backCanvas.width = viewW;
-      this.backCanvas.height = viewH;
+      this.backCanvas.width = this.viewW;
+      this.backCanvas.height = this.viewH;
       this.backCtx = this.backCanvas.getContext('2d');
       if (this.backCtx?.createImageData) {
-        this.backImageData = this.backCtx.createImageData(viewW, viewH);
+        this.backImageData = this.backCtx.createImageData(this.viewW, this.viewH);
       }
 
       this.backGlowCanvas = document.createElement('canvas');
-      this.backGlowCanvas.width = viewW;
-      this.backGlowCanvas.height = viewH;
+      this.backGlowCanvas.width = this.viewW;
+      this.backGlowCanvas.height = this.viewH;
       this.backGlowCtx = this.backGlowCanvas.getContext('2d');
       if (this.backGlowCtx?.createImageData) {
-        this.backGlowImageData = this.backGlowCtx.createImageData(viewW, viewH);
+        this.backGlowImageData = this.backGlowCtx.createImageData(this.viewW, this.viewH);
       }
 
       this.frontCanvas = document.createElement('canvas');
-      this.frontCanvas.width = viewW;
-      this.frontCanvas.height = viewH;
+      this.frontCanvas.width = this.viewW;
+      this.frontCanvas.height = this.viewH;
       this.frontCtx = this.frontCanvas.getContext('2d');
       if (this.frontCtx?.createImageData) {
-        this.frontImageData = this.frontCtx.createImageData(viewW, viewH);
+        this.frontImageData = this.frontCtx.createImageData(this.viewW, this.viewH);
       }
 
       this.frontGlowCanvas = document.createElement('canvas');
-      this.frontGlowCanvas.width = viewW;
-      this.frontGlowCanvas.height = viewH;
+      this.frontGlowCanvas.width = this.viewW;
+      this.frontGlowCanvas.height = this.viewH;
       this.frontGlowCtx = this.frontGlowCanvas.getContext('2d');
       if (this.frontGlowCtx?.createImageData) {
-        this.frontGlowImageData = this.frontGlowCtx.createImageData(viewW, viewH);
+        this.frontGlowImageData = this.frontGlowCtx.createImageData(this.viewW, this.viewH);
       }
     }
   }
@@ -1136,7 +1136,7 @@ export class ArcaneShaderFX {
       const s = this.active[i];
       const lx = Math.round((s.worldX - worldLeft) / scale);
       const ly = Math.round((s.worldY - worldTop) / scale);
-      if (lx < -120 || lx > this.viewW + 120 || ly < -120 || ly > this.viewH + 120) continue;
+      if (lx < -160 || lx > this.viewW + 160 || ly < -160 || ly > this.viewH + 160) continue;
       s.inst.cfg.x = lx;
       s.inst.cfg.y = ly;
       s.inst.render(pen, passName);
@@ -1176,7 +1176,7 @@ export class ArcaneShaderFX {
       resolveSurfaceToSplitRGBA(surface, albedoRgba, emissiveRgba, 1.22);
       const w = this.viewW;
       const h = this.viewH;
-      const m = 8;
+      const m = 16;
       for (let y = 0; y < h; y++) {
         const yEdge = Math.min(y, h - 1 - y);
         const fullRow = yEdge < m;
@@ -1186,7 +1186,8 @@ export class ArcaneShaderFX {
             continue;
           }
           const d = Math.min(yEdge, x, w - 1 - x);
-          const k = d <= 0 ? 0 : d / m;
+          const u = d <= 0 ? 0 : d / m;
+          const k = u * u * (3 - 2 * u);
           const o = (y * w + x) * 4;
           rgba[o + 3] = (rgba[o + 3] * k) | 0;
           albedoRgba[o + 3] = (albedoRgba[o + 3] * k) | 0;

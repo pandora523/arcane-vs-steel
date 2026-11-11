@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps63';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps63';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps63';
+import { Fighter } from './Fighter.js?v=30fps64';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps64';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps64';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps63';
+} from '../engine/shaders/abyssalShaders.js?v=30fps64';
 
 /**
  * Malakor (`reaper`) — Abyssal Necropolis Harvester & Sovereign of Death.
@@ -95,7 +95,7 @@ export class Reaper extends Fighter {
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
       if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps57')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps63';
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps64';
       }
     }
   }
@@ -1640,8 +1640,8 @@ export class Reaper extends Fighter {
           ? Math.max(260, Math.min(940, enemy.x))
           : Math.max(260, Math.min(940, this.x + this.facing * 220));
 
-        game?.audio?.play?.('ult_reaper', this.x);
-        game?.audio?.play?.('grave_bell', this._trueUltAltarX);
+        game?.audio?.play?.('reaper_ult', this.x);
+        game?.audio?.play?.('ult_cast', this._trueUltAltarX);
         game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#a855f7');
         game?.vfx?.spawnDamageText?.(
           this._trueUltAltarX,
@@ -1680,8 +1680,8 @@ export class Reaper extends Fighter {
     if (elapsed < 3.15) {
       if (elapsed >= 1.25 && this._trueUltStep < 2) {
         this._trueUltStep = 2;
-        game?.audio?.play?.('chain_yank', this._trueUltAltarX);
-        game?.audio?.play?.('soul_wail', this._trueUltAltarX);
+        game?.audio?.play?.('chain_hook', this._trueUltAltarX);
+        game?.audio?.play?.('soul_drain', this._trueUltAltarX);
         game?.vfx?.spawnDamageText?.(
           this._trueUltAltarX,
           this.groundY - 224,
@@ -1757,9 +1757,9 @@ export class Reaper extends Fighter {
       game?.renderer?.triggerShake?.(26, 0.70);
       game?.renderer?.flash?.(0.30, '#f3e8ff');
 
-      game?.audio?.play?.('ult_reaper', this._trueUltAltarX);
+      game?.audio?.play?.('reaper_ult', this._trueUltAltarX);
       game?.audio?.play?.('scythe_reap', this._trueUltAltarX);
-      game?.audio?.play?.('grave_bell', this._trueUltAltarX);
+      game?.audio?.play?.('soul_drain', this._trueUltAltarX);
 
       this.fx?.spawn('deathAvatarCathedral', this._trueUltAltarX, this.groundY - 4, {
         light: 1.50

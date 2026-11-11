@@ -19,7 +19,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   MotePool
-} from '../ArcaneShaderFX.js?v=30fps62';
+} from '../ArcaneShaderFX.js?v=30fps64';
 
 const TWO_PI = Math.PI * 2;
 
@@ -445,11 +445,16 @@ export const empOverloadDome = {
       }
 
       const rCeil = Math.ceil(r);
-      for (let y = -rCeil; y < 0; y++) {
+      const maxBotY = Math.ceil(r * floorAspect);
+      for (let y = -rCeil; y <= maxBotY; y++) {
         const shift = rowShifts.get(y) || 0;
         for (let x = -rCeil; x <= rCeil; x++) {
           const sx = x - shift;
-          const dNorm = Math.hypot(sx + 0.5, y + 0.5) / r;
+          const normX = (sx + 0.5) / r;
+          const botCurveY = Math.sqrt(Math.max(0, 1 - Math.min(1, normX * normX))) * r * floorAspect;
+          if (y > botCurveY) continue;
+          const effY = Math.min(0, y - botCurveY * 0.35);
+          const dNorm = Math.hypot(sx + 0.5, effY) / r;
           if (dNorm > 1) {
             if (dNorm < 1 + 1.45 / r && ((x + y) & 1) === 0) {
               pen.pixel(x, y, fringeCol);

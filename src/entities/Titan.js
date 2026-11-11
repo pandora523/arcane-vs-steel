@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps63';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps63';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps63';
+import { Fighter } from './Fighter.js?v=30fps64';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps64';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps64';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps63';
+} from '../engine/shaders/forgeShaders.js?v=30fps64';
 
 /**
  * Torgar (`titan`) — World-Forge Juggernaut & Runic Anvil Sovereign.
@@ -71,7 +71,7 @@ export class Titan extends Fighter {
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
       if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps53')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps63';
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps64';
       }
     }
   }
@@ -983,8 +983,8 @@ export class Titan extends Fighter {
     if (t >= 0.04 && this._trueUltStep < 1) {
       this._trueUltStep = 1;
       this.forgeArmorTimer = 6.0;
-      game?.audio?.play?.('ult_titan', this.x);
-      game?.audio?.play?.('anvil_ring', this._trueUltAnvilX);
+      game?.audio?.play?.('ult_cast', this.x);
+      game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
       game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#f97316');
       game?.vfx?.spawnSpecialCastAura?.(
         this,
@@ -1051,8 +1051,8 @@ export class Titan extends Fighter {
 
       if (t >= 1.45 && this._trueUltStep < 2) {
         this._trueUltStep = 2;
-        game?.audio?.play?.('anvil_ring', this._trueUltAnvilX);
-        game?.audio?.play?.('hammer_slam', this._trueUltAnvilX);
+        game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
+        game?.audio?.play?.('thunder_slam', this._trueUltAnvilX);
         game?.renderer?.shake?.(14, 0.25);
         game?.renderer?.triggerShake?.(14, 0.25);
         game?.vfx?.spawnDamageText?.(
@@ -1086,8 +1086,8 @@ export class Titan extends Fighter {
 
       if (t >= 2.25 && this._trueUltStep < 3) {
         this._trueUltStep = 3;
-        game?.audio?.play?.('anvil_ring', this._trueUltAnvilX);
-        game?.audio?.play?.('hammer_slam', this._trueUltAnvilX);
+        game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
+        game?.audio?.play?.('thunder_slam', this._trueUltAnvilX);
         game?.renderer?.shake?.(14, 0.25);
         game?.renderer?.triggerShake?.(14, 0.25);
         game?.vfx?.spawnDamageText?.(
@@ -1149,9 +1149,9 @@ export class Titan extends Fighter {
       game?.renderer?.triggerAberration?.(16);
       game?.renderer?.triggerHitStop?.(0.09);
 
-      game?.audio?.play?.('ult_titan', this._trueUltAnvilX);
-      game?.audio?.play?.('earth_crack', this._trueUltAnvilX);
-      game?.audio?.play?.('anvil_ring', this._trueUltAnvilX);
+      game?.audio?.play?.('ult_cast', this._trueUltAnvilX);
+      game?.audio?.play?.('earthshatter', this._trueUltAnvilX);
+      game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
 
       this.heal(Math.round(this.maxHp * 0.18), 'WORLD-FORGE TEMPER');
       this.forgeArmorTimer = 4.5;

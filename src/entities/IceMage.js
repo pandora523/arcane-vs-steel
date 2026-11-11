@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps63';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps63';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps63';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps63';
+import { Fighter } from './Fighter.js?v=30fps64';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps64';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps64';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps64';
 
 /**
  * Glacia / Lyra (`icemage`) — Cryo Sovereign & Borealis Prism Weaver.
@@ -73,7 +73,7 @@ export class IceMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
       if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps50')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps63';
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps64';
       }
     }
   }
@@ -1321,8 +1321,8 @@ export class IceMage extends Fighter {
 
       if (t >= 0.04 && this._trueUltStep < 1) {
         this._trueUltStep = 1;
-        game?.audio?.play?.('ult_icemage', this.x);
-        game?.audio?.play?.('ice_crystallize', this.x);
+        game?.audio?.play?.('ult_cast', this.x);
+        game?.audio?.play?.('frost_cast', this.x);
         game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#38bdf8');
         game?.vfx?.spawnDamageText?.(
           this.x,
@@ -1345,8 +1345,8 @@ export class IceMage extends Fighter {
     // =========================================================================
     if (t >= 1.10 && this._trueUltStep < 2) {
       this._trueUltStep = 2;
-      game?.audio?.play?.('ice_crystallize', this._trueUltCoffinX);
-      game?.audio?.play?.('prism_chime', this._trueUltCoffinX);
+      game?.audio?.play?.('frost_cast', this._trueUltCoffinX);
+      game?.audio?.play?.('prism_beam', this._trueUltCoffinX);
       game?.vfx?.spawnDamageText?.(
         this._trueUltCoffinX,
         this.groundY - 224,
@@ -1402,9 +1402,9 @@ export class IceMage extends Fighter {
       game?.renderer?.triggerAberration?.(16);
       game?.renderer?.triggerHitStop?.(0.09);
 
-      game?.audio?.play?.('ult_icemage', this._trueUltCoffinX);
-      game?.audio?.play?.('glass_shatter', this._trueUltCoffinX);
+      game?.audio?.play?.('ult_cast', this._trueUltCoffinX);
       game?.audio?.play?.('ice_shatter', this._trueUltCoffinX);
+      game?.audio?.play?.('prism_beam', this._trueUltCoffinX);
 
       this.heal(Math.round(this.maxHp * 0.18), 'AURORA SOVEREIGNTY');
 
@@ -1567,7 +1567,6 @@ export class IceMage extends Fighter {
     if (fade <= 0.01) return;
 
     const col = Math.floor(t * 30) % 30;
-    const spinAngle = t * 1.45;
     this.drawBloomedVfxRect(
       ctx,
       vfxSheet,
@@ -1580,7 +1579,7 @@ export class IceMage extends Fighter {
       fade * 0.94,
       renderer,
       1.65,
-      spinAngle
+      0
     );
   }
 

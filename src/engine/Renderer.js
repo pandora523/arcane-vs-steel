@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps63';
+import { PixelForge } from './PixelForge.js?v=30fps64';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -494,7 +494,7 @@ export class Renderer {
 
     if (this.ultDim > 0.01) {
       ctx.fillStyle = `rgba(2, 3, 10, ${this.ultDim * 0.78})`;
-      ctx.fillRect(-800, -1400, ww + 1600, 2800);
+      ctx.fillRect(-4000, -3000, ww + 8000, 6000);
       this.drawUltimateAwakeningWorld(ctx, gy);
     }
 
@@ -1549,7 +1549,7 @@ export class Renderer {
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 0.96;
     ctx.fillStyle = isInverted ? '#ffffff' : pal.bg;
-    ctx.fillRect(-1200, -1000, ww + 2400, 2400);
+    ctx.fillRect(-4000, -3000, ww + 8000, 6000);
 
     // 2. 48 Pixel-Stepped Radial Anime Impact Speed-Rays bursting from `(cx, cy)`
     const spikeCount = 48;
@@ -1666,8 +1666,8 @@ export class Renderer {
     for (const band of bands) {
       const rBand = domeRadius * band.scale;
       ctx.fillStyle = band.col;
-      const minY = Math.max(-720, Math.floor((cy - rBand) / stepH) * stepH);
-      const maxY = Math.min(gy + 220, Math.ceil((cy + rBand) / stepH) * stepH);
+      const minY = Math.max(-2400, Math.floor((cy - rBand) / stepH) * stepH);
+      const maxY = Math.min(gy + 1200, Math.ceil((cy + rBand) / stepH) * stepH);
       for (let sy = minY; sy <= maxY; sy += stepH) {
         const dy = sy - cy;
         if (Math.abs(dy) >= rBand) continue;
@@ -1680,7 +1680,7 @@ export class Renderer {
     if (p >= 0.10) {
       ctx.globalAlpha = Math.min(1, whiteAlpha * 0.98);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(-1200, -1000, ww + 2400, 2400);
+      ctx.fillRect(-4000, -3000, ww + 8000, 6000);
     }
 
     // 2. "Everyone Looks Like They Get Deleted" — Dissolving Vaporized Fighter Silhouettes & Pixel Ash Disintegration!
@@ -2489,17 +2489,15 @@ export class Renderer {
       ctx.drawImage(this.glowGold, spotX - 190, spotY - 190, 380, 380);
     }
 
-    // 2. Towering Soft-Feathered Skyward Pillar of Elemental Light Rising from the Stone Floor
+    // 2. Soft 2D Radial-Elliptical Skyward Light Plumes Rising from the Stone Floor (fades to 0 in all 4 directions — zero rectangular cutoff!)
     const colW = 148;
-    const colG = ctx.createLinearGradient(spotX - colW, 0, spotX + colW, 0);
-    colG.addColorStop(0, 'rgba(0, 0, 0, 0)');
-    colG.addColorStop(0.28, elemCol);
-    colG.addColorStop(0.5, '#ffffff');
-    colG.addColorStop(0.72, elemCol);
-    colG.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.globalAlpha = dim * 0.24;
-    ctx.fillStyle = colG;
-    ctx.fillRect(spotX - colW, gy - 680, colW * 2, 684);
+    const pillarGlow = spotGlow || this.glowGold || this.glowWhite;
+    if (pillarGlow) {
+      ctx.globalAlpha = dim * 0.32;
+      ctx.drawImage(pillarGlow, spotX - colW * 1.35, gy - 640, colW * 2.7, 740);
+      ctx.globalAlpha = dim * 0.22;
+      ctx.drawImage(this.glowWhite || pillarGlow, spotX - colW * 0.65, gy - 580, colW * 1.3, 660);
+    }
 
     // 3. High-Velocity Ascending Elemental Embers & Speed Filaments Flanking the Caster (Zero Floor Circles!)
     for (let i = 0; i < 14; i++) {

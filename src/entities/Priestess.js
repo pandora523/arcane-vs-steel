@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps62';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps62';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps62';
+import { Fighter } from './Fighter.js?v=30fps64';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps64';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps64';
 import {
   SERAPHIC_EFFECT_REGISTRY,
   SERAPHIC_GOLD_PALETTE,
   SERAPHIC_GRACE_PALETTE,
   SERAPHIC_STAINED_PALETTE
-} from '../engine/shaders/seraphicShaders.js?v=30fps62';
+} from '../engine/shaders/seraphicShaders.js?v=30fps64';
 
 /**
  * Seraphina (`priestess`) — High Priestess & Sanctuary Archangel Weaver.
@@ -82,7 +82,7 @@ export class Priestess extends Fighter {
     if (typeof Image !== 'undefined') {
       const priestessAssets = PixelForge.initAssets()?.priestess;
       if (priestessAssets?.vfx?.src && !priestessAssets.vfx.src.includes('v=30fps62')) {
-        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps62';
+        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps64';
       }
     }
   }
@@ -1410,7 +1410,7 @@ export class Priestess extends Fighter {
       // Soft whole-screen golden-ivory atmospheric bloom wash building toward 3.00s blowout
       const washAlpha = 0.03 + Math.pow(chargeP, 2.2) * 0.22;
       ctx.fillStyle = `rgba(254, 240, 138, ${washAlpha.toFixed(3)})`;
-      ctx.fillRect(-120, -240, ww + 240, this.groundY + 380);
+      ctx.fillRect(-4000, -3000, ww + 8000, 6000);
 
       // 3 pixel-stepped expanding octagonal sacred light rings sweeping across the arena
       const ringCols = ['#fde047', '#6ee7b7', '#ffffff'];
@@ -1551,7 +1551,7 @@ export class Priestess extends Fighter {
         const preU = (chargeP - 0.88) / 0.12;
         ctx.globalCompositeOperation = 'lighter';
         ctx.fillStyle = `rgba(255, 251, 235, ${(preU * preU * 0.36).toFixed(3)})`;
-        ctx.fillRect(-120, -240, ww + 240, this.groundY + 380);
+        ctx.fillRect(-4000, -3000, ww + 8000, 6000);
       }
 
       ctx.restore();
@@ -1579,7 +1579,7 @@ export class Priestess extends Fighter {
       if (beamT < 0.32) {
         const flashA = Math.pow(1 - beamT / 0.32, 1.6) * 0.46;
         ctx.fillStyle = `rgba(255, 251, 235, ${flashA.toFixed(3)})`;
-        ctx.fillRect(-120, -240, ww + 240, this.groundY + 380);
+        ctx.fillRect(-4000, -3000, ww + 8000, 6000);
       }
       if (renderer?.glowGold) {
         ctx.globalAlpha = 0.34 * env;
@@ -1613,25 +1613,30 @@ export class Priestess extends Fighter {
         ctx.translate(muzzleX, beamY);
         ctx.scale(this.facing, 1);
 
+        // Slice the seamless 148px interior of Row 7 (x=30..178) and 178px of Row 6 (x=0..178) so Row 6 meets Row 7 at dx=74 with 0 overlap and exact phase match
+        const sliceX = col * 208 + 30;
+        const sliceW = 148;
+        const muzzleSliceW = 178;
+
         // Additive celestial bloom pass along welded beam
         const bloomH = beamH + 14;
         const halfBloomH = Math.round(bloomH * 0.5);
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = 0.32 * env;
-        for (let seg = 0; seg < 10; seg++) {
-          const segCenterX = 82 + seg * 148;
-          ctx.drawImage(vfxSheet, col * 208, 1456, 208, 208, segCenterX - 104, -halfBloomH, 208, bloomH);
+        for (let seg = 0; seg < 11; seg++) {
+          const segLeftX = 74 + seg * sliceW;
+          ctx.drawImage(vfxSheet, sliceX, 1456, sliceW, 208, segLeftX, -halfBloomH, sliceW, bloomH);
         }
-        ctx.drawImage(vfxSheet, col * 208, 1248, 208, 208, -104, -halfBloomH, 208, bloomH);
+        ctx.drawImage(vfxSheet, col * 208, 1248, muzzleSliceW, 208, -104, -halfBloomH, muzzleSliceW, bloomH);
 
-        // Crisp 100% opaque cel-clustered pixel-art beam pass (`Row 7` tiled 10x at 148px step + `Row 6` cannon muzzle)
+        // Crisp 100% opaque cel-clustered pixel-art beam pass (`Row 7` tiled 11x at 148px step + `Row 6` cannon muzzle)
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 1.0;
-        for (let seg = 0; seg < 10; seg++) {
-          const segCenterX = 82 + seg * 148;
-          ctx.drawImage(vfxSheet, col * 208, 1456, 208, 208, segCenterX - 104, -halfH, 208, beamH);
+        for (let seg = 0; seg < 11; seg++) {
+          const segLeftX = 74 + seg * sliceW;
+          ctx.drawImage(vfxSheet, sliceX, 1456, sliceW, 208, segLeftX, -halfH, sliceW, beamH);
         }
-        ctx.drawImage(vfxSheet, col * 208, 1248, 208, 208, -104, -halfH, 208, beamH);
+        ctx.drawImage(vfxSheet, col * 208, 1248, muzzleSliceW, 208, -104, -halfH, muzzleSliceW, beamH);
 
         ctx.restore();
       }

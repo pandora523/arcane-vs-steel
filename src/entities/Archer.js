@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps63';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps63';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps63';
+import { Fighter } from './Fighter.js?v=30fps64';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps64';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps64';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps63';
+} from '../engine/shaders/sylvanShaders.js?v=30fps64';
 
 /**
  * Sylvara (`archer`) — Elven Tempest Bowmaster & Astral Star-Ranger.
@@ -61,7 +61,7 @@ export class Archer extends Fighter {
     if (typeof Image !== 'undefined') {
       const archerAssets = PixelForge.initAssets()?.archer;
       if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps62')) {
-        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps63';
+        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps64';
       }
     }
 
@@ -1388,7 +1388,7 @@ export class Archer extends Fighter {
       ctx.restore();
     }
 
-    // 3. Supreme Ultimate Phase 2 (`this._trueUltBeamTimer > 0`): Full-Screen Horizontal Row 7 Supernova Dragon-Arrow Beam Segment tiled across 1200px arena!
+    // 3. Supreme Ultimate Phase 2 (`this._trueUltBeamTimer > 0`): Seamless Full-Screen Horizontal Row 7 Supernova Dragon-Arrow Beam!
     if (this._trueUltBeamTimer > 0) {
       const beamProg = Math.min(1, Math.max(0, 1 - this._trueUltBeamTimer / 0.95));
       const col = Math.min(29, Math.floor(beamProg * 30));
@@ -1397,8 +1397,13 @@ export class Archer extends Fighter {
       const env = this._trueUltBeamTimer < 0.22 ? this._trueUltBeamTimer / 0.22 : 1.0;
       const muzzleX = Math.round(this.x + this.facing * 38);
       const beamY = Math.round(this.y - 96);
-      const segStep = 156;
-      const segCount = 9; // 9 * 156 = 1404px (> 1200px full arena width!)
+      // Slice the exact 3-wave 112px core (`sx + 44 .. sx + 156`) and tile edge-to-edge (`i * 112`) + non-overlapping 52px tip (`sx + 156 .. sx + 208`)
+      // so zero capsule end-caps or overlap seams ever appear!
+      const coreSliceX = sx + 44;
+      const coreSliceW = 112;
+      const tipSliceX = sx + 156;
+      const tipSliceW = 52;
+      const segCount = 12; // 12 * 112 = 1344px (> 1200px full arena width!)
 
       ctx.save();
       ctx.translate(muzzleX, beamY);
@@ -1407,17 +1412,19 @@ export class Archer extends Fighter {
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = Math.max(0, Math.min(1, env * 0.98));
       for (let i = 0; i < segCount; i++) {
-        const segX = i * segStep;
-        ctx.drawImage(vfxSheet, sx, sy, 208, 208, segX, -112, 208, 224);
+        const segX = 24 + i * coreSliceW;
+        ctx.drawImage(vfxSheet, coreSliceX, sy, coreSliceW, 208, segX, -112, coreSliceW, 224);
       }
+      ctx.drawImage(vfxSheet, tipSliceX, sy, tipSliceW, 208, 24 + segCount * coreSliceW, -112, tipSliceW, 224);
       ctx.drawImage(vfxSheet, sx, 6 * 208, 208, 208, -140, -140, 280, 280);
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.max(0, Math.min(1, env * 0.46));
+      ctx.globalAlpha = Math.max(0, Math.min(1, env * 0.44));
       for (let i = 0; i < segCount; i++) {
-        const segX = i * segStep;
-        ctx.drawImage(vfxSheet, sx, sy, 208, 208, segX, -120, 208, 240);
+        const segX = 24 + i * coreSliceW;
+        ctx.drawImage(vfxSheet, coreSliceX, sy, coreSliceW, 208, segX, -120, coreSliceW, 240);
       }
+      ctx.drawImage(vfxSheet, tipSliceX, sy, tipSliceW, 208, 24 + segCount * coreSliceW, -120, tipSliceW, 240);
       ctx.drawImage(vfxSheet, sx, 6 * 208, 208, 208, -140, -140, 280, 280);
 
       ctx.restore();
