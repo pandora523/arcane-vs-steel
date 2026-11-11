@@ -88,7 +88,7 @@
       ],
       "companions_sheet": "assets/sprites/reaper_companions.png",
       "logical_res": "104x104 (2x NEAREST -> 208x208) + 4x30 Companion Sheet (208x208)",
-      "rig": "14-part cel-clustered Gothic Arch-Reaper & Sovereign of the Death Covenant skeletal rig + True 1.72s Underground Shadow Burrow (1.26s 100% submerged Pitch-Black Abyssal Shadow Pool, Predator Eye-Slits & Surprise Attack Eruption) + 11.5s Summoned Living Death-Mage (230 HP, Dark-Matter Void Orbs) & Soul-Healer (185 HP, Luminous Soul-Mend Tethers & Halos) + 8-Row Thanatos Stand & Oblivion Gates VFX Suite + Prone Collapse",
+      "rig": "14-part cel-clustered Gothic Arch-Reaper & Sovereign of the Death Covenant skeletal rig + True 1.72s Underground Shadow Burrow (1.26s 100% submerged Pitch-Black Abyssal Shadow Pool, Predator Eye-Slits, Surprise Attack Eruption & Grave-Ward Poise) + 5-Beat Sky-Lock Overdrive + MEMENTO MORI Super Ultimate summoning 12.5s Living Death-Mage (480 HP + 60 Soul-Ward, Dark-Matter Void Orbs) & Soul-Healer (420 HP + 50 Soul-Ward, Soul-Mend Tethers & Covenant Grace) + 920px Reality-Split Guillotine + Prone Collapse",
       "script": "scripts/build_reaper_30fps_sheet.py",
       "companions_script": "scripts/build_reaper_companions_sheet.py",
       "vfx_script": "scripts/build_reaper_vfx_30fps.mjs"

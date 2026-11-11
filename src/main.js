@@ -1,19 +1,19 @@
-import { Renderer } from './engine/Renderer.js?v=30fps68';
-import { VFXManager } from './engine/VFXManager.js?v=30fps68';
-import { PixelForge } from './engine/PixelForge.js?v=30fps68';
-import { AudioManager } from './engine/AudioManager.js?v=30fps68';
-import { Fighter } from './entities/Fighter.js?v=30fps68';
-import { Warrior } from './entities/Warrior.js?v=30fps68';
-import { FireMage } from './entities/FireMage.js?v=30fps68';
-import { Archer } from './entities/Archer.js?v=30fps68';
-import { Priestess } from './entities/Priestess.js?v=30fps68';
-import { Reaper } from './entities/Reaper.js?v=30fps68';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps68';
-import { Titan } from './entities/Titan.js?v=30fps68';
-import { Ronin } from './entities/Ronin.js?v=30fps68';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps68';
-import { IceMage } from './entities/IceMage.js?v=30fps68';
-import { Android } from './entities/Android.js?v=30fps68';
+import { Renderer } from './engine/Renderer.js?v=30fps69';
+import { VFXManager } from './engine/VFXManager.js?v=30fps69';
+import { PixelForge } from './engine/PixelForge.js?v=30fps69';
+import { AudioManager } from './engine/AudioManager.js?v=30fps69';
+import { Fighter } from './entities/Fighter.js?v=30fps69';
+import { Warrior } from './entities/Warrior.js?v=30fps69';
+import { FireMage } from './entities/FireMage.js?v=30fps69';
+import { Archer } from './entities/Archer.js?v=30fps69';
+import { Priestess } from './entities/Priestess.js?v=30fps69';
+import { Reaper } from './entities/Reaper.js?v=30fps69';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps69';
+import { Titan } from './entities/Titan.js?v=30fps69';
+import { Ronin } from './entities/Ronin.js?v=30fps69';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps69';
+import { IceMage } from './entities/IceMage.js?v=30fps69';
+import { Android } from './entities/Android.js?v=30fps69';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -169,13 +169,13 @@ const CHAMPION_ROSTER = {
     victoryLine: 'From the pitch-black abyss, my Death Covenant claims your soul!',
     trueUltName: 'MEMENTO MORI: OBLIVION GUILLOTINE',
     trueUltDesc:
-      'Unseals the Twin Cathedral Gates of Oblivion, binds foes in the Six-Scythe Death-Clock & cleaves reality in one strike!',
+      'Unseals Twin Oblivion Gates to summon a 12.5s Death-Mage & Soul-Healer with Soul-Ward shields, ascends & cleaves reality!',
     skills: [
       {
         name: 'TRINITY & SHADOW BURROW',
         type: '3-HIT STAND & BURROW AMBUSH',
         vfxCell: 0,
-        desc: 'Burrows 100% underground as a pitch-black shadow pool to erupt in a Surprise Attack, plus 3-hit Thanatos Stand combo!'
+        desc: 'Burrows 100% underground as a pitch-black shadow pool to erupt in a Surprise Attack + Grave-Ward poise, plus 3-hit Stand!'
       },
       {
         name: 'SOUL SEVER',
@@ -185,9 +185,9 @@ const CHAMPION_ROSTER = {
       },
       {
         name: "DEATH'S SOVEREIGNTY",
-        type: '★ SUMMONER OVERDRIVE',
+        type: '★ THANATOS OVERDRIVE',
         vfxCell: 3,
-        desc: 'Summons a living Death-Mage (casts Dark Magic) & Soul-Healer (heals the Mage) with low own HP for 11.5s alongside Thanatos Stand!'
+        desc: 'Unleashes Blood-Moon Thanatos Stand, vaults into a Sky-Lock suspension with Wraith Clones & slams a 5-spire Guillotine!'
       }
     ]
   },

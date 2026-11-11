@@ -1,37 +1,39 @@
-import { Fighter } from './Fighter.js?v=30fps68';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps68';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps68';
+import { Fighter } from './Fighter.js?v=30fps69';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps69';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps69';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps68';
+} from '../engine/shaders/abyssalShaders.js?v=30fps69';
 
 /**
- * Malakor v6 (`reaper`) — Gothic Arch-Reaper, Shadow-Burrow Stalker & Sovereign of the Death Covenant.
+ * Malakor v7 (`reaper`) — Gothic Arch-Reaper, Shadow-Burrow Stalker & Sovereign of the Death Covenant.
  *
  * Complete S-Tier Kit:
- * - Passive (`SOUL HARVESTER & ABYSSAL SHADOW BURROW`):
+ * - Passive (`SOUL HARVESTER, ABYSSAL GRAVE-WARD & SHADOW BURROW`):
  *   Harvests up to 5 orbiting **Soul Fragments** (`this.soulStacks`) around Malakor's Ferryman Lantern;
- *   plunges **100% underground** (`this.isFullyBurrowed`, `1.70s` total / `1.26s` completely submerged)
+ *   plunges **100% underground** (`this.isFullyBurrowed`, `1.72s` total / `1.26s` completely submerged)
  *   as a creeping **Pitch-Black Abyssal Shadow Pool & Predator Lock-On Indicator** before erupting into
- *   a critical **Surprise Ambush Uppercut**!
+ *   a critical **Surprise Ambush Uppercut** + **Abyssal Grave-Ward (`22%` DR)**!
  * - 3-Stage Auto (`TRINITY OF THE SCYTHE`):
  *   (1) *Crescent Reap & Soul Wave*, (2) *Ferryman's Hook-Slash*, (3) *Thanatos Stand Cross-Guillotine*
- *   with piercing/returning `Soul-Disc` boomerang.
+ *   with piercing/returning `Soul-Disc` boomerang and enhanced vampiric Soul Harvest.
  * - Signature Skill (`SOUL SEVER` • `4.5s CD`):
  *   Rips a **Captive Severed Soul Effigy** (`this.severedSoul`) out of the enemy that echoes Soul-Link
  *   damage, followed by a shadow-step **X-Scissor Soul-Snap Guillotine**.
- * - Overdrive (`ULTIMATE` — `DEATH'S SOVEREIGNTY`):
- *   Unseals Twin Underworld Rifts to summon **TWO Autonomous Living Death Companions for `11.5s`**,
- *   each with **their own low HP bar** and symbiotic roles:
- *   • **Abyssal Death-Mage (`230 HP`)**: Levitating lich casting homing **Dark-Matter Void Orbs & Hex Novas**.
- *   • **Ossuary Soul-Healer (`185 HP`)**: Ethereal cleric channeling **Luminous Soul-Mend Tethers & Halos**
- *     to heal and empower the Death-Mage (while enemies can target and slay either companion!).
- * - Supreme Ultimate (`TRUE_ULTIMATE` — `MEMENTO MORI: OBLIVION GUILLOTINE`, `4.50s`):
- *   Localized twilight dim (`0` stage background replacement!), Twin Cathedral Gates of Oblivion (`Row 5`),
- *   Six-Scythe Death-Clock Seal (`Row 6`), and ONE instantaneous `720` Crit Reality-Split Guillotine (`Row 7`)!
+ * - Overdrive (`ULTIMATE` — `DEATH'S SOVEREIGNTY`, `1.86s`):
+ *   5-Beat Blood-Moon Thanatos Sky-Drop Execution: unseals Twin Obelisk Chains & `356x356` Thanatos Stand,
+ *   crisscrosses with Phantom Wraith Clones, ascends `168px` into the sky for a Triple-Chain Sky-Lock,
+ *   and plummets in a Reality-Crack Guillotine + 5-Wave Obelisk Fault-Line + `2.2s` Grave-Ward!
+ * - Supreme Ultimate (`TRUE_ULTIMATE` — `MEMENTO MORI: OBLIVION GUILLOTINE`, `4.50s` + `12.5s` Living Companions):
+ *   Deep Oblivion Eclipse (`0` stage background swap!), Twin `352x352` Cathedral Gates (`Row 5`) that summon
+ *   **TWO Autonomous Living Death Companions for `12.5s`** with fortified HP & Soul-Ward Shields:
+ *   • **Abyssal Death-Mage (`480 HP` + `60` Ward)**: Levitating lich casting homing **Dark-Matter Void Orbs & Hex Novas**.
+ *   • **Ossuary Soul-Healer (`420 HP` + `50` Ward)**: Ethereal cleric channeling **Luminous Soul-Mend Tethers & Halos**
+ *     to heal & shield the Death-Mage and splash Covenant Grace to Malakor!
+ *   Culminates in a `192px` Sovereign Sky-Ascent & `720`-Crit Reality-Split Cross-Guillotine (`Row 7`) + `20%` Max HP Harvest!
  */
 export class Reaper extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -39,10 +41,10 @@ export class Reaper extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Malakor',
-      maxHp: 3900,
+      maxHp: 3920,
       attackRange: 200,
-      moveSpeed: 200,
-      autoInterval: 0.92,
+      moveSpeed: 202,
+      autoInterval: 0.94,
       lightColor: 'rgba(217, 70, 239, 1)',
       primaryColor: '#d946ef',
       hasTrueUltimate: true,
@@ -57,11 +59,11 @@ export class Reaper extends Fighter {
     this.unstoppablePoise = false;
     this.isDeflecting = false;
 
-    this.skillMaxCooldown = 4.50;
+    this.skillMaxCooldown = 4.85;
     this.skillTriggerRange = 450;
     this.autoDuration = 0.90;
     this.skillDuration = 0.98;
-    this.ultDuration = 1.62;
+    this.ultDuration = 1.86;
 
     this.skillName = 'SOUL SEVER';
     this.ultName = "DEATH'S SOVEREIGNTY";
@@ -72,15 +74,21 @@ export class Reaper extends Fighter {
     this._trueUltStep = 0;
     this._trueUltAltarX = 600;
     this._trueUltSlashFlash = 0;
+    this._ultSlashFlash = 0;
     this._trueUltEnemy = null;
+    this._trueUltSummoned = false;
+    this._trueUltPhantomWave1 = false;
+    this._trueUltPhantomWave2 = false;
+    this._trueUltSkyAscent = false;
 
     this.comboStep = 0;
     this.stepDustTimer = 0;
+    this.graveWardTimer = 0; // Abyssal Grave-Ward DR after Shadow Burrow, Overdrive & True Ultimate
 
     // Crisp 1.0x HD-2D character rendering (colossal presence comes from Thanatos Stand & Cathedral Gates!)
     this.giantScale = 1.0;
 
-    // Malakor v6 Sovereign of Severed Souls & Death Covenant Systems
+    // Malakor v7 Sovereign of Severed Souls & Super-Ult Death Covenant Systems
     this.soulStacks = 2; // Starts battle with 2 harvested Soul Fragments orbiting his Ferryman Lantern
     this.maxSoulStacks = 5;
     this.soulOrbitPhase = 0;
@@ -89,7 +97,7 @@ export class Reaper extends Fighter {
     this.scytheWave = null; // Stage-1 Crescent Soul-Wave anti-kite projectile (Row 0)
     this.thanatosStand = null; // Towering Hooded Thanatos Death-God Stand Avatar (Row 3)
     this.wraithClones = []; // Crisp 1.0x HD-2D Wraith Executioner Clones during Overdrive & True Ult
-    this.deathCompanions = []; // Summoned 11.5s Living Death Companions (Death-Mage + Soul-Healer with own low HP!)
+    this.deathCompanions = []; // Summoned 12.5s Super-Ultimate Living Death Companions (Death-Mage + Soul-Healer!)
     this.darkMagicOrbs = []; // Dark-Matter Void Orbs cast by the summoned Death-Mage
 
     this.soulWisps = []; // Homing Soul-Leech Wisp orbs (Row 1 of reaper_vfx.png)
@@ -117,10 +125,10 @@ export class Reaper extends Fighter {
     this.didChainPull = false;
     this.didReapFinisher = false;
     this.ultStage = 0;
-    this.dodgeMaxCooldown = 3.50;
-    this.dashMaxCooldown = 3.40;
+    this.dodgeMaxCooldown = 3.30;
+    this.dashMaxCooldown = 3.25;
     this.wallFlipCooldown = 0;
-    this.crouchCooldown = 2.80;
+    this.crouchCooldown = 2.50;
     this.crouchDuration = 1.72;
     this.isCrouching = false;
     this.isFlipVault = false;
@@ -136,14 +144,14 @@ export class Reaper extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
-      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps68')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps68';
+      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps69')) {
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps69';
       }
-      if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps68')) {
-        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps68';
+      if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps69')) {
+        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps69';
       }
-      if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps68')) {
-        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps68';
+      if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps69')) {
+        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps69';
       }
     }
   }
@@ -168,7 +176,15 @@ export class Reaper extends Fighter {
     if (newState === 'TRUE_ULTIMATE') {
       this._trueUltStep = 0;
       this._trueUltSlashFlash = 0;
-    } else if (newState !== 'ULTIMATE') {
+      this._trueUltSummoned = false;
+      this._trueUltPhantomWave1 = false;
+      this._trueUltPhantomWave2 = false;
+      this._trueUltSkyAscent = false;
+    } else if (newState === 'ULTIMATE') {
+      this.ultStage = 0;
+      this._ultSlashFlash = 0;
+    } else {
+      this.trueUltFrameOverride = null;
       this.giantScale = 1.0;
       this.isInvulnerable = newState === 'DODGE' || newState === 'JUMP';
       this.deathAvatar = null;
@@ -185,12 +201,15 @@ export class Reaper extends Fighter {
       (newState === 'AUTO_ATTACK' && this.comboStep % 3 === 2);
 
     if (newState === 'DEATH') {
+      this.trueUltFrameOverride = null;
       this.giantScale = 1.0;
       this.isInvulnerable = false;
       this.isFullyBurrowed = false;
       this.isSubmerged = false;
       this.submergeDepth = 0;
+      this.graveWardTimer = 0;
       this._trueUltSlashFlash = 0;
+      this._ultSlashFlash = 0;
       this.severedSoul = null;
       this.scytheWave = null;
       this.thanatosStand = null;
@@ -209,9 +228,9 @@ export class Reaper extends Fighter {
       if (this.deathCompanions?.length && rawAmount > 0) {
         const refX = attacker && Number.isFinite(attacker.x) ? attacker.x : this.x;
         for (const comp of this.deathCompanions) {
-          if (comp && !comp.isDead && (comp.hurtIcd || 0) <= 0 && Math.abs(comp.x - refX) <= 185) {
-            comp.hurtIcd = 0.45;
-            this.damageCompanion(comp, Math.round(rawAmount * 0.80), attacker, isCrit, this.game);
+          if (comp && !comp.isDead && (comp.hurtIcd || 0) <= 0 && Math.abs(comp.x - refX) <= 175) {
+            comp.hurtIcd = 0.70;
+            this.damageCompanion(comp, Math.round(rawAmount * 0.45), attacker, isCrit, this.game);
             break;
           }
         }
@@ -222,7 +241,27 @@ export class Reaper extends Fighter {
       }
       return 0;
     }
-    return super.takeDamage(rawAmount, attacker, isCrit, knockbackX, knockbackY);
+
+    let finalAmount = rawAmount;
+    let finalKbX = knockbackX;
+    let finalKbY = knockbackY;
+
+    // Death Covenant Ward (12% DR while companions live) + Abyssal Grave-Ward (16% DR post-Burrow/Ult), capped at 25%!
+    let drMult = 1.0;
+    const hasLivingCovenant =
+      Array.isArray(this.deathCompanions) &&
+      this.deathCompanions.some((c) => c && !c.isDead && c.life > 0 && c.hp > 0);
+    if (hasLivingCovenant) {
+      drMult *= 0.88;
+    }
+    if ((this.graveWardTimer || 0) > 0) {
+      drMult *= 0.84;
+      finalKbX *= 0.45;
+      finalKbY *= 0.50;
+    }
+    finalAmount *= Math.max(0.75, drMult);
+
+    return super.takeDamage(finalAmount, attacker, isCrit, finalKbX, finalKbY);
   }
 
   gainSoulStack(amount = 1) {
@@ -611,23 +650,32 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Summons TWO Autonomous Living Death Companions for `11.5` seconds (`DEATH'S SOVEREIGNTY`):
-   *   1. `mage` — **Abyssal Death-Mage** (`maxHp: 230`, low own HP): Levitating lich casting Dark-Matter Void Orbs & Hex Novas.
-   *   2. `healer` — **Ossuary Soul-Healer** (`maxHp: 185`, low own HP): Ethereal cleric channeling Soul-Mend tethers & halos onto the Death-Mage!
+   * Summons TWO Autonomous Living Death Companions for `12.5` seconds during Super Ultimate (`MEMENTO MORI`):
+   *   1. `mage` — **Abyssal Death-Mage** (`maxHp: 480` + `60` Soul-Ward): Levitating lich casting Dark-Matter Void Orbs & Hex Novas.
+   *   2. `healer` — **Ossuary Soul-Healer** (`maxHp: 420` + `50` Soul-Ward): Ethereal cleric channeling Soul-Mend tethers,
+   *      shielding & healing the Death-Mage while splashing Covenant Grace onto Malakor!
    */
-  summonDeathCompanions(game = null, empowerBonus = false) {
+  summonDeathCompanions(game = null, empowerBonus = true, altarAnchorX = null) {
     const g = game || this.game;
     const ww = g?.renderer ? g.renderer.worldWidth : 1200;
-    const backDir = this.x < 250 ? 1 : this.x > ww - 250 ? -1 : -this.facing;
-    const mageX = Math.max(96, Math.min(ww - 96, this.x + backDir * 148));
-    let healerX = Math.max(86, Math.min(ww - 86, mageX + backDir * 82));
-    if (Math.abs(healerX - mageX) < 52) {
-      healerX = Math.max(86, Math.min(ww - 86, mageX - backDir * 82));
+
+    let mageX;
+    let healerX;
+    if (Number.isFinite(altarAnchorX)) {
+      mageX = Math.max(92, Math.min(ww - 92, altarAnchorX - 168));
+      healerX = Math.max(92, Math.min(ww - 92, altarAnchorX + 168));
+    } else {
+      const backDir = this.x < 250 ? 1 : this.x > ww - 250 ? -1 : -this.facing;
+      mageX = Math.max(96, Math.min(ww - 96, this.x + backDir * 154));
+      healerX = Math.max(86, Math.min(ww - 86, mageX + backDir * 84));
+      if (Math.abs(healerX - mageX) < 52) {
+        healerX = Math.max(86, Math.min(ww - 86, mageX - backDir * 84));
+      }
     }
 
-    const duration = 11.5;
+    const duration = 12.5;
 
-    const makeComp = (role, spawnX, maxHp) => {
+    const makeComp = (role, spawnX, maxHp, initShield, maxShield, damageCap) => {
       const comp = {
         id: `reaper_${role}`,
         role,
@@ -635,54 +683,58 @@ export class Reaper extends Fighter {
         owner: this,
         team: this.team,
         x: spawnX,
-        y: this.groundY - (role === 'healer' ? 16 : 12),
+        y: this.groundY - (role === 'healer' ? 20 : 18),
         groundY: this.groundY,
-        facing: this.facing,
+        facing: Number.isFinite(altarAnchorX) ? (role === 'mage' ? 1 : -1) : this.facing,
         hp: maxHp,
         maxHp,
+        shield: initShield,
+        maxShield,
+        damageCap,
+        spawnGrace: 1.0,
         life: duration,
         maxLife: duration,
         isDead: false,
         hoverPhase: role === 'healer' ? 1.85 : 0.15,
-        castCooldown: role === 'mage' ? 0.62 : 99,
-        castInterval: 1.92,
-        healCooldown: role === 'healer' ? 0.72 : 99,
-        healInterval: 1.62,
-        castAnimTimer: 0.42,
+        castCooldown: role === 'mage' ? 0.55 : 99,
+        castInterval: 1.48,
+        healCooldown: role === 'healer' ? 0.52 : 99,
+        healInterval: 1.38,
+        castAnimTimer: 0,
         didCastShot: false,
         didHealPulse: false,
-        soulEmpoweredTimer: role === 'mage' ? (empowerBonus ? 4.2 : 1.8) : 0,
+        soulEmpoweredTimer: role === 'mage' ? (empowerBonus ? 4.8 : 2.2) : 0,
         hitFlash: 0,
-        hurtIcd: 0.35,
-        takeDamage: (amt, attacker, isCrit = false) =>
-          this.damageCompanion(comp, amt, attacker, isCrit, g)
+        hurtIcd: role === 'mage' ? 0.65 : 0.68,
+        takeDamage: (amt, attacker, isCrit = false, ignoreCap = false) =>
+          this.damageCompanion(comp, amt, attacker, isCrit, g, ignoreCap)
       };
       return comp;
     };
 
-    const mageComp = makeComp('mage', mageX, 230);
-    const healerComp = makeComp('healer', healerX, 185);
+    const mageComp = makeComp('mage', mageX, 480, 60, 75, 125);
+    const healerComp = makeComp('healer', healerX, 420, 50, 65, 110);
     this.deathCompanions = [mageComp, healerComp];
 
     this.fx?.spawn('companionSummonRiftPortal', mageX, this.groundY - 4, {
-      light: 1.38,
+      light: 1.44,
       extra: { isHealer: false }
     });
     this.fx?.spawn('companionSummonRiftPortal', healerX, this.groundY - 4, {
       palette: NECRO_SOUL_EMERALD_PALETTE,
-      light: 1.38,
+      light: 1.44,
       extra: { isHealer: true }
     });
 
     if (g?.vfx) {
-      g.vfx.spawnGlyphBurst(mageX, this.groundY - 84, 7, 'abyssal');
-      g.vfx.spawnGlyphBurst(healerX, this.groundY - 84, 7, 'emerald');
+      g.vfx.spawnGlyphBurst(mageX, this.groundY - 88, 9, 'abyssal');
+      g.vfx.spawnGlyphBurst(healerX, this.groundY - 88, 9, 'emerald');
       g.vfx.spawnDamageText(
         (mageX + healerX) * 0.5,
-        this.groundY - 196,
+        this.groundY - 208,
         0,
-        false,
-        '★ DEATH MAGE & SOUL HEALER SUMMONED! ★',
+        true,
+        '★ OBLIVION COVENANT: DEATH MAGE & SOUL HEALER! ★',
         '#e879f9'
       );
     }
@@ -690,12 +742,26 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Applies real enemy damage to a summoned Death Companion (low own HP counterplay!).
+   * Applies enemy damage to a summoned Death Companion with Soul-Ward Overshield & Cleave Protection!
    */
-  damageCompanion(comp, rawAmount, attacker = null, isCrit = false, game = null) {
+  damageCompanion(comp, rawAmount, attacker = null, isCrit = false, game = null, ignoreCap = false) {
     if (!comp || comp.isDead || comp.life <= 0 || rawAmount <= 0) return 0;
-    const dmg = Math.max(1, Math.round(rawAmount));
-    comp.hp = Math.max(0, comp.hp - dmg);
+
+    let adjusted = rawAmount;
+    if (!ignoreCap) {
+      if ((comp.spawnGrace || 0) > 0) {
+        adjusted *= 0.55;
+      }
+      if (comp.damageCap > 0) {
+        adjusted = Math.min(comp.damageCap, adjusted);
+      }
+    }
+
+    const dmg = Math.max(1, Math.round(adjusted));
+    const shieldAbsorb = Math.min(comp.shield || 0, dmg);
+    comp.shield = Math.max(0, (comp.shield || 0) - shieldAbsorb);
+    const hpLoss = dmg - shieldAbsorb;
+    comp.hp = Math.max(0, comp.hp - hpLoss);
     comp.hitFlash = 0.18;
     const g = game || this.game;
 
@@ -705,8 +771,8 @@ export class Reaper extends Fighter {
         comp.y - 134,
         dmg,
         isCrit,
-        null,
-        comp.role === 'healer' ? '#6ee7b7' : '#f0abfc'
+        shieldAbsorb > 0 && hpLoss === 0 ? 'SOUL WARD!' : null,
+        shieldAbsorb > 0 && hpLoss === 0 ? '#67e8f9' : comp.role === 'healer' ? '#6ee7b7' : '#f0abfc'
       );
     }
 
@@ -738,7 +804,7 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Steps both summoned Death Companions (`11.5s` duration) + Dark-Matter Void Orbs + Enemy Counterplay!
+   * Steps both summoned Super-Ult Death Companions (`12.5s` active duration) + Dark-Matter Void Orbs + Counterplay!
    */
   updateCompanions(dt, enemy, game) {
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
@@ -768,8 +834,8 @@ export class Reaper extends Fighter {
           const dx = desiredX - orb.x;
           const dy = desiredY - orb.y;
           const d = Math.hypot(dx, dy) || 1;
-          const speed = orb.speed || 545;
-          const steer = Math.min(1, dt * 4.8);
+          const speed = orb.speed || 555;
+          const steer = Math.min(1, dt * 5.0);
           orb.vx += ((dx / d) * speed - orb.vx) * steer;
           orb.vy += ((dy / d) * speed - orb.vy) * steer;
         }
@@ -811,7 +877,7 @@ export class Reaper extends Fighter {
           const knockDir = Math.sign(orb.vx || this.facing) || 1;
           const manaBeforeOrb = this.mana;
           const prevFoeHurt = hitFoe.hurtTimer;
-          hitFoe.takeDamage(orb.damage, this, false, knockDir * 10, 0);
+          hitFoe.takeDamage(orb.damage, this, false, knockDir * 12, 0);
           // Prevent summoned companions from infinitely battery-charging Malakor's next Ultimate or stun-locking foes!
           this.mana = manaBeforeOrb;
           hitFoe.hurtTimer = Math.min(hitFoe.hurtTimer, Math.max(prevFoeHurt, 0.06));
@@ -822,7 +888,7 @@ export class Reaper extends Fighter {
             light: orb.isEmpowered ? 1.38 : 1.24,
             extra: { isEmpowered: Boolean(orb.isEmpowered) }
           });
-          this.spawnVfxAnim(4, orb.x, orb.y, 136, 136, 0.24, {
+          this.spawnVfxAnim(4, orb.x, orb.y, 142, 142, 0.24, {
             flipX: orb.vx < 0,
             glowColor: orb.isEmpowered ? 'crimson' : 'violet',
             inFront: true
@@ -851,6 +917,7 @@ export class Reaper extends Fighter {
 
       if (this.state !== 'TRUE_ULTIMATE') {
         comp.life -= dt;
+        comp.spawnGrace = Math.max(0, (comp.spawnGrace || 0) - dt);
       }
       if (comp.life <= 0 || comp.hp <= 0) {
         comp.isDead = true;
@@ -867,23 +934,33 @@ export class Reaper extends Fighter {
       comp.hoverPhase += dt * 3.2;
       comp.hitFlash = Math.max(0, (comp.hitFlash || 0) - dt);
       comp.hurtIcd = Math.max(0, (comp.hurtIcd || 0) - dt);
-      if (comp.soulEmpoweredTimer > 0) {
+      if (comp.soulEmpoweredTimer > 0 && this.state !== 'TRUE_ULTIMATE') {
         comp.soulEmpoweredTimer = Math.max(0, comp.soulEmpoweredTimer - dt);
       }
 
+      // During `TRUE_ULTIMATE`, both companions hover majestically at the Twin Oblivion Gates channeling the Covenant!
+      if (this.state === 'TRUE_ULTIMATE') {
+        const gateSide = comp.role === 'mage' ? -1 : 1;
+        const gateX = Math.max(92, Math.min(ww - 92, this._trueUltAltarX + gateSide * 168));
+        comp.x += (gateX - comp.x) * Math.min(1, dt * 6.5);
+        comp.y = this.groundY - 24 - Math.sin(comp.hoverPhase) * 7;
+        comp.facing = this._trueUltAltarX >= comp.x ? 1 : -1;
+        continue;
+      }
+
       // 2. Hostile Projectile Collision against Companions (works in both Browser & Headless Sims!)
-      if (this.state !== 'TRUE_ULTIMATE' && game?.vfx?.projectiles?.length) {
+      if (game?.vfx?.projectiles?.length) {
         for (let pIdx = game.vfx.projectiles.length - 1; pIdx >= 0; pIdx--) {
           const p = game.vfx.projectiles[pIdx];
           if (!p || !p.owner || p.owner === this) continue;
           if (this.team && p.owner.team && p.owner.team === this.team) continue;
           if (p._hitReaperComps && p._hitReaperComps.has(comp.id)) continue;
-          const hitX = Math.abs(p.x - comp.x) < (p.radius || 18) + 28;
-          const hitY = Math.abs(p.y - (comp.y - 84)) < (p.radius || 18) + 56;
+          const hitX = Math.abs(p.x - comp.x) < (p.radius || 18) + 26;
+          const hitY = Math.abs(p.y - (comp.y - 84)) < (p.radius || 18) + 54;
           if (hitX && hitY) {
             if (!p._hitReaperComps) p._hitReaperComps = new Set();
             p._hitReaperComps.add(comp.id);
-            const pDmg = Math.round((p.damage || 65) * (p.isMeteor ? 0.55 : 0.90));
+            const pDmg = Math.round((p.damage || 65) * (p.isMeteor ? 0.48 : 0.78));
             this.damageCompanion(comp, pDmg, p.owner, Boolean(p.isMeteor), game);
             if (!p.isMeteor && !p.piercing) {
               game.vfx.projectiles.splice(pIdx, 1);
@@ -897,8 +974,8 @@ export class Reaper extends Fighter {
         }
       }
 
-      // 3. Hostile Melee / Skill Cleave Counterplay against Low-HP Companions!
-      if (this.state !== 'TRUE_ULTIMATE' && comp.hurtIcd <= 0) {
+      // 3. Hostile Melee / Skill Cleave Counterplay against Companions!
+      if (comp.hurtIcd <= 0) {
         for (const foe of enemies) {
           if (!foe || foe.isDead || foe.isBenched) continue;
           const isAttacking =
@@ -907,13 +984,13 @@ export class Reaper extends Fighter {
             foe.state === 'ULTIMATE' ||
             foe.state === 'DASH' ||
             foe.state === 'JUMP';
-          if (!isAttacking || (foe.stateTimer || 0) < 0.16) continue;
+          if (!isAttacking || (foe.stateTimer || 0) < 0.18) continue;
           const reach =
-            foe.state === 'ULTIMATE' ? 255 : foe.state === 'SKILL' ? 215 : 178;
+            foe.state === 'ULTIMATE' ? 235 : foe.state === 'SKILL' ? 195 : 165;
           if (Math.abs(foe.x - comp.x) <= reach) {
-            comp.hurtIcd = 0.42;
+            comp.hurtIcd = comp.role === 'mage' ? 0.65 : 0.68;
             const cleaveDmg =
-              foe.state === 'ULTIMATE' ? 148 : foe.state === 'SKILL' ? 112 : 84;
+              foe.state === 'ULTIMATE' ? 118 : foe.state === 'SKILL' ? 92 : 68;
             this.damageCompanion(comp, cleaveDmg, foe, foe.state !== 'AUTO_ATTACK', game);
             break;
           }
@@ -924,21 +1001,28 @@ export class Reaper extends Fighter {
         }
       }
 
-      // 4. Role-Specific Tactical Hover & Symbiotic Covenant AI!
+      // 4. Role-Specific Tactical Hover, Kiting & Symbiotic Covenant AI!
       if (comp.role === 'mage') {
         const foeX = primaryFoe ? primaryFoe.x : this.x + this.facing * 240;
+        const distToFoe = Math.abs(foeX - comp.x);
         const flankSign = this.x <= foeX ? -1 : 1;
-        let desiredMageX = foeX + flankSign * 215;
+        let desiredMageX = foeX + flankSign * 232;
         if (desiredMageX < 96 || desiredMageX > ww - 96) {
-          desiredMageX = foeX - flankSign * 210;
+          desiredMageX = foeX - flankSign * 228;
+        }
+        // Smart Kiting: if enemy rushes within 165px, glide rapidly toward the open arena flank!
+        if (distToFoe < 165) {
+          const escapeDir = foeX > ww * 0.5 ? -1 : 1;
+          desiredMageX = foeX + escapeDir * 248;
         }
         desiredMageX = Math.max(96, Math.min(ww - 96, desiredMageX));
-        comp.x += (desiredMageX - comp.x) * Math.min(1, dt * 3.4);
-        comp.y = this.groundY - 12 - Math.sin(comp.hoverPhase) * 6;
+        const kiteSpeed = distToFoe < 165 ? 4.8 : 3.5;
+        comp.x += (desiredMageX - comp.x) * Math.min(1, dt * kiteSpeed);
+        comp.y = this.groundY - 14 - Math.sin(comp.hoverPhase) * 6;
         comp.facing = foeX >= comp.x ? 1 : -1;
 
-        if (this.state !== 'TRUE_ULTIMATE' && primaryFoe && !primaryFoe.isDead) {
-          const haste = comp.soulEmpoweredTimer > 0 ? 1.22 : 1.0;
+        if (primaryFoe && !primaryFoe.isDead) {
+          const haste = comp.soulEmpoweredTimer > 0 ? 1.25 : 1.0;
           comp.castCooldown -= dt * haste;
           if (comp.castCooldown <= 0) {
             comp.castCooldown = comp.castInterval;
@@ -954,7 +1038,7 @@ export class Reaper extends Fighter {
               const muzzleY = comp.y - 88;
 
               this.fx?.spawn('darkMageVoidCastSigil', muzzleX, muzzleY, {
-                light: isEmp ? 1.36 : 1.24,
+                light: isEmp ? 1.38 : 1.26,
                 extra: { isEmpowered: isEmp }
               });
 
@@ -963,7 +1047,7 @@ export class Reaper extends Fighter {
               const dx = tx - muzzleX;
               const dy = ty - muzzleY;
               const dist = Math.hypot(dx, dy) || 1;
-              const speed = isEmp ? 565 : 525;
+              const speed = isEmp ? 580 : 540;
 
               this.darkMagicOrbs.push({
                 x: muzzleX,
@@ -973,8 +1057,8 @@ export class Reaper extends Fighter {
                 speed,
                 target: primaryFoe,
                 age: 0,
-                maxLife: 1.65,
-                damage: isEmp ? 20 : 14,
+                maxLife: 1.70,
+                damage: isEmp ? 22 : 16,
                 isEmpowered: isEmp,
                 trailTimer: 0
               });
@@ -983,86 +1067,96 @@ export class Reaper extends Fighter {
           }
         }
       } else {
-        // OSSUARY SOUL-HEALER: Strictly Heals & Empowers the Death-Mage with Luminous Soul-Mend Tethers!
+        // OSSUARY SOUL-HEALER: Heals & Shields the Death-Mage + Mends Self + Splashes Covenant Grace to Malakor!
         const anchorUnit = mage && !mage.isDead ? mage : this;
         const foeX = primaryFoe ? primaryFoe.x : anchorUnit.x + anchorUnit.facing * 200;
         const retreatSign = anchorUnit.x <= foeX ? -1 : 1;
-        let desiredHealerX = anchorUnit.x + retreatSign * 80;
+        let desiredHealerX = anchorUnit.x + retreatSign * 84;
         if (desiredHealerX < 84 || desiredHealerX > ww - 84) {
-          desiredHealerX = anchorUnit.x - retreatSign * 82;
+          desiredHealerX = anchorUnit.x - retreatSign * 86;
         }
         desiredHealerX = Math.max(84, Math.min(ww - 84, desiredHealerX));
-        comp.x += (desiredHealerX - comp.x) * Math.min(1, dt * 3.6);
-        comp.y = this.groundY - 16 - Math.sin(comp.hoverPhase) * 7;
+        comp.x += (desiredHealerX - comp.x) * Math.min(1, dt * 3.9);
+        comp.y = this.groundY - 18 - Math.sin(comp.hoverPhase) * 7;
         comp.facing = anchorUnit.x >= comp.x ? 1 : -1;
 
-        if (this.state !== 'TRUE_ULTIMATE') {
-          comp.healCooldown -= dt;
-          if (comp.healCooldown <= 0) {
-            comp.healCooldown = comp.healInterval;
-            comp.castAnimTimer = 0.66;
-            comp.didHealPulse = false;
-          }
-          if (comp.castAnimTimer > 0) {
-            comp.castAnimTimer = Math.max(0, comp.castAnimTimer - dt);
-            if (comp.castAnimTimer <= 0.38 && !comp.didHealPulse) {
-              comp.didHealPulse = true;
-              const srcX = comp.x + comp.facing * 20;
-              const srcY = comp.y - 86;
+        comp.healCooldown -= dt;
+        if (comp.healCooldown <= 0) {
+          comp.healCooldown = comp.healInterval;
+          comp.castAnimTimer = 0.66;
+          comp.didHealPulse = false;
+        }
+        if (comp.castAnimTimer > 0) {
+          comp.castAnimTimer = Math.max(0, comp.castAnimTimer - dt);
+          if (comp.castAnimTimer <= 0.38 && !comp.didHealPulse) {
+            comp.didHealPulse = true;
+            const srcX = comp.x + comp.facing * 20;
+            const srcY = comp.y - 86;
 
-              if (mage && !mage.isDead) {
-                const dstX = mage.x;
-                const dstY = mage.y - 86;
-                this.fx?.spawn('necroHealerSoulTether', srcX, srcY, {
-                  palette: NECRO_SOUL_EMERALD_PALETTE,
-                  light: 1.32,
-                  extra: { dx: dstX - srcX, dy: dstY - srcY }
-                });
-                this.fx?.spawn('necroHealerMendHalo', mage.x, mage.groundY - 4, {
-                  palette: NECRO_SOUL_EMERALD_PALETTE,
-                  light: 1.30
-                });
+            // Self Soul-Ward sustain on every ritual pulse so Healer stays resilient
+            comp.hp = Math.min(comp.maxHp, comp.hp + 34);
+            comp.shield = Math.min(comp.maxShield || 65, (comp.shield || 0) + 14);
 
-                const missingMage = mage.maxHp - mage.hp;
-                const restored = Math.min(missingMage, 58);
-                mage.hp = Math.min(mage.maxHp, mage.hp + 58);
-                mage.soulEmpoweredTimer = 2.45;
+            // Splash Covenant Grace sustain onto Malakor when injured!
+            if (!this.isDead && this.hp < this.maxHp) {
+              this.hp = Math.min(this.maxHp, this.hp + 10);
+            }
 
-                if (restored > 0) {
-                  if (game?.vfx) {
-                    game.vfx.spawnDamageText(
-                      mage.x,
-                      mage.y - 144,
-                      0,
-                      false,
-                      `✚ MAGE MEND +${Math.round(restored)}`,
-                      '#6ee7b7'
-                    );
-                  }
-                } else {
-                  // Mage is at 100% HP -> empower Mage's Dark Magic & mend Healer's own fragile HP!
-                  comp.hp = Math.min(comp.maxHp, comp.hp + 24);
-                  if (game?.vfx) {
-                    game.vfx.spawnDamageText(
-                      mage.x,
-                      mage.y - 144,
-                      0,
-                      false,
-                      '✚ DARK COVENANT!',
-                      '#6ee7b7'
-                    );
-                  }
+            if (mage && !mage.isDead) {
+              const dstX = mage.x;
+              const dstY = mage.y - 86;
+              this.fx?.spawn('necroHealerSoulTether', srcX, srcY, {
+                palette: NECRO_SOUL_EMERALD_PALETTE,
+                light: 1.34,
+                extra: { dx: dstX - srcX, dy: dstY - srcY }
+              });
+              this.fx?.spawn('necroHealerMendHalo', mage.x, mage.groundY - 4, {
+                palette: NECRO_SOUL_EMERALD_PALETTE,
+                light: 1.32
+              });
+
+              const missingMage = mage.maxHp - mage.hp;
+              const restored = Math.min(missingMage, 92);
+              mage.hp = Math.min(mage.maxHp, mage.hp + 92);
+              mage.soulEmpoweredTimer = 2.65;
+
+              if (restored >= 20) {
+                mage.shield = Math.min(mage.maxShield || 75, (mage.shield || 0) + 20);
+                if (game?.vfx) {
+                  game.vfx.spawnDamageText(
+                    mage.x,
+                    mage.y - 144,
+                    0,
+                    false,
+                    `✚ MAGE MEND +${Math.round(restored)}`,
+                    '#6ee7b7'
+                  );
                 }
               } else {
-                // If the Death-Mage was slain, Soul-Healer mends its own fragile Soul-Ward!
-                this.fx?.spawn('necroHealerMendHalo', comp.x, comp.groundY - 4, {
-                  palette: NECRO_SOUL_EMERALD_PALETTE,
-                  light: 1.24
-                });
-                comp.hp = Math.min(comp.maxHp, comp.hp + 34);
+                // Mage near 100% HP -> fortify Mage's Soul-Ward Overshield & empower Dark Magic!
+                mage.shield = Math.min(mage.maxShield || 75, (mage.shield || 0) + 35);
                 if (game?.vfx) {
-                  game.vfx.spawnDamageText(comp.x, comp.y - 144, 0, false, '✚ WARD MEND +34', '#6ee7b7');
+                  game.vfx.spawnDamageText(
+                    mage.x,
+                    mage.y - 144,
+                    0,
+                    false,
+                    '✚ SOUL WARD + DARK COVENANT!',
+                    '#67e8f9'
+                  );
                 }
+              }
+            } else {
+              // If the Death-Mage was slain, Soul-Healer channels full Covenant Mend onto Malakor & itself!
+              this.fx?.spawn('necroHealerMendHalo', comp.x, comp.groundY - 4, {
+                palette: NECRO_SOUL_EMERALD_PALETTE,
+                light: 1.28
+              });
+              comp.hp = Math.min(comp.maxHp, comp.hp + 32);
+              if (!this.isDead && this.hp < this.maxHp) {
+                this.heal(22, 'COVENANT GRACE');
+              } else if (game?.vfx) {
+                game.vfx.spawnDamageText(comp.x, comp.y - 144, 0, false, '✚ WARD MEND +68', '#6ee7b7');
               }
             }
           }
@@ -1075,10 +1169,10 @@ export class Reaper extends Fighter {
    * CROUCH: "ABYSSAL SHADOW BURROW & SURPRISE AMBUSH" (`1.72s` total / `1.26s` 100% underground!)
    * Malakor plunges his entire body completely beneath `groundY` (`0.00s..0.22s`), stalks unseen
    * underground for `1.26s` (`0.22s..1.48s`) as a Pitch-Black Abyssal Shadow Pool & Predator Lock-On
-   * Indicator, and erupts upward at `t = 1.48s` for a devastating Surprise Attack!
+   * Indicator, and erupts upward at `t = 1.48s` for a devastating Surprise Attack + `1.8s` Grave-Ward!
    */
   startCrouch(enemy, game) {
-    this.crouchCooldown = 11.20;
+    this.crouchCooldown = 9.60;
     this.crouchDuration = 1.72;
     this.setState('CROUCH');
     this.isCrouching = true;
@@ -1530,10 +1624,13 @@ export class Reaper extends Fighter {
         game.vfx.spawnDamageText(this.x, this.groundY - 168, 0, true, '★ SURPRISE ATTACK! ★', '#f43f5e');
       }
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 212) {
+      // Grant 1.45s of Abyssal Grave-Ward DR upon erupting from underground!
+      this.graveWardTimer = Math.max(this.graveWardTimer || 0, 1.45);
+
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 215) {
         this.strikeWithSoulResonance(enemy, 64, true, -this.facing * 56, -210, game);
         this.gainSoulStack(1);
-        this.leechLife(8, enemy, game, 'AMBUSH HARVEST');
+        this.leechLife(13, enemy, game, 'AMBUSH HARVEST');
       } else {
         this.tryStrikeSeveredEffigy(eruptX, 64, game);
       }
@@ -1561,6 +1658,7 @@ export class Reaper extends Fighter {
   update(dt, enemy, game) {
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
+    this.graveWardTimer = Math.max(0, (this.graveWardTimer || 0) - dt);
     this.burrowDodgeToastCd = Math.max(0, (this.burrowDodgeToastCd || 0) - dt);
     this.soulOrbitPhase += dt * 3.6;
 
@@ -1574,11 +1672,14 @@ export class Reaper extends Fighter {
     if (this._trueUltSlashFlash > 0) {
       this._trueUltSlashFlash = Math.max(0, this._trueUltSlashFlash - dt);
     }
+    if (this._ultSlashFlash > 0) {
+      this._ultSlashFlash = Math.max(0, this._ultSlashFlash - dt);
+    }
     if (enemy) {
       this._trueUltEnemy = enemy;
     }
 
-    // 0. Step Summoned Living Death Companions (`11.5s` Death-Mage + Soul-Healer) & Dark Magic Orbs!
+    // 0. Step Summoned Super-Ult Living Death Companions (`12.5s` Death-Mage + Soul-Healer) & Dark Magic Orbs!
     this.updateCompanions(dt, enemy, game);
 
     // 1. Step Wraith Afterimages & Wraith Executioner Clones
@@ -1644,7 +1745,7 @@ export class Reaper extends Fighter {
         sw.didHit = true;
         this.strikeWithSoulResonance(enemy, 42, false, -38, -24, game);
         this.gainSoulStack(1);
-        this.leechLife(5, enemy, game, 'SOUL WAVE');
+        this.leechLife(7, enemy, game, 'SOUL WAVE');
         this.spawnVfxAnim(4, sw.x, sw.y, 148, 148, 0.24, {
           flipX: sw.dir < 0,
           glowColor: 'violet',
@@ -1694,8 +1795,10 @@ export class Reaper extends Fighter {
           });
         }
         if (enemy && !enemy.isDead && Math.abs(enemy.x - sp.x) <= 78) {
-          this.strikeWithSoulResonance(enemy, 14, true, this.facing * 42, -90, game);
-          this.leechLife(4, enemy, game, 'OBELISK ERUPT');
+          const manaPreSpire = this.mana;
+          this.strikeWithSoulResonance(enemy, 12, true, this.facing * 42, -90, game);
+          this.leechLife(3, enemy, game, 'OBELISK ERUPT');
+          this.mana = manaPreSpire;
         }
       }
     }
@@ -1716,9 +1819,9 @@ export class Reaper extends Fighter {
           Math.abs(enemy.y - 96 - bs.y) < 88
         ) {
           bs.hitOutbound = true;
-          this.strikeWithSoulResonance(enemy, 42, false, -42, -52, game);
+          this.strikeWithSoulResonance(enemy, 39, false, -42, -52, game);
           this.gainSoulStack(1);
-          this.leechLife(6, enemy, game, 'SOUL DISC');
+          this.leechLife(5, enemy, game, 'SOUL DISC');
           this.spawnVfxAnim(1, bs.x, bs.y, 124, 124, 0.26, {
             glowColor: 'violet',
             inFront: true
@@ -1731,8 +1834,8 @@ export class Reaper extends Fighter {
       } else if (bs.phase === 'hover') {
         if (!bs.hitHover && bs.timer >= 0.09 && enemy && !enemy.isDead && Math.abs(enemy.x - bs.x) < 72) {
           bs.hitHover = true;
-          this.strikeWithSoulResonance(enemy, 32, true, -58, -64, game);
-          this.leechLife(5, enemy, game, 'VORTEX SHRED');
+          this.strikeWithSoulResonance(enemy, 29, true, -58, -64, game);
+          this.leechLife(4, enemy, game, 'VORTEX SHRED');
           this.fx?.spawn('soulHarvestScytheArc', bs.x, bs.y, {
             flip: bs.dir < 0,
             light: 1.32,
@@ -1768,7 +1871,7 @@ export class Reaper extends Fighter {
           Math.abs(enemy.y - 96 - bs.y) < 88
         ) {
           bs.hitReturn = true;
-          this.strikeWithSoulResonance(enemy, 47, true, -96, -80, game);
+          this.strikeWithSoulResonance(enemy, 44, true, -96, -80, game);
           this.gainSoulStack(1);
           this.leechLife(6, enemy, game, 'RETURN REAP!');
           if (game.vfx) {
@@ -1821,7 +1924,7 @@ export class Reaper extends Fighter {
       );
       if (inPillar) {
         this.gainSoulStack(1);
-        this.leechLife(10, enemy, game, 'ABYSSAL SIPHON');
+        this.leechLife(9, enemy, game, 'ABYSSAL SIPHON');
         this.skillCooldown = Math.max(0, this.skillCooldown - 0.50);
         if (this.crouchCooldown <= 0) {
           this.startCrouch(enemy, game);
@@ -1844,7 +1947,13 @@ export class Reaper extends Fighter {
         return;
       }
 
-      if (dist >= 145 && dist <= 375 && this.crouchCooldown <= 0 && this.mana < this.maxMana) {
+      const canDefensiveBurrow = this.hp < this.maxHp * 0.38 && dist <= 250;
+      if (
+        this.crouchCooldown <= 0 &&
+        this.mana < this.maxMana &&
+        this.finisherGauge < 100 &&
+        ((dist >= 155 && dist <= 370) || canDefensiveBurrow)
+      ) {
         this.startCrouch(enemy, game);
         return;
       }
@@ -1955,10 +2064,12 @@ export class Reaper extends Fighter {
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 50) {
           const isCrit = mode === 2 || Math.random() < 0.24;
-          let dmg = mode === 2 ? 92 : mode === 1 ? 80 : 71;
+          let dmg = mode === 2 ? 88 : mode === 1 ? 77 : 68;
+          let crimsonHeal = 0;
           if (mode === 2 && this.soulStacks >= 5) {
             this.consumeSoulStacks(2);
-            dmg += 24;
+            dmg += 20;
+            crimsonHeal = 5;
             if (game.vfx) {
               game.vfx.spawnDamageText(enemy.x, enemy.y - 172, 0, false, '★ CRIMSON REAP! ★', '#f43f5e');
             }
@@ -1969,11 +2080,11 @@ export class Reaper extends Fighter {
             enemy.x += Math.sign(this.x - enemy.x) * (mode === 1 ? 30 : 22);
           }
           this.gainSoulStack(1);
-          this.leechLife(7, enemy, game, 'SOUL HARVEST');
+          this.leechLife(7 + crimsonHeal, enemy, game, 'SOUL HARVEST');
           if (game.audio) game.audio.play(mode === 2 ? 'soul_drain' : 'scythe_reap', enemy.x);
           if (game.renderer) game.renderer.triggerHitStop(0.055);
         } else {
-          this.tryStrikeSeveredEffigy(cx, mode === 2 ? 85 : 70, game);
+          this.tryStrikeSeveredEffigy(cx, mode === 2 ? 82 : 68, game);
         }
       }
     } else if (t >= 0.84) {
@@ -1982,7 +2093,7 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * SIGNATURE SKILL (`4.5s CD`): "SOUL SEVER"
+   * SIGNATURE SKILL (`4.85s CD`): "SOUL SEVER"
    * - Beat 1 (`0.08s .. 0.44s`): Launches the Ferryman's Chain (`460px` reach) to impale the enemy
    *   and rip out a glowing **Captive Severed Soul Effigy (`this.severedSoul`, `2.4s` duration)**
    *   directly in front of Malakor, linked to the enemy by a pulsing crimson-violet Soul-Tether!
@@ -2028,7 +2139,7 @@ export class Reaper extends Fighter {
         if (game.vfx) game.vfx.spawnGlyphBurst(targetX, targetY, 8, 'abyssal');
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= maxHookDist + 30) {
-          enemy.takeDamage(43, this, !enemy.hasPoise, -165, -32);
+          enemy.takeDamage(40, this, !enemy.hasPoise, -165, -32);
           this.gainSoulStack(1);
           const effigyX = Math.max(105, Math.min(ww - 105, this.x + this.facing * 122));
           this.spawnSeveredSoulEffigy(enemy, effigyX, game);
@@ -2099,14 +2210,14 @@ export class Reaper extends Fighter {
       if (game.vfx) game.vfx.spawnGlyphBurst(reapX, this.y - 98, 9, 'abyssal');
 
       const consumedSouls = this.consumeSoulStacks(3);
-      const bonusDmg = consumedSouls * 12;
+      const bonusDmg = consumedSouls * 10;
       const bonusHeal = consumedSouls * 3;
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 250) {
-        this.strikeWithSoulResonance(enemy, 84 + bonusDmg, true, -36, -125, game);
-        this.leechLife(10 + bonusHeal, enemy, game, consumedSouls > 0 ? `SOUL SNAP x${consumedSouls}` : 'SOUL GUILLOTINE');
+        this.strikeWithSoulResonance(enemy, 78 + bonusDmg, true, -36, -125, game);
+        this.leechLife(11 + bonusHeal, enemy, game, consumedSouls > 0 ? `SOUL SNAP x${consumedSouls}` : 'SOUL GUILLOTINE');
       } else {
-        this.tryStrikeSeveredEffigy(reapX, 86 + bonusDmg, game);
+        this.tryStrikeSeveredEffigy(reapX, 82 + bonusDmg, game);
       }
     } else if (t >= 0.90) {
       this.isDeflecting = false;
@@ -2114,15 +2225,15 @@ export class Reaper extends Fighter {
     }
   }
 
-  spawnWraithTrail(fromX, fromY, toX, toY, facing, count = 4) {
-    const cols = [8, 12, 16, 20];
+  spawnWraithTrail(fromX, fromY, toX, toY, facing, count = 5, row = 4) {
+    const cols = [8, 12, 16, 20, 24];
     for (let i = 0; i < count; i++) {
       const u = i / Math.max(1, count);
       this.spawnAfterimage(
         fromX + (toX - fromX) * u,
         fromY + (toY - fromY) * u,
         facing,
-        4,
+        row,
         cols[i % cols.length],
         0.30 + i * 0.04,
         1.0
@@ -2131,296 +2242,410 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * OVERDRIVE (`ULTIMATE` — "DEATH'S SOVEREIGNTY: DEATH COVENANT", `1.62s` cast + `11.5s` Living Companions!):
-   * - Unseals Twin Underworld Rifts to summon **TWO Autonomous Living Death Companions for `11.5` seconds**,
-   *   each with **their own low HP bar** and symbiotic AI:
-   *   • **Abyssal Death-Mage (`230 HP`)**: Levitating lich casting Dark-Matter Void Orbs & Hex Novas.
-   *   • **Ossuary Soul-Healer (`185 HP`)**: Ethereal cleric channeling Luminous Soul-Mend Tethers & Halos
-   *     onto the Death-Mage to heal and empower its Dark Magic!
-   * - Simultaneously manifests the **Towering Thanatos Death-God Stand (`Row 3`, `324x324`)** and
-   *   **Twin Wraith Executioner Clones (`this.wraithClones`)** for an abyssal cross-guillotine!
+   * OVERDRIVE (`ULTIMATE` — "DEATH'S SOVEREIGNTY", `1.86s`):
+   * 5-Beat Blood-Moon Thanatos Sky-Drop Execution (Companions now summon exclusively on Super Ultimate!):
+   * - Beat 1 (`0.04s`): Localized Blood-Moon twilight (`ultDim = 0.38`), `356x356` Thanatos Stand (`Row 3`),
+   *   Twin `248px` Crimson Guillotine Obelisks (`Row 2`), and Dual Skeletal Chains shackling the foe!
+   * - Beat 2 (`0.28s`): High-speed L->R Phantom Pincer Cross-Slash (`Row 2` scythe cleave) + opposite Wraith Clone!
+   * - Beat 3 (`0.56s`): `112px` Rising Scythe Vault R->L (`Row 8`) + Twin Criss-Crossing Wraith Clones!
+   * - Beat 4 (`0.86s .. 1.18s`): High-Sky Apex Suspension (`groundY - 168`) flanked by Twin Aerial Wraith Clones
+   *   firing Triple Downward Death-Chains (`★ THANATOS SKY-LOCK! ★`)!
+   * - Beat 5 (`1.20s`): Cataclysmic Sky-Drop Slam with `0.08s` Abyssal Impact Frame, `30px` quake, Reality-Crack
+   *   slash flash, `348x284` `Row 7` Guillotine, 5-Wave Obelisk Fault-Line & `2.2s` Abyssal Grave-Ward!
    */
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
-    const targetX = enemy ? enemy.x : ww * 0.5;
+    const targetX = enemy ? Math.max(150, Math.min(ww - 150, enemy.x)) : ww * 0.5;
     this.vx = 0;
     this.vy = 0;
+    this.mana = 0;
     this.giantScale = 1.0;
-    this.isDeflecting = t < 1.50;
-    this.isInvulnerable = t < 1.36;
+    this.isDeflecting = t < 1.66;
+    this.isInvulnerable = t < 1.48;
+
+    // Localized Blood-Moon twilight dim (zero stage background swap!)
+    if (game?.renderer && t < 1.80) {
+      const dimTarget = t <= 1.38 ? 0.38 : 0.38 * Math.max(0, 1 - (t - 1.38) / 0.42);
+      game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, dimTarget);
+    }
 
     if (t < 0.04) {
       this.ultStage = 0;
       this.y = this.groundY;
       this.ultPassStartX = this.x;
       this.ultPassTargetX = targetX;
+      this._ultTargetLockX = targetX;
+      this.trueUltFrameOverride = 121;
     }
 
-    // STAGE 1 (t >= 0.04s): Summon 11.5s Living Death-Mage & Soul-Healer + Towering Thanatos Stand!
+    const lockX = Number.isFinite(this._ultTargetLockX) ? this._ultTargetLockX : targetX;
+
+    // BEAT 1 (t >= 0.04s): Sovereign Domain Unseal, Twin Obelisk Prison & Dual Chain Snare!
     if (t >= 0.04 && this.ultStage === 0) {
       this.ultStage = 1;
+      this._ultTargetLockX = targetX;
       this.soulStacks = this.maxSoulStacks;
-      if (game.audio) game.audio.play('soul_drain', targetX);
-      if (game.renderer) game.renderer.triggerShake(16, 0.28);
+      if (game.audio) {
+        game.audio.play('soul_drain', targetX);
+        game.audio.play('chain_hook', targetX);
+      }
+      if (game.renderer) game.renderer.triggerShake(18, 0.28);
 
       this.tombstones = [];
       for (const side of [-1, 1]) {
-        const tx = Math.max(85, Math.min(ww - 85, targetX + side * 185));
+        const tx = Math.max(85, Math.min(ww - 85, targetX + side * 182));
         this.tombstones.push({
           x: tx,
           groundY: this.groundY,
-          size: 232,
-          delay: 0.02,
-          life: 1.50,
-          maxLife: 1.50,
+          size: 248,
+          delay: 0.01,
+          life: 1.72,
+          maxLife: 1.72,
           shattered: false,
           isPrison: true
         });
+        this.fx?.spawn('skeletalChainTetherBeam', tx, this.groundY - 108, {
+          light: 1.38,
+          extra: {
+            dx: targetX - tx,
+            dy: 14,
+            arcH: -14,
+            isCrimson: side > 0,
+            showClaw: true,
+            customDuration: 0.44
+          }
+        });
       }
 
-      // Summon the 11.5s Death-Mage (230 HP) & Soul-Healer (185 HP) Covenant Companions!
-      this.summonDeathCompanions(game, false);
-      this.spawnThanatosStand(1.52, 324, targetX, false);
+      this.spawnThanatosStand(1.76, 356, targetX, false);
 
       this.fx?.spawn('necropolisBoneyardDomain', targetX, this.groundY - 4, {
-        light: 1.44
+        light: 1.46
       });
       this.fx?.spawn('necroticGraveyardSigil', targetX, this.groundY - 4, {
         palette: BLOOD_MOON_CRIMSON_PALETTE,
-        light: 1.38,
-        extra: { radius: 52, isPrison: true, isCrimson: true, customDuration: 1.48 }
+        light: 1.42,
+        extra: { radius: 56, isPrison: true, isCrimson: true, customDuration: 1.68 }
       });
-      this.spawnVfxAnim(6, targetX, this.groundY - 104, 248, 248, 0.50, {
+      this.spawnVfxAnim(6, targetX, this.groundY - 106, 268, 268, 0.54, {
         glowColor: 'crimson',
         inFront: false
       });
 
       if (game.vfx) {
+        game.vfx.spawnGlyphBurst(targetX, this.groundY - 104, 10, 'abyssal');
         game.vfx.spawnDamageText(
           targetX,
-          this.groundY - 256,
+          this.groundY - 262,
           0,
-          false,
-          "★ DEATH'S SOVEREIGNTY: DEATH COVENANT! ★",
+          true,
+          "★ DEATH'S SOVEREIGNTY! ★",
           '#d946ef'
         );
       }
       if (enemy && !enemy.isDead) {
-        this.strikeWithSoulResonance(enemy, 18, false, -25, 0, game);
-        this.leechLife(4, enemy, game, 'SOVEREIGN DOMAIN');
+        this.strikeWithSoulResonance(enemy, 14, false, -28, 0, game);
+        this.mana = 0;
       }
     }
 
-    // STAGE 2 (t >= 0.26s): Twin Wraith Pincer Cross-Slash I (Malakor L->R + Wraith Clone R->L)
-    if (t >= 0.26 && this.ultStage === 1) {
-      this.ultStage = 2;
-      if (game.audio) game.audio.play('scythe_reap', targetX);
-      if (game.renderer) game.renderer.triggerShake(16, 0.24);
+    if (t >= 0.04 && t < 0.28 && this.ultStage === 1) {
+      const u1 = Math.min(1, (t - 0.04) / 0.24);
+      this.trueUltFrameOverride = 122 + Math.min(6, Math.floor(u1 * 7));
+      if (enemy && !enemy.isDead && !enemy.unstoppablePoise) {
+        enemy.x += (lockX - enemy.x) * Math.min(1, dt * 6.5);
+      }
+    }
 
-      this.ultPassStartX = Math.max(105, Math.min(ww - 105, targetX - 155));
-      this.ultPassTargetX = Math.max(105, Math.min(ww - 105, targetX + 155));
+    // BEAT 2 (t >= 0.28s): Phantom Pincer Cross-Slash I (Malakor L->R + Opposite Wraith Clone R->L)
+    if (t >= 0.28 && this.ultStage === 1) {
+      this.ultStage = 2;
+      this._ultTargetLockX = targetX;
+      if (game.audio) game.audio.play('scythe_reap', targetX);
+      if (game.renderer) {
+        game.renderer.triggerShake(19, 0.24);
+        game.renderer.triggerHitStop(0.04);
+      }
+
+      this.ultPassStartX = Math.max(105, Math.min(ww - 105, targetX - 168));
+      this.ultPassTargetX = Math.max(105, Math.min(ww - 105, targetX + 168));
       this.x = this.ultPassStartX;
       this.facing = 1;
 
-      // Opposite-flank Wraith Executioner Clone crosses simultaneously!
       this.spawnWraithClone(
         this.ultPassTargetX,
         this.groundY,
         this.ultPassStartX,
         this.groundY,
         -1,
-        0.26,
+        0.28,
         2,
         8,
         22
       );
-      this.spawnWraithTrail(this.ultPassStartX, this.groundY, this.ultPassTargetX, this.groundY, 1, 4);
+      this.spawnWraithTrail(this.ultPassStartX, this.groundY, this.ultPassTargetX, this.groundY, 1, 6, 2);
+      for (let w = 0; w < 3; w++) this.spawnSoulWisp();
 
       this.fx?.spawn('soulHarvestScytheArc', targetX, this.groundY - 104, {
         flip: false,
-        light: 1.40,
-        extra: { radiusWorld: 162, isCrimson: false, isCross: true, isUppercut: false }
+        light: 1.44,
+        extra: { radiusWorld: 172, isCrimson: false, isCross: true, isUppercut: false }
       });
-      this.spawnVfxAnim(4, targetX, this.groundY - 104, 216, 216, 0.34, {
+      this.spawnVfxAnim(4, targetX, this.groundY - 104, 232, 232, 0.36, {
         flipX: false,
         glowColor: 'violet',
         inFront: true
       });
 
       if (enemy && !enemy.isDead) {
-        this.strikeWithSoulResonance(enemy, 22, true, -38, -42, game);
-        this.leechLife(4, enemy, game, 'PHANTOM PINCER I');
+        this.strikeWithSoulResonance(enemy, 18, true, -38, -46, game);
+        this.mana = 0;
       }
     }
 
-    if (t >= 0.26 && t < 0.50 && this.ultStage === 2) {
-      const u = Math.min(1, (t - 0.26) / 0.20);
+    if (t >= 0.28 && t < 0.56 && this.ultStage === 2) {
+      const u = Math.min(1, (t - 0.28) / 0.24);
       const ease = 1 - Math.pow(1 - u, 3);
       this.x = this.ultPassStartX + (this.ultPassTargetX - this.ultPassStartX) * ease;
-      this.y = this.groundY - Math.sin(u * Math.PI) * 24;
+      this.y = this.groundY - Math.sin(u * Math.PI) * 28;
+      this.trueUltFrameOverride = 68 + Math.min(13, Math.floor(u * 14));
     }
 
-    // STAGE 3 (t >= 0.52s): Twin Wraith Pincer Cross-Slash II (Malakor R->L + Aerial Wraith Clone)
-    if (t >= 0.52 && this.ultStage === 2) {
+    // BEAT 3 (t >= 0.56s): Rising Scythe Vault II (Malakor 112px Aerial Arc R->L + Twin Criss-Crossing Clones)
+    if (t >= 0.56 && this.ultStage === 2) {
       this.ultStage = 3;
+      this._ultTargetLockX = targetX;
       if (game.audio) game.audio.play('reaper_ult', targetX);
-      if (game.renderer) game.renderer.triggerShake(18, 0.26);
+      if (game.renderer) {
+        game.renderer.triggerShake(20, 0.26);
+        game.renderer.triggerHitStop(0.045);
+      }
 
-      this.ultPassStartX = Math.max(105, Math.min(ww - 105, targetX + 150));
-      this.ultPassTargetX = Math.max(105, Math.min(ww - 105, targetX - 150));
+      this.ultPassStartX = Math.max(105, Math.min(ww - 105, targetX + 162));
+      this.ultPassTargetX = Math.max(105, Math.min(ww - 105, targetX - 162));
       this.x = this.ultPassStartX;
       this.facing = -1;
 
       this.spawnWraithClone(
         this.ultPassTargetX,
-        this.groundY - 76,
+        this.groundY - 92,
         this.ultPassStartX,
         this.groundY,
         1,
-        0.26,
+        0.28,
         8,
         12,
         24
       );
-      this.spawnWraithTrail(this.ultPassStartX, this.groundY - 20, this.ultPassTargetX, this.groundY - 54, -1, 4);
+      this.spawnWraithClone(
+        this.ultPassTargetX,
+        this.groundY,
+        this.ultPassStartX,
+        this.groundY,
+        1,
+        0.28,
+        2,
+        9,
+        23
+      );
+      this.spawnWraithTrail(this.ultPassStartX, this.groundY - 24, this.ultPassTargetX, this.groundY - 82, -1, 6, 8);
 
-      this.fx?.spawn('soulHarvestScytheArc', targetX, this.groundY - 112, {
+      this.fx?.spawn('soulHarvestScytheArc', targetX, this.groundY - 114, {
         flip: true,
-        light: 1.42,
-        extra: { radiusWorld: 166, isCrimson: true, isCross: true, isUppercut: false }
+        light: 1.46,
+        extra: { radiusWorld: 178, isCrimson: true, isCross: true, isUppercut: true }
       });
-      this.spawnVfxAnim(0, targetX, this.groundY - 110, 208, 208, 0.36, {
+      this.spawnVfxAnim(0, targetX, this.groundY - 114, 228, 228, 0.38, {
         flipX: true,
         glowColor: 'crimson',
         inFront: true
       });
 
       if (enemy && !enemy.isDead) {
-        this.strikeWithSoulResonance(enemy, 22, true, 35, -52, game);
-        this.leechLife(4, enemy, game, 'PHANTOM PINCER II');
+        this.strikeWithSoulResonance(enemy, 18, true, 36, -64, game);
+        this.mana = 0;
       }
     }
 
-    if (t >= 0.52 && t < 0.76 && this.ultStage === 3) {
-      const u = Math.min(1, (t - 0.52) / 0.22);
+    if (t >= 0.56 && t < 0.86 && this.ultStage === 3) {
+      const u = Math.min(1, (t - 0.56) / 0.26);
       const ease = 1 - Math.pow(1 - u, 2);
       this.x = this.ultPassStartX + (this.ultPassTargetX - this.ultPassStartX) * ease;
-      this.y = this.groundY - Math.sin(u * Math.PI) * 78;
+      this.y = this.groundY - Math.sin(u * Math.PI) * 112;
+      this.trueUltFrameOverride = 245 + Math.min(11, Math.floor(u * 12));
     }
 
-    // STAGE 4 (t >= 0.76s): Triangle Death-Chain Convergence
-    if (t >= 0.76 && this.ultStage === 3) {
+    // BEAT 4 (t >= 0.86s .. 1.20s): High-Sky Apex Suspension (`groundY - 168`) & Triple Death-Chain Sky-Lock!
+    if (t >= 0.86 && this.ultStage === 3) {
       this.ultStage = 4;
+      this._ultTargetLockX = targetX;
       if (game.audio) game.audio.play('chain_hook', targetX);
-      if (game.renderer) game.renderer.triggerShake(18, 0.26);
+      if (game.renderer) game.renderer.triggerShake(20, 0.28);
 
       const dir = enemy ? Math.sign(enemy.x - this.x) || 1 : 1;
       this.ultPassStartX = targetX;
-      this.ultPassTargetX = Math.max(115, Math.min(ww - 115, targetX - dir * 108));
+      this.ultPassTargetX = Math.max(110, Math.min(ww - 110, targetX - dir * 96));
       this.x = targetX;
-      this.y = this.groundY - 104;
+      this.y = this.groundY - 168;
       this.facing = dir;
 
-      this.spawnWraithClone(targetX - 140, this.groundY - 56, targetX - 75, this.groundY, 1, 0.28, 4, 10, 22);
-      this.spawnWraithClone(targetX + 140, this.groundY - 56, targetX + 75, this.groundY, -1, 0.28, 4, 10, 22);
-
-      this.fx?.spawn('skeletalChainTetherBeam', this.x, this.y - 58, {
-        light: 1.38,
-        extra: {
-          dx: 0,
-          dy: 82,
-          arcH: 16,
-          isCrimson: true,
-          showClaw: true,
-          customDuration: 0.30
-        }
+      this.fx?.spawn('abyssalShadowEruptionPillar', targetX, this.groundY - 2, {
+        light: 1.42,
+        extra: { facing: dir }
       });
 
+      // Twin Aerial Wraith Executioners flank Malakor high in the sky!
+      this.spawnWraithClone(targetX - 142, this.groundY - 122, targetX - 96, this.groundY - 108, 1, 0.34, 8, 13, 20);
+      this.spawnWraithClone(targetX + 142, this.groundY - 122, targetX + 96, this.groundY - 108, -1, 0.34, 8, 13, 20);
+
+      for (const ox of [-128, 0, 128]) {
+        this.fx?.spawn('skeletalChainTetherBeam', targetX + ox, this.groundY - (ox === 0 ? 210 : 176), {
+          light: 1.42,
+          extra: {
+            dx: -ox,
+            dy: ox === 0 ? 116 : 84,
+            arcH: ox === 0 ? 8 : -12,
+            isCrimson: true,
+            showClaw: true,
+            customDuration: 0.34
+          }
+        });
+      }
+
+      if (game.vfx) {
+        game.vfx.spawnDamageText(targetX, this.groundY - 246, 0, false, '★ THANATOS SKY-LOCK! ★', '#f43f5e');
+      }
+
       if (enemy && !enemy.isDead) {
-        this.strikeWithSoulResonance(enemy, 20, true, 0, -88, game);
-        this.leechLife(4, enemy, game, 'LEGION SHACKLE');
+        this.strikeWithSoulResonance(enemy, 16, true, 0, -96, game);
+        this.mana = 0;
+        this.leechLife(6, enemy, game, 'THANATOS SHACKLE');
       }
     }
 
-    if (t >= 0.76 && t < 1.00 && this.ultStage === 4) {
-      const u = Math.min(1, (t - 0.76) / 0.22);
-      this.x = this.ultPassStartX + (this.ultPassTargetX - this.ultPassStartX) * u;
-      this.y = this.groundY - (1 - u) * 104;
-    } else if (t >= 1.00) {
+    if (t >= 0.86 && t < 1.20 && this.ultStage === 4) {
+      const u = Math.min(1, (t - 0.86) / 0.34);
+      // Hold ominous apex suspension at groundY - 168 for 72% of the beat, then coil into lightning dive!
+      const diveFrac = u < 0.72 ? 0 : Math.pow((u - 0.72) / 0.28, 2.2);
+      this.x = lockX + (this.ultPassTargetX - lockX) * diveFrac;
+      this.y = this.groundY - Math.round((1 - diveFrac) * 168 + Math.sin(u * Math.PI) * 10);
+      this.trueUltFrameOverride = 253 + Math.min(6, Math.floor(u * 7));
+      if (enemy && !enemy.isDead && !enemy.unstoppablePoise) {
+        enemy.x += (lockX - enemy.x) * Math.min(1, dt * 8.0);
+      }
+    } else if (t >= 1.20) {
       this.y = this.groundY;
     }
 
     if (this.thanatosStand) {
-      this.thanatosStand.x = targetX;
+      this.thanatosStand.x = lockX;
+      if (this.ultStage === 4 && t < 1.20) {
+        this.thanatosStand.y = this.groundY - Math.round(this.thanatosStand.size * 0.62);
+      } else {
+        this.thanatosStand.y = this.groundY - Math.round(this.thanatosStand.size * 0.52);
+      }
     }
 
-    // STAGE 5 (t >= 1.00s): Unison Thanatos Stand + Malakor Abyssal Cross-Guillotine & 5-Wave Fault-Line!
-    if (t >= 1.00 && this.ultStage === 4) {
+    // BEAT 5 (t >= 1.20s): Cataclysmic Sky-Drop Guillotine, Abyssal Impact Frame & 5-Wave Obelisk Fault-Line!
+    if (t >= 1.20 && this.ultStage === 4) {
       this.ultStage = 5;
-      if (game.audio) game.audio.play('scythe_reap', targetX);
+      this._ultSlashFlash = 0.48;
+      this._ultSlashCenterX = lockX;
+      this.graveWardTimer = Math.max(this.graveWardTimer || 0, 1.50);
 
+      if (game.audio) {
+        game.audio.play('scythe_reap', lockX);
+        game.audio.play('reaper_ult', lockX);
+      }
+
+      game?.renderer?.triggerImpactFrame?.(0.08, lockX, this.groundY - 110, 'abyssal');
+      if (game?.renderer && game.renderer.impactFrameTimer > 0.08) {
+        game.renderer.impactFrameFocusX = lockX;
+        game.renderer.impactFrameFocusY = this.groundY - 110;
+        game.renderer.impactFrameMaxTimer = 0.08;
+        game.renderer.impactFrameTimer = 0.08;
+      }
       if (game.renderer) {
-        game.renderer.triggerShake(26, 0.54);
-        game.renderer.triggerAberration(15);
+        game.renderer.triggerShake(30, 0.58);
+        game.renderer.triggerAberration(18);
         game.renderer.triggerHitStop(0.09);
+        game.renderer.flash?.(0.18, '#f5d0fe');
       }
 
       const slamDir = enemy ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
       this.facing = slamDir;
+      this.x = Math.max(95, Math.min(ww - 95, lockX - slamDir * 90));
+      this.y = this.groundY;
 
-      this.fx?.spawn('deathAvatarCathedral', targetX, this.groundY - 4, {
-        light: 1.48
+      // Twin Aerial Wraith Clones crash diagonally from sky into the Guillotine epicenter!
+      this.spawnWraithClone(lockX - 150, this.groundY - 120, lockX + 70, this.groundY, 1, 0.34, 4, 14, 24);
+      this.spawnWraithClone(lockX + 150, this.groundY - 120, lockX - 70, this.groundY, -1, 0.34, 4, 14, 24);
+
+      this.fx?.spawn('deathAvatarCathedral', lockX, this.groundY - 4, {
+        light: 1.50
       });
-      this.fx?.spawn('soulHarvestScytheArc', targetX, this.groundY - 108, {
+      this.fx?.spawn('soulHarvestScytheArc', lockX, this.groundY - 112, {
         flip: slamDir < 0,
-        light: 1.48,
-        extra: { radiusWorld: 174, isCrimson: true, isCross: true, isUppercut: false }
+        light: 1.50,
+        extra: { radiusWorld: 186, isCrimson: true, isCross: true, isUppercut: false }
       });
-      this.spawnVfxAnim(7, targetX, this.groundY - 108, 280, 240, 0.44, {
+      this.spawnVfxAnim(7, lockX, this.groundY - 114, 348, 284, 0.48, {
         flipX: slamDir < 0,
         glowColor: 'crimson',
         inFront: true
       });
 
-      const faultStart = Math.max(95, Math.min(ww - 95, targetX - slamDir * 176));
+      const faultStart = Math.max(95, Math.min(ww - 95, lockX - slamDir * 176));
       this.spawnNecroticFaultLine(faultStart, slamDir, game);
 
       for (const tb of this.tombstones) {
         tb.shattered = true;
-        tb.life = Math.min(tb.life, tb.maxLife * 0.30);
+        tb.life = Math.min(tb.life, tb.maxLife * 0.32);
       }
 
       if (enemy && !enemy.isDead) {
-        this.strikeWithSoulResonance(enemy, 64, true, slamDir * 165, -225, game);
-        this.leechLife(8, enemy, game, 'THANATOS GUILLOTINE');
-        if (game.vfx) game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 98, 14, 'abyssal');
+        this.strikeWithSoulResonance(enemy, 58, true, slamDir * 168, -230, game);
+        this.mana = 0;
+        this.leechLife(16, enemy, game, 'THANATOS SKY-GUILLOTINE');
+        if (game.vfx) game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 98, 16, 'abyssal');
       }
     }
 
-    if (t >= 1.54) {
+    if (t >= 1.20 && t < 1.86) {
+      const uFollow = Math.min(1, (t - 1.20) / 0.66);
+      this.trueUltFrameOverride = 136 + Math.min(13, Math.floor(uFollow * 14));
+    }
+
+    if (t >= 1.86) {
       this.y = this.groundY;
+      this.mana = 0;
       this.giantScale = 1.0;
       this.isDeflecting = false;
       this.isInvulnerable = false;
+      this.trueUltFrameOverride = null;
       this.thanatosStand = null;
       this.deathAvatar = null;
       this.wraithClones = [];
-      // Note: `this.deathCompanions` (Death-Mage & Soul-Healer) remain alive in the arena for their full 11.5s!
       this.setState('IDLE');
     }
   }
 
   /**
-   * SUPREME ULTIMATE (`state === 'TRUE_ULTIMATE'`, `4.50s`):
+   * SUPREME ULTIMATE (`state === 'TRUE_ULTIMATE'`, `4.50s` + `12.5s` Summoned Death Companions!):
    * "MEMENTO MORI: OBLIVION GUILLOTINE"
    * - Zero stage background image override (`trueUltStageOverride` / `permanentStageOverride` untouched).
-   * - Crisp `1.0x` HD-2D Malakor accompanied by **Twin Cathedral Gates of Oblivion (`Row 5`)**,
-   *   **Towering Hooded Thanatos Death-God Stand (`Row 3`, `348x348`)**, **Six-Scythe Death-Clock
-   *   Execution Seal (`Row 6`)**, and **Oblivion Reality-Split Cross-Guillotine (`Row 7`)**!
+   * - Phase 1 (`0.00s .. 1.25s`): Deep Oblivion Eclipse (`ultDim = 0.64`), Twin `352x352` Cathedral Gates (`Row 5`),
+   *   Colossal `388x388` Thanatos Stand (`Row 3`), AND at `0.38s` unseals the **12.5s Abyssal Death-Mage (`480 HP` + `60` Ward)**
+   *   and **Ossuary Soul-Healer (`420 HP` + `50` Ward)** directly out of the Left & Right Oblivion Gates!
+   * - Phase 2 (`1.25s .. 3.15s`): Six-Scythe Death-Clock Seal (`Row 6`, `356x356`), 4-Chain Covenant Snare,
+   *   4 High-Speed Non-Damaging Phantom Wraith Clones (`1.52s` & `1.96s`), and Malakor's `192px` Sovereign Sky-Ascent (`2.36s`)!
+   * - Phase 3 (`t = 3.15s`): Cataclysmic Sky-Plunge with `0.14s` Impact Frame, `34px` quake, Full-Horizon Reality-Split
+   *   Slash Streak, `548x428` `Row 7` Cross-Guillotine, single `720`-Crit Execution + `12%` Max HP Harvest + `2.2s` Grave-Ward!
    */
   updateTrueUltimate(dt, enemy, game) {
     const elapsed = this.stateTimer;
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     this.isInvulnerable = true;
     this.unstoppablePoise = true;
     this.isSubmerged = false;
@@ -2429,7 +2654,9 @@ export class Reaper extends Fighter {
     this.giantScale = 1.0;
     this.vx = 0;
     this.vy = 0;
-    this.y = this.groundY;
+    if (elapsed < 2.36 || elapsed >= 3.15) {
+      this.y = this.groundY;
+    }
 
     if (enemy) {
       this._trueUltEnemy = enemy;
@@ -2450,15 +2677,15 @@ export class Reaper extends Fighter {
       }
     }
 
-    // Localized twilight dim without ever swapping stage backgrounds
-    if (game?.renderer && elapsed < 4.10) {
+    // Deep Oblivion Eclipse dim without ever swapping stage backgrounds
+    if (game?.renderer && elapsed < 4.35) {
       const dimTarget =
-        elapsed <= 3.35 ? 0.54 : 0.54 * Math.max(0, 1 - (elapsed - 3.35) / 0.75);
+        elapsed <= 3.45 ? 0.64 : 0.64 * Math.max(0, 1 - (elapsed - 3.45) / 0.90);
       game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, dimTarget);
     }
 
     // =========================================================================
-    // PHASE 1 (0.00s .. 1.25s): Unsealing the Twin Cathedral Gates of Oblivion
+    // PHASE 1 (0.00s .. 1.25s): Unsealing Twin Oblivion Gates & Summoning Death-Mage + Soul-Healer!
     // =========================================================================
     if (elapsed < 1.25) {
       if (elapsed >= 0.04 && this._trueUltStep < 1) {
@@ -2469,49 +2696,74 @@ export class Reaper extends Fighter {
 
         game?.audio?.play?.('reaper_ult', this.x);
         game?.audio?.play?.('ult_cast', this._trueUltAltarX);
+        game?.renderer?.triggerShake?.(18, 0.34);
         game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#d946ef');
         game?.vfx?.spawnDamageText?.(
           this._trueUltAltarX,
-          this.groundY - 248,
+          this.groundY - 254,
           0,
           true,
           '★ GATES OF OBLIVION: UNSEAL! ★',
           '#d946ef'
         );
 
-        for (let i = 0; i < 5; i++) {
+        for (let i = 0; i < 6; i++) {
           this.spawnSoulWisp();
         }
 
         this.fx?.spawn('mementoMoriNecropolisGates', this._trueUltAltarX, this.groundY - 4, {
-          light: 1.48
+          light: 1.50
         });
         this.fx?.spawn('necropolisBoneyardDomain', this._trueUltAltarX, this.groundY - 4, {
-          light: 1.44
+          light: 1.46
         });
         this.fx?.spawn('necroticGraveyardSigil', this._trueUltAltarX, this.groundY - 4, {
           palette: ABYSSAL_VIOLET_PALETTE,
-          light: 1.40,
-          extra: { radius: 58, isPrison: true, isCrimson: false, customDuration: 3.35 }
+          light: 1.44,
+          extra: { radius: 60, isPrison: true, isCrimson: false, customDuration: 3.40 }
         });
       }
 
+      // t = 0.38s: Summon the 12.5s Abyssal Death-Mage (480 HP) & Ossuary Soul-Healer (420 HP) out of the Twin Gates!
+      if (elapsed >= 0.38 && !this._trueUltSummoned) {
+        this._trueUltSummoned = true;
+        this.summonDeathCompanions(game, true, this._trueUltAltarX);
+        game?.audio?.play?.('soul_drain', this._trueUltAltarX);
+        game?.renderer?.triggerShake?.(16, 0.28);
+
+        for (const comp of this.deathCompanions) {
+          if (!comp) continue;
+          this.fx?.spawn('skeletalChainTetherBeam', comp.x, this.groundY - 104, {
+            light: 1.38,
+            extra: {
+              dx: this._trueUltAltarX - comp.x,
+              dy: 6,
+              arcH: -22,
+              isCrimson: comp.role === 'mage',
+              showClaw: false,
+              customDuration: 0.86
+            }
+          });
+        }
+      }
+
       const u = Math.min(1, Math.max(0, elapsed / 1.25));
-      this.trueUltFrameOverride = 120 + Math.min(8, Math.floor(u * 9));
+      this.trueUltFrameOverride = 120 + Math.min(11, Math.floor(u * 12));
       return;
     }
 
     // =========================================================================
-    // PHASE 2 (1.25s .. 3.15s): Six-Scythe Death-Clock Bind & Thanatos Stand Manifestation
+    // PHASE 2 (1.25s .. 3.15s): Death-Clock Bind, Phantom Wraith Barrage & 192px Sovereign Sky-Ascent!
     // =========================================================================
     if (elapsed < 3.15) {
       if (elapsed >= 1.25 && this._trueUltStep < 2) {
         this._trueUltStep = 2;
         game?.audio?.play?.('chain_hook', this._trueUltAltarX);
         game?.audio?.play?.('soul_drain', this._trueUltAltarX);
+        game?.renderer?.triggerShake?.(16, 0.26);
         game?.vfx?.spawnDamageText?.(
           this._trueUltAltarX,
-          this.groundY - 224,
+          this.groundY - 228,
           0,
           true,
           'MEMENTO MORI: DEATH-CLOCK SEAL!',
@@ -2519,12 +2771,12 @@ export class Reaper extends Fighter {
         );
 
         for (const side of [-1, 1]) {
-          const gateX = this._trueUltAltarX + side * 156;
-          this.fx?.spawn('skeletalChainTetherBeam', gateX, this.groundY - 120, {
-            light: 1.40,
+          const gateX = this._trueUltAltarX + side * 168;
+          this.fx?.spawn('skeletalChainTetherBeam', gateX, this.groundY - 124, {
+            light: 1.44,
             extra: {
               dx: this._trueUltAltarX - gateX,
-              dy: 22,
+              dy: 24,
               arcH: -18,
               isCrimson: side > 0,
               showClaw: true,
@@ -2534,17 +2786,97 @@ export class Reaper extends Fighter {
         }
       }
 
-      const uBind = Math.min(1, Math.max(0, (elapsed - 1.25) / 1.90));
-      this.trueUltFrameOverride = 129 + Math.min(6, Math.floor(uBind * 7));
+      // t = 1.52s: Non-damaging High-Speed Grounded Phantom Wraith Cross-Slash from both Gates!
+      if (elapsed >= 1.52 && !this._trueUltPhantomWave1) {
+        this._trueUltPhantomWave1 = true;
+        game?.audio?.play?.('scythe_reap', this._trueUltAltarX);
+        game?.renderer?.triggerShake?.(16, 0.22);
+
+        const lx = Math.max(95, Math.min(ww - 95, this._trueUltAltarX - 180));
+        const rx = Math.max(95, Math.min(ww - 95, this._trueUltAltarX + 180));
+        this.spawnWraithClone(lx, this.groundY, rx, this.groundY, 1, 0.32, 2, 8, 22);
+        this.spawnWraithClone(rx, this.groundY, lx, this.groundY, -1, 0.32, 2, 8, 22);
+        this.spawnWraithTrail(lx, this.groundY, rx, this.groundY, 1, 5, 2);
+
+        this.fx?.spawn('soulHarvestScytheArc', this._trueUltAltarX, this.groundY - 106, {
+          flip: false,
+          light: 1.44,
+          extra: { radiusWorld: 176, isCrimson: false, isCross: true, isUppercut: false }
+        });
+        this.spawnVfxAnim(4, this._trueUltAltarX, this.groundY - 106, 228, 228, 0.34, {
+          flipX: false,
+          glowColor: 'violet',
+          inFront: true
+        });
+      }
+
+      // t = 1.96s: Non-damaging Twin Aerial Diagonal Phantom Executioners!
+      if (elapsed >= 1.96 && !this._trueUltPhantomWave2) {
+        this._trueUltPhantomWave2 = true;
+        game?.audio?.play?.('scythe_reap', this._trueUltAltarX);
+        game?.renderer?.triggerShake?.(18, 0.24);
+
+        const lx = Math.max(95, Math.min(ww - 95, this._trueUltAltarX - 186));
+        const rx = Math.max(95, Math.min(ww - 95, this._trueUltAltarX + 186));
+        this.spawnWraithClone(lx, this.groundY - 142, this._trueUltAltarX + 92, this.groundY, 1, 0.34, 8, 12, 24);
+        this.spawnWraithClone(rx, this.groundY - 142, this._trueUltAltarX - 92, this.groundY, -1, 0.34, 8, 12, 24);
+
+        this.fx?.spawn('soulHarvestScytheArc', this._trueUltAltarX, this.groundY - 114, {
+          flip: true,
+          light: 1.46,
+          extra: { radiusWorld: 184, isCrimson: true, isCross: true, isUppercut: false }
+        });
+        this.spawnVfxAnim(0, this._trueUltAltarX, this.groundY - 114, 224, 224, 0.36, {
+          flipX: true,
+          glowColor: 'crimson',
+          inFront: true
+        });
+      }
+
+      // t = 2.36s .. 3.14s: Malakor's Sovereign Sky-Ascent Coil (`groundY - 192`) directly in front of Thanatos Stand!
+      if (elapsed >= 2.36 && !this._trueUltSkyAscent) {
+        this._trueUltSkyAscent = true;
+        this._trueUltAscentStartX = this.x;
+        game?.audio?.play?.('reaper_ult', this._trueUltAltarX);
+        game?.renderer?.triggerShake?.(20, 0.30);
+
+        this.fx?.spawn('abyssalShadowEruptionPillar', this.x, this.groundY - 2, {
+          light: 1.46,
+          extra: { facing: this.facing }
+        });
+        for (let i = 0; i < 6; i++) {
+          this.spawnSoulWisp();
+        }
+        game?.vfx?.spawnDamageText?.(
+          this._trueUltAltarX,
+          this.groundY - 266,
+          0,
+          true,
+          '★ MEMENTO MORI: FINAL TOLL! ★',
+          '#f43f5e'
+        );
+      }
+
+      if (elapsed >= 2.36) {
+        const uAsc = Math.min(1, Math.max(0, (elapsed - 2.36) / 0.78));
+        const liftEase = 1 - Math.pow(1 - Math.min(1, uAsc / 0.55), 3);
+        const startX = Number.isFinite(this._trueUltAscentStartX) ? this._trueUltAscentStartX : this.x;
+        this.x = startX + (this._trueUltAltarX - startX) * liftEase;
+        this.y = this.groundY - Math.round(liftEase * 192 + Math.sin(uAsc * Math.PI * 2) * 5);
+        this.trueUltFrameOverride = 252 + Math.min(7, Math.floor(uAsc * 8));
+      } else {
+        const uBind = Math.min(1, Math.max(0, (elapsed - 1.25) / 1.11));
+        this.trueUltFrameOverride = 128 + Math.min(7, Math.floor(uBind * 8));
+      }
 
       // Pull and bind active enemies to this._trueUltAltarX with ZERO micro-tick damage!
       if (enemy && !enemy.isDead) {
-        enemy.x += (this._trueUltAltarX - enemy.x) * Math.min(1, dt * 8.2);
+        enemy.x += (this._trueUltAltarX - enemy.x) * Math.min(1, dt * 8.6);
         enemy.vx = 0;
       }
       for (const tgt of targets) {
         if (tgt && !tgt.isDead && !tgt.isBenched && tgt !== enemy) {
-          tgt.x += (this._trueUltAltarX - tgt.x) * Math.min(1, dt * 8.2);
+          tgt.x += (this._trueUltAltarX - tgt.x) * Math.min(1, dt * 8.6);
           tgt.vx = 0;
         }
       }
@@ -2552,59 +2884,84 @@ export class Reaper extends Fighter {
     }
 
     // =========================================================================
-    // PHASE 3 (t >= 3.15s): Instantaneous Oblivion Reality-Split Cross-Guillotine
+    // PHASE 3 (t >= 3.15s): Cataclysmic Sky-Plunge & Reality-Split Oblivion Guillotine!
     // =========================================================================
     if (elapsed >= 3.15 && this._trueUltStep < 3) {
       this._trueUltStep = 3;
-      this._trueUltSlashFlash = 0.92;
+      this._trueUltSlashFlash = 0.98;
       this.soulStacks = this.maxSoulStacks;
+      this.graveWardTimer = Math.max(this.graveWardTimer || 0, 2.20);
 
-      const ww = game?.renderer ? game.renderer.worldWidth : 1200;
       if (Math.abs(this._trueUltAltarX - this.x) > 8) {
         this.facing = this._trueUltAltarX >= this.x ? 1 : -1;
       }
-      this.x = Math.max(95, Math.min(ww - 95, this._trueUltAltarX - this.facing * 92));
+      const landX = Math.max(95, Math.min(ww - 95, this._trueUltAltarX - this.facing * 88));
+      this.spawnWraithTrail(this._trueUltAltarX, this.groundY - 188, landX, this.groundY, this.facing, 6, 8);
+      this.x = landX;
       this.y = this.groundY;
 
-      // Twin Wraith Executioners cleave inward from both Cathedral Gates simultaneously!
+      // 4 Converging Wraith Executioners (2 Grounded + 2 Aerial) cleave inward from both Oblivion Gates!
       this.spawnWraithClone(
-        this._trueUltAltarX - 165,
+        this._trueUltAltarX - 172,
         this.groundY,
-        this._trueUltAltarX + 85,
+        this._trueUltAltarX + 90,
         this.groundY,
         1,
-        0.44,
+        0.46,
         4,
         14,
         24
       );
       this.spawnWraithClone(
-        this._trueUltAltarX + 165,
+        this._trueUltAltarX + 172,
         this.groundY,
-        this._trueUltAltarX - 85,
+        this._trueUltAltarX - 90,
         this.groundY,
         -1,
-        0.44,
+        0.46,
         4,
+        14,
+        24
+      );
+      this.spawnWraithClone(
+        this._trueUltAltarX - 168,
+        this.groundY - 148,
+        this._trueUltAltarX + 64,
+        this.groundY,
+        1,
+        0.42,
+        8,
+        14,
+        24
+      );
+      this.spawnWraithClone(
+        this._trueUltAltarX + 168,
+        this.groundY - 148,
+        this._trueUltAltarX - 64,
+        this.groundY,
+        -1,
+        0.42,
+        8,
         14,
         24
       );
 
       game?.renderer?.triggerImpactFrame?.(
-        0.12,
+        0.14,
         this._trueUltAltarX,
-        this.groundY - 112,
+        this.groundY - 116,
         'abyssal'
       );
-      if (game?.renderer && game.renderer.impactFrameTimer > 1) {
+      if (game?.renderer && game.renderer.impactFrameTimer > 0.14) {
         game.renderer.impactFrameFocusX = this._trueUltAltarX;
-        game.renderer.impactFrameFocusY = this.groundY - 112;
-        game.renderer.impactFrameMaxTimer = 0.12;
-        game.renderer.impactFrameTimer = 0.12;
+        game.renderer.impactFrameFocusY = this.groundY - 116;
+        game.renderer.impactFrameMaxTimer = 0.14;
+        game.renderer.impactFrameTimer = 0.14;
       }
-      game?.renderer?.shake?.(26, 0.70);
-      game?.renderer?.triggerShake?.(26, 0.70);
-      game?.renderer?.flash?.(0.30, '#fdf4ff');
+      game?.renderer?.shake?.(34, 0.82);
+      game?.renderer?.triggerShake?.(34, 0.82);
+      game?.renderer?.triggerAberration?.(22);
+      game?.renderer?.flash?.(0.34, '#fdf4ff');
 
       game?.audio?.play?.('reaper_ult', this._trueUltAltarX);
       game?.audio?.play?.('scythe_reap', this._trueUltAltarX);
@@ -2613,31 +2970,44 @@ export class Reaper extends Fighter {
       this.fx?.spawn('deathAvatarCathedral', this._trueUltAltarX, this.groundY - 4, {
         light: 1.50
       });
-      this.fx?.spawn('soulHarvestScytheArc', this._trueUltAltarX, this.groundY - 112, {
+      this.fx?.spawn('soulHarvestScytheArc', this._trueUltAltarX, this.groundY - 114, {
         flip: this.facing < 0,
         light: 1.50,
-        extra: { radiusWorld: 186, isCrimson: true, isCross: true, isUppercut: false }
+        extra: { radiusWorld: 196, isCrimson: true, isCross: true, isUppercut: false }
       });
-      this.spawnGroundedBoneSpire(this._trueUltAltarX, 240, 0.78, {
+
+      // Central + Twin Flanking Grounded Bone Obelisks (purely visual Row 2 spires -> 0 extra damage ticks!)
+      this.spawnGroundedBoneSpire(this._trueUltAltarX, 264, 0.86, {
         flipX: this.facing < 0,
         glowColor: 'crimson',
         inFront: false
       });
+      for (const side of [-1, 1]) {
+        const spX = Math.max(92, Math.min(ww - 92, this._trueUltAltarX + side * 146));
+        this.spawnGroundedBoneSpire(spX, 224, 0.74, {
+          flipX: side < 0,
+          glowColor: side < 0 ? 'violet' : 'crimson',
+          inFront: false
+        });
+      }
+      game?.vfx?.spawnGlyphBurst?.(this._trueUltAltarX, this.groundY - 112, 18, 'abyssal');
 
-      // SINGLE INSTANTANEOUS EXECUTION BURST (720 primary Crit; 0.78x on secondary 2v2 foe) + 14% Max HP Harvest!
+      // SINGLE INSTANTANEOUS EXECUTION BURST (720 primary Crit; 0.76x on secondary 2v2 foe) + 12% Max HP Harvest!
+      const manaBeforeExec = 0;
       let hitCount = 0;
       for (const t of targets) {
         if (t && !t.isDead && !t.isBenched) {
-          const burstDmg = hitCount === 0 ? 720 : Math.round(720 * 0.78);
-          t.takeDamage(burstDmg, this, true, 290, -260);
+          const burstDmg = hitCount === 0 ? 720 : Math.round(720 * 0.76);
+          t.takeDamage(burstDmg, this, true, 295, -265);
           hitCount++;
         }
       }
-      this.heal(Math.round(this.maxHp * 0.14), 'OBLIVION HARVEST');
+      this.mana = manaBeforeExec;
+      this.heal(Math.round(this.maxHp * 0.12), 'OBLIVION HARVEST');
     }
 
     // =========================================================================
-    // PHASE 4 (3.15s .. 4.50s): Sovereign Follow-Through & Return to Guard
+    // PHASE 4 (3.15s .. 4.50s): Sovereign Follow-Through & Death Covenant Unleashed!
     // =========================================================================
     const cleaveSpan = Math.min(1, Math.max(0, (elapsed - 3.15) / 0.55));
     if (elapsed < 3.70) {
@@ -2653,6 +3023,7 @@ export class Reaper extends Fighter {
       this.isInvulnerable = false;
       this.trueUltFrameOverride = null;
       this.wraithClones = [];
+      // Note: `this.deathCompanions` (480 HP Death-Mage & 420 HP Soul-Healer) now enter active combat for a full 12.5s!
       this.setState('IDLE');
     }
   }
@@ -2720,18 +3091,19 @@ export class Reaper extends Fighter {
     if (this.thanatosStand && this.state !== 'TRUE_ULTIMATE') {
       const st = this.thanatosStand;
       const u = Math.min(1, Math.max(0, st.age / st.maxLife));
-      const fade = u < 0.16 ? u / 0.16 : u > 0.78 ? (1 - u) / 0.22 : 1.0;
+      const fade = u < 0.14 ? u / 0.14 : u > 0.80 ? (1 - u) / 0.20 : 1.0;
       const col = Math.min(29, Math.floor((st.age * 26) % 30));
+      const standY = Number.isFinite(st.y) ? st.y : this.groundY - Math.round(st.size * 0.52);
       this.drawBloomedVfxCell(
         ctx,
         vfxSheet,
         3,
         col,
         st.x,
-        this.groundY - Math.round(st.size * 0.52),
+        standY,
         st.size,
         st.size,
-        fade * 0.92,
+        fade * 0.94,
         st.facing < 0,
         renderer,
         'crimson'
@@ -2742,24 +3114,24 @@ export class Reaper extends Fighter {
 
     const t = this.stateTimer || 0;
     const dur = this.trueUltDuration || 4.50;
-    const fadeIn = Math.min(1, Math.max(0.15, t / 0.35));
+    const fadeIn = Math.min(1, Math.max(0.18, t / 0.32));
     const fadeOut = t > dur - 0.55 ? Math.max(0, (dur - t) / 0.55) : 1.0;
-    const gateAlpha = fadeIn * fadeOut * 0.96;
+    const gateAlpha = fadeIn * fadeOut * 0.97;
     if (gateAlpha <= 0.02) return;
 
     const col = Math.min(29, Math.floor((t * 24) % 30));
-    const gateY = this.groundY - 130;
+    const gateY = this.groundY - 138;
 
-    // Twin Cathedral Gates of Oblivion (`Row 5`, 328x328)
+    // Twin Cathedral Gates of Oblivion (`Row 5`, 352x352) flanking the Altar & Summoned Companions!
     this.drawBloomedVfxCell(
       ctx,
       vfxSheet,
       5,
       col,
-      this._trueUltAltarX - 156,
+      this._trueUltAltarX - 168,
       gateY,
-      328,
-      328,
+      352,
+      352,
       gateAlpha,
       false,
       renderer,
@@ -2770,30 +3142,37 @@ export class Reaper extends Fighter {
       vfxSheet,
       5,
       col,
-      this._trueUltAltarX + 156,
+      this._trueUltAltarX + 168,
       gateY,
-      328,
-      328,
+      352,
+      352,
       gateAlpha,
       true,
       renderer,
       'crimson'
     );
 
-    // Towering Hooded Thanatos Death-God Stand (`Row 3`, 348x348) presiding above the Oblivion Altar!
-    const standRise = Math.min(1, Math.max(0, (t - 0.25) / 0.75));
+    // Colossal Towering Hooded Thanatos Death-God Stand (`Row 3`, 388x388) rising & plunging with Malakor!
+    const standRise = Math.min(1, Math.max(0, (t - 0.16) / 0.68));
     if (standRise > 0.02) {
-      const standCol = Math.min(29, Math.floor((t * 22) % 30));
+      const standCol = Math.min(29, Math.floor((t * 24) % 30));
+      let extraLift = 0;
+      if (t >= 2.36 && t < 3.15) {
+        const uAsc = Math.min(1, (t - 2.36) / 0.78);
+        extraLift = Math.round(Math.sin(Math.min(1, uAsc / 0.65) * (Math.PI * 0.5)) * 38);
+      } else if (t >= 3.15 && t < 3.45) {
+        extraLift = -12;
+      }
       this.drawBloomedVfxCell(
         ctx,
         vfxSheet,
         3,
         standCol,
         this._trueUltAltarX,
-        this.groundY - Math.round(145 + standRise * 42),
-        348,
-        348,
-        standRise * fadeOut * 0.95,
+        this.groundY - Math.round(154 + standRise * 46 + extraLift),
+        388,
+        388,
+        standRise * fadeOut * 0.96,
         this.facing < 0,
         renderer,
         'crimson'
@@ -3038,8 +3417,9 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * Renders Malakor's Summoned `11.5s` Living Death Companions (`Abyssal Death-Mage` & `Ossuary Soul-Healer`),
-   * their Symbiotic Soul-Covenant Tether, 2.5D Sanctum Rings, and Crisp Low-HP + Timer Bars!
+   * Renders Malakor's Summoned `12.5s` Super-Ultimate Living Death Companions
+   * (`Abyssal Death-Mage` 480 HP + 60 Ward & `Ossuary Soul-Healer` 420 HP + 50 Ward),
+   * their Symbiotic Soul-Covenant Tether, 2.5D Sanctum Rings, and Soul-Ward + HP + Timer Plates!
    */
   drawDeathCompanions(ctx, sprites, renderer = null) {
     if (this.isDead || !this.deathCompanions || this.deathCompanions.length === 0) return;
@@ -3058,17 +3438,20 @@ export class Reaper extends Fighter {
       const sy = healer.y - 84;
       const tx = mage.x - mage.facing * 10;
       const ty = mage.y - 86;
-      const isChanneling = healer.castAnimTimer > 0 || mage.soulEmpoweredTimer > 0;
-      const nodeCount = isChanneling ? 7 : 5;
+      const isChanneling =
+        this.state === 'TRUE_ULTIMATE' ||
+        healer.castAnimTimer > 0 ||
+        mage.soulEmpoweredTimer > 0;
+      const nodeCount = isChanneling ? 8 : 5;
 
       for (let i = 1; i <= nodeCount; i++) {
         const u = ((i / (nodeCount + 1)) + ((this.soulOrbitPhase * 0.45) % (1 / (nodeCount + 1))));
         const clampedU = Math.min(0.96, Math.max(0.04, u));
         const nx = Math.round(sx + (tx - sx) * clampedU);
-        const ny = Math.round(sy + (ty - sy) * clampedU - Math.sin(clampedU * Math.PI) * 20);
+        const ny = Math.round(sy + (ty - sy) * clampedU - Math.sin(clampedU * Math.PI) * 22);
         const isEmeraldSide = clampedU < 0.56;
 
-        ctx.globalAlpha = isChanneling ? 0.88 : 0.58;
+        ctx.globalAlpha = isChanneling ? 0.90 : 0.60;
         ctx.fillStyle = isEmeraldSide ? '#10b981' : '#c084fc';
         ctx.fillRect(nx - 4, ny - 2, 8, 4);
         ctx.fillRect(nx - 2, ny - 4, 4, 8);
@@ -3084,9 +3467,9 @@ export class Reaper extends Fighter {
             wispCol,
             nx,
             ny,
-            30,
-            30,
-            0.48,
+            32,
+            32,
+            0.52,
             false,
             renderer,
             'violet'
@@ -3107,20 +3490,32 @@ export class Reaper extends Fighter {
       const cy = Math.round(comp.y);
       const gy = Math.round(comp.groundY || this.groundY);
       const lifeFade = comp.life < 0.45 ? Math.max(0.15, comp.life / 0.45) : 1.0;
+      const inCastPose = comp.castAnimTimer > 0 || this.state === 'TRUE_ULTIMATE';
+      const hasShield = (comp.shield || 0) > 0;
 
       // Ground contact shadow + 2.5D sanctum floor ring
-      ctx.globalAlpha = 0.58 * lifeFade;
+      ctx.globalAlpha = 0.60 * lifeFade;
       ctx.fillStyle = '#03010a';
       ctx.beginPath();
-      ctx.ellipse(cx, gy + 2, 34, 8, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, gy + 2, 36, 9, 0, 0, Math.PI * 2);
       ctx.fill();
 
-      ctx.globalAlpha = (comp.castAnimTimer > 0 ? 0.82 : 0.52) * lifeFade;
+      ctx.globalAlpha = (inCastPose ? 0.86 : 0.56) * lifeFade;
       ctx.lineWidth = 2;
       ctx.strokeStyle = isMage ? '#d946ef' : '#34d399';
       ctx.beginPath();
-      ctx.ellipse(cx, gy + 2, 38 + Math.sin(comp.hoverPhase * 2) * 3, 9, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx, gy + 2, 40 + Math.sin(comp.hoverPhase * 2) * 3, 10, 0, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Cyan Soul-Ward Overshield ground ring when shielded!
+      if (hasShield) {
+        ctx.globalAlpha = 0.52 * lifeFade;
+        ctx.lineWidth = 1.5;
+        ctx.strokeStyle = '#67e8f9';
+        ctx.beginPath();
+        ctx.ellipse(cx, gy + 2, 46, 12, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
 
       // Soft additive aura glow behind companion
       const glowImg = isMage
@@ -3129,13 +3524,13 @@ export class Reaper extends Fighter {
       if (glowImg) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = (comp.castAnimTimer > 0 ? 0.34 : 0.20) * lifeFade;
-        ctx.drawImage(glowImg, cx - 84, cy - 158, 168, 168);
+        ctx.globalAlpha = (inCastPose ? 0.38 : 0.22) * lifeFade;
+        ctx.drawImage(glowImg, cx - 88, cy - 162, 176, 176);
         ctx.restore();
       }
 
       // 30fps HD-2D Companion Sprite (`reaper_companions.png`, 208x208 cells)
-      const drawW = isMage ? 172 : 168;
+      const drawW = isMage ? 174 : 170;
       const drawH = drawW;
       let row = isMage ? 0 : 2;
       let col = Math.floor(((comp.hoverPhase * 9.2) % 30 + 30) % 30);
@@ -3144,6 +3539,9 @@ export class Reaper extends Fighter {
         const castDur = isMage ? 0.62 : 0.66;
         const uCast = Math.min(1, Math.max(0, 1 - comp.castAnimTimer / castDur));
         col = Math.min(29, Math.floor(uCast * 30));
+      } else if (this.state === 'TRUE_ULTIMATE') {
+        row = isMage ? 1 : 3;
+        col = Math.floor((((this.stateTimer || 0) * 20 + (isMage ? 0 : 8)) % 30 + 30) % 30);
       }
 
       if (compSheet && compSheet.complete && compSheet.naturalWidth) {
@@ -3169,13 +3567,26 @@ export class Reaper extends Fighter {
         ctx.fillRect(cx - 18, cy - 96, 36, 86);
       }
 
+      // Floating Cyan Soul-Ward Aegis chevrons when companion's Overshield is active!
+      if (hasShield) {
+        for (const side of [-1, 1]) {
+          const wx = cx + side * 32;
+          const wy = cy - 78 + Math.round(Math.sin(comp.hoverPhase * 2.2 + side) * 4);
+          ctx.globalAlpha = 0.84 * lifeFade;
+          ctx.fillStyle = '#0891b2';
+          ctx.fillRect(wx - 2, wy - 7, 4, 14);
+          ctx.fillStyle = '#a5f3fc';
+          ctx.fillRect(wx - 1, wy - 5, 2, 10);
+        }
+      }
+
       // Soul-Empowered Covenant Motes orbiting the Death-Mage when blessed by the Soul-Healer!
       if (isMage && comp.soulEmpoweredTimer > 0) {
         for (let m = 0; m < 3; m++) {
           const ang = comp.hoverPhase * 1.9 + (m * Math.PI * 2) / 3;
-          const mx = Math.round(cx + Math.cos(ang) * 34);
-          const my = Math.round(cy - 76 + Math.sin(ang) * 14);
-          ctx.globalAlpha = 0.90 * lifeFade;
+          const mx = Math.round(cx + Math.cos(ang) * 36);
+          const my = Math.round(cy - 78 + Math.sin(ang) * 14);
+          ctx.globalAlpha = 0.92 * lifeFade;
           ctx.fillStyle = m % 2 === 0 ? '#34d399' : '#e879f9';
           ctx.fillRect(mx - 3, my - 2, 6, 4);
           ctx.fillRect(mx - 2, my - 3, 4, 6);
@@ -3184,53 +3595,68 @@ export class Reaper extends Fighter {
         }
       }
 
-      // 3. Crisp Pixel-Art Low-HP Bar & 11.5s Summon Lifespan Plate above each Companion!
-      const barW = 50;
+      // 3. Crisp Pixel-Art Soul-Ward Overshield + HP + 12.5s Summon Lifespan Plate above each Companion!
+      const barW = 54;
       const barX = cx - Math.floor(barW * 0.5);
-      const barY = cy - 150;
+      const barY = cy - 154;
       const hpFrac = Math.max(0, Math.min(1, comp.hp / Math.max(1, comp.maxHp)));
+      const shieldFrac = Math.max(
+        0,
+        Math.min(1, (comp.shield || 0) / Math.max(1, comp.maxShield || 60))
+      );
       const lifeFrac = Math.max(0, Math.min(1, comp.life / Math.max(0.1, comp.maxLife)));
 
-      ctx.globalAlpha = 0.94 * lifeFade;
-      // Outer dark plate + crisp 1px role-tinted frame
+      ctx.globalAlpha = 0.95 * lifeFade;
+      // Outer dark plate + crisp 1px role/ward-tinted frame
       ctx.fillStyle = '#05020c';
-      ctx.fillRect(barX - 2, barY - 2, barW + 4, 12);
-      ctx.strokeStyle = isMage ? '#86198f' : '#065f46';
+      ctx.fillRect(barX - 2, barY - 2, barW + 4, 15);
+      ctx.strokeStyle = hasShield ? '#38bdf8' : isMage ? '#a21caf' : '#059669';
       ctx.lineWidth = 1;
-      ctx.strokeRect(barX - 1.5, barY - 1.5, barW + 3, 11);
+      ctx.strokeRect(barX - 1.5, barY - 1.5, barW + 3, 14);
 
-      // Missing HP trough
+      // Top 2px Cyan Soul-Ward Overshield Strip (`60` / `50` Ward)
+      ctx.fillStyle = '#0c1929';
+      ctx.fillRect(barX, barY, barW, 2);
+      if (shieldFrac > 0) {
+        const shW = Math.max(2, Math.round(barW * shieldFrac));
+        ctx.fillStyle = '#22d3ee';
+        ctx.fillRect(barX, barY, shW, 2);
+        ctx.fillStyle = '#ecfeff';
+        ctx.fillRect(barX, barY, shW, 1);
+      }
+
+      // Middle 5px Companion HP Bar (`480 HP` Mage / `420 HP` Healer)
+      const hpY = barY + 3;
       ctx.fillStyle = '#140b24';
-      ctx.fillRect(barX, barY, barW, 5);
+      ctx.fillRect(barX, hpY, barW, 5);
 
-      // Active Low-HP fill + specular top highlight
       const fillW = Math.max(hpFrac > 0 ? 2 : 0, Math.round(barW * hpFrac));
       if (fillW > 0) {
         ctx.fillStyle =
           hpFrac < 0.34 ? '#f43f5e' : isMage ? '#c026d3' : '#10b981';
-        ctx.fillRect(barX, barY, fillW, 5);
+        ctx.fillRect(barX, hpY, fillW, 5);
         ctx.fillStyle =
           hpFrac < 0.34 ? '#fda4af' : isMage ? '#f5d0fe' : '#a7f3d0';
-        ctx.fillRect(barX, barY, fillW, 2);
+        ctx.fillRect(barX, hpY, fillW, 2);
       }
 
-      // 100-HP micro-segment ticks so low companion HP (`390` / `330`) reads immediately!
+      // 100-HP micro-segment ticks (`100, 200, 300, 400`)
       ctx.fillStyle = '#05020c';
       for (let tickHp = 100; tickHp < comp.maxHp; tickHp += 100) {
         const txTick = barX + Math.round((tickHp / comp.maxHp) * barW);
-        ctx.fillRect(txTick, barY, 1, 5);
+        ctx.fillRect(txTick, hpY, 1, 5);
       }
 
-      // 11.5s Summon Duration Strip underneath HP bar
+      // Bottom 2px 12.5s Summon Duration Strip
       ctx.fillStyle = '#1e1b4b';
-      ctx.fillRect(barX, barY + 6, barW, 2);
+      ctx.fillRect(barX, barY + 9, barW, 2);
       const lifeW = Math.max(1, Math.round(barW * lifeFrac));
       ctx.fillStyle = isMage ? '#e879f9' : '#fde047';
-      ctx.fillRect(barX, barY + 6, lifeW, 2);
+      ctx.fillRect(barX, barY + 9, lifeW, 2);
 
       // Role Pixel Emblem to the left of the HP plate (Arcane Diamond for Mage / Soul Cross for Healer)
       const iconX = barX - 9;
-      const iconY = barY + 3;
+      const iconY = barY + 5;
       if (isMage) {
         ctx.fillStyle = '#d946ef';
         ctx.fillRect(iconX - 3, iconY - 1, 6, 2);
@@ -3245,6 +3671,91 @@ export class Reaper extends Fighter {
         ctx.fillRect(iconX - 1, iconY - 1, 2, 2);
       }
     }
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders a razor-sharp HD-2D Pixel Reality-Split X-Slash + Horizon Fracture Streak
+   * using stepped `ctx.fillRect` pixel bars ONLY (`0` ctx.rotate / `0` quadraticCurveTo).
+   */
+  drawPixelSlashStreak(
+    ctx,
+    cx,
+    cy,
+    halfW = 320,
+    halfH = 132,
+    alpha = 1.0,
+    outerColor = '#d946ef',
+    midColor = '#f43f5e',
+    coreColor = '#ffffff'
+  ) {
+    if (alpha <= 0.02) return;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.globalCompositeOperation = 'lighter';
+
+    const steps = 28;
+    for (let s = -steps; s <= steps; s++) {
+      const u = s / steps; // -1 .. +1
+      const taper = 1 - Math.abs(u) * 0.72;
+      const thickOuter = Math.max(2, Math.round(12 * taper));
+      const thickCore = Math.max(1, Math.round(4 * taper));
+      const xOff = Math.round(u * halfW);
+      const yOff = Math.round(u * halfH);
+      const segW = Math.max(6, Math.ceil((halfW * 2) / (steps * 2)) + 2);
+
+      // Diagonal 1 (\) & Diagonal 2 (/) outer plasma
+      ctx.globalAlpha = Math.min(1, alpha * 0.56);
+      ctx.fillStyle = outerColor;
+      ctx.fillRect(
+        Math.round(cx + xOff - segW * 0.5),
+        Math.round(cy + yOff - thickOuter * 0.5),
+        segW,
+        thickOuter
+      );
+      ctx.fillStyle = midColor;
+      ctx.fillRect(
+        Math.round(cx + xOff - segW * 0.5),
+        Math.round(cy - yOff - thickOuter * 0.5),
+        segW,
+        thickOuter
+      );
+
+      // Pure white razor core on both diagonals
+      ctx.globalAlpha = Math.min(1, alpha * 0.94);
+      ctx.fillStyle = coreColor;
+      ctx.fillRect(
+        Math.round(cx + xOff - segW * 0.5),
+        Math.round(cy + yOff - thickCore * 0.5),
+        segW,
+        thickCore
+      );
+      ctx.fillRect(
+        Math.round(cx + xOff - segW * 0.5),
+        Math.round(cy - yOff - thickCore * 0.5),
+        segW,
+        thickCore
+      );
+    }
+
+    // Full-span horizontal Reality-Crack Streak across the execution epicenter
+    const horizSpan = Math.round(halfW * 1.16);
+    ctx.globalAlpha = Math.min(1, alpha * 0.62);
+    ctx.fillStyle = midColor;
+    ctx.fillRect(Math.round(cx - horizSpan), Math.round(cy - 4), horizSpan * 2, 8);
+    ctx.globalAlpha = Math.min(1, alpha * 0.98);
+    ctx.fillStyle = coreColor;
+    ctx.fillRect(Math.round(cx - Math.round(horizSpan * 0.94)), Math.round(cy - 1), Math.round(horizSpan * 1.88), 3);
+
+    // Central Starburst Flash Cross
+    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.fillStyle = outerColor;
+    ctx.fillRect(Math.round(cx - 26), Math.round(cy - 5), 52, 10);
+    ctx.fillRect(Math.round(cx - 5), Math.round(cy - 34), 10, 68);
+    ctx.fillStyle = coreColor;
+    ctx.fillRect(Math.round(cx - 16), Math.round(cy - 2), 32, 4);
+    ctx.fillRect(Math.round(cx - 2), Math.round(cy - 22), 4, 44);
 
     ctx.restore();
   }
@@ -3530,16 +4041,55 @@ export class Reaper extends Fighter {
     const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.reaper : null;
     if (!sprites) return;
 
+    const hasLivingCovenant =
+      !this.isDead &&
+      this.deathCompanions &&
+      this.deathCompanions.some((c) => c && !c.isDead && c.life > 0);
+
     if (!isReflection) {
       // 1. Pitch-Black Underground Shadow Burrow Pool & Surprise Attack Lock-On Indicator
       this.drawBurrowShadowIndicator(ctx, renderer);
-      // 2. Summoned 11.5s Living Death Companions (`Abyssal Death-Mage` & `Ossuary Soul-Healer`)
+      // 2. Summoned 12.5s Super-Ultimate Living Death Companions (`Death-Mage` & `Soul-Healer`)
       this.drawDeathCompanions(ctx, sprites, renderer);
     }
 
     // 3. Malakor Character Sprite (100% hidden underground during `this.isFullyBurrowed`!)
     if (!this.isFullyBurrowed) {
       const isBurrowPlunging = !isReflection && this.state === 'CROUCH' && this.isSubmerged;
+
+      // Abyssal Grave-Ward (`this.graveWardTimer > 0`) & Death Covenant Ward (`15%` DR) Aegis Aura!
+      if (!isReflection && !this.isDead && (this.graveWardTimer > 0 || hasLivingCovenant)) {
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        const wardAlpha =
+          this.graveWardTimer > 0 ? Math.min(0.84, 0.35 + this.graveWardTimer * 0.32) : 0.62;
+        ctx.globalAlpha = wardAlpha * 0.65;
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = hasLivingCovenant ? '#34d399' : '#c084fc';
+        ctx.beginPath();
+        ctx.ellipse(
+          Math.round(this.x),
+          Math.round(this.groundY + 2),
+          52,
+          12,
+          0,
+          0,
+          Math.PI * 2
+        );
+        ctx.stroke();
+
+        for (let w = 0; w < 4; w++) {
+          const ang = this.soulOrbitPhase * 1.6 + (w * Math.PI) / 2;
+          const wx = Math.round(this.x + Math.cos(ang) * 42);
+          const wy = Math.round(this.y - 78 + Math.sin(ang) * 16);
+          ctx.globalAlpha = wardAlpha;
+          ctx.fillStyle = '#090314';
+          ctx.fillRect(wx - 3, wy - 7, 6, 14);
+          ctx.fillStyle = hasLivingCovenant && w % 2 === 0 ? '#6ee7b7' : '#e879f9';
+          ctx.fillRect(wx - 1, wy - 5, 2, 10);
+        }
+        ctx.restore();
+      }
 
       ctx.save();
       ctx.imageSmoothingEnabled = false;
@@ -3582,19 +4132,34 @@ export class Reaper extends Fighter {
       ctx.restore();
     }
 
+    if (!isReflection && this._ultSlashFlash > 0) {
+      const ultSlashAlpha = Math.min(1, this._ultSlashFlash / 0.22);
+      this.drawPixelSlashStreak(
+        ctx,
+        this._ultSlashCenterX || this.x,
+        this.groundY - 110,
+        280,
+        126,
+        ultSlashAlpha,
+        '#d946ef',
+        '#f43f5e',
+        '#ffffff'
+      );
+    }
+
     if (!isReflection && sprites.vfx?.complete) {
       const vfxSheet = sprites.vfx;
 
-      // Phase 2 (`1.25s .. 3.15s`): Six-Scythe Death-Clock Execution Seal (`Row 6`, 324x324)
+      // Phase 2 (`1.25s .. 3.30s`): Six-Scythe Death-Clock Execution Seal (`Row 6`, 356x356)
       if (this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 1.25 && this.stateTimer <= 3.30) {
         const bindX =
           this._trueUltEnemy && !this._trueUltEnemy.isDead
             ? this._trueUltEnemy.x
             : this._trueUltAltarX;
-        const bindY = this.groundY - 104;
+        const bindY = this.groundY - 108;
         const bindCol = Math.min(29, Math.floor(((this.stateTimer - 1.25) * 24) % 30));
         const bindFade =
-          this.stateTimer > 3.12 ? Math.max(0, 1 - (this.stateTimer - 3.12) / 0.18) : 0.96;
+          this.stateTimer > 3.12 ? Math.max(0, 1 - (this.stateTimer - 3.12) / 0.18) : 0.97;
         this.drawBloomedVfxCell(
           ctx,
           vfxSheet,
@@ -3602,29 +4167,72 @@ export class Reaper extends Fighter {
           bindCol,
           bindX,
           bindY,
-          324,
-          324,
+          356,
+          356,
           bindFade,
           false,
           renderer,
           'crimson'
         );
+
+        // Sovereign Sky-Ascent (`2.36s .. 3.15s`): Converging Execution Crosshair & Guillotine Plumb-Line!
+        if (this.stateTimer >= 2.36 && this.stateTimer < 3.15) {
+          const uLock = Math.min(1, Math.max(0, (this.stateTimer - 2.36) / 0.78));
+          const bracketDist = Math.round(92 - uLock * 56);
+          const ax = Math.round(this._trueUltAltarX);
+          const ay = Math.round(bindY);
+          const topY = Math.round(this.y - 72);
+
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = 0.42 + uLock * 0.52;
+          ctx.fillStyle = '#f43f5e';
+          ctx.fillRect(ax - 3, topY, 6, Math.max(12, this.groundY - topY));
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(ax - 1, topY, 2, Math.max(12, this.groundY - topY));
+
+          // 4 Converging Execution Corner Brackets around the condemned target
+          ctx.fillStyle = uLock > 0.72 ? '#ffffff' : '#fda4af';
+          for (const sxSign of [-1, 1]) {
+            for (const sySign of [-1, 1]) {
+              const bx = ax + sxSign * bracketDist;
+              const by = ay + sySign * Math.round(bracketDist * 0.72);
+              ctx.fillRect(bx - (sxSign > 0 ? 12 : 0), by - 1, 12, 3);
+              ctx.fillRect(bx - 1, by - (sySign > 0 ? 12 : 0), 3, 12);
+            }
+          }
+          ctx.restore();
+        }
       }
 
-      // Phase 3 (`this._trueUltSlashFlash > 0`): Oblivion Reality-Split Cross-Guillotine (`Row 7`, 480x380)
+      // Phase 3 (`this._trueUltSlashFlash > 0`): Full-Horizon 920px Reality-Split Streak + `548x428` Cross-Guillotine!
       if (this._trueUltSlashFlash > 0) {
-        const uSlash = Math.min(1, Math.max(0, 1 - this._trueUltSlashFlash / 0.92));
+        const uSlash = Math.min(1, Math.max(0, 1 - this._trueUltSlashFlash / 0.98));
         const slashCol = Math.min(29, Math.floor(uSlash * 30));
-        const slashAlpha = Math.min(1, (this._trueUltSlashFlash / 0.24) * 0.98);
+        const slashAlpha = Math.min(1, (this._trueUltSlashFlash / 0.26) * 0.99);
+
+        this.drawPixelSlashStreak(
+          ctx,
+          this._trueUltAltarX,
+          this.groundY - 128,
+          460,
+          168,
+          slashAlpha,
+          '#e879f9',
+          '#f43f5e',
+          '#ffffff'
+        );
+
         this.drawBloomedVfxCell(
           ctx,
           vfxSheet,
           7,
           slashCol,
           this._trueUltAltarX,
-          this.groundY - 128,
-          480,
-          380,
+          this.groundY - 134,
+          548,
+          428,
           slashAlpha,
           this.facing < 0,
           renderer,

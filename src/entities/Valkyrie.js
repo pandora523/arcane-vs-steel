@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps68';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps68';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps68';
+import { Fighter } from './Fighter.js?v=30fps69';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps69';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps69';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps68';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps69';
 
 /**
  * Freyja (`valkyrie`) — Dragon-Lance Valkyrie & Valhalla Sky-Sovereign.
@@ -76,7 +76,7 @@ export class Valkyrie extends Fighter {
     if (typeof Image !== 'undefined') {
       const valkyrieAssets = PixelForge.initAssets()?.valkyrie;
       if (valkyrieAssets?.vfx?.src && !valkyrieAssets.vfx.src.includes('v=30fps63')) {
-        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps68';
+        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps69';
       }
     }
 
