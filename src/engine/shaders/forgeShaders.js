@@ -25,7 +25,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps65';
+} from '../ArcaneShaderFX.js?v=30fps66';
 
 // Volcanic Basalt-Obsidian + Molten Magma Crimson-Orange -> Forge Gold
 export const FORGE_GOLD_PALETTE = [
@@ -1453,27 +1453,31 @@ export const tectonicMagmaWaveCell = {
         const ph = localT * Math.PI * 2;
         const crestX = 8;
 
-        // 2.5D Boiling Lava & Jade Slipstream Wake (`[-36, +12] x [-22, +24]`)
+        // 2.5D Boiling Lava & Jade Slipstream Wake (`[-36, +12] x [-22, +24]`, tapered cleanly to 0 before x=-34)
         pen.shadeBox(-36, -22, crestX + 4, 24, (lx, ly, out) => {
-          const tailU = clamp01((crestX - lx) / 42);
-          const halfH = (1 - tailU) * 18.5 + 2.5;
-          const waveA = Math.sin(tailU * 7.5 - ph * 2) * 3.8 * tailU;
-          const waveB = Math.cos(tailU * 7.5 - ph * 2) * 3.8 * tailU;
+          const tailU = (crestX - lx) / 41;
+          if (tailU <= -0.08 || tailU >= 1.0) return 0;
+          const clampedTail = clamp01(tailU);
+          const tailTaper = Math.pow(1 - clampedTail, 1.15);
+          const halfH = tailTaper * 19.5;
+          if (halfH <= 0.8) return 0;
+          const waveA = Math.sin(clampedTail * 7.5 - ph * 2) * 3.8 * clampedTail;
+          const waveB = Math.cos(clampedTail * 7.5 - ph * 2) * 3.8 * clampedTail;
           const dMagma = Math.abs(ly - waveA);
           const dJade = Math.abs(ly - waveB);
           const dy = Math.min(dMagma, dJade);
           if (dy >= halfH) return 0;
 
           const n = fbmNoise2D(lx * 0.18 + ph * 1.4, ly * 0.2, cfg.seed || 201, 2);
-          const heat = (1 - dy / halfH) * (1 - tailU * 0.58) + n * 0.22;
+          const heat = ((1 - dy / halfH) * 0.92 + n * 0.22) * tailTaper;
           if (heat <= 0.24) return 0;
 
-          const isJadeVein = dJade < dMagma && tailU > 0.14;
+          const isJadeVein = dJade < dMagma && clampedTail > 0.14;
           const idx = Math.min(7, Math.max(1, Math.floor(heat * 7.8)));
           out.alpha = clamp01(heat * 1.35);
           if (dy >= halfH - 1.15) return COL_OBSIDIAN;
           out.glowColor = isJadeVein ? jade[5] : magma[5];
-          out.glowStrength = 0.28 * (1 - tailU);
+          out.glowStrength = 0.28 * tailTaper;
           return isJadeVein ? jade[Math.min(6, idx + 1)] : magma[idx];
         });
 
@@ -1935,8 +1939,11 @@ export const worldForgeCrucibleAltarCell = {
 
         // 2. Roaring Stepped Amber-Gold & Emerald-Jade Forge Flames rising around the Crucible (`[-72, +72] x [-88, +48]`)
         pen.shadeBox(-72, -88, 72, 48, (lx, ly, out) => {
+          const botCurve = 38 + Math.sqrt(Math.max(0, 1 - (lx / 64) ** 2)) * 8.5;
+          if (ly > botCurve) return 0;
           const hFrac = clamp01((48 - ly) / 130);
           if (hFrac >= 0.98) return 0;
+          const botFade = clamp01((botCurve - ly) / 6.5);
           const tongue = Math.sin(lx * 0.19 + ph * 2) * 0.13 + Math.cos(lx * 0.31 - ph) * 0.09;
           const topTipTaper = hFrac > 0.62 ? Math.max(0, 1 - ((hFrac - 0.62) / 0.36) ** 1.35) : 1.0;
           const maxW = (62 * (1 - hFrac * 0.42) + Math.sin(hFrac * 9 - ph * 2) * 6) * (0.35 + 0.65 * topTipTaper);
@@ -1944,15 +1951,15 @@ export const worldForgeCrucibleAltarCell = {
           if (ax > maxW) return 0;
 
           const n = fbmNoise2D(lx * 0.09, ly * 0.09 + localT * 3.0, cfg.seed || 307, 3);
-          const heat = ((1 - ax / Math.max(1, maxW)) * 0.92 + n * 0.34 + tongue) * topTipTaper;
+          const heat = ((1 - ax / Math.max(1, maxW)) * 0.92 + n * 0.34 + tongue) * topTipTaper * (0.35 + 0.65 * botFade);
           if (heat <= 0.30) return 0;
 
           const isJadeFlame = Math.sin(lx * 0.16 + hFrac * 6 - ph) > 0.18;
           const idx = Math.min(7, Math.max(3, Math.floor(heat * 8.2)));
-          out.alpha = clamp01((heat - 0.24) * 1.9);
+          out.alpha = clamp01((heat - 0.24) * 1.9) * botFade;
           if (heat <= 0.36) return COL_OBSIDIAN;
           out.glowColor = isJadeFlame ? jade[5] : magma[5];
-          out.glowStrength = 0.34 * topTipTaper;
+          out.glowStrength = 0.34 * topTipTaper * botFade;
           return isJadeFlame ? jade[Math.min(6, idx)] : magma[idx];
         });
 
@@ -2283,6 +2290,162 @@ export const continentalSunderGeyserCell = {
   }
 };
 
+// ============================================================================
+// 14. KHAZAD WORLD-FORGE ANCESTOR AVATAR (`khazadForgeAncestorAvatar`)
+//     - Towering Spectral Horned Dwarven Forge-God Spirit (`renderBack`: Horned Gold/Obsidian
+//       Crown, Blazing Emerald-Jade Eyes, Flowing Molten Beard, & 8-Cog Sovereign Halo;
+//       `renderFront`: Unison Colossal God-Maul Overhead Cleave & Khazad Rune Burst!)
+// ============================================================================
+export const khazadForgeAncestorAvatar = {
+  duration: 0.68,
+  loop: false,
+  defaults: { palette: FORGE_GOLD_PALETTE, seed: 389 },
+  create(cfg) {
+    const magma = buildColorRamp(FORGE_GOLD_PALETTE, 8);
+    const jade = buildColorRamp(FORGE_JADE_PALETTE, 8);
+    const band4 = [magma[2], jade[4], magma[6], PURE_WHITE];
+    let t = 0;
+
+    return {
+      step(dt) {
+        t += dt;
+      },
+      renderBack(pen) {
+        const u = clamp01(t / 0.68);
+        const pop = smoothStep(0, 0.16, u);
+        const fade = 1 - smoothStep(0.62, 1.0, u);
+        const env = pop * fade;
+        if (env <= 0.02) return;
+
+        // 1. Towering 8-Cog Sovereign Crucible Halo behind the Forge-God Ancestor (`cy = -26`)
+        drawDwarvenCrucibleGearRing(pen, -4, -26, 30 * pop, 0.92, u * 2.2, 0.88 * env, null, true);
+
+        // 2. Horned Khazad Forge-God Visage, Ram-Horn Shoulders, Jade Eyes & Braided Magma Beard
+        //    Strictly inside `[-38, +30] x [-64, +8]` with >=4px margin inside `shadeBox(-44, -70, 36, 14)`
+        pen.shadeBox(-44, -70, 36, 14, (lx, ly, out) => {
+          const cx = -4;
+          const dx = lx - cx;
+          const ax = Math.abs(dx);
+
+          // A. Upward-Sweeping Golden Khazad War-Horns (`ly in [-62, -36]`)
+          if (ly >= -62 && ly <= -36) {
+            const hu = (-36 - ly) / 26; // 0 at base (-36), 1 at horn tips (-62)
+            const hornCenter = 11 + hu * 11 - hu * hu * 4.5;
+            const hornHalfW = Math.max(0.9, 4.2 * (1 - hu * 0.72));
+            if (Math.abs(ax - hornCenter) <= hornHalfW) {
+              out.alpha = env * 0.96;
+              if (Math.abs(ax - hornCenter) >= hornHalfW - 0.95) return COL_OBSIDIAN;
+              out.glowColor = COL_FORGE_GOLD;
+              out.glowStrength = 0.34 * env;
+              return hu > 0.65 ? PURE_WHITE : COL_FORGE_GOLD;
+            }
+          }
+
+          // B. Ornate Bronze-Gold Helm Dome & Cheek Guards (`ly in [-48, -24]`)
+          if (ly >= -48 && ly <= -24) {
+            const helmU = (ly + 48) / 24;
+            const helmW = 13.5 * Math.sqrt(Math.max(0, 1 - Math.pow((helmU - 0.55) / 0.62, 2)));
+            if (ax <= helmW) {
+              out.alpha = env * 0.97;
+              if (ax >= helmW - 1.1 || ly <= -46.8) return COL_OBSIDIAN;
+              // Emerald-Jade Brow Crest (`dx ~ 0, ly ~ -39`)
+              if (ax + Math.abs(ly + 39) <= 3.4) {
+                out.glowColor = COL_JADE_BRIGHT;
+                out.glowStrength = 0.45 * env;
+                return ax + Math.abs(ly + 39) <= 1.4 ? PURE_WHITE : COL_JADE_PALE;
+              }
+              // Blazing Emerald-Jade Demi-God Eyes (`ly in [-34, -30], ax in [3.2, 8.2]`)
+              if (ly >= -34 && ly <= -30.5 && ax >= 3.0 && ax <= 8.2) {
+                out.glowColor = COL_JADE_BRIGHT;
+                out.glowStrength = 0.52 * env;
+                return ax >= 4.5 && ax <= 6.8 ? PURE_WHITE : COL_JADE_BRIGHT;
+              }
+              if (ax <= 2.2 || Math.abs(ly + 35.5) <= 1.2) return COL_FORGE_GOLD;
+              return COL_BASALT;
+            }
+          }
+
+          // C. Broad Spectral Ram-Horn Pauldrons & Chest (`ly in [-28, -2]`)
+          const shY = (ly + 16) / 15;
+          const shW = 29 * Math.sqrt(Math.max(0, 1 - shY * shY));
+          const inShoulders = ly >= -30 && ly <= -1 && ax <= shW;
+
+          // D. Flowing 3-Braid Molten Magma Beard (`ly in [-27, +6]`)
+          const beardU = clamp01((ly + 27) / 33);
+          const beardW = (12.5 * (1 - beardU * 0.65) + Math.sin(beardU * 8) * 1.4) * (1 - smoothStep(0.88, 1.0, beardU));
+          const inBeard = ly >= -27 && ly <= 6 && ax <= beardW;
+
+          if (inBeard) {
+            out.alpha = env * 0.96;
+            if (ax >= beardW - 1.05 || ly >= 4.8) return COL_OBSIDIAN;
+            const braid = Math.abs(Math.sin(dx * 0.65 + ly * 0.25));
+            out.glowColor = COL_MAGMA_BRIGHT;
+            out.glowStrength = 0.36 * env;
+            if (Math.abs(ly + 8) <= 1.5 && ax <= 5.5) return COL_FORGE_GOLD;
+            return braid > 0.68 ? COL_FORGE_GOLD : braid > 0.34 ? COL_MAGMA_BRIGHT : COL_MAGMA_MID;
+          }
+
+          if (inShoulders) {
+            const taper = clamp01(( -1 - ly ) / 8);
+            out.alpha = env * 0.9 * (0.35 + 0.65 * taper);
+            if (ax >= shW - 1.2) return COL_OBSIDIAN;
+            // Shoulder Emerald-Jade Runes (`ax ~ 19, ly ~ -17`)
+            if (Math.abs(ax - 19) + Math.abs(ly + 17) <= 4.2) {
+              out.glowColor = COL_JADE_MID;
+              out.glowStrength = 0.42 * env;
+              return Math.abs(ax - 19) + Math.abs(ly + 17) <= 1.8 ? PURE_WHITE : COL_JADE_BRIGHT;
+            }
+            if (ax >= shW - 3.2 || ly <= -26) return COL_FORGE_GOLD;
+            return COL_BASALT;
+          }
+
+          return 0;
+        });
+
+        pen.radialGlow(-4, -28, 34 * env, magma[5], 0.36 * env);
+        pen.radialGlow(-4, -34, 22 * env, jade[5], 0.30 * env);
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 0.68);
+        const fade = 1 - smoothStep(0.66, 1.0, u);
+        if (fade <= 0.02) return;
+
+        const swingP = smoothStep(0.04, 0.48, u);
+        const hammerAng = -1.25 + swingP * 1.48;
+
+        drawMultiLayerCrescentArc(pen, {
+          cx: 4,
+          cy: -14,
+          radius: 36,
+          width: 12.5,
+          eccentricity: 0.84,
+          headAngle: hammerAng + 0.18,
+          tailAngle: -2.05 + u * 0.45,
+          fade: fade * 0.95,
+          ramp: jade,
+          seed: cfg.seed || 389,
+          t: u,
+          flashHot: u < 0.38
+        });
+
+        drawColossalDwarvenWarhammer(
+          pen,
+          6 + Math.cos(hammerAng) * 8,
+          -18 + Math.sin(hammerAng) * 8,
+          1.22,
+          swingP,
+          cfg.seed || 389,
+          hammerAng,
+          fade * 0.96,
+          u >= 0.2 && u <= 0.52
+        );
+
+        drawTiltedOrbitBand(pen, 4, 2, (20 + 18 * swingP), 0.24, 1.8, 0.94 * fade, band4, FRONT_HALF, u < 0.42);
+      }
+    };
+  }
+};
+
 export const FORGE_EFFECT_REGISTRY = {
   forgeMagmaMantle,
   worldBreakerAnvilCleave,
@@ -2293,6 +2456,7 @@ export const FORGE_EFFECT_REGISTRY = {
   tectonicCraterSlam,
   colossalSkyAnvilDrop,
   ragnarokWorldForgeWave,
+  khazadForgeAncestorAvatar,
   tectonicMagmaWaveCell,
   moltenSlagBoulderCell,
   runicIronForgeAnvilCell,

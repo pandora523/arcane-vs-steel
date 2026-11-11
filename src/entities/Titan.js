@@ -1,16 +1,42 @@
-import { Fighter } from './Fighter.js?v=30fps65';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps65';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps65';
+import { Fighter } from './Fighter.js?v=30fps66';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps66';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps66';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps65';
+} from '../engine/shaders/forgeShaders.js?v=30fps66';
 
 /**
- * Torgar (`titan`) — World-Forge Juggernaut & Runic Anvil Sovereign.
- * Powered natively by `ArcaneShaderFX` (dual-buffer 120Hz HD-2D shader & particle engine)
- * + `assets/sprites/titan_sheet.png` & `assets/sprites/titan_vfx.png`.
+ * Torgar v5 (`titan`) — Sovereign of the World-Forge & Runic Anvil Juggernaut.
+ *
+ * Full v5 Kit Architecture:
+ *   - Passive (`MOLTEN CRUCIBLE & MAGMA BULWARK`):
+ *       Builds `0..5` orbiting Khazad Molten Crucible Cores (`this.crucibleStacks`, starts at `2`)
+ *       when landing heavy Forge blows or absorbing hits during Magma Bulwark (`forgeArmorTimer > 0`,
+ *       `44%` DR + Molten Thorn reflect). At `5` stacks (`MAX TEMPER`), Torgar's next Stage-3
+ *       Finisher or `WORLD-ANVIL CATACLYSM` triggers **WORLD-BREAKER TEMPER** (restores HP, refreshes
+ *       Magma Bulwark, and erupts a bonus `Row 2` Magma-Jade Volcanic Obelisk).
+ *   - 3-Stage Auto (`TRINITY OF THE WORLD-MAUL`):
+ *       1. Magnetic Fissure Sweep (`comboStep === 0`): 2H Anvil-Ram Cleave + traveling `Row 0`
+ *          Tectonic Magma-Jade Fissure Wave (`390px`) that damages & magnetically wrenches kiting foes inward!
+ *       2. Volcanic Horn Uppercut (`comboStep === 1`): 2H Forge Crush + rising Siege-Horn Uppercut
+ *          erupting a grounded `Row 2` Magma-Jade Rune Pillar (`+1` Crucible Core).
+ *       3. World-Breaker Cataclysm (`comboStep === 2`): Summons the colossal `khazadForgeAncestorAvatar`
+ *          spirit behind Torgar for a unison overhead God-Maul Crit slam, triggers World-Breaker Temper
+ *          at `5` stacks, and sends a Seismic Resonance detonation through any planted World-Anvil Altar!
+ *   - Signature Skill (`WORLD-ANVIL CATACLYSM`):
+ *       Plants a persistent **World-Forge Anvil Altar** (`Row 3` 8-Cog Mandala + `Row 1` Horned Iron Anvil,
+ *       `4.2s`) with a Magnetic Gravity Slam, then batters a blazing **Ricocheting Anvil Cannonball**
+ *       across the arena that rebounds ONCE off the stage wall (`★ ANVIL WALL-RICOCHET! ★`)!
+ *   - Overdrive (`RAGNAROK WORLD-FORGE`, `5.0s`):
+ *       Ascends to `3.0x` Colossal World-Forge Demi-God scale across `5.0s` (`6` multi-fault volcanic
+ *       caldera eruptions + Anvil Altar resonance).
+ *   - Supreme Ultimate (`GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER`, `4.55s`):
+ *       Localized volcanic twilight dim (zero stage background overrides), summons the `Row 5` Colossal
+ *       World-Forge Crucible Altar flanked by Twin `Row 2` Obelisks binding all active foes, delivers
+ *       two rhythmic `Row 6` + Ancestor Tempering Strikes (`0` micro-ticks), then sky-leaps for ONE
+ *       instantaneous `735`-Crit Continental Sunder burst + `7` full-stage `Row 7` Volcanic Geysers!
  */
 export class Titan extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -18,17 +44,17 @@ export class Titan extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Torgar',
-      maxHp: 4500,
-      moveSpeed: 196,
-      attackRange: 198,
-      autoInterval: 0.90,
+      maxHp: 4390,
+      moveSpeed: 192,
+      attackRange: 200,
+      autoInterval: 0.94,
       lightColor: 'rgba(245, 158, 11, 1)',
       primaryColor: '#f59e0b'
     });
     this.heroId = 'titan';
     this.deathSfx = 'death_titan';
-    this.skillName = 'ANVIL CANNONBALL';
-    this.ultName = 'RAGNAROK FORGE';
+    this.skillName = 'WORLD-ANVIL CATACLYSM';
+    this.ultName = 'RAGNAROK WORLD-FORGE';
     this.hasTrueUltimate = true;
     this.trueUltName = 'GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER';
     this.trueUltDuration = 4.55;
@@ -38,25 +64,44 @@ export class Titan extends Fighter {
     this.theme = 'forge';
     this.hasPoise = true;
     this.unstoppablePoise = false;
-    this.skillTriggerRange = 460;
-    this.skillMaxCooldown = 4.18;
-    this.dashMaxCooldown = 2.65;
-    this.autoDuration = 0.86;
+    this.skillTriggerRange = 465;
+    this.skillMaxCooldown = 4.85;
+    this.dashMaxCooldown = 2.75;
+    this.autoDuration = 0.88;
     this.skillDuration = 0.94;
     this.ultDuration = 5.0;
-    this.crouchDuration = 0.78;
+    this.crouchDuration = 0.80;
     this.dashDuration = 0.42;
     this.comboStep = 0;
+    this._activeComboStage = 0;
     this.stepDustTimer = 0;
 
-    // Torgar Unique Juggernaut Mechanics:
-    // 1. Magma Armor Fortify timer (damage reduction + molten thorn reflection in Fighter.js)
+    // Torgar v5 Sovereign Mechanics:
+    // 1. Orbiting Molten Crucible Cores (`0..5`) + Bulwark reactive ICD
+    this.crucibleStacks = 2;
+    this.maxCrucibleStacks = 5;
+    this._crucibleGainIcd = 0;
+    this._crucibleOrbitPhase = 0;
+
+    // 2. Magma Bulwark Fortify timer (`44%` DR + super-armor + molten thorn reflect in Fighter.js)
     this.forgeArmorTimer = 0;
-    // 2. Physical Runic Anvil (summoned on floor, then smashed horizontally like a cannonball!)
+
+    // 3. Persistent World-Forge Anvil Altar (`Row 3` Mandala + `Row 1` Horned Anvil construct)
+    this.worldAnvilAltar = null;
+
+    // 4. Ricocheting Anvil Cannonball (`Row 1` Horned Anvil projectile with 1 wall rebound)
     this.activeAnvil = null;
-    // 3. Giant Titan Scale during Ragnarok Ultimate
+
+    // 5. Traveling Tectonic Magma-Jade Fissure Waves (`Row 0`, Stage-1 Auto magnetic pull wave)
+    this.fissureWaves = [];
+
+    // 6. Khazad Forge-God Ancestor Spirit manifestation timer
+    this.ancestorSpiritTimer = 0;
+
+    // 7. Giant Titan Scale during Ragnarok Overdrive & Continental Sunder
     this.giantScale = 1.0;
-    // 4. Active 30fps `titan_vfx.png` cell animations
+
+    // 8. Active 30fps `titan_vfx.png` cell animations
     this.activeVfxAnims = [];
 
     // Native 120Hz dual-buffer HD-2D World-Forge shader & particle runtime (`back` + `front` 2.5D layers)
@@ -70,13 +115,172 @@ export class Titan extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
-      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps53')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps65';
+      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps66')) {
+        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps66';
+      }
+      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps66')) {
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps66';
       }
     }
   }
 
+  getActiveEnemies(enemy, game) {
+    const raw = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+    return raw.filter((t) => t && !t.isDead && !t.isBenched);
+  }
+
+  gainCrucibleCore(amount = 1, game = null) {
+    const prev = this.crucibleStacks;
+    this.crucibleStacks = Math.max(0, Math.min(this.maxCrucibleStacks, this.crucibleStacks + amount));
+    if (prev < this.maxCrucibleStacks && this.crucibleStacks >= this.maxCrucibleStacks) {
+      if (this.fx) {
+        this.fx.spawn('moltenAnvilSparks', this.x, this.y - 84, {
+          flip: this.facing < 0,
+          palette: FORGE_JADE_PALETTE,
+          light: 1.35
+        });
+      }
+      const g = game || this.game;
+      g?.vfx?.spawnDamageText?.(
+        this.x,
+        this.y - 166,
+        0,
+        false,
+        '★ CRUCIBLE MAX TEMPER! ★',
+        '#10b981'
+      );
+    }
+  }
+
+  triggerWorldBreakerTemper(targetX, enemy, game) {
+    if (this.crucibleStacks < this.maxCrucibleStacks) return false;
+    this.crucibleStacks = Math.max(0, this.crucibleStacks - 3);
+    this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.85);
+    this.heal(48, 'WORLD-BREAKER TEMPER');
+
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const obeliskX = Math.max(75, Math.min(ww - 75, targetX));
+    this.fx?.spawn('tectonicCraterSlam', obeliskX, this.groundY - 4, {
+      flip: this.facing < 0,
+      palette: FORGE_JADE_PALETTE,
+      light: 1.38,
+      extra: { maxRx: 132 }
+    });
+    this.spawnSheetBurst(2, obeliskX, this.groundY - 84, {
+      w: 232,
+      h: 232,
+      maxLife: 0.56,
+      flipX: this.facing < 0,
+      glowColor: 'emerald',
+      inFront: false
+    });
+    game?.vfx?.spawnDamageText?.(
+      this.x,
+      this.y - 172,
+      0,
+      true,
+      '★ WORLD-BREAKER TEMPER! ★',
+      '#34d399'
+    );
+
+    for (const t of this.getActiveEnemies(enemy, game)) {
+      if (Math.abs(t.x - obeliskX) <= 150) {
+        t.takeDamage(30, this, true, 110 * this.facing, -185);
+      }
+    }
+    return true;
+  }
+
+  manifestAncestorAvatar(duration = 0.72, light = 1.42) {
+    this.ancestorSpiritTimer = Math.max(this.ancestorSpiritTimer, duration);
+    if (!this.fx) return;
+    this.fx.spawn('khazadForgeAncestorAvatar', this.x - this.facing * 22, this.y - 102, {
+      follow: this,
+      offsetX: -this.facing * 22,
+      offsetY: -102,
+      flip: this.facing < 0,
+      palette: FORGE_GOLD_PALETTE,
+      light,
+      maxDuration: duration
+    });
+  }
+
+  triggerAnvilResonance(enemy, game, dmgBase = 36) {
+    const altar = this.worldAnvilAltar;
+    if (!altar || altar.life <= 0 || altar.resonanceCd > 0) return false;
+    altar.resonanceCd = 0.65;
+
+    const ax = altar.x;
+    game?.audio?.play?.('clang', ax);
+    game?.renderer?.triggerShake?.(9, 0.18);
+
+    this.fx?.spawn('tectonicCraterSlam', ax, this.groundY - 4, {
+      flip: this.facing < 0,
+      palette: FORGE_JADE_PALETTE,
+      light: 1.36,
+      extra: { maxRx: 142 }
+    });
+    this.fx?.spawn('moltenAnvilSparks', ax, this.groundY - 64, {
+      flip: this.facing < 0,
+      palette: FORGE_JADE_PALETTE,
+      light: 1.32
+    });
+    this.spawnSheetBurst(4, ax, this.groundY - 66, {
+      w: 228,
+      h: 228,
+      maxLife: 0.42,
+      flipX: this.facing < 0,
+      glowColor: 'emerald',
+      inFront: true
+    });
+    this.spawnSheetBurst(2, ax, this.groundY - 82, {
+      w: 216,
+      h: 216,
+      maxLife: 0.48,
+      flipX: this.facing < 0,
+      glowColor: 'gold',
+      inFront: false
+    });
+
+    game?.vfx?.spawnDamageText?.(
+      ax,
+      this.groundY - 142,
+      0,
+      true,
+      '✦ ANVIL RESONANCE! ✦',
+      '#34d399'
+    );
+
+    let hitAny = false;
+    for (const t of this.getActiveEnemies(enemy, game)) {
+      if (Math.abs(t.x - ax) <= 188) {
+        const pullDir = ax >= t.x ? 1 : -1;
+        t.takeDamage(dmgBase, this, true, pullDir * 105, -175);
+        hitAny = true;
+      }
+    }
+    return hitAny;
+  }
+
+  takeDamage(amount, attacker, isCrit = false, knockX = 0, knockY = 0) {
+    const prevHp = this.hp;
+    super.takeDamage(amount, attacker, isCrit, knockX, knockY);
+    if (
+      !this.isDead &&
+      prevHp > this.hp &&
+      (this.forgeArmorTimer > 0 || this.isDeflecting) &&
+      this._crucibleGainIcd <= 0
+    ) {
+      this._crucibleGainIcd = 0.85;
+      this.gainCrucibleCore(1, this.game);
+      this.gainMana(1.0);
+    }
+  }
+
   setState(newState) {
+    if (newState === 'AUTO_ATTACK') {
+      this._activeComboStage = this.comboStep;
+    }
     super.setState(newState);
     if (newState !== 'ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
       this.giantScale = 1.0;
@@ -99,8 +303,9 @@ export class Titan extends Fighter {
   }
 
   getEffectiveAttackRange() {
-    // Tectonic ground slams ripple 225px across the arena floor
-    return this.comboStep === 2 ? 225 : 195;
+    if (this.comboStep === 0) return 245;
+    if (this.comboStep === 2) return 232;
+    return 204;
   }
 
   spawnVfxAnim(row, x, y, w = 208, h = 208, maxLife = 0.44, opts = {}) {
@@ -137,6 +342,20 @@ export class Titan extends Fighter {
     );
   }
 
+  spawnFissureWave(startX, dir) {
+    this.fissureWaves.push({
+      x: startX,
+      y: this.groundY,
+      startX,
+      dir,
+      vx: dir * 560,
+      maxDist: 390,
+      age: 0,
+      maxLife: 0.72,
+      hitTargets: new Set()
+    });
+  }
+
   ensureForgeMagmaMantle() {
     if (!this.fx) return;
     if (this.isDead || this.state === 'DEATH') {
@@ -144,7 +363,7 @@ export class Titan extends Fighter {
       this._mantleSlot = null;
       return;
     }
-    const isFortified = this.forgeArmorTimer > 0;
+    const isFortified = this.forgeArmorTimer > 0 || this.crucibleStacks >= this.maxCrucibleStacks;
     let slot = this.fx.active.find((s) => s.key === 'forgeMagmaMantle');
     if (!slot) {
       slot = this.fx.spawn('forgeMagmaMantle', this.x, this.y - 78, {
@@ -153,7 +372,7 @@ export class Titan extends Fighter {
         offsetY: -78,
         flip: false,
         palette: FORGE_GOLD_PALETTE,
-        light: 1.16,
+        light: 1.18,
         extra: { fortified: isFortified }
       });
     } else if (slot.inst?.cfg) {
@@ -165,6 +384,19 @@ export class Titan extends Fighter {
   update(dt, enemy, game) {
     if (this.forgeArmorTimer > 0) {
       this.forgeArmorTimer = Math.max(0, this.forgeArmorTimer - dt);
+    }
+    if (this._crucibleGainIcd > 0) {
+      this._crucibleGainIcd = Math.max(0, this._crucibleGainIcd - dt);
+    }
+    if (this.ancestorSpiritTimer > 0) {
+      this.ancestorSpiritTimer = Math.max(0, this.ancestorSpiritTimer - dt);
+    }
+    this._crucibleOrbitPhase += dt * (this.crucibleStacks >= this.maxCrucibleStacks ? 4.4 : 2.8);
+
+    if (this.isDead) {
+      this.worldAnvilAltar = null;
+      this.activeAnvil = null;
+      this.fissureWaves.length = 0;
     }
 
     // 1. Step Active 30fps `titan_vfx.png` Cell Animations
@@ -183,23 +415,94 @@ export class Titan extends Fighter {
       }
     }
 
-    // 2. Maintain 2.5D Orbiting Forge Magma Mantle & Step 120Hz `ArcaneShaderFX`
-    this.ensureForgeMagmaMantle();
-    if (this.fx) {
-      this.fx.update(dt);
+    // 2. Step Traveling Tectonic Magma-Jade Fissure Waves (`Row 0`, Magnetic Pull Wave)
+    if (this.fissureWaves.length > 0 && game) {
+      const ww = game.renderer ? game.renderer.worldWidth : 1200;
+      const targets = this.getActiveEnemies(enemy, game);
+      for (let i = this.fissureWaves.length - 1; i >= 0; i--) {
+        const wv = this.fissureWaves[i];
+        wv.age += dt;
+        wv.x += wv.vx * dt;
+
+        for (const t of targets) {
+          if (!wv.hitTargets.has(t) && Math.abs(t.x - wv.x) < 62 && Math.abs(t.y - wv.y) < 96) {
+            wv.hitTargets.add(t);
+            // Pull kiting enemy inward toward Torgar!
+            const pullSign = this.x >= t.x ? 1 : -1;
+            t.x = Math.max(65, Math.min(ww - 65, t.x + pullSign * 38));
+            t.takeDamage(24, this, false, pullSign * 85, -88);
+            this.gainMana(1.0);
+            game.vfx?.spawnDamageText?.(t.x, t.y - 146, 0, false, 'MAGNETIC FISSURE!', '#34d399');
+            this.fx?.spawn('moltenAnvilSparks', t.x, this.groundY - 36, {
+              flip: wv.dir < 0,
+              palette: FORGE_JADE_PALETTE,
+              light: 1.22
+            });
+          }
+        }
+
+        // Passing through a planted World-Anvil Altar rings a mini-resonance!
+        if (
+          this.worldAnvilAltar &&
+          this.worldAnvilAltar.resonanceCd <= 0 &&
+          Math.abs(wv.x - this.worldAnvilAltar.x) < 42
+        ) {
+          this.triggerAnvilResonance(enemy, game, 28);
+        }
+
+        if (
+          wv.age >= wv.maxLife ||
+          Math.abs(wv.x - wv.startX) >= wv.maxDist ||
+          wv.x < 45 ||
+          wv.x > ww - 45
+        ) {
+          this.fissureWaves.splice(i, 1);
+        }
+      }
     }
 
-    // 3. Update Physical Runic Forge Anvil (sits on floor, then flies horizontally when smashed!)
+    // 3. Step Persistent World-Forge Anvil Altar (`this.worldAnvilAltar`, `3.8s`)
+    if (this.worldAnvilAltar && game) {
+      const altar = this.worldAnvilAltar;
+      altar.age += dt;
+      altar.life -= dt;
+      if (altar.resonanceCd > 0) altar.resonanceCd = Math.max(0, altar.resonanceCd - dt);
+      if (altar.dashBoostCd > 0) altar.dashBoostCd = Math.max(0, altar.dashBoostCd - dt);
+
+      altar.pulseTimer -= dt;
+      if (altar.pulseTimer <= 0 && altar.life > 0.25) {
+        altar.pulseTimer = 1.35;
+        const ww = game.renderer ? game.renderer.worldWidth : 1200;
+        this.fx?.spawn('tectonicCraterSlam', altar.x, this.groundY - 4, {
+          flip: altar.dir < 0,
+          palette: FORGE_JADE_PALETTE,
+          light: 1.18,
+          extra: { maxRx: 108 }
+        });
+        for (const t of this.getActiveEnemies(enemy, game)) {
+          if (Math.abs(t.x - altar.x) <= 185) {
+            const pullSign = altar.x >= t.x ? 1 : -1;
+            t.x = Math.max(65, Math.min(ww - 65, t.x + pullSign * 28));
+            t.takeDamage(10, this, false, pullSign * 45, -40);
+          }
+        }
+      }
+
+      if (altar.life <= 0) {
+        this.worldAnvilAltar = null;
+      }
+    }
+
+    // 4. Step Ricocheting Anvil Cannonball (`this.activeAnvil`)
     if (this.activeAnvil && game) {
       const a = this.activeAnvil;
       a.age += dt;
       if (a.state === 'flying') {
         a.x += a.vx * dt;
-        a.rot += a.dir * dt * 11.5;
         a.trailAccum = (a.trailAccum || 0) + dt;
         if (a.trailAccum >= 0.032) {
           a.trailAccum = 0;
-          this.fx.burst(a.x - a.dir * 20, a.y - 38, {
+          this.fx?.burst(a.x - a.dir * 20, a.y - 42, {
             count: 3,
             speedMin: 35,
             speedMax: 110,
@@ -211,70 +514,94 @@ export class Titan extends Fighter {
             colors: ['#ffffff', '#fde047', '#f59e0b', '#10b981']
           });
         }
-        const targets = game.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+
+        const ww = game.renderer ? game.renderer.worldWidth : 1200;
+        const targets = this.getActiveEnemies(enemy, game);
         for (const t of targets) {
-          if (t && !t.isDead && !t.isBenched && !a.hitTargets.has(t)) {
-            if (Math.abs(t.x - a.x) < 68 && Math.abs(t.y - a.y) < 110) {
-              a.hitTargets.add(t);
-              t.takeDamage(118, this, true, 340, -165);
-              if (game.audio) game.audio.play('thunder_slam', t.x);
-              game.renderer.triggerShake(11, 0.22);
-              game.renderer.triggerHitStop(0.05);
+          if (!a.hitTargets.has(t) && Math.abs(t.x - a.x) < 66 && Math.abs(t.y - a.y) < 110) {
+            a.hitTargets.add(t);
+            const hitDmg = a.rebounded ? 54 : 82;
+            t.takeDamage(hitDmg, this, true, a.dir * 265, -155);
+            this.gainCrucibleCore(1, game);
+            if (game.audio) game.audio.play('thunder_slam', t.x);
+            game.renderer?.triggerShake?.(11, 0.22);
+            game.renderer?.triggerHitStop?.(0.045);
 
-              this.fx.spawn('tectonicCraterSlam', t.x, this.groundY - 6, {
+            this.fx?.spawn('tectonicCraterSlam', t.x, this.groundY - 6, {
+              flip: a.dir < 0,
+              palette: a.rebounded ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
+              light: 1.28,
+              extra: { maxRx: 124 }
+            });
+            this.spawnSheetBurst(4, t.x, t.y - 68, {
+              w: 224,
+              h: 224,
+              maxLife: 0.40,
+              flipX: a.dir < 0,
+              glowColor: a.rebounded ? 'emerald' : 'gold',
+              inFront: true
+            });
+
+            if (t.x <= 185 || t.x >= ww - 185) {
+              t.takeDamage(34, this, true, -a.dir * 135, -205);
+              game.vfx?.spawnDamageText?.(
+                t.x,
+                t.y - 165,
+                0,
+                true,
+                '★ ANVIL WALL-CRUSH! ★',
+                '#fef08a'
+              );
+              this.fx?.spawn('moltenAnvilSparks', t.x, t.y - 54, {
                 flip: a.dir < 0,
-                palette: FORGE_GOLD_PALETTE,
-                light: 1.28,
-                extra: { maxRx: 124 }
+                palette: FORGE_JADE_PALETTE,
+                light: 1.38
               });
-              this.spawnSheetBurst(4, t.x, t.y - 68, {
-                w: 224,
-                h: 224,
-                maxLife: 0.40,
-                flipX: a.dir < 0,
-                glowColor: 'gold',
-                inFront: true
-              });
-
-              // Check if enemy is slammed into or near the arena wall for WALL CRUSH bonus!
-              const ww = game.renderer ? game.renderer.worldWidth : 1200;
-              if (t.x <= 185 || t.x >= ww - 185) {
-                t.takeDamage(58, this, true, -140, -220);
-                game.vfx.spawnDamageText(
-                  t.x,
-                  t.y - 165,
-                  0,
-                  true,
-                  '★ ANVIL WALL-CRUSH! ★',
-                  '#fef08a'
-                );
-                this.fx.spawn('moltenAnvilSparks', t.x, t.y - 54, {
-                  flip: a.dir < 0,
-                  palette: FORGE_JADE_PALETTE,
-                  light: 1.38
-                });
-                this.spawnSheetBurst(3, t.x, this.groundY - 64, {
-                  w: 220,
-                  h: 220,
-                  maxLife: 0.44,
-                  flipX: a.dir < 0,
-                  glowColor: 'emerald',
-                  inFront: false
-                });
-              }
             }
           }
         }
-        const ww = game.renderer ? game.renderer.worldWidth : 1200;
-        if (a.x < 40 || a.x > ww - 40 || a.age > 1.65) {
-          this.fx.spawn('moltenAnvilSparks', a.x, a.y - 38, {
+
+        // Wall-Ricochet Rebound Check (`bouncesLeft > 0`)!
+        if ((a.x <= 64 || a.x >= ww - 64) && a.bouncesLeft > 0) {
+          a.bouncesLeft -= 1;
+          a.rebounded = true;
+          a.x = Math.max(66, Math.min(ww - 66, a.x));
+          a.dir = -a.dir;
+          a.vx = a.dir * 820;
+          a.hitTargets.clear();
+
+          game.audio?.play?.('clang', a.x);
+          game.renderer?.triggerShake?.(9, 0.16);
+          game.vfx?.spawnDamageText?.(
+            a.x,
+            this.groundY - 128,
+            0,
+            true,
+            '★ ANVIL WALL-RICOCHET! ★',
+            '#34d399'
+          );
+          this.fx?.spawn('moltenAnvilSparks', a.x, a.y - 44, {
+            flip: a.dir < 0,
+            palette: FORGE_JADE_PALETTE,
+            light: 1.36
+          });
+          this.spawnSheetBurst(4, a.x, a.y - 54, {
+            w: 212,
+            h: 212,
+            maxLife: 0.36,
+            flipX: a.dir < 0,
+            glowColor: 'emerald',
+            inFront: true
+          });
+        } else if (a.x < 36 || a.x > ww - 36 || a.age > 2.35) {
+          this.fx?.spawn('moltenAnvilSparks', a.x, a.y - 38, {
             flip: a.dir < 0,
             palette: FORGE_GOLD_PALETTE,
             light: 1.22
           });
           this.spawnSheetBurst(4, a.x, a.y - 52, {
-            w: 208,
-            h: 208,
+            w: 204,
+            h: 204,
             maxLife: 0.34,
             flipX: a.dir < 0,
             glowColor: 'gold',
@@ -282,23 +609,21 @@ export class Titan extends Fighter {
           });
           this.activeAnvil = null;
         }
-      } else if (a.state === 'planted') {
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - a.x) < 48 && Math.abs(enemy.y - a.y) < 75) {
-          const push = enemy.x >= a.x ? 1 : -1;
-          enemy.x += push * (48 - Math.abs(enemy.x - a.x));
-        }
-        if (a.age > 1.5) {
-          this.activeAnvil = null;
-        }
       }
+    }
+
+    // 5. Maintain 2.5D Orbiting Forge Magma Mantle & Step 120Hz `ArcaneShaderFX`
+    this.ensureForgeMagmaMantle();
+    if (this.fx) {
+      this.fx.update(dt);
     }
 
     if (!this.isDead && this.state === 'WALK') {
       this.stepDustTimer += dt;
       if (this.stepDustTimer >= 0.36) {
         this.stepDustTimer = 0;
-        if (game.audio) game.audio.play('footstep_steel', this.x);
-        this.fx.burst(this.x - this.facing * 14, this.groundY - 2, {
+        if (game?.audio) game.audio.play('footstep_steel', this.x);
+        this.fx?.burst(this.x - this.facing * 14, this.groundY - 2, {
           count: 5,
           speedMin: 25,
           speedMax: 75,
@@ -322,73 +647,73 @@ export class Titan extends Fighter {
   }
 
   startCrouch(_enemy, game) {
-    this.crouchDuration = 0.82;
+    this.crouchDuration = 0.80;
     this.setState('CROUCH');
     this.isCrouching = true;
     this.isDeflecting = true;
-    this.forgeArmorTimer = 2.3;
-    this.heal(40, 'FORGE TEMPER');
+    this.forgeArmorTimer = 1.65;
+    this.gainCrucibleCore(1, game);
+    this.heal(26, 'FORGE TEMPER');
     this.vx = 0;
     const frontX = this.x + this.facing * 118;
 
-    this.fx.spawn('runicBulwarkDome', this.x, this.y - 78, {
+    this.fx?.spawn('runicBulwarkDome', this.x, this.y - 78, {
       follow: this,
       offsetX: 0,
       offsetY: -78,
       flip: this.facing < 0,
       palette: FORGE_GOLD_PALETTE,
-      light: 1.2
+      light: 1.22
     });
-    this.spawnSheetBurst(1, this.x + this.facing * 26, this.y - 78, {
-      w: 212,
-      h: 212,
-      maxLife: 0.52,
+    this.spawnSheetBurst(3, this.x, this.groundY - 46, {
+      w: 204,
+      h: 204,
+      maxLife: 0.48,
       followOwner: true,
-      offsetX: 26,
-      offsetY: -78,
+      offsetX: 0,
+      offsetY: -46,
       flipX: this.facing < 0,
-      glowColor: 'gold',
-      inFront: true
+      glowColor: 'emerald',
+      inFront: false
     });
 
-    if (game && game.audio) game.audio.play('clang', frontX);
-    if (game && game.vfx) {
-      game.vfx.spawnDamageText(
-        this.x,
-        this.y - 148,
-        0,
-        false,
-        'MAGMA ARMOR FORTIFY!',
-        '#fbbf24'
-      );
-    }
+    if (game?.audio) game.audio.play('clang', frontX);
+    game?.vfx?.spawnDamageText?.(
+      this.x,
+      this.y - 148,
+      0,
+      false,
+      'MAGMA BULWARK!',
+      '#fbbf24'
+    );
   }
 
   updateCrouch(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.crouchDuration || 0.82;
+    const dur = this.crouchDuration || 0.80;
     this.vx *= Math.pow(0.001, dt);
-    this.isDeflecting = t < 0.65;
+    this.isDeflecting = t < 0.64;
 
-    // Deflect incoming enemy projectiles with molten anvil clang in front of Torgar
-    if (this.isDeflecting && game && game.vfx) {
+    // Deflect incoming enemy projectiles with molten anvil clang
+    if (this.isDeflecting && game?.vfx) {
       for (const proj of game.vfx.projectiles) {
         if (
           proj.owner !== this &&
           (!this.team || !proj.owner?.team || proj.owner.team !== this.team) &&
-          Math.abs(proj.x - (this.x + this.facing * 60)) < 115
+          Math.abs(proj.x - (this.x + this.facing * 60)) < 118
         ) {
           proj.owner = this;
-          proj.vx = -proj.vx * 1.25;
+          proj.vx = -proj.vx * 1.28;
           proj.vy = -Math.abs(proj.vy) * 0.4;
           proj.color = '#f59e0b';
-          this.gainMana(12);
+          this.gainMana(8);
+          this.gainCrucibleCore(1, game);
           if (game.audio) game.audio.play('clang', proj.x);
           game.vfx.spawnDamageText(this.x, this.y - 156, 0, false, 'ANVIL DEFLECT!', '#fef08a');
-          this.spawnSheetBurst(1, proj.x, proj.y, {
-            w: 196,
-            h: 196,
-            maxLife: 0.32,
+          this.spawnSheetBurst(4, proj.x, proj.y, {
+            w: 192,
+            h: 192,
+            maxLife: 0.30,
             flipX: this.facing < 0,
             glowColor: 'gold',
             inFront: true
@@ -397,18 +722,18 @@ export class Titan extends Fighter {
       }
     }
 
-    // At t = 0.36s: Erupt a Molten Magma Hammer-Slam Nova IN FRONT of Torgar (never on his feet!)
-    if (t >= 0.36 && !this.didActionFrame) {
+    // At t = 0.35s: Erupt a Molten Magma Hammer-Slam Nova IN FRONT of Torgar + Anvil Resonance
+    if (t >= 0.35 && !this.didActionFrame) {
       this.didActionFrame = true;
       const slamX = this.x + this.facing * 124;
-      if (game.audio) game.audio.play('thunder_slam', slamX);
-      game.renderer.triggerShake(8, 0.18);
+      if (game?.audio) game.audio.play('thunder_slam', slamX);
+      game?.renderer?.triggerShake?.(8, 0.18);
 
-      this.fx.spawn('tectonicCraterSlam', slamX, this.groundY - 6, {
+      this.fx?.spawn('tectonicCraterSlam', slamX, this.groundY - 6, {
         flip: this.facing < 0,
         palette: FORGE_GOLD_PALETTE,
         light: 1.24,
-        extra: { maxRx: 112 }
+        extra: { maxRx: 116 }
       });
       this.spawnSheetBurst(4, slamX, this.groundY - 68, {
         w: 220,
@@ -419,10 +744,13 @@ export class Titan extends Fighter {
         inFront: true
       });
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - slamX) <= 185) {
-        enemy.takeDamage(48, this, false, 235, -165);
-        game.vfx.spawnDamageText(enemy.x, enemy.y - 150, 0, false, 'MOLTEN NOVA!', '#fbbf24');
+      for (const foe of this.getActiveEnemies(enemy, game)) {
+        if (Math.abs(foe.x - slamX) <= 185) {
+          foe.takeDamage(34, this, false, this.facing * 215, -155);
+          game?.vfx?.spawnDamageText?.(foe.x, foe.y - 150, 0, false, 'MOLTEN NOVA!', '#fbbf24');
+        }
       }
+      this.triggerAnvilResonance(enemy, game, 30);
     }
 
     if (t >= dur) {
@@ -436,7 +764,7 @@ export class Titan extends Fighter {
     this.dashDuration = 0.62;
     this.setState('JUMP');
     this.isInvulnerable = true;
-    const ww = game.renderer.worldWidth;
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     let dir = this.facing;
     if (enemy && !enemy.isDead) {
       dir = Math.sign(enemy.x - this.x) || this.facing;
@@ -444,35 +772,34 @@ export class Titan extends Fighter {
     this.dashDir = dir;
     this.isFlipVault = true;
     this.vaultStartX = this.x;
-    const targetDist = enemy && !enemy.isDead ? Math.min(220, Math.max(85, Math.abs(enemy.x - this.x) - 115)) : 145;
+    const targetDist =
+      enemy && !enemy.isDead ? Math.min(220, Math.max(85, Math.abs(enemy.x - this.x) - 110)) : 145;
     this.vaultTargetX = Math.max(85, Math.min(ww - 85, this.x + dir * targetDist));
     this.vx = 0;
     this.vy = 0;
 
-    this.fx.spawn('moltenAnvilSparks', this.x, this.groundY - 12, {
+    this.fx?.spawn('moltenAnvilSparks', this.x, this.groundY - 12, {
       flip: this.facing < 0,
       palette: FORGE_GOLD_PALETTE,
       light: 1.15
     });
 
-    if (game && game.audio) game.audio.play('dash_whoosh', this.x);
-    if (game && game.vfx) {
-      game.vfx.spawnDamageText(
-        this.x,
-        this.y - 144,
-        0,
-        false,
-        'TECTONIC CRUSH LEAP!',
-        '#fbbf24'
-      );
-    }
+    if (game?.audio) game.audio.play('dash_whoosh', this.x);
+    game?.vfx?.spawnDamageText?.(
+      this.x,
+      this.y - 144,
+      0,
+      false,
+      'TECTONIC CRUSH LEAP!',
+      '#fbbf24'
+    );
   }
 
   onStartDash(_enemy, game, _dir) {
     this.isFlipVault = false;
     this.unstoppablePoise = true;
 
-    this.fx.spawn('runicBulwarkDome', this.x, this.y - 78, {
+    this.fx?.spawn('runicBulwarkDome', this.x, this.y - 78, {
       follow: this,
       offsetX: 0,
       offsetY: -78,
@@ -481,17 +808,15 @@ export class Titan extends Fighter {
       light: 1.16
     });
 
-    if (game && game.audio) game.audio.play('dash_whoosh', this.x);
-    if (game && game.vfx) {
-      game.vfx.spawnDamageText(
-        this.x,
-        this.y - 144,
-        0,
-        false,
-        'JUGGERNAUT BULL-RUSH!',
-        '#f59e0b'
-      );
-    }
+    if (game?.audio) game.audio.play('dash_whoosh', this.x);
+    game?.vfx?.spawnDamageText?.(
+      this.x,
+      this.y - 144,
+      0,
+      false,
+      'JUGGERNAUT BULL-RUSH!',
+      '#f59e0b'
+    );
   }
 
   updateDashOrDodge(_dt, enemy, game) {
@@ -502,7 +827,7 @@ export class Titan extends Fighter {
     if (this.isFlipVault) {
       const easeU = 1 - Math.pow(1 - u, 1.55);
       this.x = this.vaultStartX + (this.vaultTargetX - this.vaultStartX) * easeU;
-      const jumpHeight = 58;
+      const jumpHeight = 60;
       this.y = this.groundY - Math.sin(u * Math.PI) * jumpHeight;
       this.vx = 0;
       this.vy = 0;
@@ -510,15 +835,15 @@ export class Titan extends Fighter {
       if (u >= 0.82 && !this.didActionFrame) {
         this.didActionFrame = true;
         this.y = this.groundY;
-        const slamX = this.x + this.facing * 128;
-        if (game.audio) game.audio.play('thunder_slam', slamX);
-        game.renderer.triggerShake(10, 0.22);
+        const slamX = this.x + this.facing * 124;
+        if (game?.audio) game.audio.play('thunder_slam', slamX);
+        game?.renderer?.triggerShake?.(10, 0.22);
 
-        this.fx.spawn('tectonicCraterSlam', slamX, this.groundY - 6, {
+        this.fx?.spawn('tectonicCraterSlam', slamX, this.groundY - 6, {
           flip: this.facing < 0,
           palette: FORGE_JADE_PALETTE,
           light: 1.28,
-          extra: { maxRx: 124 }
+          extra: { maxRx: 128 }
         });
         this.spawnSheetBurst(4, slamX, this.groundY - 68, {
           w: 224,
@@ -529,10 +854,13 @@ export class Titan extends Fighter {
           inFront: true
         });
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - slamX) <= 215 && enemy.y >= this.groundY - 70) {
-          enemy.takeDamage(68, this, true, 165, -210);
-          game.vfx.spawnDamageText(enemy.x, enemy.y - 155, 0, true, 'SEISMIC SLAM!', '#fef08a');
+        for (const foe of this.getActiveEnemies(enemy, game)) {
+          if (Math.abs(foe.x - slamX) <= 210 && foe.y >= this.groundY - 75) {
+            foe.takeDamage(48, this, true, this.facing * 155, -200);
+            game?.vfx?.spawnDamageText?.(foe.x, foe.y - 155, 0, true, 'SEISMIC SLAM!', '#fef08a');
+          }
         }
+        this.triggerAnvilResonance(enemy, game, 34);
       }
 
       if (t >= dur) {
@@ -544,28 +872,55 @@ export class Titan extends Fighter {
       return;
     }
 
-    const rushSpeed = 520 * (1 - u * 0.45);
+    const rushSpeed = 515 * (1 - u * 0.45);
     this.vx = this.dashDir * rushSpeed;
-    if (enemy && !enemy.isDead && !this.didActionFrame && Math.abs(enemy.x - this.x) < 115) {
-      this.didActionFrame = true;
-      enemy.takeDamage(52, this, false, 240, -145);
-      if (game.audio) game.audio.play('heavy_cleave', this.x);
-      game.renderer.triggerShake(7, 0.16);
-      game.vfx.spawnDamageText(enemy.x, enemy.y - 150, 0, false, 'SHOULDER RAM!', '#fbbf24');
-      this.fx.spawn('forgeHammerArc', this.x + this.facing * 52, this.y - 82, {
-        flip: this.facing < 0,
-        palette: FORGE_GOLD_PALETTE,
-        light: 1.2,
-        extra: { radius: 28, width: 10.5, isFinisher: false }
-      });
-      this.spawnSheetBurst(1, enemy.x, enemy.y - 78, {
-        w: 196,
-        h: 196,
-        maxLife: 0.34,
-        flipX: this.facing < 0,
-        glowColor: 'gold',
-        inFront: true
-      });
+
+    // Interactive World-Anvil Synergy: Bull-Rushing through the planted Altar supercharges Torgar!
+    if (
+      this.worldAnvilAltar &&
+      this.worldAnvilAltar.dashBoostCd <= 0 &&
+      Math.abs(this.x - this.worldAnvilAltar.x) < 76
+    ) {
+      this.worldAnvilAltar.dashBoostCd = 2.2;
+      this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.65);
+      this.gainCrucibleCore(1, game);
+      this.triggerAnvilResonance(enemy, game, 32);
+      game?.audio?.play?.('clang', this.worldAnvilAltar.x);
+      game?.vfx?.spawnDamageText?.(
+        this.worldAnvilAltar.x,
+        this.groundY - 135,
+        0,
+        true,
+        '✦ CRUCIBLE OVERCHARGE! ✦',
+        '#34d399'
+      );
+    }
+
+    if (!this.didActionFrame) {
+      for (const foe of this.getActiveEnemies(enemy, game)) {
+        if (Math.abs(foe.x - this.x) < 116) {
+          this.didActionFrame = true;
+          foe.takeDamage(38, this, false, this.dashDir * 225, -135);
+          if (game?.audio) game.audio.play('heavy_cleave', this.x);
+          game?.renderer?.triggerShake?.(7, 0.16);
+          game?.vfx?.spawnDamageText?.(foe.x, foe.y - 150, 0, false, 'SHOULDER RAM!', '#fbbf24');
+          this.fx?.spawn('forgeHammerArc', this.x + this.facing * 52, this.y - 82, {
+            flip: this.facing < 0,
+            palette: FORGE_GOLD_PALETTE,
+            light: 1.2,
+            extra: { radius: 28, width: 10.5, isFinisher: false }
+          });
+          this.spawnSheetBurst(4, foe.x, foe.y - 68, {
+            w: 196,
+            h: 196,
+            maxLife: 0.34,
+            flipX: this.facing < 0,
+            glowColor: 'gold',
+            inFront: true
+          });
+          break;
+        }
+      }
     }
 
     if (t >= dur) {
@@ -575,149 +930,227 @@ export class Titan extends Fighter {
   }
 
   /**
-   * AutoAttack (2H Figure-8 Anvil-Breaker Combo):
-   *   - Strike 1 (`t = 0.28`): spawns `forgeHammerArc` + `spawnSheetBurst(row 0)` at the impact point
-   *   - Strike 2 (`t = 0.66`): spawns `forgeHammerArc` (flipped angle) + `moltenAnvilSparks` + `spawnSheetBurst(row 4)`
+   * 3-Stage Escalating Auto (`TRINITY OF THE WORLD-MAUL`):
+   *   - Stage 0 (`MAGNETIC FISSURE SWEEP`): Cleave + traveling `Row 0` Magnetic Fissure Wave (`390px`)
+   *   - Stage 1 (`VOLCANIC HORN UPPERCUT`): Crush + rising Siege-Horn Uppercut & `Row 2` Magma-Jade Pillar (`+1` Core)
+   *   - Stage 2 (`WORLD-BREAKER CATACLYSM`): Manifests `khazadForgeAncestorAvatar` + God-Maul Crit Slam +
+   *     World-Breaker Temper (`5` stacks) + Seismic Resonance into `worldAnvilAltar`!
    */
   updateAutoAttack(_dt, enemy, game) {
     const t = this.stateTimer;
     const dir = this.facing;
+    const stage = this._activeComboStage || 0;
     const impactX = this.x + dir * 124;
     const impactY = this.groundY - 6;
 
-    if (t < 0.26) {
+    if (t < 0.25) {
       this.armAngle = -2.35;
     }
 
-    // Strike 1 (`t >= 0.28`): Sweeping 2H Horizontal Anvil-Ram Cleave
-    if (t >= 0.28 && !this.didActionFrame) {
+    // Strike 1 (`t >= 0.26`)
+    if (t >= 0.26 && !this.didActionFrame) {
       this.didActionFrame = true;
-      this.comboStep = (this.comboStep + 1) % 3;
-      this.vx = dir * 115;
+      this.vx = dir * (stage === 2 ? 126 : 108);
       this.armVel = 34;
 
-      if (game.audio) game.audio.play('heavy_cleave', impactX);
-      game.renderer.triggerShake(7, 0.16);
+      if (game?.audio) game.audio.play('heavy_cleave', impactX);
+      game?.renderer?.triggerShake?.(stage === 2 ? 9 : 7, 0.16);
 
-      this.fx.spawn('forgeHammerArc', this.x + dir * 64, this.y - 84, {
+      if (stage === 2) {
+        // Stage 3 Windup: Manifest the towering Khazad Forge-Ancestor behind Torgar!
+        this.manifestAncestorAvatar(0.68, 1.44);
+      }
+
+      this.fx?.spawn('forgeHammerArc', this.x + dir * 64, this.y - 84, {
         flip: dir < 0,
-        palette: FORGE_GOLD_PALETTE,
-        light: 1.24,
+        palette: stage === 2 ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
+        light: 1.26,
         extra: {
-          radius: 30,
-          width: 11.0,
+          radius: stage === 2 ? 32 : 30,
+          width: 11.2,
           flipAngle: false,
-          isFinisher: false
+          isFinisher: stage === 2
         }
       });
-      this.spawnSheetBurst(0, impactX, impactY - 56, {
-        w: 196,
-        h: 196,
-        maxLife: 0.34,
-        flipX: dir < 0,
-        glowColor: 'gold',
-        inFront: true
-      });
 
-      // Launch planted Runic Anvil if struck by Torgar's maul
-      if (
-        this.activeAnvil &&
-        this.activeAnvil.state === 'planted' &&
-        Math.abs(this.activeAnvil.x - impactX) <= 135
-      ) {
-        this.activeAnvil.state = 'flying';
-        this.activeAnvil.dir = dir;
-        this.activeAnvil.vx = dir * 940;
-        this.activeAnvil.age = 0;
+      if (stage === 0) {
+        // Stage 1 Special: Launch traveling `Row 0` Tectonic Magma-Jade Fissure Wave!
+        this.spawnFissureWave(this.x + dir * 92, dir);
+      } else {
+        this.spawnSheetBurst(0, impactX, impactY - 54, {
+          w: 196,
+          h: 196,
+          maxLife: 0.34,
+          flipX: dir < 0,
+          glowColor: stage === 2 ? 'emerald' : 'gold',
+          inFront: true
+        });
       }
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 228) {
-        const isCrit = Math.random() < 0.25;
-        const dmg = 60 * (isCrit ? 1.35 : 1);
-        enemy.takeDamage(dmg, this, isCrit, -65, -115);
-        game.vfx.spawnDamageText(enemy.x, enemy.y - 150, 0, false, 'ANVIL CLEAVE!', '#fbbf24');
-        this.gainMana(3.6);
+      let landed = false;
+      for (const foe of this.getActiveEnemies(enemy, game)) {
+        if (Math.abs(foe.x - this.x) <= 224) {
+          const isCrit = Math.random() < 0.22;
+          const dmg = (stage === 2 ? 45 : 39) * (isCrit ? 1.30 : 1);
+          foe.takeDamage(dmg, this, isCrit, -dir * 50, -104);
+          landed = true;
+        }
+      }
+      if (landed) {
+        this.gainMana(2.8);
       }
     }
 
-    // Strike 2 (`t >= 0.66`): Reverse Backhand Volcanic Horn Hook-Sweep
-    if (t >= 0.66 && !this.didSecondaryAction) {
+    // Strike 2 (`t >= 0.64`)
+    if (t >= 0.64 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
-      const isFinisher = this.comboStep === 0;
-      this.vx = dir * (isFinisher ? 155 : 125);
+      const isFinisher = stage === 2;
+      this.comboStep = (stage + 1) % 3;
+      this.vx = dir * (isFinisher ? 148 : 118);
 
-      if (game.audio) game.audio.play('thunder_slam', impactX);
-      game.renderer.triggerShake(isFinisher ? 10 : 8, 0.18);
+      if (game?.audio) game.audio.play('thunder_slam', impactX);
+      game?.renderer?.triggerShake?.(isFinisher ? 12 : 8, 0.20);
 
-      this.fx.spawn('forgeHammerArc', this.x + dir * 68, this.y - 88, {
+      this.fx?.spawn('forgeHammerArc', this.x + dir * 68, this.y - 88, {
         flip: dir < 0,
-        palette: isFinisher ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
-        light: 1.32,
+        palette: stage >= 1 ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
+        light: 1.34,
         extra: {
-          radius: 33,
-          width: 12.0,
+          radius: isFinisher ? 35 : 32,
+          width: isFinisher ? 12.8 : 11.8,
           flipAngle: true,
-          isFinisher: true
+          isFinisher
         }
       });
-      this.fx.spawn('moltenAnvilSparks', impactX, impactY - 48, {
+      this.fx?.spawn('moltenAnvilSparks', impactX, impactY - 48, {
         flip: dir < 0,
         palette: isFinisher ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
-        light: 1.28
-      });
-      this.spawnSheetBurst(4, impactX, impactY - 62, {
-        w: 212,
-        h: 212,
-        maxLife: 0.38,
-        flipX: dir < 0,
-        glowColor: isFinisher ? 'emerald' : 'gold',
-        inFront: true
+        light: 1.30
       });
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 245) {
-        const isCrit = isFinisher || Math.random() < 0.3;
-        const dmg = (isFinisher ? 82 : 60) * (isCrit ? 1.35 : 1);
-        enemy.takeDamage(dmg, this, isCrit, isFinisher ? 165 : 95, isFinisher ? -215 : -145);
-        if (isFinisher) {
-          game.vfx.spawnDamageText(enemy.x, enemy.y - 162, 0, true, 'WORLD-BREAKER SLAM!', '#10b981');
+      if (stage === 1) {
+        // Stage 2 Rising Volcanic Siege-Horn Uppercut: Erupt grounded `Row 2` Magma-Jade Rune Pillar!
+        const pillarX =
+          enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 245 ? enemy.x : impactX;
+        this.spawnSheetBurst(2, pillarX, this.groundY - 82, {
+          w: 216,
+          h: 216,
+          maxLife: 0.46,
+          flipX: dir < 0,
+          glowColor: 'emerald',
+          inFront: false
+        });
+      } else {
+        this.spawnSheetBurst(4, impactX, impactY - 62, {
+          w: isFinisher ? 228 : 208,
+          h: isFinisher ? 228 : 208,
+          maxLife: 0.38,
+          flipX: dir < 0,
+          glowColor: isFinisher ? 'emerald' : 'gold',
+          inFront: true
+        });
+      }
+
+      if (isFinisher) {
+        this.fx?.spawn('tectonicCraterSlam', impactX, this.groundY - 4, {
+          flip: dir < 0,
+          palette: FORGE_JADE_PALETTE,
+          light: 1.36,
+          extra: { maxRx: 145 }
+        });
+      }
+
+      let landed = false;
+      for (const foe of this.getActiveEnemies(enemy, game)) {
+        if (Math.abs(foe.x - this.x) <= (isFinisher ? 246 : 236)) {
+          const isCrit = isFinisher || Math.random() < 0.25;
+          const base = isFinisher ? 62 : stage === 1 ? 47 : 41;
+          const dmg = base * (isCrit ? 1.30 : 1);
+          foe.takeDamage(
+            dmg,
+            this,
+            isCrit,
+            dir * (isFinisher ? 165 : 90),
+            isFinisher ? -210 : stage === 1 ? -175 : -135
+          );
+          if (isFinisher) {
+            game?.vfx?.spawnDamageText?.(
+              foe.x,
+              foe.y - 164,
+              0,
+              true,
+              '★ WORLD-BREAKER SLAM! ★',
+              '#10b981'
+            );
+          } else if (stage === 1) {
+            game?.vfx?.spawnDamageText?.(
+              foe.x,
+              foe.y - 154,
+              0,
+              false,
+              'VOLCANIC SPIRE!',
+              '#fbbf24'
+            );
+          }
+          landed = true;
         }
-        this.gainMana(3.6);
+      }
+
+      if (landed) {
+        this.gainMana(3.0);
+        if (stage === 1) {
+          this.gainCrucibleCore(1, game);
+        } else if (isFinisher) {
+          if (!this.triggerWorldBreakerTemper(impactX, enemy, game)) {
+            this.gainCrucibleCore(1, game);
+          }
+        }
+      }
+
+      // Stage 3 Finisher always sends a Seismic Resonance Pulse into any planted World-Anvil Altar!
+      if (isFinisher) {
+        this.triggerAnvilResonance(enemy, game, 38);
       }
     }
 
-    if (t >= (this.autoDuration || 0.86)) {
+    if (t >= (this.autoDuration || 0.88)) {
       this.setState('IDLE');
     }
   }
 
   /**
-   * Skill (2H Battering-Ram Golf-Drive Anvil Cannonball Launch):
-   *   - Activation (`t = 0.05`): spawns `runicBulwarkDome` + `spawnSheetBurst(row 1)` on Titan
-   *   - Upward Golf-Drive Launch (`t = 0.45`): spawns `tectonicCraterSlam` + `spawnSheetBurst(row 3)` at `(impactX, impactY)`
-   *     + a traveling diagonal anvil shockwave (`spawnSheetBurst(row 0)` at `impactX + dir * 48`)
+   * Signature Skill (`WORLD-ANVIL CATACLYSM`, `4.85s CD`):
+   *   - Phase 1 (`t = 0.06s`): Fortifies Torgar (`Magma Bulwark` + `+1` Crucible Core) and drops a
+   *     persistent **World-Forge Anvil Altar** (`this.worldAnvilAltar`, `3.8s`) with a Magnetic Gravity Slam!
+   *   - Phase 2 (`t = 0.45s`): Hammers a blazing **Ricocheting Anvil Cannonball** (`this.activeAnvil`,
+   *     `bouncesLeft = 1`) off the Altar across the stage while leaving the Altar planted for Resonance!
    */
   updateSkill(_dt, enemy, game) {
     const t = this.stateTimer;
     const dir = this.facing;
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
 
-    // Phase 1 (`t >= 0.05`): Activation — Runic Bulwark Dome on Titan + Summon Runic Anvil
-    if (t >= 0.05 && !this.didActionFrame) {
+    // Phase 1 (`t >= 0.06`): Summon Persistent World-Forge Anvil Altar + Magnetic Gravity Slam
+    if (t >= 0.06 && !this.didActionFrame) {
       this.didActionFrame = true;
-      this.vx = dir * 115;
-      const anvilX = Math.max(95, Math.min(game.renderer.worldWidth - 95, this.x + dir * 118));
-      this.activeAnvil = {
+      this.vx = dir * 105;
+      this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.75);
+      this.gainCrucibleCore(1, game);
+
+      const anvilX = Math.max(98, Math.min(ww - 98, this.x + dir * 118));
+      this.worldAnvilAltar = {
         x: anvilX,
         y: this.groundY,
-        vx: 0,
         dir,
-        rot: 0,
         age: 0,
-        trailAccum: 0,
-        state: 'planted',
-        hitTargets: new Set()
+        life: 3.8,
+        maxLife: 3.8,
+        pulseTimer: 1.35,
+        resonanceCd: 0.45,
+        dashBoostCd: 0
       };
 
-      this.fx.spawn('runicBulwarkDome', this.x, this.y - 78, {
+      this.fx?.spawn('runicBulwarkDome', this.x, this.y - 78, {
         follow: this,
         offsetX: 0,
         offsetY: -78,
@@ -725,80 +1158,101 @@ export class Titan extends Fighter {
         palette: FORGE_GOLD_PALETTE,
         light: 1.26
       });
-      this.spawnSheetBurst(1, this.x + dir * 22, this.y - 78, {
-        w: 204,
-        h: 204,
-        maxLife: 0.44,
-        followOwner: true,
-        offsetX: 22,
-        offsetY: -78,
-        flipX: dir < 0,
-        glowColor: 'gold',
-        inFront: true
+      this.fx?.spawn('tectonicCraterSlam', anvilX, this.groundY - 4, {
+        flip: dir < 0,
+        palette: FORGE_JADE_PALETTE,
+        light: 1.28,
+        extra: { maxRx: 130 }
       });
 
-      if (game.audio) game.audio.play('skill_cast', anvilX);
-      game.renderer.triggerShake(6, 0.14);
-      game.vfx.spawnSpecialCastAura(this, this.skillName, '✦ WORLD-FORGE ANVIL ✦', 'forge', false);
-      game.vfx.spawnDamageText(anvilX, this.groundY - 115, 0, false, 'FORGE ANVIL!', '#10b981');
+      if (game?.audio) {
+        game.audio.play('skill_cast', anvilX);
+        game.audio.play('clang', anvilX);
+      }
+      game?.renderer?.triggerShake?.(7, 0.15);
+      game?.vfx?.spawnSpecialCastAura?.(
+        this,
+        this.skillName,
+        '✦ WORLD-ANVIL CATACLYSM ✦',
+        'forge',
+        false
+      );
+      game?.vfx?.spawnDamageText?.(anvilX, this.groundY - 122, 0, false, 'WORLD-ANVIL ALTAR!', '#10b981');
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - anvilX) < 130) {
-        enemy.takeDamage(70, this, false, 45, -135);
+      // Magnetic Gravity Slam pulls nearby foes toward the newly planted Altar!
+      for (const foe of this.getActiveEnemies(enemy, game)) {
+        if (Math.abs(foe.x - anvilX) <= 205) {
+          const pullSign = anvilX >= foe.x ? 1 : -1;
+          foe.x = Math.max(70, Math.min(ww - 70, foe.x + pullSign * 38));
+          foe.takeDamage(38, this, false, pullSign * 55, -125);
+        }
       }
     }
 
-    // Phase 2 (`t >= 0.45`): Upward 2H Battering-Ram Golf-Drive Launch
+    // Phase 2 (`t >= 0.45`): Hammer Ricocheting Anvil Cannonball off the Altar's strike face!
     if (t >= 0.45 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
-      this.vx = dir * 155;
-      const impactX = this.activeAnvil ? this.activeAnvil.x : this.x + dir * 128;
+      this.vx = dir * 145;
+      const impactX = this.worldAnvilAltar ? this.worldAnvilAltar.x : this.x + dir * 124;
       const impactY = this.groundY - 6;
-      if (game.audio) game.audio.play('thunder_slam', impactX);
-      game.renderer.triggerShake(11, 0.22);
 
-      this.fx.spawn('tectonicCraterSlam', impactX, impactY, {
+      if (game?.audio) {
+        game.audio.play('thunder_slam', impactX);
+        game.audio.play('clang', impactX);
+      }
+      game?.renderer?.triggerShake?.(11, 0.22);
+
+      this.fx?.spawn('tectonicCraterSlam', impactX, impactY, {
         flip: dir < 0,
-        palette: FORGE_JADE_PALETTE,
-        light: 1.32,
-        extra: { maxRx: 124 }
+        palette: FORGE_GOLD_PALETTE,
+        light: 1.34,
+        extra: { maxRx: 132 }
       });
-      this.spawnSheetBurst(3, impactX, impactY - 58, {
+      this.fx?.spawn('moltenAnvilSparks', impactX, impactY - 52, {
+        flip: dir < 0,
+        palette: FORGE_GOLD_PALETTE,
+        light: 1.34
+      });
+      this.spawnSheetBurst(4, impactX, impactY - 58, {
         w: 216,
         h: 216,
-        maxLife: 0.44,
-        flipX: dir < 0,
-        glowColor: 'emerald',
-        inFront: false
-      });
-      // Traveling diagonal anvil shockwave at `impactX + dir * 48`
-      this.spawnSheetBurst(0, impactX + dir * 48, impactY - 52, {
-        w: 204,
-        h: 204,
-        maxLife: 0.42,
-        vx: dir * 360,
-        vy: -42,
+        maxLife: 0.40,
         flipX: dir < 0,
         glowColor: 'gold',
         inFront: true
       });
 
-      game.vfx.spawnDamageText(
+      // Trigger World-Breaker Temper if Torgar forged 5 Crucible Cores!
+      this.triggerWorldBreakerTemper(impactX + dir * 64, enemy, game);
+
+      game?.vfx?.spawnDamageText?.(
         impactX,
-        this.y - 156,
+        this.y - 158,
         0,
         true,
-        '★ CANNONBALL SMASH! ★',
+        '★ ANVIL CANNONBALL! ★',
         '#fbbf24'
       );
 
-      if (this.activeAnvil) {
-        this.activeAnvil.state = 'flying';
-        this.activeAnvil.dir = dir;
-        this.activeAnvil.vx = dir * 940;
-        this.activeAnvil.age = 0;
-      }
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - impactX) < 180) {
-        enemy.takeDamage(98, this, true, 220, -145);
+      // Spawn the blazing Ricocheting Anvil Cannonball (`bouncesLeft = 1`)!
+      this.activeAnvil = {
+        x: impactX + dir * 18,
+        y: this.groundY,
+        vx: dir * 940,
+        dir,
+        age: 0,
+        trailAccum: 0,
+        state: 'flying',
+        bouncesLeft: 1,
+        rebounded: false,
+        hitTargets: new Set()
+      };
+
+      // Close-quarters melee maul impact right at the Altar strike point
+      for (const foe of this.getActiveEnemies(enemy, game)) {
+        if (Math.abs(foe.x - impactX) < 130) {
+          foe.takeDamage(36, this, true, dir * 155, -130);
+        }
       }
     }
 
@@ -808,49 +1262,61 @@ export class Titan extends Fighter {
   }
 
   /**
-   * Ultimate (World-Forge Ragnarok):
-   *   - Initial Anvil Ignition (`t = 0.08`): spawns `runicBulwarkDome` on Titan
-   *   - Cataclysmic Impact (`t = 0.50`): spawns `ragnarokWorldForgeWave` centered at `(impactX, impactY)`
-   *     + staggered diagonal caldera eruptions (`spawnSheetBurst(row 2)` and `spawnSheetBurst(row 4)`
-   *     offset left/right along the fault line, NOT stacked on the exact same pixel!)
+   * Overdrive (`ULTIMATE` — `RAGNAROK WORLD-FORGE`, `5.0s`):
+   *   - Maintains `3.0x` Colossal World-Forge Sovereign scale across the `5.0s` Overdrive
+   *     (`peakScale = 3.00`, `scaleAt4s = 3.00`), maxes `5` Crucible Cores, and marches forward
+   *     unleashing `6` multi-fault volcanic hammer eruptions + World-Anvil Altar resonance!
    */
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const dur = this.ultDuration || 5.0;
     const dir = this.facing;
-    // Grow smoothly to 3.0x colossal World-Forge Juggernaut size across the full 5.0-second Overdrive!
     const grow = Math.min(1, t / 0.28);
     const shrink = t > dur - 0.32 ? Math.max(0, (dur - t) / 0.32) : 1;
     const smoothGrow = grow * grow * (3 - 2 * grow);
     this.giantScale = 1.0 + 2.0 * smoothGrow * shrink;
-    this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.85);
+    this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.55);
 
-    // Cycle Row 4 (120..149) smoothly across 3 full World-Breaker slam cycles over the 5.0s Overdrive!
-    const cycleStep = Math.min(29, Math.floor(((t * 18) % 30)));
+    const cycleStep = Math.min(29, Math.floor((t * 18) % 30));
     this.trueUltFrameOverride = 120 + cycleStep;
 
-    if (enemy && !enemy.isDead) {
-      this.facing = enemy.x >= this.x ? 1 : -1;
-      const dist = Math.abs(enemy.x - this.x);
+    const foes = this.getActiveEnemies(enemy, game);
+    const leadFoe =
+      foes.length > 0
+        ? foes.reduce((best, f) =>
+            Math.abs(f.x - this.x) < Math.abs(best.x - this.x) ? f : best
+          )
+        : enemy;
+    if (leadFoe && !leadFoe.isDead) {
+      this.facing = leadFoe.x >= this.x ? 1 : -1;
+      const dist = Math.abs(leadFoe.x - this.x);
       if (dist > 175) {
-        this.x += this.facing * 240 * dt;
+        this.x += this.facing * 230 * dt;
       }
     }
     this.walkPhase += dt * 7.5;
     this.headBob = Math.abs(Math.sin(this.walkPhase)) * 5.5;
 
-    // 1. Initial Anvil Ignition (`t >= 0.06`): spawns colossal `runicBulwarkDome` & ground crater under 3x Titan
+    // 1. Initial Anvil Ignition (`t >= 0.06`)
     if (t >= 0.06 && !this._ultCastTriggered) {
       this._ultCastTriggered = true;
       this._ultWaveStep = 0;
+      this.crucibleStacks = this.maxCrucibleStacks;
+      this.manifestAncestorAvatar(1.15, 1.5);
       if (game?.vfx) {
-        game.vfx.spawnSpecialCastAura(this, this.ultName, '★ COLOSSAL WORLD-FORGE RAGNAROK (5S) ★', 'forge', true);
+        game.vfx.spawnSpecialCastAura(
+          this,
+          this.ultName,
+          '★ RAGNAROK WORLD-FORGE (5S) ★',
+          'forge',
+          true
+        );
       }
       if (game?.renderer) {
         game.renderer.triggerShake(16, 0.28);
         game.renderer.triggerAberration(6);
       }
-      this.fx.spawn('runicBulwarkDome', this.x, this.y - 140, {
+      this.fx?.spawn('runicBulwarkDome', this.x, this.y - 140, {
         follow: this,
         offsetX: 0,
         offsetY: -140,
@@ -859,7 +1325,7 @@ export class Titan extends Fighter {
         light: 1.48,
         maxDuration: 4.8
       });
-      this.fx.spawn('tectonicCraterSlam', this.x, this.groundY - 4, {
+      this.fx?.spawn('tectonicCraterSlam', this.x, this.groundY - 4, {
         flip: dir < 0,
         palette: FORGE_GOLD_PALETTE,
         light: 1.42,
@@ -876,24 +1342,26 @@ export class Titan extends Fighter {
       if (game?.audio) {
         game.audio.play('thunder_slam', impactX);
       }
-      game?.renderer?.triggerShake(22 + localWave * 4, 0.36);
-      game?.renderer?.triggerAberration(8 + localWave * 2);
+      game?.renderer?.triggerShake?.(22 + localWave * 4, 0.36);
+      game?.renderer?.triggerAberration?.(8 + localWave * 2);
 
-      // Central Ragnarok World-Forge Wave at `(impactX, impactY)` + flanking fault waves
-      this.fx.spawn('ragnarokWorldForgeWave', impactX, impactY, {
+      if (waveIdx === 3 || waveIdx === 6) {
+        this.manifestAncestorAvatar(0.85, 1.5);
+      }
+
+      this.fx?.spawn('ragnarokWorldForgeWave', impactX, impactY, {
         flip: this.facing < 0,
         palette: waveIdx % 2 === 0 ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
         light: 1.5,
         extra: { stage: localWave }
       });
-      this.fx.spawn('tectonicCraterSlam', impactX, impactY, {
+      this.fx?.spawn('tectonicCraterSlam', impactX, impactY, {
         flip: this.facing < 0,
         palette: FORGE_GOLD_PALETTE,
         light: 1.44,
         extra: { maxRx: 185 }
       });
 
-      // Staggered colossal caldera eruptions offset left/right along the fault line, grounded on `impactY`
       const leftOffset = waveIdx % 2 === 1 ? -88 : 92;
       const rightOffset = waveIdx % 2 === 1 ? 92 : -88;
       this.spawnSheetBurst(2, impactX + this.facing * leftOffset, impactY - 98, {
@@ -913,21 +1381,21 @@ export class Titan extends Fighter {
         inFront: true
       });
 
-      const targets = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
-      for (const target of targets) {
-        if (target && !target.isDead && !target.isBenched) {
+      for (const target of this.getActiveEnemies(enemy, game)) {
+        if (Math.abs(target.x - impactX) <= 360 || waveIdx >= 5) {
           target.takeDamage(
-            waveIdx >= 5 ? 98 : 74,
+            waveIdx >= 5 ? 72 : 54,
             this,
             true,
-            waveIdx >= 5 ? 295 : -75,
-            waveIdx >= 5 ? -275 : -175
+            waveIdx >= 5 ? 285 : -70,
+            waveIdx >= 5 ? -265 : -165
           );
         }
       }
+
+      this.triggerAnvilResonance(enemy, game, 32);
     };
 
-    // 6 Colossal World-Breaker Fault-Line Eruptions across the 5.0-second Overdrive!
     const waveTimes = [0.52, 1.25, 1.98, 2.72, 3.48, 4.24];
     for (let i = 0; i < waveTimes.length; i++) {
       if (t >= waveTimes[i] && (this._ultWaveStep || 0) < i + 1) {
@@ -947,18 +1415,14 @@ export class Titan extends Fighter {
   /**
    * 3-Overdrive Supreme Ultimate (`state === 'TRUE_ULTIMATE'`, `4.55s`):
    * "GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER"
-   * - Never changes the stage background image (`overrideArena` / `setStageTransformation` is NEVER called).
-   * - Phase 1 (`0.00s .. 1.20s`): Summons the Colossal World-Forge Crucible Anvil Altar (`Row 5`, `320x320`),
-   *   grows Torgar into a `2.45x` World-Forge Avatar beside `this._trueUltAnvilX - this.facing * 95`,
-   *   grants `this.forgeArmorTimer = 6.0`, and draws the enemy toward the Crucible Anvil.
-   * - Phase 2 (`t >= 1.45s` Strike 1 & `t >= 2.25s` Strike 2): Rhythmic God-Hammer Tempering Strikes
-   *   with `Row 6` (`340x340`) slamming onto the Crucible Anvil (zero chip damage ticks).
-   * - Phase 3 (`t >= 3.20s`): Torgar leaps (`2.20s .. 3.18s`) and brings the God-Hammer down at `t = 3.20s`
-   *   (`Row 4` frame `21..25`), shattering the Crucible Anvil, triggering anime impact frame (`'forge'`),
-   *   healing Torgar for `18%` Max HP (`'WORLD-FORGE TEMPER'`), refreshing `this.forgeArmorTimer = 4.5`,
-   *   dealing a SINGLE CATACLYSMIC INSTANT BURST of `385` Crit damage (`isCrit = true, knockX = 340, knockY = -290`),
-   *   and erupting 7 full-stage `Row 7` Continental Sunder Volcanic Rune Geysers (`240x340`) across the `1200px` arena!
-   * - Phase 4 (`3.20s .. 4.55s`): Smoothly eases `this.giantScale` back to `1.0` and returns to `IDLE`.
+   * - NEVER overrides or alters stage background images (`trueUltStageOverride === null`).
+   * - Phase 1 (`0.00s .. 1.20s`): Summons the `Row 5` Colossal World-Forge Crucible Altar flanked by
+   *   Twin `Row 2` Volcanic Obelisks, grows Torgar to `2.45x`, maxes `5` Crucible Cores, and binds
+   *   ALL active enemies toward `_trueUltAnvilX` with molten runic forge-chains.
+   * - Phase 2 (`t >= 1.45s` & `t >= 2.25s`): Rhythmic God-Hammer Tempering Strikes (`Row 6` +
+   *   `khazadForgeAncestorAvatar`, ZERO chip damage micro-ticks).
+   * - Phase 3 (`t >= 3.20s`): Torgar sky-leaps and shatters the Crucible in ONE SINGLE CATACLYSMIC
+   *   `735`-Crit burst across all active enemies + `16%` Max HP heal + `7` full-stage `Row 7` Geysers!
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
@@ -973,16 +1437,20 @@ export class Titan extends Fighter {
       this._trueUltGeyserTimer = Math.max(0, this._trueUltGeyserTimer - dt);
     }
 
-    // Phase 1 (`0.00s .. 1.20s` — Summoning the World-Forge Crucible Anvil Altar)
+    const activeFoes = this.getActiveEnemies(enemy, game);
+
+    // Phase 1 (`0.00s .. 1.20s` — Summoning the World-Forge Crucible Altar)
     if (this._trueUltStep < 1) {
-      this._trueUltAnvilX = enemy
-        ? Math.max(240, Math.min(960, enemy.x))
-        : Math.max(240, Math.min(960, this.x + this.facing * 190));
+      const anchorFoe = activeFoes[0] || enemy;
+      this._trueUltAnvilX = anchorFoe
+        ? Math.max(250, Math.min(950, anchorFoe.x))
+        : Math.max(250, Math.min(950, this.x + this.facing * 190));
     }
 
     if (t >= 0.04 && this._trueUltStep < 1) {
       this._trueUltStep = 1;
       this.forgeArmorTimer = 6.0;
+      this.crucibleStacks = this.maxCrucibleStacks;
       game?.audio?.play?.('ult_cast', this.x);
       game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
       game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#f97316');
@@ -1015,11 +1483,11 @@ export class Titan extends Fighter {
         flip: this.facing < 0,
         palette: FORGE_GOLD_PALETTE,
         light: 1.42,
-        extra: { maxRx: 165 }
+        extra: { maxRx: 172 }
       });
       this.spawnSheetBurst(5, this._trueUltAnvilX, this.groundY - 110, {
-        w: 320,
-        h: 320,
+        w: 332,
+        h: 332,
         maxLife: 3.16,
         flipX: this.facing < 0,
         glowColor: 'gold',
@@ -1027,8 +1495,11 @@ export class Titan extends Fighter {
       });
     }
 
-    if (t < 3.20 && enemy && !enemy.isDead) {
-      enemy.x += (this._trueUltAnvilX - enemy.x) * Math.min(1, dt * 6);
+    // Magnetically bind ALL active enemies into the Crucible Anvil before the sunder blow!
+    if (t < 3.20) {
+      for (const foe of activeFoes) {
+        foe.x += (this._trueUltAnvilX - foe.x) * Math.min(1, dt * 6.5);
+      }
       this.facing = this._trueUltAnvilX >= this.x ? 1 : -1;
     }
 
@@ -1067,7 +1538,7 @@ export class Titan extends Fighter {
           flip: this.facing < 0,
           palette: FORGE_GOLD_PALETTE,
           light: 1.4,
-          extra: { maxRx: 155 }
+          extra: { maxRx: 158 }
         });
         this.fx?.spawn('moltenAnvilSparks', this._trueUltAnvilX, this.groundY - 82, {
           flip: this.facing < 0,
@@ -1086,32 +1557,33 @@ export class Titan extends Fighter {
 
       if (t >= 2.25 && this._trueUltStep < 3) {
         this._trueUltStep = 3;
+        this.manifestAncestorAvatar(1.15, 1.55);
         game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
         game?.audio?.play?.('thunder_slam', this._trueUltAnvilX);
-        game?.renderer?.shake?.(14, 0.25);
-        game?.renderer?.triggerShake?.(14, 0.25);
+        game?.renderer?.shake?.(15, 0.26);
+        game?.renderer?.triggerShake?.(15, 0.26);
         game?.vfx?.spawnDamageText?.(
           this._trueUltAnvilX,
-          this.groundY - 195,
+          this.groundY - 198,
           0,
           true,
-          'TEMPERING STRIKE II!',
-          '#f97316'
+          'TEMPERING STRIKE II — KHAZAD AWAKENS!',
+          '#10b981'
         );
         this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
           flip: this.facing < 0,
           palette: FORGE_JADE_PALETTE,
-          light: 1.44,
-          extra: { maxRx: 168 }
+          light: 1.46,
+          extra: { maxRx: 172 }
         });
         this.fx?.spawn('moltenAnvilSparks', this._trueUltAnvilX, this.groundY - 86, {
           flip: this.facing < 0,
           palette: FORGE_JADE_PALETTE,
-          light: 1.42
+          light: 1.44
         });
         this.spawnSheetBurst(6, this._trueUltAnvilX, this.groundY - 120, {
-          w: 340,
-          h: 340,
+          w: 348,
+          h: 348,
           maxLife: 0.62,
           flipX: this.facing < 0,
           glowColor: 'emerald',
@@ -1119,10 +1591,9 @@ export class Titan extends Fighter {
         });
       }
 
-      // Leap (`2.20s .. 3.18s`) before bringing the God-Hammer down at `t = 3.20s`
       if (t >= 2.20 && t < 3.18) {
         const leapU = Math.max(0, Math.min(1, (t - 2.20) / 0.98));
-        this.y = this.groundY - Math.sin(leapU * Math.PI) * 138;
+        this.y = this.groundY - Math.sin(leapU * Math.PI) * 142;
         this.trueUltFrameOverride = 136 + Math.min(4, Math.floor(leapU * 5));
       } else {
         this.y = this.groundY;
@@ -1153,8 +1624,9 @@ export class Titan extends Fighter {
       game?.audio?.play?.('earthshatter', this._trueUltAnvilX);
       game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
 
-      this.heal(Math.round(this.maxHp * 0.16), 'WORLD-FORGE TEMPER');
-      this.forgeArmorTimer = 4.5;
+      this.heal(Math.round(this.maxHp * 0.12), 'WORLD-FORGE TEMPER');
+      this.forgeArmorTimer = 2.4;
+      this.crucibleStacks = this.maxCrucibleStacks;
 
       this.fx?.spawn('ragnarokWorldForgeWave', this._trueUltAnvilX, this.groundY - 4, {
         flip: this.facing < 0,
@@ -1190,12 +1662,9 @@ export class Titan extends Fighter {
         '#f97316'
       );
 
-      // Deal a SINGLE CATACLYSMIC INSTANT BURST of 735 Crit damage to all active enemies!
-      const targets = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
-      for (const t of targets) {
-        if (t && !t.isDead && !t.isBenched) {
-          t.takeDamage(735, this, true, 340, -290);
-        }
+      // SINGLE CATACLYSMIC INSTANT BURST of 735 Crit damage to all active enemies!
+      for (const foe of activeFoes) {
+        foe.takeDamage(735, this, true, 340, -290);
       }
     }
 
@@ -1207,10 +1676,10 @@ export class Titan extends Fighter {
 
     if (t < 3.85) {
       const slamFrameU = Math.max(0, Math.min(1, (t - 3.20) / 0.65));
-      this.trueUltFrameOverride = 120 + 21 + Math.min(4, Math.floor(slamFrameU * 5)); // Row 4 frame 21..25
+      this.trueUltFrameOverride = 120 + 21 + Math.min(4, Math.floor(slamFrameU * 5));
     } else {
       const recU = Math.max(0, Math.min(1, (t - 3.85) / Math.max(0.01, dur - 3.85)));
-      this.trueUltFrameOverride = 120 + 26 + Math.min(3, Math.floor(recU * 4)); // Row 4 frame 26..29
+      this.trueUltFrameOverride = 120 + 26 + Math.min(3, Math.floor(recU * 4));
     }
 
     if (t >= dur) {
@@ -1223,9 +1692,94 @@ export class Titan extends Fighter {
     }
   }
 
+  /**
+   * Pixel-art Molten Runic Chain renderer (strictly integer `fillRect` links — ZERO `quadraticCurveTo` or `rotate`).
+   */
+  drawPixelForgeChain(ctx, x1, y1, x2, y2, phase = 0) {
+    if (!ctx?.fillRect) return;
+    const dx = x2 - x1;
+    const dy = y2 - y1;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 12) return;
+    const steps = Math.max(4, Math.min(28, Math.floor(dist / 14)));
+
+    ctx.save();
+    for (let i = 0; i <= steps; i++) {
+      const u = i / steps;
+      const sag = Math.sin(u * Math.PI) * 12;
+      const px = Math.round(x1 + dx * u);
+      const py = Math.round(y1 + dy * u + sag);
+      const isJade = (i + Math.floor(phase * 10)) % 3 === 0;
+      ctx.fillStyle = '#0d0f1c';
+      ctx.fillRect(px - 4, py - 4, 8, 8);
+      ctx.fillStyle = isJade ? '#10b981' : '#f59e0b';
+      ctx.fillRect(px - 3, py - 3, 6, 6);
+      ctx.fillStyle = isJade ? '#a7f3d0' : '#fef08a';
+      ctx.fillRect(px - 1, py - 1, 2, 2);
+    }
+    ctx.restore();
+  }
+
+  /**
+   * Renders Torgar's `0..5` orbiting Molten Crucible Cores in 2.5D (`inFront = false` back half, `true` front half).
+   * Uses strictly crisp integer `ctx.fillRect` pixel art — ZERO `ctx.rotate` or `quadraticCurveTo`.
+   */
+  drawCrucibleCores(ctx, inFront = false) {
+    if (!ctx?.fillRect || this.isDead || this.crucibleStacks <= 0) return;
+    const scale = this.giantScale || 1.0;
+    const count = this.crucibleStacks;
+    const isMax = count >= this.maxCrucibleStacks;
+    const cx = this.x;
+    const cy = this.y - Math.round(92 * scale);
+    const rx = Math.round(54 * scale);
+    const ry = Math.round(16 * scale);
+
+    ctx.save();
+    for (let i = 0; i < count; i++) {
+      const ang = this._crucibleOrbitPhase + (i * Math.PI * 2) / this.maxCrucibleStacks;
+      const depth = Math.sin(ang);
+      if (inFront ? depth < 0 : depth >= 0) continue;
+
+      const ox = Math.round(cx + Math.cos(ang) * rx);
+      const oy = Math.round(cy + depth * ry + Math.sin(this._crucibleOrbitPhase * 1.8 + i) * 3);
+      const s = scale >= 1.8 ? 2 : 1;
+
+      // Crisp 16-bit faceted Khazad Forge-Core diamond (Selout + Obsidian + Gold/Jade Core + White Spark)
+      ctx.fillStyle = '#0d0f1c';
+      ctx.fillRect(ox - 5 * s, oy - 3 * s, 10 * s, 6 * s);
+      ctx.fillRect(ox - 3 * s, oy - 5 * s, 6 * s, 10 * s);
+
+      ctx.fillStyle = isMax ? '#047857' : '#b45309';
+      ctx.fillRect(ox - 4 * s, oy - 2 * s, 8 * s, 4 * s);
+      ctx.fillRect(ox - 2 * s, oy - 4 * s, 4 * s, 8 * s);
+
+      ctx.fillStyle = isMax ? '#34d399' : '#fbbf24';
+      ctx.fillRect(ox - 2 * s, oy - 2 * s, 4 * s, 4 * s);
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(ox - 1 * s, oy - 1 * s, 2 * s, 2 * s);
+    }
+    ctx.restore();
+  }
+
   drawBehind(ctx, renderer = null) {
     if (this.state !== 'TRUE_ULTIMATE') return;
     const t = this.stateTimer || 0;
+    const dur = this.trueUltDuration || 4.55;
+    const ww = renderer?.worldWidth || 1200;
+
+    // Localized volcanic crucible twilight dim (NEVER overrides stage background image!)
+    if (ctx?.fillRect) {
+      const envAlpha =
+        t < 0.35 ? t / 0.35 : t > dur - 0.55 ? Math.max(0, (dur - t) / 0.55) : 1.0;
+      ctx.save();
+      ctx.fillStyle = `rgba(18, 8, 4, ${(0.44 * envAlpha).toFixed(3)})`;
+      ctx.fillRect(0, 0, ww, this.groundY + 140);
+      ctx.fillStyle = `rgba(245, 158, 11, ${(0.14 * envAlpha).toFixed(3)})`;
+      ctx.fillRect(0, this.groundY - 12, ww, 16);
+      ctx.restore();
+    }
+
     if (t >= 3.20) return;
 
     const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.titan : null;
@@ -1234,8 +1788,27 @@ export class Titan extends Fighter {
     const ax = this._trueUltAnvilX || 600;
     const ay = this.groundY - 110;
 
-    // Render `titan_vfx.png` Row 5 (Colossal World-Forge Crucible Anvil Altar, 320x320) at `this._trueUltAnvilX, this.groundY - 110`
+    // Twin Flanking `Row 2` Volcanic Forge Obelisks framing the Crucible Arena
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+      for (const side of [-1, 1]) {
+        const ox = Math.max(85, Math.min(ww - 85, ax + side * 215));
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          2,
+          (col + (side > 0 ? 9 : 0)) % 30,
+          ox,
+          this.groundY - 96,
+          236,
+          252,
+          0.92,
+          side < 0,
+          renderer,
+          'emerald'
+        );
+      }
+
+      // Central `Row 5` Colossal World-Forge Crucible Anvil Altar (`336x336`)
       this.drawBloomedVfxCell(
         ctx,
         vfxSheet,
@@ -1243,17 +1816,23 @@ export class Titan extends Fighter {
         col,
         ax,
         ay,
-        320,
-        320,
-        0.96,
+        336,
+        336,
+        0.97,
         this.facing < 0,
         renderer,
         'gold'
       );
     } else if (vfxSheet && ctx?.drawImage) {
       ctx.save();
-      ctx.drawImage(vfxSheet, col * 208, 5 * 208, 208, 208, ax - 160, ay - 160, 320, 320);
+      ctx.drawImage(vfxSheet, col * 208, 5 * 208, 208, 208, ax - 168, ay - 168, 336, 336);
       ctx.restore();
+    }
+
+    // Molten Runic Forge-Chains binding active enemies to the Crucible Anvil
+    const foes = this.game ? this.getActiveEnemies(null, this.game) : [];
+    for (const foe of foes) {
+      this.drawPixelForgeChain(ctx, ax, this.groundY - 64, foe.x, foe.y - 68, t);
     }
   }
 
@@ -1305,15 +1884,15 @@ export class Titan extends Fighter {
   }
 
   /**
-   * Stamps active 30fps `titan_vfx.png` rows:
-   * - Row 0: Spinning Flaming Horned Dwarven Forge-Anvil Projectile
-   * - Row 1: Khazad Dwarven Octagonal Ram-Horn & Crossed-Warhammer Aegis Crest
-   * - Row 2: Colossal Sky-Falling God-Hammer & 5-Spire Volcanic Basalt-Jade Eruption
-   * - Row 3: 8-Cog Interlocking Dwarven World-Forge Crucible Gear Mandala & Glowing Horned Anvil
-   * - Row 4: Tectonic Basalt Plate Split & 8-Spoke Magma-Jade Star-Crater Nova
-   * - Row 5: Colossal World-Forge Crucible Anvil Altar (`320x320`)
-   * - Row 6: God-Hammer Lightning-Magma Strike Arc (`340x340`)
-   * - Row 7: Continental Sunder Volcanic Rune Geysers (`240x340`)
+   * Stamps active 30fps `titan_vfx.png` rows accurately mapped to `build_titan_vfx_30fps.mjs`:
+   * - Row 0: `tectonicMagmaWaveCell` (Traveling Tectonic Magma-Jade Fissure Wave)
+   * - Row 1: `runicIronForgeAnvilCell` (Horned Khazad Iron Forge-Anvil construct & cannonball)
+   * - Row 2: `tectonicMagmaPillarCell` (Erupting Magma-Jade Volcanic Rune Obelisk)
+   * - Row 3: `worldForgeAnvilSealCell` (8-Cog Sovereign World-Forge Crucible Mandala)
+   * - Row 4: `cataclysmCraterNovaCell` (Molten Hammer Star-Crater Shock-Ring Nova)
+   * - Row 5: `worldForgeCrucibleAltarCell` (Colossal World-Forge Crucible Altar)
+   * - Row 6: `godHammerLightningStrikeCell` (God-Hammer Lightning-Magma Strike Arc)
+   * - Row 7: `continentalSunderGeyserCell` (Continental Sunder Volcanic Rune Geysers)
    */
   drawActiveAnvilAndQuakes(ctx, vfxSheet = null, renderer = null, inFront = false) {
     const sheet =
@@ -1321,7 +1900,7 @@ export class Titan extends Fighter {
     if (!sheet || !sheet.complete) return;
 
     if (!inFront) {
-      // 1. Background 30fps `titan_vfx.png` cell animations (Row 2 Colossal God-Hammer & 5-Spire Eruption + Row 3 8-Cog Crucible Mandala)
+      // 1. Background 30fps `titan_vfx.png` cell animations (`Row 2` Pillars & `Row 3` Seals)
       for (const v of this.activeVfxAnims) {
         if (v.inFront) continue;
         const u = Math.min(1, Math.max(0, v.age / v.maxLife));
@@ -1344,84 +1923,99 @@ export class Titan extends Fighter {
         );
       }
 
-      // 2. Planted Runic World-Forge Anvil Seal (`Row 3` 8-Cog Crucible Mandala & Glowing Horned Anvil)
-      if (this.activeAnvil && this.activeAnvil.state === 'planted') {
-        const a = this.activeAnvil;
-        const col = Math.floor(a.age * 30) % 30;
-        const fade = a.age > 1.25 ? Math.max(0, (1.5 - a.age) / 0.25) : 1.0;
+      // 2. Persistent World-Forge Anvil Altar (`Row 3` 8-Cog Sovereign Mandala + `Row 1` Horned Iron Anvil!)
+      if (this.worldAnvilAltar && this.worldAnvilAltar.life > 0) {
+        const altar = this.worldAnvilAltar;
+        const col = Math.floor(altar.age * 30) % 30;
+        const fade = altar.life < 0.45 ? Math.max(0, altar.life / 0.45) : 1.0;
         this.drawBloomedVfxCell(
           ctx,
           sheet,
           3,
           col,
-          a.x,
-          a.y - 54,
-          204,
-          204,
-          fade * 0.96,
-          a.dir < 0,
+          altar.x,
+          altar.y - 36,
+          212,
+          212,
+          fade * 0.92,
+          altar.dir < 0,
           renderer,
           'emerald'
+        );
+        this.drawBloomedVfxCell(
+          ctx,
+          sheet,
+          1,
+          col,
+          altar.x,
+          altar.y - 54,
+          196,
+          196,
+          fade * 0.98,
+          altar.dir < 0,
+          renderer,
+          'gold'
         );
       }
       return;
     }
 
-    // 3. Active Magma Armor Fortify Runic Shield Crest (`Row 1` Khazad Octagonal Ram-Horn & Crossed-Warhammer Aegis Crest)
-    if (this.forgeArmorTimer > 0 && !this.isDead) {
-      const col = Math.floor((this.walkPhase || 0) * 12) % 30;
-      const alpha = Math.min(1, this.forgeArmorTimer * 1.5) * 0.82;
+    // 3. Traveling Tectonic Magma-Jade Fissure Waves (`Row 0`)
+    for (const wv of this.fissureWaves) {
+      const col = Math.floor(wv.age * 36) % 30;
+      const u = Math.min(1, wv.age / wv.maxLife);
+      const fade = u > 0.76 ? Math.max(0, (1 - u) / 0.24) : 1.0;
       this.drawBloomedVfxCell(
         ctx,
         sheet,
-        1,
+        0,
         col,
-        this.x + this.facing * 20,
-        this.y - 78,
-        192,
-        192,
-        alpha,
-        this.facing < 0,
+        wv.x,
+        wv.y - 54,
+        212,
+        212,
+        fade * 0.96,
+        wv.dir < 0,
         renderer,
-        'gold'
+        'emerald'
       );
     }
 
-    // 4. Flying Anvil Cannonball (`Row 0` Spinning Flaming Horned Anvil Projectile + `Row 3` 8-Cog Crucible Mandala trail)
+    // 4. Ricocheting Anvil Cannonball (`Row 0` Magma Wake + `Row 1` Blazing Horned Iron Anvil!)
     if (this.activeAnvil && this.activeAnvil.state === 'flying') {
       const a = this.activeAnvil;
       const col = Math.floor(a.age * 30) % 30;
       this.drawBloomedVfxCell(
         ctx,
         sheet,
-        3,
+        0,
         col,
-        a.x - a.dir * 22,
+        a.x - a.dir * 28,
         a.y - 48,
         192,
         192,
-        0.9,
+        0.88,
         a.dir < 0,
         renderer,
-        'emerald'
+        a.rebounded ? 'emerald' : 'gold'
       );
       this.drawBloomedVfxCell(
         ctx,
         sheet,
-        0,
+        1,
         col,
         a.x,
-        a.y - 48,
+        a.y - 52,
         208,
         208,
-        0.96,
+        0.98,
         a.dir < 0,
         renderer,
-        'gold'
+        a.rebounded ? 'emerald' : 'gold'
       );
     }
 
-    // 5. Foreground 30fps `titan_vfx.png` cell bursts (`Row 1` Aegis Crest & `Row 4` Tectonic Basalt Plate Split Nova)
+    // 5. Foreground 30fps `titan_vfx.png` cell bursts (`Row 0`, `Row 4`, `Row 6`, `Row 7`)
     for (const v of this.activeVfxAnims) {
       if (!v.inFront) continue;
       const u = Math.min(1, Math.max(0, v.age / v.maxLife));
@@ -1455,15 +2049,21 @@ export class Titan extends Fighter {
       this.drawActiveAnvilAndQuakes(ctx, vfxSheet, renderer, false);
     }
 
-    // Live 120Hz `ArcaneShaderFX` "back" layer (2.5D Orbiting Magma Mantle, Crater Shockwaves, Sky Anvil Drops, Ragnarok Waves)
+    // Live 120Hz `ArcaneShaderFX` "back" layer (2.5D Magma Mantle, Khazad Ancestor Spirit, Craters, Ragnarok Waves)
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
+
+    // Back-orbiting Molten Crucible Cores
+    this.drawCrucibleCores(ctx, false);
   }
 
   drawUltimateForeground(ctx, renderer = null) {
-    // Live 120Hz `ArcaneShaderFX` "front" layer (World-Breaker Anvil Cleaves, Sky Anvil Drops, Front 2.5D Rings & Sparks)
+    // Live 120Hz `ArcaneShaderFX` "front" layer (World-Breaker Cleaves, Ancestor God-Maul, Sparks & Bulwark Dome)
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
+
+    // Front-orbiting Molten Crucible Cores
+    this.drawCrucibleCores(ctx, true);
 
     const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.titan : null;
     const vfxSheet = sprites?.vfx;
@@ -1505,7 +2105,6 @@ export class Titan extends Fighter {
     if (!isReflection && this.state === 'TRUE_ULTIMATE') {
       const t = this.stateTimer || 0;
       const ax = this._trueUltAnvilX || 600;
-      // Render Row 6 (God-Hammer Lightning-Magma Strike Arc, 340x340) slamming onto the Crucible Anvil during Phase 2
       if (t >= 1.45 && t < 3.20) {
         const col = Math.floor(t * 30) % 30;
         const ay = this.groundY - 120;
@@ -1517,8 +2116,8 @@ export class Titan extends Fighter {
             col,
             ax,
             ay,
-            340,
-            340,
+            344,
+            344,
             0.95,
             this.facing < 0,
             renderer,
@@ -1526,13 +2125,13 @@ export class Titan extends Fighter {
           );
         } else if (vfxSheet && ctx?.drawImage) {
           ctx.save();
-          ctx.drawImage(vfxSheet, col * 208, 6 * 208, 208, 208, ax - 170, ay - 170, 340, 340);
+          ctx.drawImage(vfxSheet, col * 208, 6 * 208, 208, 208, ax - 172, ay - 172, 344, 344);
           ctx.restore();
         }
       }
     }
 
-    // Erupt 7 full-stage `titan_vfx.png` Row 7 (Continental Sunder Volcanic Rune Geysers, 240x340) spaced across the 1200px arena
+    // Erupt 7 full-stage `titan_vfx.png` Row 7 (Continental Sunder Volcanic Rune Geysers, 240x340) across the 1200px arena
     if (!isReflection && this._trueUltGeyserTimer > 0) {
       const u = Math.max(0, Math.min(1, 1 - this._trueUltGeyserTimer / 1.05));
       const baseCol = Math.min(29, Math.floor(u * 30));

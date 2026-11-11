@@ -1,19 +1,19 @@
-import { Renderer } from './engine/Renderer.js?v=30fps65';
-import { VFXManager } from './engine/VFXManager.js?v=30fps65';
-import { PixelForge } from './engine/PixelForge.js?v=30fps65';
-import { AudioManager } from './engine/AudioManager.js?v=30fps65';
-import { Fighter } from './entities/Fighter.js?v=30fps65';
-import { Warrior } from './entities/Warrior.js?v=30fps65';
-import { FireMage } from './entities/FireMage.js?v=30fps65';
-import { Archer } from './entities/Archer.js?v=30fps65';
-import { Priestess } from './entities/Priestess.js?v=30fps65';
-import { Reaper } from './entities/Reaper.js?v=30fps65';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps65';
-import { Titan } from './entities/Titan.js?v=30fps65';
-import { Ronin } from './entities/Ronin.js?v=30fps65';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps65';
-import { IceMage } from './entities/IceMage.js?v=30fps65';
-import { Android } from './entities/Android.js?v=30fps65';
+import { Renderer } from './engine/Renderer.js?v=30fps66';
+import { VFXManager } from './engine/VFXManager.js?v=30fps66';
+import { PixelForge } from './engine/PixelForge.js?v=30fps66';
+import { AudioManager } from './engine/AudioManager.js?v=30fps66';
+import { Fighter } from './entities/Fighter.js?v=30fps66';
+import { Warrior } from './entities/Warrior.js?v=30fps66';
+import { FireMage } from './entities/FireMage.js?v=30fps66';
+import { Archer } from './entities/Archer.js?v=30fps66';
+import { Priestess } from './entities/Priestess.js?v=30fps66';
+import { Reaper } from './entities/Reaper.js?v=30fps66';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps66';
+import { Titan } from './entities/Titan.js?v=30fps66';
+import { Ronin } from './entities/Ronin.js?v=30fps66';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps66';
+import { IceMage } from './entities/IceMage.js?v=30fps66';
+import { Android } from './entities/Android.js?v=30fps66';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -229,35 +229,35 @@ const CHAMPION_ROSTER = {
   titan: {
     id: 'titan',
     name: 'TORGAR',
-    role: 'WORLD-FORGE WARLORD',
-    style: 'UNSTOPPABLE JUGGERNAUT',
-    trait: 'PASSIVE: SUPER-ARMOR & MAGMA SHELL',
+    role: 'SOVEREIGN OF THE WORLD-FORGE',
+    style: 'COLOSSAL ANVIL JUGGERNAUT',
+    trait: 'PASSIVE: MOLTEN CRUCIBLE CORES & MAGMA BULWARK',
     cls: Titan,
     theme: 'forge',
     color: '#f59e0b',
     selectSfx: 'thunder_slam',
-    victoryLine: 'God-Hammer Mjolnir sunders the arena under molten iron and stone!',
+    victoryLine: 'Tempered on the World-Anvil — God-Hammer Mjolnir sunders stone and steel alike!',
     trueUltName: 'GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER',
     trueUltDesc:
-      'Forges the colossal God-Hammer Mjolnir mid-air and slams the continent apart in a cataclysmic magma eruption!',
+      'Binds all foes to the Colossal World-Forge Crucible between Volcanic Obelisks, tempers Mjolnir with Khazad Ancestor lightning, and sunders the continent!',
     skills: [
       {
-        name: 'TECTONIC EARTH-SHAKER',
-        type: 'AUTO + MAGMA FORTIFY',
+        name: 'TRINITY OF THE WORLD-MAUL',
+        type: '3-HIT AUTO + ANCESTOR SLAM',
         vfxCell: 0,
-        desc: 'Slams ground fissures that suck foes inward & encases himself in 44% Damage-Reduction Magma Armor.'
+        desc: '1: Magnetic Fissure Wave pulls foes in • 2: Volcanic Jade Spire • 3: Khazad Ancestor Crit Slam & Anvil Resonance!'
       },
       {
-        name: 'ANVIL CANNONBALL',
+        name: 'WORLD-ANVIL CATACLYSM',
         type: 'SKILL • 4.2S CD',
         vfxCell: 1,
-        desc: 'Summons a physical Iron Anvil obstacle, then batters it horizontally across the stage for a Wall-Crush!'
+        desc: 'Plants a Gravity-Pulsing World-Anvil Altar, then hammers a Ricocheting Anvil Cannonball that rebounds off the arena wall!'
       },
       {
-        name: 'WORLD-FORGE RAGNAROK',
+        name: 'RAGNAROK WORLD-FORGE',
         type: '★ OVERDRIVE ULT',
         vfxCell: 3,
-        desc: 'Grows to 1.25x Giant Size and marches forward with 3 unstoppable volcanic hammer slams.'
+        desc: 'Ascends to 3.0x Colossal Demi-God scale for 5s, marching forward with 6 unstoppable volcanic caldera eruptions.'
       }
     ]
   },

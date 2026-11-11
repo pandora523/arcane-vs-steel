@@ -18,65 +18,65 @@ export class PixelForge {
       arenaSylvan: loadImg('assets/sprites/arena_sylvan.png'),
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
-      arenaInferno: loadImg('assets/sprites/arena_inferno.png?v=30fps65'),
-      arenaSanctuary: loadImg('assets/sprites/arena_sanctuary.png?v=30fps65'),
+      arenaInferno: loadImg('assets/sprites/arena_inferno.png?v=30fps66'),
+      arenaSanctuary: loadImg('assets/sprites/arena_sanctuary.png?v=30fps66'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps65'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps65'),
-        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps65'),
-        portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps65', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps66'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps66'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps66'),
+        portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps66', () => this.refreshPortraits())
       },
       mage: {
-        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps65'),
-        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps65'),
-        meteor: loadImg('assets/sprites/meteor_cataclysm.png?v=30fps65'),
-        portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps65', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps66'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps66'),
+        meteor: loadImg('assets/sprites/meteor_cataclysm.png?v=30fps66'),
+        portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps66', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps65'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps65'),
-        portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps65', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps66'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps66'),
+        portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps66', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps65'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps65'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps65'),
-        portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps65', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps66'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps66'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps66'),
+        portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps66', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps65'),
-        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps65'),
-        portrait: loadImg('assets/sprites/reaper_portrait.png?v=30fps65', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps66'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps66'),
+        portrait: loadImg('assets/sprites/reaper_portrait.png?v=30fps66', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps65'),
-        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps65'),
-        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps65', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps66'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps66'),
+        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps66', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps65'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps65'),
-        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps65', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps66'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps66'),
+        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps66', () => this.refreshPortraits())
       },
       ronin: {
-        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps65'),
-        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps65'),
-        portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps65', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps66'),
+        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps66'),
+        portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps66', () => this.refreshPortraits())
       },
       valkyrie: {
-        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps65'),
-        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps65'),
-        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps65', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps66'),
+        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps66'),
+        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps66', () => this.refreshPortraits())
       },
       icemage: {
-        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps65'),
-        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps65'),
-        portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps65', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps66'),
+        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps66'),
+        portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps66', () => this.refreshPortraits())
       },
       android: {
-        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps65'),
-        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps65'),
-        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps65', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps66'),
+        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps66'),
+        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps66', () => this.refreshPortraits())
       }
     };
 
@@ -1094,39 +1094,41 @@ export class PixelForge {
       }
     } else if (heroKey === 'titan') {
       if (slotIdx === 0) {
-        // TECTONIC WAR-HAMMER + ANVIL BULWARK: Colossal Runic War-Hammer + Emerald-Jade & Molten Gold Rune Core
-        drawLinePx(5, 23, 19, 9, '#b45309', 2); // Heavy bronze haft
-        // Colossal beveled War-Hammer head
-        fillRectPx(12, 4, 11, 7, '#475569');
-        fillRectPx(13, 5, 9, 5, '#f59e0b');
-        fillRectPx(15, 6, 5, 3, '#10b981');
-        setPx(17, 7, '#ffffff');
-        // Molten ground shockwave arc
-        drawLinePx(6, 23, 23, 23, '#fde047', 2);
+        // TRINITY OF THE WORLD-MAUL: Obsidian-Gold Horned Maul + Emerald-Jade Crucible Core & Magnetic Fissure
+        drawLinePx(5, 22, 19, 8, '#b45309', 2);
+        fillRectPx(11, 3, 12, 8, '#1e293b');
+        fillRectPx(12, 4, 10, 6, '#f59e0b');
+        fillRectPx(15, 5, 4, 4, '#10b981');
+        setPx(16, 6, '#ffffff');
+        // Orbiting Crucible Core + Magnetic Fissure wave
+        drawCirclePx(7, 9, 2, '#34d399', true);
+        drawLinePx(4, 23, 24, 23, '#fde047', 2);
+        drawLinePx(8, 21, 20, 21, '#10b981', 1);
       } else if (slotIdx === 1) {
-        // MOUNTAIN ANVIL: Colossal Bronze & Obsidian Forge Anvil + Descending Lightning/Sparks
-        fillRectPx(7, 13, 15, 4, '#64748b'); // Anvil top horn & face
-        fillRectPx(4, 14, 4, 2, '#94a3b8');  // Left horn
-        fillRectPx(10, 17, 9, 4, '#334155'); // Anvil waist
-        fillRectPx(8, 21, 13, 3, '#475569'); // Anvil base
-        // Glowing emerald-jade & gold forge runes on anvil
-        fillRectPx(12, 15, 5, 2, '#10b981');
+        // WORLD-ANVIL CATACLYSM: Horned Obsidian-Gold World-Anvil Altar + Wall-Ricochet Trajectory Spark
+        fillRectPx(7, 13, 15, 4, '#334155');
+        fillRectPx(4, 14, 4, 2, '#fbbf24');
+        fillRectPx(21, 14, 3, 2, '#fbbf24');
+        fillRectPx(10, 17, 9, 4, '#1e293b');
+        fillRectPx(7, 21, 15, 3, '#b45309');
+        fillRectPx(12, 14, 5, 2, '#10b981');
         fillRectPx(13, 18, 3, 2, '#fde047');
-        // Overhead impact sparks
-        drawLinePx(14, 4, 14, 12, '#fde047', 2);
-        drawLinePx(8, 7, 13, 12, '#f97316', 2);
-        drawLinePx(20, 7, 15, 12, '#34d399', 2);
+        // Ricochet trajectory V-arc off top-right border
+        drawLinePx(8, 6, 23, 9, '#fde047', 2);
+        drawLinePx(23, 9, 14, 12, '#34d399', 2);
+        setPx(23, 9, '#ffffff');
       } else {
-        // WORLD-FORGE RAGNAROK: Horned Molten Titan Crown + Erupting Basalt & Jade Monoliths
-        fillRectPx(5, 12, 3, 12, '#10b981');
-        fillRectPx(20, 12, 3, 12, '#10b981');
-        // Horned Titan helmet & glowing eyes
-        drawLinePx(5, 6, 11, 11, '#fde047', 2);
-        drawLinePx(22, 6, 16, 11, '#fde047', 2);
-        fillRectPx(9, 9, 10, 10, '#d97706');
-        fillRectPx(10, 12, 3, 2, '#ffffff');
-        fillRectPx(15, 12, 3, 2, '#ffffff');
-        fillRectPx(11, 16, 6, 6, '#f97316'); // Braided fire beard
+        // RAGNAROK WORLD-FORGE: Colossal Horned Khazad Sovereign Crown + Twin Jade Obelisks & Braided Fire Beard
+        fillRectPx(4, 11, 3, 13, '#10b981');
+        fillRectPx(21, 11, 3, 13, '#10b981');
+        drawLinePx(4, 5, 10, 10, '#fde047', 2);
+        drawLinePx(23, 5, 17, 10, '#fde047', 2);
+        fillRectPx(9, 8, 10, 9, '#1e293b');
+        fillRectPx(10, 9, 8, 3, '#f59e0b');
+        fillRectPx(10, 12, 3, 2, '#34d399');
+        fillRectPx(15, 12, 3, 2, '#34d399');
+        fillRectPx(10, 16, 8, 6, '#ea580c');
+        fillRectPx(13, 16, 2, 7, '#fde047');
         fillRectPx(4, 23, 20, 2, '#fde047');
       }
     } else if (heroKey === 'ronin') {
