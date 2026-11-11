@@ -18,10 +18,10 @@ export class Titan extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Torgar',
-      maxHp: 1520,
-      moveSpeed: 164,
-      attackRange: 185,
-      autoInterval: 1.04,
+      maxHp: 4500,
+      moveSpeed: 196,
+      attackRange: 198,
+      autoInterval: 0.90,
       lightColor: 'rgba(245, 158, 11, 1)',
       primaryColor: '#f59e0b'
     });
@@ -39,7 +39,7 @@ export class Titan extends Fighter {
     this.hasPoise = true;
     this.unstoppablePoise = false;
     this.skillTriggerRange = 460;
-    this.skillMaxCooldown = 4.25;
+    this.skillMaxCooldown = 4.18;
     this.dashMaxCooldown = 2.65;
     this.autoDuration = 0.86;
     this.skillDuration = 0.94;
@@ -216,7 +216,7 @@ export class Titan extends Fighter {
           if (t && !t.isDead && !t.isBenched && !a.hitTargets.has(t)) {
             if (Math.abs(t.x - a.x) < 68 && Math.abs(t.y - a.y) < 110) {
               a.hitTargets.add(t);
-              t.takeDamage(64, this, true, 340, -165);
+              t.takeDamage(118, this, true, 340, -165);
               if (game.audio) game.audio.play('thunder_slam', t.x);
               game.renderer.triggerShake(11, 0.22);
               game.renderer.triggerHitStop(0.05);
@@ -239,7 +239,7 @@ export class Titan extends Fighter {
               // Check if enemy is slammed into or near the arena wall for WALL CRUSH bonus!
               const ww = game.renderer ? game.renderer.worldWidth : 1200;
               if (t.x <= 185 || t.x >= ww - 185) {
-                t.takeDamage(26, this, true, -140, -220);
+                t.takeDamage(58, this, true, -140, -220);
                 game.vfx.spawnDamageText(
                   t.x,
                   t.y - 165,
@@ -327,7 +327,7 @@ export class Titan extends Fighter {
     this.isCrouching = true;
     this.isDeflecting = true;
     this.forgeArmorTimer = 2.3;
-    this.heal(30, 'FORGE TEMPER');
+    this.heal(40, 'FORGE TEMPER');
     this.vx = 0;
     const frontX = this.x + this.facing * 118;
 
@@ -420,7 +420,7 @@ export class Titan extends Fighter {
       });
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - slamX) <= 185) {
-        enemy.takeDamage(28, this, false, 235, -165);
+        enemy.takeDamage(48, this, false, 235, -165);
         game.vfx.spawnDamageText(enemy.x, enemy.y - 150, 0, false, 'MOLTEN NOVA!', '#fbbf24');
       }
     }
@@ -530,7 +530,7 @@ export class Titan extends Fighter {
         });
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - slamX) <= 215 && enemy.y >= this.groundY - 70) {
-          enemy.takeDamage(46, this, true, 165, -210);
+          enemy.takeDamage(68, this, true, 165, -210);
           game.vfx.spawnDamageText(enemy.x, enemy.y - 155, 0, true, 'SEISMIC SLAM!', '#fef08a');
         }
       }
@@ -548,7 +548,7 @@ export class Titan extends Fighter {
     this.vx = this.dashDir * rushSpeed;
     if (enemy && !enemy.isDead && !this.didActionFrame && Math.abs(enemy.x - this.x) < 115) {
       this.didActionFrame = true;
-      enemy.takeDamage(34, this, false, 240, -145);
+      enemy.takeDamage(52, this, false, 240, -145);
       if (game.audio) game.audio.play('heavy_cleave', this.x);
       game.renderer.triggerShake(7, 0.16);
       game.vfx.spawnDamageText(enemy.x, enemy.y - 150, 0, false, 'SHOULDER RAM!', '#fbbf24');
@@ -631,12 +631,12 @@ export class Titan extends Fighter {
         this.activeAnvil.age = 0;
       }
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 215) {
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 228) {
         const isCrit = Math.random() < 0.25;
-        const dmg = 22 * (isCrit ? 1.35 : 1);
+        const dmg = 60 * (isCrit ? 1.35 : 1);
         enemy.takeDamage(dmg, this, isCrit, -65, -115);
         game.vfx.spawnDamageText(enemy.x, enemy.y - 150, 0, false, 'ANVIL CLEAVE!', '#fbbf24');
-        this.gainMana(8);
+        this.gainMana(3.6);
       }
     }
 
@@ -674,14 +674,14 @@ export class Titan extends Fighter {
         inFront: true
       });
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 235) {
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 245) {
         const isCrit = isFinisher || Math.random() < 0.3;
-        const dmg = (isFinisher ? 30 : 22) * (isCrit ? 1.35 : 1);
+        const dmg = (isFinisher ? 82 : 60) * (isCrit ? 1.35 : 1);
         enemy.takeDamage(dmg, this, isCrit, isFinisher ? 165 : 95, isFinisher ? -215 : -145);
         if (isFinisher) {
           game.vfx.spawnDamageText(enemy.x, enemy.y - 162, 0, true, 'WORLD-BREAKER SLAM!', '#10b981');
         }
-        this.gainMana(8);
+        this.gainMana(3.6);
       }
     }
 
@@ -742,8 +742,8 @@ export class Titan extends Fighter {
       game.vfx.spawnSpecialCastAura(this, this.skillName, '✦ WORLD-FORGE ANVIL ✦', 'forge', false);
       game.vfx.spawnDamageText(anvilX, this.groundY - 115, 0, false, 'FORGE ANVIL!', '#10b981');
 
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - anvilX) < 115) {
-        enemy.takeDamage(26, this, false, 45, -135);
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - anvilX) < 130) {
+        enemy.takeDamage(70, this, false, 45, -135);
       }
     }
 
@@ -797,8 +797,8 @@ export class Titan extends Fighter {
         this.activeAnvil.vx = dir * 940;
         this.activeAnvil.age = 0;
       }
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - impactX) < 165) {
-        enemy.takeDamage(34, this, true, 220, -145);
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - impactX) < 180) {
+        enemy.takeDamage(98, this, true, 220, -145);
       }
     }
 
@@ -917,7 +917,7 @@ export class Titan extends Fighter {
       for (const target of targets) {
         if (target && !target.isDead && !target.isBenched) {
           target.takeDamage(
-            waveIdx >= 5 ? 56 : 44,
+            waveIdx >= 5 ? 98 : 74,
             this,
             true,
             waveIdx >= 5 ? 295 : -75,
@@ -1153,7 +1153,7 @@ export class Titan extends Fighter {
       game?.audio?.play?.('earthshatter', this._trueUltAnvilX);
       game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
 
-      this.heal(Math.round(this.maxHp * 0.18), 'WORLD-FORGE TEMPER');
+      this.heal(Math.round(this.maxHp * 0.16), 'WORLD-FORGE TEMPER');
       this.forgeArmorTimer = 4.5;
 
       this.fx?.spawn('ragnarokWorldForgeWave', this._trueUltAnvilX, this.groundY - 4, {
@@ -1190,11 +1190,11 @@ export class Titan extends Fighter {
         '#f97316'
       );
 
-      // Deal a SINGLE CATACLYSMIC INSTANT BURST of 385 Crit damage to all active enemies!
+      // Deal a SINGLE CATACLYSMIC INSTANT BURST of 735 Crit damage to all active enemies!
       const targets = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
       for (const t of targets) {
         if (t && !t.isDead && !t.isBenched) {
-          t.takeDamage(385, this, true, 340, -290);
+          t.takeDamage(735, this, true, 340, -290);
         }
       }
     }

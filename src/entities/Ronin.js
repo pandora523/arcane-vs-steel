@@ -14,10 +14,10 @@ export class Ronin extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Kaze-Maru',
-      maxHp: 1125,
-      moveSpeed: 222,
-      attackRange: 175,
-      autoInterval: 0.86,
+      maxHp: 3600,
+      moveSpeed: 234,
+      attackRange: 182,
+      autoInterval: 0.88,
       lightColor: 'rgba(129, 140, 248, 1)',
       primaryColor: '#818cf8'
     });
@@ -31,7 +31,7 @@ export class Ronin extends Fighter {
     this.theme = 'storm';
     this.hasPoise = false;
     this.skillTriggerRange = 440;
-    this.skillMaxCooldown = 4.85;
+    this.skillMaxCooldown = 4.75;
     this.dodgeMaxCooldown = 3.45;
     this.dashMaxCooldown = 3.40;
     this.autoDuration = 0.46;
@@ -310,9 +310,9 @@ export class Ronin extends Fighter {
       );
     }
 
-    attacker.takeDamage(48, this, true, 145, -155);
-    this.heal(16, 'SERENE FOCUS');
-    this.gainMana(15);
+    attacker.takeDamage(72, this, true, 145, -155);
+    this.heal(20, 'SERENE FOCUS');
+    this.gainMana(4);
     this.didActionFrame = true;
   }
 
@@ -373,7 +373,7 @@ export class Ronin extends Fighter {
           game.renderer.triggerShake(7, 0.15);
           game.vfx.spawnBurst(t.x, t.y - 82, 16, '#818cf8', 235, { upBias: 95, size: 5 });
           game.vfx.spawnDamageText(t.x, t.y - 156, 0, true, 'JUDGMENT SHEATH!', '#38bdf8');
-          t.takeDamage(24, this, true, 95, -145);
+          t.takeDamage(38, this, true, 95, -145);
         }
       }
     }
@@ -495,7 +495,7 @@ export class Ronin extends Fighter {
       this.spawnPixelShockwave(this.x, this.y - 72, 108, 'cyan', 0.26, false);
       if (game?.audio) game.audio.play('slash', this.x);
       if (enemy && !enemy.isDead && Math.abs(enemy.x - (oldX + this.x) * 0.5) < 145) {
-        enemy.takeDamage(34, this, true, 125, -135);
+        enemy.takeDamage(52, this, true, 125, -135);
       }
     }
 
@@ -584,7 +584,7 @@ export class Ronin extends Fighter {
         });
         this.spawnPixelShockwave(this.x, this.y - 68, 96, 'cyan', 0.24, false);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 145) {
-          enemy.takeDamage(22, this, false, 45, -130);
+          enemy.takeDamage(34, this, false, 45, -130);
         }
       }
 
@@ -599,7 +599,7 @@ export class Ronin extends Fighter {
         });
         this.spawnPixelShockwave(this.x, this.y - 68, 106, 'purple', 0.26, false);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 155) {
-          enemy.takeDamage(25, this, true, 95, 120);
+          enemy.takeDamage(38, this, true, 95, 120);
         }
       }
 
@@ -664,9 +664,9 @@ export class Ronin extends Fighter {
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 30) {
           const isCrit = Math.random() < 0.30;
-          const dmg = (step === 0 ? 27 : 30) * (isCrit ? 1.35 : 1);
+          const dmg = (step === 0 ? 47 : 52) * (isCrit ? 1.35 : 1);
           enemy.takeDamage(dmg, this, isCrit, 75, step === 1 ? -145 : 0);
-          this.gainMana(9);
+          this.gainMana(2.4);
         }
       } else {
         // Step 2 (3rd Hit): IAIDO FLASH-THROUGH SLASH & DELAYED JUDGMENT CUT!
@@ -698,8 +698,8 @@ export class Ronin extends Fighter {
             'IAIDO FLASH-THROUGH!',
             '#38bdf8'
           );
-          enemy.takeDamage(32, this, true, 35, -125);
-          this.gainMana(11);
+          enemy.takeDamage(55, this, true, 35, -125);
+          this.gainMana(3.5);
 
           this.delayedJudgmentCuts.push({
             target: enemy,
@@ -828,7 +828,7 @@ export class Ronin extends Fighter {
         );
         if (game?.audio) game.audio.play('dash_whoosh', center);
         if (enemy && !enemy.isDead && Math.abs(enemy.x - center) < 235) {
-          enemy.takeDamage(20, this, passIdx === 2, 22, -98);
+          enemy.takeDamage(34, this, passIdx === 2, 22, -98);
         }
       }
       return;
@@ -906,8 +906,9 @@ export class Ronin extends Fighter {
       this.spawnPixelLightningBolt(strikeX, this.groundY - 270, this.groundY, 'cyan', 0.36);
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 340) {
-        enemy.takeDamage(36, this, true, 165, -210);
+        enemy.takeDamage(72, this, true, 165, -210);
       }
+      this.heal(18, 'ZANSHIN FOCUS');
     }
 
     if (t >= this.skillDuration) {
@@ -1066,7 +1067,7 @@ export class Ronin extends Fighter {
           if (game?.audio) game.audio.play('slash', targetX);
           game?.renderer?.triggerShake(8, 0.12);
           if (enemy && !enemy.isDead) {
-            enemy.takeDamage(25, this, true, 16, -95);
+            enemy.takeDamage(35, this, true, 16, -95);
           }
         }
       }
@@ -1129,8 +1130,9 @@ export class Ronin extends Fighter {
         '#38bdf8'
       );
 
+      this.heal(22, 'SUSANOO FOCUS');
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(54, this, true, 220, -245);
+        enemy.takeDamage(94, this, true, 220, -245);
       }
     }
 
@@ -1392,18 +1394,18 @@ export class Ronin extends Fighter {
         }
         this.spawnPixelShockwave(rx, ry, 108, k % 2 === 0 ? 'cyan' : 'purple', 0.24, false);
 
-        // 8 x 12 light pinning cuts keeping the foe suspended inside the storm web!
+        // 8 x 18 light pinning cuts keeping the foe suspended inside the storm web!
         let cutAny = false;
         for (const foe of foes) {
           if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - targetX) < 205) {
-            foe.takeDamage(12, this, false, 14, -24);
+            foe.takeDamage(foe === focusEnemy ? 17 : 13, this, false, 14, -24);
             foe.vx = (targetX - foe.x) * 3.4;
             foe.x += (targetX - foe.x) * 0.35;
             cutAny = true;
           }
         }
         if (!cutAny && focusEnemy && !focusEnemy.isDead) {
-          focusEnemy.takeDamage(12, this, false, 14, -24);
+          focusEnemy.takeDamage(17, this, false, 14, -24);
           focusEnemy.vx = (targetX - focusEnemy.x) * 3.4;
           focusEnemy.x += (targetX - focusEnemy.x) * 0.35;
         }
@@ -1435,7 +1437,7 @@ export class Ronin extends Fighter {
 
     // =========================================================================
     // PHASE 3 (2.85s..4.40s): Reappear on Far Flank Facing AWAY, Slow Saya Slide,
-    //                         t = 3.35s Guard Click -> 8-Rift + Row 7 Cleave (275 Crit!)
+    //                         t = 3.35s Guard Click -> 8-Rift + Row 7 Cleave (590 Crit!)
     // =========================================================================
     if (this._trueUltStep < 3) {
       this._trueUltStep = 3;
@@ -1541,16 +1543,17 @@ export class Ronin extends Fighter {
         );
       }
 
-      // Deal ONE massive 275 Crit burst!
+      this.heal(Math.round(this.maxHp * 0.12), 'RAIJIN RENEWAL');
+      // Deal ONE massive 545 Crit burst!
       let hitFinisher = false;
       for (const foe of foes) {
         if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - targetX) < 255) {
-          foe.takeDamage(275, this, true, 255, -285);
+          foe.takeDamage(foe === focusEnemy ? 545 : 415, this, true, 255, -285);
           hitFinisher = true;
         }
       }
       if (!hitFinisher && focusEnemy && !focusEnemy.isDead) {
-        focusEnemy.takeDamage(275, this, true, 255, -285);
+        focusEnemy.takeDamage(545, this, true, 255, -285);
       }
     }
 

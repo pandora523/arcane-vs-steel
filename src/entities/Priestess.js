@@ -19,10 +19,10 @@ export class Priestess extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Seraphina',
-      maxHp: 1160,
+      maxHp: 3620,
       attackRange: 512,
-      moveSpeed: 132,
-      autoInterval: 1.33,
+      moveSpeed: 148,
+      autoInterval: 1.12,
       lightColor: 'rgba(253, 224, 71, 1)',
       primaryColor: '#fde047',
       hasTrueUltimate: true,
@@ -32,7 +32,7 @@ export class Priestess extends Fighter {
     this.heroId = 'priestess';
     this.theme = 'radiant';
     this.deathSfx = 'death_priestess';
-    this.skillMaxCooldown = 5.55;
+    this.skillMaxCooldown = 5.00;
     this.autoDuration = 0.90;
     this.skillDuration = 0.98;
     this.ultDuration = 1.52;
@@ -280,7 +280,7 @@ export class Priestess extends Fighter {
     this.vx = 0;
     this.vy = 0;
     if (game.audio) game.audio.play('holy_heal', this.x);
-    this.heal(16, 'WINGS OF GRACE');
+    this.heal(8, 'WINGS OF GRACE');
     this.ensureSlipstream();
     this.ensureSanctuarySeal(false);
     this.fx.spawn('graceHealBloom', this.x, this.groundY, {
@@ -321,7 +321,7 @@ export class Priestess extends Fighter {
     });
     if (game && game.vfx) {
       if (game.audio) game.audio.play('holy_heal', this.x);
-      this.heal(13, 'BENEDICTION');
+      this.heal(8, 'BENEDICTION');
       game.vfx.spawnGlyphBurst(this.x, this.y - 88, 6, 'radiant');
       game.vfx.spawnDamageText(this.x, this.y - 122, 0, false, 'BENEDICTION PRAYER!', '#fef08a');
     }
@@ -370,7 +370,7 @@ export class Priestess extends Fighter {
     this.vx = 0;
     this.vy = 0;
     if (game.audio) game.audio.play('holy_heal', this.x);
-    this.heal(16, 'WINGS OF GRACE');
+    this.heal(8, 'WINGS OF GRACE');
     this.ensureSlipstream();
     this.ensureSanctuarySeal(false);
     this.fx.spawn('graceHealBloom', this.x, this.groundY, {
@@ -452,7 +452,7 @@ export class Priestess extends Fighter {
           color: '#fde047',
           coreColor: '#ffffff',
           owner: this,
-          damage: 45,
+          damage: 58,
           type: 'holy_light',
           isMeteor: false
         });
@@ -541,7 +541,7 @@ export class Priestess extends Fighter {
         color: '#fde047',
         coreColor: '#ffffff',
         owner: this,
-        damage: 66,
+        damage: 80,
         type: 'holy_light',
         isMeteor: false
       });
@@ -657,7 +657,7 @@ export class Priestess extends Fighter {
           color: '#fde047',
           coreColor: '#ffffff',
           owner: this,
-          damage: isGraceCast ? 41 : 62,
+          damage: isGraceCast ? 68 : 90,
           type: 'holy_light',
           isMeteor: false
         });
@@ -669,7 +669,7 @@ export class Priestess extends Fighter {
         });
 
         if (isGraceCast) {
-          this.heal(17, 'DAWN GRACE');
+          this.heal(16, 'DAWN GRACE');
           this.fx.spawn('graceHealBloom', this.x, this.groundY, {
             follow: this,
             offsetX: 0,
@@ -686,7 +686,7 @@ export class Priestess extends Fighter {
             color: '#facc15',
             coreColor: '#fef9c3',
             owner: this,
-            damage: 20,
+            damage: 34,
             type: 'holy_light',
             isMeteor: false
           });
@@ -706,7 +706,7 @@ export class Priestess extends Fighter {
               coreColor: '#ffffff',
               owner: this,
               target: enemy,
-              damage: 24,
+              damage: 36,
               isUltimate: false
             });
           }
@@ -731,7 +731,7 @@ export class Priestess extends Fighter {
     } else if (t >= 0.20 && !this.didSanctuaryHeal) {
       this.didSanctuaryHeal = true;
       if (game.audio) game.audio.play('holy_heal', this.x);
-      this.heal(62, 'SANCTUARY');
+      this.heal(38, 'SANCTUARY');
       this.fx.spawn('graceHealBloom', this.x, this.groundY, {
         follow: this,
         offsetX: 0,
@@ -798,7 +798,7 @@ export class Priestess extends Fighter {
       });
 
       if (!enemy.isDead) {
-        const beamDmg = horizDist >= 260 ? 54 : 48;
+        const beamDmg = horizDist >= 260 ? 84 : 74;
         enemy.takeDamage(beamDmg, this, false, 60, -45);
       }
 
@@ -817,7 +817,7 @@ export class Priestess extends Fighter {
           coreColor: '#ffffff',
           owner: this,
           target: enemy,
-          damage: 12,
+          damage: 26,
           delay: side < 0 ? 0 : 0.06,
           isUltimate: false
         });
@@ -832,7 +832,7 @@ export class Priestess extends Fighter {
         color: '#fde047',
         coreColor: '#ffffff',
         owner: this,
-        damage: 33,
+        damage: 52,
         type: 'holy_light',
         isMeteor: false
       });
@@ -876,7 +876,7 @@ export class Priestess extends Fighter {
     if (t >= 0.16 && !this.didUltMiracle) {
       this.didUltMiracle = true;
       if (game.audio) game.audio.play('holy_heal', this.x);
-      this.heal(86, 'MIRACLE');
+      this.heal(46, 'MIRACLE');
       this.fx.spawn('graceHealBloom', this.x, this.groundY, {
         follow: this,
         offsetX: 0,
@@ -929,12 +929,12 @@ export class Priestess extends Fighter {
         coreColor: '#ffffff',
         owner: this,
         target: enemy,
-        damage: 7,
+        damage: 18,
         isUltimate: true
       });
 
       game.vfx.spawnGlyphBurst(aimX, this.groundY - 45, 5, 'radiant');
-      enemy.takeDamage(13, this, false, 28, 0);
+      enemy.takeDamage(28, this, false, 28, 0);
     }
 
     if (t >= 0.94 && !this.didActionFrame) {
@@ -1003,7 +1003,7 @@ export class Priestess extends Fighter {
       game.vfx.spawnGlyphBurst(targetX, this.groundY - 90, 8, 'heal');
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(96, this, true, 150, -210);
+        enemy.takeDamage(168, this, true, 150, -210);
       }
     } else if (t >= this.ultDuration) {
       this.y = this.groundY;
@@ -1013,7 +1013,7 @@ export class Priestess extends Fighter {
 
   /**
    * Supreme Ultimate: `"FINAL GRACE"` (`TRUE_ULTIMATE`, `4.25s`).
-   * Phase 1 (`0.00s..3.00s`): Invulnerable winged flight + 30% Max HP heal (`348 HP`) + whole-screen expanding celestial bloom charge.
+   * Phase 1 (`0.00s..3.00s`): Invulnerable winged flight + 30% Max HP heal (`1,104 HP`) + whole-screen expanding celestial bloom charge.
    * Phase 2 (`3.00s..3.92s`): Single instant stored tanked-damage horizontal counter-beam (`———`), then smooth descent (`3.92s..4.25s`).
    * Never replaces the arena stage background (`setStageTransformation` is never called).
    */
@@ -1074,7 +1074,7 @@ export class Priestess extends Fighter {
 
       if (t >= 0.55 && !this.finalGraceDidHeal) {
         this.finalGraceDidHeal = true;
-        const healAmt = Math.round(this.maxHp * 0.30);
+        const healAmt = Math.round(this.maxHp * 0.18);
         if (game?.audio) game.audio.play('holy_heal', this.x);
         this.heal(healAmt, 'FINAL GRACE');
         this.fx.spawn('graceHealBloom', this.x, this.groundY, {
@@ -1146,7 +1146,7 @@ export class Priestess extends Fighter {
       this.finalGraceBeamY = beamY;
 
       const rawTanked = Math.round(this.tankedDamage || 0);
-      const counterDmg = Math.max(220, rawTanked);
+      const counterDmg = Math.min(Math.round(this.maxHp * 0.28), Math.max(620, rawTanked));
       this.tankedDamage = 0;
 
       if (game?.audio) game.audio.play('final_grace_beam', this.x);

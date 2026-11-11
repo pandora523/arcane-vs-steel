@@ -18,10 +18,10 @@ export class Valkyrie extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Freyja',
-      maxHp: 1205,
-      moveSpeed: 212,
+      maxHp: 3680,
+      moveSpeed: 208,
       attackRange: 520,
-      autoInterval: 0.99,
+      autoInterval: 1.02,
       lightColor: 'rgba(244, 63, 94, 1)',
       primaryColor: '#f43f5e'
     });
@@ -35,7 +35,7 @@ export class Valkyrie extends Fighter {
     this.theme = 'crimson';
     this.hasPoise = true;
     this.skillTriggerRange = 620;
-    this.skillMaxCooldown = 4.75;
+    this.skillMaxCooldown = 4.95;
     this.dodgeMaxCooldown = 3.30;
     this.autoDuration = 0.60;
     this.skillDuration = 0.90;
@@ -393,7 +393,7 @@ export class Valkyrie extends Fighter {
               sp.hitTargets.add(t);
               hitSomeone = true;
               t.takeDamage(sp.damage, this, sp.isUlt, 65, sp.isUlt ? -115 : -45);
-              this.gainMana(sp.isUlt ? 0 : 2.8);
+              this.gainMana(sp.isUlt ? 0 : 1.05);
               if (game.audio) game.audio.play('holy_spear', sp.x);
 
               this.fx.spawn('gungnirImpactStarburst', sp.x, sp.y, {
@@ -502,7 +502,7 @@ export class Valkyrie extends Fighter {
     this.vaultTargetX = Math.max(85, Math.min(ww - 85, this.x + retreatDir * 210));
     this.vx = 0;
     this.vy = 0;
-    this.heal(5, 'VALKYRIE GRACE');
+    this.heal(8, 'VALKYRIE GRACE');
     this.spawnAfterimage(this.x, this.y, this.facing, 7, 2, 0.20);
 
     // 2.5D Valhalla Ground Takeoff Ring + Crimson-Gold Feather Slipstream
@@ -571,7 +571,7 @@ export class Valkyrie extends Fighter {
       const sy = this.y - 68;
       const tx = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 320;
       const ty = enemy && !enemy.isDead ? enemy.y - 74 : this.groundY - 74;
-      this.spawnGungnirSkySpear(sx, sy, tx, ty, 18, false, -45, -22);
+      this.spawnGungnirSkySpear(sx, sy, tx, ty, 20, false, -45, -22);
 
       this.fx.spawn('gungnirSpearThrustCone', sx, sy, {
         flip: false,
@@ -597,7 +597,7 @@ export class Valkyrie extends Fighter {
       const sy = this.y - 72;
       const tx = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 340;
       const ty = enemy && !enemy.isDead ? enemy.y - 68 : this.groundY - 68;
-      this.spawnGungnirSkySpear(sx, sy, tx, ty, 19, false, 45, 16);
+      this.spawnGungnirSkySpear(sx, sy, tx, ty, 22, false, 45, 16);
 
       this.fx.spawn('gungnirSpearThrustCone', sx, sy, {
         flip: false,
@@ -635,7 +635,7 @@ export class Valkyrie extends Fighter {
     this.isInvulnerable = true;
     this.isFlipVault = true;
     this._jumpJavelins = 0;
-    this.heal(6, 'VALHALLA WINGS');
+    this.heal(8, 'VALHALLA WINGS');
 
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const clampX = (v) => Math.max(105, Math.min(ww - 105, v));
@@ -769,7 +769,7 @@ export class Valkyrie extends Fighter {
         const sy = this.y - 88;
         const tx = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 360;
         const ty = enemy && !enemy.isDead ? enemy.y - 72 : this.groundY - 72;
-        this.spawnGungnirSkySpear(sx, sy, tx, ty, 19, false, -65, -28);
+        this.spawnGungnirSkySpear(sx, sy, tx, ty, 20, false, -65, -28);
         this.fx.spawn('gungnirSpearThrustCone', sx, sy, {
           flip: false,
           palette: VALKYRIE_CRIMSON_PALETTE,
@@ -784,7 +784,7 @@ export class Valkyrie extends Fighter {
         const sy = this.y - 86;
         const tx = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 360;
         const ty = enemy && !enemy.isDead ? enemy.y - 68 : this.groundY - 68;
-        this.spawnGungnirSkySpear(sx, sy, tx, ty, 20, false, 65, 14);
+        this.spawnGungnirSkySpear(sx, sy, tx, ty, 22, false, 65, 14);
         this.fx.spawn('gungnirSpearThrustCone', sx, sy, {
           flip: false,
           palette: VALKYRIE_GOLD_PALETTE,
@@ -855,7 +855,7 @@ export class Valkyrie extends Fighter {
         sy,
         tx,
         ty,
-        17,
+        22,
         false,
         this.comboStep % 2 === 0 ? -45 : 45,
         vArc
@@ -881,7 +881,7 @@ export class Valkyrie extends Fighter {
 
       if (step < 2) {
         const vArc = step % 2 === 0 ? 18 : -26;
-        this.spawnGungnirSkySpear(sx, sy, tx, ty, 18, false, step % 2 === 0 ? 50 : -50, vArc);
+        this.spawnGungnirSkySpear(sx, sy, tx, ty, 24, false, step % 2 === 0 ? 50 : -50, vArc);
         this.fx.spawn('gungnirSpearThrustCone', sx, sy, {
           flip: false,
           palette: VALKYRIE_GOLD_PALETTE,
@@ -913,7 +913,7 @@ export class Valkyrie extends Fighter {
           this.y - 102,
           tx,
           ty - 8,
-          16,
+          20,
           false,
           -65,
           -36
@@ -923,7 +923,7 @@ export class Valkyrie extends Fighter {
           this.y - 80,
           tx,
           ty + 8,
-          16,
+          20,
           false,
           65,
           24
@@ -1087,7 +1087,7 @@ export class Valkyrie extends Fighter {
           : this.x + this.facing * (340 + idx * 18);
       const ty = enemy && !enemy.isDead ? enemy.y - 72 : this.groundY - 72;
 
-      this.spawnGungnirSkySpear(sx, sy, tx, ty, 12, false, arcSpreads[idx], verticalArcs[idx]);
+      this.spawnGungnirSkySpear(sx, sy, tx, ty, 15, false, arcSpreads[idx], verticalArcs[idx]);
       this.fx.burst(sx, sy, {
         count: 5,
         speedMin: 60,
@@ -1141,7 +1141,7 @@ export class Valkyrie extends Fighter {
             color: '#f43f5e',
             owner: this,
             target: enemy,
-            damage: 21,
+            damage: 36,
             delay: 0
           });
         }
@@ -1363,7 +1363,7 @@ export class Valkyrie extends Fighter {
           sy,
           clampedTx,
           ty,
-          10,
+          14,
           true,
           arcSpreadSlots[idx % arcSpreadSlots.length],
           vArcSlots[idx % vArcSlots.length]
@@ -1448,7 +1448,7 @@ export class Valkyrie extends Fighter {
             color: '#f43f5e',
             owner: this,
             target: enemy,
-            damage: i === 0 ? 14 : 8,
+            damage: i === 0 ? 18 : 11,
             delay: Math.floor(Math.abs(off) / 105) * 0.06
           });
         });
@@ -1469,7 +1469,7 @@ export class Valkyrie extends Fighter {
       });
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(42, this, true, 235, -245);
+        enemy.takeDamage(74, this, true, 235, -245);
       }
     }
 
@@ -1667,18 +1667,18 @@ export class Valkyrie extends Fighter {
               size: 4
             });
           }
-          // 6 x 24 rapid pinning strikes keeping the target locked inside the glowing spear-ring!
+          // 6 x 30 rapid pinning strikes keeping the target locked inside the glowing spear-ring!
           let hitAny = false;
           for (const foe of foes) {
             if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - targetX) < 190) {
-              foe.takeDamage(24, this, false, 18, -32);
+              foe.takeDamage(25, this, false, 18, -32);
               foe.vx = (targetX - foe.x) * 3.2;
               foe.x += (targetX - foe.x) * 0.34;
               hitAny = true;
             }
           }
           if (!hitAny && focusEnemy && !focusEnemy.isDead) {
-            focusEnemy.takeDamage(24, this, false, 18, -32);
+            focusEnemy.takeDamage(25, this, false, 18, -32);
             focusEnemy.vx = (targetX - focusEnemy.x) * 3.2;
             focusEnemy.x += (targetX - focusEnemy.x) * 0.34;
           }
@@ -1976,19 +1976,19 @@ export class Valkyrie extends Fighter {
         );
       }
 
-      // Heal Freyja for 20% Max HP ("VALHALLA GRACE")
-      this.heal(Math.round(this.maxHp * 0.20), 'VALHALLA GRACE');
+      // Heal Freyja for 12% Max HP ("VALHALLA GRACE")
+      this.heal(Math.round(this.maxHp * 0.12), 'VALHALLA GRACE');
 
-      // Deal ONE massive 245 Crit Finisher burst!
+      // Deal ONE massive 555 Crit Finisher burst!
       let hitFinisher = false;
       for (const foe of foes) {
         if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - targetX) < 250) {
-          foe.takeDamage(245, this, true, 265, -275);
+          foe.takeDamage(555, this, true, 265, -275);
           hitFinisher = true;
         }
       }
       if (!hitFinisher && focusEnemy && !focusEnemy.isDead) {
-        focusEnemy.takeDamage(245, this, true, 265, -275);
+        focusEnemy.takeDamage(555, this, true, 265, -275);
       }
     }
 

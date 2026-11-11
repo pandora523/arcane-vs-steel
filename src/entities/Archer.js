@@ -18,17 +18,17 @@ export class Archer extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Sylvara',
-      maxHp: 1335,
+      maxHp: 3620,
       attackRange: 520,
-      moveSpeed: 173,
-      autoInterval: 1.01,
+      moveSpeed: 184,
+      autoInterval: 0.92,
       lightColor: 'rgba(16, 185, 129, 1)',
       primaryColor: '#10b981'
     });
     this.heroId = 'archer';
     this.theme = 'emerald';
     this.deathSfx = 'death_archer';
-    this.skillMaxCooldown = 4.25;
+    this.skillMaxCooldown = 4.05;
     this.ultName = 'ASTRAL HURRICANE';
     this.skillName = 'VERDANT SNARE & SEEKERS';
     this.hasTrueUltimate = true;
@@ -635,7 +635,7 @@ export class Archer extends Fighter {
         // Close-Range < 165px ("Star-Blade Vault Shot"): slash with twin bladed bow limbs + 95px backward slide + point-blank emerald arrow!
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 165) {
           const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-          enemy.takeDamage(28, this, false, 140, -60);
+          enemy.takeDamage(46, this, false, 140, -60);
           this.spawnVfxAnim(0, enemy.x, (enemy.groundY || this.groundY) - 96, 196, 196, 0.36, {
             flipX: this.facing < 0,
             inFront: true
@@ -657,7 +657,7 @@ export class Archer extends Fighter {
         const shotAng = Math.atan2(dy, dx);
         const isTwinShot = comboStage === 1;
         const isDragonPiercer = comboStage === 2;
-        const baseDamage = 96;
+        const baseDamage = 118;
 
         // Stage 0 / Muzzle Flash (`archer_vfx.png` Row 0)
         this.spawnVfxAnim(0, spawnX, spawnY, 188, 188, 0.34, {
@@ -681,7 +681,7 @@ export class Archer extends Fighter {
           const mainDmg = isDragonPiercer
             ? Math.round(baseDamage * 1.30)
             : isTwinShot
-              ? 84
+              ? 102
               : baseDamage;
 
           game.vfx.spawnProjectile({
@@ -710,7 +710,7 @@ export class Archer extends Fighter {
               color: '#34d399',
               coreColor: '#fef08a',
               owner: this,
-              damage: 64,
+              damage: 82,
               type: 'arrow'
             });
           }
@@ -797,7 +797,7 @@ export class Archer extends Fighter {
               color: '#10b981',
               coreColor: '#fef08a',
               owner: this,
-              damage: 24,
+              damage: 38,
               type: 'arrow'
             });
           }
@@ -807,7 +807,7 @@ export class Archer extends Fighter {
       // Row 3 Frame F11 (`t = 0.38s`): Release 3 Direct Fan-Spread Wind Arrows horizontally!
       this.didActionFrame = true;
       this.vx -= this.facing * 65;
-      this.heal(18, 'STARLIGHT GRACE');
+      this.heal(22, 'STARLIGHT GRACE');
       if (game?.audio) game.audio.play('arrow_shoot', this.x);
 
       const bowX = this.x + this.facing * 48;
@@ -833,7 +833,7 @@ export class Archer extends Fighter {
             color: '#34d399',
             coreColor: '#fef08a',
             owner: this,
-            damage: 41,
+            damage: 62,
             type: 'arrow'
           });
         });
@@ -898,7 +898,7 @@ export class Archer extends Fighter {
             coreColor: '#fef08a',
             owner: this,
             target: enemy,
-            damage: 25,
+            damage: 40,
             delay: i * 0.06,
             maxLinger: 0.55
           });
@@ -1051,7 +1051,7 @@ export class Archer extends Fighter {
       }
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(238, this, true, 220, -340);
+        enemy.takeDamage(295, this, true, 220, -340);
       }
     } else if (t >= 1.6) {
       this.setState('IDLE');
@@ -1196,8 +1196,8 @@ export class Archer extends Fighter {
         game.audio.play('arrow_hit', this.x);
       }
 
-      // Heal Sylvara for 18% Max HP
-      this.heal(Math.round(this.maxHp * 0.18), 'WORLD-TREE GRACE');
+      // Heal Sylvara for 14% Max HP
+      this.heal(Math.round(this.maxHp * 0.14), 'WORLD-TREE GRACE');
 
       const startX = this.x + this.facing * 42;
       const startY = this.y - 96;
@@ -1213,13 +1213,13 @@ export class Archer extends Fighter {
         }
       });
 
-      // Single instantaneous massive burst of 365 Crit damage to all active enemies in front of or near the beam!
+      // Single instantaneous massive burst of 760 Crit damage to all active enemies in front of or near the beam!
       let hitAny = false;
       for (const tFoe of targets) {
         if (tFoe && !tFoe.isDead && !tFoe.isBenched) {
           const relX = (tFoe.x - this.x) * this.facing;
           if (relX >= -110 || Math.abs(tFoe.x - this._trueUltTargetX) <= 260) {
-            tFoe.takeDamage(365, this, true, 320, -240);
+            tFoe.takeDamage(760, this, true, 320, -240);
             hitAny = true;
             this.spawnVfxAnim(3, tFoe.x, (tFoe.groundY || this.groundY) - 96, 236, 236, 0.48, {
               flipX: this.facing < 0,
@@ -1235,7 +1235,7 @@ export class Archer extends Fighter {
         }
       }
       if (!hitAny && primaryTarget && !primaryTarget.isDead) {
-        primaryTarget.takeDamage(365, this, true, 320, -240);
+        primaryTarget.takeDamage(760, this, true, 320, -240);
       }
     }
 

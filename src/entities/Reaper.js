@@ -19,10 +19,10 @@ export class Reaper extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Malakor',
-      maxHp: 1235,
-      attackRange: 188,
-      moveSpeed: 188,
-      autoInterval: 1.06,
+      maxHp: 3900,
+      attackRange: 194,
+      moveSpeed: 198,
+      autoInterval: 0.93,
       lightColor: 'rgba(192, 132, 252, 1)',
       primaryColor: '#c084fc',
       hasTrueUltimate: true,
@@ -35,10 +35,10 @@ export class Reaper extends Fighter {
     this.hasPoise = true;
     this.unstoppablePoise = false;
     this.isDeflecting = false;
-    this.skillMaxCooldown = 4.95;
+    this.skillMaxCooldown = 4.45;
     this.skillTriggerRange = 440;
-    this.autoDuration = 0.94;
-    this.skillDuration = 1.12;
+    this.autoDuration = 0.90;
+    this.skillDuration = 1.08;
     this.ultDuration = 1.68;
     this.skillName = "DEATH'S GRASP";
     this.ultName = 'GRIM HARVEST';
@@ -221,6 +221,9 @@ export class Reaper extends Fighter {
     const prevHp = this.hp;
     this.hp = Math.min(this.maxHp, this.hp + amount);
     const actual = Math.max(1, Math.round(amount));
+    if (this.stats) {
+      this.stats.healingDone += Math.max(0, Math.round(this.hp - prevHp));
+    }
 
     if (game && game.vfx) {
       game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, `${label} +${actual}`, '#e879f9');
@@ -765,7 +768,7 @@ export class Reaper extends Fighter {
       }
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 195) {
-        enemy.takeDamage(46, this, true, -48, -195);
+        enemy.takeDamage(54, this, true, -48, -195);
         this.leechLife(14, enemy, game, 'GRAVE HARVEST');
       }
     } else {
@@ -860,8 +863,8 @@ export class Reaper extends Fighter {
           Math.abs(enemy.y - 96 - bs.y) < 88
         ) {
           bs.hitOutbound = true;
-          enemy.takeDamage(30, this, false, -42, -55);
-          this.leechLife(14, enemy, game, 'PHANTOM SCYTHE');
+          enemy.takeDamage(50, this, false, -42, -55);
+          this.leechLife(8, enemy, game, 'PHANTOM SCYTHE');
           this.spawnVfxAnim(1, bs.x, bs.y, 128, 128, 0.28, {
             glowColor: 'violet',
             inFront: true
@@ -875,8 +878,8 @@ export class Reaper extends Fighter {
       } else if (bs.phase === 'hover') {
         if (!bs.hitHover && bs.timer >= 0.09 && enemy && !enemy.isDead && Math.abs(enemy.x - bs.x) < 72) {
           bs.hitHover = true;
-          enemy.takeDamage(24, this, true, -58, -68);
-          this.leechLife(10, enemy, game, 'VORTEX SHRED');
+          enemy.takeDamage(38, this, true, -58, -68);
+          this.leechLife(6, enemy, game, 'VORTEX SHRED');
           this.fx?.spawn('soulHarvestScytheArc', bs.x, bs.y, {
             flip: bs.dir < 0,
             light: 1.32,
@@ -913,8 +916,8 @@ export class Reaper extends Fighter {
         ) {
           bs.hitReturn = true;
           // Return flight hooks and pulls the enemy INWARD toward Malakor!
-          enemy.takeDamage(34, this, true, -98, -82);
-          this.leechLife(14, enemy, game, 'RETURN REAP!');
+          enemy.takeDamage(55, this, true, -98, -82);
+          this.leechLife(8, enemy, game, 'RETURN REAP!');
           this.spawnVfxAnim(1, bs.x, bs.y, 136, 136, 0.30, {
             glowColor: 'crimson',
             inFront: true
@@ -1107,15 +1110,15 @@ export class Reaper extends Fighter {
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 48) {
           const isCrit = mode === 2 || Math.random() < 0.24;
-          const dmg = mode === 2 ? 62 : mode === 1 ? 54 : 50;
+          const dmg = mode === 2 ? 98 : mode === 1 ? 85 : 76;
           const inwardPull = mode === 2 ? -78 : -68;
           enemy.takeDamage(dmg, this, isCrit, inwardPull, mode === 2 ? -95 : -28);
           if (!enemy.unstoppablePoise) {
             const pullDir = Math.sign(this.x - enemy.x);
             enemy.x += pullDir * 24;
           }
-          // Heal +14 HP per hit via homing Soul-Leech Wisp orbs (Row 1 of reaper_vfx.png)!
-          this.leechLife(14, enemy, game, 'SOUL HARVEST');
+          // Heal +11 HP per hit via homing Soul-Leech Wisp orbs (Row 1 of reaper_vfx.png)!
+          this.leechLife(11, enemy, game, 'SOUL HARVEST');
           if (game.audio) game.audio.play(mode === 2 ? 'soul_drain' : 'scythe_reap', enemy.x);
           if (game.renderer) game.renderer.triggerHitStop(0.055);
           this.fx?.burst(enemy.x, enemy.y - 96, {
@@ -1181,7 +1184,7 @@ export class Reaper extends Fighter {
         if (game.vfx) game.vfx.spawnGlyphBurst(targetX, targetY, 8, 'abyssal');
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= maxHookDist + 30) {
-          enemy.takeDamage(26, this, !enemy.hasPoise, -165, -35);
+          enemy.takeDamage(46, this, !enemy.hasPoise, -165, -35);
           // Trap enemy inside Malakor's Cursed Ossuary Bone-Cage grounded on this.groundY!
           const cageX = Math.max(105, Math.min(ww - 105, this.x + this.facing * 124));
           this.spawnOssuaryBoneCage(cageX, game);
@@ -1243,8 +1246,8 @@ export class Reaper extends Fighter {
       if (game.vfx) game.vfx.spawnGlyphBurst(reapX, this.y - 98, 9, 'abyssal');
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 245) {
-        enemy.takeDamage(58, this, true, -35, -125);
-        this.leechLife(28, enemy, game, 'OSSUARY GUILLOTINE');
+        enemy.takeDamage(98, this, true, -35, -125);
+        this.leechLife(18, enemy, game, 'OSSUARY GUILLOTINE');
       }
     } else if (t >= 0.90) {
       this.isDeflecting = false;
@@ -1365,8 +1368,8 @@ export class Reaper extends Fighter {
         );
       }
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(18, this, false, -25, 0);
-        this.leechLife(10, enemy, game, 'BONEYARD DOMAIN');
+        enemy.takeDamage(30, this, false, -25, 0);
+        this.leechLife(6, enemy, game, 'BONEYARD DOMAIN');
       }
     }
 
@@ -1402,8 +1405,8 @@ export class Reaper extends Fighter {
       if (game.vfx) game.vfx.spawnGlyphBurst(targetX, this.groundY - 98, 8, 'abyssal');
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(20, this, true, -40, -45);
-        this.leechLife(10, enemy, game, 'WRAITH CROSS I');
+        enemy.takeDamage(34, this, true, -40, -45);
+        this.leechLife(6, enemy, game, 'WRAITH CROSS I');
       }
     }
 
@@ -1453,8 +1456,8 @@ export class Reaper extends Fighter {
       if (game.vfx) game.vfx.spawnGlyphBurst(targetX, this.groundY - 110, 9, 'abyssal');
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(20, this, true, 35, -55);
-        this.leechLife(10, enemy, game, 'WRAITH CROSS II');
+        enemy.takeDamage(34, this, true, 35, -55);
+        this.leechLife(6, enemy, game, 'WRAITH CROSS II');
       }
     }
 
@@ -1498,8 +1501,8 @@ export class Reaper extends Fighter {
       if (game.vfx) game.vfx.spawnGlyphBurst(targetX, this.groundY - 108, 10, 'abyssal');
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(18, this, true, 0, -90);
-        this.leechLife(10, enemy, game, 'WRAITH CROSS III');
+        enemy.takeDamage(30, this, true, 0, -90);
+        this.leechLife(6, enemy, game, 'WRAITH CROSS III');
       }
     }
 
@@ -1564,8 +1567,8 @@ export class Reaper extends Fighter {
       }
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(64, this, true, slamDir * 165, -230);
-        this.leechLife(22, enemy, game, 'SOVEREIGN GUILLOTINE');
+        enemy.takeDamage(124, this, true, slamDir * 165, -230);
+        this.leechLife(18, enemy, game, 'SOVEREIGN GUILLOTINE');
         if (game.vfx) game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 98, 14, 'abyssal');
       }
     }
@@ -1775,13 +1778,13 @@ export class Reaper extends Fighter {
         inFront: false
       });
 
-      // SINGLE INSTANTANEOUS EXECUTION BURST of 360 Crit damage + 25% Max HP heal!
+      // SINGLE INSTANTANEOUS EXECUTION BURST of 720 Crit damage + 15% Max HP heal!
       for (const t of targets) {
         if (t && !t.isDead && !t.isBenched) {
-          t.takeDamage(360, this, true, 290, -260);
+          t.takeDamage(720, this, true, 290, -260);
         }
       }
-      this.heal(Math.round(this.maxHp * 0.25), 'MEMENTO MORI HARVEST');
+      this.heal(Math.round(this.maxHp * 0.15), 'MEMENTO MORI HARVEST');
     }
 
     // =========================================================================

@@ -20,10 +20,10 @@ export class Android extends Fighter {
     super({
       ...opts,
       name: opts.name || 'VEX-09',
-      maxHp: 1140,
-      moveSpeed: 214,
-      attackRange: 185,
-      autoInterval: 0.90,
+      maxHp: 3760,
+      moveSpeed: 228,
+      attackRange: 192,
+      autoInterval: 0.86,
       lightColor: 'rgba(0, 240, 255, 1)',
       primaryColor: '#00f0ff'
     });
@@ -36,9 +36,9 @@ export class Android extends Fighter {
     this.trueUltName = 'PROJECT GUNG-09: ORBITAL SATELLITE BUSTER';
     this.trueUltDuration = 4.45;
     this.theme = 'cyber';
-    this.hasPoise = false;
+    this.hasPoise = true;
     this.skillTriggerRange = 460;
-    this.skillMaxCooldown = 4.6;
+    this.skillMaxCooldown = 4.32;
     this.dodgeMaxCooldown = 3.4;
     this.dashMaxCooldown = 3.5;
     this.autoDuration = 0.50;
@@ -317,8 +317,8 @@ export class Android extends Fighter {
           extra: { radius: 38, sparks: ['#ffffff', '#7df9ff', '#00f0ff', '#ff2e93'] }
         });
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 205) {
-          enemy.takeDamage(36, this, false, 130, 0);
-          this.gainMana(10);
+          enemy.takeDamage(68, this, false, 130, 0);
+          this.gainMana(4);
           this.fx.spawn('cyberImpactSpark', enemy.x - this.facing * 10, enemy.y - 96, {
             palette: CYBER_NEON_PALETTE,
             light: 1.15
@@ -377,7 +377,7 @@ export class Android extends Fighter {
           vx: this.facing * 640,
           vy: 0,
           radius: 24,
-          damage: 34,
+          damage: 68,
           color: '#00f0ff',
           owner: this,
           type: 'cyber_disc'
@@ -421,7 +421,7 @@ export class Android extends Fighter {
             vx: this.facing * 670,
             vy: 0,
             radius: 25,
-            damage: 35,
+            damage: 66,
             color: '#00f0ff',
             owner: this,
             type: 'cyber_disc'
@@ -467,9 +467,9 @@ export class Android extends Fighter {
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 210) {
         const isCrit = step === 2 || Math.random() < 0.24;
-        const dmg = step === 2 ? 42 : 30;
+        const dmg = step === 2 ? 88 : 64;
         enemy.takeDamage(dmg, this, isCrit, step === 2 ? 145 : 85, 0);
-        this.gainMana(11);
+        this.gainMana(5);
 
         this.fx.spawn('cyberImpactSpark', enemy.x - this.facing * 12, enemy.y - 96, {
           palette: CYBER_NEON_PALETTE,
@@ -526,7 +526,7 @@ export class Android extends Fighter {
       });
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 235) {
-        enemy.takeDamage(38, this, false, 95, 0);
+        enemy.takeDamage(78, this, false, 95, 0);
         this.fx.spawn('cyberImpactSpark', enemy.x, enemy.y - 96, {
           palette: CYBER_NEON_PALETTE,
           light: 1.2
@@ -553,7 +553,7 @@ export class Android extends Fighter {
           : [];
       for (const foe of foes) {
         if (Math.abs(foe.x - empX) <= 235) {
-          foe.takeDamage(46, this, true, 155, -135);
+          foe.takeDamage(92, this, true, 155, -135);
           this.fx.spawn('rgbGlitchTear', foe.x, foe.groundY, {
             follow: foe,
             offsetX: 0,
@@ -564,8 +564,8 @@ export class Android extends Fighter {
           });
         }
       }
-      this.heal(18, 'NANO SHIELD');
-      this.gainMana(16);
+      this.heal(32, 'NANO SHIELD');
+      this.gainMana(6);
 
       if (game?.renderer) {
         game.renderer.triggerShake(9, 0.18);
@@ -670,7 +670,7 @@ export class Android extends Fighter {
         for (const foe of foes) {
           if (Math.abs(foe.x - this._ultFocusX) <= 340) {
             foe.x += (this._ultFocusX - foe.x) * 0.34;
-            foe.takeDamage(30, this, false, 35, 0);
+            foe.takeDamage(58, this, false, 35, 0);
             this.fx.spawn('cyberImpactSpark', foe.x, foe.y - 84, {
               palette: CYBER_MAGENTA_PALETTE,
               light: 1.15
@@ -702,7 +702,7 @@ export class Android extends Fighter {
           : [];
       for (const foe of foes) {
         if (Math.abs(foe.x - this._ultFocusX) <= 360) {
-          foe.takeDamage(84, this, true, 210, -185);
+          foe.takeDamage(168, this, true, 210, -185);
           this.fx.spawn('rgbGlitchTear', foe.x, foe.groundY, {
             follow: foe,
             offsetX: 0,
@@ -847,7 +847,7 @@ export class Android extends Fighter {
       game?.audio?.play?.('cyber_beam', this._trueUltTargetX);
       game?.audio?.play?.('emp_blast', this._trueUltTargetX);
 
-      this.heal(Math.round(this.maxHp * 0.18), 'NANO-CORE OVERCLOCK');
+      this.heal(Math.round(this.maxHp * 0.12), 'NANO-CORE OVERCLOCK');
 
       this.fx.spawn('supernovaExplosion', this._trueUltTargetX, this.groundY - 96, {
         palette: CYBER_NEON_PALETTE,
@@ -865,7 +865,7 @@ export class Android extends Fighter {
         const knockX = 330;
         const knockY = -270;
         for (const t of targets) {
-          t.takeDamage(380, this, isCrit, knockX, knockY);
+          t.takeDamage(705, this, isCrit, knockX, knockY);
           this.fx.spawn('rgbGlitchTear', t.x, t.groundY, {
             follow: t,
             offsetX: 0,

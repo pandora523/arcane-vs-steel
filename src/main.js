@@ -39,7 +39,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'TEMPEST VANGUARD',
-        type: 'SKILL • 5.4S CD',
+        type: 'SKILL • 5.1S CD',
         vfxCell: 1,
         desc: '360° spinning Runeblade cyclone rush that pulls foes in before a grounded crystal slam.'
       },
@@ -74,7 +74,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'VERDANT SNARE & SEEKERS',
-        type: 'SKILL • 4.2S CD',
+        type: 'SKILL • 4.1S CD',
         vfxCell: 1,
         desc: 'Binds foes in sylvan starlight roots while launching homing astral seeker volleys from above.'
       },
@@ -109,7 +109,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'TRIPLE SOLAR PILLAR',
-        type: 'SKILL • 4.8S CD',
+        type: 'SKILL • 4.1S CD',
         vfxCell: 1,
         desc: 'Erupts 3 sequential columns of molten hellfire beneath the enemy.'
       },
@@ -144,7 +144,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'DIVINE SANCTUARY',
-        type: 'SKILL • 5.5S CD',
+        type: 'SKILL • 5.0S CD',
         vfxCell: 1,
         desc: 'Consecrates a 2.5D Cathedral Seal, healing HP & smiting foes with Sanctum spires & Valkyrie spears.'
       },
@@ -179,7 +179,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: "DEATH'S GRASP",
-        type: 'SKILL • 4.8S CD',
+        type: 'SKILL • 4.5S CD',
         vfxCell: 1,
         desc: 'Erupts a Cursed Ossuary Bone-Cage & drags foes through necrotic soul-crystal spires!'
       },
@@ -214,7 +214,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'CHRONO-SCHISM REWIND',
-        type: 'SKILL • 5.2S CD',
+        type: 'SKILL • 4.6S CD',
         vfxCell: 1,
         desc: 'Drops a Past Anchor, warps in to carve an X-Rift & Stasis Field, then rewinds back restoring lost HP!'
       },
@@ -245,11 +245,11 @@ const CHAMPION_ROSTER = {
         name: 'TECTONIC EARTH-SHAKER',
         type: 'AUTO + MAGMA FORTIFY',
         vfxCell: 0,
-        desc: 'Slams ground fissures that suck foes inward & encases himself in 62% Damage-Reduction Magma Armor.'
+        desc: 'Slams ground fissures that suck foes inward & encases himself in 44% Damage-Reduction Magma Armor.'
       },
       {
         name: 'ANVIL CANNONBALL',
-        type: 'SKILL • 4.7S CD',
+        type: 'SKILL • 4.2S CD',
         vfxCell: 1,
         desc: 'Summons a physical Iron Anvil obstacle, then batters it horizontally across the stage for a Wall-Crush!'
       },
@@ -284,7 +284,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'ZANTETSUKEN 5-FOLD FLASH',
-        type: 'SKILL • 4.2S CD',
+        type: 'SKILL • 4.8S CD',
         vfxCell: 2,
         desc: 'Zig-zags across the enemy 5 times leaving suspended lightning lines that detonate on sheath-click!'
       },
@@ -319,7 +319,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'GUNGNIR JAVELIN BARRAGE',
-        type: 'SKILL • 4.75S CD',
+        type: 'SKILL • 5.0S CD',
         vfxCell: 1,
         desc: 'Skims across the arena unleashing a 6-javelin halo volley before erupting a Dragonfire Obelisk!'
       },
@@ -354,7 +354,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'TRI-BEAM PRISM MATRIX',
-        type: 'SKILL • 5.1S CD',
+        type: 'SKILL • 4.7S CD',
         vfxCell: 1,
         desc: 'Surrounds the enemy with 3 Cryo-Prisms in a laser triangle that bounces around them before shattering Brittle Frost!'
       },
@@ -389,7 +389,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'EMP OVERLOAD BLITZ',
-        type: 'SKILL • 4.6S CD',
+        type: 'SKILL • 4.3S CD',
         vfxCell: 1,
         desc: 'Locks onto foes with a holographic scanner, jetpack-rushes through, and detonates a scanline EMP dome.'
       },
@@ -1948,7 +1948,7 @@ class Game {
     const reserve = this.getReserveFighter(team);
     if (!point || !reserve || reserve.isDead || !reserve.isBenched) return false;
 
-    this[cdKey] = 6.2;
+    this[cdKey] = 11.0;
     const gy = this.renderer.groundY;
     const incomingX = Math.max(130, Math.min(this.renderer.worldWidth - 130, point.x + (team === 1 ? 34 : -34)));
 
@@ -2008,7 +2008,7 @@ class Game {
     const ally = this.getReserveFighter(team);
     if (!point || !ally || ally.isDead) return false;
 
-    this[cdKey] = 6.5;
+    this[cdKey] = 5.2;
     const target = this.getTargetFor(point);
     if (!target || target.isDead) return false;
 
@@ -2026,12 +2026,12 @@ class Game {
       this.vfx.spawnProjectile({
         x: ally.x + dir * 48,
         y: ally.y - 102,
-        vx: dir * 740,
+        vx: dir * 780,
         vy: 0,
-        radius: 26,
+        radius: 28,
         color: ally.primaryColor,
         coreColor: '#ffffff',
-        damage: 78,
+        damage: 215,
         owner: ally,
         type:
           ally.heroId === 'archer'
@@ -2057,7 +2057,7 @@ class Game {
                               : 'fireball'
       });
       if (!point.isDead) {
-        point.heal(42, 'TAG GRACE');
+        point.heal(35, 'TAG GRACE');
         point.gainMana(12);
       }
       if (this.audio) this.audio.play('skill_cast', ally.x);
@@ -2133,7 +2133,7 @@ class Game {
     } else if (stageId === 'sylvan') {
       this.renderer.triggerStageEvent(
         '★ STARLIGHT MONSOON PHENOMENON ★',
-        'BLESSING: +180 HP SANCTUARY REGEN!',
+        'BLESSING: +420 HP SANCTUARY REGEN!',
         '#34d399',
         10.0
       );
@@ -2732,7 +2732,7 @@ class Game {
       if (this.stageEventTickTimer >= 2.0) {
         this.stageEventTickTimer = 0;
         if (this.renderer?.stageId === 'sylvan' && !this.isMatchOver) {
-          activeFighters.forEach((f) => f.heal(26, 'STARLIGHT'));
+          activeFighters.forEach((f) => f.heal(84, 'STARLIGHT'));
         } else if (this.renderer?.stageId === 'boneyard' && !this.isMatchOver) {
           const midX =
             activeFighters.reduce((acc, f) => acc + f.x, 0) / Math.max(1, activeFighters.length);
@@ -2755,7 +2755,7 @@ class Game {
           const pointHpRatio = point.hp / point.maxHp;
           const reserveHpRatio = reserve.hp / reserve.maxHp;
           if (
-            (pointHpRatio <= 0.48 && reserveHpRatio > pointHpRatio + 0.08) ||
+            (pointHpRatio <= 0.40 && reserveHpRatio > pointHpRatio + 0.08) ||
             (reserveHpRatio - pointHpRatio >= 0.28 && this.matchTime > 5.0)
           ) {
             this.triggerTeamTagSwap(team, false);

@@ -8,7 +8,7 @@ export class Fighter {
     this.vy = 0;
     this.facing = opts.facing || 1;
 
-    this.maxHp = opts.maxHp || 1000;
+    this.maxHp = opts.maxHp || 3600;
     this.hp = this.maxHp;
     this.mana = 0;
     this.maxMana = 100;
@@ -151,8 +151,8 @@ export class Fighter {
       label !== 'ALLY GRACE'
     ) {
       const ally = this.game.getTeammateOf ? this.game.getTeammateOf(this) : null;
-      if (ally && !ally.isDead && ally.hp < ally.maxHp) {
-        const sharedAmt = Math.max(8, Math.round(amount * 0.55));
+      if (ally && !ally.isDead && !ally.isBenched && ally.hp < ally.maxHp) {
+        const sharedAmt = Math.max(8, Math.round(amount * 0.32));
         ally._isAllyGraceHeal = true;
         const healedAlly = ally.heal(sharedAmt, 'ALLY GRACE');
         ally._isAllyGraceHeal = false;
@@ -176,7 +176,10 @@ export class Fighter {
       if (this.game && this.game.vfx) {
         this.game.vfx.spawnDamageText(this.x, this.groundY - 76, 0, false, 'GRAVE PHASE!', '#c084fc');
       }
-      this.gainMana(8);
+      if ((this._evadeManaCd || 0) <= 0) {
+        this._evadeManaCd = 0.55;
+        this.gainMana(5);
+      }
       return;
     }
     if (this.isInvulnerable || (this.state === 'DODGE' && this.stateTimer < 0.36)) {
@@ -184,7 +187,10 @@ export class Fighter {
         this.game.vfx.spawnDamageText(this.x - this.facing * 24, this.y - 196, 0, false, 'EVADED!', this.primaryColor);
         this.game.vfx.spawnShockwave(this.x, this.y - 95, 68, this.primaryColor, 0.24);
       }
-      this.gainMana(8);
+      if ((this._evadeManaCd || 0) <= 0) {
+        this._evadeManaCd = 0.55;
+        this.gainMana(5);
+      }
       return;
     }
 
@@ -231,7 +237,7 @@ export class Fighter {
       this.lastHitTime = nowT;
 
       // 2v2 Chaos Brawl Cleave Splash: heavy strikes cleave nearby opposing teammate within 94px
-      if (this.game.gameMode === '2v2_brawl' && (amount >= 38 || isCrit)) {
+      if (this.game.gameMode === '2v2_brawl' && (amount >= 52 || isCrit)) {
         const enemyAlly = this.game.getTeammateOf ? this.game.getTeammateOf(this) : null;
         if (
           enemyAlly &&
@@ -240,7 +246,7 @@ export class Fighter {
           Math.abs(enemyAlly.x - this.x) < 94
         ) {
           enemyAlly._isSplashDamage = true;
-          enemyAlly.takeDamage(Math.round(amount * 0.52), attacker, false, knockX * 0.65, 0);
+          enemyAlly.takeDamage(Math.round(amount * 0.28), attacker, false, knockX * 0.65, 0);
           enemyAlly._isSplashDamage = false;
         }
       }
@@ -253,13 +259,13 @@ export class Fighter {
       amount *= 1.18;
     }
     if (this.forgeArmorTimer > 0) {
-      // Torgar's Magma Armor Fortify: 48% damage reduction, unstoppable super-armor, and molten thorn reflection!
-      amount *= 0.52;
+      // Torgar's Magma Armor Fortify: 44% damage reduction, unstoppable super-armor, and molten thorn reflection!
+      amount *= 0.56;
       knockX *= 0.12;
       knockY = 0;
       if (attacker && !attacker.isDead && !this._isThornReflect && Math.abs(attacker.x - this.x) < 210) {
         this._isThornReflect = true;
-        attacker.takeDamage(12, this, false, 65, 0);
+        attacker.takeDamage(18, this, false, 65, 0);
         this._isThornReflect = false;
         if (this.game && this.game.vfx) {
           this.game.vfx.spawnDamageText(this.x, this.y - 210, 0, false, 'MAGMA ARMOR!', '#f59e0b');
@@ -288,9 +294,9 @@ export class Fighter {
     }
     this.hitFlash = 0.18;
     this.hurtTimer = isCrit ? 0.34 : 0.25;
-    this.gainMana(amount * 0.115);
+    this.gainMana(Math.min(8.5, amount * 0.036));
     if (attacker) {
-      attacker.gainMana(Math.min(11, Math.max(2.5, amount * 0.11)));
+      attacker.gainMana(Math.min(9.5, Math.max(0.8, amount * 0.085)));
     }
 
     // Trigger Low-HP Desperation Overdrive (Berserk State) when crossing below 28% HP
@@ -327,7 +333,7 @@ export class Fighter {
       !this.isDeflecting &&
       !(this.forgeArmorTimer > 0) &&
       !this.unstoppablePoise &&
-      (!this.hasPoise || isCrit || amount >= 95) &&
+      (!this.hasPoise || isCrit || amount >= 145) &&
       (this.state === 'IDLE' ||
         this.state === 'WALK' ||
         (this.state === 'AUTO_ATTACK' && !this.didActionFrame && isCrit))
@@ -437,6 +443,7 @@ export class Fighter {
 
     if (this.hitFlash > 0) this.hitFlash = Math.max(0, this.hitFlash - dt);
     if (this.hurtTimer > 0) this.hurtTimer = Math.max(0, this.hurtTimer - dt);
+    if (this._evadeManaCd > 0) this._evadeManaCd = Math.max(0, this._evadeManaCd - dt);
 
     // Chronos "ETERNAL ZERO" Time-Stop Freeze: freezes enemies mid-frame & mid-air in stopped time!
     if (this.chronoTimeStopTimer > 0 && !this.isDead && this.state !== 'TRUE_ULTIMATE') {
@@ -467,9 +474,9 @@ export class Fighter {
       this.walkPhase += dt * 2.5;
       this.headBob = Math.sin(this.walkPhase) * 1.8;
       this.torsoAngle *= Math.pow(0.05, dt);
-      this.gainMana(dt * 4.2);
+      this.gainMana(dt * 2.2);
       if (this.hp < this.maxHp) {
-        this.hp = Math.min(this.maxHp, this.hp + dt * 15);
+        this.hp = Math.min(this.maxHp, this.hp + dt * 3.5);
       }
       this.autoCooldown = Math.max(0, this.autoCooldown - dt);
       this.skillCooldown = Math.max(0, this.skillCooldown - dt);

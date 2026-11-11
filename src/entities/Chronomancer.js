@@ -31,10 +31,10 @@ export class Chronomancer extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Chronos',
-      maxHp: 1020,
-      attackRange: 255,
-      moveSpeed: 210,
-      autoInterval: 1.02,
+      maxHp: 3730,
+      attackRange: 260,
+      moveSpeed: 218,
+      autoInterval: 0.88,
       lightColor: 'rgba(45, 212, 191, 1)',
       primaryColor: '#2dd4bf',
       hasTrueUltimate: true,
@@ -46,7 +46,7 @@ export class Chronomancer extends Fighter {
     this.deathSfx = 'death_chrono';
 
     this.autoDuration = 0.88;
-    this.skillMaxCooldown = 5.2;
+    this.skillMaxCooldown = 4.58;
     this.skillDuration = 1.08;
     this.skillTriggerRange = 435;
     this.skillName = 'CHRONO-SCHISM REWIND';
@@ -605,7 +605,7 @@ export class Chronomancer extends Fighter {
           color: '#2dd4bf',
           coreColor: '#facc15',
           owner: this,
-          damage: 32,
+          damage: 46,
           pierce: true,
           type: 'clock_gear'
         });
@@ -675,7 +675,7 @@ export class Chronomancer extends Fighter {
       Math.abs(enemy.x - this.x) <= 146
     ) {
       this.didActionFrame = true;
-      enemy.takeDamage(34, this, false, 95, -50);
+      enemy.takeDamage(48, this, false, 95, -50);
       if (game?.audio) game.audio.play('slash', enemy.x);
       this.fx?.spawn('chronoTimeRiftSlash', enemy.x, enemy.y - 94, {
         flip: this.facing < 0,
@@ -719,7 +719,7 @@ export class Chronomancer extends Fighter {
         color: '#2dd4bf',
         coreColor: '#facc15',
         owner: this,
-        damage: 38,
+        damage: 54,
         pierce: true,
         type: 'clock_gear'
       });
@@ -975,11 +975,11 @@ export class Chronomancer extends Fighter {
           inFront: true
         });
 
-        // Close Minute-Glaive Cleave (`155px`, `22 dmg`)
+        // Close Minute-Glaive Cleave (`155px`, `50 dmg` primary / `40` splash)
         for (const foe of foes) {
           const dxFoe = foe.x - this.x;
           if (Math.abs(dxFoe) <= 155 && dxFoe * this.facing >= -28) {
-            foe.takeDamage(22, this, false, 78, -25);
+            foe.takeDamage(foe === primary ? 50 : 40, this, false, 78, -25);
             this.spawnVfxAnim(4, foe.x, foe.y - 96, 176, 176, 0.26, {
               flipX: this.facing < 0,
               glowColor: 'teal',
@@ -988,7 +988,7 @@ export class Chronomancer extends Fighter {
           }
         }
 
-        // Fast Piercing `Row 0` Minute-Blade Crescent Sonic Wave (`speed = 650`, `damage = 30`, `pierce = true`)
+        // Fast Piercing `Row 0` Minute-Blade Crescent Sonic Wave (`speed = 650`, `damage = 62`, `pierce = true`)
         const targetY = primary ? primary.y - 102 : slashY;
         const dx = primary ? primary.x - slashX : this.facing * 520;
         const dy = (primary && Math.abs(dx) > 95 ? targetY - slashY : 0);
@@ -1005,7 +1005,7 @@ export class Chronomancer extends Fighter {
           color: '#2dd4bf',
           coreColor: '#facc15',
           owner: this,
-          damage: 30,
+          damage: 62,
           pierce: true,
           type: 'clock_gear'
         });
@@ -1016,7 +1016,7 @@ export class Chronomancer extends Fighter {
       // STAGE 2 (`stage === 1` — `FUTURE PHANTOM PINCER`):
       // Chronos slashes from the front while manifesting a luminous Cyan Future-Self
       // Phantom Clone directly BEHIND the enemy (`enemy.x + facing * 78`, facing `-this.facing`,
-      // playing `Row 2 F08..F18` over `0.42s`!), executing a Pincer Cross-Slash (`38 dmg`,
+      // playing `Row 2 F08..F18` over `0.42s`!), executing a Pincer Cross-Slash (`82 dmg`,
       // `'PARADOX PINCER!'`, stamping `Row 5` `paradoxTwinScissorCell` on the enemy)!
       // ----------------------------------------------------------------------
       else if (stage === 1) {
@@ -1071,7 +1071,7 @@ export class Chronomancer extends Fighter {
 
         for (const foe of foes) {
           if (Math.abs(foe.x - strikeX) <= 135 || Math.abs(foe.x - this.x) <= 275) {
-            foe.takeDamage(38, this, false, 35, -35);
+            foe.takeDamage(foe === primary ? 82 : 64, this, false, 35, -35);
           }
         }
       }
@@ -1079,8 +1079,8 @@ export class Chronomancer extends Fighter {
       // ----------------------------------------------------------------------
       // STAGE 3 (`stage === 2` — `XII CHIME SCISSOR`):
       // Chronos lunges slightly & snaps both Clock-Blades together (`Row 5` `paradoxTwinScissorCell`
-      // + `Row 4` `chronoShatterBurstCell` on target), dealing a Guaranteed Crit (`52 dmg`,
-      // `'XII CHIME!'`), applying `enemy.chronoSlowTimer = 1.15`, and refunding `+8 Mana`!
+      // + `Row 4` `chronoShatterBurstCell` on target), dealing a Guaranteed Crit (`104 dmg`,
+      // `'XII CHIME!'`), applying `enemy.chronoSlowTimer = 1.15`, and refunding `+7 Mana`!
       // ----------------------------------------------------------------------
       else {
         this.vx = this.facing * 155;
@@ -1112,7 +1112,7 @@ export class Chronomancer extends Fighter {
           inFront: true
         });
 
-        this.gainMana(8);
+        this.gainMana(7);
         game?.vfx?.spawnDamageText?.(snapX, snapY - 64, 0, true, 'XII CHIME!', '#fde047');
         game?.vfx?.spawnGlyphBurst?.(snapX, snapY, 8, 'chrono');
         game?.renderer?.triggerShake?.(11, 0.18);
@@ -1120,7 +1120,7 @@ export class Chronomancer extends Fighter {
         for (const foe of foes) {
           if (Math.abs(foe.x - snapX) <= 135 || Math.abs(foe.x - this.x) <= 295) {
             foe.chronoSlowTimer = Math.max(foe.chronoSlowTimer || 0, 1.15);
-            foe.takeDamage(52, this, true, 115, -75);
+            foe.takeDamage(foe === primary ? 104 : 80, this, true, 115, -75);
           }
         }
       }
@@ -1170,7 +1170,7 @@ export class Chronomancer extends Fighter {
     }
 
     // `t = 0.24s`: Warp in front of enemy (`clamp(enemy.x - facing * 82)`), carve Twin Clock-Blade
-    // X-Scissor Rift (`Row 5`, `62 Crit` in `175px` AOE) & open `3.8s` Stasis Hourglass Field (`Row 2` + `chronoStasisField`)!
+    // X-Scissor Rift (`Row 5`, `76 Crit` in `175px` AOE) & open `3.8s` Stasis Hourglass Field (`Row 2` + `chronoStasisField`)!
     if (t >= 0.24 && this._skillStage === 1) {
       this._skillStage = 2;
       this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
@@ -1236,12 +1236,12 @@ export class Chronomancer extends Fighter {
       for (const foe of foes) {
         if (Math.abs(foe.x - targetX) <= 175 || Math.abs(foe.x - this.x) <= 175) {
           foe.chronoSlowTimer = Math.max(foe.chronoSlowTimer || 0, 1.6);
-          foe.takeDamage(62, this, true, 45, -65);
+          foe.takeDamage(foe === primary ? 105 : 72, this, true, 45, -65);
         }
       }
     }
 
-    // `t = 0.76s`: `CHRONO REWIND!` — Leave a Golden Past-Clone slashing at the rift (`28 dmg` echo hit)
+    // `t = 0.76s`: `CHRONO REWIND!` — Leave a Golden Past-Clone slashing at the rift (`54 dmg` echo hit)
     // while Chronos rewinds instantaneously back to `this.anchorX` & heals!
     if (t >= 0.76 && this._skillStage === 2) {
       this._skillStage = 3;
@@ -1276,7 +1276,7 @@ export class Chronomancer extends Fighter {
 
       for (const foe of foes) {
         if (Math.abs(foe.x - echoTargetX) <= 165 || Math.abs(foe.x - riftCloneX) <= 175) {
-          foe.takeDamage(28, this, false, 70, -45);
+          foe.takeDamage(foe === primary ? 54 : 38, this, false, 70, -45);
         }
       }
 
@@ -1298,7 +1298,7 @@ export class Chronomancer extends Fighter {
         extra: { isArrival: true }
       });
 
-      const rewindHeal = Math.max(42, Math.round(Math.max(0, this.anchorHp - this.hp) * 0.55));
+      const rewindHeal = Math.max(32, Math.min(88, Math.round(Math.max(0, this.anchorHp - this.hp) * 0.40)));
       this.heal(rewindHeal, 'CHRONO REWIND');
     }
 
@@ -1412,7 +1412,7 @@ export class Chronomancer extends Fighter {
 
       for (const foe of foes) {
         if (Math.abs(foe.x - targetX) <= 175) {
-          foe.takeDamage(44, this, true, -18, -35);
+          foe.takeDamage(foe === primary ? 78 : 54, this, true, -18, -35);
         }
       }
     }
@@ -1441,7 +1441,7 @@ export class Chronomancer extends Fighter {
 
       for (const foe of foes) {
         if (Math.abs(foe.x - targetX) <= 180) {
-          foe.takeDamage(48, this, true, 18, -45);
+          foe.takeDamage(foe === primary ? 84 : 58, this, true, 18, -45);
         }
       }
     }
@@ -1468,7 +1468,7 @@ export class Chronomancer extends Fighter {
         inFront: true
       });
 
-      this.heal(36, 'TRI-TIMELINE');
+      this.heal(38, 'TRI-TIMELINE');
       game?.vfx?.spawnDamageText?.(
         targetX,
         this.groundY - 240,
@@ -1481,7 +1481,7 @@ export class Chronomancer extends Fighter {
 
       for (const foe of foes) {
         if (Math.abs(foe.x - targetX) <= 210) {
-          foe.takeDamage(88, this, true, 165, -185);
+          foe.takeDamage(foe === primary ? 140 : 98, this, true, 165, -185);
         }
       }
     }
@@ -1892,12 +1892,12 @@ export class Chronomancer extends Fighter {
       game?.vfx?.spawnBurst?.(tx, impactY, 26, '#fde047', 310, { upBias: 95, size: 6 });
       game?.vfx?.spawnGlyphBurst?.(tx, impactY, 16, 'chrono');
 
-      // 5. Heal Chronos `25%` of `maxHp` via Temporal Rewind!
-      const rewindUltHeal = Math.round(this.maxHp * 0.25);
+      // 5. Heal Chronos `12%` of `maxHp` via Temporal Rewind!
+      const rewindUltHeal = Math.round(this.maxHp * 0.12);
       this.heal(rewindUltHeal, 'TEMPORAL REWIND');
       this.spawnRewindRibbons(tx, impactY);
 
-      // 6. ONE SINGLE SIMULTANEOUS CATACLYSMIC BURST (`395` Crit Damage)!
+      // 6. ONE SINGLE SIMULTANEOUS CATACLYSMIC BURST (`680` Crit Damage)!
       game?.vfx?.spawnDamageText?.(
         tx,
         impactY - 122,
@@ -1909,7 +1909,7 @@ export class Chronomancer extends Fighter {
 
       const postFreezeFoes = this.getActiveEnemies(enemy, game);
       for (const foe of postFreezeFoes) {
-        foe.takeDamage(395, this, true, 245, -215);
+        foe.takeDamage(680, this, true, 245, -215);
       }
     }
 

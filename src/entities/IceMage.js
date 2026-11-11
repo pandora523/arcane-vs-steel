@@ -14,17 +14,17 @@ export class IceMage extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Lyra',
-      maxHp: 1190,
+      maxHp: 3620,
       attackRange: 505,
-      moveSpeed: 172,
-      autoInterval: 1.08,
+      moveSpeed: 180,
+      autoInterval: 1.07,
       lightColor: 'rgba(103, 232, 249, 1)',
       primaryColor: '#67e8f9'
     });
     this.heroId = 'icemage';
     this.theme = 'glacial';
     this.deathSfx = 'death_icemage';
-    this.skillMaxCooldown = 5.10;
+    this.skillMaxCooldown = 4.70;
     this.skillTriggerRange = 545;
     this.skillName = 'TRI-BEAM PRISM MATRIX';
     this.ultName = 'BOREALIS PRISM CATHEDRAL';
@@ -333,10 +333,10 @@ export class IceMage extends Fighter {
     const isVanguard = enemy.hasPoise && enemy.attackRange <= 160;
     const isHarvester = enemy.hasPoise && enemy.attackRange > 160;
     const isGroundedCaster = !enemy.hasPoise && enemy.moveSpeed <= 122;
-    const shatterDmg = isVanguard ? 38 : isHarvester ? 40 : isGroundedCaster ? 44 : 46;
+    const shatterDmg = isVanguard ? 43 : isHarvester ? 47 : isGroundedCaster ? 50 : 53;
 
     enemy.takeDamage(shatterDmg, this, true, 85, -95);
-    this.heal(16, 'CRYO BARRIER');
+    this.heal(11, 'CRYO BARRIER');
 
     if (game) {
       if (game.audio) game.audio.play('ice_shatter', enemy.x);
@@ -412,7 +412,7 @@ export class IceMage extends Fighter {
       const isVanguard = enemy.hasPoise && enemy.attackRange <= 160;
       const isHarvester = enemy.hasPoise && enemy.attackRange > 160;
       const isGroundedCaster = !enemy.hasPoise && enemy.moveSpeed <= 122;
-      const refractDmg = isVanguard ? 18 : isHarvester ? 19 : isGroundedCaster ? 21 : 22;
+      const refractDmg = isVanguard ? 24 : isHarvester ? 26 : isGroundedCaster ? 28 : 30;
 
       if (game && game.vfx) {
         game.vfx.spawnProjectile({
@@ -677,7 +677,7 @@ export class IceMage extends Fighter {
             color: '#67e8f9',
             coreColor: '#e879f9',
             owner: this,
-            damage: 32,
+            damage: 24,
             type: 'cryo_shard'
           });
           this.fx?.spawn('cryoPrismMachCone', prism.x, prism.y, {
@@ -732,7 +732,7 @@ export class IceMage extends Fighter {
           color: '#67e8f9',
           coreColor: '#ffffff',
           owner: this,
-          damage: 38,
+          damage: 28,
           type: 'cryo_shard'
         });
       }
@@ -1001,12 +1001,12 @@ export class IceMage extends Fighter {
         const isHarvester = enemy && enemy.hasPoise && enemy.attackRange > 160;
         const isGroundedCaster = enemy && !enemy.hasPoise && enemy.moveSpeed <= 122;
         const primaryDmg = isVanguard
-          ? mode === 2 ? 46 : 40
+          ? mode === 2 ? 57 : 49
           : isHarvester
-            ? mode === 2 ? 48 : 42
+            ? mode === 2 ? 59 : 52
             : isGroundedCaster
-              ? mode === 2 ? 52 : 45
-              : mode === 2 ? 54 : 47;
+              ? mode === 2 ? 62 : 55
+              : mode === 2 ? 64 : 57;
 
         game.vfx.spawnProjectile({
           x: spawnX,
@@ -1100,7 +1100,7 @@ export class IceMage extends Fighter {
           const isVanguard = enemy.hasPoise && enemy.attackRange <= 160;
           const isHarvester = enemy.hasPoise && enemy.attackRange > 160;
           const isGroundedCaster = !enemy.hasPoise && enemy.moveSpeed <= 122;
-          const lockDmg = isVanguard ? 32 : isHarvester ? 34 : isGroundedCaster ? 38 : 40;
+          const lockDmg = isVanguard ? 42 : isHarvester ? 45 : isGroundedCaster ? 48 : 50;
           enemy.takeDamage(lockDmg, this, false, 18, -35);
           this.applyBrittleFrost(enemy, 2, game, tx, ty - 96);
           if (game.vfx) {
@@ -1136,7 +1136,7 @@ export class IceMage extends Fighter {
         const isVanguard = enemy.hasPoise && enemy.attackRange <= 160;
         const isHarvester = enemy.hasPoise && enemy.attackRange > 160;
         const isGroundedCaster = !enemy.hasPoise && enemy.moveSpeed <= 122;
-        const convergeDmg = isVanguard ? 42 : isHarvester ? 45 : isGroundedCaster ? 50 : 52;
+        const convergeDmg = isVanguard ? 54 : isHarvester ? 58 : isGroundedCaster ? 62 : 66;
         enemy.takeDamage(convergeDmg, this, true, 90, -105);
         enemy.brittleStacks = Math.max(4, (enemy.brittleStacks || 0) + 2);
         this.applyBrittleFrost(enemy, 0, game, tx, ty - 96);
@@ -1190,10 +1190,18 @@ export class IceMage extends Fighter {
       game.vfx.spawnDamageText(centerX, this.groundY - 360, 0, false, 'ABSOLUTE ZERO — BOREALIS CATHEDRAL!', '#67e8f9');
       if (enemy && !enemy.isDead) {
         if (!enemy.hasPoise) enemy.vx = 0;
-        const d1 = isVanguard ? 28 : isHarvester ? 30 : isGroundedCaster ? 33 : 35;
+        const d1 = isVanguard ? 36 : isHarvester ? 39 : isGroundedCaster ? 42 : 44;
         enemy.takeDamage(d1, this, false, -20, 0);
         this.applyBrittleFrost(enemy, 2, game, centerX, this.groundY - 110);
         game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 8, 'glacial');
+      }
+      if (game?.fighters) {
+        for (const foe of game.fighters) {
+          if (foe && foe !== this && foe !== enemy && !foe.isDead && !foe.isBenched && (!this.team || foe.team !== this.team) && Math.abs(foe.x - centerX) <= 220) {
+            foe.takeDamage(34, this, false, -18, 0);
+            this.applyBrittleFrost(foe, 2, game, foe.x, this.groundY - 110);
+          }
+        }
       }
     }
 
@@ -1226,10 +1234,17 @@ export class IceMage extends Fighter {
       }
 
       if (enemy && !enemy.isDead) {
-        const d2 = isVanguard ? 32 : isHarvester ? 34 : isGroundedCaster ? 36 : 38;
+        const d2 = isVanguard ? 42 : isHarvester ? 45 : isGroundedCaster ? 48 : 50;
         enemy.takeDamage(d2, this, true, -25, -45);
         game.vfx.spawnDamageText(cx, this.groundY - 330, 0, false, '7-PRISM ORBITAL CONVERGENCE!', '#e879f9');
         game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 10, 'glacial');
+      }
+      if (game?.fighters) {
+        for (const foe of game.fighters) {
+          if (foe && foe !== this && foe !== enemy && !foe.isDead && !foe.isBenched && (!this.team || foe.team !== this.team) && Math.abs(foe.x - cx) <= 220) {
+            foe.takeDamage(40, this, true, -20, -40);
+          }
+        }
       }
     }
 
@@ -1266,9 +1281,17 @@ export class IceMage extends Fighter {
       this.deployCryoPrism(cx + 140, this.groundY - 155, game, 7.0);
 
       if (enemy && !enemy.isDead) {
-        const d3 = isVanguard ? 94 : isHarvester ? 98 : isGroundedCaster ? 106 : 112;
+        const d3 = isVanguard ? 122 : isHarvester ? 128 : isGroundedCaster ? 134 : 140;
         enemy.takeDamage(d3, this, true, 165, -210);
-        this.heal(28, 'BOREALIS AEGIS');
+        this.heal(30, 'BOREALIS AEGIS');
+      }
+      if (game?.fighters) {
+        for (const foe of game.fighters) {
+          if (foe && foe !== this && foe !== enemy && !foe.isDead && !foe.isBenched && (!this.team || foe.team !== this.team) && Math.abs(foe.x - cx) <= 230) {
+            foe.takeDamage(108, this, true, 145, -185);
+            this.applyBrittleFrost(foe, 2, game, foe.x, this.groundY - 105);
+          }
+        }
       }
     }
 
@@ -1406,7 +1429,7 @@ export class IceMage extends Fighter {
       game?.audio?.play?.('ice_shatter', this._trueUltCoffinX);
       game?.audio?.play?.('prism_beam', this._trueUltCoffinX);
 
-      this.heal(Math.round(this.maxHp * 0.18), 'AURORA SOVEREIGNTY');
+      this.heal(Math.round(this.maxHp * 0.12), 'AURORA SOVEREIGNTY');
 
       this.spawnPixelFrostRing(this._trueUltCoffinX, this.groundY - 128, 260, '#67e8f9', 0.48, false, true);
       this.fx?.burst(this._trueUltCoffinX, this.groundY - 128, {
@@ -1428,11 +1451,11 @@ export class IceMage extends Fighter {
         '#f0f9ff'
       );
 
-      // Deal a SINGLE INSTANTANEOUS SHATTER BURST of 370 Crit damage (isCrit = true, knockX = 310, knockY = -250)
+      // Deal a SINGLE INSTANTANEOUS SHATTER BURST of 580 Crit damage (isCrit = true, knockX = 310, knockY = -250)
       for (const t of targets) {
         if (t && !t.isDead) {
           t.chronoTimeStopTimer = 0;
-          t.takeDamage(370, this, true, 310, -250);
+          t.takeDamage(580, this, true, 310, -250);
         }
       }
     }

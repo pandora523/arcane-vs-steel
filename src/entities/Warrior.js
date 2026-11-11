@@ -18,10 +18,10 @@ export class Warrior extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Aethelgard',
-      maxHp: 1260,
-      attackRange: 152,
-      moveSpeed: 156,
-      autoInterval: 1.29,
+      maxHp: 4020,
+      attackRange: 158,
+      moveSpeed: 180,
+      autoInterval: 1.16,
       lightColor: 'rgba(125, 211, 252, 1)',
       primaryColor: '#38bdf8',
       hasTrueUltimate: true,
@@ -35,7 +35,7 @@ export class Warrior extends Fighter {
     this.skillDuration = 1.04;
     this.ultDuration = 1.86;
     this.trueUltDuration = 4.45;
-    this.skillMaxCooldown = 5.4;
+    this.skillMaxCooldown = 5.05;
     this.skillTriggerRange = 480;
     this.ultName = 'HEAVENLY EARTHSHATTER';
     this.trueUltName = 'CELESTIAL SWORD OF JUSTICE';
@@ -594,7 +594,7 @@ export class Warrior extends Fighter {
       Math.abs(enemy.x - this.x) <= 142
     ) {
       this.didActionFrame = true;
-      enemy.takeDamage(52, this, false, 125, -80);
+      enemy.takeDamage(64, this, false, 125, -80);
       if (game?.audio) game.audio.play('heavy_cleave', enemy.x);
       this.fx?.spawn('runebladeCrescentSlash', this.x + this.facing * 40, this.y - 92, {
         flip: this.facing < 0,
@@ -636,6 +636,7 @@ export class Warrior extends Fighter {
     // Frame F13 (t >= 0.42s): Low Two-Handed Frost-Crescent Counter-Slash out of Cross-Guard Parry!
     if (t >= 0.42 && !this.didActionFrame) {
       this.didActionFrame = true;
+      this.heal(24, 'RUNIC RESOLVE');
       this.vx += this.facing * 95;
       if (game?.audio) game.audio.play('blade_wave', this.x);
 
@@ -650,7 +651,7 @@ export class Warrior extends Fighter {
         color: '#38bdf8',
         coreColor: '#fef08a',
         owner: this,
-        damage: 68,
+        damage: 66,
         type: 'blade_wave'
       });
 
@@ -889,7 +890,7 @@ export class Warrior extends Fighter {
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 50) {
           const isCrit = mode === 2 || Math.random() < 0.25;
-          const dmg = mode === 2 ? 78 : mode === 1 ? 66 : 59;
+          const dmg = mode === 2 ? 78 : mode === 1 ? 68 : 60;
           enemy.takeDamage(dmg, this, isCrit, 115, mode === 2 ? -130 : 0);
           if (game?.audio) game.audio.play(isCrit ? 'hit_crit' : 'clang', enemy.x);
           if (game?.renderer) game.renderer.triggerHitStop(0.06);
@@ -999,7 +1000,7 @@ export class Warrior extends Fighter {
         });
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 148) {
           // Gently pull foe inward toward the cyclone eye so all 3 spin slashes + slam connect!
-          enemy.takeDamage(18, this, false, -35, -24);
+          enemy.takeDamage(22, this, false, -35, -24);
           if (game?.audio) game.audio.play('clang', enemy.x);
           this.spawnVfxAnim(4, enemy.x, enemy.y - 90, 192, 192, 0.26, {
             flipX: this.spinHitStep % 2 === 0,
@@ -1073,7 +1074,7 @@ export class Warrior extends Fighter {
       game?.vfx?.spawnLightning(slamX, -220, this.groundY, '#ffffff', '#38bdf8');
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - slamX) < 198) {
-        enemy.takeDamage(68, this, true, 135, -155);
+        enemy.takeDamage(74, this, true, 135, -155);
       }
     } else if (t >= this.skillDuration) {
       this.isDeflecting = false;
@@ -1180,7 +1181,7 @@ export class Warrior extends Fighter {
         game?.renderer?.triggerShake(10, 0.14);
         game?.vfx?.spawnDamageText(targetX, this.groundY - 162, 0, false, 'RUNE BLINK: LEFT!', '#7dd3fc');
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(30, this, false, 18, -32);
+          enemy.takeDamage(42, this, false, 18, -32);
         }
       }
       return;
@@ -1226,7 +1227,7 @@ export class Warrior extends Fighter {
         game?.renderer?.triggerShake(12, 0.16);
         game?.vfx?.spawnDamageText(targetX, this.groundY - 168, 0, false, 'RUNE BLINK: RIGHT!', '#38bdf8');
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(32, this, true, -18, -48);
+          enemy.takeDamage(44, this, true, -18, -48);
         }
       }
       return;
@@ -1270,7 +1271,7 @@ export class Warrior extends Fighter {
         game?.vfx?.spawnGlyphBurst(targetX, this.groundY - 102, 8, 'steel');
         game?.vfx?.spawnDamageText(targetX, this.groundY - 172, 0, false, 'RUNIC LAUNCH!', '#fef08a');
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(34, this, true, 12, -165);
+          enemy.takeDamage(48, this, true, 12, -165);
         }
       }
       return;
@@ -1426,7 +1427,7 @@ export class Warrior extends Fighter {
           color: idx === 0 ? '#38bdf8' : '#7dd3fc',
           coreColor: '#ffffff',
           owner: this,
-          damage: 45,
+          damage: 46,
           type: 'blade_wave',
           isMeteor: false,
           isUltimate: true
@@ -1436,7 +1437,7 @@ export class Warrior extends Fighter {
       game?.vfx?.spawnGlyphBurst(slamX, this.groundY - 75, 12, 'steel');
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(165, this, true, 220, -320);
+        enemy.takeDamage(168, this, true, 220, -320);
       }
     } else if (t >= this.ultDuration) {
       this._ultInit = false;
@@ -1862,7 +1863,7 @@ export class Warrior extends Fighter {
         game?.renderer?.triggerShake?.(16, 0.22);
         game?.vfx?.spawnDamageText?.(targetX, this.groundY - 188, 0, true, '★ SLASH OF JUSTICE I! ★', '#e0f2fe');
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(44, this, true, 16, -45);
+          enemy.takeDamage(68, this, true, 16, -45);
         }
       }
 
@@ -1890,7 +1891,7 @@ export class Warrior extends Fighter {
         game?.renderer?.triggerShake?.(18, 0.24);
         game?.vfx?.spawnDamageText?.(targetX, this.groundY - 204, 0, true, '★ SLASH OF JUSTICE II! ★', '#fef08a');
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(46, this, true, -16, -60);
+          enemy.takeDamage(72, this, true, -16, -60);
         }
       }
 
@@ -1922,7 +1923,7 @@ export class Warrior extends Fighter {
           '#ffffff'
         );
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(50, this, true, 0, -95);
+          enemy.takeDamage(78, this, true, 0, -95);
         }
       }
       return;
@@ -2087,10 +2088,11 @@ export class Warrior extends Fighter {
         );
       }
 
+      this.heal(Math.round(this.maxHp * 0.12), 'SACRED VOW');
       const enemies = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
       for (const foe of enemies) {
         if (foe && !foe.isDead && !foe.isBenched) {
-          foe.takeDamage(195, this, true, 240, -330);
+          foe.takeDamage(580, this, true, 240, -330);
         }
       }
     }

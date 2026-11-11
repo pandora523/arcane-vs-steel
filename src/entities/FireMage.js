@@ -14,10 +14,10 @@ export class FireMage extends Fighter {
     super({
       ...opts,
       name: opts.name || 'Ignis Sol',
-      maxHp: 1275,
+      maxHp: 3700,
       attackRange: 520,
-      moveSpeed: 138,
-      autoInterval: 1.18,
+      moveSpeed: 158,
+      autoInterval: 0.98,
       lightColor: 'rgba(251, 146, 60, 1)',
       primaryColor: '#fb923c',
       hasTrueUltimate: true,
@@ -27,7 +27,7 @@ export class FireMage extends Fighter {
     this.heroId = 'mage';
     this.theme = 'arcane';
     this.deathSfx = 'death_mage';
-    this.skillMaxCooldown = 4.55;
+    this.skillMaxCooldown = 4.10;
     this.autoDuration = 0.96;
     this.skillDuration = 1.05;
     this.ultDuration = 1.56;
@@ -438,6 +438,7 @@ export class FireMage extends Fighter {
         if (enemy && !enemy.isDead) {
           this.facing = enemy.x >= this.x ? 1 : -1;
         }
+        this.heal(10, 'SOLAR BLINK');
         this.spawnSolarEcho(PixelForge.getFrameIndex(this, this.runeOrbit), 1.0, 0.42);
         this.fx.spawn('arcaneBlinkRift', this.x, this.groundY, {
           light: 1.36,
@@ -719,7 +720,7 @@ export class FireMage extends Fighter {
           color: '#fb923c',
           coreColor: '#fef08a',
           owner: this,
-          damage: isTwinFlare ? 69 : 80,
+          damage: isTwinFlare ? 98 : 114,
           type: 'fireball',
           isMeteor: false
         });
@@ -740,7 +741,7 @@ export class FireMage extends Fighter {
             color: '#ea580c',
             coreColor: '#fef08a',
             owner: this,
-            damage: 43,
+            damage: 64,
             type: 'fireball',
             isMeteor: false
           });
@@ -769,6 +770,7 @@ export class FireMage extends Fighter {
     if (!this.didSkillAura) {
       this.didSkillAura = true;
       this.vx = 0;
+      this.heal(12, 'SOLAR WARD');
       game.vfx.spawnSpecialCastAura(this, this.skillName, '✦ SOLAR ARCHMAGE ✦', 'arcane', false);
       this.fx.spawn('heliosPalmFocus', this.x + this.facing * 26, this.y - 108, {
         follow: this,
@@ -840,7 +842,7 @@ export class FireMage extends Fighter {
             color: '#fb923c',
             coreColor: '#fef08a',
             owner: this,
-            damage: 38,
+            damage: 62,
             type: 'fireball'
           });
         });
@@ -868,6 +870,7 @@ export class FireMage extends Fighter {
 
       if (!this.spawnedEclipse) {
         this.spawnedEclipse = true;
+        this.heal(18, 'SOLAR CORONA');
         if (game.audio) game.audio.play('eclipse_charge', eclipseX);
         game.vfx.spawnSpecialCastAura(this, this.ultName, '★ ECLIPSE SUPERNOVA ★', 'arcane', true);
 
@@ -890,7 +893,7 @@ export class FireMage extends Fighter {
         });
 
         if (enemy && !enemy.isDead) {
-          enemy.takeDamage(26, this, false, 20, 0);
+          enemy.takeDamage(44, this, false, 20, 0);
         }
       }
 
@@ -926,7 +929,7 @@ export class FireMage extends Fighter {
       });
 
       if (enemy && !enemy.isDead) {
-        enemy.takeDamage(96, this, true, 160, -220);
+        enemy.takeDamage(165, this, true, 160, -220);
       }
 
       [-150, -75, 0, 75, 150].forEach((off, idx) => {
@@ -945,7 +948,7 @@ export class FireMage extends Fighter {
           color: '#ea580c',
           coreColor: '#fef08a',
           owner: this,
-          damage: idx === 2 ? 48 : 24,
+          damage: idx === 2 ? 74 : 40,
           type: 'meteor',
           isMeteor: true
         });
@@ -1300,10 +1303,11 @@ export class FireMage extends Fighter {
         game.vfx.spawnBurst(targetX, this.groundY - 24, 44, '#ea580c', 420, { upBias: 185, size: 9 });
         game.vfx.spawnGlyphBurst(targetX, this.groundY - 72, 16, 'arcane');
 
+        this.heal(Math.round(this.maxHp * 0.14), 'ASTRAL LEY-WARD');
         const enemies = game.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
         for (const cand of enemies) {
           if (cand && !cand.isDead && !cand.isBenched) {
-            cand.takeDamage(235, this, true, 320, -380);
+            cand.takeDamage(760, this, true, 320, -380);
           }
         }
 
