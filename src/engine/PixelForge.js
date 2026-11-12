@@ -18,66 +18,66 @@ export class PixelForge {
       arenaSylvan: loadImg('assets/sprites/arena_sylvan.png'),
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
-      arenaInferno: loadImg('assets/sprites/arena_inferno.png?v=30fps69'),
-      arenaSanctuary: loadImg('assets/sprites/arena_sanctuary.png?v=30fps69'),
+      arenaInferno: loadImg('assets/sprites/arena_inferno.png?v=30fps70'),
+      arenaSanctuary: loadImg('assets/sprites/arena_sanctuary.png?v=30fps70'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps69'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps69'),
-        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps69'),
-        portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps69', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps70'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps70'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps70'),
+        portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps70', () => this.refreshPortraits())
       },
       mage: {
-        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps69'),
-        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps69'),
-        meteor: loadImg('assets/sprites/meteor_cataclysm.png?v=30fps69'),
-        portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps69', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps70'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps70'),
+        meteor: loadImg('assets/sprites/meteor_cataclysm.png?v=30fps70'),
+        portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps70', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps69'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps69'),
-        portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps69', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps70'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps70'),
+        portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps70', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps69'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps69'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps69'),
-        portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps69', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps70'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps70'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps70'),
+        portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps70', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps69'),
-        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps69'),
-        companions: loadImg('assets/sprites/reaper_companions.png?v=30fps69'),
-        portrait: loadImg('assets/sprites/reaper_portrait.png?v=30fps69', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps70'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps70'),
+        companions: loadImg('assets/sprites/reaper_companions.png?v=30fps70'),
+        portrait: loadImg('assets/sprites/reaper_portrait.png?v=30fps70', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps69'),
-        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps69'),
-        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps69', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps70'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps70'),
+        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps70', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps69'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps69'),
-        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps69', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps70'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps70'),
+        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps70', () => this.refreshPortraits())
       },
       ronin: {
-        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps69'),
-        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps69'),
-        portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps69', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps70'),
+        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps70'),
+        portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps70', () => this.refreshPortraits())
       },
       valkyrie: {
-        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps69'),
-        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps69'),
-        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps69', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps70'),
+        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps70'),
+        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps70', () => this.refreshPortraits())
       },
       icemage: {
-        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps69'),
-        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps69'),
-        portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps69', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps70'),
+        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps70'),
+        portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps70', () => this.refreshPortraits())
       },
       android: {
-        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps69'),
-        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps69'),
-        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps69', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps70'),
+        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps70'),
+        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps70', () => this.refreshPortraits())
       }
     };
 
@@ -181,6 +181,11 @@ export class PixelForge {
       return 180 + step;
     }
 
+    const frameOverride = fighter.trueUltFrameOverride ?? fighter._overrideFrameIdx;
+    if (frameOverride !== undefined && frameOverride !== null) {
+      return frameOverride;
+    }
+
     if (st === 'AUTO_ATTACK') {
       const duration = fighter.autoDuration || 0.96;
       const step = Math.min(29, Math.max(0, Math.floor((t / duration) * 30)));
@@ -191,11 +196,6 @@ export class PixelForge {
       const skillDur = fighter.skillDuration || 1.05;
       const step = Math.min(29, Math.max(0, Math.floor((t / skillDur) * 30)));
       return 90 + step;
-    }
-
-    const frameOverride = fighter.trueUltFrameOverride ?? fighter._overrideFrameIdx;
-    if (frameOverride !== undefined && frameOverride !== null) {
-      return frameOverride;
     }
 
     if (st === 'TRUE_ULTIMATE') {
@@ -1119,18 +1119,18 @@ export class PixelForge {
         drawLinePx(23, 9, 14, 12, '#34d399', 2);
         setPx(23, 9, '#ffffff');
       } else {
-        // RAGNAROK WORLD-FORGE: Colossal Horned Khazad Sovereign Crown + Twin Jade Obelisks & Braided Fire Beard
-        fillRectPx(4, 11, 3, 13, '#10b981');
-        fillRectPx(21, 11, 3, 13, '#10b981');
-        drawLinePx(4, 5, 10, 10, '#fde047', 2);
-        drawLinePx(23, 5, 17, 10, '#fde047', 2);
-        fillRectPx(9, 8, 10, 9, '#1e293b');
-        fillRectPx(10, 9, 8, 3, '#f59e0b');
-        fillRectPx(10, 12, 3, 2, '#34d399');
-        fillRectPx(15, 12, 3, 2, '#34d399');
-        fillRectPx(10, 16, 8, 6, '#ea580c');
-        fillRectPx(13, 16, 2, 7, '#fde047');
-        fillRectPx(4, 23, 20, 2, '#fde047');
+        // WORLD-BREAKER HOME RUN: 2H World-Maul Baseball-Bat Swing + Blazing Home-Run Comet & Wall-Slam Stun Star
+        drawLinePx(4, 19, 17, 11, '#b45309', 2); // 2H Maul shaft swung horizontally like a baseball bat
+        fillRectPx(14, 7, 7, 7, '#1e293b'); // Colossal Maul Head
+        fillRectPx(15, 8, 5, 5, '#f59e0b');
+        fillRectPx(16, 9, 3, 3, '#34d399');
+        // Blazing Home-Run Comet Trajectory to the far right wall
+        drawLinePx(6, 15, 23, 6, '#fde047', 2);
+        drawLinePx(9, 17, 23, 8, '#10b981', 1);
+        // Far-Wall Impact Barrier + Stun Star
+        fillRectPx(23, 3, 2, 21, '#f97316');
+        fillRectPx(21, 4, 4, 4, '#fef08a');
+        setPx(22, 5, '#ffffff');
       }
     } else if (heroKey === 'ronin') {
       if (slotIdx === 0) {

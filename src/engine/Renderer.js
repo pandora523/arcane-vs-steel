@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps69';
+import { PixelForge } from './PixelForge.js?v=30fps70';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -601,6 +601,13 @@ export class Renderer {
       this.drawWhiteoutDeletionWorld(ctx, sorted, ww, gy);
     }
 
+    // 7.4. Overhead Orbiting Pixel Stun Stars for Stunned Fighters (`stunTimer > 0`)
+    for (const f of sorted) {
+      if (!f.isDead && !f.isBenched && f.stunTimer > 0) {
+        this.drawFighterStunStars(ctx, f);
+      }
+    }
+
     // 7.5. In-World 2v2 Overhead Team & Mini-HP Badges (when 4 fighters are present)
     if (fighters.length > 2) {
       for (const f of sorted) {
@@ -632,6 +639,34 @@ export class Renderer {
     ctx.globalAlpha = 0.55 * pulse;
     ctx.fillStyle = f.primaryColor || teamCol;
     ctx.fillRect(px - 36, py - 8, 72, 4);
+    ctx.restore();
+  }
+
+  drawFighterStunStars(ctx, f) {
+    if (!ctx?.fillRect || !f || f.stunTimer <= 0) return;
+    const cx = Math.round(f.x);
+    const cy = Math.round(f.y - 168);
+    const rx = 28;
+    const ry = 9;
+    const phase = (this.time || 0) * 8.5;
+
+    ctx.save();
+    for (let i = 0; i < 4; i++) {
+      const ang = phase + (i * Math.PI) / 2;
+      const sx = Math.round(cx + Math.cos(ang) * rx);
+      const sy = Math.round(cy + Math.sin(ang) * ry);
+      // Crisp 16-bit 4-point pixel star
+      ctx.fillStyle = '#0d0f1c';
+      ctx.fillRect(sx - 5, sy - 2, 10, 4);
+      ctx.fillRect(sx - 2, sy - 5, 4, 10);
+      ctx.fillStyle = i % 2 === 0 ? '#f59e0b' : '#10b981';
+      ctx.fillRect(sx - 4, sy - 1, 8, 2);
+      ctx.fillRect(sx - 1, sy - 4, 2, 8);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(sx - 2, sy - 2, 4, 4);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(sx - 1, sy - 1, 2, 2);
+    }
     ctx.restore();
   }
 

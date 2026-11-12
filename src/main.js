@@ -1,19 +1,19 @@
-import { Renderer } from './engine/Renderer.js?v=30fps69';
-import { VFXManager } from './engine/VFXManager.js?v=30fps69';
-import { PixelForge } from './engine/PixelForge.js?v=30fps69';
-import { AudioManager } from './engine/AudioManager.js?v=30fps69';
-import { Fighter } from './entities/Fighter.js?v=30fps69';
-import { Warrior } from './entities/Warrior.js?v=30fps69';
-import { FireMage } from './entities/FireMage.js?v=30fps69';
-import { Archer } from './entities/Archer.js?v=30fps69';
-import { Priestess } from './entities/Priestess.js?v=30fps69';
-import { Reaper } from './entities/Reaper.js?v=30fps69';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps69';
-import { Titan } from './entities/Titan.js?v=30fps69';
-import { Ronin } from './entities/Ronin.js?v=30fps69';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps69';
-import { IceMage } from './entities/IceMage.js?v=30fps69';
-import { Android } from './entities/Android.js?v=30fps69';
+import { Renderer } from './engine/Renderer.js?v=30fps70';
+import { VFXManager } from './engine/VFXManager.js?v=30fps70';
+import { PixelForge } from './engine/PixelForge.js?v=30fps70';
+import { AudioManager } from './engine/AudioManager.js?v=30fps70';
+import { Fighter } from './entities/Fighter.js?v=30fps70';
+import { Warrior } from './entities/Warrior.js?v=30fps70';
+import { FireMage } from './entities/FireMage.js?v=30fps70';
+import { Archer } from './entities/Archer.js?v=30fps70';
+import { Priestess } from './entities/Priestess.js?v=30fps70';
+import { Reaper } from './entities/Reaper.js?v=30fps70';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps70';
+import { Titan } from './entities/Titan.js?v=30fps70';
+import { Ronin } from './entities/Ronin.js?v=30fps70';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps70';
+import { IceMage } from './entities/IceMage.js?v=30fps70';
+import { Android } from './entities/Android.js?v=30fps70';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -242,22 +242,22 @@ const CHAMPION_ROSTER = {
       'Binds all foes to the Colossal World-Forge Crucible between Volcanic Obelisks, tempers Mjolnir with Khazad Ancestor lightning, and sunders the continent!',
     skills: [
       {
-        name: 'TRINITY OF THE WORLD-MAUL',
-        type: '3-HIT AUTO + ANCESTOR SLAM',
+        name: 'FOURFOLD ART OF THE WORLD-MAUL',
+        type: '4-VARIANT AUTO + ANCESTOR SLAM',
         vfxCell: 0,
-        desc: '1: Magnetic Fissure Wave pulls foes in • 2: Volcanic Jade Spire • 3: Khazad Ancestor Crit Slam & Anvil Resonance!'
+        desc: '1: Magnetic Fissure Sweep • 2: Volcanic Horn Uppercut • 3: Battering-Ram Maul Thrust • 4: Khazad Ancestor Overhead Slam!'
       },
       {
         name: 'WORLD-ANVIL CATACLYSM',
-        type: 'SKILL • 4.2S CD',
+        type: 'SKILL • 4.8S CD',
         vfxCell: 1,
         desc: 'Plants a Gravity-Pulsing World-Anvil Altar, then hammers a Ricocheting Anvil Cannonball that rebounds off the arena wall!'
       },
       {
-        name: 'RAGNAROK WORLD-FORGE',
+        name: 'WORLD-BREAKER HOME RUN',
         type: '★ OVERDRIVE ULT',
-        vfxCell: 3,
-        desc: 'Ascends to 3.0x Colossal Demi-God scale for 5s, marching forward with 6 unstoppable volcanic caldera eruptions.'
+        vfxCell: 4,
+        desc: 'Swings his 2H World-Maul like a colossal baseball bat, blasting the enemy to the farthest side of the stage and stunning them for 0.8s!'
       }
     ]
   },

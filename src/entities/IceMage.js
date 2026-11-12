@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps69';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps69';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps69';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps69';
+import { Fighter } from './Fighter.js?v=30fps70';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps70';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps70';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps70';
 
 /**
  * Glacia / Lyra (`icemage`) — Cryo Sovereign & Borealis Prism Weaver.
@@ -73,7 +73,7 @@ export class IceMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
       if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps50')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps69';
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps70';
       }
     }
   }

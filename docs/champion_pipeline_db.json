@@ -107,7 +107,7 @@
       "theme": "forge",
       "base_source": "assets/sprites/titan_v5_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "15-part cel-clustered Sovereign of the World-Forge skeletal rig (horned obsidian-gold Khazad helm, 3-braid copper-flame beard, emerald-jade furnace cuirass, bare Dwarven arms & heavy forge gauntlets) + World-Forge Crucible Back-Halo + 2H World-Maul IK + Khazad Forge-Ancestor Avatar & 8-Row World-Anvil / Continental Sunder VFX Suite + Prone Collapse",
+      "rig": "15-part cel-clustered Sovereign of the World-Forge skeletal rig (horned obsidian-gold Khazad helm, 3-braid copper-flame beard, emerald-jade furnace cuirass, bare Dwarven arms & heavy forge gauntlets) + World-Forge Crucible Back-Halo + 4-Variant 2H World-Maul Auto-Attack (Row 2: F00..F07 Sweep, F08..F14 Horn Uppercut, F15..F21 Battering-Ram Thrust, F22..F29 Overhead Slam) + World-Breaker Home-Run Overdrive (Row 4 Baseball-Bat Swing to Farthest Wall + 0.8s Stun) + Khazad Forge-Ancestor Avatar & 8-Row World-Anvil / Continental Sunder VFX Suite + Prone Collapse",
       "script": "scripts/build_titan_30fps_sheet.py",
       "vfx_script": "scripts/build_titan_vfx_30fps.mjs"
     },

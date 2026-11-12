@@ -55,6 +55,7 @@ export class Fighter {
     this.hitFlash = 0;
     this.hurtTimer = 0;
     this.hurtDir = -1;
+    this.stunTimer = 0;
 
     // 5-node Verlet-like Cape / Cloth Trail
     this.capeNodes = Array.from({ length: 5 }, (_, i) => ({
@@ -624,6 +625,18 @@ export class Fighter {
 
     const dist = enemy ? Math.abs(enemy.x - this.x) : 999;
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
+
+    // Stun Lock (e.g., Torgar's World-Breaker Home-Run Wall-Slam 0.8s Stun)
+    if (this.stunTimer > 0 && this.state !== 'TRUE_ULTIMATE') {
+      this.stunTimer = Math.max(0, this.stunTimer - dt);
+      this.vx *= Math.pow(0.001, dt);
+      this.hurtTimer = Math.max(this.hurtTimer, 0.14);
+      if (this.state !== 'IDLE') {
+        this.state = 'IDLE';
+        this.stateTimer = 0;
+      }
+      return;
+    }
 
     if (this.state === 'IDLE' || this.state === 'WALK') {
       if (enemy && !enemy.isDead) {

@@ -694,49 +694,88 @@ def build_row_configs(row_idx):
             cfgs.append(apply_2h_maul_ik(cfg))
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK (Trinity of the World-Maul:
-            # F00..F05 Coiled Back-Hip Windup -> F06..F13 Sweeping 2H Horizontal Anvil-Ram Cleave ->
-            # F14..F22 Rising 2H Volcanic Horn Uppercut / World-Breaker Slam -> F23..F29 Guard Recovery)
+            # Row 2: AUTO_ATTACK (4 Distinct Dynamic 2H World-Maul Combo Variants across 30 frames:
+            # - Variant 1 (F00..F07): Sweeping Horizontal Anvil-Ram Cleave (back-hip coil -> wide +X sweep)
+            # - Variant 2 (F08..F14): Rising Volcanic Siege-Horn Uppercut (low crouch scoop -> rising -74 deg uppercut)
+            # - Variant 3 (F15..F21): Shoulder-Braced Battering-Ram Maul Thrust (coiled draw -> horizontal +2 deg ram punch)
+            # - Variant 4 (F22..F29): Overhead Two-Handed World-Breaker Slam (high -104 deg hoist -> +22 deg crater smash))
             kfs = [
-                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5, mane_rel_deg=-1.0,
-                         l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
-                         grip_x=52.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=38.0)),
-                (5, dict(pelvis_dx=-15.0, pelvis_dy=22.0, torso_deg=-11.0, head_rel_deg=7.5, mane_rel_deg=4.5,
-                         l_thigh_deg=-16.0, l_shin_deg=18.0, r_thigh_deg=18.0, r_shin_deg=-12.0,
-                         grip_x=22.0, grip_y=-48.0, weapon_deg=-96.0, grip_sep=34.0, halo_grand=True)),
-                (9, dict(pelvis_dx=12.0, pelvis_dy=36.0, torso_deg=16.0, head_rel_deg=-8.0, mane_rel_deg=-8.0,
-                         l_thigh_deg=18.0, l_shin_deg=16.0, r_thigh_deg=-22.0, r_shin_deg=16.0,
-                         grip_x=76.0, grip_y=-22.0, weapon_deg=-12.0, grip_sep=36.0, halo_grand=True)),
-                (13, dict(pelvis_dx=18.0, pelvis_dy=42.0, torso_deg=20.0, head_rel_deg=-10.0, mane_rel_deg=-10.0,
-                          l_thigh_deg=22.0, l_shin_deg=18.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
-                          grip_x=82.0, grip_y=-6.0, weapon_deg=16.0, grip_sep=38.0, halo_grand=True)),
-                (18, dict(pelvis_dx=12.0, pelvis_dy=26.0, torso_deg=6.0, head_rel_deg=-2.0, mane_rel_deg=-4.0,
-                          l_thigh_deg=8.0, l_shin_deg=12.0, r_thigh_deg=-10.0, r_shin_deg=10.0,
-                          grip_x=72.0, grip_y=-38.0, weapon_deg=-42.0, grip_sep=36.0, halo_grand=True)),
-                (22, dict(pelvis_dx=6.0, pelvis_dy=16.0, torso_deg=-4.0, head_rel_deg=4.0, mane_rel_deg=-2.0,
-                          l_thigh_deg=-8.0, l_shin_deg=12.0, r_thigh_deg=12.0, r_shin_deg=-8.0,
-                          grip_x=60.0, grip_y=-54.0, weapon_deg=-68.0, grip_sep=35.0, halo_grand=True)),
-                (26, dict(pelvis_dx=2.0, pelvis_dy=8.0, torso_deg=1.0, head_rel_deg=-1.0,
-                          l_thigh_deg=-4.0, l_shin_deg=5.0, r_thigh_deg=5.0, r_shin_deg=-4.0,
-                          grip_x=55.0, grip_y=-28.0, weapon_deg=-48.0, grip_sep=37.0)),
+                # Variant 1 (F00..F07): Sweeping Horizontal Anvil-Ram Cleave
+                (0, dict(pelvis_dx=0.0, pelvis_dy=4.0, torso_deg=2.0, head_rel_deg=-1.0, mane_rel_deg=-1.0,
+                         l_thigh_deg=-4.0, l_shin_deg=6.0, r_thigh_deg=6.0, r_shin_deg=-4.0,
+                         grip_x=48.0, grip_y=-16.0, weapon_deg=-42.0, grip_sep=38.0)),
+                (2, dict(pelvis_dx=-16.0, pelvis_dy=24.0, torso_deg=-12.0, head_rel_deg=8.0, mane_rel_deg=5.0,
+                         l_thigh_deg=-18.0, l_shin_deg=20.0, r_thigh_deg=20.0, r_shin_deg=-14.0,
+                         grip_x=20.0, grip_y=-46.0, weapon_deg=-98.0, grip_sep=34.0, halo_grand=True)),
+                (5, dict(pelvis_dx=18.0, pelvis_dy=38.0, torso_deg=20.0, head_rel_deg=-10.0, mane_rel_deg=-10.0,
+                         l_thigh_deg=22.0, l_shin_deg=18.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
+                         grip_x=82.0, grip_y=-8.0, weapon_deg=14.0, grip_sep=38.0, halo_grand=True)),
+                (7, dict(pelvis_dx=8.0, pelvis_dy=18.0, torso_deg=8.0, head_rel_deg=-4.0, mane_rel_deg=-4.0,
+                         l_thigh_deg=10.0, l_shin_deg=10.0, r_thigh_deg=-10.0, r_shin_deg=8.0,
+                         grip_x=62.0, grip_y=-16.0, weapon_deg=-24.0, grip_sep=37.0)),
+
+                # Variant 2 (F08..F14): Rising Volcanic Siege-Horn Uppercut
+                (8, dict(pelvis_dx=-8.0, pelvis_dy=48.0, torso_deg=16.0, head_rel_deg=-6.0, mane_rel_deg=-6.0,
+                         l_thigh_deg=-24.0, l_shin_deg=26.0, r_thigh_deg=24.0, r_shin_deg=-18.0,
+                         grip_x=44.0, grip_y=6.0, weapon_deg=26.0, grip_sep=36.0, halo_grand=True)),
+                (11, dict(pelvis_dx=14.0, pelvis_dy=14.0, torso_deg=-8.0, head_rel_deg=6.0, mane_rel_deg=4.0,
+                          l_thigh_deg=18.0, l_shin_deg=16.0, r_thigh_deg=-18.0, r_shin_deg=14.0,
+                          grip_x=66.0, grip_y=-66.0, weapon_deg=-74.0, grip_sep=35.0, halo_grand=True)),
+                (14, dict(pelvis_dx=6.0, pelvis_dy=16.0, torso_deg=4.0, head_rel_deg=-2.0, mane_rel_deg=-2.0,
+                          l_thigh_deg=6.0, l_shin_deg=8.0, r_thigh_deg=-6.0, r_shin_deg=6.0,
+                          grip_x=56.0, grip_y=-28.0, weapon_deg=-42.0, grip_sep=37.0)),
+
+                # Variant 3 (F15..F21): Shoulder-Braced Battering-Ram Maul Thrust
+                (15, dict(pelvis_dx=-14.0, pelvis_dy=34.0, torso_deg=-8.0, head_rel_deg=6.0, mane_rel_deg=4.0,
+                          l_thigh_deg=-20.0, l_shin_deg=22.0, r_thigh_deg=20.0, r_shin_deg=-16.0,
+                          grip_x=26.0, grip_y=-22.0, weapon_deg=-18.0, grip_sep=32.0, halo_grand=True)),
+                (18, dict(pelvis_dx=22.0, pelvis_dy=40.0, torso_deg=22.0, head_rel_deg=-10.0, mane_rel_deg=-12.0,
+                          l_thigh_deg=26.0, l_shin_deg=22.0, r_thigh_deg=-26.0, r_shin_deg=20.0,
+                          grip_x=84.0, grip_y=-16.0, weapon_deg=2.0, grip_sep=38.0,
+                          forge_aegis=True, halo_grand=True)),
+                (21, dict(pelvis_dx=8.0, pelvis_dy=18.0, torso_deg=8.0, head_rel_deg=-4.0, mane_rel_deg=-4.0,
+                          l_thigh_deg=8.0, l_shin_deg=10.0, r_thigh_deg=-8.0, r_shin_deg=8.0,
+                          grip_x=58.0, grip_y=-18.0, weapon_deg=-30.0, grip_sep=37.0, forge_aegis=False)),
+
+                # Variant 4 (F22..F29): Overhead Two-Handed World-Breaker Slam
+                (22, dict(pelvis_dx=-8.0, pelvis_dy=12.0, torso_deg=-14.0, head_rel_deg=10.0, mane_rel_deg=8.0,
+                          l_thigh_deg=-14.0, l_shin_deg=16.0, r_thigh_deg=16.0, r_shin_deg=-12.0,
+                          grip_x=32.0, grip_y=-92.0, weapon_deg=-104.0, grip_sep=33.0, halo_grand=True)),
+                (25, dict(pelvis_dx=18.0, pelvis_dy=46.0, torso_deg=22.0, head_rel_deg=-10.0, mane_rel_deg=-10.0,
+                          l_thigh_deg=-22.0, l_shin_deg=24.0, r_thigh_deg=22.0, r_shin_deg=-18.0,
+                          grip_x=78.0, grip_y=-2.0, weapon_deg=22.0, grip_sep=38.0, halo_grand=True)),
                 (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5, mane_rel_deg=-1.0,
                           l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
-                          grip_x=52.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=38.0)),
+                          grip_x=52.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=38.0, halo_grand=False)),
             ]
             cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.0)
-            if 6 <= f <= 13:
-                u = (f - 6) / 7.0
+            if 3 <= f <= 6:
+                u = (f - 3) / 3.0
                 cfg["slash_arc"] = dict(
                     dx=6.0, dy=11.0, r=27.5,
-                    a0=-72.0 + 34.0 * u, a1=16.0 + 28.0 * u,
-                    intensity=1.20 - 0.30 * abs(u - 0.5),
+                    a0=-68.0 + 28.0 * u, a1=20.0 + 24.0 * u,
+                    intensity=1.22 - 0.25 * abs(u - 0.5),
                 )
-            elif 16 <= f <= 22:
-                u = (f - 16) / 6.0
+            elif 9 <= f <= 13:
+                u = (f - 9) / 4.0
                 cfg["slash_arc"] = dict(
-                    dx=6.0, dy=9.0, r=26.5,
-                    a0=22.0 - 42.0 * u, a1=-28.0 - 44.0 * u,
-                    intensity=1.15 - 0.30 * abs(u - 0.5),
+                    dx=6.0, dy=8.0, r=26.5,
+                    a0=28.0 - 46.0 * u, a1=-26.0 - 48.0 * u,
+                    intensity=1.22 - 0.25 * abs(u - 0.5),
+                )
+            elif 16 <= f <= 20:
+                u = (f - 16) / 4.0
+                cfg["slash_arc"] = dict(
+                    dx=8.0, dy=10.0, r=25.5,
+                    a0=-34.0 + 14.0 * u, a1=28.0 + 12.0 * u,
+                    intensity=1.20 - 0.22 * abs(u - 0.5),
+                )
+            elif 24 <= f <= 27:
+                u = (f - 24) / 3.0
+                cfg["slash_arc"] = dict(
+                    dx=5.0, dy=12.0, r=28.5,
+                    a0=-86.0 + 20.0 * u, a1=46.0 + 14.0 * u,
+                    intensity=1.26 - 0.20 * abs(u - 0.5),
                 )
             cfgs.append(cfg)
 
@@ -784,54 +823,57 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 4:
-            # Row 4: ULTIMATE (RAGNAROK WORLD-FORGE & GOD-HAMMER MJOLNIR:
-            # F00..F08 Wide 2H Lateral Forge-Sweep -> F09..F17 Rising 2H Volcanic Uppercut Heave ->
-            # F18..F21 High Airborne Leap (foot_y=90) -> F22..F26 Meteoric World-Breaker Impact; ZERO baked floor ring!)
+            # Row 4: ULTIMATE (WORLD-BREAKER HOME RUN & GOD-HAMMER MJOLNIR:
+            # - F00..F04: Planting Step & Batter's Box Stance
+            # - F05..F11: Deep Back-Shoulder Baseball-Bat Windup (cocking 2H Maul behind back shoulder at -124 deg, weight on rear leg)
+            # - F12..F19: Explosive Two-Handed Horizontal Baseball-Bat Home-Run Swing (+X full extension & grand-slam follow-through!)
+            # - F20..F29: High Leap (F20..F22) & World-Breaker Follow-Through / Sovereign Recovery)
             kfs = [
-                (0, dict(pelvis_dx=-10.0, pelvis_dy=28.0, torso_deg=-10.0, head_rel_deg=8.0,
-                         l_thigh_deg=-16.0, l_shin_deg=18.0, r_thigh_deg=18.0, r_shin_deg=-14.0,
-                         grip_x=24.0, grip_y=-58.0, weapon_deg=-98.0, grip_sep=34.0,
+                (0, dict(pelvis_dx=0.0, pelvis_dy=12.0, torso_deg=4.0, head_rel_deg=-2.0,
+                         l_thigh_deg=-8.0, l_shin_deg=10.0, r_thigh_deg=8.0, r_shin_deg=-8.0,
+                         grip_x=48.0, grip_y=-18.0, weapon_deg=-44.0, grip_sep=36.0,
                          foot_y=99.0, halo_grand=True)),
-                (5, dict(pelvis_dx=16.0, pelvis_dy=44.0, torso_deg=20.0, head_rel_deg=-10.0,
-                         l_thigh_deg=22.0, l_shin_deg=18.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
-                         grip_x=80.0, grip_y=-12.0, weapon_deg=14.0, grip_sep=38.0,
+                (4, dict(pelvis_dx=-10.0, pelvis_dy=28.0, torso_deg=-8.0, head_rel_deg=6.0,
+                         l_thigh_deg=-18.0, l_shin_deg=20.0, r_thigh_deg=18.0, r_shin_deg=-14.0,
+                         grip_x=24.0, grip_y=-34.0, weapon_deg=-92.0, grip_sep=34.0,
                          foot_y=99.0, halo_grand=True)),
-                (9, dict(pelvis_dx=10.0, pelvis_dy=42.0, torso_deg=16.0, head_rel_deg=-6.0,
-                         l_thigh_deg=14.0, l_shin_deg=16.0, r_thigh_deg=-16.0, r_shin_deg=14.0,
-                         grip_x=68.0, grip_y=2.0, weapon_deg=24.0, grip_sep=36.0,
+                (9, dict(pelvis_dx=-18.0, pelvis_dy=40.0, torso_deg=-16.0, head_rel_deg=12.0, mane_rel_deg=8.0,
+                         l_thigh_deg=-26.0, l_shin_deg=28.0, r_thigh_deg=24.0, r_shin_deg=-18.0,
+                         grip_x=14.0, grip_y=-24.0, weapon_deg=-124.0, grip_sep=32.0,
                          foot_y=99.0, halo_grand=True)),
-                (14, dict(pelvis_dx=12.0, pelvis_dy=20.0, torso_deg=-8.0, head_rel_deg=8.0,
-                          l_thigh_deg=-16.0, l_shin_deg=18.0, r_thigh_deg=20.0, r_shin_deg=-14.0,
-                          grip_x=66.0, grip_y=-78.0, weapon_deg=-68.0, grip_sep=34.0,
-                          foot_y=97.0, halo_grand=True)),
-                (19, dict(pelvis_dx=4.0, pelvis_dy=10.0, torso_deg=-14.0, head_rel_deg=12.0,
-                          l_thigh_deg=24.0, l_shin_deg=34.0, r_thigh_deg=-16.0, r_shin_deg=26.0,
-                          grip_x=32.0, grip_y=-120.0, weapon_deg=-108.0, grip_sep=32.0,
-                          foot_y=90.0, halo_grand=True)),
-                (21, dict(pelvis_dx=8.0, pelvis_dy=14.0, torso_deg=-8.0, head_rel_deg=8.0,
+                (11, dict(pelvis_dx=-14.0, pelvis_dy=42.0, torso_deg=-14.0, head_rel_deg=10.0, mane_rel_deg=6.0,
+                          l_thigh_deg=-24.0, l_shin_deg=26.0, r_thigh_deg=22.0, r_shin_deg=-16.0,
+                          grip_x=18.0, grip_y=-22.0, weapon_deg=-118.0, grip_sep=32.0,
+                          foot_y=99.0, halo_grand=True)),
+                (14, dict(pelvis_dx=18.0, pelvis_dy=38.0, torso_deg=20.0, head_rel_deg=-10.0, mane_rel_deg=-10.0,
+                          l_thigh_deg=22.0, l_shin_deg=18.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
+                          grip_x=82.0, grip_y=-16.0, weapon_deg=-4.0, grip_sep=38.0,
+                          foot_y=99.0, halo_grand=True)),
+                (17, dict(pelvis_dx=22.0, pelvis_dy=30.0, torso_deg=16.0, head_rel_deg=-8.0, mane_rel_deg=-8.0,
+                          l_thigh_deg=26.0, l_shin_deg=20.0, r_thigh_deg=-26.0, r_shin_deg=20.0,
+                          grip_x=84.0, grip_y=-42.0, weapon_deg=-42.0, grip_sep=36.0,
+                          foot_y=99.0, halo_grand=True)),
+                (20, dict(pelvis_dx=6.0, pelvis_dy=10.0, torso_deg=-12.0, head_rel_deg=10.0,
                           l_thigh_deg=22.0, l_shin_deg=32.0, r_thigh_deg=-14.0, r_shin_deg=24.0,
-                          grip_x=48.0, grip_y=-96.0, weapon_deg=-84.0, grip_sep=34.0,
+                          grip_x=36.0, grip_y=-114.0, weapon_deg=-104.0, grip_sep=32.0,
                           foot_y=91.0, halo_grand=True)),
                 (24, dict(pelvis_dx=16.0, pelvis_dy=46.0, torso_deg=22.0, head_rel_deg=-10.0,
                           l_thigh_deg=-22.0, l_shin_deg=24.0, r_thigh_deg=22.0, r_shin_deg=-18.0,
                           grip_x=74.0, grip_y=-2.0, weapon_deg=20.0, grip_sep=36.0,
                           foot_y=99.0, halo_grand=True)),
-                (26, dict(pelvis_dx=14.0, pelvis_dy=42.0, torso_deg=18.0, head_rel_deg=-8.0,
-                          l_thigh_deg=-18.0, l_shin_deg=20.0, r_thigh_deg=18.0, r_shin_deg=-16.0,
-                          grip_x=68.0, grip_y=-6.0, weapon_deg=12.0, grip_sep=38.0,
-                          foot_y=99.0, halo_grand=True)),
                 (29, dict(torso_deg=3.0, grip_x=52.0, grip_y=-14.0, weapon_deg=-38.0,
                           grip_sep=38.0, foot_y=99.0, halo_grand=False)),
             ]
             cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
-            if 2 <= f <= 7:
-                u = (f - 2) / 5.0
-                cfg["slash_arc"] = dict(dx=5.0, dy=11.0, r=28.0, a0=-74.0 + 24.0 * u, a1=34.0 + 16.0 * u, intensity=1.22)
-            elif 11 <= f <= 16:
-                u = (f - 11) / 5.0
-                cfg["slash_arc"] = dict(dx=5.0, dy=9.0, r=27.5, a0=28.0 - 44.0 * u, a1=-34.0 - 48.0 * u, intensity=1.24)
+            if 12 <= f <= 18:
+                u = (f - 12) / 6.0
+                cfg["slash_arc"] = dict(
+                    dx=6.0, dy=10.0, r=28.5,
+                    a0=46.0 - 62.0 * u, a1=-28.0 - 54.0 * u,
+                    intensity=1.28,
+                )
             elif 22 <= f <= 26:
-                cfg["slash_arc"] = dict(dx=4.0, dy=12.0, r=28.5, a0=-88.0, a1=54.0, intensity=1.28)
+                cfg["slash_arc"] = dict(dx=4.0, dy=12.0, r=28.5, a0=-88.0, a1=54.0, intensity=1.26)
             cfgs.append(cfg)
 
         elif row_idx == 5:
@@ -942,13 +984,13 @@ def build_row_configs(row_idx):
 def main():
     parts = load_and_segment_512()
     picks = [
-        (0, 0, "R0 2H ANVIL GUARD"),
-        (1, 4, "R1 TITAN STRIDE"),
-        (2, 11, "R2 2H RAM CLEAVE"),
-        (3, 9, "R3 ANVIL COIL"),
+        (2, 5, "R2 V1: SWEEPING CLEAVE"),
+        (2, 11, "R2 V2: HORN UPPERCUT"),
+        (2, 18, "R2 V3: BATTERING RAM"),
+        (2, 25, "R2 V4: OVERHEAD SLAM"),
+        (4, 9, "R4 BATTER WINDUP"),
+        (4, 15, "R4 HOME-RUN SWING"),
         (3, 16, "R3 CANNONBALL DRIVE"),
-        (4, 19, "R4 RAGNAROK LEAP"),
-        (4, 24, "R4 EARTHSHATTER"),
         (7, 8, "R7 ANVIL BULWARK"),
     ]
     build_and_save_30fps_sheet(

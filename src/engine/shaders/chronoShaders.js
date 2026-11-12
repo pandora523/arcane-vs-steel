@@ -34,7 +34,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps69';
+} from '../ArcaneShaderFX.js?v=30fps70';
 
 const TWO_PI = Math.PI * 2;
 const BACK_HALF = (theta) => Math.sin(theta) < 0;
