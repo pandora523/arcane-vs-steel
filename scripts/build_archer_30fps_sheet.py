@@ -42,7 +42,7 @@ from hd2d_rig_core import (
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "archer_v3_base.jpg")
 OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "archer_sheet.png")
-ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
+ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/b9d8130e-8764-4ace-8d4e-40f97049d6f1"
 
 # Curated 20-Color Emerald / Moon-Silver / Royal Yggdrasil Gold Master Palette
 MASTER_PALETTE = np.array([
@@ -570,8 +570,19 @@ def apply_dual_archer_ik(cfg):
     l_sh_w = rot_pt(PIVOTS["l_sh"], pel, torso_deg)
     r_sh_w = rot_pt(PIVOTS["r_sh"], pel, torso_deg)
 
-    r_target = (pel[0] + cfg.get("r_hx", 72.0), pel[1] + cfg.get("r_hy", -32.0))
-    l_target = (pel[0] + cfg.get("l_hx", -24.0), pel[1] + cfg.get("l_hy", -42.0))
+    if cfg.get("shoulder_aim_ik", False):
+        sh_mid = (0.5 * (l_sh_w[0] + r_sh_w[0]), 0.5 * (l_sh_w[1] + r_sh_w[1]))
+        aim_rad = math.radians(cfg.get("bow_deg", 75.0))
+        ux, uy = math.cos(aim_rad), math.sin(aim_rad)
+        nx, ny = -uy, ux
+        pull = max(0.0, min(1.0, float(cfg.get("draw_pull", 0.0))))
+        r_reach = float(cfg.get("aim_reach", 62.0))
+        l_pull = 12.0 + pull * 24.0
+        r_target = (sh_mid[0] + ux * r_reach + nx * 4.0, sh_mid[1] + uy * r_reach + ny * 4.0)
+        l_target = (sh_mid[0] - ux * l_pull - nx * 4.0, sh_mid[1] - uy * l_pull - ny * 4.0)
+    else:
+        r_target = (pel[0] + cfg.get("r_hx", 72.0), pel[1] + cfg.get("r_hy", -32.0))
+        l_target = (pel[0] + cfg.get("l_hx", -24.0), pel[1] + cfg.get("l_hy", -42.0))
 
     r_sode_rel, r_fore_rel = solve_arm_ik(
         r_sh_w, r_target, _R1, _R2, _AR1, _AR2, torso_deg,
@@ -591,7 +602,7 @@ def apply_dual_archer_ik(cfg):
 
 ARCHER_NUMERIC_KEYS = tuple(BASE_NUMERIC_KEYS) + (
     "r_hx", "r_hy", "l_hx", "l_hy",
-    "bow_deg", "bow_span", "draw_pull", "wing_flap", "wing_scale",
+    "bow_deg", "bow_span", "draw_pull", "wing_flap", "wing_scale", "aim_reach",
 )
 
 
@@ -620,7 +631,8 @@ def eval_archer_keyframes(f, keyframes, ph, defaults, wave_mult=2.0):
     meta_keys = (
         "use_dual_ik", "right_arm_in_front", "right_leg_behind",
         "wings_mode", "quiver_on", "arrow_mode", "resting_weapon",
-        "r_elbow_cw", "l_elbow_cw",
+        "r_elbow_cw", "l_elbow_cw", "centered_mode",
+        "shoulder_aim_ik", "wing_follow_torso",
     )
     for mk in meta_keys:
         if mk in active_d:
@@ -634,14 +646,22 @@ def eval_archer_keyframes(f, keyframes, ph, defaults, wave_mult=2.0):
 # BACK ATTACHMENTS: EMERALD STAR-QUIVER & 6-PINION YGGDRASIL LIGHT-WINGS
 # =============================================================================
 
-def draw_star_quiver_104(arr, nk_x, nk_y, torso_deg=0.0, shimmer=0.0):
+def draw_star_quiver_104(arr, nk_x, nk_y, torso_deg=0.0, shimmer=0.0, follow_torso=False):
     """
     Renders Sylvara's Ornate Emerald Star-Quiver slung diagonally behind her upper back,
     complete with royal-gold filigree mouth & 3 glowing starlight-jade arrow fletchings.
     """
-    qx = max(14.0, min(88.0, nk_x - 5.5))
-    qy = max(16.0, min(88.0, nk_y + 5.5))
-    ang = math.radians(-128.0 + torso_deg * 0.45)
+    if follow_torso:
+        tr = math.radians(torso_deg)
+        ct, st = math.cos(tr), math.sin(tr)
+        ox, oy = -5.5 * ct - 5.5 * st, -5.5 * st + 5.5 * ct
+        qx = max(14.0, min(88.0, nk_x + ox))
+        qy = max(16.0, min(88.0, nk_y + oy))
+        ang = math.radians(-128.0 + torso_deg)
+    else:
+        qx = max(14.0, min(88.0, nk_x - 5.5))
+        qy = max(16.0, min(88.0, nk_y + 5.5))
+        ang = math.radians(-128.0 + torso_deg * 0.45)
     ux, uy = math.cos(ang), math.sin(ang)
     nx, ny = -uy, ux
 
@@ -680,15 +700,24 @@ def draw_star_quiver_104(arr, nk_x, nk_y, torso_deg=0.0, shimmer=0.0):
         put_px_safe(arr, fx1, fy1, C_STAR_CORE if idx == 1 else C_GOLD_SPEC)
 
 
-def draw_yggdrasil_wings_104(arr, nk_x, nk_y, flap_deg=0.0, scale_w=1.0):
+def draw_yggdrasil_wings_104(arr, nk_x, nk_y, flap_deg=0.0, scale_w=1.0, torso_deg=0.0, follow_torso=False):
     """
     Renders Luminous 6-Pinion Emerald-Gold Yggdrasil Light-Wings behind Sylvara on
-    Row 4 (`ULTIMATE`) and Row 8 (`JUMP`).
+    Row 4 (`ULTIMATE` / `TRUE_ULTIMATE`) and Row 8 (`JUMP`).
     6 distinct articulated crystal-leaf pinions (3 upper-swept + 3 cascading lower-back)
     with solid emerald-gold feather fill & 1px dark framing (0 interior pinholes, 0 clips).
     """
-    wx = max(24.0, min(80.0, nk_x - 3.5))
-    wy = max(22.0, min(80.0, nk_y + 4.5))
+    if follow_torso:
+        tr = math.radians(torso_deg)
+        ct, st = math.cos(tr), math.sin(tr)
+        ox, oy = -3.5 * ct - 4.5 * st, -3.5 * st + 4.5 * ct
+        wx = max(24.0, min(80.0, nk_x + ox))
+        wy = max(22.0, min(80.0, nk_y + oy))
+        rot_add = torso_deg
+    else:
+        wx = max(24.0, min(80.0, nk_x - 3.5))
+        wy = max(22.0, min(80.0, nk_y + 4.5))
+        rot_add = 0.0
 
     # 6 articulated pinions: (base_angle_deg, length_px, width_px, flap_mult)
     # Sweeping majestically up-left and fan-spread behind her shoulders & back
@@ -702,7 +731,7 @@ def draw_yggdrasil_wings_104(arr, nk_x, nk_y, flap_deg=0.0, scale_w=1.0):
     )
 
     for p_idx, (base_deg, plen, pwid, f_mult) in enumerate(pinions):
-        ang = math.radians(base_deg + flap_deg * f_mult)
+        ang = math.radians(base_deg + rot_add + flap_deg * f_mult)
         ux, uy = math.cos(ang), math.sin(ang)
         nx, ny = -uy, ux
 
@@ -956,23 +985,32 @@ def extra_extents(joints_c, cfg, scale):
             pts.append((rh[0] + ux * (9.5 / max(0.08, scale)), rh[1] + uy * (9.5 / max(0.08, scale))))
     if cfg.get("wings_mode", "off") != "off":
         w_reach = (21.5 * cfg.get("wing_scale", 1.0)) / max(0.08, scale)
-        pts.append((nk[0] - w_reach, nk[1] - w_reach * 0.65))
+        if cfg.get("wing_follow_torso", False):
+            pts.append((nk[0] - w_reach, nk[1] - w_reach))
+            pts.append((nk[0] + w_reach, nk[1] + w_reach))
+        else:
+            pts.append((nk[0] - w_reach, nk[1] - w_reach * 0.65))
     return pts
 
 
 def draw_back(out, joints_104, cfg):
     nk = joints_104["neck"]
+    follow_t = cfg.get("wing_follow_torso", False)
+    t_deg = cfg.get("torso_deg", 0.0)
     if cfg.get("wings_mode", "off") != "off":
         draw_yggdrasil_wings_104(
             out, nk[0], nk[1],
             flap_deg=cfg.get("wing_flap", 0.0),
             scale_w=cfg.get("wing_scale", 1.0),
+            torso_deg=t_deg,
+            follow_torso=follow_t,
         )
     if cfg.get("quiver_on", True):
         draw_star_quiver_104(
             out, nk[0], nk[1],
-            torso_deg=cfg.get("torso_deg", 0.0),
+            torso_deg=t_deg,
             shimmer=cfg.get("weapon_glow", 0.5),
+            follow_torso=follow_t,
         )
 
 
@@ -1203,67 +1241,201 @@ def build_row_configs(row_idx):
             cfgs.append(eval_archer_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0))
 
         elif row_idx == 4:
-            # Row 4: ULTIMATE — `ARROW OF YGGDRASIL: SUPERNOVA PIERCE` / `ASTRAL HURRICANE`
-            # Unfurls Luminous 6-Pinion Emerald-Gold Yggdrasil Light-Wings (`wings_mode="on"`),
-            # ascends sovereignly (`foot_y = 94.0`), draws colossal Supernova Dragon-Arrow (`F05..F18`),
-            # and unleashes the cataclysmic release (`F19..F22`)!
-            kfs = [
-                (0, dict(
-                    pelvis_dy=8.0, torso_deg=3.0, l_thigh_deg=6.0, r_thigh_deg=-6.0,
-                    r_hx=66.0, r_hy=-28.0, l_hx=-26.0, l_hy=-24.0,
-                    bow_deg=-14.0, bow_span=14.5, draw_pull=0.15,
-                    wings_mode="on", wing_scale=0.65, wing_flap=-8.0,
-                    arrow_mode="nocked", foot_y=98.5,
-                )),
-                (5, dict(
-                    pelvis_dx=-2.0, pelvis_dy=4.0, torso_deg=-2.0, head_rel_deg=-3.0,
-                    l_thigh_deg=14.0, l_shin_deg=22.0, l_foot_deg=14.0,
-                    r_thigh_deg=-12.0, r_shin_deg=18.0, r_foot_deg=12.0,
-                    l_coat_rel_deg=-10.0, r_coat_rel_deg=8.0,
-                    r_hx=76.0, r_hy=-72.0, l_hx=16.0, l_hy=-72.0,
-                    bow_deg=-2.0, bow_span=15.2, draw_pull=0.55,
-                    wings_mode="on", wing_scale=1.0, wing_flap=8.0,
-                    l_elbow_cw=False, arrow_mode="charged", foot_y=94.5,
-                )),
-                (12, dict(
-                    # Sovereign Levitating Full Yggdrasil Draw!
-                    pelvis_dx=-4.0, pelvis_dy=2.0, torso_deg=-3.0, head_rel_deg=-2.0,
-                    l_thigh_deg=16.0, l_shin_deg=24.0, l_foot_deg=16.0,
-                    r_thigh_deg=-14.0, r_shin_deg=20.0, r_foot_deg=14.0,
-                    l_coat_rel_deg=-12.0, r_coat_rel_deg=10.0,
-                    r_hx=82.0, r_hy=-76.0, l_hx=-20.0, l_hy=-76.0,
-                    bow_deg=-1.0, bow_span=15.5, draw_pull=1.0,
-                    wings_mode="on", wing_scale=1.05, wing_flap=-6.0,
-                    l_elbow_cw=False, arrow_mode="charged", foot_y=93.8,
-                )),
-                (17, dict(
-                    # Peak Tension Hold before Supernova Release!
-                    pelvis_dx=-6.0, pelvis_dy=2.0, torso_deg=-4.0, head_rel_deg=-1.5,
-                    l_thigh_deg=16.0, l_shin_deg=24.0, l_foot_deg=16.0,
-                    r_thigh_deg=-14.0, r_shin_deg=20.0, r_foot_deg=14.0,
-                    r_hx=84.0, r_hy=-76.0, l_hx=-24.0, l_hy=-76.0,
-                    bow_deg=0.0, bow_span=15.5, draw_pull=1.0,
-                    wings_mode="on", wing_scale=1.08, wing_flap=10.0,
-                    l_elbow_cw=False, arrow_mode="charged", foot_y=93.8,
-                )),
-                (20, dict(
-                    # SUPERNOVA DRAGON-ARROW RELEASE & RECOIL!
-                    pelvis_dx=-10.0, pelvis_dy=6.0, torso_deg=-7.0, head_rel_deg=2.0,
-                    l_thigh_deg=18.0, l_shin_deg=22.0, r_thigh_deg=-16.0, r_shin_deg=18.0,
-                    r_hx=80.0, r_hy=-82.0, l_hx=-46.0, l_hy=-86.0,
-                    bow_deg=-4.0, bow_span=15.5, draw_pull=0.0,
-                    wings_mode="on", wing_scale=1.10, wing_flap=16.0,
-                    l_elbow_cw=False, arrow_mode="release_flash", foot_y=94.2,
-                )),
-                (29, dict(
-                    pelvis_dy=6.0, torso_deg=3.0, l_thigh_deg=6.0, r_thigh_deg=-6.0,
-                    r_hx=66.0, r_hy=-24.0, l_hx=-26.0, l_hy=-20.0,
-                    bow_deg=-14.0, bow_span=14.5, draw_pull=0.1,
-                    wings_mode="on", wing_scale=0.65, wing_flap=-6.0,
+            # Row 4: `ZEPHYR VAULT: 180° STARLOCK BARRAGE` (`F00..F15`) & `ARROW OF YGGDRASIL: SUPERNOVA PIERCE` (`F16..F29`)
+            # - F00..F02 (`120..122`): Explosive Gale Charge-In Rush + Vault-Kick Launch off the enemy!
+            # - F03..F13 (`123..133`): Full Acrobatic 180°/360° Somersault Flip (`centered_mode=True`) firing Lock-On Arrows downward!
+            # - F14..F15 (`134..135`): Agile opposite-side acrobatic landing
+            # - F16..F17 (`136..137`): Grounded Bow-Stave Earth-Root Invocation (erupting Yggdrasil Thorn-Roots under enemies!)
+            # - F18..F24 (`138..144`): Far-Stage Sovereign Winged Yggdrasil Greatbow Full Draw
+            # - F25..F27 (`145..147`): Full-Stage Supernova Dragon-Arrow Release & Recoil
+            # - F28..F29 (`148..149`): Sovereign descent to grounded stance
+            cfg = dict(DEFAULTS)
+            cfg["mane_wave_phase"] = ph * 3.5
+
+            if f == 0:
+                cfg.update(
+                    pelvis_dx=8.0, pelvis_dy=22.0, torso_deg=18.0, head_rel_deg=-10.0,
+                    l_thigh_deg=30.0, l_shin_deg=26.0, l_foot_deg=16.0,
+                    r_thigh_deg=-22.0, r_shin_deg=28.0, r_foot_deg=12.0,
+                    l_coat_rel_deg=-18.0, r_coat_rel_deg=-14.0,
+                    r_hx=76.0, r_hy=-34.0, l_hx=-42.0, l_hy=-8.0,
+                    bow_deg=-6.0, bow_span=14.2, draw_pull=0.05,
+                    wings_mode="on", wing_scale=0.68, wing_flap=-10.0,
+                    right_arm_in_front=True, arrow_mode="nocked", foot_y=98.5,
+                )
+                cfgs.append(apply_dual_archer_ik(cfg))
+
+            elif f == 1:
+                cfg.update(
+                    pelvis_dx=12.0, pelvis_dy=20.0, torso_deg=21.0, head_rel_deg=-11.0,
+                    l_thigh_deg=34.0, l_shin_deg=22.0, l_foot_deg=18.0,
+                    r_thigh_deg=-26.0, r_shin_deg=30.0, r_foot_deg=14.0,
+                    l_coat_rel_deg=-22.0, r_coat_rel_deg=-16.0,
+                    r_hx=80.0, r_hy=-38.0, l_hx=-46.0, l_hy=-12.0,
+                    bow_deg=8.0, bow_span=14.2, draw_pull=0.0,
+                    wings_mode="on", wing_scale=0.78, wing_flap=6.0,
+                    right_arm_in_front=True, arrow_mode="nocked", foot_y=97.5,
+                    slash_arc=dict(dx=15.0, dy=-5.0, r=19.5, a0=-52.0, a1=38.0, gold=True, intensity=0.92),
+                )
+                cfgs.append(apply_dual_archer_ik(cfg))
+
+            elif f == 2:
+                # Vault-Kick launch off target!
+                cfg.update(
+                    pelvis_dx=4.0, pelvis_dy=10.0, torso_deg=-18.0, head_rel_deg=8.0,
+                    l_thigh_deg=-52.0, l_shin_deg=16.0, l_foot_deg=-10.0,
+                    r_thigh_deg=14.0, r_shin_deg=36.0, r_foot_deg=18.0,
+                    l_coat_rel_deg=12.0, r_coat_rel_deg=14.0,
+                    r_hx=70.0, r_hy=-32.0, l_hx=-30.0, l_hy=-22.0,
+                    bow_deg=20.0, bow_span=14.2, draw_pull=0.20,
+                    wings_mode="on", wing_scale=0.88, wing_flap=14.0,
+                    arrow_mode="nocked", foot_y=94.5,
+                )
+                cfgs.append(apply_dual_archer_ik(cfg))
+
+            elif 3 <= f <= 13:
+                # Acrobatic 180°/360° Somersault Flip (`F03..F13`) aiming Celestial Greatbow downward around the 180° arc!
+                somersault_specs = [
+                    # (flip_deg, bow_aim_deg, draw_pull, arrow_mode, wing_flap)
+                    (-48.0,  44.0, 0.88, "charged",       -8.0),   # F03: Ascending backflip lock-on draw
+                    (-78.0,  58.0, 0.12, "release_flash", 10.0),   # F04: Shot #1 release
+                    (-108.0, 68.0, 0.94, "fan3",          -6.0),   # F05: Inverted climb multi-lock draw
+                    (-138.0, 78.0, 0.12, "release_flash", 12.0),   # F06: Shot #2 release
+                    (-166.0, 86.0, 1.00, "charged",       -8.0),   # F07: Near-inverted high lock-on draw
+                    (-186.0, 90.0, 1.00, "fan3",          10.0),   # F08: TRUE 180° UPSIDE-DOWN APEX STARLOCK!
+                    (-212.0, 82.0, 0.12, "release_flash", 14.0),   # F09: Apex release flash
+                    (-244.0, 70.0, 0.96, "charged",       -6.0),   # F10: Descending inverted lock-on draw
+                    (-276.0, 56.0, 0.12, "release_flash", 12.0),   # F11: Chest-down dive shot release
+                    (-308.0, 42.0, 0.92, "fan3",          -8.0),   # F12: Recovery rotation fan-lock draw
+                    (-336.0, 28.0, 0.12, "release_flash", 10.0),   # F13: Final arc lock-shot & landing prep
+                ]
+                flip_deg, aim_deg, pull_v, a_mode, w_flap = somersault_specs[f - 3]
+                cfg.update(
+                    centered_mode=True,
+                    shoulder_aim_ik=True,
+                    wing_follow_torso=True,
+                    pelvis_dx=0.0,
+                    pelvis_dy=48.0,
+                    torso_deg=flip_deg,
+                    head_rel_deg=8.0,
+                    l_thigh_deg=flip_deg - 42.0,
+                    l_shin_deg=flip_deg + 44.0,
+                    l_foot_deg=flip_deg + 26.0,
+                    r_thigh_deg=flip_deg - 16.0,
+                    r_shin_deg=flip_deg + 52.0,
+                    r_foot_deg=flip_deg + 32.0,
+                    l_coat_rel_deg=-14.0,
+                    r_coat_rel_deg=12.0,
+                    bow_deg=aim_deg,
+                    bow_span=13.6,
+                    aim_reach=56.0,
+                    draw_pull=pull_v,
+                    wings_mode="on",
+                    wing_scale=0.84,
+                    wing_flap=w_flap,
+                    l_elbow_cw=True,
+                    arrow_mode=a_mode,
+                    weapon_glow=1.0,
+                )
+                cfgs.append(apply_dual_archer_ik(cfg))
+
+            elif f in (14, 15):
+                # F14..F15: Opposite-side agile Ranger touchdown (`foot_y = 99.0`)
+                u_l = f - 14  # 0 or 1
+                cfg.update(
+                    pelvis_dx=4.0 - u_l * 2.0,
+                    pelvis_dy=42.0 - u_l * 18.0,
+                    torso_deg=14.0 - u_l * 6.0,
+                    head_rel_deg=-6.0 + u_l * 3.0,
+                    l_thigh_deg=26.0 - u_l * 12.0,
+                    l_shin_deg=28.0 - u_l * 14.0,
+                    r_thigh_deg=-24.0 + u_l * 10.0,
+                    r_shin_deg=26.0 - u_l * 12.0,
+                    l_coat_rel_deg=-12.0 + u_l * 6.0,
+                    r_coat_rel_deg=-8.0 + u_l * 4.0,
+                    r_hx=68.0, r_hy=-24.0, l_hx=-28.0, l_hy=-16.0,
+                    bow_deg=-12.0, bow_span=14.4, draw_pull=0.10,
+                    wings_mode="on", wing_scale=0.72 - u_l * 0.08, wing_flap=-8.0 + u_l * 4.0,
                     arrow_mode="nocked", foot_y=99.0,
-                )),
-            ]
-            cfgs.append(eval_archer_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.5))
+                )
+                cfgs.append(apply_dual_archer_ik(cfg))
+
+            elif f in (16, 17):
+                # F16..F17: Grounded Yggdrasil Earth-Root Invocation! Plunges bow-tip low (`bow_deg = +62 deg`)
+                u_r = f - 16
+                cfg.update(
+                    pelvis_dx=4.0,
+                    pelvis_dy=50.0 - u_r * 8.0,
+                    torso_deg=15.0 - u_r * 3.0,
+                    head_rel_deg=-7.0,
+                    l_thigh_deg=28.0, l_shin_deg=30.0,
+                    r_thigh_deg=-28.0, r_shin_deg=28.0,
+                    l_coat_rel_deg=8.0, r_coat_rel_deg=-8.0,
+                    r_hx=70.0, r_hy=-18.0 - u_r * 6.0,
+                    l_hx=-18.0, l_hy=-68.0,
+                    bow_deg=62.0 - u_r * 8.0, bow_span=14.2, draw_pull=0.45 + u_r * 0.25,
+                    wings_mode="on", wing_scale=0.82 + u_r * 0.10, wing_flap=-10.0 + u_r * 16.0,
+                    l_elbow_cw=False, arrow_mode="charged", foot_y=99.0,
+                )
+                cfgs.append(apply_dual_archer_ik(cfg))
+
+            elif 18 <= f <= 24:
+                # F18..F24 (`138..144`): Sovereign Far-Stage Yggdrasil Winged Ascension & Full Celestial Greatbow Draw!
+                u_d = (f - 18) / 6.0
+                cfg.update(
+                    pelvis_dx=-2.0 - u_d * 4.0,
+                    pelvis_dy=4.0 - u_d * 2.0,
+                    torso_deg=-2.0 - u_d * 2.5,
+                    head_rel_deg=-2.5 + u_d * 1.0,
+                    l_thigh_deg=14.0 + u_d * 3.0, l_shin_deg=22.0 + u_d * 3.0, l_foot_deg=14.0 + u_d * 2.0,
+                    r_thigh_deg=-12.0 - u_d * 2.0, r_shin_deg=18.0 + u_d * 3.0, r_foot_deg=12.0 + u_d * 2.0,
+                    l_coat_rel_deg=-10.0 - u_d * 3.0, r_coat_rel_deg=8.0 + u_d * 3.0,
+                    r_hx=76.0 + u_d * 8.0, r_hy=-73.0 - u_d * 3.0,
+                    l_hx=14.0 - u_d * 38.0, l_hy=-73.0 - u_d * 3.0,
+                    bow_deg=-2.0 + u_d * 2.0, bow_span=15.2 + u_d * 0.3,
+                    draw_pull=min(1.0, 0.52 + u_d * 0.55),
+                    wings_mode="on", wing_scale=1.0 + u_d * 0.08,
+                    wing_flap=math.sin(u_d * math.pi * 2.0) * 9.0,
+                    l_elbow_cw=False, arrow_mode="charged",
+                    foot_y=94.4 - u_d * 0.7,
+                )
+                cfgs.append(apply_dual_archer_ik(cfg))
+
+            elif 25 <= f <= 27:
+                # F25..F27 (`145..147`): Full-Stage SUPERNOVA DRAGON-ARROW RELEASE & RECOIL!
+                u_rel = (f - 25) / 2.0
+                cfg.update(
+                    pelvis_dx=-10.0 + u_rel * 3.0,
+                    pelvis_dy=6.0 + u_rel * 2.0,
+                    torso_deg=-7.5 + u_rel * 2.5,
+                    head_rel_deg=2.0 - u_rel * 1.0,
+                    l_thigh_deg=18.0 - u_rel * 3.0, l_shin_deg=22.0 - u_rel * 4.0,
+                    r_thigh_deg=-16.0 + u_rel * 3.0, r_shin_deg=18.0 - u_rel * 4.0,
+                    r_hx=80.0 - u_rel * 4.0, r_hy=-82.0 + u_rel * 10.0,
+                    l_hx=-46.0 + u_rel * 8.0, l_hy=-86.0 + u_rel * 14.0,
+                    bow_deg=-4.0 - u_rel * 3.0, bow_span=15.5 - u_rel * 0.4,
+                    draw_pull=0.0,
+                    wings_mode="on", wing_scale=1.10 - u_rel * 0.08,
+                    wing_flap=16.0 - u_rel * 10.0,
+                    l_elbow_cw=False, arrow_mode="release_flash" if f <= 26 else "none",
+                    foot_y=94.2 + u_rel * 1.4,
+                )
+                cfgs.append(apply_dual_archer_ik(cfg))
+
+            else:
+                # F28..F29 (`148..149`): Sovereign descent to grounded poised Ranger stance (`foot_y = 99.0`)
+                u_end = f - 28  # 0 or 1
+                cfg.update(
+                    pelvis_dy=10.0 - u_end * 4.0,
+                    torso_deg=2.0 + u_end * 1.0,
+                    l_thigh_deg=8.0 - u_end * 2.0, r_thigh_deg=-8.0 + u_end * 2.0,
+                    r_hx=68.0 - u_end * 2.0, r_hy=-34.0 + u_end * 10.0,
+                    l_hx=-28.0 + u_end * 2.0, l_hy=-28.0 + u_end * 8.0,
+                    bow_deg=-12.0 - u_end * 2.0, bow_span=14.6, draw_pull=0.08,
+                    wings_mode="on", wing_scale=0.80 - u_end * 0.15, wing_flap=-4.0 - u_end * 2.0,
+                    arrow_mode="nocked", foot_y=97.2 + u_end * 1.8,
+                )
+                cfgs.append(apply_dual_archer_ik(cfg))
 
         elif row_idx == 5:
             # Row 5: DEATH & HURT
@@ -1519,10 +1691,10 @@ def main():
     picks = [
         (0, 0, "R0 SYLVAN IDLE"),
         (1, 4, "R1 RANGER STRIDE"),
-        (2, 4, "R2 BOW-BLADE SLASH"),
         (2, 17, "R2 FULL GREATBOW DRAW"),
         (3, 16, "R3 SEEKER FAN VOLLEY"),
-        (4, 17, "R4 YGGDRASIL WINGS"),
+        (4, 8, "R4 180 INVERTED LOCK"),
+        (4, 23, "R4 YGGDRASIL WINGS"),
         (5, 25, "R5 RESTING GREATBOW"),
         (8, 16, "R8 WINGED ZEPHYR SHOT"),
     ]

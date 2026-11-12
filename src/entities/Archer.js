@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps73';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps73';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps73';
+import { Fighter } from './Fighter.js?v=30fps74';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps74';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps74';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps73';
+} from '../engine/shaders/sylvanShaders.js?v=30fps74';
 
 /**
  * Sylvara (`archer`) — Elven Tempest Bowmaster & Astral Star-Ranger.
@@ -29,11 +29,12 @@ export class Archer extends Fighter {
     this.theme = 'emerald';
     this.deathSfx = 'death_archer';
     this.skillMaxCooldown = 4.05;
-    this.ultName = 'ASTRAL HURRICANE';
+    this.ultName = 'ZEPHYR VAULT: 180° STARLOCK BARRAGE';
+    this.ultDuration = 2.04;
     this.skillName = 'VERDANT SNARE & SEEKERS';
     this.hasTrueUltimate = true;
     this.trueUltName = 'ARROW OF YGGDRASIL: SUPERNOVA PIERCE';
-    this.trueUltDuration = 4.35;
+    this.trueUltDuration = 4.55;
     this.windPhase = 0;
     this.shotCombo = 0;
     this.stepTimer = 0;
@@ -49,19 +50,33 @@ export class Archer extends Fighter {
     this.flipAngle = 0;
 
     this.activeVfxAnims = [];
+    this._ultPhase = 0;
+    this._ultShotMask = 0;
+    this._ultChargeDir = this.facing;
+    this._ultStartX = this.x;
+    this._ultPivotX = this.x + this.facing * 200;
     this._trueUltStep = 0;
     this._trueUltBeamTimer = 0;
     this._trueUltMoteTimer = 0;
     this._trueUltTargetX = this.x + this.facing * 320;
+    this._trueUltJumpStartX = this.x;
+    this._trueUltFarEdgeX = 108;
+    this._trueUltRootedTargets = [];
     this.brambleSnareZones = [];
 
     // Native 120Hz dual-buffer HD-2D Sylvan shader & particle runtime (`back` + `front` 2.5D layers)
-    this.fx = new ArcaneShaderFX(SYLVAN_EFFECT_REGISTRY, { pixelScale: 3, viewW: 440, viewH: 220 });
+    // Expanded viewport (`720x460` @ `pixelScale=3` -> `2160x1380` world coverage) for cross-stage Yggdrasil & 180° sky vaults
+    this.fx = new ArcaneShaderFX(SYLVAN_EFFECT_REGISTRY, {
+      pixelScale: 3,
+      viewW: 720,
+      viewH: 460,
+      topRatio: 0.72
+    });
 
     if (typeof Image !== 'undefined') {
       const archerAssets = PixelForge.initAssets()?.archer;
-      if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps62')) {
-        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps73';
+      if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps74')) {
+        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps74';
       }
     }
 
@@ -72,25 +87,49 @@ export class Archer extends Fighter {
     this._deathBurstTriggered = false;
   }
 
+  getEnemyTargets(enemy, game) {
+    if (game?.getEnemiesOf) {
+      const list = game.getEnemiesOf(this).filter((f) => f && !f.isDead && !f.isBenched);
+      if (list.length > 0) return list;
+    }
+    return enemy && !enemy.isDead ? [enemy] : [];
+  }
+
   setState(newState) {
     super.setState(newState);
     if (newState !== 'CROUCH') {
       this.isDeflecting = false;
       this.fx?.stopByKey('sylvanLeafCloakDome');
     }
-    if (newState !== 'DASH' && newState !== 'JUMP' && newState !== 'DODGE') {
+    if (newState !== 'DASH' && newState !== 'JUMP' && newState !== 'DODGE' && newState !== 'ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
       this.fx?.stopByKey('zephyrVaultSlipstream');
     }
     if (newState !== 'ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
       this.fx?.stopByKey('astralWingPlume');
+      this.cameraAirLift = 0;
+      this._overrideFrameIdx = null;
+    }
+    if (newState === 'ULTIMATE') {
+      this._ultPhase = 0;
+      this._ultShotMask = 0;
+      this._ultChargeDir = this.facing;
+      this._ultStartX = this.x;
+      this._ultPivotX = this.x + this.facing * 200;
+      this.isFlipVault = false;
+      this._overrideFrameIdx = 120;
     }
     if (newState === 'TRUE_ULTIMATE') {
       this._trueUltStep = 0;
       this._trueUltBeamTimer = 0;
       this._trueUltMoteTimer = 0;
       this._trueUltTargetX = this.x + this.facing * 320;
-      this.trueUltFrameOverride = 124;
+      this._trueUltJumpStartX = this.x;
+      this._trueUltFarEdgeX = 108;
+      this._trueUltRootedTargets = [];
+      this.isFlipVault = false;
+      this.trueUltFrameOverride = 136;
     } else {
+      this.releaseRootedTargets();
       this._trueUltStep = 0;
       this._trueUltBeamTimer = 0;
       this._trueUltMoteTimer = 0;
@@ -99,6 +138,17 @@ export class Archer extends Fighter {
     this._drewBowVortex = false;
     this._skillLockSpawned = false;
     this._afterimageTimer = 0;
+  }
+
+  releaseRootedTargets() {
+    if (!Array.isArray(this._trueUltRootedTargets) || this._trueUltRootedTargets.length === 0) return;
+    for (const entry of this._trueUltRootedTargets) {
+      const foe = entry?.foe;
+      if (foe) {
+        foe.isRooted = false;
+      }
+    }
+    this._trueUltRootedTargets = [];
   }
 
   spawnVfxAnim(row, x, y, w = 208, h = 208, maxLife = 0.55, opts = {}) {
@@ -881,163 +931,283 @@ export class Archer extends Fighter {
     }
   }
 
+  /**
+   * 1-Overdrive Ultimate (`state === 'ULTIMATE'`, `2.04s`):
+   * "ZEPHYR VAULT: 180° STARLOCK BARRAGE"
+   * - Phase 1 (`0.00s .. 0.32s`): Gale Charge-In rush straight into the enemy + Twin Bow-Blade Vault-Kick (`32` dmg).
+   * - Phase 2 (`0.32s .. 1.56s`): 180° semicircular overhead flip-jump (`theta = 0 .. Math.PI`, flipping upside-down
+   *   via baked Row 4 somersault frames `123..133` and flipping `facing` 180° at apex) while firing 7 radial
+   *   Lock-On Homing Arrows (`22°, 46°, 70°, 90°, 110°, 134°, 158°`) around the 180° arc!
+   * - Phase 3 (`1.56s .. 2.04s`): Agile opposite-side touchdown (`134..135`) + Sylvan recovery.
+   */
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-    const targetX = Math.max(120, Math.min(ww - 120, enemy ? enemy.x : this.x + this.facing * 380));
 
-    this.y = this.groundY;
+    // Evasive wind-form during active Gale Charge-In + 180° Somersault (`t < 1.56s`), vulnerable on landing recovery
+    this.isInvulnerable = t < 1.56;
+    this.unstoppablePoise = true;
+    this.hurtTimer = 0;
+    this.isFlipVault = false;
+    this.isCrouching = false;
+    this.vx = 0;
     this.vy = 0;
 
-    if (t < 0.04) {
-      this.spawnedChannelTornado = false;
-    }
+    const targets = this.getEnemyTargets(enemy, game);
+    const primary = enemy && !enemy.isDead ? enemy : targets[0] || null;
 
-    if (t < 0.56) {
-      if (!this.spawnedChannelTornado && t >= 0.05) {
-        this.spawnedChannelTornado = true;
+    // Phase 1 (`0.00s .. 0.32s`): Explosive Gale Charge-In Rush right into the enemy!
+    if (t < 0.32) {
+      if (this._ultPhase < 1) {
+        this._ultPhase = 1;
+        this._ultShotMask = 0;
+        this._ultStartX = this.x;
+        this._ultChargeDir = primary ? (primary.x >= this.x ? 1 : -1) : this.facing;
+        this.facing = this._ultChargeDir;
+
         if (game?.audio) game.audio.play('zephyr_flip', this.x);
-
-        // 1. Radiant 6-Pinion Astral Light-Wings behind Sylvara's levitating torso (`back` layer)
-        this.fx.spawn('astralWingPlume', this.x - this.facing * 16, this.y - 124, {
-          follow: this,
-          offsetX: -16,
-          offsetY: -124,
-          flip: this.facing < 0,
-          palette: SYLVAN_STARLIGHT_PALETTE,
-          maxDuration: 1.38,
-          light: 1.2,
-          extra: { wingSpan: 30 }
-        });
-
-        // 2. Bow-Draw Astral Convergence + Ground Updraft + Target Celestial Astrolabe Lock
-        this.fx.spawn('sylvanBowDrawVortex', this.x + this.facing * 52, this.y - 128, {
-          follow: this,
-          offsetX: 52,
-          offsetY: -128,
-          palette: SYLVAN_STARLIGHT_PALETTE,
-          maxDuration: 0.5,
-          light: 1.2,
-          extra: { radius: 26 }
-        });
+        if (game?.vfx) {
+          game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, 'ZEPHYR CHARGE!', '#34d399');
+        }
         this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
           palette: SYLVAN_EMERALD_PALETTE,
           light: 1.1,
-          extra: { radius: 32 }
+          extra: { radius: 30 }
         });
-        this.fx.spawn('starfallCelestialLock', targetX, this.groundY, {
-          palette: SYLVAN_STARLIGHT_PALETTE,
-          light: 1.15,
-          extra: { radius: 40, beaconH: 64 }
-        });
-        this.fx.spawn('emeraldTempestCyclone', this.x + this.facing * 64, this.groundY, {
-          vx: this.facing * 95,
+        this.fx.spawn('zephyrVaultSlipstream', this.x - this.facing * 16, this.y - 104, {
+          follow: this,
+          offsetX: -16,
+          offsetY: -104,
+          flip: this.facing < 0,
           palette: SYLVAN_EMERALD_PALETTE,
-          maxDuration: 0.52,
+          maxDuration: 1.55,
           light: 1.1,
-          extra: { baseRadius: 10, topRadius: 26, height: 78, isUltimate: false }
+          extra: { length: 28, tilt: -0.12 }
+        });
+        this.fx.spawn('astralWingPlume', this.x - this.facing * 16, this.y - 122, {
+          follow: this,
+          offsetX: -16,
+          offsetY: -122,
+          flip: this.facing < 0,
+          palette: SYLVAN_STARLIGHT_PALETTE,
+          maxDuration: 1.85,
+          light: 1.2,
+          extra: { wingSpan: 30 }
         });
       }
-    } else if (!this.didActionFrame) {
-      // Row 4 Frame F18 (`t = 0.56s`): Full Astral Light-Wing Dragon-Arrow Release!
-      this.didActionFrame = true;
-      if (game?.audio) game.audio.play('archer_ult', this.x);
 
-      const startX = this.x + this.facing * 52;
-      const startY = this.y - 128;
-      const endX =
-        this.facing === 1
-          ? Math.min(ww - 110, Math.max(targetX + 210, this.x + 560))
-          : Math.max(110, Math.min(targetX - 210, this.x - 560));
-      const endY = this.groundY - 128;
+      const u = Math.min(1, Math.max(0, t / 0.32));
+      const easeRush = 1 - Math.pow(1 - u, 2.25);
+      const rawContactX = primary
+        ? primary.x - this._ultChargeDir * 48
+        : this._ultStartX + this._ultChargeDir * 240;
+      const contactX = Math.max(120, Math.min(ww - 120, rawContactX));
 
-      if (game?.renderer) {
-        game.renderer.triggerShake(26, 0.65);
-        game.renderer.triggerAberration(15);
-        game.renderer.triggerHitStop(0.09);
+      this.x = this._ultStartX + (contactX - this._ultStartX) * easeRush;
+      this.y = this.groundY;
+      this.cameraAirLift = 0;
+      this._overrideFrameIdx = u < 0.55 ? 120 : 121;
+
+      this._afterimageTimer += dt;
+      if (this._afterimageTimer >= 0.09) {
+        this._afterimageTimer = 0;
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, u < 0.55 ? 0 : 1, 0.20);
+      }
+      return;
+    }
+
+    // Vault-Kick Contact & 180° Target Lock-On Snap (`t >= 0.32s`)
+    if (this._ultPhase < 2) {
+      this._ultPhase = 2;
+      if (primary && !primary.isDead) {
+        // Ensure 180° overhead semicircle (`±192px`) has clean room on both sides of the target
+        primary.x = Math.max(265, Math.min(ww - 265, primary.x));
+        this._ultPivotX = primary.x;
+        primary.vx = 0;
+        primary.takeDamage(36, this, false, 30, -85);
+        this.spawnVfxAnim(0, primary.x, (primary.groundY || this.groundY) - 96, 184, 184, 0.28, {
+          flipX: this._ultChargeDir < 0,
+          inFront: true
+        });
+        this.fx.spawn('sylvanArrowImpactBurst', primary.x, (primary.groundY || this.groundY) - 96, {
+          flip: false,
+          palette: SYLVAN_STARLIGHT_PALETTE,
+          light: 1.2,
+          extra: { aimAngle: -Math.PI * 0.5, isCrit: true }
+        });
+      } else {
+        this._ultPivotX = Math.max(265, Math.min(ww - 265, this.x + this._ultChargeDir * 48));
       }
 
-      // 1. Native 120Hz `astralHurricaneLance` (Triple Dragon-Wind Helices + 5 Cascading 3D Mach Rings)
-      this.fx.spawn('astralHurricaneLance', startX, startY, {
-        flip: false,
-        palette: SYLVAN_EMERALD_PALETTE,
-        light: 1.3,
-        extra: {
-          dx: (endX - startX) / 3,
-          dy: (endY - startY) / 3,
-          width: 8.2
-        }
-      });
-
-      this.fx.spawn('sonicBowReleaseWave', startX, startY, {
+      this.fx.spawn('yggdrasilLockReticle', this._ultPivotX, this.groundY - 98, {
         flip: false,
         palette: SYLVAN_STARLIGHT_PALETTE,
+        maxDuration: 1.36,
         light: 1.25,
-        extra: { aimAngle: this.facing === 1 ? 0 : Math.PI, radius: 32, twin: true }
+        extra: { radius: 19, chargeDir: this._ultChargeDir }
       });
-
-      // 2. Colossal True 2.5D Ultimate Emerald Tempest Cyclone wrapping behind & over the enemy!
-      this.fx.spawn('emeraldTempestCyclone', targetX, this.groundY, {
-        vx: this.facing * 36,
-        palette: SYLVAN_EMERALD_PALETTE,
-        light: 1.3,
-        extra: {
-          baseRadius: 14,
-          topRadius: 36,
-          height: 90,
-          isUltimate: true
-        }
-      });
-
-      this.fx.spawn('sylvanArrowImpactBurst', targetX, this.groundY - 96, {
-        flip: false,
+      this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
         palette: SYLVAN_STARLIGHT_PALETTE,
-        light: 1.3,
-        extra: { aimAngle: this.facing === 1 ? 0 : Math.PI, isCrit: true }
+        light: 1.15,
+        extra: { radius: 28 }
       });
-
-      // 3. Preserved Roaring Astral Wind-Dragon Beam & Fissure Decal
+      if (game?.audio) {
+        game.audio.play('archer_ult', this.x);
+        game.audio.play('zephyr_flip', this.x);
+      }
       if (game?.vfx) {
-        game.vfx.spawnBeam({
-          x1: startX,
-          y1: startY,
-          x2: endX,
-          y2: endY,
-          width: 56,
-          color: '#10b981',
-          coreColor: '#fef08a',
-          maxLife: 0.78
-        });
-        game.vfx.spawnTornado({
-          x: targetX,
-          groundY: this.groundY,
-          vx: this.facing * 45,
-          radius: 102,
-          height: 325,
-          color: '#10b981',
-          coreColor: '#fef08a',
-          maxLife: 1.45,
-          isUltimate: true
-        });
-        game.vfx.spawnDecal(targetX, 175, 'fissure', '#10b981', 6.0);
+        game.vfx.spawnDamageText(this._ultPivotX, this.groundY - 172, 0, true, '180° STARLOCK!', '#fef08a');
+      }
+      if (game?.renderer) {
+        game.renderer.triggerShake(12, 0.24);
+      }
+      this._overrideFrameIdx = 122;
+    }
+
+    // Phase 2 (`0.32s .. 1.56s`): 180° Semicircular Overhead Flip-Jump + 7 Radial Lock-On Homing Arrows!
+    if (t < 1.56) {
+      const arcU = Math.min(1, Math.max(0, (t - 0.32) / 1.24));
+      const theta = arcU * Math.PI; // Sweeps 0 rad -> PI rad (full 180° overhead arc!)
+      const arcRadiusX = 192;
+      const arcHeightY = 194;
+
+      // Gently keep locked foe centered inside the 180° reticle unless dodging
+      if (primary && !primary.isDead && primary.state !== 'DODGE' && primary.state !== 'JUMP') {
+        primary.x += (this._ultPivotX - primary.x) * Math.min(1, dt * 7);
       }
 
-      if (enemy && !enemy.isDead) {
-        enemy.takeDamage(295, this, true, 220, -340);
+      this.x = Math.max(
+        84,
+        Math.min(ww - 84, this._ultPivotX - this._ultChargeDir * Math.cos(theta) * arcRadiusX)
+      );
+      this.y = this.groundY - Math.sin(theta) * arcHeightY;
+      this.cameraAirLift = Math.sin(theta) * 142;
+
+      // Flip 180° across the overhead zenith so Sylvara lands on the opposite side facing back at her foe!
+      this.facing = theta >= Math.PI * 0.5 ? -this._ultChargeDir : this._ultChargeDir;
+
+      // Baked 30fps Row 4 somersault frames (`123..133` -> `-48° .. -186° upside-down apex .. -336°`, zero ctx.rotate!)
+      const somCol = 3 + Math.min(10, Math.floor(arcU * 11));
+      this._overrideFrameIdx = 120 + somCol;
+
+      this._afterimageTimer += dt;
+      if (this._afterimageTimer >= 0.11) {
+        this._afterimageTimer = 0;
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, somCol, 0.22);
       }
-    } else if (t >= 1.6) {
+
+      // 7 Lock-On Homing Arrows spaced evenly around the 180° overhead arc!
+      const lockAnglesDeg = [22, 46, 70, 90, 110, 134, 158];
+      for (let i = 0; i < lockAnglesDeg.length; i++) {
+        const triggerTheta = (lockAnglesDeg[i] * Math.PI) / 180;
+        if (theta >= triggerTheta && (this._ultShotMask & (1 << i)) === 0) {
+          this._ultShotMask |= 1 << i;
+
+          const tx = primary && !primary.isDead ? primary.x : this._ultPivotX;
+          const ty = (primary && !primary.isDead ? primary.y : this.groundY) - 96;
+          const bowX = this.x + (tx >= this.x ? 16 : -16);
+          const bowY = this.y - 68;
+          const dx = tx - bowX;
+          const dy = ty - bowY;
+          const shotAng = Math.atan2(dy, dx);
+          const isZenith = i === 3;
+          const isFinisher = i === 6;
+
+          if (game?.audio) {
+            game.audio.play('arrow_shoot', this.x);
+            if (isZenith || isFinisher) game.audio.play('arrow_hit', tx);
+          }
+
+          this.fx.spawn('starlockHomingArrow', bowX, bowY, {
+            flip: false,
+            palette: isZenith || isFinisher ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
+            light: isZenith || isFinisher ? 1.3 : 1.15,
+            extra: {
+              dx: dx / 3,
+              dy: dy / 3
+            }
+          });
+
+          this.fx.spawn('sonicBowReleaseWave', bowX, bowY, {
+            flip: false,
+            palette: isZenith ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
+            light: 1.15,
+            extra: { aimAngle: shotAng, radius: isZenith ? 23 : 18, twin: isZenith }
+          });
+
+          this.spawnVfxAnim(1, bowX, bowY, 156, 156, 0.22, {
+            vx: Math.cos(shotAng) * 860,
+            vy: Math.sin(shotAng) * 860,
+            flipX: dx < 0,
+            inFront: true,
+            isSeeker: true
+          });
+
+          if (primary && !primary.isDead) {
+            const shotDmg = isZenith ? 36 : 27;
+            primary.takeDamage(
+              shotDmg,
+              this,
+              isZenith || isFinisher,
+              isFinisher ? 140 : 18,
+              isFinisher ? -170 : -24
+            );
+            if (isZenith || isFinisher) {
+              this.spawnVfxAnim(4, tx, ty, 184, 184, 0.32, {
+                flipX: false,
+                inFront: true
+              });
+              if (game?.renderer) {
+                game.renderer.triggerShake(isFinisher ? 18 : 11, 0.25);
+              }
+            }
+          }
+        }
+      }
+      return;
+    }
+
+    // Phase 3 (`1.56s .. 2.04s`): Agile Opposite-Side Touchdown & Recovery
+    if (this._ultPhase < 3) {
+      this._ultPhase = 3;
+      this.didActionFrame = true;
+      this.y = this.groundY;
+      this.vy = 0;
+      this.cameraAirLift = 0;
+      this.facing = primary && !primary.isDead ? (primary.x >= this.x ? 1 : -1) : -this._ultChargeDir;
+      this.autoCooldown = Math.max(this.autoCooldown, 0.52);
+      this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
+        palette: SYLVAN_EMERALD_PALETTE,
+        light: 1.1,
+        extra: { radius: 28 }
+      });
+    }
+
+    this.y = this.groundY;
+    this.cameraAirLift = 0;
+    this._overrideFrameIdx = t < 1.80 ? 134 : 135;
+
+    if (t >= this.ultDuration) {
+      this.isInvulnerable = false;
+      this.unstoppablePoise = false;
+      this._overrideFrameIdx = null;
+      this.cameraAirLift = 0;
       this.setState('IDLE');
     }
   }
 
   /**
-   * 3-Overdrive Supreme Ultimate (`state === 'TRUE_ULTIMATE'`, `4.35s`):
+   * 3-Overdrive Supreme Ultimate (`state === 'TRUE_ULTIMATE'`, `4.55s`):
    * "ARROW OF YGGDRASIL: SUPERNOVA PIERCE"
    * - Never changes the stage background image.
-   * - Phase 1 (`0.00s .. 2.85s`): World-Tree Ascension (up to `64px` above `groundY`), Row 5 Yggdrasil Seal,
-   *   and continuous Row 6 Colossal Celestial Greatbow Muzzle charge (`280x280`) with zero damage ticks.
-   * - Phase 2 (`t >= 2.85s`): Instantaneous full-screen horizontal Row 7 Supernova Dragon-Arrow Pierce (`365` Crit + `18%` Max HP heal).
-   * - Phase 3 (`2.85s .. 4.35s`): Smooth descent back to `groundY` and return to `IDLE`.
+   * - Phase 1 (`0.00s .. 0.42s`): Kneeling Earth-Root Invocation (`136..137`) erupting 2.5D Elder-Wood Yggdrasil
+   *   Thorn-Root Cages (`yggdrasilRootPrison` + Row 2 Snare + Row 5 Seal) beneath all enemies, rooting them completely in place!
+   * - Phase 2 (`0.42s .. 1.28s`): High acrobatic flip-jump (`188px` height, frames `123..134`) all the way to the
+   *   FARTHEST edge of the stage (`108` or `ww - 108`, `492px–984px` away from the rooted enemy!) and turning across the arena.
+   * - Phase 3 (`1.28s .. 3.15s`): Sovereign Yggdrasil Winged Ascension (`64px` lift, frames `138..144`), Colossal Row 6
+   *   Celestial Greatbow Charge (`280x280`), and cross-stage emerald-gold Sagittarius aiming sightline onto the rooted foe.
+   * - Phase 4 (`t >= 3.15s`): Full-stage horizontal Row 7 Supernova Dragon-Arrow Pierce (`760` Crit + `14%` Max HP heal).
+   * - Phase 5 (`3.15s .. 4.55s`): Smooth sovereign descent (`145..149`) back to `groundY` and clean return to `IDLE`.
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
@@ -1051,35 +1221,192 @@ export class Archer extends Fighter {
     this.vx = 0;
     this.vy = 0;
 
-    const targets = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
-    const primaryTarget =
-      enemy && !enemy.isDead ? enemy : targets.find((foe) => foe && !foe.isDead && !foe.isBenched) || null;
+    const targets = this.getEnemyTargets(enemy, game);
+    const primaryTarget = enemy && !enemy.isDead ? enemy : targets[0] || null;
 
-    if (t < 2.85 && primaryTarget) {
-      this._trueUltTargetX = Math.max(110, Math.min(ww - 110, primaryTarget.x));
-      if (Math.abs(primaryTarget.x - this.x) > 8) {
-        this.facing = primaryTarget.x >= this.x ? 1 : -1;
+    // Phase 1 (`0.00s .. 0.42s` — Erupt Elder-Wood Yggdrasil Thorn-Roots & Hard-Root All Enemies!)
+    if (t >= 0.03 && this._trueUltStep < 1) {
+      this._trueUltStep = 1;
+      this._trueUltRootedTargets = [];
+
+      const anchorX = primaryTarget
+        ? Math.max(96, Math.min(ww - 96, primaryTarget.x))
+        : Math.max(120, Math.min(ww - 120, this.x + this.facing * 320));
+      this._trueUltTargetX = anchorX;
+
+      // Pick the FARTHEST edge of the stage away from the rooted enemy so the shot always crosses the full arena!
+      const leftEdgeX = 108;
+      const rightEdgeX = ww - 108;
+      this._trueUltFarEdgeX =
+        Math.abs(anchorX - leftEdgeX) >= Math.abs(rightEdgeX - anchorX) ? leftEdgeX : rightEdgeX;
+      this._trueUltJumpStartX = this.x;
+
+      if (Math.abs(anchorX - this.x) > 4) {
+        this.facing = anchorX >= this.x ? 1 : -1;
+      }
+
+      if (game?.audio) {
+        game.audio.play('zephyr_flip', this.x);
+        game.audio.play('arrow_shoot', this.x);
+      }
+      game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#34d399');
+      if (game?.vfx) {
+        game.vfx.spawnDamageText(
+          this.x,
+          this.y - 162,
+          0,
+          true,
+          '★ YGGDRASIL ROOTS: BIND! ★',
+          '#34d399'
+        );
+      }
+
+      for (const foe of targets) {
+        const lockX = Math.max(96, Math.min(ww - 96, foe.x));
+        const lockY = foe.groundY || this.groundY;
+        if (foe.state !== 'IDLE' && foe.state !== 'TRUE_ULTIMATE') {
+          foe.setState('IDLE');
+        }
+        foe.x = lockX;
+        foe.y = lockY;
+        foe.vx = 0;
+        foe.vy = 0;
+        foe.isRooted = true;
+        foe.isCrouching = false;
+        foe.isDeflecting = false;
+        foe.iaidoCounterActive = false;
+        foe.stunTimer = Math.max(foe.stunTimer || 0, 3.20);
+        foe.crouchCooldown = Math.max(foe.crouchCooldown || 0, 0.25);
+        foe.dodgeCooldown = Math.max(foe.dodgeCooldown || 0, 0.25);
+        foe.dashCooldown = Math.max(foe.dashCooldown || 0, 0.25);
+        this._trueUltRootedTargets.push({ foe, lockX, lockY });
+
+        // 2.5D Elder-Wood Yggdrasil Thorn-Root Prison (`back` + `front` wraparound) + Bramble Snare + Yggdrasil Seal
+        this.fx.spawn('yggdrasilRootPrison', lockX, lockY, {
+          flip: false,
+          palette: SYLVAN_EMERALD_PALETTE,
+          maxDuration: 3.16,
+          light: 1.25,
+          extra: { radius: 26, height: 45 }
+        });
+        this.spawnVfxAnim(2, lockX, lockY - 82, 232, 232, 3.12, {
+          flipX: false,
+          inFront: false
+        });
+        this.spawnVfxAnim(5, lockX, lockY - 72, 340, 220, 3.12, {
+          flipX: false,
+          inFront: false
+        });
+        if (game?.vfx) {
+          game.vfx.spawnDamageText(lockX, lockY - 152, 0, false, 'ROOTED!', '#6ee7b7');
+        }
+      }
+
+      // If solo test without targets, still place Yggdrasil Seal at `_trueUltTargetX`
+      if (targets.length === 0) {
+        this.fx.spawn('yggdrasilRootPrison', anchorX, this.groundY, {
+          flip: false,
+          palette: SYLVAN_EMERALD_PALETTE,
+          maxDuration: 3.16,
+          light: 1.25,
+          extra: { radius: 26, height: 45 }
+        });
       }
     }
 
-    // Phase 1 (`0.00s .. 2.85s` — World-Tree Ascension & Constellation Bow Charge)
-    if (t < 2.85) {
-      const ascU = Math.min(1, t / 1.15);
-      this.y = this.groundY - 64 * Math.sin(ascU * (Math.PI * 0.5));
-      // Row 4 (`ULTIMATE` bow-draw pose frames `4..13` -> indices `124..133`)
-      this.trueUltFrameOverride = 120 + 4 + Math.min(9, Math.floor((t / 2.85) * 10));
-
-      if (t >= 0.04 && this._trueUltStep < 1) {
-        this._trueUltStep = 1;
-        if (game?.audio) {
-          game.audio.play('archer_ult', this.x);
-          game.audio.play('arrow_shoot', this.x);
+    // Hold all rooted enemies strictly locked in place (`0` damage pre-ticks!) until the `t = 3.15s` Supernova release
+    if (t < 3.15) {
+      for (const entry of this._trueUltRootedTargets) {
+        const foe = entry.foe;
+        if (foe && !foe.isDead && !foe.isBenched && foe.state !== 'TRUE_ULTIMATE') {
+          if (foe.state !== 'IDLE') {
+            foe.setState('IDLE');
+          }
+          foe.x = entry.lockX;
+          foe.y = entry.lockY;
+          foe.vx = 0;
+          foe.vy = 0;
+          foe.isRooted = true;
+          foe.isCrouching = false;
+          foe.isDeflecting = false;
+          foe.iaidoCounterActive = false;
+          foe.stunTimer = Math.max(foe.stunTimer || 0, 0.25);
+          foe.crouchCooldown = Math.max(foe.crouchCooldown || 0, 0.25);
+          foe.dodgeCooldown = Math.max(foe.dodgeCooldown || 0, 0.25);
+          foe.dashCooldown = Math.max(foe.dashCooldown || 0, 0.25);
         }
-        game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#34d399');
+      }
+    }
+
+    if (t < 0.42) {
+      this.y = this.groundY;
+      this.cameraAirLift = 0;
+      this.trueUltFrameOverride = t < 0.22 ? 136 : 137;
+      return;
+    }
+
+    // Phase 2 (`0.42s .. 1.28s` — Acrobatic Flip-Jump to the FARTHEST Edge of the Stage!)
+    if (t < 1.28) {
+      if (this._trueUltStep < 2) {
+        this._trueUltStep = 2;
+        this._trueUltJumpStartX = this.x;
+        if (game?.audio) game.audio.play('zephyr_flip', this.x);
+        this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
+          palette: SYLVAN_STARLIGHT_PALETTE,
+          light: 1.2,
+          extra: { radius: 34 }
+        });
+        this.fx.spawn('zephyrVaultSlipstream', this.x - this.facing * 16, this.y - 104, {
+          follow: this,
+          offsetX: -16,
+          offsetY: -104,
+          flip: this.facing < 0,
+          palette: SYLVAN_STARLIGHT_PALETTE,
+          maxDuration: 0.88,
+          light: 1.15,
+          extra: { length: 30, tilt: -0.14 }
+        });
+        if (game?.vfx) {
+          game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, 'FAR-HORIZON VAULT!', '#fef08a');
+        }
+      }
+
+      const jumpU = Math.min(1, Math.max(0, (t - 0.42) / 0.86));
+      const easeX = jumpU < 0.5 ? 2 * jumpU * jumpU : 1 - Math.pow(-2 * jumpU + 2, 2) / 2;
+      const lift = Math.sin(jumpU * Math.PI) * 188;
+
+      this.x = this._trueUltJumpStartX + (this._trueUltFarEdgeX - this._trueUltJumpStartX) * easeX;
+      this.y = this.groundY - lift;
+      this.cameraAirLift = lift * 0.78;
+
+      // Twist mid-flip to face across the entire arena toward the rooted enemy!
+      const jumpDir = Math.sign(this._trueUltFarEdgeX - this._trueUltJumpStartX) || -this.facing;
+      this.facing =
+        jumpU >= 0.52 ? (this._trueUltTargetX >= this._trueUltFarEdgeX ? 1 : -1) : jumpDir;
+
+      const flipCol = 3 + Math.min(11, Math.floor(jumpU * 12)); // Row 4 F03..F14 (`123..134`)
+      this.trueUltFrameOverride = 120 + flipCol;
+
+      this._afterimageTimer += dt;
+      if (this._afterimageTimer >= 0.10) {
+        this._afterimageTimer = 0;
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, flipCol, 0.22);
+      }
+      return;
+    }
+
+    // Phase 3 (`1.28s .. 3.15s` — Far-Edge World-Tree Ascension & Colossal Celestial Greatbow Charge!)
+    if (t < 3.15) {
+      if (this._trueUltStep < 3) {
+        this._trueUltStep = 3;
+        this.x = this._trueUltFarEdgeX;
+        this.facing = this._trueUltTargetX >= this.x ? 1 : -1;
+
+        if (game?.audio) game.audio.play('archer_ult', this.x);
         if (game?.vfx) {
           game.vfx.spawnDamageText(
             this.x,
-            this.y - 164,
+            this.groundY - 168,
             0,
             true,
             '★ ARROW OF YGGDRASIL! ★',
@@ -1087,41 +1414,51 @@ export class Archer extends Fighter {
           );
         }
 
-        // Spawn `archer_vfx.png` Row 5 (Yggdrasil World-Tree & Constellation Seal) beneath Sylvara & under target enemy
-        this.spawnVfxAnim(5, this.x, this.groundY - 72, 340, 220, 2.85, {
+        this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
+          palette: SYLVAN_EMERALD_PALETTE,
+          light: 1.15,
+          extra: { radius: 32 }
+        });
+        this.spawnVfxAnim(5, this.x, this.groundY - 72, 340, 220, 2.15, {
           flipX: false,
           inFront: false
         });
-        this.spawnVfxAnim(5, this._trueUltTargetX, this.groundY - 72, 340, 220, 2.85, {
-          flipX: false,
-          inFront: false
-        });
-
         this.fx.spawn('astralWingPlume', this.x - this.facing * 16, this.y - 124, {
           follow: this,
           offsetX: -16,
           offsetY: -124,
           flip: this.facing < 0,
           palette: SYLVAN_STARLIGHT_PALETTE,
-          maxDuration: 3.9,
-          light: 1.3,
-          extra: { wingSpan: 34 }
+          maxDuration: 3.1,
+          light: 1.35,
+          extra: { wingSpan: 35 }
         });
         this.fx.spawn('sylvanBowDrawVortex', this.x + this.facing * 38, this.y - 96, {
           follow: this,
           offsetX: 38,
           offsetY: -96,
           palette: SYLVAN_STARLIGHT_PALETTE,
-          maxDuration: 2.75,
-          light: 1.3,
-          extra: { radius: 28 }
+          maxDuration: 1.84,
+          light: 1.35,
+          extra: { radius: 30 }
         });
       }
 
-      // During `0.20s .. 2.80s`: converging emerald/gold star-motes toward the drawn Celestial Greatbow Muzzle (zero damage ticks!)
-      if (t >= 0.20 && t <= 2.80) {
+      this.x = this._trueUltFarEdgeX;
+      this.facing = this._trueUltTargetX >= this.x ? 1 : -1;
+      const ascU = Math.min(1, Math.max(0, (t - 1.28) / 0.85));
+      const liftY = 64 * Math.sin(ascU * (Math.PI * 0.5));
+      this.y = this.groundY - liftY;
+      this.cameraAirLift = liftY * 0.5;
+
+      // Row 4 Sovereign Yggdrasil Winged Greatbow Draw frames `18..24` (`138..144`)
+      const drawU = Math.min(1, Math.max(0, (t - 1.28) / 1.87));
+      this.trueUltFrameOverride = 138 + Math.min(6, Math.floor(drawU * 7));
+
+      // Converging emerald/gold star-motes into the drawn Greatbow Muzzle (zero damage pre-ticks!)
+      if (t >= 1.35 && t <= 3.10) {
         this._trueUltMoteTimer += dt;
-        if (this._trueUltMoteTimer >= 0.18) {
+        if (this._trueUltMoteTimer >= 0.16) {
           this._trueUltMoteTimer = 0;
           const muzzleX = this.x + this.facing * 38;
           const muzzleY = this.y - 96;
@@ -1129,13 +1466,13 @@ export class Archer extends Fighter {
             game.vfx.spawnParticles(muzzleX, muzzleY, 2, '#34d399');
           } else if (game?.vfx?.spawnParticle) {
             for (let i = 0; i < 2; i++) {
-              const ang = Math.PI * i + t * 5.0;
-              const rad = 72;
+              const ang = Math.PI * i + t * 5.5;
+              const rad = 74;
               game.vfx.spawnParticle({
                 x: muzzleX + Math.cos(ang) * rad,
                 y: muzzleY + Math.sin(ang) * rad,
-                vx: -Math.cos(ang) * 190,
-                vy: -Math.sin(ang) * 190,
+                vx: -Math.cos(ang) * 195,
+                vy: -Math.sin(ang) * 195,
                 size: 4.5,
                 color: i % 2 === 0 ? '#34d399' : '#fef08a',
                 maxLife: 0.34
@@ -1147,25 +1484,25 @@ export class Archer extends Fighter {
       return;
     }
 
-    // Phase 2 (`t >= 2.85s`, `_trueUltStep < 2` — Instant Full-Screen Supernova Dragon-Arrow Pierce)
-    if (this._trueUltStep < 2) {
-      this._trueUltStep = 2;
-      this._trueUltBeamTimer = 0.95;
+    // Phase 4 (`t >= 3.15s`, `_trueUltStep < 4` — Full-Stage Cataclysmic Supernova Dragon-Arrow Pierce!)
+    if (this._trueUltStep < 4) {
+      this._trueUltStep = 4;
+      this._trueUltBeamTimer = 0.96;
 
       game?.renderer?.triggerImpactFrame?.(0.11, this.x, this.y - 96, 'emerald');
       if (game?.renderer && game.renderer.impactFrameTimer > 1.0) {
         game.renderer.triggerImpactFrame(this.x, this.y - 96, 0.11, 'emerald');
       }
-      game?.renderer?.shake?.(24, 0.65);
-      game?.renderer?.triggerShake?.(24, 0.65);
+      game?.renderer?.shake?.(26, 0.68);
+      game?.renderer?.triggerShake?.(26, 0.68);
       game?.renderer?.flash?.(0.28, '#ecfdf5');
-      game?.renderer?.triggerAberration?.(15);
+      game?.renderer?.triggerAberration?.(16);
       game?.renderer?.triggerHitStop?.(0.09);
 
       if (game?.audio) {
         game.audio.play('archer_ult', this.x);
         game.audio.play('solar_beam', this.x);
-        game.audio.play('arrow_hit', this.x);
+        game.audio.play('arrow_hit', this._trueUltTargetX);
       }
 
       // Heal Sylvara for 14% Max HP
@@ -1173,7 +1510,7 @@ export class Archer extends Fighter {
 
       const startX = this.x + this.facing * 42;
       const startY = this.y - 96;
-      const endX = this.facing >= 0 ? ww + 120 : -120;
+      const endX = this.facing >= 0 ? ww - 76 : 76;
       this.fx.spawn('astralHurricaneLance', startX, startY, {
         flip: false,
         palette: SYLVAN_STARLIGHT_PALETTE,
@@ -1181,48 +1518,74 @@ export class Archer extends Fighter {
         extra: {
           dx: (endX - startX) / 3,
           dy: 0,
-          width: 9.5
+          width: 9.6
         }
       });
+      this.fx.spawn('sonicBowReleaseWave', startX, startY, {
+        flip: false,
+        palette: SYLVAN_STARLIGHT_PALETTE,
+        light: 1.35,
+        extra: { aimAngle: this.facing >= 0 ? 0 : Math.PI, radius: 34, twin: true }
+      });
 
-      // Single instantaneous massive burst of 760 Crit damage to all active enemies in front of or near the beam!
-      let hitAny = false;
-      for (const tFoe of targets) {
-        if (tFoe && !tFoe.isDead && !tFoe.isBenched) {
-          const relX = (tFoe.x - this.x) * this.facing;
-          if (relX >= -110 || Math.abs(tFoe.x - this._trueUltTargetX) <= 260) {
-            tFoe.takeDamage(760, this, true, 320, -240);
-            hitAny = true;
-            this.spawnVfxAnim(3, tFoe.x, (tFoe.groundY || this.groundY) - 96, 212, 212, 0.42, {
-              flipX: this.facing < 0,
-              inFront: true
-            });
-            this.fx.spawn('sylvanArrowImpactBurst', tFoe.x, (tFoe.groundY || this.groundY) - 96, {
-              flip: false,
-              palette: SYLVAN_STARLIGHT_PALETTE,
-              light: 1.38,
-              extra: { aimAngle: this.facing === 1 ? 0 : Math.PI, isCrit: true }
-            });
-          }
+      // Shatter root prisons and obliterate all rooted / active enemies across the stage (`700` Crit)!
+      const hitSet = new Set();
+      const allCandidates = [
+        ...this._trueUltRootedTargets.map((e) => e.foe),
+        ...targets
+      ];
+      for (const tFoe of allCandidates) {
+        if (tFoe && !tFoe.isDead && !tFoe.isBenched && !hitSet.has(tFoe)) {
+          hitSet.add(tFoe);
+          tFoe.isRooted = false;
+          tFoe.isCrouching = false;
+          tFoe.isDeflecting = false;
+          tFoe.stunTimer = 0;
+          tFoe.takeDamage(700, this, true, 210, -210);
+          const impY = (tFoe.groundY || this.groundY) - 96;
+          this.spawnVfxAnim(3, tFoe.x, impY, 216, 216, 0.44, {
+            flipX: this.facing < 0,
+            inFront: true
+          });
+          this.spawnVfxAnim(4, tFoe.x, impY, 224, 224, 0.42, {
+            flipX: false,
+            inFront: true
+          });
+          this.fx.spawn('sylvanArrowImpactBurst', tFoe.x, impY, {
+            flip: false,
+            palette: SYLVAN_STARLIGHT_PALETTE,
+            light: 1.4,
+            extra: { aimAngle: this.facing === 1 ? 0 : Math.PI, isCrit: true }
+          });
         }
       }
-      if (!hitAny && primaryTarget && !primaryTarget.isDead) {
-        primaryTarget.takeDamage(760, this, true, 320, -240);
+      if (hitSet.size === 0 && primaryTarget && !primaryTarget.isDead) {
+        primaryTarget.isRooted = false;
+        primaryTarget.isCrouching = false;
+        primaryTarget.isDeflecting = false;
+        primaryTarget.stunTimer = 0;
+        primaryTarget.takeDamage(700, this, true, 210, -210);
       }
+      this.releaseRootedTargets();
     }
 
-    // Phase 3 (`2.85s .. 4.35s` — Smooth Descent & Recovery to IDLE)
-    const descU = Math.min(1, Math.max(0, (t - 2.85) / (this.trueUltDuration - 2.85)));
-    this.y = this.groundY - 64 * Math.cos(descU * (Math.PI * 0.5));
-    this.trueUltFrameOverride = 120 + Math.min(29, 18 + Math.floor(descU * 11));
+    // Phase 5 (`3.15s .. 4.55s` — Sovereign Release Recoil & Smooth Descent to `IDLE`)
+    const descU = Math.min(1, Math.max(0, (t - 3.15) / (this.trueUltDuration - 3.15)));
+    const remLift = 64 * Math.cos(descU * (Math.PI * 0.5));
+    this.y = this.groundY - remLift;
+    this.cameraAirLift = remLift * 0.5;
+    this.trueUltFrameOverride = 145 + Math.min(4, Math.floor(descU * 5));
 
     if (t >= this.trueUltDuration) {
       this.y = this.groundY;
       this.vy = 0;
+      this.cameraAirLift = 0;
       this.isInvulnerable = false;
       this.unstoppablePoise = false;
       this.trueUltFrameOverride = null;
       this._trueUltBeamTimer = 0;
+      this.autoCooldown = Math.max(this.autoCooldown, 0.65);
+      this.releaseRootedTargets();
       this.setState('IDLE');
     }
   }
@@ -1261,7 +1624,7 @@ export class Archer extends Fighter {
     // 0. Background 30fps `archer_vfx.png` animations (Row 2 Bramble Snares & Row 5 Yggdrasil World-Tree Seals)
     this.drawBehind(ctx, renderer);
 
-    // 1. Crisp Emerald-Starlight Zephyr Afterimages (`JUMP` Vault & `DASH` Gale Stride)
+    // 1. Crisp Emerald-Starlight Zephyr Afterimages (`JUMP` Vault, `DASH` Gale Stride, & 180° Somersaults)
     if (this.afterimages.length > 0 && sprites?.sheet?.complete) {
       for (const img of this.afterimages) {
         const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.28);
@@ -1282,7 +1645,7 @@ export class Archer extends Fighter {
   }
 
   drawUltimateForeground(ctx, renderer = null) {
-    // Live 120Hz `ArcaneShaderFX` "front" layer (renders crisp foreground wind-arcs, Mach cones & front cyclone walls)
+    // Live 120Hz `ArcaneShaderFX` "front" layer (renders crisp foreground wind-arcs, root cages, reticles & homing arrows)
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
   }
@@ -1319,7 +1682,7 @@ export class Archer extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Foreground 30fps `archer_vfx.png` animations (Row 0 Muzzle/Slash, Row 1 Seekers, Row 3 Dragon-Piercer)
+    // 1. Foreground 30fps `archer_vfx.png` animations (Row 0 Muzzle/Slash, Row 1 Seekers, Row 3 Dragon-Piercer, Row 4 Star-Cross)
     for (const v of this.activeVfxAnims) {
       if (!v.inFront) continue;
       const u = Math.min(1, Math.max(0, v.age / Math.max(0.05, v.maxLife)));
@@ -1340,14 +1703,36 @@ export class Archer extends Fighter {
       ctx.restore();
     }
 
-    // 2. Supreme Ultimate Phase 1 (`0.20s .. 2.80s`): Colossal Drawn Golden-Emerald Celestial Greatbow Muzzle (`Row 6`, 280x280)
-    if (this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 0.20 && this.stateTimer <= 2.80) {
-      const chargeU = Math.min(1, Math.max(0, (this.stateTimer - 0.20) / 2.60));
+    // 2. Supreme Ultimate Phase 3 (`1.32s .. 3.14s` at the Farthest Stage Edge):
+    //    Colossal Drawn Golden-Emerald Celestial Greatbow Muzzle (`Row 6`, 280x280) + Cross-Stage Sagittarius Sightline!
+    if (this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 1.32 && this.stateTimer <= 3.14) {
+      const chargeU = Math.min(1, Math.max(0, (this.stateTimer - 1.32) / 1.82));
       const col = Math.min(29, Math.floor(chargeU * 30));
       const sx = col * 208;
       const sy = 6 * 208;
       const bowX = Math.round(this.x + this.facing * 38);
       const bowY = Math.round(this.y - 96);
+
+      // Cross-stage emerald-gold Sagittarius lock sightline connecting far-edge Greatbow to the rooted enemy!
+      ctx.save();
+      const sightAlpha = Math.min(0.82, 0.25 + chargeU * 0.65);
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = '#34d399';
+      ctx.lineWidth = 3;
+      ctx.globalAlpha = sightAlpha * 0.45;
+      ctx.beginPath();
+      ctx.moveTo(bowX + this.facing * 42, bowY);
+      ctx.lineTo(this._trueUltTargetX, this.groundY - 96);
+      ctx.stroke();
+
+      ctx.strokeStyle = '#fef9c3';
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = sightAlpha * 0.85;
+      ctx.beginPath();
+      ctx.moveTo(bowX + this.facing * 42, bowY);
+      ctx.lineTo(this._trueUltTargetX, this.groundY - 96);
+      ctx.stroke();
+      ctx.restore();
 
       ctx.save();
       ctx.translate(bowX, bowY);
@@ -1355,14 +1740,14 @@ export class Archer extends Fighter {
       ctx.globalAlpha = 0.96;
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -140, -140, 280, 280);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.48;
+      ctx.globalAlpha = 0.22;
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -140, -140, 280, 280);
       ctx.restore();
     }
 
-    // 3. Supreme Ultimate Phase 2 (`this._trueUltBeamTimer > 0`): Seamless Full-Screen Horizontal Row 7 Supernova Dragon-Arrow Beam!
+    // 3. Supreme Ultimate Phase 4 (`this._trueUltBeamTimer > 0`): Seamless Full-Screen Horizontal Row 7 Supernova Dragon-Arrow Beam!
     if (this._trueUltBeamTimer > 0) {
-      const beamProg = Math.min(1, Math.max(0, 1 - this._trueUltBeamTimer / 0.95));
+      const beamProg = Math.min(1, Math.max(0, 1 - this._trueUltBeamTimer / 0.96));
       const col = Math.min(29, Math.floor(beamProg * 30));
       const sx = col * 208;
       const sy = 7 * 208;
@@ -1370,7 +1755,6 @@ export class Archer extends Fighter {
       const muzzleX = Math.round(this.x + this.facing * 38);
       const beamY = Math.round(this.y - 96);
       // Slice the exact 3-wave 112px core (`sx + 44 .. sx + 156`) and tile edge-to-edge (`i * 112`) + non-overlapping 52px tip (`sx + 156 .. sx + 208`)
-      // so zero capsule end-caps or overlap seams ever appear!
       const coreSliceX = sx + 44;
       const coreSliceW = 112;
       const tipSliceX = sx + 156;
@@ -1391,7 +1775,7 @@ export class Archer extends Fighter {
       ctx.drawImage(vfxSheet, sx, 6 * 208, 208, 208, -140, -140, 280, 280);
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.max(0, Math.min(1, env * 0.44));
+      ctx.globalAlpha = Math.max(0, Math.min(1, env * 0.22));
       for (let i = 0; i < segCount; i++) {
         const segX = 24 + i * coreSliceW;
         ctx.drawImage(vfxSheet, coreSliceX, sy, coreSliceW, 208, segX, -120, coreSliceW, 240);

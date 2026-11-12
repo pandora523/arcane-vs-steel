@@ -64,7 +64,7 @@
       "theme": "emerald",
       "base_source": "assets/sprites/archer_v3_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part cel-clustered Sylvan Elven Star-Huntress skeletal rig + Back Quiver + Articulated Recurve Star-Bow & Multi-Arrow Draw + 6-Pinion Astral Ult Light-Wings + 8-Row Yggdrasil & Supernova Dragon-Arrow VFX Suite + Supine Collapse",
+      "rig": "13-part cel-clustered Sylvan Elven Star-Huntress skeletal rig + Back Quiver + Articulated Recurve Star-Bow & Multi-Arrow Draw + 6-Pinion Astral Ult Light-Wings + Row 4 Gale Charge-In & 180/360 Somersault Inverted Lock-Shot (F00..F15) + Grounded Yggdrasil Root Invocation & Far-Stage Sovereign Greatbow Draw (F16..F29) + 8-Row Yggdrasil & Supernova Dragon-Arrow VFX Suite + Supine Collapse",
       "script": "scripts/build_archer_30fps_sheet.py",
       "vfx_script": "scripts/build_archer_vfx_30fps.mjs"
     },

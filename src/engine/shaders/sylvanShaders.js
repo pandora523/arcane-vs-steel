@@ -24,7 +24,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   MotePool
-} from '../ArcaneShaderFX.js?v=30fps73';
+} from '../ArcaneShaderFX.js?v=30fps74';
 
 const TWO_PI = Math.PI * 2;
 
@@ -2324,6 +2324,347 @@ export const supernovaDragonBeamSegmentCell = {
   }
 };
 
+// ============================================================================
+// 14. SYLVARA V4 ULTIMATE & SUPREME ULTIMATE REWORK SHADERS
+//     - `yggdrasilRootPrison`: 2.5D Elder-Wood Yggdrasil Thorn-Root Cage rooting enemies in place
+//     - `yggdrasilLockReticle`: 180° Azimuth Sagittarius Target Lock Reticle
+//     - `starlockHomingArrow`: Radial 180°-Arc Lock-On Sightline & Supersonic Seeker Arrow
+// ============================================================================
+
+export const yggdrasilRootPrison = {
+  duration: 3.1,
+  loop: false,
+  defaults: {
+    palette: SYLVAN_EMERALD_PALETTE,
+    radius: 26,
+    height: 44,
+    seed: 211
+  },
+  create(cfg) {
+    const emRamp = buildColorRamp(cfg.palette, 8);
+    const goldRamp = buildColorRamp(SYLVAN_STARLIGHT_PALETTE, 8);
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, goldRamp[6], emRamp[5], emRamp[3]], floorY: 2 });
+    const dur = cfg.duration || 3.1;
+    let t = 0;
+    let emitAcc = 0;
+    let burstEmitted = false;
+
+    const rootSpecs = Array.from({ length: 6 }, (_, i) => ({
+      baseAng: (i / 6) * TWO_PI + 0.28,
+      twist: (i % 2 === 0 ? 1 : -1) * 1.35,
+      hScale: 0.84 + (i % 3) * 0.08,
+      leanIn: 0.34 + (i % 2) * 0.12
+    }));
+
+    const renderPass = (pen, isFront) => {
+      const u = clamp01(t / dur);
+      const erupt = Easing.outBack(clamp01(t / 0.24), 1.35);
+      const shatterU = t > dur - 0.26 ? clamp01((t - (dur - 0.26)) / 0.26) : 0;
+      const fade = 1 - shatterU;
+      if (fade <= 0.03) return;
+
+      const rad = (cfg.radius || 26) * (1 + shatterU * 0.38);
+      const maxH = (cfg.height || 44) * erupt;
+      const pred = (ang) => (Math.sin(ang) >= 0) === isFront;
+
+      // 1. Ground Elder-Wood Root Seal & Tilted Thorn-Shackle Rings
+      drawTiltedOrbitBand(
+        pen,
+        0,
+        0,
+        rad,
+        0.24,
+        1.8,
+        (isFront ? 0.92 : 0.62) * fade,
+        [emRamp[1], emRamp[3], emRamp[5], goldRamp[5]],
+        pred,
+        t < 0.14
+      );
+      drawElvenStarCompass(
+        pen,
+        0,
+        0,
+        rad * 0.94,
+        rad * 0.52,
+        0.24,
+        t * 0.85,
+        goldRamp[5],
+        emRamp[5],
+        (isFront ? 0.86 : 0.52) * fade,
+        pred
+      );
+
+      // Waist & shin binding rings locking the target's legs
+      for (let b = 0; b < 2; b++) {
+        const by = -maxH * (b === 0 ? 0.34 : 0.68);
+        const br = rad * (b === 0 ? 0.72 : 0.56);
+        drawTiltedOrbitBand(
+          pen,
+          0,
+          by,
+          br,
+          0.22,
+          1.4,
+          (isFront ? 0.9 : 0.55) * fade,
+          [emRamp[2], emRamp[4], goldRamp[5], PURE_WHITE],
+          pred,
+          false
+        );
+      }
+
+      // 2. Six Gnarled Golden-Bark & Bioluminescent Emerald Yggdrasil Thorn-Roots
+      for (let rIdx = 0; rIdx < rootSpecs.length; rIdx++) {
+        const rs = rootSpecs[rIdx];
+        const steps = 20;
+        let prevX = 0;
+        let prevY = 0;
+        let prevVis = false;
+        const rHeight = maxH * rs.hScale;
+
+        for (let s = 0; s <= steps; s++) {
+          const v = s / steps;
+          const ang = rs.baseAng + rs.twist * v + Math.sin(t * 4.5 + rIdx) * 0.05 * v;
+          const sinA = Math.sin(ang);
+          const vis = (sinA >= 0) === isFront;
+          const localR = rad * (1 - rs.leanIn * Math.sin(v * Math.PI * 0.82)) + shatterU * 10 * v;
+          const rx = Math.cos(ang) * localR;
+          const ry = -v * rHeight + sinA * localR * 0.18;
+
+          if (s > 0 && vis && prevVis) {
+            const thick = mixScalar(2.6, 0.7, v) * fade;
+            const sapPulse = 0.5 + 0.5 * Math.sin(v * 9 - t * 11 + rIdx);
+            const coreCol = v > 0.86 ? PURE_WHITE : sapPulse > 0.72 ? goldRamp[5] : emRamp[5];
+            const barkCol = emRamp[2];
+            if (thick >= 1.5) {
+              pen.line(prevX - 1, prevY, rx - 1, ry, barkCol, (isFront ? 0.92 : 0.6) * fade);
+              pen.line(prevX + 1, prevY, rx + 1, ry, goldRamp[4], (isFront ? 0.88 : 0.55) * fade);
+            }
+            pen.line(prevX, prevY, rx, ry, coreCol, (isFront ? 0.96 : 0.68) * fade);
+
+            // Jutting emerald-gold bramble thorns along each root
+            if (s % 5 === 2 && v < 0.88) {
+              const outSign = s % 2 === 0 ? 1 : -1;
+              const tx = rx + Math.cos(ang) * outSign * 3.8;
+              const ty = ry - 2.6;
+              pen.line(rx, ry, tx, ty, goldRamp[6], 0.9 * fade);
+              pen.stipple(tx, ty, PURE_WHITE, 0.85 * fade);
+            }
+          }
+          if (s === steps && vis) {
+            drawSylvanLeaf(pen, rx, ry, ang - Math.PI * 0.5, goldRamp[6], emRamp[4], 0.94 * fade);
+          }
+          prevX = rx;
+          prevY = ry;
+          prevVis = vis;
+        }
+      }
+
+      if (isFront) {
+        pen.radialGlow(0, -10, 22 * fade, emRamp[4], 0.34 * fade);
+        motes.render(pen);
+      }
+    };
+
+    return {
+      step(dt) {
+        t += dt;
+        emitAcc += dt;
+        if (!burstEmitted) {
+          burstEmitted = true;
+          for (let i = 0; i < 14; i++) {
+            const a = -Math.PI * 0.5 + rng.between(-1.05, 1.05);
+            const sp = rng.between(55, 150);
+            motes.emit(
+              i % 3 === 0 ? 'glint' : 'spark',
+              rng.between(-12, 12),
+              -2,
+              Math.cos(a) * sp,
+              Math.sin(a) * sp,
+              rng.between(0.18, 0.36),
+              rng.chance(0.5) ? goldRamp[5] : emRamp[4],
+              1,
+              85
+            );
+          }
+        }
+        if (t < dur - 0.25 && emitAcc >= 0.08) {
+          emitAcc -= 0.08;
+          motes.emit(
+            'glint',
+            rng.between(-18, 18),
+            rng.between(-32, -4),
+            rng.between(-12, 12),
+            rng.between(-34, -14),
+            0.28,
+            rng.chance(0.45) ? goldRamp[6] : emRamp[5]
+          );
+        }
+        motes.step(dt);
+      },
+      renderBack(pen) {
+        renderPass(pen, false);
+      },
+      renderFront(pen) {
+        renderPass(pen, true);
+      }
+    };
+  }
+};
+
+export const yggdrasilLockReticle = {
+  duration: 1.48,
+  loop: false,
+  defaults: {
+    palette: SYLVAN_STARLIGHT_PALETTE,
+    radius: 19,
+    chargeDir: 1,
+    seed: 223
+  },
+  create(cfg) {
+    const starRamp = buildColorRamp(cfg.palette, 8);
+    const emRamp = buildColorRamp(SYLVAN_EMERALD_PALETTE, 8);
+    const dur = cfg.duration || 1.48;
+    const lockDegs = [22, 46, 70, 90, 110, 134, 158];
+    let t = 0;
+
+    return {
+      step(dt) {
+        t += dt;
+      },
+      renderFront(pen) {
+        const u = clamp01(t / dur);
+        const snap = Easing.outBack(clamp01(t / 0.14), 1.6);
+        const fade = u > 0.84 ? (1 - u) / 0.16 : 1;
+        if (fade <= 0.03) return;
+
+        const r = (cfg.radius || 19) * (1.32 - 0.32 * snap);
+        const rot = t * 3.2;
+
+        // 1. Concentric Sagittarius Lock-On Crosshair Rings
+        pen.strokeRing(0, 0, r, 1.4, starRamp[5], 0.92 * fade);
+        pen.strokeRing(0, 0, r * 0.56, 1.1, emRamp[5], 0.86 * fade);
+
+        for (let k = 0; k < 4; k++) {
+          const a = rot + (k * Math.PI) / 2;
+          const ca = Math.cos(a);
+          const sa = Math.sin(a);
+          pen.line(ca * (r * 0.36), sa * (r * 0.36), ca * (r + 4.5), sa * (r + 4.5), PURE_WHITE, 0.94 * fade);
+        }
+
+        // 2. Upper 180° Semicircular Starlock Azimuth Gauge (`7` radial lock-on nodes!)
+        const arcR = r + 7.5;
+        const dir = cfg.chargeDir >= 0 ? 1 : -1;
+        for (let s = 0; s < 24; s++) {
+          const th0 = (s / 24) * Math.PI;
+          const th1 = ((s + 1) / 24) * Math.PI;
+          const x0 = -dir * Math.cos(th0) * arcR;
+          const y0 = -Math.sin(th0) * arcR;
+          const x1 = -dir * Math.cos(th1) * arcR;
+          const y1 = -Math.sin(th1) * arcR;
+          pen.line(x0, y0, x1, y1, s / 24 <= u * 1.15 ? starRamp[5] : emRamp[3], 0.82 * fade);
+        }
+
+        for (let i = 0; i < lockDegs.length; i++) {
+          const th = (lockDegs[i] * Math.PI) / 180;
+          const nx = -dir * Math.cos(th) * arcR;
+          const ny = -Math.sin(th) * arcR;
+          const lit = u >= (i / lockDegs.length) * 0.82;
+          pen.fillCircle(nx, ny, lit ? 1.8 : 1.1, lit ? PURE_WHITE : emRamp[4], 0.95 * fade);
+        }
+
+        drawStarburstFlare(pen, 0, 0, 6.5 * fade, 0.88 * fade, starRamp);
+        pen.radialGlow(0, 0, 15 * fade, emRamp[4], 0.32 * fade);
+      }
+    };
+  }
+};
+
+export const starlockHomingArrow = {
+  duration: 0.34,
+  loop: false,
+  defaults: {
+    palette: SYLVAN_STARLIGHT_PALETTE,
+    dx: 48,
+    dy: 48,
+    seed: 239
+  },
+  create(cfg) {
+    const starRamp = buildColorRamp(cfg.palette, 8);
+    const emRamp = buildColorRamp(SYLVAN_EMERALD_PALETTE, 8);
+    const dx = cfg.dx ?? 48;
+    const dy = cfg.dy ?? 48;
+    const totalDist = Math.max(4, Math.hypot(dx, dy));
+    const ux = dx / totalDist;
+    const uy = dy / totalDist;
+    const nx = -uy;
+    const ny = ux;
+    const dur = cfg.duration || 0.34;
+    let t = 0;
+
+    return {
+      step(dt) {
+        t += dt;
+      },
+      renderFront(pen) {
+        const u = clamp01(t / dur);
+        const fade = u > 0.72 ? (1 - u) / 0.28 : 1;
+        if (fade <= 0.03) return;
+
+        // 1. Instantaneous Emerald-Gold Lock-On Laser Sightline (`0.00..0.16s`)
+        if (u < 0.48) {
+          const sightA = (1 - u / 0.48) * 0.82;
+          pen.line(0, 0, dx, dy, u < 0.18 ? PURE_WHITE : emRamp[5], sightA);
+        }
+
+        // 2. Supersonic Homing Starlock Arrow Streaking Radially Inward (`u = 0.0 .. 0.68`)
+        const flightU = clamp01(u / 0.62);
+        const headD = totalDist * Easing.outCubic(flightU);
+        const tailD = Math.max(0, headD - Math.min(26, totalDist * 0.55));
+        const hx = ux * headD;
+        const hy = uy * headD;
+        const tx = ux * tailD;
+        const ty = uy * tailD;
+
+        if (flightU < 0.98) {
+          pen.line(tx + nx * 1.1, ty + ny * 1.1, hx, hy, emRamp[5], 0.92 * fade);
+          pen.line(tx - nx * 1.1, ty - ny * 1.1, hx, hy, starRamp[5], 0.92 * fade);
+          pen.line(tx, ty, hx, hy, PURE_WHITE, 1.0 * fade);
+
+          // Crescent Starlock Broadhead Vanes
+          pen.line(hx, hy, hx - ux * 5.5 + nx * 3.4, hy - uy * 5.5 + ny * 3.4, starRamp[6], 0.96 * fade);
+          pen.line(hx, hy, hx - ux * 5.5 - nx * 3.4, hy - uy * 5.5 - ny * 3.4, starRamp[6], 0.96 * fade);
+          drawOrientedMachRing(
+            pen,
+            ux * Math.max(3, headD - 6),
+            uy * Math.max(3, headD - 6),
+            ux,
+            uy,
+            7.5,
+            0.34,
+            1.4,
+            PURE_WHITE,
+            emRamp[5],
+            0.88 * fade
+          );
+        }
+
+        // 3. Muzzle Flash & Locked-Target Detonation Starburst
+        if (u < 0.24) {
+          drawStarburstFlare(pen, 0, 0, 9.5 * (1 - u / 0.24), 0.9, starRamp);
+        }
+        if (u >= 0.52) {
+          const impU = (u - 0.52) / 0.48;
+          const impFade = 1 - impU;
+          pen.strokeRing(dx, dy, 4 + 14 * Easing.outExpo(impU), 1.5, starRamp[5], 0.92 * impFade);
+          drawStarburstFlare(pen, dx, dy, 12.5 * impFade, 0.95 * impFade, emRamp);
+          pen.radialGlow(dx, dy, 16 * impFade, starRamp[5], 0.42 * impFade);
+        }
+      }
+    };
+  }
+};
+
 export const SYLVAN_EFFECT_REGISTRY = {
   sylvanBowDrawVortex,
   sonicBowReleaseWave,
@@ -2345,6 +2686,10 @@ export const SYLVAN_EFFECT_REGISTRY = {
   emeraldStarCrossBurstCell,
   yggdrasilConstellationSealCell,
   colossalCelestialGreatbowCell,
-  supernovaDragonBeamSegmentCell
+  supernovaDragonBeamSegmentCell,
+  yggdrasilRootPrison,
+  yggdrasilLockReticle,
+  starlockHomingArrow
 };
+
 

@@ -25,21 +25,21 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps73';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps73';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps73';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps73';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps73';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps73';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps73';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps73';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps73';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps73';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps73';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps73';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps73';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps73';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps73';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps74';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps74';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps74';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps74';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps74';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps74';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps74';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps74';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps74';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps74';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps74';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps74';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps74';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps74';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps74';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -584,7 +584,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps73');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps74');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -1693,6 +1693,133 @@ for (const [name, Cls] of CLASSES) {
     `[PASS] VEX-09 v3 & Fighting Style AI Director: 3-Variant Real Gap-Close Melee (<=109px blade contact), Backstep (-${Math.round(backwardRetreatPx)}px) -> Face/Visor Hyper-Laser (-${Math.round(ultDmgDealt)} dmg), & Live Martial AI (${[...observedStates].sort().join('/')})!`
   );
 }
+
+// 15. Verify Sylvara (`Archer`) v4 Rework:
+//     - 15A (`ULTIMATE` — "ZEPHYR VAULT: 180° STARLOCK BARRAGE"): Charges into the enemy (`<= 70px`), flips 180° overhead
+//       (`lift >= 175px`, crosses to opposite side & flips `facing` 180°), and fires 7 radial Lock-On Homing Arrows!
+//     - 15B (`TRUE_ULTIMATE` — "ARROW OF YGGDRASIL: SUPERNOVA PIERCE"): Roots nearby enemy in place (`yggdrasilRootPrison`,
+//       zero drift before shot), flip-jumps all the way to the FARTHEST edge of the stage (`|sylvara.x - foe.x| >= 500px`),
+//       and fires the full-stage `760` Crit Supernova Dragon-Arrow Pierce with `0` `ctx.rotate` calls!
+{
+  const syl = new Archer({ x: 340, groundY: 460, facing: 1, name: 'Sylvara' });
+  const foe = new Warrior({ x: 600, groundY: 460, facing: -1, name: 'Target' });
+  syl.game = game;
+  foe.game = game;
+  game.fighters = [syl, foe];
+  game.getEnemiesOf = (f) => game.fighters.filter((o) => o !== f);
+  foe.maxHp = 99999;
+  foe.hp = 99999;
+
+  const sylTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
+  const sylCtx = createMockCtx(sylTrack);
+
+  // 15A. Test Overdrive Ultimate (`ZEPHYR VAULT: 180° STARLOCK BARRAGE`)
+  const initialChargeDir = foe.x >= syl.x ? 1 : -1;
+  const hpBefore180 = foe.hp;
+  let minChargeDist = 999;
+  let minVaultY = syl.groundY;
+  let starlockHits = 0;
+  const origFoeTake = foe.takeDamage.bind(foe);
+  foe.takeDamage = (amt, att, crit, kx, ky) => {
+    if (att === syl) starlockHits++;
+    return origFoeTake(amt, att, crit, kx, ky);
+  };
+
+  syl.setState('ULTIMATE');
+  for (let step = 0; step < 72; step++) {
+    const dt = 1 / 30;
+    syl.update(dt, foe, game);
+    minChargeDist = Math.min(minChargeDist, Math.abs(foe.x - syl.x));
+    minVaultY = Math.min(minVaultY, syl.y);
+    syl.drawForegroundOverlay(sylCtx, game.renderer);
+    syl.draw(sylCtx, false, game.renderer);
+    syl.drawUltimateForeground(sylCtx, game.renderer);
+    if (syl.state === 'IDLE') break;
+  }
+
+  const total180Dmg = hpBefore180 - foe.hp;
+  const landedOppositeSide = (syl.x - foe.x) * initialChargeDir > 120;
+  if (
+    minChargeDist > 75 ||
+    syl.groundY - minVaultY < 175 ||
+    !landedOppositeSide ||
+    syl.facing !== -initialChargeDir ||
+    starlockHits < 8 ||
+    total180Dmg < 185 ||
+    sylTrack.rotateCalls > 0
+  ) {
+    throw new Error(
+      `Sylvara 180° Starlock Ultimate failed: minChargeDist=${minChargeDist.toFixed(1)}, lift=${(syl.groundY - minVaultY).toFixed(1)}, landedOpposite=${landedOppositeSide}, facing=${syl.facing} (expected ${-initialChargeDir}), hits=${starlockHits}, dmg=${total180Dmg}, rotate=${sylTrack.rotateCalls}`
+    );
+  }
+
+  // 15B. Test Supreme Ultimate (`ARROW OF YGGDRASIL: SUPERNOVA PIERCE`) starting right next to the enemy!
+  syl.x = 500;
+  syl.y = 460;
+  syl.facing = 1;
+  foe.x = 565; // Point-blank 65px away — Sylvara MUST root the enemy and flip-jump to the farthest stage edge!
+  foe.y = 460;
+  foe.vx = 220; // Moving enemy — root prison must halt & pin them on the spot!
+  foe.hp = 99999;
+
+  let sawRootPrison = false;
+  let maxEnemyDriftWhileRooted = 0;
+  let minFlipJumpY = syl.groundY;
+  let shotDistance = 0;
+  let preShotDmg = 0;
+  let yggShotDmg = 0;
+
+  syl.finisherGauge = 100;
+  syl.setState('TRUE_ULTIMATE');
+  for (let step = 0; step < 155; step++) {
+    const dt = 1 / 30;
+    const prevHp = foe.hp;
+    syl.update(dt, foe, game);
+    foe.dodgeCooldown = 999;
+    foe.dashCooldown = 999;
+    foe.update(dt, syl, game);
+    minFlipJumpY = Math.min(minFlipJumpY, syl.y);
+
+    if (syl.fx.active.some((a) => a.key === 'yggdrasilRootPrison')) {
+      sawRootPrison = true;
+    }
+    if (syl.stateTimer >= 0.10 && syl.stateTimer < 3.10) {
+      maxEnemyDriftWhileRooted = Math.max(maxEnemyDriftWhileRooted, Math.abs(foe.x - 565));
+      if (prevHp > foe.hp) preShotDmg += prevHp - foe.hp;
+    }
+    if (prevHp > foe.hp) {
+      if (shotDistance === 0) shotDistance = Math.abs(foe.x - syl.x);
+      yggShotDmg += prevHp - foe.hp;
+    }
+
+    syl.drawForegroundOverlay(sylCtx, game.renderer);
+    syl.draw(sylCtx, false, game.renderer);
+    syl.drawUltimateForeground(sylCtx, game.renderer);
+    if (step > 30 && syl.state === 'IDLE') break;
+  }
+
+  const onFarStageEdge = syl.x <= 125 || syl.x >= 1075;
+  if (
+    !sawRootPrison ||
+    maxEnemyDriftWhileRooted > 4 ||
+    preShotDmg !== 0 ||
+    syl.groundY - minFlipJumpY < 165 ||
+    !onFarStageEdge ||
+    shotDistance < 500 ||
+    Math.round(yggShotDmg) !== 700 ||
+    syl.state !== 'IDLE' ||
+    sylTrack.rotateCalls > 0
+  ) {
+    throw new Error(
+      `Sylvara Yggdrasil Far-Stage Super-Ult failed: root=${sawRootPrison}, drift=${maxEnemyDriftWhileRooted.toFixed(1)}, preShotDmg=${preShotDmg}, flipLift=${(syl.groundY - minFlipJumpY).toFixed(1)}, sylX=${syl.x.toFixed(1)}, shotDist=${shotDistance.toFixed(1)}, dmg=${yggShotDmg}, state=${syl.state}, rotate=${sylTrack.rotateCalls}`
+    );
+  }
+
+  console.log(
+    `[PASS] Sylvara v4 Ults: 180° Starlock Vault (chargeDist=${Math.round(minChargeDist)}px, lift=${Math.round(syl.groundY - minVaultY)}px, ${starlockHits} hits / -${Math.round(total180Dmg)} dmg) & Far-Stage Yggdrasil Pierce (rootDrift=${maxEnemyDriftWhileRooted.toFixed(1)}px, shotDist=${Math.round(shotDistance)}px from x=${Math.round(syl.x)}, -${Math.round(yggShotDmg)} Crit, 0 ctx.rotate)!`
+  );
+}
+
 
 
 

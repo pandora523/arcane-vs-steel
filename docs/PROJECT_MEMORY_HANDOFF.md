@@ -2,10 +2,10 @@
 
 > **IMPORTANT FOR ANY NEW CHAT / AGENT**: Read this file alongside `docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md` and `docs/champion_pipeline_db.json` at the start of a new conversation so full project context, user preferences, protected champions, and recent reworks are preserved seamlessly.
 
-## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps73`)
+## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps74`)
 - **All 11 HD-2D 30fps Champions (`208x208` cells, 9 rows x 30 frames + `vfx` sheets + `128x128` portraits)** are live and verified on `main`.
 - **Epic Battle HP Inflation & Ultimate Pacing**:
-  - Champion HP pools are inflated (`3600–4390 HP`) so fights last ~`50–80s` in 1v1 (`~58s` in 2v2 Brawl, `~120s` in 2v2 Tag) and champions reliably cast **3 Overdrives (`ULTIMATE`)** to unlock and cast their **Supreme Ultimate (`TRUE_ULTIMATE`)** (`99.8%` `TRUE_ULTIMATE` rate in 1v1 benchmarks).
+  - Champion HP pools are inflated (`3600–4390 HP`) so fights last ~`50–80s` in 1v1 (`~58s` in 2v2 Brawl, `~120s` in 2v2 Tag) and champions reliably cast **3 Overdrives (`ULTIMATE`)** to unlock and cast their **Supreme Ultimate (`TRUE_ULTIMATE`)** (`99.8%+` `TRUE_ULTIMATE` rate in 1v1 benchmarks).
   - Test Mode (`testModeUnlimitedHp`) supports infinite HP & rapid testing of Overdrives and Supreme Ultimates.
 
 ---
@@ -22,6 +22,18 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 ---
 
 ## 3. Recent Champion Reworks & Visual Clarity Rules
+
+### Sylvara (`src/entities/Archer.js`, `heroId: 'archer'`, v4 Ultimate & Supreme Ultimate Rework)
+- **Baked 30fps `Row 4` Acrobatic Somersault & Far-Stage Yggdrasil Choreography (`scripts/build_archer_30fps_sheet.py`, `0/270` clips, `0` pinholes, `20/20` palette)**:
+  - `F00..F02` (`120..122`): Explosive Gale Charge-In sprint + Twin Bow-Blade slash + Vault-Kick launch.
+  - `F03..F13` (`123..133`): Full articulated `-48° -> -186° (true upside-down apex) -> -336°` airborne somersault (`centered_mode=True`, `shoulder_aim_ik=True`, `wing_follow_torso=True`, zero `ctx.rotate`) aiming her Celestial Greatbow downward around the 180° arc.
+  - `F14..F15` (`134..135`): Agile opposite-side touchdown (`foot_y=99.0`).
+  - `F16..F17` (`136..137`): Grounded Bow-Stave Earth-Root invocation (`bow_deg=+62°`) + `F18..F29` (`138..149`) Far-Stage Sovereign Winged Yggdrasil Greatbow Draw & Supernova Release.
+- **Overdrive Ultimate (`ZEPHYR VAULT: 180° STARLOCK BARRAGE`)**:
+  - Charges straight into the enemy (`0.00..0.32s`), delivers a `36`-dmg Gale Vault-Kick snapping `yggdrasilLockReticle` onto the foe, leaps and flips **180 degrees** overhead (`theta = 0 .. Math.PI`, `194px` height, flipping `facing` 180° at apex to land on the opposite side), and fires **7 radial Lock-On Homing Arrows** (`starlockHomingArrow`, `22°..158°`, `234` total dmg) inward around the 180° arc.
+- **Supreme Ultimate (`ARROW OF YGGDRASIL: SUPERNOVA PIERCE`, `4.55s`)**:
+  - Erupts 2.5D Elder-Wood Yggdrasil Thorn-Root Cages (`yggdrasilRootPrison` + Bramble Snare + Yggdrasil Seal) beneath all enemies (`0.03s`), hard-rooting them in place (`0.0px` drift, `0` pre-ticks).
+  - Performs a high acrobatic flip-jump (`0.42..1.28s`, `188px` height) all the way to the **farthest edge of the stage** (`x = 108` or `ww - 108`, `492px–984px` away from the rooted enemy), turns across the arena, draws the colossal `280x280` `Row 6` Celestial Greatbow with a cross-stage Sagittarius aiming sightline, and fires the full-stage `Row 7` Supernova Dragon-Arrow Pierce (`700` Crit + `+14%` Max HP heal) at `t = 3.15s`.
 
 ### VEX-09 (`src/entities/Android.js`, `heroId: 'android'`, v3) & Roster-Wide Fighting Style AI Director (`src/entities/Fighter.js`)
 - **Coiled Athletic Cyber-Valkyrie Rig (`scripts/build_android_30fps_sheet.py`, `0/270` clips, `29/29` transitions)**:

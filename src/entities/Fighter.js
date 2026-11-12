@@ -859,8 +859,11 @@ export class Fighter {
       enemy &&
       !this.isDead &&
       !enemy.isDead &&
+      !this.isRooted &&
+      !(this.stunTimer > 0) &&
       this.state !== 'ULTIMATE' &&
       this.state !== 'TRUE_ULTIMATE' &&
+      enemy.state !== 'TRUE_ULTIMATE' &&
       this.state !== 'DASH' &&
       this.state !== 'DODGE' &&
       !this.isFullyBurrowed &&
@@ -880,6 +883,8 @@ export class Fighter {
       game &&
       game.gameMode === '2v2_brawl' &&
       !this.isDead &&
+      !this.isRooted &&
+      !(this.stunTimer > 0) &&
       this.state !== 'ULTIMATE' &&
       this.state !== 'TRUE_ULTIMATE' &&
       this.state !== 'DASH' &&
@@ -898,8 +903,11 @@ export class Fighter {
       }
     }
 
-    // Physics integration & Gravity (skipped while in a controlled parabolic flip-vault arc)
-    if (!this.isFlipVault) {
+    // Physics integration & Gravity (skipped while in a controlled parabolic flip-vault arc or hard-rooted)
+    if (this.isRooted) {
+      this.vx = 0;
+      this.vy = 0;
+    } else if (!this.isFlipVault) {
       this.vy += 980 * dt;
       this.x += this.vx * dt;
       this.y += this.vy * dt;
@@ -995,15 +1003,19 @@ export class Fighter {
     const dist = enemy ? Math.abs(enemy.x - this.x) : 999;
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
 
-    // Stun Lock (e.g., Torgar's World-Breaker Home-Run Wall-Slam 0.8s Stun)
-    if (this.stunTimer > 0 && this.state !== 'TRUE_ULTIMATE') {
-      this.stunTimer = Math.max(0, this.stunTimer - dt);
-      this.vx *= Math.pow(0.001, dt);
+    // Stun / Root Lock (e.g., Torgar's Home-Run Stun, Lyra's Absolute Zero Freeze, Sylvara's Yggdrasil Roots)
+    if ((this.stunTimer > 0 || this.isRooted) && this.state !== 'TRUE_ULTIMATE') {
+      if (this.stunTimer > 0) {
+        this.stunTimer = Math.max(0, this.stunTimer - dt);
+      }
+      this.vx = this.isRooted ? 0 : this.vx * Math.pow(0.001, dt);
+      if (this.isRooted) this.vy = 0;
       this.hurtTimer = Math.max(this.hurtTimer, 0.14);
       if (this.state !== 'IDLE') {
-        this.state = 'IDLE';
-        this.stateTimer = 0;
+        this.setState('IDLE');
       }
+      this.isCrouching = false;
+      this.isDeflecting = false;
       return;
     }
 

@@ -22,7 +22,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   MotePool
-} from '../ArcaneShaderFX.js?v=30fps73';
+} from '../ArcaneShaderFX.js?v=30fps74';
 
 const TWO_PI = Math.PI * 2;
 const BACK_HALF = (theta) => Math.sin(theta) < 0;

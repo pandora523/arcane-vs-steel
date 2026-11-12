@@ -25,7 +25,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps73';
+} from '../ArcaneShaderFX.js?v=30fps74';
 
 // Volcanic Basalt-Obsidian + Molten Magma Crimson-Orange -> Forge Gold
 export const FORGE_GOLD_PALETTE = [

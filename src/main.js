@@ -1,19 +1,19 @@
-import { Renderer } from './engine/Renderer.js?v=30fps73';
-import { VFXManager } from './engine/VFXManager.js?v=30fps73';
-import { PixelForge } from './engine/PixelForge.js?v=30fps73';
-import { AudioManager } from './engine/AudioManager.js?v=30fps73';
-import { Fighter } from './entities/Fighter.js?v=30fps73';
-import { Warrior } from './entities/Warrior.js?v=30fps73';
-import { FireMage } from './entities/FireMage.js?v=30fps73';
-import { Archer } from './entities/Archer.js?v=30fps73';
-import { Priestess } from './entities/Priestess.js?v=30fps73';
-import { Reaper } from './entities/Reaper.js?v=30fps73';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps73';
-import { Titan } from './entities/Titan.js?v=30fps73';
-import { Ronin } from './entities/Ronin.js?v=30fps73';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps73';
-import { IceMage } from './entities/IceMage.js?v=30fps73';
-import { Android } from './entities/Android.js?v=30fps73';
+import { Renderer } from './engine/Renderer.js?v=30fps74';
+import { VFXManager } from './engine/VFXManager.js?v=30fps74';
+import { PixelForge } from './engine/PixelForge.js?v=30fps74';
+import { AudioManager } from './engine/AudioManager.js?v=30fps74';
+import { Fighter } from './entities/Fighter.js?v=30fps74';
+import { Warrior } from './entities/Warrior.js?v=30fps74';
+import { FireMage } from './entities/FireMage.js?v=30fps74';
+import { Archer } from './entities/Archer.js?v=30fps74';
+import { Priestess } from './entities/Priestess.js?v=30fps74';
+import { Reaper } from './entities/Reaper.js?v=30fps74';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps74';
+import { Titan } from './entities/Titan.js?v=30fps74';
+import { Ronin } from './entities/Ronin.js?v=30fps74';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps74';
+import { IceMage } from './entities/IceMage.js?v=30fps74';
+import { Android } from './entities/Android.js?v=30fps74';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -64,7 +64,7 @@ const CHAMPION_ROSTER = {
     victoryLine: 'Supersonic astral arrows pierce through the tempest!',
     trueUltName: 'ARROW OF YGGDRASIL: SUPERNOVA PIERCE',
     trueUltDesc:
-      'Draws the celestial World-Tree Greatbow and looses a star-splitting Supernova Arrow through every enemy!',
+      'Roots all enemies in Elder-Wood Yggdrasil Thorn-Cages, flip-jumps to the farthest edge of the stage, and fires a full-screen Supernova Dragon-Arrow!',
     skills: [
       {
         name: 'ASTRAL LONGBOW',
@@ -79,10 +79,10 @@ const CHAMPION_ROSTER = {
         desc: 'Binds foes in sylvan starlight roots while launching homing astral seeker volleys from above.'
       },
       {
-        name: 'ASTRAL HURRICANE',
+        name: 'ZEPHYR VAULT: 180° STARLOCK',
         type: '★ OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Unfurls 6-pinion Astral Light-Wings to fire a Wind-Dragon Hurricane Lance & 10-beam starfall.'
+        desc: 'Charges into the enemy, vaults in a 180° overhead somersault flip, and fires 7 radial lock-on homing arrows around the 180° arc!'
       }
     ]
   },
