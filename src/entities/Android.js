@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps70';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps70';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps70';
+import { Fighter } from './Fighter.js?v=30fps71';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps71';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps71';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps70';
+} from '../engine/shaders/cyberShaders.js?v=30fps71';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 
@@ -55,10 +55,10 @@ export class Android extends Fighter {
     if (typeof Image !== 'undefined') {
       const androidAssets = PixelForge.initAssets()?.android;
       if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps62')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps70';
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps71';
       }
       if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps62')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps70';
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps71';
       }
     }
 
@@ -179,16 +179,6 @@ export class Android extends Fighter {
         palette: CYBER_NEON_PALETTE,
         light: 1.0
       });
-    } else if (!this.isDead && (isCrit || amount >= 42)) {
-      this.fx.spawn('rgbGlitchTear', this.x, this.groundY, {
-        follow: this,
-        offsetX: 0,
-        offsetY: 0,
-        useGroundY: true,
-        palette: CYBER_MAGENTA_PALETTE,
-        maxDuration: 0.34,
-        light: 0.9
-      });
     }
   }
 
@@ -259,11 +249,7 @@ export class Android extends Fighter {
   onStartDash(enemy, game, dir) {
     this.dashDuration = 0.34;
     this.dashDir = dir || this.facing;
-    this.fx.spawn('cyberImpactSpark', this.x, this.groundY, {
-      palette: CYBER_NEON_PALETTE,
-      light: 1.0,
-      extra: { phaseMode: true }
-    });
+    this._afterimageTimer = 0;
     this.fx.spawn('wingPylonThruster', this.x - this.facing * 20, this.y - 134, {
       follow: this,
       offsetX: -20,
@@ -338,15 +324,12 @@ export class Android extends Fighter {
     // Wing-Pylon Phase-Rush (`DASH`)
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     this.x = Math.max(85, Math.min(ww - 85, this.x + (this.dashDir || this.facing) * 620 * dt));
-    if (Math.random() < 0.45) {
-      this.spawnAfterimage(this.x, this.y, this.facing, 6, 12, 0.22);
+    this._afterimageTimer = (this._afterimageTimer || 0) + dt;
+    if (this._afterimageTimer >= 0.12) {
+      this._afterimageTimer = 0;
+      this.spawnAfterimage(this.x, this.y, this.facing, 6, 12, 0.18);
     }
     if (this.stateTimer >= this.dashDuration) {
-      this.fx.spawn('cyberImpactSpark', this.x, this.groundY, {
-        palette: CYBER_MAGENTA_PALETTE,
-        light: 0.95,
-        extra: { phaseMode: true }
-      });
       this.setState('IDLE');
     }
   }
@@ -427,15 +410,11 @@ export class Android extends Fighter {
             type: 'cyber_disc'
           });
         }
-        // Command 2 of her autonomous Fin-Funnel Drones (android_vfx.png Row 6, 150x150) to fire converging cyan-magenta laser pulses at the target
+        // Command 2 of her autonomous Fin-Funnel Drones to fire converging cyan-magenta laser pulses at the target
         for (let dIdx = 0; dIdx < 2; dIdx++) {
           const drone = this.funnelDrones?.[dIdx];
           const droneX = drone ? drone.x : this.x + this.facing * (dIdx === 0 ? -36 : 42);
           const droneY = drone ? drone.y : this.y - (dIdx === 0 ? 148 : 122);
-          this.spawnVfxAnim(6, droneX, droneY, 150, 150, 0.30, {
-            flipX: this.facing < 0,
-            foreground: true
-          });
           this.fx.spawn('orbitalHelixBeam', droneX, droneY, {
             flip: false,
             palette: dIdx === 0 ? CYBER_NEON_PALETTE : CYBER_MAGENTA_PALETTE,
@@ -447,7 +426,7 @@ export class Android extends Fighter {
             }
           });
         }
-        this.spawnVfxAnim(6, hitX, this.groundY - 96, 176, 176, 0.34, { foreground: true });
+        this.spawnVfxAnim(6, hitX, this.groundY - 96, 136, 136, 0.24, { foreground: true });
       } else {
         // `plasmaCrescentSlash` has built-in `cx = +6 (+18px), cy = -26 (-78px)` & floor sparks at `y = 0` (`groundY`)
         this.fx.spawn('plasmaCrescentSlash', this.x + this.facing * 44, this.groundY - 8, {
@@ -944,7 +923,7 @@ export class Android extends Fighter {
 
     if (renderer?.glowCyber || renderer?.glowCyan) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.28);
+      ctx.globalAlpha = Math.min(1, alpha * 0.16);
       ctx.drawImage(renderer.glowCyber || renderer.glowCyan, -w * 0.65, -h * 0.65, w * 1.3, h * 1.3);
     }
 
@@ -953,7 +932,7 @@ export class Android extends Fighter {
     ctx.drawImage(vfxSheet, sx, sy, 208, 208, Math.round(-w * 0.5), Math.round(-h * 0.5), Math.round(w), Math.round(h));
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * 0.34);
+    ctx.globalAlpha = Math.min(1, alpha * 0.18);
     ctx.drawImage(vfxSheet, sx, sy, 208, 208, Math.round(-w * 0.5), Math.round(-h * 0.5), Math.round(w), Math.round(h));
     ctx.restore();
   }
@@ -1003,7 +982,7 @@ export class Android extends Fighter {
     // 1. Holographic Cyber Afterimages
     if (this.afterimages.length > 0 && sprites?.sheet?.complete) {
       for (const img of this.afterimages) {
-        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.55);
+        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.30);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.translate(Math.round(img.x / 4) * 4, Math.round(img.y / 4) * 4);

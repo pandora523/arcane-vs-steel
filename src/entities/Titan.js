@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps70';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps70';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps70';
+import { Fighter } from './Fighter.js?v=30fps71';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps71';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps71';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps70';
+} from '../engine/shaders/forgeShaders.js?v=30fps71';
 
 /**
  * Torgar v6 (`titan`) — Sovereign of the World-Forge & Runic Anvil Juggernaut.
@@ -128,11 +128,11 @@ export class Titan extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
-      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps70')) {
-        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps70';
+      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps71')) {
+        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps71';
       }
-      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps70')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps70';
+      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps71')) {
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps71';
       }
     }
   }
@@ -380,7 +380,11 @@ export class Titan extends Fighter {
 
   ensureForgeMagmaMantle() {
     if (!this.fx) return;
-    if (this.isDead || this.state === 'DEATH') {
+    const shouldShowMantle =
+      !this.isDead &&
+      this.state !== 'DEATH' &&
+      (this.forgeArmorTimer > 0 || this.state === 'ULTIMATE' || this.state === 'TRUE_ULTIMATE');
+    if (!shouldShowMantle) {
       this.fx.stopByKey('forgeMagmaMantle');
       this._mantleSlot = null;
       return;
@@ -530,17 +534,17 @@ export class Titan extends Fighter {
       if (a.state === 'flying') {
         a.x += a.vx * dt;
         a.trailAccum = (a.trailAccum || 0) + dt;
-        if (a.trailAccum >= 0.032) {
+        if (a.trailAccum >= 0.085) {
           a.trailAccum = 0;
           this.fx?.burst(a.x - a.dir * 20, a.y - 42, {
-            count: 3,
+            count: 1,
             speedMin: 35,
-            speedMax: 110,
-            lifeMin: 0.14,
-            lifeMax: 0.28,
+            speedMax: 90,
+            lifeMin: 0.12,
+            lifeMax: 0.22,
             gravity: 45,
             angle: a.dir >= 0 ? Math.PI : 0,
-            spread: 0.85,
+            spread: 0.65,
             colors: ['#ffffff', '#fde047', '#f59e0b', '#10b981']
           });
         }
@@ -564,9 +568,9 @@ export class Titan extends Fighter {
               extra: { maxRx: 124 }
             });
             this.spawnSheetBurst(4, t.x, t.y - 68, {
-              w: 224,
-              h: 224,
-              maxLife: 0.40,
+              w: 196,
+              h: 196,
+              maxLife: 0.34,
               flipX: a.dir < 0,
               glowColor: a.rebounded ? 'emerald' : 'gold',
               inFront: true
@@ -615,27 +619,11 @@ export class Titan extends Fighter {
             palette: FORGE_JADE_PALETTE,
             light: 1.36
           });
-          this.spawnSheetBurst(4, a.x, a.y - 54, {
-            w: 212,
-            h: 212,
-            maxLife: 0.36,
-            flipX: a.dir < 0,
-            glowColor: 'emerald',
-            inFront: true
-          });
         } else if (a.x < 36 || a.x > ww - 36 || a.age > 2.35) {
           this.fx?.spawn('moltenAnvilSparks', a.x, a.y - 38, {
             flip: a.dir < 0,
             palette: FORGE_GOLD_PALETTE,
             light: 1.22
-          });
-          this.spawnSheetBurst(4, a.x, a.y - 52, {
-            w: 204,
-            h: 204,
-            maxLife: 0.34,
-            flipX: a.dir < 0,
-            glowColor: 'gold',
-            inFront: true
           });
           this.activeAnvil = null;
         }
@@ -653,13 +641,6 @@ export class Titan extends Fighter {
       if (this.stepDustTimer >= 0.36) {
         this.stepDustTimer = 0;
         if (game?.audio) game.audio.play('footstep_steel', this.x);
-        this.fx?.burst(this.x - this.facing * 14, this.groundY - 2, {
-          count: 5,
-          speedMin: 25,
-          speedMax: 75,
-          gravity: 65,
-          colors: ['#fde047', '#f59e0b', '#10b981']
-        });
       }
     }
 
@@ -940,14 +921,6 @@ export class Titan extends Fighter {
             light: 1.2,
             extra: { radius: 28, width: 10.5, isFinisher: false }
           });
-          this.spawnSheetBurst(4, foe.x, foe.y - 68, {
-            w: 196,
-            h: 196,
-            maxLife: 0.34,
-            flipX: this.facing < 0,
-            glowColor: 'gold',
-            inFront: true
-          });
           break;
         }
       }
@@ -1028,15 +1001,6 @@ export class Titan extends Fighter {
       if (stage === 0) {
         // Variant 1 Special: Launch traveling `Row 0` Tectonic Magma-Jade Fissure Wave!
         this.spawnFissureWave(this.x + dir * 92, dir);
-      } else {
-        this.spawnSheetBurst(0, impactX, impactY - 54, {
-          w: 196,
-          h: 196,
-          maxLife: 0.34,
-          flipX: dir < 0,
-          glowColor: stage >= 2 ? 'emerald' : 'gold',
-          inFront: true
-        });
       }
 
       let landed = false;
@@ -1075,31 +1039,34 @@ export class Titan extends Fighter {
           isFinisher
         }
       });
-      this.fx?.spawn('moltenAnvilSparks', impactX, impactY - 48, {
-        flip: dir < 0,
-        palette: stage >= 2 ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
-        light: 1.30
-      });
+
+      if (isFinisher) {
+        this.fx?.spawn('moltenAnvilSparks', impactX, impactY - 48, {
+          flip: dir < 0,
+          palette: FORGE_JADE_PALETTE,
+          light: 1.30
+        });
+      }
 
       if (stage === 1) {
         // Variant 2 Rising Volcanic Siege-Horn Uppercut: Erupt grounded `Row 2` Magma-Jade Rune Pillar!
         const pillarX =
           enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 245 ? enemy.x : impactX;
         this.spawnSheetBurst(2, pillarX, this.groundY - 82, {
-          w: 216,
-          h: 216,
-          maxLife: 0.46,
+          w: 196,
+          h: 196,
+          maxLife: 0.42,
           flipX: dir < 0,
           glowColor: 'emerald',
           inFront: false
         });
-      } else {
+      } else if (isFinisher) {
         this.spawnSheetBurst(4, impactX, impactY - 62, {
-          w: isFinisher ? 228 : 212,
-          h: isFinisher ? 228 : 212,
-          maxLife: 0.38,
+          w: 204,
+          h: 204,
+          maxLife: 0.34,
           flipX: dir < 0,
-          glowColor: stage >= 2 ? 'emerald' : 'gold',
+          glowColor: 'emerald',
           inFront: true
         });
       }
@@ -1536,17 +1503,17 @@ export class Titan extends Fighter {
         fl.foe.hurtTimer = Math.max(fl.foe.hurtTimer || 0, 0.18);
 
         fl.sparkAccum += dt;
-        if (fl.sparkAccum >= 0.04) {
+        if (fl.sparkAccum >= 0.09) {
           fl.sparkAccum = 0;
           this.fx?.burst(fl.foe.x - fl.dir * 18, fl.foe.y - 64, {
-            count: 4,
+            count: 2,
             speedMin: 40,
-            speedMax: 120,
-            lifeMin: 0.14,
-            lifeMax: 0.28,
+            speedMax: 105,
+            lifeMin: 0.12,
+            lifeMax: 0.22,
             gravity: 35,
             angle: fl.dir >= 0 ? Math.PI : 0,
-            spread: 0.75,
+            spread: 0.65,
             colors: ['#ffffff', '#fde047', '#f59e0b', '#10b981']
           });
         }
@@ -1582,26 +1549,18 @@ export class Titan extends Fighter {
           this.fx?.spawn('tectonicCraterSlam', wallX, this.groundY - 4, {
             flip: fl.dir < 0,
             palette: FORGE_JADE_PALETTE,
-            light: 1.50,
-            extra: { maxRx: 175 }
+            light: 1.44,
+            extra: { maxRx: 165 }
           });
           this.fx?.spawn('moltenAnvilSparks', wallX, this.groundY - 68, {
             flip: fl.dir < 0,
             palette: FORGE_GOLD_PALETTE,
-            light: 1.46
-          });
-          this.spawnSheetBurst(2, wallX, this.groundY - 92, {
-            w: 248,
-            h: 248,
-            maxLife: 0.62,
-            flipX: fl.dir < 0,
-            glowColor: 'emerald',
-            inFront: false
+            light: 1.38
           });
           this.spawnSheetBurst(4, wallX, this.groundY - 78, {
-            w: 256,
-            h: 256,
-            maxLife: 0.52,
+            w: 216,
+            h: 216,
+            maxLife: 0.42,
             flipX: fl.dir < 0,
             glowColor: 'gold',
             inFront: true
@@ -2093,7 +2052,7 @@ export class Titan extends Fighter {
         : renderer?.glowGold || renderer?.glowOrange;
     if (glowSprite) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.38);
+      ctx.globalAlpha = Math.min(1, alpha * 0.20);
       const gw = Math.round(w * 1.15);
       const gh = Math.round(h * 1.15);
       ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
@@ -2104,7 +2063,7 @@ export class Titan extends Fighter {
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * 0.44);
+    ctx.globalAlpha = Math.min(1, alpha * 0.20);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.restore();

@@ -19,13 +19,13 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps70';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps71';
 
 import {
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE,
   FORGE_EFFECT_REGISTRY
-} from '../src/engine/shaders/forgeShaders.js?v=30fps70';
+} from '../src/engine/shaders/forgeShaders.js?v=30fps71';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');

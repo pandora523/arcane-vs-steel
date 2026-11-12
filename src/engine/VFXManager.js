@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js?v=30fps70';
-import { PixelForge } from './PixelForge.js?v=30fps70';
+import { PixelFont } from './PixelFont.js?v=30fps71';
+import { PixelForge } from './PixelForge.js?v=30fps71';
 
 export class VFXManager {
   constructor() {
@@ -143,6 +143,27 @@ export class VFXManager {
       life: 0,
       maxLife: isCrit ? 0.44 : 0.32
     });
+    const isDecluttered =
+      heroId === 'titan' ||
+      heroId === 'reaper' ||
+      heroId === 'archer' ||
+      heroId === 'icemage' ||
+      heroId === 'android';
+    if (isDecluttered) {
+      // Crisp, readable hit sparks without burying the 5 custom-shader heroes in double-layered confetti
+      this.spawnBurst(x, y, isCrit ? 6 : 3, col, isCrit ? 220 : 175, {
+        upBias: 65,
+        size: isCrit ? 6 : 4.5,
+        life: isCrit ? 0.36 : 0.26,
+        spread: 18,
+        additive: true
+      });
+      if (isCrit) {
+        this.spawnGlyphBurst(x, y - 8, 2, theme);
+      }
+      return;
+    }
+
     // Dense saturated particle shower + elemental glyphs spraying outward around the impact!
     this.spawnBurst(x, y, isCrit ? 24 : 15, col, isCrit ? 290 : 220, {
       upBias: 85,
@@ -469,15 +490,33 @@ export class VFXManager {
       maxLife: isUltimate ? 1.65 : 1.15
     });
 
+    const hId = fighter?.heroId || '';
+    const isDecluttered =
+      hId === 'titan' ||
+      hId === 'reaper' ||
+      hId === 'archer' ||
+      hId === 'icemage' ||
+      hId === 'android';
+
     // Immediate special-cast burst around the head & shoulders (skip circular shockwave ring for abyssal Reaper & chrono)
-    if (theme !== 'abyssal' && theme !== 'chrono') {
+    if (!isDecluttered && theme !== 'abyssal' && theme !== 'chrono') {
       this.spawnShockwave(fighter.x, fighter.y - 105, isUltimate ? 145 : 95, palette.main, isUltimate ? 0.48 : 0.34, false);
     }
-    this.spawnBurst(fighter.x, fighter.y - 105, isUltimate ? 22 : 12, palette.core, isUltimate ? 250 : 175, {
-      upBias: 90,
-      size: isUltimate ? 7 : 5
-    });
-    this.spawnGlyphBurst(fighter.x, fighter.y - 115, isUltimate ? 8 : 5, theme);
+    this.spawnBurst(
+      fighter.x,
+      fighter.y - 105,
+      isDecluttered ? (isUltimate ? 8 : 4) : isUltimate ? 22 : 12,
+      palette.core,
+      isUltimate ? 250 : 175,
+      {
+        upBias: 90,
+        size: isDecluttered ? (isUltimate ? 5.5 : 4) : isUltimate ? 7 : 5
+      }
+    );
+    const castGlyphCount = isDecluttered ? (isUltimate ? 3 : 0) : isUltimate ? 8 : 5;
+    if (castGlyphCount > 0) {
+      this.spawnGlyphBurst(fighter.x, fighter.y - 115, castGlyphCount, theme);
+    }
   }
 
   update(dt, groundY, renderer, audio = null) {
@@ -486,6 +525,28 @@ export class VFXManager {
       ca.life += dt;
       if (!ca.fighter || ca.fighter.isDead || ca.life >= ca.maxLife) {
         this.castAuras.splice(i, 1);
+        continue;
+      }
+      const caHeroId = ca.fighter.heroId || '';
+      const caDecluttered =
+        caHeroId === 'titan' ||
+        caHeroId === 'reaper' ||
+        caHeroId === 'archer' ||
+        caHeroId === 'icemage' ||
+        caHeroId === 'android';
+      if (caDecluttered) {
+        if (Math.random() < (ca.isUltimate ? 0.35 : 0.18)) {
+          this.spawnParticle({
+            x: ca.fighter.x + (Math.random() - 0.5) * 90,
+            y: ca.fighter.y - 18 - Math.random() * 110,
+            vx: (Math.random() - 0.5) * 45,
+            vy: -135 - Math.random() * 95,
+            size: ca.isUltimate ? 6 : 4.5,
+            color: Math.random() > 0.35 ? ca.mainColor : ca.coreColor,
+            maxLife: 0.36,
+            gravity: -65
+          });
+        }
         continue;
       }
       const pCount = ca.isUltimate ? 2 : 1;

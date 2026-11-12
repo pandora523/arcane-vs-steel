@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps70';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps70';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps70';
+import { Fighter } from './Fighter.js?v=30fps71';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps71';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps71';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps70';
+} from '../engine/shaders/sylvanShaders.js?v=30fps71';
 
 /**
  * Sylvara (`archer`) — Elven Tempest Bowmaster & Astral Star-Ranger.
@@ -61,7 +61,7 @@ export class Archer extends Fighter {
     if (typeof Image !== 'undefined') {
       const archerAssets = PixelForge.initAssets()?.archer;
       if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps62')) {
-        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps70';
+        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps71';
       }
     }
 
@@ -283,11 +283,6 @@ export class Archer extends Fighter {
       game.vfx.spawnDamageText(this.x, this.y - 120, 0, false, 'GALE STRIDE!', '#34d399');
     }
 
-    this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
-      palette: SYLVAN_EMERALD_PALETTE,
-      light: 1.0,
-      extra: { radius: 22 }
-    });
     this.fx.spawn('zephyrVaultSlipstream', this.x - this.facing * 16, this.y - 102, {
       follow: this,
       offsetX: -16,
@@ -337,9 +332,9 @@ export class Archer extends Fighter {
 
       if (airU > 0.08 && airU < 0.88) {
         this._afterimageTimer += dt;
-        if (this._afterimageTimer >= 0.085) {
+        if (this._afterimageTimer >= 0.16) {
           this._afterimageTimer = 0;
-          this.spawnAfterimage(this.x, this.y, this.facing, 8, Math.min(29, Math.floor(u * 30)), 0.22);
+          this.spawnAfterimage(this.x, this.y, this.facing, 8, Math.min(29, Math.floor(u * 30)), 0.18);
         }
       }
 
@@ -383,11 +378,6 @@ export class Archer extends Fighter {
         this.isFlipVault = false;
         this.flipAngle = 0;
         this.isInvulnerable = false;
-        this.fx.spawn('zephyrGroundBurst', this.x, this.groundY, {
-          palette: SYLVAN_EMERALD_PALETTE,
-          light: 1.0,
-          extra: { radius: 22 }
-        });
         this.setState('IDLE');
       }
       return;
@@ -396,10 +386,10 @@ export class Archer extends Fighter {
     // Row 6 (30-frame DASH — Gale Stride): mid-dash snap-shot at F14 (`t >= 0.20`)
     this.x += this.dashDir * 295 * dt;
     this._afterimageTimer += dt;
-    if (this._afterimageTimer >= 0.09) {
+    if (this._afterimageTimer >= 0.16) {
       this._afterimageTimer = 0;
       const col = Math.min(29, Math.floor((t / Math.max(0.1, this.dashDuration)) * 30));
-      this.spawnAfterimage(this.x, this.y, this.facing, 6, col, 0.2);
+      this.spawnAfterimage(this.x, this.y, this.facing, 6, col, 0.18);
     }
 
     if (t >= 0.20 && !this.didActionFrame && enemy && !enemy.isDead) {
@@ -562,18 +552,6 @@ export class Archer extends Fighter {
       }
     }
 
-    if (!this.isDead && this.state === 'WALK') {
-      this.stepTimer += dt;
-      if (this.stepTimer >= 0.34) {
-        this.stepTimer = 0;
-        this.fx.spawn('zephyrGroundBurst', this.x - this.facing * 14, this.groundY, {
-          palette: SYLVAN_EMERALD_PALETTE,
-          light: 0.85,
-          extra: { radius: 13 }
-        });
-      }
-    }
-
     if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
       const ww = game?.renderer ? game.renderer.worldWidth : 1200;
       const dist = Math.abs(enemy.x - this.x);
@@ -636,7 +614,7 @@ export class Archer extends Fighter {
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 165) {
           const ww = game?.renderer ? game.renderer.worldWidth : 1200;
           enemy.takeDamage(46, this, false, 140, -60);
-          this.spawnVfxAnim(0, enemy.x, (enemy.groundY || this.groundY) - 96, 196, 196, 0.36, {
+          this.spawnVfxAnim(0, enemy.x, (enemy.groundY || this.groundY) - 96, 176, 176, 0.30, {
             flipX: this.facing < 0,
             inFront: true
           });
@@ -659,15 +637,9 @@ export class Archer extends Fighter {
         const isDragonPiercer = comboStage === 2;
         const baseDamage = 118;
 
-        // Stage 0 / Muzzle Flash (`archer_vfx.png` Row 0)
-        this.spawnVfxAnim(0, spawnX, spawnY, 188, 188, 0.34, {
-          flipX: this.facing < 0,
-          inFront: true
-        });
-
         // Stage 2: Charged Dragon-Piercer (`isCrit = true`, `1.30x` damage, `spawnVfxAnim(3, ...)`)
         if (isDragonPiercer) {
-          this.spawnVfxAnim(3, this.x + this.facing * 56, this.y - 96, 208, 208, 0.42, {
+          this.spawnVfxAnim(3, this.x + this.facing * 56, this.y - 96, 176, 176, 0.36, {
             flipX: this.facing < 0,
             inFront: true
           });
@@ -1149,24 +1121,24 @@ export class Archer extends Fighter {
       // During `0.20s .. 2.80s`: converging emerald/gold star-motes toward the drawn Celestial Greatbow Muzzle (zero damage ticks!)
       if (t >= 0.20 && t <= 2.80) {
         this._trueUltMoteTimer += dt;
-        if (this._trueUltMoteTimer >= 0.08) {
+        if (this._trueUltMoteTimer >= 0.18) {
           this._trueUltMoteTimer = 0;
           const muzzleX = this.x + this.facing * 38;
           const muzzleY = this.y - 96;
           if (game?.vfx?.spawnParticles) {
-            game.vfx.spawnParticles(muzzleX, muzzleY, 4, '#34d399');
+            game.vfx.spawnParticles(muzzleX, muzzleY, 2, '#34d399');
           } else if (game?.vfx?.spawnParticle) {
-            for (let i = 0; i < 4; i++) {
-              const ang = (Math.PI * 2 * i) / 4 + t * 5.0;
-              const rad = 76;
+            for (let i = 0; i < 2; i++) {
+              const ang = Math.PI * i + t * 5.0;
+              const rad = 72;
               game.vfx.spawnParticle({
                 x: muzzleX + Math.cos(ang) * rad,
                 y: muzzleY + Math.sin(ang) * rad,
                 vx: -Math.cos(ang) * 190,
                 vy: -Math.sin(ang) * 190,
-                size: 5,
+                size: 4.5,
                 color: i % 2 === 0 ? '#34d399' : '#fef08a',
-                maxLife: 0.36
+                maxLife: 0.34
               });
             }
           }
@@ -1221,7 +1193,7 @@ export class Archer extends Fighter {
           if (relX >= -110 || Math.abs(tFoe.x - this._trueUltTargetX) <= 260) {
             tFoe.takeDamage(760, this, true, 320, -240);
             hitAny = true;
-            this.spawnVfxAnim(3, tFoe.x, (tFoe.groundY || this.groundY) - 96, 236, 236, 0.48, {
+            this.spawnVfxAnim(3, tFoe.x, (tFoe.groundY || this.groundY) - 96, 212, 212, 0.42, {
               flipX: this.facing < 0,
               inFront: true
             });
@@ -1276,7 +1248,7 @@ export class Archer extends Fighter {
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.94));
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.42));
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.20));
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
       ctx.restore();
     }
@@ -1292,7 +1264,7 @@ export class Archer extends Fighter {
     // 1. Crisp Emerald-Starlight Zephyr Afterimages (`JUMP` Vault & `DASH` Gale Stride)
     if (this.afterimages.length > 0 && sprites?.sheet?.complete) {
       for (const img of this.afterimages) {
-        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.48);
+        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.28);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.translate(Math.round(img.x / 4) * 4, Math.round(img.y / 4) * 4);
@@ -1363,7 +1335,7 @@ export class Archer extends Fighter {
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.96));
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.45));
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.20));
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
       ctx.restore();
     }

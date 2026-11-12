@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps70';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps70';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps70';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps70';
+import { Fighter } from './Fighter.js?v=30fps71';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps71';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps71';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps71';
 
 /**
  * Glacia / Lyra (`icemage`) — Cryo Sovereign & Borealis Prism Weaver.
@@ -73,7 +73,7 @@ export class IceMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
       if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps50')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps70';
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps71';
       }
     }
   }
@@ -152,11 +152,11 @@ export class IceMage extends Fighter {
         }
       });
       this.fx.burst(p1.x, p1.y, {
-        count: 6,
+        count: 2,
         speedMin: 30,
-        speedMax: 96,
-        lifeMin: 0.14,
-        lifeMax: 0.28,
+        speedMax: 84,
+        lifeMin: 0.12,
+        lifeMax: 0.22,
         gravity: 25,
         colors: ['#ffffff', '#bae6fd', '#67e8f9', '#e879f9']
       });
@@ -165,40 +165,37 @@ export class IceMage extends Fighter {
 
   onProjectileTrail(p) {
     if (!this.fx || p.type !== 'cryo_shard') return;
-    if (p.ringTimer >= 0.048) {
+    if (p.ringTimer >= 0.14) {
       p.ringTimer = 0;
       this.fx.burst(p.x - Math.sign(p.vx || 1) * 16, p.y, {
-        count: 3,
-        speedMin: 22,
-        speedMax: 68,
-        lifeMin: 0.15,
-        lifeMax: 0.28,
-        gravity: -12,
-        spread: 1.05,
+        count: 1,
+        speedMin: 20,
+        speedMax: 52,
+        lifeMin: 0.12,
+        lifeMax: 0.20,
+        gravity: -10,
+        spread: 0.75,
         angle: Math.atan2(-(p.vy || 0), -(p.vx || 1)),
         colors: ['#ffffff', '#bae6fd', '#67e8f9', '#e879f9']
       });
     }
   }
 
-  onProjectileHit(p, _hitTarget, isCrit, game) {
+  onProjectileHit(p, _hitTarget, isCrit, _game) {
     if (!this.fx) return false;
     this.fx.spawn('absoluteZeroShatterBurst', p.x, p.y, {
-      light: isCrit ? 1.38 : 1.22,
+      light: isCrit ? 1.32 : 1.16,
       extra: { isLarge: Boolean(isCrit) }
     });
     this.fx.burst(p.x, p.y, {
-      count: isCrit ? 18 : 12,
-      speedMin: 50,
-      speedMax: isCrit ? 210 : 165,
-      lifeMin: 0.16,
-      lifeMax: 0.34,
+      count: isCrit ? 6 : 3,
+      speedMin: 45,
+      speedMax: isCrit ? 175 : 135,
+      lifeMin: 0.14,
+      lifeMax: 0.26,
       gravity: 75,
       colors: ['#ffffff', '#bae6fd', '#67e8f9', '#38bdf8', '#e879f9']
     });
-    if (game?.vfx) {
-      game.vfx.spawnGlyphBurst(p.x, p.y, isCrit ? 6 : 4, 'glacial');
-    }
     return true;
   }
 
@@ -237,17 +234,14 @@ export class IceMage extends Fighter {
     this.cryoPrisms.push(prism);
     if (this.fx) {
       this.fx.burst(clampedX, clampedY, {
-        count: 8,
-        speedMin: 28,
-        speedMax: 85,
-        lifeMin: 0.16,
-        lifeMax: 0.3,
-        gravity: -10,
+        count: 3,
+        speedMin: 24,
+        speedMax: 68,
+        lifeMin: 0.14,
+        lifeMax: 0.24,
+        gravity: -8,
         colors: ['#ffffff', '#bae6fd', '#67e8f9', '#e879f9']
       });
-    }
-    if (game && game.vfx) {
-      game.vfx.spawnGlyphBurst(clampedX, clampedY, 4, 'glacial');
     }
     return prism;
   }
@@ -347,16 +341,16 @@ export class IceMage extends Fighter {
       if (game.vfx) {
         game.vfx.spawnDamageText(enemy.x, enemy.y - 172, 0, true, '★ ABSOLUTE ZERO SHATTER! ★', '#67e8f9');
         this.spawnPixelFrostRing(enemy.x, enemy.y - 96, 118, '#67e8f9', 0.32, false, true);
-        game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 8, 'glacial');
+        game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 3, 'glacial');
       }
     }
     if (this.fx) {
       this.fx.burst(enemy.x, enemy.y - 96, {
-        count: 22,
-        speedMin: 60,
-        speedMax: 240,
-        lifeMin: 0.18,
-        lifeMax: 0.4,
+        count: 9,
+        speedMin: 55,
+        speedMax: 195,
+        lifeMin: 0.16,
+        lifeMax: 0.32,
         gravity: 85,
         colors: ['#ffffff', '#bae6fd', '#67e8f9', '#e879f9']
       });
@@ -487,7 +481,6 @@ export class IceMage extends Fighter {
     if (game && game.audio) game.audio.play('frost_cast', this.x);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(this.x, this.y - 135, 0, false, 'AXEL PRISM VAULT!', '#67e8f9');
-      game.vfx.spawnGlyphBurst(this.x, this.y - 60, 6, 'glacial');
     }
   }
 
@@ -513,7 +506,6 @@ export class IceMage extends Fighter {
 
     if (game && game.audio) game.audio.play('frost_cast', wallX);
     if (game && game.vfx) {
-      game.vfx.spawnGlyphBurst(wallX, this.groundY - 78, 6, 'glacial');
       game.vfx.spawnDamageText(this.x, this.y - 128, 0, false, 'REFRACTIVE ICE-WALL!', '#a5f3fc');
     }
   }
@@ -534,7 +526,6 @@ export class IceMage extends Fighter {
 
     if (game && game.audio) game.audio.play('frost_cast', this.x);
     if (game && game.vfx) {
-      game.vfx.spawnGlyphBurst(this.x, this.y - 88, 6, 'glacial');
       game.vfx.spawnDamageText(this.x, this.y - 144, 0, false, 'PERMAFROST SKATE!', '#67e8f9');
     }
   }
@@ -576,7 +567,6 @@ export class IceMage extends Fighter {
 
     if (game && game.audio) game.audio.play('frost_cast', decoyX);
     if (game && game.vfx) {
-      game.vfx.spawnGlyphBurst(decoyX, this.y - 92, 7, 'glacial');
       game.vfx.spawnDamageText(decoyX, this.y - 156, 0, false, 'FROST STATUE DECOY!', '#a5f3fc');
     }
   }
@@ -594,11 +584,11 @@ export class IceMage extends Fighter {
 
     if (this.fx) {
       this.fx.burst(d.x, d.y - 92, {
-        count: 18,
-        speedMin: 55,
-        speedMax: 225,
-        lifeMin: 0.18,
-        lifeMax: 0.38,
+        count: 6,
+        speedMin: 50,
+        speedMax: 185,
+        lifeMin: 0.16,
+        lifeMax: 0.30,
         gravity: 80,
         colors: ['#ffffff', '#bae6fd', '#67e8f9', '#e879f9']
       });
@@ -606,7 +596,6 @@ export class IceMage extends Fighter {
     if (game) {
       if (game.audio) game.audio.play('ice_shatter', d.x);
       if (game.vfx) {
-        game.vfx.spawnGlyphBurst(d.x, d.y - 92, 7, 'glacial');
         game.vfx.spawnDamageText(d.x, d.y - 162, 0, false, 'DECOY SHATTER NOVA!', '#67e8f9');
       }
     }
@@ -842,7 +831,6 @@ export class IceMage extends Fighter {
             this.iceWall.refractedCount++;
             if (game.audio) game.audio.play('ice_shatter', origX);
             game.vfx.spawnDamageText(origX, origY - 36, 0, false, 'PRISM WALL REFRACT!', '#67e8f9');
-            game.vfx.spawnGlyphBurst(origX, origY, 5, 'glacial');
             this.fx?.spawn('absoluteZeroShatterBurst', origX, origY, {
               light: 1.28,
               extra: { isLarge: false }
@@ -937,16 +925,16 @@ export class IceMage extends Fighter {
       }
     }
 
-    if (!this.isDead && this.state === 'WALK') {
+    if (!this.isDead && this.state === 'WALK' && onPermafrost) {
       this.stepDustTimer += dt;
-      if (this.stepDustTimer >= 0.28) {
+      if (this.stepDustTimer >= 0.42) {
         this.stepDustTimer = 0;
         this.fx.burst(this.x - this.facing * 12, this.groundY - 4, {
-          count: onPermafrost ? 5 : 3,
-          speedMin: 22,
-          speedMax: 68,
-          lifeMin: 0.14,
-          lifeMax: 0.28,
+          count: 2,
+          speedMin: 20,
+          speedMax: 54,
+          lifeMin: 0.12,
+          lifeMax: 0.22,
           gravity: 40,
           colors: ['#ffffff', '#bae6fd', '#67e8f9', '#e879f9']
         });
@@ -987,9 +975,6 @@ export class IceMage extends Fighter {
         const speed = 675;
 
         if (game.audio) game.audio.play('prism_beam', this.x);
-        if (game.vfx) {
-          game.vfx.spawnGlyphBurst(spawnX, spawnY, 5, 'glacial');
-        }
 
         if (this.cryoPrisms.length < 2 || mode === 2) {
           const prismX = this.x + this.facing * (145 + (this.comboStep % 2) * 85);
@@ -1105,7 +1090,6 @@ export class IceMage extends Fighter {
           this.applyBrittleFrost(enemy, 2, game, tx, ty - 96);
           if (game.vfx) {
             game.vfx.spawnDamageText(enemy.x, enemy.y - 162, 0, false, 'TRI-PRISM LASER CAGE!', '#67e8f9');
-            game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 8, 'glacial');
           }
           if (game.renderer) game.renderer.triggerShake(10, 0.18);
         }
@@ -1193,7 +1177,7 @@ export class IceMage extends Fighter {
         const d1 = isVanguard ? 36 : isHarvester ? 39 : isGroundedCaster ? 42 : 44;
         enemy.takeDamage(d1, this, false, -20, 0);
         this.applyBrittleFrost(enemy, 2, game, centerX, this.groundY - 110);
-        game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 8, 'glacial');
+        game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 3, 'glacial');
       }
       if (game?.fighters) {
         for (const foe of game.fighters) {
@@ -1237,7 +1221,7 @@ export class IceMage extends Fighter {
         const d2 = isVanguard ? 42 : isHarvester ? 45 : isGroundedCaster ? 48 : 50;
         enemy.takeDamage(d2, this, true, -25, -45);
         game.vfx.spawnDamageText(cx, this.groundY - 330, 0, false, '7-PRISM ORBITAL CONVERGENCE!', '#e879f9');
-        game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 10, 'glacial');
+        game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 3, 'glacial');
       }
       if (game?.fighters) {
         for (const foe of game.fighters) {
@@ -1266,15 +1250,15 @@ export class IceMage extends Fighter {
       game.vfx.spawnDamageText(cx, this.groundY - 380, 0, true, '★ CATHEDRAL DIAMOND SHATTER! ★', '#a5f3fc');
       this.spawnPixelFrostRing(cx, cy, 240, '#67e8f9', 0.44, false, true);
       this.fx.burst(cx, cy, {
-        count: 34,
+        count: 14,
         speedMin: 80,
-        speedMax: 320,
-        lifeMin: 0.22,
-        lifeMax: 0.48,
+        speedMax: 280,
+        lifeMin: 0.20,
+        lifeMax: 0.40,
         gravity: 95,
         colors: ['#ffffff', '#bae6fd', '#67e8f9', '#38bdf8', '#e879f9']
       });
-      game.vfx.spawnGlyphBurst(cx, cy, 14, 'glacial');
+      game.vfx.spawnGlyphBurst(cx, cy, 5, 'glacial');
 
       this.deployCryoPrism(cx - 140, this.groundY - 155, game, 7.0);
       this.deployCryoPrism(cx, this.groundY - 210, game, 7.0);
@@ -1433,15 +1417,15 @@ export class IceMage extends Fighter {
 
       this.spawnPixelFrostRing(this._trueUltCoffinX, this.groundY - 128, 260, '#67e8f9', 0.48, false, true);
       this.fx?.burst(this._trueUltCoffinX, this.groundY - 128, {
-        count: 42,
-        speedMin: 90,
-        speedMax: 350,
-        lifeMin: 0.24,
-        lifeMax: 0.56,
+        count: 16,
+        speedMin: 85,
+        speedMax: 295,
+        lifeMin: 0.22,
+        lifeMax: 0.44,
         gravity: 85,
         colors: ['#ffffff', '#f0f9ff', '#bae6fd', '#67e8f9', '#38bdf8', '#e879f9']
       });
-      game?.vfx?.spawnGlyphBurst?.(this._trueUltCoffinX, this.groundY - 128, 16, 'glacial');
+      game?.vfx?.spawnGlyphBurst?.(this._trueUltCoffinX, this.groundY - 128, 6, 'glacial');
       game?.vfx?.spawnDamageText?.(
         this._trueUltCoffinX,
         this.groundY - 260,
@@ -1496,21 +1480,17 @@ export class IceMage extends Fighter {
 
     if (renderer && renderer.glowGlacial && glowScale > 0) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * (r === 2 ? 0.32 : 0.48);
-      const gSize = drawSize * glowScale;
+      ctx.globalAlpha = fade * (r === 2 ? 0.16 : 0.22);
+      const gSize = drawSize * Math.min(1.4, glowScale);
       ctx.drawImage(renderer.glowGlacial, -gSize * 0.5, -gSize * 0.5, gSize, gSize);
     }
 
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * (r === 2 ? 0.28 : 0.42);
-    ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, half - 8, half - 8, drawSize + 16, drawSize + 16);
-
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.99;
+    ctx.globalAlpha = fade * 0.96;
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, half, half, drawSize, drawSize);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * (r === 2 ? 0.14 : 0.28);
+    ctx.globalAlpha = fade * (r === 2 ? 0.10 : 0.16);
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, half, half, drawSize, drawSize);
 
     ctx.restore();
@@ -1550,22 +1530,18 @@ export class IceMage extends Fighter {
 
     if (renderer && renderer.glowGlacial && glowScale > 0) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.44;
-      const gW = drawW * glowScale;
-      const gH = drawH * glowScale;
+      ctx.globalAlpha = fade * 0.22;
+      const gW = drawW * Math.min(1.35, glowScale);
+      const gH = drawH * Math.min(1.35, glowScale);
       ctx.drawImage(renderer.glowGlacial, -gW * 0.5, -gH * 0.5, gW, gH);
     }
 
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.36;
-    ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, halfW - 6, halfH - 6, drawW + 12, drawH + 12);
-
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = fade * 0.99;
+    ctx.globalAlpha = fade * 0.96;
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, halfW, halfH, drawW, drawH);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.28;
+    ctx.globalAlpha = fade * 0.16;
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, halfW, halfH, drawW, drawH);
 
     ctx.restore();
@@ -1625,7 +1601,7 @@ export class IceMage extends Fighter {
 
       if (renderer && renderer.glowGlacial) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.42;
+        ctx.globalAlpha = fade * 0.18;
         ctx.drawImage(renderer.glowGlacial, rx - rX * 1.25, ry - 48, rX * 2.5, 96);
       }
 

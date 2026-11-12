@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps70';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps70';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps70';
+import { Fighter } from './Fighter.js?v=30fps71';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps71';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps71';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps70';
+} from '../engine/shaders/abyssalShaders.js?v=30fps71';
 
 /**
  * Malakor v7 (`reaper`) — Gothic Arch-Reaper, Shadow-Burrow Stalker & Sovereign of the Death Covenant.
@@ -144,14 +144,14 @@ export class Reaper extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
-      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps70')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps70';
+      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps71')) {
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps71';
       }
-      if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps70')) {
-        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps70';
+      if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps71')) {
+        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps71';
       }
-      if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps70')) {
-        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps70';
+      if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps71')) {
+        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps71';
       }
     }
   }
@@ -492,34 +492,34 @@ export class Reaper extends Fighter {
 
     if (game && game.vfx) {
       game.vfx.spawnDamageText(this.x, this.y - 144, 0, false, `${label} +${actual}`, '#e879f9');
-      game.vfx.spawnGlyphBurst(this.x, this.y - 98, 5, 'abyssal');
     }
 
     const fromX = sourceEntity ? sourceEntity.x : this.x + this.facing * 120;
     const fromY = sourceEntity ? sourceEntity.y - 96 : this.y - 96;
-    const count = Math.min(4, Math.max(2, Math.round(actual / 8)));
-    for (let i = 0; i < count; i++) {
+    if (this.soulWisps.length < 4) {
       this.soulWisps.push({
-        startX: fromX + (Math.random() - 0.5) * 34,
-        startY: fromY + (Math.random() - 0.5) * 34,
-        arcHeight: -44 - Math.random() * 60 + (i % 2 === 0 ? -22 : 22),
-        life: -i * 0.04,
-        maxLife: 0.46 + Math.random() * 0.14,
-        glowColor: i % 2 === 0 ? 'violet' : 'crimson'
+        startX: fromX + (Math.random() - 0.5) * 24,
+        startY: fromY + (Math.random() - 0.5) * 24,
+        arcHeight: -42 - Math.random() * 38,
+        life: 0,
+        maxLife: 0.42,
+        glowColor: actual >= 12 ? 'crimson' : 'violet'
       });
     }
-    this.fx?.spawn('skeletalChainTetherBeam', fromX, fromY, {
-      light: 1.24,
-      extra: {
-        dx: this.x - fromX,
-        dy: this.y - 96 - fromY,
-        arcH: -56,
-        isCrimson: count % 2 === 0,
-        isComet: true,
-        showClaw: false,
-        customDuration: 0.44
-      }
-    });
+    if (actual >= 12) {
+      this.fx?.spawn('skeletalChainTetherBeam', fromX, fromY, {
+        light: 1.18,
+        extra: {
+          dx: this.x - fromX,
+          dy: this.y - 96 - fromY,
+          arcH: -52,
+          isCrimson: actual >= 18,
+          isComet: true,
+          showClaw: false,
+          customDuration: 0.36
+        }
+      });
+    }
     return this.hp - prevHp;
   }
 
@@ -727,8 +727,8 @@ export class Reaper extends Fighter {
     });
 
     if (g?.vfx) {
-      g.vfx.spawnGlyphBurst(mageX, this.groundY - 88, 9, 'abyssal');
-      g.vfx.spawnGlyphBurst(healerX, this.groundY - 88, 9, 'emerald');
+      g.vfx.spawnGlyphBurst(mageX, this.groundY - 88, 3, 'abyssal');
+      g.vfx.spawnGlyphBurst(healerX, this.groundY - 88, 3, 'emerald');
       g.vfx.spawnDamageText(
         (mageX + healerX) * 0.5,
         this.groundY - 208,
@@ -789,7 +789,7 @@ export class Reaper extends Fighter {
         extra: { isEmpowered: comp.role === 'mage' }
       });
       if (g?.vfx) {
-        g.vfx.spawnGlyphBurst(comp.x, comp.y - 80, 8, comp.role === 'healer' ? 'emerald' : 'abyssal');
+        g.vfx.spawnGlyphBurst(comp.x, comp.y - 80, 3, comp.role === 'healer' ? 'emerald' : 'abyssal');
         g.vfx.spawnDamageText(
           comp.x,
           comp.y - 154,
@@ -843,15 +843,15 @@ export class Reaper extends Fighter {
         orb.x += orb.vx * dt;
         orb.y += orb.vy * dt;
 
-        if (orb.trailTimer >= 0.065) {
+        if (orb.trailTimer >= 0.16) {
           orb.trailTimer = 0;
           this.fx?.burst(orb.x, orb.y, {
-            count: 2,
-            speedMin: 18,
-            speedMax: 52,
-            lifeMin: 0.14,
-            lifeMax: 0.24,
-            gravity: -8,
+            count: 1,
+            speedMin: 16,
+            speedMax: 42,
+            lifeMin: 0.12,
+            lifeMax: 0.20,
+            gravity: -6,
             colors: orb.isEmpowered
               ? ['#04010a', '#d946ef', '#f43f5e', '#6ee7b7']
               : ['#04010a', '#7e22ce', '#d946ef', '#ffffff']
@@ -887,11 +887,6 @@ export class Reaper extends Fighter {
           this.fx?.spawn('darkMageHexImpactNova', orb.x, orb.y, {
             light: orb.isEmpowered ? 1.38 : 1.24,
             extra: { isEmpowered: Boolean(orb.isEmpowered) }
-          });
-          this.spawnVfxAnim(4, orb.x, orb.y, 142, 142, 0.24, {
-            flipX: orb.vx < 0,
-            glowColor: orb.isEmpowered ? 'crimson' : 'violet',
-            inFront: true
           });
           if (game?.audio) game.audio.play('soul_drain', hitFoe.x);
           this.darkMagicOrbs.splice(i, 1);
@@ -1200,7 +1195,7 @@ export class Reaper extends Fighter {
     });
     if (game && game.audio) game.audio.play('soul_drain', this.x);
     if (game && game.vfx) {
-      game.vfx.spawnGlyphBurst(this.x, this.groundY - 18, 8, 'abyssal');
+      game.vfx.spawnGlyphBurst(this.x, this.groundY - 18, 3, 'abyssal');
       game.vfx.spawnDamageText(this.x, this.y - 134, 0, false, '▼ SHADOW BURROW! ▼', '#c084fc');
     }
   }
@@ -1226,7 +1221,6 @@ export class Reaper extends Fighter {
     });
     if (game.audio) game.audio.play('dash_whoosh', this.x);
     if (game.vfx) {
-      game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 6, 'abyssal');
       game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'WRAITH STEP!', '#d946ef');
     }
   }
@@ -1273,7 +1267,6 @@ export class Reaper extends Fighter {
       });
       if (game.audio) game.audio.play('blink', this.x);
       if (game.vfx) {
-        game.vfx.spawnGlyphBurst(this.x, this.y - 60, 7, 'abyssal');
         game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, "REAPER'S GLIDE!", '#e879f9');
       }
       return;
@@ -1316,7 +1309,6 @@ export class Reaper extends Fighter {
       });
       if (game.audio) game.audio.play('blink', this.x);
       if (game.vfx) {
-        game.vfx.spawnGlyphBurst(this.x, this.groundY - 36, 7, 'abyssal');
         game.vfx.spawnDamageText(this.x, this.y - 144, 0, false, 'WRAITH PHASE!', '#e879f9');
       }
       return;
@@ -1343,7 +1335,6 @@ export class Reaper extends Fighter {
     });
     if (game.audio) game.audio.play('soul_drain', this.x);
     if (game.vfx) {
-      game.vfx.spawnGlyphBurst(this.x, this.groundY - 24, 6, 'abyssal');
       game.vfx.spawnDamageText(this.x, this.y - 142, 0, false, 'SHADOW VEIL!', '#e879f9');
     }
   }
@@ -1373,8 +1364,8 @@ export class Reaper extends Fighter {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
 
-      if (u < 0.60 && Math.random() < 0.45) {
-        this.spawnAfterimage(this.x, this.y, this.facing, 8, Math.min(29, Math.floor(u * 29)), 0.24);
+      if (u < 0.60 && Math.random() < 0.16) {
+        this.spawnAfterimage(this.x, this.y, this.facing, 8, Math.min(29, Math.floor(u * 29)), 0.18);
       }
 
       if (u >= 0.58 && !this.didActionFrame) {
@@ -1388,17 +1379,11 @@ export class Reaper extends Fighter {
           light: 1.40,
           extra: { radiusWorld: 144, isCrimson: true, isCross: true, isUppercut: false }
         });
-        this.spawnVfxAnim(4, cx, cy, 208, 208, 0.34, {
-          flipX: this.facing < 0,
-          glowColor: 'crimson',
-          inFront: true
-        });
-        this.spawnGroundedBoneSpire(cx, 208, 0.48, {
+        this.spawnGroundedBoneSpire(cx, 192, 0.44, {
           flipX: this.facing < 0,
           glowColor: 'crimson',
           inFront: false
         });
-        if (game.vfx) game.vfx.spawnGlyphBurst(cx, cy, 7, 'abyssal');
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 210) {
           const missingRatio = Math.max(0, Math.min(1, 1 - enemy.hp / enemy.maxHp));
@@ -1433,8 +1418,8 @@ export class Reaper extends Fighter {
       if (enemy) {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
-      if (Math.random() < 0.52) {
-        this.spawnAfterimage(this.x, this.groundY, this.facing, 6, 12, 0.20);
+      if (Math.random() < 0.18) {
+        this.spawnAfterimage(this.x, this.groundY, this.facing, 6, 12, 0.16);
       }
 
       if (t >= this.dashDuration) {
@@ -1453,8 +1438,8 @@ export class Reaper extends Fighter {
     const speed = this.state === 'DASH' ? 495 : 435;
     this.x += this.dashDir * speed * dt;
 
-    if (Math.random() < 0.45) {
-      this.spawnAfterimage(this.x, this.groundY, this.facing, 6, 14, 0.18);
+    if (Math.random() < 0.16) {
+      this.spawnAfterimage(this.x, this.groundY, this.facing, 6, 14, 0.16);
     }
 
     if (
@@ -1473,11 +1458,6 @@ export class Reaper extends Fighter {
         flip: this.facing < 0,
         light: 1.28,
         extra: { radiusWorld: 128, isCrimson: false, isUppercut: false }
-      });
-      this.spawnVfxAnim(0, this.x + this.facing * 48, this.y - 96, 176, 176, 0.28, {
-        flipX: this.facing < 0,
-        glowColor: 'violet',
-        inFront: true
       });
     }
 
@@ -1964,15 +1944,6 @@ export class Reaper extends Fighter {
       if (this.stepDustTimer >= 0.32) {
         this.stepDustTimer = 0;
         if (game?.audio) game.audio.play('footstep_steel', this.x);
-        this.fx?.burst(this.x - this.facing * 14, this.groundY - 2, {
-          count: 3,
-          speedMin: 28,
-          speedMax: 75,
-          lifeMin: 0.14,
-          lifeMax: 0.26,
-          gravity: 25,
-          colors: ['#ffffff', '#d946ef', '#f43f5e']
-        });
       }
     }
 
@@ -2017,11 +1988,6 @@ export class Reaper extends Fighter {
             isUppercut: mode === 1
           }
         });
-        this.spawnVfxAnim(0, cx, cy, 196, 196, 0.32, {
-          flipX: this.facing < 0,
-          glowColor: mode === 2 ? 'crimson' : 'violet',
-          inFront: true
-        });
 
         if (mode === 0) {
           // Stage 1: Launch mid-range Crescent Soul-Wave (`Row 0`) if enemy is outside point-blank!
@@ -2050,7 +2016,7 @@ export class Reaper extends Fighter {
           if (game.audio) game.audio.play('scythe_reap', this.x);
           this.spawnThanatosStand(0.56, 276);
           this.spawnBoomerangScythe();
-          this.spawnVfxAnim(4, cx, cy, 212, 212, 0.34, {
+          this.spawnVfxAnim(4, cx, cy, 172, 172, 0.28, {
             flipX: this.facing < 0,
             glowColor: 'crimson',
             inFront: true
@@ -2059,8 +2025,6 @@ export class Reaper extends Fighter {
             game.vfx.spawnDamageText(this.x, this.y - 150, 0, false, '★ THANATOS CROSS-REAP! ★', '#e879f9');
           }
         }
-
-        if (game.vfx) game.vfx.spawnGlyphBurst(cx, cy, 5, 'abyssal');
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 50) {
           const isCrit = mode === 2 || Math.random() < 0.24;
@@ -3061,7 +3025,7 @@ export class Reaper extends Fighter {
         : renderer?.glowViolet || renderer?.glowPurple || renderer?.glowCrimson;
     if (glowSprite) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.42);
+      ctx.globalAlpha = Math.min(1, alpha * 0.20);
       const gw = Math.round(w * 1.15);
       const gh = Math.round(h * 1.15);
       ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
@@ -3072,7 +3036,7 @@ export class Reaper extends Fighter {
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * 0.48);
+    ctx.globalAlpha = Math.min(1, alpha * 0.22);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.restore();
@@ -3196,7 +3160,7 @@ export class Reaper extends Fighter {
     // 1. Crisp Un-Rotated HD-2D Wraith Afterimage Silhouettes & Wraith Executioner Clones
     if (sprites?.sheet?.complete) {
       for (const img of this.afterimages) {
-        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.52);
+        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.28);
         const sc = img.scale || 1.0;
         ctx.save();
         ctx.imageSmoothingEnabled = false;
@@ -3856,9 +3820,9 @@ export class Reaper extends Fighter {
           col,
           ox,
           oy,
-          44,
-          44,
-          0.88,
+          28,
+          28,
+          0.72,
           false,
           renderer,
           isMaxCrimson ? 'crimson' : 'violet'
@@ -3999,9 +3963,9 @@ export class Reaper extends Fighter {
           col,
           wx,
           wy,
-          92,
-          92,
-          fade * 0.94,
+          56,
+          56,
+          fade * 0.78,
           tx < w.startX,
           renderer,
           w.glowColor || 'violet'

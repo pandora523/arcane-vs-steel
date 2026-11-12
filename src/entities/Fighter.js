@@ -610,14 +610,21 @@ export class Fighter {
     this.torsoVel += force * dt;
     this.torsoAngle += this.torsoVel * dt;
 
-    // Ambient Aura & Desperation Overdrive Particles
-    if (!this.isFullyBurrowed && Math.random() < (this.isBerserk ? 0.56 : 0.28)) {
+    // Ambient Aura & Desperation Overdrive Particles (decluttered for the 5 custom-shader heroes)
+    const isDeclutteredHero =
+      this.heroId === 'titan' ||
+      this.heroId === 'reaper' ||
+      this.heroId === 'archer' ||
+      this.heroId === 'icemage' ||
+      this.heroId === 'android';
+    const ambientChance = isDeclutteredHero ? (this.isBerserk ? 0.10 : 0) : this.isBerserk ? 0.56 : 0.28;
+    if (!this.isFullyBurrowed && ambientChance > 0 && Math.random() < ambientChance) {
       game.vfx.spawnParticle({
         x: this.x + (Math.random() - 0.5) * (this.isBerserk ? 48 : 34),
         y: this.y - Math.random() * (this.isBerserk ? 85 : 60),
         vx: (Math.random() - 0.5) * 24,
         vy: -38 - Math.random() * (this.isBerserk ? 55 : 35),
-        size: this.isBerserk ? 5 : 3.5,
+        size: isDeclutteredHero ? 3.5 : this.isBerserk ? 5 : 3.5,
         color: this.isBerserk && Math.random() < 0.45 ? '#facc15' : this.primaryColor,
         maxLife: 0.55
       });
