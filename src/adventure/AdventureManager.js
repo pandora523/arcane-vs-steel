@@ -1,6 +1,6 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps83';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps83';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps83';
+import { Fighter } from '../entities/Fighter.js?v=30fps84';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps84';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps84';
 
 export const ADVENTURE_WORLD_WIDTH = 4800;
 export const ADVENTURE_DEPTH_MIN_Y = 442;
@@ -359,8 +359,8 @@ export class AdventureManager {
             ictx,
             heroKey,
             slot,
-            canvas.width || 56,
-            canvas.height || 56,
+            canvas.width || 64,
+            canvas.height || 64,
             0
           );
         }
@@ -371,6 +371,9 @@ export class AdventureManager {
       }
     }
     this._renderedIconHero = heroKey;
+    this._renderedMageIconsReady = Boolean(
+      PixelForge.assets?.mage?.icons?.complete && PixelForge.assets.mage.icons.naturalWidth >= 448
+    );
   }
 
   syncControlDeckUI() {
@@ -401,7 +404,13 @@ export class AdventureManager {
     if (!player) return;
 
     const heroKey = player.heroId || 'mage';
-    if (this._renderedIconHero !== heroKey) {
+    const mageIconsNowReady =
+      heroKey === 'mage' &&
+      Boolean(PixelForge.assets?.mage?.icons?.complete && PixelForge.assets.mage.icons.naturalWidth >= 448);
+    if (
+      this._renderedIconHero !== heroKey ||
+      (heroKey === 'mage' && mageIconsNowReady && !this._renderedMageIconsReady)
+    ) {
       this.refreshActionIcons(heroKey);
     }
 
@@ -511,6 +520,7 @@ export class AdventureManager {
     this.dodgeCdMax = Math.max(0.5, (playerFighter.dodgeMaxCooldown || 3.2) * 0.72);
     this.crouchCdMax = 3.2;
     this._renderedIconHero = null;
+    this._renderedMageIconsReady = false;
 
     const renderer = this.game.renderer;
     if (renderer) {
@@ -1370,20 +1380,23 @@ export class AdventureManager {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Compact 4-Zone Campaign Progress Strip under Top Center Crest
-    const stripW = Math.min(360, Math.round(w * 0.44));
+    // 1. Compact 4-Zone Campaign Progress Strip under Top Center Crest & Utility Pill
+    const stripW = Math.min(renderer.isMobileLandscape ? 290 : 360, Math.round(w * 0.42));
+    const stripH = renderer.isMobileLandscape ? 15 : 18;
     const stripX = Math.round((w - stripW) * 0.5);
-    const stripY = renderer.isMobile ? 54 : 68;
+    const stripY = renderer.isMobileLandscape ? 68 : renderer.isMobile ? 96 : 68;
     ctx.fillStyle = 'rgba(6, 9, 18, 0.82)';
-    ctx.fillRect(stripX, stripY, stripW, 18);
+    ctx.fillRect(stripX, stripY, stripW, stripH);
     ctx.strokeStyle = '#d4af37';
     ctx.lineWidth = 1;
-    ctx.strokeRect(stripX, stripY, stripW, 18);
+    ctx.strokeRect(stripX, stripY, stripW, stripH);
 
     const segW = Math.floor((stripW - 16) / 4);
+    const segH = renderer.isMobileLandscape ? 9 : 10;
+    const segPadY = renderer.isMobileLandscape ? 3 : 4;
     for (let i = 0; i < 4; i++) {
       const sx = stripX + 4 + i * (segW + 2);
-      const sy = stripY + 4;
+      const sy = stripY + segPadY;
       const cleared = this.zonesCleared[i];
       const current = this.zoneIndex === i;
       ctx.fillStyle = cleared
@@ -1393,28 +1406,30 @@ export class AdventureManager {
             ? '#ef4444'
             : '#fb923c'
           : '#1e293b';
-      ctx.fillRect(sx, sy, segW, 10);
+      ctx.fillRect(sx, sy, segW, segH);
       ctx.font = '7px "ArcanePixel", "Press Start 2P", monospace';
       ctx.textAlign = 'center';
       ctx.fillStyle = current || cleared ? '#ffffff' : '#94a3b8';
-      ctx.fillText(i === 3 ? 'BOSS' : `Z${i + 1}`, sx + Math.floor(segW * 0.5), sy + 8);
+      ctx.fillText(i === 3 ? 'BOSS' : `Z${i + 1}`, sx + Math.floor(segW * 0.5), sy + (renderer.isMobileLandscape ? 7 : 8));
     }
 
     // 2. Classic Marvel/Capcom Flashing `"GO! ➔"` Arcade Advance Prompt
     if (this.goPromptActive && !this.game.isMatchOver) {
       const blink = Math.sin(t * 9.5) > -0.25;
       if (blink) {
-        const gx = w - (renderer.isMobile ? 128 : 168);
-        const gy = Math.round(h * 0.36);
+        const gx = w - (renderer.isMobileLandscape ? 212 : renderer.isMobile ? 128 : 168);
+        const gy = Math.round(h * (renderer.isMobileLandscape ? 0.30 : 0.36));
         const shift = Math.round(Math.sin(t * 8.0) * 6);
 
         ctx.fillStyle = 'rgba(9, 12, 22, 0.90)';
-        ctx.fillRect(gx - 88 + shift, gy - 22, 162, 42);
+        ctx.fillRect(gx - 88 + shift, gy - 20, 162, 38);
         ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 2;
-        ctx.strokeRect(gx - 88 + shift, gy - 22, 162, 42);
+        ctx.strokeRect(gx - 88 + shift, gy - 20, 162, 38);
 
-        ctx.font = '12px "ArcanePixel", "Press Start 2P", monospace';
+        ctx.font = renderer.isMobileLandscape
+          ? '10px "ArcanePixel", "Press Start 2P", monospace'
+          : '12px "ArcanePixel", "Press Start 2P", monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#fef08a';
         ctx.fillText(`${this.goPromptText} ➔`, gx - 7 + shift, gy + 4);

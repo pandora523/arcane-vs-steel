@@ -1,0 +1,17 @@
+{
+  "name": "Arcane vs. Steel — HD-2D Pixel Arena & Adventure",
+  "short_name": "Arcane vs Steel",
+  "description": "HD-2D 30fps pixel-art arena battler and 4-realm Marvel-arcade Adventure Campaign.",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "orientation": "landscape",
+  "background_color": "#05070c",
+  "theme_color": "#05070c",
+  "icons": [
+    {
+      "src": "assets/sprites/mage_portrait.png",
+      "sizes": "128x128",
+      "type": "image/png"
+    }
+  ]
+}

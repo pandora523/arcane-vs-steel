@@ -1,20 +1,20 @@
-import { Renderer } from './engine/Renderer.js?v=30fps83';
-import { VFXManager } from './engine/VFXManager.js?v=30fps83';
-import { PixelForge } from './engine/PixelForge.js?v=30fps83';
-import { AudioManager } from './engine/AudioManager.js?v=30fps83';
-import { Fighter } from './entities/Fighter.js?v=30fps83';
-import { Warrior } from './entities/Warrior.js?v=30fps83';
-import { FireMage } from './entities/FireMage.js?v=30fps83';
-import { Archer } from './entities/Archer.js?v=30fps83';
-import { Priestess } from './entities/Priestess.js?v=30fps83';
-import { Reaper } from './entities/Reaper.js?v=30fps83';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps83';
-import { Titan } from './entities/Titan.js?v=30fps83';
-import { Ronin } from './entities/Ronin.js?v=30fps83';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps83';
-import { IceMage } from './entities/IceMage.js?v=30fps83';
-import { Android } from './entities/Android.js?v=30fps83';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps83';
+import { Renderer } from './engine/Renderer.js?v=30fps84';
+import { VFXManager } from './engine/VFXManager.js?v=30fps84';
+import { PixelForge } from './engine/PixelForge.js?v=30fps84';
+import { AudioManager } from './engine/AudioManager.js?v=30fps84';
+import { Fighter } from './entities/Fighter.js?v=30fps84';
+import { Warrior } from './entities/Warrior.js?v=30fps84';
+import { FireMage } from './entities/FireMage.js?v=30fps84';
+import { Archer } from './entities/Archer.js?v=30fps84';
+import { Priestess } from './entities/Priestess.js?v=30fps84';
+import { Reaper } from './entities/Reaper.js?v=30fps84';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps84';
+import { Titan } from './entities/Titan.js?v=30fps84';
+import { Ronin } from './entities/Ronin.js?v=30fps84';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps84';
+import { IceMage } from './entities/IceMage.js?v=30fps84';
+import { Android } from './entities/Android.js?v=30fps84';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps84';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -494,8 +494,14 @@ class Game {
       this.slot1Hero = urlHero;
       this.slot2Hero = urlHero === 'archer' ? 'mage' : 'archer';
     }
+    const landscapeParam = params.get('landscape');
+    this.forceMobileLandscapeParam = landscapeParam === '1' || landscapeParam === 'true';
+    this.mobileLandscapeEnabled =
+      landscapeParam === '0' || landscapeParam === 'false' ? false : true;
+
     this.ensureDistinctTeamPartners();
 
+    this.syncMobileLandscapeViewport();
     this.bindUI();
     this.setLandingStep(this.landingStep, false);
     this.syncRosterSelectionUI(false);
@@ -1248,8 +1254,11 @@ class Game {
         const cx = rect.left + rect.width * 0.5;
         const cy = rect.top + rect.height * 0.5;
         const maxRadius = Math.max(24, Math.min(rect.width, rect.height) * 0.36);
-        const dx = (e.clientX - cx) / maxRadius;
-        const dy = (e.clientY - cy) / maxRadius;
+        const rawDx = e.clientX - cx;
+        const rawDy = e.clientY - cy;
+        const isCssRotated = document.documentElement.classList.contains('is-css-rotated-landscape');
+        const dx = (isCssRotated ? rawDy : rawDx) / maxRadius;
+        const dy = (isCssRotated ? -rawDx : rawDy) / maxRadius;
         this.adventure?.setJoystickVector(dx, dy, true);
       };
       const releaseJoy = (e) => {
@@ -1356,6 +1365,125 @@ class Game {
         this.adventure?.clearHeldInputs();
         this.openLanding('roster');
       });
+    }
+
+    const btnMobileLandscape = document.getElementById('btn-mobile-landscape');
+    if (btnMobileLandscape) {
+      btnMobileLandscape.addEventListener('click', () => this.toggleMobileLandscape(true));
+    }
+    const advBtnLandscape = document.getElementById('adv-btn-landscape');
+    if (advBtnLandscape) {
+      advBtnLandscape.addEventListener('click', () => this.toggleMobileLandscape(true));
+    }
+
+    const onViewportChange = () => this.syncMobileLandscapeViewport();
+    window.addEventListener('resize', onViewportChange);
+    window.addEventListener('orientationchange', () => {
+      this.syncMobileLandscapeViewport();
+      setTimeout(() => this.syncMobileLandscapeViewport(), 120);
+    });
+    document.addEventListener('fullscreenchange', onViewportChange);
+  }
+
+  isMobileViewportDevice() {
+    const physW = window.innerWidth;
+    const physH = window.innerHeight;
+    const coarseTouch =
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(hover: none) and (pointer: coarse)').matches;
+    return Boolean(coarseTouch || Math.min(physW, physH) <= 540 || this.forceMobileLandscapeParam);
+  }
+
+  syncMobileLandscapeViewport() {
+    const physW = window.innerWidth;
+    const physH = window.innerHeight;
+    const root = document.documentElement;
+    root.style.setProperty('--phys-w', `${physW}px`);
+    root.style.setProperty('--phys-h', `${physH}px`);
+
+    const isMobileDevice = this.isMobileViewportDevice();
+    const cssRotated = Boolean(isMobileDevice && this.mobileLandscapeEnabled && physW < physH);
+    const activeLandscape = Boolean(isMobileDevice && (this.mobileLandscapeEnabled || physW >= physH));
+
+    root.classList.toggle('is-mobile-device', isMobileDevice);
+    root.classList.toggle('is-css-rotated-landscape', cssRotated);
+    root.classList.toggle('is-mobile-landscape', activeLandscape);
+
+    const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+    const labelText =
+      physW < physH
+        ? this.mobileLandscapeEnabled
+          ? '⛶ LANDSCAPE: ON'
+          : '⟳ LANDSCAPE: OFF'
+        : isFs
+          ? '⛶ FULLSCREEN: ON'
+          : '⛶ FULLSCREEN';
+
+    const navLbl = document.getElementById('mobile-landscape-label');
+    const advLbl = document.getElementById('adv-landscape-label');
+    const navBtn = document.getElementById('btn-mobile-landscape');
+    const advBtn = document.getElementById('adv-btn-landscape');
+    if (navLbl) navLbl.textContent = labelText;
+    if (advLbl) advLbl.textContent = labelText;
+    if (navBtn) {
+      navBtn.classList.toggle('is-landscape-on', activeLandscape || isFs);
+      navBtn.setAttribute('aria-pressed', String(activeLandscape || isFs));
+    }
+    if (advBtn) {
+      advBtn.classList.toggle('is-landscape-on', activeLandscape || isFs);
+      advBtn.setAttribute('aria-pressed', String(activeLandscape || isFs));
+    }
+
+    this.renderer?.resize();
+  }
+
+  toggleMobileLandscape(fromUserGesture = true) {
+    const physW = window.innerWidth;
+    const physH = window.innerHeight;
+    const isFs = Boolean(document.fullscreenElement || document.webkitFullscreenElement);
+
+    if (physW < physH) {
+      this.mobileLandscapeEnabled = !this.mobileLandscapeEnabled;
+      if (this.mobileLandscapeEnabled && fromUserGesture) {
+        const reqFs =
+          document.documentElement.requestFullscreen ||
+          document.documentElement.webkitRequestFullscreen;
+        if (typeof reqFs === 'function' && !isFs) {
+          Promise.resolve(reqFs.call(document.documentElement))
+            .then(() => screen.orientation?.lock?.('landscape')?.catch(() => {}))
+            .catch(() => {});
+        } else {
+          screen.orientation?.lock?.('landscape')?.catch(() => {});
+        }
+      } else if (!this.mobileLandscapeEnabled) {
+        try {
+          screen.orientation?.unlock?.();
+        } catch (_) {
+          // Orientation unlock optional
+        }
+        if (isFs && typeof document.exitFullscreen === 'function') {
+          document.exitFullscreen().catch(() => {});
+        }
+      }
+    } else if (fromUserGesture) {
+      if (!isFs) {
+        this.mobileLandscapeEnabled = true;
+        const reqFs =
+          document.documentElement.requestFullscreen ||
+          document.documentElement.webkitRequestFullscreen;
+        if (typeof reqFs === 'function') {
+          Promise.resolve(reqFs.call(document.documentElement))
+            .then(() => screen.orientation?.lock?.('landscape')?.catch(() => {}))
+            .catch(() => {});
+        }
+      } else if (typeof document.exitFullscreen === 'function') {
+        document.exitFullscreen().catch(() => {});
+      }
+    }
+
+    this.syncMobileLandscapeViewport();
+    if (fromUserGesture && this.audio) {
+      this.audio.play('reflect', 600);
     }
   }
 
@@ -1896,6 +2024,25 @@ class Game {
           const ictx = iconCanvas.getContext('2d');
           PixelForge.drawSkillIcon(ictx, primaryKey, idx, iconCanvas.width, iconCanvas.height, t);
         });
+      }
+
+      const supIconCanvas = document.getElementById(`${prefix}-skill-icon-3`);
+      const supBox = document.getElementById(`${prefix}-true-ult-box`);
+      if (supIconCanvas) {
+        const showSupIcon = primaryKey === 'mage';
+        supIconCanvas.classList.toggle('hidden', !showSupIcon);
+        if (supBox) supBox.classList.toggle('has-supreme-icon', showSupIcon);
+        if (showSupIcon) {
+          const sictx = supIconCanvas.getContext('2d');
+          PixelForge.drawSkillIcon(
+            sictx,
+            'mage',
+            3,
+            supIconCanvas.width,
+            supIconCanvas.height,
+            t
+          );
+        }
       }
     };
 

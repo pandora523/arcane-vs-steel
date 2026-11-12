@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps83';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps83';
+import { PixelForge } from './PixelForge.js?v=30fps84';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps84';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -28,9 +28,13 @@ export class Renderer {
   constructor(canvas) {
     this.canvas = canvas;
     this.ctx = canvas.getContext('2d', { alpha: false });
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
-    this.isMobile = this.width < 768 || this.height < 520;
+    const isCssRotated =
+      typeof document !== 'undefined' &&
+      Boolean(document.documentElement?.classList?.contains('is-css-rotated-landscape'));
+    this.width = isCssRotated ? window.innerHeight : window.innerWidth;
+    this.height = isCssRotated ? window.innerWidth : window.innerHeight;
+    this.isMobile = this.width < 768 || this.height < 540;
+    this.isMobileLandscape = this.isMobile && this.width > this.height;
 
     this.worldWidth = 1200;
     this.groundY = 520;
@@ -288,9 +292,13 @@ export class Renderer {
   }
 
   resize() {
-    this.width = window.innerWidth;
-    this.height = window.innerHeight;
-    this.isMobile = this.width < 768 || this.height < 520;
+    const isCssRotated =
+      typeof document !== 'undefined' &&
+      Boolean(document.documentElement?.classList?.contains('is-css-rotated-landscape'));
+    this.width = isCssRotated ? window.innerHeight : window.innerWidth;
+    this.height = isCssRotated ? window.innerWidth : window.innerHeight;
+    this.isMobile = this.width < 768 || this.height < 540;
+    this.isMobileLandscape = this.isMobile && this.width > this.height;
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     this.canvas.width = Math.round(this.width * dpr);
     this.canvas.height = Math.round(this.height * dpr);
@@ -453,9 +461,18 @@ export class Renderer {
 
       const maxSpanW = this.adventureMode ? 1280 : this.worldWidth;
       const fitScaleX = this.width / Math.max(620, Math.min(maxSpanW, dist));
-      const fitScaleY = this.height / (this.adventureMode ? 760 : 720);
+      const fitScaleY =
+        this.height /
+        (this.isMobileLandscape
+          ? this.adventureMode
+            ? 545
+            : 565
+          : this.adventureMode
+            ? 760
+            : 720);
       let targetZoom = Math.min(fitScaleX, fitScaleY * 1.15);
-      targetZoom = Math.max(0.52, Math.min(this.isMobile ? 0.85 : 1.12, targetZoom));
+      const maxZoomCap = this.isMobileLandscape ? 0.92 : this.isMobile ? 0.85 : 1.12;
+      targetZoom = Math.max(0.52, Math.min(maxZoomCap, targetZoom));
 
       const anchorGroundY =
         this.adventureMode && player && Number.isFinite(player.groundY)
@@ -496,10 +513,8 @@ export class Renderer {
         const winMidX =
           victoryFighters.reduce((sum, f) => sum + f.x, 0) / victoryFighters.length;
         targetX = targetX * 0.20 + winMidX * 0.80;
-        targetZoom = Math.max(
-          0.52,
-          Math.min(this.isMobile ? 0.88 : 1.15, targetZoom * 1.08)
-        );
+        const winZoomCap = this.isMobileLandscape ? 0.95 : this.isMobile ? 0.88 : 1.15;
+        targetZoom = Math.max(0.52, Math.min(winZoomCap, targetZoom * 1.08));
       }
 
       const halfViewW = (this.width * 0.5) / targetZoom;
@@ -553,7 +568,16 @@ export class Renderer {
       this.shakeTime > 0 ? Math.round(Math.cos(this.time * 38) * this.shakeIntensity) : 0;
 
     const screenAnchorY =
-      this.height * (this.adventureMode && this.isMobile ? 0.58 : this.isMobile ? 0.64 : 0.68);
+      this.height *
+      (this.isMobileLandscape
+        ? this.adventureMode
+          ? 0.63
+          : 0.67
+        : this.adventureMode && this.isMobile
+          ? 0.58
+          : this.isMobile
+            ? 0.64
+            : 0.68);
     ctx.translate(this.width * 0.5 + sx, screenAnchorY + sy);
     ctx.scale(this.zoom, this.zoom);
     ctx.translate(-this.camX, -this.camY);

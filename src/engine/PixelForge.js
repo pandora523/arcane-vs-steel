@@ -18,82 +18,83 @@ export class PixelForge {
       arenaSylvan: loadImg('assets/sprites/arena_sylvan.png'),
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
-      arenaInferno: loadImg('assets/sprites/arena_inferno.png?v=30fps83'),
-      arenaSanctuary: loadImg('assets/sprites/arena_sanctuary.png?v=30fps83'),
+      arenaInferno: loadImg('assets/sprites/arena_inferno.png?v=30fps84'),
+      arenaSanctuary: loadImg('assets/sprites/arena_sanctuary.png?v=30fps84'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps83'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps83'),
-        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps84'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps84'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       mage: {
-        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps83'),
-        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps83'),
-        meteor: loadImg('assets/sprites/meteor_cataclysm.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps84'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps84'),
+        meteor: loadImg('assets/sprites/meteor_cataclysm.png?v=30fps84'),
+        icons: loadImg('assets/sprites/mage_icons.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps83'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps84'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps83'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps83'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps84'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps84'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps83'),
-        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps83'),
-        companions: loadImg('assets/sprites/reaper_companions.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/reaper_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps84'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps84'),
+        companions: loadImg('assets/sprites/reaper_companions.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/reaper_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps83'),
-        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps84'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps83'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps84'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       ronin: {
-        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps83'),
-        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps84'),
+        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       valkyrie: {
-        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps83'),
-        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps84'),
+        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       icemage: {
-        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps83'),
-        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps84'),
+        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       android: {
-        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps83'),
-        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps84'),
+        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       ghoul: {
-        sheet: loadImg('assets/sprites/monster_ghoul_sheet.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/monster_ghoul_sheet.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       cultist: {
-        sheet: loadImg('assets/sprites/monster_cultist_sheet.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/monster_cultist_sheet.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       brute: {
-        sheet: loadImg('assets/sprites/monster_brute_sheet.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/monster_brute_sheet.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps84', () => this.refreshPortraits())
       },
       archfiend: {
-        sheet: loadImg('assets/sprites/boss_archfiend_sheet.png?v=30fps83'),
-        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps83', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/boss_archfiend_sheet.png?v=30fps84'),
+        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps84', () => this.refreshPortraits())
       }
     };
 
@@ -810,10 +811,54 @@ export class PixelForge {
   }
 
   /**
-   * Renders 18 purpose-built, crisp 28x28 Pixel-Art RPG Ability Icons (scaled 2x to 56x56)
-   * with rich elemental backgrounds, automatic 1px dark pixel-ink outlines, and animated pixel sparks.
+   * Blits Ignis Sol's remade 64x64 HD-2D RPG ability & action icon sheet (`assets/sprites/mage_icons.png`, 448x64):
+   *   Cell 0: attack (Solar Fireball)
+   *   Cell 1: skill (Triple Solar Pillar)
+   *   Cell 2: overdrive (Eclipse Supernova)
+   *   Cell 3: ultimate (Heavensfall Astral Meteor)
+   *   Cell 4: dodge (Arcane Flame-Blink)
+   *   Cell 5: jump (Solar Phoenix Vault)
+   *   Cell 6: crouch (Flame Ward Aegis)
+   */
+  static drawMageSheetIcon(ctx, cellIdx, w, h, t = 0) {
+    if (!ctx || typeof Image === 'undefined') return false;
+    const icons = this.initAssets()?.mage?.icons;
+    if (!icons || !icons.complete || !icons.naturalWidth || icons.naturalWidth < 448) return false;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, w, h);
+    ctx.drawImage(icons, cellIdx * 64, 0, 64, 64, 0, 0, w, h);
+
+    const b = Math.max(1, Math.round(w / 64));
+    ctx.fillStyle = 'rgba(255, 244, 214, 0.14)';
+    ctx.fillRect(0, 0, w, b);
+    ctx.fillRect(0, 0, b, h);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.42)';
+    ctx.fillRect(0, h - b, w, b);
+    ctx.fillRect(w - b, 0, b, h);
+
+    if (t > 0) {
+      const sparkPhase = Math.floor(t * 3.5) % 2;
+      ctx.fillStyle = sparkPhase === 0 ? '#ffffff' : '#fde047';
+      ctx.fillRect(Math.round(w * 0.14), Math.round(h * 0.14), b * 2, b * 2);
+      ctx.fillRect(Math.round(w * 0.82), Math.round(h * 0.80), b * 2, b * 2);
+    }
+
+    ctx.restore();
+    return true;
+  }
+
+  /**
+   * Renders purpose-built Pixel-Art RPG Ability Icons
+   * (64x64 HD-2D illustrated sprite sheet for Ignis Sol; 28x28 crisp procedural icons for other champions).
    */
   static drawSkillIcon(ctx, heroKey, slotIdx, w, h, t = 0) {
+    if (!ctx) return;
+    if (heroKey === 'mage' && slotIdx >= 0 && slotIdx <= 3) {
+      if (this.drawMageSheetIcon(ctx, slotIdx, w, h, t)) return;
+    }
+
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.clearRect(0, 0, w, h);
@@ -1327,6 +1372,21 @@ export class PixelForge {
    */
   static drawAdventureActionIcon(ctx, heroKey, actionType, w, h, t = 0) {
     if (!ctx) return;
+    if (heroKey === 'mage') {
+      const mageCellMap = {
+        attack: 0,
+        skill: 1,
+        overdrive: 2,
+        ultimate: 3,
+        dodge: 4,
+        jump: 5,
+        crouch: 6
+      };
+      const cellIdx = mageCellMap[actionType];
+      if (cellIdx !== undefined && this.drawMageSheetIcon(ctx, cellIdx, w, h, t)) {
+        return;
+      }
+    }
     if (actionType === 'attack') return this.drawSkillIcon(ctx, heroKey, 0, w, h, t);
     if (actionType === 'skill') return this.drawSkillIcon(ctx, heroKey, 1, w, h, t);
     if (actionType === 'overdrive') return this.drawSkillIcon(ctx, heroKey, 2, w, h, t);

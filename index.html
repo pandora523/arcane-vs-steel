@@ -3,10 +3,15 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#05070c" />
   <title>Arcane vs. Steel — HD-2D Pixel Auto-Battler</title>
   <meta name="description" content="HD-2D pixel-art idle auto-battler featuring articulated 40-frame sprite animations, dynamic lighting, floor reflections, and cinematic ultimates." />
+  <link rel="manifest" href="manifest.json" />
   <link rel="preload" href="assets/fonts/pixel_art.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="style.css?v=30fps83" />
+  <link rel="stylesheet" href="style.css?v=30fps84" />
 </head>
 <body>
   <main id="app" class="is-landing-open" data-landing-step="title">
@@ -142,11 +147,14 @@
 
     <!-- Adventure Mode Mobile Action-RPG HUD: Left Touch Joystick + Right Skill Icon & Cooldown Cluster -->
     <section id="adventure-controls" class="adventure-controls hidden" aria-label="Adventure Touch &amp; Arcade Controls">
-      <!-- Compact Top Utility Pill (Auto-AI, Retry, Roster) -->
+      <!-- Compact Top Utility Pill (Auto-AI, Landscape, Retry, Roster) -->
       <div id="adv-utility-bar" class="adv-utility-bar">
         <button id="adv-btn-autoplay" class="adv-util-btn adv-btn-ai" type="button" aria-pressed="false" title="Toggle Autonomous AI [P]">
           <span class="adv-util-dot"></span>
           <span id="adv-autoplay-label">AI: OFF</span>
+        </button>
+        <button id="adv-btn-landscape" class="adv-util-btn adv-btn-landscape" type="button" title="Toggle Mobile Landscape / Fullscreen">
+          <span id="adv-landscape-label">⛶ LANDSCAPE</span>
         </button>
         <button id="adv-btn-restart" class="adv-util-btn" type="button" title="Restart Campaign">RETRY</button>
         <button id="adv-btn-menu" class="adv-util-btn" type="button" title="Open Champion Roster">ROSTER</button>
@@ -171,18 +179,18 @@
         <!-- Anchor Primary Basic Attack (Largest Bottom-Right Thumb Button, Hold or Tap) -->
         <button id="adv-btn-attack" class="adv-orb-btn adv-orb-attack is-ready" type="button" title="Basic Attack Combo [J / Z]">
           <span class="adv-orb-face">
-            <canvas id="adv-icon-attack" class="adv-skill-icon" width="56" height="56"></canvas>
+            <canvas id="adv-icon-attack" class="adv-skill-icon" width="64" height="64"></canvas>
             <span id="adv-cd-sweep-attack" class="adv-cd-sweep"></span>
             <span id="adv-cd-text-attack" class="adv-cd-timer"></span>
           </span>
-          <span id="adv-tag-attack" class="adv-orb-tag">ATK</span>
+          <span id="adv-tag-attack" class="adv-orb-tag">FIRE</span>
           <span class="adv-key-hint">J</span>
         </button>
 
         <!-- Inner Arc 1 (180° Left of Attack): Arcane Blink / Dodge -->
         <button id="adv-btn-dodge" class="adv-orb-btn adv-orb-dodge" type="button" title="Arcane Blink Dodge [L / Shift]">
           <span class="adv-orb-face">
-            <canvas id="adv-icon-dodge" class="adv-skill-icon" width="56" height="56"></canvas>
+            <canvas id="adv-icon-dodge" class="adv-skill-icon" width="64" height="64"></canvas>
             <span id="adv-cd-sweep-dodge" class="adv-cd-sweep"></span>
             <span id="adv-cd-text-dodge" class="adv-cd-timer"></span>
           </span>
@@ -193,40 +201,40 @@
         <!-- Inner Arc 2 (135° Upper-Left of Attack): Special Skill -->
         <button id="adv-btn-skill" class="adv-orb-btn adv-orb-skill" type="button" title="Special Skill [K / X]">
           <span class="adv-orb-face">
-            <canvas id="adv-icon-skill" class="adv-skill-icon" width="56" height="56"></canvas>
+            <canvas id="adv-icon-skill" class="adv-skill-icon" width="64" height="64"></canvas>
             <span id="adv-cd-sweep-skill" class="adv-cd-sweep"></span>
             <span id="adv-cd-text-skill" class="adv-cd-timer"></span>
           </span>
-          <span id="adv-tag-skill" class="adv-orb-tag">SKILL</span>
+          <span id="adv-tag-skill" class="adv-orb-tag">PILLAR</span>
           <span class="adv-key-hint">K</span>
         </button>
 
         <!-- Inner Arc 3 (90° Above Attack): Overdrive Ultimate -->
         <button id="adv-btn-overdrive" class="adv-orb-btn adv-orb-overdrive" type="button" title="Overdrive Art [U / Q]">
           <span class="adv-orb-face">
-            <canvas id="adv-icon-overdrive" class="adv-skill-icon" width="56" height="56"></canvas>
+            <canvas id="adv-icon-overdrive" class="adv-skill-icon" width="64" height="64"></canvas>
             <span id="adv-cd-sweep-overdrive" class="adv-cd-sweep"></span>
             <span id="adv-cd-text-overdrive" class="adv-cd-timer">0%</span>
           </span>
-          <span id="adv-tag-overdrive" class="adv-orb-tag">OVERDRIVE</span>
+          <span id="adv-tag-overdrive" class="adv-orb-tag">NOVA</span>
           <span class="adv-key-hint">U</span>
         </button>
 
         <!-- Crowned Upper Medallion: Supreme Cataclysm Ultimate -->
         <button id="adv-btn-ultimate" class="adv-orb-btn adv-orb-ultimate" type="button" title="Supreme Ultimate Finisher [I / E]">
           <span class="adv-orb-face">
-            <canvas id="adv-icon-ultimate" class="adv-skill-icon" width="56" height="56"></canvas>
+            <canvas id="adv-icon-ultimate" class="adv-skill-icon" width="64" height="64"></canvas>
             <span id="adv-cd-sweep-ultimate" class="adv-cd-sweep"></span>
             <span id="adv-cd-text-ultimate" class="adv-cd-timer">0%</span>
           </span>
-          <span id="adv-tag-ultimate" class="adv-orb-tag">ULTIMATE</span>
+          <span id="adv-tag-ultimate" class="adv-orb-tag">METEOR</span>
           <span class="adv-key-hint">I</span>
         </button>
 
         <!-- Outer Tactical Arc Left: Flame Ward / Counter Guard -->
         <button id="adv-btn-crouch" class="adv-orb-btn adv-orb-crouch" type="button" title="Counter Ward / Deflect [V / H]">
           <span class="adv-orb-face">
-            <canvas id="adv-icon-crouch" class="adv-skill-icon" width="48" height="48"></canvas>
+            <canvas id="adv-icon-crouch" class="adv-skill-icon" width="64" height="64"></canvas>
             <span id="adv-cd-sweep-crouch" class="adv-cd-sweep"></span>
             <span id="adv-cd-text-crouch" class="adv-cd-timer"></span>
           </span>
@@ -237,7 +245,7 @@
         <!-- Outer Tactical Arc Upper-Left: Solar Vault / Aerial Jump -->
         <button id="adv-btn-jump" class="adv-orb-btn adv-orb-jump" type="button" title="Aerial Vault Jump [Space]">
           <span class="adv-orb-face">
-            <canvas id="adv-icon-jump" class="adv-skill-icon" width="48" height="48"></canvas>
+            <canvas id="adv-icon-jump" class="adv-skill-icon" width="64" height="64"></canvas>
             <span id="adv-cd-sweep-jump" class="adv-cd-sweep"></span>
             <span id="adv-cd-text-jump" class="adv-cd-timer"></span>
           </span>
@@ -336,14 +344,24 @@
           </button>
         </div>
 
-        <button
-          type="button"
-          class="step-nav-quick-btn"
-          id="btn-nav-commence"
-          title="Launch straight into the arena with the active lineup"
-        >
-          <span>⚔ QUICK LAUNCH</span>
-        </button>
+        <div class="step-nav-right-actions">
+          <button
+            type="button"
+            class="step-nav-landscape-btn"
+            id="btn-mobile-landscape"
+            title="Toggle Mobile Landscape / Fullscreen"
+          >
+            <span id="mobile-landscape-label">⛶ LANDSCAPE</span>
+          </button>
+          <button
+            type="button"
+            class="step-nav-quick-btn"
+            id="btn-nav-commence"
+            title="Launch straight into the arena with the active lineup"
+          >
+            <span>⚔ QUICK LAUNCH</span>
+          </button>
+        </div>
       </nav>
 
       <!-- =========================================================================
@@ -756,7 +774,7 @@
               <div class="profile-skills-header">4-SLOT SOVEREIGN KIT &amp; SUPREME ULTIMATE</div>
               <div class="profile-skill-list" id="p1-skill-list">
                 <div class="skill-card">
-                  <div class="skill-icon-box"><canvas id="p1-skill-icon-0" width="56" height="56"></canvas></div>
+                  <div class="skill-icon-box"><canvas id="p1-skill-icon-0" width="64" height="64"></canvas></div>
                   <div class="skill-info">
                     <div class="skill-title-row">
                       <strong class="skill-name" id="p1-skill-name-0">FROST CRESCENT</strong>
@@ -769,7 +787,7 @@
                 </div>
 
                 <div class="skill-card">
-                  <div class="skill-icon-box"><canvas id="p1-skill-icon-1" width="56" height="56"></canvas></div>
+                  <div class="skill-icon-box"><canvas id="p1-skill-icon-1" width="64" height="64"></canvas></div>
                   <div class="skill-info">
                     <div class="skill-title-row">
                       <strong class="skill-name" id="p1-skill-name-1">TEMPEST VANGUARD</strong>
@@ -782,7 +800,7 @@
                 </div>
 
                 <div class="skill-card skill-card-ult">
-                  <div class="skill-icon-box icon-box-ult"><canvas id="p1-skill-icon-2" width="56" height="56"></canvas></div>
+                  <div class="skill-icon-box icon-box-ult"><canvas id="p1-skill-icon-2" width="64" height="64"></canvas></div>
                   <div class="skill-info">
                     <div class="skill-title-row">
                       <strong class="skill-name" id="p1-skill-name-2">HEAVENLY EARTHSHATTER</strong>
@@ -797,6 +815,7 @@
                 <!-- 4th Row: Supreme Ultimate Finisher -->
                 <div class="skill-card skill-card-supreme" id="p1-true-ult-box">
                   <div class="supreme-crest-box" aria-hidden="true">
+                    <canvas id="p1-skill-icon-3" class="supreme-skill-canvas hidden" width="64" height="64"></canvas>
                     <span class="supreme-star">★</span>
                     <span class="supreme-tier">III</span>
                   </div>
@@ -1024,7 +1043,7 @@
               <div class="profile-skills-header">4-SLOT SOVEREIGN KIT &amp; SUPREME ULTIMATE</div>
               <div class="profile-skill-list" id="p2-skill-list">
                 <div class="skill-card">
-                  <div class="skill-icon-box"><canvas id="p2-skill-icon-0" width="56" height="56"></canvas></div>
+                  <div class="skill-icon-box"><canvas id="p2-skill-icon-0" width="64" height="64"></canvas></div>
                   <div class="skill-info">
                     <div class="skill-title-row">
                       <strong class="skill-name" id="p2-skill-name-0">TRINITY OF THE SCYTHE</strong>
@@ -1037,7 +1056,7 @@
                 </div>
 
                 <div class="skill-card">
-                  <div class="skill-icon-box"><canvas id="p2-skill-icon-1" width="56" height="56"></canvas></div>
+                  <div class="skill-icon-box"><canvas id="p2-skill-icon-1" width="64" height="64"></canvas></div>
                   <div class="skill-info">
                     <div class="skill-title-row">
                       <strong class="skill-name" id="p2-skill-name-1">SOUL SEVER</strong>
@@ -1050,7 +1069,7 @@
                 </div>
 
                 <div class="skill-card skill-card-ult">
-                  <div class="skill-icon-box icon-box-ult"><canvas id="p2-skill-icon-2" width="56" height="56"></canvas></div>
+                  <div class="skill-icon-box icon-box-ult"><canvas id="p2-skill-icon-2" width="64" height="64"></canvas></div>
                   <div class="skill-info">
                     <div class="skill-title-row">
                       <strong class="skill-name" id="p2-skill-name-2">DEATH'S SOVEREIGNTY</strong>
@@ -1065,6 +1084,7 @@
                 <!-- 4th Row: Supreme Ultimate Finisher -->
                 <div class="skill-card skill-card-supreme" id="p2-true-ult-box">
                   <div class="supreme-crest-box" aria-hidden="true">
+                    <canvas id="p2-skill-icon-3" class="supreme-skill-canvas hidden" width="64" height="64"></canvas>
                     <span class="supreme-star">★</span>
                     <span class="supreme-tier">III</span>
                   </div>
@@ -1129,6 +1149,6 @@
     </div>
   </main>
 
-  <script type="module" src="src/main.js?v=30fps83"></script>
+  <script type="module" src="src/main.js?v=30fps84"></script>
 </body>
 </html>

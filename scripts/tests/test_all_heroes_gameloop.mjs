@@ -28,27 +28,27 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps83';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps83';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps83';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps83';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps83';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps83';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps83';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps83';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps83';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps83';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps83';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps83';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps83';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps83';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps83';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps83';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps83';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps84';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps84';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps84';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps84';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps84';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps84';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps84';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps84';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps84';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps84';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps84';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps84';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps84';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps84';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps84';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps84';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps84';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps83';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps84';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -608,7 +608,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps83');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps84');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -2077,9 +2077,23 @@ for (const [name, Cls] of CLASSES) {
     if (pw !== 128 || ph !== 128) {
       throw new Error(`Expected boss_archfiend_portrait.png dimensions 128x128, got ${pw}x${ph}`);
     }
+    const iconBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/mage_icons.png');
+    const iw = iconBuf.readUInt32BE(16);
+    const ih = iconBuf.readUInt32BE(20);
+    if (iw !== 448 || ih !== 64) {
+      throw new Error(`Expected mage_icons.png dimensions 448x64 (7 cells x 64x64), got ${iw}x${ih}`);
+    }
+    const manifestJson = JSON.parse(
+      fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/manifest.json', 'utf8')
+    );
+    if (manifestJson.orientation !== 'landscape' || manifestJson.display !== 'fullscreen') {
+      throw new Error(
+        `Expected manifest.json orientation='landscape' & display='fullscreen', got ${JSON.stringify(manifestJson)}`
+      );
+    }
   }
 
-  // 17B. Verify HTML Adventure Mode Mobile Joystick + Right-Side Skill Cluster DOM IDs & Icon Renderer
+  // 17B. Verify HTML Adventure Mode Mobile Joystick + Right-Side Skill Cluster + Mobile Landscape DOM IDs & Icon Renderer
   const indexHtml = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/index.html', 'utf8');
   const advJs = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js', 'utf8');
   const htmlIds = new Set([...indexHtml.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
@@ -2088,16 +2102,22 @@ for (const [name, Cls] of CLASSES) {
     'app',
     'btn-title-adventure',
     'mode-btn-adventure',
+    'btn-mobile-landscape',
+    'mobile-landscape-label',
     'adventure-controls',
     'adv-utility-bar',
     'adv-btn-autoplay',
     'adv-autoplay-label',
+    'adv-btn-landscape',
+    'adv-landscape-label',
     'adv-btn-restart',
     'adv-btn-menu',
     'adv-joystick-zone',
     'adv-joystick-base',
     'adv-joystick-knob',
-    'adv-skill-cluster'
+    'adv-skill-cluster',
+    'p1-skill-icon-3',
+    'p2-skill-icon-3'
   ];
   for (const slot of advSlots) {
     requiredAdvIds.push(
@@ -2119,18 +2139,58 @@ for (const [name, Cls] of CLASSES) {
     }
   }
 
-  // Verify PixelForge.drawAdventureActionIcon renders all 7 slots with >0 pixel rects and ZERO ctx.rotate
+  // Verify PixelForge.drawAdventureActionIcon blits Ignis Sol's remade 64x64 HD-2D icon sheet (`mage_icons.png`)
+  // across all 7 slots with exact cell coordinates & ZERO ctx.rotate, AND preserves procedural fallback!
+  const expectedMageCells = {
+    attack: 0,
+    skill: 1,
+    overdrive: 2,
+    ultimate: 3,
+    dodge: 4,
+    jump: 5,
+    crouch: 6
+  };
   for (const slot of advSlots) {
     const iconTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
     const iconCtx = createMockCtx(iconTrack);
+    const blits = [];
+    iconCtx.drawImage = (_img, sx, sy, sw, sh, dx, dy, dw, dh) => {
+      blits.push({ sx, sy, sw, sh, dx, dy, dw, dh });
+    };
+    PixelForge.drawAdventureActionIcon(iconCtx, 'mage', slot, 64, 64, 0.25);
+    const expSx = expectedMageCells[slot] * 64;
+    if (
+      blits.length !== 1 ||
+      blits[0].sx !== expSx ||
+      blits[0].sy !== 0 ||
+      blits[0].sw !== 64 ||
+      blits[0].sh !== 64 ||
+      blits[0].dw !== 64 ||
+      blits[0].dh !== 64 ||
+      iconTrack.rotateCalls > 0
+    ) {
+      throw new Error(
+        `drawAdventureActionIcon('mage', '${slot}') failed 64x64 HD-2D sheet audit: blits=${JSON.stringify(blits)}, rotateCalls=${iconTrack.rotateCalls}`
+      );
+    }
+
+    // Verify procedural fallback when mage.icons is still loading (complete = false)
+    const fallbackTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
+    const fallbackCtx = createMockCtx(fallbackTrack);
     let rectDraws = 0;
-    iconCtx.fillRect = () => {
+    fallbackCtx.fillRect = () => {
       rectDraws++;
     };
-    PixelForge.drawAdventureActionIcon(iconCtx, 'mage', slot, 56, 56, 0.25);
-    if (rectDraws < 20 || iconTrack.rotateCalls > 0) {
+    const mageIconsAsset = PixelForge.initAssets().mage.icons;
+    mageIconsAsset.complete = false;
+    try {
+      PixelForge.drawAdventureActionIcon(fallbackCtx, 'mage', slot, 64, 64, 0.25);
+    } finally {
+      mageIconsAsset.complete = true;
+    }
+    if (rectDraws < 20 || fallbackTrack.rotateCalls > 0) {
       throw new Error(
-        `drawAdventureActionIcon('mage', '${slot}') failed audit: rectDraws=${rectDraws}, rotateCalls=${iconTrack.rotateCalls}`
+        `drawAdventureActionIcon('mage', '${slot}') fallback failed audit: rectDraws=${rectDraws}, rotateCalls=${fallbackTrack.rotateCalls}`
       );
     }
   }
@@ -2643,8 +2703,59 @@ for (const [name, Cls] of CLASSES) {
       throw new Error(`Forbidden ctx.rotate() called ${advTrack.rotateCalls} times during Adventure Mode rendering!`);
     }
 
+    // 17D. Verify Mobile Landscape Viewport Sizing (Native Hardware Landscape 844x390 & Portrait-Locked CSS Landscape 390x844 -> 844x390)
+    const origWinW = globalThis.window.innerWidth;
+    const origWinH = globalThis.window.innerHeight;
+    const origDocEl = globalThis.document.documentElement;
+    const rootClasses = new Set();
+    globalThis.document.documentElement = {
+      classList: {
+        contains: (c) => rootClasses.has(c)
+      }
+    };
+    try {
+      // Case 1: Native Hardware Mobile Landscape (844x390)
+      globalThis.window.innerWidth = 844;
+      globalThis.window.innerHeight = 390;
+      const mobCanvas = {
+        width: 844,
+        height: 390,
+        getContext: () => createMockCtx()
+      };
+      const mobRenderer = new Renderer(mobCanvas);
+      mobRenderer.adventureMode = true;
+      mobRenderer.worldWidth = ADVENTURE_WORLD_WIDTH;
+      if (mobRenderer.width !== 844 || mobRenderer.height !== 390 || !mobRenderer.isMobileLandscape) {
+        throw new Error(
+          `Expected native mobile landscape 844x390 with isMobileLandscape=true, got ${mobRenderer.width}x${mobRenderer.height} (isMobileLandscape=${mobRenderer.isMobileLandscape})`
+        );
+      }
+      const mobSol = new FireMage(320, 561, 1);
+      for (let s = 0; s < 30; s++) mobRenderer.update(0.05, [mobSol]);
+      if (mobRenderer.zoom < 0.72 || mobRenderer.zoom > 0.925) {
+        throw new Error(
+          `Expected crisp widescreen mobile-landscape zoom in [0.72..0.925] on 844x390, got ${mobRenderer.zoom.toFixed(3)}`
+        );
+      }
+
+      // Case 2: Portrait-Locked Phone (390x844) with `is-css-rotated-landscape` active -> Logical 844x390!
+      globalThis.window.innerWidth = 390;
+      globalThis.window.innerHeight = 844;
+      rootClasses.add('is-css-rotated-landscape');
+      mobRenderer.resize();
+      if (mobRenderer.width !== 844 || mobRenderer.height !== 390 || !mobRenderer.isMobileLandscape) {
+        throw new Error(
+          `Expected CSS-rotated portrait 390x844 -> logical 844x390 with isMobileLandscape=true, got ${mobRenderer.width}x${mobRenderer.height}`
+        );
+      }
+    } finally {
+      globalThis.window.innerWidth = origWinW;
+      globalThis.window.innerHeight = origWinH;
+      globalThis.document.documentElement = origDocEl;
+    }
+
     console.log(
-      `[PASS] Adventure Mode (Seamless 3D 4800px 4-Zone Map + 360° Touch Joystick & 7-Orb Cooldown Cluster): UP/DOWN/LEFT/RIGHT 3D movement verified, 0 stitched PNG blits, all monsters visible (ghoul=${monsterDrawCounts.ghoul}, cultist=${monsterDrawCounts.cultist}, brute=${monsterDrawCounts.brute}, boss=${monsterDrawCounts.archfiend} blits), 0 ctx.rotate (${adv.score} pts)!`
+      `[PASS] Adventure Mode + Mobile Landscape + Sol 64x64 HD-2D Icons: 7/7 Sol sheet icons verified, native & CSS-rotated 844x390 landscape verified, UP/DOWN/LEFT/RIGHT 3D movement verified, 0 stitched PNG blits, all monsters visible (ghoul=${monsterDrawCounts.ghoul}, cultist=${monsterDrawCounts.cultist}, brute=${monsterDrawCounts.brute}, boss=${monsterDrawCounts.archfiend} blits), 0 ctx.rotate (${adv.score} pts)!`
     );
   } finally {
     globalThis.document.getElementById = origGetElementById;
