@@ -28,27 +28,27 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps82';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps82';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps82';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps82';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps82';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps82';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps82';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps82';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps82';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps82';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps82';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps82';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps82';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps82';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps82';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps82';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps82';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps83';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps83';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps83';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps83';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps83';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps83';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps83';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps83';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps83';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps83';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps83';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps83';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps83';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps83';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps83';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps83';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps83';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps82';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps83';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -608,7 +608,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps82');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps83');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -2237,32 +2237,49 @@ for (const [name, Cls] of CLASSES) {
     advGame.leftFighter = sol;
     adv.startCampaign(sol);
 
+    // Spy on advGame.renderer.ctx.drawImage to ensure ZERO stitched duel-stage PNGs (`arena_*`) are ever blitted in Adventure Mode!
+    let stitchedStagePngBlits = 0;
+    const origRenDrawImage = advGame.renderer.ctx.drawImage.bind(advGame.renderer.ctx);
+    advGame.renderer.ctx.drawImage = function (img, ...rest) {
+      if (advGame.renderer.adventureMode && img && typeof img.src === 'string' && img.src.includes('arena_')) {
+        stitchedStagePngBlits++;
+      }
+      return origRenDrawImage(img, ...rest);
+    };
+
     if (
       advGame.renderer.worldWidth !== ADVENTURE_WORLD_WIDTH ||
       !advGame.renderer.adventureMode ||
       adv.zoneIndex !== 0 ||
       !adv.lockActive ||
       adv.getLivingMonsters().length !== 2 ||
+      sol.groundY !== 561 ||
       !mockDomMap.get('app').classList.contains('is-adventure-active') ||
       mockDomMap.get('adventure-controls').classList.contains('hidden')
     ) {
       throw new Error(
-        `Adventure startCampaign check failed: ww=${advGame.renderer.worldWidth}, advMode=${advGame.renderer.adventureMode}, zone=${adv.zoneIndex}, lock=${adv.lockActive}, monsters=${adv.getLivingMonsters().length}`
+        `Adventure startCampaign check failed: ww=${advGame.renderer.worldWidth}, advMode=${advGame.renderer.adventureMode}, zone=${adv.zoneIndex}, lock=${adv.lockActive}, solGy=${sol.groundY}, monsters=${adv.getLivingMonsters().length}`
       );
     }
 
-    // Verify Wave 1 ghouls have valid heroId === 'ghoul' and spawn immediately inside narrow 360px mobile framing!
-    for (const m of adv.getLivingMonsters()) {
+    // Verify Wave 1 ghouls have valid heroId === 'ghoul' AND spawn staggered across distinct 3D depth lanes!
+    const w1Monsters = adv.getLivingMonsters();
+    for (const m of w1Monsters) {
       if (m.heroId !== 'ghoul') {
         throw new Error(`Expected Wave 1 normal monster heroId === 'ghoul', got ${m.heroId}`);
       }
+    }
+    if (Math.abs(w1Monsters[0].groundY - w1Monsters[1].groundY) < 60) {
+      throw new Error(
+        `Expected Wave 1 monsters staggered across 3D depth lanes, got gy=[${w1Monsters[0].groundY}, ${w1Monsters[1].groundY}]`
+      );
     }
 
     const tickAdv = (frames = 1) => {
       const dt = 1 / 30;
       for (let i = 0; i < frames; i++) {
         adv.update(dt);
-        // Step projectiles against opposing team (mirrors main.js updateProjectiles)
+        // Step projectiles against opposing team in 3D space (mirrors main.js updateProjectiles)
         for (let pi = advGame.vfx.projectiles.length - 1; pi >= 0; pi--) {
           const p = advGame.vfx.projectiles[pi];
           p.x += (p.vx || 0) * dt;
@@ -2270,13 +2287,21 @@ for (const [name, Cls] of CLASSES) {
           const targets = advGame.fighters.filter((f) => f && !f.isDead && f.team !== p.owner?.team);
           let hit = false;
           for (const t of targets) {
-            if (Math.abs(p.x - t.x) < (p.radius || 24) + 34 && Math.abs(p.y - (t.y - 84)) < 96) {
+            if (
+              (p.type === 'forge_wave' || p.type === 'blade_wave') &&
+              Math.abs(p.vy || 0) < 25 &&
+              Math.abs((t.groundY || t.y) - (p.owner?.groundY || t.groundY)) > 58
+            ) {
+              continue;
+            }
+            if (Math.abs(p.x - t.x) < (p.radius || 24) + 36 && Math.abs(p.y - (t.y - 108)) < 96) {
               t.takeDamage(p.damage || 30, p.owner, Boolean(p.isCrit), 80, 0);
               hit = true;
               break;
             }
           }
-          if (hit || p.y >= advGame.renderer.groundY + 10 || p.x < -300 || p.x > ADVENTURE_WORLD_WIDTH + 300) {
+          const floorLim = p.isMeteor ? (p.owner?.groundY || 561) - 4 : 692;
+          if (hit || ((p.vy || 0) > 0 && p.y >= floorLim) || p.x < -300 || p.x > ADVENTURE_WORLD_WIDTH + 300) {
             advGame.vfx.projectiles.splice(pi, 1);
           }
         }
@@ -2306,23 +2331,82 @@ for (const [name, Cls] of CLASSES) {
       }
     };
 
-    // Verify Manual Mode (`autoPlay === false`): Sol stays put at x=240 when idle (AI never hijacks player)
+    // Verify Manual Mode (`autoPlay === false`): Sol stays put at (x=240, groundY=561) when idle (AI never hijacks player)
     tickAdv(12);
-    if (sol.state !== 'IDLE' || Math.abs(sol.x - 240) > 2) {
-      throw new Error(`Expected manual idle Sol to hold position at x=240 in IDLE, got state=${sol.state}, x=${sol.x}`);
+    if (sol.state !== 'IDLE' || Math.abs(sol.x - 240) > 2 || Math.abs(sol.groundY - 561) > 2) {
+      throw new Error(
+        `Expected manual idle Sol to hold position at (240, 561) in IDLE, got state=${sol.state}, x=${sol.x}, gy=${sol.groundY}`
+      );
     }
 
-    // Verify Touch-Screen Virtual Analog Joystick (`setJoystickVector`) Walk Right & Release
-    adv.setJoystickVector(0.85, 0.12, true);
-    if (!mockDomMap.get('adv-joystick-base').classList.contains('is-active')) {
-      throw new Error('Expected #adv-joystick-base to gain .is-active when virtual touch joystick is dragged!');
+    // Verify 3D Touch-Screen Virtual Analog Joystick (`setJoystickVector`): UP, DOWN, Diagonal RIGHT, & Clamp [442..680]!
+    // Hold Wave 1 monsters in place during pure 3D input displacement calibration so claw knockback doesn't skew coordinates.
+    for (const m of w1Monsters) m.stunTimer = 3.0;
+    adv.setJoystickVector(0, -0.95, true);
+    if (
+      !mockDomMap.get('adv-joystick-base').classList.contains('is-active') ||
+      !mockDomMap.get('adv-joystick-knob').style.transform.includes('-34px')
+    ) {
+      throw new Error(
+        `Expected #adv-joystick-knob 2D vertical transform on Up drag, got '${mockDomMap.get('adv-joystick-knob').style.transform}'`
+      );
     }
-    tickAdv(16);
+    tickAdv(26);
+    const upperGy = sol.groundY;
+    if (upperGy >= 475 || upperGy < 442) {
+      throw new Error(`Expected joystick UP to move Sol into upper 3D lane [442..474], got groundY=${upperGy}`);
+    }
+
+    adv.setJoystickVector(0.85, 0.92, true);
+    tickAdv(36);
     const walkedX = sol.x;
+    const lowerGy = sol.groundY;
     adv.setJoystickVector(0, 0, false);
     tickAdv(2);
-    if (walkedX <= 315 || sol.state !== 'IDLE') {
-      throw new Error(`Expected analog joystick input to advance Sol >315px and return to IDLE on release, got walkedX=${walkedX}, state=${sol.state}`);
+    if (walkedX <= 330 || lowerGy <= 610 || lowerGy > 680 || sol.state !== 'IDLE') {
+      throw new Error(
+        `Expected diagonal 3D joystick to move Sol right & down within [442..680] and return to IDLE: x=${walkedX}, gy=${lowerGy}, state=${sol.state}`
+      );
+    }
+
+    // Verify 3D Desktop Keyboard (`KeyW` Up, `KeyA` Left, `Space` Vault Jump, `KeyV` Ward Crouch)!
+    const preKbGy = sol.groundY;
+    const preKbX = sol.x;
+    adv.onKeyDown({ code: 'KeyW', preventDefault() {} });
+    adv.onKeyDown({ code: 'KeyA', preventDefault() {} });
+    tickAdv(14);
+    adv.onKeyUp({ code: 'KeyW' });
+    adv.onKeyUp({ code: 'KeyA' });
+    tickAdv(2);
+    for (const m of w1Monsters) m.stunTimer = 0;
+    if (sol.groundY >= preKbGy - 20 || sol.x >= preKbX - 20) {
+      throw new Error(
+        `Expected WASD KeyW+KeyA to move Sol up & left in 3D space: gy ${preKbGy}->${sol.groundY}, x ${preKbX}->${sol.x}`
+      );
+    }
+
+    // Verify 3D Lane Melee Dodging: a Ghoul swinging on upper lane (gy=460) misses Sol on lower lane (gy=640) even at identical X!
+    {
+      const testGhoul = w1Monsters[0];
+      sol.x = 500;
+      sol.groundY = 640;
+      sol.y = 640;
+      testGhoul.x = 540;
+      testGhoul.groundY = 460;
+      testGhoul.y = 460;
+      testGhoul.facing = -1;
+      const solHpBefore = sol.hp;
+      testGhoul.setState('AUTO_ATTACK');
+      for (let step = 0; step < 14; step++) {
+        testGhoul.stateTimer += 1 / 30;
+        testGhoul.updateAutoAttack(1 / 30, sol, advGame);
+      }
+      if (sol.hp !== solHpBefore) {
+        throw new Error(`Expected 3D Z-dodging (|640 - 460| = 180px) to avoid melee claw hit, but Sol lost HP!`);
+      }
+      // Return Sol to mid lane for rest of campaign
+      sol.groundY = 561;
+      sol.y = 561;
     }
 
     // Verify Hold-to-Attack (`setAttackHeld`), Marvel-Arcade Recovery Cancel into Skill, and Independent Jump vs Dodge Cooldowns!
@@ -2550,12 +2634,17 @@ for (const [name, Cls] of CLASSES) {
       throw new Error(`Expected stopCampaign() to restore worldWidth=1200 & adventureMode=false, got ww=${advGame.renderer.worldWidth}`);
     }
 
+    if (stitchedStagePngBlits > 0) {
+      throw new Error(
+        `Forbidden stitched duel-stage PNG blitted ${stitchedStagePngBlits} times during Adventure Mode — must use 100% seamless AdventureMapRenderer!`
+      );
+    }
     if (advTrack.rotateCalls > 0) {
       throw new Error(`Forbidden ctx.rotate() called ${advTrack.rotateCalls} times during Adventure Mode rendering!`);
     }
 
     console.log(
-      `[PASS] Adventure Mode (4800px 4-Zone Campaign + Mobile Touch Joystick & 7-Orb Cooldown Cluster): all normal monsters visible (ghoul=${monsterDrawCounts.ghoul}, cultist=${monsterDrawCounts.cultist}, brute=${monsterDrawCounts.brute}, boss=${monsterDrawCounts.archfiend} blits), 0 ctx.rotate (${adv.score} pts)!`
+      `[PASS] Adventure Mode (Seamless 3D 4800px 4-Zone Map + 360° Touch Joystick & 7-Orb Cooldown Cluster): UP/DOWN/LEFT/RIGHT 3D movement verified, 0 stitched PNG blits, all monsters visible (ghoul=${monsterDrawCounts.ghoul}, cultist=${monsterDrawCounts.cultist}, brute=${monsterDrawCounts.brute}, boss=${monsterDrawCounts.archfiend} blits), 0 ctx.rotate (${adv.score} pts)!`
     );
   } finally {
     globalThis.document.getElementById = origGetElementById;

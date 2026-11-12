@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps82';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps82';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps82';
+import { Fighter } from './Fighter.js?v=30fps83';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps83';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps83';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps82';
+} from '../engine/shaders/sylvanShaders.js?v=30fps83';
 
 /**
  * Sylvara (`archer`) — Elven Tempest Bowmaster & Astral Star-Ranger.
@@ -75,8 +75,8 @@ export class Archer extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const archerAssets = PixelForge.initAssets()?.archer;
-      if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps82')) {
-        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps82';
+      if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps83')) {
+        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps83';
       }
     }
 

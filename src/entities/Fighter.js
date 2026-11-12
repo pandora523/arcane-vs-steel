@@ -793,7 +793,7 @@ export class Fighter {
 
   update(dt, enemy, game) {
     this.game = game;
-    if (game?.renderer && Number.isFinite(game.renderer.groundY)) {
+    if (!game?.adventure?.active && game?.renderer && Number.isFinite(game.renderer.groundY)) {
       this.groundY = game.renderer.groundY;
     }
 
@@ -874,7 +874,7 @@ export class Fighter {
       }
     }
 
-    // Personal-space repulsion so characters never crowd on top of each other
+    // Personal-space repulsion so characters never crowd on top of each other (lane-aware in 3D Adventure Mode)
     if (
       enemy &&
       !this.isDead &&
@@ -889,12 +889,16 @@ export class Fighter {
       !this.isFullyBurrowed &&
       !enemy.isFullyBurrowed
     ) {
-      const dx = this.x - enemy.x;
-      const absDx = Math.abs(dx);
-      const minSep = 110;
-      if (absDx < minSep) {
-        const pushDir = dx === 0 ? -this.facing : Math.sign(dx);
-        this.x += pushDir * (minSep - absDx) * 6.5 * dt;
+      const isAdv3D = Boolean(game?.adventure?.active);
+      const depthDiff = Math.abs((this.groundY || this.y) - (enemy.groundY || enemy.y));
+      if (!isAdv3D || depthDiff < 46) {
+        const dx = this.x - enemy.x;
+        const absDx = Math.abs(dx);
+        const minSep = isAdv3D ? 82 : 110;
+        if (absDx < minSep) {
+          const pushDir = dx === 0 ? -this.facing : Math.sign(dx);
+          this.x += pushDir * (minSep - absDx) * 6.5 * dt;
+        }
       }
     }
 
@@ -941,7 +945,7 @@ export class Fighter {
       }
     }
 
-    // Virtual Arena boundaries (or active Adventure Mode wave-lock zone boundaries)
+    // Virtual Arena boundaries (or active Adventure Mode wave-lock & 3D walkable floor boundaries)
     const margin = 80;
     const minArenaX =
       game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
@@ -952,6 +956,17 @@ export class Fighter {
         ? game.adventure.lockMaxX
         : game.renderer.worldWidth - margin;
     this.x = Math.max(minArenaX, Math.min(maxArenaX, this.x));
+
+    if (game?.adventure?.active && Number.isFinite(this.groundY)) {
+      const minGy = game.adventure.depthMinY || 442;
+      const maxGy = game.adventure.depthMaxY || 680;
+      const prevGy = this.groundY;
+      this.groundY = Math.max(minGy, Math.min(maxGy, this.groundY));
+      const dGy = this.groundY - prevGy;
+      if (dGy !== 0) {
+        this.y += dGy;
+      }
+    }
 
     this.updateCape(dt);
 

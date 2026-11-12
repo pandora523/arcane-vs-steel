@@ -1,20 +1,20 @@
-import { Renderer } from './engine/Renderer.js?v=30fps82';
-import { VFXManager } from './engine/VFXManager.js?v=30fps82';
-import { PixelForge } from './engine/PixelForge.js?v=30fps82';
-import { AudioManager } from './engine/AudioManager.js?v=30fps82';
-import { Fighter } from './entities/Fighter.js?v=30fps82';
-import { Warrior } from './entities/Warrior.js?v=30fps82';
-import { FireMage } from './entities/FireMage.js?v=30fps82';
-import { Archer } from './entities/Archer.js?v=30fps82';
-import { Priestess } from './entities/Priestess.js?v=30fps82';
-import { Reaper } from './entities/Reaper.js?v=30fps82';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps82';
-import { Titan } from './entities/Titan.js?v=30fps82';
-import { Ronin } from './entities/Ronin.js?v=30fps82';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps82';
-import { IceMage } from './entities/IceMage.js?v=30fps82';
-import { Android } from './entities/Android.js?v=30fps82';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps82';
+import { Renderer } from './engine/Renderer.js?v=30fps83';
+import { VFXManager } from './engine/VFXManager.js?v=30fps83';
+import { PixelForge } from './engine/PixelForge.js?v=30fps83';
+import { AudioManager } from './engine/AudioManager.js?v=30fps83';
+import { Fighter } from './entities/Fighter.js?v=30fps83';
+import { Warrior } from './entities/Warrior.js?v=30fps83';
+import { FireMage } from './entities/FireMage.js?v=30fps83';
+import { Archer } from './entities/Archer.js?v=30fps83';
+import { Priestess } from './entities/Priestess.js?v=30fps83';
+import { Reaper } from './entities/Reaper.js?v=30fps83';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps83';
+import { Titan } from './entities/Titan.js?v=30fps83';
+import { Ronin } from './entities/Ronin.js?v=30fps83';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps83';
+import { IceMage } from './entities/IceMage.js?v=30fps83';
+import { Android } from './entities/Android.js?v=30fps83';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps83';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -2711,13 +2711,20 @@ class Game {
         }
       }
 
+      const isAdv = this.isAdventureMode();
       const enemies = p.owner ? this.getEnemiesOf(p.owner) : [this.rightFighter];
       let hitTarget = null;
       for (const cand of enemies) {
+        if (!cand || cand.isDead || cand.isBenched) continue;
         if (
-          cand &&
-          !cand.isDead &&
-          !cand.isBenched &&
+          isAdv &&
+          (p.type === 'forge_wave' || p.type === 'blade_wave') &&
+          Math.abs(p.vy || 0) < 25 &&
+          Math.abs((cand.groundY || cand.y) - (p.owner?.groundY || cand.groundY)) > 58
+        ) {
+          continue;
+        }
+        if (
           Math.abs(p.x - cand.x) < p.radius + 36 &&
           Math.abs(p.y - (cand.y - 108)) < p.radius + 68
         ) {
@@ -2725,22 +2732,24 @@ class Game {
           break;
         }
       }
-      const hitGround = p.y >= gy - 4;
+      const floorLim = isAdv ? (p.isMeteor ? (p.owner?.groundY || 561) - 4 : 692) : gy - 4;
+      const hitGround = isAdv ? (p.vy || 0) > 0 && p.y >= floorLim : p.y >= floorLim;
 
       if (hitTarget || hitGround) {
         if (p.isMeteor) {
+          const impGy = isAdv ? Math.min(680, Math.max(442, p.y)) : gy;
           if (this.audio) this.audio.play('meteor_impact', p.x);
           this.renderer.triggerShake(22, 0.52);
           this.renderer.triggerAberration(14);
           if (typeof p.owner?.onProjectileHit === 'function') {
             p.owner.onProjectileHit(p, hitTarget, true, this);
           }
-          this.vfx.spawnShockwave(p.x, gy, 290, '#fb923c', 0.6, true);
-          this.vfx.spawnShockwave(p.x, gy - 35, 220, '#fef08a', 0.46, false);
-          this.vfx.spawnDecal(p.x, 165, 'fissure', '#fb923c', 6.0);
-          this.vfx.spawnBurst(p.x, gy - 15, 30, '#fb923c', 380, { upBias: 165, size: 9 });
-          this.vfx.spawnBurst(p.x, gy - 15, 20, '#fef08a', 310, { upBias: 130, size: 8 });
-          this.vfx.spawnGlyphBurst(p.x, gy - 50, 8, 'arcane');
+          this.vfx.spawnShockwave(p.x, impGy, 290, '#fb923c', 0.6, true);
+          this.vfx.spawnShockwave(p.x, impGy - 35, 220, '#fef08a', 0.46, false);
+          this.vfx.spawnDecal(p.x, 165, 'fissure', '#fb923c', 6.0, impGy);
+          this.vfx.spawnBurst(p.x, impGy - 15, 30, '#fb923c', 380, { upBias: 165, size: 9 });
+          this.vfx.spawnBurst(p.x, impGy - 15, 20, '#fef08a', 310, { upBias: 130, size: 8 });
+          this.vfx.spawnGlyphBurst(p.x, impGy - 50, 8, 'arcane');
 
           for (const cand of enemies) {
             if (cand && !cand.isDead && !cand.isBenched && Math.abs(cand.x - p.x) < 230) {

@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps82';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps82';
+import { Fighter } from './Fighter.js?v=30fps83';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps83';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -145,7 +145,33 @@ export class Monster extends Fighter {
     this.didSecondaryAction = false;
     this.dashStartX = x;
     this.dashTargetX = x;
+    this.dashStartGy = groundY;
+    this.dashTargetGy = groundY;
+    this.pounceVelZ = 0;
+    this.flankOffsetZ = ((Math.round(x) % 5) - 2) * 14;
     this.bruteAltSkill = 0;
+  }
+
+  shiftMonsterDepth(dz, game) {
+    if (!Number.isFinite(dz) || dz === 0) return;
+    const minGy = (game?.adventure?.depthMinY || 442) + 8;
+    const maxGy = (game?.adventure?.depthMaxY || 680) - 8;
+    const prevGy = Number.isFinite(this.groundY) ? this.groundY : 561;
+    const nextGy = Math.max(minGy, Math.min(maxGy, prevGy + dz));
+    const applied = nextGy - prevGy;
+    if (applied === 0) return;
+    this.groundY = nextGy;
+    this.y += applied;
+    if (Array.isArray(this.capeNodes)) {
+      for (const n of this.capeNodes) {
+        if (n) n.y += applied;
+      }
+    }
+  }
+
+  setMonsterGroundY(targetGy, game) {
+    const prevGy = Number.isFinite(this.groundY) ? this.groundY : 561;
+    this.shiftMonsterDepth(targetGy - prevGy, game);
   }
 
   setState(next) {
@@ -160,10 +186,19 @@ export class Monster extends Fighter {
     this.didSecondaryAction = false;
   }
 
-  spawnFloorTelegraph(x, radius, delay, damage, color = '#a855f7', label = 'VOID SIGIL!') {
+  spawnFloorTelegraph(
+    x,
+    radius,
+    delay,
+    damage,
+    color = '#a855f7',
+    label = 'VOID SIGIL!',
+    targetGroundY = null
+  ) {
+    const gy = Number.isFinite(targetGroundY) ? targetGroundY : this.groundY;
     this.telegraphRings.push({
       x,
-      y: this.groundY,
+      y: gy,
       radius,
       timer: 0,
       maxTimer: delay,
@@ -189,13 +224,16 @@ export class Monster extends Fighter {
           game.vfx.spawnGlyphBurst(ring.x, ring.y - 42, 6, this.theme === 'forge' ? 'forge' : 'abyssal');
         }
         const enemies = game?.getEnemiesOf ? game.getEnemiesOf(this) : [];
+        const maxDepthDelta = Math.max(54, ring.radius * 0.56);
         for (const target of enemies) {
+          const tGy = target ? target.groundY || target.y : 0;
           if (
             target &&
             !target.isDead &&
             !target.isBenched &&
             Math.abs(target.x - ring.x) <= ring.radius &&
-            Math.abs(target.y - ring.y) <= 58
+            Math.abs(tGy - ring.y) <= maxDepthDelta &&
+            target.y >= tGy - 68
           ) {
             target.takeDamage(Math.round(ring.damage * this.dmgScale), this, false, 130, -140);
           }
@@ -221,16 +259,20 @@ export class Monster extends Fighter {
       return;
     }
 
-    // Monster pack spacing so multiple ghouls/cultists don't stack on the exact same pixel
+    // 3D Monster pack spacing so multiple ghouls/cultists fan out organically across X and depth groundY
     if (game?.fighters && (this.state === 'IDLE' || this.state === 'WALK')) {
       for (const other of game.fighters) {
         if (other && other !== this && other.team === this.team && !other.isDead) {
           const dx = this.x - other.x;
-          const absDx = Math.abs(dx);
-          const minAllySep = this.isBoss || other.isBoss ? 120 : 72;
-          if (absDx < minAllySep) {
-            const push = absDx < 2 ? (this.x % 2 === 0 ? 1 : -1) : Math.sign(dx);
-            this.x += push * (minAllySep - absDx) * 3.8 * dt;
+          const dz = (this.groundY || this.y) - (other.groundY || other.y);
+          const dist2D = Math.hypot(dx, dz * 1.45);
+          const minAllySep = this.isBoss || other.isBoss ? 116 : 74;
+          if (dist2D < minAllySep) {
+            const nx = dist2D < 2 ? (this.x % 2 === 0 ? 1 : -1) : dx / dist2D;
+            const nz = dist2D < 2 ? (Math.round(this.x) % 3 === 0 ? 0.6 : -0.6) : (dz * 1.45) / dist2D;
+            const pushMag = (minAllySep - dist2D) * 3.6 * dt;
+            this.x += nx * pushMag;
+            this.shiftMonsterDepth(nz * pushMag * 0.72, game);
           }
         }
       }
@@ -265,11 +307,14 @@ export class Monster extends Fighter {
 
   runMonsterNeutralAI(dt, enemy, game) {
     const dist = Math.abs(enemy.x - this.x);
+    const enemyGy = enemy.groundY || enemy.y;
+    const dz = enemyGy - this.groundY;
+    const absDz = Math.abs(dz);
     this.facing = enemy.x >= this.x ? 1 : -1;
 
     if (this.kind === 'cultist') {
-      // Ranged Warlock spacing: maintain 270..440px, retreat or Void-Step if crowded
-      if (dist < 175 && this.dashCooldown <= 0) {
+      // Ranged Warlock spacing: maintain 270..440px in X while flanking gently in 3D depth
+      if (dist < 175 && absDz < 72 && this.dashCooldown <= 0) {
         this.startMonsterDash(enemy, game, -this.facing, 210);
         return;
       }
@@ -280,22 +325,31 @@ export class Monster extends Fighter {
         this.setState('SKILL');
         return;
       }
-      if (dist <= this.attackRange && dist >= 185 && this.autoCooldown <= 0) {
+      if (dist <= this.attackRange && dist >= 185 && absDz <= 135 && this.autoCooldown <= 0) {
         this.autoCooldown = this.autoInterval;
         this.setState('AUTO_ATTACK');
         return;
       }
+      const desiredGy = enemyGy + this.flankOffsetZ * 2.2;
+      const cultistDz = desiredGy - this.groundY;
+      let moving = false;
       if (dist < 235) {
-        this.state = 'WALK';
         this.moveDir = -1;
-        this.walkPhase += dt * 4.2;
         this.x -= this.facing * this.moveSpeed * 0.85 * dt;
-        this.headBob = Math.sin(this.walkPhase * 2) * 1.8;
+        moving = true;
       } else if (dist > 410) {
-        this.state = 'WALK';
         this.moveDir = 1;
-        this.walkPhase += dt * 4.2;
         this.x += this.facing * this.moveSpeed * dt;
+        moving = true;
+      }
+      if (Math.abs(cultistDz) > 22) {
+        this.shiftMonsterDepth(Math.sign(cultistDz) * this.moveSpeed * 0.66 * dt, game);
+        if (!moving) this.moveDir = 1;
+        moving = true;
+      }
+      if (moving) {
+        this.state = 'WALK';
+        this.walkPhase += dt * 4.2;
         this.headBob = Math.sin(this.walkPhase * 2) * 1.8;
       } else {
         this.state = 'IDLE';
@@ -305,15 +359,15 @@ export class Monster extends Fighter {
     }
 
     if (this.kind === 'brute') {
-      // Heavy Armored Juggernaut: Bull-Charge from mid-range or Seismic Slam / Cleaver Chop
-      if (this.dashCooldown <= 0 && dist > 205 && dist < 520) {
+      // Heavy Armored Juggernaut: aligns on 3D lane before Bull-Charge, Seismic Slam, or Cleaver Chop
+      if (this.dashCooldown <= 0 && dist > 205 && dist < 520 && absDz <= 56) {
         this.telegraphLabel = '! BULL CHARGE !';
         this.telegraphTimer = 0.62;
         this.forgeArmorTimer = 0.65;
         this.startMonsterDash(enemy, game, this.facing, Math.min(330, dist - 55));
         return;
       }
-      if (this.skillCooldown <= 0 && dist <= 380) {
+      if (this.skillCooldown <= 0 && dist <= 380 && absDz <= 46) {
         this.skillCooldown = this.skillMaxCooldown;
         this.forgeArmorTimer = 0.72;
         this.telegraphLabel = '! SEISMIC SLAM !';
@@ -321,16 +375,24 @@ export class Monster extends Fighter {
         this.setState('SKILL');
         return;
       }
-      if (dist <= this.attackRange && this.autoCooldown <= 0) {
+      if (dist <= this.attackRange && absDz <= 48 && this.autoCooldown <= 0) {
         this.autoCooldown = this.autoInterval;
         this.setState('AUTO_ATTACK');
         return;
       }
-      if (dist > 122) {
+      if (dist > 122 || absDz > 34) {
         this.state = 'WALK';
         this.moveDir = 1;
         this.walkPhase += dt * 3.4;
-        this.x += this.facing * this.moveSpeed * dt;
+        if (dist > 116) {
+          this.x += this.facing * this.moveSpeed * dt;
+        }
+        if (absDz > 12) {
+          this.shiftMonsterDepth(
+            Math.sign(dz) * Math.min(absDz, this.moveSpeed * 0.86 * dt),
+            game
+          );
+        }
         this.headBob = Math.abs(Math.sin(this.walkPhase * 2)) * 2.8;
       } else {
         this.state = 'IDLE';
@@ -339,11 +401,12 @@ export class Monster extends Fighter {
       return;
     }
 
-    // Default (`ghoul` — Ashfang Rusher): aggressive pack stalker + Feral Pounce
-    if (this.skillCooldown <= 0 && dist >= 130 && dist <= 310) {
+    // Default (`ghoul` — Ashfang Rusher): aggressive 3D pack stalker + Feral Pounce
+    if (this.skillCooldown <= 0 && dist >= 130 && dist <= 310 && absDz <= 56) {
       this.skillCooldown = this.skillMaxCooldown;
       this.telegraphLabel = '! POUNCE !';
       this.telegraphTimer = 0.52;
+      this.pounceVelZ = Math.max(-135, Math.min(135, dz * 2.1));
       this.setState('SKILL');
       return;
     }
@@ -351,16 +414,26 @@ export class Monster extends Fighter {
       this.startMonsterDash(enemy, game, this.facing, 195);
       return;
     }
-    if (dist <= this.attackRange && this.autoCooldown <= 0) {
+    if (dist <= this.attackRange && absDz <= 46 && this.autoCooldown <= 0) {
       this.autoCooldown = this.autoInterval;
       this.setState('AUTO_ATTACK');
       return;
     }
-    if (dist > 102) {
+    const ghoulGoalGy = enemyGy + this.flankOffsetZ * 0.55;
+    const ghoulDz = ghoulGoalGy - this.groundY;
+    if (dist > 102 || Math.abs(ghoulDz) > 28) {
       this.state = 'WALK';
       this.moveDir = 1;
       this.walkPhase += dt * 5.6;
-      this.x += this.facing * this.moveSpeed * dt;
+      if (dist > 96) {
+        this.x += this.facing * this.moveSpeed * dt;
+      }
+      if (Math.abs(ghoulDz) > 8) {
+        this.shiftMonsterDepth(
+          Math.sign(ghoulDz) * Math.min(Math.abs(ghoulDz), this.moveSpeed * 0.88 * dt),
+          game
+        );
+      }
       this.headBob = Math.sin(this.walkPhase * 2) * 2.4;
     } else {
       this.state = 'IDLE';
@@ -368,14 +441,24 @@ export class Monster extends Fighter {
     }
   }
 
-  startMonsterDash(_enemy, game, dir, distance = 200) {
+  startMonsterDash(enemy, game, dir, distance = 200) {
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const minX = game?.adventure?.lockActive ? game.adventure.lockMinX + 24 : 95;
     const maxX = game?.adventure?.lockActive ? game.adventure.lockMaxX - 24 : ww - 95;
+    const minGy = (game?.adventure?.depthMinY || 442) + 14;
+    const maxGy = (game?.adventure?.depthMaxY || 680) - 14;
     this.dashCooldown = this.dashMaxCooldown;
     this.dashDir = dir || this.facing;
     this.dashStartX = this.x;
     this.dashTargetX = Math.max(minX, Math.min(maxX, this.x + this.dashDir * distance));
+    this.dashStartGy = this.groundY;
+    const targetGy =
+      this.kind === 'cultist'
+        ? this.groundY + (this.groundY > 561 ? -58 : 58)
+        : enemy
+          ? enemy.groundY || enemy.y
+          : this.groundY;
+    this.dashTargetGy = Math.max(minGy, Math.min(maxGy, targetGy));
     this.setState('DASH');
     if (game?.audio) game.audio.play('dash_whoosh', this.x);
   }
@@ -393,7 +476,17 @@ export class Monster extends Fighter {
       }
       const chargeU = Math.min(1, (t - 0.20) / Math.max(0.15, dur - 0.20));
       this.x = this.dashStartX + (this.dashTargetX - this.dashStartX) * chargeU;
-      if (!this.didActionFrame && enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 115) {
+      this.setMonsterGroundY(
+        this.dashStartGy + (this.dashTargetGy - this.dashStartGy) * chargeU,
+        game
+      );
+      if (
+        !this.didActionFrame &&
+        enemy &&
+        !enemy.isDead &&
+        Math.abs(enemy.x - this.x) < 115 &&
+        Math.abs((enemy.groundY || enemy.y) - this.groundY) < 58
+      ) {
         this.didActionFrame = true;
         enemy.takeDamage(Math.round(56 * this.dmgScale), this, true, 240, -165);
         if (game?.renderer) game.renderer.triggerShake(11, 0.22);
@@ -404,6 +497,10 @@ export class Monster extends Fighter {
     } else {
       const ease = 1 - Math.pow(1 - u, 2);
       this.x = this.dashStartX + (this.dashTargetX - this.dashStartX) * ease;
+      this.setMonsterGroundY(
+        this.dashStartGy + (this.dashTargetGy - this.dashStartGy) * ease,
+        game
+      );
     }
 
     if (t >= dur) {
@@ -446,7 +543,12 @@ export class Monster extends Fighter {
         const fAng = this.facing === 1 ? 0 : Math.PI;
         game?.vfx?.spawnSlash(this.x + this.facing * 52, this.y - 88, 86, fAng - 1.1, fAng + 1.1, '#f59e0b', 0.26);
         game?.vfx?.spawnShockwave(this.x + this.facing * 64, this.groundY - 8, 92, '#ea580c', 0.26, true);
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 28) {
+        if (
+          enemy &&
+          !enemy.isDead &&
+          Math.abs(enemy.x - this.x) <= this.attackRange + 28 &&
+          Math.abs((enemy.groundY || enemy.y) - this.groundY) <= 58
+        ) {
           enemy.takeDamage(Math.round(52 * this.dmgScale), this, false, 165, -90);
         }
       } else {
@@ -454,7 +556,12 @@ export class Monster extends Fighter {
         if (game?.audio) game.audio.play('slash', this.x);
         const fAng = this.facing === 1 ? 0 : Math.PI;
         game?.vfx?.spawnSlash(this.x + this.facing * 42, this.y - 78, 62, fAng - 0.9, fAng + 0.9, '#ef4444', 0.20);
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 22) {
+        if (
+          enemy &&
+          !enemy.isDead &&
+          Math.abs(enemy.x - this.x) <= this.attackRange + 22 &&
+          Math.abs((enemy.groundY || enemy.y) - this.groundY) <= 54
+        ) {
           enemy.takeDamage(Math.round(32 * this.dmgScale), this, false, 95, 0);
         }
       }
@@ -472,9 +579,19 @@ export class Monster extends Fighter {
       if (t >= 0.18 && !this.didActionFrame) {
         this.didActionFrame = true;
         const targetX = enemy ? enemy.x : this.x + this.facing * 300;
-        this.spawnFloorTelegraph(targetX, 82, 0.72, 54, '#a855f7', 'VOID SIGIL');
+        const targetGy = enemy ? enemy.groundY || enemy.y : this.groundY;
+        this.spawnFloorTelegraph(targetX, 82, 0.72, 54, '#a855f7', 'VOID SIGIL', targetGy);
         if (this.isElite) {
-          this.spawnFloorTelegraph(targetX + this.facing * 125, 72, 0.88, 46, '#38bdf8', 'ASTRAL RIFT');
+          const riftGy = Math.max(454, Math.min(668, targetGy + (targetGy > 561 ? -54 : 54)));
+          this.spawnFloorTelegraph(
+            targetX + this.facing * 125,
+            72,
+            0.88,
+            46,
+            '#38bdf8',
+            'ASTRAL RIFT',
+            riftGy
+          );
         }
         if (game?.audio) game.audio.play('skill_cast', this.x);
       }
@@ -500,11 +617,18 @@ export class Monster extends Fighter {
         });
       }
     } else {
-      // Ghoul Feral Pounce Lunge
+      // Ghoul Feral Pounce Lunge in 3D space
       if (t >= 0.22 && t < 0.56) {
         this.x += this.facing * 410 * dt;
+        this.shiftMonsterDepth((this.pounceVelZ || 0) * dt, game);
         this.y = this.groundY - Math.sin(((t - 0.22) / 0.34) * Math.PI) * 34;
-        if (!this.didActionFrame && enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 105) {
+        if (
+          !this.didActionFrame &&
+          enemy &&
+          !enemy.isDead &&
+          Math.abs(enemy.x - this.x) < 105 &&
+          Math.abs((enemy.groundY || enemy.y) - this.groundY) <= 56
+        ) {
           this.didActionFrame = true;
           if (game?.audio) game.audio.play('scythe_reap', this.x);
           const fAng = this.facing === 1 ? 0 : Math.PI;
@@ -515,6 +639,7 @@ export class Monster extends Fighter {
     }
 
     if (t >= this.skillDuration) {
+      this.pounceVelZ = 0;
       this.y = this.groundY;
       this.setState('IDLE');
     }
@@ -675,6 +800,8 @@ export class ArchfiendBoss extends Monster {
     this.vulnerableTimer = 0;
     this.diveTargetX = x;
     this.diveStartX = x;
+    this.diveStartGy = groundY;
+    this.diveTargetGy = groundY;
   }
 
   update(dt, enemy, game) {
@@ -758,6 +885,9 @@ export class ArchfiendBoss extends Monster {
     }
 
     const dist = Math.abs(enemy.x - this.x);
+    const enemyGy = enemy.groundY || enemy.y;
+    const dz = enemyGy - this.groundY;
+    const absDz = Math.abs(dz);
     this.facing = enemy.x >= this.x ? 1 : -1;
 
     // Phase 2 & Phase 3 Boss Signature Ultimate (`ULTIMATE`, Row 4)
@@ -765,6 +895,8 @@ export class ArchfiendBoss extends Monster {
       this.ultCooldown = this.bossPhase >= 3 ? 6.8 : 8.2;
       this.diveStartX = this.x;
       this.diveTargetX = enemy.x;
+      this.diveStartGy = this.groundY;
+      this.diveTargetGy = enemyGy;
       this.telegraphLabel =
         this.bossPhase >= 3 ? '★ BLACK PIT APOCALYPSE! ★' : '★ SKY-REND DIVEBOMB! ★';
       this.telegraphTimer = 1.35;
@@ -796,17 +928,25 @@ export class ArchfiendBoss extends Monster {
       return;
     }
 
-    if (dist <= this.attackRange && this.autoCooldown <= 0) {
+    if (dist <= this.attackRange && absDz <= 64 && this.autoCooldown <= 0) {
       this.autoCooldown = this.autoInterval * (this.bossPhase >= 3 ? 0.82 : 1.0);
       this.setState('AUTO_ATTACK');
       return;
     }
 
-    if (dist > 142) {
+    if (dist > 142 || absDz > 40) {
       this.state = 'WALK';
       this.moveDir = 1;
       this.walkPhase += dt * 3.8;
-      this.x += this.facing * this.moveSpeed * dt;
+      if (dist > 132) {
+        this.x += this.facing * this.moveSpeed * dt;
+      }
+      if (absDz > 12) {
+        this.shiftMonsterDepth(
+          Math.sign(dz) * Math.min(absDz, this.moveSpeed * 0.85 * dt),
+          game
+        );
+      }
       this.headBob = Math.abs(Math.sin(this.walkPhase * 2)) * 3.0;
     } else {
       this.state = 'IDLE';
@@ -823,7 +963,12 @@ export class ArchfiendBoss extends Monster {
       const fAng = this.facing === 1 ? 0 : Math.PI;
       game?.vfx?.spawnSlash(this.x + this.facing * 68, this.y - 104, 118, fAng - 1.15, fAng + 1.15, '#ef4444', 0.28);
       game?.vfx?.spawnShockwave(this.x + this.facing * 78, this.groundY - 12, 128, '#f59e0b', 0.28, true);
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 36) {
+      if (
+        enemy &&
+        !enemy.isDead &&
+        Math.abs(enemy.x - this.x) <= this.attackRange + 36 &&
+        Math.abs((enemy.groundY || enemy.y) - this.groundY) <= 74
+      ) {
         enemy.takeDamage(68, this, true, 210, -120);
       }
     }
@@ -861,7 +1006,15 @@ export class ArchfiendBoss extends Monster {
       });
 
       if (enemy) {
-        this.spawnFloorTelegraph(enemy.x, 90, 0.78, 62, '#ef4444', 'HELLFIRE SEAL');
+        this.spawnFloorTelegraph(
+          enemy.x,
+          90,
+          0.78,
+          62,
+          '#ef4444',
+          'HELLFIRE SEAL',
+          enemy.groundY || enemy.y
+        );
       }
     }
     if (t >= this.skillDuration) {
@@ -873,22 +1026,28 @@ export class ArchfiendBoss extends Monster {
     const t = this.stateTimer;
     const minX = game?.adventure?.lockActive ? game.adventure.lockMinX + 60 : 3680;
     const maxX = game?.adventure?.lockActive ? game.adventure.lockMaxX - 60 : 4720;
+    const minGy = (game?.adventure?.depthMinY || 442) + 18;
+    const maxGy = (game?.adventure?.depthMaxY || 680) - 18;
 
     if (this.bossPhase >= 3) {
-      // Phase 3: Black Pit Apocalypse — 5 sequential telegraphed hellfire pillars + Vulnerable Punish Window!
+      // Phase 3: Black Pit Apocalypse — 5 sequential 3D telegraphed hellfire pillars + Vulnerable Punish Window!
       this.y = this.groundY;
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         const base = enemy ? enemy.x : (minX + maxX) * 0.5;
+        const baseGy = enemy ? enemy.groundY || enemy.y : 561;
+        const zOffsets = [-64, 52, 0, -52, 64];
         [-260, -130, 0, 130, 260].forEach((off, idx) => {
           const px = Math.max(minX, Math.min(maxX, base + off));
-          this.spawnFloorTelegraph(px, 84, 0.56 + idx * 0.16, 72, '#ef4444', 'APOCALYPSE');
-          game?.vfx?.spawnFlamePillar(px, this.groundY, this, enemy, {
+          const pGy = Math.max(minGy, Math.min(maxGy, baseGy + zOffsets[idx]));
+          this.spawnFloorTelegraph(px, 84, 0.56 + idx * 0.16, 72, '#ef4444', 'APOCALYPSE', pGy);
+          game?.vfx?.spawnFlamePillar(px, pGy, this, enemy, {
             theme: 'abyssal',
             delay: 0.56 + idx * 0.16,
             maxLife: 1.2,
             scaleWidth: idx === 2 ? 1.2 : 0.9,
-            isUltimate: true
+            isUltimate: true,
+            groundY: pGy
           });
         });
       }
@@ -901,20 +1060,38 @@ export class ArchfiendBoss extends Monster {
       return;
     }
 
-    // Phase 2: Sky-Rend Winged Divebomb!
+    // Phase 2: Sky-Rend 3D Winged Divebomb!
     if (t < 0.62) {
       const u = t / 0.62;
       this.y = this.groundY - Math.sin(u * Math.PI * 0.5) * 215;
       if (!this.didSecondaryAction) {
         this.didSecondaryAction = true;
+        this.diveStartGy = this.groundY;
         this.diveTargetX = Math.max(minX, Math.min(maxX, enemy ? enemy.x : this.x));
-        this.spawnFloorTelegraph(this.diveTargetX, 112, 0.68, 78, '#f59e0b', 'DIVEBOMB');
+        this.diveTargetGy = Math.max(
+          minGy,
+          Math.min(maxGy, enemy ? enemy.groundY || enemy.y : this.groundY)
+        );
+        this.spawnFloorTelegraph(
+          this.diveTargetX,
+          112,
+          0.68,
+          78,
+          '#f59e0b',
+          'DIVEBOMB',
+          this.diveTargetGy
+        );
       }
     } else if (t < 1.05) {
       const u = (t - 0.62) / 0.43;
       this.x = this.diveStartX + (this.diveTargetX - this.diveStartX) * u;
+      this.setMonsterGroundY(
+        this.diveStartGy + (this.diveTargetGy - this.diveStartGy) * u,
+        game
+      );
       this.y = this.groundY - (1 - u) * 215;
     } else {
+      this.setMonsterGroundY(this.diveTargetGy, game);
       this.y = this.groundY;
       if (!this.didActionFrame) {
         this.didActionFrame = true;

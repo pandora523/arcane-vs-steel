@@ -1,8 +1,11 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps82';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps82';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps82';
+import { Fighter } from '../entities/Fighter.js?v=30fps83';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps83';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps83';
 
 export const ADVENTURE_WORLD_WIDTH = 4800;
+export const ADVENTURE_DEPTH_MIN_Y = 442;
+export const ADVENTURE_DEPTH_MAX_Y = 680;
+export const ADVENTURE_DEPTH_MID_Y = 561;
 
 export const ADVENTURE_ZONES = [
   {
@@ -53,10 +56,10 @@ export const ADVENTURE_ZONES = [
 ];
 
 /**
- * Marvel-Arcade Beat-'Em-Up Adventure Campaign Coordinator:
- * - 4800px continuous 4-Zone stage with screen-lock wave encounters, `"GO! ➔"` prompts,
- *   arcade item pickups (`HP`, `MANA`, `ULT CORE`), and a 3-Phase Archfiend Boss Lair.
- * - Full Manual Player Control (`Move`, `Solar Vault`, `Flame Ward`, `Arcane Blink`,
+ * Marvel-Arcade 2.5D Beat-'Em-Up Adventure Campaign Coordinator:
+ * - 4800px continuous seamless 4-Zone 3D stage (`X: 80..4720`, `groundY: 442..680`) with screen-lock
+ *   wave encounters, `"GO! ➔"` prompts, 3D item pickups (`HP`, `MANA`, `ULT CORE`), and a 3-Phase Archfiend Boss Lair.
+ * - Full 360° 3D Manual Player Control (`Move Up/Down/Left/Right`, `Solar Vault`, `Flame Ward`, `Arcane Blink`,
  *   `Attack`, `Skill`, `Overdrive`, `Astral Meteor Ultimate`) + optional `Auto-Play` AI toggle.
  */
 export class AdventureManager {
@@ -64,6 +67,9 @@ export class AdventureManager {
     this.game = game;
     this.active = false;
     this.autoPlay = false;
+
+    this.depthMinY = ADVENTURE_DEPTH_MIN_Y;
+    this.depthMaxY = ADVENTURE_DEPTH_MAX_Y;
 
     this.zoneIndex = 0;
     this.subWave = 0;
@@ -89,11 +95,15 @@ export class AdventureManager {
     this.comboHits = 0;
     this.comboTimer = 0;
 
-    // Input state (Keyboard + Touch Virtual Analog Joystick + Right-Side Skill Cluster)
+    // Input state (3D Keyboard WASD/Arrows + 360° Touch Virtual Analog Joystick + Right-Side Skill Cluster)
     this.heldLeft = false;
     this.heldRight = false;
+    this.heldUp = false;
+    this.heldDown = false;
     this.uiHeldLeft = false;
     this.uiHeldRight = false;
+    this.uiHeldUp = false;
+    this.uiHeldDown = false;
     this.joyX = 0;
     this.joyY = 0;
     this.joyActive = false;
@@ -128,8 +138,12 @@ export class AdventureManager {
   clearHeldInputs() {
     this.heldLeft = false;
     this.heldRight = false;
+    this.heldUp = false;
+    this.heldDown = false;
     this.uiHeldLeft = false;
     this.uiHeldRight = false;
+    this.uiHeldUp = false;
+    this.uiHeldDown = false;
     this.heldAttack = false;
     this.uiHeldAttack = false;
     this.queuedAction = null;
@@ -145,14 +159,24 @@ export class AdventureManager {
     const code = e.code;
     if (code === 'ArrowLeft' || code === 'KeyA') {
       this.heldLeft = true;
+      this.syncJoystickKnobUI();
       e.preventDefault();
     } else if (code === 'ArrowRight' || code === 'KeyD') {
       this.heldRight = true;
+      this.syncJoystickKnobUI();
       e.preventDefault();
-    } else if (code === 'ArrowUp' || code === 'KeyW' || code === 'Space') {
-      this.triggerAction('jump');
+    } else if (code === 'ArrowUp' || code === 'KeyW') {
+      this.heldUp = true;
+      this.syncJoystickKnobUI();
       e.preventDefault();
     } else if (code === 'ArrowDown' || code === 'KeyS') {
+      this.heldDown = true;
+      this.syncJoystickKnobUI();
+      e.preventDefault();
+    } else if (code === 'Space') {
+      this.triggerAction('jump');
+      e.preventDefault();
+    } else if (code === 'KeyV' || code === 'KeyH') {
       this.triggerAction('crouch');
       e.preventDefault();
     } else if (code === 'KeyJ' || code === 'KeyZ') {
@@ -181,8 +205,16 @@ export class AdventureManager {
     const code = e.code;
     if (code === 'ArrowLeft' || code === 'KeyA') {
       this.heldLeft = false;
+      this.syncJoystickKnobUI();
     } else if (code === 'ArrowRight' || code === 'KeyD') {
       this.heldRight = false;
+      this.syncJoystickKnobUI();
+    } else if (code === 'ArrowUp' || code === 'KeyW') {
+      this.heldUp = false;
+      this.syncJoystickKnobUI();
+    } else if (code === 'ArrowDown' || code === 'KeyS') {
+      this.heldDown = false;
+      this.syncJoystickKnobUI();
     } else if (code === 'KeyJ' || code === 'KeyZ') {
       this.heldAttack = false;
     }
@@ -191,6 +223,12 @@ export class AdventureManager {
   setMoveInput(dir, pressed) {
     if (dir < 0) this.uiHeldLeft = Boolean(pressed);
     if (dir > 0) this.uiHeldRight = Boolean(pressed);
+    this.syncJoystickKnobUI();
+  }
+
+  setDepthInput(dir, pressed) {
+    if (dir < 0) this.uiHeldUp = Boolean(pressed);
+    if (dir > 0) this.uiHeldDown = Boolean(pressed);
     this.syncJoystickKnobUI();
   }
 
@@ -219,17 +257,48 @@ export class AdventureManager {
     const knob = document.getElementById('adv-joystick-knob');
     if (!base || !knob) return;
 
+    let vx = 0;
+    let vy = 0;
+    let maxPx = 30;
     if (this.joyActive) {
-      const dx = Math.round(this.joyX * 36);
-      const dy = Math.round(this.joyY * 36);
-      if (knob.style) knob.style.transform = `translate3d(${dx}px, ${dy}px, 0px)`;
-      base.classList?.toggle('is-active', Math.hypot(this.joyX, this.joyY) > 0.08);
+      vx = this.joyX;
+      vy = this.joyY;
+      maxPx = 36;
     } else {
-      const kbDir =
-        (this.heldRight || this.uiHeldRight ? 1 : 0) - (this.heldLeft || this.uiHeldLeft ? 1 : 0);
-      if (knob.style) knob.style.transform = `translate3d(${kbDir * 30}px, 0px, 0px)`;
-      base.classList?.toggle('is-active', kbDir !== 0);
+      const kbX = (this.heldRight || this.uiHeldRight ? 1 : 0) - (this.heldLeft || this.uiHeldLeft ? 1 : 0);
+      const kbY = (this.heldDown || this.uiHeldDown ? 1 : 0) - (this.heldUp || this.uiHeldUp ? 1 : 0);
+      const mag = Math.hypot(kbX, kbY);
+      vx = mag > 1 ? kbX / mag : kbX;
+      vy = mag > 1 ? kbY / mag : kbY;
     }
+
+    const dx = Math.round(vx * maxPx);
+    const dy = Math.round(vy * maxPx);
+    if (knob.style) knob.style.transform = `translate3d(${dx}px, ${dy}px, 0px)`;
+    base.classList?.toggle('is-active', Math.hypot(vx, vy) > 0.08);
+
+    if (typeof base.querySelector === 'function') {
+      base.querySelector('.adv-joy-n')?.classList?.toggle('is-lit', vy < -0.22);
+      base.querySelector('.adv-joy-s')?.classList?.toggle('is-lit', vy > 0.22);
+      base.querySelector('.adv-joy-w')?.classList?.toggle('is-lit', vx < -0.22);
+      base.querySelector('.adv-joy-e')?.classList?.toggle('is-lit', vx > 0.22);
+    }
+  }
+
+  shiftEntityDepth(entity, dz) {
+    if (!entity || !Number.isFinite(dz) || dz === 0) return 0;
+    const prevGy = Number.isFinite(entity.groundY) ? entity.groundY : ADVENTURE_DEPTH_MID_Y;
+    const nextGy = Math.max(this.depthMinY, Math.min(this.depthMaxY, prevGy + dz));
+    const applied = nextGy - prevGy;
+    if (applied === 0) return 0;
+    entity.groundY = nextGy;
+    entity.y += applied;
+    if (Array.isArray(entity.capeNodes)) {
+      for (const n of entity.capeNodes) {
+        if (n) n.y += applied;
+      }
+    }
+    return applied;
   }
 
   triggerAction(actionName) {
@@ -453,15 +522,26 @@ export class AdventureManager {
       renderer.trueUltStageOverride = null;
       renderer.trueUltStageAlpha = 0;
       renderer.camX = 480;
+      renderer.camY = ADVENTURE_DEPTH_MID_Y - 95;
     }
 
     playerFighter.x = 240;
-    playerFighter.y = renderer ? renderer.groundY : 580;
+    playerFighter.groundY = ADVENTURE_DEPTH_MID_Y;
+    playerFighter.y = ADVENTURE_DEPTH_MID_Y;
     playerFighter.facing = 1;
     playerFighter.team = 1;
     playerFighter.isPlayerControlled = true;
     playerFighter.adventureAutoPlay = this.autoPlay;
     playerFighter._manualWalkActive = false;
+    playerFighter._advVaultVelZ = 0;
+    if (Array.isArray(playerFighter.capeNodes)) {
+      playerFighter.capeNodes.forEach((n, i) => {
+        if (n) {
+          n.x = playerFighter.x - playerFighter.facing * i * 9;
+          n.y = playerFighter.y - 52 + i * 9;
+        }
+      });
+    }
     // Give Sol a head-start boost on Overdrive & Finisher so arcade action pops fast!
     playerFighter.mana = Math.max(playerFighter.mana, 45);
     if (playerFighter.hasTrueUltimate) {
@@ -499,12 +579,20 @@ export class AdventureManager {
   }
 
   spawnMonster(kind, x, opts = {}) {
-    const gy = this.game.renderer ? this.game.renderer.groundY : 580;
+    const lanePool = [508, 616, 470, 646, 558];
+    const defaultGy =
+      kind === 'archfiend'
+        ? ADVENTURE_DEPTH_MID_Y
+        : lanePool[(this.game.fighters ? this.game.fighters.length : 0) % lanePool.length];
+    const rawGy = Number.isFinite(opts.groundY) ? opts.groundY : defaultGy;
+    const gy = Math.max(this.depthMinY + 12, Math.min(this.depthMaxY - 12, rawGy));
     const player = this.game.leftFighter;
     const facing = player && player.x > x ? 1 : -1;
     const m = kind === 'archfiend' ? new ArchfiendBoss(x, gy, facing) : new Monster(kind, x, gy, facing, opts);
     m.game = this.game;
     m.team = 2;
+    m.groundY = gy;
+    m.y = gy;
     this.game.fighters.push(m);
     if (!this.game.rightFighter || this.game.rightFighter.isDead || m.isBoss) {
       this.game.rightFighter = m;
@@ -516,11 +604,16 @@ export class AdventureManager {
     return m;
   }
 
-  spawnPickup(type, x) {
-    const gy = this.game.renderer ? this.game.renderer.groundY : 580;
+  spawnPickup(type, x, groundY = null) {
+    const fallbackGy = this.game.leftFighter?.groundY || ADVENTURE_DEPTH_MID_Y;
+    const gy = Math.max(
+      this.depthMinY + 16,
+      Math.min(this.depthMaxY - 16, Number.isFinite(groundY) ? groundY : fallbackGy)
+    );
     this.pickups.push({
       type, // 'hp' | 'mana' | 'ult'
       x,
+      groundY: gy,
       y: gy,
       vy: -210,
       age: 0,
@@ -548,14 +641,14 @@ export class AdventureManager {
 
     if (zoneIdx === 0 && subWave === 1) {
       this.totalWaveLabel = 'WAVE 1 / 5';
-      // Spawn inside immediate viewport framing even on 360px portrait mobile screens!
-      this.spawnMonster('ghoul', 680);
-      this.spawnMonster('ghoul', 840);
+      // Staggered across upper & lower 3D lanes inside immediate viewport framing!
+      this.spawnMonster('ghoul', 680, { groundY: 506 });
+      this.spawnMonster('ghoul', 840, { groundY: 618 });
     } else if (zoneIdx === 0 && subWave === 2) {
       this.totalWaveLabel = 'WAVE 2 / 5';
-      this.spawnMonster('ghoul', 880);
-      this.spawnMonster('cultist', 1020);
-      this.spawnMonster('ghoul', 220);
+      this.spawnMonster('ghoul', 880, { groundY: 476 });
+      this.spawnMonster('cultist', 1020, { groundY: 562 });
+      this.spawnMonster('ghoul', 230, { groundY: 638 });
       this.game.renderer?.triggerStageEvent?.(
         '★ VANGUARD AMBUSH! ★',
         'VOID CULTIST & ASHFANG PACK DETECTED!',
@@ -564,9 +657,9 @@ export class AdventureManager {
       );
     } else if (zoneIdx === 1) {
       this.totalWaveLabel = 'WAVE 3 / 5';
-      this.spawnMonster('brute', 1960);
-      this.spawnMonster('cultist', 2140);
-      this.spawnMonster('cultist', 2260);
+      this.spawnMonster('brute', 1960, { groundY: 562 });
+      this.spawnMonster('cultist', 2140, { groundY: 478 });
+      this.spawnMonster('cultist', 2250, { groundY: 644 });
       this.game.renderer?.triggerStageEvent?.(
         '★ ZONE II: CURSED STARWOOD ★',
         'OBSIDIAN JUGGERNAUT BLOCKS THE CAUSEWAY!',
@@ -575,10 +668,10 @@ export class AdventureManager {
       );
     } else if (zoneIdx === 2) {
       this.totalWaveLabel = 'WAVE 4 / 5';
-      this.spawnMonster('brute', 3140, { isElite: true });
-      this.spawnMonster('ghoul', 2940);
-      this.spawnMonster('ghoul', 3300);
-      this.spawnMonster('cultist', 2560, { isElite: true });
+      this.spawnMonster('brute', 3140, { isElite: true, groundY: 560 });
+      this.spawnMonster('ghoul', 2940, { groundY: 474 });
+      this.spawnMonster('ghoul', 3290, { groundY: 648 });
+      this.spawnMonster('cultist', 2570, { isElite: true, groundY: 518 });
       this.game.renderer?.triggerStageEvent?.(
         '★ ZONE III: ABYSSAL BONE-GATE ★',
         'ELITE HELLFORGED GUARDIANS!',
@@ -608,14 +701,14 @@ export class AdventureManager {
   onBossPhaseShift(boss, phase) {
     if (!this.active || this.game.isMatchOver) return;
     if (phase === 2) {
-      // Summon 2 Ashfang Vanguards + drop Solar Recovery Shrine!
-      this.spawnMonster('ghoul', Math.max(this.lockMinX + 60, boss.x - 360));
-      this.spawnMonster('ghoul', Math.min(this.lockMaxX - 60, boss.x + 220));
-      this.spawnPickup('hp', 4120);
-      this.spawnPickup('mana', 4210);
+      // Summon 2 flanking Ashfang Vanguards on upper & lower 3D lanes + drop Solar Recovery Shrine!
+      this.spawnMonster('ghoul', Math.max(this.lockMinX + 60, boss.x - 360), { groundY: 484 });
+      this.spawnMonster('ghoul', Math.min(this.lockMaxX - 60, boss.x + 220), { groundY: 638 });
+      this.spawnPickup('hp', 4120, 502);
+      this.spawnPickup('mana', 4210, 622);
     } else if (phase === 3) {
-      this.spawnPickup('hp', 4080);
-      this.spawnPickup('ult', 4180);
+      this.spawnPickup('hp', 4080, 496);
+      this.spawnPickup('ult', 4180, 628);
     }
   }
 
@@ -627,11 +720,12 @@ export class AdventureManager {
   getNearestLivingMonster(player) {
     const living = this.getLivingMonsters();
     if (!living.length) return null;
+    const pGy = player.groundY || player.y || ADVENTURE_DEPTH_MID_Y;
     let best = living[0];
     let bestScore = Infinity;
     for (const m of living) {
-      // Slightly prioritize Boss or nearest threat in front of player
-      const d = Math.abs(m.x - player.x) - (m.isBoss ? 45 : 0);
+      const mGy = m.groundY || m.y || ADVENTURE_DEPTH_MID_Y;
+      const d = Math.hypot(m.x - player.x, (mGy - pGy) * 1.65) - (m.isBoss ? 45 : 0);
       if (d < bestScore) {
         bestScore = d;
         best = m;
@@ -802,16 +896,16 @@ export class AdventureManager {
     const p = this.game.leftFighter;
     const dropBaseX = p ? Math.min(this.lockMaxX - 160, p.x + 150) : zoneIdx * 1200 + 820;
     if (zoneIdx === 0) {
-      this.spawnPickup('hp', dropBaseX);
-      this.spawnPickup('mana', dropBaseX + 78);
+      this.spawnPickup('hp', dropBaseX, 514);
+      this.spawnPickup('mana', dropBaseX + 78, 608);
     } else if (zoneIdx === 1) {
-      this.spawnPickup('hp', dropBaseX);
-      this.spawnPickup('ult', dropBaseX + 82);
+      this.spawnPickup('hp', dropBaseX, 512);
+      this.spawnPickup('ult', dropBaseX + 82, 610);
     } else if (zoneIdx === 2) {
-      // Sanctuary Boss-Prep Cache before Throne of the Black Pit!
-      this.spawnPickup('hp', 3340);
-      this.spawnPickup('mana', 3420);
-      this.spawnPickup('ult', 3500);
+      // Sanctuary Boss-Prep Cache staggered across the 3D road before Throne of the Black Pit!
+      this.spawnPickup('hp', 3340, 498);
+      this.spawnPickup('mana', 3420, 562);
+      this.spawnPickup('ult', 3500, 626);
     }
 
     if (this.game.audio) {
@@ -821,20 +915,27 @@ export class AdventureManager {
 
   updatePickups(dt, player) {
     if (!this.pickups.length) return;
-    const gy = this.game.renderer ? this.game.renderer.groundY : 580;
+    const pGy = player ? player.groundY || player.y : ADVENTURE_DEPTH_MID_Y;
     for (let i = this.pickups.length - 1; i >= 0; i--) {
       const pk = this.pickups[i];
+      const pkGy = Number.isFinite(pk.groundY) ? pk.groundY : ADVENTURE_DEPTH_MID_Y;
       pk.age += dt;
-      if (pk.y < gy || pk.vy < 0) {
+      if (pk.y < pkGy || pk.vy < 0) {
         pk.vy += 680 * dt;
         pk.y += pk.vy * dt;
-        if (pk.y >= gy) {
-          pk.y = gy;
+        if (pk.y >= pkGy) {
+          pk.y = pkGy;
           pk.vy = 0;
         }
       }
 
-      if (player && !player.isDead && Math.abs(player.x - pk.x) <= 74 && Math.abs(player.y - pk.y) <= 95) {
+      if (
+        player &&
+        !player.isDead &&
+        Math.abs(player.x - pk.x) <= 74 &&
+        Math.abs(pGy - pkGy) <= 64 &&
+        Math.abs(player.y - pk.y) <= 105
+      ) {
         this.pickups.splice(i, 1);
         this.score += 150;
         if (this.game.audio) this.game.audio.play('holy_hit', pk.x);
@@ -925,42 +1026,60 @@ export class AdventureManager {
       }
     }
 
-    // Optional Auto-Play AI Mode: Sol fights waves autonomously & marches right when cleared!
+    // Optional Auto-Play AI Mode: Sol fights waves autonomously across 3D lanes & marches right when cleared!
     if (this.autoPlay) {
       player._manualWalkActive = false;
+      player._advVaultVelZ = 0;
       if (!target && !this.lockActive && !this.bossSpawnPending && !this.game.isMatchOver) {
-        // March toward nearest pickup first, otherwise advance right toward next zone!
         const nextPickup = this.pickups[0];
         const goalX = nextPickup ? nextPickup.x : ADVENTURE_WORLD_WIDTH - 240;
-        const dir = goalX >= player.x ? 1 : -1;
-        player.facing = dir;
+        const goalGy = nextPickup && Number.isFinite(nextPickup.groundY) ? nextPickup.groundY : ADVENTURE_DEPTH_MID_Y;
+        const dx = goalX - player.x;
+        const dz = goalGy - (player.groundY || ADVENTURE_DEPTH_MID_Y);
+        const len = Math.hypot(dx, dz) || 1;
+        player.facing = dx >= -6 ? 1 : -1;
         player.moveDir = 1;
         player.state = 'WALK';
         player.walkPhase += dt * 5.0;
-        player.x += dir * player.moveSpeed * 1.45 * dt;
+        const autoMoveSpeed = Math.max(player.moveSpeed || 180, 188);
+        player.x += (dx / len) * autoMoveSpeed * 1.45 * dt;
+        this.shiftEntityDepth(player, (dz / len) * autoMoveSpeed * 1.10 * dt);
         Fighter.prototype.update.call(player, dt, null, this.game);
         player.state = 'WALK';
         return;
+      }
+      if (target && (player.state === 'IDLE' || player.state === 'WALK') && !(player.stunTimer > 0) && !player.isRooted) {
+        const autoMoveSpeed = Math.max(player.moveSpeed || 180, 188);
+        const dz = (target.groundY || ADVENTURE_DEPTH_MID_Y) - (player.groundY || ADVENTURE_DEPTH_MID_Y);
+        if (Math.abs(dz) > 14) {
+          this.shiftEntityDepth(player, Math.sign(dz) * Math.min(Math.abs(dz), autoMoveSpeed * 0.92 * dt));
+        }
       }
       player.update(dt, target, this.game);
       return;
     }
 
-    // Manual Player Control Mode (Touch Virtual Analog Joystick + Keyboard)!
-    const kbMove =
-      (this.heldRight || this.uiHeldRight ? 1 : 0) - (this.heldLeft || this.uiHeldLeft ? 1 : 0);
-    const rawMove = this.joyActive
-      ? Math.abs(this.joyX) > 0.14
-        ? this.joyX
-        : 0
-      : kbMove;
-    const moveDir = rawMove === 0 ? 0 : rawMove > 0 ? 1 : -1;
-    const moveSpeedScale =
-      rawMove === 0
-        ? 0
-        : this.joyActive
-          ? 0.58 + 0.42 * Math.min(1, Math.abs(rawMove) / 0.75)
-          : 1;
+    // Manual 360° 3D Player Control Mode (Touch Virtual Analog Joystick + WASD / Arrow Keys)!
+    let vecX = 0;
+    let vecY = 0;
+    if (this.joyActive) {
+      const mag = Math.hypot(this.joyX, this.joyY);
+      if (mag > 0.13) {
+        const scaledMag = 0.54 + 0.46 * Math.min(1, (mag - 0.13) / 0.65);
+        vecX = (this.joyX / mag) * scaledMag;
+        vecY = (this.joyY / mag) * scaledMag;
+      }
+    } else {
+      const kbX = (this.heldRight || this.uiHeldRight ? 1 : 0) - (this.heldLeft || this.uiHeldLeft ? 1 : 0);
+      const kbY = (this.heldDown || this.uiHeldDown ? 1 : 0) - (this.heldUp || this.uiHeldUp ? 1 : 0);
+      const mag = Math.hypot(kbX, kbY);
+      if (mag > 0) {
+        vecX = kbX / (mag > 1 ? mag : 1);
+        vecY = kbY / (mag > 1 ? mag : 1);
+      }
+    }
+    const moveDirX = Math.abs(vecX) > 0.12 ? (vecX > 0 ? 1 : -1) : 0;
+    const isMoving3D = Math.hypot(vecX, vecY) > 0.05;
 
     // Continuous hold-to-attack on primary thumb orb or [J/Z]
     if (!this.queuedAction && (this.heldAttack || this.uiHeldAttack) && player.autoCooldown <= 0) {
@@ -1011,20 +1130,21 @@ export class AdventureManager {
         player.setState('SKILL');
       } else if (act === 'dodge' && player.dodgeCooldown <= 0) {
         this.queuedAction = null;
-        const blinkDir = moveDir !== 0 ? moveDir : target ? (player.x < target.x ? -1 : 1) : player.facing;
+        const blinkDir = moveDirX !== 0 ? moveDirX : target ? (player.x < target.x ? -1 : 1) : player.facing;
         this.dodgeCdMax = Math.max(0.5, player.dodgeMaxCooldown * 0.72);
         player.dodgeCooldown = this.dodgeCdMax;
         player.dashDir = blinkDir;
         player.isInvulnerable = true;
+        player._advVaultVelZ = Math.abs(vecY) > 0.12 ? vecY * 290 : 0;
         player.setState('DODGE');
         if (typeof player.onStartDodge === 'function') {
-          // Pass null enemy when player holds an explicit direction so blink always goes where the player steers!
-          player.onStartDodge(moveDir !== 0 ? null : target, this.game, blinkDir);
+          player.onStartDodge(isMoving3D ? null : target, this.game, blinkDir);
         }
       } else if (act === 'jump' && this.jumpCd <= 0 && typeof player.startJump === 'function') {
         this.queuedAction = null;
-        const vaultDir = moveDir !== 0 ? moveDir : player.facing;
+        const vaultDir = moveDirX !== 0 ? moveDirX : player.facing;
         player.facing = vaultDir;
+        player._advVaultVelZ = Math.abs(vecY) > 0.12 ? vecY * 235 : 0;
         const prevDodgeCd = player.dodgeCooldown;
         player.startJump(null, this.game, vaultDir);
         player.dodgeCooldown = prevDodgeCd;
@@ -1043,19 +1163,24 @@ export class AdventureManager {
       }
     }
 
-    // Apply responsive horizontal movement when in neutral IDLE/WALK
+    // Apply responsive 360° 3D movement (X + Depth groundY) when in neutral IDLE/WALK
     if (
       !player.isDead &&
       !(player.stunTimer > 0) &&
       !player.isRooted &&
       (player.state === 'IDLE' || player.state === 'WALK')
     ) {
-      if (moveDir !== 0 && !this.game.isMatchOver) {
+      player._advVaultVelZ = 0;
+      if (isMoving3D && !this.game.isMatchOver) {
         player._manualWalkActive = true;
-        player.facing = moveDir;
+        if (moveDirX !== 0) {
+          player.facing = moveDirX;
+        }
         player.moveDir = 1;
         player.state = 'WALK';
-        player.x += moveDir * player.moveSpeed * 1.42 * moveSpeedScale * dt;
+        const advMoveSpeed = Math.max(player.moveSpeed || 180, 188);
+        player.x += vecX * advMoveSpeed * 1.42 * dt;
+        this.shiftEntityDepth(player, vecY * advMoveSpeed * 1.12 * dt);
       } else {
         player._manualWalkActive = false;
         player.moveDir = 0;
@@ -1063,13 +1188,18 @@ export class AdventureManager {
           player.state = 'IDLE';
         }
       }
-      // Critical: pass `enemy = null` while in manual IDLE/WALK so FireMage.js autonomous dodge/retreat
-      // never overrides the player's positioning, while keeping all 120Hz Solar Shaders & cooldowns ticking!
+      // Pass `enemy = null` while in manual IDLE/WALK so FireMage.js autonomous dodge/retreat
+      // never overrides the player's 3D positioning, while keeping all 120Hz Solar Shaders & cooldowns ticking!
       player.update(dt, null, this.game);
     } else {
       player._manualWalkActive = false;
+      if ((player.state === 'DODGE' || player.state === 'JUMP') && player._advVaultVelZ) {
+        this.shiftEntityDepth(player, player._advVaultVelZ * dt);
+      } else {
+        player._advVaultVelZ = 0;
+      }
       // During active Attack, Skill, Jump, Blink, Crouch, Overdrive, or Astral Meteor Ultimate,
-      // pass `target` so Sol's projectiles, Triple Solar Pillars, and Meteor lock onto the monster!
+      // pass `target` so Sol's projectiles, Triple Solar Pillars, and Meteor lock onto the monster in 3D!
       player.update(dt, target, this.game);
     }
   }
@@ -1090,7 +1220,7 @@ export class AdventureManager {
       this.bossWarningTimer = Math.max(0, this.bossWarningTimer - dt);
       if (this.bossWarningTimer <= 0 && this.bossSpawnPending) {
         this.bossSpawnPending = false;
-        this.bossEntity = this.spawnMonster('archfiend', 4440);
+        this.bossEntity = this.spawnMonster('archfiend', 4440, { groundY: ADVENTURE_DEPTH_MID_Y });
         this.syncRightHUD();
       }
     }
@@ -1146,47 +1276,63 @@ export class AdventureManager {
 
   renderWorldFloor(ctx, renderer) {
     if (!this.active || !ctx) return;
-    const gy = renderer.groundY;
     const t = renderer.time || 0;
+    const roadTop = 438;
+    const roadBot = 684;
 
-    // 1. Render Monster Floor Telegraph Rings
+    // 1. Render Monster 3D Floor Telegraph Rings
     for (const f of this.game.fighters) {
       if (f && f.isMonster && !f.isDead && typeof f.drawTelegraphRings === 'function') {
         f.drawTelegraphRings(ctx);
       }
     }
 
-    // 2. Render Marvel-Arcade Glowing Energy Gate Barriers when screen is wave-locked
+    // 2. Render 3D Floor-Spanning Arcane Seal Barriers when screen is wave-locked
     if (this.lockActive) {
       ctx.save();
-      const pulse = 0.42 + 0.22 * Math.sin(t * 6.5);
+      const pulse = 0.44 + 0.22 * Math.sin(t * 6.5);
       for (const gateX of [this.lockMinX - 16, this.lockMaxX + 16]) {
         if (gateX <= 70 || gateX >= ADVENTURE_WORLD_WIDTH - 70) continue;
+        const gx = Math.round(gateX);
+        // Floor rune threshold strip across the entire 3D road depth
         ctx.fillStyle = `rgba(251, 146, 60, ${(pulse * 0.24).toFixed(3)})`;
-        ctx.fillRect(gateX - 6, gy - 260, 12, 264);
-        ctx.fillStyle = `rgba(254, 240, 138, ${(pulse * 0.72).toFixed(3)})`;
+        ctx.fillRect(gx - 6, roadTop, 12, roadBot - roadTop);
+        ctx.fillStyle = `rgba(254, 240, 138, ${(pulse * 0.76).toFixed(3)})`;
         for (let seg = 0; seg < 8; seg++) {
-          const sy = Math.round(gy - 18 - seg * 32 + ((t * 48) % 32));
-          if (sy > gy - 255 && sy < gy) {
-            ctx.fillRect(gateX - 2, sy, 4, 14);
-          }
+          const sy = Math.round(roadTop + ((seg * 32 + t * 52) % (roadBot - roadTop - 12)));
+          ctx.fillRect(gx - 2, sy, 4, 14);
+        }
+        // Upper & lower arcane seal obelisks anchoring the 3D threshold
+        for (const pyY of [roadTop + 4, roadBot - 4]) {
+          ctx.fillStyle = '#0d0f1a';
+          ctx.fillRect(gx - 7, pyY - 38, 14, 40);
+          ctx.fillStyle = '#1e293b';
+          ctx.fillRect(gx - 5, pyY - 36, 10, 36);
+          ctx.fillStyle = '#fb923c';
+          ctx.fillRect(gx - 3, pyY - 30, 6, 18);
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(gx - 1, pyY - 26, 2, 10);
         }
       }
       ctx.restore();
     }
 
-    // 3. Render Pixel-Art Arcade Pickups (`Solar Heart`, `Solar Mana`, `Astral Core`)
+    // 3. Render Pixel-Art 3D Arcade Pickups (`Solar Heart`, `Solar Mana`, `Astral Core`) sorted by depth
     if (this.pickups.length > 0) {
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      for (const pk of this.pickups) {
+      const sortedPickups = [...this.pickups].sort(
+        (a, b) => (a.groundY || a.y || 561) - (b.groundY || b.y || 561)
+      );
+      for (const pk of sortedPickups) {
+        const pkGy = Math.round(Number.isFinite(pk.groundY) ? pk.groundY : pk.y);
         const bob = Math.round(Math.sin(t * 5.2 + pk.x * 0.03) * 6);
         const px = Math.round(pk.x);
         const py = Math.round(pk.y - 26 + bob);
 
-        // Contact shadow
+        // Grounded 3D lane contact shadow
         ctx.fillStyle = 'rgba(0, 0, 0, 0.48)';
-        ctx.fillRect(px - 14, Math.round(pk.y - 3), 28, 5);
+        ctx.fillRect(px - 14, pkGy - 3, 28, 5);
 
         const colMain =
           pk.type === 'hp' ? '#22c55e' : pk.type === 'mana' ? '#38bdf8' : '#facc15';

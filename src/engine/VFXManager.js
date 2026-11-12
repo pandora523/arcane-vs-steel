@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js?v=30fps82';
-import { PixelForge } from './PixelForge.js?v=30fps82';
+import { PixelFont } from './PixelFont.js?v=30fps83';
+import { PixelForge } from './PixelForge.js?v=30fps83';
 
 export class VFXManager {
   constructor() {
@@ -288,9 +288,18 @@ export class VFXManager {
     this.shockwaves.push({ x, y, maxRadius, color, life: 0, maxLife: duration, flat, vertical });
   }
 
-  spawnDecal(x, width, type = 'scorch', color = '#fb923c', duration = 5.5) {
+  spawnDecal(x, width, type = 'scorch', color = '#fb923c', duration = 5.5, groundY = null) {
     if (this.decals.length > 12) this.decals.shift();
-    this.decals.push({ x, width, type, color, life: 0, maxLife: duration, seed: Math.random() * 100 });
+    this.decals.push({
+      x,
+      width,
+      type,
+      color,
+      life: 0,
+      maxLife: duration,
+      seed: Math.random() * 100,
+      groundY
+    });
   }
 
   spawnLightning(x, topY, bottomY, color = '#fde08a', mainColor = '#38bdf8') {
@@ -307,9 +316,13 @@ export class VFXManager {
   }
 
   spawnFlamePillar(x, groundY, owner, target, opts = {}) {
+    const resolvedGy =
+      owner?.game?.isAdventureMode?.() && target && Number.isFinite(target.groundY) && owner.team === 1
+        ? target.groundY
+        : groundY;
     this.pillars.push({
       x,
-      groundY,
+      groundY: resolvedGy,
       owner,
       target,
       life: 0,
@@ -575,8 +588,9 @@ export class VFXManager {
       p.vy = p.vy * p.drag + p.gravity * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      if (p.y > groundY && p.gravity > 0) {
-        p.y = groundY;
+      const bounceGy = renderer?.adventureMode ? Math.max(groundY, 640) : groundY;
+      if (p.y > bounceGy && p.gravity > 0) {
+        p.y = bounceGy;
         p.vy *= -0.45;
         p.vx *= 0.7;
       }
@@ -786,9 +800,13 @@ export class VFXManager {
 
     for (let i = this.pillars.length - 1; i >= 0; i--) {
       const pil = this.pillars[i];
+      const pilGy = Number.isFinite(pil.groundY) ? pil.groundY : groundY;
       pil.life += dt;
       if (!pil.erupted && pil.target && pil.scaleWidth >= 0.95) {
         pil.x += (pil.target.x - pil.x) * 3.5 * dt;
+        if (pil.owner?.game?.isAdventureMode?.() && Number.isFinite(pil.target.groundY)) {
+          pil.groundY = pilGy + (pil.target.groundY - pilGy) * 3.5 * dt;
+        }
       }
       if (pil.life >= pil.delay && !pil.erupted) {
         pil.erupted = true;
@@ -820,9 +838,9 @@ export class VFXManager {
               : pil.theme === 'steel'
                 ? '#38bdf8'
                 : '#facc15';
-        this.spawnDecal(pil.x, 110 * pil.scaleWidth, 'fissure', col, 4.8);
-        this.spawnShockwave(pil.x, groundY, 135 * pil.scaleWidth, shockCol, 0.44, true);
-        this.spawnGlyphBurst(pil.x, groundY - 40, 6, pil.theme);
+        this.spawnDecal(pil.x, 110 * pil.scaleWidth, 'fissure', col, 4.8, pilGy);
+        this.spawnShockwave(pil.x, pilGy, 135 * pil.scaleWidth, shockCol, 0.44, true);
+        this.spawnGlyphBurst(pil.x, pilGy - 40, 6, pil.theme);
       }
       if (pil.erupted && pil.life < pil.maxLife - 0.12) {
         const colMain =
@@ -840,7 +858,7 @@ export class VFXManager {
           const spiral = Math.sin(pil.life * 22 + k * 2) * 42 * pil.scaleWidth;
           this.spawnParticle({
             x: pil.x + spiral,
-            y: groundY - Math.random() * 28,
+            y: pilGy - Math.random() * 28,
             vx: (Math.random() - 0.5) * 44,
             vy: -300 - Math.random() * 210,
             size: (12 + Math.random() * 8) * pil.scaleWidth,
@@ -852,15 +870,19 @@ export class VFXManager {
         pil.tickTimer += dt;
         if (pil.tickTimer >= 0.25) {
           pil.tickTimer = 0;
+          const isAdv = Boolean(pil.owner?.game?.isAdventureMode?.());
           const pilEnemies =
             pil.owner?.game?.getEnemiesOf ? pil.owner.game.getEnemiesOf(pil.owner) : pil.target ? [pil.target] : [];
           for (const foe of pilEnemies) {
+            const foeGy = Number.isFinite(foe?.groundY) ? foe.groundY : foe?.y || pilGy;
+            const inDepth = !isAdv || Math.abs(foeGy - pilGy) < 76 * pil.scaleWidth;
             if (
               foe &&
               !foe.isDead &&
               !foe.isBenched &&
+              inDepth &&
               Math.abs(foe.x - pil.x) < 88 * pil.scaleWidth &&
-              groundY - foe.y < 155
+              pilGy - foe.y < 155
             ) {
               foe.takeDamage(Math.round(28 * pil.scaleWidth), pil.owner, false, 35, -55);
             }
@@ -931,12 +953,13 @@ export class VFXManager {
       }
       return 'cyan';
     };
-    const pushLight = (x, y, radius, colorType, intensity, z = 68) => {
+    const pushLight = (x, y, radius, colorType, intensity, z = 68, groundY = gy) => {
       const { nr, ng, nb } = rgbForType(colorType);
-      lights.push({ x, y, z, radius, colorType, intensity, nr, ng, nb });
+      lights.push({ x, y, z, radius, colorType, intensity, nr, ng, nb, groundY });
     };
 
     for (const f of fighters) {
+      const fGy = Number.isFinite(f.groundY) ? f.groundY : gy;
       const colorType = typeForHex(f.primaryColor);
       pushLight(
         f.x + f.facing * 24,
@@ -944,66 +967,69 @@ export class VFXManager {
         f.state === 'ULTIMATE' ? 295 : f.state === 'SKILL' ? 235 : 175,
         colorType,
         f.state === 'ULTIMATE' ? 1.85 : f.state === 'SKILL' ? 1.50 : 1.12,
-        64
+        64,
+        fGy
       );
       // Seraphina's active Cathedral Rose Halo & Seraphim Wings emit intense Celestial Gold + Emerald Grace light!
       if (f.heroId === 'priestess' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isAngelicAscent)) {
-        pushLight(f.x, f.y - 124, f.state === 'ULTIMATE' ? 385 : 310, 'gold', f.state === 'ULTIMATE' ? 1.98 : 1.75, 90);
-        pushLight(f.x, f.y - 95, 240, 'emerald', 1.35, 76);
+        pushLight(f.x, f.y - 124, f.state === 'ULTIMATE' ? 385 : 310, 'gold', f.state === 'ULTIMATE' ? 1.98 : 1.75, 90, fGy);
+        pushLight(f.x, f.y - 95, 240, 'emerald', 1.35, 76, fGy);
       }
       // Torgar's World-Breaker War-Hammer & Ragnarok World-Forge emit Molten Gold + Emerald Jade Runic light!
       if (f.heroId === 'titan' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isBulwarkActive)) {
-        pushLight(f.x, f.y - 110, f.state === 'ULTIMATE' ? 390 : 300, 'gold', f.state === 'ULTIMATE' ? 1.95 : 1.70, 88);
-        pushLight(f.x + f.facing * 32, f.y - 82, 235, 'emerald', 1.40, 74);
+        pushLight(f.x, f.y - 110, f.state === 'ULTIMATE' ? 390 : 300, 'gold', f.state === 'ULTIMATE' ? 1.95 : 1.70, 88, fGy);
+        pushLight(f.x + f.facing * 32, f.y - 82, 235, 'emerald', 1.40, 74, fGy);
       }
       // Kaze-Maru's Thunder-Odachi & Susanoo Storm-God Avatar emit Electric Indigo + Thunder-Cyan light!
       if (f.heroId === 'ronin' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isDeflecting)) {
-        pushLight(f.x, f.y - 115, f.state === 'ULTIMATE' ? 395 : 305, 'indigo', f.state === 'ULTIMATE' ? 1.95 : 1.72, 88);
-        pushLight(f.x + f.facing * 34, f.y - 84, 240, 'cyan', 1.45, 76);
+        pushLight(f.x, f.y - 115, f.state === 'ULTIMATE' ? 395 : 305, 'indigo', f.state === 'ULTIMATE' ? 1.95 : 1.72, 88, fGy);
+        pushLight(f.x + f.facing * 34, f.y - 84, 240, 'cyan', 1.45, 76, fGy);
       }
       // Freyja's Gungnir Dragon-Lance & Bahamut Cataclysm emit Dragonfire Crimson + Imperial Gold light!
       if (f.heroId === 'valkyrie' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isDeflecting)) {
-        pushLight(f.x, f.y - 118, f.state === 'ULTIMATE' ? 395 : 305, 'crimson', f.state === 'ULTIMATE' ? 1.95 : 1.72, 88);
-        pushLight(f.x + f.facing * 34, f.y - 84, 245, 'gold', 1.48, 76);
+        pushLight(f.x, f.y - 118, f.state === 'ULTIMATE' ? 395 : 305, 'crimson', f.state === 'ULTIMATE' ? 1.95 : 1.72, 88, fGy);
+        pushLight(f.x + f.facing * 34, f.y - 84, 245, 'gold', 1.48, 76, fGy);
       }
       // Chronomancer's active Colossal Doomsday Clock & Stasis Hourglass emit intense dual Teal + Gold light!
       if (f.doomsdayClock) {
-        pushLight(f.doomsdayClock.x, f.doomsdayClock.y, 410, 'teal', 1.95, 92);
-        pushLight(f.doomsdayClock.x, f.doomsdayClock.y + 40, 340, 'gold', 1.75, 84);
+        pushLight(f.doomsdayClock.x, f.doomsdayClock.y, 410, 'teal', 1.95, 92, fGy);
+        pushLight(f.doomsdayClock.x, f.doomsdayClock.y + 40, 340, 'gold', 1.75, 84, fGy);
       }
       if (f.stasisHourglass) {
-        pushLight(f.stasisHourglass.x, f.stasisHourglass.y - 95, 295, 'gold', 1.80, 76);
-        pushLight(f.stasisHourglass.x, f.stasisHourglass.y - 95, 250, 'teal', 1.65, 76);
+        pushLight(f.stasisHourglass.x, f.stasisHourglass.y - 95, 295, 'gold', 1.80, 76, fGy);
+        pushLight(f.stasisHourglass.x, f.stasisHourglass.y - 95, 250, 'teal', 1.65, 76, fGy);
       }
       if (f.deathAvatar) {
-        pushLight(f.deathAvatar.x, f.deathAvatar.y - 140, 340, 'violet', 1.75, 85);
+        pushLight(f.deathAvatar.x, f.deathAvatar.y - 140, 340, 'violet', 1.75, 85, fGy);
       }
       if (f.worldForgeAvatar) {
-        pushLight(f.worldForgeAvatar.x, f.worldForgeAvatar.y - 150, 380, 'gold', 1.88, 88);
-        pushLight(f.worldForgeAvatar.x, f.worldForgeAvatar.y - 110, 280, 'emerald', 1.45, 78);
+        pushLight(f.worldForgeAvatar.x, f.worldForgeAvatar.y - 150, 380, 'gold', 1.88, 88, fGy);
+        pushLight(f.worldForgeAvatar.x, f.worldForgeAvatar.y - 110, 280, 'emerald', 1.45, 78, fGy);
       }
       if (f.susanooAvatar) {
-        pushLight(f.susanooAvatar.x, f.susanooAvatar.y - 145, 385, 'indigo', 1.92, 88);
-        pushLight(f.susanooAvatar.x, f.susanooAvatar.y - 105, 285, 'cyan', 1.50, 78);
+        pushLight(f.susanooAvatar.x, f.susanooAvatar.y - 145, 385, 'indigo', 1.92, 88, fGy);
+        pushLight(f.susanooAvatar.x, f.susanooAvatar.y - 105, 285, 'cyan', 1.50, 78, fGy);
       }
       if (f.bahamutAvatar) {
-        pushLight(f.bahamutAvatar.x, f.bahamutAvatar.y - 148, 390, 'crimson', 1.94, 88);
-        pushLight(f.bahamutAvatar.x, f.bahamutAvatar.y - 108, 290, 'gold', 1.52, 78);
+        pushLight(f.bahamutAvatar.x, f.bahamutAvatar.y - 148, 390, 'crimson', 1.94, 88, fGy);
+        pushLight(f.bahamutAvatar.x, f.bahamutAvatar.y - 108, 290, 'gold', 1.52, 78, fGy);
       }
       if (f.borealisCathedral) {
-        pushLight(f.borealisCathedral.x, f.borealisCathedral.y - 135, 395, 'cyan', 1.95, 90);
-        pushLight(f.borealisCathedral.x, f.borealisCathedral.y - 95, 290, 'violet', 1.55, 78);
+        pushLight(f.borealisCathedral.x, f.borealisCathedral.y - 135, 395, 'cyan', 1.95, 90, fGy);
+        pushLight(f.borealisCathedral.x, f.borealisCathedral.y - 95, 290, 'violet', 1.55, 78, fGy);
       }
     }
     for (const p of this.projectiles) {
       const colorType = typeForHex(p.color);
+      const pGy = Number.isFinite(p.owner?.groundY) ? p.owner.groundY : gy;
       pushLight(
         p.x,
         p.y,
         p.isMeteor ? 360 : p.type === 'clock_gear' ? 225 : 205,
         colorType,
         p.isMeteor ? 1.85 : p.type === 'clock_gear' ? 1.55 : 1.42,
-        72
+        72,
+        pGy
       );
     }
     for (const b of this.beams) {
@@ -1021,10 +1047,11 @@ export class VFXManager {
     }
     for (const ss of this.skyStrikes) {
       if (ss.delay <= 0) {
-        pushLight(ss.x, ss.y, 195, typeForHex(ss.color), 1.42, 74);
+        pushLight(ss.x, ss.y, 195, typeForHex(ss.color), 1.42, 74, ss.groundY || gy);
       }
     }
     for (const pil of this.pillars) {
+      const pilGy = Number.isFinite(pil.groundY) ? pil.groundY : gy;
       const colorType =
         pil.theme === 'emerald'
           ? 'emerald'
@@ -1035,29 +1062,32 @@ export class VFXManager {
               : 'orange';
       pushLight(
         pil.x,
-        gy - 85,
+        pilGy - 85,
         pil.erupted ? 285 : 175,
         colorType,
         pil.erupted ? 1.8 : 1.1,
-        75
+        75,
+        pilGy
       );
     }
     for (const tor of this.tornados) {
+      const torGy = Number.isFinite(tor.groundY) ? tor.groundY : gy;
       pushLight(
         tor.x,
-        gy - 110,
+        torGy - 110,
         295,
         tor.color === '#38bdf8' ? 'cyan' : 'emerald',
         1.75,
-        82
+        82,
+        torGy
       );
     }
     for (const sn of this.supernovas) {
-      pushLight(sn.x, sn.y, 380, 'orange', 1.95, 90);
+      pushLight(sn.x, sn.y, 380, 'orange', 1.95, 90, sn.groundY || gy);
     }
     for (const sp of this.crystalSpikes) {
       if (sp.life >= 0) {
-        pushLight(sp.x, sp.groundY - sp.height * 0.5, 175, 'cyan', 1.25, 62);
+        pushLight(sp.x, sp.groundY - sp.height * 0.5, 175, 'cyan', 1.25, 62, sp.groundY || gy);
       }
     }
     // Sample active character particles & glyphs so swirling particle bursts cast real 3D normal-mapped light!
@@ -1089,9 +1119,10 @@ export class VFXManager {
   renderGroundDecals(ctx, gy) {
     for (const d of this.decals) {
       const alpha = Math.min(1, (1 - d.life / d.maxLife) * 1.5);
+      const dGy = Number.isFinite(d.groundY) ? d.groundY : gy;
       ctx.save();
       const bx = Math.round(d.x / 4) * 4;
-      const by = Math.round(gy / 4) * 4;
+      const by = Math.round(dGy / 4) * 4;
       ctx.globalAlpha = alpha;
 
       const wSteps = Math.max(4, Math.round(d.width / 8));

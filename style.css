@@ -2889,9 +2889,13 @@ html, body {
 .adv-joy-w { left: 6px; top: 50%; transform: translateY(-50%); }
 .adv-joy-e { right: 6px; top: 50%; transform: translateY(-50%); }
 
-.adv-joystick-base.is-active .adv-joy-w,
-.adv-joystick-base.is-active .adv-joy-e {
-  color: rgba(254, 240, 138, 0.86);
+.adv-joystick-base.is-active .adv-joy-dir {
+  color: rgba(226, 232, 240, 0.62);
+}
+
+.adv-joy-dir.is-lit {
+  color: #fef08a !important;
+  text-shadow: 0 0 6px rgba(250, 204, 21, 0.9), 0 1px 1px #000;
 }
 
 .adv-joystick-knob {

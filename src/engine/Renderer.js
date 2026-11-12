@@ -1,4 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps82';
+import { PixelForge } from './PixelForge.js?v=30fps83';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps83';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -127,11 +128,15 @@ export class Renderer {
   }
 
   getActiveStageId() {
-    return (
-      this.permanentStageOverride ||
-      (this.trueUltStageAlpha > 0.35 ? this.trueUltStageOverride : null) ||
-      this.stageId
-    );
+    if (this.permanentStageOverride) return this.permanentStageOverride;
+    if (this.trueUltStageAlpha > 0.35 && this.trueUltStageOverride) return this.trueUltStageOverride;
+    if (this.adventureMode) {
+      if (this.camX >= 3600) return 'inferno';
+      if (this.camX >= 2400) return 'boneyard';
+      if (this.camX >= 1200) return 'sylvan';
+      return 'cathedral';
+    }
+    return this.stageId;
   }
 
   pickRandomStage(forcedStage = null) {
@@ -430,7 +435,8 @@ export class Renderer {
       for (const f of framePool) {
         if (f.x < minX) minX = f.x;
         if (f.x > maxX) maxX = f.x;
-        const lift = Math.max(0, this.groundY - f.y);
+        const fGy = Number.isFinite(f.groundY) ? f.groundY : this.groundY;
+        const lift = Math.max(0, fGy - f.y);
         if (lift > maxAirLift) maxAirLift = lift;
         const skyFocus = Math.max(0, f.cameraAirLift || 0);
         if (skyFocus > maxSkyFocus) maxSkyFocus = skyFocus;
@@ -442,24 +448,30 @@ export class Renderer {
             : player.x + player.facing * 95
           : (minX + maxX) * 0.5;
       const rawHorizSpan = Math.abs(maxX - minX) + (validFighters.length > 2 ? 380 : 340);
-      const horizSpan = this.adventureMode ? Math.min(1180, Math.max(760, rawHorizSpan)) : rawHorizSpan;
+      const horizSpan = this.adventureMode ? Math.min(1180, Math.max(820, rawHorizSpan)) : rawHorizSpan;
       const dist = Math.max(horizSpan, maxAirLift * 1.48 + 340);
 
       const maxSpanW = this.adventureMode ? 1280 : this.worldWidth;
       const fitScaleX = this.width / Math.max(620, Math.min(maxSpanW, dist));
-      const fitScaleY = this.height / 720;
+      const fitScaleY = this.height / (this.adventureMode ? 760 : 720);
       let targetZoom = Math.min(fitScaleX, fitScaleY * 1.15);
-      targetZoom = Math.max(0.52, Math.min(this.isMobile ? 0.85 : 1.15, targetZoom));
+      targetZoom = Math.max(0.52, Math.min(this.isMobile ? 0.85 : 1.12, targetZoom));
 
+      const anchorGroundY =
+        this.adventureMode && player && Number.isFinite(player.groundY)
+          ? player.groundY * 0.46 + 561 * 0.54
+          : this.adventureMode
+            ? 561
+            : this.groundY;
       let targetX = midX;
-      let targetY = this.groundY - 95 - Math.min(285, maxAirLift * 0.62);
+      let targetY = anchorGroundY - 95 - Math.min(285, maxAirLift * 0.62);
 
       // Wide-cosmos framing for grounded celestial finishers (e.g. Ignis Sol's Heavensfall Meteor)
       // Keeps the arena floor (`groundY`) visible near the bottom while revealing `groundY - 720+` high in the sky!
       if (maxSkyFocus > 0) {
         const skyZoom = Math.max(0.66, (this.height * 0.80) / Math.max(500, maxSkyFocus + 165));
         targetZoom = Math.min(targetZoom, skyZoom);
-        const skyTargetY = this.groundY - Math.min(232, 95 + maxSkyFocus * 0.22);
+        const skyTargetY = anchorGroundY - Math.min(242, 95 + maxSkyFocus * 0.22);
         targetY = Math.min(targetY, skyTargetY);
       }
 
@@ -520,7 +532,7 @@ export class Renderer {
     }
 
     this.camParallaxX = this.adventureMode
-      ? ((this.camX % 1200) + 1200) % 1200 - 600
+      ? Math.sin(this.camX * (Math.PI / 900)) * 220
       : this.camX - this.worldWidth * 0.5;
     this.camParallaxY = this.camY - (this.groundY - 95);
   }
@@ -572,19 +584,36 @@ export class Renderer {
             activeStageForRefl === 'cathedral'
           ? 0.30
           : 0.24;
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(-600, gy + 2, ww + 1200, 700);
-    ctx.clip();
-    ctx.translate(0, (gy + 2) * 2);
-    ctx.scale(1, -0.42);
-    ctx.globalAlpha = reflAlpha;
-    for (const f of fighters) {
-      if (f.isBenched || f.isFullyBurrowed) continue;
-      f.draw(ctx, true, this);
+    if (this.adventureMode) {
+      // Per-fighter local stone-road sheen anchored to each entity's own 2.5D depth `f.groundY`
+      for (const f of fighters) {
+        if (f.isBenched || f.isFullyBurrowed) continue;
+        const fGy = Number.isFinite(f.groundY) ? f.groundY : gy;
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(f.x - 160, fGy + 2, 320, Math.max(0, 686 - fGy));
+        ctx.clip();
+        ctx.translate(0, (fGy + 2) * 2);
+        ctx.scale(1, -0.34);
+        ctx.globalAlpha = 0.14;
+        f.draw(ctx, true, this);
+        ctx.restore();
+      }
+    } else {
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(-600, gy + 2, ww + 1200, 700);
+      ctx.clip();
+      ctx.translate(0, (gy + 2) * 2);
+      ctx.scale(1, -0.42);
+      ctx.globalAlpha = reflAlpha;
+      for (const f of fighters) {
+        if (f.isBenched || f.isFullyBurrowed) continue;
+        f.draw(ctx, true, this);
+      }
+      vfx.renderMainPass(ctx, true, this);
+      ctx.restore();
     }
-    vfx.renderMainPass(ctx, true, this);
-    ctx.restore();
 
     // 4. Unreal HD-2D Dynamic Point-Light Floor Pools, 4-Step Normal Map Lights & Grounded Contact Shadows
     const lights = vfx.getActiveLights(fighters, gy);
@@ -608,7 +637,12 @@ export class Renderer {
     if (typeof vfx.renderBackgroundCastSeals === 'function') {
       vfx.renderBackgroundCastSeals(ctx, this);
     }
-    const sorted = [...fighters].sort((a, b) => (a.isBenched ? -1 : b.isBenched ? 1 : a.y - b.y));
+    const sorted = [...fighters].sort((a, b) => {
+      if (a.isBenched !== b.isBenched) return a.isBenched ? -1 : 1;
+      const aGy = Number.isFinite(a.groundY) ? a.groundY : a.y;
+      const bGy = Number.isFinite(b.groundY) ? b.groundY : b.y;
+      return aGy - bGy || a.y - b.y;
+    });
     for (const f of sorted) {
       if (f.isBenched && !f.isDead) {
         this.drawTagPedestalWorld(ctx, f);
@@ -655,6 +689,15 @@ export class Renderer {
         ctx.save();
         ctx.translate(f.x, f.y);
         ctx.scale(0.8, 0.8);
+        ctx.translate(-f.x, -f.y);
+        f.draw(ctx, false, this);
+        ctx.restore();
+      } else if (this.adventureMode && Number.isFinite(f.groundY)) {
+        const depthT = Math.max(0, Math.min(1, (f.groundY - 442) / 238));
+        const dScale = 0.93 + depthT * 0.12;
+        ctx.save();
+        ctx.translate(f.x, f.y);
+        ctx.scale(dScale, dScale);
         ctx.translate(-f.x, -f.y);
         f.draw(ctx, false, this);
         ctx.restore();
@@ -818,156 +861,13 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawAdventureZoneGate(ctx, gateX, gy, accentCol = '#fb923c') {
-    const gx = Math.round(gateX);
-    const t = this.time || 0;
-    const flick = 0.72 + 0.28 * Math.sin(t * 7.5 + gateX * 0.01);
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-
-    // Stepped Obsidian-Stone Gothic Gate Pillar + Buttress Plinth
-    ctx.fillStyle = '#070912';
-    ctx.fillRect(gx - 34, gy - 420, 68, 424);
-    ctx.fillStyle = '#151c2c';
-    ctx.fillRect(gx - 28, gy - 412, 56, 412);
-    ctx.fillStyle = '#243046';
-    ctx.fillRect(gx - 20, gy - 404, 16, 400);
-    // Stepped plinth base
-    ctx.fillStyle = '#0b0f1a';
-    ctx.fillRect(gx - 46, gy - 28, 92, 32);
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(gx - 42, gy - 24, 84, 24);
-    // Forged Brass Trim & Archway Crest
-    ctx.fillStyle = '#9a762d';
-    ctx.fillRect(gx - 36, gy - 340, 72, 6);
-    ctx.fillRect(gx - 38, gy - 28, 76, 4);
-    ctx.fillStyle = '#d4af37';
-    ctx.fillRect(gx - 10, gy - 386, 20, 36);
-    ctx.fillStyle = accentCol;
-    ctx.fillRect(gx - 4, gy - 378, 8, 20);
-
-    // Twin Lit Iron Braziers flanking the Zone Gate
-    for (const side of [-1, 1]) {
-      const bx = gx + side * 38;
-      const by = gy - 118;
-      ctx.fillStyle = '#090d16';
-      ctx.fillRect(bx - 12, by, 24, 10);
-      ctx.fillRect(bx - 6, by + 10, 12, 16);
-      const glow = this.getGlowForColor(accentCol);
-      if (glow) {
-        ctx.save();
-        ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = 0.34 * flick;
-        ctx.drawImage(glow, bx - 42, by - 52, 84, 84);
-        ctx.restore();
-      }
-      const fh = Math.round(14 + 5 * flick);
-      ctx.fillStyle = accentCol;
-      ctx.fillRect(bx - 7, by - fh, 14, fh);
-      ctx.fillStyle = '#fef08a';
-      ctx.fillRect(bx - 4, by - Math.round(fh * 0.65), 8, Math.round(fh * 0.65));
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(bx - 2, by - 5, 4, 5);
-    }
-    ctx.restore();
-  }
-
   drawHD2DArena(ctx, ww, gy) {
-    const assets = PixelForge.initAssets();
-
     if (this.adventureMode && ww > 1600) {
-      const drawW = 1680;
-      const drawH = 945;
-      const drawY = Math.round(gy - drawH * 0.82);
-      const zones = [
-        { cx: 600, id: 'cathedral', img: assets.arenaBg, gateCol: '#fb923c' },
-        { cx: 1800, id: 'sylvan', img: assets.arenaSylvan || assets.arenaBg, gateCol: '#34d399' },
-        { cx: 3000, id: 'boneyard', img: assets.arenaBoneyard || assets.arenaBg, gateCol: '#a855f7' },
-        { cx: 4200, id: 'clocktower', img: assets.arenaClocktower || assets.arenaBg, gateCol: '#ef4444' }
-      ];
-      const isInfernoPerm = this.permanentStageOverride === 'inferno';
-      const infernoOverlayAlpha = isInfernoPerm
-        ? 1.0
-        : this.trueUltStageOverride === 'inferno'
-          ? this.trueUltStageAlpha
-          : 0;
-
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.fillStyle = '#05070f';
-      ctx.fillRect(-1200, -1100, ww + 2400, gy + 1900);
-
-      for (const z of zones) {
-        if (Math.abs(z.cx - this.camX) > 1680) continue;
-        const zx = Math.round(z.cx - drawW * 0.5);
-        const zImg = isInfernoPerm && assets.arenaInferno?.complete ? assets.arenaInferno : z.img;
-        if (zImg && zImg.complete && zImg.naturalWidth > 0) {
-          // Upper-sky vertical mirror for Heavensfall cosmos camera zoom
-          ctx.save();
-          ctx.translate(zx, drawY);
-          ctx.scale(1, -1);
-          ctx.drawImage(zImg, 0, 0, drawW, drawH);
-          ctx.restore();
-          ctx.drawImage(zImg, zx, drawY, drawW, drawH);
-        }
-        if (
-          !isInfernoPerm &&
-          infernoOverlayAlpha > 0.02 &&
-          assets.arenaInferno?.complete &&
-          assets.arenaInferno.naturalWidth > 0
-        ) {
-          ctx.save();
-          ctx.globalAlpha = Math.min(1, infernoOverlayAlpha);
-          ctx.drawImage(assets.arenaInferno, zx, drawY, drawW, drawH);
-          ctx.restore();
-        }
-      }
-
-      // Continuous Flagstone / Basalt Seam across all 4800px
-      const seamStage = this.getActiveStageId();
-      for (let r = 0; r < 5; r++) {
-        const ry = Math.round((gy - 22 + r * r * 12) / 3) * 3;
-        ctx.fillStyle = seamStage === 'inferno' ? 'rgba(15, 6, 4, 0.44)' : 'rgba(8, 11, 20, 0.36)';
-        ctx.fillRect(-400, ry, ww + 800, 3);
-        if (seamStage === 'inferno') {
-          ctx.fillStyle = 'rgba(251, 146, 60, 0.16)';
-          ctx.fillRect(-400, ry + 1, ww + 800, 2);
-        } else if (r === 1) {
-          ctx.fillStyle = 'rgba(212, 175, 55, 0.12)';
-          ctx.fillRect(-400, ry + 1, ww + 800, 2);
-        }
-      }
-
-      // Per-Zone Bespoke Animated Stage Effects + Connecting Gothic Zone Gate Archways
-      for (const z of zones) {
-        if (Math.abs(z.cx - this.camX) > 1350) continue;
-        const zx = Math.round(z.cx - drawW * 0.5);
-        if (isInfernoPerm) {
-          this.drawInfernoStageEffects(ctx, zx, drawY, drawW, drawH, gy, 1.0);
-        } else {
-          if (z.id === 'sylvan') {
-            this.drawSylvanStageEffects(ctx, z.img, zx, drawY, drawW, drawH, gy);
-          } else if (z.id === 'boneyard') {
-            this.drawBoneyardStageEffects(ctx, z.img, zx, drawY, drawW, drawH, gy);
-          } else if (z.id === 'clocktower') {
-            this.drawClocktowerStageEffects(ctx, z.img, zx, drawY, drawW, drawH, gy);
-          } else {
-            this.drawStagePixelFlames(ctx, z.img, zx, drawY, drawW, drawH, gy);
-          }
-          if (infernoOverlayAlpha > 0.12) {
-            this.drawInfernoStageEffects(ctx, zx, drawY, drawW, drawH, gy, infernoOverlayAlpha);
-          }
-        }
-      }
-
-      // Mask diorama seams at x = 1200, 2400, 3600 with ornate Gothic Zone Gate Pillars & Lit Braziers!
-      this.drawAdventureZoneGate(ctx, 1200, gy, '#34d399');
-      this.drawAdventureZoneGate(ctx, 2400, gy, '#a855f7');
-      this.drawAdventureZoneGate(ctx, 3600, gy, '#ef4444');
-
-      ctx.restore();
+      AdventureMapRenderer.render(ctx, this, ww);
       return;
     }
+
+    const assets = PixelForge.initAssets();
 
     const stageMeta = this.getCurrentStageMeta();
     const bg = (stageMeta && assets[stageMeta.assetKey]) || assets.arenaBg;
@@ -3106,7 +3006,7 @@ export class Renderer {
       }
 
       const topY = gy - 545;
-      const botY = gy + 16;
+      const botY = this.adventureMode ? 684 : gy + 16;
       const beamAlpha = baseAlpha + 0.025 * Math.sin(t * 2.1 + s * 1.3);
       const grad = ctx.createLinearGradient(topX, topY, botX, botY);
       grad.addColorStop(0, `rgba(${topRgb}, 0)`);
@@ -3160,12 +3060,13 @@ export class Renderer {
       const u = ((m.y + t * m.spdY * spdMult) % riseSpan) / riseSpan;
       const my = gy + 20 - u * riseSpan;
       const moteParallax = (this.camParallaxX || 0) * (0.08 + (i % 3) * 0.04);
-      const mx =
+      const rawDriftX =
         m.x +
-        moteAnchorOffset +
         Math.sin(t * (activeStage === 'inferno' ? 2.8 : 1.6) + m.phase) * 26 +
-        u * windBias +
-        moteParallax;
+        u * windBias;
+      const mx = this.adventureMode
+        ? this.camX - 760 + ((((rawDriftX - (this.camX - 760)) % 1520) + 1520) % 1520)
+        : rawDriftX + moteAnchorOffset + moteParallax;
       const pulse = 0.5 + 0.5 * Math.sin(t * 3.8 + m.phase);
       const alpha = 0.36 + 0.50 * pulse;
       const col =
@@ -4026,7 +3927,8 @@ export class Renderer {
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (const l of lights) {
-      const distY = Math.max(0, gy - l.y);
+      const lGy = Number.isFinite(l.groundY) ? l.groundY : gy;
+      const distY = Math.max(0, lGy - l.y);
       const atten = Math.max(0, 1 - distY / 360);
       if (atten <= 0.02) continue;
       const rx = l.radius * (1 + distY * 0.002);
@@ -4048,7 +3950,7 @@ export class Renderer {
                       ? this.glowCrimson
                       : this.glowOrange;
       ctx.globalAlpha = Math.min(0.38, 0.28 * atten * l.intensity);
-      ctx.drawImage(tex, l.x - rx, gy + 2 - ry, rx * 2, ry * 2);
+      ctx.drawImage(tex, l.x - rx, lGy + 2 - ry, rx * 2, ry * 2);
     }
     ctx.restore();
   }
@@ -4056,7 +3958,8 @@ export class Renderer {
   drawDynamicShadows(ctx, fighters, lights, gy) {
     for (const f of fighters) {
       if (f.isFullyBurrowed) continue;
-      const jumpH = Math.max(0, gy - f.y);
+      const fGy = Number.isFinite(f.groundY) ? f.groundY : gy;
+      const jumpH = Math.max(0, fGy - f.y);
       const scale = Math.max(0.25, 1 - jumpH / 320);
       const deadStretch = f.isDead ? 1 + Math.min(0.45, (f.deathTimer || 0) * 0.38) : 1;
       let shiftX = 0;
@@ -4068,12 +3971,12 @@ export class Renderer {
       shiftX = Math.max(-24, Math.min(24, shiftX));
       const rx = 68 * scale * deadStretch;
       const ry = 17 * scale;
-      ctx.drawImage(this.shadowTex, f.x + shiftX - rx, gy - ry + 4, rx * 2, ry * 2);
+      ctx.drawImage(this.shadowTex, f.x + shiftX - rx, fGy - ry + 4, rx * 2, ry * 2);
       if (jumpH < 8) {
         ctx.drawImage(
           this.shadowTex,
           f.x - 46 * deadStretch,
-          gy - 8,
+          fGy - 8,
           92 * deadStretch,
           18
         );
