@@ -27,13 +27,13 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps81';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps82';
 
 import {
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE,
   CYBER_EFFECT_REGISTRY
-} from '../src/engine/shaders/cyberShaders.js?v=30fps81';
+} from '../src/engine/shaders/cyberShaders.js?v=30fps82';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');

@@ -2748,16 +2748,11 @@ html, body {
 
 .adventure-controls {
   position: absolute;
-  bottom: calc(max(4px, env(safe-area-inset-bottom)) + 32px);
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 15;
-  width: min(98vw, 1080px);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
+  inset: 0;
+  z-index: 16;
   pointer-events: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .adventure-controls.hidden,
@@ -2765,76 +2760,52 @@ html, body {
   display: none !important;
 }
 
-.adv-cluster {
-  display: flex;
-  flex-wrap: wrap;
+/* Compact Top Campaign Utility Pill (Auto-AI, Retry, Roster) */
+.adv-utility-bar {
+  position: absolute;
+  top: calc(max(8px, env(safe-area-inset-top)) + 82px);
+  left: 50%;
+  transform: translateX(-50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 5px;
+  background: rgba(6, 9, 18, 0.80);
+  border: 1px solid rgba(212, 175, 55, 0.52);
+  outline: 1px solid #000;
+  border-radius: 999px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.78);
+  pointer-events: auto;
+}
+
+.adv-util-btn {
+  display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 4px 5px;
-  background: rgba(6, 9, 18, 0.82);
-  border: 1px solid rgba(212, 175, 55, 0.55);
-  outline: 1px solid #000;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.85);
-  pointer-events: auto;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.adv-btn {
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
-  color: var(--text-ivory);
+  padding: 4px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(30, 41, 59, 0.94) 0%, rgba(15, 23, 42, 0.94) 100%);
   border: 1px solid #475569;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 0 #000;
-  padding: 6px 8px;
+  color: var(--text-ivory);
   font-family: var(--font-pixel);
-  font-size: 0.36rem;
+  font-size: 0.34rem;
   line-height: 1;
   cursor: pointer;
-  white-space: nowrap;
   touch-action: manipulation;
-  transition: filter 0.12s ease, transform 0.08s ease, border-color 0.12s ease;
+  transition: filter 0.12s ease, border-color 0.12s ease;
 }
 
-.adv-btn:hover {
+.adv-util-btn:hover {
   filter: brightness(1.16);
   border-color: var(--bronze-lit);
 }
 
-.adv-btn:active {
-  transform: translateY(1px);
-}
-
-.adv-btn-evade {
-  background: linear-gradient(180deg, #0c4a6e 0%, #082f49 100%);
-  border-color: #38bdf8;
-}
-
-.adv-btn-atk {
-  background: linear-gradient(180deg, #7c2d12 0%, #431407 100%);
-  border-color: #fb923c;
-  color: #ffedd5;
-}
-
-.adv-btn-skl {
-  background: linear-gradient(180deg, #581c87 0%, #2e1065 100%);
-  border-color: #c084fc;
-}
-
-.adv-btn-od,
-.adv-btn-ult {
-  background: linear-gradient(180deg, #422006 0%, #1f1003 100%);
-  border-color: #854d0e;
-  color: #fde68a;
-  opacity: 0.72;
-}
-
-.adv-btn-skl.is-ready,
-.adv-btn-od.is-ready,
-.adv-btn-ult.is-ready {
-  opacity: 1;
-  border-color: #facc15;
-  box-shadow: 0 0 10px rgba(250, 204, 21, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.25);
-  color: #fef08a;
+.adv-util-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #64748b;
+  box-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
 }
 
 .adv-btn-ai.is-autoplay-on {
@@ -2843,20 +2814,442 @@ html, body {
   color: #dcfce7;
 }
 
-@media (max-width: 960px) {
-  .adventure-controls {
-    bottom: calc(max(4px, env(safe-area-inset-bottom)) + 54px);
-    flex-direction: column;
-    gap: 4px;
+.adv-btn-ai.is-autoplay-on .adv-util-dot {
+  background: #4ade80;
+  box-shadow: 0 0 6px #4ade80;
+}
+
+/* =========================================================================
+   LEFT SIDE: TOUCH-SCREEN VIRTUAL ANALOG JOYSTICK
+   ========================================================================= */
+.adv-joystick-zone {
+  position: absolute;
+  left: max(18px, env(safe-area-inset-left));
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 30px);
+  width: 148px;
+  height: 148px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.adv-joystick-base {
+  position: relative;
+  width: 112px;
+  height: 112px;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 50% 50%,
+    rgba(15, 23, 42, 0.42) 0%,
+    rgba(8, 12, 24, 0.76) 68%,
+    rgba(4, 6, 14, 0.90) 100%
+  );
+  border: 2px solid rgba(212, 175, 55, 0.62);
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.92),
+    inset 0 0 16px rgba(0, 0, 0, 0.82),
+    0 6px 20px rgba(0, 0, 0, 0.72);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.adv-joystick-base::before {
+  content: '';
+  position: absolute;
+  inset: 14px;
+  border-radius: 50%;
+  border: 1px dashed rgba(212, 175, 55, 0.26);
+  pointer-events: none;
+}
+
+.adv-joystick-base.is-active {
+  border-color: #fb923c;
+  box-shadow:
+    0 0 0 1px #000,
+    0 0 18px rgba(251, 146, 60, 0.45),
+    inset 0 0 14px rgba(251, 146, 60, 0.22);
+}
+
+.adv-joy-dir {
+  position: absolute;
+  font-size: 9px;
+  line-height: 1;
+  color: rgba(226, 232, 240, 0.42);
+  text-shadow: 0 1px 1px #000;
+  pointer-events: none;
+}
+.adv-joy-n { top: 5px; left: 50%; transform: translateX(-50%); }
+.adv-joy-s { bottom: 5px; left: 50%; transform: translateX(-50%); }
+.adv-joy-w { left: 6px; top: 50%; transform: translateY(-50%); }
+.adv-joy-e { right: 6px; top: 50%; transform: translateY(-50%); }
+
+.adv-joystick-base.is-active .adv-joy-w,
+.adv-joystick-base.is-active .adv-joy-e {
+  color: rgba(254, 240, 138, 0.86);
+}
+
+.adv-joystick-knob {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 36% 32%, #facc15 0%, #d97706 48%, #7c2d12 100%);
+  border: 2px solid #fef08a;
+  box-shadow:
+    0 0 0 1px #000,
+    0 4px 12px rgba(0, 0, 0, 0.85),
+    inset 0 2px 4px rgba(255, 255, 255, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transform: translate3d(0px, 0px, 0px);
+  will-change: transform;
+  pointer-events: none;
+}
+
+.adv-joystick-core {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #ffffff 0%, #fde047 65%, #ea580c 100%);
+  box-shadow: 0 0 6px rgba(254, 240, 138, 0.85);
+}
+
+.adv-joy-hint {
+  margin-top: 5px;
+  font-family: var(--font-pixel);
+  font-size: 0.28rem;
+  letter-spacing: 0.04em;
+  color: rgba(226, 232, 240, 0.68);
+  text-shadow: 0 1px 2px #000;
+  pointer-events: none;
+}
+
+/* =========================================================================
+   RIGHT SIDE: ACTION-RPG SKILL ICON & RADIAL COOLDOWN CLUSTER
+   ========================================================================= */
+.adv-skill-cluster {
+  position: absolute;
+  right: max(14px, env(safe-area-inset-right));
+  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 28px);
+  width: 224px;
+  height: 212px;
+  pointer-events: none;
+}
+
+.adv-orb-btn {
+  position: absolute;
+  padding: 0;
+  border-radius: 50%;
+  background: #070a14;
+  border: 2px solid #94a3b8;
+  box-shadow:
+    0 0 0 1px #000,
+    0 5px 14px rgba(0, 0, 0, 0.88),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 0.07s ease, border-color 0.14s ease, box-shadow 0.14s ease;
+}
+
+.adv-orb-btn:active,
+.adv-orb-btn.is-pressed {
+  transform: scale(0.92);
+}
+
+.adv-orb-face {
+  position: relative;
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #060913;
+}
+
+.adv-skill-icon {
+  display: block;
+  width: 100%;
+  height: 100%;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+  transition: filter 0.14s ease;
+}
+
+/* Radial Clock-Sweep Cooldown & Charge Overlay */
+.adv-cd-sweep {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    rgba(2, 5, 14, 0.82) var(--cd-deg, 0deg),
+    transparent 0deg
+  );
+  pointer-events: none;
+}
+
+.adv-orb-btn.is-charging .adv-cd-sweep {
+  background: conic-gradient(
+    rgba(4, 7, 18, 0.76) var(--cd-deg, 0deg),
+    rgba(250, 204, 21, 0.12) 0deg
+  );
+}
+
+.adv-orb-attack .adv-cd-sweep {
+  background: conic-gradient(
+    rgba(2, 5, 14, 0.42) var(--cd-deg, 0deg),
+    transparent 0deg
+  );
+}
+
+.adv-orb-btn.is-on-cd .adv-skill-icon {
+  filter: saturate(0.42) brightness(0.68);
+}
+
+.adv-orb-btn.is-charging .adv-skill-icon {
+  filter: saturate(0.72) brightness(0.82);
+}
+
+/* Live Cooldown Seconds ("3.2s") & Charge Readout ("64%" / "MAX") */
+.adv-cd-timer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-pixel);
+  font-size: 0.42rem;
+  line-height: 1;
+  color: #ffffff;
+  text-shadow:
+    -1px -1px 0 #000,
+    1px -1px 0 #000,
+    -1px 1px 0 #000,
+    1px 1px 0 #000,
+    0 2px 4px rgba(0, 0, 0, 0.95);
+  pointer-events: none;
+}
+
+.adv-orb-btn.is-ready .adv-cd-timer {
+  color: #fef08a;
+  font-size: 0.34rem;
+}
+
+/* Ability Micro-Tag on Bottom Rim */
+.adv-orb-tag {
+  position: absolute;
+  bottom: -6px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 1px 4px;
+  border-radius: 4px;
+  background: rgba(5, 8, 18, 0.94);
+  border: 1px solid rgba(148, 163, 184, 0.55);
+  font-family: var(--font-pixel);
+  font-size: 0.23rem;
+  line-height: 1.1;
+  color: #f8fafc;
+  white-space: nowrap;
+  text-shadow: 0 1px 0 #000;
+  pointer-events: none;
+}
+
+/* Desktop Keybind Micro-Badge (Hidden on Touch Devices) */
+.adv-key-hint {
+  position: absolute;
+  top: -4px;
+  right: -2px;
+  min-width: 14px;
+  height: 14px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #0f172a;
+  border: 1px solid #d4af37;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-family: var(--font-pixel);
+  font-size: 0.24rem;
+  color: #fef08a;
+  pointer-events: none;
+}
+
+/* Exact Non-Overlapping Polar Coordinates around Anchor Attack Button */
+.adv-orb-attack {
+  width: 74px;
+  height: 74px;
+  right: 6px;
+  bottom: 6px;
+  border-width: 3px;
+  border-color: #fb923c;
+  box-shadow:
+    0 0 0 1px #000,
+    0 0 16px rgba(251, 146, 60, 0.42),
+    0 6px 16px rgba(0, 0, 0, 0.9);
+}
+.adv-orb-attack .adv-orb-tag {
+  border-color: #fb923c;
+  color: #ffedd5;
+}
+
+.adv-orb-dodge {
+  width: 54px;
+  height: 54px;
+  right: 108px;
+  bottom: 16px;
+  border-color: #38bdf8;
+}
+
+.adv-orb-skill {
+  width: 56px;
+  height: 56px;
+  right: 81px;
+  bottom: 81px;
+  border-color: #c084fc;
+}
+
+.adv-orb-overdrive {
+  width: 56px;
+  height: 56px;
+  right: 15px;
+  bottom: 107px;
+  border-color: #d97706;
+}
+
+.adv-orb-ultimate {
+  width: 58px;
+  height: 58px;
+  right: 80px;
+  bottom: 149px;
+  border-width: 2.5px;
+  border-color: #facc15;
+}
+
+.adv-orb-crouch {
+  width: 46px;
+  height: 46px;
+  right: 153px;
+  bottom: 79px;
+  border-color: #fbbf24;
+}
+
+.adv-orb-jump {
+  width: 46px;
+  height: 46px;
+  right: 147px;
+  bottom: 141px;
+  border-color: #34d399;
+}
+
+.adv-orb-crouch .adv-cd-timer,
+.adv-orb-jump .adv-cd-timer {
+  font-size: 0.34rem;
+}
+
+/* Ready Glow States */
+.adv-orb-skill.is-ready {
+  border-color: #e879f9;
+  box-shadow: 0 0 0 1px #000, 0 0 12px rgba(232, 121, 249, 0.48), 0 5px 14px rgba(0, 0, 0, 0.88);
+}
+
+.adv-orb-dodge.is-ready {
+  border-color: #38bdf8;
+  box-shadow: 0 0 0 1px #000, 0 0 10px rgba(56, 189, 248, 0.38), 0 5px 14px rgba(0, 0, 0, 0.88);
+}
+
+.adv-orb-overdrive.is-ready {
+  border-color: #fde047;
+  box-shadow: 0 0 0 1px #000, 0 0 16px rgba(250, 204, 21, 0.65), 0 5px 14px rgba(0, 0, 0, 0.88);
+}
+.adv-orb-overdrive.is-ready .adv-orb-tag {
+  border-color: #fde047;
+  color: #fef08a;
+}
+
+.adv-orb-ultimate.is-ready {
+  border-color: #67e8f9;
+  box-shadow:
+    0 0 0 1px #000,
+    0 0 20px rgba(103, 232, 249, 0.72),
+    0 0 30px rgba(250, 204, 21, 0.45);
+  animation: advUltPulse 1.2s ease-in-out infinite;
+}
+.adv-orb-ultimate.is-ready .adv-orb-tag {
+  border-color: #67e8f9;
+  color: #ecfeff;
+}
+
+@keyframes advUltPulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+}
+
+/* Touch & Mobile Viewport Ergonomics: Hide spectator iron-bar during active Adventure Mode */
+@media (hover: none) and (pointer: coarse) {
+  .adv-key-hint,
+  .adv-joy-hint {
+    display: none !important;
   }
-  .adv-cluster {
-    justify-content: center;
-    width: 100%;
+}
+
+@media (max-width: 960px), (hover: none) and (pointer: coarse) {
+  #app.is-adventure-active .hud-bottom {
+    display: none !important;
   }
-  .adv-btn {
-    padding: 5px 6px;
-    font-size: 0.30rem;
-    flex: 1 1 auto;
+
+  .adv-utility-bar {
+    top: calc(max(6px, env(safe-area-inset-top)) + 68px);
+  }
+
+  .adv-joystick-zone {
+    left: max(12px, env(safe-area-inset-left));
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+
+  .adv-skill-cluster {
+    right: max(10px, env(safe-area-inset-right));
+    bottom: max(12px, env(safe-area-inset-bottom));
+  }
+}
+
+/* Compact scaling for narrow portrait phones (360px..420px) & short landscape phones */
+@media (max-width: 430px) {
+  .adv-joystick-zone {
+    transform: scale(0.88);
+    transform-origin: bottom left;
+    left: max(8px, env(safe-area-inset-left));
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+  .adv-skill-cluster {
+    transform: scale(0.86);
+    transform-origin: bottom right;
+    right: max(8px, env(safe-area-inset-right));
+    bottom: max(10px, env(safe-area-inset-bottom));
+  }
+}
+
+@media (max-height: 500px) {
+  .adv-utility-bar {
+    top: calc(max(4px, env(safe-area-inset-top)) + 52px);
+    transform: translateX(-50%) scale(0.9);
+  }
+  .adv-joystick-zone {
+    transform: scale(0.86);
+    transform-origin: bottom left;
+    bottom: max(8px, env(safe-area-inset-bottom));
+  }
+  .adv-skill-cluster {
+    transform: scale(0.84);
+    transform-origin: bottom right;
+    bottom: max(8px, env(safe-area-inset-bottom));
   }
 }
 

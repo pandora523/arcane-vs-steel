@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js?v=30fps81';
-import { PixelForge } from './PixelForge.js?v=30fps81';
+import { PixelFont } from './PixelFont.js?v=30fps82';
+import { PixelForge } from './PixelForge.js?v=30fps82';
 
 export class VFXManager {
   constructor() {

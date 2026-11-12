@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps81';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps81';
+import { Fighter } from './Fighter.js?v=30fps82';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps82';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -105,7 +105,12 @@ export class Monster extends Fighter {
       deathSfx: cfg.deathSfx
     });
 
+    this.heroId = cfg.heroId;
     this.kind = kind;
+    this.theme = cfg.theme;
+    this.primaryColor = cfg.primaryColor;
+    this.secondaryColor = cfg.secondaryColor;
+    this.deathSfx = cfg.deathSfx;
     this.isMonster = true;
     this.isElite = isElite;
     this.isBoss = false;
@@ -117,6 +122,14 @@ export class Monster extends Fighter {
 
     this.autoDuration = cfg.autoDuration;
     this.skillDuration = cfg.skillDuration;
+    this.skillMaxCooldown = cfg.skillMaxCooldown * (isElite ? 0.88 : 1.0);
+    this.skillName =
+      kind === 'cultist'
+        ? 'VOID SIGIL'
+        : kind === 'brute'
+          ? 'SEISMIC CLEAVE'
+          : 'FERAL POUNCE';
+    this.ultName = 'ABYSSAL SURGE';
     this.dashDuration = cfg.dashDuration;
     this.dashMaxCooldown = cfg.dashMaxCooldown;
 
@@ -587,33 +600,33 @@ export class Monster extends Fighter {
 
   draw(ctx, isReflection = false, renderer = null) {
     const assets = PixelForge.initAssets();
-    const charSet = assets[this.heroId];
-    if (!charSet || !charSet.sheet) return;
+    const charSet = assets[this.heroId] || assets[this.kind];
+    if (charSet && charSet.sheet && charSet.sheet.complete && charSet.sheet.naturalWidth > 0) {
+      const scale = this.spriteScale || 1.0;
+      const drawW = Math.round(208 * scale);
+      const drawH = Math.round(208 * scale);
+      const shakeX =
+        !isReflection && this.hurtTimer > 0 ? Math.round(Math.sin(this.hurtTimer * 55) * 4) : 0;
 
-    const scale = this.spriteScale || 1.0;
-    const drawW = Math.round(208 * scale);
-    const drawH = Math.round(208 * scale);
-    const shakeX =
-      !isReflection && this.hurtTimer > 0 ? Math.round(Math.sin(this.hurtTimer * 55) * 4) : 0;
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.translate(Math.round(this.x + shakeX), Math.round(this.y));
+      ctx.scale(this.facing, 1);
 
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    ctx.translate(Math.round(this.x + shakeX), Math.round(this.y));
-    ctx.scale(this.facing, 1);
+      if (this.isDead && this.deathTimer > 1.2) {
+        const fade = Math.max(0.12, 1 - (this.deathTimer - 1.2) * 0.55);
+        ctx.globalAlpha *= fade;
+      }
 
-    if (this.isDead && this.deathTimer > 1.2) {
-      const fade = Math.max(0.12, 1 - (this.deathTimer - 1.2) * 0.55);
-      ctx.globalAlpha *= fade;
+      PixelForge.drawSheetFrame(ctx, charSet, this, drawW, drawH, this.walkPhase, isReflection, renderer);
+
+      if (!isReflection && this.hitFlash > 0) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(0.45, this.hitFlash * 2.2);
+        PixelForge.drawSheetFrame(ctx, charSet, this, drawW, drawH, this.walkPhase, true, renderer);
+      }
+      ctx.restore();
     }
-
-    PixelForge.drawSheetFrame(ctx, charSet, this, drawW, drawH, this.walkPhase, isReflection, renderer);
-
-    if (!isReflection && this.hitFlash > 0) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(0.45, this.hitFlash * 2.2);
-      PixelForge.drawSheetFrame(ctx, charSet, this, drawW, drawH, this.walkPhase, true, renderer);
-    }
-    ctx.restore();
 
     if (!isReflection) {
       this.drawOverheadPlate(ctx);

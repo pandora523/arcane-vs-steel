@@ -27,6 +27,12 @@ export class Fighter {
     this.moveSpeed = opts.moveSpeed || 165;
     this.lightColor = opts.lightColor || 'rgba(56, 189, 248, 1)';
     this.primaryColor = opts.primaryColor || '#38bdf8';
+    if (opts.secondaryColor) this.secondaryColor = opts.secondaryColor;
+    if (opts.heroId) this.heroId = opts.heroId;
+    if (opts.theme) this.theme = opts.theme;
+    if (opts.skillName) this.skillName = opts.skillName;
+    if (opts.ultName) this.ultName = opts.ultName;
+    if (opts.deathSfx) this.deathSfx = opts.deathSfx;
 
     // State Machine: IDLE, WALK, DASH, DODGE, AUTO_ATTACK, SKILL, ULTIMATE (Overdrive), TRUE_ULTIMATE (Supreme Finisher), DEATH
     this.state = 'IDLE';
@@ -36,7 +42,7 @@ export class Fighter {
     this.autoCooldown = Math.random() * 0.35;
     this.autoInterval = opts.autoInterval || 1.25;
     this.skillCooldown = 1.6 + Math.random() * 1.1;
-    this.skillMaxCooldown = 5.0;
+    this.skillMaxCooldown = opts.skillMaxCooldown || 5.0;
     this.dodgeCooldown = 0.8 + Math.random() * 0.9;
     this.dodgeMaxCooldown = 3.4;
     this.dashCooldown = 0.6 + Math.random() * 0.8;

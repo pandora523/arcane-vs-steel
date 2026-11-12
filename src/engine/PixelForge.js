@@ -18,82 +18,82 @@ export class PixelForge {
       arenaSylvan: loadImg('assets/sprites/arena_sylvan.png'),
       arenaBoneyard: loadImg('assets/sprites/arena_boneyard.png'),
       arenaClocktower: loadImg('assets/sprites/arena_clocktower.png'),
-      arenaInferno: loadImg('assets/sprites/arena_inferno.png?v=30fps81'),
-      arenaSanctuary: loadImg('assets/sprites/arena_sanctuary.png?v=30fps81'),
+      arenaInferno: loadImg('assets/sprites/arena_inferno.png?v=30fps82'),
+      arenaSanctuary: loadImg('assets/sprites/arena_sanctuary.png?v=30fps82'),
       warrior: {
-        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps81'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps81'),
-        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/warrior_sheet.png?v=30fps82'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps82'),
+        vfx: loadImg('assets/sprites/warrior_vfx.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/warrior_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       mage: {
-        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps81'),
-        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps81'),
-        meteor: loadImg('assets/sprites/meteor_cataclysm.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/mage_sheet.png?v=30fps82'),
+        vfx: loadImg('assets/sprites/mage_vfx.png?v=30fps82'),
+        meteor: loadImg('assets/sprites/meteor_cataclysm.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/mage_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       archer: {
-        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps81'),
-        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/archer_sheet.png?v=30fps82'),
+        vfx: loadImg('assets/sprites/archer_vfx.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/archer_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       priestess: {
-        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps81'),
-        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps81'),
-        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/priestess_sheet.png?v=30fps82'),
+        wings: loadImg('assets/sprites/seraphim_wings.png?v=30fps82'),
+        vfx: loadImg('assets/sprites/priestess_vfx.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/priestess_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       reaper: {
-        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps81'),
-        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps81'),
-        companions: loadImg('assets/sprites/reaper_companions.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/reaper_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/reaper_sheet.png?v=30fps82'),
+        vfx: loadImg('assets/sprites/reaper_vfx.png?v=30fps82'),
+        companions: loadImg('assets/sprites/reaper_companions.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/reaper_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       chronomancer: {
-        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps81'),
-        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/chronomancer_sheet.png?v=30fps82'),
+        vfx: loadImg('assets/sprites/chronomancer_vfx.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/chronomancer_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       titan: {
-        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps81'),
-        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/titan_sheet.png?v=30fps82'),
+        vfx: loadImg('assets/sprites/titan_vfx.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/titan_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       ronin: {
-        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps81'),
-        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/ronin_sheet.png?v=30fps82'),
+        vfx: loadImg('assets/sprites/ronin_vfx.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/ronin_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       valkyrie: {
-        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps81'),
-        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/valkyrie_sheet.png?v=30fps82'),
+        vfx: loadImg('assets/sprites/valkyrie_vfx.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/valkyrie_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       icemage: {
-        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps81'),
-        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/icemage_sheet.png?v=30fps82'),
+        vfx: loadImg('assets/sprites/icemage_vfx.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/icemage_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       android: {
-        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps81'),
-        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/android_sheet.png?v=30fps82'),
+        vfx: loadImg('assets/sprites/android_vfx.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/android_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       ghoul: {
-        sheet: loadImg('assets/sprites/monster_ghoul_sheet.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/monster_ghoul_sheet.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       cultist: {
-        sheet: loadImg('assets/sprites/monster_cultist_sheet.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/monster_cultist_sheet.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       brute: {
-        sheet: loadImg('assets/sprites/monster_brute_sheet.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/monster_brute_sheet.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps82', () => this.refreshPortraits())
       },
       archfiend: {
-        sheet: loadImg('assets/sprites/boss_archfiend_sheet.png?v=30fps81'),
-        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps81', () => this.refreshPortraits())
+        sheet: loadImg('assets/sprites/boss_archfiend_sheet.png?v=30fps82'),
+        portrait: loadImg('assets/sprites/boss_archfiend_portrait.png?v=30fps82', () => this.refreshPortraits())
       }
     };
 
@@ -1308,6 +1308,179 @@ export class PixelForge {
 
     // 5. Subtle Animated Pixel Sparkles in corners
     const sparkPhase = Math.floor(t * 3 + slotIdx * 2) % 2;
+    ctx.fillStyle = sparkPhase === 0 ? '#ffffff' : th.glow;
+    ctx.fillRect(Math.round(3 * px), Math.round(3 * px), Math.ceil(px), Math.ceil(px));
+    ctx.fillRect(Math.round(24 * px), Math.round(24 * px), Math.ceil(px), Math.ceil(px));
+
+    ctx.restore();
+  }
+
+  /**
+   * Renders crisp 28x28 16-bit Pixel-Art Action-RPG Button Icons for all 7 Adventure HUD Slots:
+   * - 'attack'    -> Hero Signature Basic Attack (`drawSkillIcon(..., 0)`)
+   * - 'skill'     -> Hero Special Skill (`drawSkillIcon(..., 1)`)
+   * - 'overdrive' -> Hero Overdrive Art (`drawSkillIcon(..., 2)`)
+   * - 'ultimate'  -> Supreme Cataclysm Ultimate Finisher (e.g. Ignis Sol's Heavensfall Meteor)
+   * - 'dodge'     -> Arcane Blink / Phase Dash Evasion
+   * - 'jump'      -> Solar Vault / Aerial Leap
+   * - 'crouch'    -> Flame Ward / Counter Aegis Shield
+   */
+  static drawAdventureActionIcon(ctx, heroKey, actionType, w, h, t = 0) {
+    if (!ctx) return;
+    if (actionType === 'attack') return this.drawSkillIcon(ctx, heroKey, 0, w, h, t);
+    if (actionType === 'skill') return this.drawSkillIcon(ctx, heroKey, 1, w, h, t);
+    if (actionType === 'overdrive') return this.drawSkillIcon(ctx, heroKey, 2, w, h, t);
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    ctx.clearRect(0, 0, w, h);
+
+    const G = 28;
+    const px = w / G;
+    const buf = new Array(G * G).fill(null);
+    const setPx = (x, y, col) => {
+      const ix = Math.round(x);
+      const iy = Math.round(y);
+      if (ix >= 0 && ix < G && iy >= 0 && iy < G) buf[iy * G + ix] = col;
+    };
+    const fillRectPx = (x, y, rw, rh, col) => {
+      for (let yy = y; yy < y + rh; yy++) {
+        for (let xx = x; xx < x + rw; xx++) setPx(xx, yy, col);
+      }
+    };
+    const drawLinePx = (x0, y0, x1, y1, col, thick = 1) => {
+      const steps = Math.max(Math.abs(x1 - x0), Math.abs(y1 - y0), 1);
+      for (let i = 0; i <= steps; i++) {
+        const lx = Math.round(x0 + ((x1 - x0) * i) / steps);
+        const ly = Math.round(y0 + ((y1 - y0) * i) / steps);
+        for (let ty = 0; ty < thick; ty++) {
+          for (let tx = 0; tx < thick; tx++) setPx(lx + tx, ly + ty, col);
+        }
+      }
+    };
+    const drawCirclePx = (cx, cy, r, col, fill = false) => {
+      for (let yy = Math.floor(cy - r - 1); yy <= Math.ceil(cy + r + 1); yy++) {
+        for (let xx = Math.floor(cx - r - 1); xx <= Math.ceil(cx + r + 1); xx++) {
+          const d = Math.hypot(xx - cx, yy - cy);
+          if (fill ? d <= r + 0.35 : Math.abs(d - r) <= 0.72) setPx(xx, yy, col);
+        }
+      }
+    };
+
+    const themes = {
+      warrior: { bg0: '#061024', bg1: '#0c2d5e', rim: '#38bdf8', glow: '#7dd3fc', gold: '#facc15', deep: '#0284c7' },
+      archer: { bg0: '#041b15', bg1: '#0b4635', rim: '#34d399', glow: '#6ee7b7', gold: '#fde047', deep: '#059669' },
+      mage: { bg0: '#1c0806', bg1: '#5c180a', rim: '#fb923c', glow: '#fde047', gold: '#facc15', deep: '#dc2626' },
+      priestess: { bg0: '#191205', bg1: '#4d360b', rim: '#fde047', glow: '#fef9c3', gold: '#fbbf24', deep: '#d97706' },
+      reaper: { bg0: '#11061f', bg1: '#351052', rim: '#c084fc', glow: '#f43f5e', gold: '#e879f9', deep: '#7e22ce' },
+      chronomancer: { bg0: '#04181c', bg1: '#0d4248', rim: '#2dd4bf', glow: '#99f6e4', gold: '#f59e0b', deep: '#0f766e' },
+      titan: { bg0: '#1a0c04', bg1: '#4a2108', rim: '#f59e0b', glow: '#34d399', gold: '#fde047', deep: '#b45309' },
+      ronin: { bg0: '#070a24', bg1: '#1e1b4b', rim: '#818cf8', glow: '#38bdf8', gold: '#facc15', deep: '#4338ca' },
+      valkyrie: { bg0: '#1f060d', bg1: '#590d22', rim: '#fb7185', glow: '#fef08a', gold: '#f59e0b', deep: '#be123c' },
+      icemage: { bg0: '#051529', bg1: '#0c3a6e', rim: '#67e8f9', glow: '#a5f3fc', gold: '#e879f9', deep: '#0284c7' },
+      android: { bg0: '#07091a', bg1: '#152254', rim: '#00f0ff', glow: '#7df9ff', gold: '#ff2e93', deep: '#0092d6' }
+    };
+    const th = themes[heroKey] || themes.mage;
+
+    const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.5, 4, w * 0.5, h * 0.5, w * 0.72);
+    bgGrad.addColorStop(0, actionType === 'ultimate' ? '#581c0c' : th.bg1);
+    bgGrad.addColorStop(1, th.bg0);
+    ctx.fillStyle = bgGrad;
+    ctx.fillRect(0, 0, w, h);
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.10)';
+    ctx.fillRect(0, 0, w, px);
+    ctx.fillRect(0, 0, px, h);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.45)';
+    ctx.fillRect(0, h - px, w, px);
+    ctx.fillRect(w - px, 0, px, h);
+
+    if (actionType === 'ultimate') {
+      // SUPREME CATACLYSM METEOR / CELESTIAL FINISHER:
+      // Astral cosmic ring + Colossal blazing meteor plunging top-right -> bottom-left + magma crater
+      drawCirclePx(14, 14, 10, th.deep, false);
+      drawLinePx(23, 3, 10, 16, th.deep, 5);
+      drawLinePx(22, 4, 10, 16, th.rim, 3);
+      drawLinePx(23, 6, 15, 13, th.gold, 2);
+      drawCirclePx(10, 16, 6.5, th.deep, true);
+      drawCirclePx(10, 16, 5, th.rim, true);
+      drawCirclePx(10, 16, 3.4, th.gold, true);
+      drawCirclePx(9, 17, 1.8, '#ffffff', true);
+      // Impact shockwave & star-crown sparks
+      drawLinePx(3, 23, 22, 23, th.gold, 2);
+      drawLinePx(5, 24, 18, 24, '#ffffff', 1);
+      setPx(5, 8, '#38bdf8');
+      setPx(6, 8, '#ffffff');
+      setPx(20, 19, th.glow);
+    } else if (actionType === 'dodge') {
+      // ARCANE BLINK / PHASE STEP: Twin rift portals + streaking winged phase boot & chevrons
+      drawCirclePx(8, 14, 7, th.deep, false);
+      drawCirclePx(19, 14, 8, th.rim, false);
+      // 3 crisp forward warp chevrons
+      drawLinePx(5, 10, 9, 14, th.glow, 2);
+      drawLinePx(5, 18, 9, 14, th.glow, 2);
+      drawLinePx(11, 9, 16, 14, th.gold, 2);
+      drawLinePx(11, 19, 16, 14, th.gold, 2);
+      drawLinePx(17, 8, 23, 14, '#ffffff', 2);
+      drawLinePx(17, 20, 23, 14, '#ffffff', 2);
+      fillRectPx(4, 13, 14, 2, th.rim);
+      fillRectPx(10, 13, 11, 2, '#ffffff');
+    } else if (actionType === 'jump') {
+      // SOLAR VAULT / AERIAL LEAP: Twin ascending elemental wings + soaring apex arrow & launch ring
+      drawLinePx(4, 15, 11, 10, th.rim, 2);
+      drawLinePx(5, 18, 11, 13, th.gold, 2);
+      drawLinePx(23, 15, 16, 10, th.rim, 2);
+      drawLinePx(22, 18, 16, 13, th.gold, 2);
+      // Central skyward spear-arrow
+      fillRectPx(13, 5, 2, 15, th.gold);
+      fillRectPx(13, 5, 1, 14, '#ffffff');
+      drawLinePx(9, 9, 14, 4, '#ffffff', 2);
+      drawLinePx(18, 9, 13, 4, '#ffffff', 2);
+      // Ground launch shockwave
+      drawLinePx(6, 22, 21, 22, th.rim, 2);
+      drawLinePx(9, 23, 18, 23, '#ffffff', 1);
+    } else {
+      // FLAME WARD / COUNTER AEGIS ('crouch'): Crested rune-shield + deflect barrier dome & spark
+      drawCirclePx(14, 14, 9.5, th.glow, false);
+      fillRectPx(8, 7, 12, 9, th.deep);
+      drawLinePx(8, 16, 14, 22, th.deep, 3);
+      drawLinePx(19, 16, 14, 22, th.deep, 3);
+      fillRectPx(9, 8, 10, 7, th.rim);
+      drawLinePx(9, 15, 14, 20, th.rim, 2);
+      drawLinePx(18, 15, 14, 20, th.rim, 2);
+      // Gold shield trim + white-hot counter core
+      fillRectPx(8, 7, 12, 2, th.gold);
+      fillRectPx(13, 9, 2, 10, th.gold);
+      fillRectPx(10, 12, 8, 2, th.gold);
+      drawCirclePx(14, 13, 2, '#ffffff', true);
+    }
+
+    const outlineCol = '#03060c';
+    for (let y = 1; y < G - 1; y++) {
+      for (let x = 1; x < G - 1; x++) {
+        if (buf[y * G + x]) continue;
+        if (
+          buf[(y - 1) * G + x] ||
+          buf[(y + 1) * G + x] ||
+          buf[y * G + (x - 1)] ||
+          buf[y * G + (x + 1)]
+        ) {
+          ctx.fillStyle = outlineCol;
+          ctx.fillRect(Math.round(x * px), Math.round(y * px), Math.ceil(px), Math.ceil(px));
+        }
+      }
+    }
+
+    for (let y = 0; y < G; y++) {
+      for (let x = 0; x < G; x++) {
+        const c = buf[y * G + x];
+        if (!c) continue;
+        ctx.fillStyle = c;
+        ctx.fillRect(Math.round(x * px), Math.round(y * px), Math.ceil(px), Math.ceil(px));
+      }
+    }
+
+    const sparkPhase = Math.floor(t * 3) % 2;
     ctx.fillStyle = sparkPhase === 0 ? '#ffffff' : th.glow;
     ctx.fillRect(Math.round(3 * px), Math.round(3 * px), Math.ceil(px), Math.ceil(px));
     ctx.fillRect(Math.round(24 * px), Math.round(24 * px), Math.ceil(px), Math.ceil(px));

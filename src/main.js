@@ -1,20 +1,20 @@
-import { Renderer } from './engine/Renderer.js?v=30fps81';
-import { VFXManager } from './engine/VFXManager.js?v=30fps81';
-import { PixelForge } from './engine/PixelForge.js?v=30fps81';
-import { AudioManager } from './engine/AudioManager.js?v=30fps81';
-import { Fighter } from './entities/Fighter.js?v=30fps81';
-import { Warrior } from './entities/Warrior.js?v=30fps81';
-import { FireMage } from './entities/FireMage.js?v=30fps81';
-import { Archer } from './entities/Archer.js?v=30fps81';
-import { Priestess } from './entities/Priestess.js?v=30fps81';
-import { Reaper } from './entities/Reaper.js?v=30fps81';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps81';
-import { Titan } from './entities/Titan.js?v=30fps81';
-import { Ronin } from './entities/Ronin.js?v=30fps81';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps81';
-import { IceMage } from './entities/IceMage.js?v=30fps81';
-import { Android } from './entities/Android.js?v=30fps81';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps81';
+import { Renderer } from './engine/Renderer.js?v=30fps82';
+import { VFXManager } from './engine/VFXManager.js?v=30fps82';
+import { PixelForge } from './engine/PixelForge.js?v=30fps82';
+import { AudioManager } from './engine/AudioManager.js?v=30fps82';
+import { Fighter } from './entities/Fighter.js?v=30fps82';
+import { Warrior } from './entities/Warrior.js?v=30fps82';
+import { FireMage } from './entities/FireMage.js?v=30fps82';
+import { Archer } from './entities/Archer.js?v=30fps82';
+import { Priestess } from './entities/Priestess.js?v=30fps82';
+import { Reaper } from './entities/Reaper.js?v=30fps82';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps82';
+import { Titan } from './entities/Titan.js?v=30fps82';
+import { Ronin } from './entities/Ronin.js?v=30fps82';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps82';
+import { IceMage } from './entities/IceMage.js?v=30fps82';
+import { Android } from './entities/Android.js?v=30fps82';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps82';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -1237,41 +1237,102 @@ class Game {
     this.btnReset.addEventListener('click', () => this.resetMatch());
     this.btnPlayAgain.addEventListener('click', () => this.resetMatch());
 
-    // Adventure Mode Arcade Control Deck (Movement Hold + Action Triggers + Auto-Play Toggle)
-    const bindHoldMoveBtn = (id, dir) => {
-      const btn = document.getElementById(id);
-      if (!btn) return;
-      const press = (e) => {
+    // Adventure Mode Mobile Action-RPG HUD: Multi-Touch Analog Joystick + Right-Side Skill Cluster
+    const joyZone = document.getElementById('adv-joystick-zone');
+    const joyBase = document.getElementById('adv-joystick-base');
+    if (joyZone) {
+      let activeJoyPointerId = null;
+      const updateJoyFromEvent = (e) => {
+        const refEl = joyBase || joyZone;
+        const rect = refEl.getBoundingClientRect();
+        const cx = rect.left + rect.width * 0.5;
+        const cy = rect.top + rect.height * 0.5;
+        const maxRadius = Math.max(24, Math.min(rect.width, rect.height) * 0.36);
+        const dx = (e.clientX - cx) / maxRadius;
+        const dy = (e.clientY - cy) / maxRadius;
+        this.adventure?.setJoystickVector(dx, dy, true);
+      };
+      const releaseJoy = (e) => {
+        if (
+          e &&
+          activeJoyPointerId !== null &&
+          e.pointerId !== undefined &&
+          e.pointerId !== activeJoyPointerId
+        ) {
+          return;
+        }
+        activeJoyPointerId = null;
+        this.adventure?.setJoystickVector(0, 0, false);
+      };
+      joyZone.addEventListener('pointerdown', (e) => {
+        if (activeJoyPointerId !== null && activeJoyPointerId !== e.pointerId) return;
         e.preventDefault();
-        this.adventure?.setMoveInput(dir, true);
-      };
-      const release = () => {
-        this.adventure?.setMoveInput(dir, false);
-      };
-      btn.addEventListener('pointerdown', press);
-      btn.addEventListener('pointerup', release);
-      btn.addEventListener('pointerleave', release);
-      btn.addEventListener('pointercancel', release);
-    };
-    bindHoldMoveBtn('adv-btn-left', -1);
-    bindHoldMoveBtn('adv-btn-right', 1);
+        activeJoyPointerId = e.pointerId;
+        try {
+          joyZone.setPointerCapture?.(e.pointerId);
+        } catch (_) {
+          // Pointer capture optional in synthetic/headless environments
+        }
+        updateJoyFromEvent(e);
+      });
+      joyZone.addEventListener('pointermove', (e) => {
+        if (e.pointerId !== activeJoyPointerId) return;
+        e.preventDefault();
+        updateJoyFromEvent(e);
+      });
+      joyZone.addEventListener('pointerup', releaseJoy);
+      joyZone.addEventListener('pointercancel', releaseJoy);
+      joyZone.addEventListener('lostpointercapture', releaseJoy);
+    }
 
+    // Primary Anchor Attack Button (supports multi-touch hold-to-attack + instant tap)
+    const advAttackBtn = document.getElementById('adv-btn-attack');
+    if (advAttackBtn) {
+      const releaseAttack = () => {
+        advAttackBtn.classList.remove('is-pressed');
+        this.adventure?.setAttackHeld(false);
+      };
+      advAttackBtn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        advAttackBtn.classList.add('is-pressed');
+        try {
+          advAttackBtn.setPointerCapture?.(e.pointerId);
+        } catch (_) {
+          // Optional pointer capture
+        }
+        this.adventure?.setAttackHeld(true);
+        this.adventure?.triggerAction('attack');
+      });
+      advAttackBtn.addEventListener('pointerup', releaseAttack);
+      advAttackBtn.addEventListener('pointercancel', releaseAttack);
+      advAttackBtn.addEventListener('lostpointercapture', releaseAttack);
+      advAttackBtn.addEventListener('pointerleave', releaseAttack);
+      advAttackBtn.addEventListener('click', () => {
+        this.adventure?.triggerAction('attack');
+      });
+    }
+
+    // Right-Side Circular Skill & Tactical Orbs
     const advActionMap = {
-      'adv-btn-jump': 'jump',
-      'adv-btn-crouch': 'crouch',
       'adv-btn-dodge': 'dodge',
-      'adv-btn-attack': 'attack',
       'adv-btn-skill': 'skill',
       'adv-btn-overdrive': 'overdrive',
-      'adv-btn-ultimate': 'ultimate'
+      'adv-btn-ultimate': 'ultimate',
+      'adv-btn-crouch': 'crouch',
+      'adv-btn-jump': 'jump'
     };
     Object.entries(advActionMap).forEach(([id, act]) => {
       const btn = document.getElementById(id);
       if (!btn) return;
+      const clearPress = () => btn.classList.remove('is-pressed');
       btn.addEventListener('pointerdown', (e) => {
         e.preventDefault();
+        btn.classList.add('is-pressed');
         this.adventure?.triggerAction(act);
       });
+      btn.addEventListener('pointerup', clearPress);
+      btn.addEventListener('pointercancel', clearPress);
+      btn.addEventListener('pointerleave', clearPress);
       btn.addEventListener('click', () => {
         this.adventure?.triggerAction(act);
       });
@@ -1281,6 +1342,19 @@ class Game {
     if (advBtnAutoPlay) {
       advBtnAutoPlay.addEventListener('click', () => {
         this.adventure?.toggleAutoPlay(true);
+      });
+    }
+    const advBtnRestart = document.getElementById('adv-btn-restart');
+    if (advBtnRestart) {
+      advBtnRestart.addEventListener('click', () => {
+        this.resetMatch();
+      });
+    }
+    const advBtnMenu = document.getElementById('adv-btn-menu');
+    if (advBtnMenu) {
+      advBtnMenu.addEventListener('click', () => {
+        this.adventure?.clearHeldInputs();
+        this.openLanding('roster');
       });
     }
   }

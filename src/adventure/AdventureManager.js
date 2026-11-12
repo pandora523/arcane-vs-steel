@@ -1,6 +1,6 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps81';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps81';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps81';
+import { Fighter } from '../entities/Fighter.js?v=30fps82';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps82';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps82';
 
 export const ADVENTURE_WORLD_WIDTH = 4800;
 
@@ -89,13 +89,27 @@ export class AdventureManager {
     this.comboHits = 0;
     this.comboTimer = 0;
 
-    // Input state (Keyboard + On-Screen Arcade Deck)
+    // Input state (Keyboard + Touch Virtual Analog Joystick + Right-Side Skill Cluster)
     this.heldLeft = false;
     this.heldRight = false;
     this.uiHeldLeft = false;
     this.uiHeldRight = false;
+    this.joyX = 0;
+    this.joyY = 0;
+    this.joyActive = false;
+    this.heldAttack = false;
+    this.uiHeldAttack = false;
     this.queuedAction = null;
     this.queuedActionTimer = 0;
+
+    // Tracked cooldown maximums for smooth 360-degree radial HUD sweeps
+    this.jumpCd = 0;
+    this.jumpCdMax = 1.75;
+    this.autoCdMax = 0.72;
+    this.skillCdMax = 4.5;
+    this.dodgeCdMax = 2.4;
+    this.crouchCdMax = 3.2;
+    this._renderedIconHero = null;
 
     this._boundKeyDown = (e) => this.onKeyDown(e);
     this._boundKeyUp = (e) => this.onKeyUp(e);
@@ -116,8 +130,11 @@ export class AdventureManager {
     this.heldRight = false;
     this.uiHeldLeft = false;
     this.uiHeldRight = false;
+    this.heldAttack = false;
+    this.uiHeldAttack = false;
     this.queuedAction = null;
     this.queuedActionTimer = 0;
+    this.setJoystickVector(0, 0, false);
   }
 
   onKeyDown(e) {
@@ -139,6 +156,7 @@ export class AdventureManager {
       this.triggerAction('crouch');
       e.preventDefault();
     } else if (code === 'KeyJ' || code === 'KeyZ') {
+      this.heldAttack = true;
       this.triggerAction('attack');
       e.preventDefault();
     } else if (code === 'KeyK' || code === 'KeyX') {
@@ -165,18 +183,57 @@ export class AdventureManager {
       this.heldLeft = false;
     } else if (code === 'ArrowRight' || code === 'KeyD') {
       this.heldRight = false;
+    } else if (code === 'KeyJ' || code === 'KeyZ') {
+      this.heldAttack = false;
     }
   }
 
   setMoveInput(dir, pressed) {
     if (dir < 0) this.uiHeldLeft = Boolean(pressed);
     if (dir > 0) this.uiHeldRight = Boolean(pressed);
+    this.syncJoystickKnobUI();
+  }
+
+  setAttackHeld(pressed) {
+    this.uiHeldAttack = Boolean(pressed);
+  }
+
+  setJoystickVector(nx, ny, active = true) {
+    if (!active) {
+      this.joyActive = false;
+      this.joyX = 0;
+      this.joyY = 0;
+    } else {
+      const mag = Math.hypot(nx || 0, ny || 0);
+      const scale = mag > 1 ? 1 / mag : 1;
+      this.joyActive = true;
+      this.joyX = (nx || 0) * scale;
+      this.joyY = (ny || 0) * scale;
+    }
+    this.syncJoystickKnobUI();
+  }
+
+  syncJoystickKnobUI() {
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+    const base = document.getElementById('adv-joystick-base');
+    const knob = document.getElementById('adv-joystick-knob');
+    if (!base || !knob) return;
+
+    if (this.joyActive) {
+      const dx = Math.round(this.joyX * 36);
+      const dy = Math.round(this.joyY * 36);
+      if (knob.style) knob.style.transform = `translate3d(${dx}px, ${dy}px, 0px)`;
+      base.classList?.toggle('is-active', Math.hypot(this.joyX, this.joyY) > 0.08);
+    } else {
+      const kbDir =
+        (this.heldRight || this.uiHeldRight ? 1 : 0) - (this.heldLeft || this.uiHeldLeft ? 1 : 0);
+      if (knob.style) knob.style.transform = `translate3d(${kbDir * 30}px, 0px, 0px)`;
+      base.classList?.toggle('is-active', kbDir !== 0);
+    }
   }
 
   triggerAction(actionName) {
     if (!this.active || this.game.isMatchOver) return;
-    // Any manual action button press smoothly hands control to the player if Auto-Play was left on,
-    // unless explicitly testing Auto-Play via toggleAutoPlay
     this.queuedAction = actionName;
     this.queuedActionTimer = 0.24;
   }
@@ -200,39 +257,163 @@ export class AdventureManager {
     this.setAutoPlay(!this.autoPlay, playSound);
   }
 
+  refreshActionIcons(heroKey = 'mage') {
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+    const slots = ['attack', 'dodge', 'skill', 'overdrive', 'ultimate', 'crouch', 'jump'];
+    const heroTags =
+      heroKey === 'mage'
+        ? {
+            attack: 'FIRE',
+            dodge: 'BLINK',
+            skill: 'PILLAR',
+            overdrive: 'NOVA',
+            ultimate: 'METEOR',
+            crouch: 'WARD',
+            jump: 'VAULT'
+          }
+        : {
+            attack: 'ATK',
+            dodge: 'DASH',
+            skill: 'SKILL',
+            overdrive: 'DRIVE',
+            ultimate: 'ULT',
+            crouch: 'GUARD',
+            jump: 'JUMP'
+          };
+
+    for (const slot of slots) {
+      const canvas = document.getElementById(`adv-icon-${slot}`);
+      if (canvas && typeof canvas.getContext === 'function') {
+        const ictx = canvas.getContext('2d');
+        if (ictx) {
+          PixelForge.drawAdventureActionIcon(
+            ictx,
+            heroKey,
+            slot,
+            canvas.width || 56,
+            canvas.height || 56,
+            0
+          );
+        }
+      }
+      const tagEl = document.getElementById(`adv-tag-${slot}`);
+      if (tagEl && heroTags[slot]) {
+        tagEl.textContent = heroTags[slot];
+      }
+    }
+    this._renderedIconHero = heroKey;
+  }
+
   syncControlDeckUI() {
     if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+    const visible = Boolean(this.active && !this.game.isLandingOpen && !this.game.isMatchOver);
+    const appEl = document.getElementById('app');
+    if (appEl) {
+      appEl.classList?.toggle('is-adventure-active', visible);
+    }
     const deck = document.getElementById('adventure-controls');
     if (deck) {
-      const visible = this.active && !this.game.isLandingOpen && !this.game.isMatchOver;
-      deck.classList.toggle('hidden', !visible);
+      deck.classList?.toggle('hidden', !visible);
     }
+
     const autoBtn = document.getElementById('adv-btn-autoplay');
     const autoLbl = document.getElementById('adv-autoplay-label');
     if (autoBtn) {
-      autoBtn.setAttribute('aria-pressed', String(this.autoPlay));
-      autoBtn.classList.toggle('is-autoplay-on', this.autoPlay);
+      autoBtn.setAttribute?.('aria-pressed', String(this.autoPlay));
+      autoBtn.classList?.toggle('is-autoplay-on', this.autoPlay);
     }
     if (autoLbl) {
-      autoLbl.textContent = this.autoPlay ? 'AUTO AI: ON [P]' : 'MANUAL [P: AI]';
+      autoLbl.textContent = this.autoPlay ? 'AI: ON' : 'AI: OFF';
     }
+
+    this.syncJoystickKnobUI();
 
     const player = this.game.leftFighter;
     if (!player) return;
-    const odBtn = document.getElementById('adv-btn-overdrive');
-    const ultBtn = document.getElementById('adv-btn-ultimate');
-    const skBtn = document.getElementById('adv-btn-skill');
-    if (odBtn) {
-      odBtn.classList.toggle('is-ready', player.mana >= player.maxMana);
+
+    const heroKey = player.heroId || 'mage';
+    if (this._renderedIconHero !== heroKey) {
+      this.refreshActionIcons(heroKey);
     }
-    if (ultBtn) {
-      ultBtn.classList.toggle(
-        'is-ready',
-        Boolean(player.hasTrueUltimate && player.finisherGauge >= player.maxFinisherGauge)
-      );
+
+    const updateOrbSlot = (slot, mode, sweepRatio, labelText, hidden = false) => {
+      const btn = document.getElementById(`adv-btn-${slot}`);
+      const sweep = document.getElementById(`adv-cd-sweep-${slot}`);
+      const txt = document.getElementById(`adv-cd-text-${slot}`);
+      if (btn) {
+        btn.classList?.toggle('hidden', Boolean(hidden));
+        btn.classList?.toggle('is-ready', mode === 'ready');
+        btn.classList?.toggle('is-on-cd', mode === 'cd');
+        btn.classList?.toggle('is-charging', mode === 'charge');
+      }
+      if (sweep?.style?.setProperty) {
+        const deg = Math.max(0, Math.min(360, (sweepRatio || 0) * 360));
+        sweep.style.setProperty('--cd-deg', `${deg.toFixed(1)}deg`);
+      }
+      if (txt && txt.textContent !== labelText) {
+        txt.textContent = labelText;
+      }
+    };
+
+    // 1. Basic Attack (subtle cadence sweep while keeping primary icon vibrant)
+    const autoCd = Math.max(0, player.autoCooldown || 0);
+    this.autoCdMax = Math.max(this.autoCdMax, autoCd, (player.autoInterval || 1) * 0.68, 0.25);
+    updateOrbSlot('attack', 'ready', autoCd > 0.03 ? autoCd / this.autoCdMax : 0, '');
+
+    // 2. Arcane Blink / Dodge
+    const dodgeCd = Math.max(0, player.dodgeCooldown || 0);
+    this.dodgeCdMax = Math.max(this.dodgeCdMax, dodgeCd, (player.dodgeMaxCooldown || 3.2) * 0.72, 0.5);
+    if (dodgeCd > 0.05) {
+      updateOrbSlot('dodge', 'cd', dodgeCd / this.dodgeCdMax, `${dodgeCd.toFixed(1)}s`);
+    } else {
+      updateOrbSlot('dodge', 'ready', 0, '');
     }
-    if (skBtn) {
-      skBtn.classList.toggle('is-ready', player.skillCooldown <= 0.05);
+
+    // 3. Special Skill
+    const skillCd = Math.max(0, player.skillCooldown || 0);
+    this.skillCdMax = Math.max(this.skillCdMax, skillCd, (player.skillMaxCooldown || 5.0) * 0.78, 0.5);
+    if (skillCd > 0.05) {
+      updateOrbSlot('skill', 'cd', skillCd / this.skillCdMax, `${skillCd.toFixed(1)}s`);
+    } else {
+      updateOrbSlot('skill', 'ready', 0, '');
+    }
+
+    // 4. Solar Vault / Aerial Jump (independent cooldown from Blink!)
+    const jumpCd = Math.max(0, this.jumpCd || 0);
+    if (jumpCd > 0.05) {
+      updateOrbSlot('jump', 'cd', jumpCd / this.jumpCdMax, `${jumpCd.toFixed(1)}s`);
+    } else {
+      updateOrbSlot('jump', 'ready', 0, '');
+    }
+
+    // 5. Flame Ward / Counter Guard
+    const crouchCd = Math.max(0, player.crouchCooldown || 0);
+    this.crouchCdMax = Math.max(this.crouchCdMax, crouchCd, 3.2);
+    if (crouchCd > 0.05) {
+      updateOrbSlot('crouch', 'cd', crouchCd / this.crouchCdMax, `${crouchCd.toFixed(1)}s`);
+    } else {
+      updateOrbSlot('crouch', 'ready', 0, '');
+    }
+
+    // 6. Overdrive Art (Mana Gauge 0..100%)
+    const maxMana = Math.max(1, player.maxMana || 100);
+    const manaRatio = Math.max(0, Math.min(1, (player.mana || 0) / maxMana));
+    if (manaRatio < 0.999) {
+      updateOrbSlot('overdrive', 'charge', 1 - manaRatio, `${Math.floor(manaRatio * 100)}%`);
+    } else {
+      updateOrbSlot('overdrive', 'ready', 0, 'MAX');
+    }
+
+    // 7. Supreme Cataclysm Ultimate (Finisher Gauge 0..100%)
+    const hasUlt = Boolean(player.hasTrueUltimate);
+    const maxFin = Math.max(1, player.maxFinisherGauge || 100);
+    const ultRatio = Math.max(0, Math.min(1, (player.finisherGauge || 0) / maxFin));
+    if (!hasUlt) {
+      updateOrbSlot('ultimate', 'charge', 1, '', true);
+    } else if (ultRatio < 0.999) {
+      updateOrbSlot('ultimate', 'charge', 1 - ultRatio, `${Math.floor(ultRatio * 100)}%`, false);
+    } else {
+      updateOrbSlot('ultimate', 'ready', 0, 'ULT', false);
     }
   }
 
@@ -254,6 +435,13 @@ export class AdventureManager {
     this.bossSpawnPending = false;
     this.bossEntity = null;
     this.goPromptActive = false;
+    this.jumpCd = 0;
+
+    this.autoCdMax = Math.max(0.25, (playerFighter.autoInterval || 1) * 0.68);
+    this.skillCdMax = Math.max(0.5, (playerFighter.skillMaxCooldown || 5.0) * 0.78);
+    this.dodgeCdMax = Math.max(0.5, (playerFighter.dodgeMaxCooldown || 3.2) * 0.72);
+    this.crouchCdMax = 3.2;
+    this._renderedIconHero = null;
 
     const renderer = this.game.renderer;
     if (renderer) {
@@ -264,7 +452,7 @@ export class AdventureManager {
       renderer.permanentStageOverride = null;
       renderer.trueUltStageOverride = null;
       renderer.trueUltStageAlpha = 0;
-      renderer.camX = 560;
+      renderer.camX = 480;
     }
 
     playerFighter.x = 240;
@@ -281,6 +469,7 @@ export class AdventureManager {
     }
 
     this.game.fighters = [playerFighter];
+    this.refreshActionIcons(playerFighter.heroId || 'mage');
     this.spawnZoneEncounter(0, 1);
     this.syncStageBadge();
     this.syncRightHUD();
@@ -295,6 +484,7 @@ export class AdventureManager {
     this.bossSpawnPending = false;
     this.bossEntity = null;
     this.pickups = [];
+    this.jumpCd = 0;
     this.clearHeldInputs();
 
     const renderer = this.game.renderer;
@@ -358,12 +548,13 @@ export class AdventureManager {
 
     if (zoneIdx === 0 && subWave === 1) {
       this.totalWaveLabel = 'WAVE 1 / 5';
-      this.spawnMonster('ghoul', 880);
-      this.spawnMonster('ghoul', 1050);
+      // Spawn inside immediate viewport framing even on 360px portrait mobile screens!
+      this.spawnMonster('ghoul', 680);
+      this.spawnMonster('ghoul', 840);
     } else if (zoneIdx === 0 && subWave === 2) {
       this.totalWaveLabel = 'WAVE 2 / 5';
-      this.spawnMonster('ghoul', 960);
-      this.spawnMonster('cultist', 1090);
+      this.spawnMonster('ghoul', 880);
+      this.spawnMonster('cultist', 1020);
       this.spawnMonster('ghoul', 220);
       this.game.renderer?.triggerStageEvent?.(
         '★ VANGUARD AMBUSH! ★',
@@ -373,9 +564,9 @@ export class AdventureManager {
       );
     } else if (zoneIdx === 1) {
       this.totalWaveLabel = 'WAVE 3 / 5';
-      this.spawnMonster('brute', 2020);
-      this.spawnMonster('cultist', 2190);
-      this.spawnMonster('cultist', 2300);
+      this.spawnMonster('brute', 1960);
+      this.spawnMonster('cultist', 2140);
+      this.spawnMonster('cultist', 2260);
       this.game.renderer?.triggerStageEvent?.(
         '★ ZONE II: CURSED STARWOOD ★',
         'OBSIDIAN JUGGERNAUT BLOCKS THE CAUSEWAY!',
@@ -384,9 +575,9 @@ export class AdventureManager {
       );
     } else if (zoneIdx === 2) {
       this.totalWaveLabel = 'WAVE 4 / 5';
-      this.spawnMonster('brute', 3180, { isElite: true });
-      this.spawnMonster('ghoul', 2980);
-      this.spawnMonster('ghoul', 3340);
+      this.spawnMonster('brute', 3140, { isElite: true });
+      this.spawnMonster('ghoul', 2940);
+      this.spawnMonster('ghoul', 3300);
       this.spawnMonster('cultist', 2560, { isElite: true });
       this.game.renderer?.triggerStageEvent?.(
         '★ ZONE III: ABYSSAL BONE-GATE ★',
@@ -755,9 +946,27 @@ export class AdventureManager {
       return;
     }
 
-    // Manual Player Control Mode!
-    const moveDir =
+    // Manual Player Control Mode (Touch Virtual Analog Joystick + Keyboard)!
+    const kbMove =
       (this.heldRight || this.uiHeldRight ? 1 : 0) - (this.heldLeft || this.uiHeldLeft ? 1 : 0);
+    const rawMove = this.joyActive
+      ? Math.abs(this.joyX) > 0.14
+        ? this.joyX
+        : 0
+      : kbMove;
+    const moveDir = rawMove === 0 ? 0 : rawMove > 0 ? 1 : -1;
+    const moveSpeedScale =
+      rawMove === 0
+        ? 0
+        : this.joyActive
+          ? 0.58 + 0.42 * Math.min(1, Math.abs(rawMove) / 0.75)
+          : 1;
+
+    // Continuous hold-to-attack on primary thumb orb or [J/Z]
+    if (!this.queuedAction && (this.heldAttack || this.uiHeldAttack) && player.autoCooldown <= 0) {
+      this.queuedAction = 'attack';
+      this.queuedActionTimer = 0.08;
+    }
 
     const isAttackRecoveryCancel =
       player.state === 'AUTO_ATTACK' &&
@@ -796,13 +1005,15 @@ export class AdventureManager {
       } else if (act === 'skill' && player.skillCooldown <= 0) {
         this.queuedAction = null;
         if (target) player.facing = target.x >= player.x ? 1 : -1;
-        player.skillCooldown = player.skillMaxCooldown * 0.78;
+        this.skillCdMax = Math.max(0.5, player.skillMaxCooldown * 0.78);
+        player.skillCooldown = this.skillCdMax;
         if (player.stats) player.stats.skillsUsed++;
         player.setState('SKILL');
       } else if (act === 'dodge' && player.dodgeCooldown <= 0) {
         this.queuedAction = null;
         const blinkDir = moveDir !== 0 ? moveDir : target ? (player.x < target.x ? -1 : 1) : player.facing;
-        player.dodgeCooldown = player.dodgeMaxCooldown * 0.72;
+        this.dodgeCdMax = Math.max(0.5, player.dodgeMaxCooldown * 0.72);
+        player.dodgeCooldown = this.dodgeCdMax;
         player.dashDir = blinkDir;
         player.isInvulnerable = true;
         player.setState('DODGE');
@@ -810,20 +1021,24 @@ export class AdventureManager {
           // Pass null enemy when player holds an explicit direction so blink always goes where the player steers!
           player.onStartDodge(moveDir !== 0 ? null : target, this.game, blinkDir);
         }
-      } else if (act === 'jump' && player.dodgeCooldown <= 0 && typeof player.startJump === 'function') {
+      } else if (act === 'jump' && this.jumpCd <= 0 && typeof player.startJump === 'function') {
         this.queuedAction = null;
         const vaultDir = moveDir !== 0 ? moveDir : player.facing;
         player.facing = vaultDir;
+        const prevDodgeCd = player.dodgeCooldown;
         player.startJump(null, this.game, vaultDir);
-        player.dodgeCooldown = Math.min(player.dodgeCooldown, 1.35);
+        player.dodgeCooldown = prevDodgeCd;
+        this.jumpCd = this.jumpCdMax;
       } else if (act === 'crouch' && (player.crouchCooldown || 0) <= 0 && typeof player.startCrouch === 'function') {
         this.queuedAction = null;
         if (target) player.facing = target.x >= player.x ? 1 : -1;
         player.startCrouch(target, this.game);
+        this.crouchCdMax = Math.max(this.crouchCdMax, player.crouchCooldown || 3.2);
       } else if (act === 'attack' && player.autoCooldown <= 0) {
         this.queuedAction = null;
         if (target) player.facing = target.x >= player.x ? 1 : -1;
-        player.autoCooldown = player.autoInterval * 0.68;
+        this.autoCdMax = Math.max(0.25, player.autoInterval * 0.68);
+        player.autoCooldown = this.autoCdMax;
         player.setState('AUTO_ATTACK');
       }
     }
@@ -840,7 +1055,7 @@ export class AdventureManager {
         player.facing = moveDir;
         player.moveDir = 1;
         player.state = 'WALK';
-        player.x += moveDir * player.moveSpeed * 1.42 * dt;
+        player.x += moveDir * player.moveSpeed * 1.42 * moveSpeedScale * dt;
       } else {
         player._manualWalkActive = false;
         player.moveDir = 0;
@@ -866,6 +1081,9 @@ export class AdventureManager {
     if (!player) return;
 
     this.goBlinkTimer += dt;
+    if (this.jumpCd > 0) {
+      this.jumpCd = Math.max(0, this.jumpCd - dt);
+    }
 
     // 1. Boss Warning Countdown -> Spawn Archfiend Malphas!
     if (this.bossWarningTimer > 0) {

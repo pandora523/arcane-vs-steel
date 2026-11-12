@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps81';
+import { PixelForge } from './PixelForge.js?v=30fps82';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -29,7 +29,7 @@ export class Renderer {
     this.ctx = canvas.getContext('2d', { alpha: false });
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    this.isMobile = this.width < 768;
+    this.isMobile = this.width < 768 || this.height < 520;
 
     this.worldWidth = 1200;
     this.groundY = 520;
@@ -285,7 +285,7 @@ export class Renderer {
   resize() {
     this.width = window.innerWidth;
     this.height = window.innerHeight;
-    this.isMobile = this.width < 768;
+    this.isMobile = this.width < 768 || this.height < 520;
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     this.canvas.width = Math.round(this.width * dpr);
     this.canvas.height = Math.round(this.height * dpr);
@@ -540,7 +540,8 @@ export class Renderer {
     const sy =
       this.shakeTime > 0 ? Math.round(Math.cos(this.time * 38) * this.shakeIntensity) : 0;
 
-    const screenAnchorY = this.height * (this.isMobile ? 0.64 : 0.68);
+    const screenAnchorY =
+      this.height * (this.adventureMode && this.isMobile ? 0.58 : this.isMobile ? 0.64 : 0.68);
     ctx.translate(this.width * 0.5 + sx, screenAnchorY + sy);
     ctx.scale(this.zoom, this.zoom);
     ctx.translate(-this.camX, -this.camY);
