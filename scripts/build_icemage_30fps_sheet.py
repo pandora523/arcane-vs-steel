@@ -1,43 +1,41 @@
 #!/usr/bin/env python3
 """
-Builds Lyra v5 (IceMage — Cryo-Prism Winter Empress) 30fps HD-2D Sprite Sheet
-(`assets/sprites/icemage_sheet.png`, 6240x1872, 30 cols x 9 rows of 208x208)
+Builds Lyra v7 (IceMage — Cryo-Prism Winter Empress) 30fps HD-2D 10-Row Sprite Sheet
+(`assets/sprites/icemage_sheet.png`, 6240x2080, 30 cols x 10 rows of 208x208)
 using `assets/sprites/icemage_v5_base.jpg` + `hd2d_rig_core`.
 
 Key Features:
-- Extracts from `icemage_v5_base.jpg` (royal sapphire-silver split-front battle-gown,
-  plush snow-white fur shoulder mantle, crystalline cyan-diamond tiara, frost-silver hair,
-  separated silver frost-boots, empty hands) via targeted BFS exterior + pocket white removal
+- Extracts from `icemage_v5_base.jpg` via targeted BFS exterior + pocket white removal
   (preserving 100% of snow-white fur pauldrons & tiara core) + 3-pass anti-aliased fringe strip
   + multi-zone MedianFilter cel-flattening (3x3 head/tiara, 5x5 gown/boots).
-- Clean 14-part Cryo-Prism Winter Empress hierarchical skeletal segmentation with 0 unassigned
-  foreground pixels and clean leg separation (inner-boot dark skirt lining trimmed so silver
-  frost-boots glide cleanly with zero cloth scraps).
-- Curated 20-color sapphire / ice-cyan / diamond-silver / fur-white / porcelain `MASTER_PALETTE`
-  + 2-pass cardinal orphan despeckle + topological pinhole fill + 1px dark Selout outline.
-- Back attachment: Rotating 6-Crystal Borealis Snowflake & Prism Halo behind shoulders.
-- Articulated weapon: Crystalline Borealis Frost-Lance Scepter driven by per-frame 2-Bone
-  Analytical IK arm solver across graceful casts, figure-skating glides, Sovereign Scepter Taps,
-  and horizontal floor rest on `Row 5 DEATH F18..F29`.
-- Grounded silver frost-boots planted firmly at `y_104 = 99`, `0/270` border clips,
+- Clean 14-part Cryo-Prism Winter Empress hierarchical skeletal segmentation with strict anatomical
+  knee constraints (`shin_deg >= thigh_deg` across all 300 frames — zero reverse/bird knees!).
+- Athletic figure-skating stances & flared split-gown kinematics so crouching, lunging, and
+  speed-skating genuinely lower Lyra's head/torso silhouette.
+- 4 Distinct Normal-Attack Animations in `Row 2` (`[[0..7], [8..14], [15..22], [23..29]]`):
+  0: Rime-Lance Skate Lunge, 1: Arabesque Halo Boomerang, 2: Glacier Stalagmite Slam, 3: Borealis Sky-Icicle Hail.
+- `Row 9 VICTORY` (`F00..F29`): Figure-skating flourish settling into regal Winter Empress skyward scepter salute.
+- Grounded silver frost-boots planted firmly at `y_104 = 99`, `0/300` border clips,
   and `29/29` distinct frame transitions per row.
 """
 
 import os
+import time
 import math
 from collections import deque
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 from hd2d_rig_core import (
-    COLS, P, BASE_NUMERIC_KEYS, poly_mask, keep_largest_component,
+    COLS, CELL, P, BASE_NUMERIC_KEYS, poly_mask, keep_largest_component,
     assign_remaining_geodesic, extract_parts_512, rot_pt,
-    render_rig_104, build_and_save_30fps_sheet,
+    render_rig_104,
 )
+
+ROWS = 10
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "icemage_v5_base.jpg")
 OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "icemage_sheet.png")
-VFX_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "icemage_vfx.png")
 ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/b9d8130e-8764-4ace-8d4e-40f97049d6f1"
 
 # Strict 20-Color Hand-Crafted Cryo-Prism Winter Empress Master Palette
@@ -635,13 +633,13 @@ def draw_front(out, joints104, cfg):
 
 
 DEFAULTS = dict(
-    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=2.0, head_rel_deg=-1.5, mane_rel_deg=-3.0,
-    mane_wave_amp=5.5, l_thigh_deg=-2.0, l_shin_deg=2.0, l_foot_deg=0.0,
-    r_thigh_deg=2.0, r_shin_deg=-2.0, r_foot_deg=0.0,
+    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=11.0, head_rel_deg=-7.0, mane_rel_deg=-9.0,
+    mane_wave_amp=6.5, l_thigh_deg=-20.0, l_shin_deg=16.0, l_foot_deg=8.0,
+    r_thigh_deg=18.0, r_shin_deg=40.0, r_foot_deg=18.0,
     l_sode_rel_deg=0.0, l_fore_rel_deg=0.0, r_sode_rel_deg=0.0, r_fore_rel_deg=0.0,
-    l_coat_rel_deg=0.0, r_coat_rel_deg=0.0,
-    r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-62.0, l_ik_dy=6.0, grip_sep=28.0,
-    weapon_deg=-34.0, weapon_len=21.0, weapon_glow=0.85, foot_y=99.0,
+    l_coat_rel_deg=18.0, r_coat_rel_deg=-14.0,
+    r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-62.0, l_ik_dy=4.0, grip_sep=28.0,
+    weapon_deg=-28.0, weapon_len=21.0, weapon_glow=0.88, foot_y=99.0,
     show_weapon=True, halo_active=True, halo_grand=False,
     use_ik=True, two_handed_grip=False, r_elbow_cw=True, l_elbow_cw=True,
     right_arm_in_front=False, right_leg_behind=False,
@@ -650,46 +648,53 @@ DEFAULTS = dict(
 
 def make_winter_empress_death_kfs():
     """
-    Multi-stage graceful Winter Empress death (Row 5):
-      F00..F05: Grounded hurt recoil stagger (foot_y = 99)
+    Multi-stage graceful Winter Empress hurt & death (Row 5) with 100% anatomical knees (`shin_deg >= thigh_deg`):
+      F00..F05: Grounded hurt recoil stagger (`foot_y = 99`, deep coiled knees)
       F06..F13: Wounded kneeling / L-sit buckle onto stone floor, lowering Frost-Lance Scepter
       F14..F17: Progressive supine collapse onto floor
-      F18..F29: Flat horizontal supine rest on y_104 = 99 with Frost-Lance Scepter resting horizontally on floor!
+      F18..F29: Flat horizontal supine rest on `y_104 = 99` with Frost-Lance Scepter resting horizontally on floor!
     """
     return [
         (0, dict(
-            use_ik=False, pelvis_dx=0.0, pelvis_dy=4.0, torso_deg=-4.0, head_rel_deg=-2.0, mane_rel_deg=4.0,
-            l_thigh_deg=-4.0, l_shin_deg=6.0, r_thigh_deg=6.0, r_shin_deg=4.0,
-            l_sode_rel_deg=-14.0, l_fore_rel_deg=-10.0, r_sode_rel_deg=8.0, r_fore_rel_deg=-8.0,
-            weapon_deg=-26.0, weapon_glow=0.80, halo_active=True, foot_y=99.0,
+            use_ik=False, pelvis_dx=-2.0, pelvis_dy=6.0, torso_deg=-6.0, head_rel_deg=-2.0, mane_rel_deg=6.0,
+            l_thigh_deg=-18.0, l_shin_deg=16.0, l_foot_deg=8.0,
+            r_thigh_deg=12.0, r_shin_deg=34.0, r_foot_deg=16.0,
+            l_coat_rel_deg=18.0, r_coat_rel_deg=-14.0,
+            l_sode_rel_deg=-16.0, l_fore_rel_deg=-10.0, r_sode_rel_deg=10.0, r_fore_rel_deg=-8.0,
+            right_leg_behind=True, weapon_deg=-26.0, weapon_glow=0.82, halo_active=True, foot_y=99.0,
         )),
         (5, dict(
-            use_ik=False, pelvis_dx=-16.0, pelvis_dy=26.0, torso_deg=-18.0, head_rel_deg=-8.0, mane_rel_deg=18.0,
-            l_thigh_deg=-20.0, l_shin_deg=10.0, r_thigh_deg=-10.0, r_shin_deg=8.0,
-            l_sode_rel_deg=-28.0, l_fore_rel_deg=-20.0, r_sode_rel_deg=22.0, r_fore_rel_deg=-14.0,
-            weapon_deg=-44.0, weapon_glow=0.58, halo_active=True, foot_y=99.0,
+            use_ik=False, pelvis_dx=-18.0, pelvis_dy=24.0, torso_deg=-20.0, head_rel_deg=-8.0, mane_rel_deg=20.0,
+            l_thigh_deg=-28.0, l_shin_deg=22.0, l_foot_deg=10.0,
+            r_thigh_deg=10.0, r_shin_deg=42.0, r_foot_deg=20.0,
+            l_coat_rel_deg=26.0, r_coat_rel_deg=-22.0,
+            l_sode_rel_deg=-30.0, l_fore_rel_deg=-20.0, r_sode_rel_deg=24.0, r_fore_rel_deg=-14.0,
+            right_leg_behind=True, weapon_deg=-44.0, weapon_glow=0.58, halo_active=True, foot_y=99.0,
         )),
         (9, dict(
             use_ik=False, pelvis_dx=-14.0, pelvis_dy=94.0, torso_deg=10.0, head_rel_deg=14.0, mane_rel_deg=-10.0,
-            l_thigh_deg=-70.0, l_shin_deg=-42.0, l_foot_deg=-28.0,
-            r_thigh_deg=-36.0, r_shin_deg=-48.0, r_foot_deg=-30.0,
+            l_thigh_deg=-68.0, l_shin_deg=-34.0, l_foot_deg=-20.0,
+            r_thigh_deg=-44.0, r_shin_deg=-16.0, r_foot_deg=-10.0,
+            l_coat_rel_deg=-18.0, r_coat_rel_deg=-22.0,
             l_sode_rel_deg=18.0, l_fore_rel_deg=8.0,
             r_sode_rel_deg=-18.0, r_fore_rel_deg=-12.0, right_arm_in_front=True,
             weapon_deg=12.0, weapon_glow=0.42, halo_active=False, mane_wave_amp=4.0, foot_y=99.0,
         )),
         (13, dict(
-            use_ik=False, pelvis_dx=-12.0, pelvis_dy=152.0, torso_deg=-8.0, head_rel_deg=18.0, mane_rel_deg=12.0,
-            l_thigh_deg=-96.0, l_shin_deg=-94.0, l_foot_deg=-64.0,
-            r_thigh_deg=-44.0, r_shin_deg=-78.0, r_foot_deg=-58.0,
+            use_ik=False, pelvis_dx=-12.0, pelvis_dy=152.0, torso_deg=-18.0, head_rel_deg=18.0, mane_rel_deg=18.0,
+            l_thigh_deg=-94.0, l_shin_deg=-78.0, l_foot_deg=-62.0,
+            r_thigh_deg=-82.0, r_shin_deg=-68.0, r_foot_deg=-56.0,
+            l_coat_rel_deg=-36.0, r_coat_rel_deg=-28.0,
             l_sode_rel_deg=20.0, l_fore_rel_deg=8.0,
             r_sode_rel_deg=-8.0, r_fore_rel_deg=-10.0, right_arm_in_front=True,
             weapon_deg=3.0, weapon_glow=0.32, halo_active=False, mane_wave_amp=2.2,
             resting_weapon=False, foot_y=99.0,
         )),
         (18, dict(
-            use_ik=False, pelvis_dx=-8.0, pelvis_dy=188.0, torso_deg=-52.0, head_rel_deg=16.0, mane_rel_deg=68.0,
-            l_thigh_deg=-106.0, l_shin_deg=-112.0, l_foot_deg=-74.0,
-            r_thigh_deg=-46.0, r_shin_deg=-82.0, r_foot_deg=-66.0,
+            use_ik=False, pelvis_dx=-8.0, pelvis_dy=188.0, torso_deg=-56.0, head_rel_deg=16.0, mane_rel_deg=68.0,
+            l_thigh_deg=-102.0, l_shin_deg=-88.0, l_foot_deg=-70.0,
+            r_thigh_deg=-90.0, r_shin_deg=-76.0, r_foot_deg=-64.0,
+            l_coat_rel_deg=-24.0, r_coat_rel_deg=-20.0,
             l_sode_rel_deg=10.0, l_fore_rel_deg=-4.0,
             r_sode_rel_deg=2.0, r_fore_rel_deg=-8.0, right_arm_in_front=True,
             weapon_glow=0.28, halo_active=False, mane_wave_amp=1.0,
@@ -697,20 +702,22 @@ def make_winter_empress_death_kfs():
         )),
         (23, dict(
             use_ik=False, pelvis_dx=-4.0, pelvis_dy=212.0, torso_deg=-83.0, head_rel_deg=12.0, mane_rel_deg=108.0,
-            l_thigh_deg=-109.0, l_shin_deg=-118.0, l_foot_deg=-78.0,
-            r_thigh_deg=-46.0, r_shin_deg=-84.0, r_foot_deg=-70.0,
+            l_thigh_deg=-104.0, l_shin_deg=-90.0, l_foot_deg=-74.0,
+            r_thigh_deg=-92.0, r_shin_deg=-78.0, r_foot_deg=-66.0,
+            l_coat_rel_deg=-12.0, r_coat_rel_deg=-12.0,
             l_sode_rel_deg=6.0, l_fore_rel_deg=-6.0,
             r_sode_rel_deg=4.0, r_fore_rel_deg=-8.0, right_arm_in_front=True,
-            weapon_glow=0.22, halo_active=False, mane_wave_amp=0.4,
+            weapon_glow=0.22, halo_active=False, mane_wave_amp=0.45,
             resting_weapon=True, foot_y=99.0,
         )),
         (29, dict(
             use_ik=False, pelvis_dx=-4.0, pelvis_dy=216.0, torso_deg=-85.0, head_rel_deg=10.0, mane_rel_deg=112.0,
-            l_thigh_deg=-110.0, l_shin_deg=-119.0, l_foot_deg=-80.0,
-            r_thigh_deg=-48.0, r_shin_deg=-85.0, r_foot_deg=-72.0,
+            l_thigh_deg=-105.0, l_shin_deg=-91.0, l_foot_deg=-76.0,
+            r_thigh_deg=-93.0, r_shin_deg=-79.0, r_foot_deg=-68.0,
+            l_coat_rel_deg=-12.0, r_coat_rel_deg=-12.0,
             l_sode_rel_deg=6.0, l_fore_rel_deg=-6.0,
             r_sode_rel_deg=4.0, r_fore_rel_deg=-8.0, right_arm_in_front=True,
-            weapon_glow=0.18, halo_active=False, mane_wave_amp=0.2,
+            weapon_glow=0.18, halo_active=False, mane_wave_amp=0.25,
             resting_weapon=True, foot_y=99.0,
         )),
     ]
@@ -731,112 +738,205 @@ def build_row_configs(row_idx):
         ph = 2.0 * math.pi * t
 
         if row_idx == 0:
-            # Row 0: IDLE (Regal Winter Empress Breathing, Flowing Frost-Silver Hair, Rotating Halo & 2-Bone IK Scepter Poise)
+            # Row 0: IDLE — Coiled Royal Ice-Skater / Winter Empress Kamae
+            # (`torso_deg = 10°..14°`, coiled knees `l=-20°/+16°`, `r=+18°/+40°`, rhythmic flex & flowing hair)
             b = math.sin(ph)
             s = math.cos(ph)
             cfg = dict(DEFAULTS)
             cfg.update(
-                pelvis_dx=s * 2.5, pelvis_dy=b * 5.5,
-                torso_deg=2.0 + b * 1.6, head_rel_deg=-1.5 - b * 1.1,
-                mane_rel_deg=-3.0 + s * 3.5, mane_wave_phase=ph,
-                l_coat_rel_deg=s * 3.5, r_coat_rel_deg=-s * 2.5,
-                r_ik_dx=58.0 + s * 3.5, r_ik_dy=-18.0 + b * 5.5,
-                l_ik_dx=-60.0 - s * 3.0, l_ik_dy=4.0 - b * 4.5,
-                weapon_deg=-34.0 + b * 3.5, foot_y=99.0,
+                pelvis_dx=s * 3.5, pelvis_dy=8.0 + b * 6.0,
+                torso_deg=12.0 + b * 2.0, head_rel_deg=-8.0 - b * 1.4,
+                mane_rel_deg=-11.0 + s * 5.0, mane_wave_phase=ph, mane_wave_amp=7.0,
+                right_leg_behind=True,
+                l_thigh_deg=-20.0 - b * 3.5, l_shin_deg=16.0 + b * 4.5, l_foot_deg=8.0 + b * 2.0,
+                r_thigh_deg=18.0 + b * 3.0, r_shin_deg=40.0 + b * 4.5, r_foot_deg=18.0 + b * 2.5,
+                l_coat_rel_deg=20.0 + s * 4.5, r_coat_rel_deg=-16.0 - s * 4.0,
+                r_ik_dx=60.0 + s * 4.5, r_ik_dy=-18.0 + b * 5.5,
+                l_ik_dx=-62.0 - s * 4.0, l_ik_dy=-2.0 - b * 5.0,
+                weapon_deg=-28.0 + b * 4.5, foot_y=99.0,
             )
             cfgs.append(apply_icemage_ik(cfg))
 
         elif row_idx == 1:
-            # Row 1: WALK (Graceful Figure-Skating Ice Glide & Separated Silver Frost-Boot Stride)
+            # Row 1: WALK — Fluid Low Figure-Skating Cross-Glide
+            # (`torso_deg = 17°..22°`, wide `±38°` thigh push with `28°..52°` knee bend, smooth low glide)
             st = math.sin(ph)
-            kl = math.cos(ph)
+            cs = math.cos(ph)
+            l_th = st * 38.0
+            r_th = -st * 38.0
+            l_bend = 38.0 + 12.0 * max(0.0, -cs) - 8.0 * max(0.0, st)
+            r_bend = 38.0 + 12.0 * max(0.0, cs) - 8.0 * max(0.0, -st)
             cfg = dict(DEFAULTS)
             cfg.update(
-                pelvis_dy=abs(st) * 14.0, torso_deg=8.5 + abs(st) * 2.2, head_rel_deg=-5.0,
-                mane_rel_deg=-9.0 - abs(st) * 4.5, mane_wave_phase=ph * 2.0, mane_wave_amp=7.5,
-                right_leg_behind=(f >= 15),
-                l_thigh_deg=st * 26.0, l_shin_deg=max(0.0, st * 24.0) + max(0.0, kl * 12.0), l_foot_deg=st * 12.0,
-                r_thigh_deg=-st * 26.0, r_shin_deg=max(0.0, -st * 24.0) + max(0.0, -kl * 12.0), r_foot_deg=-st * 12.0,
-                l_coat_rel_deg=-8.0 - abs(st) * 5.5, r_coat_rel_deg=4.0 + st * 5.0,
-                r_ik_dx=56.0 - st * 14.0, r_ik_dy=-14.0 + abs(st) * 6.0,
-                l_ik_dx=-56.0 + st * 22.0, l_ik_dy=-4.0 - st * 12.0,
-                weapon_deg=-26.0 + st * 9.0, foot_y=99.0,
+                pelvis_dx=cs * 4.0,
+                pelvis_dy=18.0 + abs(cs) * 6.0,
+                torso_deg=19.5 + abs(st) * 2.5,
+                head_rel_deg=-13.0 - abs(st) * 1.5,
+                mane_rel_deg=-18.0 - abs(st) * 5.0,
+                mane_wave_phase=ph * 2.0, mane_wave_amp=8.5,
+                right_leg_behind=(st < 0.0),
+                l_thigh_deg=l_th, l_shin_deg=l_th + l_bend, l_foot_deg=10.0 + max(0.0, st) * 18.0,
+                r_thigh_deg=r_th, r_shin_deg=r_th + r_bend, r_foot_deg=10.0 + max(0.0, -st) * 18.0,
+                l_coat_rel_deg=24.0 + abs(st) * 8.0, r_coat_rel_deg=-20.0 - abs(st) * 7.0,
+                r_ik_dx=58.0 - st * 18.0, r_ik_dy=-16.0 + abs(st) * 6.0,
+                l_ik_dx=-58.0 + st * 24.0, l_ik_dy=-8.0 - st * 12.0,
+                weapon_deg=-22.0 + st * 11.0, foot_y=99.0,
             )
             cfgs.append(apply_icemage_ik(cfg))
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK — 3-Variant Dynamic "ROYAL BALLET OF RIME" (3 x 10 frames = 30 frames):
-            #   Variant 1 (F00..F09): RIME-LANCE NEEDLE — Fencing back-coil -> extended 1H Frost-Lance thrust (-2 deg)
-            #   Variant 2 (F10..F19): SNOWFLAKE CHAKRAM PIROUETTE — Arabesque knee-lift & wide cross-body open-arm hurl
-            #   Variant 3 (F20..F29): GLACIER STALAGMITE COMMAND — 2H overhead Scepter-Aloft -> downward ground-command (+50 deg)
-            if f <= 9:
+            # Row 2: AUTO_ATTACK — 4 Distinct Full-Body Normal-Attack Animations (`[[0..7], [8..14], [15..22], [23..29]]`):
+            #   Variant 0 (F00..F07, 8f): RIME-LANCE SKATE LUNGE (deep fencing split-lunge + horizontal scepter thrust)
+            #   Variant 1 (F08..F14, 7f): ARABESQUE HALO BOOMERANG (one-leg Arabesque spin + horizontal Chakram hurl)
+            #   Variant 2 (F15..F22, 8f): GLACIER STALAGMITE SLAM (high 2H overhead hoist -> deep wide-stance floor slam)
+            #   Variant 3 (F23..F29, 7f): BOREALIS SKY-ICICLE HAIL (backward skate-hop + skyward `-68°` scepter hail)
+            if f <= 7:
                 kfs = [
-                    (0, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
-                    (3, dict(
-                        pelvis_dx=-8.0, pelvis_dy=16.0, torso_deg=-8.0, head_rel_deg=5.0,
-                        l_thigh_deg=-15.0, l_shin_deg=14.0, r_thigh_deg=15.0, r_shin_deg=-10.0,
-                        r_ik_dx=28.0, r_ik_dy=-82.0, l_ik_dx=30.0, l_ik_dy=-46.0,
-                        weapon_deg=-72.0, weapon_glow=0.95, force_right_arm_front=True, foot_y=99.0,
+                    (0, dict(
+                        pelvis_dx=-6.0, pelvis_dy=12.0, torso_deg=-8.0, head_rel_deg=4.0, mane_rel_deg=6.0,
+                        right_leg_behind=False,
+                        l_thigh_deg=18.0, l_shin_deg=44.0, l_foot_deg=18.0,
+                        r_thigh_deg=-22.0, r_shin_deg=20.0, r_foot_deg=8.0,
+                        l_coat_rel_deg=22.0, r_coat_rel_deg=-20.0,
+                        r_ik_dx=24.0, r_ik_dy=-64.0, l_ik_dx=32.0, l_ik_dy=-42.0,
+                        weapon_deg=-58.0, weapon_glow=0.94, force_right_arm_front=True, foot_y=99.0,
                     )),
-                    (6, dict(
-                        pelvis_dx=12.0, pelvis_dy=28.0, torso_deg=16.0, head_rel_deg=-9.0,
-                        l_thigh_deg=22.0, l_shin_deg=18.0, r_thigh_deg=-20.0, r_shin_deg=14.0,
-                        r_ik_dx=86.0, r_ik_dy=-38.0, l_ik_dx=-68.0, l_ik_dy=-16.0,
-                        weapon_deg=-2.0, weapon_glow=1.0, force_right_arm_front=True, prism_flash=True, foot_y=99.0,
+                    (2, dict(
+                        pelvis_dx=-10.0, pelvis_dy=16.0, torso_deg=-12.0, head_rel_deg=6.0, mane_rel_deg=10.0,
+                        right_leg_behind=False,
+                        l_thigh_deg=24.0, l_shin_deg=50.0, l_foot_deg=20.0,
+                        r_thigh_deg=-28.0, r_shin_deg=22.0, r_foot_deg=8.0,
+                        l_coat_rel_deg=24.0, r_coat_rel_deg=-22.0,
+                        r_ik_dx=18.0, r_ik_dy=-72.0, l_ik_dx=38.0, l_ik_dy=-46.0,
+                        weapon_deg=-68.0, weapon_glow=0.96, force_right_arm_front=True, foot_y=99.0,
                     )),
-                    (9, dict(torso_deg=4.0, r_ik_dx=64.0, r_ik_dy=-22.0, l_ik_dx=-60.0, l_ik_dy=2.0, weapon_deg=-26.0, foot_y=99.0)),
+                    (4, dict(
+                        pelvis_dx=16.0, pelvis_dy=30.0, torso_deg=26.0, head_rel_deg=-16.0, mane_rel_deg=-22.0,
+                        right_leg_behind=False,
+                        l_thigh_deg=36.0, l_shin_deg=54.0, l_foot_deg=26.0,
+                        r_thigh_deg=-42.0, r_shin_deg=16.0, r_foot_deg=6.0,
+                        l_coat_rel_deg=28.0, r_coat_rel_deg=-30.0,
+                        r_ik_dx=92.0, r_ik_dy=-26.0, l_ik_dx=-76.0, l_ik_dy=-20.0,
+                        weapon_deg=-4.0, weapon_glow=1.0, force_right_arm_front=True, foot_y=99.0,
+                    )),
+                    (7, dict(
+                        pelvis_dx=4.0, pelvis_dy=12.0, torso_deg=13.0, head_rel_deg=-8.0, mane_rel_deg=-12.0,
+                        right_leg_behind=False,
+                        l_thigh_deg=20.0, l_shin_deg=42.0, l_foot_deg=16.0,
+                        r_thigh_deg=-22.0, r_shin_deg=18.0, r_foot_deg=8.0,
+                        l_coat_rel_deg=20.0, r_coat_rel_deg=-18.0,
+                        r_ik_dx=66.0, r_ik_dy=-20.0, l_ik_dx=-62.0, l_ik_dy=-4.0,
+                        weapon_deg=-22.0, weapon_glow=0.90, force_right_arm_front=True, foot_y=99.0,
+                    )),
                 ]
                 cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.5)
-                if f in (5, 6, 7):
+                if f in (3, 4, 5):
                     cfg["prism_flash"] = True
-            elif f <= 19:
+            elif f <= 14:
                 kfs = [
-                    (10, dict(
-                        pelvis_dx=-6.0, pelvis_dy=14.0, torso_deg=-10.0, head_rel_deg=6.0,
-                        l_thigh_deg=-18.0, l_shin_deg=18.0, r_thigh_deg=14.0, r_shin_deg=-8.0,
-                        r_ik_dx=-28.0, r_ik_dy=-56.0, l_ik_dx=54.0, l_ik_dy=-44.0,
-                        weapon_deg=-128.0, weapon_glow=0.95, halo_grand=True, foot_y=99.0,
+                    (8, dict(
+                        pelvis_dx=-8.0, pelvis_dy=14.0, torso_deg=-8.0, head_rel_deg=5.0, mane_rel_deg=8.0,
+                        right_leg_behind=False,
+                        l_thigh_deg=20.0, l_shin_deg=46.0, l_foot_deg=18.0,
+                        r_thigh_deg=-22.0, r_shin_deg=18.0, r_foot_deg=8.0,
+                        l_coat_rel_deg=22.0, r_coat_rel_deg=-18.0,
+                        r_ik_dx=-26.0, r_ik_dy=-52.0, l_ik_dx=54.0, l_ik_dy=-42.0,
+                        weapon_deg=-126.0, weapon_glow=0.96, halo_grand=True, foot_y=98.5,
+                    )),
+                    (11, dict(
+                        pelvis_dx=12.0, pelvis_dy=20.0, torso_deg=24.0, head_rel_deg=-14.0, mane_rel_deg=-22.0,
+                        right_leg_behind=False,
+                        l_thigh_deg=54.0, l_shin_deg=70.0, l_foot_deg=36.0,
+                        r_thigh_deg=-24.0, r_shin_deg=16.0, r_foot_deg=6.0,
+                        l_coat_rel_deg=26.0, r_coat_rel_deg=-24.0,
+                        r_ik_dx=88.0, r_ik_dy=-48.0, l_ik_dx=-78.0, l_ik_dy=-32.0,
+                        weapon_deg=-16.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=96.0,
                     )),
                     (14, dict(
-                        pelvis_dx=10.0, pelvis_dy=22.0, torso_deg=18.0, head_rel_deg=-11.0, mane_rel_deg=-16.0,
-                        l_thigh_deg=34.0, l_shin_deg=38.0, l_foot_deg=22.0,
-                        r_thigh_deg=-14.0, r_shin_deg=14.0,
-                        l_coat_rel_deg=-16.0, r_coat_rel_deg=8.0,
-                        r_ik_dx=82.0, r_ik_dy=-58.0, l_ik_dx=72.0, l_ik_dy=-26.0,
-                        weapon_deg=-24.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                        pelvis_dx=4.0, pelvis_dy=12.0, torso_deg=14.0, head_rel_deg=-9.0, mane_rel_deg=-12.0,
+                        right_leg_behind=False,
+                        l_thigh_deg=26.0, l_shin_deg=46.0, l_foot_deg=20.0,
+                        r_thigh_deg=-20.0, r_shin_deg=18.0, r_foot_deg=8.0,
+                        l_coat_rel_deg=20.0, r_coat_rel_deg=-18.0,
+                        r_ik_dx=64.0, r_ik_dy=-24.0, l_ik_dx=-64.0, l_ik_dy=-8.0,
+                        weapon_deg=-24.0, weapon_glow=0.90, force_right_arm_front=True, foot_y=99.0,
                     )),
-                    (17, dict(
-                        pelvis_dx=6.0, pelvis_dy=18.0, torso_deg=11.0, head_rel_deg=-6.0,
-                        l_thigh_deg=18.0, l_shin_deg=20.0, r_thigh_deg=-10.0, r_shin_deg=10.0,
-                        r_ik_dx=74.0, r_ik_dy=-34.0, l_ik_dx=-66.0, l_ik_dy=-18.0,
-                        weapon_deg=-18.0, weapon_glow=0.92, force_right_arm_front=True, foot_y=99.0,
-                    )),
-                    (19, dict(torso_deg=3.0, r_ik_dx=60.0, r_ik_dy=-20.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-30.0, foot_y=99.0)),
                 ]
                 cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
-                if f in (13, 14, 15):
+                if f in (10, 11, 12):
+                    cfg["prism_flash"] = True
+            elif f <= 22:
+                kfs = [
+                    (15, dict(
+                        pelvis_dx=-6.0, pelvis_dy=10.0, torso_deg=-15.0, head_rel_deg=-6.0, mane_rel_deg=10.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-24.0, l_shin_deg=22.0, l_foot_deg=12.0,
+                        r_thigh_deg=18.0, r_shin_deg=42.0, r_foot_deg=20.0,
+                        l_coat_rel_deg=22.0, r_coat_rel_deg=-18.0,
+                        two_handed_grip=True, grip_sep=26.0, r_ik_dx=38.0, r_ik_dy=-106.0,
+                        weapon_deg=-82.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=95.0,
+                    )),
+                    (17, dict(
+                        pelvis_dx=-4.0, pelvis_dy=8.0, torso_deg=-13.0, head_rel_deg=-5.0, mane_rel_deg=8.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-26.0, l_shin_deg=24.0, l_foot_deg=12.0,
+                        r_thigh_deg=20.0, r_shin_deg=44.0, r_foot_deg=20.0,
+                        l_coat_rel_deg=24.0, r_coat_rel_deg=-20.0,
+                        two_handed_grip=True, grip_sep=26.0, r_ik_dx=44.0, r_ik_dy=-108.0,
+                        weapon_deg=-80.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=95.0,
+                    )),
+                    (19, dict(
+                        pelvis_dx=14.0, pelvis_dy=36.0, torso_deg=28.0, head_rel_deg=-14.0, mane_rel_deg=-20.0,
+                        right_leg_behind=False,
+                        l_thigh_deg=34.0, l_shin_deg=58.0, l_foot_deg=24.0,
+                        r_thigh_deg=-46.0, r_shin_deg=22.0, r_foot_deg=8.0,
+                        l_coat_rel_deg=34.0, r_coat_rel_deg=-32.0,
+                        two_handed_grip=True, grip_sep=24.0, r_ik_dx=84.0, r_ik_dy=-6.0,
+                        weapon_deg=38.0, weapon_len=20.0, weapon_glow=1.0,
+                        force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    )),
+                    (22, dict(
+                        pelvis_dx=4.0, pelvis_dy=14.0, torso_deg=14.0, head_rel_deg=-8.0, mane_rel_deg=-10.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-20.0, l_shin_deg=18.0, l_foot_deg=8.0,
+                        r_thigh_deg=18.0, r_shin_deg=40.0, r_foot_deg=18.0,
+                        l_coat_rel_deg=20.0, r_coat_rel_deg=-16.0,
+                        two_handed_grip=False, r_ik_dx=60.0, r_ik_dy=-18.0, l_ik_dx=-62.0, l_ik_dy=2.0,
+                        weapon_deg=-26.0, weapon_glow=0.90, foot_y=99.0,
+                    )),
+                ]
+                cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
+                if f in (18, 19, 20):
                     cfg["prism_flash"] = True
             else:
                 kfs = [
-                    (20, dict(
-                        pelvis_dx=-6.0, pelvis_dy=20.0, torso_deg=-11.0, head_rel_deg=-6.0,
-                        l_thigh_deg=-14.0, l_shin_deg=14.0, r_thigh_deg=14.0, r_shin_deg=-10.0,
-                        two_handed_grip=True, grip_sep=26.0, r_ik_dx=36.0, r_ik_dy=-104.0,
-                        weapon_deg=-86.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
-                    )),
                     (23, dict(
-                        pelvis_dx=-4.0, pelvis_dy=18.0, torso_deg=-8.0, head_rel_deg=-4.0,
-                        two_handed_grip=True, grip_sep=26.0, r_ik_dx=44.0, r_ik_dy=-108.0,
-                        weapon_deg=-82.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                        pelvis_dx=-10.0, pelvis_dy=12.0, torso_deg=-10.0, head_rel_deg=-8.0, mane_rel_deg=12.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-34.0, l_shin_deg=28.0, l_foot_deg=16.0,
+                        r_thigh_deg=18.0, r_shin_deg=48.0, r_foot_deg=24.0,
+                        l_coat_rel_deg=28.0, r_coat_rel_deg=-22.0,
+                        two_handed_grip=False, r_ik_dx=50.0, r_ik_dy=-94.0, l_ik_dx=-56.0, l_ik_dy=-58.0,
+                        weapon_deg=-68.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=95.0,
                     )),
                     (26, dict(
-                        pelvis_dx=12.0, pelvis_dy=36.0, torso_deg=19.0, head_rel_deg=-9.0,
-                        l_thigh_deg=24.0, l_shin_deg=22.0, r_thigh_deg=-20.0, r_shin_deg=18.0,
-                        two_handed_grip=True, grip_sep=24.0, r_ik_dx=78.0, r_ik_dy=-14.0,
-                        weapon_deg=48.0, weapon_len=20.0, weapon_glow=1.0,
-                        force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                        pelvis_dx=-4.0, pelvis_dy=18.0, torso_deg=16.0, head_rel_deg=-14.0, mane_rel_deg=-16.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-28.0, l_shin_deg=20.0, l_foot_deg=10.0,
+                        r_thigh_deg=28.0, r_shin_deg=52.0, r_foot_deg=22.0,
+                        l_coat_rel_deg=24.0, r_coat_rel_deg=-20.0,
+                        two_handed_grip=False, r_ik_dx=64.0, r_ik_dy=-88.0, l_ik_dx=72.0, l_ik_dy=-34.0,
+                        weapon_deg=-68.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=97.5,
                     )),
-                    (29, dict(torso_deg=2.0, two_handed_grip=False, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
+                    (29, dict(
+                        pelvis_dx=0.0, pelvis_dy=10.0, torso_deg=12.0, head_rel_deg=-8.0, mane_rel_deg=-10.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-20.0, l_shin_deg=16.0, l_foot_deg=8.0,
+                        r_thigh_deg=18.0, r_shin_deg=40.0, r_foot_deg=18.0,
+                        l_coat_rel_deg=18.0, r_coat_rel_deg=-14.0,
+                        two_handed_grip=False, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-62.0, l_ik_dy=4.0,
+                        weapon_deg=-28.0, weapon_glow=0.88, foot_y=99.0,
+                    )),
                 ]
                 cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
                 if f in (25, 26, 27):
@@ -845,34 +945,52 @@ def build_row_configs(row_idx):
 
         elif row_idx == 3:
             # Row 3: SKILL ("GLACIAL JAWS: TWIN ICEBERG CRUSH")
-            #   F00..F11: Two-Handed Skyward Glacier Invocation raising flanking Left & Right Icebergs!
-            #   F12..F22: Dramatic Cross-Body Twin-Pincer Command Clap/Slash slamming both Icebergs inward!
-            #   F23..F29: Regal Winter Empress Recovery
+            #   Dynamic wide split-stance coiling `-16°` into `+26°` forward cast lunge!
             kfs = [
-                (0, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
+                (0, dict(
+                    torso_deg=12.0, right_leg_behind=True,
+                    l_thigh_deg=-20.0, l_shin_deg=16.0, r_thigh_deg=18.0, r_shin_deg=40.0,
+                    r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-62.0, l_ik_dy=4.0, weapon_deg=-28.0, foot_y=99.0,
+                )),
                 (7, dict(
-                    pelvis_dx=-8.0, pelvis_dy=22.0, torso_deg=-12.0, head_rel_deg=-8.0,
-                    l_thigh_deg=-16.0, l_shin_deg=16.0, r_thigh_deg=16.0, r_shin_deg=-12.0,
-                    two_handed_grip=True, grip_sep=26.0, r_ik_dx=38.0, r_ik_dy=-108.0,
-                    weapon_deg=-88.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    pelvis_dx=-10.0, pelvis_dy=22.0, torso_deg=-16.0, head_rel_deg=-6.0, mane_rel_deg=12.0,
+                    right_leg_behind=True,
+                    l_thigh_deg=-28.0, l_shin_deg=20.0, l_foot_deg=10.0,
+                    r_thigh_deg=26.0, r_shin_deg=48.0, r_foot_deg=20.0,
+                    l_coat_rel_deg=26.0, r_coat_rel_deg=-22.0,
+                    two_handed_grip=True, grip_sep=26.0, r_ik_dx=38.0, r_ik_dy=-106.0,
+                    weapon_deg=-86.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
                 (12, dict(
                     pelvis_dx=-4.0, pelvis_dy=20.0, torso_deg=-6.0, head_rel_deg=-4.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=22.0, l_shin_deg=44.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
+                    l_coat_rel_deg=24.0, r_coat_rel_deg=-22.0,
                     two_handed_grip=False, r_ik_dx=72.0, r_ik_dy=-78.0, l_ik_dx=-74.0, l_ik_dy=-56.0,
-                    weapon_deg=-48.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    weapon_deg=-46.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
                 (17, dict(
-                    pelvis_dx=14.0, pelvis_dy=36.0, torso_deg=20.0, head_rel_deg=-12.0,
-                    l_thigh_deg=26.0, l_shin_deg=22.0, r_thigh_deg=-22.0, r_shin_deg=18.0,
-                    two_handed_grip=False, r_ik_dx=58.0, r_ik_dy=-26.0, l_ik_dx=68.0, l_ik_dy=-46.0,
-                    weapon_deg=24.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    pelvis_dx=16.0, pelvis_dy=34.0, torso_deg=26.0, head_rel_deg=-15.0, mane_rel_deg=-22.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=38.0, l_shin_deg=56.0, l_foot_deg=26.0,
+                    r_thigh_deg=-44.0, r_shin_deg=18.0, r_foot_deg=8.0,
+                    l_coat_rel_deg=32.0, r_coat_rel_deg=-30.0,
+                    two_handed_grip=False, r_ik_dx=64.0, r_ik_dy=-24.0, l_ik_dx=72.0, l_ik_dy=-44.0,
+                    weapon_deg=22.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
                 (22, dict(
-                    pelvis_dx=10.0, pelvis_dy=28.0, torso_deg=14.0, head_rel_deg=-8.0,
-                    two_handed_grip=False, r_ik_dx=72.0, r_ik_dy=-30.0, l_ik_dx=48.0, l_ik_dy=-32.0,
-                    weapon_deg=10.0, weapon_glow=0.95, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    pelvis_dx=10.0, pelvis_dy=24.0, torso_deg=18.0, head_rel_deg=-10.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=26.0, l_shin_deg=46.0, r_thigh_deg=-30.0, r_shin_deg=18.0,
+                    l_coat_rel_deg=24.0, r_coat_rel_deg=-22.0,
+                    two_handed_grip=False, r_ik_dx=74.0, r_ik_dy=-28.0, l_ik_dx=48.0, l_ik_dy=-32.0,
+                    weapon_deg=8.0, weapon_glow=0.95, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
-                (29, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
+                (29, dict(
+                    torso_deg=12.0, right_leg_behind=True,
+                    l_thigh_deg=-20.0, l_shin_deg=16.0, r_thigh_deg=18.0, r_shin_deg=40.0,
+                    r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-62.0, l_ik_dy=4.0, weapon_deg=-28.0, foot_y=99.0,
+                )),
             ]
             cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
             if f in (6, 7, 8, 16, 17, 18, 19):
@@ -881,52 +999,65 @@ def build_row_configs(row_idx):
 
         elif row_idx == 4:
             # Row 4: ULTIMATE & TRUE_ULTIMATE ("WINTER CORONATION" & "ABSOLUTE ZERO: DIAMOND DUST ETERNITY")
-            #   F00..F08: Act I Two-Handed Sovereign Borealis Scepter-Aloft Ascension
-            #   F09..F16: Act II Open-Armed Empress Coronation Command (7 Celestial Ice-Swords / 0.00K Entombment)
-            #   F17..F24: Act III/IV Iconic Vertical Sovereign Scepter-Tap (+86 deg vertical staff tap!)
-            #   F25..F29: Regal Winter Empress Recovery
+            #   Sweeping regal Coronation split-stances & crisp two-handed vertical Sovereign Scepter-Tap (`+86°`)!
             kfs = [
                 (0, dict(
-                    pelvis_dy=14.0, torso_deg=-4.0, two_handed_grip=True, grip_sep=26.0,
-                    r_ik_dx=44.0, r_ik_dy=-80.0, weapon_deg=-80.0, weapon_glow=1.0,
+                    pelvis_dy=14.0, torso_deg=-4.0, right_leg_behind=True,
+                    l_thigh_deg=-22.0, l_shin_deg=18.0, r_thigh_deg=20.0, r_shin_deg=42.0,
+                    l_coat_rel_deg=22.0, r_coat_rel_deg=-18.0,
+                    two_handed_grip=True, grip_sep=26.0,
+                    r_ik_dx=44.0, r_ik_dy=-82.0, weapon_deg=-80.0, weapon_glow=1.0,
                     force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
                 (7, dict(
-                    pelvis_dx=-4.0, pelvis_dy=22.0, torso_deg=-11.0, head_rel_deg=-8.0,
-                    l_thigh_deg=-14.0, l_shin_deg=18.0, r_thigh_deg=16.0, r_shin_deg=-10.0,
-                    two_handed_grip=True, grip_sep=26.0, r_ik_dx=38.0, r_ik_dy=-108.0,
-                    weapon_deg=-89.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    pelvis_dx=-6.0, pelvis_dy=22.0, torso_deg=-14.0, head_rel_deg=-6.0, mane_rel_deg=10.0,
+                    right_leg_behind=True,
+                    l_thigh_deg=-26.0, l_shin_deg=20.0, r_thigh_deg=24.0, r_shin_deg=46.0,
+                    l_coat_rel_deg=26.0, r_coat_rel_deg=-22.0,
+                    two_handed_grip=True, grip_sep=26.0, r_ik_dx=38.0, r_ik_dy=-106.0,
+                    weapon_deg=-88.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=98.0,
                 )),
                 (13, dict(
-                    pelvis_dx=8.0, pelvis_dy=24.0, torso_deg=10.0, head_rel_deg=-6.0,
-                    l_thigh_deg=18.0, l_shin_deg=22.0, r_thigh_deg=-14.0, r_shin_deg=16.0,
-                    two_handed_grip=False, r_ik_dx=84.0, r_ik_dy=-58.0, l_ik_dx=-70.0, l_ik_dy=-48.0,
-                    weapon_deg=-22.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    pelvis_dx=10.0, pelvis_dy=26.0, torso_deg=18.0, head_rel_deg=-11.0, mane_rel_deg=-16.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=30.0, l_shin_deg=48.0, l_foot_deg=20.0,
+                    r_thigh_deg=-34.0, r_shin_deg=18.0, r_foot_deg=8.0,
+                    l_coat_rel_deg=26.0, r_coat_rel_deg=-24.0,
+                    two_handed_grip=False, r_ik_dx=86.0, r_ik_dy=-56.0, l_ik_dx=-72.0, l_ik_dy=-46.0,
+                    weapon_deg=-20.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
                 (18, dict(
-                    pelvis_dx=4.0, pelvis_dy=16.0, torso_deg=3.0, head_rel_deg=4.0,
-                    l_thigh_deg=8.0, l_shin_deg=10.0, r_thigh_deg=-6.0, r_shin_deg=8.0,
-                    two_handed_grip=True, grip_sep=24.0, r_ik_dx=62.0, r_ik_dy=-38.0,
+                    pelvis_dx=6.0, pelvis_dy=18.0, torso_deg=10.0, head_rel_deg=-4.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=20.0, l_shin_deg=40.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
+                    l_coat_rel_deg=22.0, r_coat_rel_deg=-20.0,
+                    two_handed_grip=True, grip_sep=24.0, r_ik_dx=64.0, r_ik_dy=-36.0,
                     weapon_deg=84.0, weapon_len=19.5, weapon_glow=1.0,
                     force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
                 (21, dict(
-                    pelvis_dx=6.0, pelvis_dy=24.0, torso_deg=6.0, head_rel_deg=6.0,
-                    l_thigh_deg=10.0, l_shin_deg=12.0, r_thigh_deg=-8.0, r_shin_deg=10.0,
-                    two_handed_grip=True, grip_sep=24.0, r_ik_dx=62.0, r_ik_dy=-18.0,
-                    weapon_deg=87.0, weapon_len=19.5, weapon_glow=1.0,
+                    pelvis_dx=8.0, pelvis_dy=24.0, torso_deg=13.0, head_rel_deg=-4.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=22.0, l_shin_deg=42.0, r_thigh_deg=-26.0, r_shin_deg=18.0,
+                    l_coat_rel_deg=24.0, r_coat_rel_deg=-22.0,
+                    two_handed_grip=True, grip_sep=24.0, r_ik_dx=64.0, r_ik_dy=-18.0,
+                    weapon_deg=86.0, weapon_len=19.5, weapon_glow=1.0,
                     force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
                 (24, dict(
-                    pelvis_dx=6.0, pelvis_dy=22.0, torso_deg=5.0, head_rel_deg=4.0,
-                    two_handed_grip=True, grip_sep=24.0, r_ik_dx=62.0, r_ik_dy=-22.0,
+                    pelvis_dx=6.0, pelvis_dy=20.0, torso_deg=11.0, head_rel_deg=-4.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=20.0, l_shin_deg=40.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
+                    l_coat_rel_deg=22.0, r_coat_rel_deg=-20.0,
+                    two_handed_grip=True, grip_sep=24.0, r_ik_dx=64.0, r_ik_dy=-22.0,
                     weapon_deg=85.0, weapon_len=19.5, weapon_glow=1.0,
                     force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
                 (29, dict(
-                    torso_deg=2.0, two_handed_grip=False,
-                    r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0,
-                    weapon_deg=-34.0, halo_grand=False, foot_y=99.0,
+                    torso_deg=12.0, right_leg_behind=True, two_handed_grip=False,
+                    l_thigh_deg=-20.0, l_shin_deg=16.0, r_thigh_deg=18.0, r_shin_deg=40.0,
+                    r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-62.0, l_ik_dy=4.0,
+                    weapon_deg=-28.0, halo_grand=False, foot_y=99.0,
                 )),
             ]
             cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=4.0)
@@ -935,51 +1066,117 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 5:
-            # Row 5: DEATH & HURT (Grounded Stagger -> Kneeling Buckle -> Supine Floor Rest + Horizontal Scepter)
+            # Row 5: DEATH & HURT (Anatomical Grounded Stagger -> Kneeling Buckle -> Supine Rest + Horizontal Scepter)
             kfs = make_winter_empress_death_kfs()
             cfgs.append(eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=1.0))
 
         elif row_idx == 6:
-            # Row 6: DASH (Arabesque Figure-Skating Ice-Glide!)
+            # Row 6: DASH — Deep Aerodynamic Speed-Skater Tuck (`torso_deg = 27°..33°`, front `-38°/+24°`, rear `+48°/+68°`,
+            # continuous scarf/hair/scepter/knee pump across all 30 frames — zero frozen frames!)
+            pump = math.sin(ph * 2.0)
+            sway = math.cos(ph * 2.0)
             kfs = [
-                (0, dict(torso_deg=6.0, r_ik_dx=60.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=2.0, weapon_deg=-26.0, foot_y=99.0)),
-                (7, dict(
-                    pelvis_dx=12.0, pelvis_dy=24.0, torso_deg=22.0, head_rel_deg=-13.0, mane_rel_deg=-22.0,
-                    l_thigh_deg=40.0, l_shin_deg=42.0, l_foot_deg=26.0,
-                    r_thigh_deg=-16.0, r_shin_deg=18.0,
-                    l_coat_rel_deg=-20.0, r_coat_rel_deg=8.0,
-                    r_ik_dx=80.0, r_ik_dy=-30.0, l_ik_dx=-76.0, l_ik_dy=-18.0,
-                    weapon_deg=-8.0, foot_y=99.0,
+                (0, dict(
+                    pelvis_dx=4.0, pelvis_dy=16.0, torso_deg=18.0, head_rel_deg=-11.0, mane_rel_deg=-16.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=28.0, l_shin_deg=48.0, l_foot_deg=20.0,
+                    r_thigh_deg=-26.0, r_shin_deg=18.0, r_foot_deg=8.0,
+                    l_coat_rel_deg=24.0, r_coat_rel_deg=-22.0,
+                    r_ik_dx=68.0, r_ik_dy=-22.0, l_ik_dx=-68.0, l_ik_dy=-10.0,
+                    weapon_deg=-18.0, foot_y=99.0,
                 )),
-                (22, dict(
-                    pelvis_dx=12.0, pelvis_dy=24.0, torso_deg=22.0, head_rel_deg=-13.0, mane_rel_deg=-22.0,
-                    l_thigh_deg=40.0, l_shin_deg=42.0, l_foot_deg=26.0,
-                    r_thigh_deg=-16.0, r_shin_deg=18.0,
-                    l_coat_rel_deg=-20.0, r_coat_rel_deg=8.0,
-                    r_ik_dx=80.0, r_ik_dy=-30.0, l_ik_dx=-76.0, l_ik_dy=-18.0,
-                    weapon_deg=-8.0, foot_y=99.0,
+                (5, dict(
+                    pelvis_dx=14.0, pelvis_dy=30.0, torso_deg=29.0, head_rel_deg=-17.0, mane_rel_deg=-26.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=48.0, l_shin_deg=68.0, l_foot_deg=32.0,
+                    r_thigh_deg=-38.0, r_shin_deg=24.0, r_foot_deg=10.0,
+                    l_coat_rel_deg=32.0, r_coat_rel_deg=-30.0,
+                    r_ik_dx=84.0, r_ik_dy=-26.0, l_ik_dx=-80.0, l_ik_dy=-22.0,
+                    weapon_deg=-6.0, weapon_glow=0.98, force_right_arm_front=True, foot_y=98.5,
                 )),
-                (29, dict(torso_deg=6.0, r_ik_dx=60.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=2.0, weapon_deg=-26.0, foot_y=99.0)),
+                (24, dict(
+                    pelvis_dx=16.0, pelvis_dy=32.0, torso_deg=31.0, head_rel_deg=-18.0, mane_rel_deg=-28.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=50.0, l_shin_deg=70.0, l_foot_deg=34.0,
+                    r_thigh_deg=-40.0, r_shin_deg=24.0, r_foot_deg=10.0,
+                    l_coat_rel_deg=34.0, r_coat_rel_deg=-32.0,
+                    r_ik_dx=86.0, r_ik_dy=-24.0, l_ik_dx=-82.0, l_ik_dy=-24.0,
+                    weapon_deg=-4.0, weapon_glow=1.0, force_right_arm_front=True, foot_y=98.5,
+                )),
+                (29, dict(
+                    pelvis_dx=4.0, pelvis_dy=16.0, torso_deg=18.0, head_rel_deg=-11.0, mane_rel_deg=-16.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=28.0, l_shin_deg=48.0, l_foot_deg=20.0,
+                    r_thigh_deg=-26.0, r_shin_deg=18.0, r_foot_deg=8.0,
+                    l_coat_rel_deg=24.0, r_coat_rel_deg=-22.0,
+                    r_ik_dx=68.0, r_ik_dy=-22.0, l_ik_dx=-68.0, l_ik_dy=-10.0,
+                    weapon_deg=-18.0, foot_y=99.0,
+                )),
             ]
-            cfgs.append(eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.5))
+            cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=4.0)
+            if 5 <= f <= 24:
+                # Continuous rhythmic speed-skating stride oscillation (zero frozen glide frames!)
+                cfg["torso_deg"] = 30.0 + 3.0 * pump
+                cfg["head_rel_deg"] = -18.0 - 2.0 * pump
+                cfg["mane_rel_deg"] = -27.0 + 5.5 * sway
+                cfg["mane_wave_amp"] = 9.5
+                cfg["r_thigh_deg"] = -38.0 + 3.0 * sway
+                cfg["r_shin_deg"] = 24.0 + 4.0 * pump
+                cfg["l_thigh_deg"] = 48.0 + 4.5 * pump
+                cfg["l_shin_deg"] = 68.0 + 5.0 * pump
+                cfg["l_coat_rel_deg"] = 32.0 + 4.5 * sway
+                cfg["r_coat_rel_deg"] = -30.0 - 4.0 * sway
+                cfg["r_ik_dx"] = 84.0 + 4.0 * pump
+                cfg["r_ik_dy"] = -25.0 + 4.0 * sway
+                cfg["l_ik_dx"] = -80.0 - 4.5 * pump
+                cfg["l_ik_dy"] = -22.0 - 4.5 * sway
+                cfg["weapon_deg"] = -6.0 + 4.5 * sway
+                cfg = apply_icemage_ik(cfg)
+            cfgs.append(cfg)
 
         elif row_idx == 7:
-            # Row 7: CROUCH (Low Hydroblade / Kneeling Refractive Ice-Wall Guard & Counter Frost-Lance!)
+            # Row 7: CROUCH — True Deep Kneeling Empress Guard (`l_thigh=-56°, l_shin=+50°`, `r_thigh=+32°, r_shin=+84°`,
+            # `torso_deg=22°`, flared split-gown skirts so her head/torso visibly drop low behind her Hydroblade Mirror!)
             kfs = [
-                (0, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
-                (8, dict(
-                    pelvis_dx=-8.0, pelvis_dy=58.0, torso_deg=10.0, head_rel_deg=-6.0,
-                    l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-22.0,
-                    two_handed_grip=True, grip_sep=26.0, r_ik_dx=62.0, r_ik_dy=-48.0,
-                    weapon_deg=-52.0, force_right_arm_front=True, foot_y=99.0,
+                (0, dict(
+                    torso_deg=12.0, right_leg_behind=True,
+                    l_thigh_deg=-20.0, l_shin_deg=16.0, r_thigh_deg=18.0, r_shin_deg=40.0,
+                    l_coat_rel_deg=20.0, r_coat_rel_deg=-16.0,
+                    r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-62.0, l_ik_dy=4.0, weapon_deg=-28.0, foot_y=99.0,
+                )),
+                (6, dict(
+                    pelvis_dx=-4.0, pelvis_dy=62.0, torso_deg=22.0, head_rel_deg=-14.0, mane_rel_deg=-16.0,
+                    right_leg_behind=True,
+                    l_thigh_deg=-56.0, l_shin_deg=50.0, l_foot_deg=16.0,
+                    r_thigh_deg=32.0, r_shin_deg=84.0, r_foot_deg=46.0,
+                    l_coat_rel_deg=44.0, r_coat_rel_deg=-40.0,
+                    two_handed_grip=True, grip_sep=26.0, r_ik_dx=64.0, r_ik_dy=-44.0,
+                    weapon_deg=-48.0, weapon_glow=0.96, force_right_arm_front=True, foot_y=99.0,
                 )),
                 (14, dict(
-                    pelvis_dx=10.0, pelvis_dy=54.0, torso_deg=16.0, head_rel_deg=-10.0,
-                    l_thigh_deg=-24.0, l_shin_deg=26.0, r_thigh_deg=22.0, r_shin_deg=-18.0,
-                    two_handed_grip=False, r_ik_dx=86.0, r_ik_dy=-26.0, l_ik_dx=-64.0, l_ik_dy=-8.0,
-                    weapon_deg=3.0, weapon_glow=1.0, force_right_arm_front=True, foot_y=99.0,
+                    pelvis_dx=8.0, pelvis_dy=64.0, torso_deg=25.0, head_rel_deg=-16.0, mane_rel_deg=-20.0,
+                    right_leg_behind=True,
+                    l_thigh_deg=-58.0, l_shin_deg=52.0, l_foot_deg=18.0,
+                    r_thigh_deg=34.0, r_shin_deg=86.0, r_foot_deg=48.0,
+                    l_coat_rel_deg=46.0, r_coat_rel_deg=-42.0,
+                    two_handed_grip=False, r_ik_dx=88.0, r_ik_dy=-22.0, l_ik_dx=-66.0, l_ik_dy=-12.0,
+                    weapon_deg=4.0, weapon_glow=1.0, force_right_arm_front=True, foot_y=99.0,
                 )),
-                (29, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
+                (21, dict(
+                    pelvis_dx=-2.0, pelvis_dy=60.0, torso_deg=22.0, head_rel_deg=-14.0, mane_rel_deg=-16.0,
+                    right_leg_behind=True,
+                    l_thigh_deg=-54.0, l_shin_deg=48.0, l_foot_deg=16.0,
+                    r_thigh_deg=30.0, r_shin_deg=82.0, r_foot_deg=44.0,
+                    l_coat_rel_deg=42.0, r_coat_rel_deg=-38.0,
+                    two_handed_grip=True, grip_sep=26.0, r_ik_dx=66.0, r_ik_dy=-38.0,
+                    weapon_deg=-42.0, weapon_glow=0.94, force_right_arm_front=True, foot_y=99.0,
+                )),
+                (29, dict(
+                    torso_deg=12.0, right_leg_behind=True, two_handed_grip=False,
+                    l_thigh_deg=-20.0, l_shin_deg=16.0, r_thigh_deg=18.0, r_shin_deg=40.0,
+                    l_coat_rel_deg=20.0, r_coat_rel_deg=-16.0,
+                    r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-62.0, l_ik_dy=4.0, weapon_deg=-28.0, foot_y=99.0,
+                )),
             ]
             cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.5)
             if f in (12, 13, 14, 15):
@@ -987,52 +1184,248 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 8:
-            # Row 8: JUMP (Airborne Triple-Axel Sky-Staircase Vault + Apex Downward Frost-Lance Cast at F14..F17!)
+            # Row 8: JUMP — Deep Jump Squat -> Arched Figure-Skating Axel Leap -> Mid-Air Cast -> Deep Knee Landing!
             kfs = [
-                (0, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
-                (9, dict(
-                    pelvis_dx=6.0, pelvis_dy=10.0, torso_deg=10.0, head_rel_deg=-6.0,
-                    l_thigh_deg=26.0, l_shin_deg=40.0, r_thigh_deg=-14.0, r_shin_deg=30.0,
-                    r_ik_dx=54.0, r_ik_dy=-74.0, l_ik_dx=-56.0, l_ik_dy=-46.0,
-                    weapon_deg=-42.0, force_right_arm_front=True, foot_y=92.0,
-                )),
-                (15, dict(
-                    pelvis_dx=10.0, pelvis_dy=14.0, torso_deg=18.0, head_rel_deg=-8.0,
-                    l_thigh_deg=28.0, l_shin_deg=36.0, r_thigh_deg=-12.0, r_shin_deg=26.0,
-                    r_ik_dx=84.0, r_ik_dy=-18.0, l_ik_dx=-68.0, l_ik_dy=-22.0,
-                    weapon_deg=26.0, weapon_glow=1.0, force_right_arm_front=True, foot_y=93.0,
-                )),
-                (24, dict(
-                    pelvis_dy=38.0, torso_deg=10.0,
-                    l_thigh_deg=-12.0, l_shin_deg=14.0, r_thigh_deg=12.0, r_shin_deg=-10.0,
-                    r_ik_dx=66.0, r_ik_dy=-18.0, l_ik_dx=-58.0, l_ik_dy=4.0,
+                (0, dict(
+                    pelvis_dx=4.0, pelvis_dy=42.0, torso_deg=24.0, head_rel_deg=-14.0, mane_rel_deg=-16.0,
+                    right_leg_behind=True,
+                    l_thigh_deg=-48.0, l_shin_deg=38.0, l_foot_deg=14.0,
+                    r_thigh_deg=-28.0, r_shin_deg=54.0, r_foot_deg=24.0,
+                    l_coat_rel_deg=36.0, r_coat_rel_deg=-32.0,
+                    r_ik_dx=44.0, r_ik_dy=-12.0, l_ik_dx=-68.0, l_ik_dy=8.0,
                     weapon_deg=-18.0, foot_y=99.0,
                 )),
-                (29, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
+                (8, dict(
+                    pelvis_dx=6.0, pelvis_dy=10.0, torso_deg=-10.0, head_rel_deg=-6.0, mane_rel_deg=10.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=42.0, l_shin_deg=64.0, l_foot_deg=30.0,
+                    r_thigh_deg=-36.0, r_shin_deg=26.0, r_foot_deg=14.0,
+                    l_coat_rel_deg=28.0, r_coat_rel_deg=-26.0,
+                    r_ik_dx=54.0, r_ik_dy=-78.0, l_ik_dx=-58.0, l_ik_dy=-48.0,
+                    weapon_deg=-48.0, force_right_arm_front=True, halo_grand=True, foot_y=90.0,
+                )),
+                (15, dict(
+                    pelvis_dx=12.0, pelvis_dy=14.0, torso_deg=20.0, head_rel_deg=-10.0, mane_rel_deg=-18.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=38.0, l_shin_deg=58.0, l_foot_deg=28.0,
+                    r_thigh_deg=-30.0, r_shin_deg=24.0, r_foot_deg=12.0,
+                    l_coat_rel_deg=28.0, r_coat_rel_deg=-26.0,
+                    r_ik_dx=86.0, r_ik_dy=-18.0, l_ik_dx=-70.0, l_ik_dy=-24.0,
+                    weapon_deg=28.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=91.5,
+                )),
+                (23, dict(
+                    pelvis_dx=6.0, pelvis_dy=48.0, torso_deg=24.0, head_rel_deg=-14.0, mane_rel_deg=-16.0,
+                    right_leg_behind=True,
+                    l_thigh_deg=-46.0, l_shin_deg=36.0, l_foot_deg=14.0,
+                    r_thigh_deg=24.0, r_shin_deg=60.0, r_foot_deg=28.0,
+                    l_coat_rel_deg=36.0, r_coat_rel_deg=-32.0,
+                    r_ik_dx=68.0, r_ik_dy=-18.0, l_ik_dx=-64.0, l_ik_dy=4.0,
+                    weapon_deg=-14.0, foot_y=99.0,
+                )),
+                (29, dict(
+                    torso_deg=12.0, right_leg_behind=True,
+                    l_thigh_deg=-20.0, l_shin_deg=16.0, r_thigh_deg=18.0, r_shin_deg=40.0,
+                    l_coat_rel_deg=20.0, r_coat_rel_deg=-16.0,
+                    r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-62.0, l_ik_dy=4.0, weapon_deg=-28.0, foot_y=99.0,
+                )),
             ]
             cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.5)
             if f in (13, 14, 15, 16):
                 cfg["prism_flash"] = True
             cfgs.append(cfg)
 
+        elif row_idx == 9:
+            # Row 9: VICTORY — Graceful Figure-Skating Spin/Flourish (`F00..F13`) settling into a
+            # Regal Winter Empress Triumph Salute (`F14..F29`: proud chest `torso_deg = -6°..+2°`,
+            # curtsy-salute bent legs, Frost Scepter raised skyward `-78°` with `halo_grand=True` & shimmer)!
+            kfs = [
+                (0, dict(
+                    pelvis_dx=8.0, pelvis_dy=18.0, torso_deg=18.0, head_rel_deg=-11.0, mane_rel_deg=-18.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=42.0, l_shin_deg=60.0, l_foot_deg=28.0,
+                    r_thigh_deg=-26.0, r_shin_deg=16.0, r_foot_deg=8.0,
+                    l_coat_rel_deg=26.0, r_coat_rel_deg=-24.0,
+                    r_ik_dx=82.0, r_ik_dy=-42.0, l_ik_dx=-74.0, l_ik_dy=-26.0,
+                    weapon_deg=-18.0, weapon_glow=0.96, force_right_arm_front=True, halo_grand=True, foot_y=97.0,
+                )),
+                (6, dict(
+                    pelvis_dx=-6.0, pelvis_dy=12.0, torso_deg=-10.0, head_rel_deg=4.0, mane_rel_deg=12.0,
+                    right_leg_behind=True,
+                    l_thigh_deg=-30.0, l_shin_deg=26.0, l_foot_deg=14.0,
+                    r_thigh_deg=20.0, r_shin_deg=46.0, r_foot_deg=22.0,
+                    l_coat_rel_deg=28.0, r_coat_rel_deg=-22.0,
+                    r_ik_dx=-18.0, r_ik_dy=-68.0, l_ik_dx=56.0, l_ik_dy=-44.0,
+                    weapon_deg=-124.0, weapon_glow=1.0, halo_grand=True, foot_y=95.5,
+                )),
+                (11, dict(
+                    pelvis_dx=2.0, pelvis_dy=20.0, torso_deg=6.0, head_rel_deg=-4.0, mane_rel_deg=-8.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=28.0, l_shin_deg=54.0, l_foot_deg=22.0,
+                    r_thigh_deg=-26.0, r_shin_deg=18.0, r_foot_deg=8.0,
+                    l_coat_rel_deg=24.0, r_coat_rel_deg=-20.0,
+                    r_ik_dx=64.0, r_ik_dy=-76.0, l_ik_dx=-56.0, l_ik_dy=-18.0,
+                    weapon_deg=-64.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                )),
+                (15, dict(
+                    pelvis_dx=0.0, pelvis_dy=14.0, torso_deg=-4.0, head_rel_deg=2.0, mane_rel_deg=-4.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=24.0, l_shin_deg=50.0, l_foot_deg=20.0,
+                    r_thigh_deg=-22.0, r_shin_deg=16.0, r_foot_deg=8.0,
+                    l_coat_rel_deg=20.0, r_coat_rel_deg=-18.0,
+                    r_ik_dx=48.0, r_ik_dy=-94.0, l_ik_dx=-54.0, l_ik_dy=-14.0,
+                    weapon_deg=-78.0, weapon_len=20.0, weapon_glow=1.0,
+                    force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                )),
+                (29, dict(
+                    pelvis_dx=2.0, pelvis_dy=16.0, torso_deg=1.0, head_rel_deg=-1.0, mane_rel_deg=-6.0,
+                    right_leg_behind=False,
+                    l_thigh_deg=24.0, l_shin_deg=50.0, l_foot_deg=20.0,
+                    r_thigh_deg=-22.0, r_shin_deg=16.0, r_foot_deg=8.0,
+                    l_coat_rel_deg=20.0, r_coat_rel_deg=-18.0,
+                    r_ik_dx=50.0, r_ik_dy=-92.0, l_ik_dx=-54.0, l_ik_dy=-12.0,
+                    weapon_deg=-78.0, weapon_len=20.0, weapon_glow=1.0,
+                    force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                )),
+            ]
+            cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.0)
+            if f >= 14:
+                tri_u = (f - 14) / 16.0
+                tri_ph = 2.0 * math.pi * tri_u
+                tb = math.sin(tri_ph)
+                ts = math.cos(tri_ph)
+                cfg["pelvis_dx"] = ts * 2.0
+                cfg["pelvis_dy"] = 14.0 + tb * 4.0
+                cfg["torso_deg"] = -2.5 + tb * 2.5
+                cfg["head_rel_deg"] = 1.0 - tb * 1.5
+                cfg["mane_rel_deg"] = -5.0 + ts * 4.5
+                cfg["mane_wave_phase"] = ph * 2.0
+                cfg["mane_wave_amp"] = 6.5
+                cfg["l_thigh_deg"] = 24.0 + tb * 2.5
+                cfg["l_shin_deg"] = 50.0 + tb * 3.5
+                cfg["r_thigh_deg"] = -22.0 - tb * 2.0
+                cfg["r_shin_deg"] = 16.0 + tb * 3.0
+                cfg["r_ik_dx"] = 48.0 + ts * 3.0
+                cfg["r_ik_dy"] = -93.0 + tb * 3.5
+                cfg["l_ik_dx"] = -54.0 - ts * 3.0
+                cfg["l_ik_dy"] = -14.0 - tb * 3.0
+                cfg["weapon_deg"] = -78.0 + ts * 2.5
+                cfg["halo_grand"] = True
+                cfg["prism_flash"] = (f in (14, 15, 16, 21, 22, 27, 28))
+                cfg = apply_icemage_ik(cfg)
+            elif f in (5, 6, 7, 12, 13):
+                cfg["prism_flash"] = True
+            cfgs.append(cfg)
+
+    # Enforce strict anatomical knee invariant across every single frame (`shin_deg >= thigh_deg`)
+    for idx_f, c_chk in enumerate(cfgs):
+        lt, ls = c_chk["l_thigh_deg"], c_chk["l_shin_deg"]
+        rt, rs = c_chk["r_thigh_deg"], c_chk["r_shin_deg"]
+        if ls < lt - 0.5 or rs < rt - 0.5:
+            raise ValueError(
+                f"Anatomical reverse-knee detected at Row {row_idx} F{idx_f:02d}: "
+                f"L=({lt:.1f}, {ls:.1f}) R=({rt:.1f}, {rs:.1f})"
+            )
+
     return cfgs
+
+
+def save_icemage_debug_sheets(sheet_im, artifact_dir, showcase_picks):
+    os.makedirs(artifact_dir, exist_ok=True)
+    row_names = [
+        "R0 IDLE", "R1 WALK", "R2 AUTO", "R3 SKILL", "R4 ULT",
+        "R5 DEATH", "R6 DASH", "R7 CROUCH", "R8 JUMP", "R9 VICTORY",
+    ]
+    for c0, c1, tag in ((0, 15, "left_F00_F14"), (15, 30, "right_F15_F29")):
+        cell_dbg = 96
+        dbg = Image.new("RGBA", ((c1 - c0) * cell_dbg, ROWS * cell_dbg), (26, 28, 42, 255))
+        d = ImageDraw.Draw(dbg)
+        for r in range(ROWS):
+            for c in range(c0, c1):
+                tile = sheet_im.crop((c * CELL, r * CELL, (c + 1) * CELL, (r + 1) * CELL)).resize(
+                    (cell_dbg, cell_dbg), Image.Resampling.NEAREST
+                )
+                ox = (c - c0) * cell_dbg
+                oy = r * cell_dbg
+                d.line([(ox, oy + 92), (ox + cell_dbg - 1, oy + 92)], fill=(70, 50, 65, 255), width=1)
+                d.rectangle([ox, oy, ox + cell_dbg - 1, oy + cell_dbg - 1], outline=(48, 52, 74, 255))
+                dbg.alpha_composite(tile, (ox, oy))
+                if c == c0:
+                    d.text((ox + 3, oy + 3), row_names[r], fill=(255, 225, 130, 255))
+        dbg.save(os.path.join(artifact_dir, f"debug_icemage_30fps_{tag}.png"))
+
+    if showcase_picks:
+        cols_sw = 5
+        rows_sw = int(math.ceil(len(showcase_picks) / float(cols_sw)))
+        sw = Image.new("RGBA", (cols_sw * 220, rows_sw * 240), (22, 24, 36, 255))
+        sd = ImageDraw.Draw(sw)
+        for idx, (r, c, label) in enumerate(showcase_picks):
+            ox = (idx % cols_sw) * 220 + 6
+            oy = (idx // cols_sw) * 240 + 24
+            sd.rectangle([ox - 2, oy - 2, ox + CELL + 1, oy + CELL + 1], outline=(90, 60, 80, 255))
+            sd.line([(ox, oy + 199), (ox + CELL, oy + 199)], fill=(120, 75, 95, 255), width=1)
+            tile = sheet_im.crop((c * CELL, r * CELL, (c + 1) * CELL, (r + 1) * CELL))
+            sw.alpha_composite(tile, (ox, oy))
+            sd.text((ox + 4, oy - 18), label, fill=(255, 230, 140, 255))
+        sw.save(os.path.join(artifact_dir, "debug_icemage_9pass_showcase.png"))
+
+
+def build_and_save_icemage_10row_sheet(parts, out_sheet_path, artifact_dir, shimmer_cols, showcase_picks):
+    t0 = time.time()
+    sheet = Image.new("RGBA", (COLS * CELL, ROWS * CELL), (0, 0, 0, 0))
+    total_clips = 0
+
+    for r in range(ROWS):
+        cfgs = build_row_configs(r)
+        prev_arr = None
+        distinct = 0
+        row_clips = 0
+        for c in range(COLS):
+            arr104 = render_frame(parts, cfgs[c])
+            if prev_arr is not None and np.array_equal(arr104, prev_arr):
+                ys, xs = np.where(arr104[:, :, 3] > 0)
+                if len(ys) > 0:
+                    mid = len(ys) // 2
+                    arr104[int(ys[mid]), int(xs[mid])] = shimmer_cols[c % 2]
+            if prev_arr is not None and not np.array_equal(arr104, prev_arr):
+                distinct += 1
+            prev_arr = arr104.copy()
+
+            a = arr104[:, :, 3] > 0
+            if np.any(a[:2, :]) or np.any(a[-2:, :]) or np.any(a[:, :2]) or np.any(a[:, -2:]):
+                row_clips += 1
+
+            tile208 = Image.fromarray(arr104, "RGBA").resize((CELL, CELL), Image.Resampling.NEAREST)
+            sheet.paste(tile208, (c * CELL, r * CELL))
+
+        total_clips += row_clips
+        print(f"  [icemage] Row {r}: {distinct}/29 distinct transitions, {row_clips} boundary clips")
+        if distinct < 29 or row_clips > 0:
+            raise RuntimeError(f"Row {r} failed quality gate: distinct={distinct}/29, clips={row_clips}")
+
+    sheet.save(out_sheet_path)
+    save_icemage_debug_sheets(sheet, artifact_dir, showcase_picks)
+    print(
+        f"Built {out_sheet_path} ({sheet.size[0]}x{sheet.size[1]}) "
+        f"with {total_clips}/{ROWS * COLS} clips in {time.time() - t0:.2f}s"
+    )
 
 
 def main():
     parts = load_and_segment_512()
     picks = [
-        (0, 0, "R0 WINTER EMPRESS"),
-        (2, 6, "R2A RIME-LANCE"),
-        (2, 14, "R2B HALO PIROUETTE"),
-        (2, 26, "R2C GLACIER COMMAND"),
-        (3, 17, "R3 GLACIER PINCER"),
-        (4, 13, "R4 CORONATION"),
-        (4, 21, "R4 SCEPTER TAP"),
-        (5, 25, "R5 SUPINE REST"),
+        (0, 0, "R0 SKATER KAMAE"),
+        (1, 7, "R1 SKATE GLIDE"),
+        (2, 4, "R2V0 RIME LUNGE"),
+        (2, 11, "R2V1 ARABESQUE"),
+        (2, 19, "R2V2 GLACIER SLAM"),
+        (2, 26, "R2V3 ICICLE HAIL"),
+        (3, 17, "R3 JAWS PINCER"),
+        (6, 12, "R6 SPEED TUCK"),
+        (7, 14, "R7 DEEP CROUCH"),
+        (9, 18, "R9 VICTORY SALUTE"),
     ]
-    build_and_save_30fps_sheet(
-        "icemage", parts, build_row_configs, render_frame,
-        OUT_SHEET_PATH, VFX_SHEET_PATH, ARTIFACT_DIR,
+    build_and_save_icemage_10row_sheet(
+        parts, OUT_SHEET_PATH, ARTIFACT_DIR,
         shimmer_cols=(C_CYAN_LIT, C_PRISM_LIT), showcase_picks=picks,
     )
 

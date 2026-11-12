@@ -1,19 +1,19 @@
-import { Renderer } from './engine/Renderer.js?v=30fps78';
-import { VFXManager } from './engine/VFXManager.js?v=30fps78';
-import { PixelForge } from './engine/PixelForge.js?v=30fps78';
-import { AudioManager } from './engine/AudioManager.js?v=30fps78';
-import { Fighter } from './entities/Fighter.js?v=30fps78';
-import { Warrior } from './entities/Warrior.js?v=30fps78';
-import { FireMage } from './entities/FireMage.js?v=30fps78';
-import { Archer } from './entities/Archer.js?v=30fps78';
-import { Priestess } from './entities/Priestess.js?v=30fps78';
-import { Reaper } from './entities/Reaper.js?v=30fps78';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps78';
-import { Titan } from './entities/Titan.js?v=30fps78';
-import { Ronin } from './entities/Ronin.js?v=30fps78';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps78';
-import { IceMage } from './entities/IceMage.js?v=30fps78';
-import { Android } from './entities/Android.js?v=30fps78';
+import { Renderer } from './engine/Renderer.js?v=30fps79';
+import { VFXManager } from './engine/VFXManager.js?v=30fps79';
+import { PixelForge } from './engine/PixelForge.js?v=30fps79';
+import { AudioManager } from './engine/AudioManager.js?v=30fps79';
+import { Fighter } from './entities/Fighter.js?v=30fps79';
+import { Warrior } from './entities/Warrior.js?v=30fps79';
+import { FireMage } from './entities/FireMage.js?v=30fps79';
+import { Archer } from './entities/Archer.js?v=30fps79';
+import { Priestess } from './entities/Priestess.js?v=30fps79';
+import { Reaper } from './entities/Reaper.js?v=30fps79';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps79';
+import { Titan } from './entities/Titan.js?v=30fps79';
+import { Ronin } from './entities/Ronin.js?v=30fps79';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps79';
+import { IceMage } from './entities/IceMage.js?v=30fps79';
+import { Android } from './entities/Android.js?v=30fps79';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -1891,7 +1891,9 @@ class Game {
         cathedral: 'GOTHIC SANCTUARY',
         sylvan: 'SYLVAN GLADE',
         boneyard: 'NECROPOLIS',
-        clocktower: 'ASTRAL CLOCKTOWER'
+        clocktower: 'ASTRAL CLOCKTOWER',
+        sanctuary: 'RADIANT SANCTUARY',
+        inferno: 'LAYWASTE OF INFERNO'
       };
       this.hudEls.stageBadge.textContent = stgNames[this.renderer?.stageId] || 'GOTHIC SANCTUARY';
     }
@@ -2120,10 +2122,28 @@ class Game {
     this.stageEventTriggered = true;
     this.stageEventTimer = 10.0;
     this.stageEventTickTimer = 0;
-    const stageId = this.renderer?.stageId || 'cathedral';
+    const stageId =
+      this.renderer?.getActiveStageId?.() ||
+      this.renderer?.permanentStageOverride ||
+      this.renderer?.stageId ||
+      'cathedral';
     const ww = this.renderer?.worldWidth || 1200;
 
-    if (stageId === 'cathedral') {
+    if (stageId === 'inferno') {
+      this.renderer.triggerStageEvent(
+        '★ CATACLYSMIC CALDERA ERUPTION ★',
+        'BLESSING: +55% OVERDRIVE CHARGE!',
+        '#fb923c',
+        10.0
+      );
+    } else if (stageId === 'sanctuary') {
+      this.renderer.triggerStageEvent(
+        '★ SERAPHIC CHOIR BENEDICTION ★',
+        'BLESSING: +420 HP SANCTUARY REGEN!',
+        '#60a5fa',
+        10.0
+      );
+    } else if (stageId === 'cathedral') {
       this.renderer.triggerStageEvent(
         '★ SOLAR ECLIPSE PHENOMENON ★',
         'BLESSING: +55% OVERDRIVE CHARGE!',
@@ -2731,15 +2751,26 @@ class Game {
       this.stageEventTickTimer += dt;
       if (this.stageEventTickTimer >= 2.0) {
         this.stageEventTickTimer = 0;
-        if (this.renderer?.stageId === 'sylvan' && !this.isMatchOver) {
+        const activeStg =
+          this.renderer?.getActiveStageId?.() ||
+          this.renderer?.permanentStageOverride ||
+          this.renderer?.stageId;
+        if ((activeStg === 'sylvan' || activeStg === 'sanctuary') && !this.isMatchOver) {
           activeFighters.forEach((f) => f.heal(84, 'STARLIGHT'));
-        } else if (this.renderer?.stageId === 'boneyard' && !this.isMatchOver) {
+        } else if ((activeStg === 'boneyard' || activeStg === 'inferno') && !this.isMatchOver) {
           const midX =
             activeFighters.reduce((acc, f) => acc + f.x, 0) / Math.max(1, activeFighters.length);
-          this.vfx.spawnBurst(midX, this.renderer.groundY - 40, 20, '#e11d48', 260, {
-            upBias: 160,
-            size: 6
-          });
+          this.vfx.spawnBurst(
+            midX,
+            this.renderer.groundY - 40,
+            20,
+            activeStg === 'inferno' ? '#fb923c' : '#e11d48',
+            260,
+            {
+              upBias: 160,
+              size: 6
+            }
+          );
         }
       }
     }
@@ -2780,14 +2811,14 @@ class Game {
     }
 
     // Reveal the Victory / Rematch plaque ONLY after all 30 death frames (F00..F29) have finished
-    // AND the fallen champion has rested cleanly on the arena floor for ~0.95s!
+    // AND the winning champion has showcased their Row 9 VICTORY flourish & pose for ~1.35s!
     if (this.isMatchOver && this.victoryRevealPending && !this.isSimPaused) {
       const fallen = this.deadMatchFighter || this.fighters.find((f) => f && f.isDead);
       const fullDeathDur = PixelForge.DEATH_DURATION || 1.55;
       const onFloor = !fallen || fallen.y >= this.renderer.groundY - 2;
       if (!fallen || ((fallen.deathTimer || 0) >= fullDeathDur && onFloor)) {
         this.postDeathHoldTimer = (this.postDeathHoldTimer || 0) + rawDt;
-        if (this.postDeathHoldTimer >= 0.95) {
+        if (this.postDeathHoldTimer >= 1.35) {
           this.revealVictoryOverlay();
         }
       }

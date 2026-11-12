@@ -2,7 +2,7 @@ globalThis.Image = class MockImage {
   constructor() {
     this.complete = true;
     this.naturalWidth = 6240;
-    this.naturalHeight = 1872;
+    this.naturalHeight = 2080;
     this.src = '';
   }
 };
@@ -25,21 +25,22 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps78';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps78';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps78';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps78';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps78';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps78';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps78';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps78';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps78';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps78';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps78';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps78';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps78';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps78';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps78';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps79';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps79';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps79';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps79';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps79';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps79';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps79';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps79';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps79';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps79';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps79';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps79';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps79';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps79';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps79';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps79';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -154,7 +155,7 @@ for (const [name, Cls] of CLASSES) {
   dummy.maxHp = 99999;
   dummy.hp = 99999;
 
-  const states = ['IDLE', 'WALK', 'AUTO_ATTACK', 'SKILL', 'ULTIMATE', 'DASH', 'CROUCH', 'JUMP'];
+  const states = ['IDLE', 'WALK', 'AUTO_ATTACK', 'SKILL', 'ULTIMATE', 'DASH', 'CROUCH', 'JUMP', 'VICTORY'];
   for (const st of states) {
     hero.hp = hero.maxHp;
     hero.isDead = false;
@@ -174,8 +175,18 @@ for (const [name, Cls] of CLASSES) {
     let dummyWallX = dummy.x;
     let sawReaperStand = false;
     let maxReaperClones = 0;
+    let sawVictoryFlourish = false;
+    let sawVictoryLoop = false;
     for (let i = 0; i < steps; i++) {
       hero.update(1 / 30, dummy, game);
+      if (st === 'VICTORY') {
+        const vIdx = PixelForge.getFrameIndex(hero, hero.walkPhase);
+        if (vIdx < 270 || vIdx > 299) {
+          throw new Error(`Expected ${name} VICTORY frameIdx in Row 9 (270..299), got ${vIdx}`);
+        }
+        if (vIdx >= 270 && vIdx <= 284) sawVictoryFlourish = true;
+        if (vIdx >= 285 && vIdx <= 299) sawVictoryLoop = true;
+      }
       if ((hero.giantScale || 1.0) > peakScale) {
         peakScale = hero.giantScale;
       }
@@ -192,6 +203,11 @@ for (const [name, Cls] of CLASSES) {
       hero.drawForegroundOverlay?.(ctx, game.renderer);
       hero.draw(ctx, false, game.renderer);
       hero.drawUltimateForeground?.(ctx, game.renderer);
+    }
+    if (st === 'VICTORY' && (!sawVictoryFlourish || !sawVictoryLoop)) {
+      throw new Error(
+        `Expected ${name} VICTORY to play F00..F14 flourish (${sawVictoryFlourish}) -> F15..F29 loop (${sawVictoryLoop})`
+      );
     }
     if (name === 'Titan' && st === 'AUTO_ATTACK') {
       // Also verify all 3 normal attack model animations cycle through dedicated 10-frame Row 2 sub-ranges (F00..F09, F10..F19, F20..F29)
@@ -232,7 +248,7 @@ for (const [name, Cls] of CLASSES) {
       console.log(`  [OK] Reaper v5 Death's Sovereignty: crisp 1.0x scale, Thanatos Stand=${sawReaperStand}, WraithClones=${maxReaperClones}`);
     }
   }
-  console.log(`[PASS] ${name}: all 8 combat states + shader/VFX layers simulated cleanly`);
+  console.log(`[PASS] ${name}: all 9 states (incl. Row 9 VICTORY pose) + shader/VFX layers simulated cleanly`);
 }
 
 // 1. Verify Aethelgard v4 Supreme Finishing Move: TRUE_ULTIMATE ("CELESTIAL SWORD OF JUSTICE")
@@ -584,7 +600,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps78');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps79');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -1555,30 +1571,37 @@ for (const [name, Cls] of CLASSES) {
   lyra.game = game;
   foe.game = game;
 
-  // 13A. Verify 3-Variant Royal Ballet Auto-Attack (F00..F09 Comet, F10..F19 Snowflake Chakram, F20..F29 3-Spire March)
-  const seenAutoSubRanges = [false, false, false];
+  // 13A. Verify 4-Variant Royal Figure-Skating Auto-Attack (`60..67` Comet, `68..74` Chakram, `75..82` 3-Spire Slam, `83..89` Sky-Icicle Hail)
+  const seenAutoSubRanges = [false, false, false, false];
   let sawChakram = false;
   let sawMarchingSpire = false;
-  for (let v = 0; v < 3; v++) {
+  let sawSkyIcicles = false;
+  let sawSkateFootwork = false;
+  for (let v = 0; v < 4; v++) {
     lyra.x = 380;
     foe.x = 660;
     lyra.setState('AUTO_ATTACK');
-    for (let f = 0; f < 25; f++) {
+    for (let f = 0; f < 26; f++) {
       lyra.update(1 / 30, foe, game);
+      if (Math.abs(lyra.x - 380) > 6) sawSkateFootwork = true;
       if (lyra.trueUltFrameOverride !== null) {
-        const sub = Math.floor((lyra.trueUltFrameOverride - 60) / 10);
-        if (sub >= 0 && sub <= 2) seenAutoSubRanges[sub] = true;
+        const ov = lyra.trueUltFrameOverride;
+        if (ov >= 60 && ov <= 67) seenAutoSubRanges[0] = true;
+        else if (ov >= 68 && ov <= 74) seenAutoSubRanges[1] = true;
+        else if (ov >= 75 && ov <= 82) seenAutoSubRanges[2] = true;
+        else if (ov >= 83 && ov <= 89) seenAutoSubRanges[3] = true;
       }
       if (lyra.activeChakrams.length > 0) sawChakram = true;
       if (lyra.activeMarchingSpires.length > 0) sawMarchingSpire = true;
+      if (lyra.activeSkyIcicles.length > 0) sawSkyIcicles = true;
       lyra.drawForegroundOverlay(lyraCtx, game.renderer);
       lyra.draw(lyraCtx, false, game.renderer);
       lyra.drawUltimateForeground(lyraCtx, game.renderer);
     }
   }
-  if (!seenAutoSubRanges.every(Boolean) || !sawChakram || !sawMarchingSpire) {
+  if (!seenAutoSubRanges.every(Boolean) || !sawChakram || !sawMarchingSpire || !sawSkyIcicles || !sawSkateFootwork) {
     throw new Error(
-      `Lyra v6 3-Variant Auto failed: ranges=${JSON.stringify(seenAutoSubRanges)}, chakram=${sawChakram}, spires=${sawMarchingSpire}`
+      `Lyra v7 4-Variant Auto failed: ranges=${JSON.stringify(seenAutoSubRanges)}, chakram=${sawChakram}, spires=${sawMarchingSpire}, skyIcicles=${sawSkyIcicles}, skateFootwork=${sawSkateFootwork}`
     );
   }
 
@@ -1679,7 +1702,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   console.log(
-    `[PASS] Lyra v6 Full Rework: 3-Variant Royal Ballet (Comet/Chakram/3-Spire March), 4-Stack Solid Crystal Freeze (${foe.stunTimer.toFixed(2)}s), 3-Step Sky-Stair, Glacial Jaws (-${Math.round(jawsDmg)} dmg), 7-Sword Winter Coronation (-${Math.round(coronationDmg)} dmg), & Polar Night 28-Shard Reality Shatter (-${Math.round(trueUltDmg)} Crit, 0 ctx.rotate)!`
+    `[PASS] Lyra v7 Full Rework: 4-Variant Figure-Skating Ballet (Lance/Chakram/3-Spire/Sky-Icicle Hail), 4-Stack Solid Crystal Freeze (${foe.stunTimer.toFixed(2)}s), 3-Step Sky-Stair, Glacial Jaws (-${Math.round(jawsDmg)} dmg), 7-Sword Winter Coronation (-${Math.round(coronationDmg)} dmg), & Crystal-Clear Polar Night 28-Shard Reality Shatter (-${Math.round(trueUltDmg)} Crit, 0 ctx.rotate)!`
   );
 }
 
@@ -1907,6 +1930,97 @@ for (const [name, Cls] of CLASSES) {
     `[PASS] Sylvara v4 Ults: 180° Starlock Vault (chargeDist=${Math.round(minChargeDist)}px, lift=${Math.round(syl.groundY - minVaultY)}px, ${starlockHits} hits / -${Math.round(total180Dmg)} dmg) & Far-Stage Yggdrasil Pierce (rootDrift=${maxEnemyDriftWhileRooted.toFixed(1)}px, shotDist=${Math.round(shotDistance)}px from x=${Math.round(syl.x)}, -${Math.round(yggShotDmg)} Crit, 0 ctx.rotate)!`
   );
 }
+
+// 16. Verify All 11 Champions' Post-KO Row-9 Victory Poses (6240x2080) & Upgraded Stage + LAYWASTE OF INFERNO Effects
+{
+  const sheetFiles = [
+    'warrior',
+    'mage',
+    'archer',
+    'priestess',
+    'reaper',
+    'chronomancer',
+    'titan',
+    'ronin',
+    'valkyrie',
+    'icemage',
+    'android'
+  ];
+  for (const key of sheetFiles) {
+    const p = `/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${key}_sheet.png`;
+    const buf = fs.readFileSync(p);
+    const w = buf.readUInt32BE(16);
+    const h = buf.readUInt32BE(20);
+    if (w !== 6240 || h !== 2080) {
+      throw new Error(`Expected ${key}_sheet.png dimensions 6240x2080 (10 rows x 30 cols), got ${w}x${h}`);
+    }
+  }
+
+  // 16A. Verify automatic post-KO VICTORY pose transition for all 11 champions (+ 2v2_tag benched partner unbenching!)
+  const matchGame = createMockGame();
+  matchGame.testModeUnlimitedHp = false;
+  matchGame.isMatchOver = true;
+  for (const [name, Cls] of CLASSES) {
+    const winner = new Cls({ x: 380, groundY: 520, facing: 1, name, team: 'left' });
+    const fallen = new Warrior({ x: 760, groundY: 520, facing: -1, name: 'Fallen', team: 'right' });
+    fallen.hp = 0;
+    fallen.isDead = true;
+    fallen.state = 'DEATH';
+    matchGame.fighters = [winner, fallen];
+    matchGame.getEnemiesOf = (f) => (f === winner ? [fallen] : [winner]);
+
+    winner.update(1 / 30, fallen, matchGame);
+    if (winner.state !== 'VICTORY') {
+      throw new Error(`Expected ${name} to automatically enter VICTORY on match win, got ${winner.state}`);
+    }
+    const f0 = PixelForge.getFrameIndex(winner, winner.walkPhase);
+    for (let s = 0; s < 24; s++) {
+      winner.update(1 / 30, fallen, matchGame);
+    }
+    const fLoop = PixelForge.getFrameIndex(winner, winner.walkPhase);
+    if (f0 < 270 || f0 > 284 || fLoop < 285 || fLoop > 299) {
+      throw new Error(`Expected ${name} VICTORY frames to progress 270..284 -> 285..299, got f0=${f0}, fLoop=${fLoop}`);
+    }
+  }
+
+  // Verify benched 2v2_tag partner steps off pedestal into VICTORY when match is won
+  const tagPartner = new Valkyrie({ x: 54, groundY: 520, facing: 1, name: 'Freyja', team: 'left' });
+  tagPartner.isBenched = true;
+  const deadFoe = new Reaper({ x: 820, groundY: 520, facing: -1, name: 'Malakor', team: 'right' });
+  deadFoe.hp = 0;
+  deadFoe.isDead = true;
+  matchGame.getEnemiesOf = () => [deadFoe];
+  tagPartner.update(1 / 30, deadFoe, matchGame);
+  if (tagPartner.isBenched || tagPartner.state !== 'VICTORY') {
+    throw new Error(`Expected benched 2v2_tag partner to unbench into VICTORY, got benched=${tagPartner.isBenched}, state=${tagPartner.state}`);
+  }
+
+  // 16B. Verify upgraded Renderer stage effects across all 6 stages incl. Ignis Sol's LAYWASTE OF INFERNO
+  const stageHero = new FireMage({ x: 420, groundY: 520, facing: 1 });
+  const stageFoe = new IceMage({ x: 780, groundY: 520, facing: -1 });
+  for (const stg of ['cathedral', 'sylvan', 'boneyard', 'clocktower', 'sanctuary']) {
+    matchGame.renderer.pickRandomStage(stg);
+    matchGame.renderer.triggerStageEvent('STAGE PHENOMENON', stg.toUpperCase(), '#facc15', 6.0);
+    matchGame.renderer.update(1 / 30, [stageHero, stageFoe]);
+    matchGame.renderer.render([stageHero, stageFoe], matchGame.vfx);
+  }
+  matchGame.renderer.pickRandomStage('cathedral');
+  matchGame.renderer.setStageTransformation('inferno', 1.0, true, 0);
+  if (matchGame.renderer.getActiveStageId() !== 'inferno') {
+    throw new Error(`Expected getActiveStageId() === 'inferno' after Ignis Sol stage transformation, got ${matchGame.renderer.getActiveStageId()}`);
+  }
+  matchGame.renderer.triggerStageEvent('SOLAR ERUPTION', 'LAYWASTE OF INFERNO', '#fb923c', 6.0);
+  for (let i = 0; i < 6; i++) {
+    matchGame.renderer.update(1 / 30, [stageHero, stageFoe]);
+    matchGame.renderer.render([stageHero, stageFoe], matchGame.vfx);
+  }
+  matchGame.renderer.resetStageOverrides();
+
+  console.log(
+    '[PASS] All 11 Champions 6240x2080 Row-9 Victory Poses (post-KO + 2v2_tag) & All 6 Upgraded Stages (incl. LAYWASTE OF INFERNO magma/caldera/foreground) verified!'
+  );
+}
+
 
 
 

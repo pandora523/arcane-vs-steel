@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps78';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps78';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps78';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps78';
+import { Fighter } from './Fighter.js?v=30fps79';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps79';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps79';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps79';
 
 /**
  * Lyra (`icemage`) — Winter Empress & Sovereign of Absolute Zero (v6 Full Rework).
@@ -11,12 +11,14 @@ import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=3
  *    At 4 stacks, triggers ★ SOLID CRYSTAL FREEZE! ★ — encasing the foe inside a translucent
  *    Row-6 Ice-Crystal Block (`0.46s` solid freeze stun), dealing crit shatter damage, and
  *    granting Lyra a Cryo Mirror Shield (`+14 HP`).
- *  - 3-Variant Royal Ballet Auto-Attack (`Row 2`):
- *      1) `RIME-LANCE NEEDLE` (`F00..F09`): Supersonic faceted Borealis cryo-comet + Mach cone.
- *      2) `SNOWFLAKE BOOMERANG HALO` (`F10..F19`): Arabesque pirouette hurling a giant spinning
- *         6-bladed Row-1 Snowflake Chakram that curves through the foe and boomerangs back (`+8 HP` on catch).
- *      3) `GLACIER STALAGMITE MARCH` (`F20..F29`): Overhead Scepter command erupting 3 sequential
- *         ground-marching Row-2 Glacier Spires along the floor that pop foes upward and freeze a Rink.
+ *  - 4-Variant Royal Figure-Skating Auto-Attack (`Row 2`):
+ *      1) `RIME-LANCE SKATE LUNGE` (`F00..F07`): Deep fencing skate-lunge + supersonic Borealis cryo-comet & Mach cone.
+ *      2) `ARABESQUE HALO BOOMERANG` (`F08..F14`): High-leg Arabesque glide hurling a giant spinning
+ *         6-bladed Row-1 Snowflake Chakram that curves through the foe and boomerangs back (`+7 HP` on catch).
+ *      3) `GLACIER STALAGMITE SLAM` (`F15..F22`): Two-handed overhead hoist & wide-stance floor slam erupting
+ *         3 sequential ground-marching Row-2 Glacier Spires along the floor that pop foes upward and freeze a Rink.
+ *      4) `BOREALIS SKY-ICICLE HAIL` (`F23..F29`): Agile backward skate-hop & skyward Scepter command opening an
+ *         Aurora Borealis sky-rift overhead that rains 3 staggered diagonal Crystalline Sky-Icicle Lances!
  *  - Mobility & Tactical Figure-Skating:
  *      - `JUMP` (`TRIPLE-AXEL SKY-STAIRCASE`): Materializes 3 stepped mid-air crystalline ice platforms
  *        beneath her skates along her high vault arc while firing an apex cryo-comet.
@@ -30,18 +32,25 @@ import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=3
  *  - Overdrive Ultimate (`WINTER CORONATION: SEVEN CELESTIAL ICE-SWORDS`, `Row 4`):
  *      Summons 7 Giant Celestial Ice-Claymores (`Row 4`) in a Coronation Halo overhead; 6 outer swords
  *      rain down sequentially to impale the floor in a hexagonal palisade cage before a colossal 7th
- *      Sovereign Crown-Claymore plunges into the center, detonating all 7 swords (`+32 HP`).
+ *      Sovereign Crown-Claymore plunges into the center, detonating all 7 swords (`+26 HP`).
  *  - 3-Overdrive Supreme Ultimate (`ABSOLUTE ZERO: DIAMOND DUST ETERNITY`, `4.60s`):
- *      Act I: Polar Night sky + multi-ribbon Northern Lights (Aurora Borealis) + Full-Stage Crystal Mirror
- *             Lake + overhead Celestial Astrolabe (`Row 5`) as Lyra ascends 90px on a floating Ice-Lotus Pedestal.
+ *      Act I: Luminous Borealis Aurora sky + multi-ribbon Northern Lights + Full-Stage Crystal Frost Mirror
+ *             + overhead Celestial Astrolabe (`Row 5`) as Lyra ascends 90px on a floating Ice-Lotus Pedestal.
  *      Act II: Live thermodynamic readout plunges to `-273.15°C • 0.00 K` while entombing foes in the
  *              towering Row-6 Diamond-Coffin Monolith inside a 6-Mirror Borealis Star-Snowflake Cathedral.
  *      Act III: Reality freezes brittle with arena-wide branching glass fault-lines as Lyra performs her
  *               vertical Sovereign Scepter-Tap (`Row 4 F17..F23`).
- *      Act IV: ★ DIAMOND DUST ETERNITY! ★ — Reality shatters into 28 faceted stained-glass ice panes +
+ *      Act IV: ★ DIAMOND DUST ETERNITY! ★ — Reality shatters into 28 faceted crystal glass panes +
  *              triple Row-7 Prismatic Starbursts + `diamondDustCataclysmNova` for an instantaneous
- *              `695` Crit Execution + `16%` Max HP Sovereign Heal!
+ *              `675` Crit Execution + `12%` Max HP Sovereign Heal!
  */
+const LYRA_AUTO_SLICES = [
+  [60, 8],
+  [68, 7],
+  [75, 8],
+  [83, 7]
+];
+
 export class IceMage extends Fighter {
   constructor(x, groundY, facing = 1) {
     const opts = typeof x === 'object' && x !== null ? x : { x, groundY, facing };
@@ -50,7 +59,7 @@ export class IceMage extends Fighter {
       name: opts.name || 'Lyra',
       maxHp: 3630,
       attackRange: 510,
-      moveSpeed: 182,
+      moveSpeed: 186,
       autoInterval: 1.07,
       lightColor: 'rgba(103, 232, 249, 1)',
       primaryColor: '#67e8f9'
@@ -58,6 +67,7 @@ export class IceMage extends Fighter {
     this.heroId = 'icemage';
     this.theme = 'glacial';
     this.deathSfx = 'death_icemage';
+    this.autoDuration = 0.76;
     this.skillMaxCooldown = 4.70;
     this.skillTriggerRange = 545;
     this.skillName = 'GLACIAL JAWS: TWIN ICEBERG CRUSH';
@@ -83,6 +93,7 @@ export class IceMage extends Fighter {
     this.permafrostZones = []; // Shimmering 2.5D Permafrost Ice-Rinks on the arena floor
     this.activeChakrams = []; // Returning curved 6-bladed Row-1 Snowflake Boomerang Chakrams
     this.activeMarchingSpires = []; // Sequential ground-erupting Row-2 Glacier Stalagmite Spires
+    this.activeSkyIcicles = []; // Staggered diagonal Borealis Sky-Icicle Lances (Auto Variant 4)
     this.activeCrystalPrisons = []; // Solid 4-stack Brittle Freeze Row-6 Ice-Crystal Sarcophagi
     this.skyIceSteps = []; // Stepped mid-air Crystalline Ice-Staircase platforms from Jump
     this.iceDecoy = null; // Sculpted crystal statue left behind on Dodge
@@ -122,8 +133,8 @@ export class IceMage extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
-      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps78')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps78';
+      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps79')) {
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps79';
       }
     }
   }
@@ -134,13 +145,17 @@ export class IceMage extends Fighter {
     this._drewScepterFocus = false;
 
     if (newState === 'AUTO_ATTACK') {
-      this._autoVariant = this.comboStep % 3;
-      this.trueUltFrameOverride = 60 + this._autoVariant * 10;
+      this._autoVariant = this.comboStep % 4;
+      this.trueUltFrameOverride = LYRA_AUTO_SLICES[this._autoVariant][0];
     } else if (newState === 'TRUE_ULTIMATE') {
       this._trueUltStep = 0;
       this._buildTrueUltFracturesAndShards();
     } else {
       this.trueUltFrameOverride = null;
+    }
+
+    if (newState === 'DEATH') {
+      this.activeSkyIcicles = [];
     }
 
     if (prevState === 'TRUE_ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
@@ -333,6 +348,53 @@ export class IceMage extends Fighter {
         isFinal: i === 2,
         dmg: i === 2 ? baseDmg : Math.round(baseDmg * 0.48),
         size: i === 2 ? 176 : 136 + i * 16
+      });
+    }
+  }
+
+  /**
+   * Opens an Aurora Borealis sky-rift overhead (`borealisIcicleHail`) and rains 3 staggered
+   * diagonal Crystalline Sky-Icicle Lances onto the enemy's floor zone (`Row 2 F23..F29`)!
+   */
+  spawnBorealisSkyIcicleHail(enemy, perIcicleDmg = 19) {
+    const ww = this.game?.renderer ? this.game.renderer.worldWidth : 1200;
+    const dir = enemy ? (enemy.x >= this.x ? 1 : -1) : this.facing;
+    const baseTargetX = enemy
+      ? Math.max(110, Math.min(ww - 110, enemy.x))
+      : Math.max(110, Math.min(ww - 110, this.x + dir * 320));
+
+    if (this.fx) {
+      this.fx.spawn('borealisIcicleHail', baseTargetX, this.groundY, {
+        light: 1.24,
+        extra: { dir }
+      });
+    }
+
+    const volleyState = { appliedFrost: false };
+    for (let i = 0; i < 3; i++) {
+      const endX = Math.max(92, Math.min(ww - 92, baseTargetX + (i - 1) * 28));
+      const startX = Math.max(68, Math.min(ww - 68, endX - dir * 88));
+      const startY = this.groundY - 256 - (i === 1 ? 18 : 0);
+      this.activeSkyIcicles.push({
+        startX,
+        startY,
+        endX,
+        endY: this.groundY - 12,
+        x: startX,
+        y: startY,
+        dir,
+        target: i >= 1 ? enemy : null,
+        laneOffset: (i - 1) * 28,
+        delay: i * 0.065,
+        life: 0,
+        flightDur: 0.20,
+        holdDur: 0.22,
+        impacted: false,
+        didHit: false,
+        isCenter: i === 1,
+        magenta: i === 1,
+        dmg: perIcicleDmg,
+        volleyState
       });
     }
   }
@@ -635,8 +697,9 @@ export class IceMage extends Fighter {
     // Row 8: Triple-Axel Sky-Staircase (materializes 3 stepped mid-air crystal platforms beneath her skates!)
     if ((this.state === 'JUMP' || this.state === 'DODGE') && this.isFlipVault) {
       const u = Math.min(1, t / this.dashDuration);
-      const airU = Math.max(0, Math.min(1, (u - 0.06) / 0.82));
-      this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * airU;
+      const airU = Math.max(0, Math.min(1, (u - 0.05) / 0.86));
+      const easeAirU = 0.5 - 0.5 * Math.cos(airU * Math.PI);
+      this.x = this.flipStartX + (this.flipTargetX - this.flipStartX) * easeAirU;
 
       const liftFrac = Math.sin(airU * Math.PI);
       this.y = this.groundY - liftFrac * 92;
@@ -700,6 +763,15 @@ export class IceMage extends Fighter {
         this.setState('IDLE');
       }
       return;
+    }
+
+    // Sustain frictionless figure-skater glide momentum across the ice instead of stopping steeply
+    if (this.state === 'DASH' && t < 0.28) {
+      const glide = 1 - (t / 0.28) * 0.45;
+      this.vx = (this.dashDir || this.facing) * 435 * glide;
+    } else if (this.state === 'DODGE' && t < 0.30) {
+      const glide = 1 - (t / 0.30) * 0.45;
+      this.vx = (this.dashDir || -this.facing) * 405 * glide;
     }
 
     if (t >= this.dashDuration) {
@@ -873,6 +945,70 @@ export class IceMage extends Fighter {
       }
     }
 
+    // 2B. Update Staggered Diagonal Borealis Sky-Icicle Lances (Auto Variant 4)
+    for (let i = this.activeSkyIcicles.length - 1; i >= 0; i--) {
+      const ic = this.activeSkyIcicles[i];
+      if (ic.delay > 0) {
+        ic.delay -= dt;
+        if (ic.delay <= 0 && ic.target && !ic.target.isDead) {
+          const trackedEnd = Math.max(92, Math.min(wwStage - 92, ic.target.x + (ic.laneOffset || 0)));
+          ic.endX = ic.endX * 0.35 + trackedEnd * 0.65;
+          ic.startX = Math.max(68, Math.min(wwStage - 68, ic.endX - ic.dir * 88));
+        }
+        continue;
+      }
+      ic.life += dt;
+      if (!ic.impacted) {
+        const u = Math.min(1, ic.life / ic.flightDur);
+        const plunge = u * u * (2.0 - u);
+        ic.x = ic.startX + (ic.endX - ic.startX) * plunge;
+        ic.y = ic.startY + (ic.endY - ic.startY) * plunge;
+
+        if (!ic.didHit && u >= 0.42) {
+          for (const foe of activeFoes) {
+            if (Math.abs(foe.x - ic.x) < 64 && Math.abs((foe.y - 72) - ic.y) < 92) {
+              ic.didHit = true;
+              const isCrit = ic.isCenter && Math.random() < 0.24;
+              foe.takeDamage(isCrit ? Math.round(ic.dmg * 1.28) : ic.dmg, this, isCrit, 44, -46);
+              this.mana = Math.min(this.maxMana, (this.mana || 0) + 3);
+              if (ic.volleyState && !ic.volleyState.appliedFrost) {
+                ic.volleyState.appliedFrost = true;
+                this.applyBrittleFrost(foe, 1, game, ic.x, ic.y);
+              }
+              break;
+            }
+          }
+        }
+
+        if (u >= 1) {
+          ic.impacted = true;
+          ic.x = ic.endX;
+          ic.y = ic.endY;
+          if (!ic.didHit) {
+            for (const foe of activeFoes) {
+              if (Math.abs(foe.x - ic.endX) < 62 && Math.abs(foe.y - this.groundY) < 96) {
+                ic.didHit = true;
+                foe.takeDamage(ic.dmg, this, false, 40, -42);
+                this.mana = Math.min(this.maxMana, (this.mana || 0) + 3);
+                if (ic.volleyState && !ic.volleyState.appliedFrost) {
+                  ic.volleyState.appliedFrost = true;
+                  this.applyBrittleFrost(foe, 1, game, ic.endX, ic.endY - 24);
+                }
+                break;
+              }
+            }
+          }
+          if (game?.audio) game.audio.play(ic.isCenter ? 'ice_shatter' : 'frost_cast', ic.endX);
+          this.spawnPixelFrostRing(ic.endX, this.groundY - 6, 68, '#67e8f9', 0.20, true, ic.isCenter);
+          if (ic.isCenter) {
+            this.spawnPermafrostZone(ic.endX, 140, 4.0);
+          }
+        }
+      } else if (ic.life >= ic.flightDur + ic.holdDur) {
+        this.activeSkyIcicles.splice(i, 1);
+      }
+    }
+
     // 3. Update Solid 4-Stack Crystal Stasis Prisons & Mid-Air Sky-Staircase Platforms
     for (let i = this.activeCrystalPrisons.length - 1; i >= 0; i--) {
       const cp = this.activeCrystalPrisons[i];
@@ -900,7 +1036,13 @@ export class IceMage extends Fighter {
       if (Math.abs(this.x - z.x) <= z.radius) {
         onPermafrost = true;
       }
-      if (enemy && !enemy.isDead && Math.abs(enemy.x - z.x) <= z.radius && Math.abs(enemy.y - this.groundY) < 28) {
+      if (
+        this.state !== 'TRUE_ULTIMATE' &&
+        enemy &&
+        !enemy.isDead &&
+        Math.abs(enemy.x - z.x) <= z.radius &&
+        Math.abs(enemy.y - this.groundY) < 28
+      ) {
         if (!enemy.hasPoise) {
           enemy.vx *= Math.pow(0.45, dt);
         }
@@ -1055,20 +1197,36 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * ★ 3-VARIANT DYNAMIC NORMAL ATTACK (`Row 2`):
-   *  - Variant 0 (`F00..F09`): Rime-Lance Needle Comet
-   *  - Variant 1 (`F10..F19`): Arabesque Snowflake Boomerang Chakram
-   *  - Variant 2 (`F20..F29`): 2H Overhead Scepter Glacier Stalagmite March
+   * ★ 4-VARIANT DYNAMIC ROYAL FIGURE-SKATING NORMAL ATTACK (`Row 2`):
+   *  - Variant 0 (`F00..F07`, `60..67`): Rime-Lance Skate Lunge (fencing skate-lunge + supersonic Borealis cryo-comet)
+   *  - Variant 1 (`F08..F14`, `68..74`): Arabesque Halo Boomerang (high rear-leg Arabesque + returning 6-bladed Snowflake Chakram)
+   *  - Variant 2 (`F15..F22`, `75..82`): Glacier Stalagmite Slam (2H overhead hoist & floor slam + 3 marching Glacier Spires)
+   *  - Variant 3 (`F23..F29`, `83..89`): Borealis Sky-Icicle Hail (agile backward skate-hop + 3 diagonal Sky-Icicle Lances)
    */
   updateAutoAttack(_dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = 0.78;
-    const mode = this._autoVariant || 0;
-    const subFrame = Math.min(9, Math.floor((t / dur) * 10));
-    this.trueUltFrameOverride = 60 + mode * 10 + subFrame;
+    const dur = this.autoDuration || 0.76;
+    const mode = (this._autoVariant || 0) % 4;
+    const [sliceStart, sliceLen] = LYRA_AUTO_SLICES[mode] || LYRA_AUTO_SLICES[0];
+    const subFrame = Math.min(sliceLen - 1, Math.floor((t / dur) * sliceLen));
+    this.trueUltFrameOverride = sliceStart + subFrame;
+
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const foeDist = enemy ? Math.abs(enemy.x - this.x) : 340;
 
     if (t < 0.22) {
-      this.torsoAngle = -this.facing * 0.12 * (t / 0.22);
+      this.torsoAngle = -this.facing * 0.10 * (t / 0.22);
+      // Expressive Figure-Skating Footwork per normal-attack variant so she never casts statically on one spot!
+      if (mode === 0 && foeDist > 165) {
+        this.vx = this.facing * 165;
+      } else if (mode === 1) {
+        this.vx = this.facing * (foeDist > 235 ? 118 : -64);
+      } else if (mode === 2 && foeDist > 175) {
+        this.vx = this.facing * 130;
+      } else if (mode === 3 && this.x > 165 && this.x < ww - 165) {
+        this.vx = -this.facing * 145;
+      }
+
       if (t >= 0.04 && !this._drewScepterFocus) {
         this._drewScepterFocus = true;
         this.fx.spawn('cryoScepterFocus', this.x + this.facing * 44, this.y - 110, {
@@ -1076,14 +1234,14 @@ export class IceMage extends Fighter {
           offsetX: 44,
           offsetY: -110,
           flip: this.facing < 0,
-          light: 1.22
+          light: 1.20
         });
       }
     } else if (t < 0.56) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.comboStep++;
-        this.torsoVel = this.facing * 8.2;
+        this.torsoVel = this.facing * (mode === 3 ? -5.8 : 7.8);
 
         const spawnX = this.x + this.facing * 52;
         const spawnY = this.y - 108;
@@ -1098,14 +1256,14 @@ export class IceMage extends Fighter {
         const isGroundedCaster = enemy && !enemy.hasPoise && enemy.moveSpeed <= 122;
 
         if (mode === 0) {
-          // Variant 1: High-Speed Rime-Lance Needle Comet
+          // Variant 1 (`60..67`): Rime-Lance Skate Lunge — High-Speed Borealis Cryo-Comet + Mach Cone
           const lanceDmg = isVanguard ? 50 : isHarvester ? 53 : isGroundedCaster ? 56 : 58;
           if (game?.audio) game.audio.play('prism_beam', this.x);
           game?.vfx?.spawnProjectile?.({
             x: spawnX,
             y: spawnY,
-            vx: (dx / dist) * 725,
-            vy: (dy / dist) * 725,
+            vx: (dx / dist) * 735,
+            vy: (dy / dist) * 735,
             radius: 19,
             color: '#67e8f9',
             coreColor: '#ffffff',
@@ -1119,23 +1277,32 @@ export class IceMage extends Fighter {
             extra: { aimAngle: Math.atan2(dy, dx), empowered: false }
           });
         } else if (mode === 1) {
-          // Variant 2: Pure Arabesque Spinning 6-Bladed Snowflake Boomerang Halo!
+          // Variant 2 (`68..74`): Arabesque Halo Boomerang — Returning 6-Bladed Snowflake Chakram + Halo Burst!
           const chakramOutDmg = isVanguard ? 50 : isHarvester ? 53 : isGroundedCaster ? 56 : 58;
           if (game?.audio) game.audio.play('frost_cast', this.x);
           this.spawnSnowflakeChakram(spawnX, spawnY, targetX, targetY, chakramOutDmg, 22, enemy);
+          this.fx.spawn('snowflakeChakramBurst', Math.max(85, Math.min(1115, spawnX)), spawnY, {
+            light: 1.20
+          });
           if (game?.vfx) {
             game.vfx.spawnDamageText(this.x, this.y - 148, 0, false, 'SNOWFLAKE CHAKRAM!', '#a5f3fc');
           }
-        } else {
-          // Variant 3: Pure 2H Overhead Scepter Command — 3 Sequential Ground-Marching Glacier Spires!
+        } else if (mode === 2) {
+          // Variant 3 (`75..82`): Glacier Stalagmite Slam — 2H Floor Slam Erupting 3 Ground-Marching Spires!
           const spireBaseDmg = isVanguard ? 54 : isHarvester ? 57 : isGroundedCaster ? 60 : 62;
           if (game?.audio) game.audio.play('frost_cast', this.x);
           this.spawnGlacierStalagmiteMarch(enemy, spireBaseDmg);
-          this.fx.spawn('cryoPrismMachCone', Math.max(85, Math.min(1115, spawnX)), spawnY, {
-            flip: false,
-            light: 1.28,
-            extra: { aimAngle: Math.atan2(dy, dx), empowered: true }
+          this.fx.spawn('glacierStalagmiteErupt', Math.max(90, Math.min(1110, this.x + this.facing * 58)), this.groundY, {
+            light: 1.22
           });
+        } else {
+          // Variant 4 (`83..89`): Borealis Sky-Icicle Hail — Skyward Scepter Rift + 3 Diagonal Sky-Icicle Lances!
+          const perIcicleDmg = isVanguard ? 18 : isHarvester ? 19 : isGroundedCaster ? 20 : 20;
+          if (game?.audio) game.audio.play('frost_cast', this.x);
+          this.spawnBorealisSkyIcicleHail(enemy, perIcicleDmg);
+          if (game?.vfx) {
+            game.vfx.spawnDamageText(this.x, this.y - 148, 0, false, 'BOREALIS ICICLE HAIL!', '#e0f2fe');
+          }
         }
       }
     } else if (t >= dur) {
@@ -1511,7 +1678,7 @@ export class IceMage extends Fighter {
     const palette = [
       { fill: '#38bdf8', facet: '#bae6fd' },
       { fill: '#67e8f9', facet: '#f0f9ff' },
-      { fill: '#1d4ed8', facet: '#7dd3fc' },
+      { fill: '#7dd3fc', facet: '#ffffff' },
       { fill: '#c084fc', facet: '#f5d0fe' }
     ];
     this._trueUltGlassShards = [];
@@ -1575,7 +1742,7 @@ export class IceMage extends Fighter {
     }
 
     // =========================================================================
-    // ACT I (0.00s .. 1.12s — Polar Night, Northern Lights & Sovereign Ascension)
+    // ACT I (0.00s .. 1.12s — Borealis Aurora, Frost Mirror & Sovereign Ascension)
     // =========================================================================
     if (t < 1.12) {
       this._trueUltCoffinX = enemy
@@ -1595,7 +1762,6 @@ export class IceMage extends Fighter {
         this._trueUltStep = 1;
         game?.audio?.play?.('ult_cast', this.x);
         game?.audio?.play?.('frost_cast', this.x);
-        game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#38bdf8');
         game?.vfx?.spawnDamageText?.(
           this.x,
           this.y - 172,
@@ -1605,7 +1771,7 @@ export class IceMage extends Fighter {
           '#67e8f9'
         );
         this.spawnPermafrostZone(this._trueUltCoffinX, 240, 5.8);
-        this.fx?.spawn('absoluteZeroAuroraVeil', 600, this.groundY - 210, { light: 1.32 });
+        this.fx?.spawn('absoluteZeroAuroraVeil', this._trueUltCoffinX, this.groundY - 6, { light: 1.28 });
       }
       return;
     }
@@ -1693,11 +1859,8 @@ export class IceMage extends Fighter {
         if (foe) foe.chronoTimeStopTimer = 0;
       }
 
-      game?.renderer?.triggerImpactFrame?.(0.13, cx, this.groundY - 120, 'glacial');
-      game?.renderer?.triggerImpactFrame?.(cx, this.groundY - 120, 0.13, 'glacial');
-      game?.renderer?.shake?.(28, 0.72);
+      game?.renderer?.triggerImpactFrame?.(cx, this.groundY - 120, 0.06, 'glacial');
       game?.renderer?.triggerShake?.(28, 0.72);
-      game?.renderer?.flash?.(0.34, '#f0f9ff');
       game?.renderer?.triggerAberration?.(18);
       game?.renderer?.triggerHitStop?.(0.095);
 
@@ -1733,6 +1896,8 @@ export class IceMage extends Fighter {
       for (const foe of targets) {
         if (foe && !foe.isDead) {
           foe.chronoTimeStopTimer = 0;
+          foe.brittleStacks = 0;
+          foe._permafrostTick = 0;
           foe.takeDamage(675, this, true, 325, -255);
         }
       }
@@ -1751,6 +1916,10 @@ export class IceMage extends Fighter {
       this.cameraAirLift = 0;
       this.isInvulnerable = false;
       this.trueUltFrameOverride = null;
+      this.autoCooldown = Math.max(this.autoCooldown || 0, 0.35);
+      this.skillCooldown = Math.max(this.skillCooldown || 0, 0.35);
+      this.dodgeCooldown = Math.max(this.dodgeCooldown || 0, 0.35);
+      this.dashCooldown = Math.max(this.dashCooldown || 0, 0.35);
       if (enemy) enemy.chronoTimeStopTimer = 0;
       this.setState('IDLE');
     }
@@ -1856,20 +2025,24 @@ export class IceMage extends Fighter {
       const py = Math.round((this.y + 8) / 4) * 4;
       this.drawBloomedVfxRect(ctx, vfxSheet, 3, col, px, py + 4, 136, 48, fade * 0.90, renderer, 1.2);
       ctx.save();
-      ctx.globalAlpha = fade * 0.94;
-      ctx.fillStyle = '#091326';
-      ctx.fillRect(px - 44, py - 6, 88, 12);
+      ctx.globalAlpha = fade * 0.92;
       ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(px - 40, py - 4, 80, 8);
-      ctx.fillStyle = '#f0f9ff';
-      ctx.fillRect(px - 32, py - 4, 64, 3);
+      ctx.fillRect(px - 42, py - 4, 84, 8);
+      ctx.fillStyle = '#bae6fd';
+      ctx.fillRect(px - 34, py - 5, 68, 6);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(px - 24, py - 5, 48, 3);
+      ctx.fillStyle = '#67e8f9';
+      ctx.fillRect(px - 14, py + 4, 28, 4);
+      ctx.fillStyle = '#bae6fd';
+      ctx.fillRect(px - 6, py + 8, 12, 4);
       ctx.restore();
     }
   }
 
   /**
-   * Renders Polar Night Sky Canopy, Multi-Ribbon Northern Lights (Aurora Borealis), Overhead Celestial
-   * Astrolabe (`Row 5`), and Full-Stage Crystal Mirror Lake behind fighters during `TRUE_ULTIMATE`.
+   * Renders Seamless Borealis Aurora Sky Wash, Multi-Ribbon Northern Lights, Overhead Celestial
+   * Astrolabe (`Row 5`), and Feathered Crystal Frost-Mirror Floor behind fighters during `TRUE_ULTIMATE`.
    */
   drawTrueUltPolarNightBackground(ctx, renderer = null) {
     const inTrueUlt = this.state === 'TRUE_ULTIMATE';
@@ -1891,23 +2064,29 @@ export class IceMage extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Translucent Polar Night Sky Canopy (never replaces the stage background!)
-    const skyGrad = ctx.createLinearGradient(0, -140, 0, gy + 36);
-    skyGrad.addColorStop(0, `rgba(4, 10, 32, ${(0.76 * fade).toFixed(3)})`);
-    skyGrad.addColorStop(0.58, `rgba(8, 22, 56, ${(0.56 * fade).toFixed(3)})`);
-    skyGrad.addColorStop(1, `rgba(14, 42, 84, ${(0.34 * fade).toFixed(3)})`);
+    // 1. Viewport-Seamless Luminous Borealis Sky Wash (spans far beyond zoomed-out camera bounds, zero hard box edges!)
+    const skyGrad = ctx.createLinearGradient(0, -520, 0, gy + 80);
+    skyGrad.addColorStop(0, `rgba(14, 42, 78, ${(0.18 * fade).toFixed(3)})`);
+    skyGrad.addColorStop(0.55, `rgba(56, 189, 248, ${(0.10 * fade).toFixed(3)})`);
+    skyGrad.addColorStop(1, `rgba(186, 230, 253, ${(0.04 * fade).toFixed(3)})`);
     ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, -140, ww, gy + 190);
+    ctx.fillRect(-2400, -1600, ww + 4800, gy + 2800);
 
-    // 2. Multi-Ribbon Undulating Pixel-Stepped Northern Lights (Aurora Borealis) across the 1200px sky!
+    // 2. Multi-Ribbon Undulating Pixel-Stepped Northern Lights (Aurora Borealis) spanning past both stage wings!
     const ribbons = [
-      { baseY: 36, amp: 24, freq: 0.009, speed: 2.1, h: 78, colTop: '#34d399', colBot: '#67e8f9', alpha: 0.28 },
-      { baseY: 78, amp: 30, freq: 0.012, speed: -1.7, h: 86, colTop: '#c084fc', colBot: '#38bdf8', alpha: 0.26 },
-      { baseY: 118, amp: 20, freq: 0.015, speed: 2.6, h: 68, colTop: '#67e8f9', colBot: '#e879f9', alpha: 0.24 }
+      { baseY: 28, amp: 24, freq: 0.009, speed: 2.1, h: 78, colTop: '#34d399', colBot: '#67e8f9', alpha: 0.24 },
+      { baseY: 72, amp: 30, freq: 0.012, speed: -1.7, h: 86, colTop: '#c084fc', colBot: '#38bdf8', alpha: 0.22 },
+      { baseY: 114, amp: 20, freq: 0.015, speed: 2.6, h: 68, colTop: '#67e8f9', colBot: '#e879f9', alpha: 0.20 }
     ];
 
+    const ribbonMinX = -380;
+    const ribbonMaxX = ww + 380;
     for (const rb of ribbons) {
-      for (let x = 24; x < ww - 24; x += 12) {
+      for (let x = ribbonMinX; x <= ribbonMaxX; x += 12) {
+        const edgeDist = Math.min(x - ribbonMinX, ribbonMaxX - x);
+        const edgeTaper = Math.max(0, Math.min(1, edgeDist / 220));
+        if (edgeTaper <= 0.01) continue;
+
         const wave =
           Math.sin(x * rb.freq + t * rb.speed) * rb.amp +
           Math.cos(x * rb.freq * 1.9 - t * rb.speed * 0.8) * (rb.amp * 0.45);
@@ -1915,45 +2094,42 @@ export class IceMage extends Fighter {
         const ry = Math.round((rb.baseY + wave) / 4) * 4;
         const rh = Math.round((rb.h * curtainPulse) / 4) * 4;
 
-        ctx.globalAlpha = fade * rb.alpha * curtainPulse;
+        ctx.globalAlpha = fade * rb.alpha * curtainPulse * edgeTaper;
         ctx.fillStyle = rb.colTop;
         ctx.fillRect(x, ry, 10, Math.max(8, Math.round(rh * 0.48)));
 
-        ctx.globalAlpha = fade * (rb.alpha * 1.15) * curtainPulse;
+        ctx.globalAlpha = fade * (rb.alpha * 1.12) * curtainPulse * edgeTaper;
         ctx.fillStyle = rb.colBot;
         ctx.fillRect(x, ry + Math.round(rh * 0.42), 10, Math.max(8, Math.round(rh * 0.58)));
 
-        ctx.globalAlpha = fade * 0.34 * curtainPulse;
+        ctx.globalAlpha = fade * 0.28 * curtainPulse * edgeTaper;
         ctx.fillStyle = '#f0f9ff';
         ctx.fillRect(x, ry + rh - 6, 10, 4);
       }
     }
 
-    // 3. Full-Stage Crystal Mirror Lake Floor (`x = 56 .. ww - 56`)
-    const lakeX = 56;
-    const lakeW = ww - 112;
-    ctx.globalAlpha = fade * 0.62;
-    ctx.fillStyle = '#081b3a';
-    ctx.fillRect(lakeX, gy - 14, lakeW, 38);
+    // 3. Feathered Full-Stage Crystal Frost-Mirror Shimmer (zero dark-navy rectangles or strokeRect boxes!)
+    const frostGrad = ctx.createLinearGradient(-240, gy, ww + 240, gy);
+    frostGrad.addColorStop(0, 'rgba(103, 232, 249, 0)');
+    frostGrad.addColorStop(0.16, `rgba(56, 189, 248, ${(0.18 * fade).toFixed(3)})`);
+    frostGrad.addColorStop(0.5, `rgba(186, 230, 253, ${(0.26 * fade).toFixed(3)})`);
+    frostGrad.addColorStop(0.84, `rgba(56, 189, 248, ${(0.18 * fade).toFixed(3)})`);
+    frostGrad.addColorStop(1, 'rgba(103, 232, 249, 0)');
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = frostGrad;
+    ctx.fillRect(-240, gy - 10, ww + 480, 24);
 
-    ctx.globalAlpha = fade * 0.48;
-    ctx.fillStyle = '#38bdf8';
-    ctx.fillRect(lakeX + 16, gy - 10, lakeW - 32, 24);
-
-    // Specular ice-rink reflection bands
-    ctx.globalAlpha = fade * 0.55;
-    ctx.fillStyle = '#bae6fd';
-    for (let sx = lakeX + 40; sx < lakeX + lakeW - 60; sx += 96) {
+    // Specular ice-rink crystal reflection streaks
+    for (let sx = -120; sx < ww + 120; sx += 92) {
+      const edgeFade = Math.max(0, Math.min(1, Math.min(sx + 160, ww + 160 - sx) / 180));
       const glintShift = Math.round(Math.sin(t * 2.4 + sx * 0.02) * 12);
-      ctx.fillRect(sx + glintShift, gy - 6, 52, 4);
-      ctx.fillRect(sx - glintShift + 18, gy + 4, 36, 3);
+      ctx.globalAlpha = fade * 0.46 * edgeFade;
+      ctx.fillStyle = '#e0f2fe';
+      ctx.fillRect(sx + glintShift, gy - 5, 52, 3);
+      ctx.globalAlpha = fade * 0.34 * edgeFade;
+      ctx.fillStyle = '#67e8f9';
+      ctx.fillRect(sx - glintShift + 18, gy + 3, 36, 2);
     }
-
-    // Crisp Selout + White-Cyan Rim around the Mirror Lake
-    ctx.globalAlpha = fade * 0.85;
-    ctx.strokeStyle = '#67e8f9';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(lakeX + 8, gy - 12, lakeW - 16, 30);
 
     // 4. Overhead Colossal Celestial Aurora Astrolabe (`Row 5`) & Flanking Cathedral Ice-Organ Spires (`Row 2`)
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
@@ -1973,7 +2149,7 @@ export class IceMage extends Fighter {
         1.45
       );
 
-      // 6 Flanking Cathedral Ice-Organ Spires framing the stage wings
+      // 4 Flanking Cathedral Ice-Organ Spires framing the stage wings
       const spireCol = Math.min(20, 8 + (Math.floor(t * 14) % 12));
       const wingPositions = [
         { x: 108, sz: 164 },
@@ -2047,12 +2223,12 @@ export class IceMage extends Fighter {
 
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = fade * 0.95;
-      ctx.fillStyle = '#091326';
-      ctx.fillRect(sx - hw - 2, sy - 4, hw * 2 + 4, 12);
-      ctx.fillStyle = '#38bdf8';
-      ctx.fillRect(sx - hw, sy - 2, hw * 2, 8);
-      ctx.fillStyle = '#f0f9ff';
-      ctx.fillRect(sx - hw + 4, sy - 2, hw * 2 - 8, 3);
+      ctx.fillStyle = '#0284c7';
+      ctx.fillRect(sx - hw - 2, sy - 4, hw * 2 + 4, 10);
+      ctx.fillStyle = '#7dd3fc';
+      ctx.fillRect(sx - hw, sy - 3, hw * 2, 7);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(sx - hw + 4, sy - 3, hw * 2 - 8, 3);
       // Hanging icicle keel
       ctx.fillStyle = '#67e8f9';
       ctx.fillRect(sx - 12, sy + 6, 24, 5);
@@ -2179,6 +2355,65 @@ export class IceMage extends Fighter {
       this.drawBloomedVfxCell(ctx, vfxSheet, 1, col, c.x, c.y, 96, 0.98, renderer, 1.55);
     }
 
+    // 1B. Staggered Diagonal Borealis Sky-Icicle Lances (Auto Variant 4 — zero `ctx.rotate`!)
+    for (const ic of this.activeSkyIcicles) {
+      if (ic.delay > 0) continue;
+      const riftCol = Math.floor(ic.life * 36) % 30;
+      const dxFull = ic.endX - ic.startX;
+      const dyFull = ic.endY - ic.startY;
+      const lenFull = Math.hypot(dxFull, dyFull) || 1;
+      const ux = dxFull / lenFull;
+      const uy = dyFull / lenFull;
+      const px = -uy;
+      const py = ux;
+
+      if (!ic.impacted) {
+        // Sky-rift snowflake glint at launch point
+        this.drawBloomedVfxCell(ctx, vfxSheet, 1, riftCol, ic.startX, ic.startY, 48, 0.72, renderer, 1.15);
+
+        const tipX = Math.round(ic.x / 2) * 2;
+        const tipY = Math.round(ic.y / 2) * 2;
+        const lanceLen = ic.isCenter ? 64 : 52;
+        const steps = 13;
+        ctx.save();
+        for (let s = 0; s <= steps; s++) {
+          const frac = s / steps; // 0 = sharp tip, 1 = tail fletching
+          const bx = Math.round((tipX - ux * lanceLen * frac) / 2) * 2;
+          const by = Math.round((tipY - uy * lanceLen * frac) / 2) * 2;
+          const halfW = frac < 0.28 ? Math.ceil(frac * 18) : Math.max(2, Math.round((1 - (frac - 0.28) * 0.9) * 5));
+
+          ctx.globalAlpha = 0.92 * (1 - frac * 0.35);
+          ctx.fillStyle = ic.magenta && s % 3 === 1 ? '#e879f9' : '#38bdf8';
+          ctx.fillRect(
+            Math.round(bx - Math.abs(px) * halfW) - 2,
+            Math.round(by - Math.abs(py) * halfW) - 2,
+            Math.max(4, Math.round(Math.abs(px) * halfW * 2) + 4),
+            Math.max(4, Math.round(Math.abs(py) * halfW * 2) + 4)
+          );
+
+          ctx.fillStyle = s <= 4 ? '#ffffff' : '#bae6fd';
+          ctx.fillRect(bx - 2, by - 2, 4, 4);
+        }
+        ctx.restore();
+      } else {
+        const holdU = Math.min(1, Math.max(0, (ic.life - ic.flightDur) / ic.holdDur));
+        const fade = Math.max(0, 1 - holdU);
+        const shardCol = Math.min(20, 6 + Math.floor(holdU * 14));
+        this.drawBloomedVfxCell(
+          ctx,
+          vfxSheet,
+          2,
+          shardCol,
+          ic.endX,
+          this.groundY - 28,
+          ic.isCenter ? 84 : 68,
+          fade * 0.88,
+          renderer,
+          1.2
+        );
+      }
+    }
+
     // 2. Solid 4-Stack Crystal Freeze Sarcophagi (`Row 6`)
     for (const cp of this.activeCrystalPrisons) {
       const u = Math.min(1, cp.life / cp.maxLife);
@@ -2298,8 +2533,8 @@ export class IceMage extends Fighter {
    *  - Towering Row-6 Crystalline Diamond-Coffin Monolith (`328x376`)
    *  - 6-Mirror Borealis Star-Snowflake Cathedral Lattice (`Row 1` + Sacred Star Chords)
    *  - Live 16-Bit Thermodynamic Readout (`-18.4°C` -> `-273.15°C • 0.00 K`)
-   *  - Arena-Wide Branching Reality-Glass Fracture Cracks + 6 Hovering Coronation Swords (`Row 4`)
-   *  - Act IV: 28 Faceted Stained-Glass Ice Shards (pure 2D math rotation, zero `ctx.rotate`!) +
+   *  - Arena-Wide Branching Reality-Glass Fracture Cracks + 4 Hovering Coronation Swords (`Row 4`)
+   *  - Act IV: 28 Faceted Crystal Glass Shards (pure 2D math rotation, zero `ctx.rotate`!) +
    *    Falling Diamond Dust Snow + Triple Row-7 Prismatic Starbursts!
    */
   drawTrueUltForegroundSpectacle(ctx, renderer = null) {
@@ -2400,7 +2635,7 @@ export class IceMage extends Fighter {
         }
       }
 
-      // 4. Crisp 16-Bit Thermodynamic Readout HUD floating above the Monolith!
+      // 4. Luminous Frameless 16-Bit Thermodynamic Readout floating above the Monolith (zero dark-blue boxes!)
       const tempProgress = Math.min(1, Math.max(0, (t - 1.12) / 1.24));
       const easedTemp = 1 - Math.pow(1 - tempProgress, 2.4);
       const celsius = -18.0 - 255.15 * easedTemp;
@@ -2412,15 +2647,20 @@ export class IceMage extends Fighter {
 
       ctx.save();
       const hudY = Math.max(54, coffinY - 196);
-      ctx.fillStyle = 'rgba(6, 15, 38, 0.84)';
-      ctx.fillRect(coffinX - 156, hudY - 16, 312, 26);
-      ctx.strokeStyle = atZero ? '#e879f9' : '#67e8f9';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(coffinX - 156, hudY - 16, 312, 26);
+      ctx.globalAlpha = fade * 0.95;
+      // Sleek tapered crystal underline + center diamond pip
+      ctx.fillStyle = atZero ? '#e879f9' : '#38bdf8';
+      ctx.fillRect(coffinX - 116, hudY + 8, 232, 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(coffinX - 58, hudY + 8, 116, 2);
+      ctx.fillRect(coffinX - 3, hudY + 6, 6, 6);
+
       ctx.font = 'bold 13px monospace';
       ctx.textAlign = 'center';
-      ctx.fillStyle = atZero ? '#f0f9ff' : '#a5f3fc';
-      ctx.fillText(label, coffinX, hudY + 2);
+      ctx.fillStyle = '#0284c7';
+      ctx.fillText(label, coffinX + 1, hudY + 2);
+      ctx.fillStyle = atZero ? '#ffffff' : '#e0f2fe';
+      ctx.fillText(label, coffinX, hudY + 1);
       ctx.restore();
     }
 
@@ -2450,7 +2690,7 @@ export class IceMage extends Fighter {
         );
       }
 
-      // 2. 28 Faceted Stained-Glass Ice Reality-Pane Shards (pure 2D math rotation — ZERO `ctx.rotate`!)
+      // 2. 28 Faceted Crystal Glass Reality-Pane Shards (pure 2D math rotation — ZERO `ctx.rotate`!)
       ctx.save();
       ctx.globalAlpha = shatterFade * 0.95;
       for (const s of this._trueUltGlassShards) {
@@ -2466,7 +2706,7 @@ export class IceMage extends Fighter {
         const p3x = Math.round(s.x + sa * s.r2 * 0.78);
         const p3y = Math.round(s.y - ca * s.r2 * 0.78);
 
-        // Stained-glass facet body
+        // Luminous crystal glass facet body
         ctx.fillStyle = s.fill;
         ctx.beginPath();
         ctx.moveTo(p0x, p0y);
@@ -2485,8 +2725,8 @@ export class IceMage extends Fighter {
         ctx.closePath();
         ctx.fill();
 
-        // Crisp Dark-Navy Selout outline + internal specular ridge
-        ctx.strokeStyle = '#091326';
+        // Crisp Cerulean Crystal Bevel + pure-white specular ridge (zero dark-navy strokes!)
+        ctx.strokeStyle = '#38bdf8';
         ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(p0x, p0y);

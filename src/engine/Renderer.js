@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps78';
+import { PixelForge } from './PixelForge.js?v=30fps79';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -42,6 +42,8 @@ export class Renderer {
     this.ultZoomTimer = 0;
     this.camX = this.worldWidth * 0.5;
     this.camY = this.groundY - 90;
+    this.camParallaxX = 0;
+    this.camParallaxY = 0;
     this.zoom = 1;
     this.time = 0;
 
@@ -124,9 +126,20 @@ export class Renderer {
     this.whiteoutStyle = style;
   }
 
+  getActiveStageId() {
+    return (
+      this.permanentStageOverride ||
+      (this.trueUltStageAlpha > 0.35 ? this.trueUltStageOverride : null) ||
+      this.stageId
+    );
+  }
+
   pickRandomStage(forcedStage = null) {
     this.resetStageOverrides();
-    if (forcedStage && STAGE_ROSTER.some((s) => s.id === forcedStage)) {
+    if (
+      forcedStage &&
+      (STAGE_ROSTER.some((s) => s.id === forcedStage) || Boolean(ULTIMATE_STAGE_MAP[forcedStage]))
+    ) {
       this.stageId = forcedStage;
       return this.stageId;
     }
@@ -140,6 +153,9 @@ export class Renderer {
   getCurrentStageMeta() {
     if (this.permanentStageOverride && ULTIMATE_STAGE_MAP[this.permanentStageOverride]) {
       return ULTIMATE_STAGE_MAP[this.permanentStageOverride];
+    }
+    if (ULTIMATE_STAGE_MAP[this.stageId]) {
+      return ULTIMATE_STAGE_MAP[this.stageId];
     }
     return STAGE_ROSTER.find((s) => s.id === this.stageId) || STAGE_ROSTER[0];
   }
@@ -447,6 +463,20 @@ export class Renderer {
         targetZoom *= 1.025;
       }
 
+      // Cinematic Winner Camera Framing during Victory Pose (`f.state === 'VICTORY'`)
+      const victoryFighters = pool.filter(
+        (f) => !f.isBenched && !f.isDead && f.state === 'VICTORY'
+      );
+      if (victoryFighters.length > 0 && (this.koZoomTimer || 0) <= 0.85) {
+        const winMidX =
+          victoryFighters.reduce((sum, f) => sum + f.x, 0) / victoryFighters.length;
+        targetX = targetX * 0.20 + winMidX * 0.80;
+        targetZoom = Math.max(
+          0.52,
+          Math.min(this.isMobile ? 0.88 : 1.15, targetZoom * 1.08)
+        );
+      }
+
       // Clamp camera X so the viewport stays comfortably inside the 1680-wide cathedral diorama
       const halfViewW = (this.width * 0.5) / targetZoom;
       const bgLeft = (this.worldWidth - 1680) * 0.5 + 16;
@@ -463,6 +493,9 @@ export class Renderer {
       this.camX += (targetX - this.camX) * lerpFactor;
       this.camY += (targetY - this.camY) * lerpFactor;
     }
+
+    this.camParallaxX = this.camX - this.worldWidth * 0.5;
+    this.camParallaxY = this.camY - (this.groundY - 95);
   }
 
   render(fighters, vfx) {
@@ -501,14 +534,23 @@ export class Renderer {
     // 2. Ground Scorch & Fissures
     vfx.renderGroundDecals(ctx, gy);
 
-    // 3. Real-Time Pixel-Art Wet Stone Floor Reflections
+    // 3. Real-Time Pixel-Art Stage-Aware Floor Reflections
+    const activeStageForRefl = this.getActiveStageId();
+    const reflAlpha =
+      activeStageForRefl === 'inferno'
+        ? 0.16
+        : activeStageForRefl === 'sylvan' ||
+            activeStageForRefl === 'sanctuary' ||
+            activeStageForRefl === 'cathedral'
+          ? 0.30
+          : 0.24;
     ctx.save();
     ctx.beginPath();
     ctx.rect(-600, gy + 2, ww + 1200, 700);
     ctx.clip();
     ctx.translate(0, (gy + 2) * 2);
     ctx.scale(1, -0.42);
-    ctx.globalAlpha = 0.26;
+    ctx.globalAlpha = reflAlpha;
     for (const f of fighters) {
       if (f.isBenched || f.isFullyBurrowed) continue;
       f.draw(ctx, true, this);
@@ -592,6 +634,9 @@ export class Renderer {
     if (this.koZoomTimer > 0) {
       this.drawKOFinisherWorld(ctx, gy);
     }
+
+    // 7.15. Near-Camera 1.22x Parallax Atmospheric Stage Foreground Depth Layer
+    this.drawStageForeground(ctx, ww, gy);
 
     // 7.25. Supreme Finisher High-Contrast Anime Impact Frame & Full-Stage White-Out Deletion Screen!
     if (this.impactFrameTimer > 0) {
@@ -798,29 +843,96 @@ export class Renderer {
       drawStageImageWithWings(overrideImg, this.trueUltStageAlpha);
     }
 
-    // Subtle Pixel-Stepped Flagstone Seams & Specular Trim
+    // Stage-Aware Pixel-Stepped Flagstone Seams & Elemental Specular Trim
+    const seamStage = this.getActiveStageId();
+    const seamPulse = 0.5 + 0.5 * Math.sin(this.time * 3.8);
     for (let r = 0; r < 5; r++) {
       const ry = Math.round((gy - 22 + r * r * 12) / 3) * 3;
-      ctx.fillStyle = r === 1 ? 'rgba(148, 174, 212, 0.11)' : 'rgba(8, 11, 20, 0.34)';
-      ctx.fillRect(-800, ry, ww + 1600, 3);
+      if (seamStage === 'inferno') {
+        ctx.fillStyle = 'rgba(15, 6, 4, 0.44)';
+        ctx.fillRect(-800, ry, ww + 1600, 3);
+        const lavaSeamAlpha = (0.12 + 0.08 * Math.sin(this.time * 5.2 + r * 1.3)).toFixed(3);
+        ctx.fillStyle = `rgba(251, 146, 60, ${lavaSeamAlpha})`;
+        ctx.fillRect(-800, ry + 1, ww + 1600, 2);
+        // Segmented incandescent ember-lit basalt fault cracks
+        const coreAlpha = (0.16 + 0.10 * Math.sin(this.time * 6.8 + r * 1.9)).toFixed(3);
+        ctx.fillStyle = `rgba(254, 215, 170, ${coreAlpha})`;
+        for (let seg = -3; seg <= 6; seg++) {
+          const sx = Math.round((seg * 195 + r * 47) / 3) * 3;
+          const sw = 48 + ((seg * 17 + r * 11) & 31);
+          ctx.fillRect(sx, ry + 1, sw, 1);
+        }
+      } else if (seamStage === 'sylvan') {
+        ctx.fillStyle = 'rgba(4, 16, 14, 0.34)';
+        ctx.fillRect(-800, ry, ww + 1600, 3);
+        if (r === 1 || r === 3) {
+          const leyAlpha = (0.11 + 0.05 * seamPulse).toFixed(3);
+          ctx.fillStyle = r === 1 ? `rgba(52, 211, 153, ${leyAlpha})` : `rgba(56, 189, 248, ${leyAlpha})`;
+          ctx.fillRect(-800, ry + 1, ww + 1600, 2);
+        }
+      } else if (seamStage === 'boneyard') {
+        ctx.fillStyle = 'rgba(10, 5, 18, 0.40)';
+        ctx.fillRect(-800, ry, ww + 1600, 3);
+        if (r === 1 || r === 2) {
+          const cryptAlpha = (0.10 + 0.05 * seamPulse).toFixed(3);
+          ctx.fillStyle = r === 1 ? `rgba(168, 85, 247, ${cryptAlpha})` : 'rgba(225, 29, 72, 0.09)';
+          ctx.fillRect(-800, ry + 1, ww + 1600, 2);
+        }
+      } else if (seamStage === 'clocktower') {
+        ctx.fillStyle = 'rgba(6, 12, 20, 0.34)';
+        ctx.fillRect(-800, ry, ww + 1600, 3);
+        if (r === 1 || r === 3) {
+          ctx.fillStyle = r === 1 ? 'rgba(234, 179, 8, 0.15)' : 'rgba(45, 212, 191, 0.10)';
+          ctx.fillRect(-800, ry + 1, ww + 1600, 2);
+        }
+      } else if (seamStage === 'sanctuary') {
+        ctx.fillStyle = 'rgba(12, 24, 48, 0.24)';
+        ctx.fillRect(-800, ry, ww + 1600, 3);
+        if (r === 1 || r === 2) {
+          ctx.fillStyle = r === 1 ? 'rgba(125, 211, 252, 0.16)' : 'rgba(250, 204, 21, 0.14)';
+          ctx.fillRect(-800, ry + 1, ww + 1600, 2);
+        }
+      } else {
+        ctx.fillStyle = 'rgba(8, 11, 20, 0.34)';
+        ctx.fillRect(-800, ry, ww + 1600, 3);
+        if (r === 1) {
+          ctx.fillStyle = 'rgba(56, 189, 248, 0.11)';
+          ctx.fillRect(-800, ry, ww * 0.5 + 720, 2);
+          ctx.fillStyle = 'rgba(251, 146, 60, 0.11)';
+          ctx.fillRect(ww * 0.5 + 80, ry, ww * 0.5 + 720, 2);
+          ctx.fillStyle = 'rgba(148, 174, 212, 0.11)';
+          ctx.fillRect(ww * 0.5 - 120, ry, 240, 2);
+        }
+      }
     }
 
     // Dispatch Bespoke Live Animated Pixel-Art Stage Effects Above Each Stage Image!
-    const activeStageId = this.permanentStageOverride || this.stageId;
-    if (activeStageId === 'inferno') {
+    const baseStageId = this.permanentStageOverride || this.stageId;
+    if (baseStageId === 'inferno') {
       this.drawInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
-    } else if (this.trueUltStageOverride === 'inferno' && this.trueUltStageAlpha > 0.12) {
-      this.drawInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
-    } else if (this.trueUltStageOverride === 'sanctuary' && this.trueUltStageAlpha > 0.12) {
-      this.drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
-    } else if (activeStageId === 'sylvan') {
+    } else if (baseStageId === 'sanctuary') {
+      this.drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
+    } else if (baseStageId === 'sylvan') {
       this.drawSylvanStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy);
-    } else if (activeStageId === 'boneyard') {
+    } else if (baseStageId === 'boneyard') {
       this.drawBoneyardStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy);
-    } else if (activeStageId === 'clocktower') {
+    } else if (baseStageId === 'clocktower') {
       this.drawClocktowerStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy);
     } else {
       this.drawStagePixelFlames(ctx, bg, drawX, drawY, drawW, drawH, gy);
+    }
+
+    // Crossfade Ultimate Stage Transformation Effects when transitioning onto a base stage
+    if (
+      this.trueUltStageOverride &&
+      this.trueUltStageOverride !== baseStageId &&
+      this.trueUltStageAlpha > 0.12
+    ) {
+      if (this.trueUltStageOverride === 'inferno') {
+        this.drawInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
+      } else if (this.trueUltStageOverride === 'sanctuary') {
+        this.drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
+      }
     }
     ctx.restore();
   }
@@ -829,8 +941,8 @@ export class Renderer {
     if (this.flameOnlyCanvas) return this.flameOnlyCanvas;
     if (!bg || !bg.complete || !bg.naturalWidth) return null;
 
-    const w = bg.naturalWidth;
-    const h = bg.naturalHeight;
+    const w = Math.min(bg.naturalWidth || 640, 640);
+    const h = Math.min(bg.naturalHeight || 360, 360);
     const c = document.createElement('canvas');
     c.width = w;
     c.height = h;
@@ -869,8 +981,8 @@ export class Renderer {
     if (this.boneyardFlameCanvas) return this.boneyardFlameCanvas;
     if (!bg || !bg.complete || !bg.naturalWidth) return null;
 
-    const w = bg.naturalWidth;
-    const h = bg.naturalHeight;
+    const w = Math.min(bg.naturalWidth || 640, 640);
+    const h = Math.min(bg.naturalHeight || 360, 360);
     const c = document.createElement('canvas');
     c.width = w;
     c.height = h;
@@ -900,6 +1012,72 @@ export class Renderer {
     return c;
   }
 
+  getSylvanWaterfallLayer(bg) {
+    if (this.sylvanWaterfallCanvas) return this.sylvanWaterfallCanvas;
+    if (!bg || !bg.complete || !bg.naturalWidth) return null;
+
+    const w = Math.min(bg.naturalWidth || 640, 640);
+    const h = Math.min(bg.naturalHeight || 360, 360);
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const cCtx = c.getContext('2d');
+    cCtx.drawImage(bg, 0, 0, w, h);
+
+    const imgData = cCtx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const r = d[i];
+        const g = d[i + 1];
+        const b = d[i + 2];
+        let alpha = 0;
+        if (x > w * 0.39 && x < w * 0.61 && y > h * 0.48 && y < h * 0.75) {
+          if (g > 150 && b > 140 && g + b - r * 1.8 > 115) {
+            alpha = Math.min(255, Math.max(0, (Math.max(g, b) - 145) * 2.4));
+          }
+        }
+        d[i + 3] = alpha;
+      }
+    }
+    cCtx.putImageData(imgData, 0, 0);
+    this.sylvanWaterfallCanvas = c;
+    return c;
+  }
+
+  getInfernoMagmaLayer(bg) {
+    if (this.infernoMagmaCanvas) return this.infernoMagmaCanvas;
+    if (!bg || !bg.complete || !bg.naturalWidth) return null;
+
+    const w = Math.min(bg.naturalWidth || 640, 640);
+    const h = Math.min(bg.naturalHeight || 360, 360);
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const cCtx = c.getContext('2d');
+    cCtx.drawImage(bg, 0, 0, w, h);
+
+    const imgData = cCtx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const r = d[i];
+        const g = d[i + 1];
+        const b = d[i + 2];
+        let alpha = 0;
+        if (r > 175 && g > 70 && r > b * 1.45) {
+          alpha = Math.min(255, Math.max(0, (r - 165) * 2.8));
+        }
+        d[i + 3] = alpha;
+      }
+    }
+    cCtx.putImageData(imgData, 0, 0);
+    this.infernoMagmaCanvas = c;
+    return c;
+  }
+
   drawStagePixelFlames(ctx, bg, drawX, drawY, drawW, drawH, gy) {
     // Exact measured brazier flame bounding boxes in arena_bg.png (normalized 0..1 coordinates)
     const braziers = [
@@ -916,28 +1094,52 @@ export class Renderer {
     const bgW = flameLayer ? flameLayer.width : 640;
     const bgH = flameLayer ? flameLayer.height : 360;
 
-    // 0. Flickering Stained-Glass Lancet Window Backlights & Floating Cathedral Sanctuary Censer Sparks
-    const eclipseX = drawX + drawW * 0.504;
-    const eclipseY = drawY + drawH * 0.352;
-    const eclipseR = 56;
+    // 0. Eclipse Rose-Window Corona Rays, Pulsing Solar Rim & Stained-Glass Lancet Backlights
+    const eclipseX = drawX + drawW * 0.498;
+    const eclipseY = drawY + drawH * 0.367;
+    const eclipseR = 54;
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    // Pulsing golden-solar & frost-cyan stained-glass window shafts
     ctx.globalAlpha = 0.42 + 0.12 * Math.sin(t * 4.2);
     ctx.drawImage(this.glowGold, eclipseX - 280, eclipseY - 280, 560, 560);
     ctx.globalAlpha = 0.26 + 0.08 * Math.cos(t * 3.1);
     ctx.drawImage(this.glowOrange, eclipseX - 210, eclipseY - 210, 420, 420);
+    // Cool stained-glass lancet wash on upper-left & warm solar wash on upper-right
+    ctx.globalAlpha = 0.16 + 0.05 * Math.sin(t * 2.3);
+    ctx.drawImage(this.glowCyan, drawX + drawW * 0.22 - 180, drawY + drawH * 0.18 - 140, 360, 280);
+    ctx.drawImage(this.glowOrange, drawX + drawW * 0.78 - 180, drawY + drawH * 0.18 - 140, 360, 280);
+
+    // Subtle rotating 12-spoke Eclipse Corona Rays & Baily's-Bead Rim Glints
+    for (let k = 0; k < 12; k++) {
+      const ang = (k / 12) * Math.PI * 2 + t * 0.18;
+      const spokePulse = 0.5 + 0.5 * Math.sin(t * 4.6 + k * 1.3);
+      const inner = eclipseR - 2;
+      const outer = eclipseR + 18 + spokePulse * 24;
+      ctx.strokeStyle = k % 2 === 0 ? '#fde047' : '#fb923c';
+      ctx.lineWidth = k % 3 === 0 ? 2.5 : 1.5;
+      ctx.globalAlpha = 0.14 + 0.12 * spokePulse;
+      ctx.beginPath();
+      ctx.moveTo(eclipseX + Math.cos(ang) * inner, eclipseY + Math.sin(ang) * inner);
+      ctx.lineTo(eclipseX + Math.cos(ang) * outer, eclipseY + Math.sin(ang) * outer);
+      ctx.stroke();
+
+      const bx = Math.round(eclipseX + Math.cos(ang + 0.12) * eclipseR);
+      const by = Math.round(eclipseY + Math.sin(ang + 0.12) * eclipseR);
+      ctx.globalAlpha = 0.35 + 0.35 * spokePulse;
+      ctx.fillStyle = spokePulse > 0.7 ? '#ffffff' : '#fde047';
+      ctx.fillRect(bx - 2, by - 2, 4, 4);
+    }
     ctx.restore();
 
-    // Rising Golden & Frost Sanctuary Censer Sparks below the Rose Window (Zero dotted circles!)
+    // Rising Golden & Frost Sanctuary Censer Sparks below the Rose Window
     ctx.save();
-    for (let j = 0; j < 14; j++) {
+    for (let j = 0; j < 16; j++) {
       const life = (t * (0.45 + (j % 3) * 0.12) + j * 0.41) % 1;
-      const ox = Math.round((eclipseX + (j - 6.5) * 26 + Math.sin(t * 3.2 + j) * 10) / 4) * 4;
-      const oy = Math.round((eclipseY + 95 - life * 165) / 4) * 4;
+      const ox = Math.round((eclipseX + (j - 7.5) * 24 + Math.sin(t * 3.2 + j) * 10) / 4) * 4;
+      const oy = Math.round((eclipseY + 95 - life * 170) / 4) * 4;
       ctx.globalAlpha = Math.sin(life * Math.PI) * 0.85;
-      ctx.fillStyle = j % 3 === 0 ? '#ffffff' : j % 2 === 0 ? '#fde047' : '#fb923c';
+      ctx.fillStyle = j % 4 === 0 ? '#7dd3fc' : j % 3 === 0 ? '#ffffff' : j % 2 === 0 ? '#fde047' : '#fb923c';
       ctx.fillRect(ox - 2, oy - 4, 4, 8);
       ctx.fillRect(ox - 4, oy - 2, 8, 4);
     }
@@ -996,19 +1198,19 @@ export class Renderer {
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.44;
       ctx.drawImage(glow, worldCx - glowR, worldMidY - glowR, glowR * 2, glowR * 2);
-      ctx.globalAlpha = 0.28;
-      ctx.drawImage(glow, worldCx - glowR * 0.72, gy - 26, glowR * 1.44, 98 * b.scale);
+      ctx.globalAlpha = 0.30;
+      ctx.drawImage(glow, worldCx - glowR * 0.76, gy - 28, glowR * 1.52, 104 * b.scale);
       ctx.restore();
 
-      // 3. Roaring Pixel-Art Flame Tongues & High-Rising Glowing Embers with Micro-Halos
+      // 3. Roaring Pixel-Art Flame Tongues & High-Rising Glowing Ember Trails
       ctx.save();
-      const emberCount = 16;
+      const emberCount = 18;
       for (let e = 0; e < emberCount; e++) {
         const life = (t * (1.15 + (e % 4) * 0.28) + b.seed + e * 1.17) % 1;
         const spread = (((e * 29) % 13) - 6) * 0.095 * flameW;
         const sway = Math.sin(t * 8.5 + e * 1.9 + b.seed) * (9 * b.scale * life);
         const ex = Math.round((worldCx + spread * (1 - life * 0.45) + sway) / 4) * 4;
-        const ey = Math.round((worldBot - flameH * (0.22 + life * 1.35)) / 4) * 4;
+        const ey = Math.round((worldBot - flameH * (0.22 + life * 1.42)) / 4) * 4;
         const pxSz = life < 0.28 ? 8 : life < 0.62 ? 6 : 4;
         const fade = Math.max(0, 1 - life * 0.88);
 
@@ -1018,6 +1220,10 @@ export class Renderer {
           ctx.drawImage(glow, ex - 18, ey - 18, 36, 36);
         }
         ctx.globalCompositeOperation = 'source-over';
+        // Rising 2-step pixel ember wake
+        ctx.globalAlpha = fade * 0.48;
+        ctx.fillStyle = pal[1];
+        ctx.fillRect(ex - 2, ey + pxSz * 0.5, 4, 6);
         ctx.globalAlpha = fade * 0.95;
         ctx.fillStyle = life < 0.25 ? '#ffffff' : life < 0.55 ? pal[3] : life < 0.8 ? pal[2] : pal[1];
         ctx.fillRect(ex - pxSz * 0.5, ey - pxSz * 0.5, pxSz, pxSz);
@@ -1025,20 +1231,24 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 4. Soft Dual-Elemental (Frost-Cyan vs Solar-Gold) Cathedral Floor Reflection Pools
+    // 4. Rich Warm/Cool Dual-Elemental (Frost-Cyan vs Solar-Gold) Cathedral Floor Reflection Pools
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     const altarCx = drawX + drawW * 0.50;
-    ctx.globalAlpha = 0.24 + 0.08 * Math.sin(t * 3.8);
-    ctx.drawImage(this.glowCyan, altarCx - 290, gy - 18, 260, 56);
-    ctx.drawImage(this.glowGold, altarCx + 30, gy - 18, 260, 56);
+    ctx.globalAlpha = 0.26 + 0.08 * Math.sin(t * 3.8);
+    ctx.drawImage(this.glowCyan, altarCx - 420, gy - 22, 390, 68);
+    ctx.drawImage(this.glowGold, altarCx + 30, gy - 22, 390, 68);
+    ctx.globalAlpha = 0.16 + 0.05 * Math.cos(t * 3.1);
+    ctx.drawImage(this.glowOrange, altarCx + 180, gy + 12, 340, 72);
+    ctx.drawImage(this.glowCyan, altarCx - 520, gy + 12, 340, 72);
     ctx.restore();
   }
 
   drawSylvanStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy) {
     const t = this.time;
+    const waterfallLayer = this.getSylvanWaterfallLayer(bg);
 
-    // 0. Smooth Volumetric Aurora Borealis Sky Veil (Zero vertical rectangle bars or stepped squares!)
+    // 0. Smooth Volumetric Aurora Borealis Sky Veil
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     for (let lobe = 0; lobe < 5; lobe++) {
@@ -1062,22 +1272,63 @@ export class Renderer {
     ctx.drawImage(this.glowCyan, moonX - 180, moonY - 180, 360, 360);
     ctx.restore();
 
-    // 2. Bioluminescent Waterfall Plunge Pool & Shimmering Mist Motes (Zero blocky rectangle strips!)
-    const fallsLeft = drawX + drawW * 0.415;
-    const fallsW = drawW * 0.172;
-    const fallsTop = drawY + drawH * 0.512;
-    const fallsBot = drawY + drawH * 0.728;
+    // 2. Animated Waterfall Shimmer Strips, Plunge-Pool Mist Spray Halo & Foaming Cascade Droplets
+    const fallsLeft = drawX + drawW * 0.405;
+    const fallsW = drawW * 0.192;
+    const fallsTop = drawY + drawH * 0.505;
+    const fallsBot = drawY + drawH * 0.732;
     const fallsH = fallsBot - fallsTop;
+
+    if (waterfallLayer) {
+      const wfW = waterfallLayer.width;
+      const wfH = waterfallLayer.height;
+      const strips = 14;
+      const srcX = wfW * 0.405;
+      const srcW = wfW * 0.192;
+      const srcTop = wfH * 0.505;
+      const srcH = wfH * 0.227;
+      ctx.save();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.36 + 0.10 * Math.sin(t * 6.4);
+      for (let s = 0; s < strips; s++) {
+        const flow = (s / strips + t * 0.55) % 1;
+        const sy = srcTop + ((s / strips) * srcH);
+        const sh = srcH / strips + 0.6;
+        const dy = fallsTop + (s / strips) * fallsH;
+        const dh = fallsH / strips + 1.2;
+        const shimmerX = Math.round(Math.sin(t * 8.5 + s * 0.9) * 3);
+        const dropY = Math.round(Math.sin(flow * Math.PI * 2) * 3);
+        ctx.drawImage(
+          waterfallLayer,
+          srcX,
+          sy,
+          srcW,
+          sh,
+          Math.round(fallsLeft + shimmerX),
+          Math.round(dy + dropY),
+          Math.round(fallsW),
+          Math.round(dh)
+        );
+      }
+      ctx.restore();
+    }
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.34 + 0.08 * Math.sin(t * 5);
-    ctx.drawImage(this.glowCyan, fallsLeft - 30, fallsBot - 65, fallsW + 60, 130);
+    ctx.globalAlpha = 0.36 + 0.09 * Math.sin(t * 5);
+    ctx.drawImage(this.glowCyan, fallsLeft - 45, fallsBot - 68, fallsW + 90, 138);
     ctx.globalAlpha = 0.26 + 0.06 * Math.cos(t * 4.2);
-    ctx.drawImage(this.glowEmerald, fallsLeft - 10, fallsTop - 20, fallsW + 20, fallsH + 40);
+    ctx.drawImage(this.glowEmerald, fallsLeft - 14, fallsTop - 20, fallsW + 28, fallsH + 44);
+    // Drifting Mist Spray Cloud Puffs rising from plunge pool
+    for (let m = 0; m < 5; m++) {
+      const mx = fallsLeft + (m / 4) * fallsW + Math.sin(t * 1.9 + m * 1.6) * 20;
+      const my = fallsBot - 8 - Math.abs(Math.sin(t * 1.4 + m)) * 18;
+      ctx.globalAlpha = 0.18 + 0.06 * Math.sin(t * 3.1 + m);
+      ctx.drawImage(m % 2 === 0 ? this.glowCyan : this.glowWhite, mx - 58, my - 26, 116, 52);
+    }
 
-    for (let s = 0; s < 16; s++) {
-      const streamX = fallsLeft + (s / 15) * fallsW + Math.sin(t * 3.2 + s * 1.9) * 5;
+    for (let s = 0; s < 18; s++) {
+      const streamX = fallsLeft + (s / 17) * fallsW + Math.sin(t * 3.2 + s * 1.9) * 5;
       const dropPhase = (t * (1.25 + (s % 4) * 0.18) + s * 0.21) % 1;
       const dx = Math.round(streamX);
       const dy = Math.round(fallsTop + dropPhase * fallsH);
@@ -1089,11 +1340,37 @@ export class Renderer {
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = fade * 0.85;
       ctx.fillStyle = s % 3 === 0 ? '#ffffff' : s % 2 === 0 ? '#7dd3fc' : '#6ee7b7';
-      ctx.fillRect(dx - 1, dy - 2, 3, 4);
+      ctx.fillRect(dx - 1, dy - 3, 3, 6);
     }
     ctx.restore();
 
-    // 3. 6 Hanging Bioluminescent Crystal Lanterns & Swarming Glowing Forest Fireflies
+    // 2.5. Glowing Floor Rune Pulse Rings & Ley-Band Shimmer on the Wet Sanctuary Flagstones
+    ctx.save();
+    const runeCx = drawX + drawW * 0.50;
+    const runePulse = 0.5 + 0.5 * Math.sin(t * 3.0);
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.strokeStyle = '#34d399';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = 0.16 + 0.10 * runePulse;
+    ctx.beginPath();
+    ctx.ellipse(runeCx, gy + 30, 210 + runePulse * 8, 22 + runePulse * 2, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#38bdf8';
+    ctx.globalAlpha = 0.14 + 0.08 * (1 - runePulse);
+    ctx.beginPath();
+    ctx.ellipse(runeCx, gy + 30, 145, 15, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    for (let r = 0; r < 10; r++) {
+      const rx = Math.round(runeCx + (r - 4.5) * 92);
+      const ry = gy + (r % 2 === 0 ? 12 : 48);
+      const rFade = 0.35 + 0.45 * Math.sin(t * 4.2 + r * 1.1);
+      ctx.globalAlpha = rFade * 0.36;
+      ctx.fillStyle = r % 2 === 0 ? '#6ee7b7' : '#7dd3fc';
+      ctx.fillRect(rx - 4, ry, 8, 2);
+    }
+    ctx.restore();
+
+    // 3. 6 Hanging Bioluminescent Crystal Lanterns & Swarming Glowing Forest Fireflies with Trails
     const lanterns = [
       { cx: 0.064, cy: 0.33, scale: 1.25, isCyan: false, seed: 1.1 },
       { cx: 0.150, cy: 0.41, scale: 1.05, isCyan: true, seed: 2.4 },
@@ -1128,11 +1405,16 @@ export class Renderer {
         const life = (t * (0.85 + (e % 3) * 0.22) + l.seed + e * 1.19) % 1;
         const sx = Math.round(lx + Math.sin(t * 4.2 + e * 2.1 + l.seed) * (32 * l.scale));
         const sy = Math.round(ly + 22 - life * (95 * l.scale));
+        const prevSx = Math.round(lx + Math.sin((t - 0.06) * 4.2 + e * 2.1 + l.seed) * (32 * l.scale));
+        const prevSy = sy + 5;
         const fade = Math.max(0, 1 - life * 0.85);
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = fade * 0.36;
         ctx.drawImage(glow, sx - 14, sy - 14, 28, 28);
         ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * 0.45;
+        ctx.fillStyle = pal[2];
+        ctx.fillRect(prevSx - 1, prevSy - 1, 2, 2);
         ctx.globalAlpha = fade * 0.92;
         ctx.fillStyle = e % 3 === 0 ? '#fef08a' : life < 0.45 ? pal[3] : pal[1];
         ctx.fillRect(sx - 2, sy - 2, 4, 4);
@@ -1140,24 +1422,26 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 4. Drifting Wind-Swept Luminous Sylvan Blossom Petals
+    // 4. Drifting Wind-Swept Bioluminescent Star-Petals
     ctx.save();
-    for (let p = 0; p < 18; p++) {
+    for (let p = 0; p < 22; p++) {
       const u = (t * (0.14 + (p % 3) * 0.04) + p * 0.17) % 1;
-      const px = Math.round(drawX + drawW * (0.10 + u * 0.80));
+      const px = Math.round(drawX + drawW * (0.08 + u * 0.84));
       const py = Math.round(
         drawY +
-          drawH * (0.24 + ((p * 0.19 + u * 0.55) % 0.56)) +
+          drawH * (0.22 + ((p * 0.19 + u * 0.55) % 0.58)) +
           Math.sin(t * 3.5 + p * 1.7) * 18
       );
-      const gTex = p % 2 === 0 ? this.glowEmerald : this.glowCyan;
+      const gTex = p % 3 === 0 ? this.glowGold : p % 2 === 0 ? this.glowEmerald : this.glowCyan;
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.32;
       ctx.drawImage(gTex, px - 14, py - 14, 28, 28);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.88;
+      ctx.globalAlpha = 0.90;
       ctx.fillStyle = p % 3 === 0 ? '#fef08a' : p % 2 === 0 ? '#6ee7b7' : '#7dd3fc';
-      ctx.fillRect(px - 2, py - 2, 4, 3);
+      ctx.fillRect(px - 3, py - 1, 5, 3);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(px - 1, py - 1, 2, 2);
     }
     ctx.restore();
   }
@@ -1165,12 +1449,32 @@ export class Renderer {
   drawBoneyardStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy) {
     const t = this.time;
 
-    // 0. Breathing Blood-Moon Atmospheric Horizon Pulse Behind the Gothic Spires
+    // 0. Breathing Blood-Moon Atmospheric Horizon Pulse & Distant Spire Lightning Glint
     const moonPulse = 0.22 + 0.12 * Math.sin(t * 2.1);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = moonPulse;
     ctx.drawImage(this.glowViolet, drawX + drawW * 0.25, drawY + drawH * 0.02, drawW * 0.5, drawH * 0.45);
+
+    // Occasional Distant Necropolis Spire Lightning Glint (upper sky only, zero fighter washout)
+    const boltCycle = (t * 0.24) % 1;
+    if (boltCycle > 0.925) {
+      const flash = Math.sin(((boltCycle - 0.925) / 0.075) * Math.PI);
+      const isRightSpire = Math.floor(t * 0.24) % 2 === 1;
+      const bx = drawX + drawW * (isRightSpire ? 0.68 : 0.31);
+      const by = drawY + drawH * 0.08;
+      ctx.globalAlpha = flash * 0.28;
+      ctx.drawImage(this.glowViolet, bx - 160, by - 40, 320, 240);
+      ctx.strokeStyle = '#f5d0fe';
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = flash * 0.55;
+      ctx.beginPath();
+      ctx.moveTo(bx, by);
+      ctx.lineTo(bx - 12, by + 42);
+      ctx.lineTo(bx + 8, by + 76);
+      ctx.lineTo(bx - 6, by + 128);
+      ctx.stroke();
+    }
     ctx.restore();
 
     // 1. 4 Flickering Abyssal Soul-Fire Braziers on the Necropolis Bone Pillars
@@ -1234,14 +1538,14 @@ export class Renderer {
       ctx.drawImage(this.glowViolet, worldCx - glowR * 0.72, gy - 26, glowR * 1.44, 96 * b.scale);
       ctx.restore();
 
-      // Dancing Crimson-Violet Soul-Fire Pixel Embers & Tongues with Micro-Halos
+      // Dancing Crimson-Violet Soul-Fire Pixel Embers & Curling Wisps
       ctx.save();
-      for (let e = 0; e < 14; e++) {
+      for (let e = 0; e < 16; e++) {
         const life = (t * (1.2 + (e % 3) * 0.28) + b.seed + e * 1.31) % 1;
         const spread = (((e * 23) % 11) - 5) * 0.11 * flameW;
-        const sway = Math.sin(t * 8.8 + e * 1.7 + b.seed) * (9 * b.scale * life);
+        const sway = Math.sin(t * 8.8 + e * 1.7 + b.seed) * (10 * b.scale * life);
         const ex = Math.round(worldCx + spread * (1 - life * 0.5) + sway);
-        const ey = Math.round(worldBot - flameH * (0.22 + life * 1.25));
+        const ey = Math.round(worldBot - flameH * (0.22 + life * 1.35));
         const pxSz = life < 0.35 ? 5 : life < 0.72 ? 4 : 3;
         const fade = Math.max(0, 0.96 - life * 0.85);
         if (e % 2 === 0) {
@@ -1250,6 +1554,9 @@ export class Renderer {
           ctx.drawImage(this.glowViolet, ex - 16, ey - 16, 32, 32);
         }
         ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * 0.45;
+        ctx.fillStyle = ABYSSAL_FIRE_PAL[1];
+        ctx.fillRect(ex - 1, ey + pxSz * 0.5, 2, 5);
         ctx.globalAlpha = fade;
         ctx.fillStyle =
           life < 0.22
@@ -1264,16 +1571,46 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 2. Soft Blood-Crimson & Royal-Purple Eclipse Moon Glow
-    const moonX = drawX + drawW * 0.50;
-    const moonY = drawY + drawH * 0.24;
+    // 2. Blood-Crimson & Royal-Purple Eclipse Moon Corona Ring
+    const moonX = drawX + drawW * 0.498;
+    const moonY = drawY + drawH * 0.264;
+    const moonR = Math.round(drawW * 0.101);
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.globalAlpha = 0.38 + 0.10 * Math.sin(t * 3.8);
     ctx.drawImage(this.glowViolet, moonX - 250, moonY - 250, 500, 500);
+    if (this.glowCrimson) {
+      ctx.globalAlpha = 0.26 + 0.08 * Math.cos(t * 3.1);
+      ctx.drawImage(this.glowCrimson, moonX - 220, moonY - 220, 440, 440);
+    }
+    ctx.strokeStyle = '#f43f5e';
+    ctx.lineWidth = 2.5;
+    ctx.globalAlpha = 0.28 + 0.12 * Math.sin(t * 4.4);
+    ctx.beginPath();
+    ctx.arc(moonX, moonY, moonR + 2, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#e879f9';
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = 0.22 + 0.08 * Math.cos(t * 3.6);
+    ctx.beginPath();
+    ctx.arc(moonX, moonY, moonR + 7, 0, Math.PI * 2);
+    ctx.stroke();
     ctx.restore();
 
-    // 3. Rising Spectral Wraith Wisps with Soft Volumetric Glow Halos (Zero rectangular mist bars!)
+    // 2.5. Low-Rolling Violet & Crimson Crypt Ground-Mist Ribbons along `gy`
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (let m = 0; m < 7; m++) {
+      const drift = ((t * 28 + m * 210) % (drawW * 0.92)) - drawW * 0.46;
+      const mx = drawX + drawW * 0.5 + drift;
+      const my = gy - 8 + (m % 3) * 14 + Math.sin(t * 1.8 + m) * 5;
+      const mistGlow = m % 3 === 0 && this.glowCrimson ? this.glowCrimson : this.glowViolet;
+      ctx.globalAlpha = 0.12 + 0.05 * Math.sin(t * 2.2 + m * 1.3);
+      ctx.drawImage(mistGlow, mx - 185, my - 26, 370, 52);
+    }
+    ctx.restore();
+
+    // 3. Rising Spectral Wraith Wisps with Soft Volumetric Glow Halos
     ctx.save();
     for (let w = 0; w < 18; w++) {
       const life = (t * (0.44 + (w % 3) * 0.14) + w * 0.67) % 1;
@@ -1300,9 +1637,34 @@ export class Renderer {
   drawClocktowerStageEffects(ctx, bg, drawX, drawY, drawW, drawH, gy) {
     const t = this.time;
 
-    // 1. Central Astronomical Stained-Glass Clock Dial with Sleek Tapered Clock Hands (Zero stepped squares!)
-    const clockX = drawX + drawW * 0.50;
-    const clockY = drawY + drawH * 0.31;
+    // 0. Occasional Shooting Stars streaking across the Upper Starry Observatory Arches (`y = 0.08..0.28`)
+    ctx.save();
+    for (let s = 0; s < 2; s++) {
+      const period = (t * (0.28 + s * 0.09) + s * 0.53) % 1;
+      if (period < 0.24) {
+        const u = period / 0.24;
+        const archBaseX = s === 0 ? drawX + drawW * 0.25 : drawX + drawW * 0.64;
+        const sx = archBaseX + u * (drawW * 0.10);
+        const sy = drawY + drawH * (0.10 + s * 0.05) + u * (drawH * 0.11);
+        const sFade = Math.sin(u * Math.PI);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.strokeStyle = s === 0 ? '#5eead4' : '#fde047';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = sFade * 0.72;
+        ctx.beginPath();
+        ctx.moveTo(sx, sy);
+        ctx.lineTo(sx - 28, sy - 18);
+        ctx.stroke();
+        ctx.fillStyle = '#ffffff';
+        ctx.globalAlpha = sFade * 0.95;
+        ctx.fillRect(Math.round(sx) - 2, Math.round(sy) - 2, 4, 4);
+      }
+    }
+    ctx.restore();
+
+    // 1. Central Astronomical Stained-Glass Clock Dial with Counter-Rotating Celestial Astrolabe Rings & Tapered Hands
+    const clockX = drawX + drawW * 0.502;
+    const clockY = drawY + drawH * 0.315;
 
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
@@ -1310,6 +1672,25 @@ export class Renderer {
     ctx.drawImage(this.glowTeal, clockX - 250, clockY - 250, 500, 500);
     ctx.globalAlpha = 0.28 + 0.08 * Math.cos(t * 2.8);
     ctx.drawImage(this.glowGold, clockX - 190, clockY - 190, 380, 380);
+
+    // Counter-Rotating Astrolabe Rings & Orbiting Celestial Nodes
+    for (let ring = 0; ring < 2; ring++) {
+      const rAst = ring === 0 ? 112 : 154;
+      const rot = ring === 0 ? t * 0.32 : -t * 0.21;
+      ctx.strokeStyle = ring === 0 ? '#2dd4bf' : '#facc15';
+      ctx.lineWidth = 1.5;
+      ctx.globalAlpha = 0.26 + 0.08 * Math.sin(t * 3.0 + ring);
+      for (let arcIdx = 0; arcIdx < 4; arcIdx++) {
+        const a0 = rot + (arcIdx * Math.PI) / 2 + 0.14;
+        ctx.beginPath();
+        ctx.arc(clockX, clockY, rAst, a0, a0 + Math.PI * 0.34);
+        ctx.stroke();
+        const nx = Math.round(clockX + Math.cos(a0 - 0.07) * rAst);
+        const ny = Math.round(clockY + Math.sin(a0 - 0.07) * rAst);
+        ctx.fillStyle = ring === 0 ? '#99f6e4' : '#fef08a';
+        ctx.fillRect(nx - 2, ny - 2, 4, 4);
+      }
+    }
     ctx.restore();
 
     ctx.save();
@@ -1394,20 +1775,33 @@ export class Renderer {
       ctx.restore();
     }
 
-    // 3. Rising Anti-Gravity Golden & Teal Time-Sand Motes from the Belfry Floor
+    // 3. Glowing Zodiac Floor Ticks & Rising Anti-Gravity Golden Chrono-Dust
     ctx.save();
     const floorCx = drawX + drawW * 0.50;
-    for (let n = 0; n < 14; n++) {
+    const floorCy = gy + 44;
+    const activeHour = Math.floor(t * 3) % 12;
+    for (let z = 0; z < 12; z++) {
+      const za = (z / 12) * Math.PI * 2 + t * 0.08;
+      const zx = Math.round(floorCx + Math.cos(za) * 245);
+      const zy = Math.round(floorCy + Math.sin(za) * 34);
+      const isLit = z === activeHour || z === (activeHour + 6) % 12;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = isLit ? 0.55 : 0.22;
+      ctx.fillStyle = z % 2 === 0 ? '#fde047' : '#2dd4bf';
+      ctx.fillRect(zx - 3, zy - 1, 6, 3);
+    }
+
+    for (let n = 0; n < 18; n++) {
       const life = (t * (0.55 + (n % 3) * 0.15) + n * 0.37) % 1;
-      const nx = Math.round(floorCx + (n - 6.5) * 42 + Math.sin(t * 2.5 + n) * 8);
-      const ny = Math.round(gy + 12 - life * 85);
+      const nx = Math.round(floorCx + (n - 8.5) * 38 + Math.sin(t * 2.5 + n) * 10);
+      const ny = Math.round(gy + 16 - life * 105);
       const fade = Math.sin(life * Math.PI);
       const glow = n % 2 === 0 ? this.glowGold : this.glowTeal;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.32;
+      ctx.globalAlpha = fade * 0.34;
       ctx.drawImage(glow, nx - 12, ny - 12, 24, 24);
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.85;
+      ctx.globalAlpha = fade * 0.88;
       ctx.fillStyle = n % 2 === 0 ? '#fde047' : '#2dd4bf';
       ctx.fillRect(nx - 2, ny - 2, 3, 4);
     }
@@ -1415,67 +1809,118 @@ export class Renderer {
   }
 
   /**
-   * Live HD-2D Stage Effects for Aethelgard's Supreme Finisher Stage Transformation:
-   * "CELESTIAL SANCTUARY OF JUSTICE" (`arena_sanctuary.png`)
+   * Live HD-2D Stage Effects for "CELESTIAL SANCTUARY OF JUSTICE" (`arena_sanctuary.png`)
    */
   drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
     const t = this.time;
     const sanctuaryCx = drawX + drawW * 0.50;
-    const roseY = drawY + drawH * 0.28;
+    const roseY = drawY + drawH * 0.32;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Radiant Celestial Rose-Window & Sapphire-Gold Sky Halo
+    // 0. High-Altitude Drifting Cloud-Sea Wisps past the Flanking Marble Colonnades
     ctx.globalCompositeOperation = 'lighter';
+    for (let c = 0; c < 6; c++) {
+      const isLeft = c < 3;
+      const localIdx = c % 3;
+      const drift = Math.sin(t * 0.65 + c * 1.4) * 26;
+      const cloudX =
+        drawX + drawW * (isLeft ? 0.08 + localIdx * 0.08 : 0.76 + localIdx * 0.08) + drift;
+      const cloudY = drawY + drawH * (0.54 + (localIdx % 2) * 0.08);
+      const cGlow = localIdx % 2 === 0 ? this.glowWhite : this.glowCyan;
+      if (cGlow) {
+        ctx.globalAlpha = (0.16 + 0.05 * Math.sin(t * 1.6 + c)) * alpha;
+        ctx.drawImage(cGlow, cloudX - 150, cloudY - 48, 300, 96);
+      }
+    }
+
+    // 1. Radiant Celestial Rose-Window & Sapphire-Gold Sky Halo
     ctx.globalAlpha = (0.46 + 0.12 * Math.sin(t * 3.8)) * alpha;
     if (this.glowCyan) ctx.drawImage(this.glowCyan, sanctuaryCx - 360, roseY - 260, 720, 520);
-    ctx.globalAlpha = (0.38 + 0.10 * Math.cos(t * 3.1)) * alpha;
+    ctx.globalAlpha = (0.36 + 0.10 * Math.cos(t * 3.1)) * alpha;
     if (this.glowWhite) ctx.drawImage(this.glowWhite, sanctuaryCx - 260, roseY - 200, 520, 400);
     ctx.globalAlpha = (0.28 + 0.08 * Math.sin(t * 2.4)) * alpha;
     if (this.glowGold) ctx.drawImage(this.glowGold, sanctuaryCx - 210, roseY - 160, 420, 320);
 
-    // 2. 5 Diagonal Heavenly Sanctuary God-Ray Shafts Streaming Down from the Sky Breach
+    // 2. 5 Soft Diagonal Heavenly Sanctuary God-Ray Shafts Streaming Down from the Sky Breach
     for (let i = -2; i <= 2; i++) {
-      const topX = sanctuaryCx + i * 115;
-      const botX = sanctuaryCx + i * 185 + Math.sin(t * 1.8 + i) * 18;
-      const rayW = i === 0 ? 96 : 68;
-      const rayGrad = ctx.createLinearGradient(topX, drawY + 40, botX, gy);
-      rayGrad.addColorStop(0, i === 0 ? 'rgba(255, 255, 255, 0.36)' : 'rgba(125, 211, 252, 0.26)');
-      rayGrad.addColorStop(0.55, 'rgba(56, 189, 248, 0.14)');
+      const topX = sanctuaryCx - 80 + i * 105;
+      const botX = sanctuaryCx + 40 + i * 165 + Math.sin(t * 1.8 + i) * 18;
+      const rayW = i === 0 ? 92 : 64;
+      const rayGrad = ctx.createLinearGradient(topX, drawY + 30, botX, gy + 12);
+      rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+      rayGrad.addColorStop(0.22, i === 0 ? 'rgba(255, 255, 255, 0.28)' : 'rgba(125, 211, 252, 0.20)');
+      rayGrad.addColorStop(0.65, 'rgba(56, 189, 248, 0.10)');
       rayGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
-      ctx.globalAlpha = alpha * (0.78 + 0.22 * Math.sin(t * 3.2 + i * 1.3));
+      ctx.globalAlpha = alpha * (0.72 + 0.22 * Math.sin(t * 3.2 + i * 1.3));
       ctx.fillStyle = rayGrad;
       ctx.beginPath();
-      ctx.moveTo(topX - rayW * 0.45, drawY + 40);
-      ctx.lineTo(topX + rayW * 0.45, drawY + 40);
+      ctx.moveTo(topX - rayW * 0.45, drawY + 30);
+      ctx.lineTo(topX + rayW * 0.45, drawY + 30);
       ctx.lineTo(botX + rayW * 0.85, gy + 12);
       ctx.lineTo(botX - rayW * 0.85, gy + 12);
       ctx.closePath();
       ctx.fill();
     }
 
-    // 3. Consecrated Sapphire & White-Gold Runic Floor Seal Glow across the Marble Sanctuary Floor
+    // 3. Consecrated Sapphire & Imperial-Gold Runic Floor Seal Circles across the Marble Floor
+    const sealPulse = 0.5 + 0.5 * Math.sin(t * 3.4);
+    ctx.strokeStyle = '#7dd3fc';
+    ctx.lineWidth = 2;
+    ctx.globalAlpha = (0.20 + 0.10 * sealPulse) * alpha;
+    ctx.beginPath();
+    ctx.ellipse(sanctuaryCx, gy + 34, 290, 32, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = '#fde047';
+    ctx.lineWidth = 1.5;
+    ctx.globalAlpha = (0.18 + 0.08 * (1 - sealPulse)) * alpha;
+    ctx.beginPath();
+    ctx.ellipse(sanctuaryCx, gy + 34, 185, 20, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
     for (let k = -2; k <= 2; k++) {
       const poolX = sanctuaryCx + k * 210;
       const glow = k % 2 === 0 ? this.glowCyan : this.glowGold;
       if (glow) {
-        ctx.globalAlpha = (0.34 + 0.09 * Math.sin(t * 4.5 + k)) * alpha;
+        ctx.globalAlpha = (0.30 + 0.09 * Math.sin(t * 4.5 + k)) * alpha;
         ctx.drawImage(glow, poolX - 160, gy - 26, 320, 68);
       }
     }
 
-    // 4. Ascending Sacred White & Ice-Blue Censer Motes across the Sanctuary Nave
-    for (let m = 0; m < 24; m++) {
+    // 4. Gentle Falling Pixel Seraphic Feathers & Ascending Sacred Censer Motes
+    for (let f = 0; f < 18; f++) {
+      const fall = (t * (0.18 + (f % 4) * 0.04) + f * 0.23) % 1;
+      const fx = Math.round(
+        (sanctuaryCx + (f - 8.5) * 62 + Math.sin(t * 2.1 + f * 1.5) * 26) / 2
+      ) * 2;
+      const fy = Math.round((drawY + drawH * 0.18 + fall * (gy - drawY - drawH * 0.14)) / 2) * 2;
+      const fFade = Math.sin(fall * Math.PI) * alpha;
+      const tilt = Math.sin(t * 3.0 + f) > 0 ? 1 : -1;
+      if (f % 2 === 0 && this.glowCyan) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fFade * 0.28;
+        ctx.drawImage(this.glowCyan, fx - 14, fy - 14, 28, 28);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fFade * 0.90;
+      ctx.fillStyle = f % 3 === 0 ? '#fef08a' : '#bae6fd';
+      ctx.fillRect(fx - 3 * tilt, fy - 2, 6, 3);
+      ctx.fillRect(fx - 1 * tilt, fy + 1, 5, 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(fx - 2 * tilt, fy - 1, 4, 2);
+    }
+
+    for (let m = 0; m < 18; m++) {
       const life = (t * (0.65 + (m % 4) * 0.16) + m * 0.29) % 1;
-      const mx = Math.round((sanctuaryCx + (m - 11.5) * 46 + Math.sin(t * 3.4 + m) * 14) / 3) * 3;
-      const my = Math.round((gy - 8 - life * 380) / 3) * 3;
+      const mx = Math.round((sanctuaryCx + (m - 8.5) * 54 + Math.sin(t * 3.4 + m) * 14) / 3) * 3;
+      const my = Math.round((gy - 8 - life * 360) / 3) * 3;
       const fade = Math.sin(life * Math.PI) * alpha;
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.92;
+      ctx.globalAlpha = fade * 0.88;
       ctx.fillStyle = m % 3 === 0 ? '#fef08a' : m % 2 === 0 ? '#ffffff' : '#7dd3fc';
-      ctx.fillRect(mx - 2, my - 4, 4, 8);
-      ctx.fillRect(mx - 4, my - 2, 8, 4);
+      ctx.fillRect(mx - 1, my - 3, 2, 6);
+      ctx.fillRect(mx - 3, my - 1, 6, 2);
     }
 
     ctx.restore();
@@ -1487,65 +1932,259 @@ export class Renderer {
    */
   drawInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
     const t = this.time;
-    const centerCx = drawX + drawW * 0.50;
-    const calderaY = drawY + drawH * 0.34;
+    const assets = PixelForge.initAssets();
+    const bg = assets ? assets.arenaInferno : null;
+    const magmaLayer = this.getInfernoMagmaLayer(bg);
+
+    const calderaCx = drawX + drawW * 0.495;
+    const calderaCy = drawY + drawH * 0.42;
+    const leftPeakCx = drawX + drawW * 0.268;
+    const leftPeakCy = drawY + drawH * 0.25;
+    const rightPeakCx = drawX + drawW * 0.748;
+    const rightPeakCy = drawY + drawH * 0.22;
+    const parallaxSmokeX = (this.camParallaxX || 0) * 0.08;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Apocalyptic Solar-Magma & Crimson Caldera Sky Horizon Pulse
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = (0.52 + 0.14 * Math.sin(t * 4.2)) * alpha;
-    if (this.glowOrange) ctx.drawImage(this.glowOrange, centerCx - 420, calderaY - 260, 840, 520);
-    ctx.globalAlpha = (0.38 + 0.10 * Math.cos(t * 3.5)) * alpha;
-    if (this.glowCrimson) ctx.drawImage(this.glowCrimson, centerCx - 340, calderaY - 220, 680, 440);
-    ctx.globalAlpha = (0.34 + 0.10 * Math.sin(t * 5.1)) * alpha;
-    if (this.glowGold) ctx.drawImage(this.glowGold, centerCx - 240, calderaY - 160, 480, 320);
-
-    // 2. Pulsing Molten Magma Rivers & Cracked Basalt Fissures across the Wasteland Floor (`gy`)
-    const fissures = [-440, -290, -145, 0, 145, 290, 440];
-    for (let i = 0; i < fissures.length; i++) {
-      const fx = centerCx + fissures[i];
-      const pulse = 0.72 + 0.28 * Math.sin(t * 6.5 + i * 1.4);
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.44 * pulse * alpha;
-      if (this.glowOrange) ctx.drawImage(this.glowOrange, fx - 140, gy - 32, 280, 74);
-      if (i % 2 === 0 && this.glowGold) {
-        ctx.globalAlpha = 0.32 * pulse * alpha;
-        ctx.drawImage(this.glowGold, fx - 95, gy - 22, 190, 52);
+    // 0. Billowing Dark-Rimmed Volcanic Ash & Pyroclastic Smoke Plumes behind the Central Caldera & Twin Peaks
+    const smokeVents = [
+      { x: calderaCx, y: calderaCy - 36, scale: 1.35, count: 7, seed: 0.4 },
+      { x: leftPeakCx, y: leftPeakCy - 12, scale: 0.72, count: 4, seed: 2.1 },
+      { x: rightPeakCx, y: rightPeakCy - 14, scale: 0.78, count: 4, seed: 3.9 }
+    ];
+    ctx.globalCompositeOperation = 'source-over';
+    for (const vent of smokeVents) {
+      for (let p = 0; p < vent.count; p++) {
+        const u = (t * (0.16 + (p % 3) * 0.04) + vent.seed + p * 0.27) % 1;
+        const driftX = (u * 78 + Math.sin(t * 1.4 + p + vent.seed) * 16) * vent.scale + parallaxSmokeX;
+        const riseY = u * 165 * vent.scale;
+        const px = Math.round((vent.x + driftX) / 4) * 4;
+        const py = Math.round((vent.y - riseY) / 4) * 4;
+        const pw = Math.round((44 + u * 64) * vent.scale);
+        const ph = Math.round((20 + u * 28) * vent.scale);
+        const sFade = Math.sin(u * Math.PI) * 0.38 * alpha;
+        // Dark pyroclastic ash body
+        ctx.globalAlpha = sFade;
+        ctx.fillStyle = '#180c09';
+        ctx.fillRect(px - (pw >> 1), py - (ph >> 1), pw, ph);
+        // Scorching magma-lit underbelly rim facing the caldera below
+        ctx.globalAlpha = sFade * (1 - u * 0.55) * 0.85;
+        ctx.fillStyle = u < 0.45 ? '#c2410c' : '#7c2d12';
+        ctx.fillRect(px - Math.round(pw * 0.38), py + Math.round(ph * 0.22), Math.round(pw * 0.76), 4);
       }
-
-      // Stepped Pixel-Art Glowing Lava Crack Vein along the floor
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = 0.92 * alpha;
-      const crackW = Math.round((56 + (i % 3) * 18) * pulse);
-      ctx.fillStyle = '#9a3412';
-      ctx.fillRect(Math.round(fx - crackW * 0.6), gy - 2, Math.round(crackW * 1.2), 6);
-      ctx.fillStyle = '#f97316';
-      ctx.fillRect(Math.round(fx - crackW * 0.45), gy - 1, Math.round(crackW * 0.9), 4);
-      ctx.fillStyle = '#fef08a';
-      ctx.fillRect(Math.round(fx - crackW * 0.25), gy, Math.round(crackW * 0.5), 2);
     }
 
-    // 3. Roaring Volcanic Ash, Cinders & Rising Magma Sparks across the entire Laywaste of Inferno!
-    for (let e = 0; e < 36; e++) {
-      const life = (t * (0.95 + (e % 5) * 0.22) + e * 0.31) % 1;
-      const laneX = centerCx + ((e - 17.5) * 34) + Math.sin(t * 4.8 + e * 1.7) * 22;
-      const ex = Math.round(laneX / 3) * 3;
-      const ey = Math.round((gy + 8 - life * 460) / 3) * 3;
+    // 1. Pulsing Caldera & Twin-Peak Solar-Corona Halos (`glowOrange` + `glowCrimson` + `glowGold`)
+    ctx.globalCompositeOperation = 'lighter';
+    ctx.globalAlpha = (0.50 + 0.14 * Math.sin(t * 4.2)) * alpha;
+    if (this.glowOrange) ctx.drawImage(this.glowOrange, calderaCx - 430, calderaCy - 270, 860, 540);
+    ctx.globalAlpha = (0.36 + 0.10 * Math.cos(t * 3.5)) * alpha;
+    if (this.glowCrimson) ctx.drawImage(this.glowCrimson, calderaCx - 350, calderaCy - 220, 700, 440);
+    ctx.globalAlpha = (0.34 + 0.10 * Math.sin(t * 5.3)) * alpha;
+    if (this.glowGold) ctx.drawImage(this.glowGold, calderaCx - 240, calderaCy - 155, 480, 310);
+
+    // Twin Volcanic Peak Eruption Coronas
+    if (this.glowOrange) {
+      ctx.globalAlpha = (0.30 + 0.10 * Math.sin(t * 4.8 + 1.2)) * alpha;
+      ctx.drawImage(this.glowOrange, leftPeakCx - 125, leftPeakCy - 95, 250, 190);
+      ctx.globalAlpha = (0.32 + 0.10 * Math.cos(t * 4.5 + 2.4)) * alpha;
+      ctx.drawImage(this.glowOrange, rightPeakCx - 135, rightPeakCy - 100, 270, 200);
+    }
+
+    // 2. Live Animated `getInfernoMagmaLayer(bg)` Heat-Shimmer & Downward Lava Cascade Wave-Strips
+    if (magmaLayer) {
+      const mw = magmaLayer.width;
+      const mh = magmaLayer.height;
+
+      // 2A. Central Caldera & Twin Peaks Horizontal Heat-Shimmer Wave-Strips
+      const shimmerZones = [
+        { x0: 0.35, y0: 0.30, w: 0.30, h: 0.34, strips: 14, amp: 4.5, seed: 0.5 },
+        { x0: 0.22, y0: 0.19, w: 0.10, h: 0.16, strips: 6, amp: 2.5, seed: 2.2 },
+        { x0: 0.70, y0: 0.17, w: 0.10, h: 0.17, strips: 6, amp: 2.5, seed: 3.8 }
+      ];
+      ctx.globalCompositeOperation = 'lighter';
+      for (const z of shimmerZones) {
+        ctx.globalAlpha = (0.44 + 0.16 * Math.sin(t * 7.2 + z.seed)) * alpha;
+        for (let s = 0; s < z.strips; s++) {
+          const u = s / z.strips;
+          const sy = (z.y0 + u * z.h) * mh;
+          const sh = (z.h / z.strips) * mh + 0.6;
+          const dy = drawY + (z.y0 + u * z.h) * drawH;
+          const dh = (z.h / z.strips) * drawH + 1.2;
+          const waveX = Math.round(Math.sin(t * 9.6 + s * 0.8 + z.seed) * z.amp * (1 - u * 0.4));
+          const liftY = Math.round(Math.cos(t * 7.4 + s * 0.9) * 1.5);
+          ctx.drawImage(
+            magmaLayer,
+            z.x0 * mw,
+            sy,
+            z.w * mw,
+            sh,
+            Math.round(drawX + z.x0 * drawW + waveX),
+            Math.round(dy - liftY),
+            Math.round(z.w * drawW),
+            Math.round(dh)
+          );
+        }
+      }
+
+      // 2B. Flank Lava Falls (`(0.10, 0.66)` & `(0.92, 0.65)`) Downward Cascade Wave-Strips
+      const lavaFalls = [
+        { x0: 0.04, y0: 0.56, w: 0.12, h: 0.20, poolCx: 0.10, poolCy: 0.72, seed: 1.1 },
+        { x0: 0.85, y0: 0.56, w: 0.13, h: 0.20, poolCx: 0.92, poolCy: 0.71, seed: 4.3 }
+      ];
+      for (const lf of lavaFalls) {
+        const strips = 10;
+        ctx.globalAlpha = (0.48 + 0.16 * Math.sin(t * 8.4 + lf.seed)) * alpha;
+        for (let s = 0; s < strips; s++) {
+          const u = s / strips;
+          const flowPhase = (u - ((t * 0.85) % 1) + 1) % 1;
+          const sy = (lf.y0 + u * lf.h) * mh;
+          const sh = (lf.h / strips) * mh + 0.6;
+          const dy = drawY + (lf.y0 + u * lf.h) * drawH;
+          const dh = (lf.h / strips) * drawH + 1.5;
+          const cascadeDrop = Math.round(Math.sin(flowPhase * Math.PI * 2) * 3.5);
+          const swayX = Math.round(Math.sin(t * 7.5 + s * 1.1 + lf.seed) * 2.5);
+          ctx.drawImage(
+            magmaLayer,
+            lf.x0 * mw,
+            sy,
+            lf.w * mw,
+            sh,
+            Math.round(drawX + lf.x0 * drawW + swayX),
+            Math.round(dy + cascadeDrop),
+            Math.round(lf.w * drawW),
+            Math.round(dh)
+          );
+        }
+        if (this.glowOrange) {
+          ctx.globalAlpha = (0.34 + 0.10 * Math.sin(t * 6.0 + lf.seed)) * alpha;
+          ctx.drawImage(
+            this.glowOrange,
+            drawX + lf.poolCx * drawW - 95,
+            drawY + lf.poolCy * drawH - 55,
+            190,
+            110
+          );
+        }
+      }
+
+      // 2C. Floor Lava Rivers (`y = 0.72..0.98`) Flowing Molten Undulation Strips
+      const riverStrips = 12;
+      const rY0 = 0.72;
+      const rH = 0.26;
+      ctx.globalAlpha = (0.34 + 0.12 * Math.sin(t * 5.4)) * alpha;
+      for (let s = 0; s < riverStrips; s++) {
+        const u = s / riverStrips;
+        const sy = (rY0 + u * rH) * mh;
+        const sh = (rH / riverStrips) * mh + 0.6;
+        const dy = drawY + (rY0 + u * rH) * drawH;
+        const dh = (rH / riverStrips) * drawH + 1.2;
+        const driftX = Math.round(Math.sin(t * 5.8 + s * 0.95) * (2.5 + u * 2.5));
+        ctx.drawImage(
+          magmaLayer,
+          0.04 * mw,
+          sy,
+          0.92 * mw,
+          sh,
+          Math.round(drawX + 0.04 * drawW + driftX),
+          Math.round(dy),
+          Math.round(0.92 * drawW),
+          Math.round(dh)
+        );
+      }
+    }
+
+    // 3. Glowing Branching Molten Floor Fissures (`gy - 6 .. gy + 110`) & Periodic Magma-Bubble / Spark Pops
+    const centerCx = drawX + drawW * 0.50;
+    const fissures = [-480, -340, -195, -60, 85, 225, 365, 500];
+    for (let i = 0; i < fissures.length; i++) {
+      const fx = centerCx + fissures[i];
+      const fy = gy - 4 + ((i * 31) % 5) * 22;
+      const pulse = 0.72 + 0.28 * Math.sin(t * 6.2 + i * 1.4);
+
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.36 * pulse * alpha;
+      if (this.glowOrange) ctx.drawImage(this.glowOrange, fx - 135, fy - 28, 270, 64);
+      if (i % 2 === 0 && this.glowGold) {
+        ctx.globalAlpha = 0.26 * pulse * alpha;
+        ctx.drawImage(this.glowGold, fx - 90, fy - 18, 180, 44);
+      }
+
+      // Stepped Branching Pixel-Art Glowing Lava Vein + Diagonal Fork
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.90 * alpha;
+      const crackW = Math.round((58 + (i % 3) * 22) * pulse);
+      const branchDir = i % 2 === 0 ? 1 : -1;
+      ctx.fillStyle = '#431407';
+      ctx.fillRect(Math.round(fx - crackW * 0.62), fy - 2, Math.round(crackW * 1.24), 6);
+      ctx.fillStyle = '#ea580c';
+      ctx.fillRect(Math.round(fx - crackW * 0.48), fy - 1, Math.round(crackW * 0.96), 4);
+      ctx.fillRect(Math.round(fx + branchDir * 12), fy + 3, Math.round(crackW * 0.42), 3);
+      ctx.fillRect(Math.round(fx + branchDir * 24), fy + 6, Math.round(crackW * 0.28), 2);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(Math.round(fx - crackW * 0.26), fy, Math.round(crackW * 0.52), 2);
+
+      // Periodic Mini Magma-Bubble Blister & Crisp Pixel Spark Pop
+      const popCycle = (t * (0.72 + (i % 3) * 0.14) + i * 0.39) % 1;
+      const bx = Math.round((fx + branchDir * 10) / 2) * 2;
+      const by = fy;
+      if (popCycle > 0.45 && popCycle < 0.72) {
+        const swell = (popCycle - 0.45) / 0.27;
+        const bSz = swell > 0.6 ? 6 : 4;
+        ctx.fillStyle = '#f97316';
+        ctx.fillRect(bx - (bSz >> 1), by - bSz + 1, bSz, bSz);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(bx - 1, by - bSz + 2, 2, 2);
+      } else if (popCycle >= 0.72) {
+        const burst = (popCycle - 0.72) / 0.28;
+        ctx.globalAlpha = (1 - burst) * 0.92 * alpha;
+        for (let sp = -1; sp <= 1; sp++) {
+          const sx = Math.round(bx + sp * (6 + burst * 18));
+          const sy = Math.round(by - Math.sin(burst * Math.PI) * (14 + Math.abs(sp) * 6));
+          ctx.fillStyle = sp === 0 ? '#ffffff' : '#fb923c';
+          ctx.fillRect(sx - 1, sy - 1, 3, 3);
+        }
+      }
+    }
+
+    // 4. 52 Wind-Swept Rising Spiral Embers & Cinders across the Laywaste of Inferno!
+    for (let e = 0; e < 52; e++) {
+      const life = (t * (0.88 + (e % 5) * 0.21) + e * 0.29) % 1;
+      const baseLaneX = drawX + drawW * (0.06 + ((e * 37) % 100) * 0.0088);
+      const windDrift = life * (42 + (e % 3) * 18);
+      const spiralX = Math.sin(life * Math.PI * 4 + t * 5.2 + e * 1.7) * (14 + (e % 4) * 5);
+      const ex = Math.round((baseLaneX + windDrift + spiralX) / 3) * 3;
+      const ey = Math.round((gy + 24 - life * 510) / 3) * 3;
       const fade = Math.sin(life * Math.PI) * alpha;
-      const sz = life < 0.35 ? 6 : 4;
+      const sz = life < 0.30 ? 5 : life < 0.70 ? 4 : 3;
 
       if (e % 2 === 0 && this.glowOrange) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.38;
-        ctx.drawImage(this.glowOrange, ex - 18, ey - 18, 36, 36);
+        ctx.globalAlpha = fade * 0.34;
+        ctx.drawImage(
+          e % 6 === 0 && this.glowCrimson ? this.glowCrimson : this.glowOrange,
+          ex - 16,
+          ey - 16,
+          32,
+          32
+        );
       }
       ctx.globalCompositeOperation = 'source-over';
+      // Trailing cooling cinder wake
+      ctx.globalAlpha = fade * 0.50;
+      ctx.fillStyle = '#9a3412';
+      ctx.fillRect(ex - 2, ey + 2, 3, 4);
       ctx.globalAlpha = fade * 0.95;
       ctx.fillStyle =
-        life < 0.22 ? '#ffffff' : life < 0.50 ? '#fef08a' : life < 0.78 ? '#f97316' : '#dc2626';
-      ctx.fillRect(ex - sz * 0.5, ey - sz * 0.5, sz, sz);
+        life < 0.20
+          ? '#ffffff'
+          : life < 0.48
+            ? '#fef08a'
+            : life < 0.76
+              ? '#fb923c'
+              : '#dc2626';
+      ctx.fillRect(ex - (sz >> 1), ey - (sz >> 1), sz, sz);
     }
 
     ctx.restore();
@@ -1572,11 +2211,12 @@ export class Renderer {
       emerald: { accent: '#34d399', alt: '#fde047', bg: '#020a06' },
       abyssal: { accent: '#c084fc', alt: '#f43f5e', bg: '#08020d' },
       forge: { accent: '#f59e0b', alt: '#34d399', bg: '#0b0502' },
-      glacial: { accent: '#67e8f9', alt: '#818cf8', bg: '#02080e' },
+      glacial: { accent: '#67e8f9', alt: '#ecfeff', bg: '#082f49' },
       cyber: { accent: '#00f0ff', alt: '#f43f5e', bg: '#02060c' }
     };
     const pal = IMPACT_STYLE_PALETTES[this.impactFrameStyle] || IMPACT_STYLE_PALETTES.inferno;
     const accentCol = pal.accent;
+    const invertedFlashCol = this.impactFrameStyle === 'glacial' ? '#ecfeff' : '#ffffff';
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -1584,7 +2224,7 @@ export class Renderer {
     // 1. Full-Arena Stark High-Contrast Backdrop Flash
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 0.96;
-    ctx.fillStyle = isInverted ? '#ffffff' : pal.bg;
+    ctx.fillStyle = isInverted ? invertedFlashCol : pal.bg;
     ctx.fillRect(-4000, -3000, ww + 8000, 6000);
 
     // 2. 48 Pixel-Stepped Radial Anime Impact Speed-Rays bursting from `(cx, cy)`
@@ -2185,41 +2825,161 @@ export class Renderer {
   }
 
   drawVolumetricGodRays(ctx, ww, gy) {
+    const activeStage = this.getActiveStageId();
+    const t = this.time;
+    const parX = (this.camParallaxX || 0) * 0.18;
     ctx.save();
 
-    // Soft ambient radial sky-glow per stage (zero hard-edged polygon wedges or stepped rays!)
+    // 1. Soft Ambient Radial Sky-Glow per Active Stage
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = 0.22 + 0.05 * Math.sin(this.time * 1.4);
+    ctx.globalAlpha = 0.22 + 0.05 * Math.sin(t * 1.4);
     const skyGlow =
-      this.stageId === 'sylvan'
+      activeStage === 'sylvan'
         ? this.glowEmerald
-        : this.stageId === 'boneyard'
+        : activeStage === 'boneyard'
           ? this.glowViolet
-          : this.stageId === 'clocktower'
+          : activeStage === 'clocktower'
             ? this.glowTeal
-            : this.glowGold;
-    ctx.drawImage(skyGlow, ww * 0.5 - 380, gy - 540, 760, 480);
+            : activeStage === 'sanctuary'
+              ? this.glowCyan
+              : activeStage === 'inferno'
+                ? this.glowOrange
+                : this.glowGold;
+    if (skyGlow) {
+      ctx.drawImage(skyGlow, ww * 0.5 - 390 + parX * 0.4, gy - 540, 780, 480);
+    }
+    if (activeStage === 'inferno' && this.glowCrimson) {
+      ctx.globalAlpha = 0.16 + 0.04 * Math.cos(t * 2.1);
+      ctx.drawImage(this.glowCrimson, ww * 0.5 - 320 + parX * 0.3, gy - 480, 640, 420);
+    } else if (activeStage === 'sanctuary' && this.glowGold) {
+      ctx.globalAlpha = 0.16 + 0.04 * Math.cos(t * 1.9);
+      ctx.drawImage(this.glowGold, ww * 0.5 - 280 + parX * 0.3, gy - 510, 560, 420);
+    }
 
+    // 2. 5 Diagonal Volumetric Parallax Light-Shafts (`0.06..0.12` alpha in `'lighter'` — zero fighter washout!)
+    const shaftCount = 5;
+    for (let s = 0; s < shaftCount; s++) {
+      const idx = s - 2; // -2..+2
+      const sway = Math.sin(t * (0.9 + s * 0.17) + s * 1.4) * 22;
+      let topX;
+      let botX;
+      let topRgb;
+      let midRgb;
+      let baseAlpha = 0.085;
+
+      if (activeStage === 'inferno') {
+        topX = ww * 0.5 + idx * 145 - 35 + parX;
+        botX = ww * 0.5 + idx * 195 + 45 + sway + parX * 1.15;
+        topRgb = s % 2 === 0 ? '251, 146, 60' : '250, 204, 21';
+        midRgb = s % 3 === 0 ? '239, 68, 68' : '234, 88, 12';
+        baseAlpha = 0.095;
+      } else if (activeStage === 'sanctuary') {
+        topX = ww * 0.5 - 95 + idx * 118 + parX;
+        botX = ww * 0.5 + 35 + idx * 172 + sway + parX * 1.15;
+        topRgb = s === 2 ? '254, 240, 138' : '125, 211, 252';
+        midRgb = s % 2 === 0 ? '56, 189, 248' : '250, 204, 21';
+        baseAlpha = 0.095;
+      } else if (activeStage === 'sylvan') {
+        topX = ww * 0.5 - 40 + idx * 135 + parX;
+        botX = ww * 0.5 + 30 + idx * 178 + sway + parX * 1.15;
+        topRgb = s % 2 === 0 ? '52, 211, 153' : '253, 224, 71';
+        midRgb = s % 2 === 0 ? '16, 185, 129' : '56, 189, 248';
+        baseAlpha = 0.085;
+      } else if (activeStage === 'boneyard') {
+        topX = ww * 0.5 + idx * 125 + parX;
+        botX = ww * 0.5 + idx * 185 + sway + parX * 1.15;
+        topRgb = s % 2 === 0 ? '244, 63, 94' : '192, 132, 252';
+        midRgb = s % 2 === 0 ? '159, 18, 57' : '126, 34, 206';
+        baseAlpha = 0.075;
+      } else if (activeStage === 'clocktower') {
+        topX = ww * 0.5 + idx * 130 + parX;
+        botX = ww * 0.5 + idx * 182 + sway + parX * 1.15;
+        topRgb = s % 2 === 0 ? '45, 212, 191' : '250, 204, 21';
+        midRgb = s % 2 === 0 ? '20, 184, 166' : '202, 138, 4';
+        baseAlpha = 0.085;
+      } else {
+        // Cathedral: frost-cyan shafts on left, eclipse-solar shafts on center/right
+        topX = ww * 0.5 + idx * 118 + parX;
+        botX = ww * 0.5 + idx * 188 + sway + parX * 1.15;
+        const isCool = idx < 0;
+        topRgb = isCool ? '56, 189, 248' : idx === 0 ? '253, 224, 71' : '251, 146, 60';
+        midRgb = isCool ? '14, 165, 233' : '234, 88, 12';
+        baseAlpha = 0.088;
+      }
+
+      const topY = gy - 545;
+      const botY = gy + 16;
+      const beamAlpha = baseAlpha + 0.025 * Math.sin(t * 2.1 + s * 1.3);
+      const grad = ctx.createLinearGradient(topX, topY, botX, botY);
+      grad.addColorStop(0, `rgba(${topRgb}, 0)`);
+      grad.addColorStop(0.24, `rgba(${topRgb}, 1)`);
+      grad.addColorStop(0.68, `rgba(${midRgb}, 0.52)`);
+      grad.addColorStop(1, `rgba(${midRgb}, 0)`);
+
+      ctx.fillStyle = grad;
+      const wTop = s === 2 ? 78 : 58;
+      const wBot = s === 2 ? 132 : 98;
+      // Soft outer volumetric envelope
+      ctx.globalAlpha = beamAlpha * 0.58;
+      ctx.beginPath();
+      ctx.moveTo(topX - wTop * 0.5, topY);
+      ctx.lineTo(topX + wTop * 0.5, topY);
+      ctx.lineTo(botX + wBot * 0.5, botY);
+      ctx.lineTo(botX - wBot * 0.5, botY);
+      ctx.closePath();
+      ctx.fill();
+
+      // Soft inner core shaft
+      ctx.globalAlpha = beamAlpha * 0.44;
+      ctx.beginPath();
+      ctx.moveTo(topX - wTop * 0.24, topY);
+      ctx.lineTo(topX + wTop * 0.24, topY);
+      ctx.lineTo(botX + wBot * 0.26, botY);
+      ctx.lineTo(botX - wBot * 0.26, botY);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    // 3. Stage-Specific Rising / Drifting Depth Motes for ALL 6 Stages
     const moteColors =
-      this.stageId === 'sylvan'
-        ? ['#34d399', '#38bdf8']
-        : this.stageId === 'boneyard'
-          ? ['#c084fc', '#e11d48']
-          : this.stageId === 'clocktower'
-            ? ['#2dd4bf', '#fde047']
-            : ['#38bdf8', '#fb923c'];
+      activeStage === 'inferno'
+        ? ['#fb923c', '#fde047']
+        : activeStage === 'sanctuary'
+          ? ['#7dd3fc', '#fef08a']
+          : activeStage === 'sylvan'
+            ? ['#34d399', '#fde047']
+            : activeStage === 'boneyard'
+              ? ['#c084fc', '#f43f5e']
+              : activeStage === 'clocktower'
+                ? ['#2dd4bf', '#fde047']
+                : ['#38bdf8', '#fb923c'];
+    const spdMult = activeStage === 'inferno' ? 1.85 : activeStage === 'sanctuary' ? 1.05 : 1.25;
+    const windBias = activeStage === 'inferno' ? 28 : 0;
 
-    for (const m of this.motes) {
-      const my = gy + 20 - ((m.y + this.time * m.spdY * 1.25) % 540);
-      const mx = m.x + Math.sin(this.time * 1.6 + m.phase) * 26;
-      const pulse = 0.5 + 0.5 * Math.sin(this.time * 3.8 + m.phase);
-      const alpha = 0.38 + 0.52 * pulse;
-      const col = m.isBlue ? moteColors[0] : moteColors[1];
+    for (let i = 0; i < this.motes.length; i++) {
+      const m = this.motes[i];
+      const riseSpan = 540;
+      const u = ((m.y + t * m.spdY * spdMult) % riseSpan) / riseSpan;
+      const my = gy + 20 - u * riseSpan;
+      const moteParallax = (this.camParallaxX || 0) * (0.08 + (i % 3) * 0.04);
+      const mx =
+        m.x +
+        Math.sin(t * (activeStage === 'inferno' ? 2.8 : 1.6) + m.phase) * 26 +
+        u * windBias +
+        moteParallax;
+      const pulse = 0.5 + 0.5 * Math.sin(t * 3.8 + m.phase);
+      const alpha = 0.36 + 0.50 * pulse;
+      const col =
+        activeStage === 'inferno' && i % 5 === 0
+          ? '#ef4444'
+          : m.isBlue
+            ? moteColors[0]
+            : moteColors[1];
       const glowTex = this.getGlowForColor(col);
       const s = m.size;
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = alpha * 0.45;
+      ctx.globalAlpha = alpha * 0.42;
       ctx.drawImage(glowTex, mx - 16, my - 16, 32, 32);
 
       ctx.globalCompositeOperation = 'source-over';
@@ -2235,6 +2995,7 @@ export class Renderer {
   }
 
   drawStagePhenomenonWorld(ctx, ww, gy) {
+    const activeStage = this.getActiveStageId();
     const t = this.time;
     const fade = Math.min(1, this.stageEventTimer / 1.5);
     ctx.save();
@@ -2265,8 +3026,94 @@ export class Renderer {
       ctx.fillRect(px - size * 0.25, py - size * 0.25, Math.max(2, size * 0.5), Math.max(2, size * 0.5));
     };
 
-    if (this.stageId === 'cathedral') {
-      // ★ CATHEDRAL PHENOMENON: SOLAR ECLIPSE EMBER RAIN (Pure Particles & Radial Bloom — Zero Polygon Rays!)
+    if (activeStage === 'inferno') {
+      // ★ INFERNO PHENOMENON: PYROCLASTIC CINDER STORM & SOLAR FLARE
+      const calderaX = ww * 0.495;
+      const calderaY = gy - 355;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = (0.44 + 0.10 * Math.sin(t * 5.2)) * fade;
+      if (this.glowOrange) ctx.drawImage(this.glowOrange, calderaX - 440, calderaY - 260, 880, 520);
+      ctx.globalAlpha = 0.30 * fade;
+      if (this.glowCrimson) ctx.drawImage(this.glowCrimson, ww * 0.5 - 500, gy - 260, 1000, 300);
+      ctx.globalAlpha = 0.28 * fade;
+      if (this.glowGold) ctx.drawImage(this.glowGold, calderaX - 260, calderaY - 170, 520, 340);
+
+      for (let p = 0; p < 72; p++) {
+        const speed = 0.62 + (p % 5) * 0.11;
+        const cycle = (t * speed + p * 0.19) % 1;
+        const isUpdraft = p % 3 === 0;
+        let px;
+        let py;
+        let tailDx;
+        let tailDy;
+        if (isUpdraft) {
+          const baseX = 70 + ((p * 83) % (ww - 140));
+          const spiral = Math.sin(cycle * Math.PI * 4 + t * 5 + p) * 24;
+          px = baseX + cycle * 95 + spiral;
+          py = gy + 12 - cycle * 520;
+          tailDx = -4;
+          tailDy = 7;
+        } else {
+          const startX = -40 + ((p * 97) % (ww + 40));
+          px = startX + cycle * 240;
+          py = gy - 540 + cycle * 555 + Math.sin(t * 4.2 + p) * 14;
+          tailDx = -8;
+          tailDy = -14;
+        }
+        const pAlpha = fade * Math.sin(cycle * Math.PI);
+        const midCol = p % 4 === 0 ? '#ef4444' : p % 2 === 0 ? '#fb923c' : '#fde047';
+        const glow = p % 4 === 0 ? this.glowCrimson : p % 2 === 0 ? this.glowOrange : this.glowGold;
+        const sz = p % 3 === 0 ? 5 : 4;
+        drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 24, pAlpha, tailDx, tailDy);
+      }
+    } else if (activeStage === 'sanctuary') {
+      // ★ SANCTUARY PHENOMENON: RADIANT SERAPHIM FEATHER & HALO SHOWER
+      const originX = ww * 0.50;
+      const originY = gy - 390;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.38 * fade;
+      if (this.glowCyan) ctx.drawImage(this.glowCyan, originX - 420, originY - 240, 840, 480);
+      ctx.globalAlpha = 0.28 * fade;
+      if (this.glowGold) ctx.drawImage(this.glowGold, originX - 300, originY - 190, 600, 380);
+
+      // Descending Consecrated Golden-Sapphire Halo Ripples on the Marble Floor
+      for (let h = 0; h < 3; h++) {
+        const hProg = (t * 0.42 + h * 0.33) % 1;
+        const hAlpha = fade * Math.sin(hProg * Math.PI) * 0.34;
+        ctx.strokeStyle = h % 2 === 0 ? '#fde047' : '#7dd3fc';
+        ctx.lineWidth = 2;
+        ctx.globalAlpha = hAlpha;
+        ctx.beginPath();
+        ctx.ellipse(originX, gy + 24, 110 + hProg * 260, 12 + hProg * 28, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      for (let f = 0; f < 56; f++) {
+        const cycle = (t * (0.30 + (f % 4) * 0.06) + f * 0.23) % 1;
+        const baseX = 80 + ((f * 89) % (ww - 160));
+        const sway = Math.sin(t * 2.6 + f * 1.5) * 28;
+        const fx = Math.round(baseX + sway);
+        const fy = Math.round(gy - 530 + cycle * 545);
+        const fAlpha = fade * Math.sin(cycle * Math.PI);
+        const isGold = f % 3 === 0;
+        const glow = isGold ? this.glowGold : this.glowCyan;
+        const tilt = Math.cos(t * 2.6 + f * 1.5) >= 0 ? 1 : -1;
+
+        if (glow) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = fAlpha * 0.38;
+          ctx.drawImage(glow, fx - 18, fy - 18, 36, 36);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fAlpha * 0.94;
+        ctx.fillStyle = isGold ? '#fef08a' : '#bae6fd';
+        ctx.fillRect(fx - 3 * tilt, fy - 2, 7, 3);
+        ctx.fillRect(fx - 1 * tilt, fy + 1, 5, 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(fx - 2 * tilt, fy - 1, 4, 2);
+      }
+    } else if (activeStage === 'cathedral') {
+      // ★ CATHEDRAL PHENOMENON: SOLAR ECLIPSE EMBER RAIN
       const originX = ww * 0.504;
       const originY = gy - 380;
       ctx.globalCompositeOperation = 'lighter';
@@ -2290,8 +3137,8 @@ export class Renderer {
 
         drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 22, pAlpha, 0, -5);
       }
-    } else if (this.stageId === 'sylvan') {
-      // ★ SYLVAN PHENOMENON: ASTRAL STARFALL METEOR SHOWER & BIOLUMINESCENT FIREFLY SWARM (Smooth Comet Streaks!)
+    } else if (activeStage === 'sylvan') {
+      // ★ SYLVAN PHENOMENON: ASTRAL STARFALL METEOR SHOWER & BIOLUMINESCENT FIREFLY SWARM
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.34 * fade;
       ctx.drawImage(this.glowEmerald, ww * 0.5 - 460, gy - 420, 920, 440);
@@ -2324,8 +3171,8 @@ export class Renderer {
         const glow = isGold ? this.glowGold : f % 2 === 0 ? this.glowEmerald : this.glowCyan;
         drawGlowingParticle(fx, fy, 4, '#ffffff', midCol, glow, 20, fAlpha, -3, 2);
       }
-    } else if (this.stageId === 'boneyard') {
-      // ★ BONEYARD PHENOMENON: ABYSSAL SOUL-EMBER ASCENSION (Pure Rising Particles & Radial Mist — Zero Polygon Shafts!)
+    } else if (activeStage === 'boneyard') {
+      // ★ BONEYARD PHENOMENON: ABYSSAL SOUL-EMBER ASCENSION
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.36 * fade;
       ctx.drawImage(this.glowViolet, ww * 0.5 - 480, gy - 320, 960, 360);
@@ -2343,8 +3190,8 @@ export class Renderer {
 
         drawGlowingParticle(wx, wy, sz, '#ffffff', midCol, this.glowViolet, 24, wAlpha, -swirlX * 0.08, 6);
       }
-    } else if (this.stageId === 'clocktower') {
-      // ★ CLOCKTOWER PHENOMENON: ANTI-GRAVITY TIME-SAND VORTEX (Pure Helical Time-Sand Particles — Zero Polygon Shafts!)
+    } else if (activeStage === 'clocktower') {
+      // ★ CLOCKTOWER PHENOMENON: ANTI-GRAVITY TIME-SAND VORTEX
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.36 * fade;
       ctx.drawImage(this.glowTeal, ww * 0.5 - 460, gy - 420, 920, 440);
@@ -2362,6 +3209,129 @@ export class Renderer {
         const sz = p % 3 === 0 ? 5 : 4;
 
         drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 22, pAlpha, 0, 6);
+      }
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * Near-Camera 1.22x Parallax Foreground Depth Layer (`14` sparse edge-biased particles at modest alpha
+   * so fighter faces & silhouettes stay 100% clear!).
+   */
+  drawStageForeground(ctx, ww, gy) {
+    const activeStage = this.getActiveStageId();
+    const t = this.time;
+    const fgShiftX = -(this.camParallaxX || 0) * 0.22;
+    const fgShiftY = -(this.camParallaxY || 0) * 0.10;
+    const count = 14;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    for (let i = 0; i < count; i++) {
+      const isLeftFlank = i % 2 === 0;
+      const slot = Math.floor(i / 2); // 0..6
+      const speed =
+        activeStage === 'inferno'
+          ? 0.34 + (i % 3) * 0.08
+          : activeStage === 'sanctuary' || activeStage === 'sylvan'
+            ? 0.16 + (i % 3) * 0.04
+            : 0.22 + (i % 3) * 0.05;
+      const cycle = (t * speed + i * 0.19) % 1;
+      const flankSpan = ww * 0.28;
+      const baseX = isLeftFlank
+        ? -35 + ((slot * 67) % Math.round(flankSpan))
+        : ww - flankSpan + ((slot * 71) % Math.round(flankSpan)) + 35;
+      const swayX = Math.sin(t * 2.2 + i * 1.3) * 22 + (activeStage === 'inferno' ? cycle * 38 : 0);
+      const px = Math.round((baseX + swayX + fgShiftX) / 3) * 3;
+
+      const isFalling = activeStage === 'sanctuary' || (activeStage === 'sylvan' && i % 3 !== 0);
+      const rawY = isFalling
+        ? gy - 340 + cycle * 435
+        : gy + 92 - cycle * 410;
+      const py = Math.round((rawY + fgShiftY) / 3) * 3;
+      const alpha = Math.sin(cycle * Math.PI) * 0.44;
+      if (alpha <= 0.02) continue;
+
+      if (activeStage === 'inferno') {
+        const isAshFlake = i % 3 === 1;
+        if (!isAshFlake && this.glowOrange) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = alpha * 0.36;
+          ctx.drawImage(this.glowOrange, px - 20, py - 20, 40, 40);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha * 0.92;
+        if (isAshFlake) {
+          ctx.fillStyle = '#291510';
+          ctx.fillRect(px - 4, py - 2, 8, 5);
+          ctx.fillStyle = '#ea580c';
+          ctx.fillRect(px - 3, py + 1, 5, 2);
+        } else {
+          ctx.fillStyle = '#fb923c';
+          ctx.fillRect(px - 3, py - 3, 6, 6);
+          ctx.fillStyle = '#fef08a';
+          ctx.fillRect(px - 1, py - 1, 3, 3);
+        }
+      } else if (activeStage === 'sylvan') {
+        const gTex = i % 2 === 0 ? this.glowEmerald : this.glowCyan;
+        if (gTex) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = alpha * 0.34;
+          ctx.drawImage(gTex, px - 18, py - 18, 36, 36);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha * 0.88;
+        ctx.fillStyle = i % 3 === 0 ? '#fef08a' : i % 2 === 0 ? '#6ee7b7' : '#7dd3fc';
+        ctx.fillRect(px - 3, py - 2, 6, 4);
+      } else if (activeStage === 'boneyard') {
+        if (this.glowViolet) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = alpha * 0.34;
+          ctx.drawImage(this.glowViolet, px - 18, py - 18, 36, 36);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha * 0.88;
+        ctx.fillStyle = i % 3 === 0 ? '#f43f5e' : '#c084fc';
+        ctx.fillRect(px - 3, py - 2, 5, 5);
+      } else if (activeStage === 'clocktower') {
+        const gTex = i % 2 === 0 ? this.glowGold : this.glowTeal;
+        if (gTex) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = alpha * 0.34;
+          ctx.drawImage(gTex, px - 16, py - 16, 32, 32);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha * 0.90;
+        ctx.fillStyle = i % 2 === 0 ? '#fde047' : '#5eead4';
+        ctx.fillRect(px - 3, py - 1, 6, 2);
+        ctx.fillRect(px - 1, py - 3, 2, 6);
+      } else if (activeStage === 'sanctuary') {
+        if (this.glowCyan) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = alpha * 0.32;
+          ctx.drawImage(this.glowCyan, px - 18, py - 18, 36, 36);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha * 0.90;
+        ctx.fillStyle = i % 3 === 0 ? '#fef08a' : '#e0f2fe';
+        ctx.fillRect(px - 4, py - 2, 8, 3);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 2, py - 1, 4, 2);
+      } else {
+        // Cathedral: left frost-cyan & right solar-gold censer sparks
+        const gTex = isLeftFlank ? this.glowCyan : this.glowOrange;
+        if (gTex) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = alpha * 0.34;
+          ctx.drawImage(gTex, px - 18, py - 18, 36, 36);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha * 0.88;
+        ctx.fillStyle = isLeftFlank ? '#7dd3fc' : '#fde047';
+        ctx.fillRect(px - 2, py - 3, 4, 6);
+        ctx.fillRect(px - 3, py - 1, 6, 2);
       }
     }
 

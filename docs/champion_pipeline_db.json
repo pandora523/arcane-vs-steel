@@ -6,8 +6,8 @@
     "ALWAYS generate the 16-bit HD-2D base character sprite (<hero>_v2_base.jpg, 1024x1024, facing +X right on pure #FFFFFF white background, empty hands at sides, no cape/weapon) and matching bust portrait using generate_image FIRST.",
     "NEVER pass another champion's base sprite in ImagePaths when generating a new champion's full-body sprite (to avoid copying their armor/silhouette); pass the new champion's own base sprite in ImagePaths when generating their matching portrait.",
     "ALWAYS pre-flatten continuous AI gradients via MedianFilter (3x3 head / 5x5 body), segment into anatomical parts with 0 unassigned foreground pixels, quantize every 104x104 frame to a curated 20-color MASTER_PALETTE, run 2-pass cardinal orphan despeckling + interior pinhole fill, and apply a crisp 1px directional Selout outline.",
-    "ALWAYS plant grounded boots at y_104 = 99 (y_208 = 198..199) paired with groundPlantOffset = 4 in draw() so all 10 champions stand uniformly on their ground shadows.",
-    "ALWAYS enforce a 2px transparent safety margin in 104x104 (4px in 208x208) across all 270 frames (0/270 boundary clips) and 29/29 distinct frame transitions per row.",
+    "ALWAYS plant grounded boots at y_104 = 99 (y_208 = 198..199) paired with groundPlantOffset = 4 in draw() so all 11 champions stand uniformly on their ground shadows.",
+    "ALWAYS enforce a 2px transparent safety margin in 104x104 (4px in 208x208) across all 300 frames (10 rows x 30 cols = 6240x2080, 0/300 boundary clips, incl. Row 9 VICTORY pose) and 29/29 distinct frame transitions per row.",
     "ALWAYS use multi-stage grounded death animations (F00..F06 impact stagger -> F07..F14 knee buckle -> F15..F22 progressive prone/supine laydown -> F23..F29 grounded rest).",
     "ALWAYS generate and visually inspect debug_<hero>_30fps_left_F00_F14.png, debug_<hero>_30fps_right_F15_F29.png, and debug_<hero>_30fps_vfx.png using view_file."
   ],
@@ -24,7 +24,8 @@
       "scripts/build_ronin_30fps_sheet.py",
       "scripts/build_valkyrie_30fps_sheet.py",
       "scripts/build_icemage_30fps_sheet.py",
-      "scripts/build_android_30fps_sheet.py"
+      "scripts/build_android_30fps_sheet.py",
+      "scripts/build_all_victory_poses.py"
     ],
     "vfx_sheet_builders": [
       "scripts/build_warrior_vfx_30fps.mjs",
@@ -45,8 +46,8 @@
       "name": "Aethelgard",
       "theme": "steel",
       "base_source": "assets/sprites/warrior_v4_base.jpg",
-      "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "14-part cel-clustered Silver-Platinum & Gold Sovereign Paladin skeletal rig + Colossal Two-Handed Winged Celestial Claymore (per-frame 2-Bone Analytical IK locking both gauntlets) + Sacred Vow (Row 4 F00..F05) + Sky-Hover Sword-Pointing Stance (Row 8 F12..F19) & Supersonic Dive (Row 8 F20..F24) + 8-Row 30fps Runic Steel & Cathedral VFX Suite + Prone Paladin Collapse",
+      "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
+      "rig": "14-part cel-clustered Silver-Platinum & Gold Sovereign Paladin skeletal rig + Colossal Two-Handed Winged Celestial Claymore (per-frame 2-Bone Analytical IK locking both gauntlets) + Sacred Vow (Row 4 F00..F05) + Sky-Hover Sword-Pointing Stance (Row 8 F12..F19) & Supersonic Dive (Row 8 F20..F24) + Row 9 Sovereign Sword-Salute Victory Pose + 8-Row 30fps Runic Steel & Cathedral VFX Suite + Prone Paladin Collapse",
       "script": "scripts/build_warrior_30fps_sheet.py",
       "vfx_script": "scripts/build_warrior_vfx_30fps.mjs"
     },
@@ -54,8 +55,8 @@
       "name": "Ignis Sol",
       "theme": "arcane",
       "base_source": "assets/sprites/mage_v2_base.jpg",
-      "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "15-part pinhole-free hierarchical Black-Mage skeletal articulation (mane, head [crimson wizard hat + pitch-black shadow face + glowing flame eyes], torso, l_coat, r_coat, l_sode, l_forearm, r_sode, r_forearm, l_thigh, l_shin, l_foot, r_thigh, r_shin, r_foot) + Solar Astrolabe halo + Helios Sun-Staff + ArcaneShaderFX 120Hz 2.5D Solar & Black-Sun Eclipse Shader Suite + Supine Collapse",
+      "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
+      "rig": "15-part pinhole-free hierarchical Black-Mage skeletal articulation + Solar Astrolabe halo + Helios Sun-Staff + Row 9 Solar Levitation Victory Pose + LAYWASTE OF INFERNO Animated Magma/Caldera Stage Effects + ArcaneShaderFX 120Hz 2.5D Solar & Black-Sun Eclipse Shader Suite + Supine Collapse",
       "script": "scripts/build_mage_30fps_sheet.py",
       "vfx_script": "scripts/build_mage_vfx_30fps.mjs"
     },
@@ -63,8 +64,8 @@
       "name": "Sylvara",
       "theme": "emerald",
       "base_source": "assets/sprites/archer_v3_base.jpg",
-      "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part cel-clustered Sylvan Elven Star-Huntress skeletal rig + Back Quiver + Articulated Recurve Star-Bow & Multi-Arrow Draw + 6-Pinion Astral Ult Light-Wings + Row 4 Gale Charge-In & 180/360 Somersault Inverted Lock-Shot (F00..F15) + Grounded Yggdrasil Root Invocation & Far-Stage Sovereign Greatbow Draw (F16..F29) + 8-Row Yggdrasil & Supernova Dragon-Arrow VFX Suite + Supine Collapse",
+      "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
+      "rig": "13-part cel-clustered Sylvan Elven Star-Huntress skeletal rig + Back Quiver + Articulated Recurve Star-Bow & Multi-Arrow Draw + 6-Pinion Astral Ult Light-Wings + Row 4 Gale Charge-In & 180/360 Somersault Inverted Lock-Shot (F00..F15) + Grounded Yggdrasil Root Invocation & Far-Stage Sovereign Greatbow Draw (F16..F29) + Row 9 Winged Star-Bow Salute Victory Pose + 8-Row Yggdrasil & Supernova Dragon-Arrow VFX Suite + Supine Collapse",
       "script": "scripts/build_archer_30fps_sheet.py",
       "vfx_script": "scripts/build_archer_vfx_30fps.mjs"
     },
@@ -73,8 +74,8 @@
       "theme": "radiant",
       "base_source": "assets/sprites/priestess_v2_base.jpg",
       "wing_base_source": "assets/sprites/seraphim_wings_v2_base.jpg",
-      "logical_res": "104x104 character (2x -> 208x208) + 160x116 wings (2x -> 320x232)",
-      "rig": "16-part grounded uncrossed High-Priestess skeletal rig (foot_y=99.0 on Row 2 Auto & Row 3 Skill) + Sunburst Cathedral Scepter + 30fps HD-2D Feathered Archangel Wings + 8-Row Seraphic & FINAL GRACE Horizontal Beam VFX Suite + Supine Collapse",
+      "logical_res": "104x104 character (2x -> 208x208, 10 rows x 30 cols = 6240x2080) + 160x116 wings (2x -> 320x232)",
+      "rig": "16-part grounded uncrossed High-Priestess skeletal rig (foot_y=99.0 on Row 2 Auto & Row 3 Skill) + Sunburst Cathedral Scepter + 30fps HD-2D Feathered Archangel Wings + Row 9 Seraphic Benediction Victory Pose + 8-Row Seraphic & FINAL GRACE Horizontal Beam VFX Suite + Supine Collapse",
       "script": "scripts/build_priestess_30fps_sheet.py",
       "vfx_script": "scripts/build_priestess_vfx_30fps.mjs"
     },
@@ -87,8 +88,8 @@
         "assets/sprites/reaper_healer_companion_base.jpg"
       ],
       "companions_sheet": "assets/sprites/reaper_companions.png",
-      "logical_res": "104x104 (2x NEAREST -> 208x208) + 4x30 Companion Sheet (208x208)",
-      "rig": "14-part cel-clustered Gothic Arch-Reaper & Sovereign of the Death Covenant skeletal rig + True 1.72s Underground Shadow Burrow (1.26s 100% submerged Pitch-Black Abyssal Shadow Pool, Predator Eye-Slits, Surprise Attack Eruption & Grave-Ward Poise) + 5-Beat Sky-Lock Overdrive + MEMENTO MORI Super Ultimate summoning 12.5s Living Death-Mage (480 HP + 60 Soul-Ward, Dark-Matter Void Orbs) & Soul-Healer (420 HP + 50 Soul-Ward, Soul-Mend Tethers & Covenant Grace) + 920px Reality-Split Guillotine + Prone Collapse",
+      "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080) + 4x30 Companion Sheet (208x208)",
+      "rig": "14-part cel-clustered Gothic Arch-Reaper & Sovereign of the Death Covenant skeletal rig + True 1.72s Underground Shadow Burrow + 5-Beat Sky-Lock Overdrive + MEMENTO MORI Super Ultimate summoning 12.5s Living Death-Mage & Soul-Healer + Row 9 Scythe Ground-Plant Victory Pose + Prone Collapse",
       "script": "scripts/build_reaper_30fps_sheet.py",
       "companions_script": "scripts/build_reaper_companions_sheet.py",
       "vfx_script": "scripts/build_reaper_vfx_30fps.mjs"
@@ -97,8 +98,8 @@
       "name": "Chronos",
       "theme": "chrono",
       "base_source": "assets/sprites/chronomancer_v3_base.jpg",
-      "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "14-part cel-clustered Midnight-Navy & Brass-Gold Horological Duelist rig + Rotating Grand XII Clock-Wheel Halo + Twin Hands of Fate (Minute Glaive + Hour Short-Blade / Pocket-Astrolabe) + 8-Row Eternal Zero & Paradox Clone VFX Suite + Supine Collapse",
+      "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
+      "rig": "14-part cel-clustered Midnight-Navy & Brass-Gold Horological Duelist rig + Rotating Grand XII Clock-Wheel Halo + Twin Hands of Fate (Minute Glaive + Hour Short-Blade / Pocket-Astrolabe) + Row 9 XII-Hour Halo Bow Victory Pose + 8-Row Eternal Zero & Paradox Clone VFX Suite + Supine Collapse",
       "script": "scripts/build_chronomancer_30fps_sheet.py",
       "vfx_script": "scripts/build_chronomancer_vfx_30fps.mjs"
     },
@@ -106,8 +107,8 @@
       "name": "Torgar",
       "theme": "forge",
       "base_source": "assets/sprites/titan_v5_base.jpg",
-      "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "15-part cel-clustered Sovereign of the World-Forge skeletal rig + World-Forge Crucible Back-Halo + Slash-Free Symmetric Double-Faced Dwarven Warhammer (Mjolnir, 0 upside-down orientations, 0 sword-slash crescents & 0 vertical Super-Ult spike columns across sheet & VFX) + 3-Animation 2H Auto-Attack (Row 2: F00..F09 Overhead Earth-Splitter Slam, F10..F19 Leaping High-Knee Sky-Breaker Uppercut, F20..F29 Pivoting Battering-Ram Backspin Finisher) + Horizontal Baseball-Bat Home-Run Overdrive (Row 4 F00..F14 Unobstructed Rear-Shoulder Coil -> Slash-Free Horizontal Swing + Gold Sonic Wake to Farthest Wall + 0.8s Stun) + Colossal 2.15x 4-Beat Sky-Uppercut -> Continuous Explosive Fast-Jump (Super-Leap 180px Above Airborne Foe) -> Meteor Ground-Smash + 2.5D Soil, Dirt & Shattered Bedrock Crater Splash + 1.85s Stun Supreme Ultimate (Row 4 F15..F29) + Prone Collapse",
+      "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
+      "rig": "15-part cel-clustered Sovereign of the World-Forge skeletal rig + World-Forge Crucible Back-Halo + Slash-Free Symmetric Double-Faced Dwarven Warhammer (Mjolnir, 0 upside-down orientations, 0 sword-slash crescents & 0 vertical Super-Ult spike columns across sheet & VFX) + 3-Animation 2H Auto-Attack + Horizontal Baseball-Bat Home-Run Overdrive + Colossal 2.15x 4-Beat Sky-Uppercut -> Fast-Jump -> Meteor Ground-Smash + 2.5D Soil/Rock Crater Splash Supreme Ultimate + Row 9 Skyward Mjolnir Roar Victory Pose + Prone Collapse",
       "script": "scripts/build_titan_30fps_sheet.py",
       "vfx_script": "scripts/build_titan_vfx_30fps.mjs"
     },
@@ -115,8 +116,8 @@
       "name": "Kaze-Maru",
       "theme": "storm",
       "base_source": "assets/sprites/ronin_v2_base.jpg",
-      "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part cel-clustered Storm-Blade Iaido Samurai skeletal rig + Katana & Saya + 8-Row Amakakeru Thousand Thunder Judgments & Raijin Shader VFX Suite + Prone Sword-Plant Collapse",
+      "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
+      "rig": "13-part cel-clustered Storm-Blade Iaido Samurai skeletal rig + Katana & Saya + Row 9 Chiburi Blood-Flick & Noto Sheathe Victory Pose + 8-Row Amakakeru Thousand Thunder Judgments & Raijin Shader VFX Suite + Prone Sword-Plant Collapse",
       "script": "scripts/build_ronin_30fps_sheet.py",
       "vfx_script": "scripts/build_ronin_vfx_30fps.mjs"
     },
@@ -124,8 +125,8 @@
       "name": "Freyja",
       "theme": "crimson",
       "base_source": "assets/sprites/valkyrie_v2_base.jpg",
-      "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part cel-clustered Valkyrie skeletal rig + 6-pinion Crimson-Gold Valkyrie Wings + Gungnir War-Lance + -360-deg Aerial Backflip Retreat (Row 7) + 8-Row Twilight of Ragnarok Gungnir & Valkyrie Shader VFX Suite + Supine Collapse",
+      "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
+      "rig": "13-part cel-clustered Valkyrie skeletal rig + 6-pinion Crimson-Gold Valkyrie Wings + Gungnir War-Lance + -360-deg Aerial Backflip Retreat (Row 7) + Row 9 Winged Gungnir Banner Salute Victory Pose + 8-Row Twilight of Ragnarok Gungnir & Valkyrie Shader VFX Suite + Supine Collapse",
       "script": "scripts/build_valkyrie_30fps_sheet.py",
       "vfx_script": "scripts/build_valkyrie_vfx_30fps.mjs"
     },
@@ -133,8 +134,8 @@
       "name": "Lyra",
       "theme": "glacial",
       "base_source": "assets/sprites/icemage_v5_base.jpg",
-      "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "15-part cel-clustered Winter Empress skeletal rig + Fur Shoulder Mantle + Crystalline Frost Scepter + 3-Variant Royal Ballet Auto-Attack (Row 2: F00..F09 Rime-Lance Comet, F10..F19 Arabesque Returning 6-Bladed Snowflake Chakram, F20..F29 3-Spire Glacier Stalagmite March) + 4-Stack Solid Crystal Freeze + 3-Step Mid-Air Sky-Staircase (Row 8) + Glacial Jaws Twin Iceberg Crush (Row 3) + 7-Sword Winter Coronation Overdrive & Polar Night 0.00 K 28-Shard Reality-Glass Shatter Supreme Ultimate (Row 4) + Supine Collapse",
+      "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
+      "rig": "15-part cel-clustered Winter Empress low coiled figure-skating skeletal rig (0/300 clips, 0 inverted knees) + Fur Shoulder Mantle + Crystalline Frost Scepter + 4-Variant Royal Figure-Skating Auto-Attack (Row 2: F00..F07 Rime-Lance Skate Lunge, F08..F14 Arabesque Halo Boomerang, F15..F22 2H Glacier Stalagmite Slam, F23..F29 Borealis Sky-Icicle Hail) + 4-Stack Solid Crystal Freeze + 3-Step Mid-Air Sky-Staircase (Row 8) + Glacial Jaws Twin Iceberg Crush (Row 3) + 7-Sword Winter Coronation Overdrive & Seamless Crystal Borealis 0.00 K 28-Shard Reality Shatter Supreme Ultimate (Row 4) + Row 9 Figure-Skating Pirouette & Scepter Salute Victory Pose + Supine Collapse",
       "script": "scripts/build_icemage_30fps_sheet.py",
       "vfx_script": "scripts/build_icemage_vfx_30fps.mjs"
     },
@@ -142,8 +143,8 @@
       "name": "VEX-09",
       "theme": "cyber",
       "base_source": "assets/sprites/android_v2_base.jpg",
-      "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "13-part cel-clustered Cybernetic Valkyrie skeletal rig + Coiled Split-Leg Martial Stances + Muramasa-09 Odachi & Saya + 3-Variant Real Gap-Close Melee (Row 2: F00..F09 Split-Lunge Cleave, F10..F19 Martial High-Knee Rising Dragon Slash, F20..F29 Crashing Overhead Fang Slam) + Backstep Evade -> Quad Fin-Funnel Optical Ring -> Valkyrie Visor Hyper-Laser (Row 4) + 8-Row Project GUNG-09 Orbital Satellite Buster VFX Suite + Prone Shutdown Collapse",
+      "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
+      "rig": "13-part cel-clustered Cybernetic Valkyrie skeletal rig + Coiled Split-Leg Martial Stances + Muramasa-09 Odachi & Saya + 3-Variant Real Gap-Close Melee + Backstep Evade -> Quad Fin-Funnel Optical Ring -> Valkyrie Visor Hyper-Laser (Row 4) + Row 9 Odachi Flourish & Visor Salute Victory Pose + 8-Row Project GUNG-09 Orbital Satellite Buster VFX Suite + Prone Shutdown Collapse",
       "script": "scripts/build_android_30fps_sheet.py",
       "vfx_script": "scripts/build_android_vfx_30fps.mjs"
     }

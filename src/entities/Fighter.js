@@ -256,6 +256,9 @@ export class Fighter {
     if (newState !== 'CROUCH') {
       this.isCrouching = false;
     }
+    if (newState !== 'VICTORY') {
+      this._victoryFlourishPlayed = false;
+    }
     if (
       newState !== 'DODGE' &&
       newState !== 'JUMP' &&
@@ -811,6 +814,17 @@ export class Fighter {
     if (this.isBenched && !this.isDead) {
       const ww = game.renderer ? game.renderer.worldWidth : 1200;
       const isLeftTeam = this.team === 'left' || this.team === 1;
+      const foes = game?.getEnemiesOf ? game.getEnemiesOf(this) : [];
+      if (game?.isMatchOver && foes.length > 0 && foes.every((f) => f?.isDead)) {
+        this.isBenched = false;
+        this.x = isLeftTeam ? 156 : ww - 156;
+        this.y = this.groundY;
+        this.vx = 0;
+        this.vy = 0;
+        this.facing = isLeftTeam ? 1 : -1;
+        this.setState('VICTORY');
+        return;
+      }
       const targetBenchX = isLeftTeam ? 54 : ww - 54;
       this.x += (targetBenchX - this.x) * Math.min(1, dt * 10);
       this.y = this.groundY - 6;
@@ -1296,13 +1310,67 @@ export class Fighter {
           this.x += this.facing * this.moveSpeed * dt;
           this.headBob = Math.sin(this.walkPhase * 2) * 2.5;
         }
+      } else if (game?.isMatchOver && !this.isDead && this.y >= this.groundY - 2) {
+        this.setState('VICTORY');
+        this.moveDir = 0;
       } else {
         this.state = 'IDLE';
         this.moveDir = 0;
       }
     }
 
-    if (this.state === 'IDLE') {
+    if (this.state === 'VICTORY') {
+      this.moveDir = 0;
+      this.vx = 0;
+      this.vy = 0;
+      this.y = this.groundY;
+      this.hurtTimer = 0;
+      this.stunTimer = 0;
+      this.isRooted = false;
+      this.isFlipVault = false;
+      this.isCrouching = false;
+      this.isDeflecting = false;
+      this.trueUltFrameOverride = null;
+      this._overrideFrameIdx = null;
+      this.walkPhase += dt * 2.4;
+      this.headBob = Math.sin(this.walkPhase) * 1.2;
+
+      if (!this._victoryFlourishPlayed) {
+        this._victoryFlourishPlayed = true;
+        if (enemy) {
+          this.facing = enemy.x >= this.x ? 1 : -1;
+        } else {
+          this.facing = this.x <= ww * 0.5 ? 1 : -1;
+        }
+        if (game?.vfx) {
+          game.vfx.spawnShockwave?.(this.x, this.groundY - 4, 96, this.primaryColor || '#facc15', 0.42, true);
+          game.vfx.spawnBurst?.(this.x, this.y - 92, 12, this.primaryColor || '#facc15', 165, {
+            upBias: 95,
+            size: 5
+          });
+          if (game.isMatchOver) {
+            game.vfx.spawnDamageText?.(
+              this.x,
+              this.y - 196,
+              0,
+              true,
+              '★ VICTORY! ★',
+              this.primaryColor || '#fde047'
+            );
+          }
+        }
+      } else if (game?.vfx && Math.random() < 0.14) {
+        game.vfx.spawnParticle?.({
+          x: this.x + (Math.random() - 0.5) * 56,
+          y: this.y - 18 - Math.random() * 110,
+          vx: (Math.random() - 0.5) * 18,
+          vy: -32 - Math.random() * 38,
+          size: 3.5,
+          color: Math.random() < 0.4 ? '#fef08a' : this.primaryColor || '#38bdf8',
+          maxLife: 0.58
+        });
+      }
+    } else if (this.state === 'IDLE') {
       this.moveDir = 0;
       this.walkPhase += dt * 2.8;
       this.headBob = Math.sin(this.walkPhase) * 2.0;

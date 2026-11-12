@@ -2,8 +2,13 @@
 
 > **IMPORTANT FOR ANY NEW CHAT / AGENT**: Read this file alongside `docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md` and `docs/champion_pipeline_db.json` at the start of a new conversation so full project context, user preferences, protected champions, and recent reworks are preserved seamlessly.
 
-## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps78`)
-- **All 11 HD-2D 30fps Champions (`208x208` cells, 9 rows x 30 frames + `vfx` sheets + `128x128` portraits)** are live and verified on `main`.
+## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps79`)
+- **All 11 HD-2D 30fps Champions (`208x208` cells, `10 rows x 30 frames = 6240x2080` incl. Row 9 `VICTORY` Pose + `vfx` sheets + `128x128` portraits)** are live and verified on `main`.
+- **Stage Effects Overhaul & Ignis Sol `LAYWASTE OF INFERNO` Stage**:
+  - All 6 stages (`cathedral`, `sylvan`, `boneyard`, `clocktower`, `sanctuary`, and Ignis Sol's `inferno` `LAYWASTE OF INFERNO`) feature parallax volumetric god-rays, near-camera `1.22x` foreground bokeh/ash/petal/feather depth layers, stage-aware floor reflections & seams, and bespoke phenomena.
+  - Ignis Sol's `LAYWASTE OF INFERNO` (`src/engine/Renderer.js`, zero edits to protected `FireMage.js`) features a cached `640x360` animated magma/lava-river pixel overlay (`getInfernoMagmaLayer`), solar-corona caldera flares, pyroclastic ash plumes, branching molten floor fissures, and 52 rising spiral embers.
+- **Per-Character Post-KO Victory Poses (`Row 9`, frames `270..299`)**:
+  - Every surviving winner (plus unbenched `2v2_tag` teammates) transitions into `state === 'VICTORY'`, playing a bespoke 15-frame entry flourish (`F00..F14`) into a seamless 15-frame sovereign loop (`F15..F29`) during the `1.35s` post-KO hold with zoomed victory camera framing.
 - **Epic Battle HP Inflation & Ultimate Pacing**:
   - Champion HP pools are inflated (`3600–4160 HP`) so fights last ~`50–80s` in 1v1 (`~58s` in 2v2 Brawl, `~120s` in 2v2 Tag) and champions reliably cast **3 Overdrives (`ULTIMATE`)** to unlock and cast their **Supreme Ultimate (`TRUE_ULTIMATE`)** (`99.8%+` `TRUE_ULTIMATE` rate in 1v1 benchmarks).
   - Test Mode (`testModeUnlimitedHp`) supports infinite HP & rapid testing of Overdrives and Supreme Ultimates.
@@ -11,7 +16,7 @@
 ---
 
 ## 2. User-Confirmed Protected Champions (DO NOT ALTER UNLESS EXPLICITLY ASKED)
-The user explicitly confirmed that the following **6 champions are doing fine** — **do NOT modify their particles, VFX, animations, kits, or stats** unless the user specifically asks for a change to one of them (only global `?v=30fpsXX` cache-bust query bumps are allowed):
+The user explicitly confirmed that the following **6 champions are doing fine** — **do NOT modify their particles, VFX, Rows 0..8 animations, kits, or stats** unless the user specifically asks for a change to one of them (only global `?v=30fpsXX` cache-bust query bumps are allowed; their Row 9 `VICTORY` poses were appended at `y = 1872..2080` keeping `Rows 0..8` 100% byte-identical):
 1. **Ignis Sol** (`src/entities/FireMage.js`, `heroId: 'mage'`) — switches stage to `LAYWASTE OF INFERNO` strictly on meteor ground impact (`t >= 3.22s`).
 2. **Aethelgard** (`src/entities/Warrior.js`, `heroId: 'warrior'`) — `v4` 2H Greatsword rig + High-Sky Sacred Vow & Cathedral Pillar Supreme Ultimate.
 3. **Freyja** (`src/entities/Valkyrie.js`, `heroId: 'valkyrie'`) — articulated multi-angle spear dives (`make_spear_dive_cfg`, zero canvas rotation/shear) + `TWILIGHT OF RAGNAROK: GUNGNIR`.
@@ -24,7 +29,7 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 ## 3. Recent Champion Reworks & Visual Clarity Rules
 
 ### Torgar (`src/entities/Titan.js`, `heroId: 'titan'`, v7 Slash-Free Symmetric Mjolnir, Horizontal Baseball-Bat Overdrive & Fast-Jump Soil/Rock Crater Splash Supreme Ultimate)
-- **Symmetric Double-Faced Dwarven Warhammer (`Mjolnir`) & Zero Green-Orange Sword-Slash Crescents (`0/270` & `0/240` clips)**:
+- **Symmetric Double-Faced Dwarven Warhammer (`Mjolnir`) & Zero Green-Orange Sword-Slash Crescents (`0/300` & `0/240` clips)**:
   - Rebuilt `draw_2h_worldbreaker_maul_104` (`scripts/build_titan_30fps_sheet.py`) and `drawColossalDwarvenWarhammer` (`src/engine/shaders/forgeShaders.js`) with a symmetric pinched anvil waist (`abs(dp)`), twin flared beveled striking faces, twin jade cheek runes, and radial outward handle-to-head geometry (`da` from inner grip to outer head).
   - Completely removed ALL green-orange sword-slash crescents (`slash_arc`, `horiz_bat_arc`, `forge_aegis`, `drawMultiLayerCrescentArc`, and `forgeHammerArc`) from `titan_sheet.png`, `titan_vfx.png` (`Row 0` now erupts 3 grounded Volcanic Basalt & Molten-Gold Earth-Spire Crags), `forgeShaders.js`, and `Titan.js` so blunt warhammer impacts read through grounded shockwave craters, molten anvil sparks, and shattered earth/rock splashes rather than blade slashes.
 - **3-Animation Dynamic Normal Attack (`TRINITY OF THE WORLD-MAUL`, `Row 2 F00..F29`)**:
@@ -41,7 +46,7 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
   - **Beat 4 (`1.96..2.36s`)**: Jackknifes downward (`F24..F26`), physically intercepts the airborne enemy mid-sky (`plungeU = 0.34`), and **meteor-spikes them straight into the arena floor** (`t = 2.36s`) for ONE `735`-Crit Continental Sunder + `+9%` Max HP heal + wide 2.5D **Soil, Dirt & Shattered Bedrock Crater Splash** (`Row 7` `continentalSunderGeyserCell` with `glowColor: 'none'` + `32` ballistic bouncing granite boulders & wet soil clods + `16` rolling dust plumes, zero vertical spike columns) + **`1.85s` Stun**.
 
 ### Sylvara (`src/entities/Archer.js`, `heroId: 'archer'`, v4 Ultimate & Supreme Ultimate Rework)
-- **Baked 30fps `Row 4` Acrobatic Somersault & Far-Stage Yggdrasil Choreography (`scripts/build_archer_30fps_sheet.py`, `0/270` clips, `0` pinholes, `20/20` palette)**:
+- **Baked 30fps `Row 4` Acrobatic Somersault & Far-Stage Yggdrasil Choreography (`scripts/build_archer_30fps_sheet.py`, `0/300` clips, `0` pinholes, `20/20` palette)**:
   - `F00..F02` (`120..122`): Explosive Gale Charge-In sprint + Twin Bow-Blade slash + Vault-Kick launch.
   - `F03..F13` (`123..133`): Full articulated `-48° -> -186° (true upside-down apex) -> -336°` airborne somersault (`centered_mode=True`, `shoulder_aim_ik=True`, `wing_follow_torso=True`, zero `ctx.rotate`) aiming her Celestial Greatbow downward around the 180° arc.
   - `F14..F15` (`134..135`): Agile opposite-side touchdown (`foot_y=99.0`).
@@ -53,8 +58,8 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
   - Performs a high acrobatic flip-jump (`0.42..1.28s`, `188px` height) all the way to the **farthest edge of the stage** (`x = 108` or `ww - 108`, `492px–984px` away from the rooted enemy), turns across the arena, draws the colossal `280x280` `Row 6` Celestial Greatbow with a cross-stage Sagittarius aiming sightline, and fires the full-stage `Row 7` Supernova Dragon-Arrow Pierce (`700` Crit + `+14%` Max HP heal) at `t = 3.15s`.
 
 ### VEX-09 (`src/entities/Android.js`, `heroId: 'android'`, v3) & Roster-Wide Fighting Style AI Director (`src/entities/Fighter.js`)
-- **Coiled Athletic Cyber-Valkyrie Rig (`scripts/build_android_30fps_sheet.py`, `0/270` clips, `29/29` transitions)**:
-  - Deep hip/knee/ankle skeletal stances across all 9 rows (`IDLE` coiled Kamae, low-center thruster `WALK`/`DASH`, kneeling `CROUCH` Hex-Matrix Deflect, airborne `JUMP` Guillotine) — zero rod-straight or stiff poses.
+- **Coiled Athletic Cyber-Valkyrie Rig (`scripts/build_android_30fps_sheet.py`, `0/300` clips, `29/29` transitions)**:
+  - Deep hip/knee/ankle skeletal stances across all 10 rows (`IDLE` coiled Kamae, low-center thruster `WALK`/`DASH`, kneeling `CROUCH` Hex-Matrix Deflect, airborne `JUMP` Guillotine, `Row 9 VICTORY` Odachi salute) — zero rod-straight or stiff poses.
   - **3-Variant Dynamic `Row 2` Melee Combo + Real Point-Blank Model Gap-Close**:
     1. `F00..F09`: Deep Split-Lunge Horizontal Plasma Cleave (`60..69`)
     2. `F10..F19`: Martial High-Knee Kick + Rising Dragon Upper-Slash (`70..79`)
@@ -67,16 +72,18 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 - **Roster-Wide Fighting Style AI Director (`src/entities/Fighter.js`)**:
   - Gives all 11 champions (including the 6 protected champions via `super.update`, with zero edits to their class files) distinct `getAiStyleProfile()` martial personalities: reactive counter-reads (`CROUCH` parries/shields/hex-deflects/frost-mirrors/shadow-burrows & `JUMP` aerial escapes), full combo-string discipline, combo-finisher/whiff-punish `SKILL` windows, post-combo signature maneuvers, mid-range aerial engages, and expressive neutral footsies.
 
-### Lyra (`src/entities/IceMage.js`, `heroId: 'icemage'`, v6)
+### Lyra (`src/entities/IceMage.js`, `heroId: 'icemage'`, v7 Low Coiled Figure-Skating Rig, 4-Variant Normal Attack & Crystal-Clear Supreme Ultimate)
+- **Coiled Athletic Figure-Skating Rig (`scripts/build_icemage_30fps_sheet.py`, `6240x2080`, `0/300` clips, `0` inverted knees)**:
+  - Eliminated steep vertical postures across `IDLE` (coiled skater Kamae), `WALK` (sweeping `±38°` cross-glide with `21°` lean), `DASH` (aerodynamic speed-skater), `CROUCH` (deep kneeling Mirror Wall), `JUMP` (Triple-Axel), and `Row 9 VICTORY` (pirouette into skyward Scepter salute), paired with sustained frictionless skate-glide velocity in `IceMage.js`.
 - **Passive (`HOARFROST RIME & SOLID CRYSTAL STASIS`)**: Frost hits stack Hoarfrost Rime `[1..4]`; at `4` stacks triggers **`★ SOLID CRYSTAL FREEZE! ★`** — encasing the target inside a translucent `Row 6` Ice-Crystal Block (`0.40s` solid freeze stun), dealing crit shatter damage, and granting Lyra a Cryo Mirror Shield (`+12 HP`).
-- **3-Variant Royal Ballet Normal Attack (`Row 2 F00..F29`)**:
-  1. `F00..F09` (`RIME-LANCE NEEDLE`): High-velocity Borealis cryo-comet + Mach cone.
-  2. `F10..F19` (`SNOWFLAKE BOOMERANG HALO`): Arabesque pirouette hurling a curved Borealis-homing returning 6-bladed `Row 1` Snowflake Chakram (`+7 HP` on catch).
-  3. `F20..F29` (`GLACIER STALAGMITE MARCH`): 2H overhead Scepter command erupting 3 sequential ground-marching `Row 2` Glacier Spires across the floor, locking Spire 3 onto the target.
-- **Tactical Figure-Skating Mobility**: `JUMP` materializes **3 stepped mid-air Crystalline Sky-Staircase platforms** (`skyIceSteps`), `DASH` launches a returning Snowflake Chakram over a `Permafrost Rink`, `DODGE` leaves an exploding `Ice-Sculpture Decoy`, and `CROUCH` raises a projectile-splitting `Hydroblade Mirror Wall`.
+- **4-Variant Royal Figure-Skating Normal Attack (`Row 2`, `[[60, 8], [68, 7], [75, 8], [83, 7]]`)**:
+  1. `F00..F07` (`60..67`, `RIME-LANCE SKATE LUNGE`): Deep fencing skate-lunge + Borealis `cryo_shard` comet & `cryoPrismMachCone`.
+  2. `F08..F14` (`68..74`, `ARABESQUE HALO BOOMERANG`): High rear-leg Arabesque cross-glide + curved returning 6-bladed `Row 1` Snowflake Chakram (`+7 HP` on catch) + `snowflakeChakramBurst`.
+  3. `F15..F22` (`75..82`, `GLACIER STALAGMITE SLAM`): 2H overhead hoist & wide-stance floor slam erupting `3` sequential ground-marching `Row 2` Glacier Spires (`spawnGlacierStalagmiteMarch`).
+  4. `F23..F29` (`83..89`, `BOREALIS SKY-ICICLE HAIL`): Agile backward skate-hop & skyward Scepter command opening `borealisIcicleHail` overhead and raining `3` staggered diagonal Crystalline Sky-Icicle Lances (`activeSkyIcicles`, `0` `ctx.rotate` calls).
 - **Signature Skill (`GLACIAL JAWS: TWIN ICEBERG CRUSH`, `Row 3`)**: Erupts TWO towering flanking `Row 2` Glacier Iceberg Walls (`±136px`) around the enemy and slams both icebergs inward together (`spread -> 16px`, `+2` Rime).
 - **Overdrive Ultimate (`WINTER CORONATION: SEVEN CELESTIAL ICE-SWORDS`, `Row 4`)**: Summons `7` Giant Celestial Ice-Claymores (`Row 4`) in a Coronation Halo; `6` outer swords plunge down sequentially to impale the floor in a hexagonal sword palisade before a colossal `7th` Sovereign Crown-Sword shatters all `7` swords.
-- **Supreme Ultimate (`ABSOLUTE ZERO: DIAMOND DUST ETERNITY`, `4.60s`)**: Summons a translucent **Polar Night sky + multi-ribbon Northern Lights + Full-Stage Crystal Mirror Lake** (never altering `stageOverride`), lifts Lyra `90px` on a floating Ice-Lotus Pedestal, plunges a live 16-bit thermodynamic readout to **`0.00 K • -273.15°C`** inside the `Row 6` Diamond-Coffin & 6-Mirror Borealis Star Web, spiderwebs `14` branching reality-glass fault-lines, and shatters space on her vertical Scepter-Tap (`Row 4 F17..F23`) into **`28` faceted stained-glass ice shards** (pure 2D math rotation, `0` `ctx.rotate` calls) for a single instantaneous **`675` Crit execution** + **`+12%` Max HP heal**.
+- **Supreme Ultimate (`ABSOLUTE ZERO: DIAMOND DUST ETERNITY`, `4.60s`, Zero Dark-Bluish Artifacts)**: Uses a viewport-seamless translucent Borealis sky wash (`-2400..ww+2400`, `alpha <= 0.18`), edge-tapered Northern Lights ribbons, feathered Crystal Frost-Mirror floor, grounded `absoluteZeroAuroraVeil`, refractive translucent crystal `Row 5/6/7` VFX cells (`glacialShaders.js` & `icemage_vfx.png`), frameless `0.00 K • -273.15°C` crystal readout, and **`28` faceted crystal glass shards** (`0` `ctx.rotate` calls) for a single instantaneous **`675` Crit execution** + **`+12%` Max HP heal**.
 
 ### Malakor (`src/entities/Reaper.js`, `heroId: 'reaper'`, v6)
 - **Shadow-Burrow Ambush (`CROUCH`)**: Malakor sinks completely underground for ~`1.27s` (`1–2s` window) leaving a dark abyssal ground indicator vortex (`abyssalRiftGroundPortal` + dark tell ring) before erupting upward in a surprise scythe ambush.

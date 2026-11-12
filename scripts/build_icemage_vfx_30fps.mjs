@@ -19,12 +19,12 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps78';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps79';
 
 import {
   GLACIAL_CRYO_PALETTE,
   GLACIAL_EFFECT_REGISTRY
-} from '../src/engine/shaders/glacialShaders.js?v=30fps78';
+} from '../src/engine/shaders/glacialShaders.js?v=30fps79';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
