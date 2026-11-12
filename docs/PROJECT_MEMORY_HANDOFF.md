@@ -2,7 +2,7 @@
 
 > **IMPORTANT FOR ANY NEW CHAT / AGENT**: Read this file alongside `docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md` and `docs/champion_pipeline_db.json` at the start of a new conversation so full project context, user preferences, protected champions, and recent reworks are preserved seamlessly.
 
-## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps77`)
+## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps78`)
 - **All 11 HD-2D 30fps Champions (`208x208` cells, 9 rows x 30 frames + `vfx` sheets + `128x128` portraits)** are live and verified on `main`.
 - **Epic Battle HP Inflation & Ultimate Pacing**:
   - Champion HP pools are inflated (`3600–4160 HP`) so fights last ~`50–80s` in 1v1 (`~58s` in 2v2 Brawl, `~120s` in 2v2 Tag) and champions reliably cast **3 Overdrives (`ULTIMATE`)** to unlock and cast their **Supreme Ultimate (`TRUE_ULTIMATE`)** (`99.8%+` `TRUE_ULTIMATE` rate in 1v1 benchmarks).
@@ -23,10 +23,10 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 
 ## 3. Recent Champion Reworks & Visual Clarity Rules
 
-### Torgar (`src/entities/Titan.js`, `heroId: 'titan'`, v7 Slash-Free Symmetric Mjolnir, Horizontal Baseball-Bat Overdrive & Fast-Jump Sky-Smash Supreme Ultimate)
+### Torgar (`src/entities/Titan.js`, `heroId: 'titan'`, v7 Slash-Free Symmetric Mjolnir, Horizontal Baseball-Bat Overdrive & Fast-Jump Soil/Rock Crater Splash Supreme Ultimate)
 - **Symmetric Double-Faced Dwarven Warhammer (`Mjolnir`) & Zero Green-Orange Sword-Slash Crescents (`0/270` & `0/240` clips)**:
   - Rebuilt `draw_2h_worldbreaker_maul_104` (`scripts/build_titan_30fps_sheet.py`) and `drawColossalDwarvenWarhammer` (`src/engine/shaders/forgeShaders.js`) with a symmetric pinched anvil waist (`abs(dp)`), twin flared beveled striking faces, twin jade cheek runes, and radial outward handle-to-head geometry (`da` from inner grip to outer head).
-  - Completely removed ALL green-orange sword-slash crescents (`slash_arc`, `horiz_bat_arc`, `forge_aegis`, `drawMultiLayerCrescentArc`, and `forgeHammerArc`) from `titan_sheet.png`, `titan_vfx.png` (`Row 0` now erupts 3 grounded Volcanic Basalt & Molten-Gold Earth-Spire Crags), `forgeShaders.js`, and `Titan.js` so blunt warhammer impacts read through grounded shockwave craters, molten anvil sparks, and volcanic pillars rather than blade slashes.
+  - Completely removed ALL green-orange sword-slash crescents (`slash_arc`, `horiz_bat_arc`, `forge_aegis`, `drawMultiLayerCrescentArc`, and `forgeHammerArc`) from `titan_sheet.png`, `titan_vfx.png` (`Row 0` now erupts 3 grounded Volcanic Basalt & Molten-Gold Earth-Spire Crags), `forgeShaders.js`, and `Titan.js` so blunt warhammer impacts read through grounded shockwave craters, molten anvil sparks, and shattered earth/rock splashes rather than blade slashes.
 - **3-Animation Dynamic Normal Attack (`TRINITY OF THE WORLD-MAUL`, `Row 2 F00..F29`)**:
   - **3 genuinely distinct full-body martial animations** on Torgar's character model (with physical windup step-in):
     1. `F00..F09` (`OVERHEAD EARTH-SPLITTER SLAM`): Tall `-78°` vertical 2H hoist above his horned helm into a deep split-knee `+14°` floor smash + traveling `Row 0` Volcanic Earth-Spire Fissure Wave.
@@ -35,10 +35,10 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 - **Horizontal Baseball-Bat Overdrive (`WORLD-BREAKER HOME RUN`, `Row 4 F00..F14`, `1.46s`)**:
   - Unobstructed rear-shoulder Baseball-Bat coil (`F00..F05`, cocked behind Torgar's helm so his face stays completely clear) into a slash-free chest-high horizontal Home-Run Grand-Slam (`F06..F10` + warm gold/white sonic air-compression wake), launching the enemy in a fast line-drive comet (`38px` arc) to the **farthest stage wall** and **stunning for `0.80s`**.
 - **Supreme Ultimate (`GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER`, `Row 4 F15..F29`, `3.80s` 4-Beat Choreography)**:
-  - **Beat 1 (`0.00..0.62s`)**: Swells into his **HUGE `2.15x` Colossus Form** with an unobstructed silhouette (`F15..F16` deep floor-scoop coil).
+  - **Beat 1 (`0.00..0.62s`)**: Swells into his **HUGE `2.15x` Colossus Form** with an unobstructed silhouette (`F15..F16` deep floor-scoop coil, zero flanking crystal spikes).
   - **Beat 2 (`0.62..1.10s`)**: Planted firmly on `groundY`, rips a 2H Rising Sky-Uppercut (`F17..F19`, `cameraAirLift = 680`), **hammering and launching all active enemies UP into the sky** (`groundY - 210px`, `0` chip ticks).
-  - **Beat 3 (`1.10..1.96s`)**: Compresses into a brief deep squat (`1.10..1.20s`, `F16`) and **explosively fast-jumps (`Super-Leap`, `1.20..1.56s`, `F20..F21`)** continuously from `groundY` up to `groundY - 380..390px` (`0` blink-teleport snapping, crisp 2-ghost motion trail) cleanly ABOVE the airborne enemy before hoisting Mjolnir overhead (`1.56..1.96s`, `F22..F23`).
-  - **Beat 4 (`1.96..2.36s`)**: Jackknifes downward (`F24..F26`), physically intercepts the airborne enemy mid-sky (`plungeU = 0.34`), and **meteor-spikes them straight into the arena floor** (`t = 2.36s`) for ONE `735`-Crit Continental Sunder + `+9%` Max HP heal + `7` depth-sorted `Row 7` Volcanic Geysers + **`1.85s` Stun**.
+  - **Beat 3 (`1.10..1.96s`)**: Compresses into a brief deep squat (`1.10..1.20s`, `F16`) and **explosively fast-jumps (`Super-Leap`, `1.20..1.56s`, `F20..F21`)** continuously from `groundY` up to `groundY - 380..390px` (`0` blink-teleport snapping, soil/pebble kickoff splash + crisp 2-ghost motion trail) cleanly ABOVE the airborne enemy before hoisting Mjolnir overhead (`1.56..1.96s`, `F22..F23`).
+  - **Beat 4 (`1.96..2.36s`)**: Jackknifes downward (`F24..F26`), physically intercepts the airborne enemy mid-sky (`plungeU = 0.34`), and **meteor-spikes them straight into the arena floor** (`t = 2.36s`) for ONE `735`-Crit Continental Sunder + `+9%` Max HP heal + wide 2.5D **Soil, Dirt & Shattered Bedrock Crater Splash** (`Row 7` `continentalSunderGeyserCell` with `glowColor: 'none'` + `32` ballistic bouncing granite boulders & wet soil clods + `16` rolling dust plumes, zero vertical spike columns) + **`1.85s` Stun**.
 
 ### Sylvara (`src/entities/Archer.js`, `heroId: 'archer'`, v4 Ultimate & Supreme Ultimate Rework)
 - **Baked 30fps `Row 4` Acrobatic Somersault & Far-Stage Yggdrasil Choreography (`scripts/build_archer_30fps_sheet.py`, `0/270` clips, `0` pinholes, `20/20` palette)**:

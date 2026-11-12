@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps77';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps77';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps77';
+import { Fighter } from './Fighter.js?v=30fps78';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps78';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps78';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps77';
+} from '../engine/shaders/forgeShaders.js?v=30fps78';
 
 /**
  * Torgar v7 (`titan`) — Sovereign of the World-Forge & Runic Anvil Juggernaut.
@@ -37,7 +37,7 @@ import {
  *       Grows **HUGE (`2.15x`)**, **hammers all active enemies high UP into the sky** (`groundY - 210px`) with a
  *       grounded rising Mjolnir uppercut, **fast-jumps explosively (`Super-Leap`)** continuously to the top of the sky
  *       (`groundY - 380..390px`) cleanly above the airborne foe hoisting Mjolnir overhead (`Row 4 F20..F23`), and
- *       **meteor-spikes them straight into the ground** for ONE `735`-Crit Continental Sunder + `7` Geysers + **`1.85s` Stun**!
+ *       **meteor-spikes them straight into the ground** for ONE `735`-Crit Continental Sunder + Soil & Shattered Bedrock Crater Splash + **`1.85s` Stun**!
  */
 export class Titan extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -108,8 +108,10 @@ export class Titan extends Fighter {
     // 7. Giant Titan Scale during Continental Sunder
     this.giantScale = 1.0;
 
-    // 8. Active 30fps `titan_vfx.png` cell animations
+    // 8. Active 30fps `titan_vfx.png` cell animations & 2.5D Soil/Bedrock Splash debris
     this.activeVfxAnims = [];
+    this._soilRockChunks = [];
+    this._soilDustPlumes = [];
 
     // 9. World-Breaker Home-Run Overdrive flight & impact streak state
     this._homeRunFlights = [];
@@ -128,11 +130,11 @@ export class Titan extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
-      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps77')) {
-        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps77';
+      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps78')) {
+        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps78';
       }
-      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps77')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps77';
+      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps78')) {
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps78';
       }
     }
   }
@@ -451,6 +453,8 @@ export class Titan extends Fighter {
       this.fissureWaves.length = 0;
       this._homeRunFlights.length = 0;
       this._homeRunSwingStreak = null;
+      this._soilRockChunks.length = 0;
+      this._soilDustPlumes.length = 0;
     }
 
     // 1. Step Active 30fps `titan_vfx.png` Cell Animations
@@ -466,6 +470,39 @@ export class Titan extends Fighter {
       }
       if (v.age >= v.maxLife) {
         this.activeVfxAnims.splice(i, 1);
+      }
+    }
+
+    // 1B. Step Ballistic 2.5D Soil & Shattered Bedrock Chunks + Rolling Ground Dust Plumes
+    for (let i = this._soilRockChunks.length - 1; i >= 0; i--) {
+      const c = this._soilRockChunks[i];
+      c.age += dt;
+      c.x += c.vx * dt;
+      c.vy += c.grav * dt;
+      c.y += c.vy * dt;
+      if (c.y >= this.groundY - 2) {
+        c.y = this.groundY - 2;
+        if (c.bounces < 1 && Math.abs(c.vy) > 90) {
+          c.bounces += 1;
+          c.vy = -Math.abs(c.vy) * 0.30;
+          c.vx *= 0.58;
+        } else {
+          c.vy = 0;
+          c.vx *= Math.pow(0.02, dt);
+        }
+      }
+      if (c.age >= c.maxLife) {
+        this._soilRockChunks.splice(i, 1);
+      }
+    }
+    for (let i = this._soilDustPlumes.length - 1; i >= 0; i--) {
+      const p = this._soilDustPlumes[i];
+      p.age += dt;
+      p.x += p.vx * dt;
+      p.vx *= Math.pow(0.18, dt);
+      p.y += p.vy * dt;
+      if (p.age >= p.maxLife) {
+        this._soilDustPlumes.splice(i, 1);
       }
     }
 
@@ -1567,7 +1604,7 @@ export class Titan extends Fighter {
    *   all the way up to `groundY - 380..390px` cleanly ABOVE the airborne enemy before hoisting Mjolnir overhead (`F22..F23`)!
    * - Beat 4 (`1.96s .. 2.36s`): Giant Torgar jackknifes downward (`Row 4 F24..F26`), intercepts the airborne
    *   enemy mid-sky, and **meteor-spikes them straight into the arena floor** at `t >= 2.36s` for ONE `735`-Crit
-   *   Continental Sunder + `+9%` Max HP heal + `7` `Row 7` Volcanic Geysers + **`1.85s` Stun**!
+   *   Continental Sunder + `+9%` Max HP heal + wide 2.5D **Soil, Dirt & Shattered Bedrock Crater Splash** + **`1.85s` Stun**!
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
@@ -1698,7 +1735,7 @@ export class Titan extends Fighter {
         );
         this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
           flip: ultDir < 0,
-          palette: FORGE_JADE_PALETTE,
+          palette: FORGE_GOLD_PALETTE,
           light: 1.42,
           extra: { maxRx: 168 }
         });
@@ -1739,7 +1776,7 @@ export class Titan extends Fighter {
           gravity: 35,
           angle: -Math.PI * 0.5,
           spread: 0.85,
-          colors: ['#ffffff', '#fde047', '#f59e0b', '#10b981']
+          colors: ['#ffffff', '#fde047', '#f59e0b']
         });
       }
 
@@ -1767,7 +1804,7 @@ export class Titan extends Fighter {
           game?.audio?.play?.('thunder_slam', standX);
           game?.renderer?.triggerShake?.(14, 0.20);
 
-          // Explosive floor launch shockwave & molten sparks under Torgar's boots (ZERO teleport blink flash!)
+          // Explosive floor launch shockwave & soil/pebble kick-off under Torgar's boots (ZERO teleport blink flash!)
           this.fx?.spawn('tectonicCraterSlam', standX, this.groundY - 4, {
             flip: ultDir < 0,
             palette: FORGE_GOLD_PALETTE,
@@ -1779,6 +1816,7 @@ export class Titan extends Fighter {
             palette: FORGE_GOLD_PALETTE,
             light: 1.36
           });
+          this.triggerSoilRockSplash(standX, this.groundY, ww, 'leap');
           game?.vfx?.spawnDamageText?.(
             standX,
             this.groundY - 190,
@@ -1855,7 +1893,7 @@ export class Titan extends Fighter {
       return;
     }
 
-    // Beat 5 (`t >= 2.36s`, `_trueUltStep < 4` — Cataclysmic Ground-Smash Impact + `1.85s` Stun!)
+    // Beat 5 (`t >= 2.36s`, `_trueUltStep < 4` — Cataclysmic Ground-Smash + Soil & Shattered Bedrock Crater Splash!)
     if (this._trueUltStep < 4) {
       this._trueUltStep = 4;
       this._superJumpTrail = [];
@@ -1890,23 +1928,32 @@ export class Titan extends Fighter {
       });
       this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
         flip: ultDir < 0,
-        palette: FORGE_JADE_PALETTE,
-        light: 1.52,
+        palette: FORGE_GOLD_PALETTE,
+        light: 1.48,
         extra: { maxRx: 215 }
       });
 
-      for (let i = 0; i < 7; i++) {
-        const gx = 120 + i * 160;
-        const nearCenter = Math.abs(gx - this.x) < 140 || Math.abs(gx - this._trueUltAnvilX) < 110;
-        this.spawnSheetBurst(7, gx, this.groundY - 145, {
-          w: 240,
-          h: 340,
-          maxLife: 1.05,
-          flipX: i % 2 === 1,
-          glowColor: i % 2 === 0 ? 'gold' : 'emerald',
-          inFront: !nearCenter && i % 2 === 0
+      // Wide 2.5D Soil, Dirt & Shattered Bedrock Crater Splash (`Row 7`, `glowColor: 'none'` — ZERO vertical spikes!)
+      this.spawnSheetBurst(7, this._trueUltAnvilX, this.groundY - 64, {
+        w: 420,
+        h: 256,
+        maxLife: 0.98,
+        flipX: ultDir < 0,
+        glowColor: 'none',
+        inFront: false
+      });
+      for (const side of [-1, 1]) {
+        const splashX = Math.max(110, Math.min(ww - 110, this._trueUltAnvilX + side * 190));
+        this.spawnSheetBurst(7, splashX, this.groundY - 46, {
+          w: 284,
+          h: 184,
+          maxLife: 0.90,
+          flipX: side < 0,
+          glowColor: 'none',
+          inFront: true
         });
       }
+      this.triggerSoilRockSplash(this._trueUltAnvilX, this.groundY, ww, 'cataclysm');
 
       game?.vfx?.spawnDamageText?.(
         this._trueUltAnvilX,
@@ -2077,26 +2124,7 @@ export class Titan extends Fighter {
     const ay = this.groundY - 110;
 
     if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-      // Twin Flanking `Row 2` Volcanic Forge Obelisks framing the Crucible Landing Zone
-      for (const side of [-1, 1]) {
-        const ox = Math.max(85, Math.min(ww - 85, ax + side * 215));
-        this.drawBloomedVfxCell(
-          ctx,
-          vfxSheet,
-          2,
-          (col + (side > 0 ? 9 : 0)) % 30,
-          ox,
-          this.groundY - 96,
-          236,
-          252,
-          0.90,
-          side < 0,
-          renderer,
-          'emerald'
-        );
-      }
-
-      // Central `Row 5` Colossal World-Forge Crucible Target Seal on the Arena Floor (`336x336`)
+      // Central `Row 5` Colossal World-Forge Crucible Target Seal on the Arena Floor (`336x336`, ZERO flanking crystal spikes!)
       this.drawBloomedVfxCell(
         ctx,
         vfxSheet,
@@ -2170,8 +2198,10 @@ export class Titan extends Fighter {
     ctx.translate(Math.round(x), Math.round(y));
     if (flipX) ctx.scale(-1, 1);
 
-    const glowSprite =
-      glowColor === 'emerald'
+    const useGlow = glowColor !== 'none';
+    const glowSprite = !useGlow
+      ? null
+      : glowColor === 'emerald'
         ? renderer?.glowEmerald || renderer?.glowGold || renderer?.glowOrange
         : renderer?.glowGold || renderer?.glowOrange;
     if (glowSprite) {
@@ -2186,23 +2216,25 @@ export class Titan extends Fighter {
     ctx.globalAlpha = Math.min(1, alpha);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
-    ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * 0.20);
-    ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
+    if (useGlow) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = Math.min(1, alpha * 0.20);
+      ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
+    }
 
     ctx.restore();
   }
 
   /**
    * Stamps active 30fps `titan_vfx.png` rows accurately mapped to `build_titan_vfx_30fps.mjs`:
-   * - Row 0: `tectonicMagmaWaveCell` (Traveling Tectonic Magma-Jade Fissure Wave)
+   * - Row 0: `tectonicMagmaWaveCell` (Traveling Tectonic Volcanic Earth-Spire Wave)
    * - Row 1: `runicIronForgeAnvilCell` (Horned Khazad Iron Forge-Anvil construct & cannonball)
    * - Row 2: `tectonicMagmaPillarCell` (Erupting Magma-Jade Volcanic Rune Obelisk)
    * - Row 3: `worldForgeAnvilSealCell` (8-Cog Sovereign World-Forge Crucible Mandala)
    * - Row 4: `cataclysmCraterNovaCell` (Molten Hammer Star-Crater Shock-Ring Nova)
    * - Row 5: `worldForgeCrucibleAltarCell` (Colossal World-Forge Crucible Altar)
-   * - Row 6: `godHammerLightningStrikeCell` (God-Hammer Lightning-Magma Strike Arc)
-   * - Row 7: `continentalSunderGeyserCell` (Continental Sunder Volcanic Rune Geysers)
+   * - Row 6: `godHammerLightningStrikeCell` (God-Hammer Lightning-Magma Strike)
+   * - Row 7: `continentalSunderGeyserCell` (Continental Sunder Soil, Dirt & Shattered Bedrock Crater Splash)
    */
   drawActiveAnvilAndQuakes(ctx, vfxSheet = null, renderer = null, inFront = false) {
     const sheet =
@@ -2210,7 +2242,7 @@ export class Titan extends Fighter {
     if (!sheet || !sheet.complete) return;
 
     if (!inFront) {
-      // 1. Background 30fps `titan_vfx.png` cell animations (`Row 2` Pillars & `Row 3` Seals)
+      // 1. Background 30fps `titan_vfx.png` cell animations
       for (const v of this.activeVfxAnims) {
         if (v.inFront) continue;
         const u = Math.min(1, Math.max(0, v.age / v.maxLife));
@@ -2226,7 +2258,7 @@ export class Titan extends Fighter {
           v.y,
           v.w,
           v.h,
-          fade * 0.94,
+          fade * 0.96,
           v.flipX,
           renderer,
           v.glowColor
@@ -2349,6 +2381,124 @@ export class Titan extends Fighter {
     }
   }
 
+  /**
+   * Spawns ballistic 16-bit Soil Clods, Shattered Granite Boulders & Rolling Dust Plumes.
+   */
+  triggerSoilRockSplash(originX, groundY, ww = 1200, preset = 'cataclysm') {
+    const isBig = preset === 'cataclysm';
+    const chunkCount = isBig ? 32 : 12;
+    const plumeCount = isBig ? 16 : 6;
+    const cx = Math.max(80, Math.min(ww - 80, originX));
+
+    for (let i = 0; i < chunkCount; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const lane = Math.floor(i / 2) / Math.max(1, Math.floor(chunkCount / 2) - 1);
+      // Fan outward left & right (`|vx| >= 95`) so rocks splash in a dramatic wide fountain!
+      const speedX = isBig ? 95 + lane * 495 : 65 + lane * 215;
+      const speedY = isBig
+        ? -(690 - lane * 360 + ((i * 37) % 90))
+        : -(340 - lane * 130 + ((i * 29) % 55));
+      const size = isBig ? 8 + ((i * 5) % 11) : 5 + ((i * 3) % 6);
+      this._soilRockChunks.push({
+        x: cx + side * (12 + lane * 34),
+        y: groundY - 6 - ((i * 7) % 14),
+        vx: side * speedX,
+        vy: speedY,
+        grav: isBig ? 1520 : 1280,
+        size,
+        isRock: i % 3 !== 1,
+        inFront: i % 2 === 0,
+        bounces: 0,
+        age: 0,
+        maxLife: isBig ? 0.96 + (i % 4) * 0.11 : 0.52 + (i % 3) * 0.08
+      });
+    }
+
+    for (let i = 0; i < plumeCount; i++) {
+      const side = i % 2 === 0 ? -1 : 1;
+      const lane = Math.floor(i / 2) / Math.max(1, Math.floor(plumeCount / 2) - 1);
+      this._soilDustPlumes.push({
+        x: cx + side * (18 + lane * 48),
+        y: groundY - 8 - (i % 3) * 8,
+        vx: side * (isBig ? 110 + lane * 340 : 75 + lane * 165),
+        vy: -(isBig ? 18 + (i % 4) * 12 : 12 + (i % 3) * 8),
+        r: isBig ? 18 + ((i * 7) % 16) : 11 + ((i * 5) % 9),
+        inFront: i % 3 !== 0,
+        age: 0,
+        maxLife: isBig ? 0.88 + (i % 4) * 0.10 : 0.46 + (i % 3) * 0.06
+      });
+    }
+  }
+
+  /**
+   * Renders 2.5D Stepped 16-Bit Pixel-Art Soil Dust Plumes, Dirt Clods & Shattered Granite Boulders.
+   * Uses strictly integer `ctx.fillRect` pixel clusters — ZERO `ctx.rotate` or `quadraticCurveTo`.
+   */
+  drawSoilRockSplash(ctx, inFront = false) {
+    if (!ctx?.fillRect) return;
+    const hasPlumes = this._soilDustPlumes?.length > 0;
+    const hasChunks = this._soilRockChunks?.length > 0;
+    if (!hasPlumes && !hasChunks) return;
+
+    ctx.save();
+    // 1. Billowing Low-Ground Soil & Dust Plumes
+    for (let i = 0; i < this._soilDustPlumes.length; i++) {
+      const p = this._soilDustPlumes[i];
+      if (Boolean(p.inFront) !== inFront) continue;
+      const u = Math.min(1, p.age / p.maxLife);
+      const alpha = u < 0.12 ? u / 0.12 : Math.max(0, 1 - (u - 0.12) / 0.88);
+      if (alpha <= 0.03) continue;
+
+      const rad = Math.max(6, Math.round((p.r * (0.65 + 0.65 * u)) / 2) * 2);
+      const px = Math.round(p.x / 2) * 2;
+      const py = Math.round(p.y / 2) * 2;
+      const h = Math.max(6, Math.round(rad * 0.62));
+
+      ctx.globalAlpha = alpha * 0.76;
+      ctx.fillStyle = '#362214';
+      ctx.fillRect(px - rad, py - Math.round(h * 0.45), rad * 2, h);
+      ctx.fillStyle = '#5c3d26';
+      ctx.fillRect(px - rad + 2, py - Math.round(h * 0.65), rad * 2 - 4, h - 2);
+      ctx.fillStyle = '#8c6240';
+      ctx.fillRect(px - Math.round(rad * 0.76), py - Math.round(h * 0.80), Math.round(rad * 1.52), Math.round(h * 0.68));
+      ctx.fillStyle = '#c2a37e';
+      ctx.fillRect(px - Math.round(rad * 0.52), py - Math.round(h * 0.90), Math.round(rad * 1.04), Math.round(h * 0.42));
+    }
+
+    // 2. Faceted Tumbling Granite Boulders & Heavy Wet Soil Clods
+    for (let i = 0; i < this._soilRockChunks.length; i++) {
+      const c = this._soilRockChunks[i];
+      if (Boolean(c.inFront) !== inFront) continue;
+      const u = Math.min(1, c.age / c.maxLife);
+      const alpha = u > 0.76 ? Math.max(0, (1 - u) / 0.24) : 1.0;
+      if (alpha <= 0.03) continue;
+
+      const s = Math.max(4, Math.round(c.size / 2) * 2);
+      const hs = Math.round(s * 0.5);
+      const cx = Math.round(c.x / 2) * 2;
+      const cy = Math.round(c.y / 2) * 2;
+
+      ctx.globalAlpha = alpha * 0.98;
+      // 2px Dark Loam-Obsidian Selective Outline (`#120d0a`)
+      ctx.fillStyle = '#120d0a';
+      ctx.fillRect(cx - hs - 2, cy - hs, s + 4, s);
+      ctx.fillRect(cx - hs, cy - hs - 2, s, s + 4);
+
+      // Shadow body (`#292524` dark basalt rock or `#362214` dark wet soil)
+      ctx.fillStyle = c.isRock ? '#292524' : '#362214';
+      ctx.fillRect(cx - hs, cy - hs, s, s);
+
+      // Midtone plane (`#57534e` granite or `#5c3d26` sienna soil)
+      ctx.fillStyle = c.isRock ? '#57534e' : '#5c3d26';
+      ctx.fillRect(cx - hs, cy - hs, Math.max(2, s - 2), Math.max(2, s - 2));
+
+      // Upper-lit fracture / soil clod crest (`#a8a29e` stone or `#a67c52` dry earth)
+      ctx.fillStyle = c.isRock ? '#a8a29e' : '#a67c52';
+      ctx.fillRect(cx - hs + 2, cy - hs, Math.max(2, s - 4), Math.max(2, Math.round(s * 0.45)));
+    }
+    ctx.restore();
+  }
+
   drawForegroundOverlay(ctx, renderer = null) {
     const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.titan : null;
     const vfxSheet = sprites?.vfx;
@@ -2358,6 +2508,9 @@ export class Titan extends Fighter {
     if (vfxSheet?.complete) {
       this.drawActiveAnvilAndQuakes(ctx, vfxSheet, renderer, false);
     }
+
+    // Back-layer 2.5D Soil, Dust & Shattered Bedrock Splash
+    this.drawSoilRockSplash(ctx, false);
 
     // Live 120Hz `ArcaneShaderFX` "back" layer (2.5D Magma Mantle, Khazad Ancestor Spirit, Craters, Ragnarok Waves)
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
@@ -2422,9 +2575,12 @@ export class Titan extends Fighter {
 
     const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.titan : null;
     const vfxSheet = sprites?.vfx;
-    if (!vfxSheet?.complete) return;
+    if (vfxSheet?.complete) {
+      this.drawActiveAnvilAndQuakes(ctx, vfxSheet, renderer, true);
+    }
 
-    this.drawActiveAnvilAndQuakes(ctx, vfxSheet, renderer, true);
+    // Front-layer 2.5D Flying Boulders, Soil Clods & Ground Dust Plumes
+    this.drawSoilRockSplash(ctx, true);
   }
 
   draw(ctx, isReflection = false, renderer = null) {

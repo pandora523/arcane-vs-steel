@@ -25,7 +25,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps77';
+} from '../ArcaneShaderFX.js?v=30fps78';
 
 // Volcanic Basalt-Obsidian + Molten Magma Crimson-Orange -> Forge Gold
 export const FORGE_GOLD_PALETTE = [
@@ -1176,34 +1176,53 @@ export const ragnarokWorldForgeWave = {
   },
   create(cfg) {
     const magma = buildColorRamp(FORGE_GOLD_PALETTE, 8);
-    const jade = buildColorRamp(FORGE_JADE_PALETTE, 8);
-    const magmaBand = [magma[2], magma[4], magma[6], PURE_WHITE];
-    const jadeBand = [jade[2], jade[4], jade[6], PURE_WHITE];
+    const soilDark = packHexColor('#362214');
+    const soilMid = packHexColor('#5c3d26');
+    const soilLight = packHexColor('#8c6240');
+    const rockDark = packHexColor('#292524');
+    const rockMid = packHexColor('#57534e');
+    const rockLight = packHexColor('#a8a29e');
+    const dustTan = packHexColor('#d6c2a5');
+    const dustBand = [soilDark, soilMid, soilLight, dustTan];
+
     const rng = new DeterministicRng(cfg.seed);
     const motes = new MotePool({
       rng,
-      sparkRamp: [PURE_WHITE, magma[6], jade[5], magma[4]],
-      floorY: 0
+      sparkRamp: [dustTan, rockLight, soilLight, magma[6]],
+      floorY: 4
     });
 
-    const cathedralSpires = [
-      { x: -34, h: 32, w: 5.8, tilt: -18.0, delay: 0.12, back: true, seed: 19 },
-      { x: 34, h: 32, w: 5.8, tilt: 18.0, delay: 0.12, back: true, seed: 29 },
-      { x: -24, h: 38, w: 6.4, tilt: -12.0, delay: 0.08, back: false, seed: 43 },
-      { x: -11, h: 42, w: 6.8, tilt: -5.5, delay: 0.04, back: false, seed: 59 },
-      { x: 11, h: 42, w: 6.8, tilt: 5.5, delay: 0.04, back: false, seed: 73 },
-      { x: 24, h: 38, w: 6.4, tilt: 12.0, delay: 0.08, back: false, seed: 89 }
+    // Parabolic flying rock boulders & heavy soil clods splashed outward from impact crater
+    const debrisChunks = [
+      { vx: -62, vy: -52, grav: 132, r: 4.2, isRock: true, back: true },
+      { vx: -42, vy: -68, grav: 138, r: 3.6, isRock: false, back: true },
+      { vx: 44, vy: -66, grav: 138, r: 3.8, isRock: false, back: true },
+      { vx: 64, vy: -50, grav: 132, r: 4.4, isRock: true, back: true },
+      { vx: -54, vy: -58, grav: 136, r: 4.6, isRock: false, back: false },
+      { vx: -26, vy: -74, grav: 144, r: 5.0, isRock: true, back: false },
+      { vx: 28, vy: -72, grav: 144, r: 4.8, isRock: true, back: false },
+      { vx: 56, vy: -56, grav: 136, r: 4.5, isRock: false, back: false }
     ];
 
-    // Parabolic Arcing Anvil Firebrands launched outward from the Ragnarok caldera
-    const firebrands = [
-      { vx: -58, vy: -64, grav: 118, isJade: false, seed: 13 },
-      { vx: -36, vy: -76, grav: 124, isJade: true, seed: 27 },
-      { vx: -18, vy: -82, grav: 128, isJade: false, seed: 41 },
-      { vx: 18, vy: -82, grav: 128, isJade: true, seed: 53 },
-      { vx: 36, vy: -76, grav: 124, isJade: false, seed: 67 },
-      { vx: 58, vy: -64, grav: 118, isJade: true, seed: 83 }
-    ];
+    function drawDebrisClod(pen, cx, cy, r, ang, isRock, alpha) {
+      if (alpha <= 0.02 || r <= 1.0) return;
+      const b = Math.ceil(r + 2);
+      const ca = Math.cos(ang);
+      const sa = Math.sin(ang);
+      pen.shadeBox(cx - b, cy - b, cx + b, cy + b, (lx, ly, out) => {
+        const dx = lx - cx;
+        const dy = ly - cy;
+        const ux = dx * ca + dy * sa;
+        const uy = -dx * sa + dy * ca;
+        const dist = Math.max(Math.abs(ux) * 0.92 + Math.abs(uy) * 0.55, Math.hypot(ux, uy * 1.12));
+        if (dist > r) return 0;
+        out.alpha = alpha;
+        if (dist >= r - 1.05) return COL_OBSIDIAN;
+        if (uy < -r * 0.25) return isRock ? rockLight : dustTan;
+        if (ux > 0) return isRock ? rockMid : soilLight;
+        return isRock ? rockDark : soilDark;
+      });
+    }
 
     let t = 0;
     let burstDone = false;
@@ -1212,18 +1231,18 @@ export const ragnarokWorldForgeWave = {
       step(dt) {
         if (!burstDone) {
           burstDone = true;
-          for (let i = 0; i < 30; i++) {
-            const rx = rng.between(-46, 46);
+          for (let i = 0; i < 28; i++) {
+            const rx = rng.between(-44, 44);
             motes.emit(
-              i % 3 === 0 ? 'orb' : i % 2 === 0 ? 'glint' : 'spark',
-              rx,
-              -4,
-              rx * 2.6,
-              rng.between(-138, -52),
-              rng.between(0.26, 0.54),
-              i % 2 === 0 ? magma[6] : jade[5],
-              1.35,
-              116
+              'orb',
+              rx * 0.5,
+              -2,
+              rx * 2.7,
+              rng.between(-128, -44),
+              rng.between(0.28, 0.58),
+              i % 3 === 0 ? rockLight : i % 2 === 0 ? dustTan : soilLight,
+              1.4,
+              135
             );
           }
         }
@@ -1232,99 +1251,34 @@ export const ragnarokWorldForgeWave = {
       },
       renderBack(pen) {
         const u = clamp01(t / 0.78);
-        const pop = smoothStep(0, 0.18, u);
+        const pop = smoothStep(0, 0.16, u);
         const fade = 1 - Math.pow(u, 1.55);
         if (fade <= 0.02) return;
 
-        // 1. Parabolic Arcing Anvil Firebrands & Molten Slag Boulders
-        for (let i = 0; i < firebrands.length; i++) {
-          const fb = firebrands[i];
-          const uFb = clamp01(u * 1.15);
-          const fx = fb.vx * uFb;
-          const fy = -8 + fb.vy * uFb + 0.5 * fb.grav * uFb * uFb;
-          const prevU = Math.max(0, uFb - 0.12);
-          const pfx = fb.vx * prevU;
-          const pfy = -8 + fb.vy * prevU + 0.5 * fb.grav * prevU * prevU;
-          pen.line(pfx, pfy, fx, fy, fb.isJade ? COL_JADE_BRIGHT : COL_MAGMA_BRIGHT, fade * 0.88);
-          drawKhazadDiamondRune(pen, fx, fy, 3.2 * fade, fb.isJade, fade * 0.94);
-          drawHexForgeRivet(pen, (pfx + fx) * 0.5, (pfy + fy) * 0.5, 1.8 * fade, !fb.isJade, fade * 0.85);
+        drawTiltedOrbitBand(pen, 0, 2, 56 * pop, 0.20, 2.2, 0.88 * fade, dustBand, BACK_HALF, false);
+        for (let i = 0; i < debrisChunks.length; i++) {
+          const d = debrisChunks[i];
+          if (!d.back) continue;
+          const fx = d.vx * u;
+          const fy = Math.min(2, -4 + d.vy * u + 0.5 * d.grav * u * u);
+          drawDebrisClod(pen, fx, fy, d.r * (1 - 0.2 * u), u * 5.0 + i, d.isRock, fade * 0.95);
         }
-
-        // 3. Colossal 2.5D Interlocking Dwarven Crucible Gear-Mandala on the Floor (Back Half)
-        drawDwarvenCrucibleGearRing(pen, 0, 0, 54 * pop, 0.22, u * 2.2, 0.92 * fade, BACK_HALF, false);
-        drawDwarvenCrucibleGearRing(pen, 0, 0, 36 * pop, 0.22, -u * 3.1, 0.88 * fade, BACK_HALF, true);
-        drawTiltedOrbitBand(pen, 0, 0, 46 * pop, 0.22, 1.8, 0.9 * fade, magmaBand, BACK_HALF, false);
-
-        // 4. Back-Layer Vertical Interlocking World-Forge Crucible Gears & Left Pincer God-Maul
-        drawDwarvenCrucibleGearRing(pen, -22 * pop, -18 * pop, 20 * pop, 0.76, u * 3.8, 0.85 * fade, null, false);
-        drawDwarvenCrucibleGearRing(pen, 22 * pop, -18 * pop, 20 * pop, 0.76, -u * 3.8, 0.85 * fade, null, true);
-
-        const leftSwingAngle = -1.22 + smoothStep(0.0, 0.42, u) * 0.92;
-        drawColossalDwarvenWarhammer(
-          pen,
-          -15 * pop,
-          -24 + 8 * smoothStep(0, 0.28, u),
-          0.96,
-          u,
-          (cfg.seed || 181) + 7,
-          leftSwingAngle,
-          fade * 0.94,
-          u >= 0.14 && u <= 0.36
-        );
-
-        pen.radialGlow(0, -24 * pop, 34 * fade, magma[5], 0.44 * fade);
-        pen.radialGlow(0, -14 * pop, 26 * fade, jade[5], 0.36 * fade);
       },
       renderFront(pen) {
         const u = clamp01(t / 0.78);
-        const pop = smoothStep(0, 0.18, u);
+        const pop = smoothStep(0, 0.16, u);
         const fade = 1 - Math.pow(u, 1.55);
         if (fade <= 0.02) return;
 
-        // 1. Central World-Forge Crucible Horned Anvil Altar at `(0, -9)`
-        drawPixelHornedAnvil(pen, 0, -9, 1.48 * pop, 0, fade * 0.99, u >= 0.14 && u <= 0.42);
-
-        // 2. Right Pincer Colossal Diagonal-Swinging Khazad God-Maul crashing onto the World-Anvil
-        const rightSwingAngle = -1.88 - smoothStep(0.04, 0.46, u) * 1.14;
-        const hammerDrop = smoothStep(0, 0.24, u);
-        const hammerY = -28 + 10 * hammerDrop;
-        drawColossalDwarvenWarhammer(
-          pen,
-          14 * pop,
-          hammerY,
-          1.12,
-          u,
-          cfg.seed || 181,
-          rightSwingAngle,
-          fade * 0.99,
-          u >= 0.16 && u <= 0.42,
-          -1
-        );
-
-        // 3. Orbiting Forged Khazad Diamond Runes around the World-Anvil
-        for (let k = 0; k < 4; k++) {
-          const ka = u * 4.5 + (k * Math.PI) / 2;
-          const kx = Math.cos(ka) * 28 * pop;
-          const ky = -12 + Math.sin(ka) * 9 * pop;
-          drawKhazadDiamondRune(pen, kx, ky, 3.2 * fade, k % 2 === 0, fade * 0.95);
+        for (let i = 0; i < debrisChunks.length; i++) {
+          const d = debrisChunks[i];
+          if (d.back) continue;
+          const fx = d.vx * u;
+          const fy = Math.min(3, -4 + d.vy * u + 0.5 * d.grav * u * u);
+          drawDebrisClod(pen, fx, fy, d.r * (1 - 0.2 * u), -u * 4.6 + i, d.isRock, fade * 0.98);
         }
 
-        // 4. Diagonal Arcing Magma & Emerald-Jade Lightning Bolts across the Caldera
-        if (u < 0.74) {
-          const bolt1 = buildLightningChain(rng, -34, -38, -4, -14, 0.22, 3);
-          const bolt2 = buildLightningChain(rng, 34, -38, 4, -14, 0.22, 3);
-          pen.polyline(bolt1, COL_JADE_BRIGHT, fade * 0.96);
-          pen.polyline(bolt1, PURE_WHITE, fade * 0.92);
-          pen.polyline(bolt2, COL_FORGE_GOLD, fade * 0.96);
-          pen.polyline(bolt2, PURE_WHITE, fade * 0.88);
-        }
-
-        // 5. Multi-Ring 2.5D Lava & Emerald-Jade Gear Shockwaves (Front Half)
-        drawDwarvenCrucibleGearRing(pen, 0, 2, 54 * pop, 0.22, u * 2.2, 0.96 * fade, FRONT_HALF, false);
-        drawTiltedOrbitBand(pen, 0, 2, 46 * pop, 0.22, 2.2, 0.96 * fade, magmaBand, FRONT_HALF, u < 0.3);
-        drawTiltedOrbitBand(pen, 0, 2, 32 * pop, 0.22, 1.8, 0.92 * fade, jadeBand, FRONT_HALF, false);
-
-        drawStarburstFlare(pen, 0, -18, 16 * fade, fade * 0.98, [magma[4], jade[5], magma[6], PURE_WHITE]);
+        drawTiltedOrbitBand(pen, 0, 3, 56 * pop, 0.20, 2.4, 0.94 * fade, dustBand, FRONT_HALF, false);
         motes.render(pen);
       }
     };
@@ -1971,152 +1925,203 @@ export const godHammerLightningStrikeCell = {
 };
 
 // ============================================================================
-// 13. ROW 7 (NATIVE 208x208): CONTINENTAL SUNDER VOLCANIC RUNE GEYSER (`continentalSunderGeyserCell`)
-//     - Towering magma-and-jade tectonic eruption column (`x in [-64, +64]`, `y in [-82, +78]`)
-//     - Curved 2.5D volcanic caldera crater base, double-helix jade/gold rune bands, ascending Khazad runes,
-//       flanking volcanic basalt spires, and volcanic lightning chains (`0` border clips!)
+// 13. ROW 7 (NATIVE 208x208): CONTINENTAL SUNDER SOIL & SHATTERED BEDROCK SPLASH (`continentalSunderGeyserCell`)
+//     - Wide 2.5D torn earth crater, billowing soil & dust shock-clouds, overturned flat stone slabs,
+//       and 16 parabolic flying granite boulders & soil clods (`x in [-84, +84]`, `y in [-68, +70]`, ZERO spikes!)
 // ============================================================================
 export const continentalSunderGeyserCell = {
   duration: 1.0,
   loop: false,
   defaults: { palette: FORGE_GOLD_PALETTE, seed: 359 },
   create(cfg) {
-    const magma = buildColorRamp(FORGE_GOLD_PALETTE, 8);
-    const jade = buildColorRamp(FORGE_JADE_PALETTE, 8);
-    const magmaBand = [magma[2], magma[4], magma[6], PURE_WHITE];
-    const jadeBand = [jade[2], jade[4], jade[6], PURE_WHITE];
-    const rng = new DeterministicRng(cfg.seed || 359);
+    const cOutline = packHexColor('#120d0a');
+    const cSoilDark = packHexColor('#362214');
+    const cSoilMid = packHexColor('#5c3d26');
+    const cSoilLight = packHexColor('#8c6240');
+    const cDustTan = packHexColor('#c2a37e');
+    const cDustPale = packHexColor('#e6d3b8');
+    const cRockDark = packHexColor('#292524');
+    const cRockMid = packHexColor('#57534e');
+    const cRockLight = packHexColor('#8a847c');
+    const cRockRim = packHexColor('#d6d3d1');
+    const dustBand = [cSoilDark, cSoilMid, cSoilLight, cDustTan];
+
+    // 16 Parabolic Flying Boulders & Heavy Soil Clods splashing outward & bouncing on the ground
+    const splashDebris = [
+      { x0: -10, vx: -118, vy: -145, g: 295, r: 7.5, isRock: true, back: true, rot: 1.2 },
+      { x0: -6, vx: -86, vy: -178, g: 310, r: 6.4, isRock: false, back: true, rot: -2.1 },
+      { x0: -4, vx: -52, vy: -198, g: 325, r: 8.2, isRock: true, back: true, rot: 0.7 },
+      { x0: 4, vx: 54, vy: -194, g: 325, r: 7.8, isRock: false, back: true, rot: -1.4 },
+      { x0: 7, vx: 88, vy: -174, g: 310, r: 8.4, isRock: true, back: true, rot: 2.3 },
+      { x0: 11, vx: 120, vy: -142, g: 295, r: 6.8, isRock: false, back: true, rot: -0.9 },
+
+      { x0: -14, vx: -132, vy: -126, g: 285, r: 8.8, isRock: false, back: false, rot: -1.8 },
+      { x0: -9, vx: -104, vy: -162, g: 305, r: 9.6, isRock: true, back: false, rot: 2.6 },
+      { x0: -5, vx: -68, vy: -188, g: 320, r: 7.2, isRock: false, back: false, rot: 1.5 },
+      { x0: -2, vx: -28, vy: -206, g: 335, r: 6.5, isRock: true, back: false, rot: -2.8 },
+      { x0: 2, vx: 30, vy: -204, g: 335, r: 6.8, isRock: false, back: false, rot: 2.1 },
+      { x0: 5, vx: 70, vy: -186, g: 320, r: 9.2, isRock: true, back: false, rot: -1.6 },
+      { x0: 9, vx: 106, vy: -158, g: 305, r: 7.6, isRock: false, back: false, rot: 1.9 },
+      { x0: 14, vx: 134, vy: -124, g: 285, r: 9.0, isRock: true, back: false, rot: -2.4 },
+      { x0: -16, vx: -146, vy: -92, g: 265, r: 5.8, isRock: false, back: false, rot: 3.1 },
+      { x0: 16, vx: 148, vy: -90, g: 265, r: 6.0, isRock: false, back: false, rot: -3.0 }
+    ];
+
+    // Low blocky overturned earth & granite crater mounds (wide & flat-topped, ZERO spikes!)
+    const rimMounds = [
+      { cx: -52, hw: 14, h: 12, lean: -5, isRock: false },
+      { cx: -31, hw: 16, h: 17, lean: -7, isRock: true },
+      { cx: -12, hw: 13, h: 13, lean: -3, isRock: false },
+      { cx: 13, hw: 13, h: 14, lean: 3, isRock: false },
+      { cx: 32, hw: 16, h: 18, lean: 7, isRock: true },
+      { cx: 53, hw: 14, h: 12, lean: 5, isRock: false }
+    ];
+
+    function sampleChunkPos(d, u, baseY) {
+      let x = d.x0 + d.vx * u;
+      let y = baseY - 4 + d.vy * u + 0.5 * d.g * u * u;
+      const floorY = baseY + 3;
+      if (y > floorY) {
+        // Single low dirt-clod ground bounce
+        const over = y - floorY;
+        y = Math.max(floorY - 14, floorY - over * 0.28);
+      }
+      x = Math.max(-76, Math.min(76, x));
+      y = Math.max(-62, Math.min(64, y));
+      return { x, y };
+    }
+
+    function drawSoilOrBoulder(pen, cx, cy, rad, ang, isRock, alpha) {
+      if (alpha <= 0.02 || rad <= 1.2) return;
+      const b = Math.ceil(rad + 2.2);
+      const ca = Math.cos(ang);
+      const sa = Math.sin(ang);
+      pen.shadeBox(cx - b, cy - b, cx + b, cy + b, (lx, ly, out) => {
+        const dx = lx - cx;
+        const dy = ly - cy;
+        const ux = dx * ca + dy * sa;
+        const uy = -dx * sa + dy * ca;
+        // Faceted angular rock polygon vs irregular lumpy soil clod
+        const shape = isRock
+          ? Math.max(
+              Math.abs(ux) * 0.94 + Math.abs(uy) * 0.42,
+              Math.abs(uy) * 1.04 + Math.abs(ux) * 0.30,
+              Math.abs(ux + uy * 0.6) * 0.82
+            )
+          : Math.hypot(ux * 0.95, uy * 1.12) + Math.sin(ux * 0.7 + uy * 0.5) * 0.85;
+        if (shape > rad) return 0;
+        out.alpha = alpha;
+        if (shape >= rad - 1.25) return cOutline;
+        if (isRock) {
+          if (uy < -rad * 0.32 && ux < rad * 0.4) return cRockRim;
+          if (uy < 0.1 * rad) return cRockLight;
+          return ux > 0 ? cRockMid : cRockDark;
+        }
+        if (uy < -rad * 0.30) return cDustTan;
+        if (uy < 0.15 * rad) return cSoilLight;
+        return ux > 0 ? cSoilMid : cSoilDark;
+      });
+    }
 
     return {
       step() {},
       renderBack(pen, localT) {
         const u = clamp01(localT);
-        const rise = 0.28 + 0.72 * smoothStep(0, 0.18, u);
-        const fade = 1 - 0.78 * smoothStep(0.76, 1.0, u);
-        const env = rise * fade;
-        if (env <= 0.02) return;
+        const pop = 0.30 + 0.70 * smoothStep(0, 0.14, u);
+        const fade = 1 - smoothStep(0.72, 1.0, u);
+        if (fade <= 0.02) return;
 
-        const baseY = 62;
+        const baseY = 52;
 
-        // 1. Curved 2.5D Volcanic Caldera Lava Pool Base (`rx = 58`, `ry = 13`, max y = `76 <= 86`)
-        pen.shadeBox(-62, baseY - 15, 62, baseY + 15, (lx, ly, out) => {
-          const dx = lx / (58 * rise);
-          const dy = (ly - baseY) / Math.max(2, 13 * rise);
+        // 1. Wide Shattered Soil & Bedrock Impact Crater Pit (`rx = 68`, `ry = 13`)
+        pen.shadeBox(-72, baseY - 15, 72, baseY + 15, (lx, ly, out) => {
+          const dx = lx / Math.max(4, 68 * pop);
+          const dy = (ly - baseY) / Math.max(2, 13 * pop);
           const r2 = dx * dx + dy * dy;
           if (r2 > 1.0) return 0;
           const r = Math.sqrt(r2);
           out.alpha = fade * 0.98;
-          if (r >= 0.88) return COL_OBSIDIAN;
-          if (r >= 0.72) return dy > 0 ? COL_BASALT : COL_MAGMA_DEEP;
-          out.glowColor = r < 0.42 ? COL_JADE_MID : COL_MAGMA_BRIGHT;
-          out.glowStrength = 0.38 * fade;
-          if (r < 0.24) return PURE_WHITE;
-          if (r < 0.46) return COL_JADE_PALE;
-          return r < 0.60 ? COL_FORGE_GOLD : COL_MAGMA_BRIGHT;
+          if (r >= 0.88) return cOutline;
+          if (r >= 0.70) return dy < 0 ? cSoilMid : cDustTan;
+          if (r >= 0.48) return cSoilDark;
+          return cRockDark;
         });
 
-        drawDwarvenCrucibleGearRing(pen, 0, baseY, 56 * rise, 0.22, u * 3.0, 0.92 * fade, BACK_HALF, false);
+        // 2. Wide V-Fanning Billowing Soil Spray & Dust Plume Cloud (`[-80, +80] x [-42, +56]`, ZERO vertical pole!)
+        const plumeSpread = 26 + 50 * smoothStep(0, 0.65, u);
+        const plumeLift = 48 * Math.sin(Math.min(1, u * 1.25) * Math.PI * 0.78) + 18 * (1 - u);
+        pen.shadeBox(-82, baseY - 78, 82, baseY + 8, (lx, ly, out) => {
+          const dy = baseY - ly;
+          if (dy < -4 || dy > plumeLift + 16) return 0;
+          const v = clamp01(dy / Math.max(10, plumeLift + 12));
+          // Two outward-arcing soil/dust lobes fanning left & right (hollow V-cup in the upper middle!)
+          const lobeCenter = (14 + v * plumeSpread * 0.78);
+          const distLobe = Math.abs(Math.abs(lx) - lobeCenter);
+          const lobeRadius = (24 * (1 - v * 0.45) + (1 - v) * 14) * pop;
+          if (distLobe > lobeRadius) return 0;
 
-        // Flanking Back Volcanic Basalt-Jade Spires erupting from the Caldera Rim
-        drawVolcanicBasaltJadeSpire(pen, -28, baseY, 64, 9.5, -18, 23, rise, 0.95 * fade);
-        drawVolcanicBasaltJadeSpire(pen, 28, baseY, 64, 9.5, 18, 47, rise, 0.95 * fade);
+          const n = fbmNoise2D(lx * 0.09, ly * 0.10 + u * 3.2, cfg.seed || 359, 3);
+          const density = (1 - distLobe / lobeRadius) * 0.86 + n * 0.32 - u * 0.22;
+          if (density <= 0.24) return 0;
 
-        pen.radialGlow(0, -4, 54 * env, magma[5], 0.36 * env);
-        pen.radialGlow(0, -28, 42 * env, jade[5], 0.30 * env);
+          out.alpha = fade * clamp01((density - 0.20) * 2.1) * 0.94;
+          if (density <= 0.31) return cOutline;
+          if (density > 0.76 && dy > 10) return cDustPale;
+          if (density > 0.60) return cDustTan;
+          if (density > 0.46) return cSoilLight;
+          if (density > 0.36) return cSoilMid;
+          return cSoilDark;
+        });
+
+        // 3. Back-layer Parabolic Flying Rocks & Soil Clods
+        for (let i = 0; i < splashDebris.length; i++) {
+          const d = splashDebris[i];
+          if (!d.back) continue;
+          const pos = sampleChunkPos(d, u, baseY);
+          drawSoilOrBoulder(pen, pos.x, pos.y, d.r * (1 - 0.18 * u), d.rot + u * 4.2, d.isRock, fade * 0.96);
+        }
       },
       renderFront(pen, localT) {
         const u = clamp01(localT);
-        const rise = 0.26 + 0.74 * smoothStep(0, 0.16, u);
-        const fade = 1 - 0.78 * smoothStep(0.76, 1.0, u);
-        const env = rise * fade;
-        if (env <= 0.02) return;
+        const pop = 0.28 + 0.72 * smoothStep(0, 0.12, u);
+        const settle = 1 - 0.45 * smoothStep(0.55, 1.0, u);
+        const fade = 1 - smoothStep(0.74, 1.0, u);
+        if (fade <= 0.02) return;
 
-        const baseY = 62;
-        const colHeight = 140 * rise; // Erupts from `y = +62` up to `y = -78` (`140px` tall!)
-        const topY = baseY - colHeight;
+        const baseY = 52;
 
-        // 1. Towering Stepped Cel-Shaded Volcanic Magma & Emerald-Jade Geyser Column
-        const colWBase = 26 * (1 - 0.32 * smoothStep(0.68, 1.0, u));
-        pen.shadeBox(-40, topY - 8, 40, baseY + 12, (lx, ly, out) => {
-          const dy = ly - baseY;
-          if (dy < -colHeight) return 0;
-
-          const hFrac = dy < 0 ? clamp01(-dy / Math.max(1, colHeight)) : 0;
-          // Rounded boiling volcanic crown at top + flared caldera root at base (ZERO flat cutoffs!)
-          const topTaper = hFrac > 0.78 ? Math.sqrt(Math.max(0, 1 - ((hFrac - 0.78) / 0.22) ** 2)) : 1.0;
-          const baseFlare = hFrac < 0.16 ? 1 + (1 - hFrac / 0.16) * 0.38 : 1.0;
-          const billow = Math.sin(hFrac * 13 - u * 15) * 3.4 * (1 - hFrac * 0.4);
-          const effW = Math.max(1.5, (colWBase * baseFlare + billow) * topTaper);
-
-          const adx = Math.abs(lx);
-          if (adx > effW) return 0;
-
-          // Curved 2.5D elliptical caldera base rim
-          const botLimit = Math.round(Math.sqrt(Math.max(0, 1 - (lx / Math.max(1, effW)) ** 2)) * 8.5 + 2.0);
-          if (dy > botLimit) return 0;
-
-          const n = fbmNoise2D(lx * 0.11, ly * 0.09 + u * 5.2, cfg.seed || 359, 3);
-          const radial = 1 - adx / effW;
-          const heat = radial * 0.88 + n * 0.28;
-
-          out.alpha = fade * 0.99;
-          // Crisp 1px Dark Volcanic Basalt-Obsidian Outer Silhouette (`Selout`)
-          if (adx >= effW - 1.35 || dy >= botLimit - 1.25 || (hFrac > 0.95 && radial < 0.35)) {
-            return COL_OBSIDIAN;
-          }
-
-          // Spiraling Double-Helix Emerald-Jade Runic Plasma Veins up the Volcanic Column
-          const helixX = Math.sin(hFrac * 9.5 - u * 11) * (effW * 0.56);
-          const dHelix = Math.min(Math.abs(lx - helixX), Math.abs(lx + helixX));
-          if (dHelix < 3.6 && hFrac > 0.08 && hFrac < 0.94) {
-            out.glowColor = COL_JADE_MID;
-            out.glowStrength = 0.44 * fade;
-            return dHelix < 1.3 ? PURE_WHITE : dHelix < 2.4 ? COL_JADE_PALE : COL_JADE_MID;
-          }
-
-          // White-Hot -> Forge-Gold -> Magma-Crimson -> Volcanic Basalt Stepped Column Core
-          if (heat > 0.82) {
-            out.glowColor = COL_FORGE_GOLD;
-            out.glowStrength = 0.46 * fade;
-            return PURE_WHITE;
-          }
-          if (heat > 0.64) {
-            out.glowColor = COL_MAGMA_BRIGHT;
-            out.glowStrength = 0.36 * fade;
-            return COL_FORGE_GOLD;
-          }
-          if (heat > 0.46) return COL_MAGMA_BRIGHT;
-          if (heat > 0.30) return COL_MAGMA_MID;
-          return COL_BASALT;
-        });
-
-        // 2. Flanking Foreground Volcanic Basalt-Jade Spires at Caldera Base
-        drawVolcanicBasaltJadeSpire(pen, -17, baseY + 2, 78, 10.5, -9, 67, rise, 0.98 * fade);
-        drawVolcanicBasaltJadeSpire(pen, 17, baseY + 2, 78, 10.5, 9, 89, rise, 0.98 * fade);
-
-        // 3. Ascending Elder Khazad Diamond Runes inside the Volcanic Geyser
-        if (rise > 0.35) {
-          for (let k = 0; k < 3; k++) {
-            const rFrac = ((k / 3) + u * 0.85) % 1;
-            const ry = baseY - 14 - rFrac * (colHeight - 28);
-            const rx = Math.sin(rFrac * Math.PI * 2 + k) * 6;
-            drawKhazadDiamondRune(pen, rx, ry, 5.2 * fade, k % 2 === 0, fade * 0.98);
-          }
+        // 1. Low Blocky Overturned Earth Clods & Broken Granite Slabs along Crater Rim (flat/chunky, ZERO spikes!)
+        for (let i = 0; i < rimMounds.length; i++) {
+          const m = rimMounds[i];
+          const mh = m.h * pop * settle;
+          const mhw = m.hw * pop;
+          const cx = m.cx * (0.75 + 0.25 * pop);
+          pen.shadeBox(cx - mhw - 8, baseY - mh - 3, cx + mhw + 8, baseY + 6, (lx, ly, out) => {
+            if (ly > baseY + 4 || ly < baseY - mh) return 0;
+            const v = clamp01((baseY + 4 - ly) / Math.max(3, mh + 4));
+            const shiftX = v * m.lean;
+            const dx = lx - (cx + shiftX);
+            // Wide trapezoidal/rounded clod top (retains 62% width at top so it reads as a chunky slab/mound, NEVER a spike!)
+            const halfW = mhw * (1 - v * 0.38);
+            if (Math.abs(dx) > halfW) return 0;
+            out.alpha = fade * 0.99;
+            if (Math.abs(dx) >= halfW - 1.25 || v >= 0.90) return cOutline;
+            if (v >= 0.72) return m.isRock ? cRockLight : cDustTan;
+            if (dx * (m.lean >= 0 ? -1 : 1) > 0) return m.isRock ? cRockMid : cSoilLight;
+            return m.isRock ? cRockDark : cSoilDark;
+          });
         }
 
-        // 4. Crackling Volcanic Lightning Chains & Multi-Tier 2.5D Shock-Rings
-        if (u < 0.84) {
-          const boltL = buildLightningChain(rng, -24 * rise, baseY - 6, -4, topY + 10, 0.2, 4);
-          const boltR = buildLightningChain(rng, 24 * rise, baseY - 6, 4, topY + 10, 0.2, 4);
-          pen.polyline(boltL, COL_JADE_BRIGHT, fade * 0.95);
-          pen.polyline(boltR, COL_FORGE_GOLD, fade * 0.95);
+        // 2. Front-layer Explosive Fountain of 10 Faceted Boulders & Wet Soil Clods
+        for (let i = 0; i < splashDebris.length; i++) {
+          const d = splashDebris[i];
+          if (d.back) continue;
+          const pos = sampleChunkPos(d, u, baseY);
+          drawSoilOrBoulder(pen, pos.x, pos.y, d.r * (1 - 0.16 * u), d.rot - u * 4.8, d.isRock, fade * 0.99);
         }
 
-        drawTiltedOrbitBand(pen, 0, baseY - colHeight * 0.48, 28 * rise, 0.26, 2.0, 0.94 * fade, jadeBand, FRONT_HALF, false);
-        drawDwarvenCrucibleGearRing(pen, 0, baseY + 2, 56 * rise, 0.22, u * 3.0, 0.96 * fade, FRONT_HALF, false);
-        drawTiltedOrbitBand(pen, 0, baseY + 2, 46 * rise, 0.22, 2.4, 0.97 * fade, magmaBand, FRONT_HALF, u < 0.4);
-
-        drawStarburstFlare(pen, 0, topY + 8, 16 * env, 0.96 * env, [magma[4], jade[5], magma[6], PURE_WHITE]);
+        // 3. Expanding Ground Soil-Dust Shockwave Ring along `baseY + 3`
+        drawTiltedOrbitBand(pen, 0, baseY + 3, (34 + 38 * smoothStep(0, 0.7, u)), 0.18, 2.4, 0.94 * fade, dustBand, FRONT_HALF, false);
       }
     };
   }
