@@ -90,7 +90,7 @@ export class Fighter {
     switch (this.heroId) {
       case 'titan':
         return {
-          comboGoal: 4,
+          comboGoal: 3,
           sweetMin: 114,
           sweetMax: 138,
           counterCrouchBias: 0.68,

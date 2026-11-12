@@ -2,10 +2,10 @@
 
 > **IMPORTANT FOR ANY NEW CHAT / AGENT**: Read this file alongside `docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md` and `docs/champion_pipeline_db.json` at the start of a new conversation so full project context, user preferences, protected champions, and recent reworks are preserved seamlessly.
 
-## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps74`)
+## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps75`)
 - **All 11 HD-2D 30fps Champions (`208x208` cells, 9 rows x 30 frames + `vfx` sheets + `128x128` portraits)** are live and verified on `main`.
 - **Epic Battle HP Inflation & Ultimate Pacing**:
-  - Champion HP pools are inflated (`3600–4390 HP`) so fights last ~`50–80s` in 1v1 (`~58s` in 2v2 Brawl, `~120s` in 2v2 Tag) and champions reliably cast **3 Overdrives (`ULTIMATE`)** to unlock and cast their **Supreme Ultimate (`TRUE_ULTIMATE`)** (`99.8%+` `TRUE_ULTIMATE` rate in 1v1 benchmarks).
+  - Champion HP pools are inflated (`3600–4160 HP`) so fights last ~`50–80s` in 1v1 (`~58s` in 2v2 Brawl, `~120s` in 2v2 Tag) and champions reliably cast **3 Overdrives (`ULTIMATE`)** to unlock and cast their **Supreme Ultimate (`TRUE_ULTIMATE`)** (`99.8%+` `TRUE_ULTIMATE` rate in 1v1 benchmarks).
   - Test Mode (`testModeUnlimitedHp`) supports infinite HP & rapid testing of Overdrives and Supreme Ultimates.
 
 ---
@@ -22,6 +22,17 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 ---
 
 ## 3. Recent Champion Reworks & Visual Clarity Rules
+
+### Torgar (`src/entities/Titan.js`, `heroId: 'titan'`, v7 Model Animations, Upright Hammer & Sky-Smash Supreme Ultimate)
+- **3-Animation Dynamic Normal Attack (`TRINITY OF THE WORLD-MAUL`, `Row 2 F00..F29`, `0/270` clips)**:
+  - Rebuilt `Row 2` into **3 genuinely distinct full-body martial animations** on Torgar's character model (with physical windup step-in):
+    1. `F00..F09` (`OVERHEAD EARTH-SPLITTER SLAM`): Tall `-78°` vertical 2H hoist above his horned helm into a deep split-knee `+14°` floor smash + traveling `Row 0` Magnetic Fissure Wave.
+    2. `F10..F19` (`LEAPING SKY-BREAKER UPPERCUT`): Deep crouch `+20°` floor scoop into an airborne high-knee (`foot_y = 91`) `-68°` skyward uppercut + grounded `Row 2` Magma-Jade Pillar (`+1` Crucible Core).
+    3. `F20..F29` (`BATTERING-RAM BACKSPIN FINISHER`): Lead-leg swap (`right_leg_behind = True`) & twisted torso coil into a wide split-lunge horizontal battering-ram punch + `Forge-Aegis` + `khazadForgeAncestorAvatar` Guaranteed Crit + World-Breaker Temper + Seismic Altar Resonance.
+- **Fixed Right-Side-Up Hammer in Overdrive (`WORLD-BREAKER HOME RUN`, `Row 4 F00..F14`, `1.48s`)**:
+  - Eliminated inverted `-124°` cocking and `+20°` drooping recovery frames; Torgar hoists his 2H World-Maul cleanly upright above his back shoulder (`-78°`) and drives a level-to-rising Home-Run Swing (`-22°`) across `F00..F14`, batting the enemy to the **farthest stage wall** and **stunning for `0.8s`**.
+- **Supreme Ultimate (`GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER`, `Row 4 F15..F29`, `4.45s`)**:
+  - Swells into his **HUGE `2.38x` Colossus Form**, **hammers all active enemies high UP into the sky** (`groundY - 245px`) with a rising Sky-Uppercut (`cameraAirLift = 680`, `0` chip ticks), **teleports to the top of the sky** (`groundY - 315px`) directly above the airborne foe in a `Row 6` Khazad Forge-Lightning Pillar hoisting Mjolnir upright overhead, and **meteor-smashes them straight down into the arena floor** (`t = 3.20s`) for ONE `735`-Crit Continental Sunder + `+9%` Max HP heal + `7` `Row 7` Volcanic Geysers + **`1.65s` Stun**.
 
 ### Sylvara (`src/entities/Archer.js`, `heroId: 'archer'`, v4 Ultimate & Supreme Ultimate Rework)
 - **Baked 30fps `Row 4` Acrobatic Somersault & Far-Stage Yggdrasil Choreography (`scripts/build_archer_30fps_sheet.py`, `0/270` clips, `0` pinholes, `20/20` palette)**:
@@ -60,15 +71,6 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 - **Signature Skill (`GLACIAL JAWS: TWIN ICEBERG CRUSH`, `Row 3`)**: Erupts TWO towering flanking `Row 2` Glacier Iceberg Walls (`±136px`) around the enemy and slams both icebergs inward together (`spread -> 16px`, `+2` Rime).
 - **Overdrive Ultimate (`WINTER CORONATION: SEVEN CELESTIAL ICE-SWORDS`, `Row 4`)**: Summons `7` Giant Celestial Ice-Claymores (`Row 4`) in a Coronation Halo; `6` outer swords plunge down sequentially to impale the floor in a hexagonal sword palisade before a colossal `7th` Sovereign Crown-Sword shatters all `7` swords.
 - **Supreme Ultimate (`ABSOLUTE ZERO: DIAMOND DUST ETERNITY`, `4.60s`)**: Summons a translucent **Polar Night sky + multi-ribbon Northern Lights + Full-Stage Crystal Mirror Lake** (never altering `stageOverride`), lifts Lyra `90px` on a floating Ice-Lotus Pedestal, plunges a live 16-bit thermodynamic readout to **`0.00 K • -273.15°C`** inside the `Row 6` Diamond-Coffin & 6-Mirror Borealis Star Web, spiderwebs `14` branching reality-glass fault-lines, and shatters space on her vertical Scepter-Tap (`Row 4 F17..F23`) into **`28` faceted stained-glass ice shards** (pure 2D math rotation, `0` `ctx.rotate` calls) for a single instantaneous **`675` Crit execution** + **`+12%` Max HP heal**.
-
-### Torgar (`src/entities/Titan.js`, `heroId: 'titan'`, v6)
-- **4-Variant Dynamic Normal Attack (`Row 2 F00..F29`)**: Cycles cleanly through 4 distinct hammer techniques so normal attacks never look repetitive:
-  1. `F00..F07`: Magnetic Fissure Sweep (`stage 0`, `spawnFissureWave`)
-  2. `F08..F14`: Volcanic-Horn Uppercut (`stage 1`, `Row 2` magma pillar)
-  3. `F09..F21` (`F15..F21`): Battering-Ram Thrust (`stage 2`)
-  4. `F22..F29`: Overhead World-Breaker Slam (`stage 3` finisher + Khazad Ancestor)
-- **Overdrive Ultimate (`WORLD-BREAKER HOME RUN`)**: Torgar steps into a 2H baseball-bat windup and swings horizontally, launching the enemy across the arena to the **farthest side of the stage** with a wall-crash impact and **`0.8s` stun**.
-- **Supreme Ultimate (`GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER`)**: High-impact orbital leap & `735`-crit tectonic sunder at `t = 3.23s`.
 
 ### Malakor (`src/entities/Reaper.js`, `heroId: 'reaper'`, v6)
 - **Shadow-Burrow Ambush (`CROUCH`)**: Malakor sinks completely underground for ~`1.27s` (`1–2s` window) leaving a dark abyssal ground indicator vortex (`abyssalRiftGroundPortal` + dark tell ring) before erupting upward in a surprise scythe ambush.

@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps74';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps74';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps74';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps74';
+import { Fighter } from './Fighter.js?v=30fps75';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps75';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps75';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps75';
 
 /**
  * Lyra (`icemage`) — Winter Empress & Sovereign of Absolute Zero (v6 Full Rework).
@@ -122,8 +122,8 @@ export class IceMage extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
-      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps74')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps74';
+      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps75')) {
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps75';
       }
     }
   }

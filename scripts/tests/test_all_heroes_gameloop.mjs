@@ -25,21 +25,21 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps74';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps74';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps74';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps74';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps74';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps74';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps74';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps74';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps74';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps74';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps74';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps74';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps74';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps74';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps74';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps75';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps75';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps75';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps75';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps75';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps75';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps75';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps75';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps75';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps75';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps75';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps75';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps75';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps75';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps75';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -194,24 +194,24 @@ for (const [name, Cls] of CLASSES) {
       hero.drawUltimateForeground?.(ctx, game.renderer);
     }
     if (name === 'Titan' && st === 'AUTO_ATTACK') {
-      // Also verify all 4 normal attack variants cycle through Row 2 sub-ranges (F00..F07, F08..F14, F15..F21, F22..F29)
+      // Also verify all 3 normal attack model animations cycle through dedicated 10-frame Row 2 sub-ranges (F00..F09, F10..F19, F20..F29)
       const seenRanges = new Set();
-      for (let v = 0; v < 4; v++) {
+      for (let v = 0; v < 3; v++) {
         hero.comboStep = v;
         hero.setState('AUTO_ATTACK');
-        for (let k = 0; k < 20; k++) {
+        for (let k = 0; k < 24; k++) {
           hero.update(1 / 30, dummy, game);
           const fIdx = hero.trueUltFrameOverride;
-          if (fIdx >= 60 && fIdx <= 67) seenRanges.add(0);
-          else if (fIdx >= 68 && fIdx <= 74) seenRanges.add(1);
-          else if (fIdx >= 75 && fIdx <= 81) seenRanges.add(2);
-          else if (fIdx >= 82 && fIdx <= 89) seenRanges.add(3);
+          if (fIdx >= 60 && fIdx <= 69) seenRanges.add(0);
+          else if (fIdx >= 70 && fIdx <= 79) seenRanges.add(1);
+          else if (fIdx >= 80 && fIdx <= 89) seenRanges.add(2);
+          if (hero.state === 'IDLE') break;
         }
       }
-      if (seenRanges.size < 4) {
-        throw new Error(`Expected Titan 4 normal attack variants to cover all 4 Row 2 sub-ranges, got ${[...seenRanges]}`);
+      if (seenRanges.size < 3) {
+        throw new Error(`Expected Titan 3 normal attack model animations to cover all 3 Row 2 10-frame sub-ranges, got ${[...seenRanges]}`);
       }
-      console.log(`  [OK] Titan 4-Variant World-Maul Auto-Attack verified across all 4 Row 2 sub-ranges (F00..F07, F08..F14, F15..F21, F22..F29)`);
+      console.log(`  [OK] Titan 3-Animation World-Maul Auto-Attack verified across all 3 Row 2 sub-ranges (F00..F09, F10..F19, F20..F29)`);
     }
     if (name === 'Titan' && st === 'ULTIMATE') {
       if (peakDummyStun < 0.78 || (dummyWallX > 90 && dummyWallX < 1110)) {
@@ -584,7 +584,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps74');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps75');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -1058,9 +1058,10 @@ for (const [name, Cls] of CLASSES) {
   );
 }
 
-// 10. Verify Torgar v6 (`Titan`) Full Rework: Molten Crucible Cores, 4-Variant World-Maul Auto + Khazad Ancestor,
-//     WORLD-ANVIL CATACLYSM Altar Resonance & Wall-Ricochet Cannonball, WORLD-BREAKER HOME RUN Overdrive (Baseball-Bat
-//     Farthest-Wall Knockback + 0.8s Stun), and GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER!
+// 10. Verify Torgar v7 (`Titan`) Full Rework: Molten Crucible Cores, 3-Animation World-Maul Auto + Khazad Ancestor,
+//     WORLD-ANVIL CATACLYSM Altar Resonance & Wall-Ricochet Cannonball, Upright WORLD-BREAKER HOME RUN Overdrive
+//     (Row 4 F00..F14 Baseball-Bat Farthest-Wall Knockback + 0.8s Stun), and GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER
+//     (Giant 2.38x -> Sky-Uppercut Knockup -> Teleport to Top -> Meteor Ground-Smash + 1.65s Stun)!
 {
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
@@ -1080,33 +1081,50 @@ for (const [name, Cls] of CLASSES) {
     torgar.trueUltName !== 'GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER'
   ) {
     throw new Error(
-      `Unexpected Torgar v6 kit names: skill=${torgar.skillName}, ult=${torgar.ultName}, trueUlt=${torgar.trueUltName}`
+      `Unexpected Torgar v7 kit names: skill=${torgar.skillName}, ult=${torgar.ultName}, trueUlt=${torgar.trueUltName}`
     );
   }
 
-  // 10A. Verify 4-Variant Auto Combo ("FOURFOLD ART OF THE WORLD-MAUL"):
-  //      Variant 0 spawns Magnetic Fissure Wave & pulls kiting foe inward, Variants 1 & 2 build Crucible Cores, Variant 3 manifests Khazad Ancestor!
+  // 10A. Verify 3-Animation Auto Combo ("TRINITY OF THE WORLD-MAUL"):
+  //      Animation 0 (`60..69`) spawns Magnetic Fissure Wave & pulls kiting foe inward,
+  //      Animation 1 (`70..79`) builds Crucible Core, Animation 2 (`80..89`) manifests Khazad Ancestor!
   let sawFissureWave = false;
   let sawAncestorInAuto = false;
-  torgar.crucibleStacks = 2;
+  let gainedCoreOnStage1 = false;
+  torgar.crucibleStacks = 1;
   const foeStartX = 680;
   foe.x = foeStartX;
-  for (let c = 0; c < 4; c++) {
+  for (let c = 0; c < 3; c++) {
     torgar.x = 400;
+    torgar.comboStep = c;
     if (c > 0) foe.x = 535;
+    const stacksBefore = torgar.crucibleStacks;
     torgar.setState('AUTO_ATTACK');
-    for (let i = 0; i < 27; i++) {
+    const minExpect = 60 + c * 10;
+    const maxExpect = minExpect + 9;
+    for (let i = 0; i < 24; i++) {
       torgar.update(1 / 30, foe, game);
+      if (torgar.state === 'AUTO_ATTACK' && torgar.trueUltFrameOverride !== null) {
+        if (torgar.trueUltFrameOverride < minExpect || torgar.trueUltFrameOverride > maxExpect) {
+          throw new Error(
+            `Titan Auto Animation ${c} leaked outside [${minExpect}..${maxExpect}]: got ${torgar.trueUltFrameOverride}`
+          );
+        }
+      }
       if (torgar.fissureWaves.length > 0) sawFissureWave = true;
       if (torgar.ancestorSpiritTimer > 0) sawAncestorInAuto = true;
       if (c === 0 && i === 18 && foe.x >= foeStartX) {
-        throw new Error(`Expected Variant-1 Magnetic Fissure Wave to pull kiting foe inward from ${foeStartX}, got x=${foe.x}`);
+        throw new Error(`Expected Animation-1 Magnetic Fissure Wave to pull kiting foe inward from ${foeStartX}, got x=${foe.x}`);
       }
+      if (torgar.state === 'IDLE') break;
+    }
+    if (c === 1 && torgar.crucibleStacks > stacksBefore) {
+      gainedCoreOnStage1 = true;
     }
   }
-  if (!sawFissureWave || !sawAncestorInAuto) {
+  if (!sawFissureWave || !gainedCoreOnStage1 || !sawAncestorInAuto) {
     throw new Error(
-      `Torgar v6 Fourfold Art of the World-Maul check failed: fissureWave=${sawFissureWave}, ancestor=${sawAncestorInAuto}`
+      `Torgar v7 Trinity of the World-Maul check failed: fissureWave=${sawFissureWave}, coreOnStage1=${gainedCoreOnStage1}, ancestor=${sawAncestorInAuto}`
     );
   }
 
@@ -1130,7 +1148,7 @@ for (const [name, Cls] of CLASSES) {
     );
   }
 
-  // 10C. Verify Seismic Anvil Resonance: enemy stands near planted World-Anvil Altar while Torgar slams Variant-4 Finisher far away!
+  // 10C. Verify Seismic Anvil Resonance: enemy stands near planted World-Anvil Altar while Torgar slams Stage-3 Finisher far away!
   torgar.activeAnvil = null;
   torgar.worldAnvilAltar.resonanceCd = 0;
   torgar.worldAnvilAltar.pulseTimer = 9.0;
@@ -1138,7 +1156,7 @@ for (const [name, Cls] of CLASSES) {
   const hpBeforeResonance = foe.hp;
   torgar.x = 220; // Far away (>600px) from foe & Altar!
   torgar.facing = -1;
-  torgar.comboStep = 3; // Variant-4 World-Breaker Overhead Finisher
+  torgar.comboStep = 2; // Animation-3 Battering-Ram Finisher
   torgar.setState('AUTO_ATTACK');
   for (let i = 0; i < 24; i++) {
     torgar.update(1 / 30, foe, game);
@@ -1146,21 +1164,27 @@ for (const [name, Cls] of CLASSES) {
   const resonanceDmg = hpBeforeResonance - foe.hp;
   if (resonanceDmg <= 0) {
     throw new Error(
-      `Expected Variant-4 World-Breaker Slam to detonate Seismic Resonance on distant World-Anvil Altar! hp=${foe.hp} vs ${hpBeforeResonance}`
+      `Expected Stage-3 Battering-Ram Slam to detonate Seismic Resonance on distant World-Anvil Altar! hp=${foe.hp} vs ${hpBeforeResonance}`
     );
   }
 
   // 10C.2 Verify WORLD-BREAKER HOME RUN Overdrive (`state === 'ULTIMATE'`):
-  //       Uses hammer like a baseball bat, hits enemy to the FARTHEST side of the stage, and stuns them for 0.8s!
-  //       Case 1: Enemy at x=340 (closer to left wall 82 -> farthest side is right wall 1118)
+  //       Strictly uses upright Row 4 frames `120..134` (`F00..F14`), bats enemy to FARTHEST stage wall, and stuns for 0.8s!
   torgar.x = 260;
   foe.x = 340;
   foe.stunTimer = 0;
   const hpBeforeHomeRun = foe.hp;
   torgar.setState('ULTIMATE');
   let stunnedAtRightWall = false;
-  for (let i = 0; i < 46; i++) {
+  for (let i = 0; i < 48; i++) {
     torgar.update(1 / 30, foe, game);
+    if (torgar.state === 'ULTIMATE' && torgar.trueUltFrameOverride !== null) {
+      if (torgar.trueUltFrameOverride < 120 || torgar.trueUltFrameOverride > 134) {
+        throw new Error(
+          `Expected Titan ULTIMATE frames to stay strictly in upright Row 4 F00..F14 (120..134), got ${torgar.trueUltFrameOverride}`
+        );
+      }
+    }
     if (foe.stunTimer >= 0.78 && foe.x >= 1115) {
       stunnedAtRightWall = true;
     }
@@ -1176,7 +1200,7 @@ for (const [name, Cls] of CLASSES) {
   foe.stunTimer = 0;
   torgar.setState('ULTIMATE');
   let stunnedAtLeftWall = false;
-  for (let i = 0; i < 46; i++) {
+  for (let i = 0; i < 48; i++) {
     torgar.update(1 / 30, foe, game);
     if (foe.stunTimer >= 0.78 && foe.x <= 85) {
       stunnedAtLeftWall = true;
@@ -1188,17 +1212,25 @@ for (const [name, Cls] of CLASSES) {
     );
   }
 
-  // 10D. Verify GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER deals 0 micro-ticks in Phase 1-2, then ONE 735-Crit burst at t >= 3.20s + 16% Max HP heal!
+  // 10D. Verify GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER Rework:
+  //      Grows HUGE (`>= 2.30x`), hammers enemy high UP into sky (`minFoeY <= groundY - 220`),
+  //      teleports to the TOP above the airborne enemy (`minTorgarY <= minFoeY - 55`, `<= groundY - 305`),
+  //      and meteor-smashes them into the ground (`groundY`) at t >= 3.20s for ONE 735-Crit + 1.65s Stun + 12% Max HP heal!
+  const arenaGroundY = game.renderer.groundY || 520;
+  torgar.groundY = arenaGroundY;
+  foe.groundY = arenaGroundY;
   torgar.hp = 1200;
+  torgar.x = 420;
+  torgar.y = arenaGroundY;
   foe.x = 680;
+  foe.y = arenaGroundY;
   foe.hp = 7000;
   foe.stunTimer = 0;
   const torgarUltHits = [];
   const origTake = foe.takeDamage.bind(foe);
   foe.takeDamage = (amt, att, crit, kx, ky) => {
-    // Only record hits from Torgar during TRUE_ULTIMATE (ignore any leftover projectiles)
     if (torgar.state === 'TRUE_ULTIMATE') {
-      torgarUltHits.push({ t: torgar.stateTimer, amt: Math.round(amt), crit });
+      torgarUltHits.push({ t: torgar.stateTimer, amt: Math.round(amt), crit, foeY: foe.y });
     }
     return origTake(amt, att, crit, kx, ky);
   };
@@ -1206,36 +1238,59 @@ for (const [name, Cls] of CLASSES) {
   torgar.activeAnvil = null;
   torgar.fissureWaves.length = 0;
 
+  let maxGiantScale = 1.0;
+  let minFoeY = arenaGroundY;
+  let minTorgarY = arenaGroundY;
+  let maxPostSmashStun = 0;
+
   const titanTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
   const titanCtx = createMockCtx(titanTrack);
   torgar.setState('TRUE_ULTIMATE');
   for (let step = 0; step < 145; step++) {
     const dt = 1 / 30;
     torgar.update(dt, foe, game);
+    maxGiantScale = Math.max(maxGiantScale, torgar.giantScale || 1.0);
+    minFoeY = Math.min(minFoeY, foe.y);
+    minTorgarY = Math.min(minTorgarY, torgar.y);
+    if (torgar.stateTimer >= 3.19) {
+      maxPostSmashStun = Math.max(maxPostSmashStun, foe.stunTimer || 0);
+    }
     torgar.drawForegroundOverlay(titanCtx, game.renderer);
     torgar.draw(titanCtx, false, game.renderer);
     torgar.drawUltimateForeground(titanCtx, game.renderer);
     if (game.renderer.trueUltStageOverride !== null || game.renderer.permanentStageOverride !== null) {
-      throw new Error('Torgar v6 TRUE_ULTIMATE must NEVER replace stage background!');
+      throw new Error('Torgar v7 TRUE_ULTIMATE must NEVER replace stage background!');
     }
+  }
+  if (
+    maxGiantScale < 2.30 ||
+    minFoeY > arenaGroundY - 220 ||
+    minTorgarY > minFoeY - 55 ||
+    minTorgarY > arenaGroundY - 305 ||
+    maxPostSmashStun < 1.50
+  ) {
+    throw new Error(
+      `Expected Torgar v7 TRUE_ULTIMATE Giant Sky-Uppercut + Top-Teleport + Ground-Smash Stun! scale=${maxGiantScale}, minFoeY=${minFoeY}, minTorgarY=${minTorgarY}, postStun=${maxPostSmashStun}`
+    );
   }
   if (
     torgarUltHits.length !== 1 ||
     torgarUltHits[0].t < 3.19 ||
     torgarUltHits[0].amt < 700 ||
-    !torgarUltHits[0].crit
+    !torgarUltHits[0].crit ||
+    Math.abs(torgarUltHits[0].foeY - arenaGroundY) > 1
   ) {
     throw new Error(
-      `Expected single instantaneous >=700 Crit Continental Sunder burst at t >= 3.20s, got ${JSON.stringify(torgarUltHits)}`
+      `Expected single instantaneous >=700 Crit Continental Sunder ground-smash at t >= 3.20s on groundY, got ${JSON.stringify(torgarUltHits)}`
     );
   }
   if (torgar.hp <= 1200 || titanTrack.rotateCalls > 0 || titanTrack.quadCalls > 0) {
     throw new Error(
-      `Torgar v6 post-ult check failed: hp=${torgar.hp}, rotateCalls=${titanTrack.rotateCalls}, quadCalls=${titanTrack.quadCalls}`
+      `Torgar v7 post-ult check failed: hp=${torgar.hp}, rotateCalls=${titanTrack.rotateCalls}, quadCalls=${titanTrack.quadCalls}`
     );
   }
   console.log(
-    `[PASS] Torgar v6 Full Rework: 4-Variant World-Maul Auto + Khazad Ancestor, World-Anvil Altar Resonance (-${resonanceDmg} dmg) & Wall-Ricochet, WORLD-BREAKER HOME RUN (Baseball-Bat Farthest-Wall Knockback + 0.8s Stun), and SINGLE ${torgarUltHits[0].amt}-Crit Continental Sunder at t=${torgarUltHits[0].t.toFixed(2)}s!`
+    `[PASS] Torgar v7 Full Rework: 3-Animation World-Maul Auto + Khazad Ancestor, World-Anvil Altar Resonance (-${resonanceDmg} dmg) & Wall-Ricochet, Upright Home-Run Overdrive (F00..F14 + 0.8s Wall Stun), & Colossal ${maxGiantScale.toFixed(2)}x Sky-Uppercut (foeY=${Math.round(minFoeY)}) -> Top-Teleport (torgarY=${Math.round(minTorgarY)}) -> ${torgarUltHits[0].amt}-Crit Ground-Smash + ${maxPostSmashStun.toFixed(2)}s Stun!`
   );
 }
 
