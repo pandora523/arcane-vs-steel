@@ -134,7 +134,7 @@
       "theme": "glacial",
       "base_source": "assets/sprites/icemage_v5_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "15-part cel-clustered Cryo-Prism Empress skeletal rig + Fur Shoulder Mantle + Crystalline Frost Scepter + Cryo Prism Halo + 8-Row Absolute Zero Diamond Dust & Borealis Shader VFX Suite + Supine Collapse",
+      "rig": "15-part cel-clustered Winter Empress skeletal rig + Fur Shoulder Mantle + Crystalline Frost Scepter + 3-Variant Royal Ballet Auto-Attack (Row 2: F00..F09 Rime-Lance Comet, F10..F19 Arabesque Returning 6-Bladed Snowflake Chakram, F20..F29 3-Spire Glacier Stalagmite March) + 4-Stack Solid Crystal Freeze + 3-Step Mid-Air Sky-Staircase (Row 8) + Glacial Jaws Twin Iceberg Crush (Row 3) + 7-Sword Winter Coronation Overdrive & Polar Night 0.00 K 28-Shard Reality-Glass Shatter Supreme Ultimate (Row 4) + Supine Collapse",
       "script": "scripts/build_icemage_30fps_sheet.py",
       "vfx_script": "scripts/build_icemage_vfx_30fps.mjs"
     },

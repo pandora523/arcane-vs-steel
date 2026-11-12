@@ -1,9 +1,10 @@
 /**
- * Cryo-Prism Winter Empress & Borealis Shader Suite (`glacialShaders.js`)
+ * Winter Empress & Absolute Zero Borealis Shader Suite (`glacialShaders.js`)
  * First-party 120Hz 2.5D pixel-shader & particle effects for Lyra (`icemage` / `IceMage.js`).
  *
  * Powers both:
- *   1. Live 120Hz `ArcaneShaderFX` (`back` + `front` 2.5D depth wraps around Lyra, Cryo-Prisms & opponents)
+ *   1. Live 120Hz `ArcaneShaderFX` (`back` + `front` 2.5D depth wraps around Lyra, Glacier Jaws,
+ *      Coronation Ice-Swords & Absolute Zero Entombment — 0 shadeBox / viewport border clips!)
  *   2. Offline 30fps `assets/sprites/icemage_vfx.png` (`6240x1664`, 8 rows x 30 cols @ 208x208, 0/240 clips)
  */
 
@@ -17,7 +18,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps71';
+} from '../ArcaneShaderFX.js?v=30fps72';
 
 export const GLACIAL_CRYO_PALETTE = [
   '#061224',
@@ -45,6 +46,7 @@ const BACK_HALF = (theta) => Math.sin(theta) < 0;
 const FRONT_HALF = (theta) => Math.sin(theta) >= 0;
 
 function drawSnowflakeStar(pen, cx, cy, r, mainCol, accentCol, alpha = 1, rot = 0) {
+  if (r <= 0.8 || alpha <= 0.02) return;
   for (let k = 0; k < 6; k++) {
     const a = rot + (k * Math.PI) / 3;
     const ex = cx + Math.cos(a) * r;
@@ -66,7 +68,7 @@ function drawSnowflakeStar(pen, cx, cy, r, mainCol, accentCol, alpha = 1, rot = 
     }
   }
   pen.fillCircle(cx, cy, Math.max(1.2, r * 0.2), PURE_WHITE, alpha);
-  pen.radialGlow(cx, cy, r * 0.85, mainCol, 0.32 * alpha);
+  pen.radialGlow(cx, cy, r * 0.82, mainCol, 0.28 * alpha);
 }
 
 // ============================================================================
@@ -87,17 +89,17 @@ export const cryoScepterFocus = {
     return {
       step(dt) {
         t += dt;
-        acc += dt * 52;
+        acc += dt * 44;
         while (acc >= 1 && t < 0.26) {
           acc -= 1;
           const a = rng.between(0, Math.PI * 2);
-          const dist = rng.between(9, 16);
+          const dist = rng.between(8, 15);
           motes.emit(
             'glint',
             Math.cos(a) * dist,
             Math.sin(a) * dist,
-            -Math.cos(a) * 38,
-            -Math.sin(a) * 38,
+            -Math.cos(a) * 36,
+            -Math.sin(a) * 36,
             0.18,
             rng.chance(0.4) ? borealis[5] : cryo[5],
             1,
@@ -110,20 +112,20 @@ export const cryoScepterFocus = {
         const u = clamp01(t / 0.32);
         const env = Math.sin(u * Math.PI);
         if (env <= 0.02) return;
-        const r = 5 + 6 * smoothStep(0, 0.7, u);
+        const r = 5 + 5.5 * smoothStep(0, 0.7, u);
         drawTiltedOrbitBand(
           pen,
           0,
           0,
-          r * 1.3,
+          r * 1.25,
           0.45,
           1.1,
-          0.86 * env,
+          0.84 * env,
           [cryo[2], cryo[4], borealis[5], PURE_WHITE],
           () => true,
           false
         );
-        drawSnowflakeStar(pen, 0, 0, r * 1.4, cryo[5], borealis[5], env, u * 4.2);
+        drawSnowflakeStar(pen, 0, 0, r * 1.35, cryo[5], borealis[5], env, u * 4.2);
         motes.render(pen);
       }
     };
@@ -131,7 +133,7 @@ export const cryoScepterFocus = {
 };
 
 // ============================================================================
-// 2. CRYO-SHARD PRISM MACH-CONE (`cryoPrismMachCone`)
+// 2. CRYO-LANCE MACH-CONE (`cryoPrismMachCone`)
 // ============================================================================
 export const cryoPrismMachCone = {
   duration: 0.3,
@@ -150,16 +152,16 @@ export const cryoPrismMachCone = {
         if (!burstDone) {
           burstDone = true;
           const base = cfg.aimAngle || 0;
-          for (let i = 0; i < (cfg.empowered ? 18 : 12); i++) {
-            const a = base + rng.between(-0.55, 0.55);
-            const spd = rng.between(45, 132);
+          for (let i = 0; i < (cfg.empowered ? 14 : 10); i++) {
+            const a = base + rng.between(-0.52, 0.52);
+            const spd = rng.between(44, 120);
             motes.emit(
               i % 3 === 0 ? 'glint' : 'streak',
               0,
               0,
               Math.cos(a) * spd,
               Math.sin(a) * spd,
-              rng.between(0.14, 0.26),
+              rng.between(0.14, 0.24),
               i % 2 === 0 ? cryo[5] : borealis[5],
               1,
               0
@@ -176,27 +178,27 @@ export const cryoPrismMachCone = {
         const aim = cfg.aimAngle || 0;
         const ca = Math.cos(aim);
         const sa = Math.sin(aim);
-        const reach = (cfg.empowered ? 25 : 20) * smoothStep(0, 0.55, u);
+        const reach = (cfg.empowered ? 24 : 19) * smoothStep(0, 0.55, u);
 
         for (let k = 0; k < 2; k++) {
           const d = (k + 0.5) * reach * 0.55;
           const rx = ca * d;
           const ry = sa * d;
-          const rr = (cfg.empowered ? 12.5 : 10) * (1 - k * 0.22) * (0.45 + 0.55 * u);
+          const rr = (cfg.empowered ? 12 : 9.5) * (1 - k * 0.22) * (0.45 + 0.55 * u);
           for (let s = 0; s < 18; s++) {
             const th = (s / 18) * Math.PI * 2 + u * 3.5;
             const lx = Math.cos(th) * rr * 0.35;
             const ly = Math.sin(th) * rr;
             const px = rx + lx * ca - ly * sa;
             const py = ry + lx * sa + ly * ca;
-            pen.stipple(px, py, s % 3 === 0 ? PURE_WHITE : k === 0 ? cryo[5] : borealis[5], fade * 0.92);
+            pen.stipple(px, py, s % 3 === 0 ? PURE_WHITE : k === 0 ? cryo[5] : borealis[5], fade * 0.9);
           }
         }
         drawSnowflakeStar(
           pen,
           0,
           0,
-          (cfg.empowered ? 12 : 9.5) * fade,
+          (cfg.empowered ? 11.5 : 9) * fade,
           cryo[5],
           borealis[5],
           fade,
@@ -209,7 +211,7 @@ export const cryoPrismMachCone = {
 };
 
 // ============================================================================
-// 3. 2.5D PERMAFROST SNOWFLAKE RINK SIGIL (`permafrostSnowflakeSigil`)
+// 3. 2.5D PERMAFROST MIRROR RINK SIGIL (`permafrostSnowflakeSigil`)
 // ============================================================================
 export const permafrostSnowflakeSigil = {
   duration: 1.6,
@@ -227,19 +229,19 @@ export const permafrostSnowflakeSigil = {
     return {
       step(dt) {
         phase += dt;
-        acc += dt * 18;
-        const rx = Math.min(68, Math.max(24, (cfg.radiusWorld || 155) / 3));
+        acc += dt * 12;
+        const rx = Math.min(62, Math.max(24, (cfg.radiusWorld || 155) / 3));
         while (acc >= 1) {
           acc -= 1;
           const a = rng.between(0, Math.PI * 2);
-          const r = rng.between(4, rx * 0.88);
+          const r = rng.between(4, rx * 0.85);
           motes.emit(
             'glint',
             Math.cos(a) * r,
-            Math.sin(a) * r * 0.22 - 1,
-            rng.between(-6, 6),
-            rng.between(-24, -9),
-            rng.between(0.28, 0.52),
+            Math.sin(a) * r * 0.21 - 1,
+            rng.between(-5, 5),
+            rng.between(-20, -8),
+            rng.between(0.24, 0.44),
             rng.chance(0.4) ? borealis[5] : cryo[5],
             1,
             0
@@ -248,14 +250,14 @@ export const permafrostSnowflakeSigil = {
         motes.step(dt);
       },
       renderBack(pen) {
-        const rx = Math.min(68, Math.max(24, (cfg.radiusWorld || 155) / 3));
-        drawTiltedOrbitBand(pen, 0, 0, rx, 0.21, 1.3, 0.82, band4, BACK_HALF, false);
-        drawTiltedOrbitBand(pen, 0, 0, rx * 0.58, 0.21, 1.0, 0.72, band4, BACK_HALF, false);
+        const rx = Math.min(62, Math.max(24, (cfg.radiusWorld || 155) / 3));
+        drawTiltedOrbitBand(pen, 0, 0, rx, 0.21, 1.3, 0.8, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, rx * 0.58, 0.21, 1.0, 0.7, band4, BACK_HALF, false);
       },
       renderFront(pen) {
-        const rx = Math.min(68, Math.max(24, (cfg.radiusWorld || 155) / 3));
-        drawTiltedOrbitBand(pen, 0, 0, rx, 0.21, 1.4, 0.9, band4, FRONT_HALF, false);
-        drawTiltedOrbitBand(pen, 0, 0, rx * 0.58, 0.21, 1.1, 0.78, band4, FRONT_HALF, false);
+        const rx = Math.min(62, Math.max(24, (cfg.radiusWorld || 155) / 3));
+        drawTiltedOrbitBand(pen, 0, 0, rx, 0.21, 1.4, 0.88, band4, FRONT_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, rx * 0.58, 0.21, 1.1, 0.76, band4, FRONT_HALF, false);
 
         for (let k = 0; k < 6; k++) {
           const a = phase * 0.8 + (k * Math.PI) / 3;
@@ -266,7 +268,7 @@ export const permafrostSnowflakeSigil = {
             Math.cos(a) * rx,
             Math.sin(a) * rx * 0.21,
             k % 2 === 0 ? cryo[5] : borealis[5],
-            0.82
+            0.8
           );
         }
         motes.render(pen);
@@ -291,16 +293,16 @@ export const glacialSkateRibbon = {
 
     return {
       step(dt) {
-        acc += dt * 48;
+        acc += dt * 36;
         while (acc >= 1) {
           acc -= 1;
           motes.emit(
             rng.chance(0.45) ? 'glint' : 'streak',
             rng.between(-8, 4),
-            rng.between(-14, 6),
-            rng.between(-85, -30),
-            rng.between(-18, 12),
-            rng.between(0.16, 0.32),
+            rng.between(-12, 4),
+            rng.between(-75, -26),
+            rng.between(-14, 10),
+            rng.between(0.14, 0.28),
             rng.chance(0.4) ? borealis[5] : cryo[5],
             1,
             0
@@ -309,7 +311,7 @@ export const glacialSkateRibbon = {
         motes.step(dt);
       },
       renderBack(pen) {
-        pen.radialGlow(-3, -4, 12, cryo[4], 0.26);
+        pen.radialGlow(-3, -4, 10, cryo[4], 0.22);
         motes.render(pen);
       }
     };
@@ -317,10 +319,10 @@ export const glacialSkateRibbon = {
 };
 
 // ============================================================================
-// 5. REFRACTED BOREALIS PRISM LASER BEAM (`refractedBorealisBeam`)
+// 5. REFRACTED BOREALIS LIGHT-CHORD (`refractedBorealisBeam`)
 // ============================================================================
 export const refractedBorealisBeam = {
-  duration: 0.42,
+  duration: 0.4,
   loop: false,
   defaults: { palette: GLACIAL_CRYO_PALETTE, seed: 73, dx: 90, dy: 0, magenta: false },
   create(cfg) {
@@ -334,7 +336,7 @@ export const refractedBorealisBeam = {
         t += dt;
       },
       renderFront(pen) {
-        const u = clamp01(t / 0.42);
+        const u = clamp01(t / 0.4);
         const fade = 1 - u;
         if (fade <= 0.02) return;
         const ex = (cfg.dx || 90) / 3;
@@ -343,24 +345,24 @@ export const refractedBorealisBeam = {
         const subCol = cfg.magenta ? cryo[5] : borealis[5];
 
         pen.line(0, 0, ex, ey, mainCol, fade * 0.85);
-        pen.line(0, -1, ex, ey - 1, PURE_WHITE, fade * 0.95);
+        pen.line(0, -1, ex, ey - 1, PURE_WHITE, fade * 0.94);
         pen.line(0, 1, ex, ey + 1, mainCol, fade * 0.72);
 
-        const helix = buildLightningChain(rng, 0, 0, ex, ey, 0.07, 3);
-        pen.polyline(helix, subCol, fade * 0.82);
+        const helix = buildLightningChain(rng, 0, 0, ex, ey, 0.06, 3);
+        pen.polyline(helix, subCol, fade * 0.8);
 
-        drawSnowflakeStar(pen, 0, 0, 6.5 * fade, mainCol, subCol, fade, u * 4);
-        drawSnowflakeStar(pen, ex, ey, 7.5 * fade, PURE_WHITE, mainCol, fade, -u * 4);
+        drawSnowflakeStar(pen, 0, 0, 6 * fade, mainCol, subCol, fade, u * 4);
+        drawSnowflakeStar(pen, ex, ey, 7 * fade, PURE_WHITE, mainCol, fade, -u * 4);
       }
     };
   }
 };
 
 // ============================================================================
-// 6. 2.5D ABSOLUTE ZERO HOARFROST SHATTER NOVA (`absoluteZeroShatterBurst`)
+// 6. 2.5D HOARFROST SHATTER NOVA (`absoluteZeroShatterBurst`)
 // ============================================================================
 export const absoluteZeroShatterBurst = {
-  duration: 0.46,
+  duration: 0.44,
   loop: false,
   defaults: { palette: GLACIAL_CRYO_PALETTE, seed: 89, isLarge: false },
   create(cfg) {
@@ -376,20 +378,20 @@ export const absoluteZeroShatterBurst = {
       step(dt) {
         if (!burstDone) {
           burstDone = true;
-          const cnt = cfg.isLarge ? 26 : 16;
+          const cnt = cfg.isLarge ? 20 : 12;
           for (let i = 0; i < cnt; i++) {
             const a = rng.between(0, Math.PI * 2);
-            const spd = rng.between(48, cfg.isLarge ? 175 : 132);
+            const spd = rng.between(42, cfg.isLarge ? 145 : 112);
             motes.emit(
               i % 2 === 0 ? 'glint' : 'spark',
               0,
               0,
               Math.cos(a) * spd,
               Math.sin(a) * spd,
-              rng.between(0.18, 0.38),
+              rng.between(0.16, 0.32),
               i % 2 === 0 ? cryo[5] : borealis[5],
-              cfg.isLarge ? 1.3 : 1.0,
-              45
+              cfg.isLarge ? 1.2 : 1.0,
+              40
             );
           }
         }
@@ -397,13 +399,13 @@ export const absoluteZeroShatterBurst = {
         motes.step(dt);
       },
       renderFront(pen) {
-        const u = clamp01(t / 0.46);
+        const u = clamp01(t / 0.44);
         const fade = 1 - u;
         if (fade <= 0.02) return;
-        const maxR = cfg.isLarge ? 36 : 22;
+        const maxR = cfg.isLarge ? 32 : 20;
         const r = maxR * smoothStep(0, 0.65, u);
-        drawTiltedOrbitBand(pen, 0, 0, r, 0.85, 1.5, fade * 0.92, band4, () => true, u < 0.25);
-        drawSnowflakeStar(pen, 0, 0, maxR * 0.95 * fade, cryo[5], borealis[5], fade, u * 2.8);
+        drawTiltedOrbitBand(pen, 0, 0, r, 0.85, 1.4, fade * 0.9, band4, () => true, u < 0.24);
+        drawSnowflakeStar(pen, 0, 0, maxR * 0.92 * fade, cryo[5], borealis[5], fade, u * 2.8);
         motes.render(pen);
       }
     };
@@ -411,10 +413,129 @@ export const absoluteZeroShatterBurst = {
 };
 
 // ============================================================================
-// 7. 2.5D BOREALIS CATHEDRAL AURORA CURTAIN & CROWN (`borealisCathedralDomain`)
+// 7. 2.5D BLIZZARD JAWS VORTEX (`blizzardJawsVortex`)
+//    Powers `SKILL` ("GLACIAL JAWS: TWIN ICEBERG CRUSH") — swirling sub-zero
+//    snow-squall pulling enemies between the two flanking Glacier Icebergs!
+// ============================================================================
+export const blizzardJawsVortex = {
+  duration: 0.78,
+  loop: false,
+  defaults: { palette: GLACIAL_CRYO_PALETTE, seed: 113 },
+  create(cfg) {
+    const cryo = buildColorRamp(cfg.palette, 8);
+    const borealis = buildColorRamp(BOREALIS_PRISM_PALETTE, 8);
+    const band4 = [cryo[2], cryo[5], borealis[5], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, cryo[6], borealis[5], cryo[4]], floorY: 0 });
+    let t = 0;
+    let acc = 0;
+
+    return {
+      step(dt) {
+        t += dt;
+        acc += dt * 42;
+        while (acc >= 1 && t < 0.56) {
+          acc -= 1;
+          const a = rng.between(0, Math.PI * 2);
+          const rad = rng.between(26, 52);
+          motes.emit(
+            rng.chance(0.5) ? 'glint' : 'streak',
+            Math.cos(a) * rad,
+            -26 + Math.sin(a) * 18,
+            -Math.cos(a) * 78,
+            -Math.sin(a) * 32,
+            0.22,
+            rng.chance(0.4) ? borealis[5] : cryo[5],
+            1.05,
+            0
+          );
+        }
+        motes.step(dt);
+      },
+      renderBack(pen) {
+        const u = clamp01(t / 0.78);
+        const env = smoothStep(0, 0.14, u) * (1 - smoothStep(0.75, 1.0, u));
+        if (env <= 0.02) return;
+        const shrink = 1 - 0.52 * smoothStep(0.18, 0.72, u);
+        drawTiltedOrbitBand(pen, 0, -2, 54 * shrink, 0.22, 1.5, 0.86 * env, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -28, 42 * shrink, 0.24, 1.2, 0.78 * env, band4, BACK_HALF, false);
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 0.78);
+        const env = smoothStep(0, 0.14, u) * (1 - smoothStep(0.75, 1.0, u));
+        if (env <= 0.02) return;
+        const shrink = 1 - 0.52 * smoothStep(0.18, 0.72, u);
+        drawTiltedOrbitBand(pen, 0, -2, 54 * shrink, 0.22, 1.6, 0.94 * env, band4, FRONT_HALF, u > 0.62);
+        drawTiltedOrbitBand(pen, 0, -28, 42 * shrink, 0.24, 1.3, 0.85 * env, band4, FRONT_HALF, false);
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 8. 2.5D CORONATION SWORD FLOOR IMPALEMENT (`coronationSwordImpact`)
+//    Crisp icy shock-ring & vertical frost-geyser when a Celestial Ice-Sword
+//    impales into the arena floor during `ULTIMATE`!
+// ============================================================================
+export const coronationSwordImpact = {
+  duration: 0.42,
+  loop: false,
+  defaults: { palette: GLACIAL_CRYO_PALETTE, seed: 127, isCenter: false },
+  create(cfg) {
+    const cryo = buildColorRamp(cfg.palette, 8);
+    const borealis = buildColorRamp(BOREALIS_PRISM_PALETTE, 8);
+    const band4 = [cryo[2], cryo[5], borealis[5], PURE_WHITE];
+    const rng = new DeterministicRng(cfg.seed);
+    const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, cryo[6], borealis[5], cryo[4]], floorY: 0 });
+    let t = 0;
+    let burstDone = false;
+
+    return {
+      step(dt) {
+        if (!burstDone) {
+          burstDone = true;
+          const n = cfg.isCenter ? 18 : 10;
+          for (let i = 0; i < n; i++) {
+            const vx = rng.between(-52, 52);
+            const vy = rng.between(-135, -45);
+            motes.emit(
+              i % 2 === 0 ? 'glint' : 'streak',
+              rng.between(-5, 5),
+              -2,
+              vx,
+              vy,
+              rng.between(0.18, 0.34),
+              i % 3 === 0 ? PURE_WHITE : i % 2 === 0 ? cryo[5] : borealis[5],
+              1.1,
+              140
+            );
+          }
+        }
+        t += dt;
+        motes.step(dt);
+      },
+      renderFront(pen) {
+        const u = clamp01(t / 0.42);
+        const fade = 1 - u;
+        if (fade <= 0.02) return;
+        const rx = (cfg.isCenter ? 46 : 26) * smoothStep(0, 0.48, u);
+        drawTiltedOrbitBand(pen, 0, -1, rx, 0.22, 1.5, 0.94 * fade, band4, () => true, u < 0.25);
+        const plumeH = (cfg.isCenter ? 38 : 24) * (1 - u * 0.55);
+        pen.line(0, 0, 0, -plumeH, PURE_WHITE, fade * 0.95);
+        pen.line(-2, 0, -1, -plumeH * 0.78, cryo[5], fade * 0.8);
+        pen.line(2, 0, 1, -plumeH * 0.78, borealis[5], fade * 0.8);
+        motes.render(pen);
+      }
+    };
+  }
+};
+
+// ============================================================================
+// 9. 2.5D WINTER CORONATION PALACE DOMAIN (`borealisCathedralDomain`)
 // ============================================================================
 export const borealisCathedralDomain = {
-  duration: 1.5,
+  duration: 1.55,
   loop: false,
   defaults: { palette: GLACIAL_CRYO_PALETTE, seed: 103 },
   create(cfg) {
@@ -429,54 +550,54 @@ export const borealisCathedralDomain = {
     return {
       step(dt) {
         t += dt;
-        acc += dt * 48;
-        while (acc >= 1 && t < 1.3) {
+        acc += dt * 32;
+        while (acc >= 1 && t < 1.32) {
           acc -= 1;
           motes.emit(
             rng.chance(0.5) ? 'glint' : 'spark',
-            rng.between(-72, 72),
-            rng.between(-110, -8),
-            rng.between(-20, 20),
-            rng.between(18, 56),
-            rng.between(0.24, 0.46),
+            rng.between(-64, 64),
+            rng.between(-96, -10),
+            rng.between(-16, 16),
+            rng.between(14, 42),
+            rng.between(0.22, 0.42),
             rng.chance(0.45) ? borealis[5] : cryo[5],
-            1.1,
-            18
+            1.05,
+            16
           );
         }
         motes.step(dt);
       },
       renderBack(pen) {
-        const u = clamp01(t / 1.5);
+        const u = clamp01(t / 1.55);
         const pop = smoothStep(0, 0.14, u);
         const fade = 1 - smoothStep(0.82, 1.0, u);
         const env = pop * fade;
         if (env <= 0.02) return;
 
-        for (let i = -9; i <= 9; i++) {
+        for (let i = -8; i <= 8; i++) {
           const rx = i * 8;
-          const wave = Math.sin(u * 9 + i * 0.55) * 6;
-          const yTop = -126 + wave;
-          const yBot = -68 + wave;
+          const wave = Math.sin(u * 8.5 + i * 0.55) * 5;
+          const yTop = -112 + wave;
+          const yBot = -58 + wave;
           const col = i % 3 === 0 ? borealis[5] : i % 2 === 0 ? cryo[5] : cryo[4];
-          pen.line(rx, yTop, rx, yBot, col, 0.58 * env);
+          pen.line(rx, yTop, rx, yBot, col, 0.54 * env);
           if (i % 2 === 0) {
-            pen.line(rx, yTop + 6, rx, yTop + 24, PURE_WHITE, 0.68 * env);
+            pen.line(rx, yTop + 5, rx, yTop + 20, PURE_WHITE, 0.64 * env);
           }
         }
 
-        drawTiltedOrbitBand(pen, 0, 0, 76 * pop, 0.21, 1.7, 0.88 * env, band4, BACK_HALF, false);
-        drawTiltedOrbitBand(pen, 0, 0, 48 * pop, 0.21, 1.3, 0.82 * env, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -2, 72 * pop, 0.21, 1.6, 0.88 * env, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -2, 44 * pop, 0.21, 1.2, 0.8 * env, band4, BACK_HALF, false);
       },
       renderFront(pen) {
-        const u = clamp01(t / 1.5);
+        const u = clamp01(t / 1.55);
         const pop = smoothStep(0, 0.14, u);
         const fade = 1 - smoothStep(0.82, 1.0, u);
         const env = pop * fade;
         if (env <= 0.02) return;
 
-        drawTiltedOrbitBand(pen, 0, 0, 76 * pop, 0.21, 1.9, 0.96 * env, band4, FRONT_HALF, true);
-        drawTiltedOrbitBand(pen, 0, 0, 48 * pop, 0.21, 1.4, 0.88 * env, band4, FRONT_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -2, 72 * pop, 0.21, 1.8, 0.95 * env, band4, FRONT_HALF, true);
+        drawTiltedOrbitBand(pen, 0, -2, 44 * pop, 0.21, 1.3, 0.86 * env, band4, FRONT_HALF, false);
         motes.render(pen);
       }
     };
@@ -484,18 +605,19 @@ export const borealisCathedralDomain = {
 };
 
 // ============================================================================
-// 8. 2.5D ABSOLUTE ZERO AURORA BOREALIS & DIAMOND DUST DOMAIN (`absoluteZeroAuroraVeil`)
-//    Powers `TRUE_ULTIMATE` ("ABSOLUTE ZERO: DIAMOND DUST ETERNITY") Phases 1 & 2!
+// 10. 2.5D ABSOLUTE ZERO SANCTUARY RINGS (`absoluteZeroAuroraVeil`)
+//     Powers `TRUE_ULTIMATE` Acts I–III around the Entombed Diamond Monolith!
+//     (Strictly bounded inside viewport so 0/4 borders ever clip!)
 // ============================================================================
 export const absoluteZeroAuroraVeil = {
-  duration: 3.4,
+  duration: 3.35,
   loop: false,
-  defaults: { palette: GLACIAL_CRYO_PALETTE, seed: 149, customDuration: 3.4 },
+  defaults: { palette: GLACIAL_CRYO_PALETTE, seed: 149, customDuration: 3.35 },
   create(cfg) {
-    const dur = cfg.customDuration || 3.4;
+    const dur = cfg.customDuration || 3.35;
     const cryo = buildColorRamp(cfg.palette, 8);
     const borealis = buildColorRamp(BOREALIS_PRISM_PALETTE, 8);
-    const band4 = [cryo[2], cryo[4], borealis[4], PURE_WHITE];
+    const band4 = [cryo[2], cryo[5], borealis[5], PURE_WHITE];
     const rng = new DeterministicRng(cfg.seed);
     const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, cryo[6], borealis[5], cryo[4]], floorY: 0 });
     let t = 0;
@@ -504,19 +626,19 @@ export const absoluteZeroAuroraVeil = {
     return {
       step(dt) {
         t += dt;
-        acc += dt * 62;
-        while (acc >= 1 && t < dur - 0.2) {
+        acc += dt * 36;
+        while (acc >= 1 && t < dur - 0.18) {
           acc -= 1;
           motes.emit(
             rng.chance(0.55) ? 'glint' : 'spark',
-            rng.between(-96, 96),
-            rng.between(-138, -6),
-            rng.between(-34, 34),
-            rng.between(14, 48),
-            rng.between(0.28, 0.54),
-            rng.chance(0.38) ? borealis[4] : rng.chance(0.5) ? PURE_WHITE : cryo[5],
-            1.15,
-            12
+            rng.between(-76, 76),
+            rng.between(-105, -8),
+            rng.between(-18, 18),
+            rng.between(10, 34),
+            rng.between(0.24, 0.44),
+            rng.chance(0.38) ? borealis[5] : rng.chance(0.5) ? PURE_WHITE : cryo[5],
+            1.1,
+            8
           );
         }
         motes.step(dt);
@@ -524,35 +646,22 @@ export const absoluteZeroAuroraVeil = {
       renderBack(pen) {
         const u = clamp01(t / dur);
         const pop = smoothStep(0, 0.1, u);
-        const fade = 1 - smoothStep(0.88, 1.0, u);
+        const fade = 1 - smoothStep(0.9, 1.0, u);
         const env = pop * fade;
         if (env <= 0.02) return;
 
-        // Sweeping undulating Aurora Borealis sky curtains across the arena
-        for (let i = -13; i <= 13; i++) {
-          const rx = i * 7;
-          const wave = Math.sin(t * 4.4 + i * 0.45) * 8 + Math.cos(t * 2.3 - i * 0.3) * 4;
-          const yTop = -142 + wave;
-          const yBot = -62 + wave * 0.7;
-          const col = i % 4 === 0 ? borealis[4] : i % 2 === 0 ? cryo[5] : cryo[3];
-          pen.line(rx, yTop, rx, yBot, col, 0.56 * env);
-          if (i % 3 === 0) {
-            pen.line(rx, yTop + 5, rx, yTop + 26, PURE_WHITE, 0.7 * env);
-          }
-        }
-
-        drawTiltedOrbitBand(pen, 0, 0, 92 * pop, 0.21, 1.8, 0.88 * env, band4, BACK_HALF, false);
-        drawTiltedOrbitBand(pen, 0, 0, 58 * pop, 0.21, 1.4, 0.82 * env, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -2, 82 * pop, 0.2, 1.7, 0.88 * env, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -2, 52 * pop, 0.2, 1.3, 0.82 * env, band4, BACK_HALF, false);
       },
       renderFront(pen) {
         const u = clamp01(t / dur);
         const pop = smoothStep(0, 0.1, u);
-        const fade = 1 - smoothStep(0.88, 1.0, u);
+        const fade = 1 - smoothStep(0.9, 1.0, u);
         const env = pop * fade;
         if (env <= 0.02) return;
 
-        drawTiltedOrbitBand(pen, 0, 0, 92 * pop, 0.21, 2.0, 0.96 * env, band4, FRONT_HALF, true);
-        drawTiltedOrbitBand(pen, 0, 0, 58 * pop, 0.21, 1.5, 0.88 * env, band4, FRONT_HALF, false);
+        drawTiltedOrbitBand(pen, 0, -2, 82 * pop, 0.2, 1.9, 0.96 * env, band4, FRONT_HALF, true);
+        drawTiltedOrbitBand(pen, 0, -2, 52 * pop, 0.2, 1.4, 0.88 * env, band4, FRONT_HALF, false);
         motes.render(pen);
       }
     };
@@ -560,11 +669,11 @@ export const absoluteZeroAuroraVeil = {
 };
 
 // ============================================================================
-// 9. 2.5D DIAMOND DUST CATACLYSM NOVA (`diamondDustCataclysmNova`)
-//    Triggered at `t = 3.20s` when Lyra taps her Frost-Scepter!
+// 11. 2.5D DIAMOND DUST CATACLYSM NOVA (`diamondDustCataclysmNova`)
+//     Triggered at `t = 3.30s` when Lyra taps her Frost-Lance Scepter!
 // ============================================================================
 export const diamondDustCataclysmNova = {
-  duration: 0.9,
+  duration: 0.88,
   loop: false,
   defaults: { palette: GLACIAL_CRYO_PALETTE, seed: 181 },
   create(cfg) {
@@ -580,19 +689,19 @@ export const diamondDustCataclysmNova = {
       step(dt) {
         if (!burstDone) {
           burstDone = true;
-          for (let i = 0; i < 42; i++) {
-            const a = (i / 42) * Math.PI * 2 + rng.between(-0.08, 0.08);
-            const spd = rng.between(68, 245);
+          for (let i = 0; i < 32; i++) {
+            const a = (i / 32) * Math.PI * 2 + rng.between(-0.08, 0.08);
+            const spd = rng.between(58, 175);
             motes.emit(
               i % 3 === 0 ? 'streak' : 'glint',
               0,
               0,
               Math.cos(a) * spd,
-              Math.sin(a) * spd * 0.85,
-              rng.between(0.32, 0.72),
-              i % 3 === 0 ? PURE_WHITE : i % 2 === 0 ? cryo[5] : borealis[4],
-              1.4,
-              32
+              Math.sin(a) * spd * 0.72,
+              rng.between(0.24, 0.48),
+              i % 3 === 0 ? PURE_WHITE : i % 2 === 0 ? cryo[5] : borealis[5],
+              1.25,
+              24
             );
           }
         }
@@ -600,14 +709,14 @@ export const diamondDustCataclysmNova = {
         motes.step(dt);
       },
       renderFront(pen) {
-        const u = clamp01(t / 0.9);
+        const u = clamp01(t / 0.88);
         const fade = 1 - smoothStep(0.35, 1.0, u);
         if (fade <= 0.02) return;
-        const r = 68 * smoothStep(0, 0.45, u);
-        drawTiltedOrbitBand(pen, 0, 0, r, 0.72, 2.0, 0.96 * fade, band4, () => true, u < 0.22);
-        drawTiltedOrbitBand(pen, 0, 0, r * 0.62, 0.72, 1.4, 0.88 * fade, band4, () => true, false);
-        drawStarburstFlare(pen, 0, 0, 44 * fade, 0.95 * fade, [cryo[3], cryo[5], borealis[5], PURE_WHITE]);
-        drawSnowflakeStar(pen, 0, 0, 48 * fade, PURE_WHITE, borealis[4], 0.92 * fade, u * 3.2);
+        const r = 56 * smoothStep(0, 0.45, u);
+        drawTiltedOrbitBand(pen, 0, 0, r, 0.65, 1.9, 0.95 * fade, band4, () => true, u < 0.24);
+        drawTiltedOrbitBand(pen, 0, 0, r * 0.6, 0.65, 1.3, 0.86 * fade, band4, () => true, false);
+        drawStarburstFlare(pen, 0, 0, 38 * fade, 0.95 * fade, [cryo[3], cryo[5], borealis[5], PURE_WHITE]);
+        drawSnowflakeStar(pen, 0, 0, 42 * fade, PURE_WHITE, borealis[5], 0.92 * fade, u * 3.2);
         motes.render(pen);
       }
     };
@@ -616,14 +725,14 @@ export const diamondDustCataclysmNova = {
 
 // ============================================================================
 // BAKED 30FPS `icemage_vfx.png` 8-ROW CELLS (`104x104` logical -> `208x208` crisp 2x)
-//   Row 0 (`y=0`):    Cryo-Shard Comet (`cryoShardBoltCell`)
-//   Row 1 (`y=208`):  Floating Hexagonal Cryo-Prism Mirror (`hexCryoPrismMirrorCell`)
-//   Row 2 (`y=416`):  Erupting Jagged Glacier Spire (`facetedGlacierMonolithCell`)
-//   Row 3 (`y=624`):  Borealis Aurora Crown Seal (`borealisRoseMandalaCell`)
-//   Row 4 (`y=832`):  Hoarfrost Starburst Nova (`hoarfrostShatterNovaCell`)
-//   Row 5 (`y=1040`): Aurora Borealis Sovereign Snowflake Mandala (`auroraSovereignMandalaCell`)
-//   Row 6 (`y=1248`): Absolute Zero Crystalline Diamond-Coffin Monolith (`diamondCoffinMonolithCell`)
-//   Row 7 (`y=1456`): Diamond Dust Prismatic Starburst Shatter (`diamondDustStarburstCell`)
+//   Row 0 (`y=0`):    Faceted Borealis Cryo-Lance Comet (`cryoShardBoltCell`)
+//   Row 1 (`y=208`):  Spinning 6-Bladed Snowflake Chakram Halo (`hexCryoPrismMirrorCell`)
+//   Row 2 (`y=416`):  Erupting Jagged Glacier Iceberg Wall (`facetedGlacierMonolithCell`)
+//   Row 3 (`y=624`):  Stained-Glass Winter Palace Crest (`borealisRoseMandalaCell`)
+//   Row 4 (`y=832`):  Giant Celestial Coronation Ice-Claymore (`celestialIceSwordCell`)
+//   Row 5 (`y=1040`): Celestial Aurora Astrolabe & Winter Moon (`auroraSovereignMandalaCell`)
+//   Row 6 (`y=1248`): Absolute Zero Diamond-Lotus Prison (`diamondCoffinMonolithCell`)
+//   Row 7 (`y=1456`): Cataclysmic 8-Point Ice-Glass Starburst (`diamondDustStarburstCell`)
 // ============================================================================
 
 export const cryoShardBoltCell = {
@@ -639,16 +748,16 @@ export const cryoShardBoltCell = {
 
     return {
       step(dt) {
-        acc += dt * 44;
+        acc += dt * 40;
         while (acc >= 1) {
           acc -= 1;
           motes.emit(
             'glint',
             rng.between(-8, 12),
             rng.between(-7, 7),
-            rng.between(-75, -24),
-            rng.between(-12, 12),
-            0.24,
+            rng.between(-70, -24),
+            rng.between(-10, 10),
+            0.22,
             rng.chance(0.45) ? borealis[5] : cryo[5],
             1,
             0
@@ -658,20 +767,20 @@ export const cryoShardBoltCell = {
       },
       renderFront(pen, localT) {
         const ph = localT * Math.PI * 2;
-        const tipX = 28;
+        const tipX = 29;
         const tailX = -32;
 
-        // Faceted Diamond-Hexagon Cryo Lance pointing `+X`
-        pen.shadeBox(tailX - 4, -18, tipX + 4, 18, (lx, ly, out) => {
+        // Faceted Diamond-Spearhead Cryo-Lance pointing `+X`
+        pen.shadeBox(tailX - 5, -20, tipX + 5, 20, (lx, ly, out) => {
           const u = (lx - tailX) / (tipX - tailX);
           if (u < 0 || u > 1) return 0;
-          const halfH = u < 0.68 ? (u / 0.68) * 11.5 : ((1 - u) / 0.32) * 11.5;
+          const halfH = u < 0.66 ? (u / 0.66) * 12.0 : ((1 - u) / 0.34) * 12.0;
           const ay = Math.abs(ly);
           if (ay > halfH) return 0;
 
           if (ay > halfH - 1.6) {
             out.color = cryo[0];
-            out.alpha = 0.96;
+            out.alpha = 0.98;
             return out.color;
           }
           if (ay < 2.2) {
@@ -682,7 +791,7 @@ export const cryoShardBoltCell = {
             return out.color;
           }
           const upperFacet = ly < 0;
-          const shimmer = Math.sin(u * 12 - ph * 2) > 0.25;
+          const shimmer = Math.sin(u * 12 - ph * 2) > 0.22;
           out.color = upperFacet ? (shimmer ? cryo[6] : cryo[5]) : shimmer ? borealis[5] : cryo[3];
           out.alpha = 0.96;
           out.glowColor = upperFacet ? cryo[5] : borealis[5];
@@ -690,13 +799,14 @@ export const cryoShardBoltCell = {
           return out.color;
         });
 
-        drawSnowflakeStar(pen, 8, 0, 11, cryo[6], borealis[5], 0.9, ph);
+        drawSnowflakeStar(pen, 7, 0, 11, cryo[6], borealis[5], 0.92, ph);
         motes.render(pen);
       }
     };
   }
 };
 
+// ROW 1 (`y = 208`): SPINNING 6-BLADED SNOWFLAKE CHAKRAM / PRISM HALO
 export const hexCryoPrismMirrorCell = {
   duration: 1.0,
   loop: true,
@@ -710,50 +820,63 @@ export const hexCryoPrismMirrorCell = {
       step() {},
       renderBack(pen, localT) {
         const ph = localT * Math.PI * 2;
-        drawTiltedOrbitBand(pen, 0, 0, 31, 0.38, 1.4, 0.85, band4, BACK_HALF, false);
+        drawTiltedOrbitBand(pen, 0, 0, 32, 0.36, 1.3, 0.82, band4, BACK_HALF, false);
 
-        const R = 23;
-        pen.shadeBox(-26, -26, 26, 26, (lx, ly, out) => {
-          const rx = lx * Math.cos(ph * 0.5) - ly * Math.sin(ph * 0.5);
-          const ry = lx * Math.sin(ph * 0.5) + ly * Math.cos(ph * 0.5);
-          const ax = Math.abs(rx);
-          const ay = Math.abs(ry);
-          const hexD = Math.max(ax * 0.866025 + ay * 0.5, ay);
-          if (hexD > R) return 0;
-          if (hexD > R - 1.8) {
+        // 6-Bladed Beveled Crystalline Snowflake Chakram
+        pen.shadeBox(-36, -36, 36, 36, (lx, ly, out) => {
+          const r = Math.hypot(lx, ly);
+          if (r > 31) return 0;
+          const ang = Math.atan2(ly, lx) + ph;
+          const sectorAng = ((ang % (Math.PI / 3)) + Math.PI / 3) % (Math.PI / 3) - Math.PI / 6;
+          // Star-blade outer contour: 6 swept razor points + inner ring
+          const bladeReach = 15 + Math.pow(Math.max(0, Math.cos(sectorAng * 3)), 1.35) * 15.5;
+          if (r > bladeReach) return 0;
+          if (r > 7.5 && r < 11.2 && Math.abs(sectorAng) > 0.16) return 0; // open crystalline cutout slots!
+
+          if (r > bladeReach - 1.7) {
             out.color = cryo[0];
             out.alpha = 0.98;
             return out.color;
           }
-          if (hexD < 5.5) {
-            out.color = PURE_WHITE;
+          if (r < 6.0) {
+            out.color = r < 3.2 ? PURE_WHITE : borealis[5];
             out.alpha = 1;
-            out.glowColor = cryo[5];
-            out.glowStrength = 0.5;
+            out.glowColor = borealis[5];
+            out.glowStrength = 0.48;
             return out.color;
           }
-          const sector = Math.floor(((Math.atan2(ry, rx) + Math.PI) / (Math.PI * 2)) * 6) % 6;
+          if (Math.abs(sectorAng) < 0.07) {
+            out.color = PURE_WHITE;
+            out.alpha = 0.98;
+            out.glowColor = cryo[5];
+            out.glowStrength = 0.35;
+            return out.color;
+          }
+          const secIdx = Math.floor(((ang + Math.PI * 4) / (Math.PI / 3))) % 6;
           out.color =
-            sector === 0 || sector === 1
-              ? cryo[6]
-              : sector === 2 || sector === 5
-                ? cryo[4]
-                : borealis[5];
-          out.alpha = 0.94;
-          out.glowColor = sector === 3 ? borealis[5] : cryo[5];
-          out.glowStrength = 0.28;
+            sectorAng < 0
+              ? secIdx % 2 === 0
+                ? cryo[6]
+                : borealis[6]
+              : secIdx % 2 === 0
+                ? cryo[3]
+                : borealis[4];
+          out.alpha = 0.95;
+          out.glowColor = secIdx % 2 === 0 ? cryo[5] : borealis[5];
+          out.glowStrength = 0.25;
           return out.color;
         });
       },
       renderFront(pen, localT) {
         const ph = localT * Math.PI * 2;
-        drawTiltedOrbitBand(pen, 0, 0, 31, 0.38, 1.5, 0.94, band4, FRONT_HALF, true);
-        drawSnowflakeStar(pen, 0, 0, 18, PURE_WHITE, borealis[5], 0.9, -ph);
+        drawTiltedOrbitBand(pen, 0, 0, 32, 0.36, 1.4, 0.92, band4, FRONT_HALF, true);
+        drawSnowflakeStar(pen, 0, 0, 14, PURE_WHITE, borealis[5], 0.9, -ph);
       }
     };
   }
 };
 
+// ROW 2 (`y = 416`): ERUPTING JAGGED GLACIER ICEBERG WALL (`F00..F21`) & SHATTER (`F22..F29`)
 export const facetedGlacierMonolithCell = {
   duration: 1.0,
   loop: false,
@@ -763,11 +886,11 @@ export const facetedGlacierMonolithCell = {
     const borealis = buildColorRamp(BOREALIS_PRISM_PALETTE, 8);
     const band4 = [cryo[1], cryo[3], cryo[5], PURE_WHITE];
     const spires = [
-      { ox: -16, tilt: -0.22, hScale: 0.56, wScale: 0.42 },
-      { ox: 16, tilt: 0.22, hScale: 0.58, wScale: 0.42 },
-      { ox: -9, tilt: -0.11, hScale: 0.78, wScale: 0.58 },
-      { ox: 9, tilt: 0.11, hScale: 0.80, wScale: 0.58 },
-      { ox: 0, tilt: 0.0, hScale: 1.0, wScale: 0.74 }
+      { ox: -17, tilt: -0.22, hScale: 0.58, wScale: 0.45 },
+      { ox: 17, tilt: 0.22, hScale: 0.6, wScale: 0.45 },
+      { ox: -9.5, tilt: -0.11, hScale: 0.8, wScale: 0.6 },
+      { ox: 9.5, tilt: 0.11, hScale: 0.82, wScale: 0.6 },
+      { ox: 0, tilt: 0.0, hScale: 1.0, wScale: 0.76 }
     ];
 
     return {
@@ -787,7 +910,7 @@ export const facetedGlacierMonolithCell = {
             const topY = baseY - spH;
             const maxHalfW = 18 * pop * sp.wScale;
 
-            pen.shadeBox(-38, topY - 2, 38, baseY + 6, (lx, ly, out) => {
+            pen.shadeBox(-42, topY - 4, 42, baseY + 8, (lx, ly, out) => {
               if (ly < topY) return 0;
               const hFrac = Math.max(0, (baseY - ly) / Math.max(1, spH));
               const centerX = sp.ox + (ly - baseY) * sp.tilt;
@@ -805,10 +928,10 @@ export const facetedGlacierMonolithCell = {
                 return out.color;
               }
               if (ax < 1.35) {
-                out.color = hFrac > 0.65 ? PURE_WHITE : cryo[6];
+                out.color = hFrac > 0.62 ? PURE_WHITE : cryo[6];
                 out.alpha = 0.98;
                 out.glowColor = cryo[5];
-                out.glowStrength = 0.28;
+                out.glowStrength = 0.3;
                 return out.color;
               }
               const glint = ((Math.floor(lx + ly * 0.7) % 9) + 9) % 9 === 0;
@@ -823,7 +946,9 @@ export const facetedGlacierMonolithCell = {
                     ? cryo[5]
                     : cryo[4]
                   : ax < halfW * 0.46
-                    ? cryo[3]
+                    ? sIdx === 4
+                      ? borealis[4]
+                      : cryo[3]
                     : cryo[1];
               out.alpha = 0.96;
               return out.color;
@@ -853,6 +978,7 @@ export const facetedGlacierMonolithCell = {
   }
 };
 
+// ROW 3 (`y = 624`): STAINED-GLASS WINTER PALACE SOVEREIGN CREST
 export const borealisRoseMandalaCell = {
   duration: 1.0,
   loop: true,
@@ -864,20 +990,36 @@ export const borealisRoseMandalaCell = {
 
     return {
       step() {},
+      renderBack(pen, localT) {
+        const ph = localT * Math.PI * 2;
+        pen.shadeBox(-38, -38, 38, 38, (lx, ly, out) => {
+          const r = Math.hypot(lx, ly);
+          if (r > 33) return 0;
+          const ang = Math.atan2(ly, lx) - ph * 0.5;
+          const lotus = Math.abs(Math.cos(ang * 3));
+          const maxR = 21 + lotus * 11.5;
+          if (r > maxR) return 0;
+          if (r > maxR - 1.5) {
+            out.color = cryo[0];
+            out.alpha = 0.92;
+            return out.color;
+          }
+          const sec = Math.floor(((ang + Math.PI * 4) / (Math.PI * 2)) * 12) % 12;
+          out.color = sec % 3 === 0 ? borealis[3] : sec % 2 === 0 ? cryo[2] : cryo[4];
+          out.alpha = 0.72;
+          return out.color;
+        });
+      },
       renderFront(pen, localT) {
         const ph = localT * Math.PI * 2;
-        drawTiltedOrbitBand(pen, 0, 0, 38, 1.0, 1.6, 0.92, band4, () => true, false);
-        drawTiltedOrbitBand(pen, 0, 0, 24, 1.0, 1.3, 0.88, band4, () => true, false);
-
+        drawTiltedOrbitBand(pen, 0, 0, 36, 1.0, 1.5, 0.92, band4, () => true, false);
         for (let k = 0; k < 12; k++) {
           const a = ph * 0.5 + (k * Math.PI) / 6;
-          const rOut = k % 2 === 0 ? 38 : 31;
+          const rOut = k % 2 === 0 ? 38 : 30;
           const col = k % 3 === 0 ? borealis[5] : k % 2 === 0 ? cryo[6] : cryo[4];
-          pen.line(0, 0, Math.cos(a) * rOut, Math.sin(a) * rOut, col, 0.9);
-          const nx = Math.cos(a) * 38;
-          const ny = Math.sin(a) * 38;
+          pen.line(0, 0, Math.cos(a) * rOut, Math.sin(a) * rOut, col, 0.92);
           if (k % 2 === 0) {
-            pen.fillCircle(nx, ny, 2.2, PURE_WHITE, 0.95);
+            pen.fillCircle(Math.cos(a) * 38, Math.sin(a) * 38, 2.2, PURE_WHITE, 0.96);
           }
         }
         drawSnowflakeStar(pen, 0, 0, 22, PURE_WHITE, borealis[5], 0.95, -ph);
@@ -886,37 +1028,112 @@ export const borealisRoseMandalaCell = {
   }
 };
 
-export const hoarfrostShatterNovaCell = {
+// ROW 4 (`y = 832`): GIANT CELESTIAL CORONATION ICE-CLAYMORE / ICICLE LANCE (pointing `+Y` down!)
+//   Powers Lyra's Overdrive Ultimate ("WINTER CORONATION: SEVEN CELESTIAL ICE-SWORDS")!
+export const celestialIceSwordCell = {
   duration: 1.0,
-  loop: false,
+  loop: true,
   defaults: { palette: GLACIAL_CRYO_PALETTE, seed: 347 },
   create(cfg) {
     const cryo = buildColorRamp(cfg.palette, 8);
     const borealis = buildColorRamp(BOREALIS_PRISM_PALETTE, 8);
-    const band4 = [cryo[2], cryo[4], borealis[5], PURE_WHITE];
 
     return {
       step() {},
       renderFront(pen, localT) {
-        const u = clamp01(localT);
-        const pop = 0.45 + 0.55 * smoothStep(0, 0.25, u);
-        const fade = 1 - smoothStep(0.68, 1.0, u);
-        const env = (0.88 + 0.12 * smoothStep(0, 0.15, u)) * fade;
-        if (env <= 0.02) return;
+        const ph = localT * Math.PI * 2;
+        const pomY = -41;
+        const guardY = -20;
+        const tipY = 43;
 
-        const r = 38 * pop;
-        drawTiltedOrbitBand(pen, 0, 0, r, 1.0, 1.7, 0.94 * env, band4, () => true, u < 0.25);
-        drawTiltedOrbitBand(pen, 0, 0, r * 0.62, 1.0, 1.2, 0.85 * env, band4, () => true, false);
-        drawSnowflakeStar(pen, 0, 0, r * 1.02, PURE_WHITE, borealis[5], 0.95 * env, u * 2.2);
-        drawStarburstFlare(pen, 0, 0, r * 0.72, 0.88 * env, [cryo[3], cryo[5], borealis[5], PURE_WHITE]);
+        // 1. Pommel Crown Star & Outlined Hilt
+        pen.shadeBox(-28, pomY - 5, 28, tipY + 4, (lx, ly, out) => {
+          // Hilt & Pommel (`pomY .. guardY`)
+          if (ly >= pomY - 3 && ly < guardY - 2) {
+            const dyPom = ly - pomY;
+            const dPom = Math.abs(lx) / 4.8 + Math.abs(dyPom) / 4.8;
+            if (dPom <= 1.0) {
+              out.color = dPom > 0.72 ? cryo[0] : dPom < 0.34 ? PURE_WHITE : borealis[5];
+              out.alpha = 0.98;
+              return out.color;
+            }
+            if (Math.abs(lx) <= 2.6 && ly >= pomY + 2) {
+              out.color = Math.abs(lx) > 1.3 ? cryo[0] : cryo[6];
+              out.alpha = 0.98;
+              return out.color;
+            }
+            return 0;
+          }
+
+          // Swept Crystalline Winged Snowflake Cross-Guard (`ly` near `guardY`)
+          const wingY = guardY - Math.abs(lx) * 0.22;
+          if (Math.abs(lx) <= 23 && Math.abs(ly - wingY) <= 4.4 * (1 - Math.abs(lx) / 28)) {
+            const edge = Math.abs(ly - wingY) > 2.7 * (1 - Math.abs(lx) / 28) || Math.abs(lx) > 21.2;
+            out.color = edge ? cryo[0] : Math.abs(ly - wingY) < 1.1 ? PURE_WHITE : lx < 0 ? cryo[5] : borealis[5];
+            out.alpha = 0.98;
+            if (!edge) {
+              out.glowColor = cryo[5];
+              out.glowStrength = 0.3;
+            }
+            return out.color;
+          }
+
+          // Beveled Faceted Crystal Greatsword Blade (`guardY .. tipY`)
+          if (ly >= guardY - 1 && ly <= tipY) {
+            const v = (ly - guardY) / (tipY - guardY); // 0 at guard, 1 at tip
+            // Regal broad-shouldered crystal claymore taper with ricasso flare at v = 0.16
+            let halfW;
+            if (v < 0.16) {
+              halfW = 7.5 + (v / 0.16) * 3.8;
+            } else if (v < 0.68) {
+              halfW = 11.3 - ((v - 0.16) / 0.52) * 3.2;
+            } else {
+              halfW = Math.max(0.6, (1 - (v - 0.68) / 0.32) * 8.1);
+            }
+            const ax = Math.abs(lx);
+            if (ax > halfW) return 0;
+
+            if (ax > halfW - 1.55 || v > 0.97) {
+              out.color = cryo[0];
+              out.alpha = 0.99;
+              return out.color;
+            }
+            // Blazing white diamond fuller spine
+            if (ax < 1.5) {
+              out.color = PURE_WHITE;
+              out.alpha = 1;
+              out.glowColor = cryo[5];
+              out.glowStrength = 0.42;
+              return out.color;
+            }
+            // Travelling Borealis light-band along the crystal bevels
+            const shimmer = Math.sin(v * 11 - ph * 2) > 0.32;
+            const innerBevel = ax < halfW * 0.52;
+            if (lx < 0) {
+              out.color = innerBevel ? (shimmer ? PURE_WHITE : cryo[6]) : cryo[4];
+            } else {
+              out.color = innerBevel ? (shimmer ? borealis[6] : borealis[5]) : cryo[2];
+            }
+            out.alpha = 0.96;
+            out.glowColor = lx < 0 ? cryo[5] : borealis[5];
+            out.glowStrength = 0.22;
+            return out.color;
+          }
+          return 0;
+        });
+
+        // Guard center jewel glint
+        drawSnowflakeStar(pen, 0, guardY, 7.5, PURE_WHITE, borealis[5], 0.94, ph);
       }
     };
   }
 };
 
+// Preserve alias for compatibility
+export const hoarfrostShatterNovaCell = celestialIceSwordCell;
+
 // ============================================================================
-// ROW 5 (`y = 1040`): AURORA BOREALIS SOVEREIGN SNOWFLAKE MANDALA
-//   Grand 12-Point Sapphire-Cyan Crystalline Seal (`auroraSovereignMandalaCell`)
+// ROW 5 (`y = 1040`): CELESTIAL AURORA ASTROLABE & WINTER MOON MANDALA
 // ============================================================================
 export const auroraSovereignMandalaCell = {
   duration: 1.0,
@@ -925,28 +1142,35 @@ export const auroraSovereignMandalaCell = {
   create(cfg) {
     const cryo = buildColorRamp(cfg.palette, 8);
     const borealis = buildColorRamp(BOREALIS_PRISM_PALETTE, 8);
-    const sapphireBand = [cryo[1], cryo[2], cryo[5], PURE_WHITE];
+    const sapphireBand = [cryo[1], cryo[3], cryo[5], PURE_WHITE];
     const prismBand = [borealis[2], cryo[4], borealis[5], PURE_WHITE];
 
     return {
       step() {},
       renderBack(pen, localT) {
         const ph = localT * Math.PI * 2;
-        // Stained-glass Borealis sapphire-cyan inner rose mandala
-        pen.shadeBox(-26, -26, 26, 26, (lx, ly, out) => {
+        pen.shadeBox(-34, -34, 34, 34, (lx, ly, out) => {
           const r = Math.hypot(lx, ly);
-          if (r > 24) return 0;
+          if (r > 30) return 0;
           const ang = Math.atan2(ly, lx) + ph * 0.5;
           const petal = Math.abs(Math.cos(ang * 6));
-          if (r > 17 + petal * 6.5) return 0;
-          if (r > 15.5 + petal * 6.5) {
+          const maxR = 19 + petal * 9.5;
+          if (r > maxR) return 0;
+          if (r > maxR - 1.5) {
             out.color = cryo[0];
-            out.alpha = 0.94;
+            out.alpha = 0.95;
+            return out.color;
+          }
+          if (r < 8.5) {
+            out.color = r < 4.5 ? PURE_WHITE : cryo[6];
+            out.alpha = 0.96;
+            out.glowColor = cryo[5];
+            out.glowStrength = 0.42;
             return out.color;
           }
           const sec = Math.floor(((ang + Math.PI * 4) / (Math.PI * 2)) * 12) % 12;
-          out.color = sec % 3 === 0 ? borealis[3] : sec % 2 === 0 ? cryo[2] : cryo[4];
-          out.alpha = 0.82;
+          out.color = sec % 3 === 0 ? borealis[4] : sec % 2 === 0 ? cryo[3] : cryo[5];
+          out.alpha = 0.86;
           out.glowColor = sec % 3 === 0 ? borealis[5] : cryo[5];
           out.glowStrength = 0.3;
           return out.color;
@@ -954,11 +1178,9 @@ export const auroraSovereignMandalaCell = {
       },
       renderFront(pen, localT) {
         const ph = localT * Math.PI * 2;
-        // Outer & mid concentric Sovereign Mandala circles
         drawTiltedOrbitBand(pen, 0, 0, 40, 1.0, 1.7, 0.95, sapphireBand, () => true, false);
         drawTiltedOrbitBand(pen, 0, 0, 31, 1.0, 1.3, 0.9, prismBand, () => true, false);
 
-        // Interlocking 6-point sapphire-silver hexagram chords
         for (let tri = 0; tri < 2; tri++) {
           const baseRot = (tri === 0 ? ph : -ph) * 0.5 + tri * (Math.PI / 6);
           for (let k = 0; k < 3; k++) {
@@ -975,7 +1197,6 @@ export const auroraSovereignMandalaCell = {
           }
         }
 
-        // Grand 12-Point Sapphire-Cyan Crystalline Snowflake Lances & Crown Finials
         for (let k = 0; k < 12; k++) {
           const a = ph * 0.5 + (k * Math.PI) / 6;
           const isMajor = k % 2 === 0;
@@ -985,7 +1206,6 @@ export const auroraSovereignMandalaCell = {
           const ty = Math.sin(a) * rTip;
           pen.line(0, 0, tx, ty, col, 0.95);
 
-          // Herringbone snowflake barbs on all 12 points
           const bx = Math.cos(a) * (isMajor ? 27 : 22);
           const by = Math.sin(a) * (isMajor ? 27 : 22);
           for (const s of [-0.52, 0.52]) {
@@ -1010,11 +1230,8 @@ export const auroraSovereignMandalaCell = {
 };
 
 // ============================================================================
-// ROW 6 (`y = 1248`): ABSOLUTE ZERO CRYSTALLINE DIAMOND-COFFIN MONOLITH
-//   Towering Translucent Faceted Diamond-Ice Prison Encasing the Frozen Target!
-//   - `F00..F05`: Rapid upward flash-freeze crystallization
-//   - `F06..F23`: Shimmering translucent hexagonal diamond-coffin prison
-//   - `F24..F29`: Blazing cyan-white fracture fault-lines erupting before shatter!
+// ROW 6 (`y = 1248`): ABSOLUTE ZERO TRANSLUCENT DIAMOND-LOTUS MONOLITH
+//   Encases Frozen Enemies in Both 4-Stack Deep-Freeze & `TRUE_ULTIMATE`!
 // ============================================================================
 export const diamondCoffinMonolithCell = {
   duration: 1.0,
@@ -1026,8 +1243,8 @@ export const diamondCoffinMonolithCell = {
     const baseBand = [cryo[1], cryo[3], cryo[5], PURE_WHITE];
     const rng = new DeterministicRng(cfg.seed);
     const crackChains = [
-      buildLightningChain(rng, -18, -24, 17, 18, 0.16, 3),
-      buildLightningChain(rng, 16, -28, -15, 22, 0.16, 3),
+      buildLightningChain(rng, -19, -25, 18, 19, 0.16, 3),
+      buildLightningChain(rng, 17, -28, -16, 22, 0.16, 3),
       buildLightningChain(rng, -4, -36, 4, 34, 0.12, 3)
     ];
 
@@ -1036,42 +1253,39 @@ export const diamondCoffinMonolithCell = {
       renderFront(pen, localT) {
         const u = clamp01(localT);
         const grow = smoothStep(0, 0.17, u);
-        const crackAmt = smoothStep(0.78, 0.98, u);
+        const crackAmt = smoothStep(0.74, 0.98, u);
         const baseY = 40;
         const coffinH = 81 * (0.38 + 0.62 * grow);
         const topY = baseY - coffinH;
         const midY = (baseY + topY) * 0.5;
         const maxHalfW = 26 * (0.7 + 0.3 * grow);
 
-        // Basal permafrost crown ring behind coffin
         drawTiltedOrbitBand(pen, 0, baseY - 2, 35 * grow, 0.2, 1.5, 0.9, baseBand, BACK_HALF, false);
 
-        // Flanking basal crystal Buttress Spires (left & right of the Diamond Coffin)
         for (const side of [-1, 1]) {
           const spOx = side * 24 * grow;
-          const spTop = baseY - 34 * grow;
-          pen.shadeBox(spOx - 8, spTop - 2, spOx + 8, baseY + 3, (lx, ly, out) => {
+          const spTop = baseY - 35 * grow;
+          pen.shadeBox(spOx - 10, spTop - 4, spOx + 10, baseY + 5, (lx, ly, out) => {
             if (ly < spTop || ly > baseY + 2) return 0;
             const hf = (baseY - ly) / Math.max(1, baseY - spTop);
-            const hw = (1 - hf * 0.85) * 6.8;
-            const dx = lx - (spOx + (baseY - ly) * side * 0.08);
+            const hw = (1 - hf * 0.85) * 7.0;
+            const dx = lx - (spOx + (baseY - ly) * side * 0.09);
             const ax = Math.abs(dx);
             if (ax > hw) return 0;
-            if (ax > hw - 1.3) {
+            if (ax > hw - 1.35) {
               out.color = cryo[0];
-              out.alpha = 0.95;
+              out.alpha = 0.96;
               return out.color;
             }
-            out.color = dx * side < 0 ? cryo[5] : cryo[2];
-            out.alpha = 0.9;
+            out.color = dx * side < 0 ? cryo[5] : borealis[3];
+            out.alpha = 0.92;
             return out.color;
           });
         }
 
-        // Towering Translucent Faceted Elongated-Hexagon Diamond-Coffin Prison
-        pen.shadeBox(-30, topY - 2, 30, baseY + 4, (lx, ly, out) => {
+        pen.shadeBox(-34, topY - 4, 34, baseY + 6, (lx, ly, out) => {
           if (ly < topY || ly > baseY + 2) return 0;
-          const vNorm = (ly - topY) / Math.max(1, coffinH); // 0 at apex, 1 at base
+          const vNorm = (ly - topY) / Math.max(1, coffinH);
           let profile = 1.0;
           if (vNorm < 0.22) {
             profile = 0.12 + (vNorm / 0.22) * 0.88;
@@ -1082,7 +1296,6 @@ export const diamondCoffinMonolithCell = {
           const ax = Math.abs(lx);
           if (ax > halfW) return 0;
 
-          // 1. Crisp 1.5px dark obsidian-sapphire outer crystal silhouette & crown/pavilion girdle seams
           const innerRidgeW = halfW * 0.52;
           const isOuterBorder = ax > halfW - 1.5 || vNorm < 0.03 || vNorm > 0.97;
           const isGirdleSeam = Math.abs(vNorm - 0.22) < 0.016 || Math.abs(vNorm - 0.82) < 0.016;
@@ -1092,7 +1305,6 @@ export const diamondCoffinMonolithCell = {
             return out.color;
           }
 
-          // 2. Crisp specular white/cyan geometric facet ridges (central spine + side bevels + girdle)
           const isSpine = ax < 1.15;
           const isBevelSeam = Math.abs(ax - innerRidgeW) < 0.9;
           if (isSpine || isBevelSeam || isGirdleSeam) {
@@ -1103,12 +1315,10 @@ export const diamondCoffinMonolithCell = {
             return out.color;
           }
 
-          // 3. Diagonal Borealis specular shimmer sweeping down the diamond facets
           const diagBand = Math.sin(lx * 0.22 + ly * 0.18 - u * Math.PI * 4);
           const isWindow = ax < innerRidgeW && vNorm > 0.22 && vNorm < 0.82;
 
           if (isWindow) {
-            // Translucent central stasis window so the frozen target remains visible inside the crystal!
             if (diagBand > 0.72) {
               out.color = PURE_WHITE;
               out.alpha = 0.82;
@@ -1122,7 +1332,6 @@ export const diamondCoffinMonolithCell = {
             return out.color;
           }
 
-          // Outer solid beveled sapphire-cyan-amethyst crystal walls
           if (lx < 0) {
             out.color = vNorm < 0.22 ? cryo[6] : diagBand > 0.35 ? cryo[5] : cryo[3];
           } else {
@@ -1134,11 +1343,9 @@ export const diamondCoffinMonolithCell = {
           return out.color;
         });
 
-        // Apex crown diamond star & basal front ring
         drawSnowflakeStar(pen, 0, topY + 3, 8.5 * grow, PURE_WHITE, cryo[5], 0.92, u * Math.PI * 2);
         drawTiltedOrbitBand(pen, 0, baseY - 2, 35 * grow, 0.2, 1.6, 0.96, baseBand, FRONT_HALF, true);
 
-        // Pre-shatter glowing fracture fault-lines (`F24..F29`)
         if (crackAmt > 0.02) {
           for (let i = 0; i < crackChains.length; i++) {
             pen.polyline(crackChains[i], i % 2 === 0 ? PURE_WHITE : borealis[5], crackAmt * 0.96);
@@ -1156,8 +1363,7 @@ export const diamondCoffinMonolithCell = {
 };
 
 // ============================================================================
-// ROW 7 (`y = 1456`): DIAMOND DUST PRISMATIC STARBURST SHATTER
-//   Screen-Bursting Cyan-Sapphire-Violet Crystal Explosion (`diamondDustStarburstCell`)
+// ROW 7 (`y = 1456`): CATACLYSMIC 8-POINT ICE-GLASS CROSS-NOVA & SHATTER SHARDS
 // ============================================================================
 export const diamondDustStarburstCell = {
   duration: 1.0,
@@ -1169,13 +1375,13 @@ export const diamondDustStarburstCell = {
     const prismBand = [cryo[2], cryo[5], borealis[5], PURE_WHITE];
     const rng = new DeterministicRng(cfg.seed);
 
-    const shards = Array.from({ length: 16 }, (_, i) => {
-      const ang = (i / 16) * Math.PI * 2 + rng.between(-0.1, 0.1);
+    const shards = Array.from({ length: 18 }, (_, i) => {
+      const ang = (i / 18) * Math.PI * 2 + rng.between(-0.09, 0.09);
       return {
         ang,
-        maxDist: rng.between(24, 41),
-        len: rng.between(4.8, 7.6),
-        wid: rng.between(2.4, 3.8),
+        maxDist: rng.between(22, 40),
+        len: rng.between(5.4, 8.4),
+        wid: rng.between(2.8, 4.4),
         spin0: rng.between(0, Math.PI * 2),
         spinVel: rng.sign() * rng.between(3.5, 7.2),
         isViolet: i % 3 === 0
@@ -1187,7 +1393,7 @@ export const diamondDustStarburstCell = {
       return {
         ang,
         r0: rng.between(4, 14),
-        r1: rng.between(26, 43),
+        r1: rng.between(24, 42),
         colIdx: i % 3
       };
     });
@@ -1200,38 +1406,36 @@ export const diamondDustStarburstCell = {
         const fade = 1 - smoothStep(0.68, 1.0, u);
         if (fade <= 0.02) return;
 
-        // 1. Expanding Prismatic Shockwave Rings (Cyan + Sapphire + Borealis Violet)
-        const ringR = 10 + 32 * expand;
-        drawTiltedOrbitBand(pen, 0, 0, ringR, 1.0, 1.8, 0.95 * fade, prismBand, () => true, u < 0.22);
-        if (u > 0.08) {
-          drawTiltedOrbitBand(
-            pen,
-            0,
-            0,
-            ringR * 0.66,
-            1.0,
-            1.3,
-            0.85 * fade,
-            [borealis[2], borealis[4], cryo[5], PURE_WHITE],
-            () => true,
-            false
-          );
-        }
+        // 1. Expanding Prismatic Shockwave Rings
+        const ringR = 10 + 31 * expand;
+        drawTiltedOrbitBand(pen, 0, 0, ringR, 1.0, 1.8, 0.95 * fade, prismBand, () => true, u < 0.24);
 
-        // 2. Central Prismatic Starburst Singularity Flash (`F00..F16`)
-        const flashFade = 1 - smoothStep(0.05, 0.58, u);
-        if (flashFade > 0.02) {
-          const flareR = (18 + 24 * smoothStep(0, 0.25, u)) * flashFade;
-          drawStarburstFlare(pen, 0, 0, flareR, 0.96 * flashFade, [
+        // 2. Massive 8-Pointed Crystalline Cross-Lance Starburst (`F00..F20`)
+        const crossFade = 1 - smoothStep(0.12, 0.72, u);
+        if (crossFade > 0.02) {
+          const armL = (20 + 21 * smoothStep(0, 0.28, u)) * crossFade;
+          for (let k = 0; k < 8; k++) {
+            const a = (k * Math.PI) / 4;
+            const reach = k % 2 === 0 ? armL : armL * 0.74;
+            const ex = Math.cos(a) * reach;
+            const ey = Math.sin(a) * reach;
+            pen.line(0, 0, ex, ey, k % 2 === 0 ? PURE_WHITE : borealis[5], crossFade * 0.96);
+            if (k % 2 === 0) {
+              const nx = -Math.sin(a);
+              const ny = Math.cos(a);
+              pen.line(nx, ny, ex * 0.68 + nx, ey * 0.68 + ny, cryo[5], crossFade * 0.86);
+              pen.line(-nx, -ny, ex * 0.68 - nx, ey * 0.68 - ny, borealis[5], crossFade * 0.86);
+            }
+          }
+          drawStarburstFlare(pen, 0, 0, armL * 0.9, 0.96 * crossFade, [
             cryo[2],
             cryo[5],
             borealis[5],
             PURE_WHITE
           ]);
-          drawSnowflakeStar(pen, 0, 0, flareR * 0.95, PURE_WHITE, borealis[5], 0.95 * flashFade, u * 3.0);
         }
 
-        // 3. 16 Radially Exploding Faceted Diamond-Ice Crystal Shards
+        // 3. 18 Radially Exploding Faceted Ice-Glass Shards
         for (let i = 0; i < shards.length; i++) {
           const sh = shards[i];
           const dist = 4 + sh.maxDist * expand;
@@ -1240,12 +1444,12 @@ export const diamondDustStarburstCell = {
           const rot = sh.spin0 + u * sh.spinVel;
           const ca = Math.cos(rot);
           const sa = Math.sin(rot);
-          const scale = (1 - smoothStep(0.55, 1.0, u) * 0.55);
+          const scale = 1 - smoothStep(0.55, 1.0, u) * 0.5;
           const L = sh.len * scale;
           const W = sh.wid * scale;
           if (L < 1.2) continue;
 
-          const bound = Math.ceil(Math.max(L, W)) + 2;
+          const bound = Math.ceil(Math.max(L, W)) + 3;
           pen.shadeBox(sx - bound, sy - bound, sx + bound, sy + bound, (lx, ly, out) => {
             const dx = lx - sx;
             const dy = ly - sy;
@@ -1277,7 +1481,7 @@ export const diamondDustStarburstCell = {
           });
         }
 
-        // 4. Sparkling Diamond Dust Aurora Motes (`F06..F29`)
+        // 4. Sparkling Diamond Dust Aurora Motes
         for (let i = 0; i < dust.length; i++) {
           const dm = dust[i];
           const dr = dm.r0 + (dm.r1 - dm.r0) * smoothStep(0.05, 0.95, u);
@@ -1303,6 +1507,8 @@ export const GLACIAL_EFFECT_REGISTRY = {
   glacialSkateRibbon,
   refractedBorealisBeam,
   absoluteZeroShatterBurst,
+  blizzardJawsVortex,
+  coronationSwordImpact,
   borealisCathedralDomain,
   absoluteZeroAuroraVeil,
   diamondDustCataclysmNova,
@@ -1310,6 +1516,7 @@ export const GLACIAL_EFFECT_REGISTRY = {
   hexCryoPrismMirrorCell,
   facetedGlacierMonolithCell,
   borealisRoseMandalaCell,
+  celestialIceSwordCell,
   hoarfrostShatterNovaCell,
   auroraSovereignMandalaCell,
   diamondCoffinMonolithCell,

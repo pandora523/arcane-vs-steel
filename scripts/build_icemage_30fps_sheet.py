@@ -38,7 +38,7 @@ ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "icemage_v5_base.jpg")
 OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "icemage_sheet.png")
 VFX_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "icemage_vfx.png")
-ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
+ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/b9d8130e-8764-4ace-8d4e-40f97049d6f1"
 
 # Strict 20-Color Hand-Crafted Cryo-Prism Winter Empress Master Palette
 MASTER_PALETTE = np.array([
@@ -765,91 +765,162 @@ def build_row_configs(row_idx):
             cfgs.append(apply_icemage_ik(cfg))
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK (2-Bone IK Back-Coil -> Forward Borealis Frost-Lance Thrust & Prism Cast!)
-            kfs = [
-                (0, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
-                (6, dict(
-                    pelvis_dx=-8.0, pelvis_dy=18.0, torso_deg=-8.0, head_rel_deg=5.0,
-                    l_thigh_deg=-16.0, l_shin_deg=14.0, r_thigh_deg=16.0, r_shin_deg=-10.0,
-                    r_ik_dx=28.0, r_ik_dy=-84.0, l_ik_dx=34.0, l_ik_dy=-48.0,
-                    weapon_deg=-74.0, weapon_glow=0.95, force_right_arm_front=True, foot_y=99.0,
-                )),
-                (12, dict(
-                    pelvis_dx=12.0, pelvis_dy=28.0, torso_deg=16.0, head_rel_deg=-9.0,
-                    l_thigh_deg=22.0, l_shin_deg=18.0, r_thigh_deg=-20.0, r_shin_deg=14.0,
-                    r_ik_dx=86.0, r_ik_dy=-38.0, l_ik_dx=-68.0, l_ik_dy=-14.0,
-                    weapon_deg=-3.0, weapon_glow=1.0, force_right_arm_front=True, prism_flash=True, foot_y=99.0,
-                )),
-                (19, dict(
-                    pelvis_dx=7.0, pelvis_dy=20.0, torso_deg=9.0,
-                    r_ik_dx=74.0, r_ik_dy=-28.0, l_ik_dx=-62.0, l_ik_dy=-4.0,
-                    weapon_deg=-16.0, weapon_glow=0.90, force_right_arm_front=True, foot_y=99.0,
-                )),
-                (29, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
-            ]
-            cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.5)
-            if 10 <= f <= 15:
-                cfg["prism_flash"] = True
+            # Row 2: AUTO_ATTACK — 3-Variant Dynamic "ROYAL BALLET OF RIME" (3 x 10 frames = 30 frames):
+            #   Variant 1 (F00..F09): RIME-LANCE NEEDLE — Fencing back-coil -> extended 1H Frost-Lance thrust (-2 deg)
+            #   Variant 2 (F10..F19): SNOWFLAKE CHAKRAM PIROUETTE — Arabesque knee-lift & wide cross-body open-arm hurl
+            #   Variant 3 (F20..F29): GLACIER STALAGMITE COMMAND — 2H overhead Scepter-Aloft -> downward ground-command (+50 deg)
+            if f <= 9:
+                kfs = [
+                    (0, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
+                    (3, dict(
+                        pelvis_dx=-8.0, pelvis_dy=16.0, torso_deg=-8.0, head_rel_deg=5.0,
+                        l_thigh_deg=-15.0, l_shin_deg=14.0, r_thigh_deg=15.0, r_shin_deg=-10.0,
+                        r_ik_dx=28.0, r_ik_dy=-82.0, l_ik_dx=30.0, l_ik_dy=-46.0,
+                        weapon_deg=-72.0, weapon_glow=0.95, force_right_arm_front=True, foot_y=99.0,
+                    )),
+                    (6, dict(
+                        pelvis_dx=12.0, pelvis_dy=28.0, torso_deg=16.0, head_rel_deg=-9.0,
+                        l_thigh_deg=22.0, l_shin_deg=18.0, r_thigh_deg=-20.0, r_shin_deg=14.0,
+                        r_ik_dx=86.0, r_ik_dy=-38.0, l_ik_dx=-68.0, l_ik_dy=-16.0,
+                        weapon_deg=-2.0, weapon_glow=1.0, force_right_arm_front=True, prism_flash=True, foot_y=99.0,
+                    )),
+                    (9, dict(torso_deg=4.0, r_ik_dx=64.0, r_ik_dy=-22.0, l_ik_dx=-60.0, l_ik_dy=2.0, weapon_deg=-26.0, foot_y=99.0)),
+                ]
+                cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.5)
+                if f in (5, 6, 7):
+                    cfg["prism_flash"] = True
+            elif f <= 19:
+                kfs = [
+                    (10, dict(
+                        pelvis_dx=-6.0, pelvis_dy=14.0, torso_deg=-10.0, head_rel_deg=6.0,
+                        l_thigh_deg=-18.0, l_shin_deg=18.0, r_thigh_deg=14.0, r_shin_deg=-8.0,
+                        r_ik_dx=-28.0, r_ik_dy=-56.0, l_ik_dx=54.0, l_ik_dy=-44.0,
+                        weapon_deg=-128.0, weapon_glow=0.95, halo_grand=True, foot_y=99.0,
+                    )),
+                    (14, dict(
+                        pelvis_dx=10.0, pelvis_dy=22.0, torso_deg=18.0, head_rel_deg=-11.0, mane_rel_deg=-16.0,
+                        l_thigh_deg=34.0, l_shin_deg=38.0, l_foot_deg=22.0,
+                        r_thigh_deg=-14.0, r_shin_deg=14.0,
+                        l_coat_rel_deg=-16.0, r_coat_rel_deg=8.0,
+                        r_ik_dx=82.0, r_ik_dy=-58.0, l_ik_dx=72.0, l_ik_dy=-26.0,
+                        weapon_deg=-24.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    )),
+                    (17, dict(
+                        pelvis_dx=6.0, pelvis_dy=18.0, torso_deg=11.0, head_rel_deg=-6.0,
+                        l_thigh_deg=18.0, l_shin_deg=20.0, r_thigh_deg=-10.0, r_shin_deg=10.0,
+                        r_ik_dx=74.0, r_ik_dy=-34.0, l_ik_dx=-66.0, l_ik_dy=-18.0,
+                        weapon_deg=-18.0, weapon_glow=0.92, force_right_arm_front=True, foot_y=99.0,
+                    )),
+                    (19, dict(torso_deg=3.0, r_ik_dx=60.0, r_ik_dy=-20.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-30.0, foot_y=99.0)),
+                ]
+                cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
+                if f in (13, 14, 15):
+                    cfg["prism_flash"] = True
+            else:
+                kfs = [
+                    (20, dict(
+                        pelvis_dx=-6.0, pelvis_dy=20.0, torso_deg=-11.0, head_rel_deg=-6.0,
+                        l_thigh_deg=-14.0, l_shin_deg=14.0, r_thigh_deg=14.0, r_shin_deg=-10.0,
+                        two_handed_grip=True, grip_sep=26.0, r_ik_dx=36.0, r_ik_dy=-104.0,
+                        weapon_deg=-86.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    )),
+                    (23, dict(
+                        pelvis_dx=-4.0, pelvis_dy=18.0, torso_deg=-8.0, head_rel_deg=-4.0,
+                        two_handed_grip=True, grip_sep=26.0, r_ik_dx=44.0, r_ik_dy=-108.0,
+                        weapon_deg=-82.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    )),
+                    (26, dict(
+                        pelvis_dx=12.0, pelvis_dy=36.0, torso_deg=19.0, head_rel_deg=-9.0,
+                        l_thigh_deg=24.0, l_shin_deg=22.0, r_thigh_deg=-20.0, r_shin_deg=18.0,
+                        two_handed_grip=True, grip_sep=24.0, r_ik_dx=78.0, r_ik_dy=-14.0,
+                        weapon_deg=48.0, weapon_len=20.0, weapon_glow=1.0,
+                        force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    )),
+                    (29, dict(torso_deg=2.0, two_handed_grip=False, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
+                ]
+                cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
+                if f in (25, 26, 27):
+                    cfg["prism_flash"] = True
             cfgs.append(cfg)
 
         elif row_idx == 3:
-            # Row 3: SKILL (TRI-BEAM PRISM MATRIX — 2-Handed IK Overhead Prism Invocation -> Matrix Detonation Sweep!)
+            # Row 3: SKILL ("GLACIAL JAWS: TWIN ICEBERG CRUSH")
+            #   F00..F11: Two-Handed Skyward Glacier Invocation raising flanking Left & Right Icebergs!
+            #   F12..F22: Dramatic Cross-Body Twin-Pincer Command Clap/Slash slamming both Icebergs inward!
+            #   F23..F29: Regal Winter Empress Recovery
             kfs = [
                 (0, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
                 (7, dict(
-                    pelvis_dx=-6.0, pelvis_dy=22.0, torso_deg=-9.0, head_rel_deg=-6.0,
-                    l_thigh_deg=-14.0, l_shin_deg=14.0, r_thigh_deg=14.0, r_shin_deg=-10.0,
-                    two_handed_grip=True, grip_sep=26.0, r_ik_dx=46.0, r_ik_dy=-98.0,
-                    weapon_deg=-82.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    pelvis_dx=-8.0, pelvis_dy=22.0, torso_deg=-12.0, head_rel_deg=-8.0,
+                    l_thigh_deg=-16.0, l_shin_deg=16.0, r_thigh_deg=16.0, r_shin_deg=-12.0,
+                    two_handed_grip=True, grip_sep=26.0, r_ik_dx=38.0, r_ik_dy=-108.0,
+                    weapon_deg=-88.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
-                (16, dict(
-                    pelvis_dx=14.0, pelvis_dy=34.0, torso_deg=18.0, head_rel_deg=-11.0,
-                    l_thigh_deg=26.0, l_shin_deg=22.0, r_thigh_deg=-20.0, r_shin_deg=16.0,
-                    two_handed_grip=False, r_ik_dx=88.0, r_ik_dy=-42.0, l_ik_dx=-72.0, l_ik_dy=-22.0,
-                    weapon_deg=2.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                (12, dict(
+                    pelvis_dx=-4.0, pelvis_dy=20.0, torso_deg=-6.0, head_rel_deg=-4.0,
+                    two_handed_grip=False, r_ik_dx=72.0, r_ik_dy=-78.0, l_ik_dx=-74.0, l_ik_dy=-56.0,
+                    weapon_deg=-48.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                )),
+                (17, dict(
+                    pelvis_dx=14.0, pelvis_dy=36.0, torso_deg=20.0, head_rel_deg=-12.0,
+                    l_thigh_deg=26.0, l_shin_deg=22.0, r_thigh_deg=-22.0, r_shin_deg=18.0,
+                    two_handed_grip=False, r_ik_dx=58.0, r_ik_dy=-26.0, l_ik_dx=68.0, l_ik_dy=-46.0,
+                    weapon_deg=24.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                )),
+                (22, dict(
+                    pelvis_dx=10.0, pelvis_dy=28.0, torso_deg=14.0, head_rel_deg=-8.0,
+                    two_handed_grip=False, r_ik_dx=72.0, r_ik_dy=-30.0, l_ik_dx=48.0, l_ik_dy=-32.0,
+                    weapon_deg=10.0, weapon_glow=0.95, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
                 (29, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
             ]
             cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
-            if f in (6, 7, 8, 15, 16, 17, 18):
+            if f in (6, 7, 8, 16, 17, 18, 19):
                 cfg["prism_flash"] = True
             cfgs.append(cfg)
 
         elif row_idx == 4:
-            # Row 4: ULTIMATE & TRUE_ULTIMATE ("BOREALIS CATHEDRAL" / "ABSOLUTE ZERO: DIAMOND DUST ETERNITY")
-            #   F00..F09: Phase 1 Two-Handed Sovereign Borealis Scepter-Aloft Ascension
-            #   F10..F17: Phase 2 Empress Forward Frost-Lance Command (8-Prism Refraction)
-            #   F18..F24: Phase 3 Sovereign Vertical Scepter Tap (+74 deg) shattering the Diamond Coffin!
-            #   F25..F29: Regal Empress Recovery
+            # Row 4: ULTIMATE & TRUE_ULTIMATE ("WINTER CORONATION" & "ABSOLUTE ZERO: DIAMOND DUST ETERNITY")
+            #   F00..F08: Act I Two-Handed Sovereign Borealis Scepter-Aloft Ascension
+            #   F09..F16: Act II Open-Armed Empress Coronation Command (7 Celestial Ice-Swords / 0.00K Entombment)
+            #   F17..F24: Act III/IV Iconic Vertical Sovereign Scepter-Tap (+86 deg vertical staff tap!)
+            #   F25..F29: Regal Winter Empress Recovery
             kfs = [
                 (0, dict(
                     pelvis_dy=14.0, torso_deg=-4.0, two_handed_grip=True, grip_sep=26.0,
-                    r_ik_dx=46.0, r_ik_dy=-78.0, weapon_deg=-78.0, weapon_glow=1.0,
+                    r_ik_dx=44.0, r_ik_dy=-80.0, weapon_deg=-80.0, weapon_glow=1.0,
                     force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
                 (7, dict(
-                    pelvis_dx=-4.0, pelvis_dy=24.0, torso_deg=-10.0, head_rel_deg=-8.0,
-                    l_thigh_deg=-16.0, l_shin_deg=16.0, r_thigh_deg=16.0, r_shin_deg=-12.0,
-                    two_handed_grip=True, grip_sep=26.0, r_ik_dx=42.0, r_ik_dy=-106.0,
-                    weapon_deg=-88.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                    pelvis_dx=-4.0, pelvis_dy=22.0, torso_deg=-11.0, head_rel_deg=-8.0,
+                    l_thigh_deg=-14.0, l_shin_deg=18.0, r_thigh_deg=16.0, r_shin_deg=-10.0,
+                    two_handed_grip=True, grip_sep=26.0, r_ik_dx=38.0, r_ik_dy=-108.0,
+                    weapon_deg=-89.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
-                (14, dict(
-                    pelvis_dx=10.0, pelvis_dy=28.0, torso_deg=14.0, head_rel_deg=-8.0,
-                    l_thigh_deg=20.0, l_shin_deg=18.0, r_thigh_deg=-18.0, r_shin_deg=14.0,
-                    two_handed_grip=False, r_ik_dx=88.0, r_ik_dy=-46.0, l_ik_dx=-68.0, l_ik_dy=-26.0,
-                    weapon_deg=-4.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                (13, dict(
+                    pelvis_dx=8.0, pelvis_dy=24.0, torso_deg=10.0, head_rel_deg=-6.0,
+                    l_thigh_deg=18.0, l_shin_deg=22.0, r_thigh_deg=-14.0, r_shin_deg=16.0,
+                    two_handed_grip=False, r_ik_dx=84.0, r_ik_dy=-58.0, l_ik_dx=-70.0, l_ik_dy=-48.0,
+                    weapon_deg=-22.0, weapon_glow=1.0, force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
-                (20, dict(
-                    pelvis_dx=6.0, pelvis_dy=20.0, torso_deg=6.0, head_rel_deg=4.0,
-                    l_thigh_deg=10.0, l_shin_deg=10.0, r_thigh_deg=-8.0, r_shin_deg=8.0,
-                    two_handed_grip=True, grip_sep=24.0, r_ik_dx=66.0, r_ik_dy=-24.0,
-                    weapon_deg=74.0, weapon_len=20.0, weapon_glow=1.0,
+                (18, dict(
+                    pelvis_dx=4.0, pelvis_dy=16.0, torso_deg=3.0, head_rel_deg=4.0,
+                    l_thigh_deg=8.0, l_shin_deg=10.0, r_thigh_deg=-6.0, r_shin_deg=8.0,
+                    two_handed_grip=True, grip_sep=24.0, r_ik_dx=62.0, r_ik_dy=-38.0,
+                    weapon_deg=84.0, weapon_len=19.5, weapon_glow=1.0,
+                    force_right_arm_front=True, halo_grand=True, foot_y=99.0,
+                )),
+                (21, dict(
+                    pelvis_dx=6.0, pelvis_dy=24.0, torso_deg=6.0, head_rel_deg=6.0,
+                    l_thigh_deg=10.0, l_shin_deg=12.0, r_thigh_deg=-8.0, r_shin_deg=10.0,
+                    two_handed_grip=True, grip_sep=24.0, r_ik_dx=62.0, r_ik_dy=-18.0,
+                    weapon_deg=87.0, weapon_len=19.5, weapon_glow=1.0,
                     force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
                 (24, dict(
-                    pelvis_dx=6.0, pelvis_dy=22.0, torso_deg=7.0, head_rel_deg=3.0,
-                    two_handed_grip=True, grip_sep=24.0, r_ik_dx=66.0, r_ik_dy=-22.0,
-                    weapon_deg=76.0, weapon_len=20.0, weapon_glow=1.0,
+                    pelvis_dx=6.0, pelvis_dy=22.0, torso_deg=5.0, head_rel_deg=4.0,
+                    two_handed_grip=True, grip_sep=24.0, r_ik_dx=62.0, r_ik_dy=-22.0,
+                    weapon_deg=85.0, weapon_len=19.5, weapon_glow=1.0,
                     force_right_arm_front=True, halo_grand=True, foot_y=99.0,
                 )),
                 (29, dict(
@@ -859,7 +930,7 @@ def build_row_configs(row_idx):
                 )),
             ]
             cfg = eval_icemage_keyframes(f, kfs, ph, DEFAULTS, wave_mult=4.0)
-            if 5 <= f <= 8 or 13 <= f <= 16 or 19 <= f <= 23:
+            if 5 <= f <= 8 or 12 <= f <= 15 or 19 <= f <= 23:
                 cfg["prism_flash"] = True
             cfgs.append(cfg)
 
@@ -916,7 +987,7 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 8:
-            # Row 8: JUMP (Airborne Axel Figure-Skating Vault + Apex Downward Frost-Lance Cast at F14..F17!)
+            # Row 8: JUMP (Airborne Triple-Axel Sky-Staircase Vault + Apex Downward Frost-Lance Cast at F14..F17!)
             kfs = [
                 (0, dict(torso_deg=2.0, r_ik_dx=58.0, r_ik_dy=-18.0, l_ik_dx=-60.0, l_ik_dy=4.0, weapon_deg=-34.0, foot_y=99.0)),
                 (9, dict(
@@ -951,13 +1022,13 @@ def main():
     parts = load_and_segment_512()
     picks = [
         (0, 0, "R0 WINTER EMPRESS"),
-        (1, 4, "R1 SKATING GLIDE"),
-        (2, 12, "R2 FROST-LANCE CAST"),
-        (3, 16, "R3 TRI-BEAM MATRIX"),
-        (4, 7, "R4 BOREALIS ASCENT"),
+        (2, 6, "R2A RIME-LANCE"),
+        (2, 14, "R2B HALO PIROUETTE"),
+        (2, 26, "R2C GLACIER COMMAND"),
+        (3, 17, "R3 GLACIER PINCER"),
+        (4, 13, "R4 CORONATION"),
         (4, 21, "R4 SCEPTER TAP"),
-        (5, 25, "R5 SUPINE SCEPTER REST"),
-        (8, 15, "R8 AXEL PRISM VAULT"),
+        (5, 25, "R5 SUPINE REST"),
     ]
     build_and_save_30fps_sheet(
         "icemage", parts, build_row_configs, render_frame,

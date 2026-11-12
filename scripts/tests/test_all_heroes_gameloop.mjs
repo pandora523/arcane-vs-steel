@@ -25,21 +25,21 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps71';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps71';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps71';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps71';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps71';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps71';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps71';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps71';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps71';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps71';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps71';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps71';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps71';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps71';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps71';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps72';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps72';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps72';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps72';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps72';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps72';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps72';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps72';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps72';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps72';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps72';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps72';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps72';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps72';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps72';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -584,7 +584,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps71');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps72');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -1453,6 +1453,148 @@ for (const [name, Cls] of CLASSES) {
     `[PASS] Malakor v6 Overdrive Sky-Lock + Super-Ultimate Death Covenant: ${(fullyBurrowedFrames / 30).toFixed(2)}s Underground Burrow (-${Math.round(surpriseAttackDmg)} dmg), Sky-Lock Overdrive (minY=${Math.round(minUltY)}), Super-Ultimate 12.5s Death-Mage (${mage.maxHp} HP + 60 Ward, -${Math.round(darkMagicDmg)} orb dmg) & Soul-Healer (${healer.maxHp} HP + 50 Ward, healed Mage -> ${mage.hp} HP + Covenant Grace)!`
   );
 }
+
+// 13. Lyra v6 Full Kit, Winter Coronation Overdrive & Polar Night Reality-Glass Shatter Supreme Ultimate
+{
+  const lyraTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
+  const lyraCtx = createMockCtx(lyraTrack);
+  const lyra = new IceMage({ x: 380, groundY: 460, facing: 1 });
+  const foe = new Warrior({ x: 660, groundY: 460, facing: -1 });
+  foe.maxHp = 20000;
+  foe.hp = 20000;
+  const game = createMockGame();
+  game.fighters = [lyra, foe];
+  lyra.game = game;
+  foe.game = game;
+
+  // 13A. Verify 3-Variant Royal Ballet Auto-Attack (F00..F09 Comet, F10..F19 Snowflake Chakram, F20..F29 3-Spire March)
+  const seenAutoSubRanges = [false, false, false];
+  let sawChakram = false;
+  let sawMarchingSpire = false;
+  for (let v = 0; v < 3; v++) {
+    lyra.x = 380;
+    foe.x = 660;
+    lyra.setState('AUTO_ATTACK');
+    for (let f = 0; f < 25; f++) {
+      lyra.update(1 / 30, foe, game);
+      if (lyra.trueUltFrameOverride !== null) {
+        const sub = Math.floor((lyra.trueUltFrameOverride - 60) / 10);
+        if (sub >= 0 && sub <= 2) seenAutoSubRanges[sub] = true;
+      }
+      if (lyra.activeChakrams.length > 0) sawChakram = true;
+      if (lyra.activeMarchingSpires.length > 0) sawMarchingSpire = true;
+      lyra.drawForegroundOverlay(lyraCtx, game.renderer);
+      lyra.draw(lyraCtx, false, game.renderer);
+      lyra.drawUltimateForeground(lyraCtx, game.renderer);
+    }
+  }
+  if (!seenAutoSubRanges.every(Boolean) || !sawChakram || !sawMarchingSpire) {
+    throw new Error(
+      `Lyra v6 3-Variant Auto failed: ranges=${JSON.stringify(seenAutoSubRanges)}, chakram=${sawChakram}, spires=${sawMarchingSpire}`
+    );
+  }
+
+  // 13B. Verify 4-Stack Hoarfrost Rime -> Solid Crystal Freeze (Row-6 Ice Prison + Stun + Shield Heal)
+  foe.brittleStacks = 3;
+  foe.stunTimer = 0;
+  lyra.hp = 3000;
+  lyra.applyBrittleFrost(foe, 1, game, foe.x, foe.y - 96);
+  if (lyra.activeCrystalPrisons.length === 0 || foe.stunTimer < 0.30 || lyra.hp <= 3000) {
+    throw new Error(
+      `Lyra v6 Solid Crystal Freeze failed: prisons=${lyra.activeCrystalPrisons.length}, stun=${foe.stunTimer}, hp=${lyra.hp}`
+    );
+  }
+
+  // 13C. Verify Jump Triple-Axel Sky-Staircase spawns 3 mid-air crystal platforms
+  lyra.skyIceSteps = [];
+  lyra.startJump(foe, game);
+  for (let f = 0; f < 20; f++) {
+    lyra.update(1 / 30, foe, game);
+    lyra.drawForegroundOverlay(lyraCtx, game.renderer);
+  }
+  if (lyra.skyIceSteps.length < 3) {
+    throw new Error(`Expected 3 mid-air Sky-Staircase platforms on Jump, got ${lyra.skyIceSteps.length}`);
+  }
+
+  // 13D. Verify Signature Skill: Glacial Jaws Twin Iceberg Crush (spread 136 -> 16)
+  lyra.setState('IDLE');
+  lyra.x = 380;
+  foe.x = 650;
+  const hpPreJaws = foe.hp;
+  let maxJawSpread = 0;
+  let minJawSpread = 999;
+  lyra.setState('SKILL');
+  for (let f = 0; f < 30; f++) {
+    lyra.update(1 / 30, foe, game);
+    if (lyra.glacierJaws) {
+      maxJawSpread = Math.max(maxJawSpread, lyra.glacierJaws.spread);
+      minJawSpread = Math.min(minJawSpread, lyra.glacierJaws.spread);
+    }
+    lyra.drawUltimateForeground(lyraCtx, game.renderer);
+  }
+  const jawsDmg = hpPreJaws - foe.hp;
+  if (maxJawSpread < 120 || minJawSpread > 24 || jawsDmg < 70) {
+    throw new Error(
+      `Lyra v6 Glacial Jaws failed: maxSpread=${maxJawSpread}, minSpread=${minJawSpread}, dmg=${jawsDmg}`
+    );
+  }
+
+  // 13E. Verify Overdrive Ultimate: Winter Coronation Seven Celestial Ice-Swords
+  lyra.setState('IDLE');
+  foe.x = 660;
+  const hpPreCoronation = foe.hp;
+  let allSixImpaled = false;
+  let crownShattered = false;
+  lyra.setState('ULTIMATE');
+  for (let f = 0; f < 52; f++) {
+    lyra.update(1 / 30, foe, game);
+    if (lyra.coronationDomain) {
+      if (lyra.coronationDomain.swords.every((s) => s.impacted)) allSixImpaled = true;
+      if (lyra.coronationDomain.shattered) crownShattered = true;
+    }
+    lyra.drawUltimateForeground(lyraCtx, game.renderer);
+  }
+  const coronationDmg = hpPreCoronation - foe.hp;
+  if (!allSixImpaled || !crownShattered || coronationDmg < 150) {
+    throw new Error(
+      `Lyra v6 Winter Coronation failed: impaled=${allSixImpaled}, shattered=${crownShattered}, dmg=${coronationDmg}`
+    );
+  }
+
+  // 13F. Verify Supreme Ultimate: Polar Night, 90px Ascension, Reality-Glass Shatter (28 Shards, 0 ctx.rotate)
+  lyra.setState('IDLE');
+  lyra.hp = 2600;
+  foe.x = 680;
+  const hpPreTrueUlt = foe.hp;
+  let minTrueUltY = lyra.groundY;
+  let sawGlassShards = false;
+  lyra.setState('TRUE_ULTIMATE');
+  for (let f = 0; f < 145; f++) {
+    lyra.update(1 / 30, foe, game);
+    minTrueUltY = Math.min(minTrueUltY, lyra.y);
+    if (lyra._trueUltShatterTimer > 0 && lyra._trueUltGlassShards.length === 28) sawGlassShards = true;
+    lyra.drawForegroundOverlay(lyraCtx, game.renderer);
+    lyra.draw(lyraCtx, false, game.renderer);
+    lyra.drawUltimateForeground(lyraCtx, game.renderer);
+  }
+  const trueUltDmg = hpPreTrueUlt - foe.hp;
+  if (
+    lyra.groundY - minTrueUltY < 85 ||
+    !sawGlassShards ||
+    Math.round(trueUltDmg) !== 675 ||
+    lyra.cameraAirLift !== 0 ||
+    lyraTrack.rotateCalls > 0
+  ) {
+    throw new Error(
+      `Lyra v6 TRUE_ULTIMATE failed: lift=${lyra.groundY - minTrueUltY}, shards=${sawGlassShards}, dmg=${trueUltDmg}, airLiftAfter=${lyra.cameraAirLift}, rotate=${lyraTrack.rotateCalls}`
+    );
+  }
+
+  console.log(
+    `[PASS] Lyra v6 Full Rework: 3-Variant Royal Ballet (Comet/Chakram/3-Spire March), 4-Stack Solid Crystal Freeze (${foe.stunTimer.toFixed(2)}s), 3-Step Sky-Stair, Glacial Jaws (-${Math.round(jawsDmg)} dmg), 7-Sword Winter Coronation (-${Math.round(coronationDmg)} dmg), & Polar Night 28-Shard Reality Shatter (-${Math.round(trueUltDmg)} Crit, 0 ctx.rotate)!`
+  );
+}
+
 
 
 

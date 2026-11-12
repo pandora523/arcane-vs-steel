@@ -19,17 +19,17 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps62';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps72';
 
 import {
   GLACIAL_CRYO_PALETTE,
   GLACIAL_EFFECT_REGISTRY
-} from '../src/engine/shaders/glacialShaders.js?v=30fps62';
+} from '../src/engine/shaders/glacialShaders.js?v=30fps72';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const ARTIFACT_DIR =
-  '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088';
+  '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/b9d8130e-8764-4ace-8d4e-40f97049d6f1';
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -164,7 +164,7 @@ function bakeVfxSheet() {
 
   const rowSpecs = [
     {
-      name: 'Row 0: Cryo-Shard Comet Bolt (F00..F29)',
+      name: 'Row 0: Faceted Borealis Cryo-Lance Comet (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -175,7 +175,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 1: Floating Hexagonal Cryo-Prism Mirror (F00..F29)',
+      name: 'Row 1: Spinning 6-Bladed Snowflake Chakram Halo (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -186,7 +186,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 2: Erupting Jagged Glacier Spire (F00..F21) & Shatter (F22..F29)',
+      name: 'Row 2: Erupting Jagged Glacier Iceberg Wall (F00..F21) & Shatter (F22..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -197,7 +197,7 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 3: Borealis Aurora Crown Seal (F00..F29)',
+      name: 'Row 3: Stained-Glass Winter Palace Sovereign Crest (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
@@ -208,11 +208,11 @@ function bakeVfxSheet() {
       ]
     },
     {
-      name: 'Row 4: Hoarfrost Starburst Nova (F00..F29)',
+      name: 'Row 4: Giant Celestial Coronation Ice-Claymore (F00..F29)',
       windowSec: 1.0,
       layers: [
         {
-          def: GLACIAL_EFFECT_REGISTRY.hoarfrostShatterNovaCell,
+          def: GLACIAL_EFFECT_REGISTRY.celestialIceSwordCell,
           warmup: 0,
           cfg: { x: 52, y: 52, palette: GLACIAL_CRYO_PALETTE }
         }

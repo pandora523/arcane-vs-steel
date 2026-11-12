@@ -1,19 +1,19 @@
-import { Renderer } from './engine/Renderer.js?v=30fps71';
-import { VFXManager } from './engine/VFXManager.js?v=30fps71';
-import { PixelForge } from './engine/PixelForge.js?v=30fps71';
-import { AudioManager } from './engine/AudioManager.js?v=30fps71';
-import { Fighter } from './entities/Fighter.js?v=30fps71';
-import { Warrior } from './entities/Warrior.js?v=30fps71';
-import { FireMage } from './entities/FireMage.js?v=30fps71';
-import { Archer } from './entities/Archer.js?v=30fps71';
-import { Priestess } from './entities/Priestess.js?v=30fps71';
-import { Reaper } from './entities/Reaper.js?v=30fps71';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps71';
-import { Titan } from './entities/Titan.js?v=30fps71';
-import { Ronin } from './entities/Ronin.js?v=30fps71';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps71';
-import { IceMage } from './entities/IceMage.js?v=30fps71';
-import { Android } from './entities/Android.js?v=30fps71';
+import { Renderer } from './engine/Renderer.js?v=30fps72';
+import { VFXManager } from './engine/VFXManager.js?v=30fps72';
+import { PixelForge } from './engine/PixelForge.js?v=30fps72';
+import { AudioManager } from './engine/AudioManager.js?v=30fps72';
+import { Fighter } from './entities/Fighter.js?v=30fps72';
+import { Warrior } from './entities/Warrior.js?v=30fps72';
+import { FireMage } from './entities/FireMage.js?v=30fps72';
+import { Archer } from './entities/Archer.js?v=30fps72';
+import { Priestess } from './entities/Priestess.js?v=30fps72';
+import { Reaper } from './entities/Reaper.js?v=30fps72';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps72';
+import { Titan } from './entities/Titan.js?v=30fps72';
+import { Ronin } from './entities/Ronin.js?v=30fps72';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps72';
+import { IceMage } from './entities/IceMage.js?v=30fps72';
+import { Android } from './entities/Android.js?v=30fps72';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -334,35 +334,35 @@ const CHAMPION_ROSTER = {
   icemage: {
     id: 'icemage',
     name: 'LYRA',
-    role: 'CRYO-PRISM EMPRESS',
-    style: 'REFRACTIVE FROST WEAVER',
-    trait: 'PASSIVE: CRYO-PRISMS & PERMAFROST SKATE',
+    role: 'WINTER EMPRESS',
+    style: 'ROYAL BALLET CRYOMANCER',
+    trait: 'PASSIVE: 4-STACK SOLID CRYSTAL FREEZE & SKY-STAIR',
     cls: IceMage,
     theme: 'glacial',
     color: '#67e8f9',
     selectSfx: 'frost_cast',
-    victoryLine: 'Refracted through Borealis Prisms, Lyra freezes eternity in Diamond Dust!',
+    victoryLine: 'At Absolute Zero, even reality shatters like stained glass into Diamond Dust!',
     trueUltName: 'ABSOLUTE ZERO: DIAMOND DUST ETERNITY',
     trueUltDesc:
-      'Crystallizes the entire atmosphere to Absolute Zero and shatters frozen space into a million refractive diamond prisms!',
+      'Summons the Polar Night & Northern Lights, freezes reality to 0.00 K (-273.15°C) inside a Diamond-Lotus Monolith, and shatters space into 28 stained-glass ice shards!',
     skills: [
       {
-        name: 'CRYO-PRISM REFRACTION',
-        type: 'AUTO + ICE STATUE DECOY',
-        vfxCell: 0,
-        desc: 'Deploys floating Hexagonal Cryo-Prisms that refract laser chains & leaves an exploding Ice-Statue Decoy on dodge.'
-      },
-      {
-        name: 'TRI-BEAM PRISM MATRIX',
-        type: 'SKILL • 4.7S CD',
+        name: 'ROYAL BALLET OF RIME',
+        type: '3-VARIANT AUTO + SKY-STAIR',
         vfxCell: 1,
-        desc: 'Surrounds the enemy with 3 Cryo-Prisms in a laser triangle that bounces around them before shattering Brittle Frost!'
+        desc: '1: Rime-Lance Comet • 2: Returning 6-Bladed Snowflake Chakram • 3: 3-Spire Glacier Stalagmite March!'
       },
       {
-        name: 'BOREALIS CATHEDRAL',
-        type: '★ OVERDRIVE ULT',
+        name: 'GLACIAL JAWS: ICEBERG CRUSH',
+        type: 'SKILL • 4.7S CD',
         vfxCell: 2,
-        desc: 'Encases the enemy in a Diamond Iceberg beneath the Northern Lights and slices it with a 7-Prism Orbital Laser Array!'
+        desc: 'Erupts TWO towering flanking Glacier Iceberg Walls around the enemy and slams both icebergs inward together!'
+      },
+      {
+        name: 'WINTER CORONATION',
+        type: '★ OVERDRIVE ULT',
+        vfxCell: 4,
+        desc: 'Rains 6 Giant Celestial Ice-Claymores to cage the foe in a sword palisade before a colossal 7th Sovereign Crown-Sword shatters all 7!'
       }
     ]
   },
