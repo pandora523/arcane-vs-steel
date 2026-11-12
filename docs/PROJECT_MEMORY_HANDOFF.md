@@ -2,7 +2,7 @@
 
 > **IMPORTANT FOR ANY NEW CHAT / AGENT**: Read this file alongside `docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md` and `docs/champion_pipeline_db.json` at the start of a new conversation so full project context, user preferences, protected champions, and recent reworks are preserved seamlessly.
 
-## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps75`)
+## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps76`)
 - **All 11 HD-2D 30fps Champions (`208x208` cells, 9 rows x 30 frames + `vfx` sheets + `128x128` portraits)** are live and verified on `main`.
 - **Epic Battle HP Inflation & Ultimate Pacing**:
   - Champion HP pools are inflated (`3600–4160 HP`) so fights last ~`50–80s` in 1v1 (`~58s` in 2v2 Brawl, `~120s` in 2v2 Tag) and champions reliably cast **3 Overdrives (`ULTIMATE`)** to unlock and cast their **Supreme Ultimate (`TRUE_ULTIMATE`)** (`99.8%+` `TRUE_ULTIMATE` rate in 1v1 benchmarks).
@@ -23,16 +23,21 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 
 ## 3. Recent Champion Reworks & Visual Clarity Rules
 
-### Torgar (`src/entities/Titan.js`, `heroId: 'titan'`, v7 Model Animations, Upright Hammer & Sky-Smash Supreme Ultimate)
-- **3-Animation Dynamic Normal Attack (`TRINITY OF THE WORLD-MAUL`, `Row 2 F00..F29`, `0/270` clips)**:
-  - Rebuilt `Row 2` into **3 genuinely distinct full-body martial animations** on Torgar's character model (with physical windup step-in):
+### Torgar (`src/entities/Titan.js`, `heroId: 'titan'`, v7 Symmetric Mjolnir, Horizontal Baseball-Bat Overdrive & Elevated Sky-Smash Supreme Ultimate)
+- **Symmetric Double-Faced Dwarven Warhammer (`Mjolnir`) on Both Sprite & 2.5D Shader (`0/270` & `0/240` clips)**:
+  - Rebuilt `draw_2h_worldbreaker_maul_104` (`scripts/build_titan_30fps_sheet.py`) and `drawColossalDwarvenWarhammer` (`src/engine/shaders/forgeShaders.js`) with a symmetric pinched anvil waist (`abs(dp)`), twin flared beveled striking faces, twin jade cheek runes, and radial outward handle-to-head geometry (`da` from inner grip to outer head) — eliminating the upside-down shader warhammer bug and ensuring Mjolnir is 100% right-side-up at every swing angle across all 9 rows.
+- **3-Animation Dynamic Normal Attack (`TRINITY OF THE WORLD-MAUL`, `Row 2 F00..F29`)**:
+  - **3 genuinely distinct full-body martial animations** on Torgar's character model (with physical windup step-in):
     1. `F00..F09` (`OVERHEAD EARTH-SPLITTER SLAM`): Tall `-78°` vertical 2H hoist above his horned helm into a deep split-knee `+14°` floor smash + traveling `Row 0` Magnetic Fissure Wave.
     2. `F10..F19` (`LEAPING SKY-BREAKER UPPERCUT`): Deep crouch `+20°` floor scoop into an airborne high-knee (`foot_y = 91`) `-68°` skyward uppercut + grounded `Row 2` Magma-Jade Pillar (`+1` Crucible Core).
     3. `F20..F29` (`BATTERING-RAM BACKSPIN FINISHER`): Lead-leg swap (`right_leg_behind = True`) & twisted torso coil into a wide split-lunge horizontal battering-ram punch + `Forge-Aegis` + `khazadForgeAncestorAvatar` Guaranteed Crit + World-Breaker Temper + Seismic Altar Resonance.
-- **Fixed Right-Side-Up Hammer in Overdrive (`WORLD-BREAKER HOME RUN`, `Row 4 F00..F14`, `1.48s`)**:
-  - Eliminated inverted `-124°` cocking and `+20°` drooping recovery frames; Torgar hoists his 2H World-Maul cleanly upright above his back shoulder (`-78°`) and drives a level-to-rising Home-Run Swing (`-22°`) across `F00..F14`, batting the enemy to the **farthest stage wall** and **stunning for `0.8s`**.
-- **Supreme Ultimate (`GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER`, `Row 4 F15..F29`, `4.45s`)**:
-  - Swells into his **HUGE `2.38x` Colossus Form**, **hammers all active enemies high UP into the sky** (`groundY - 245px`) with a rising Sky-Uppercut (`cameraAirLift = 680`, `0` chip ticks), **teleports to the top of the sky** (`groundY - 315px`) directly above the airborne foe in a `Row 6` Khazad Forge-Lightning Pillar hoisting Mjolnir upright overhead, and **meteor-smashes them straight down into the arena floor** (`t = 3.20s`) for ONE `735`-Crit Continental Sunder + `+9%` Max HP heal + `7` `Row 7` Volcanic Geysers + **`1.65s` Stun**.
+- **Horizontal Baseball-Bat Overdrive (`WORLD-BREAKER HOME RUN`, `Row 4 F00..F14`, `1.46s`)**:
+  - Unobstructed rear-shoulder Baseball-Bat coil (`F00..F05`, cocked behind Torgar's helm so his face stays completely clear) into a chest-high 2.5D horizontal Home-Run Grand-Slam (`F06..F10`, `horizontalBat: true` crescent + baked `horiz_bat_arc` across his front chest plane), launching the enemy in a fast line-drive comet (`38px` arc) to the **farthest stage wall** and **stunning for `0.80s`**.
+- **Supreme Ultimate (`GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER`, `Row 4 F15..F29`, `3.80s` 4-Beat Choreography)**:
+  - **Beat 1 (`0.00..0.62s`)**: Swells into his **HUGE `2.15x` Colossus Form** with an unobstructed silhouette (`F15..F16` deep floor-scoop coil).
+  - **Beat 2 (`0.62..1.28s`)**: Planted firmly on `groundY`, rips a 2H Rising Sky-Uppercut (`F17..F19`, `cameraAirLift = 680`), **hammering and launching all active enemies UP into the sky** (`groundY - 210px`, `0` chip ticks).
+  - **Beat 3 (`1.28..1.96s`)**: Vanishes in a Bifrost Forge-Lightning flash and **teleports cleanly ABOVE the airborne enemy** (`groundY - 375..392px`, `~180px` above the suspended foe so Torgar's boots float above the enemy's head while his raised Mjolnir stays inside the top camera viewport) in an airborne knee-tuck crown-hoist pose (`F20..F23`).
+  - **Beat 4 (`1.96..2.36s`)**: Jackknifes downward (`F24..F26`), physically intercepts the airborne enemy mid-sky (`plungeU = 0.34`), and **meteor-spikes them straight into the arena floor** (`t = 2.36s`) for ONE `735`-Crit Continental Sunder + `+9%` Max HP heal + `7` depth-sorted `Row 7` Volcanic Geysers + **`1.85s` Stun**.
 
 ### Sylvara (`src/entities/Archer.js`, `heroId: 'archer'`, v4 Ultimate & Supreme Ultimate Rework)
 - **Baked 30fps `Row 4` Acrobatic Somersault & Far-Stage Yggdrasil Choreography (`scripts/build_archer_30fps_sheet.py`, `0/270` clips, `0` pinholes, `20/20` palette)**:

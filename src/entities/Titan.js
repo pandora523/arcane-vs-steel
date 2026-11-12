@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps75';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps75';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps75';
+import { Fighter } from './Fighter.js?v=30fps76';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps76';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps76';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps75';
+} from '../engine/shaders/forgeShaders.js?v=30fps76';
 
 /**
  * Torgar v7 (`titan`) — Sovereign of the World-Forge & Runic Anvil Juggernaut.
@@ -29,15 +29,15 @@ import {
  *       Plants a persistent **World-Forge Anvil Altar** (`Row 3` 8-Cog Mandala + `Row 1` Horned Iron Anvil,
  *       `3.8s`) with a Magnetic Gravity Slam, then batters a blazing **Ricocheting Anvil Cannonball**
  *       across the arena that rebounds ONCE off the stage wall (`★ ANVIL WALL-RICOCHET! ★`)!
- *   - Overdrive (`WORLD-BREAKER HOME RUN`, `1.48s`):
- *       Steps into the Batter's Box hoisting his 2H World-Maul upright above his back shoulder (`Row 4 F00..F05`),
- *       and unleashes a blistering level Home-Run Grand-Slam swing (`Row 4 F06..F14`) that launches the enemy
- *       to the **farthest side of the stage**, crashing them into the arena wall and **stunning for `0.8s`**!
- *   - Supreme Ultimate (`GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER`, `4.45s`):
- *       Grows **HUGE (`2.38x`)**, **hammers all active enemies high UP into the sky** (`groundY - 245px`) with a
- *       rising World-Maul uppercut, **teleports to the top of the sky** (`groundY - 315px`) directly above the
- *       airborne foe in a Khazad Forge-Lightning pillar, and **meteor-smashes them straight into the ground**
- *       for ONE cataclysmic `735`-Crit Continental Sunder + `7` `Row 7` Volcanic Geysers + **`1.65s` Stun**!
+ *   - Overdrive (`WORLD-BREAKER HOME RUN`, `1.46s`):
+ *       Steps into the Batter's Box cocking his symmetric 2H Mjolnir behind his rear shoulder (`Row 4 F00..F05`),
+ *       and rips a chest-high horizontal Baseball-Bat Home-Run Swing (`Row 4 F06..F14`) that launches the enemy
+ *       in a line-drive comet to the **farthest side of the stage**, crashing and **stunning for `0.8s`**!
+ *   - Supreme Ultimate (`GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER`, `3.80s`):
+ *       Grows **HUGE (`2.15x`)**, **hammers all active enemies high UP into the sky** (`groundY - 210px`) with a
+ *       grounded rising Mjolnir uppercut, **teleports cleanly to the top of the sky** (`groundY - 385px`) directly
+ *       above the airborne foe hoisting Mjolnir above his horned crown (`Row 4 F20..F23`), and **meteor-spikes
+ *       them straight into the ground** for ONE `735`-Crit Continental Sunder + `7` Geysers + **`1.85s` Stun**!
  */
 export class Titan extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -58,8 +58,9 @@ export class Titan extends Fighter {
     this.ultName = 'WORLD-BREAKER HOME RUN';
     this.hasTrueUltimate = true;
     this.trueUltName = 'GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER';
-    this.trueUltDuration = 4.45;
+    this.trueUltDuration = 3.80;
     this._trueUltStep = 0;
+    this._trueUltMidAirClanged = false;
     this._trueUltAnvilX = 600;
     this._trueUltGeyserTimer = 0;
     this._trueUltBoundFoes = [];
@@ -73,7 +74,7 @@ export class Titan extends Fighter {
     this.dashMaxCooldown = 2.95;
     this.autoDuration = 0.76;
     this.skillDuration = 0.94;
-    this.ultDuration = 1.48;
+    this.ultDuration = 1.46;
     this.crouchDuration = 0.80;
     this.dashDuration = 0.42;
     this.comboStep = 0;
@@ -125,11 +126,11 @@ export class Titan extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
-      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps75')) {
-        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps75';
+      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps76')) {
+        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps76';
       }
-      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps75')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps75';
+      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps76')) {
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps76';
       }
     }
   }
@@ -323,6 +324,7 @@ export class Titan extends Fighter {
     }
     if (newState === 'TRUE_ULTIMATE') {
       this._trueUltStep = 0;
+      this._trueUltMidAirClanged = false;
       this._trueUltGeyserTimer = 0;
       this._trueUltAirSparkAccum = 0;
       this._trueUltBoundFoes = [];
@@ -395,6 +397,7 @@ export class Titan extends Fighter {
     if (!this.fx) return;
     const shouldShowMantle =
       !this.isDead &&
+      !this.isFlipVault &&
       this.state !== 'DEATH' &&
       (this.forgeArmorTimer > 0 || this.state === 'ULTIMATE' || this.state === 'TRUE_ULTIMATE');
     if (!shouldShowMantle) {
@@ -1280,25 +1283,22 @@ export class Titan extends Fighter {
   }
 
   /**
-   * Overdrive (`ULTIMATE` — `WORLD-BREAKER HOME RUN`, `2.45s`):
-   *   - Phase 1 (`0.00s .. 0.40s`, `Row 4 F00..F11`): Torgar steps into the Batter's Box, faces the
-   *     **farthest side of the stage**, locks the enemy onto the glowing Batter's Plate (`Row 3`),
-   *     and cocks his 2H World-Maul deep behind his back shoulder (`-124°`) like a colossal baseball bat!
-   *   - Phase 2 (`t >= 0.40s`, `Row 4 F12..F19`): Unleashes a blistering horizontal Baseball-Bat
-   *     Home-Run Swing (`★ HOME-RUN GRAND SLAM! ★`), blasting all hit enemies across the arena toward
-   *     the **farthest stage wall** (`x = 82` or `x = ww - 82`).
-   *   - Phase 3 (`0.40s .. 0.82s`): High-velocity line-drive comet flight across the stage; upon
-   *     slamming into the farthest wall (`t = 0.82s`), deals bonus Wall-Crash Crit damage and
-   *     **stuns the enemy for `0.8` seconds** (`stunTimer = 0.80`)!
+   * Overdrive (`ULTIMATE` — `WORLD-BREAKER HOME RUN`, `1.46s`):
+   *   - Phase 1 (`0.00s .. 0.42s`, `Row 4 F00..F05`): Torgar steps briskly into the Batter's Box,
+   *     faces the **farthest side of the stage**, locks the enemy onto the glowing Batter's Plate,
+   *     and cocks his symmetric 2H Mjolnir behind his rear shoulder (`-116°`) with an unobstructed silhouette!
+   *   - Phase 2 (`t >= 0.42s`, `Row 4 F06..F10` -> `F11..F14`): Rips a chest-high horizontal Baseball-Bat
+   *     Home-Run Swing (`horizontalBat: true`), blasting hit enemies in a line-drive comet across the arena
+   *     into the **farthest stage wall** (`x = 82` or `x = ww - 82`) and **stunning for `0.8s`**!
    */
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.ultDuration || 2.45;
+    const dur = this.ultDuration || 1.46;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
 
     this.mana = 0;
     this.giantScale = 1.0;
-    this.isInvulnerable = t < 0.85;
+    this.isInvulnerable = t < 0.88;
     this.forgeArmorTimer = Math.max(this.forgeArmorTimer, 0.55);
     this.vx = 0;
     this.vy = 0;
@@ -1325,8 +1325,6 @@ export class Titan extends Fighter {
       this._homeRunDir = this._homeRunTargetWallX >= refX ? 1 : -1;
       this.facing = this._homeRunDir;
 
-      this.manifestAncestorAvatar(1.10, 1.50);
-
       if (game?.audio) {
         game.audio.play('ult_cast', this.x);
         game.audio.play('clang', this.x);
@@ -1348,43 +1346,36 @@ export class Titan extends Fighter {
           '#fde047'
         );
       }
-      game?.renderer?.triggerShake?.(10, 0.18);
+      game?.renderer?.triggerShake?.(9, 0.16);
 
-      const plateX = leadFoe && !leadFoe.isDead ? leadFoe.x : this.x + this._homeRunDir * 105;
-      this.spawnSheetBurst(3, plateX, this.groundY - 36, {
-        w: 224,
-        h: 224,
-        maxLife: 0.55,
+      // Glowing Home-Plate Crucible Seal on the arena floor (`inFront: false` so Torgar stays 100% clear!)
+      const plateX = leadFoe && !leadFoe.isDead ? leadFoe.x : this.x + this._homeRunDir * 106;
+      this.spawnSheetBurst(3, plateX, this.groundY - 28, {
+        w: 204,
+        h: 204,
+        maxLife: 0.52,
         flipX: this._homeRunDir < 0,
         glowColor: 'gold',
         inFront: false
-      });
-      this.fx?.spawn('runicBulwarkDome', this.x, this.y - 84, {
-        follow: this,
-        offsetX: 0,
-        offsetY: -84,
-        flip: this._homeRunDir < 0,
-        palette: FORGE_GOLD_PALETTE,
-        light: 1.38,
-        maxDuration: 1.35
       });
     }
 
     const batDir = this._homeRunDir || this.facing;
     this.facing = batDir;
 
-    // Phase 1 (`0.00s .. 0.40s`, `Row 4 F00..F05`): Step into Batter's Box & Hoist 2H Maul Upright Above Back Shoulder
-    if (t < 0.40) {
-      const windupU = Math.max(0, Math.min(0.999, t / 0.40));
+    // Phase 1 (`0.00s .. 0.42s`, `Row 4 F00..F05`): Step into Batter's Box & Cock Mjolnir Behind Rear Shoulder!
+    if (t < 0.42) {
+      const windupU = Math.max(0, Math.min(0.999, t / 0.42));
       this.trueUltFrameOverride = 120 + Math.min(5, Math.floor(windupU * 6));
 
       if (leadFoe && !leadFoe.isDead) {
         const clampedFoeX = Math.max(195, Math.min(ww - 195, leadFoe.x));
         leadFoe.x += (clampedFoeX - leadFoe.x) * Math.min(1, dt * 16);
-        const batterX = Math.max(85, Math.min(ww - 85, leadFoe.x - batDir * 98));
-        this.x += (batterX - this.x) * Math.min(1, dt * 22);
-        // Magnetically lock the primary target (and any enemy right inside the Batter's Box) into the sweet-spot
-        const sweetSpotX = Math.max(150, Math.min(ww - 150, this.x + batDir * 98));
+        const batterX = Math.max(85, Math.min(ww - 85, leadFoe.x - batDir * 104));
+        const stepSpeed = t < 0.20 ? 28 : 14;
+        this.x += (batterX - this.x) * Math.min(1, dt * stepSpeed);
+        // Hold enemies inside the Batter's Box right on the strike-zone sweet-spot
+        const sweetSpotX = Math.max(150, Math.min(ww - 150, this.x + batDir * 104));
         for (const f of foes) {
           if (f === leadFoe || Math.abs(f.x - sweetSpotX) <= 185) {
             f.x += (sweetSpotX - f.x) * Math.min(1, dt * 15);
@@ -1395,11 +1386,11 @@ export class Titan extends Fighter {
       return;
     }
 
-    // Phase 2 (`t >= 0.40s`, `Row 4 F06..F10`): Explosive Upright Horizontal Baseball-Bat Swing!
-    if (t >= 0.40 && (this._ultWaveStep || 0) < 1) {
+    // Phase 2 (`t >= 0.42s`, `Row 4 F06..F10`): CRACK OF THE BAT! Chest-High Horizontal Baseball-Bat Swing!
+    if (t >= 0.42 && (this._ultWaveStep || 0) < 1) {
       this._ultWaveStep = 1;
-      const contactX = Math.max(90, Math.min(ww - 90, this.x + batDir * 102));
-      const contactY = this.groundY - 72;
+      const contactX = Math.max(90, Math.min(ww - 90, this.x + batDir * 106));
+      const contactY = this.groundY - 82;
 
       if (game?.audio) {
         game.audio.play('parry_clang', contactX);
@@ -1410,17 +1401,19 @@ export class Titan extends Fighter {
       if (game?.renderer && game.renderer.impactFrameTimer > 1) {
         game.renderer.triggerImpactFrame?.(contactX, contactY, 0.08, 'forge');
       }
-      game?.renderer?.triggerShake?.(20, 0.32);
+      game?.renderer?.triggerShake?.(20, 0.30);
       game?.renderer?.triggerAberration?.(10);
-      game?.renderer?.triggerHitStop?.(0.06);
+      game?.renderer?.triggerHitStop?.(0.065);
 
-      this.fx?.spawn('forgeHammerArc', this.x + batDir * 74, this.y - 84, {
+      // True 2.5D Horizontal Baseball-Bat Swing Crescent (`horizontalBat: true`, chest-level!)
+      this.fx?.spawn('forgeHammerArc', this.x + batDir * 68, this.y - 86, {
         flip: batDir < 0,
         palette: FORGE_GOLD_PALETTE,
-        light: 1.52,
+        light: 1.48,
         extra: {
-          radius: 38,
-          width: 14.2,
+          radius: 40,
+          width: 13.5,
+          horizontalBat: true,
           flipAngle: false,
           isFinisher: true
         }
@@ -1428,15 +1421,7 @@ export class Titan extends Fighter {
       this.fx?.spawn('moltenAnvilSparks', contactX, contactY, {
         flip: batDir < 0,
         palette: FORGE_JADE_PALETTE,
-        light: 1.48
-      });
-      this.spawnSheetBurst(4, contactX, contactY, {
-        w: 248,
-        h: 248,
-        maxLife: 0.44,
-        flipX: batDir < 0,
-        glowColor: 'gold',
-        inFront: true
+        light: 1.44
       });
 
       this._homeRunSwingStreak = {
@@ -1445,7 +1430,7 @@ export class Titan extends Fighter {
         targetWallX: this._homeRunTargetWallX,
         dir: batDir,
         age: 0,
-        maxLife: 0.52
+        maxLife: 0.48
       };
 
       game?.vfx?.spawnDamageText?.(
@@ -1457,14 +1442,14 @@ export class Titan extends Fighter {
         '#fde047'
       );
 
-      // Launch hit enemies inside the Batter's Box across the stage toward the farthest wall!
+      // Launch hit enemies inside the Batter's Box in a line-drive comet to the farthest stage wall!
       for (const foe of foes) {
         if (foe !== leadFoe && Math.abs(foe.x - contactX) > 195) continue;
         const distRight = ww - 82 - foe.x;
         const distLeft = foe.x - 82;
         const targetWallX =
           this._homeRunTargetWallX || (distRight >= distLeft ? ww - 82 : 82);
-        foe.takeDamage(44, this, true, batDir * 680, -140);
+        foe.takeDamage(44, this, true, batDir * 680, -110);
         this.mana = 0;
         this._homeRunFlights.push({
           foe,
@@ -1472,39 +1457,39 @@ export class Titan extends Fighter {
           targetWallX,
           dir: batDir,
           elapsed: 0,
-          duration: 0.42,
+          duration: 0.38,
           sparkAccum: 0,
           crashed: false
         });
       }
     }
 
-    // Step Active Home-Run Comet Flights & Farthest-Wall Crash (`0.8s` Stun)!
+    // Step Active Home-Run Line-Drive Flights & Farthest-Wall Crash (`0.8s` Stun)!
     if (this._homeRunFlights && this._homeRunFlights.length > 0) {
       for (const fl of this._homeRunFlights) {
         if (!fl.foe || fl.foe.isDead || fl.crashed) continue;
         fl.elapsed += dt;
         const u = Math.min(1, fl.elapsed / fl.duration);
-        const easeU = 1 - Math.pow(1 - u, 1.65);
+        const easeU = 1 - Math.pow(1 - u, 1.75);
 
         fl.foe.x = fl.startX + (fl.targetWallX - fl.startX) * easeU;
-        fl.foe.y = fl.foe.groundY - Math.sin(u * Math.PI) * 58;
+        fl.foe.y = fl.foe.groundY - Math.sin(u * Math.PI) * 38;
         fl.foe.vx = 0;
         fl.foe.vy = 0;
         fl.foe.hurtTimer = Math.max(fl.foe.hurtTimer || 0, 0.18);
 
         fl.sparkAccum += dt;
-        if (fl.sparkAccum >= 0.09) {
+        if (fl.sparkAccum >= 0.085) {
           fl.sparkAccum = 0;
-          this.fx?.burst(fl.foe.x - fl.dir * 18, fl.foe.y - 64, {
+          this.fx?.burst(fl.foe.x - fl.dir * 18, fl.foe.y - 68, {
             count: 2,
-            speedMin: 40,
+            speedMin: 42,
             speedMax: 105,
             lifeMin: 0.12,
             lifeMax: 0.22,
-            gravity: 35,
+            gravity: 30,
             angle: fl.dir >= 0 ? Math.PI : 0,
-            spread: 0.65,
+            spread: 0.55,
             colors: ['#ffffff', '#fde047', '#f59e0b', '#10b981']
           });
         }
@@ -1517,7 +1502,6 @@ export class Titan extends Fighter {
           fl.foe.vx = 0;
           fl.foe.vy = 0;
 
-          // Deal bonus Wall-Crash Crit damage and pin at the farthest side of the stage
           fl.foe.takeDamage(42, this, true, -fl.dir * 35, -110);
           this.mana = 0;
           fl.foe.x = wallX;
@@ -1534,7 +1518,7 @@ export class Titan extends Fighter {
             game.audio.play('thunder_slam', wallX);
             game.audio.play('clang', wallX);
           }
-          game?.renderer?.triggerShake?.(24, 0.38);
+          game?.renderer?.triggerShake?.(24, 0.36);
           game?.renderer?.triggerAberration?.(12);
 
           this.fx?.spawn('tectonicCraterSlam', wallX, this.groundY - 4, {
@@ -1549,9 +1533,9 @@ export class Titan extends Fighter {
             light: 1.38
           });
           this.spawnSheetBurst(4, wallX, this.groundY - 78, {
-            w: 216,
-            h: 216,
-            maxLife: 0.42,
+            w: 208,
+            h: 208,
+            maxLife: 0.40,
             flipX: fl.dir < 0,
             glowColor: 'gold',
             inFront: true
@@ -1571,13 +1555,16 @@ export class Titan extends Fighter {
       }
     }
 
-    // Drive strictly upright Row 4 frames `F06..F14` during swing & slugger follow-through (`0.40s .. 1.48s`)
-    if (t < 0.74) {
-      const swingU = Math.max(0, Math.min(0.999, (t - 0.40) / 0.34));
+    // Drive Row 4 frames `F06..F14` (`0.42s .. 1.46s`): crisp bat whip -> heroic slugger hold -> smooth return
+    if (t < 0.68) {
+      const swingU = Math.max(0, Math.min(0.999, (t - 0.42) / 0.26));
       this.trueUltFrameOverride = 120 + 6 + Math.min(4, Math.floor(swingU * 5));
+    } else if (t < 1.08) {
+      const holdU = Math.max(0, Math.min(0.999, (t - 0.68) / 0.40));
+      this.trueUltFrameOverride = 120 + 10 + Math.min(1, Math.floor(holdU * 2));
     } else {
-      const followU = Math.max(0, Math.min(0.999, (t - 0.74) / Math.max(0.01, dur - 0.74)));
-      this.trueUltFrameOverride = 120 + 11 + Math.min(3, Math.floor(followU * 4));
+      const recU = Math.max(0, Math.min(0.999, (t - 1.08) / Math.max(0.01, dur - 1.08)));
+      this.trueUltFrameOverride = 120 + 12 + Math.min(2, Math.floor(recU * 3));
     }
 
     if (t >= dur) {
@@ -1590,24 +1577,22 @@ export class Titan extends Fighter {
   }
 
   /**
-   * 3-Overdrive Supreme Ultimate (`state === 'TRUE_ULTIMATE'`, `4.45s`):
+   * 3-Overdrive Supreme Ultimate (`state === 'TRUE_ULTIMATE'`, `3.80s`):
    * "GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER"
    * - NEVER overrides or alters stage background images (`trueUltStageOverride === null`).
-   * - Phase 1 (`0.00s .. 0.84s`): Torgar swells into his **HUGE `2.38x` Colossus Form**, maxes `5`
-   *   Crucible Cores, locks active enemies onto `_trueUltAnvilX` (`Row 5` Crucible Seal), and strides
-   *   in while coiling low (`Row 4 F15..F16`).
-   * - Phase 2 (`0.84s .. 1.65s`): Giant Torgar unleashes a thunderous **2H Rising World-Maul Sky-Uppercut**
-   *   (`Row 4 F17..F19`), **hammering and launching all active enemies high UP into the sky (`groundY - 245px`)**!
-   * - Phase 3 (`1.65s .. 2.82s`): Giant Torgar vanishes in a `Row 6` Khazad Forge-Lightning Pillar and
-   *   **teleports to the top of the sky (`groundY - 315px`)** directly above the airborne foe, manifesting
-   *   `khazadForgeAncestorAvatar` & hoisting Mjolnir upright overhead (`Row 4 F20..F24`)!
-   * - Phase 4 (`2.82s .. 3.20s`): Giant Torgar plunges downward (`Row 4 F25..F27`), **meteor-smashing the
-   *   airborne enemy straight into the arena floor** at `t >= 3.20s` for ONE cataclysmic `735`-Crit
-   *   Continental Sunder + `+12%` Max HP heal + `7` `Row 7` Volcanic Geysers + **`1.65s` Stun**!
+   * - Beat 1 (`0.00s .. 0.62s`): Torgar swells into his **HUGE `2.15x` Colossus Form** with a clean,
+   *   unobstructed silhouette, maxes `5` Crucible Cores, and coils Mjolnir low along the floor (`Row 4 F15..F16`).
+   * - Beat 2 (`0.62s .. 1.28s`): Planted on the ground, Giant Torgar rips a **2H Rising Mjolnir Sky-Uppercut**
+   *   (`Row 4 F17..F19`), **hammering and launching all active enemies high UP into the sky (`groundY - 210px`)**!
+   * - Beat 3 (`1.28s .. 1.96s`): Giant Torgar vanishes in a Bifrost Forge-Lightning flash and **teleports cleanly
+   *   ABOVE the airborne enemy (`groundY - 385px`)**, hoisting Mjolnir above his horned crown (`Row 4 F20..F23`)!
+   * - Beat 4 (`1.96s .. 2.36s`): Giant Torgar jackknifes downward (`Row 4 F24..F26`), intercepts the airborne
+   *   enemy mid-sky, and **meteor-spikes them straight into the arena floor** at `t >= 2.36s` for ONE `735`-Crit
+   *   Continental Sunder + `+9%` Max HP heal + `7` `Row 7` Volcanic Geysers + **`1.85s` Stun**!
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.trueUltDuration || 4.45;
+    const dur = this.trueUltDuration || 3.80;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     this.isInvulnerable = true;
     this.vx = 0;
@@ -1628,7 +1613,7 @@ export class Titan extends Fighter {
         : Math.max(240, Math.min(ww - 240, this.x + this.facing * 180));
     }
 
-    // Phase 1 (`0.00s .. 0.84s` — Giant Colossus Transformation & Uppercut Coil)
+    // Beat 1 (`0.00s .. 0.62s` — Giant 2.15x Colossus Awakening & Deep Floor-Scoop Coil)
     if (t >= 0.04 && this._trueUltStep < 1) {
       this._trueUltStep = 1;
       this.forgeArmorTimer = 6.0;
@@ -1659,71 +1644,63 @@ export class Titan extends Fighter {
         '#f97316'
       );
 
-      this.fx?.spawn('runicBulwarkDome', this.x, this.y - 125, {
-        follow: this,
-        offsetX: 0,
-        offsetY: -125,
-        flip: this.facing < 0,
-        palette: FORGE_GOLD_PALETTE,
-        light: 1.45,
-        maxDuration: 4.3
-      });
       this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
         flip: this.facing < 0,
         palette: FORGE_GOLD_PALETTE,
-        light: 1.42,
-        extra: { maxRx: 172 }
+        light: 1.38,
+        extra: { maxRx: 165 }
       });
-      this.spawnSheetBurst(5, this._trueUltAnvilX, this.groundY - 110, {
-        w: 332,
-        h: 332,
-        maxLife: 3.22,
+      this.spawnSheetBurst(5, this._trueUltAnvilX, this.groundY - 96, {
+        w: 288,
+        h: 288,
+        maxLife: 2.40,
         flipX: this.facing < 0,
         glowColor: 'gold',
         inFront: false
       });
     }
 
-    if (t < 0.84) {
-      const growU = Math.max(0, Math.min(1, t / 0.62));
+    if (t < 0.62) {
+      const growU = Math.max(0, Math.min(1, t / 0.52));
       const easeGrow = growU * growU * (3 - 2 * growU);
-      this.giantScale = 1.0 + 1.38 * easeGrow;
+      this.giantScale = 1.0 + 1.15 * easeGrow;
       this.isFlipVault = false;
-      this.cameraAirLift = 0;
+      this.cameraAirLift = Math.round(420 * easeGrow);
 
       for (const foe of activeFoes) {
         if (!this._trueUltBoundFoes.includes(foe)) this._trueUltBoundFoes.push(foe);
         foe.isRooted = true;
         foe.vx = 0;
         foe.vy = 0;
-        foe.x += (this._trueUltAnvilX - foe.x) * Math.min(1, dt * 14);
+        foe.x += (this._trueUltAnvilX - foe.x) * Math.min(1, dt * 16);
         foe.y = foe.groundY;
       }
       this.facing = this._trueUltAnvilX >= this.x ? 1 : -1;
-      const standX = Math.max(105, Math.min(ww - 105, this._trueUltAnvilX - this.facing * 112));
-      this.x += (standX - this.x) * Math.min(1, dt * 14);
+      const standX = Math.max(105, Math.min(ww - 105, this._trueUltAnvilX - this.facing * 124));
+      this.x += (standX - this.x) * Math.min(1, dt * 18);
       this.y = this.groundY;
 
-      // Step from upright stance (`F00..F02`) into deep uppercut squat coil (`F15..F16`)
-      if (t < 0.42) {
-        this.trueUltFrameOverride = 120 + Math.min(2, Math.floor((t / 0.42) * 3));
+      // Transition from Sovereign Guard (`F00`) into Deep Floor-Scoop Coil (`F15..F16`)
+      if (t < 0.24) {
+        this.trueUltFrameOverride = 120;
       } else {
-        this.trueUltFrameOverride = 120 + 15 + Math.min(1, Math.floor(((t - 0.42) / 0.42) * 2));
+        const coilU = Math.max(0, Math.min(0.999, (t - 0.24) / 0.38));
+        this.trueUltFrameOverride = 120 + 15 + Math.min(1, Math.floor(coilU * 2));
       }
       return;
     }
 
-    // Phase 2 (`0.84s .. 1.65s` — STEP 1: Giant Hammer Sky-Uppercut Knocking Enemies HIGH UP!)
-    if (t < 2.82) {
-      this.giantScale = 2.38;
+    // Beats 2 & 3 (`0.62s .. 1.96s` — Grounded Sky-Uppercut Knockup -> Elevated Top-of-Sky Teleport Hoist!)
+    if (t < 1.96) {
+      this.giantScale = 2.15;
       this.cameraAirLift = 680;
 
-      if (t >= 0.84 && this._trueUltStep < 2) {
+      if (t >= 0.62 && this._trueUltStep < 2) {
         this._trueUltStep = 2;
         game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
         game?.audio?.play?.('thunder_slam', this._trueUltAnvilX);
         game?.audio?.play?.('heavy_cleave', this._trueUltAnvilX);
-        game?.renderer?.triggerShake?.(18, 0.28);
+        game?.renderer?.triggerShake?.(18, 0.26);
         game?.renderer?.triggerHitStop?.(0.05);
 
         game?.vfx?.spawnDamageText?.(
@@ -1734,13 +1711,13 @@ export class Titan extends Fighter {
           '★ MJOLNIR SKY-UPPERCUT! ★',
           '#fbbf24'
         );
-        this.fx?.spawn('forgeHammerArc', this.x + this.facing * 88, this.groundY - 125, {
+        this.fx?.spawn('forgeHammerArc', this.x + this.facing * 92, this.groundY - 122, {
           flip: this.facing < 0,
           palette: FORGE_GOLD_PALETTE,
-          light: 1.50,
+          light: 1.48,
           extra: {
             radius: 44,
-            width: 15.0,
+            width: 14.5,
             flipAngle: true,
             isFinisher: true
           }
@@ -1748,29 +1725,21 @@ export class Titan extends Fighter {
         this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
           flip: this.facing < 0,
           palette: FORGE_JADE_PALETTE,
-          light: 1.44,
-          extra: { maxRx: 170 }
+          light: 1.42,
+          extra: { maxRx: 168 }
         });
         this.fx?.spawn('moltenAnvilSparks', this._trueUltAnvilX, this.groundY - 92, {
           flip: this.facing < 0,
           palette: FORGE_GOLD_PALETTE,
-          light: 1.44
-        });
-        this.spawnSheetBurst(4, this._trueUltAnvilX, this.groundY - 95, {
-          w: 280,
-          h: 280,
-          maxLife: 0.46,
-          flipX: this.facing < 0,
-          glowColor: 'gold',
-          inFront: true
+          light: 1.42
         });
       }
 
-      // Rocket all active enemies HIGH UP into the sky (`groundY -> groundY - 245px`) & hold at apex!
-      const launchU = Math.max(0, Math.min(1, (t - 0.84) / 0.56));
+      // Rocket all active enemies HIGH UP into the sky (`groundY -> groundY - 210px`) & hold cleanly at apex!
+      const launchU = Math.max(0, Math.min(1, (t - 0.62) / 0.44));
       const easeUp = 1 - Math.pow(1 - launchU, 3);
-      const hoverBob = launchU >= 1 ? Math.sin((t - 1.40) * 9.0) * 6 : 0;
-      const targetFoeY = this.groundY - 245 * easeUp + hoverBob;
+      const hoverBob = launchU >= 1 ? Math.sin((t - 1.06) * 10.0) * 4 : 0;
+      const targetFoeY = this.groundY - 210 * easeUp + hoverBob;
 
       for (let fIdx = 0; fIdx < activeFoes.length; fIdx++) {
         const foe = activeFoes[fIdx];
@@ -1785,71 +1754,62 @@ export class Titan extends Fighter {
       }
 
       this._trueUltAirSparkAccum = (this._trueUltAirSparkAccum || 0) + dt;
-      if (this._trueUltAirSparkAccum >= 0.09) {
+      if (this._trueUltAirSparkAccum >= 0.095) {
         this._trueUltAirSparkAccum = 0;
-        this.fx?.burst(this._trueUltAnvilX, targetFoeY - 48, {
+        this.fx?.burst(this._trueUltAnvilX, targetFoeY - 46, {
           count: 2,
           speedMin: 35,
-          speedMax: 95,
+          speedMax: 90,
           lifeMin: 0.12,
-          lifeMax: 0.22,
-          gravity: 40,
+          lifeMax: 0.20,
+          gravity: 35,
           angle: -Math.PI * 0.5,
-          spread: 0.9,
+          spread: 0.85,
           colors: ['#ffffff', '#fde047', '#f59e0b', '#10b981']
         });
       }
 
-      // Phase 3 (`1.65s .. 2.82s` — STEP 2: Teleport to the Top Directly Above the Airborne Enemy!)
-      if (t >= 1.65 && this._trueUltStep < 3) {
+      // Beat 3 (`1.28s .. 1.96s` — Bifrost Teleport Cleanly ABOVE the Airborne Enemy!)
+      if (t >= 1.28 && this._trueUltStep < 3) {
         this._trueUltStep = 3;
         const departX = this.x;
 
-        // Departure Forge-Lightning Pillar on the arena floor
-        this.spawnSheetBurst(6, departX, this.groundY - 125, {
-          w: 320,
-          h: 320,
-          maxLife: 0.48,
+        // Departure Bifrost Lightning Burst on the arena floor (`inFront: false`)
+        this.spawnSheetBurst(6, departX, this.groundY - 110, {
+          w: 248,
+          h: 248,
+          maxLife: 0.34,
           flipX: this.facing < 0,
           glowColor: 'gold',
-          inFront: true
+          inFront: false
         });
-        this.fx?.spawn('moltenAnvilSparks', departX, this.groundY - 96, {
+        this.fx?.spawn('moltenAnvilSparks', departX, this.groundY - 88, {
           flip: this.facing < 0,
           palette: FORGE_GOLD_PALETTE,
-          light: 1.42
+          light: 1.38
         });
 
-        // Instant Bifrost / Khazad Forge-Lightning Teleport to the TOP of the sky above the enemy!
+        // Teleport Giant Torgar cleanly ABOVE the enemy (`y = groundY - 375`, `165px` above `foe.y = groundY - 210`!)
         this.isFlipVault = true;
-        this.x = Math.max(120, Math.min(ww - 120, this._trueUltAnvilX - this.facing * 28));
-        this.y = this.groundY - 315;
+        this.x = Math.max(120, Math.min(ww - 120, this._trueUltAnvilX - this.facing * 36));
+        this.y = this.groundY - 375;
         this.facing = this._trueUltAnvilX >= this.x ? 1 : -1;
 
-        this.manifestAncestorAvatar(1.35, 1.56);
         game?.audio?.play?.('dash_whoosh', this.x);
         game?.audio?.play?.('thunder_slam', this.x);
         game?.audio?.play?.('parry_clang', this.x);
-        game?.renderer?.triggerShake?.(16, 0.24);
+        game?.renderer?.triggerShake?.(15, 0.22);
         game?.renderer?.triggerAberration?.(8);
 
-        // Arrival Forge-Lightning Burst high in the sky!
-        this.spawnSheetBurst(6, this.x, this.y - 115, {
-          w: 336,
-          h: 336,
-          maxLife: 0.54,
-          flipX: this.facing < 0,
-          glowColor: 'emerald',
-          inFront: true
-        });
-        this.fx?.spawn('moltenAnvilSparks', this.x, this.y - 110, {
+        // Subtle background arrival spark halo behind Torgar (`NO` opaque sprite covering his torso!)
+        this.fx?.spawn('moltenAnvilSparks', this.x, this.y - 160, {
           flip: this.facing < 0,
           palette: FORGE_JADE_PALETTE,
-          light: 1.48
+          light: 1.44
         });
         game?.vfx?.spawnDamageText?.(
           this._trueUltAnvilX,
-          this.y - 135,
+          this.y - 145,
           0,
           true,
           "★ TELEPORT: HEAVEN'S ANVIL! ★",
@@ -1857,37 +1817,50 @@ export class Titan extends Fighter {
         );
       }
 
-      if (t < 1.65) {
+      if (t < 1.28) {
         this.isFlipVault = false;
         this.y = this.groundY;
-        const upU = Math.max(0, Math.min(0.999, (t - 0.84) / 0.81));
+        const upU = Math.max(0, Math.min(0.999, (t - 0.62) / 0.66));
         this.trueUltFrameOverride = 120 + 17 + Math.min(2, Math.floor(upU * 3));
       } else {
         this.isFlipVault = true;
-        const skyHoverU = Math.max(0, Math.min(0.999, (t - 1.65) / 1.17));
-        this.x = Math.max(120, Math.min(ww - 120, this._trueUltAnvilX - this.facing * 28));
-        this.y = this.groundY - 315 - Math.sin(skyHoverU * Math.PI) * 10;
-        this.trueUltFrameOverride = 120 + 20 + Math.min(4, Math.floor(skyHoverU * 5));
+        const skyHoverU = Math.max(0, Math.min(0.999, (t - 1.28) / 0.68));
+        this.x = Math.max(120, Math.min(ww - 120, this._trueUltAnvilX - this.facing * 36));
+        // Coiled upward anticipation lift (`groundY - 375 -> groundY - 392`) before the Meteor Spike!
+        this.y = this.groundY - 375 - Math.sin(skyHoverU * Math.PI * 0.65) * 17;
+        this.trueUltFrameOverride = 120 + 20 + Math.min(3, Math.floor(skyHoverU * 4));
       }
       return;
     }
 
-    // Phase 4 (`2.82s .. 3.20s` — STEP 3: Meteor Plunge Driving Airborne Enemy Straight Into the Ground!)
-    if (t < 3.20) {
-      this.giantScale = 2.38;
+    // Beat 4 (`1.96s .. 2.36s` — Violent Downward Meteor Spike Driving Airborne Enemy Into the Ground!)
+    if (t < 2.36) {
+      this.giantScale = 2.15;
       this.isFlipVault = true;
-      const plungeU = Math.max(0, Math.min(1, (t - 2.82) / 0.38));
+      const plungeU = Math.max(0, Math.min(1, (t - 1.96) / 0.40));
       const accel = plungeU * plungeU;
-      this.cameraAirLift = Math.round(680 * (1 - accel * 0.65));
+      this.cameraAirLift = Math.round(680 * (1 - accel * 0.62));
 
-      const targetLandX = Math.max(115, Math.min(ww - 115, this._trueUltAnvilX - this.facing * 78));
-      const startSkyX = Math.max(120, Math.min(ww - 120, this._trueUltAnvilX - this.facing * 28));
+      const targetLandX = Math.max(115, Math.min(ww - 115, this._trueUltAnvilX - this.facing * 88));
+      const startSkyX = Math.max(120, Math.min(ww - 120, this._trueUltAnvilX - this.facing * 36));
       this.x = startSkyX + (targetLandX - startSkyX) * accel;
-      this.y = this.groundY - 315 * (1 - accel);
+      this.y = this.groundY - 390 * (1 - accel);
 
-      // Drive the airborne enemy straight down into the arena floor with Mjolnir!
-      const foePlungeU = Math.max(0, Math.min(1, (plungeU - 0.14) / 0.86));
-      const foeY = this.groundY - 245 * (1 - foePlungeU * foePlungeU);
+      // Enemy stays suspended at `groundY - 210` until Torgar's downward Mjolnir physically intercepts them (`plungeU >= 0.34`),
+      // then gets spiked straight down TOGETHER with Mjolnir into `groundY`!
+      if (plungeU >= 0.34 && !this._trueUltMidAirClanged) {
+        this._trueUltMidAirClanged = true;
+        game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
+        game?.renderer?.triggerHitStop?.(0.04);
+        this.fx?.spawn('moltenAnvilSparks', this._trueUltAnvilX, this.groundY - 215, {
+          flip: this.facing < 0,
+          palette: FORGE_GOLD_PALETTE,
+          light: 1.46
+        });
+      }
+
+      const foeDriveU = plungeU < 0.34 ? 0 : Math.min(1, (plungeU - 0.34) / 0.66);
+      const foeY = this.groundY - 210 * (1 - foeDriveU * foeDriveU);
       for (let fIdx = 0; fIdx < activeFoes.length; fIdx++) {
         const foe = activeFoes[fIdx];
         const staggerX = fIdx === 0 ? 0 : fIdx % 2 === 1 ? 102 : -102;
@@ -1899,11 +1872,11 @@ export class Titan extends Fighter {
         foe.hurtTimer = Math.max(foe.hurtTimer || 0, 0.24);
       }
 
-      this.trueUltFrameOverride = plungeU < 0.55 ? 120 + 25 : 120 + 26;
+      this.trueUltFrameOverride = plungeU < 0.28 ? 120 + 24 : plungeU < 0.65 ? 120 + 25 : 120 + 26;
       return;
     }
 
-    // Phase 5 (`t >= 3.20s`, `_trueUltStep < 4` — Cataclysmic Ground-Smash Impact + Stun!)
+    // Beat 5 (`t >= 2.36s`, `_trueUltStep < 4` — Cataclysmic Ground-Smash Impact + `1.85s` Stun!)
     if (this._trueUltStep < 4) {
       this._trueUltStep = 4;
       this._trueUltGeyserTimer = 1.05;
@@ -1917,7 +1890,7 @@ export class Titan extends Fighter {
       }
       game?.renderer?.shake?.(30, 0.80);
       game?.renderer?.triggerShake?.(30, 0.80);
-      game?.renderer?.flash?.(0.32, '#fff7ed');
+      game?.renderer?.flash?.(0.30, '#fff7ed');
       game?.renderer?.triggerAberration?.(16);
       game?.renderer?.triggerHitStop?.(0.09);
 
@@ -1944,13 +1917,14 @@ export class Titan extends Fighter {
 
       for (let i = 0; i < 7; i++) {
         const gx = 120 + i * 160;
+        const nearCenter = Math.abs(gx - this.x) < 140 || Math.abs(gx - this._trueUltAnvilX) < 110;
         this.spawnSheetBurst(7, gx, this.groundY - 145, {
           w: 240,
           h: 340,
           maxLife: 1.05,
           flipX: i % 2 === 1,
           glowColor: i % 2 === 0 ? 'gold' : 'emerald',
-          inFront: i % 2 === 0
+          inFront: !nearCenter && i % 2 === 0
         });
       }
 
@@ -1963,7 +1937,7 @@ export class Titan extends Fighter {
         '#f97316'
       );
 
-      // Release airborne root lock, slam every enemy into the crater for ONE 735-Crit blow, and STUN!
+      // Release airborne root lock, slam every enemy into the crater for ONE 735-Crit blow, and STUN (`1.85s`)!
       for (const foe of this._trueUltBoundFoes) {
         if (foe) foe.isRooted = false;
       }
@@ -1979,24 +1953,24 @@ export class Titan extends Fighter {
           foe.y = foe.groundY;
           foe.vx = 0;
           foe.vy = 0;
-          foe.stunTimer = Math.max(foe.stunTimer || 0, 1.65);
-          foe.hurtTimer = 0.34;
+          foe.stunTimer = Math.max(foe.stunTimer || 0, 1.85);
+          foe.hurtTimer = 0.36;
         }
       }
     }
 
-    // Phase 6 (`3.20s .. 4.45s` — Smoothly ease `giantScale` & `cameraAirLift` back to `1.0 / 0` and return to `IDLE`)
+    // Recovery (`2.36s .. 3.80s` — Smoothly ease `giantScale` `2.15 -> 1.0` & `cameraAirLift -> 0` and return to `IDLE`)
     this.y = this.groundY;
     this.isFlipVault = false;
-    const postU = Math.max(0, Math.min(1, (t - 3.20) / Math.max(0.01, dur - 3.20)));
+    const postU = Math.max(0, Math.min(1, (t - 2.36) / Math.max(0.01, dur - 2.36)));
     const easeBack = postU * postU * (3 - 2 * postU);
-    this.giantScale = 2.38 - 1.38 * easeBack;
-    this.cameraAirLift = Math.round(240 * Math.max(0, 1 - postU * 2.2));
+    this.giantScale = 2.15 - 1.15 * easeBack;
+    this.cameraAirLift = Math.round(250 * Math.max(0, 1 - postU * 2.1));
 
-    if (t < 3.80) {
+    if (t < 2.95) {
       this.trueUltFrameOverride = 120 + 27;
     } else {
-      const recU = Math.max(0, Math.min(0.999, (t - 3.80) / Math.max(0.01, dur - 3.80)));
+      const recU = Math.max(0, Math.min(0.999, (t - 2.95) / Math.max(0.01, dur - 2.95)));
       this.trueUltFrameOverride = 120 + 28 + Math.min(1, Math.floor(recU * 2));
     }
 
@@ -2085,23 +2059,23 @@ export class Titan extends Fighter {
   drawBehind(ctx, renderer = null) {
     if (this.state !== 'TRUE_ULTIMATE') return;
     const t = this.stateTimer || 0;
-    const dur = this.trueUltDuration || 4.45;
+    const dur = this.trueUltDuration || 3.80;
     const ww = renderer?.worldWidth || 1200;
 
     // Localized volcanic crucible twilight dim (NEVER overrides stage background image!)
     if (ctx?.fillRect) {
       const envAlpha =
-        t < 0.35 ? t / 0.35 : t > dur - 0.55 ? Math.max(0, (dur - t) / 0.55) : 1.0;
+        t < 0.30 ? t / 0.30 : t > dur - 0.55 ? Math.max(0, (dur - t) / 0.55) : 1.0;
       ctx.save();
       ctx.fillStyle = `rgba(18, 8, 4, ${(0.44 * envAlpha).toFixed(3)})`;
       ctx.fillRect(0, -480, ww, this.groundY + 620);
       ctx.fillStyle = `rgba(245, 158, 11, ${(0.14 * envAlpha).toFixed(3)})`;
       ctx.fillRect(0, this.groundY - 12, ww, 16);
 
-      // Vertical Heaven's Anvil Meteor Drop Pillar Sightline while Giant Torgar hovers at the top!
-      if (t >= 1.65 && t < 3.20) {
+      // Vertical Heaven's Anvil Meteor Drop Pillar Sightline while Giant Torgar hovers at the top (`1.28s .. 2.36s`)!
+      if (t >= 1.28 && t < 2.36) {
         const ax = Math.round(this._trueUltAnvilX || 600);
-        const topY = Math.round(this.y - 260);
+        const topY = Math.round(this.y - 210);
         const beamH = Math.max(24, Math.round(this.groundY - topY));
         ctx.fillStyle = 'rgba(16, 185, 129, 0.14)';
         ctx.fillRect(ax - 22, topY, 44, beamH);
@@ -2113,7 +2087,7 @@ export class Titan extends Fighter {
       ctx.restore();
     }
 
-    if (t >= 3.20) return;
+    if (t >= 2.36) return;
 
     const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.titan : null;
     const vfxSheet = sprites?.vfx;
@@ -2157,18 +2131,18 @@ export class Titan extends Fighter {
         'gold'
       );
 
-      // Sovereign `Row 3` 8-Cog Sky-Mandala Halo behind Giant Torgar after he teleports to the top!
-      if (t >= 1.65) {
+      // Sovereign `Row 3` 8-Cog Sky-Mandala Halo behind Giant Torgar after he teleports to the top (`t >= 1.28s`)!
+      if (t >= 1.28) {
         this.drawBloomedVfxCell(
           ctx,
           vfxSheet,
           3,
           col,
           this.x,
-          this.y - 165,
+          this.y - 185,
           312,
           312,
-          0.90,
+          0.88,
           this.facing < 0,
           renderer,
           'emerald'
@@ -2183,8 +2157,8 @@ export class Titan extends Fighter {
     // Molten Runic Forge-Chains anchoring active enemies (to ground Crucible early, or to Giant Sky-Torgar above!)
     const foes = this.game ? this.getActiveEnemies(null, this.game) : [];
     for (const foe of foes) {
-      if (t >= 1.65) {
-        this.drawPixelForgeChain(ctx, this.x, this.y - 90, foe.x, foe.y - 64, t);
+      if (t >= 1.28) {
+        this.drawPixelForgeChain(ctx, this.x, this.y - 140, foe.x, foe.y - 64, t);
       } else {
         this.drawPixelForgeChain(ctx, ax, this.groundY - 64, foe.x, foe.y - 68, t);
       }
@@ -2505,66 +2479,5 @@ export class Titan extends Fighter {
     }
 
     ctx.restore();
-
-    if (!isReflection && this.state === 'TRUE_ULTIMATE') {
-      const t = this.stateTimer || 0;
-      if (t >= 1.65 && t < 3.20) {
-        const col = Math.floor(t * 30) % 30;
-        const lx = Math.round(this.x + this.facing * 26);
-        const ly = Math.round(t < 2.82 ? this.y - 210 : this.y - 120);
-        if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-          this.drawBloomedVfxCell(
-            ctx,
-            vfxSheet,
-            6,
-            col,
-            lx,
-            ly,
-            320,
-            320,
-            0.94,
-            this.facing < 0,
-            renderer,
-            'emerald'
-          );
-        } else if (vfxSheet && ctx?.drawImage) {
-          ctx.save();
-          ctx.drawImage(vfxSheet, col * 208, 6 * 208, 208, 208, lx - 160, ly - 160, 320, 320);
-          ctx.restore();
-        }
-      }
-    }
-
-    // Erupt 7 full-stage `titan_vfx.png` Row 7 (Continental Sunder Volcanic Rune Geysers, 240x340) across the 1200px arena
-    if (!isReflection && this._trueUltGeyserTimer > 0) {
-      const u = Math.max(0, Math.min(1, 1 - this._trueUltGeyserTimer / 1.05));
-      const baseCol = Math.min(29, Math.floor(u * 30));
-      const fade = this._trueUltGeyserTimer < 0.22 ? this._trueUltGeyserTimer / 0.22 : 1.0;
-      for (let i = 0; i < 7; i++) {
-        const gx = 120 + i * 160;
-        const gy = this.groundY - 145;
-        const col = (baseCol + i * 2) % 30;
-        if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-          this.drawBloomedVfxCell(
-            ctx,
-            vfxSheet,
-            7,
-            col,
-            gx,
-            gy,
-            240,
-            340,
-            fade * 0.96,
-            i % 2 === 1,
-            renderer,
-            i % 2 === 0 ? 'gold' : 'emerald'
-          );
-        } else if (vfxSheet && ctx?.drawImage) {
-          ctx.save();
-          ctx.drawImage(vfxSheet, col * 208, 7 * 208, 208, 208, gx - 120, gy - 170, 240, 340);
-          ctx.restore();
-        }
-      }
-    }
   }
 }

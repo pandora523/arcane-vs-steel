@@ -25,7 +25,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps75';
+} from '../ArcaneShaderFX.js?v=30fps76';
 
 // Volcanic Basalt-Obsidian + Molten Magma Crimson-Orange -> Forge Gold
 export const FORGE_GOLD_PALETTE = [
@@ -352,8 +352,9 @@ const GOD_MAUL_JADE_RAMP = buildColorRamp(FORGE_JADE_PALETTE, 8);
  * Renders the Colossal Khazad God-Maul in rotated `(da, dp)` local coordinates
  * swinging along a dynamic diagonal arc (`angle` sweeping from `-66°` windup down to `+11°` impact),
  * with a roaring multi-layer crescent swing trail (`drawMultiLayerCrescentArc`),
- * keeping the haft (`dp` in `[-20*scale, -8*scale]`) and horned-ram pommel cap (`dp` in `[-24*scale, -20*scale]`)
- * 100% inside the bounding box so it NEVER cuts off flat at the top!
+ * keeping the haft (`da` in `[-13*scale, +6.5*scale]`) at the inner grip and the symmetric
+ * Double-Faced Mjolnir Anvil Head (`da` in `[+6.5*scale, +22.5*scale]`, `dp` in `[-16.5*scale, +16.5*scale]`)
+ * at the outer swing radius — 100% upright and inside the bounding box!
  */
 function drawColossalDwarvenWarhammer(
   pen,
@@ -364,23 +365,25 @@ function drawColossalDwarvenWarhammer(
   seed = 17,
   swingAngle = null,
   alpha = 1.0,
-  flashHot = false
+  flashHot = false,
+  swingDir = 1
 ) {
   if (alpha <= 0.02 || scale <= 0.15) return;
 
   const angle = swingAngle !== null ? swingAngle : -1.15 + Math.min(1, p * 1.45) * 1.35;
   const cosA = Math.cos(angle);
   const sinA = Math.sin(angle);
+  const dir = swingDir < 0 ? -1 : 1;
 
-  // Roaring Multi-Layer Crescent Swing Trail behind the swinging God-Maul head
+  // Roaring Multi-Layer Crescent Swing Trail aligned directly with the outer Mjolnir head (`da ~ 14.5`)
   drawMultiLayerCrescentArc(pen, {
     cx,
     cy,
-    radius: 17.5 * scale,
-    width: 7.2 * scale,
+    radius: 15.5 * scale,
+    width: 7.0 * scale,
     eccentricity: 0.84,
-    headAngle: angle + 0.22,
-    tailAngle: angle - 1.18,
+    headAngle: angle + 0.22 * dir,
+    tailAngle: angle - 1.18 * dir,
     fade: alpha * 0.94,
     ramp: GOD_MAUL_MAGMA_RAMP,
     seed,
@@ -390,11 +393,11 @@ function drawColossalDwarvenWarhammer(
   drawMultiLayerCrescentArc(pen, {
     cx,
     cy,
-    radius: 13.5 * scale,
-    width: 5.0 * scale,
+    radius: 12.2 * scale,
+    width: 4.8 * scale,
     eccentricity: 0.84,
-    headAngle: angle + 0.12,
-    tailAngle: angle - 0.92,
+    headAngle: angle + 0.12 * dir,
+    tailAngle: angle - 0.92 * dir,
     fade: alpha * 0.88,
     ramp: GOD_MAUL_JADE_RAMP,
     seed: seed + 19,
@@ -407,98 +410,107 @@ function drawColossalDwarvenWarhammer(
   pen.shadeBox(cx - bound, cy - bound, cx + bound, cy + bound, (lx, ly, out) => {
     const dx = lx - cx;
     const dy = ly - cy;
+    // `da` runs from grip/pommel (`-da`) outward along the shaft (`cosA, sinA`) to the Mjolnir head (`+da`)!
+    // `dp` runs perpendicular (`-sinA, cosA`) across the twin symmetric striking faces!
     const da = (dx * cosA + dy * sinA) / scale;
     const dp = (-dx * sinA + dy * cosA) / scale;
-    const ada = Math.abs(da);
+    const adp = Math.abs(dp);
     out.alpha = alpha;
 
-    // 1. Ornate Horned-Ram Pommel Cap (`dp` in `[-24, -20]`) & Runic Haft (`dp` in `[-20, -8]`)
-    // Kept 100% inside the rotated bounding box so the handle is NEVER cut off!
-    if (dp >= -24.0 && dp < -8.0) {
-      if (dp < -20.0) {
-        // Ornate Horned-Ram Pommel Crown (`dp` in `[-24, -20]`)
-        const uPom = (dp + 24.0) / 4.0;
-        const pommelW = 2.8 + Math.sin(uPom * Math.PI) * 2.4;
-        const crownCurve = -24.0 + (ada / 5.2) ** 2 * 1.4;
-        if (ada > pommelW || dp < crownCurve) return 0;
-        if (ada >= pommelW - 0.95 || dp <= crownCurve + 0.95) {
+    // 1. Inner Pommel Cap (`da` in `[-13.5, -9.5]`) & Reinforced Runic Haft (`da` in `[-9.5, +6.5]`)
+    if (da >= -13.5 && da < 6.5) {
+      if (da < -9.5) {
+        const uPom = (da + 13.5) / 4.0;
+        const pommelW = 2.6 + Math.sin(uPom * Math.PI) * 2.1;
+        const crownCurve = -13.5 + (adp / 4.8) ** 2 * 1.2;
+        if (adp > pommelW || da < crownCurve) return 0;
+        if (adp >= pommelW - 0.95 || da <= crownCurve + 0.95) {
           return COL_OBSIDIAN;
         }
-        if (ada + Math.abs(dp + 22.0) <= 2.1) {
+        if (adp + Math.abs(da + 11.5) <= 2.0) {
           out.glowColor = COL_JADE_MID;
           out.glowStrength = 0.42 * alpha;
-          return ada < 0.8 ? PURE_WHITE : COL_JADE_PALE;
+          return adp < 0.8 ? PURE_WHITE : COL_JADE_PALE;
         }
-        return dp < -22.0 ? COL_FORGE_GOLD : COL_MAGMA_MID;
+        return da < -11.5 ? COL_FORGE_GOLD : COL_MAGMA_MID;
       }
 
-      // Reinforced Dwarven Runic Haft (`dp` in `[-20, -8]`) with flared socket collar (`dp > -11`)
-      const collarFlare = dp > -11.0 ? ((dp + 11.0) / 3.0) * 1.6 : 0;
-      const haftW = 2.7 + collarFlare;
-      if (ada > haftW) return 0;
-      if (ada >= haftW - 0.95) {
+      const collarFlare = da > 3.5 ? ((da - 3.5) / 3.0) * 1.6 : 0;
+      const haftW = 2.6 + collarFlare;
+      if (adp > haftW) return 0;
+      if (adp >= haftW - 0.95) {
         return COL_OBSIDIAN;
       }
-      const isGripRing = Math.abs(Math.sin(dp * 0.95)) > 0.72 || dp > -9.8;
+      const isGripRing = Math.abs(Math.sin(da * 0.95)) > 0.72 || da > 4.6;
       if (isGripRing) {
         out.glowColor = COL_MAGMA_MID;
         out.glowStrength = 0.24 * alpha;
-        return ada < 0.9 ? PURE_WHITE : COL_FORGE_GOLD;
+        return adp < 0.9 ? PURE_WHITE : COL_FORGE_GOLD;
       }
-      return ada < 0.85 ? COL_MAGMA_BRIGHT : COL_BASALT;
+      return adp < 0.85 ? COL_MAGMA_BRIGHT : COL_BASALT;
     }
 
-    // 2. Rotated Double-Faced Beveled Volcanic Anvil Head (`da` in `[-18, +18]`, `dp` in `[-8, +10]`)
-    if (dp < -8.0 || dp > 10.0 || ada > 18.0) return 0;
+    // 2. Top Crown Finial Spike (`da` in `[22.2, 24.8]`, `adp <= 3.8`)
+    if (da > 22.2 && da <= 24.8) {
+      const finW = 3.8 * (1 - (da - 22.2) / 2.6);
+      if (adp > finW) return 0;
+      if (adp >= finW - 0.9 || da >= 24.0) return COL_OBSIDIAN;
+      return adp < 0.9 ? PURE_WHITE : COL_FORGE_GOLD;
+    }
 
-    // Pinched anvil waist at `ada in [3.5, 9.5]`, flaring to huge beveled striking faces at `ada in [9.5, 18.0]`
-    const faceFlare = ada > 9.0 ? ((ada - 9.0) / 9.0) * 1.6 : ada < 3.8 ? (1 - ada / 3.8) * 1.1 : 0;
-    const minDp = -6.6 - faceFlare;
-    const maxDp = 8.4 + faceFlare;
-    const chamfer = Math.max(0, ada - 15.2) + Math.max(0, dp < 0 ? -dp - (Math.abs(minDp) - 2.4) : dp - (maxDp - 2.4));
-    if (dp < minDp || dp > maxDp || chamfer > 2.6) return 0;
+    // 3. Symmetric Double-Faced Volcanic Mjolnir Head (`da` in `[6.5, 22.5]`, `dp` in `[-16.5, +16.5]`)
+    if (da < 6.5 || da > 22.5 || adp > 16.5) return 0;
 
-    const distEdge = Math.min(18.0 - ada, dp - minDp, maxDp - dp, 2.6 - chamfer);
-    // 1px Dark Basalt-Obsidian Selective Outline
+    // Pinched anvil waist at `adp in [3.5, 8.5]`, flaring symmetrically to huge beveled faces at `adp in [8.5, 16.5]`
+    const faceFlare = adp > 8.2 ? ((adp - 8.2) / 8.3) * 1.6 : adp < 3.6 ? (1 - adp / 3.6) * 1.0 : 0;
+    const minDa = 7.9 - faceFlare;
+    const maxDa = 21.1 + faceFlare;
+    const daMid = 14.5;
+    const chamfer =
+      Math.max(0, adp - 13.8) +
+      Math.max(0, da < daMid ? minDa + 2.2 - da : da - (maxDa - 2.2));
+    if (da < minDa || da > maxDa || chamfer > 2.5) return 0;
+
+    const distEdge = Math.min(16.5 - adp, da - minDa, maxDa - da, 2.5 - chamfer);
     if (distEdge < 1.05 / Math.max(0.65, scale)) {
       return COL_OBSIDIAN;
     }
 
-    // Corner Pyramid Studs on the flared striking cheeks
-    const studDa = Math.abs(ada - 14.2);
-    const studDp = Math.min(Math.abs(dp + 4.4), Math.abs(dp - 5.6));
-    if (studDa <= 1.6 && studDp <= 1.6) {
+    // Symmetric Corner Pyramid Studs on BOTH flared striking cheeks
+    const studDp = Math.abs(adp - 12.8);
+    const studDa = Math.min(Math.abs(da - 10.2), Math.abs(da - 18.8));
+    if (studDp <= 1.5 && studDa <= 1.5) {
       out.glowColor = COL_FORGE_GOLD;
       out.glowStrength = 0.34 * alpha;
-      return studDa + studDp < 1.2 ? PURE_WHITE : COL_FORGE_GOLD;
+      return studDp + studDa < 1.2 ? PURE_WHITE : COL_FORGE_GOLD;
     }
 
-    // Blazing Khazad Emerald-Jade & Molten-Gold Runes on Anvil Cheeks & Central Boss
-    const centerRune = ada * 0.78 + Math.abs(dp - 0.8) * 0.95;
-    const cheekRune = Math.abs(ada - 10.2) * 0.95 + Math.abs(dp - 0.8) * 1.05;
-    if (centerRune <= 5.4 || cheekRune <= 4.0) {
+    // Blazing Khazad Emerald-Jade & Molten-Gold Runes on Central Boss & Both Cheeks
+    const centerRune = adp * 0.78 + Math.abs(da - daMid) * 0.92;
+    const cheekRune = Math.abs(adp - 9.6) * 0.95 + Math.abs(da - daMid) * 1.02;
+    if (centerRune <= 5.2 || cheekRune <= 3.8) {
       out.glowColor = COL_JADE_MID;
       out.glowStrength = 0.48 * alpha;
       if (centerRune <= 1.8 || cheekRune <= 1.4) return PURE_WHITE;
-      if (centerRune <= 3.5 || cheekRune <= 2.6) return COL_JADE_PALE;
+      if (centerRune <= 3.4 || cheekRune <= 2.5) return COL_JADE_PALE;
       return COL_JADE_MID;
     }
 
-    // White-Hot / Molten-Gold Bottom & Left/Right Striking Faces
-    if (dp >= maxDp - 2.6 || ada >= 15.6) {
+    // White-Hot / Molten-Gold Twin Striking Faces (`adp >= 14.2`) & Crown Edge
+    if (adp >= 14.2 || da >= maxDa - 2.2) {
       out.glowColor = COL_MAGMA_BRIGHT;
       out.glowStrength = 0.44 * alpha;
-      if (flashHot || dp >= maxDp - 1.4) return PURE_WHITE;
-      return ada >= 16.4 ? COL_FORGE_GOLD : COL_MAGMA_BRIGHT;
+      if (flashHot || (dp * dir > 0 && adp >= 15.0)) return PURE_WHITE;
+      return adp >= 15.0 ? COL_FORGE_GOLD : COL_MAGMA_BRIGHT;
     }
 
     // Golden Khazad Fretwork & Bevel Framing
-    if (distEdge < 2.2 || Math.abs(ada - 6.0) < 0.95 || Math.abs(dp - 0.8) < 0.85) {
-      return dp < 0.8 ? COL_FORGE_GOLD : COL_MAGMA_MID;
+    if (distEdge < 2.1 || Math.abs(adp - 5.6) < 0.9 || Math.abs(da - daMid) < 0.85) {
+      return da > daMid ? COL_FORGE_GOLD : COL_MAGMA_MID;
     }
 
     // Heavy Volcanic Basalt-Obsidian Armor Plate
-    return dp < 0.8 ? COL_MAGMA_DEEP : COL_BASALT;
+    return dp * dir < 0 ? COL_MAGMA_DEEP : COL_BASALT;
   });
 }
 
@@ -710,17 +722,23 @@ export const worldBreakerAnvilCleave = {
 
         const baseR = cfg.radius || 32;
         const baseW = cfg.width || 12.5;
+        const isHorizBat = Boolean(cfg.horizontalBat);
         const flipSign = cfg.flipAngle || cfg.reverse ? -1 : 1;
-        const headAng = flipSign * (-0.98 + 2.22 * smoothStep(0, 0.52, u));
-        const tailAng = flipSign * (-1.72 + 0.52 * u);
+        const ecc = isHorizBat ? 0.30 : 0.8;
+        const headAng = isHorizBat
+          ? -1.45 + 2.02 * smoothStep(0, 0.48, u)
+          : flipSign * (-0.98 + 2.22 * smoothStep(0, 0.52, u));
+        const tailAng = isHorizBat
+          ? -2.55 + 0.65 * u
+          : flipSign * (-1.72 + 0.52 * u);
 
         // Layer A: Volcanic Basalt-Obsidian & Molten Magma Crimson-Orange Primary Cleave
         drawMultiLayerCrescentArc(pen, {
-          cx: -2,
+          cx: isHorizBat ? -6 : -2,
           cy: 0,
           radius: baseR,
           width: baseW,
-          eccentricity: 0.8,
+          eccentricity: ecc,
           headAngle: headAng,
           tailAngle: tailAng,
           fade,
@@ -732,11 +750,11 @@ export const worldBreakerAnvilCleave = {
 
         // Layer B: Interleaved Luminous World-Forge Emerald-Jade Runic Shear Wake
         drawMultiLayerCrescentArc(pen, {
-          cx: -3,
+          cx: isHorizBat ? -7 : -3,
           cy: 1,
           radius: baseR * 0.8,
           width: baseW * (cfg.isFinisher ? 0.78 : 0.62),
-          eccentricity: 0.8,
+          eccentricity: ecc,
           headAngle: headAng - 0.08 * flipSign,
           tailAngle: tailAng + 0.16 * flipSign,
           fade: fade * 0.94,
@@ -747,22 +765,22 @@ export const worldBreakerAnvilCleave = {
         });
 
         // Leading Warhammer Tip & Jagged Basalt Impact Shock-Cone
-        const tipX = -2 + Math.cos(headAng) * baseR;
-        const tipY = Math.sin(headAng) * baseR * 0.8;
+        const tipX = (isHorizBat ? -6 : -2) + Math.cos(headAng) * baseR;
+        const tipY = Math.sin(headAng) * baseR * ecc;
 
         // Jagged Basalt & Jade Impact Shock-Cone spikes radiating ahead of hammer head
         const coneSpikes = cfg.isFinisher ? 5 : 3;
         for (let i = 0; i < coneSpikes; i++) {
-          const sAng = headAng + (i - (coneSpikes - 1) * 0.5) * 0.26;
+          const sAng = (isHorizBat ? 0 : headAng) + (i - (coneSpikes - 1) * 0.5) * (isHorizBat ? 0.18 : 0.26);
           const sLen = (cfg.isFinisher ? 16 : 12) * fade;
           const x1 = tipX + Math.cos(sAng) * sLen;
-          const y1 = tipY + Math.sin(sAng) * sLen;
+          const y1 = tipY + Math.sin(sAng) * sLen * (isHorizBat ? 0.45 : 1.0);
           pen.line(tipX, tipY, x1, y1, COL_OBSIDIAN, fade * 0.95);
           pen.line(
             tipX,
             tipY,
             tipX + Math.cos(sAng) * sLen * 0.82,
-            tipY + Math.sin(sAng) * sLen * 0.82,
+            tipY + Math.sin(sAng) * sLen * 0.82 * (isHorizBat ? 0.45 : 1.0),
             i % 2 === 0 ? COL_JADE_BRIGHT : COL_FORGE_GOLD,
             fade
           );
@@ -773,7 +791,7 @@ export const worldBreakerAnvilCleave = {
           const rv = rivets[i];
           const dist = 10 + rv.spd * u;
           const rx = Math.cos(rv.ang * flipSign) * dist;
-          const ry = Math.sin(rv.ang * flipSign) * dist * 0.78 + u * u * 14;
+          const ry = Math.sin(rv.ang * flipSign) * dist * (isHorizBat ? 0.28 : 0.78) + u * u * (isHorizBat ? 5 : 14);
           drawHexForgeRivet(pen, rx, ry, rv.r * fade, rv.isJade, fade * 0.96);
         }
 
@@ -1379,7 +1397,7 @@ export const ragnarokWorldForgeWave = {
         drawPixelHornedAnvil(pen, 0, -9, 1.48 * pop, 0, fade * 0.99, u >= 0.14 && u <= 0.42);
 
         // 2. Right Pincer Colossal Diagonal-Swinging Khazad God-Maul crashing onto the World-Anvil
-        const rightSwingAngle = 1.18 - smoothStep(0.04, 0.46, u) * 0.96;
+        const rightSwingAngle = -1.88 - smoothStep(0.04, 0.46, u) * 1.14;
         const hammerDrop = smoothStep(0, 0.24, u);
         const hammerY = -28 + 10 * hammerDrop;
         drawColossalDwarvenWarhammer(
@@ -1391,7 +1409,8 @@ export const ragnarokWorldForgeWave = {
           cfg.seed || 181,
           rightSwingAngle,
           fade * 0.99,
-          u >= 0.16 && u <= 0.42
+          u >= 0.16 && u <= 0.42,
+          -1
         );
 
         // 3. Orbiting Forged Khazad Diamond Runes around the World-Anvil

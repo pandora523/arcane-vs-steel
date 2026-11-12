@@ -18,7 +18,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps75';
+} from '../ArcaneShaderFX.js?v=30fps76';
 
 export const GLACIAL_CRYO_PALETTE = [
   '#061224',

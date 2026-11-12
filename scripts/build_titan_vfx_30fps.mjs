@@ -19,19 +19,18 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps75';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps76';
 
 import {
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE,
   FORGE_EFFECT_REGISTRY
-} from '../src/engine/shaders/forgeShaders.js?v=30fps75';
+} from '../src/engine/shaders/forgeShaders.js?v=30fps76';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const ARTIFACT_DIRS = [
-  '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088',
-  '/home/antigravity/.gemini/jetski/brain/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088'
+  '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/b9d8130e-8764-4ace-8d4e-40f97049d6f1'
 ];
 const LOCAL_SCRATCH_DIR =
   '/home/antigravity/.gemini/jetski/brain/a815757550227923da36a43fb00c80f0/scratch';

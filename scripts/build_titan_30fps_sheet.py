@@ -408,12 +408,13 @@ def draw_2h_worldbreaker_maul_104(
     arr, hx, hy, maul_deg, shaft_len=17.5, glow=1.0, phase=0.0, show_gauntlets=True
 ):
     """
-    Draws Torgar's COLOSSAL TWO-HANDED WORLD-BREAKER GOD-MAUL:
+    Draws Torgar's COLOSSAL TWO-HANDED WORLD-BREAKER MJOLNIR:
     - Solid 3D Burnished Bronze, Forge-Gold, & Molten Core Runic Haft
     - Flared Dwarven Anvil Pommel with glowing Jade/Gold core (`da = -11.8..-9.2`)
-    - GARGANTUAN Double-Faced Beveled Volcanic Anvil Hammerhead (`36x54px` in `208x208`):
-      * Flared Crushing Anvil Ram Face (`dp > 0`) + Curved Volcanic Siege Horn (`dp < 0`)
-      * Luminous Emerald-Jade & White-Hot Octagonal World-Forge Heart + Gold Bevels
+    - SYMMETRIC Double-Faced Beveled Volcanic Mjolnir Hammerhead (`36x52px` in `208x208`):
+      * Pinched Dwarven anvil waist (`|dp| in [3.6, 5.8]`) flaring to twin massive beveled
+        striking blocks (`|dp| in [5.8, 12.4]`) — 100% upright & unmistakable at ANY angle!
+      * Luminous Emerald-Jade & White-Hot Octagonal World-Forge Heart + Twin Cheek Runes
     - Two Armored Bronze-and-Obsidian Gauntlet Knuckle Clasps locking BOTH hands onto the haft!
     """
     rad = math.radians(maul_deg)
@@ -447,54 +448,48 @@ def draw_2h_worldbreaker_maul_104(
                 col = C_GOLD if is_ring else C_BRONZE
             put_px(arr, px, py, col)
 
-    # 2. GARGANTUAN Double-Faced Beveled Volcanic Anvil Hammerhead
+    # 2. SYMMETRIC Double-Faced Beveled Volcanic Mjolnir Hammerhead
     tx, ty = hx + ux * shaft_len, hy + uy * shaft_len
-    for da in np.linspace(-8.5, 9.5, 37):
-        for dp in np.linspace(-13.5, 13.5, 55):
-            if abs(dp) <= 3.6:
+    for da in np.linspace(-8.2, 9.2, 37):
+        for dp in np.linspace(-12.6, 12.6, 53):
+            adp = abs(dp)
+            if adp <= 3.6:
                 max_da_neg, max_da_pos = -5.8, 6.8
-            elif dp > 3.6:
-                if dp < 6.2:
-                    max_da_neg, max_da_pos = -4.6, 5.4
-                else:
-                    flare = min(1.0, (dp - 6.2) / 3.2)
-                    max_da_neg = -4.6 - 3.9 * flare
-                    max_da_pos = 5.4 + 4.1 * flare
-                if dp > 12.2 and (abs(da - 0.5) > 6.8):
-                    continue
+            elif adp <= 5.8:
+                max_da_neg, max_da_pos = -4.6, 5.5
             else:
-                if dp > -5.8:
-                    max_da_neg, max_da_pos = -4.6, 5.4
-                else:
-                    u_pick = min(1.0, (abs(dp) - 5.8) / 7.7)
-                    hook = -2.2 * (u_pick ** 1.25)
-                    half_h = 5.8 * (1.0 - 0.65 * (u_pick ** 1.08))
-                    max_da_neg = hook - half_h
-                    max_da_pos = hook + half_h
+                flare = min(1.0, (adp - 5.8) / 3.0)
+                max_da_neg = -4.6 - 3.2 * flare
+                max_da_pos = 5.5 + 3.4 * flare
+                if adp > 10.8:
+                    chamfer_lim = 7.8 - (adp - 10.8) * 1.65
+                    if abs(da - 0.45) > chamfer_lim:
+                        continue
 
             if da < max_da_neg or da > max_da_pos:
                 continue
 
             on_outer_edge = (
-                (abs(dp) > 12.4)
+                (adp > 11.7)
                 or (da < max_da_neg + 0.9)
                 or (da > max_da_pos - 0.9)
             )
             on_gold_trim = (
-                (10.6 <= abs(dp) <= 12.4)
-                or (abs(abs(dp) - 6.2) < 0.75)
-                or (da < max_da_neg + 1.95)
-                or (da > max_da_pos - 1.95)
+                (10.0 <= adp <= 11.7)
+                or (abs(adp - 5.8) < 0.72)
+                or (da < max_da_neg + 1.9)
+                or (da > max_da_pos - 1.9)
             )
 
             px = tx + ux * da + nx * dp
             py = ty + uy * da + ny * dp
 
-            d_core = abs(da - 0.4) * 0.68 + abs(dp) * 0.50
-            d_cheek_rune = abs(da - 0.5) * 0.85 + abs(dp - 9.0) * 0.85
-            crack1 = abs((dp - 8.2) - (da - 0.5) * 0.78) < 0.85 and (4.8 <= dp <= 11.2)
-            crack2 = abs((dp + 7.8) + (da - 0.2) * 0.78) < 0.85 and (-10.8 <= dp <= -4.5)
+            d_core = abs(da - 0.45) * 0.68 + adp * 0.52
+            d_cheek_rune = abs(da - 0.45) * 0.85 + abs(adp - 8.4) * 0.85
+            crack = abs((adp - 7.8) - (da - 0.4) * 0.72) < 0.82 and (4.6 <= adp <= 10.6)
 
+            # Top-sky directional lighting based on world-space normal `ny` so top bevels gleam!
+            face_ny = dp * ny
             if on_outer_edge:
                 col = C_OUT
             elif d_core <= 1.75 and glow > 0.3:
@@ -505,20 +500,20 @@ def draw_2h_worldbreaker_maul_104(
                 col = C_GOLD_SPEC
             elif d_cheek_rune <= 1.95 and glow > 0.3:
                 col = C_JADE_SPEC if d_cheek_rune <= 1.1 else C_JADE_LIT
-            elif (crack1 or crack2) and glow > 0.35:
-                col = C_GOLD_SPEC if (abs(dp) < 8.8) else C_MAGMA_ORANGE
+            elif crack and glow > 0.35:
+                col = C_GOLD_SPEC if (adp < 8.4) else C_MAGMA_ORANGE
             elif on_gold_trim:
-                col = C_GOLD_SPEC if (dp > 10.0 or da > 4.2) else (C_GOLD if dp >= 0 else C_BRONZE)
+                col = C_GOLD_SPEC if (adp > 9.8 or face_ny < -1.5 or da > 4.0) else (C_GOLD if face_ny <= 2.5 else C_BRONZE)
             else:
-                if dp > 2.5:
-                    col = C_BASALT_MID if da > 0.0 else C_BASALT_BASE
-                elif dp < -2.5:
-                    col = C_BASALT_BASE if da > 0.0 else C_BASALT_DARK
-                else:
+                if face_ny < -2.0:
                     col = C_BASALT_MID
+                elif face_ny > 3.0:
+                    col = C_BASALT_DARK if da < 0.0 else C_BASALT_BASE
+                else:
+                    col = C_BASALT_MID if da > 0.2 else C_BASALT_BASE
             put_px(arr, px, py, col)
 
-    # Top Crown Finial integrated into the Anvil Head
+    # Top Crown Finial integrated into the Mjolnir Head
     for da_fin in np.linspace(6.6, 9.8, 8):
         hw_f = max(0.0, 2.8 * (1.0 - (da_fin - 6.6) / 3.4))
         for dp_f in np.linspace(-hw_f, hw_f, 6):
@@ -549,6 +544,33 @@ def draw_2h_worldbreaker_maul_104(
                     put_px(arr, px, py, col)
 
 
+def draw_horizontal_bat_arc_104(arr, cx, cy, rx=31.0, ry=7.8, a0_deg=155.0, a1_deg=6.0, intensity=1.2):
+    """
+    Draws a razor-sharp 2.5D Horizontal Baseball-Bat Swing Crescent across chest/shoulder
+    height for Torgar's WORLD-BREAKER HOME RUN (`Row 4 F06..F10`) — ZERO vertical chop circles!
+    """
+    steps = 76
+    for i in range(steps + 1):
+        u = i / float(steps)
+        ang = math.radians(a0_deg + (a1_deg - a0_deg) * u)
+        ca, sa = math.cos(ang), math.sin(ang)
+        thick = (1.5 + 3.5 * (u ** 1.25)) * min(1.35, intensity)
+        for dr in np.linspace(-thick * 0.85, thick * 0.75, 11):
+            px = cx + ca * (rx + dr)
+            py = cy + sa * (ry + dr * 0.42)
+            if abs(dr) >= thick * 0.68:
+                col = C_OUT
+            elif u > 0.65 and abs(dr) < 0.85:
+                col = C_CORE
+            elif abs(dr) < 1.25:
+                col = C_GOLD_SPEC if u > 0.28 else C_MAGMA_ORANGE
+            elif dr < 0:
+                col = C_JADE_SPEC if u > 0.55 else C_JADE_LIT
+            else:
+                col = C_MAGMA_ORANGE if u > 0.35 else C_BRONZE
+            put_px(arr, px, py, col)
+
+
 def draw_forge_aegis_arc_104(arr, cx, cy, phase=0.0):
     """
     Draws a curved Molten Gold & Emerald-Jade Forge-Aegis Bulwark Shield Arc ahead of
@@ -577,10 +599,10 @@ def extra_extents(joints_c, cfg, scale):
         nx, ny = -uy, ux
         wlen = cfg.get("weapon_len", 17.5)
         pts.append((h[0] - ux * (13.0 / scale), h[1] - uy * (13.0 / scale)))
-        head_cx = h[0] + ux * ((wlen + 10.2) / scale)
-        head_cy = h[1] + uy * ((wlen + 10.2) / scale)
-        pts.append((head_cx + nx * (14.5 / scale), head_cy + ny * (14.5 / scale)))
-        pts.append((head_cx - nx * (14.5 / scale), head_cy - ny * (14.5 / scale)))
+        head_cx = h[0] + ux * ((wlen + 9.6) / scale)
+        head_cy = h[1] + uy * ((wlen + 9.6) / scale)
+        pts.append((head_cx + nx * (13.5 / scale), head_cy + ny * (13.5 / scale)))
+        pts.append((head_cx - nx * (13.5 / scale), head_cy - ny * (13.5 / scale)))
     return pts
 
 
@@ -598,6 +620,20 @@ def draw_back(bg, joints104, cfg):
 
 def draw_front(out, joints104, cfg):
     ph = cfg.get("mane_wave_phase", 0.0)
+
+    if cfg.get("horiz_bat_arc") is not None:
+        hb = cfg["horiz_bat_arc"]
+        nk = joints104["neck"]
+        draw_horizontal_bat_arc_104(
+            out,
+            nk[0] + hb.get("dx", 4.0),
+            nk[1] + hb.get("dy", 6.0),
+            rx=hb.get("rx", 31.0),
+            ry=hb.get("ry", 7.8),
+            a0_deg=hb["a0"],
+            a1_deg=hb["a1"],
+            intensity=hb.get("intensity", 1.25),
+        )
 
     if cfg.get("slash_arc") is not None:
         sa = cfg["slash_arc"]
@@ -837,96 +873,118 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 4:
-            # Row 4: ULTIMATE (F00..F14: WORLD-BREAKER HOME RUN — 100% Upright Hammer!) &
-            #        TRUE_ULTIMATE (F15..F29: GOD-HAMMER MJOLNIR SKY-UPPERCUT -> TOP-TELEPORT HOIST -> METEOR SMASH!):
-            # - F00..F05: Batter's Box High-Shoulder Upright Windup (hammerhead high above back shoulder at -76 deg, flat anvil face +X!)
-            # - F06..F10: Blistering Level-to-Rising Home-Run Swing (grip_x=86, weapon_deg=-22 deg, 100% upright!)
-            # - F11..F14: Heroic Slugger Follow-Through & Return to Guard
-            # - F15..F19: TRUE_ULTIMATE Step 1 — Giant Colossus Rising Sky-Uppercut (launching enemy UP into sky!)
-            # - F20..F24: TRUE_ULTIMATE Step 2 — Teleported to Top of Sky — Floating Overhead Mjolnir Hoist (-76 deg upright!)
-            # - F25..F29: TRUE_ULTIMATE Step 3 — Plunging Meteor Ground-Smash & Sovereign Recovery!
+            # Row 4: ULTIMATE (F00..F14: WORLD-BREAKER HOME RUN — True Slugger Horizontal Bat Swing!) &
+            #        TRUE_ULTIMATE (F15..F29: GOD-HAMMER MJOLNIR SKY-UPPERCUT -> TOP-TELEPORT OVERHEAD HOIST -> METEOR SPIKE!):
+            # - F00..F05: Slugger Rear-Shoulder Baseball-Bat Coil (hands pulled back to rear shoulder, Mjolnir cocked at -132 deg!)
+            # - F06..F10: Blistering Chest-High Horizontal Home-Run Bat Swing (grip_x=+92, grip_y=-92, weapon_deg=-6 deg + flat 2.5D bat arc!)
+            # - F11..F14: Grand-Slam High-Shoulder Follow-Through & Return to Guard
+            # - F15..F19: TRUE_ULTIMATE Beat 1 & 2 — Deep Floor-Scoop Coil (F15..F16) -> Full-Extension Rising Sky-Uppercut (F17..F19)
+            # - F20..F23: TRUE_ULTIMATE Beat 3 — Airborne Coiled Knee-Tuck & 2H Overhead Crown Hoist (grip_y=-152, weapon_deg=-108 deg!)
+            # - F24..F29: TRUE_ULTIMATE Beat 4 — Violent Airborne Downward Meteor Spike (+34 deg!) -> Kneeling Crater Impact & Recovery!
             if f <= 14:
                 kfs = [
-                    (0, dict(pelvis_dx=0.0, pelvis_dy=10.0, torso_deg=3.0, head_rel_deg=-2.0,
+                    (0, dict(pelvis_dx=0.0, pelvis_dy=8.0, torso_deg=3.0, head_rel_deg=-2.0,
                              l_thigh_deg=-6.0, l_shin_deg=8.0, r_thigh_deg=6.0, r_shin_deg=-6.0,
-                             grip_x=50.0, grip_y=-18.0, weapon_deg=-40.0, grip_sep=37.0,
-                             foot_y=99.0, halo_grand=True)),
-                    (3, dict(pelvis_dx=-14.0, pelvis_dy=28.0, torso_deg=-12.0, head_rel_deg=8.0, mane_rel_deg=6.0,
-                             l_thigh_deg=-22.0, l_shin_deg=24.0, r_thigh_deg=22.0, r_shin_deg=-16.0,
-                             grip_x=28.0, grip_y=-66.0, weapon_deg=-76.0, grip_sep=34.0,
-                             foot_y=99.0, halo_grand=True)),
-                    (5, dict(pelvis_dx=-18.0, pelvis_dy=34.0, torso_deg=-14.0, head_rel_deg=10.0, mane_rel_deg=8.0,
-                             l_thigh_deg=-26.0, l_shin_deg=28.0, r_thigh_deg=24.0, r_shin_deg=-18.0,
-                             grip_x=26.0, grip_y=-70.0, weapon_deg=-78.0, grip_sep=34.0,
-                             foot_y=99.0, halo_grand=True)),
-                    (8, dict(pelvis_dx=22.0, pelvis_dy=36.0, torso_deg=18.0, head_rel_deg=-8.0, mane_rel_deg=-10.0,
-                             l_thigh_deg=24.0, l_shin_deg=20.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
-                             grip_x=86.0, grip_y=-26.0, weapon_deg=-22.0, grip_sep=38.0,
-                             foot_y=99.0, halo_grand=True)),
-                    (11, dict(pelvis_dx=24.0, pelvis_dy=30.0, torso_deg=14.0, head_rel_deg=-6.0, mane_rel_deg=-6.0,
+                             grip_x=48.0, grip_y=-24.0, weapon_deg=-42.0, grip_sep=36.0,
+                             right_arm_in_front=False, foot_y=99.0, halo_grand=True)),
+                    (3, dict(pelvis_dx=-16.0, pelvis_dy=22.0, torso_deg=-12.0, head_rel_deg=12.0, mane_rel_deg=8.0,
+                             l_thigh_deg=-22.0, l_shin_deg=24.0, r_thigh_deg=22.0, r_shin_deg=-14.0,
+                             grip_x=-34.0, grip_y=-104.0, weapon_deg=-112.0, grip_sep=32.0,
+                             right_arm_in_front=True, foot_y=99.0, halo_grand=True)),
+                    (5, dict(pelvis_dx=-20.0, pelvis_dy=26.0, torso_deg=-15.0, head_rel_deg=15.0, mane_rel_deg=10.0,
+                             l_thigh_deg=-26.0, l_shin_deg=28.0, r_thigh_deg=26.0, r_shin_deg=-16.0,
+                             grip_x=-42.0, grip_y=-108.0, weapon_deg=-116.0, grip_sep=32.0,
+                             right_arm_in_front=True, foot_y=99.0, halo_grand=True)),
+                    (6, dict(pelvis_dx=8.0, pelvis_dy=28.0, torso_deg=4.0, head_rel_deg=-2.0, mane_rel_deg=-2.0,
+                             l_thigh_deg=12.0, l_shin_deg=16.0, r_thigh_deg=-12.0, r_shin_deg=12.0,
+                             grip_x=44.0, grip_y=-88.0, weapon_deg=-34.0, grip_sep=35.0,
+                             right_arm_in_front=True, foot_y=99.0, halo_grand=True)),
+                    (8, dict(pelvis_dx=26.0, pelvis_dy=32.0, torso_deg=16.0, head_rel_deg=-10.0, mane_rel_deg=-10.0,
+                             l_thigh_deg=26.0, l_shin_deg=20.0, r_thigh_deg=-26.0, r_shin_deg=18.0,
+                             grip_x=90.0, grip_y=-86.0, weapon_deg=-4.0, grip_sep=37.0,
+                             right_arm_in_front=True, foot_y=99.0, halo_grand=True)),
+                    (11, dict(pelvis_dx=24.0, pelvis_dy=26.0, torso_deg=18.0, head_rel_deg=-10.0, mane_rel_deg=-8.0,
                               l_thigh_deg=24.0, l_shin_deg=18.0, r_thigh_deg=-22.0, r_shin_deg=16.0,
-                              grip_x=80.0, grip_y=-34.0, weapon_deg=-30.0, grip_sep=37.0,
-                              foot_y=99.0, halo_grand=True)),
+                              grip_x=82.0, grip_y=-100.0, weapon_deg=-22.0, grip_sep=36.0,
+                              right_arm_in_front=True, foot_y=99.0, halo_grand=True)),
                     (14, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5, mane_rel_deg=-1.0,
                               l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
                               grip_x=52.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=38.0,
-                              foot_y=99.0, halo_grand=False)),
+                              right_arm_in_front=False, foot_y=99.0, halo_grand=False)),
                 ]
                 cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.8)
-                if 6 <= f <= 11:
-                    u = (f - 6) / 5.0
-                    cfg["slash_arc"] = dict(
-                        dx=7.0, dy=9.0, r=28.5,
-                        a0=-64.0 + 36.0 * u, a1=22.0 + 18.0 * u,
-                        intensity=1.28,
+                if 6 <= f <= 10:
+                    u = (f - 6) / 4.0
+                    # Sweep across the FRONT (+Y, +90 deg) 2.5D horizontal batting plane right into Mjolnir's head!
+                    cfg["horiz_bat_arc"] = dict(
+                        dx=4.0, dy=13.0, rx=32.5, ry=9.2,
+                        a0=156.0 - 44.0 * u, a1=8.0 - 26.0 * u,
+                        intensity=1.32,
                     )
             elif f <= 19:
                 kfs = [
-                    (15, dict(pelvis_dx=-12.0, pelvis_dy=52.0, torso_deg=18.0, head_rel_deg=-8.0,
-                              l_thigh_deg=-26.0, l_shin_deg=28.0, r_thigh_deg=24.0, r_shin_deg=-18.0,
-                              grip_x=32.0, grip_y=4.0, weapon_deg=16.0, grip_sep=36.0,
-                              foot_y=99.0, halo_grand=True)),
-                    (18, dict(pelvis_dx=18.0, pelvis_dy=0.0, torso_deg=-16.0, head_rel_deg=12.0,
-                              l_thigh_deg=20.0, l_shin_deg=18.0, r_thigh_deg=-30.0, r_shin_deg=36.0,
-                              grip_x=72.0, grip_y=-94.0, weapon_deg=-68.0, grip_sep=34.0,
-                              foot_y=92.0, halo_grand=True)),
-                    (19, dict(pelvis_dx=14.0, pelvis_dy=4.0, torso_deg=-14.0, head_rel_deg=10.0,
-                              l_thigh_deg=18.0, l_shin_deg=16.0, r_thigh_deg=-24.0, r_shin_deg=28.0,
-                              grip_x=68.0, grip_y=-88.0, weapon_deg=-66.0, grip_sep=35.0,
-                              foot_y=93.0, halo_grand=True)),
+                    (15, dict(pelvis_dx=-14.0, pelvis_dy=54.0, torso_deg=20.0, head_rel_deg=-10.0, mane_rel_deg=-8.0,
+                              l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-20.0,
+                              grip_x=22.0, grip_y=14.0, weapon_deg=28.0, grip_sep=35.0,
+                              right_arm_in_front=True, foot_y=99.0, halo_grand=True)),
+                    (16, dict(pelvis_dx=-16.0, pelvis_dy=56.0, torso_deg=22.0, head_rel_deg=-10.0, mane_rel_deg=-8.0,
+                              l_thigh_deg=-30.0, l_shin_deg=32.0, r_thigh_deg=28.0, r_shin_deg=-22.0,
+                              grip_x=18.0, grip_y=18.0, weapon_deg=32.0, grip_sep=35.0,
+                              right_arm_in_front=True, foot_y=99.0, halo_grand=True)),
+                    (17, dict(pelvis_dx=8.0, pelvis_dy=22.0, torso_deg=-2.0, head_rel_deg=4.0, mane_rel_deg=2.0,
+                              l_thigh_deg=8.0, l_shin_deg=14.0, r_thigh_deg=-14.0, r_shin_deg=20.0,
+                              grip_x=68.0, grip_y=-48.0, weapon_deg=-20.0, grip_sep=36.0,
+                              right_arm_in_front=True, foot_y=97.0, halo_grand=True)),
+                    (18, dict(pelvis_dx=20.0, pelvis_dy=-4.0, torso_deg=-18.0, head_rel_deg=14.0, mane_rel_deg=10.0,
+                              l_thigh_deg=22.0, l_shin_deg=18.0, r_thigh_deg=-32.0, r_shin_deg=38.0,
+                              grip_x=74.0, grip_y=-110.0, weapon_deg=-68.0, grip_sep=34.0,
+                              right_arm_in_front=True, foot_y=93.0, halo_grand=True)),
+                    (19, dict(pelvis_dx=16.0, pelvis_dy=0.0, torso_deg=-15.0, head_rel_deg=12.0, mane_rel_deg=8.0,
+                              l_thigh_deg=18.0, l_shin_deg=16.0, r_thigh_deg=-26.0, r_shin_deg=30.0,
+                              grip_x=70.0, grip_y=-104.0, weapon_deg=-66.0, grip_sep=35.0,
+                              right_arm_in_front=True, foot_y=94.0, halo_grand=True)),
                 ]
                 cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
-                if 16 <= f <= 19:
-                    u = (f - 16) / 3.0
+                if 17 <= f <= 19:
+                    u = (f - 17) / 2.0
                     cfg["slash_arc"] = dict(
                         dx=7.0, dy=6.0, r=28.5,
-                        a0=36.0 - 52.0 * u, a1=-28.0 - 50.0 * u,
+                        a0=40.0 - 50.0 * u, a1=-24.0 - 52.0 * u,
                         intensity=1.28,
                     )
             else:
                 kfs = [
-                    (20, dict(pelvis_dx=2.0, pelvis_dy=8.0, torso_deg=-14.0, head_rel_deg=-6.0,
-                              l_thigh_deg=22.0, l_shin_deg=34.0, r_thigh_deg=-16.0, r_shin_deg=26.0,
-                              grip_x=42.0, grip_y=-104.0, weapon_deg=-76.0, grip_sep=33.0,
-                              foot_y=91.0, halo_grand=True)),
-                    (23, dict(pelvis_dx=4.0, pelvis_dy=6.0, torso_deg=-16.0, head_rel_deg=-8.0,
-                              l_thigh_deg=24.0, l_shin_deg=36.0, r_thigh_deg=-18.0, r_shin_deg=28.0,
-                              grip_x=40.0, grip_y=-108.0, weapon_deg=-78.0, grip_sep=33.0,
-                              foot_y=91.0, halo_grand=True)),
-                    (25, dict(pelvis_dx=16.0, pelvis_dy=24.0, torso_deg=16.0, head_rel_deg=-8.0,
-                              l_thigh_deg=18.0, l_shin_deg=24.0, r_thigh_deg=-18.0, r_shin_deg=22.0,
-                              grip_x=78.0, grip_y=-30.0, weapon_deg=-16.0, grip_sep=37.0,
-                              foot_y=94.0, halo_grand=True)),
-                    (27, dict(pelvis_dx=20.0, pelvis_dy=52.0, torso_deg=24.0, head_rel_deg=-10.0,
-                              l_thigh_deg=-26.0, l_shin_deg=28.0, r_thigh_deg=24.0, r_shin_deg=-20.0,
-                              grip_x=76.0, grip_y=4.0, weapon_deg=14.0, grip_sep=38.0,
-                              foot_y=99.0, halo_grand=True)),
-                    (29, dict(torso_deg=3.0, grip_x=52.0, grip_y=-14.0, weapon_deg=-38.0,
-                              grip_sep=38.0, foot_y=99.0, halo_grand=False)),
+                    (20, dict(pelvis_dx=-6.0, pelvis_dy=4.0, torso_deg=-18.0, head_rel_deg=22.0, mane_rel_deg=12.0,
+                              l_thigh_deg=-24.0, l_shin_deg=40.0, r_thigh_deg=-34.0, r_shin_deg=44.0,
+                              grip_x=-2.0, grip_y=-150.0, weapon_deg=-104.0, grip_sep=32.0,
+                              right_arm_in_front=True, foot_y=89.0, halo_grand=True)),
+                    (23, dict(pelvis_dx=-10.0, pelvis_dy=0.0, torso_deg=-22.0, head_rel_deg=26.0, mane_rel_deg=14.0,
+                              l_thigh_deg=-28.0, l_shin_deg=44.0, r_thigh_deg=-38.0, r_shin_deg=48.0,
+                              grip_x=-8.0, grip_y=-156.0, weapon_deg=-110.0, grip_sep=32.0,
+                              right_arm_in_front=True, foot_y=88.0, halo_grand=True)),
+                    (24, dict(pelvis_dx=12.0, pelvis_dy=12.0, torso_deg=12.0, head_rel_deg=-4.0, mane_rel_deg=-6.0,
+                              l_thigh_deg=-16.0, l_shin_deg=30.0, r_thigh_deg=-22.0, r_shin_deg=34.0,
+                              grip_x=78.0, grip_y=-68.0, weapon_deg=-10.0, grip_sep=36.0,
+                              right_arm_in_front=True, foot_y=90.0, halo_grand=True)),
+                    (26, dict(pelvis_dx=22.0, pelvis_dy=24.0, torso_deg=26.0, head_rel_deg=-8.0, mane_rel_deg=-12.0,
+                              l_thigh_deg=-12.0, l_shin_deg=26.0, r_thigh_deg=-18.0, r_shin_deg=28.0,
+                              grip_x=76.0, grip_y=4.0, weapon_deg=34.0, grip_sep=37.0,
+                              right_arm_in_front=True, foot_y=92.0, halo_grand=True)),
+                    (27, dict(pelvis_dx=22.0, pelvis_dy=56.0, torso_deg=28.0, head_rel_deg=-10.0, mane_rel_deg=-12.0,
+                              l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-22.0,
+                              grip_x=78.0, grip_y=12.0, weapon_deg=20.0, grip_sep=38.0,
+                              right_arm_in_front=True, foot_y=99.0, halo_grand=True)),
+                    (29, dict(torso_deg=4.0, grip_x=52.0, grip_y=-14.0, weapon_deg=-38.0,
+                              grip_sep=38.0, right_arm_in_front=False, foot_y=99.0, halo_grand=False)),
                 ]
                 cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
-                if 25 <= f <= 28:
-                    cfg["slash_arc"] = dict(dx=5.0, dy=12.0, r=28.5, a0=-86.0, a1=52.0, intensity=1.28)
+                if 24 <= f <= 27:
+                    u = (f - 24) / 3.0
+                    cfg["slash_arc"] = dict(
+                        dx=6.0, dy=11.0, r=28.5,
+                        a0=-88.0 + 24.0 * u, a1=44.0 + 18.0 * u,
+                        intensity=1.28,
+                    )
             cfgs.append(cfg)
 
         elif row_idx == 5:
@@ -1037,14 +1095,14 @@ def build_row_configs(row_idx):
 def main():
     parts = load_and_segment_512()
     picks = [
-        (2, 3, "R2 A1: OVERHEAD HOIST"),
         (2, 6, "R2 A1: EARTH-SPLITTER"),
         (2, 15, "R2 A2: SKY-UPPERCUT"),
         (2, 25, "R2 A3: BATTERING RAM"),
-        (4, 5, "R4 BATTER WINDUP"),
-        (4, 8, "R4 HOME-RUN SWING"),
-        (4, 18, "R4 MJOLNIR SKY-LAUNCH"),
-        (4, 22, "R4 HEAVEN'S ANVIL TOP"),
+        (4, 5, "R4 F05: BATTER COIL"),
+        (4, 8, "R4 F08: HOME-RUN SWING"),
+        (4, 18, "R4 F18: SKY-UPPERCUT"),
+        (4, 22, "R4 F22: TOP CROWN HOIST"),
+        (4, 26, "R4 F26: METEOR SPIKE"),
     ]
     build_and_save_30fps_sheet(
         "titan", parts, build_row_configs, render_frame,

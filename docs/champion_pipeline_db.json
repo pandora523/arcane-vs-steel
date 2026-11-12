@@ -107,7 +107,7 @@
       "theme": "forge",
       "base_source": "assets/sprites/titan_v5_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "15-part cel-clustered Sovereign of the World-Forge skeletal rig (horned obsidian-gold Khazad helm, 3-braid copper-flame beard, emerald-jade furnace cuirass, bare Dwarven arms & heavy forge gauntlets) + World-Forge Crucible Back-Halo + 3-Animation 2H World-Maul Auto-Attack (Row 2: F00..F09 Overhead Earth-Splitter Slam, F10..F19 Leaping High-Knee Sky-Breaker Uppercut, F20..F29 Pivoting Battering-Ram Backspin Finisher) + Upright World-Breaker Home-Run Overdrive (Row 4 F00..F14 Baseball-Bat Swing to Farthest Wall + 0.8s Stun) + Colossal 2.38x Sky-Uppercut -> Top-Sky Teleport -> Meteor Ground-Smash + 1.65s Stun Supreme Ultimate (Row 4 F15..F29) + Prone Collapse",
+      "rig": "15-part cel-clustered Sovereign of the World-Forge skeletal rig + World-Forge Crucible Back-Halo + Symmetric Double-Faced Dwarven Warhammer (Mjolnir, 0 upside-down orientations across all angles) + 3-Animation 2H Auto-Attack (Row 2: F00..F09 Overhead Earth-Splitter Slam, F10..F19 Leaping High-Knee Sky-Breaker Uppercut, F20..F29 Pivoting Battering-Ram Backspin Finisher) + Horizontal Baseball-Bat Home-Run Overdrive (Row 4 F00..F14 Unobstructed Rear-Shoulder Coil -> Chest-High Horizontal Swing to Farthest Wall + 0.8s Stun) + Colossal 2.15x 4-Beat Sky-Uppercut -> Elevated Top-Sky Teleport (180px Above Airborne Foe) -> Meteor Ground-Smash + 1.85s Stun Supreme Ultimate (Row 4 F15..F29) + Prone Collapse",
       "script": "scripts/build_titan_30fps_sheet.py",
       "vfx_script": "scripts/build_titan_vfx_30fps.mjs"
     },
