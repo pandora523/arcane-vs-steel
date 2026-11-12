@@ -1,19 +1,20 @@
-import { Renderer } from './engine/Renderer.js?v=30fps80';
-import { VFXManager } from './engine/VFXManager.js?v=30fps80';
-import { PixelForge } from './engine/PixelForge.js?v=30fps80';
-import { AudioManager } from './engine/AudioManager.js?v=30fps80';
-import { Fighter } from './entities/Fighter.js?v=30fps80';
-import { Warrior } from './entities/Warrior.js?v=30fps80';
-import { FireMage } from './entities/FireMage.js?v=30fps80';
-import { Archer } from './entities/Archer.js?v=30fps80';
-import { Priestess } from './entities/Priestess.js?v=30fps80';
-import { Reaper } from './entities/Reaper.js?v=30fps80';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps80';
-import { Titan } from './entities/Titan.js?v=30fps80';
-import { Ronin } from './entities/Ronin.js?v=30fps80';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps80';
-import { IceMage } from './entities/IceMage.js?v=30fps80';
-import { Android } from './entities/Android.js?v=30fps80';
+import { Renderer } from './engine/Renderer.js?v=30fps81';
+import { VFXManager } from './engine/VFXManager.js?v=30fps81';
+import { PixelForge } from './engine/PixelForge.js?v=30fps81';
+import { AudioManager } from './engine/AudioManager.js?v=30fps81';
+import { Fighter } from './entities/Fighter.js?v=30fps81';
+import { Warrior } from './entities/Warrior.js?v=30fps81';
+import { FireMage } from './entities/FireMage.js?v=30fps81';
+import { Archer } from './entities/Archer.js?v=30fps81';
+import { Priestess } from './entities/Priestess.js?v=30fps81';
+import { Reaper } from './entities/Reaper.js?v=30fps81';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps81';
+import { Titan } from './entities/Titan.js?v=30fps81';
+import { Ronin } from './entities/Ronin.js?v=30fps81';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps81';
+import { IceMage } from './entities/IceMage.js?v=30fps81';
+import { Android } from './entities/Android.js?v=30fps81';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps81';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -410,6 +411,7 @@ class Game {
     this.vfx = new VFXManager();
     this.audio = new AudioManager();
     PixelForge.initAssets();
+    this.adventure = new AdventureManager(this);
 
     this.userSlowMo = false;
     this.autoTourney = true;
@@ -432,7 +434,7 @@ class Game {
     // Default Mode & 4-Slot Team Lineup:
     // Team 1 (Arcane & Sanctuary): Torgar (Titan-Forger) + Seraphina (High Priestess)
     // Team 2 (Challenger Duo): Sylvara (Tempest Bowmaster) + Malakor (Abyssal Soulreaper)
-    this.gameMode = '2v2_brawl'; // '1v1' | '2v2_brawl' | '2v2_tag'
+    this.gameMode = '2v2_brawl'; // '1v1' | '2v2_brawl' | '2v2_tag' | 'adventure'
     this.slot1Hero = 'warrior';
     this.slot1PartnerHero = 'titan';
     this.slot2Hero = 'reaper';
@@ -467,6 +469,12 @@ class Game {
       this.gameMode = '2v2_tag';
     } else if (modeParam === '2v2_brawl' || modeParam === '2v2' || modeParam === 'brawl') {
       this.gameMode = '2v2_brawl';
+    } else if (modeParam === 'adventure' || modeParam === 'campaign') {
+      this.gameMode = 'adventure';
+      this.slot1Hero = 'mage';
+    }
+    if (params.get('autoplay') === '1') {
+      this.adventure.setAutoPlay(true, false);
     }
 
     const p1 = params.get('p1');
@@ -512,6 +520,7 @@ class Game {
     const startArena = params.get('battle') === '1';
     this.isSimPaused = params.get('pause') === '1';
     if (
+      (modeParam && this.isAdventureMode()) ||
       p1 ||
       p1b ||
       p2 ||
@@ -691,6 +700,10 @@ class Game {
     return this.gameMode === '2v2_brawl' || this.gameMode === '2v2_tag';
   }
 
+  isAdventureMode() {
+    return this.gameMode === 'adventure';
+  }
+
   ensureDistinctTeamPartners() {
     const keys = Object.keys(CHAMPION_ROSTER);
     if (this.slot1PartnerHero === this.slot1Hero) {
@@ -702,9 +715,17 @@ class Game {
   }
 
   setGameMode(mode, playSound = true) {
-    if (!['1v1', '2v2_brawl', '2v2_tag'].includes(mode)) return;
+    if (!['1v1', '2v2_brawl', '2v2_tag', 'adventure'].includes(mode)) return;
+    const prevMode = this.gameMode;
     this.gameMode = mode;
-    if (!this.is2v2Mode()) {
+    if (mode === 'adventure') {
+      if (prevMode !== 'adventure') {
+        this.slot1Hero = 'mage';
+      }
+      this.inspectLeftRole = 'lead';
+      this.inspectRightRole = 'lead';
+      this.activeAssignSlot = 1;
+    } else if (!this.is2v2Mode()) {
       this.inspectLeftRole = 'lead';
       this.inspectRightRole = 'lead';
       if (this.activeAssignSlot > 2) this.activeAssignSlot = 1;
@@ -713,21 +734,24 @@ class Game {
     }
     this.syncRosterSelectionUI(playSound);
     this.resetMatch();
+    this.adventure?.syncControlDeckUI();
   }
 
   cycleGameMode() {
-    const order = ['2v2_brawl', '2v2_tag', '1v1'];
+    const order = ['2v2_brawl', '2v2_tag', '1v1', 'adventure'];
     const next = order[(order.indexOf(this.gameMode) + 1) % order.length];
     this.setGameMode(next, true);
   }
 
   formatModeBadgeText() {
     const base =
-      this.gameMode === '2v2_brawl'
-        ? 'CHAOS BRAWL'
-        : this.gameMode === '2v2_tag'
-          ? 'TAG RELAY'
-          : '1V1 DUEL';
+      this.gameMode === 'adventure'
+        ? 'ADVENTURE'
+        : this.gameMode === '2v2_brawl'
+          ? 'CHAOS BRAWL'
+          : this.gameMode === '2v2_tag'
+            ? 'TAG RELAY'
+            : '1V1 DUEL';
     return this.testModeUnlimitedHp ? `${base} • ∞ HP` : base;
   }
 
@@ -750,7 +774,11 @@ class Game {
       this.hudTestModeLabel.textContent = active ? '∞ HP: ON' : '∞ HP: OFF';
     }
     if (this.hudEls?.modeBadge) {
-      this.hudEls.modeBadge.textContent = this.formatModeBadgeText();
+      if (this.isAdventureMode() && this.adventure?.active) {
+        this.adventure.syncRightHUD();
+      } else {
+        this.hudEls.modeBadge.textContent = this.formatModeBadgeText();
+      }
     }
   }
 
@@ -758,7 +786,7 @@ class Game {
     this.testModeUnlimitedHp = Boolean(enabled);
     if (this.testModeUnlimitedHp && Array.isArray(this.fighters)) {
       for (const f of this.fighters) {
-        if (f && !f.isDead) {
+        if (f && !f.isDead && !f.isMonster) {
           f.hp = f.maxHp;
           f.isBerserk = false;
         }
@@ -810,7 +838,8 @@ class Game {
     this.modeBtns = {
       '1v1': document.getElementById('mode-btn-1v1'),
       '2v2_brawl': document.getElementById('mode-btn-2v2-brawl'),
-      '2v2_tag': document.getElementById('mode-btn-2v2-tag')
+      '2v2_tag': document.getElementById('mode-btn-2v2-tag'),
+      adventure: document.getElementById('mode-btn-adventure')
     };
     Object.entries(this.modeBtns).forEach(([modeKey, btn]) => {
       if (!btn) return;
@@ -1002,7 +1031,7 @@ class Game {
           this.setActiveSlot(1);
         } else {
           this.assignHeroToSlot(1, heroKey, true);
-          this.setActiveSlot(this.is2v2Mode() ? 3 : 2);
+          this.setActiveSlot(this.is2v2Mode() ? 3 : this.isAdventureMode() ? 1 : 2);
         }
       });
     });
@@ -1023,6 +1052,11 @@ class Game {
     Object.entries(this.cards).forEach(([heroKey, cardEl]) => {
       if (!cardEl) return;
       cardEl.addEventListener('click', () => {
+        if (this.isAdventureMode()) {
+          this.assignHeroToSlot(1, heroKey, true);
+          this.setActiveSlot(1);
+          return;
+        }
         if (this.slot1Hero === heroKey) {
           this.inspectLeftRole = 'lead';
           this.setActiveSlot(1);
@@ -1103,6 +1137,14 @@ class Game {
     const btnGoRoster = document.getElementById('btn-go-roster');
     if (btnGoRoster) {
       btnGoRoster.addEventListener('click', () => this.setLandingStep('roster', true));
+    }
+    const btnTitleAdventure = document.getElementById('btn-title-adventure');
+    if (btnTitleAdventure) {
+      btnTitleAdventure.addEventListener('click', () => {
+        this.slot1Hero = 'mage';
+        this.setGameMode('adventure', false);
+        this.startDuel(true);
+      });
     }
     const btnTitleQuickDuel = document.getElementById('btn-title-quick-duel');
     if (btnTitleQuickDuel) {
@@ -1194,6 +1236,53 @@ class Game {
 
     this.btnReset.addEventListener('click', () => this.resetMatch());
     this.btnPlayAgain.addEventListener('click', () => this.resetMatch());
+
+    // Adventure Mode Arcade Control Deck (Movement Hold + Action Triggers + Auto-Play Toggle)
+    const bindHoldMoveBtn = (id, dir) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      const press = (e) => {
+        e.preventDefault();
+        this.adventure?.setMoveInput(dir, true);
+      };
+      const release = () => {
+        this.adventure?.setMoveInput(dir, false);
+      };
+      btn.addEventListener('pointerdown', press);
+      btn.addEventListener('pointerup', release);
+      btn.addEventListener('pointerleave', release);
+      btn.addEventListener('pointercancel', release);
+    };
+    bindHoldMoveBtn('adv-btn-left', -1);
+    bindHoldMoveBtn('adv-btn-right', 1);
+
+    const advActionMap = {
+      'adv-btn-jump': 'jump',
+      'adv-btn-crouch': 'crouch',
+      'adv-btn-dodge': 'dodge',
+      'adv-btn-attack': 'attack',
+      'adv-btn-skill': 'skill',
+      'adv-btn-overdrive': 'overdrive',
+      'adv-btn-ultimate': 'ultimate'
+    };
+    Object.entries(advActionMap).forEach(([id, act]) => {
+      const btn = document.getElementById(id);
+      if (!btn) return;
+      btn.addEventListener('pointerdown', (e) => {
+        e.preventDefault();
+        this.adventure?.triggerAction(act);
+      });
+      btn.addEventListener('click', () => {
+        this.adventure?.triggerAction(act);
+      });
+    });
+
+    const advBtnAutoPlay = document.getElementById('adv-btn-autoplay');
+    if (advBtnAutoPlay) {
+      advBtnAutoPlay.addEventListener('click', () => {
+        this.adventure?.toggleAutoPlay(true);
+      });
+    }
   }
 
   setLandingStep(step, playSound = true) {
@@ -1322,13 +1411,16 @@ class Game {
         btn.setAttribute('aria-pressed', String(active));
       });
     }
+    const isAdv = this.isAdventureMode();
     if (this.modeCycleLabel) {
       this.modeCycleLabel.textContent =
-        this.gameMode === '2v2_brawl'
-          ? 'MODE: 2V2 BRAWL'
-          : this.gameMode === '2v2_tag'
-            ? 'MODE: 2V2 TAG'
-            : 'MODE: 1V1 DUEL';
+        this.gameMode === 'adventure'
+          ? 'MODE: ADVENTURE'
+          : this.gameMode === '2v2_brawl'
+            ? 'MODE: 2V2 BRAWL'
+            : this.gameMode === '2v2_tag'
+              ? 'MODE: 2V2 TAG'
+              : 'MODE: 1V1 DUEL';
     }
     if (this.btnTagAssist) {
       this.btnTagAssist.classList.toggle('hidden', !is2v2);
@@ -1340,11 +1432,13 @@ class Game {
     this.syncTestModeUI();
 
     const modeTitleStr =
-      this.gameMode === '2v2_brawl'
-        ? '2V2 CHAOS BRAWL'
-        : this.gameMode === '2v2_tag'
-          ? '2V2 TAG RELAY'
-          : '1V1 SOVEREIGN DUEL';
+      this.gameMode === 'adventure'
+        ? 'ADVENTURE CAMPAIGN'
+        : this.gameMode === '2v2_brawl'
+          ? '2V2 CHAOS BRAWL'
+          : this.gameMode === '2v2_tag'
+            ? '2V2 TAG RELAY'
+            : '1V1 SOVEREIGN DUEL';
     const stageNames = {
       auto: 'AUTO REALM',
       cathedral: 'ECLIPSE CATHEDRAL',
@@ -1353,7 +1447,9 @@ class Game {
       boneyard: 'ABYSSAL NECROPOLIS',
       clocktower: 'ASTRAL CLOCKTOWER'
     };
-    const stageTitleStr = stageNames[this.forcedStage || 'auto'] || 'AUTO REALM';
+    const stageTitleStr = isAdv
+      ? '4-REALM GAUNTLET'
+      : stageNames[this.forcedStage || 'auto'] || 'AUTO REALM';
     const hpStr = this.testModeUnlimitedHp ? '∞ HP: ON' : 'MORTAL HP';
     const summaryStr = `${modeTitleStr} • ${stageTitleStr} • SANDBOX ${hpStr}`;
 
@@ -1364,7 +1460,7 @@ class Game {
     const rosterBadgeTextEl = document.getElementById('roster-config-badge-text');
     if (rosterBadgeTextEl) rosterBadgeTextEl.textContent = summaryStr;
     const matchupVsEl = document.getElementById('matchup-vs-text');
-    if (matchupVsEl) matchupVsEl.textContent = is2v2 ? '2V2' : '1V1';
+    if (matchupVsEl) matchupVsEl.textContent = isAdv ? 'SOLO' : is2v2 ? '2V2' : '1V1';
 
     const slotLabelMap = {
       1: '★ P1 LEAD',
@@ -1374,13 +1470,15 @@ class Game {
     };
     const gridPromptEl = document.getElementById('portrait-grid-label');
     if (gridPromptEl) {
-      gridPromptEl.textContent = `SELECT A CHAMPION FOR ${slotLabelMap[this.activeAssignSlot] || '★ P1 LEAD'} — OR CLICK P1 / P2 ON ANY MEDALLION`;
+      gridPromptEl.textContent = isAdv
+        ? 'SELECT YOUR CAMPAIGN HERO (DEFAULT: IGNIS SOL) — MANUAL CONTROLS + [P] AUTO-PLAY AI'
+        : `SELECT A CHAMPION FOR ${slotLabelMap[this.activeAssignSlot] || '★ P1 LEAD'} — OR CLICK P1 / P2 ON ANY MEDALLION`;
     }
 
     // 2. Matchup Banner 4-Slot Names & Active Slot Highlight
     if (this.slotLeftName) this.slotLeftName.textContent = c1.name;
     if (this.slotLeftPartnerName) this.slotLeftPartnerName.textContent = c1b.name;
-    if (this.slotRightName) this.slotRightName.textContent = c2.name;
+    if (this.slotRightName) this.slotRightName.textContent = isAdv ? 'ARCHFIEND MALPHAS' : c2.name;
     if (this.slotRightPartnerName) this.slotRightPartnerName.textContent = c2b.name;
 
     if (this.slotBtnLeftPartner) this.slotBtnLeftPartner.classList.toggle('hidden', !is2v2);
@@ -1508,7 +1606,9 @@ class Game {
     syncProfilePanel('p2', 'right', rightInspected, rightOther);
 
     if (this.startDuelText) {
-      if (this.gameMode === '2v2_brawl') {
+      if (this.isAdventureMode()) {
+        this.startDuelText.textContent = `${c1.name} • 4-REALM ADVENTURE`;
+      } else if (this.gameMode === '2v2_brawl') {
         this.startDuelText.textContent = `${c1.name} + ${c1b.name} VS. ${c2.name} + ${c2b.name}`;
       } else if (this.gameMode === '2v2_tag') {
         this.startDuelText.textContent = `${c1.name} + ${c1b.name} VS. ${c2.name} + ${c2b.name}`;
@@ -1528,6 +1628,7 @@ class Game {
     if (this.landingOverlay) this.landingOverlay.classList.add('hidden');
     if (this.appEl) this.appEl.classList.remove('is-landing-open');
     this.resetMatch();
+    this.adventure?.syncControlDeckUI();
     if (playSound && this.audio) {
       this.audio.play('ult_cast', 600);
     }
@@ -1539,6 +1640,7 @@ class Game {
     this.victoryOverlay.classList.add('hidden');
     if (this.landingOverlay) this.landingOverlay.classList.remove('hidden');
     if (this.appEl) this.appEl.classList.add('is-landing-open');
+    this.adventure?.syncControlDeckUI();
     if (targetStep) {
       this.setLandingStep(targetStep, false);
     }
@@ -1818,6 +1920,50 @@ class Game {
     clearTimeout(this.victoryTimeout);
     clearTimeout(this.autoNextTimeout);
     clearTimeout(this.ultBannerTimeout);
+
+    if (this.isAdventureMode()) {
+      if (this.renderer) {
+        this.renderer.stageEventTimer = 0;
+        this.renderer.stageEventBannerTimer = 0;
+        this.renderer.koZoomTimer = 0;
+        this.renderer.cutInTimer = 0;
+      }
+      const gy = this.renderer.groundY;
+      const c1 = CHAMPION_ROSTER[this.slot1Hero] || CHAMPION_ROSTER.mage;
+      this.leftFighter = new c1.cls(240, gy, 1);
+      this.leftFighter.game = this;
+      this.leftFighter.team = 1;
+      this.leftFighter.slotRole = 'lead';
+      this.leftFighter.isPoint = true;
+      this.leftFighter.isBenched = false;
+      this.leftPartner = null;
+      this.rightPartner = null;
+
+      this.applySideHUDTheme(this.hudEls.left, c1, this.leftFighter, null);
+
+      this.matchTime = 0;
+      this.ultSlowTimer = 0;
+      this.koSlowTimer = 0;
+      this.clashCooldown = 0;
+      this.stageEventTriggered = false;
+      this.stageEventTimer = 0;
+      this.stageEventTickTimer = 0;
+      this.isMatchOver = false;
+      this.victoryRevealPending = false;
+      this.deadMatchFighter = null;
+      this.postDeathHoldTimer = 0;
+      this.victoryOverlay.classList.add('hidden');
+      if (this.ultBanner) this.ultBanner.classList.add('hidden');
+
+      this.syncTestModeUI();
+      this.adventure.startCampaign(this.leftFighter);
+      this.updateHUD();
+      return;
+    }
+
+    if (this.adventure?.active) {
+      this.adventure.stopCampaign();
+    }
     if (this.renderer && typeof this.renderer.pickRandomStage === 'function') {
       this.renderer.pickRandomStage(this.forcedStage);
       this.renderer.stageEventTimer = 0;
@@ -2182,6 +2328,15 @@ class Game {
       this.audio.play(deadFighter.deathSfx, deadFighter.x);
     }
 
+    if (this.isAdventureMode() && this.adventure?.active) {
+      if (deadFighter.isMonster) {
+        this.adventure.onMonsterDeath(deadFighter);
+      } else {
+        this.adventure.onPlayerDeath(deadFighter);
+      }
+      return;
+    }
+
     // In 2v2 Modes: Check if the fallen fighter's teammate is still alive!
     const survivingAlly = this.getTeammateOf(deadFighter);
     if (survivingAlly && !survivingAlly.isDead) {
@@ -2338,10 +2493,16 @@ class Game {
     this.victoryRevealPending = false;
     this.victoryOverlay.classList.remove('hidden');
     if (this.audio) this.audio.play('victory_fanfare');
-    if (this.autoTourney && !this.isSimPaused) {
+    if (this.autoTourney && !this.isAdventureMode() && !this.isSimPaused) {
       clearTimeout(this.autoNextTimeout);
       this.autoNextTimeout = setTimeout(() => {
-        if (this.isMatchOver && this.autoTourney && !this.isLandingOpen && !this.isSimPaused) {
+        if (
+          this.isMatchOver &&
+          this.autoTourney &&
+          !this.isAdventureMode() &&
+          !this.isLandingOpen &&
+          !this.isSimPaused
+        ) {
           this.advanceTourneyChallenger();
         }
       }, 4200);
@@ -2644,11 +2805,18 @@ class Game {
       const manaPct = Math.min(100, (f.mana / f.maxMana) * 100);
       els.hpBar.style.width = `${hpPct}%`;
       els.hpDmg.style.width = `${hpPct}%`;
-      els.hpText.textContent = this.testModeUnlimitedHp ? `∞ ${Math.ceil(f.hp)}` : `${Math.ceil(f.hp)}`;
+      els.hpText.textContent =
+        this.testModeUnlimitedHp && !f.isMonster ? `∞ ${Math.ceil(f.hp)}` : `${Math.ceil(f.hp)}`;
       els.state.textContent = f.isDead ? 'DEFEATED' : f.state;
 
       els.manaBar.style.width = `${manaPct}%`;
-      els.ultLabel.textContent = `OVERDRIVE ${Math.floor(manaPct)}%`;
+      els.ultLabel.textContent = f.isBoss
+        ? `PHASE ${f.bossPhase || 1} / 3`
+        : f.isMonster
+          ? f.isElite
+            ? '★ ELITE MONSTER'
+            : 'ABYSSAL HORDE'
+          : `OVERDRIVE ${Math.floor(manaPct)}%`;
 
       if (els.finisherFrame && els.finisherBar && els.finisherLabel) {
         if (f.hasTrueUltimate) {
@@ -2670,8 +2838,13 @@ class Game {
 
       const cdPct = Math.max(0, (f.skillCooldown / f.skillMaxCooldown) * 100);
       els.skillCd.style.width = `${cdPct}%`;
-      els.skillText.textContent =
-        f.skillCooldown > 0.05 ? `${f.skillName} ${f.skillCooldown.toFixed(1)}s` : `${f.skillName} READY`;
+      els.skillText.textContent = f.isMonster
+        ? f.isBoss
+          ? `PHASE ${f.bossPhase || 1} • ${f.skillName}`
+          : this.adventure?.totalWaveLabel || f.skillName
+        : f.skillCooldown > 0.05
+          ? `${f.skillName} ${f.skillCooldown.toFixed(1)}s`
+          : `${f.skillName} READY`;
 
       if (this.is2v2Mode() && partner && els.partnerWing) {
         const pHpPct = Math.max(0, (partner.hp / partner.maxHp) * 100);
@@ -2736,8 +2909,9 @@ class Game {
 
     const activeFighters = this.fighters.filter((f) => f && !f.isDead && !f.isBenched);
 
-    // Trigger Autonomous Mid-Match Stage Phenomenon at 11.5s or when any active fighter drops below 58% HP
+    // Trigger Autonomous Mid-Match Stage Phenomenon at 11.5s or when any active fighter drops below 58% HP (Arena Duel/2v2 modes)
     if (
+      !this.isAdventureMode() &&
       !this.isMatchOver &&
       !this.stageEventTriggered &&
       activeFighters.length >= 2 &&
@@ -2799,14 +2973,18 @@ class Game {
       }
     }
 
-    // Update all fighters with dynamic 2v2 target acquisition
-    for (const f of this.fighters) {
-      if (!f) continue;
-      const target = this.getTargetFor(f);
-      if (f.chronoTimeStopTimer > 0 && !f.isDead && f.state !== 'TRUE_ULTIMATE') {
-        Fighter.prototype.update.call(f, dt, target, this);
-      } else {
-        f.update(dt, target, this);
+    // Update Adventure Campaign (manual/auto-play hero + active monster horde) OR Arena Duel/2v2 fighters
+    if (this.isAdventureMode() && this.adventure?.active) {
+      this.adventure.update(dt);
+    } else {
+      for (const f of this.fighters) {
+        if (!f) continue;
+        const target = this.getTargetFor(f);
+        if (f.chronoTimeStopTimer > 0 && !f.isDead && f.state !== 'TRUE_ULTIMATE') {
+          Fighter.prototype.update.call(f, dt, target, this);
+        } else {
+          f.update(dt, target, this);
+        }
       }
     }
 

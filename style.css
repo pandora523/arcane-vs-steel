@@ -1300,10 +1300,10 @@ html, body {
   color: var(--text-ivory);
 }
 
-/* Section A: 3 Spacious Forged Mode Cards */
+/* Section A: 4 Spacious Forged Mode Cards */
 .mode-cards-grid {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: clamp(8px, 1vw, 12px);
 }
 
@@ -2732,3 +2732,131 @@ html, body {
     font-size: 0.32rem;
   }
 }
+
+/* =========================================================================
+   ADVENTURE CAMPAIGN CTA & FORGED ARCADE CONTROL DECK
+   ========================================================================= */
+.sanctum-btn-adventure {
+  background: linear-gradient(180deg, #7c2d12 0%, #431407 58%, #1f0904 100%);
+  border: 2px solid #fb923c;
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.28), 0 6px 18px rgba(0, 0, 0, 0.8);
+}
+
+.sanctum-btn-adventure:hover {
+  border-color: #fde047;
+}
+
+.adventure-controls {
+  position: absolute;
+  bottom: calc(max(4px, env(safe-area-inset-bottom)) + 32px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 15;
+  width: min(98vw, 1080px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.adventure-controls.hidden,
+#app.is-landing-open .adventure-controls {
+  display: none !important;
+}
+
+.adv-cluster {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 5px;
+  background: rgba(6, 9, 18, 0.82);
+  border: 1px solid rgba(212, 175, 55, 0.55);
+  outline: 1px solid #000;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.85);
+  pointer-events: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.adv-btn {
+  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  color: var(--text-ivory);
+  border: 1px solid #475569;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.14), 0 1px 0 #000;
+  padding: 6px 8px;
+  font-family: var(--font-pixel);
+  font-size: 0.36rem;
+  line-height: 1;
+  cursor: pointer;
+  white-space: nowrap;
+  touch-action: manipulation;
+  transition: filter 0.12s ease, transform 0.08s ease, border-color 0.12s ease;
+}
+
+.adv-btn:hover {
+  filter: brightness(1.16);
+  border-color: var(--bronze-lit);
+}
+
+.adv-btn:active {
+  transform: translateY(1px);
+}
+
+.adv-btn-evade {
+  background: linear-gradient(180deg, #0c4a6e 0%, #082f49 100%);
+  border-color: #38bdf8;
+}
+
+.adv-btn-atk {
+  background: linear-gradient(180deg, #7c2d12 0%, #431407 100%);
+  border-color: #fb923c;
+  color: #ffedd5;
+}
+
+.adv-btn-skl {
+  background: linear-gradient(180deg, #581c87 0%, #2e1065 100%);
+  border-color: #c084fc;
+}
+
+.adv-btn-od,
+.adv-btn-ult {
+  background: linear-gradient(180deg, #422006 0%, #1f1003 100%);
+  border-color: #854d0e;
+  color: #fde68a;
+  opacity: 0.72;
+}
+
+.adv-btn-skl.is-ready,
+.adv-btn-od.is-ready,
+.adv-btn-ult.is-ready {
+  opacity: 1;
+  border-color: #facc15;
+  box-shadow: 0 0 10px rgba(250, 204, 21, 0.42), inset 0 1px 0 rgba(255, 255, 255, 0.25);
+  color: #fef08a;
+}
+
+.adv-btn-ai.is-autoplay-on {
+  background: linear-gradient(180deg, #14532d 0%, #052e16 100%);
+  border-color: #4ade80;
+  color: #dcfce7;
+}
+
+@media (max-width: 960px) {
+  .adventure-controls {
+    bottom: calc(max(4px, env(safe-area-inset-bottom)) + 54px);
+    flex-direction: column;
+    gap: 4px;
+  }
+  .adv-cluster {
+    justify-content: center;
+    width: 100%;
+  }
+  .adv-btn {
+    padding: 5px 6px;
+    font-size: 0.30rem;
+    flex: 1 1 auto;
+  }
+}
+

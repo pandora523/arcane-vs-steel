@@ -976,10 +976,13 @@ export class ArcaneShaderFX {
   }
 
   computeViewport(centerWorldX = this.arenaCenterX, groundWorldY = this.groundWorldY) {
+    const effectiveCenterX = Number.isFinite(this.overrideCenterWorldX)
+      ? this.overrideCenterWorldX
+      : centerWorldX;
     const scale = this.pixelScale;
     const worldW = this.viewW * scale;
     const worldH = this.viewH * scale;
-    const worldLeft = Math.round((centerWorldX - worldW * 0.5) / scale) * scale;
+    const worldLeft = Math.round((effectiveCenterX - worldW * 0.5) / scale) * scale;
     const worldTop = Math.round((groundWorldY - worldH * this.topRatio) / scale) * scale;
     return { scale, worldW, worldH, worldLeft, worldTop };
   }
@@ -987,6 +990,20 @@ export class ArcaneShaderFX {
   spawn(effectKey, worldX, worldY, opts = {}) {
     const def = this.registry[effectKey];
     if (!def || !Number.isFinite(worldX) || !Number.isFinite(worldY)) return null;
+    if (
+      Number.isFinite(this.overrideCenterWorldX) &&
+      effectKey === 'magmaFissureCrack' &&
+      (opts?.extra?.spanX || 0) > 1600
+    ) {
+      worldX = this.overrideCenterWorldX - 460;
+      opts = {
+        ...opts,
+        extra: {
+          ...opts.extra,
+          spanX: 920
+        }
+      };
+    }
     if (this.active.length >= 22) {
       this.active.shift();
     }
@@ -1120,7 +1137,9 @@ export class ArcaneShaderFX {
   }
 
   rasterizeLayer(passName, centerWorldX = 600, groundWorldY = 580) {
-    this.arenaCenterX = centerWorldX;
+    this.arenaCenterX = Number.isFinite(this.overrideCenterWorldX)
+      ? this.overrideCenterWorldX
+      : centerWorldX;
     this.groundWorldY = groundWorldY;
     const isBack = passName === 'back';
     const surface = isBack ? this.surfaceBack : this.surfaceFront;

@@ -448,7 +448,7 @@ export class Fighter {
       knockX *= 0.35;
       knockY *= 0.35;
     }
-    const unlimitedHp = Boolean(this.game && this.game.testModeUnlimitedHp);
+    const unlimitedHp = Boolean(this.game && this.game.testModeUnlimitedHp && !this.isMonster);
     const prevHp = this.hp;
     this.hp = unlimitedHp ? Math.max(1, this.hp - amount) : Math.max(0, this.hp - amount);
     this.timeSinceLastHit = 0;
@@ -846,7 +846,7 @@ export class Fighter {
     }
 
     // Test Mode (Unlimited HP): smoothly restore HP after brief impact hold or out-of-combat window
-    if (game && game.testModeUnlimitedHp && !this.isDead) {
+    if (game && game.testModeUnlimitedHp && !this.isMonster && !this.isDead) {
       this.timeSinceLastHit = (this.timeSinceLastHit || 0) + dt;
       if (this._testModeRefillTimer > 0) {
         this._testModeRefillTimer = Math.max(0, this._testModeRefillTimer - dt);
@@ -935,9 +935,17 @@ export class Fighter {
       }
     }
 
-    // Virtual Arena boundaries (1200 units wide)
+    // Virtual Arena boundaries (or active Adventure Mode wave-lock zone boundaries)
     const margin = 80;
-    this.x = Math.max(margin, Math.min(game.renderer.worldWidth - margin, this.x));
+    const minArenaX =
+      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
+        ? game.adventure.lockMinX
+        : margin;
+    const maxArenaX =
+      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMaxX)
+        ? game.adventure.lockMaxX
+        : game.renderer.worldWidth - margin;
+    this.x = Math.max(minArenaX, Math.min(maxArenaX, this.x));
 
     this.updateCape(dt);
 
@@ -958,7 +966,13 @@ export class Fighter {
       return;
     }
 
-    if (enemy && this.state !== 'ULTIMATE' && this.state !== 'TRUE_ULTIMATE') {
+    const isManualPlayer = Boolean(this.isPlayerControlled && !this.adventureAutoPlay);
+    if (
+      enemy &&
+      this.state !== 'ULTIMATE' &&
+      this.state !== 'TRUE_ULTIMATE' &&
+      (!isManualPlayer || (this.state !== 'IDLE' && this.state !== 'WALK'))
+    ) {
       this.facing = enemy.x >= this.x ? 1 : -1;
     }
 
@@ -1000,7 +1014,8 @@ export class Fighter {
       this.heroId === 'reaper' ||
       this.heroId === 'archer' ||
       this.heroId === 'icemage' ||
-      this.heroId === 'android';
+      this.heroId === 'android' ||
+      Boolean(this.isMonster);
     const ambientChance = isDeclutteredHero ? (this.isBerserk ? 0.10 : 0) : this.isBerserk ? 0.56 : 0.28;
     if (!this.isFullyBurrowed && ambientChance > 0 && Math.random() < ambientChance) {
       game.vfx.spawnParticle({
@@ -1034,7 +1049,19 @@ export class Fighter {
     }
 
     if (this.state === 'IDLE' || this.state === 'WALK') {
-      if (enemy && !enemy.isDead) {
+      if (isManualPlayer) {
+        if (game?.isMatchOver && !this.isDead && this.y >= this.groundY - 2) {
+          this.setState('VICTORY');
+          this.moveDir = 0;
+        } else if (this._manualWalkActive) {
+          this.state = 'WALK';
+          this.walkPhase += dt * 4.8;
+          this.headBob = Math.sin(this.walkPhase * 2) * 2.2;
+        } else {
+          this.state = 'IDLE';
+          this.moveDir = 0;
+        }
+      } else if (enemy && !enemy.isDead) {
         const aiProfile = this.getAiStyleProfile();
         const atkRange = this.getEffectiveAttackRange ? this.getEffectiveAttackRange() : this.attackRange;
 
@@ -1401,6 +1428,23 @@ export class Fighter {
         this.updateTrueUltimate(dt, enemy, game);
       } else {
         this.updateUltimate(dt, enemy, game);
+      }
+    }
+
+    if (game?.adventure?.lockActive) {
+      const lMin = Number.isFinite(game.adventure.lockMinX) ? game.adventure.lockMinX : 80;
+      const lMax = Number.isFinite(game.adventure.lockMaxX)
+        ? game.adventure.lockMaxX
+        : (game.renderer?.worldWidth || 1200) - 80;
+      this.x = Math.max(lMin, Math.min(lMax, this.x));
+      if (Number.isFinite(this.flipTargetX)) {
+        this.flipTargetX = Math.max(lMin + 24, Math.min(lMax - 24, this.flipTargetX));
+      }
+      if (Number.isFinite(this.blinkTargetX)) {
+        this.blinkTargetX = Math.max(lMin + 24, Math.min(lMax - 24, this.blinkTargetX));
+      }
+      if (Number.isFinite(this.dashTargetX)) {
+        this.dashTargetX = Math.max(lMin + 20, Math.min(lMax - 20, this.dashTargetX));
       }
     }
 

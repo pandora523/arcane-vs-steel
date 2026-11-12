@@ -2,16 +2,20 @@
 
 > **IMPORTANT FOR ANY NEW CHAT / AGENT**: Read this file alongside `docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md` and `docs/champion_pipeline_db.json` at the start of a new conversation so full project context, user preferences, protected champions, and recent reworks are preserved seamlessly.
 
-## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps80`)
+## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps81`)
 - **All 11 HD-2D 30fps Champions (`208x208` cells, `10 rows x 30 frames = 6240x2080` incl. Row 9 `VICTORY` Pose + `vfx` sheets + `128x128` portraits)** are live and verified on `main`.
+- **Marvel-Arcade `4800px` 4-Zone Adventure Mode (`src/adventure/AdventureManager.js` + `src/entities/Monster.js`)**:
+  - Continuous 4-realm horizontal scrolling campaign (`Zone I Eclipse Outskirts` -> `Zone II Cursed Starwood` -> `Zone III Abyssal Bone-Gate` -> `Zone IV Throne of the Black Pit`) with screen-lock wave encounters, glowing energy gate barriers, `"GO! ➔"` advance prompts, item pickups (`+HP`, `+MANA`, `★ULT`), Boss Warning banner, and Arcade Rank summary.
+  - **Test Hero Ignis Sol (`FireMage`, zero edits to `FireMage.js`)**: Full manual keyboard + on-screen `#adventure-controls` Arcade Deck (`A/D` Move, `W/Space` Solar Vault Jump, `S` Flame Ward Crouch, `L/Shift` Arcane Blink, `J/Z` Solar Fireball, `K/X` Triple Solar Pillar, `U/Q` Overdrive, `I/E` Astral Meteor Cataclysm Ultimate) + optional `[P]` Auto-Play AI toggle; `ArcaneShaderFX.overrideCenterWorldX` keeps 120Hz Solar Shaders crisp across all `4800px`.
+  - **4 New HD-2D 30fps Monster & Boss Assets (`6240x1456`, `7x30 @ 208x208`, zero `ctx.rotate`)**: *Ashfang Ghoul* (`monster_ghoul_sheet.png`), *Void Cultist* (`monster_cultist_sheet.png`), *Obsidian Juggernaut* (`monster_brute_sheet.png`), and 3-phase Final Boss *Malphas, Archfiend of the Black Pit* (`boss_archfiend_sheet.png` + `128x128` `boss_archfiend_portrait.png`).
 - **Stage Effects Overhaul & Ignis Sol `LAYWASTE OF INFERNO` Stage**:
-  - All 6 stages (`cathedral`, `sylvan`, `boneyard`, `clocktower`, `sanctuary`, and Ignis Sol's `inferno` `LAYWASTE OF INFERNO`) feature parallax volumetric god-rays, near-camera `1.22x` foreground bokeh/ash/petal/feather depth layers, stage-aware floor reflections & seams, and bespoke phenomena.
+  - All 6 stages (`cathedral`, `sylvan`, `boneyard`, `clocktower`, `sanctuary`, and Ignis Sol's `inferno` `LAYWASTE OF INFERNO`) feature parallax volumetric god-rays, near-camera `1.22x` foreground bokeh/ash/petal/feather depth layers, stage-aware floor reflections & seams, and bespoke phenomena (plus seamless 4-zone scrolling transitions in Adventure Mode).
   - Ignis Sol's `LAYWASTE OF INFERNO` (`src/engine/Renderer.js`, zero edits to protected `FireMage.js`) features a cached `640x360` animated magma/lava-river pixel overlay (`getInfernoMagmaLayer`), solar-corona caldera flares, pyroclastic ash plumes, branching molten floor fissures, and 52 rising spiral embers.
 - **Per-Character Post-KO Victory Poses (`Row 9`, frames `270..299`)**:
-  - Every surviving winner (plus unbenched `2v2_tag` teammates) transitions into `state === 'VICTORY'`, playing a bespoke 15-frame entry flourish (`F00..F14`) into a seamless 15-frame sovereign loop (`F15..F29`) during the `1.35s` post-KO hold with zoomed victory camera framing.
+  - Every surviving winner (plus unbenched `2v2_tag` teammates and Campaign Clear heroes) transitions into `state === 'VICTORY'`, playing a bespoke 15-frame entry flourish (`F00..F14`) into a seamless 15-frame sovereign loop (`F15..F29`) during the `1.35s` post-KO hold with zoomed victory camera framing.
 - **Epic Battle HP Inflation & Ultimate Pacing**:
   - Champion HP pools are inflated (`3600–4160 HP`) so fights last ~`50–80s` in 1v1 (`~58s` in 2v2 Brawl, `~120s` in 2v2 Tag) and champions reliably cast **3 Overdrives (`ULTIMATE`)** to unlock and cast their **Supreme Ultimate (`TRUE_ULTIMATE`)** (`99.8%+` `TRUE_ULTIMATE` rate in 1v1 benchmarks).
-  - Test Mode (`testModeUnlimitedHp`) supports infinite HP & rapid testing of Overdrives and Supreme Ultimates.
+  - Test Mode (`testModeUnlimitedHp`) supports infinite HP & rapid testing of Overdrives and Supreme Ultimates while excluding `isMonster` enemies so Adventure Mode monsters & bosses always take mortal damage.
 
 ---
 

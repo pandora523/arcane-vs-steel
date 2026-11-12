@@ -13,6 +13,9 @@ globalThis.window = {
   addEventListener() {}
 };
 globalThis.document = {
+  getElementById() {
+    return null;
+  },
   createElement() {
     return {
       width: 256,
@@ -25,22 +28,27 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps80';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps80';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps80';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps80';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps80';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps80';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps80';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps80';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps80';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps80';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps80';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps80';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps80';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps80';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps80';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps80';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps81';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps81';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps81';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps81';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps81';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps81';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps81';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps81';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps81';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps81';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps81';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps81';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps81';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps81';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps81';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps81';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps81';
+import {
+  AdventureManager,
+  ADVENTURE_WORLD_WIDTH
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps81';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -600,7 +608,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps80');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps81');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -751,6 +759,7 @@ for (const [name, Cls] of CLASSES) {
   // Scan all src/**/*.js files to confirm 100% of literal audio.play('...'), selectSfx, and deathSfx keys are registered!
   const jsFiles = [
     '/home/antigravity/pandora523/arcane-vs-steel/src/main.js',
+    '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js',
     ...fs.readdirSync('/home/antigravity/pandora523/arcane-vs-steel/src/entities').map(
       (f) => `/home/antigravity/pandora523/arcane-vs-steel/src/entities/${f}`
     )
@@ -943,6 +952,7 @@ for (const [name, Cls] of CLASSES) {
     '/home/antigravity/pandora523/arcane-vs-steel/index.html',
     '/home/antigravity/pandora523/arcane-vs-steel/style.css',
     '/home/antigravity/pandora523/arcane-vs-steel/src/main.js',
+    '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js',
     ...fs.readdirSync('/home/antigravity/pandora523/arcane-vs-steel/src/entities').map(
       (f) => `/home/antigravity/pandora523/arcane-vs-steel/src/entities/${f}`
     )
@@ -2037,6 +2047,348 @@ for (const [name, Cls] of CLASSES) {
     '[PASS] All 11 Champions 6240x2080 Row-9 Victory Poses (post-KO + 2v2_tag) & All 6 Upgraded Stages (incl. LAYWASTE OF INFERNO magma/caldera/foreground) verified!'
   );
 }
+
+// 17. Verify Marvel-Arcade 4-Zone (4800px) Adventure Mode:
+//     - Monster (`ghoul`, `cultist`, `brute`) & Final Boss (`archfiend`) 30fps sheets (6240x1456) + portrait (128x128)
+//     - Manual Ignis Sol (`FireMage`) Player Controls (Move, Jump, Crouch, Blink, Attack, Skill, Overdrive, Astral Meteor Ultimate) + Auto-Play AI toggle
+//     - Full Zone 1 -> Zone 2 -> Zone 3 -> Zone 4 scrolling progression, pickups, "GO! ➔" prompts, Boss Warning,
+//       3-Phase Archfiend Malphas boss mechanics, Campaign Clear -> Sol Row 9 VICTORY pose, and 0 ctx.rotate calls!
+{
+  // 17A. Verify Monster & Boss PNG dimensions
+  const monsterSheets = [
+    'monster_ghoul_sheet.png',
+    'monster_cultist_sheet.png',
+    'monster_brute_sheet.png',
+    'boss_archfiend_sheet.png'
+  ];
+  for (const fname of monsterSheets) {
+    const p = `/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${fname}`;
+    const buf = fs.readFileSync(p);
+    const w = buf.readUInt32BE(16);
+    const h = buf.readUInt32BE(20);
+    if (w !== 6240 || h !== 1456) {
+      throw new Error(`Expected ${fname} dimensions 6240x1456 (7 rows x 30 cols @ 208x208), got ${w}x${h}`);
+    }
+  }
+  {
+    const portBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/boss_archfiend_portrait.png');
+    const pw = portBuf.readUInt32BE(16);
+    const ph = portBuf.readUInt32BE(20);
+    if (pw !== 128 || ph !== 128) {
+      throw new Error(`Expected boss_archfiend_portrait.png dimensions 128x128, got ${pw}x${ph}`);
+    }
+  }
+
+  // 17B. Verify HTML Adventure Mode controls & AdventureManager DOM IDs
+  const indexHtml = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/index.html', 'utf8');
+  const advJs = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js', 'utf8');
+  const htmlIds = new Set([...indexHtml.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
+  const requiredAdvIds = [
+    'btn-title-adventure',
+    'mode-btn-adventure',
+    'adventure-controls',
+    'adv-btn-left',
+    'adv-btn-right',
+    'adv-btn-jump',
+    'adv-btn-crouch',
+    'adv-btn-dodge',
+    'adv-btn-autoplay',
+    'adv-autoplay-label',
+    'adv-btn-attack',
+    'adv-btn-skill',
+    'adv-btn-overdrive',
+    'adv-btn-ultimate'
+  ];
+  for (const reqId of requiredAdvIds) {
+    if (!htmlIds.has(reqId)) {
+      throw new Error(`Missing required Adventure Mode HTML ID #${reqId} in index.html!`);
+    }
+  }
+  for (const m of advJs.matchAll(/getElementById\(\s*'([^']+)'\s*\)/g)) {
+    if (!htmlIds.has(m[1])) {
+      throw new Error(`AdventureManager.js references missing getElementById('${m[1]}')!`);
+    }
+  }
+
+  // 17C. Simulate Full 4-Zone Campaign with Ignis Sol (`FireMage`)
+  const advTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
+  const advCtx = createMockCtx(advTrack);
+  const advGame = createMockGame();
+  advGame.gameMode = 'adventure';
+  advGame.isAdventureMode = () => advGame.gameMode === 'adventure';
+  advGame.is2v2Mode = () => false;
+  advGame.isLandingOpen = false;
+  advGame.testModeUnlimitedHp = true; // Monsters must STILL take mortal damage & die when player ∞ HP is ON!
+  advGame.matchTime = 24;
+  advGame.updateHUD = () => {};
+  advGame.triggerUltimateCinematic = () => {};
+  advGame.triggerTrueUltimateCinematic = () => {};
+  advGame.hudEls = {
+    left: {},
+    right: { partnerWing: { classList: { add() {}, remove() {}, toggle() {} } } },
+    crestVs: {},
+    modeBadge: {},
+    stageBadge: {}
+  };
+
+  const adv = new AdventureManager(advGame);
+  advGame.adventure = adv;
+  advGame.onFighterDeath = (deadFighter) => {
+    if (deadFighter.isMonster) adv.onMonsterDeath(deadFighter);
+    else adv.onPlayerDeath(deadFighter);
+  };
+
+  const sol = new FireMage(240, advGame.renderer.groundY, 1);
+  sol.game = advGame;
+  advGame.leftFighter = sol;
+  adv.startCampaign(sol);
+
+  if (
+    advGame.renderer.worldWidth !== ADVENTURE_WORLD_WIDTH ||
+    !advGame.renderer.adventureMode ||
+    adv.zoneIndex !== 0 ||
+    !adv.lockActive ||
+    adv.getLivingMonsters().length !== 2
+  ) {
+    throw new Error(
+      `Adventure startCampaign check failed: ww=${advGame.renderer.worldWidth}, advMode=${advGame.renderer.adventureMode}, zone=${adv.zoneIndex}, lock=${adv.lockActive}, monsters=${adv.getLivingMonsters().length}`
+    );
+  }
+
+  const tickAdv = (frames = 1) => {
+    const dt = 1 / 30;
+    for (let i = 0; i < frames; i++) {
+      adv.update(dt);
+      // Step projectiles against opposing team (mirrors main.js updateProjectiles)
+      for (let pi = advGame.vfx.projectiles.length - 1; pi >= 0; pi--) {
+        const p = advGame.vfx.projectiles[pi];
+        p.x += (p.vx || 0) * dt;
+        p.y += (p.vy || 0) * dt;
+        const targets = advGame.fighters.filter((f) => f && !f.isDead && f.team !== p.owner?.team);
+        let hit = false;
+        for (const t of targets) {
+          if (Math.abs(p.x - t.x) < (p.radius || 24) + 34 && Math.abs(p.y - (t.y - 84)) < 96) {
+            t.takeDamage(p.damage || 30, p.owner, Boolean(p.isCrit), 80, 0);
+            hit = true;
+            break;
+          }
+        }
+        if (hit || p.y >= advGame.renderer.groundY + 10 || p.x < -300 || p.x > ADVENTURE_WORLD_WIDTH + 300) {
+          advGame.vfx.projectiles.splice(pi, 1);
+        }
+      }
+      advGame.vfx.update(dt, advGame.renderer.groundY, advGame.renderer, advGame.audio);
+      advGame.renderer.update(dt, advGame.fighters);
+      advGame.renderer.render(advGame.fighters, advGame.vfx);
+
+      // Strictly audit all Monster/Boss character draws & Adventure world/HUD passes for ZERO ctx.rotate calls!
+      adv.renderWorldFloor(advCtx, advGame.renderer);
+      for (const f of advGame.fighters) {
+        if (f && f.isMonster) {
+          f.draw(advCtx, false, advGame.renderer);
+        }
+      }
+      adv.renderScreenHUD(advCtx, advGame.renderer);
+    }
+  };
+
+  // Verify Manual Mode (`autoPlay === false`): Sol stays put at x=240 when idle (AI never hijacks player)
+  tickAdv(12);
+  if (sol.state !== 'IDLE' || Math.abs(sol.x - 240) > 2) {
+    throw new Error(`Expected manual idle Sol to hold position at x=240 in IDLE, got state=${sol.state}, x=${sol.x}`);
+  }
+
+  // Verify Manual Walk Right & Release
+  adv.setMoveInput(1, true);
+  tickAdv(15);
+  const walkedX = sol.x;
+  adv.setMoveInput(1, false);
+  tickAdv(2);
+  if (walkedX <= 320 || sol.state !== 'IDLE') {
+    throw new Error(`Expected manual walk input to advance Sol >320px and return to IDLE on release, got walkedX=${walkedX}, state=${sol.state}`);
+  }
+
+  // Verify Manual Attack -> Marvel-Arcade Recovery Cancel into Skill, plus Jump, Crouch, Dodge, and Overdrive!
+  for (const m of adv.getLivingMonsters()) {
+    m.hp = 3500;
+  }
+  const waitIdle = (maxFrames = 90) => {
+    for (let f = 0; f < maxFrames && sol.state !== 'IDLE'; f++) tickAdv(1);
+  };
+
+  sol.autoCooldown = 0;
+  adv.triggerAction('attack');
+  tickAdv(1);
+  if (sol.state !== 'AUTO_ATTACK') throw new Error(`Expected manual attack -> AUTO_ATTACK, got ${sol.state}`);
+  // Advance past fireball release (t >= 0.34s -> 14 frames), then test Marvel-Arcade recovery cancel into SKILL!
+  tickAdv(14);
+  sol.skillCooldown = 0;
+  adv.triggerAction('skill');
+  tickAdv(1);
+  if (sol.state !== 'SKILL') throw new Error(`Expected manual skill recovery-cancel -> SKILL, got ${sol.state}`);
+  waitIdle(60);
+
+  sol.dodgeCooldown = 0;
+  adv.triggerAction('jump');
+  tickAdv(1);
+  if (sol.state !== 'JUMP') throw new Error(`Expected manual jump -> JUMP, got ${sol.state}`);
+  waitIdle(60);
+
+  sol.crouchCooldown = 0;
+  adv.triggerAction('crouch');
+  tickAdv(1);
+  if (sol.state !== 'CROUCH') throw new Error(`Expected manual crouch -> CROUCH, got ${sol.state}`);
+  waitIdle(60);
+
+  sol.dodgeCooldown = 0;
+  adv.triggerAction('dodge');
+  tickAdv(1);
+  if (sol.state !== 'DODGE') throw new Error(`Expected manual dodge -> DODGE, got ${sol.state}`);
+  waitIdle(50);
+
+  sol.mana = sol.maxMana;
+  adv.triggerAction('overdrive');
+  tickAdv(1);
+  if (sol.state !== 'ULTIMATE') throw new Error(`Expected manual overdrive -> ULTIMATE, got ${sol.state}`);
+  waitIdle(90);
+
+  // Clear Wave 1 (verify monsters die even with testModeUnlimitedHp = true!)
+  for (const m of adv.getLivingMonsters()) {
+    m.takeDamage(9999, sol, true, 120, 0);
+  }
+  if (adv.getLivingMonsters().length !== 0) {
+    throw new Error('Expected Wave 1 ghouls to take mortal damage and die even when testModeUnlimitedHp === true!');
+  }
+
+  // Advance 0.5s -> Zone 1 Subwave 2 spawns (Ghoul + Void Cultist ambush!)
+  tickAdv(18);
+  if (adv.subWave !== 2 || adv.getLivingMonsters().length < 2) {
+    throw new Error(`Expected Zone 1 Subwave 2 ambush to spawn, got subWave=${adv.subWave}, living=${adv.getLivingMonsters().length}`);
+  }
+  // Let Void Cultist & Ghouls execute attacks/sigils for 45 frames to exercise their AI & floor telegraphs
+  tickAdv(45);
+  for (const m of adv.getLivingMonsters()) {
+    m.takeDamage(9999, sol, true, 120, 0);
+  }
+  tickAdv(4);
+  if (adv.lockActive || !adv.goPromptActive || adv.pickups.length < 2) {
+    throw new Error(`Expected Zone 1 clear to unlock gate, show GO! prompt & drop pickups: lock=${adv.lockActive}, go=${adv.goPromptActive}, pickups=${adv.pickups.length}`);
+  }
+
+  // Walk Sol across pickups and into Zone 2 (`triggerX = 1310`)
+  adv.setMoveInput(1, true);
+  for (let step = 0; step < 180 && adv.zoneIndex < 1; step++) {
+    tickAdv(1);
+  }
+  adv.setMoveInput(1, false);
+  if (adv.zoneIndex !== 1 || !adv.lockActive || !adv.getLivingMonsters().some((m) => m.kind === 'brute')) {
+    throw new Error(`Expected Zone 2 Cursed Starwood encounter with Obsidian Juggernaut, got zone=${adv.zoneIndex}, lock=${adv.lockActive}`);
+  }
+
+  // Let Obsidian Juggernaut + Cultists fight for 45 frames, then unleash Sol's Astral Meteor Supreme Ultimate (`TRUE_ULTIMATE`)!
+  tickAdv(45);
+  sol.setState('IDLE');
+  sol.finisherGauge = sol.maxFinisherGauge;
+  adv.triggerAction('ultimate');
+  tickAdv(1);
+  if (sol.state !== 'TRUE_ULTIMATE') {
+    throw new Error(`Expected manual ultimate -> TRUE_ULTIMATE, got ${sol.state}`);
+  }
+  tickAdv(150);
+  if (advGame.renderer.permanentStageOverride !== 'inferno') {
+    throw new Error(`Expected Sol's Astral Meteor Ultimate to scorch Adventure stage into inferno, got ${advGame.renderer.permanentStageOverride}`);
+  }
+  for (const m of adv.getLivingMonsters()) {
+    m.takeDamage(9999, sol, true, 120, 0);
+  }
+  tickAdv(4);
+
+  // March into Zone 3 (`triggerX = 2510`) -> Elite Brute + Elite Cultist + Ghouls!
+  adv.setMoveInput(1, true);
+  for (let step = 0; step < 220 && adv.zoneIndex < 2; step++) {
+    tickAdv(1);
+  }
+  adv.setMoveInput(1, false);
+  if (adv.zoneIndex !== 2 || !adv.getLivingMonsters().some((m) => m.isElite)) {
+    throw new Error(`Expected Zone 3 Abyssal Bone-Gate Elite encounter, got zone=${adv.zoneIndex}`);
+  }
+  tickAdv(35);
+  for (const m of adv.getLivingMonsters()) {
+    m.takeDamage(9999, sol, true, 120, 0);
+  }
+  tickAdv(4);
+
+  // March through Sanctuary Cache into Zone 4 Throne of the Black Pit (`triggerX = 3720`) -> Boss Warning -> Archfiend Malphas!
+  adv.setMoveInput(1, true);
+  for (let step = 0; step < 240 && adv.zoneIndex < 3; step++) {
+    tickAdv(1);
+  }
+  adv.setMoveInput(1, false);
+  if (adv.zoneIndex !== 3 || !adv.bossSpawnPending || adv.bossWarningTimer <= 0) {
+    throw new Error(`Expected Zone 4 Boss Warning banner, got zone=${adv.zoneIndex}, pending=${adv.bossSpawnPending}, timer=${adv.bossWarningTimer}`);
+  }
+
+  // Tick through 1.85s Boss Warning -> Malphas spawns!
+  tickAdv(62);
+  const boss = adv.bossEntity;
+  if (!boss || !(boss instanceof ArchfiendBoss) || boss.isDead || boss.bossPhase !== 1) {
+    throw new Error(`Expected ArchfiendBoss Malphas in Phase 1, got ${boss?.name} phase=${boss?.bossPhase}`);
+  }
+  if (sol.fx.overrideCenterWorldX === null) {
+    throw new Error('Expected Renderer.render to sync sol.fx.overrideCenterWorldX in Adventure Mode for 4800px shader visibility!');
+  }
+
+  // Exercise Boss Phase 1 attacks
+  tickAdv(50);
+
+  // Drop Boss below 65% HP -> Trigger Phase 2 (Dread Wing Divebomb + 2 Summoned Ashfang Vanguards + Shrine Pickups!)
+  boss.isInvulnerable = false;
+  boss.takeDamage(Math.ceil(boss.maxHp * 0.40), sol, true, 90, 0);
+  tickAdv(55);
+  if (boss.bossPhase < 2) {
+    throw new Error(`Expected Archfiend Malphas to transition to Phase 2 at <=65% HP, got phase=${boss.bossPhase}, hp=${boss.hp}/${boss.maxHp}`);
+  }
+
+  // Drop Boss below 30% HP -> Trigger Phase 3 (5-Pillar Black Pit Apocalypse + Vulnerable Punish Window!)
+  boss.isInvulnerable = false;
+  boss.hp = Math.floor(boss.maxHp * 0.26);
+  tickAdv(95);
+  if (boss.bossPhase !== 3) {
+    throw new Error(`Expected Archfiend Malphas to transition to Phase 3 at <=30% HP, got phase=${boss.bossPhase}`);
+  }
+
+  // Vanquish Archfiend Malphas -> Verify Campaign Clear, Minion Banish & Sol Row 9 VICTORY Pose!
+  boss.isInvulnerable = false;
+  boss.takeDamage(99999, sol, true, 160, 0);
+  tickAdv(15);
+  if (!advGame.isMatchOver || adv.getLivingMonsters().length !== 0 || sol.state !== 'VICTORY') {
+    throw new Error(
+      `Expected Campaign Victory & Sol Row 9 VICTORY pose on Malphas KO: isMatchOver=${advGame.isMatchOver}, living=${adv.getLivingMonsters().length}, solState=${sol.state}`
+    );
+  }
+
+  // Verify Optional Auto-Play AI Toggle & Clean Teardown (`stopCampaign` restores 1200px Arena)
+  advGame.isMatchOver = false;
+  const autoSol = new FireMage(240, advGame.renderer.groundY, 1);
+  autoSol.game = advGame;
+  advGame.leftFighter = autoSol;
+  adv.setAutoPlay(true, false);
+  adv.startCampaign(autoSol);
+  tickAdv(30);
+  adv.stopCampaign();
+  if (advGame.renderer.worldWidth !== 1200 || advGame.renderer.adventureMode !== false) {
+    throw new Error(`Expected stopCampaign() to restore worldWidth=1200 & adventureMode=false, got ww=${advGame.renderer.worldWidth}`);
+  }
+
+  if (advTrack.rotateCalls > 0) {
+    throw new Error(`Forbidden ctx.rotate() called ${advTrack.rotateCalls} times during Adventure Mode rendering!`);
+  }
+
+  console.log(
+    `[PASS] Adventure Mode (4800px 4-Zone Campaign): Ignis Sol manual kit + [P] Auto-Play, Ghoul/Cultist/Juggernaut waves, pickups, 3-Phase Archfiend Malphas Boss, Sol Row-9 VICTORY & 0 ctx.rotate (${adv.score} pts)!`
+  );
+}
+
 
 
 

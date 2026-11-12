@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps80';
+import { PixelForge } from './PixelForge.js?v=30fps81';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -417,11 +417,17 @@ export class Renderer {
         (f) => !f.isBenched && (!f.isDead || (f.deathTimer || 0) < 2.8)
       );
       const pool = activePool.length > 0 ? activePool : validFighters;
-      let minX = pool[0].x;
-      let maxX = pool[0].x;
+      const player = this.adventureMode ? pool.find((f) => f.team === 1) || pool[0] : null;
+      const framePool =
+        this.adventureMode && player
+          ? pool.filter((f) => f === player || Math.abs(f.x - player.x) <= 920)
+          : pool;
+
+      let minX = framePool[0].x;
+      let maxX = framePool[0].x;
       let maxAirLift = 0;
       let maxSkyFocus = 0;
-      for (const f of pool) {
+      for (const f of framePool) {
         if (f.x < minX) minX = f.x;
         if (f.x > maxX) maxX = f.x;
         const lift = Math.max(0, this.groundY - f.y);
@@ -429,11 +435,18 @@ export class Renderer {
         const skyFocus = Math.max(0, f.cameraAirLift || 0);
         if (skyFocus > maxSkyFocus) maxSkyFocus = skyFocus;
       }
-      const midX = (minX + maxX) * 0.5;
-      const horizSpan = Math.abs(maxX - minX) + (validFighters.length > 2 ? 380 : 340);
+      const midX =
+        this.adventureMode && player
+          ? framePool.length > 1
+            ? player.x * 0.56 + ((minX + maxX) * 0.5) * 0.44
+            : player.x + player.facing * 95
+          : (minX + maxX) * 0.5;
+      const rawHorizSpan = Math.abs(maxX - minX) + (validFighters.length > 2 ? 380 : 340);
+      const horizSpan = this.adventureMode ? Math.min(1180, Math.max(760, rawHorizSpan)) : rawHorizSpan;
       const dist = Math.max(horizSpan, maxAirLift * 1.48 + 340);
 
-      const fitScaleX = this.width / Math.max(620, Math.min(this.worldWidth, dist));
+      const maxSpanW = this.adventureMode ? 1280 : this.worldWidth;
+      const fitScaleX = this.width / Math.max(620, Math.min(maxSpanW, dist));
       const fitScaleY = this.height / 720;
       let targetZoom = Math.min(fitScaleX, fitScaleY * 1.15);
       targetZoom = Math.max(0.52, Math.min(this.isMobile ? 0.85 : 1.15, targetZoom));
@@ -477,24 +490,38 @@ export class Renderer {
         );
       }
 
-      // Clamp camera X so the viewport stays comfortably inside the 1680-wide cathedral diorama
       const halfViewW = (this.width * 0.5) / targetZoom;
-      const bgLeft = (this.worldWidth - 1680) * 0.5 + 16;
-      const bgRight = (this.worldWidth + 1680) * 0.5 - 16;
-      if (bgRight - bgLeft > halfViewW * 2) {
-        targetX = Math.max(bgLeft + halfViewW, Math.min(bgRight - halfViewW, targetX));
+      if (this.adventureMode) {
+        const camMin = Number.isFinite(this.adventureCamMinX) ? this.adventureCamMinX : 0;
+        const camMax = Number.isFinite(this.adventureCamMaxX)
+          ? this.adventureCamMaxX
+          : this.worldWidth;
+        if (camMax - camMin > halfViewW * 2) {
+          targetX = Math.max(camMin + halfViewW, Math.min(camMax - halfViewW, targetX));
+        } else {
+          targetX = (camMin + camMax) * 0.5;
+        }
       } else {
-        targetX = this.worldWidth * 0.5;
+        // Clamp camera X so the viewport stays comfortably inside the 1680-wide cathedral diorama
+        const bgLeft = (this.worldWidth - 1680) * 0.5 + 16;
+        const bgRight = (this.worldWidth + 1680) * 0.5 - 16;
+        if (bgRight - bgLeft > halfViewW * 2) {
+          targetX = Math.max(bgLeft + halfViewW, Math.min(bgRight - halfViewW, targetX));
+        } else {
+          targetX = this.worldWidth * 0.5;
+        }
       }
 
-      const camSpeed = maxSkyFocus > 0 ? 7.5 : 6;
+      const camSpeed = maxSkyFocus > 0 ? 7.5 : this.adventureMode ? 7.0 : 6;
       const lerpFactor = Math.min(1, Math.max(0, rawDt * camSpeed));
       this.zoom += (targetZoom - this.zoom) * lerpFactor;
       this.camX += (targetX - this.camX) * lerpFactor;
       this.camY += (targetY - this.camY) * lerpFactor;
     }
 
-    this.camParallaxX = this.camX - this.worldWidth * 0.5;
+    this.camParallaxX = this.adventureMode
+      ? ((this.camX % 1200) + 1200) % 1200 - 600
+      : this.camX - this.worldWidth * 0.5;
     this.camParallaxY = this.camY - (this.groundY - 95);
   }
 
@@ -564,6 +591,18 @@ export class Renderer {
     this.drawFloorLightPools(ctx, lights, gy);
     this.drawDynamicShadows(ctx, fighters, lights, gy);
 
+    // 4.5. Adventure Mode Floor Telegraph Rings, Wave-Lock Gates & Arcade Pickups
+    if (this.adventureMode && this.adventureHook) {
+      this.adventureHook.renderWorldFloor(ctx, this);
+    }
+
+    // Sync 120Hz ArcaneShaderFX viewport center to scrolling camera in Adventure Mode (zero FireMage.js edits!)
+    for (const f of fighters) {
+      if (f && f.fx) {
+        f.fx.overrideCenterWorldX = this.adventureMode ? this.camX : null;
+      }
+    }
+
     // 5. Skill & Aura Pass (Rendered BEHIND the character bodies so skills never obscure characters or glow over their faces!)
     if (typeof vfx.renderBackgroundCastSeals === 'function') {
       vfx.renderBackgroundCastSeals(ctx, this);
@@ -597,7 +636,9 @@ export class Renderer {
       if (f.heroId !== 'reaper') {
         this.drawCharacterGroundHalo(ctx, f);
       }
-      this.drawCharacterPixelFlames(ctx, f);
+      if (!f.isMonster) {
+        this.drawCharacterPixelFlames(ctx, f);
+      }
     }
     for (const f of sorted) {
       if (!f.isBenched && typeof f.drawForegroundOverlay === 'function') {
@@ -653,8 +694,8 @@ export class Renderer {
       }
     }
 
-    // 7.5. In-World 2v2 Overhead Team & Mini-HP Badges (when 4 fighters are present)
-    if (fighters.length > 2) {
+    // 7.5. In-World 2v2 Overhead Team & Mini-HP Badges (when 4 fighters are present in 2v2 modes)
+    if (fighters.length > 2 && !this.adventureMode) {
       for (const f of sorted) {
         this.drawFighter2v2OverheadBadge(ctx, f);
       }
@@ -667,6 +708,11 @@ export class Renderer {
 
     // 8. Screen-Space Unreal HD-2D Soft Tilt-Shift Vignette (Zero hard vertical bars)
     this.drawHD2DPostProcess(ctx);
+
+    // 9. Adventure Mode Screen-Space Progress Strip, Flashing "GO! ➔" Arrow & Boss Warning Banner
+    if (this.adventureMode && this.adventureHook) {
+      this.adventureHook.renderScreenHUD(ctx, this);
+    }
   }
 
   drawTagPedestalWorld(ctx, f) {
@@ -771,8 +817,157 @@ export class Renderer {
     ctx.restore();
   }
 
+  drawAdventureZoneGate(ctx, gateX, gy, accentCol = '#fb923c') {
+    const gx = Math.round(gateX);
+    const t = this.time || 0;
+    const flick = 0.72 + 0.28 * Math.sin(t * 7.5 + gateX * 0.01);
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // Stepped Obsidian-Stone Gothic Gate Pillar + Buttress Plinth
+    ctx.fillStyle = '#070912';
+    ctx.fillRect(gx - 34, gy - 420, 68, 424);
+    ctx.fillStyle = '#151c2c';
+    ctx.fillRect(gx - 28, gy - 412, 56, 412);
+    ctx.fillStyle = '#243046';
+    ctx.fillRect(gx - 20, gy - 404, 16, 400);
+    // Stepped plinth base
+    ctx.fillStyle = '#0b0f1a';
+    ctx.fillRect(gx - 46, gy - 28, 92, 32);
+    ctx.fillStyle = '#1e293b';
+    ctx.fillRect(gx - 42, gy - 24, 84, 24);
+    // Forged Brass Trim & Archway Crest
+    ctx.fillStyle = '#9a762d';
+    ctx.fillRect(gx - 36, gy - 340, 72, 6);
+    ctx.fillRect(gx - 38, gy - 28, 76, 4);
+    ctx.fillStyle = '#d4af37';
+    ctx.fillRect(gx - 10, gy - 386, 20, 36);
+    ctx.fillStyle = accentCol;
+    ctx.fillRect(gx - 4, gy - 378, 8, 20);
+
+    // Twin Lit Iron Braziers flanking the Zone Gate
+    for (const side of [-1, 1]) {
+      const bx = gx + side * 38;
+      const by = gy - 118;
+      ctx.fillStyle = '#090d16';
+      ctx.fillRect(bx - 12, by, 24, 10);
+      ctx.fillRect(bx - 6, by + 10, 12, 16);
+      const glow = this.getGlowForColor(accentCol);
+      if (glow) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = 0.34 * flick;
+        ctx.drawImage(glow, bx - 42, by - 52, 84, 84);
+        ctx.restore();
+      }
+      const fh = Math.round(14 + 5 * flick);
+      ctx.fillStyle = accentCol;
+      ctx.fillRect(bx - 7, by - fh, 14, fh);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(bx - 4, by - Math.round(fh * 0.65), 8, Math.round(fh * 0.65));
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(bx - 2, by - 5, 4, 5);
+    }
+    ctx.restore();
+  }
+
   drawHD2DArena(ctx, ww, gy) {
     const assets = PixelForge.initAssets();
+
+    if (this.adventureMode && ww > 1600) {
+      const drawW = 1680;
+      const drawH = 945;
+      const drawY = Math.round(gy - drawH * 0.82);
+      const zones = [
+        { cx: 600, id: 'cathedral', img: assets.arenaBg, gateCol: '#fb923c' },
+        { cx: 1800, id: 'sylvan', img: assets.arenaSylvan || assets.arenaBg, gateCol: '#34d399' },
+        { cx: 3000, id: 'boneyard', img: assets.arenaBoneyard || assets.arenaBg, gateCol: '#a855f7' },
+        { cx: 4200, id: 'clocktower', img: assets.arenaClocktower || assets.arenaBg, gateCol: '#ef4444' }
+      ];
+      const isInfernoPerm = this.permanentStageOverride === 'inferno';
+      const infernoOverlayAlpha = isInfernoPerm
+        ? 1.0
+        : this.trueUltStageOverride === 'inferno'
+          ? this.trueUltStageAlpha
+          : 0;
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.fillStyle = '#05070f';
+      ctx.fillRect(-1200, -1100, ww + 2400, gy + 1900);
+
+      for (const z of zones) {
+        if (Math.abs(z.cx - this.camX) > 1680) continue;
+        const zx = Math.round(z.cx - drawW * 0.5);
+        const zImg = isInfernoPerm && assets.arenaInferno?.complete ? assets.arenaInferno : z.img;
+        if (zImg && zImg.complete && zImg.naturalWidth > 0) {
+          // Upper-sky vertical mirror for Heavensfall cosmos camera zoom
+          ctx.save();
+          ctx.translate(zx, drawY);
+          ctx.scale(1, -1);
+          ctx.drawImage(zImg, 0, 0, drawW, drawH);
+          ctx.restore();
+          ctx.drawImage(zImg, zx, drawY, drawW, drawH);
+        }
+        if (
+          !isInfernoPerm &&
+          infernoOverlayAlpha > 0.02 &&
+          assets.arenaInferno?.complete &&
+          assets.arenaInferno.naturalWidth > 0
+        ) {
+          ctx.save();
+          ctx.globalAlpha = Math.min(1, infernoOverlayAlpha);
+          ctx.drawImage(assets.arenaInferno, zx, drawY, drawW, drawH);
+          ctx.restore();
+        }
+      }
+
+      // Continuous Flagstone / Basalt Seam across all 4800px
+      const seamStage = this.getActiveStageId();
+      for (let r = 0; r < 5; r++) {
+        const ry = Math.round((gy - 22 + r * r * 12) / 3) * 3;
+        ctx.fillStyle = seamStage === 'inferno' ? 'rgba(15, 6, 4, 0.44)' : 'rgba(8, 11, 20, 0.36)';
+        ctx.fillRect(-400, ry, ww + 800, 3);
+        if (seamStage === 'inferno') {
+          ctx.fillStyle = 'rgba(251, 146, 60, 0.16)';
+          ctx.fillRect(-400, ry + 1, ww + 800, 2);
+        } else if (r === 1) {
+          ctx.fillStyle = 'rgba(212, 175, 55, 0.12)';
+          ctx.fillRect(-400, ry + 1, ww + 800, 2);
+        }
+      }
+
+      // Per-Zone Bespoke Animated Stage Effects + Connecting Gothic Zone Gate Archways
+      for (const z of zones) {
+        if (Math.abs(z.cx - this.camX) > 1350) continue;
+        const zx = Math.round(z.cx - drawW * 0.5);
+        if (isInfernoPerm) {
+          this.drawInfernoStageEffects(ctx, zx, drawY, drawW, drawH, gy, 1.0);
+        } else {
+          if (z.id === 'sylvan') {
+            this.drawSylvanStageEffects(ctx, z.img, zx, drawY, drawW, drawH, gy);
+          } else if (z.id === 'boneyard') {
+            this.drawBoneyardStageEffects(ctx, z.img, zx, drawY, drawW, drawH, gy);
+          } else if (z.id === 'clocktower') {
+            this.drawClocktowerStageEffects(ctx, z.img, zx, drawY, drawW, drawH, gy);
+          } else {
+            this.drawStagePixelFlames(ctx, z.img, zx, drawY, drawW, drawH, gy);
+          }
+          if (infernoOverlayAlpha > 0.12) {
+            this.drawInfernoStageEffects(ctx, zx, drawY, drawW, drawH, gy, infernoOverlayAlpha);
+          }
+        }
+      }
+
+      // Mask diorama seams at x = 1200, 2400, 3600 with ornate Gothic Zone Gate Pillars & Lit Braziers!
+      this.drawAdventureZoneGate(ctx, 1200, gy, '#34d399');
+      this.drawAdventureZoneGate(ctx, 2400, gy, '#a855f7');
+      this.drawAdventureZoneGate(ctx, 3600, gy, '#ef4444');
+
+      ctx.restore();
+      return;
+    }
+
     const stageMeta = this.getCurrentStageMeta();
     const bg = (stageMeta && assets[stageMeta.assetKey]) || assets.arenaBg;
     const drawW = 1680;
@@ -2828,6 +3023,8 @@ export class Renderer {
     const activeStage = this.getActiveStageId();
     const t = this.time;
     const parX = (this.camParallaxX || 0) * 0.18;
+    const viewCenterX = this.adventureMode ? this.camX : ww * 0.5;
+    const moteAnchorOffset = this.adventureMode ? this.camX - 600 : 0;
     ctx.save();
 
     // 1. Soft Ambient Radial Sky-Glow per Active Stage
@@ -2846,14 +3043,14 @@ export class Renderer {
                 ? this.glowOrange
                 : this.glowGold;
     if (skyGlow) {
-      ctx.drawImage(skyGlow, ww * 0.5 - 390 + parX * 0.4, gy - 540, 780, 480);
+      ctx.drawImage(skyGlow, viewCenterX - 390 + parX * 0.4, gy - 540, 780, 480);
     }
     if (activeStage === 'inferno' && this.glowCrimson) {
       ctx.globalAlpha = 0.16 + 0.04 * Math.cos(t * 2.1);
-      ctx.drawImage(this.glowCrimson, ww * 0.5 - 320 + parX * 0.3, gy - 480, 640, 420);
+      ctx.drawImage(this.glowCrimson, viewCenterX - 320 + parX * 0.3, gy - 480, 640, 420);
     } else if (activeStage === 'sanctuary' && this.glowGold) {
       ctx.globalAlpha = 0.16 + 0.04 * Math.cos(t * 1.9);
-      ctx.drawImage(this.glowGold, ww * 0.5 - 280 + parX * 0.3, gy - 510, 560, 420);
+      ctx.drawImage(this.glowGold, viewCenterX - 280 + parX * 0.3, gy - 510, 560, 420);
     }
 
     // 2. 5 Diagonal Volumetric Parallax Light-Shafts (`0.06..0.12` alpha in `'lighter'` — zero fighter washout!)
@@ -2868,39 +3065,39 @@ export class Renderer {
       let baseAlpha = 0.085;
 
       if (activeStage === 'inferno') {
-        topX = ww * 0.5 + idx * 145 - 35 + parX;
-        botX = ww * 0.5 + idx * 195 + 45 + sway + parX * 1.15;
+        topX = viewCenterX + idx * 145 - 35 + parX;
+        botX = viewCenterX + idx * 195 + 45 + sway + parX * 1.15;
         topRgb = s % 2 === 0 ? '251, 146, 60' : '250, 204, 21';
         midRgb = s % 3 === 0 ? '239, 68, 68' : '234, 88, 12';
         baseAlpha = 0.095;
       } else if (activeStage === 'sanctuary') {
-        topX = ww * 0.5 - 95 + idx * 118 + parX;
-        botX = ww * 0.5 + 35 + idx * 172 + sway + parX * 1.15;
+        topX = viewCenterX - 95 + idx * 118 + parX;
+        botX = viewCenterX + 35 + idx * 172 + sway + parX * 1.15;
         topRgb = s === 2 ? '254, 240, 138' : '125, 211, 252';
         midRgb = s % 2 === 0 ? '56, 189, 248' : '250, 204, 21';
         baseAlpha = 0.095;
       } else if (activeStage === 'sylvan') {
-        topX = ww * 0.5 - 40 + idx * 135 + parX;
-        botX = ww * 0.5 + 30 + idx * 178 + sway + parX * 1.15;
+        topX = viewCenterX - 40 + idx * 135 + parX;
+        botX = viewCenterX + 30 + idx * 178 + sway + parX * 1.15;
         topRgb = s % 2 === 0 ? '52, 211, 153' : '253, 224, 71';
         midRgb = s % 2 === 0 ? '16, 185, 129' : '56, 189, 248';
         baseAlpha = 0.085;
       } else if (activeStage === 'boneyard') {
-        topX = ww * 0.5 + idx * 125 + parX;
-        botX = ww * 0.5 + idx * 185 + sway + parX * 1.15;
+        topX = viewCenterX + idx * 125 + parX;
+        botX = viewCenterX + idx * 185 + sway + parX * 1.15;
         topRgb = s % 2 === 0 ? '244, 63, 94' : '192, 132, 252';
         midRgb = s % 2 === 0 ? '159, 18, 57' : '126, 34, 206';
         baseAlpha = 0.075;
       } else if (activeStage === 'clocktower') {
-        topX = ww * 0.5 + idx * 130 + parX;
-        botX = ww * 0.5 + idx * 182 + sway + parX * 1.15;
+        topX = viewCenterX + idx * 130 + parX;
+        botX = viewCenterX + idx * 182 + sway + parX * 1.15;
         topRgb = s % 2 === 0 ? '45, 212, 191' : '250, 204, 21';
         midRgb = s % 2 === 0 ? '20, 184, 166' : '202, 138, 4';
         baseAlpha = 0.085;
       } else {
         // Cathedral: frost-cyan shafts on left, eclipse-solar shafts on center/right
-        topX = ww * 0.5 + idx * 118 + parX;
-        botX = ww * 0.5 + idx * 188 + sway + parX * 1.15;
+        topX = viewCenterX + idx * 118 + parX;
+        botX = viewCenterX + idx * 188 + sway + parX * 1.15;
         const isCool = idx < 0;
         topRgb = isCool ? '56, 189, 248' : idx === 0 ? '253, 224, 71' : '251, 146, 60';
         midRgb = isCool ? '14, 165, 233' : '234, 88, 12';
@@ -2964,6 +3161,7 @@ export class Renderer {
       const moteParallax = (this.camParallaxX || 0) * (0.08 + (i % 3) * 0.04);
       const mx =
         m.x +
+        moteAnchorOffset +
         Math.sin(t * (activeStage === 'inferno' ? 2.8 : 1.6) + m.phase) * 26 +
         u * windBias +
         moteParallax;
@@ -3224,6 +3422,8 @@ export class Renderer {
     const t = this.time;
     const fgShiftX = -(this.camParallaxX || 0) * 0.22;
     const fgShiftY = -(this.camParallaxY || 0) * 0.10;
+    const viewSpanW = this.adventureMode ? 1200 : ww;
+    const viewLeftX = this.adventureMode ? this.camX - viewSpanW * 0.5 : 0;
     const count = 14;
 
     ctx.save();
@@ -3239,10 +3439,10 @@ export class Renderer {
             ? 0.16 + (i % 3) * 0.04
             : 0.22 + (i % 3) * 0.05;
       const cycle = (t * speed + i * 0.19) % 1;
-      const flankSpan = ww * 0.28;
+      const flankSpan = viewSpanW * 0.28;
       const baseX = isLeftFlank
-        ? -35 + ((slot * 67) % Math.round(flankSpan))
-        : ww - flankSpan + ((slot * 71) % Math.round(flankSpan)) + 35;
+        ? viewLeftX - 35 + ((slot * 67) % Math.round(flankSpan))
+        : viewLeftX + viewSpanW - flankSpan + ((slot * 71) % Math.round(flankSpan)) + 35;
       const swayX = Math.sin(t * 2.2 + i * 1.3) * 22 + (activeStage === 'inferno' ? cycle * 38 : 0);
       const px = Math.round((baseX + swayX + fgShiftX) / 3) * 3;
 
