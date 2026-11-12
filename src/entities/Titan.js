@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps76';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps76';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps76';
+import { Fighter } from './Fighter.js?v=30fps77';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps77';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps77';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps76';
+} from '../engine/shaders/forgeShaders.js?v=30fps77';
 
 /**
  * Torgar v7 (`titan`) — Sovereign of the World-Forge & Runic Anvil Juggernaut.
@@ -23,7 +23,7 @@ import {
  *       2. Animation 2 (`comboStep === 1`, `F10..F19` — `LEAPING SKY-BREAKER UPPERCUT`): Deep crouch floor
  *          scoop into an airborne high-knee rising uppercut + grounded `Row 2` Magma-Jade Pillar (`+1` Core).
  *       3. Animation 3 (`comboStep === 2`, `F20..F29` — `BATTERING-RAM BACKSPIN FINISHER`): Pivoting
- *          lead-leg swap & twisted torso coil into a wide split-lunge horizontal punch + `Forge-Aegis` +
+ *          lead-leg swap & twisted torso coil into a wide split-lunge horizontal punch +
  *          `khazadForgeAncestorAvatar` Crit Finisher + World-Breaker Temper + Seismic Altar Resonance!
  *   - Signature Skill (`WORLD-ANVIL CATACLYSM`):
  *       Plants a persistent **World-Forge Anvil Altar** (`Row 3` 8-Cog Mandala + `Row 1` Horned Iron Anvil,
@@ -35,9 +35,9 @@ import {
  *       in a line-drive comet to the **farthest side of the stage**, crashing and **stunning for `0.8s`**!
  *   - Supreme Ultimate (`GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER`, `3.80s`):
  *       Grows **HUGE (`2.15x`)**, **hammers all active enemies high UP into the sky** (`groundY - 210px`) with a
- *       grounded rising Mjolnir uppercut, **teleports cleanly to the top of the sky** (`groundY - 385px`) directly
- *       above the airborne foe hoisting Mjolnir above his horned crown (`Row 4 F20..F23`), and **meteor-spikes
- *       them straight into the ground** for ONE `735`-Crit Continental Sunder + `7` Geysers + **`1.85s` Stun**!
+ *       grounded rising Mjolnir uppercut, **fast-jumps explosively (`Super-Leap`)** continuously to the top of the sky
+ *       (`groundY - 380..390px`) cleanly above the airborne foe hoisting Mjolnir overhead (`Row 4 F20..F23`), and
+ *       **meteor-spikes them straight into the ground** for ONE `735`-Crit Continental Sunder + `7` Geysers + **`1.85s` Stun**!
  */
 export class Titan extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -60,11 +60,13 @@ export class Titan extends Fighter {
     this.trueUltName = 'GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER';
     this.trueUltDuration = 3.80;
     this._trueUltStep = 0;
+    this._trueUltDir = 1;
     this._trueUltMidAirClanged = false;
     this._trueUltAnvilX = 600;
     this._trueUltGeyserTimer = 0;
     this._trueUltBoundFoes = [];
     this._trueUltAirSparkAccum = 0;
+    this._superJumpTrail = [];
     this.cameraAirLift = 0;
     this.theme = 'forge';
     this.hasPoise = true;
@@ -126,11 +128,11 @@ export class Titan extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
-      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps76')) {
-        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps76';
+      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps77')) {
+        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps77';
       }
-      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps76')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps76';
+      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps77')) {
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps77';
       }
     }
   }
@@ -292,6 +294,7 @@ export class Titan extends Fighter {
     if (this.state === 'TRUE_ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
       this.cameraAirLift = 0;
       this.isFlipVault = false;
+      this._superJumpTrail = [];
       if (Array.isArray(this._trueUltBoundFoes)) {
         for (const f of this._trueUltBoundFoes) {
           if (f) {
@@ -328,6 +331,7 @@ export class Titan extends Fighter {
       this._trueUltGeyserTimer = 0;
       this._trueUltAirSparkAccum = 0;
       this._trueUltBoundFoes = [];
+      this._superJumpTrail = [];
       this.isInvulnerable = true;
     }
     this.unstoppablePoise =
@@ -931,11 +935,10 @@ export class Titan extends Fighter {
           if (game?.audio) game.audio.play('heavy_cleave', this.x);
           game?.renderer?.triggerShake?.(7, 0.16);
           game?.vfx?.spawnDamageText?.(foe.x, foe.y - 150, 0, false, 'SHOULDER RAM!', '#fbbf24');
-          this.fx?.spawn('forgeHammerArc', this.x + this.facing * 52, this.y - 82, {
+          this.fx?.spawn('moltenAnvilSparks', this.x + this.facing * 52, this.y - 82, {
             flip: this.facing < 0,
             palette: FORGE_GOLD_PALETTE,
-            light: 1.2,
-            extra: { radius: 28, width: 10.5, isFinisher: false }
+            light: 1.2
           });
           break;
         }
@@ -1014,18 +1017,6 @@ export class Titan extends Fighter {
         if (stage === 0 || isFinisher) game.audio.play('thunder_slam', impactX);
       }
       game?.renderer?.triggerShake?.(isFinisher ? 12 : stage === 1 ? 9 : 8, 0.19);
-
-      this.fx?.spawn('forgeHammerArc', this.x + dir * 68, this.y - (stage === 1 ? 92 : 84), {
-        flip: dir < 0,
-        palette: stage >= 1 ? FORGE_JADE_PALETTE : FORGE_GOLD_PALETTE,
-        light: isFinisher ? 1.38 : 1.28,
-        extra: {
-          radius: isFinisher ? 35 : 32,
-          width: isFinisher ? 12.8 : 11.6,
-          flipAngle: stage === 1,
-          isFinisher
-        }
-      });
 
       if (stage === 0) {
         // Animation 1 Overhead Earth-Splitter: Crater slam + traveling `Row 0` Magnetic Fissure Wave!
@@ -1405,19 +1396,6 @@ export class Titan extends Fighter {
       game?.renderer?.triggerAberration?.(10);
       game?.renderer?.triggerHitStop?.(0.065);
 
-      // True 2.5D Horizontal Baseball-Bat Swing Crescent (`horizontalBat: true`, chest-level!)
-      this.fx?.spawn('forgeHammerArc', this.x + batDir * 68, this.y - 86, {
-        flip: batDir < 0,
-        palette: FORGE_GOLD_PALETTE,
-        light: 1.48,
-        extra: {
-          radius: 40,
-          width: 13.5,
-          horizontalBat: true,
-          flipAngle: false,
-          isFinisher: true
-        }
-      });
       this.fx?.spawn('moltenAnvilSparks', contactX, contactY, {
         flip: batDir < 0,
         palette: FORGE_JADE_PALETTE,
@@ -1582,10 +1560,11 @@ export class Titan extends Fighter {
    * - NEVER overrides or alters stage background images (`trueUltStageOverride === null`).
    * - Beat 1 (`0.00s .. 0.62s`): Torgar swells into his **HUGE `2.15x` Colossus Form** with a clean,
    *   unobstructed silhouette, maxes `5` Crucible Cores, and coils Mjolnir low along the floor (`Row 4 F15..F16`).
-   * - Beat 2 (`0.62s .. 1.28s`): Planted on the ground, Giant Torgar rips a **2H Rising Mjolnir Sky-Uppercut**
+   * - Beat 2 (`0.62s .. 1.10s`): Planted on the ground, Giant Torgar rips a **2H Rising Mjolnir Sky-Uppercut**
    *   (`Row 4 F17..F19`), **hammering and launching all active enemies high UP into the sky (`groundY - 210px`)**!
-   * - Beat 3 (`1.28s .. 1.96s`): Giant Torgar vanishes in a Bifrost Forge-Lightning flash and **teleports cleanly
-   *   ABOVE the airborne enemy (`groundY - 385px`)**, hoisting Mjolnir above his horned crown (`Row 4 F20..F23`)!
+   * - Beat 3 (`1.10s .. 1.96s`): Giant Torgar compresses into a brief deep jump-squat (`1.10s .. 1.20s`, `F16`),
+   *   then **explosively fast-jumps (`Super-Leap`, `1.20s .. 1.56s`, `F20..F21`)** continuously from the ground
+   *   all the way up to `groundY - 380..390px` cleanly ABOVE the airborne enemy before hoisting Mjolnir overhead (`F22..F23`)!
    * - Beat 4 (`1.96s .. 2.36s`): Giant Torgar jackknifes downward (`Row 4 F24..F26`), intercepts the airborne
    *   enemy mid-sky, and **meteor-spikes them straight into the arena floor** at `t >= 2.36s` for ONE `735`-Crit
    *   Continental Sunder + `+9%` Max HP heal + `7` `Row 7` Volcanic Geysers + **`1.85s` Stun**!
@@ -1611,11 +1590,18 @@ export class Titan extends Fighter {
       this._trueUltAnvilX = anchorFoe
         ? Math.max(240, Math.min(ww - 240, anchorFoe.x))
         : Math.max(240, Math.min(ww - 240, this.x + this.facing * 180));
+      this._trueUltDir = this._trueUltAnvilX >= this.x ? 1 : -1;
     }
+
+    const ultDir = this._trueUltDir || this.facing;
+    this.facing = ultDir;
+    const standX = Math.max(105, Math.min(ww - 105, this._trueUltAnvilX - ultDir * 124));
+    const skyApexX = Math.max(120, Math.min(ww - 120, this._trueUltAnvilX - ultDir * 36));
 
     // Beat 1 (`0.00s .. 0.62s` — Giant 2.15x Colossus Awakening & Deep Floor-Scoop Coil)
     if (t >= 0.04 && this._trueUltStep < 1) {
       this._trueUltStep = 1;
+      this._superJumpTrail = [];
       this.forgeArmorTimer = 6.0;
       this.crucibleStacks = this.maxCrucibleStacks;
       this._trueUltBoundFoes = [...activeFoes];
@@ -1645,7 +1631,7 @@ export class Titan extends Fighter {
       );
 
       this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
-        flip: this.facing < 0,
+        flip: ultDir < 0,
         palette: FORGE_GOLD_PALETTE,
         light: 1.38,
         extra: { maxRx: 165 }
@@ -1654,7 +1640,7 @@ export class Titan extends Fighter {
         w: 288,
         h: 288,
         maxLife: 2.40,
-        flipX: this.facing < 0,
+        flipX: ultDir < 0,
         glowColor: 'gold',
         inFront: false
       });
@@ -1666,6 +1652,7 @@ export class Titan extends Fighter {
       this.giantScale = 1.0 + 1.15 * easeGrow;
       this.isFlipVault = false;
       this.cameraAirLift = Math.round(420 * easeGrow);
+      this._superJumpTrail = [];
 
       for (const foe of activeFoes) {
         if (!this._trueUltBoundFoes.includes(foe)) this._trueUltBoundFoes.push(foe);
@@ -1675,8 +1662,6 @@ export class Titan extends Fighter {
         foe.x += (this._trueUltAnvilX - foe.x) * Math.min(1, dt * 16);
         foe.y = foe.groundY;
       }
-      this.facing = this._trueUltAnvilX >= this.x ? 1 : -1;
-      const standX = Math.max(105, Math.min(ww - 105, this._trueUltAnvilX - this.facing * 124));
       this.x += (standX - this.x) * Math.min(1, dt * 18);
       this.y = this.groundY;
 
@@ -1690,7 +1675,7 @@ export class Titan extends Fighter {
       return;
     }
 
-    // Beats 2 & 3 (`0.62s .. 1.96s` — Grounded Sky-Uppercut Knockup -> Elevated Top-of-Sky Teleport Hoist!)
+    // Beats 2 & 3 (`0.62s .. 1.96s` — Grounded Sky-Uppercut Knockup -> Explosive Fast-Jump (`Super-Leap`) -> Sky Hoist!)
     if (t < 1.96) {
       this.giantScale = 2.15;
       this.cameraAirLift = 680;
@@ -1711,25 +1696,14 @@ export class Titan extends Fighter {
           '★ MJOLNIR SKY-UPPERCUT! ★',
           '#fbbf24'
         );
-        this.fx?.spawn('forgeHammerArc', this.x + this.facing * 92, this.groundY - 122, {
-          flip: this.facing < 0,
-          palette: FORGE_GOLD_PALETTE,
-          light: 1.48,
-          extra: {
-            radius: 44,
-            width: 14.5,
-            flipAngle: true,
-            isFinisher: true
-          }
-        });
         this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
-          flip: this.facing < 0,
+          flip: ultDir < 0,
           palette: FORGE_JADE_PALETTE,
           light: 1.42,
           extra: { maxRx: 168 }
         });
         this.fx?.spawn('moltenAnvilSparks', this._trueUltAnvilX, this.groundY - 92, {
-          flip: this.facing < 0,
+          flip: ultDir < 0,
           palette: FORGE_GOLD_PALETTE,
           light: 1.42
         });
@@ -1769,81 +1743,86 @@ export class Titan extends Fighter {
         });
       }
 
-      // Beat 3 (`1.28s .. 1.96s` — Bifrost Teleport Cleanly ABOVE the Airborne Enemy!)
-      if (t >= 1.28 && this._trueUltStep < 3) {
-        this._trueUltStep = 3;
-        const departX = this.x;
-
-        // Departure Bifrost Lightning Burst on the arena floor (`inFront: false`)
-        this.spawnSheetBurst(6, departX, this.groundY - 110, {
-          w: 248,
-          h: 248,
-          maxLife: 0.34,
-          flipX: this.facing < 0,
-          glowColor: 'gold',
-          inFront: false
-        });
-        this.fx?.spawn('moltenAnvilSparks', departX, this.groundY - 88, {
-          flip: this.facing < 0,
-          palette: FORGE_GOLD_PALETTE,
-          light: 1.38
-        });
-
-        // Teleport Giant Torgar cleanly ABOVE the enemy (`y = groundY - 375`, `165px` above `foe.y = groundY - 210`!)
-        this.isFlipVault = true;
-        this.x = Math.max(120, Math.min(ww - 120, this._trueUltAnvilX - this.facing * 36));
-        this.y = this.groundY - 375;
-        this.facing = this._trueUltAnvilX >= this.x ? 1 : -1;
-
-        game?.audio?.play?.('dash_whoosh', this.x);
-        game?.audio?.play?.('thunder_slam', this.x);
-        game?.audio?.play?.('parry_clang', this.x);
-        game?.renderer?.triggerShake?.(15, 0.22);
-        game?.renderer?.triggerAberration?.(8);
-
-        // Subtle background arrival spark halo behind Torgar (`NO` opaque sprite covering his torso!)
-        this.fx?.spawn('moltenAnvilSparks', this.x, this.y - 160, {
-          flip: this.facing < 0,
-          palette: FORGE_JADE_PALETTE,
-          light: 1.44
-        });
-        game?.vfx?.spawnDamageText?.(
-          this._trueUltAnvilX,
-          this.y - 145,
-          0,
-          true,
-          "★ TELEPORT: HEAVEN'S ANVIL! ★",
-          '#10b981'
-        );
-      }
-
-      if (t < 1.28) {
+      if (t < 1.10) {
+        // Beat 2 (`0.62s .. 1.10s`): Grounded Sky-Uppercut Follow-Through (`F17..F19`)
+        this._superJumpTrail = [];
         this.isFlipVault = false;
+        this.x = standX;
         this.y = this.groundY;
-        const upU = Math.max(0, Math.min(0.999, (t - 0.62) / 0.66));
+        const upU = Math.max(0, Math.min(0.999, (t - 0.62) / 0.48));
         this.trueUltFrameOverride = 120 + 17 + Math.min(2, Math.floor(upU * 3));
-      } else {
+      } else if (t < 1.20) {
+        // Beat 3A (`1.10s .. 1.20s`): Brief Deep Squat Jump-Coil on `groundY` (`F16`)
+        this._superJumpTrail = [];
+        this.isFlipVault = false;
+        this.x = standX;
+        this.y = this.groundY;
+        this.trueUltFrameOverride = 120 + 16;
+      } else if (t < 1.56) {
+        // Beat 3B (`1.20s .. 1.56s`): Continuous Explosive Fast-Jump (`Super-Leap`) from `groundY` to `groundY - 380`!
+        if (this._trueUltStep < 3) {
+          this._trueUltStep = 3;
+          this._superJumpTrail = [];
+          game?.audio?.play?.('dash_whoosh', standX);
+          game?.audio?.play?.('thunder_slam', standX);
+          game?.renderer?.triggerShake?.(14, 0.20);
+
+          // Explosive floor launch shockwave & molten sparks under Torgar's boots (ZERO teleport blink flash!)
+          this.fx?.spawn('tectonicCraterSlam', standX, this.groundY - 4, {
+            flip: ultDir < 0,
+            palette: FORGE_GOLD_PALETTE,
+            light: 1.38,
+            extra: { maxRx: 156 }
+          });
+          this.fx?.spawn('moltenAnvilSparks', standX, this.groundY - 24, {
+            flip: ultDir < 0,
+            palette: FORGE_GOLD_PALETTE,
+            light: 1.36
+          });
+          game?.vfx?.spawnDamageText?.(
+            standX,
+            this.groundY - 190,
+            0,
+            true,
+            '★ COLOSSUS SKY-LEAP! ★',
+            '#fbbf24'
+          );
+        }
+
+        const prevFrame = this.trueUltFrameOverride || 120 + 20;
+        if (!Array.isArray(this._superJumpTrail)) this._superJumpTrail = [];
+        this._superJumpTrail.push({ x: this.x, y: this.y, frameIdx: prevFrame });
+        if (this._superJumpTrail.length > 2) this._superJumpTrail.shift();
+
+        const jumpU = Math.max(0, Math.min(1, (t - 1.20) / 0.36));
+        const easeJump = 1 - (1 - jumpU) * (1 - jumpU);
         this.isFlipVault = true;
-        const skyHoverU = Math.max(0, Math.min(0.999, (t - 1.28) / 0.68));
-        this.x = Math.max(120, Math.min(ww - 120, this._trueUltAnvilX - this.facing * 36));
-        // Coiled upward anticipation lift (`groundY - 375 -> groundY - 392`) before the Meteor Spike!
-        this.y = this.groundY - 375 - Math.sin(skyHoverU * Math.PI * 0.65) * 17;
-        this.trueUltFrameOverride = 120 + 20 + Math.min(3, Math.floor(skyHoverU * 4));
+        this.x = standX + (skyApexX - standX) * easeJump;
+        this.y = this.groundY - 380 * easeJump;
+        this.trueUltFrameOverride = jumpU < 0.48 ? 120 + 20 : 120 + 21;
+      } else {
+        // Beat 3C (`1.56s .. 1.96s`): Apex Sky-Hang & Overhead Mjolnir Crown-Hoist (`F22..F23`) cleanly ABOVE enemy!
+        this._superJumpTrail = [];
+        this.isFlipVault = true;
+        const hangU = Math.max(0, Math.min(1, (t - 1.56) / 0.40));
+        this.x = skyApexX;
+        this.y = this.groundY - 380 - Math.sin(hangU * Math.PI * 0.5) * 10;
+        this.trueUltFrameOverride = hangU < 0.5 ? 120 + 22 : 120 + 23;
       }
       return;
     }
 
     // Beat 4 (`1.96s .. 2.36s` — Violent Downward Meteor Spike Driving Airborne Enemy Into the Ground!)
     if (t < 2.36) {
+      this._superJumpTrail = [];
       this.giantScale = 2.15;
       this.isFlipVault = true;
       const plungeU = Math.max(0, Math.min(1, (t - 1.96) / 0.40));
       const accel = plungeU * plungeU;
       this.cameraAirLift = Math.round(680 * (1 - accel * 0.62));
 
-      const targetLandX = Math.max(115, Math.min(ww - 115, this._trueUltAnvilX - this.facing * 88));
-      const startSkyX = Math.max(120, Math.min(ww - 120, this._trueUltAnvilX - this.facing * 36));
-      this.x = startSkyX + (targetLandX - startSkyX) * accel;
+      const targetLandX = Math.max(115, Math.min(ww - 115, this._trueUltAnvilX - ultDir * 88));
+      this.x = skyApexX + (targetLandX - skyApexX) * accel;
       this.y = this.groundY - 390 * (1 - accel);
 
       // Enemy stays suspended at `groundY - 210` until Torgar's downward Mjolnir physically intercepts them (`plungeU >= 0.34`),
@@ -1853,7 +1832,7 @@ export class Titan extends Fighter {
         game?.audio?.play?.('parry_clang', this._trueUltAnvilX);
         game?.renderer?.triggerHitStop?.(0.04);
         this.fx?.spawn('moltenAnvilSparks', this._trueUltAnvilX, this.groundY - 215, {
-          flip: this.facing < 0,
+          flip: ultDir < 0,
           palette: FORGE_GOLD_PALETTE,
           light: 1.46
         });
@@ -1879,6 +1858,7 @@ export class Titan extends Fighter {
     // Beat 5 (`t >= 2.36s`, `_trueUltStep < 4` — Cataclysmic Ground-Smash Impact + `1.85s` Stun!)
     if (this._trueUltStep < 4) {
       this._trueUltStep = 4;
+      this._superJumpTrail = [];
       this._trueUltGeyserTimer = 1.05;
       this.isFlipVault = false;
       this.y = this.groundY;
@@ -1903,13 +1883,13 @@ export class Titan extends Fighter {
       this.crucibleStacks = this.maxCrucibleStacks;
 
       this.fx?.spawn('ragnarokWorldForgeWave', this._trueUltAnvilX, this.groundY - 4, {
-        flip: this.facing < 0,
+        flip: ultDir < 0,
         palette: FORGE_GOLD_PALETTE,
         light: 1.55,
         extra: { stage: 3 }
       });
       this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
-        flip: this.facing < 0,
+        flip: ultDir < 0,
         palette: FORGE_JADE_PALETTE,
         light: 1.52,
         extra: { maxRx: 215 }
@@ -1948,7 +1928,7 @@ export class Titan extends Fighter {
         foe.y = foe.groundY;
         foe.vx = 0;
         foe.vy = 0;
-        foe.takeDamage(735, this, true, this.facing * 120, 0);
+        foe.takeDamage(735, this, true, ultDir * 120, 0);
         if (!foe.isDead) {
           foe.y = foe.groundY;
           foe.vx = 0;
@@ -1982,6 +1962,7 @@ export class Titan extends Fighter {
       this.isInvulnerable = false;
       this.trueUltFrameOverride = null;
       this._trueUltGeyserTimer = 0;
+      this._superJumpTrail = [];
       this.setState('IDLE');
     }
   }
@@ -2072,14 +2053,14 @@ export class Titan extends Fighter {
       ctx.fillStyle = `rgba(245, 158, 11, ${(0.14 * envAlpha).toFixed(3)})`;
       ctx.fillRect(0, this.groundY - 12, ww, 16);
 
-      // Vertical Heaven's Anvil Meteor Drop Pillar Sightline while Giant Torgar hovers at the top (`1.28s .. 2.36s`)!
-      if (t >= 1.28 && t < 2.36) {
+      // Vertical Heaven's Anvil Meteor Drop Pillar Sightline once Giant Torgar's Fast-Jump crests (`1.50s .. 2.36s`)!
+      if (t >= 1.50 && t < 2.36) {
         const ax = Math.round(this._trueUltAnvilX || 600);
         const topY = Math.round(this.y - 210);
         const beamH = Math.max(24, Math.round(this.groundY - topY));
-        ctx.fillStyle = 'rgba(16, 185, 129, 0.14)';
-        ctx.fillRect(ax - 22, topY, 44, beamH);
-        ctx.fillStyle = 'rgba(251, 191, 36, 0.22)';
+        ctx.fillStyle = 'rgba(245, 158, 11, 0.14)';
+        ctx.fillRect(ax - 18, topY, 36, beamH);
+        ctx.fillStyle = 'rgba(251, 191, 36, 0.24)';
         ctx.fillRect(ax - 6, topY, 12, beamH);
         ctx.fillStyle = 'rgba(255, 255, 255, 0.38)';
         ctx.fillRect(ax - 2, topY, 4, beamH);
@@ -2131,8 +2112,8 @@ export class Titan extends Fighter {
         'gold'
       );
 
-      // Sovereign `Row 3` 8-Cog Sky-Mandala Halo behind Giant Torgar after he teleports to the top (`t >= 1.28s`)!
-      if (t >= 1.28) {
+      // Sovereign `Row 3` 8-Cog Sky-Mandala Halo behind Giant Torgar once his Fast-Jump crests (`t >= 1.50s`)!
+      if (t >= 1.50) {
         this.drawBloomedVfxCell(
           ctx,
           vfxSheet,
@@ -2157,7 +2138,7 @@ export class Titan extends Fighter {
     // Molten Runic Forge-Chains anchoring active enemies (to ground Crucible early, or to Giant Sky-Torgar above!)
     const foes = this.game ? this.getActiveEnemies(null, this.game) : [];
     for (const foe of foes) {
-      if (t >= 1.28) {
+      if (t >= 1.50) {
         this.drawPixelForgeChain(ctx, this.x, this.y - 140, foe.x, foe.y - 64, t);
       } else {
         this.drawPixelForgeChain(ctx, ax, this.groundY - 64, foe.x, foe.y - 68, t);
@@ -2407,37 +2388,33 @@ export class Titan extends Fighter {
     const cy = Math.round(st.startY);
 
     ctx.save();
-    ctx.globalAlpha = alpha * 0.92;
-    // Outer Obsidian Selout + Molten Amber & Jade Comet Beam
+    ctx.globalAlpha = alpha * 0.82;
+    // Crisp warm gold/white air-compression line-drive wake (ZERO green-orange slash beam!)
     ctx.fillStyle = '#0d0f1c';
-    ctx.fillRect(minX, cy - 11, spanW, 22);
-    ctx.fillStyle = '#b45309';
-    ctx.fillRect(minX, cy - 9, spanW, 18);
-    ctx.fillStyle = '#10b981';
-    ctx.fillRect(minX, cy - 6, spanW, 12);
-    ctx.fillStyle = '#fde047';
+    ctx.fillRect(minX, cy - 4, spanW, 8);
+    ctx.fillStyle = '#fbbf24';
     ctx.fillRect(minX, cy - 3, spanW, 6);
     ctx.fillStyle = '#ffffff';
     ctx.fillRect(minX, cy - 1, spanW, 2);
 
     // Stepped pixel sonic shock-rings along the home-run trajectory
-    const ringCount = Math.min(7, Math.max(2, Math.floor(spanW / 125)));
+    const ringCount = Math.min(6, Math.max(2, Math.floor(spanW / 135)));
     for (let i = 1; i <= ringCount; i++) {
       const rx = Math.round(startX + ((endX - startX) * i) / (ringCount + 1));
-      ctx.fillStyle = i % 2 === 0 ? '#34d399' : '#fbbf24';
-      ctx.fillRect(rx - 3, cy - 22, 6, 44);
+      ctx.fillStyle = '#fbbf24';
+      ctx.fillRect(rx - 2, cy - 20, 4, 40);
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(rx - 1, cy - 18, 2, 36);
+      ctx.fillRect(rx - 1, cy - 16, 2, 32);
     }
     ctx.restore();
   }
 
   drawUltimateForeground(ctx, renderer = null) {
-    // Live 120Hz `ArcaneShaderFX` "front" layer (World-Breaker Cleaves, Ancestor God-Maul, Sparks & Bulwark Dome)
+    // Live 120Hz `ArcaneShaderFX` "front" layer (Ancestor God-Maul, Sparks & Bulwark Dome)
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
 
-    // Baseball-Bat Home-Run Comet Trajectory Streak
+    // Baseball-Bat Home-Run Sonic Trajectory Wake
     this.drawHomeRunTrajectory(ctx);
 
     // Front-orbiting Molten Crucible Cores
@@ -2453,16 +2430,38 @@ export class Titan extends Fighter {
   draw(ctx, isReflection = false, renderer = null) {
     const sprites = typeof Image !== 'undefined' ? PixelForge.initAssets()?.titan : null;
     if (!sprites) return;
-    const vfxSheet = sprites.vfx;
-
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
 
     const scale = this.giantScale || 1.0;
     const w = 208;
     const h = 208;
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
     const groundPlantOffset = 4;
+
+    // Crisp 2-ghost upward motion trail during Torgar's Super-Ultimate Fast-Jump (`1.20s .. 1.56s`)
+    if (
+      !isReflection &&
+      sprites.sheet?.complete &&
+      Array.isArray(this._superJumpTrail) &&
+      this._superJumpTrail.length > 0 &&
+      ctx?.drawImage
+    ) {
+      const cols = Math.max(1, Math.round((sprites.sheet.naturalWidth || 6240) / 208));
+      for (let gi = 0; gi < this._superJumpTrail.length; gi++) {
+        const g = this._superJumpTrail[gi];
+        const gCol = g.frameIdx % cols;
+        const gRow = (g.frameIdx / cols) | 0;
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+        ctx.globalAlpha = gi === 0 ? 0.16 : 0.30;
+        ctx.translate(Math.round(g.x), Math.round(g.y + groundPlantOffset));
+        ctx.scale(this.facing * scale, scale);
+        ctx.drawImage(sprites.sheet, gCol * 208, gRow * 208, 208, 208, -104, -198, w, h);
+        ctx.restore();
+      }
+    }
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
 
     ctx.translate(
       Math.round(this.x),

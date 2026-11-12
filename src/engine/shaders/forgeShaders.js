@@ -25,7 +25,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps76';
+} from '../ArcaneShaderFX.js?v=30fps77';
 
 // Volcanic Basalt-Obsidian + Molten Magma Crimson-Orange -> Forge Gold
 export const FORGE_GOLD_PALETTE = [
@@ -375,36 +375,6 @@ function drawColossalDwarvenWarhammer(
   const sinA = Math.sin(angle);
   const dir = swingDir < 0 ? -1 : 1;
 
-  // Roaring Multi-Layer Crescent Swing Trail aligned directly with the outer Mjolnir head (`da ~ 14.5`)
-  drawMultiLayerCrescentArc(pen, {
-    cx,
-    cy,
-    radius: 15.5 * scale,
-    width: 7.0 * scale,
-    eccentricity: 0.84,
-    headAngle: angle + 0.22 * dir,
-    tailAngle: angle - 1.18 * dir,
-    fade: alpha * 0.94,
-    ramp: GOD_MAUL_MAGMA_RAMP,
-    seed,
-    t: clamp01(p),
-    flashHot
-  });
-  drawMultiLayerCrescentArc(pen, {
-    cx,
-    cy,
-    radius: 12.2 * scale,
-    width: 4.8 * scale,
-    eccentricity: 0.84,
-    headAngle: angle + 0.12 * dir,
-    tailAngle: angle - 0.92 * dir,
-    fade: alpha * 0.88,
-    ramp: GOD_MAUL_JADE_RAMP,
-    seed: seed + 19,
-    t: clamp01(p),
-    flashHot: false
-  });
-
   const bound = Math.ceil(25.5 * scale + 3);
 
   pen.shadeBox(cx - bound, cy - bound, cx + bound, cy + bound, (lx, ly, out) => {
@@ -721,50 +691,14 @@ export const worldBreakerAnvilCleave = {
         if (fade <= 0.02) return;
 
         const baseR = cfg.radius || 32;
-        const baseW = cfg.width || 12.5;
         const isHorizBat = Boolean(cfg.horizontalBat);
         const flipSign = cfg.flipAngle || cfg.reverse ? -1 : 1;
         const ecc = isHorizBat ? 0.30 : 0.8;
         const headAng = isHorizBat
           ? -1.45 + 2.02 * smoothStep(0, 0.48, u)
           : flipSign * (-0.98 + 2.22 * smoothStep(0, 0.52, u));
-        const tailAng = isHorizBat
-          ? -2.55 + 0.65 * u
-          : flipSign * (-1.72 + 0.52 * u);
 
-        // Layer A: Volcanic Basalt-Obsidian & Molten Magma Crimson-Orange Primary Cleave
-        drawMultiLayerCrescentArc(pen, {
-          cx: isHorizBat ? -6 : -2,
-          cy: 0,
-          radius: baseR,
-          width: baseW,
-          eccentricity: ecc,
-          headAngle: headAng,
-          tailAngle: tailAng,
-          fade,
-          ramp: magma,
-          seed: cfg.seed || 73,
-          t: u,
-          flashHot: u < 0.34
-        });
-
-        // Layer B: Interleaved Luminous World-Forge Emerald-Jade Runic Shear Wake
-        drawMultiLayerCrescentArc(pen, {
-          cx: isHorizBat ? -7 : -3,
-          cy: 1,
-          radius: baseR * 0.8,
-          width: baseW * (cfg.isFinisher ? 0.78 : 0.62),
-          eccentricity: ecc,
-          headAngle: headAng - 0.08 * flipSign,
-          tailAngle: tailAng + 0.16 * flipSign,
-          fade: fade * 0.94,
-          ramp: jade,
-          seed: (cfg.seed || 73) + 23,
-          t: u,
-          flashHot: u < 0.24
-        });
-
-        // Leading Warhammer Tip & Jagged Basalt Impact Shock-Cone
+        // Leading Warhammer Tip & Jagged Basalt Impact Shock-Cone (ZERO slash crescents!)
         const tipX = (isHorizBat ? -6 : -2) + Math.cos(headAng) * baseR;
         const tipY = Math.sin(headAng) * baseR * ecc;
 
@@ -1065,22 +999,6 @@ export const tectonicCraterShockwave = {
         if (fade <= 0.02) return;
         const maxR = Math.min(48, Math.max(26, cfg.maxRx ? cfg.maxRx / 3 : 36));
 
-        // Roaring Upward Golf-Drive Crescent Shockwave Arc
-        drawMultiLayerCrescentArc(pen, {
-          cx: 2,
-          cy: -14 * pop,
-          radius: 26 * pop,
-          width: 8.5,
-          eccentricity: 0.82,
-          headAngle: -1.85 + u * 0.55,
-          tailAngle: 0.45,
-          fade: fade * 0.95,
-          ramp: magma,
-          seed: cfg.seed || 113,
-          t: u,
-          flashHot: u < 0.28
-        });
-
         // Front-layer Central Parabolic Horned Dwarven Anvil Cannonball
         for (const ap of anvilProjectiles) {
           if (ap.back) continue;
@@ -1318,37 +1236,7 @@ export const ragnarokWorldForgeWave = {
         const fade = 1 - Math.pow(u, 1.55);
         if (fade <= 0.02) return;
 
-        // 1. Sweeping 2.5D Diagonal Magma-Jade Crescent Shockwaves (Left & Right Flanks)
-        drawMultiLayerCrescentArc(pen, {
-          cx: -14 * pop,
-          cy: -16 * pop,
-          radius: 34 * pop,
-          width: 9.5,
-          eccentricity: 0.78,
-          headAngle: -2.35 - u * 0.45,
-          tailAngle: -0.95,
-          fade: fade * 0.9,
-          ramp: magma,
-          seed: (cfg.seed || 181) + 11,
-          t: u,
-          flashHot: u < 0.28
-        });
-        drawMultiLayerCrescentArc(pen, {
-          cx: 14 * pop,
-          cy: -16 * pop,
-          radius: 34 * pop,
-          width: 9.5,
-          eccentricity: 0.78,
-          headAngle: -0.79 + u * 0.45,
-          tailAngle: -2.19,
-          fade: fade * 0.9,
-          ramp: jade,
-          seed: (cfg.seed || 181) + 29,
-          t: u,
-          flashHot: u < 0.28
-        });
-
-        // 2. Parabolic Arcing Anvil Firebrands & Molten Slag Boulders
+        // 1. Parabolic Arcing Anvil Firebrands & Molten Slag Boulders
         for (let i = 0; i < firebrands.length; i++) {
           const fb = firebrands[i];
           const uFb = clamp01(u * 1.15);
@@ -1512,50 +1400,37 @@ export const tectonicMagmaWaveCell = {
       },
       renderFront(pen, localT) {
         const ph = localT * Math.PI * 2;
-        const wob = Math.sin(ph) * 0.08;
+        const bob = Math.sin(ph) * 2.0;
 
-        // Primary Serrated Tectonic Magma Crescent Wave Crest (`+X` forward sweep)
-        drawMultiLayerCrescentArc(pen, {
-          cx: -2,
-          cy: 0,
-          radius: 26,
-          width: 10.5,
-          eccentricity: 0.86,
-          headAngle: 1.08 + wob,
-          tailAngle: -1.08 + wob,
-          fade: 0.98,
-          ramp: magma,
-          seed: cfg.seed || 201,
-          t: localT,
-          flashHot: true
-        });
-
-        // Interleaved Luminous Emerald-Jade Runic Fault Wake
-        drawMultiLayerCrescentArc(pen, {
-          cx: -5,
-          cy: 1,
-          radius: 20.5,
-          width: 7.2,
-          eccentricity: 0.86,
-          headAngle: 0.92 - wob,
-          tailAngle: -0.92 - wob,
-          fade: 0.94,
-          ramp: jade,
-          seed: (cfg.seed || 201) + 37,
-          t: localT,
-          flashHot: false
-        });
-
-        // Jagged Volcanic Basalt Wave-Teeth along the leading edge (`x <= 35`)
-        for (let k = -2; k <= 2; k++) {
-          const ang = k * 0.36 + wob;
-          const bx = -2 + Math.cos(ang) * 25;
-          const by = Math.sin(ang) * 22;
-          drawKhazadDiamondRune(pen, bx, by, k === 0 ? 3.6 : 2.7, Math.abs(k) === 1, 0.96);
+        // Grounded 3-Crag Volcanic Basalt & Molten Magma Earth-Spire Wave (`[-24, +24] x [-20, +18]`, ZERO slash crescent!)
+        const crags = [
+          { cx: -12, baseY: 16, h: 20 + bob * 0.6, hw: 7.0, tilt: 0.22 },
+          { cx: 1, baseY: 16, h: 28 - bob * 0.8, hw: 8.5, tilt: 0.28 },
+          { cx: 14, baseY: 16, h: 33 + bob, hw: 9.2, tilt: 0.34 }
+        ];
+        for (let ci = 0; ci < crags.length; ci++) {
+          const cr = crags[ci];
+          pen.shadeBox(cr.cx - 12, cr.baseY - cr.h - 2, cr.cx + 16, cr.baseY + 2, (lx, ly, out) => {
+            if (ly > cr.baseY || ly < cr.baseY - cr.h) return 0;
+            const v = (cr.baseY - ly) / cr.h; // 0 at floor, 1 at crag tip
+            const centerShift = v * cr.h * cr.tilt;
+            const dx = lx - (cr.cx + centerShift);
+            const w = cr.hw * Math.pow(1 - v, 0.72);
+            if (Math.abs(dx) > w) return 0;
+            out.alpha = 0.98;
+            if (Math.abs(dx) >= w - 1.15 || v > 0.93) return COL_OBSIDIAN;
+            if (Math.abs(dx - 0.8) < 1.3 && v > 0.18 && v < 0.82) {
+              out.glowColor = COL_MAGMA_BRIGHT;
+              out.glowStrength = 0.35;
+              return v > 0.55 ? PURE_WHITE : COL_FORGE_GOLD;
+            }
+            return dx > 0 ? COL_MAGMA_MID : COL_BASALT;
+          });
         }
 
+        drawKhazadDiamondRune(pen, 16, 2, 3.4, false, 0.96);
         drawTiltedOrbitBand(pen, 2, 16, 26, 0.24, 1.7, 0.95, band4, FRONT_HALF, true);
-        drawStarburstFlare(pen, 22, 0, 8.5, 0.94, [magma[4], jade[5], magma[6], PURE_WHITE]);
+        drawStarburstFlare(pen, 18, 4, 7.5, 0.92, [magma[4], magma[6], PURE_WHITE]);
       }
     };
   }
@@ -1890,36 +1765,6 @@ export const cataclysmCraterNovaCell = {
           drawTectonicBasaltPlate(pen, px, py, plateR, a + u * 1.2, i % 2 === 1, env * 0.98);
         }
 
-        drawMultiLayerCrescentArc(pen, {
-          cx: -2,
-          cy: 0,
-          radius: 24 * pop,
-          width: 8.8,
-          eccentricity: 0.85,
-          headAngle: 1.3,
-          tailAngle: -1.3,
-          fade: env,
-          ramp: magma,
-          seed: cfg.seed || 251,
-          t: u,
-          flashHot: u < 0.35
-        });
-
-        drawMultiLayerCrescentArc(pen, {
-          cx: -3,
-          cy: 0,
-          radius: 18.5 * pop,
-          width: 6.4,
-          eccentricity: 0.85,
-          headAngle: 1.15,
-          tailAngle: -1.15,
-          fade: env * 0.92,
-          ramp: jade,
-          seed: (cfg.seed || 251) + 31,
-          t: u,
-          flashHot: false
-        });
-
         drawTiltedOrbitBand(pen, 0, 0, 30 * pop, 0.84, 1.7, 0.95 * env, band4, FRONT_HALF, u < 0.3);
         drawKhazadDiamondRune(pen, 0, 0, 6.0 * env, true, env * 0.98);
         drawStarburstFlare(pen, 0, 0, 12.0 * env, 0.96 * env, [magma[4], jade[5], magma[6], PURE_WHITE]);
@@ -2078,40 +1923,8 @@ export const godHammerLightningStrikeCell = {
         // Overhead God-Hammer Swing Trajectory (`-1.32 rad` high windup -> `+0.26 rad` crushing anvil strike)
         const swingP = smoothStep(0, 0.52, u);
         const hammerAng = -1.32 + swingP * 1.58;
-        const tailAng = -2.18 + u * 0.55;
 
-        // 1. Massive Multi-Layer Golden-Magma & Emerald-Jade Overhead Cleave Wake (`r = 66`, `w = 24`)
-        drawMultiLayerCrescentArc(pen, {
-          cx: -8,
-          cy: 2,
-          radius: 66,
-          width: 24,
-          eccentricity: 0.86,
-          headAngle: hammerAng + 0.24,
-          tailAngle: tailAng,
-          fade: fade * 0.99,
-          ramp: magma,
-          seed: cfg.seed || 331,
-          t: u,
-          flashHot: u < 0.48
-        });
-
-        drawMultiLayerCrescentArc(pen, {
-          cx: -10,
-          cy: 4,
-          radius: 52,
-          width: 17,
-          eccentricity: 0.86,
-          headAngle: hammerAng + 0.14,
-          tailAngle: tailAng + 0.18,
-          fade: fade * 0.96,
-          ramp: jade,
-          seed: (cfg.seed || 331) + 41,
-          t: u,
-          flashHot: u < 0.35
-        });
-
-        // 2. Colossal Rune-Engraved God-Hammer Mjolnir (`scale = 1.92`, bounded strictly inside `[-82, +82]`)
+        // Colossal Rune-Engraved God-Hammer Mjolnir (`scale = 1.92`, bounded strictly inside `[-82, +82]`)
         const maulCx = -4 + Math.cos(hammerAng) * 14;
         const maulCy = -6 + Math.sin(hammerAng) * 14;
         drawColossalDwarvenWarhammer(
@@ -2431,21 +2244,6 @@ export const khazadForgeAncestorAvatar = {
 
         const swingP = smoothStep(0.04, 0.48, u);
         const hammerAng = -1.25 + swingP * 1.48;
-
-        drawMultiLayerCrescentArc(pen, {
-          cx: 4,
-          cy: -14,
-          radius: 36,
-          width: 12.5,
-          eccentricity: 0.84,
-          headAngle: hammerAng + 0.18,
-          tailAngle: -2.05 + u * 0.45,
-          fade: fade * 0.95,
-          ramp: jade,
-          seed: cfg.seed || 389,
-          t: u,
-          flashHot: u < 0.38
-        });
 
         drawColossalDwarvenWarhammer(
           pen,

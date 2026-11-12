@@ -621,29 +621,6 @@ def draw_back(bg, joints104, cfg):
 def draw_front(out, joints104, cfg):
     ph = cfg.get("mane_wave_phase", 0.0)
 
-    if cfg.get("horiz_bat_arc") is not None:
-        hb = cfg["horiz_bat_arc"]
-        nk = joints104["neck"]
-        draw_horizontal_bat_arc_104(
-            out,
-            nk[0] + hb.get("dx", 4.0),
-            nk[1] + hb.get("dy", 6.0),
-            rx=hb.get("rx", 31.0),
-            ry=hb.get("ry", 7.8),
-            a0_deg=hb["a0"],
-            a1_deg=hb["a1"],
-            intensity=hb.get("intensity", 1.25),
-        )
-
-    if cfg.get("slash_arc") is not None:
-        sa = cfg["slash_arc"]
-        nk = joints104["neck"]
-        draw_slash_arc_104(
-            out, nk[0] + sa.get("dx", 4.0), nk[1] + sa.get("dy", 11.0),
-            sa.get("r", 27.5), sa["a0"], sa["a1"],
-            C_CORE, C_GOLD_SPEC, C_JADE_LIT, intensity=sa.get("intensity", 1.0),
-        )
-
     if cfg.get("show_weapon", True):
         if cfg.get("planted_weapon", False):
             rh = joints104["r_hand"]
@@ -664,10 +641,6 @@ def draw_front(out, joints104, cfg):
                 phase=ph,
                 show_gauntlets=True,
             )
-
-    if cfg.get("forge_aegis", False):
-        nk = joints104["neck"]
-        draw_forge_aegis_arc_104(out, min(89.0, nk[0] + 22.0), nk[1] + 11.0, phase=ph)
 
 
 DEFAULTS = dict(
@@ -954,9 +927,13 @@ def build_row_configs(row_idx):
                     )
             else:
                 kfs = [
-                    (20, dict(pelvis_dx=-6.0, pelvis_dy=4.0, torso_deg=-18.0, head_rel_deg=22.0, mane_rel_deg=12.0,
-                              l_thigh_deg=-24.0, l_shin_deg=40.0, r_thigh_deg=-34.0, r_shin_deg=44.0,
-                              grip_x=-2.0, grip_y=-150.0, weapon_deg=-104.0, grip_sep=32.0,
+                    (20, dict(pelvis_dx=6.0, pelvis_dy=2.0, torso_deg=-10.0, head_rel_deg=14.0, mane_rel_deg=8.0,
+                              l_thigh_deg=20.0, l_shin_deg=24.0, r_thigh_deg=-42.0, r_shin_deg=48.0,
+                              grip_x=22.0, grip_y=-128.0, weapon_deg=-86.0, grip_sep=33.0,
+                              right_arm_in_front=True, foot_y=91.0, halo_grand=True)),
+                    (21, dict(pelvis_dx=-2.0, pelvis_dy=2.0, torso_deg=-16.0, head_rel_deg=20.0, mane_rel_deg=11.0,
+                              l_thigh_deg=-18.0, l_shin_deg=36.0, r_thigh_deg=-36.0, r_shin_deg=46.0,
+                              grip_x=4.0, grip_y=-146.0, weapon_deg=-100.0, grip_sep=32.0,
                               right_arm_in_front=True, foot_y=89.0, halo_grand=True)),
                     (23, dict(pelvis_dx=-10.0, pelvis_dy=0.0, torso_deg=-22.0, head_rel_deg=26.0, mane_rel_deg=14.0,
                               l_thigh_deg=-28.0, l_shin_deg=44.0, r_thigh_deg=-38.0, r_shin_deg=48.0,
@@ -978,13 +955,6 @@ def build_row_configs(row_idx):
                               grip_sep=38.0, right_arm_in_front=False, foot_y=99.0, halo_grand=False)),
                 ]
                 cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=3.0)
-                if 24 <= f <= 27:
-                    u = (f - 24) / 3.0
-                    cfg["slash_arc"] = dict(
-                        dx=6.0, dy=11.0, r=28.5,
-                        a0=-88.0 + 24.0 * u, a1=44.0 + 18.0 * u,
-                        intensity=1.28,
-                    )
             cfgs.append(cfg)
 
         elif row_idx == 5:

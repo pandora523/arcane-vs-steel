@@ -25,21 +25,21 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps76';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps76';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps76';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps76';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps76';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps76';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps76';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps76';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps76';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps76';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps76';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps76';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps76';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps76';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps76';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps77';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps77';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps77';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps77';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps77';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps77';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps77';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps77';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps77';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps77';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps77';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps77';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps77';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps77';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps77';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -584,7 +584,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps76');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps77');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -1241,6 +1241,9 @@ for (const [name, Cls] of CLASSES) {
   let maxGiantScale = 1.0;
   let minFoeY = arenaGroundY;
   let minTorgarY = arenaGroundY;
+  let prevTorgarY = torgar.y;
+  let maxAscentStepDeltaY = 0;
+  let sawJumpTrail = false;
   let maxPostSmashStun = 0;
   let sawCleanIdleExit = false;
 
@@ -1254,6 +1257,14 @@ for (const [name, Cls] of CLASSES) {
       maxGiantScale = Math.max(maxGiantScale, torgar.giantScale || 1.0);
       minFoeY = Math.min(minFoeY, foe.y);
       minTorgarY = Math.min(minTorgarY, torgar.y);
+      if (torgar.stateTimer < 1.96) {
+        const ascentDelta = Math.max(0, prevTorgarY - torgar.y);
+        maxAscentStepDeltaY = Math.max(maxAscentStepDeltaY, ascentDelta);
+      }
+      if (Array.isArray(torgar._superJumpTrail) && torgar._superJumpTrail.length > 0) {
+        sawJumpTrail = true;
+      }
+      prevTorgarY = torgar.y;
       if (torgar.stateTimer >= 2.35) {
         maxPostSmashStun = Math.max(maxPostSmashStun, foe.stunTimer || 0);
       }
@@ -1272,10 +1283,12 @@ for (const [name, Cls] of CLASSES) {
     minFoeY > arenaGroundY - 195 ||
     minTorgarY > minFoeY - 150 ||
     minTorgarY > arenaGroundY - 370 ||
+    maxAscentStepDeltaY > 115 ||
+    !sawJumpTrail ||
     maxPostSmashStun < 1.75
   ) {
     throw new Error(
-      `Expected Torgar v7 TRUE_ULTIMATE Giant Sky-Uppercut + Elevated Top-Teleport + Ground-Smash Stun! scale=${maxGiantScale}, minFoeY=${minFoeY}, minTorgarY=${minTorgarY}, postStun=${maxPostSmashStun}`
+      `Expected Torgar v7 TRUE_ULTIMATE Giant Sky-Uppercut + Continuous Fast-Jump (no blink!) + Ground-Smash Stun! scale=${maxGiantScale}, minFoeY=${minFoeY}, minTorgarY=${minTorgarY}, maxAscentStepDeltaY=${maxAscentStepDeltaY}, sawJumpTrail=${sawJumpTrail}, postStun=${maxPostSmashStun}`
     );
   }
   if (
@@ -1295,7 +1308,7 @@ for (const [name, Cls] of CLASSES) {
     );
   }
   console.log(
-    `[PASS] Torgar v7 Full Rework: 3-Animation Symmetric Mjolnir Auto + Khazad Ancestor, World-Anvil Altar Resonance (-${resonanceDmg} dmg) & Wall-Ricochet, Horizontal Baseball-Bat Home-Run Overdrive (F00..F14 + 0.8s Wall Stun), & Colossal ${maxGiantScale.toFixed(2)}x Sky-Uppercut (foeY=${Math.round(minFoeY)}) -> Elevated Top-Teleport (torgarY=${Math.round(minTorgarY)}) -> ${torgarUltHits[0].amt}-Crit Meteor Ground-Smash + ${maxPostSmashStun.toFixed(2)}s Stun!`
+    `[PASS] Torgar v7 Full Rework: Slash-Free 3-Animation Symmetric Mjolnir Auto + Khazad Ancestor, World-Anvil Altar Resonance (-${resonanceDmg} dmg) & Wall-Ricochet, Horizontal Baseball-Bat Home-Run Overdrive (F00..F14 + 0.8s Wall Stun), & Colossal ${maxGiantScale.toFixed(2)}x Sky-Uppercut (foeY=${Math.round(minFoeY)}) -> Continuous Fast-Jump (torgarY=${Math.round(minTorgarY)}, maxStepDeltaY=${Math.round(maxAscentStepDeltaY)}px) -> ${torgarUltHits[0].amt}-Crit Meteor Ground-Smash + ${maxPostSmashStun.toFixed(2)}s Stun!`
   );
 }
 
