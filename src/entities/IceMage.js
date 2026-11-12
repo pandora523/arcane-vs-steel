@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps79';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps79';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps79';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps79';
+import { Fighter } from './Fighter.js?v=30fps80';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps80';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps80';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps80';
 
 /**
  * Lyra (`icemage`) — Winter Empress & Sovereign of Absolute Zero (v6 Full Rework).
@@ -133,8 +133,8 @@ export class IceMage extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
-      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps79')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps79';
+      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps80')) {
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps80';
       }
     }
   }
@@ -149,13 +149,15 @@ export class IceMage extends Fighter {
       this.trueUltFrameOverride = LYRA_AUTO_SLICES[this._autoVariant][0];
     } else if (newState === 'TRUE_ULTIMATE') {
       this._trueUltStep = 0;
+      this.clearPermafrostZones();
       this._buildTrueUltFracturesAndShards();
     } else {
       this.trueUltFrameOverride = null;
     }
 
-    if (newState === 'DEATH') {
+    if (newState === 'DEATH' || newState === 'VICTORY') {
       this.activeSkyIcicles = [];
+      this.clearPermafrostZones();
     }
 
     if (prevState === 'TRUE_ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
@@ -246,33 +248,37 @@ export class IceMage extends Fighter {
     return true;
   }
 
+  clearPermafrostZones() {
+    if (Array.isArray(this.permafrostZones)) {
+      for (const z of this.permafrostZones) {
+        z?.fxSlot?.inst?.release?.();
+      }
+      this.permafrostZones.length = 0;
+    }
+    this.fx?.stopByKey?.('permafrostSnowflakeSigil');
+  }
+
   /**
-   * Freezes a stretch of the arena floor into a shimmering 2.5D Permafrost Ice-Rink.
+   * Freezes a single deliberate stretch of the arena floor into a shimmering 2.5D Permafrost Ice-Rink.
+   * Properly releases any prior `ArcaneShaderFX` sigil (`inst.release()`) and enforces finite `maxDuration`.
    */
-  spawnPermafrostZone(centerX, radius = 155, duration = 4.6) {
+  spawnPermafrostZone(centerX, radius = 155, duration = 2.6) {
     const ww = this.game && this.game.renderer ? this.game.renderer.worldWidth : 1200;
     const cx = Math.max(150, Math.min(ww - 150, centerX));
-    for (const z of this.permafrostZones) {
-      if (Math.abs(z.x - cx) < 95) {
-        z.x = (z.x + cx) * 0.5;
-        z.radius = Math.max(z.radius, radius);
-        z.life = 0;
-        z.maxLife = Math.max(z.maxLife, duration);
-        if (z.fxSlot) {
-          z.fxSlot.x = z.x;
-          if (z.fxSlot.inst?.cfg) z.fxSlot.inst.cfg.radiusWorld = Math.min(240, z.radius);
-        }
-        return z;
-      }
-    }
-    if (this.permafrostZones.length >= 3) {
+    // Keep at most 1 active Permafrost Rink at a time so ground circles never stack or spam!
+    while (this.permafrostZones.length >= 1) {
       const removed = this.permafrostZones.shift();
-      if (removed?.fxSlot) removed.fxSlot.done = true;
+      removed?.fxSlot?.inst?.release?.();
     }
+    const clampedDur = Math.max(0.8, Math.min(3.2, duration));
     const fxSlot = this.fx
       ? this.fx.spawn('permafrostSnowflakeSigil', cx, this.groundY, {
-          light: 1.16,
-          extra: { radiusWorld: Math.min(240, radius) }
+          light: 1.04,
+          maxDuration: clampedDur,
+          extra: {
+            radiusWorld: Math.min(200, radius),
+            customDuration: clampedDur
+          }
         })
       : null;
     const zone = {
@@ -280,7 +286,7 @@ export class IceMage extends Fighter {
       y: this.groundY,
       radius,
       life: 0,
-      maxLife: duration,
+      maxLife: clampedDur,
       fxSlot
     };
     this.permafrostZones.push(zone);
@@ -525,8 +531,15 @@ export class IceMage extends Fighter {
     this.vx = 0;
     this.vy = 0;
     this.ensureGlacialSkateRibbon();
-    this.spawnPermafrostZone(this.x, 145, 4.2);
-    this.spawnPixelFrostRing(this.x, this.groundY, 88, '#67e8f9', 0.28, true, false);
+    this.fx?.burst(this.x, this.groundY - 8, {
+      count: 4,
+      speedMin: 35,
+      speedMax: 95,
+      lifeMin: 0.12,
+      lifeMax: 0.22,
+      gravity: 60,
+      colors: ['#ffffff', '#bae6fd', '#67e8f9']
+    });
     if (game && game.audio) game.audio.play('zephyr_flip', this.x);
     if (game && game.vfx) {
       game.vfx.spawnDamageText(this.x, this.y - 138, 0, false, 'TRIPLE-AXEL SKY-STAIR!', '#67e8f9');
@@ -551,8 +564,15 @@ export class IceMage extends Fighter {
       maxLife: 2.40,
       refractedCount: 0
     };
-    this.spawnPermafrostZone(this.x + this.facing * 50, 165, 4.8);
-    this.spawnPixelFrostRing(wallX, this.groundY - 2, 84, '#67e8f9', 0.28, true, false);
+    this.fx?.burst(wallX, this.groundY - 18, {
+      count: 4,
+      speedMin: 36,
+      speedMax: 105,
+      lifeMin: 0.12,
+      lifeMax: 0.22,
+      gravity: 70,
+      colors: ['#ffffff', '#bae6fd', '#67e8f9']
+    });
 
     if (game && game.audio) game.audio.play('frost_cast', wallX);
     if (game && game.vfx) {
@@ -571,7 +591,6 @@ export class IceMage extends Fighter {
     this.dashDir = escapeDir;
     this.vx = escapeDir * 425;
     this.ensureGlacialSkateRibbon();
-    this.spawnPermafrostZone(this.x, 155, 4.5);
 
     if (enemy && !enemy.isDead) {
       this.spawnSnowflakeChakram(
@@ -613,7 +632,6 @@ export class IceMage extends Fighter {
       shattered: false
     };
     this.ensureGlacialSkateRibbon();
-    this.spawnPermafrostZone(decoyX, 160, 4.6);
 
     let smartDir = nearLeft ? 1 : nearRight ? -1 : dir;
     if (enemy && dist < 245 && (nearLeft || nearRight)) {
@@ -758,8 +776,15 @@ export class IceMage extends Fighter {
         this.isFlipVault = false;
         this.flipAngle = 0;
         this.isInvulnerable = false;
-        this.spawnPermafrostZone(this.x, 145, 4.2);
-        this.spawnPixelFrostRing(this.x, this.groundY, 76, '#67e8f9', 0.25, true, false);
+        this.fx?.burst(this.x, this.groundY - 6, {
+          count: 3,
+          speedMin: 30,
+          speedMax: 85,
+          lifeMin: 0.12,
+          lifeMax: 0.20,
+          gravity: 65,
+          colors: ['#ffffff', '#bae6fd', '#67e8f9']
+        });
         this.setState('IDLE');
       }
       return;
@@ -922,8 +947,7 @@ export class IceMage extends Fighter {
         }
         if (game?.audio) game.audio.play(sp.isFinal ? 'ice_shatter' : 'frost_cast', sp.x);
         if (sp.isFinal) {
-          this.spawnPermafrostZone(sp.x, 155, 4.4);
-          this.spawnPixelFrostRing(sp.x, sp.y - 36, 98, '#67e8f9', 0.26, true, true);
+          this.spawnPixelFrostRing(sp.x, sp.y - 36, 86, '#67e8f9', 0.24, false, true);
         }
       }
       sp.life += dt;
@@ -999,9 +1023,16 @@ export class IceMage extends Fighter {
             }
           }
           if (game?.audio) game.audio.play(ic.isCenter ? 'ice_shatter' : 'frost_cast', ic.endX);
-          this.spawnPixelFrostRing(ic.endX, this.groundY - 6, 68, '#67e8f9', 0.20, true, ic.isCenter);
           if (ic.isCenter) {
-            this.spawnPermafrostZone(ic.endX, 140, 4.0);
+            this.fx?.burst(ic.endX, this.groundY - 14, {
+              count: 6,
+              speedMin: 42,
+              speedMax: 135,
+              lifeMin: 0.14,
+              lifeMax: 0.24,
+              gravity: 80,
+              colors: ['#ffffff', '#bae6fd', '#67e8f9', '#e879f9']
+            });
           }
         }
       } else if (ic.life >= ic.flightDur + ic.holdDur) {
@@ -1053,7 +1084,7 @@ export class IceMage extends Fighter {
         }
       }
       if (z.life >= z.maxLife) {
-        if (z.fxSlot) z.fxSlot.done = true;
+        z.fxSlot?.inst?.release?.();
         this.permafrostZones.splice(i, 1);
       }
     }
@@ -1332,7 +1363,7 @@ export class IceMage extends Fighter {
         const ty = enemy ? enemy.groundY : this.groundY;
 
         if (game?.audio) game.audio.play('frost_cast', tx);
-        this.spawnPermafrostZone(tx, 185, 5.0);
+        this.spawnPermafrostZone(tx, 175, 2.2);
         this.fx.spawn('blizzardJawsVortex', tx, ty, { light: 1.28 });
 
         this.glacierJaws = {
@@ -1463,7 +1494,7 @@ export class IceMage extends Fighter {
       if (game.audio) game.audio.play('frost_cast', centerX);
       game.renderer.triggerShake(13, 0.24);
 
-      this.spawnPermafrostZone(centerX, 240, 6.0);
+      this.spawnPermafrostZone(centerX, 200, 2.6);
       const swordOffsets = [-176, -114, -56, 56, 114, 176];
       const swords = swordOffsets.map((ox, idx) => ({
         skyX: centerX + Math.cos(-Math.PI * 0.88 + (idx / 5) * Math.PI * 0.76) * 188,
@@ -1770,7 +1801,6 @@ export class IceMage extends Fighter {
           '★ POLAR NIGHT: ABSOLUTE ZERO! ★',
           '#67e8f9'
         );
-        this.spawnPermafrostZone(this._trueUltCoffinX, 240, 5.8);
         this.fx?.spawn('absoluteZeroAuroraVeil', this._trueUltCoffinX, this.groundY - 6, { light: 1.28 });
       }
       return;

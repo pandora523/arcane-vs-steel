@@ -25,22 +25,22 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps79';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps79';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps79';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps79';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps79';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps79';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps79';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps79';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps79';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps79';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps79';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps79';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps79';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps79';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps79';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps79';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps80';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps80';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps80';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps80';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps80';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps80';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps80';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps80';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps80';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps80';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps80';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps80';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps80';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps80';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps80';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps80';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -600,7 +600,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps79');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps80');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -1626,8 +1626,11 @@ for (const [name, Cls] of CLASSES) {
   if (lyra.skyIceSteps.length < 3) {
     throw new Error(`Expected 3 mid-air Sky-Staircase platforms on Jump, got ${lyra.skyIceSteps.length}`);
   }
+  if (lyra.permafrostZones.length !== 0) {
+    throw new Error(`Expected 0 ground Permafrost circles after basic Autos & Jump, got ${lyra.permafrostZones.length}`);
+  }
 
-  // 13D. Verify Signature Skill: Glacial Jaws Twin Iceberg Crush (spread 136 -> 16)
+  // 13D. Verify Signature Skill: Glacial Jaws Twin Iceberg Crush (spread 136 -> 16) + Clean Ground Sigil Expiry
   lyra.setState('IDLE');
   lyra.x = 380;
   foe.x = 650;
@@ -1644,9 +1647,23 @@ for (const [name, Cls] of CLASSES) {
     lyra.drawUltimateForeground(lyraCtx, game.renderer);
   }
   const jawsDmg = hpPreJaws - foe.hp;
-  if (maxJawSpread < 120 || minJawSpread > 24 || jawsDmg < 70) {
+  if (maxJawSpread < 120 || minJawSpread > 24 || jawsDmg < 70 || lyra.permafrostZones.length > 1) {
     throw new Error(
-      `Lyra v6 Glacial Jaws failed: maxSpread=${maxJawSpread}, minSpread=${minJawSpread}, dmg=${jawsDmg}`
+      `Lyra v6 Glacial Jaws failed: maxSpread=${maxJawSpread}, minSpread=${minJawSpread}, dmg=${jawsDmg}, zones=${lyra.permafrostZones.length}`
+    );
+  }
+  // Advance past the 2.2s Permafrost Rink lifetime + 0.28s shader release window and assert 0 stuck ground circles!
+  for (let f = 0; f < 82; f++) {
+    lyra.autoCooldown = 5;
+    lyra.skillCooldown = 5;
+    lyra.dodgeCooldown = 5;
+    lyra.crouchCooldown = 5;
+    lyra.update(1 / 30, foe, game);
+  }
+  const stuckSigils = lyra.fx.active.filter((s) => s.key === 'permafrostSnowflakeSigil').length;
+  if (lyra.permafrostZones.length !== 0 || stuckSigils !== 0) {
+    throw new Error(
+      `Lyra Permafrost ground circle stuck! zones=${lyra.permafrostZones.length}, stuckShaderSlots=${stuckSigils}`
     );
   }
 

@@ -2,7 +2,7 @@
 
 > **IMPORTANT FOR ANY NEW CHAT / AGENT**: Read this file alongside `docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md` and `docs/champion_pipeline_db.json` at the start of a new conversation so full project context, user preferences, protected champions, and recent reworks are preserved seamlessly.
 
-## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps79`)
+## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps80`)
 - **All 11 HD-2D 30fps Champions (`208x208` cells, `10 rows x 30 frames = 6240x2080` incl. Row 9 `VICTORY` Pose + `vfx` sheets + `128x128` portraits)** are live and verified on `main`.
 - **Stage Effects Overhaul & Ignis Sol `LAYWASTE OF INFERNO` Stage**:
   - All 6 stages (`cathedral`, `sylvan`, `boneyard`, `clocktower`, `sanctuary`, and Ignis Sol's `inferno` `LAYWASTE OF INFERNO`) feature parallax volumetric god-rays, near-camera `1.22x` foreground bokeh/ash/petal/feather depth layers, stage-aware floor reflections & seams, and bespoke phenomena.

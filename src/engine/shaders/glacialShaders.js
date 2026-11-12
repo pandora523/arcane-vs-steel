@@ -18,7 +18,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps79';
+} from '../ArcaneShaderFX.js?v=30fps80';
 
 // Luminous Refractive Crystal-Ice Master Palette (zero murky #061224 / #0c2948 / #1d4ed8 dark-navy slabs!)
 export const GLACIAL_CRYO_PALETTE = [
@@ -375,8 +375,7 @@ export const borealisIcicleHail = {
         if (env <= 0.02) return;
         const skyX = -dir * 22;
         const skyY = -68;
-        drawLuminousCrystalOrbit(pen, skyX, skyY, 28, 0.24, 1.3, 0.86 * env, band4, BACK_HALF, false);
-        drawLuminousCrystalOrbit(pen, 0, -1, 24 * smoothStep(0.1, 0.55, u), 0.22, 1.2, 0.78 * env, band4, BACK_HALF, false);
+        drawLuminousCrystalOrbit(pen, skyX, skyY, 26, 0.24, 1.2, 0.82 * env, band4, BACK_HALF, false);
       },
       renderFront(pen) {
         const u = clamp01(t / 0.56);
@@ -384,8 +383,8 @@ export const borealisIcicleHail = {
         if (env <= 0.02) return;
         const skyX = -dir * 22;
         const skyY = -68;
-        drawLuminousCrystalOrbit(pen, skyX, skyY, 28, 0.24, 1.4, 0.92 * env, band4, FRONT_HALF, u < 0.35);
-        drawSnowflakeStar(pen, skyX, skyY, 10 * env, PURE_WHITE, borealis[4], env, u * 4.5);
+        drawLuminousCrystalOrbit(pen, skyX, skyY, 26, 0.24, 1.3, 0.88 * env, band4, FRONT_HALF, u < 0.35);
+        drawSnowflakeStar(pen, skyX, skyY, 9.5 * env, PURE_WHITE, borealis[4], env, u * 4.5);
 
         // 3 Diagonal Borealis Hail Guide-Rays from sky-rift to target zone
         for (let i = -1; i <= 1; i++) {
@@ -399,10 +398,9 @@ export const borealisIcicleHail = {
           const hx = sx + (ex - sx) * laneU;
           const hy = sy + (ey - sy) * laneU;
           pen.line(sx, sy, hx, hy, i === 0 ? PURE_WHITE : cryo[5], 0.78 * fadeLane);
-          drawSnowflakeStar(pen, hx, hy, 6.5 * fadeLane, PURE_WHITE, i % 2 === 0 ? cryo[5] : borealis[4], fadeLane, laneU * 6);
+          drawSnowflakeStar(pen, hx, hy, 6.0 * fadeLane, PURE_WHITE, i % 2 === 0 ? cryo[5] : borealis[4], fadeLane, laneU * 6);
         }
 
-        drawLuminousCrystalOrbit(pen, 0, -1, 24 * smoothStep(0.1, 0.55, u), 0.22, 1.3, 0.86 * env, band4, FRONT_HALF, false);
         motes.render(pen);
       }
     };
@@ -411,65 +409,60 @@ export const borealisIcicleHail = {
 
 // ============================================================================
 // 3. 2.5D PERMAFROST MIRROR RINK SIGIL (`permafrostSnowflakeSigil`)
+//     Finite (`loop: false`) subtle frost-rink rim that stipple-fades cleanly to zero!
 // ============================================================================
 export const permafrostSnowflakeSigil = {
-  duration: 1.6,
-  loop: true,
-  defaults: { palette: GLACIAL_CRYO_PALETTE, seed: 43, radiusWorld: 155 },
+  duration: 2.8,
+  loop: false,
+  defaults: { palette: GLACIAL_CRYO_PALETTE, seed: 43, radiusWorld: 155, customDuration: 2.8 },
   create(cfg) {
+    const dur = Math.max(0.6, cfg.customDuration || 2.8);
     const cryo = buildColorRamp(cfg.palette, 8);
     const borealis = buildColorRamp(BOREALIS_PRISM_PALETTE, 8);
-    const band4 = [cryo[3], cryo[5], borealis[4], PURE_WHITE];
+    const band4 = [cryo[2], cryo[4], cryo[6], PURE_WHITE];
     const rng = new DeterministicRng(cfg.seed);
     const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, cryo[6], borealis[5], cryo[4]] });
-    let phase = 0;
+    let t = 0;
     let acc = 0;
 
     return {
       step(dt) {
-        phase += dt;
-        acc += dt * 12;
-        const rx = Math.min(62, Math.max(24, (cfg.radiusWorld || 155) / 3));
-        while (acc >= 1) {
-          acc -= 1;
-          const a = rng.between(0, Math.PI * 2);
-          const r = rng.between(4, rx * 0.85);
-          motes.emit(
-            'glint',
-            Math.cos(a) * r,
-            Math.sin(a) * r * 0.21 - 1,
-            rng.between(-5, 5),
-            rng.between(-20, -8),
-            rng.between(0.24, 0.44),
-            rng.chance(0.4) ? borealis[4] : cryo[5],
-            1,
-            0
-          );
+        t += dt;
+        if (t < dur * 0.78) {
+          acc += dt * 7;
+          const rx = Math.min(56, Math.max(22, (cfg.radiusWorld || 155) / 3));
+          while (acc >= 1) {
+            acc -= 1;
+            const a = rng.between(0, Math.PI * 2);
+            const r = rng.between(6, rx * 0.82);
+            motes.emit(
+              'glint',
+              Math.cos(a) * r,
+              Math.sin(a) * r * 0.20 - 1,
+              rng.between(-4, 4),
+              rng.between(-16, -6),
+              rng.between(0.20, 0.36),
+              rng.chance(0.35) ? borealis[5] : cryo[5],
+              1,
+              0
+            );
+          }
         }
         motes.step(dt);
       },
       renderBack(pen) {
-        const rx = Math.min(62, Math.max(24, (cfg.radiusWorld || 155) / 3));
-        drawTiltedOrbitBand(pen, 0, 0, rx, 0.21, 1.3, 0.8, band4, BACK_HALF, false);
-        drawTiltedOrbitBand(pen, 0, 0, rx * 0.58, 0.21, 1.0, 0.7, band4, BACK_HALF, false);
+        const u = clamp01(t / dur);
+        const env = smoothStep(0, 0.10, u) * (1 - smoothStep(0.70, 1.0, u)) * (pen.fade ?? 1);
+        if (env <= 0.02) return;
+        const rx = Math.min(56, Math.max(22, (cfg.radiusWorld || 155) / 3));
+        drawLuminousCrystalOrbit(pen, 0, 0, rx, 0.19, 1.0, 0.56 * env, band4, BACK_HALF, false);
       },
       renderFront(pen) {
-        const rx = Math.min(62, Math.max(24, (cfg.radiusWorld || 155) / 3));
-        drawTiltedOrbitBand(pen, 0, 0, rx, 0.21, 1.4, 0.88, band4, FRONT_HALF, false);
-        drawTiltedOrbitBand(pen, 0, 0, rx * 0.58, 0.21, 1.1, 0.76, band4, FRONT_HALF, false);
-
-        for (let k = 0; k < 6; k++) {
-          const a = phase * 0.8 + (k * Math.PI) / 3;
-          if (Math.sin(a) < 0) continue;
-          pen.line(
-            Math.cos(a) * rx * 0.3,
-            Math.sin(a) * rx * 0.3 * 0.21,
-            Math.cos(a) * rx,
-            Math.sin(a) * rx * 0.21,
-            k % 2 === 0 ? cryo[5] : borealis[4],
-            0.8
-          );
-        }
+        const u = clamp01(t / dur);
+        const env = smoothStep(0, 0.10, u) * (1 - smoothStep(0.70, 1.0, u)) * (pen.fade ?? 1);
+        if (env <= 0.02) return;
+        const rx = Math.min(56, Math.max(22, (cfg.radiusWorld || 155) / 3));
+        drawLuminousCrystalOrbit(pen, 0, 0, rx, 0.19, 1.1, 0.64 * env, band4, FRONT_HALF, false);
         motes.render(pen);
       }
     };
