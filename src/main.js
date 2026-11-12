@@ -1,19 +1,19 @@
-import { Renderer } from './engine/Renderer.js?v=30fps72';
-import { VFXManager } from './engine/VFXManager.js?v=30fps72';
-import { PixelForge } from './engine/PixelForge.js?v=30fps72';
-import { AudioManager } from './engine/AudioManager.js?v=30fps72';
-import { Fighter } from './entities/Fighter.js?v=30fps72';
-import { Warrior } from './entities/Warrior.js?v=30fps72';
-import { FireMage } from './entities/FireMage.js?v=30fps72';
-import { Archer } from './entities/Archer.js?v=30fps72';
-import { Priestess } from './entities/Priestess.js?v=30fps72';
-import { Reaper } from './entities/Reaper.js?v=30fps72';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps72';
-import { Titan } from './entities/Titan.js?v=30fps72';
-import { Ronin } from './entities/Ronin.js?v=30fps72';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps72';
-import { IceMage } from './entities/IceMage.js?v=30fps72';
-import { Android } from './entities/Android.js?v=30fps72';
+import { Renderer } from './engine/Renderer.js?v=30fps73';
+import { VFXManager } from './engine/VFXManager.js?v=30fps73';
+import { PixelForge } from './engine/PixelForge.js?v=30fps73';
+import { AudioManager } from './engine/AudioManager.js?v=30fps73';
+import { Fighter } from './entities/Fighter.js?v=30fps73';
+import { Warrior } from './entities/Warrior.js?v=30fps73';
+import { FireMage } from './entities/FireMage.js?v=30fps73';
+import { Archer } from './entities/Archer.js?v=30fps73';
+import { Priestess } from './entities/Priestess.js?v=30fps73';
+import { Reaper } from './entities/Reaper.js?v=30fps73';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps73';
+import { Titan } from './entities/Titan.js?v=30fps73';
+import { Ronin } from './entities/Ronin.js?v=30fps73';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps73';
+import { IceMage } from './entities/IceMage.js?v=30fps73';
+import { Android } from './entities/Android.js?v=30fps73';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -382,10 +382,10 @@ const CHAMPION_ROSTER = {
       'Paints the arena with an orbital targeting matrix and calls down a full-stage Project GUNG-09 satellite plasma beam!',
     skills: [
       {
-        name: 'HF PLASMA KATANA',
+        name: 'MURAMASA-09 ODACHI',
         type: 'AUTO + HEX DEFLECT',
         vfxCell: 0,
-        desc: '3-step cyan-magenta plasma katana combo that hurls Cyber Chakram discs & raises a hexagonal force-field.'
+        desc: 'Thruster-steps into point-blank contact with a 3-form Split-Lunge, High-Knee Dragon Slash & Fang Slam combo.'
       },
       {
         name: 'EMP OVERLOAD BLITZ',
@@ -394,10 +394,10 @@ const CHAMPION_ROSTER = {
         desc: 'Locks onto foes with a holographic scanner, jetpack-rushes through, and detonates a scanline EMP dome.'
       },
       {
-        name: 'SINGULARITY PROTOCOL',
+        name: 'VALKYRIE VISOR HYPER-LASER',
         type: '★ OVERDRIVE ULT',
         vfxCell: 2,
-        desc: 'Ascends on twin aero-thrusters, deploys a laser-grid Cyber Singularity Core, and fires 3 orbital plasma sweeps!'
+        desc: 'Boosts backward away from danger, deploys a 4-Funnel Optical Ring around her head, and fires a searing Face-Visor Laser!'
       }
     ]
   }

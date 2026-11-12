@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps72';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps72';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps72';
+import { Fighter } from './Fighter.js?v=30fps73';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps73';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps73';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps72';
+} from '../engine/shaders/abyssalShaders.js?v=30fps73';
 
 /**
  * Malakor v7 (`reaper`) — Gothic Arch-Reaper, Shadow-Burrow Stalker & Sovereign of the Death Covenant.
@@ -144,14 +144,14 @@ export class Reaper extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
-      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps72')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps72';
+      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps73')) {
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps73';
       }
-      if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps72')) {
-        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps72';
+      if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps73')) {
+        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps73';
       }
-      if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps72')) {
-        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps72';
+      if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps73')) {
+        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps73';
       }
     }
   }

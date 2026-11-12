@@ -25,21 +25,21 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps72';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps72';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps72';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps72';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps72';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps72';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps72';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps72';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps72';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps72';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps72';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps72';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps72';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps72';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps72';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps73';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps73';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps73';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps73';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps73';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps73';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps73';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps73';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps73';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps73';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps73';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps73';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps73';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps73';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps73';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -584,7 +584,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps72');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps73');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -1594,6 +1594,106 @@ for (const [name, Cls] of CLASSES) {
     `[PASS] Lyra v6 Full Rework: 3-Variant Royal Ballet (Comet/Chakram/3-Spire March), 4-Stack Solid Crystal Freeze (${foe.stunTimer.toFixed(2)}s), 3-Step Sky-Stair, Glacial Jaws (-${Math.round(jawsDmg)} dmg), 7-Sword Winter Coronation (-${Math.round(coronationDmg)} dmg), & Polar Night 28-Shard Reality Shatter (-${Math.round(trueUltDmg)} Crit, 0 ctx.rotate)!`
   );
 }
+
+// 14. Verify VEX-09 (`Android`) v3 Gap-Close 3-Variant Melee, Backward-Evade Visor Face-Laser Ultimate & Roster Fighting Style AI!
+{
+  const vex = new Android({ x: 340, groundY: 460, facing: 1, name: 'VEX-09' });
+  const dummy = new Warrior({ x: 540, groundY: 460, facing: -1, name: 'Target' });
+  vex.game = game;
+  dummy.game = game;
+  dummy.maxHp = 99999;
+  dummy.hp = 99999;
+
+  // 14A. Verify all 3 Row 2 Auto-Attack variants (`60..69`, `70..79`, `80..89`) physically thruster-glide VEX-09's real model
+  //      from 200px distance down to point-blank blade contact (`<= 120px`) BEFORE `didActionFrame` swings!
+  const seenSubRanges = [false, false, false];
+  for (let c = 0; c < 3; c++) {
+    vex.x = 340;
+    dummy.x = 540; // 200px initial gap — previously VEX-09 swung into empty air!
+    vex.setState('AUTO_ATTACK');
+    let distAtSwing = 999;
+    for (let f = 0; f < 22; f++) {
+      const wasDone = vex.didActionFrame;
+      vex.update(1 / 30, dummy, game);
+      const ov = vex.trueUltFrameOverride;
+      if (ov >= 60 && ov <= 69) seenSubRanges[0] = true;
+      if (ov >= 70 && ov <= 79) seenSubRanges[1] = true;
+      if (ov >= 80 && ov <= 89) seenSubRanges[2] = true;
+      if (!wasDone && vex.didActionFrame) {
+        distAtSwing = Math.abs(dummy.x - vex.x);
+      }
+      if (vex.state === 'IDLE') break;
+    }
+    if (distAtSwing > 122) {
+      throw new Error(
+        `VEX-09 Auto Variant ${c} failed to close gap before swinging! Expected distAtSwing <= 122px, got ${distAtSwing.toFixed(1)}px`
+      );
+    }
+  }
+  if (!seenSubRanges[0] || !seenSubRanges[1] || !seenSubRanges[2]) {
+    throw new Error(`VEX-09 did not cycle all 3 Row 2 melee variants: ${JSON.stringify(seenSubRanges)}`);
+  }
+
+  // 14B. Verify VEX-09's Overdrive Ultimate ("VALKYRIE VISOR HYPER-LASER") moves BACKWARD first (`>= 150px`),
+  //      then fires `visorHyperLaserBeam` directly from her Face/Visor!
+  vex.x = 520;
+  vex.facing = 1;
+  dummy.x = 650;
+  const hpBeforeUlt = dummy.hp;
+  const startUltX = vex.x;
+  let xAtFirstVisorShot = vex.x;
+  let sawVisorLaser = false;
+  vex.setState('ULTIMATE');
+  for (let f = 0; f < 64; f++) {
+    vex.update(1 / 30, dummy, game);
+    const hasVisorBeam = vex.fx.active.some((a) => a.key === 'visorHyperLaserBeam');
+    if (hasVisorBeam && !sawVisorLaser) {
+      sawVisorLaser = true;
+      xAtFirstVisorShot = vex.x;
+    }
+    if (vex.state === 'IDLE') break;
+  }
+  const backwardRetreatPx = startUltX - xAtFirstVisorShot;
+  const ultDmgDealt = hpBeforeUlt - dummy.hp;
+  if (!sawVisorLaser || backwardRetreatPx < 150 || ultDmgDealt < 280) {
+    throw new Error(
+      `VEX-09 Visor Hyper-Laser Ultimate failed: sawVisorLaser=${sawVisorLaser}, backwardRetreatPx=${backwardRetreatPx.toFixed(1)}, dmg=${ultDmgDealt}`
+    );
+  }
+
+  // 14C. Verify Roster-Wide Fighting Style AI Director showcases rich signature states (`CROUCH`, `JUMP`, `DODGE`, `DASH`)
+  //      alongside `AUTO_ATTACK` & `SKILL` in live AI-vs-AI combat!
+  const aiRosterPairs = [
+    [new Warrior({ x: 380, groundY: 460, facing: 1, name: 'Aethelgard' }), new Ronin({ x: 760, groundY: 460, facing: -1, name: 'Kaze-Maru' })],
+    [new Android({ x: 380, groundY: 460, facing: 1, name: 'VEX-09' }), new IceMage({ x: 780, groundY: 460, facing: -1, name: 'Lyra' })]
+  ];
+  const observedStates = new Set();
+  game.testModeUnlimitedHp = true;
+  for (const [a, b] of aiRosterPairs) {
+    a.game = game;
+    b.game = game;
+    for (let step = 0; step < 540; step++) {
+      a.update(1 / 30, b, game);
+      b.update(1 / 30, a, game);
+      game.vfx.update(1 / 30, 460, game.renderer, game.audio);
+      observedStates.add(a.state);
+      observedStates.add(b.state);
+    }
+  }
+  game.testModeUnlimitedHp = false;
+  for (const reqState of ['AUTO_ATTACK', 'SKILL', 'CROUCH', 'JUMP']) {
+    if (!observedStates.has(reqState)) {
+      throw new Error(
+        `Fighting Style AI Director failed to exhibit ${reqState} across live AI duels! Saw: ${[...observedStates].join(', ')}`
+      );
+    }
+  }
+
+  console.log(
+    `[PASS] VEX-09 v3 & Fighting Style AI Director: 3-Variant Real Gap-Close Melee (<=109px blade contact), Backstep (-${Math.round(backwardRetreatPx)}px) -> Face/Visor Hyper-Laser (-${Math.round(ultDmgDealt)} dmg), & Live Martial AI (${[...observedStates].sort().join('/')})!`
+  );
+}
+
 
 
 

@@ -2,7 +2,7 @@
 
 > **IMPORTANT FOR ANY NEW CHAT / AGENT**: Read this file alongside `docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md` and `docs/champion_pipeline_db.json` at the start of a new conversation so full project context, user preferences, protected champions, and recent reworks are preserved seamlessly.
 
-## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps72`)
+## 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps73`)
 - **All 11 HD-2D 30fps Champions (`208x208` cells, 9 rows x 30 frames + `vfx` sheets + `128x128` portraits)** are live and verified on `main`.
 - **Epic Battle HP Inflation & Ultimate Pacing**:
   - Champion HP pools are inflated (`3600–4390 HP`) so fights last ~`50–80s` in 1v1 (`~58s` in 2v2 Brawl, `~120s` in 2v2 Tag) and champions reliably cast **3 Overdrives (`ULTIMATE`)** to unlock and cast their **Supreme Ultimate (`TRUE_ULTIMATE`)** (`99.8%` `TRUE_ULTIMATE` rate in 1v1 benchmarks).
@@ -23,6 +23,21 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 
 ## 3. Recent Champion Reworks & Visual Clarity Rules
 
+### VEX-09 (`src/entities/Android.js`, `heroId: 'android'`, v3) & Roster-Wide Fighting Style AI Director (`src/entities/Fighter.js`)
+- **Coiled Athletic Cyber-Valkyrie Rig (`scripts/build_android_30fps_sheet.py`, `0/270` clips, `29/29` transitions)**:
+  - Deep hip/knee/ankle skeletal stances across all 9 rows (`IDLE` coiled Kamae, low-center thruster `WALK`/`DASH`, kneeling `CROUCH` Hex-Matrix Deflect, airborne `JUMP` Guillotine) — zero rod-straight or stiff poses.
+  - **3-Variant Dynamic `Row 2` Melee Combo + Real Point-Blank Model Gap-Close**:
+    1. `F00..F09`: Deep Split-Lunge Horizontal Plasma Cleave (`60..69`)
+    2. `F10..F19`: Martial High-Knee Kick + Rising Dragon Upper-Slash (`70..79`)
+    3. `F20..F29`: Crashing Split-Stance Overhead Fang Slam + Chakram Disc + Dual Funnel Convergence (`80..89`)
+    - During windup (`u < 0.35`, before `didActionFrame`), VEX-09 physically thruster-glides her real `this.x` model right up to true point-blank blade contact (`~108px` from `enemy.x`) so she never swings into empty air.
+- **Backward-Evade Visor Hyper-Laser Overdrive (`VALKYRIE VISOR HYPER-LASER`, `Row 4`)**:
+  - **Phase 1 (`0.00..0.44s`, `F00..F07`)**: Physically thruster-leaps backward away from the enemy (`~215px` retreat + 3 holographic afterimages).
+  - **Phase 2 (`0.44..0.72s`, `F08..F13`)**: Plants into a wide split-stance, touches her left fingers to her Visor temple, and locks her 4 Fin-Funnels into a **Quad Optical Amplifier Ring** framing her head.
+  - **Phase 3 (`0.72..1.54s`, `F14..F24`)**: Fires searing `visorHyperLaserBeam` blasts directly from her **Face / Visor** `(this.x + facing*20, groundY - 134)` across the arena into the target, culminating in an overcharged Visor Supernova detonation.
+- **Roster-Wide Fighting Style AI Director (`src/entities/Fighter.js`)**:
+  - Gives all 11 champions (including the 6 protected champions via `super.update`, with zero edits to their class files) distinct `getAiStyleProfile()` martial personalities: reactive counter-reads (`CROUCH` parries/shields/hex-deflects/frost-mirrors/shadow-burrows & `JUMP` aerial escapes), full combo-string discipline, combo-finisher/whiff-punish `SKILL` windows, post-combo signature maneuvers, mid-range aerial engages, and expressive neutral footsies.
+
 ### Lyra (`src/entities/IceMage.js`, `heroId: 'icemage'`, v6)
 - **Passive (`HOARFROST RIME & SOLID CRYSTAL STASIS`)**: Frost hits stack Hoarfrost Rime `[1..4]`; at `4` stacks triggers **`★ SOLID CRYSTAL FREEZE! ★`** — encasing the target inside a translucent `Row 6` Ice-Crystal Block (`0.40s` solid freeze stun), dealing crit shatter damage, and granting Lyra a Cryo Mirror Shield (`+12 HP`).
 - **3-Variant Royal Ballet Normal Attack (`Row 2 F00..F29`)**:
@@ -38,7 +53,7 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 - **4-Variant Dynamic Normal Attack (`Row 2 F00..F29`)**: Cycles cleanly through 4 distinct hammer techniques so normal attacks never look repetitive:
   1. `F00..F07`: Magnetic Fissure Sweep (`stage 0`, `spawnFissureWave`)
   2. `F08..F14`: Volcanic-Horn Uppercut (`stage 1`, `Row 2` magma pillar)
-  3. `F15..F21`: Battering-Ram Thrust (`stage 2`)
+  3. `F09..F21` (`F15..F21`): Battering-Ram Thrust (`stage 2`)
   4. `F22..F29`: Overhead World-Breaker Slam (`stage 3` finisher + Khazad Ancestor)
 - **Overdrive Ultimate (`WORLD-BREAKER HOME RUN`)**: Torgar steps into a 2H baseball-bat windup and swings horizontally, launching the enemy across the arena to the **farthest side of the stage** with a wall-crash impact and **`0.8s` stun**.
 - **Supreme Ultimate (`GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER`)**: High-impact orbital leap & `735`-crit tectonic sunder at `t = 3.23s`.
@@ -51,7 +66,7 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
     1. **Herald of Oblivion (Death-Mage)**: `480 HP + 60 Soul Ward`, casts homing dark-magic orbs at enemies.
     2. **Soul-Weaver (Healer)**: `420 HP + 50 Soul Ward`, channels an emerald-necrotic mend tether healing the Death-Mage (and granting Covenant Grace sustain to Malakor).
 
-### Combat Particle & VFX Readability (`?v=30fps72`)
+### Combat Particle & VFX Readability (`?v=30fps73`)
 - Avoid excessive particle spam, per-frame walk/idle dust, or stacked high-alpha `globalCompositeOperation = 'lighter'` passes (`keep additive bloom <= 0.16–0.22`) so pixel-art silhouettes and combat telegraphs remain sharp.
 - `Fighter.js` and `VFXManager.js` include `isDeclutteredHero` (`titan`, `reaper`, `archer`, `icemage`, `android`) gates so those 5 heroes stay visually clean while leaving the 6 protected heroes 100% untouched.
 

@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps72';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps72';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps72';
+import { Fighter } from './Fighter.js?v=30fps73';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps73';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps73';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps72';
+} from '../engine/shaders/cyberShaders.js?v=30fps73';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 
@@ -21,9 +21,9 @@ export class Android extends Fighter {
       ...opts,
       name: opts.name || 'VEX-09',
       maxHp: 3760,
-      moveSpeed: 228,
-      attackRange: 192,
-      autoInterval: 0.86,
+      moveSpeed: 234,
+      attackRange: 172,
+      autoInterval: 0.84,
       lightColor: 'rgba(0, 240, 255, 1)',
       primaryColor: '#00f0ff'
     });
@@ -31,7 +31,7 @@ export class Android extends Fighter {
     this.heroId = 'android';
     this.deathSfx = 'death_android';
     this.skillName = 'EMP OVERLOAD BLITZ';
-    this.ultName = 'SINGULARITY PROTOCOL';
+    this.ultName = 'VALKYRIE VISOR HYPER-LASER';
     this.hasTrueUltimate = true;
     this.trueUltName = 'PROJECT GUNG-09: ORBITAL SATELLITE BUSTER';
     this.trueUltDuration = 4.45;
@@ -41,24 +41,34 @@ export class Android extends Fighter {
     this.skillMaxCooldown = 4.32;
     this.dodgeMaxCooldown = 3.4;
     this.dashMaxCooldown = 3.5;
-    this.autoDuration = 0.50;
+    this.crouchCooldown = 0;
+    this.crouchMaxCooldown = 4.2;
+    this.autoDuration = 0.52;
     this.skillDuration = 0.96;
-    this.ultDuration = 1.85;
-    this.crouchDuration = 0.88;
+    this.ultDuration = 1.90;
+    this.crouchDuration = 0.86;
     this.dashDuration = 0.34;
     this.comboStep = 0;
+    this._autoVariant = 0;
+    this._autoGapClosed = false;
 
     // Native 120Hz dual-buffer HD-2D shader & particle engine (`back` & `front` 2.5D layers)
-    this.fx = new ArcaneShaderFX(CYBER_EFFECT_REGISTRY, { pixelScale: 3, viewW: 440, viewH: 220 });
+    // Expanded 480x260 shader viewport (1440x780 world coverage) ensures zero border clips on cross-stage Visor Lasers
+    this.fx = new ArcaneShaderFX(CYBER_EFFECT_REGISTRY, {
+      pixelScale: 3,
+      viewW: 640,
+      viewH: 460,
+      topRatio: 0.70
+    });
 
-    // Ensure browser always fetches latest v=30fps62 VEX-09 sprite & VFX sheets
+    // Ensure browser always fetches latest VEX-09 sprite & VFX sheets
     if (typeof Image !== 'undefined') {
       const androidAssets = PixelForge.initAssets()?.android;
-      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps62')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps72';
+      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps73')) {
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps73';
       }
-      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps62')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps72';
+      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps73')) {
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps73';
       }
     }
 
@@ -70,6 +80,8 @@ export class Android extends Fighter {
       { angle: Math.PI * 1.5, x: this.x, y: this.y - 120 }
     ];
     this._trueUltStep = 0;
+    this._trueUltStartX = this.x;
+    this._trueUltRetreatX = this.x;
     this._trueUltTargetX = 600;
     this._trueUltBusterTimer = 0;
 
@@ -78,18 +90,29 @@ export class Android extends Fighter {
     this.activeVfxAnims = [];
     this._skillStep = 0;
     this._ultStep = 0;
-    this._ultFocusX = this.x + this.facing * 180;
+    this._ultStartX = this.x;
+    this._ultRetreatX = this.x;
+    this._ultBackGhostIdx = 0;
+    this._ultFocusX = this.x + this.facing * 220;
     this._ultCoreFx = null;
     this._deathSparksTriggered = false;
   }
 
   setState(newState) {
     super.setState(newState);
+    if (
+      newState !== 'AUTO_ATTACK' &&
+      newState !== 'ULTIMATE' &&
+      newState !== 'TRUE_ULTIMATE'
+    ) {
+      this.trueUltFrameOverride = null;
+    }
     if (newState !== 'CROUCH') {
       this.isDeflecting = false;
       this.fx?.stopByKey('aegisHexDome');
     }
     if (
+      newState !== 'AUTO_ATTACK' &&
       newState !== 'DASH' &&
       newState !== 'JUMP' &&
       newState !== 'ULTIMATE' &&
@@ -97,15 +120,22 @@ export class Android extends Fighter {
     ) {
       this.fx?.stopByKey('wingPylonThruster');
     }
+    if (newState === 'AUTO_ATTACK') {
+      this._autoVariant = this.comboStep % 3;
+      this._autoGapClosed = false;
+    }
     if (newState === 'SKILL') {
       this._skillStep = 0;
     }
     if (newState === 'ULTIMATE') {
       this._ultStep = 0;
+      this._ultBackGhostIdx = 0;
       this._ultCoreFx = null;
     }
     if (newState === 'TRUE_ULTIMATE') {
       this._trueUltStep = 0;
+      this._trueUltStartX = this.x;
+      this._trueUltRetreatX = this.x;
     }
   }
 
@@ -187,6 +217,7 @@ export class Android extends Fighter {
     this.isCrouching = true;
     this.isDeflecting = true;
     this.crouchDuration = 0.86;
+    this.crouchCooldown = this.crouchMaxCooldown || 4.2;
     this.vx = 0;
 
     // Full-height 3D Geodesic Hexagonal Aegis Dome (`back` + `front` wraparound, `252x168px` world size)
@@ -375,22 +406,65 @@ export class Android extends Fighter {
   }
 
   updateAutoAttack(dt, enemy, game) {
-    const u = this.stateTimer / (this.autoDuration || 0.50);
-    // Forward lunge momentum during strike frames F08..F15
-    if (u >= 0.22 && u <= 0.52) {
-      const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-      this.x = Math.max(85, Math.min(ww - 85, this.x + this.facing * 165 * dt));
+    const dur = this.autoDuration || 0.52;
+    const u = Math.min(1, this.stateTimer / dur);
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const variant = this._autoVariant ?? 0;
+
+    // Drive exact 10-frame sub-window of Row 2 (`60..69` Split-Lunge, `70..79` High-Knee Upper-Slash, `80..89` Overhead Fang Slam)
+    const subFrame = Math.min(9, Math.max(0, Math.floor(u * 10)));
+    this.trueUltFrameOverride = 60 + variant * 10 + subFrame;
+
+    // Variant 1 (`High-Knee Kick + Rising Dragon Upper-Slash`) gets a crisp athletic hop off the floor
+    if (variant === 1 && u >= 0.16 && u <= 0.78) {
+      const hopU = (u - 0.16) / 0.62;
+      this.y = this.groundY - Math.sin(hopU * Math.PI) * 18;
+    } else {
+      this.y = this.groundY;
     }
 
-    if (!this.didActionFrame && u >= 0.30) {
-      this.didActionFrame = true;
-      const combo = this.comboStep % 3;
-      const step = combo;
-      this.comboStep++;
-      const hitX = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 155;
+    // Real Model Gap-Close BEFORE Swinging (`u < 0.35`, prior to blade strike frame!):
+    // Physically thruster-glide VEX-09 right up to true point-blank blade contact (`108px` from `enemy.x`)
+    // so she NEVER swings into empty air from afar!
+    if (u < 0.35) {
+      if (enemy && !enemy.isDead) {
+        if (u < 0.08 && Math.abs(enemy.x - this.x) > 12) {
+          this.facing = enemy.x >= this.x ? 1 : -1;
+        }
+        const contactGap = 108;
+        const desiredX = Math.max(85, Math.min(ww - 85, enemy.x - this.facing * contactGap));
+        const forwardDelta = (desiredX - this.x) * this.facing;
+        if (forwardDelta > 1.5) {
+          if (!this._autoGapClosed && forwardDelta > 26) {
+            this._autoGapClosed = true;
+            this.spawnAfterimage(this.x, this.y, this.facing, 2, variant * 10 + 1, 0.20);
+            this.fx.spawn('wingPylonThruster', this.x - this.facing * 18, this.y - 134, {
+              follow: this,
+              offsetX: -18,
+              offsetY: -134,
+              flip: this.facing < 0,
+              palette: variant === 1 ? CYBER_MAGENTA_PALETTE : CYBER_NEON_PALETTE,
+              maxDuration: 0.18,
+              light: 0.95,
+              extra: { length: 16, tilt: -0.78 }
+            });
+          }
+          const maxStep = Math.min(forwardDelta, 780 * dt);
+          this.x = Math.max(85, Math.min(ww - 85, this.x + this.facing * maxStep));
+        }
+      } else if (u >= 0.08) {
+        this.x = Math.max(85, Math.min(ww - 85, this.x + this.facing * 215 * dt));
+      }
+    }
 
-      if (combo === 2) {
-        // 3rd Hit Finisher: `twinCrossSlash` has built-in `X = +34 (+102px), Y = -23 (-69px)`
+    if (!this.didActionFrame && u >= 0.35) {
+      this.didActionFrame = true;
+      const step = variant;
+      this.comboStep++;
+      const hitX = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 115;
+
+      if (step === 2) {
+        // Variant 2 (F20..F29): Crashing Split-Stance Overhead Fang Slam + Chakram Disc + Dual Funnel Convergence
         this.fx.spawn('twinCrossSlash', this.x - this.facing * 14, this.groundY - 24, {
           flip: this.facing < 0,
           palette: CYBER_MAGENTA_PALETTE,
@@ -399,7 +473,7 @@ export class Android extends Fighter {
         });
         if (game?.vfx) {
           game.vfx.spawnProjectile({
-            x: this.x + this.facing * 68,
+            x: this.x + this.facing * 64,
             y: this.groundY - 94,
             vx: this.facing * 670,
             vy: 0,
@@ -410,28 +484,40 @@ export class Android extends Fighter {
             type: 'cyber_disc'
           });
         }
-        // Command 2 of her autonomous Fin-Funnel Drones to fire converging cyan-magenta laser pulses at the target
         for (let dIdx = 0; dIdx < 2; dIdx++) {
           const drone = this.funnelDrones?.[dIdx];
           const droneX = drone ? drone.x : this.x + this.facing * (dIdx === 0 ? -36 : 42);
           const droneY = drone ? drone.y : this.y - (dIdx === 0 ? 148 : 122);
+          const rawDx = Math.max(-200, Math.min(200, (hitX - droneX) / 3));
+          const rawDy = Math.max(-60, Math.min(52, (this.groundY - 96 - droneY) / 3));
           this.fx.spawn('orbitalHelixBeam', droneX, droneY, {
             flip: false,
             palette: dIdx === 0 ? CYBER_NEON_PALETTE : CYBER_MAGENTA_PALETTE,
             light: 1.18,
             extra: {
-              dx: (hitX - droneX) / 3,
-              dy: (this.groundY - 96 - droneY) / 3,
+              dx: rawDx,
+              dy: rawDy,
               width: 3.8
             }
           });
         }
         this.spawnVfxAnim(6, hitX, this.groundY - 96, 136, 136, 0.24, { foreground: true });
+      } else if (step === 1) {
+        // Variant 1 (F10..F19): Martial High-Knee Kick + Rising Dragon Upper-Slash
+        this.fx.spawn('plasmaCrescentSlash', this.x + this.facing * 42, this.y - 14, {
+          flip: this.facing < 0,
+          palette: CYBER_MAGENTA_PALETTE,
+          light: 1.14,
+          extra: {
+            radius: 38,
+            sparks: ['#ffffff', '#ff92d8', '#ff2e93', '#00f0ff']
+          }
+        });
       } else {
-        // `plasmaCrescentSlash` has built-in `cx = +6 (+18px), cy = -26 (-78px)` & floor sparks at `y = 0` (`groundY`)
+        // Variant 0 (F00..F09): Deep Split-Lunge Horizontal Plasma Cleave
         this.fx.spawn('plasmaCrescentSlash', this.x + this.facing * 44, this.groundY - 8, {
           flip: this.facing < 0,
-          palette: step === 0 ? CYBER_NEON_PALETTE : CYBER_MAGENTA_PALETTE,
+          palette: CYBER_NEON_PALETTE,
           light: 1.1,
           extra: {
             radius: 38,
@@ -446,12 +532,13 @@ export class Android extends Fighter {
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 210) {
         const isCrit = step === 2 || Math.random() < 0.24;
-        const dmg = step === 2 ? 88 : 64;
-        enemy.takeDamage(dmg, this, isCrit, step === 2 ? 145 : 85, 0);
+        const dmg = step === 2 ? 88 : step === 1 ? 66 : 64;
+        const popY = step === 1 ? -55 : 0;
+        enemy.takeDamage(dmg, this, isCrit, step === 2 ? 145 : 75, popY);
         this.gainMana(5);
 
         this.fx.spawn('cyberImpactSpark', enemy.x - this.facing * 12, enemy.y - 96, {
-          palette: CYBER_NEON_PALETTE,
+          palette: step === 1 ? CYBER_MAGENTA_PALETTE : CYBER_NEON_PALETTE,
           light: 1.15
         });
 
@@ -461,9 +548,23 @@ export class Android extends Fighter {
       }
     }
 
-    if (this.stateTimer >= this.autoDuration) {
+    if (this.stateTimer >= dur) {
+      this.y = this.groundY;
+      this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }
+  }
+
+  getEnemyTargets(enemy, game) {
+    const foes = Array.isArray(game?.fighters)
+      ? game.fighters.filter(
+          (f) => f && !f.isDead && !f.isBenched && f !== this && (!this.team || f.team !== this.team)
+        )
+      : [];
+    if (enemy && !enemy.isDead && !enemy.isBenched && enemy !== this && !foes.includes(enemy)) {
+      foes.push(enemy);
+    }
+    return foes;
   }
 
   updateSkill(dt, enemy, game) {
@@ -488,7 +589,7 @@ export class Android extends Fighter {
       this._skillStep = 2;
       this.spawnAfterimage(this.x, this.y, this.facing, 3, 9, 0.28);
       if (enemy && !enemy.isDead) {
-        const targetX = enemy.x - this.facing * 92;
+        const targetX = enemy.x - this.facing * 98;
         if (Math.abs(enemy.x - this.x) <= 460) {
           this.x = Math.max(85, Math.min(ww - 85, targetX));
         }
@@ -525,11 +626,7 @@ export class Android extends Fighter {
         extra: { radius: 48, fringe: '#ff2e93' }
       });
 
-      const foes = game?.fighters
-        ? game.fighters.filter((f) => f && !f.isDead && !f.isBenched && f !== this && (!this.team || f.team !== this.team))
-        : enemy && !enemy.isDead
-          ? [enemy]
-          : [];
+      const foes = this.getEnemyTargets(enemy, game);
       for (const foe of foes) {
         if (Math.abs(foe.x - empX) <= 235) {
           foe.takeDamage(92, this, true, 155, -135);
@@ -558,81 +655,163 @@ export class Android extends Fighter {
     }
   }
 
+  /**
+   * Ultimate (`state === 'ULTIMATE'`) — "VALKYRIE VISOR HYPER-LASER" (`1.90s`):
+   *   Phase 1 (`0.00..0.44s`, Row 4 `F00..F07`): Thruster Backstep Evade Leap AWAY from enemy (`~215px` separation).
+   *   Phase 2 (`0.44..0.72s`, Row 4 `F08..F13`): Braced Split-Stance + Temple Visor Optical Amplifier Lock.
+   *   Phase 3 (`0.72..1.54s`, Row 4 `F14..F24`): Searing High-Energy Hyper-Laser fired directly from VEX-09's Face/Visor!
+   *   Phase 4 (`1.54..1.90s`, Row 4 `F25..F29`): Optical cool-down & Kamae recovery.
+   */
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    this.isInvulnerable = t < 1.55;
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    this.isInvulnerable = t < 1.60;
 
-    // Hover ascension curve matching Row 4 (`ULTIMATE`)
-    if (t < 1.48) {
-      const lift = Math.sin(Math.min(1, t / 1.48) * Math.PI) * 34;
-      this.y = this.groundY - lift;
-    } else {
-      this.y = this.groundY;
-    }
-
-    // Step 0 (t >= 0.05s): Ignite Upper-Back Wing-Pylon Thrusters + Deploy `singularityReactor` & Holo-Lock
-    if (this._ultStep === 0 && t >= 0.05) {
+    // Step 0 (`t >= 0.00s`): Lock facing onto enemy & initiate Backward Thruster Evade Leap!
+    if (this._ultStep === 0) {
       this._ultStep = 1;
-      const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-      const rawFocusX = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 220;
-      this._ultFocusX = Math.max(120, Math.min(ww - 120, rawFocusX));
+      if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) > 4) {
+        this.facing = enemy.x >= this.x ? 1 : -1;
+      }
+      this._ultStartX = this.x;
+      const desiredRetreat = this.x - this.facing * 215;
+      this._ultRetreatX = Math.max(95, Math.min(ww - 95, desiredRetreat));
 
-      this.fx.spawn('wingPylonThruster', this.x - this.facing * 18, this.y - 146, {
+      // If VEX-09's back was already near a corner wall, her retro-thruster shockwave blasts the foe forward
+      // so she ALWAYS opens a clean cross-stage firing lane before shooting her Visor Laser!
+      if (Math.abs(this._ultRetreatX - this._ultStartX) < 115 && enemy && !enemy.isDead) {
+        enemy.x = Math.max(95, Math.min(ww - 95, enemy.x + this.facing * 145));
+      }
+
+      const rawFocusX = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 260;
+      this._ultFocusX = Math.max(115, Math.min(ww - 115, rawFocusX));
+
+      this.fx.spawn('wingPylonThruster', this.x + this.facing * 10, this.y - 134, {
         follow: this,
-        offsetX: -18,
-        offsetY: -146,
-        flip: this.facing < 0,
+        offsetX: 10,
+        offsetY: -134,
+        flip: this.facing > 0,
         palette: CYBER_NEON_PALETTE,
-        maxDuration: 1.38,
-        light: 1.05,
-        extra: { length: 20, tilt: -0.58 }
+        maxDuration: 0.44,
+        light: 1.08,
+        extra: { length: 22, tilt: -0.68 }
       });
-      this.fx.spawn('holoTargetReticle', this._ultFocusX, this.groundY, {
-        palette: CYBER_MAGENTA_PALETTE,
-        light: 1.05,
-        extra: { boxW: 22, boxH: 62 }
-      });
-      this._ultCoreFx = this.fx.spawn('singularityReactor', this._ultFocusX, this.groundY, {
-        palette: CYBER_NEON_PALETTE,
-        light: 1.2,
-        extra: { radius: 42, coreY: -32 }
-      });
-
-      if (game?.audio) game.audio.play('ult_cast', this.x);
+      if (game?.audio) {
+        game.audio.play('zephyr_flip', this.x);
+        game.audio.play('ult_cast', this.x);
+      }
     }
 
-    // Steps 1..3 (t = 0.44s, 0.76s, 1.06s): Singularity Gravity Pull + Targeted Hand-to-Core Orbital Helix Beams
-    const pulseTimes = [0.44, 0.76, 1.06];
+    // Phase 1 (`0.00..0.44s` -> Row 4 `F00..F07`): Physical Backward Thruster Evade Leap
+    if (t < 0.44) {
+      const uBack = Math.min(1, t / 0.44);
+      const easeBack = 1 - Math.pow(1 - uBack, 2.5);
+      this.x = this._ultStartX + (this._ultRetreatX - this._ultStartX) * easeBack;
+      this.y = this.groundY - Math.sin(uBack * Math.PI) * 34;
+      this.trueUltFrameOverride = 120 + Math.min(7, Math.floor(uBack * 8));
+
+      const ghostMarks = [0.10, 0.22, 0.34];
+      if (
+        this._ultBackGhostIdx < ghostMarks.length &&
+        t >= ghostMarks[this._ultBackGhostIdx]
+      ) {
+        const gCol = 2 + this._ultBackGhostIdx * 2;
+        this._ultBackGhostIdx++;
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, gCol, 0.24);
+      }
+      return;
+    }
+
+    // Plant boots firmly into wide braced firing stance from t >= 0.44s onward
+    this.y = this.groundY;
+
+    // Phase 2 (`0.44..0.72s` -> Row 4 `F08..F13`): Temple Visor Charge + Quad Optical Amplifier Ring Lock
+    if (t < 0.72) {
+      const uCharge = Math.min(1, (t - 0.44) / 0.28);
+      this.trueUltFrameOverride = 128 + Math.min(5, Math.floor(uCharge * 6));
+
+      if (this._ultStep === 1) {
+        this._ultStep = 2;
+        const rawFocusX = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 265;
+        this._ultFocusX = Math.max(115, Math.min(ww - 115, rawFocusX));
+        if (Math.abs(this._ultFocusX - this.x) > 8) {
+          this.facing = this._ultFocusX >= this.x ? 1 : -1;
+        }
+
+        // Optical star-flash right on VEX-09's Visor + Target Lock Reticle on enemy
+        this.fx.spawn('cyberImpactSpark', this.x + this.facing * 20, this.groundY - 134, {
+          palette: CYBER_NEON_PALETTE,
+          light: 1.25
+        });
+        this.fx.spawn('wingPylonThruster', this.x - this.facing * 18, this.groundY - 132, {
+          follow: this,
+          offsetX: -18,
+          offsetY: -132,
+          flip: this.facing < 0,
+          palette: CYBER_MAGENTA_PALETTE,
+          maxDuration: 1.05,
+          light: 1.05,
+          extra: { length: 19, tilt: -0.75 }
+        });
+        this.fx.spawn('holoTargetReticle', this._ultFocusX, this.groundY, {
+          palette: CYBER_MAGENTA_PALETTE,
+          light: 1.12,
+          extra: { boxW: 22, boxH: 62 }
+        });
+        this._ultCoreFx = this.fx.spawn('singularityReactor', this._ultFocusX, this.groundY, {
+          palette: CYBER_NEON_PALETTE,
+          light: 1.18,
+          extra: { radius: 40, coreY: -32 }
+        });
+        if (game?.audio) game.audio.play('skill_cast', this.x);
+      }
+      return;
+    }
+
+    // Phase 3 (`0.72..1.54s` -> Row 4 `F14..F24`): Unleash High-Energy Face/Visor Hyper-Laser Barrage!
+    if (t < 1.54) {
+      const uFire = Math.min(1, (t - 0.72) / 0.82);
+      this.trueUltFrameOverride = 134 + Math.min(10, Math.floor(uFire * 11));
+    } else {
+      const uRec = Math.min(1, (t - 1.54) / Math.max(0.1, this.ultDuration - 1.54));
+      this.trueUltFrameOverride = 145 + Math.min(4, Math.floor(uRec * 5));
+    }
+
+    const pulseTimes = [0.72, 0.98, 1.24];
     for (let pIdx = 0; pIdx < pulseTimes.length; pIdx++) {
-      if (this._ultStep === pIdx + 1 && t >= pulseTimes[pIdx]) {
-        this._ultStep = pIdx + 2;
+      if (this._ultStep === pIdx + 2 && t >= pulseTimes[pIdx]) {
+        this._ultStep = pIdx + 3;
         if (enemy && !enemy.isDead) {
-          this._ultFocusX = this._ultFocusX * 0.45 + enemy.x * 0.55;
+          this._ultFocusX = Math.max(115, Math.min(ww - 115, this._ultFocusX * 0.42 + enemy.x * 0.58));
           if (this._ultCoreFx) {
             this._ultCoreFx.worldX = this._ultFocusX;
           }
         }
-        // Aim VEX-09's raised outstretched hand `(this.x + facing * 56, this.y - 142)` directly into `(coreX, coreY)`
         if (Math.abs(this._ultFocusX - this.x) > 8) {
           this.facing = this._ultFocusX >= this.x ? 1 : -1;
         }
-        const handX = this.x + this.facing * 56;
-        const handY = this.y - 142;
+
+        // Boot-skid backward recoil as the Hyper-Laser erupts directly from her Visor `(x + facing*20, groundY - 134)`!
+        this.x = Math.max(90, Math.min(ww - 90, this.x - this.facing * 7));
+        const visorX = this.x + this.facing * 20;
+        const visorY = this.groundY - 134;
         const coreX = this._ultFocusX;
         const coreY = this.groundY - 96;
+        const beamDx = Math.max(-200, Math.min(200, (coreX - visorX) / 3));
+        const beamDy = Math.max(-60, Math.min(52, (coreY - visorY) / 3));
 
-        this.fx.spawn('orbitalHelixBeam', handX, handY, {
+        this.fx.spawn('visorHyperLaserBeam', visorX, visorY, {
           flip: false,
           palette: pIdx % 2 === 0 ? CYBER_NEON_PALETTE : CYBER_MAGENTA_PALETTE,
-          light: 1.2,
+          light: 1.28,
           extra: {
-            dx: (coreX - handX) / 3,
-            dy: (coreY - handY) / 3,
-            width: 4.5
+            dx: beamDx,
+            dy: beamDy,
+            width: 6.4,
+            seed: 21 + pIdx * 7
           }
         });
 
-        // Center `twinCrossSlash` (`X = +102px, Y = -69px`) squarely inside the Singularity Core `(coreX, coreY)`
         const slashFlip = pIdx % 2 === 1;
         this.fx.spawn('twinCrossSlash', coreX + (slashFlip ? 102 : -102), coreY + 69, {
           flip: slashFlip,
@@ -641,28 +820,43 @@ export class Android extends Fighter {
           extra: { sparks: ['#ffffff', '#7df9ff', '#00f0ff', '#ff2e93'] }
         });
 
-        const foes = game?.fighters
-          ? game.fighters.filter((f) => f && !f.isDead && !f.isBenched && f !== this && (!this.team || f.team !== this.team))
-          : enemy && !enemy.isDead
-            ? [enemy]
-            : [];
+        const foes = this.getEnemyTargets(enemy, game);
         for (const foe of foes) {
-          if (Math.abs(foe.x - this._ultFocusX) <= 340) {
-            foe.x += (this._ultFocusX - foe.x) * 0.34;
+          if (Math.abs(foe.x - this._ultFocusX) <= 360) {
+            foe.x += (this._ultFocusX - foe.x) * 0.30;
             foe.takeDamage(58, this, false, 35, 0);
-            this.fx.spawn('cyberImpactSpark', foe.x, foe.y - 84, {
+            this.fx.spawn('cyberImpactSpark', foe.x, foe.y - 88, {
               palette: CYBER_MAGENTA_PALETTE,
               light: 1.15
             });
           }
         }
+        if (game?.renderer) {
+          game.renderer.triggerShake(7, 0.12);
+        }
         if (game?.audio) game.audio.play('cyber_beam', this._ultFocusX);
       }
     }
 
-    // Step 4 (t >= 1.38s): Cataclysmic Singularity Supernova Detonation
-    if (this._ultStep === 4 && t >= 1.38) {
-      this._ultStep = 5;
+    // Step 5 (`t >= 1.48s`): Final Overcharged Visor Hyper-Laser + Supernova Detonation
+    if (this._ultStep === 5 && t >= 1.48) {
+      this._ultStep = 6;
+      const visorX = this.x + this.facing * 20;
+      const visorY = this.groundY - 134;
+      const beamDx = Math.max(-200, Math.min(200, (this._ultFocusX - visorX) / 3));
+      const beamDy = Math.max(-60, Math.min(52, (this.groundY - 92 - visorY) / 3));
+
+      this.fx.spawn('visorHyperLaserBeam', visorX, visorY, {
+        flip: false,
+        palette: CYBER_MAGENTA_PALETTE,
+        light: 1.34,
+        extra: {
+          dx: beamDx,
+          dy: beamDy,
+          width: 7.4,
+          seed: 55
+        }
+      });
       this.fx.spawn('supernovaExplosion', this._ultFocusX, this.groundY - 88, {
         palette: CYBER_MAGENTA_PALETTE,
         light: 1.3
@@ -674,13 +868,9 @@ export class Android extends Fighter {
         extra: { radius: 52, fringe: '#ff2e93' }
       });
 
-      const foes = game?.fighters
-        ? game.fighters.filter((f) => f && !f.isDead && !f.isBenched && f !== this && (!this.team || f.team !== this.team))
-        : enemy && !enemy.isDead
-          ? [enemy]
-          : [];
+      const foes = this.getEnemyTargets(enemy, game);
       for (const foe of foes) {
-        if (Math.abs(foe.x - this._ultFocusX) <= 360) {
+        if (Math.abs(foe.x - this._ultFocusX) <= 370) {
           foe.takeDamage(168, this, true, 210, -185);
           this.fx.spawn('rgbGlitchTear', foe.x, foe.groundY, {
             follow: foe,
@@ -703,6 +893,7 @@ export class Android extends Fighter {
     if (t >= this.ultDuration) {
       this.y = this.groundY;
       this.isInvulnerable = false;
+      this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }
   }
@@ -714,17 +905,12 @@ export class Android extends Fighter {
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     this.isInvulnerable = true;
     this.vx = 0;
     this.vy = 0;
 
-    const targets = game?.fighters
-      ? game.fighters.filter(
-          (f) => f && !f.isDead && !f.isBenched && f !== this && (!this.team || f.team !== this.team)
-        )
-      : enemy && !enemy.isDead
-        ? [enemy]
-        : [];
+    const targets = this.getEnemyTargets(enemy, game);
 
     // Track target X during 0.00s .. 2.75s
     if (t <= 2.75) {
@@ -736,14 +922,17 @@ export class Android extends Fighter {
       }
     }
 
-    // Phase 1 (0.00s .. 1.15s — Wing-Pylon Ascension & Orbital Satellite Target-Lock)
+    // Phase 1 (0.00s .. 1.15s — Backward Wing-Pylon Ascension & Orbital Satellite Target-Lock)
     if (t < 1.15) {
       const uAsc = Math.min(1, t / 1.15);
       const ease = 1 - Math.pow(1 - uAsc, 2.4);
       this.y = this.groundY - 72 * ease;
+      this.trueUltFrameOverride = 120 + Math.min(8, Math.floor(uAsc * 9));
 
       if (t >= 0.04 && this._trueUltStep < 1) {
         this._trueUltStep = 1;
+        this._trueUltStartX = this.x;
+        this._trueUltRetreatX = Math.max(120, Math.min(ww - 120, this.x - this.facing * 165));
         game?.audio?.play?.('ult_cast', this.x);
         game?.audio?.play?.('emp_blast', this.x);
         game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#00f0ff');
@@ -771,12 +960,17 @@ export class Android extends Fighter {
           extra: { boxW: 26, boxH: 66 }
         });
       }
+      if (this._trueUltStep >= 1) {
+        this.x = this._trueUltStartX + (this._trueUltRetreatX - this._trueUltStartX) * ease;
+      }
       return;
     }
 
-    // Phase 2 (1.15s .. 3.00s — 8-Drone All-Range Octagonal Convergence Grid, zero micro-tick damage)
+    // Phase 2 (1.15s .. 3.00s — 8-Drone All-Range Octagonal Convergence Grid + Temple Visor Lock)
     if (t < 3.05) {
       this.y = this.groundY - 72 + Math.sin((t - 1.15) * 6.0) * 4;
+      const uLock = Math.min(1, (t - 1.15) / 1.90);
+      this.trueUltFrameOverride = 128 + Math.min(5, Math.floor(uLock * 6));
 
       if (t >= 1.15 && this._trueUltStep < 2) {
         this._trueUltStep = 2;
@@ -807,10 +1001,26 @@ export class Android extends Fighter {
       return;
     }
 
-    // Phase 3 (t >= 3.05s, _trueUltStep < 3 — Instantaneous Orbital Satellite Buster Beam)
+    // Phase 3 (t >= 3.05s, _trueUltStep < 3 — Synchronized Visor Hyper-Laser + Orbital Satellite Buster Column)
     if (t >= 3.05 && this._trueUltStep < 3) {
       this._trueUltStep = 3;
       this._trueUltBusterTimer = 1.00;
+
+      const visorX = this.x + this.facing * 20;
+      const visorY = this.y - 134;
+      const beamDx = Math.max(-200, Math.min(200, (this._trueUltTargetX - visorX) / 3));
+      const beamDy = Math.max(-60, Math.min(52, (this.groundY - 104 - visorY) / 3));
+      this.fx.spawn('visorHyperLaserBeam', visorX, visorY, {
+        flip: false,
+        palette: CYBER_NEON_PALETTE,
+        light: 1.35,
+        extra: {
+          dx: beamDx,
+          dy: beamDy,
+          width: 7.5,
+          seed: 99
+        }
+      });
 
       game?.renderer?.triggerImpactFrame?.(0.12, this._trueUltTargetX, this.groundY - 110, 'cyber');
       if (game?.renderer && game.renderer.impactFrameTimer > 1.0) {
@@ -857,21 +1067,29 @@ export class Android extends Fighter {
       }
     }
 
-    // Phase 4 (3.05s .. 4.45s — Smoothly descend back to groundY & return to IDLE)
+    // Phase 4 (3.05s .. 4.45s — Hold Visor Laser through 3.65s, then smoothly descend to IDLE)
     const uDesc = Math.min(1, Math.max(0, (t - 3.05) / (this.trueUltDuration - 3.05)));
     const easeDesc = uDesc * uDesc * (3 - 2 * uDesc);
     this.y = this.groundY - 72 * (1 - easeDesc);
+    this.trueUltFrameOverride =
+      t < 3.70
+        ? 135 + Math.min(9, Math.floor(((t - 3.05) / 0.65) * 10))
+        : 145 + Math.min(4, Math.floor(((t - 3.70) / 0.75) * 5));
 
     if (t >= this.trueUltDuration) {
       this.y = this.groundY;
       this.isInvulnerable = false;
       this._trueUltStep = 0;
+      this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }
   }
 
   update(dt, enemy, game) {
     this.fx.update(dt);
+    if (this.crouchCooldown > 0) {
+      this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
+    }
 
     if (this._trueUltBusterTimer > 0) {
       this._trueUltBusterTimer = Math.max(0, this._trueUltBusterTimer - dt);
@@ -905,6 +1123,25 @@ export class Android extends Fighter {
       }
       if (v.age >= v.maxLife) {
         this.activeVfxAnims.splice(i, 1);
+      }
+    }
+
+    // Cyber-Valkyrie Optical Reflex AI: intercept incoming projectiles with Hex-Matrix Chakram Deflect (`CROUCH`)
+    if (
+      !this.isDead &&
+      !this.isPlayerControlled &&
+      this.crouchCooldown <= 0 &&
+      (this.state === 'IDLE' || this.state === 'WALK') &&
+      game?.vfx?.projectiles
+    ) {
+      for (const p of game.vfx.projectiles) {
+        if (p.owner === this || (this.team && p.owner?.team === this.team)) continue;
+        const dx = p.x - this.x;
+        if (Math.abs(dx) < 185 && dx * p.vx < 0 && Math.abs(p.y - (this.y - 96)) < 95) {
+          this.facing = dx >= 0 ? 1 : -1;
+          this.startCrouch(enemy, game);
+          break;
+        }
       }
     }
 

@@ -143,7 +143,7 @@
       "theme": "cyber",
       "base_source": "assets/sprites/android_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208)",
-      "rig": "8-part cel-clustered Cybernetic Valkyrie skeletal rig + 2-Bone Analytical IK Robotic Arms + Muramasa-09 Cyan-Magenta HF Plasma Katana + Aero-Thruster Wing-Pylons + 8-Row Project GUNG-09 Orbital Satellite Buster VFX Suite + Prone Shutdown Collapse",
+      "rig": "13-part cel-clustered Cybernetic Valkyrie skeletal rig + Coiled Split-Leg Martial Stances + Muramasa-09 Odachi & Saya + 3-Variant Real Gap-Close Melee (Row 2: F00..F09 Split-Lunge Cleave, F10..F19 Martial High-Knee Rising Dragon Slash, F20..F29 Crashing Overhead Fang Slam) + Backstep Evade -> Quad Fin-Funnel Optical Ring -> Valkyrie Visor Hyper-Laser (Row 4) + 8-Row Project GUNG-09 Orbital Satellite Buster VFX Suite + Prone Shutdown Collapse",
       "script": "scripts/build_android_30fps_sheet.py",
       "vfx_script": "scripts/build_android_vfx_30fps.mjs"
     }

@@ -24,7 +24,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   MotePool
-} from '../ArcaneShaderFX.js?v=30fps72';
+} from '../ArcaneShaderFX.js?v=30fps73';
 
 const TWO_PI = Math.PI * 2;
 

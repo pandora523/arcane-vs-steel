@@ -1,4 +1,4 @@
-import { PixelForge } from './PixelForge.js?v=30fps72';
+import { PixelForge } from './PixelForge.js?v=30fps73';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];

@@ -20,7 +20,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps72';
+} from '../ArcaneShaderFX.js?v=30fps73';
 
 export const RUNIC_CYAN_PALETTE = [
   '#061228',

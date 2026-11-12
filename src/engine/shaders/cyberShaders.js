@@ -19,7 +19,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   MotePool
-} from '../ArcaneShaderFX.js?v=30fps72';
+} from '../ArcaneShaderFX.js?v=30fps73';
 
 const TWO_PI = Math.PI * 2;
 
@@ -2437,6 +2437,127 @@ export const orbitalBusterColumn = {
   }
 };
 
+// ============================================================================
+// 20. VALKYRIE VISOR HYPER-LASER BEAM (`visorHyperLaserBeam`)
+//     Fires directly from VEX-09's optical visor (0, 0) to target (dx, dy)
+//     with anamorphic visor lens flare + dual Mach focusing rings + HF corona.
+// ============================================================================
+export const visorHyperLaserBeam = {
+  duration: 0.42,
+  loop: false,
+  defaults: {
+    palette: CYBER_NEON_PALETTE,
+    dx: 92,
+    dy: 16,
+    width: 6.2,
+    seed: 21
+  },
+  create(cfg) {
+    const ramp = buildColorRamp(cfg.palette, 8);
+    const cyanHi = packHexColor('#00f0ff');
+    const magCol = packHexColor('#ff2e93');
+    const magHi = packHexColor('#ff92d8');
+    const deepIndigo = packHexColor('#162256');
+    const beamLevels = [PURE_WHITE, cyanHi, ramp[4], magHi, magCol, deepIndigo];
+
+    const drawFocusRing = (pen, cx, cy, ux, uy, nx, ny, rx, ry, col, hiCol, fade) => {
+      let prevX = null;
+      let prevY = null;
+      for (let i = 0; i <= 20; i++) {
+        const a = (i / 20) * TWO_PI;
+        const along = Math.cos(a) * rx;
+        const perp = Math.sin(a) * ry;
+        const px = cx + ux * along + nx * perp;
+        const py = cy + uy * along + ny * perp;
+        if (prevX !== null) {
+          pen.line(prevX, prevY, px, py, Math.cos(a) > 0.25 ? hiCol : col, 0.9 * fade);
+        }
+        prevX = px;
+        prevY = py;
+      }
+    };
+
+    return {
+      renderFront(pen, t) {
+        const u = clamp01(t / 0.42);
+        const fade = u < 0.10 ? u / 0.10 : u > 0.74 ? (1 - u) / 0.26 : 1;
+        if (fade <= 0.03) return;
+
+        const dx = cfg.dx ?? 92;
+        const dy = cfg.dy ?? 16;
+        const dist = Math.max(10, Math.hypot(dx, dy));
+        const ux = dx / dist;
+        const uy = dy / dist;
+        const nx = -uy;
+        const ny = ux;
+        const baseW = (cfg.width ?? 6.2) * (0.86 + 0.22 * Math.sin(u * Math.PI)) * fade;
+
+        // 1. Multi-band cel-shaded Hyper-Laser Beam Spine from Visor (0,0) -> (dx,dy)
+        for (let d = 0; d <= dist; d += 0.65) {
+          const taper = d < 5 ? 0.58 + 0.42 * (d / 5) : 1.0;
+          const bx = ux * d;
+          const by = uy * d;
+          const w = baseW * taper * (1 + 0.12 * Math.sin(d * 0.28 - u * TWO_PI * 5));
+          const shockBoost = (((d * 0.035 - u * 4) % 1) + 1) % 1 < 0.16 ? 1 : 0;
+
+          for (let qOff = -w * 1.2; qOff <= w * 1.2; qOff += 0.55) {
+            const q = Math.abs(qOff) / Math.max(0.45, w);
+            const px = bx + nx * qOff;
+            const py = by + ny * qOff;
+            let lv = q < 0.28 ? 0 : q < 0.52 ? 1 : q < 0.72 ? 2 : q < 0.90 ? 3 : q < 1.06 ? 4 : 5;
+            lv = Math.max(0, lv - shockBoost);
+            pen.stipple(px, py, beamLevels[lv], lv === 5 ? clamp01((1.22 - q) / 0.22) * fade : fade);
+          }
+
+          // Spiraling Cyan/Magenta Optical Data-Helix
+          for (let s = 0; s < 2; s++) {
+            const ang = d * 0.19 - u * TWO_PI * 5 + s * Math.PI;
+            if (Math.cos(ang) > -0.15) {
+              const off = Math.sin(ang) * w * 1.08;
+              pen.stipple(bx + nx * off, by + ny * off, s === 0 ? PURE_WHITE : magHi, 0.95 * fade);
+            }
+          }
+          if ((Math.round(d) & 7) === 0) {
+            pen.radialGlow(bx, by, Math.min(18, w * 2.1 + 4), d % 16 === 0 ? cyanHi : magCol, 0.22 * fade);
+          }
+        }
+
+        // 2. Crackling high-voltage optical discharge snapping down the laser core
+        const boltRng = new DeterministicRng((cfg.seed ?? 21) * 41 + Math.floor(t * 36));
+        const boltPts = buildLightningChain(boltRng, ux * 3, uy * 3, dx, dy, 0.14, 3);
+        pen.polyline(boltPts, PURE_WHITE, 0.92 * fade);
+
+        // 3. Dual Optical Mach Focusing Rings right in front of VEX-09's Visor
+        const rPulse = 1 + 0.12 * Math.sin(u * TWO_PI * 3);
+        if (dist > 14) {
+          drawFocusRing(pen, ux * 6.5, uy * 6.5, ux, uy, nx, ny, 2.2, 7.6 * rPulse, cyanHi, PURE_WHITE, fade);
+        }
+        if (dist > 24) {
+          drawFocusRing(pen, ux * 15.0, uy * 15.0, ux, uy, nx, ny, 2.5, 9.2 * rPulse, magCol, magHi, 0.88 * fade);
+        }
+
+        // 4. Anamorphic Visor Optical Emitter Flare anchored at VEX-09's Face (0, 0)
+        const flareW = (14 + 4 * Math.sin(u * Math.PI)) * fade;
+        pen.line(-flareW, -1, flareW, -1, cyanHi, 0.82 * fade);
+        pen.line(-flareW * 0.82, 1, flareW * 0.82, 1, magHi, 0.78 * fade);
+        pen.line(-flareW * 1.12, 0, flareW * 1.12, 0, PURE_WHITE, 0.96 * fade);
+        pen.line(0, -8 * fade, 0, 8 * fade, PURE_WHITE, 0.92 * fade);
+        pen.fillCircle(0, 0, 4.2 * fade, cyanHi);
+        pen.fillCircle(0, 0, 2.5 * fade, PURE_WHITE);
+        pen.radialGlow(0, 0, 18, cyanHi, 0.58 * fade);
+
+        // 5. Explosive Target Impact Shockwave & Starburst at (dx, dy)
+        const rImp = 5 + 15 * Easing.outCubic(u);
+        pen.strokeRing(dx, dy, rImp, Math.max(1, 2.2 * (1 - u * 0.7)), u < 0.35 ? PURE_WHITE : magHi, 0.95 * fade);
+        pen.fillCircle(dx, dy, 5.4 * fade, magCol);
+        pen.fillCircle(dx, dy, 3.2 * fade, PURE_WHITE);
+        drawStarburstFlare(pen, dx, dy, 17 * fade, 0.78 * fade, ramp);
+        pen.radialGlow(dx, dy, 22, magCol, 0.56 * fade);
+      }
+    };
+  }
+};
+
 export const CYBER_EFFECT_REGISTRY = {
   plasmaCrescentSlash,
   twinCrossSlash,
@@ -2457,6 +2578,8 @@ export const CYBER_EFFECT_REGISTRY = {
   hexGlitchCrossSlash,
   orbitalTargetLockHex,
   finFunnelLaserNode,
-  orbitalBusterColumn
+  orbitalBusterColumn,
+  visorHyperLaserBeam
 };
+
 

@@ -27,18 +27,18 @@ import {
   resolveSurfaceToRGBA,
   ShaderPen,
   instantiateShaderEffect
-} from '../src/engine/ArcaneShaderFX.js?v=30fps62';
+} from '../src/engine/ArcaneShaderFX.js?v=30fps73';
 
 import {
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE,
   CYBER_EFFECT_REGISTRY
-} from '../src/engine/shaders/cyberShaders.js?v=30fps62';
+} from '../src/engine/shaders/cyberShaders.js?v=30fps73';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const ARTIFACT_DIR =
-  '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088';
+  '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/b9d8130e-8764-4ace-8d4e-40f97049d6f1';
 
 // ============================================================================
 // Self-Contained Pure Node RGBA PNG Encoder (CRC32 + zlib deflate)
