@@ -1,9 +1,9 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps93';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps93';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps93';
-import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps93';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps93';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps93';
+import { Fighter } from '../entities/Fighter.js?v=30fps94';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps94';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps94';
+import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps94';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps94';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps94';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -111,6 +111,7 @@ export class AdventureManager {
     this.bossEntity = null;
 
     this.pickups = [];
+    this.portals = [];
     this.monstersKilled = 0;
     this.totalWaveLabel = 'WAVE 1 / 8';
     this.score = 0;
@@ -141,6 +142,8 @@ export class AdventureManager {
     this.skillCdMax = 4.5;
     this.dodgeCdMax = 1.35;
     this._renderedIconHero = null;
+    this._renderedMageIconsReady = false;
+    this._renderedHeroIconsReady = false;
 
     this._boundKeyDown = (e) => this.onKeyDown(e);
     this._boundKeyUp = (e) => this.onKeyUp(e);
@@ -559,8 +562,19 @@ export class AdventureManager {
       }
     }
     this._renderedIconHero = heroKey;
+    const mageImg = PixelForge.assets?.mage?.icons;
+    const heroSheet = PixelForge.assets?.heroIconsSheet;
     this._renderedMageIconsReady = Boolean(
-      PixelForge.assets?.mage?.icons?.complete && PixelForge.assets.mage.icons.naturalWidth >= 448
+      mageImg &&
+        (typeof HTMLImageElement === 'undefined' ||
+          !(mageImg instanceof HTMLImageElement) ||
+          (mageImg.complete && mageImg.naturalWidth >= 448))
+    );
+    this._renderedHeroIconsReady = Boolean(
+      heroSheet &&
+        (typeof HTMLImageElement === 'undefined' ||
+          !(heroSheet instanceof HTMLImageElement) ||
+          (heroSheet.complete && heroSheet.naturalWidth >= 384))
     );
   }
 
@@ -608,12 +622,28 @@ export class AdventureManager {
     if (!player) return;
 
     const heroKey = player.heroId || this.game.slot1Hero || 'mage';
+    const mageImg = PixelForge.assets?.mage?.icons;
+    const heroSheet = PixelForge.assets?.heroIconsSheet;
     const mageIconsNowReady =
       heroKey === 'mage' &&
-      Boolean(PixelForge.assets?.mage?.icons?.complete && PixelForge.assets.mage.icons.naturalWidth >= 448);
+      Boolean(
+        mageImg &&
+          (typeof HTMLImageElement === 'undefined' ||
+            !(mageImg instanceof HTMLImageElement) ||
+            (mageImg.complete && mageImg.naturalWidth >= 448))
+      );
+    const heroIconsNowReady =
+      heroKey !== 'mage' &&
+      Boolean(
+        heroSheet &&
+          (typeof HTMLImageElement === 'undefined' ||
+            !(heroSheet instanceof HTMLImageElement) ||
+            (heroSheet.complete && heroSheet.naturalWidth >= 384))
+      );
     if (
       this._renderedIconHero !== heroKey ||
-      (heroKey === 'mage' && mageIconsNowReady && !this._renderedMageIconsReady)
+      (heroKey === 'mage' && mageIconsNowReady && !this._renderedMageIconsReady) ||
+      (heroKey !== 'mage' && heroIconsNowReady && !this._renderedHeroIconsReady)
     ) {
       this.refreshActionIcons(heroKey);
     }
@@ -697,6 +727,7 @@ export class AdventureManager {
     this.subWaveDelay = 0;
     this.zonesCleared = [false, false, false, false];
     this.pickups = [];
+    this.portals = [];
     this.monstersKilled = 0;
     this.score = 0;
     this.comboHits = 0;
@@ -715,6 +746,7 @@ export class AdventureManager {
     this.dodgeCdMax = 1.35;
     this._renderedIconHero = null;
     this._renderedMageIconsReady = false;
+    this._renderedHeroIconsReady = false;
 
     const renderer = this.game.renderer;
     if (renderer) {
@@ -797,6 +829,7 @@ export class AdventureManager {
     this.bossSpawnPending = false;
     this.bossEntity = null;
     this.pickups = [];
+    this.portals = [];
     this.clearHeldInputs();
 
     const renderer = this.game.renderer;
@@ -842,6 +875,32 @@ export class AdventureManager {
     if (!this.game.rightFighter || this.game.rightFighter.isDead || m.isBoss) {
       this.game.rightFighter = m;
     }
+
+    // Open a biome-matched HD-2D Dimensional Summoning Portal behind every emerging Realm enemy!
+    if (!m.isBoss && !opts.skipPortal) {
+      const portalZone =
+        kind === 'templar' || kind === 'astrologer'
+          ? 0
+          : kind === 'treant' || kind === 'dryad'
+            ? 1
+            : kind === 'ghoul' || kind === 'cultist'
+              ? 2
+              : kind === 'brute' || kind === 'fiend'
+                ? 3
+                : Math.max(0, Math.min(3, Math.floor(spawnX / 2400)));
+      this.portals.push({
+        x: spawnX - facing * 26,
+        groundY: gy,
+        zone: portalZone,
+        facing,
+        age: 0,
+        maxLife: 1.36,
+        isElite: Boolean(opts.isElite),
+        primaryColor: m.primaryColor || '#38bdf8',
+        seed: (this.portals.length * 1.7 + spawnX * 0.01) % 6.28
+      });
+    }
+
     if (this.game.vfx) {
       this.game.vfx.spawnShockwave(spawnX, gy - 24, m.isBoss ? 250 : 92, m.primaryColor, 0.34, true);
       this.game.vfx.spawnBurst(spawnX, gy - 44, m.isBoss ? 28 : 12, m.primaryColor, 210, { upBias: 130, size: 5 });
@@ -888,75 +947,75 @@ export class AdventureManager {
 
     if (zoneIdx === 0 && subWave === 1) {
       this.totalWaveLabel = 'WAVE 1 / 8';
-      this.spawnMonster('ghoul', 720, { groundY: 506 });
-      this.spawnMonster('ghoul', 900, { groundY: 618 });
+      this.spawnMonster('templar', 720, { groundY: 506 });
+      this.spawnMonster('templar', 900, { groundY: 618 });
     } else if (zoneIdx === 0 && subWave === 2) {
       this.totalWaveLabel = 'WAVE 2 / 8';
-      this.spawnMonster('ghoul', 1760, { groundY: 478 });
-      this.spawnMonster('cultist', 1980, { groundY: 562 });
-      this.spawnMonster('ghoul', 2140, { groundY: 636 });
+      this.spawnMonster('templar', 1760, { groundY: 478 });
+      this.spawnMonster('astrologer', 1980, { groundY: 562 });
+      this.spawnMonster('templar', 2140, { groundY: 636 });
       this.game.renderer?.triggerStageEvent?.(
-        '★ ECLIPSE CHAPEL AMBUSH! ★',
-        'VOID CULTIST & ASHFANG PACK DETECTED!',
-        '#a855f7',
+        '★ ECLIPSE CHAPEL SANCTUM! ★',
+        'ASTRAL PORTALS OPEN — FALLEN TEMPLARS & SEER!',
+        '#38bdf8',
         2.4
       );
     } else if (zoneIdx === 1 && subWave === 1) {
       this.totalWaveLabel = 'WAVE 3 / 8';
-      this.spawnMonster('brute', 3120, { groundY: 562 });
-      this.spawnMonster('cultist', 3290, { groundY: 478 });
-      this.spawnMonster('cultist', 3420, { groundY: 642 });
+      this.spawnMonster('treant', 3120, { groundY: 562 });
+      this.spawnMonster('dryad', 3290, { groundY: 478 });
+      this.spawnMonster('dryad', 3420, { groundY: 642 });
       this.game.renderer?.triggerStageEvent?.(
         '★ ZONE II: CURSED STARWOOD ★',
-        'OBSIDIAN JUGGERNAUT BLOCKS THE CAUSEWAY!',
-        '#f59e0b',
+        'BRIAR PORTALS TEAR OPEN — ELDERTREE & DRYADS!',
+        '#34d399',
         2.6
       );
     } else if (zoneIdx === 1 && subWave === 2) {
       this.totalWaveLabel = 'WAVE 4 / 8';
-      this.spawnMonster('brute', 4240, { groundY: 558 });
-      this.spawnMonster('ghoul', 4040, { groundY: 480 });
-      this.spawnMonster('ghoul', 4420, { groundY: 640 });
-      this.spawnMonster('cultist', 4580, { groundY: 524 });
+      this.spawnMonster('treant', 4240, { groundY: 558 });
+      this.spawnMonster('dryad', 4040, { groundY: 480 });
+      this.spawnMonster('dryad', 4420, { groundY: 640 });
+      this.spawnMonster('treant', 4580, { groundY: 524 });
       this.game.renderer?.triggerStageEvent?.(
-        '★ STARWOOD WAYGATE GARRISON! ★',
-        'SYLVAN CORRUPTION SURGES ACROSS THE BRIDGE!',
+        '★ STARWOOD WAYGATE COVEN! ★',
+        'TWISTED SYLVAN GUARDIANS EMERGE FROM THE RIFTS!',
         '#34d399',
         2.5
       );
     } else if (zoneIdx === 2 && subWave === 1) {
       this.totalWaveLabel = 'WAVE 5 / 8';
-      this.spawnMonster('brute', 5480, { isElite: true, groundY: 560 });
+      this.spawnMonster('ghoul', 5480, { isElite: true, groundY: 560 });
       this.spawnMonster('ghoul', 5280, { groundY: 476 });
       this.spawnMonster('ghoul', 5660, { groundY: 646 });
       this.spawnMonster('cultist', 5800, { isElite: true, groundY: 518 });
       this.game.renderer?.triggerStageEvent?.(
         '★ ZONE III: ABYSSAL BONE-GATE ★',
-        'ELITE HELLFORGED GUARDIANS!',
-        '#ef4444',
+        'CRYPT PORTALS UNSEALED — OSSUARY UNDEAD LEGION!',
+        '#c084fc',
         2.8
       );
     } else if (zoneIdx === 2 && subWave === 2) {
       this.totalWaveLabel = 'WAVE 6 / 8';
-      this.spawnMonster('brute', 6680, { isElite: true, groundY: 562 });
+      this.spawnMonster('ghoul', 6680, { isElite: true, groundY: 562 });
       this.spawnMonster('cultist', 6880, { isElite: true, groundY: 484 });
       this.spawnMonster('ghoul', 6420, { groundY: 640 });
-      this.spawnMonster('ghoul', 6990, { groundY: 618 });
+      this.spawnMonster('cultist', 6990, { groundY: 618 });
       this.game.renderer?.triggerStageEvent?.(
         '★ NECROPOLIS PORTCULLIS SIEGE! ★',
-        'BREAK THE OSSUARY SENTINELS!',
+        'BREAK THE LICH-PRIESTS & BONE-STALKERS!',
         '#c084fc',
         2.6
       );
     } else if (zoneIdx === 3 && subWave === 1) {
       this.totalWaveLabel = 'WAVE 7 / 8';
       this.spawnMonster('brute', 7920, { isElite: true, groundY: 560 });
-      this.spawnMonster('cultist', 8080, { isElite: true, groundY: 482 });
-      this.spawnMonster('cultist', 8210, { groundY: 638 });
-      this.spawnMonster('ghoul', 7720, { groundY: 616 });
+      this.spawnMonster('fiend', 8080, { isElite: true, groundY: 482 });
+      this.spawnMonster('fiend', 8210, { groundY: 638 });
+      this.spawnMonster('fiend', 7720, { groundY: 616 });
       this.game.renderer?.triggerStageEvent?.(
         '★ ZONE IV: BLACK PIT VANGUARD ★',
-        'THRONE GATEKEEPERS STAND BEFORE MALPHAS!',
+        'HELL-MAW PORTALS ERUPT BEFORE MALPHAS!',
         '#fb923c',
         2.7
       );
@@ -992,9 +1051,9 @@ export class AdventureManager {
   onBossPhaseShift(_boss, phase) {
     if (!this.active || this.game.isMatchOver) return;
     if (phase === 2) {
-      // Summon 2 flanking Ashfang Vanguards on upper & lower left lanes + drop Elixir & Soul Ember!
-      this.spawnMonster('ghoul', 8620, { groundY: 484 });
-      this.spawnMonster('ghoul', 8780, { groundY: 638 });
+      // Summon 2 flanking Shackled Pit-Fiends through Hell-Maw Portals + drop Elixir & Soul Ember!
+      this.spawnMonster('fiend', 8620, { groundY: 484 });
+      this.spawnMonster('fiend', 8780, { groundY: 638 });
       this.spawnPickup('hp', 8880, 502);
       this.spawnPickup('ember', 8980, 622, { ultAmt: 28 });
     } else if (phase === 3) {
@@ -2355,8 +2414,15 @@ export class AdventureManager {
       }
     }
 
-    // 4. Update Pickups
+    // 4. Update Pickups & Dimensional Summoning Portals
     this.updatePickups(dt, player);
+    for (let i = this.portals.length - 1; i >= 0; i--) {
+      const p = this.portals[i];
+      p.age += dt;
+      if (p.age >= p.maxLife) {
+        this.portals.splice(i, 1);
+      }
+    }
 
     // 5. Update Player (Manual or Auto-Play) + Clamp Arena Walk Bounds + Update Active Monsters
     const nearestMonster = this.getNearestLivingMonster(player);
@@ -2406,12 +2472,68 @@ export class AdventureManager {
 
   renderWorldFloor(ctx, renderer) {
     if (!this.active || !ctx) return;
-    const t = renderer.time || 0;
+    const t = renderer?.time || 0;
     const roadTop = 438;
     const roadBot = 684;
 
     // -1. Render Destructible Prop Contact Shadows & Shattered Rubble Bases on Causeway Floor
     this.destructibles?.renderRubbleAndShadows(ctx, renderer);
+
+    // -0.5. Render Dimensional Summoning Portal 2.5D Foreshortened Ground Rune Seals (`advFxSheet` Row 4 Cols 4..7)
+    if (this.portals.length > 0) {
+      const assets = PixelForge.initAssets();
+      const fxSheet = assets?.advFxSheet;
+      const fxReady =
+        Boolean(fxSheet) &&
+        (typeof HTMLImageElement === 'undefined' ||
+          !(fxSheet instanceof HTMLImageElement) ||
+          (fxSheet.complete && fxSheet.naturalWidth > 0));
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (const p of this.portals) {
+        const u = Math.max(0, Math.min(1, p.age / p.maxLife));
+        const openScale = p.age < 0.22 ? 0.35 + 0.65 * (p.age / 0.22) : u > 0.75 ? 1 - 0.55 * ((u - 0.75) / 0.25) : 1;
+        const alpha = p.age < 0.14 ? p.age / 0.14 : u > 0.72 ? (1 - u) / 0.28 : 1;
+        if (alpha <= 0.01) continue;
+
+        const px = Math.round(p.x);
+        const py = Math.round(p.groundY);
+        const sealW = Math.round((p.isElite ? 196 : 176) * openScale);
+        const sealH = Math.round((p.isElite ? 82 : 74) * openScale);
+        const z = Math.max(0, Math.min(3, p.zone | 0));
+
+        const glowTex = renderer?.getGlowForColor
+          ? renderer.getGlowForColor(p.primaryColor)
+          : renderer?.glowCyan;
+        if (glowTex) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.min(0.16, 0.15 * alpha);
+          ctx.drawImage(glowTex, Math.round(px - sealW * 0.55), Math.round(py - sealH * 0.55), Math.round(sealW * 1.1), Math.round(sealH * 1.1));
+          ctx.restore();
+        }
+
+        ctx.globalAlpha = Math.min(0.92, alpha);
+        if (fxReady && sealW >= 8 && sealH >= 6) {
+          ctx.drawImage(
+            fxSheet,
+            (4 + z) * 128,
+            512,
+            128,
+            128,
+            Math.round(px - sealW * 0.5),
+            Math.round(py - sealH * 0.5),
+            sealW,
+            sealH
+          );
+        } else {
+          ctx.fillStyle = p.primaryColor || '#38bdf8';
+          ctx.fillRect(Math.round(px - sealW * 0.4), py - 4, Math.round(sealW * 0.8), 8);
+        }
+      }
+      ctx.restore();
+    }
 
     // 0. Render Champion Adventure Skill Set 2.5D Floor Zones & Sanctuary Seals
     this.skillSets.renderFloor(ctx);
@@ -2527,13 +2649,126 @@ export class AdventureManager {
     }
   }
 
-  renderWorldMid(ctx) {
+  renderWorldMid(ctx, renderer) {
     if (!this.active || !ctx) return;
+
+    // Render Standing Biome-Matched HD-2D Dimensional Summoning Portals BEHIND emerging Realm enemies (`advFxSheet` Rows 0..3 Cols 0..3)
+    if (this.portals.length > 0) {
+      const assets = PixelForge.initAssets();
+      const fxSheet = assets?.advFxSheet;
+      const fxReady =
+        Boolean(fxSheet) &&
+        (typeof HTMLImageElement === 'undefined' ||
+          !(fxSheet instanceof HTMLImageElement) ||
+          (fxSheet.complete && fxSheet.naturalWidth > 0));
+
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      const sortedPortals = [...this.portals].sort((a, b) => (a.groundY || 561) - (b.groundY || 561));
+
+      for (const p of sortedPortals) {
+        const u = Math.max(0, Math.min(1, p.age / p.maxLife));
+        let scaleX = 1.0;
+        let scaleY = 1.0;
+        let alpha = 1.0;
+
+        if (p.age < 0.20) {
+          const k = p.age / 0.20;
+          const ease = 1 - Math.pow(1 - k, 3);
+          scaleX = 0.16 + 0.88 * ease;
+          scaleY = 0.76 + 0.26 * ease;
+          alpha = Math.min(1, k * 1.4);
+        } else if (u < 0.74) {
+          const pulse = Math.sin(p.age * 12.0 + p.seed);
+          scaleX = 1.0 + 0.035 * pulse;
+          scaleY = 1.0 - 0.02 * pulse;
+          alpha = 1.0;
+        } else {
+          const k = (u - 0.74) / 0.26;
+          scaleX = Math.max(0.10, 1 - 0.88 * k * k);
+          scaleY = 1.0 + 0.10 * k;
+          alpha = Math.max(0, 1 - k);
+        }
+        if (alpha <= 0.01) continue;
+
+        const px = Math.round(p.x);
+        const py = Math.round(p.groundY + 6);
+        const baseW = p.isElite ? 214 : 196;
+        const baseH = p.isElite ? 224 : 206;
+        const dw = Math.max(8, Math.round(baseW * scaleX));
+        const dh = Math.max(16, Math.round(baseH * scaleY));
+        const dx = Math.round(px - dw * 0.5);
+        const dy = Math.round(py - (122 / 128) * dh);
+        const z = Math.max(0, Math.min(3, p.zone | 0));
+        const frame = Math.floor(p.age * 11.5 + p.seed) & 3;
+
+        const glowTex = renderer?.getGlowForColor
+          ? renderer.getGlowForColor(p.primaryColor)
+          : renderer?.glowCyan;
+        if (glowTex) {
+          ctx.save();
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = Math.min(0.16, 0.15 * alpha);
+          ctx.drawImage(
+            glowTex,
+            Math.round(px - dw * 0.62),
+            Math.round(py - dh * 0.82),
+            Math.round(dw * 1.24),
+            Math.round(dh * 0.96)
+          );
+          ctx.restore();
+        }
+
+        ctx.globalAlpha = alpha;
+        if (fxReady) {
+          ctx.drawImage(fxSheet, frame * 128, z * 128, 128, 128, dx, dy, dw, dh);
+        } else {
+          ctx.fillStyle = '#0d0f1c';
+          ctx.fillRect(dx, dy, dw, dh);
+          ctx.fillStyle = p.primaryColor || '#38bdf8';
+          ctx.fillRect(dx + 4, dy + 4, Math.max(2, dw - 8), Math.max(2, dh - 8));
+        }
+      }
+      ctx.restore();
+    }
+
     this.skillSets.renderMid(ctx);
   }
 
   renderWorldForeground(ctx, renderer) {
     if (!this.active || !ctx) return;
+
+    // Crisp foreground Portal Rim Sparks IN FRONT of emerging monsters so enemies stride through the rift plane!
+    if (this.portals.length > 0) {
+      const sparkCols = [
+        ['#e0f2fe', '#fde047'],
+        ['#a7f3d0', '#5eead4'],
+        ['#f3e8ff', '#e879f9'],
+        ['#fef08a', '#fb923c']
+      ];
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      for (const p of this.portals) {
+        if (p.age >= 1.12) continue;
+        const fade = p.age > 0.85 ? 1 - (p.age - 0.85) / 0.27 : 1;
+        const z = Math.max(0, Math.min(3, p.zone | 0));
+        const cols = sparkCols[z];
+        for (let s = 0; s < 5; s++) {
+          const cyc = (p.age * (1.8 + (s % 2) * 0.45) + s * 0.21 + p.seed) % 1;
+          const sx = Math.round(
+            p.x + Math.cos(p.age * 5.2 + s * 1.35) * (46 + (s % 2) * 14)
+          );
+          const sy = Math.round(p.groundY - 18 - cyc * 148);
+          ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.88 * fade;
+          ctx.fillStyle = '#0d0f1c';
+          ctx.fillRect(sx - 3, sy - 3, 6, 6);
+          ctx.fillStyle = cols[s & 1];
+          ctx.fillRect(sx - 2, sy - 2, 4, 4);
+        }
+      }
+      ctx.restore();
+    }
+
     this.skillSets.renderForeground(ctx);
     this.destructibles?.renderDebris(ctx, renderer);
   }

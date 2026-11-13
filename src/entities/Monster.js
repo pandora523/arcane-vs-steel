@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps93';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps93';
+import { Fighter } from './Fighter.js?v=30fps94';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps94';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -9,15 +9,103 @@ import { PixelForge } from '../engine/PixelForge.js?v=30fps93';
  * with ZERO `ctx.rotate(...)` or canvas shearing so every silhouette stays 100% crisp.
  */
 const MONSTER_ARCHETYPES = {
+  templar: {
+    heroId: 'templar',
+    name: 'ECLIPSE TEMPLAR',
+    eliteName: 'FALLEN CATHEDRAL WARDEN',
+    theme: 'sanctuary',
+    primaryColor: '#38bdf8',
+    secondaryColor: '#facc15',
+    maxHp: 480,
+    eliteHp: 770,
+    moveSpeed: 198,
+    attackRange: 126,
+    autoInterval: 1.20,
+    autoDuration: 0.64,
+    skillMaxCooldown: 4.9,
+    skillDuration: 0.76,
+    dashMaxCooldown: 4.5,
+    dashDuration: 0.44,
+    spriteScale: 1.02,
+    eliteScale: 1.12,
+    scoreValue: 260,
+    deathSfx: 'parry_clang'
+  },
+  astrologer: {
+    heroId: 'astrologer',
+    name: 'ECLIPSE ACOLYTE',
+    eliteName: 'ASTRAL HERETIC PRIEST',
+    theme: 'sanctuary',
+    primaryColor: '#38bdf8',
+    secondaryColor: '#fde047',
+    maxHp: 390,
+    eliteHp: 650,
+    moveSpeed: 154,
+    attackRange: 460,
+    autoInterval: 1.65,
+    autoDuration: 0.72,
+    skillMaxCooldown: 6.0,
+    skillDuration: 0.92,
+    dashMaxCooldown: 5.0,
+    dashDuration: 0.44,
+    spriteScale: 1.0,
+    eliteScale: 1.10,
+    scoreValue: 350,
+    deathSfx: 'chrono_hit'
+  },
+  treant: {
+    heroId: 'treant',
+    name: 'STARWOOD BRIAR-BRUTE',
+    eliteName: 'ELDER BLIGHTWOOD GUARDIAN',
+    theme: 'sylvan',
+    primaryColor: '#34d399',
+    secondaryColor: '#2dd4bf',
+    maxHp: 920,
+    eliteHp: 1350,
+    moveSpeed: 126,
+    attackRange: 148,
+    autoInterval: 1.72,
+    autoDuration: 0.84,
+    skillMaxCooldown: 5.8,
+    skillDuration: 0.96,
+    dashMaxCooldown: 5.4,
+    dashDuration: 0.62,
+    spriteScale: 1.18,
+    eliteScale: 1.28,
+    scoreValue: 540,
+    deathSfx: 'thunder_slam'
+  },
+  dryad: {
+    heroId: 'dryad',
+    name: 'STARWOOD THORN-WRAITH',
+    eliteName: 'SYLVAN BRIAR-WEAVER',
+    theme: 'sylvan',
+    primaryColor: '#10b981',
+    secondaryColor: '#a7f3d0',
+    maxHp: 410,
+    eliteHp: 670,
+    moveSpeed: 162,
+    attackRange: 455,
+    autoInterval: 1.60,
+    autoDuration: 0.70,
+    skillMaxCooldown: 5.8,
+    skillDuration: 0.90,
+    dashMaxCooldown: 4.8,
+    dashDuration: 0.44,
+    spriteScale: 1.0,
+    eliteScale: 1.10,
+    scoreValue: 360,
+    deathSfx: 'frost_cast'
+  },
   ghoul: {
     heroId: 'ghoul',
-    name: 'ASHFANG GHOUL',
-    eliteName: 'DIRE ASHFANG ALPHA',
+    name: 'OSSUARY CRYPT-GHOUL',
+    eliteName: 'DREAD BONE-STALKER',
     theme: 'abyssal',
-    primaryColor: '#ef4444',
-    secondaryColor: '#f97316',
-    maxHp: 460,
-    eliteHp: 740,
+    primaryColor: '#c084fc',
+    secondaryColor: '#34d399',
+    maxHp: 470,
+    eliteHp: 750,
     moveSpeed: 214,
     attackRange: 118,
     autoInterval: 1.18,
@@ -28,18 +116,18 @@ const MONSTER_ARCHETYPES = {
     dashDuration: 0.42,
     spriteScale: 0.98,
     eliteScale: 1.10,
-    scoreValue: 250,
+    scoreValue: 270,
     deathSfx: 'scythe_reap'
   },
   cultist: {
     heroId: 'cultist',
-    name: 'VOID CULTIST',
-    eliteName: 'ARCH-HERETIC WARLOCK',
+    name: 'VOID NECROMANCER',
+    eliteName: 'ARCH-LICH INVOKER',
     theme: 'abyssal',
     primaryColor: '#a855f7',
-    secondaryColor: '#38bdf8',
-    maxHp: 390,
-    eliteHp: 650,
+    secondaryColor: '#e879f9',
+    maxHp: 400,
+    eliteHp: 660,
     moveSpeed: 152,
     attackRange: 455,
     autoInterval: 1.65,
@@ -50,7 +138,7 @@ const MONSTER_ARCHETYPES = {
     dashDuration: 0.44,
     spriteScale: 1.0,
     eliteScale: 1.10,
-    scoreValue: 350,
+    scoreValue: 360,
     deathSfx: 'chrono_hit'
   },
   brute: {
@@ -74,13 +162,51 @@ const MONSTER_ARCHETYPES = {
     eliteScale: 1.30,
     scoreValue: 550,
     deathSfx: 'thunder_slam'
+  },
+  fiend: {
+    heroId: 'fiend',
+    name: 'BLACK PIT HELLFIEND',
+    eliteName: 'ASHEN ABYSS-REAVER',
+    theme: 'forge',
+    primaryColor: '#ef4444',
+    secondaryColor: '#fb923c',
+    maxHp: 520,
+    eliteHp: 820,
+    moveSpeed: 222,
+    attackRange: 124,
+    autoInterval: 1.14,
+    autoDuration: 0.60,
+    skillMaxCooldown: 4.6,
+    skillDuration: 0.72,
+    dashMaxCooldown: 4.2,
+    dashDuration: 0.40,
+    spriteScale: 1.06,
+    eliteScale: 1.16,
+    scoreValue: 330,
+    deathSfx: 'scythe_reap'
   }
 };
 
 export class Monster extends Fighter {
   constructor(kind, x, groundY, facing = -1, opts = {}) {
-    const cfg = MONSTER_ARCHETYPES[kind] || MONSTER_ARCHETYPES.ghoul;
+    const cfg = MONSTER_ARCHETYPES[kind] || MONSTER_ARCHETYPES.templar;
     const isElite = Boolean(opts.isElite);
+    const skillLabel =
+      kind === 'astrologer'
+        ? 'ECLIPSE SIGIL'
+        : kind === 'dryad'
+          ? 'BRIAR SNARE'
+          : kind === 'cultist'
+            ? 'SOUL SIGIL'
+            : kind === 'treant'
+              ? 'BRIAR QUAKE'
+              : kind === 'brute'
+                ? 'SEISMIC CLEAVE'
+                : kind === 'templar'
+                  ? 'ECLIPSE THRUST'
+                  : kind === 'fiend'
+                    ? 'HELLFIRE LEAP'
+                    : 'CRYPT POUNCE';
     super({
       name: isElite ? cfg.eliteName : cfg.name,
       heroId: cfg.heroId,
@@ -95,12 +221,7 @@ export class Monster extends Fighter {
       attackRange: cfg.attackRange,
       autoInterval: cfg.autoInterval * (isElite ? 0.90 : 1.0),
       skillMaxCooldown: cfg.skillMaxCooldown * (isElite ? 0.88 : 1.0),
-      skillName:
-        kind === 'cultist'
-          ? 'VOID SIGIL'
-          : kind === 'brute'
-            ? 'SEISMIC CLEAVE'
-            : 'FERAL POUNCE',
+      skillName: skillLabel,
       ultName: 'ABYSSAL SURGE',
       deathSfx: cfg.deathSfx
     });
@@ -114,6 +235,8 @@ export class Monster extends Fighter {
     this.isMonster = true;
     this.isElite = isElite;
     this.isBoss = false;
+    this.isCasterArchetype = kind === 'cultist' || kind === 'astrologer' || kind === 'dryad';
+    this.isHeavyArchetype = kind === 'brute' || kind === 'treant';
     this.hasTrueUltimate = false;
     this.team = 2;
     this.dmgScale = (isElite ? 1.22 : 1.0) * (opts.dmgScale || 1.0);
@@ -123,21 +246,19 @@ export class Monster extends Fighter {
     this.autoDuration = cfg.autoDuration;
     this.skillDuration = cfg.skillDuration;
     this.skillMaxCooldown = cfg.skillMaxCooldown * (isElite ? 0.88 : 1.0);
-    this.skillName =
-      kind === 'cultist'
-        ? 'VOID SIGIL'
-        : kind === 'brute'
-          ? 'SEISMIC CLEAVE'
-          : 'FERAL POUNCE';
+    this.skillName = skillLabel;
     this.ultName = 'ABYSSAL SURGE';
     this.dashDuration = cfg.dashDuration;
     this.dashMaxCooldown = cfg.dashMaxCooldown;
 
-    this.autoCooldown = 0.45 + Math.random() * 0.55;
-    this.skillCooldown = 1.6 + Math.random() * 1.4;
-    this.dashCooldown = 1.2 + Math.random() * 1.2;
+    this.autoCooldown = 0.55 + Math.random() * 0.55;
+    this.skillCooldown = 1.65 + Math.random() * 1.4;
+    this.dashCooldown = 1.25 + Math.random() * 1.2;
 
-    this.hasPoise = kind === 'brute' || isElite;
+    this.hasPoise = this.isHeavyArchetype || isElite;
+    this.isInvulnerable = false;
+    this.portalSpawnMax = 0.72;
+    this.portalSpawnTimer = opts.skipPortal ? 0 : 0.72;
     this.telegraphLabel = '';
     this.telegraphTimer = 0;
     this.telegraphRings = [];
@@ -290,12 +411,32 @@ export class Monster extends Fighter {
 
     // Physics, death, cooldowns, stun/root handled cleanly if we run custom monster AI before state dispatch
     if (this.isDead) {
+      this.portalSpawnTimer = 0;
       this.telegraphRings.length = 0;
       super.update(dt, enemy, game);
       return;
     }
 
-    // 3D Monster pack spacing so multiple ghouls/cultists fan out organically across X and depth groundY
+    // Dimensional Portal Emergence Stride (`0.72s`): monster steps decisively out of its Realm Rift while remaining targetable!
+    if (this.portalSpawnTimer > 0) {
+      this.portalSpawnTimer = Math.max(0, this.portalSpawnTimer - dt);
+      const u = 1 - this.portalSpawnTimer / Math.max(0.1, this.portalSpawnMax || 0.72);
+      if (enemy && !enemy.isDead) {
+        this.facing = enemy.x >= this.x ? 1 : -1;
+      }
+      this.state = 'WALK';
+      this.moveDir = 1;
+      this.walkPhase += dt * 5.2;
+      this.x += this.facing * 44 * (1 - u * 0.65) * dt;
+      super.update(dt, null, game);
+      if (!this.isDead && !(this.stunTimer > 0) && !this.isRooted) {
+        this.state = 'WALK';
+        this.moveDir = 1;
+      }
+      return;
+    }
+
+    // 3D Monster pack spacing so multiple enemies fan out organically across X and depth groundY
     if (game?.fighters && (this.state === 'IDLE' || this.state === 'WALK')) {
       for (const other of game.fighters) {
         if (other && other !== this && other.team === this.team && !other.isDead) {
@@ -323,7 +464,6 @@ export class Monster extends Fighter {
       !enemy.isDead
     ) {
       this.runMonsterNeutralAI(dt, enemy, game);
-      // Pass null enemy to super.update ONLY if still in IDLE/WALK so super.update won't overwrite monster spacing with champion AI
       if (this.state === 'IDLE' || this.state === 'WALK') {
         const savedState = this.state;
         const savedMoveDir = this.moveDir;
@@ -404,12 +544,12 @@ export class Monster extends Fighter {
       }
     };
 
-    if (this.kind === 'cultist') {
+    if (this.isCasterArchetype) {
       const retreatDir = -this.facing;
       const corneredBehind =
         (retreatDir < 0 && this.x <= mMin + 72) || (retreatDir > 0 && this.x >= mMax - 72);
 
-      // Ranged Warlock spacing: if cornered against a wave-lock wall, dash or curve AROUND the hero toward open center!
+      // Ranged Caster spacing (`astrologer`, `dryad`, `cultist`): dash or curve AROUND hero if cornered!
       if (dist < 185 && absDz < 78 && this.dashCooldown <= 0) {
         const dashDir = corneredBehind ? this.facing : retreatDir;
         this.startMonsterDash(enemy, game, dashDir, corneredBehind ? 235 : 210);
@@ -417,7 +557,12 @@ export class Monster extends Fighter {
       }
       if (this.skillCooldown <= 0 && dist <= 560) {
         this.skillCooldown = this.skillMaxCooldown;
-        this.telegraphLabel = '★ VOID SIGIL! ★';
+        this.telegraphLabel =
+          this.kind === 'astrologer'
+            ? '★ ECLIPSE SIGIL! ★'
+            : this.kind === 'dryad'
+              ? '★ BRIAR SNARE! ★'
+              : '★ SOUL SIGIL! ★';
         this.telegraphTimer = 0.78;
         this.setState('SKILL');
         return;
@@ -431,7 +576,6 @@ export class Monster extends Fighter {
       let moving = false;
       if (dist < 235) {
         if (corneredBehind) {
-          // Orbit INWARD past the hero along the spacious opposite Z-lane instead of backing into the wall!
           const escapeGy = enemyGy > 561 ? 470 : 652;
           const escDz = escapeGy - this.groundY;
           this.moveDir = 1;
@@ -463,12 +607,11 @@ export class Monster extends Fighter {
         }
         moving = true;
       } else {
-        // Gentle 2.5D strafe wave inside sweet-spot so Cultists weave smoothly
         const weaveGy =
           enemyGy + (this.flankOffsetZ || 0) * 1.4 + Math.sin(nowT * 1.6 + (this.flankOffsetZ || 0)) * 26;
-        const cultistDz = weaveGy - this.groundY;
-        if (Math.abs(cultistDz) > 20) {
-          this.shiftMonsterDepth(Math.sign(cultistDz) * this.moveSpeed * 0.58 * dt, game);
+        const casterDz = weaveGy - this.groundY;
+        if (Math.abs(casterDz) > 20) {
+          this.shiftMonsterDepth(Math.sign(casterDz) * this.moveSpeed * 0.58 * dt, game);
           this.moveDir = 1;
           moving = true;
         }
@@ -486,10 +629,10 @@ export class Monster extends Fighter {
       return;
     }
 
-    if (this.kind === 'brute') {
-      // Heavy Armored Juggernaut: curved 2.5D approach that converges onto enemyGy for Bull-Charge & Seismic Slam
+    if (this.isHeavyArchetype) {
+      // Heavy Guardian (`treant`, `brute`): curved 2.5D approach that converges onto enemyGy for Charge & Quake!
       if (this.dashCooldown <= 0 && dist > 205 && dist < 520 && absDz <= 56) {
-        this.telegraphLabel = '! BULL CHARGE !';
+        this.telegraphLabel = this.kind === 'treant' ? '! ROOT CHARGE !' : '! BULL CHARGE !';
         this.telegraphTimer = 0.62;
         this.forgeArmorTimer = 0.65;
         this.startMonsterDash(enemy, game, this.facing, Math.min(330, dist - 55));
@@ -498,7 +641,7 @@ export class Monster extends Fighter {
       if (this.skillCooldown <= 0 && dist <= 380 && absDz <= 46) {
         this.skillCooldown = this.skillMaxCooldown;
         this.forgeArmorTimer = 0.72;
-        this.telegraphLabel = '! SEISMIC SLAM !';
+        this.telegraphLabel = this.kind === 'treant' ? '! BRIAR QUAKE !' : '! SEISMIC SLAM !';
         this.telegraphTimer = 0.65;
         this.setState('SKILL');
         return;
@@ -514,17 +657,17 @@ export class Monster extends Fighter {
         enemyGy +
         ((this.flankOffsetZ || 0) * 0.65 + Math.sin(nowT * 1.5 + (this.flankOffsetZ || 0)) * 42) *
           arcBlend;
-      const bruteDz = curvedGoalGy - this.groundY;
-      if (dist > 120 || Math.abs(bruteDz) > 30) {
+      const heavyDz = curvedGoalGy - this.groundY;
+      if (dist > 120 || Math.abs(heavyDz) > 30) {
         this.state = 'WALK';
         this.moveDir = 1;
         this.walkPhase += dt * 3.4;
         if (dist > 114) {
           this.x += this.facing * this.moveSpeed * dt;
         }
-        if (Math.abs(bruteDz) > 10) {
+        if (Math.abs(heavyDz) > 10) {
           this.shiftMonsterDepth(
-            Math.sign(bruteDz) * Math.min(Math.abs(bruteDz), this.moveSpeed * 0.88 * dt),
+            Math.sign(heavyDz) * Math.min(Math.abs(heavyDz), this.moveSpeed * 0.88 * dt),
             game
           );
         }
@@ -538,10 +681,15 @@ export class Monster extends Fighter {
       return;
     }
 
-    // Default (`ghoul` — Ashfang Rusher): curved 3D pincer flank stalker + Feral Pounce
+    // Melee Vanguard (`templar`, `ghoul`, `fiend`): curved 3D pincer flank + signature lunge
     if (this.skillCooldown <= 0 && dist >= 130 && dist <= 310 && absDz <= 56) {
       this.skillCooldown = this.skillMaxCooldown;
-      this.telegraphLabel = '! POUNCE !';
+      this.telegraphLabel =
+        this.kind === 'templar'
+          ? '! ECLIPSE THRUST !'
+          : this.kind === 'fiend'
+            ? '! HELLFIRE LEAP !'
+            : '! CRYPT POUNCE !';
       this.telegraphTimer = 0.52;
       this.pounceVelZ = Math.max(-135, Math.min(135, dz * 2.1));
       this.setState('SKILL');
@@ -557,22 +705,22 @@ export class Monster extends Fighter {
       return;
     }
 
-    const ghoulArc = Math.max(0, Math.min(1, (dist - 108) / 190));
-    const ghoulGoalGy =
+    const rushArc = Math.max(0, Math.min(1, (dist - 108) / 190));
+    const rushGoalGy =
       enemyGy +
       ((this.flankOffsetZ || 0) * 0.85 + Math.sin(nowT * 2.2 + (this.flankOffsetZ || 0)) * 52) *
-        ghoulArc;
-    const ghoulDz = ghoulGoalGy - this.groundY;
-    if (dist > 100 || Math.abs(ghoulDz) > 26) {
+        rushArc;
+    const rushDz = rushGoalGy - this.groundY;
+    if (dist > 100 || Math.abs(rushDz) > 26) {
       this.state = 'WALK';
       this.moveDir = 1;
       this.walkPhase += dt * 5.6;
       if (dist > 94) {
         this.x += this.facing * this.moveSpeed * dt;
       }
-      if (Math.abs(ghoulDz) > 7) {
+      if (Math.abs(rushDz) > 7) {
         this.shiftMonsterDepth(
-          Math.sign(ghoulDz) * Math.min(Math.abs(ghoulDz), this.moveSpeed * 0.92 * dt),
+          Math.sign(rushDz) * Math.min(Math.abs(rushDz), this.moveSpeed * 0.92 * dt),
           game
         );
       }
@@ -596,12 +744,11 @@ export class Monster extends Fighter {
     this.dashStartX = this.x;
     this.dashTargetX = Math.max(minX, Math.min(maxX, this.x + this.dashDir * distance));
     this.dashStartGy = this.groundY;
-    const targetGy =
-      this.kind === 'cultist'
-        ? this.groundY + (this.groundY > 561 ? -58 : 58)
-        : enemy
-          ? enemy.groundY || enemy.y
-          : this.groundY;
+    const targetGy = this.isCasterArchetype
+      ? this.groundY + (this.groundY > 561 ? -58 : 58)
+      : enemy
+        ? enemy.groundY || enemy.y
+        : this.groundY;
     this.dashTargetGy = Math.max(minGy, Math.min(maxGy, targetGy));
     this.setState('DASH');
     if (game?.audio) game.audio.play('dash_whoosh', this.x);
@@ -612,8 +759,8 @@ export class Monster extends Fighter {
     const t = this.stateTimer;
     const u = Math.min(1, t / dur);
 
-    if (this.kind === 'brute') {
-      // Brief 0.20s stomp windup before unstoppable Bull-Charge!
+    if (this.isHeavyArchetype) {
+      // Brief 0.20s stomp windup before unstoppable Guardian/Juggernaut Charge!
       if (t < 0.20) {
         this.vx = 0;
         return;
@@ -635,7 +782,8 @@ export class Monster extends Fighter {
         enemy.takeDamage(Math.round(56 * this.dmgScale), this, true, 240, -165);
         if (game?.renderer) game.renderer.triggerShake(11, 0.22);
         if (game?.vfx) {
-          game.vfx.spawnShockwave(this.x + this.facing * 36, this.y - 68, 95, '#f59e0b', 0.28, true);
+          const col = this.kind === 'treant' ? '#34d399' : '#f59e0b';
+          game.vfx.spawnShockwave(this.x + this.facing * 36, this.y - 68, 95, col, 0.28, true);
         }
       }
     } else {
@@ -655,11 +803,11 @@ export class Monster extends Fighter {
 
   updateAutoAttack(_dt, enemy, game) {
     const t = this.stateTimer;
-    const hitTime = this.kind === 'brute' ? 0.38 : this.kind === 'cultist' ? 0.34 : 0.26;
+    const hitTime = this.isHeavyArchetype ? 0.38 : this.isCasterArchetype ? 0.34 : 0.26;
 
     if (t >= hitTime && !this.didActionFrame) {
       this.didActionFrame = true;
-      if (this.kind === 'cultist') {
+      if (this.isCasterArchetype) {
         const sx = this.x + this.facing * 44;
         const sy = this.y - 98;
         const tx = enemy ? enemy.x : sx + this.facing * 380;
@@ -667,7 +815,19 @@ export class Monster extends Fighter {
         const dx = tx - sx;
         const dy = ty - sy;
         const len = Math.hypot(dx, dy) || 1;
-        const spd = 435;
+        const spd = this.kind === 'dryad' ? 450 : 435;
+        const projCol =
+          this.kind === 'astrologer'
+            ? '#38bdf8'
+            : this.kind === 'dryad'
+              ? '#34d399'
+              : '#a855f7';
+        const coreCol =
+          this.kind === 'astrologer'
+            ? '#fef08a'
+            : this.kind === 'dryad'
+              ? '#ecfdf5'
+              : '#f3e8ff';
         if (game?.audio) game.audio.play('skill_cast', sx);
         game?.vfx?.spawnProjectile({
           x: sx,
@@ -675,18 +835,34 @@ export class Monster extends Fighter {
           vx: (dx / len) * spd,
           vy: (dy / len) * spd,
           radius: 14,
-          color: '#a855f7',
-          coreColor: '#f3e8ff',
+          color: projCol,
+          coreColor: coreCol,
           damage: Math.round(34 * this.dmgScale),
           owner: this,
           type: 'phantom_scythe'
         });
-      } else if (this.kind === 'brute') {
+      } else if (this.isHeavyArchetype) {
+        const isTreant = this.kind === 'treant';
         if (game?.audio) game.audio.play('heavy_cleave', this.x);
         if (game?.renderer) game.renderer.triggerShake(9, 0.18);
         const fAng = this.facing === 1 ? 0 : Math.PI;
-        game?.vfx?.spawnSlash(this.x + this.facing * 52, this.y - 88, 86, fAng - 1.1, fAng + 1.1, '#f59e0b', 0.26);
-        game?.vfx?.spawnShockwave(this.x + this.facing * 64, this.groundY - 8, 92, '#ea580c', 0.26, true);
+        game?.vfx?.spawnSlash(
+          this.x + this.facing * 52,
+          this.y - 88,
+          86,
+          fAng - 1.1,
+          fAng + 1.1,
+          isTreant ? '#34d399' : '#f59e0b',
+          0.26
+        );
+        game?.vfx?.spawnShockwave(
+          this.x + this.facing * 64,
+          this.groundY - 8,
+          92,
+          isTreant ? '#10b981' : '#ea580c',
+          0.26,
+          true
+        );
         if (
           enemy &&
           !enemy.isDead &&
@@ -696,17 +872,31 @@ export class Monster extends Fighter {
           enemy.takeDamage(Math.round(52 * this.dmgScale), this, false, 165, -90);
         }
       } else {
-        // Ashfang Ghoul twin claw rip
+        // Vanguard strike: Templar Eclipse Rune-Blade / Ghoul Crypt Claw / Fiend Molten Hellfire Rake!
+        const slashCol =
+          this.kind === 'templar'
+            ? '#38bdf8'
+            : this.kind === 'fiend'
+              ? '#ef4444'
+              : '#c084fc';
         if (game?.audio) game.audio.play('slash', this.x);
         const fAng = this.facing === 1 ? 0 : Math.PI;
-        game?.vfx?.spawnSlash(this.x + this.facing * 42, this.y - 78, 62, fAng - 0.9, fAng + 0.9, '#ef4444', 0.20);
+        game?.vfx?.spawnSlash(
+          this.x + this.facing * 44,
+          this.y - 78,
+          64,
+          fAng - 0.9,
+          fAng + 0.9,
+          slashCol,
+          0.20
+        );
         if (
           enemy &&
           !enemy.isDead &&
           Math.abs(enemy.x - this.x) <= this.attackRange + 22 &&
           Math.abs((enemy.groundY || enemy.y) - this.groundY) <= 54
         ) {
-          enemy.takeDamage(Math.round(32 * this.dmgScale), this, false, 95, 0);
+          enemy.takeDamage(Math.round(33 * this.dmgScale), this, false, 95, 0);
         }
       }
     }
@@ -719,12 +909,24 @@ export class Monster extends Fighter {
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
 
-    if (this.kind === 'cultist') {
+    if (this.isCasterArchetype) {
       if (t >= 0.18 && !this.didActionFrame) {
         this.didActionFrame = true;
         const targetX = enemy ? enemy.x : this.x + this.facing * 300;
         const targetGy = enemy ? enemy.groundY || enemy.y : this.groundY;
-        this.spawnFloorTelegraph(targetX, 82, 0.72, 54, '#a855f7', 'VOID SIGIL', targetGy);
+        const sigilCol =
+          this.kind === 'astrologer'
+            ? '#38bdf8'
+            : this.kind === 'dryad'
+              ? '#10b981'
+              : '#a855f7';
+        const sigilLbl =
+          this.kind === 'astrologer'
+            ? 'ECLIPSE SIGIL'
+            : this.kind === 'dryad'
+              ? 'BRIAR SNARE'
+              : 'SOUL SIGIL';
+        this.spawnFloorTelegraph(targetX, 82, 0.72, 54, sigilCol, sigilLbl, targetGy);
         if (this.isElite) {
           const riftGy = Math.max(454, Math.min(668, targetGy + (targetGy > 561 ? -54 : 54)));
           this.spawnFloorTelegraph(
@@ -732,36 +934,51 @@ export class Monster extends Fighter {
             72,
             0.88,
             46,
-            '#38bdf8',
-            'ASTRAL RIFT',
+            this.secondaryColor || '#38bdf8',
+            sigilLbl,
             riftGy
           );
         }
         if (game?.audio) game.audio.play('skill_cast', this.x);
       }
-    } else if (this.kind === 'brute') {
+    } else if (this.isHeavyArchetype) {
       if (t >= 0.44 && !this.didActionFrame) {
         this.didActionFrame = true;
+        const isTreant = this.kind === 'treant';
         const sx = this.x + this.facing * 62;
         if (game?.audio) game.audio.play('thunder_slam', sx);
         if (game?.renderer) game.renderer.triggerShake(13, 0.25);
-        game?.vfx?.spawnShockwave(sx, this.groundY - 8, 135, '#f59e0b', 0.34, true);
-        game?.vfx?.spawnBurst(sx, this.groundY - 16, 18, '#fb923c', 240, { upBias: 150, size: 6 });
+        game?.vfx?.spawnShockwave(
+          sx,
+          this.groundY - 8,
+          135,
+          isTreant ? '#34d399' : '#f59e0b',
+          0.34,
+          true
+        );
+        game?.vfx?.spawnBurst(
+          sx,
+          this.groundY - 16,
+          18,
+          isTreant ? '#6ee7b7' : '#fb923c',
+          240,
+          { upBias: 150, size: 6 }
+        );
         game?.vfx?.spawnProjectile({
           x: sx,
           y: this.groundY - 48,
           vx: this.facing * 510,
           vy: 0,
           radius: 22,
-          color: '#f59e0b',
-          coreColor: '#fef08a',
+          color: isTreant ? '#10b981' : '#f59e0b',
+          coreColor: isTreant ? '#d1fae5' : '#fef08a',
           damage: Math.round(54 * this.dmgScale),
           owner: this,
           type: 'forge_wave'
         });
       }
     } else {
-      // Ghoul Feral Pounce Lunge in 3D space
+      // Vanguard 3D Lunge (`templar` Eclipse Thrust / `ghoul` Crypt Pounce / `fiend` Hellfire Leap)
       if (t >= 0.22 && t < 0.56) {
         this.x += this.facing * 410 * dt;
         this.shiftMonsterDepth((this.pounceVelZ || 0) * dt, game);
@@ -774,9 +991,23 @@ export class Monster extends Fighter {
           Math.abs((enemy.groundY || enemy.y) - this.groundY) <= 56
         ) {
           this.didActionFrame = true;
+          const slashCol =
+            this.kind === 'templar'
+              ? '#38bdf8'
+              : this.kind === 'fiend'
+                ? '#fb923c'
+                : '#c084fc';
           if (game?.audio) game.audio.play('scythe_reap', this.x);
           const fAng = this.facing === 1 ? 0 : Math.PI;
-          game?.vfx?.spawnSlash(this.x + this.facing * 38, this.y - 76, 68, fAng - 1.0, fAng + 1.0, '#ef4444', 0.22);
+          game?.vfx?.spawnSlash(
+            this.x + this.facing * 38,
+            this.y - 76,
+            68,
+            fAng - 1.0,
+            fAng + 1.0,
+            slashCol,
+            0.22
+          );
           enemy.takeDamage(Math.round(46 * this.dmgScale), this, true, 145, -80);
         }
       }
@@ -799,7 +1030,6 @@ export class Monster extends Fighter {
       const radX = Math.round(r.radius);
       const radY = Math.max(10, Math.round(r.radius * 0.28));
 
-      // Crisp 2.5D pixel-stepped danger ellipse + shrinking lock-on inner ring
       ctx.globalAlpha = 0.22 + u * 0.28;
       ctx.fillStyle = r.color;
       ctx.beginPath();
@@ -813,7 +1043,6 @@ export class Monster extends Fighter {
       ctx.ellipse(rx, ry, radX, radY, 0, 0, Math.PI * 2);
       ctx.stroke();
 
-      // Pixel cardinal warning ticks
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(rx - radX - 2, ry - 2, 4, 4);
       ctx.fillRect(rx + radX - 2, ry - 2, 4, 4);
@@ -834,7 +1063,6 @@ export class Monster extends Fighter {
     const hpPct = Math.max(0, Math.min(1, this.hp / Math.max(1, this.maxHp)));
 
     ctx.save();
-    // Optional active telegraph callout above the monster's head
     if (this.telegraphTimer > 0 && this.telegraphLabel) {
       ctx.font = '8px "ArcanePixel", "Press Start 2P", monospace';
       ctx.textAlign = 'center';
@@ -871,7 +1099,12 @@ export class Monster extends Fighter {
     const assets = PixelForge.initAssets();
     const charSet = assets[this.heroId] || assets[this.kind];
     if (charSet && charSet.sheet && charSet.sheet.complete && charSet.sheet.naturalWidth > 0) {
-      const scale = this.spriteScale || 1.0;
+      const emergeU =
+        this.portalSpawnTimer > 0
+          ? 1 - this.portalSpawnTimer / Math.max(0.1, this.portalSpawnMax || 0.72)
+          : 1;
+      const emergeScale = emergeU < 1 ? 0.84 + 0.16 * emergeU : 1;
+      const scale = (this.spriteScale || 1.0) * emergeScale;
       const drawW = Math.round(208 * scale);
       const drawH = Math.round(208 * scale);
       const shakeX =
@@ -882,6 +1115,9 @@ export class Monster extends Fighter {
       ctx.translate(Math.round(this.x + shakeX), Math.round(this.y));
       ctx.scale(this.facing, 1);
 
+      if (emergeU < 1 && !isReflection) {
+        ctx.globalAlpha *= 0.45 + 0.55 * emergeU;
+      }
       if (this.isDead && this.deathTimer > 1.2) {
         const fade = Math.max(0.12, 1 - (this.deathTimer - 1.2) * 0.55);
         ctx.globalAlpha *= fade;
@@ -889,9 +1125,10 @@ export class Monster extends Fighter {
 
       PixelForge.drawSheetFrame(ctx, charSet, this, drawW, drawH, this.walkPhase, isReflection, renderer);
 
-      if (!isReflection && this.hitFlash > 0) {
+      if (!isReflection && (this.hitFlash > 0 || emergeU < 0.75)) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(0.45, this.hitFlash * 2.2);
+        ctx.globalAlpha =
+          this.hitFlash > 0 ? Math.min(0.42, this.hitFlash * 2.2) : (1 - emergeU) * 0.18;
         PixelForge.drawSheetFrame(ctx, charSet, this, drawW, drawH, this.walkPhase, true, renderer);
       }
       ctx.restore();
@@ -904,25 +1141,15 @@ export class Monster extends Fighter {
 }
 
 /**
- * GIANT LEFT-SIDE COLOSSAL FINAL BOSS: BEHEMOTH MALPHAS, COLOSSUS OF THE BLACK PIT
- *
- * Multi-part articulated `4096x1024` (`8 cols x 2 rows = 16 x 512x512` HD-2D cells) Sovereign Rig:
- *   Row 0 (registered `256x256 -> 512x512` torso space):
- *     (0,0) CALDERA_RIM    • (1,0) TORSO_HEART_A • (2,0) TORSO_HEART_B • (3,0) TORSO_DYING
- *     (4,0) PAULDRON_REAR  • (5,0) PAULDRON_FRONT• (6,0) SKULL_UPPER   • (7,0) JAW_LOWER
- *   Row 1 (articulated limbs & baked `512x512` boss VFX):
- *     (0,1) CLAW_OPEN      • (1,1) CLAW_FLEX     • (2,1) FIST_CRUSH    • (3,1) FIST_METEOR
- *     (4,1) VFX_GEYSER_A   • (5,1) VFX_GEYSER_B  • (6,1) VFX_JAW_HELLFIRE • (7,1) VFX_CLAW_SLASH
- *
- * Permanently anchored on the FAR RIGHT side of Zone IV (`anchorX = 9335`, facing LEFT `-X`)
- * rising from behind the Chained Dark-Obsidian Abyssal Throne Parapet Rim (`y <= 654`) with zero `ctx.rotate()`.
+ * GIANT RIGHT-SIDE COLOSSAL FINAL BOSS: BEHEMOTH MALPHAS, COLOSSUS OF THE BLACK PIT
  */
 export class ArchfiendBoss extends Monster {
   constructor(x = 9335, groundY = 561, _facing = -1) {
     super('brute', x, groundY, -1, {
       maxHp: 3900,
       spriteScale: 2.18,
-      dmgScale: 1.18
+      dmgScale: 1.18,
+      skipPortal: true
     });
     this.heroId = 'archfiend';
     this.kind = 'archfiend';
@@ -933,6 +1160,7 @@ export class ArchfiendBoss extends Monster {
     this.isBoss = true;
     this.isColossalBoss = true;
     this.isElite = true;
+    this.portalSpawnTimer = 0;
     this.scoreValue = 4200;
 
     // Permanently anchored on the FAR RIGHT side of Zone IV facing LEFT (-X)!

@@ -1,21 +1,21 @@
-import { Renderer } from './engine/Renderer.js?v=30fps93';
-import { VFXManager } from './engine/VFXManager.js?v=30fps93';
-import { PixelForge } from './engine/PixelForge.js?v=30fps93';
-import { AudioManager } from './engine/AudioManager.js?v=30fps93';
-import { Fighter } from './entities/Fighter.js?v=30fps93';
-import { Warrior } from './entities/Warrior.js?v=30fps93';
-import { FireMage } from './entities/FireMage.js?v=30fps93';
-import { Archer } from './entities/Archer.js?v=30fps93';
-import { Priestess } from './entities/Priestess.js?v=30fps93';
-import { Reaper } from './entities/Reaper.js?v=30fps93';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps93';
-import { Titan } from './entities/Titan.js?v=30fps93';
-import { Ronin } from './entities/Ronin.js?v=30fps93';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps93';
-import { IceMage } from './entities/IceMage.js?v=30fps93';
-import { Android } from './entities/Android.js?v=30fps93';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps93';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps93';
+import { Renderer } from './engine/Renderer.js?v=30fps94';
+import { VFXManager } from './engine/VFXManager.js?v=30fps94';
+import { PixelForge } from './engine/PixelForge.js?v=30fps94';
+import { AudioManager } from './engine/AudioManager.js?v=30fps94';
+import { Fighter } from './entities/Fighter.js?v=30fps94';
+import { Warrior } from './entities/Warrior.js?v=30fps94';
+import { FireMage } from './entities/FireMage.js?v=30fps94';
+import { Archer } from './entities/Archer.js?v=30fps94';
+import { Priestess } from './entities/Priestess.js?v=30fps94';
+import { Reaper } from './entities/Reaper.js?v=30fps94';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps94';
+import { Titan } from './entities/Titan.js?v=30fps94';
+import { Ronin } from './entities/Ronin.js?v=30fps94';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps94';
+import { IceMage } from './entities/IceMage.js?v=30fps94';
+import { Android } from './entities/Android.js?v=30fps94';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps94';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps94';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -2403,14 +2403,14 @@ class Game {
       const supIconCanvas = document.getElementById(`${prefix}-skill-icon-3`);
       const supBox = document.getElementById(`${prefix}-true-ult-box`);
       if (supIconCanvas) {
-        const showSupIcon = primaryKey === 'mage';
+        const showSupIcon = Boolean(CHAMPION_ROSTER[primaryKey]);
         supIconCanvas.classList.toggle('hidden', !showSupIcon);
         if (supBox) supBox.classList.toggle('has-supreme-icon', showSupIcon);
         if (showSupIcon) {
           const sictx = supIconCanvas.getContext('2d');
           PixelForge.drawSkillIcon(
             sictx,
-            'mage',
+            primaryKey,
             3,
             supIconCanvas.width,
             supIconCanvas.height,
@@ -2438,7 +2438,9 @@ class Game {
         const bctx = bossCanvas.getContext('2d');
         bctx.clearRect(0, 0, cw, ch);
         bctx.imageSmoothingEnabled = false;
-        const bossPort = PixelForge.initAssets()?.boss_archfiend?.portrait;
+        const bossPort =
+          PixelForge.initAssets()?.archfiend?.portrait ||
+          PixelForge.initAssets()?.boss_archfiend?.portrait;
         const pulse = 0.55 + 0.25 * Math.sin(t * 3.8);
         bctx.fillStyle = `rgba(220, 38, 38, ${(0.22 * pulse).toFixed(3)})`;
         bctx.fillRect(46, 174, 180, 18);
@@ -2458,6 +2460,9 @@ class Game {
         bctx.fillText('★ ZONE IV COLOSSUS', 74, 12);
       }
       const drawBossThreatIcon = (ictx, idx, iw, ih, timeSec) => {
+        if (PixelForge.drawHeroSheetIcon?.(ictx, 'archfiend', idx, iw, ih, timeSec)) {
+          return;
+        }
         ictx.save();
         ictx.clearRect(0, 0, iw, ih);
         ictx.imageSmoothingEnabled = false;
@@ -2473,11 +2478,9 @@ class Game {
           ictx.strokeStyle = '#fb923c';
           ictx.lineWidth = 2;
           ictx.strokeRect(10, 46, 44, 8);
-          // Falling brimstone trails
           ictx.fillStyle = '#f97316';
           ictx.fillRect(22, 6, 4, 14);
           ictx.fillRect(38, 8, 4, 12);
-          // Armored obsidian gauntlet fist
           ictx.fillStyle = '#1e1b2e';
           ictx.fillRect(18, 16, 28, 24);
           ictx.fillStyle = '#dc2626';
@@ -2540,8 +2543,17 @@ class Game {
       });
       const supIconCanvas = document.getElementById('p2-skill-icon-3');
       const supBox = document.getElementById('p2-true-ult-box');
-      if (supIconCanvas) supIconCanvas.classList.add('hidden');
-      if (supBox) supBox.classList.remove('has-supreme-icon');
+      if (supIconCanvas) {
+        supIconCanvas.classList.remove('hidden');
+        if (supBox) supBox.classList.add('has-supreme-icon');
+        drawBossThreatIcon(
+          supIconCanvas.getContext('2d'),
+          3,
+          supIconCanvas.width,
+          supIconCanvas.height,
+          t
+        );
+      }
     } else {
       drawSideProfileVisuals('p2', p2Front, p2Back, true);
     }

@@ -28,30 +28,30 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps93';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps93';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps93';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps93';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps93';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps93';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps93';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps93';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps93';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps93';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps93';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps93';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps93';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps93';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps93';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps93';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps93';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps94';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps94';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps94';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps94';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps94';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps94';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps94';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps94';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps94';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps94';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps94';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps94';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps94';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps94';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps94';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps94';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps94';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps93';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps93';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps93';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps93';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps94';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps94';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps94';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps94';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -612,7 +612,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps93');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps94');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -2065,11 +2065,16 @@ for (const [name, Cls] of CLASSES) {
 //     - Full Zone 1 -> Zone 2 -> Zone 3 -> Zone 4 scrolling progression, pickups, "GO! ➔" prompts, Boss Warning,
 //       3-Phase Archfiend Malphas boss mechanics, Campaign Clear -> Sol Row 9 VICTORY pose, and 0 ctx.rotate calls!
 {
-  // 17A. Verify Monster & Boss PNG dimensions
+  // 17A. Verify All 8 Realm Monster Sheets, Boss Sheets, All-11-Hero Icons & Stage/Portal FX PNG dimensions
   const monsterSheets = [
+    'monster_templar_sheet.png',
+    'monster_astrologer_sheet.png',
+    'monster_treant_sheet.png',
+    'monster_dryad_sheet.png',
     'monster_ghoul_sheet.png',
     'monster_cultist_sheet.png',
     'monster_brute_sheet.png',
+    'monster_fiend_sheet.png',
     'boss_archfiend_sheet.png'
   ];
   for (const fname of monsterSheets) {
@@ -2099,6 +2104,18 @@ for (const [name, Cls] of CLASSES) {
     const ih = iconBuf.readUInt32BE(20);
     if (iw !== 448 || ih !== 64) {
       throw new Error(`Expected mage_icons.png dimensions 448x64 (7 cells x 64x64), got ${iw}x${ih}`);
+    }
+    const heroIconsBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/hero_icons_sheet.png');
+    const hiw = heroIconsBuf.readUInt32BE(16);
+    const hih = heroIconsBuf.readUInt32BE(20);
+    if (hiw !== 384 || hih !== 704) {
+      throw new Error(`Expected hero_icons_sheet.png dimensions 384x704 (6 cols x 11 rows @ 64x64), got ${hiw}x${hih}`);
+    }
+    const advFxBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/adv_fx_sheet.png');
+    const fxw = advFxBuf.readUInt32BE(16);
+    const fxh = advFxBuf.readUInt32BE(20);
+    if (fxw !== 1024 || fxh !== 640) {
+      throw new Error(`Expected adv_fx_sheet.png dimensions 1024x640 (8 cols x 5 rows @ 128x128), got ${fxw}x${fxh}`);
     }
     const manifestJson = JSON.parse(
       fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/manifest.json', 'utf8')
@@ -2182,8 +2199,12 @@ for (const [name, Cls] of CLASSES) {
     }
   }
 
-  // Verify PixelForge.drawAdventureActionIcon blits Ignis Sol's remade 64x64 HD-2D icon sheet (`mage_icons.png`)
-  // across all 5 active orbs (and full 7-cell sheet) with exact cell coordinates & ZERO ctx.rotate!
+  // Verify PixelForge.drawAdventureActionIcon & drawSkillIcon blit 64x64 HD-2D icon sheets across ALL 11 champions + Boss Malphas (`0` ctx.rotate)!
+  const iconAssetsInit = PixelForge.initAssets();
+  if (iconAssetsInit.heroIconsSheet) {
+    iconAssetsInit.heroIconsSheet.naturalWidth = 384;
+    iconAssetsInit.heroIconsSheet.naturalHeight = 704;
+  }
   const expectedMageCells = {
     attack: 0,
     skill: 1,
@@ -2238,14 +2259,124 @@ for (const [name, Cls] of CLASSES) {
     }
   }
 
-  // 17C. Simulate Full 4-Zone Campaign with Ignis Sol (`FireMage`), Adventure RPG Progression, Skill Tree & Giant Left-Side Colossal Boss!
+  // Verify `hero_icons_sheet.png` (`384x704`) across the remaining 10 champions (`0..9`) + Boss Malphas (`archfiend`, row `10`)!
+  const heroSheetRows = [
+    ['warrior', 0],
+    ['archer', 1],
+    ['priestess', 2],
+    ['reaper', 3],
+    ['chronomancer', 4],
+    ['titan', 5],
+    ['ronin', 6],
+    ['valkyrie', 7],
+    ['icemage', 8],
+    ['android', 9]
+  ];
+  const expectedHeroActionCols = {
+    attack: 0,
+    skill: 1,
+    overdrive: 2,
+    ultimate: 3,
+    dodge: 4,
+    jump: 5,
+    crouch: 5
+  };
+  for (const [hKey, expRow] of heroSheetRows) {
+    // 4 Champion Select cards (`0..3`)
+    for (let slotIdx = 0; slotIdx <= 3; slotIdx++) {
+      const tr = { rotateCalls: 0 };
+      const ic = createMockCtx(tr);
+      const blits = [];
+      ic.drawImage = (_img, sx, sy, sw, sh, dx, dy, dw, dh) => {
+        blits.push({ sx, sy, sw, sh, dx, dy, dw, dh });
+      };
+      PixelForge.drawSkillIcon(ic, hKey, slotIdx, 64, 64, 0.25);
+      if (
+        blits.length !== 1 ||
+        blits[0].sx !== slotIdx * 64 ||
+        blits[0].sy !== expRow * 64 ||
+        blits[0].sw !== 64 ||
+        blits[0].sh !== 64 ||
+        tr.rotateCalls > 0
+      ) {
+        throw new Error(
+          `drawSkillIcon('${hKey}', ${slotIdx}) failed hero_icons_sheet audit: blits=${JSON.stringify(blits)}, rotate=${tr.rotateCalls}`
+        );
+      }
+    }
+    // Adventure Action Orbs (`attack`, `skill`, `overdrive`, `ultimate`, `dodge`, `jump`, `crouch`)
+    for (const [actKey, expCol] of Object.entries(expectedHeroActionCols)) {
+      const tr = { rotateCalls: 0 };
+      const ic = createMockCtx(tr);
+      const blits = [];
+      ic.drawImage = (_img, sx, sy, sw, sh) => {
+        blits.push({ sx, sy, sw, sh });
+      };
+      PixelForge.drawAdventureActionIcon(ic, hKey, actKey, 64, 64, 0.25);
+      if (
+        blits.length !== 1 ||
+        blits[0].sx !== expCol * 64 ||
+        blits[0].sy !== expRow * 64 ||
+        blits[0].sw !== 64 ||
+        blits[0].sh !== 64 ||
+        tr.rotateCalls > 0
+      ) {
+        throw new Error(
+          `drawAdventureActionIcon('${hKey}', '${actKey}') failed hero_icons_sheet audit: blits=${JSON.stringify(blits)}`
+        );
+      }
+    }
+  }
+  // Verify Boss Malphas (`archfiend`, row 10) threat card icons (`0..3`)
+  for (let bIdx = 0; bIdx <= 3; bIdx++) {
+    const tr = { rotateCalls: 0 };
+    const ic = createMockCtx(tr);
+    const blits = [];
+    ic.drawImage = (_img, sx, sy, sw, sh) => {
+      blits.push({ sx, sy, sw, sh });
+    };
+    const ok = PixelForge.drawHeroSheetIcon(ic, 'archfiend', bIdx, 64, 64, 0.25);
+    if (!ok || blits.length !== 1 || blits[0].sx !== bIdx * 64 || blits[0].sy !== 640 || tr.rotateCalls > 0) {
+      throw new Error(`drawHeroSheetIcon('archfiend', ${bIdx}) failed audit: ok=${ok}, blits=${JSON.stringify(blits)}`);
+    }
+  }
+
+  // 17C. Simulate Full 4-Zone Campaign with Ignis Sol (`FireMage`), Dimensional Portals, 8 Realm Monsters & Right-Side Colossal Boss!
+  const allAssets = PixelForge.initAssets();
+  if (allAssets.archfiend?.colossus) {
+    allAssets.archfiend.colossus.naturalWidth = 4096;
+    allAssets.archfiend.colossus.naturalHeight = 1024;
+  }
+  if (allAssets.advFxSheet) {
+    allAssets.advFxSheet.naturalWidth = 1024;
+    allAssets.advFxSheet.naturalHeight = 640;
+  }
+  if (allAssets.heroIconsSheet) {
+    allAssets.heroIconsSheet.naturalWidth = 384;
+    allAssets.heroIconsSheet.naturalHeight = 704;
+  }
+
   const advTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
   const advCtx = createMockCtx(advTrack);
-  const monsterDrawCounts = { ghoul: 0, cultist: 0, brute: 0, archfiend: 0 };
+  const monsterDrawCounts = {
+    templar: 0,
+    astrologer: 0,
+    treant: 0,
+    dryad: 0,
+    ghoul: 0,
+    cultist: 0,
+    brute: 0,
+    fiend: 0,
+    archfiend: 0
+  };
+  let portalFxBlits = 0;
   let activeMonsterDrawKind = null;
   const baseDrawImage = advCtx.drawImage.bind(advCtx);
   advCtx.drawImage = (img, sx, sy, sw, sh, dx, dy, dw, dh) => {
     baseDrawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
+    if (img === allAssets.advFxSheet && sw === 128 && sh === 128) {
+      portalFxBlits++;
+    }
     if (activeMonsterDrawKind) {
       const expCell = activeMonsterDrawKind === 'archfiend' ? 512 : 208;
       if (
@@ -2333,12 +2464,6 @@ for (const [name, Cls] of CLASSES) {
   };
   for (const id of requiredAdvIds) {
     mockDomMap.set(id, makeMockEl(id));
-  }
-  // Ensure Colossal Boss assets have naturalWidth = 4096 so Monster.js colossusReady check succeeds in headless Node!
-  const allAssets = PixelForge.initAssets();
-  if (allAssets.archfiend?.colossus) {
-    allAssets.archfiend.colossus.naturalWidth = 4096;
-    allAssets.archfiend.colossus.naturalHeight = 1024;
   }
 
   const origGetElementById = globalThis.document.getElementById;
@@ -2429,11 +2554,18 @@ for (const [name, Cls] of CLASSES) {
       );
     }
 
-    // Verify Wave 1 ghouls have valid heroId === 'ghoul' AND spawn staggered across distinct 3D depth lanes!
+    // Verify Wave 1 Eclipse Templars (`templar`) emerge from Dimensional Summoning Portals staggered across distinct 3D depth lanes!
     const w1Monsters = adv.getLivingMonsters();
+    if (!Array.isArray(adv.portals) || adv.portals.length < 2 || adv.portals[0].zone !== 0) {
+      throw new Error(
+        `Expected Wave 1 Eclipse Templars to open Zone I Astral Portals (zone=0), got portals=${JSON.stringify(adv.portals)}`
+      );
+    }
     for (const m of w1Monsters) {
-      if (m.heroId !== 'ghoul') {
-        throw new Error(`Expected Wave 1 normal monster heroId === 'ghoul', got ${m.heroId}`);
+      if (m.heroId !== 'templar' || !(m.portalSpawnTimer > 0)) {
+        throw new Error(
+          `Expected Wave 1 Zone I monster heroId === 'templar' with active portalSpawnTimer > 0, got heroId=${m.heroId}, timer=${m.portalSpawnTimer}`
+        );
       }
     }
     if (Math.abs(w1Monsters[0].groundY - w1Monsters[1].groundY) < 60) {
@@ -2638,6 +2770,7 @@ for (const [name, Cls] of CLASSES) {
     // Verify Solar Spirit Skill Gating, Recovery Cancel into Skill, XP Level-Up & Interactive 3-Branch Skill Tree!
     for (const m of adv.getLivingMonsters()) {
       m.hp = 3500;
+      m.stunTimer = 10.0;
     }
     const waitIdle = (maxFrames = 90) => {
       for (let f = 0; f < maxFrames && sol.state !== 'IDLE'; f++) tickAdv(1);
@@ -2788,23 +2921,31 @@ for (const [name, Cls] of CLASSES) {
       m.takeDamage(19999, sol, true, 120, 0);
     }
     if (adv.getLivingMonsters().length !== 0) {
-      throw new Error('Expected Wave 1 ghouls to take mortal damage and die even when testModeUnlimitedHp === true!');
+      throw new Error('Expected Wave 1 Eclipse Templars to take mortal damage and die even when testModeUnlimitedHp === true!');
     }
     tickAdv(6);
     if (adv.lockActive || !adv.goPromptActive) {
       throw new Error(`Expected Wave 1 / 8 clear to unlock mid-zone corridor with GO! prompt: lock=${adv.lockActive}, go=${adv.goPromptActive}`);
     }
 
-    // Walk Sol rightward past Zone 1 midTriggerX (`1340`) -> Wave 2 / 8 (Zone 1 Subwave 2 ambush!)
+    // Walk Sol rightward past Zone 1 midTriggerX (`1340`) -> Wave 2 / 8 (Zone 1 Subwave 2: Templars + Eclipse Astrologer!)
     adv.setJoystickVector(1, 0, true);
     for (let step = 0; step < 260 && adv.subWave < 2; step++) {
       tickAdv(1);
     }
     adv.setJoystickVector(0, 0, false);
-    if (adv.subWave !== 2 || !adv.lockActive || adv.getLivingMonsters().length < 2) {
-      throw new Error(`Expected Zone 1 Subwave 2 ambush at midTriggerX, got subWave=${adv.subWave}, lock=${adv.lockActive}, living=${adv.getLivingMonsters().length}`);
+    if (
+      adv.subWave !== 2 ||
+      !adv.lockActive ||
+      adv.getLivingMonsters().length < 2 ||
+      !adv.getLivingMonsters().some((m) => m.kind === 'astrologer') ||
+      adv.portals.length < 2
+    ) {
+      throw new Error(
+        `Expected Zone 1 Subwave 2 ambush with Eclipse Astrologer & Portals, got subWave=${adv.subWave}, lock=${adv.lockActive}, living=${adv.getLivingMonsters().map((m) => m.kind).join(',')}`
+      );
     }
-    // Let Void Cultist & Ghouls execute attacks/sigils for 45 frames to exercise their AI, sprites & floor telegraphs
+    // Let Eclipse Astrologer & Templars execute attacks/sigils for 45 frames to exercise their AI, sprites & floor telegraphs
     tickAdv(45);
     for (const m of adv.getLivingMonsters()) {
       m.takeDamage(19999, sol, true, 120, 0);
@@ -2816,17 +2957,24 @@ for (const [name, Cls] of CLASSES) {
       );
     }
 
-    // Walk Sol via analog joystick across pickups and into Zone 2 (`triggerX = 2540`) -> Wave 3 / 8!
+    // Walk Sol via analog joystick across pickups and into Zone 2 (`triggerX = 2540`) -> Wave 3 / 8 (Starwood Treant + Briar Dryads)!
     adv.setJoystickVector(1, 0, true);
     for (let step = 0; step < 320 && adv.zoneIndex < 1; step++) {
       tickAdv(1);
     }
     adv.setJoystickVector(0, 0, false);
-    if (adv.zoneIndex !== 1 || !adv.lockActive || !adv.getLivingMonsters().some((m) => m.kind === 'brute')) {
-      throw new Error(`Expected Zone 2 Cursed Starwood encounter with Obsidian Juggernaut, got zone=${adv.zoneIndex}, lock=${adv.lockActive}`);
+    if (
+      adv.zoneIndex !== 1 ||
+      !adv.lockActive ||
+      !adv.getLivingMonsters().some((m) => m.kind === 'treant') ||
+      !adv.getLivingMonsters().some((m) => m.kind === 'dryad')
+    ) {
+      throw new Error(
+        `Expected Zone 2 Cursed Starwood encounter with Eldertree Treant & Briar Dryads, got zone=${adv.zoneIndex}, living=${adv.getLivingMonsters().map((m) => m.kind).join(',')}`
+      );
     }
 
-    // Let Obsidian Juggernaut + Cultists fight for 45 frames, then charge Astral Relic Seals (100%) & unleash `TRUE_ULTIMATE`!
+    // Let Eldertree Treant + Briar Dryads fight for 45 frames, then charge Astral Relic Seals (100%) & unleash `TRUE_ULTIMATE`!
     tickAdv(45);
     sol.setState('IDLE');
     adv.progression.gainAstralRelic(100, sol);
@@ -2859,14 +3007,21 @@ for (const [name, Cls] of CLASSES) {
     }
     tickAdv(4);
 
-    // March into Zone 3 (`triggerX = 4940`, Wave 5 / 8) -> Elite Brute + Cultist + Ghouls!
+    // March into Zone 3 (`triggerX = 4940`, Wave 5 / 8) -> Necropolis Bone-Stalker Ghouls + Lich-Priests (`cultist`)!
     adv.setJoystickVector(1, 0, true);
     for (let step = 0; step < 340 && adv.zoneIndex < 2; step++) {
       tickAdv(1);
     }
     adv.setJoystickVector(0, 0, false);
-    if (adv.zoneIndex !== 2 || !adv.getLivingMonsters().some((m) => m.isElite)) {
-      throw new Error(`Expected Zone 3 Abyssal Bone-Gate Elite encounter, got zone=${adv.zoneIndex}`);
+    if (
+      adv.zoneIndex !== 2 ||
+      !adv.getLivingMonsters().some((m) => m.isElite) ||
+      !adv.getLivingMonsters().some((m) => m.kind === 'ghoul') ||
+      !adv.getLivingMonsters().some((m) => m.kind === 'cultist')
+    ) {
+      throw new Error(
+        `Expected Zone 3 Abyssal Bone-Gate Elite Undead encounter (ghoul + cultist), got zone=${adv.zoneIndex}, living=${adv.getLivingMonsters().map((m) => m.kind).join(',')}`
+      );
     }
     tickAdv(35);
     for (const m of adv.getLivingMonsters()) {
@@ -2885,15 +3040,24 @@ for (const [name, Cls] of CLASSES) {
     }
     tickAdv(4);
 
-    // March into Zone 4 Throne Gate Vanguard (`triggerX = 7340`, Wave 7 / 8) & clear!
+    // March into Zone 4 Throne Gate Vanguard (`triggerX = 7340`, Wave 7 / 8: Obsidian Brute + Black Pit Hellfiends) & clear!
     adv.setJoystickVector(1, 0, true);
     for (let step = 0; step < 340 && adv.zoneIndex < 3; step++) {
       tickAdv(1);
     }
     adv.setJoystickVector(0, 0, false);
-    if (adv.zoneIndex !== 3 || adv.subWave !== 1 || !adv.lockActive) {
-      throw new Error(`Expected Zone 4 Wave 7 / 8 Throne Gate Vanguard, got zone=${adv.zoneIndex}, subWave=${adv.subWave}`);
+    if (
+      adv.zoneIndex !== 3 ||
+      adv.subWave !== 1 ||
+      !adv.lockActive ||
+      !adv.getLivingMonsters().some((m) => m.kind === 'brute') ||
+      !adv.getLivingMonsters().some((m) => m.kind === 'fiend')
+    ) {
+      throw new Error(
+        `Expected Zone 4 Wave 7 / 8 Throne Gate Vanguard (brute + fiend), got zone=${adv.zoneIndex}, subWave=${adv.subWave}, living=${adv.getLivingMonsters().map((m) => m.kind).join(',')}`
+      );
     }
+    tickAdv(30);
     for (const m of adv.getLivingMonsters()) {
       m.takeDamage(29999, sol, true, 120, 0);
     }
@@ -2948,12 +3112,14 @@ for (const [name, Cls] of CLASSES) {
     // Exercise Colossal Boss Phase 1 Siege-Claw / Fist / Hellfire attacks
     tickAdv(50);
 
-    // Drop Colossal Boss below 65% HP -> Trigger Phase 2 (Cataclysmic Siege + Summoned Vanguards + Astral Relic Drop!)
+    // Drop Colossal Boss below 65% HP -> Trigger Phase 2 (Cataclysmic Siege + Summoned Hellfiends via Hell-Maw Portals!)
     boss.isInvulnerable = false;
     boss.hp = Math.floor(boss.maxHp * 0.60);
     tickAdv(55);
-    if (boss.bossPhase < 2) {
-      throw new Error(`Expected Colossal Malphas to transition to Phase 2 at <=65% HP, got phase=${boss.bossPhase}, hp=${boss.hp}/${boss.maxHp}`);
+    if (boss.bossPhase < 2 || !adv.getLivingMonsters().some((m) => m.kind === 'fiend')) {
+      throw new Error(
+        `Expected Colossal Malphas Phase 2 at <=65% HP with summoned 'fiend' vanguards, got phase=${boss.bossPhase}, living=${adv.getLivingMonsters().map((m) => m.kind).join(',')}`
+      );
     }
 
     // Drop Colossal Boss below 30% HP -> Trigger Phase 3 (5-Fissure Black Pit Apocalypse + Exposed Heart-Core Slump!)
@@ -2975,13 +3141,26 @@ for (const [name, Cls] of CLASSES) {
       );
     }
 
-    // Verify all 3 normal monster archetypes (208x208) AND Giant Left-Side Colossal Boss (512x512) logged real sprite blits!
-    for (const kind of ['ghoul', 'cultist', 'brute', 'archfiend']) {
+    // Verify all 8 Realm monster archetypes (208x208), Right-Side Colossal Boss (512x512), and Dimensional Portals (`advFxSheet`) logged real sprite blits!
+    for (const kind of [
+      'templar',
+      'astrologer',
+      'treant',
+      'dryad',
+      'ghoul',
+      'cultist',
+      'brute',
+      'fiend',
+      'archfiend'
+    ]) {
       if ((monsterDrawCounts[kind] || 0) < 20) {
         throw new Error(
           `Expected >=20 real sprite drawImage blits for '${kind}', got ${monsterDrawCounts[kind] || 0}`
         );
       }
+    }
+    if (portalFxBlits < 40) {
+      throw new Error(`Expected >=40 Dimensional Portal advFxSheet 128x128 blits across campaign, got ${portalFxBlits}`);
     }
 
     // Verify Optional Auto-Play AI Toggle & Clean Teardown (`stopCampaign` restores 1200px Arena AND restores 3700 VS maxHp!)
@@ -3664,14 +3843,19 @@ for (const [name, Cls] of CLASSES) {
     }
   }
 
-  // 20B. Verify 5-Plane Seamless 10-Bay Adventure Panoramas (`adv_*_pano.png`, `0` `ctx.rotate`, `0` `arena_*` PNGs)
+  // 20B. Verify 5-Plane Seamless 10-Bay Adventure Panoramas + Live Animated `adv_fx_sheet.png` Stage FX (`0` `ctx.rotate`, `0` `arena_*` PNGs)
   const expectedPanos = [
     ['adv_vista_pano.png', 1620, 272],
     ['adv_arch_pano.png', 3930, 272],
     ['adv_floor_pano.png', 4570, 96],
     ['adv_inferno_pano.png', 800, 360]
   ];
-  for (const [fname, expW, expH] of [...expectedPanos, ['adv_props_sheet.png', 1152, 640]]) {
+  for (const [fname, expW, expH] of [
+    ...expectedPanos,
+    ['adv_props_sheet.png', 1152, 640],
+    ['adv_fx_sheet.png', 1024, 640],
+    ['hero_icons_sheet.png', 384, 704]
+  ]) {
     const pbuf = fs.readFileSync(`/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${fname}`);
     const pw = pbuf.readUInt32BE(16);
     const ph = pbuf.readUInt32BE(20);
@@ -3684,15 +3868,26 @@ for (const [name, Cls] of CLASSES) {
   if (panoAssets.advArchPano) panoAssets.advArchPano.naturalWidth = 3930;
   if (panoAssets.advFloorPano) panoAssets.advFloorPano.naturalWidth = 4570;
   if (panoAssets.advInfernoPano) panoAssets.advInfernoPano.naturalWidth = 800;
+  if (panoAssets.advFxSheet) {
+    panoAssets.advFxSheet.naturalWidth = 1024;
+    panoAssets.advFxSheet.naturalHeight = 640;
+  }
 
   const mapTrack = { rotateCalls: 0 };
   let arenaPngDraws = 0;
+  let advFxStageBlits = 0;
   const seenPanoBlits = new Set();
   let fgRectCount = 0;
   const mapCtx = createMockCtx(mapTrack);
   mapCtx.drawImage = (img, ...rest) => {
     if (img && typeof img.src === 'string') {
       if (img.src.includes('arena_')) arenaPngDraws++;
+      if (img.src.includes('adv_fx_sheet.png')) {
+        if (rest[2] !== 128 || rest[3] !== 128 || rest.some((v) => !Number.isFinite(v))) {
+          throw new Error(`Invalid adv_fx_sheet stage drawImage args: ${JSON.stringify(rest)}`);
+        }
+        advFxStageBlits++;
+      }
       for (const [fname] of expectedPanos) {
         if (img.src.includes(fname)) {
           if (rest.some((v) => !Number.isFinite(v))) {
@@ -3737,11 +3932,12 @@ for (const [name, Cls] of CLASSES) {
     mapTrack.rotateCalls !== 0 ||
     arenaPngDraws !== 0 ||
     seenPanoBlits.size !== 4 ||
+    advFxStageBlits < 24 ||
     fgRectCount < 6 ||
     typeof AdventureMapRenderer.renderCalderaBossChasm !== 'undefined'
   ) {
     throw new Error(
-      `AdventureMapRenderer 5-plane panorama audit failed: rotate=${mapTrack.rotateCalls}, arenaPngs=${arenaPngDraws}, panos=${[...seenPanoBlits].join(',')}, fgRects=${fgRectCount}, chasmFn=${typeof AdventureMapRenderer.renderCalderaBossChasm}`
+      `AdventureMapRenderer 5-plane + animated FX audit failed: rotate=${mapTrack.rotateCalls}, arenaPngs=${arenaPngDraws}, panos=${[...seenPanoBlits].join(',')}, advFxBlits=${advFxStageBlits}, fgRects=${fgRectCount}, chasmFn=${typeof AdventureMapRenderer.renderCalderaBossChasm}`
     );
   }
   const mapSrc = fs.readFileSync(
@@ -3752,7 +3948,7 @@ for (const [name, Cls] of CLASSES) {
     throw new Error('AdventureMapRenderer.js must contain 0 arena_* references, 0 renderCalderaBossChasm, and 0 ctx.rotate() calls!');
   }
 
-  // 20C. Verify 36 HD-2D Sprite Destructibles & RPG Pickups (`advPropsSheet`: Intact -> Cracked -> Rubble + Shards + Pickups)
+  // 20C. Verify 20 Hero-Scaled Biome-Matched Architectural Monuments & Controlled 8-Item Drop Economy (`advPropsSheet`)
   const allAssets20 = PixelForge.initAssets();
   if (allAssets20.advPropsSheet) {
     allAssets20.advPropsSheet.naturalWidth = 1152;
@@ -3767,19 +3963,32 @@ for (const [name, Cls] of CLASSES) {
   destGame.adventure = destAdv;
   destAdv.startCampaign(destHero);
 
-  if (!destAdv.destructibles || destAdv.destructibles.props.length !== 36) {
+  if (!destAdv.destructibles || destAdv.destructibles.props.length !== 20) {
     throw new Error(
-      `Expected 36 curated HD-2D destructible props across 9600px stage, got ${destAdv.destructibles?.props?.length}`
+      `Expected 20 curated hero-scaled architectural monuments across 9600px stage (5 per Realm), got ${destAdv.destructibles?.props?.length}`
     );
+  }
+  for (const mp of destAdv.destructibles.props) {
+    const expZone = Math.floor(mp.x / 2400);
+    if (
+      (mp.groundY !== 458 && mp.groundY !== 660) ||
+      mp.zone !== expZone ||
+      !(mp.drawScale >= 1.5) ||
+      !(mp.height >= 148)
+    ) {
+      throw new Error(
+        `Invalid monument placement/scale (${mp.kind}): x=${mp.x}, gy=${mp.groundY}, zone=${mp.zone} (exp ${expZone}), scale=${mp.drawScale}, h=${mp.height}`
+      );
+    }
   }
   // Must NEVER pollute getLivingMonsters()!
   if (destAdv.getLivingMonsters().some((m) => m.isAdventureProp)) {
     throw new Error('Destructible props must NEVER appear in getLivingMonsters()!');
   }
 
-  // Test Intact -> Cracked -> Destroyed via melee + projectile, plus HD-2D drops & debris!
-  const p0 = destAdv.destructibles.props[0]; // sanctuary_pillar at x=340, groundY=464, maxHp=115
-  destHero.x = p0.x - 45;
+  // Test Intact -> Cracked -> Destroyed on `eclipse_brazier` (`dropType === null`): grants direct Spirit + debris with ZERO floor clutter!
+  const p0 = destAdv.destructibles.props[0]; // eclipse_brazier at x=420, groundY=458, dropType=null
+  destHero.x = p0.x - 52;
   destHero.groundY = p0.groundY;
   destHero.y = p0.groundY;
   destHero.facing = 1;
@@ -3789,21 +3998,26 @@ for (const [name, Cls] of CLASSES) {
   if (p0.hp >= p0.maxHp || p0.destroyed) {
     throw new Error(`Expected prop 0 to enter damaged/cracked state after 1 melee hit, hp=${p0.hp}/${p0.maxHp}`);
   }
-  // Finish shattering prop 0 via second hit -> verify debris & pickup spawn!
+  destAdv.progression.spirit = 20;
   const pickupsBefore = destAdv.pickups.length;
   destAdv.destructibles.damageProp(p0, 200, destHero, destGame, true);
-  if (!p0.destroyed || destAdv.destructibles.debris.length < 10 || destAdv.pickups.length <= pickupsBefore) {
+  if (
+    !p0.destroyed ||
+    destAdv.destructibles.debris.length < 10 ||
+    destAdv.progression.spirit < 30 ||
+    destAdv.pickups.length !== pickupsBefore
+  ) {
     throw new Error(
-      `Expected shattered prop 0 to spawn debris & pickup: destroyed=${p0.destroyed}, debris=${destAdv.destructibles.debris.length}, pickups=${destAdv.pickups.length}`
+      `Expected shattered brazier (dropType=null) to grant +10 direct Spirit & debris with 0 floor drops: destroyed=${p0.destroyed}, debris=${destAdv.destructibles.debris.length}, spirit=${destAdv.progression.spirit}, pickups=${destAdv.pickups.length}/${pickupsBefore}`
     );
   }
 
-  // Shatter an Ancient Artifact (`eclipse_astrolabe` at index 3) via projectile + spawn HP pickup -> verify all 3 RPG pickup types!
-  const artProp = destAdv.destructibles.props[3];
+  // Shatter an Ancient Artifact (`eclipse_astrolabe` at index 2) via projectile -> drops single Astral Relic shard!
+  const artProp = destAdv.destructibles.props[2];
   destHero.groundY = artProp.groundY;
   destGame.vfx.spawnProjectile({
     x: artProp.x - 8,
-    y: artProp.groundY - 36,
+    y: artProp.groundY - 48,
     vx: 300,
     vy: 0,
     color: '#fb923c',
@@ -3812,7 +4026,6 @@ for (const [name, Cls] of CLASSES) {
     radius: 16
   });
   destAdv.destructibles.update(1 / 30, destHero, destGame);
-  destAdv.spawnPickup('hp', 480, 560);
   if (!artProp.destroyed || !destAdv.pickups.some((pk) => pk.type === 'relic')) {
     throw new Error(
       `Expected Ancient Artifact shatter to drop Astral Relic shard: destroyed=${artProp.destroyed}`
@@ -3839,9 +4052,23 @@ for (const [name, Cls] of CLASSES) {
     }
     destAdv.renderWorldForeground(propCtx, destGame.renderer);
   }
-  if (propTrack.rotateCalls !== 0 || propCellBlits128 < 36 || shardBlits64 < 10) {
+  if (propTrack.rotateCalls !== 0 || propCellBlits128 < 20 || shardBlits64 < 10) {
     throw new Error(
       `HD-2D advPropsSheet audit failed: rotate=${propTrack.rotateCalls}, cell128=${propCellBlits128}, shard64=${shardBlits64}`
+    );
+  }
+
+  // Verify controlled campaign-wide drop economy: smashing ALL 20 monuments across 9600px yields strictly 8 single-item pickups (4 relic + 4 hp)!
+  destAdv.pickups.length = 0;
+  destAdv.destructibles.resetForCampaign();
+  for (const mp of destAdv.destructibles.props) {
+    destAdv.destructibles.damageProp(mp, 999, destHero, destGame, true);
+  }
+  const relicDrops = destAdv.pickups.filter((pk) => pk.type === 'relic').length;
+  const hpDrops = destAdv.pickups.filter((pk) => pk.type === 'hp').length;
+  if (destAdv.pickups.length !== 8 || relicDrops !== 4 || hpDrops !== 4) {
+    throw new Error(
+      `Expected smashing all 20 monuments to spawn strictly 8 pickups (4 relic + 4 hp), got total=${destAdv.pickups.length} (relic=${relicDrops}, hp=${hpDrops})`
     );
   }
   destAdv.stopCampaign();
@@ -3968,7 +4195,7 @@ for (const [name, Cls] of CLASSES) {
     );
   }
 
-  // 20E. Verify Adventure 2.5D Curved AI Steering, Corner-Escape Orbit & Zero Stuck Entities (All 11 Heroes + All 3 Monsters)
+  // 20E. Verify Adventure 2.5D Curved AI Steering, Corner-Escape Orbit & Zero Stuck Entities (All 11 Heroes + All 3 Realm Caster Archetypes)
   {
     const heroClasses20E = [
       Warrior,
@@ -4001,7 +4228,7 @@ for (const [name, Cls] of CLASSES) {
       aiAdv.lockMinX = 1220;
       aiAdv.lockMaxX = 2360;
       aiGame.fighters = [hero];
-      const dummy = aiAdv.spawnMonster('brute', 1305, { groundY: 635 });
+      const dummy = aiAdv.spawnMonster('treant', 1305, { groundY: 635, skipPortal: true });
       dummy.maxHp = 50000;
       dummy.hp = 50000;
       dummy.moveSpeed = 0; // Freeze dummy so ONLY hero's own 2.5D curved steering/orbit is measured!
@@ -4068,42 +4295,44 @@ for (const [name, Cls] of CLASSES) {
       aiAdv.stopCampaign();
     }
 
-    // Verify corner-pinned Void Cultist (`cultist`) orbits inward across 2.5D road instead of backing into lockMinX!
-    const mGame = createMockGame();
-    mGame.gameMode = 'adventure';
-    const anchorHero = new Warrior(1335, 561, -1);
-    anchorHero.game = mGame;
-    mGame.leftFighter = anchorHero;
-    const mAdv = new AdventureManager(mGame);
-    mGame.adventure = mAdv;
-    mAdv.startCampaign(anchorHero);
-    mAdv.zoneIndex = 1;
-    mAdv.lockActive = true;
-    mAdv.lockMinX = 1220;
-    mAdv.lockMaxX = 2360;
-    mGame.fighters = [anchorHero];
-    anchorHero.x = 1335;
-    anchorHero.groundY = 561;
-    anchorHero.y = 561;
-    const cornerCultist = mAdv.spawnMonster('cultist', 1242, { groundY: 561 });
-    cornerCultist.skillCooldown = 99;
-    cornerCultist.autoCooldown = 99;
-    cornerCultist.dashCooldown = 99;
+    // Verify corner-pinned Realm Casters (`astrologer`, `dryad`, `cultist`) orbit inward across 2.5D road instead of backing into lockMinX!
+    for (const casterKind of ['astrologer', 'dryad', 'cultist']) {
+      const mGame = createMockGame();
+      mGame.gameMode = 'adventure';
+      const anchorHero = new Warrior(1335, 561, -1);
+      anchorHero.game = mGame;
+      mGame.leftFighter = anchorHero;
+      const mAdv = new AdventureManager(mGame);
+      mGame.adventure = mAdv;
+      mAdv.startCampaign(anchorHero);
+      mAdv.zoneIndex = 1;
+      mAdv.lockActive = true;
+      mAdv.lockMinX = 1220;
+      mAdv.lockMaxX = 2360;
+      mGame.fighters = [anchorHero];
+      anchorHero.x = 1335;
+      anchorHero.groundY = 561;
+      anchorHero.y = 561;
+      const cornerCaster = mAdv.spawnMonster(casterKind, 1242, { groundY: 561, skipPortal: true });
+      cornerCaster.skillCooldown = 99;
+      cornerCaster.autoCooldown = 99;
+      cornerCaster.dashCooldown = 99;
 
-    let maxCultistGyShift = 0;
-    for (let f = 0; f < 75; f++) {
-      cornerCultist.update(1 / 30, anchorHero, mGame);
-      maxCultistGyShift = Math.max(maxCultistGyShift, Math.abs(cornerCultist.groundY - 561));
+      let maxCasterGyShift = 0;
+      for (let f = 0; f < 75; f++) {
+        cornerCaster.update(1 / 30, anchorHero, mGame);
+        maxCasterGyShift = Math.max(maxCasterGyShift, Math.abs(cornerCaster.groundY - 561));
+      }
+      if (cornerCaster.x <= 1350 || maxCasterGyShift < 25) {
+        throw new Error(
+          `Expected cornered '${casterKind}' at x=1242 to orbit inward past hero (x>1350) along curved 2.5D lane, got x=${cornerCaster.x.toFixed(1)}, maxGyShift=${maxCasterGyShift.toFixed(1)}`
+        );
+      }
+      mAdv.stopCampaign();
     }
-    if (cornerCultist.x <= 1350 || maxCultistGyShift < 25) {
-      throw new Error(
-        `Expected cornered Void Cultist at x=1242 to orbit inward past hero (x>1350) along curved 2.5D lane, got x=${cornerCultist.x.toFixed(1)}, maxGyShift=${maxCultistGyShift.toFixed(1)}`
-      );
-    }
-    mAdv.stopCampaign();
   }
 
   console.log(
-    `[PASS] Suite 20: 11-Hero Pixel-Bleed Purity, 9600px 10-Bay Unbroken Panoramas, 36 HD-2D Props & Pickups, Right-Side Colossal Boss (x=9335) & 11-Hero 2.5D Curved AI verified!`
+    `[PASS] Suite 20: 11-Hero Icons & Pixel Purity, 9600px Panoramas + Bowl-Locked Animated FX, 20 Hero-Scaled Monuments (8 Total Drops), Dimensional Portals, 8 Realm Monsters & Right-Side Colossal Boss verified!`
   );
 }

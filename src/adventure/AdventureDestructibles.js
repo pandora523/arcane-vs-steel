@@ -1,282 +1,219 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps93';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps94';
 
 /**
- * Interactive 2.5D Destructible Terrain, Building Props & Ancient Artifact Caches (`AdventureDestructibles`)
+ * Interactive 2.5D Architectural Monuments, Braziers & Ancient Artifact Shrines (`AdventureDestructibles`)
  *
  * Features:
- *  - 36 curated 2.5D destructible props across the expanded 9600px (`4 x 2400px`) campaign
- *    (`groundY: 460..658`), keeping central movement/dodge lanes wide open and NEVER blocking
- *    player `x` or `groundY` movement.
+ *  - 20 curated, hero-scaled (`drawScale: 1.50..1.66` -> `192..212px` cell, `148..185px` tall)
+ *    architectural monuments across the 9600px (`4 x 2400px`) campaign, strictly matched to each
+ *    Realm's architecture and anchored along colonnade piers (`groundY: 458`) and parapet
+ *    copings (`groundY: 660`) so the central combat road stays wide open.
+ *  - Controlled RPG economy: 12/20 architectural braziers/lanterns infuse direct Spirit & XP on
+ *    shatter (`dropType: null`, zero floor clutter), leaving only 2 single-item caches (`1` Relic
+ *    + `1` Solar Elixir) per 2400px Realm (`8` total across the campaign, zero double-drops).
  *  - Rendered from generated & pixel-pipeline-converted 16-bit HD-2D sprite atlas
  *    `assets/sprites/adv_props_sheet.png` (`1152x640`, `9 cols x 5 rows` of `128x128` cells,
- *    `1px` `#0d0f1c` Selout, zero canvas rotation, subtle additive glow `<= 0.16`):
- *      - Row 0 (`sy = 0`):   Intact Frame A (`bottom_y = 118` inside `128x128`)
- *      - Row 1 (`sy = 128`): Intact Gleam Frame B (animated crystal/brazier/rune shimmer)
+ *    `1px` `#0d0f1c` Selout, zero canvas rotation, subtle additive glow `<= 0.15`):
+ *      - Row 0 (`sy = 0`):   Intact Frame A (`bottom_y = 121` inside `128x128`)
+ *      - Row 1 (`sy = 128`): Intact Gleam Frame B (animated flame/crystal/rune shimmer)
  *      - Row 2 (`sy = 256`): Cracked / Damaged (`0 < hp <= maxHp * 0.55`)
- *      - Row 3 (`sy = 384`): Persistent Low Shattered Rubble Base (`hp <= 0`)
+ *      - Row 3 (`sy = 384`): Persistent Low Shattered Plinth Base (`hp <= 0`)
  *      - Row 4 (`sy = 512`): Cols 0..5 RPG Pickups, Cols 6..8 `64x64` Pixel Debris Shards!
  */
 
 const SELOUT = '#0d0f1c';
 const PROP_CELL = 128;
-const PROP_BASE_Y_IN_CELL = 118;
+const PROP_BASE_Y_IN_CELL = 121;
 
 const PROP_ARCHETYPES = {
-  sanctuary_pillar: {
+  eclipse_brazier: {
     sheetCol: 0,
     shardCol: 6,
-    drawScale: 0.92,
-    label: 'SANCTUARY PILLAR',
+    drawScale: 1.54,
+    hasGlow: true,
+    label: 'CATHEDRAL SANCTUM BRAZIER',
     maxHp: 115,
-    halfW: 26,
-    height: 86,
-    primaryColor: '#94a3b8',
+    halfW: 42,
+    height: 152,
+    primaryColor: '#38bdf8',
     accentColor: '#eab308',
-    debrisCols: ['#334155', '#64748b', '#cbd5e1', '#eab308'],
+    debrisCols: ['#334155', '#64748b', '#38bdf8', '#eab308'],
     hitSfx: 'clang',
     breakSfx: 'earthshatter',
-    breakCallout: 'PILLAR SHATTERED!',
-    calloutColor: '#e2e8f0'
+    breakCallout: 'BRAZIER SHATTERED! +SPIRIT',
+    calloutColor: '#7dd3fc'
   },
-  gilded_reliquary: {
+  eclipse_reliquary: {
     sheetCol: 1,
     shardCol: 6,
-    drawScale: 0.80,
-    label: 'GILDED RELIQUARY',
-    maxHp: 95,
-    halfW: 28,
-    height: 60,
+    drawScale: 1.50,
+    hasGlow: true,
+    label: 'ECLIPSE RELIQUARY STELE',
+    maxHp: 110,
+    halfW: 44,
+    height: 148,
     primaryColor: '#eab308',
     accentColor: '#fde047',
-    debrisCols: ['#991b1b', '#eab308', '#fef08a', '#475569'],
+    debrisCols: ['#334155', '#94a3b8', '#eab308', '#fef08a'],
     hitSfx: 'clang',
     breakSfx: 'parry_clang',
-    breakCallout: 'RELIQUARY SMASHED!',
+    breakCallout: 'RELIQUARY UNSEALED!',
     calloutColor: '#fde047'
   },
-  siege_barricade: {
+  eclipse_astrolabe: {
     sheetCol: 2,
     shardCol: 6,
-    drawScale: 0.86,
-    label: 'SIEGE BARRICADE',
-    maxHp: 85,
-    halfW: 34,
-    height: 56,
-    primaryColor: '#fb923c',
-    accentColor: '#cbd5e1',
-    debrisCols: ['#78350f', '#92400e', '#64748b', '#cbd5e1'],
-    hitSfx: 'heavy_cleave',
-    breakSfx: 'thunder_slam',
-    breakCallout: 'BARRICADE BREACHED!',
-    calloutColor: '#fb923c'
-  },
-  eclipse_astrolabe: {
-    sheetCol: 3,
-    shardCol: 6,
-    drawScale: 0.90,
-    label: 'ECLIPSE ASTROLABE',
+    drawScale: 1.62,
+    hasGlow: true,
+    label: 'ECLIPSE ASTRAL ORRERY',
     maxHp: 135,
-    halfW: 28,
-    height: 82,
+    halfW: 46,
+    height: 160,
     isArtifact: true,
     primaryColor: '#38bdf8',
     accentColor: '#fde047',
     debrisCols: ['#d97706', '#fde047', '#38bdf8', '#334155'],
     hitSfx: 'reflect',
     breakSfx: 'time_shatter',
-    breakCallout: '★ ANCIENT ARTIFACT UNSEALED! ★',
+    breakCallout: '★ ANCIENT ORRERY UNSEALED! ★',
     calloutColor: '#fde047'
   },
-  elven_amphora: {
-    sheetCol: 4,
+  starwood_lantern: {
+    sheetCol: 3,
     shardCol: 7,
-    drawScale: 0.78,
-    label: 'SYLVAN AMPHORA',
-    maxHp: 75,
-    halfW: 26,
-    height: 54,
+    drawScale: 1.54,
+    hasGlow: true,
+    label: 'STARWOOD SHRINE LANTERN',
+    maxHp: 105,
+    halfW: 42,
+    height: 152,
     primaryColor: '#34d399',
-    accentColor: '#a7f3d0',
-    debrisCols: ['#065f46', '#10b981', '#cbd5e1', '#67e8f9'],
+    accentColor: '#67e8f9',
+    debrisCols: ['#3f2a1d', '#065f46', '#34d399', '#67e8f9'],
     hitSfx: 'clang',
     breakSfx: 'ice_shatter',
-    breakCallout: 'SYLVAN CACHE OPENED!',
+    breakCallout: 'SHRINE LANTERN SUNDERED! +SPIRIT',
     calloutColor: '#34d399'
   },
   starwood_crystal: {
-    sheetCol: 5,
+    sheetCol: 4,
     shardCol: 7,
-    drawScale: 0.90,
-    label: 'STARWOOD RUNESTONE',
+    drawScale: 1.62,
+    hasGlow: true,
+    label: 'STARWOOD RUNESTONE MONOLITH',
     maxHp: 130,
-    halfW: 30,
-    height: 80,
+    halfW: 46,
+    height: 160,
     isArtifact: true,
     primaryColor: '#34d399',
     accentColor: '#67e8f9',
     debrisCols: ['#059669', '#34d399', '#38bdf8', '#ecfeff'],
     hitSfx: 'frost_cast',
     breakSfx: 'ice_shatter',
-    breakCallout: '★ ANCIENT ARTIFACT UNSEALED! ★',
+    breakCallout: '★ SYLVAN RUNESTONE UNSEALED! ★',
     calloutColor: '#67e8f9'
+  },
+  soul_brazier: {
+    sheetCol: 5,
+    shardCol: 7,
+    drawScale: 1.56,
+    hasGlow: true,
+    label: 'GARGOYLE SOUL-BRAZIER',
+    maxHp: 115,
+    halfW: 44,
+    height: 154,
+    primaryColor: '#c084fc',
+    accentColor: '#f43f5e',
+    debrisCols: ['#1e293b', '#6b21a8', '#c084fc', '#cbd5e1'],
+    hitSfx: 'chain_hook',
+    breakSfx: 'thunder_slam',
+    breakCallout: 'SOUL-BRAZIER BANISHED! +SPIRIT',
+    calloutColor: '#d8b4fe'
   },
   ossuary_obelisk: {
     sheetCol: 6,
     shardCol: 7,
-    drawScale: 0.92,
-    label: 'OSSUARY OBELISK',
-    maxHp: 120,
-    halfW: 26,
-    height: 86,
-    primaryColor: '#c084fc',
-    accentColor: '#f43f5e',
-    debrisCols: ['#2e1065', '#6b21a8', '#cbd5e1', '#f43f5e'],
-    hitSfx: 'clang',
-    breakSfx: 'thunder_slam',
-    breakCallout: 'OSSUARY SUNDERED!',
-    calloutColor: '#c084fc'
-  },
-  soul_brazier: {
-    sheetCol: 7,
-    shardCol: 7,
-    drawScale: 0.90,
-    label: 'ABYSSAL SOUL-BRAZIER',
-    maxHp: 115,
-    halfW: 26,
-    height: 78,
+    drawScale: 1.64,
+    hasGlow: true,
+    label: 'OSSUARY SKULL OBELISK',
+    maxHp: 135,
+    halfW: 46,
+    height: 162,
     isArtifact: true,
     primaryColor: '#c084fc',
     accentColor: '#f43f5e',
-    debrisCols: ['#1e293b', '#9333ea', '#f43f5e', '#cbd5e1'],
-    hitSfx: 'chain_hook',
+    debrisCols: ['#2e1065', '#9333ea', '#cbd5e1', '#f43f5e'],
+    hitSfx: 'clang',
     breakSfx: 'time_shatter',
-    breakCallout: '★ ANCIENT ARTIFACT UNSEALED! ★',
+    breakCallout: '★ NECROPOLIS RELIC UNSEALED! ★',
     calloutColor: '#e879f9'
+  },
+  blackpit_brazier: {
+    sheetCol: 7,
+    shardCol: 8,
+    drawScale: 1.56,
+    hasGlow: true,
+    label: 'BLACK PIT HELLFIRE BRAZIER',
+    maxHp: 120,
+    halfW: 44,
+    height: 154,
+    primaryColor: '#ef4444',
+    accentColor: '#fb923c',
+    debrisCols: ['#271215', '#7f1d1d', '#fb923c', '#fde047'],
+    hitSfx: 'heavy_cleave',
+    breakSfx: 'meteor_impact',
+    breakCallout: 'HELLFIRE BRAZIER SMASHED! +SPIRIT',
+    calloutColor: '#fb923c'
   },
   hellfire_pylon: {
     sheetCol: 8,
     shardCol: 8,
-    drawScale: 0.92,
-    label: 'HELLFIRE SUPPLY PYLON',
-    maxHp: 125,
-    halfW: 28,
-    height: 82,
+    drawScale: 1.66,
+    hasGlow: true,
+    label: 'ABYSSAL OBSIDIAN PYLON',
+    maxHp: 140,
+    halfW: 48,
+    height: 164,
+    isArtifact: true,
     primaryColor: '#ef4444',
-    accentColor: '#fb923c',
+    accentColor: '#fde047',
     debrisCols: ['#271215', '#b45309', '#ef4444', '#fde047'],
     hitSfx: 'clang',
     breakSfx: 'meteor_impact',
-    breakCallout: 'HELLFIRE PYLON SHATTERED!',
-    calloutColor: '#fb923c'
+    breakCallout: '★ ABYSSAL PYLON SHATTERED! ★',
+    calloutColor: '#fde047'
   }
 };
 
-// Curated 36-prop layout across the expanded 9600px campaign (`9` per 2400px Realm, central lane clear!)
+// Curated 20-monument architectural layout (`5` per 2400px Realm, aligned with colonnade piers `458` & parapets `660`, only `8` single-item drops total!)
 const CURATED_PROP_LAYOUT = [
-  // Zone I: Eclipse Cathedral Outskirts (`0..2400`) — 9 props
-  { kind: 'sanctuary_pillar', zone: 0, x: 320, groundY: 464, dropType: 'ember', ultAmt: 18 },
-  { kind: 'gilded_reliquary', zone: 0, x: 560, groundY: 652, dropType: 'ember', ultAmt: 20 },
-  { kind: 'siege_barricade', zone: 0, x: 820, groundY: 646, dropType: 'ember', ultAmt: 18 },
-  {
-    kind: 'eclipse_astrolabe',
-    zone: 0,
-    x: 1080,
-    groundY: 468,
-    dropType: 'relic',
-    relicAmt: 22,
-    bonusDrop: 'ember',
-    ultAmt: 18
-  },
-  { kind: 'gilded_reliquary', zone: 0, x: 1320, groundY: 656, dropType: 'hp' },
-  { kind: 'sanctuary_pillar', zone: 0, x: 1580, groundY: 462, dropType: 'ember', ultAmt: 18 },
-  { kind: 'siege_barricade', zone: 0, x: 1840, groundY: 648, dropType: 'ember', ultAmt: 20 },
-  {
-    kind: 'eclipse_astrolabe',
-    zone: 0,
-    x: 2060,
-    groundY: 466,
-    dropType: 'hp',
-    bonusDrop: 'ember',
-    ultAmt: 20
-  },
-  { kind: 'gilded_reliquary', zone: 0, x: 2280, groundY: 654, dropType: 'ember', ultAmt: 18 },
+  // Zone I: Eclipse Cathedral Outskirts (`0..2400`) — Gothic Stone Braziers, Reliquary Steles & Astral Orrery
+  { kind: 'eclipse_brazier', zone: 0, x: 420, groundY: 458, dropType: null },
+  { kind: 'eclipse_reliquary', zone: 0, x: 920, groundY: 660, dropType: null },
+  { kind: 'eclipse_astrolabe', zone: 0, x: 1380, groundY: 458, dropType: 'relic', relicAmt: 28 },
+  { kind: 'eclipse_brazier', zone: 0, x: 1840, groundY: 660, dropType: null },
+  { kind: 'eclipse_reliquary', zone: 0, x: 2240, groundY: 458, dropType: 'hp' },
 
-  // Zone II: Cursed Starwood Crossing (`2400..4800`) — 9 props
-  { kind: 'elven_amphora', zone: 1, x: 2580, groundY: 648, dropType: 'ember', ultAmt: 18 },
-  { kind: 'elven_amphora', zone: 1, x: 2840, groundY: 466, dropType: 'hp' },
-  {
-    kind: 'starwood_crystal',
-    zone: 1,
-    x: 3120,
-    groundY: 650,
-    dropType: 'relic',
-    relicAmt: 22,
-    bonusDrop: 'ember',
-    ultAmt: 18
-  },
-  { kind: 'elven_amphora', zone: 1, x: 3400, groundY: 462, dropType: 'ember', ultAmt: 18 },
-  { kind: 'siege_barricade', zone: 1, x: 3680, groundY: 652, dropType: 'hp' },
-  {
-    kind: 'starwood_crystal',
-    zone: 1,
-    x: 3960,
-    groundY: 468,
-    dropType: 'relic',
-    relicAmt: 22,
-    bonusDrop: 'ember',
-    ultAmt: 20
-  },
-  { kind: 'elven_amphora', zone: 1, x: 4220, groundY: 654, dropType: 'ember', ultAmt: 18 },
-  { kind: 'starwood_crystal', zone: 1, x: 4480, groundY: 464, dropType: 'hp' },
-  { kind: 'elven_amphora', zone: 1, x: 4690, groundY: 650, dropType: 'ember', ultAmt: 20 },
+  // Zone II: Cursed Starwood Crossing (`2400..4800`) — Root-Wrapped Shrine Lanterns & Starwood Runestone Monoliths
+  { kind: 'starwood_lantern', zone: 1, x: 2680, groundY: 458, dropType: null },
+  { kind: 'starwood_lantern', zone: 1, x: 3160, groundY: 660, dropType: null },
+  { kind: 'starwood_crystal', zone: 1, x: 3620, groundY: 458, dropType: 'relic', relicAmt: 28 },
+  { kind: 'starwood_lantern', zone: 1, x: 4120, groundY: 660, dropType: null },
+  { kind: 'starwood_crystal', zone: 1, x: 4580, groundY: 458, dropType: 'hp' },
 
-  // Zone III: Sunken Bone-Bridge Necropolis (`4800..7200`) — 9 props
-  { kind: 'siege_barricade', zone: 2, x: 4980, groundY: 464, dropType: 'ember', ultAmt: 18 },
-  { kind: 'ossuary_obelisk', zone: 2, x: 5240, groundY: 654, dropType: 'ember', ultAmt: 20 },
-  {
-    kind: 'soul_brazier',
-    zone: 2,
-    x: 5520,
-    groundY: 652,
-    dropType: 'relic',
-    relicAmt: 22,
-    bonusDrop: 'ember',
-    ultAmt: 18
-  },
-  { kind: 'ossuary_obelisk', zone: 2, x: 5790, groundY: 462, dropType: 'hp' },
-  { kind: 'siege_barricade', zone: 2, x: 6060, groundY: 650, dropType: 'ember', ultAmt: 18 },
-  {
-    kind: 'soul_brazier',
-    zone: 2,
-    x: 6340,
-    groundY: 468,
-    dropType: 'relic',
-    relicAmt: 24,
-    bonusDrop: 'hp'
-  },
-  { kind: 'ossuary_obelisk', zone: 2, x: 6600, groundY: 656, dropType: 'ember', ultAmt: 20 },
-  { kind: 'soul_brazier', zone: 2, x: 6860, groundY: 464, dropType: 'ember', ultAmt: 22 },
-  { kind: 'ossuary_obelisk', zone: 2, x: 7090, groundY: 652, dropType: 'hp' },
+  // Zone III: Sunken Bone-Bridge Necropolis (`4800..7200`) — Gargoyle Soul-Braziers & Skull-Crowned Ossuary Obelisks
+  { kind: 'soul_brazier', zone: 2, x: 5080, groundY: 458, dropType: null },
+  { kind: 'soul_brazier', zone: 2, x: 5560, groundY: 660, dropType: null },
+  { kind: 'ossuary_obelisk', zone: 2, x: 6020, groundY: 458, dropType: 'relic', relicAmt: 30 },
+  { kind: 'soul_brazier', zone: 2, x: 6520, groundY: 660, dropType: null },
+  { kind: 'ossuary_obelisk', zone: 2, x: 6980, groundY: 458, dropType: 'hp' },
 
-  // Zone IV: Throne of the Black Pit (`7200..9600`, Boss at `9335` on Right) — 9 props (`<= 9060`)
-  { kind: 'hellfire_pylon', zone: 3, x: 7380, groundY: 464, dropType: 'ember', ultAmt: 22 },
-  { kind: 'siege_barricade', zone: 3, x: 7620, groundY: 652, dropType: 'hp' },
-  {
-    kind: 'soul_brazier',
-    zone: 3,
-    x: 7860,
-    groundY: 468,
-    dropType: 'relic',
-    relicAmt: 24,
-    bonusDrop: 'ember',
-    ultAmt: 20
-  },
-  { kind: 'hellfire_pylon', zone: 3, x: 8100, groundY: 656, dropType: 'ember', ultAmt: 24 },
-  { kind: 'gilded_reliquary', zone: 3, x: 8300, groundY: 464, dropType: 'hp' },
-  { kind: 'hellfire_pylon', zone: 3, x: 8490, groundY: 654, dropType: 'hp' },
-  { kind: 'hellfire_pylon', zone: 3, x: 8690, groundY: 464, dropType: 'ember', ultAmt: 28 },
-  { kind: 'hellfire_pylon', zone: 3, x: 8890, groundY: 656, dropType: 'hp' },
-  { kind: 'hellfire_pylon', zone: 3, x: 9055, groundY: 466, dropType: 'ember', ultAmt: 28 }
+  // Zone IV: Throne of the Black Pit (`7200..9600`, Boss at `9335`) — Spiked Hellfire Braziers & Chained Obsidian Pylons
+  { kind: 'blackpit_brazier', zone: 3, x: 7460, groundY: 458, dropType: null },
+  { kind: 'blackpit_brazier', zone: 3, x: 7880, groundY: 660, dropType: null },
+  { kind: 'hellfire_pylon', zone: 3, x: 8280, groundY: 458, dropType: 'relic', relicAmt: 32 },
+  { kind: 'blackpit_brazier', zone: 3, x: 8660, groundY: 660, dropType: null },
+  { kind: 'hellfire_pylon', zone: 3, x: 9010, groundY: 458, dropType: 'hp' }
 ];
 
 function pxFill(ctx, x, y, w, h, col) {
@@ -361,7 +298,8 @@ export class AdventureDestructibles {
         kind: spec.kind,
         sheetCol: arch.sheetCol,
         shardCol: arch.shardCol,
-        drawScale: arch.drawScale || 0.88,
+        drawScale: arch.drawScale || 1.54,
+        hasGlow: Boolean(arch.hasGlow || arch.isArtifact),
         name: arch.label,
         zone: spec.zone,
         x: spec.x,
@@ -374,10 +312,10 @@ export class AdventureDestructibles {
         maxHp: arch.maxHp,
         hp: arch.maxHp,
         isArtifact: Boolean(arch.isArtifact || spec.isArtifact),
-        dropType: spec.dropType || 'ember',
-        bonusDrop: spec.bonusDrop || null,
+        dropType: spec.dropType ?? null,
+        bonusDrop: spec.bonusDrop ?? null,
         ultAmt: spec.ultAmt || 20,
-        relicAmt: spec.relicAmt || 22,
+        relicAmt: spec.relicAmt || 28,
         primaryColor: arch.primaryColor,
         accentColor: arch.accentColor,
         debrisCols: arch.debrisCols,
@@ -427,7 +365,7 @@ export class AdventureDestructibles {
     return out;
   }
 
-  getIntactTargetInFront(player, maxDist = 440) {
+  getIntactTargetInFront(player, maxDist = 460) {
     if (!player) return null;
     const facing = player.facing || 1;
     const pGy = Number.isFinite(player.groundY) ? player.groundY : player.y || 561;
@@ -440,7 +378,7 @@ export class AdventureDestructibles {
       const dx = (p.x - player.x) * facing;
       if (dx < 20 || dx > maxDist) continue;
       const dGy = Math.abs(p.groundY - pGy);
-      if (dGy > 95) continue;
+      if (dGy > 112) continue;
       const score = dx + dGy * 1.15 - (p.isArtifact ? 18 : 0);
       if (score < bestScore) {
         bestScore = score;
@@ -456,15 +394,15 @@ export class AdventureDestructibles {
     for (let i = 0; i < count; i++) {
       if (this.debris.length > 180) this.debris.shift();
       const spreadA = ((i / Math.max(1, count)) - 0.5) * 2.2 + (Math.random() - 0.5) * 0.45;
-      const speedX = (isShatter ? 95 : 55) + Math.random() * (isShatter ? 145 : 75);
-      const drawSize = isShatter ? 26 + (i % 3) * 4 : 20 + (i % 2) * 4;
+      const speedX = (isShatter ? 105 : 60) + Math.random() * (isShatter ? 155 : 80);
+      const drawSize = isShatter ? 30 + (i % 3) * 5 : 22 + (i % 2) * 4;
       const col = cols[i % cols.length];
       this.debris.push({
         x: prop.x + (Math.random() - 0.5) * prop.halfW * 1.3,
-        y: prop.groundY - 12 - Math.random() * Math.max(16, prop.height * 0.72),
-        groundY: prop.groundY + (Math.random() - 0.5) * 14,
+        y: prop.groundY - 16 - Math.random() * Math.max(22, prop.height * 0.72),
+        groundY: prop.groundY + (Math.random() - 0.5) * 16,
         vx: Math.sin(spreadA) * speedX,
-        vy: -(isShatter ? 185 : 115) - Math.random() * (isShatter ? 175 : 95),
+        vy: -(isShatter ? 195 : 120) - Math.random() * (isShatter ? 180 : 95),
         size: drawSize,
         shardCol,
         quad: i & 3,
@@ -472,7 +410,7 @@ export class AdventureDestructibles {
         hiColor: i % 3 === 0 ? prop.accentColor : '#f8fafc',
         bounces: 0,
         life: 0,
-        maxLife: (isShatter ? 0.95 : 0.55) + Math.random() * 0.35
+        maxLife: (isShatter ? 0.98 : 0.58) + Math.random() * 0.35
       });
     }
   }
@@ -513,7 +451,7 @@ export class AdventureDestructibles {
     vfx?.spawnShockwave?.(
       prop.x,
       prop.groundY - 16,
-      prop.isArtifact ? 118 : 84,
+      prop.isArtifact ? 128 : 96,
       prop.accentColor,
       0.34,
       true
@@ -536,8 +474,9 @@ export class AdventureDestructibles {
     if (this.adventure) {
       this.adventure.score = (this.adventure.score || 0) + (prop.isArtifact ? 220 : 95);
       this.adventure.progression?.gainXp?.(prop.isArtifact ? 24 : 10, hero);
+      this.adventure.progression?.gainSpirit?.(prop.isArtifact ? 14 : 10);
 
-      if (typeof this.adventure.spawnPickup === 'function') {
+      if (prop.dropType && typeof this.adventure.spawnPickup === 'function') {
         const hasBonus = Boolean(prop.bonusDrop);
         this.adventure.spawnPickup(
           prop.dropType,
@@ -545,13 +484,13 @@ export class AdventureDestructibles {
           prop.groundY,
           {
             ultAmt: prop.ultAmt || 20,
-            relicAmt: prop.relicAmt || 22
+            relicAmt: prop.relicAmt || 28
           }
         );
         if (hasBonus) {
           this.adventure.spawnPickup(prop.bonusDrop, prop.x + 24, prop.groundY, {
             ultAmt: prop.ultAmt || 20,
-            relicAmt: prop.relicAmt || 22
+            relicAmt: prop.relicAmt || 28
           });
         }
       }
@@ -559,11 +498,11 @@ export class AdventureDestructibles {
 
     vfx?.spawnDamageText?.(
       prop.x,
-      prop.groundY - prop.height - 32,
+      prop.groundY - prop.height - 28,
       0,
       true,
       prop.breakCallout ||
-        (prop.isArtifact ? '★ ANCIENT ARTIFACT UNSEALED! ★' : 'RELIQUARY SMASHED!'),
+        (prop.isArtifact ? '★ ANCIENT ARTIFACT UNSEALED! ★' : 'MONUMENT SHATTERED!'),
       prop.calloutColor || (prop.isArtifact ? '#fde047' : '#fb923c')
     );
 
@@ -636,25 +575,25 @@ export class AdventureDestructibles {
         const atkRange = player.attackRange || 180;
 
         if (st === 'AUTO_ATTACK' && stTimer >= 0.10) {
-          const maxFwd = Math.min(260, atkRange + 45);
+          const maxFwd = Math.min(276, atkRange + 60);
           const dmg = Math.max(38, Math.round(48 * atkMult));
           for (let i = 0; i < this.props.length; i++) {
             const prop = this.props[i];
             if (prop.destroyed || prop._lastHitCastId === this._playerCastId) continue;
             const dx = (prop.x - player.x) * facing;
-            if (dx >= -42 && dx <= maxFwd && Math.abs(prop.groundY - playerGy) <= 68) {
+            if (dx >= -52 && dx <= maxFwd && Math.abs(prop.groundY - playerGy) <= 78) {
               prop._lastHitCastId = this._playerCastId;
               this.damageProp(prop, dmg, player, game, false);
             }
           }
         } else if (st === 'SKILL' && stTimer >= 0.14) {
-          const maxFwd = Math.min(360, atkRange + 145);
+          const maxFwd = Math.min(375, atkRange + 155);
           const dmg = Math.max(65, Math.round(82 * skillMult));
           for (let i = 0; i < this.props.length; i++) {
             const prop = this.props[i];
             if (prop.destroyed || prop._lastHitCastId === this._playerCastId) continue;
             const dx = (prop.x - player.x) * facing;
-            if (dx >= -85 && dx <= maxFwd && Math.abs(prop.groundY - playerGy) <= 110) {
+            if (dx >= -92 && dx <= maxFwd && Math.abs(prop.groundY - playerGy) <= 118) {
               prop._lastHitCastId = this._playerCastId;
               this.damageProp(prop, dmg, player, game, false);
             }
@@ -664,11 +603,11 @@ export class AdventureDestructibles {
             const prop = this.props[i];
             if (prop.destroyed || prop._lastHitCastId === this._playerCastId) continue;
             if (
-              Math.abs(prop.x - player.x) <= 360 &&
-              Math.abs(prop.groundY - playerGy) <= 185
+              Math.abs(prop.x - player.x) <= 380 &&
+              Math.abs(prop.groundY - playerGy) <= 215
             ) {
               prop._lastHitCastId = this._playerCastId;
-              this.damageProp(prop, 140, player, game, true);
+              this.damageProp(prop, 145, player, game, true);
             }
           }
         } else if (st === 'TRUE_ULTIMATE' && stTimer >= 0.65) {
@@ -701,7 +640,7 @@ export class AdventureDestructibles {
           const prop = this.props[j];
           if (prop.destroyed) continue;
           if (p._hitProps && p._hitProps.has(prop)) continue;
-          if (!p.isMeteor && Math.abs(ownerGy - prop.groundY) > 74) continue;
+          if (!p.isMeteor && Math.abs(ownerGy - prop.groundY) > 84) continue;
 
           if (
             Math.abs(p.x - prop.x) <= pr + prop.halfW + 14 &&
@@ -730,14 +669,14 @@ export class AdventureDestructibles {
       for (let i = 0; i < vfx.pillars.length; i++) {
         const pil = vfx.pillars[i];
         if (!pil || !pil.erupted || pil.owner?.team !== 1) continue;
-        const reachX = 92 * (pil.scaleWidth || 1);
+        const reachX = 96 * (pil.scaleWidth || 1);
         const pilGy = pil.groundY || 561;
         for (let j = 0; j < this.props.length; j++) {
           const prop = this.props[j];
           if (prop.destroyed || (pil._hitProps && pil._hitProps.has(prop))) continue;
           if (
             Math.abs(pil.x - prop.x) <= reachX &&
-            Math.abs(pilGy - prop.groundY) <= 84
+            Math.abs(pilGy - prop.groundY) <= 94
           ) {
             if (!pil._hitProps) pil._hitProps = new Set();
             pil._hitProps.add(prop);
@@ -859,12 +798,12 @@ export class AdventureDestructibles {
         ctx.fillStyle = 'rgba(3, 5, 12, 0.26)';
         ctx.fillRect(cx - p.halfW + 2, gy - 8, (p.halfW - 2) * 2, 14);
 
-        if (p.isArtifact || p.kind === 'hellfire_pylon') {
+        if (p.hasGlow || p.isArtifact) {
           const glowTex = renderer?.getGlowForColor
             ? renderer.getGlowForColor(p.primaryColor)
             : renderer?.glowGold;
           const pulse = 0.78 + 0.22 * Math.sin(t * 4.5 + p.index);
-          drawSubtlePropGlow(ctx, glowTex, cx, gy, p.halfW + 22, 16, 0.13 * pulse);
+          drawSubtlePropGlow(ctx, glowTex, cx, gy, p.halfW + 24, 18, 0.13 * pulse);
         }
         continue;
       }
@@ -913,7 +852,7 @@ export class AdventureDestructibles {
       const d = this.debris[i];
       const rem = 1 - d.life / d.maxLife;
       const alpha = rem < 0.25 ? rem / 0.25 : 1;
-      const sz = Math.round(d.size || 22);
+      const sz = Math.round(d.size || 24);
       const dx = Math.round(d.x - sz * 0.5);
       const dy = Math.round(d.y - sz * 0.5);
 
@@ -943,8 +882,8 @@ export class AdventureDestructibles {
 
     const zoom = Math.max(0.35, renderer?.zoom || 1);
     const camX = Number.isFinite(renderer?.camX) ? renderer.camX : prop.x;
-    const halfView = ((renderer?.width || 1280) * 0.5) / zoom + 220;
-    if (prop.x + prop.halfW + 64 < camX - halfView || prop.x - prop.halfW - 64 > camX + halfView) {
+    const halfView = ((renderer?.width || 1280) * 0.5) / zoom + 240;
+    if (prop.x + prop.halfW + 84 < camX - halfView || prop.x - prop.halfW - 84 > camX + halfView) {
       return;
     }
 
@@ -998,20 +937,20 @@ export class AdventureDestructibles {
       );
     }
 
-    // Subtle atmospheric core halo on glowing artifacts & hellfire pylons (`alpha <= 0.15`)
-    if (!isRefl && (prop.isArtifact || prop.kind === 'hellfire_pylon')) {
+    // Subtle atmospheric core halo on lit braziers, lanterns & artifact monuments (`alpha <= 0.14`)
+    if (!isRefl && (prop.hasGlow || prop.isArtifact)) {
       const glowTex = renderer?.getGlowForColor
         ? renderer.getGlowForColor(prop.primaryColor)
         : renderer?.glowGold;
-      drawSubtlePropGlow(ctx, glowTex, cx, by - prop.height * 0.56, 44, 44, 0.14 * flick);
+      drawSubtlePropGlow(ctx, glowTex, cx, by - prop.height * 0.62, 56, 56, 0.14 * flick);
     }
 
     // Crisp pixel impact-glint cross on strike
     if (!isRefl && prop.hitFlash > 0) {
       const fcy = Math.round(by - prop.height * 0.52);
       ctx.globalAlpha = Math.min(0.85, prop.hitFlash / 0.16);
-      pxFill(ctx, cx - 14, fcy - 2, 28, 4, '#fef08a');
-      pxFill(ctx, cx - 2, fcy - 14, 4, 28, '#fef08a');
+      pxFill(ctx, cx - 16, fcy - 2, 32, 4, '#fef08a');
+      pxFill(ctx, cx - 2, fcy - 16, 4, 32, '#fef08a');
       pxFill(ctx, cx - 6, fcy - 6, 12, 12, '#ffffff');
       ctx.globalAlpha = 1;
     }
@@ -1023,7 +962,7 @@ export class AdventureDestructibles {
         seloutRect(ctx, cx - 5, ay - 5, 10, 10, prop.accentColor, '#ffffff');
       }
       if (prop.hp < prop.maxHp) {
-        const bw = 38;
+        const bw = 48;
         const bx = cx - (bw >> 1);
         const barY = by - prop.height - (prop.isArtifact ? 26 : 12);
         const ratio = Math.max(0, Math.min(1, prop.hp / prop.maxHp));
