@@ -361,18 +361,28 @@ def quantize_and_cluster_104(
     dn_a = np.pad(alpha[1:, :], ((0, 1), (0, 0)), constant_values=False)
     lf_a = np.pad(alpha[:, :-1], ((0, 0), (1, 0)), constant_values=False)
     rt_a = np.pad(alpha[:, 1:], ((0, 0), (0, 1)), constant_values=False)
-    edge = alpha & (~(up_a & dn_a & lf_a & rt_a))
+    interior_a = alpha & up_a & dn_a & lf_a & rt_a
+    edge = alpha & (~interior_a)
+
+    adj_interior = (
+        np.pad(interior_a[:-1, :], ((1, 0), (0, 0)), constant_values=False)
+        | np.pad(interior_a[1:, :], ((0, 1), (0, 0)), constant_values=False)
+        | np.pad(interior_a[:, :-1], ((0, 0), (1, 0)), constant_values=False)
+        | np.pad(interior_a[:, 1:], ((0, 0), (0, 1)), constant_values=False)
+    )
 
     is_hair = np.isin(idx_map, hair_indices) if len(hair_indices) > 0 else np.zeros_like(alpha)
     is_prot = np.isin(idx_map, protect_indices) if len(protect_indices) > 0 else np.zeros_like(alpha)
-    body_edge = edge & (~is_hair) & (~is_prot)
+    body_edge = edge & (~is_hair) & ((~is_prot) | adj_interior)
     hair_edge = edge & is_hair
 
-    shadow_edge = body_edge & ((~dn_a) | (~rt_a))
-    lit_edge = body_edge & (~shadow_edge)
+    shadow_side = (~dn_a) | (~rt_a)
+    shadow_edge = body_edge & shadow_side
+    lit_edge = body_edge & (~shadow_side)
     idx_map[lit_edge] = lit_selout
     idx_map[shadow_edge] = shad_selout
-    idx_map[hair_edge & ((~dn_a) | (~rt_a))] = hair_selout
+    idx_map[hair_edge & shadow_side] = hair_selout
+    idx_map[hair_edge & (~shadow_side)] = lit_selout
 
     valid = idx_map >= 0
     out_rgb = palette[np.clip(idx_map, 0, len(palette) - 1)].astype(np.uint8)

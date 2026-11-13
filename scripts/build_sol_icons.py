@@ -150,6 +150,14 @@ def process_icon(src_path: str, cell_size: int = 64) -> Image.Image:
     # Step 3: 2-Pass Cardinal Orphan Despeckle
     grid = despeckle_grid(grid, cell_size, cell_size, passes=2)
 
+    # Step 4: Crisp 1px dark Selout bezel on cell perimeter to prevent adjacent-cell UV seam bleed
+    rim_dark = MASTER_PALETTE[0]
+    for i in range(cell_size):
+        grid[0][i] = rim_dark
+        grid[cell_size - 1][i] = rim_dark
+        grid[i][0] = rim_dark
+        grid[i][cell_size - 1] = rim_dark
+
     out = Image.new("RGBA", (cell_size, cell_size), (0, 0, 0, 255))
     opx = out.load()
     for y in range(cell_size):

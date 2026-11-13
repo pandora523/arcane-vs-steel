@@ -1,8 +1,9 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps90';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps90';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps90';
-import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps90';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps90';
+import { Fighter } from '../entities/Fighter.js?v=30fps91';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps91';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps91';
+import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps91';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps91';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps91';
 
 export const ADVENTURE_WORLD_WIDTH = 4800;
 export const ADVENTURE_DEPTH_MIN_Y = 442;
@@ -71,6 +72,7 @@ export class AdventureManager {
 
     this.progression = new AdventureProgression(this);
     this.skillSets = new AdventureSkillSets(this);
+    this.destructibles = new AdventureDestructibles(this);
     this.isSkillTreeOpen = false;
 
     this.depthMinY = ADVENTURE_DEPTH_MIN_Y;
@@ -90,6 +92,7 @@ export class AdventureManager {
     this.goBlinkTimer = 0;
 
     this.bossWarningTimer = 0;
+    this._bossWarnPulseTimer = 0;
     this.bossSpawnPending = false;
     this.bossEntity = null;
 
@@ -739,6 +742,8 @@ export class AdventureManager {
     }
 
     this.game.fighters = [playerFighter];
+    this._bossWarnPulseTimer = 0;
+    this.destructibles.resetForCampaign();
     this.closeSkillTree(false);
     this.renderSkillTreeModal();
     this.refreshActionIcons(playerFighter.heroId || 'mage');
@@ -756,10 +761,12 @@ export class AdventureManager {
     }
     this.progression.detachFromFighter(this.game.leftFighter);
     this.skillSets.detachFromFighter(this.game.leftFighter);
+    this.destructibles.resetForCampaign();
     this.active = false;
     this.lockActive = false;
     this.goPromptActive = false;
     this.bossWarningTimer = 0;
+    this._bossWarnPulseTimer = 0;
     this.bossSpawnPending = false;
     this.bossEntity = null;
     this.pickups = [];
@@ -828,6 +835,7 @@ export class AdventureManager {
       vy: -210,
       age: 0,
       ultAmt: extra.ultAmt || 20,
+      relicAmt: extra.relicAmt || 34,
       collected: false
     });
   }
@@ -891,10 +899,13 @@ export class AdventureManager {
     } else if (zoneIdx === 3) {
       this.totalWaveLabel = 'COLOSSAL BOSS';
       this.bossWarningTimer = 1.85;
+      this._bossWarnPulseTimer = 0;
       this.bossSpawnPending = true;
       const player = this.game.leftFighter;
       if (player) {
-        if (player.x < 4240) player.x = 4240;
+        const isRangedHero = (player.attackRange || 180) >= 320;
+        const bossEntryX = isRangedHero ? 4240 : 3985;
+        if (player.x < bossEntryX) player.x = bossEntryX;
         player.facing = -1;
       }
       if (this.game.audio) this.game.audio.play('eclipse_charge', 3920);
@@ -1255,7 +1266,8 @@ export class AdventureManager {
           );
           this.game.vfx?.spawnBurst(pk.x, pk.y - 24, 14, '#fb923c', 190, { upBias: 120, size: 5 });
         } else if (pk.type === 'relic' || pk.type === 'ult') {
-          this.progression.gainAstralRelic(34, player, '★ ASTRAL SEAL +34%! ★');
+          const rAmt = pk.relicAmt || 34;
+          this.progression.gainAstralRelic(rAmt, player, `★ ASTRAL SEAL +${rAmt}%! ★`);
           this.game.vfx?.spawnBurst(pk.x, pk.y - 24, 18, '#67e8f9', 210, { upBias: 135, size: 5 });
         }
       }
@@ -1778,9 +1790,21 @@ export class AdventureManager {
     this.progression.update(dt, player);
     this.skillSets.update(dt, player);
 
-    // 1. Boss Warning Countdown -> Spawn Colossal Behemoth Malphas on the LEFT (`x = 3865`)!
+    // 1. Boss Warning Countdown -> Boil the Left Caldera Chasm (`x = 3792`), then Spawn Colossal Behemoth Malphas (`x = 3865`)!
     if (this.bossWarningTimer > 0) {
       this.bossWarningTimer = Math.max(0, this.bossWarningTimer - dt);
+      this._bossWarnPulseTimer = (this._bossWarnPulseTimer || 0) - dt;
+      if (this._bossWarnPulseTimer <= 0) {
+        this._bossWarnPulseTimer = 0.28;
+        const gx = 3750 + Math.round(Math.random() * 145);
+        g.vfx?.spawnShockwave?.(gx, 628, 125, '#fb923c', 0.30, true);
+        g.vfx?.spawnBurst?.(gx, 622, 12, '#fef08a', 215, {
+          upBias: 220,
+          size: 5.5,
+          life: 0.44
+        });
+        g.renderer?.triggerShake?.(6, 0.14);
+      }
       if (this.bossWarningTimer <= 0 && this.bossSpawnPending) {
         this.bossSpawnPending = false;
         const isRangedHero = (player.attackRange || 180) >= 320;
@@ -1852,8 +1876,15 @@ export class AdventureManager {
       }
     }
 
+    // 6. Update Interactive 2.5D Destructible Terrain, Reliquaries & Ancient Artifacts
+    this.destructibles.update(dt, player, g);
+
     this.syncRightHUD();
     this.syncControlDeckUI();
+  }
+
+  getStandingProps() {
+    return this.active && this.destructibles ? this.destructibles.getStandingProps() : [];
   }
 
   renderWorldFloor(ctx, renderer) {
@@ -1861,6 +1892,9 @@ export class AdventureManager {
     const t = renderer.time || 0;
     const roadTop = 438;
     const roadBot = 684;
+
+    // -1. Render Destructible Prop Contact Shadows & Shattered Rubble Bases on Causeway Floor
+    this.destructibles?.renderRubbleAndShadows(ctx, renderer);
 
     // 0. Render Champion Adventure Skill Set 2.5D Floor Zones & Sanctuary Seals
     this.skillSets.renderFloor(ctx);
@@ -1947,9 +1981,10 @@ export class AdventureManager {
     this.skillSets.renderMid(ctx);
   }
 
-  renderWorldForeground(ctx) {
+  renderWorldForeground(ctx, renderer) {
     if (!this.active || !ctx) return;
     this.skillSets.renderForeground(ctx);
+    this.destructibles?.renderDebris(ctx, renderer);
   }
 
   renderScreenHUD(ctx, renderer) {

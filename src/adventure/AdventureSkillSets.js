@@ -213,8 +213,21 @@ export class AdventureSkillSets {
     }
     if (
       player &&
-      (player.state === 'SKILL' || player.state === 'ULTIMATE' || player.state === 'TRUE_ULTIMATE')
+      (player.state === 'AUTO_ATTACK' ||
+        player.state === 'SKILL' ||
+        player.state === 'ULTIMATE' ||
+        player.state === 'TRUE_ULTIMATE')
     ) {
+      const propTarget = this.adventure?.destructibles?.getIntactTargetInFront?.(
+        player,
+        Math.max(220, (player.attackRange || 180) + 75)
+      );
+      if (propTarget) {
+        return propTarget;
+      }
+      if (player.state === 'AUTO_ATTACK') {
+        return null;
+      }
       const focalX = this.clampX(player.x + (player.facing || 1) * 240, 44);
       const gy = Number.isFinite(player.groundY) ? player.groundY : player.y || 561;
       return {

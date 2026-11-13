@@ -25,7 +25,9 @@
       "scripts/build_valkyrie_30fps_sheet.py",
       "scripts/build_icemage_30fps_sheet.py",
       "scripts/build_android_30fps_sheet.py",
-      "scripts/build_all_victory_poses.py"
+      "scripts/build_all_victory_poses.py",
+      "scripts/fix_all_sheets_pixel_bleeding.py",
+      "scripts/build_colossal_boss.py"
     ],
     "vfx_sheet_builders": [
       "scripts/build_warrior_vfx_30fps.mjs",

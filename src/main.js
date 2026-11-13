@@ -1,21 +1,21 @@
-import { Renderer } from './engine/Renderer.js?v=30fps90';
-import { VFXManager } from './engine/VFXManager.js?v=30fps90';
-import { PixelForge } from './engine/PixelForge.js?v=30fps90';
-import { AudioManager } from './engine/AudioManager.js?v=30fps90';
-import { Fighter } from './entities/Fighter.js?v=30fps90';
-import { Warrior } from './entities/Warrior.js?v=30fps90';
-import { FireMage } from './entities/FireMage.js?v=30fps90';
-import { Archer } from './entities/Archer.js?v=30fps90';
-import { Priestess } from './entities/Priestess.js?v=30fps90';
-import { Reaper } from './entities/Reaper.js?v=30fps90';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps90';
-import { Titan } from './entities/Titan.js?v=30fps90';
-import { Ronin } from './entities/Ronin.js?v=30fps90';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps90';
-import { IceMage } from './entities/IceMage.js?v=30fps90';
-import { Android } from './entities/Android.js?v=30fps90';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps90';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps90';
+import { Renderer } from './engine/Renderer.js?v=30fps91';
+import { VFXManager } from './engine/VFXManager.js?v=30fps91';
+import { PixelForge } from './engine/PixelForge.js?v=30fps91';
+import { AudioManager } from './engine/AudioManager.js?v=30fps91';
+import { Fighter } from './entities/Fighter.js?v=30fps91';
+import { Warrior } from './entities/Warrior.js?v=30fps91';
+import { FireMage } from './entities/FireMage.js?v=30fps91';
+import { Archer } from './entities/Archer.js?v=30fps91';
+import { Priestess } from './entities/Priestess.js?v=30fps91';
+import { Reaper } from './entities/Reaper.js?v=30fps91';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps91';
+import { Titan } from './entities/Titan.js?v=30fps91';
+import { Ronin } from './entities/Ronin.js?v=30fps91';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps91';
+import { IceMage } from './entities/IceMage.js?v=30fps91';
+import { Android } from './entities/Android.js?v=30fps91';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps91';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps91';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -3784,8 +3784,9 @@ class Game {
     // AND the winning champion has showcased their Row 9 VICTORY flourish & pose for ~1.35s!
     if (this.isMatchOver && this.victoryRevealPending && !this.isSimPaused) {
       const fallen = this.deadMatchFighter || this.fighters.find((f) => f && f.isDead);
-      const fullDeathDur = PixelForge.DEATH_DURATION || 1.55;
-      const onFloor = !fallen || fallen.y >= this.renderer.groundY - 2;
+      const fullDeathDur = fallen?.isColossalBoss ? 2.4 : PixelForge.DEATH_DURATION || 1.55;
+      const onFloor =
+        !fallen || fallen.isColossalBoss || fallen.y >= this.renderer.groundY - 2;
       if (!fallen || ((fallen.deathTimer || 0) >= fullDeathDur && onFloor)) {
         this.postDeathHoldTimer = (this.postDeathHoldTimer || 0) + rawDt;
         if (this.postDeathHoldTimer >= 1.35) {

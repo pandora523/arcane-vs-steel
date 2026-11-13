@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps90';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps90';
+import { PixelForge } from './PixelForge.js?v=30fps91';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps91';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -446,7 +446,7 @@ export class Renderer {
           ? pool.filter((f) => f === player || f.isColossalBoss || Math.abs(f.x - player.x) <= 920)
           : pool;
       const colossalBoss = this.adventureMode
-        ? framePool.find((f) => f.isColossalBoss && !f.isDead)
+        ? framePool.find((f) => f.isColossalBoss && (!f.isDead || (f.deathTimer || 0) < 2.38))
         : null;
 
       let minX = framePool[0].x;
@@ -535,7 +535,10 @@ export class Renderer {
       const victoryFighters = pool.filter(
         (f) => !f.isBenched && !f.isDead && f.state === 'VICTORY'
       );
-      if (victoryFighters.length > 0 && (this.koZoomTimer || 0) <= 0.85) {
+      const holdColossalDeath = Boolean(
+        colossalBoss && colossalBoss.isDead && (colossalBoss.deathTimer || 0) < 2.38
+      );
+      if (victoryFighters.length > 0 && (this.koZoomTimer || 0) <= 0.85 && !holdColossalDeath) {
         const winMidX =
           victoryFighters.reduce((sum, f) => sum + f.x, 0) / victoryFighters.length;
         targetX = targetX * 0.20 + winMidX * 0.80;
@@ -602,20 +605,24 @@ export class Renderer {
     const sy =
       this.shakeTime > 0 ? Math.round(Math.cos(this.time * 38) * this.shakeIntensity) : 0;
 
-    const screenAnchorY =
+    const screenAnchorY = Math.round(
       this.height *
-      (this.isMobileLandscape
-        ? this.adventureMode
-          ? 0.63
-          : 0.67
-        : this.adventureMode && this.isMobile
-          ? 0.58
-          : this.isMobile
-            ? 0.64
-            : 0.68);
-    ctx.translate(this.width * 0.5 + sx, screenAnchorY + sy);
-    ctx.scale(this.zoom, this.zoom);
-    ctx.translate(-this.camX, -this.camY);
+        (this.isMobileLandscape
+          ? this.adventureMode
+            ? 0.63
+            : 0.67
+          : this.adventureMode && this.isMobile
+            ? 0.58
+            : this.isMobile
+              ? 0.64
+              : 0.68)
+    );
+    const safeZoom = Math.max(0.1, this.zoom || 1);
+    const snappedCamX = Math.round(this.camX * safeZoom) / safeZoom;
+    const snappedCamY = Math.round(this.camY * safeZoom) / safeZoom;
+    ctx.translate(Math.round(this.width * 0.5) + sx, screenAnchorY + sy);
+    ctx.scale(safeZoom, safeZoom);
+    ctx.translate(-snappedCamX, -snappedCamY);
 
     // 1. HD-2D Pixel-Art Cathedral Diorama + Live Animated Stage Flames & Atmospheric Blooms
     this.drawHD2DArena(ctx, ww, gy);
@@ -707,6 +714,19 @@ export class Renderer {
         this.drawTagPedestalWorld(ctx, f);
       }
       if (f.isFullyBurrowed) continue;
+      if (f.isColossalBoss) {
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        const bossFade = f.isDead
+          ? Math.max(0, 1 - Math.max(0, (f.deathTimer || 0) - 1.6) * 1.2)
+          : 1;
+        ctx.globalAlpha = 0.16 * bossFade;
+        const bossGlow = this.getGlowForColor(f.primaryColor || '#ef4444');
+        const bx = Math.round((f.anchorX || f.x) - 310);
+        ctx.drawImage(bossGlow, bx, 360, 560, 340);
+        ctx.restore();
+        continue;
+      }
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const deathFade = f.isDead ? Math.min(1, Math.max(0.08, 1 - (f.deathTimer || 0) * 0.65)) : 1;
@@ -744,23 +764,40 @@ export class Renderer {
       this.adventureHook.renderWorldMid(ctx, this);
     }
 
-    // 6. Character Pass: Crisp Champions drawn IN FRONT of normal skills & auto-attacks
-    // so characters and their faces are NEVER buried under regular combat VFX or washed out by additive skill bloom!
-    for (const f of sorted) {
+    // 6. Character & 2.5D Standing Prop Pass: Crisp Champions + Destructible Terrain/Artifacts
+    // interleaved by 2.5D groundY depth IN FRONT of normal skills & auto-attacks!
+    const standingProps =
+      this.adventureMode && typeof this.adventureHook?.getStandingProps === 'function'
+        ? this.adventureHook.getStandingProps()
+        : [];
+    const charPassList =
+      standingProps.length > 0
+        ? [...sorted, ...standingProps].sort((a, b) => {
+            if (a.isBenched !== b.isBenched) return a.isBenched ? -1 : 1;
+            const aGy = Number.isFinite(a.groundY) ? a.groundY : a.y;
+            const bGy = Number.isFinite(b.groundY) ? b.groundY : b.y;
+            return aGy - bGy || a.y - b.y;
+          })
+        : sorted;
+    for (const f of charPassList) {
       if (f.isBenched) {
+        const rx = Math.round(f.x);
+        const ry = Math.round(f.y);
         ctx.save();
-        ctx.translate(f.x, f.y);
+        ctx.translate(rx, ry);
         ctx.scale(0.8, 0.8);
-        ctx.translate(-f.x, -f.y);
+        ctx.translate(-rx, -ry);
         f.draw(ctx, false, this);
         ctx.restore();
-      } else if (this.adventureMode && Number.isFinite(f.groundY)) {
+      } else if (this.adventureMode && Number.isFinite(f.groundY) && !f.isColossalBoss) {
         const depthT = Math.max(0, Math.min(1, (f.groundY - 442) / 238));
-        const dScale = 0.93 + depthT * 0.12;
+        const dScale = Math.round((0.93 + depthT * 0.12) * 32) / 32;
+        const rx = Math.round(f.x);
+        const ry = Math.round(f.y);
         ctx.save();
-        ctx.translate(f.x, f.y);
+        ctx.translate(rx, ry);
         ctx.scale(dScale, dScale);
-        ctx.translate(-f.x, -f.y);
+        ctx.translate(-rx, -ry);
         f.draw(ctx, false, this);
         ctx.restore();
       } else {
@@ -4022,7 +4059,7 @@ export class Renderer {
 
   drawDynamicShadows(ctx, fighters, lights, gy) {
     for (const f of fighters) {
-      if (f.isFullyBurrowed) continue;
+      if (f.isFullyBurrowed || f.isColossalBoss) continue;
       const fGy = Number.isFinite(f.groundY) ? f.groundY : gy;
       const jumpH = Math.max(0, fGy - f.y);
       const scale = Math.max(0.25, 1 - jumpH / 320);

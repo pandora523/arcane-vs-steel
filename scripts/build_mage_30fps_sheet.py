@@ -1548,8 +1548,6 @@ def build_row_configs(row_idx):
                     }),
                 ]
                 cfg.update(eval_pose_keyframes(f, kfs))
-                if 18 <= f <= 21:
-                    cfg["ground_slam"] = max(0.25, 1.0 - abs(f - 19.5) * 0.32)
 
             else:
                 # V3 (F23..F29): Eclipse Backstep Star-Volley — agile kiting hop-step thrusting blazing Astrolabe + Staff forward

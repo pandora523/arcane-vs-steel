@@ -28,28 +28,30 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps90';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps90';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps90';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps90';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps90';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps90';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps90';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps90';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps90';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps90';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps90';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps90';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps90';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps90';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps90';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps90';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps90';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps91';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps91';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps91';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps91';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps91';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps91';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps91';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps91';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps91';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps91';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps91';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps91';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps91';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps91';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps91';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps91';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps91';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps90';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps90';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps91';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps91';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps91';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps91';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -610,7 +612,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps90');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps91');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -2089,8 +2091,8 @@ for (const [name, Cls] of CLASSES) {
     const colossusBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/boss_colossus_sheet.png');
     const cw = colossusBuf.readUInt32BE(16);
     const ch = colossusBuf.readUInt32BE(20);
-    if (cw !== 2048 || ch !== 512) {
-      throw new Error(`Expected boss_colossus_sheet.png dimensions 2048x512 (4 cells x 512x512), got ${cw}x${ch}`);
+    if (cw !== 4096 || ch !== 1024) {
+      throw new Error(`Expected boss_colossus_sheet.png dimensions 4096x1024 (16 cells x 512x512), got ${cw}x${ch}`);
     }
     const iconBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/mage_icons.png');
     const iw = iconBuf.readUInt32BE(16);
@@ -2332,11 +2334,11 @@ for (const [name, Cls] of CLASSES) {
   for (const id of requiredAdvIds) {
     mockDomMap.set(id, makeMockEl(id));
   }
-  // Ensure Colossal Boss assets have naturalWidth = 2048 so Monster.js colossusReady check succeeds in headless Node!
+  // Ensure Colossal Boss assets have naturalWidth = 4096 so Monster.js colossusReady check succeeds in headless Node!
   const allAssets = PixelForge.initAssets();
   if (allAssets.archfiend?.colossus) {
-    allAssets.archfiend.colossus.naturalWidth = 2048;
-    allAssets.archfiend.colossus.naturalHeight = 512;
+    allAssets.archfiend.colossus.naturalWidth = 4096;
+    allAssets.archfiend.colossus.naturalHeight = 1024;
   }
 
   const origGetElementById = globalThis.document.getElementById;
@@ -3580,5 +3582,256 @@ for (const [name, Cls] of CLASSES) {
 
   console.log(
     '[PASS] All 11 Champions 4-Variant Main-Model Auto-Attacks (Row 2: [60..67], [68..74], [75..82], [83..89]) & Dynamic Visuals verified (0 slice leaks, 0 ctx.rotate)!'
+  );
+}
+
+// ============================================================================
+// 20. PIXEL-BLEED PURITY, 4-REALM BUILDINGS/DESTRUCTIBLES & COLOSSAL BOSS RIG
+// ============================================================================
+{
+  // 20A. Verify PNG IHDR invariants across all 11 hero sheets, Sol icons, & 16-cell Colossal Boss atlas
+  const heroIds = [
+    'warrior',
+    'mage',
+    'archer',
+    'priestess',
+    'reaper',
+    'chronomancer',
+    'titan',
+    'ronin',
+    'valkyrie',
+    'icemage',
+    'android'
+  ];
+  for (const hid of heroIds) {
+    const buf = fs.readFileSync(
+      `/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${hid}_sheet.png`
+    );
+    const w = buf.readUInt32BE(16);
+    const h = buf.readUInt32BE(20);
+    if (w !== 6240 || h !== 2080) {
+      throw new Error(`Expected ${hid}_sheet.png to be 6240x2080, got ${w}x${h}`);
+    }
+  }
+
+  // 20B. Verify 4-Realm Monumental Buildings & Artifacts in AdventureMapRenderer (0 ctx.rotate, 0 arena_* PNGs)
+  const mapTrack = { rotateCalls: 0 };
+  let fillRectCount = 0;
+  let arenaPngDraws = 0;
+  const mapCtx = createMockCtx(mapTrack);
+  mapCtx.fillRect = () => {
+    fillRectCount++;
+  };
+  mapCtx.drawImage = (img) => {
+    if (img && typeof img.src === 'string' && img.src.includes('arena_')) {
+      arenaPngDraws++;
+    }
+  };
+  const mockMapRenderer = {
+    width: 1200,
+    height: 600,
+    zoom: 0.9,
+    camX: 450,
+    camY: 466,
+    time: 1.25,
+    glowOrange: {},
+    glowGold: {},
+    glowCyan: {},
+    glowEmerald: {},
+    glowViolet: {},
+    glowCrimson: {}
+  };
+  for (const cx of [450, 1750, 2950, 4150]) {
+    mockMapRenderer.camX = cx;
+    AdventureMapRenderer.render(mapCtx, mockMapRenderer, ADVENTURE_WORLD_WIDTH);
+  }
+  if (mapTrack.rotateCalls !== 0 || arenaPngDraws !== 0 || fillRectCount < 800) {
+    throw new Error(
+      `AdventureMapRenderer audit failed: rotate=${mapTrack.rotateCalls}, arenaPngs=${arenaPngDraws}, fillRects=${fillRectCount}`
+    );
+  }
+  const mapSrc = fs.readFileSync(
+    '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js',
+    'utf8'
+  );
+  if (mapSrc.includes('arena_') || /\.rotate\s*\(/.test(mapSrc)) {
+    throw new Error('AdventureMapRenderer.js must contain 0 arena_* references and 0 ctx.rotate() calls!');
+  }
+
+  // 20C. Verify 22 Interactive 2.5D Destructibles (Intact -> Cracked -> Destroyed + Debris + Drops + Non-Blocking)
+  const destGame = createMockGame();
+  destGame.gameMode = 'adventure';
+  const destHero = new Warrior(240, 561, 1);
+  destHero.game = destGame;
+  destGame.leftFighter = destHero;
+  const destAdv = new AdventureManager(destGame);
+  destGame.adventure = destAdv;
+  destAdv.startCampaign(destHero);
+
+  if (!destAdv.destructibles || destAdv.destructibles.props.length !== 22) {
+    throw new Error(
+      `Expected 22 curated destructible props, got ${destAdv.destructibles?.props?.length}`
+    );
+  }
+  // Must NEVER pollute getLivingMonsters()!
+  if (destAdv.getLivingMonsters().some((m) => m.isAdventureProp)) {
+    throw new Error('Destructible props must NEVER appear in getLivingMonsters()!');
+  }
+
+  // Test Intact -> Cracked -> Destroyed via melee + projectile + pillar + beam, plus drops & debris!
+  const p0 = destAdv.destructibles.props[0]; // sanctuary_pillar at x=310, groundY=464, maxHp=115
+  destHero.x = p0.x - 45;
+  destHero.groundY = p0.groundY;
+  destHero.y = p0.groundY;
+  destHero.facing = 1;
+  destHero.setState('AUTO_ATTACK');
+  destHero.stateTimer = 0.14;
+  destAdv.destructibles.update(1 / 30, destHero, destGame);
+  if (p0.hp >= p0.maxHp || p0.destroyed) {
+    throw new Error(`Expected prop 0 to enter damaged/cracked state after 1 melee hit, hp=${p0.hp}/${p0.maxHp}`);
+  }
+  // Finish shattering prop 0 via second hit -> verify debris & pickup spawn!
+  const pickupsBefore = destAdv.pickups.length;
+  destAdv.destructibles.damageProp(p0, 200, destHero, destGame, true);
+  if (!p0.destroyed || destAdv.destructibles.debris.length < 10 || destAdv.pickups.length <= pickupsBefore) {
+    throw new Error(
+      `Expected shattered prop 0 to spawn debris & pickup: destroyed=${p0.destroyed}, debris=${destAdv.destructibles.debris.length}, pickups=${destAdv.pickups.length}`
+    );
+  }
+
+  // Shatter an Ancient Artifact (`eclipse_astrolabe` at index 3) via projectile -> verify relic + bonus ember!
+  const artProp = destAdv.destructibles.props[3];
+  destHero.groundY = artProp.groundY;
+  destGame.vfx.spawnProjectile({
+    x: artProp.x - 8,
+    y: artProp.groundY - 36,
+    vx: 300,
+    vy: 0,
+    color: '#fb923c',
+    owner: destHero,
+    damage: 250,
+    radius: 16
+  });
+  destAdv.destructibles.update(1 / 30, destHero, destGame);
+  if (!artProp.destroyed || !destAdv.pickups.some((pk) => pk.type === 'relic')) {
+    throw new Error(
+      `Expected Ancient Artifact shatter to drop Astral Relic shard: destroyed=${artProp.destroyed}`
+    );
+  }
+
+  // Render standing props, rubble & debris with 0 ctx.rotate()
+  const propTrack = { rotateCalls: 0 };
+  const propCtx = createMockCtx(propTrack);
+  destAdv.renderWorldFloor(propCtx, destGame.renderer);
+  for (const sp of destAdv.getStandingProps()) {
+    sp.draw(propCtx, false, destGame.renderer);
+  }
+  destAdv.renderWorldForeground(propCtx, destGame.renderer);
+  if (propTrack.rotateCalls !== 0) {
+    throw new Error(`Destructible prop rendering called ctx.rotate() ${propTrack.rotateCalls} times!`);
+  }
+  destAdv.stopCampaign();
+
+  // 20D. Verify Colossal Boss (`ArchfiendBoss`) Appearing Climb, Articulated Face/Body, Boss VFX & Clipped Death
+  const allAssets20 = PixelForge.initAssets();
+  if (allAssets20.archfiend?.colossus) {
+    allAssets20.archfiend.colossus.naturalWidth = 4096;
+    allAssets20.archfiend.colossus.naturalHeight = 1024;
+  }
+  const bossGame = createMockGame();
+  bossGame.gameMode = 'adventure';
+  const bossHero = new FireMage(4240, 561, -1);
+  bossHero.game = bossGame;
+  bossGame.leftFighter = bossHero;
+  const colossus = new ArchfiendBoss(3865, 561, 1);
+  colossus.game = bossGame;
+  bossGame.rightFighter = colossus;
+  bossGame.fighters = [bossHero, colossus];
+
+  if (!(colossus.emergeTimer > 1.0) || colossus.isInvulnerable !== false) {
+    throw new Error(
+      `Expected ArchfiendBoss to start with emergeTimer > 1.0 and isInvulnerable=false, got emergeTimer=${colossus.emergeTimer}, invuln=${colossus.isInvulnerable}`
+    );
+  }
+
+  const seenCells = new Set();
+  const jawValues = new Set();
+  let deathClips = 0;
+  const bossTrack = { rotateCalls: 0 };
+  const bossCtx = createMockCtx(bossTrack);
+  bossCtx.clip = () => {
+    if (colossus.isDead) deathClips++;
+  };
+  bossCtx.drawImage = (...args) => {
+    if (args.length === 9 && args[0] === allAssets20.archfiend?.colossus) {
+      const [, sx, sy, sw, sh, dx, dy, dw, dh] = args;
+      if (
+        sw !== 512 ||
+        sh !== 512 ||
+        ![sx, sy, sw, sh, dx, dy, dw, dh].every((v) => Number.isFinite(v))
+      ) {
+        throw new Error(`Invalid ArchfiendBoss 9-arg drawImage: ${JSON.stringify(args.slice(1))}`);
+      }
+      seenCells.add(`${sx},${sy}`);
+    }
+  };
+
+  // Step through APPEAR (60f) -> Hellfire Breath SKILL0 (36f) -> Claw Sweep SKILL1 (36f) -> ULTIMATE (55f)
+  for (let f = 0; f < 60; f++) {
+    colossus.update(1 / 30, bossHero, bossGame);
+    jawValues.add(Math.round((colossus.jawOpen || 0) * 20));
+    colossus.draw(bossCtx, false, bossGame.renderer);
+  }
+  if (colossus.emergeTimer !== 0) {
+    throw new Error(`Expected emergeTimer to reach 0 after 60 frames, got ${colossus.emergeTimer}`);
+  }
+
+  colossus.skillVariant = 0;
+  colossus.setState('SKILL');
+  for (let f = 0; f < 36; f++) {
+    colossus.update(1 / 30, bossHero, bossGame);
+    jawValues.add(Math.round((colossus.jawOpen || 0) * 20));
+    colossus.draw(bossCtx, false, bossGame.renderer);
+  }
+
+  colossus.skillVariant = 1;
+  colossus.setState('SKILL');
+  for (let f = 0; f < 36; f++) {
+    colossus.update(1 / 30, bossHero, bossGame);
+    colossus.draw(bossCtx, false, bossGame.renderer);
+  }
+
+  colossus.bossPhase = 3;
+  colossus.setState('ULTIMATE');
+  for (let f = 0; f < 55; f++) {
+    colossus.update(1 / 30, bossHero, bossGame);
+    colossus.draw(bossCtx, false, bossGame.renderer);
+  }
+
+  // Trigger DEATH -> verify multi-stage explosions (`_deathBlastStage >= 4`), `TORSO_DYING` (`1536,0`), and `ctx.clip()`!
+  colossus.hp = 1;
+  colossus.takeDamage(9999, bossHero, true, 120, 0);
+  for (let f = 0; f < 65; f++) {
+    colossus.update(1 / 30, bossHero, bossGame);
+    colossus.draw(bossCtx, false, bossGame.renderer);
+  }
+
+  if (
+    bossTrack.rotateCalls !== 0 ||
+    seenCells.size < 12 ||
+    !seenCells.has('1536,0') || // TORSO_DYING
+    !seenCells.has('3072,512') || // VFX_JAW_HELLFIRE
+    !seenCells.has('3584,512') || // VFX_CLAW_SLASH
+    jawValues.size < 4 ||
+    deathClips < 30 ||
+    (colossus._deathBlastStage || 0) < 4
+  ) {
+    throw new Error(
+      `ArchfiendBoss 16-cell choreography audit failed: rotate=${bossTrack.rotateCalls}, cells=${seenCells.size} (${[...seenCells].join(' | ')}), jawSteps=${jawValues.size}, deathClips=${deathClips}, blastStage=${colossus._deathBlastStage}`
+    );
+  }
+
+  console.log(
+    `[PASS] Suite 20: 11-Hero Pixel-Bleed Purity, 4-Realm Monumental Buildings, 22 Destructible 2.5D Props & 16-Cell Colossal Boss (${seenCells.size}/16 cells, ${jawValues.size} jaw steps, ${colossus._deathBlastStage} death blasts, 0 ctx.rotate) verified!`
   );
 }
