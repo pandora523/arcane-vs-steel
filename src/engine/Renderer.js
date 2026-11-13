@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps85';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps85';
+import { PixelForge } from './PixelForge.js?v=30fps86';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps86';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -291,6 +291,13 @@ export class Renderer {
     return this.glowCyan;
   }
 
+  getMobileLandscapeFixedZoom(colossalBoss = false) {
+    const fullStageW = this.adventureMode ? 1420 : 1360;
+    const fullStageH = this.adventureMode ? 710 : 690;
+    const baseWide = Math.max(0.46, Math.min(this.width / fullStageW, this.height / fullStageH));
+    return colossalBoss ? Math.min(baseWide, 0.52) : baseWide;
+  }
+
   resize() {
     const isCssRotated =
       typeof document !== 'undefined' &&
@@ -299,6 +306,9 @@ export class Renderer {
     this.height = isCssRotated ? window.innerWidth : window.innerHeight;
     this.isMobile = this.width < 768 || this.height < 540;
     this.isMobileLandscape = this.isMobile && this.width > this.height;
+    if (this.isMobileLandscape) {
+      this.zoom = this.getMobileLandscapeFixedZoom(false);
+    }
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     this.canvas.width = Math.round(this.width * dpr);
     this.canvas.height = Math.round(this.height * dpr);
@@ -471,21 +481,19 @@ export class Renderer {
       const horizSpan = this.adventureMode ? Math.min(1220, Math.max(820, rawHorizSpan)) : rawHorizSpan;
       const dist = Math.max(horizSpan, maxAirLift * 1.48 + 340);
 
-      const maxSpanW = this.adventureMode ? 1280 : this.worldWidth;
-      const fitScaleX = this.width / Math.max(620, Math.min(maxSpanW, dist));
-      const fitScaleY =
-        this.height /
-        (this.isMobileLandscape
-          ? this.adventureMode
-            ? 545
-            : 565
-          : this.adventureMode
-            ? 760
-            : 720);
-      let targetZoom = Math.min(fitScaleX, fitScaleY * 1.15);
-      const minZoomCap = colossalBoss ? 0.44 : 0.52;
-      const maxZoomCap = this.isMobileLandscape ? 0.92 : this.isMobile ? 0.85 : 1.12;
-      targetZoom = Math.max(minZoomCap, Math.min(maxZoomCap, targetZoom));
+      let targetZoom;
+      if (this.isMobileLandscape) {
+        // Mobile Landscape: ZERO camera zoom-in — constant wide full-stage viewport fit
+        targetZoom = this.getMobileLandscapeFixedZoom(false);
+      } else {
+        const maxSpanW = this.adventureMode ? 1280 : this.worldWidth;
+        const fitScaleX = this.width / Math.max(620, Math.min(maxSpanW, dist));
+        const fitScaleY = this.height / (this.adventureMode ? 760 : 720);
+        targetZoom = Math.min(fitScaleX, fitScaleY * 1.15);
+        const minZoomCap = colossalBoss ? 0.44 : 0.52;
+        const maxZoomCap = this.isMobile ? 0.85 : 1.12;
+        targetZoom = Math.max(minZoomCap, Math.min(maxZoomCap, targetZoom));
+      }
 
       const anchorGroundY =
         this.adventureMode && player && Number.isFinite(player.groundY)
@@ -500,21 +508,25 @@ export class Renderer {
       // Wide-cosmos framing for grounded celestial finishers (e.g. Ignis Sol's Heavensfall Meteor)
       // Keeps the arena floor (`groundY`) visible near the bottom while revealing `groundY - 720+` high in the sky!
       if (maxSkyFocus > 0) {
-        const skyZoom = Math.max(0.66, (this.height * 0.80) / Math.max(500, maxSkyFocus + 165));
-        targetZoom = Math.min(targetZoom, skyZoom);
+        if (!this.isMobileLandscape) {
+          const skyZoom = Math.max(0.66, (this.height * 0.80) / Math.max(500, maxSkyFocus + 165));
+          targetZoom = Math.min(targetZoom, skyZoom);
+        }
         const skyTargetY = anchorGroundY - Math.min(242, 95 + maxSkyFocus * 0.22);
         targetY = Math.min(targetY, skyTargetY);
       }
 
       if (this.koZoomTimer > 0) {
-        // Dramatic K.O. Finisher zoom toward the fatal impact
-        targetZoom *= 1.12;
+        // Dramatic K.O. Finisher focus (skip zoom-in on mobile landscape)
+        if (!this.isMobileLandscape) {
+          targetZoom *= 1.12;
+        }
         if (Number.isFinite(this.koFocusX)) {
           targetX = midX * 0.45 + this.koFocusX * 0.55;
         }
-      } else if (this.clashZoomTimer > 0) {
+      } else if (this.clashZoomTimer > 0 && !this.isMobileLandscape) {
         targetZoom *= 1.045;
-      } else if (this.ultZoomTimer > 0 && maxSkyFocus <= 0) {
+      } else if (this.ultZoomTimer > 0 && maxSkyFocus <= 0 && !this.isMobileLandscape) {
         // Gentle 2.5% cinematic breathe without jerking the camera away from the arena center
         targetZoom *= 1.025;
       }
@@ -527,8 +539,10 @@ export class Renderer {
         const winMidX =
           victoryFighters.reduce((sum, f) => sum + f.x, 0) / victoryFighters.length;
         targetX = targetX * 0.20 + winMidX * 0.80;
-        const winZoomCap = this.isMobileLandscape ? 0.95 : this.isMobile ? 0.88 : 1.15;
-        targetZoom = Math.max(0.52, Math.min(winZoomCap, targetZoom * 1.08));
+        if (!this.isMobileLandscape) {
+          const winZoomCap = this.isMobile ? 0.88 : 1.15;
+          targetZoom = Math.max(0.52, Math.min(winZoomCap, targetZoom * 1.08));
+        }
       }
 
       const halfViewW = (this.width * 0.5) / targetZoom;
@@ -558,7 +572,11 @@ export class Renderer {
 
       const camSpeed = maxSkyFocus > 0 ? 7.5 : this.adventureMode ? 7.0 : 6;
       const lerpFactor = Math.min(1, Math.max(0, rawDt * camSpeed));
-      this.zoom += (targetZoom - this.zoom) * lerpFactor;
+      if (this.isMobileLandscape) {
+        this.zoom = targetZoom;
+      } else {
+        this.zoom += (targetZoom - this.zoom) * lerpFactor;
+      }
       this.camX += (targetX - this.camX) * lerpFactor;
       this.camY += (targetY - this.camY) * lerpFactor;
     }
@@ -722,6 +740,9 @@ export class Renderer {
       }
     }
     vfx.renderMainPass(ctx, false, this, false);
+    if (this.adventureMode && this.adventureHook?.renderWorldMid) {
+      this.adventureHook.renderWorldMid(ctx, this);
+    }
 
     // 6. Character Pass: Crisp Champions drawn IN FRONT of normal skills & auto-attacks
     // so characters and their faces are NEVER buried under regular combat VFX or washed out by additive skill bloom!
@@ -754,6 +775,9 @@ export class Renderer {
       }
     }
     vfx.renderMainPass(ctx, false, this, true);
+    if (this.adventureMode && this.adventureHook?.renderWorldForeground) {
+      this.adventureHook.renderWorldForeground(ctx, this);
+    }
     if (this.clashZoomTimer > 0) {
       this.drawClashWorld(ctx, gy);
     }

@@ -28,27 +28,28 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps85';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps85';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps85';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps85';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps85';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps85';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps85';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps85';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps85';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps85';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps85';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps85';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps85';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps85';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps85';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps85';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps85';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps86';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps86';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps86';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps86';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps86';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps86';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps86';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps86';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps86';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps86';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps86';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps86';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps86';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps86';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps86';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps86';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps86';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps85';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps86';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps86';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -608,7 +609,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps85');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps86');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -2428,18 +2429,20 @@ for (const [name, Cls] of CLASSES) {
       );
     }
 
-    const tickAdv = (frames = 1) => {
+    const tickAdv = (frames = 1, renderEvery = 1) => {
       const dt = 1 / 30;
       for (let i = 0; i < frames; i++) {
         adv.update(dt);
-        // Step projectiles against opposing team in 3D space (mirrors main.js updateProjectiles incl. Colossal Boss hurtbox)
+        // Step projectiles against opposing team in 3D space (mirrors main.js updateProjectiles incl. Colossal Boss hurtbox & pierce)
         for (let pi = advGame.vfx.projectiles.length - 1; pi >= 0; pi--) {
           const p = advGame.vfx.projectiles[pi];
+          p.age = (p.age || 0) + dt;
           p.x += (p.vx || 0) * dt;
           p.y += (p.vy || 0) * dt;
           const targets = advGame.fighters.filter((f) => f && !f.isDead && f.team !== p.owner?.team);
-          let hit = false;
+          let hitTarget = null;
           for (const t of targets) {
+            if (p.pierce && p._hitTargets && p._hitTargets.has(t)) continue;
             if (
               (p.type === 'forge_wave' || p.type === 'blade_wave') &&
               Math.abs(p.vy || 0) < 25 &&
@@ -2452,21 +2455,35 @@ for (const [name, Cls] of CLASSES) {
             const centerOffY = t.isColossalBoss ? 148 : 108;
             if (Math.abs(p.x - t.x) < hitRadX && Math.abs(p.y - (t.y - centerOffY)) < hitRadY) {
               t.takeDamage(p.damage || 30, p.owner, Boolean(p.isCrit), 80, 0);
-              hit = true;
+              hitTarget = t;
               break;
             }
           }
           const floorLim = p.isMeteor ? (p.owner?.groundY || 561) - 4 : 692;
-          if (hit || ((p.vy || 0) > 0 && p.y >= floorLim) || p.x < -300 || p.x > ADVENTURE_WORLD_WIDTH + 300) {
+          const hitGround = (p.vy || 0) > 0 && p.y >= floorLim;
+          if (hitTarget && p.pierce && !hitGround && !p.isMeteor) {
+            if (!p._hitTargets) p._hitTargets = new Set();
+            p._hitTargets.add(hitTarget);
+            if (p._hitTargets.size >= 5) advGame.vfx.projectiles.splice(pi, 1);
+          } else if (
+            hitTarget ||
+            hitGround ||
+            (!p.isMeteor && p.age > 1.45) ||
+            p.x < -300 ||
+            p.x > ADVENTURE_WORLD_WIDTH + 300
+          ) {
             advGame.vfx.projectiles.splice(pi, 1);
           }
         }
         advGame.vfx.update(dt, advGame.renderer.groundY, advGame.renderer, advGame.audio);
         advGame.renderer.update(dt, advGame.fighters);
-        advGame.renderer.render(advGame.fighters, advGame.vfx);
+        if (i % renderEvery === 0 || i === frames - 1) {
+          advGame.renderer.render(advGame.fighters, advGame.vfx);
+        }
 
-        // Strictly audit all Monster/Boss character draws & Adventure world/HUD passes for real sprite blits & ZERO ctx.rotate!
+        // Strictly audit all Monster/Boss character draws & all 3 AdventureSkillSets world layers + HUD for ZERO ctx.rotate!
         adv.renderWorldFloor(advCtx, advGame.renderer);
+        adv.renderWorldMid(advCtx);
         for (const f of advGame.fighters) {
           if (f && f.isMonster) {
             if (!f.heroId) {
@@ -2483,6 +2500,7 @@ for (const [name, Cls] of CLASSES) {
             }
           }
         }
+        adv.renderWorldForeground(advCtx);
         adv.renderScreenHUD(advCtx, advGame.renderer);
       }
     };
@@ -2837,11 +2855,11 @@ for (const [name, Cls] of CLASSES) {
       boss.bossPhase !== 1 ||
       boss.x !== 3865 ||
       boss.facing !== 1 ||
-      sol.x < 3990 ||
+      sol.x < 3965 ||
       boss.x >= sol.x
     ) {
       throw new Error(
-        `Expected Giant Left-Side Colossal Boss Malphas at x=3865 facing RIGHT (+1) with Sol on right (>=3990), got bossX=${boss?.x}, facing=${boss?.facing}, solX=${sol.x}, phase=${boss?.bossPhase}`
+        `Expected Giant Left-Side Colossal Boss Malphas at x=3865 facing RIGHT (+1) with Sol on right (>=3965), got bossX=${boss?.x}, facing=${boss?.facing}, solX=${sol.x}, phase=${boss?.bossPhase}`
       );
     }
     if (sol.fx.overrideCenterWorldX === null) {
@@ -2881,7 +2899,7 @@ for (const [name, Cls] of CLASSES) {
       throw new Error(`Expected Colossal Malphas to transition to Phase 3 at <=30% HP, got phase=${boss.bossPhase}`);
     }
 
-    // Vanquish Colossal Behemoth Malphas -> Verify Campaign Clear, Minion Banish & Sol Row 9 VICTORY Pose!
+    // Vanquish Colossal Behemoth Malphas -> Verify Campaign Victory, Minion Banish & Sol Row 9 VICTORY Pose!
     boss.isInvulnerable = false;
     boss.hp = 10;
     boss.takeDamage(99999, sol, true, 160, 0);
@@ -2921,6 +2939,224 @@ for (const [name, Cls] of CLASSES) {
       );
     }
 
+    // 17E. Verify ALL 11 Champions Selectable & Playable in Adventure Mode WITH Dedicated 2.5D Adventure Skill Sets AND 100% Untouched VS Mode Restoration!
+    {
+      const allAdvHeroes = [
+        { key: 'warrior', Cls: Warrior },
+        { key: 'archer', Cls: Archer },
+        { key: 'mage', Cls: FireMage },
+        { key: 'priestess', Cls: Priestess },
+        { key: 'reaper', Cls: Reaper },
+        { key: 'chronomancer', Cls: Chronomancer },
+        { key: 'titan', Cls: Titan },
+        { key: 'ronin', Cls: Ronin },
+        { key: 'valkyrie', Cls: Valkyrie },
+        { key: 'icemage', Cls: IceMage },
+        { key: 'android', Cls: Android }
+      ];
+      for (const h of allAdvHeroes) {
+        const expectedKit = ADVENTURE_HERO_KITS[h.key];
+        if (!expectedKit) {
+          throw new Error(`Missing ADVENTURE_HERO_KITS entry for '${h.key}'!`);
+        }
+
+        advGame.isMatchOver = false;
+        advGame.slot1Hero = h.key;
+        const hero = new h.Cls(240, advGame.renderer.groundY, 1);
+        if (!hero.heroId) hero.heroId = h.key;
+        hero.game = advGame;
+
+        // Snapshot 100% of VS Mode stats & method references BEFORE attaching Adventure kit
+        const origVsHp = hero.maxHp;
+        const origVsSkillName = hero.skillName;
+        const origVsUltName = hero.ultName;
+        const origVsTrueUltName = hero.trueUltName;
+        const origUpdateAuto = hero.updateAutoAttack;
+        const origUpdateSkill = hero.updateSkill;
+        const origUpdateUlt = hero.updateUltimate;
+        const origUpdateTrueUlt = hero.updateTrueUltimate;
+
+        advGame.leftFighter = hero;
+        adv.setAutoPlay(false, false);
+        adv.startCampaign(hero);
+
+        if (
+          !hero._advKitActive ||
+          hero._advKitId !== h.key ||
+          hero.skillName !== expectedKit.skillName ||
+          hero.ultName !== expectedKit.ultName ||
+          hero.trueUltName !== expectedKit.trueUltName
+        ) {
+          throw new Error(
+            `Expected Adventure kit attached for '${h.key}', got active=${hero._advKitActive}, skill='${hero.skillName}' vs '${expectedKit.skillName}'`
+          );
+        }
+
+        // Verify all 7 action-orb tags match the active hero's Adventure kit
+        for (const [actId, expTag] of Object.entries(expectedKit.tags)) {
+          const domTag = mockDomMap.get(`adv-tag-${actId}`)?.textContent;
+          if (domTag !== expTag) {
+            throw new Error(
+              `Expected Adventure '${actId}' orb tag '${expTag}' for '${h.key}', got '${domTag}'`
+            );
+          }
+        }
+
+        // Verify gentle joystick tilt (`0.30`) produces slower `_manualSpeedRatio` than full sprint (`1.0`)
+        adv.setJoystickVector(0.30, 0, true);
+        tickAdv(8, 16);
+        const slowRatio = hero._manualSpeedRatio;
+        adv.setJoystickVector(1.0, 0, true);
+        tickAdv(12, 16);
+        const fastRatio = hero._manualSpeedRatio;
+        adv.setJoystickVector(0, 0, false);
+        if (!(slowRatio > 0 && fastRatio > slowRatio + 0.15)) {
+          throw new Error(
+            `Expected proportional _manualSpeedRatio for '${h.key}' (slow=${slowRatio}, fast=${fastRatio})`
+          );
+        }
+
+        // Spawn a high-HP 3-lane monster cluster right ahead in Zone 0 to exercise every Adventure move!
+        for (const m of adv.getLivingMonsters()) m.isDead = true;
+        hero.x = 340;
+        hero.groundY = 561;
+        hero.y = 561;
+        hero.facing = 1;
+        hero.setState('IDLE');
+        const laneM1 = adv.spawnMonster('ghoul', 500, { groundY: 495 });
+        const laneM2 = adv.spawnMonster('cultist', 530, { groundY: 561 });
+        const laneM3 = adv.spawnMonster('brute', 555, { groundY: 628 });
+        for (const m of [laneM1, laneM2, laneM3]) {
+          m.maxHp = 25000;
+          m.hp = 25000;
+          m.stunTimer = 99;
+          m.autoCooldown = 999;
+          m.skillCooldown = 999;
+        }
+        const totalClusterHp = () => laneM1.hp + laneM2.hp + laneM3.hp;
+
+        // 1) Multi-Step Adventure Basic Attack Combo (`3` steps, `4` for Lyra)
+        let hpBefore = totalClusterHp();
+        const comboCount = h.key === 'icemage' ? 4 : 3;
+        for (let step = 0; step < comboCount; step++) {
+          hero.autoCooldown = 0;
+          hero.x = 380;
+          hero.facing = 1;
+          adv.triggerAction('attack');
+          tickAdv(18, 18);
+        }
+        tickAdv(12, 12);
+        const basicDmg = hpBefore - totalClusterHp();
+        if (basicDmg <= 0) {
+          throw new Error(`Expected '${h.key}' Adventure Basic Combo to damage 3-lane monster cluster, dealt ${basicDmg}`);
+        }
+
+        // 2) Adventure Ward (`crouch`) & Vault Plunge (`jump`)
+        hero.setState('IDLE');
+        hero.crouchCooldown = 0;
+        adv.triggerAction('crouch');
+        tickAdv(26, 26);
+        if (hero.state !== 'IDLE') {
+          throw new Error(`Expected '${h.key}' Adventure Ward to exit cleanly to IDLE, got ${hero.state}`);
+        }
+        adv.jumpCd = 0;
+        adv.triggerAction('jump');
+        tickAdv(28, 28);
+        if (hero.state !== 'IDLE') {
+          throw new Error(`Expected '${h.key}' Adventure Vault Plunge to exit cleanly to IDLE, got ${hero.state}`);
+        }
+
+        // 3) Adventure Skill (`skill`) — 2.5D AoE + Zone-Clamped Bounds
+        hero.x = 380;
+        hero.groundY = 561;
+        hero.y = 561;
+        hero.facing = 1;
+        hero.skillCooldown = 0;
+        adv.progression.spirit = 100;
+        hpBefore = totalClusterHp();
+        adv.triggerAction('skill');
+        tickAdv(42, 21);
+        const skillDmg = hpBefore - totalClusterHp();
+        if (skillDmg <= 0 || hero.x > 1200 || hero.x < 40 || hero.state !== 'IDLE') {
+          throw new Error(
+            `Adventure Skill check failed for '${h.key}': dmg=${skillDmg}, x=${hero.x.toFixed(1)}, state=${hero.state}`
+          );
+        }
+
+        // 4) Adventure Overdrive (`overdrive`) — 2.5D Crowd-Clear + Zone-Clamped Bounds
+        hero.x = 380;
+        hero.groundY = 561;
+        hero.y = 561;
+        hero.facing = 1;
+        adv.progression.ultCharge = 100;
+        hpBefore = totalClusterHp();
+        adv.triggerAction('overdrive');
+        tickAdv(62, 31);
+        const odDmg = hpBefore - totalClusterHp();
+        if (odDmg <= 0 || hero.x > 1200 || hero.x < 40 || hero.state !== 'IDLE') {
+          throw new Error(
+            `Adventure Overdrive check failed for '${h.key}': dmg=${odDmg}, x=${hero.x.toFixed(1)}, state=${hero.state}`
+          );
+        }
+
+        // 5) Adventure Supreme Cataclysm (`ultimate`) — Screen-Wide Multi-Lane Finisher + Zone-Clamped Bounds
+        hero.x = 380;
+        hero.groundY = 561;
+        hero.y = 561;
+        hero.facing = 1;
+        adv.progression.astralCharge = 100;
+        hpBefore = totalClusterHp();
+        adv.triggerAction('ultimate');
+        tickAdv(92, 46);
+        const cataclysmDmg = hpBefore - totalClusterHp();
+        if (cataclysmDmg < 250 || hero.x > 1200 || hero.x < 40 || hero.state !== 'IDLE') {
+          throw new Error(
+            `Adventure Cataclysm check failed for '${h.key}': dmg=${cataclysmDmg}, x=${hero.x.toFixed(1)}, state=${hero.state}`
+          );
+        }
+
+        // 6) Verify Melee Champions reach & damage Left-Side Colossal Boss Malphas (`x = 3865`)!
+        if (['warrior', 'titan', 'ronin', 'valkyrie', 'reaper'].includes(h.key)) {
+          for (const m of adv.getLivingMonsters()) m.isDead = true;
+          adv.zoneIndex = 3;
+          adv.lockActive = true;
+          adv.lockMinX = 3965;
+          adv.lockMaxX = 4720;
+          hero.setState('IDLE');
+          hero.x = 4080;
+          const testBoss = adv.spawnMonster('archfiend', 3865, { groundY: 558 });
+          const startBossHp = testBoss.hp;
+          adv.setAutoPlay(true, false);
+          tickAdv(55, 28);
+          if (testBoss.hp >= startBossHp) {
+            throw new Error(
+              `Expected melee hero '${h.key}' Adventure kit to reach and damage Colossal Boss Malphas (hero.x=${hero.x.toFixed(1)}, boss.hp=${testBoss.hp}/${startBossHp})`
+            );
+          }
+          adv.setAutoPlay(false, false);
+        }
+
+        // 7) Teardown Adventure Campaign & verify 100% exact VS Mode method & stat restoration!
+        adv.stopCampaign();
+        if (
+          hero._advKitActive ||
+          hero._advSkillOrig ||
+          hero.maxHp !== origVsHp ||
+          hero.skillName !== origVsSkillName ||
+          hero.ultName !== origVsUltName ||
+          hero.trueUltName !== origVsTrueUltName ||
+          hero.updateAutoAttack !== origUpdateAuto ||
+          hero.updateSkill !== origUpdateSkill ||
+          hero.updateUltimate !== origUpdateUlt ||
+          hero.updateTrueUltimate !== origUpdateTrueUlt
+        ) {
+          throw new Error(
+            `Expected stopCampaign() to restore 100% of '${h.key}' VS Mode methods & stats! maxHp=${hero.maxHp}/${origVsHp}, skill='${hero.skillName}'/'${origVsSkillName}'`
+          );
+        }
+      }
+    }
+
     if (stitchedStagePngBlits > 0) {
       throw new Error(
         `Forbidden stitched duel-stage PNG blitted ${stitchedStagePngBlits} times during Adventure Mode — must use 100% seamless AdventureMapRenderer!`
@@ -2930,7 +3166,7 @@ for (const [name, Cls] of CLASSES) {
       throw new Error(`Forbidden ctx.rotate() called ${advTrack.rotateCalls} times during Adventure Mode rendering!`);
     }
 
-    // 17D. Verify Default Portrait Mobile (390x844 stays 390x844 when Landscape OFF) AND Opt-In Mobile Landscape (844x390)
+    // 17D. Verify Default Portrait Mobile (390x844 stays 390x844 when Landscape OFF) AND ZERO-ZOOM Mobile Landscape (844x390)
     const origWinW = globalThis.window.innerWidth;
     const origWinH = globalThis.window.innerHeight;
     const origDocEl = globalThis.document.documentElement;
@@ -2956,7 +3192,7 @@ for (const [name, Cls] of CLASSES) {
         );
       }
 
-      // Case 1: Native Hardware Mobile Landscape (844x390)
+      // Case 1: Native Hardware Mobile Landscape (844x390) — ZERO Camera Zoom!
       globalThis.window.innerWidth = 844;
       globalThis.window.innerHeight = 390;
       const mobCanvas = {
@@ -2973,21 +3209,39 @@ for (const [name, Cls] of CLASSES) {
         );
       }
       const mobSol = new FireMage(320, 561, 1);
-      for (let s = 0; s < 30; s++) mobRenderer.update(0.05, [mobSol]);
-      if (mobRenderer.zoom < 0.72 || mobRenderer.zoom > 0.925) {
+      const mobGhoulClose = new FireMage(360, 561, -1);
+      for (let s = 0; s < 15; s++) mobRenderer.update(0.05, [mobSol, mobGhoulClose]);
+      const zoomClose = mobRenderer.zoom;
+
+      // Spread fighters wide apart + trigger KO / Clash / Ult / Victory zoom timers -> zoom MUST remain 100% constant & unzoomed!
+      mobGhoulClose.x = 1120;
+      mobRenderer.koZoomTimer = 1.0;
+      mobRenderer.clashZoomTimer = 0.5;
+      mobRenderer.ultZoomTimer = 1.0;
+      mobSol.state = 'VICTORY';
+      for (let s = 0; s < 15; s++) mobRenderer.update(0.05, [mobSol, mobGhoulClose]);
+      const zoomFarAndKo = mobRenderer.zoom;
+
+      if (zoomClose < 0.48 || zoomClose > 0.62 || Math.abs(zoomClose - zoomFarAndKo) > 0.0001) {
         throw new Error(
-          `Expected crisp widescreen mobile-landscape zoom in [0.72..0.925] on 844x390, got ${mobRenderer.zoom.toFixed(3)}`
+          `Expected unzoomed constant mobile-landscape fit in [0.48..0.62] with zero zoom drift, got close=${zoomClose.toFixed(4)}, far+KO=${zoomFarAndKo.toFixed(4)}`
         );
       }
 
-      // Case 2: Portrait-Locked Phone (390x844) when user opts in (`is-css-rotated-landscape` active) -> Logical 844x390!
+      // Case 2: Portrait-Locked Phone (390x844) when user opts in (`is-css-rotated-landscape` active) -> Logical 844x390 unzoomed!
       globalThis.window.innerWidth = 390;
       globalThis.window.innerHeight = 844;
       rootClasses.add('is-css-rotated-landscape');
       mobRenderer.resize();
-      if (mobRenderer.width !== 844 || mobRenderer.height !== 390 || !mobRenderer.isMobileLandscape) {
+      if (
+        mobRenderer.width !== 844 ||
+        mobRenderer.height !== 390 ||
+        !mobRenderer.isMobileLandscape ||
+        mobRenderer.zoom < 0.48 ||
+        mobRenderer.zoom > 0.62
+      ) {
         throw new Error(
-          `Expected CSS-rotated portrait 390x844 -> logical 844x390 with isMobileLandscape=true, got ${mobRenderer.width}x${mobRenderer.height}`
+          `Expected CSS-rotated portrait 390x844 -> logical 844x390 unzoomed, got ${mobRenderer.width}x${mobRenderer.height} zoom=${mobRenderer.zoom.toFixed(3)}`
         );
       }
     } finally {
@@ -2997,7 +3251,7 @@ for (const [name, Cls] of CLASSES) {
     }
 
     console.log(
-      `[PASS] Adventure Mode v2 (Move+Attack Multi-Touch + Non-Steep 3D Joystick + Portrait Default + Left-Side Colossal Boss + RPG Stats & 3-Branch Skill Tree): VS stats 100% preserved (3700 HP), simultaneous move+attack verified, Colossal Malphas (512x512 @ x=3865 LEFT) verified, all monsters visible (ghoul=${monsterDrawCounts.ghoul}, cultist=${monsterDrawCounts.cultist}, brute=${monsterDrawCounts.brute}, colossusBoss=${monsterDrawCounts.archfiend} blits), 0 ctx.rotate (${adv.score} pts)!`
+      `[PASS] Adventure Mode v4 (Zero-Zoom Mobile Landscape + All 11 Playable Champions + Proportional Walk Cadence + Dedicated 11-Hero 2.5D Adventure Skill Sets + Colossal Boss Reach): all 11 kits verified, VS Mode methods & stats 100% untouched, mobile landscape locked unzoomed, 0 ctx.rotate!`
     );
   } finally {
     globalThis.document.getElementById = origGetElementById;

@@ -47,9 +47,9 @@ export const ADVENTURE_SKILL_TREE = [
     tier: 3,
     maxRank: 2,
     glyph: '🌋',
-    name: 'SEARING PILLARS',
+    name: 'SEARING MASTERY',
     summary: (r) =>
-      `Skill Spirit cost ${r === 2 ? '14' : r === 1 ? '22' : '22/14'} (from 32) & +${(r || 1) * 28}% Skill Pillar Damage`
+      `Skill Spirit cost ${r === 2 ? '14' : r === 1 ? '22' : '22/14'} (from 32) & +${(r || 1) * 28}% Skill Damage`
   },
 
   // =========================================================================
@@ -75,7 +75,7 @@ export const ADVENTURE_SKILL_TREE = [
     glyph: '🌑',
     name: 'ECLIPSE OVERCHARGE',
     summary: (r) =>
-      `+${(r || 1) * 28}% Ultimate Nova Damage & +${(r || 1) * 14}% bonus Astral Seal resonance`
+      `+${(r || 1) * 28}% Overdrive Ultimate Damage & +${(r || 1) * 14}% bonus Astral Seal resonance`
   },
   {
     id: 'astral_3',
@@ -86,7 +86,7 @@ export const ADVENTURE_SKILL_TREE = [
     glyph: '☄️',
     name: 'CATACLYSM SOVEREIGN',
     summary: (r) =>
-      `Unseals +${(r || 1) * 34}% Astral Relic immediately & +${(r || 1) * 35}% Super-Ult Meteor Damage`
+      `Unseals +${(r || 1) * 34}% Astral Relic immediately & +${(r || 1) * 35}% Supreme Ultimate Damage`
   },
 
   // =========================================================================
@@ -300,11 +300,9 @@ export class AdventureProgression {
     player.heal = (amount, label = '') => {
       if (player.isDead || amount <= 0) return 0;
       const curStats = this.getComputedStats();
-      let scaledAmt = amount;
-      if (label === 'FLAME WARD' || label === 'SOLAR PHOENIX' || label === 'SOLAR BLINK') {
-        scaledAmt = Math.round(amount * 0.75 + curStats.evasiveHealBonus);
-      } else if (label === 'SOLAR WARD' || label === 'SOLAR CORONA') {
-        scaledAmt = Math.round(amount * 0.85);
+      let scaledAmt = Math.max(8, Math.round(amount * 0.72));
+      if (player.state === 'DODGE' || player.state === 'CROUCH' || label.includes('WARD') || label.includes('BLINK') || label.includes('PARRY') || label.includes('GUARD') || label.includes('AEGIS')) {
+        scaledAmt += curStats.evasiveHealBonus;
       }
       return player._advOrig.heal(scaledAmt, label);
     };
@@ -488,7 +486,7 @@ export class AdventureProgression {
       vx: (dx / len) * 690,
       vy: (dy / len) * 690 - 18,
       radius: 11,
-      color: '#fde047',
+      color: player.primaryColor || '#fde047',
       coreColor: '#ffffff',
       owner: player,
       damage: 58,

@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps85';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps85';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps85';
+import { Fighter } from './Fighter.js?v=30fps86';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps86';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps86';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps85';
+} from '../engine/shaders/forgeShaders.js?v=30fps86';
 
 /**
  * Torgar v7 (`titan`) — Sovereign of the World-Forge & Runic Anvil Juggernaut.
@@ -130,11 +130,11 @@ export class Titan extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
-      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps85')) {
-        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps85';
+      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps86')) {
+        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps86';
       }
-      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps85')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps85';
+      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps86')) {
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps86';
       }
     }
   }
@@ -1339,6 +1339,13 @@ export class Titan extends Fighter {
           )
         : enemy;
 
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
+    const wallMinX = advBounds ? advBounds.minX + 24 : 82;
+    const wallMaxX = advBounds ? advBounds.maxX - 24 : ww - 82;
+
     // 1. Batter's Box Lock & Farthest-Wall Target Selection (`t >= 0.02`)
     if (t >= 0.02 && !this._ultCastTriggered) {
       this._ultCastTriggered = true;
@@ -1347,10 +1354,15 @@ export class Titan extends Fighter {
       this.gainCrucibleCore(1, game);
 
       const refX = leadFoe && !leadFoe.isDead ? leadFoe.x : this.x;
-      const distRight = ww - 82 - refX;
-      const distLeft = refX - 82;
-      this._homeRunTargetWallX = distRight >= distLeft ? ww - 82 : 82;
-      this._homeRunDir = this._homeRunTargetWallX >= refX ? 1 : -1;
+      if (leadFoe?.isColossalBoss) {
+        this._homeRunTargetWallX = leadFoe.anchorX || leadFoe.x;
+        this._homeRunDir = -1;
+      } else {
+        const distRight = wallMaxX - refX;
+        const distLeft = refX - wallMinX;
+        this._homeRunTargetWallX = distRight >= distLeft ? wallMaxX : wallMinX;
+        this._homeRunDir = this._homeRunTargetWallX >= refX ? 1 : -1;
+      }
       this.facing = this._homeRunDir;
 
       if (game?.audio) {
@@ -1397,17 +1409,23 @@ export class Titan extends Fighter {
       this.trueUltFrameOverride = 120 + Math.min(5, Math.floor(windupU * 6));
 
       if (leadFoe && !leadFoe.isDead) {
-        const clampedFoeX = Math.max(195, Math.min(ww - 195, leadFoe.x));
-        leadFoe.x += (clampedFoeX - leadFoe.x) * Math.min(1, dt * 16);
-        const batterX = Math.max(85, Math.min(ww - 85, leadFoe.x - batDir * 104));
-        const stepSpeed = t < 0.20 ? 28 : 14;
-        this.x += (batterX - this.x) * Math.min(1, dt * stepSpeed);
-        // Hold enemies inside the Batter's Box right on the strike-zone sweet-spot
-        const sweetSpotX = Math.max(150, Math.min(ww - 150, this.x + batDir * 104));
-        for (const f of foes) {
-          if (f === leadFoe || Math.abs(f.x - sweetSpotX) <= 185) {
-            f.x += (sweetSpotX - f.x) * Math.min(1, dt * 15);
-            f.vx = 0;
+        if (leadFoe.isColossalBoss) {
+          const bossBatterX = Math.max(wallMinX, (leadFoe.anchorX || leadFoe.x) + 112);
+          const stepSpeed = t < 0.20 ? 28 : 14;
+          this.x += (bossBatterX - this.x) * Math.min(1, dt * stepSpeed);
+        } else {
+          const clampedFoeX = Math.max(wallMinX + 110, Math.min(wallMaxX - 110, leadFoe.x));
+          leadFoe.x += (clampedFoeX - leadFoe.x) * Math.min(1, dt * 16);
+          const batterX = Math.max(wallMinX + 4, Math.min(wallMaxX - 4, leadFoe.x - batDir * 104));
+          const stepSpeed = t < 0.20 ? 28 : 14;
+          this.x += (batterX - this.x) * Math.min(1, dt * stepSpeed);
+          // Hold enemies inside the Batter's Box right on the strike-zone sweet-spot
+          const sweetSpotX = Math.max(wallMinX + 68, Math.min(wallMaxX - 68, this.x + batDir * 104));
+          for (const f of foes) {
+            if (!f.isColossalBoss && (f === leadFoe || Math.abs(f.x - sweetSpotX) <= 185)) {
+              f.x += (sweetSpotX - f.x) * Math.min(1, dt * 15);
+              f.vx = 0;
+            }
           }
         }
       }
@@ -1417,7 +1435,9 @@ export class Titan extends Fighter {
     // Phase 2 (`t >= 0.42s`, `Row 4 F06..F10`): CRACK OF THE BAT! Chest-High Horizontal Baseball-Bat Swing!
     if (t >= 0.42 && (this._ultWaveStep || 0) < 1) {
       this._ultWaveStep = 1;
-      const contactX = Math.max(90, Math.min(ww - 90, this.x + batDir * 106));
+      const contactX = leadFoe?.isColossalBoss
+        ? (leadFoe.anchorX || leadFoe.x) + 20
+        : Math.max(wallMinX + 8, Math.min(wallMaxX - 8, this.x + batDir * 106));
       const contactY = this.groundY - 82;
 
       if (game?.audio) {
@@ -1460,10 +1480,11 @@ export class Titan extends Fighter {
       // Launch hit enemies inside the Batter's Box in a line-drive comet to the farthest stage wall!
       for (const foe of foes) {
         if (foe !== leadFoe && Math.abs(foe.x - contactX) > 195) continue;
-        const distRight = ww - 82 - foe.x;
-        const distLeft = foe.x - 82;
-        const targetWallX =
-          this._homeRunTargetWallX || (distRight >= distLeft ? ww - 82 : 82);
+        const distRight = wallMaxX - foe.x;
+        const distLeft = foe.x - wallMinX;
+        const targetWallX = foe.isColossalBoss
+          ? foe.anchorX || foe.x
+          : this._homeRunTargetWallX || (distRight >= distLeft ? wallMaxX : wallMinX);
         foe.takeDamage(44, this, true, batDir * 680, -110);
         this.mana = 0;
         this._homeRunFlights.push({
@@ -1487,8 +1508,10 @@ export class Titan extends Fighter {
         const u = Math.min(1, fl.elapsed / fl.duration);
         const easeU = 1 - Math.pow(1 - u, 1.75);
 
-        fl.foe.x = fl.startX + (fl.targetWallX - fl.startX) * easeU;
-        fl.foe.y = fl.foe.groundY - Math.sin(u * Math.PI) * 38;
+        if (!fl.foe.isColossalBoss) {
+          fl.foe.x = fl.startX + (fl.targetWallX - fl.startX) * easeU;
+          fl.foe.y = fl.foe.groundY - Math.sin(u * Math.PI) * 38;
+        }
         fl.foe.vx = 0;
         fl.foe.vy = 0;
         fl.foe.hurtTimer = Math.max(fl.foe.hurtTimer || 0, 0.18);
@@ -1512,15 +1535,19 @@ export class Titan extends Fighter {
         if (u >= 1.0 && !fl.crashed) {
           fl.crashed = true;
           const wallX = fl.targetWallX;
-          fl.foe.x = wallX;
-          fl.foe.y = fl.foe.groundY;
+          if (!fl.foe.isColossalBoss) {
+            fl.foe.x = wallX;
+            fl.foe.y = fl.foe.groundY;
+          }
           fl.foe.vx = 0;
           fl.foe.vy = 0;
 
           fl.foe.takeDamage(42, this, true, -fl.dir * 35, -110);
           this.mana = 0;
-          fl.foe.x = wallX;
-          fl.foe.y = fl.foe.groundY;
+          if (!fl.foe.isColossalBoss) {
+            fl.foe.x = wallX;
+            fl.foe.y = fl.foe.groundY;
+          }
           fl.foe.vx = 0;
           fl.foe.vy = 0;
 
@@ -1622,18 +1649,31 @@ export class Titan extends Fighter {
 
     const activeFoes = this.getActiveEnemies(enemy, game);
 
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
+    const zMin = advBounds ? advBounds.minX : 0;
+    const zMax = advBounds ? advBounds.maxX : ww;
+
     if (this._trueUltStep < 1) {
       const anchorFoe = activeFoes[0] || enemy;
-      this._trueUltAnvilX = anchorFoe
-        ? Math.max(240, Math.min(ww - 240, anchorFoe.x))
-        : Math.max(240, Math.min(ww - 240, this.x + this.facing * 180));
-      this._trueUltDir = this._trueUltAnvilX >= this.x ? 1 : -1;
+      if (anchorFoe?.isColossalBoss) {
+        this._trueUltAnvilX = (anchorFoe.anchorX || anchorFoe.x) + 40;
+        this._trueUltDir = -1;
+      } else {
+        const margin = advBounds ? 95 : 240;
+        this._trueUltAnvilX = anchorFoe
+          ? Math.max(zMin + margin, Math.min(zMax - margin, anchorFoe.x))
+          : Math.max(zMin + margin, Math.min(zMax - margin, this.x + this.facing * 180));
+        this._trueUltDir = this._trueUltAnvilX >= this.x ? 1 : -1;
+      }
     }
 
     const ultDir = this._trueUltDir || this.facing;
     this.facing = ultDir;
-    const standX = Math.max(105, Math.min(ww - 105, this._trueUltAnvilX - ultDir * 124));
-    const skyApexX = Math.max(120, Math.min(ww - 120, this._trueUltAnvilX - ultDir * 36));
+    const standX = Math.max(zMin + 24, Math.min(zMax - 24, this._trueUltAnvilX - ultDir * 124));
+    const skyApexX = Math.max(zMin + 28, Math.min(zMax - 28, this._trueUltAnvilX - ultDir * 36));
 
     // Beat 1 (`0.00s .. 0.62s` — Giant 2.15x Colossus Awakening & Deep Floor-Scoop Coil)
     if (t >= 0.04 && this._trueUltStep < 1) {

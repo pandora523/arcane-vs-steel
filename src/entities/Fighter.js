@@ -1076,8 +1076,11 @@ export class Fighter {
           this.moveDir = 0;
         } else if (this._manualWalkActive) {
           this.state = 'WALK';
-          this.walkPhase += dt * 4.8;
-          this.headBob = Math.sin(this.walkPhase * 2) * 2.2;
+          const spdRatio = Number.isFinite(this._manualSpeedRatio)
+            ? Math.max(0.32, Math.min(1.2, this._manualSpeedRatio))
+            : 1.0;
+          this.walkPhase += dt * (1.9 + 3.1 * spdRatio);
+          this.headBob = Math.sin(this.walkPhase * 2) * (1.2 + 1.1 * spdRatio);
         } else {
           this.state = 'IDLE';
           this.moveDir = 0;

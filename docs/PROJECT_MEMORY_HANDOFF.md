@@ -116,6 +116,16 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 - Avoid excessive particle spam, per-frame walk/idle dust, or stacked high-alpha `globalCompositeOperation = 'lighter'` passes (`keep additive bloom <= 0.16–0.22`) so pixel-art silhouettes and combat telegraphs remain sharp.
 - `Fighter.js` and `VFXManager.js` include `isDeclutteredHero` (`titan`, `reaper`, `archer`, `icemage`, `android`) gates so those 5 heroes stay visually clean while leaving the 6 protected heroes 100% untouched.
 
+### Adventure Mode v4 (`?v=30fps86` — Zero-Zoom Mobile Landscape, All-11-Champion Roster Select, Proportional Walk Cadence & Dedicated 11-Hero 2.5D Adventure Skill Sets)
+- **Zero Camera Zoom on Mobile Landscape (`src/engine/Renderer.js`)**:
+  - Whenever `renderer.isMobileLandscape === true` (both native mobile landscape viewports and opt-in CSS-rotated portrait phones), `resize()` and `updateCamera()` lock `this.zoom = this.getMobileLandscapeFixedZoom(false)` (`~0.55x` wide full-stage fit on `844x390`) with **zero** dynamic close-up zoom, **zero** `koZoomTimer` / `clashZoomTimer` / `ultZoomTimer` / `VICTORY` zoom-ins, and **zero** zoom drift.
+- **All-11-Champion Adventure Selection (`src/main.js`, `src/adventure/AdventureManager.js`, `src/adventure/AdventureProgression.js`)**:
+  - Clicking `#btn-title-adventure` routes through Champion Select (`setGameMode('adventure', false); setLandingStep('roster', true);`) with all 11 champions unlocked, showcasing `BEHEMOTH MALPHAS` on `#profile-right`, overlaying `ADVENTURE_HERO_KITS` skill cards onto `#profile-left` without mutating `CHAMPION_ROSTER`, and rendering bespoke 7-orb PixelForge icons + hero-specific action tags.
+- **Proportional Analog Walk Cadence (`src/entities/Fighter.js`, `src/adventure/AdventureManager.js`)**:
+  - Scales manual 3D `walkPhase` & `headBob` proportionally to `_manualSpeedRatio` so gentle joystick tilts produce natural deliberate strides instead of stiff full-rate foot-pumping.
+- **Standalone 11-Hero 2.5D Adventure Skill Sets (`src/adventure/AdventureSkillSets.js`, 100% VS Mode Isolation)**:
+  - Attaches custom 2.5D Beat-'Em-Up & Colossal-Boss-compatible kits (`Basic Combo`, `Adventure Skill`, `Adventure Overdrive`, `Adventure Cataclysm`, `Adventure Ward`, `Adventure Vault Plunge`) to `player` ONLY during `AdventureManager.startCampaign()` and restores 100% of original VS Mode methods & stats on `stopCampaign()`, leaving VS Mode (`1v1`, `2v2_brawl`, `2v2_tag`) and all 6 Protected Champion class files completely untouched.
+
 ---
 
 ## 4. Automated Verification Suites (`scripts/tests/`)
@@ -125,7 +135,7 @@ node scripts/tests/check_all_ult_shader_boxes.mjs
 node scripts/tests/test_all_heroes_gameloop.mjs
 node scripts/tests/benchmark_roster_balance.mjs
 ```
-And whenever modifying `.js` / `.png` / `.css` / `index.html` assets, bump the cache-bust query string (`?v=30fps71` -> `?v=30fps72`, etc.) across `index.html`, `src/`, and `scripts/`.
+And whenever modifying `.js` / `.png` / `.css` / `index.html` assets, bump the cache-bust query string (`?v=30fps85` -> `?v=30fps86`, etc.) across `index.html`, `src/`, and `scripts/`.
 
 ## 5. Persistent Prior Session Reference
 - Full prior session debug renders and logs are stored in the persistent `~/.gemini` volume at:

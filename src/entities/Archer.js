@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps85';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps85';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps85';
+import { Fighter } from './Fighter.js?v=30fps86';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps86';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps86';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps85';
+} from '../engine/shaders/sylvanShaders.js?v=30fps86';
 
 /**
  * Sylvara (`archer`) — Elven Tempest Bowmaster & Astral Star-Ranger.
@@ -75,8 +75,8 @@ export class Archer extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const archerAssets = PixelForge.initAssets()?.archer;
-      if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps85')) {
-        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps85';
+      if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps86')) {
+        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps86';
       }
     }
 
@@ -1229,14 +1229,21 @@ export class Archer extends Fighter {
       this._trueUltStep = 1;
       this._trueUltRootedTargets = [];
 
+      const advBounds =
+        game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+          ? game.adventure.getActiveStageBounds()
+          : null;
+      const stageMinX = advBounds ? advBounds.minX : 0;
+      const stageMaxX = advBounds ? advBounds.maxX : ww;
+
       const anchorX = primaryTarget
-        ? Math.max(96, Math.min(ww - 96, primaryTarget.x))
-        : Math.max(120, Math.min(ww - 120, this.x + this.facing * 320));
+        ? Math.max(stageMinX + 48, Math.min(stageMaxX - 48, primaryTarget.x))
+        : Math.max(stageMinX + 72, Math.min(stageMaxX - 72, this.x + this.facing * 320));
       this._trueUltTargetX = anchorX;
 
-      // Pick the FARTHEST edge of the stage away from the rooted enemy so the shot always crosses the full arena!
-      const leftEdgeX = 108;
-      const rightEdgeX = ww - 108;
+      // Pick the FARTHEST edge of the active stage/zone away from the rooted enemy so the shot crosses the arena cleanly!
+      const leftEdgeX = stageMinX + (advBounds ? 44 : 108);
+      const rightEdgeX = stageMaxX - (advBounds ? 44 : 108);
       this._trueUltFarEdgeX =
         Math.abs(anchorX - leftEdgeX) >= Math.abs(rightEdgeX - anchorX) ? leftEdgeX : rightEdgeX;
       this._trueUltJumpStartX = this.x;
@@ -1262,9 +1269,11 @@ export class Archer extends Fighter {
       }
 
       for (const foe of targets) {
-        const lockX = Math.max(96, Math.min(ww - 96, foe.x));
+        const lockX = foe.isColossalBoss
+          ? foe.anchorX || foe.x
+          : Math.max(stageMinX + 48, Math.min(stageMaxX - 48, foe.x));
         const lockY = foe.groundY || this.groundY;
-        if (foe.state !== 'IDLE' && foe.state !== 'TRUE_ULTIMATE') {
+        if (foe.state !== 'IDLE' && foe.state !== 'TRUE_ULTIMATE' && !foe.isColossalBoss) {
           foe.setState('IDLE');
         }
         foe.x = lockX;

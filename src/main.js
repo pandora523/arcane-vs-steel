@@ -1,20 +1,21 @@
-import { Renderer } from './engine/Renderer.js?v=30fps85';
-import { VFXManager } from './engine/VFXManager.js?v=30fps85';
-import { PixelForge } from './engine/PixelForge.js?v=30fps85';
-import { AudioManager } from './engine/AudioManager.js?v=30fps85';
-import { Fighter } from './entities/Fighter.js?v=30fps85';
-import { Warrior } from './entities/Warrior.js?v=30fps85';
-import { FireMage } from './entities/FireMage.js?v=30fps85';
-import { Archer } from './entities/Archer.js?v=30fps85';
-import { Priestess } from './entities/Priestess.js?v=30fps85';
-import { Reaper } from './entities/Reaper.js?v=30fps85';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps85';
-import { Titan } from './entities/Titan.js?v=30fps85';
-import { Ronin } from './entities/Ronin.js?v=30fps85';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps85';
-import { IceMage } from './entities/IceMage.js?v=30fps85';
-import { Android } from './entities/Android.js?v=30fps85';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps85';
+import { Renderer } from './engine/Renderer.js?v=30fps86';
+import { VFXManager } from './engine/VFXManager.js?v=30fps86';
+import { PixelForge } from './engine/PixelForge.js?v=30fps86';
+import { AudioManager } from './engine/AudioManager.js?v=30fps86';
+import { Fighter } from './entities/Fighter.js?v=30fps86';
+import { Warrior } from './entities/Warrior.js?v=30fps86';
+import { FireMage } from './entities/FireMage.js?v=30fps86';
+import { Archer } from './entities/Archer.js?v=30fps86';
+import { Priestess } from './entities/Priestess.js?v=30fps86';
+import { Reaper } from './entities/Reaper.js?v=30fps86';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps86';
+import { Titan } from './entities/Titan.js?v=30fps86';
+import { Ronin } from './entities/Ronin.js?v=30fps86';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps86';
+import { IceMage } from './entities/IceMage.js?v=30fps86';
+import { Android } from './entities/Android.js?v=30fps86';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps86';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps86';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -722,10 +723,9 @@ class Game {
 
   setGameMode(mode, playSound = true) {
     if (!['1v1', '2v2_brawl', '2v2_tag', 'adventure'].includes(mode)) return;
-    const prevMode = this.gameMode;
     this.gameMode = mode;
     if (mode === 'adventure') {
-      if (prevMode !== 'adventure') {
+      if (!CHAMPION_ROSTER[this.slot1Hero]) {
         this.slot1Hero = 'mage';
       }
       this.inspectLeftRole = 'lead';
@@ -1147,9 +1147,8 @@ class Game {
     const btnTitleAdventure = document.getElementById('btn-title-adventure');
     if (btnTitleAdventure) {
       btnTitleAdventure.addEventListener('click', () => {
-        this.slot1Hero = 'mage';
         this.setGameMode('adventure', false);
-        this.startDuel(true);
+        this.setLandingStep('roster', true);
       });
     }
     const btnTitleQuickDuel = document.getElementById('btn-title-quick-duel');
@@ -1785,14 +1784,14 @@ class Game {
     const gridPromptEl = document.getElementById('portrait-grid-label');
     if (gridPromptEl) {
       gridPromptEl.textContent = isAdv
-        ? 'SELECT YOUR CAMPAIGN HERO (DEFAULT: IGNIS SOL) — MANUAL CONTROLS + [P] AUTO-PLAY AI'
+        ? 'SELECT ANY OF THE 11 CHAMPIONS FOR YOUR 4-REALM ADVENTURE CAMPAIGN'
         : `SELECT A CHAMPION FOR ${slotLabelMap[this.activeAssignSlot] || '★ P1 LEAD'} — OR CLICK P1 / P2 ON ANY MEDALLION`;
     }
 
     // 2. Matchup Banner 4-Slot Names & Active Slot Highlight
     if (this.slotLeftName) this.slotLeftName.textContent = c1.name;
     if (this.slotLeftPartnerName) this.slotLeftPartnerName.textContent = c1b.name;
-    if (this.slotRightName) this.slotRightName.textContent = isAdv ? 'ARCHFIEND MALPHAS' : c2.name;
+    if (this.slotRightName) this.slotRightName.textContent = isAdv ? 'BEHEMOTH MALPHAS' : c2.name;
     if (this.slotRightPartnerName) this.slotRightPartnerName.textContent = c2b.name;
 
     if (this.slotBtnLeftPartner) this.slotBtnLeftPartner.classList.toggle('hidden', !is2v2);
@@ -1802,10 +1801,11 @@ class Game {
 
     if (this.slotBtnLeft) this.slotBtnLeft.classList.toggle('active-slot', this.activeAssignSlot === 1);
     if (this.slotBtnLeftPartner)
-      this.slotBtnLeftPartner.classList.toggle('active-slot', this.activeAssignSlot === 3);
-    if (this.slotBtnRight) this.slotBtnRight.classList.toggle('active-slot', this.activeAssignSlot === 2);
+      this.slotBtnLeftPartner.classList.toggle('active-slot', !isAdv && this.activeAssignSlot === 3);
+    if (this.slotBtnRight)
+      this.slotBtnRight.classList.toggle('active-slot', !isAdv && this.activeAssignSlot === 2);
     if (this.slotBtnRightPartner)
-      this.slotBtnRightPartner.classList.toggle('active-slot', this.activeAssignSlot === 4);
+      this.slotBtnRightPartner.classList.toggle('active-slot', !isAdv && this.activeAssignSlot === 4);
 
     if (this.p1TabLead) {
       this.p1TabLead.textContent = `★ P1: ${c1.name}`;
@@ -1839,9 +1839,9 @@ class Game {
       const card = this.cards[key];
       const ribbon = this.ribbons[key];
       const isP1 = this.slot1Hero === key;
-      const isP1B = is2v2 && this.slot1PartnerHero === key;
-      const isP2 = this.slot2Hero === key;
-      const isP2B = is2v2 && this.slot2PartnerHero === key;
+      const isP1B = !isAdv && is2v2 && this.slot1PartnerHero === key;
+      const isP2 = !isAdv && this.slot2Hero === key;
+      const isP2B = !isAdv && is2v2 && this.slot2PartnerHero === key;
       if (card) {
         card.classList.toggle('selected-p1', isP1);
         card.classList.toggle('selected-p1b', isP1B);
@@ -1849,34 +1849,49 @@ class Game {
         card.classList.toggle('selected-p2b', isP2B);
       }
       if (ribbon) {
-        ribbon.textContent = isP1
-          ? '★ P1 LEAD'
-          : isP1B
-            ? '★ P1B ALLY'
-            : isP2
-              ? '★ P2 LEAD'
-              : isP2B
-                ? '★ P2B ALLY'
-                : slotPrompts[this.activeAssignSlot] || 'SET P1';
+        ribbon.textContent = isAdv
+          ? isP1
+            ? '★ CAMPAIGN HERO'
+            : 'SELECT HERO'
+          : isP1
+            ? '★ P1 LEAD'
+            : isP1B
+              ? '★ P1B ALLY'
+              : isP2
+                ? '★ P2 LEAD'
+                : isP2B
+                  ? '★ P2B ALLY'
+                  : slotPrompts[this.activeAssignSlot] || 'SET P1';
       }
     });
 
     document.querySelectorAll('[data-assign-p1]').forEach((btn) => {
       const k = btn.getAttribute('data-assign-p1');
       const isP1 = this.slot1Hero === k;
-      const isP1B = is2v2 && this.slot1PartnerHero === k;
+      const isP1B = !isAdv && is2v2 && this.slot1PartnerHero === k;
       btn.classList.toggle('active-p1', isP1 || isP1B);
-      btn.textContent = isP1 ? '★ P1' : isP1B ? '★ P1B' : this.activeAssignSlot === 3 && is2v2 ? '+P1B' : 'P1';
+      btn.textContent = isAdv
+        ? isP1
+          ? '★ HERO'
+          : 'SELECT'
+        : isP1
+          ? '★ P1'
+          : isP1B
+            ? '★ P1B'
+            : this.activeAssignSlot === 3 && is2v2
+              ? '+P1B'
+              : 'P1';
     });
     document.querySelectorAll('[data-assign-p2]').forEach((btn) => {
       const k = btn.getAttribute('data-assign-p2');
-      const isP2 = this.slot2Hero === k;
-      const isP2B = is2v2 && this.slot2PartnerHero === k;
+      const isP2 = !isAdv && this.slot2Hero === k;
+      const isP2B = !isAdv && is2v2 && this.slot2PartnerHero === k;
+      btn.classList.toggle('hidden', isAdv);
       btn.classList.toggle('active-p2', isP2 || isP2B);
       btn.textContent = isP2 ? '★ P2' : isP2B ? '★ P2B' : this.activeAssignSlot === 4 && is2v2 ? '+P2B' : 'P2';
     });
 
-    // 4. Populate Left (P1 / P1B) and Right (P2 / P2B) Fighter Profile & Skill Breakdown Panels
+    // 4. Populate Left (P1 / P1B) and Right (P2 / P2B or Adventure Final Boss) Profile Panels
     const syncProfilePanel = (prefix, sideName, cfg, partnerCfg) => {
       if (!cfg) return;
       const asideEl = document.getElementById(`profile-${sideName}`);
@@ -1911,17 +1926,59 @@ class Game {
       }
     };
 
-    const leftInspected = is2v2 && this.inspectLeftRole === 'partner' ? c1b : c1;
+    const baseLeftInspected = is2v2 && this.inspectLeftRole === 'partner' ? c1b : c1;
+    const advLeftKit = isAdv ? ADVENTURE_HERO_KITS[baseLeftInspected?.id] : null;
+    const leftInspected = advLeftKit
+      ? {
+          ...baseLeftInspected,
+          role: advLeftKit.role,
+          style: advLeftKit.style,
+          trait: advLeftKit.trait,
+          trueUltName: advLeftKit.trueUltName,
+          trueUltDesc: advLeftKit.trueUltDesc,
+          skills: advLeftKit.skills
+        }
+      : baseLeftInspected;
     const leftOther = is2v2 && this.inspectLeftRole === 'partner' ? c1 : c1b;
-    const rightInspected = is2v2 && this.inspectRightRole === 'partner' ? c2b : c2;
+    const rightInspected = isAdv
+      ? {
+          name: 'BEHEMOTH MALPHAS',
+          role: 'COLOSSAL ABYSSAL TITAN • ZONE IV FINAL BOSS',
+          theme: 'abyssal',
+          style: 'LEFT-CLIFF SIEGE COLOSSUS • 3-PHASE RAID BOSS',
+          trait: 'TRAIT: EXPOSED HEART-CORE SLUMP (+45% PUNISH DMG)',
+          trueUltName: 'PHASE III: HELLFIRE MAW CATACLYSM',
+          trueUltDesc:
+            'Inhales abyssal hellfire and scorches the central 3D lane while raining Brimstone Meteors across all 4 realms!',
+          skills: [
+            {
+              name: 'CRUSHING METEOR FIST',
+              type: 'COLOSSAL SLAM',
+              desc: 'Locks a 3D floor impact ring onto your lane and slams an armored obsidian gauntlet from the heavens.'
+            },
+            {
+              name: 'ABYSSAL RAZOR-CLAW SWEEP',
+              type: 'LANE CLEAVE',
+              desc: 'Rakes razor claws across the Upper or Lower 3D road — shift vertically with the joystick to evade!'
+            },
+            {
+              name: 'HEART-CORE VULNERABILITY',
+              type: 'PUNISH WINDOW',
+              desc: 'After heavy slams, Malphas slumps forward exposing his molten chest core for +45% bonus damage!'
+            }
+          ]
+        }
+      : is2v2 && this.inspectRightRole === 'partner'
+        ? c2b
+        : c2;
     const rightOther = is2v2 && this.inspectRightRole === 'partner' ? c2 : c2b;
 
     syncProfilePanel('p1', 'left', leftInspected, leftOther);
-    syncProfilePanel('p2', 'right', rightInspected, rightOther);
+    syncProfilePanel('p2', 'right', rightInspected, isAdv ? null : rightOther);
 
     if (this.startDuelText) {
       if (this.isAdventureMode()) {
-        this.startDuelText.textContent = `${c1.name} • 4-REALM ADVENTURE`;
+        this.startDuelText.textContent = `START ADVENTURE • ${c1.name}`;
       } else if (this.gameMode === '2v2_brawl') {
         this.startDuelText.textContent = `${c1.name} + ${c1b.name} VS. ${c2.name} + ${c2b.name}`;
       } else if (this.gameMode === '2v2_tag') {
@@ -2164,7 +2221,57 @@ class Game {
     const p2Back = is2v2 && this.inspectRightRole === 'partner' ? this.slot2Hero : this.slot2PartnerHero;
 
     drawSideProfileVisuals('p1', p1Front, p1Back, false);
-    drawSideProfileVisuals('p2', p2Front, p2Back, true);
+    if (this.isAdventureMode()) {
+      const bossCanvas = document.getElementById('p2-sprite-canvas');
+      if (bossCanvas) {
+        const cw = 272;
+        const ch = 208;
+        if (bossCanvas.width !== cw || bossCanvas.height !== ch) {
+          bossCanvas.width = cw;
+          bossCanvas.height = ch;
+        }
+        const bctx = bossCanvas.getContext('2d');
+        bctx.clearRect(0, 0, cw, ch);
+        bctx.imageSmoothingEnabled = false;
+        const bossPort = PixelForge.initAssets()?.boss_archfiend?.portrait;
+        const pulse = 0.55 + 0.25 * Math.sin(t * 3.8);
+        bctx.fillStyle = `rgba(220, 38, 38, ${(0.22 * pulse).toFixed(3)})`;
+        bctx.fillRect(46, 174, 180, 18);
+        if (bossPort?.complete && bossPort.naturalWidth) {
+          const bob = Math.round(Math.sin(t * 2.4) * 3);
+          bctx.drawImage(bossPort, 52, 16 + bob, 168, 168);
+          bctx.strokeStyle = '#f97316';
+          bctx.lineWidth = 2;
+          bctx.strokeRect(52, 16 + bob, 168, 168);
+        } else {
+          drawAnimatedHeroOnStage(bctx, 'reaper', true, 32, 0, 208, 0, 1.0, false);
+        }
+        bctx.font = 'bold 10px monospace';
+        bctx.fillStyle = '#09070d';
+        bctx.fillText('★ ZONE IV COLOSSUS', 75, 13);
+        bctx.fillStyle = '#fb923c';
+        bctx.fillText('★ ZONE IV COLOSSUS', 74, 12);
+      }
+      [0, 1, 2].forEach((idx) => {
+        const iconCanvas = document.getElementById(`p2-skill-icon-${idx}`);
+        if (iconCanvas) {
+          PixelForge.drawSkillIcon(
+            iconCanvas.getContext('2d'),
+            'reaper',
+            idx,
+            iconCanvas.width,
+            iconCanvas.height,
+            t
+          );
+        }
+      });
+      const supIconCanvas = document.getElementById('p2-skill-icon-3');
+      const supBox = document.getElementById('p2-true-ult-box');
+      if (supIconCanvas) supIconCanvas.classList.add('hidden');
+      if (supBox) supBox.classList.remove('has-supreme-icon');
+    } else {
+      drawSideProfileVisuals('p2', p2Front, p2Back, true);
+    }
   }
 
   getTeamFighters(team) {
@@ -2262,8 +2369,10 @@ class Game {
         this.renderer.cutInTimer = 0;
       }
       const gy = this.renderer.groundY;
-      const c1 = CHAMPION_ROSTER[this.slot1Hero] || CHAMPION_ROSTER.mage;
+      const heroKey = CHAMPION_ROSTER[this.slot1Hero] ? this.slot1Hero : 'mage';
+      const c1 = CHAMPION_ROSTER[heroKey];
       this.leftFighter = new c1.cls(240, gy, 1);
+      if (!this.leftFighter.heroId) this.leftFighter.heroId = heroKey;
       this.leftFighter.game = this;
       this.leftFighter.team = 1;
       this.leftFighter.slotRole = 'lead';
@@ -2975,6 +3084,7 @@ class Game {
       let hitTarget = null;
       for (const cand of enemies) {
         if (!cand || cand.isDead || cand.isBenched) continue;
+        if (isAdv && p.pierce && p._hitTargets && p._hitTargets.has(cand)) continue;
         if (
           isAdv &&
           !cand.isColossalBoss &&
@@ -3138,8 +3248,16 @@ class Game {
             this.vfx.spawnBurst(p.x, gy, 8, p.color, 150, { upBias: 70 });
           }
         }
-        this.vfx.projectiles.splice(i, 1);
-      } else if (p.x < -300 || p.x > ww + 300) {
+        if (isAdv && p.pierce && hitTarget && !hitGround && !p.isMeteor) {
+          if (!p._hitTargets) p._hitTargets = new Set();
+          p._hitTargets.add(hitTarget);
+          if (p._hitTargets.size >= 5) {
+            this.vfx.projectiles.splice(i, 1);
+          }
+        } else {
+          this.vfx.projectiles.splice(i, 1);
+        }
+      } else if ((isAdv && !p.isMeteor && p.age > 1.45) || p.x < -300 || p.x > ww + 300) {
         this.vfx.projectiles.splice(i, 1);
       }
     }
@@ -3152,6 +3270,7 @@ class Game {
 
     const sync = (els, f, partner) => {
       if (!els || !f) return;
+      const advTags = isAdv ? ADVENTURE_HERO_KITS[f.heroId]?.tags : null;
       const hpPct = Math.max(0, (f.hp / f.maxHp) * 100);
       const manaPct = Math.min(100, (f.mana / f.maxMana) * 100);
       els.hpBar.style.width = `${hpPct}%`;
@@ -3168,7 +3287,7 @@ class Game {
             ? '★ ELITE MONSTER'
             : 'ABYSSAL HORDE'
           : isAdv
-            ? `NOVA ${Math.floor(manaPct)}% (EMBERS)`
+            ? `${advTags?.overdrive || 'DRIVE'} ${Math.floor(manaPct)}% (EMBERS)`
             : `OVERDRIVE ${Math.floor(manaPct)}%`;
 
       if (els.finisherFrame && els.finisherBar && els.finisherLabel) {
@@ -3185,7 +3304,7 @@ class Game {
             f.state === 'TRUE_ULTIMATE'
               ? `★ ULTIMATE: ${f.trueUltName || 'SWORD OF JUSTICE'}! ★`
               : isAdv
-                ? `★ METEOR ${Math.floor(finPct)}% (${seals}/3 SEALS) ★`
+                ? `★ ${advTags?.ultimate || 'CATACLYSM'} ${Math.floor(finPct)}% (${seals}/3 SEALS) ★`
                 : `★ ULTIMATE ${Math.floor(finPct)}% (${seals}/3 OD) ★`;
         } else {
           els.finisherFrame.classList.add('hidden');

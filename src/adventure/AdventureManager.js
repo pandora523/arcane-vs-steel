@@ -1,7 +1,8 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps85';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps85';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps85';
-import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps85';
+import { Fighter } from '../entities/Fighter.js?v=30fps86';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps86';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps86';
+import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps86';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps86';
 
 export const ADVENTURE_WORLD_WIDTH = 4800;
 export const ADVENTURE_DEPTH_MIN_Y = 442;
@@ -60,7 +61,7 @@ export const ADVENTURE_ZONES = [
  * Marvel-Arcade 2.5D Beat-'Em-Up Adventure Campaign Coordinator:
  * - 4800px continuous seamless 4-Zone 3D stage (`X: 80..4720`, `groundY: 442..680`) with screen-lock
  *   wave encounters, `"GO! ➔"` prompts, magnetic RPG pickups (`HP`, `SOUL EMBER`, `ASTRAL RELIC`),
- *   3-Branch Skill Tree leveling, and a Giant Left-Side Colossal Boss (`BEHEMOTH MALPHAS`).
+ *   3-Branch Skill Tree leveling, Dedicated 11-Hero 2.5D Adventure Skill Sets, and a Giant Left-Side Colossal Boss (`BEHEMOTH MALPHAS`).
  */
 export class AdventureManager {
   constructor(game) {
@@ -69,6 +70,7 @@ export class AdventureManager {
     this.autoPlay = false;
 
     this.progression = new AdventureProgression(this);
+    this.skillSets = new AdventureSkillSets(this);
     this.isSkillTreeOpen = false;
 
     this.depthMinY = ADVENTURE_DEPTH_MIN_Y;
@@ -293,6 +295,8 @@ export class AdventureManager {
       if (el) el.textContent = String(val);
     };
 
+    const heroTitle = player?.name ? player.name.toUpperCase() : 'CHAMPION';
+    setTxt('adv-st-title', `${heroTitle} • ADVENTURE SKILL TREE`);
     setTxt('adv-st-level-badge', `LV.${prog.level}`);
     const xpPct = prog.level >= prog.maxLevel ? 100 : Math.min(100, Math.round((prog.xp / Math.max(1, prog.xpToNext)) * 100));
     const xpFill = document.getElementById('adv-st-xp-fill');
@@ -325,7 +329,7 @@ export class AdventureManager {
 
     const branches = [
       { key: 'wrath', title: '🔥 SOLAR WRATH', sub: 'OFFENSE & SPIRIT' },
-      { key: 'astral', title: '✦ ASTRAL AWAKENING', sub: 'NOVA & RELIC SEALS' },
+      { key: 'astral', title: '✦ ASTRAL AWAKENING', sub: 'DRIVE & RELIC SEALS' },
       { key: 'aegis', title: '🛡️ PHOENIX AEGIS', sub: 'VITALITY & AGILITY' }
     ];
 
@@ -508,26 +512,15 @@ export class AdventureManager {
   refreshActionIcons(heroKey = 'mage') {
     if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
     const slots = ['attack', 'dodge', 'skill', 'overdrive', 'ultimate', 'crouch', 'jump'];
-    const heroTags =
-      heroKey === 'mage'
-        ? {
-            attack: 'FIRE',
-            dodge: 'BLINK',
-            skill: 'PILLAR',
-            overdrive: 'NOVA',
-            ultimate: 'METEOR',
-            crouch: 'WARD',
-            jump: 'VAULT'
-          }
-        : {
-            attack: 'ATK',
-            dodge: 'DASH',
-            skill: 'SKILL',
-            overdrive: 'DRIVE',
-            ultimate: 'ULT',
-            crouch: 'GUARD',
-            jump: 'JUMP'
-          };
+    const heroTags = ADVENTURE_HERO_KITS[heroKey]?.tags || {
+      attack: 'ATK',
+      dodge: 'DASH',
+      skill: 'SKILL',
+      overdrive: 'DRIVE',
+      ultimate: 'ULT',
+      crouch: 'GUARD',
+      jump: 'JUMP'
+    };
 
     for (const slot of slots) {
       const canvas = document.getElementById(`adv-icon-${slot}`);
@@ -592,7 +585,7 @@ export class AdventureManager {
     const player = this.game.leftFighter;
     if (!player) return;
 
-    const heroKey = player.heroId || 'mage';
+    const heroKey = player.heroId || this.game.slot1Hero || 'mage';
     const mageIconsNowReady =
       heroKey === 'mage' &&
       Boolean(PixelForge.assets?.mage?.icons?.complete && PixelForge.assets.mage.icons.naturalWidth >= 448);
@@ -627,7 +620,7 @@ export class AdventureManager {
 
     // 1. Basic Attack (subtle cadence sweep while keeping primary icon vibrant)
     const autoCd = Math.max(0, player.autoCooldown || 0);
-    this.autoCdMax = Math.max(0.35, this.autoCdMax || 0.52);
+    this.autoCdMax = Math.max(0.32, this.autoCdMax || 0.44);
     updateOrbSlot('attack', 'ready', autoCd > 0.03 ? autoCd / this.autoCdMax : 0, '');
 
     // 2. Arcane Blink / Dodge
@@ -668,7 +661,7 @@ export class AdventureManager {
       updateOrbSlot('crouch', 'ready', 0, '');
     }
 
-    // 6. Solar Awakening Ultimate (Soul Ember & Combo Charge 0..100%)
+    // 6. Adventure Overdrive Ultimate (Soul Ember & Combo Charge 0..100%)
     const ultRatio = Math.max(0, Math.min(1, this.progression.ultCharge / 100));
     if (ultRatio < 0.999) {
       updateOrbSlot('overdrive', 'charge', 1 - ultRatio, `${Math.floor(ultRatio * 100)}%`);
@@ -709,13 +702,14 @@ export class AdventureManager {
     this.goPromptActive = false;
     this.jumpCd = 0;
 
+    this.skillSets.attachToFighter(playerFighter);
     this.progression.resetForNewCampaign();
     this.progression.attachToFighter(playerFighter);
 
-    this.autoCdMax = 0.52;
-    this.skillCdMax = Math.max(0.5, (playerFighter.skillMaxCooldown || 5.0) * 0.78);
-    this.dodgeCdMax = Math.max(0.5, (playerFighter.dodgeMaxCooldown || 3.2) * 0.72);
-    this.crouchCdMax = 3.2;
+    this.autoCdMax = playerFighter.autoInterval || 0.44;
+    this.skillCdMax = Math.max(0.5, (playerFighter.skillMaxCooldown || 4.5) * 0.85);
+    this.dodgeCdMax = Math.max(0.5, (playerFighter.dodgeMaxCooldown || 3.0) * 0.72);
+    this.crouchCdMax = 2.8;
     this._renderedIconHero = null;
     this._renderedMageIconsReady = false;
 
@@ -763,6 +757,7 @@ export class AdventureManager {
   stopCampaign() {
     this.closeSkillTree(false);
     this.progression.detachFromFighter(this.game.leftFighter);
+    this.skillSets.detachFromFighter(this.game.leftFighter);
     this.active = false;
     this.lockActive = false;
     this.goPromptActive = false;
@@ -1194,12 +1189,13 @@ export class AdventureManager {
           if (stats.emberHealPct > 0) {
             player.heal(Math.max(8, Math.round(player.maxHp * stats.emberHealPct)), 'EMBER MEND');
           }
+          const odTag = ADVENTURE_HERO_KITS[player.heroId]?.tags?.overdrive || 'DRIVE';
           this.game.vfx?.spawnDamageText(
             player.x,
             player.y - 148,
             0,
             false,
-            `+SOUL EMBER (NOVA ${Math.floor(this.progression.ultCharge)}%)`,
+            `+SOUL EMBER (${odTag} ${Math.floor(this.progression.ultCharge)}%)`,
             '#fb923c'
           );
           this.game.vfx?.spawnBurst(pk.x, pk.y - 24, 14, '#fb923c', 190, { upBias: 120, size: 5 });
@@ -1362,8 +1358,17 @@ export class AdventureManager {
           if (Math.abs(dz) > 14) {
             this.shiftEntityDepth(player, Math.sign(dz) * Math.min(Math.abs(dz), autoMoveSpeed * 0.68 * dt));
           }
-          if (target.isColossalBoss && player.x < 4240) {
-            player.x += autoMoveSpeed * 0.85 * dt;
+          if (target.isColossalBoss) {
+            const effRange = player.getEffectiveAttackRange
+              ? player.getEffectiveAttackRange()
+              : player.attackRange || 180;
+            if (effRange >= 320) {
+              if (player.x < 4220) {
+                player.x += autoMoveSpeed * 0.85 * dt;
+              }
+            } else if (player.x > 3985) {
+              player.x -= autoMoveSpeed * 0.85 * dt;
+            }
           }
         }
       }
@@ -1447,7 +1452,9 @@ export class AdventureManager {
       player.state === 'AUTO_ATTACK' &&
       player.didActionFrame &&
       this.queuedAction &&
-      (this.queuedAction !== 'attack' || (player.autoCooldown <= 0 && player.stateTimer >= 0.50));
+      (this.queuedAction !== 'attack' ||
+        (player.autoCooldown <= 0 &&
+          player.stateTimer >= Math.min(0.35, (player.autoDuration || 0.48) * 0.72)));
 
     const canAct =
       !player.isDead &&
@@ -1534,7 +1541,7 @@ export class AdventureManager {
         this.queuedAction = null;
         if (target) player.facing = target.x >= player.x ? 1 : -1;
         else if (moveDirX !== 0) player.facing = moveDirX;
-        this.autoCdMax = 0.50;
+        this.autoCdMax = player.autoInterval || 0.44;
         player.autoCooldown = this.autoCdMax;
         player.setState('AUTO_ATTACK');
       }
@@ -1550,6 +1557,16 @@ export class AdventureManager {
       player._advVaultVelZ = 0;
       if (isMoving3D && !this.game.isMatchOver) {
         player._manualWalkActive = true;
+        player._manualSpeedRatio = Math.max(
+          0.32,
+          Math.min(
+            1.2,
+            Math.hypot(
+              this.smoothVelX / Math.max(1, maxSpeedX),
+              this.smoothVelY / Math.max(1, maxSpeedZ)
+            )
+          )
+        );
         if (moveDirX !== 0) {
           player.facing = moveDirX;
         }
@@ -1559,6 +1576,7 @@ export class AdventureManager {
         this.shiftEntityDepth(player, this.smoothVelY * dt);
       } else {
         player._manualWalkActive = false;
+        player._manualSpeedRatio = 0;
         player.moveDir = 0;
         if (!this.game.isMatchOver) {
           player.state = 'IDLE';
@@ -1567,6 +1585,7 @@ export class AdventureManager {
       player.update(dt, null, this.game);
     } else {
       player._manualWalkActive = false;
+      player._manualSpeedRatio = 0;
       if (
         player.state === 'AUTO_ATTACK' &&
         !player.isDead &&
@@ -1592,12 +1611,33 @@ export class AdventureManager {
       const prevDidAction = Boolean(player.didActionFrame);
       player.update(dt, target, this.game);
       if (player.state === 'AUTO_ATTACK' && isMoving3D && Math.abs(player.vx) > 8) {
-        player.vx *= 0.22;
+        const isMeleeForwardLunge =
+          (player.attackRange || 180) < 300 && player.vx * this.smoothVelX >= -5;
+        if (!isMeleeForwardLunge) {
+          player.vx *= 0.22;
+        }
       }
       if (player.state === 'AUTO_ATTACK' && !prevDidAction && player.didActionFrame) {
         this.progression.onPlayerCastBasicAttack(player, target, this.game);
       }
     }
+  }
+
+  getActiveStageBounds() {
+    const colossalAlive = Boolean(
+      this.bossEntity && !this.bossEntity.isDead && this.bossEntity.isColossalBoss
+    );
+    if (colossalAlive) {
+      return { minX: 3965, maxX: ADVENTURE_WORLD_WIDTH - 80 };
+    }
+    if (this.lockActive) {
+      return { minX: this.lockMinX, maxX: this.lockMaxX };
+    }
+    const z = ADVENTURE_ZONES[this.zoneIndex] || ADVENTURE_ZONES[0];
+    return {
+      minX: Math.max(80, z.minX + 60),
+      maxX: Math.min(ADVENTURE_WORLD_WIDTH - 80, z.maxX - 60)
+    };
   }
 
   update(dt) {
@@ -1615,13 +1655,16 @@ export class AdventureManager {
       this.jumpCd = Math.max(0, this.jumpCd - dt);
     }
     this.progression.update(dt, player);
+    this.skillSets.update(dt, player);
 
     // 1. Boss Warning Countdown -> Spawn Colossal Behemoth Malphas on the LEFT (`x = 3865`)!
     if (this.bossWarningTimer > 0) {
       this.bossWarningTimer = Math.max(0, this.bossWarningTimer - dt);
       if (this.bossWarningTimer <= 0 && this.bossSpawnPending) {
         this.bossSpawnPending = false;
-        if (player.x < 4240) player.x = 4240;
+        const isRangedHero = (player.attackRange || 180) >= 320;
+        const bossEntryX = isRangedHero ? 4240 : 4080;
+        if (player.x < bossEntryX) player.x = bossEntryX;
         player.facing = -1;
         this.bossEntity = this.spawnMonster('archfiend', 3865, { groundY: ADVENTURE_DEPTH_MID_Y });
         this.syncRightHUD();
@@ -1668,10 +1711,19 @@ export class AdventureManager {
     const nearestMonster = this.getNearestLivingMonster(player);
     this.processPlayerControls(dt, player, nearestMonster);
 
-    // Keep player out of the Left-Side Colossal Boss's abyssal body pit (`x >= 3990`) & inside wave locks!
+    // Keep player out of the Left-Side Colossal Boss's abyssal body pit (`x >= 3965` so melee reaches cleanly!) & inside wave locks!
     const colossalAlive = Boolean(this.bossEntity && !this.bossEntity.isDead && this.bossEntity.isColossalBoss);
-    const minWalkX = colossalAlive ? 3990 : this.lockActive ? this.lockMinX : 80;
+    const minWalkX = colossalAlive ? 3965 : this.lockActive ? this.lockMinX : 80;
     const maxWalkX = this.lockActive ? this.lockMaxX : ADVENTURE_WORLD_WIDTH - 80;
+    if (Array.isArray(player._ultWaypoints)) {
+      const wpMin = minWalkX + 36;
+      const wpMax = maxWalkX - 36;
+      for (const wp of player._ultWaypoints) {
+        if (wp && Number.isFinite(wp.x)) {
+          wp.x = Math.max(wpMin, Math.min(wpMax, wp.x));
+        }
+      }
+    }
     if (player.x < minWalkX) player.x = minWalkX;
     if (player.x > maxWalkX) player.x = maxWalkX;
 
@@ -1689,6 +1741,9 @@ export class AdventureManager {
     const t = renderer.time || 0;
     const roadTop = 438;
     const roadBot = 684;
+
+    // 0. Render Champion Adventure Skill Set 2.5D Floor Zones & Sanctuary Seals
+    this.skillSets.renderFloor(ctx);
 
     // 1. Render Monster 3D Floor Telegraph Rings & Colossal Siege Corridors
     for (const f of this.game.fighters) {
@@ -1765,6 +1820,16 @@ export class AdventureManager {
       }
       ctx.restore();
     }
+  }
+
+  renderWorldMid(ctx) {
+    if (!this.active || !ctx) return;
+    this.skillSets.renderMid(ctx);
+  }
+
+  renderWorldForeground(ctx) {
+    if (!this.active || !ctx) return;
+    this.skillSets.renderForeground(ctx);
   }
 
   renderScreenHUD(ctx, renderer) {
