@@ -28,30 +28,30 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps92';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps92';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps92';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps92';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps92';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps92';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps92';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps92';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps92';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps92';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps92';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps92';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps92';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps92';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps92';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps92';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps92';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps93';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps93';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps93';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps93';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps93';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps93';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps93';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps93';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps93';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps93';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps93';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps93';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps93';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps93';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps93';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps93';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps93';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps92';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps92';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps92';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps92';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps93';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps93';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps93';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps93';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -612,7 +612,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps92');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps93');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -2777,18 +2777,32 @@ for (const [name, Cls] of CLASSES) {
     }
     waitIdle(90);
 
-    // Clear Wave 1 (verify monsters die even with testModeUnlimitedHp = true!)
+    if (ADVENTURE_WORLD_WIDTH !== 9600 || advGame.renderer.worldWidth !== 9600) {
+      throw new Error(
+        `Expected expanded 9600px Adventure campaign worldWidth, got const=${ADVENTURE_WORLD_WIDTH}, renderer=${advGame.renderer.worldWidth}`
+      );
+    }
+
+    // Clear Wave 1 / 8 (Zone 1 Subwave 1) -> unlocks exploration corridor inside Zone 1!
     for (const m of adv.getLivingMonsters()) {
       m.takeDamage(19999, sol, true, 120, 0);
     }
     if (adv.getLivingMonsters().length !== 0) {
       throw new Error('Expected Wave 1 ghouls to take mortal damage and die even when testModeUnlimitedHp === true!');
     }
+    tickAdv(6);
+    if (adv.lockActive || !adv.goPromptActive) {
+      throw new Error(`Expected Wave 1 / 8 clear to unlock mid-zone corridor with GO! prompt: lock=${adv.lockActive}, go=${adv.goPromptActive}`);
+    }
 
-    // Advance 0.5s -> Zone 1 Subwave 2 spawns (Ghoul + Void Cultist ambush!)
-    tickAdv(18);
-    if (adv.subWave !== 2 || adv.getLivingMonsters().length < 2) {
-      throw new Error(`Expected Zone 1 Subwave 2 ambush to spawn, got subWave=${adv.subWave}, living=${adv.getLivingMonsters().length}`);
+    // Walk Sol rightward past Zone 1 midTriggerX (`1340`) -> Wave 2 / 8 (Zone 1 Subwave 2 ambush!)
+    adv.setJoystickVector(1, 0, true);
+    for (let step = 0; step < 260 && adv.subWave < 2; step++) {
+      tickAdv(1);
+    }
+    adv.setJoystickVector(0, 0, false);
+    if (adv.subWave !== 2 || !adv.lockActive || adv.getLivingMonsters().length < 2) {
+      throw new Error(`Expected Zone 1 Subwave 2 ambush at midTriggerX, got subWave=${adv.subWave}, lock=${adv.lockActive}, living=${adv.getLivingMonsters().length}`);
     }
     // Let Void Cultist & Ghouls execute attacks/sigils for 45 frames to exercise their AI, sprites & floor telegraphs
     tickAdv(45);
@@ -2802,9 +2816,9 @@ for (const [name, Cls] of CLASSES) {
       );
     }
 
-    // Walk Sol via analog joystick across pickups and into Zone 2 (`triggerX = 1310`)
+    // Walk Sol via analog joystick across pickups and into Zone 2 (`triggerX = 2540`) -> Wave 3 / 8!
     adv.setJoystickVector(1, 0, true);
-    for (let step = 0; step < 200 && adv.zoneIndex < 1; step++) {
+    for (let step = 0; step < 320 && adv.zoneIndex < 1; step++) {
       tickAdv(1);
     }
     adv.setJoystickVector(0, 0, false);
@@ -2834,9 +2848,20 @@ for (const [name, Cls] of CLASSES) {
     }
     tickAdv(4);
 
-    // March into Zone 3 (`triggerX = 2510`) -> Elite Brute + Elite Cultist + Ghouls!
+    // Advance into Zone 2 Subwave 2 (`midTriggerX = 3740`, Wave 4 / 8) & clear!
     adv.setJoystickVector(1, 0, true);
-    for (let step = 0; step < 240 && adv.zoneIndex < 2; step++) {
+    for (let step = 0; step < 320 && adv.subWave < 2; step++) {
+      tickAdv(1);
+    }
+    adv.setJoystickVector(0, 0, false);
+    for (const m of adv.getLivingMonsters()) {
+      m.takeDamage(29999, sol, true, 120, 0);
+    }
+    tickAdv(4);
+
+    // March into Zone 3 (`triggerX = 4940`, Wave 5 / 8) -> Elite Brute + Cultist + Ghouls!
+    adv.setJoystickVector(1, 0, true);
+    for (let step = 0; step < 340 && adv.zoneIndex < 2; step++) {
       tickAdv(1);
     }
     adv.setJoystickVector(0, 0, false);
@@ -2849,17 +2874,42 @@ for (const [name, Cls] of CLASSES) {
     }
     tickAdv(4);
 
-    // March through Sanctuary Cache into Zone 4 Throne of the Black Pit (`triggerX = 3720`) -> Boss Warning -> Colossal Behemoth Malphas!
+    // Advance into Zone 3 Subwave 2 (`midTriggerX = 6140`, Wave 6 / 8) & clear!
     adv.setJoystickVector(1, 0, true);
-    for (let step = 0; step < 260 && adv.zoneIndex < 3; step++) {
+    for (let step = 0; step < 340 && adv.subWave < 2; step++) {
       tickAdv(1);
     }
     adv.setJoystickVector(0, 0, false);
-    if (adv.zoneIndex !== 3 || !adv.bossSpawnPending || adv.bossWarningTimer <= 0) {
-      throw new Error(`Expected Zone 4 Boss Warning banner, got zone=${adv.zoneIndex}, pending=${adv.bossSpawnPending}, timer=${adv.bossWarningTimer}`);
+    for (const m of adv.getLivingMonsters()) {
+      m.takeDamage(29999, sol, true, 120, 0);
+    }
+    tickAdv(4);
+
+    // March into Zone 4 Throne Gate Vanguard (`triggerX = 7340`, Wave 7 / 8) & clear!
+    adv.setJoystickVector(1, 0, true);
+    for (let step = 0; step < 340 && adv.zoneIndex < 3; step++) {
+      tickAdv(1);
+    }
+    adv.setJoystickVector(0, 0, false);
+    if (adv.zoneIndex !== 3 || adv.subWave !== 1 || !adv.lockActive) {
+      throw new Error(`Expected Zone 4 Wave 7 / 8 Throne Gate Vanguard, got zone=${adv.zoneIndex}, subWave=${adv.subWave}`);
+    }
+    for (const m of adv.getLivingMonsters()) {
+      m.takeDamage(29999, sol, true, 120, 0);
+    }
+    tickAdv(4);
+
+    // March to Eastern Abyssal Throne (`midTriggerX = 8520`, Wave 8 / 8) -> Boss Warning -> Right-Side Colossal Behemoth Malphas!
+    adv.setJoystickVector(1, 0, true);
+    for (let step = 0; step < 340 && !adv.bossSpawnPending; step++) {
+      tickAdv(1);
+    }
+    adv.setJoystickVector(0, 0, false);
+    if (adv.zoneIndex !== 3 || adv.subWave !== 2 || !adv.bossSpawnPending || adv.bossWarningTimer <= 0) {
+      throw new Error(`Expected Zone 4 Wave 8 / 8 Boss Warning banner, got zone=${adv.zoneIndex}, subWave=${adv.subWave}, pending=${adv.bossSpawnPending}, timer=${adv.bossWarningTimer}`);
     }
 
-    // Tick through 1.85s Boss Warning -> Giant Left-Side Colossal Boss (`BEHEMOTH MALPHAS`) rises on the LEFT side (`x = 3865`)!
+    // Tick through 1.85s Boss Warning -> Giant Right-Side Colossal Boss (`BEHEMOTH MALPHAS`) rises on the FAR RIGHT (`x = 9335`, `facing = -1`)!
     tickAdv(62);
     const boss = adv.bossEntity;
     if (
@@ -2868,17 +2918,17 @@ for (const [name, Cls] of CLASSES) {
       !boss.isColossalBoss ||
       boss.isDead ||
       boss.bossPhase !== 1 ||
-      boss.x !== 3865 ||
-      boss.facing !== 1 ||
-      sol.x < 3965 ||
-      boss.x >= sol.x
+      boss.x !== 9335 ||
+      boss.facing !== -1 ||
+      sol.x > 9250 ||
+      boss.x <= sol.x
     ) {
       throw new Error(
-        `Expected Giant Left-Side Colossal Boss Malphas at x=3865 facing RIGHT (+1) with Sol on right (>=3965), got bossX=${boss?.x}, facing=${boss?.facing}, solX=${sol.x}, phase=${boss?.bossPhase}`
+        `Expected Giant Right-Side Colossal Boss Malphas at x=9335 facing LEFT (-1) with Sol on left (<=9250), got bossX=${boss?.x}, facing=${boss?.facing}, solX=${sol.x}, phase=${boss?.bossPhase}`
       );
     }
     if (sol.fx.overrideCenterWorldX === null) {
-      throw new Error('Expected Renderer.render to sync sol.fx.overrideCenterWorldX in Adventure Mode for 4800px shader visibility!');
+      throw new Error('Expected Renderer.render to sync sol.fx.overrideCenterWorldX in Adventure Mode for 9600px shader visibility!');
     }
 
     // Verify Exposed Molten Heart-Core Punish Window (`vulnerableTimer > 0`) grants +45% bonus Adventure damage!
@@ -3189,20 +3239,20 @@ for (const [name, Cls] of CLASSES) {
           );
         }
 
-        // 6) Verify ALL 11 Champions (both melee & ranged, even from off-center 3D lane!) reach & damage Left-Side Colossal Boss Malphas (`x = 3865`)!
+        // 6) Verify ALL 11 Champions (both melee & ranged, even from off-center 3D lane!) reach & damage Right-Side Colossal Boss Malphas (`x = 9335`)!
         {
           for (const m of adv.getLivingMonsters()) m.isDead = true;
           adv.zoneIndex = 3;
           adv.lockActive = true;
-          adv.lockMinX = 3945;
-          adv.lockMaxX = 4720;
+          adv.lockMinX = 8380;
+          adv.lockMaxX = 9520;
           const isRanged = (hero.attackRange || 180) >= 320;
           hero.setState('IDLE');
-          hero.x = isRanged ? 4240 : 3985;
+          hero.x = isRanged ? 8920 : 9180;
           hero.groundY = 472;
           hero.y = 472;
-          hero.facing = -1;
-          const testBoss = adv.spawnMonster('archfiend', 3865, { groundY: 561 });
+          hero.facing = 1;
+          const testBoss = adv.spawnMonster('archfiend', 9335, { groundY: 561 });
           adv.bossEntity = testBoss;
           const startBossHp = testBoss.hp;
           adv.setAutoPlay(true, false);
@@ -3614,14 +3664,14 @@ for (const [name, Cls] of CLASSES) {
     }
   }
 
-  // 20B. Verify 5-Plane Seamless Adventure Panoramas (`adv_*_pano.png`, `0` `ctx.rotate`, `0` `arena_*` PNGs)
+  // 20B. Verify 5-Plane Seamless 10-Bay Adventure Panoramas (`adv_*_pano.png`, `0` `ctx.rotate`, `0` `arena_*` PNGs)
   const expectedPanos = [
     ['adv_vista_pano.png', 1620, 272],
-    ['adv_arch_pano.png', 2358, 272],
-    ['adv_floor_pano.png', 2742, 96],
+    ['adv_arch_pano.png', 3930, 272],
+    ['adv_floor_pano.png', 4570, 96],
     ['adv_inferno_pano.png', 800, 360]
   ];
-  for (const [fname, expW, expH] of expectedPanos) {
+  for (const [fname, expW, expH] of [...expectedPanos, ['adv_props_sheet.png', 1152, 640]]) {
     const pbuf = fs.readFileSync(`/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${fname}`);
     const pw = pbuf.readUInt32BE(16);
     const ph = pbuf.readUInt32BE(20);
@@ -3631,8 +3681,8 @@ for (const [name, Cls] of CLASSES) {
   }
   const panoAssets = PixelForge.initAssets();
   if (panoAssets.advVistaPano) panoAssets.advVistaPano.naturalWidth = 1620;
-  if (panoAssets.advArchPano) panoAssets.advArchPano.naturalWidth = 2358;
-  if (panoAssets.advFloorPano) panoAssets.advFloorPano.naturalWidth = 2742;
+  if (panoAssets.advArchPano) panoAssets.advArchPano.naturalWidth = 3930;
+  if (panoAssets.advFloorPano) panoAssets.advFloorPano.naturalWidth = 4570;
   if (panoAssets.advInfernoPano) panoAssets.advInfernoPano.naturalWidth = 800;
 
   const mapTrack = { rotateCalls: 0 };
@@ -3668,7 +3718,7 @@ for (const [name, Cls] of CLASSES) {
     glowViolet: {},
     glowCrimson: {}
   };
-  for (const cx of [450, 1200, 1800, 2400, 3000, 3600, 4250]) {
+  for (const cx of [450, 1600, 2800, 4200, 5600, 7200, 9020]) {
     mockMapRenderer.camX = cx;
     AdventureMapRenderer.render(mapCtx, mockMapRenderer, ADVENTURE_WORLD_WIDTH);
   }
@@ -3687,21 +3737,27 @@ for (const [name, Cls] of CLASSES) {
     mapTrack.rotateCalls !== 0 ||
     arenaPngDraws !== 0 ||
     seenPanoBlits.size !== 4 ||
-    fgRectCount < 6
+    fgRectCount < 6 ||
+    typeof AdventureMapRenderer.renderCalderaBossChasm !== 'undefined'
   ) {
     throw new Error(
-      `AdventureMapRenderer 5-plane panorama audit failed: rotate=${mapTrack.rotateCalls}, arenaPngs=${arenaPngDraws}, panos=${[...seenPanoBlits].join(',')}, fgRects=${fgRectCount}`
+      `AdventureMapRenderer 5-plane panorama audit failed: rotate=${mapTrack.rotateCalls}, arenaPngs=${arenaPngDraws}, panos=${[...seenPanoBlits].join(',')}, fgRects=${fgRectCount}, chasmFn=${typeof AdventureMapRenderer.renderCalderaBossChasm}`
     );
   }
   const mapSrc = fs.readFileSync(
     '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js',
     'utf8'
   );
-  if (mapSrc.includes('arena_') || /\.rotate\s*\(/.test(mapSrc)) {
-    throw new Error('AdventureMapRenderer.js must contain 0 arena_* references and 0 ctx.rotate() calls!');
+  if (mapSrc.includes('arena_') || mapSrc.includes('renderCalderaBossChasm') || /\.rotate\s*\(/.test(mapSrc)) {
+    throw new Error('AdventureMapRenderer.js must contain 0 arena_* references, 0 renderCalderaBossChasm, and 0 ctx.rotate() calls!');
   }
 
-  // 20C. Verify 22 Interactive 2.5D Destructibles (Intact -> Cracked -> Destroyed + Debris + Drops + Non-Blocking)
+  // 20C. Verify 36 HD-2D Sprite Destructibles & RPG Pickups (`advPropsSheet`: Intact -> Cracked -> Rubble + Shards + Pickups)
+  const allAssets20 = PixelForge.initAssets();
+  if (allAssets20.advPropsSheet) {
+    allAssets20.advPropsSheet.naturalWidth = 1152;
+    allAssets20.advPropsSheet.naturalHeight = 640;
+  }
   const destGame = createMockGame();
   destGame.gameMode = 'adventure';
   const destHero = new Warrior(240, 561, 1);
@@ -3711,9 +3767,9 @@ for (const [name, Cls] of CLASSES) {
   destGame.adventure = destAdv;
   destAdv.startCampaign(destHero);
 
-  if (!destAdv.destructibles || destAdv.destructibles.props.length !== 22) {
+  if (!destAdv.destructibles || destAdv.destructibles.props.length !== 36) {
     throw new Error(
-      `Expected 22 curated destructible props, got ${destAdv.destructibles?.props?.length}`
+      `Expected 36 curated HD-2D destructible props across 9600px stage, got ${destAdv.destructibles?.props?.length}`
     );
   }
   // Must NEVER pollute getLivingMonsters()!
@@ -3721,8 +3777,8 @@ for (const [name, Cls] of CLASSES) {
     throw new Error('Destructible props must NEVER appear in getLivingMonsters()!');
   }
 
-  // Test Intact -> Cracked -> Destroyed via melee + projectile + pillar + beam, plus drops & debris!
-  const p0 = destAdv.destructibles.props[0]; // sanctuary_pillar at x=310, groundY=464, maxHp=115
+  // Test Intact -> Cracked -> Destroyed via melee + projectile, plus HD-2D drops & debris!
+  const p0 = destAdv.destructibles.props[0]; // sanctuary_pillar at x=340, groundY=464, maxHp=115
   destHero.x = p0.x - 45;
   destHero.groundY = p0.groundY;
   destHero.y = p0.groundY;
@@ -3742,7 +3798,7 @@ for (const [name, Cls] of CLASSES) {
     );
   }
 
-  // Shatter an Ancient Artifact (`eclipse_astrolabe` at index 3) via projectile -> verify relic + bonus ember!
+  // Shatter an Ancient Artifact (`eclipse_astrolabe` at index 3) via projectile + spawn HP pickup -> verify all 3 RPG pickup types!
   const artProp = destAdv.destructibles.props[3];
   destHero.groundY = artProp.groundY;
   destGame.vfx.spawnProjectile({
@@ -3756,44 +3812,63 @@ for (const [name, Cls] of CLASSES) {
     radius: 16
   });
   destAdv.destructibles.update(1 / 30, destHero, destGame);
+  destAdv.spawnPickup('hp', 480, 560);
   if (!artProp.destroyed || !destAdv.pickups.some((pk) => pk.type === 'relic')) {
     throw new Error(
       `Expected Ancient Artifact shatter to drop Astral Relic shard: destroyed=${artProp.destroyed}`
     );
   }
 
-  // Render standing props, rubble & debris with 0 ctx.rotate()
+  // Render standing props, rubble, HD-2D pickups & shard debris -> verify advPropsSheet 9-arg blits & 0 ctx.rotate()!
   const propTrack = { rotateCalls: 0 };
   const propCtx = createMockCtx(propTrack);
-  destAdv.renderWorldFloor(propCtx, destGame.renderer);
-  for (const sp of destAdv.getStandingProps()) {
-    sp.draw(propCtx, false, destGame.renderer);
+  let propCellBlits128 = 0;
+  let shardBlits64 = 0;
+  propCtx.drawImage = (...args) => {
+    if (args.length === 9 && args[0] === allAssets20.advPropsSheet) {
+      const [, sx, sy, sw, sh] = args;
+      if (sw === 128 && sh === 128 && sx >= 0 && sy >= 0) propCellBlits128++;
+      if (sw === 64 && sh === 64 && sy >= 512) shardBlits64++;
+    }
+  };
+  for (const camX of [0, 1400, 2800, 4400, 6000, 7600, 8600]) {
+    destGame.renderer.cameraX = camX;
+    destAdv.renderWorldFloor(propCtx, destGame.renderer);
+    for (const sp of destAdv.getStandingProps()) {
+      sp.draw(propCtx, false, destGame.renderer);
+    }
+    destAdv.renderWorldForeground(propCtx, destGame.renderer);
   }
-  destAdv.renderWorldForeground(propCtx, destGame.renderer);
-  if (propTrack.rotateCalls !== 0) {
-    throw new Error(`Destructible prop rendering called ctx.rotate() ${propTrack.rotateCalls} times!`);
+  if (propTrack.rotateCalls !== 0 || propCellBlits128 < 36 || shardBlits64 < 10) {
+    throw new Error(
+      `HD-2D advPropsSheet audit failed: rotate=${propTrack.rotateCalls}, cell128=${propCellBlits128}, shard64=${shardBlits64}`
+    );
   }
   destAdv.stopCampaign();
 
-  // 20D. Verify Colossal Boss (`ArchfiendBoss`) Appearing Climb, Articulated Face/Body, Boss VFX & Clipped Death
-  const allAssets20 = PixelForge.initAssets();
+  // 20D. Verify Right-Side Colossal Boss (`ArchfiendBoss` at `x=9335`, `facing=-1`) Climb, Leftward Attacks, HD-2D VFX & Clipped Death
   if (allAssets20.archfiend?.colossus) {
     allAssets20.archfiend.colossus.naturalWidth = 4096;
     allAssets20.archfiend.colossus.naturalHeight = 1024;
   }
   const bossGame = createMockGame();
   bossGame.gameMode = 'adventure';
-  const bossHero = new FireMage(4240, 561, -1);
+  const bossHero = new FireMage(8920, 561, 1);
   bossHero.game = bossGame;
   bossGame.leftFighter = bossHero;
-  const colossus = new ArchfiendBoss(3865, 561, 1);
+  const colossus = new ArchfiendBoss(9335, 561, -1);
   colossus.game = bossGame;
   bossGame.rightFighter = colossus;
   bossGame.fighters = [bossHero, colossus];
 
-  if (!(colossus.emergeTimer > 1.0) || colossus.isInvulnerable !== false) {
+  if (
+    !(colossus.emergeTimer > 1.0) ||
+    colossus.isInvulnerable !== false ||
+    colossus.x !== 9335 ||
+    colossus.facing !== -1
+  ) {
     throw new Error(
-      `Expected ArchfiendBoss to start with emergeTimer > 1.0 and isInvulnerable=false, got emergeTimer=${colossus.emergeTimer}, invuln=${colossus.isInvulnerable}`
+      `Expected Right-Side ArchfiendBoss at x=9335 facing=-1 with emergeTimer>1.0 & invuln=false, got x=${colossus.x}, facing=${colossus.facing}, emerge=${colossus.emergeTimer}`
     );
   }
 
@@ -3819,7 +3894,7 @@ for (const [name, Cls] of CLASSES) {
     }
   };
 
-  // Step through APPEAR (60f) -> Hellfire Breath SKILL0 (36f) -> Claw Sweep SKILL1 (36f) -> ULTIMATE (55f)
+  // Step through APPEAR (60f) -> Fist Crush AUTO_ATTACK (32f) -> Leftward Hellfire SKILL0 (36f) -> Leftward Claw Sweep SKILL1 (36f) -> ULTIMATE (55f)
   for (let f = 0; f < 60; f++) {
     colossus.update(1 / 30, bossHero, bossGame);
     jawValues.add(Math.round((colossus.jawOpen || 0) * 20));
@@ -3829,6 +3904,15 @@ for (const [name, Cls] of CLASSES) {
     throw new Error(`Expected emergeTimer to reach 0 after 60 frames, got ${colossus.emergeTimer}`);
   }
 
+  colossus.slamTargetX = 8920;
+  colossus.slamTargetGy = 561;
+  colossus.setState('AUTO_ATTACK');
+  for (let f = 0; f < 32; f++) {
+    colossus.update(1 / 30, bossHero, bossGame);
+    colossus.draw(bossCtx, false, bossGame.renderer);
+  }
+
+  bossGame.vfx.projectiles.length = 0;
   colossus.skillVariant = 0;
   colossus.setState('SKILL');
   for (let f = 0; f < 36; f++) {
@@ -3836,22 +3920,31 @@ for (const [name, Cls] of CLASSES) {
     jawValues.add(Math.round((colossus.jawOpen || 0) * 20));
     colossus.draw(bossCtx, false, bossGame.renderer);
   }
+  if (!bossGame.vfx.projectiles.some((p) => p.vx < -200)) {
+    throw new Error('Expected Right-Side ArchfiendBoss Jaw Hellfire to fire spread fireballs LEFTWARD (vx < -200)!');
+  }
 
+  let minSweepClawX = 99999;
   colossus.skillVariant = 1;
   colossus.setState('SKILL');
   for (let f = 0; f < 36; f++) {
     colossus.update(1 / 30, bossHero, bossGame);
+    minSweepClawX = Math.min(minSweepClawX, colossus.clawWorldX);
     colossus.draw(bossCtx, false, bossGame.renderer);
+  }
+  if (minSweepClawX > 8550) {
+    throw new Error(`Expected Right-Side ArchfiendBoss Claw Sweep to rake LEFTWARD past x<=8550, got min=${minSweepClawX}`);
   }
 
   colossus.bossPhase = 3;
+  colossus.slamTargetX = 8880;
   colossus.setState('ULTIMATE');
   for (let f = 0; f < 55; f++) {
     colossus.update(1 / 30, bossHero, bossGame);
     colossus.draw(bossCtx, false, bossGame.renderer);
   }
 
-  // Trigger DEATH -> verify multi-stage explosions (`_deathBlastStage >= 4`), `TORSO_DYING` (`1536,0`), and `ctx.clip()`!
+  // Trigger DEATH -> verify multi-stage explosions (`_deathBlastStage >= 4`), `TORSO_DYING` (`1536,0`), `facing === -1`, and `ctx.clip()`!
   colossus.hp = 1;
   colossus.takeDamage(9999, bossHero, true, 120, 0);
   for (let f = 0; f < 65; f++) {
@@ -3861,7 +3954,8 @@ for (const [name, Cls] of CLASSES) {
 
   if (
     bossTrack.rotateCalls !== 0 ||
-    seenCells.size < 12 ||
+    colossus.facing !== -1 ||
+    seenCells.size < 13 ||
     !seenCells.has('1536,0') || // TORSO_DYING
     !seenCells.has('3072,512') || // VFX_JAW_HELLFIRE
     !seenCells.has('3584,512') || // VFX_CLAW_SLASH
@@ -3870,7 +3964,7 @@ for (const [name, Cls] of CLASSES) {
     (colossus._deathBlastStage || 0) < 4
   ) {
     throw new Error(
-      `ArchfiendBoss 16-cell choreography audit failed: rotate=${bossTrack.rotateCalls}, cells=${seenCells.size} (${[...seenCells].join(' | ')}), jawSteps=${jawValues.size}, deathClips=${deathClips}, blastStage=${colossus._deathBlastStage}`
+      `ArchfiendBoss 16-cell right-side choreography audit failed: rotate=${bossTrack.rotateCalls}, facing=${colossus.facing}, cells=${seenCells.size} (${[...seenCells].join(' | ')}), jawSteps=${jawValues.size}, deathClips=${deathClips}, blastStage=${colossus._deathBlastStage}`
     );
   }
 
@@ -4010,6 +4104,6 @@ for (const [name, Cls] of CLASSES) {
   }
 
   console.log(
-    `[PASS] Suite 20: 11-Hero Pixel-Bleed Purity, 5-Plane Seamless Panoramas, 22 Destructible 2.5D Props, 16-Cell Colossal Boss & 11-Hero 2.5D Curved Anti-Stuck AI verified!`
+    `[PASS] Suite 20: 11-Hero Pixel-Bleed Purity, 9600px 10-Bay Unbroken Panoramas, 36 HD-2D Props & Pickups, Right-Side Colossal Boss (x=9335) & 11-Hero 2.5D Curved AI verified!`
   );
 }

@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps92';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps92';
+import { PixelForge } from './PixelForge.js?v=30fps93';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps93';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -463,15 +463,15 @@ export class Renderer {
         if (skyFocus > maxSkyFocus) maxSkyFocus = skyFocus;
       }
       if (colossalBoss) {
-        const bossLeftEdge = (colossalBoss.anchorX || colossalBoss.x) - 195;
-        if (bossLeftEdge < minX) minX = bossLeftEdge;
-        const rightEdge = Math.max(player ? player.x + 110 : 4380, 4380);
-        if (rightEdge > maxX) maxX = rightEdge;
+        const bossRightEdge = (colossalBoss.anchorX || colossalBoss.x) + 195;
+        if (bossRightEdge > maxX) maxX = bossRightEdge;
+        const leftEdge = Math.min(player ? player.x - 110 : 8820, 8820);
+        if (leftEdge < minX) minX = leftEdge;
       }
       const midX =
         this.adventureMode && player
           ? colossalBoss
-            ? ((colossalBoss.anchorX || colossalBoss.x) - 185 + (player.x + 95)) * 0.5
+            ? ((colossalBoss.anchorX || colossalBoss.x) + 185 + (player.x - 95)) * 0.5
             : framePool.length > 1
               ? player.x * 0.56 + ((minX + maxX) * 0.5) * 0.44
               : player.x + player.facing * 95
@@ -722,7 +722,7 @@ export class Renderer {
           : 1;
         ctx.globalAlpha = 0.16 * bossFade;
         const bossGlow = this.getGlowForColor(f.primaryColor || '#ef4444');
-        const bx = Math.round((f.anchorX || f.x) - 310);
+        const bx = Math.round((f.anchorX || f.x) - 250);
         ctx.drawImage(bossGlow, bx, 360, 560, 340);
         ctx.restore();
         continue;

@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps92';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps92';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps92';
+import { Fighter } from './Fighter.js?v=30fps93';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps93';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps93';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps92';
+} from '../engine/shaders/abyssalShaders.js?v=30fps93';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -153,13 +153,13 @@ export class Reaper extends Fighter {
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
       if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps87')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps92';
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps93';
       }
       if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps87')) {
-        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps92';
+        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps93';
       }
       if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps87')) {
-        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps92';
+        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps93';
       }
     }
   }
@@ -2322,7 +2322,7 @@ export class Reaper extends Fighter {
     const uMax = advBounds ? advBounds.maxX - 36 : ww - 105;
     const targetX = advBounds
       ? enemy?.isColossalBoss
-        ? (enemy.anchorX || enemy.x) + 115
+        ? (enemy.anchorX || enemy.x) + (enemy.facing || -1) * 115
         : Math.max(advBounds.minX + 125, Math.min(advBounds.maxX - 125, enemy ? enemy.x : this.x + this.facing * 200))
       : enemy
         ? Math.max(150, Math.min(ww - 150, enemy.x))
@@ -2749,7 +2749,7 @@ export class Reaper extends Fighter {
       const rawX = enemy ? enemy.x : this.x + this.facing * 220;
       if (advBounds) {
         return enemy?.isColossalBoss
-          ? (enemy.anchorX || enemy.x) + 140
+          ? (enemy.anchorX || enemy.x) + (enemy.facing || -1) * 140
           : Math.max(advBounds.minX + 160, Math.min(advBounds.maxX - 160, rawX));
       }
       return Math.max(260, Math.min(940, rawX));

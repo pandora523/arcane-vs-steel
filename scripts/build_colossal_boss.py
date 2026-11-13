@@ -1,31 +1,31 @@
 #!/usr/bin/env python3
 """
-Builds the Giant Left-Side Colossal Boss HD-2D Multi-Part & VFX Atlas + Portrait for Adventure Mode Zone IV:
+Builds the Giant Right-Side Colossal Boss HD-2D Multi-Part & VFX Atlas + Portrait for Adventure Mode Zone IV:
   - `assets/sprites/boss_colossus_sheet.png` (4096x1024 = 8 cols x 2 rows = 16 cells x 512x512, authored at 256x256 -> 2x NEAREST)
-      Row 0 (Registered 256x256 Multi-Part Sovereign Body Rig facing +X RIGHT):
-        Cell (0,0) [sx=0,    sy=0]:   CALDERA_RIM    — Stationary Foreground Jagged Obsidian & Magma Cliff Crags
-        Cell (1,0) [sx=512,  sy=0]:   TORSO_HEART_A  — Headless & Pauldron-Free Ribcage + Normal Glowing Heart-Core
-        Cell (2,0) [sx=1024, sy=0]:   TORSO_HEART_B  — Headless Ribcage + Surging/Expanded White-Gold Heart-Core
-        Cell (3,0) [sx=1536, sy=0]:   TORSO_DYING    — Cracked Charred Ashen Ribcage & Shattered Core (Death Collapse)
-        Cell (4,0) [sx=2048, sy=0]:   PAULDRON_REAR  — Right-Side / Screen-Right Spiked Bronze-Obsidian Pauldron
-        Cell (5,0) [sx=2560, sy=0]:   PAULDRON_FRONT — Left-Side / Screen-Left Gothic Cathedral Arch Pauldron
-        Cell (6,0) [sx=3072, sy=0]:   SKULL_UPPER    — Horned Demon Skull, Blazing Eyes, Upper Fangs & Hellfire Throat Cavity
-        Cell (7,0) [sx=3584, sy=0]:   JAW_LOWER      — Articulated Lower Demon Mandible, Lower Fangs & Chin Spike
-      Row 1 (Articulated Siege-Claws, Siege-Fists & Baked 512x512 Boss HD-2D VFX):
-        Cell (0,1) [sx=0,    sy=512]: CLAW_OPEN        — Poised Open Siege-Claw (+X)
-        Cell (1,1) [sx=512,  sy=512]: CLAW_FLEX        — Tensed / Raking / Ledge-Gripping Siege-Claw (+X)
-        Cell (2,1) [sx=1024, sy=512]: FIST_CRUSH       — Vertical Runic Siege-Fist
-        Cell (3,1) [sx=1536, sy=512]: FIST_METEOR      — Overcharged Meteoric Siege-Fist w/ Hellfire Shock-Crown
-        Cell (4,1) [sx=2048, sy=512]: VFX_GEYSER_A     — Abyssal Caldera Lava Geyser & Obsidian Shards Frame A
-        Cell (5,1) [sx=2560, sy=512]: VFX_GEYSER_B     — Abyssal Caldera Lava Geyser & Obsidian Shards Frame B
-        Cell (6,1) [sx=3072, sy=512]: VFX_JAW_HELLFIRE — Horizontal Hellfire Breath Torrent Cone (+X)
-        Cell (7,1) [sx=3584, sy=512]: VFX_CLAW_SLASH   — Colossal 3-Talon Molten Slash Arc (+X)
+      Row 0 (Registered 256x256 Multi-Part Sovereign Body Rig pre-oriented facing -X LEFT for Right-Side Zone IV Throne):
+        Cell (0,0) [sx=0,    sy=0]:   CALDERA_RIM    — Stationary Foreground Jagged Obsidian & Chained Throne Parapet Rim
+        Cell (1,0) [sx=512,  sy=0]:   TORSO_HEART_A  — Headless & Pauldron-Free Ribcage + Normal Glowing Heart-Core (-X)
+        Cell (2,0) [sx=1024, sy=0]:   TORSO_HEART_B  — Headless Ribcage + Surging/Expanded White-Gold Heart-Core (-X)
+        Cell (3,0) [sx=1536, sy=0]:   TORSO_DYING    — Cracked Charred Ashen Ribcage & Shattered Core (-X)
+        Cell (4,0) [sx=2048, sy=0]:   PAULDRON_REAR  — Far-Side Spiked Bronze-Obsidian Pauldron (-X)
+        Cell (5,0) [sx=2560, sy=0]:   PAULDRON_FRONT — Near-Side Gothic Cathedral Arch Pauldron (-X)
+        Cell (6,0) [sx=3072, sy=0]:   SKULL_UPPER    — Horned Demon Skull, Blazing Eyes, Upper Fangs & Hellfire Throat (-X)
+        Cell (7,0) [sx=3584, sy=0]:   JAW_LOWER      — Articulated Lower Demon Mandible, Lower Fangs & Chin Spike (-X)
+      Row 1 (Articulated Siege-Claws, Siege-Fists & Generated HD-2D Pixel-Art Boss VFX facing -X LEFT):
+        Cell (0,1) [sx=0,    sy=512]: CLAW_OPEN        — Poised Open Siege-Claw (-X)
+        Cell (1,1) [sx=512,  sy=512]: CLAW_FLEX        — Tensed / Raking / Ledge-Gripping Siege-Claw (-X)
+        Cell (2,1) [sx=1024, sy=512]: FIST_CRUSH       — Vertical Runic Siege-Fist (-X)
+        Cell (3,1) [sx=1536, sy=512]: FIST_METEOR      — Overcharged Meteoric Siege-Fist w/ Hellfire Shock-Crown (-X)
+        Cell (4,1) [sx=2048, sy=512]: VFX_GEYSER_A     — Generated Volcanic Magma Geyser & Basalt Crater Frame A
+        Cell (5,1) [sx=2560, sy=512]: VFX_GEYSER_B     — Generated Volcanic Magma Geyser & Basalt Crater Frame B
+        Cell (6,1) [sx=3072, sy=512]: VFX_JAW_HELLFIRE — Generated Horizontal Hellfire Breath Torrent Cone (-X)
+        Cell (7,1) [sx=3584, sy=512]: VFX_CLAW_SLASH   — Generated Colossal 3-Talon Molten Slash Wave (-X)
   - `assets/sprites/boss_archfiend_portrait.png` (128x128 NEAREST, MedianFilter(5) + 20-color FASTOCTREE)
   - `debug_colossal_boss_showcase.png` (mandatory visual audit sheet: all 16 cells + 5 composite pose previews)
 
 Strictly follows `arcane-vs-steel-pipeline` Rules 1-4:
   - BFS border + enclosed white-pocket flood-fill + 3-pass anti-aliased fringe stripping (zero white halo)
-  - Pre-downsample MedianFilter(size=5) cel-flattening
+  - Pre-downsample MedianFilter cel-flattening
   - Hand-crafted 20-color Obsidian / Bronze / Crimson / Molten-Gold Master Palette quantization (zero dithering)
   - Connected-component stray-crumb removal + interior pinhole fill + 2-pass cardinal orphan despeckling
   - Crisp 1px `#0d0f1c` selective outline (Selout) on every segmented part & VFX cell
@@ -44,6 +44,7 @@ SRC_TORSO = os.path.join(ARTIFACT_DIR, "boss_colossus_torso_1794526244460.jpg")
 SRC_CLAW = os.path.join(ARTIFACT_DIR, "boss_colossus_claw_1794526243762.jpg")
 SRC_FIST = os.path.join(ARTIFACT_DIR, "boss_colossus_fist_v2_1794526470907.jpg")
 SRC_PORTRAIT = os.path.join(ARTIFACT_DIR, "boss_colossus_portrait_1794526377107.jpg")
+SRC_VFX_PACK = os.path.join(ARTIFACT_DIR, "boss_vfx_hd2d_pack_1794565156396.jpg")
 
 OUT_SHEET = os.path.join(REPO_DIR, "assets/sprites/boss_colossus_sheet.png")
 OUT_PORTRAIT = os.path.join(REPO_DIR, "assets/sprites/boss_archfiend_portrait.png")
@@ -696,16 +697,155 @@ def build_row0_segmented_torso_cells(torso_fg: Image.Image) -> list[tuple[str, I
                 if step % 3 == 0 and g_torso_dying[px_y][px_x + 1] >= 0:
                     g_torso_dying[px_y][px_x + 1] = 13 if step < 12 else 11
 
+    def flip_h(g: list[list[int]]) -> list[list[int]]:
+        return [row[::-1] for row in g]
+
+    g_caldera_hd2d = build_generated_throne_rim_grid()
+
     return [
-        ("R0C0: CALDERA_RIM", finalize_grid_to_512(g_caldera, "CALDERA_RIM", min_comp_size=18, keep_only_largest=True)),
-        ("R0C1: TORSO_HEART_A", finalize_grid_to_512(g_torso_a, "TORSO_HEART_A", min_comp_size=20, keep_only_largest=True)),
-        ("R0C2: TORSO_HEART_B", finalize_grid_to_512(g_torso_b, "TORSO_HEART_B", min_comp_size=20, keep_only_largest=True)),
-        ("R0C3: TORSO_DYING", finalize_grid_to_512(g_torso_dying, "TORSO_DYING", min_comp_size=20, keep_only_largest=True)),
-        ("R0C4: PAULDRON_REAR", finalize_grid_to_512(g_prear, "PAULDRON_REAR", min_comp_size=14, keep_only_largest=True)),
-        ("R0C5: PAULDRON_FRONT", finalize_grid_to_512(g_pfront, "PAULDRON_FRONT", min_comp_size=16, keep_only_largest=True)),
-        ("R0C6: SKULL_UPPER", finalize_grid_to_512(g_skull, "SKULL_UPPER", min_comp_size=16, keep_only_largest=True)),
-        ("R0C7: JAW_LOWER", finalize_grid_to_512(g_jaw, "JAW_LOWER", min_comp_size=10, keep_only_largest=True)),
+        ("R0C0: CALDERA_RIM", finalize_grid_to_512(g_caldera_hd2d, "CALDERA_RIM", min_comp_size=18, keep_only_largest=True)),
+        ("R0C1: TORSO_HEART_A", finalize_grid_to_512(flip_h(g_torso_a), "TORSO_HEART_A", min_comp_size=20, keep_only_largest=True)),
+        ("R0C2: TORSO_HEART_B", finalize_grid_to_512(flip_h(g_torso_b), "TORSO_HEART_B", min_comp_size=20, keep_only_largest=True)),
+        ("R0C3: TORSO_DYING", finalize_grid_to_512(flip_h(g_torso_dying), "TORSO_DYING", min_comp_size=20, keep_only_largest=True)),
+        ("R0C4: PAULDRON_REAR", finalize_grid_to_512(flip_h(g_prear), "PAULDRON_REAR", min_comp_size=14, keep_only_largest=True)),
+        ("R0C5: PAULDRON_FRONT", finalize_grid_to_512(flip_h(g_pfront), "PAULDRON_FRONT", min_comp_size=16, keep_only_largest=True)),
+        ("R0C6: SKULL_UPPER", finalize_grid_to_512(flip_h(g_skull), "SKULL_UPPER", min_comp_size=16, keep_only_largest=True)),
+        ("R0C7: JAW_LOWER", finalize_grid_to_512(flip_h(g_jaw), "JAW_LOWER", min_comp_size=10, keep_only_largest=True)),
     ]
+
+
+def extract_vfx_quad_foreground(quad_img: Image.Image) -> Image.Image:
+    """
+    Extracts a generated VFX / Throne Rim quadrant on pure `#FFFFFF` white background while
+    preserving 100% of interior incandescent white-yellow fire cores (`r=255, g=255, b=240+`)!
+    Only exterior white connected to the quadrant's outer borders (+ low-chroma white fringe) is cleared.
+    """
+    im = quad_img.convert("RGBA")
+    w, h = im.size
+    px = im.load()
+
+    bg = [[False] * w for _ in range(h)]
+    q = deque()
+
+    def is_exterior_white(r: int, g: int, b: int) -> bool:
+        mn = min(r, g, b)
+        mx = max(r, g, b)
+        return (r > 232 and g > 232 and b > 232 and (mx - mn) <= 18) or (mn > 218 and (mx - mn) <= 14)
+
+    for x in range(w):
+        for y in (0, h - 1):
+            r, g, b, _ = px[x, y]
+            if is_exterior_white(r, g, b) and not bg[y][x]:
+                bg[y][x] = True
+                q.append((x, y))
+    for y in range(h):
+        for x in (0, w - 1):
+            r, g, b, _ = px[x, y]
+            if is_exterior_white(r, g, b) and not bg[y][x]:
+                bg[y][x] = True
+                q.append((x, y))
+
+    while q:
+        cx, cy = q.popleft()
+        for nx, ny in ((cx - 1, cy), (cx + 1, cy), (cx, cy - 1), (cx, cy + 1)):
+            if 0 <= nx < w and 0 <= ny < h and not bg[ny][nx]:
+                r, g, b, _ = px[nx, ny]
+                if is_exterior_white(r, g, b):
+                    bg[ny][nx] = True
+                    q.append((nx, ny))
+
+    for y in range(h):
+        for x in range(w):
+            if bg[y][x]:
+                px[x, y] = (0, 0, 0, 0)
+
+    # 3-pass anti-aliased neutral-gray/white outer fringe strip (never strips saturated yellow/orange!)
+    for _ in range(3):
+        to_clear = []
+        for y in range(h):
+            for x in range(w):
+                r, g, b, a = px[x, y]
+                if a == 0:
+                    continue
+                adj_trans = False
+                for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
+                    if nx < 0 or nx >= w or ny < 0 or ny >= h or px[nx, ny][3] == 0:
+                        adj_trans = True
+                        break
+                if adj_trans:
+                    mn = min(r, g, b)
+                    mx = max(r, g, b)
+                    if mn > 175 and (mx - mn) < 32:
+                        to_clear.append((x, y))
+        for x, y in to_clear:
+            px[x, y] = (0, 0, 0, 0)
+
+    rgb = Image.new("RGB", (w, h), (22, 20, 28))
+    rgb.paste(im.convert("RGB"), mask=im.split()[3])
+    rgb_flat = rgb.filter(ImageFilter.MedianFilter(size=3))
+    alpha_flat = im.split()[3].filter(ImageFilter.MedianFilter(size=3))
+    out = rgb_flat.convert("RGBA")
+    out.putalpha(alpha_flat)
+    return out
+
+
+def _get_vfx_pack_quad(row: int, col: int) -> Image.Image:
+    pack = Image.open(SRC_VFX_PACK).convert("RGB")
+    w, h = pack.size
+    mw, mh = w // 2, h // 2
+    return pack.crop((col * mw, row * mh, (col + 1) * mw, (row + 1) * mh))
+
+
+def build_generated_throne_rim_grid() -> list[list[int]]:
+    """
+    Converts Bottom-Right quadrant of `boss_vfx_hd2d_pack` (Jagged Dark-Obsidian Chained Fortress
+    Pit Parapet Rim with glowing molten lava fissures) into `CALDERA_RIM` (`Cell 0,0`, `256x256` -> `512x512`).
+    """
+    fg = extract_vfx_quad_foreground(_get_vfx_pack_quad(1, 1))
+    bbox = fg.getbbox()
+    assert bbox is not None
+    cropped = fg.crop(bbox)
+    tw, th = 224, 122
+    rgb_s = cropped.convert("RGB").resize((tw, th), Image.Resampling.BILINEAR)
+    a_s = cropped.split()[3].resize((tw, th), Image.Resampling.NEAREST)
+
+    ox = (LOGICAL - tw) // 2
+    oy = 248 - th  # Bottom sits cleanly at `y = 248` (>= 16px margin in 512x512!)
+    grid = [[-1] * LOGICAL for _ in range(LOGICAL)]
+    rpx = rgb_s.load()
+    apx = a_s.load()
+    for y in range(th):
+        for x in range(tw):
+            if apx[x, y] >= 120:
+                r, g, b = rpx[x, y]
+                grid[oy + y][ox + x] = nearest_palette_idx(r, g, b)
+
+    # Carve a dramatic recessed inner pit notch along the flat top plateau (`y_256 = 126..164, x_256 = 56..200`)
+    # so the outer basalt spikes & iron chains frame Malphas's chest/waist without a flat tabletop behind him!
+    for lx in range(54, 202):
+        u = abs(lx - 128.0) / 74.0
+        # Keep tall jagged crags on left/right (`u > 0.72`) and lower jagged parapet teeth across the center (`y ~ 166..178`)
+        if u < 0.88:
+            tooth = 7.0 * math.sin(lx * 0.24) + 4.5 * math.cos(lx * 0.53)
+            dip = (1.0 - (u / 0.88) ** 2) * 34.0
+            rim_lip_y = int(round(138.0 + dip + tooth))
+            for ly in range(120, min(LOGICAL - 12, rim_lip_y)):
+                grid[ly][lx] = -1
+            # Highlight newly carved inner parapet teeth with molten rim ember / basalt highlight
+            if 8 <= rim_lip_y < LOGICAL - 12 and grid[rim_lip_y][lx] >= 0:
+                grid[rim_lip_y][lx] = 14 if (lx % 9 in (0, 1)) else 3
+
+    # Ensure solid dark obsidian base along `y = 216..246` inside `[40..216]` so chasm clipping has zero leaks!
+    for ly in range(216, 247):
+        t_row = (ly - 216) / 30.0
+        taper = int(round(t_row * 22.0))
+        x0 = 42 + taper + ((ly * 3) % 3)
+        x1 = 214 - taper - ((ly * 5) % 3)
+        for lx in range(x0, x1 + 1):
+            if grid[ly][lx] < 0:
+                grid[ly][lx] = 1 if ((lx + ly) % 5 != 0) else 2
+
+    return grid
 
 
 def fg_to_logical_grid(fg_rgba: Image.Image, pad: int = 12) -> list[list[int]]:
@@ -748,21 +888,18 @@ def build_claw_flex_grid(claw_open_grid: list[list[int]]) -> list[list[int]]:
                 flex[y][x] = nc
             else:
                 u = (x - knuckle_x) / 110.0
-                # Curl upper thumb & 4 talons progressively downward & slightly inward
                 dy = int(round((u ** 1.38) * 18.0))
                 dx = -int(round((u ** 1.65) * 8.0))
                 nx = x + dx
                 ny = y + dy
                 if 6 <= nx < LOGICAL - 6 and 6 <= ny < LOGICAL - 6:
                     nc = c
-                    # Ignite palm sigil, knuckle ridges & razor claw tips!
                     if 11 <= c <= 17:
                         nc = min(18, c + 2)
                     elif u > 0.62 and c in (4, 5, 9, 10):
                         nc = 17 if u > 0.80 else 15
                     flex[ny][nx] = max(flex[ny][nx], nc)
 
-    # Fill any 1px pixel-shift gaps inside articulated fingers
     for _ in range(2):
         patched = [row[:] for row in flex]
         for y in range(6, LOGICAL - 6):
@@ -778,7 +915,6 @@ def build_claw_flex_grid(claw_open_grid: list[list[int]]) -> list[list[int]]:
 
 def build_fist_meteor_grid(fist_base_grid: list[list[int]]) -> list[list[int]]:
     """Builds `FIST_METEOR` (`Cell 3,1`): Overcharged Siege-Fist w/ blazing pixel-art magma crown & white-gold runes."""
-    # Shift fist slightly up by 6px so we have generous bottom room for the roaring knuckle shock-crown
     met = [[-1] * LOGICAL for _ in range(LOGICAL)]
     min_x, max_x, max_y = LOGICAL, 0, 0
     for y in range(LOGICAL):
@@ -789,24 +925,21 @@ def build_fist_meteor_grid(fist_base_grid: list[list[int]]) -> list[list[int]]:
             ny = max(8, y - 6)
             nc = c
             if 11 <= c <= 17:
-                nc = min(19, c + 3)  # Searing white-gold / solar runes!
+                nc = min(19, c + 3)
             elif c in (9, 10) and ny > 155:
-                nc = 17  # Superheated knuckle spikes!
+                nc = 17
             met[ny][x] = nc
             min_x = min(min_x, x)
             max_x = max(max_x, x)
             max_y = max(max_y, ny)
 
-    # Add roaring pixel-art meteoric hellfire shock-crown enveloping the knuckles & streaming up the gauntlet sides!
     cx_mid = 0.5 * (min_x + max_x)
     half_w = max(24.0, 0.5 * (max_x - min_x))
     for y in range(72, min(LOGICAL - 8, max_y + 12)):
-        v = (y - 72) / max(1.0, (max_y + 10 - 72))  # 0 at top -> 1 at knuckle impact rim
-        # Flame envelope wraps around lower knuckles and licks up both flanks
+        v = (y - 72) / max(1.0, (max_y + 10 - 72))
         crown_w = half_w + 6 + v * 18 + math.sin(y * 0.34) * 4.5
         for x in range(max(8, int(cx_mid - crown_w - 6)), min(LOGICAL - 8, int(cx_mid + crown_w + 7))):
             if met[y][x] >= 0:
-                # Superheat bottom 16px of knuckles with molten edge glare
                 if y > max_y - 16 and met[y][x] in (1, 2, 3, 6, 7, 8):
                     if (x + y) % 2 == 0 or y > max_y - 9:
                         met[y][x] = 16 if y < max_y - 7 else 18
@@ -814,7 +947,6 @@ def build_fist_meteor_grid(fist_base_grid: list[list[int]]) -> list[list[int]]:
 
             dx_norm = abs(x - cx_mid) / max(1.0, crown_w)
             tongue = 0.16 * math.sin(x * 0.42 + y * 0.18) + 0.11 * math.cos(x * 0.77 - y * 0.27)
-            # Stronger at bottom knuckle impact arc (`v > 0.68`) and streaming upward along outer gauntlet edges (`dx_norm > 0.66`)
             in_bottom_bow = y >= max_y - 18 and dx_norm + tongue * 0.55 < 1.02 - max(0.0, (y - max_y) * 0.045)
             in_side_plume = v > 0.18 and 0.64 < dx_norm < (1.02 - (1.0 - v) * 0.22 + tongue)
             if in_bottom_bow or in_side_plume:
@@ -838,191 +970,112 @@ def build_fist_meteor_grid(fist_base_grid: list[list[int]]) -> list[list[int]]:
 
 def build_vfx_geyser_grid(variant: int) -> list[list[int]]:
     """
-    Pixel-art Abyssal Caldera Lava Geyser & Obsidian Shards (`variant=0` Frame A, `variant=1` Tall Roiling Crest Frame B).
+    Converts Bottom-Left quadrant of `boss_vfx_hd2d_pack` (Generated Towering Volcanic Magma Geyser
+    Pillar & Shattered Black-Basalt Crater Rim) into `VFX_GEYSER_A` (`variant=0`) and animated surge
+    `VFX_GEYSER_B` (`variant=1`), tapering the top edge into natural roaring flame tongues (`>= 16px` margin).
     """
+    fg = extract_vfx_quad_foreground(_get_vfx_pack_quad(1, 0))
+    if variant == 1:
+        fg = fg.transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    bbox = fg.getbbox()
+    assert bbox is not None
+    cropped = fg.crop(bbox)
+    cw, ch = cropped.size
+    pad_top = 10 if variant == 0 else 8
+    pad_bot = 10
+    th = LOGICAL - pad_top - pad_bot
+    scale = min((LOGICAL - 24) / cw, th / ch)
+    tw = max(16, int(round(cw * scale * (1.06 if variant == 1 else 1.0))))
+    th_actual = max(16, int(round(ch * scale)))
+
+    rgb_s = cropped.convert("RGB").resize((tw, th_actual), Image.Resampling.BILINEAR)
+    a_s = cropped.split()[3].resize((tw, th_actual), Image.Resampling.NEAREST)
+    ox = (LOGICAL - tw) // 2
+    oy = LOGICAL - pad_bot - th_actual
+
     grid = [[-1] * LOGICAL for _ in range(LOGICAL)]
-    top_y = 42 if variant == 0 else 16
-    bot_y = 242
-    phase = 0.0 if variant == 0 else 2.15
+    rpx = rgb_s.load()
+    apx = a_s.load()
+    for y in range(th_actual):
+        for x in range(tw):
+            if apx[x, y] >= 116:
+                r, g, b = rpx[x, y]
+                idx = nearest_palette_idx(r, g, b)
+                if variant == 1 and 13 <= idx <= 18:
+                    idx = min(19, idx + 1)
+                grid[oy + y][ox + x] = idx
 
-    for y in range(top_y, bot_y + 1):
-        u = (y - top_y) / max(1.0, bot_y - top_y)  # 0 at crest -> 1 at caldera base
-        # Broad churning base flaring at bottom & bifurcating into roaring tongues at crest
-        base_flare = (max(0.0, u - 0.68) / 0.32) ** 1.5 * 42.0
-        col_half_w = 18.0 + u * 36.0 + base_flare + math.sin(y * 0.21 + phase) * 6.5
-        center_sway = math.sin(y * 0.09 + phase) * (5.0 if variant == 0 else 7.5)
-        cx = 128.0 + center_sway
+    # Sculpt top `26px` (`oy .. oy + 26`) into natural pointed roaring flame crown tongues (zero flat crop bar!)
+    phase = 0.0 if variant == 0 else 1.85
+    for lx in range(ox, ox + tw):
+        dx_center = abs(lx - 128.0) / max(1.0, tw * 0.34)
+        crown_cut = int(round(dx_center * 18.0 + (0.5 + 0.5 * math.sin(lx * 0.36 + phase)) * 11.0))
+        top_keep_y = oy + crown_cut
+        for ly in range(0, min(LOGICAL, top_keep_y)):
+            grid[ly][lx] = -1
+        if 8 <= top_keep_y < LOGICAL - 8 and grid[top_keep_y][lx] >= 15:
+            grid[top_keep_y][lx] = 14
+            if top_keep_y + 1 < LOGICAL - 8 and grid[top_keep_y + 1][lx] >= 16:
+                grid[top_keep_y + 1][lx] = 15
 
-        for x in range(14, LOGICAL - 14):
-            dx = x - cx
-            adx = abs(dx)
-            # Crown tongues at top
-            crest_notch = 0.0
-            if u < 0.28:
-                crest_notch = (0.28 - u) * 1.45 * (0.5 + 0.5 * math.cos(dx * 0.24 + phase))
-            norm = adx / max(1.0, col_half_w) + crest_notch * 0.42
-            turb = 0.14 * math.sin(x * 0.33 - y * 0.26 + phase) + 0.09 * math.cos(x * 0.61 + y * 0.19)
-            val = 1.0 - norm + turb
-            if val <= 0.0:
-                continue
-            if val > 0.74:
-                grid[y][x] = 19 if u > 0.22 else 18
-            elif val > 0.56:
-                grid[y][x] = 18 if u > 0.35 else 17
-            elif val > 0.40:
-                grid[y][x] = 16
-            elif val > 0.26:
-                grid[y][x] = 15
-            elif val > 0.14:
-                grid[y][x] = 14
-            else:
-                grid[y][x] = 12
-
-    # Stamp chunky jagged obsidian volcanic rock shards erupting upward inside & beside the magma plume!
-    shards = (
-        [(74, 156, 13, 17), (182, 144, 14, 18), (92, 92, 11, 14), (166, 84, 12, 15), (62, 206, 15, 13), (194, 202, 16, 14)]
-        if variant == 0
-        else [(66, 118, 14, 18), (188, 108, 15, 19), (86, 52, 12, 15), (170, 46, 12, 16), (128, 34, 10, 14), (56, 182, 16, 15), (200, 176, 16, 15)]
-    )
-    for sx, sy, rx, ry in shards:
-        for y in range(max(10, sy - ry), min(LOGICAL - 10, sy + ry + 1)):
-            for x in range(max(10, sx - rx), min(LOGICAL - 10, sx + rx + 1)):
-                nx = (x - sx) / max(1.0, rx)
-                ny = (y - sy) / max(1.0, ry)
-                # Faceted angular polygon metric (`|nx| + |ny|*0.85` + stepped facet)
-                poly = max(abs(nx) * 0.92 + abs(ny) * 0.58, abs(ny) * 0.95 + abs(nx) * 0.42)
-                if poly <= 0.95:
-                    if ny > 0.35:
-                        grid[y][x] = 15 if poly > 0.72 else 13  # Hot magma-lit underside!
-                    elif nx < -0.25:
-                        grid[y][x] = 4 if poly < 0.65 else 3
-                    elif poly < 0.55:
-                        grid[y][x] = 2
-                    else:
-                        grid[y][x] = 1
     return grid
 
 
 def build_vfx_jaw_hellfire_grid() -> list[list[int]]:
     """
-    Pixel-art Horizontal Hellfire Breath Torrent Cone shooting `+X` RIGHT (`Cell 6,1`).
+    Converts Top-Left quadrant of `boss_vfx_hd2d_pack` (Generated Roaring Horizontal Hellfire
+    Dragon-Breath Torrent Cone: incandescent white-yellow mouth blast on the RIGHT flaring into
+    orange-crimson flames & dark obsidian smoke toward the LEFT `-X`) into `VFX_JAW_HELLFIRE` (`Cell 6,1`).
     """
+    fg = extract_vfx_quad_foreground(_get_vfx_pack_quad(0, 0))
+    bbox = fg.getbbox()
+    assert bbox is not None
+    cropped = fg.crop(bbox)
+    cw, ch = cropped.size
+    avail = LOGICAL - 20
+    scale = min(avail / cw, avail / ch)
+    tw = max(16, int(round(cw * scale)))
+    th = max(16, int(round(ch * scale)))
+
+    rgb_s = cropped.convert("RGB").resize((tw, th), Image.Resampling.BILINEAR)
+    a_s = cropped.split()[3].resize((tw, th), Image.Resampling.NEAREST)
+    ox = LOGICAL - 10 - tw  # Right side (`x ~ 246`) sits right at Malphas's roaring jaws!
+    oy = (LOGICAL - th) // 2
+
     grid = [[-1] * LOGICAL for _ in range(LOGICAL)]
-    x_start, x_end = 16, 242
+    rpx = rgb_s.load()
+    apx = a_s.load()
+    for y in range(th):
+        for x in range(tw):
+            if apx[x, y] >= 116:
+                r, g, b = rpx[x, y]
+                grid[oy + y][ox + x] = nearest_palette_idx(r, g, b)
 
-    for x in range(x_start, x_end + 1):
-        u = (x - x_start) / float(x_end - x_start)  # 0 at mouth nozzle -> 1 at torrent front
-        # Tight searing mouth blast expanding into a huge sweeping hellfire cone
-        half_h = 13.0 + (u ** 0.88) * 68.0 + math.sin(x * 0.18) * 5.0
-        cy = 128.0 + math.sin(u * 4.2) * 5.0
+    # Sculpt the left smoke-billow edge (`ox .. ox + 26`, where raw art touched `x=0`) into organic rounded smoke/flame curls!
+    cy_mid = oy + th * 0.5
+    for ly in range(oy, oy + th):
+        dy_norm = abs(ly - cy_mid) / max(1.0, th * 0.5)
+        billow = int(round((dy_norm ** 1.35) * 20.0 + (0.5 + 0.5 * math.sin(ly * 0.29)) * 10.0))
+        left_keep_x = ox + billow
+        for lx in range(0, min(LOGICAL, left_keep_x)):
+            grid[ly][lx] = -1
 
-        # Taper the right tip into roaring flame tongues rather than a flat vertical wall
-        front_tongues = 0.0
-        if u > 0.74:
-            front_tongues = ((u - 0.74) / 0.26) * (0.48 + 0.52 * math.sin((x + cy) * 0.12))
-
-        for y in range(14, LOGICAL - 14):
-            dy = y - cy
-            ady = abs(dy)
-            if u > 0.72:
-                lick = 0.42 * math.sin(y * 0.23) + 0.28 * math.cos(y * 0.41 + 1.1)
-                if u > 0.86 + lick * 0.16 * (1.0 - min(1.0, ady / max(1.0, half_h))):
-                    continue
-            norm = ady / max(1.0, half_h)
-            hook = 0.16 * math.sin(x * 0.24 - ady * 0.31) + 0.10 * math.cos(x * 0.47 + y * 0.22)
-            val = 1.0 - norm + hook - front_tongues * 0.18
-            if val <= 0.0:
-                continue
-            if val > 0.78 and u < 0.78:
-                grid[y][x] = 19
-            elif val > 0.60:
-                grid[y][x] = 18
-            elif val > 0.44:
-                grid[y][x] = 17
-            elif val > 0.30:
-                grid[y][x] = 16
-            elif val > 0.18:
-                grid[y][x] = 15
-            elif val > 0.09:
-                grid[y][x] = 14
-            else:
-                grid[y][x] = 12
-
-    # Add chunky forward-blasting ember/obsidian fire-bolts (`Selout`-outlined shards)
-    bolts = [(176, 68, 12, 6), (208, 92, 14, 7), (224, 130, 15, 8), (198, 168, 13, 7), (162, 188, 11, 6)]
-    for bx, by, rx, ry in bolts:
-        for y in range(by - ry, by + ry + 1):
-            for x in range(bx - rx, bx + rx + 1):
-                if 10 <= x < LOGICAL - 10 and 10 <= y < LOGICAL - 10:
-                    d = abs(x - bx) / rx + abs(y - by) / ry
-                    if d <= 1.0:
-                        grid[y][x] = 19 if d < 0.38 else (17 if d < 0.70 else 14)
     return grid
 
 
 def build_vfx_claw_slash_grid() -> list[list[int]]:
     """
-    Pixel-art Colossal 3-Talon Molten Slash Arc (`+X` right-sweeping triple fiery claw crescents, `Cell 7,1`).
+    Converts Top-Right quadrant of `boss_vfx_hd2d_pack` (Generated Colossal Triple-Talon Molten
+    Demon-Claw Slash Wave) and mirrors horizontally so all 3 blazing gold-crimson-orange talon
+    crescents sweep LEFTWARD (`-X`) across the arena (`Cell 7,1`).
     """
-    grid = [[-1] * LOGICAL for _ in range(LOGICAL)]
-    # Three clearly separated parallel sweeping razor-claw crescents raking +X RIGHT
-    arcs = [
-        (24.0, 112.0, 118.0, -0.82, 0.72, 11.0),    # Inner/Upper Talon Gouge 1 (front x ~ 142)
-        (66.0, 128.0, 122.0, -0.84, 0.80, 13.0),    # Center Dominant Talon Gouge 2 (front x ~ 188)
-        (110.0, 144.0, 118.0, -0.76, 0.84, 11.5),   # Outer/Leading Talon Gouge 3 (front x ~ 228)
-    ]
-
-    for y in range(12, LOGICAL - 12):
-        for x in range(14, LOGICAL - 12):
-            best_heat = -1.0
-            for cx, cy, rad, a0, a1, thick in arcs:
-                dx = x - cx
-                dy = y - cy
-                ang = math.atan2(dy, dx)
-                if ang < a0 or ang > a1:
-                    continue
-                u_ang = (ang - a0) / (a1 - a0)
-                tip_env = math.sin(math.pi * u_ang) ** 0.76
-                loc_thick = thick * tip_env
-                if loc_thick < 1.6:
-                    continue
-                r_dist = math.hypot(dx, dy)
-                wake_jag = 0.0
-                if r_dist < rad:
-                    wake_jag = max(0.0, math.sin(ang * 24.0 + cx * 0.2)) * 4.2 * tip_env
-                inner_span = loc_thick * 1.10 + wake_jag
-                outer_span = loc_thick * 0.52
-
-                if rad - inner_span <= r_dist <= rad + outer_span:
-                    if r_dist >= rad:
-                        edge_u = 1.0 - (r_dist - rad) / max(0.5, outer_span)
-                        heat = 0.68 + 0.32 * edge_u
-                    else:
-                        edge_u = 1.0 - (rad - r_dist) / max(0.5, inner_span)
-                        heat = 0.88 * edge_u
-                    best_heat = max(best_heat, heat * (0.82 + 0.18 * tip_env))
-
-            if best_heat > 0.0:
-                if best_heat > 0.85:
-                    grid[y][x] = 19
-                elif best_heat > 0.70:
-                    grid[y][x] = 18
-                elif best_heat > 0.54:
-                    grid[y][x] = 17
-                elif best_heat > 0.38:
-                    grid[y][x] = 16
-                elif best_heat > 0.24:
-                    grid[y][x] = 15
-                elif best_heat > 0.13:
-                    grid[y][x] = 14
-                else:
-                    grid[y][x] = 12
-    return grid
+    fg = extract_vfx_quad_foreground(_get_vfx_pack_quad(0, 1)).transpose(Image.Transpose.FLIP_LEFT_RIGHT)
+    return fg_to_logical_grid(fg, pad=10)
 
 
 def build_portrait_128(src_path: str) -> Image.Image:
     """Rule 2 HUD Portrait pipeline: MedianFilter(size=5) + 20-color FASTOCTREE (dither=NONE) -> 128x128 NEAREST."""
-    im = Image.open(src_path).convert("RGB")
+    im = Image.open(src_path).convert("RGB").transpose(Image.Transpose.FLIP_LEFT_RIGHT)
     w, h = im.size
     crop_box = (int(w * 0.08), int(h * 0.02), int(w * 0.92), int(h * 0.86))
     im = im.crop(crop_box).filter(ImageFilter.MedianFilter(size=5))
@@ -1036,11 +1089,10 @@ def composite_boss_pose(
     row1: list[Image.Image],
     mode: str,
 ) -> Image.Image:
-    """Renders an authentic clipped multi-part boss composite preview (340x360) for mandatory visual audit."""
+    """Renders an authentic clipped multi-part RIGHT-SIDE (`-X` facing) boss composite preview (340x360) for visual audit."""
     canvas = Image.new("RGBA", (340, 360), (16, 10, 18, 255))
     draw = ImageDraw.Draw(canvas)
-    rim_y_bot = 316  # Chasm road lip in preview space
-    # Background abyssal glow + road strip below rim_y_bot
+    rim_y_bot = 316
     draw.rectangle([0, 0, 339, rim_y_bot], fill=(20, 11, 18, 255))
     draw.rectangle([0, rim_y_bot + 1, 339, 359], fill=(38, 28, 36, 255))
     draw.line([(0, rim_y_bot), (339, rim_y_bot)], fill=(120, 38, 32, 255), width=2)
@@ -1050,7 +1102,7 @@ def composite_boss_pose(
     ]
     claw_open, claw_flex, _, _, geyser_a, geyser_b, vfx_hellfire, vfx_slash = row1
 
-    base_x = 12
+    base_x = 68  # Seated on the RIGHT side facing LEFT (`-X`)!
     base_y = rim_y_bot - 252  # 64
 
     rise_y = 0
@@ -1072,78 +1124,73 @@ def composite_boss_pose(
     elif mode == "ROAR":
         torso_img = torso_b
         jaw_drop = 16
-        skull_dx, skull_dy = 8, -3
+        skull_dx, skull_dy = -8, -3
         pf_dy, pr_dy = -7, -6
     elif mode == "CORE":
         torso_img = torso_b
-        slump_x, slump_y = 12, 16
+        slump_x, slump_y = -12, 16
         jaw_drop = 9
         pf_dy, pr_dy = 8, 8
     elif mode == "DEATH":
         rise_y = 112
         torso_img = torso_dying
         jaw_drop = 16
-        skull_dx, skull_dy = -4, -6
+        skull_dx, skull_dy = 4, -6
         pf_dy, pr_dy = 12, 10
 
-    # Clip region strictly above solid base of CALDERA_RIM (`y <= rim_y_bot - 8`) so zero bottom leakage occurs!
     body_layer = Image.new("RGBA", (340, 360), (0, 0, 0, 0))
     tx = base_x + slump_x
     ty = base_y + slump_y + rise_y
 
     if mode in ("APPEAR", "DEATH"):
         gey = (geyser_b if mode == "APPEAR" else geyser_a).resize((210, 210), Image.Resampling.NEAREST)
-        body_layer.alpha_composite(gey, (base_x + 30, rim_y_bot - 196))
+        body_layer.alpha_composite(gey, (base_x + 24, rim_y_bot - 196))
 
-    # Rear claw
+    # Rear claw reaching LEFT (`-X`)
     rc_src = claw_flex if mode in ("APPEAR", "ROAR", "DEATH") else claw_open
     rc = rc_src.resize((128, 128), Image.Resampling.NEAREST)
     rc_y = (rim_y_bot - 96) if mode == "APPEAR" else (ty + 78)
-    body_layer.alpha_composite(rc, (tx + 140, rc_y))
+    body_layer.alpha_composite(rc, (tx - 8, rc_y))
 
-    # Rear Pauldron -> Torso -> Skull -> Jaw -> Front Pauldron
     body_layer.alpha_composite(p_rear, (tx, ty + pr_dy))
     body_layer.alpha_composite(torso_img, (tx, ty))
     body_layer.alpha_composite(skull, (tx + skull_dx, ty + skull_dy))
     body_layer.alpha_composite(jaw, (tx + skull_dx, ty + skull_dy + jaw_drop))
     body_layer.alpha_composite(p_front, (tx, ty + pf_dy))
 
-    # Apply chasm clip (`y <= rim_y_bot - 8`) BEFORE compositing stationary CALDERA_RIM on top!
     clip_mask = Image.new("L", (340, 360), 0)
     ImageDraw.Draw(clip_mask).rectangle([0, 0, 339, rim_y_bot - 8], fill=255)
     clipped_body = Image.new("RGBA", (340, 360), (0, 0, 0, 0))
     clipped_body.paste(body_layer, (0, 0), mask=clip_mask)
     canvas.alpha_composite(clipped_body)
 
-    # Stationary foreground CALDERA_RIM anchored permanently at `(base_x, base_y)`!
+    # Stationary foreground Throne Parapet Rim (`CALDERA_RIM`)
     canvas.alpha_composite(caldera_rim, (base_x, base_y))
 
-    # Foreground Claw & Attack VFX
     if mode == "ROAR":
-        hf = vfx_hellfire.resize((184, 184), Image.Resampling.NEAREST)
-        canvas.alpha_composite(hf, (tx + skull_dx + 137, ty + skull_dy - 4))
+        hf = vfx_hellfire.resize((172, 172), Image.Resampling.NEAREST)
+        canvas.alpha_composite(hf, (max(0, tx + skull_dx - 54), ty + skull_dy - 4))
         fc = claw_flex.resize((138, 138), Image.Resampling.NEAREST)
-        canvas.alpha_composite(fc, (tx + 122, rim_y_bot - 92))
+        canvas.alpha_composite(fc, (tx + 2, rim_y_bot - 92))
     elif mode == "APPEAR":
         fc = claw_flex.resize((142, 142), Image.Resampling.NEAREST)
-        canvas.alpha_composite(fc, (base_x + 118, rim_y_bot - 96))
+        canvas.alpha_composite(fc, (base_x + 4, rim_y_bot - 96))
     elif mode == "DEATH":
-        # Clipped slipping foreground claw inside chasm
         fc = claw_flex.resize((136, 136), Image.Resampling.NEAREST)
         fc_layer = Image.new("RGBA", (340, 360), (0, 0, 0, 0))
-        fc_layer.alpha_composite(fc, (base_x + 112, rim_y_bot - 58))
+        fc_layer.alpha_composite(fc, (base_x + 12, rim_y_bot - 58))
         fc_clipped = Image.new("RGBA", (340, 360), (0, 0, 0, 0))
         fc_clipped.paste(fc_layer, (0, 0), mask=clip_mask)
         canvas.alpha_composite(fc_clipped)
     else:
         fc = claw_open.resize((140, 140), Image.Resampling.NEAREST)
-        canvas.alpha_composite(fc, (tx + 124, rim_y_bot - 90))
+        canvas.alpha_composite(fc, (tx + 2, rim_y_bot - 90))
         if mode == "IDLE":
-            sl = vfx_slash.resize((116, 116), Image.Resampling.NEAREST)
-            canvas.alpha_composite(sl, (218, rim_y_bot - 104))
+            sl = vfx_slash.resize((124, 124), Image.Resampling.NEAREST)
+            canvas.alpha_composite(sl, (4, rim_y_bot - 110))
 
     if mode == "CORE":
-        cx, cy = tx + 141, ty + 142
+        cx, cy = tx + 119, ty + 142
         draw.rectangle([cx - 18, cy - 18, cx + 18, cy + 18], outline=(103, 232, 249, 255), width=2)
         draw.rectangle([cx - 13, cy - 13, cx + 13, cy + 13], outline=(254, 240, 138, 255), width=1)
 
@@ -1155,24 +1202,29 @@ def main():
     claw_fg = extract_clean_foreground(SRC_CLAW)
     fist_fg = extract_clean_foreground(SRC_FIST)
 
-    # Row 0: 8 Registered 512x512 Multi-Part Sovereign Body Cells
+    # Row 0: 8 Registered 512x512 Multi-Part Sovereign Body Cells (pre-oriented facing `-X` LEFT!)
     row0_cells = build_row0_segmented_torso_cells(torso_fg)
 
-    # Row 1: 8 Articulated Claws, Fists & Baked Boss HD-2D VFX Cells
-    claw_open_grid = fg_to_logical_grid(claw_fg, pad=12)
-    claw_flex_grid = build_claw_flex_grid(claw_open_grid)
-    fist_crush_grid = fg_to_logical_grid(fist_fg, pad=12)
-    fist_meteor_grid = build_fist_meteor_grid(fist_crush_grid)
+    # Row 1: 8 Articulated Claws, Fists & Generated HD-2D Boss VFX Cells (pre-oriented facing `-X` LEFT!)
+    claw_open_r = fg_to_logical_grid(claw_fg, pad=12)
+    claw_flex_r = build_claw_flex_grid(claw_open_r)
+    fist_crush_r = fg_to_logical_grid(fist_fg, pad=12)
+    fist_meteor_r = build_fist_meteor_grid(fist_crush_r)
+
+    claw_open_grid = [row[::-1] for row in claw_open_r]
+    claw_flex_grid = [row[::-1] for row in claw_flex_r]
+    fist_crush_grid = [row[::-1] for row in fist_crush_r]
+    fist_meteor_grid = [row[::-1] for row in fist_meteor_r]
 
     row1_cells = [
         ("R1C0: CLAW_OPEN", finalize_grid_to_512(claw_open_grid, "CLAW_OPEN", min_comp_size=18, keep_only_largest=True)),
         ("R1C1: CLAW_FLEX", finalize_grid_to_512(claw_flex_grid, "CLAW_FLEX", min_comp_size=18, keep_only_largest=True)),
         ("R1C2: FIST_CRUSH", finalize_grid_to_512(fist_crush_grid, "FIST_CRUSH", min_comp_size=18, keep_only_largest=True)),
         ("R1C3: FIST_METEOR", finalize_grid_to_512(fist_meteor_grid, "FIST_METEOR", min_comp_size=14, keep_only_largest=False)),
-        ("R1C4: VFX_GEYSER_A", finalize_grid_to_512(build_vfx_geyser_grid(0), "VFX_GEYSER_A", min_comp_size=14)),
-        ("R1C5: VFX_GEYSER_B", finalize_grid_to_512(build_vfx_geyser_grid(1), "VFX_GEYSER_B", min_comp_size=14)),
-        ("R1C6: VFX_JAW_HELLFIRE", finalize_grid_to_512(build_vfx_jaw_hellfire_grid(), "VFX_JAW_HELLFIRE", min_comp_size=12)),
-        ("R1C7: VFX_CLAW_SLASH", finalize_grid_to_512(build_vfx_claw_slash_grid(), "VFX_CLAW_SLASH", min_comp_size=14)),
+        ("R1C4: VFX_GEYSER_A", finalize_grid_to_512(build_vfx_geyser_grid(0), "VFX_GEYSER_A", min_comp_size=8)),
+        ("R1C5: VFX_GEYSER_B", finalize_grid_to_512(build_vfx_geyser_grid(1), "VFX_GEYSER_B", min_comp_size=8)),
+        ("R1C6: VFX_JAW_HELLFIRE", finalize_grid_to_512(build_vfx_jaw_hellfire_grid(), "VFX_JAW_HELLFIRE", min_comp_size=8)),
+        ("R1C7: VFX_CLAW_SLASH", finalize_grid_to_512(build_vfx_claw_slash_grid(), "VFX_CLAW_SLASH", min_comp_size=6)),
     ]
 
     sheet = Image.new("RGBA", (4096, 1024), (0, 0, 0, 0))
@@ -1183,18 +1235,17 @@ def main():
 
     os.makedirs(os.path.dirname(OUT_SHEET), exist_ok=True)
     sheet.save(OUT_SHEET, optimize=True)
-    print(f"[OK] Wrote {OUT_SHEET} ({sheet.width}x{sheet.height}, 16x 512x512 cells, 20-color Master Palette, 0 clips)")
+    print(f"[OK] Wrote {OUT_SHEET} ({sheet.width}x{sheet.height}, 16x 512x512 cells facing -X LEFT, 20-color Master Palette, 0 clips)")
 
     portrait = build_portrait_128(SRC_PORTRAIT)
     portrait.save(OUT_PORTRAIT, optimize=True)
     print(f"[OK] Wrote {OUT_PORTRAIT} ({portrait.width}x{portrait.height})")
 
-    # Build Mandatory Debug Showcase Sheet (`debug_colossal_boss_showcase.png`)
     dbg = Image.new("RGBA", (1840, 1020), (10, 12, 22, 255))
     draw = ImageDraw.Draw(dbg)
     draw.text(
         (24, 10),
-        "COLOSSAL BOSS 4096x1024 ATLAS AUDIT (16 x 512x512 CELLS, 20-COLOR MASTER PALETTE, 1px #0d0f1c SELOUT, 0 CLIPS)",
+        "RIGHT-SIDE COLOSSAL BOSS 4096x1024 ATLAS AUDIT (FACING -X LEFT, GENERATED HD-2D VFX & THRONE RIM, 1px SELOUT, 0 CLIPS)",
         fill=(254, 240, 138, 255),
     )
 
@@ -1213,11 +1264,10 @@ def main():
             draw.rectangle([x0 - 1, y0 - 1, x0 + cell_box, y0 + cell_box], outline=(212, 175, 55, 255), width=1)
             draw.text((x0 + 2, y0 - 14), label, fill=(254, 240, 138, 255))
 
-    # Bottom Section: 5 Assembled Multi-Part Pose Composites
     poses = [
-        ("1. APPEARING CLIMB (CLIPPED)", "APPEAR"),
-        ("2. IDLE BREATH + SLASH VFX", "IDLE"),
-        ("3. WIDE-JAW HELLFIRE ROAR", "ROAR"),
+        ("1. RIGHT-SIDE APPEAR (CLIPPED)", "APPEAR"),
+        ("2. IDLE BREATH + 3-TALON SLASH", "IDLE"),
+        ("3. HELLFIRE DRAGON-BREATH ROAR", "ROAR"),
         ("4. EXPOSED HEART-CORE (+45%)", "CORE"),
         ("5. CRACKED DEATH COLLAPSE", "DEATH"),
     ]
@@ -1237,3 +1287,4 @@ def main():
 
 if __name__ == "__main__":
     main()
+

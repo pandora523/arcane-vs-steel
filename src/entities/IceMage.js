@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps92';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps92';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps92';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps92';
+import { Fighter } from './Fighter.js?v=30fps93';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps93';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps93';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps93';
 
 /**
  * Lyra (`icemage`) — Winter Empress & Sovereign of Absolute Zero (v6 Full Rework).
@@ -134,7 +134,7 @@ export class IceMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
       if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps87')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps92';
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps93';
       }
     }
   }
@@ -1422,7 +1422,7 @@ export class IceMage extends Fighter {
         this.didJawsErupt = true;
         const rawTx = enemy
           ? enemy.isColossalBoss
-            ? enemy.x + 115
+            ? enemy.x + (enemy.facing || -1) * 115
             : enemy.x
           : this.x + this.facing * 270;
         const tx = clampJawsX(rawTx);
@@ -1477,7 +1477,13 @@ export class IceMage extends Fighter {
       this.isDeflecting = false;
       const tx = this.glacierJaws
         ? this.glacierJaws.x
-        : clampJawsX(enemy ? (enemy.isColossalBoss ? enemy.x + 115 : enemy.x) : this.x + this.facing * 270);
+        : clampJawsX(
+            enemy
+              ? enemy.isColossalBoss
+                ? enemy.x + (enemy.facing || -1) * 115
+                : enemy.x
+              : this.x + this.facing * 270
+          );
       const ty = this.glacierJaws ? this.glacierJaws.y : this.groundY;
 
       if (this.glacierJaws) {
@@ -1546,7 +1552,7 @@ export class IceMage extends Fighter {
     const advBounds = game?.isAdventureMode?.() ? game.adventure?.getActiveStageBounds?.() : null;
     const targetX = enemy
       ? enemy.isColossalBoss
-        ? enemy.x + 125
+        ? enemy.x + (enemy.facing || -1) * 125
         : enemy.x
       : this.x + this.facing * 280;
     const centerX = advBounds
@@ -1858,7 +1864,7 @@ export class IceMage extends Fighter {
     if (t < 1.12) {
       const rawCoffinX = enemy
         ? enemy.isColossalBoss
-          ? enemy.x + 125
+          ? enemy.x + (enemy.facing || -1) * 125
           : enemy.x
         : this.x + this.facing * 240;
       this._trueUltCoffinX = advBounds

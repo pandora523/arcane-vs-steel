@@ -380,10 +380,12 @@ export class AdventureSkillSets {
       }
     }
 
-    const focusMin = colossalAlive ? 3865 : safeMin;
+    const focusMax = colossalAlive
+      ? Math.max(safeMax, this.adventure?.bossEntity?.anchorX || 9335)
+      : safeMax;
     for (const key of HERO_FOCUS_TARGET_KEYS) {
       if (Number.isFinite(player[key])) {
-        player[key] = Math.max(focusMin, Math.min(safeMax, player[key]));
+        player[key] = Math.max(safeMin, Math.min(focusMax, player[key]));
       }
     }
 

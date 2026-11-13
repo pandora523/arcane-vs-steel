@@ -951,10 +951,19 @@ export class Fighter {
       game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
         ? game.adventure.lockMinX
         : margin;
-    const maxArenaX =
+    const bossWallAlive = Boolean(
+      game?.adventure?.bossEntity &&
+        !game.adventure.bossEntity.isDead &&
+        game.adventure.bossEntity.isColossalBoss &&
+        !this.isColossalBoss
+    );
+    const rawMaxArenaX =
       game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMaxX)
         ? game.adventure.lockMaxX
         : game.renderer.worldWidth - margin;
+    const maxArenaX = bossWallAlive
+      ? Math.min(rawMaxArenaX, (game.adventure.bossEntity.anchorX || 9335) - 85)
+      : rawMaxArenaX;
     this.x = Math.max(minArenaX, Math.min(maxArenaX, this.x));
 
     if (game?.adventure?.active && Number.isFinite(this.groundY)) {
@@ -1214,12 +1223,13 @@ export class Fighter {
           const bossColossalAlive = Boolean(
             isAdvMode && game?.adventure?.bossEntity && !game.adventure.bossEntity.isDead && game.adventure.bossEntity.isColossalBoss
           );
-          const effMinWall = bossColossalAlive ? Math.max(minArenaX, 3945) : minArenaX;
+          const effMinWall = minArenaX;
+          const effBackMaxWall = bossColossalAlive ? maxArenaX + 400 : maxArenaX;
           const outstepMargin = 85;
           const rangeWallMargin = 95;
           // Brief martial out-step feint right after completing a full combo string so fighters breathe & bait whiffs!
           if ((this._aiOutstepTimer || 0) > 0 && dist < atkRange * 0.94) {
-            const nearWall = this.x < effMinWall + outstepMargin || this.x > maxArenaX - outstepMargin;
+            const nearWall = this.x < effMinWall + outstepMargin || this.x > effBackMaxWall - outstepMargin;
             const stepSign = nearWall ? 1 : this._aiOutstepDir || -1;
             this.state = 'WALK';
             this.moveDir = stepSign;
@@ -1247,7 +1257,7 @@ export class Fighter {
                 this.startCrouch(enemy, game);
                 return;
               }
-              const nearWall = this.x < effMinWall + rangeWallMargin || this.x > maxArenaX - rangeWallMargin;
+              const nearWall = this.x < effMinWall + rangeWallMargin || this.x > effBackMaxWall - rangeWallMargin;
               const vSweetMin = aiProfile.sweetMin || 310;
               const vSweetMax = aiProfile.sweetMax || 375;
               if (dist < vSweetMin && !nearWall) {
@@ -1270,7 +1280,7 @@ export class Fighter {
               const sweetSpotMin = aiProfile.sweetMin || 350;
               const sweetSpotMax = aiProfile.sweetMax || 455;
               const nearLeft = this.x < effMinWall + rangeWallMargin;
-              const nearRight = this.x > maxArenaX - rangeWallMargin;
+              const nearRight = this.x > effBackMaxWall - rangeWallMargin;
 
               // Corner-escape aerial vault for trapped ranged champions (VS Modes only)
               if (
@@ -1306,7 +1316,7 @@ export class Fighter {
             }
           } else if (this.heroId === 'ronin' || this.heroId === 'android') {
             // Iaido Samurai (Kaze-Maru) & Cyber-Valkyrie (VEX-09): disciplined blade-tip spacing (118..148px)
-            const nearSpacingWall = this.x < effMinWall + 60 || this.x > maxArenaX - 60;
+            const nearSpacingWall = this.x < effMinWall + 60 || this.x > effBackMaxWall - 60;
             if (dist > 148) {
               this.state = 'WALK';
               this.moveDir = 1;
@@ -1325,7 +1335,7 @@ export class Fighter {
             }
           } else if (this.heroId === 'chronomancer') {
             // Sovereign of Time (Chronos): poised mid-close halberd spacing (145..205px)
-            const nearChronoWall = this.x < effMinWall + 65 || this.x > maxArenaX - 65;
+            const nearChronoWall = this.x < effMinWall + 65 || this.x > effBackMaxWall - 65;
             if (dist > 205) {
               this.state = 'WALK';
               this.moveDir = 1;

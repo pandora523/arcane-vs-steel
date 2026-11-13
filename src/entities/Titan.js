@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps92';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps92';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps92';
+import { Fighter } from './Fighter.js?v=30fps93';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps93';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps93';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps92';
+} from '../engine/shaders/forgeShaders.js?v=30fps93';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -140,11 +140,11 @@ export class Titan extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
-      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps92')) {
-        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps92';
+      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps93')) {
+        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps93';
       }
       if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps87')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps92';
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps93';
       }
     }
   }
@@ -1455,8 +1455,9 @@ export class Titan extends Fighter {
 
       const refX = leadFoe && !leadFoe.isDead ? leadFoe.x : this.x;
       if (leadFoe?.isColossalBoss) {
+        const bossFace = leadFoe.facing || -1;
         this._homeRunTargetWallX = leadFoe.anchorX || leadFoe.x;
-        this._homeRunDir = -1;
+        this._homeRunDir = bossFace < 0 ? 1 : -1;
       } else {
         const distRight = wallMaxX - refX;
         const distLeft = refX - wallMinX;
@@ -1510,7 +1511,11 @@ export class Titan extends Fighter {
 
       if (leadFoe && !leadFoe.isDead) {
         if (leadFoe.isColossalBoss) {
-          const bossBatterX = Math.max(wallMinX, (leadFoe.anchorX || leadFoe.x) + 112);
+          const bossFace = leadFoe.facing || -1;
+          const bossBatterX = Math.max(
+            wallMinX,
+            Math.min(wallMaxX, (leadFoe.anchorX || leadFoe.x) + bossFace * 112)
+          );
           const stepSpeed = t < 0.20 ? 28 : 14;
           this.x += (bossBatterX - this.x) * Math.min(1, dt * stepSpeed);
         } else {
@@ -1536,7 +1541,7 @@ export class Titan extends Fighter {
     if (t >= 0.42 && (this._ultWaveStep || 0) < 1) {
       this._ultWaveStep = 1;
       const contactX = leadFoe?.isColossalBoss
-        ? (leadFoe.anchorX || leadFoe.x) + 20
+        ? (leadFoe.anchorX || leadFoe.x) + (leadFoe.facing || -1) * 20
         : Math.max(wallMinX + 8, Math.min(wallMaxX - 8, this.x + batDir * 106));
       const contactY = this.groundY - 82;
 
@@ -1759,8 +1764,9 @@ export class Titan extends Fighter {
     if (this._trueUltStep < 1) {
       const anchorFoe = activeFoes[0] || enemy;
       if (anchorFoe?.isColossalBoss) {
-        this._trueUltAnvilX = (anchorFoe.anchorX || anchorFoe.x) + 40;
-        this._trueUltDir = -1;
+        const bossFace = anchorFoe.facing || -1;
+        this._trueUltAnvilX = (anchorFoe.anchorX || anchorFoe.x) + bossFace * 40;
+        this._trueUltDir = bossFace < 0 ? 1 : -1;
       } else {
         const margin = advBounds ? 95 : 240;
         this._trueUltAnvilX = anchorFoe

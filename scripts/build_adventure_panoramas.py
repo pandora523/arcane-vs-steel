@@ -342,15 +342,15 @@ def build_arch_and_floor_panoramas() -> tuple[np.ndarray, np.ndarray, np.ndarray
     """
     Builds:
       - `adv_arch_pano.png` (`2358 x 272` RGBA, `p = 0.86`, `6 * 393px` periodic)
-      - `adv_floor_pano.png` (`2742 x 96` RGB, `p = 1.00`, `6 * 457px` periodic)
+      - `adv_floor_pano.png` (`4570 x 96` RGB, `p = 1.00`, `10 * 457px` periodic)
 
-    Check `p = 0.86` zone centers (`px = (0.86 * camX + 840) / 2.625`):
-      - Zone I   (`camX = 600`):  `px = 516.6`
-      - Zone II  (`camX = 1800`): `px = 909.7` (`+393.1` px!)
-      - Zone III (`camX = 3000`): `px = 1302.9` (`+393.1` px!)
-      - Zone IV  (`camX = 4200`): `px = 1696.0` (`+393.1` px!)
+    Check `p = 0.86` 2400px-per-Realm bay centers (`px = (0.86 * camX + 840) / 2.625`):
+      - Zone I   (`camX = 600, 1800`):  `px = 516.6, 909.7`
+      - Zone II  (`camX = 3000, 4200`): `px = 1302.9, 1696.0`
+      - Zone III (`camX = 5400, 6600`): `px = 2089.1, 2482.3`
+      - Zone IV  (`camX = 7800, 9000`): `px = 2875.4, 3268.6`
     Each `640px` panel cropped to `585px` (`x = 28..613`) and quilted across `192px` of solid outer
-    Gothic masonry gives `585 - 192 = 393px` per zone — **EXACT SUB-PIXEL ZONE SYNCHRONIZATION**!
+    Gothic masonry gives `585 - 192 = 393px` per 1200px half-zone (`786px` per 2400px Realm)!
     """
     u1, f1 = load_aligned_zone_panel(SRC_FILES["zone1"], curb_src_y=610)
     u2, f2 = load_aligned_zone_panel(SRC_FILES["zone2"], curb_src_y=563)
@@ -362,15 +362,19 @@ def build_arch_and_floor_panoramas() -> tuple[np.ndarray, np.ndarray, np.ndarray
     a3 = extract_organic_arch_rgba(u3)
     a4 = extract_organic_arch_rgba(u4)
 
-    # 6 bays (`[Zone1_bleed, Zone1, Zone2, Zone3, Zone4, Zone4_bleed]`), each `585px` (`x = 28..613`), `ov = 192` -> step `393px`!
-    ax0, ax1 = 28, 613  # 585px; note open sky is strictly within `108..532`, so outer `80px` on BOTH sides is 100% solid stone!
+    # 10 bays (`[a1_bleed, a1, a1, a2, a2, a3, a3, a4, a4, a4_bleed]`), each `585px`, `ov = 192` -> step `393px`!
+    ax0, ax1 = 28, 613  # 585px; open sky is strictly within `108..532`, so outer `80px` on BOTH sides is 100% solid stone!
     arch_strips = [
-        a1[:, ax0:ax1, :].copy(),  # 0: Left bleed (Gothic Eclipse Bastion)
-        a1[:, ax0:ax1, :].copy(),  # 1: Zone I   (`camX = 600` -> `px = 517`)
-        a2[:, ax0:ax1, :].copy(),  # 2: Zone II  (`camX = 1800` -> `px = 910`)
-        a3[:, ax0:ax1, :].copy(),  # 3: Zone III (`camX = 3000` -> `px = 1303`)
-        a4[:, ax0:ax1, :].copy(),  # 4: Zone IV  (`camX = 4200` -> `px = 1696`)
-        a4[:, ax0:ax1, :].copy(),  # 5: Right bleed (Black Pit Obsidian Bastion)
+        a1[:, ax0:ax1, :].copy(),  # 0: Left bleed (`px = 124`, `camX = -600`)
+        a1[:, ax0:ax1, :].copy(),  # 1: Zone I A   (`px = 517`, `camX = 600`)
+        a1[:, ax0:ax1, :].copy(),  # 2: Zone I B   (`px = 910`, `camX = 1800`)
+        a2[:, ax0:ax1, :].copy(),  # 3: Zone II A  (`px = 1303`, `camX = 3000`)
+        a2[:, ax0:ax1, :].copy(),  # 4: Zone II B  (`px = 1696`, `camX = 4200`)
+        a3[:, ax0:ax1, :].copy(),  # 5: Zone III A (`px = 2089`, `camX = 5400`)
+        a3[:, ax0:ax1, :].copy(),  # 6: Zone III B (`px = 2482`, `camX = 6600`)
+        a4[:, ax0:ax1, :].copy(),  # 7: Zone IV A  (`px = 2875`, `camX = 7800`)
+        a4[:, ax0:ax1, :].copy(),  # 8: Zone IV B  (`px = 3268`, `camX = 9000`, Boss Arena)
+        a4[:, ax0:ax1, :].copy(),  # 9: Right bleed (`px = 3661`, `camX = 10200`)
     ]
 
     ov_a = 585 - 393  # 192px!
@@ -379,19 +383,23 @@ def build_arch_and_floor_panoramas() -> tuple[np.ndarray, np.ndarray, np.ndarray
         ring_a = multiband_quilt_rgba(ring_a, s, overlap=ov_a)
     ring_a_plus = multiband_quilt_rgba(ring_a, arch_strips[0], overlap=ov_a)
 
-    periodic_arch_W = 6 * 393  # 2358px
+    periodic_arch_W = 10 * 393  # 3930px
     sliced_a = ring_a_plus[:, 393 : 393 + periodic_arch_W, :].copy()
     roll_a = (517 - (585 // 2)) % periodic_arch_W
     seamless_arch = np.roll(sliced_a, shift=roll_a, axis=1)
 
-    # Now build `adv_floor_pano.png` (`2742 x 96` RGB, `p = 1.00`, `6 * 457px` periodic):
-    # Crop `617px` (`x = 12..629`), `ov = 160px` -> `617 - 160 = 457px` per zone!
+    # Now build `adv_floor_pano.png` (`4570 x 96` RGB, `p = 1.00`, `10 * 457px` periodic):
+    # Crop `617px` (`x = 12..629`), `ov = 160px` -> `617 - 160 = 457px` per 1200px half-zone!
     fx0, fx1 = 12, 629
     floor_strips = [
         f1[:, fx0:fx1, :].copy(),
         f1[:, fx0:fx1, :].copy(),
+        f1[:, fx0:fx1, :].copy(),
+        f2[:, fx0:fx1, :].copy(),
         f2[:, fx0:fx1, :].copy(),
         f3[:, fx0:fx1, :].copy(),
+        f3[:, fx0:fx1, :].copy(),
+        f4[:, fx0:fx1, :].copy(),
         f4[:, fx0:fx1, :].copy(),
         f4[:, fx0:fx1, :].copy(),
     ]
@@ -401,7 +409,7 @@ def build_arch_and_floor_panoramas() -> tuple[np.ndarray, np.ndarray, np.ndarray
         ring_f = multiband_quilt_rgb(ring_f, sf, overlap=ov_f)
     ring_f_plus = multiband_quilt_rgb(ring_f, floor_strips[0], overlap=ov_f)
 
-    periodic_floor_W = 6 * 457  # 2742px
+    periodic_floor_W = 10 * 457  # 4570px
     sliced_f = ring_f_plus[:, 457 : 457 + periodic_floor_W, :].copy()
     roll_f = (549 - (617 // 2)) % periodic_floor_W
     seamless_floor = np.roll(sliced_f, shift=roll_f, axis=1)

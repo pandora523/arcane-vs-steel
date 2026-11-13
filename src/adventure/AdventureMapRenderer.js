@@ -1,20 +1,20 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps92';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps93';
 
 /**
  * Seamless Multi-Plane HD-2D Adventure World Panorama Renderer (`AdventureMapRenderer`)
  *
  * Renders the bespoke "Abyssal Eclipse Pilgrimage" 5-plane panoramic stage across
- * the continuous 4800px 2.5D campaign (`X: -∞..+∞`, walkable depth `Z/Y: 442..680`):
+ * the expanded 9600px (`4 x 2400px` Realms) 2.5D campaign (`X: -inf..+inf`, walkable depth `Z/Y: 442..680`):
  *   - Plane 0 (`0.14x`): Upper Abyssal Star-Cosmos & Nebula Vault (`viewTop .. -240`)
- *   - Plane 1 (`0.38x`): `advVistaPano` (`1176x272`) — Continuous Abyssal Solar Eclipse,
+ *   - Plane 1 (`0.26x`): `advVistaPano` (`1620x272`) - Continuous Abyssal Solar Eclipse,
  *                        Gothic Viaducts, Cursed Starwood Waterfalls, Sunken Violet
  *                        Bone-Viaduct Citadel & Smoldering Black Pit Magma Volcanoes
- *   - Plane 1.5 (`0.62x`): Mid-Chasm Drifting Canyon Mist & Atmospheric Depth Veils
- *   - Plane 2 (`0.86x`): `advArchPano` (`2358x272` RGBA) — Organic Sky-Keyed Ruined Gothic
+ *   - Plane 1.5 (`0.70x`): Mid-Chasm Drifting Canyon Mist & Atmospheric Depth Veils
+ *   - Plane 2 (`0.86x`): `advArchPano` (`3930x272` RGBA, 10 bays) - Organic Sky-Keyed Ruined Gothic
  *                        Eclipse Colonnade, Overgrown Spirit-Trees & Crystal Lanterns,
  *                        Ossuary Gargoyle Portcullis Gate & Scorched Black Pit Obsidian Arch
- *   - Plane 3 (`1.00x`): `advFloorPano` (`2742x96`) — Grounded Wet Carved Rune, Elven,
- *                        Ossuary & Molten-Cracked Obsidian Causeway + Shattered Caldera Boss Chasm
+ *   - Plane 3 (`1.00x`): `advFloorPano` (`4570x96`, 10 bays) - Unbroken Grounded Wet Carved Rune,
+ *                        Elven, Ossuary & Molten-Cracked Obsidian Causeway across all 9600px
  *   - Plane 4 (`1.24x`): Near-Camera Foreground Vault Spandrels, Hanging Chains & Cliff Buttresses
  *
  * Strictly zero canvas rotation calls, crisp integer pixel coordinates, subtle additive
@@ -25,8 +25,6 @@ export const ADVENTURE_ROAD_TOP_Y = 436;
 export const ADVENTURE_ROAD_BOT_Y = 686;
 
 const SELOUT = '#0d0f1c';
-const CALDERA_CHASM_MIN_X = 3650;
-const CALDERA_CHASM_MAX_X = 3935;
 
 const PANO_SCALE = 2.625;
 const PANO_ORIGIN_WORLD_X = -840.0;
@@ -34,33 +32,21 @@ const ARCH_WORLD_TOP_Y = Math.round(ADVENTURE_ROAD_TOP_Y - 264 * PANO_SCALE); //
 const ARCH_WORLD_H = Math.round(272 * PANO_SCALE); // 714 (`-257 .. +457`)
 const FLOOR_WORLD_H = Math.round(96 * PANO_SCALE); // 252 (`436 .. 688`)
 
-// Retained landmark metadata for campaign zone queries & tooling
+// Landmark metadata across the expanded 9600px (`4 x 2400px`) campaign
 export const ADVENTURE_LANDMARKS = [
-  { id: 'eclipse_gatehouse', zone: 0, x: 210, halfW: 148, height: 274, isArtifact: false },
-  { id: 'astral_orrery', zone: 0, x: 585, halfW: 106, height: 236, isArtifact: true },
-  { id: 'reliquary_chapel', zone: 0, x: 965, halfW: 134, height: 248, isArtifact: false },
-  { id: 'elven_moonwell', zone: 1, x: 1410, halfW: 150, height: 268, isArtifact: false },
-  { id: 'yggdrasil_waygate', zone: 1, x: 1805, halfW: 114, height: 250, isArtifact: true },
-  { id: 'starwood_scriptorium', zone: 1, x: 2195, halfW: 128, height: 260, isArtifact: false },
-  { id: 'ossuary_mausoleum', zone: 2, x: 2610, halfW: 145, height: 264, isArtifact: false },
-  { id: 'soul_reliquary_spire', zone: 2, x: 3005, halfW: 112, height: 258, isArtifact: true },
-  { id: 'bone_gate_bastion', zone: 2, x: 3405, halfW: 154, height: 282, isArtifact: false },
-  { id: 'caldera_boss_chasm', zone: 3, x: 3792, halfW: 146, height: 214, isChasm: true },
-  { id: 'demon_forge_citadel', zone: 3, x: 4165, halfW: 154, height: 284, isArtifact: false },
-  { id: 'hellfire_crucible_monoliths', zone: 3, x: 4565, halfW: 140, height: 270, isArtifact: true }
+  { id: 'eclipse_gatehouse', zone: 0, x: 420, halfW: 148, height: 274, isArtifact: false },
+  { id: 'astral_orrery', zone: 0, x: 1180, halfW: 106, height: 236, isArtifact: true },
+  { id: 'reliquary_chapel', zone: 0, x: 1940, halfW: 134, height: 248, isArtifact: false },
+  { id: 'elven_moonwell', zone: 1, x: 2820, halfW: 150, height: 268, isArtifact: false },
+  { id: 'yggdrasil_waygate', zone: 1, x: 3610, halfW: 114, height: 250, isArtifact: true },
+  { id: 'starwood_scriptorium', zone: 1, x: 4390, halfW: 128, height: 260, isArtifact: false },
+  { id: 'ossuary_mausoleum', zone: 2, x: 5220, halfW: 145, height: 264, isArtifact: false },
+  { id: 'soul_reliquary_spire', zone: 2, x: 6010, halfW: 112, height: 258, isArtifact: true },
+  { id: 'bone_gate_bastion', zone: 2, x: 6810, halfW: 154, height: 282, isArtifact: false },
+  { id: 'demon_forge_citadel', zone: 3, x: 7740, halfW: 154, height: 284, isArtifact: false },
+  { id: 'hellfire_crucible_monoliths', zone: 3, x: 8540, halfW: 140, height: 270, isArtifact: true },
+  { id: 'abyssal_throne_sanctuary', zone: 3, x: 9335, halfW: 175, height: 296, isArtifact: false }
 ];
-
-const ROAD_COURSES = (() => {
-  const heights = [16, 18, 20, 22, 24, 26, 28, 30, 32, 34];
-  const list = [];
-  let curY = ADVENTURE_ROAD_TOP_Y;
-  for (let i = 0; i < heights.length; i++) {
-    const h = heights[i];
-    list.push({ row: i, y: curY, h, t: i / (heights.length - 1) });
-    curY += h;
-  }
-  return list;
-})();
 
 function hash2D(ix, iy) {
   let n = (Math.imul(ix | 0, 374761393) + Math.imul(iy | 0, 668265263)) | 0;
@@ -71,16 +57,6 @@ function hash2D(ix, iy) {
 function smoothstep(edge0, edge1, x) {
   const t = Math.max(0, Math.min(1, (x - edge0) / (edge1 - edge0)));
   return t * t * (3 - 2 * t);
-}
-
-function pxFill(ctx, x, y, w, h, color) {
-  const rx = Math.round(x);
-  const ry = Math.round(y);
-  const rw = Math.round(w);
-  const rh = Math.round(h);
-  if (rw <= 0 || rh <= 0) return;
-  ctx.fillStyle = color;
-  ctx.fillRect(rx, ry, rw, rh);
 }
 
 function seloutBlock(ctx, x, y, w, h, bodyCol, topCol = null, botCol = null) {
@@ -100,20 +76,6 @@ function seloutBlock(ctx, x, y, w, h, bodyCol, topCol = null, botCol = null) {
   if (botCol && rh >= 6) {
     ctx.fillStyle = botCol;
     ctx.fillRect(rx + 1, ry + rh - 3, rw - 2, 2);
-  }
-}
-
-function drawPixelDisc(ctx, cx, cy, r, fillCol, rimCol = null) {
-  const ir = Math.max(2, Math.round(r));
-  const icx = Math.round(cx);
-  const icy = Math.round(cy);
-  for (let dy = -ir; dy <= ir; dy += 2) {
-    const span = Math.round(Math.sqrt(Math.max(0, ir * ir - dy * dy)));
-    if (span <= 0) continue;
-    ctx.fillStyle = SELOUT;
-    ctx.fillRect(icx - span - 1, icy + dy, span * 2 + 2, 2);
-    ctx.fillStyle = rimCol && Math.abs(dy) >= ir - 2 ? rimCol : fillCol;
-    ctx.fillRect(icx - span, icy + dy, span * 2, 2);
   }
 }
 
@@ -164,8 +126,6 @@ function drawWrappedPanorama(
   if (!texW || texW <= 0) return false;
 
   const tileWorldW = texW * PANO_SCALE;
-  // World X where texture pixel `sx = 0` (`lx_world = PANO_ORIGIN_WORLD_X`) sits for current `camX`:
-  // wx - (1 - p) * camX = PANO_ORIGIN_WORLD_X + k * tileWorldW
   const anchorWorldX = PANO_ORIGIN_WORLD_X + (1 - parallaxP) * camX;
   const firstK = Math.floor((viewLeft - anchorWorldX) / tileWorldW);
   const lastK = Math.ceil((viewRight - anchorWorldX) / tileWorldW);
@@ -197,155 +157,31 @@ function drawWrappedPanorama(
 
 export class AdventureMapRenderer {
   static getBiomeWeights(wx) {
-    const t01 = smoothstep(880, 1520, wx);
-    const t12 = smoothstep(2080, 2720, wx);
-    const t23 = smoothstep(3280, 3920, wx);
+    const t01 = smoothstep(1920, 2880, wx);
+    const t12 = smoothstep(4320, 5280, wx);
+    const t23 = smoothstep(6720, 7680, wx);
     return [1 - t01, t01 * (1 - t12), t12 * (1 - t23), t23];
   }
 
   // ===========================================================================
-  // LEFT-SIDE SHATTERED CALDERA BOSS CHASM (`x: 3650..3935, y: 432..686`)
-  // ===========================================================================
-  static renderCalderaBossChasm(ctx, renderer, t, infernoAlpha) {
-    const xL = CALDERA_CHASM_MIN_X;
-    const xR = CALDERA_CHASM_MAX_X;
-    const chasmW = xR - xL;
-    const topY = 432;
-    const botY = ADVENTURE_ROAD_BOT_Y;
-    const pulse = 0.76 + 0.24 * Math.sin(t * 4.4);
-
-    // 1. Deep Abyssal Pit Throat & Stepped Basalt Chasm Walls
-    pxFill(ctx, xL + 18, topY, chasmW - 36, botY - topY + 28, '#05040a');
-    pxFill(ctx, xL + 26, topY + 8, chasmW - 52, 82, '#160a0e');
-    pxFill(ctx, xL + 32, topY + 34, chasmW - 64, 62, '#291116');
-
-    for (let col = 0; col < 9; col++) {
-      const rx = xL + 34 + col * 26;
-      const rh = 68 + Math.round(hash2D(col, 901) * 44);
-      seloutBlock(ctx, rx, topY + 6, 20, rh, '#241116', '#451d24', '#12070a');
-      if (col % 2 === 1) {
-        pxFill(ctx, rx + 8, topY + 18, 4, rh - 20, '#dc2626');
-      }
-    }
-
-    // 2. Bubbling Incandescent Magma Pool (`y: 512..686`)
-    const magmaTop = 512;
-    pxFill(ctx, xL + 24, magmaTop, chasmW - 48, botY - magmaTop + 20, '#7f1d1d');
-    pxFill(ctx, xL + 32, magmaTop + 10, chasmW - 64, botY - magmaTop + 8, '#b91c1c');
-
-    for (let row = 0; row < 7; row++) {
-      const my = magmaTop + 12 + row * 24;
-      const drift = Math.round(Math.sin(t * 2.3 + row * 1.4) * 10);
-      const bandW = chasmW - 84 - (row % 2) * 18;
-      pxFill(ctx, xL + 42 + drift, my, bandW, 12, row % 2 === 0 ? '#ea580c' : '#dc2626');
-      pxFill(ctx, xL + 58 - drift, my + 3, Math.round(bandW * 0.62), 6, '#fb923c');
-      if (row % 2 === 0) {
-        pxFill(ctx, xL + 84 + drift, my + 4, 54, 3, '#fde047');
-      }
-      const crustX = xL + 54 + ((row * 57) % 150);
-      seloutBlock(ctx, crustX - drift * 0.5, my + 6, 34, 10, '#1f1014', '#3b1c22');
-    }
-
-    for (let b = 0; b < 8; b++) {
-      const cyc = (t * (0.9 + (b % 3) * 0.32) + b * 0.37) % 1;
-      const bx = xL + 56 + ((b * 43) % (chasmW - 112));
-      const by = magmaTop + 24 + ((b * 29) % 132);
-      if (cyc < 0.62) {
-        const br = 3 + Math.round((cyc / 0.62) * 5);
-        drawPixelDisc(ctx, bx, by, br, '#fb923c', '#fef08a');
-      } else {
-        const rise = Math.round(((cyc - 0.62) / 0.38) * 54);
-        pxFill(ctx, bx - 2, by - rise, 4, 4, '#fde047');
-        pxFill(ctx, bx + 6, by - Math.round(rise * 0.7), 3, 3, '#fb923c');
-      }
-    }
-
-    const glowHot = renderer.glowCrimson || renderer.glowOrange;
-    drawSubtleGlow(ctx, glowHot, (xL + xR) * 0.5, 585, 165, 98, 0.17 * pulse);
-    drawSubtleGlow(ctx, renderer.glowOrange, 3845, 560, 125, 76, 0.14 * pulse);
-
-    // 3. Heavy Pixel-Stepped Abyssal Chains Straining into the Pit
-    const chainAnchors = [
-      { ax: xL + 22, ay: 468, tx: 3826, ty: 562 },
-      { ax: xL + 26, ay: 632, tx: 3828, ty: 590 },
-      { ax: xR - 22, ay: 472, tx: 3864, ty: 558 },
-      { ax: xR - 24, ay: 638, tx: 3862, ty: 594 }
-    ];
-    for (let c = 0; c < chainAnchors.length; c++) {
-      const ch = chainAnchors[c];
-      const links = 11;
-      for (let k = 0; k <= links; k++) {
-        const u = k / links;
-        const sag = Math.sin(u * Math.PI) * 16;
-        const lx = Math.round(ch.ax + (ch.tx - ch.ax) * u);
-        const ly = Math.round(ch.ay + (ch.ty - ch.ay) * u + sag);
-        seloutBlock(
-          ctx,
-          lx - 5,
-          ly - 4,
-          10,
-          8,
-          k % 2 === 0 ? '#334155' : '#1e293b',
-          k > 7 ? '#fb923c' : '#64748b'
-        );
-        if (k > 6) {
-          pxFill(ctx, lx - 2, ly - 1, 4, 2, '#fde047');
-        }
-      }
-    }
-
-    // 4. Sheared Broken Bridge Masonry & Obsidian Rim Crags
-    for (let r = 0; r < ROAD_COURSES.length; r++) {
-      const course = ROAD_COURSES[r];
-      const cy = course.y;
-      const ch = course.h;
-      const jutL = 22 + Math.round(hash2D(r, 933) * 26);
-      const jutR = 24 + Math.round(hash2D(r, 947) * 28);
-      const stoneBase = infernoAlpha > 0.4 ? '#381914' : '#24151c';
-      const stoneLit = infernoAlpha > 0.4 ? '#632c20' : '#462834';
-
-      seloutBlock(ctx, xL - 10, cy, jutL + 10, ch, stoneBase, stoneLit, '#160b0e');
-      pxFill(ctx, xL + jutL - 4, cy + ch - 2, 6, 12, SELOUT);
-      if (r % 2 === 0) pxFill(ctx, xL + jutL - 8, cy + 4, 6, 3, '#fb923c');
-
-      seloutBlock(ctx, xR - jutR, cy, jutR + 12, ch, stoneBase, stoneLit, '#160b0e');
-      pxFill(ctx, xR - jutR - 2, cy + ch - 2, 6, 12, SELOUT);
-      if (r % 2 === 1) pxFill(ctx, xR - jutR + 3, cy + 4, 6, 3, '#fb923c');
-    }
-
-    for (const bx of [xL + 16, xR - 16]) {
-      seloutBlock(ctx, bx - 14, 448, 28, 30, '#271519', '#572e35', '#13090b');
-      pxFill(ctx, bx - 8, 454, 16, 4, '#f59e0b');
-      seloutBlock(ctx, bx - 14, 618, 28, 32, '#271519', '#572e35', '#13090b');
-      pxFill(ctx, bx - 8, 624, 16, 4, '#f59e0b');
-    }
-
-    for (let k = 0; k < 7; k++) {
-      const fx = xL + 26 + k * 38;
-      const fh = 16 + (k % 3) * 6;
-      seloutBlock(ctx, fx, botY - fh + 6, 26, fh + 18, '#1b0d11', '#3f1d24', '#0b0507');
-      pxFill(ctx, fx + 8, botY - fh + 10, 6, 3, '#ef4444');
-    }
-  }
-
-  // ===========================================================================
-  // LIVE SYNCHRONIZED STAGE ATMOSPHERICS ON PLANE 1 (`0.38x`) & PLANE 2 (`0.86x`)
+  // LIVE SYNCHRONIZED STAGE ATMOSPHERICS ON PLANE 2 (`0.86x`, 10 BAYS = 9600px)
   // ===========================================================================
   static renderLiveArchEffects(ctx, renderer, camX, viewLeft, viewRight, t, infernoAlpha) {
-    // Anchor in `0.86x` layer space (`step = 393 * 2.625 = 1031.625` world px per bay!)
     const archAnchor = PANO_ORIGIN_WORLD_X + (1 - 0.86) * camX;
-    const periodWorld = 2358 * PANO_SCALE; // 6189.75
+    const periodWorld = 3930 * PANO_SCALE; // 10316.25
 
-    // Bay centers in art px on `adv_arch_pano.png` (`2358px`):
-    //   Bay 0: 124 (Eclipse bleed), Bay 1: 517 (Zone I Eclipse), Bay 2: 910 (Zone II Starwood),
-    //   Bay 3: 1303 (Zone III Bone-Gate), Bay 4: 1696 (Zone IV Black Pit), Bay 5: 2089 (Black Pit bleed)
+    // 10 bay centers in art px on `adv_arch_pano.png` (`3930px`, `393px` step = `1200px` camX):
     const bayDefs = [
       { centerPx: 124, zone: 0 },
       { centerPx: 517, zone: 0 },
-      { centerPx: 910, zone: 1 },
-      { centerPx: 1303, zone: 2 },
-      { centerPx: 1696, zone: 3 },
-      { centerPx: 2089, zone: 3 }
+      { centerPx: 910, zone: 0 },
+      { centerPx: 1303, zone: 1 },
+      { centerPx: 1696, zone: 1 },
+      { centerPx: 2089, zone: 2 },
+      { centerPx: 2482, zone: 2 },
+      { centerPx: 2875, zone: 3 },
+      { centerPx: 3268, zone: 3 },
+      { centerPx: 3661, zone: 3 }
     ];
 
     const firstK = Math.floor((viewLeft - archAnchor) / periodWorld) - 1;
@@ -363,13 +199,11 @@ export class AdventureMapRenderer {
         const flickB = 0.78 + 0.22 * Math.cos(t * 6.8 + b * 2.3);
 
         if (z === 0) {
-          // Zone I Eclipse Outskirts: Cyan left braziers + Solar right braziers + rising sparks
           drawSubtleGlow(ctx, renderer.glowCyan, cx - 540, 175, 130, 130, 0.14 * flickA);
           drawSubtleGlow(ctx, renderer.glowCyan, cx - 350, 225, 95, 95, 0.12 * flickB);
           drawSubtleGlow(ctx, renderer.glowOrange, cx + 350, 230, 95, 95, 0.12 * flickA);
           drawSubtleGlow(ctx, renderer.glowGold || renderer.glowOrange, cx + 545, 180, 130, 130, 0.14 * flickB);
         } else if (z === 1) {
-          // Zone II Cursed Starwood: Emerald/Cyan crystal lanterns & drifting bioluminescent spores
           drawSubtleGlow(ctx, renderer.glowEmerald || renderer.glowCyan, cx - 350, 35, 110, 110, 0.13 * flickA);
           drawSubtleGlow(ctx, renderer.glowCyan, cx - 355, 235, 95, 95, 0.12 * flickB);
           drawSubtleGlow(ctx, renderer.glowEmerald || renderer.glowCyan, cx + 350, 35, 110, 110, 0.13 * flickB);
@@ -385,7 +219,6 @@ export class AdventureMapRenderer {
           }
           ctx.globalAlpha = 1;
         } else if (z === 2) {
-          // Zone III Abyssal Bone-Gate: Violet soul-fire braziers & rising spectral wraith wisps
           drawSubtleGlow(ctx, renderer.glowViolet, cx - 560, 210, 125, 125, 0.15 * flickA);
           drawSubtleGlow(ctx, renderer.glowViolet, cx - 355, 250, 90, 90, 0.12 * flickB);
           drawSubtleGlow(ctx, renderer.glowViolet, cx + 355, 250, 90, 90, 0.12 * flickA);
@@ -401,7 +234,6 @@ export class AdventureMapRenderer {
           }
           ctx.globalAlpha = 1;
         } else {
-          // Zone IV Throne of the Black Pit: Roaring crimson-amber obsidian braziers & spiral cinders
           const hotGlow = renderer.glowCrimson || renderer.glowOrange;
           drawSubtleGlow(ctx, hotGlow, cx - 545, 190, 135, 135, 0.16 * flickA);
           drawSubtleGlow(ctx, renderer.glowOrange, cx - 355, 235, 95, 95, 0.13 * flickB);
@@ -481,14 +313,14 @@ export class AdventureMapRenderer {
     ctx.globalAlpha = 1;
 
     // =========================================================================
-    // PLANE 1 (`0.52x`): FAR ABYSSAL ECLIPSE CANYON VISTA (`advVistaPano`, `1620x272`)
+    // PLANE 1 (`0.26x`): FAR ABYSSAL ECLIPSE CANYON VISTA (`advVistaPano`, `1620x272`)
     // =========================================================================
     drawWrappedPanorama(
       ctx,
       assets?.advVistaPano,
       0,
       272,
-      0.52,
+      0.26,
       ARCH_WORLD_TOP_Y,
       ARCH_WORLD_H,
       camX,
@@ -523,7 +355,6 @@ export class AdventureMapRenderer {
     ctx.fillStyle = canyonMist;
     ctx.fillRect(viewLeft, 175, viewW, ADVENTURE_ROAD_TOP_Y - 167);
 
-    // Drifting `0.70x` mid-chasm mist wisps for visible motion between Vista (`0.52x`) and Arches (`0.86x`)
     const mistAnchor = (1 - 0.70) * camX - t * 18;
     const mistStep = 420;
     const mStart = Math.floor((viewLeft - mistAnchor) / mistStep) - 1;
@@ -543,7 +374,7 @@ export class AdventureMapRenderer {
     }
 
     // =========================================================================
-    // PLANE 2 (`0.86x`): GOTHIC PILGRIMAGE COLONNADE (`advArchPano`, `2358x272` RGBA)
+    // PLANE 2 (`0.86x`): GOTHIC PILGRIMAGE COLONNADE (`advArchPano`, `3930x272` RGBA)
     // =========================================================================
     drawWrappedPanorama(
       ctx,
@@ -556,10 +387,9 @@ export class AdventureMapRenderer {
       camX,
       viewLeft,
       viewRight,
-      2358
+      3930
     );
 
-    // Seamless `LAYWASTE OF INFERNO` Supreme Ultimate Transformation Overlay (`advInfernoPano` upper `0..272`)
     if (infernoAlpha > 0.01 && assets?.advInfernoPano) {
       ctx.save();
       ctx.globalAlpha = Math.min(1, infernoAlpha);
@@ -579,11 +409,10 @@ export class AdventureMapRenderer {
       ctx.restore();
     }
 
-    // Live `0.86x`-locked flickering brazier/lantern light halos & rising embers
     AdventureMapRenderer.renderLiveArchEffects(ctx, renderer, camX, viewLeft, viewRight, t, infernoAlpha);
 
     // =========================================================================
-    // PLANE 3 (`1.00x`): WALKABLE PERSPECTIVE STONE CAUSEWAY (`advFloorPano`, `2742x96`)
+    // PLANE 3 (`1.00x`): UNBROKEN WALKABLE STONE CAUSEWAY (`advFloorPano`, `4570x96`)
     // =========================================================================
     const floorDrawn = drawWrappedPanorama(
       ctx,
@@ -596,7 +425,7 @@ export class AdventureMapRenderer {
       camX,
       viewLeft,
       viewRight,
-      2742
+      4570
     );
     if (!floorDrawn) {
       ctx.fillStyle = '#141926';
@@ -622,7 +451,7 @@ export class AdventureMapRenderer {
       ctx.restore();
     }
 
-    // Subtle grounded contact occlusion right under the `y = 436` stone curb (`alpha <= 0.22`)
+    // Subtle grounded contact occlusion right under the `y = 436` stone curb (`alpha <= 0.24`)
     const curbShadow = ctx.createLinearGradient(0, ADVENTURE_ROAD_TOP_Y - 2, 0, ADVENTURE_ROAD_TOP_Y + 14);
     curbShadow.addColorStop(0, 'rgba(4, 6, 12, 0.24)');
     curbShadow.addColorStop(0.45, 'rgba(4, 6, 12, 0.14)');
@@ -630,24 +459,20 @@ export class AdventureMapRenderer {
     ctx.fillStyle = curbShadow;
     ctx.fillRect(viewLeft, ADVENTURE_ROAD_TOP_Y - 2, viewW, 16);
 
-    // Zone IV Left-Side Shattered Caldera Boss Chasm (`x: 3650..3935`) + Boss Sanctuary Seal (`x: 4340`)
-    if (viewRight > CALDERA_CHASM_MIN_X - 80 && viewLeft < CALDERA_CHASM_MAX_X + 80) {
-      AdventureMapRenderer.renderCalderaBossChasm(ctx, renderer, t, infernoAlpha);
-    }
-
-    const bossSealX = 4340;
+    // Right-Side Boss Sanctuary Runic Floor Seal (`x: 8920`) in front of Behemoth Malphas (`x: 9335`)
+    const bossSealX = 8920;
     const bossSealY = 561;
-    if (bossSealX + 220 > viewLeft && bossSealX - 220 < viewRight) {
+    if (bossSealX + 240 > viewLeft && bossSealX - 240 < viewRight) {
       const sealPulse = 0.65 + 0.35 * Math.sin(t * 3.1);
       ctx.save();
-      ctx.globalAlpha = 0.24 + 0.08 * sealPulse;
+      ctx.globalAlpha = 0.22 + 0.08 * sealPulse;
       ctx.strokeStyle = infernoAlpha > 0.4 ? '#fb923c' : '#ef4444';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.ellipse(bossSealX, bossSealY, 148, 52, 0, 0, Math.PI * 2);
+      ctx.ellipse(bossSealX, bossSealY, 168, 56, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.beginPath();
-      ctx.ellipse(bossSealX, bossSealY, 108, 38, 0, 0, Math.PI * 2);
+      ctx.ellipse(bossSealX, bossSealY, 118, 40, 0, 0, Math.PI * 2);
       ctx.stroke();
       ctx.restore();
     }
@@ -662,16 +487,15 @@ export class AdventureMapRenderer {
     ctx.fillStyle = cliffGrad;
     ctx.fillRect(viewLeft, curbY, viewW, cliffH);
 
-    // Crisp carved stone bridge coping lip along `y = 686..704` (broken cleanly at the Caldera Chasm)
+    // Crisp continuous carved stone bridge coping lip along `y = 686..704`
     const copingW = 64;
     const cFirst = Math.floor(viewLeft / copingW) - 1;
     const cLast = Math.ceil(viewRight / copingW) + 1;
     for (let c = cFirst; c <= cLast; c++) {
       const cx = c * copingW;
-      if (cx + copingW > CALDERA_CHASM_MIN_X + 20 && cx < CALDERA_CHASM_MAX_X - 20) continue;
-      const isWarm = infernoAlpha > 0.45 || cx >= 3520;
-      const isBone = !isWarm && cx >= 2350;
-      const isSylv = !isWarm && !isBone && cx >= 1150;
+      const isWarm = infernoAlpha > 0.45 || cx >= 7100;
+      const isBone = !isWarm && cx >= 4700;
+      const isSylv = !isWarm && !isBone && cx >= 2300;
       const topCol = isWarm ? '#5c2b29' : isBone ? '#3f3159' : isSylv ? '#244f4b' : '#2d3b55';
       const bodyCol = isWarm ? '#2b1417' : isBone ? '#211932' : isSylv ? '#142d2c' : '#182132';
       seloutBlock(ctx, cx, curbY, copingW, 20, bodyCol, topCol, '#080b14');
@@ -694,8 +518,6 @@ export class AdventureMapRenderer {
     const viewTop = Math.floor(camY - screenAnchorY / zoom - 120);
     const viewBot = Math.ceil(camY + (renderer.height - screenAnchorY) / zoom + 180);
 
-    // `p = 1.24`: Foreground stone buttress silhouettes & upper hanging chains scroll 24% faster than `1.0x`!
-    // Kept strictly below `y = 688` and above `y = -48` so characters (`y = 442..680`) are NEVER obstructed!
     const fgAnchor = (1 - 1.24) * camX; // -0.24 * camX
     const fgPeriod = 520;
     const firstFg = Math.floor((viewLeft - fgAnchor) / fgPeriod) - 1;
@@ -707,7 +529,6 @@ export class AdventureMapRenderer {
 
     for (let f = firstFg; f <= lastFg; f++) {
       const fx = Math.round(fgAnchor + f * fgPeriod);
-      if (fx > CALDERA_CHASM_MIN_X - 40 && fx < CALDERA_CHASM_MAX_X + 40) continue;
 
       // 1. Near-Camera Foreground Abyssal Cliff Buttress Silhouette (`y = 690 .. viewBot`)
       const buttW = 92;
