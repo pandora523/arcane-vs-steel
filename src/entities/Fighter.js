@@ -1079,8 +1079,8 @@ export class Fighter {
           const spdRatio = Number.isFinite(this._manualSpeedRatio)
             ? Math.max(0.32, Math.min(1.2, this._manualSpeedRatio))
             : 1.0;
-          this.walkPhase += dt * (1.9 + 3.1 * spdRatio);
-          this.headBob = Math.sin(this.walkPhase * 2) * (1.2 + 1.1 * spdRatio);
+          this.walkPhase += dt * (2.2 + 3.6 * spdRatio);
+          this.headBob = Math.sin(this.walkPhase * 2) * (1.2 + 1.15 * spdRatio);
         } else {
           this.state = 'IDLE';
           this.moveDir = 0;

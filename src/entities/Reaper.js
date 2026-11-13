@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps86';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps86';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps86';
+import { Fighter } from './Fighter.js?v=30fps87';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps87';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps87';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps86';
+} from '../engine/shaders/abyssalShaders.js?v=30fps87';
 
 /**
  * Malakor v7 (`reaper`) — Gothic Arch-Reaper, Shadow-Burrow Stalker & Sovereign of the Death Covenant.
@@ -144,14 +144,14 @@ export class Reaper extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
-      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps86')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps86';
+      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps87')) {
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps87';
       }
-      if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps86')) {
-        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps86';
+      if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps87')) {
+        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps87';
       }
-      if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps86')) {
-        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps86';
+      if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps87')) {
+        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps87';
       }
     }
   }
@@ -658,18 +658,26 @@ export class Reaper extends Fighter {
   summonDeathCompanions(game = null, empowerBonus = true, altarAnchorX = null) {
     const g = game || this.game;
     const ww = g?.renderer ? g.renderer.worldWidth : 1200;
+    const advBounds =
+      g?.adventure?.active && typeof g.adventure.getActiveStageBounds === 'function'
+        ? g.adventure.getActiveStageBounds()
+        : null;
+    const cMin = advBounds ? advBounds.minX + 48 : 92;
+    const cMax = advBounds ? advBounds.maxX - 48 : ww - 92;
 
     let mageX;
     let healerX;
     if (Number.isFinite(altarAnchorX)) {
-      mageX = Math.max(92, Math.min(ww - 92, altarAnchorX - 168));
-      healerX = Math.max(92, Math.min(ww - 92, altarAnchorX + 168));
+      mageX = Math.max(cMin, Math.min(cMax, altarAnchorX - 168));
+      healerX = Math.max(cMin, Math.min(cMax, altarAnchorX + 168));
     } else {
-      const backDir = this.x < 250 ? 1 : this.x > ww - 250 ? -1 : -this.facing;
-      mageX = Math.max(96, Math.min(ww - 96, this.x + backDir * 154));
-      healerX = Math.max(86, Math.min(ww - 86, mageX + backDir * 84));
+      const sMin = advBounds ? advBounds.minX : 0;
+      const sMax = advBounds ? advBounds.maxX : ww;
+      const backDir = this.x < sMin + 250 ? 1 : this.x > sMax - 250 ? -1 : -this.facing;
+      mageX = Math.max(cMin, Math.min(cMax, this.x + backDir * 154));
+      healerX = Math.max(cMin - 6, Math.min(cMax + 6, mageX + backDir * 84));
       if (Math.abs(healerX - mageX) < 52) {
-        healerX = Math.max(86, Math.min(ww - 86, mageX - backDir * 84));
+        healerX = Math.max(cMin - 6, Math.min(cMax + 6, mageX - backDir * 84));
       }
     }
 
@@ -2220,7 +2228,19 @@ export class Reaper extends Fighter {
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
-    const targetX = enemy ? Math.max(150, Math.min(ww - 150, enemy.x)) : ww * 0.5;
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
+    const uMin = advBounds ? advBounds.minX + 36 : 105;
+    const uMax = advBounds ? advBounds.maxX - 36 : ww - 105;
+    const targetX = advBounds
+      ? enemy?.isColossalBoss
+        ? (enemy.anchorX || enemy.x) + 115
+        : Math.max(advBounds.minX + 125, Math.min(advBounds.maxX - 125, enemy ? enemy.x : this.x + this.facing * 200))
+      : enemy
+        ? Math.max(150, Math.min(ww - 150, enemy.x))
+        : ww * 0.5;
     this.vx = 0;
     this.vy = 0;
     this.mana = 0;
@@ -2258,7 +2278,7 @@ export class Reaper extends Fighter {
 
       this.tombstones = [];
       for (const side of [-1, 1]) {
-        const tx = Math.max(85, Math.min(ww - 85, targetX + side * 182));
+        const tx = Math.max(advBounds ? advBounds.minX + 24 : 85, Math.min(advBounds ? advBounds.maxX - 24 : ww - 85, targetX + side * 182));
         this.tombstones.push({
           x: tx,
           groundY: this.groundY,
@@ -2317,7 +2337,7 @@ export class Reaper extends Fighter {
     if (t >= 0.04 && t < 0.28 && this.ultStage === 1) {
       const u1 = Math.min(1, (t - 0.04) / 0.24);
       this.trueUltFrameOverride = 122 + Math.min(6, Math.floor(u1 * 7));
-      if (enemy && !enemy.isDead && !enemy.unstoppablePoise) {
+      if (enemy && !enemy.isDead && !enemy.unstoppablePoise && !enemy.isColossalBoss) {
         enemy.x += (lockX - enemy.x) * Math.min(1, dt * 6.5);
       }
     }
@@ -2332,8 +2352,8 @@ export class Reaper extends Fighter {
         game.renderer.triggerHitStop(0.04);
       }
 
-      this.ultPassStartX = Math.max(105, Math.min(ww - 105, targetX - 168));
-      this.ultPassTargetX = Math.max(105, Math.min(ww - 105, targetX + 168));
+      this.ultPassStartX = Math.max(uMin, Math.min(uMax, targetX - 168));
+      this.ultPassTargetX = Math.max(uMin, Math.min(uMax, targetX + 168));
       this.x = this.ultPassStartX;
       this.facing = 1;
 
@@ -2386,8 +2406,8 @@ export class Reaper extends Fighter {
         game.renderer.triggerHitStop(0.045);
       }
 
-      this.ultPassStartX = Math.max(105, Math.min(ww - 105, targetX + 162));
-      this.ultPassTargetX = Math.max(105, Math.min(ww - 105, targetX - 162));
+      this.ultPassStartX = Math.max(uMin, Math.min(uMax, targetX + 162));
+      this.ultPassTargetX = Math.max(uMin, Math.min(uMax, targetX - 162));
       this.x = this.ultPassStartX;
       this.facing = -1;
 
@@ -2449,8 +2469,8 @@ export class Reaper extends Fighter {
 
       const dir = enemy ? Math.sign(enemy.x - this.x) || 1 : 1;
       this.ultPassStartX = targetX;
-      this.ultPassTargetX = Math.max(110, Math.min(ww - 110, targetX - dir * 96));
-      this.x = targetX;
+      this.ultPassTargetX = Math.max(uMin, Math.min(uMax, targetX - dir * 96));
+      this.x = Math.max(uMin, Math.min(uMax, targetX));
       this.y = this.groundY - 168;
       this.facing = dir;
 
@@ -2492,10 +2512,11 @@ export class Reaper extends Fighter {
       const u = Math.min(1, (t - 0.86) / 0.34);
       // Hold ominous apex suspension at groundY - 168 for 72% of the beat, then coil into lightning dive!
       const diveFrac = u < 0.72 ? 0 : Math.pow((u - 0.72) / 0.28, 2.2);
-      this.x = lockX + (this.ultPassTargetX - lockX) * diveFrac;
+      const startDiveX = Math.max(uMin, Math.min(uMax, lockX));
+      this.x = startDiveX + (this.ultPassTargetX - startDiveX) * diveFrac;
       this.y = this.groundY - Math.round((1 - diveFrac) * 168 + Math.sin(u * Math.PI) * 10);
       this.trueUltFrameOverride = 253 + Math.min(6, Math.floor(u * 7));
-      if (enemy && !enemy.isDead && !enemy.unstoppablePoise) {
+      if (enemy && !enemy.isDead && !enemy.unstoppablePoise && !enemy.isColossalBoss) {
         enemy.x += (lockX - enemy.x) * Math.min(1, dt * 8.0);
       }
     } else if (t >= 1.20) {
@@ -2539,7 +2560,7 @@ export class Reaper extends Fighter {
 
       const slamDir = enemy ? Math.sign(enemy.x - this.x) || this.facing : this.facing;
       this.facing = slamDir;
-      this.x = Math.max(95, Math.min(ww - 95, lockX - slamDir * 90));
+      this.x = Math.max(uMin - 10, Math.min(uMax + 10, lockX - slamDir * 90));
       this.y = this.groundY;
 
       // Twin Aerial Wraith Clones crash diagonally from sky into the Guillotine epicenter!
@@ -2560,7 +2581,7 @@ export class Reaper extends Fighter {
         inFront: true
       });
 
-      const faultStart = Math.max(95, Math.min(ww - 95, lockX - slamDir * 176));
+      const faultStart = Math.max(uMin - 10, Math.min(uMax + 10, lockX - slamDir * 176));
       this.spawnNecroticFaultLine(faultStart, slamDir, game);
 
       for (const tb of this.tombstones) {
@@ -2610,6 +2631,12 @@ export class Reaper extends Fighter {
   updateTrueUltimate(dt, enemy, game) {
     const elapsed = this.stateTimer;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
+    const tMin = advBounds ? advBounds.minX + 36 : 95;
+    const tMax = advBounds ? advBounds.maxX - 36 : ww - 95;
     this.isInvulnerable = true;
     this.unstoppablePoise = true;
     this.isSubmerged = false;
@@ -2632,10 +2659,18 @@ export class Reaper extends Fighter {
         ? [enemy]
         : [];
 
+    const computeAltarX = () => {
+      const rawX = enemy ? enemy.x : this.x + this.facing * 220;
+      if (advBounds) {
+        return enemy?.isColossalBoss
+          ? (enemy.anchorX || enemy.x) + 140
+          : Math.max(advBounds.minX + 160, Math.min(advBounds.maxX - 160, rawX));
+      }
+      return Math.max(260, Math.min(940, rawX));
+    };
+
     if (elapsed < 0.04 && this._trueUltStep === 0) {
-      this._trueUltAltarX = enemy
-        ? Math.max(260, Math.min(940, enemy.x))
-        : Math.max(260, Math.min(940, this.x + this.facing * 220));
+      this._trueUltAltarX = computeAltarX();
       if (Math.abs(this._trueUltAltarX - this.x) > 8) {
         this.facing = this._trueUltAltarX >= this.x ? 1 : -1;
       }
@@ -2654,9 +2689,7 @@ export class Reaper extends Fighter {
     if (elapsed < 1.25) {
       if (elapsed >= 0.04 && this._trueUltStep < 1) {
         this._trueUltStep = 1;
-        this._trueUltAltarX = enemy
-          ? Math.max(260, Math.min(940, enemy.x))
-          : Math.max(260, Math.min(940, this.x + this.facing * 220));
+        this._trueUltAltarX = computeAltarX();
 
         game?.audio?.play?.('reaper_ult', this.x);
         game?.audio?.play?.('ult_cast', this._trueUltAltarX);
@@ -2756,8 +2789,8 @@ export class Reaper extends Fighter {
         game?.audio?.play?.('scythe_reap', this._trueUltAltarX);
         game?.renderer?.triggerShake?.(16, 0.22);
 
-        const lx = Math.max(95, Math.min(ww - 95, this._trueUltAltarX - 180));
-        const rx = Math.max(95, Math.min(ww - 95, this._trueUltAltarX + 180));
+        const lx = Math.max(tMin, Math.min(tMax, this._trueUltAltarX - 180));
+        const rx = Math.max(tMin, Math.min(tMax, this._trueUltAltarX + 180));
         this.spawnWraithClone(lx, this.groundY, rx, this.groundY, 1, 0.32, 2, 8, 22);
         this.spawnWraithClone(rx, this.groundY, lx, this.groundY, -1, 0.32, 2, 8, 22);
         this.spawnWraithTrail(lx, this.groundY, rx, this.groundY, 1, 5, 2);
@@ -2780,8 +2813,8 @@ export class Reaper extends Fighter {
         game?.audio?.play?.('scythe_reap', this._trueUltAltarX);
         game?.renderer?.triggerShake?.(18, 0.24);
 
-        const lx = Math.max(95, Math.min(ww - 95, this._trueUltAltarX - 186));
-        const rx = Math.max(95, Math.min(ww - 95, this._trueUltAltarX + 186));
+        const lx = Math.max(tMin, Math.min(tMax, this._trueUltAltarX - 186));
+        const rx = Math.max(tMin, Math.min(tMax, this._trueUltAltarX + 186));
         this.spawnWraithClone(lx, this.groundY - 142, this._trueUltAltarX + 92, this.groundY, 1, 0.34, 8, 12, 24);
         this.spawnWraithClone(rx, this.groundY - 142, this._trueUltAltarX - 92, this.groundY, -1, 0.34, 8, 12, 24);
 
@@ -2825,7 +2858,8 @@ export class Reaper extends Fighter {
         const uAsc = Math.min(1, Math.max(0, (elapsed - 2.36) / 0.78));
         const liftEase = 1 - Math.pow(1 - Math.min(1, uAsc / 0.55), 3);
         const startX = Number.isFinite(this._trueUltAscentStartX) ? this._trueUltAscentStartX : this.x;
-        this.x = startX + (this._trueUltAltarX - startX) * liftEase;
+        const clampedGoalX = Math.max(tMin, Math.min(tMax, this._trueUltAltarX));
+        this.x = startX + (clampedGoalX - startX) * liftEase;
         this.y = this.groundY - Math.round(liftEase * 192 + Math.sin(uAsc * Math.PI * 2) * 5);
         this.trueUltFrameOverride = 252 + Math.min(7, Math.floor(uAsc * 8));
       } else {
@@ -2834,12 +2868,12 @@ export class Reaper extends Fighter {
       }
 
       // Pull and bind active enemies to this._trueUltAltarX with ZERO micro-tick damage!
-      if (enemy && !enemy.isDead) {
+      if (enemy && !enemy.isDead && !enemy.isColossalBoss) {
         enemy.x += (this._trueUltAltarX - enemy.x) * Math.min(1, dt * 8.6);
         enemy.vx = 0;
       }
       for (const tgt of targets) {
-        if (tgt && !tgt.isDead && !tgt.isBenched && tgt !== enemy) {
+        if (tgt && !tgt.isDead && !tgt.isBenched && !tgt.isColossalBoss && tgt !== enemy) {
           tgt.x += (this._trueUltAltarX - tgt.x) * Math.min(1, dt * 8.6);
           tgt.vx = 0;
         }
@@ -2859,7 +2893,7 @@ export class Reaper extends Fighter {
       if (Math.abs(this._trueUltAltarX - this.x) > 8) {
         this.facing = this._trueUltAltarX >= this.x ? 1 : -1;
       }
-      const landX = Math.max(95, Math.min(ww - 95, this._trueUltAltarX - this.facing * 88));
+      const landX = Math.max(tMin, Math.min(tMax, this._trueUltAltarX - this.facing * 88));
       this.spawnWraithTrail(this._trueUltAltarX, this.groundY - 188, landX, this.groundY, this.facing, 6, 8);
       this.x = landX;
       this.y = this.groundY;
@@ -2947,7 +2981,7 @@ export class Reaper extends Fighter {
         inFront: false
       });
       for (const side of [-1, 1]) {
-        const spX = Math.max(92, Math.min(ww - 92, this._trueUltAltarX + side * 146));
+        const spX = Math.max(tMin - 3, Math.min(tMax + 3, this._trueUltAltarX + side * 146));
         this.spawnGroundedBoneSpire(spX, 224, 0.74, {
           flipX: side < 0,
           glowColor: side < 0 ? 'violet' : 'crimson',

@@ -1,8 +1,8 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps86';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps86';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps86';
-import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps86';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps86';
+import { Fighter } from '../entities/Fighter.js?v=30fps87';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps87';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps87';
+import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps87';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps87';
 
 export const ADVENTURE_WORLD_WIDTH = 4800;
 export const ADVENTURE_DEPTH_MIN_Y = 442;
@@ -1304,8 +1304,8 @@ export class AdventureManager {
         player.facing = dx >= -6 ? 1 : -1;
         player.moveDir = 1;
         player.state = 'WALK';
-        player.walkPhase += dt * 5.0;
-        const autoMoveSpeed = 196 * stats.moveSpeedMult;
+        player.walkPhase += dt * 5.8;
+        const autoMoveSpeed = 235 * stats.moveSpeedMult;
         player.x += (dx / len) * autoMoveSpeed * 1.42 * dt;
         this.shiftEntityDepth(player, (dz / len) * autoMoveSpeed * 0.72 * dt);
         Fighter.prototype.update.call(player, dt, null, this.game);
@@ -1346,7 +1346,7 @@ export class AdventureManager {
           if (player.stats) player.stats.skillsUsed++;
           player.setState('SKILL');
         } else {
-          const autoMoveSpeed = 192 * stats.moveSpeedMult;
+          const autoMoveSpeed = 235 * stats.moveSpeedMult;
           const desiredGy = target.isColossalBoss
             ? target.sweepLane === 'upper' && target.bossAction === 'claw_sweep'
               ? 636
@@ -1366,8 +1366,8 @@ export class AdventureManager {
               if (player.x < 4220) {
                 player.x += autoMoveSpeed * 0.85 * dt;
               }
-            } else if (player.x > 3985) {
-              player.x -= autoMoveSpeed * 0.85 * dt;
+            } else if (player.x > 3955) {
+              player.x -= autoMoveSpeed * 0.90 * dt;
             }
           }
         }
@@ -1379,7 +1379,9 @@ export class AdventureManager {
       if (this.progression.spirit + 0.01 < stats.skillSpiritCost && player.skillCooldown <= 0) {
         player.skillCooldown = 0.25;
       }
-      player.update(dt, target, this.game);
+      const combatTarget = this.skillSets.resolveTarget(player, target);
+      this.skillSets.beginPlayerStep(dt, player, combatTarget, false, 0);
+      player.update(dt, combatTarget, this.game);
       if (prevSkillCd <= 0 && player.state !== 'SKILL' && player.skillCooldown === 0.25) {
         player.skillCooldown = 0;
       }
@@ -1391,10 +1393,10 @@ export class AdventureManager {
     }
 
     // =========================================================================
-    // MANUAL 360° 3D CONTROL: SMOOTH NON-STEEP ANALOG CURVE + ATTACK-WHILE-MOVING
+    // MANUAL 360° 3D CONTROL: BRISK OBSTACLE-DODGING WALK + SMOOTH ANALOG CURVE
     // =========================================================================
-    const maxSpeedX = 208 * stats.moveSpeedMult;
-    const maxSpeedZ = 112 * stats.moveSpeedMult; // Foreshortened 2.5D depth speed so vertical lane control is silky-smooth & never steep!
+    const maxSpeedX = 276 * stats.moveSpeedMult;
+    const maxSpeedZ = 156 * stats.moveSpeedMult; // Agile 2.5D depth-lane dodging while keeping gentle micro-tilt silky-smooth!
     let targetVx = 0;
     let targetVy = 0;
     let rawDirX = 0;
@@ -1405,7 +1407,7 @@ export class AdventureManager {
       const deadzone = 0.12;
       if (mag > deadzone) {
         const u = Math.min(1, (mag - deadzone) / (1 - deadzone));
-        // Progressive quadratic response: gentle precision walk near center, full sprint at outer rim
+        // Progressive quadratic response: gentle precision walk near center, brisk sprint at outer rim
         const curved = 0.28 * u + 0.72 * u * u;
         let nx = this.joyX / mag;
         let ny = this.joyY / mag;
@@ -1432,7 +1434,7 @@ export class AdventureManager {
     }
 
     const isReleasing = Math.abs(targetVx) < 0.01 && Math.abs(targetVy) < 0.01;
-    const smoothAlpha = Math.min(1, dt * (isReleasing ? 26 : 16));
+    const smoothAlpha = Math.min(1, dt * (isReleasing ? 28 : 20));
     this.smoothVelX += (targetVx - this.smoothVelX) * smoothAlpha;
     this.smoothVelY += (targetVy - this.smoothVelY) * smoothAlpha;
     if (Math.abs(targetVx) < 0.01 && Math.abs(this.smoothVelX) < 2.0) this.smoothVelX = 0;
@@ -1547,7 +1549,7 @@ export class AdventureManager {
       }
     }
 
-    // Apply silky-smooth 360° 3D movement in IDLE/WALK AND allow responsive strafing during AUTO_ATTACK!
+    // Apply brisk 360° 3D movement in IDLE/WALK AND allow responsive strafing during AUTO_ATTACK!
     if (
       !player.isDead &&
       !(player.stunTimer > 0) &&
@@ -1582,6 +1584,7 @@ export class AdventureManager {
           player.state = 'IDLE';
         }
       }
+      this.skillSets.beginPlayerStep(dt, player, null, isMoving3D, rawDirY);
       player.update(dt, null, this.game);
     } else {
       player._manualWalkActive = false;
@@ -1595,8 +1598,8 @@ export class AdventureManager {
         !this.game.isMatchOver
       ) {
         // Simultaneous Run-and-Cast: glide smoothly along joystick vector while keeping aim locked on target!
-        player.x += this.smoothVelX * 0.80 * dt;
-        this.shiftEntityDepth(player, this.smoothVelY * 0.84 * dt);
+        player.x += this.smoothVelX * 0.82 * dt;
+        this.shiftEntityDepth(player, this.smoothVelY * 0.85 * dt);
         if (target) {
           player.facing = target.x >= player.x ? 1 : -1;
         } else if (moveDirX !== 0) {
@@ -1609,7 +1612,9 @@ export class AdventureManager {
       }
 
       const prevDidAction = Boolean(player.didActionFrame);
-      player.update(dt, target, this.game);
+      const combatTarget = this.skillSets.resolveTarget(player, target);
+      this.skillSets.beginPlayerStep(dt, player, combatTarget, isMoving3D, rawDirY);
+      player.update(dt, combatTarget, this.game);
       if (player.state === 'AUTO_ATTACK' && isMoving3D && Math.abs(player.vx) > 8) {
         const isMeleeForwardLunge =
           (player.attackRange || 180) < 300 && player.vx * this.smoothVelX >= -5;
@@ -1628,7 +1633,7 @@ export class AdventureManager {
       this.bossEntity && !this.bossEntity.isDead && this.bossEntity.isColossalBoss
     );
     if (colossalAlive) {
-      return { minX: 3965, maxX: ADVENTURE_WORLD_WIDTH - 80 };
+      return { minX: 3945, maxX: ADVENTURE_WORLD_WIDTH - 80 };
     }
     if (this.lockActive) {
       return { minX: this.lockMinX, maxX: this.lockMaxX };
@@ -1663,8 +1668,9 @@ export class AdventureManager {
       if (this.bossWarningTimer <= 0 && this.bossSpawnPending) {
         this.bossSpawnPending = false;
         const isRangedHero = (player.attackRange || 180) >= 320;
-        const bossEntryX = isRangedHero ? 4240 : 4080;
+        const bossEntryX = isRangedHero ? 4240 : 3985;
         if (player.x < bossEntryX) player.x = bossEntryX;
+        else if (!isRangedHero && player.x > 4090) player.x = bossEntryX;
         player.facing = -1;
         this.bossEntity = this.spawnMonster('archfiend', 3865, { groundY: ADVENTURE_DEPTH_MID_Y });
         this.syncRightHUD();
@@ -1711,25 +1717,23 @@ export class AdventureManager {
     const nearestMonster = this.getNearestLivingMonster(player);
     this.processPlayerControls(dt, player, nearestMonster);
 
-    // Keep player out of the Left-Side Colossal Boss's abyssal body pit (`x >= 3965` so melee reaches cleanly!) & inside wave locks!
+    // Keep player out of the Left-Side Colossal Boss's abyssal body pit (`x >= 3945` so all melee heroes reach cleanly!) & inside wave locks!
     const colossalAlive = Boolean(this.bossEntity && !this.bossEntity.isDead && this.bossEntity.isColossalBoss);
-    const minWalkX = colossalAlive ? 3965 : this.lockActive ? this.lockMinX : 80;
+    const minWalkX = colossalAlive ? 3945 : this.lockActive ? this.lockMinX : 80;
     const maxWalkX = this.lockActive ? this.lockMaxX : ADVENTURE_WORLD_WIDTH - 80;
-    if (Array.isArray(player._ultWaypoints)) {
-      const wpMin = minWalkX + 36;
-      const wpMax = maxWalkX - 36;
-      for (const wp of player._ultWaypoints) {
-        if (wp && Number.isFinite(wp.x)) {
-          wp.x = Math.max(wpMin, Math.min(wpMax, wp.x));
-        }
-      }
-    }
+    this.skillSets.endPlayerStep(dt, player, minWalkX, maxWalkX, colossalAlive);
     if (player.x < minWalkX) player.x = minWalkX;
     if (player.x > maxWalkX) player.x = maxWalkX;
 
     for (const f of g.fighters) {
       if (!f || f === player) continue;
       f.update(dt, player, g);
+      if (this.lockActive && f.isMonster && !f.isDead && !f.isColossalBoss) {
+        const mMin = minWalkX + 18;
+        const mMax = Math.max(mMin, maxWalkX - 18);
+        if (f.x < mMin) f.x = mMin;
+        if (f.x > mMax) f.x = mMax;
+      }
     }
 
     this.syncRightHUD();

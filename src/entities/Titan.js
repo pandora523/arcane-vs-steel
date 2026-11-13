@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps86';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps86';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps86';
+import { Fighter } from './Fighter.js?v=30fps87';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps87';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps87';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps86';
+} from '../engine/shaders/forgeShaders.js?v=30fps87';
 
 /**
  * Torgar v7 (`titan`) — Sovereign of the World-Forge & Runic Anvil Juggernaut.
@@ -130,11 +130,11 @@ export class Titan extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
-      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps86')) {
-        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps86';
+      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps87')) {
+        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps87';
       }
-      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps86')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps86';
+      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps87')) {
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps87';
       }
     }
   }
@@ -570,10 +570,18 @@ export class Titan extends Fighter {
           light: 1.18,
           extra: { maxRx: 108 }
         });
+        const advBounds =
+          game.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+            ? game.adventure.getActiveStageBounds()
+            : null;
+        const pMin = advBounds ? advBounds.minX + 24 : 65;
+        const pMax = advBounds ? advBounds.maxX - 24 : ww - 65;
         for (const t of this.getActiveEnemies(enemy, game)) {
           if (Math.abs(t.x - altar.x) <= 185) {
             const pullSign = altar.x >= t.x ? 1 : -1;
-            t.x = Math.max(65, Math.min(ww - 65, t.x + pullSign * 28));
+            if (!t.isColossalBoss) {
+              t.x = Math.max(pMin, Math.min(pMax, t.x + pullSign * 28));
+            }
             t.takeDamage(10, this, false, pullSign * 45, -40);
           }
         }
@@ -607,9 +615,19 @@ export class Titan extends Fighter {
         }
 
         const ww = game.renderer ? game.renderer.worldWidth : 1200;
+        const advBounds =
+          game.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+            ? game.adventure.getActiveStageBounds()
+            : null;
+        const wallMin = advBounds ? advBounds.minX + 18 : 64;
+        const wallMax = advBounds ? advBounds.maxX - 18 : ww - 64;
         const targets = this.getActiveEnemies(enemy, game);
         for (const t of targets) {
-          if (!a.hitTargets.has(t) && Math.abs(t.x - a.x) < 66 && Math.abs(t.y - a.y) < 110) {
+          if (
+            !a.hitTargets.has(t) &&
+            Math.abs(t.x - a.x) < (t.isColossalBoss ? 125 : 66) &&
+            (t.isColossalBoss || Math.abs(t.y - a.y) < 110)
+          ) {
             a.hitTargets.add(t);
             const hitDmg = a.rebounded ? 54 : 82;
             t.takeDamage(hitDmg, this, true, a.dir * 265, -155);
@@ -633,7 +651,7 @@ export class Titan extends Fighter {
               inFront: true
             });
 
-            if (t.x <= 185 || t.x >= ww - 185) {
+            if (t.isColossalBoss || t.x <= wallMin + 121 || t.x >= wallMax - 121) {
               t.takeDamage(34, this, true, -a.dir * 135, -205);
               game.vfx?.spawnDamageText?.(
                 t.x,
@@ -653,10 +671,10 @@ export class Titan extends Fighter {
         }
 
         // Wall-Ricochet Rebound Check (`bouncesLeft > 0`)!
-        if ((a.x <= 64 || a.x >= ww - 64) && a.bouncesLeft > 0) {
+        if ((a.x <= wallMin || a.x >= wallMax) && a.bouncesLeft > 0) {
           a.bouncesLeft -= 1;
           a.rebounded = true;
-          a.x = Math.max(66, Math.min(ww - 66, a.x));
+          a.x = Math.max(wallMin + 2, Math.min(wallMax - 2, a.x));
           a.dir = -a.dir;
           a.vx = a.dir * 820;
           a.hitTargets.clear();
@@ -676,7 +694,7 @@ export class Titan extends Fighter {
             palette: FORGE_JADE_PALETTE,
             light: 1.36
           });
-        } else if (a.x < 36 || a.x > ww - 36 || a.age > 2.35) {
+        } else if (a.x < wallMin - 28 || a.x > wallMax + 28 || a.age > 2.35) {
           this.fx?.spawn('moltenAnvilSparks', a.x, a.y - 38, {
             flip: a.dir < 0,
             palette: FORGE_GOLD_PALETTE,
@@ -1229,10 +1247,18 @@ export class Titan extends Fighter {
       game?.vfx?.spawnDamageText?.(anvilX, this.groundY - 122, 0, false, 'WORLD-ANVIL ALTAR!', '#10b981');
 
       // Magnetic Gravity Slam pulls nearby foes toward the newly planted Altar!
+      const advSkillBounds =
+        game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+          ? game.adventure.getActiveStageBounds()
+          : null;
+      const pullMin = advSkillBounds ? advSkillBounds.minX + 24 : 70;
+      const pullMax = advSkillBounds ? advSkillBounds.maxX - 24 : ww - 70;
       for (const foe of this.getActiveEnemies(enemy, game)) {
         if (Math.abs(foe.x - anvilX) <= 205) {
           const pullSign = anvilX >= foe.x ? 1 : -1;
-          foe.x = Math.max(70, Math.min(ww - 70, foe.x + pullSign * 38));
+          if (!foe.isColossalBoss) {
+            foe.x = Math.max(pullMin, Math.min(pullMax, foe.x + pullSign * 38));
+          }
           foe.takeDamage(38, this, false, pullSign * 55, -125);
         }
       }
@@ -1733,11 +1759,13 @@ export class Titan extends Fighter {
 
       for (const foe of activeFoes) {
         if (!this._trueUltBoundFoes.includes(foe)) this._trueUltBoundFoes.push(foe);
-        foe.isRooted = true;
-        foe.vx = 0;
-        foe.vy = 0;
-        foe.x += (this._trueUltAnvilX - foe.x) * Math.min(1, dt * 16);
-        foe.y = foe.groundY;
+        if (!foe.isColossalBoss) {
+          foe.isRooted = true;
+          foe.vx = 0;
+          foe.vy = 0;
+          foe.x += (this._trueUltAnvilX - foe.x) * Math.min(1, dt * 16);
+          foe.y = foe.groundY;
+        }
       }
       this.x += (standX - this.x) * Math.min(1, dt * 18);
       this.y = this.groundY;
@@ -1795,12 +1823,14 @@ export class Titan extends Fighter {
       for (let fIdx = 0; fIdx < activeFoes.length; fIdx++) {
         const foe = activeFoes[fIdx];
         if (!this._trueUltBoundFoes.includes(foe)) this._trueUltBoundFoes.push(foe);
-        const staggerX = fIdx === 0 ? 0 : fIdx % 2 === 1 ? 102 : -102;
-        foe.isRooted = true;
-        foe.vx = 0;
-        foe.vy = 0;
-        foe.x = Math.max(95, Math.min(ww - 95, this._trueUltAnvilX + staggerX));
-        foe.y = targetFoeY;
+        if (!foe.isColossalBoss) {
+          const staggerX = fIdx === 0 ? 0 : fIdx % 2 === 1 ? 102 : -102;
+          foe.isRooted = true;
+          foe.vx = 0;
+          foe.vy = 0;
+          foe.x = Math.max(95, Math.min(ww - 95, this._trueUltAnvilX + staggerX));
+          foe.y = targetFoeY;
+        }
         foe.hurtTimer = Math.max(foe.hurtTimer || 0, 0.24);
       }
 
@@ -1899,7 +1929,13 @@ export class Titan extends Fighter {
       const accel = plungeU * plungeU;
       this.cameraAirLift = Math.round(680 * (1 - accel * 0.62));
 
-      const targetLandX = Math.max(115, Math.min(ww - 115, this._trueUltAnvilX - ultDir * 88));
+      const advTrueBounds =
+        game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+          ? game.adventure.getActiveStageBounds()
+          : null;
+      const landMin = advTrueBounds ? advTrueBounds.minX + 36 : 115;
+      const landMax = advTrueBounds ? advTrueBounds.maxX - 36 : ww - 115;
+      const targetLandX = Math.max(landMin, Math.min(landMax, this._trueUltAnvilX - ultDir * 88));
       this.x = skyApexX + (targetLandX - skyApexX) * accel;
       this.y = this.groundY - 390 * (1 - accel);
 
@@ -1920,12 +1956,14 @@ export class Titan extends Fighter {
       const foeY = this.groundY - 210 * (1 - foeDriveU * foeDriveU);
       for (let fIdx = 0; fIdx < activeFoes.length; fIdx++) {
         const foe = activeFoes[fIdx];
-        const staggerX = fIdx === 0 ? 0 : fIdx % 2 === 1 ? 102 : -102;
-        foe.isRooted = true;
-        foe.vx = 0;
-        foe.vy = 0;
-        foe.x = Math.max(95, Math.min(ww - 95, this._trueUltAnvilX + staggerX));
-        foe.y = foeY;
+        if (!foe.isColossalBoss) {
+          const staggerX = fIdx === 0 ? 0 : fIdx % 2 === 1 ? 102 : -102;
+          foe.isRooted = true;
+          foe.vx = 0;
+          foe.vy = 0;
+          foe.x = Math.max(95, Math.min(ww - 95, this._trueUltAnvilX + staggerX));
+          foe.y = foeY;
+        }
         foe.hurtTimer = Math.max(foe.hurtTimer || 0, 0.24);
       }
 
@@ -2011,12 +2049,14 @@ export class Titan extends Fighter {
       this._trueUltBoundFoes = [];
 
       for (const foe of activeFoes) {
-        foe.isRooted = false;
-        foe.y = foe.groundY;
-        foe.vx = 0;
-        foe.vy = 0;
+        if (!foe.isColossalBoss) {
+          foe.isRooted = false;
+          foe.y = foe.groundY;
+          foe.vx = 0;
+          foe.vy = 0;
+        }
         foe.takeDamage(735, this, true, ultDir * 120, 0);
-        if (!foe.isDead) {
+        if (!foe.isDead && !foe.isColossalBoss) {
           foe.y = foe.groundY;
           foe.vx = 0;
           foe.vy = 0;

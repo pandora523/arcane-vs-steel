@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps86';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps86';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps86';
+import { Fighter } from './Fighter.js?v=30fps87';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps87';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps87';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps86';
+} from '../engine/shaders/cyberShaders.js?v=30fps87';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 
@@ -64,11 +64,11 @@ export class Android extends Fighter {
     // Ensure browser always fetches latest VEX-09 sprite & VFX sheets
     if (typeof Image !== 'undefined') {
       const androidAssets = PixelForge.initAssets()?.android;
-      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps86')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps86';
+      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps87')) {
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps87';
       }
-      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps86')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps86';
+      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps87')) {
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps87';
       }
     }
 
@@ -584,6 +584,11 @@ export class Android extends Fighter {
       if (game?.audio) game.audio.play('skill_cast', this.x);
     }
 
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
+
     // Step 1 (t >= 0.28s): Cyber Thruster Blitz Lunge + X-Cross Plasma Strike
     if (this._skillStep === 1 && t >= 0.28) {
       this._skillStep = 2;
@@ -591,10 +596,15 @@ export class Android extends Fighter {
       if (enemy && !enemy.isDead) {
         const targetX = enemy.x - this.facing * 98;
         if (Math.abs(enemy.x - this.x) <= 460) {
-          this.x = Math.max(85, Math.min(ww - 85, targetX));
+          this.x = advBounds
+            ? Math.max(advBounds.minX + 18, Math.min(advBounds.maxX - 24, targetX))
+            : Math.max(85, Math.min(ww - 85, targetX));
         }
       } else {
-        this.x = Math.max(85, Math.min(ww - 85, this.x + this.facing * 170));
+        const rawX = this.x + this.facing * 170;
+        this.x = advBounds
+          ? Math.max(advBounds.minX + 24, Math.min(advBounds.maxX - 24, rawX))
+          : Math.max(85, Math.min(ww - 85, rawX));
       }
       this.spawnAfterimage(this.x - this.facing * 48, this.y, this.facing, 3, 12, 0.26);
 
@@ -665,6 +675,12 @@ export class Android extends Fighter {
   updateUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
+    const uMin = advBounds ? advBounds.minX + 32 : 95;
+    const uMax = advBounds ? advBounds.maxX - 32 : ww - 95;
     this.isInvulnerable = t < 1.60;
 
     // Step 0 (`t >= 0.00s`): Lock facing onto enemy & initiate Backward Thruster Evade Leap!
@@ -675,16 +691,23 @@ export class Android extends Fighter {
       }
       this._ultStartX = this.x;
       const desiredRetreat = this.x - this.facing * 215;
-      this._ultRetreatX = Math.max(95, Math.min(ww - 95, desiredRetreat));
+      this._ultRetreatX = Math.max(uMin, Math.min(uMax, desiredRetreat));
 
       // If VEX-09's back was already near a corner wall, her retro-thruster shockwave blasts the foe forward
       // so she ALWAYS opens a clean cross-stage firing lane before shooting her Visor Laser!
-      if (Math.abs(this._ultRetreatX - this._ultStartX) < 115 && enemy && !enemy.isDead) {
-        enemy.x = Math.max(95, Math.min(ww - 95, enemy.x + this.facing * 145));
+      if (
+        Math.abs(this._ultRetreatX - this._ultStartX) < 115 &&
+        enemy &&
+        !enemy.isDead &&
+        !enemy.isColossalBoss
+      ) {
+        enemy.x = Math.max(uMin, Math.min(uMax, enemy.x + this.facing * 145));
       }
 
       const rawFocusX = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 260;
-      this._ultFocusX = Math.max(115, Math.min(ww - 115, rawFocusX));
+      this._ultFocusX = enemy?.isColossalBoss
+        ? enemy.x
+        : Math.max(advBounds ? advBounds.minX + 44 : 115, Math.min(advBounds ? advBounds.maxX - 44 : ww - 115, rawFocusX));
 
       this.fx.spawn('wingPylonThruster', this.x + this.facing * 10, this.y - 134, {
         follow: this,
@@ -733,7 +756,9 @@ export class Android extends Fighter {
       if (this._ultStep === 1) {
         this._ultStep = 2;
         const rawFocusX = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 265;
-        this._ultFocusX = Math.max(115, Math.min(ww - 115, rawFocusX));
+        this._ultFocusX = enemy?.isColossalBoss
+          ? enemy.x
+          : Math.max(advBounds ? advBounds.minX + 44 : 115, Math.min(advBounds ? advBounds.maxX - 44 : ww - 115, rawFocusX));
         if (Math.abs(this._ultFocusX - this.x) > 8) {
           this.facing = this._ultFocusX >= this.x ? 1 : -1;
         }
@@ -782,7 +807,12 @@ export class Android extends Fighter {
       if (this._ultStep === pIdx + 2 && t >= pulseTimes[pIdx]) {
         this._ultStep = pIdx + 3;
         if (enemy && !enemy.isDead) {
-          this._ultFocusX = Math.max(115, Math.min(ww - 115, this._ultFocusX * 0.42 + enemy.x * 0.58));
+          this._ultFocusX = enemy.isColossalBoss
+            ? enemy.x
+            : Math.max(
+                advBounds ? advBounds.minX + 44 : 115,
+                Math.min(advBounds ? advBounds.maxX - 44 : ww - 115, this._ultFocusX * 0.42 + enemy.x * 0.58)
+              );
           if (this._ultCoreFx) {
             this._ultCoreFx.worldX = this._ultFocusX;
           }
@@ -792,7 +822,7 @@ export class Android extends Fighter {
         }
 
         // Boot-skid backward recoil as the Hyper-Laser erupts directly from her Visor `(x + facing*20, groundY - 134)`!
-        this.x = Math.max(90, Math.min(ww - 90, this.x - this.facing * 7));
+        this.x = Math.max(advBounds ? advBounds.minX + 28 : 90, Math.min(advBounds ? advBounds.maxX - 28 : ww - 90, this.x - this.facing * 7));
         const visorX = this.x + this.facing * 20;
         const visorY = this.groundY - 134;
         const coreX = this._ultFocusX;
@@ -823,7 +853,9 @@ export class Android extends Fighter {
         const foes = this.getEnemyTargets(enemy, game);
         for (const foe of foes) {
           if (Math.abs(foe.x - this._ultFocusX) <= 360) {
-            foe.x += (this._ultFocusX - foe.x) * 0.30;
+            if (!foe.isColossalBoss) {
+              foe.x += (this._ultFocusX - foe.x) * 0.30;
+            }
             foe.takeDamage(58, this, false, 35, 0);
             this.fx.spawn('cyberImpactSpark', foe.x, foe.y - 88, {
               palette: CYBER_MAGENTA_PALETTE,
@@ -906,6 +938,10 @@ export class Android extends Fighter {
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
     this.isInvulnerable = true;
     this.vx = 0;
     this.vy = 0;
@@ -914,9 +950,12 @@ export class Android extends Fighter {
 
     // Track target X during 0.00s .. 2.75s
     if (t <= 2.75) {
-      this._trueUltTargetX = enemy
-        ? Math.max(200, Math.min(1000, enemy.x))
-        : Math.max(200, Math.min(1000, this.x + this.facing * 240));
+      const rawTgtX = enemy ? enemy.x : this.x + this.facing * 240;
+      this._trueUltTargetX = advBounds
+        ? enemy?.isColossalBoss
+          ? enemy.x
+          : Math.max(advBounds.minX + 110, Math.min(advBounds.maxX - 110, rawTgtX))
+        : Math.max(200, Math.min(1000, rawTgtX));
       if (Math.abs(this._trueUltTargetX - this.x) > 8) {
         this.facing = this._trueUltTargetX >= this.x ? 1 : -1;
       }
@@ -932,7 +971,9 @@ export class Android extends Fighter {
       if (t >= 0.04 && this._trueUltStep < 1) {
         this._trueUltStep = 1;
         this._trueUltStartX = this.x;
-        this._trueUltRetreatX = Math.max(120, Math.min(ww - 120, this.x - this.facing * 165));
+        this._trueUltRetreatX = advBounds
+          ? Math.max(advBounds.minX + 42, Math.min(advBounds.maxX - 42, this.x - this.facing * 165))
+          : Math.max(120, Math.min(ww - 120, this.x - this.facing * 165));
         game?.audio?.play?.('ult_cast', this.x);
         game?.audio?.play?.('emp_blast', this.x);
         game?.vfx?.triggerCinematicCutIn?.(this, this.trueUltName, '#00f0ff');
@@ -987,12 +1028,12 @@ export class Android extends Fighter {
       }
 
       if (t <= 3.00) {
-        if (enemy && !enemy.isDead) {
+        if (enemy && !enemy.isDead && !enemy.isColossalBoss) {
           enemy.x += (this._trueUltTargetX - enemy.x) * Math.min(1, dt * 7);
           enemy.vx *= 0.2;
         }
         for (const foe of targets) {
-          if (foe !== enemy) {
+          if (foe !== enemy && !foe.isColossalBoss) {
             foe.x += (this._trueUltTargetX - foe.x) * Math.min(1, dt * 7);
             foe.vx *= 0.2;
           }

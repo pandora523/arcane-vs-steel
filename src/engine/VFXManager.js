@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js?v=30fps86';
-import { PixelForge } from './PixelForge.js?v=30fps86';
+import { PixelFont } from './PixelFont.js?v=30fps87';
+import { PixelForge } from './PixelForge.js?v=30fps87';
 
 export class VFXManager {
   constructor() {
@@ -684,7 +684,12 @@ export class VFXManager {
         const csEnemies =
           cs.owner?.game?.getEnemiesOf ? cs.owner.game.getEnemiesOf(cs.owner) : cs.target ? [cs.target] : [];
         for (const foe of csEnemies) {
-          if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - cs.x) < 76) {
+          if (
+            foe &&
+            !foe.isDead &&
+            !foe.isBenched &&
+            Math.abs(foe.x - cs.x) < (foe.isColossalBoss ? 145 : 76)
+          ) {
             foe.takeDamage(cs.damage, cs.owner, false, 65, -90);
           }
         }
@@ -784,7 +789,12 @@ export class VFXManager {
             const strikeEnemies =
               s.owner?.game?.getEnemiesOf ? s.owner.game.getEnemiesOf(s.owner) : s.target ? [s.target] : [];
             for (const foe of strikeEnemies) {
-              if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - s.x) < 92) {
+              if (
+                foe &&
+                !foe.isDead &&
+                !foe.isBenched &&
+                Math.abs(foe.x - s.x) < (foe.isColossalBoss ? 155 : 92)
+              ) {
                 foe.takeDamage(s.damage, s.owner, isHeavyWeapon, 55, -60);
               }
             }

@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps86';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps86';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps86';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps86';
+import { Fighter } from './Fighter.js?v=30fps87';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps87';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps87';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps87';
 
 /**
  * Lyra (`icemage`) — Winter Empress & Sovereign of Absolute Zero (v6 Full Rework).
@@ -133,8 +133,8 @@ export class IceMage extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
-      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps86')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps86';
+      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps87')) {
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps87';
       }
     }
   }
@@ -187,7 +187,8 @@ export class IceMage extends Fighter {
    */
   spawnPixelFrostRing(x, y, maxRadius = 110, color = '#67e8f9', maxLife = 0.30, isFloor = false, hasSpikes = false) {
     if (this.fx) {
-      const safeX = Math.max(80, Math.min(1120, x));
+      const ww = this.game?.renderer ? this.game.renderer.worldWidth : 1200;
+      const safeX = Math.max(80, Math.min(ww - 80, x));
       const safeY = Math.max(40, Math.min(this.groundY + 24, y));
       this.fx.spawn('absoluteZeroShatterBurst', safeX, safeY, {
         light: hasSpikes ? 1.34 : 1.15,
@@ -212,7 +213,8 @@ export class IceMage extends Fighter {
     if (!this.fx || p.type !== 'cryo_shard') return;
     if (p.ringTimer >= 0.16) {
       p.ringTimer = 0;
-      const sx = Math.max(80, Math.min(1120, p.x - Math.sign(p.vx || 1) * 16));
+      const ww = this.game?.renderer ? this.game.renderer.worldWidth : 1200;
+      const sx = Math.max(80, Math.min(ww - 80, p.x - Math.sign(p.vx || 1) * 16));
       const sy = Math.max(50, Math.min(this.groundY + 12, p.y));
       this.fx.burst(sx, sy, {
         count: 1,
@@ -230,7 +232,8 @@ export class IceMage extends Fighter {
 
   onProjectileHit(p, _hitTarget, isCrit, _game) {
     if (!this.fx) return false;
-    const sx = Math.max(80, Math.min(1120, p.x));
+    const ww = this.game?.renderer ? this.game.renderer.worldWidth : 1200;
+    const sx = Math.max(80, Math.min(ww - 80, p.x));
     const sy = Math.max(50, Math.min(this.groundY + 16, p.y));
     this.fx.spawn('absoluteZeroShatterBurst', sx, sy, {
       light: isCrit ? 1.30 : 1.14,
@@ -445,8 +448,8 @@ export class IceMage extends Fighter {
 
     enemy.takeDamage(shatterDmg, this, true, 68, -80);
 
-    // Genuine Solid Ice-Block Freeze Stasis (unless target is mid-Ultimate)
-    if (enemy.state !== 'ULTIMATE' && enemy.state !== 'TRUE_ULTIMATE' && !enemy.isDead) {
+    // Genuine Solid Ice-Block Freeze Stasis (unless target is mid-Ultimate or Colossal Boss)
+    if (enemy.state !== 'ULTIMATE' && enemy.state !== 'TRUE_ULTIMATE' && !enemy.isDead && !enemy.isColossalBoss) {
       enemy.stunTimer = Math.max(enemy.stunTimer || 0, 0.40);
       enemy.vx *= 0.15;
     }
@@ -474,7 +477,8 @@ export class IceMage extends Fighter {
       }
     }
     if (this.fx) {
-      const sx = Math.max(80, Math.min(1120, enemy.x));
+      const ww = this.game?.renderer ? this.game.renderer.worldWidth : 1200;
+      const sx = Math.max(80, Math.min(ww - 80, enemy.x));
       const sy = Math.max(60, Math.min(this.groundY, enemy.y - 96));
       this.fx.burst(sx, sy, {
         count: 10,
@@ -499,32 +503,41 @@ export class IceMage extends Fighter {
     this.wallFlipCooldown = 3.0;
 
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
+    const sMin = advBounds ? advBounds.minX : 0;
+    const sMax = advBounds ? advBounds.maxX : ww;
+    const sMid = (sMin + sMax) * 0.5;
+    const pad = advBounds ? 48 : 150;
+
     let dir = customDir !== null ? customDir : -this.facing;
-    if (this.x < 180) dir = 1;
-    else if (this.x > ww - 180) dir = -1;
+    if (this.x < sMin + 180) dir = 1;
+    else if (this.x > sMax - 180) dir = -1;
 
     const dist = enemy ? Math.abs(enemy.x - this.x) : 300;
     const retreatX = this.x - this.facing * 260;
     const nearWallOrCornered =
-      this.x < 330 ||
-      this.x > ww - 330 ||
-      retreatX < 190 ||
-      retreatX > ww - 190 ||
+      this.x < sMin + 330 ||
+      this.x > sMax - 330 ||
+      retreatX < sMin + 190 ||
+      retreatX > sMax - 190 ||
       dist < 225;
 
     if (enemy && nearWallOrCornered) {
       this.dashDuration = 0.62;
-      const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
+      const openSideDir = enemy.x < sMid ? 1 : -1;
       let target = enemy.x + openSideDir * 350;
       if (Math.abs(target - this.x) < 260) {
         const crossDir = this.x < enemy.x ? 1 : -1;
         target = enemy.x + crossDir * 340;
       }
-      this.flipTargetX = Math.max(150, Math.min(ww - 150, target));
+      this.flipTargetX = Math.max(sMin + pad, Math.min(sMax - pad, target));
       this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || 1;
     } else {
       this.dashDuration = 0.58;
-      this.flipTargetX = Math.max(150, Math.min(ww - 150, this.x + dir * 335));
+      this.flipTargetX = Math.max(sMin + pad, Math.min(sMax - pad, this.x + dir * 335));
       this.dashDir = dir;
     }
 
@@ -555,7 +568,13 @@ export class IceMage extends Fighter {
     this.vx = 0;
 
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-    const wallX = Math.max(100, Math.min(ww - 100, this.x + this.facing * 74));
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
+    const wallX = advBounds
+      ? Math.max(advBounds.minX + 24, Math.min(advBounds.maxX - 24, this.x + this.facing * 74))
+      : Math.max(100, Math.min(ww - 100, this.x + this.facing * 74));
     this.iceWall = {
       x: wallX,
       y: this.groundY,
@@ -582,12 +601,18 @@ export class IceMage extends Fighter {
 
   onStartDash(enemy, game, dir) {
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
+    const sMin = advBounds ? advBounds.minX : 0;
+    const sMax = advBounds ? advBounds.maxX : ww;
     this.dashDuration = 0.38;
     this.isDeflecting = false;
     this.isFlipVault = false;
     this.flipAngle = 0;
 
-    const escapeDir = this.x < 240 ? 1 : this.x > ww - 240 ? -1 : dir;
+    const escapeDir = this.x < sMin + 240 ? 1 : this.x > sMax - 240 ? -1 : dir;
     this.dashDir = escapeDir;
     this.vx = escapeDir * 425;
     this.ensureGlacialSkateRibbon();
@@ -611,9 +636,16 @@ export class IceMage extends Fighter {
 
   onStartDodge(enemy, game, dir) {
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
+    const sMin = advBounds ? advBounds.minX : 0;
+    const sMax = advBounds ? advBounds.maxX : ww;
+    const sMid = (sMin + sMax) * 0.5;
     const dist = enemy ? Math.abs(enemy.x - this.x) : 999;
-    const nearLeft = this.x < 305;
-    const nearRight = this.x > ww - 305;
+    const nearLeft = this.x < sMin + 305;
+    const nearRight = this.x > sMax - 305;
 
     this.isDeflecting = false;
     this.isFlipVault = false;
@@ -635,7 +667,7 @@ export class IceMage extends Fighter {
 
     let smartDir = nearLeft ? 1 : nearRight ? -1 : dir;
     if (enemy && dist < 245 && (nearLeft || nearRight)) {
-      const openSideDir = enemy.x < ww * 0.5 ? 1 : -1;
+      const openSideDir = enemy.x < sMid ? 1 : -1;
       smartDir = openSideDir;
       this.vx = smartDir * 468;
     } else {
@@ -660,7 +692,8 @@ export class IceMage extends Fighter {
     this.spawnPixelFrostRing(d.x, d.y - 92, 120, '#67e8f9', 0.32, false, true);
 
     if (this.fx) {
-      const sx = Math.max(80, Math.min(1120, d.x));
+      const ww = this.game?.renderer ? this.game.renderer.worldWidth : 1200;
+      const sx = Math.max(80, Math.min(ww - 80, d.x));
       this.fx.burst(sx, d.y - 92, {
         count: 7,
         speedMin: 55,
@@ -763,7 +796,8 @@ export class IceMage extends Fighter {
             type: 'cryo_shard'
           });
         }
-        this.fx?.spawn('cryoPrismMachCone', Math.max(85, Math.min(1115, sx)), Math.max(55, sy), {
+        const wwDash = game?.renderer ? game.renderer.worldWidth : 1200;
+        this.fx?.spawn('cryoPrismMachCone', Math.max(85, Math.min(wwDash - 85, sx)), Math.max(55, sy), {
           flip: false,
           light: 1.24,
           extra: { aimAngle: Math.atan2(dy, dx), empowered: true }
@@ -834,7 +868,8 @@ export class IceMage extends Fighter {
           type: 'cryo_shard'
         });
       }
-      this.fx?.spawn('cryoPrismMachCone', Math.max(85, Math.min(1115, wallX)), spawnY, {
+      const wwCrouch = game?.renderer ? game.renderer.worldWidth : 1200;
+      this.fx?.spawn('cryoPrismMachCone', Math.max(85, Math.min(wwCrouch - 85, wallX)), spawnY, {
         flip: false,
         light: 1.22,
         extra: { aimAngle: Math.atan2(dy, dx), empowered: false }
@@ -897,7 +932,11 @@ export class IceMage extends Fighter {
         c.y = c.startY + (c.apexY - c.startY) * easeU + Math.sin(u * Math.PI) * c.arcLift;
 
         for (const foe of activeFoes) {
-          if (!c.hitOutSet.has(foe) && Math.abs(foe.x - c.x) < 76 && Math.abs((foe.y - 96) - c.y) < 104) {
+          if (
+            !c.hitOutSet.has(foe) &&
+            Math.abs(foe.x - c.x) < (foe.isColossalBoss ? 128 : 76) &&
+            (foe.isColossalBoss || Math.abs((foe.y - 96) - c.y) < 104)
+          ) {
             c.hitOutSet.add(foe);
             const isCrit = Math.random() < 0.26;
             foe.takeDamage(isCrit ? Math.round(c.outDmg * 1.32) : c.outDmg, this, isCrit, 48, -34);
@@ -916,7 +955,11 @@ export class IceMage extends Fighter {
         c.y = c.apexY + (targetRetY - c.apexY) * u - Math.sin(u * Math.PI) * c.arcLift * 0.72;
 
         for (const foe of activeFoes) {
-          if (!c.hitRetSet.has(foe) && Math.abs(foe.x - c.x) < 68 && Math.abs((foe.y - 96) - c.y) < 96) {
+          if (
+            !c.hitRetSet.has(foe) &&
+            Math.abs(foe.x - c.x) < (foe.isColossalBoss ? 120 : 68) &&
+            (foe.isColossalBoss || Math.abs((foe.y - 96) - c.y) < 96)
+          ) {
             c.hitRetSet.add(foe);
             foe.takeDamage(c.returnDmg, this, false, -38, -28);
             this.applyBrittleFrost(foe, 1, game, c.x, c.y);
@@ -953,7 +996,10 @@ export class IceMage extends Fighter {
       sp.life += dt;
       if (!sp.didHit && sp.life >= 0.02 && sp.life <= 0.28) {
         for (const foe of activeFoes) {
-          if (Math.abs(foe.x - sp.x) < 78 && Math.abs(foe.y - sp.y) < 108) {
+          if (
+            Math.abs(foe.x - sp.x) < (foe.isColossalBoss ? 132 : 78) &&
+            (foe.isColossalBoss || Math.abs(foe.y - sp.y) < 108)
+          ) {
             sp.didHit = true;
             foe.takeDamage(sp.dmg, this, sp.isFinal, 52, sp.isFinal ? -92 : -45);
             if (sp.isFinal) {
@@ -990,7 +1036,10 @@ export class IceMage extends Fighter {
 
         if (!ic.didHit && u >= 0.42) {
           for (const foe of activeFoes) {
-            if (Math.abs(foe.x - ic.x) < 64 && Math.abs((foe.y - 72) - ic.y) < 92) {
+            if (
+              Math.abs(foe.x - ic.x) < (foe.isColossalBoss ? 124 : 64) &&
+              (foe.isColossalBoss || Math.abs((foe.y - 72) - ic.y) < 92)
+            ) {
               ic.didHit = true;
               const isCrit = ic.isCenter && Math.random() < 0.24;
               foe.takeDamage(isCrit ? Math.round(ic.dmg * 1.28) : ic.dmg, this, isCrit, 44, -46);
@@ -1010,7 +1059,10 @@ export class IceMage extends Fighter {
           ic.y = ic.endY;
           if (!ic.didHit) {
             for (const foe of activeFoes) {
-              if (Math.abs(foe.x - ic.endX) < 62 && Math.abs(foe.y - this.groundY) < 96) {
+              if (
+                Math.abs(foe.x - ic.endX) < (foe.isColossalBoss ? 124 : 62) &&
+                (foe.isColossalBoss || Math.abs(foe.y - this.groundY) < 96)
+              ) {
                 ic.didHit = true;
                 foe.takeDamage(ic.dmg, this, false, 40, -42);
                 this.mana = Math.min(this.maxMana, (this.mana || 0) + 3);
@@ -1074,7 +1126,7 @@ export class IceMage extends Fighter {
         Math.abs(enemy.x - z.x) <= z.radius &&
         Math.abs(enemy.y - this.groundY) < 28
       ) {
-        if (!enemy.hasPoise) {
+        if (!enemy.hasPoise && !enemy.isColossalBoss) {
           enemy.vx *= Math.pow(0.45, dt);
         }
         enemy._permafrostTick = (enemy._permafrostTick || 0) + dt;
@@ -1130,7 +1182,7 @@ export class IceMage extends Fighter {
             this.iceWall.refractedCount++;
             if (game.audio) game.audio.play('reflect', origX);
             game.vfx.spawnDamageText(origX, origY - 36, 0, false, 'MIRROR WALL SPLIT!', '#67e8f9');
-            this.fx?.spawn('absoluteZeroShatterBurst', Math.max(80, Math.min(1120, origX)), origY, {
+            this.fx?.spawn('absoluteZeroShatterBurst', Math.max(80, Math.min(wwStage - 80, origX)), origY, {
               light: 1.26,
               extra: { isLarge: false }
             });
@@ -1302,7 +1354,7 @@ export class IceMage extends Fighter {
             damage: lanceDmg,
             type: 'cryo_shard'
           });
-          this.fx.spawn('cryoPrismMachCone', Math.max(85, Math.min(1115, spawnX)), spawnY, {
+          this.fx.spawn('cryoPrismMachCone', Math.max(85, Math.min(ww - 85, spawnX)), spawnY, {
             flip: false,
             light: 1.22,
             extra: { aimAngle: Math.atan2(dy, dx), empowered: false }
@@ -1312,7 +1364,7 @@ export class IceMage extends Fighter {
           const chakramOutDmg = isVanguard ? 50 : isHarvester ? 53 : isGroundedCaster ? 56 : 58;
           if (game?.audio) game.audio.play('frost_cast', this.x);
           this.spawnSnowflakeChakram(spawnX, spawnY, targetX, targetY, chakramOutDmg, 22, enemy);
-          this.fx.spawn('snowflakeChakramBurst', Math.max(85, Math.min(1115, spawnX)), spawnY, {
+          this.fx.spawn('snowflakeChakramBurst', Math.max(85, Math.min(ww - 85, spawnX)), spawnY, {
             light: 1.20
           });
           if (game?.vfx) {
@@ -1323,7 +1375,7 @@ export class IceMage extends Fighter {
           const spireBaseDmg = isVanguard ? 54 : isHarvester ? 57 : isGroundedCaster ? 60 : 62;
           if (game?.audio) game.audio.play('frost_cast', this.x);
           this.spawnGlacierStalagmiteMarch(enemy, spireBaseDmg);
-          this.fx.spawn('glacierStalagmiteErupt', Math.max(90, Math.min(1110, this.x + this.facing * 58)), this.groundY, {
+          this.fx.spawn('glacierStalagmiteErupt', Math.max(90, Math.min(ww - 90, this.x + this.facing * 58)), this.groundY, {
             light: 1.22
           });
         } else {
@@ -1350,6 +1402,11 @@ export class IceMage extends Fighter {
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const advBounds = game?.isAdventureMode?.() ? game.adventure?.getActiveStageBounds?.() : null;
+    const clampJawsX = (rawX) =>
+      advBounds
+        ? Math.max(advBounds.minX + 36, Math.min(advBounds.maxX - 76, rawX))
+        : Math.max(210, Math.min(ww - 210, rawX));
 
     if (t < 0.12) {
       this.didJawsErupt = false;
@@ -1358,8 +1415,12 @@ export class IceMage extends Fighter {
     } else if (t < 0.52) {
       if (!this.didJawsErupt) {
         this.didJawsErupt = true;
-        const rawTx = enemy ? enemy.x : this.x + this.facing * 270;
-        const tx = Math.max(210, Math.min(ww - 210, rawTx));
+        const rawTx = enemy
+          ? enemy.isColossalBoss
+            ? enemy.x + 115
+            : enemy.x
+          : this.x + this.facing * 270;
+        const tx = clampJawsX(rawTx);
         const ty = enemy ? enemy.groundY : this.groundY;
 
         if (game?.audio) game.audio.play('frost_cast', tx);
@@ -1396,7 +1457,13 @@ export class IceMage extends Fighter {
           const slamCurve = closeU * closeU;
           this.glacierJaws.spread = 136 - 118 * slamCurve;
         }
-        if (enemy && !enemy.isDead && !enemy.hasPoise && Math.abs(enemy.x - this.glacierJaws.x) < 190) {
+        if (
+          enemy &&
+          !enemy.isDead &&
+          !enemy.hasPoise &&
+          !enemy.isColossalBoss &&
+          Math.abs(enemy.x - this.glacierJaws.x) < 190
+        ) {
           enemy.x += (this.glacierJaws.x - enemy.x) * Math.min(1, dt * 8.5);
         }
       }
@@ -1405,7 +1472,7 @@ export class IceMage extends Fighter {
       this.isDeflecting = false;
       const tx = this.glacierJaws
         ? this.glacierJaws.x
-        : Math.max(210, Math.min(ww - 210, enemy ? enemy.x : this.x + this.facing * 270));
+        : clampJawsX(enemy ? (enemy.isColossalBoss ? enemy.x + 115 : enemy.x) : this.x + this.facing * 270);
       const ty = this.glacierJaws ? this.glacierJaws.y : this.groundY;
 
       if (this.glacierJaws) {
@@ -1442,7 +1509,7 @@ export class IceMage extends Fighter {
       if (enemy && !enemy.isDead && !targets.includes(enemy)) targets.push(enemy);
 
       for (const foe of targets) {
-        if (Math.abs(foe.x - tx) <= 185) {
+        if (Math.abs(foe.x - tx) <= (foe.isColossalBoss ? 255 : 185)) {
           const isVanguard = foe.hasPoise && foe.attackRange <= 160;
           const isHarvester = foe.hasPoise && foe.attackRange > 160;
           const isGroundedCaster = !foe.hasPoise && foe.moveSpeed <= 122;
@@ -1471,8 +1538,15 @@ export class IceMage extends Fighter {
   updateUltimate(_dt, enemy, game) {
     const t = this.stateTimer;
     const ww = game.renderer ? game.renderer.worldWidth : 1200;
-    const targetX = enemy ? enemy.x : this.x + this.facing * 280;
-    const centerX = Math.max(250, Math.min(ww - 250, targetX));
+    const advBounds = game?.isAdventureMode?.() ? game.adventure?.getActiveStageBounds?.() : null;
+    const targetX = enemy
+      ? enemy.isColossalBoss
+        ? enemy.x + 125
+        : enemy.x
+      : this.x + this.facing * 280;
+    const centerX = advBounds
+      ? Math.max(advBounds.minX + 55, Math.min(advBounds.maxX - 95, targetX))
+      : Math.max(250, Math.min(ww - 250, targetX));
 
     this.vx = 0;
     this.vy = 0;
@@ -1529,7 +1603,7 @@ export class IceMage extends Fighter {
       );
 
       if (enemy && !enemy.isDead) {
-        if (!enemy.hasPoise) enemy.vx = 0;
+        if (!enemy.hasPoise && !enemy.isColossalBoss) enemy.vx = 0;
         const d1 = isVanguard ? 34 : isHarvester ? 37 : isGroundedCaster ? 40 : 42;
         enemy.takeDamage(d1, this, false, -18, 0);
         this.applyBrittleFrost(enemy, 2, game, centerX, this.groundY - 110);
@@ -1544,7 +1618,7 @@ export class IceMage extends Fighter {
             !foe.isDead &&
             !foe.isBenched &&
             (!this.team || foe.team !== this.team) &&
-            Math.abs(foe.x - centerX) <= 225
+            Math.abs(foe.x - centerX) <= (foe.isColossalBoss ? 275 : 225)
           ) {
             foe.takeDamage(32, this, false, -16, 0);
             this.applyBrittleFrost(foe, 2, game, foe.x, this.groundY - 110);
@@ -1553,7 +1627,7 @@ export class IceMage extends Fighter {
       }
     }
 
-    if (enemy && !enemy.isDead && !enemy.hasPoise && t < 1.02) {
+    if (enemy && !enemy.isDead && !enemy.hasPoise && !enemy.isColossalBoss && t < 1.02) {
       enemy.vx *= 0.14;
       if (this.coronationDomain) {
         enemy.x += (this.coronationDomain.x - enemy.x) * 0.08;
@@ -1596,7 +1670,7 @@ export class IceMage extends Fighter {
             !foe.isDead &&
             !foe.isBenched &&
             (!this.team || foe.team !== this.team) &&
-            Math.abs(foe.x - cx) <= 225
+            Math.abs(foe.x - cx) <= (foe.isColossalBoss ? 275 : 225)
           ) {
             foe.takeDamage(38, this, true, 0, -42);
           }
@@ -1652,7 +1726,7 @@ export class IceMage extends Fighter {
             !foe.isDead &&
             !foe.isBenched &&
             (!this.team || foe.team !== this.team) &&
-            Math.abs(foe.x - cx) <= 235
+            Math.abs(foe.x - cx) <= (foe.isColossalBoss ? 285 : 235)
           ) {
             foe.takeDamage(106, this, true, 148, -185);
             this.applyBrittleFrost(foe, 2, game, foe.x, this.groundY - 105);
@@ -1755,6 +1829,7 @@ export class IceMage extends Fighter {
    */
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
+    const advBounds = game?.isAdventureMode?.() ? game.adventure?.getActiveStageBounds?.() : null;
     this.isInvulnerable = true;
     this.vx = 0;
     this.vy = 0;
@@ -1776,9 +1851,14 @@ export class IceMage extends Fighter {
     // ACT I (0.00s .. 1.12s — Borealis Aurora, Frost Mirror & Sovereign Ascension)
     // =========================================================================
     if (t < 1.12) {
-      this._trueUltCoffinX = enemy
-        ? Math.max(240, Math.min(960, enemy.x))
-        : Math.max(240, Math.min(960, this.x + this.facing * 240));
+      const rawCoffinX = enemy
+        ? enemy.isColossalBoss
+          ? enemy.x + 125
+          : enemy.x
+        : this.x + this.facing * 240;
+      this._trueUltCoffinX = advBounds
+        ? Math.max(advBounds.minX + 55, Math.min(advBounds.maxX - 105, rawCoffinX))
+        : Math.max(240, Math.min(960, rawCoffinX));
       if (Math.abs(this._trueUltCoffinX - this.x) > 8) {
         this.facing = this._trueUltCoffinX >= this.x ? 1 : -1;
       }
@@ -1854,16 +1934,20 @@ export class IceMage extends Fighter {
 
       // Hold active foes frozen at the heart of the Diamond-Coffin Monolith (ZERO micro-DoT ticks!)
       if (enemy && !enemy.isDead) {
-        enemy.x += (this._trueUltCoffinX - enemy.x) * Math.min(1, dt * 18);
-        enemy.vx = 0;
-        enemy.vy = 0;
+        if (!enemy.isColossalBoss) {
+          enemy.x += (this._trueUltCoffinX - enemy.x) * Math.min(1, dt * 18);
+          enemy.vx = 0;
+          enemy.vy = 0;
+        }
         enemy.chronoTimeStopTimer = Math.max(enemy.chronoTimeStopTimer || 0, 0.16);
       }
       for (const foe of targets) {
         if (foe && !foe.isDead) {
-          foe.x += (this._trueUltCoffinX - foe.x) * Math.min(1, dt * 18);
-          foe.vx = 0;
-          foe.vy = 0;
+          if (!foe.isColossalBoss) {
+            foe.x += (this._trueUltCoffinX - foe.x) * Math.min(1, dt * 18);
+            foe.vx = 0;
+            foe.vy = 0;
+          }
           foe.chronoTimeStopTimer = Math.max(foe.chronoTimeStopTimer || 0, 0.16);
         }
       }
@@ -1882,6 +1966,12 @@ export class IceMage extends Fighter {
       for (const s of this._trueUltGlassShards) {
         s.x = cx + (Math.cos(s.angle) * 42);
         s.y = cy + (Math.sin(s.angle) * 48);
+      }
+      if (advBounds) {
+        for (let i = 0; i < this._trueUltDiamondDust.length; i++) {
+          this._trueUltDiamondDust[i].x = cx - 520 + ((i * 97) % 1040);
+          this._trueUltDiamondDust[i].y = 30 + ((i * 53) % 360);
+        }
       }
 
       if (enemy) enemy.chronoTimeStopTimer = 0;
@@ -2179,14 +2269,21 @@ export class IceMage extends Fighter {
         1.45
       );
 
-      // 4 Flanking Cathedral Ice-Organ Spires framing the stage wings
+      // 4 Flanking Cathedral Ice-Organ Spires framing the stage wings (or active camera in Adventure Mode)
       const spireCol = Math.min(20, 8 + (Math.floor(t * 14) % 12));
-      const wingPositions = [
-        { x: 108, sz: 164 },
-        { x: 176, sz: 124 },
-        { x: ww - 108, sz: 164 },
-        { x: ww - 176, sz: 124 }
-      ];
+      const wingPositions = renderer?.adventureMode
+        ? [
+            { x: Math.max(88, coffinX - 492), sz: 164 },
+            { x: Math.max(120, coffinX - 424), sz: 124 },
+            { x: Math.min(ww - 88, coffinX + 492), sz: 164 },
+            { x: Math.min(ww - 120, coffinX + 424), sz: 124 }
+          ]
+        : [
+            { x: 108, sz: 164 },
+            { x: 176, sz: 124 },
+            { x: ww - 108, sz: 164 },
+            { x: ww - 176, sz: 124 }
+          ];
       for (const wp of wingPositions) {
         this.drawBloomedVfxCell(
           ctx,
@@ -2658,8 +2755,9 @@ export class IceMage extends Fighter {
         ctx.restore();
 
         // 4 Hovering Celestial Ice-Claymores flanking the cracked monolith
+        const ww = renderer?.worldWidth || 1200;
         for (const ox of [-276, -184, 184, 276]) {
-          const sx = Math.max(88, Math.min(1112, coffinX + ox));
+          const sx = Math.max(88, Math.min(ww - 88, coffinX + ox));
           const sy = coffinY - 56 + Math.round(Math.sin(t * 6.0 + ox) * 6);
           this.drawBloomedVfxRect(ctx, vfxSheet, 4, prismCol, sx, sy, 132, 176, crackProgress * 0.92, renderer, 1.35);
         }
@@ -2696,6 +2794,7 @@ export class IceMage extends Fighter {
 
     // Act IV (`_trueUltShatterTimer > 0`): Reality-Glass Pane Shatter + Falling Diamond Dust + Triple Row-7 Starbursts!
     if (this._trueUltShatterTimer > 0) {
+      const ww = renderer?.worldWidth || 1200;
       const uShatter = 1 - Math.max(0, Math.min(1, this._trueUltShatterTimer / 1.28));
       const row7Col = Math.min(29, Math.floor(uShatter * 30));
       const shatterFade = Math.min(1, this._trueUltShatterTimer / 0.34);
@@ -2703,7 +2802,7 @@ export class IceMage extends Fighter {
       // 1. Triple Staggered Colossal Row-7 Prismatic Starbursts across the arena
       this.drawBloomedVfxRect(ctx, vfxSheet, 7, row7Col, coffinX, coffinY, 456, 396, shatterFade * 0.98, renderer, 2.0);
       for (const side of [-1, 1]) {
-        const wingX = Math.max(150, Math.min(1050, coffinX + side * 276));
+        const wingX = Math.max(150, Math.min(ww - 150, coffinX + side * 276));
         const subCol = Math.min(29, Math.max(0, row7Col - 2));
         this.drawBloomedVfxRect(
           ctx,

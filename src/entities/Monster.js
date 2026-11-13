@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps86';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps86';
+import { Fighter } from './Fighter.js?v=30fps87';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps87';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -209,6 +209,16 @@ export class Monster extends Fighter {
     const dealt = Math.max(0, prevHp - this.hp);
     if (dealt > 0 && prog && attacker && !attacker.isMonster) {
       prog.onPlayerHitMonster(attacker, this, dealt);
+      if (!this._isAdvCleaveSplash) {
+        this.game?.adventure?.skillSets?.onDirectMonsterHit?.(
+          attacker,
+          this,
+          amount,
+          isCrit,
+          knockX,
+          knockY
+        );
+      }
     }
   }
 

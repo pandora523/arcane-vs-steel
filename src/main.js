@@ -1,21 +1,21 @@
-import { Renderer } from './engine/Renderer.js?v=30fps86';
-import { VFXManager } from './engine/VFXManager.js?v=30fps86';
-import { PixelForge } from './engine/PixelForge.js?v=30fps86';
-import { AudioManager } from './engine/AudioManager.js?v=30fps86';
-import { Fighter } from './entities/Fighter.js?v=30fps86';
-import { Warrior } from './entities/Warrior.js?v=30fps86';
-import { FireMage } from './entities/FireMage.js?v=30fps86';
-import { Archer } from './entities/Archer.js?v=30fps86';
-import { Priestess } from './entities/Priestess.js?v=30fps86';
-import { Reaper } from './entities/Reaper.js?v=30fps86';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps86';
-import { Titan } from './entities/Titan.js?v=30fps86';
-import { Ronin } from './entities/Ronin.js?v=30fps86';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps86';
-import { IceMage } from './entities/IceMage.js?v=30fps86';
-import { Android } from './entities/Android.js?v=30fps86';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps86';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps86';
+import { Renderer } from './engine/Renderer.js?v=30fps87';
+import { VFXManager } from './engine/VFXManager.js?v=30fps87';
+import { PixelForge } from './engine/PixelForge.js?v=30fps87';
+import { AudioManager } from './engine/AudioManager.js?v=30fps87';
+import { Fighter } from './entities/Fighter.js?v=30fps87';
+import { Warrior } from './entities/Warrior.js?v=30fps87';
+import { FireMage } from './entities/FireMage.js?v=30fps87';
+import { Archer } from './entities/Archer.js?v=30fps87';
+import { Priestess } from './entities/Priestess.js?v=30fps87';
+import { Reaper } from './entities/Reaper.js?v=30fps87';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps87';
+import { Titan } from './entities/Titan.js?v=30fps87';
+import { Ronin } from './entities/Ronin.js?v=30fps87';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps87';
+import { IceMage } from './entities/IceMage.js?v=30fps87';
+import { Android } from './entities/Android.js?v=30fps87';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps87';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps87';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -1927,18 +1927,7 @@ class Game {
     };
 
     const baseLeftInspected = is2v2 && this.inspectLeftRole === 'partner' ? c1b : c1;
-    const advLeftKit = isAdv ? ADVENTURE_HERO_KITS[baseLeftInspected?.id] : null;
-    const leftInspected = advLeftKit
-      ? {
-          ...baseLeftInspected,
-          role: advLeftKit.role,
-          style: advLeftKit.style,
-          trait: advLeftKit.trait,
-          trueUltName: advLeftKit.trueUltName,
-          trueUltDesc: advLeftKit.trueUltDesc,
-          skills: advLeftKit.skills
-        }
-      : baseLeftInspected;
+    const leftInspected = baseLeftInspected;
     const leftOther = is2v2 && this.inspectLeftRole === 'partner' ? c1 : c1b;
     const rightInspected = isAdv
       ? {

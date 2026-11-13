@@ -28,28 +28,28 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps86';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps86';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps86';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps86';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps86';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps86';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps86';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps86';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps86';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps86';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps86';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps86';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps86';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps86';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps86';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps86';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps86';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps87';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps87';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps87';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps87';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps87';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps87';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps87';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps87';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps87';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps87';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps87';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps87';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps87';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps87';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps87';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps87';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps87';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps86';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps86';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps87';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps87';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -609,7 +609,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps86');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps87');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -2980,19 +2980,24 @@ for (const [name, Cls] of CLASSES) {
         adv.setAutoPlay(false, false);
         adv.startCampaign(hero);
 
+        // CRITICAL: 100% of authentic VS Mode methods, animations, shaders & skill names MUST remain untouched!
         if (
           !hero._advKitActive ||
           hero._advKitId !== h.key ||
-          hero.skillName !== expectedKit.skillName ||
-          hero.ultName !== expectedKit.ultName ||
-          hero.trueUltName !== expectedKit.trueUltName
+          hero.skillName !== origVsSkillName ||
+          hero.ultName !== origVsUltName ||
+          hero.trueUltName !== origVsTrueUltName ||
+          hero.updateAutoAttack !== origUpdateAuto ||
+          hero.updateSkill !== origUpdateSkill ||
+          hero.updateUltimate !== origUpdateUlt ||
+          hero.updateTrueUltimate !== origUpdateTrueUlt
         ) {
           throw new Error(
-            `Expected Adventure kit attached for '${h.key}', got active=${hero._advKitActive}, skill='${hero.skillName}' vs '${expectedKit.skillName}'`
+            `Expected '${h.key}' to retain 100% authentic VS methods & names in Adventure Mode! skill='${hero.skillName}' vs '${origVsSkillName}'`
           );
         }
 
-        // Verify all 7 action-orb tags match the active hero's Adventure kit
+        // Verify all 7 action-orb tags match the active hero's iconic theme
         for (const [actId, expTag] of Object.entries(expectedKit.tags)) {
           const domTag = mockDomMap.get(`adv-tag-${actId}`)?.textContent;
           if (domTag !== expTag) {
@@ -3002,21 +3007,24 @@ for (const [name, Cls] of CLASSES) {
           }
         }
 
-        // Verify gentle joystick tilt (`0.30`) produces slower `_manualSpeedRatio` than full sprint (`1.0`)
+        // Verify gentle joystick tilt (`0.30`) vs brisk obstacle-dodging sprint (`1.0` -> >85px in 12 frames!)
+        const walkStartX = hero.x;
         adv.setJoystickVector(0.30, 0, true);
         tickAdv(8, 16);
         const slowRatio = hero._manualSpeedRatio;
+        const sprintStartX = hero.x;
         adv.setJoystickVector(1.0, 0, true);
         tickAdv(12, 16);
         const fastRatio = hero._manualSpeedRatio;
+        const sprintDeltaX = hero.x - sprintStartX;
         adv.setJoystickVector(0, 0, false);
-        if (!(slowRatio > 0 && fastRatio > slowRatio + 0.15)) {
+        if (!(slowRatio > 0 && fastRatio > slowRatio + 0.15 && sprintDeltaX > 85 && hero.x > walkStartX)) {
           throw new Error(
-            `Expected proportional _manualSpeedRatio for '${h.key}' (slow=${slowRatio}, fast=${fastRatio})`
+            `Expected brisk obstacle-dodging walk speed & proportional _manualSpeedRatio for '${h.key}' (slow=${slowRatio}, fast=${fastRatio}, sprintDx=${sprintDeltaX.toFixed(1)})`
           );
         }
 
-        // Spawn a high-HP 3-lane monster cluster right ahead in Zone 0 to exercise every Adventure move!
+        // Spawn a high-HP 3-lane monster cluster right ahead in Zone 0 to exercise every authentic move!
         for (const m of adv.getLivingMonsters()) m.isDead = true;
         hero.x = 340;
         hero.groundY = 561;
@@ -3034,39 +3042,66 @@ for (const [name, Cls] of CLASSES) {
           m.skillCooldown = 999;
         }
         const totalClusterHp = () => laneM1.hp + laneM2.hp + laneM3.hp;
+        const resetClusterPos = () => {
+          laneM1.x = 500;
+          laneM1.groundY = 495;
+          laneM1.y = 495;
+          laneM2.x = 530;
+          laneM2.groundY = 561;
+          laneM2.y = 561;
+          laneM3.x = 555;
+          laneM3.groundY = 628;
+          laneM3.y = 628;
+          for (const m of [laneM1, laneM2, laneM3]) {
+            m.vx = 0;
+            m.vy = 0;
+            m.stunTimer = 99;
+          }
+        };
 
-        // 1) Multi-Step Adventure Basic Attack Combo (`3` steps, `4` for Lyra)
+        // 1) Authentic Multi-Step Basic Attack Combo (`4` variants for Lyra & Torgar, `3` for others) + 2.5D Pack Cleave
         let hpBefore = totalClusterHp();
-        const comboCount = h.key === 'icemage' ? 4 : 3;
+        const comboCount = h.key === 'icemage' || h.key === 'titan' ? 4 : 3;
         for (let step = 0; step < comboCount; step++) {
+          resetClusterPos();
           hero.autoCooldown = 0;
-          hero.x = 380;
+          hero.x = 385;
+          hero.groundY = 561;
+          hero.y = 561;
           hero.facing = 1;
           adv.triggerAction('attack');
-          tickAdv(18, 18);
+          tickAdv(26, 26);
         }
-        tickAdv(12, 12);
+        tickAdv(14, 14);
         const basicDmg = hpBefore - totalClusterHp();
-        if (basicDmg <= 0) {
-          throw new Error(`Expected '${h.key}' Adventure Basic Combo to damage 3-lane monster cluster, dealt ${basicDmg}`);
+        const offLaneCleaved = laneM1.hp < 25000 || laneM3.hp < 25000;
+        if (basicDmg <= 0 || !offLaneCleaved) {
+          throw new Error(
+            `Expected '${h.key}' authentic Basic Combo to damage & 2.5D-cleave 3-lane monster cluster, dealt=${basicDmg}, offLaneCleaved=${offLaneCleaved}`
+          );
         }
 
-        // 2) Adventure Ward (`crouch`) & Vault Plunge (`jump`)
+        // 2) Authentic Defensive Ward/Parry (`crouch`) & Aerial Vault/Jump (`jump`)
+        resetClusterPos();
         hero.setState('IDLE');
+        hero.x = 380;
+        hero.groundY = 561;
+        hero.y = 561;
         hero.crouchCooldown = 0;
         adv.triggerAction('crouch');
-        tickAdv(26, 26);
+        tickAdv(62, 62);
         if (hero.state !== 'IDLE') {
-          throw new Error(`Expected '${h.key}' Adventure Ward to exit cleanly to IDLE, got ${hero.state}`);
+          throw new Error(`Expected '${h.key}' authentic Crouch/Ward to exit cleanly to IDLE, got ${hero.state}`);
         }
         adv.jumpCd = 0;
         adv.triggerAction('jump');
-        tickAdv(28, 28);
+        tickAdv(54, 54);
         if (hero.state !== 'IDLE') {
-          throw new Error(`Expected '${h.key}' Adventure Vault Plunge to exit cleanly to IDLE, got ${hero.state}`);
+          throw new Error(`Expected '${h.key}' authentic Jump/Vault to exit cleanly to IDLE, got ${hero.state}`);
         }
 
-        // 3) Adventure Skill (`skill`) — 2.5D AoE + Zone-Clamped Bounds
+        // 3) Authentic Signature Skill (`skill`) — 2.5D AoE + Zone-Clamped Bounds
+        resetClusterPos();
         hero.x = 380;
         hero.groundY = 561;
         hero.y = 561;
@@ -3075,15 +3110,16 @@ for (const [name, Cls] of CLASSES) {
         adv.progression.spirit = 100;
         hpBefore = totalClusterHp();
         adv.triggerAction('skill');
-        tickAdv(42, 21);
+        tickAdv(52, 26);
         const skillDmg = hpBefore - totalClusterHp();
         if (skillDmg <= 0 || hero.x > 1200 || hero.x < 40 || hero.state !== 'IDLE') {
           throw new Error(
-            `Adventure Skill check failed for '${h.key}': dmg=${skillDmg}, x=${hero.x.toFixed(1)}, state=${hero.state}`
+            `Authentic Skill check failed for '${h.key}': dmg=${skillDmg}, x=${hero.x.toFixed(1)}, state=${hero.state}`
           );
         }
 
-        // 4) Adventure Overdrive (`overdrive`) — 2.5D Crowd-Clear + Zone-Clamped Bounds
+        // 4) Authentic Overdrive Ultimate (`overdrive`) — 2.5D Crowd-Clear + Zone-Clamped Bounds
+        resetClusterPos();
         hero.x = 380;
         hero.groundY = 561;
         hero.y = 561;
@@ -3091,15 +3127,16 @@ for (const [name, Cls] of CLASSES) {
         adv.progression.ultCharge = 100;
         hpBefore = totalClusterHp();
         adv.triggerAction('overdrive');
-        tickAdv(62, 31);
+        tickAdv(76, 38);
         const odDmg = hpBefore - totalClusterHp();
         if (odDmg <= 0 || hero.x > 1200 || hero.x < 40 || hero.state !== 'IDLE') {
           throw new Error(
-            `Adventure Overdrive check failed for '${h.key}': dmg=${odDmg}, x=${hero.x.toFixed(1)}, state=${hero.state}`
+            `Authentic Overdrive check failed for '${h.key}': dmg=${odDmg}, x=${hero.x.toFixed(1)}, state=${hero.state}`
           );
         }
 
-        // 5) Adventure Supreme Cataclysm (`ultimate`) — Screen-Wide Multi-Lane Finisher + Zone-Clamped Bounds
+        // 5) Authentic Supreme Ultimate (`ultimate`) — Full Choreography + Shaders + Zone-Clamped Bounds
+        resetClusterPos();
         hero.x = 380;
         hero.groundY = 561;
         hero.y = 561;
@@ -3107,30 +3144,35 @@ for (const [name, Cls] of CLASSES) {
         adv.progression.astralCharge = 100;
         hpBefore = totalClusterHp();
         adv.triggerAction('ultimate');
-        tickAdv(92, 46);
+        tickAdv(176, 58);
         const cataclysmDmg = hpBefore - totalClusterHp();
         if (cataclysmDmg < 250 || hero.x > 1200 || hero.x < 40 || hero.state !== 'IDLE') {
           throw new Error(
-            `Adventure Cataclysm check failed for '${h.key}': dmg=${cataclysmDmg}, x=${hero.x.toFixed(1)}, state=${hero.state}`
+            `Authentic Supreme Ultimate check failed for '${h.key}': dmg=${cataclysmDmg}, x=${hero.x.toFixed(1)}, state=${hero.state}`
           );
         }
 
-        // 6) Verify Melee Champions reach & damage Left-Side Colossal Boss Malphas (`x = 3865`)!
-        if (['warrior', 'titan', 'ronin', 'valkyrie', 'reaper'].includes(h.key)) {
+        // 6) Verify ALL 11 Champions (both melee & ranged, even from off-center 3D lane!) reach & damage Left-Side Colossal Boss Malphas (`x = 3865`)!
+        {
           for (const m of adv.getLivingMonsters()) m.isDead = true;
           adv.zoneIndex = 3;
           adv.lockActive = true;
-          adv.lockMinX = 3965;
+          adv.lockMinX = 3945;
           adv.lockMaxX = 4720;
+          const isRanged = (hero.attackRange || 180) >= 320;
           hero.setState('IDLE');
-          hero.x = 4080;
-          const testBoss = adv.spawnMonster('archfiend', 3865, { groundY: 558 });
+          hero.x = isRanged ? 4240 : 3985;
+          hero.groundY = 472;
+          hero.y = 472;
+          hero.facing = -1;
+          const testBoss = adv.spawnMonster('archfiend', 3865, { groundY: 561 });
+          adv.bossEntity = testBoss;
           const startBossHp = testBoss.hp;
           adv.setAutoPlay(true, false);
           tickAdv(55, 28);
           if (testBoss.hp >= startBossHp) {
             throw new Error(
-              `Expected melee hero '${h.key}' Adventure kit to reach and damage Colossal Boss Malphas (hero.x=${hero.x.toFixed(1)}, boss.hp=${testBoss.hp}/${startBossHp})`
+              `Expected hero '${h.key}' authentic kit to reach and damage Colossal Boss Malphas (hero.x=${hero.x.toFixed(1)}, gy=${hero.groundY.toFixed(1)}, boss.hp=${testBoss.hp}/${startBossHp})`
             );
           }
           adv.setAutoPlay(false, false);
@@ -3140,7 +3182,6 @@ for (const [name, Cls] of CLASSES) {
         adv.stopCampaign();
         if (
           hero._advKitActive ||
-          hero._advSkillOrig ||
           hero.maxHp !== origVsHp ||
           hero.skillName !== origVsSkillName ||
           hero.ultName !== origVsUltName ||

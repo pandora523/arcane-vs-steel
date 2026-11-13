@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps86';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps86';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps86';
+import { Fighter } from './Fighter.js?v=30fps87';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps87';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps87';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps86';
+} from '../engine/shaders/sylvanShaders.js?v=30fps87';
 
 /**
  * Sylvara (`archer`) — Elven Tempest Bowmaster & Astral Star-Ranger.
@@ -75,8 +75,8 @@ export class Archer extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const archerAssets = PixelForge.initAssets()?.archer;
-      if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps86')) {
-        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps86';
+      if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps87')) {
+        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps87';
       }
     }
 
@@ -996,12 +996,18 @@ export class Archer extends Fighter {
         });
       }
 
+      const advBounds =
+        game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+          ? game.adventure.getActiveStageBounds()
+          : null;
       const u = Math.min(1, Math.max(0, t / 0.32));
       const easeRush = 1 - Math.pow(1 - u, 2.25);
       const rawContactX = primary
         ? primary.x - this._ultChargeDir * 48
         : this._ultStartX + this._ultChargeDir * 240;
-      const contactX = Math.max(120, Math.min(ww - 120, rawContactX));
+      const contactX = advBounds
+        ? Math.max(advBounds.minX + 36, Math.min(advBounds.maxX - 36, rawContactX))
+        : Math.max(120, Math.min(ww - 120, rawContactX));
 
       this.x = this._ultStartX + (contactX - this._ultStartX) * easeRush;
       this.y = this.groundY;
@@ -1016,14 +1022,25 @@ export class Archer extends Fighter {
       return;
     }
 
+    const advBounds =
+      game?.adventure?.active && typeof game.adventure.getActiveStageBounds === 'function'
+        ? game.adventure.getActiveStageBounds()
+        : null;
+
     // Vault-Kick Contact & 180° Target Lock-On Snap (`t >= 0.32s`)
     if (this._ultPhase < 2) {
       this._ultPhase = 2;
       if (primary && !primary.isDead) {
-        // Ensure 180° overhead semicircle (`±192px`) has clean room on both sides of the target
-        primary.x = Math.max(265, Math.min(ww - 265, primary.x));
-        this._ultPivotX = primary.x;
-        primary.vx = 0;
+        // Ensure 180° overhead semicircle (`±192px`) has clean room inside stage/encounter bounds
+        if (!primary.isColossalBoss) {
+          primary.x = advBounds
+            ? Math.max(advBounds.minX + 200, Math.min(advBounds.maxX - 200, primary.x))
+            : Math.max(265, Math.min(ww - 265, primary.x));
+          primary.vx = 0;
+        }
+        this._ultPivotX = advBounds
+          ? Math.max(advBounds.minX + 200, Math.min(advBounds.maxX - 200, primary.x))
+          : primary.x;
         primary.takeDamage(36, this, false, 30, -85);
         this.spawnVfxAnim(0, primary.x, (primary.groundY || this.groundY) - 96, 184, 184, 0.28, {
           flipX: this._ultChargeDir < 0,
@@ -1036,7 +1053,9 @@ export class Archer extends Fighter {
           extra: { aimAngle: -Math.PI * 0.5, isCrit: true }
         });
       } else {
-        this._ultPivotX = Math.max(265, Math.min(ww - 265, this.x + this._ultChargeDir * 48));
+        this._ultPivotX = advBounds
+          ? Math.max(advBounds.minX + 200, Math.min(advBounds.maxX - 200, this.x + this._ultChargeDir * 48))
+          : Math.max(265, Math.min(ww - 265, this.x + this._ultChargeDir * 48));
       }
 
       this.fx.spawn('yggdrasilLockReticle', this._ultPivotX, this.groundY - 98, {
@@ -1071,15 +1090,21 @@ export class Archer extends Fighter {
       const arcRadiusX = 192;
       const arcHeightY = 194;
 
-      // Gently keep locked foe centered inside the 180° reticle unless dodging
-      if (primary && !primary.isDead && primary.state !== 'DODGE' && primary.state !== 'JUMP') {
+      // Gently keep locked foe centered inside the 180° reticle unless dodging or Colossal Boss
+      if (
+        primary &&
+        !primary.isDead &&
+        !primary.isColossalBoss &&
+        primary.state !== 'DODGE' &&
+        primary.state !== 'JUMP'
+      ) {
         primary.x += (this._ultPivotX - primary.x) * Math.min(1, dt * 7);
       }
 
-      this.x = Math.max(
-        84,
-        Math.min(ww - 84, this._ultPivotX - this._ultChargeDir * Math.cos(theta) * arcRadiusX)
-      );
+      const rawArcX = this._ultPivotX - this._ultChargeDir * Math.cos(theta) * arcRadiusX;
+      this.x = advBounds
+        ? Math.max(advBounds.minX + 24, Math.min(advBounds.maxX - 24, rawArcX))
+        : Math.max(84, Math.min(ww - 84, rawArcX));
       this.y = this.groundY - Math.sin(theta) * arcHeightY;
       this.cameraAirLift = Math.sin(theta) * 142;
 
@@ -1237,7 +1262,9 @@ export class Archer extends Fighter {
       const stageMaxX = advBounds ? advBounds.maxX : ww;
 
       const anchorX = primaryTarget
-        ? Math.max(stageMinX + 48, Math.min(stageMaxX - 48, primaryTarget.x))
+        ? primaryTarget.isColossalBoss
+          ? primaryTarget.anchorX || primaryTarget.x
+          : Math.max(stageMinX + 48, Math.min(stageMaxX - 48, primaryTarget.x))
         : Math.max(stageMinX + 72, Math.min(stageMaxX - 72, this.x + this.facing * 320));
       this._trueUltTargetX = anchorX;
 
@@ -1273,21 +1300,23 @@ export class Archer extends Fighter {
           ? foe.anchorX || foe.x
           : Math.max(stageMinX + 48, Math.min(stageMaxX - 48, foe.x));
         const lockY = foe.groundY || this.groundY;
-        if (foe.state !== 'IDLE' && foe.state !== 'TRUE_ULTIMATE' && !foe.isColossalBoss) {
-          foe.setState('IDLE');
+        if (!foe.isColossalBoss) {
+          if (foe.state !== 'IDLE' && foe.state !== 'TRUE_ULTIMATE') {
+            foe.setState('IDLE');
+          }
+          foe.x = lockX;
+          foe.y = lockY;
+          foe.vx = 0;
+          foe.vy = 0;
+          foe.isRooted = true;
+          foe.isCrouching = false;
+          foe.isDeflecting = false;
+          foe.iaidoCounterActive = false;
+          foe.stunTimer = Math.max(foe.stunTimer || 0, 3.20);
+          foe.crouchCooldown = Math.max(foe.crouchCooldown || 0, 0.25);
+          foe.dodgeCooldown = Math.max(foe.dodgeCooldown || 0, 0.25);
+          foe.dashCooldown = Math.max(foe.dashCooldown || 0, 0.25);
         }
-        foe.x = lockX;
-        foe.y = lockY;
-        foe.vx = 0;
-        foe.vy = 0;
-        foe.isRooted = true;
-        foe.isCrouching = false;
-        foe.isDeflecting = false;
-        foe.iaidoCounterActive = false;
-        foe.stunTimer = Math.max(foe.stunTimer || 0, 3.20);
-        foe.crouchCooldown = Math.max(foe.crouchCooldown || 0, 0.25);
-        foe.dodgeCooldown = Math.max(foe.dodgeCooldown || 0, 0.25);
-        foe.dashCooldown = Math.max(foe.dashCooldown || 0, 0.25);
         this._trueUltRootedTargets.push({ foe, lockX, lockY });
 
         // 2.5D Elder-Wood Yggdrasil Thorn-Root Prison (`back` + `front` wraparound) + Bramble Snare + Yggdrasil Seal
@@ -1327,7 +1356,13 @@ export class Archer extends Fighter {
     if (t < 3.15) {
       for (const entry of this._trueUltRootedTargets) {
         const foe = entry.foe;
-        if (foe && !foe.isDead && !foe.isBenched && foe.state !== 'TRUE_ULTIMATE') {
+        if (
+          foe &&
+          !foe.isDead &&
+          !foe.isBenched &&
+          !foe.isColossalBoss &&
+          foe.state !== 'TRUE_ULTIMATE'
+        ) {
           if (foe.state !== 'IDLE') {
             foe.setState('IDLE');
           }
