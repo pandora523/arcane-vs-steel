@@ -1079,8 +1079,8 @@ export class Fighter {
           const spdRatio = Number.isFinite(this._manualSpeedRatio)
             ? Math.max(0.32, Math.min(1.2, this._manualSpeedRatio))
             : 1.0;
-          this.walkPhase += dt * (2.2 + 3.6 * spdRatio);
-          this.headBob = Math.sin(this.walkPhase * 2) * (1.2 + 1.15 * spdRatio);
+          this.walkPhase += dt * (2.0 + 2.4 * spdRatio);
+          this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.2;
         } else {
           this.state = 'IDLE';
           this.moveDir = 0;
@@ -1215,9 +1215,9 @@ export class Fighter {
             const stepSign = nearWall ? 1 : this._aiOutstepDir || -1;
             this.state = 'WALK';
             this.moveDir = stepSign;
-            this.walkPhase += dt * 5.2;
+            this.walkPhase += dt * 4.4;
             this.x += this.facing * stepSign * this.moveSpeed * 0.72 * dt;
-            this.headBob = Math.sin(this.walkPhase * 2) * 2.0;
+            this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
             return;
           }
 
@@ -1239,12 +1239,25 @@ export class Fighter {
                 this.startCrouch(enemy, game);
                 return;
               }
-              this.state = 'WALK';
-              this.walkPhase += dt * 4.4;
-              const hoverStep = Math.sin(this.walkPhase * 1.3) * 0.35;
-              this.moveDir = hoverStep >= 0 ? 1 : -1;
-              this.x += this.facing * this.moveSpeed * hoverStep * dt;
-              this.headBob = Math.sin(this.walkPhase * 2) * 2.0;
+              const nearWall = this.x < 175 || this.x > ww - 175;
+              const vSweetMin = aiProfile.sweetMin || 310;
+              const vSweetMax = aiProfile.sweetMax || 375;
+              if (dist < vSweetMin && !nearWall) {
+                this.state = 'WALK';
+                this.moveDir = -1;
+                this.walkPhase += dt * 4.2;
+                this.x -= this.facing * this.moveSpeed * 0.72 * dt;
+                this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
+              } else if (dist > vSweetMax) {
+                this.state = 'WALK';
+                this.moveDir = 1;
+                this.walkPhase += dt * 4.2;
+                this.x += this.facing * this.moveSpeed * 0.70 * dt;
+                this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
+              } else {
+                this.state = 'IDLE';
+                this.moveDir = 0;
+              }
             } else {
               const sweetSpotMin = aiProfile.sweetMin || 350;
               const sweetSpotMax = aiProfile.sweetMax || 455;
@@ -1270,53 +1283,63 @@ export class Fighter {
                 this.moveDir = -1;
                 this.walkPhase += dt * 4.2;
                 this.x -= this.facing * this.moveSpeed * 0.80 * dt;
-                this.headBob = Math.sin(this.walkPhase * 2) * 2.2;
+                this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
               } else if (dist > sweetSpotMax) {
                 this.state = 'WALK';
                 this.moveDir = 1;
                 this.walkPhase += dt * 4.0;
                 this.x += this.facing * this.moveSpeed * 0.65 * dt;
-                this.headBob = Math.sin(this.walkPhase * 2) * 2.0;
+                this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
               } else {
-                // Subtle lateral mage/ranger micro-weave in the sweet spot
-                const weave = Math.sin(this.walkPhase * 1.5);
-                if (Math.abs(weave) > 0.45 && !nearLeft && !nearRight) {
-                  this.state = 'WALK';
-                  this.moveDir = weave >= 0 ? 1 : -1;
-                  this.walkPhase += dt * 3.4;
-                  this.x += this.facing * Math.sign(weave) * this.moveSpeed * 0.32 * dt;
-                  this.headBob = Math.sin(this.walkPhase * 2) * 1.6;
-                } else {
-                  this.state = 'IDLE';
-                  this.moveDir = 0;
-                }
+                // Hold poised ranged kamae inside the sweet-spot band instead of crab-oscillating in place
+                this.state = 'IDLE';
+                this.moveDir = 0;
               }
             }
           } else if (this.heroId === 'ronin' || this.heroId === 'android') {
-            // Iaido Samurai (Kaze-Maru) & Cyber-Valkyrie (VEX-09): crisp high-tempo in-and-out blade footsies!
-            this.state = 'WALK';
-            this.walkPhase += dt * 6.0;
-            const weaveDir =
-              dist > 148 ? 0.85 : dist < 118 ? -0.60 : Math.sin(this.walkPhase * 1.5) > 0 ? 0.52 : -0.46;
-            this.moveDir = weaveDir >= 0 ? 1 : -1;
-            this.x += this.facing * this.moveSpeed * 0.76 * weaveDir * dt;
-            this.headBob = Math.sin(this.walkPhase * 2) * 1.8;
+            // Iaido Samurai (Kaze-Maru) & Cyber-Valkyrie (VEX-09): disciplined blade-tip spacing (118..148px)
+            if (dist > 148) {
+              this.state = 'WALK';
+              this.moveDir = 1;
+              this.walkPhase += dt * 4.4;
+              this.x += this.facing * this.moveSpeed * 0.76 * 0.85 * dt;
+              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
+            } else if (dist < 118) {
+              this.state = 'WALK';
+              this.moveDir = -1;
+              this.walkPhase += dt * 4.0;
+              this.x -= this.facing * this.moveSpeed * 0.76 * 0.60 * dt;
+              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
+            } else {
+              this.state = 'IDLE';
+              this.moveDir = 0;
+            }
           } else if (this.heroId === 'chronomancer') {
-            // Sovereign of Time (Chronos): rhythmic mid-close halberd pendulum spacing (150..215px)
-            this.state = 'WALK';
-            this.walkPhase += dt * 4.6;
-            const cDir = dist > 205 ? 0.80 : dist < 145 ? -0.65 : Math.sin(this.walkPhase * 1.2) * 0.42;
-            this.moveDir = cDir >= 0 ? 1 : -1;
-            this.x += this.facing * this.moveSpeed * cDir * dt;
-            this.headBob = Math.sin(this.walkPhase * 2) * 2.0;
+            // Sovereign of Time (Chronos): poised mid-close halberd spacing (145..205px)
+            if (dist > 205) {
+              this.state = 'WALK';
+              this.moveDir = 1;
+              this.walkPhase += dt * 4.2;
+              this.x += this.facing * this.moveSpeed * 0.80 * dt;
+              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
+            } else if (dist < 145) {
+              this.state = 'WALK';
+              this.moveDir = -1;
+              this.walkPhase += dt * 4.0;
+              this.x -= this.facing * this.moveSpeed * 0.65 * dt;
+              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
+            } else {
+              this.state = 'IDLE';
+              this.moveDir = 0;
+            }
           } else if (this.heroId === 'titan') {
             // Unstoppable Mountain Juggernaut (Torgar): heavy, earth-shaking march into point-blank maul range (124px)
             if (dist > 124) {
               this.state = 'WALK';
               this.moveDir = 1;
-              this.walkPhase += dt * 3.2;
+              this.walkPhase += dt * 3.4;
               this.x += this.facing * this.moveSpeed * 0.90 * dt;
-              this.headBob = Math.abs(Math.sin(this.walkPhase * 2)) * 3.2;
+              this.headBob = Math.abs(Math.sin((this.walkPhase * Math.PI) / 2.0)) * 1.6;
             } else {
               this.state = 'IDLE';
               this.moveDir = 0;
@@ -1326,15 +1349,15 @@ export class Fighter {
             if (dist > 150) {
               this.state = 'WALK';
               this.moveDir = 1;
-              this.walkPhase += dt * 4.6;
+              this.walkPhase += dt * 4.3;
               this.x += this.facing * this.moveSpeed * 0.86 * dt;
-              this.headBob = Math.sin(this.walkPhase * 2) * 2.4;
+              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
             } else if (dist < 118) {
               this.state = 'WALK';
               this.moveDir = -1;
               this.walkPhase += dt * 4.0;
               this.x -= this.facing * this.moveSpeed * 0.45 * dt;
-              this.headBob = Math.sin(this.walkPhase * 2) * 2.0;
+              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
             } else {
               this.state = 'IDLE';
               this.moveDir = 0;
@@ -1344,15 +1367,15 @@ export class Fighter {
             if (dist > 136) {
               this.state = 'WALK';
               this.moveDir = 1;
-              this.walkPhase += dt * 4.5;
+              this.walkPhase += dt * 4.3;
               this.x += this.facing * this.moveSpeed * 0.85 * dt;
-              this.headBob = Math.sin(this.walkPhase * 2) * 2.4;
+              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
             } else if (dist < 116) {
               this.state = 'WALK';
               this.moveDir = -1;
               this.walkPhase += dt * 3.8;
               this.x -= this.facing * this.moveSpeed * 0.42 * dt;
-              this.headBob = Math.sin(this.walkPhase * 2) * 1.8;
+              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
             } else {
               this.state = 'IDLE';
               this.moveDir = 0;
@@ -1361,9 +1384,9 @@ export class Fighter {
         } else {
           this.state = 'WALK';
           this.moveDir = 1;
-          this.walkPhase += dt * 4.5;
+          this.walkPhase += dt * 4.2;
           this.x += this.facing * this.moveSpeed * dt;
-          this.headBob = Math.sin(this.walkPhase * 2) * 2.5;
+          this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.5;
         }
       } else if (game?.isMatchOver && !this.isDead && this.y >= this.groundY - 2) {
         this.setState('VICTORY');
@@ -1489,7 +1512,7 @@ export class Fighter {
       targetLean = -0.09;
     } else if (this.state === 'WALK') {
       if ((this.moveDir ?? 1) >= 0) {
-        targetLean = 0.145 + Math.sin(this.walkPhase * 2) * 0.025;
+        targetLean = 0.145 + Math.sin((this.walkPhase * Math.PI) / 2.0) * 0.018;
       } else {
         targetLean = -0.055;
       }
@@ -1507,7 +1530,10 @@ export class Fighter {
   getTargetTorsoAngle() {
     if (this.state === 'HURT' || this.hurtTimer > 0.08) return -this.facing * 0.22;
     if (this.state === 'DASH' || this.state === 'DODGE') return this.dashDir * 0.25;
-    if (this.state === 'WALK') return this.facing * 0.18 + Math.sin(this.walkPhase) * 0.14;
+    if (this.state === 'WALK') {
+      const dirLean = (this.moveDir ?? 1) < 0 ? -0.06 : 0.16;
+      return this.facing * dirLean + Math.sin((this.walkPhase * Math.PI) / 2.0) * 0.06;
+    }
     if (this.state === 'IDLE') return Math.sin(this.walkPhase) * 0.05;
     return 0;
   }

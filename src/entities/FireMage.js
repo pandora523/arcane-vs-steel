@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps88';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps88';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps88';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps88';
+import { Fighter } from './Fighter.js?v=30fps89';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps89';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps89';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps89';
 
 /**
  * Ignis Sol (`mage`) — Solar Archmage & Black-Sun Eclipse Sovereign.
@@ -89,7 +89,7 @@ export class FireMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const mageAssets = PixelForge.initAssets()?.mage;
       if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps60')) {
-        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps88';
+        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps89';
       }
     }
   }
@@ -627,7 +627,16 @@ export class FireMage extends Fighter {
       this.finisherGauge >= this.maxFinisherGauge &&
       !(enemy && enemy.isInvulnerable);
 
-    if (!trueUltReady && enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
+    const isManualPlayer = Boolean(
+      (this.isPlayerControlled && !this.adventureAutoPlay) || this.isManualAdventureControl
+    );
+    if (
+      !isManualPlayer &&
+      !trueUltReady &&
+      enemy &&
+      !enemy.isDead &&
+      (this.state === 'IDLE' || this.state === 'WALK')
+    ) {
       const dist = Math.abs(enemy.x - this.x);
       const ww = game.renderer.worldWidth;
       const nearWall = this.x < 260 || this.x > ww - 260;
@@ -660,8 +669,10 @@ export class FireMage extends Fighter {
         return;
       }
 
-      if (dist < 215) {
-        this.x -= this.facing * this.moveSpeed * 0.68 * dt;
+      if (dist < 215 && this.autoCooldown > 0 && this.x > 175 && this.x < ww - 175) {
+        this.moveDir = -1;
+        this.walkPhase += dt * 0.5;
+        this.x -= this.facing * this.moveSpeed * 0.12 * dt;
       }
     }
     super.update(dt, enemy, game);

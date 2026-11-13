@@ -33,6 +33,7 @@ from hd2d_rig_core import (
     assign_remaining_geodesic, extract_parts_512, rot_pt,
     draw_line_104, draw_slash_arc_104, render_rig_104,
     make_prone_knight_death_kfs, eval_pose_keyframes, build_and_save_30fps_sheet,
+    compute_bipedal_walk_pose,
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -869,21 +870,24 @@ def build_row_configs(row_idx):
             cfgs.append(apply_2h_scythe_ik(cfg))
 
         elif row_idx == 1:
-            # Row 1: WALK — Relentless Death-March Armored Stride (scythe carried low & poised)
-            st = math.sin(ph)
-            kl = math.cos(ph)
+            # Row 1: WALK — Authentic Bipedal Crossover Predatory Gothic Arch-Reaper Stride
+            c_step = math.cos(ph)
+            gait = compute_bipedal_walk_pose(PIVOTS, f, cols=COLS, stride_scale=0.80)
+            gait["l_hip_dy"] -= 5.6
+            gait["r_hip_dy"] += 5.6
             cfg = dict(DEFAULTS)
+            cfg.update(gait)
             cfg.update(
-                pelvis_dy=abs(st) * 15.5, torso_deg=8.5 + abs(st) * 2.5, head_rel_deg=-4.0,
+                pelvis_dx=0.0, pelvis_dy=0.0,
+                torso_deg=6.0 + 1.8 * abs(c_step), head_rel_deg=-3.0,
                 mane_wave_phase=ph * 2.0,
-                right_leg_behind=(f >= 15),
-                l_thigh_deg=st * 25.0, l_shin_deg=max(0.0, st * 26.0) + max(0.0, kl * 13.0), l_foot_deg=st * 11.0,
-                r_thigh_deg=-st * 25.0, r_shin_deg=max(0.0, -st * 26.0) + max(0.0, -kl * 13.0), r_foot_deg=-st * 11.0,
-                l_coat_rel_deg=st * 6.0, r_coat_rel_deg=-st * 6.0,
-                grip_x=44.0 + st * 5.0, grip_y=-4.0 + abs(st) * 4.5,
-                weapon_deg=-26.0 + st * 9.0, foot_y=99.0,
+                grip_x=45.5 - c_step * 6.5, grip_y=-8.0 + abs(c_step) * 3.5,
+                weapon_deg=-32.0 - c_step * 8.5, weapon_glow=0.88 + 0.12 * math.sin(ph),
+                foot_y=99.0,
             )
-            cfgs.append(apply_2h_scythe_ik(cfg))
+            cfg = apply_2h_scythe_ik(cfg)
+            cfg["right_arm_in_front"] = False
+            cfgs.append(cfg)
 
         elif row_idx == 2:
             # Row 2: AUTO_ATTACK — Trinity of the Scythe (Coiled Back-Cock -> Wide Crescent Reap -> Reverse Hook Rend)

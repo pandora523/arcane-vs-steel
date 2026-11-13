@@ -41,6 +41,7 @@ from hd2d_rig_core import (
     assign_remaining_geodesic, extract_parts_512, rot_pt,
     put_px, draw_line_104, draw_slash_arc_104, render_rig_104,
     make_prone_knight_death_kfs, eval_pose_keyframes, build_and_save_30fps_sheet,
+    compute_bipedal_walk_pose,
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -784,20 +785,24 @@ def build_row_configs(row_idx):
             cfgs.append(apply_2h_sword_ik(cfg))
 
         elif row_idx == 1:
-            # Row 1: WALK (Heavy Armored Two-Handed Celestial Claymore Vanguard March!)
-            st = math.sin(ph)
-            kl = math.cos(ph)
+            # Row 1: WALK (Authentic Bipedal Crossover Paladin Vanguard Two-Handed Greatsword March!)
+            c_step = math.cos(ph)
+            gait = compute_bipedal_walk_pose(PIVOTS, f, cols=COLS, stride_scale=0.80)
+            gait["l_hip_dy"] -= 2.4
+            gait["r_hip_dy"] += 2.4
             cfg = dict(DEFAULTS)
+            cfg.update(gait)
             cfg.update(
-                pelvis_dy=abs(st) * 19.0, torso_deg=8.5 + abs(st) * 2.4, head_rel_deg=-4.0,
-                mane_rel_deg=-8.0 - abs(st) * 4.5, mane_wave_phase=ph * 2.0, mane_wave_amp=8.5,
-                right_leg_behind=(f >= 15),
-                l_thigh_deg=st * 27.0, l_shin_deg=max(0.0, st * 29.0) + max(0.0, kl * 14.0), l_foot_deg=st * 12.0,
-                r_thigh_deg=-st * 27.0, r_shin_deg=max(0.0, -st * 29.0) + max(0.0, -kl * 14.0), r_foot_deg=-st * 12.0,
-                grip_x=58.0 + st * 4.5, grip_y=-11.0 + abs(st) * 5.0,
-                weapon_deg=-33.0 + st * 7.5,
+                pelvis_dx=0.0, pelvis_dy=0.0,
+                torso_deg=5.5 + 1.8 * abs(c_step), head_rel_deg=-3.0,
+                mane_rel_deg=-6.0 - 3.5 * abs(c_step), mane_wave_phase=ph * 2.0, mane_wave_amp=8.0,
+                grip_x=56.0 - c_step * 8.5, grip_y=-12.0 + abs(c_step) * 4.0,
+                weapon_deg=-35.0 - c_step * 9.5, weapon_glow=0.88 + 0.12 * math.sin(ph),
+                foot_y=99.0,
             )
-            cfgs.append(apply_2h_sword_ik(cfg))
+            cfg = apply_2h_sword_ik(cfg)
+            cfg["right_arm_in_front"] = False
+            cfgs.append(cfg)
 
         elif row_idx == 2:
             # Row 2: AUTO_ATTACK (Coiled Back-Shoulder 2H Windup -> Full-Extension Lunging 2H Cleave -> Weighty Recovery!)

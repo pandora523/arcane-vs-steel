@@ -17,6 +17,7 @@ import math
 import time
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
+from hd2d_rig_core import compute_bipedal_walk_pose
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "ronin_v2_base.jpg")
@@ -29,6 +30,14 @@ LOGICAL = 104
 COLS = 30
 ROWS = 9
 VFX_ROWS = 4
+
+PIVOTS = dict(
+    pelvis=(267.5, 287.5), neck=(277.5, 134.0), mane=(252.5, 59.0),
+    l_sh=(220.0, 137.5), l_elb=(179.0, 197.5), l_hand=(185.0, 277.5),
+    r_sh=(309.0, 142.5), r_elb=(324.0, 202.5), r_hand=(361.0, 270.0),
+    l_hip=(227.5, 290.0), l_knee=(196.0, 367.5), l_ank=(169.0, 444.0),
+    r_hip=(302.5, 290.0), r_knee=(337.5, 362.5), r_ank=(327.5, 439.0),
+)
 
 # Strict 18-Color Hand-Crafted Pixel-Art Samurai Master Palette (Zero Continuous AI Gradients)
 MASTER_PALETTE = np.array([
@@ -595,10 +604,18 @@ def render_pose_104(parts, cfg):
     r_sh_src = (309.0, 142.5)
     r_sh_dst = torso_joint(r_sh_src)
 
-    l_hip_src = (227.5, 290.0)
-    l_hip_dst = torso_joint(l_hip_src)
-    r_hip_src = (302.5, 290.0)
-    r_hip_dst = torso_joint(r_hip_src)
+    l_hip_src = PIVOTS["l_hip"]
+    l_hip_base = torso_joint(l_hip_src)
+    l_hip_dst = (
+        l_hip_base[0] + cfg.get("l_hip_dx", 0.0),
+        l_hip_base[1] + cfg.get("l_hip_dy", 0.0),
+    )
+    r_hip_src = PIVOTS["r_hip"]
+    r_hip_base = torso_joint(r_hip_src)
+    r_hip_dst = (
+        r_hip_base[0] + cfg.get("r_hip_dx", 0.0),
+        r_hip_base[1] + cfg.get("r_hip_dy", 0.0),
+    )
 
     l_thigh_deg = cfg.get("l_thigh_deg", 0.0)
     l_shin_deg = cfg.get("l_shin_deg", 0.0)
@@ -709,8 +726,8 @@ def render_pose_104(parts, cfg):
     c_xmax = float(bbox[2]) if bbox else float(cx)
     c_ymax = float(bbox[3]) if bbox else float(y_bot)
     saya_rad = math.radians(cfg.get("saya_deg", 152.0 + torso_deg * 0.5))
-    saya_tip_cx = l_hip_dst[0] + math.cos(saya_rad) * (20.0 / scale)
-    saya_tip_cy = l_hip_dst[1] + math.sin(saya_rad) * (20.0 / scale)
+    saya_tip_cx = l_hip_base[0] + math.cos(saya_rad) * (20.0 / scale)
+    saya_tip_cy = l_hip_base[1] + math.sin(saya_rad) * (20.0 / scale)
     c_xmin = min(c_xmin, saya_tip_cx - 12)
     c_xmax = max(c_xmax, saya_tip_cx + 12)
     c_ymin = min(c_ymin, saya_tip_cy - 12)
@@ -766,7 +783,7 @@ def render_pose_104(parts, cfg):
         return ((pt[0] - crop_x0) * scale, (pt[1] - crop_y0) * scale)
 
     neck_104 = to104(neck_dst)
-    l_hip_104 = to104(l_hip_dst)
+    l_hip_104 = to104(l_hip_base)
     l_hand_104 = to104(l_hand_dst)
     r_hand_104 = to104(r_hand_dst)
 
@@ -976,33 +993,31 @@ def build_row_configs(row_idx):
             ))
 
         elif row_idx == 1:
-            # Row 1: WALK (Full 2-step 30fps articulated hip/knee/ankle stride, zero scanline pulling!)
-            stride = math.sin(ph)
-            knee_lift = math.cos(ph)
-            right_behind = (f >= 15)
-            cfgs.append(dict(
+            # Row 1: WALK (Authentic Bipedal Crossover Contralateral Samurai Stride!)
+            c_step = math.cos(ph)
+            gait = compute_bipedal_walk_pose(PIVOTS, f, cols=COLS, stride_scale=0.80)
+            gait["l_hip_dy"] += 2.3
+            gait["r_hip_dy"] -= 2.3
+            torso_d = 5.5 + 1.8 * abs(c_step)
+            cfg = dict(gait)
+            cfg.update(
                 pelvis_dx=0.0,
-                pelvis_dy=abs(stride) * 22.0,
-                torso_deg=8.0 + abs(stride) * 2.5,
-                head_rel_deg=-4.0,
-                mane_rel_deg=-8.0 - abs(stride) * 5.0,
+                pelvis_dy=0.0,
+                torso_deg=torso_d,
+                head_rel_deg=-3.0,
+                mane_rel_deg=-6.0 - 3.5 * abs(c_step),
                 mane_wave_phase=ph * 2.0,
-                mane_wave_amp=8.5,
-                right_leg_behind=right_behind,
-                l_thigh_deg=stride * 28.0,
-                l_shin_deg=max(0.0, stride * 30.0) + max(0.0, knee_lift * 16.0),
-                l_foot_deg=stride * 14.0,
-                r_thigh_deg=-stride * 28.0,
-                r_shin_deg=max(0.0, -stride * 30.0) + max(0.0, -knee_lift * 16.0),
-                r_foot_deg=-stride * 14.0,
-                l_sode_rel_deg=-stride * 22.0,
-                l_fore_rel_deg=-20.0 - abs(stride) * 8.0,
-                r_sode_rel_deg=stride * 18.0 - 8.0,
-                r_fore_rel_deg=-16.0 + stride * 6.0,
-                odachi_deg=-26.0 + stride * 10.0,
+                mane_wave_amp=8.0,
+                l_sode_rel_deg=-18.0 * c_step,
+                l_fore_rel_deg=-18.0 - 6.0 * max(0.0, c_step) - 4.0 * abs(c_step),
+                r_sode_rel_deg=15.0 * c_step - 8.0,
+                r_fore_rel_deg=-16.0 + 5.0 * c_step,
+                odachi_deg=-28.0 + 9.0 * c_step,
                 odachi_len=30.0,
-                drums_active=(f % 4 == 0)
-            ))
+                saya_deg=152.0 + torso_d * 0.5 - 3.5 * c_step,
+                drums_active=(f % 4 == 0),
+            )
+            cfgs.append(cfg)
 
         elif row_idx == 2:
             # Row 2: AUTO_ATTACK (3-Phase Handcrafted Battoujutsu 3-Slash Combo)

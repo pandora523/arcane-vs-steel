@@ -16,10 +16,16 @@ Builds Freyja (Valkyrie — Sovereign Winged Sky-Dragoon) 30fps HD-2D Sprite She
 """
 
 import os
+import sys
 import math
 import time
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
+
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+from hd2d_rig_core import compute_bipedal_walk_pose
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "valkyrie_v2_base.jpg")
@@ -664,6 +670,25 @@ def draw_dragonfire_mach_cone_104(arr, tip_x, tip_y, dive_deg, length=36.0, inte
             put_px(arr, bx, by, P_IVORY)
 
 
+VALKYRIE_PIVOTS = {
+    "pelvis": (266.0, 280.0),
+    "neck":   (276.0, 128.0),
+    "mane":   (259.0, 56.0),
+    "l_sh":   (231.0, 143.0),
+    "l_elb":  (194.0, 206.0),
+    "l_hand": (169.0, 268.0),
+    "r_sh":   (310.0, 153.0),
+    "r_elb":  (314.0, 209.0),
+    "r_hand": (359.0, 263.0),
+    "l_hip":  (228.0, 287.0),
+    "l_knee": (202.0, 352.0),
+    "l_ank":  (142.0, 441.0),
+    "r_hip":  (304.0, 287.0),
+    "r_knee": (348.0, 351.0),
+    "r_ank":  (359.0, 437.0),
+}
+
+
 def render_pose_104(parts, cfg):
     """
     Renders a single 104x104 logical frame from Freyja's 512x512 13-part anatomical rig.
@@ -699,9 +724,11 @@ def render_pose_104(parts, cfg):
     r_sh_dst = torso_joint(r_sh_src)
 
     l_hip_src = (228.0, 287.0)
-    l_hip_dst = torso_joint(l_hip_src)
+    _l_hip_base = torso_joint(l_hip_src)
+    l_hip_dst = (_l_hip_base[0] + cfg.get("l_hip_dx", 0.0), _l_hip_base[1] + cfg.get("l_hip_dy", 0.0))
     r_hip_src = (304.0, 287.0)
-    r_hip_dst = torso_joint(r_hip_src)
+    _r_hip_base = torso_joint(r_hip_src)
+    r_hip_dst = (_r_hip_base[0] + cfg.get("r_hip_dx", 0.0), _r_hip_base[1] + cfg.get("r_hip_dy", 0.0))
 
     if cfg.get("legs_follow_torso", False):
         l_thigh_deg = torso_deg + cfg.get("l_thigh_deg", 0.0)
@@ -898,18 +925,25 @@ def render_pose_104(parts, cfg):
         elif min_y104 < 7.0:
             crop_y0 += int(round((min_y104 - 7.0) / scale))
     else:
-        min_104 = (c_xmin - crop_x0) * scale
-        max_104 = (c_xmax - crop_x0) * scale
-        span_104 = max_104 - min_104
-        if span_104 > 90.0:
-            S = int(round((c_xmax - c_xmin) / (89.0 / 104.0)))
-            scale = 104.0 / S
-            crop_x0 = int(round(0.5 * (c_xmin + c_xmax) - S * 0.50))
-            crop_y0 = int(round(y_bot - S * (99.0 / 104.0)))
-        elif max_104 > 97.0:
-            crop_x0 += int(round((max_104 - 97.0) / scale))
-        elif min_104 < 6.0:
-            crop_x0 += int(round((min_104 - 6.0) / scale))
+        if cfg.get("lock_crop_x0") is not None:
+            crop_x0 = int(cfg["lock_crop_x0"])
+        else:
+            min_104 = (c_xmin - crop_x0) * scale
+            max_104 = (c_xmax - crop_x0) * scale
+            span_104 = max_104 - min_104
+            if span_104 > 90.0:
+                S = int(round((c_xmax - c_xmin) / (89.0 / 104.0)))
+                scale = 104.0 / S
+                crop_x0 = int(round(0.5 * (c_xmin + c_xmax) - S * 0.50))
+                crop_y0 = int(round(y_bot - S * (99.0 / 104.0)))
+            elif max_104 > 97.0:
+                crop_x0 += int(round((max_104 - 97.0) / scale))
+            elif min_104 < 6.0:
+                crop_x0 += int(round((min_104 - 6.0) / scale))
+        if cfg.get("l_hip_dx", 0.0) != 0.0 or cfg.get("r_hip_dx", 0.0) != 0.0:
+            max_y104 = (c_ymax - crop_y0) * scale
+            if max_y104 > 101.0:
+                crop_y0 += int(round((max_y104 - 101.0) / scale))
 
     win = Image.new("RGBA", (S, S), (0, 0, 0, 0))
     win.paste(canvas, (-crop_x0, -crop_y0))
@@ -1048,9 +1082,13 @@ def render_pose_104(parts, cfg):
     return out
 
 
+render_rig = render_pose_104
+
+
 POSE_NUMERIC_KEYS = [
     "pelvis_dx", "pelvis_dy", "torso_deg", "head_rel_deg", "mane_rel_deg",
-    "mane_wave_amp", "l_thigh_deg", "l_shin_deg", "l_foot_deg",
+    "mane_wave_amp", "l_hip_dx", "l_hip_dy", "r_hip_dx", "r_hip_dy",
+    "l_thigh_deg", "l_shin_deg", "l_foot_deg",
     "r_thigh_deg", "r_shin_deg", "r_foot_deg",
     "l_sode_rel_deg", "l_fore_rel_deg", "r_sode_rel_deg", "r_fore_rel_deg",
     "lance_deg", "lance_len", "lance_glow", "foot_y", "flip_air_blend"
@@ -1063,6 +1101,10 @@ POSE_DEFAULTS = dict(
     head_rel_deg=-2.0,
     mane_rel_deg=-5.0,
     mane_wave_amp=7.0,
+    l_hip_dx=0.0,
+    l_hip_dy=0.0,
+    r_hip_dx=0.0,
+    r_hip_dy=0.0,
     l_thigh_deg=-2.0,
     l_shin_deg=2.0,
     l_foot_deg=0.0,
@@ -1152,35 +1194,30 @@ def build_row_configs(row_idx):
             ))
 
         elif row_idx == 1:
-            # Row 1: WALK (100% Grounded 2-Step Articulated Valkyrie Stride + Sleek Forward Lance!)
-            stride = math.sin(ph)
-            knee_lift = math.cos(ph)
-            right_behind = (f >= 15)
-            cfgs.append(dict(
+            # Row 1: WALK (Authentic Bipedal Crossover Valkyrie Stride + Contralateral Gungnir Swing!)
+            c_step = math.cos(ph)
+            walk_pose = compute_bipedal_walk_pose(VALKYRIE_PIVOTS, f, stride_scale=0.76)
+            cfg_w = dict(
                 pelvis_dx=0.0,
-                pelvis_dy=abs(stride) * 18.0,
-                torso_deg=8.0 + abs(stride) * 2.2,
-                head_rel_deg=-4.5,
-                mane_rel_deg=-9.0 - abs(stride) * 4.5,
+                pelvis_dy=0.0,
+                torso_deg=5.5 + 1.8 * abs(c_step),
+                head_rel_deg=-3.5 - 0.8 * abs(c_step),
+                mane_rel_deg=-7.5 - 3.5 * abs(c_step),
                 mane_wave_phase=ph * 2.0,
-                mane_wave_amp=8.5,
+                mane_wave_amp=7.5,
                 wing_mode="normal",
                 wing_phase=ph * 2.0,
-                right_leg_behind=right_behind,
-                l_thigh_deg=stride * 25.0,
-                l_shin_deg=max(0.0, stride * 26.0) + max(0.0, knee_lift * 14.0),
-                l_foot_deg=stride * 12.0,
-                r_thigh_deg=-stride * 25.0,
-                r_shin_deg=max(0.0, -stride * 26.0) + max(0.0, -knee_lift * 14.0),
-                r_foot_deg=-stride * 12.0,
-                l_sode_rel_deg=-stride * 18.0,
-                l_fore_rel_deg=-16.0 - abs(stride) * 7.0,
-                r_sode_rel_deg=stride * 14.0 - 10.0,
-                r_fore_rel_deg=-16.0 + stride * 5.0,
+                l_sode_rel_deg=-18.0 * c_step,
+                l_fore_rel_deg=-16.0 - max(0.0, c_step) * 8.0,
+                r_sode_rel_deg=15.0 * c_step - 8.0,
+                r_fore_rel_deg=-16.0 - max(0.0, -c_step) * 6.0,
                 foot_y=99.0,
-                lance_deg=-12.0 + stride * 6.0,
-                lance_len=31.0
-            ))
+                lance_deg=-34.0 - c_step * 7.0,
+                lance_len=28.0,
+                lock_crop_x0=176,
+            )
+            cfg_w.update(walk_pose)
+            cfgs.append(cfg_w)
 
         elif row_idx == 2:
             # Row 2: AUTO_ATTACK (Smooth Continuous 3-Phase Horizontal Valkyrie Lance-Projection Combo!)

@@ -1,8 +1,8 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps88';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps88';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps88';
-import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps88';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps88';
+import { Fighter } from '../entities/Fighter.js?v=30fps89';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps89';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps89';
+import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps89';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps89';
 
 export const ADVENTURE_WORLD_WIDTH = 4800;
 export const ADVENTURE_DEPTH_MIN_Y = 442;
@@ -164,6 +164,9 @@ export class AdventureManager {
 
     const code = e.code;
     if (code === 'KeyT') {
+      if (this.game.isPaused) {
+        this.game.setPaused?.(false, false);
+      }
       this.toggleSkillTree(true);
       e.preventDefault();
       return;
@@ -171,9 +174,10 @@ export class AdventureManager {
     if (code === 'Escape' && this.isSkillTreeOpen) {
       this.closeSkillTree(true);
       e.preventDefault();
+      e.stopImmediatePropagation?.();
       return;
     }
-    if (this.isSkillTreeOpen) return;
+    if (this.isSkillTreeOpen || this.game.isPaused) return;
 
     if (code === 'ArrowLeft' || code === 'KeyA') {
       this.heldLeft = true;
@@ -564,6 +568,12 @@ export class AdventureManager {
       spBadge.textContent = `${this.progression.skillPoints} SP`;
       spBadge.classList?.toggle('has-sp', this.progression.skillPoints > 0);
     }
+    const pauseSpBadge = document.getElementById('pause-sp-badge');
+    if (pauseSpBadge) {
+      const showPip = Boolean(visible && this.progression.skillPoints > 0);
+      pauseSpBadge.textContent = `${this.progression.skillPoints} SP`;
+      pauseSpBadge.classList?.toggle('hidden', !showPip);
+    }
 
     const autoBtn = document.getElementById('adv-btn-autoplay');
     const autoLbl = document.getElementById('adv-autoplay-label');
@@ -700,6 +710,12 @@ export class AdventureManager {
       renderer.trueUltStageAlpha = 0;
       renderer.camX = 480;
       renderer.camY = ADVENTURE_DEPTH_MID_Y - 95;
+      renderer.zoom =
+        renderer.isMobileLandscape && typeof renderer.getMobileLandscapeFixedZoom === 'function'
+          ? renderer.getMobileLandscapeFixedZoom(false)
+          : renderer.isMobile
+            ? 0.80
+            : 0.90;
     }
 
     playerFighter.x = 240;
@@ -756,6 +772,14 @@ export class AdventureManager {
       renderer.adventureHook = null;
       renderer.adventureCamMinX = null;
       renderer.adventureCamMaxX = null;
+      renderer.camX = 600;
+      renderer.camY = (renderer.groundY || 520) - 95;
+      renderer.zoom =
+        renderer.isMobileLandscape && typeof renderer.getMobileLandscapeFixedZoom === 'function'
+          ? renderer.getMobileLandscapeFixedZoom(false)
+          : renderer.isMobile
+            ? 0.72
+            : 1.0;
     }
     this.syncControlDeckUI();
   }
@@ -981,6 +1005,7 @@ export class AdventureManager {
     this.goPromptActive = false;
     this.zonesCleared[3] = true;
 
+    g.setPaused?.(false, false);
     g.isMatchOver = true;
     g.koSlowTimer = 0.55;
     g.ultSlowTimer = 0;
@@ -1013,6 +1038,11 @@ export class AdventureManager {
     const winnerEl = hasDom ? document.getElementById('victory-winner') : null;
     const statsEl = hasDom ? document.getElementById('victory-stats') : null;
     const autoEl = hasDom ? document.getElementById('victory-auto-next') : null;
+    const nextChallengerBtn = hasDom ? document.getElementById('btn-next-challenger') : null;
+    const playAgainBtn = hasDom ? document.getElementById('btn-play-again') : null;
+
+    nextChallengerBtn?.classList?.add('hidden');
+    if (playAgainBtn) playAgainBtn.textContent = 'RETRY CAMPAIGN';
 
     if (eyebrowEl) {
       eyebrowEl.textContent = `ADVENTURE CAMPAIGN CLEARED • ${rank} • SCORE: ${this.score}`;
@@ -1024,26 +1054,31 @@ export class AdventureManager {
       statsEl.textContent = `Archfiend Malphas Vanquished! ${this.monstersKilled} Monsters Slain across 4 Realms in ${clearSec}s.`;
     }
     if (autoEl) {
-      autoEl.textContent = 'CAMPAIGN COMPLETE • PRESS PLAY AGAIN TO REPLAY';
+      autoEl.classList?.remove('hidden');
+      autoEl.textContent = 'CAMPAIGN COMPLETE • PRESS RETRY CAMPAIGN TO REPLAY';
     }
 
-    // Populate Left (Sol) & Right (Abyssal Horde + Boss) Telemetry
-    if (hasDom && player?.stats) {
+    // Populate Left (Hero) & Right (Abyssal Horde + Boss) Telemetry
+    if (hasDom) {
       const setTxt = (id, val) => {
         const el = document.getElementById(id);
         if (el) el.textContent = String(val);
       };
-      setTxt('tel-left-name', player.name);
-      setTxt('tel-left-dmg', player.stats.damageDealt || 0);
-      setTxt('tel-left-skills', `${player.stats.skillsUsed || 0} / ${player.stats.ultsUsed || 0}`);
-      setTxt('tel-left-max', player.stats.biggestHit || 0);
-      setTxt('tel-left-extra', `${player.stats.healingDone || 0} / ${this.monstersKilled} KILLS`);
+      setTxt('tel-left-extra-label', 'MONSTERS SLAIN');
+      setTxt('tel-right-skills-label', 'ZONE / PHASE');
+      setTxt('tel-right-extra-label', 'RUN SCORE');
+
+      setTxt('tel-left-name', player?.name || 'CHAMPION');
+      setTxt('tel-left-dmg', Math.round(player?.stats?.damageDealt || 0));
+      setTxt('tel-left-skills', `${player?.stats?.skillsUsed || 0} / ${player?.stats?.ultsUsed || 0}`);
+      setTxt('tel-left-max', Math.round(player?.stats?.biggestHit || 0));
+      setTxt('tel-left-extra', `${this.monstersKilled} SLAIN`);
 
       setTxt('tel-right-name', 'ARCHFIEND HORDE');
-      setTxt('tel-right-dmg', boss?.stats?.damageDealt || 0);
+      setTxt('tel-right-dmg', Math.round(boss?.stats?.damageDealt || 0));
       setTxt('tel-right-skills', `PHASE ${boss?.bossPhase || 3}`);
-      setTxt('tel-right-max', boss?.stats?.biggestHit || 0);
-      setTxt('tel-right-extra', `SCORE ${this.score}`);
+      setTxt('tel-right-max', Math.round(boss?.stats?.biggestHit || 0));
+      setTxt('tel-right-extra', `${this.score} PTS`);
     }
 
     this.syncControlDeckUI();
@@ -1052,26 +1087,65 @@ export class AdventureManager {
 
   onPlayerDeath(player) {
     const g = this.game;
+    g.setPaused?.(false, false);
     g.isMatchOver = true;
     g.koSlowTimer = 0.48;
     g.deadMatchFighter = player;
     g.victoryRevealPending = true;
     g.postDeathHoldTimer = 0;
 
-    const killer = this.bossEntity || this.getLivingMonsters()[0] || player;
+    const killer = this.bossEntity || this.getLivingMonsters()[0] || null;
+    const killerName = killer && killer !== player ? killer.name : 'ABYSSAL HORDE';
     const hasDom = typeof document !== 'undefined' && typeof document.getElementById === 'function';
     const eyebrowEl = hasDom ? document.getElementById('victory-eyebrow') : null;
     const winnerEl = hasDom ? document.getElementById('victory-winner') : null;
     const statsEl = hasDom ? document.getElementById('victory-stats') : null;
+    const autoEl = hasDom ? document.getElementById('victory-auto-next') : null;
+    const nextChallengerBtn = hasDom ? document.getElementById('btn-next-challenger') : null;
+    const playAgainBtn = hasDom ? document.getElementById('btn-play-again') : null;
+
+    nextChallengerBtn?.classList?.add('hidden');
+    if (playAgainBtn) playAgainBtn.textContent = 'RETRY CAMPAIGN';
+
     if (eyebrowEl) {
       eyebrowEl.textContent = `ADVENTURE FALLEN AT ZONE ${this.zoneIndex + 1} • SCORE: ${this.score}`;
     }
     if (winnerEl) {
-      winnerEl.textContent = `${killer.name.toUpperCase()} PREVAILS`;
+      winnerEl.textContent = `${killerName.toUpperCase()} PREVAILS`;
     }
     if (statsEl) {
-      statsEl.textContent = 'The Black Pit claims another soul — ignite Solar Overdrive and try again!';
+      statsEl.textContent = 'The Black Pit claims another soul — spend Skill Points, unleash Overdrive, and retry!';
     }
+    if (autoEl) {
+      autoEl.textContent = '';
+      autoEl.classList?.add('hidden');
+    }
+
+    if (hasDom) {
+      const setTxt = (id, val) => {
+        const el = document.getElementById(id);
+        if (el) el.textContent = String(val);
+      };
+      setTxt('tel-left-extra-label', 'MONSTERS SLAIN');
+      setTxt('tel-right-skills-label', 'ZONE / PHASE');
+      setTxt('tel-right-extra-label', 'RUN SCORE');
+
+      setTxt('tel-left-name', player?.name || 'CHAMPION');
+      setTxt('tel-left-dmg', Math.round(player?.stats?.damageDealt || 0));
+      setTxt('tel-left-skills', `${player?.stats?.skillsUsed || 0} / ${player?.stats?.ultsUsed || 0}`);
+      setTxt('tel-left-max', Math.round(player?.stats?.biggestHit || 0));
+      setTxt('tel-left-extra', `${this.monstersKilled} SLAIN`);
+
+      setTxt('tel-right-name', killerName.toUpperCase());
+      setTxt('tel-right-dmg', Math.round(killer?.stats?.damageDealt || 0));
+      setTxt(
+        'tel-right-skills',
+        killer?.isBoss ? `PHASE ${killer.bossPhase || 1}` : `ZONE ${this.zoneIndex + 1}`
+      );
+      setTxt('tel-right-max', Math.round(killer?.stats?.biggestHit || 0));
+      setTxt('tel-right-extra', `${this.score} PTS`);
+    }
+
     this.syncControlDeckUI();
     g.updateHUD();
   }
@@ -1285,7 +1359,7 @@ export class AdventureManager {
         player.facing = dx >= -6 ? 1 : -1;
         player.moveDir = 1;
         player.state = 'WALK';
-        player.walkPhase += dt * 5.8;
+        player.walkPhase += dt * 1.6;
         const autoMoveSpeed = 235 * stats.moveSpeedMult;
         player.x += (dx / len) * autoMoveSpeed * 1.42 * dt;
         this.shiftEntityDepth(player, (dz / len) * autoMoveSpeed * 0.72 * dt);
@@ -1891,7 +1965,7 @@ export class AdventureManager {
     const stripW = Math.min(renderer.isMobileLandscape ? 290 : 360, Math.round(w * 0.48));
     const stripH = renderer.isMobileLandscape ? 25 : 29;
     const stripX = Math.round((w - stripW) * 0.5);
-    const stripY = renderer.isMobileLandscape ? 66 : renderer.isMobile ? 104 : 68;
+    const stripY = renderer.isMobileLandscape ? 72 : renderer.isMobile ? 98 : 106;
     ctx.fillStyle = 'rgba(6, 9, 18, 0.86)';
     ctx.fillRect(stripX, stripY, stripW, stripH);
     ctx.strokeStyle = '#d4af37';

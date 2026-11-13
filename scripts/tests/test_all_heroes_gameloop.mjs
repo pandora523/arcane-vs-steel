@@ -28,28 +28,28 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps88';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps88';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps88';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps88';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps88';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps88';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps88';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps88';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps88';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps88';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps88';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps88';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps88';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps88';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps88';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps88';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps88';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps89';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps89';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps89';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps89';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps89';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps89';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps89';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps89';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps89';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps89';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps89';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps89';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps89';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps89';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps89';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps89';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps89';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps88';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps88';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps89';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps89';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -609,7 +609,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps88');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps89');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -3334,3 +3334,122 @@ for (const [name, Cls] of CLASSES) {
 
 
 
+
+// =========================================================================
+// 18. Bipedal Walk Playback (Forward + Backward) + Pause Modal & UI Isolation
+// =========================================================================
+{
+  const repoRoot = '/home/antigravity/pandora523/arcane-vs-steel';
+  const html = fs.readFileSync(`${repoRoot}/index.html`, 'utf8');
+  const css = fs.readFileSync(`${repoRoot}/style.css`, 'utf8');
+  const mainSrc = fs.readFileSync(`${repoRoot}/src/main.js`, 'utf8');
+
+  // 18A. Verify all 11 sprite sheets have PNG IHDR 6240x2080 (10 rows x 30 cols)
+  // and PixelForge.getFrameIndex plays forward (30..59) on moveDir >= 0 and reverses (59..30) on moveDir < 0
+  const walkHeroes = [
+    ['warrior', Warrior],
+    ['mage', FireMage],
+    ['ronin', Ronin],
+    ['valkyrie', Valkyrie],
+    ['reaper', Reaper],
+    ['priestess', Priestess],
+    ['archer', Archer],
+    ['chronomancer', Chronomancer],
+    ['titan', Titan],
+    ['icemage', IceMage],
+    ['android', Android]
+  ];
+
+  for (const [sheetKey, HeroCls] of walkHeroes) {
+    const pngPath = `${repoRoot}/assets/sprites/${sheetKey}_sheet.png`;
+    const buf = fs.readFileSync(pngPath);
+    const width = buf.readUInt32BE(16);
+    const height = buf.readUInt32BE(20);
+    if (width !== 6240 || height !== 2080) {
+      throw new Error(`Expected ${sheetKey}_sheet.png to be 6240x2080, got ${width}x${height}`);
+    }
+
+    const hero = new HeroCls(300, 561, 1);
+    hero.state = 'WALK';
+
+    hero.moveDir = 1;
+    hero.walkPhase = 0;
+    const fwd0 = PixelForge.getFrameIndex(hero, 0);
+    hero.walkPhase = 7 / 7.5 + 0.01;
+    const fwd7 = PixelForge.getFrameIndex(hero, 0);
+    hero.walkPhase = 15 / 7.5 + 0.01;
+    const fwd15 = PixelForge.getFrameIndex(hero, 0);
+    hero.walkPhase = 22 / 7.5 + 0.01;
+    const fwd22 = PixelForge.getFrameIndex(hero, 0);
+
+    if (fwd0 !== 30 || fwd7 !== 37 || fwd15 !== 45 || fwd22 !== 52) {
+      throw new Error(
+        `[${sheetKey}] Expected forward WALK frames (30, 37, 45, 52), got (${fwd0}, ${fwd7}, ${fwd15}, ${fwd22})`
+      );
+    }
+
+    hero.moveDir = -1;
+    hero.walkPhase = 7 / 7.5 + 0.01;
+    const bwd7 = PixelForge.getFrameIndex(hero, 0);
+    hero.walkPhase = 22 / 7.5 + 0.01;
+    const bwd22 = PixelForge.getFrameIndex(hero, 0);
+    if (bwd7 !== 53 || bwd22 !== 38) {
+      throw new Error(
+        `[${sheetKey}] Expected backward WALK frame reversal (53, 38), got (${bwd7}, ${bwd22})`
+      );
+    }
+  }
+
+  // 18B. Verify Pause Button, Pause Modal, and Strict Mode Isolation (Zero Live View-Blocking Bars)
+  const requiredPauseIds = [
+    'btn-game-pause',
+    'pause-sp-badge',
+    'pause-modal',
+    'pause-mode-subtitle',
+    'btn-pause-resume',
+    'pause-vs-section',
+    'pause-adv-section',
+    'btn-vs-pause-landscape',
+    'vs-pause-landscape-label'
+  ];
+  for (const pid of requiredPauseIds) {
+    if (!html.includes(`id="${pid}"`)) {
+      throw new Error(`Missing required Pause UI ID in index.html: #${pid}`);
+    }
+  }
+
+  // Ensure both .hud-bottom (VS utility bar) and #adv-utility-bar (Adventure utility bar) live inside #pause-modal
+  const pauseModalStart = html.indexOf('id="pause-modal"');
+  const landingOverlayStart = html.indexOf('id="landing-overlay"');
+  const vsSectionIdx = html.indexOf('id="pause-vs-section"');
+  const advSectionIdx = html.indexOf('id="pause-adv-section"');
+  const hudBottomIdx = html.indexOf('class="hud-bottom');
+  const advUtilIdx = html.indexOf('id="adv-utility-bar"');
+  if (
+    pauseModalStart < 0 ||
+    vsSectionIdx < pauseModalStart ||
+    hudBottomIdx < vsSectionIdx ||
+    advSectionIdx < hudBottomIdx ||
+    advUtilIdx < advSectionIdx ||
+    landingOverlayStart < advUtilIdx
+  ) {
+    throw new Error(
+      'Expected .hud-bottom inside #pause-vs-section and #adv-utility-bar inside #pause-adv-section within #pause-modal so live arena views are never blocked!'
+    );
+  }
+
+  if (
+    !css.includes('#app.is-adventure-active #pause-vs-section') ||
+    !css.includes('#app:not(.is-adventure-active) #pause-adv-section')
+  ) {
+    throw new Error('Missing strict CSS mode-isolation rules for #pause-vs-section and #pause-adv-section in style.css!');
+  }
+
+  if (!mainSrc.includes('this.isPaused') || !mainSrc.includes('setPaused(') || !mainSrc.includes('togglePause(')) {
+    throw new Error('Missing pause simulation freeze state/handlers (isPaused / setPaused / togglePause) in src/main.js!');
+  }
+
+  console.log(
+    '[PASS] Bipedal Walk Crossover (11x 6240x2080 Sheets + Forward/Backward Frame Playback) & Mode-Isolated Pause Menu Modal verified!'
+  );
+}

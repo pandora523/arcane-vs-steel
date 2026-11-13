@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps88';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps88';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps88';
+import { Fighter } from './Fighter.js?v=30fps89';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps89';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps89';
 import {
   SERAPHIC_EFFECT_REGISTRY,
   SERAPHIC_GOLD_PALETTE,
   SERAPHIC_GRACE_PALETTE,
   SERAPHIC_STAINED_PALETTE
-} from '../engine/shaders/seraphicShaders.js?v=30fps88';
+} from '../engine/shaders/seraphicShaders.js?v=30fps89';
 
 /**
  * Seraphina (`priestess`) — High Priestess & Sanctuary Archangel Weaver.
@@ -82,7 +82,7 @@ export class Priestess extends Fighter {
     if (typeof Image !== 'undefined') {
       const priestessAssets = PixelForge.initAssets()?.priestess;
       if (priestessAssets?.vfx?.src && !priestessAssets.vfx.src.includes('v=30fps62')) {
-        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps88';
+        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps89';
       }
     }
   }
@@ -573,7 +573,11 @@ export class Priestess extends Fighter {
     const readyForTrueUlt =
       this.hasTrueUltimate && (this.finisherGauge || 0) >= (this.maxFinisherGauge || 100);
 
+    const isManualPlayer = Boolean(
+      (this.isPlayerControlled && !this.adventureAutoPlay) || this.isManualAdventureControl
+    );
     if (
+      !isManualPlayer &&
       !readyForTrueUlt &&
       enemy &&
       !enemy.isDead &&
@@ -602,8 +606,10 @@ export class Priestess extends Fighter {
         return;
       }
 
-      if (dist < 235) {
-        this.x -= this.facing * this.moveSpeed * 0.68 * dt;
+      if (dist < 235 && this.autoCooldown > 0 && this.x > 175 && this.x < ww - 175) {
+        this.moveDir = -1;
+        this.walkPhase += dt * 0.5;
+        this.x -= this.facing * this.moveSpeed * 0.12 * dt;
       }
     }
     super.update(dt, enemy, game);

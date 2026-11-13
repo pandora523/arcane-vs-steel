@@ -28,7 +28,7 @@ from PIL import Image, ImageDraw, ImageFilter
 from hd2d_rig_core import (
     COLS, CELL, P, BASE_NUMERIC_KEYS, poly_mask, keep_largest_component,
     assign_remaining_geodesic, extract_parts_512, rot_pt,
-    render_rig_104,
+    render_rig_104, compute_bipedal_walk_pose,
 )
 
 ROWS = 10
@@ -758,29 +758,27 @@ def build_row_configs(row_idx):
             cfgs.append(apply_icemage_ik(cfg))
 
         elif row_idx == 1:
-            # Row 1: WALK — Fluid Low Figure-Skating Cross-Glide
-            # (`torso_deg = 17°..22°`, wide `±38°` thigh push with `28°..52°` knee bend, smooth low glide)
-            st = math.sin(ph)
-            cs = math.cos(ph)
-            l_th = st * 38.0
-            r_th = -st * 38.0
-            l_bend = 38.0 + 12.0 * max(0.0, -cs) - 8.0 * max(0.0, st)
-            r_bend = 38.0 + 12.0 * max(0.0, cs) - 8.0 * max(0.0, -st)
+            # Row 1: WALK — True Symmetric Human Bipedal Crossover Stride + Contralateral Frost Scepter Swing
+            gait = compute_bipedal_walk_pose(PIVOTS, f, cols=COLS, stride_scale=0.82)
+            c_step = math.cos(ph)
+            s_step = math.sin(ph)
             cfg = dict(DEFAULTS)
+            cfg.update(gait)
             cfg.update(
-                pelvis_dx=cs * 4.0,
-                pelvis_dy=18.0 + abs(cs) * 6.0,
-                torso_deg=19.5 + abs(st) * 2.5,
-                head_rel_deg=-13.0 - abs(st) * 1.5,
-                mane_rel_deg=-18.0 - abs(st) * 5.0,
-                mane_wave_phase=ph * 2.0, mane_wave_amp=8.5,
-                right_leg_behind=(st < 0.0),
-                l_thigh_deg=l_th, l_shin_deg=l_th + l_bend, l_foot_deg=10.0 + max(0.0, st) * 18.0,
-                r_thigh_deg=r_th, r_shin_deg=r_th + r_bend, r_foot_deg=10.0 + max(0.0, -st) * 18.0,
-                l_coat_rel_deg=24.0 + abs(st) * 8.0, r_coat_rel_deg=-20.0 - abs(st) * 7.0,
-                r_ik_dx=58.0 - st * 18.0, r_ik_dy=-16.0 + abs(st) * 6.0,
-                l_ik_dx=-58.0 + st * 24.0, l_ik_dy=-8.0 - st * 12.0,
-                weapon_deg=-22.0 + st * 11.0, foot_y=99.0,
+                pelvis_dx=s_step * 1.8,
+                pelvis_dy=5.0 + abs(c_step) * 3.5,
+                torso_deg=7.5 - math.cos(ph * 2.0) * 1.4,
+                head_rel_deg=-4.8 + math.cos(ph * 2.0) * 0.8,
+                mane_rel_deg=-9.5 + math.sin(ph - 0.55) * 4.5,
+                mane_wave_phase=ph, mane_wave_amp=7.0,
+                l_coat_rel_deg=gait["l_coat_rel_deg"] + 12.0 + abs(s_step) * 2.5,
+                r_coat_rel_deg=gait["r_coat_rel_deg"] - 10.0 - abs(s_step) * 2.0,
+                r_ik_dx=46.0 - c_step * 17.0,
+                r_ik_dy=-16.0 - max(0.0, -c_step) * 6.0 + abs(s_step) * 3.0,
+                l_ik_dx=-34.0 + c_step * 24.0,
+                l_ik_dy=-6.0 - max(0.0, c_step) * 8.0 + abs(s_step) * 3.0,
+                weapon_deg=-30.0 + c_step * 8.0,
+                foot_y=99.0,
             )
             cfgs.append(apply_icemage_ik(cfg))
 

@@ -18,16 +18,26 @@ Builds Seraphina (Priestess — Radiant High Priestess of the Dawn) 30fps HD-2D 
 """
 
 import os
+import sys
 import math
 import time
 from collections import deque
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+if os.path.dirname(__file__) not in sys.path:
+    sys.path.insert(0, os.path.dirname(__file__))
+from hd2d_rig_core import compute_bipedal_walk_pose
+
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "priestess_v2_base.jpg")
 OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "priestess_sheet.png")
 ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
+
+PRIESTESS_PIVOTS = dict(
+    l_hip=(250.0, 250.0), l_knee=(234.0, 344.0), l_ank=(216.0, 454.0),
+    r_hip=(286.0, 252.0), r_knee=(286.0, 344.0), r_ank=(283.0, 450.0),
+)
 
 CELL = 208
 LOGICAL = 104
@@ -877,9 +887,17 @@ def render_pose_104(parts, cfg):
     r_sh_dst = torso_joint(r_sh_src)
 
     l_hip_src = (250.0, 250.0)
-    l_hip_dst = torso_joint(l_hip_src)
+    l_hip_base = torso_joint(l_hip_src)
+    l_hip_dst = (
+        l_hip_base[0] + cfg.get("l_hip_dx", 0.0),
+        l_hip_base[1] + cfg.get("l_hip_dy", 0.0),
+    )
     r_hip_src = (286.0, 252.0)
-    r_hip_dst = torso_joint(r_hip_src)
+    r_hip_base = torso_joint(r_hip_src)
+    r_hip_dst = (
+        r_hip_base[0] + cfg.get("r_hip_dx", 0.0),
+        r_hip_base[1] + cfg.get("r_hip_dy", 0.0),
+    )
 
     l_thigh_deg = cfg.get("l_thigh_deg", 0.0)
     l_shin_deg = cfg.get("l_shin_deg", 0.0)
@@ -1311,29 +1329,30 @@ def build_row_configs(row_idx):
             cfg["hand_orb_r"] = 1.7 + 0.35 * math.sin(p * 2.0)
 
         elif row_idx == 1:
-            # ROW 1: WALK — Graceful grounded two-step Cathedral Stride (wide anatomical leg separation, zero knee-crossing)
-            s = math.sin(p)
-            c2 = abs(math.cos(p))
-            cfg["pelvis_dx"] = 2.0
-            cfg["pelvis_dy"] = 2.0 - c2 * 2.0
-            cfg["torso_deg"] = 3.2 + math.sin(p * 2.0) * 1.0
-            cfg["head_rel_deg"] = -2.2
-            cfg["mane_rel_deg"] = -3.5 - math.sin(p - 0.5) * 3.8
-            # Keep l_thigh (back leg, x=250) and r_thigh (front leg, x=286) strictly separated with constant front/back z-order
-            cfg["l_thigh_deg"] = 2.5 + s * 8.0
-            cfg["l_shin_deg"] = max(0.0, s * 10.5) + 1.5
-            cfg["l_foot_deg"] = max(-3.0, s * 5.0)
-            cfg["r_thigh_deg"] = -3.5 - s * 8.0
-            cfg["r_shin_deg"] = max(0.0, -s * 10.5) + 1.5
-            cfg["r_foot_deg"] = max(-3.0, -s * 5.0)
-            cfg["right_leg_behind"] = False
-            cfg["coat_billow"] = 4.4 + abs(s) * 3.4
-            cfg["r_sode_rel_deg"] = -10.0 - s * 8.5
-            cfg["r_fore_rel_deg"] = -20.0 - s * 5.0
-            cfg["l_sode_rel_deg"] = -10.0 + s * 10.0
-            cfg["l_fore_rel_deg"] = -26.0 + s * 6.5
-            cfg["staff_deg"] = -46.0 - s * 6.0
-            cfg["hand_orb_r"] = 1.4
+            # ROW 1: WALK — True Bipedal Crossover Cathedral Stride + Contralateral Scepter & Flowing Stole
+            gait = compute_bipedal_walk_pose(PRIESTESS_PIVOTS, f, cols=COLS, stride_scale=0.80)
+            c_step = math.cos(p)
+            s_step = math.sin(p)
+            cfg.update(gait)
+            cfg["pelvis_dx"] = s_step * 1.4
+            cfg["pelvis_dy"] = 1.5 + abs(c_step) * 2.5
+            cfg["torso_deg"] = 3.5 - math.cos(p * 2.0) * 1.1
+            cfg["head_rel_deg"] = -2.2 + math.cos(p * 2.0) * 0.7
+            cfg["mane_rel_deg"] = -4.0 + math.sin(p - 0.55) * 4.5
+            cfg["l_coat_deg"] = 8.5 + max(0.0, c_step) * 5.0 + abs(s_step) * 2.2
+            cfg["r_coat_deg"] = -7.0 - max(0.0, -c_step) * 4.5 - abs(s_step) * 1.8
+            cfg["stole_deg"] = 4.5 + math.sin(p * 2.0 - 0.5) * 3.2 - c_step * 1.5
+            cfg["l_sode_rel_deg"] = -12.0 - c_step * 13.5
+            cfg["l_fore_rel_deg"] = -28.0 - c_step * 7.0
+            cfg["r_sode_rel_deg"] = -9.0 + c_step * 11.5
+            cfg["r_fore_rel_deg"] = -21.0 + c_step * 5.5
+            cfg["right_arm_in_front"] = True
+            cfg["staff_deg"] = -49.0 - c_step * 6.0
+            cfg["staff_glow"] = 1.0 + 0.14 * math.sin(p * 2.0)
+            cfg["hand_orb_r"] = 1.5 + 0.25 * math.sin(p * 2.0)
+            cfg["halo_mode"] = "normal"
+            cfg["halo_phase"] = p
+            cfg["foot_y"] = 99.0
 
         elif row_idx == 2:
             # ROW 2: AUTO_ATTACK — Firmly Grounded Sanctuary Scepter Cast (both boots planted at foot_y=99.0, zero knee-crossing!)

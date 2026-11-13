@@ -24,6 +24,7 @@ from hd2d_rig_core import (
     assign_remaining_geodesic, extract_parts_512, rot_pt,
     put_px, draw_slash_arc_104, render_rig_104,
     make_prone_knight_death_kfs, eval_pose_keyframes, build_and_save_30fps_sheet,
+    compute_bipedal_walk_pose,
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -687,20 +688,24 @@ def build_row_configs(row_idx):
             cfgs.append(apply_2h_maul_ik(cfg))
 
         elif row_idx == 1:
-            # Row 1: WALK (Ground-Shaking Two-Handed Titan Stride with Deep Knee Lifts & Maul Heave)
-            st = math.sin(ph)
-            kl = math.cos(ph)
+            # Row 1: WALK (Authentic Bipedal Crossover World-Forge Warhammer Stride!)
+            c_step = math.cos(ph)
+            gait = compute_bipedal_walk_pose(PIVOTS, f, cols=COLS, stride_scale=0.78)
+            gait["l_hip_dy"] -= 1.7
+            gait["r_hip_dy"] += 1.7
             cfg = dict(DEFAULTS)
+            cfg.update(gait)
             cfg.update(
-                pelvis_dy=abs(st) * 16.0, torso_deg=7.5 + abs(st) * 2.5, head_rel_deg=-3.5,
-                mane_rel_deg=-3.0 - abs(st) * 2.8, mane_wave_phase=ph * 2.0, mane_wave_amp=3.5,
-                right_leg_behind=(f >= 15),
-                l_thigh_deg=st * 24.0, l_shin_deg=max(0.0, st * 24.0) + max(0.0, kl * 13.0), l_foot_deg=st * 11.0,
-                r_thigh_deg=-st * 24.0, r_shin_deg=max(0.0, -st * 24.0) + max(0.0, -kl * 13.0), r_foot_deg=-st * 11.0,
-                grip_x=54.0 + st * 4.5, grip_y=-12.0 + abs(st) * 4.5,
-                weapon_deg=-34.0 + st * 7.5,
+                pelvis_dx=0.0, pelvis_dy=0.0,
+                torso_deg=6.0 + 2.0 * abs(c_step), head_rel_deg=-3.0,
+                mane_rel_deg=-2.5 - 2.2 * abs(c_step), mane_wave_phase=ph * 2.0, mane_wave_amp=3.2,
+                grip_x=53.0 - c_step * 8.5, grip_y=-13.0 + abs(c_step) * 4.0,
+                weapon_deg=-36.0 - c_step * 9.5, weapon_glow=0.90 + 0.10 * math.sin(ph),
+                foot_y=99.0,
             )
-            cfgs.append(apply_2h_maul_ik(cfg))
+            cfg = apply_2h_maul_ik(cfg)
+            cfg["right_arm_in_front"] = False
+            cfgs.append(cfg)
 
         elif row_idx == 2:
             # Row 2: AUTO_ATTACK (3 Unmistakably Distinct 10-Frame 2H World-Maul Model Animations:

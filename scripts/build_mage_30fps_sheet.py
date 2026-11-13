@@ -17,15 +17,25 @@ Builds Ignis Sol (FireMage — Mysterious Shadow-Faced Black-Mage Pyromancer) 30
 """
 
 import os
+import sys
 import math
 import time
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+if os.path.dirname(__file__) not in sys.path:
+    sys.path.insert(0, os.path.dirname(__file__))
+from hd2d_rig_core import compute_bipedal_walk_pose
+
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "mage_v2_base.jpg")
 OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "mage_sheet.png")
 ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
+
+MAGE_PIVOTS = dict(
+    l_hip=(246.0, 274.0), l_knee=(219.0, 370.0), l_ank=(197.5, 454.0),
+    r_hip=(291.0, 274.0), r_knee=(314.0, 370.0), r_ank=(309.0, 448.0),
+)
 
 CELL = 208
 LOGICAL = 104
@@ -944,9 +954,17 @@ def render_pose_104(parts, cfg):
     r_sh_dst = torso_joint(r_sh_src)
 
     l_hip_src = (246.0, 274.0)
-    l_hip_dst = torso_joint(l_hip_src)
+    l_hip_base = torso_joint(l_hip_src)
+    l_hip_dst = (
+        l_hip_base[0] + cfg.get("l_hip_dx", 0.0),
+        l_hip_base[1] + cfg.get("l_hip_dy", 0.0),
+    )
     r_hip_src = (291.0, 274.0)
-    r_hip_dst = torso_joint(r_hip_src)
+    r_hip_base = torso_joint(r_hip_src)
+    r_hip_dst = (
+        r_hip_base[0] + cfg.get("r_hip_dx", 0.0),
+        r_hip_base[1] + cfg.get("r_hip_dy", 0.0),
+    )
 
     l_thigh_deg = cfg.get("l_thigh_deg", 0.0)
     l_shin_deg = cfg.get("l_shin_deg", 0.0)
@@ -1381,28 +1399,31 @@ def build_row_configs(row_idx):
             cfg["orb_dy"] = -3.0
 
         elif row_idx == 1:
-            # ROW 1: WALK — Grounded 2-Step Mysterious Battle-Mage Stride Cycle + Flowing Coat-Tails
-            stride = math.sin(p)
-            lift_l = max(0.0, math.cos(p))
-            lift_r = max(0.0, -math.cos(p))
-            cfg["pelvis_dy"] = abs(stride) * 5.0 - 1.5
-            cfg["torso_deg"] = 5.5 + math.sin(p * 2.0) * 1.8
-            cfg["head_rel_deg"] = -3.0
-            cfg["mane_rel_deg"] = -4.0 + c1 * 5.5
-            cfg["coat_billow"] = 5.5 + abs(stride) * 4.0
-            cfg["l_thigh_deg"] = -stride * 23.0
-            cfg["l_shin_deg"] = lift_l * 23.0 + max(0.0, stride) * 7.0
-            cfg["l_foot_deg"] = -stride * 9.0
-            cfg["r_thigh_deg"] = stride * 23.0
-            cfg["r_shin_deg"] = lift_r * 23.0 + max(0.0, -stride) * 7.0
-            cfg["r_foot_deg"] = stride * 9.0
-            cfg["right_leg_behind"] = (stride < 0.0)
-            cfg["l_sode_rel_deg"] = stride * 15.0 - 8.0
-            cfg["l_fore_rel_deg"] = -22.0 + stride * 9.0
-            cfg["r_sode_rel_deg"] = -stride * 13.0 - 6.0
-            cfg["r_fore_rel_deg"] = -20.0 - stride * 7.0
+            # ROW 1: WALK — True Bipedal Crossover Battle-Mage Stride + Contralateral Sun-Staff & Flowing Coat-Tails
+            gait = compute_bipedal_walk_pose(MAGE_PIVOTS, f, cols=COLS, stride_scale=0.82)
+            c_step = math.cos(p)
+            s_step = math.sin(p)
+            cfg.update(gait)
+            cfg["pelvis_dx"] = s_step * 1.5
+            cfg["pelvis_dy"] = 1.5 + abs(c_step) * 3.0
+            cfg["torso_deg"] = 4.5 - math.cos(p * 2.0) * 1.4
+            cfg["head_rel_deg"] = -2.5 + math.cos(p * 2.0) * 0.8
+            cfg["mane_rel_deg"] = -4.5 + math.sin(p - 0.5) * 5.0
+            cfg["l_coat_deg"] = 9.5 + max(0.0, c_step) * 5.5 + abs(s_step) * 2.5
+            cfg["r_coat_deg"] = -7.5 - max(0.0, -c_step) * 4.5 - abs(s_step) * 2.0
+            cfg["l_sode_rel_deg"] = -11.0 - c_step * 15.0
+            cfg["l_fore_rel_deg"] = -24.0 - c_step * 8.0
+            cfg["r_sode_rel_deg"] = -7.0 + c_step * 13.0
+            cfg["r_fore_rel_deg"] = -20.0 + c_step * 6.0
             cfg["right_arm_in_front"] = True
-            cfg["staff_deg"] = -44.0 - stride * 6.0
+            cfg["staff_deg"] = -48.0 - c_step * 6.5
+            cfg["staff_glow"] = 0.98 + 0.14 * math.sin(p * 2.0)
+            cfg["hand_orb_r"] = 1.4 + 0.3 * math.sin(p * 2.0)
+            cfg["orb_dx"] = 4.0
+            cfg["orb_dy"] = -2.5
+            cfg["halo_mode"] = "normal"
+            cfg["halo_phase"] = p
+            cfg["foot_y"] = 99.0
 
         elif row_idx == 2:
             # ROW 2: AUTO_ATTACK — Grounded Black-Mage Sun-Staff Projection Combo (Syncs with FireMage.js!)

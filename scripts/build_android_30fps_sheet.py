@@ -32,6 +32,7 @@ from hd2d_rig_core import (
     CELL, LOGICAL, COLS, ROWS, P, BASE_NUMERIC_KEYS,
     poly_mask, keep_largest_component, assign_remaining_geodesic,
     extract_parts_512, rot_pt, render_rig_104, build_and_save_30fps_sheet,
+    compute_bipedal_walk_pose,
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -1262,39 +1263,33 @@ def build_row_configs(row):
             cfgs.append(apply_dual_cyber_ik(c))
 
         elif row == 1:
-            # R1 WALK: Predatory Forward-Leaning Cyber-Skirmisher Sprint-Stride (deep knee drive + swept HF Odachi)
-            s = math.sin(ph)
-            c2 = math.cos(ph)
+            # R1 WALK: Authentic Bipedal Crossover Cyber-Valkyrie Stride (`foot_y = 99.0`, contralateral IK + Odachi counter-sway!)
+            c_step = math.cos(ph)
+            walk_pose = compute_bipedal_walk_pose(PIVOTS, f, stride_scale=0.76)
             c = dict(DEFAULTS)
             c.update(
-                pelvis_dx=6.0 * c2,
-                pelvis_dy=-5.0 * abs(s) + 4.0,
-                torso_deg=16.5 + 3.0 * math.cos(ph * 2.0),
-                head_rel_deg=-8.5,
-                mane_wave_amp=3.8,
-                l_thigh_deg=32.0 * s + 4.0,
-                l_shin_deg=10.0 + 28.0 * max(0.0, -s),
-                l_foot_deg=10.0 * s,
-                r_thigh_deg=-32.0 * s - 6.0,
-                r_shin_deg=12.0 + 28.0 * max(0.0, s),
-                r_foot_deg=-10.0 * s,
-                right_leg_behind=(s > 0.0),
-                l_hx=18.0 - 18.0 * s,
-                l_hy=10.0 + 4.5 * abs(s),
-                r_hx=52.0 + 18.0 * s,
-                r_hy=-8.0 + 4.0 * abs(s),
-                odachi_deg=152.0 + 11.0 * s,
-                odachi_len=28.5,
-                funnel_bob=1.4 * math.cos(ph * 2.0),
-                funnel_spread=0.40,
-                thruster_power=0.58,
-                funnel_mode="swept",
+                pelvis_dx=0.0,
+                pelvis_dy=0.0,
+                torso_deg=6.0 + 1.8 * abs(c_step),
+                head_rel_deg=-3.5 - 0.8 * abs(c_step),
+                mane_wave_amp=3.2,
+                l_hx=-26.0 + c_step * 42.0,
+                l_hy=6.0 - c_step * 14.0,
+                r_hx=40.0 - c_step * 42.0,
+                r_hy=2.0 + c_step * 14.0,
+                odachi_deg=145.0 + c_step * 9.0,
+                odachi_len=25.5,
+                funnel_bob=1.2 * math.sin(ph * 2.0),
+                funnel_spread=0.28 + 0.10 * abs(c_step),
+                thruster_power=0.46 + 0.12 * abs(c_step),
+                funnel_mode="wing",
                 grip_hand="l_hand",
                 foot_y=99.0,
                 mane_wave_phase=ph * 2.0,
                 frame_col=f,
                 phase_u=f / 30.0,
             )
+            c.update(walk_pose)
             cfgs.append(apply_dual_cyber_ik(c))
 
         elif row == 2:

@@ -36,7 +36,7 @@ from hd2d_rig_core import (
     CELL, LOGICAL, COLS, ROWS, P, BASE_NUMERIC_KEYS,
     poly_mask, keep_largest_component, assign_remaining_geodesic,
     extract_parts_512, rot_pt, draw_slash_arc_104,
-    render_rig_104, build_and_save_30fps_sheet,
+    render_rig_104, build_and_save_30fps_sheet, compute_bipedal_walk_pose,
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -1101,28 +1101,30 @@ def build_row_configs(row_idx):
             cfgs.append(apply_dual_archer_ik(cfg))
 
         elif row_idx == 1:
-            # Row 1: WALK — Agile Anatomical 2-Step Sylvan Stride (`foot_y = 99.0`, zero crossed knees!)
-            st = math.sin(ph)
-            kl = math.cos(ph)
+            # Row 1: WALK — Authentic Bipedal Crossover Sylvan Stride (`foot_y = 99.0`, contralateral bow & draw-hand IK!)
+            c_step = math.cos(ph)
+            walk_pose = compute_bipedal_walk_pose(PIVOTS, f, stride_scale=0.82)
             cfg = dict(DEFAULTS)
             cfg.update(
-                pelvis_dy=abs(st) * 17.5,
-                torso_deg=8.5 + abs(st) * 2.2, head_rel_deg=-4.5,
-                right_leg_behind=(f >= 15),
-                l_thigh_deg=st * 24.0 + 2.0,
-                l_shin_deg=max(0.0, st * 26.0) + max(0.0, kl * 11.0),
-                l_foot_deg=st * 11.0,
-                r_thigh_deg=-st * 24.0 - 2.0,
-                r_shin_deg=max(0.0, -st * 26.0) + max(0.0, -kl * 11.0),
-                r_foot_deg=-st * 11.0,
-                l_coat_rel_deg=-st * 9.0 - 3.5,
-                r_coat_rel_deg=st * 8.5 - 3.0,
-                r_hx=62.0 - st * 9.0, r_hy=-12.0 + abs(st) * 5.0,
-                l_hx=-6.0 + st * 14.0, l_hy=2.0 + abs(st) * 4.0,
-                bow_deg=-20.0 + st * 8.0, bow_span=14.0, draw_pull=0.0,
-                arrow_mode="nocked", wings_mode="off", quiver_on=True,
-                mane_wave_phase=ph * 2.0, foot_y=99.0,
+                pelvis_dx=0.0,
+                pelvis_dy=0.0,
+                torso_deg=5.0 + 1.6 * abs(c_step),
+                head_rel_deg=-2.6 - 0.8 * abs(c_step),
+                r_hx=58.0 - c_step * 12.0,
+                r_hy=-14.0 + c_step * 5.0,
+                l_hx=-8.0 + c_step * 22.0,
+                l_hy=6.0 - c_step * 6.0,
+                bow_deg=-20.0 - c_step * 6.5,
+                bow_span=14.0,
+                draw_pull=0.0,
+                arrow_mode="nocked",
+                wings_mode="off",
+                quiver_on=True,
+                mane_wave_phase=ph * 2.0,
+                mane_wave_amp=4.8,
+                foot_y=99.0,
             )
+            cfg.update(walk_pose)
             cfgs.append(apply_dual_archer_ik(cfg))
 
         elif row_idx == 2:

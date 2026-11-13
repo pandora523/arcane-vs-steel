@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps88';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps88';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps88';
+import { Fighter } from './Fighter.js?v=30fps89';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps89';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps89';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps88';
+} from '../engine/shaders/forgeShaders.js?v=30fps89';
 
 /**
  * Torgar v7 (`titan`) — Sovereign of the World-Forge & Runic Anvil Juggernaut.
@@ -131,10 +131,10 @@ export class Titan extends Fighter {
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
       if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps87')) {
-        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps88';
+        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps89';
       }
       if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps87')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps88';
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps89';
       }
     }
   }

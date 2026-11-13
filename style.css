@@ -88,9 +88,11 @@ html, body {
 }
 
 #app.is-landing-open .hud-top,
-#app.is-landing-open .hud-bottom {
+#app.is-landing-open .hud-bottom,
+#app.is-landing-open #btn-game-pause,
+#app.is-landing-open .hud-pause-btn {
   opacity: 0;
-  pointer-events: none;
+  pointer-events: none !important;
 }
 
 .fighter-plate {
@@ -579,12 +581,12 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 2px;
 }
 
 .crest-shield {
-  width: clamp(26px, 4vw, 34px);
-  height: clamp(26px, 4vw, 34px);
+  width: clamp(24px, 3.6vw, 30px);
+  height: clamp(24px, 3.6vw, 30px);
   background: linear-gradient(135deg, #27272a, #09090b);
   border: 2px solid var(--bronze-lit);
   outline: 1px solid #000;
@@ -598,13 +600,13 @@ html, body {
 .crest-shield span {
   transform: rotate(-45deg);
   font-family: var(--font-pixel);
-  font-size: clamp(0.42rem, 0.95vw, 0.56rem);
+  font-size: clamp(0.40rem, 0.90vw, 0.52rem);
   color: var(--bronze-lit);
 }
 
 .clock-plate {
   font-family: var(--font-pixel);
-  font-size: clamp(0.42rem, 0.95vw, 0.54rem);
+  font-size: clamp(0.40rem, 0.90vw, 0.52rem);
   color: var(--text-ash);
   text-shadow: 0 2px 0 #000;
   margin-top: 2px;
@@ -612,7 +614,7 @@ html, body {
 
 .hud-mode-tag {
   font-family: var(--font-pixel);
-  font-size: 0.3rem;
+  font-size: 0.29rem;
   color: #fef08a;
   background: rgba(66, 32, 6, 0.88);
   border: 1px solid #facc15;
@@ -623,7 +625,7 @@ html, body {
 
 .hud-stage-tag {
   font-family: var(--font-pixel);
-  font-size: 0.27rem;
+  font-size: 0.26rem;
   color: #bae6fd;
   background: rgba(8, 47, 73, 0.85);
   border: 1px solid #38bdf8;
@@ -632,28 +634,101 @@ html, body {
   text-shadow: 0 1px 0 #000;
 }
 
-/* Bottom Forged Iron Spectator Bar — Ultra-Compact, Single-Line & Non-Blocking */
-.hud-bottom {
+/* Compact Forged Medallion Pause Button in Top HUD Center Emblem */
+.hud-pause-btn {
+  position: relative;
+  margin-top: 2px;
+  padding: 3px 8px;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(24, 31, 48, 0.95) 0%, rgba(9, 12, 22, 0.96) 100%);
+  border: 1.5px solid var(--bronze-lit);
+  outline: 1px solid #000;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.28),
+    0 3px 10px rgba(0, 0, 0, 0.86);
+  color: #fef08a;
+  font-family: var(--font-pixel);
+  font-size: 0.30rem;
+  line-height: 1;
+  letter-spacing: 0.04em;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  transition: filter 0.14s ease, transform 0.08s ease, border-color 0.14s ease;
+}
+
+.hud-pause-btn:hover {
+  filter: brightness(1.18);
+  border-color: #fde047;
+}
+
+.hud-pause-btn:active,
+.hud-pause-btn[aria-expanded="true"] {
+  transform: translateY(1px);
+  background: linear-gradient(180deg, #78350f 0%, #451a03 100%);
+  border-color: #fde047;
+}
+
+.hud-pause-icon {
+  font-size: 0.34rem;
+  line-height: 1;
+}
+
+.pause-sp-badge {
   position: absolute;
-  bottom: max(4px, env(safe-area-inset-bottom));
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 15;
-  max-width: 98vw;
+  top: -5px;
+  right: -6px;
+  min-width: 13px;
+  height: 13px;
+  padding: 0 3px;
+  border-radius: 999px;
+  background: #ca8a04;
+  border: 1.5px solid #fef08a;
+  color: #05070e;
+  font-family: var(--font-pixel);
+  font-size: 0.24rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 8px rgba(250, 204, 21, 0.85);
+  animation: advUltPulse 1.15s ease-in-out infinite;
+  pointer-events: none;
+}
+
+.pause-sp-badge.hidden {
+  display: none !important;
+}
+
+/* Forged Iron Spectator Controls — Housed Exclusively Inside #pause-vs-section */
+.hud-bottom {
+  position: relative;
+  bottom: auto;
+  left: auto;
+  transform: none;
+  z-index: 1;
+  width: 100%;
+  max-width: 100%;
   pointer-events: auto;
 }
 
 .iron-bar {
   display: flex;
-  flex-wrap: nowrap;
+  flex-wrap: wrap;
   align-items: center;
   justify-content: center;
-  gap: 4px;
-  padding: 3px 4px;
-  background: rgba(6, 9, 16, 0.78);
-  border: 1px solid rgba(212, 175, 55, 0.58);
+  gap: 7px;
+  padding: 10px;
+  background: rgba(6, 9, 16, 0.88);
+  border: 1px solid rgba(212, 175, 55, 0.48);
+  border-radius: 8px;
   outline: 1px solid #000;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.85);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 14px rgba(0, 0, 0, 0.72);
 }
 
 .iron-btn {
@@ -2628,28 +2703,36 @@ html, body {
   .hud-stage-tag {
     display: none;
   }
+  .hud-pause-btn {
+    padding: 2px 6px;
+    font-size: 0.25rem;
+    gap: 3px;
+    margin-top: 1px;
+  }
+  .hud-pause-icon {
+    font-size: 0.28rem;
+  }
   .hud-bottom {
-    bottom: max(3px, env(safe-area-inset-bottom));
-    width: 96vw;
-    max-width: 480px;
+    width: 100%;
+    max-width: 100%;
     padding: 0;
   }
   .iron-bar {
     flex-wrap: wrap;
     justify-content: center;
-    gap: 3px;
-    padding: 3px 4px;
+    gap: 5px;
+    padding: 7px 6px;
     border-width: 1px;
     width: 100%;
   }
   .hud-bottom .iron-btn {
-    padding: 4px 5px;
+    padding: 6px 8px;
     font-size: 0.31rem;
     letter-spacing: 0.01em;
-    gap: 3px;
+    gap: 4px;
     flex: 1 1 auto;
     justify-content: center;
-    min-height: 22px;
+    min-height: 26px;
   }
   .gem-indicator {
     width: 4px;
@@ -2765,7 +2848,7 @@ html, body {
     font-size: 0.34rem;
   }
   .hud-bottom .iron-btn {
-    padding: 4px 4px;
+    padding: 6px 6px;
     font-size: 0.29rem;
   }
   .victory-telemetry {
@@ -2813,32 +2896,34 @@ html, body {
   display: none !important;
 }
 
-/* Compact Top Campaign Utility Pill (Skill Tree, Auto-AI, Retry, Roster) */
+/* Campaign Utility Deck — Housed Exclusively Inside #pause-adv-section */
 .adv-utility-bar {
-  position: absolute;
-  top: calc(max(8px, env(safe-area-inset-top)) + 82px);
-  left: 50%;
-  transform: translateX(-50%);
-  display: inline-flex;
+  position: relative;
+  top: auto;
+  left: auto;
+  transform: none;
+  display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  max-width: 96%;
+  width: 100%;
+  max-width: 100%;
   align-items: center;
-  gap: 5px;
-  padding: 3px 6px;
-  background: rgba(6, 9, 18, 0.84);
-  border: 1px solid rgba(212, 175, 55, 0.56);
+  gap: 8px;
+  padding: 10px;
+  background: rgba(6, 9, 18, 0.88);
+  border: 1px solid rgba(212, 175, 55, 0.48);
   outline: 1px solid #000;
-  border-radius: 999px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.78);
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06), 0 4px 12px rgba(0, 0, 0, 0.72);
   pointer-events: auto;
 }
 
 .adv-util-btn {
   display: inline-flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  justify-content: center;
+  gap: 5px;
+  padding: 7px 11px;
   border-radius: 999px;
   background: linear-gradient(180deg, rgba(30, 41, 59, 0.94) 0%, rgba(15, 23, 42, 0.94) 100%);
   border: 1px solid #475569;
@@ -2907,7 +2992,7 @@ html, body {
 .adv-joystick-zone {
   position: absolute;
   left: max(16px, env(safe-area-inset-left));
-  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 26px);
+  bottom: max(14px, env(safe-area-inset-bottom));
   width: 164px;
   height: 164px;
   display: flex;
@@ -3023,7 +3108,7 @@ html, body {
 .adv-skill-cluster {
   position: absolute;
   right: max(14px, env(safe-area-inset-right));
-  bottom: calc(max(12px, env(safe-area-inset-bottom)) + 28px);
+  bottom: max(14px, env(safe-area-inset-bottom));
   width: 186px;
   height: 222px;
   pointer-events: none;
@@ -3270,10 +3355,6 @@ html, body {
     display: none !important;
   }
 
-  .adv-utility-bar {
-    top: calc(max(6px, env(safe-area-inset-top)) + 68px);
-  }
-
   .adv-joystick-zone {
     left: max(12px, env(safe-area-inset-left));
     bottom: max(12px, env(safe-area-inset-bottom));
@@ -3302,10 +3383,6 @@ html, body {
 }
 
 @media (max-height: 500px) {
-  .adv-utility-bar {
-    top: calc(max(4px, env(safe-area-inset-top)) + 44px);
-    transform: translateX(-50%) scale(0.9);
-  }
   .adv-joystick-zone {
     transform: scale(0.86);
     transform-origin: bottom left;
@@ -3323,24 +3400,28 @@ html, body {
    1. Native Hardware Landscape (`844x390`) + Fullscreen Lock
    2. Portrait-Locked Phone CSS `+90deg` Widescreen Rotation (`390x844` -> `844x390`)
    ========================================================================= */
-.adv-btn-landscape {
+.adv-btn-landscape,
+.vs-pause-landscape-btn {
   display: none;
 }
 
-.adv-btn-landscape.is-landscape-on {
+.adv-btn-landscape.is-landscape-on,
+.vs-pause-landscape-btn.is-landscape-on {
   background: linear-gradient(180deg, #7c2d12 0%, #3b1306 100%);
   border-color: #fb923c;
   color: #fef08a;
 }
 
 html.is-mobile-device .step-nav-landscape-btn,
-html.is-mobile-device .adv-btn-landscape {
+html.is-mobile-device .adv-btn-landscape,
+html.is-mobile-device .vs-pause-landscape-btn {
   display: inline-flex;
 }
 
 @media (hover: none) and (pointer: coarse), (max-width: 960px), (max-height: 540px) {
   .step-nav-landscape-btn,
-  .adv-btn-landscape {
+  .adv-btn-landscape,
+  .vs-pause-landscape-btn {
     display: inline-flex;
   }
 }
@@ -3573,20 +3654,20 @@ html.is-mobile-landscape .hud-stage-tag {
   display: none;
 }
 
+html.is-mobile-landscape .hud-pause-btn {
+  padding: 2px 6px;
+  font-size: 0.24rem;
+  gap: 3px;
+  margin-top: 1px;
+}
+
 html.is-mobile-landscape #app.is-adventure-active .hud-bottom {
   display: none !important;
 }
 
 html.is-mobile-landscape .hud-bottom {
-  width: min(94%, 640px);
-  max-width: 640px;
-  bottom: 3px;
-}
-
-html.is-mobile-landscape .adv-utility-bar {
-  top: 38px;
-  transform: translateX(-50%) scale(0.88);
-  transform-origin: top center;
+  width: 100%;
+  max-width: 100%;
 }
 
 html.is-mobile-landscape .adv-joystick-zone {
@@ -3968,6 +4049,260 @@ html.is-mobile-landscape .adv-st-plaque {
 html.is-mobile-landscape .adv-st-grid {
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
+
+/* =========================================================================
+   MODE-ISOLATED PAUSE MENU MODAL & CROSS-MODE UI ISOLATION
+   ========================================================================= */
+.pause-modal {
+  position: absolute;
+  inset: 0;
+  z-index: 46;
+  background: rgba(3, 5, 12, 0.78);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: max(12px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right))
+    max(12px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+  pointer-events: auto;
+}
+
+.pause-modal.hidden,
+#app.is-landing-open .pause-modal {
+  display: none !important;
+}
+
+/* Strict CSS Mode Isolation inside #pause-modal */
+#app.is-adventure-active #pause-vs-section {
+  display: none !important;
+}
+
+#app:not(.is-adventure-active) #pause-adv-section {
+  display: none !important;
+}
+
+.pause-plaque {
+  width: min(94%, 640px);
+  max-height: 92%;
+  overflow-y: auto;
+  background: linear-gradient(180deg, #0d1324 0%, #070a14 100%);
+  border: 2px solid #d4af37;
+  outline: 2px solid #000;
+  border-radius: 10px;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.28),
+    0 18px 46px rgba(0, 0, 0, 0.94);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.pause-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(212, 175, 55, 0.36);
+}
+
+.pause-title-block {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.pause-kicker {
+  font-family: var(--font-pixel);
+  font-size: 0.29rem;
+  letter-spacing: 0.06em;
+  color: #fb923c;
+  text-shadow: 0 1px 0 #000;
+}
+
+.pause-modal-title {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: clamp(0.62rem, 1.6vw, 0.84rem);
+  letter-spacing: 0.05em;
+  color: #fef08a;
+  text-shadow: 0 2px 0 #000;
+}
+
+.pause-resume-btn {
+  padding: 9px 16px;
+  border-radius: 6px;
+  background: linear-gradient(180deg, #ca8a04 0%, #854d0e 60%, #451a03 100%);
+  border: 2px solid #fef08a;
+  outline: 1px solid #000;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.35),
+    0 4px 12px rgba(0, 0, 0, 0.82);
+  color: #ffffff;
+  font-family: var(--font-pixel);
+  font-size: 0.40rem;
+  letter-spacing: 0.05em;
+  cursor: pointer;
+  touch-action: manipulation;
+  transition: filter 0.14s ease, transform 0.08s ease;
+}
+
+.pause-resume-btn:hover {
+  filter: brightness(1.15);
+}
+
+.pause-resume-btn:active {
+  transform: translateY(1px);
+}
+
+.pause-section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.pause-section.hidden {
+  display: none !important;
+}
+
+.pause-section-label {
+  font-family: var(--font-pixel);
+  font-size: 0.28rem;
+  letter-spacing: 0.06em;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.pause-hud-bottom .iron-btn {
+  padding: 8px 11px;
+  font-size: 0.36rem;
+  border-radius: 5px;
+}
+
+.pause-adv-hint {
+  margin: 0;
+  font-family: var(--font-pixel);
+  font-size: 0.25rem;
+  line-height: 1.5;
+  color: #94a3b8;
+  text-align: center;
+}
+
+.pause-adv-hint strong {
+  color: #fef08a;
+  font-weight: normal;
+}
+
+.pause-shared-row {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding-top: 10px;
+  border-top: 1px solid rgba(148, 163, 184, 0.24);
+}
+
+.pause-sfx-btn {
+  padding: 7px 12px;
+  font-size: 0.34rem;
+  border-radius: 5px;
+}
+
+.pause-esc-hint {
+  font-family: var(--font-pixel);
+  font-size: 0.25rem;
+  color: #94a3b8;
+  letter-spacing: 0.04em;
+}
+
+/* Step 02 Adventure Mode Stage Lock Banner */
+.adv-stage-lock-banner {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+  padding: 12px 14px;
+  background: linear-gradient(180deg, rgba(67, 20, 7, 0.72) 0%, rgba(15, 23, 42, 0.90) 100%);
+  border: 1.5px solid #fb923c;
+  border-radius: 8px;
+  box-shadow: inset 0 1px 0 rgba(254, 240, 138, 0.20), 0 6px 16px rgba(0, 0, 0, 0.72);
+}
+
+.adv-stage-lock-banner.hidden {
+  display: none !important;
+}
+
+.adv-stage-lock-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 8px;
+  border-radius: 4px;
+  background: rgba(124, 45, 18, 0.92);
+  border: 1px solid #fde047;
+  font-family: var(--font-pixel);
+  font-size: 0.32rem;
+  color: #fef08a;
+  letter-spacing: 0.04em;
+}
+
+.adv-stage-lock-desc {
+  margin: 0;
+  font-size: 0.78rem;
+  line-height: 1.4;
+  color: #e2e8f0;
+}
+
+.adv-stage-lock-desc strong {
+  color: #fef08a;
+}
+
+/* Step 03 Adventure Boss Slot Non-Selectable Styling */
+.slot-pill.is-boss-slot {
+  cursor: default;
+  border-color: rgba(239, 68, 68, 0.68);
+  background: linear-gradient(180deg, rgba(69, 10, 10, 0.78) 0%, rgba(15, 23, 42, 0.92) 100%);
+}
+
+.slot-pill.is-boss-slot .slot-tag {
+  color: #fca5a5;
+}
+
+@media (max-width: 640px) {
+  .pause-plaque {
+    padding: 12px;
+    gap: 10px;
+  }
+  .pause-shared-row {
+    justify-content: center;
+    text-align: center;
+  }
+  .pause-esc-hint {
+    display: none;
+  }
+}
+
+html.is-mobile-landscape .pause-plaque {
+  width: min(92%, 600px);
+  padding: 10px 14px;
+  gap: 8px;
+}
+
+html.is-mobile-landscape .pause-header {
+  padding-bottom: 6px;
+}
+
+html.is-mobile-landscape .pause-resume-btn {
+  padding: 6px 12px;
+  font-size: 0.34rem;
+}
+
+html.is-mobile-landscape .pause-adv-hint {
+  display: none;
+}
+
 
 
 

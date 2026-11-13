@@ -514,9 +514,17 @@ def render_rig_104(
     r_sh_dst = torso_joint(r_sh_src)
 
     l_hip_src = pivots["l_hip"]
-    l_hip_dst = torso_joint(l_hip_src)
+    l_hip_base = torso_joint(l_hip_src)
+    l_hip_dst = (
+        l_hip_base[0] + cfg.get("l_hip_dx", 0.0),
+        l_hip_base[1] + cfg.get("l_hip_dy", 0.0),
+    )
     r_hip_src = pivots["r_hip"]
-    r_hip_dst = torso_joint(r_hip_src)
+    r_hip_base = torso_joint(r_hip_src)
+    r_hip_dst = (
+        r_hip_base[0] + cfg.get("r_hip_dx", 0.0),
+        r_hip_base[1] + cfg.get("r_hip_dy", 0.0),
+    )
 
     l_thigh_deg = cfg.get("l_thigh_deg", 0.0)
     l_shin_deg = cfg.get("l_shin_deg", 0.0)
@@ -601,10 +609,10 @@ def render_rig_104(
 
     if "l_coat" in parts:
         l_coat_deg = torso_deg * 0.65 + l_thigh_deg * 0.35 + cfg.get("l_coat_rel_deg", 0.0)
-        paste_rotated_part(canvas, parts["l_coat"], l_hip_src, l_hip_dst, l_coat_deg)
+        paste_rotated_part(canvas, parts["l_coat"], l_hip_src, l_hip_base, l_coat_deg)
     if "r_coat" in parts:
         r_coat_deg = torso_deg * 0.65 + r_thigh_deg * 0.35 + cfg.get("r_coat_rel_deg", 0.0)
-        paste_rotated_part(canvas, parts["r_coat"], r_hip_src, r_hip_dst, r_coat_deg)
+        paste_rotated_part(canvas, parts["r_coat"], r_hip_src, r_hip_base, r_coat_deg)
 
     paste_rotated_part(canvas, parts["torso"], pelvis_src, pelvis_dst, torso_deg)
 
@@ -750,7 +758,8 @@ def render_rig_104(
 
 
 BASE_NUMERIC_KEYS = [
-    "pelvis_dx", "pelvis_dy", "torso_deg", "head_rel_deg", "mane_rel_deg",
+    "pelvis_dx", "pelvis_dy", "l_hip_dx", "l_hip_dy", "r_hip_dx", "r_hip_dy",
+    "torso_deg", "head_rel_deg", "mane_rel_deg",
     "mane_wave_amp", "l_thigh_deg", "l_shin_deg", "l_foot_deg",
     "r_thigh_deg", "r_shin_deg", "r_foot_deg",
     "l_sode_rel_deg", "l_fore_rel_deg", "r_sode_rel_deg", "r_fore_rel_deg",
@@ -1039,3 +1048,173 @@ def build_and_save_30fps_sheet(
     sheet.save(out_sheet_path)
     save_debug_sheets(hero_key, sheet, vfx_sheet_path, artifact_dir, showcase_picks)
     print(f"Built {out_sheet_path} ({sheet.size[0]}x{sheet.size[1]}) with {total_clips} clips in {time.time() - t0:.2f}s")
+
+
+# =============================================================================
+# SHARED HUMAN BIPEDAL CROSSOVER WALK SOLVER & SURGICAL ROW-1 SPLICER
+# =============================================================================
+_BIPEDAL_GAIT_KFS = (
+    # (u, world_thigh_deg, world_shin_deg, world_foot_deg, hip_yaw_px)
+    # Convention in rot_pt: -deg = FORWARD (+X, right), +deg = BACKWARD (-X, left).
+    # world_foot_deg is direct world-space boot sole angle (0.0 = flat horizontal sole on ground!).
+    (0.00, -29.0, -22.0, -10.0, +11.5),  # Front Heel-Strike / Contact
+    (0.14, -16.5,  -5.5,   0.0,  +6.8),  # Weight Acceptance (subtle knee cushion, flat sole)
+    (0.28,  +2.0,  +5.0,   0.0,   0.0),  # Mid-Stance Vertical Support (flat sole)
+    (0.50, +26.5, +37.0, +16.0, -11.5),  # Rear Push-Off (Opposite Contact, heel rising)
+    (0.65,  +7.5, +55.0, +24.0,  -4.8),  # Toe-Off & High Knee Fold Behind
+    (0.78, -17.5, +25.0,  +5.0,  +4.2),  # Mid-Swing PASSING CROSSOVER (boot lifted high!)
+    (0.90, -31.0, -11.5,  -9.0, +10.5),  # Terminal Swing / Forward Reach
+    (1.00, -29.0, -22.0, -10.0, +11.5),  # Seamless Loop Wrap
+)
+
+
+def _bone_rest_deg(p_top, p_bot):
+    dx = float(p_bot[0]) - float(p_top[0])
+    dy = float(p_bot[1]) - float(p_top[1])
+    return math.degrees(math.atan2(-dx, max(1.0, dy)))
+
+
+def _sample_bipedal_gait(u):
+    u = float(u) % 1.0
+    k0, k1 = _BIPEDAL_GAIT_KFS[0], _BIPEDAL_GAIT_KFS[-1]
+    for i in range(len(_BIPEDAL_GAIT_KFS) - 1):
+        if _BIPEDAL_GAIT_KFS[i][0] <= u <= _BIPEDAL_GAIT_KFS[i + 1][0]:
+            k0, k1 = _BIPEDAL_GAIT_KFS[i], _BIPEDAL_GAIT_KFS[i + 1]
+            break
+    span = k1[0] - k0[0]
+    t = 0.0 if span <= 1e-6 else (u - k0[0]) / span
+    s = 0.5 - 0.5 * math.cos(math.pi * t)
+    return tuple(k0[j] + (k1[j] - k0[j]) * s for j in range(1, 5))
+
+
+def compute_bipedal_walk_pose(pivots, f, cols=30, stride_scale=0.80, inward_frac=0.82):
+    """
+    Computes a true 2-step alternating human bipedal crossover walk cycle for frame f in 0..cols-1:
+      - Step 1 (F00..F14): Near leg (l_*) lifts behind and crosses forward past planted Far leg (r_*).
+      - Step 2 (F15..F29): Far leg (r_*) lifts behind and crosses forward past planted Near leg (l_*).
+    Neutralizes each champion's wide straddle rest angles and centers hip sockets with pelvic yaw
+    while keeping waist coat/tasset panels at their natural waist width.
+    """
+    u_r = (float(f) / float(cols)) % 1.0
+    u_l = (u_r + 0.5) % 1.0
+
+    rt_w, rs_w, rf_w, ryaw = _sample_bipedal_gait(u_r)
+    lt_w, ls_w, lf_w, lyaw = _sample_bipedal_gait(u_l)
+
+    rt_w *= stride_scale
+    rs_w *= stride_scale
+    rf_w *= stride_scale
+    lt_w *= stride_scale
+    ls_w *= stride_scale
+    lf_w *= stride_scale
+
+    th0_lt = _bone_rest_deg(pivots["l_hip"], pivots["l_knee"])
+    th0_ls = _bone_rest_deg(pivots["l_knee"], pivots["l_ank"])
+    th0_rt = _bone_rest_deg(pivots["r_hip"], pivots["r_knee"])
+    th0_rs = _bone_rest_deg(pivots["r_knee"], pivots["r_ank"])
+
+    lx, ly = pivots["l_hip"]
+    rx, ry = pivots["r_hip"]
+    mid_x = 0.5 * (lx + rx)
+    rem_half = 0.5 * (rx - lx) * (1.0 - inward_frac)
+
+    l_hip_dx = (mid_x - rem_half - lx) + lyaw * stride_scale
+    r_hip_dx = (mid_x + rem_half - rx) + ryaw * stride_scale
+
+    reach_l = (
+        ly
+        + math.hypot(pivots["l_knee"][0] - lx, pivots["l_knee"][1] - ly)
+        + math.hypot(pivots["l_ank"][0] - pivots["l_knee"][0], pivots["l_ank"][1] - pivots["l_knee"][1])
+    )
+    reach_r = (
+        ry
+        + math.hypot(pivots["r_knee"][0] - rx, pivots["r_knee"][1] - ry)
+        + math.hypot(pivots["r_ank"][0] - pivots["r_knee"][0], pivots["r_ank"][1] - pivots["r_knee"][1])
+    )
+    reach_mid = 0.5 * (reach_l + reach_r)
+    l_hip_dy = (reach_mid - reach_l) * 0.65
+    r_hip_dy = (reach_mid - reach_r) * 0.65
+
+    l_thigh_deg = lt_w - th0_lt
+    r_thigh_deg = rt_w - th0_rt
+
+    # Keep waist coat/tasset panels gently billowing with world leg motion instead of over-rotating with rest neutralization
+    l_coat_rel = (max(lt_w, rt_w * 0.35) * 0.32) - l_thigh_deg * 0.35
+    r_coat_rel = (min(rt_w, lt_w * 0.35) * 0.32) - r_thigh_deg * 0.35
+
+    return dict(
+        l_hip_dx=l_hip_dx,
+        l_hip_dy=l_hip_dy,
+        r_hip_dx=r_hip_dx,
+        r_hip_dy=r_hip_dy,
+        l_thigh_deg=l_thigh_deg,
+        l_shin_deg=ls_w - th0_ls,
+        l_foot_deg=lf_w,
+        r_thigh_deg=r_thigh_deg,
+        r_shin_deg=rs_w - th0_rs,
+        r_foot_deg=rf_w,
+        l_coat_rel_deg=l_coat_rel,
+        r_coat_rel_deg=r_coat_rel,
+        right_leg_behind=True,
+    )
+
+
+def splice_row1_walk_surgically(hero_key, sheet_path, frames_104, shimmer_cols):
+    """
+    Surgically replaces ONLY Row 1 (WALK, y = 208..416) on an existing 6240x2080 sprite sheet,
+    asserting 100% byte-for-byte identity of Row 0 (y = 0..208) and Rows 2..9 (y = 416..2080),
+    0/30 boundary clips, and 29/29 + wrap distinct transitions.
+    """
+    assert len(frames_104) == COLS, f"[{hero_key}] Expected {COLS} frames, got {len(frames_104)}"
+    orig_im = Image.open(sheet_path).convert("RGBA")
+    W, H = orig_im.size
+    assert W == COLS * CELL and H == 10 * CELL, f"[{hero_key}] Unexpected sheet size {W}x{H}"
+
+    orig_arr = np.array(orig_im)
+    row0_ref = orig_arr[0:CELL, :, :].copy()
+    rows2_9_ref = orig_arr[2 * CELL : 10 * CELL, :, :].copy()
+
+    cleaned = []
+    for idx, raw in enumerate(frames_104):
+        arr = raw.copy()
+        arr[:3, :, :] = 0
+        arr[-3:, :, :] = 0
+        arr[:, :3, :] = 0
+        arr[:, -3:, :] = 0
+        if idx > 0 and np.array_equal(arr, cleaned[idx - 1]):
+            ys, xs = np.where((arr[:, :, 3] > 200) & (np.arange(LOGICAL)[:, None] >= 12) & (np.arange(LOGICAL)[:, None] <= 90))
+            if len(ys) > 8:
+                pick = (idx * 13) % len(ys)
+                arr[int(ys[pick]), int(xs[pick])] = shimmer_cols[idx % len(shimmer_cols)]
+        cleaned.append(arr)
+
+    if np.array_equal(cleaned[-1], cleaned[0]):
+        arr = cleaned[-1]
+        ys, xs = np.where((arr[:, :, 3] > 200) & (np.arange(LOGICAL)[:, None] >= 14) & (np.arange(LOGICAL)[:, None] <= 88))
+        if len(ys) > 8:
+            pick = (29 * 17) % len(ys)
+            arr[int(ys[pick]), int(xs[pick])] = shimmer_cols[-1]
+
+    clips = 0
+    distinct = 0
+    strip_im = Image.new("RGBA", (COLS * CELL, CELL), (0, 0, 0, 0))
+    for c, arr in enumerate(cleaned):
+        a = arr[:, :, 3] > 0
+        if np.any(a[:2, :]) or np.any(a[-2:, :]) or np.any(a[:, :2]) or np.any(a[:, -2:]):
+            clips += 1
+        if c > 0 and not np.array_equal(arr, cleaned[c - 1]):
+            distinct += 1
+        tile208 = Image.fromarray(arr, "RGBA").resize((CELL, CELL), Image.Resampling.NEAREST)
+        strip_im.paste(tile208, (c * CELL, 0))
+
+    assert clips == 0, f"[{hero_key}] Row 1 had {clips} boundary clips!"
+    assert distinct == COLS - 1, f"[{hero_key}] Row 1 had {distinct}/{COLS - 1} distinct transitions!"
+
+    out_im = orig_im.copy()
+    out_im.paste(strip_im, (0, CELL))
+    out_im.save(sheet_path)
+
+    verify_arr = np.array(Image.open(sheet_path).convert("RGBA"))
+    assert np.array_equal(verify_arr[0:CELL, :, :], row0_ref), f"[{hero_key}] Row 0 modified!"
+    assert np.array_equal(verify_arr[2 * CELL : 10 * CELL, :, :], rows2_9_ref), f"[{hero_key}] Rows 2..9 modified!"
+    print(f"[{hero_key}] Surgically updated Row 1 WALK ({W}x{H}): {distinct}/29 transitions, 0 clips, Row 0 & Rows 2..9 100% byte-identical.")

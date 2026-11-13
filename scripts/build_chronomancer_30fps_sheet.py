@@ -35,6 +35,7 @@ from hd2d_rig_core import (
     CELL, LOGICAL, COLS, ROWS, P, BASE_NUMERIC_KEYS,
     poly_mask, keep_largest_component, assign_remaining_geodesic,
     extract_parts_512, rot_pt, render_rig_104, build_and_save_30fps_sheet,
+    compute_bipedal_walk_pose,
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -1278,29 +1279,30 @@ def build_row_configs(row_idx):
             cfgs.append(apply_dual_chrono_ik(cfg))
 
         elif row_idx == 1:
-            # Row 1: WALK — Crisp Anatomical 2-Step Martial Stride (`F00..F14` & `F15..F29`, `foot_y = 99.0`)
-            st = math.sin(ph)
-            kl = math.cos(ph)
+            # Row 1: WALK — Authentic Bipedal Crossover Horological Duelist Stride (`foot_y = 99.0`, contralateral blades + XII halo!)
+            c_step = math.cos(ph)
+            walk_pose = compute_bipedal_walk_pose(PIVOTS, f, stride_scale=0.80)
             cfg = dict(DEFAULTS)
             cfg.update(
-                pelvis_dy=abs(st) * 18.0,
-                torso_deg=8.0 + abs(st) * 2.2, head_rel_deg=-4.0,
-                right_leg_behind=(f >= 15),
-                l_thigh_deg=st * 24.0 + 2.0,
-                l_shin_deg=max(0.0, st * 26.0) + max(0.0, kl * 12.0),
-                l_foot_deg=st * 11.0,
-                r_thigh_deg=-st * 24.0 - 2.0,
-                r_shin_deg=max(0.0, -st * 26.0) + max(0.0, -kl * 12.0),
-                r_foot_deg=-st * 11.0,
-                l_coat_rel_deg=-st * 9.0 - 4.0,
-                r_coat_rel_deg=st * 8.0 - 3.0,
-                r_hx=58.0 - st * 10.0, r_hy=-6.0 + abs(st) * 5.0,
-                l_hx=-42.0 + st * 14.0, l_hy=12.0 + abs(st) * 4.0,
-                minute_deg=-36.0 + st * 9.0, minute_len=29.5,
-                hour_deg=142.0 - st * 14.0, hour_len=14.5,
-                left_mode="hour_blade", halo_mode="normal",
-                wheel_rot=ph * 2.0, mane_wave_phase=ph * 2.0, foot_y=99.0,
+                pelvis_dx=0.0,
+                pelvis_dy=0.0,
+                torso_deg=4.5 + 1.6 * abs(c_step),
+                head_rel_deg=-2.4 - 0.7 * abs(c_step),
+                r_hx=52.0 - c_step * 11.0,
+                r_hy=-8.0 + c_step * 5.0,
+                l_hx=-34.0 + c_step * 16.0,
+                l_hy=12.0 - c_step * 6.0,
+                minute_deg=-44.0 - c_step * 6.0,
+                minute_len=27.5,
+                hour_deg=138.0 - c_step * 12.0,
+                hour_len=14.0,
+                left_mode="hour_blade",
+                halo_mode="normal",
+                wheel_rot=ph,
+                mane_wave_phase=ph * 2.0,
+                foot_y=99.0,
             )
+            cfg.update(walk_pose)
             cfgs.append(apply_dual_chrono_ik(cfg))
 
         elif row_idx == 2:
