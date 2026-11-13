@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js?v=30fps84';
-import { PixelForge } from './PixelForge.js?v=30fps84';
+import { PixelFont } from './PixelFont.js?v=30fps85';
+import { PixelForge } from './PixelForge.js?v=30fps85';
 
 export class VFXManager {
   constructor() {
@@ -875,14 +875,16 @@ export class VFXManager {
             pil.owner?.game?.getEnemiesOf ? pil.owner.game.getEnemiesOf(pil.owner) : pil.target ? [pil.target] : [];
           for (const foe of pilEnemies) {
             const foeGy = Number.isFinite(foe?.groundY) ? foe.groundY : foe?.y || pilGy;
-            const inDepth = !isAdv || Math.abs(foeGy - pilGy) < 76 * pil.scaleWidth;
+            const inDepth =
+              !isAdv || foe?.isColossalBoss || Math.abs(foeGy - pilGy) < 76 * pil.scaleWidth;
+            const hitWidth = (foe?.isColossalBoss ? 156 : 88) * pil.scaleWidth;
             if (
               foe &&
               !foe.isDead &&
               !foe.isBenched &&
               inDepth &&
-              Math.abs(foe.x - pil.x) < 88 * pil.scaleWidth &&
-              pilGy - foe.y < 155
+              Math.abs(foe.x - pil.x) < hitWidth &&
+              (foe.isColossalBoss || pilGy - foe.y < 155)
             ) {
               foe.takeDamage(Math.round(28 * pil.scaleWidth), pil.owner, false, 35, -55);
             }

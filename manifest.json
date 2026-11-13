@@ -4,7 +4,7 @@
   "description": "HD-2D 30fps pixel-art arena battler and 4-realm Marvel-arcade Adventure Campaign.",
   "start_url": "./index.html",
   "display": "fullscreen",
-  "orientation": "landscape",
+  "orientation": "any",
   "background_color": "#05070c",
   "theme_color": "#05070c",
   "icons": [

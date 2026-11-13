@@ -28,27 +28,27 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps84';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps84';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps84';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps84';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps84';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps84';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps84';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps84';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps84';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps84';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps84';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps84';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps84';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps84';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps84';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps84';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps84';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps85';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps85';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps85';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps85';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps85';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps85';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps85';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps85';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps85';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps85';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps85';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps85';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps85';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps85';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps85';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps85';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps85';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps84';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps85';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -608,7 +608,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps84');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps85');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -2077,6 +2077,12 @@ for (const [name, Cls] of CLASSES) {
     if (pw !== 128 || ph !== 128) {
       throw new Error(`Expected boss_archfiend_portrait.png dimensions 128x128, got ${pw}x${ph}`);
     }
+    const colossusBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/boss_colossus_sheet.png');
+    const cw = colossusBuf.readUInt32BE(16);
+    const ch = colossusBuf.readUInt32BE(20);
+    if (cw !== 2048 || ch !== 512) {
+      throw new Error(`Expected boss_colossus_sheet.png dimensions 2048x512 (4 cells x 512x512), got ${cw}x${ch}`);
+    }
     const iconBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/mage_icons.png');
     const iw = iconBuf.readUInt32BE(16);
     const ih = iconBuf.readUInt32BE(20);
@@ -2086,16 +2092,23 @@ for (const [name, Cls] of CLASSES) {
     const manifestJson = JSON.parse(
       fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/manifest.json', 'utf8')
     );
-    if (manifestJson.orientation !== 'landscape' || manifestJson.display !== 'fullscreen') {
+    if (manifestJson.orientation !== 'any' || manifestJson.display !== 'fullscreen') {
       throw new Error(
-        `Expected manifest.json orientation='landscape' & display='fullscreen', got ${JSON.stringify(manifestJson)}`
+        `Expected manifest.json orientation='any' (portrait default, landscape opt-in) & display='fullscreen', got ${JSON.stringify(manifestJson)}`
       );
+    }
+    const mainJs = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/src/main.js', 'utf8');
+    if (!mainJs.includes('this.mobileLandscapeEnabled = Boolean(this.forceMobileLandscapeParam);')) {
+      throw new Error('Expected main.js to default mobileLandscapeEnabled to false unless ?landscape=1 is explicitly passed!');
     }
   }
 
-  // 17B. Verify HTML Adventure Mode Mobile Joystick + Right-Side Skill Cluster + Mobile Landscape DOM IDs & Icon Renderer
+  // 17B. Verify HTML Adventure Mode Mobile Joystick + Right-Side Skill Cluster + Skill Tree Modal + Opt-In Landscape DOM IDs
   const indexHtml = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/index.html', 'utf8');
   const advJs = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js', 'utf8');
+  if (!indexHtml.includes('LANDSCAPE: OFF')) {
+    throw new Error('Expected index.html default mobile landscape button labels to start as LANDSCAPE: OFF!');
+  }
   const htmlIds = new Set([...indexHtml.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
   const advSlots = ['attack', 'dodge', 'skill', 'overdrive', 'ultimate', 'crouch', 'jump'];
   const requiredAdvIds = [
@@ -2106,12 +2119,28 @@ for (const [name, Cls] of CLASSES) {
     'mobile-landscape-label',
     'adventure-controls',
     'adv-utility-bar',
+    'adv-btn-skilltree',
+    'adv-skilltree-label',
+    'adv-sp-badge',
     'adv-btn-autoplay',
     'adv-autoplay-label',
     'adv-btn-landscape',
     'adv-landscape-label',
     'adv-btn-restart',
     'adv-btn-menu',
+    'adv-skill-tree-modal',
+    'adv-st-level-badge',
+    'adv-st-xp-fill',
+    'adv-st-xp-text',
+    'adv-st-sp-count',
+    'adv-st-refund',
+    'adv-st-close',
+    'adv-st-stat-hp',
+    'adv-st-stat-atk',
+    'adv-st-stat-spirit',
+    'adv-st-stat-ult',
+    'adv-st-stat-ward',
+    'adv-st-grid',
     'adv-joystick-zone',
     'adv-joystick-base',
     'adv-joystick-knob',
@@ -2195,7 +2224,7 @@ for (const [name, Cls] of CLASSES) {
     }
   }
 
-  // 17C. Simulate Full 4-Zone Campaign with Ignis Sol (`FireMage`) + Strict Monster Sprite Visibility Audit
+  // 17C. Simulate Full 4-Zone Campaign with Ignis Sol (`FireMage`), Adventure RPG Progression, Skill Tree & Giant Left-Side Colossal Boss!
   const advTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
   const advCtx = createMockCtx(advTrack);
   const monsterDrawCounts = { ghoul: 0, cultist: 0, brute: 0, archfiend: 0 };
@@ -2204,31 +2233,59 @@ for (const [name, Cls] of CLASSES) {
   advCtx.drawImage = (img, sx, sy, sw, sh, dx, dy, dw, dh) => {
     baseDrawImage(img, sx, sy, sw, sh, dx, dy, dw, dh);
     if (activeMonsterDrawKind) {
+      const expCell = activeMonsterDrawKind === 'archfiend' ? 512 : 208;
       if (
         !img ||
         ![sx, sy, sw, sh, dx, dy, dw, dh].every((v) => typeof v === 'number' && Number.isFinite(v)) ||
-        sw !== 208 ||
-        sh !== 208
+        sw !== expCell ||
+        sh !== expCell
       ) {
         throw new Error(
-          `Invalid Monster drawImage(${activeMonsterDrawKind}): args=[${[sx, sy, sw, sh, dx, dy, dw, dh].join(', ')}]`
+          `Invalid Monster drawImage(${activeMonsterDrawKind}): expected ${expCell}x${expCell}, args=[${[sx, sy, sw, sh, dx, dy, dw, dh].join(', ')}]`
         );
       }
       monsterDrawCounts[activeMonsterDrawKind] = (monsterDrawCounts[activeMonsterDrawKind] || 0) + 1;
     }
   };
 
-  // Mock DOM elements to verify live radial cooldown sweeps (`--cd-deg`), countdown timers & `#app.is-adventure-active`
+  // Mock DOM elements to verify live radial cooldown sweeps (`--cd-deg`), countdown timers, Skill Tree Modal & `#app.is-adventure-active`
   const mockDomMap = new Map();
   const makeMockEl = (id) => {
     const classes = new Set();
     const props = {};
+    const listeners = {};
+    const children = [];
+    let rawHtml = '';
     return {
       id,
-      width: 56,
-      height: 56,
+      className: '',
+      get innerHTML() {
+        return rawHtml;
+      },
+      set innerHTML(v) {
+        rawHtml = String(v ?? '');
+        if (rawHtml === '') children.length = 0;
+      },
+      type: '',
+      disabled: false,
+      width: 64,
+      height: 64,
       textContent: '',
+      children,
+      appendChild(child) {
+        children.push(child);
+        return child;
+      },
+      addEventListener(ev, fn) {
+        listeners[ev] = fn;
+      },
+      click() {
+        if (!this.disabled && typeof listeners.click === 'function') {
+          listeners.click();
+        }
+      },
       style: {
+        width: '',
         transform: '',
         setProperty(k, v) {
           props[k] = v;
@@ -2263,10 +2320,25 @@ for (const [name, Cls] of CLASSES) {
   for (const id of requiredAdvIds) {
     mockDomMap.set(id, makeMockEl(id));
   }
+  // Ensure Colossal Boss assets have naturalWidth = 2048 so Monster.js colossusReady check succeeds in headless Node!
+  const allAssets = PixelForge.initAssets();
+  if (allAssets.archfiend?.colossus) {
+    allAssets.archfiend.colossus.naturalWidth = 2048;
+    allAssets.archfiend.colossus.naturalHeight = 512;
+  }
+
   const origGetElementById = globalThis.document.getElementById;
+  const origCreateElement = globalThis.document.createElement;
   globalThis.document.getElementById = (id) => mockDomMap.get(id) || null;
+  globalThis.document.createElement = (tag) => makeMockEl(tag);
 
   try {
+    // Strictly verify VS Mode Ignis Sol stats remain 100% untouched (`maxHp === 3700`)!
+    const vsBaselineSol = new FireMage(240, 520, 1);
+    if (vsBaselineSol.maxHp !== 3700) {
+      throw new Error(`VS Mode FireMage baseline maxHp must stay 3700, got ${vsBaselineSol.maxHp}`);
+    }
+
     const advGame = createMockGame();
     advGame.gameMode = 'adventure';
     advGame.isAdventureMode = () => advGame.gameMode === 'adventure';
@@ -2296,6 +2368,27 @@ for (const [name, Cls] of CLASSES) {
     sol.game = advGame;
     advGame.leftFighter = sol;
     adv.startCampaign(sol);
+
+    // Verify Adventure RPG Stats & Gauge Isolation on Campaign Start:
+    // - Lv.1 Adventure HP = 1040 (decoupled from 3700 VS HP)
+    // - Starts with 1 SP, 0% Ultimate (`ultCharge`), 0% Super-Ult (`astralCharge`)
+    // - Passive VS gainMana / gainFinisher calls are blocked so ONLY Soul Embers, Combos & Astral Relics charge them!
+    sol.gainMana(55);
+    sol.gainFinisher(55);
+    if (
+      sol.maxHp !== 1040 ||
+      sol.hp !== 1040 ||
+      adv.progression.level !== 1 ||
+      adv.progression.skillPoints !== 1 ||
+      adv.progression.ultCharge !== 0 ||
+      adv.progression.astralCharge !== 0 ||
+      sol.mana !== 0 ||
+      sol.finisherGauge !== 0
+    ) {
+      throw new Error(
+        `Adventure RPG stat isolation failed: hp=${sol.hp}/${sol.maxHp}, lv=${adv.progression.level}, sp=${adv.progression.skillPoints}, mana=${sol.mana}, fin=${sol.finisherGauge}`
+      );
+    }
 
     // Spy on advGame.renderer.ctx.drawImage to ensure ZERO stitched duel-stage PNGs (`arena_*`) are ever blitted in Adventure Mode!
     let stitchedStagePngBlits = 0;
@@ -2339,7 +2432,7 @@ for (const [name, Cls] of CLASSES) {
       const dt = 1 / 30;
       for (let i = 0; i < frames; i++) {
         adv.update(dt);
-        // Step projectiles against opposing team in 3D space (mirrors main.js updateProjectiles)
+        // Step projectiles against opposing team in 3D space (mirrors main.js updateProjectiles incl. Colossal Boss hurtbox)
         for (let pi = advGame.vfx.projectiles.length - 1; pi >= 0; pi--) {
           const p = advGame.vfx.projectiles[pi];
           p.x += (p.vx || 0) * dt;
@@ -2354,7 +2447,10 @@ for (const [name, Cls] of CLASSES) {
             ) {
               continue;
             }
-            if (Math.abs(p.x - t.x) < (p.radius || 24) + 36 && Math.abs(p.y - (t.y - 108)) < 96) {
+            const hitRadX = (p.radius || 24) + (t.isColossalBoss ? 115 : 36);
+            const hitRadY = t.isColossalBoss ? 240 : 96;
+            const centerOffY = t.isColossalBoss ? 148 : 108;
+            if (Math.abs(p.x - t.x) < hitRadX && Math.abs(p.y - (t.y - centerOffY)) < hitRadY) {
               t.takeDamage(p.damage || 30, p.owner, Boolean(p.isCrit), 80, 0);
               hit = true;
               break;
@@ -2382,7 +2478,7 @@ for (const [name, Cls] of CLASSES) {
             activeMonsterDrawKind = null;
             if ((monsterDrawCounts[f.kind] || 0) <= beforeCount) {
               throw new Error(
-                `Monster ${f.name} (kind=${f.kind}, heroId=${f.heroId}) failed to call ctx.drawImage during draw() — normal enemy is invisible!`
+                `Monster ${f.name} (kind=${f.kind}, heroId=${f.heroId}) failed to call ctx.drawImage during draw() — enemy is invisible!`
               );
             }
           }
@@ -2399,47 +2495,87 @@ for (const [name, Cls] of CLASSES) {
       );
     }
 
-    // Verify 3D Touch-Screen Virtual Analog Joystick (`setJoystickVector`): UP, DOWN, Diagonal RIGHT, & Clamp [442..680]!
-    // Hold Wave 1 monsters in place during pure 3D input displacement calibration so claw knockback doesn't skew coordinates.
-    for (const m of w1Monsters) m.stunTimer = 3.0;
+    // Verify Smooth Non-Steep 3D Touch-Screen Virtual Analog Joystick (`setJoystickVector`):
+    // 1) Gentle micro-deflection (`-0.24` Y) moves smoothly by only ~1-6px over 10 frames (NOT steep!)
+    for (const m of w1Monsters) m.stunTimer = 6.0;
+    adv.setJoystickVector(0, -0.24, true);
+    tickAdv(10);
+    const gentleDeltaGy = 561 - sol.groundY;
+    if (gentleDeltaGy <= 0.2 || gentleDeltaGy > 8) {
+      throw new Error(
+        `Expected gentle -0.24 joystick deflection to give smooth fine micro-control (0.2..8px), got deltaGy=${gentleDeltaGy.toFixed(2)}`
+      );
+    }
+
+    // 2) Full UP drag (`-0.95` Y): smooth 2.5D Z-glide into upper lane [442..475]
     adv.setJoystickVector(0, -0.95, true);
     if (
       !mockDomMap.get('adv-joystick-base').classList.contains('is-active') ||
-      !mockDomMap.get('adv-joystick-knob').style.transform.includes('-34px')
+      !mockDomMap.get('adv-joystick-knob').style.transform.includes('-38px')
     ) {
       throw new Error(
-        `Expected #adv-joystick-knob 2D vertical transform on Up drag, got '${mockDomMap.get('adv-joystick-knob').style.transform}'`
+        `Expected #adv-joystick-knob 2D vertical transform (-38px) on Up drag, got '${mockDomMap.get('adv-joystick-knob').style.transform}'`
       );
     }
-    tickAdv(26);
+    tickAdv(36);
     const upperGy = sol.groundY;
-    if (upperGy >= 475 || upperGy < 442) {
-      throw new Error(`Expected joystick UP to move Sol into upper 3D lane [442..474], got groundY=${upperGy}`);
+    if (upperGy > 476 || upperGy < 442) {
+      throw new Error(`Expected joystick UP to move Sol into upper 3D lane [442..476], got groundY=${upperGy}`);
     }
 
+    // 3) Diagonal RIGHT+DOWN drag (`0.85, 0.92`) + smooth deceleration to IDLE
     adv.setJoystickVector(0.85, 0.92, true);
-    tickAdv(36);
+    tickAdv(68);
     const walkedX = sol.x;
     const lowerGy = sol.groundY;
     adv.setJoystickVector(0, 0, false);
-    tickAdv(2);
-    if (walkedX <= 330 || lowerGy <= 610 || lowerGy > 680 || sol.state !== 'IDLE') {
+    tickAdv(6);
+    if (walkedX <= 340 || lowerGy <= 605 || lowerGy > 680 || sol.state !== 'IDLE') {
       throw new Error(
         `Expected diagonal 3D joystick to move Sol right & down within [442..680] and return to IDLE: x=${walkedX}, gy=${lowerGy}, state=${sol.state}`
       );
     }
 
-    // Verify 3D Desktop Keyboard (`KeyW` Up, `KeyA` Left, `Space` Vault Jump, `KeyV` Ward Crouch)!
+    // 4) CRITICAL MULTI-TOUCH CHECK: Simultaneous Drag-Joystick + Hold-Attack (`setJoystickVector` + `setAttackHeld(true)`)!
+    // Dragging the left joystick MUST NEVER block attacking, AND Sol must strafe smoothly in 3D while casting AUTO_ATTACK!
+    {
+      const startMoveAtkX = sol.x;
+      const startMoveAtkGy = sol.groundY;
+      sol.autoCooldown = 0;
+      adv.setJoystickVector(0.88, -0.72, true);
+      adv.setAttackHeld(true);
+      let sawAutoAttack = false;
+      let sawActionRelease = false;
+      for (let f = 0; f < 22; f++) {
+        tickAdv(1);
+        if (sol.state === 'AUTO_ATTACK') {
+          sawAutoAttack = true;
+          if (sol.didActionFrame) sawActionRelease = true;
+        }
+      }
+      const movedWhileAttackingX = sol.x - startMoveAtkX;
+      const movedWhileAttackingZ = startMoveAtkGy - sol.groundY;
+      adv.setAttackHeld(false);
+      adv.setJoystickVector(0, 0, false);
+      tickAdv(20);
+      if (!sawAutoAttack || !sawActionRelease || movedWhileAttackingX < 40 || movedWhileAttackingZ < 14) {
+        throw new Error(
+          `Simultaneous Joystick-Drag + Attack failed: sawAuto=${sawAutoAttack}, sawRelease=${sawActionRelease}, dx=${movedWhileAttackingX.toFixed(1)}, dz=${movedWhileAttackingZ.toFixed(1)}`
+        );
+      }
+    }
+
+    // Verify 3D Desktop Keyboard (`KeyW` Up, `KeyA` Left)!
     const preKbGy = sol.groundY;
     const preKbX = sol.x;
     adv.onKeyDown({ code: 'KeyW', preventDefault() {} });
     adv.onKeyDown({ code: 'KeyA', preventDefault() {} });
-    tickAdv(14);
+    tickAdv(18);
     adv.onKeyUp({ code: 'KeyW' });
     adv.onKeyUp({ code: 'KeyA' });
-    tickAdv(2);
+    tickAdv(6);
     for (const m of w1Monsters) m.stunTimer = 0;
-    if (sol.groundY >= preKbGy - 20 || sol.x >= preKbX - 20) {
+    if (sol.groundY >= preKbGy - 14 || sol.x >= preKbX - 20) {
       throw new Error(
         `Expected WASD KeyW+KeyA to move Sol up & left in 3D space: gy ${preKbGy}->${sol.groundY}, x ${preKbX}->${sol.x}`
       );
@@ -2464,39 +2600,93 @@ for (const [name, Cls] of CLASSES) {
       if (sol.hp !== solHpBefore) {
         throw new Error(`Expected 3D Z-dodging (|640 - 460| = 180px) to avoid melee claw hit, but Sol lost HP!`);
       }
-      // Return Sol to mid lane for rest of campaign
       sol.groundY = 561;
       sol.y = 561;
     }
 
-    // Verify Hold-to-Attack (`setAttackHeld`), Marvel-Arcade Recovery Cancel into Skill, and Independent Jump vs Dodge Cooldowns!
+    // Verify Solar Spirit Skill Gating, Recovery Cancel into Skill, XP Level-Up & Interactive 3-Branch Skill Tree!
     for (const m of adv.getLivingMonsters()) {
       m.hp = 3500;
     }
     const waitIdle = (maxFrames = 90) => {
       for (let f = 0; f < maxFrames && sol.state !== 'IDLE'; f++) tickAdv(1);
     };
+    waitIdle(60);
 
+    // 1) Low Solar Spirit (`10 < 32`) blocks SKILL and flags `.is-low-spirit`
+    adv.progression.spirit = 10;
+    sol.skillCooldown = 0;
+    adv.syncControlDeckUI();
+    if (!mockDomMap.get('adv-btn-skill').classList.contains('is-low-spirit')) {
+      throw new Error('Expected #adv-btn-skill to show .is-low-spirit when Solar Spirit < cost!');
+    }
+    adv.triggerAction('skill');
+    tickAdv(2);
+    if (sol.state === 'SKILL') {
+      throw new Error('Expected SKILL to be gated when Solar Spirit < skillSpiritCost!');
+    }
+
+    // 2) Sufficient Solar Spirit (`85 >= 32`) + Marvel-Arcade AUTO_ATTACK recovery cancel -> casts SKILL & spends Spirit!
+    adv.progression.spirit = 85;
     sol.autoCooldown = 0;
     adv.setAttackHeld(true);
     tickAdv(1);
     adv.setAttackHeld(false);
     if (sol.state !== 'AUTO_ATTACK') throw new Error(`Expected hold-to-attack -> AUTO_ATTACK, got ${sol.state}`);
-    // Advance past fireball release (t >= 0.34s -> 14 frames), then test Marvel-Arcade recovery cancel into SKILL!
     tickAdv(14);
+    const spiritBeforeSkill = adv.progression.spirit;
     sol.skillCooldown = 0;
     adv.triggerAction('skill');
     tickAdv(1);
     if (
       sol.state !== 'SKILL' ||
+      adv.progression.spirit > spiritBeforeSkill - 25 ||
       !mockDomMap.get('adv-btn-skill').classList.contains('is-on-cd') ||
       !mockDomMap.get('adv-cd-text-skill').textContent.endsWith('s')
     ) {
       throw new Error(
-        `Expected manual skill recovery-cancel -> SKILL with live seconds cooldown text, got state=${sol.state}, cdText='${mockDomMap.get('adv-cd-text-skill').textContent}'`
+        `Expected Spirit-funded recovery-cancel -> SKILL with live seconds cooldown, got state=${sol.state}, spirit=${spiritBeforeSkill}->${adv.progression.spirit}, cdText='${mockDomMap.get('adv-cd-text-skill').textContent}'`
       );
     }
     waitIdle(60);
+
+    // 3) XP Level-Up (`Lv.1 -> Lv.2`, `+1 SP`) + Interactive 3-Branch Skill Tree Upgrade & Refund!
+    adv.progression.gainXp(130, sol);
+    if (adv.progression.level !== 2 || adv.progression.skillPoints !== 2 || sol.maxHp !== 1150) {
+      throw new Error(
+        `Expected XP Level-Up to Lv.2 (2 SP, 1150 HP), got lv=${adv.progression.level}, sp=${adv.progression.skillPoints}, maxHp=${sol.maxHp}`
+      );
+    }
+    adv.openSkillTree(false);
+    if (!adv.isSkillTreeOpen || mockDomMap.get('adv-st-grid').children.length !== 3) {
+      throw new Error(`Expected Skill Tree Modal to render 3 branches, got children=${mockDomMap.get('adv-st-grid').children.length}`);
+    }
+    // Click Tier-1 Solar Wrath (`wrath_1`) & Phoenix Aegis (`aegis_1`) DOM upgrade buttons directly!
+    const wrath1Btn = mockDomMap.get('adv-st-grid').children[0].children[1].children[2];
+    const aegis1Btn = mockDomMap.get('adv-st-grid').children[2].children[1].children[2];
+    wrath1Btn.click();
+    aegis1Btn.click();
+    if (
+      adv.progression.getRank('wrath_1') !== 1 ||
+      adv.progression.getRank('aegis_1') !== 1 ||
+      adv.progression.skillPoints !== 0 ||
+      sol.maxHp !== 1390
+    ) {
+      throw new Error(
+        `Skill Tree DOM upgrade failed: wrath_1=${adv.progression.getRank('wrath_1')}, aegis_1=${adv.progression.getRank('aegis_1')}, sp=${adv.progression.skillPoints}, maxHp=${sol.maxHp}`
+      );
+    }
+    // Test Respec (`refundSkillTree`) -> restores 2 SP & 1150 HP, then invest 2 ranks in `wrath_1` to unlock Homing Seeker!
+    adv.refundSkillTree(false);
+    if (adv.progression.skillPoints !== 2 || sol.maxHp !== 1150) {
+      throw new Error(`Skill Tree refund failed: sp=${adv.progression.skillPoints}, maxHp=${sol.maxHp}`);
+    }
+    adv.progression.upgradeNode('wrath_1', sol);
+    adv.progression.upgradeNode('wrath_1', sol);
+    adv.closeSkillTree(false);
+    if (!adv.progression.getComputedStats().hasHomingSeeker || adv.isSkillTreeOpen) {
+      throw new Error('Expected Rank 2 Ignited Volley (`wrath_1`) to unlock Homing Seeker and close modal cleanly!');
+    }
 
     // Verify Jump (`VAULT`) triggers independent `jumpCd` WITHOUT putting Dodge (`BLINK`) on cooldown!
     sol.dodgeCooldown = 0;
@@ -2539,19 +2729,24 @@ for (const [name, Cls] of CLASSES) {
     }
     waitIdle(50);
 
-    sol.mana = sol.maxMana;
+    // Charge Adventure Ultimate (`NOVA`) via Soul Ember energy -> casts ULTIMATE & grants +18% Astral Seal Resonance!
+    adv.progression.gainAdventureUlt(100, sol);
     adv.syncControlDeckUI();
     if (mockDomMap.get('adv-cd-text-overdrive').textContent !== 'MAX') {
       throw new Error(`Expected full Overdrive orb readout 'MAX', got '${mockDomMap.get('adv-cd-text-overdrive').textContent}'`);
     }
     adv.triggerAction('overdrive');
     tickAdv(1);
-    if (sol.state !== 'ULTIMATE') throw new Error(`Expected manual overdrive -> ULTIMATE, got ${sol.state}`);
+    if (sol.state !== 'ULTIMATE' || adv.progression.ultCharge !== 0 || adv.progression.astralCharge < 18) {
+      throw new Error(
+        `Expected Soul-Ember Overdrive -> ULTIMATE + Astral Seal Resonance (>=18%), got state=${sol.state}, ult=${adv.progression.ultCharge}, astral=${adv.progression.astralCharge}`
+      );
+    }
     waitIdle(90);
 
     // Clear Wave 1 (verify monsters die even with testModeUnlimitedHp = true!)
     for (const m of adv.getLivingMonsters()) {
-      m.takeDamage(9999, sol, true, 120, 0);
+      m.takeDamage(19999, sol, true, 120, 0);
     }
     if (adv.getLivingMonsters().length !== 0) {
       throw new Error('Expected Wave 1 ghouls to take mortal damage and die even when testModeUnlimitedHp === true!');
@@ -2565,16 +2760,18 @@ for (const [name, Cls] of CLASSES) {
     // Let Void Cultist & Ghouls execute attacks/sigils for 45 frames to exercise their AI, sprites & floor telegraphs
     tickAdv(45);
     for (const m of adv.getLivingMonsters()) {
-      m.takeDamage(9999, sol, true, 120, 0);
+      m.takeDamage(19999, sol, true, 120, 0);
     }
     tickAdv(4);
-    if (adv.lockActive || !adv.goPromptActive || adv.pickups.length < 2) {
-      throw new Error(`Expected Zone 1 clear to unlock gate, show GO! prompt & drop pickups: lock=${adv.lockActive}, go=${adv.goPromptActive}, pickups=${adv.pickups.length}`);
+    if (adv.lockActive || !adv.goPromptActive || adv.pickups.length < 2 || !adv.pickups.some((p) => p.type === 'relic')) {
+      throw new Error(
+        `Expected Zone 1 clear to unlock gate, show GO! prompt & drop Astral Relic Shard: lock=${adv.lockActive}, go=${adv.goPromptActive}, pickups=${adv.pickups.map((p) => p.type).join(',')}`
+      );
     }
 
     // Walk Sol via analog joystick across pickups and into Zone 2 (`triggerX = 1310`)
     adv.setJoystickVector(1, 0, true);
-    for (let step = 0; step < 180 && adv.zoneIndex < 1; step++) {
+    for (let step = 0; step < 200 && adv.zoneIndex < 1; step++) {
       tickAdv(1);
     }
     adv.setJoystickVector(0, 0, false);
@@ -2582,31 +2779,31 @@ for (const [name, Cls] of CLASSES) {
       throw new Error(`Expected Zone 2 Cursed Starwood encounter with Obsidian Juggernaut, got zone=${adv.zoneIndex}, lock=${adv.lockActive}`);
     }
 
-    // Let Obsidian Juggernaut + Cultists fight for 45 frames, then unleash Sol's Astral Meteor Supreme Ultimate (`TRUE_ULTIMATE`)!
+    // Let Obsidian Juggernaut + Cultists fight for 45 frames, then charge Astral Relic Seals (100%) & unleash `TRUE_ULTIMATE`!
     tickAdv(45);
     sol.setState('IDLE');
-    sol.finisherGauge = sol.maxFinisherGauge;
+    adv.progression.gainAstralRelic(100, sol);
     adv.syncControlDeckUI();
     if (mockDomMap.get('adv-cd-text-ultimate').textContent !== 'ULT') {
       throw new Error(`Expected full Ultimate orb readout 'ULT', got '${mockDomMap.get('adv-cd-text-ultimate').textContent}'`);
     }
     adv.triggerAction('ultimate');
     tickAdv(1);
-    if (sol.state !== 'TRUE_ULTIMATE') {
-      throw new Error(`Expected manual ultimate -> TRUE_ULTIMATE, got ${sol.state}`);
+    if (sol.state !== 'TRUE_ULTIMATE' || adv.progression.astralCharge !== 0) {
+      throw new Error(`Expected Astral-Relic Super-Ultimate -> TRUE_ULTIMATE, got ${sol.state}`);
     }
     tickAdv(150);
     if (advGame.renderer.permanentStageOverride !== 'inferno') {
       throw new Error(`Expected Sol's Astral Meteor Ultimate to scorch Adventure stage into inferno, got ${advGame.renderer.permanentStageOverride}`);
     }
     for (const m of adv.getLivingMonsters()) {
-      m.takeDamage(9999, sol, true, 120, 0);
+      m.takeDamage(29999, sol, true, 120, 0);
     }
     tickAdv(4);
 
     // March into Zone 3 (`triggerX = 2510`) -> Elite Brute + Elite Cultist + Ghouls!
     adv.setJoystickVector(1, 0, true);
-    for (let step = 0; step < 220 && adv.zoneIndex < 2; step++) {
+    for (let step = 0; step < 240 && adv.zoneIndex < 2; step++) {
       tickAdv(1);
     }
     adv.setJoystickVector(0, 0, false);
@@ -2615,13 +2812,13 @@ for (const [name, Cls] of CLASSES) {
     }
     tickAdv(35);
     for (const m of adv.getLivingMonsters()) {
-      m.takeDamage(9999, sol, true, 120, 0);
+      m.takeDamage(29999, sol, true, 120, 0);
     }
     tickAdv(4);
 
-    // March through Sanctuary Cache into Zone 4 Throne of the Black Pit (`triggerX = 3720`) -> Boss Warning -> Archfiend Malphas!
+    // March through Sanctuary Cache into Zone 4 Throne of the Black Pit (`triggerX = 3720`) -> Boss Warning -> Colossal Behemoth Malphas!
     adv.setJoystickVector(1, 0, true);
-    for (let step = 0; step < 240 && adv.zoneIndex < 3; step++) {
+    for (let step = 0; step < 260 && adv.zoneIndex < 3; step++) {
       tickAdv(1);
     }
     adv.setJoystickVector(0, 0, false);
@@ -2629,55 +2826,82 @@ for (const [name, Cls] of CLASSES) {
       throw new Error(`Expected Zone 4 Boss Warning banner, got zone=${adv.zoneIndex}, pending=${adv.bossSpawnPending}, timer=${adv.bossWarningTimer}`);
     }
 
-    // Tick through 1.85s Boss Warning -> Malphas spawns!
+    // Tick through 1.85s Boss Warning -> Giant Left-Side Colossal Boss (`BEHEMOTH MALPHAS`) rises on the LEFT side (`x = 3865`)!
     tickAdv(62);
     const boss = adv.bossEntity;
-    if (!boss || !(boss instanceof ArchfiendBoss) || boss.isDead || boss.bossPhase !== 1) {
-      throw new Error(`Expected ArchfiendBoss Malphas in Phase 1, got ${boss?.name} phase=${boss?.bossPhase}`);
+    if (
+      !boss ||
+      !(boss instanceof ArchfiendBoss) ||
+      !boss.isColossalBoss ||
+      boss.isDead ||
+      boss.bossPhase !== 1 ||
+      boss.x !== 3865 ||
+      boss.facing !== 1 ||
+      sol.x < 3990 ||
+      boss.x >= sol.x
+    ) {
+      throw new Error(
+        `Expected Giant Left-Side Colossal Boss Malphas at x=3865 facing RIGHT (+1) with Sol on right (>=3990), got bossX=${boss?.x}, facing=${boss?.facing}, solX=${sol.x}, phase=${boss?.bossPhase}`
+      );
     }
     if (sol.fx.overrideCenterWorldX === null) {
       throw new Error('Expected Renderer.render to sync sol.fx.overrideCenterWorldX in Adventure Mode for 4800px shader visibility!');
     }
 
-    // Exercise Boss Phase 1 attacks
-    tickAdv(50);
-
-    // Drop Boss below 65% HP -> Trigger Phase 2 (Dread Wing Divebomb + 2 Summoned Ashfang Vanguards + Shrine Pickups!)
-    boss.isInvulnerable = false;
-    boss.takeDamage(Math.ceil(boss.maxHp * 0.40), sol, true, 90, 0);
-    tickAdv(55);
-    if (boss.bossPhase < 2) {
-      throw new Error(`Expected Archfiend Malphas to transition to Phase 2 at <=65% HP, got phase=${boss.bossPhase}, hp=${boss.hp}/${boss.maxHp}`);
-    }
-
-    // Drop Boss below 30% HP -> Trigger Phase 3 (5-Pillar Black Pit Apocalypse + Vulnerable Punish Window!)
-    boss.isInvulnerable = false;
-    boss.hp = Math.floor(boss.maxHp * 0.26);
-    tickAdv(95);
-    if (boss.bossPhase !== 3) {
-      throw new Error(`Expected Archfiend Malphas to transition to Phase 3 at <=30% HP, got phase=${boss.bossPhase}`);
-    }
-
-    // Vanquish Archfiend Malphas -> Verify Campaign Clear, Minion Banish & Sol Row 9 VICTORY Pose!
-    boss.isInvulnerable = false;
-    boss.takeDamage(99999, sol, true, 160, 0);
-    tickAdv(15);
-    if (!advGame.isMatchOver || adv.getLivingMonsters().length !== 0 || sol.state !== 'VICTORY') {
-      throw new Error(
-        `Expected Campaign Victory & Sol Row 9 VICTORY pose on Malphas KO: isMatchOver=${advGame.isMatchOver}, living=${adv.getLivingMonsters().length}, solState=${sol.state}`
-      );
-    }
-
-    // Verify all 3 normal monster archetypes AND Archfiend Boss logged real 208x208 sprite blits!
-    for (const kind of ['ghoul', 'cultist', 'brute', 'archfiend']) {
-      if ((monsterDrawCounts[kind] || 0) < 20) {
+    // Verify Exposed Molten Heart-Core Punish Window (`vulnerableTimer > 0`) grants +45% bonus Adventure damage!
+    {
+      boss.vulnerableTimer = 0;
+      const normalScaleDmg = adv.progression.scaleOutgoingDamage(100, sol, boss);
+      boss.vulnerableTimer = 2.0;
+      const corePunishDmg = adv.progression.scaleOutgoingDamage(100, sol, boss);
+      boss.vulnerableTimer = 0;
+      if (corePunishDmg < Math.round(normalScaleDmg * 1.4)) {
         throw new Error(
-          `Expected >=20 real 208x208 sprite drawImage blits for '${kind}', got ${monsterDrawCounts[kind] || 0}`
+          `Expected Colossal Boss Exposed Heart-Core to grant +45% punish damage: normal=${normalScaleDmg}, vuln=${corePunishDmg}`
         );
       }
     }
 
-    // Verify Optional Auto-Play AI Toggle & Clean Teardown (`stopCampaign` restores 1200px Arena)
+    // Exercise Colossal Boss Phase 1 Siege-Claw / Fist / Hellfire attacks
+    tickAdv(50);
+
+    // Drop Colossal Boss below 65% HP -> Trigger Phase 2 (Cataclysmic Siege + Summoned Vanguards + Astral Relic Drop!)
+    boss.isInvulnerable = false;
+    boss.hp = Math.floor(boss.maxHp * 0.60);
+    tickAdv(55);
+    if (boss.bossPhase < 2) {
+      throw new Error(`Expected Colossal Malphas to transition to Phase 2 at <=65% HP, got phase=${boss.bossPhase}, hp=${boss.hp}/${boss.maxHp}`);
+    }
+
+    // Drop Colossal Boss below 30% HP -> Trigger Phase 3 (5-Fissure Black Pit Apocalypse + Exposed Heart-Core Slump!)
+    boss.isInvulnerable = false;
+    boss.hp = Math.floor(boss.maxHp * 0.26);
+    tickAdv(95);
+    if (boss.bossPhase !== 3) {
+      throw new Error(`Expected Colossal Malphas to transition to Phase 3 at <=30% HP, got phase=${boss.bossPhase}`);
+    }
+
+    // Vanquish Colossal Behemoth Malphas -> Verify Campaign Clear, Minion Banish & Sol Row 9 VICTORY Pose!
+    boss.isInvulnerable = false;
+    boss.hp = 10;
+    boss.takeDamage(99999, sol, true, 160, 0);
+    tickAdv(15);
+    if (!advGame.isMatchOver || adv.getLivingMonsters().length !== 0 || sol.state !== 'VICTORY') {
+      throw new Error(
+        `Expected Campaign Victory & Sol Row 9 VICTORY pose on Colossal Malphas KO: isMatchOver=${advGame.isMatchOver}, living=${adv.getLivingMonsters().length}, solState=${sol.state}`
+      );
+    }
+
+    // Verify all 3 normal monster archetypes (208x208) AND Giant Left-Side Colossal Boss (512x512) logged real sprite blits!
+    for (const kind of ['ghoul', 'cultist', 'brute', 'archfiend']) {
+      if ((monsterDrawCounts[kind] || 0) < 20) {
+        throw new Error(
+          `Expected >=20 real sprite drawImage blits for '${kind}', got ${monsterDrawCounts[kind] || 0}`
+        );
+      }
+    }
+
+    // Verify Optional Auto-Play AI Toggle & Clean Teardown (`stopCampaign` restores 1200px Arena AND restores 3700 VS maxHp!)
     advGame.isMatchOver = false;
     const autoSol = new FireMage(240, advGame.renderer.groundY, 1);
     autoSol.game = advGame;
@@ -2689,9 +2913,12 @@ for (const [name, Cls] of CLASSES) {
     if (
       advGame.renderer.worldWidth !== 1200 ||
       advGame.renderer.adventureMode !== false ||
+      autoSol.maxHp !== 3700 ||
       mockDomMap.get('app').classList.contains('is-adventure-active')
     ) {
-      throw new Error(`Expected stopCampaign() to restore worldWidth=1200 & adventureMode=false, got ww=${advGame.renderer.worldWidth}`);
+      throw new Error(
+        `Expected stopCampaign() to restore worldWidth=1200, adventureMode=false & VS maxHp=3700, got ww=${advGame.renderer.worldWidth}, maxHp=${autoSol.maxHp}`
+      );
     }
 
     if (stitchedStagePngBlits > 0) {
@@ -2703,7 +2930,7 @@ for (const [name, Cls] of CLASSES) {
       throw new Error(`Forbidden ctx.rotate() called ${advTrack.rotateCalls} times during Adventure Mode rendering!`);
     }
 
-    // 17D. Verify Mobile Landscape Viewport Sizing (Native Hardware Landscape 844x390 & Portrait-Locked CSS Landscape 390x844 -> 844x390)
+    // 17D. Verify Default Portrait Mobile (390x844 stays 390x844 when Landscape OFF) AND Opt-In Mobile Landscape (844x390)
     const origWinW = globalThis.window.innerWidth;
     const origWinH = globalThis.window.innerHeight;
     const origDocEl = globalThis.document.documentElement;
@@ -2714,6 +2941,21 @@ for (const [name, Cls] of CLASSES) {
       }
     };
     try {
+      // Case 0: Default Portrait Mobile (390x844, `is-css-rotated-landscape` NOT active by default!)
+      globalThis.window.innerWidth = 390;
+      globalThis.window.innerHeight = 844;
+      const portCanvas = {
+        width: 390,
+        height: 844,
+        getContext: () => createMockCtx()
+      };
+      const portRenderer = new Renderer(portCanvas);
+      if (portRenderer.width !== 390 || portRenderer.height !== 844 || portRenderer.isMobileLandscape) {
+        throw new Error(
+          `Expected default portrait phone (390x844) to stay portrait with isMobileLandscape=false, got ${portRenderer.width}x${portRenderer.height}`
+        );
+      }
+
       // Case 1: Native Hardware Mobile Landscape (844x390)
       globalThis.window.innerWidth = 844;
       globalThis.window.innerHeight = 390;
@@ -2738,7 +2980,7 @@ for (const [name, Cls] of CLASSES) {
         );
       }
 
-      // Case 2: Portrait-Locked Phone (390x844) with `is-css-rotated-landscape` active -> Logical 844x390!
+      // Case 2: Portrait-Locked Phone (390x844) when user opts in (`is-css-rotated-landscape` active) -> Logical 844x390!
       globalThis.window.innerWidth = 390;
       globalThis.window.innerHeight = 844;
       rootClasses.add('is-css-rotated-landscape');
@@ -2755,10 +2997,11 @@ for (const [name, Cls] of CLASSES) {
     }
 
     console.log(
-      `[PASS] Adventure Mode + Mobile Landscape + Sol 64x64 HD-2D Icons: 7/7 Sol sheet icons verified, native & CSS-rotated 844x390 landscape verified, UP/DOWN/LEFT/RIGHT 3D movement verified, 0 stitched PNG blits, all monsters visible (ghoul=${monsterDrawCounts.ghoul}, cultist=${monsterDrawCounts.cultist}, brute=${monsterDrawCounts.brute}, boss=${monsterDrawCounts.archfiend} blits), 0 ctx.rotate (${adv.score} pts)!`
+      `[PASS] Adventure Mode v2 (Move+Attack Multi-Touch + Non-Steep 3D Joystick + Portrait Default + Left-Side Colossal Boss + RPG Stats & 3-Branch Skill Tree): VS stats 100% preserved (3700 HP), simultaneous move+attack verified, Colossal Malphas (512x512 @ x=3865 LEFT) verified, all monsters visible (ghoul=${monsterDrawCounts.ghoul}, cultist=${monsterDrawCounts.cultist}, brute=${monsterDrawCounts.brute}, colossusBoss=${monsterDrawCounts.archfiend} blits), 0 ctx.rotate (${adv.score} pts)!`
     );
   } finally {
     globalThis.document.getElementById = origGetElementById;
+    globalThis.document.createElement = origCreateElement;
   }
 }
 

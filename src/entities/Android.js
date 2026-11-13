@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps84';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps84';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps84';
+import { Fighter } from './Fighter.js?v=30fps85';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps85';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps85';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps84';
+} from '../engine/shaders/cyberShaders.js?v=30fps85';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 
@@ -64,11 +64,11 @@ export class Android extends Fighter {
     // Ensure browser always fetches latest VEX-09 sprite & VFX sheets
     if (typeof Image !== 'undefined') {
       const androidAssets = PixelForge.initAssets()?.android;
-      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps84')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps84';
+      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps85')) {
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps85';
       }
-      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps84')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps84';
+      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps85')) {
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps85';
       }
     }
 

@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps84';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps84';
+import { PixelForge } from './PixelForge.js?v=30fps85';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps85';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -433,8 +433,11 @@ export class Renderer {
       const player = this.adventureMode ? pool.find((f) => f.team === 1) || pool[0] : null;
       const framePool =
         this.adventureMode && player
-          ? pool.filter((f) => f === player || Math.abs(f.x - player.x) <= 920)
+          ? pool.filter((f) => f === player || f.isColossalBoss || Math.abs(f.x - player.x) <= 920)
           : pool;
+      const colossalBoss = this.adventureMode
+        ? framePool.find((f) => f.isColossalBoss && !f.isDead)
+        : null;
 
       let minX = framePool[0].x;
       let maxX = framePool[0].x;
@@ -449,14 +452,23 @@ export class Renderer {
         const skyFocus = Math.max(0, f.cameraAirLift || 0);
         if (skyFocus > maxSkyFocus) maxSkyFocus = skyFocus;
       }
+      if (colossalBoss) {
+        const bossLeftEdge = (colossalBoss.anchorX || colossalBoss.x) - 195;
+        if (bossLeftEdge < minX) minX = bossLeftEdge;
+        const rightEdge = Math.max(player ? player.x + 110 : 4380, 4380);
+        if (rightEdge > maxX) maxX = rightEdge;
+      }
       const midX =
         this.adventureMode && player
-          ? framePool.length > 1
-            ? player.x * 0.56 + ((minX + maxX) * 0.5) * 0.44
-            : player.x + player.facing * 95
+          ? colossalBoss
+            ? ((colossalBoss.anchorX || colossalBoss.x) - 185 + (player.x + 95)) * 0.5
+            : framePool.length > 1
+              ? player.x * 0.56 + ((minX + maxX) * 0.5) * 0.44
+              : player.x + player.facing * 95
           : (minX + maxX) * 0.5;
-      const rawHorizSpan = Math.abs(maxX - minX) + (validFighters.length > 2 ? 380 : 340);
-      const horizSpan = this.adventureMode ? Math.min(1180, Math.max(820, rawHorizSpan)) : rawHorizSpan;
+      const rawHorizSpan =
+        Math.abs(maxX - minX) + (colossalBoss ? 180 : validFighters.length > 2 ? 380 : 340);
+      const horizSpan = this.adventureMode ? Math.min(1220, Math.max(820, rawHorizSpan)) : rawHorizSpan;
       const dist = Math.max(horizSpan, maxAirLift * 1.48 + 340);
 
       const maxSpanW = this.adventureMode ? 1280 : this.worldWidth;
@@ -471,8 +483,9 @@ export class Renderer {
             ? 760
             : 720);
       let targetZoom = Math.min(fitScaleX, fitScaleY * 1.15);
+      const minZoomCap = colossalBoss ? 0.44 : 0.52;
       const maxZoomCap = this.isMobileLandscape ? 0.92 : this.isMobile ? 0.85 : 1.12;
-      targetZoom = Math.max(0.52, Math.min(maxZoomCap, targetZoom));
+      targetZoom = Math.max(minZoomCap, Math.min(maxZoomCap, targetZoom));
 
       const anchorGroundY =
         this.adventureMode && player && Number.isFinite(player.groundY)
@@ -481,7 +494,8 @@ export class Renderer {
             ? 561
             : this.groundY;
       let targetX = midX;
-      let targetY = anchorGroundY - 95 - Math.min(285, maxAirLift * 0.62);
+      let targetY =
+        anchorGroundY - (colossalBoss ? 112 : 95) - Math.min(285, maxAirLift * 0.62);
 
       // Wide-cosmos framing for grounded celestial finishers (e.g. Ignis Sol's Heavensfall Meteor)
       // Keeps the arena floor (`groundY`) visible near the bottom while revealing `groundY - 720+` high in the sky!
@@ -518,6 +532,9 @@ export class Renderer {
       }
 
       const halfViewW = (this.width * 0.5) / targetZoom;
+      if (this.adventureMode && colossalBoss && player) {
+        targetX = Math.max(targetX, player.x + 85 - halfViewW);
+      }
       if (this.adventureMode) {
         const camMin = Number.isFinite(this.adventureCamMinX) ? this.adventureCamMinX : 0;
         const camMax = Number.isFinite(this.adventureCamMaxX)
@@ -611,7 +628,7 @@ export class Renderer {
     if (this.adventureMode) {
       // Per-fighter local stone-road sheen anchored to each entity's own 2.5D depth `f.groundY`
       for (const f of fighters) {
-        if (f.isBenched || f.isFullyBurrowed) continue;
+        if (f.isBenched || f.isFullyBurrowed || f.isColossalBoss) continue;
         const fGy = Number.isFinite(f.groundY) ? f.groundY : gy;
         ctx.save();
         ctx.beginPath();

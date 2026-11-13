@@ -1,20 +1,20 @@
-import { Renderer } from './engine/Renderer.js?v=30fps84';
-import { VFXManager } from './engine/VFXManager.js?v=30fps84';
-import { PixelForge } from './engine/PixelForge.js?v=30fps84';
-import { AudioManager } from './engine/AudioManager.js?v=30fps84';
-import { Fighter } from './entities/Fighter.js?v=30fps84';
-import { Warrior } from './entities/Warrior.js?v=30fps84';
-import { FireMage } from './entities/FireMage.js?v=30fps84';
-import { Archer } from './entities/Archer.js?v=30fps84';
-import { Priestess } from './entities/Priestess.js?v=30fps84';
-import { Reaper } from './entities/Reaper.js?v=30fps84';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps84';
-import { Titan } from './entities/Titan.js?v=30fps84';
-import { Ronin } from './entities/Ronin.js?v=30fps84';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps84';
-import { IceMage } from './entities/IceMage.js?v=30fps84';
-import { Android } from './entities/Android.js?v=30fps84';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps84';
+import { Renderer } from './engine/Renderer.js?v=30fps85';
+import { VFXManager } from './engine/VFXManager.js?v=30fps85';
+import { PixelForge } from './engine/PixelForge.js?v=30fps85';
+import { AudioManager } from './engine/AudioManager.js?v=30fps85';
+import { Fighter } from './entities/Fighter.js?v=30fps85';
+import { Warrior } from './entities/Warrior.js?v=30fps85';
+import { FireMage } from './entities/FireMage.js?v=30fps85';
+import { Archer } from './entities/Archer.js?v=30fps85';
+import { Priestess } from './entities/Priestess.js?v=30fps85';
+import { Reaper } from './entities/Reaper.js?v=30fps85';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps85';
+import { Titan } from './entities/Titan.js?v=30fps85';
+import { Ronin } from './entities/Ronin.js?v=30fps85';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps85';
+import { IceMage } from './entities/IceMage.js?v=30fps85';
+import { Android } from './entities/Android.js?v=30fps85';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps85';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -496,8 +496,8 @@ class Game {
     }
     const landscapeParam = params.get('landscape');
     this.forceMobileLandscapeParam = landscapeParam === '1' || landscapeParam === 'true';
-    this.mobileLandscapeEnabled =
-      landscapeParam === '0' || landscapeParam === 'false' ? false : true;
+    // Portrait / native device orientation is the default; Landscape is opt-in via button or ?landscape=1
+    this.mobileLandscapeEnabled = Boolean(this.forceMobileLandscapeParam);
 
     this.ensureDistinctTeamPartners();
 
@@ -1243,25 +1243,72 @@ class Game {
     this.btnReset.addEventListener('click', () => this.resetMatch());
     this.btnPlayAgain.addEventListener('click', () => this.resetMatch());
 
-    // Adventure Mode Mobile Action-RPG HUD: Multi-Touch Analog Joystick + Right-Side Skill Cluster
+    // Adventure Mode Mobile Action-RPG HUD: Independent Multi-Touch Joystick + Simultaneous Right-Side Skill Cluster
     const joyZone = document.getElementById('adv-joystick-zone');
     const joyBase = document.getElementById('adv-joystick-base');
     if (joyZone) {
+      let activeJoyTouchId = null;
       let activeJoyPointerId = null;
-      const updateJoyFromEvent = (e) => {
+      const updateJoyFromCoords = (clientX, clientY) => {
         const refEl = joyBase || joyZone;
         const rect = refEl.getBoundingClientRect();
         const cx = rect.left + rect.width * 0.5;
         const cy = rect.top + rect.height * 0.5;
-        const maxRadius = Math.max(24, Math.min(rect.width, rect.height) * 0.36);
-        const rawDx = e.clientX - cx;
-        const rawDy = e.clientY - cy;
+        const maxRadius = Math.max(36, Math.min(rect.width, rect.height) * 0.44);
+        const rawDx = clientX - cx;
+        const rawDy = clientY - cy;
         const isCssRotated = document.documentElement.classList.contains('is-css-rotated-landscape');
         const dx = (isCssRotated ? rawDy : rawDx) / maxRadius;
         const dy = (isCssRotated ? -rawDx : rawDy) / maxRadius;
         this.adventure?.setJoystickVector(dx, dy, true);
       };
-      const releaseJoy = (e) => {
+
+      // Dedicated TouchEvent multi-touch tracking by touch.identifier (zero interference with right-hand Attack/Skills!)
+      joyZone.addEventListener(
+        'touchstart',
+        (e) => {
+          if (activeJoyTouchId !== null) return;
+          const t = e.changedTouches?.[0];
+          if (!t) return;
+          e.preventDefault();
+          activeJoyTouchId = t.identifier;
+          updateJoyFromCoords(t.clientX, t.clientY);
+        },
+        { passive: false }
+      );
+      joyZone.addEventListener(
+        'touchmove',
+        (e) => {
+          if (activeJoyTouchId === null) return;
+          const touches = e.changedTouches || [];
+          for (let i = 0; i < touches.length; i++) {
+            if (touches[i].identifier === activeJoyTouchId) {
+              e.preventDefault();
+              updateJoyFromCoords(touches[i].clientX, touches[i].clientY);
+              break;
+            }
+          }
+        },
+        { passive: false }
+      );
+      const releaseJoyTouch = (e) => {
+        if (activeJoyTouchId === null) return;
+        const touches = e.changedTouches || [];
+        for (let i = 0; i < touches.length; i++) {
+          if (touches[i].identifier === activeJoyTouchId) {
+            activeJoyTouchId = null;
+            activeJoyPointerId = null;
+            this.adventure?.setJoystickVector(0, 0, false);
+            break;
+          }
+        }
+      };
+      joyZone.addEventListener('touchend', releaseJoyTouch, { passive: false });
+      joyZone.addEventListener('touchcancel', releaseJoyTouch, { passive: false });
+
+      // PointerEvent fallback for desktop mouse/pen/synthetic pointers
+      const releaseJoyPointer = (e) => {
+        if (e?.pointerType === 'touch' && activeJoyTouchId !== null) return;
         if (
           e &&
           activeJoyPointerId !== null &&
@@ -1274,6 +1321,7 @@ class Game {
         this.adventure?.setJoystickVector(0, 0, false);
       };
       joyZone.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') return;
         if (activeJoyPointerId !== null && activeJoyPointerId !== e.pointerId) return;
         e.preventDefault();
         activeJoyPointerId = e.pointerId;
@@ -1282,46 +1330,78 @@ class Game {
         } catch (_) {
           // Pointer capture optional in synthetic/headless environments
         }
-        updateJoyFromEvent(e);
+        updateJoyFromCoords(e.clientX, e.clientY);
       });
       joyZone.addEventListener('pointermove', (e) => {
-        if (e.pointerId !== activeJoyPointerId) return;
+        if (e.pointerType === 'touch' || e.pointerId !== activeJoyPointerId) return;
         e.preventDefault();
-        updateJoyFromEvent(e);
+        updateJoyFromCoords(e.clientX, e.clientY);
       });
-      joyZone.addEventListener('pointerup', releaseJoy);
-      joyZone.addEventListener('pointercancel', releaseJoy);
-      joyZone.addEventListener('lostpointercapture', releaseJoy);
+      joyZone.addEventListener('pointerup', releaseJoyPointer);
+      joyZone.addEventListener('pointercancel', releaseJoyPointer);
+      joyZone.addEventListener('lostpointercapture', releaseJoyPointer);
     }
 
-    // Primary Anchor Attack Button (supports multi-touch hold-to-attack + instant tap)
+    // Primary Anchor Attack Button (independent multi-touch Set — works seamlessly while dragging left joystick!)
     const advAttackBtn = document.getElementById('adv-btn-attack');
     if (advAttackBtn) {
-      const releaseAttack = () => {
-        advAttackBtn.classList.remove('is-pressed');
-        this.adventure?.setAttackHeld(false);
+      const activeAttackTouchIds = new Set();
+      const activeAttackPointerIds = new Set();
+      const syncAttackHeldState = () => {
+        const held = activeAttackTouchIds.size > 0 || activeAttackPointerIds.size > 0;
+        advAttackBtn.classList.toggle('is-pressed', held);
+        this.adventure?.setAttackHeld(held);
       };
+
+      advAttackBtn.addEventListener(
+        'touchstart',
+        (e) => {
+          e.preventDefault();
+          const touches = e.changedTouches || [];
+          for (let i = 0; i < touches.length; i++) {
+            activeAttackTouchIds.add(touches[i].identifier);
+          }
+          syncAttackHeldState();
+          this.adventure?.triggerAction('attack');
+        },
+        { passive: false }
+      );
+      const endAttackTouch = (e) => {
+        const touches = e.changedTouches || [];
+        for (let i = 0; i < touches.length; i++) {
+          activeAttackTouchIds.delete(touches[i].identifier);
+        }
+        syncAttackHeldState();
+      };
+      advAttackBtn.addEventListener('touchend', endAttackTouch, { passive: false });
+      advAttackBtn.addEventListener('touchcancel', endAttackTouch, { passive: false });
+
       advAttackBtn.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') return;
         e.preventDefault();
-        advAttackBtn.classList.add('is-pressed');
+        activeAttackPointerIds.add(e.pointerId ?? 'mouse');
         try {
           advAttackBtn.setPointerCapture?.(e.pointerId);
         } catch (_) {
           // Optional pointer capture
         }
-        this.adventure?.setAttackHeld(true);
+        syncAttackHeldState();
         this.adventure?.triggerAction('attack');
       });
-      advAttackBtn.addEventListener('pointerup', releaseAttack);
-      advAttackBtn.addEventListener('pointercancel', releaseAttack);
-      advAttackBtn.addEventListener('lostpointercapture', releaseAttack);
-      advAttackBtn.addEventListener('pointerleave', releaseAttack);
+      const endAttackPointer = (e) => {
+        if (e?.pointerType === 'touch') return;
+        activeAttackPointerIds.delete(e?.pointerId ?? 'mouse');
+        syncAttackHeldState();
+      };
+      advAttackBtn.addEventListener('pointerup', endAttackPointer);
+      advAttackBtn.addEventListener('pointercancel', endAttackPointer);
+      advAttackBtn.addEventListener('lostpointercapture', endAttackPointer);
       advAttackBtn.addEventListener('click', () => {
         this.adventure?.triggerAction('attack');
       });
     }
 
-    // Right-Side Circular Skill & Tactical Orbs
+    // Right-Side Circular Skill & Tactical Orbs (independent multi-touch — zero collision with left joystick!)
     const advActionMap = {
       'adv-btn-dodge': 'dodge',
       'adv-btn-skill': 'skill',
@@ -1334,18 +1414,48 @@ class Game {
       const btn = document.getElementById(id);
       if (!btn) return;
       const clearPress = () => btn.classList.remove('is-pressed');
+      btn.addEventListener(
+        'touchstart',
+        (e) => {
+          e.preventDefault();
+          btn.classList.add('is-pressed');
+          this.adventure?.triggerAction(act);
+        },
+        { passive: false }
+      );
+      btn.addEventListener('touchend', clearPress, { passive: false });
+      btn.addEventListener('touchcancel', clearPress, { passive: false });
       btn.addEventListener('pointerdown', (e) => {
+        if (e.pointerType === 'touch') return;
         e.preventDefault();
         btn.classList.add('is-pressed');
         this.adventure?.triggerAction(act);
       });
       btn.addEventListener('pointerup', clearPress);
       btn.addEventListener('pointercancel', clearPress);
-      btn.addEventListener('pointerleave', clearPress);
       btn.addEventListener('click', () => {
         this.adventure?.triggerAction(act);
       });
     });
+
+    const advBtnSkillTree = document.getElementById('adv-btn-skilltree');
+    if (advBtnSkillTree) {
+      advBtnSkillTree.addEventListener('click', () => {
+        this.adventure?.toggleSkillTree(true);
+      });
+    }
+    const advStClose = document.getElementById('adv-st-close');
+    if (advStClose) {
+      advStClose.addEventListener('click', () => {
+        this.adventure?.closeSkillTree(true);
+      });
+    }
+    const advStRefund = document.getElementById('adv-st-refund');
+    if (advStRefund) {
+      advStRefund.addEventListener('click', () => {
+        this.adventure?.refundSkillTree(true);
+      });
+    }
 
     const advBtnAutoPlay = document.getElementById('adv-btn-autoplay');
     if (advBtnAutoPlay) {
@@ -1403,7 +1513,9 @@ class Game {
 
     const isMobileDevice = this.isMobileViewportDevice();
     const cssRotated = Boolean(isMobileDevice && this.mobileLandscapeEnabled && physW < physH);
-    const activeLandscape = Boolean(isMobileDevice && (this.mobileLandscapeEnabled || physW >= physH));
+    const activeLandscape = Boolean(
+      isMobileDevice && (this.mobileLandscapeEnabled || (physW >= physH && physH <= 540))
+    );
 
     root.classList.toggle('is-mobile-device', isMobileDevice);
     root.classList.toggle('is-css-rotated-landscape', cssRotated);
@@ -2865,15 +2977,19 @@ class Game {
         if (!cand || cand.isDead || cand.isBenched) continue;
         if (
           isAdv &&
+          !cand.isColossalBoss &&
           (p.type === 'forge_wave' || p.type === 'blade_wave') &&
           Math.abs(p.vy || 0) < 25 &&
           Math.abs((cand.groundY || cand.y) - (p.owner?.groundY || cand.groundY)) > 58
         ) {
           continue;
         }
+        const hitRadX = p.radius + (cand.isColossalBoss ? 115 : 36);
+        const hitRadY = p.radius + (cand.isColossalBoss ? 225 : 68);
+        const centerOffsetY = cand.isColossalBoss ? 148 : 108;
         if (
-          Math.abs(p.x - cand.x) < p.radius + 36 &&
-          Math.abs(p.y - (cand.y - 108)) < p.radius + 68
+          Math.abs(p.x - cand.x) < hitRadX &&
+          Math.abs(p.y - (cand.y - centerOffsetY)) < hitRadY
         ) {
           hitTarget = cand;
           break;
@@ -2899,7 +3015,8 @@ class Game {
           this.vfx.spawnGlyphBurst(p.x, impGy - 50, 8, 'arcane');
 
           for (const cand of enemies) {
-            if (cand && !cand.isDead && !cand.isBenched && Math.abs(cand.x - p.x) < 230) {
+            const meteorRad = cand?.isColossalBoss ? 320 : 230;
+            if (cand && !cand.isDead && !cand.isBenched && Math.abs(cand.x - p.x) < meteorRad) {
               cand.takeDamage(p.damage, p.owner, true, 160, -240);
               this.renderer.triggerHitStop(0.075);
             }
@@ -3029,6 +3146,10 @@ class Game {
   }
 
   updateHUD() {
+    const isAdv = this.isAdventureMode();
+    const advProg = isAdv ? this.adventure?.progression : null;
+    const advStats = advProg ? advProg.getComputedStats() : null;
+
     const sync = (els, f, partner) => {
       if (!els || !f) return;
       const hpPct = Math.max(0, (f.hp / f.maxHp) * 100);
@@ -3041,12 +3162,14 @@ class Game {
 
       els.manaBar.style.width = `${manaPct}%`;
       els.ultLabel.textContent = f.isBoss
-        ? `PHASE ${f.bossPhase || 1} / 3`
+        ? `PHASE ${f.bossPhase || 1} / 3${(f.vulnerableTimer || 0) > 0 ? ' • CORE EXPOSED!' : ''}`
         : f.isMonster
           ? f.isElite
             ? '★ ELITE MONSTER'
             : 'ABYSSAL HORDE'
-          : `OVERDRIVE ${Math.floor(manaPct)}%`;
+          : isAdv
+            ? `NOVA ${Math.floor(manaPct)}% (EMBERS)`
+            : `OVERDRIVE ${Math.floor(manaPct)}%`;
 
       if (els.finisherFrame && els.finisherBar && els.finisherLabel) {
         if (f.hasTrueUltimate) {
@@ -3057,10 +3180,13 @@ class Game {
               : Math.min(100, Math.max(0, (f.finisherGauge / Math.max(1, f.maxFinisherGauge)) * 100));
           els.finisherBar.style.width = `${finPct}%`;
           els.finisherFrame.classList.toggle('finisher-ready', finPct >= 99 || f.state === 'TRUE_ULTIMATE');
+          const seals = Math.min(3, Math.floor((finPct + 0.5) / 33.33));
           els.finisherLabel.textContent =
             f.state === 'TRUE_ULTIMATE'
               ? `★ ULTIMATE: ${f.trueUltName || 'SWORD OF JUSTICE'}! ★`
-              : `★ ULTIMATE ${Math.floor(finPct)}% (${Math.min(3, Math.floor((finPct + 0.5) / 33.33))}/3 OD) ★`;
+              : isAdv
+                ? `★ METEOR ${Math.floor(finPct)}% (${seals}/3 SEALS) ★`
+                : `★ ULTIMATE ${Math.floor(finPct)}% (${seals}/3 OD) ★`;
         } else {
           els.finisherFrame.classList.add('hidden');
         }
@@ -3074,7 +3200,9 @@ class Game {
           : this.adventure?.totalWaveLabel || f.skillName
         : f.skillCooldown > 0.05
           ? `${f.skillName} ${f.skillCooldown.toFixed(1)}s`
-          : `${f.skillName} READY`;
+          : isAdv && advProg && advStats && advProg.spirit + 0.01 < advStats.skillSpiritCost
+            ? `${f.skillName} (${Math.floor(advProg.spirit)}/${advStats.skillSpiritCost} SP)`
+            : `${f.skillName} READY`;
 
       if (this.is2v2Mode() && partner && els.partnerWing) {
         const pHpPct = Math.max(0, (partner.hp / partner.maxHp) * 100);
@@ -3283,7 +3411,7 @@ class Game {
       this.renderer.update(rawDt, this.fighters);
       this.vfx.update(rawDt * 0.4, this.renderer.groundY, this.renderer, this.audio);
       this.renderChampionPreviews(now);
-    } else if (!this.isSimPaused) {
+    } else if (!this.isSimPaused && !(this.isAdventureMode() && this.adventure?.isSkillTreeOpen)) {
       this.stepSimulation(rawDt);
     }
     this.renderer.render(this.fighters, this.vfx);
