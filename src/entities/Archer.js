@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps97';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps97';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps97';
+import { Fighter } from './Fighter.js?v=30fps98';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps98';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps98';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps97';
+} from '../engine/shaders/sylvanShaders.js?v=30fps98';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -86,7 +86,7 @@ export class Archer extends Fighter {
     if (typeof Image !== 'undefined') {
       const archerAssets = PixelForge.initAssets()?.archer;
       if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps87')) {
-        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps97';
+        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps98';
       }
     }
 

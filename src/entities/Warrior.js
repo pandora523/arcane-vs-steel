@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps97';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps97';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps97';
+import { Fighter } from './Fighter.js?v=30fps98';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps98';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps98';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps97';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps98';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -98,11 +98,11 @@ export class Warrior extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const warriorAssets = PixelForge.initAssets()?.warrior;
-      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps97')) {
-        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps97';
+      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps98')) {
+        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps98';
       }
       if (warriorAssets?.vfx?.src && !warriorAssets.vfx.src.includes('v=30fps60')) {
-        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps97';
+        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps98';
       }
     }
   }

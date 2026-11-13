@@ -28,30 +28,30 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps97';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps97';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps97';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps97';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps97';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps97';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps97';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps97';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps97';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps97';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps97';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps97';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps97';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps97';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps97';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps97';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps97';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps98';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps98';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps98';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps98';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps98';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps98';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps98';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps98';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps98';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps98';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps98';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps98';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps98';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps98';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps98';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps98';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps98';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps97';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps97';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps97';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps97';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps98';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps98';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps98';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps98';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -612,7 +612,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps97');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps98');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -4723,6 +4723,11 @@ for (const [name, Cls] of CLASSES) {
         dummy.dashCooldown = 999;
         dummy.skillCooldown = 999;
         dummy.autoCooldown = 999;
+        ronin.skillCooldown = 999;
+        ronin.dodgeCooldown = 999;
+        ronin.dashCooldown = 999;
+        ronin.crouchCooldown = 999;
+        if (f > 0 && ronin.state !== 'AUTO_ATTACK') break;
         ronin.update(1 / 30, dummy, aGame);
         minDist = Math.min(minDist, Math.abs(dummy.x - ronin.x));
         if (ronin.cleanBladeCuts.some((c) => c.type === 'wound')) sawCleanCut = true;
@@ -4751,4 +4756,135 @@ for (const [name, Cls] of CLASSES) {
     `[PASS] Suite 21: Kaze-Maru Flesh-Cutting 4-Auto, Full-Arena Lightning Surge Slice (0 Crystal), Unburned Sakura-Raining Shogunate vs Sol & Burning Synergy verified!`
   );
 }
+
+// ============================================================================
+// SUITE 22: FREYJA (VALKYRIE) SUPREME ULTIMATE SKY-SOVEREIGN MODEL,
+//           DOWNWARD GUNGNIR COMMAND & STEEP DIAGONAL FALCON SPEAR-DIVE
+// ============================================================================
+{
+  const fGame = createMockGame();
+  const freyja = new Valkyrie({ x: 340, groundY: 460, facing: 1 });
+  const dummy = new Warrior({ x: 820, groundY: 460, facing: -1 });
+  dummy.maxHp = 25000;
+  dummy.hp = 25000;
+  freyja.hp = Math.round(freyja.maxHp * 0.5);
+  const hpStart = freyja.hp;
+  freyja.game = fGame;
+  dummy.game = fGame;
+  fGame.fighters = [freyja, dummy];
+  fGame.getEnemiesOf = (f) => fGame.fighters.filter((o) => o !== f);
+
+  // 22A. Verify Overdrive ULTIMATE maps cleanly to Row 4 Cast (120..123), Wing-Glide (124..128), and Grounded Thrust (145..149)
+  freyja.mana = freyja.maxMana;
+  freyja.setState('ULTIMATE');
+  const seenUltFrames = new Set();
+  for (let i = 0; i < 60 && freyja.state === 'ULTIMATE'; i++) {
+    freyja.update(1 / 30, dummy, fGame);
+    if (freyja.trueUltFrameOverride !== null) seenUltFrames.add(freyja.trueUltFrameOverride);
+  }
+  const sawGlide = [...seenUltFrames].some((f) => f >= 124 && f <= 128);
+  const sawFinThrust = [...seenUltFrames].some((f) => f >= 145 && f <= 149);
+  if (!sawGlide || !sawFinThrust) {
+    throw new Error(`[Suite 22A] Expected Freyja ULTIMATE to use Row 4 glide (124..128) & thrust (145..149), got ${[...seenUltFrames]}`);
+  }
+
+  // 22B. Verify Supreme TRUE_ULTIMATE Sky-Sovereign Ascent (129..132), Shot-Synced Hover (133..138),
+  //      Apex Convergence (139..140), Steep Diagonal Falcon Spear-Dive (141..144), and Airborne Bahamut Suppression
+  const dummyHpBefore = dummy.hp;
+  freyja.hp = hpStart;
+  freyja.finisherGauge = freyja.maxFinisherGauge;
+  freyja.setState('TRUE_ULTIMATE');
+
+  const seenAscent = new Set();
+  const seenHover = new Set();
+  const seenApex = new Set();
+  const seenDive = new Set();
+  let sawCmdRayOrigin = false;
+  let bahamutDrawnAirborne = false;
+  let charRotateCalls = 0;
+
+  const auditCtx = createMockCtx({ rotateCalls: 0, quadCalls: 0, syValues: new Set() });
+  const origDrawImage = auditCtx.drawImage;
+  auditCtx.drawImage = function (...args) {
+    // Check if Row 3 (sy = 3 * 208 = 624) of valkyrie_vfx is drawn while Freyja is airborne in TRUE_ULTIMATE
+    if (
+      freyja.state === 'TRUE_ULTIMATE' &&
+      freyja.y < freyja.groundY - 48 &&
+      args.length === 9 &&
+      args[2] === 3 * 208 &&
+      String(args[0]?.src || '').includes('valkyrie_vfx')
+    ) {
+      bahamutDrawnAirborne = true;
+    }
+    return origDrawImage.apply(this, args);
+  };
+
+  for (let step = 0; step < 145 && freyja.state === 'TRUE_ULTIMATE'; step++) {
+    const tPrev = freyja.stateTimer;
+    freyja.update(1 / 30, dummy, fGame);
+    const fr = freyja.trueUltFrameOverride;
+    if (tPrev >= 0.24 && tPrev < 1.06 && fr !== null) seenAscent.add(fr);
+    if (tPrev >= 1.12 && tPrev < 2.50 && fr !== null) {
+      seenHover.add(fr);
+      if (tPrev > 1.24) {
+        const slipActive = freyja.fx.active.some((s) => s.key === 'valkyrieSlipstreamTrail' && !s.inst.released);
+        if (slipActive && tPrev > 1.35) {
+          throw new Error(`[Suite 22B] Expected valkyrieSlipstreamTrail stopped during sky hover at t=${tPrev.toFixed(2)}`);
+        }
+      }
+    }
+    if (tPrev >= 2.56 && tPrev < 2.78 && fr !== null) seenApex.add(fr);
+    if (tPrev >= 2.82 && tPrev < 3.08 && fr !== null) seenDive.add(fr);
+
+    for (const l of freyja.einherjarSkyLances) {
+      if (typeof l.cmdOriginX === 'number' && typeof l.cmdOriginY === 'number') {
+        sawCmdRayOrigin = true;
+      }
+    }
+
+    // Verify character draw() never calls ctx.rotate
+    let rotBefore = 0;
+    const prevRot = auditCtx.rotate;
+    auditCtx.rotate = () => {
+      rotBefore++;
+    };
+    freyja.draw(auditCtx, false, fGame.renderer);
+    charRotateCalls += rotBefore;
+    auditCtx.rotate = prevRot;
+
+    freyja.drawForegroundOverlay(auditCtx, fGame.renderer);
+    freyja.drawUltimateForeground(auditCtx, fGame.renderer);
+  }
+
+  if (![...seenAscent].every((f) => f >= 129 && f <= 132) || seenAscent.size < 3) {
+    throw new Error(`[Suite 22B] Expected Twin-Winged Sovereign Ascent frames 129..132, got ${[...seenAscent]}`);
+  }
+  if (![...seenHover].every((f) => f >= 133 && f <= 138) || !seenHover.has(135) || seenHover.size < 4) {
+    throw new Error(`[Suite 22B] Expected Shot-Synced Hover frames 133..138 (incl. F15=135 downward thrust), got ${[...seenHover]}`);
+  }
+  if (!seenApex.has(139) || !seenApex.has(140)) {
+    throw new Error(`[Suite 22B] Expected Apex Convergence frames 139..140, got ${[...seenApex]}`);
+  }
+  if (![...seenDive].every((f) => f >= 141 && f <= 144) || seenDive.size < 3) {
+    throw new Error(`[Suite 22B] Expected Steep Diagonal Falcon Spear-Dive frames 141..144, got ${[...seenDive]}`);
+  }
+  if (!sawCmdRayOrigin) {
+    throw new Error(`[Suite 22B] Expected einherjarSkyLances to track downward spearhead cmdOriginX/Y!`);
+  }
+  if (bahamutDrawnAirborne) {
+    throw new Error(`[Suite 22B] Expected bahamutAvatar (Row 3 sunburst) gated off while airborne in TRUE_ULTIMATE!`);
+  }
+  if (charRotateCalls !== 0) {
+    throw new Error(`[Suite 22B] Expected ZERO ctx.rotate on Freyja character draw(), got ${charRotateCalls}`);
+  }
+  const dealt = dummyHpBefore - dummy.hp;
+  if (dealt < 705 || freyja.hp <= hpStart || freyja.state !== 'IDLE') {
+    throw new Error(`[Suite 22B] Expected intact True Ult dmg>=705, heal>0 & clean IDLE exit, got dealt=${dealt}, hp=${freyja.hp}/${hpStart}, state=${freyja.state}`);
+  }
+
+  console.log(
+    `[PASS] Suite 22: Freyja Supreme Ultimate Twin-Winged Sky-Sovereign Model, Shot-Synced Downward Gungnir Command & Steep Falcon Spear-Dive verified (0 ctx.rotate, dealt=${dealt})!`
+  );
+}
+
 

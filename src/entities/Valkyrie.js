@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps97';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps97';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps97';
+import { Fighter } from './Fighter.js?v=30fps98';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps98';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps98';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps97';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps98';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -84,7 +84,7 @@ export class Valkyrie extends Fighter {
     if (typeof Image !== 'undefined') {
       const valkyrieAssets = PixelForge.initAssets()?.valkyrie;
       if (valkyrieAssets?.vfx?.src && !valkyrieAssets.vfx.src.includes('v=30fps63')) {
-        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps97';
+        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps98';
       }
     }
 
@@ -1293,13 +1293,14 @@ export class Valkyrie extends Fighter {
       }
     }
 
-    // Stage 0 (0.00s .. 0.30s -> Row 4 F00..F04): 100% GROUNDED Valhalla Awakening Cast (ZERO lifting / ZERO floating!)
+    // Stage 0 (0.00s .. 0.30s -> Row 4 F00..F03): 100% GROUNDED Valhalla Awakening Cast (ZERO lifting / ZERO floating!)
     if (t < 0.30) {
       this.vx = 0;
       this.vy = 0;
       this.x = originX;
       this.y = this.groundY;
       this.divePitchRad = 0;
+      this.trueUltFrameOverride = 120 + Math.min(3, Math.floor((t / 0.30) * 4));
       if (enemy && !enemy.isDead) {
         this.facing = enemy.x >= this.x ? 1 : -1;
       }
@@ -1312,10 +1313,13 @@ export class Valkyrie extends Fighter {
       land: { x: originX, y: this.groundY }
     };
 
-    // Stage 1 (0.30s .. 1.44s -> Row 4 F05..F23): Wide, Shallow Sweeping Valkyrie Wing-Glides + 12 Sleek Javelins!
+    // Stage 1 (0.30s .. 1.44s -> Row 4 F04..F08): Wide, Shallow Sweeping Valkyrie Wing-Glides + 12 Sleek Javelins!
     if (t >= 0.30 && t < 1.44) {
       this.vx = 0;
       this.vy = 0;
+      const uGlide = Math.max(0, Math.min(0.999, (t - 0.30) / 1.14));
+      const glideCol = 4 + Math.min(4, Math.floor(uGlide * 5));
+      this.trueUltFrameOverride = 120 + glideCol;
       let spawnTrail = false;
 
       if (!this._ultPassCone1) {
@@ -1386,8 +1390,7 @@ export class Valkyrie extends Fighter {
         this.afterimageSpawnAccum += dt;
         if (this.afterimageSpawnAccum >= 0.034) {
           this.afterimageSpawnAccum = 0;
-          const col = Math.min(23, Math.max(5, Math.floor((t / this.ultDuration) * 30)));
-          this.spawnAfterimage(this.x, this.y, this.facing, 4, col, 0.24);
+          this.spawnAfterimage(this.x, this.y, this.facing, 4, glideCol, 0.24);
         }
       }
 
@@ -1435,10 +1438,11 @@ export class Valkyrie extends Fighter {
       return;
     }
 
-    // Stage 2 (1.44s .. 1.80s -> Row 4 F24..F29): 100% Grounded Sovereign Forward Thrust & Cataclysm!
+    // Stage 2 (1.44s .. 1.80s -> Row 4 F25..F29): 100% Grounded Sovereign Forward Thrust & Cataclysm!
     this.x = wps.land.x;
     this.y = this.groundY;
     this.divePitchRad = 0;
+    this.trueUltFrameOverride = 145 + Math.min(4, Math.floor(Math.max(0, (t - 1.44) / 0.36) * 5));
     if (enemy && !enemy.isDead) {
       this.facing = enemy.x >= this.x ? 1 : -1;
     }
@@ -1530,6 +1534,7 @@ export class Valkyrie extends Fighter {
     if (t >= this.ultDuration) {
       this._spearsFired = 0;
       this.bahamutAvatar = null;
+      this.trueUltFrameOverride = null;
       this.y = this.groundY;
       this.divePitchRad = 0;
       this.isInvulnerable = false;
@@ -1609,36 +1614,38 @@ export class Valkyrie extends Fighter {
       this.ragnarokDiveBeam = null;
       this.ragnarokPillars = [];
 
-      // Unfurl 2.5D crimson-gold Valkyrie wings, halo array & slipstream
-      this.fx.spawn('valkyrieWingPlume', this.x, this.y - 102, {
+      // Unfurl subtle launch light-plume, grounded crown halo & upward launch slipstream
+      this.fx.spawn('valkyrieWingPlume', this.x, this.y - 92, {
         key: 'valkyrieWingPlume',
         follow: this,
-        offsetX: -12,
-        offsetY: -102,
-        flip: this.facing < 0,
-        palette: VALKYRIE_CRIMSON_PALETTE,
-        light: 1.35,
-        extra: { span: 38, duration: 4.35 }
-      });
-      this.fx.spawn('valkyrieHaloArray', this.x, this.y - 108, {
-        key: 'valkyrieHaloArray',
-        follow: this,
-        offsetX: -4,
-        offsetY: -108,
-        flip: false,
-        palette: VALKYRIE_GOLD_PALETTE,
-        light: 1.28,
-        extra: { rx: 30, ry: 16 }
-      });
-      this.fx.spawn('valkyrieSlipstreamTrail', this.x, this.y - 92, {
-        key: 'valkyrieSlipstreamTrail',
-        follow: this,
-        offsetX: -18,
+        offsetX: -14,
         offsetY: -92,
         flip: this.facing < 0,
         palette: VALKYRIE_CRIMSON_PALETTE,
-        light: 1.15,
-        extra: { length: 38, tilt: -0.22 }
+        light: 1.02,
+        extra: { wingSpan: 26 }
+      });
+      this.fx.spawn('valkyrieHaloArray', this.x, this.y - 104, {
+        key: 'valkyrieHaloArray',
+        follow: this,
+        offsetX: -4,
+        offsetY: -104,
+        maxDuration: 0.78,
+        flip: false,
+        palette: VALKYRIE_GOLD_PALETTE,
+        light: 1.08,
+        extra: { rx: 24, ry: 10 }
+      });
+      this.fx.spawn('valkyrieSlipstreamTrail', this.x, this.y - 68, {
+        key: 'valkyrieSlipstreamTrail',
+        follow: this,
+        offsetX: -12,
+        offsetY: -68,
+        maxDuration: 0.92,
+        flip: this.facing < 0,
+        palette: VALKYRIE_CRIMSON_PALETTE,
+        light: 1.05,
+        extra: { length: 30, tilt: -0.95 }
       });
       this.fx.spawn('valhallaGroundBurst', this.x, this.groundY, {
         palette: VALKYRIE_GOLD_PALETTE,
@@ -1721,7 +1728,7 @@ export class Valkyrie extends Fighter {
               size: 4
             });
           }
-          // 6 x 30 rapid pinning strikes keeping the target locked inside the glowing spear-ring!
+          // 6 x 25 rapid pinning strikes keeping the target locked inside the glowing spear-ring!
           let hitAny = false;
           for (const foe of foes) {
             if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - targetX) < 190) {
@@ -1780,7 +1787,7 @@ export class Valkyrie extends Fighter {
         const uPrep = t / 0.22;
         this.y = this.groundY;
         this.cameraAirLift = 0;
-        this.trueUltFrameOverride = 120 + Math.min(4, Math.floor(uPrep * 5));
+        this.trueUltFrameOverride = 120 + Math.min(3, Math.floor(uPrep * 4)); // Row 4 F00..F03 grounded cast
       } else {
         const uAsc = Math.min(1, (t - 0.22) / 0.88);
         const easeAsc = 1 - Math.pow(1 - uAsc, 3);
@@ -1789,12 +1796,13 @@ export class Valkyrie extends Fighter {
         this.cameraAirLift = lift;
         const driftTowardArena = this._trueUltOriginX + (targetX - this.facing * 235 - this._trueUltOriginX) * (easeAsc * 0.65);
         this.x = Math.max(105, Math.min(ww - 105, driftTowardArena));
-        this.trueUltFrameOverride = 125 + Math.min(10, Math.floor(uAsc * 11));
+        const ascCol = 9 + Math.min(3, Math.floor(uAsc * 4));
+        this.trueUltFrameOverride = 120 + ascCol; // Row 4 F09..F12 Twin-Winged Sovereign Sky-Ascent
 
         this._trueUltAfterimageAcc += dt;
-        if (this._trueUltAfterimageAcc >= 0.05) {
+        if (this._trueUltAfterimageAcc >= 0.055) {
           this._trueUltAfterimageAcc = 0;
-          this.spawnAfterimage(this.x, this.y, this.facing, 4, 6 + (Math.floor(uAsc * 9) % 9), 0.24);
+          this.spawnAfterimage(this.x, this.y, this.facing, 4, ascCol, 0.20);
         }
       }
 
@@ -1809,13 +1817,16 @@ export class Valkyrie extends Fighter {
     }
 
     // =========================================================================
-    // PHASE 2 (1.10s..2.55s): Rain 6 Colossal Row 6 Einherjar Sky-Lances (6x24)
+    // PHASE 2 (1.10s..2.55s): Poised Twin-Winged Sky-Sovereign Hover &
+    //                         Shot-Synced Downward Gungnir Sky-Lance Command (6x25)
     // =========================================================================
     if (t < 2.55) {
       const hoverT = t - 1.10;
+      if (hoverT < 0.06) {
+        this.fx.stopByKey('valkyrieSlipstreamTrail');
+      }
       this.y = this.groundY - 410 + Math.sin(hoverT * 6.5) * 6;
       this.cameraAirLift = 410;
-      this.trueUltFrameOverride = 131 + (Math.floor(hoverT * 14) % 7); // Row 4 F11..F17 winged sky command
 
       const lanceSchedule = [1.14, 1.36, 1.58, 1.80, 2.02, 2.24];
       const ringOffsets = [-94, 94, -58, 58, -24, 24];
@@ -1833,6 +1844,9 @@ export class Valkyrie extends Fighter {
         const startX = pinX + (idx % 2 === 0 ? -38 : 38);
         const startY = this.groundY - 485;
         const pinY = this.groundY - 92 + depthY;
+        const spearTipX = this.x + this.facing * 72;
+        const spearTipY = this.y - 48;
+        const shotAng = Math.atan2(pinY - spearTipY, pinX - spearTipX);
 
         this.einherjarSkyLances.push({
           index: idx,
@@ -1840,6 +1854,8 @@ export class Valkyrie extends Fighter {
           startY,
           targetX: pinX,
           pinY,
+          cmdOriginX: spearTipX,
+          cmdOriginY: spearTipY,
           x: startX,
           y: startY,
           inFront: depthY > 0,
@@ -1848,23 +1864,44 @@ export class Valkyrie extends Fighter {
           impacted: false
         });
 
-        // Muzzle flash at Freyja's raised Gungnir in the heavens
-        this.fx.spawn('gungnirImpactStarburst', this.x + this.facing * 26, this.y - 98, {
+        // Crisp downward muzzle starburst directly on Freyja's aimed Gungnir spearhead (zero face clutter!)
+        this.fx.spawn('gungnirImpactStarburst', spearTipX, spearTipY, {
           flip: false,
-          palette: VALKYRIE_GOLD_PALETTE,
-          light: 1.15,
-          extra: { aimAngle: Math.PI * 0.5, isCrit: false }
+          palette: idx % 2 === 0 ? VALKYRIE_GOLD_PALETTE : VALKYRIE_CRIMSON_PALETTE,
+          light: 1.12,
+          extra: { aimAngle: shotAng, isCrit: false }
         });
+      }
+
+      // Sync Row 4 F13..F18 (133..138) directly to each downward Gungnir Sky-Lance shot!
+      if (this._trueUltLancesSpawned === 0) {
+        this.trueUltFrameOverride = t < 1.12 ? 133 : 134; // F13..F14 high-shoulder downward aim coil
+      } else {
+        const lastFireT = lanceSchedule[this._trueUltLancesSpawned - 1];
+        const shotDt = Math.max(0, t - lastFireT);
+        if (shotDt < 0.045) {
+          this.trueUltFrameOverride = 135; // F15: Explosive downward Gungnir command thrust (+52 deg)
+        } else if (shotDt < 0.095) {
+          this.trueUltFrameOverride = 136; // F16: Downward extension & recoil
+        } else if (shotDt < 0.145) {
+          this.trueUltFrameOverride = 137; // F17: Sovereign chamber pull-back
+        } else if (shotDt < 0.185 || this._trueUltLancesSpawned >= 6) {
+          this.trueUltFrameOverride = 138; // F18: Regal poised Sky-Sovereign stance
+        } else if (shotDt < 0.205) {
+          this.trueUltFrameOverride = 133; // F13: Re-coil for next sky-lance
+        } else {
+          this.trueUltFrameOverride = 134; // F14: High-shoulder aim lock
+        }
       }
       return;
     }
 
     // =========================================================================
-    // PHASE 3 (2.55s..4.35s): Gungnir Ragnarok Spear-Dive, 3x Row 7 Pillars,
-    //                         20% Max HP Heal, 245 Crit Finisher & Backflip!
+    // PHASE 3 (2.55s..4.35s): Apex Convergence, Steep Diagonal Falcon Spear-Dive,
+    //                         3x Row 7 Pillars, 12% Max HP Heal, 555 Crit & Backflip!
     // =========================================================================
     if (t < 2.80) {
-      // 2.55s..2.80s: Apex Gungnir Convergence in the Heavens
+      // 2.55s..2.80s: Apex Gungnir Convergence in the Heavens (Row 4 F19..F20)
       if (this._trueUltStep < 2) {
         this._trueUltStep = 2;
         this._trueUltDiveStartX = this.x;
@@ -1874,51 +1911,47 @@ export class Valkyrie extends Fighter {
           game.audio.play('ult_cast', this.x);
           game.audio.play('storm_leap', this.x);
         }
-        this.fx.spawn('gungnirSpearFocus', this.x + this.facing * 32, this.y - 98, {
+        this.fx.spawn('gungnirSpearFocus', this.x + this.facing * 68, this.y - 50, {
           follow: this,
-          offsetX: 32,
-          offsetY: -98,
+          offsetX: 68,
+          offsetY: -50,
           flip: this.facing < 0,
           palette: VALKYRIE_GOLD_PALETTE,
-          light: 1.4,
+          light: 1.28,
           extra: { charge: 1.0, twin: true }
-        });
-        this.spawnVfxAnim(4, this.x + this.facing * 24, this.y - 98, 224, 224, 0.28, {
-          glowColor: 'gold',
-          inFront: true
         });
       }
       const uCharge = (t - 2.55) / 0.25;
       this.y = this.groundY - 410 - Math.sin(uCharge * Math.PI) * 14;
       this.cameraAirLift = 410;
-      this.trueUltFrameOverride = 136 + Math.min(2, Math.floor(uCharge * 3)); // Row 4 F16..F18
+      this.trueUltFrameOverride = uCharge < 0.5 ? 139 : 140; // Row 4 F19..F20 twin-wing apex convergence
       return;
     }
 
     if (t < 3.10) {
-      // 2.80s..3.10s: Cataclysmic Diagonal/Vertical Gungnir Spear-Dive wrapped in crimson-gold energy!
+      // 2.80s..3.10s: Steep Diagonal Valkyrie Falcon Spear-Dive (Row 4 F21..F24, 0 ctx.rotate!)
       if (this._trueUltStep < 3) {
         this._trueUltStep = 3;
         if (game?.audio) game.audio.play('dash_whoosh', this.x);
         const dxDive = targetX - this._trueUltDiveStartX;
         const dyDive = 410;
         const diveAng = Math.atan2(dyDive, dxDive);
-        this.fx.spawn('gungnirSpearThrustCone', this.x, this.y - 78, {
+        this.fx.spawn('gungnirSpearThrustCone', this.x + this.facing * 56, this.y - 40, {
           follow: this,
-          offsetX: 28,
-          offsetY: -78,
+          offsetX: 56,
+          offsetY: -40,
           flip: false,
           palette: VALKYRIE_GOLD_PALETTE,
-          light: 1.4,
-          extra: { aimAngle: diveAng, radius: 34, twin: true }
+          light: 1.32,
+          extra: { aimAngle: diveAng, radius: 30, twin: true }
         });
         this.ragnarokDiveBeam = {
-          x0: this._trueUltDiveStartX,
-          y0: this.groundY - 430,
+          x0: this._trueUltDiveStartX + this.facing * 24,
+          y0: this.groundY - 436,
           x1: targetX,
           y1: this.groundY - 8,
-          headX: this._trueUltDiveStartX,
-          headY: this.groundY - 410,
+          headX: this._trueUltDiveStartX + this.facing * 64,
+          headY: this.groundY - 446,
           age: 0,
           maxLife: 0.54
         };
@@ -1929,17 +1962,18 @@ export class Valkyrie extends Fighter {
       this.x = this._trueUltDiveStartX + (this._trueUltLandX - this._trueUltDiveStartX) * easeDive;
       this.y = this.groundY - 410 * (1 - easeDive);
       this.cameraAirLift = 410 * (1 - easeDive);
-      this.trueUltFrameOverride = 138 + Math.min(4, Math.floor(uDive * 5)); // Row 4 F18..F22 articulated falcon spear-dive!
+      const diveCol = 21 + Math.min(3, Math.floor(uDive * 4));
+      this.trueUltFrameOverride = 120 + diveCol; // Row 4 F21..F24 steep diagonal falcon spear-dive!
 
       if (this.ragnarokDiveBeam) {
-        this.ragnarokDiveBeam.headX = this.x + this.facing * 42;
-        this.ragnarokDiveBeam.headY = this.y - 44;
+        this.ragnarokDiveBeam.headX = this.x + this.facing * 64;
+        this.ragnarokDiveBeam.headY = this.y - 36;
       }
 
       this._trueUltAfterimageAcc += dt;
       if (this._trueUltAfterimageAcc >= 0.025) {
         this._trueUltAfterimageAcc = 0;
-        this.spawnAfterimage(this.x, this.y, this.facing, 4, 19 + (Math.floor(uDive * 4) % 4), 0.26);
+        this.spawnAfterimage(this.x, this.y, this.facing, 4, diveCol, 0.24);
       }
       return;
     }
@@ -2047,10 +2081,10 @@ export class Valkyrie extends Fighter {
     }
 
     if (t < 3.34) {
-      // 3.10s..3.34s: Sovereign Gungnir Grounded Judgment Hold (Row 4 F23..F26)
+      // 3.10s..3.34s: Sovereign Gungnir Grounded Judgment Hold (Row 4 F25..F28)
       const uHold = (t - 3.10) / 0.24;
       this.y = this.groundY;
-      this.trueUltFrameOverride = 143 + Math.min(3, Math.floor(uHold * 4));
+      this.trueUltFrameOverride = 145 + Math.min(3, Math.floor(uHold * 4));
       return;
     }
 
@@ -2159,6 +2193,48 @@ export class Valkyrie extends Fighter {
         lance.shatterAge !== undefined ? Math.max(0, 1 - lance.shatterAge / 0.30) : 1.0;
       if (shatterFade <= 0.02) continue;
 
+      // Crisp golden-crimson Gungnir Command Ray projecting directly from Freyja's downward spearhead!
+      if (lance.cmdOriginX !== undefined && lance.age < 0.14) {
+        const cmdAlpha = (1 - lance.age / 0.14) * 0.92 * shatterFade;
+        const ox = Math.round(lance.cmdOriginX);
+        const oy = Math.round(lance.cmdOriginY);
+        const tx = Math.round(lance.x);
+        const ty = Math.round(lance.y);
+        const dx = tx - ox;
+        const dy = ty - oy;
+        const dist = Math.hypot(dx, dy) || 1;
+        const nx = -dy / dist;
+        const ny = dx / dist;
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = cmdAlpha * 0.46;
+        ctx.fillStyle = '#f43f5e';
+        ctx.beginPath();
+        ctx.moveTo(ox + nx * 6, oy + ny * 6);
+        ctx.lineTo(tx + nx * 2, ty + ny * 2);
+        ctx.lineTo(tx - nx * 2, ty - ny * 2);
+        ctx.lineTo(ox - nx * 6, oy - ny * 6);
+        ctx.closePath();
+        ctx.fill();
+
+        ctx.globalAlpha = cmdAlpha * 0.88;
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        ctx.moveTo(ox + nx * 2.5, oy + ny * 2.5);
+        ctx.lineTo(tx, ty);
+        ctx.lineTo(ox - nx * 2.5, oy - ny * 2.5);
+        ctx.closePath();
+        ctx.fill();
+
+        // Crisp 4-point Valkyrie star-glint right on Gungnir's spearhead
+        const glintR = Math.round(14 * (1 - lance.age / 0.14) + 5);
+        ctx.globalAlpha = cmdAlpha;
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(ox - glintR, oy - 1, glintR * 2, 3);
+        ctx.fillRect(ox - 1, oy - glintR, 3, glintR * 2);
+        ctx.restore();
+      }
+
       // Tapered needle sky-wake streak while plunging or newly pinned (zero rectangular blocks!)
       if (lance.age < 0.42) {
         const wakeAlpha = (1 - lance.age / 0.42) * 0.72 * shatterFade;
@@ -2245,7 +2321,7 @@ export class Valkyrie extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 0. Supreme Ultimate Row 5 Bifrost Einherjar Target Seal (2.5D floor mandala beneath enemy + sky mandala behind Freyja)
+    // 0. Supreme Ultimate Row 5 Bifrost Einherjar Target Seal (2.5D floor mandala beneath enemy + subtle sacred halo behind Freyja)
     if (this.ragnarokSeal && vfxSheet?.complete) {
       const s = this.ragnarokSeal;
       const col = Math.floor(s.age * 30) % 30;
@@ -2276,22 +2352,38 @@ export class Valkyrie extends Fighter {
         ctx.restore();
       }
 
-      // Upright Einherjar Sovereign Mandala behind airborne Freyja in the heavens
+      // Delicate single-pass Sacred Valhalla Backdrop & Golden Crown Halo behind airborne Freyja (zero silhouette washout!)
       if (s.skyAlpha > 0.03 && this.y < this.groundY - 40) {
-        this.drawBloomedVfxCell(
-          ctx,
-          vfxSheet,
-          5,
-          (col + 15) % 30,
-          this.x,
-          this.y - 102,
-          236,
-          236,
-          s.skyAlpha * 0.84,
-          false,
-          renderer,
-          'gold'
-        );
+        const cell = 208;
+        const haloCol = (col + 15) % 30;
+        const hx = Math.round(this.x - this.facing * 8);
+        const hy = Math.round(this.y - 114);
+        ctx.save();
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = s.skyAlpha * 0.22;
+        ctx.drawImage(vfxSheet, haloCol * cell, 5 * cell, cell, cell, hx - 98, hy - 98, 196, 196);
+
+        // Crisp 2.5D Golden Valkyrie Crown Halo floating cleanly ABOVE Freyja's winged helm while hovering
+        if (this.stateTimer < 2.80 && this.y < this.groundY - 80) {
+          const crownX = Math.round(this.x - this.facing * 2);
+          const crownY = Math.round(this.y - 158);
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = s.skyAlpha * 0.72;
+          ctx.strokeStyle = '#fbbf24';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.ellipse(crownX, crownY, 26, 6, 0, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.globalAlpha = s.skyAlpha * 0.90;
+          ctx.fillStyle = '#fef08a';
+          for (let n = 0; n < 4; n++) {
+            const na = s.age * 4.2 + (n * Math.PI) / 2;
+            const nx = Math.round(crownX + Math.cos(na) * 26);
+            const ny = Math.round(crownY + Math.sin(na) * 6);
+            ctx.fillRect(nx - 2, ny - 2, 4, 4);
+          }
+        }
+        ctx.restore();
       }
     }
 
@@ -2299,8 +2391,13 @@ export class Valkyrie extends Fighter {
     this.drawRagnarokLancesLayer(ctx, vfxSheet, renderer, false);
     this.drawRagnarokPillarsLayer(ctx, vfxSheet, renderer, false);
 
-    // 1. Colossal Bahamut / Valhalla Sovereign Crest (`Row 3` of `valkyrie_vfx.png`) behind Freyja
-    if (this.bahamutAvatar && vfxSheet?.complete) {
+    // 1. Colossal Bahamut / Valhalla Sovereign Crest (`Row 3` of `valkyrie_vfx.png`) behind grounded/Overdrive Freyja
+    //    (Gated off once airborne in TRUE_ULTIMATE so her Twin-Winged Sky-Sovereign model reads with 100% crystal clarity!)
+    if (
+      this.bahamutAvatar &&
+      vfxSheet?.complete &&
+      !(this.state === 'TRUE_ULTIMATE' && this.y < this.groundY - 48)
+    ) {
       const u = Math.min(1, Math.max(0, this.bahamutAvatar.life / this.bahamutAvatar.maxLife));
       const col = Math.min(29, Math.floor(u * 30));
       const fade = u < 0.10 ? u / 0.10 : u > 0.84 ? (1 - u) / 0.16 : 1.0;
