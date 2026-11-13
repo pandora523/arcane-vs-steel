@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps95';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps96';
 
 /**
  * Interactive 2.5D Architectural Monuments, Braziers & Ancient Artifact Shrines (`AdventureDestructibles`)

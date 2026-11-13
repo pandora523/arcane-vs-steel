@@ -20,7 +20,12 @@ import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-from hd2d_rig_core import compute_bipedal_walk_pose, splice_row2_auto_surgically
+from hd2d_rig_core import (
+    compute_bipedal_walk_pose,
+    splice_row1_walk_surgically,
+    splice_row2_auto_surgically,
+)
+from fix_all_sheets_pixel_bleeding import clean_cell_104
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "ronin_v2_base.jpg")
@@ -996,29 +1001,33 @@ def build_row_configs(row_idx):
             ))
 
         elif row_idx == 1:
-            # Row 1: WALK (Authentic Bipedal Crossover Contralateral Samurai Stride!)
+            # Row 1: WALK (Authentic Two-Handed Chudan-no-Kamae Samurai Guard Stride — Both hands gripping Tsuka hilt!)
             c_step = math.cos(ph)
-            gait = compute_bipedal_walk_pose(PIVOTS, f, cols=COLS, stride_scale=0.80)
-            gait["l_hip_dy"] += 2.3
-            gait["r_hip_dy"] -= 2.3
-            torso_d = 5.5 + 1.8 * abs(c_step)
+            s_step = math.sin(ph)
+            gait = compute_bipedal_walk_pose(PIVOTS, f, cols=COLS, stride_scale=0.78)
+            gait["l_hip_dy"] += 2.2
+            gait["r_hip_dy"] -= 2.2
+            torso_d = 3.2 + 1.0 * abs(c_step)
             cfg = dict(gait)
             cfg.update(
                 pelvis_dx=0.0,
-                pelvis_dy=0.0,
+                pelvis_dy=2.0 * abs(s_step),
                 torso_deg=torso_d,
-                head_rel_deg=-3.0,
-                mane_rel_deg=-6.0 - 3.5 * abs(c_step),
+                head_rel_deg=-2.2,
+                mane_rel_deg=-5.5 - 2.5 * abs(c_step),
                 mane_wave_phase=ph * 2.0,
-                mane_wave_amp=8.0,
-                l_sode_rel_deg=-18.0 * c_step,
-                l_fore_rel_deg=-18.0 - 6.0 * max(0.0, c_step) - 4.0 * abs(c_step),
-                r_sode_rel_deg=15.0 * c_step - 8.0,
-                r_fore_rel_deg=-16.0 + 5.0 * c_step,
-                odachi_deg=-28.0 + 9.0 * c_step,
-                odachi_len=30.0,
-                saya_deg=152.0 + torso_d * 0.5 - 3.5 * c_step,
-                drums_active=(f % 4 == 0),
+                mane_wave_amp=7.0,
+                l_sode_rel_deg=-54.0 + 1.8 * c_step,
+                l_fore_rel_deg=8.0 - 1.5 * c_step,
+                r_sode_rel_deg=36.0 + 1.8 * c_step,
+                r_fore_rel_deg=-60.0 - 1.5 * c_step,
+                right_arm_in_front=True,
+                odachi_deg=-48.0 + 1.8 * c_step,
+                odachi_curve=-1.0,
+                odachi_len=28.0,
+                odachi_glow=0.90,
+                saya_deg=160.0 + torso_d * 0.4 - 2.0 * c_step,
+                drums_active=(f % 5 == 0),
             )
             cfgs.append(cfg)
 
@@ -1915,11 +1924,32 @@ def main():
         print("Saved debug contact sheets & showcase to", ARTIFACT_DIR)
 
 
+def build_row1_walk_only():
+    parts = load_and_segment_512()
+    cfgs = build_row_configs(1)
+    frames_104 = []
+    for idx, c in enumerate(cfgs):
+        fr = render_pose_104(parts, c)
+        clean_cell_104(fr, "ronin", 1)
+        a = fr[:, :, 3] > 0
+        ys, xs = np.where(a)
+        assert len(ys) > 0, f"[ronin] Empty walk frame F{idx:02d}"
+        assert int(ys.min()) >= 4 and int(ys.max()) <= 99 and int(xs.min()) >= 4 and int(xs.max()) <= 99, (
+            f"[ronin] Walk F{idx:02d} raw bounds ({int(xs.min())}..{int(xs.max())}, {int(ys.min())}..{int(ys.max())}) outside safe 4..99!"
+        )
+        frames_104.append(fr)
+    splice_row1_walk_surgically(
+        "ronin", OUT_SHEET_PATH, frames_104,
+        ((106, 242, 255, 255), (250, 214, 96, 255)),
+    )
+
+
 def build_row2_auto_only():
     parts = load_and_segment_512()
     cfgs = build_row_configs(2)
     frames_104 = [render_pose_104(parts, c) for c in cfgs]
     for idx, fr in enumerate(frames_104):
+        clean_cell_104(fr, "ronin", 2)
         a = fr[:, :, 3] > 0
         ys, xs = np.where(a)
         assert len(ys) > 0, f"[ronin] Empty frame F{idx:02d}"
@@ -1933,7 +1963,9 @@ def build_row2_auto_only():
 
 
 if __name__ == "__main__":
-    if "--auto-only" in sys.argv:
+    if "--walk-only" in sys.argv:
+        build_row1_walk_only()
+    elif "--auto-only" in sys.argv:
         build_row2_auto_only()
     else:
         main()

@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps95';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps96';
 
 /**
  * Seamless Multi-Plane HD-2D Adventure World Panorama Renderer (`AdventureMapRenderer`)
@@ -887,10 +887,14 @@ export class AdventureMapRenderer {
     const viewBot = Math.ceil(camY + (renderer.height - screenAnchorY) / zoom + 260);
     const viewW = viewRight - viewLeft;
 
-    const isInfernoPerm = renderer.permanentStageOverride === 'inferno';
+    const isInfernoPerm =
+      renderer.permanentStageOverride === 'inferno' ||
+      renderer.permanentStageOverride === 'shogunate_inferno';
+    const isShogunatePerm = renderer.permanentStageOverride === 'shogunate';
     const infernoAlpha = isInfernoPerm
       ? 1.0
-      : renderer.trueUltStageOverride === 'inferno'
+      : renderer.trueUltStageOverride === 'inferno' ||
+          renderer.trueUltStageOverride === 'shogunate_inferno'
         ? Math.max(0, Math.min(1, renderer.trueUltStageAlpha || 0))
         : 0;
 
@@ -906,9 +910,9 @@ export class AdventureMapRenderer {
     // =========================================================================
     const skyTopY = Math.min(viewTop, -900);
     const skyGrad = ctx.createLinearGradient(0, skyTopY, 0, ADVENTURE_ROAD_TOP_Y);
-    skyGrad.addColorStop(0, infernoAlpha > 0.5 ? '#0c0507' : '#04060e');
-    skyGrad.addColorStop(0.55, infernoAlpha > 0.5 ? '#1a0a0d' : '#080c1a');
-    skyGrad.addColorStop(1, infernoAlpha > 0.5 ? '#261012' : '#0d1326');
+    skyGrad.addColorStop(0, infernoAlpha > 0.5 ? '#0c0507' : isShogunatePerm ? '#050816' : '#04060e');
+    skyGrad.addColorStop(0.55, infernoAlpha > 0.5 ? '#1a0a0d' : isShogunatePerm ? '#0b1228' : '#080c1a');
+    skyGrad.addColorStop(1, infernoAlpha > 0.5 ? '#261012' : isShogunatePerm ? '#121d38' : '#0d1326');
     ctx.fillStyle = skyGrad;
     ctx.fillRect(viewLeft, skyTopY, viewW, ADVENTURE_ROAD_TOP_Y - skyTopY + 16);
 
@@ -968,13 +972,22 @@ export class AdventureMapRenderer {
     // PLANE 1.5 (`0.70x`): MID-CHASM DRIFTING CANYON MIST & STEPPED PIXEL-BAND BLOOM VEILS
     // =========================================================================
     const mistR = Math.round(
-      26 * camWeights[0] + 18 * camWeights[1] + 54 * camWeights[2] + 78 * camWeights[3] + infernoAlpha * 55
+      26 * camWeights[0] +
+        18 * camWeights[1] +
+        54 * camWeights[2] +
+        78 * camWeights[3] +
+        infernoAlpha * 55 +
+        (isShogunatePerm ? 18 : 0)
     );
     const mistG = Math.round(
       38 * camWeights[0] + 64 * camWeights[1] + 28 * camWeights[2] + 24 * camWeights[3]
     );
     const mistB = Math.round(
-      62 * camWeights[0] + 68 * camWeights[1] + 76 * camWeights[2] + 30 * camWeights[3]
+      62 * camWeights[0] +
+        68 * camWeights[1] +
+        76 * camWeights[2] +
+        30 * camWeights[3] +
+        (isShogunatePerm ? 26 : 0)
     );
     const canyonMist = ctx.createLinearGradient(0, 175, 0, ADVENTURE_ROAD_TOP_Y + 8);
     canyonMist.addColorStop(0, `rgba(${mistR},${mistG},${mistB},0)`);
@@ -991,11 +1004,13 @@ export class AdventureMapRenderer {
     const mistHex =
       infernoAlpha > 0.45 || camWeights[3] > 0.45
         ? '#fb923c'
-        : camWeights[2] > 0.45
-          ? '#a855f7'
-          : camWeights[1] > 0.45
-            ? '#2dd4bf'
-            : '#38bdf8';
+        : isShogunatePerm
+          ? '#fda4af'
+          : camWeights[2] > 0.45
+            ? '#a855f7'
+            : camWeights[1] > 0.45
+              ? '#2dd4bf'
+              : '#38bdf8';
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.fillStyle = mistHex;
@@ -1183,7 +1198,11 @@ export class AdventureMapRenderer {
     const t = renderer.time || 0;
     const isInferno =
       renderer.permanentStageOverride === 'inferno' ||
-      (renderer.trueUltStageOverride === 'inferno' && (renderer.trueUltStageAlpha || 0) > 0.5);
+      renderer.permanentStageOverride === 'shogunate_inferno' ||
+      ((renderer.trueUltStageOverride === 'inferno' ||
+        renderer.trueUltStageOverride === 'shogunate_inferno') &&
+        (renderer.trueUltStageAlpha || 0) > 0.5);
+    const isShogunate = renderer.permanentStageOverride === 'shogunate';
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -1200,11 +1219,21 @@ export class AdventureMapRenderer {
       ctx.fillStyle = 'rgba(22, 30, 48, 0.55)';
       ctx.fillRect(fx - 42, 690, buttW - 8, 5);
 
-      // 2. Drifting Near-Camera Foreground Pixel Cross-Motes (`1.24x` depth, crisp pixel grid)
+      // 2. Drifting Near-Camera Foreground Pixel Cross-Motes / Shogunate Sakura Petals (`1.24x` depth)
       for (let m = 0; m < 4; m++) {
         const cyc = (t * (0.16 + (m % 2) * 0.06) + m * 0.27 + Math.abs(f) * 0.19) % 1;
         const mx = snapPx(fx - 190 + m * 126 + Math.sin(t * 1.4 + m + f) * 26, 4);
-        const my = snapPx(z === 1 ? 140 + cyc * 480 : 640 - cyc * 460, 4);
+        const my = snapPx(isShogunate || z === 1 ? 140 + cyc * 480 : 640 - cyc * 460, 4);
+        if (isShogunate && m % 2 === 0) {
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.72;
+          ctx.fillStyle = '#fda4af';
+          ctx.fillRect(mx - 3, my - 1, 6, 3);
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(mx - 1, my - 1, 2, 2);
+          ctx.globalAlpha = 1;
+          continue;
+        }
         const col =
           z === 3
             ? m % 2 === 0
@@ -1214,7 +1243,9 @@ export class AdventureMapRenderer {
               ? '#c084fc'
               : z === 1
                 ? '#5eead4'
-                : '#7dd3fc';
+                : isShogunate
+                  ? '#fda4af'
+                  : '#7dd3fc';
         drawPixelCrossGlint(ctx, mx, my, col, '#ffffff', 3, 1, Math.sin(cyc * Math.PI) * 0.16);
       }
 
@@ -1233,6 +1264,8 @@ export class AdventureMapRenderer {
       }
     }
 
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 }

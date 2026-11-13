@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps95';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps95';
+import { PixelForge } from './PixelForge.js?v=30fps96';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps96';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -21,7 +21,13 @@ export const STAGE_ROSTER = [
 
 export const ULTIMATE_STAGE_MAP = {
   sanctuary: { id: 'sanctuary', name: 'CELESTIAL SANCTUARY OF JUSTICE', assetKey: 'arenaSanctuary' },
-  inferno: { id: 'inferno', name: 'LAYWASTE OF INFERNO', assetKey: 'arenaInferno' }
+  inferno: { id: 'inferno', name: 'LAYWASTE OF INFERNO', assetKey: 'arenaInferno' },
+  shogunate: { id: 'shogunate', name: 'MOONLIT SHOGUNATE CASTLE', assetKey: 'arenaShogunate' },
+  shogunate_inferno: {
+    id: 'shogunate_inferno',
+    name: 'BURNING SHOGUNATE INFERNO',
+    assetKey: 'arenaShogunateInferno'
+  }
 };
 
 export class Renderer {
@@ -52,11 +58,18 @@ export class Renderer {
     this.zoom = 1;
     this.time = 0;
 
-    // Supreme Finisher Stage Transformation, Impact Frame & White-Out Deletion State
+    // Supreme Finisher Stage Transformation, Whole-Stage Katana Slice, Impact Frame & White-Out Deletion State
     this.trueUltStageOverride = null;
     this.trueUltStageAlpha = 0;
     this.trueUltStageTimer = 0;
     this.permanentStageOverride = null;
+    this.stageSliceTimer = 0;
+    this.stageSliceMaxTimer = 1.08;
+    this.stageSliceFromId = null;
+    this.stageSliceToId = null;
+    this.stageSliceFocusX = 600;
+    this.stageSliceFocusY = 420;
+    this.stageSliceDir = 1;
     this.impactFrameTimer = 0;
     this.impactFrameMaxTimer = 0.15;
     this.impactFrameFocusX = 600;
@@ -90,29 +103,71 @@ export class Renderer {
     this.trueUltStageAlpha = 0;
     this.trueUltStageTimer = 0;
     this.permanentStageOverride = null;
+    this.stageSliceTimer = 0;
+    this.stageSliceFromId = null;
+    this.stageSliceToId = null;
     this.impactFrameTimer = 0;
     this.whiteoutTimer = 0;
   }
 
   setStageTransformation(stageKey, alpha = 1.0, permanent = false, holdDuration = 0) {
-    if (permanent && ULTIMATE_STAGE_MAP[stageKey]) {
-      this.permanentStageOverride = stageKey;
-      this.trueUltStageOverride = stageKey;
+    let resolvedKey = stageKey;
+    // Bidirectional Ignis Sol <-> Kaze-Maru Stage Synergy:
+    // - Ignis Sol's Inferno cast inside Kaze-Maru's Japanese realm ignites the Burning Japanese Stage (`shogunate_inferno`)!
+    // - Kaze-Maru's Shogunate slice inside Ignis Sol's Inferno realm teleports into the Burning Japanese Stage (`shogunate_inferno`)!
+    if (
+      resolvedKey === 'inferno' &&
+      (this.permanentStageOverride === 'shogunate' ||
+        this.permanentStageOverride === 'shogunate_inferno' ||
+        this.stageId === 'shogunate' ||
+        this.stageId === 'shogunate_inferno')
+    ) {
+      resolvedKey = 'shogunate_inferno';
+    } else if (
+      resolvedKey === 'shogunate' &&
+      (this.permanentStageOverride === 'inferno' ||
+        this.permanentStageOverride === 'shogunate_inferno' ||
+        this.trueUltStageOverride === 'inferno' ||
+        this.stageId === 'inferno' ||
+        this.stageId === 'shogunate_inferno')
+    ) {
+      resolvedKey = 'shogunate_inferno';
+    }
+
+    if (permanent && ULTIMATE_STAGE_MAP[resolvedKey]) {
+      this.permanentStageOverride = resolvedKey;
+      this.trueUltStageOverride = resolvedKey;
       this.trueUltStageAlpha = 1.0;
       this.trueUltStageTimer = Math.max(this.trueUltStageTimer, holdDuration);
       return;
     }
-    if (!stageKey) {
+    if (!resolvedKey) {
       this.trueUltStageOverride = null;
       this.trueUltStageAlpha = 0;
       this.trueUltStageTimer = 0;
       return;
     }
-    this.trueUltStageOverride = stageKey;
+    this.trueUltStageOverride = resolvedKey;
     this.trueUltStageAlpha = Math.max(0, Math.min(1, alpha));
     if (holdDuration > 0) {
       this.trueUltStageTimer = Math.max(this.trueUltStageTimer, holdDuration);
     }
+  }
+
+  triggerDimensionalStageSlice(opts = {}) {
+    this.stageSliceFromId = opts.fromStageId || this.getActiveStageId() || this.stageId || 'cathedral';
+    this.stageSliceToId = opts.toStageId || 'shogunate';
+    this.stageSliceFocusX = Number.isFinite(opts.focusX) ? opts.focusX : this.worldWidth * 0.5;
+    this.stageSliceFocusY = Number.isFinite(opts.focusY) ? opts.focusY : this.groundY - 92;
+    this.stageSliceDir = opts.dir === -1 ? -1 : 1;
+    this.stageSliceMaxTimer = Math.max(0.35, opts.duration || 1.08);
+    this.stageSliceTimer = this.stageSliceMaxTimer;
+  }
+
+  getStageMetaById(id) {
+    if (!id) return STAGE_ROSTER[0];
+    if (ULTIMATE_STAGE_MAP[id]) return ULTIMATE_STAGE_MAP[id];
+    return STAGE_ROSTER.find((s) => s.id === id) || STAGE_ROSTER[0];
   }
 
   triggerImpactFrame(x, y, duration = 0.15, style = 'inferno') {
@@ -414,6 +469,9 @@ export class Renderer {
     if (this.whiteoutTimer > 0) {
       this.whiteoutTimer = Math.max(0, this.whiteoutTimer - rawDt);
     }
+    if (this.stageSliceTimer > 0) {
+      this.stageSliceTimer = Math.max(0, this.stageSliceTimer - rawDt);
+    }
     if (this.trueUltStageTimer > 0) {
       this.trueUltStageTimer = Math.max(0, this.trueUltStageTimer - rawDt);
       if (!this.permanentStageOverride) {
@@ -643,12 +701,13 @@ export class Renderer {
     // 3. Real-Time Pixel-Art Stage-Aware Floor Reflections
     const activeStageForRefl = this.getActiveStageId();
     const reflAlpha =
-      activeStageForRefl === 'inferno'
+      activeStageForRefl === 'inferno' || activeStageForRefl === 'shogunate_inferno'
         ? 0.16
         : activeStageForRefl === 'sylvan' ||
             activeStageForRefl === 'sanctuary' ||
-            activeStageForRefl === 'cathedral'
-          ? 0.30
+            activeStageForRefl === 'cathedral' ||
+            activeStageForRefl === 'shogunate'
+          ? 0.28
           : 0.24;
     if (this.adventureMode) {
       // Per-fighter local stone-road sheen anchored to each entity's own 2.5D depth `f.groundY`
@@ -827,6 +886,11 @@ export class Renderer {
       AdventureMapRenderer.renderForegroundDepth(ctx, this);
     }
     this.drawStageForeground(ctx, ww, gy);
+
+    // 7.20. Whole-Stage Dimensional Katana Rift Seam & Petal/Ember Burst
+    if (this.stageSliceTimer > 0) {
+      this.drawDimensionalStageSliceWorld(ctx, ww, gy);
+    }
 
     // 7.25. Supreme Finisher High-Contrast Anime Impact Frame & Full-Stage White-Out Deletion Screen!
     if (this.impactFrameTimer > 0) {
@@ -1049,19 +1113,31 @@ export class Renderer {
     const seamPulse = 0.5 + 0.5 * Math.sin(this.time * 3.8);
     for (let r = 0; r < 5; r++) {
       const ry = Math.round((gy - 22 + r * r * 12) / 3) * 3;
-      if (seamStage === 'inferno') {
-        ctx.fillStyle = 'rgba(15, 6, 4, 0.44)';
+      if (seamStage === 'inferno' || seamStage === 'shogunate_inferno') {
+        ctx.fillStyle = seamStage === 'shogunate_inferno' ? 'rgba(18, 7, 6, 0.46)' : 'rgba(15, 6, 4, 0.44)';
         ctx.fillRect(-800, ry, ww + 1600, 3);
         const lavaSeamAlpha = (0.12 + 0.08 * Math.sin(this.time * 5.2 + r * 1.3)).toFixed(3);
-        ctx.fillStyle = `rgba(251, 146, 60, ${lavaSeamAlpha})`;
+        ctx.fillStyle =
+          seamStage === 'shogunate_inferno'
+            ? `rgba(244, 63, 94, ${lavaSeamAlpha})`
+            : `rgba(251, 146, 60, ${lavaSeamAlpha})`;
         ctx.fillRect(-800, ry + 1, ww + 1600, 2);
-        // Segmented incandescent ember-lit basalt fault cracks
+        // Segmented incandescent ember-lit stone fault cracks
         const coreAlpha = (0.16 + 0.10 * Math.sin(this.time * 6.8 + r * 1.9)).toFixed(3);
         ctx.fillStyle = `rgba(254, 215, 170, ${coreAlpha})`;
         for (let seg = -3; seg <= 6; seg++) {
           const sx = Math.round((seg * 195 + r * 47) / 3) * 3;
           const sw = 48 + ((seg * 17 + r * 11) & 31);
           ctx.fillRect(sx, ry + 1, sw, 1);
+        }
+      } else if (seamStage === 'shogunate') {
+        ctx.fillStyle = 'rgba(8, 12, 26, 0.36)';
+        ctx.fillRect(-800, ry, ww + 1600, 3);
+        if (r === 1 || r === 3) {
+          const moonAlpha = (0.11 + 0.05 * seamPulse).toFixed(3);
+          ctx.fillStyle =
+            r === 1 ? `rgba(125, 211, 252, ${moonAlpha})` : `rgba(251, 113, 133, ${moonAlpha})`;
+          ctx.fillRect(-800, ry + 1, ww + 1600, 2);
         }
       } else if (seamStage === 'sylvan') {
         ctx.fillStyle = 'rgba(4, 16, 14, 0.34)';
@@ -1111,6 +1187,10 @@ export class Renderer {
     const baseStageId = this.permanentStageOverride || this.stageId;
     if (baseStageId === 'inferno') {
       this.drawInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
+    } else if (baseStageId === 'shogunate') {
+      this.drawShogunateStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
+    } else if (baseStageId === 'shogunate_inferno') {
+      this.drawShogunateInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
     } else if (baseStageId === 'sanctuary') {
       this.drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
     } else if (baseStageId === 'sylvan') {
@@ -1131,10 +1211,97 @@ export class Renderer {
     ) {
       if (this.trueUltStageOverride === 'inferno') {
         this.drawInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
+      } else if (this.trueUltStageOverride === 'shogunate') {
+        this.drawShogunateStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
+      } else if (this.trueUltStageOverride === 'shogunate_inferno') {
+        this.drawShogunateInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
       } else if (this.trueUltStageOverride === 'sanctuary') {
         this.drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
       }
     }
+
+    // Whole-Stage Diagonal Katana Slice Split: shears & separates the previous stage in two polygon-clipped halves!
+    if (this.stageSliceTimer > 0) {
+      const fromMeta = this.getStageMetaById(this.stageSliceFromId);
+      const fromImg = (fromMeta && assets[fromMeta.assetKey]) || assets.arenaBg;
+      const p = Math.max(
+        0,
+        Math.min(1, 1 - this.stageSliceTimer / Math.max(0.1, this.stageSliceMaxTimer || 1.08))
+      );
+      const halfAlpha = p < 0.58 ? 1.0 : Math.max(0, 1 - (p - 0.58) / 0.42);
+      if (halfAlpha > 0.01 && fromImg && fromImg.complete && fromImg.naturalWidth > 0) {
+        const sliceCx = Number.isFinite(this.stageSliceFocusX) ? this.stageSliceFocusX : ww * 0.5;
+        const sliceCy = Number.isFinite(this.stageSliceFocusY) ? this.stageSliceFocusY : gy - 92;
+        const dir = this.stageSliceDir === -1 ? -1 : 1;
+        const slope = -0.26 * dir;
+        const invLen = 1 / Math.hypot(1, slope);
+        const tx = invLen * dir;
+        const ty = slope * invLen * dir;
+        const nx = -slope * invLen;
+        const ny = invLen;
+
+        const shear = p < 0.16 ? (p / 0.16) * 52 : 52 + ((p - 0.16) / 0.84) * 195;
+        const sep = p < 0.16 ? 3 : 3 + Math.pow((p - 0.16) / 0.84, 2.05) * 610;
+        const x0 = -2400;
+        const x1 = ww + 2400;
+        const cutY0 = sliceCy + (x0 - sliceCx) * slope;
+        const cutY1 = sliceCy + (x1 - sliceCx) * slope;
+        const isInfernoSlice = this.stageSliceToId === 'shogunate_inferno';
+        const rimOuter = isInfernoSlice ? '#f97316' : '#38bdf8';
+        const rimInner = isInfernoSlice ? '#fef08a' : '#ecfeff';
+
+        for (let half = 0; half < 2; half++) {
+          const sign = half === 0 ? -1 : 1;
+          const shiftX = Math.round(sign * (tx * shear + nx * sep));
+          const shiftY = Math.round(sign * (ty * shear + ny * sep));
+
+          ctx.save();
+          ctx.beginPath();
+          if (half === 0) {
+            ctx.moveTo(x0, -2600);
+            ctx.lineTo(x1, -2600);
+            ctx.lineTo(x1, cutY1 + shiftY);
+            ctx.lineTo(x0, cutY0 + shiftY);
+          } else {
+            ctx.moveTo(x0, cutY0 + shiftY);
+            ctx.lineTo(x1, cutY1 + shiftY);
+            ctx.lineTo(x1, gy + 2200);
+            ctx.lineTo(x0, gy + 2200);
+          }
+          ctx.closePath();
+          ctx.clip();
+
+          ctx.save();
+          ctx.translate(shiftX, shiftY);
+          drawStageImageWithWings(fromImg, halfAlpha);
+          ctx.restore();
+
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = halfAlpha * 0.82;
+          ctx.strokeStyle = rimOuter;
+          ctx.lineWidth = 7;
+          ctx.beginPath();
+          ctx.moveTo(x0, cutY0 + shiftY);
+          ctx.lineTo(x1, cutY1 + shiftY);
+          ctx.stroke();
+
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = halfAlpha * 0.96;
+          ctx.strokeStyle = rimInner;
+          ctx.lineWidth = 2.5;
+          ctx.beginPath();
+          ctx.moveTo(x0, cutY0 + shiftY);
+          ctx.lineTo(x1, cutY1 + shiftY);
+          ctx.stroke();
+
+          ctx.globalAlpha = 1;
+          ctx.restore();
+        }
+      }
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -1165,7 +1332,7 @@ export class Renderer {
             alpha = Math.min(255, Math.max(0, (b - 155) * 3.0));
           }
         } else if (x > w * 0.58) {
-          // Right side: isolate only the bright solar/orange brazier flames (zero stone wall pixels)
+          // Left/Right solar brazier flames
           if (r > 180 && g > 105 && r - b > 65) {
             alpha = Math.min(255, Math.max(0, (r - 165) * 3.0));
           }
@@ -1276,6 +1443,38 @@ export class Renderer {
     }
     cCtx.putImageData(imgData, 0, 0);
     this.infernoMagmaCanvas = c;
+    return c;
+  }
+
+  getShogunateInfernoFlameLayer(bg) {
+    if (this.shogunateInfernoFlameCanvas) return this.shogunateInfernoFlameCanvas;
+    if (!bg || !bg.complete || !bg.naturalWidth) return null;
+
+    const w = Math.min(bg.naturalWidth || 640, 640);
+    const h = Math.min(bg.naturalHeight || 360, 360);
+    const c = document.createElement('canvas');
+    c.width = w;
+    c.height = h;
+    const cCtx = c.getContext('2d');
+    cCtx.drawImage(bg, 0, 0, w, h);
+
+    const imgData = cCtx.getImageData(0, 0, w, h);
+    const d = imgData.data;
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const i = (y * w + x) * 4;
+        const r = d[i];
+        const g = d[i + 1];
+        const b = d[i + 2];
+        let alpha = 0;
+        if (r > 175 && g > 65 && r > b * 1.4) {
+          alpha = Math.min(255, Math.max(0, (r - 165) * 2.7));
+        }
+        d[i + 3] = alpha;
+      }
+    }
+    cCtx.putImageData(imgData, 0, 0);
+    this.shogunateInfernoFlameCanvas = c;
     return c;
   }
 
@@ -2388,6 +2587,378 @@ export class Renderer {
       ctx.fillRect(ex - (sz >> 1), ey - (sz >> 1), sz, sz);
     }
 
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
+   * Moonlit Feudal Japanese Castle (`arena_shogunate.png`):
+   *   - Silver-cyan full moon halo at `(0.583, 0.184)` + subtle pixel-stepped rim glints
+   *   - Warm amber stone Tōrō lantern glow & flagstone reflections at `(0.057, 0.600)`, `(0.270, 0.587)`, `(0.731, 0.574)`, `(0.939, 0.599)`
+   *   - Drifting indigo castle-courtyard night mist & 34 wind-swept pixel sakura petals
+   */
+  drawShogunateStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
+    if (alpha <= 0.01) return;
+    const t = this.time;
+    const moonCx = drawX + drawW * 0.583;
+    const moonCy = drawY + drawH * 0.184;
+    const lanterns = [
+      { cx: 0.057, cy: 0.600, seed: 0.7 },
+      { cx: 0.270, cy: 0.587, seed: 2.1 },
+      { cx: 0.731, cy: 0.574, seed: 3.6 },
+      { cx: 0.939, cy: 0.599, seed: 5.2 }
+    ];
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Silver-Cyan Full Moon Halo (`'lighter'` capped <= 0.18)
+    ctx.globalCompositeOperation = 'lighter';
+    if (this.glowCyan) {
+      ctx.globalAlpha = (0.14 + 0.03 * Math.sin(t * 2.1)) * alpha;
+      ctx.drawImage(this.glowCyan, moonCx - 290, moonCy - 210, 580, 420);
+    }
+    if (this.glowIndigo) {
+      ctx.globalAlpha = (0.11 + 0.03 * Math.cos(t * 1.7)) * alpha;
+      ctx.drawImage(this.glowIndigo, moonCx - 220, moonCy - 165, 440, 330);
+    }
+
+    // 2. 4 Stone Tōrō Lantern Warm Pixel-Stepped Halos & Courtyard Reflections
+    for (let i = 0; i < lanterns.length; i++) {
+      const l = lanterns[i];
+      const lx = Math.round(drawX + drawW * l.cx);
+      const ly = Math.round(drawY + drawH * l.cy);
+      const flick = 0.72 + 0.28 * Math.sin(t * 6.4 + l.seed) * Math.cos(t * 3.9 + l.seed);
+
+      ctx.globalCompositeOperation = 'lighter';
+      if (this.glowGold) {
+        ctx.globalAlpha = Math.min(0.17, 0.14 * flick) * alpha;
+        ctx.drawImage(this.glowGold, lx - 72, ly - 64, 144, 128);
+      }
+      if (this.glowOrange) {
+        ctx.globalAlpha = Math.min(0.14, 0.11 * flick) * alpha;
+        ctx.drawImage(this.glowOrange, lx - 86, gy - 10, 172, 46);
+      }
+
+      // Crisp pixel-art paper-shoji lantern flame heart
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.88 * alpha;
+      ctx.fillStyle = '#fb923c';
+      ctx.fillRect(lx - 4, ly - 5, 8, 10);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(lx - 2, ly - 3, 4, 6);
+    }
+
+    // 3. Stepped Indigo Courtyard Night-Mist Ribbons
+    ctx.globalCompositeOperation = 'lighter';
+    for (let m = 0; m < 4; m++) {
+      const mDrift = Math.sin(t * 0.85 + m * 1.7) * 58;
+      const mx = Math.round((drawX + drawW * (0.20 + m * 0.20) + mDrift) / 4) * 4;
+      const my = Math.round((gy - 34 + (m % 2) * 14) / 4) * 4;
+      ctx.globalAlpha = (0.05 + 0.02 * Math.sin(t * 1.6 + m)) * alpha;
+      ctx.fillStyle = m % 2 === 0 ? '#7dd3fc' : '#fda4af';
+      ctx.fillRect(mx - 110, my, 220, 6);
+      ctx.fillRect(mx - 70, my - 6, 140, 6);
+    }
+
+    // 4. 34 Wind-Swept Pixel-Art Sakura Petals drifting across the Shogunate Courtyard (`0` ctx.rotate!)
+    const petalCols = ['#fda4af', '#fb7185', '#fbcfe8', '#fff1f2'];
+    for (let p = 0; p < 34; p++) {
+      const cyc = (t * (0.19 + (p % 4) * 0.045) + p * 0.29) % 1;
+      const startX = drawX + drawW * (0.04 + ((p * 41) % 96) * 0.0096);
+      const breezeX = cyc * (185 + (p % 3) * 42) + Math.sin(t * 2.6 + p * 1.3) * 24;
+      const flutterY = Math.cos(t * 3.8 + p * 1.9) * 9;
+      const px = Math.round((startX + breezeX) / 2) * 2;
+      const py = Math.round((drawY + 60 + cyc * (gy - drawY + 55) + flutterY) / 2) * 2;
+      const fade = Math.sin(cyc * Math.PI) * alpha;
+      if (fade <= 0.03) continue;
+
+      const flip = Math.sin(t * 5.2 + p) >= 0 ? 1 : -1;
+      if (p % 3 === 0 && this.glowCrimson) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(0.14, fade * 0.12);
+        ctx.drawImage(this.glowCrimson, px - 12, py - 12, 24, 24);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.92;
+      ctx.fillStyle = petalCols[p % petalCols.length];
+      ctx.fillRect(px - 3, py - 1, 5, 3);
+      ctx.fillRect(px + flip * 2, py + 1, 3, 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(px - 1, py - 1, 2, 2);
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
+   * Burning Feudal Japanese Stage (`arena_shogunate_inferno.png` — Kaze-Maru vs Ignis Sol Synergy!):
+   *   - Pyroclastic smoke plumes rising from the burning Tenshu roofs, 5-story pagoda & right pavilion
+   *   - Solar Eclipse Corona at `(0.574, 0.206)` + `getShogunateInfernoFlameLayer` heat-shimmer wave strips
+   *   - Blazing stone Tōrō lanterns, incandescent courtyard fissures & 44 burning sakura petals / cinders
+   */
+  drawShogunateInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
+    if (alpha <= 0.01) return;
+    const t = this.time;
+    const assets = PixelForge.initAssets();
+    const bg = assets.arenaShogunateInferno;
+    const flameLayer = this.getShogunateInfernoFlameLayer(bg);
+    const eclipseCx = drawX + drawW * 0.574;
+    const eclipseCy = drawY + drawH * 0.206;
+    const parallaxSmokeX = -(this.camParallaxX || 0) * 0.06;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 0. Dark Pyroclastic Smoke Plumes rising from the Burning Tenshu, Pagoda & Right Pavilion
+    const smokeVents = [
+      { x: drawX + drawW * 0.48, y: drawY + drawH * 0.23, count: 6, scale: 1.05, seed: 0.4 },
+      { x: drawX + drawW * 0.63, y: drawY + drawH * 0.27, count: 4, scale: 0.80, seed: 1.9 },
+      { x: drawX + drawW * 0.72, y: drawY + drawH * 0.39, count: 4, scale: 0.78, seed: 3.4 }
+    ];
+    ctx.globalCompositeOperation = 'source-over';
+    for (const vent of smokeVents) {
+      for (let p = 0; p < vent.count; p++) {
+        const u = (t * (0.17 + (p % 3) * 0.04) + vent.seed + p * 0.25) % 1;
+        const driftX = (u * 72 + Math.sin(t * 1.5 + p + vent.seed) * 14) * vent.scale + parallaxSmokeX;
+        const riseY = u * 150 * vent.scale;
+        const px = Math.round((vent.x + driftX) / 4) * 4;
+        const py = Math.round((vent.y - riseY) / 4) * 4;
+        const pw = Math.round((42 + u * 58) * vent.scale);
+        const ph = Math.round((18 + u * 26) * vent.scale);
+        const sFade = Math.sin(u * Math.PI) * 0.34 * alpha;
+        ctx.globalAlpha = sFade;
+        ctx.fillStyle = '#180a09';
+        ctx.fillRect(px - (pw >> 1), py - (ph >> 1), pw, ph);
+        ctx.globalAlpha = sFade * (1 - u * 0.52) * 0.84;
+        ctx.fillStyle = u < 0.45 ? '#ea580c' : '#9a3412';
+        ctx.fillRect(px - Math.round(pw * 0.36), py + Math.round(ph * 0.22), Math.round(pw * 0.72), 4);
+      }
+    }
+
+    // 1. Solar Eclipse Corona (`'lighter'` capped <= 0.18)
+    ctx.globalCompositeOperation = 'lighter';
+    if (this.glowOrange) {
+      ctx.globalAlpha = (0.16 + 0.02 * Math.sin(t * 4.1)) * alpha;
+      ctx.drawImage(this.glowOrange, eclipseCx - 320, eclipseCy - 220, 640, 440);
+    }
+    if (this.glowCrimson) {
+      ctx.globalAlpha = (0.14 + 0.03 * Math.cos(t * 3.4)) * alpha;
+      ctx.drawImage(this.glowCrimson, eclipseCx - 260, eclipseCy - 180, 520, 360);
+    }
+
+    // 2. Live Heat-Shimmer Wave Strips on the Burning Tenshu Keep, 5-Story Pagoda & Pavilion
+    if (flameLayer) {
+      const mw = flameLayer.width;
+      const mh = flameLayer.height;
+      const fireZones = [
+        { x0: 0.35, y0: 0.14, w: 0.25, h: 0.28, strips: 12, amp: 3.5, seed: 0.6 },
+        { x0: 0.59, y0: 0.24, w: 0.08, h: 0.13, strips: 6, amp: 2.5, seed: 2.1 },
+        { x0: 0.68, y0: 0.36, w: 0.09, h: 0.11, strips: 5, amp: 2.5, seed: 3.7 }
+      ];
+      ctx.globalCompositeOperation = 'lighter';
+      for (const z of fireZones) {
+        ctx.globalAlpha = Math.min(0.18, 0.15 + 0.03 * Math.sin(t * 7.6 + z.seed)) * alpha;
+        for (let s = 0; s < z.strips; s++) {
+          const u = s / z.strips;
+          const sy = (z.y0 + u * z.h) * mh;
+          const sh = (z.h / z.strips) * mh + 0.6;
+          const dy = drawY + (z.y0 + u * z.h) * drawH;
+          const dh = (z.h / z.strips) * drawH + 1.2;
+          const waveX = Math.round(Math.sin(t * 9.2 + s * 0.85 + z.seed) * z.amp);
+          const liftY = Math.round(Math.cos(t * 7.8 + s * 0.9) * 1.5);
+          ctx.drawImage(
+            flameLayer,
+            z.x0 * mw,
+            sy,
+            z.w * mw,
+            sh,
+            Math.round(drawX + z.x0 * drawW + waveX),
+            Math.round(dy - liftY),
+            Math.round(z.w * drawW),
+            Math.round(dh)
+          );
+        }
+      }
+    }
+
+    // 3. Blazing Stone Tōrō Lanterns & Incandescent Courtyard Ember Seams
+    const lanterns = [
+      { cx: 0.057, cy: 0.600, seed: 0.7 },
+      { cx: 0.270, cy: 0.587, seed: 2.1 },
+      { cx: 0.731, cy: 0.574, seed: 3.6 },
+      { cx: 0.939, cy: 0.599, seed: 5.2 }
+    ];
+    for (let i = 0; i < lanterns.length; i++) {
+      const l = lanterns[i];
+      const lx = Math.round(drawX + drawW * l.cx);
+      const ly = Math.round(drawY + drawH * l.cy);
+      const flick = 0.74 + 0.26 * Math.sin(t * 8.2 + l.seed);
+      ctx.globalCompositeOperation = 'lighter';
+      if (this.glowOrange) {
+        ctx.globalAlpha = Math.min(0.18, 0.16 * flick) * alpha;
+        ctx.drawImage(this.glowOrange, lx - 84, ly - 74, 168, 148);
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.92 * alpha;
+      ctx.fillStyle = '#ea580c';
+      ctx.fillRect(lx - 5, ly - 7, 10, 13);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(lx - 2, ly - 4, 4, 8);
+    }
+
+    // 4. 44 Wind-Swept Burning Sakura Petals & Rising Spiral Cinders (`0` ctx.rotate!)
+    for (let e = 0; e < 44; e++) {
+      const isBurningPetal = e % 2 === 0;
+      const life = (t * (isBurningPetal ? 0.28 + (e % 3) * 0.06 : 0.76 + (e % 4) * 0.16) + e * 0.23) % 1;
+      const laneX = drawX + drawW * (0.05 + ((e * 39) % 94) * 0.0096);
+      const driftX = life * (isBurningPetal ? 195 : 58) + Math.sin(t * 3.8 + e * 1.5) * 20;
+      const ex = Math.round((laneX + driftX) / 2) * 2;
+      const ey = isBurningPetal
+        ? Math.round((drawY + 75 + life * (gy - drawY + 45)) / 2) * 2
+        : Math.round((gy + 22 - life * 485) / 2) * 2;
+      const fade = Math.sin(life * Math.PI) * alpha;
+      if (fade <= 0.03) continue;
+
+      if (e % 3 === 0 && this.glowOrange) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(0.17, fade * 0.16);
+        ctx.drawImage(
+          isBurningPetal && this.glowCrimson ? this.glowCrimson : this.glowOrange,
+          ex - 14,
+          ey - 14,
+          28,
+          28
+        );
+      }
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.94;
+      if (isBurningPetal) {
+        // Charred dark sakura petal with glowing ember-lit edge!
+        ctx.fillStyle = '#291510';
+        ctx.fillRect(ex - 3, ey - 2, 6, 4);
+        ctx.fillStyle = e % 4 === 0 ? '#f43f5e' : '#fb923c';
+        ctx.fillRect(ex - 2, ey - 1, 4, 2);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(ex + 1, ey - 1, 2, 2);
+      } else {
+        const sz = life < 0.35 ? 4 : 3;
+        ctx.fillStyle = life < 0.25 ? '#ffffff' : life < 0.55 ? '#fef08a' : '#fb923c';
+        ctx.fillRect(ex - (sz >> 1), ey - (sz >> 1), sz, sz);
+      }
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
+   * World-Space Full-Viewport Diagonal Katana Dimensional Rift Seam (`this.stageSliceTimer > 0`):
+   *   - Blazing diagonal katana cut line across the entire viewport (`0` ctx.rotate!)
+   *   - Pixel-stepped dimensional star cross-flare at `(stageSliceFocusX, stageSliceFocusY)`
+   *   - 36 sakura petals (or blazing solar cinders for `shogunate_inferno`) bursting from the cut
+   */
+  drawDimensionalStageSliceWorld(ctx, ww, gy) {
+    const p = Math.max(
+      0,
+      Math.min(1, 1 - this.stageSliceTimer / Math.max(0.1, this.stageSliceMaxTimer || 1.08))
+    );
+    const fade = Math.max(0, 1 - p);
+    if (fade <= 0.01) return;
+
+    const sliceCx = Number.isFinite(this.stageSliceFocusX) ? this.stageSliceFocusX : ww * 0.5;
+    const sliceCy = Number.isFinite(this.stageSliceFocusY) ? this.stageSliceFocusY : gy - 92;
+    const dir = this.stageSliceDir === -1 ? -1 : 1;
+    const slope = -0.26 * dir;
+    const x0 = -2400;
+    const x1 = ww + 2400;
+    const y0 = sliceCy + (x0 - sliceCx) * slope;
+    const y1 = sliceCy + (x1 - sliceCx) * slope;
+    const isInfernoSlice = this.stageSliceToId === 'shogunate_inferno';
+
+    const outerCol = isInfernoSlice ? '#ea580c' : '#0284c7';
+    const midCol = isInfernoSlice ? '#fb923c' : '#38bdf8';
+    const petalCols = isInfernoSlice
+      ? ['#fef08a', '#fb923c', '#f43f5e', '#ffffff']
+      : ['#fda4af', '#fb7185', '#7dd3fc', '#ffffff'];
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Razor-Bright Full-Viewport Diagonal Katana Seam
+    const seamFade = p < 0.22 ? 1.0 : Math.max(0, 1 - (p - 0.22) / 0.78);
+    if (seamFade > 0.01) {
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = seamFade * 0.55;
+      ctx.strokeStyle = outerCol;
+      ctx.lineWidth = Math.max(2, (1 - p * 0.7) * 26);
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+
+      ctx.globalAlpha = seamFade * 0.80;
+      ctx.strokeStyle = midCol;
+      ctx.lineWidth = Math.max(1.5, (1 - p * 0.75) * 11);
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = seamFade * 0.98;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1, (1 - p * 0.8) * 4);
+      ctx.beginPath();
+      ctx.moveTo(x0, y0);
+      ctx.lineTo(x1, y1);
+      ctx.stroke();
+    }
+
+    // 2. Crisp Pixel-Stepped Katana Tsuba Click Star-Flare at `(sliceCx, sliceCy)`
+    if (p < 0.48) {
+      const flareFade = 1 - p / 0.48;
+      const armH = Math.round(240 * flareFade);
+      const armV = Math.round(135 * flareFade);
+      const cxR = Math.round(sliceCx);
+      const cyR = Math.round(sliceCy);
+
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = flareFade * 0.65;
+      ctx.fillStyle = midCol;
+      ctx.fillRect(cxR - armH, cyR - 3, armH * 2, 6);
+      ctx.fillRect(cxR - 3, cyR - armV, 6, armV * 2);
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = flareFade * 0.96;
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cxR - Math.round(armH * 0.62), cyR - 1, Math.round(armH * 1.24), 3);
+      ctx.fillRect(cxR - 1, cyR - Math.round(armV * 0.62), 3, Math.round(armV * 1.24));
+    }
+
+    // 3. 36 Dimensional Sakura Petals / Blazing Cinders bursting outward along the katana cut!
+    for (let i = 0; i < 36; i++) {
+      const laneX = -80 + ((i * 39) % (ww + 160));
+      const baseCutY = sliceCy + (laneX - sliceCx) * slope;
+      const side = i % 2 === 0 ? -1 : 1;
+      const burstDist = (32 + (i % 5) * 28) * Math.pow(p, 0.72);
+      const windX = p * dir * (48 + (i % 4) * 22);
+      const px = Math.round((laneX + windX + side * slope * burstDist) / 2) * 2;
+      const py = Math.round((baseCutY + side * burstDist) / 2) * 2;
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.92;
+      ctx.fillStyle = petalCols[i % petalCols.length];
+      ctx.fillRect(px - 3, py - 2, 6, 3);
+      ctx.fillRect(px - 1, py + 1, 3, 2);
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -3043,17 +3614,20 @@ export class Renderer {
           ? this.glowViolet
           : activeStage === 'clocktower'
             ? this.glowTeal
-            : activeStage === 'sanctuary'
+            : activeStage === 'sanctuary' || activeStage === 'shogunate'
               ? this.glowCyan
-              : activeStage === 'inferno'
+              : activeStage === 'inferno' || activeStage === 'shogunate_inferno'
                 ? this.glowOrange
                 : this.glowGold;
     if (skyGlow) {
       ctx.drawImage(skyGlow, viewCenterX - 390 + parX * 0.4, gy - 540, 780, 480);
     }
-    if (activeStage === 'inferno' && this.glowCrimson) {
+    if ((activeStage === 'inferno' || activeStage === 'shogunate_inferno') && this.glowCrimson) {
       ctx.globalAlpha = 0.16 + 0.04 * Math.cos(t * 2.1);
       ctx.drawImage(this.glowCrimson, viewCenterX - 320 + parX * 0.3, gy - 480, 640, 420);
+    } else if (activeStage === 'shogunate' && this.glowIndigo) {
+      ctx.globalAlpha = 0.14 + 0.03 * Math.cos(t * 1.8);
+      ctx.drawImage(this.glowIndigo, viewCenterX - 280 + parX * 0.3, gy - 510, 560, 420);
     } else if (activeStage === 'sanctuary' && this.glowGold) {
       ctx.globalAlpha = 0.16 + 0.04 * Math.cos(t * 1.9);
       ctx.drawImage(this.glowGold, viewCenterX - 280 + parX * 0.3, gy - 510, 560, 420);
@@ -3070,12 +3644,23 @@ export class Renderer {
       let midRgb;
       let baseAlpha = 0.085;
 
-      if (activeStage === 'inferno') {
+      if (activeStage === 'inferno' || activeStage === 'shogunate_inferno') {
         topX = viewCenterX + idx * 145 - 35 + parX;
         botX = viewCenterX + idx * 195 + 45 + sway + parX * 1.15;
-        topRgb = s % 2 === 0 ? '251, 146, 60' : '250, 204, 21';
+        topRgb =
+          activeStage === 'shogunate_inferno' && s % 2 === 1
+            ? '244, 63, 94'
+            : s % 2 === 0
+              ? '251, 146, 60'
+              : '250, 204, 21';
         midRgb = s % 3 === 0 ? '239, 68, 68' : '234, 88, 12';
         baseAlpha = 0.095;
+      } else if (activeStage === 'shogunate') {
+        topX = viewCenterX + 45 + idx * 128 + parX;
+        botX = viewCenterX - 25 + idx * 176 + sway + parX * 1.15;
+        topRgb = s % 2 === 0 ? '125, 211, 252' : '253, 164, 175';
+        midRgb = s % 2 === 0 ? '56, 189, 248' : '244, 63, 94';
+        baseAlpha = 0.082;
       } else if (activeStage === 'sanctuary') {
         topX = viewCenterX - 95 + idx * 118 + parX;
         botX = viewCenterX + 35 + idx * 172 + sway + parX * 1.15;
@@ -3143,21 +3728,24 @@ export class Renderer {
       ctx.fill();
     }
 
-    // 3. Stage-Specific Rising / Drifting Depth Motes for ALL 6 Stages
+    // 3. Stage-Specific Rising / Drifting Depth Motes for ALL Stages
     const moteColors =
-      activeStage === 'inferno'
+      activeStage === 'inferno' || activeStage === 'shogunate_inferno'
         ? ['#fb923c', '#fde047']
-        : activeStage === 'sanctuary'
-          ? ['#7dd3fc', '#fef08a']
-          : activeStage === 'sylvan'
-            ? ['#34d399', '#fde047']
-            : activeStage === 'boneyard'
-              ? ['#c084fc', '#f43f5e']
-              : activeStage === 'clocktower'
-                ? ['#2dd4bf', '#fde047']
-                : ['#38bdf8', '#fb923c'];
-    const spdMult = activeStage === 'inferno' ? 1.85 : activeStage === 'sanctuary' ? 1.05 : 1.25;
-    const windBias = activeStage === 'inferno' ? 28 : 0;
+        : activeStage === 'shogunate'
+          ? ['#fda4af', '#7dd3fc']
+          : activeStage === 'sanctuary'
+            ? ['#7dd3fc', '#fef08a']
+            : activeStage === 'sylvan'
+              ? ['#34d399', '#fde047']
+              : activeStage === 'boneyard'
+                ? ['#c084fc', '#f43f5e']
+                : activeStage === 'clocktower'
+                  ? ['#2dd4bf', '#fde047']
+                  : ['#38bdf8', '#fb923c'];
+    const isInfernoFamily = activeStage === 'inferno' || activeStage === 'shogunate_inferno';
+    const spdMult = isInfernoFamily ? 1.85 : activeStage === 'sanctuary' || activeStage === 'shogunate' ? 1.05 : 1.25;
+    const windBias = isInfernoFamily ? 28 : activeStage === 'shogunate' ? 22 : 0;
 
     for (let i = 0; i < this.motes.length; i++) {
       const m = this.motes[i];
@@ -3167,7 +3755,7 @@ export class Renderer {
       const moteParallax = (this.camParallaxX || 0) * (0.08 + (i % 3) * 0.04);
       const rawDriftX =
         m.x +
-        Math.sin(t * (activeStage === 'inferno' ? 2.8 : 1.6) + m.phase) * 26 +
+        Math.sin(t * (isInfernoFamily ? 2.8 : 1.6) + m.phase) * 26 +
         u * windBias;
       const mx = this.adventureMode
         ? this.camX - 760 + ((((rawDriftX - (this.camX - 760)) % 1520) + 1520) % 1520)
@@ -3175,7 +3763,7 @@ export class Renderer {
       const pulse = 0.5 + 0.5 * Math.sin(t * 3.8 + m.phase);
       const alpha = 0.36 + 0.50 * pulse;
       const col =
-        activeStage === 'inferno' && i % 5 === 0
+        isInfernoFamily && i % 5 === 0
           ? '#ef4444'
           : m.isBlue
             ? moteColors[0]
@@ -3196,6 +3784,8 @@ export class Renderer {
         ctx.fillRect(mx + 1, my + 1, Math.max(1, s - 2), Math.max(1, s - 2));
       }
     }
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -3231,8 +3821,8 @@ export class Renderer {
       ctx.fillRect(px - size * 0.25, py - size * 0.25, Math.max(2, size * 0.5), Math.max(2, size * 0.5));
     };
 
-    if (activeStage === 'inferno') {
-      // ★ INFERNO PHENOMENON: PYROCLASTIC CINDER STORM & SOLAR FLARE
+    if (activeStage === 'inferno' || activeStage === 'shogunate_inferno') {
+      // ★ INFERNO / SHOGUNATE INFERNO PHENOMENON: PYROCLASTIC CINDER STORM & SOLAR FLARE
       const calderaX = ww * 0.495;
       const calderaY = gy - 355;
       ctx.globalCompositeOperation = 'lighter';
@@ -3266,10 +3856,51 @@ export class Renderer {
           tailDy = -14;
         }
         const pAlpha = fade * Math.sin(cycle * Math.PI);
-        const midCol = p % 4 === 0 ? '#ef4444' : p % 2 === 0 ? '#fb923c' : '#fde047';
+        const midCol =
+          activeStage === 'shogunate_inferno' && p % 3 === 0
+            ? '#f43f5e'
+            : p % 4 === 0
+              ? '#ef4444'
+              : p % 2 === 0
+                ? '#fb923c'
+                : '#fde047';
         const glow = p % 4 === 0 ? this.glowCrimson : p % 2 === 0 ? this.glowOrange : this.glowGold;
         const sz = p % 3 === 0 ? 5 : 4;
         drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 24, pAlpha, tailDx, tailDy);
+      }
+    } else if (activeStage === 'shogunate') {
+      // ★ SHOGUNATE PHENOMENON: MOONLIT SAKURA GALE & ASTRAL BLADE BREEZE
+      const originX = ww * 0.56;
+      const originY = gy - 385;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.28 * fade;
+      if (this.glowCyan) ctx.drawImage(this.glowCyan, originX - 380, originY - 220, 760, 440);
+      ctx.globalAlpha = 0.20 * fade;
+      if (this.glowCrimson) ctx.drawImage(this.glowCrimson, ww * 0.5 - 420, gy - 310, 840, 340);
+
+      for (let f = 0; f < 56; f++) {
+        const cycle = (t * (0.34 + (f % 4) * 0.07) + f * 0.21) % 1;
+        const baseX = -40 + ((f * 89) % (ww + 40));
+        const breezeX = cycle * 260 + Math.sin(t * 2.8 + f * 1.4) * 26;
+        const fx = Math.round(baseX + breezeX);
+        const fy = Math.round(gy - 520 + cycle * 545);
+        const fAlpha = fade * Math.sin(cycle * Math.PI);
+        const isMoon = f % 4 === 0;
+        const glow = isMoon ? this.glowCyan : this.glowCrimson;
+        const tilt = Math.cos(t * 3.1 + f * 1.5) >= 0 ? 1 : -1;
+
+        if (glow) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = fAlpha * 0.24;
+          ctx.drawImage(glow, fx - 14, fy - 14, 28, 28);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fAlpha * 0.94;
+        ctx.fillStyle = isMoon ? '#bae6fd' : f % 2 === 0 ? '#fda4af' : '#fb7185';
+        ctx.fillRect(fx - 3 * tilt, fy - 2, 6, 3);
+        ctx.fillRect(fx - 1 * tilt, fy + 1, 4, 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(fx - 1 * tilt, fy - 1, 3, 2);
       }
     } else if (activeStage === 'sanctuary') {
       // ★ SANCTUARY PHENOMENON: RADIANT SERAPHIM FEATHER & HALO SHOWER
@@ -3417,6 +4048,8 @@ export class Renderer {
       }
     }
 
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 
@@ -3440,9 +4073,9 @@ export class Renderer {
       const isLeftFlank = i % 2 === 0;
       const slot = Math.floor(i / 2); // 0..6
       const speed =
-        activeStage === 'inferno'
+        activeStage === 'inferno' || activeStage === 'shogunate_inferno'
           ? 0.34 + (i % 3) * 0.08
-          : activeStage === 'sanctuary' || activeStage === 'sylvan'
+          : activeStage === 'sanctuary' || activeStage === 'sylvan' || activeStage === 'shogunate'
             ? 0.16 + (i % 3) * 0.04
             : 0.22 + (i % 3) * 0.05;
       const cycle = (t * speed + i * 0.19) % 1;
@@ -3450,10 +4083,17 @@ export class Renderer {
       const baseX = isLeftFlank
         ? viewLeftX - 35 + ((slot * 67) % Math.round(flankSpan))
         : viewLeftX + viewSpanW - flankSpan + ((slot * 71) % Math.round(flankSpan)) + 35;
-      const swayX = Math.sin(t * 2.2 + i * 1.3) * 22 + (activeStage === 'inferno' ? cycle * 38 : 0);
+      const swayX =
+        Math.sin(t * 2.2 + i * 1.3) * 22 +
+        (activeStage === 'inferno' || activeStage === 'shogunate_inferno' || activeStage === 'shogunate'
+          ? cycle * 38
+          : 0);
       const px = Math.round((baseX + swayX + fgShiftX) / 3) * 3;
 
-      const isFalling = activeStage === 'sanctuary' || (activeStage === 'sylvan' && i % 3 !== 0);
+      const isFalling =
+        activeStage === 'sanctuary' ||
+        activeStage === 'shogunate' ||
+        (activeStage === 'sylvan' && i % 3 !== 0);
       const rawY = isFalling
         ? gy - 340 + cycle * 435
         : gy + 92 - cycle * 410;
@@ -3461,7 +4101,7 @@ export class Renderer {
       const alpha = Math.sin(cycle * Math.PI) * 0.44;
       if (alpha <= 0.02) continue;
 
-      if (activeStage === 'inferno') {
+      if (activeStage === 'inferno' || activeStage === 'shogunate_inferno') {
         const isAshFlake = i % 3 === 1;
         if (!isAshFlake && this.glowOrange) {
           ctx.globalCompositeOperation = 'lighter';
@@ -3473,14 +4113,26 @@ export class Renderer {
         if (isAshFlake) {
           ctx.fillStyle = '#291510';
           ctx.fillRect(px - 4, py - 2, 8, 5);
-          ctx.fillStyle = '#ea580c';
+          ctx.fillStyle = activeStage === 'shogunate_inferno' ? '#f43f5e' : '#ea580c';
           ctx.fillRect(px - 3, py + 1, 5, 2);
         } else {
-          ctx.fillStyle = '#fb923c';
+          ctx.fillStyle = activeStage === 'shogunate_inferno' && i % 2 === 0 ? '#fb7185' : '#fb923c';
           ctx.fillRect(px - 3, py - 3, 6, 6);
           ctx.fillStyle = '#fef08a';
           ctx.fillRect(px - 1, py - 1, 3, 3);
         }
+      } else if (activeStage === 'shogunate') {
+        if (this.glowCrimson && i % 2 === 0) {
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = alpha * 0.24;
+          ctx.drawImage(this.glowCrimson, px - 16, py - 16, 32, 32);
+        }
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha * 0.90;
+        ctx.fillStyle = i % 3 === 0 ? '#fbcfe8' : '#fda4af';
+        ctx.fillRect(px - 4, py - 2, 7, 3);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(px - 2, py - 1, 3, 2);
       } else if (activeStage === 'sylvan') {
         const gTex = i % 2 === 0 ? this.glowEmerald : this.glowCyan;
         if (gTex) {
@@ -3542,6 +4194,8 @@ export class Renderer {
       }
     }
 
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 

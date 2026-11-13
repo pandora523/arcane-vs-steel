@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps95';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps95';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps95';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps95';
+import { Fighter } from './Fighter.js?v=30fps96';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps96';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps96';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps96';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -33,8 +33,8 @@ export class Ronin extends Fighter {
     this.skillName = 'ZANTETSUKEN FLASH';
     this.ultName = 'SUSANOO OMNISLASH';
     this.hasTrueUltimate = true;
-    this.trueUltName = 'AMAKAKERU: THOUSAND THUNDER JUDGMENTS';
-    this.trueUltDuration = 4.40;
+    this.trueUltName = 'AMAKAKERU: SHOGUNATE REALM SLICE';
+    this.trueUltDuration = 3.70;
     this.theme = 'storm';
     this.hasPoise = false;
     this.skillTriggerRange = 440;
@@ -66,13 +66,15 @@ export class Ronin extends Fighter {
     this._ultTargetX = 600;
     this.susanooAvatar = null;
 
-    // 6. Supreme Ultimate (`AMAKAKERU: THOUSAND THUNDER JUDGMENTS`) state
+    // 6. Supreme Ultimate (`AMAKAKERU: SHOGUNATE REALM SLICE`) state
     this._trueUltInit = false;
     this._trueUltStep = 0;
     this._trueUltCutsDone = 0;
     this._trueUltTargetX = 600;
+    this._trueUltDashDir = 1;
+    this._trueUltStartX = 300;
+    this._trueUltBackX = 750;
     this.raijinEyeSeal = null;
-    this.spatialJudgmentRifts = [];
     this.amakakeruCleaves = [];
 
     this.fx = new ArcaneShaderFX(STORM_EFFECT_REGISTRY, {
@@ -83,11 +85,11 @@ export class Ronin extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const roninAssets = PixelForge.initAssets()?.ronin;
-      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps95')) {
-        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps95';
+      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps96')) {
+        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps96';
       }
       if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps63')) {
-        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps95';
+        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps96';
       }
     }
   }
@@ -140,8 +142,10 @@ export class Ronin extends Fighter {
       this._trueUltInit = false;
       this._trueUltStep = 0;
       this._trueUltCutsDone = 0;
+      this._trueUltDashDir = this.facing || 1;
+      this._trueUltStartX = this.x;
+      this._trueUltBackX = this.x;
       this.raijinEyeSeal = null;
-      this.spatialJudgmentRifts = [];
       this.amakakeruCleaves = [];
       this.trueUltFrameOverride = 214;
     } else {
@@ -150,7 +154,6 @@ export class Ronin extends Fighter {
         this.trueUltFrameOverride = null;
       }
       this.raijinEyeSeal = null;
-      this.spatialJudgmentRifts = [];
       this.amakakeruCleaves = [];
       this.cameraAirLift = 0;
       this.unstoppablePoise = false;
@@ -414,7 +417,7 @@ export class Ronin extends Fighter {
     }
 
     if (!this.isDead && this.state === 'WALK') {
-      this.divePitchRad = 0.05;
+      this.divePitchRad = 0;
       this.stepDustTimer += dt;
       if (this.stepDustTimer >= 0.24) {
         this.stepDustTimer = 0;
@@ -1317,7 +1320,7 @@ export class Ronin extends Fighter {
 
   updateTrueUltimate(dt, enemy, game) {
     const t = this.stateTimer;
-    const ww = game?.renderer?.worldWidth || 1600;
+    const ww = game?.renderer?.worldWidth || 1200;
 
     // Guarantee PixelForge.getFrameIndex honors trueUltFrameOverride (isCrouching/isFlipVault/isBlinkTeleport = false)
     this.isInvulnerable = true;
@@ -1328,7 +1331,7 @@ export class Ronin extends Fighter {
     this.vx = 0;
     this.vy = 0;
 
-    // Resolve active enemy target (supports 1v1 & 3v3 tag modes)
+    // Resolve active enemy target (supports 1v1, 3v3 tag & 9600px Adventure Mode)
     const foes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
     let focusEnemy = enemy && !enemy.isDead && !enemy.isBenched ? enemy : null;
     if (!focusEnemy && foes.length > 0) {
@@ -1348,106 +1351,128 @@ export class Ronin extends Fighter {
       this._trueUltInit = true;
       this._trueUltStep = 0;
       this._trueUltCutsDone = 0;
-      this._trueUltOriginX = this.x;
       this._trueUltAfterimageAcc = 0;
 
-      const initTargetX = focusEnemy
-        ? Math.max(160, Math.min(ww - 160, focusEnemy.x))
-        : Math.max(160, Math.min(ww - 160, this.x + this.facing * 290));
+      const rawEnemyX = focusEnemy
+        ? focusEnemy.x
+        : this.x + (this.facing || 1) * 280;
+      const dashDir =
+        Math.abs(rawEnemyX - this.x) > 4
+          ? rawEnemyX >= this.x
+            ? 1
+            : -1
+          : this.facing || 1;
+      this._trueUltDashDir = dashDir;
+
+      // Guarantee clear landing room on the BACK SIDE of the enemy (`backX = targetX + dashDir * 148`)
+      const minTargetX = dashDir === 1 ? 195 : 235;
+      const maxTargetX = dashDir === 1 ? ww - 235 : ww - 195;
+      const initTargetX = Math.max(minTargetX, Math.min(maxTargetX, rawEnemyX));
       this._trueUltTargetX = initTargetX;
-      if (Math.abs(initTargetX - this.x) > 8) {
-        this.facing = initTargetX >= this.x ? 1 : -1;
+
+      // Guarantee Kaze-Maru starts strictly in front of `initTargetX` along `-dashDir`
+      let startX = this.x;
+      if ((initTargetX - startX) * dashDir < 110) {
+        startX = Math.max(80, Math.min(ww - 80, initTargetX - dashDir * 145));
       }
+      this._trueUltStartX = startX;
+      this._trueUltBackX = Math.max(80, Math.min(ww - 80, initTargetX + dashDir * 148));
+      this.x = startX;
       this.y = this.groundY;
+      this.facing = dashDir;
 
       if (game?.audio) {
         game.audio.play('ult_cast', this.x);
         game.audio.play('parry_clang', this.x);
       }
       if (game?.renderer) {
-        game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, 0.52);
+        game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, 0.54);
         game.renderer.triggerShake(7, 0.20);
       }
 
-      // Manifest Row 5 Raijin Thunder-Drum Eye Seal behind Kaze-Maru + 2.5D Susanoo Storm Domain
+      // Manifest Row 5 Raijin Thunder-Drum Eye Seal behind Kaze-Maru + Susanoo Wind-Gathering Domain
       this.raijinEyeSeal = {
-        x: this.x - this.facing * 8,
+        x: this.x - dashDir * 10,
         y: this.groundY - 108,
         age: 0,
         alpha: 1.0,
         floorLockAlpha: 0
       };
-      this.spatialJudgmentRifts = [];
       this.amakakeruCleaves = [];
 
       this.spawnSayaGlint(false);
-      this.spawnPixelShockwave(this.x, this.groundY - 4, 155, 'cyan', 0.36, true);
+      this.spawnPixelShockwave(this.x, this.groundY - 4, 150, 'cyan', 0.34, true);
       this.fx.spawn('susanooStormDomain', this.x, this.groundY, {
         key: 'susanooStormDomain',
         follow: this,
         offsetX: 0,
         offsetY: 0,
         useGroundY: true,
-        light: 1.38
+        light: 1.34
       });
 
       if (game?.vfx) {
-        game.vfx.spawnShockwave(this.x, this.groundY - 4, 165, '#38bdf8', 0.34, true);
+        game.vfx.spawnShockwave(this.x, this.groundY - 4, 160, '#38bdf8', 0.34, true);
         game.vfx.spawnDamageText(
           this.x,
           this.groundY - 168,
           0,
           true,
-          '★ AMAKAKERU: THOUSAND THUNDER JUDGMENTS ★',
+          '★ AMAKAKERU: SHOGUNATE REALM SLICE ★',
           '#38bdf8'
         );
       }
     }
 
-    // Sustain dramatic 0.52 Ult Dim through the 8-angle blitz & tense Saya resheath, fading cleanly after 3.35s
-    if (game?.renderer && t < 3.90) {
-      const dimTarget = t <= 3.35 ? 0.52 : 0.52 * Math.max(0, 1 - (t - 3.35) / 0.55);
+    const dashDir = this._trueUltDashDir || 1;
+
+    // Sustain dramatic Ult Dim through the Iaido charge, single back-side flash-cut & Noto resheath (`0.00s..2.15s`)
+    if (game?.renderer && t < 2.65) {
+      const dimTarget = t <= 1.95 ? 0.54 : 0.54 * Math.max(0, 1 - (t - 1.95) / 0.70);
       game.renderer.ultDim = Math.max(game.renderer.ultDim || 0, dimTarget);
     }
 
-    // Track active target smoothly before blitz locks the storm-web center
-    if (t < 1.25 && focusEnemy && !focusEnemy.isDead) {
-      const desiredX = Math.max(160, Math.min(ww - 160, focusEnemy.x));
-      this._trueUltTargetX += (desiredX - this._trueUltTargetX) * Math.min(1, dt * 8.5);
+    // Smoothly track target during Beat 1 charge (`t < 0.90s`) while preserving back-side landing room
+    if (t < 0.90 && focusEnemy && !focusEnemy.isDead) {
+      const minTargetX = dashDir === 1 ? 195 : 235;
+      const maxTargetX = dashDir === 1 ? ww - 235 : ww - 195;
+      const desiredX = Math.max(minTargetX, Math.min(maxTargetX, focusEnemy.x));
+      this._trueUltTargetX += (desiredX - this._trueUltTargetX) * Math.min(1, dt * 9.0);
+      // If enemy was pinned right against the far wall, storm-vacuum pulls them slightly inward so back-side dash has clear room!
+      if ((focusEnemy.x - maxTargetX) * dashDir > 0 || (minTargetX - focusEnemy.x) * dashDir < 0) {
+        if (focusEnemy.x > maxTargetX) focusEnemy.x -= Math.min(focusEnemy.x - maxTargetX, dt * 320);
+        if (focusEnemy.x < minTargetX) focusEnemy.x += Math.min(minTargetX - focusEnemy.x, dt * 320);
+      }
+      if ((this._trueUltTargetX - this._trueUltStartX) * dashDir < 105) {
+        this._trueUltStartX = Math.max(
+          80,
+          Math.min(ww - 80, this._trueUltTargetX - dashDir * 140)
+        );
+      }
+      this._trueUltBackX = Math.max(
+        80,
+        Math.min(ww - 80, this._trueUltTargetX + dashDir * 148)
+      );
     }
+
     const targetX = this._trueUltTargetX;
+    const startX = this._trueUltStartX;
+    const backSideX = this._trueUltBackX;
 
     // Step Row 5 Raijin Thunder-Drum Eye Seal
     if (this.raijinEyeSeal) {
       this.raijinEyeSeal.age += dt;
-      if (t < 1.05 || t >= 2.85) {
-        this.raijinEyeSeal.x = this.x - this.facing * 8;
-        this.raijinEyeSeal.y = this.y - 106;
-      } else {
-        this.raijinEyeSeal.x = targetX;
-        this.raijinEyeSeal.y = this.groundY - 118;
-      }
+      this.raijinEyeSeal.x = this.x - this.facing * 10;
+      this.raijinEyeSeal.y = this.y - 106;
       this.raijinEyeSeal.alpha =
-        t < 3.65 ? Math.min(1, t / 0.22) : Math.max(0, 1 - (t - 3.65) / 0.45);
+        t < 2.25 ? Math.min(1, t / 0.20) : Math.max(0, 1 - (t - 2.25) / 0.55);
       this.raijinEyeSeal.floorLockAlpha =
-        t >= 1.05 && t < 3.65
-          ? Math.min(1, (t - 1.05) / 0.20) * (t <= 3.35 ? 1 : Math.max(0, 1 - (t - 3.35) / 0.30))
+        t >= 0.92 && t < 2.15
+          ? Math.min(1, (t - 0.92) / 0.14) * (t <= 1.95 ? 1 : Math.max(0, 1 - (t - 1.95) / 0.20))
           : 0;
     }
 
-    // Step 8 persistent suspended Row 6 Spatial Judgment-Cut Rifts
-    for (let i = this.spatialJudgmentRifts.length - 1; i >= 0; i--) {
-      const rift = this.spatialJudgmentRifts[i];
-      rift.age += dt;
-      if (rift.detonated) {
-        rift.detonateAge += dt;
-        if (rift.detonateAge >= 0.46) {
-          this.spatialJudgmentRifts.splice(i, 1);
-        }
-      }
-    }
-
-    // Step Row 7 Amakakeru Heaven-Splitting Thunder Cleaves
+    // Step Row 7 Amakakeru Heaven-Splitting Thunder Cleave
     for (let i = this.amakakeruCleaves.length - 1; i >= 0; i--) {
       const c = this.amakakeruCleaves[i];
       c.age += dt;
@@ -1456,195 +1481,188 @@ export class Ronin extends Fighter {
       }
     }
 
-    // Pin target inside the 8-rift storm web between 1.05s and 3.35s detonation
-    if (t >= 1.08 && t < 3.35 && focusEnemy && !focusEnemy.isDead && this.spatialJudgmentRifts.length > 0) {
+    // Hold struck target frozen in time between the single Iaido slash (`1.04s`) and the Tsuba click (`1.95s`)
+    if (t >= 1.04 && t < 1.95 && focusEnemy && !focusEnemy.isDead) {
       const drift = focusEnemy.x - targetX;
-      if (Math.abs(drift) > 40) {
-        focusEnemy.x -= Math.sign(drift) * Math.min(Math.abs(drift) - 40, dt * 380);
+      if (Math.abs(drift) > 18) {
+        focusEnemy.x -= Math.sign(drift) * Math.min(Math.abs(drift) - 18, dt * 420);
       }
-      focusEnemy.vx *= 0.18;
+      focusEnemy.vx = 0;
+      focusEnemy.vy = Math.min(0, focusEnemy.vy || 0);
     }
 
     // =========================================================================
-    // PHASE 1 (0.00s..1.05s): Motionless Iaido Battoujutsu Crouch (Row 7 F04..F08)
-    //                         & Row 5 Raijin Thunder-Drum Eye Seal
+    // BEAT 1 (`0.00s .. 0.92s`): Grounded Iaido Battoujutsu Charge & Pose
     // =========================================================================
-    if (t < 1.05) {
+    if (t < 0.92) {
+      this.x = startX;
       this.y = this.groundY;
+      this.facing = dashDir;
       this.cameraAirLift = 0;
       this.divePitchRad = 0;
-      if (focusEnemy && !focusEnemy.isDead && Math.abs(focusEnemy.x - this.x) > 8) {
-        this.facing = focusEnemy.x >= this.x ? 1 : -1;
-      }
-      // Row 7 F04..F08 = indices 214..218 (motionless deep coiled Iaido crouch with Koiguchi sparks)
-      this.trueUltFrameOverride = 214 + Math.min(4, Math.floor((t / 1.05) * 5));
+      // Row 7 F04..F08 = indices 214..218 (deep coiled grounded Iaido charge pose with Koiguchi sparks)
+      this.trueUltFrameOverride = 214 + Math.min(4, Math.floor((t / 0.92) * 5));
 
-      if (t >= 0.52 && this._trueUltStep < 1) {
+      if (t >= 0.46 && this._trueUltStep < 1) {
         this._trueUltStep = 1;
         if (game?.audio) game.audio.play('parry_clang', this.x);
-        this.spawnSayaGlint(false);
-        this.spawnPixelShockwave(this.x, this.groundY - 4, 130, 'gold', 0.28, true);
+        this.spawnSayaGlint(true);
+        this.spawnPixelShockwave(this.x, this.groundY - 4, 132, 'gold', 0.28, true);
       }
       return;
     }
 
     // =========================================================================
-    // PHASE 2 (1.05s..2.85s): Vanish at Godspeed, 8-Angle Lightning Blitz &
-    //                         8 Persistent Suspended Row 6 Spatial Judgment-Cut Rifts
+    // BEAT 2 (`0.92s .. 1.34s`): Single Supersonic Iaido Flash-Dash Through
+    //                            Enemy onto Their Back Side (`1` Razor Slash!)
     // =========================================================================
-    if (t < 2.85) {
+    if (t < 1.34) {
       if (this._trueUltStep < 2) {
         this._trueUltStep = 2;
         if (game?.audio) {
           game.audio.play('blink', this.x);
           game.audio.play('dash_whoosh', this.x);
         }
-        this.spawnAfterimage(this.x, this.groundY, this.facing, 7, 6, 0.34);
-        this.spawnPixelShockwave(this.x, this.groundY - 4, 145, 'cyan', 0.28, true);
+        this.spawnAfterimage(startX, this.groundY, dashDir, 7, 8, 0.34);
+        this.spawnPixelShockwave(startX, this.groundY - 4, 155, 'cyan', 0.28, true);
       }
 
-      // 8 distinct geometric blitz angles around (targetX, groundY - 92), 0.22s per pass across 1.05s..2.81s
-      const PASS_SPECS = [
-        // [startDX, startDY, endDX, endDY, riftDX, riftDY, riftAngleDeg, frameStart, frameSpan, inFront]
-        [-195, -24, 185, -142, -68, -74, -22, 125, 3, true],
-        [190, -168, -185, -26, 68, -78, 28, 128, 2, false],
-        [-175, -18, 175, -196, -38, -138, -42, 130, 2, true],
-        [205, -88, -205, -84, 82, -108, 4, 132, 2, true],
-        [-165, -215, 168, -20, -78, -118, 48, 137, 3, false],
-        [168, -22, -165, -212, 42, -144, -52, 134, 3, true],
-        [-210, -96, 210, -92, -26, -54, 14, 132, 2, false],
-        [48, -245, -52, -12, 24, -92, 74, 138, 3, true]
-      ];
+      const dashSpan = 0.28; // `0.92s .. 1.20s` supersonic travel, `1.20s .. 1.34s` back-side skid hold
+      const rawU = Math.min(1, Math.max(0, (t - 0.92) / dashSpan));
+      const easeDash = 1 - Math.pow(1 - rawU, 3.0);
 
-      const blitzElapsed = Math.max(0, t - 1.05);
-      const passDur = 0.22;
-      const passIdx = Math.min(7, Math.floor(blitzElapsed / passDur));
-      const passU = Math.min(1, (blitzElapsed - passIdx * passDur) / passDur);
-      const spec = PASS_SPECS[passIdx];
+      this.x = startX + (backSideX - startX) * easeDash;
+      this.y = this.groundY;
+      // Moving in `dashDir` -> once past `targetX`, facing `dashDir` means facing AWAY from the enemy!
+      this.facing = dashDir;
+      this.divePitchRad = 0;
+      this.cameraAirLift = 0;
 
-      // Trigger cut SFX, persistent Row 6 Spatial Judgment-Cut Rift & 12 dmg light cut as each pass crosses target!
-      while (this._trueUltCutsDone <= passIdx && (passU >= 0.28 || this._trueUltCutsDone < passIdx)) {
-        const k = this._trueUltCutsDone;
-        this._trueUltCutsDone++;
-        const s = PASS_SPECS[k];
-        const rx = targetX + s[4];
-        const ry = this.groundY + s[5];
-        const baseRiftAngle = Math.atan2(20, 35); // Row 6 intrinsic diagonal (~29.7 deg)
-        const desiredAngle = (s[6] * Math.PI) / 180;
+      if (rawU < 0.55) {
+        this.trueUltFrameOverride = rawU < 0.28 ? 132 : 133;
+        this.syncSpearMachCone();
+      } else if (rawU < 0.96) {
+        this.fx?.stopByKey('shunpoSpearMachCone');
+        this.trueUltFrameOverride = rawU < 0.72 ? 65 : rawU < 0.86 ? 66 : 67;
+      } else {
+        this.fx?.stopByKey('shunpoSpearMachCone');
+        this.trueUltFrameOverride = 237;
+      }
 
-        this.spatialJudgmentRifts.push({
-          index: k,
-          x: rx,
-          y: ry,
-          angleRad: desiredAngle - baseRiftAngle,
-          inFront: s[9],
-          glowColor: k % 3 === 0 ? 'gold' : k % 2 === 0 ? 'cyan' : 'purple',
-          age: 0,
-          detonated: false,
-          detonateAge: 0
-        });
+      if (rawU < 0.95) {
+        this._trueUltAfterimageAcc += dt;
+        if (this._trueUltAfterimageAcc >= 0.022) {
+          this._trueUltAfterimageAcc = 0;
+          this.spawnAfterimage(this.x, this.groundY, dashDir, 4, 12, 0.34);
+        }
+      }
 
+      // Trigger ONE single razor-clean katana slash right as Kaze-Maru crosses `targetX`!
+      if (this._trueUltCutsDone === 0 && rawU >= 0.42) {
+        this._trueUltCutsDone = 1;
+        // Ensure enemy sits cleanly at `targetX` so `backSideX` is strictly on their back side!
+        if (focusEnemy && !focusEnemy.isDead && (backSideX - focusEnemy.x) * dashDir < 48) {
+          focusEnemy.x = targetX;
+        }
+
+        // Single long diagonal-horizontal katana slash line across the enemy (held until Tsuba click at 1.95s)
         this.addSlashLine(
-          targetX + s[0] * 0.72,
-          this.groundY + s[1],
-          targetX + s[2] * 0.72,
-          this.groundY + s[3],
-          2.35 - k * 0.21,
+          targetX - dashDir * 245,
+          this.groundY - 66,
+          targetX + dashDir * 245,
+          this.groundY - 122,
+          1.05,
           false
         );
+        this.spawnVfxAnim(6, targetX, this.groundY - 92, 236, 236, 0.92, {
+          flipX: dashDir < 0,
+          glowColor: 'cyan',
+          inFront: true
+        });
+        this.spawnPixelShockwave(targetX, this.groundY - 88, 145, 'cyan', 0.28, false);
 
         if (game?.audio) {
-          game.audio.play('raijin_slash', rx);
-          game.audio.play('dash_whoosh', rx);
+          game.audio.play('raijin_slash', targetX);
         }
         if (game?.renderer) {
-          game.renderer.triggerShake(5, 0.10);
-          game.renderer.triggerHitStop(0.016);
+          game.renderer.triggerShake(9, 0.14);
+          game.renderer.triggerHitStop(0.045);
         }
-        this.spawnPixelShockwave(rx, ry, 108, k % 2 === 0 ? 'cyan' : 'purple', 0.24, false);
+        if (game?.vfx) {
+          game.vfx.spawnDamageText(
+            targetX,
+            this.groundY - 158,
+            0,
+            true,
+            'IAIDO FLASH-CUT!',
+            '#67e8f9'
+          );
+        }
 
-        // 8 x 18 light pinning cuts keeping the foe suspended inside the storm web!
-        let cutAny = false;
+        let slashedAny = false;
         for (const foe of foes) {
-          if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - targetX) < 205) {
-            foe.takeDamage(foe === focusEnemy ? 17 : 13, this, false, 14, -24);
-            foe.vx = (targetX - foe.x) * 3.4;
-            foe.x += (targetX - foe.x) * 0.35;
-            cutAny = true;
+          if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - targetX) < 235) {
+            foe.takeDamage(foe === focusEnemy ? 120 : 95, this, true, 12, -18);
+            foe.vx = 0;
+            slashedAny = true;
           }
         }
-        if (!cutAny && focusEnemy && !focusEnemy.isDead) {
-          focusEnemy.takeDamage(17, this, false, 14, -24);
-          focusEnemy.vx = (targetX - focusEnemy.x) * 3.4;
-          focusEnemy.x += (targetX - focusEnemy.x) * 0.35;
+        if (!slashedAny && focusEnemy && !focusEnemy.isDead) {
+          focusEnemy.takeDamage(120, this, true, 12, -18);
+          focusEnemy.vx = 0;
         }
-      }
-
-      const startX = Math.max(85, Math.min(ww - 85, targetX + spec[0]));
-      const startY = this.groundY + spec[1];
-      const endX = Math.max(85, Math.min(ww - 85, targetX + spec[2]));
-      const endY = this.groundY + spec[3];
-      const easePass = 1 - Math.pow(1 - passU, 2.2);
-
-      this.x = startX + (endX - startX) * easePass;
-      this.y = Math.min(this.groundY, startY + (endY - startY) * easePass + 28);
-      this.facing = endX >= startX ? 1 : -1;
-      this.divePitchRad = Math.atan2(endY - startY, Math.abs(endX - startX) || 1);
-      this.cameraAirLift = Math.max(0, (this.groundY - this.y) * 0.55);
-
-      const fIdx = spec[7] + Math.min(spec[8] - 1, Math.floor(passU * spec[8]));
-      this.trueUltFrameOverride = fIdx;
-      this.syncSpearMachCone();
-
-      this._trueUltAfterimageAcc += dt;
-      if (this._trueUltAfterimageAcc >= 0.024) {
-        this._trueUltAfterimageAcc = 0;
-        this.spawnAfterimage(this.x, this.y, this.facing, 4, fIdx - 120, 0.30);
       }
       return;
     }
 
     // =========================================================================
-    // PHASE 3 (2.85s..4.40s): Reappear on Far Flank Facing AWAY, Slow Saya Slide,
-    //                         t = 3.35s Guard Click -> 8-Rift + Row 7 Cleave (590 Crit!)
+    // BEAT 3 (`1.34s .. 3.70s`): Zanshin Pause on Enemy's Back Side, Slow Noto
+    //   Resheath -> t = 1.95s Tsuba Click -> WHOLE STAGE SLICES OPEN & Teleports
+    //   into Feudal Japanese Castle (`shogunate`) or Burning Japanese Stage
+    //   (`shogunate_inferno` when fighting Ignis Sol / Inferno)!
     // =========================================================================
     if (this._trueUltStep < 3) {
       this._trueUltStep = 3;
+      this.fx?.stopByKey('shunpoSpearMachCone');
+      this.x = backSideX;
+      this.y = this.groundY;
+      this.facing = dashDir; // Facing AWAY from the enemy on their back side!
       this.divePitchRad = 0;
       this.cameraAirLift = 0;
-      this.fx?.stopByKey('shunpoSpearMachCone');
-
-      // Pick roomy far flank opposite origin (or whichever side has clear arena room)
-      const preferredFlank = this._trueUltOriginX <= targetX ? 1 : -1;
-      let flankX = targetX + preferredFlank * 215;
-      if (flankX < 115 || flankX > ww - 115) {
-        flankX = targetX - preferredFlank * 215;
-      }
-      this.x = Math.max(110, Math.min(ww - 110, flankX));
-      this.y = this.groundY;
-      // Face AWAY from the enemy for the iconic Iaido Noto resheath execution!
-      this.facing = this.x >= targetX ? 1 : -1;
-
-      if (game?.audio) game.audio.play('blink', this.x);
-      this.spawnAfterimage(targetX - this.facing * 45, this.groundY - 30, this.facing, 4, 20, 0.28);
-      this.spawnPixelShockwave(this.x, this.groundY - 4, 118, 'cyan', 0.26, true);
+      this.spawnPixelShockwave(this.x, this.groundY - 4, 96, 'cyan', 0.24, true);
     }
 
-    if (t < 3.35) {
-      // 2.85s..3.35s: Slowly slide katana into Saya scabbard (Row 7 F27->F26->F00..F04)
-      const uSheath = (t - 2.85) / 0.50;
+    if (t < 1.95) {
+      // `1.34s .. 1.95s`: Slowly slide Thunder-Odachi into Saya scabbard (`237 -> 236 -> 210..214`)
+      const uSheath = (t - 1.34) / 0.61;
       const sheathFrames = [237, 236, 210, 211, 212, 213, 214];
       this.trueUltFrameOverride =
         sheathFrames[Math.min(sheathFrames.length - 1, Math.floor(uSheath * sheathFrames.length))];
+      this.x = backSideX;
       this.y = this.groundY;
+      this.facing = dashDir;
       return;
     }
 
-    // t >= 3.35s: TSUBA GUARD CLICKS SHUT -> DETONATE ALL 8 RIFTS + COLOSSAL ROW 7 AMAKAKERU CLEAVE!
+    // `t >= 1.95s`: TSUBA CLICKS SHUT -> WHOLE-STAGE DIAGONAL KATANA SLICE & REALM TELEPORT!
     if (this._trueUltStep < 4) {
       this._trueUltStep = 4;
+      this.x = backSideX;
       this.y = this.groundY;
+      this.facing = dashDir;
       this.spawnSayaGlint(true);
+
+      // Detect Ignis Sol (`heroId === 'mage'` / `FireMage`) or active Inferno stage for Burning Japanese Stage synergy!
+      const activeStageNow = game?.renderer?.getActiveStageId?.() || game?.renderer?.stageId || 'cathedral';
+      const permStageNow = game?.renderer?.permanentStageOverride || '';
+      const vsIgnisSol =
+        foes.some((f) => f && (f.heroId === 'mage' || f.constructor?.name === 'FireMage')) ||
+        Boolean(enemy && (enemy.heroId === 'mage' || enemy.constructor?.name === 'FireMage')) ||
+        activeStageNow === 'inferno' ||
+        activeStageNow === 'shogunate_inferno' ||
+        permStageNow === 'inferno' ||
+        permStageNow === 'shogunate_inferno';
+      const destStageKey = vsIgnisSol ? 'shogunate_inferno' : 'shogunate';
 
       if (game?.audio) {
         game.audio.play('parry_clang', this.x);
@@ -1653,89 +1671,114 @@ export class Ronin extends Fighter {
         game.audio.play('hit_crit', targetX);
       }
       if (game?.renderer) {
-        game.renderer.triggerImpactFrame?.(targetX, this.groundY - 92, 0.15, 'storm');
+        game.renderer.setStageTransformation?.(destStageKey, 1.0, true);
+        game.renderer.triggerDimensionalStageSlice?.({
+          fromStageId: activeStageNow,
+          toStageId: game.renderer.permanentStageOverride || destStageKey,
+          focusX: targetX,
+          focusY: this.groundY - 92,
+          dir: dashDir,
+          duration: 1.08
+        });
+        game.renderer.triggerImpactFrame?.(
+          targetX,
+          this.groundY - 92,
+          0.14,
+          vsIgnisSol ? 'inferno' : 'storm'
+        );
         game.renderer.triggerShake(22, 0.38);
         game.renderer.triggerAberration(12);
         game.renderer.triggerHitStop(0.085);
       }
 
-      // Simultaneously detonate all 8 suspended Row 6 Spatial Judgment-Cut Rifts!
-      for (const rift of this.spatialJudgmentRifts) {
-        rift.detonated = true;
-        rift.detonateAge = 0;
-        this.spawnPixelShockwave(rift.x, rift.y, 132, 'gold', 0.32, false);
+      // Detonate the single katana slash line across the target + erupt ONE majestic Amakakeru cleave!
+      for (const line of this.activeSlashLines) {
+        line.detonated = true;
       }
+      this.amakakeruCleaves.push({
+        x: targetX,
+        groundY: this.groundY,
+        w: 312,
+        h: 528,
+        age: 0,
+        maxLife: 0.96,
+        glowColor: vsIgnisSol ? 'gold' : 'cyan',
+        inFront: true
+      });
 
-      // Erupt colossal screen-tall Row 7 Amakakeru Heaven-Splitting Thunder Cleave!
-      const cleaveSpecs = [
-        { x: targetX, w: 312, h: 528, maxLife: 0.98, glow: 'cyan', inFront: true },
-        { x: Math.max(90, targetX - 106), w: 228, h: 392, maxLife: 0.86, glow: 'purple', inFront: false },
-        { x: Math.min(ww - 90, targetX + 106), w: 228, h: 392, maxLife: 0.86, glow: 'gold', inFront: false }
-      ];
-      for (const cs of cleaveSpecs) {
-        this.amakakeruCleaves.push({
-          x: cs.x,
-          groundY: this.groundY,
-          w: cs.w,
-          h: cs.h,
-          age: 0,
-          maxLife: cs.maxLife,
-          glowColor: cs.glow,
-          inFront: cs.inFront
-        });
-      }
-
-      this.spawnPixelShockwave(targetX, this.groundY - 6, 310, 'cyan', 0.48, true);
-      this.spawnPixelShockwave(targetX, this.groundY - 92, 225, 'gold', 0.40, false);
-      this.spawnPixelLightningBolt(targetX, this.groundY - 460, this.groundY, 'gold', 0.48);
-      this.spawnPixelLightningBolt(targetX - 78, this.groundY - 380, this.groundY, 'cyan', 0.42);
-      this.spawnPixelLightningBolt(targetX + 78, this.groundY - 380, this.groundY, 'purple', 0.42);
-      this.spawnVfxAnim(4, targetX, this.groundY - 96, 260, 260, 0.44, {
-        glowColor: 'cyan',
+      this.spawnPixelShockwave(
+        targetX,
+        this.groundY - 6,
+        310,
+        vsIgnisSol ? 'gold' : 'cyan',
+        0.48,
+        true
+      );
+      this.spawnPixelLightningBolt(
+        targetX,
+        this.groundY - 460,
+        this.groundY,
+        vsIgnisSol ? 'gold' : 'cyan',
+        0.46
+      );
+      this.spawnVfxAnim(4, targetX, this.groundY - 96, 256, 256, 0.44, {
+        glowColor: vsIgnisSol ? 'gold' : 'cyan',
         inFront: true
       });
 
       if (game?.vfx) {
-        game.vfx.spawnShockwave(targetX, this.groundY - 6, 325, '#38bdf8', 0.48, true);
-        game.vfx.spawnSlash(targetX, this.groundY - 92, 235, -Math.PI, Math.PI, '#67e8f9', 0.42);
-        game.vfx.spawnBurst(targetX, this.groundY - 76, 36, '#818cf8', 355, {
-          upBias: 210,
-          size: 7
-        });
+        game.vfx.spawnShockwave(
+          targetX,
+          this.groundY - 6,
+          320,
+          vsIgnisSol ? '#fb923c' : '#38bdf8',
+          0.48,
+          true
+        );
+        game.vfx.spawnBurst(
+          targetX,
+          this.groundY - 76,
+          34,
+          vsIgnisSol ? '#fb923c' : '#fda4af',
+          345,
+          { upBias: 195, size: 6 }
+        );
         game.vfx.spawnDamageText(
           targetX,
           this.groundY - 198,
           0,
           true,
-          '★ THOUSAND THUNDER JUDGMENTS! ★',
-          '#fef08a'
+          vsIgnisSol ? '★ BURNING SHOGUNATE REALM SLICE! ★' : '★ SHOGUNATE REALM SLICE! ★',
+          vsIgnisSol ? '#fb923c' : '#fda4af'
         );
       }
 
-      this.heal(Math.round(this.maxHp * 0.12), 'RAIJIN RENEWAL');
-      // Deal ONE massive 545 Crit burst!
+      this.heal(Math.round(this.maxHp * 0.12), 'ZANSHIN RENEWAL');
+      // Deal ONE massive 560 Supreme Crit (`120 + 560 = 680` total damage)!
       let hitFinisher = false;
       for (const foe of foes) {
-        if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - targetX) < 255) {
-          foe.takeDamage(foe === focusEnemy ? 545 : 415, this, true, 255, -285);
+        if (foe && !foe.isDead && !foe.isBenched && Math.abs(foe.x - targetX) < 265) {
+          foe.takeDamage(foe === focusEnemy ? 560 : 425, this, true, 255 * dashDir, -285);
           hitFinisher = true;
         }
       }
       if (!hitFinisher && focusEnemy && !focusEnemy.isDead) {
-        focusEnemy.takeDamage(545, this, true, 255, -285);
+        focusEnemy.takeDamage(560, this, true, 255 * dashDir, -285);
       }
     }
 
-    if (t < 4.05) {
-      // 3.35s..4.05s: Motionless sheathed Zanshin crouch facing away (Row 7 F05..F08 = 215..218)
-      const uHold = (t - 3.35) / 0.70;
+    if (t < 3.25) {
+      // `1.95s .. 3.25s`: Motionless sheathed Zanshin hold facing away (`Row 7` `215..218`) as the stage halves split apart!
+      const uHold = (t - 1.95) / 1.30;
+      this.x = backSideX;
       this.y = this.groundY;
+      this.facing = dashDir;
       this.trueUltFrameOverride = 215 + Math.min(3, Math.floor(uHold * 4));
       return;
     }
 
-    // 4.05s..4.40s: Smooth rise from sheathed Iaido crouch back to standing neutral (Row 7 F25..F29 = 235..239)
-    const uRise = Math.min(1, (t - 4.05) / 0.35);
+    // `3.25s .. 3.70s`: Smooth rise from sheathed Iaido crouch back to standing samurai guard (`Row 7` `235..239`)
+    const uRise = Math.min(1, (t - 3.25) / 0.45);
     this.y = this.groundY;
     this.trueUltFrameOverride = 235 + Math.min(4, Math.floor(uRise * 5));
 
@@ -1747,7 +1790,6 @@ export class Ronin extends Fighter {
       this.unstoppablePoise = false;
       this.trueUltFrameOverride = null;
       this.raijinEyeSeal = null;
-      this.spatialJudgmentRifts = [];
       this.amakakeruCleaves = [];
       if (focusEnemy && !focusEnemy.isDead && Math.abs(focusEnemy.x - this.x) > 8) {
         this.facing = focusEnemy.x >= this.x ? 1 : -1;
@@ -1758,6 +1800,7 @@ export class Ronin extends Fighter {
 
   /**
    * 3-Pass HD-2D Additive Bloom Renderer for Kaze-Maru's 208x208 VFX Sheet (`assets/sprites/ronin_vfx.png`).
+   * Zero canvas rotation (`ctx.rotate` strictly forbidden).
    */
   drawBloomedVfxCell(
     ctx,
@@ -1771,8 +1814,7 @@ export class Ronin extends Fighter {
     alpha = 1.0,
     flipX = false,
     renderer = null,
-    glowColor = 'cyan',
-    angleRad = 0
+    glowColor = 'cyan'
   ) {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
     const cell = 208;
@@ -1782,14 +1824,13 @@ export class Ronin extends Fighter {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     ctx.translate(Math.round(x), Math.round(y));
-    if (angleRad) ctx.rotate(angleRad);
     if (flipX) ctx.scale(-1, 1);
 
     const glowSprite =
       glowColor === 'gold'
         ? renderer?.glowGold || renderer?.glowCyan
         : glowColor === 'purple'
-          ? renderer?.glowPurple || renderer?.glowCyan
+          ? renderer?.glowViolet || renderer?.glowPurple || renderer?.glowCyan
           : renderer?.glowCyan;
     if (glowSprite) {
       ctx.globalCompositeOperation = 'lighter';
@@ -1807,46 +1848,9 @@ export class Ronin extends Fighter {
     ctx.globalAlpha = Math.min(1, alpha * 0.52);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
     ctx.restore();
-  }
-
-  drawSpatialRiftsLayer(ctx, vfxSheet, renderer, inFrontPass) {
-    if (!this.spatialJudgmentRifts || this.spatialJudgmentRifts.length === 0 || !vfxSheet?.complete) {
-      return;
-    }
-    const isPreClickTension =
-      this.state === 'TRUE_ULTIMATE' && this.stateTimer >= 2.85 && this.stateTimer < 3.35;
-    for (const rift of this.spatialJudgmentRifts) {
-      if (Boolean(rift.inFront) !== inFrontPass) continue;
-      const col = Math.floor(rift.age * 30) % 30;
-      const appear = Math.min(1, rift.age / 0.10);
-      const detFade = rift.detonated ? Math.max(0, 1 - rift.detonateAge / 0.46) : 1.0;
-      if (detFade <= 0.02) continue;
-
-      const scaleBoost = rift.detonated
-        ? 1 + rift.detonateAge * 1.65
-        : isPreClickTension
-          ? 1.05 + Math.sin(this.stateTimer * 44 + rift.index) * 0.06
-          : 1.0;
-      const jx = isPreClickTension ? Math.sin(this.stateTimer * 62 + rift.index * 2.1) * 2.5 : 0;
-      const jy = isPreClickTension ? Math.cos(this.stateTimer * 58 + rift.index * 1.7) * 2.5 : 0;
-
-      this.drawBloomedVfxCell(
-        ctx,
-        vfxSheet,
-        6,
-        col,
-        rift.x + jx,
-        rift.y + jy,
-        Math.round(218 * appear * scaleBoost),
-        Math.round(218 * appear * scaleBoost),
-        0.96 * detFade,
-        rift.index % 2 === 1,
-        renderer,
-        rift.detonated ? 'gold' : rift.glowColor,
-        rift.angleRad
-      );
-    }
   }
 
   drawAmakakeruCleavesLayer(ctx, vfxSheet, renderer, inFrontPass) {
@@ -1902,6 +1906,8 @@ export class Ronin extends Fighter {
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = seal.floorLockAlpha * 0.55;
         ctx.drawImage(vfxSheet, sx, sy, cell, cell, -fw * 0.5, -fh * 0.5, fw, fh);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
         ctx.restore();
       }
       if (seal.alpha > 0.02) {
@@ -1924,7 +1930,6 @@ export class Ronin extends Fighter {
       }
     }
 
-    this.drawSpatialRiftsLayer(ctx, vfxSheet, renderer, false);
     this.drawAmakakeruCleavesLayer(ctx, vfxSheet, renderer, false);
 
     // 1. Render Indigo-Cyan Lightning Afterimage Clones (pure un-rotated HD-2D frames!)
@@ -1938,6 +1943,8 @@ export class Ronin extends Fighter {
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = alpha;
         PixelForge.drawAfterimageFrame(ctx, sprites, img.frameIdx || 190, 208, 208);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
         ctx.restore();
       }
     }
@@ -1973,42 +1980,9 @@ export class Ronin extends Fighter {
     const sprites = PixelForge.initAssets().ronin;
     const vfxSheet = sprites?.vfx;
 
-    // 0. Crackling Storm-Web Lightning Cage linking the 8 Spatial Judgment-Cut Rifts (straight line segments only!)
-    if (this.spatialJudgmentRifts.length >= 2) {
-      ctx.save();
-      ctx.globalCompositeOperation = 'lighter';
-      const n = this.spatialJudgmentRifts.length;
-      const seedTick = Math.floor((this.stateTimer || 0) * 30);
-      for (let i = 0; i < n; i++) {
-        const a = this.spatialJudgmentRifts[i];
-        const b = this.spatialJudgmentRifts[(i + 1) % n];
-        const fade = a.detonated ? Math.max(0, 1 - a.detonateAge / 0.32) : 0.82;
-        if (fade <= 0.03) continue;
-
-        const mx = (a.x + b.x) * 0.5 + (((seedTick * 17 + i * 31) % 19) - 9);
-        const my = (a.y + b.y) * 0.5 + (((seedTick * 23 + i * 13) % 19) - 9);
-
-        ctx.strokeStyle = a.detonated ? '#fef08a' : i % 2 === 0 ? '#67e8f9' : '#a78bfa';
-        ctx.lineWidth = a.detonated ? 3.2 : 2.0;
-        ctx.globalAlpha = fade * 0.85;
-        ctx.beginPath();
-        ctx.moveTo(Math.round(a.x), Math.round(a.y));
-        ctx.lineTo(Math.round(mx), Math.round(my));
-        ctx.lineTo(Math.round(b.x), Math.round(b.y));
-        ctx.stroke();
-
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.0;
-        ctx.globalAlpha = fade;
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
-
-    this.drawSpatialRiftsLayer(ctx, vfxSheet, renderer, true);
     this.drawAmakakeruCleavesLayer(ctx, vfxSheet, renderer, true);
 
-    // 1. Render Foreground Row-3 Raijin Halo Crest & Row-4 Thousand-Blade Slash Ring IN FRONT of characters!
+    // 1. Render Foreground Row-3 Raijin Halo Crest, Row-4 Slash Ring & Row-6 Single Iaido Cut IN FRONT of characters!
     if (this.activeVfxAnims.length > 0 && vfxSheet && vfxSheet.complete) {
       for (const v of this.activeVfxAnims) {
         const isFront = v.inFront !== undefined ? v.inFront : v.row >= 3;
@@ -2066,6 +2040,8 @@ export class Ronin extends Fighter {
       PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);
     }
 
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
     ctx.restore();
   }
 }
