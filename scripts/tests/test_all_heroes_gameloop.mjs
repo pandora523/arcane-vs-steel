@@ -28,30 +28,30 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps91';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps91';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps91';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps91';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps91';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps91';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps91';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps91';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps91';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps91';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps91';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps91';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps91';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps91';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps91';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps91';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps91';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps92';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps92';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps92';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps92';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps92';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps92';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps92';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps92';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps92';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps92';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps92';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps92';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps92';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps92';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps92';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps92';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps92';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps91';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps91';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps91';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps91';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps92';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps92';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps92';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps92';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -612,7 +612,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps91');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps92');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -3614,17 +3614,43 @@ for (const [name, Cls] of CLASSES) {
     }
   }
 
-  // 20B. Verify 4-Realm Monumental Buildings & Artifacts in AdventureMapRenderer (0 ctx.rotate, 0 arena_* PNGs)
+  // 20B. Verify 5-Plane Seamless Adventure Panoramas (`adv_*_pano.png`, `0` `ctx.rotate`, `0` `arena_*` PNGs)
+  const expectedPanos = [
+    ['adv_vista_pano.png', 1620, 272],
+    ['adv_arch_pano.png', 2358, 272],
+    ['adv_floor_pano.png', 2742, 96],
+    ['adv_inferno_pano.png', 800, 360]
+  ];
+  for (const [fname, expW, expH] of expectedPanos) {
+    const pbuf = fs.readFileSync(`/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${fname}`);
+    const pw = pbuf.readUInt32BE(16);
+    const ph = pbuf.readUInt32BE(20);
+    if (pw !== expW || ph !== expH) {
+      throw new Error(`Expected ${fname} to be ${expW}x${expH}, got ${pw}x${ph}`);
+    }
+  }
+  const panoAssets = PixelForge.initAssets();
+  if (panoAssets.advVistaPano) panoAssets.advVistaPano.naturalWidth = 1620;
+  if (panoAssets.advArchPano) panoAssets.advArchPano.naturalWidth = 2358;
+  if (panoAssets.advFloorPano) panoAssets.advFloorPano.naturalWidth = 2742;
+  if (panoAssets.advInfernoPano) panoAssets.advInfernoPano.naturalWidth = 800;
+
   const mapTrack = { rotateCalls: 0 };
-  let fillRectCount = 0;
   let arenaPngDraws = 0;
+  const seenPanoBlits = new Set();
+  let fgRectCount = 0;
   const mapCtx = createMockCtx(mapTrack);
-  mapCtx.fillRect = () => {
-    fillRectCount++;
-  };
-  mapCtx.drawImage = (img) => {
-    if (img && typeof img.src === 'string' && img.src.includes('arena_')) {
-      arenaPngDraws++;
+  mapCtx.drawImage = (img, ...rest) => {
+    if (img && typeof img.src === 'string') {
+      if (img.src.includes('arena_')) arenaPngDraws++;
+      for (const [fname] of expectedPanos) {
+        if (img.src.includes(fname)) {
+          if (rest.some((v) => !Number.isFinite(v))) {
+            throw new Error(`Non-finite drawImage arg on ${fname}: ${JSON.stringify(rest)}`);
+          }
+          seenPanoBlits.add(fname);
+        }
+      }
     }
   };
   const mockMapRenderer = {
@@ -3634,6 +3660,7 @@ for (const [name, Cls] of CLASSES) {
     camX: 450,
     camY: 466,
     time: 1.25,
+    permanentStageOverride: null,
     glowOrange: {},
     glowGold: {},
     glowCyan: {},
@@ -3641,13 +3668,29 @@ for (const [name, Cls] of CLASSES) {
     glowViolet: {},
     glowCrimson: {}
   };
-  for (const cx of [450, 1750, 2950, 4150]) {
+  for (const cx of [450, 1200, 1800, 2400, 3000, 3600, 4250]) {
     mockMapRenderer.camX = cx;
     AdventureMapRenderer.render(mapCtx, mockMapRenderer, ADVENTURE_WORLD_WIDTH);
   }
-  if (mapTrack.rotateCalls !== 0 || arenaPngDraws !== 0 || fillRectCount < 800) {
+  mockMapRenderer.permanentStageOverride = 'inferno';
+  AdventureMapRenderer.render(mapCtx, mockMapRenderer, ADVENTURE_WORLD_WIDTH);
+  mockMapRenderer.permanentStageOverride = null;
+
+  const fgCtx = createMockCtx(mapTrack);
+  fgCtx.fillRect = () => {
+    fgRectCount++;
+  };
+  mockMapRenderer.camY = 120;
+  AdventureMapRenderer.renderForegroundDepth(fgCtx, mockMapRenderer);
+
+  if (
+    mapTrack.rotateCalls !== 0 ||
+    arenaPngDraws !== 0 ||
+    seenPanoBlits.size !== 4 ||
+    fgRectCount < 6
+  ) {
     throw new Error(
-      `AdventureMapRenderer audit failed: rotate=${mapTrack.rotateCalls}, arenaPngs=${arenaPngDraws}, fillRects=${fillRectCount}`
+      `AdventureMapRenderer 5-plane panorama audit failed: rotate=${mapTrack.rotateCalls}, arenaPngs=${arenaPngDraws}, panos=${[...seenPanoBlits].join(',')}, fgRects=${fgRectCount}`
     );
   }
   const mapSrc = fs.readFileSync(
@@ -3831,7 +3874,142 @@ for (const [name, Cls] of CLASSES) {
     );
   }
 
+  // 20E. Verify Adventure 2.5D Curved AI Steering, Corner-Escape Orbit & Zero Stuck Entities (All 11 Heroes + All 3 Monsters)
+  {
+    const heroClasses20E = [
+      Warrior,
+      FireMage,
+      Valkyrie,
+      Priestess,
+      Ronin,
+      Chronomancer,
+      Reaper,
+      Titan,
+      Archer,
+      IceMage,
+      Android
+    ];
+
+    for (const HeroCls of heroClasses20E) {
+      const aiGame = createMockGame();
+      aiGame.gameMode = 'adventure';
+      const hero = new HeroCls(240, 561, 1);
+      hero.game = aiGame;
+      aiGame.leftFighter = hero;
+      const aiAdv = new AdventureManager(aiGame);
+      aiGame.adventure = aiAdv;
+      aiAdv.setAutoPlay(true, false);
+      aiAdv.startCampaign(hero);
+
+      // Pin hero into locked Zone II left corner (`x=1224, groundY=470`) with an off-lane monster (`x=1305, groundY=635`)
+      aiAdv.zoneIndex = 1;
+      aiAdv.lockActive = true;
+      aiAdv.lockMinX = 1220;
+      aiAdv.lockMaxX = 2360;
+      aiGame.fighters = [hero];
+      const dummy = aiAdv.spawnMonster('brute', 1305, { groundY: 635 });
+      dummy.maxHp = 50000;
+      dummy.hp = 50000;
+      dummy.moveSpeed = 0; // Freeze dummy so ONLY hero's own 2.5D curved steering/orbit is measured!
+      dummy.skillCooldown = 99;
+      dummy.dashCooldown = 99;
+      dummy.autoCooldown = 99;
+
+      hero.x = 1224;
+      hero.groundY = 470;
+      hero.y = 470;
+      hero.autoCooldown = 0.25;
+
+      let minSeenX = hero.x;
+      let maxSeenX = hero.x;
+      let minSeenGy = hero.groundY;
+      let maxSeenGy = hero.groundY;
+      let attackedIn25D = false;
+
+      for (let f = 0; f < 95; f++) {
+        aiAdv.update(1 / 30);
+        aiGame.vfx.update(1 / 30, aiGame);
+        minSeenX = Math.min(minSeenX, hero.x);
+        maxSeenX = Math.max(maxSeenX, hero.x);
+        minSeenGy = Math.min(minSeenGy, hero.groundY);
+        maxSeenGy = Math.max(maxSeenGy, hero.groundY);
+        if (hero.state === 'AUTO_ATTACK' || hero.state === 'SKILL' || dummy.hp < 50000) {
+          attackedIn25D = true;
+        }
+      }
+
+      const spanX = maxSeenX - minSeenX;
+      const spanGy = maxSeenGy - minSeenGy;
+      if (spanX < 28 || spanGy < 65 || !attackedIn25D) {
+        throw new Error(
+          `Adventure 2.5D Curved AI stuck/failed for ${hero.name} (${hero.heroId}): spanX=${spanX.toFixed(1)}, spanGy=${spanGy.toFixed(1)}, attacked=${attackedIn25D}, final=(${hero.x.toFixed(1)}, ${hero.groundY.toFixed(1)})`
+        );
+      }
+
+      // Verify imminent floor telegraph triggers pure 3D evade dash (`_advPureDodge` / `DODGE`)
+      hero.setState('IDLE');
+      hero.dodgeCooldown = 0;
+      dummy.spawnFloorTelegraph(hero.x, 90, 0.30, 50, '#a855f7', 'TEST SIGIL', hero.groundY);
+      aiAdv.update(1 / 30);
+      if (hero.state !== 'DODGE' || !hero._advPureDodge || !hero.isInvulnerable) {
+        throw new Error(
+          `Expected ${hero.heroId} Auto-Play to trigger pure 3D evade dash out of imminent floor telegraph, got state=${hero.state}, pureDodge=${hero._advPureDodge}`
+        );
+      }
+
+      // Verify between-wave lock standby (`target === null && lockActive === true`) settles cleanly away from walls
+      for (let f = 0; f < 15; f++) aiAdv.update(1 / 30);
+      aiGame.fighters = [hero];
+      aiAdv.pickups.length = 0;
+      hero.x = 1222;
+      hero.groundY = 561;
+      hero.y = 561;
+      for (let f = 0; f < 60; f++) aiAdv.update(1 / 30);
+      if (hero.x < 1380 || hero.x > 2240) {
+        throw new Error(
+          `Expected ${hero.heroId} lock-standby AI to move cleanly away from lock barrier [1220..2360], got x=${hero.x}`
+        );
+      }
+
+      aiAdv.stopCampaign();
+    }
+
+    // Verify corner-pinned Void Cultist (`cultist`) orbits inward across 2.5D road instead of backing into lockMinX!
+    const mGame = createMockGame();
+    mGame.gameMode = 'adventure';
+    const anchorHero = new Warrior(1335, 561, -1);
+    anchorHero.game = mGame;
+    mGame.leftFighter = anchorHero;
+    const mAdv = new AdventureManager(mGame);
+    mGame.adventure = mAdv;
+    mAdv.startCampaign(anchorHero);
+    mAdv.zoneIndex = 1;
+    mAdv.lockActive = true;
+    mAdv.lockMinX = 1220;
+    mAdv.lockMaxX = 2360;
+    mGame.fighters = [anchorHero];
+    anchorHero.x = 1335;
+    anchorHero.groundY = 561;
+    anchorHero.y = 561;
+    const cornerCultist = mAdv.spawnMonster('cultist', 1242, { groundY: 561 });
+    cornerCultist.skillCooldown = 99;
+    cornerCultist.autoCooldown = 99;
+    cornerCultist.dashCooldown = 99;
+
+    let maxCultistGyShift = 0;
+    for (let f = 0; f < 75; f++) {
+      cornerCultist.update(1 / 30, anchorHero, mGame);
+      maxCultistGyShift = Math.max(maxCultistGyShift, Math.abs(cornerCultist.groundY - 561));
+    }
+    if (cornerCultist.x <= 1350 || maxCultistGyShift < 25) {
+      throw new Error(
+        `Expected cornered Void Cultist at x=1242 to orbit inward past hero (x>1350) along curved 2.5D lane, got x=${cornerCultist.x.toFixed(1)}, maxGyShift=${maxCultistGyShift.toFixed(1)}`
+      );
+    }
+    mAdv.stopCampaign();
+  }
+
   console.log(
-    `[PASS] Suite 20: 11-Hero Pixel-Bleed Purity, 4-Realm Monumental Buildings, 22 Destructible 2.5D Props & 16-Cell Colossal Boss (${seenCells.size}/16 cells, ${jawValues.size} jaw steps, ${colossus._deathBlastStage} death blasts, 0 ctx.rotate) verified!`
+    `[PASS] Suite 20: 11-Hero Pixel-Bleed Purity, 5-Plane Seamless Panoramas, 22 Destructible 2.5D Props, 16-Cell Colossal Boss & 11-Hero 2.5D Curved Anti-Stuck AI verified!`
   );
 }

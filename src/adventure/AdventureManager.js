@@ -1,9 +1,9 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps91';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps91';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps91';
-import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps91';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps91';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps91';
+import { Fighter } from '../entities/Fighter.js?v=30fps92';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps92';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps92';
+import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps92';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps92';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps92';
 
 export const ADVENTURE_WORLD_WIDTH = 4800;
 export const ADVENTURE_DEPTH_MIN_Y = 442;
@@ -727,11 +727,17 @@ export class AdventureManager {
     playerFighter.facing = 1;
     playerFighter.team = 1;
     playerFighter.isPlayerControlled = true;
+    playerFighter.isManualAdventureControl = true;
     playerFighter.adventureAutoPlay = this.autoPlay;
     playerFighter._manualWalkActive = false;
+    playerFighter._manualSpeedRatio = 0;
     playerFighter._advVaultVelZ = 0;
     playerFighter._advPureDodge = false;
     playerFighter._advPureDodgeTimer = 0;
+    playerFighter._advAiVelX = 0;
+    playerFighter._advAiVelZ = 0;
+    playerFighter._advAiStuckTimer = 0;
+    playerFighter._advAiUnstickTimer = 0;
     if (Array.isArray(playerFighter.capeNodes)) {
       playerFighter.capeNodes.forEach((n, i) => {
         if (n) {
@@ -756,8 +762,15 @@ export class AdventureManager {
   stopCampaign() {
     this.closeSkillTree(false);
     if (this.game.leftFighter) {
+      this.game.leftFighter.isManualAdventureControl = false;
+      this.game.leftFighter._manualWalkActive = false;
+      this.game.leftFighter._manualSpeedRatio = 0;
       this.game.leftFighter._advPureDodge = false;
       this.game.leftFighter._advPureDodgeTimer = 0;
+      this.game.leftFighter._advAiVelX = 0;
+      this.game.leftFighter._advAiVelZ = 0;
+      this.game.leftFighter._advAiStuckTimer = 0;
+      this.game.leftFighter._advAiUnstickTimer = 0;
     }
     this.progression.detachFromFighter(this.game.leftFighter);
     this.skillSets.detachFromFighter(this.game.leftFighter);
@@ -1334,6 +1347,7 @@ export class AdventureManager {
 
   processPlayerControls(dt, player, target) {
     player.isPlayerControlled = true;
+    player.isManualAdventureControl = true;
     player.adventureAutoPlay = this.autoPlay;
 
     if (this.queuedActionTimer > 0) {
@@ -1345,9 +1359,10 @@ export class AdventureManager {
 
     const stats = this.progression.getComputedStats();
 
-    // Optional Auto-Play AI Mode: Sol fights waves autonomously across 3D lanes & marches right when cleared!
+    // =========================================================================
+    // OPTIONAL AUTO-PLAY AI: 2.5D CURVED TACTICAL NAVIGATOR & ANTI-STUCK ORBIT
+    // =========================================================================
     if (this.autoPlay) {
-      player._manualWalkActive = false;
       player._advVaultVelZ = 0;
 
       // Auto-spend Skill Points in Auto-Play so autonomous showcase runs demonstrate the Skill Tree!
@@ -1361,107 +1376,508 @@ export class AdventureManager {
         }
       }
 
-      if (!target && !this.lockActive && !this.bossSpawnPending && !this.game.isMatchOver) {
-        const nextPickup = this.pickups[0];
-        const goalX = nextPickup ? nextPickup.x : ADVENTURE_WORLD_WIDTH - 240;
-        const goalGy = nextPickup && Number.isFinite(nextPickup.groundY) ? nextPickup.groundY : ADVENTURE_DEPTH_MID_Y;
-        const dx = goalX - player.x;
-        const dz = goalGy - (player.groundY || ADVENTURE_DEPTH_MID_Y);
-        const len = Math.hypot(dx, dz) || 1;
-        player.facing = dx >= -6 ? 1 : -1;
-        player.moveDir = 1;
-        player.state = 'WALK';
-        player.walkPhase += dt * 1.6;
-        const autoMoveSpeed = 235 * stats.moveSpeedMult;
-        player.x += (dx / len) * autoMoveSpeed * 1.42 * dt;
-        this.shiftEntityDepth(player, (dz / len) * autoMoveSpeed * 0.72 * dt);
-        Fighter.prototype.update.call(player, dt, null, this.game);
-        player.state = 'WALK';
-        return;
+      // 0. Advance active Pure 3D Evade Dash smoothly during Auto-Play
+      if (player._advPureDodge) {
+        player._manualWalkActive = false;
+        player._manualSpeedRatio = 0;
+        if (player.isDead || player.state !== 'DODGE') {
+          player._advPureDodge = false;
+          player.isInvulnerable = false;
+        } else {
+          player._advPureDodgeTimer += dt;
+          const dur = player._advPureDodgeDur || 0.28;
+          const u = Math.min(1, player._advPureDodgeTimer / dur);
+          const speedScale = 1.36 * (1 - 0.56 * u * u);
+          player.x += (player._advPureDodgeDirX || 0) * 580 * speedScale * dt;
+          this.shiftEntityDepth(player, (player._advPureDodgeDirZ || 0) * 355 * speedScale * dt);
+          player.isInvulnerable = true;
+          player.vx = 0;
+          player.vy = 0;
+          player.y = player.groundY;
+          this.skillSets.beginPlayerStep(dt, player, null, true, player._advPureDodgeDirZ || 0);
+          player.update(dt, null, this.game);
+          player.vx = 0;
+          player.vy = 0;
+          player.y = player.groundY;
+          if (player._advPureDodgeTimer >= dur) {
+            player._advPureDodge = false;
+            player.isInvulnerable = false;
+            if (!player.isDead && player.state === 'DODGE') {
+              player.setState('IDLE');
+            }
+          }
+          this.progression.syncGaugesToPlayer(player);
+          return;
+        }
       }
 
-      if (
-        target &&
-        !player.isDead &&
-        !(player.stunTimer > 0) &&
-        !player.isRooted &&
-        (player.state === 'IDLE' || player.state === 'WALK')
-      ) {
-        if (
-          player.hasTrueUltimate &&
-          this.progression.astralCharge >= 99.9 &&
-          typeof player.updateTrueUltimate === 'function'
-        ) {
-          player.facing = target.x >= player.x ? 1 : -1;
-          this.progression.astralCharge = 0;
-          this.progression.syncGaugesToPlayer(player);
-          if (player.stats) player.stats.ultsUsed++;
-          player.setState('TRUE_ULTIMATE');
-          this.game.triggerTrueUltimateCinematic(player);
-        } else if (this.progression.ultCharge >= 99.9) {
-          player.facing = target.x >= player.x ? 1 : -1;
-          this.progression.ultCharge = 0;
-          this.progression.gainAstralRelic(stats.ultResonanceAstral, player, '✦ ECLIPSE SEAL RESONANCE! ✦');
-          this.progression.syncGaugesToPlayer(player);
-          if (player.stats) player.stats.ultsUsed++;
-          player.setState('ULTIMATE');
-          this.game.triggerUltimateCinematic(player);
-        } else if (player.skillCooldown <= 0 && this.progression.trySpendSkillSpirit()) {
-          player.facing = target.x >= player.x ? 1 : -1;
-          this.skillCdMax = Math.max(0.5, player.skillMaxCooldown * 0.78);
-          player.skillCooldown = this.skillCdMax;
-          if (player.stats) player.stats.skillsUsed++;
-          player.setState('SKILL');
-        } else {
-          const autoMoveSpeed = 235 * stats.moveSpeedMult;
-          const desiredGy = target.isColossalBoss
-            ? target.sweepLane === 'upper' && target.bossAction === 'claw_sweep'
-              ? 636
-              : target.sweepLane === 'lower' && target.bossAction === 'claw_sweep'
-                ? 484
-                : ADVENTURE_DEPTH_MID_Y
-            : target.groundY || ADVENTURE_DEPTH_MID_Y;
-          const dz = desiredGy - (player.groundY || ADVENTURE_DEPTH_MID_Y);
-          if (Math.abs(dz) > 14) {
-            this.shiftEntityDepth(player, Math.sign(dz) * Math.min(Math.abs(dz), autoMoveSpeed * 0.68 * dt));
-          }
-          if (target.isColossalBoss) {
-            const effRange = player.getEffectiveAttackRange
-              ? player.getEffectiveAttackRange()
-              : player.attackRange || 180;
-            if (effRange >= 320) {
-              if (player.x < 4220) {
-                player.x += autoMoveSpeed * 0.85 * dt;
+      const colossalAlive = Boolean(
+        this.bossEntity && !this.bossEntity.isDead && this.bossEntity.isColossalBoss
+      );
+      const minWalkX = colossalAlive ? 3945 : this.lockActive ? this.lockMinX : 80;
+      const maxWalkX = this.lockActive ? this.lockMaxX : ADVENTURE_WORLD_WIDTH - 80;
+      const depthMin = (this.depthMinY || ADVENTURE_DEPTH_MIN_Y) + 12;
+      const depthMax = (this.depthMaxY || ADVENTURE_DEPTH_MAX_Y) - 12;
+      const pGy = Number.isFinite(player.groundY) ? player.groundY : ADVENTURE_DEPTH_MID_Y;
+      const aiClock = (this.goBlinkTimer || 0) + (this.game?.renderer?.time || 0) * 0.35;
+      const effRange = player.getEffectiveAttackRange
+        ? player.getEffectiveAttackRange()
+        : player.attackRange || 180;
+      const isRanged = effRange >= 290;
+      const maxAutoVx = 268 * stats.moveSpeedMult;
+      const maxAutoVz = 164 * stats.moveSpeedMult;
+
+      // 1. Scan 2.5D Floor Telegraphs, Colossal Boss Sweeps/Slams & Incoming Projectiles
+      let avoidVx = 0;
+      let avoidVz = 0;
+      let imminentEvade = null;
+      const fighters = this.game?.fighters || [];
+      for (let i = 0; i < fighters.length; i++) {
+        const m = fighters[i];
+        if (!m || m.team !== 2 || m.isDead) continue;
+        if (Array.isArray(m.telegraphRings)) {
+          for (let j = 0; j < m.telegraphRings.length; j++) {
+            const r = m.telegraphRings[j];
+            const rx = Math.max(54, (r.radius || 72) + 28);
+            const rz = Math.max(46, (r.radius || 72) * 0.68 + 18);
+            const nx = (player.x - r.x) / rx;
+            const nz = (pGy - r.y) / rz;
+            const nd = Math.hypot(nx, nz);
+            if (nd < 1.18) {
+              const escZ =
+                pGy <= r.y
+                  ? r.y - rz < depthMin + 14
+                    ? 1
+                    : -1
+                  : r.y + rz > depthMax - 14
+                    ? -1
+                    : 1;
+              const escX =
+                player.x <= r.x
+                  ? player.x < minWalkX + 95
+                    ? 0.85
+                    : -0.85
+                  : player.x > maxWalkX - 95
+                    ? -0.85
+                    : 0.85;
+              const urgency = 1.22 - nd;
+              avoidVx += escX * 260 * urgency;
+              avoidVz += escZ * 215 * urgency;
+              if (nd < 0.92 && (r.timer || 0) <= 0.44) {
+                imminentEvade = { dirX: escX, dirZ: escZ };
               }
-            } else if (player.x > 3955) {
-              player.x -= autoMoveSpeed * 0.90 * dt;
+            }
+          }
+        }
+        if (m.isColossalBoss) {
+          const laneGy =
+            m.rakeWarnOnly || m.rakeActive
+              ? m.rakeLaneGy || 561
+              : m.bossAction === 'claw_sweep'
+                ? m.sweepLane === 'upper'
+                  ? 504
+                  : 620
+                : null;
+          if (laneGy !== null && Math.abs(pGy - laneGy) < 68) {
+            const safeGy = laneGy <= ADVENTURE_DEPTH_MID_Y ? 638 : 484;
+            const dirZ = safeGy >= pGy ? 1 : -1;
+            avoidVz += dirZ * 260;
+            if (Math.abs(pGy - laneGy) < 46) {
+              imminentEvade = { dirX: 0.25, dirZ };
+            }
+          }
+          if (m.fistVisible) {
+            const sdx = player.x - (m.slamTargetX || 4245);
+            const sdz = pGy - (m.slamTargetGy || 561);
+            if (Math.abs(sdx) < 155 && Math.abs(sdz) < 76) {
+              const escZ = (m.slamTargetGy || 561) <= ADVENTURE_DEPTH_MID_Y ? 1 : -1;
+              const escX = (m.slamTargetX || 4245) > (minWalkX + maxWalkX) * 0.5 ? -0.75 : 0.75;
+              avoidVx += escX * 250;
+              avoidVz += escZ * 230;
+              if (Math.abs(sdx) < 112 && Math.abs(sdz) < 54) {
+                imminentEvade = { dirX: escX, dirZ: escZ };
+              }
             }
           }
         }
       }
 
+      const projs = this.game?.vfx?.projectiles;
+      if (Array.isArray(projs)) {
+        for (let i = 0; i < projs.length; i++) {
+          const p = projs[i];
+          if (!p || !p.owner || p.owner.team !== 2) continue;
+          const pGyProj = Number.isFinite(p.owner.groundY) ? p.owner.groundY : p.y;
+          const dxP = player.x - p.x;
+          if (dxP * (p.vx || 0) > 0 && Math.abs(dxP) < 230 && Math.abs(pGy - pGyProj) < 58) {
+            const dodgeLaneZ = pGyProj <= ADVENTURE_DEPTH_MID_Y ? 1 : -1;
+            avoidVz += dodgeLaneZ * 215;
+            if (Math.abs(dxP) < 120) {
+              imminentEvade = { dirX: 0.2, dirZ: dodgeLaneZ };
+            }
+          }
+        }
+      }
+
+      // Reactive Pure 3D Evade Dash out of imminent floor telegraphs / incoming fire
+      if (
+        imminentEvade &&
+        !this.game.isMatchOver &&
+        !player.isDead &&
+        !(player.stunTimer > 0) &&
+        !player.isRooted &&
+        player.dodgeCooldown <= 0 &&
+        (player.state === 'IDLE' || player.state === 'WALK' || player.state === 'AUTO_ATTACK')
+      ) {
+        const mag = Math.hypot(imminentEvade.dirX, imminentEvade.dirZ) || 1;
+        const evX = imminentEvade.dirX / mag;
+        const evZ = imminentEvade.dirZ / mag;
+        if (Math.abs(evX) > 0.15) player.facing = evX > 0 ? 1 : -1;
+        this.dodgeCdMax = Math.max(0.55, 1.35 * stats.mobilityCdMult);
+        player.dodgeCooldown = this.dodgeCdMax;
+        player.dashDir = evX >= 0 ? 1 : -1;
+        player._advPureDodge = true;
+        player._advPureDodgeTimer = 0;
+        player._advPureDodgeDur = 0.28;
+        player._advPureDodgeDirX = evX;
+        player._advPureDodgeDirZ = evZ;
+        player._advVaultVelZ = 0;
+        player.setState('DODGE');
+        player.isInvulnerable = true;
+        player.isFlipVault = false;
+        player.isWraithPhase = false;
+        player.vx = 0;
+        player.vy = 0;
+        player.y = player.groundY;
+        this.progression.gainSpirit(18);
+        this.game.audio?.play?.('dash_whoosh', player.x);
+        this.game.vfx?.spawnShockwave?.(player.x, player.groundY - 6, 46, '#bae6fd', 0.18, true);
+        this.progression.syncGaugesToPlayer(player);
+        return;
+      }
+
+      // Shared 2.5D Curved Steering + Stuck-Progress Watchdog
+      const applyCurvedAutoSteer = (rawGoalX, rawGoalGy, stopDist = 18, faceOverride = null) => {
+        const clampedGoalX = Math.max(minWalkX + 18, Math.min(maxWalkX - 18, rawGoalX));
+        const clampedGoalGy = Math.max(depthMin, Math.min(depthMax, rawGoalGy));
+        const dxGoal = clampedGoalX - player.x;
+        const dzGoal = clampedGoalGy - pGy;
+        const distGoal = Math.hypot(dxGoal, dzGoal * 1.25);
+        const hasAvoid = Math.hypot(avoidVx, avoidVz) > 16;
+        const wantMove = distGoal > stopDist || hasAvoid || (player._advAiUnstickTimer || 0) > 0;
+
+        if (!Number.isFinite(player._advAiLastX)) {
+          player._advAiLastX = player.x;
+          player._advAiLastGy = pGy;
+        }
+        const moved25D = Math.hypot(
+          player.x - player._advAiLastX,
+          (pGy - player._advAiLastGy) * 1.3
+        );
+        player._advAiLastX = player.x;
+        player._advAiLastGy = pGy;
+
+        if (wantMove) {
+          if (moved25D < Math.max(0.45, 50 * dt)) {
+            player._advAiStuckTimer = (player._advAiStuckTimer || 0) + dt;
+          } else {
+            player._advAiStuckTimer = Math.max(0, (player._advAiStuckTimer || 0) - dt * 2.2);
+          }
+          if ((player._advAiStuckTimer || 0) >= 0.26) {
+            player._advAiStuckTimer = 0;
+            player._advAiUnstickTimer = 0.44;
+            player._advAiUnstickDirX = player.x < (minWalkX + maxWalkX) * 0.5 ? 1 : -1;
+            player._advAiUnstickDirZ = pGy > ADVENTURE_DEPTH_MID_Y ? -1 : 1;
+          }
+        } else {
+          player._advAiStuckTimer = 0;
+        }
+
+        let desiredVx = 0;
+        let desiredVz = 0;
+        if (distGoal > stopDist) {
+          const inv = 1 / Math.max(1, Math.hypot(dxGoal, dzGoal));
+          const ramp = Math.min(1, distGoal / Math.max(24, stopDist * 2.1));
+          desiredVx = dxGoal * inv * maxAutoVx * ramp;
+          desiredVz = dzGoal * inv * maxAutoVz * ramp;
+        }
+        desiredVx += avoidVx;
+        desiredVz += avoidVz;
+
+        if ((player._advAiUnstickTimer || 0) > 0) {
+          player._advAiUnstickTimer = Math.max(0, player._advAiUnstickTimer - dt);
+          desiredVx = desiredVx * 0.25 + (player._advAiUnstickDirX || 1) * maxAutoVx * 1.05;
+          desiredVz = desiredVz * 0.25 + (player._advAiUnstickDirZ || 1) * maxAutoVz * 0.98;
+        }
+
+        const magCheck = Math.hypot(
+          desiredVx / Math.max(1, maxAutoVx),
+          desiredVz / Math.max(1, maxAutoVz)
+        );
+        if (magCheck > 1.18) {
+          desiredVx *= 1.18 / magCheck;
+          desiredVz *= 1.18 / magCheck;
+        }
+
+        const smoothK = Math.min(1, dt * (wantMove ? 15 : 22));
+        player._advAiVelX = (player._advAiVelX || 0) + (desiredVx - (player._advAiVelX || 0)) * smoothK;
+        player._advAiVelZ = (player._advAiVelZ || 0) + (desiredVz - (player._advAiVelZ || 0)) * smoothK;
+
+        if (wantMove && Math.hypot(player._advAiVelX, player._advAiVelZ) > 6) {
+          player.x = Math.max(minWalkX, Math.min(maxWalkX, player.x + player._advAiVelX * dt));
+          this.shiftEntityDepth(player, player._advAiVelZ * dt);
+          player._manualWalkActive = true;
+          player._manualSpeedRatio = Math.max(
+            0.36,
+            Math.min(
+              1.18,
+              Math.hypot(
+                player._advAiVelX / Math.max(1, maxAutoVx),
+                player._advAiVelZ / Math.max(1, maxAutoVz)
+              )
+            )
+          );
+          player.moveDir = 1;
+          player.state = 'WALK';
+          if (faceOverride !== null) {
+            player.facing = faceOverride;
+          } else if (Math.abs(player._advAiVelX) > 12) {
+            player.facing = player._advAiVelX >= 0 ? 1 : -1;
+          }
+          return true;
+        }
+
+        player._advAiVelX = 0;
+        player._advAiVelZ = 0;
+        player._manualWalkActive = false;
+        player._manualSpeedRatio = 0;
+        player.moveDir = 0;
+        player.state = 'IDLE';
+        if (faceOverride !== null) {
+          player.facing = faceOverride;
+        }
+        return false;
+      };
+
+      // 2. Non-Combat / Between-Wave Curved Navigation (Unlocked March, Pickups & Wave-Lock Standby)
+      if (!target && !this.game.isMatchOver) {
+        if (!player.isDead && !(player.stunTimer > 0) && !player.isRooted && (player.state === 'IDLE' || player.state === 'WALK')) {
+          const reachablePickup = this.pickups.find(
+            (pk) => pk && pk.x >= minWalkX - 18 && pk.x <= maxWalkX + 18
+          );
+          if (reachablePickup) {
+            const pkGy = Number.isFinite(reachablePickup.groundY)
+              ? reachablePickup.groundY
+              : ADVENTURE_DEPTH_MID_Y;
+            const arcBlend = Math.max(
+              0,
+              Math.min(1, (Math.abs(reachablePickup.x - player.x) - 42) / 150)
+            );
+            const curveGy = pkGy + Math.sin(aiClock * 2.5) * 24 * arcBlend;
+            applyCurvedAutoSteer(reachablePickup.x, curveGy, 16, null);
+          } else if (this.bossSpawnPending) {
+            const entryX = isRanged ? 4250 : 4005;
+            const entryGy = ADVENTURE_DEPTH_MID_Y + Math.sin(aiClock * 1.9) * 32;
+            applyCurvedAutoSteer(entryX, entryGy, 28, -1);
+          } else if (this.lockActive) {
+            const midLockX = minWalkX + (maxWalkX - minWalkX) * 0.5;
+            const weaveGy = ADVENTURE_DEPTH_MID_Y + Math.sin(aiClock * 2.0) * 36;
+            applyCurvedAutoSteer(midLockX, weaveGy, 28, 1);
+          } else {
+            const marchX = ADVENTURE_WORLD_WIDTH - 220;
+            const marchGy =
+              ADVENTURE_DEPTH_MID_Y + Math.sin(player.x * 0.0058 + aiClock * 0.85) * 48;
+            applyCurvedAutoSteer(marchX, marchGy, 22, 1);
+          }
+        } else {
+          player._manualWalkActive = false;
+          player._manualSpeedRatio = 0;
+        }
+        const normVz = Math.max(-1, Math.min(1, (player._advAiVelZ || 0) / Math.max(1, maxAutoVz)));
+        this.skillSets.beginPlayerStep(dt, player, null, Boolean(player._manualWalkActive), normVz);
+        player.update(dt, null, this.game);
+        this.progression.syncGaugesToPlayer(player);
+        return;
+      }
+
+      // 3. Active 2.5D Combat: Curved Standoff, Corner-Escape Orbit & True 2.5D Hit-Window Gating
+      let isMovingCombat = false;
+      if (target && !this.game.isMatchOver && !player.isDead && !(player.stunTimer > 0) && !player.isRooted) {
+        const targetGy = target.isColossalBoss
+          ? pGy
+          : Number.isFinite(target.groundY)
+            ? target.groundY
+            : ADVENTURE_DEPTH_MID_Y;
+        const dxToTarget = target.x - player.x;
+        const absDx = Math.abs(dxToTarget);
+        const absDz = target.isColossalBoss ? 0 : Math.abs(targetGy - pGy);
+
+        if (player.state === 'IDLE' || player.state === 'WALK') {
+          if (
+            player.hasTrueUltimate &&
+            this.progression.astralCharge >= 99.9 &&
+            typeof player.updateTrueUltimate === 'function'
+          ) {
+            player._manualWalkActive = false;
+            player._manualSpeedRatio = 0;
+            player.facing = target.x >= player.x ? 1 : -1;
+            this.progression.astralCharge = 0;
+            this.progression.syncGaugesToPlayer(player);
+            if (player.stats) player.stats.ultsUsed++;
+            player.setState('TRUE_ULTIMATE');
+            this.game.triggerTrueUltimateCinematic(player);
+          } else if (
+            this.progression.ultCharge >= 99.9 &&
+            (target.isColossalBoss || (absDx <= Math.max(360, effRange * 1.35) && absDz <= 115))
+          ) {
+            player._manualWalkActive = false;
+            player._manualSpeedRatio = 0;
+            player.facing = target.x >= player.x ? 1 : -1;
+            this.progression.ultCharge = 0;
+            this.progression.gainAstralRelic(
+              stats.ultResonanceAstral,
+              player,
+              '✦ ECLIPSE SEAL RESONANCE! ✦'
+            );
+            this.progression.syncGaugesToPlayer(player);
+            if (player.stats) player.stats.ultsUsed++;
+            player.setState('ULTIMATE');
+            this.game.triggerUltimateCinematic(player);
+          } else if (
+            player.skillCooldown <= 0 &&
+            (target.isColossalBoss ||
+              (absDx <= Math.max(255, effRange * 1.45) && absDz <= (isRanged ? 96 : 74))) &&
+            this.progression.trySpendSkillSpirit()
+          ) {
+            player._manualWalkActive = false;
+            player._manualSpeedRatio = 0;
+            player.facing = target.x >= player.x ? 1 : -1;
+            this.skillCdMax = Math.max(0.5, player.skillMaxCooldown * 0.78);
+            player.skillCooldown = this.skillCdMax;
+            if (player.stats) player.stats.skillsUsed++;
+            player.setState('SKILL');
+          } else if (
+            player.autoCooldown <= 0 &&
+            Math.hypot(avoidVx, avoidVz) < 175 &&
+            (target.isColossalBoss
+              ? isRanged
+                ? player.x <= 4620
+                : player.x <= 4045
+              : absDx <= effRange * 0.96 && absDz <= (isRanged ? 76 : 44))
+          ) {
+            player._manualWalkActive = false;
+            player._manualSpeedRatio = 0;
+            player.facing = target.x >= player.x ? 1 : -1;
+            this.autoCdMax = player.autoInterval || 0.44;
+            player.autoCooldown = this.autoCdMax;
+            player.setState('AUTO_ATTACK');
+          } else if (target.isColossalBoss) {
+            const bossGoalX = isRanged
+              ? 4265 + Math.sin(aiClock * 1.35) * 65
+              : 3966 + Math.sin(aiClock * 1.7) * 18;
+            let bossGoalGy = ADVENTURE_DEPTH_MID_Y + Math.sin(aiClock * 1.65) * 44;
+            if (target.rakeWarnOnly || target.rakeActive) {
+              bossGoalGy = (target.rakeLaneGy || 561) <= ADVENTURE_DEPTH_MID_Y ? 638 : 484;
+            } else if (target.bossAction === 'claw_sweep') {
+              bossGoalGy = target.sweepLane === 'upper' ? 636 : 484;
+            } else if (target.fistVisible && Math.abs((target.slamTargetGy || 561) - pGy) < 76) {
+              bossGoalGy = (target.slamTargetGy || 561) <= ADVENTURE_DEPTH_MID_Y ? 640 : 482;
+            }
+            isMovingCombat = applyCurvedAutoSteer(bossGoalX, bossGoalGy, 20, -1);
+          } else {
+            const idealDistX = isRanged
+              ? Math.min(355, Math.max(225, effRange * 0.74))
+              : Math.max(82, Math.min(132, effRange * 0.68));
+            const leftSlot = target.x - idealDistX;
+            const rightSlot = target.x + idealDistX;
+            const wallMargin = isRanged ? 72 : 40;
+            const leftValid = leftSlot >= minWalkX + wallMargin;
+            const rightValid = rightSlot <= maxWalkX - wallMargin;
+
+            let wantRightSide = player.x > target.x;
+            if (leftValid && !rightValid) {
+              wantRightSide = false;
+            } else if (!leftValid && rightValid) {
+              wantRightSide = true;
+            } else if (!leftValid && !rightValid) {
+              wantRightSide = maxWalkX - target.x >= target.x - minWalkX;
+            } else if (isRanged && absDx < 165) {
+              if (player.x < minWalkX + 92) wantRightSide = true;
+              else if (player.x > maxWalkX - 92) wantRightSide = false;
+            }
+
+            const goalX = wantRightSide ? rightSlot : leftSlot;
+            const crossingSides =
+              (wantRightSide && player.x < target.x + 28) ||
+              (!wantRightSide && player.x > target.x - 28);
+
+            let goalGy = targetGy;
+            if (crossingSides) {
+              // Curve wide across the opposite 2.5D depth lane to orbit cleanly past the monster out of corners!
+              const orbitSign =
+                targetGy > ADVENTURE_DEPTH_MID_Y + 12
+                  ? -1
+                  : targetGy < ADVENTURE_DEPTH_MID_Y - 12
+                    ? 1
+                    : pGy <= targetGy
+                      ? -1
+                      : 1;
+              goalGy = targetGy + orbitSign * 86;
+            } else {
+              const distFromSlot = Math.abs(player.x - goalX);
+              const curveBlend = Math.max(0, Math.min(1, (distFromSlot - 30) / 185));
+              const flankSign =
+                (player.heroId ? player.heroId.charCodeAt(0) : 1) % 2 === 0 ? 1 : -1;
+              const rangedWeave = isRanged ? Math.sin(aiClock * 1.95) * 20 : 0;
+              goalGy =
+                targetGy +
+                (Math.sin(aiClock * 2.35) * 42 + flankSign * 26) * curveBlend +
+                rangedWeave * (1 - curveBlend);
+            }
+
+            const faceDir =
+              crossingSides && Math.abs(goalX - player.x) > 45
+                ? goalX >= player.x
+                  ? 1
+                  : -1
+                : target.x >= player.x
+                  ? 1
+                  : -1;
+            isMovingCombat = applyCurvedAutoSteer(goalX, goalGy, isRanged ? 22 : 16, faceDir);
+          }
+        } else {
+          player._manualWalkActive = false;
+          player._manualSpeedRatio = 0;
+          // Simultaneous Run-and-Cast Corner/Hazard Glide during AUTO_ATTACK
+          const cornerCrowded =
+            !target.isColossalBoss &&
+            isRanged &&
+            absDx < 155 &&
+            (player.x < minWalkX + 95 || player.x > maxWalkX - 95);
+          if (player.state === 'AUTO_ATTACK' && (Math.hypot(avoidVx, avoidVz) > 20 || cornerCrowded)) {
+            const escDirX = player.x < (minWalkX + maxWalkX) * 0.5 ? 1 : -1;
+            const escDirZ = targetGy > ADVENTURE_DEPTH_MID_Y ? -1 : 1;
+            const glideVx = cornerCrowded ? escDirX * maxAutoVx * 0.72 + avoidVx * 0.5 : avoidVx * 0.65;
+            const glideVz = cornerCrowded ? escDirZ * maxAutoVz * 0.78 + avoidVz * 0.5 : avoidVz * 0.72;
+            player.x = Math.max(minWalkX, Math.min(maxWalkX, player.x + glideVx * dt));
+            this.shiftEntityDepth(player, glideVz * dt);
+            player.facing = target.x >= player.x ? 1 : -1;
+            isMovingCombat = true;
+          }
+        }
+      } else {
+        player._manualWalkActive = false;
+        player._manualSpeedRatio = 0;
+      }
+
       const prevDidAction = Boolean(player.didActionFrame);
-      // Temporarily keep player.mana < maxMana if ultCharge < 100 and suppress offensive VS dodge/crouch triggers during Adventure AI
-      const prevSkillCd = player.skillCooldown;
-      const prevDodgeCd = player.dodgeCooldown;
-      const prevCrouchCd = player.crouchCooldown || 0;
-      if (this.progression.spirit + 0.01 < stats.skillSpiritCost && player.skillCooldown <= 0) {
-        player.skillCooldown = 0.25;
-      }
-      if (player.dodgeCooldown <= 0) player.dodgeCooldown = 0.25;
-      if ((player.crouchCooldown || 0) <= 0) player.crouchCooldown = 0.25;
       const combatTarget = this.skillSets.resolveTarget(player, target);
-      this.skillSets.beginPlayerStep(dt, player, combatTarget, false, 0);
+      const normAutoVz = Math.max(
+        -1,
+        Math.min(1, (player._advAiVelZ || 0) / Math.max(1, maxAutoVz))
+      );
+      this.skillSets.beginPlayerStep(dt, player, combatTarget, isMovingCombat, normAutoVz);
       player.update(dt, combatTarget, this.game);
-      if (prevSkillCd <= 0 && player.state !== 'SKILL' && player.skillCooldown === 0.25) {
-        player.skillCooldown = 0;
-      }
-      if (prevDodgeCd <= 0 && player.dodgeCooldown <= 0.25) {
-        player.dodgeCooldown = 0;
-      }
-      if (prevCrouchCd <= 0 && (player.crouchCooldown || 0) <= 0.25) {
-        player.crouchCooldown = 0;
-      }
       if (player.state === 'AUTO_ATTACK' && !prevDidAction && player.didActionFrame) {
         this.progression.onPlayerCastBasicAttack(player, target, this.game);
       }

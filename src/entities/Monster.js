@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps91';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps91';
+import { Fighter } from './Fighter.js?v=30fps92';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps92';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -348,10 +348,68 @@ export class Monster extends Fighter {
     const absDz = Math.abs(dz);
     this.facing = enemy.x >= this.x ? 1 : -1;
 
+    const adv = game?.adventure;
+    const colossalAlive = Boolean(
+      adv?.bossEntity && !adv.bossEntity.isDead && adv.bossEntity.isColossalBoss
+    );
+    const mMin = colossalAlive ? 3955 : adv?.lockActive ? adv.lockMinX + 24 : 95;
+    const mMax = Math.max(
+      mMin + 60,
+      adv?.lockActive ? adv.lockMaxX - 24 : (game?.renderer?.worldWidth || 4800) - 95
+    );
+    const arenaMidX = (mMin + mMax) * 0.5;
+    const nowT = game?.renderer?.time || 0;
+
+    // 2.5D Stuck-Progress Watchdog: if walking for >0.28s with <5px 2.5D progress, execute a curved 2.5D unstick arc!
+    if (!Number.isFinite(this._aiCheckX)) {
+      this._aiCheckX = this.x;
+      this._aiCheckGy = this.groundY;
+      this._aiCheckTimer = 0;
+    }
+    if ((this._unstickTimer || 0) > 0) {
+      this._unstickTimer = Math.max(0, this._unstickTimer - dt);
+      this.state = 'WALK';
+      this.moveDir = 1;
+      this.walkPhase += dt * 4.8;
+      this.x += (this._unstickDirX || 1) * this.moveSpeed * 1.05 * dt;
+      this.shiftMonsterDepth((this._unstickDirZ || 1) * this.moveSpeed * 0.92 * dt, game);
+      this.headBob = Math.sin(this.walkPhase * 2) * 2.0;
+      this._aiCheckX = this.x;
+      this._aiCheckGy = this.groundY;
+      this._aiCheckTimer = 0;
+      return;
+    }
+
+    const trackWalkProgress = (isWalking) => {
+      if (!isWalking) {
+        this._aiCheckX = this.x;
+        this._aiCheckGy = this.groundY;
+        this._aiCheckTimer = 0;
+        return;
+      }
+      this._aiCheckTimer = (this._aiCheckTimer || 0) + dt;
+      if (this._aiCheckTimer >= 0.28) {
+        const moved = Math.hypot(this.x - this._aiCheckX, this.groundY - this._aiCheckGy);
+        this._aiCheckX = this.x;
+        this._aiCheckGy = this.groundY;
+        this._aiCheckTimer = 0;
+        if (moved < 5.5) {
+          this._unstickTimer = 0.44;
+          this._unstickDirX = this.x < arenaMidX ? 1 : -1;
+          this._unstickDirZ = this.groundY > 561 ? -1 : 1;
+        }
+      }
+    };
+
     if (this.kind === 'cultist') {
-      // Ranged Warlock spacing: maintain 270..440px in X while flanking gently in 3D depth
-      if (dist < 175 && absDz < 72 && this.dashCooldown <= 0) {
-        this.startMonsterDash(enemy, game, -this.facing, 210);
+      const retreatDir = -this.facing;
+      const corneredBehind =
+        (retreatDir < 0 && this.x <= mMin + 72) || (retreatDir > 0 && this.x >= mMax - 72);
+
+      // Ranged Warlock spacing: if cornered against a wave-lock wall, dash or curve AROUND the hero toward open center!
+      if (dist < 185 && absDz < 78 && this.dashCooldown <= 0) {
+        const dashDir = corneredBehind ? this.facing : retreatDir;
+        this.startMonsterDash(enemy, game, dashDir, corneredBehind ? 235 : 210);
         return;
       }
       if (this.skillCooldown <= 0 && dist <= 560) {
@@ -361,28 +419,58 @@ export class Monster extends Fighter {
         this.setState('SKILL');
         return;
       }
-      if (dist <= this.attackRange && dist >= 185 && absDz <= 135 && this.autoCooldown <= 0) {
+      if (dist <= this.attackRange && dist >= 165 && absDz <= 140 && this.autoCooldown <= 0) {
         this.autoCooldown = this.autoInterval;
         this.setState('AUTO_ATTACK');
         return;
       }
-      const desiredGy = enemyGy + this.flankOffsetZ * 2.2;
-      const cultistDz = desiredGy - this.groundY;
+
       let moving = false;
       if (dist < 235) {
-        this.moveDir = -1;
-        this.x -= this.facing * this.moveSpeed * 0.85 * dt;
-        moving = true;
+        if (corneredBehind) {
+          // Orbit INWARD past the hero along the spacious opposite Z-lane instead of backing into the wall!
+          const escapeGy = enemyGy > 561 ? 470 : 652;
+          const escDz = escapeGy - this.groundY;
+          this.moveDir = 1;
+          this.x += this.facing * this.moveSpeed * 0.96 * dt;
+          if (Math.abs(escDz) > 8) {
+            this.shiftMonsterDepth(Math.sign(escDz) * this.moveSpeed * 0.92 * dt, game);
+          }
+          moving = true;
+        } else {
+          this.moveDir = -1;
+          this.x += retreatDir * this.moveSpeed * 0.85 * dt;
+          const kiteOrbitZ = Math.sin(nowT * 2.1 + (this.flankOffsetZ || 0)) * 48;
+          const kiteDz = enemyGy + kiteOrbitZ - this.groundY;
+          if (Math.abs(kiteDz) > 14) {
+            this.shiftMonsterDepth(Math.sign(kiteDz) * this.moveSpeed * 0.68 * dt, game);
+          }
+          moving = true;
+        }
       } else if (dist > 410) {
         this.moveDir = 1;
         this.x += this.facing * this.moveSpeed * dt;
+        const approachArcZ =
+          enemyGy +
+          (this.flankOffsetZ || 0) * 1.6 +
+          Math.sin(nowT * 1.8 + (this.flankOffsetZ || 0)) * 34 -
+          this.groundY;
+        if (Math.abs(approachArcZ) > 14) {
+          this.shiftMonsterDepth(Math.sign(approachArcZ) * this.moveSpeed * 0.66 * dt, game);
+        }
         moving = true;
+      } else {
+        // Gentle 2.5D strafe wave inside sweet-spot so Cultists weave smoothly
+        const weaveGy =
+          enemyGy + (this.flankOffsetZ || 0) * 1.4 + Math.sin(nowT * 1.6 + (this.flankOffsetZ || 0)) * 26;
+        const cultistDz = weaveGy - this.groundY;
+        if (Math.abs(cultistDz) > 20) {
+          this.shiftMonsterDepth(Math.sign(cultistDz) * this.moveSpeed * 0.58 * dt, game);
+          this.moveDir = 1;
+          moving = true;
+        }
       }
-      if (Math.abs(cultistDz) > 22) {
-        this.shiftMonsterDepth(Math.sign(cultistDz) * this.moveSpeed * 0.66 * dt, game);
-        if (!moving) this.moveDir = 1;
-        moving = true;
-      }
+
       if (moving) {
         this.state = 'WALK';
         this.walkPhase += dt * 4.2;
@@ -391,11 +479,12 @@ export class Monster extends Fighter {
         this.state = 'IDLE';
         this.moveDir = 0;
       }
+      trackWalkProgress(moving);
       return;
     }
 
     if (this.kind === 'brute') {
-      // Heavy Armored Juggernaut: aligns on 3D lane before Bull-Charge, Seismic Slam, or Cleaver Chop
+      // Heavy Armored Juggernaut: curved 2.5D approach that converges onto enemyGy for Bull-Charge & Seismic Slam
       if (this.dashCooldown <= 0 && dist > 205 && dist < 520 && absDz <= 56) {
         this.telegraphLabel = '! BULL CHARGE !';
         this.telegraphTimer = 0.62;
@@ -416,28 +505,37 @@ export class Monster extends Fighter {
         this.setState('AUTO_ATTACK');
         return;
       }
-      if (dist > 122 || absDz > 34) {
+
+      const arcBlend = Math.max(0, Math.min(1, (dist - 128) / 210));
+      const curvedGoalGy =
+        enemyGy +
+        ((this.flankOffsetZ || 0) * 0.65 + Math.sin(nowT * 1.5 + (this.flankOffsetZ || 0)) * 42) *
+          arcBlend;
+      const bruteDz = curvedGoalGy - this.groundY;
+      if (dist > 120 || Math.abs(bruteDz) > 30) {
         this.state = 'WALK';
         this.moveDir = 1;
         this.walkPhase += dt * 3.4;
-        if (dist > 116) {
+        if (dist > 114) {
           this.x += this.facing * this.moveSpeed * dt;
         }
-        if (absDz > 12) {
+        if (Math.abs(bruteDz) > 10) {
           this.shiftMonsterDepth(
-            Math.sign(dz) * Math.min(absDz, this.moveSpeed * 0.86 * dt),
+            Math.sign(bruteDz) * Math.min(Math.abs(bruteDz), this.moveSpeed * 0.88 * dt),
             game
           );
         }
         this.headBob = Math.abs(Math.sin(this.walkPhase * 2)) * 2.8;
+        trackWalkProgress(true);
       } else {
         this.state = 'IDLE';
         this.moveDir = 0;
+        trackWalkProgress(false);
       }
       return;
     }
 
-    // Default (`ghoul` — Ashfang Rusher): aggressive 3D pack stalker + Feral Pounce
+    // Default (`ghoul` — Ashfang Rusher): curved 3D pincer flank stalker + Feral Pounce
     if (this.skillCooldown <= 0 && dist >= 130 && dist <= 310 && absDz <= 56) {
       this.skillCooldown = this.skillMaxCooldown;
       this.telegraphLabel = '! POUNCE !';
@@ -455,25 +553,32 @@ export class Monster extends Fighter {
       this.setState('AUTO_ATTACK');
       return;
     }
-    const ghoulGoalGy = enemyGy + this.flankOffsetZ * 0.55;
+
+    const ghoulArc = Math.max(0, Math.min(1, (dist - 108) / 190));
+    const ghoulGoalGy =
+      enemyGy +
+      ((this.flankOffsetZ || 0) * 0.85 + Math.sin(nowT * 2.2 + (this.flankOffsetZ || 0)) * 52) *
+        ghoulArc;
     const ghoulDz = ghoulGoalGy - this.groundY;
-    if (dist > 102 || Math.abs(ghoulDz) > 28) {
+    if (dist > 100 || Math.abs(ghoulDz) > 26) {
       this.state = 'WALK';
       this.moveDir = 1;
       this.walkPhase += dt * 5.6;
-      if (dist > 96) {
+      if (dist > 94) {
         this.x += this.facing * this.moveSpeed * dt;
       }
-      if (Math.abs(ghoulDz) > 8) {
+      if (Math.abs(ghoulDz) > 7) {
         this.shiftMonsterDepth(
-          Math.sign(ghoulDz) * Math.min(Math.abs(ghoulDz), this.moveSpeed * 0.88 * dt),
+          Math.sign(ghoulDz) * Math.min(Math.abs(ghoulDz), this.moveSpeed * 0.92 * dt),
           game
         );
       }
       this.headBob = Math.sin(this.walkPhase * 2) * 2.4;
+      trackWalkProgress(true);
     } else {
       this.state = 'IDLE';
       this.moveDir = 0;
+      trackWalkProgress(false);
     }
   }
 

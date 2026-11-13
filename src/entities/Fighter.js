@@ -987,7 +987,9 @@ export class Fighter {
       return;
     }
 
-    const isManualPlayer = Boolean(this.isPlayerControlled && !this.adventureAutoPlay);
+    const isManualPlayer = Boolean(
+      (this.isPlayerControlled && !this.adventureAutoPlay) || this.isManualAdventureControl
+    );
     if (
       enemy &&
       this.state !== 'ULTIMATE' &&
@@ -1209,9 +1211,15 @@ export class Fighter {
 
         // 6. Disciplined Combo Strings & Expressive Per-Champion Neutral Footsies
         if (dist <= atkRange) {
+          const bossColossalAlive = Boolean(
+            isAdvMode && game?.adventure?.bossEntity && !game.adventure.bossEntity.isDead && game.adventure.bossEntity.isColossalBoss
+          );
+          const effMinWall = bossColossalAlive ? Math.max(minArenaX, 3945) : minArenaX;
+          const outstepMargin = 85;
+          const rangeWallMargin = 95;
           // Brief martial out-step feint right after completing a full combo string so fighters breathe & bait whiffs!
           if ((this._aiOutstepTimer || 0) > 0 && dist < atkRange * 0.94) {
-            const nearWall = this.x < 165 || this.x > ww - 165;
+            const nearWall = this.x < effMinWall + outstepMargin || this.x > maxArenaX - outstepMargin;
             const stepSign = nearWall ? 1 : this._aiOutstepDir || -1;
             this.state = 'WALK';
             this.moveDir = stepSign;
@@ -1239,7 +1247,7 @@ export class Fighter {
                 this.startCrouch(enemy, game);
                 return;
               }
-              const nearWall = this.x < 175 || this.x > ww - 175;
+              const nearWall = this.x < effMinWall + rangeWallMargin || this.x > maxArenaX - rangeWallMargin;
               const vSweetMin = aiProfile.sweetMin || 310;
               const vSweetMax = aiProfile.sweetMax || 375;
               if (dist < vSweetMin && !nearWall) {
@@ -1261,8 +1269,8 @@ export class Fighter {
             } else {
               const sweetSpotMin = aiProfile.sweetMin || 350;
               const sweetSpotMax = aiProfile.sweetMax || 455;
-              const nearLeft = this.x < 175;
-              const nearRight = this.x > ww - 175;
+              const nearLeft = this.x < effMinWall + rangeWallMargin;
+              const nearRight = this.x > maxArenaX - rangeWallMargin;
 
               // Corner-escape aerial vault for trapped ranged champions (VS Modes only)
               if (
@@ -1298,13 +1306,14 @@ export class Fighter {
             }
           } else if (this.heroId === 'ronin' || this.heroId === 'android') {
             // Iaido Samurai (Kaze-Maru) & Cyber-Valkyrie (VEX-09): disciplined blade-tip spacing (118..148px)
+            const nearSpacingWall = this.x < effMinWall + 60 || this.x > maxArenaX - 60;
             if (dist > 148) {
               this.state = 'WALK';
               this.moveDir = 1;
               this.walkPhase += dt * 4.4;
               this.x += this.facing * this.moveSpeed * 0.76 * 0.85 * dt;
               this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
-            } else if (dist < 118) {
+            } else if (dist < 118 && !nearSpacingWall) {
               this.state = 'WALK';
               this.moveDir = -1;
               this.walkPhase += dt * 4.0;
@@ -1316,13 +1325,14 @@ export class Fighter {
             }
           } else if (this.heroId === 'chronomancer') {
             // Sovereign of Time (Chronos): poised mid-close halberd spacing (145..205px)
+            const nearChronoWall = this.x < effMinWall + 65 || this.x > maxArenaX - 65;
             if (dist > 205) {
               this.state = 'WALK';
               this.moveDir = 1;
               this.walkPhase += dt * 4.2;
               this.x += this.facing * this.moveSpeed * 0.80 * dt;
               this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-            } else if (dist < 145) {
+            } else if (dist < 145 && !nearChronoWall) {
               this.state = 'WALK';
               this.moveDir = -1;
               this.walkPhase += dt * 4.0;

@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps91';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps91';
+import { PixelForge } from './PixelForge.js?v=30fps92';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps92';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -822,7 +822,10 @@ export class Renderer {
       this.drawKOFinisherWorld(ctx, gy);
     }
 
-    // 7.15. Near-Camera 1.22x Parallax Atmospheric Stage Foreground Depth Layer
+    // 7.15. Near-Camera 1.24x Parallax Atmospheric Stage Foreground Depth Layer
+    if (this.adventureMode && ww > 1600) {
+      AdventureMapRenderer.renderForegroundDepth(ctx, this);
+    }
     this.drawStageForeground(ctx, ww, gy);
 
     // 7.25. Supreme Finisher High-Contrast Anime Impact Frame & Full-Stage White-Out Deletion Screen!
