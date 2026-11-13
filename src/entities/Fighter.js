@@ -1127,9 +1127,10 @@ export class Fighter {
           return;
         }
 
-        // 2. Signature Counter-Read Defense (`CROUCH` Parries/Shields/Hex-Deflects/Mirrors/Burrows + `JUMP` Vaults + `DODGE`)
-        const threatType = this.detectIncomingThreatType(enemy, game);
-        if (this.dodgeCooldown <= 0 && threatType) {
+        // 2. Signature Counter-Read Defense (`CROUCH` Parries/Shields/Hex-Deflects/Mirrors/Burrows + `JUMP` Vaults + `DODGE` — VS Modes only)
+        const isAdvMode = Boolean(game?.isAdventureMode?.());
+        const threatType = !isAdvMode ? this.detectIncomingThreatType(enemy, game) : null;
+        if (!isAdvMode && this.dodgeCooldown <= 0 && threatType) {
           this.triggerSignatureDefense(enemy, game, threatType);
           return;
         }
@@ -1170,15 +1171,16 @@ export class Fighter {
           }
         }
 
-        // 4. Post-Combo Archetype Signature Maneuver (Shield Guard, Swallow/Wing Vault, Shadow-Burrow, Trick-Shot, or Out-Step Feint!)
-        if ((this._aiComboReadyFinisher || 0) > 0) {
+        // 4. Post-Combo Archetype Signature Maneuver (VS Modes only)
+        if (!isAdvMode && (this._aiComboReadyFinisher || 0) > 0) {
           if (this.triggerPostComboSignature(enemy, game, dist)) {
             return;
           }
         }
 
-        // 5. Mid-Range Aerial Vault Engage (`JUMP`) & Archetype Repositioning `DASH`
+        // 5. Mid-Range Aerial Vault Engage (`JUMP`) & Archetype Repositioning `DASH` (VS Modes only)
         if (
+          !isAdvMode &&
           aiProfile.midLeapChance > 0 &&
           dist >= aiProfile.midLeapMin &&
           dist <= aiProfile.midLeapMax &&
@@ -1194,11 +1196,12 @@ export class Fighter {
         }
 
         const shouldDash =
-          this.heroId === 'ronin' || this.heroId === 'android'
+          !isAdvMode &&
+          (this.heroId === 'ronin' || this.heroId === 'android'
             ? dist > 185
             : this.attackRange < 200
               ? dist > 205
-              : dist > 490 || ((this.x < 210 || this.x > ww - 210) && dist < 260);
+              : dist > 490 || ((this.x < 210 || this.x > ww - 210) && dist < 260));
         if (this.dashCooldown <= 0 && shouldDash) {
           this.startDash(enemy, game);
           return;
@@ -1231,7 +1234,7 @@ export class Fighter {
               this.backflipKiteTimer = Math.max(0, this.backflipKiteTimer - dt);
             }
             if (this.heroId === 'valkyrie') {
-              if (dist < 325 && (this.backflipKiteTimer || 0) <= 0 && this.startCrouch) {
+              if (!isAdvMode && dist < 325 && (this.backflipKiteTimer || 0) <= 0 && this.startCrouch) {
                 this.backflipKiteTimer = 1.65;
                 this.startCrouch(enemy, game);
                 return;
@@ -1248,8 +1251,9 @@ export class Fighter {
               const nearLeft = this.x < 175;
               const nearRight = this.x > ww - 175;
 
-              // Corner-escape aerial vault for trapped ranged champions
+              // Corner-escape aerial vault for trapped ranged champions (VS Modes only)
               if (
+                !isAdvMode &&
                 (nearLeft || nearRight) &&
                 dist < 250 &&
                 (this._aiSignatureCd || 0) <= 0 &&
@@ -1430,7 +1434,9 @@ export class Fighter {
         this.setState('IDLE');
       }
     } else if (this.state === 'DASH' || this.state === 'DODGE' || this.state === 'JUMP') {
-      if (this.updateDashOrDodge) {
+      if (this._advPureDodge) {
+        // Pure non-attacking 360° 3D evade handled by AdventureManager
+      } else if (this.updateDashOrDodge) {
         this.updateDashOrDodge(dt, enemy, game);
       } else if (this.stateTimer >= this.dashDuration) {
         this.setState('IDLE');

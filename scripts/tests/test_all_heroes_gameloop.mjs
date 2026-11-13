@@ -28,28 +28,28 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps87';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps87';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps87';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps87';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps87';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps87';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps87';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps87';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps87';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps87';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps87';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps87';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps87';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps87';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps87';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps87';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps87';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps88';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps88';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps88';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps88';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps88';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps88';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps88';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps88';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps88';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps88';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps88';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps88';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps88';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps88';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps88';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps88';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps88';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps87';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps87';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps88';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps88';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -609,7 +609,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps87');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps88');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -2111,7 +2111,10 @@ for (const [name, Cls] of CLASSES) {
     throw new Error('Expected index.html default mobile landscape button labels to start as LANDSCAPE: OFF!');
   }
   const htmlIds = new Set([...indexHtml.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
-  const advSlots = ['attack', 'dodge', 'skill', 'overdrive', 'ultimate', 'crouch', 'jump'];
+  const advSlots = ['attack', 'dodge', 'skill', 'overdrive', 'ultimate'];
+  if (htmlIds.has('adv-btn-crouch') || htmlIds.has('adv-btn-jump')) {
+    throw new Error('Expected streamlined 5-button Adventure skill cluster without #adv-btn-crouch or #adv-btn-jump!');
+  }
   const requiredAdvIds = [
     'app',
     'btn-title-adventure',
@@ -2170,7 +2173,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   // Verify PixelForge.drawAdventureActionIcon blits Ignis Sol's remade 64x64 HD-2D icon sheet (`mage_icons.png`)
-  // across all 7 slots with exact cell coordinates & ZERO ctx.rotate, AND preserves procedural fallback!
+  // across all 5 active orbs (and full 7-cell sheet) with exact cell coordinates & ZERO ctx.rotate!
   const expectedMageCells = {
     attack: 0,
     skill: 1,
@@ -2180,7 +2183,7 @@ for (const [name, Cls] of CLASSES) {
     jump: 5,
     crouch: 6
   };
-  for (const slot of advSlots) {
+  for (const slot of Object.keys(expectedMageCells)) {
     const iconTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
     const iconCtx = createMockCtx(iconTrack);
     const blits = [];
@@ -2706,46 +2709,48 @@ for (const [name, Cls] of CLASSES) {
       throw new Error('Expected Rank 2 Ignited Volley (`wrath_1`) to unlock Homing Seeker and close modal cleanly!');
     }
 
-    // Verify Jump (`VAULT`) triggers independent `jumpCd` WITHOUT putting Dodge (`BLINK`) on cooldown!
-    sol.dodgeCooldown = 0;
-    adv.jumpCd = 0;
+    // Verify Jump & Crouch action triggers are ignored in Adventure Mode, while Dodge is a 100% pure non-attacking 3D evade!
+    advGame.vfx.projectiles.length = 0;
     adv.triggerAction('jump');
     tickAdv(1);
-    if (
-      sol.state !== 'JUMP' ||
-      adv.jumpCd <= 0.5 ||
-      sol.dodgeCooldown > 0.05 ||
-      !mockDomMap.get('adv-btn-jump').classList.contains('is-on-cd') ||
-      mockDomMap.get('adv-btn-dodge').classList.contains('is-on-cd')
-    ) {
-      throw new Error(
-        `Expected independent Jump cooldown without locking Dodge: state=${sol.state}, jumpCd=${adv.jumpCd}, dodgeCd=${sol.dodgeCooldown}`
-      );
+    if (sol.state !== 'IDLE') {
+      throw new Error(`Expected 'jump' trigger to be ignored in 5-button Adventure Mode, got state=${sol.state}`);
     }
-    waitIdle(60);
-
-    sol.crouchCooldown = 0;
     adv.triggerAction('crouch');
     tickAdv(1);
-    if (
-      sol.state !== 'CROUCH' ||
-      !mockDomMap.get('adv-btn-crouch').classList.contains('is-on-cd')
-    ) {
-      throw new Error(`Expected manual crouch -> CROUCH with live ward cooldown, got ${sol.state}`);
+    if (sol.state !== 'IDLE') {
+      throw new Error(`Expected 'crouch' trigger to be ignored in 5-button Adventure Mode, got state=${sol.state}`);
     }
-    waitIdle(60);
 
     sol.dodgeCooldown = 0;
+    sol.x = Math.min(sol.x, 420);
+    sol.groundY = 561;
+    sol.y = 561;
+    const dodgeStartX = sol.x;
+    const dodgeStartGy = sol.groundY;
+    adv.setJoystickVector(0.8, -0.6, true);
     adv.triggerAction('dodge');
     tickAdv(1);
     if (
       sol.state !== 'DODGE' ||
+      !sol.isInvulnerable ||
       !mockDomMap.get('adv-btn-dodge').classList.contains('is-on-cd') ||
       !mockDomMap.get('adv-cd-text-dodge').textContent.endsWith('s')
     ) {
-      throw new Error(`Expected manual dodge -> DODGE with live blink cooldown, got ${sol.state}`);
+      throw new Error(`Expected manual dodge -> invulnerable DODGE with live blink cooldown, got ${sol.state}`);
     }
-    waitIdle(50);
+    tickAdv(9);
+    adv.setJoystickVector(0, 0, false);
+    if (
+      advGame.vfx.projectiles.length !== 0 ||
+      sol.x <= dodgeStartX + 90 ||
+      sol.groundY >= dodgeStartGy - 40
+    ) {
+      throw new Error(
+        `Expected Sol pure 3D dodge to emit ZERO projectiles and dash diagonally: projs=${advGame.vfx.projectiles.length}, dx=${sol.x - dodgeStartX}, dGy=${sol.groundY - dodgeStartGy}`
+      );
+    }
+    waitIdle(20);
 
     // Charge Adventure Ultimate (`NOVA`) via Soul Ember energy -> casts ULTIMATE & grants +18% Astral Seal Resonance!
     adv.progression.gainAdventureUlt(100, sol);
@@ -2997,7 +3002,10 @@ for (const [name, Cls] of CLASSES) {
           );
         }
 
-        // Verify all 7 action-orb tags match the active hero's iconic theme
+        // Verify all 5 action-orb tags match the active hero's iconic theme
+        if (Object.keys(expectedKit.tags).length !== 5) {
+          throw new Error(`Expected exactly 5 Adventure orb tags for '${h.key}', got ${Object.keys(expectedKit.tags).length}`);
+        }
         for (const [actId, expTag] of Object.entries(expectedKit.tags)) {
           const domTag = mockDomMap.get(`adv-tag-${actId}`)?.textContent;
           if (domTag !== expTag) {
@@ -3081,23 +3089,42 @@ for (const [name, Cls] of CLASSES) {
           );
         }
 
-        // 2) Authentic Defensive Ward/Parry (`crouch`) & Aerial Vault/Jump (`jump`)
+        // 2) Pure Non-Attacking 360° 3D Evade (`dodge`) — ZERO projectiles, ZERO decoys, ZERO damage!
         resetClusterPos();
+        advGame.vfx.projectiles.length = 0;
+        if (Array.isArray(hero.activeChakrams)) hero.activeChakrams.length = 0;
+        if (Array.isArray(hero.activeMarchingSpires)) hero.activeMarchingSpires.length = 0;
+        if (Array.isArray(hero.activeSkyIcicles)) hero.activeSkyIcicles.length = 0;
+        if ('iceDecoy' in hero) hero.iceDecoy = null;
         hero.setState('IDLE');
-        hero.x = 380;
+        hero.x = 455;
         hero.groundY = 561;
         hero.y = 561;
-        hero.crouchCooldown = 0;
-        adv.triggerAction('crouch');
-        tickAdv(62, 62);
-        if (hero.state !== 'IDLE') {
-          throw new Error(`Expected '${h.key}' authentic Crouch/Ward to exit cleanly to IDLE, got ${hero.state}`);
+        hero.dodgeCooldown = 0;
+        const hpBeforePureDodge = totalClusterHp();
+        adv.setJoystickVector(-0.78, -0.68, true);
+        adv.triggerAction('dodge');
+        tickAdv(1, 1);
+        if (hero.state !== 'DODGE' || !hero.isInvulnerable) {
+          throw new Error(
+            `Expected '${h.key}' Adventure Dodge to enter invulnerable DODGE immediately, got state=${hero.state}, invuln=${hero.isInvulnerable}`
+          );
         }
-        adv.jumpCd = 0;
-        adv.triggerAction('jump');
-        tickAdv(54, 54);
-        if (hero.state !== 'IDLE') {
-          throw new Error(`Expected '${h.key}' authentic Jump/Vault to exit cleanly to IDLE, got ${hero.state}`);
+        adv.setJoystickVector(0, 0, false);
+        tickAdv(10, 10);
+        const dodgeDamageDealt = hpBeforePureDodge - totalClusterHp();
+        if (
+          hero.state !== 'IDLE' ||
+          hero.isInvulnerable ||
+          advGame.vfx.projectiles.length !== 0 ||
+          Boolean(hero.iceDecoy) ||
+          dodgeDamageDealt !== 0 ||
+          455 - hero.x < 85 ||
+          561 - hero.groundY < 45
+        ) {
+          throw new Error(
+            `Expected '${h.key}' Adventure Dodge to be 100% pure 3D evade (0 dmg, 0 projs, 0 decoys): state=${hero.state}, dmg=${dodgeDamageDealt}, projs=${advGame.vfx.projectiles.length}, decoy=${Boolean(hero.iceDecoy)}, dx=${(hero.x - 455).toFixed(1)}, dGy=${(hero.groundY - 561).toFixed(1)}`
+          );
         }
 
         // 3) Authentic Signature Skill (`skill`) — 2.5D AoE + Zone-Clamped Bounds

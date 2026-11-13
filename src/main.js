@@ -1,21 +1,21 @@
-import { Renderer } from './engine/Renderer.js?v=30fps87';
-import { VFXManager } from './engine/VFXManager.js?v=30fps87';
-import { PixelForge } from './engine/PixelForge.js?v=30fps87';
-import { AudioManager } from './engine/AudioManager.js?v=30fps87';
-import { Fighter } from './entities/Fighter.js?v=30fps87';
-import { Warrior } from './entities/Warrior.js?v=30fps87';
-import { FireMage } from './entities/FireMage.js?v=30fps87';
-import { Archer } from './entities/Archer.js?v=30fps87';
-import { Priestess } from './entities/Priestess.js?v=30fps87';
-import { Reaper } from './entities/Reaper.js?v=30fps87';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps87';
-import { Titan } from './entities/Titan.js?v=30fps87';
-import { Ronin } from './entities/Ronin.js?v=30fps87';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps87';
-import { IceMage } from './entities/IceMage.js?v=30fps87';
-import { Android } from './entities/Android.js?v=30fps87';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps87';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps87';
+import { Renderer } from './engine/Renderer.js?v=30fps88';
+import { VFXManager } from './engine/VFXManager.js?v=30fps88';
+import { PixelForge } from './engine/PixelForge.js?v=30fps88';
+import { AudioManager } from './engine/AudioManager.js?v=30fps88';
+import { Fighter } from './entities/Fighter.js?v=30fps88';
+import { Warrior } from './entities/Warrior.js?v=30fps88';
+import { FireMage } from './entities/FireMage.js?v=30fps88';
+import { Archer } from './entities/Archer.js?v=30fps88';
+import { Priestess } from './entities/Priestess.js?v=30fps88';
+import { Reaper } from './entities/Reaper.js?v=30fps88';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps88';
+import { Titan } from './entities/Titan.js?v=30fps88';
+import { Ronin } from './entities/Ronin.js?v=30fps88';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps88';
+import { IceMage } from './entities/IceMage.js?v=30fps88';
+import { Android } from './entities/Android.js?v=30fps88';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps88';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps88';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -1400,14 +1400,12 @@ class Game {
       });
     }
 
-    // Right-Side Circular Skill & Tactical Orbs (independent multi-touch — zero collision with left joystick!)
+    // Right-Side Circular 5-Orb Skill Cluster (independent multi-touch — zero collision with left joystick!)
     const advActionMap = {
       'adv-btn-dodge': 'dodge',
       'adv-btn-skill': 'skill',
       'adv-btn-overdrive': 'overdrive',
-      'adv-btn-ultimate': 'ultimate',
-      'adv-btn-crouch': 'crouch',
-      'adv-btn-jump': 'jump'
+      'adv-btn-ultimate': 'ultimate'
     };
     Object.entries(advActionMap).forEach(([id, act]) => {
       const btn = document.getElementById(id);

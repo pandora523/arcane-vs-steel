@@ -21,9 +21,7 @@ export const ADVENTURE_HERO_KITS = {
       dodge: 'STEP',
       skill: 'CYCLONE',
       overdrive: 'GLACIAL',
-      ultimate: 'JUSTICE',
-      crouch: 'AEGIS',
-      jump: 'LEAP'
+      ultimate: 'JUSTICE'
     }
   },
   mage: {
@@ -33,45 +31,37 @@ export const ADVENTURE_HERO_KITS = {
       dodge: 'BLINK',
       skill: 'INFERNO',
       overdrive: 'SUPRNOVA',
-      ultimate: 'METEOR',
-      crouch: 'WARD',
-      jump: 'VAULT'
+      ultimate: 'METEOR'
     }
   },
   archer: {
     id: 'archer',
     tags: {
       attack: 'VOLLEY',
-      dodge: 'GALE',
+      dodge: 'DASH',
       skill: 'RAIN',
       overdrive: 'STARLOCK',
-      ultimate: 'GREATBOW',
-      crouch: 'SNARE',
-      jump: 'VAULT'
+      ultimate: 'GREATBOW'
     }
   },
   priestess: {
     id: 'priestess',
     tags: {
       attack: 'SMITE',
-      dodge: 'GRACE',
+      dodge: 'GLIDE',
       skill: 'SANCTUM',
       overdrive: 'SPEARS',
-      ultimate: 'CANNON',
-      crouch: 'AEGIS',
-      jump: 'ASCEND'
+      ultimate: 'CANNON'
     }
   },
   reaper: {
     id: 'reaper',
     tags: {
       attack: 'REAP',
-      dodge: 'BURROW',
+      dodge: 'SHIFT',
       skill: 'THANATOS',
       overdrive: 'CLONES',
-      ultimate: 'OBLIVION',
-      crouch: 'SHROUD',
-      jump: 'DIVE'
+      ultimate: 'OBLIVION'
     }
   },
   chronomancer: {
@@ -81,21 +71,17 @@ export const ADVENTURE_HERO_KITS = {
       dodge: 'WARP',
       skill: 'CLONE',
       overdrive: 'STASIS',
-      ultimate: 'ETERNAL',
-      crouch: 'REWIND',
-      jump: 'SHIFT'
+      ultimate: 'ETERNAL'
     }
   },
   titan: {
     id: 'titan',
     tags: {
       attack: 'MJOLNIR',
-      dodge: 'CHARGE',
+      dodge: 'STRIDE',
       skill: 'ANVIL',
       overdrive: 'HOMERUN',
-      ultimate: 'SUNDER',
-      crouch: 'BULWARK',
-      jump: 'METEOR'
+      ultimate: 'SUNDER'
     }
   },
   ronin: {
@@ -105,9 +91,7 @@ export const ADVENTURE_HERO_KITS = {
       dodge: 'SURIASHI',
       skill: 'RAIJIN',
       overdrive: 'SUSANOO',
-      ultimate: 'AMAKAKR',
-      crouch: 'PARRY',
-      jump: 'SWALLOW'
+      ultimate: 'AMAKAKR'
     }
   },
   valkyrie: {
@@ -117,21 +101,17 @@ export const ADVENTURE_HERO_KITS = {
       dodge: 'GLIDE',
       skill: 'DRAGOON',
       overdrive: 'BAHAMUT',
-      ultimate: 'RAGNAROK',
-      crouch: 'PINIONS',
-      jump: 'SKYDIVE'
+      ultimate: 'RAGNAROK'
     }
   },
   icemage: {
     id: 'icemage',
     tags: {
       attack: 'BALLET',
-      dodge: 'DECOY',
+      dodge: 'SKATE',
       skill: 'JAWS',
       overdrive: '7-SWORDS',
-      ultimate: '0.00 K',
-      crouch: 'MIRROR',
-      jump: 'STAIRS'
+      ultimate: '0.00 K'
     }
   },
   android: {
@@ -141,9 +121,7 @@ export const ADVENTURE_HERO_KITS = {
       dodge: 'THRUST',
       skill: 'FUNNELS',
       overdrive: 'HYPERBMR',
-      ultimate: 'SATELLIT',
-      crouch: 'HEXSHLD',
-      jump: 'BOOST'
+      ultimate: 'SATELLIT'
     }
   }
 };
@@ -338,7 +316,7 @@ export class AdventureSkillSets {
       radX = 310;
       radZ = 175;
       splashMult = 0.85;
-    } else if (st === 'SKILL' || st === 'CROUCH' || st === 'JUMP' || st === 'DODGE' || st === 'DASH') {
+    } else if (st === 'SKILL') {
       radX = 215;
       radZ = 128;
       splashMult = 0.80;

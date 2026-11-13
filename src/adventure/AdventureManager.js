@@ -1,8 +1,8 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps87';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps87';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps87';
-import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps87';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps87';
+import { Fighter } from '../entities/Fighter.js?v=30fps88';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps88';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps88';
+import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps88';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps88';
 
 export const ADVENTURE_WORLD_WIDTH = 4800;
 export const ADVENTURE_DEPTH_MIN_Y = 442;
@@ -120,12 +120,9 @@ export class AdventureManager {
     this.queuedActionTimer = 0;
 
     // Tracked cooldown maximums for smooth 360-degree radial HUD sweeps
-    this.jumpCd = 0;
-    this.jumpCdMax = 1.75;
     this.autoCdMax = 0.52;
     this.skillCdMax = 4.5;
-    this.dodgeCdMax = 2.4;
-    this.crouchCdMax = 3.2;
+    this.dodgeCdMax = 1.35;
     this._renderedIconHero = null;
 
     this._boundKeyDown = (e) => this.onKeyDown(e);
@@ -194,12 +191,6 @@ export class AdventureManager {
       this.heldDown = true;
       this.syncJoystickKnobUI();
       e.preventDefault();
-    } else if (code === 'Space') {
-      this.triggerAction('jump');
-      e.preventDefault();
-    } else if (code === 'KeyV' || code === 'KeyH') {
-      this.triggerAction('crouch');
-      e.preventDefault();
     } else if (code === 'KeyJ' || code === 'KeyZ') {
       this.heldAttack = true;
       this.triggerAction('attack');
@@ -207,7 +198,13 @@ export class AdventureManager {
     } else if (code === 'KeyK' || code === 'KeyX') {
       this.triggerAction('skill');
       e.preventDefault();
-    } else if (code === 'KeyL' || code === 'KeyC' || code === 'ShiftLeft' || code === 'ShiftRight') {
+    } else if (
+      code === 'KeyL' ||
+      code === 'KeyC' ||
+      code === 'Space' ||
+      code === 'ShiftLeft' ||
+      code === 'ShiftRight'
+    ) {
       this.triggerAction('dodge');
       e.preventDefault();
     } else if (code === 'KeyU' || code === 'KeyQ') {
@@ -511,15 +508,13 @@ export class AdventureManager {
 
   refreshActionIcons(heroKey = 'mage') {
     if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
-    const slots = ['attack', 'dodge', 'skill', 'overdrive', 'ultimate', 'crouch', 'jump'];
+    const slots = ['attack', 'dodge', 'skill', 'overdrive', 'ultimate'];
     const heroTags = ADVENTURE_HERO_KITS[heroKey]?.tags || {
       attack: 'ATK',
       dodge: 'DASH',
       skill: 'SKILL',
       overdrive: 'DRIVE',
-      ultimate: 'ULT',
-      crouch: 'GUARD',
-      jump: 'JUMP'
+      ultimate: 'ULT'
     };
 
     for (const slot of slots) {
@@ -623,7 +618,7 @@ export class AdventureManager {
     this.autoCdMax = Math.max(0.32, this.autoCdMax || 0.44);
     updateOrbSlot('attack', 'ready', autoCd > 0.03 ? autoCd / this.autoCdMax : 0, '');
 
-    // 2. Arcane Blink / Dodge
+    // 2. Pure 3D Evade Dash
     const dodgeCd = Math.max(0, player.dodgeCooldown || 0);
     this.dodgeCdMax = Math.max(this.dodgeCdMax, dodgeCd, 0.5);
     if (dodgeCd > 0.05) {
@@ -644,24 +639,7 @@ export class AdventureManager {
       updateOrbSlot('skill', 'ready', 0, '');
     }
 
-    // 4. Solar Vault / Aerial Jump
-    const jumpCd = Math.max(0, this.jumpCd || 0);
-    if (jumpCd > 0.05) {
-      updateOrbSlot('jump', 'cd', jumpCd / this.jumpCdMax, `${jumpCd.toFixed(1)}s`);
-    } else {
-      updateOrbSlot('jump', 'ready', 0, '');
-    }
-
-    // 5. Flame Ward / Counter Guard
-    const crouchCd = Math.max(0, player.crouchCooldown || 0);
-    this.crouchCdMax = Math.max(this.crouchCdMax, crouchCd, 1.5);
-    if (crouchCd > 0.05) {
-      updateOrbSlot('crouch', 'cd', crouchCd / this.crouchCdMax, `${crouchCd.toFixed(1)}s`);
-    } else {
-      updateOrbSlot('crouch', 'ready', 0, '');
-    }
-
-    // 6. Adventure Overdrive Ultimate (Soul Ember & Combo Charge 0..100%)
+    // 4. Adventure Overdrive Ultimate (Soul Ember & Combo Charge 0..100%)
     const ultRatio = Math.max(0, Math.min(1, this.progression.ultCharge / 100));
     if (ultRatio < 0.999) {
       updateOrbSlot('overdrive', 'charge', 1 - ultRatio, `${Math.floor(ultRatio * 100)}%`);
@@ -669,7 +647,7 @@ export class AdventureManager {
       updateOrbSlot('overdrive', 'ready', 0, 'MAX');
     }
 
-    // 7. Supreme Cataclysm Ultimate (Astral Relic Seals 0..100%)
+    // 5. Supreme Cataclysm Ultimate (Astral Relic Seals 0..100%)
     const hasUlt = Boolean(player.hasTrueUltimate);
     const sealRatio = Math.max(0, Math.min(1, this.progression.astralCharge / 100));
     if (!hasUlt) {
@@ -700,7 +678,6 @@ export class AdventureManager {
     this.bossSpawnPending = false;
     this.bossEntity = null;
     this.goPromptActive = false;
-    this.jumpCd = 0;
 
     this.skillSets.attachToFighter(playerFighter);
     this.progression.resetForNewCampaign();
@@ -708,8 +685,7 @@ export class AdventureManager {
 
     this.autoCdMax = playerFighter.autoInterval || 0.44;
     this.skillCdMax = Math.max(0.5, (playerFighter.skillMaxCooldown || 4.5) * 0.85);
-    this.dodgeCdMax = Math.max(0.5, (playerFighter.dodgeMaxCooldown || 3.0) * 0.72);
-    this.crouchCdMax = 2.8;
+    this.dodgeCdMax = 1.35;
     this._renderedIconHero = null;
     this._renderedMageIconsReady = false;
 
@@ -735,6 +711,8 @@ export class AdventureManager {
     playerFighter.adventureAutoPlay = this.autoPlay;
     playerFighter._manualWalkActive = false;
     playerFighter._advVaultVelZ = 0;
+    playerFighter._advPureDodge = false;
+    playerFighter._advPureDodgeTimer = 0;
     if (Array.isArray(playerFighter.capeNodes)) {
       playerFighter.capeNodes.forEach((n, i) => {
         if (n) {
@@ -756,6 +734,10 @@ export class AdventureManager {
 
   stopCampaign() {
     this.closeSkillTree(false);
+    if (this.game.leftFighter) {
+      this.game.leftFighter._advPureDodge = false;
+      this.game.leftFighter._advPureDodgeTimer = 0;
+    }
     this.progression.detachFromFighter(this.game.leftFighter);
     this.skillSets.detachFromFighter(this.game.leftFighter);
     this.active = false;
@@ -765,7 +747,6 @@ export class AdventureManager {
     this.bossSpawnPending = false;
     this.bossEntity = null;
     this.pickups = [];
-    this.jumpCd = 0;
     this.clearHeldInputs();
 
     const renderer = this.game.renderer;
@@ -1374,16 +1355,26 @@ export class AdventureManager {
       }
 
       const prevDidAction = Boolean(player.didActionFrame);
-      // Temporarily keep player.mana < maxMana during AI update if ultCharge < 100 so AI doesn't bypass Spirit/Ember economy
+      // Temporarily keep player.mana < maxMana if ultCharge < 100 and suppress offensive VS dodge/crouch triggers during Adventure AI
       const prevSkillCd = player.skillCooldown;
+      const prevDodgeCd = player.dodgeCooldown;
+      const prevCrouchCd = player.crouchCooldown || 0;
       if (this.progression.spirit + 0.01 < stats.skillSpiritCost && player.skillCooldown <= 0) {
         player.skillCooldown = 0.25;
       }
+      if (player.dodgeCooldown <= 0) player.dodgeCooldown = 0.25;
+      if ((player.crouchCooldown || 0) <= 0) player.crouchCooldown = 0.25;
       const combatTarget = this.skillSets.resolveTarget(player, target);
       this.skillSets.beginPlayerStep(dt, player, combatTarget, false, 0);
       player.update(dt, combatTarget, this.game);
       if (prevSkillCd <= 0 && player.state !== 'SKILL' && player.skillCooldown === 0.25) {
         player.skillCooldown = 0;
+      }
+      if (prevDodgeCd <= 0 && player.dodgeCooldown <= 0.25) {
+        player.dodgeCooldown = 0;
+      }
+      if (prevCrouchCd <= 0 && (player.crouchCooldown || 0) <= 0.25) {
+        player.crouchCooldown = 0;
       }
       if (player.state === 'AUTO_ATTACK' && !prevDidAction && player.didActionFrame) {
         this.progression.onPlayerCastBasicAttack(player, target, this.game);
@@ -1393,7 +1384,7 @@ export class AdventureManager {
     }
 
     // =========================================================================
-    // MANUAL 360° 3D CONTROL: BRISK OBSTACLE-DODGING WALK + SMOOTH ANALOG CURVE
+    // MANUAL 360° 3D CONTROL: BRISK OBSTACLE-DODGING WALK + PURE 3D EVADE DASH
     // =========================================================================
     const maxSpeedX = 276 * stats.moveSpeedMult;
     const maxSpeedZ = 156 * stats.moveSpeedMult; // Agile 2.5D depth-lane dodging while keeping gentle micro-tilt silky-smooth!
@@ -1449,7 +1440,11 @@ export class AdventureManager {
       this.queuedActionTimer = 0.20;
     }
 
-    // Allow cancelling AUTO_ATTACK recovery into any Skill/Dodge/Vault/Ult OR combo-chaining the next Basic Attack!
+    // Pure 3D Dodge can cancel AUTO_ATTACK immediately so players can reactively evade boss/monster telegraphs!
+    const isInstantDodgeCancel =
+      player.state === 'AUTO_ATTACK' && this.queuedAction === 'dodge' && player.dodgeCooldown <= 0;
+
+    // Allow cancelling AUTO_ATTACK recovery into Skill/Overdrive/Ultimate OR combo-chaining the next Basic Attack!
     const isAttackRecoveryCancel =
       player.state === 'AUTO_ATTACK' &&
       player.didActionFrame &&
@@ -1462,7 +1457,11 @@ export class AdventureManager {
       !player.isDead &&
       !(player.stunTimer > 0) &&
       !player.isRooted &&
-      (player.state === 'IDLE' || player.state === 'WALK' || isAttackRecoveryCancel);
+      !player._advPureDodge &&
+      (player.state === 'IDLE' ||
+        player.state === 'WALK' ||
+        isInstantDodgeCancel ||
+        isAttackRecoveryCancel);
 
     if (canAct && this.queuedAction) {
       const act = this.queuedAction;
@@ -1512,33 +1511,45 @@ export class AdventureManager {
           );
         }
       } else if (act === 'dodge' && player.dodgeCooldown <= 0) {
+        // 100% Pure Non-Attacking 360° 3D Evade Dash (zero counter-projectiles, zero decoys, zero damage!)
         this.queuedAction = null;
-        const blinkDir = moveDirX !== 0 ? moveDirX : target ? (player.x < target.x ? -1 : 1) : player.facing;
-        this.dodgeCdMax = Math.max(0.45, player.dodgeMaxCooldown * 0.72 * stats.mobilityCdMult);
-        player.dodgeCooldown = this.dodgeCdMax;
-        player.dashDir = blinkDir;
-        player.isInvulnerable = true;
-        player._advVaultVelZ = Math.abs(rawDirY) > 0.12 ? rawDirY * 195 : 0;
-        this.progression.gainSpirit(18);
-        player.setState('DODGE');
-        if (typeof player.onStartDodge === 'function') {
-          player.onStartDodge(isMoving3D ? null : target, this.game, blinkDir);
+        const inputMag = Math.hypot(rawDirX, rawDirY);
+        let evadeX = 0;
+        let evadeZ = 0;
+        if (inputMag > 0.08) {
+          evadeX = rawDirX / inputMag;
+          evadeZ = rawDirY / inputMag;
+        } else {
+          evadeX =
+            target && Math.abs(target.x - player.x) < 280
+              ? player.x <= target.x
+                ? -1
+                : 1
+              : player.facing || 1;
+          evadeZ = 0;
         }
-      } else if (act === 'jump' && this.jumpCd <= 0 && typeof player.startJump === 'function') {
-        this.queuedAction = null;
-        const vaultDir = moveDirX !== 0 ? moveDirX : player.facing;
-        player.facing = vaultDir;
-        player._advVaultVelZ = Math.abs(rawDirY) > 0.12 ? rawDirY * 165 : 0;
-        const prevDodgeCd = player.dodgeCooldown;
-        player.startJump(null, this.game, vaultDir);
-        player.dodgeCooldown = prevDodgeCd;
-        this.jumpCd = Math.max(0.85, this.jumpCdMax * stats.mobilityCdMult);
-      } else if (act === 'crouch' && (player.crouchCooldown || 0) <= 0 && typeof player.startCrouch === 'function') {
-        this.queuedAction = null;
-        if (target) player.facing = target.x >= player.x ? 1 : -1;
-        player.startCrouch(target, this.game);
-        player.crouchCooldown = Math.max(0.9, (player.crouchCooldown || 3.2) * stats.mobilityCdMult);
-        this.crouchCdMax = Math.max(1.2, player.crouchCooldown);
+        if (Math.abs(evadeX) > 0.15) {
+          player.facing = evadeX > 0 ? 1 : -1;
+        }
+        this.dodgeCdMax = Math.max(0.55, 1.35 * stats.mobilityCdMult);
+        player.dodgeCooldown = this.dodgeCdMax;
+        player.dashDir = evadeX >= 0 ? 1 : -1;
+        player._advPureDodge = true;
+        player._advPureDodgeTimer = 0;
+        player._advPureDodgeDur = 0.28;
+        player._advPureDodgeDirX = evadeX;
+        player._advPureDodgeDirZ = evadeZ;
+        player._advVaultVelZ = 0;
+        player.setState('DODGE');
+        player.isInvulnerable = true;
+        player.isFlipVault = false;
+        player.isWraithPhase = false;
+        player.vx = 0;
+        player.vy = 0;
+        player.y = player.groundY;
+        this.progression.gainSpirit(18);
+        this.game.audio?.play?.('dash_whoosh', player.x);
+        this.game.vfx?.spawnShockwave?.(player.x, player.groundY - 6, 46, '#bae6fd', 0.18, true);
       } else if (act === 'attack' && player.autoCooldown <= 0) {
         this.queuedAction = null;
         if (target) player.facing = target.x >= player.x ? 1 : -1;
@@ -1546,6 +1557,42 @@ export class AdventureManager {
         this.autoCdMax = player.autoInterval || 0.44;
         player.autoCooldown = this.autoCdMax;
         player.setState('AUTO_ATTACK');
+      } else if (act !== 'attack' && act !== 'dodge' && act !== 'skill' && act !== 'overdrive' && act !== 'ultimate') {
+        this.queuedAction = null;
+      }
+    }
+
+    // Advance Pure Non-Attacking 360° 3D Evade Dash when active
+    if (player._advPureDodge) {
+      player._manualWalkActive = false;
+      player._manualSpeedRatio = 0;
+      if (player.isDead || player.state !== 'DODGE') {
+        player._advPureDodge = false;
+        player.isInvulnerable = false;
+      } else {
+        player._advPureDodgeTimer += dt;
+        const dur = player._advPureDodgeDur || 0.28;
+        const u = Math.min(1, player._advPureDodgeTimer / dur);
+        const speedScale = 1.36 * (1 - 0.56 * u * u);
+        player.x += (player._advPureDodgeDirX || 0) * 580 * speedScale * dt;
+        this.shiftEntityDepth(player, (player._advPureDodgeDirZ || 0) * 355 * speedScale * dt);
+        player.isInvulnerable = true;
+        player.vx = 0;
+        player.vy = 0;
+        player.y = player.groundY;
+        this.skillSets.beginPlayerStep(dt, player, null, true, player._advPureDodgeDirZ || 0);
+        player.update(dt, null, this.game);
+        player.vx = 0;
+        player.vy = 0;
+        player.y = player.groundY;
+        if (player._advPureDodgeTimer >= dur) {
+          player._advPureDodge = false;
+          player.isInvulnerable = false;
+          if (!player.isDead && player.state === 'DODGE') {
+            player.setState('IDLE');
+          }
+        }
+        return;
       }
     }
 
@@ -1605,8 +1652,6 @@ export class AdventureManager {
         } else if (moveDirX !== 0) {
           player.facing = moveDirX;
         }
-      } else if ((player.state === 'DODGE' || player.state === 'JUMP') && player._advVaultVelZ) {
-        this.shiftEntityDepth(player, player._advVaultVelZ * dt);
       } else {
         player._advVaultVelZ = 0;
       }
@@ -1656,9 +1701,6 @@ export class AdventureManager {
     if (!player) return;
 
     this.goBlinkTimer += dt;
-    if (this.jumpCd > 0) {
-      this.jumpCd = Math.max(0, this.jumpCd - dt);
-    }
     this.progression.update(dt, player);
     this.skillSets.update(dt, player);
 

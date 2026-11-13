@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps87';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps87';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps87';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps87';
+import { Fighter } from './Fighter.js?v=30fps88';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps88';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps88';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps88';
 
 /**
  * Lyra (`icemage`) — Winter Empress & Sovereign of Absolute Zero (v6 Full Rework).
@@ -134,7 +134,7 @@ export class IceMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
       if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps87')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps87';
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps88';
       }
     }
   }
@@ -1236,8 +1236,13 @@ export class IceMage extends Fighter {
 
     this.fx.update(dt);
 
-    // 8. Proactive Winter Empress Tactical Figure-Skating AI
-    if (enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
+    // 8. Proactive Winter Empress Tactical Figure-Skating AI (VS Duel / 2v2 Modes)
+    if (
+      !game?.isAdventureMode?.() &&
+      enemy &&
+      !enemy.isDead &&
+      (this.state === 'IDLE' || this.state === 'WALK')
+    ) {
       const dist = Math.abs(enemy.x - this.x);
       const ww = game.renderer ? game.renderer.worldWidth : 1200;
       const nearWall = this.x < 255 || this.x > ww - 255;
