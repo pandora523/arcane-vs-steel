@@ -1,7 +1,14 @@
-import { Fighter } from './Fighter.js?v=30fps89';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps89';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps89';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps89';
+import { Fighter } from './Fighter.js?v=30fps90';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps90';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps90';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps90';
+
+const AUTO_SLICES_4 = [
+  [60, 8],
+  [68, 7],
+  [75, 8],
+  [83, 7]
+];
 
 /**
  * Kaze-Maru (`ronin`) — Storm-Blade Iaido Samurai & Raijin Thunder Vanguard.
@@ -40,6 +47,7 @@ export class Ronin extends Fighter {
     this.crouchDuration = 0.62;
     this.dashDuration = 0.26;
     this.comboStep = 0;
+    this._autoVariant = 0;
     this.stepDustTimer = 0;
     this.divePitchRad = 0;
 
@@ -75,13 +83,26 @@ export class Ronin extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const roninAssets = PixelForge.initAssets()?.ronin;
+      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps90')) {
+        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps90';
+      }
       if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps63')) {
-        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps89';
+        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps90';
       }
     }
   }
 
   setState(newState) {
+    if (
+      this.state === 'AUTO_ATTACK' &&
+      newState !== 'AUTO_ATTACK' &&
+      newState !== 'JUMP' &&
+      newState !== 'SKILL' &&
+      newState !== 'ULTIMATE' &&
+      newState !== 'TRUE_ULTIMATE'
+    ) {
+      this.y = this.groundY;
+    }
     super.setState(newState);
     if (newState !== 'CROUCH') {
       this.iaidoCounterActive = false;
@@ -125,16 +146,30 @@ export class Ronin extends Fighter {
       this.trueUltFrameOverride = 214;
     } else {
       this._trueUltInit = false;
-      this.trueUltFrameOverride = null;
+      if (newState !== 'AUTO_ATTACK' && newState !== 'ULTIMATE') {
+        this.trueUltFrameOverride = null;
+      }
       this.raijinEyeSeal = null;
       this.spatialJudgmentRifts = [];
       this.amakakeruCleaves = [];
       this.cameraAirLift = 0;
       this.unstoppablePoise = false;
     }
+    if (newState === 'AUTO_ATTACK') {
+      this._autoVariant = (((this.comboStep || 0) % 4) + 4) % 4;
+      this.comboStep = (this._autoVariant + 1) % 4;
+      this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
+      this._drewAutoGlint = false;
+    }
     if (newState === 'DEATH') {
       this.fx?.clear();
+      this.trueUltFrameOverride = null;
     }
+  }
+
+  getEffectiveAttackRange() {
+    const nextVar = (((this.comboStep || 0) % 4) + 4) % 4;
+    return nextVar === 3 ? 215 : nextVar === 2 ? 196 : this.attackRange;
   }
 
   spawnSayaGlint(isSheath = false) {
@@ -373,7 +408,7 @@ export class Ronin extends Fighter {
           game.renderer.triggerShake(7, 0.15);
           game.vfx.spawnBurst(t.x, t.y - 82, 16, '#818cf8', 235, { upBias: 95, size: 5 });
           game.vfx.spawnDamageText(t.x, t.y - 156, 0, true, 'JUDGMENT SHEATH!', '#38bdf8');
-          t.takeDamage(38, this, true, 95, -145);
+          t.takeDamage(jc.dmg || 38, this, true, 95, -145);
         }
       }
     }
@@ -628,87 +663,219 @@ export class Ronin extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    if (t >= 0.04 && !this._drewAutoGlint) {
+    const dur = this.autoDuration || 0.46;
+    const mode = (((this._autoVariant ?? 0) % 4) + 4) % 4;
+    const u = Math.min(0.999, Math.max(0, t / dur));
+    const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
+    this.trueUltFrameOverride = sliceStart + Math.min(sliceLen - 1, Math.floor(u * sliceLen));
+
+    if ((mode === 0 || mode === 3) && t >= 0.04 && !this._drewAutoGlint) {
       this._drewAutoGlint = true;
       this.spawnSayaGlint(false);
     }
 
-    if (t >= 0.18 && !this.didActionFrame) {
-      this.didActionFrame = true;
-      const step = this.comboStep;
-      this.comboStep = (this.comboStep + 1) % 3;
+    // V2 (Raijin Jōdan Helm-Splitter): Subtle 14px athletic thunder-hop during 0.08..0.36s
+    if (mode === 2 && t >= 0.08 && t <= 0.36) {
+      const hopU = (t - 0.08) / 0.28;
+      this.y = this.groundY - Math.sin(hopU * Math.PI) * 14;
+      this.vy = 0;
+    } else {
+      this.y = this.groundY;
+    }
 
-      if (step < 2) {
+    if (t >= 0.17 && !this.didActionFrame) {
+      this.didActionFrame = true;
+      const rawFoes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+      const foes = rawFoes.filter((f) => f && !f.isDead && !f.isBenched);
+      const frontFoe =
+        foes.find((f) => (f.x - this.x) * this.facing >= -16 && Math.abs(f.x - this.x) <= 222) ||
+        (enemy && !enemy.isDead ? enemy : foes[0] || null);
+
+      if (mode === 0) {
+        // V0 (60..67): Battōjutsu Quick-Draw Rising Slash (cyan electric arc)
         this.vx = this.facing * 255;
         if (game?.audio) game.audio.play('slash', this.x);
-        this.spawnVfxAnim(0, this.x + this.facing * 44, this.y - 82, 196, 196, 0.28, {
+        this.spawnVfxAnim(0, this.x + this.facing * 44, this.groundY - 82, 196, 196, 0.28, {
           vx: this.facing * 260,
           flipX: this.facing < 0,
-          glowColor: step === 0 ? 'cyan' : 'purple'
+          glowColor: 'cyan'
         });
         this.spawnPixelShockwave(
           this.x + this.facing * 38,
-          this.y - 80,
+          this.groundY - 80,
           98,
-          step === 0 ? 'cyan' : 'purple',
+          'cyan',
           0.24,
           false
         );
         this.addSlashLine(
-          this.x + this.facing * 18,
-          this.y - (step === 0 ? 78 : 35),
-          this.x + this.facing * 145,
-          this.y - (step === 0 ? 68 : 125),
+          this.x + this.facing * 16,
+          this.groundY - 42,
+          this.x + this.facing * 146,
+          this.groundY - 118,
           0.26
         );
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 30) {
-          const isCrit = Math.random() < 0.30;
-          const dmg = (step === 0 ? 47 : 52) * (isCrit ? 1.35 : 1);
-          enemy.takeDamage(dmg, this, isCrit, 75, step === 1 ? -145 : 0);
-          this.gainMana(2.4);
+        let landed = false;
+        for (const foe of foes) {
+          if (Math.abs(foe.x - this.x) <= this.attackRange + 30) {
+            const isCrit = Math.random() < 0.28;
+            const dmg = 46 * (isCrit ? 1.32 : 1);
+            foe.takeDamage(dmg, this, isCrit, 75, 0);
+            landed = true;
+          }
         }
+        if (landed) this.gainMana(2.4);
+      } else if (mode === 1) {
+        // V1 (68..74): Reverse Kesagiri Storm Whip (violet cross-body storm cleave + slash ring)
+        this.vx = this.facing * 270;
+        if (game?.audio) game.audio.play('slash', this.x);
+        this.spawnVfxAnim(0, this.x + this.facing * 48, this.groundY - 84, 200, 200, 0.28, {
+          vx: this.facing * 275,
+          flipX: this.facing < 0,
+          glowColor: 'purple'
+        });
+        this.spawnVfxAnim(4, this.x + this.facing * 64, this.groundY - 82, 186, 186, 0.26, {
+          flipX: this.facing < 0,
+          glowColor: 'purple'
+        });
+        this.spawnPixelShockwave(
+          this.x + this.facing * 44,
+          this.groundY - 82,
+          104,
+          'purple',
+          0.25,
+          false
+        );
+        this.addSlashLine(
+          this.x + this.facing * 18,
+          this.groundY - 122,
+          this.x + this.facing * 150,
+          this.groundY - 46,
+          0.27
+        );
+        this.addSlashLine(
+          this.x + this.facing * 24,
+          this.groundY - 58,
+          this.x + this.facing * 144,
+          this.groundY - 110,
+          0.24
+        );
+
+        let landed = false;
+        for (const foe of foes) {
+          if (Math.abs(foe.x - this.x) <= this.attackRange + 32) {
+            const isCrit = Math.random() < 0.30;
+            const dmg = 50 * (isCrit ? 1.32 : 1);
+            foe.takeDamage(dmg, this, isCrit, 85, -135);
+            landed = true;
+          }
+        }
+        if (landed) this.gainMana(2.5);
+      } else if (mode === 2) {
+        // V2 (75..82): Raijin Jōdan Helm-Splitter (vertical thunderbolt + grounded Judgment Pillar)
+        this.vx = this.facing * 245;
+        const strikeX =
+          frontFoe && Math.abs(frontFoe.x - this.x) <= 214
+            ? frontFoe.x
+            : this.x + this.facing * 92;
+        if (game?.audio) {
+          game.audio.play('raijin_slash', strikeX);
+          game.audio.play('slash', this.x);
+        }
+        this.spawnPixelLightningBolt(strikeX, this.groundY - 228, this.groundY, 'cyan', 0.30);
+        this.spawnVfxAnim(2, strikeX, this.groundY - 94, 204, 204, 0.38, {
+          startFrame: 12,
+          endFrame: 27,
+          glowColor: 'cyan'
+        });
+        this.spawnPixelShockwave(strikeX, this.groundY - 78, 108, 'cyan', 0.26, false);
+        this.addSlashLine(
+          strikeX - this.facing * 14,
+          this.groundY - 156,
+          strikeX + this.facing * 18,
+          this.groundY - 16,
+          0.30
+        );
+
+        let landed = false;
+        for (const foe of foes) {
+          if (Math.abs(foe.x - this.x) <= this.attackRange + 38) {
+            const isCrit = Math.random() < 0.35;
+            const dmg = 54 * (isCrit ? 1.32 : 1);
+            foe.takeDamage(dmg, this, isCrit, 92, -150);
+            if (isCrit) {
+              game?.vfx?.spawnDamageText?.(
+                foe.x,
+                foe.y - 150,
+                0,
+                true,
+                'RAIJIN HELM-SPLITTER!',
+                '#67e8f9'
+              );
+            }
+            landed = true;
+          }
+        }
+        if (landed) this.gainMana(2.8);
       } else {
-        // Step 2 (3rd Hit): IAIDO FLASH-THROUGH SLASH & DELAYED JUDGMENT CUT!
+        // V3 (83..89): Iaido Flash-Through Thrust & Delayed Judgment Cut!
         const oldX = this.x;
         const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-        this.spawnAfterimage(oldX, this.y, this.facing, 2, 16, 0.30);
+        const minX =
+          game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
+            ? game.adventure.lockMinX + 24
+            : 85;
+        const maxX =
+          game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMaxX)
+            ? game.adventure.lockMaxX - 24
+            : ww - 85;
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 215) {
-          const newX = Math.max(85, Math.min(ww - 85, enemy.x + this.facing * 94));
-          this.spawnAfterimage((oldX + newX) * 0.5, this.y, this.facing, 3, 10, 0.28);
+        this.spawnAfterimage(oldX, this.groundY, this.facing, 2, 24, 0.30);
+
+        if (frontFoe && !frontFoe.isDead && Math.abs(frontFoe.x - this.x) <= 218) {
+          const newX = Math.max(minX, Math.min(maxX, frontFoe.x + this.facing * 94));
+          this.spawnAfterimage((oldX + newX) * 0.5, this.groundY, this.facing, 3, 10, 0.28);
           this.x = newX;
-          this.facing = enemy.x >= this.x ? 1 : -1;
-          this.addSlashLine(oldX, this.y - 76, newX, this.y - 76, 0.38);
-          this.spawnVfxAnim(0, (oldX + newX) * 0.5, this.y - 80, 208, 208, 0.30, {
+          this.facing = frontFoe.x >= this.x ? 1 : -1;
+          this.addSlashLine(oldX, this.groundY - 76, newX, this.groundY - 76, 0.38);
+          this.spawnVfxAnim(0, (oldX + newX) * 0.5, this.groundY - 80, 208, 208, 0.30, {
             flipX: newX < oldX,
             glowColor: 'cyan'
           });
-          this.spawnPixelShockwave(enemy.x, enemy.y - 78, 112, 'cyan', 0.26, false);
+          this.spawnPixelShockwave(frontFoe.x, frontFoe.y - 78, 112, 'cyan', 0.26, false);
 
           if (game?.audio) {
             game.audio.play('dash_whoosh', this.x);
-            game.audio.play('slash', enemy.x);
+            game.audio.play('slash', frontFoe.x);
           }
           game?.vfx?.spawnDamageText(
             this.x,
-            this.y - 148,
+            this.groundY - 148,
             0,
             true,
             'IAIDO FLASH-THROUGH!',
             '#38bdf8'
           );
-          enemy.takeDamage(55, this, true, 35, -125);
-          this.gainMana(3.5);
+
+          const corridorMin = Math.min(oldX, newX) - 36;
+          const corridorMax = Math.max(oldX, newX) + 36;
+          for (const foe of foes) {
+            if (foe === frontFoe || (foe.x >= corridorMin && foe.x <= corridorMax)) {
+              foe.takeDamage(52, this, true, 35, -125);
+            }
+          }
+          this.gainMana(3.4);
 
           this.delayedJudgmentCuts.push({
-            target: enemy,
-            timer: 0.24
+            target: frontFoe,
+            timer: 0.24,
+            dmg: 36
           });
         } else {
-          this.x = Math.max(85, Math.min(ww - 85, this.x + this.facing * 145));
-          this.addSlashLine(oldX, this.y - 76, this.x, this.y - 76, 0.28);
-          this.spawnVfxAnim(0, this.x + this.facing * 32, this.y - 78, 196, 196, 0.28, {
+          this.x = Math.max(minX, Math.min(maxX, this.x + this.facing * 145));
+          this.addSlashLine(oldX, this.groundY - 76, this.x, this.groundY - 76, 0.28);
+          this.spawnVfxAnim(0, this.x + this.facing * 32, this.groundY - 78, 196, 196, 0.28, {
             vx: this.facing * 240,
             flipX: this.facing < 0,
             glowColor: 'cyan'
@@ -719,7 +886,9 @@ export class Ronin extends Fighter {
     }
 
     if (t >= 0.44) {
+      this.y = this.groundY;
       this._drewAutoGlint = false;
+      this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }
   }

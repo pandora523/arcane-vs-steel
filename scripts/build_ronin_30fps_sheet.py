@@ -13,11 +13,14 @@ and VFX Sheet (6240x832, 30 cols x 4 rows of 208x208) using:
 """
 
 import os
+import sys
 import math
 import time
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
-from hd2d_rig_core import compute_bipedal_walk_pose
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from hd2d_rig_core import compute_bipedal_walk_pose, splice_row2_auto_surgically
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "ronin_v2_base.jpg")
@@ -1020,109 +1023,285 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK (3-Phase Handcrafted Battoujutsu 3-Slash Combo)
-            if f < 6:
-                # Phase 1: Iaido Coiled Windup
-                u = f / 5.0
-                cfgs.append(dict(
-                    pelvis_dx=-10.0 * u,
-                    pelvis_dy=85.0 * u,
-                    torso_deg=14.0 * u,
-                    head_rel_deg=-6.0 * u,
-                    mane_rel_deg=-10.0 * u,
-                    mane_wave_phase=ph,
-                    mane_wave_amp=8.0,
-                    l_thigh_deg=-26.0 * u,
-                    l_shin_deg=24.0 * u,
-                    r_thigh_deg=24.0 * u,
-                    r_shin_deg=-22.0 * u,
-                    l_sode_rel_deg=-8.0 * u,
-                    l_fore_rel_deg=-32.0 * u,
-                    r_sode_rel_deg=24.0 * u,
-                    r_fore_rel_deg=20.0 * u,
-                    sheathed=(f >= 2),
-                    drums_active=True
-                ))
-            elif f < 14:
-                # Phase 2: Rising Kesagiri Lightning Slash (Slash 1)
-                u = (f - 6) / 7.0
-                cfgs.append(dict(
-                    pelvis_dx=0.0,
-                    pelvis_dy=80.0 - 20.0 * u,
-                    torso_deg=18.0 + 8.0 * math.sin(u * math.pi),
-                    head_rel_deg=-8.0,
-                    mane_rel_deg=-18.0,
-                    mane_wave_phase=ph * 2.0,
-                    mane_wave_amp=10.0,
-                    l_thigh_deg=22.0 * u,
-                    l_shin_deg=14.0 * u,
-                    r_thigh_deg=-26.0 * u,
-                    r_shin_deg=14.0 * u,
-                    l_sode_rel_deg=14.0 * u,
-                    l_fore_rel_deg=-26.0,
-                    r_sode_rel_deg=18.0 - 66.0 * u,
-                    r_fore_rel_deg=-10.0 - 18.0 * u,
-                    right_arm_in_front=True,
-                    odachi_deg=65.0 - 115.0 * u,
-                    odachi_len=30.0,
-                    drums_active=True,
-                    slash_arc=dict(
-                        r=28.0, a0=75.0 - 40.0 * u, a1=-55.0 - 20.0 * u,
-                        intensity=math.sin(u * math.pi) * 1.15, violet=False
-                    ) if 1 <= (f - 6) <= 6 else None
-                ))
-            elif f < 22:
-                # Phase 3: Reverse Horizontal Battoujutsu Cleave (Slash 2)
-                u = (f - 14) / 7.0
-                cfgs.append(dict(
-                    pelvis_dx=0.0,
-                    pelvis_dy=65.0 + 20.0 * math.sin(u * math.pi),
-                    torso_deg=24.0 - 4.0 * u,
-                    head_rel_deg=-10.0,
-                    mane_rel_deg=-22.0,
-                    mane_wave_phase=ph * 2.5,
-                    mane_wave_amp=11.0,
-                    l_thigh_deg=24.0,
-                    l_shin_deg=14.0,
-                    r_thigh_deg=-28.0,
-                    r_shin_deg=16.0,
-                    l_sode_rel_deg=18.0,
-                    l_fore_rel_deg=-28.0,
-                    r_sode_rel_deg=-48.0 + 22.0 * u,
-                    r_fore_rel_deg=-24.0 + 10.0 * u,
-                    right_arm_in_front=True,
-                    odachi_deg=-42.0 + 64.0 * u,
-                    odachi_curve=1.0,
-                    odachi_len=30.0,
-                    drums_active=True,
-                    slash_arc=dict(
-                        r=30.0, a0=-50.0 + 20.0 * u, a1=45.0 + 20.0 * u,
-                        intensity=math.sin(u * math.pi) * 1.2, violet=True
-                    ) if 1 <= (f - 14) <= 6 else None
-                ))
+            # Row 2: AUTO_ATTACK — 4 Distinct Full-Body Iaido Storm Katana & Saya Animations:
+            # - Slice 0 (F00..F07, 8f -> 60..67): Battōjutsu Quick-Draw Slash (coiled hand-on-Saya crouch -> lightning rising katana draw)
+            # - Slice 1 (F08..F14, 7f -> 68..74): Reverse Kesagiri Storm Whip (lead-leg swap -> reverse cross-body horizontal cleave)
+            # - Slice 2 (F15..F22, 8f -> 75..82): Raijin Jōdan Helm-Splitter (high overhead Jōdan raise -> vertical thunder-chop)
+            # - Slice 3 (F23..F29, 7f -> 83..89): Iaido Flash-Thrust & Chiburi Snap (aerodynamic forward blitz thrust -> Chiburi & Noto)
+            if f <= 7:
+                if f <= 2:
+                    u = f / 2.0
+                    cfgs.append(dict(
+                        pelvis_dx=-10.0 * u,
+                        pelvis_dy=82.0 * u,
+                        torso_deg=16.0 * u,
+                        head_rel_deg=-7.0 * u,
+                        mane_rel_deg=-10.0 * u,
+                        mane_wave_phase=ph,
+                        mane_wave_amp=8.0,
+                        l_thigh_deg=-26.0 * u,
+                        l_shin_deg=24.0 * u,
+                        r_thigh_deg=24.0 * u,
+                        r_shin_deg=-22.0 * u,
+                        l_sode_rel_deg=-8.0 * u,
+                        l_fore_rel_deg=-32.0 * u,
+                        r_sode_rel_deg=24.0 * u,
+                        r_fore_rel_deg=20.0 * u,
+                        sheathed=(f >= 1),
+                        drums_active=True,
+                    ))
+                elif f <= 5:
+                    u = (f - 3) / 2.0
+                    cfgs.append(dict(
+                        pelvis_dx=8.0 * u,
+                        pelvis_dy=74.0 - 20.0 * u,
+                        torso_deg=20.0 - 6.0 * u,
+                        head_rel_deg=-8.0 + 4.0 * u,
+                        mane_rel_deg=-18.0,
+                        mane_wave_phase=ph * 2.2,
+                        mane_wave_amp=10.0,
+                        l_thigh_deg=22.0,
+                        l_shin_deg=14.0,
+                        r_thigh_deg=-26.0,
+                        r_shin_deg=14.0,
+                        l_sode_rel_deg=14.0,
+                        l_fore_rel_deg=-26.0,
+                        r_sode_rel_deg=6.0 - 52.0 * u,
+                        r_fore_rel_deg=-12.0 - 14.0 * u,
+                        right_arm_in_front=True,
+                        odachi_deg=48.0 - 102.0 * u,
+                        odachi_len=27.0,
+                        drums_active=True,
+                        slash_arc=dict(
+                            dx=4.0, dy=10.0, r=26.5,
+                            a0=68.0 - 38.0 * u, a1=-44.0 - 24.0 * u,
+                            intensity=1.05 + 0.22 * math.sin(u * math.pi), violet=False,
+                        ),
+                    ))
+                else:
+                    u = (f - 6) / 1.0
+                    cfgs.append(dict(
+                        pelvis_dx=4.0 * (1.0 - u),
+                        pelvis_dy=36.0 * (1.0 - u),
+                        torso_deg=10.0 * (1.0 - u) + 2.0,
+                        head_rel_deg=-3.0 * (1.0 - u) - 1.0,
+                        mane_rel_deg=-12.0 * (1.0 - u) - 3.0,
+                        mane_wave_phase=ph,
+                        mane_wave_amp=7.5,
+                        l_thigh_deg=12.0 * (1.0 - u),
+                        l_shin_deg=8.0 * (1.0 - u),
+                        r_thigh_deg=-14.0 * (1.0 - u),
+                        r_shin_deg=8.0 * (1.0 - u),
+                        l_sode_rel_deg=6.0 * (1.0 - u) - 4.0,
+                        l_fore_rel_deg=-20.0 * (1.0 - u) - 10.0 * u,
+                        r_sode_rel_deg=-36.0 * (1.0 - u) - 14.0 * u,
+                        r_fore_rel_deg=-22.0 * (1.0 - u) - 16.0 * u,
+                        odachi_deg=-46.0 * (1.0 - u) - 28.0 * u,
+                        odachi_len=28.0,
+                        drums_active=(f == 6),
+                    ))
+            elif f <= 14:
+                if f <= 9:
+                    u = (f - 8) / 1.0
+                    cfgs.append(dict(
+                        pelvis_dx=-10.0 - 4.0 * u,
+                        pelvis_dy=54.0 + 8.0 * u,
+                        torso_deg=-6.0 - 4.0 * u,
+                        head_rel_deg=4.0 + 2.0 * u,
+                        mane_rel_deg=-8.0,
+                        mane_wave_phase=ph * 2.0,
+                        mane_wave_amp=8.5,
+                        right_leg_behind=True,
+                        l_thigh_deg=20.0 + 4.0 * u,
+                        l_shin_deg=16.0,
+                        r_thigh_deg=-22.0 - 4.0 * u,
+                        r_shin_deg=18.0,
+                        l_sode_rel_deg=-14.0,
+                        l_fore_rel_deg=-28.0,
+                        r_sode_rel_deg=-46.0 - 8.0 * u,
+                        r_fore_rel_deg=-24.0 - 6.0 * u,
+                        odachi_deg=-52.0 - 12.0 * u,
+                        odachi_curve=1.0,
+                        odachi_len=27.0,
+                        drums_active=True,
+                    ))
+                elif f <= 12:
+                    u = (f - 10) / 2.0
+                    cfgs.append(dict(
+                        pelvis_dx=10.0 + 4.0 * u,
+                        pelvis_dy=68.0 + 8.0 * math.sin(u * math.pi),
+                        torso_deg=20.0 + 3.0 * u,
+                        head_rel_deg=-9.0,
+                        mane_rel_deg=-20.0,
+                        mane_wave_phase=ph * 2.5,
+                        mane_wave_amp=10.5,
+                        right_leg_behind=True,
+                        l_thigh_deg=-24.0,
+                        l_shin_deg=20.0,
+                        r_thigh_deg=26.0,
+                        r_shin_deg=-16.0,
+                        l_sode_rel_deg=16.0,
+                        l_fore_rel_deg=-26.0,
+                        r_sode_rel_deg=-28.0 + 16.0 * u,
+                        r_fore_rel_deg=-18.0 + 8.0 * u,
+                        right_arm_in_front=True,
+                        odachi_deg=8.0 + 24.0 * u,
+                        odachi_curve=1.0,
+                        odachi_len=26.5,
+                        drums_active=True,
+                        slash_arc=dict(
+                            dx=4.0, dy=11.0, r=27.0,
+                            a0=-46.0 + 18.0 * u, a1=40.0 + 18.0 * u,
+                            intensity=1.08 + 0.22 * math.sin(u * math.pi), violet=True,
+                        ),
+                    ))
+                else:
+                    u = (f - 13) / 1.0
+                    cfgs.append(dict(
+                        pelvis_dx=6.0 * (1.0 - u),
+                        pelvis_dy=40.0 * (1.0 - u),
+                        torso_deg=14.0 * (1.0 - u) + 2.0,
+                        head_rel_deg=-5.0 * (1.0 - u) - 1.0,
+                        mane_rel_deg=-12.0 * (1.0 - u) - 3.0,
+                        mane_wave_phase=ph,
+                        mane_wave_amp=7.5,
+                        right_leg_behind=(f == 13),
+                        l_thigh_deg=-12.0 * (1.0 - u),
+                        l_shin_deg=10.0 * (1.0 - u),
+                        r_thigh_deg=12.0 * (1.0 - u),
+                        r_shin_deg=-8.0 * (1.0 - u),
+                        l_sode_rel_deg=8.0 * (1.0 - u) - 4.0,
+                        l_fore_rel_deg=-22.0 * (1.0 - u) - 10.0 * u,
+                        r_sode_rel_deg=-14.0,
+                        r_fore_rel_deg=-14.0 - 4.0 * u,
+                        odachi_deg=18.0 * (1.0 - u) - 28.0 * u,
+                        odachi_len=28.0,
+                        drums_active=(f == 13),
+                    ))
+            elif f <= 22:
+                if f <= 17:
+                    u = (f - 15) / 2.0
+                    cfgs.append(dict(
+                        pelvis_dx=-8.0 * u,
+                        pelvis_dy=18.0 + 8.0 * u,
+                        torso_deg=-8.0 - 4.0 * u,
+                        head_rel_deg=6.0 + 3.0 * u,
+                        mane_rel_deg=-8.0,
+                        mane_wave_phase=ph * 2.0,
+                        mane_wave_amp=8.5,
+                        l_thigh_deg=-14.0 * u,
+                        l_shin_deg=14.0 * u,
+                        r_thigh_deg=16.0 * u,
+                        r_shin_deg=-10.0 * u,
+                        l_sode_rel_deg=-38.0 * u,
+                        l_fore_rel_deg=-24.0,
+                        r_sode_rel_deg=-42.0 - 20.0 * u,
+                        r_fore_rel_deg=-20.0 - 6.0 * u,
+                        right_arm_in_front=True,
+                        odachi_deg=-96.0 - 42.0 * u,
+                        odachi_len=26.0,
+                        drums_active=True,
+                    ))
+                elif f <= 20:
+                    u = (f - 18) / 2.0
+                    cfgs.append(dict(
+                        pelvis_dx=10.0 + 4.0 * u,
+                        pelvis_dy=66.0 + 12.0 * u,
+                        torso_deg=20.0 + 5.0 * u,
+                        head_rel_deg=-10.0,
+                        mane_rel_deg=-22.0,
+                        mane_wave_phase=ph * 2.6,
+                        mane_wave_amp=11.0,
+                        l_thigh_deg=24.0,
+                        l_shin_deg=16.0,
+                        r_thigh_deg=-28.0,
+                        r_shin_deg=16.0,
+                        l_sode_rel_deg=16.0,
+                        l_fore_rel_deg=-24.0,
+                        r_sode_rel_deg=-28.0 + 18.0 * u,
+                        r_fore_rel_deg=-16.0 + 6.0 * u,
+                        right_arm_in_front=True,
+                        odachi_deg=-18.0 + 48.0 * u,
+                        odachi_len=26.5,
+                        drums_active=True,
+                        slash_arc=dict(
+                            dx=4.0, dy=11.0, r=26.5,
+                            a0=-82.0 + 28.0 * u, a1=14.0 + 28.0 * u,
+                            intensity=1.10 + 0.22 * math.sin(u * math.pi), violet=False,
+                        ),
+                    ))
+                else:
+                    u = (f - 21) / 1.0
+                    cfgs.append(dict(
+                        pelvis_dx=8.0 * (1.0 - u),
+                        pelvis_dy=48.0 * (1.0 - u),
+                        torso_deg=16.0 * (1.0 - u) + 2.0,
+                        head_rel_deg=-6.0 * (1.0 - u) - 1.0,
+                        mane_rel_deg=-14.0 * (1.0 - u) - 3.0,
+                        mane_wave_phase=ph,
+                        mane_wave_amp=7.5,
+                        l_thigh_deg=14.0 * (1.0 - u),
+                        l_shin_deg=10.0 * (1.0 - u),
+                        r_thigh_deg=-16.0 * (1.0 - u),
+                        r_shin_deg=10.0 * (1.0 - u),
+                        l_sode_rel_deg=8.0 * (1.0 - u) - 4.0,
+                        l_fore_rel_deg=-20.0 * (1.0 - u) - 10.0 * u,
+                        r_sode_rel_deg=-12.0 - 2.0 * u,
+                        r_fore_rel_deg=-12.0 - 6.0 * u,
+                        odachi_deg=22.0 * (1.0 - u) - 28.0 * u,
+                        odachi_len=28.0,
+                        drums_active=(f == 21),
+                    ))
             else:
-                # Phase 4: Chiburi Blood-Flick & Return to Kamae
-                u = (f - 22) / 7.0
-                cfgs.append(dict(
-                    pelvis_dx=0.0,
-                    pelvis_dy=65.0 * (1.0 - u),
-                    torso_deg=20.0 * (1.0 - u) + 2.0,
-                    head_rel_deg=-8.0 * (1.0 - u),
-                    mane_rel_deg=-16.0 * (1.0 - u) - 3.0,
-                    mane_wave_phase=ph,
-                    mane_wave_amp=7.5,
-                    l_thigh_deg=24.0 * (1.0 - u),
-                    l_shin_deg=14.0 * (1.0 - u),
-                    r_thigh_deg=-28.0 * (1.0 - u),
-                    r_shin_deg=16.0 * (1.0 - u),
-                    l_sode_rel_deg=18.0 * (1.0 - u) - 4.0,
-                    l_fore_rel_deg=-28.0 * (1.0 - u) - 10.0 * u,
-                    r_sode_rel_deg=-26.0 + 12.0 * u,
-                    r_fore_rel_deg=-14.0 - 4.0 * u,
-                    odachi_deg=22.0 * (1.0 - u) - 32.0 * u,
-                    odachi_len=30.0,
-                    drums_active=(f < 26)
-                ))
+                if f <= 25:
+                    u = (f - 23) / 2.0
+                    cfgs.append(dict(
+                        pelvis_dx=-6.0 * (1.0 - u) + 14.0 * u,
+                        pelvis_dy=64.0 + 14.0 * u,
+                        torso_deg=16.0 + 8.0 * u,
+                        head_rel_deg=-8.0 - 4.0 * u,
+                        mane_rel_deg=-18.0 - 6.0 * u,
+                        mane_wave_phase=ph * 3.0,
+                        mane_wave_amp=11.0,
+                        l_thigh_deg=16.0 + 12.0 * u,
+                        l_shin_deg=16.0,
+                        r_thigh_deg=-20.0 - 12.0 * u,
+                        r_shin_deg=18.0,
+                        l_sode_rel_deg=18.0,
+                        l_fore_rel_deg=-28.0,
+                        r_sode_rel_deg=-8.0 - 16.0 * u,
+                        r_fore_rel_deg=-14.0 + 6.0 * u,
+                        right_arm_in_front=True,
+                        odachi_deg=-8.0 + 6.0 * u,
+                        odachi_len=24.5,
+                        drums_active=True,
+                    ))
+                else:
+                    # F26..F29: Crisp Chiburi Blood-Flick (F26..F27) & Noto Sheath/Kamae Return (F28..F29)
+                    u = (f - 26) / 3.0
+                    cfgs.append(dict(
+                        pelvis_dx=8.0 * (1.0 - u),
+                        pelvis_dy=56.0 * (1.0 - u),
+                        torso_deg=16.0 * (1.0 - u) + 2.0,
+                        head_rel_deg=-6.0 * (1.0 - u) - 1.0,
+                        mane_rel_deg=-14.0 * (1.0 - u) - 3.0,
+                        mane_wave_phase=ph,
+                        mane_wave_amp=7.5,
+                        l_thigh_deg=18.0 * (1.0 - u),
+                        l_shin_deg=12.0 * (1.0 - u),
+                        r_thigh_deg=-20.0 * (1.0 - u),
+                        r_shin_deg=12.0 * (1.0 - u),
+                        l_sode_rel_deg=8.0 * (1.0 - u) - 4.0,
+                        l_fore_rel_deg=-26.0 * (1.0 - u) - 10.0 * u,
+                        r_sode_rel_deg=12.0 if f == 27 else (20.0 if f == 28 else -14.0),
+                        r_fore_rel_deg=-6.0 if f == 27 else (18.0 if f == 28 else -18.0),
+                        right_arm_in_front=(f <= 27),
+                        sheathed=(f == 28),
+                        odachi_deg=26.0 if f == 26 else (34.0 if f == 27 else -28.0),
+                        odachi_curve=1.0 if f <= 27 else -1.0,
+                        odachi_len=25.5 if f <= 27 else 28.5,
+                        drums_active=(f <= 27),
+                    ))
 
         elif row_idx == 3:
             # Row 3: SKILL (Zantetsuken Flash — Grounded Cast + 3 Multi-Angle Spear Passes!)
@@ -1736,6 +1915,27 @@ def main():
         print("Saved debug contact sheets & showcase to", ARTIFACT_DIR)
 
 
+def build_row2_auto_only():
+    parts = load_and_segment_512()
+    cfgs = build_row_configs(2)
+    frames_104 = [render_pose_104(parts, c) for c in cfgs]
+    for idx, fr in enumerate(frames_104):
+        a = fr[:, :, 3] > 0
+        ys, xs = np.where(a)
+        assert len(ys) > 0, f"[ronin] Empty frame F{idx:02d}"
+        assert int(ys.min()) >= 4 and int(ys.max()) <= 99 and int(xs.min()) >= 4 and int(xs.max()) <= 99, (
+            f"[ronin] F{idx:02d} raw bounds ({int(xs.min())}..{int(xs.max())}, {int(ys.min())}..{int(ys.max())}) outside safe 4..99!"
+        )
+    splice_row2_auto_surgically(
+        "ronin", OUT_SHEET_PATH, frames_104,
+        ((106, 242, 255, 255), (250, 214, 96, 255)),
+    )
+
+
 if __name__ == "__main__":
-    main()
+    if "--auto-only" in sys.argv:
+        build_row2_auto_only()
+    else:
+        main()
+
 

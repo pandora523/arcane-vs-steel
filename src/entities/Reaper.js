@@ -1,12 +1,19 @@
-import { Fighter } from './Fighter.js?v=30fps89';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps89';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps89';
+import { Fighter } from './Fighter.js?v=30fps90';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps90';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps90';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps89';
+} from '../engine/shaders/abyssalShaders.js?v=30fps90';
+
+const AUTO_SLICES_4 = [
+  [60, 8],
+  [68, 7],
+  [75, 8],
+  [83, 7]
+];
 
 /**
  * Malakor v7 (`reaper`) — Gothic Arch-Reaper, Shadow-Burrow Stalker & Sovereign of the Death Covenant.
@@ -17,9 +24,9 @@ import {
  *   plunges **100% underground** (`this.isFullyBurrowed`, `1.72s` total / `1.26s` completely submerged)
  *   as a creeping **Pitch-Black Abyssal Shadow Pool & Predator Lock-On Indicator** before erupting into
  *   a critical **Surprise Ambush Uppercut** + **Abyssal Grave-Ward (`22%` DR)**!
- * - 3-Stage Auto (`TRINITY OF THE SCYTHE`):
- *   (1) *Crescent Reap & Soul Wave*, (2) *Ferryman's Hook-Slash*, (3) *Thanatos Stand Cross-Guillotine*
- *   with piercing/returning `Soul-Disc` boomerang and enhanced vampiric Soul Harvest.
+ * - 4-Stage Auto (`QUATERNITY OF THE SCYTHE`):
+ *   (1) *Crescent Reap & Soul Wave*, (2) *Abyssal Hook Drag-Rend*, (3) *Thanatos Phantom Whirl*
+ *   with piercing/returning `Soul-Disc` boomerang, (4) *Guillotine Execution Pillar Slam*.
  * - Signature Skill (`SOUL SEVER` • `4.5s CD`):
  *   Rips a **Captive Severed Soul Effigy** (`this.severedSoul`) out of the enemy that echoes Soul-Link
  *   damage, followed by a shadow-step **X-Scissor Soul-Snap Guillotine**.
@@ -61,7 +68,7 @@ export class Reaper extends Fighter {
 
     this.skillMaxCooldown = 4.85;
     this.skillTriggerRange = 450;
-    this.autoDuration = 0.90;
+    this.autoDuration = 0.88;
     this.skillDuration = 0.98;
     this.ultDuration = 1.86;
 
@@ -82,6 +89,7 @@ export class Reaper extends Fighter {
     this._trueUltSkyAscent = false;
 
     this.comboStep = 0;
+    this._autoVariant = 0;
     this.stepDustTimer = 0;
     this.graveWardTimer = 0; // Abyssal Grave-Ward DR after Shadow Burrow, Overdrive & True Ultimate
 
@@ -145,13 +153,13 @@ export class Reaper extends Fighter {
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
       if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps87')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps89';
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps90';
       }
       if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps87')) {
-        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps89';
+        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps90';
       }
       if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps87')) {
-        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps89';
+        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps90';
       }
     }
   }
@@ -183,6 +191,17 @@ export class Reaper extends Fighter {
     } else if (newState === 'ULTIMATE') {
       this.ultStage = 0;
       this._ultSlashFlash = 0;
+    } else if (newState === 'AUTO_ATTACK') {
+      this._autoVariant = ((this.comboStep || 0) % 4 + 4) % 4;
+      this.comboStep = (this._autoVariant + 1) % 4;
+      this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
+      this.giantScale = 1.0;
+      this.isInvulnerable = false;
+      this.deathAvatar = null;
+      this.wraithClones = [];
+      this.fx?.stopByKey('deathAvatarCathedral');
+      this.fx?.stopByKey('necropolisBoneyardDomain');
+      this.fx?.stopByKey('mementoMoriNecropolisGates');
     } else {
       this.trueUltFrameOverride = null;
       this.giantScale = 1.0;
@@ -198,7 +217,7 @@ export class Reaper extends Fighter {
       newState === 'SKILL' ||
       newState === 'ULTIMATE' ||
       newState === 'TRUE_ULTIMATE' ||
-      (newState === 'AUTO_ATTACK' && this.comboStep % 3 === 2);
+      (newState === 'AUTO_ATTACK' && (this._autoVariant === 2 || this._autoVariant === 3));
 
     if (newState === 'DEATH') {
       this.trueUltFrameOverride = null;
@@ -379,8 +398,8 @@ export class Reaper extends Fighter {
   }
 
   getEffectiveAttackRange() {
-    // Stage 1 fires a mid-range Crescent Soul-Wave (315px) & Stage 3 hurls the Returning Soul-Disc (410px)!
-    const mode = this.comboStep % 3;
+    // V0 fires a mid-range Crescent Soul-Wave (265px) & V2 hurls the Returning Soul-Disc (410px)!
+    const mode = ((this.comboStep || 0) % 4 + 4) % 4;
     if (mode === 2) return 410;
     if (mode === 0) return 265;
     return this.attackRange;
@@ -1731,7 +1750,7 @@ export class Reaper extends Fighter {
         Math.abs(enemy.y - 96 - sw.y) < 88
       ) {
         sw.didHit = true;
-        this.strikeWithSoulResonance(enemy, 42, false, -38, -24, game);
+        this.strikeWithSoulResonance(enemy, 40, false, -38, -24, game);
         this.gainSoulStack(1);
         this.leechLife(7, enemy, game, 'SOUL WAVE');
         this.spawnVfxAnim(4, sw.x, sw.y, 148, 148, 0.24, {
@@ -1960,68 +1979,76 @@ export class Reaper extends Fighter {
   }
 
   /**
-   * 3-STAGE AUTO-ATTACK: "TRINITY OF THE SCYTHE"
-   * - Stage 1 (`mode === 0`): Crescent Reap + forward-traveling `Crescent Soul-Wave` (`Row 0`).
-   * - Stage 2 (`mode === 1`): Ferryman's Hook-Slash pulling foes inward + chain snap.
-   * - Stage 3 (`mode === 2`): Manifests the **Towering Thanatos Stand (`Row 3`)** behind Malakor
-   *   for a unison X-Cross Guillotine Crit + hurls the piercing/returning `Soul-Disc` (`Row 0`).
+   * 4-STAGE AUTO-ATTACK: "QUATERNITY OF THE SCYTHE"
+   * - V0 (`mode === 0`, `60..67`): Crescent Soul-Reap + mid-range `Crescent Soul-Wave` (`Row 0`).
+   * - V1 (`mode === 1`, `68..74`): Abyssal Hook Drag-Rend (`30px` inward yank + skeletal chain snap).
+   * - V2 (`mode === 2`, `75..82`): Thanatos Phantom Whirl — manifests Towering `Thanatos Stand` (`Row 3`)
+   *   + hurls piercing/returning `Soul-Disc` boomerang (`Row 0`) + guaranteed crit cleave.
+   * - V3 (`mode === 3`, `83..89`): Guillotine Execution Pillar Slam — overhead necrotic crash erupting
+   *   an abyssal ground rift portal + `Row 2` Guillotine Bone Obelisk spire (`86` guaranteed crit + `9` leech).
    */
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    const mode = this.comboStep % 3;
+    const mode = ((this._autoVariant ?? 0) % 4 + 4) % 4;
+    const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
+    const u = Math.min(1, Math.max(0, t / 0.84));
+
+    // Drive exact 4-variant Row 2 slice (`60..67`, `68..74`, `75..82`, `83..89`)
+    this.trueUltFrameOverride = sliceStart + Math.min(sliceLen - 1, Math.floor(u * sliceLen));
 
     if (t < 0.25) {
       this.torsoAngle = -this.facing * 0.22 * (t / 0.25);
       if (mode === 2 && !this.thanatosStand) {
-        // Pre-manifest Towering Thanatos Death-God Stand behind Malakor on Stage 3 coil!
+        // Pre-manifest Towering Thanatos Death-God Stand behind Malakor on V2 coil!
         this.spawnThanatosStand(0.66, 268);
       }
     } else if (t < 0.62) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
-        this.comboStep++;
-        this.vx += this.facing * 138;
-        this.torsoVel = this.facing * 13;
+        this.vx += this.facing * (mode === 3 ? 152 : 138);
+        this.torsoVel = this.facing * (mode === 3 ? 15 : 13);
 
         const cx = this.x + this.facing * 58;
         const cy = this.y - 98;
 
         this.fx?.spawn('soulHarvestScytheArc', cx, cy, {
           flip: this.facing < 0,
-          light: mode === 2 ? 1.42 : 1.28,
+          light: mode >= 2 ? 1.42 : 1.28,
           extra: {
-            radiusWorld: mode === 2 ? 150 : 138,
-            isCrimson: mode === 2 || this.soulStacks >= 5,
+            radiusWorld: mode === 3 ? 156 : mode === 2 ? 150 : 138,
+            isCrimson: mode >= 2 || this.soulStacks >= 5,
             isCross: mode === 2,
             isUppercut: mode === 1
           }
         });
 
         if (mode === 0) {
-          // Stage 1: Launch mid-range Crescent Soul-Wave (`Row 0`) if enemy is outside point-blank!
-          if (!enemy || Math.abs(enemy.x - this.x) > 155) {
+          // V0 (`60..67` — Crescent Soul-Reap): Launch mid-range Crescent Soul-Wave (`Row 0`) when |enemy.x - x| > 150!
+          if (!enemy || Math.abs(enemy.x - this.x) > 150) {
             this.spawnCrescentScytheWave();
           }
-          if (game.audio) game.audio.play('scythe_reap', this.x);
+          if (game?.audio) game.audio.play('scythe_reap', this.x);
         } else if (mode === 1) {
-          // Stage 2: Ferryman's Hook-Slash chain snap!
-          if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 58) {
-            this.fx?.spawn('skeletalChainTetherBeam', this.x + this.facing * 36, this.y - 96, {
-              light: 1.28,
-              extra: {
-                dx: enemy.x - (this.x + this.facing * 36),
-                dy: enemy.y - 96 - (this.y - 96),
-                arcH: 10,
-                isCrimson: false,
-                showClaw: true,
-                customDuration: 0.26
-              }
-            });
-          }
-          if (game.audio) game.audio.play('chain_hook', this.x);
-        } else {
-          // Stage 3: Unison Thanatos Stand Cross-Guillotine + Returning Soul-Disc!
-          if (game.audio) game.audio.play('scythe_reap', this.x);
+          // V1 (`68..74` — Abyssal Hook Drag-Rend): Skeletal hook-chain snap pulling foes inward!
+          const chainOriginX = this.x + this.facing * 36;
+          const chainOriginY = this.y - 96;
+          const hasNearFoe =
+            enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 58;
+          this.fx?.spawn('skeletalChainTetherBeam', chainOriginX, chainOriginY, {
+            light: 1.28,
+            extra: {
+              dx: hasNearFoe ? enemy.x - chainOriginX : this.facing * 142,
+              dy: hasNearFoe ? enemy.y - 96 - chainOriginY : 6,
+              arcH: 10,
+              isCrimson: false,
+              showClaw: true,
+              customDuration: 0.26
+            }
+          });
+          if (game?.audio) game.audio.play('chain_hook', this.x);
+        } else if (mode === 2) {
+          // V2 (`75..82` — Thanatos Phantom Whirl): Unison Thanatos Stand + Returning Soul-Disc Boomerang!
+          if (game?.audio) game.audio.play('scythe_reap', this.x);
           this.spawnThanatosStand(0.56, 276);
           this.spawnBoomerangScythe();
           this.spawnVfxAnim(4, cx, cy, 172, 172, 0.28, {
@@ -2029,37 +2056,96 @@ export class Reaper extends Fighter {
             glowColor: 'crimson',
             inFront: true
           });
-          if (game.vfx) {
-            game.vfx.spawnDamageText(this.x, this.y - 150, 0, false, '★ THANATOS CROSS-REAP! ★', '#e879f9');
+          if (game?.vfx) {
+            game.vfx.spawnDamageText(
+              this.x,
+              this.y - 150,
+              0,
+              false,
+              '★ THANATOS CROSS-REAP! ★',
+              '#e879f9'
+            );
+          }
+        } else {
+          // V3 (`83..89` — Guillotine Execution Pillar Slam): Overhead necrotic crash + Ground Rift & Bone Obelisk!
+          const impactX =
+            enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 58
+              ? enemy.x
+              : this.x + this.facing * 112;
+          this.fx?.spawn('companionSummonRiftPortal', impactX, this.groundY - 4, {
+            palette: BLOOD_MOON_CRIMSON_PALETTE,
+            light: 1.36,
+            extra: { radius: 34, isCrimson: true, customDuration: 0.48 }
+          });
+          this.fx?.spawn('abyssalShadowEruptionPillar', impactX, this.groundY - 6, {
+            palette: BLOOD_MOON_CRIMSON_PALETTE,
+            light: 1.32,
+            extra: { width: 22, height: 62, isCrimson: true, customDuration: 0.42 }
+          });
+          this.spawnGroundedBoneSpire(impactX, 208, 0.54, {
+            flipX: this.facing < 0,
+            glowColor: 'crimson',
+            inFront: false
+          });
+          if (game?.audio) {
+            game.audio.play('scythe_reap', this.x);
+            game.audio.play('heavy_cleave', impactX);
+          }
+          if (game?.renderer) {
+            game.renderer.triggerShake(10, 0.16);
+          }
+          if (game?.vfx) {
+            game.vfx.spawnDamageText(
+              impactX,
+              this.groundY - 162,
+              0,
+              true,
+              '★ GUILLOTINE SLAM! ★',
+              '#f43f5e'
+            );
           }
         }
 
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 50) {
-          const isCrit = mode === 2 || Math.random() < 0.24;
-          let dmg = mode === 2 ? 88 : mode === 1 ? 77 : 68;
-          let crimsonHeal = 0;
+          const isCrit = mode === 2 || mode === 3 || Math.random() < 0.24;
+          let dmg = mode === 3 ? 86 : mode === 2 ? 82 : mode === 1 ? 74 : 66;
+          let leechAmt = mode === 3 ? 9 : 7;
+
           if (mode === 2 && this.soulStacks >= 5) {
             this.consumeSoulStacks(2);
-            dmg += 20;
-            crimsonHeal = 5;
-            if (game.vfx) {
-              game.vfx.spawnDamageText(enemy.x, enemy.y - 172, 0, false, '★ CRIMSON REAP! ★', '#f43f5e');
+            dmg = 102;
+            leechAmt = 12;
+            if (game?.vfx) {
+              game.vfx.spawnDamageText(
+                enemy.x,
+                enemy.y - 172,
+                0,
+                false,
+                '★ CRIMSON REAP! ★',
+                '#f43f5e'
+              );
             }
           }
-          const inwardPull = mode === 2 ? -80 : -68;
-          this.strikeWithSoulResonance(enemy, dmg, isCrit, inwardPull, mode === 2 ? -95 : -28, game);
-          if (!enemy.unstoppablePoise) {
+
+          const inwardPull = mode === 3 ? 95 : mode === 2 ? -80 : -68;
+          const popY = mode === 3 ? -85 : mode === 2 ? -95 : -28;
+          this.strikeWithSoulResonance(enemy, dmg, isCrit, inwardPull, popY, game);
+          if (!enemy.unstoppablePoise && mode !== 3) {
             enemy.x += Math.sign(this.x - enemy.x) * (mode === 1 ? 30 : 22);
           }
           this.gainSoulStack(1);
-          this.leechLife(7 + crimsonHeal, enemy, game, 'SOUL HARVEST');
-          if (game.audio) game.audio.play(mode === 2 ? 'soul_drain' : 'scythe_reap', enemy.x);
-          if (game.renderer) game.renderer.triggerHitStop(0.055);
+          this.leechLife(leechAmt, enemy, game, 'SOUL HARVEST');
+          if (game?.audio) {
+            game.audio.play(mode === 2 ? 'soul_drain' : 'scythe_reap', enemy.x);
+          }
+          if (game?.renderer) game.renderer.triggerHitStop(mode === 3 ? 0.065 : 0.055);
         } else {
-          this.tryStrikeSeveredEffigy(cx, mode === 2 ? 82 : 68, game);
+          const effigyBaseDmg = mode === 3 ? 86 : mode === 2 ? 82 : mode === 1 ? 74 : 66;
+          this.tryStrikeSeveredEffigy(cx, effigyBaseDmg, game);
         }
       }
     } else if (t >= 0.84) {
+      this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }
   }
@@ -2393,7 +2479,7 @@ export class Reaper extends Fighter {
       const ease = 1 - Math.pow(1 - u, 3);
       this.x = this.ultPassStartX + (this.ultPassTargetX - this.ultPassStartX) * ease;
       this.y = this.groundY - Math.sin(u * Math.PI) * 28;
-      this.trueUltFrameOverride = 68 + Math.min(13, Math.floor(u * 14));
+      this.trueUltFrameOverride = 68 + Math.min(6, Math.floor(u * 7));
     }
 
     // BEAT 3 (t >= 0.56s): Rising Scythe Vault II (Malakor 112px Aerial Arc R->L + Twin Criss-Crossing Clones)

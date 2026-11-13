@@ -108,7 +108,7 @@
       "theme": "forge",
       "base_source": "assets/sprites/titan_v5_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
-      "rig": "15-part cel-clustered Sovereign of the World-Forge skeletal rig + World-Forge Crucible Back-Halo + Slash-Free Symmetric Double-Faced Dwarven Warhammer (Mjolnir, 0 upside-down orientations, 0 sword-slash crescents & 0 vertical Super-Ult spike columns across sheet & VFX) + 3-Animation 2H Auto-Attack + Horizontal Baseball-Bat Home-Run Overdrive + Colossal 2.15x 4-Beat Sky-Uppercut -> Fast-Jump -> Meteor Ground-Smash + 2.5D Soil/Rock Crater Splash Supreme Ultimate + Row 9 Skyward Mjolnir Roar Victory Pose + Prone Collapse",
+      "rig": "15-part cel-clustered Sovereign of the World-Forge skeletal rig + World-Forge Crucible Back-Halo + Slash-Free Symmetric Double-Faced Dwarven Warhammer (Mjolnir, 0 upside-down orientations, 0 sword-slash crescents & 0 vertical Super-Ult spike columns across sheet & VFX) + 4-Animation 2H Auto-Attack (Row 2: F00..F07, F08..F14, F15..F22, F23..F29) + Horizontal Baseball-Bat Home-Run Overdrive + Colossal 2.15x 4-Beat Sky-Uppercut -> Fast-Jump -> Meteor Ground-Smash + 2.5D Soil/Rock Crater Splash Supreme Ultimate + Row 9 Skyward Mjolnir Roar Victory Pose + Prone Collapse",
       "script": "scripts/build_titan_30fps_sheet.py",
       "vfx_script": "scripts/build_titan_vfx_30fps.mjs"
     },
@@ -117,7 +117,7 @@
       "theme": "storm",
       "base_source": "assets/sprites/ronin_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
-      "rig": "13-part cel-clustered Storm-Blade Iaido Samurai skeletal rig + Katana & Saya + Row 9 Chiburi Blood-Flick & Noto Sheathe Victory Pose + 8-Row Amakakeru Thousand Thunder Judgments & Raijin Shader VFX Suite + Prone Sword-Plant Collapse",
+      "rig": "13-part cel-clustered Storm-Blade Iaido Samurai skeletal rig + Katana & Saya + 4-Variant Iaido Auto-Attack + Row 9 Chiburi Blood-Flick & Noto Sheathe Victory Pose + 8-Row Amakakeru Thousand Thunder Judgments & Raijin Shader VFX Suite + Prone Sword-Plant Collapse",
       "script": "scripts/build_ronin_30fps_sheet.py",
       "vfx_script": "scripts/build_ronin_vfx_30fps.mjs"
     },
@@ -126,7 +126,7 @@
       "theme": "crimson",
       "base_source": "assets/sprites/valkyrie_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
-      "rig": "13-part cel-clustered Valkyrie skeletal rig + 6-pinion Crimson-Gold Valkyrie Wings + Gungnir War-Lance + -360-deg Aerial Backflip Retreat (Row 7) + Row 9 Winged Gungnir Banner Salute Victory Pose + 8-Row Twilight of Ragnarok Gungnir & Valkyrie Shader VFX Suite + Supine Collapse",
+      "rig": "13-part cel-clustered Valkyrie skeletal rig + 6-pinion Crimson-Gold Valkyrie Wings + Gungnir War-Lance + 4-Variant Spear-Arts Auto-Attack + -360-deg Aerial Backflip Retreat (Row 7) + Row 9 Winged Gungnir Banner Salute Victory Pose + 8-Row Twilight of Ragnarok Gungnir & Valkyrie Shader VFX Suite + Supine Collapse",
       "script": "scripts/build_valkyrie_30fps_sheet.py",
       "vfx_script": "scripts/build_valkyrie_vfx_30fps.mjs"
     },
@@ -144,7 +144,7 @@
       "theme": "cyber",
       "base_source": "assets/sprites/android_v2_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
-      "rig": "13-part cel-clustered Cybernetic Valkyrie skeletal rig + Coiled Split-Leg Martial Stances + Muramasa-09 Odachi & Saya + 3-Variant Real Gap-Close Melee + Backstep Evade -> Quad Fin-Funnel Optical Ring -> Valkyrie Visor Hyper-Laser (Row 4) + Row 9 Odachi Flourish & Visor Salute Victory Pose + 8-Row Project GUNG-09 Orbital Satellite Buster VFX Suite + Prone Shutdown Collapse",
+      "rig": "13-part cel-clustered Cybernetic Valkyrie skeletal rig + Coiled Split-Leg Martial Stances + Muramasa-09 Odachi & Saya + 4-Variant Real Gap-Close Melee (Row 2: F00..F07, F08..F14, F15..F22, F23..F29) + Backstep Evade -> Quad Fin-Funnel Optical Ring -> Valkyrie Visor Hyper-Laser (Row 4) + Row 9 Odachi Flourish & Visor Salute Victory Pose + 8-Row Project GUNG-09 Orbital Satellite Buster VFX Suite + Prone Shutdown Collapse",
       "script": "scripts/build_android_30fps_sheet.py",
       "vfx_script": "scripts/build_android_vfx_30fps.mjs"
     }

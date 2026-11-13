@@ -2,8 +2,12 @@
 
 > **IMPORTANT FOR ANY NEW CHAT / AGENT**: Read this file alongside `docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md` and `docs/champion_pipeline_db.json` at the start of a new conversation so full project context, user preferences, protected champions, and recent reworks are preserved seamlessly.
 
-### 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps89`)
+### 1. Current Live Baseline (`main`, Cache-Bust `?v=30fps90`)
 - **All 11 HD-2D 30fps Champions (`208x208` cells, `10 rows x 30 frames = 6240x2080` incl. Row 9 `VICTORY` Pose + `vfx` sheets + `128x128` portraits)** are live and verified on `main`.
+- **11-Champion 4-Variant Main-Model Auto-Attack & Dynamic Visuals Overhaul (`?v=30fps90`)**:
+  - **Unified 4-Animation `Row 2 AUTO_ATTACK` (`[[60, 8], [68, 7], [75, 8], [83, 7]]`) Across All 11 Champions (`scripts/hd2d_rig_core.py`, `scripts/build_*_30fps_sheet.py`, `assets/sprites/*_sheet.png`, `src/entities/*.js`)**:
+    - Surgically rebuilt **ONLY `Row 2` (`AUTO_ATTACK`, `y = 416..624`)** via `splice_row2_auto_surgically` across the 10 remaining champions (`warrior`, `mage`, `ronin`, `valkyrie`, `reaper`, `priestess`, `archer`, `chronomancer`, `titan`, `android`) to match `icemage` (`Lyra`), giving **all 11 champions** 4 genuinely distinct full-body skeletal animations on their main character model (`F00..F07` [8f], `F08..F14` [7f], `F15..F22` [8f], `F23..F29` [7f]) while keeping `Rows 0..1` (incl. bipedal crossover `WALK`) and `Rows 3..9` **100% byte-for-byte identical** (`0/30` border clips, `29/29` distinct transitions, Seraphina strictly grounded `foot_y=99.0`, Torgar 100% slash-crescent-free).
+    - Paired every main-model animation slice with deterministic `setState('AUTO_ATTACK')` variant latching (`_autoVariant = comboStep % 4`) and 4 distinct dynamic visual/combat payoffs (slashes, twin arcs, sky-pillars/javelins, piercing waves, phantom pincers, Fin-Funnel lasers, and ground-shattering finishers, `0` `ctx.rotate`) across both VS Mode and Adventure Mode.
 - **11-Champion Bipedal Left/Right Crossover Walk Overhaul + Non-Blocking In-Game Pause Menu & 100% VS/Adventure UI Isolation (`?v=30fps89`)**:
   - **True Alternating Left+Right Bipedal Crossover `Row 1 WALK` Across All 11 Champions (`scripts/hd2d_rig_core.py`, `scripts/build_*_30fps_sheet.py`, `assets/sprites/*_sheet.png`, `src/engine/PixelForge.js`, `src/entities/Fighter.js`)**:
     - Surgically rebuilt **ONLY `Row 1` (`WALK`, `y = 208..416`)** across all 11 champions (`Row 0` and `Rows 2..9` verified 100% byte-for-byte identical to prior `HEAD`; `29/29` distinct transitions, `0/30` border clips, grounded stance soles at `y_208 = 199`).
@@ -59,11 +63,12 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 - **Symmetric Double-Faced Dwarven Warhammer (`Mjolnir`) & Zero Green-Orange Sword-Slash Crescents (`0/300` & `0/240` clips)**:
   - Rebuilt `draw_2h_worldbreaker_maul_104` (`scripts/build_titan_30fps_sheet.py`) and `drawColossalDwarvenWarhammer` (`src/engine/shaders/forgeShaders.js`) with a symmetric pinched anvil waist (`abs(dp)`), twin flared beveled striking faces, twin jade cheek runes, and radial outward handle-to-head geometry (`da` from inner grip to outer head).
   - Completely removed ALL green-orange sword-slash crescents (`slash_arc`, `horiz_bat_arc`, `forge_aegis`, `drawMultiLayerCrescentArc`, and `forgeHammerArc`) from `titan_sheet.png`, `titan_vfx.png` (`Row 0` now erupts 3 grounded Volcanic Basalt & Molten-Gold Earth-Spire Crags), `forgeShaders.js`, and `Titan.js` so blunt warhammer impacts read through grounded shockwave craters, molten anvil sparks, and shattered earth/rock splashes rather than blade slashes.
-- **3-Animation Dynamic Normal Attack (`TRINITY OF THE WORLD-MAUL`, `Row 2 F00..F29`)**:
-  - **3 genuinely distinct full-body martial animations** on Torgar's character model (with physical windup step-in):
-    1. `F00..F09` (`OVERHEAD EARTH-SPLITTER SLAM`): Tall `-78°` vertical 2H hoist above his horned helm into a deep split-knee `+14°` floor smash + traveling `Row 0` Volcanic Earth-Spire Fissure Wave.
-    2. `F10..F19` (`LEAPING SKY-BREAKER UPPERCUT`): Deep crouch `+20°` floor scoop into an airborne high-knee (`foot_y = 91`) `-68°` skyward uppercut + grounded `Row 2` Magma-Jade Pillar (`+1` Crucible Core).
-    3. `F20..F29` (`BATTERING-RAM BACKSPIN FINISHER`): Lead-leg swap (`right_leg_behind = True`) & twisted torso coil into a wide split-lunge horizontal battering-ram punch + `khazadForgeAncestorAvatar` Guaranteed Crit + World-Breaker Temper + Seismic Altar Resonance.
+- **4-Animation Dynamic Normal Attack (`QUARTET OF THE WORLD-MAUL`, `Row 2 F00..F29`)**:
+  - **4 genuinely distinct full-body martial animations** on Torgar's character model (with physical windup step-in, zero slash crescents):
+    1. `F00..F07` (`OVERHEAD EARTH-SPLITTER SLAM`): Tall `-78°` vertical 2H hoist above his horned helm into a deep split-knee `+14°` floor smash + traveling `Row 0` Volcanic Earth-Spire Fissure Wave.
+    2. `F08..F14` (`LEAPING SKY-BREAKER UPPERCUT`): Deep crouch `+20°` floor scoop into an airborne high-knee (`foot_y = 91`) `-68°` skyward uppercut + grounded `Row 2` Magma-Jade Pillar (`+1` Crucible Core).
+    3. `F15..F22` (`POMMEL-RAM SEISMIC JAB`): Lead-leg swap & compact anvil-pommel gut/chest ram + focused molten anvil concussion shockwave & granite shrapnel burst.
+    4. `F23..F29` (`BATTERING-RAM BACKSPIN FINISHER`): Twisted torso coil into a wide split-lunge horizontal battering-ram punch + `khazadForgeAncestorAvatar` Guaranteed Crit + World-Breaker Temper + Seismic Altar Resonance.
 - **Horizontal Baseball-Bat Overdrive (`WORLD-BREAKER HOME RUN`, `Row 4 F00..F14`, `1.46s`)**:
   - Unobstructed rear-shoulder Baseball-Bat coil (`F00..F05`, cocked behind Torgar's helm so his face stays completely clear) into a slash-free chest-high horizontal Home-Run Grand-Slam (`F06..F10` + warm gold/white sonic air-compression wake), launching the enemy in a fast line-drive comet (`38px` arc) to the **farthest stage wall** and **stunning for `0.80s`**.
 - **Supreme Ultimate (`GOD-HAMMER MJOLNIR: CONTINENTAL SUNDER`, `Row 4 F15..F29`, `3.80s` 4-Beat Choreography)**:
@@ -87,10 +92,11 @@ The user explicitly confirmed that the following **6 champions are doing fine** 
 ### VEX-09 (`src/entities/Android.js`, `heroId: 'android'`, v3) & Roster-Wide Fighting Style AI Director (`src/entities/Fighter.js`)
 - **Coiled Athletic Cyber-Valkyrie Rig (`scripts/build_android_30fps_sheet.py`, `0/300` clips, `29/29` transitions)**:
   - Deep hip/knee/ankle skeletal stances across all 10 rows (`IDLE` coiled Kamae, low-center thruster `WALK`/`DASH`, kneeling `CROUCH` Hex-Matrix Deflect, airborne `JUMP` Guillotine, `Row 9 VICTORY` Odachi salute) — zero rod-straight or stiff poses.
-  - **3-Variant Dynamic `Row 2` Melee Combo + Real Point-Blank Model Gap-Close**:
-    1. `F00..F09`: Deep Split-Lunge Horizontal Plasma Cleave (`60..69`)
-    2. `F10..F19`: Martial High-Knee Kick + Rising Dragon Upper-Slash (`70..79`)
-    3. `F20..F29`: Crashing Split-Stance Overhead Fang Slam + Chakram Disc + Dual Funnel Convergence (`80..89`)
+  - **4-Variant Dynamic `Row 2` Melee Combo + Real Point-Blank Model Gap-Close**:
+    1. `F00..F07`: Deep Split-Lunge Horizontal Plasma Cleave (`60..67`)
+    2. `F08..F14`: Martial High-Knee Kick + Rising Dragon Upper-Slash (`68..74`)
+    3. `F15..F22`: Reverse-Grip Thruster Thrust + Dual Fin-Funnel Cross-Laser (`75..82`)
+    4. `F23..F29`: Crashing Split-Stance Overhead Fang Slam + Chakram Disc + Funnel Convergence (`83..89`)
     - During windup (`u < 0.35`, before `didActionFrame`), VEX-09 physically thruster-glides her real `this.x` model right up to true point-blank blade contact (`~108px` from `enemy.x`) so she never swings into empty air.
 - **Backward-Evade Visor Hyper-Laser Overdrive (`VALKYRIE VISOR HYPER-LASER`, `Row 4`)**:
   - **Phase 1 (`0.00..0.44s`, `F00..F07`)**: Physically thruster-leaps backward away from the enemy (`~215px` retreat + 3 holographic afterimages).

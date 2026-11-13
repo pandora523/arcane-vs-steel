@@ -25,7 +25,7 @@ from PIL import Image, ImageDraw, ImageFilter
 _SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 if _SCRIPT_DIR not in sys.path:
     sys.path.insert(0, _SCRIPT_DIR)
-from hd2d_rig_core import compute_bipedal_walk_pose
+from hd2d_rig_core import compute_bipedal_walk_pose, splice_row2_auto_surgically
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "valkyrie_v2_base.jpg")
@@ -1220,47 +1220,138 @@ def build_row_configs(row_idx):
             cfgs.append(cfg_w)
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK (Smooth Continuous 3-Phase Horizontal Valkyrie Lance-Projection Combo!)
-            kfs = [
-                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, right_arm_in_front=False)),
-                # F05: Athletic rear-weight javelin draw (-10 deg sleek horizontal cock)
-                (5, dict(
-                    pelvis_dx=-10.0, pelvis_dy=28.0, torso_deg=-8.0, head_rel_deg=6.0, mane_rel_deg=4.0,
-                    l_thigh_deg=-16.0, l_shin_deg=14.0, r_thigh_deg=16.0, r_shin_deg=-12.0,
-                    l_sode_rel_deg=-22.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=-72.0, r_fore_rel_deg=-22.0,
-                    lance_deg=-10.0, wing_mode="flare", right_arm_in_front=True
-                )),
-                # F10: Crisp forward horizontal javelin whip-projection (+2 deg level forward!)
-                (10, dict(
-                    pelvis_dx=10.0, pelvis_dy=36.0, torso_deg=16.0, head_rel_deg=-8.0, mane_rel_deg=-18.0,
-                    l_thigh_deg=18.0, l_shin_deg=14.0, r_thigh_deg=-20.0, r_shin_deg=16.0,
-                    l_sode_rel_deg=18.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=14.0, r_fore_rel_deg=-10.0,
-                    lance_deg=2.0, wing_mode="flare", right_arm_in_front=True
-                )),
-                # F15: Fluid wing-coil reset for second projection (-12 deg)
-                (15, dict(
-                    pelvis_dx=-2.0, pelvis_dy=26.0, torso_deg=4.0, head_rel_deg=-2.0, mane_rel_deg=-10.0,
-                    l_thigh_deg=4.0, l_shin_deg=8.0, r_thigh_deg=-6.0, r_shin_deg=10.0,
-                    l_sode_rel_deg=-18.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=-48.0, r_fore_rel_deg=-20.0,
-                    lance_deg=-12.0, wing_mode="normal", right_arm_in_front=True
-                )),
-                # F20: Second sweeping horizontal lance-whip (+4 deg)
-                (20, dict(
-                    pelvis_dx=12.0, pelvis_dy=38.0, torso_deg=18.0, head_rel_deg=-10.0, mane_rel_deg=-20.0,
-                    l_thigh_deg=20.0, l_shin_deg=16.0, r_thigh_deg=-22.0, r_shin_deg=18.0,
-                    l_sode_rel_deg=22.0, l_fore_rel_deg=-20.0, r_sode_rel_deg=18.0, r_fore_rel_deg=-8.0,
-                    lance_deg=4.0, wing_mode="flare", right_arm_in_front=True
-                )),
-                # F29: Smooth return to regal grounded stance (-16 deg)
-                (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, lance_deg=-16.0, right_arm_in_front=False)),
-            ]
-            cfg = eval_pose_keyframes(f, kfs, ph, wing_mult=2.0)
-            if 8 <= f <= 12:
-                u_s = (f - 8) / 4.0
-                cfg["slash_arc"] = dict(r=28.0, a0=-52.0 + 18.0 * u_s, a1=32.0 + 14.0 * u_s, intensity=math.sin((f - 7.5) / 5.0 * math.pi) * 1.15)
-            elif 18 <= f <= 22:
-                u_s = (f - 18) / 4.0
-                cfg["slash_arc"] = dict(r=27.0, a0=34.0 - 16.0 * u_s, a1=-46.0 - 12.0 * u_s, intensity=math.sin((f - 17.5) / 5.0 * math.pi) * 1.10)
+            # Row 2: 4 DISTINCT FULL-BODY VALKYRIE AUTO_ATTACK VARIANTS (`[[0..7], [8..14], [15..22], [23..29]]`, `foot_y=99.0`)
+            if f <= 7:
+                # V0 (F00..F07): Gungnir Overhand Javelin Hurl — high rear javelin cock -> explosive forward spear projection
+                kfs = [
+                    (0, dict(
+                        pelvis_dx=-5.0, pelvis_dy=14.0, torso_deg=-4.0, head_rel_deg=3.0, mane_rel_deg=2.0,
+                        l_thigh_deg=-10.0, l_shin_deg=10.0, r_thigh_deg=10.0, r_shin_deg=-8.0,
+                        l_sode_rel_deg=-18.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=-52.0, r_fore_rel_deg=-22.0,
+                        lance_deg=-18.0, lance_len=27.5, foot_y=99.0,
+                        wing_mode="normal", right_arm_in_front=True, right_leg_behind=False,
+                    )),
+                    (2, dict(
+                        pelvis_dx=-11.0, pelvis_dy=28.0, torso_deg=-9.0, head_rel_deg=6.5, mane_rel_deg=5.0,
+                        l_thigh_deg=-18.0, l_shin_deg=16.0, r_thigh_deg=18.0, r_shin_deg=-14.0,
+                        l_sode_rel_deg=-26.0, l_fore_rel_deg=-28.0, r_sode_rel_deg=-76.0, r_fore_rel_deg=-24.0,
+                        lance_deg=-14.0, lance_len=27.0, foot_y=99.0,
+                        wing_mode="flare", right_arm_in_front=True, right_leg_behind=False,
+                    )),
+                    (4, dict(
+                        pelvis_dx=12.0, pelvis_dy=36.0, torso_deg=17.0, head_rel_deg=-9.0, mane_rel_deg=-18.0,
+                        l_thigh_deg=20.0, l_shin_deg=16.0, r_thigh_deg=-22.0, r_shin_deg=18.0,
+                        l_sode_rel_deg=20.0, l_fore_rel_deg=-20.0, r_sode_rel_deg=16.0, r_fore_rel_deg=-8.0,
+                        lance_deg=2.0, lance_len=27.0, foot_y=99.0,
+                        wing_mode="flare", right_arm_in_front=True, right_leg_behind=False,
+                    )),
+                    (7, dict(
+                        pelvis_dx=2.0, pelvis_dy=8.0, torso_deg=4.0, head_rel_deg=-2.5, mane_rel_deg=-6.0,
+                        l_thigh_deg=4.0, l_shin_deg=4.0, r_thigh_deg=-5.0, r_shin_deg=5.0,
+                        l_sode_rel_deg=-4.0, l_fore_rel_deg=-16.0, r_sode_rel_deg=-10.0, r_fore_rel_deg=-16.0,
+                        lance_deg=-14.0, lance_len=29.0, foot_y=99.0,
+                        wing_mode="normal", right_arm_in_front=False, right_leg_behind=False,
+                    )),
+                ]
+                cfg = eval_pose_keyframes(f, kfs, ph, wing_mult=2.2)
+                if f in (4, 5):
+                    cfg["mach_cone"] = dict(len=25.0, intensity=0.90 if f == 4 else 0.72, ultimate=False)
+
+            elif f <= 14:
+                # V1 (F08..F14): Valkyrie Sweeping Glaive Arc — stance swap (`right_leg_behind=True`), wide 2H sweeping crimson lance whip
+                kfs = [
+                    (8, dict(
+                        pelvis_dx=-6.0, pelvis_dy=22.0, torso_deg=-5.0, head_rel_deg=3.0, mane_rel_deg=2.0,
+                        l_thigh_deg=-16.0, l_shin_deg=14.0, r_thigh_deg=16.0, r_shin_deg=10.0,
+                        l_sode_rel_deg=-28.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=-46.0, r_fore_rel_deg=-22.0,
+                        lance_deg=-40.0, lance_len=26.5, foot_y=99.0,
+                        wing_mode="normal", right_arm_in_front=True, right_leg_behind=True,
+                    )),
+                    (11, dict(
+                        pelvis_dx=10.0, pelvis_dy=34.0, torso_deg=15.0, head_rel_deg=-8.5, mane_rel_deg=-18.0,
+                        l_thigh_deg=-22.0, l_shin_deg=20.0, r_thigh_deg=22.0, r_shin_deg=16.0,
+                        l_sode_rel_deg=24.0, l_fore_rel_deg=-18.0, r_sode_rel_deg=18.0, r_fore_rel_deg=-8.0,
+                        lance_deg=7.0, lance_len=27.0, foot_y=99.0,
+                        wing_mode="swept", right_arm_in_front=True, right_leg_behind=True,
+                    )),
+                    (14, dict(
+                        pelvis_dx=2.0, pelvis_dy=10.0, torso_deg=4.0, head_rel_deg=-2.5, mane_rel_deg=-7.0,
+                        l_thigh_deg=-8.0, l_shin_deg=8.0, r_thigh_deg=8.0, r_shin_deg=6.0,
+                        l_sode_rel_deg=-6.0, l_fore_rel_deg=-16.0, r_sode_rel_deg=-12.0, r_fore_rel_deg=-16.0,
+                        lance_deg=-15.0, lance_len=28.5, foot_y=99.0,
+                        wing_mode="normal", right_arm_in_front=True, right_leg_behind=True,
+                    )),
+                ]
+                cfg = eval_pose_keyframes(f, kfs, ph, wing_mult=2.4)
+                if 10 <= f <= 12:
+                    u_s = (f - 10) / 2.0
+                    cfg["slash_arc"] = dict(r=26.5, a0=-52.0 + 14.0 * u_s, a1=36.0 + 12.0 * u_s, intensity=1.10 - abs(f - 11.0) * 0.18)
+
+            elif f <= 22:
+                # V2 (F15..F22): Heaven-Call Skyward Command — grounded regal plant -> Gungnir raised skyward (`y >= 6`!) + full wing-flare
+                kfs = [
+                    (15, dict(
+                        pelvis_dx=-3.0, pelvis_dy=18.0, torso_deg=-3.0, head_rel_deg=-4.0, mane_rel_deg=-8.0,
+                        l_thigh_deg=-12.0, l_shin_deg=12.0, r_thigh_deg=12.0, r_shin_deg=-10.0,
+                        l_sode_rel_deg=-28.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=-48.0, r_fore_rel_deg=-22.0,
+                        lance_deg=-52.0, lance_len=23.0, foot_y=99.0,
+                        wing_mode="normal", right_arm_in_front=True, right_leg_behind=False,
+                    )),
+                    (18, dict(
+                        pelvis_dx=-6.0, pelvis_dy=36.0, torso_deg=-7.5, head_rel_deg=-8.5, mane_rel_deg=-15.0,
+                        l_thigh_deg=-18.0, l_shin_deg=18.0, r_thigh_deg=18.0, r_shin_deg=-14.0,
+                        l_sode_rel_deg=-42.0, l_fore_rel_deg=-30.0, r_sode_rel_deg=-68.0, r_fore_rel_deg=-22.0,
+                        lance_deg=-74.0, lance_len=21.0, foot_y=99.0,
+                        wing_mode="flare", right_arm_in_front=True, right_leg_behind=False,
+                        halo=True, halo_spears=6,
+                    )),
+                    (20, dict(
+                        pelvis_dx=-4.0, pelvis_dy=32.0, torso_deg=-5.0, head_rel_deg=-6.5, mane_rel_deg=-13.0,
+                        l_thigh_deg=-15.0, l_shin_deg=15.0, r_thigh_deg=15.0, r_shin_deg=-12.0,
+                        l_sode_rel_deg=-36.0, l_fore_rel_deg=-28.0, r_sode_rel_deg=-58.0, r_fore_rel_deg=-20.0,
+                        lance_deg=-68.0, lance_len=21.5, foot_y=99.0,
+                        wing_mode="flare", right_arm_in_front=True, right_leg_behind=False,
+                        halo=True, halo_spears=6,
+                    )),
+                    (22, dict(
+                        pelvis_dx=0.0, pelvis_dy=8.0, torso_deg=2.0, head_rel_deg=-2.0, mane_rel_deg=-6.0,
+                        l_thigh_deg=-4.0, l_shin_deg=4.0, r_thigh_deg=4.0, r_shin_deg=-4.0,
+                        l_sode_rel_deg=-10.0, l_fore_rel_deg=-18.0, r_sode_rel_deg=-18.0, r_fore_rel_deg=-18.0,
+                        lance_deg=-26.0, lance_len=27.0, foot_y=99.0,
+                        wing_mode="normal", right_arm_in_front=True, right_leg_behind=False,
+                    )),
+                ]
+                cfg = eval_pose_keyframes(f, kfs, ph, wing_mult=2.5)
+
+            else:
+                # V3 (F23..F29): Bifrost Twin-Cross Thrust — deep forward lunge (`torso_deg=+20 deg`), level 2H rapid spear drive + wing-burst
+                kfs = [
+                    (23, dict(
+                        pelvis_dx=-4.0, pelvis_dy=24.0, torso_deg=8.0, head_rel_deg=-5.0, mane_rel_deg=-10.0,
+                        l_thigh_deg=-14.0, l_shin_deg=14.0, r_thigh_deg=14.0, r_shin_deg=-10.0,
+                        l_sode_rel_deg=-16.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=-38.0, r_fore_rel_deg=-20.0,
+                        lance_deg=-10.0, lance_len=27.0, foot_y=99.0,
+                        wing_mode="normal", right_arm_in_front=True, right_leg_behind=False,
+                    )),
+                    (26, dict(
+                        pelvis_dx=14.0, pelvis_dy=48.0, torso_deg=20.0, head_rel_deg=-11.0, mane_rel_deg=-22.0,
+                        l_thigh_deg=-24.0, l_shin_deg=24.0, r_thigh_deg=24.0, r_shin_deg=-18.0,
+                        l_sode_rel_deg=22.0, l_fore_rel_deg=-20.0, r_sode_rel_deg=18.0, r_fore_rel_deg=-8.0,
+                        lance_deg=1.0, lance_len=26.5, foot_y=99.0,
+                        wing_mode="flare", right_arm_in_front=True, right_leg_behind=False,
+                    )),
+                    (29, dict(
+                        pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-2.0, mane_rel_deg=-5.0,
+                        l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
+                        l_sode_rel_deg=-6.0, l_fore_rel_deg=-14.0, r_sode_rel_deg=-14.0, r_fore_rel_deg=-18.0,
+                        lance_deg=-16.0, lance_len=30.0, foot_y=99.0,
+                        wing_mode="normal", right_arm_in_front=False, right_leg_behind=False,
+                    )),
+                ]
+                cfg = eval_pose_keyframes(f, kfs, ph, wing_mult=2.6)
+                if 25 <= f <= 27:
+                    cfg["slash_arc"] = dict(r=26.0, a0=-44.0, a1=44.0, intensity=1.12 - abs(f - 26.0) * 0.18)
+
             cfgs.append(cfg)
 
         elif row_idx == 3:
@@ -1643,5 +1734,35 @@ def main():
     print(f"Built {OUT_SHEET_PATH} ({sheet.size[0]}x{sheet.size[1]}) with {total_clips} clips in {time.time() - t0:.2f}s")
 
 
+def build_row2_auto_only():
+    parts = load_and_segment_512()
+    cfgs = build_row_configs(2)
+    frames_104 = []
+    min_x, max_x, min_y, max_y = 104, -1, 104, -1
+    for c in range(COLS):
+        arr104 = render_pose_104(parts, cfgs[c])
+        arr104[:4, :, :] = 0
+        arr104[100:, :, :] = 0
+        arr104[:, :4, :] = 0
+        arr104[:, 100:, :] = 0
+        ys, xs = np.where(arr104[:, :, 3] > 0)
+        assert len(ys) > 0, f"Empty valkyrie Row 2 frame {c}"
+        assert int(ys.max()) == 99, f"valkyrie Row 2 frame {c} NOT grounded at y=99 (got ys.max()={ys.max()})"
+        min_x = min(min_x, int(xs.min()))
+        max_x = max(max_x, int(xs.max()))
+        min_y = min(min_y, int(ys.min()))
+        max_y = max(max_y, int(ys.max()))
+        assert 4 <= int(xs.min()) and int(xs.max()) <= 99 and 4 <= int(ys.min()) and int(ys.max()) <= 99, (
+            f"valkyrie Row 2 frame {c} out of 4..99 bounds: x={xs.min()}..{xs.max()}, y={ys.min()}..{ys.max()}"
+        )
+        frames_104.append(arr104)
+    print(f"[valkyrie Row 2 bounds] x={min_x}..{max_x}, y={min_y}..{max_y} (6-pinion wings baked, grounded y=99)")
+    splice_row2_auto_surgically("valkyrie", OUT_SHEET_PATH, frames_104, (P_GOLD_GLEAM, P_GOLD_LIT))
+
+
 if __name__ == "__main__":
-    main()
+    if "--auto-only" in sys.argv:
+        build_row2_auto_only()
+    else:
+        main()
+

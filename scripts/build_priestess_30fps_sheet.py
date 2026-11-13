@@ -25,9 +25,10 @@ from collections import deque
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-if os.path.dirname(__file__) not in sys.path:
-    sys.path.insert(0, os.path.dirname(__file__))
-from hd2d_rig_core import compute_bipedal_walk_pose
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+from hd2d_rig_core import compute_bipedal_walk_pose, splice_row2_auto_surgically
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "priestess_v2_base.jpg")
@@ -1355,57 +1356,175 @@ def build_row_configs(row_idx):
             cfg["foot_y"] = 99.0
 
         elif row_idx == 2:
-            # ROW 2: AUTO_ATTACK — Firmly Grounded Sanctuary Scepter Cast (both boots planted at foot_y=99.0, zero knee-crossing!)
-            kfs = [
-                (0, {
-                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
-                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "l_foot_deg": 0.0,
-                    "r_thigh_deg": 0.0, "r_shin_deg": 0.0, "r_foot_deg": 0.0,
-                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
-                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
-                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
-                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8,
-                }),
-                (7, {
-                    "pelvis_dx": -3.0, "pelvis_dy": 1.5, "torso_deg": -3.5, "head_rel_deg": 3.0, "mane_rel_deg": 5.5,
-                    "l_thigh_deg": 3.5, "l_shin_deg": 2.0, "l_foot_deg": 0.0,
-                    "r_thigh_deg": -3.5, "r_shin_deg": 2.5, "r_foot_deg": 0.0,
-                    "r_sode_rel_deg": 14.0, "r_fore_rel_deg": -32.0,
-                    "l_sode_rel_deg": -36.0, "l_fore_rel_deg": -40.0, "coat_billow": 7.0,
-                    "right_arm_in_front": False, "staff_deg": -72.0, "staff_glow": 1.35,
-                    "foot_y": 99.0, "halo_mode": "flare", "hand_orb_r": 3.0,
-                }),
-                (12, {
-                    "pelvis_dx": 6.0, "pelvis_dy": 2.0, "torso_deg": 4.5, "head_rel_deg": -4.0, "mane_rel_deg": -7.0,
-                    "l_thigh_deg": 4.0, "l_shin_deg": 1.5, "l_foot_deg": 0.0,
-                    "r_thigh_deg": -6.5, "r_shin_deg": 5.0, "r_foot_deg": 0.0,
-                    "r_sode_rel_deg": -40.0, "r_fore_rel_deg": -22.0,
-                    "l_sode_rel_deg": -20.0, "l_fore_rel_deg": -16.0, "coat_billow": 10.5,
-                    "right_arm_in_front": True, "staff_deg": -22.0, "staff_glow": 1.5,
-                    "foot_y": 99.0, "halo_mode": "off", "hand_orb_r": 0.0,
-                }),
-                (18, {
-                    "pelvis_dx": 4.0, "pelvis_dy": 1.5, "torso_deg": 3.5, "head_rel_deg": -3.0, "mane_rel_deg": -5.0,
-                    "l_thigh_deg": 3.0, "l_shin_deg": 1.0, "l_foot_deg": 0.0,
-                    "r_thigh_deg": -4.5, "r_shin_deg": 3.5, "r_foot_deg": 0.0,
-                    "r_sode_rel_deg": -28.0, "r_fore_rel_deg": -22.0,
-                    "l_sode_rel_deg": -16.0, "l_fore_rel_deg": -22.0, "coat_billow": 7.5,
-                    "right_arm_in_front": True, "staff_deg": -32.0, "staff_glow": 1.25,
-                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 0.0,
-                }),
-                (29, {
-                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
-                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "l_foot_deg": 0.0,
-                    "r_thigh_deg": 0.0, "r_shin_deg": 0.0, "r_foot_deg": 0.0,
-                    "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
-                    "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
-                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
-                    "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8,
-                }),
-            ]
-            cfg.update(eval_pose_keyframes(f, kfs))
-            if 10 <= f <= 16:
-                cfg["slash_arc"] = (-42.0, 40.0, 29.0, 1.0 - (f - 10) * 0.13)
+            # ROW 2: 4 DISTINCT 100% GROUNDED (`foot_y = 99.0` ON ALL 30 FRAMES, ZERO WINGS!) AUTO_ATTACK VARIANTS
+            if f <= 7:
+                # V0 (F00..F07): Sunburst Scepter Radiance — grounded forward step, right-hand Scepter thrust + left prayer hand at chest
+                kfs = [
+                    (0, {
+                        "pelvis_dx": -2.0, "pelvis_dy": 1.0, "torso_deg": -2.0, "head_rel_deg": 1.5, "mane_rel_deg": 3.0,
+                        "l_thigh_deg": 3.0, "l_shin_deg": 1.5, "l_foot_deg": 0.0,
+                        "r_thigh_deg": -3.0, "r_shin_deg": 2.0, "r_foot_deg": 0.0,
+                        "r_sode_rel_deg": 6.0, "r_fore_rel_deg": -28.0,
+                        "l_sode_rel_deg": -26.0, "l_fore_rel_deg": -40.0, "coat_billow": 4.5,
+                        "right_arm_in_front": False, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -64.0, "staff_len": 23.5, "staff_glow": 1.20,
+                        "foot_y": 99.0, "halo_mode": "flare", "hand_orb_r": 2.4, "orb_dx": 2.5, "orb_dy": -2.5,
+                    }),
+                    (4, {
+                        "pelvis_dx": 7.5, "pelvis_dy": 3.0, "torso_deg": 6.5, "head_rel_deg": -5.0, "mane_rel_deg": -7.5,
+                        "l_thigh_deg": 8.0, "l_shin_deg": 4.0, "l_foot_deg": 0.0,
+                        "r_thigh_deg": -10.0, "r_shin_deg": 8.0, "r_foot_deg": 0.0,
+                        "r_sode_rel_deg": -38.0, "r_fore_rel_deg": -20.0,
+                        "l_sode_rel_deg": -18.0, "l_fore_rel_deg": -44.0, "coat_billow": 10.5,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -18.0, "staff_len": 22.5, "staff_glow": 1.55,
+                        "foot_y": 99.0, "halo_mode": "flare", "hand_orb_r": 2.2, "orb_dx": 2.0, "orb_dy": -2.5,
+                    }),
+                    (7, {
+                        "pelvis_dx": 2.0, "pelvis_dy": 1.0, "torso_deg": 2.0, "head_rel_deg": -1.5, "mane_rel_deg": -2.5,
+                        "l_thigh_deg": 3.0, "l_shin_deg": 1.5, "l_foot_deg": 0.0,
+                        "r_thigh_deg": -4.0, "r_shin_deg": 3.0, "r_foot_deg": 0.0,
+                        "r_sode_rel_deg": -16.0, "r_fore_rel_deg": -22.0,
+                        "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -34.0, "coat_billow": 4.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -42.0, "staff_len": 24.0, "staff_glow": 1.15,
+                        "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8, "orb_dx": 2.0, "orb_dy": -2.0,
+                    }),
+                ]
+                cfg.update(eval_pose_keyframes(f, kfs))
+                if 3 <= f <= 5:
+                    cfg["slash_arc"] = (-40.0, 40.0, 28.0, 1.0 - abs(f - 4.0) * 0.22)
+
+            elif f <= 14:
+                # V1 (F08..F14): Benediction Twin-Chord Sweep — grounded stance swap (right_leg_behind=True), wide lateral scepter + left blessing palm
+                kfs = [
+                    (8, {
+                        "pelvis_dx": -3.0, "pelvis_dy": 2.5, "torso_deg": -3.5, "head_rel_deg": 2.5, "mane_rel_deg": 5.0,
+                        "l_thigh_deg": -8.0, "l_shin_deg": 6.0, "l_foot_deg": 0.0,
+                        "r_thigh_deg": 7.0, "r_shin_deg": 4.0, "r_foot_deg": 0.0,
+                        "r_sode_rel_deg": 16.0, "r_fore_rel_deg": -18.0,
+                        "l_sode_rel_deg": 10.0, "l_fore_rel_deg": -26.0, "coat_billow": 7.5,
+                        "right_arm_in_front": False, "right_leg_behind": True, "staff_behind": False,
+                        "staff_deg": -62.0, "staff_len": 22.5, "staff_glow": 1.25,
+                        "foot_y": 99.0, "halo_mode": "flare", "hand_orb_r": 2.6, "orb_dx": 3.5, "orb_dy": -2.5,
+                    }),
+                    (11, {
+                        "pelvis_dx": 6.0, "pelvis_dy": 4.0, "torso_deg": 5.5, "head_rel_deg": -4.0, "mane_rel_deg": -6.5,
+                        "l_thigh_deg": -12.0, "l_shin_deg": 10.0, "l_foot_deg": 0.0,
+                        "r_thigh_deg": 10.0, "r_shin_deg": 6.0, "r_foot_deg": 0.0,
+                        "r_sode_rel_deg": -28.0, "r_fore_rel_deg": -16.0,
+                        "l_sode_rel_deg": -42.0, "l_fore_rel_deg": -16.0, "coat_billow": 11.5,
+                        "right_arm_in_front": True, "right_leg_behind": True, "staff_behind": False,
+                        "staff_deg": -30.0, "staff_len": 22.5, "staff_glow": 1.55,
+                        "foot_y": 99.0, "halo_mode": "flare", "hand_orb_r": 3.3, "orb_dx": 6.0, "orb_dy": -2.0,
+                    }),
+                    (14, {
+                        "pelvis_dx": 1.5, "pelvis_dy": 2.0, "torso_deg": 1.5, "head_rel_deg": -1.0, "mane_rel_deg": -2.0,
+                        "l_thigh_deg": -5.0, "l_shin_deg": 4.0, "l_foot_deg": 0.0,
+                        "r_thigh_deg": 4.0, "r_shin_deg": 3.0, "r_foot_deg": 0.0,
+                        "r_sode_rel_deg": -14.0, "r_fore_rel_deg": -20.0,
+                        "l_sode_rel_deg": -20.0, "l_fore_rel_deg": -28.0, "coat_billow": 5.0,
+                        "right_arm_in_front": True, "right_leg_behind": True, "staff_behind": False,
+                        "staff_deg": -46.0, "staff_len": 23.5, "staff_glow": 1.15,
+                        "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 2.0, "orb_dx": 3.0, "orb_dy": -2.0,
+                    }),
+                ]
+                cfg.update(eval_pose_keyframes(f, kfs))
+                if 10 <= f <= 12:
+                    cfg["slash_arc"] = (-44.0, 42.0, 28.0, 1.0 - abs(f - 11.0) * 0.22)
+
+            elif f <= 22:
+                # V2 (F15..F22): Cathedral Sky-Pillar Invocation — grounded 2H high scepter elevation (tip strictly inside y >= 6!)
+                kfs = [
+                    (15, {
+                        "pelvis_dx": -1.5, "pelvis_dy": 1.5, "torso_deg": -2.0, "head_rel_deg": -2.0, "mane_rel_deg": 3.5,
+                        "l_thigh_deg": 3.5, "l_shin_deg": 2.0, "l_foot_deg": 0.0,
+                        "r_thigh_deg": -4.0, "r_shin_deg": 3.0, "r_foot_deg": 0.0,
+                        "r_sode_rel_deg": -34.0, "r_fore_rel_deg": -24.0,
+                        "l_sode_rel_deg": -32.0, "l_fore_rel_deg": -32.0, "coat_billow": 6.5,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -66.0, "staff_len": 20.5, "staff_glow": 1.35,
+                        "foot_y": 99.0, "halo_mode": "flare", "hand_orb_r": 2.6,
+                    }),
+                    (18, {
+                        "pelvis_dx": -3.0, "pelvis_dy": 2.5, "torso_deg": -4.0, "head_rel_deg": -4.5, "mane_rel_deg": 6.5,
+                        "l_thigh_deg": 5.5, "l_shin_deg": 3.0, "l_foot_deg": 0.0,
+                        "r_thigh_deg": -6.5, "r_shin_deg": 5.0, "r_foot_deg": 0.0,
+                        "r_sode_rel_deg": -48.0, "r_fore_rel_deg": -22.0,
+                        "l_sode_rel_deg": -44.0, "l_fore_rel_deg": -34.0, "coat_billow": 10.5,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -74.0, "staff_len": 19.5, "staff_glow": 1.60,
+                        "foot_y": 99.0, "halo_mode": "apotheosis", "hand_orb_r": 3.2,
+                    }),
+                    (20, {
+                        "pelvis_dx": 2.0, "pelvis_dy": 2.5, "torso_deg": 2.5, "head_rel_deg": -3.0, "mane_rel_deg": 3.0,
+                        "l_thigh_deg": 4.5, "l_shin_deg": 2.5, "l_foot_deg": 0.0,
+                        "r_thigh_deg": -5.5, "r_shin_deg": 4.0, "r_foot_deg": 0.0,
+                        "r_sode_rel_deg": -40.0, "r_fore_rel_deg": -22.0,
+                        "l_sode_rel_deg": -36.0, "l_fore_rel_deg": -32.0, "coat_billow": 9.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -68.0, "staff_len": 20.0, "staff_glow": 1.50,
+                        "foot_y": 99.0, "halo_mode": "flare", "hand_orb_r": 2.6,
+                    }),
+                    (22, {
+                        "pelvis_dx": 0.0, "pelvis_dy": 1.0, "torso_deg": 0.5, "head_rel_deg": -0.5, "mane_rel_deg": 0.5,
+                        "l_thigh_deg": 2.0, "l_shin_deg": 1.0, "l_foot_deg": 0.0,
+                        "r_thigh_deg": -2.5, "r_shin_deg": 2.0, "r_foot_deg": 0.0,
+                        "r_sode_rel_deg": -16.0, "r_fore_rel_deg": -22.0,
+                        "l_sode_rel_deg": -18.0, "l_fore_rel_deg": -32.0, "coat_billow": 4.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -52.0, "staff_len": 23.5, "staff_glow": 1.15,
+                        "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8,
+                    }),
+                ]
+                cfg.update(eval_pose_keyframes(f, kfs))
+                cfg["blink"] = 17 <= f <= 19
+                if 18 <= f <= 20:
+                    cfg["slash_arc"] = (-40.0, 40.0, 27.0, 0.95 - abs(f - 19.0) * 0.20)
+
+            else:
+                # V3 (F23..F29): Dawn Grace Sanctuary Curtsy — deep grounded reverent knee-bend (`pelvis_dy=+14`, `foot_y=99.0`), arms opening in radiant cross-blessing
+                kfs = [
+                    (23, {
+                        "pelvis_dx": 1.0, "pelvis_dy": 5.0, "torso_deg": 3.0, "head_rel_deg": -2.0, "mane_rel_deg": -2.0,
+                        "l_thigh_deg": 4.5, "l_shin_deg": 10.0, "l_foot_deg": 0.0,
+                        "r_thigh_deg": -9.0, "r_shin_deg": 9.0, "r_foot_deg": 0.0,
+                        "l_coat_deg": 8.0, "r_coat_deg": -8.0,
+                        "r_sode_rel_deg": -18.0, "r_fore_rel_deg": -18.0,
+                        "l_sode_rel_deg": -6.0, "l_fore_rel_deg": -18.0, "coat_billow": 6.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -44.0, "staff_len": 23.0, "staff_glow": 1.25,
+                        "foot_y": 99.0, "halo_mode": "flare", "hand_orb_r": 2.2, "ground_slam": 0.0,
+                    }),
+                    (26, {
+                        "pelvis_dx": 3.0, "pelvis_dy": 14.0, "torso_deg": 7.0, "head_rel_deg": -4.5, "mane_rel_deg": -4.5,
+                        "l_thigh_deg": 9.0, "l_shin_deg": 20.0, "l_foot_deg": 0.0,
+                        "r_thigh_deg": -17.0, "r_shin_deg": 17.0, "r_foot_deg": 0.0,
+                        "l_coat_deg": 14.0, "r_coat_deg": -14.0,
+                        "r_sode_rel_deg": -28.0, "r_fore_rel_deg": -12.0,
+                        "l_sode_rel_deg": 18.0, "l_fore_rel_deg": 8.0, "coat_billow": 11.5,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -28.0, "staff_len": 22.0, "staff_glow": 1.60,
+                        "foot_y": 99.0, "halo_mode": "apotheosis", "hand_orb_r": 3.1, "orb_dx": -3.0, "orb_dy": -1.5,
+                        "ground_slam": 0.78,
+                    }),
+                    (29, {
+                        "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
+                        "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "l_foot_deg": 0.0,
+                        "r_thigh_deg": 0.0, "r_shin_deg": 0.0, "r_foot_deg": 0.0,
+                        "l_coat_deg": 2.0, "r_coat_deg": -1.5,
+                        "r_sode_rel_deg": -10.0, "r_fore_rel_deg": -22.0,
+                        "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -32.0, "coat_billow": 2.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -52.0, "staff_len": 25.0, "staff_glow": 1.0,
+                        "foot_y": 99.0, "halo_mode": "normal", "hand_orb_r": 1.8, "orb_dx": 2.0, "orb_dy": -2.0,
+                        "ground_slam": 0.0,
+                    }),
+                ]
+                cfg.update(eval_pose_keyframes(f, kfs))
+                cfg["blink"] = 25 <= f <= 27
+                if 25 <= f <= 27:
+                    cfg["slash_arc"] = (-42.0, 42.0, 28.0, 0.98 - abs(f - 26.0) * 0.20)
 
         elif row_idx == 3:
             # ROW 3: SKILL — Firmly Grounded Sanctuary Scepter Floor-Consecration & Judgment Sweep (both boots planted at foot_y=99.0!)
@@ -1887,5 +2006,32 @@ def main():
     )
 
 
+def build_row2_auto_only():
+    parts = load_and_segment_512()
+    cfgs = build_row_configs(2)
+    frames_104 = []
+    min_x, max_x, min_y, max_y = 104, -1, 104, -1
+    for c in range(COLS):
+        arr104, b_holes = render_pose_104(parts, cfgs[c])
+        assert b_holes == 0, f"priestess Row 2 frame {c} has {b_holes} interior body pinholes"
+        ys, xs = np.where(arr104[:, :, 3] > 0)
+        assert len(ys) > 0, f"Empty priestess Row 2 frame {c}"
+        assert int(ys.max()) == 99, f"Seraphina Row 2 frame {c} NOT grounded at y=99 (got ys.max()={ys.max()})"
+        min_x = min(min_x, int(xs.min()))
+        max_x = max(max_x, int(xs.max()))
+        min_y = min(min_y, int(ys.min()))
+        max_y = max(max_y, int(ys.max()))
+        assert 4 <= int(xs.min()) and int(xs.max()) <= 99 and 4 <= int(ys.min()) and int(ys.max()) <= 99, (
+            f"priestess Row 2 frame {c} out of 4..99 bounds: x={xs.min()}..{xs.max()}, y={ys.min()}..{ys.max()}"
+        )
+        frames_104.append(arr104)
+    print(f"[priestess Row 2 bounds] x={min_x}..{max_x}, y={min_y}..{max_y} (all 30 frames grounded at y=99, 0 holes)")
+    splice_row2_auto_surgically("priestess", OUT_SHEET_PATH, frames_104, (P_STARLIGHT, P_GOLD_LIT))
+
+
 if __name__ == "__main__":
-    main()
+    if "--auto-only" in sys.argv:
+        build_row2_auto_only()
+    else:
+        main()
+

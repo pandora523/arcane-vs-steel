@@ -16,15 +16,18 @@ Key v5 Upgrades:
 """
 
 import os
+import sys
 import math
 import numpy as np
 from PIL import Image, ImageDraw
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hd2d_rig_core import (
     COLS, BASE_NUMERIC_KEYS, poly_mask, clean_base_512,
     assign_remaining_geodesic, extract_parts_512, rot_pt,
     put_px, draw_slash_arc_104, render_rig_104,
     make_prone_knight_death_kfs, eval_pose_keyframes, build_and_save_30fps_sheet,
-    compute_bipedal_walk_pose,
+    compute_bipedal_walk_pose, splice_row2_auto_surgically,
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -260,7 +263,7 @@ def save_debug_parts_sheet(parts, out_path):
     im.save(out_path)
 
 
-def load_and_segment_512():
+def load_and_segment_512(save_debug=True):
     arr = clean_base_512(BASE_IMG_PATH, head_y_split=140)
     H, W = 512, 512
     a = arr[:, :, 3] > 0
@@ -371,7 +374,8 @@ def load_and_segment_512():
         arr, patched_masks,
         custom_part_arrays={"torso": torso_arr, "l_thigh": l_thigh_arr, "r_thigh": r_thigh_arr},
     )
-    save_debug_parts_sheet(parts, os.path.join(ARTIFACT_DIR, "debug_titan_v5_parts.png"))
+    if save_debug:
+        save_debug_parts_sheet(parts, os.path.join(ARTIFACT_DIR, "debug_titan_v5_parts.png"))
     return parts
 
 
@@ -708,103 +712,115 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK (3 Unmistakably Distinct 10-Frame 2H World-Maul Model Animations:
-            # - Attack 1 (F00..F09): OVERHEAD EARTH-SPLITTER VERTICAL SLAM (tall overhead -78 deg raise -> deep kneeling +14 deg floor smash)
-            # - Attack 2 (F10..F19): LEAPING SKY-BREAKER UPPERCUT (deep crouch +20 deg floor scoop -> airborne high-knee -68 deg sky uppercut)
-            # - Attack 3 (F20..F29): PIVOTING BATTERING-RAM BACKSPIN LUNGE (lead-leg swap twisted chest coil -> wide split-lunge horizontal +X punch + Forge-Aegis))
-            if f <= 9:
+            # Row 2: AUTO_ATTACK — 4 Distinct Full-Body 2H Symmetric Mjolnir Warhammer Animations
+            # (ZERO slash_arc and ZERO forge_aegis on ANY frame; Mjolnir head strictly inside 4..99!)
+            # - Slice 0 (F00..F07, 8f -> 60..67): Overhead Earth-Splitter Slam (tall hoist -> deep split-knee floor smash)
+            # - Slice 1 (F08..F14, 7f -> 68..74): Leaping Sky-Breaker Uppercut (deep crouch scoop -> airborne high-knee skyward uppercut)
+            # - Slice 2 (F15..F22, 8f -> 75..82): Khazad Battering-Ram Drive (pivoting stance swap -> horizontal 2H battering-ram punch)
+            # - Slice 3 (F23..F29, 7f -> 83..89): World-Anvil Sweeping Back-Crush (rear-shoulder windup -> chest-high cross-body crush)
+            if f <= 7:
                 kfs = [
-                    (0, dict(pelvis_dx=0.0, pelvis_dy=2.0, torso_deg=2.0, head_rel_deg=-1.0, mane_rel_deg=-1.0,
+                    (0, dict(pelvis_dx=0.0, pelvis_dy=2.0, torso_deg=2.5, head_rel_deg=-1.0, mane_rel_deg=-1.0,
                              l_thigh_deg=-4.0, l_shin_deg=6.0, r_thigh_deg=6.0, r_shin_deg=-4.0,
-                             grip_x=50.0, grip_y=-20.0, weapon_deg=-42.0, grip_sep=38.0, foot_y=99.0)),
-                    (3, dict(pelvis_dx=-10.0, pelvis_dy=-4.0, torso_deg=-16.0, head_rel_deg=10.0, mane_rel_deg=8.0,
+                             grip_x=50.0, grip_y=-20.0, weapon_deg=-42.0, grip_sep=38.0,
+                             foot_y=99.0, halo_grand=False)),
+                    (2, dict(pelvis_dx=-10.0, pelvis_dy=-2.0, torso_deg=-15.0, head_rel_deg=10.0, mane_rel_deg=8.0,
                              l_thigh_deg=-14.0, l_shin_deg=14.0, r_thigh_deg=16.0, r_shin_deg=-10.0,
-                             grip_x=40.0, grip_y=-102.0, weapon_deg=-78.0, grip_sep=33.0,
-                             foot_y=97.0, halo_grand=True)),
-                    (6, dict(pelvis_dx=22.0, pelvis_dy=54.0, torso_deg=25.0, head_rel_deg=-11.0, mane_rel_deg=-12.0,
-                             l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-22.0,
-                             grip_x=78.0, grip_y=6.0, weapon_deg=14.0, grip_sep=38.0,
+                             grip_x=38.0, grip_y=-96.0, weapon_deg=-78.0, grip_sep=33.0,
+                             foot_y=97.5, halo_grand=True)),
+                    (4, dict(pelvis_dx=18.0, pelvis_dy=50.0, torso_deg=23.0, head_rel_deg=-10.0, mane_rel_deg=-11.0,
+                             l_thigh_deg=-26.0, l_shin_deg=28.0, r_thigh_deg=25.0, r_shin_deg=-20.0,
+                             grip_x=72.0, grip_y=4.0, weapon_deg=12.0, grip_sep=38.0,
                              foot_y=99.0, halo_grand=True)),
-                    (9, dict(pelvis_dx=6.0, pelvis_dy=12.0, torso_deg=5.0, head_rel_deg=-2.0, mane_rel_deg=-2.0,
-                             l_thigh_deg=-4.0, l_shin_deg=6.0, r_thigh_deg=4.0, r_shin_deg=-4.0,
-                             grip_x=54.0, grip_y=-16.0, weapon_deg=-36.0, grip_sep=38.0,
+                    (5, dict(pelvis_dx=20.0, pelvis_dy=54.0, torso_deg=25.0, head_rel_deg=-11.0, mane_rel_deg=-12.0,
+                             l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-22.0,
+                             grip_x=74.0, grip_y=6.0, weapon_deg=14.0, grip_sep=38.0,
+                             foot_y=99.0, halo_grand=True)),
+                    (7, dict(pelvis_dx=4.0, pelvis_dy=8.0, torso_deg=4.0, head_rel_deg=-1.8, mane_rel_deg=-1.5,
+                             l_thigh_deg=-3.0, l_shin_deg=4.0, r_thigh_deg=3.0, r_shin_deg=-3.0,
+                             grip_x=53.0, grip_y=-15.0, weapon_deg=-37.0, grip_sep=38.0,
                              foot_y=99.0, halo_grand=False)),
                 ]
                 cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.0)
-                if 4 <= f <= 7:
-                    u = (f - 4) / 3.0
-                    cfg["slash_arc"] = dict(
-                        dx=6.0, dy=12.0, r=28.5,
-                        a0=-84.0 + 22.0 * u, a1=44.0 + 14.0 * u,
-                        intensity=1.26 - 0.20 * abs(u - 0.5),
-                    )
-            elif f <= 19:
+            elif f <= 14:
                 kfs = [
-                    (10, dict(pelvis_dx=-10.0, pelvis_dy=48.0, torso_deg=16.0, head_rel_deg=-6.0, mane_rel_deg=-6.0,
-                              l_thigh_deg=-24.0, l_shin_deg=26.0, r_thigh_deg=22.0, r_shin_deg=-18.0,
-                              grip_x=34.0, grip_y=2.0, weapon_deg=16.0, grip_sep=36.0,
-                              foot_y=99.0, halo_grand=True)),
-                    (12, dict(pelvis_dx=-14.0, pelvis_dy=56.0, torso_deg=20.0, head_rel_deg=-8.0, mane_rel_deg=-8.0,
-                              l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-20.0,
-                              grip_x=28.0, grip_y=6.0, weapon_deg=20.0, grip_sep=36.0,
-                              foot_y=99.0, halo_grand=True)),
-                    (15, dict(pelvis_dx=20.0, pelvis_dy=-6.0, torso_deg=-18.0, head_rel_deg=12.0, mane_rel_deg=10.0,
+                    (8, dict(pelvis_dx=-10.0, pelvis_dy=48.0, torso_deg=16.0, head_rel_deg=-6.0, mane_rel_deg=-6.0,
+                             l_thigh_deg=-24.0, l_shin_deg=26.0, r_thigh_deg=22.0, r_shin_deg=-18.0,
+                             grip_x=34.0, grip_y=2.0, weapon_deg=16.0, grip_sep=36.0,
+                             foot_y=99.0, halo_grand=True)),
+                    (9, dict(pelvis_dx=-14.0, pelvis_dy=56.0, torso_deg=20.0, head_rel_deg=-8.0, mane_rel_deg=-8.0,
+                             l_thigh_deg=-28.0, l_shin_deg=30.0, r_thigh_deg=26.0, r_shin_deg=-20.0,
+                             grip_x=28.0, grip_y=6.0, weapon_deg=20.0, grip_sep=36.0,
+                             foot_y=99.0, halo_grand=True)),
+                    (11, dict(pelvis_dx=18.0, pelvis_dy=-4.0, torso_deg=-17.0, head_rel_deg=11.0, mane_rel_deg=9.0,
                               l_thigh_deg=20.0, l_shin_deg=18.0, r_thigh_deg=-34.0, r_shin_deg=40.0,
-                              grip_x=72.0, grip_y=-94.0, weapon_deg=-68.0, grip_sep=34.0,
-                              foot_y=91.0, halo_grand=True)),
-                    (17, dict(pelvis_dx=16.0, pelvis_dy=2.0, torso_deg=-12.0, head_rel_deg=8.0, mane_rel_deg=6.0,
+                              grip_x=66.0, grip_y=-88.0, weapon_deg=-66.0, grip_sep=34.0,
+                              foot_y=94.5, halo_grand=True)),
+                    (12, dict(pelvis_dx=15.0, pelvis_dy=2.0, torso_deg=-13.0, head_rel_deg=8.0, mane_rel_deg=6.0,
                               l_thigh_deg=16.0, l_shin_deg=16.0, r_thigh_deg=-24.0, r_shin_deg=28.0,
-                              grip_x=68.0, grip_y=-82.0, weapon_deg=-62.0, grip_sep=35.0,
-                              foot_y=94.0, halo_grand=True)),
-                    (19, dict(pelvis_dx=4.0, pelvis_dy=10.0, torso_deg=4.0, head_rel_deg=-2.0, mane_rel_deg=-2.0,
-                              l_thigh_deg=4.0, l_shin_deg=6.0, r_thigh_deg=-4.0, r_shin_deg=6.0,
-                              grip_x=54.0, grip_y=-20.0, weapon_deg=-38.0, grip_sep=38.0,
+                              grip_x=64.0, grip_y=-80.0, weapon_deg=-62.0, grip_sep=35.0,
+                              foot_y=96.2, halo_grand=True)),
+                    (14, dict(pelvis_dx=3.0, pelvis_dy=8.0, torso_deg=3.5, head_rel_deg=-1.8, mane_rel_deg=-1.5,
+                              l_thigh_deg=2.0, l_shin_deg=4.0, r_thigh_deg=-2.0, r_shin_deg=4.0,
+                              grip_x=53.0, grip_y=-18.0, weapon_deg=-38.0, grip_sep=38.0,
                               foot_y=99.0, halo_grand=False)),
                 ]
                 cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.2)
-                if 13 <= f <= 17:
-                    u = (f - 13) / 4.0
-                    cfg["slash_arc"] = dict(
-                        dx=7.0, dy=6.0, r=27.5,
-                        a0=34.0 - 48.0 * u, a1=-26.0 - 52.0 * u,
-                        intensity=1.26 - 0.22 * abs(u - 0.5),
-                    )
-            else:
+            elif f <= 22:
                 kfs = [
-                    (20, dict(pelvis_dx=-18.0, pelvis_dy=30.0, torso_deg=-14.0, head_rel_deg=8.0, mane_rel_deg=6.0,
+                    (15, dict(pelvis_dx=-14.0, pelvis_dy=26.0, torso_deg=-12.0, head_rel_deg=7.0, mane_rel_deg=5.0,
                               right_leg_behind=True,
-                              l_thigh_deg=22.0, l_shin_deg=20.0, r_thigh_deg=-22.0, r_shin_deg=18.0,
-                              grip_x=22.0, grip_y=-30.0, weapon_deg=-48.0, grip_sep=32.0,
+                              l_thigh_deg=20.0, l_shin_deg=18.0, r_thigh_deg=-20.0, r_shin_deg=16.0,
+                              grip_x=24.0, grip_y=-28.0, weapon_deg=-46.0, grip_sep=32.5,
                               foot_y=99.0, halo_grand=True)),
-                    (22, dict(pelvis_dx=-24.0, pelvis_dy=36.0, torso_deg=-18.0, head_rel_deg=10.0, mane_rel_deg=8.0,
+                    (17, dict(pelvis_dx=-22.0, pelvis_dy=36.0, torso_deg=-18.0, head_rel_deg=10.0, mane_rel_deg=8.0,
                               right_leg_behind=True,
                               l_thigh_deg=26.0, l_shin_deg=24.0, r_thigh_deg=-26.0, r_shin_deg=22.0,
                               grip_x=18.0, grip_y=-34.0, weapon_deg=-54.0, grip_sep=32.0,
                               foot_y=99.0, halo_grand=True)),
-                    (25, dict(pelvis_dx=28.0, pelvis_dy=42.0, torso_deg=24.0, head_rel_deg=-10.0, mane_rel_deg=-12.0,
+                    (19, dict(pelvis_dx=22.0, pelvis_dy=40.0, torso_deg=22.0, head_rel_deg=-10.0, mane_rel_deg=-11.0,
                               right_leg_behind=False,
-                              l_thigh_deg=30.0, l_shin_deg=24.0, r_thigh_deg=-28.0, r_shin_deg=22.0,
-                              grip_x=88.0, grip_y=-24.0, weapon_deg=-14.0, grip_sep=38.0,
-                              forge_aegis=True, foot_y=99.0, halo_grand=True)),
-                    (27, dict(pelvis_dx=22.0, pelvis_dy=34.0, torso_deg=18.0, head_rel_deg=-8.0, mane_rel_deg=-8.0,
+                              l_thigh_deg=28.0, l_shin_deg=22.0, r_thigh_deg=-28.0, r_shin_deg=20.0,
+                              grip_x=76.0, grip_y=-26.0, weapon_deg=-2.0, grip_sep=37.0,
+                              foot_y=99.0, halo_grand=True)),
+                    (20, dict(pelvis_dx=24.0, pelvis_dy=42.0, torso_deg=23.0, head_rel_deg=-10.0, mane_rel_deg=-12.0,
                               right_leg_behind=False,
-                              l_thigh_deg=22.0, l_shin_deg=18.0, r_thigh_deg=-20.0, r_shin_deg=16.0,
-                              grip_x=80.0, grip_y=-22.0, weapon_deg=-20.0, grip_sep=38.0,
-                              forge_aegis=True, foot_y=99.0, halo_grand=True)),
-                    (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5, mane_rel_deg=-1.0,
+                              l_thigh_deg=29.0, l_shin_deg=23.0, r_thigh_deg=-28.0, r_shin_deg=21.0,
+                              grip_x=78.0, grip_y=-25.0, weapon_deg=-2.0, grip_sep=37.0,
+                              foot_y=99.0, halo_grand=True)),
+                    (22, dict(pelvis_dx=2.0, pelvis_dy=4.0, torso_deg=3.5, head_rel_deg=-1.5, mane_rel_deg=-1.0,
                               right_leg_behind=False,
-                              l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
+                              l_thigh_deg=-2.0, l_shin_deg=3.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
                               grip_x=52.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=38.0,
-                              forge_aegis=False, foot_y=99.0, halo_grand=False)),
+                              foot_y=99.0, halo_grand=False)),
                 ]
                 cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.2)
-                if 23 <= f <= 27:
-                    u = (f - 23) / 4.0
-                    cfg["slash_arc"] = dict(
-                        dx=8.0, dy=10.0, r=26.5,
-                        a0=-38.0 + 16.0 * u, a1=26.0 + 14.0 * u,
-                        intensity=1.24 - 0.20 * abs(u - 0.5),
-                    )
+            else:
+                kfs = [
+                    (23, dict(pelvis_dx=-12.0, pelvis_dy=20.0, torso_deg=-11.0, head_rel_deg=7.0, mane_rel_deg=6.0,
+                              l_thigh_deg=-14.0, l_shin_deg=16.0, r_thigh_deg=16.0, r_shin_deg=-12.0,
+                              grip_x=-10.0, grip_y=-80.0, weapon_deg=-110.0, grip_sep=33.0,
+                              right_arm_in_front=True, foot_y=99.0, halo_grand=True)),
+                    (24, dict(pelvis_dx=-18.0, pelvis_dy=26.0, torso_deg=-15.0, head_rel_deg=9.0, mane_rel_deg=8.0,
+                              l_thigh_deg=-18.0, l_shin_deg=20.0, r_thigh_deg=20.0, r_shin_deg=-14.0,
+                              grip_x=-18.0, grip_y=-86.0, weapon_deg=-116.0, grip_sep=32.5,
+                              right_arm_in_front=True, foot_y=99.0, halo_grand=True)),
+                    (26, dict(pelvis_dx=20.0, pelvis_dy=34.0, torso_deg=18.0, head_rel_deg=-8.0, mane_rel_deg=-10.0,
+                              l_thigh_deg=24.0, l_shin_deg=18.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
+                              grip_x=76.0, grip_y=-66.0, weapon_deg=-8.0, grip_sep=37.0,
+                              right_arm_in_front=True, foot_y=99.0, halo_grand=True)),
+                    (27, dict(pelvis_dx=22.0, pelvis_dy=36.0, torso_deg=19.0, head_rel_deg=-9.0, mane_rel_deg=-10.0,
+                              l_thigh_deg=25.0, l_shin_deg=19.0, r_thigh_deg=-25.0, r_shin_deg=19.0,
+                              grip_x=78.0, grip_y=-64.0, weapon_deg=-6.0, grip_sep=37.0,
+                              right_arm_in_front=True, foot_y=99.0, halo_grand=True)),
+                    (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5, mane_rel_deg=-1.0,
+                              l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
+                              grip_x=52.0, grip_y=-14.0, weapon_deg=-38.0, grip_sep=38.0,
+                              right_arm_in_front=False, foot_y=99.0, halo_grand=False)),
+                ]
+                cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.3)
+            cfg["forge_aegis"] = False
+            cfg.pop("slash_arc", None)
             cfgs.append(cfg)
 
         elif row_idx == 3:
@@ -1086,5 +1102,27 @@ def main():
     )
 
 
+def build_row2_auto_only():
+    parts = load_and_segment_512(save_debug=False)
+    cfgs = build_row_configs(2)
+    for idx, c in enumerate(cfgs):
+        assert c.get("slash_arc") is None and not c.get("forge_aegis", False), (
+            f"[titan] F{idx:02d} must have zero slash_arc and zero forge_aegis!"
+        )
+    frames_104 = [render_frame(parts, c) for c in cfgs]
+    for idx, fr in enumerate(frames_104):
+        a = fr[:, :, 3] > 0
+        ys, xs = np.where(a)
+        assert len(ys) > 0, f"[titan] Empty frame F{idx:02d}"
+        assert int(ys.min()) >= 4 and int(ys.max()) <= 99 and int(xs.min()) >= 4 and int(xs.max()) <= 99, (
+            f"[titan] F{idx:02d} raw bounds ({int(xs.min())}..{int(xs.max())}, {int(ys.min())}..{int(ys.max())}) outside safe 4..99!"
+        )
+    splice_row2_auto_surgically("titan", OUT_SHEET_PATH, frames_104, (C_JADE_SPEC, C_GOLD_SPEC))
+
+
 if __name__ == "__main__":
-    main()
+    if "--auto-only" in sys.argv:
+        build_row2_auto_only()
+    else:
+        main()
+

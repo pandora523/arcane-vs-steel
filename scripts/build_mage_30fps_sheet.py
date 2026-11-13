@@ -23,9 +23,10 @@ import time
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
-if os.path.dirname(__file__) not in sys.path:
-    sys.path.insert(0, os.path.dirname(__file__))
-from hd2d_rig_core import compute_bipedal_walk_pose
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
+from hd2d_rig_core import compute_bipedal_walk_pose, splice_row2_auto_surgically
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "mage_v2_base.jpg")
@@ -1426,52 +1427,173 @@ def build_row_configs(row_idx):
             cfg["foot_y"] = 99.0
 
         elif row_idx == 2:
-            # ROW 2: AUTO_ATTACK — Grounded Black-Mage Sun-Staff Projection Combo (Syncs with FireMage.js!)
-            kfs = [
-                (0, {
-                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 0.0, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
-                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
-                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
-                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -28.0, "coat_billow": 2.0,
-                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
-                    "hand_orb_r": 1.8, "orb_dx": 4.5, "orb_dy": -3.0, "halo_mode": "normal",
-                }),
-                (8, {
-                    "pelvis_dx": -12.0, "pelvis_dy": 8.0, "torso_deg": -10.0, "head_rel_deg": 8.0, "mane_rel_deg": 8.0,
-                    "l_thigh_deg": 14.0, "l_shin_deg": 12.0, "r_thigh_deg": -18.0, "r_shin_deg": 20.0,
-                    "r_sode_rel_deg": 22.0, "r_fore_rel_deg": 8.0,
-                    "l_sode_rel_deg": -36.0, "l_fore_rel_deg": -32.0, "coat_billow": 10.0,
-                    "right_arm_in_front": False, "staff_deg": -72.0, "staff_glow": 1.25,
-                    "hand_orb_r": 3.4, "orb_dx": 7.0, "orb_dy": -4.0, "halo_mode": "flare",
-                }),
-                (12, {
-                    "pelvis_dx": 18.0, "pelvis_dy": 12.0, "torso_deg": 15.0, "head_rel_deg": -11.0, "mane_rel_deg": -10.0,
-                    "l_thigh_deg": 22.0, "l_shin_deg": 12.0, "r_thigh_deg": -24.0, "r_shin_deg": 26.0,
-                    "r_sode_rel_deg": -36.0, "r_fore_rel_deg": -20.0,
-                    "l_sode_rel_deg": 20.0, "l_fore_rel_deg": 10.0, "coat_billow": 14.0,
-                    "right_arm_in_front": True, "staff_deg": -5.0, "staff_glow": 1.45,
-                    "hand_orb_r": 0.0, "orb_dx": 4.0, "orb_dy": -2.0, "halo_mode": "flare",
-                }),
-                (17, {
-                    "pelvis_dx": 14.0, "pelvis_dy": 10.0, "torso_deg": 12.0, "head_rel_deg": -8.0, "mane_rel_deg": -7.0,
-                    "l_thigh_deg": 18.0, "l_shin_deg": 10.0, "r_thigh_deg": -20.0, "r_shin_deg": 22.0,
-                    "r_sode_rel_deg": -30.0, "r_fore_rel_deg": -18.0,
-                    "l_sode_rel_deg": 14.0, "l_fore_rel_deg": 6.0, "coat_billow": 10.0,
-                    "right_arm_in_front": True, "staff_deg": -10.0, "staff_glow": 1.25,
-                    "hand_orb_r": 0.0, "orb_dx": 4.0, "orb_dy": -2.0, "halo_mode": "flare",
-                }),
-                (29, {
-                    "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 1.2, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
-                    "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
-                    "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
-                    "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -28.0, "coat_billow": 2.0,
-                    "right_arm_in_front": True, "staff_deg": -52.0, "staff_glow": 1.0,
-                    "hand_orb_r": 1.8, "orb_dx": 4.5, "orb_dy": -3.0, "halo_mode": "normal",
-                }),
-            ]
-            cfg.update(eval_pose_keyframes(f, kfs))
-            if 10 <= f <= 15:
-                cfg["slash_arc"] = (-42.0, 42.0, 29.0, 1.0 - (f - 10) * 0.14)
+            # ROW 2: 4 DISTINCT FULL-BODY AUTO_ATTACK VARIANTS (`[[0..7], [8..14], [15..22], [23..29]]`)
+            if f <= 7:
+                # V0 (F00..F07): Helios Sun-Staff Spear-Cast — coiled rear-weight stance -> crisp horizontal Sun-Staff thrust
+                kfs = [
+                    (0, {
+                        "pelvis_dx": -4.0, "pelvis_dy": 3.0, "torso_deg": -3.0, "head_rel_deg": 2.0, "mane_rel_deg": 2.0,
+                        "l_thigh_deg": 6.0, "l_shin_deg": 5.0, "r_thigh_deg": -8.0, "r_shin_deg": 8.0,
+                        "r_sode_rel_deg": 6.0, "r_fore_rel_deg": -12.0,
+                        "l_sode_rel_deg": -20.0, "l_fore_rel_deg": -28.0, "coat_billow": 5.0,
+                        "right_arm_in_front": False, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -60.0, "staff_len": 24.0, "staff_glow": 1.15,
+                        "hand_orb_r": 2.4, "orb_dx": 5.0, "orb_dy": -3.0, "halo_mode": "normal", "foot_y": 99.0,
+                    }),
+                    (2, {
+                        "pelvis_dx": -12.0, "pelvis_dy": 8.0, "torso_deg": -10.0, "head_rel_deg": 8.0, "mane_rel_deg": 9.0,
+                        "l_thigh_deg": 14.0, "l_shin_deg": 12.0, "r_thigh_deg": -18.0, "r_shin_deg": 20.0,
+                        "r_sode_rel_deg": 22.0, "r_fore_rel_deg": 8.0,
+                        "l_sode_rel_deg": -36.0, "l_fore_rel_deg": -32.0, "coat_billow": 10.0,
+                        "right_arm_in_front": False, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -70.0, "staff_len": 23.0, "staff_glow": 1.30,
+                        "hand_orb_r": 3.2, "orb_dx": 6.5, "orb_dy": -4.0, "halo_mode": "flare", "foot_y": 99.0,
+                    }),
+                    (4, {
+                        "pelvis_dx": 17.0, "pelvis_dy": 12.0, "torso_deg": 15.0, "head_rel_deg": -11.0, "mane_rel_deg": -10.0,
+                        "l_thigh_deg": 22.0, "l_shin_deg": 12.0, "r_thigh_deg": -24.0, "r_shin_deg": 26.0,
+                        "r_sode_rel_deg": -35.0, "r_fore_rel_deg": -19.0,
+                        "l_sode_rel_deg": 18.0, "l_fore_rel_deg": 8.0, "coat_billow": 14.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -4.0, "staff_len": 23.0, "staff_glow": 1.50,
+                        "hand_orb_r": 0.0, "orb_dx": 4.0, "orb_dy": -2.0, "halo_mode": "flare", "foot_y": 99.0,
+                    }),
+                    (7, {
+                        "pelvis_dx": 4.0, "pelvis_dy": 3.0, "torso_deg": 3.5, "head_rel_deg": -2.5, "mane_rel_deg": -2.0,
+                        "l_thigh_deg": 6.0, "l_shin_deg": 4.0, "r_thigh_deg": -7.0, "r_shin_deg": 8.0,
+                        "r_sode_rel_deg": -14.0, "r_fore_rel_deg": -20.0,
+                        "l_sode_rel_deg": -8.0, "l_fore_rel_deg": -24.0, "coat_billow": 5.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -38.0, "staff_len": 24.5, "staff_glow": 1.10,
+                        "hand_orb_r": 1.6, "orb_dx": 4.5, "orb_dy": -3.0, "halo_mode": "normal", "foot_y": 99.0,
+                    }),
+                ]
+                cfg.update(eval_pose_keyframes(f, kfs))
+                if 3 <= f <= 5:
+                    cfg["slash_arc"] = (-38.0, 38.0, 27.0, 1.0 - abs(f - 4.0) * 0.22)
+
+            elif f <= 14:
+                # V1 (F08..F14): Solar Palm Twin-Sweep — stance swap (right_leg_behind=True), staff angled behind, left pyro-palm wide sweep
+                kfs = [
+                    (8, {
+                        "pelvis_dx": -6.0, "pelvis_dy": 6.0, "torso_deg": -6.0, "head_rel_deg": 4.0, "mane_rel_deg": 6.0,
+                        "l_thigh_deg": -14.0, "l_shin_deg": 14.0, "r_thigh_deg": 14.0, "r_shin_deg": 10.0,
+                        "r_sode_rel_deg": 20.0, "r_fore_rel_deg": 10.0,
+                        "l_sode_rel_deg": 16.0, "l_fore_rel_deg": -22.0, "coat_billow": 9.0,
+                        "right_arm_in_front": False, "right_leg_behind": True, "staff_behind": True,
+                        "staff_deg": -118.0, "staff_len": 21.5, "staff_glow": 1.15,
+                        "hand_orb_r": 2.8, "orb_dx": 3.5, "orb_dy": -3.5, "halo_mode": "flare", "foot_y": 99.0,
+                    }),
+                    (11, {
+                        "pelvis_dx": 14.0, "pelvis_dy": 11.0, "torso_deg": 13.0, "head_rel_deg": -9.0, "mane_rel_deg": -8.0,
+                        "l_thigh_deg": -22.0, "l_shin_deg": 24.0, "r_thigh_deg": 20.0, "r_shin_deg": 14.0,
+                        "r_sode_rel_deg": 26.0, "r_fore_rel_deg": 14.0,
+                        "l_sode_rel_deg": -44.0, "l_fore_rel_deg": -16.0, "coat_billow": 14.5,
+                        "right_arm_in_front": False, "right_leg_behind": True, "staff_behind": True,
+                        "staff_deg": -126.0, "staff_len": 21.0, "staff_glow": 1.35,
+                        "hand_orb_r": 3.6, "orb_dx": 7.5, "orb_dy": -2.0, "halo_mode": "flare", "foot_y": 99.0,
+                    }),
+                    (14, {
+                        "pelvis_dx": 3.0, "pelvis_dy": 4.0, "torso_deg": 3.0, "head_rel_deg": -2.0, "mane_rel_deg": -2.0,
+                        "l_thigh_deg": -8.0, "l_shin_deg": 10.0, "r_thigh_deg": 8.0, "r_shin_deg": 6.0,
+                        "r_sode_rel_deg": 8.0, "r_fore_rel_deg": -6.0,
+                        "l_sode_rel_deg": -18.0, "l_fore_rel_deg": -24.0, "coat_billow": 6.0,
+                        "right_arm_in_front": False, "right_leg_behind": True, "staff_behind": True,
+                        "staff_deg": -104.0, "staff_len": 22.0, "staff_glow": 1.10,
+                        "hand_orb_r": 2.0, "orb_dx": 4.5, "orb_dy": -2.5, "halo_mode": "normal", "foot_y": 99.0,
+                    }),
+                ]
+                cfg.update(eval_pose_keyframes(f, kfs))
+                if 10 <= f <= 12:
+                    cfg["slash_arc"] = (-52.0, 48.0, 28.0, 1.0 - abs(f - 11.0) * 0.22)
+
+            elif f <= 22:
+                # V2 (F15..F22): Astrolabe Overhead Corona Slam — high 2H Sun-Staff raise -> forceful downward ground-channel
+                kfs = [
+                    (15, {
+                        "pelvis_dx": -4.0, "pelvis_dy": 4.0, "torso_deg": -5.0, "head_rel_deg": 3.0, "mane_rel_deg": 4.0,
+                        "l_thigh_deg": 8.0, "l_shin_deg": 6.0, "r_thigh_deg": -10.0, "r_shin_deg": 12.0,
+                        "r_sode_rel_deg": -38.0, "r_fore_rel_deg": -24.0,
+                        "l_sode_rel_deg": -34.0, "l_fore_rel_deg": -28.0, "coat_billow": 8.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -68.0, "staff_len": 21.0, "staff_pom_len": 15.0, "staff_dy": 0.0,
+                        "staff_glow": 1.30, "hand_orb_r": 2.6, "halo_mode": "flare", "foot_y": 99.0,
+                    }),
+                    (17, {
+                        "pelvis_dx": -8.0, "pelvis_dy": 6.0, "torso_deg": -9.0, "head_rel_deg": 5.0, "mane_rel_deg": 7.0,
+                        "l_thigh_deg": 12.0, "l_shin_deg": 10.0, "r_thigh_deg": -15.0, "r_shin_deg": 17.0,
+                        "r_sode_rel_deg": -48.0, "r_fore_rel_deg": -24.0,
+                        "l_sode_rel_deg": -42.0, "l_fore_rel_deg": -30.0, "coat_billow": 12.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -74.0, "staff_len": 20.5, "staff_pom_len": 16.0, "staff_dy": 0.0,
+                        "staff_glow": 1.45, "hand_orb_r": 3.2, "halo_mode": "flare", "foot_y": 99.0,
+                    }),
+                    (19, {
+                        "pelvis_dx": 12.0, "pelvis_dy": 18.0, "torso_deg": 15.0, "head_rel_deg": -8.0, "mane_rel_deg": -8.0,
+                        "l_thigh_deg": 22.0, "l_shin_deg": 20.0, "r_thigh_deg": -25.0, "r_shin_deg": 29.0,
+                        "r_sode_rel_deg": -20.0, "r_fore_rel_deg": 10.0,
+                        "l_sode_rel_deg": -20.0, "l_fore_rel_deg": -16.0, "coat_billow": 15.5,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -88.0, "staff_len": 21.5, "staff_pom_len": 24.0, "staff_dy": 4.0,
+                        "staff_glow": 1.55, "hand_orb_r": 2.6, "halo_mode": "flare", "foot_y": 99.0,
+                    }),
+                    (22, {
+                        "pelvis_dx": 3.0, "pelvis_dy": 4.0, "torso_deg": 3.0, "head_rel_deg": -2.0, "mane_rel_deg": -1.5,
+                        "l_thigh_deg": 6.0, "l_shin_deg": 5.0, "r_thigh_deg": -8.0, "r_shin_deg": 9.0,
+                        "r_sode_rel_deg": -12.0, "r_fore_rel_deg": -20.0,
+                        "l_sode_rel_deg": -14.0, "l_fore_rel_deg": -26.0, "coat_billow": 5.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -52.0, "staff_len": 24.5, "staff_pom_len": 14.0, "staff_dy": 0.0,
+                        "staff_glow": 1.10, "hand_orb_r": 1.8, "halo_mode": "normal", "foot_y": 99.0,
+                    }),
+                ]
+                cfg.update(eval_pose_keyframes(f, kfs))
+                if 18 <= f <= 21:
+                    cfg["ground_slam"] = max(0.25, 1.0 - abs(f - 19.5) * 0.32)
+
+            else:
+                # V3 (F23..F29): Eclipse Backstep Star-Volley — agile kiting hop-step thrusting blazing Astrolabe + Staff forward
+                kfs = [
+                    (23, {
+                        "pelvis_dx": -4.0, "pelvis_dy": 8.0, "torso_deg": 6.0, "head_rel_deg": -4.0, "mane_rel_deg": 4.0,
+                        "l_thigh_deg": 14.0, "l_shin_deg": 18.0, "r_thigh_deg": -16.0, "r_shin_deg": 18.0,
+                        "r_sode_rel_deg": -22.0, "r_fore_rel_deg": -22.0,
+                        "l_sode_rel_deg": -28.0, "l_fore_rel_deg": -26.0, "coat_billow": 10.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -36.0, "staff_len": 23.0, "staff_glow": 1.35,
+                        "hand_orb_r": 2.8, "orb_dx": 5.5, "orb_dy": -2.5, "halo_mode": "eclipse", "foot_y": 99.0,
+                    }),
+                    (25, {
+                        "pelvis_dx": -12.0, "pelvis_dy": 4.0, "torso_deg": 13.0, "head_rel_deg": -9.0, "mane_rel_deg": 10.0,
+                        "l_thigh_deg": 20.0, "l_shin_deg": 28.0, "r_thigh_deg": -20.0, "r_shin_deg": 26.0,
+                        "r_sode_rel_deg": -36.0, "r_fore_rel_deg": -18.0,
+                        "l_sode_rel_deg": -34.0, "l_fore_rel_deg": -18.0, "coat_billow": 16.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -8.0, "staff_len": 22.5, "staff_glow": 1.60,
+                        "hand_orb_r": 3.5, "orb_dx": 6.8, "orb_dy": -2.0, "halo_mode": "eclipse", "foot_y": 97.0,
+                    }),
+                    (27, {
+                        "pelvis_dx": -8.0, "pelvis_dy": 10.0, "torso_deg": 9.0, "head_rel_deg": -6.0, "mane_rel_deg": 6.0,
+                        "l_thigh_deg": 14.0, "l_shin_deg": 18.0, "r_thigh_deg": -14.0, "r_shin_deg": 18.0,
+                        "r_sode_rel_deg": -26.0, "r_fore_rel_deg": -18.0,
+                        "l_sode_rel_deg": -20.0, "l_fore_rel_deg": -20.0, "coat_billow": 11.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -22.0, "staff_len": 23.5, "staff_glow": 1.35,
+                        "hand_orb_r": 2.2, "orb_dx": 5.0, "orb_dy": -2.5, "halo_mode": "eclipse", "foot_y": 98.5,
+                    }),
+                    (29, {
+                        "pelvis_dx": 0.0, "pelvis_dy": 0.0, "torso_deg": 1.2, "head_rel_deg": 0.0, "mane_rel_deg": 0.0,
+                        "l_thigh_deg": 0.0, "l_shin_deg": 0.0, "r_thigh_deg": 0.0, "r_shin_deg": 0.0,
+                        "r_sode_rel_deg": -8.0, "r_fore_rel_deg": -22.0,
+                        "l_sode_rel_deg": -12.0, "l_fore_rel_deg": -28.0, "coat_billow": 2.0,
+                        "right_arm_in_front": True, "right_leg_behind": False, "staff_behind": False,
+                        "staff_deg": -52.0, "staff_len": 25.0, "staff_glow": 1.0,
+                        "hand_orb_r": 1.8, "orb_dx": 4.5, "orb_dy": -3.0, "halo_mode": "normal", "foot_y": 99.0,
+                    }),
+                ]
+                cfg.update(eval_pose_keyframes(f, kfs))
+                if 24 <= f <= 27:
+                    cfg["slash_arc"] = (-42.0, 44.0, 28.0, 1.0 - abs(f - 25.5) * 0.22)
 
         elif row_idx == 3:
             # ROW 3: SKILL — TRIPLE SOLAR PILLAR & PYROMANTIC DETONATION SWEEP (100% Grounded!)
@@ -1930,5 +2052,30 @@ def main():
     print(f"[SUCCESS] Saved {OUT_SHEET_PATH} ({sheet.size[0]}x{sheet.size[1]}) in {dt:.2f}s | clips={total_clips}/270")
 
 
+def build_row2_auto_only():
+    parts = load_and_segment_512()
+    cfgs = build_row_configs(2)
+    frames_104 = []
+    min_x, max_x, min_y, max_y = 104, -1, 104, -1
+    for c in range(COLS):
+        arr104 = render_pose_104(parts, cfgs[c])
+        ys, xs = np.where(arr104[:, :, 3] > 0)
+        assert len(ys) > 0, f"Empty mage Row 2 frame {c}"
+        min_x = min(min_x, int(xs.min()))
+        max_x = max(max_x, int(xs.max()))
+        min_y = min(min_y, int(ys.min()))
+        max_y = max(max_y, int(ys.max()))
+        assert 4 <= int(xs.min()) and int(xs.max()) <= 99 and 4 <= int(ys.min()) and int(ys.max()) <= 99, (
+            f"mage Row 2 frame {c} out of 4..99 bounds: x={xs.min()}..{xs.max()}, y={ys.min()}..{ys.max()}"
+        )
+        frames_104.append(arr104)
+    print(f"[mage Row 2 bounds] x={min_x}..{max_x}, y={min_y}..{max_y}")
+    splice_row2_auto_surgically("mage", OUT_SHEET_PATH, frames_104, (P_SOLAR_GLEAM, P_GOLD_LIT))
+
+
 if __name__ == "__main__":
-    main()
+    if "--auto-only" in sys.argv:
+        build_row2_auto_only()
+    else:
+        main()
+

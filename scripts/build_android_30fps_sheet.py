@@ -23,22 +23,24 @@ Pipeline Highlights:
 """
 
 import os
+import sys
 import math
 from collections import deque
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hd2d_rig_core import (
     CELL, LOGICAL, COLS, ROWS, P, BASE_NUMERIC_KEYS,
     poly_mask, keep_largest_component, assign_remaining_geodesic,
     extract_parts_512, rot_pt, render_rig_104, build_and_save_30fps_sheet,
-    compute_bipedal_walk_pose,
+    compute_bipedal_walk_pose, splice_row2_auto_surgically,
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "android_v2_base.jpg")
 OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "android_sheet.png")
-ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/b9d8130e-8764-4ace-8d4e-40f97049d6f1"
+ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/b9d8130e-8764-4ace-8d4e-40f97049d6f1/scratch"
 
 # Curated 20-Color Obsidian-Carbon / Pearl-White / Neon-Cyan / Hot-Magenta Master Palette
 MASTER_PALETTE = np.array([
@@ -1293,118 +1295,182 @@ def build_row_configs(row):
             cfgs.append(apply_dual_cyber_ik(c))
 
         elif row == 2:
-            # R2 AUTO_ATTACK — 3 DISTINCT 10-FRAME DYNAMIC MARTIAL COMBO VARIANTS!
-            #   Variant 0 (F00..F09): Jet-Step Iaido Deep Split-Lunge Horizontal Cleave
-            #   Variant 1 (F10..F19): Martial High-Knee Kick + Reverse-Grip Rising Dragon Upper-Slash
-            #   Variant 2 (F20..F29): Overhead Crimson-Cyan Fang Crashing Split-Slam
-            if f <= 9:
+            # R2 AUTO_ATTACK — 4 DISTINCT DYNAMIC MARTIAL COMBO VARIANTS (`[[0..7], [8..14], [15..22], [23..29]]`)!
+            #   Slice 0 (F00..F07, 8f -> 60..67): Jet-Step Iaido Plasma Cleave
+            #   Slice 1 (F08..F14, 7f -> 68..74): Rising Dragon High-Kick Slash
+            #   Slice 2 (F15..F22, 8f -> 75..82): Fin-Funnel Twin-Pincer Thrust
+            #   Slice 3 (F23..F29, 7f -> 83..89): Overhead Fang Chakram Slam
+            if f <= 7:
                 kfs = [
                     (0, dict(
                         pelvis_dx=0.0, pelvis_dy=4.0, torso_deg=10.0, head_rel_deg=-4.0,
+                        right_leg_behind=False,
                         l_thigh_deg=12.0, l_shin_deg=16.0, r_thigh_deg=-18.0, r_shin_deg=26.0,
                         l_hx=34.0, l_hy=-2.0, r_hx=50.0, r_hy=-12.0,
-                        odachi_deg=-28.0, funnel_mode="wing", slash_int=0.0, foot_y=99.0,
+                        odachi_deg=-28.0, odachi_len=28.5, funnel_mode="wing", slash_int=0.0, foot_y=99.0,
                     )),
                     (2, dict(
                         pelvis_dx=-10.0, pelvis_dy=12.0, torso_deg=20.0, head_rel_deg=-8.0,
+                        right_leg_behind=False,
                         l_thigh_deg=22.0, l_shin_deg=28.0, r_thigh_deg=-34.0, r_shin_deg=50.0,
                         l_hx=-18.0, l_hy=10.0, r_hx=16.0, r_hy=4.0,
-                        odachi_deg=164.0, funnel_mode="swept", thruster_power=0.95, slash_int=0.0, foot_y=99.0,
+                        odachi_deg=164.0, odachi_len=27.5, funnel_mode="swept", thruster_power=0.95, slash_int=0.0, foot_y=99.0,
+                    )),
+                    (4, dict(
+                        pelvis_dx=28.0, pelvis_dy=18.0, torso_deg=30.0, head_rel_deg=-15.0,
+                        right_leg_behind=False,
+                        l_thigh_deg=36.0, l_shin_deg=10.0, r_thigh_deg=-42.0, r_shin_deg=48.0,
+                        l_hx=68.0, l_hy=-8.0, r_hx=60.0, r_hy=-4.0,
+                        odachi_deg=-4.0, odachi_len=28.0, funnel_mode="aim", thruster_power=0.98,
+                        slash_start=-80.0, slash_end=48.0, slash_rx=28.5, slash_ry=19.0, slash_int=1.0, foot_y=99.0,
                     )),
                     (5, dict(
-                        pelvis_dx=28.0, pelvis_dy=18.0, torso_deg=30.0, head_rel_deg=-15.0,
-                        l_thigh_deg=36.0, l_shin_deg=10.0, r_thigh_deg=-42.0, r_shin_deg=48.0,
-                        l_hx=70.0, l_hy=-8.0, r_hx=62.0, r_hy=-4.0,
-                        odachi_deg=-4.0, funnel_mode="aim", thruster_power=0.95,
-                        slash_start=-80.0, slash_end=48.0, slash_rx=29.0, slash_ry=19.0, slash_int=1.0, foot_y=99.0,
-                    )),
-                    (7, dict(
                         pelvis_dx=22.0, pelvis_dy=14.0, torso_deg=24.0, head_rel_deg=-11.0,
+                        right_leg_behind=False,
                         l_thigh_deg=28.0, l_shin_deg=14.0, r_thigh_deg=-34.0, r_shin_deg=40.0,
                         l_hx=62.0, l_hy=14.0, r_hx=46.0, r_hy=6.0,
-                        odachi_deg=24.0, funnel_mode="aim", thruster_power=0.72,
-                        slash_start=-22.0, slash_end=68.0, slash_rx=27.0, slash_ry=18.0, slash_int=0.52, foot_y=99.0,
+                        odachi_deg=24.0, odachi_len=28.0, funnel_mode="aim", thruster_power=0.76,
+                        slash_start=-22.0, slash_end=68.0, slash_rx=27.0, slash_ry=18.0, slash_int=0.62, foot_y=99.0,
                     )),
-                    (9, dict(
+                    (7, dict(
                         pelvis_dx=6.0, pelvis_dy=6.0, torso_deg=11.0, head_rel_deg=-4.0,
+                        right_leg_behind=False,
                         l_thigh_deg=12.0, l_shin_deg=16.0, r_thigh_deg=-20.0, r_shin_deg=28.0,
                         l_hx=32.0, l_hy=4.0, r_hx=48.0, r_hy=-10.0,
-                        odachi_deg=-18.0, funnel_mode="wing", thruster_power=0.45, slash_int=0.0, foot_y=99.0,
+                        odachi_deg=-18.0, odachi_len=28.5, funnel_mode="wing", thruster_power=0.45, slash_int=0.0, foot_y=99.0,
                     )),
                 ]
-            elif f <= 19:
+            elif f <= 14:
                 kfs = [
-                    (10, dict(
-                        pelvis_dx=-6.0, pelvis_dy=10.0, torso_deg=6.0, head_rel_deg=-2.0,
-                        l_thigh_deg=-8.0, l_shin_deg=26.0, r_thigh_deg=-24.0, r_shin_deg=40.0,
+                    (8, dict(
+                        pelvis_dx=-6.0, pelvis_dy=12.0, torso_deg=8.0, head_rel_deg=-2.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=10.0, l_shin_deg=28.0, r_thigh_deg=-16.0, r_shin_deg=34.0,
                         l_hx=18.0, l_hy=18.0, r_hx=34.0, r_hy=10.0,
-                        odachi_deg=62.0, funnel_mode="wing", thruster_power=0.55, slash_int=0.0, foot_y=99.0,
+                        odachi_deg=58.0, odachi_len=27.5, funnel_mode="wing", thruster_power=0.58, slash_int=0.0, foot_y=99.0,
+                    )),
+                    (9, dict(
+                        pelvis_dx=-2.0, pelvis_dy=8.0, torso_deg=-2.0, head_rel_deg=3.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-24.0, l_shin_deg=42.0, r_thigh_deg=-4.0, r_shin_deg=22.0,
+                        l_hx=30.0, l_hy=8.0, r_hx=40.0, r_hy=0.0,
+                        odachi_deg=32.0, odachi_len=27.5, funnel_mode="swept", thruster_power=0.88, slash_int=0.0, foot_y=98.5,
+                    )),
+                    (11, dict(
+                        pelvis_dx=12.0, pelvis_dy=2.0, torso_deg=-10.0, head_rel_deg=8.0,
+                        # Martial high-knee kick (`l_thigh_deg=-56`) + reverse-grip upward magenta-cyan upper-slash!
+                        right_leg_behind=True,
+                        l_thigh_deg=-56.0, l_shin_deg=54.0, l_foot_deg=18.0, r_thigh_deg=8.0, r_shin_deg=14.0,
+                        l_hx=52.0, l_hy=-52.0, r_hx=40.0, r_hy=-44.0,
+                        l_elbow_cw=False, r_elbow_cw=False,
+                        odachi_deg=-58.0, odachi_len=27.0, funnel_mode="flare", thruster_power=1.0,
+                        slash_start=68.0, slash_end=-80.0, slash_rx=28.0, slash_ry=23.5, slash_int=1.0, foot_y=97.0,
                     )),
                     (12, dict(
-                        pelvis_dx=-4.0, pelvis_dy=14.0, torso_deg=-4.0, head_rel_deg=4.0,
-                        l_thigh_deg=-16.0, l_shin_deg=34.0, r_thigh_deg=-36.0, r_shin_deg=54.0,
-                        l_hx=28.0, l_hy=14.0, r_hx=40.0, r_hy=4.0,
-                        odachi_deg=40.0, funnel_mode="swept", thruster_power=0.88, slash_int=0.0, foot_y=99.0,
-                    )),
-                    (15, dict(
-                        pelvis_dx=14.0, pelvis_dy=4.0, torso_deg=-10.0, head_rel_deg=8.0,
-                        # Planted left support leg + Explosive Martial High-Knee Kick on right leg!
-                        l_thigh_deg=-12.0, l_shin_deg=14.0, r_thigh_deg=-68.0, r_shin_deg=62.0, r_foot_deg=22.0,
-                        l_hx=54.0, l_hy=-58.0, r_hx=42.0, r_hy=-48.0,
+                        pelvis_dx=10.0, pelvis_dy=4.0, torso_deg=-6.0, head_rel_deg=5.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-46.0, l_shin_deg=48.0, l_foot_deg=12.0, r_thigh_deg=6.0, r_shin_deg=16.0,
+                        l_hx=38.0, l_hy=-56.0, r_hx=30.0, r_hy=-48.0,
                         l_elbow_cw=False, r_elbow_cw=False,
-                        odachi_deg=-58.0, funnel_mode="flare", thruster_power=1.0,
-                        slash_start=68.0, slash_end=-82.0, slash_rx=28.0, slash_ry=24.0, slash_int=1.0, foot_y=99.0,
+                        odachi_deg=-78.0, odachi_len=26.5, funnel_mode="flare", thruster_power=0.82,
+                        slash_start=18.0, slash_end=-88.0, slash_rx=27.0, slash_ry=22.5, slash_int=0.72, foot_y=97.5,
                     )),
-                    (17, dict(
-                        pelvis_dx=10.0, pelvis_dy=6.0, torso_deg=-4.0, head_rel_deg=4.0,
-                        l_thigh_deg=-8.0, l_shin_deg=16.0, r_thigh_deg=-44.0, r_shin_deg=46.0, r_foot_deg=12.0,
-                        l_hx=38.0, l_hy=-62.0, r_hx=32.0, r_hy=-52.0,
-                        l_elbow_cw=False, r_elbow_cw=False,
-                        odachi_deg=-84.0, funnel_mode="flare", thruster_power=0.78,
-                        slash_start=18.0, slash_end=-92.0, slash_rx=27.0, slash_ry=23.0, slash_int=0.48, foot_y=99.0,
+                    (13, dict(
+                        pelvis_dx=6.0, pelvis_dy=5.0, torso_deg=0.0, head_rel_deg=1.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-28.0, l_shin_deg=36.0, l_foot_deg=6.0, r_thigh_deg=8.0, r_shin_deg=16.0,
+                        l_hx=32.0, l_hy=-36.0, r_hx=36.0, r_hy=-34.0,
+                        odachi_deg=-60.0, odachi_len=27.5, funnel_mode="flare", thruster_power=0.64, slash_int=0.0, foot_y=98.5,
                     )),
-                    (19, dict(
+                    (14, dict(
                         pelvis_dx=2.0, pelvis_dy=6.0, torso_deg=6.0, head_rel_deg=-2.0,
-                        l_thigh_deg=8.0, l_shin_deg=18.0, r_thigh_deg=-22.0, r_shin_deg=32.0,
-                        l_hx=26.0, l_hy=-24.0, r_hx=38.0, r_hy=-28.0,
-                        odachi_deg=-52.0, funnel_mode="wing", thruster_power=0.50, slash_int=0.0, foot_y=99.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-14.0, l_shin_deg=24.0, r_thigh_deg=10.0, r_shin_deg=16.0,
+                        l_hx=28.0, l_hy=-18.0, r_hx=40.0, r_hy=-22.0,
+                        odachi_deg=-44.0, odachi_len=28.0, funnel_mode="wing", thruster_power=0.50, slash_int=0.0, foot_y=99.0,
+                    )),
+                ]
+            elif f <= 22:
+                kfs = [
+                    (15, dict(
+                        pelvis_dx=-8.0, pelvis_dy=10.0, torso_deg=8.0, head_rel_deg=-4.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-18.0, l_shin_deg=28.0, r_thigh_deg=18.0, r_shin_deg=20.0,
+                        l_hx=10.0, l_hy=-10.0, r_hx=-14.0, r_hy=-4.0,
+                        odachi_deg=-6.0, odachi_len=27.5, funnel_mode="swept", thruster_power=0.72, slash_int=0.0, foot_y=99.0,
+                    )),
+                    (16, dict(
+                        pelvis_dx=-14.0, pelvis_dy=14.0, torso_deg=12.0, head_rel_deg=-6.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-24.0, l_shin_deg=38.0, r_thigh_deg=24.0, r_shin_deg=24.0,
+                        l_hx=2.0, l_hy=-12.0, r_hx=-24.0, r_hy=-6.0,
+                        odachi_deg=-3.0, odachi_len=27.5, funnel_mode="swept", thruster_power=0.92, slash_int=0.0, foot_y=99.0,
+                    )),
+                    (18, dict(
+                        pelvis_dx=26.0, pelvis_dy=18.0, torso_deg=26.0, head_rel_deg=-14.0,
+                        # Stance swap (`right_leg_behind=True`), deep cyber-fencer Odachi needle-thrust (`odachi_deg=-2`) + 4 Fin-Funnels fanned!
+                        right_leg_behind=True,
+                        l_thigh_deg=-40.0, l_shin_deg=46.0, r_thigh_deg=36.0, r_shin_deg=12.0,
+                        l_hx=68.0, l_hy=-10.0, r_hx=-18.0, r_hy=-18.0,
+                        odachi_deg=-2.0, odachi_len=28.0, funnel_mode="flare", funnel_spread=0.88, thruster_power=1.0,
+                        slash_int=0.0, foot_y=99.0,
+                    )),
+                    (20, dict(
+                        pelvis_dx=22.0, pelvis_dy=16.0, torso_deg=23.0, head_rel_deg=-12.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-36.0, l_shin_deg=42.0, r_thigh_deg=32.0, r_shin_deg=14.0,
+                        l_hx=64.0, l_hy=-8.0, r_hx=-12.0, r_hy=-14.0,
+                        odachi_deg=-2.0, odachi_len=28.0, funnel_mode="flare", funnel_spread=0.96, thruster_power=0.86,
+                        slash_int=0.0, foot_y=99.0,
+                    )),
+                    (22, dict(
+                        pelvis_dx=4.0, pelvis_dy=6.0, torso_deg=10.0, head_rel_deg=-4.0,
+                        right_leg_behind=True,
+                        l_thigh_deg=-16.0, l_shin_deg=24.0, r_thigh_deg=14.0, r_shin_deg=18.0,
+                        l_hx=34.0, l_hy=-4.0, r_hx=46.0, r_hy=-12.0,
+                        odachi_deg=-24.0, odachi_len=28.5, funnel_mode="aim", thruster_power=0.52, slash_int=0.0, foot_y=99.0,
                     )),
                 ]
             else:
                 kfs = [
-                    (20, dict(
+                    (23, dict(
                         pelvis_dx=-8.0, pelvis_dy=8.0, torso_deg=-12.0, head_rel_deg=10.0,
-                        l_thigh_deg=-18.0, l_shin_deg=34.0, r_thigh_deg=-26.0, r_shin_deg=42.0,
-                        l_hx=4.0, l_hy=-64.0, r_hx=18.0, r_hy=-60.0,
+                        right_leg_behind=False,
+                        l_thigh_deg=-16.0, l_shin_deg=32.0, r_thigh_deg=-26.0, r_shin_deg=42.0,
+                        l_hx=6.0, l_hy=-58.0, r_hx=20.0, r_hy=-54.0,
                         l_elbow_cw=False, r_elbow_cw=False,
-                        odachi_deg=-126.0, funnel_mode="flare", thruster_power=0.90, slash_int=0.0, foot_y=99.0,
+                        odachi_deg=-126.0, odachi_len=26.5, funnel_mode="flare", thruster_power=0.90, slash_int=0.0, foot_y=99.0,
                     )),
-                    (22, dict(
-                        pelvis_dx=-10.0, pelvis_dy=10.0, torso_deg=-16.0, head_rel_deg=12.0,
-                        l_thigh_deg=-12.0, l_shin_deg=28.0, r_thigh_deg=-38.0, r_shin_deg=50.0,
-                        l_hx=8.0, l_hy=-68.0, r_hx=22.0, r_hy=-64.0,
+                    (24, dict(
+                        pelvis_dx=-10.0, pelvis_dy=10.0, torso_deg=-15.0, head_rel_deg=12.0,
+                        right_leg_behind=False,
+                        l_thigh_deg=-10.0, l_shin_deg=26.0, r_thigh_deg=-36.0, r_shin_deg=48.0,
+                        l_hx=10.0, l_hy=-62.0, r_hx=24.0, r_hy=-58.0,
                         l_elbow_cw=False, r_elbow_cw=False,
-                        odachi_deg=-118.0, funnel_mode="flare", thruster_power=1.0, slash_int=0.0, foot_y=99.0,
+                        odachi_deg=-118.0, odachi_len=26.5, funnel_mode="flare", thruster_power=1.0, slash_int=0.0, foot_y=99.0,
                     )),
-                    (25, dict(
-                        pelvis_dx=30.0, pelvis_dy=20.0, torso_deg=32.0, head_rel_deg=-16.0,
+                    (26, dict(
+                        pelvis_dx=28.0, pelvis_dy=20.0, torso_deg=32.0, head_rel_deg=-16.0,
+                        right_leg_behind=False,
                         l_thigh_deg=38.0, l_shin_deg=12.0, r_thigh_deg=-44.0, r_shin_deg=52.0,
-                        l_hx=68.0, l_hy=14.0, r_hx=54.0, r_hy=4.0,
-                        odachi_deg=28.0, funnel_mode="aim", thruster_power=0.95,
-                        slash_start=-96.0, slash_end=58.0, slash_rx=29.0, slash_ry=24.0, slash_int=1.0, foot_y=99.0,
+                        l_hx=66.0, l_hy=14.0, r_hx=52.0, r_hy=4.0,
+                        odachi_deg=28.0, odachi_len=28.0, funnel_mode="aim", thruster_power=0.95,
+                        slash_start=-94.0, slash_end=58.0, slash_rx=28.5, slash_ry=23.5, slash_int=1.0, foot_y=99.0,
                     )),
                     (27, dict(
-                        pelvis_dx=20.0, pelvis_dy=14.0, torso_deg=24.0, head_rel_deg=-10.0,
+                        pelvis_dx=20.0, pelvis_dy=15.0, torso_deg=24.0, head_rel_deg=-10.0,
+                        right_leg_behind=False,
                         l_thigh_deg=26.0, l_shin_deg=16.0, r_thigh_deg=-32.0, r_shin_deg=40.0,
-                        l_hx=58.0, l_hy=12.0, r_hx=48.0, r_hy=0.0,
-                        odachi_deg=18.0, funnel_mode="aim", thruster_power=0.70,
-                        slash_start=-36.0, slash_end=64.0, slash_rx=27.0, slash_ry=21.0, slash_int=0.46, foot_y=99.0,
+                        l_hx=58.0, l_hy=12.0, r_hx=46.0, r_hy=0.0,
+                        odachi_deg=18.0, odachi_len=28.0, funnel_mode="aim", thruster_power=0.72,
+                        slash_start=-36.0, slash_end=64.0, slash_rx=27.0, slash_ry=21.0, slash_int=0.52, foot_y=99.0,
                     )),
                     (29, dict(
                         pelvis_dx=0.0, pelvis_dy=2.0, torso_deg=9.5, head_rel_deg=-4.0,
+                        right_leg_behind=False,
                         l_thigh_deg=12.0, l_shin_deg=16.0, r_thigh_deg=-18.0, r_shin_deg=26.0,
                         l_hx=36.0, l_hy=-2.0, r_hx=52.0, r_hy=-12.0,
-                        odachi_deg=-30.0, funnel_mode="wing", thruster_power=0.40, slash_int=0.0, foot_y=99.0,
+                        odachi_deg=-30.0, odachi_len=29.0, funnel_mode="wing", thruster_power=0.40, slash_int=0.0, foot_y=99.0,
                     )),
                 ]
             cfgs.append(eval_vex_keyframes(f, kfs, ph, DEFAULTS))
@@ -1755,5 +1821,21 @@ def main():
     )
 
 
+def build_row2_auto_only():
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+    parts = load_and_segment_512()
+    cfgs = build_row_configs(2)
+    frames_104 = [render_frame_vex(parts, cfg) for cfg in cfgs]
+    splice_row2_auto_surgically(
+        hero_key="android",
+        sheet_path=OUT_SHEET_PATH,
+        frames_104=frames_104,
+        shimmer_cols=(list(C_CYAN), list(C_CYAN_ICE)),
+    )
+
+
 if __name__ == "__main__":
-    main()
+    if "--auto-only" in sys.argv:
+        build_row2_auto_only()
+    else:
+        main()

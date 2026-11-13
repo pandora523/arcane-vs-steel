@@ -1,7 +1,14 @@
-import { Fighter } from './Fighter.js?v=30fps89';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps89';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps89';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps89';
+import { Fighter } from './Fighter.js?v=30fps90';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps90';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps90';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps90';
+
+const AUTO_SLICES_4 = [
+  [60, 8],
+  [68, 7],
+  [75, 8],
+  [83, 7]
+];
 
 /**
  * Ignis Sol (`mage`) — Solar Archmage & Black-Sun Eclipse Sovereign.
@@ -28,13 +35,16 @@ export class FireMage extends Fighter {
     this.theme = 'arcane';
     this.deathSfx = 'death_mage';
     this.skillMaxCooldown = 4.10;
-    this.autoDuration = 0.96;
+    this.autoDuration = 0.92;
     this.skillDuration = 1.05;
     this.ultDuration = 1.56;
     this.ultName = 'ECLIPSE SUPERNOVA';
     this.skillName = 'SOLAR PILLAR';
     this.runeOrbit = 0;
     this.castCombo = 0;
+    this.comboStep = 0;
+    this._autoVariant = 0;
+    this.activeVfxAnims = [];
     this.stepTimer = 0;
     this.dodgeMaxCooldown = 2.88;
     this.dashMaxCooldown = 3.25;
@@ -89,7 +99,7 @@ export class FireMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const mageAssets = PixelForge.initAssets()?.mage;
       if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps60')) {
-        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps89';
+        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps90';
       }
     }
   }
@@ -102,6 +112,7 @@ export class FireMage extends Fighter {
       this._trueUltStage = 0;
       this._trueUltTick = 0;
     } else {
+      this.trueUltFrameOverride = null;
       this._overrideFrameIdx = null;
       this.cameraAirLift = 0;
       if (this.trueUltMeteor) {
@@ -109,9 +120,35 @@ export class FireMage extends Fighter {
         this.trueUltMeteor.phase = 'none';
       }
     }
+    if (newState === 'AUTO_ATTACK') {
+      this._autoVariant = (((this.comboStep || 0) % 4) + 4) % 4;
+      this.comboStep = (this._autoVariant + 1) % 4;
+      this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
+    }
     if (newState !== 'JUMP' && newState !== 'DODGE' && newState !== 'DASH') {
       this.fx?.stopByKey('solarGlideTrail');
     }
+  }
+
+  spawnVfxAnim(row, x, y, w = 184, h = 184, maxLife = 0.36, opts = {}) {
+    this.activeVfxAnims.push({
+      row,
+      x,
+      y,
+      w,
+      h,
+      age: 0,
+      maxLife,
+      vx: opts.vx || 0,
+      vy: opts.vy || 0,
+      flipX: opts.flipX !== undefined ? Boolean(opts.flipX) : this.facing < 0,
+      followOwner: Boolean(opts.followOwner),
+      offsetX: opts.offsetX || 0,
+      offsetY: opts.offsetY || 0,
+      inFront: opts.inFront !== undefined ? Boolean(opts.inFront) : true,
+      startFrame: opts.startFrame || 0,
+      endFrame: opts.endFrame !== undefined ? opts.endFrame : 29
+    });
   }
 
   ensureOrbitingSuns() {
@@ -121,7 +158,7 @@ export class FireMage extends Fighter {
       this._orbitSlot = null;
       return;
     }
-    const isPrimed = (this.castCombo + 1) % 3 === 0;
+    const isPrimed = (((this.comboStep || 0) % 4) + 4) % 4 === 3;
     let slot = this.fx.active.find((s) => s.key === 'heliosOrbitingSuns');
     if (!slot) {
       slot = this.fx.spawn('heliosOrbitingSuns', this.x, this.y - 98, {
@@ -600,6 +637,19 @@ export class FireMage extends Fighter {
       if (ec.life >= ec.maxLife) this.solarEchoes.splice(i, 1);
     }
 
+    for (let i = this.activeVfxAnims.length - 1; i >= 0; i--) {
+      const v = this.activeVfxAnims[i];
+      v.age += dt;
+      if (v.followOwner) {
+        v.x = this.x + this.facing * v.offsetX;
+        v.y = this.y + v.offsetY;
+      } else {
+        v.x += (v.vx || 0) * dt;
+        v.y += (v.vy || 0) * dt;
+      }
+      if (v.age >= v.maxLife) this.activeVfxAnims.splice(i, 1);
+    }
+
     this.ensureOrbitingSuns();
     this.fx.update(dt);
 
@@ -695,80 +745,179 @@ export class FireMage extends Fighter {
     this.vy = 0;
     this.y = this.groundY;
 
-    if (t < 0.34) {
+    const mode = (((this._autoVariant || 0) % 4) + 4) % 4;
+    const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
+    const u = Math.max(0, Math.min(0.999, t / Math.max(0.01, this.autoDuration)));
+    this.trueUltFrameOverride = sliceStart + Math.min(sliceLen - 1, Math.floor(u * sliceLen));
+
+    if (t < 0.32) {
       if (!this._drewPalmFocus) {
         this._drewPalmFocus = true;
-        this.fx.spawn('heliosPalmFocus', this.x + this.facing * 32, this.y - 108, {
+        const focusOffX = mode === 2 ? 26 : mode === 3 ? 38 : 32;
+        const focusOffY = mode === 2 ? -134 : -108;
+        this.fx.spawn('heliosPalmFocus', this.x + this.facing * focusOffX, this.y + focusOffY, {
           follow: this,
-          offsetX: 32,
-          offsetY: -108,
+          offsetX: focusOffX,
+          offsetY: focusOffY,
           flip: this.facing < 0,
-          light: 1.2
+          light: mode === 3 ? 1.32 : 1.2
         });
       }
     } else if (t < 0.72) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.castCombo++;
-        this.vx -= this.facing * 42;
-        if (game.audio) game.audio.play('fireball', this.x);
+        if (game?.audio) game.audio.play('fireball', this.x);
 
         const spawnX = this.x + this.facing * 54;
-        const spawnY = this.y - 106;
-        const targetY = enemy ? enemy.y - 104 : spawnY;
+        const spawnY = this.y - 104;
+        const targetY = enemy ? enemy.y - 100 : spawnY;
         const dx = enemy ? enemy.x - spawnX : this.facing * 460;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
-        const speed = 665;
-        const isTwinFlare = this.castCombo % 3 === 0;
+        const aimAng = Math.atan2(dy, Math.abs(dx));
 
-        game.vfx.spawnProjectile({
-          x: spawnX,
-          y: spawnY,
-          vx: (dx / dist) * speed,
-          vy: (dy / dist) * speed,
-          radius: 15,
-          color: '#fb923c',
-          coreColor: '#fef08a',
-          owner: this,
-          damage: isTwinFlare ? 98 : 114,
-          type: 'fireball',
-          isMeteor: false
-        });
-
-        this.fx.spawn('solarFireballMachCone', spawnX, spawnY, {
-          flip: this.facing < 0,
-          light: isTwinFlare ? 1.35 : 1.22,
-          extra: { aimAngle: Math.atan2(dy, Math.abs(dx)), isTwin: isTwinFlare }
-        });
-
-        if (isTwinFlare) {
-          game.vfx.spawnProjectile({
-            x: spawnX - this.facing * 16,
-            y: spawnY - 14,
-            vx: (dx / dist) * (speed * 0.94),
-            vy: (dy / dist) * (speed * 0.94) - 22,
-            radius: 13,
-            color: '#ea580c',
-            coreColor: '#fef08a',
-            owner: this,
-            damage: 64,
-            type: 'fireball',
-            isMeteor: false
+        if (mode === 0) {
+          // V0 (60..67 — Helios Sun-Lance): crisp horizontal Sun-Staff thrust & fast blazing solar lance
+          this.vx -= this.facing * 36;
+          this.fx.spawn('solarFireballMachCone', spawnX, spawnY, {
+            flip: this.facing < 0,
+            light: 1.22,
+            extra: { aimAngle: aimAng, isTwin: false }
           });
-          game.vfx.spawnDamageText(
-            this.x,
-            this.y - 148,
-            0,
-            false,
-            'TWIN SOLAR FLARE!',
-            '#fef08a'
-          );
+          if (game?.vfx) {
+            const speed = 680;
+            game.vfx.spawnProjectile({
+              x: spawnX,
+              y: spawnY,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed,
+              radius: 15,
+              color: '#fb923c',
+              coreColor: '#fef08a',
+              owner: this,
+              damage: 112,
+              type: 'fireball',
+              isMeteor: false
+            });
+          }
+        } else if (mode === 1) {
+          // V1 (68..74 — Twin Solar Corona Arc): wide pyro-palm sweep loosing upper/lower twin fireballs
+          this.vx -= this.facing * 40;
+          this.fx.spawn('solarFireballMachCone', spawnX, spawnY, {
+            flip: this.facing < 0,
+            light: 1.30,
+            extra: { aimAngle: aimAng, isTwin: true }
+          });
+          if (game?.vfx) {
+            const speed = 655;
+            game.vfx.spawnProjectile({
+              x: spawnX,
+              y: spawnY - 10,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed - 32,
+              radius: 14,
+              color: '#fb923c',
+              coreColor: '#fef08a',
+              owner: this,
+              damage: 64,
+              type: 'fireball',
+              isMeteor: false
+            });
+            game.vfx.spawnProjectile({
+              x: spawnX - this.facing * 14,
+              y: spawnY + 10,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed + 32,
+              radius: 13,
+              color: '#ea580c',
+              coreColor: '#fef08a',
+              owner: this,
+              damage: 58,
+              type: 'fireball',
+              isMeteor: false
+            });
+            game.vfx.spawnDamageText(this.x, this.y - 148, 0, false, 'TWIN SOLAR CORONA!', '#fef08a');
+          }
+        } else if (mode === 2) {
+          // V2 (75..82 — Astrolabe Prominence Surge): overhead-to-ground Sun-Staff slam + solar spire muzzle flare + heavy orb
+          this.vx -= this.facing * 28;
+          this.spawnVfxAnim(2, spawnX + this.facing * 12, this.groundY - 78, 184, 184, 0.36, {
+            flipX: this.facing < 0,
+            inFront: true
+          });
+          this.fx.spawn('solarFireballMachCone', spawnX, spawnY, {
+            flip: this.facing < 0,
+            light: 1.34,
+            extra: { aimAngle: aimAng, isTwin: false }
+          });
+          if (game?.vfx) {
+            const speed = 645;
+            game.vfx.spawnProjectile({
+              x: spawnX,
+              y: spawnY,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed,
+              radius: 22,
+              color: '#ea580c',
+              coreColor: '#fde047',
+              owner: this,
+              damage: 120,
+              type: 'fireball',
+              isMeteor: false
+            });
+            game.vfx.spawnDamageText(this.x, this.y - 148, 0, false, 'PROMINENCE SURGE!', '#fde047');
+          }
+        } else {
+          // V3 (83..89 — Eclipse Supernova Volley): agile recoil step + Black-Sun primary orb + trailing solar ember
+          this.vx -= this.facing * 68;
+          this.spawnVfxAnim(0, spawnX, spawnY, 184, 184, 0.34, {
+            flipX: this.facing < 0,
+            inFront: true
+          });
+          this.fx.spawn('solarFireballMachCone', spawnX, spawnY, {
+            flip: this.facing < 0,
+            light: 1.40,
+            extra: { aimAngle: aimAng, isTwin: true }
+          });
+          if (game?.vfx) {
+            const speed = 675;
+            game.vfx.spawnProjectile({
+              x: spawnX,
+              y: spawnY,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed,
+              radius: 17,
+              color: '#dc2626',
+              coreColor: '#fde047',
+              owner: this,
+              damage: 96,
+              type: 'fireball',
+              isMeteor: false
+            });
+            game.vfx.spawnProjectile({
+              x: spawnX - this.facing * 20,
+              y: spawnY - 12,
+              vx: (dx / dist) * (speed * 0.94),
+              vy: (dy / dist) * (speed * 0.94) - 18,
+              radius: 13,
+              color: '#fb923c',
+              coreColor: '#fef08a',
+              owner: this,
+              damage: 62,
+              type: 'fireball',
+              isMeteor: false
+            });
+            game.vfx.spawnDamageText(this.x, this.y - 150, 0, true, 'ECLIPSE VOLLEY!', '#fb923c');
+          }
         }
 
-        game.vfx.spawnGlyphBurst(spawnX, spawnY, 4, 'arcane');
+        if (game?.vfx) {
+          game.vfx.spawnGlyphBurst(spawnX, spawnY, mode === 3 ? 6 : 4, 'arcane');
+        }
       }
     } else if (t >= this.autoDuration) {
+      this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }
   }
@@ -1634,14 +1783,50 @@ export class FireMage extends Fighter {
     ctx.restore();
   }
 
+  drawMageVfxAnims(ctx, inFront = true, renderer = null) {
+    if (!this.activeVfxAnims.length) return;
+    const vfxSheet = PixelForge.initAssets().mage?.vfx;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (const v of this.activeVfxAnims) {
+      if (Boolean(v.inFront) !== Boolean(inFront)) continue;
+      const u = Math.max(0, Math.min(0.999, v.age / Math.max(0.01, v.maxLife)));
+      const span = Math.max(1, v.endFrame - v.startFrame + 1);
+      const col = v.startFrame + Math.min(span - 1, Math.floor(u * span));
+      const fade = Math.sin(u * Math.PI);
+      const px = Math.round(v.x);
+      const py = Math.round(v.y);
+      const halfW = Math.round(v.w * 0.5);
+      const halfH = Math.round(v.h * 0.5);
+
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.scale(v.flipX ? -1 : 1, 1);
+      if (renderer?.glowOrange) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(1, fade * 0.34);
+        ctx.drawImage(renderer.glowOrange, -halfW, -halfH, v.w, v.h);
+      }
+      if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = Math.min(1, 0.3 + fade * 0.7);
+        ctx.drawImage(vfxSheet, col * 208, v.row * 208, 208, 208, -halfW, -halfH, v.w, v.h);
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   drawForegroundOverlay(ctx, renderer = null) {
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
+    this.drawMageVfxAnims(ctx, false, renderer);
   }
 
   drawUltimateForeground(ctx, renderer = null) {
     const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
     this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
+    this.drawMageVfxAnims(ctx, true, renderer);
     this.drawTrueUltimateMeteor(ctx, renderer);
   }
 

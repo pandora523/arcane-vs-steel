@@ -1,11 +1,18 @@
-import { Fighter } from './Fighter.js?v=30fps89';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps89';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps89';
+import { Fighter } from './Fighter.js?v=30fps90';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps90';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps90';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps89';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps90';
+
+const AUTO_SLICES_4 = [
+  [60, 8],
+  [68, 7],
+  [75, 8],
+  [83, 7]
+];
 
 /**
  * Aethelgard (`warrior`) — Sovereign Paladin of Celestial Frost & Runic Steel (`v4`).
@@ -32,6 +39,7 @@ export class Warrior extends Fighter {
     this.theme = 'steel';
     this.deathSfx = 'death_warrior';
     this.hasPoise = true; // Runic Juggernaut Poise resists ranged knockback/hitstun
+    this.autoDuration = 0.88;
     this.skillDuration = 1.04;
     this.ultDuration = 1.86;
     this.trueUltDuration = 4.45;
@@ -41,6 +49,7 @@ export class Warrior extends Fighter {
     this.trueUltName = 'CELESTIAL SWORD OF JUSTICE';
     this.skillName = 'TEMPEST VANGUARD';
     this.comboStep = 0;
+    this._autoVariant = 0;
     this.spinAngle = 0;
     this.spinHitStep = 0;
     this.isDeflecting = false;
@@ -89,14 +98,24 @@ export class Warrior extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const warriorAssets = PixelForge.initAssets()?.warrior;
+      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps90')) {
+        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps90';
+      }
       if (warriorAssets?.vfx?.src && !warriorAssets.vfx.src.includes('v=30fps60')) {
-        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps89';
+        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps90';
       }
     }
   }
 
   setState(newState) {
     super.setState(newState);
+    if (newState === 'AUTO_ATTACK') {
+      this._autoVariant = (((this.comboStep || 0) % 4) + 4) % 4;
+      this.comboStep = (this._autoVariant + 1) % 4;
+      this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
+    } else if (newState !== 'ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
+      this.trueUltFrameOverride = null;
+    }
     if (newState !== 'SKILL') {
       this.fx?.stopByKey('tempestCycloneRing');
     }
@@ -128,6 +147,7 @@ export class Warrior extends Fighter {
       this.justiceSwordPointActive = false;
       this.cameraAirLift = 0;
       this._overrideFrameIdx = null;
+      this.trueUltFrameOverride = null;
     }
   }
 
@@ -293,8 +313,10 @@ export class Warrior extends Fighter {
   }
 
   getEffectiveAttackRange() {
-    // Every 3rd swing unleashes a long-range Glacial Crescent Sword-Wave up to 440px!
-    return this.comboStep % 3 === 2 ? 440 : this.attackRange;
+    const nextVar = (((this.comboStep || 0) % 4) + 4) % 4;
+    if (nextVar === 3) return 440;
+    if (nextVar === 2) return 224;
+    return this.attackRange;
   }
 
   reflectNearbyProjectiles(game) {
@@ -830,56 +852,69 @@ export class Warrior extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    const mode = this.comboStep % 3;
+    const dur = this.autoDuration || 0.88;
+    const mode = (((this._autoVariant ?? 0) % 4) + 4) % 4;
+    const u = Math.min(0.999, Math.max(0, t / dur));
+    const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
+    this.trueUltFrameOverride = sliceStart + Math.min(sliceLen - 1, Math.floor(u * sliceLen));
 
-    if (t < 0.32) {
-      // Row 2 Frames F00..F09: Progressive overhead/back-shoulder windup + frost-gold rune charge
-      this.torsoAngle = -this.facing * 0.24 * (t / 0.32);
-    } else if (t < 0.68) {
-      // Row 2 Frames F10..F18: Explosive forward Runeblade cleave & Frost-Crescent slash arc
+    if (t < 0.30) {
+      this.torsoAngle = -this.facing * (mode === 2 ? 0.16 : 0.24) * (t / 0.30);
+    } else if (t < dur) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
-        this.comboStep++;
-        this.vx += this.facing * 165;
-        this.torsoVel = this.facing * 13;
+        const stepVx = mode === 2 ? 205 : mode === 1 ? 170 : mode === 0 ? 155 : 145;
+        this.vx += this.facing * stepVx;
+        this.torsoVel = this.facing * (mode === 2 ? 15 : 13);
 
-        const cx = this.x + this.facing * 42;
-        const cy = this.y - 96;
+        const cx = this.x + this.facing * (mode === 2 ? 54 : 42);
+        const cy = this.y - (mode === 1 ? 104 : mode === 2 ? 92 : 96);
 
         if (this.fx) {
           this.fx.spawn('runebladeCrescentSlash', cx, cy, {
             flip: this.facing < 0,
-            palette: mode === 1 ? RUNIC_GOLD_PALETTE : RUNIC_CYAN_PALETTE,
-            light: mode === 2 ? 1.38 : 1.24,
+            palette: mode === 1 || mode === 3 ? RUNIC_GOLD_PALETTE : RUNIC_CYAN_PALETTE,
+            light: mode === 3 ? 1.42 : mode === 2 ? 1.34 : mode === 1 ? 1.32 : 1.24,
             extra: {
-              radius: mode === 2 ? 34 : 28,
-              width: mode === 2 ? 12.5 : 10.5,
-              isGold: mode === 1,
-              groundWrap: mode === 2
+              radius: mode === 3 ? 34 : mode === 1 ? 30 : 28,
+              width: mode === 3 ? 12.5 : mode === 2 ? 9.5 : 10.5,
+              isGold: mode === 1 || mode === 3,
+              groundWrap: mode === 3
             }
           });
         }
 
         if (mode === 2) {
-          // Combo Finisher (Strike 3): Launches a Ranged Glacial Crescent Sword-Wave across the arena!
-          if (game?.audio) game.audio.play('blade_wave', this.x);
-          game?.vfx?.spawnDamageText(this.x, this.y - 145, 0, false, 'FROST CRESCENT!', '#38bdf8');
+          // V2 (Sovereign Pommel-Thrust Piercer): Star-cross runic pierce spark at sword tip
+          if (game?.audio) game.audio.play('slash', this.x);
+          this.spawnVfxAnim(4, cx + this.facing * 20, cy + 4, 192, 192, 0.28, {
+            flipX: this.facing < 0,
+            glowColor: 'cyan',
+            foreground: true
+          });
+        } else if (mode === 3) {
+          // V3 (Cathedral Guillotine Wave): Overhead smash + ranged Glacial/Celestial Blade-Wave!
+          if (game?.audio) {
+            game.audio.play('blade_wave', this.x);
+            game.audio.play('heavy_cleave', this.x);
+          }
+          game?.vfx?.spawnDamageText(this.x, this.y - 145, 0, false, 'GUILLOTINE WAVE!', '#fde047');
           game?.vfx?.spawnProjectile({
             x: this.x + this.facing * 54,
-            y: this.y - 106,
-            vx: this.facing * 635,
+            y: this.y - 104,
+            vx: this.facing * 645,
             vy: 0,
             radius: 20,
             color: '#38bdf8',
-            coreColor: '#e0f2fe',
+            coreColor: '#fef08a',
             owner: this,
-            damage: 66,
+            damage: 64,
             type: 'blade_wave'
           });
           this.spawnVfxAnim(0, cx + this.facing * 14, cy, 196, 196, 0.30, {
-            vx: this.facing * 255,
+            vx: this.facing * 260,
             flipX: this.facing < 0,
-            glowColor: 'cyan',
+            glowColor: 'gold',
             foreground: true
           });
         } else {
@@ -888,24 +923,71 @@ export class Warrior extends Fighter {
 
         game?.vfx?.spawnGlyphBurst(cx, cy, 5, 'steel');
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 50) {
-          const isCrit = mode === 2 || Math.random() < 0.25;
-          const dmg = mode === 2 ? 78 : mode === 1 ? 68 : 60;
-          enemy.takeDamage(dmg, this, isCrit, 115, mode === 2 ? -130 : 0);
-          if (game?.audio) game.audio.play(isCrit ? 'hit_crit' : 'clang', enemy.x);
-          if (game?.renderer) game.renderer.triggerHitStop(0.06);
-          this.spawnVfxAnim(4, enemy.x, enemy.y - 92, 196, 196, 0.28, {
-            flipX: this.facing < 0,
-            glowColor: isCrit ? 'gold' : 'cyan',
-            foreground: true
-          });
-          game?.vfx?.spawnGlyphBurst(enemy.x, enemy.y - 95, 5, 'steel');
-          if (isCrit || mode === 1) {
-            game?.vfx?.spawnLightning(enemy.x, -140, this.groundY, '#ffffff', '#38bdf8');
+        const rawFoes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+        const foes = rawFoes.filter((f) => f && !f.isDead && !f.isBenched);
+        const reach = mode === 2 ? 224 : this.attackRange + 50;
+
+        for (const foe of foes) {
+          if (Math.abs(foe.x - this.x) <= reach) {
+            const isCrit =
+              mode === 3
+                ? true
+                : mode === 2
+                  ? Math.random() < 0.32
+                  : mode === 1
+                    ? Math.random() < 0.28
+                    : Math.random() < 0.25;
+            const dmg = mode === 3 ? 76 : mode === 2 ? 68 : mode === 1 ? 66 : 60;
+            const knockX = mode === 2 ? 130 : mode === 3 ? 125 : mode === 0 ? 110 : 105;
+            const knockY = mode === 3 ? -130 : mode === 1 ? -58 : 0;
+            foe.takeDamage(dmg, this, isCrit, knockX, knockY);
+            if (game?.audio) game.audio.play(isCrit ? 'hit_crit' : 'clang', foe.x);
+            if (game?.renderer) game.renderer.triggerHitStop(0.06);
+
+            this.spawnVfxAnim(4, foe.x, foe.y - 92, 196, 196, 0.28, {
+              flipX: this.facing < 0,
+              glowColor: isCrit || mode === 1 ? 'gold' : 'cyan',
+              foreground: true
+            });
+
+            if (mode === 1) {
+              // V1 (Celestial Rising Upper-Slash): Grounded Cathedral Pillar spark + lightning bolt on hit
+              const pillarH = 196;
+              this.spawnVfxAnim(
+                2,
+                foe.x,
+                this.groundY - Math.round(pillarH * 0.32),
+                196,
+                pillarH,
+                0.32,
+                {
+                  flipX: this.facing < 0,
+                  glowColor: 'gold',
+                  foreground: false
+                }
+              );
+              game?.vfx?.spawnLightning(
+                foe.x,
+                this.groundY - 220,
+                this.groundY,
+                '#ffffff',
+                '#fde047'
+              );
+            } else if (isCrit) {
+              game?.vfx?.spawnLightning(
+                foe.x,
+                this.groundY - 220,
+                this.groundY,
+                '#ffffff',
+                '#38bdf8'
+              );
+            }
+            game?.vfx?.spawnGlyphBurst(foe.x, foe.y - 95, 5, 'steel');
           }
         }
       }
-    } else if (t >= 0.96) {
+    } else {
+      this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }
   }

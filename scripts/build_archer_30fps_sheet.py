@@ -27,16 +27,22 @@ Key Features:
 """
 
 import os
+import sys
 import math
 from collections import deque
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
+
+_SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+if _SCRIPT_DIR not in sys.path:
+    sys.path.insert(0, _SCRIPT_DIR)
 
 from hd2d_rig_core import (
     CELL, LOGICAL, COLS, ROWS, P, BASE_NUMERIC_KEYS,
     poly_mask, keep_largest_component, assign_remaining_geodesic,
     extract_parts_512, rot_pt, draw_slash_arc_104,
     render_rig_104, build_and_save_30fps_sheet, compute_bipedal_walk_pose,
+    splice_row2_auto_surgically,
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -1128,66 +1134,172 @@ def build_row_configs(row_idx):
             cfgs.append(apply_dual_archer_ik(cfg))
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK — Adaptive Ranger Combo (`foot_y = 99.0` grounded!):
-            # F00..F07: Swift Twin Bow-Blade forward crescent cleave (reads cleanly on close Star-Blade Vault!)
-            # F08..F18: Quiver reach -> full cheek-anchored Celestial Greatbow Starlight Arrow draw!
-            # F19..F22: Supersonic release flash & bow recoil -> F23..F29 crisp recovery
-            kfs = [
-                (0, dict(
-                    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.5, head_rel_deg=-1.8,
-                    l_thigh_deg=4.0, r_thigh_deg=-4.0,
-                    r_hx=64.0, r_hy=-18.0, l_hx=-32.0, l_hy=-10.0,
-                    bow_deg=-20.0, bow_span=14.5, draw_pull=0.05, arrow_mode="nocked", foot_y=99.0,
-                )),
-                (4, dict(
-                    # Forward Twin Bow-Blade sweep!
-                    pelvis_dx=9.0, pelvis_dy=20.0, torso_deg=13.0, head_rel_deg=-7.0,
-                    l_thigh_deg=18.0, l_shin_deg=12.0, r_thigh_deg=-18.0, r_shin_deg=14.0,
-                    l_coat_rel_deg=-12.0, r_coat_rel_deg=-8.0,
-                    r_hx=78.0, r_hy=-36.0, l_hx=-42.0, l_hy=-74.0,
-                    bow_deg=8.0, bow_span=14.5, draw_pull=0.0,
-                    right_arm_in_front=True, arrow_mode="none", foot_y=99.0,
-                )),
-                (9, dict(
-                    # Left draw-hand nocks Starlight Arrow onto bowstring
-                    pelvis_dx=2.0, pelvis_dy=12.0, torso_deg=6.0, head_rel_deg=-3.0,
-                    l_thigh_deg=12.0, l_shin_deg=8.0, r_thigh_deg=-12.0, r_shin_deg=8.0,
-                    r_hx=74.0, r_hy=-68.0, l_hx=42.0, l_hy=-68.0,
-                    bow_deg=-2.0, bow_span=14.8, draw_pull=0.32,
-                    right_arm_in_front=False, l_elbow_cw=False, arrow_mode="nocked", foot_y=99.0,
-                )),
-                (17, dict(
-                    # Full Sovereign Cheek-Anchored Draw! (`r_hand` extended +X, `l_hand` pulled back to cheek!)
-                    pelvis_dx=-6.0, pelvis_dy=16.0, torso_deg=2.0, head_rel_deg=-1.0,
-                    l_thigh_deg=16.0, l_shin_deg=10.0, r_thigh_deg=-16.0, r_shin_deg=10.0,
-                    l_coat_rel_deg=6.0, r_coat_rel_deg=-4.0,
-                    r_hx=82.0, r_hy=-74.0, l_hx=-18.0, l_hy=-76.0,
-                    bow_deg=-1.0, bow_span=15.0, draw_pull=1.0,
-                    right_arm_in_front=False, l_elbow_cw=False, arrow_mode="charged", foot_y=99.0,
-                )),
-                (20, dict(
-                    # Crisp Supersonic Bowstring Release & Recoil!
-                    pelvis_dx=-10.0, pelvis_dy=14.0, torso_deg=-2.0, head_rel_deg=1.5,
-                    l_thigh_deg=15.0, l_shin_deg=10.0, r_thigh_deg=-15.0, r_shin_deg=10.0,
-                    r_hx=80.0, r_hy=-78.0, l_hx=-44.0, l_hy=-84.0,
-                    bow_deg=-5.0, bow_span=15.0, draw_pull=0.0,
-                    right_arm_in_front=False, l_elbow_cw=False, arrow_mode="release_flash", foot_y=99.0,
-                )),
-                (29, dict(
-                    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.5, head_rel_deg=-1.8,
-                    l_thigh_deg=4.0, r_thigh_deg=-4.0,
-                    r_hx=64.0, r_hy=-18.0, l_hx=-32.0, l_hy=-10.0,
-                    bow_deg=-20.0, bow_span=14.5, draw_pull=0.05, arrow_mode="nocked", foot_y=99.0,
-                )),
-            ]
-            cfg = eval_archer_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.5)
-            if 3 <= f <= 6:
-                u_s = (f - 3) / 3.0
-                cfg["slash_arc"] = dict(
-                    dx=14.0, dy=-6.0, r=19.5,
-                    a0=-56.0 + u_s * 18.0, a1=38.0 + u_s * 16.0,
-                    gold=False, intensity=0.95 - 0.25 * abs(u_s - 0.45),
-                )
+            # Row 2: 4 DISTINCT GROUNDED (`foot_y = 99.0`, `wings_mode = "off"`) AUTO_ATTACK VARIANTS
+            if f <= 7:
+                # V0 (F00..F07): Verdant Snap-Draw Shot — classic cheek-anchored upright elven recurve draw -> crisp release recoil
+                kfs = [
+                    (0, dict(
+                        pelvis_dx=1.0, pelvis_dy=10.0, torso_deg=5.0, head_rel_deg=-2.5,
+                        l_thigh_deg=10.0, l_shin_deg=6.0, r_thigh_deg=-10.0, r_shin_deg=6.0,
+                        r_hx=72.0, r_hy=-64.0, l_hx=34.0, l_hy=-64.0,
+                        bow_deg=-3.0, bow_span=14.4, draw_pull=0.38,
+                        right_arm_in_front=False, right_leg_behind=False, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="nocked", foot_y=99.0,
+                    )),
+                    (3, dict(
+                        pelvis_dx=-5.0, pelvis_dy=15.0, torso_deg=2.0, head_rel_deg=-1.0,
+                        l_thigh_deg=15.0, l_shin_deg=10.0, r_thigh_deg=-15.0, r_shin_deg=10.0,
+                        l_coat_rel_deg=6.0, r_coat_rel_deg=-4.0,
+                        r_hx=80.0, r_hy=-74.0, l_hx=-18.0, l_hy=-76.0,
+                        bow_deg=-1.5, bow_span=14.6, draw_pull=1.0,
+                        right_arm_in_front=False, right_leg_behind=False, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="charged", foot_y=99.0,
+                    )),
+                    (5, dict(
+                        pelvis_dx=-9.0, pelvis_dy=13.0, torso_deg=-2.0, head_rel_deg=1.5,
+                        l_thigh_deg=14.0, l_shin_deg=9.0, r_thigh_deg=-14.0, r_shin_deg=9.0,
+                        r_hx=78.0, r_hy=-78.0, l_hx=-42.0, l_hy=-84.0,
+                        bow_deg=-5.0, bow_span=14.6, draw_pull=0.0,
+                        right_arm_in_front=False, right_leg_behind=False, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="release_flash", foot_y=99.0,
+                    )),
+                    (7, dict(
+                        pelvis_dx=-2.0, pelvis_dy=5.0, torso_deg=3.0, head_rel_deg=-1.5,
+                        l_thigh_deg=6.0, l_shin_deg=3.0, r_thigh_deg=-6.0, r_shin_deg=3.0,
+                        r_hx=66.0, r_hy=-34.0, l_hx=-24.0, l_hy=-28.0,
+                        bow_deg=-14.0, bow_span=14.4, draw_pull=0.08,
+                        right_arm_in_front=False, right_leg_behind=False, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="nocked", foot_y=99.0,
+                    )),
+                ]
+                cfg = eval_archer_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.4)
+
+            elif f <= 14:
+                # V1 (F08..F14): Sylvan Canted Split-Volley — low coiled kneeling/canted-bow stance loosing a fanned multi-arrow volley
+                kfs = [
+                    (8, dict(
+                        pelvis_dx=2.0, pelvis_dy=30.0, torso_deg=12.0, head_rel_deg=-6.0,
+                        l_thigh_deg=20.0, l_shin_deg=22.0, r_thigh_deg=-20.0, r_shin_deg=20.0,
+                        l_coat_rel_deg=7.0, r_coat_rel_deg=-5.0,
+                        r_hx=72.0, r_hy=-50.0, l_hx=14.0, l_hy=-56.0,
+                        bow_deg=10.0, bow_span=13.8, draw_pull=0.55,
+                        right_arm_in_front=False, right_leg_behind=False, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="fan3", foot_y=99.0,
+                    )),
+                    (10, dict(
+                        pelvis_dx=5.0, pelvis_dy=44.0, torso_deg=16.0, head_rel_deg=-8.5,
+                        l_thigh_deg=26.0, l_shin_deg=28.0, r_thigh_deg=-26.0, r_shin_deg=26.0,
+                        l_coat_rel_deg=10.0, r_coat_rel_deg=-8.0,
+                        r_hx=76.0, r_hy=-52.0, l_hx=-16.0, l_hy=-62.0,
+                        bow_deg=12.0, bow_span=13.8, draw_pull=0.98,
+                        right_arm_in_front=False, right_leg_behind=False, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="fan3", foot_y=99.0,
+                    )),
+                    (12, dict(
+                        pelvis_dx=1.0, pelvis_dy=42.0, torso_deg=13.0, head_rel_deg=-6.5,
+                        l_thigh_deg=24.0, l_shin_deg=26.0, r_thigh_deg=-24.0, r_shin_deg=24.0,
+                        r_hx=74.0, r_hy=-56.0, l_hx=-38.0, l_hy=-68.0,
+                        bow_deg=8.0, bow_span=13.8, draw_pull=0.0,
+                        right_arm_in_front=False, right_leg_behind=False, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="release_flash", foot_y=99.0,
+                    )),
+                    (14, dict(
+                        pelvis_dx=0.0, pelvis_dy=16.0, torso_deg=6.0, head_rel_deg=-3.0,
+                        l_thigh_deg=12.0, l_shin_deg=10.0, r_thigh_deg=-12.0, r_shin_deg=10.0,
+                        r_hx=66.0, r_hy=-30.0, l_hx=-24.0, l_hy=-24.0,
+                        bow_deg=-8.0, bow_span=14.2, draw_pull=0.10,
+                        right_arm_in_front=False, right_leg_behind=False, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="nocked", foot_y=99.0,
+                    )),
+                ]
+                cfg = eval_archer_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.5)
+
+            elif f <= 22:
+                # V2 (F15..F22): Starfall Arcing Sky-Shot — stance swap (`right_leg_behind=True`), leaned-back `-46 deg` skyward bow elevation
+                kfs = [
+                    (15, dict(
+                        pelvis_dx=-2.0, pelvis_dy=12.0, torso_deg=-3.0, head_rel_deg=-5.0,
+                        l_thigh_deg=-12.0, l_shin_deg=10.0, r_thigh_deg=12.0, r_shin_deg=8.0,
+                        r_hx=62.0, r_hy=-76.0, l_hx=10.0, l_hy=-48.0,
+                        bow_deg=-34.0, bow_span=13.2, draw_pull=0.52,
+                        right_arm_in_front=False, right_leg_behind=True, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="nocked", foot_y=99.0,
+                    )),
+                    (17, dict(
+                        pelvis_dx=-6.0, pelvis_dy=16.0, torso_deg=-8.0, head_rel_deg=-9.0,
+                        l_thigh_deg=-18.0, l_shin_deg=14.0, r_thigh_deg=18.0, r_shin_deg=12.0,
+                        l_coat_rel_deg=-8.0, r_coat_rel_deg=8.0,
+                        r_hx=64.0, r_hy=-92.0, l_hx=-14.0, l_hy=-48.0,
+                        bow_deg=-46.0, bow_span=13.0, draw_pull=1.0,
+                        right_arm_in_front=False, right_leg_behind=True, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="fan3", foot_y=99.0,
+                    )),
+                    (19, dict(
+                        pelvis_dx=-9.0, pelvis_dy=15.0, torso_deg=-10.0, head_rel_deg=-10.0,
+                        l_thigh_deg=-17.0, l_shin_deg=14.0, r_thigh_deg=17.0, r_shin_deg=12.0,
+                        r_hx=62.0, r_hy=-94.0, l_hx=-36.0, l_hy=-42.0,
+                        bow_deg=-46.0, bow_span=13.0, draw_pull=0.0,
+                        right_arm_in_front=False, right_leg_behind=True, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="release_flash", foot_y=99.0,
+                    )),
+                    (22, dict(
+                        pelvis_dx=-2.0, pelvis_dy=6.0, torso_deg=1.5, head_rel_deg=-2.0,
+                        l_thigh_deg=-6.0, l_shin_deg=5.0, r_thigh_deg=6.0, r_shin_deg=4.0,
+                        r_hx=64.0, r_hy=-34.0, l_hx=-24.0, l_hy=-24.0,
+                        bow_deg=-18.0, bow_span=14.0, draw_pull=0.08,
+                        right_arm_in_front=False, right_leg_behind=True, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="nocked", foot_y=99.0,
+                    )),
+                ]
+                cfg = eval_archer_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.6)
+
+            else:
+                # V3 (F23..F29): Yggdrasil Dragon-Piercer Draw — wide power-split stance, deep full-body spiral overdraw -> blazing release
+                kfs = [
+                    (23, dict(
+                        pelvis_dx=-3.0, pelvis_dy=22.0, torso_deg=7.0, head_rel_deg=-4.0,
+                        l_thigh_deg=20.0, l_shin_deg=14.0, r_thigh_deg=-20.0, r_shin_deg=14.0,
+                        r_hx=76.0, r_hy=-68.0, l_hx=10.0, l_hy=-68.0,
+                        bow_deg=-1.0, bow_span=14.4, draw_pull=0.62, weapon_glow=0.95,
+                        right_arm_in_front=False, right_leg_behind=False, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="charged", foot_y=99.0,
+                    )),
+                    (25, dict(
+                        pelvis_dx=-8.0, pelvis_dy=28.0, torso_deg=5.0, head_rel_deg=-3.0,
+                        l_thigh_deg=24.0, l_shin_deg=18.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
+                        l_coat_rel_deg=9.0, r_coat_rel_deg=-7.0,
+                        r_hx=81.0, r_hy=-72.0, l_hx=-24.0, l_hy=-74.0,
+                        bow_deg=0.0, bow_span=14.6, draw_pull=1.0, weapon_glow=1.0,
+                        right_arm_in_front=False, right_leg_behind=False, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="charged", foot_y=99.0,
+                    )),
+                    (27, dict(
+                        pelvis_dx=-12.0, pelvis_dy=25.0, torso_deg=-3.5, head_rel_deg=2.0,
+                        l_thigh_deg=22.0, l_shin_deg=16.0, r_thigh_deg=-22.0, r_shin_deg=16.0,
+                        r_hx=78.0, r_hy=-78.0, l_hx=-46.0, l_hy=-84.0,
+                        bow_deg=-4.0, bow_span=14.6, draw_pull=0.0, weapon_glow=1.0,
+                        right_arm_in_front=False, right_leg_behind=False, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="release_flash", foot_y=99.0,
+                    )),
+                    (29, dict(
+                        pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.5, head_rel_deg=-1.8,
+                        l_thigh_deg=4.0, l_shin_deg=-2.0, r_thigh_deg=-4.0, r_shin_deg=2.0,
+                        r_hx=64.0, r_hy=-18.0, l_hx=-32.0, l_hy=-10.0,
+                        bow_deg=-20.0, bow_span=14.4, draw_pull=0.05,
+                        right_arm_in_front=False, right_leg_behind=False, l_elbow_cw=False,
+                        wings_mode="off", arrow_mode="nocked", foot_y=99.0,
+                    )),
+                ]
+                cfg = eval_archer_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.8)
+                if f in (26, 27):
+                    cfg["slash_arc"] = dict(
+                        dx=15.0, dy=-9.0, r=18.5,
+                        a0=-42.0, a1=42.0,
+                        gold=True, intensity=0.95 if f == 26 else 0.78,
+                    )
+
+            cfg["wings_mode"] = "off"
+            cfg["foot_y"] = 99.0
             cfgs.append(cfg)
 
         elif row_idx == 3:
@@ -1708,5 +1820,38 @@ def main():
     verify_output_sheet(OUT_SHEET_PATH)
 
 
+def build_row2_auto_only():
+    parts = load_and_segment_512()
+    cfgs = build_row_configs(2)
+    frames_104 = []
+    min_x, max_x, min_y, max_y = 104, -1, 104, -1
+    for c in range(COLS):
+        assert cfgs[c].get("wings_mode") == "off", f"archer Row 2 frame {c} must have wings_mode='off'"
+        arr104 = render_frame(parts, cfgs[c])
+        arr104[:4, :, :] = 0
+        arr104[100:, :, :] = 0
+        arr104[:, :4, :] = 0
+        arr104[:, 100:, :] = 0
+        holes = count_interior_pinholes_104(arr104, max_hole_px=20)
+        assert holes == 0, f"archer Row 2 frame {c} has {holes} interior pinholes"
+        ys, xs = np.where(arr104[:, :, 3] > 0)
+        assert len(ys) > 0, f"Empty archer Row 2 frame {c}"
+        assert int(ys.max()) == 99, f"archer Row 2 frame {c} NOT grounded at y=99 (got ys.max()={ys.max()})"
+        min_x = min(min_x, int(xs.min()))
+        max_x = max(max_x, int(xs.max()))
+        min_y = min(min_y, int(ys.min()))
+        max_y = max(max_y, int(ys.max()))
+        assert 4 <= int(xs.min()) and int(xs.max()) <= 99 and 4 <= int(ys.min()) and int(ys.max()) <= 99, (
+            f"archer Row 2 frame {c} out of 4..99 bounds: x={xs.min()}..{xs.max()}, y={ys.min()}..{ys.max()}"
+        )
+        frames_104.append(arr104)
+    print(f"[archer Row 2 bounds] x={min_x}..{max_x}, y={min_y}..{max_y} (wings=off, 0 holes)")
+    splice_row2_auto_surgically("archer", OUT_SHEET_PATH, frames_104, (C_STAR_MID, C_GOLD_SPEC))
+
+
 if __name__ == "__main__":
-    main()
+    if "--auto-only" in sys.argv:
+        build_row2_auto_only()
+    else:
+        main()
+

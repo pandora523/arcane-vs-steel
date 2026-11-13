@@ -26,22 +26,24 @@ Key Features:
 """
 
 import os
+import sys
 import math
 from collections import deque
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hd2d_rig_core import (
     CELL, LOGICAL, COLS, ROWS, P, BASE_NUMERIC_KEYS,
     poly_mask, keep_largest_component, assign_remaining_geodesic,
     extract_parts_512, rot_pt, render_rig_104, build_and_save_30fps_sheet,
-    compute_bipedal_walk_pose,
+    compute_bipedal_walk_pose, splice_row2_auto_surgically,
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "chronomancer_v3_base.jpg")
 OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "chronomancer_sheet.png")
-ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
+ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/b9d8130e-8764-4ace-8d4e-40f97049d6f1/scratch"
 
 # Curated 20-Color Sovereign Horologist & Twin Clock-Blade Master Palette
 MASTER_PALETTE = np.array([
@@ -1306,65 +1308,191 @@ def build_row_configs(row_idx):
             cfgs.append(apply_dual_chrono_ik(cfg))
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK — Kinetic Twin Clock-Hand Slash & Scissor Cleave (`foot_y = 99.0` grounded!)
-            kfs = [
-                (0, dict(
-                    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5,
-                    l_thigh_deg=4.0, r_thigh_deg=-4.0,
-                    r_hx=60.0, r_hy=-10.0, l_hx=-44.0, l_hy=6.0,
-                    minute_deg=-46.0, minute_len=30.0, hour_deg=138.0, left_mode="hour_blade",
-                    halo_mode="normal", wheel_rot=0.0, foot_y=99.0,
-                )),
-                (6, dict(
-                    # High back-drawn horological coil winding both Clock-Blades backward
-                    pelvis_dx=-10.0, pelvis_dy=18.0, torso_deg=-9.0, head_rel_deg=7.0,
-                    l_thigh_deg=16.0, l_shin_deg=12.0, r_thigh_deg=-14.0, r_shin_deg=10.0,
-                    l_coat_rel_deg=8.0, r_coat_rel_deg=6.0,
-                    r_hx=8.0, r_hy=-82.0, l_hx=-58.0, l_hy=-38.0,
-                    minute_deg=-118.0, minute_len=29.5, hour_deg=-138.0,
-                    right_arm_in_front=True, halo_mode="normal", wheel_rot=-1.1, foot_y=99.0,
-                )),
-                (11, dict(
-                    # Explosive forward martial lunge sweeping the Minute Glaive across +X
-                    pelvis_dx=11.0, pelvis_dy=30.0, torso_deg=15.0, head_rel_deg=-8.0,
-                    l_thigh_deg=24.0, l_shin_deg=14.0, r_thigh_deg=-24.0, r_shin_deg=16.0,
-                    l_coat_rel_deg=-14.0, r_coat_rel_deg=-8.0,
-                    r_hx=68.0, r_hy=-22.0, l_hx=42.0, l_hy=-8.0,
-                    minute_deg=-8.0, minute_len=29.5, hour_deg=26.0,
-                    right_arm_in_front=True, x_intersect_spark=True,
-                    halo_mode="swept", wheel_rot=2.2, foot_y=99.0,
-                )),
-                (16, dict(
-                    # Full scissor cleave follow-through
-                    pelvis_dx=12.0, pelvis_dy=32.0, torso_deg=16.0, head_rel_deg=-9.0,
-                    l_thigh_deg=25.0, l_shin_deg=15.0, r_thigh_deg=-25.0, r_shin_deg=18.0,
-                    l_coat_rel_deg=-16.0, r_coat_rel_deg=-10.0,
-                    r_hx=66.0, r_hy=4.0, l_hx=48.0, l_hy=-26.0,
-                    minute_deg=16.0, minute_len=29.5, hour_deg=-24.0,
-                    right_arm_in_front=True, halo_mode="swept", wheel_rot=4.0, foot_y=99.0,
-                )),
-                (22, dict(
-                    pelvis_dx=5.0, pelvis_dy=14.0, torso_deg=8.0, head_rel_deg=-4.0,
-                    l_thigh_deg=12.0, l_shin_deg=6.0, r_thigh_deg=-12.0, r_shin_deg=8.0,
-                    r_hx=62.0, r_hy=-14.0, l_hx=-24.0, l_hy=2.0,
-                    minute_deg=-28.0, minute_len=30.0, hour_deg=96.0,
-                    right_arm_in_front=False, halo_mode="normal", wheel_rot=5.4, foot_y=99.0,
-                )),
-                (29, dict(
-                    pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5,
-                    l_thigh_deg=4.0, r_thigh_deg=-4.0,
-                    r_hx=60.0, r_hy=-10.0, l_hx=-44.0, l_hy=6.0,
-                    minute_deg=-46.0, minute_len=30.0, hour_deg=138.0,
-                    halo_mode="normal", wheel_rot=2.0 * math.pi, foot_y=99.0,
-                )),
-            ]
+            # Row 2: AUTO_ATTACK — 4 DISTINCT HOROLOGICAL BLADE COMBO VARIANTS (`[[0..7], [8..14], [15..22], [23..29]]`)!
+            #   Slice 0 (F00..F07, 8f -> 60..67): Minute-Glaive Rift Sweep
+            #   Slice 1 (F08..F14, 7f -> 68..74): Paradox Scissor Cross-Slash
+            #   Slice 2 (F15..F22, 8f -> 75..82): Escapement Needle Thrust
+            #   Slice 3 (F23..F29, 7f -> 83..89): Twelfth-Chime Pendulum Slam
+            if f <= 7:
+                kfs = [
+                    (0, dict(
+                        pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5,
+                        right_leg_behind=False, l_thigh_deg=4.0, r_thigh_deg=-4.0,
+                        r_hx=60.0, r_hy=-10.0, l_hx=-44.0, l_hy=6.0,
+                        minute_deg=-46.0, minute_len=29.5, left_mode="hover",
+                        halo_mode="normal", wheel_rot=0.0, foot_y=99.0,
+                    )),
+                    (2, dict(
+                        pelvis_dx=-10.0, pelvis_dy=16.0, torso_deg=-9.0, head_rel_deg=6.0,
+                        right_leg_behind=False, l_thigh_deg=16.0, l_shin_deg=12.0, r_thigh_deg=-14.0, r_shin_deg=10.0,
+                        l_coat_rel_deg=8.0, r_coat_rel_deg=6.0,
+                        r_hx=10.0, r_hy=-76.0, l_hx=-50.0, l_hy=4.0,
+                        minute_deg=-118.0, minute_len=28.5, left_mode="hover",
+                        right_arm_in_front=True, halo_mode="normal", wheel_rot=-0.9, foot_y=99.0,
+                    )),
+                    (4, dict(
+                        pelvis_dx=12.0, pelvis_dy=28.0, torso_deg=15.0, head_rel_deg=-8.0,
+                        right_leg_behind=False, l_thigh_deg=24.0, l_shin_deg=14.0, r_thigh_deg=-24.0, r_shin_deg=16.0,
+                        l_coat_rel_deg=-14.0, r_coat_rel_deg=-8.0,
+                        r_hx=68.0, r_hy=-16.0, l_hx=-42.0, l_hy=8.0,
+                        minute_deg=-4.0, minute_len=29.0, left_mode="hover",
+                        right_arm_in_front=True, halo_mode="swept", wheel_rot=1.8, foot_y=99.0,
+                    )),
+                    (5, dict(
+                        pelvis_dx=10.0, pelvis_dy=24.0, torso_deg=13.0, head_rel_deg=-7.0,
+                        right_leg_behind=False, l_thigh_deg=20.0, l_shin_deg=12.0, r_thigh_deg=-20.0, r_shin_deg=14.0,
+                        r_hx=64.0, r_hy=4.0, l_hx=-38.0, l_hy=6.0,
+                        minute_deg=18.0, minute_len=29.0, left_mode="hover",
+                        right_arm_in_front=True, halo_mode="swept", wheel_rot=2.6, foot_y=99.0,
+                    )),
+                    (7, dict(
+                        pelvis_dx=2.0, pelvis_dy=6.0, torso_deg=5.0, head_rel_deg=-2.0,
+                        right_leg_behind=False, l_thigh_deg=6.0, r_thigh_deg=-6.0,
+                        r_hx=58.0, r_hy=-10.0, l_hx=-42.0, l_hy=6.0,
+                        minute_deg=-34.0, minute_len=29.5, left_mode="hover",
+                        right_arm_in_front=False, halo_mode="normal", wheel_rot=3.2, foot_y=99.0,
+                    )),
+                ]
+            elif f <= 14:
+                kfs = [
+                    (8, dict(
+                        pelvis_dx=-8.0, pelvis_dy=16.0, torso_deg=-6.0, head_rel_deg=4.0,
+                        right_leg_behind=True, l_thigh_deg=-16.0, l_shin_deg=14.0, r_thigh_deg=16.0, r_shin_deg=10.0,
+                        r_hx=14.0, r_hy=-68.0, l_hx=-48.0, l_hy=-36.0,
+                        minute_deg=-108.0, minute_len=28.0, hour_deg=-138.0, hour_len=15.0,
+                        left_mode="hour_blade", right_arm_in_front=True, halo_mode="normal", wheel_rot=3.6, foot_y=99.0,
+                    )),
+                    (10, dict(
+                        pelvis_dx=12.0, pelvis_dy=30.0, torso_deg=16.0, head_rel_deg=-8.0,
+                        right_leg_behind=True, l_thigh_deg=-24.0, l_shin_deg=18.0, r_thigh_deg=24.0, r_shin_deg=14.0,
+                        l_coat_rel_deg=-14.0, r_coat_rel_deg=-10.0,
+                        r_hx=66.0, r_hy=-16.0, l_hx=50.0, l_hy=-14.0,
+                        minute_deg=22.0, minute_len=28.5, hour_deg=-26.0, hour_len=15.5,
+                        left_mode="hour_blade", right_arm_in_front=True, x_intersect_spark=True,
+                        halo_mode="flare", wheel_rot=4.6, foot_y=99.0,
+                    )),
+                    (12, dict(
+                        pelvis_dx=14.0, pelvis_dy=32.0, torso_deg=18.0, head_rel_deg=-9.0,
+                        right_leg_behind=True, l_thigh_deg=-26.0, l_shin_deg=20.0, r_thigh_deg=25.0, r_shin_deg=15.0,
+                        l_coat_rel_deg=-16.0, r_coat_rel_deg=-10.0,
+                        r_hx=62.0, r_hy=8.0, l_hx=54.0, l_hy=-32.0,
+                        minute_deg=34.0, minute_len=28.0, hour_deg=-38.0, hour_len=15.5,
+                        left_mode="hour_blade", right_arm_in_front=True, x_intersect_spark=True,
+                        halo_mode="swept", wheel_rot=5.4, foot_y=99.0,
+                    )),
+                    (14, dict(
+                        pelvis_dx=4.0, pelvis_dy=12.0, torso_deg=6.0, head_rel_deg=-3.0,
+                        right_leg_behind=True, l_thigh_deg=-10.0, l_shin_deg=8.0, r_thigh_deg=10.0, r_shin_deg=6.0,
+                        r_hx=56.0, r_hy=-12.0, l_hx=-28.0, l_hy=2.0,
+                        minute_deg=-30.0, minute_len=29.0, hour_deg=118.0,
+                        left_mode="hour_blade", right_arm_in_front=False, halo_mode="normal", wheel_rot=6.0, foot_y=99.0,
+                    )),
+                ]
+            elif f <= 22:
+                kfs = [
+                    (15, dict(
+                        pelvis_dx=-6.0, pelvis_dy=12.0, torso_deg=6.0, head_rel_deg=-3.0,
+                        right_leg_behind=False, l_thigh_deg=14.0, l_shin_deg=12.0, r_thigh_deg=-14.0, r_shin_deg=14.0,
+                        r_hx=18.0, r_hy=-14.0, l_hx=-32.0, l_hy=-38.0,
+                        minute_deg=-8.0, minute_len=27.5, left_mode="stamp",
+                        halo_mode="normal", wheel_rot=0.4, foot_y=99.0,
+                    )),
+                    (16, dict(
+                        pelvis_dx=-12.0, pelvis_dy=18.0, torso_deg=10.0, head_rel_deg=-5.0,
+                        right_leg_behind=False, l_thigh_deg=20.0, l_shin_deg=18.0, r_thigh_deg=-20.0, r_shin_deg=22.0,
+                        r_hx=4.0, r_hy=-16.0, l_hx=-42.0, l_hy=-58.0, l_elbow_cw=False,
+                        minute_deg=-5.0, minute_len=27.5, left_mode="stamp",
+                        halo_mode="swept", wheel_rot=1.0, foot_y=99.0,
+                    )),
+                    (18, dict(
+                        pelvis_dx=18.0, pelvis_dy=34.0, torso_deg=22.0, head_rel_deg=-12.0,
+                        # Deep horological fencer lunge (`torso_deg=+22`), Minute-Glaive needle-thrust (`minute_deg=-4`) + raised Pocket-Astrolabe!
+                        right_leg_behind=False, l_thigh_deg=28.0, l_shin_deg=14.0, r_thigh_deg=-28.0, r_shin_deg=22.0,
+                        l_coat_rel_deg=-18.0, r_coat_rel_deg=-12.0,
+                        r_hx=74.0, r_hy=-16.0, l_hx=-36.0, l_hy=-72.0, l_elbow_cw=False,
+                        minute_deg=-4.0, minute_len=27.0, left_mode="stamp",
+                        right_arm_in_front=True, halo_mode="swept", wheel_rot=2.2, foot_y=99.0,
+                    )),
+                    (20, dict(
+                        pelvis_dx=15.0, pelvis_dy=30.0, torso_deg=20.0, head_rel_deg=-10.0,
+                        right_leg_behind=False, l_thigh_deg=25.0, l_shin_deg=14.0, r_thigh_deg=-25.0, r_shin_deg=20.0,
+                        l_coat_rel_deg=-15.0, r_coat_rel_deg=-10.0,
+                        r_hx=70.0, r_hy=-14.0, l_hx=-32.0, l_hy=-68.0, l_elbow_cw=False,
+                        minute_deg=-4.0, minute_len=27.0, left_mode="snap_open",
+                        right_arm_in_front=True, halo_mode="flare", wheel_rot=3.1, foot_y=99.0,
+                    )),
+                    (22, dict(
+                        pelvis_dx=4.0, pelvis_dy=10.0, torso_deg=7.0, head_rel_deg=-3.0,
+                        right_leg_behind=False, l_thigh_deg=10.0, l_shin_deg=6.0, r_thigh_deg=-10.0, r_shin_deg=8.0,
+                        r_hx=58.0, r_hy=-12.0, l_hx=-36.0, l_hy=-8.0,
+                        minute_deg=-28.0, minute_len=28.5, left_mode="hover",
+                        right_arm_in_front=False, halo_mode="normal", wheel_rot=3.8, foot_y=99.0,
+                    )),
+                ]
+            else:
+                kfs = [
+                    (23, dict(
+                        pelvis_dx=-6.0, pelvis_dy=10.0, torso_deg=-4.0, head_rel_deg=-3.0,
+                        right_leg_behind=False, l_thigh_deg=12.0, l_shin_deg=14.0, r_thigh_deg=-12.0, r_shin_deg=12.0,
+                        l_coat_rel_deg=-6.0, r_coat_rel_deg=6.0,
+                        r_hx=32.0, r_hy=-134.0, l_hx=-16.0, l_hy=-130.0,
+                        minute_deg=-85.0, minute_len=23.5, hour_deg=-95.0, hour_len=14.5,
+                        left_mode="hour_blade", right_arm_in_front=False, x_intersect_spark=True,
+                        halo_mode="flare", wheel_rot=4.4, foot_y=99.0,
+                    )),
+                    (24, dict(
+                        pelvis_dx=-8.0, pelvis_dy=8.0, torso_deg=-6.0, head_rel_deg=-4.0,
+                        right_leg_behind=False, l_thigh_deg=14.0, l_shin_deg=16.0, r_thigh_deg=-14.0, r_shin_deg=14.0,
+                        l_coat_rel_deg=-8.0, r_coat_rel_deg=8.0,
+                        r_hx=30.0, r_hy=-140.0, l_hx=-12.0, l_hy=-136.0,
+                        minute_deg=-87.0, minute_len=23.5, hour_deg=-93.0, hour_len=14.5,
+                        left_mode="hour_blade", right_arm_in_front=False, x_intersect_spark=True,
+                        halo_mode="flare", wheel_rot=5.0, foot_y=99.0,
+                    )),
+                    (26, dict(
+                        pelvis_dx=15.0, pelvis_dy=34.0, torso_deg=18.0, head_rel_deg=-9.0,
+                        right_leg_behind=False, l_thigh_deg=26.0, l_shin_deg=16.0, r_thigh_deg=-26.0, r_shin_deg=20.0,
+                        l_coat_rel_deg=-16.0, r_coat_rel_deg=-10.0,
+                        r_hx=66.0, r_hy=6.0, l_hx=52.0, l_hy=-4.0,
+                        minute_deg=24.0, minute_len=28.5, hour_deg=14.0, hour_len=15.5,
+                        left_mode="hour_blade", right_arm_in_front=True, x_intersect_spark=True,
+                        halo_mode="flare", wheel_rot=5.7, foot_y=99.0,
+                    )),
+                    (27, dict(
+                        pelvis_dx=12.0, pelvis_dy=28.0, torso_deg=15.0, head_rel_deg=-7.0,
+                        right_leg_behind=False, l_thigh_deg=22.0, l_shin_deg=14.0, r_thigh_deg=-22.0, r_shin_deg=16.0,
+                        r_hx=62.0, r_hy=2.0, l_hx=46.0, l_hy=-8.0,
+                        minute_deg=16.0, minute_len=28.5, hour_deg=8.0, hour_len=15.0,
+                        left_mode="hour_blade", right_arm_in_front=True,
+                        halo_mode="swept", wheel_rot=6.0, foot_y=99.0,
+                    )),
+                    (29, dict(
+                        pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5,
+                        right_leg_behind=False, l_thigh_deg=4.0, r_thigh_deg=-4.0,
+                        r_hx=60.0, r_hy=-10.0, l_hx=-44.0, l_hy=6.0,
+                        minute_deg=-46.0, minute_len=29.5, hour_deg=138.0,
+                        left_mode="hover", halo_mode="normal", wheel_rot=2.0 * math.pi, foot_y=99.0,
+                    )),
+                ]
             cfg = eval_chrono_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.5)
-            if 8 <= f <= 15:
-                prog = (f - 8) / 7.0
+            if 3 <= f <= 5:
+                prog = (f - 3) / 2.0
                 cfg["slash_arc"] = dict(
                     dx=10.0, dy=12.0, r=25.5,
-                    a0=-68.0 + prog * 28.0, a1=18.0 + prog * 22.0,
-                    gold=False, intensity=1.0 - 0.35 * abs(prog - 0.45),
+                    a0=-66.0 + prog * 24.0, a1=22.0 + prog * 20.0,
+                    gold=False, intensity=1.0 - 0.25 * abs(prog - 0.45),
+                )
+            elif 10 <= f <= 12:
+                prog = (f - 10) / 2.0
+                inten = 1.0 - 0.25 * abs(prog - 0.5)
+                cfg["slash_arc"] = dict(dx=11.0, dy=10.0, r=24.5, a0=-54.0, a1=38.0, gold=False, intensity=inten)
+                cfg["slash_arc_2"] = dict(dx=9.0, dy=14.0, r=20.5, a0=42.0, a1=-48.0, gold=True, intensity=inten)
+            elif 26 <= f <= 27:
+                prog = float(f - 26)
+                cfg["slash_arc"] = dict(
+                    dx=10.0, dy=12.0, r=25.5,
+                    a0=-84.0 + prog * 24.0, a1=46.0 + prog * 12.0,
+                    gold=True, intensity=1.0 - 0.25 * prog,
                 )
             cfgs.append(cfg)
 
@@ -1839,5 +1967,21 @@ def main():
     verify_output_sheet(OUT_SHEET_PATH)
 
 
+def build_row2_auto_only():
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+    parts = load_and_segment_512()
+    cfgs = build_row_configs(2)
+    frames_104 = [render_frame(parts, cfg) for cfg in cfgs]
+    splice_row2_auto_surgically(
+        hero_key="chronomancer",
+        sheet_path=OUT_SHEET_PATH,
+        frames_104=frames_104,
+        shimmer_cols=(C_CYAN_LIT, C_GOLD_SPEC),
+    )
+
+
 if __name__ == "__main__":
-    main()
+    if "--auto-only" in sys.argv:
+        build_row2_auto_only()
+    else:
+        main()

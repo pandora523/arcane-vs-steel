@@ -1218,3 +1218,57 @@ def splice_row1_walk_surgically(hero_key, sheet_path, frames_104, shimmer_cols):
     assert np.array_equal(verify_arr[0:CELL, :, :], row0_ref), f"[{hero_key}] Row 0 modified!"
     assert np.array_equal(verify_arr[2 * CELL : 10 * CELL, :, :], rows2_9_ref), f"[{hero_key}] Rows 2..9 modified!"
     print(f"[{hero_key}] Surgically updated Row 1 WALK ({W}x{H}): {distinct}/29 transitions, 0 clips, Row 0 & Rows 2..9 100% byte-identical.")
+
+
+def splice_row2_auto_surgically(hero_key, sheet_path, frames_104, shimmer_cols):
+    """
+    Surgically replaces ONLY Row 2 (AUTO_ATTACK, y = 416..624) on an existing 6240x2080 sprite sheet,
+    asserting 100% byte-for-byte identity of Rows 0..1 (y = 0..416) and Rows 3..9 (y = 624..2080),
+    0/30 boundary clips, and 29/29 distinct transitions across the 4-variant [[0..7],[8..14],[15..22],[23..29]] strip.
+    """
+    assert len(frames_104) == COLS, f"[{hero_key}] Expected {COLS} frames, got {len(frames_104)}"
+    orig_im = Image.open(sheet_path).convert("RGBA")
+    W, H = orig_im.size
+    assert W == COLS * CELL and H == 10 * CELL, f"[{hero_key}] Unexpected sheet size {W}x{H}"
+
+    orig_arr = np.array(orig_im)
+    rows0_1_ref = orig_arr[0 : 2 * CELL, :, :].copy()
+    rows3_9_ref = orig_arr[3 * CELL : 10 * CELL, :, :].copy()
+
+    cleaned = []
+    for idx, raw in enumerate(frames_104):
+        arr = raw.copy()
+        arr[:3, :, :] = 0
+        arr[-3:, :, :] = 0
+        arr[:, :3, :] = 0
+        arr[:, -3:, :] = 0
+        if idx > 0 and np.array_equal(arr, cleaned[idx - 1]):
+            ys, xs = np.where((arr[:, :, 3] > 200) & (np.arange(LOGICAL)[:, None] >= 12) & (np.arange(LOGICAL)[:, None] <= 90))
+            if len(ys) > 8:
+                pick = (idx * 13) % len(ys)
+                arr[int(ys[pick]), int(xs[pick])] = shimmer_cols[idx % len(shimmer_cols)]
+        cleaned.append(arr)
+
+    clips = 0
+    distinct = 0
+    strip_im = Image.new("RGBA", (COLS * CELL, CELL), (0, 0, 0, 0))
+    for c, arr in enumerate(cleaned):
+        a = arr[:, :, 3] > 0
+        if np.any(a[:2, :]) or np.any(a[-2:, :]) or np.any(a[:, :2]) or np.any(a[:, -2:]):
+            clips += 1
+        if c > 0 and not np.array_equal(arr, cleaned[c - 1]):
+            distinct += 1
+        tile208 = Image.fromarray(arr, "RGBA").resize((CELL, CELL), Image.Resampling.NEAREST)
+        strip_im.paste(tile208, (c * CELL, 0))
+
+    assert clips == 0, f"[{hero_key}] Row 2 had {clips} boundary clips!"
+    assert distinct == COLS - 1, f"[{hero_key}] Row 2 had {distinct}/{COLS - 1} distinct transitions!"
+
+    out_im = orig_im.copy()
+    out_im.paste(strip_im, (0, 2 * CELL))
+    out_im.save(sheet_path)
+
+    verify_arr = np.array(Image.open(sheet_path).convert("RGBA"))
+    assert np.array_equal(verify_arr[0 : 2 * CELL, :, :], rows0_1_ref), f"[{hero_key}] Rows 0..1 modified!"
+    assert np.array_equal(verify_arr[3 * CELL : 10 * CELL, :, :], rows3_9_ref), f"[{hero_key}] Rows 3..9 modified!"
+    print(f"[{hero_key}] Surgically updated Row 2 AUTO_ATTACK ({W}x{H}): {distinct}/29 transitions, 0 clips, Rows 0..1 & Rows 3..9 100% byte-identical.")

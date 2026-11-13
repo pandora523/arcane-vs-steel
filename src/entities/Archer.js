@@ -1,11 +1,18 @@
-import { Fighter } from './Fighter.js?v=30fps89';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps89';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps89';
+import { Fighter } from './Fighter.js?v=30fps90';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps90';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps90';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps89';
+} from '../engine/shaders/sylvanShaders.js?v=30fps90';
+
+const AUTO_SLICES_4 = [
+  [60, 8],
+  [68, 7],
+  [75, 8],
+  [83, 7]
+];
 
 /**
  * Sylvara (`archer`) — Elven Tempest Bowmaster & Astral Star-Ranger.
@@ -29,6 +36,7 @@ export class Archer extends Fighter {
     this.theme = 'emerald';
     this.deathSfx = 'death_archer';
     this.skillMaxCooldown = 4.05;
+    this.autoDuration = 0.82;
     this.ultName = 'ZEPHYR VAULT: 180° STARLOCK BARRAGE';
     this.ultDuration = 2.04;
     this.skillName = 'VERDANT SNARE & SEEKERS';
@@ -37,6 +45,8 @@ export class Archer extends Fighter {
     this.trueUltDuration = 4.55;
     this.windPhase = 0;
     this.shotCombo = 0;
+    this.comboStep = 0;
+    this._autoVariant = 0;
     this.stepTimer = 0;
     this.dodgeMaxCooldown = 2.88;
     this.dashMaxCooldown = 3.20;
@@ -76,7 +86,7 @@ export class Archer extends Fighter {
     if (typeof Image !== 'undefined') {
       const archerAssets = PixelForge.initAssets()?.archer;
       if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps87')) {
-        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps89';
+        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps90';
       }
     }
 
@@ -134,6 +144,11 @@ export class Archer extends Fighter {
       this._trueUltBeamTimer = 0;
       this._trueUltMoteTimer = 0;
       this.trueUltFrameOverride = null;
+    }
+    if (newState === 'AUTO_ATTACK') {
+      this._autoVariant = (((this.comboStep || 0) % 4) + 4) % 4;
+      this.comboStep = (this._autoVariant + 1) % 4;
+      this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
     }
     this._drewBowVortex = false;
     this._skillLockSpawned = false;
@@ -639,33 +654,37 @@ export class Archer extends Fighter {
     super.update(dt, enemy, game);
   }
 
-  updateAutoAttack(dt, enemy, game) {
+  updateAutoAttack(_dt, enemy, game) {
     const t = this.stateTimer;
-    if (t < 0.48) {
-      this.torsoAngle = -this.facing * 0.12 * (t / 0.48);
-      if (t >= 0.08 && !this._drewBowVortex) {
+    const mode = (((this._autoVariant || 0) % 4) + 4) % 4;
+    const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
+    const u = Math.max(0, Math.min(0.999, t / Math.max(0.01, this.autoDuration)));
+    this.trueUltFrameOverride = sliceStart + Math.min(sliceLen - 1, Math.floor(u * sliceLen));
+
+    if (t < 0.40) {
+      this.torsoAngle = -this.facing * 0.12 * (t / 0.40);
+      if (t >= 0.06 && !this._drewBowVortex) {
         this._drewBowVortex = true;
-        const willBeDragonPiercer = this.shotCombo % 3 === 2;
-        this.fx.spawn('sylvanBowDrawVortex', this.x + this.facing * 54, this.y - 120, {
+        const isStarlight = mode === 2 || mode === 3;
+        const drawOffY = mode === 1 ? -96 : mode === 2 ? -132 : -114;
+        this.fx.spawn('sylvanBowDrawVortex', this.x + this.facing * 54, this.y + drawOffY, {
           follow: this,
           offsetX: 54,
-          offsetY: -120,
-          palette: willBeDragonPiercer ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
-          maxDuration: 0.38,
-          light: 1.05,
-          extra: { radius: willBeDragonPiercer ? 24 : 20 }
+          offsetY: drawOffY,
+          palette: isStarlight ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
+          maxDuration: 0.34,
+          light: mode === 3 ? 1.18 : 1.06,
+          extra: { radius: mode === 3 ? 25 : 20 }
         });
       }
     } else if (t < 0.74) {
-      // Row 2 Frame F19: High-velocity Tempest Piercer arrow release + 3-stage Ranged Combo + Close-Range Star-Blade Vault Shot
       if (!this.didActionFrame) {
         this.didActionFrame = true;
-        const comboStage = this.shotCombo % 3;
         this.shotCombo++;
-        this.vx -= this.facing * 50;
+        this.vx -= this.facing * (mode === 3 ? 64 : 46);
         if (game?.audio) game.audio.play('arrow_shoot', this.x);
 
-        // Close-Range < 165px ("Star-Blade Vault Shot"): slash with twin bladed bow limbs + 95px backward slide + point-blank emerald arrow!
+        // Close-Range < 165px ("Star-Blade Vault Shot"): slash with twin bladed bow limbs + 95px backward slide!
         if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) < 165) {
           const ww = game?.renderer ? game.renderer.worldWidth : 1200;
           enemy.takeDamage(46, this, false, 140, -60);
@@ -681,80 +700,160 @@ export class Archer extends Fighter {
         }
 
         const spawnX = this.x + this.facing * 54;
-        const spawnY = this.y - 120;
-        const targetY = enemy ? enemy.y - 116 : spawnY;
+        const spawnY = mode === 1 ? this.y - 96 : mode === 2 ? this.y - 126 : this.y - 112;
+        const targetY = enemy ? enemy.y - 102 : this.y - 102;
         const dx = enemy ? enemy.x - spawnX : this.facing * 520;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
-        const speed = 705;
         const shotAng = Math.atan2(dy, dx);
-        const isTwinShot = comboStage === 1;
-        const isDragonPiercer = comboStage === 2;
-        const baseDamage = 118;
 
-        // Stage 2: Charged Dragon-Piercer (`isCrit = true`, `1.30x` damage, `spawnVfxAnim(3, ...)`)
-        if (isDragonPiercer) {
+        if (mode === 0) {
+          // V0 (60..67 — Verdant Snap-Draw Shot): classic upright elven recurve arrow
+          if (game?.vfx) {
+            const speed = 715;
+            game.vfx.spawnProjectile({
+              x: spawnX,
+              y: spawnY,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed,
+              radius: 14,
+              color: '#10b981',
+              coreColor: '#fef08a',
+              owner: this,
+              damage: 118,
+              isCrit: false,
+              pierce: false,
+              type: 'arrow'
+            });
+          }
+          this.fx.spawn('sonicBowReleaseWave', spawnX, spawnY, {
+            flip: false,
+            palette: SYLVAN_EMERALD_PALETTE,
+            light: 1.12,
+            extra: { aimAngle: shotAng, radius: 23, twin: false }
+          });
+        } else if (mode === 1) {
+          // V1 (68..74 — Sylvan Canted Split-Volley): low coiled kneeling/canted multi-arrow volley
+          this.spawnVfxAnim(0, spawnX, spawnY, 172, 172, 0.30, {
+            flipX: this.facing < 0,
+            inFront: true
+          });
+          if (game?.vfx) {
+            const speed = 695;
+            game.vfx.spawnProjectile({
+              x: spawnX,
+              y: spawnY - 8,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed - 18,
+              radius: 14,
+              color: '#10b981',
+              coreColor: '#fef08a',
+              owner: this,
+              damage: 94,
+              type: 'arrow'
+            });
+            game.vfx.spawnProjectile({
+              x: spawnX - this.facing * 18,
+              y: spawnY + 8,
+              vx: (dx / dist) * (speed * 0.95),
+              vy: (dy / dist) * (speed * 0.95) + 18,
+              radius: 13,
+              color: '#34d399',
+              coreColor: '#fef08a',
+              owner: this,
+              damage: 76,
+              type: 'arrow'
+            });
+          }
+          this.fx.spawn('sonicBowReleaseWave', spawnX, spawnY, {
+            flip: false,
+            palette: SYLVAN_STARLIGHT_PALETTE,
+            light: 1.24,
+            extra: { aimAngle: shotAng, radius: 27, twin: true }
+          });
+        } else if (mode === 2) {
+          // V2 (75..82 — Starfall Arcing Sky-Shot): elevated skyward bow loosing arcing starfall arrow + guiding shot
+          const strikeX = enemy && !enemy.isDead ? enemy.x : spawnX + this.facing * 280;
+          this.spawnVfxAnim(
+            2,
+            strikeX,
+            (enemy?.groundY || this.groundY) - 84,
+            184,
+            184,
+            0.36,
+            { flipX: false, inFront: false }
+          );
+          if (game?.vfx) {
+            const speed = 705;
+            game.vfx.spawnProjectile({
+              x: spawnX,
+              y: spawnY,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed,
+              radius: 14,
+              color: '#34d399',
+              coreColor: '#ffffff',
+              owner: this,
+              damage: 92,
+              type: 'arrow'
+            });
+            game.vfx.spawnSkyStrike({
+              x: strikeX - this.facing * 42,
+              y: -80,
+              groundY: enemy?.groundY || this.groundY,
+              vx: this.facing * 110,
+              vy: 1420,
+              type: 'starfall_arrow',
+              color: '#34d399',
+              coreColor: '#fef08a',
+              owner: this,
+              target: enemy,
+              damage: 62,
+              delay: 0,
+              maxLinger: 0.42
+            });
+            game.vfx.spawnDamageText(this.x, this.y - 148, 0, false, 'STARFALL SKY-SHOT!', '#6ee7b7');
+          }
+          this.fx.spawn('sonicBowReleaseWave', spawnX, spawnY, {
+            flip: false,
+            palette: SYLVAN_STARLIGHT_PALETTE,
+            light: 1.26,
+            extra: { aimAngle: shotAng, radius: 28, twin: true }
+          });
+        } else {
+          // V3 (83..89 — Yggdrasil Dragon-Piercer Draw): deep power-split overdraw -> blazing crit piercer
           this.spawnVfxAnim(3, this.x + this.facing * 56, this.y - 96, 176, 176, 0.36, {
             flipX: this.facing < 0,
             inFront: true
           });
           if (game?.vfx) {
-            game.vfx.spawnDamageText(this.x, this.y - 148, 0, true, 'DRAGON-PIERCER!', '#fde047');
-          }
-        }
-
-        if (game?.vfx) {
-          const isCrit = isDragonPiercer;
-          const mainDmg = isDragonPiercer
-            ? Math.round(baseDamage * 1.30)
-            : isTwinShot
-              ? 102
-              : baseDamage;
-
-          game.vfx.spawnProjectile({
-            x: spawnX,
-            y: spawnY,
-            vx: (dx / dist) * (isDragonPiercer ? speed * 1.08 : speed),
-            vy: (dy / dist) * (isDragonPiercer ? speed * 1.08 : speed) + (isTwinShot ? -16 : 0),
-            radius: isDragonPiercer ? 16 : 14,
-            color: '#10b981',
-            coreColor: '#fef08a',
-            owner: this,
-            damage: mainDmg,
-            isCrit,
-            pierce: isDragonPiercer,
-            type: 'arrow'
-          });
-
-          // Stage 1: Twin Split-Arc Volley (2 arrows angled slightly high/low)
-          if (isTwinShot) {
+            const speed = 770;
             game.vfx.spawnProjectile({
-              x: spawnX - this.facing * 18,
-              y: spawnY - 12,
-              vx: (dx / dist) * (speed * 0.94),
-              vy: (dy / dist) * (speed * 0.94) + 18,
-              radius: 13,
-              color: '#34d399',
+              x: spawnX,
+              y: spawnY,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed,
+              radius: 16,
+              color: '#10b981',
               coreColor: '#fef08a',
               owner: this,
-              damage: 82,
+              damage: 154,
+              isCrit: true,
+              pierce: true,
               type: 'arrow'
             });
+            game.vfx.spawnDamageText(this.x, this.y - 148, 0, true, 'DRAGON-PIERCER!', '#fde047');
           }
+          this.fx.spawn('sonicBowReleaseWave', spawnX, spawnY, {
+            flip: false,
+            palette: SYLVAN_STARLIGHT_PALETTE,
+            light: 1.32,
+            extra: { aimAngle: shotAng, radius: 30, twin: true }
+          });
         }
-
-        this.fx.spawn('sonicBowReleaseWave', spawnX, spawnY, {
-          flip: false,
-          palette: isDragonPiercer || isTwinShot ? SYLVAN_STARLIGHT_PALETTE : SYLVAN_EMERALD_PALETTE,
-          light: isDragonPiercer ? 1.3 : isTwinShot ? 1.25 : 1.12,
-          extra: {
-            aimAngle: shotAng,
-            radius: isDragonPiercer ? 30 : isTwinShot ? 28 : 23,
-            twin: isTwinShot || isDragonPiercer
-          }
-        });
       }
-    } else if (t >= 0.86) {
+    } else if (t >= this.autoDuration) {
+      this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }
   }

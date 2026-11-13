@@ -28,28 +28,28 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps89';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps89';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps89';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps89';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps89';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps89';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps89';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps89';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps89';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps89';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps89';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps89';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps89';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps89';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps89';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps89';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps89';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps90';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps90';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps90';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps90';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps90';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps90';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps90';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps90';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps90';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps90';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps90';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps90';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps90';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps90';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps90';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps90';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps90';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps89';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps89';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps90';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps90';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -219,24 +219,25 @@ for (const [name, Cls] of CLASSES) {
       );
     }
     if (name === 'Titan' && st === 'AUTO_ATTACK') {
-      // Also verify all 3 normal attack model animations cycle through dedicated 10-frame Row 2 sub-ranges (F00..F09, F10..F19, F20..F29)
+      // Also verify all 4 normal attack model animations cycle through dedicated Row 2 sub-ranges (F00..F07, F08..F14, F15..F22, F23..F29)
       const seenRanges = new Set();
-      for (let v = 0; v < 3; v++) {
+      for (let v = 0; v < 4; v++) {
         hero.comboStep = v;
         hero.setState('AUTO_ATTACK');
         for (let k = 0; k < 24; k++) {
           hero.update(1 / 30, dummy, game);
           const fIdx = hero.trueUltFrameOverride;
-          if (fIdx >= 60 && fIdx <= 69) seenRanges.add(0);
-          else if (fIdx >= 70 && fIdx <= 79) seenRanges.add(1);
-          else if (fIdx >= 80 && fIdx <= 89) seenRanges.add(2);
+          if (fIdx >= 60 && fIdx <= 67) seenRanges.add(0);
+          else if (fIdx >= 68 && fIdx <= 74) seenRanges.add(1);
+          else if (fIdx >= 75 && fIdx <= 82) seenRanges.add(2);
+          else if (fIdx >= 83 && fIdx <= 89) seenRanges.add(3);
           if (hero.state === 'IDLE') break;
         }
       }
-      if (seenRanges.size < 3) {
-        throw new Error(`Expected Titan 3 normal attack model animations to cover all 3 Row 2 10-frame sub-ranges, got ${[...seenRanges]}`);
+      if (seenRanges.size < 4) {
+        throw new Error(`Expected Titan 4 normal attack model animations to cover all 4 Row 2 sub-ranges, got ${[...seenRanges]}`);
       }
-      console.log(`  [OK] Titan 3-Animation World-Maul Auto-Attack verified across all 3 Row 2 sub-ranges (F00..F09, F10..F19, F20..F29)`);
+      console.log(`  [OK] Titan 4-Animation World-Maul Auto-Attack verified across all 4 Row 2 sub-ranges (F00..F07, F08..F14, F15..F22, F23..F29)`);
     }
     if (name === 'Titan' && st === 'ULTIMATE') {
       if (peakDummyStun < 0.78 || (dummyWallX > 90 && dummyWallX < 1110)) {
@@ -609,7 +610,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps89');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps90');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -1112,23 +1113,29 @@ for (const [name, Cls] of CLASSES) {
     );
   }
 
-  // 10A. Verify 3-Animation Auto Combo ("TRINITY OF THE WORLD-MAUL"):
-  //      Animation 0 (`60..69`) spawns Magnetic Fissure Wave & pulls kiting foe inward,
-  //      Animation 1 (`70..79`) builds Crucible Core, Animation 2 (`80..89`) manifests Khazad Ancestor!
+  // 10A. Verify 4-Animation Auto Combo ("QUARTET OF THE WORLD-MAUL"):
+  //      Animation 0 (`60..67`) spawns Magnetic Fissure Wave & pulls kiting foe inward,
+  //      Animation 1 (`68..74`) builds Crucible Core, Animation 2 (`75..82`) manifests Khazad Ancestor,
+  //      Animation 3 (`83..89`) sweeps World-Anvil Back-Crush!
   let sawFissureWave = false;
   let sawAncestorInAuto = false;
   let gainedCoreOnStage1 = false;
   torgar.crucibleStacks = 1;
   const foeStartX = 680;
   foe.x = foeStartX;
-  for (let c = 0; c < 3; c++) {
+  const titanSliceBounds = [
+    [60, 67],
+    [68, 74],
+    [75, 82],
+    [83, 89]
+  ];
+  for (let c = 0; c < 4; c++) {
     torgar.x = 400;
     torgar.comboStep = c;
     if (c > 0) foe.x = 535;
     const stacksBefore = torgar.crucibleStacks;
     torgar.setState('AUTO_ATTACK');
-    const minExpect = 60 + c * 10;
-    const maxExpect = minExpect + 9;
+    const [minExpect, maxExpect] = titanSliceBounds[c];
     for (let i = 0; i < 24; i++) {
       torgar.update(1 / 30, foe, game);
       if (torgar.state === 'AUTO_ATTACK' && torgar.trueUltFrameOverride !== null) {
@@ -1151,7 +1158,7 @@ for (const [name, Cls] of CLASSES) {
   }
   if (!sawFissureWave || !gainedCoreOnStage1 || !sawAncestorInAuto) {
     throw new Error(
-      `Torgar v7 Trinity of the World-Maul check failed: fissureWave=${sawFissureWave}, coreOnStage1=${gainedCoreOnStage1}, ancestor=${sawAncestorInAuto}`
+      `Torgar v7 World-Maul check failed: fissureWave=${sawFissureWave}, coreOnStage1=${gainedCoreOnStage1}, ancestor=${sawAncestorInAuto}`
     );
   }
 
@@ -1743,10 +1750,10 @@ for (const [name, Cls] of CLASSES) {
   dummy.maxHp = 99999;
   dummy.hp = 99999;
 
-  // 14A. Verify all 3 Row 2 Auto-Attack variants (`60..69`, `70..79`, `80..89`) physically thruster-glide VEX-09's real model
+  // 14A. Verify all 4 Row 2 Auto-Attack variants (`60..67`, `68..74`, `75..82`, `83..89`) physically thruster-glide VEX-09's real model
   //      from 200px distance down to point-blank blade contact (`<= 120px`) BEFORE `didActionFrame` swings!
-  const seenSubRanges = [false, false, false];
-  for (let c = 0; c < 3; c++) {
+  const seenSubRanges = [false, false, false, false];
+  for (let c = 0; c < 4; c++) {
     vex.x = 340;
     dummy.x = 540; // 200px initial gap — previously VEX-09 swung into empty air!
     vex.setState('AUTO_ATTACK');
@@ -1755,9 +1762,10 @@ for (const [name, Cls] of CLASSES) {
       const wasDone = vex.didActionFrame;
       vex.update(1 / 30, dummy, game);
       const ov = vex.trueUltFrameOverride;
-      if (ov >= 60 && ov <= 69) seenSubRanges[0] = true;
-      if (ov >= 70 && ov <= 79) seenSubRanges[1] = true;
-      if (ov >= 80 && ov <= 89) seenSubRanges[2] = true;
+      if (ov >= 60 && ov <= 67) seenSubRanges[0] = true;
+      if (ov >= 68 && ov <= 74) seenSubRanges[1] = true;
+      if (ov >= 75 && ov <= 82) seenSubRanges[2] = true;
+      if (ov >= 83 && ov <= 89) seenSubRanges[3] = true;
       if (!wasDone && vex.didActionFrame) {
         distAtSwing = Math.abs(dummy.x - vex.x);
       }
@@ -1769,8 +1777,8 @@ for (const [name, Cls] of CLASSES) {
       );
     }
   }
-  if (!seenSubRanges[0] || !seenSubRanges[1] || !seenSubRanges[2]) {
-    throw new Error(`VEX-09 did not cycle all 3 Row 2 melee variants: ${JSON.stringify(seenSubRanges)}`);
+  if (!seenSubRanges[0] || !seenSubRanges[1] || !seenSubRanges[2] || !seenSubRanges[3]) {
+    throw new Error(`VEX-09 did not cycle all 4 Row 2 melee variants: ${JSON.stringify(seenSubRanges)}`);
   }
 
   // 14B. Verify VEX-09's Overdrive Ultimate ("VALKYRIE VISOR HYPER-LASER") moves BACKWARD first (`>= 150px`),
@@ -3067,9 +3075,9 @@ for (const [name, Cls] of CLASSES) {
           }
         };
 
-        // 1) Authentic Multi-Step Basic Attack Combo (`4` variants for Lyra & Torgar, `3` for others) + 2.5D Pack Cleave
+        // 1) Authentic 4-Variant Basic Attack Combo (`4` distinct main-model animations for ALL 11 champions!) + 2.5D Pack Cleave
         let hpBefore = totalClusterHp();
-        const comboCount = h.key === 'icemage' || h.key === 'titan' ? 4 : 3;
+        const comboCount = 4;
         for (let step = 0; step < comboCount; step++) {
           resetClusterPos();
           hero.autoCooldown = 0;
@@ -3451,5 +3459,126 @@ for (const [name, Cls] of CLASSES) {
 
   console.log(
     '[PASS] Bipedal Walk Crossover (11x 6240x2080 Sheets + Forward/Backward Frame Playback) & Mode-Isolated Pause Menu Modal verified!'
+  );
+}
+
+
+// =========================================================================
+// 19. All-11-Champion 4-Variant Main-Model Auto-Attack & Dynamic Visuals
+//     (`Row 2`: F00..F07 [60..67], F08..F14 [68..74], F15..F22 [75..82], F23..F29 [83..89])
+// =========================================================================
+{
+  const expectedAutoSlices = [
+    [60, 67],
+    [68, 74],
+    [75, 82],
+    [83, 89]
+  ];
+  const autoRoster = [
+    ['warrior', Warrior, 145],
+    ['mage', FireMage, 320],
+    ['ronin', Ronin, 150],
+    ['valkyrie', Valkyrie, 320],
+    ['reaper', Reaper, 150],
+    ['priestess', Priestess, 320],
+    ['archer', Archer, 320],
+    ['chronomancer', Chronomancer, 165],
+    ['titan', Titan, 155],
+    ['icemage', IceMage, 320],
+    ['android', Android, 175]
+  ];
+
+  const autoTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
+  const autoCtx = createMockCtx(autoTrack);
+
+  for (const [heroKey, HeroCls, testDist] of autoRoster) {
+    const hero = new HeroCls({ x: 380, groundY: 520, facing: 1, name: heroKey, team: 'left' });
+    const target = new Warrior({ x: 380 + testDist, groundY: 520, facing: -1, name: 'Dummy', team: 'right' });
+    hero.isPlayerControlled = true;
+    hero.game = game;
+    target.game = game;
+    target.maxHp = 999999;
+    target.hp = 999999;
+    game.fighters = [hero, target];
+    game.getEnemiesOf = (f) => (f === hero ? [target] : [hero]);
+    game.vfx.projectiles.length = 0;
+
+    hero.comboStep = 0;
+    const visitedSlices = [false, false, false, false];
+    let totalDamage = 0;
+
+    for (let v = 0; v < 4; v++) {
+      hero.x = 380;
+      hero.y = 520;
+      hero.facing = 1;
+      hero.autoCooldown = 999;
+      target.x = 380 + testDist;
+      target.y = 520;
+      target.stunTimer = 99;
+      const hpBefore = target.hp;
+      const [minF, maxF] = expectedAutoSlices[v];
+
+      hero.setState('AUTO_ATTACK');
+      let sawSliceFrame = false;
+      for (let tick = 0; tick < 36; tick++) {
+        const dt = 1 / 30;
+        hero.update(dt, target, game);
+        // Step projectiles so ranged auto-attack variants connect cleanly
+        for (let pi = game.vfx.projectiles.length - 1; pi >= 0; pi--) {
+          const p = game.vfx.projectiles[pi];
+          p.x += (p.vx || 0) * dt;
+          p.y += (p.vy || 0) * dt;
+          if (Math.abs(p.x - target.x) < 62 && Math.abs(p.y - (target.y - 96)) < 110) {
+            target.takeDamage(p.damage || 30, p.owner, Boolean(p.isCrit), 40, 0);
+            game.vfx.projectiles.splice(pi, 1);
+          }
+        }
+        game.vfx.update(dt, 520, game.renderer, game.audio);
+
+        if (hero.state === 'AUTO_ATTACK') {
+          const fIdx = PixelForge.getFrameIndex(hero, hero.walkPhase);
+          if (fIdx < minF || fIdx > maxF) {
+            throw new Error(
+              `[${heroKey}] Auto Variant ${v} rendered frame ${fIdx} outside expected slice [${minF}..${maxF}]!`
+            );
+          }
+          sawSliceFrame = true;
+        }
+        hero.drawForegroundOverlay?.(autoCtx, game.renderer);
+        hero.draw(autoCtx, false, game.renderer);
+        hero.drawUltimateForeground?.(autoCtx, game.renderer);
+        if (hero.state === 'IDLE') break;
+      }
+      // Tick a few extra frames for delayed/arcing projectiles or sky-lances
+      for (let extra = 0; extra < 16; extra++) {
+        const dt = 1 / 30;
+        hero.update(dt, target, game);
+        for (let pi = game.vfx.projectiles.length - 1; pi >= 0; pi--) {
+          const p = game.vfx.projectiles[pi];
+          p.x += (p.vx || 0) * dt;
+          p.y += (p.vy || 0) * dt;
+          if (Math.abs(p.x - target.x) < 62 && Math.abs(p.y - (target.y - 96)) < 110) {
+            target.takeDamage(p.damage || 30, p.owner, Boolean(p.isCrit), 40, 0);
+            game.vfx.projectiles.splice(pi, 1);
+          }
+        }
+      }
+
+      if (!sawSliceFrame) {
+        throw new Error(`[${heroKey}] Auto Variant ${v} never rendered any frame in [${minF}..${maxF}]!`);
+      }
+      visitedSlices[v] = true;
+      totalDamage += hpBefore - target.hp;
+    }
+
+    if (!visitedSlices.every(Boolean) || totalDamage <= 0 || autoTrack.rotateCalls > 0) {
+      throw new Error(
+        `[${heroKey}] 4-Variant Auto-Attack failed audit: slices=${JSON.stringify(visitedSlices)}, dmg=${totalDamage}, rotateCalls=${autoTrack.rotateCalls}`
+      );
+    }
+  }
+
+  console.log(
+    '[PASS] All 11 Champions 4-Variant Main-Model Auto-Attacks (Row 2: [60..67], [68..74], [75..82], [83..89]) & Dynamic Visuals verified (0 slice leaks, 0 ctx.rotate)!'
   );
 }

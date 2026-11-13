@@ -1,11 +1,18 @@
-import { Fighter } from './Fighter.js?v=30fps89';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps89';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps89';
+import { Fighter } from './Fighter.js?v=30fps90';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps90';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps90';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps89';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps90';
+
+const AUTO_SLICES_4 = [
+  [60, 8],
+  [68, 7],
+  [75, 8],
+  [83, 7]
+];
 
 /**
  * Freyja (`valkyrie`) — Dragon-Lance Valkyrie & Valhalla Sky-Sovereign.
@@ -43,6 +50,7 @@ export class Valkyrie extends Fighter {
     this.crouchDuration = 0.64;
     this.dashDuration = 0.38;
     this.comboStep = 0;
+    this._autoVariant = 0;
 
     // Grounded Stance by default (0 hover float on IDLE/WALK/AUTO_ATTACK/Cast Startups)
     this.hoverOffset = 0;
@@ -76,7 +84,7 @@ export class Valkyrie extends Fighter {
     if (typeof Image !== 'undefined') {
       const valkyrieAssets = PixelForge.initAssets()?.valkyrie;
       if (valkyrieAssets?.vfx?.src && !valkyrieAssets.vfx.src.includes('v=30fps63')) {
-        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps89';
+        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps90';
       }
     }
 
@@ -151,6 +159,11 @@ export class Valkyrie extends Fighter {
       this.ragnarokPillars = [];
       this.cameraAirLift = 0;
       this.unstoppablePoise = false;
+    }
+    if (newState === 'AUTO_ATTACK') {
+      this._autoVariant = (((this.comboStep || 0) % 4) + 4) % 4;
+      this.comboStep = (this._autoVariant + 1) % 4;
+      this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
     }
   }
 
@@ -824,64 +837,97 @@ export class Valkyrie extends Fighter {
 
   updateAutoAttack(_dt, enemy, game) {
     const t = this.stateTimer;
-    // Grounded Ranged Valkyrie Lance-Projection Combo (Row 2 F00..F29): firmly planted sabatons!
+    // Grounded Ranged Valkyrie 4-Variant Lance-Projection Combo (Row 2: [60..67], [68..74], [75..82], [83..89])
     this.vx = 0;
     this.vy = 0;
     this.y = this.groundY;
 
+    const mode = (((this._autoVariant || 0) % 4) + 4) % 4;
+    const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
+    const u = Math.max(0, Math.min(0.999, t / Math.max(0.01, this.autoDuration)));
+    this.trueUltFrameOverride = sliceStart + Math.min(sliceLen - 1, Math.floor(u * sliceLen));
+
+    const tx = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 380;
+    const ty = enemy && !enemy.isDead ? enemy.y - 76 : this.groundY - 76;
+
     if (t >= 0.03 && !this._drewSpearFocus) {
       this._drewSpearFocus = true;
-      const isFinisher = this.comboStep === 2;
-      this.fx.spawn('gungnirSpearFocus', this.x + this.facing * 40, this.y - 92, {
+      const isGold = mode === 2 || mode === 3;
+      const focusOffX = mode === 2 ? 28 : mode === 3 ? 44 : 38;
+      const focusOffY = mode === 2 ? -136 : mode === 0 ? -112 : -92;
+      this.fx.spawn('gungnirSpearFocus', this.x + this.facing * focusOffX, this.y + focusOffY, {
         follow: this,
-        offsetX: 40,
-        offsetY: -92,
-        palette: isFinisher ? VALKYRIE_GOLD_PALETTE : VALKYRIE_CRIMSON_PALETTE,
-        maxDuration: 0.15,
-        light: 1.08,
-        extra: { radius: isFinisher ? 22 : 18 }
+        offsetX: focusOffX,
+        offsetY: focusOffY,
+        palette: isGold ? VALKYRIE_GOLD_PALETTE : VALKYRIE_CRIMSON_PALETTE,
+        maxDuration: 0.16,
+        light: isGold ? 1.16 : 1.08,
+        extra: { radius: isGold ? 22 : 18 }
       });
+      if (mode === 2) {
+        this.fx.spawn('valhallaTargetReticle', tx, this.groundY, {
+          palette: VALKYRIE_GOLD_PALETTE,
+          maxDuration: 0.44,
+          light: 1.14,
+          extra: { radius: 26, beaconH: 38, duration: 0.44 }
+        });
+      }
     }
 
     if (t >= 0.16 && !this.didActionFrame) {
       this.didActionFrame = true;
       const sx = this.x + this.facing * 38;
-      const sy = this.y - 92;
-      const tx = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 380;
-      const ty = enemy && !enemy.isDead ? enemy.y - 76 : this.groundY - 76;
-      const vArc = this.comboStep % 2 === 0 ? -28 : 16;
-      this.spawnGungnirSkySpear(
-        sx,
-        sy,
-        tx,
-        ty,
-        22,
-        false,
-        this.comboStep % 2 === 0 ? -45 : 45,
-        vArc
-      );
-      this.fx.spawn('gungnirSpearThrustCone', sx, sy, {
-        flip: false,
-        palette: VALKYRIE_CRIMSON_PALETTE,
-        light: 1.12,
-        extra: { aimAngle: Math.atan2(ty - sy, tx - sx), radius: 23, twin: false }
-      });
+      const sy = mode === 0 ? this.y - 112 : mode === 2 ? this.y - 134 : this.y - 92;
+
+      if (mode === 0) {
+        // V0 (60..67 — Gungnir Overhand Javelin Hurl): high overhand crimson javelin projection
+        this.spawnGungnirSkySpear(sx, sy, tx, ty, 24, false, -45, -30);
+        this.fx.spawn('gungnirSpearThrustCone', sx, sy, {
+          flip: false,
+          palette: VALKYRIE_CRIMSON_PALETTE,
+          light: 1.14,
+          extra: { aimAngle: Math.atan2(ty - sy, tx - sx), radius: 24, twin: false }
+        });
+      } else if (mode === 1) {
+        // V1 (68..74 — Valkyrie Sweeping Glaive Arc): wide sweeping crimson lance whip
+        this.spawnGungnirSkySpear(sx, sy, tx, ty, 23, false, -58, 18);
+        this.fx.spawn('gungnirSpearThrustCone', sx, sy, {
+          flip: false,
+          palette: VALKYRIE_CRIMSON_PALETTE,
+          light: 1.15,
+          extra: { aimAngle: Math.atan2(ty - sy, tx - sx), radius: 26, twin: false }
+        });
+      } else if (mode === 2) {
+        // V2 (75..82 — Heaven-Call Skyward Command): skyward Gungnir call -> Valhalla sky-lance descent
+        this.spawnVfxAnim(3, this.x, this.groundY - 92, 184, 184, 0.28, {
+          followOwner: true,
+          offsetX: 0,
+          offsetY: -92,
+          glowColor: 'gold'
+        });
+        this.spawnGungnirSkySpear(tx - this.facing * 64, this.groundY - 208, tx, ty, 26, false, 0, -28);
+      } else {
+        // V3 (83..89 — Bifrost Twin-Cross Thrust): deep forward lunge opener
+        this.spawnGungnirSkySpear(sx, sy, tx, ty, 22, false, -38, -18);
+        this.fx.spawn('gungnirSpearThrustCone', sx, sy, {
+          flip: false,
+          palette: VALKYRIE_CRIMSON_PALETTE,
+          light: 1.14,
+          extra: { aimAngle: Math.atan2(ty - sy, tx - sx), radius: 24, twin: false }
+        });
+      }
       if (game?.audio) game.audio.play('holy_spear', this.x);
     }
 
     if (t >= 0.36 && !this.didSecondaryAction) {
       this.didSecondaryAction = true;
-      const step = this.comboStep;
-      this.comboStep = (this.comboStep + 1) % 3;
       const sx = this.x + this.facing * 38;
       const sy = this.y - 90;
-      const tx = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 380;
-      const ty = enemy && !enemy.isDead ? enemy.y - 72 : this.groundY - 72;
-      const aimAng = Math.atan2(ty - sy, tx - sx);
+      const ty2 = enemy && !enemy.isDead ? enemy.y - 72 : this.groundY - 72;
+      const aimAng = Math.atan2(ty2 - sy, tx - sx);
 
-      if (step < 2) {
-        const vArc = step % 2 === 0 ? 18 : -26;
-        this.spawnGungnirSkySpear(sx, sy, tx, ty, 24, false, step % 2 === 0 ? 50 : -50, vArc);
+      if (mode === 0) {
+        this.spawnGungnirSkySpear(sx, sy, tx, ty2, 24, false, 45, 16);
         this.fx.spawn('gungnirSpearThrustCone', sx, sy, {
           flip: false,
           palette: VALKYRIE_GOLD_PALETTE,
@@ -889,60 +935,68 @@ export class Valkyrie extends Fighter {
           extra: { aimAngle: aimAng, radius: 24, twin: false }
         });
         if (game?.audio) game.audio.play('holy_spear', this.x);
-      } else {
-        // 3rd-Combo Finisher: Twin Converging Horizontal Pincer Javelins + Wyvern Spiral Lance-Wave!
+      } else if (mode === 1) {
+        this.spawnGungnirSkySpear(sx, sy, tx, ty2, 25, false, 58, -24);
+        this.spawnVfxAnim(0, sx + this.facing * 12, sy, 176, 176, 0.26, {
+          vx: this.facing * 240,
+          flipX: this.facing < 0,
+          glowColor: 'crimson',
+          inFront: true
+        });
         this.fx.spawn('gungnirSpearThrustCone', sx, sy, {
           flip: false,
           palette: VALKYRIE_GOLD_PALETTE,
-          light: 1.25,
+          light: 1.18,
+          extra: { aimAngle: aimAng, radius: 27, twin: false }
+        });
+        if (game?.audio) game.audio.play('holy_spear', this.x);
+      } else if (mode === 2) {
+        this.spawnGungnirSkySpear(this.x + this.facing * 32, this.y - 134, tx, ty2, 26, false, -32, -34);
+        this.fx.spawn('valhallaGroundBurst', this.x, this.groundY, {
+          palette: VALKYRIE_GOLD_PALETTE,
+          light: 1.08,
+          extra: { radius: 20 }
+        });
+        this.fx.spawn('gungnirSpearThrustCone', sx, this.y - 120, {
+          flip: false,
+          palette: VALKYRIE_GOLD_PALETTE,
+          light: 1.2,
+          extra: { aimAngle: aimAng, radius: 25, twin: false }
+        });
+        if (game?.audio) game.audio.play('holy_spear', this.x);
+        if (game?.vfx) {
+          game.vfx.spawnDamageText(this.x, this.y - 154, 0, false, 'VALHALLA SKY-LANCE!', '#fbbf24');
+        }
+      } else {
+        // V3 Finisher: Twin Converging Bifrost Cross Javelins + Wyvern Spiral Lance-Wave!
+        this.fx.spawn('gungnirSpearThrustCone', sx, sy, {
+          flip: false,
+          palette: VALKYRIE_GOLD_PALETTE,
+          light: 1.26,
           extra: { aimAngle: aimAng, radius: 30, twin: true }
         });
         this.fx.spawn('valhallaGroundBurst', this.x, this.groundY, {
           palette: VALKYRIE_CRIMSON_PALETTE,
-          light: 1.05,
-          extra: { radius: 22 }
+          light: 1.08,
+          extra: { radius: 24 }
         });
-
         this.spawnVfxAnim(0, this.x + this.facing * 44, this.y - 88, 196, 196, 0.28, {
           vx: this.facing * 270,
           flipX: this.facing < 0,
-          glowColor: 'gold'
+          glowColor: 'gold',
+          inFront: true
         });
-        this.spawnGungnirSkySpear(
-          this.x + this.facing * 34,
-          this.y - 102,
-          tx,
-          ty - 8,
-          20,
-          false,
-          -65,
-          -36
-        );
-        this.spawnGungnirSkySpear(
-          this.x + this.facing * 34,
-          this.y - 80,
-          tx,
-          ty + 8,
-          20,
-          false,
-          65,
-          24
-        );
+        this.spawnGungnirSkySpear(this.x + this.facing * 34, this.y - 102, tx, ty2 - 8, 20, false, -65, -36);
+        this.spawnGungnirSkySpear(this.x + this.facing * 34, this.y - 80, tx, ty2 + 8, 20, false, 65, 24);
         if (game?.audio) game.audio.play('holy_spear', this.x);
         if (game?.vfx) {
-          game.vfx.spawnDamageText(
-            this.x,
-            this.y - 156,
-            0,
-            true,
-            'TWIN GUNGNIR JAVELINS!',
-            '#fbbf24'
-          );
+          game.vfx.spawnDamageText(this.x, this.y - 156, 0, true, 'BIFROST TWIN-THRUST!', '#fbbf24');
         }
       }
     }
 
     if (t >= this.autoDuration) {
+      this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }
   }

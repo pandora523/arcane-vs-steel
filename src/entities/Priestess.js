@@ -1,12 +1,19 @@
-import { Fighter } from './Fighter.js?v=30fps89';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps89';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps89';
+import { Fighter } from './Fighter.js?v=30fps90';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps90';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps90';
 import {
   SERAPHIC_EFFECT_REGISTRY,
   SERAPHIC_GOLD_PALETTE,
   SERAPHIC_GRACE_PALETTE,
   SERAPHIC_STAINED_PALETTE
-} from '../engine/shaders/seraphicShaders.js?v=30fps89';
+} from '../engine/shaders/seraphicShaders.js?v=30fps90';
+
+const AUTO_SLICES_4 = [
+  [60, 8],
+  [68, 7],
+  [75, 8],
+  [83, 7]
+];
 
 /**
  * Seraphina (`priestess`) — High Priestess & Sanctuary Archangel Weaver.
@@ -33,7 +40,7 @@ export class Priestess extends Fighter {
     this.theme = 'radiant';
     this.deathSfx = 'death_priestess';
     this.skillMaxCooldown = 5.00;
-    this.autoDuration = 0.90;
+    this.autoDuration = 0.88;
     this.skillDuration = 0.98;
     this.ultDuration = 1.52;
     this.ultName = 'SERAPHIC APOTHEOSIS';
@@ -43,6 +50,9 @@ export class Priestess extends Fighter {
     this.trueUltDuration = 4.25;
     this.haloPhase = 0;
     this.shotCombo = 0;
+    this.comboStep = 0;
+    this._autoVariant = 0;
+    this.activeVfxAnims = [];
     this.evadeToggle = 0;
     this.dodgeMaxCooldown = 3.90;
     this.dashMaxCooldown = 3.85;
@@ -82,7 +92,7 @@ export class Priestess extends Fighter {
     if (typeof Image !== 'undefined') {
       const priestessAssets = PixelForge.initAssets()?.priestess;
       if (priestessAssets?.vfx?.src && !priestessAssets.vfx.src.includes('v=30fps62')) {
-        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps89';
+        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps90';
       }
     }
   }
@@ -134,6 +144,7 @@ export class Priestess extends Fighter {
       this._finalGracePulseAccum = 0.24;
       this._finalGraceMoteAccum = 0;
     } else {
+      this.trueUltFrameOverride = null;
       this.finalGraceBeamActive = false;
       this.finalGraceBeamTimer = 0;
       this.finalGraceChargeProgress = 0;
@@ -144,6 +155,36 @@ export class Priestess extends Fighter {
       this.unstoppablePoise = false;
       this.fx?.stopByKey('seraphicFinalGraceCharge');
     }
+
+    if (newState === 'AUTO_ATTACK') {
+      this._autoVariant = (((this.comboStep || 0) % 4) + 4) % 4;
+      this.comboStep = (this._autoVariant + 1) % 4;
+      this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
+      this.isAngelicAscent = false;
+      this.y = this.groundY;
+      this.vy = 0;
+    }
+  }
+
+  spawnVfxAnim(row, x, y, w = 180, h = 180, maxLife = 0.36, opts = {}) {
+    this.activeVfxAnims.push({
+      row,
+      x,
+      y,
+      w,
+      h,
+      age: 0,
+      maxLife,
+      vx: opts.vx || 0,
+      vy: opts.vy || 0,
+      flipX: opts.flipX !== undefined ? Boolean(opts.flipX) : this.facing < 0,
+      followOwner: Boolean(opts.followOwner),
+      offsetX: opts.offsetX || 0,
+      offsetY: opts.offsetY || 0,
+      inFront: opts.inFront !== undefined ? Boolean(opts.inFront) : true,
+      startFrame: opts.startFrame || 0,
+      endFrame: opts.endFrame !== undefined ? opts.endFrame : 29
+    });
   }
 
   ensureSlipstream() {
@@ -568,6 +609,18 @@ export class Priestess extends Fighter {
     this.haloPhase += dt * 2.8;
     this.wallWingCooldown = Math.max(0, this.wallWingCooldown - dt);
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
+    for (let i = this.activeVfxAnims.length - 1; i >= 0; i--) {
+      const v = this.activeVfxAnims[i];
+      v.age += dt;
+      if (v.followOwner) {
+        v.x = this.x + this.facing * v.offsetX;
+        v.y = this.y + v.offsetY;
+      } else {
+        v.x += (v.vx || 0) * dt;
+        v.y += (v.vy || 0) * dt;
+      }
+      if (v.age >= v.maxLife) this.activeVfxAnims.splice(i, 1);
+    }
     this.fx.update(dt);
 
     const readyForTrueUlt =
@@ -615,113 +668,233 @@ export class Priestess extends Fighter {
     super.update(dt, enemy, game);
   }
 
-  updateAutoAttack(dt, enemy, game) {
+  updateAutoAttack(_dt, enemy, game) {
     const t = this.stateTimer;
+    // CRITICAL SERAPHINA GROUNDED CONTRACT: 100% grounded on every frame of AUTO_ATTACK, ZERO wings!
     this.y = this.groundY;
+    this.vy = 0;
+    this.isAngelicAscent = false;
 
-    const isDawnGrace = (this.shotCombo + (this.didActionFrame ? 0 : 1)) % 3 === 0;
-    if (isDawnGrace) {
+    const mode = (((this._autoVariant || 0) % 4) + 4) % 4;
+    const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
+    const u = Math.max(0, Math.min(0.999, t / Math.max(0.01, this.autoDuration)));
+    this.trueUltFrameOverride = sliceStart + Math.min(sliceLen - 1, Math.floor(u * sliceLen));
+
+    if (mode === 3) {
       this.ensureSanctuarySeal(false);
     }
 
-    if (t < 0.34) {
-      this.torsoAngle = -this.facing * 0.12 * (t / 0.34);
+    if (t < 0.32) {
+      this.torsoAngle = -this.facing * 0.10 * (t / 0.32);
       if (!this._drewScepterFocus) {
         this._drewScepterFocus = true;
-        this.fx.spawn('scepterStarFocus', this.x + this.facing * 48, this.y - 116, {
+        const focusOffX = mode === 2 ? 32 : 48;
+        const focusOffY = mode === 2 ? -136 : -114;
+        this.fx.spawn('scepterStarFocus', this.x + this.facing * focusOffX, this.y + focusOffY, {
           follow: this,
-          offsetX: 48,
-          offsetY: -116,
+          offsetX: focusOffX,
+          offsetY: focusOffY,
           flip: this.facing < 0,
-          light: 1.16
+          light: mode === 3 ? 1.26 : 1.16
         });
       }
     } else if (t < 0.70) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.shotCombo++;
-        this.vx -= this.facing * 44;
-        this.torsoVel = -this.facing * 6;
-        if (game.audio) game.audio.play('holy_bolt', this.x);
+        this.vx -= this.facing * (mode === 3 ? 28 : 42);
+        this.torsoVel = -this.facing * 5;
+        if (game?.audio) game.audio.play('holy_bolt', this.x);
 
         const spawnX = this.x + this.facing * 52;
-        const spawnY = this.y - 116;
-        const targetY = enemy ? enemy.y - 110 : spawnY;
+        const spawnY = this.y - 108;
+        const targetY = enemy ? enemy.y - 102 : spawnY;
         const dx = enemy ? enemy.x - spawnX : this.facing * 460;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
-        const speed = 648;
-        const mode = this.shotCombo % 3;
-        const isGraceCast = mode === 0;
+        const aimAng = Math.atan2(dy, Math.abs(dx));
 
-        game.vfx.spawnProjectile({
-          x: spawnX,
-          y: spawnY,
-          vx: (dx / dist) * speed,
-          vy: (dy / dist) * speed,
-          radius: 15,
-          color: '#fde047',
-          coreColor: '#ffffff',
-          owner: this,
-          damage: isGraceCast ? 68 : 90,
-          type: 'holy_light',
-          isMeteor: false
-        });
-
-        this.fx.spawn('scepterStarburstCone', spawnX, spawnY, {
-          flip: this.facing < 0,
-          light: isGraceCast ? 1.3 : 1.2,
-          extra: { aimAngle: Math.atan2(dy, Math.abs(dx)), isGrace: isGraceCast }
-        });
-
-        if (isGraceCast) {
+        if (mode === 0) {
+          // V0 (60..67 — Sunburst Prism Bolt): crisp grounded Sunburst Scepter thrust
+          this.fx.spawn('scepterStarburstCone', spawnX, spawnY, {
+            flip: this.facing < 0,
+            light: 1.2,
+            extra: { aimAngle: aimAng, isGrace: false }
+          });
+          if (game?.vfx) {
+            const speed = 655;
+            game.vfx.spawnProjectile({
+              x: spawnX,
+              y: spawnY,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed,
+              radius: 15,
+              color: '#fde047',
+              coreColor: '#ffffff',
+              owner: this,
+              damage: 88,
+              type: 'holy_light',
+              isMeteor: false
+            });
+          }
+        } else if (mode === 1) {
+          // V1 (68..74 — Benediction Twin-Chord): converging upper+lower holy chords + halo glint
+          this.spawnVfxAnim(0, spawnX, spawnY, 176, 176, 0.34, {
+            flipX: this.facing < 0,
+            inFront: true
+          });
+          this.fx.spawn('scepterStarburstCone', spawnX, spawnY, {
+            flip: this.facing < 0,
+            light: 1.25,
+            extra: { aimAngle: aimAng, isGrace: false }
+          });
+          if (game?.vfx) {
+            const speed = 640;
+            game.vfx.spawnProjectile({
+              x: spawnX,
+              y: spawnY - 12,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed + 18,
+              radius: 14,
+              color: '#fde047',
+              coreColor: '#ffffff',
+              owner: this,
+              damage: 52,
+              type: 'holy_light',
+              isMeteor: false
+            });
+            game.vfx.spawnProjectile({
+              x: spawnX - this.facing * 14,
+              y: spawnY + 12,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed - 18,
+              radius: 13,
+              color: '#facc15',
+              coreColor: '#fef9c3',
+              owner: this,
+              damage: 46,
+              type: 'holy_light',
+              isMeteor: false
+            });
+          }
+        } else if (mode === 2) {
+          // V2 (75..82 — Cathedral Sky-Pillar): skyward scepter call -> holy_spear sky-strike + guiding holy_light
+          if (game?.audio) game.audio.play('holy_spear', this.x);
+          this.fx.spawn('scepterStarburstCone', spawnX, spawnY - 14, {
+            flip: this.facing < 0,
+            light: 1.28,
+            extra: { aimAngle: aimAng, isGrace: true }
+          });
+          if (game?.vfx) {
+            const speed = 660;
+            game.vfx.spawnProjectile({
+              x: spawnX,
+              y: spawnY,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed,
+              radius: 14,
+              color: '#fde047',
+              coreColor: '#ffffff',
+              owner: this,
+              damage: 42,
+              type: 'holy_light',
+              isMeteor: false
+            });
+            const strikeX = enemy && !enemy.isDead ? enemy.x - this.facing * 18 : this.x + this.facing * 320;
+            this.fx.spawn('holySpearReticle', strikeX, this.groundY, {
+              light: 1.24
+            });
+            game.vfx.spawnSkyStrike({
+              x: strikeX,
+              y: -150,
+              groundY: this.groundY,
+              vx: this.facing * 55,
+              vy: 1220,
+              type: 'holy_spear',
+              color: '#fde047',
+              coreColor: '#ffffff',
+              owner: this,
+              target: enemy,
+              damage: 58,
+              isUltimate: false
+            });
+            game.vfx.spawnDamageText(this.x, this.y - 150, 0, false, 'CATHEDRAL PILLAR!', '#fde047');
+          }
+        } else {
+          // V3 (83..89 — Dawn Grace Sanctuary): +16 HP Dawn Grace heal + sanctuary seal + radiant bolt & spear
+          this.ensureSanctuarySeal(false);
           this.heal(16, 'DAWN GRACE');
           this.fx.spawn('graceHealBloom', this.x, this.groundY, {
             follow: this,
             offsetX: 0,
             offsetY: 0,
             useGroundY: true,
-            light: 1.24
+            light: 1.26
           });
-          game.vfx.spawnProjectile({
-            x: spawnX - this.facing * 14,
-            y: spawnY - 14,
-            vx: (dx / dist) * (speed * 0.95),
-            vy: (dy / dist) * (speed * 0.95) - 18,
-            radius: 13,
-            color: '#facc15',
-            coreColor: '#fef9c3',
-            owner: this,
-            damage: 34,
-            type: 'holy_light',
-            isMeteor: false
+          this.fx.spawn('scepterStarburstCone', spawnX, spawnY, {
+            flip: this.facing < 0,
+            light: 1.32,
+            extra: { aimAngle: aimAng, isGrace: true }
           });
-
-          if (enemy && !enemy.isDead) {
-            this.fx.spawn('holySpearReticle', enemy.x - this.facing * 24, this.groundY, {
-              light: 1.22
-            });
-            game.vfx.spawnSkyStrike({
-              x: enemy.x - this.facing * 24,
-              y: -150,
-              groundY: this.groundY,
-              vx: this.facing * 85,
-              vy: 1180,
-              type: 'holy_spear',
+          if (game?.vfx) {
+            const speed = 650;
+            game.vfx.spawnProjectile({
+              x: spawnX,
+              y: spawnY,
+              vx: (dx / dist) * speed,
+              vy: (dy / dist) * speed,
+              radius: 16,
               color: '#fde047',
               coreColor: '#ffffff',
               owner: this,
-              target: enemy,
-              damage: 36,
-              isUltimate: false
+              damage: 68,
+              type: 'holy_light',
+              isMeteor: false
             });
+            game.vfx.spawnProjectile({
+              x: spawnX - this.facing * 14,
+              y: spawnY - 12,
+              vx: (dx / dist) * (speed * 0.95),
+              vy: (dy / dist) * (speed * 0.95) - 16,
+              radius: 13,
+              color: '#facc15',
+              coreColor: '#fef9c3',
+              owner: this,
+              damage: 32,
+              type: 'holy_light',
+              isMeteor: false
+            });
+            if (enemy && !enemy.isDead) {
+              this.fx.spawn('holySpearReticle', enemy.x - this.facing * 24, this.groundY, {
+                light: 1.22
+              });
+              game.vfx.spawnSkyStrike({
+                x: enemy.x - this.facing * 24,
+                y: -150,
+                groundY: this.groundY,
+                vx: this.facing * 85,
+                vy: 1180,
+                type: 'holy_spear',
+                color: '#fde047',
+                coreColor: '#ffffff',
+                owner: this,
+                target: enemy,
+                damage: 36,
+                isUltimate: false
+              });
+            }
           }
         }
 
-        game.vfx.spawnGlyphBurst(spawnX, spawnY, 5, 'radiant');
+        if (game?.vfx) {
+          game.vfx.spawnGlyphBurst(spawnX, spawnY, 5, 'radiant');
+        }
       }
     } else if (t >= this.autoDuration) {
       this.y = this.groundY;
+      this.vy = 0;
+      this.isAngelicAscent = false;
+      this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }
   }
@@ -1456,6 +1629,7 @@ export class Priestess extends Fighter {
 
     // 1. Live 120Hz `ArcaneShaderFX` "back" layer (2.5D Sanctuary Cathedral Seal, Ophanim Back Ring, Slipstream Feathers & Back Sanctum Pillars)
     this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
+    this.drawPriestessVfxAnims(ctx, false, renderer);
 
     // 2. Stained-Glass Cathedral Rose Mandala + 30fps HD-2D Feathered Archangel Wings behind Seraphina
     const sprites = PixelForge.initAssets().priestess;
@@ -1468,12 +1642,47 @@ export class Priestess extends Fighter {
     ctx.restore();
   }
 
+  drawPriestessVfxAnims(ctx, inFront = true, renderer = null) {
+    if (!this.activeVfxAnims.length) return;
+    const vfxSheet = PixelForge.initAssets().priestess?.vfx;
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+    for (const v of this.activeVfxAnims) {
+      if (Boolean(v.inFront) !== Boolean(inFront)) continue;
+      const u = Math.max(0, Math.min(0.999, v.age / Math.max(0.01, v.maxLife)));
+      const span = Math.max(1, v.endFrame - v.startFrame + 1);
+      const col = v.startFrame + Math.min(span - 1, Math.floor(u * span));
+      const fade = Math.sin(u * Math.PI);
+      const px = Math.round(v.x);
+      const py = Math.round(v.y);
+      const halfW = Math.round(v.w * 0.5);
+      const halfH = Math.round(v.h * 0.5);
+
+      ctx.save();
+      ctx.translate(px, py);
+      ctx.scale(v.flipX ? -1 : 1, 1);
+      if (renderer?.glowGold) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(1, fade * 0.34);
+        ctx.drawImage(renderer.glowGold, -halfW, -halfH, v.w, v.h);
+      }
+      if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = Math.min(1, 0.32 + fade * 0.68);
+        ctx.drawImage(vfxSheet, col * 208, v.row * 208, 208, 208, -halfW, -halfH, v.w, v.h);
+      }
+      ctx.restore();
+    }
+    ctx.restore();
+  }
+
   drawUltimateForeground(ctx, renderer = null) {
     const ww = renderer?.worldWidth || 1280;
     const arenaCenterX = ww * 0.5;
 
     // 1. Live 120Hz `ArcaneShaderFX` "front" layer across ALL states
     this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
+    this.drawPriestessVfxAnims(ctx, true, renderer);
 
     if (this.state !== 'TRUE_ULTIMATE') return;
 

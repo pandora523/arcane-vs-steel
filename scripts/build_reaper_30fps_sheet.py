@@ -24,20 +24,23 @@ Key Features:
 """
 
 import os
+import sys
 import math
 from collections import deque
 import numpy as np
 from PIL import Image, ImageDraw, ImageFilter
+
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from hd2d_rig_core import (
     COLS, P, BASE_NUMERIC_KEYS, poly_mask, keep_largest_component,
     assign_remaining_geodesic, extract_parts_512, rot_pt,
     draw_line_104, draw_slash_arc_104, render_rig_104,
     make_prone_knight_death_kfs, eval_pose_keyframes, build_and_save_30fps_sheet,
-    compute_bipedal_walk_pose,
+    compute_bipedal_walk_pose, splice_row2_auto_surgically,
 )
 
 ROOT_DIR = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088"
+ARTIFACT_DIR = "/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/b9d8130e-8764-4ace-8d4e-40f97049d6f1/scratch"
 
 BASE_IMG_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "reaper_v5_base.jpg")
 OUT_SHEET_PATH = os.path.join(ROOT_DIR, "assets", "sprites", "reaper_sheet.png")
@@ -890,35 +893,160 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK — Trinity of the Scythe (Coiled Back-Cock -> Wide Crescent Reap -> Reverse Hook Rend)
-            kfs = [
-                (0, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5,
-                         l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
-                         grip_x=48.0, grip_y=-12.0, weapon_deg=-42.0, grip_sep=36.0, hook_sign=1.0)),
-                (6, dict(pelvis_dx=-16.0, pelvis_dy=24.0, torso_deg=-16.0, head_rel_deg=10.0,
-                         l_thigh_deg=-20.0, l_shin_deg=20.0, r_thigh_deg=20.0, r_shin_deg=-12.0,
-                         grip_x=10.0, grip_y=-54.0, weapon_deg=-114.0, grip_sep=32.0,
-                         halo_grand=True, hook_sign=1.0)),
-                (13, dict(pelvis_dx=16.0, pelvis_dy=44.0, torso_deg=24.0, head_rel_deg=-12.0,
-                          l_thigh_deg=24.0, l_shin_deg=20.0, r_thigh_deg=-26.0, r_shin_deg=20.0,
-                          grip_x=64.0, grip_y=-6.0, weapon_deg=16.0, grip_sep=36.0,
-                          halo_grand=True, hook_sign=1.0)),
-                (20, dict(pelvis_dx=12.0, pelvis_dy=20.0, torso_deg=-8.0, head_rel_deg=6.0,
-                          l_thigh_deg=-12.0, l_shin_deg=14.0, r_thigh_deg=16.0, r_shin_deg=-10.0,
-                          grip_x=56.0, grip_y=-64.0, weapon_deg=-68.0, grip_sep=34.0,
-                          halo_grand=True, hook_sign=-1.0)),
-                (25, dict(pelvis_dx=4.0, pelvis_dy=10.0, torso_deg=2.0, head_rel_deg=-1.0,
-                          grip_x=50.0, grip_y=-24.0, weapon_deg=-48.0, grip_sep=36.0, hook_sign=1.0)),
-                (29, dict(pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5,
-                          grip_x=48.0, grip_y=-12.0, weapon_deg=-42.0, grip_sep=36.0, hook_sign=1.0)),
-            ]
-            cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, wave_mult=2.2)
-            if 8 <= f <= 14:
-                u = (f - 8) / 6.0
+            # Row 2: AUTO_ATTACK — 4 DISTINCT ARCH-REAPER COMBO VARIANTS (`[[0..7], [8..14], [15..22], [23..29]]`)!
+            #   Slice 0 (F00..F07, 8f -> 60..67): Crescent Soul-Reap
+            #   Slice 1 (F08..F14, 7f -> 68..74): Abyssal Hook Drag-Rend
+            #   Slice 2 (F15..F22, 8f -> 75..82): Thanatos Phantom Whirl
+            #   Slice 3 (F23..F29, 7f -> 83..89): Guillotine Execution Slam
+            if f <= 7:
+                kfs = [
+                    (0, dict(
+                        pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5,
+                        right_leg_behind=False, l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
+                        grip_x=48.0, grip_y=-12.0, weapon_deg=-42.0, weapon_scale=0.90, grip_sep=36.0,
+                        chain_cast_mode=False, chain_active=False, hook_sign=1.0, foot_y=99.0,
+                    )),
+                    (2, dict(
+                        pelvis_dx=-16.0, pelvis_dy=24.0, torso_deg=-16.0, head_rel_deg=10.0,
+                        right_leg_behind=False, l_thigh_deg=-20.0, l_shin_deg=20.0, r_thigh_deg=20.0, r_shin_deg=-12.0,
+                        grip_x=10.0, grip_y=-54.0, weapon_deg=-114.0, weapon_scale=0.88, grip_sep=32.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                    )),
+                    (4, dict(
+                        pelvis_dx=16.0, pelvis_dy=44.0, torso_deg=24.0, head_rel_deg=-12.0,
+                        right_leg_behind=False, l_thigh_deg=24.0, l_shin_deg=20.0, r_thigh_deg=-26.0, r_shin_deg=20.0,
+                        grip_x=64.0, grip_y=-6.0, weapon_deg=16.0, weapon_scale=0.90, grip_sep=36.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                    )),
+                    (5, dict(
+                        pelvis_dx=14.0, pelvis_dy=38.0, torso_deg=20.0, head_rel_deg=-10.0,
+                        right_leg_behind=False, l_thigh_deg=20.0, l_shin_deg=18.0, r_thigh_deg=-22.0, r_shin_deg=18.0,
+                        grip_x=58.0, grip_y=6.0, weapon_deg=28.0, weapon_scale=0.88, grip_sep=36.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                    )),
+                    (7, dict(
+                        pelvis_dx=2.0, pelvis_dy=8.0, torso_deg=4.0, head_rel_deg=-2.0,
+                        right_leg_behind=False, l_thigh_deg=4.0, l_shin_deg=4.0, r_thigh_deg=-4.0, r_shin_deg=4.0,
+                        grip_x=48.0, grip_y=-14.0, weapon_deg=-36.0, weapon_scale=0.90, grip_sep=36.0,
+                        chain_cast_mode=False, chain_active=False, hook_sign=1.0, foot_y=99.0,
+                    )),
+                ]
+            elif f <= 14:
+                kfs = [
+                    (8, dict(
+                        pelvis_dx=6.0, pelvis_dy=22.0, torso_deg=14.0, head_rel_deg=-6.0,
+                        right_leg_behind=True, l_thigh_deg=-18.0, l_shin_deg=22.0, r_thigh_deg=18.0, r_shin_deg=14.0,
+                        grip_x=54.0, grip_y=2.0, weapon_deg=10.0, weapon_scale=0.88, grip_sep=34.0,
+                        chain_cast_mode=False, chain_active=False, hook_sign=-1.0, foot_y=99.0,
+                    )),
+                    (9, dict(
+                        pelvis_dx=18.0, pelvis_dy=38.0, torso_deg=24.0, head_rel_deg=-11.0,
+                        right_leg_behind=True, l_thigh_deg=-28.0, l_shin_deg=28.0, r_thigh_deg=26.0, r_shin_deg=18.0,
+                        grip_x=66.0, grip_y=6.0, weapon_deg=18.0, weapon_scale=0.88, grip_sep=34.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=-1.0, foot_y=99.0,
+                    )),
+                    (11, dict(
+                        pelvis_dx=-10.0, pelvis_dy=18.0, torso_deg=-14.0, head_rel_deg=9.0,
+                        right_leg_behind=True, l_thigh_deg=-12.0, l_shin_deg=18.0, r_thigh_deg=22.0, r_shin_deg=16.0,
+                        grip_x=34.0, grip_y=-58.0, weapon_deg=-68.0, weapon_scale=0.86, grip_sep=34.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=-1.0, foot_y=99.0,
+                    )),
+                    (12, dict(
+                        pelvis_dx=-14.0, pelvis_dy=14.0, torso_deg=-16.0, head_rel_deg=10.0,
+                        right_leg_behind=True, l_thigh_deg=-8.0, l_shin_deg=14.0, r_thigh_deg=20.0, r_shin_deg=14.0,
+                        grip_x=22.0, grip_y=-62.0, weapon_deg=-82.0, weapon_scale=0.85, grip_sep=32.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=-1.0, foot_y=99.0,
+                    )),
+                    (14, dict(
+                        pelvis_dx=-2.0, pelvis_dy=8.0, torso_deg=0.0, head_rel_deg=0.0,
+                        right_leg_behind=True, l_thigh_deg=-6.0, l_shin_deg=8.0, r_thigh_deg=8.0, r_shin_deg=6.0,
+                        grip_x=44.0, grip_y=-24.0, weapon_deg=-48.0, weapon_scale=0.88, grip_sep=34.0,
+                        chain_cast_mode=False, chain_active=False, hook_sign=-1.0, foot_y=99.0,
+                    )),
+                ]
+            elif f <= 22:
+                kfs = [
+                    (15, dict(
+                        pelvis_dx=-12.0, pelvis_dy=20.0, torso_deg=-14.0, head_rel_deg=8.0,
+                        right_leg_behind=False, l_thigh_deg=-18.0, l_shin_deg=20.0, r_thigh_deg=18.0, r_shin_deg=12.0,
+                        grip_x=-10.0, grip_y=-34.0, weapon_deg=-138.0, weapon_scale=0.88,
+                        chain_cast_mode=True, chain_active=False, chain_lx=46.0, chain_ly=-16.0,
+                        halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                    )),
+                    (16, dict(
+                        pelvis_dx=-16.0, pelvis_dy=26.0, torso_deg=-18.0, head_rel_deg=11.0,
+                        right_leg_behind=False, l_thigh_deg=-22.0, l_shin_deg=24.0, r_thigh_deg=22.0, r_shin_deg=14.0,
+                        grip_x=-18.0, grip_y=-28.0, weapon_deg=-150.0, weapon_scale=0.86,
+                        chain_cast_mode=True, chain_active=False, chain_lx=54.0, chain_ly=-12.0,
+                        halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                    )),
+                    (18, dict(
+                        pelvis_dx=20.0, pelvis_dy=36.0, torso_deg=22.0, head_rel_deg=-11.0,
+                        right_leg_behind=False, l_thigh_deg=26.0, l_shin_deg=18.0, r_thigh_deg=-28.0, r_shin_deg=22.0,
+                        grip_x=66.0, grip_y=-16.0, weapon_deg=-6.0, weapon_scale=0.86,
+                        chain_cast_mode=True, chain_active=False, chain_lx=-46.0, chain_ly=-22.0,
+                        right_arm_in_front=True, halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                    )),
+                    (20, dict(
+                        pelvis_dx=18.0, pelvis_dy=32.0, torso_deg=18.0, head_rel_deg=-9.0,
+                        right_leg_behind=False, l_thigh_deg=22.0, l_shin_deg=16.0, r_thigh_deg=-24.0, r_shin_deg=20.0,
+                        grip_x=62.0, grip_y=-4.0, weapon_deg=12.0, weapon_scale=0.86,
+                        chain_cast_mode=True, chain_active=False, chain_lx=-38.0, chain_ly=-14.0,
+                        right_arm_in_front=True, halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                    )),
+                    (22, dict(
+                        pelvis_dx=4.0, pelvis_dy=12.0, torso_deg=5.0, head_rel_deg=-2.0,
+                        right_leg_behind=False, l_thigh_deg=6.0, l_shin_deg=6.0, r_thigh_deg=-8.0, r_shin_deg=8.0,
+                        grip_x=50.0, grip_y=-16.0, weapon_deg=-34.0, weapon_scale=0.90, grip_sep=36.0,
+                        chain_cast_mode=False, chain_active=False, hook_sign=1.0, foot_y=99.0,
+                    )),
+                ]
+            else:
+                kfs = [
+                    (23, dict(
+                        pelvis_dx=-8.0, pelvis_dy=12.0, torso_deg=-12.0, head_rel_deg=8.0,
+                        right_leg_behind=False, l_thigh_deg=-14.0, l_shin_deg=18.0, r_thigh_deg=16.0, r_shin_deg=12.0,
+                        grip_x=22.0, grip_y=-66.0, weapon_deg=-102.0, weapon_scale=0.85, grip_sep=32.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                    )),
+                    (24, dict(
+                        pelvis_dx=-10.0, pelvis_dy=10.0, torso_deg=-15.0, head_rel_deg=10.0,
+                        right_leg_behind=False, l_thigh_deg=-10.0, l_shin_deg=16.0, r_thigh_deg=18.0, r_shin_deg=14.0,
+                        grip_x=26.0, grip_y=-70.0, weapon_deg=-96.0, weapon_scale=0.84, grip_sep=32.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                    )),
+                    (26, dict(
+                        pelvis_dx=18.0, pelvis_dy=48.0, torso_deg=26.0, head_rel_deg=-13.0,
+                        right_leg_behind=False, l_thigh_deg=30.0, l_shin_deg=26.0, r_thigh_deg=-32.0, r_shin_deg=26.0,
+                        grip_x=62.0, grip_y=4.0, weapon_deg=22.0, weapon_scale=0.88, grip_sep=36.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                    )),
+                    (27, dict(
+                        pelvis_dx=14.0, pelvis_dy=40.0, torso_deg=22.0, head_rel_deg=-10.0,
+                        right_leg_behind=False, l_thigh_deg=24.0, l_shin_deg=22.0, r_thigh_deg=-26.0, r_shin_deg=22.0,
+                        grip_x=58.0, grip_y=0.0, weapon_deg=14.0, weapon_scale=0.88, grip_sep=36.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                    )),
+                    (29, dict(
+                        pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5,
+                        right_leg_behind=False, l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
+                        grip_x=48.0, grip_y=-12.0, weapon_deg=-42.0, weapon_scale=0.90, grip_sep=36.0,
+                        chain_cast_mode=False, chain_active=False, hook_sign=1.0, foot_y=99.0,
+                    )),
+                ]
+            cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, extra_meta_keys=("weapon_scale",), wave_mult=2.2)
+            if 3 <= f <= 5:
+                u = (f - 3) / 2.0
                 cfg["slash_arc"] = dict(dx=4.0, dy=10.0, r=25.5, a0=-76.0 + 22.0 * u, a1=44.0 + 14.0 * u, intensity=1.22)
-            elif 16 <= f <= 22:
-                u = (f - 16) / 6.0
-                cfg["slash_arc"] = dict(dx=4.0, dy=8.0, r=25.0, a0=40.0 - 44.0 * u, a1=-28.0 - 46.0 * u, intensity=1.20)
+            elif 11 <= f <= 12:
+                u = float(f - 11)
+                cfg["slash_arc"] = dict(dx=6.0, dy=6.0, r=25.0, a0=48.0 - 30.0 * u, a1=-42.0 - 34.0 * u, intensity=1.24)
+            elif 18 <= f <= 20:
+                u = (f - 18) / 2.0
+                cfg["slash_arc"] = dict(dx=6.0, dy=8.0, r=26.0, a0=-46.0 + 18.0 * u, a1=42.0 + 18.0 * u, intensity=1.25)
+            elif 26 <= f <= 27:
+                u = float(f - 26)
+                cfg["slash_arc"] = dict(dx=5.0, dy=11.0, r=25.5, a0=-86.0 + 18.0 * u, a1=48.0 + 10.0 * u, intensity=1.25)
             cfgs.append(cfg)
 
         elif row_idx == 3:
@@ -1095,5 +1223,21 @@ def main():
     )
 
 
+def build_row2_auto_only():
+    os.makedirs(ARTIFACT_DIR, exist_ok=True)
+    parts = load_and_segment_512()
+    cfgs = build_row_configs(2)
+    frames_104 = [render_frame(parts, cfg) for cfg in cfgs]
+    splice_row2_auto_surgically(
+        hero_key="reaper",
+        sheet_path=OUT_SHEET_PATH,
+        frames_104=frames_104,
+        shimmer_cols=(C_CRIM_LIT, C_MAG_LIT),
+    )
+
+
 if __name__ == "__main__":
-    main()
+    if "--auto-only" in sys.argv:
+        build_row2_auto_only()
+    else:
+        main()

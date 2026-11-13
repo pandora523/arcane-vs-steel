@@ -1,13 +1,19 @@
-import { Fighter } from './Fighter.js?v=30fps89';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps89';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps89';
+import { Fighter } from './Fighter.js?v=30fps90';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps90';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps90';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps89';
+} from '../engine/shaders/cyberShaders.js?v=30fps90';
 
 const CYBER_HIT_STOP_SEC = 0.038;
+const AUTO_SLICES_4 = [
+  [60, 8],
+  [68, 7],
+  [75, 8],
+  [83, 7]
+];
 
 /**
  * VEX-09 (`android`) — Cybernetic Valkyrie Skirmisher Champion.
@@ -65,10 +71,10 @@ export class Android extends Fighter {
     if (typeof Image !== 'undefined') {
       const androidAssets = PixelForge.initAssets()?.android;
       if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps87')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps89';
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps90';
       }
       if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps87')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps89';
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps90';
       }
     }
 
@@ -121,7 +127,9 @@ export class Android extends Fighter {
       this.fx?.stopByKey('wingPylonThruster');
     }
     if (newState === 'AUTO_ATTACK') {
-      this._autoVariant = this.comboStep % 3;
+      this._autoVariant = ((this.comboStep || 0) % 4 + 4) % 4;
+      this.comboStep = (this._autoVariant + 1) % 4;
+      this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
       this._autoGapClosed = false;
     }
     if (newState === 'SKILL') {
@@ -407,15 +415,17 @@ export class Android extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const dur = this.autoDuration || 0.52;
-    const u = Math.min(1, this.stateTimer / dur);
+    const u = Math.min(1, Math.max(0, this.stateTimer / dur));
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-    const variant = this._autoVariant ?? 0;
+    const variant = ((this._autoVariant ?? 0) % 4 + 4) % 4;
+    const [sliceStart, sliceLen] = AUTO_SLICES_4[variant];
 
-    // Drive exact 10-frame sub-window of Row 2 (`60..69` Split-Lunge, `70..79` High-Knee Upper-Slash, `80..89` Overhead Fang Slam)
-    const subFrame = Math.min(9, Math.max(0, Math.floor(u * 10)));
-    this.trueUltFrameOverride = 60 + variant * 10 + subFrame;
+    // Drive exact 4-variant Row 2 slice (`60..67` Jet-Step Cleave, `68..74` Rising Dragon Kick-Slash,
+    // `75..82` Fin-Funnel Pincer Thrust, `83..89` Overhead Fang Chakram Slam)
+    this.trueUltFrameOverride =
+      sliceStart + Math.min(sliceLen - 1, Math.max(0, Math.floor(u * sliceLen)));
 
-    // Variant 1 (`High-Knee Kick + Rising Dragon Upper-Slash`) gets a crisp athletic hop off the floor
+    // Variant 1 (`68..74` — Rising Dragon High-Kick Slash) gets a crisp 18px athletic hop off the floor
     if (variant === 1 && u >= 0.16 && u <= 0.78) {
       const hopU = (u - 0.16) / 0.62;
       this.y = this.groundY - Math.sin(hopU * Math.PI) * 18;
@@ -425,7 +435,7 @@ export class Android extends Fighter {
 
     // Real Model Gap-Close BEFORE Swinging (`u < 0.35`, prior to blade strike frame!):
     // Physically thruster-glide VEX-09 right up to true point-blank blade contact (`108px` from `enemy.x`)
-    // so she NEVER swings into empty air from afar!
+    // across ALL 4 variants so she NEVER swings into empty air from afar!
     if (u < 0.35) {
       if (enemy && !enemy.isDead) {
         if (u < 0.08 && Math.abs(enemy.x - this.x) > 12) {
@@ -437,13 +447,14 @@ export class Android extends Fighter {
         if (forwardDelta > 1.5) {
           if (!this._autoGapClosed && forwardDelta > 26) {
             this._autoGapClosed = true;
-            this.spawnAfterimage(this.x, this.y, this.facing, 2, variant * 10 + 1, 0.20);
+            this.spawnAfterimage(this.x, this.y, this.facing, 2, sliceStart - 60 + 1, 0.20);
             this.fx.spawn('wingPylonThruster', this.x - this.facing * 18, this.y - 134, {
               follow: this,
               offsetX: -18,
               offsetY: -134,
               flip: this.facing < 0,
-              palette: variant === 1 ? CYBER_MAGENTA_PALETTE : CYBER_NEON_PALETTE,
+              palette:
+                variant === 1 || variant === 3 ? CYBER_MAGENTA_PALETTE : CYBER_NEON_PALETTE,
               maxDuration: 0.18,
               light: 0.95,
               extra: { length: 16, tilt: -0.78 }
@@ -460,15 +471,14 @@ export class Android extends Fighter {
     if (!this.didActionFrame && u >= 0.35) {
       this.didActionFrame = true;
       const step = variant;
-      this.comboStep++;
       const hitX = enemy && !enemy.isDead ? enemy.x : this.x + this.facing * 115;
 
-      if (step === 2) {
-        // Variant 2 (F20..F29): Crashing Split-Stance Overhead Fang Slam + Chakram Disc + Dual Funnel Convergence
+      if (step === 3) {
+        // V3 (`83..89` — Overhead Fang Chakram Slam): Crashing Split-Stance Slam + Ranged Cyber-Disc Chakram
         this.fx.spawn('twinCrossSlash', this.x - this.facing * 14, this.groundY - 24, {
           flip: this.facing < 0,
           palette: CYBER_MAGENTA_PALETTE,
-          light: 1.15,
+          light: 1.16,
           extra: { sparks: ['#ffffff', '#7df9ff', '#00f0ff', '#ff2e93'] }
         });
         if (game?.vfx) {
@@ -478,12 +488,15 @@ export class Android extends Fighter {
             vx: this.facing * 670,
             vy: 0,
             radius: 25,
-            damage: 66,
+            damage: 62,
             color: '#00f0ff',
             owner: this,
             type: 'cyber_disc'
           });
         }
+        this.spawnVfxAnim(6, hitX, this.groundY - 96, 136, 136, 0.24, { foreground: true });
+      } else if (step === 2) {
+        // V2 (`75..82` — Fin-Funnel Pincer Thrust): Odachi Needle Pierce + 2 Synchronized Fin-Funnel Laser Lances
         for (let dIdx = 0; dIdx < 2; dIdx++) {
           const drone = this.funnelDrones?.[dIdx];
           const droneX = drone ? drone.x : this.x + this.facing * (dIdx === 0 ? -36 : 42);
@@ -501,9 +514,9 @@ export class Android extends Fighter {
             }
           });
         }
-        this.spawnVfxAnim(6, hitX, this.groundY - 96, 136, 136, 0.24, { foreground: true });
+        this.spawnVfxAnim(4, hitX, this.groundY - 96, 136, 136, 0.24, { foreground: true });
       } else if (step === 1) {
-        // Variant 1 (F10..F19): Martial High-Knee Kick + Rising Dragon Upper-Slash
+        // V1 (`68..74` — Rising Dragon High-Kick Slash): Martial High-Knee Kick + Magenta Upper-Slash
         this.fx.spawn('plasmaCrescentSlash', this.x + this.facing * 42, this.y - 14, {
           flip: this.facing < 0,
           palette: CYBER_MAGENTA_PALETTE,
@@ -514,7 +527,7 @@ export class Android extends Fighter {
           }
         });
       } else {
-        // Variant 0 (F00..F09): Deep Split-Lunge Horizontal Plasma Cleave
+        // V0 (`60..67` — Jet-Step Iaido Plasma Cleave): Low Split-Lunge Neon Cyan Draw-Cleave
         this.fx.spawn('plasmaCrescentSlash', this.x + this.facing * 44, this.groundY - 8, {
           flip: this.facing < 0,
           palette: CYBER_NEON_PALETTE,
@@ -531,14 +544,26 @@ export class Android extends Fighter {
       }
 
       if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 210) {
-        const isCrit = step === 2 || Math.random() < 0.24;
-        const dmg = step === 2 ? 88 : step === 1 ? 66 : 64;
-        const popY = step === 1 ? -55 : 0;
-        enemy.takeDamage(dmg, this, isCrit, step === 2 ? 145 : 75, popY);
+        if (step === 2) {
+          // Odachi needle pierce (56 dmg) + synchronized dual Fin-Funnel laser lances (+20 bonus = 76 total)
+          const isCrit = Math.random() < 0.24;
+          enemy.takeDamage(56, this, isCrit, 72, 0);
+          if (!enemy.isDead) {
+            const manaBeforeBonus = this.mana;
+            enemy.takeDamage(20, this, false, 24, 0);
+            this.mana = manaBeforeBonus;
+          }
+        } else {
+          const isCrit = step === 3 || Math.random() < 0.24;
+          const dmg = step === 3 ? 84 : step === 1 ? 64 : 62;
+          const popY = step === 1 ? -55 : 0;
+          enemy.takeDamage(dmg, this, isCrit, step === 3 ? 145 : 75, popY);
+        }
         this.gainMana(5);
 
         this.fx.spawn('cyberImpactSpark', enemy.x - this.facing * 12, enemy.y - 96, {
-          palette: step === 1 ? CYBER_MAGENTA_PALETTE : CYBER_NEON_PALETTE,
+          palette:
+            step === 1 || step === 3 ? CYBER_MAGENTA_PALETTE : CYBER_NEON_PALETTE,
           light: 1.15
         });
 
