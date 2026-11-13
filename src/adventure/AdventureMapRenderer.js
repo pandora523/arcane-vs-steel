@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps96';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps97';
 
 /**
  * Seamless Multi-Plane HD-2D Adventure World Panorama Renderer (`AdventureMapRenderer`)
@@ -1219,18 +1219,32 @@ export class AdventureMapRenderer {
       ctx.fillStyle = 'rgba(22, 30, 48, 0.55)';
       ctx.fillRect(fx - 42, 690, buttW - 8, 5);
 
-      // 2. Drifting Near-Camera Foreground Pixel Cross-Motes / Shogunate Sakura Petals (`1.24x` depth)
-      for (let m = 0; m < 4; m++) {
-        const cyc = (t * (0.16 + (m % 2) * 0.06) + m * 0.27 + Math.abs(f) * 0.19) % 1;
-        const mx = snapPx(fx - 190 + m * 126 + Math.sin(t * 1.4 + m + f) * 26, 4);
-        const my = snapPx(isShogunate || z === 1 ? 140 + cyc * 480 : 640 - cyc * 460, 4);
-        if (isShogunate && m % 2 === 0) {
+      // 2. Drifting Near-Camera Foreground Pixel Cross-Motes / Raining Shogunate Cherry Blossoms (`1.24x` depth)
+      const moteCount = isShogunate ? 8 : 4;
+      for (let m = 0; m < moteCount; m++) {
+        const cyc = (t * (0.18 + (m % 3) * 0.05) + m * 0.17 + Math.abs(f) * 0.19) % 1;
+        const mx = snapPx(
+          fx - 220 + m * (isShogunate ? 68 : 126) + (isShogunate ? cyc * 135 : 0) + Math.sin(t * 1.8 + m + f) * 26,
+          2
+        );
+        const my = snapPx(isShogunate || z === 1 ? 80 + cyc * 560 : 640 - cyc * 460, 2);
+        if (isShogunate) {
           ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.72;
-          ctx.fillStyle = '#fda4af';
-          ctx.fillRect(mx - 3, my - 1, 6, 3);
+          ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.82;
+          const ph = (Math.floor(t * 4.8 + m) + m) & 3;
+          ctx.fillStyle = '#881337';
+          ctx.fillRect(mx - 4, my + 1, 7, 2);
+          ctx.fillStyle = m % 3 === 0 ? '#fbcfe8' : m % 2 === 0 ? '#fda4af' : '#fb7185';
+          if (ph % 2 === 0) {
+            ctx.fillRect(mx - 4, my - 2, 3, 3);
+            ctx.fillRect(mx + 1, my - 2, 3, 3);
+            ctx.fillRect(mx - 2, my - 1, 4, 3);
+          } else {
+            ctx.fillRect(mx - 3, my - 2, 6, 3);
+            ctx.fillRect(mx - 1, my, 4, 2);
+          }
           ctx.fillStyle = '#ffffff';
-          ctx.fillRect(mx - 1, my - 1, 2, 2);
+          ctx.fillRect(mx - 2, my - 2, 2, 2);
           ctx.globalAlpha = 1;
           continue;
         }
@@ -1243,9 +1257,7 @@ export class AdventureMapRenderer {
               ? '#c084fc'
               : z === 1
                 ? '#5eead4'
-                : isShogunate
-                  ? '#fda4af'
-                  : '#7dd3fc';
+                : '#7dd3fc';
         drawPixelCrossGlint(ctx, mx, my, col, '#ffffff', 3, 1, Math.sin(cyc * Math.PI) * 0.16);
       }
 

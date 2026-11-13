@@ -28,30 +28,30 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps96';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps96';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps96';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps96';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps96';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps96';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps96';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps96';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps96';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps96';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps96';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps96';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps96';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps96';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps96';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps96';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps96';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps97';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps97';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps97';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps97';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps97';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps97';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps97';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps97';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps97';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps97';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps97';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps97';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps97';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps97';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps97';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps97';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps97';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps96';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps96';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps96';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps96';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps97';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps97';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps97';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps97';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -612,7 +612,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps96');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps97');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -4528,6 +4528,17 @@ for (const [name, Cls] of CLASSES) {
             `[Suite 21C Beat 3] Expected dimensional stage slice into 'shogunate' at t=${t.toFixed(2)}, got permanent=${rGame.renderer.permanentStageOverride}, sliceTimer=${rGame.renderer.stageSliceTimer}, sliceTo=${rGame.renderer.stageSliceToId}`
           );
         }
+        const hasMachCone = Boolean(ronin.fx?.active?.some((s) => s.key === 'shunpoSpearMachCone'));
+        if (
+          !ronin.trueUltLightningSurge ||
+          (ronin.amakakeruCleaves && ronin.amakakeruCleaves.length !== 0) ||
+          ronin.activeVfxAnims.length !== 0 ||
+          hasMachCone
+        ) {
+          throw new Error(
+            `[Suite 21C Beat 3] Expected full-arena trueUltLightningSurge and ZERO middle crystal VFX: surge=${Boolean(ronin.trueUltLightningSurge)}, cleaves=${ronin.amakakeruCleaves?.length}, activeVfxAnims=${ronin.activeVfxAnims.length}, machCone=${hasMachCone}`
+          );
+        }
       }
       if (step > 30 && ronin.state !== 'TRUE_ULTIMATE') {
         exitedUltCleanly = true;
@@ -4543,7 +4554,7 @@ for (const [name, Cls] of CLASSES) {
     }
     if (track.rotateCalls !== 0 || track.quadCalls !== 0) {
       throw new Error(
-        `[Suite 21C] Forbidden canvas calls during Ronin TRUE_ULTIMATE + stage slice: rotate=${track.rotateCalls}, quad=${track.quadCalls}`
+        `[Suite 21C] Forbidden canvas calls during Ronin TRUE_ULTIMATE + lightning surge + stage slice: rotate=${track.rotateCalls}, quad=${track.quadCalls}`
       );
     }
     if (trackCtx.globalCompositeOperation !== 'source-over') {
@@ -4553,7 +4564,8 @@ for (const [name, Cls] of CLASSES) {
     }
   }
 
-  // 21D. Verify Ronin TRUE_ULTIMATE vs Ignis Sol (`FireMage`) -> Teleports to Burning Japanese Stage (`shogunate_inferno`)!
+  // 21D. Verify Ronin FIRST TRUE_ULTIMATE vs Ignis Sol (`FireMage`) -> Teleports to UNBURNED Japanese Stage (`shogunate` w/ raining sakura),
+  //      and ONLY uses `shogunate_inferno` once Ignis Sol ignites `inferno`!
   {
     const sGame = createMockGame();
     const track = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
@@ -4592,22 +4604,35 @@ for (const [name, Cls] of CLASSES) {
     }
 
     if (
-      sGame.renderer.permanentStageOverride !== 'shogunate_inferno' ||
-      sGame.renderer.getActiveStageId() !== 'shogunate_inferno' ||
-      sGame.renderer.stageSliceToId !== 'shogunate_inferno'
+      sGame.renderer.permanentStageOverride !== 'shogunate' ||
+      sGame.renderer.getActiveStageId() !== 'shogunate' ||
+      sGame.renderer.stageSliceToId !== 'shogunate'
     ) {
       throw new Error(
-        `[Suite 21D] Expected Ronin vs Ignis Sol to teleport into 'shogunate_inferno', got permanent=${sGame.renderer.permanentStageOverride}, active=${sGame.renderer.getActiveStageId()}, sliceTo=${sGame.renderer.stageSliceToId}`
+        `[Suite 21D] Expected Ronin FIRST Ultimate vs Ignis Sol to teleport into unburned 'shogunate', got permanent=${sGame.renderer.permanentStageOverride}, active=${sGame.renderer.getActiveStageId()}, sliceTo=${sGame.renderer.stageSliceToId}`
       );
     }
+
+    // Now simulate Ignis Sol's Cataclysm Meteor igniting the stage -> automatically fuses into 'shogunate_inferno'!
+    sGame.renderer.setStageTransformation('inferno', 1.0, true);
+    if (sGame.renderer.permanentStageOverride !== 'shogunate_inferno') {
+      throw new Error(
+        `[Suite 21D] Expected Sol 'inferno' after Ronin 'shogunate' to fuse into 'shogunate_inferno', got ${sGame.renderer.permanentStageOverride}`
+      );
+    }
+    const prevCtx2 = sGame.renderer.ctx;
+    sGame.renderer.ctx = trackCtx;
+    sGame.renderer.render([ronin, sol], emptyVfx);
+    sGame.renderer.ctx = prevCtx2;
+
     if (track.rotateCalls !== 0 || track.quadCalls !== 0) {
       throw new Error(
-        `[Suite 21D] Forbidden canvas calls in Burning Shogunate stage render: rotate=${track.rotateCalls}, quad=${track.quadCalls}`
+        `[Suite 21D] Forbidden canvas calls in Shogunate / Burning Shogunate stage render: rotate=${track.rotateCalls}, quad=${track.quadCalls}`
       );
     }
   }
 
-  // 21E. Verify Bidirectional Stage Synergy (Shogunate + Sol Meteor -> Burning Shogunate, and Inferno + Ronin Slice -> Burning Shogunate) + AdventureMapRenderer compatibility
+  // 21E. Verify Bidirectional Stage Synergy (Inferno already active + Ronin Slice -> Burning Shogunate) + AdventureMapRenderer compatibility
   {
     const bGame = createMockGame();
     bGame.renderer.resetStageOverrides();
@@ -4624,10 +4649,31 @@ for (const [name, Cls] of CLASSES) {
 
     bGame.renderer.resetStageOverrides();
     bGame.renderer.setStageTransformation('inferno', 1.0, true);
-    bGame.renderer.setStageTransformation('shogunate', 1.0, true);
-    if (bGame.renderer.permanentStageOverride !== 'shogunate_inferno') {
+    const ronin2 = new Ronin({ x: 360, groundY: 460, facing: 1 });
+    const sol2 = new FireMage({ x: 680, groundY: 460, facing: -1 });
+    sol2.maxHp = 20000;
+    sol2.hp = 20000;
+    ronin2.game = bGame;
+    sol2.game = bGame;
+    bGame.fighters = [ronin2, sol2];
+    bGame.getEnemiesOf = (f) => bGame.fighters.filter((o) => o !== f);
+    ronin2.finisherGauge = 100;
+    ronin2.setState('TRUE_ULTIMATE');
+    for (let step = 1; step <= 70; step++) {
+      sol2.dodgeCooldown = 999;
+      sol2.dashCooldown = 999;
+      sol2.skillCooldown = 999;
+      sol2.autoCooldown = 999;
+      ronin2.update(1 / 30, sol2, bGame);
+      sol2.update(1 / 30, ronin2, bGame);
+      bGame.renderer.update(1 / 30, [ronin2, sol2]);
+    }
+    if (
+      bGame.renderer.permanentStageOverride !== 'shogunate_inferno' ||
+      bGame.renderer.stageSliceToId !== 'shogunate_inferno'
+    ) {
       throw new Error(
-        `[Suite 21E] Expected Ronin 'shogunate' over 'inferno' to fuse into 'shogunate_inferno', got ${bGame.renderer.permanentStageOverride}`
+        `[Suite 21E] Expected Ronin Ultimate over already-burning 'inferno' to slice into 'shogunate_inferno', got permanent=${bGame.renderer.permanentStageOverride}, sliceTo=${bGame.renderer.stageSliceToId}`
       );
     }
 
@@ -4648,8 +4694,61 @@ for (const [name, Cls] of CLASSES) {
     }
   }
 
+  // 21F. Verify Ronin 4-Variant Flesh-Cutting Physical Auto-Attacks (fumikomi step-in <= 82px, 0 bloated VFX, cleanBladeCuts active)
+  {
+    const aGame = createMockGame();
+    const track = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
+    const trackCtx = createMockCtx(track);
+    const emptyVfx = new VFXManager();
+    const ronin = new Ronin({ x: 480, groundY: 460, facing: 1 });
+    const dummy = new Warrior({ x: 588, groundY: 460, facing: -1 });
+    dummy.maxHp = 20000;
+    dummy.hp = 20000;
+    ronin.game = aGame;
+    dummy.game = aGame;
+    aGame.fighters = [ronin, dummy];
+    aGame.getEnemiesOf = (f) => aGame.fighters.filter((o) => o !== f);
+
+    for (let v = 0; v < 4; v++) {
+      ronin.x = 480;
+      dummy.x = 588; // 108px samurai maai start
+      dummy.vx = 0;
+      const hpBefore = dummy.hp;
+      ronin.comboStep = v;
+      ronin.setState('AUTO_ATTACK');
+      let minDist = 999;
+      let sawCleanCut = false;
+      for (let f = 0; f < 16; f++) {
+        dummy.dodgeCooldown = 999;
+        dummy.dashCooldown = 999;
+        dummy.skillCooldown = 999;
+        dummy.autoCooldown = 999;
+        ronin.update(1 / 30, dummy, aGame);
+        minDist = Math.min(minDist, Math.abs(dummy.x - ronin.x));
+        if (ronin.cleanBladeCuts.some((c) => c.type === 'wound')) sawCleanCut = true;
+        if (ronin.activeVfxAnims.length !== 0 || ronin.activeSlashLines.length !== 0 || ronin.delayedJudgmentCuts.length !== 0) {
+          throw new Error(
+            `[Suite 21F V${v}] Expected ZERO bloated VFX on Ronin AUTO_ATTACK, got vfx=${ronin.activeVfxAnims.length}, slashLines=${ronin.activeSlashLines.length}, delayed=${ronin.delayedJudgmentCuts.length}`
+          );
+        }
+        const prevCtx = aGame.renderer.ctx;
+        aGame.renderer.ctx = trackCtx;
+        aGame.renderer.render([ronin, dummy], emptyVfx);
+        aGame.renderer.ctx = prevCtx;
+      }
+      if (!(dummy.hp < hpBefore) || !sawCleanCut || !(minDist <= 82)) {
+        throw new Error(
+          `[Suite 21F V${v}] Expected physical gap-close & flesh cut: hpDrop=${hpBefore - dummy.hp}, sawCleanCut=${sawCleanCut}, minDist=${minDist.toFixed(1)}`
+        );
+      }
+    }
+    if (track.rotateCalls !== 0 || track.quadCalls !== 0) {
+      throw new Error(`[Suite 21F] Forbidden canvas calls in Ronin AUTO_ATTACK: rotate=${track.rotateCalls}, quad=${track.quadCalls}`);
+    }
+  }
+
   console.log(
-    `[PASS] Suite 21: Kaze-Maru Two-Handed Samurai Walk, 3-Beat Whole-Stage Katana Slice ('shogunate') & Burning Shogunate Synergy vs Ignis Sol ('shogunate_inferno') verified!`
+    `[PASS] Suite 21: Kaze-Maru Flesh-Cutting 4-Auto, Full-Arena Lightning Surge Slice (0 Crystal), Unburned Sakura-Raining Shogunate vs Sol & Burning Synergy verified!`
   );
 }
 

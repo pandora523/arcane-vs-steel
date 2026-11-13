@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps96';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps96';
+import { PixelForge } from './PixelForge.js?v=30fps97';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps97';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -2662,36 +2662,111 @@ export class Renderer {
       ctx.fillRect(mx - 70, my - 6, 140, 6);
     }
 
-    // 4. 34 Wind-Swept Pixel-Art Sakura Petals drifting across the Shogunate Courtyard (`0` ctx.rotate!)
-    const petalCols = ['#fda4af', '#fb7185', '#fbcfe8', '#fff1f2'];
-    for (let p = 0; p < 34; p++) {
-      const cyc = (t * (0.19 + (p % 4) * 0.045) + p * 0.29) % 1;
-      const startX = drawX + drawW * (0.04 + ((p * 41) % 96) * 0.0096);
-      const breezeX = cyc * (185 + (p % 3) * 42) + Math.sin(t * 2.6 + p * 1.3) * 24;
-      const flutterY = Math.cos(t * 3.8 + p * 1.9) * 9;
+    // 4. 76 Continuous Diagonal Raining Cherry Blossoms (`Sakura Fubuki`) + 18 Courtyard-Skittering Petals (`0` ctx.rotate!)
+    const petalCols = ['#fda4af', '#fb7185', '#fbcfe8', '#fff1f2', '#f472b6'];
+    const spanH = Math.max(240, gy - drawY + 64);
+    for (let p = 0; p < 76; p++) {
+      const cyc = (t * (0.20 + (p % 5) * 0.042) + p * 0.137) % 1;
+      const startX = drawX - 90 + (((p * 53) % 116) / 116) * (drawW + 140);
+      const breezeX = cyc * (215 + (p % 4) * 38) + Math.sin(t * 2.7 + p * 1.31) * 26;
+      const flutterY = Math.cos(t * 3.9 + p * 1.73) * 8;
       const px = Math.round((startX + breezeX) / 2) * 2;
-      const py = Math.round((drawY + 60 + cyc * (gy - drawY + 55) + flutterY) / 2) * 2;
+      const py = Math.round((drawY - 24 + cyc * spanH + flutterY) / 2) * 2;
       const fade = Math.sin(cyc * Math.PI) * alpha;
       if (fade <= 0.03) continue;
 
-      const flip = Math.sin(t * 5.2 + p) >= 0 ? 1 : -1;
-      if (p % 3 === 0 && this.glowCrimson) {
+      if (p % 5 === 0 && this.glowCrimson) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(0.14, fade * 0.12);
+        ctx.globalAlpha = Math.min(0.13, fade * 0.11);
         ctx.drawImage(this.glowCrimson, px - 12, py - 12, 24, 24);
       }
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.92;
-      ctx.fillStyle = petalCols[p % petalCols.length];
-      ctx.fillRect(px - 3, py - 1, 5, 3);
-      ctx.fillRect(px + flip * 2, py + 1, 3, 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(px - 1, py - 1, 2, 2);
+      ctx.globalAlpha = fade * 0.94;
+      const tumblePhase = Math.floor(t * (4.8 + (p % 3) * 1.1) + p) & 3;
+      const pScale = p % 6 === 0 ? 1.5 : 1;
+      this.drawSakuraPetalPixel(
+        ctx,
+        px,
+        py,
+        tumblePhase,
+        pScale,
+        petalCols[p % petalCols.length],
+        '#ffffff'
+      );
+    }
+
+    // Courtyard flagstone breeze: 18 petals skittering low along the moonlit stone floor
+    ctx.globalCompositeOperation = 'source-over';
+    for (let s = 0; s < 18; s++) {
+      const cyc = (t * (0.26 + (s % 3) * 0.05) + s * 0.19) % 1;
+      const baseX = drawX + ((s * 67) % Math.max(200, Math.round(drawW - 140)));
+      const sx = Math.round((baseX + cyc * 190) / 2) * 2;
+      const sy = Math.round((gy - 6 + ((s * 9) % 34) - Math.abs(Math.sin(t * 4.4 + s)) * 7) / 2) * 2;
+      const sFade = Math.sin(cyc * Math.PI) * alpha * 0.86;
+      if (sFade <= 0.03) continue;
+      ctx.globalAlpha = sFade;
+      this.drawSakuraPetalPixel(
+        ctx,
+        sx,
+        sy,
+        (s + Math.floor(t * 5)) & 3,
+        1,
+        petalCols[(s + 1) % petalCols.length],
+        '#fff1f2'
+      );
     }
 
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
     ctx.restore();
+  }
+
+  /**
+   * Crisp 4-Phase Tumbling Pixel-Art Cherry Blossom Petal (`0` `ctx.rotate`!).
+   * Renders a notched HD-2D sakura petal cluster snapped cleanly to integer pixels.
+   */
+  drawSakuraPetalPixel(ctx, px, py, phase4 = 0, scale = 1, bodyCol = '#fda4af', hiCol = '#ffffff') {
+    const s = scale >= 1.8 ? 2 : 1;
+    const x = Math.round(px);
+    const y = Math.round(py);
+    const ph = phase4 & 3;
+
+    // Subtle dark crimson-plum selout shadow pixel for crisp readability against moonlit stone & sky
+    ctx.fillStyle = '#881337';
+    if (ph === 0) {
+      // Wide notched horizontal blossom petal
+      ctx.fillRect(x - 4 * s, y, 8 * s, 2 * s);
+      ctx.fillStyle = bodyCol;
+      ctx.fillRect(x - 4 * s, y - 2 * s, 3 * s, 3 * s);
+      ctx.fillRect(x + 1 * s, y - 2 * s, 3 * s, 3 * s);
+      ctx.fillRect(x - 2 * s, y - 1 * s, 4 * s, 3 * s);
+      ctx.fillStyle = hiCol;
+      ctx.fillRect(x - 3 * s, y - 2 * s, 2 * s, 1 * s);
+      ctx.fillRect(x + 1 * s, y - 1 * s, 2 * s, 1 * s);
+    } else if (ph === 1) {
+      // Diagonal-right tumbling petal
+      ctx.fillRect(x - 2 * s, y + 1 * s, 5 * s, 2 * s);
+      ctx.fillStyle = bodyCol;
+      ctx.fillRect(x - 3 * s, y - 3 * s, 4 * s, 3 * s);
+      ctx.fillRect(x - 1 * s, y - 1 * s, 4 * s, 3 * s);
+      ctx.fillStyle = hiCol;
+      ctx.fillRect(x - 2 * s, y - 2 * s, 2 * s, 2 * s);
+    } else if (ph === 2) {
+      // Edge-on slender fluttering petal
+      ctx.fillRect(x - 3 * s, y + 1 * s, 6 * s, 1 * s);
+      ctx.fillStyle = bodyCol;
+      ctx.fillRect(x - 3 * s, y - 1 * s, 6 * s, 2 * s);
+      ctx.fillStyle = hiCol;
+      ctx.fillRect(x - 1 * s, y - 1 * s, 3 * s, 1 * s);
+    } else {
+      // Diagonal-left cupped sakura petal
+      ctx.fillRect(x - 3 * s, y + 1 * s, 5 * s, 2 * s);
+      ctx.fillStyle = bodyCol;
+      ctx.fillRect(x - 1 * s, y - 3 * s, 4 * s, 3 * s);
+      ctx.fillRect(x - 3 * s, y - 1 * s, 4 * s, 3 * s);
+      ctx.fillStyle = hiCol;
+      ctx.fillRect(x, y - 2 * s, 2 * s, 2 * s);
+    }
   }
 
   /**
@@ -2859,8 +2934,8 @@ export class Renderer {
   /**
    * World-Space Full-Viewport Diagonal Katana Dimensional Rift Seam (`this.stageSliceTimer > 0`):
    *   - Blazing diagonal katana cut line across the entire viewport (`0` ctx.rotate!)
-   *   - Pixel-stepped dimensional star cross-flare at `(stageSliceFocusX, stageSliceFocusY)`
-   *   - 36 sakura petals (or blazing solar cinders for `shogunate_inferno`) bursting from the cut
+   *   - High-voltage jagged lightning surge bolts racing along & branching off the dimensional seam
+   *   - 40 sakura petals (or blazing solar cinders for `shogunate_inferno`) bursting from the cut
    */
   drawDimensionalStageSliceWorld(ctx, ww, gy) {
     const p = Math.max(
@@ -2880,14 +2955,16 @@ export class Renderer {
     const y1 = sliceCy + (x1 - sliceCx) * slope;
     const isInfernoSlice = this.stageSliceToId === 'shogunate_inferno';
 
-    const outerCol = isInfernoSlice ? '#ea580c' : '#0284c7';
+    const outerCol = isInfernoSlice ? '#ea580c' : '#4f46e5';
     const midCol = isInfernoSlice ? '#fb923c' : '#38bdf8';
     const petalCols = isInfernoSlice
       ? ['#fef08a', '#fb923c', '#f43f5e', '#ffffff']
-      : ['#fda4af', '#fb7185', '#7dd3fc', '#ffffff'];
+      : ['#fda4af', '#fb7185', '#fbcfe8', '#ffffff'];
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
+    ctx.lineCap = 'butt';
+    ctx.lineJoin = 'miter';
 
     // 1. Razor-Bright Full-Viewport Diagonal Katana Seam
     const seamFade = p < 0.22 ? 1.0 : Math.max(0, 1 - (p - 0.22) / 0.78);
@@ -2901,7 +2978,7 @@ export class Renderer {
       ctx.lineTo(x1, y1);
       ctx.stroke();
 
-      ctx.globalAlpha = seamFade * 0.80;
+      ctx.globalAlpha = seamFade * 0.82;
       ctx.strokeStyle = midCol;
       ctx.lineWidth = Math.max(1.5, (1 - p * 0.75) * 11);
       ctx.beginPath();
@@ -2919,29 +2996,78 @@ export class Renderer {
       ctx.stroke();
     }
 
-    // 2. Crisp Pixel-Stepped Katana Tsuba Click Star-Flare at `(sliceCx, sliceCy)`
-    if (p < 0.48) {
-      const flareFade = 1 - p / 0.48;
-      const armH = Math.round(240 * flareFade);
-      const armV = Math.round(135 * flareFade);
-      const cxR = Math.round(sliceCx);
-      const cyR = Math.round(sliceCy);
+    // 2. 6 Full-Viewport High-Voltage Jagged Lightning Surge Arcs + Forking Branches along the Katana Rift!
+    const tick = Math.floor(this.time * 24);
+    const jHash = (n) => {
+      const s = Math.sin(n * 91.7 + tick * 271.3) * 43758.5453;
+      return (s - Math.floor(s)) * 2 - 1;
+    };
+    const seamStartX = sliceCx - 760;
+    const seamEndX = sliceCx + 760;
+    for (let b = 0; b < 6; b++) {
+      const segs = 18;
+      const pts = [];
+      for (let s = 0; s <= segs; s++) {
+        const u = s / segs;
+        const bx = seamStartX + (seamEndX - seamStartX) * u;
+        const baseBy = sliceCy + (bx - sliceCx) * slope;
+        const spread = (b % 2 === 0 ? 1 : -1) * (12 + (b >> 1) * 18) * (0.4 + 0.6 * p);
+        const jit = jHash(b * 37 + s * 13) * (28 - p * 10);
+        pts.push([Math.round(bx), Math.round(baseBy + spread + jit)]);
+      }
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = flareFade * 0.65;
-      ctx.fillStyle = midCol;
-      ctx.fillRect(cxR - armH, cyR - 3, armH * 2, 6);
-      ctx.fillRect(cxR - 3, cyR - armV, 6, armV * 2);
+      ctx.globalAlpha = fade * 0.68;
+      ctx.strokeStyle = b % 2 === 0 ? midCol : outerCol;
+      ctx.lineWidth = b < 2 ? 4.5 : 3;
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0], pts[s][1]);
+      ctx.stroke();
 
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = flareFade * 0.96;
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(cxR - Math.round(armH * 0.62), cyR - 1, Math.round(armH * 1.24), 3);
-      ctx.fillRect(cxR - 1, cyR - Math.round(armV * 0.62), 3, Math.round(armV * 1.24));
+      ctx.globalAlpha = fade * 0.94;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = b < 2 ? 1.8 : 1.2;
+      ctx.beginPath();
+      ctx.moveTo(pts[0][0], pts[0][1]);
+      for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0], pts[s][1]);
+      ctx.stroke();
+
+      // Forking lightning tendrils leaping vertically off the dimensional cut into both halves of the stage!
+      for (let fk = 2; fk < segs; fk += 4) {
+        const anchor = pts[fk];
+        const fSign = (fk + b) % 2 === 0 ? -1 : 1;
+        const mx = anchor[0] + Math.round(jHash(b * 71 + fk) * 38);
+        const my = anchor[1] + fSign * Math.round(52 + Math.abs(jHash(b * 53 + fk)) * 58);
+        const ex = mx + Math.round(jHash(b * 97 + fk) * 44);
+        const ey = my + fSign * Math.round(48 + Math.abs(jHash(b * 113 + fk)) * 64);
+
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = fade * 0.62;
+        ctx.strokeStyle = midCol;
+        ctx.lineWidth = 2.6;
+        ctx.beginPath();
+        ctx.moveTo(anchor[0], anchor[1]);
+        ctx.lineTo(mx, my);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fade * 0.90;
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 1.1;
+        ctx.beginPath();
+        ctx.moveTo(anchor[0], anchor[1]);
+        ctx.lineTo(mx, my);
+        ctx.lineTo(ex, ey);
+        ctx.stroke();
+      }
     }
 
-    // 3. 36 Dimensional Sakura Petals / Blazing Cinders bursting outward along the katana cut!
-    for (let i = 0; i < 36; i++) {
+    // 3. 40 Dimensional Cherry Blossoms / Blazing Cinders bursting outward along the katana cut!
+    ctx.globalCompositeOperation = 'source-over';
+    for (let i = 0; i < 40; i++) {
       const laneX = -80 + ((i * 39) % (ww + 160));
       const baseCutY = sliceCy + (laneX - sliceCx) * slope;
       const side = i % 2 === 0 ? -1 : 1;
@@ -2950,11 +3076,22 @@ export class Renderer {
       const px = Math.round((laneX + windX + side * slope * burstDist) / 2) * 2;
       const py = Math.round((baseCutY + side * burstDist) / 2) * 2;
 
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.92;
-      ctx.fillStyle = petalCols[i % petalCols.length];
-      ctx.fillRect(px - 3, py - 2, 6, 3);
-      ctx.fillRect(px - 1, py + 1, 3, 2);
+      ctx.globalAlpha = fade * 0.94;
+      if (isInfernoSlice) {
+        ctx.fillStyle = petalCols[i % petalCols.length];
+        ctx.fillRect(px - 3, py - 2, 6, 3);
+        ctx.fillRect(px - 1, py + 1, 3, 2);
+      } else {
+        this.drawSakuraPetalPixel(
+          ctx,
+          px,
+          py,
+          (i + tick) & 3,
+          1,
+          petalCols[i % petalCols.length],
+          '#ffffff'
+        );
+      }
     }
 
     ctx.globalCompositeOperation = 'source-over';
@@ -3733,7 +3870,7 @@ export class Renderer {
       activeStage === 'inferno' || activeStage === 'shogunate_inferno'
         ? ['#fb923c', '#fde047']
         : activeStage === 'shogunate'
-          ? ['#fda4af', '#7dd3fc']
+          ? ['#fda4af', '#fbcfe8']
           : activeStage === 'sanctuary'
             ? ['#7dd3fc', '#fef08a']
             : activeStage === 'sylvan'
@@ -3744,24 +3881,43 @@ export class Renderer {
                   ? ['#2dd4bf', '#fde047']
                   : ['#38bdf8', '#fb923c'];
     const isInfernoFamily = activeStage === 'inferno' || activeStage === 'shogunate_inferno';
-    const spdMult = isInfernoFamily ? 1.85 : activeStage === 'sanctuary' || activeStage === 'shogunate' ? 1.05 : 1.25;
-    const windBias = isInfernoFamily ? 28 : activeStage === 'shogunate' ? 22 : 0;
+    const isShogunateRain = activeStage === 'shogunate';
+    const spdMult = isInfernoFamily ? 1.85 : isShogunateRain ? 1.18 : activeStage === 'sanctuary' ? 1.05 : 1.25;
+    const windBias = isInfernoFamily ? 28 : isShogunateRain ? 155 : 0;
 
     for (let i = 0; i < this.motes.length; i++) {
       const m = this.motes[i];
       const riseSpan = 540;
       const u = ((m.y + t * m.spdY * spdMult) % riseSpan) / riseSpan;
-      const my = gy + 20 - u * riseSpan;
+      const my = isShogunateRain ? gy - 510 + u * 545 : gy + 20 - u * riseSpan;
       const moteParallax = (this.camParallaxX || 0) * (0.08 + (i % 3) * 0.04);
       const rawDriftX =
         m.x +
-        Math.sin(t * (isInfernoFamily ? 2.8 : 1.6) + m.phase) * 26 +
+        Math.sin(t * (isInfernoFamily ? 2.8 : isShogunateRain ? 2.3 : 1.6) + m.phase) * 26 +
         u * windBias;
       const mx = this.adventureMode
         ? this.camX - 760 + ((((rawDriftX - (this.camX - 760)) % 1520) + 1520) % 1520)
         : rawDriftX + moteAnchorOffset + moteParallax;
       const pulse = 0.5 + 0.5 * Math.sin(t * 3.8 + m.phase);
-      const alpha = 0.36 + 0.50 * pulse;
+      const alpha = isShogunateRain ? Math.sin(u * Math.PI) * 0.90 : 0.36 + 0.50 * pulse;
+      if (alpha <= 0.02) continue;
+
+      if (isShogunateRain) {
+        const pCol = i % 3 === 0 ? '#fb7185' : m.isBlue ? '#fda4af' : '#fbcfe8';
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha;
+        this.drawSakuraPetalPixel(
+          ctx,
+          mx,
+          my,
+          Math.floor(t * 5.0 + m.phase + i) & 3,
+          i % 5 === 0 ? 1.8 : 1,
+          pCol,
+          '#ffffff'
+        );
+        continue;
+      }
+
       const col =
         isInfernoFamily && i % 5 === 0
           ? '#ef4444'
@@ -3782,6 +3938,32 @@ export class Renderer {
       if (pulse > 0.76) {
         ctx.fillStyle = '#ffffff';
         ctx.fillRect(mx + 1, my + 1, Math.max(1, s - 2), Math.max(1, s - 2));
+      }
+    }
+
+    // Continuous Mid-World Cherry Blossom Rain (`24` extra sakura petals drifting around fighters on `shogunate`)
+    if (isShogunateRain) {
+      const sakuraPalette = ['#fda4af', '#fb7185', '#fbcfe8', '#fff1f2'];
+      ctx.globalCompositeOperation = 'source-over';
+      for (let k = 0; k < 24; k++) {
+        const cyc = (t * (0.23 + (k % 4) * 0.045) + k * 0.17) % 1;
+        const rawX = -90 + ((k * 61) % (ww + 140)) + cyc * 185 + Math.sin(t * 2.5 + k) * 20;
+        const kx = this.adventureMode
+          ? this.camX - 760 + ((((rawX - (this.camX - 760)) % 1520) + 1520) % 1520)
+          : rawX;
+        const ky = gy - 505 + cyc * 540;
+        const kAlpha = Math.sin(cyc * Math.PI) * 0.88;
+        if (kAlpha <= 0.03) continue;
+        ctx.globalAlpha = kAlpha;
+        this.drawSakuraPetalPixel(
+          ctx,
+          kx,
+          ky,
+          (Math.floor(t * 4.6 + k * 1.3) + k) & 3,
+          k % 7 === 0 ? 1.8 : 1,
+          sakuraPalette[k % sakuraPalette.length],
+          '#ffffff'
+        );
       }
     }
     ctx.globalCompositeOperation = 'source-over';
@@ -3869,38 +4051,42 @@ export class Renderer {
         drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 24, pAlpha, tailDx, tailDy);
       }
     } else if (activeStage === 'shogunate') {
-      // ★ SHOGUNATE PHENOMENON: MOONLIT SAKURA GALE & ASTRAL BLADE BREEZE
+      // ★ SHOGUNATE PHENOMENON: MOONLIT SAKURA FUBUKI GALE & ASTRAL BLADE BREEZE
       const originX = ww * 0.56;
       const originY = gy - 385;
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.28 * fade;
+      ctx.globalAlpha = 0.22 * fade;
       if (this.glowCyan) ctx.drawImage(this.glowCyan, originX - 380, originY - 220, 760, 440);
-      ctx.globalAlpha = 0.20 * fade;
+      ctx.globalAlpha = 0.18 * fade;
       if (this.glowCrimson) ctx.drawImage(this.glowCrimson, ww * 0.5 - 420, gy - 310, 840, 340);
 
-      for (let f = 0; f < 56; f++) {
-        const cycle = (t * (0.34 + (f % 4) * 0.07) + f * 0.21) % 1;
-        const baseX = -40 + ((f * 89) % (ww + 40));
-        const breezeX = cycle * 260 + Math.sin(t * 2.8 + f * 1.4) * 26;
+      for (let f = 0; f < 72; f++) {
+        const cycle = (t * (0.34 + (f % 4) * 0.07) + f * 0.17) % 1;
+        const baseX = -60 + ((f * 89) % (ww + 80));
+        const breezeX = cycle * 275 + Math.sin(t * 2.9 + f * 1.4) * 28;
         const fx = Math.round(baseX + breezeX);
-        const fy = Math.round(gy - 520 + cycle * 545);
+        const fy = Math.round(gy - 530 + cycle * 555);
         const fAlpha = fade * Math.sin(cycle * Math.PI);
-        const isMoon = f % 4 === 0;
+        const isMoon = f % 6 === 0;
         const glow = isMoon ? this.glowCyan : this.glowCrimson;
-        const tilt = Math.cos(t * 3.1 + f * 1.5) >= 0 ? 1 : -1;
 
-        if (glow) {
+        if (glow && f % 3 === 0) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fAlpha * 0.24;
+          ctx.globalAlpha = fAlpha * 0.18;
           ctx.drawImage(glow, fx - 14, fy - 14, 28, 28);
         }
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fAlpha * 0.94;
-        ctx.fillStyle = isMoon ? '#bae6fd' : f % 2 === 0 ? '#fda4af' : '#fb7185';
-        ctx.fillRect(fx - 3 * tilt, fy - 2, 6, 3);
-        ctx.fillRect(fx - 1 * tilt, fy + 1, 4, 2);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(fx - 1 * tilt, fy - 1, 3, 2);
+        ctx.globalAlpha = fAlpha * 0.95;
+        const pCol = isMoon ? '#bae6fd' : f % 3 === 0 ? '#fbcfe8' : f % 2 === 0 ? '#fda4af' : '#fb7185';
+        this.drawSakuraPetalPixel(
+          ctx,
+          fx,
+          fy,
+          (Math.floor(t * 5.6 + f) + f) & 3,
+          f % 5 === 0 ? 2 : 1,
+          pCol,
+          '#ffffff'
+        );
       }
     } else if (activeStage === 'sanctuary') {
       // ★ SANCTUARY PHENOMENON: RADIANT SERAPHIM FEATHER & HALO SHOWER
@@ -4054,8 +4240,8 @@ export class Renderer {
   }
 
   /**
-   * Near-Camera 1.22x Parallax Foreground Depth Layer (`14` sparse edge-biased particles at modest alpha
-   * so fighter faces & silhouettes stay 100% clear!).
+   * Near-Camera 1.22x Parallax Foreground Depth Layer (`14` sparse edge-biased particles — or `22` raining
+   * cherry blossoms on `shogunate` — at modest alpha so fighter faces & silhouettes stay 100% clear!).
    */
   drawStageForeground(ctx, ww, gy) {
     const activeStage = this.getActiveStageId();
@@ -4064,41 +4250,51 @@ export class Renderer {
     const fgShiftY = -(this.camParallaxY || 0) * 0.10;
     const viewSpanW = this.adventureMode ? 1200 : ww;
     const viewLeftX = this.adventureMode ? this.camX - viewSpanW * 0.5 : 0;
-    const count = 14;
+    const count = activeStage === 'shogunate' ? 22 : 14;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
     for (let i = 0; i < count; i++) {
       const isLeftFlank = i % 2 === 0;
-      const slot = Math.floor(i / 2); // 0..6
+      const slot = Math.floor(i / 2);
       const speed =
         activeStage === 'inferno' || activeStage === 'shogunate_inferno'
           ? 0.34 + (i % 3) * 0.08
-          : activeStage === 'sanctuary' || activeStage === 'sylvan' || activeStage === 'shogunate'
-            ? 0.16 + (i % 3) * 0.04
-            : 0.22 + (i % 3) * 0.05;
+          : activeStage === 'shogunate'
+            ? 0.20 + (i % 4) * 0.045
+            : activeStage === 'sanctuary' || activeStage === 'sylvan'
+              ? 0.16 + (i % 3) * 0.04
+              : 0.22 + (i % 3) * 0.05;
       const cycle = (t * speed + i * 0.19) % 1;
       const flankSpan = viewSpanW * 0.28;
-      const baseX = isLeftFlank
-        ? viewLeftX - 35 + ((slot * 67) % Math.round(flankSpan))
-        : viewLeftX + viewSpanW - flankSpan + ((slot * 71) % Math.round(flankSpan)) + 35;
+      const baseX =
+        activeStage === 'shogunate'
+          ? viewLeftX - 70 + ((i * 73) % Math.max(240, Math.round(viewSpanW + 80)))
+          : isLeftFlank
+            ? viewLeftX - 35 + ((slot * 67) % Math.round(flankSpan))
+            : viewLeftX + viewSpanW - flankSpan + ((slot * 71) % Math.round(flankSpan)) + 35;
       const swayX =
         Math.sin(t * 2.2 + i * 1.3) * 22 +
-        (activeStage === 'inferno' || activeStage === 'shogunate_inferno' || activeStage === 'shogunate'
-          ? cycle * 38
-          : 0);
-      const px = Math.round((baseX + swayX + fgShiftX) / 3) * 3;
+        (activeStage === 'shogunate'
+          ? cycle * 165
+          : activeStage === 'inferno' || activeStage === 'shogunate_inferno'
+            ? cycle * 38
+            : 0);
+      const px = Math.round((baseX + swayX + fgShiftX) / 2) * 2;
 
       const isFalling =
         activeStage === 'sanctuary' ||
         activeStage === 'shogunate' ||
         (activeStage === 'sylvan' && i % 3 !== 0);
-      const rawY = isFalling
-        ? gy - 340 + cycle * 435
-        : gy + 92 - cycle * 410;
-      const py = Math.round((rawY + fgShiftY) / 3) * 3;
-      const alpha = Math.sin(cycle * Math.PI) * 0.44;
+      const rawY =
+        activeStage === 'shogunate'
+          ? gy - 470 + cycle * 555
+          : isFalling
+            ? gy - 340 + cycle * 435
+            : gy + 92 - cycle * 410;
+      const py = Math.round((rawY + fgShiftY) / 2) * 2;
+      const alpha = Math.sin(cycle * Math.PI) * (activeStage === 'shogunate' ? 0.62 : 0.44);
       if (alpha <= 0.02) continue;
 
       if (activeStage === 'inferno' || activeStage === 'shogunate_inferno') {
@@ -4122,17 +4318,23 @@ export class Renderer {
           ctx.fillRect(px - 1, py - 1, 3, 3);
         }
       } else if (activeStage === 'shogunate') {
-        if (this.glowCrimson && i % 2 === 0) {
+        if (this.glowCrimson && i % 4 === 0) {
           ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = alpha * 0.24;
+          ctx.globalAlpha = Math.min(0.14, alpha * 0.16);
           ctx.drawImage(this.glowCrimson, px - 16, py - 16, 32, 32);
         }
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = alpha * 0.90;
-        ctx.fillStyle = i % 3 === 0 ? '#fbcfe8' : '#fda4af';
-        ctx.fillRect(px - 4, py - 2, 7, 3);
-        ctx.fillStyle = '#ffffff';
-        ctx.fillRect(px - 2, py - 1, 3, 2);
+        ctx.globalAlpha = alpha * 0.92;
+        const fgPetalCol = i % 3 === 0 ? '#fbcfe8' : i % 2 === 0 ? '#fda4af' : '#fb7185';
+        this.drawSakuraPetalPixel(
+          ctx,
+          px,
+          py,
+          (Math.floor(t * 4.4 + i * 1.1) + i) & 3,
+          2,
+          fgPetalCol,
+          '#ffffff'
+        );
       } else if (activeStage === 'sylvan') {
         const gTex = i % 2 === 0 ? this.glowEmerald : this.glowCyan;
         if (gTex) {

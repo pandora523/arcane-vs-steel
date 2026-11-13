@@ -768,6 +768,11 @@ def render_pose_104(parts, cfg):
             crop_y0 += int(round((max_y104 - 96.0) / scale))
         elif min_y104 < 7.0:
             crop_y0 += int(round((min_y104 - 7.0) / scale))
+    elif cfg.get("fixed_crop_x", False):
+        # Lock S=592 and crop_x0 so forward sword lunges extend genuinely toward +X without shrinking or recoiling Ronin's body!
+        min_y104 = (c_ymin - crop_y0) * scale
+        if min_y104 < 6.0:
+            crop_y0 += int(round((min_y104 - 6.0) / scale))
     else:
         min_104 = (c_xmin - crop_x0) * scale
         max_104 = (c_xmax - crop_x0) * scale
@@ -1032,285 +1037,259 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK — 4 Distinct Full-Body Iaido Storm Katana & Saya Animations:
-            # - Slice 0 (F00..F07, 8f -> 60..67): Battōjutsu Quick-Draw Slash (coiled hand-on-Saya crouch -> lightning rising katana draw)
-            # - Slice 1 (F08..F14, 7f -> 68..74): Reverse Kesagiri Storm Whip (lead-leg swap -> reverse cross-body horizontal cleave)
-            # - Slice 2 (F15..F22, 8f -> 75..82): Raijin Jōdan Helm-Splitter (high overhead Jōdan raise -> vertical thunder-chop)
-            # - Slice 3 (F23..F29, 7f -> 83..89): Iaido Flash-Thrust & Chiburi Snap (aerodynamic forward blitz thrust -> Chiburi & Noto)
-            if f <= 7:
-                if f <= 2:
-                    u = f / 2.0
-                    cfgs.append(dict(
-                        pelvis_dx=-10.0 * u,
-                        pelvis_dy=82.0 * u,
-                        torso_deg=16.0 * u,
-                        head_rel_deg=-7.0 * u,
-                        mane_rel_deg=-10.0 * u,
-                        mane_wave_phase=ph,
-                        mane_wave_amp=8.0,
-                        l_thigh_deg=-26.0 * u,
-                        l_shin_deg=24.0 * u,
-                        r_thigh_deg=24.0 * u,
-                        r_shin_deg=-22.0 * u,
-                        l_sode_rel_deg=-8.0 * u,
-                        l_fore_rel_deg=-32.0 * u,
-                        r_sode_rel_deg=24.0 * u,
-                        r_fore_rel_deg=20.0 * u,
-                        sheathed=(f >= 1),
-                        drums_active=True,
-                    ))
-                elif f <= 5:
-                    u = (f - 3) / 2.0
-                    cfgs.append(dict(
-                        pelvis_dx=8.0 * u,
-                        pelvis_dy=74.0 - 20.0 * u,
-                        torso_deg=20.0 - 6.0 * u,
-                        head_rel_deg=-8.0 + 4.0 * u,
-                        mane_rel_deg=-18.0,
-                        mane_wave_phase=ph * 2.2,
-                        mane_wave_amp=10.0,
-                        l_thigh_deg=22.0,
-                        l_shin_deg=14.0,
-                        r_thigh_deg=-26.0,
-                        r_shin_deg=14.0,
-                        l_sode_rel_deg=14.0,
-                        l_fore_rel_deg=-26.0,
-                        r_sode_rel_deg=6.0 - 52.0 * u,
-                        r_fore_rel_deg=-12.0 - 14.0 * u,
-                        right_arm_in_front=True,
-                        odachi_deg=48.0 - 102.0 * u,
-                        odachi_len=27.0,
-                        drums_active=True,
-                        slash_arc=dict(
-                            dx=4.0, dy=10.0, r=26.5,
-                            a0=68.0 - 38.0 * u, a1=-44.0 - 24.0 * u,
-                            intensity=1.05 + 0.22 * math.sin(u * math.pi), violet=False,
-                        ),
-                    ))
-                else:
-                    u = (f - 6) / 1.0
-                    cfgs.append(dict(
-                        pelvis_dx=4.0 * (1.0 - u),
-                        pelvis_dy=36.0 * (1.0 - u),
-                        torso_deg=10.0 * (1.0 - u) + 2.0,
-                        head_rel_deg=-3.0 * (1.0 - u) - 1.0,
-                        mane_rel_deg=-12.0 * (1.0 - u) - 3.0,
-                        mane_wave_phase=ph,
-                        mane_wave_amp=7.5,
-                        l_thigh_deg=12.0 * (1.0 - u),
-                        l_shin_deg=8.0 * (1.0 - u),
-                        r_thigh_deg=-14.0 * (1.0 - u),
-                        r_shin_deg=8.0 * (1.0 - u),
-                        l_sode_rel_deg=6.0 * (1.0 - u) - 4.0,
-                        l_fore_rel_deg=-20.0 * (1.0 - u) - 10.0 * u,
-                        r_sode_rel_deg=-36.0 * (1.0 - u) - 14.0 * u,
-                        r_fore_rel_deg=-22.0 * (1.0 - u) - 16.0 * u,
-                        odachi_deg=-46.0 * (1.0 - u) - 28.0 * u,
-                        odachi_len=28.0,
-                        drums_active=(f == 6),
-                    ))
-            elif f <= 14:
-                if f <= 9:
-                    u = (f - 8) / 1.0
-                    cfgs.append(dict(
-                        pelvis_dx=-10.0 - 4.0 * u,
-                        pelvis_dy=54.0 + 8.0 * u,
-                        torso_deg=-6.0 - 4.0 * u,
-                        head_rel_deg=4.0 + 2.0 * u,
-                        mane_rel_deg=-8.0,
-                        mane_wave_phase=ph * 2.0,
-                        mane_wave_amp=8.5,
-                        right_leg_behind=True,
-                        l_thigh_deg=20.0 + 4.0 * u,
-                        l_shin_deg=16.0,
-                        r_thigh_deg=-22.0 - 4.0 * u,
-                        r_shin_deg=18.0,
-                        l_sode_rel_deg=-14.0,
-                        l_fore_rel_deg=-28.0,
-                        r_sode_rel_deg=-46.0 - 8.0 * u,
-                        r_fore_rel_deg=-24.0 - 6.0 * u,
-                        odachi_deg=-52.0 - 12.0 * u,
-                        odachi_curve=1.0,
-                        odachi_len=27.0,
-                        drums_active=True,
-                    ))
-                elif f <= 12:
-                    u = (f - 10) / 2.0
-                    cfgs.append(dict(
-                        pelvis_dx=10.0 + 4.0 * u,
-                        pelvis_dy=68.0 + 8.0 * math.sin(u * math.pi),
-                        torso_deg=20.0 + 3.0 * u,
-                        head_rel_deg=-9.0,
-                        mane_rel_deg=-20.0,
-                        mane_wave_phase=ph * 2.5,
-                        mane_wave_amp=10.5,
-                        right_leg_behind=True,
-                        l_thigh_deg=-24.0,
-                        l_shin_deg=20.0,
-                        r_thigh_deg=26.0,
-                        r_shin_deg=-16.0,
-                        l_sode_rel_deg=16.0,
-                        l_fore_rel_deg=-26.0,
-                        r_sode_rel_deg=-28.0 + 16.0 * u,
-                        r_fore_rel_deg=-18.0 + 8.0 * u,
-                        right_arm_in_front=True,
-                        odachi_deg=8.0 + 24.0 * u,
-                        odachi_curve=1.0,
-                        odachi_len=26.5,
-                        drums_active=True,
-                        slash_arc=dict(
-                            dx=4.0, dy=11.0, r=27.0,
-                            a0=-46.0 + 18.0 * u, a1=40.0 + 18.0 * u,
-                            intensity=1.08 + 0.22 * math.sin(u * math.pi), violet=True,
-                        ),
-                    ))
-                else:
-                    u = (f - 13) / 1.0
-                    cfgs.append(dict(
-                        pelvis_dx=6.0 * (1.0 - u),
-                        pelvis_dy=40.0 * (1.0 - u),
-                        torso_deg=14.0 * (1.0 - u) + 2.0,
-                        head_rel_deg=-5.0 * (1.0 - u) - 1.0,
-                        mane_rel_deg=-12.0 * (1.0 - u) - 3.0,
-                        mane_wave_phase=ph,
-                        mane_wave_amp=7.5,
-                        right_leg_behind=(f == 13),
-                        l_thigh_deg=-12.0 * (1.0 - u),
-                        l_shin_deg=10.0 * (1.0 - u),
-                        r_thigh_deg=12.0 * (1.0 - u),
-                        r_shin_deg=-8.0 * (1.0 - u),
-                        l_sode_rel_deg=8.0 * (1.0 - u) - 4.0,
-                        l_fore_rel_deg=-22.0 * (1.0 - u) - 10.0 * u,
-                        r_sode_rel_deg=-14.0,
-                        r_fore_rel_deg=-14.0 - 4.0 * u,
-                        odachi_deg=18.0 * (1.0 - u) - 28.0 * u,
-                        odachi_len=28.0,
-                        drums_active=(f == 13),
-                    ))
-            elif f <= 22:
-                if f <= 17:
-                    u = (f - 15) / 2.0
-                    cfgs.append(dict(
-                        pelvis_dx=-8.0 * u,
-                        pelvis_dy=18.0 + 8.0 * u,
-                        torso_deg=-8.0 - 4.0 * u,
-                        head_rel_deg=6.0 + 3.0 * u,
-                        mane_rel_deg=-8.0,
-                        mane_wave_phase=ph * 2.0,
-                        mane_wave_amp=8.5,
-                        l_thigh_deg=-14.0 * u,
-                        l_shin_deg=14.0 * u,
-                        r_thigh_deg=16.0 * u,
-                        r_shin_deg=-10.0 * u,
-                        l_sode_rel_deg=-38.0 * u,
-                        l_fore_rel_deg=-24.0,
-                        r_sode_rel_deg=-42.0 - 20.0 * u,
-                        r_fore_rel_deg=-20.0 - 6.0 * u,
-                        right_arm_in_front=True,
-                        odachi_deg=-96.0 - 42.0 * u,
-                        odachi_len=26.0,
-                        drums_active=True,
-                    ))
-                elif f <= 20:
-                    u = (f - 18) / 2.0
-                    cfgs.append(dict(
-                        pelvis_dx=10.0 + 4.0 * u,
-                        pelvis_dy=66.0 + 12.0 * u,
-                        torso_deg=20.0 + 5.0 * u,
-                        head_rel_deg=-10.0,
-                        mane_rel_deg=-22.0,
-                        mane_wave_phase=ph * 2.6,
-                        mane_wave_amp=11.0,
-                        l_thigh_deg=24.0,
-                        l_shin_deg=16.0,
-                        r_thigh_deg=-28.0,
-                        r_shin_deg=16.0,
-                        l_sode_rel_deg=16.0,
-                        l_fore_rel_deg=-24.0,
-                        r_sode_rel_deg=-28.0 + 18.0 * u,
-                        r_fore_rel_deg=-16.0 + 6.0 * u,
-                        right_arm_in_front=True,
-                        odachi_deg=-18.0 + 48.0 * u,
-                        odachi_len=26.5,
-                        drums_active=True,
-                        slash_arc=dict(
-                            dx=4.0, dy=11.0, r=26.5,
-                            a0=-82.0 + 28.0 * u, a1=14.0 + 28.0 * u,
-                            intensity=1.10 + 0.22 * math.sin(u * math.pi), violet=False,
-                        ),
-                    ))
-                else:
-                    u = (f - 21) / 1.0
-                    cfgs.append(dict(
-                        pelvis_dx=8.0 * (1.0 - u),
-                        pelvis_dy=48.0 * (1.0 - u),
-                        torso_deg=16.0 * (1.0 - u) + 2.0,
-                        head_rel_deg=-6.0 * (1.0 - u) - 1.0,
-                        mane_rel_deg=-14.0 * (1.0 - u) - 3.0,
-                        mane_wave_phase=ph,
-                        mane_wave_amp=7.5,
-                        l_thigh_deg=14.0 * (1.0 - u),
-                        l_shin_deg=10.0 * (1.0 - u),
-                        r_thigh_deg=-16.0 * (1.0 - u),
-                        r_shin_deg=10.0 * (1.0 - u),
-                        l_sode_rel_deg=8.0 * (1.0 - u) - 4.0,
-                        l_fore_rel_deg=-20.0 * (1.0 - u) - 10.0 * u,
-                        r_sode_rel_deg=-12.0 - 2.0 * u,
-                        r_fore_rel_deg=-12.0 - 6.0 * u,
-                        odachi_deg=22.0 * (1.0 - u) - 28.0 * u,
-                        odachi_len=28.0,
-                        drums_active=(f == 21),
-                    ))
-            else:
-                if f <= 25:
-                    u = (f - 23) / 2.0
-                    cfgs.append(dict(
-                        pelvis_dx=-6.0 * (1.0 - u) + 14.0 * u,
-                        pelvis_dy=64.0 + 14.0 * u,
-                        torso_deg=16.0 + 8.0 * u,
-                        head_rel_deg=-8.0 - 4.0 * u,
-                        mane_rel_deg=-18.0 - 6.0 * u,
-                        mane_wave_phase=ph * 3.0,
-                        mane_wave_amp=11.0,
-                        l_thigh_deg=16.0 + 12.0 * u,
-                        l_shin_deg=16.0,
-                        r_thigh_deg=-20.0 - 12.0 * u,
-                        r_shin_deg=18.0,
-                        l_sode_rel_deg=18.0,
-                        l_fore_rel_deg=-28.0,
-                        r_sode_rel_deg=-8.0 - 16.0 * u,
-                        r_fore_rel_deg=-14.0 + 6.0 * u,
-                        right_arm_in_front=True,
-                        odachi_deg=-8.0 + 6.0 * u,
-                        odachi_len=24.5,
-                        drums_active=True,
-                    ))
-                else:
-                    # F26..F29: Crisp Chiburi Blood-Flick (F26..F27) & Noto Sheath/Kamae Return (F28..F29)
-                    u = (f - 26) / 3.0
-                    cfgs.append(dict(
-                        pelvis_dx=8.0 * (1.0 - u),
-                        pelvis_dy=56.0 * (1.0 - u),
-                        torso_deg=16.0 * (1.0 - u) + 2.0,
-                        head_rel_deg=-6.0 * (1.0 - u) - 1.0,
-                        mane_rel_deg=-14.0 * (1.0 - u) - 3.0,
-                        mane_wave_phase=ph,
-                        mane_wave_amp=7.5,
-                        l_thigh_deg=18.0 * (1.0 - u),
-                        l_shin_deg=12.0 * (1.0 - u),
-                        r_thigh_deg=-20.0 * (1.0 - u),
-                        r_shin_deg=12.0 * (1.0 - u),
-                        l_sode_rel_deg=8.0 * (1.0 - u) - 4.0,
-                        l_fore_rel_deg=-26.0 * (1.0 - u) - 10.0 * u,
-                        r_sode_rel_deg=12.0 if f == 27 else (20.0 if f == 28 else -14.0),
-                        r_fore_rel_deg=-6.0 if f == 27 else (18.0 if f == 28 else -18.0),
-                        right_arm_in_front=(f <= 27),
-                        sheathed=(f == 28),
-                        odachi_deg=26.0 if f == 26 else (34.0 if f == 27 else -28.0),
-                        odachi_curve=1.0 if f <= 27 else -1.0,
-                        odachi_len=25.5 if f <= 27 else 28.5,
-                        drums_active=(f <= 27),
-                    ))
+            # Row 2: AUTO_ATTACK — 4 Shallow/Horizontal Full-Reach, Full-Follow-Through (Furikiri) Kenjutsu Katana Cuts!
+            # Locked `fixed_crop_x=True` (`S=592`) so Ronin's body NEVER shrinks or recoils backward when extending the blade,
+            # and `slash_arc=None` so zero bloated neon blobs obscure the razor-clean steel cut through enemy flesh:
+            # - Slice 0 (F00..F07, 8f -> 60..67): Battōjutsu Yoko-Ichimonji (coiled Saya grip -> flat horizontal waist cut -> wide back-shoulder follow-through)
+            # - Slice 1 (F08..F14, 7f -> 68..74): Gyaku-Yoko Giri (high-back shoulder chamber -> shallow cross-body chest rip -> full past-hip follow-through)
+            # - Slice 2 (F15..F22, 8f -> 75..82): Kiri-Age Gyaku-Gesa (low-back hip coil -> deep lunging shallow-rising diagonal rip -> full high-back follow-through)
+            # - Slice 3 (F23..F29, 7f -> 83..89): Morote Kiri-Nuki & Chiburi (waist coil -> two-handed step-through gut cleave -> full past-hip Chiburi blood-flick)
+            row2_table = [
+                # --- SLICE 0 (F00..F07): Battōjutsu Yoko-Ichimonji (Saya Coil -> +26° -> -2° Full Reach -> -16° -> -118° -> -166° Wide Behind-Back Furikiri) ---
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-8.0, pelvis_dy=48.0, torso_deg=10.0,
+                    head_rel_deg=-4.0, mane_rel_deg=-8.0, mane_wave_phase=ph, mane_wave_amp=6.5,
+                    l_thigh_deg=-18.0, l_shin_deg=18.0, r_thigh_deg=16.0, r_shin_deg=-14.0,
+                    l_sode_rel_deg=-6.0, l_fore_rel_deg=-28.0, r_sode_rel_deg=18.0, r_fore_rel_deg=14.0,
+                    sheathed=True, saya_deg=156.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-14.0, pelvis_dy=72.0, torso_deg=16.0,
+                    head_rel_deg=-7.0, mane_rel_deg=-12.0, mane_wave_phase=ph, mane_wave_amp=7.0,
+                    l_thigh_deg=-26.0, l_shin_deg=24.0, r_thigh_deg=24.0, r_shin_deg=-20.0,
+                    l_sode_rel_deg=-10.0, l_fore_rel_deg=-32.0, r_sode_rel_deg=24.0, r_fore_rel_deg=20.0,
+                    sheathed=True, saya_deg=160.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-4.0, pelvis_dy=62.0, torso_deg=14.0,
+                    head_rel_deg=-6.0, mane_rel_deg=-14.0, mane_wave_phase=ph * 1.6, mane_wave_amp=7.5,
+                    l_thigh_deg=16.0, l_shin_deg=14.0, r_thigh_deg=-18.0, r_shin_deg=14.0,
+                    l_sode_rel_deg=10.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=24.0, r_fore_rel_deg=-10.0,
+                    right_arm_in_front=True, odachi_deg=26.0, odachi_curve=1.0, odachi_len=26.8, odachi_glow=0.35,
+                    saya_deg=156.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-3.0, pelvis_dy=58.0, torso_deg=15.0,
+                    head_rel_deg=-6.0, mane_rel_deg=-16.0, mane_wave_phase=ph * 1.8, mane_wave_amp=8.5,
+                    l_thigh_deg=22.0, l_shin_deg=14.0, r_thigh_deg=-24.0, r_shin_deg=16.0,
+                    l_sode_rel_deg=14.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=18.0, r_fore_rel_deg=-26.0,
+                    right_arm_in_front=True, odachi_deg=-2.0, odachi_curve=1.0, odachi_len=27.2, odachi_glow=0.45,
+                    saya_deg=152.0, drums_active=True,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-1.0, pelvis_dy=54.0, torso_deg=16.0,
+                    head_rel_deg=-6.0, mane_rel_deg=-18.0, mane_wave_phase=ph * 2.0, mane_wave_amp=9.0,
+                    l_thigh_deg=24.0, l_shin_deg=14.0, r_thigh_deg=-26.0, r_shin_deg=16.0,
+                    l_sode_rel_deg=16.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=18.0, r_fore_rel_deg=-30.0,
+                    right_arm_in_front=True, odachi_deg=-16.0, odachi_curve=1.0, odachi_len=27.2, odachi_glow=0.45,
+                    saya_deg=150.0, drums_active=True,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=2.0, pelvis_dy=48.0, torso_deg=13.0,
+                    head_rel_deg=-4.0, mane_rel_deg=-15.0, mane_wave_phase=ph * 1.8, mane_wave_amp=8.0,
+                    l_thigh_deg=20.0, l_shin_deg=12.0, r_thigh_deg=-22.0, r_shin_deg=14.0,
+                    l_sode_rel_deg=12.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=44.0, r_fore_rel_deg=22.0,
+                    right_arm_in_front=False, odachi_deg=-118.0, odachi_curve=1.0, odachi_len=26.5, odachi_glow=0.35,
+                    saya_deg=150.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=4.0, pelvis_dy=38.0, torso_deg=9.0,
+                    head_rel_deg=-3.0, mane_rel_deg=-12.0, mane_wave_phase=ph * 1.4, mane_wave_amp=7.5,
+                    l_thigh_deg=14.0, l_shin_deg=10.0, r_thigh_deg=-16.0, r_shin_deg=10.0,
+                    l_sode_rel_deg=8.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=66.0, r_fore_rel_deg=44.0,
+                    right_arm_in_front=False, odachi_deg=-164.0, odachi_curve=1.0, odachi_len=27.0, odachi_glow=0.30,
+                    saya_deg=152.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=1.0, pelvis_dy=28.0, torso_deg=5.0,
+                    head_rel_deg=-1.0, mane_rel_deg=-8.0, mane_wave_phase=ph, mane_wave_amp=6.5,
+                    l_thigh_deg=8.0, l_shin_deg=6.0, r_thigh_deg=-8.0, r_shin_deg=6.0,
+                    l_sode_rel_deg=-2.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=62.0, r_fore_rel_deg=40.0,
+                    right_arm_in_front=False, odachi_deg=-158.0, odachi_curve=1.0, odachi_len=27.0, odachi_glow=0.30,
+                    saya_deg=152.0, drums_active=False,
+                ),
+
+                # --- SLICE 1 (F08..F14): Gyaku-Yoko Giri (-152° Behind-Shoulder -> -36° -> -3° -> +14° -> +86° -> +146° Past-Hip Furikiri) ---
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-8.0, pelvis_dy=48.0, torso_deg=-2.0,
+                    head_rel_deg=2.0, mane_rel_deg=-8.0, mane_wave_phase=ph * 1.5, mane_wave_amp=7.5,
+                    right_leg_behind=True, l_thigh_deg=18.0, l_shin_deg=14.0, r_thigh_deg=-20.0, r_shin_deg=16.0,
+                    l_sode_rel_deg=-12.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=58.0, r_fore_rel_deg=36.0,
+                    right_arm_in_front=False, odachi_deg=-152.0, odachi_len=27.0, odachi_glow=0.30, saya_deg=150.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-4.0, pelvis_dy=56.0, torso_deg=8.0,
+                    head_rel_deg=-2.0, mane_rel_deg=-10.0, mane_wave_phase=ph * 1.7, mane_wave_amp=8.0,
+                    right_leg_behind=True, l_thigh_deg=22.0, l_shin_deg=16.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
+                    l_sode_rel_deg=-6.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=26.0, r_fore_rel_deg=-16.0,
+                    right_arm_in_front=True, odachi_deg=-36.0, odachi_len=26.6, odachi_glow=0.35, saya_deg=152.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-3.0, pelvis_dy=62.0, torso_deg=15.0,
+                    head_rel_deg=-6.0, mane_rel_deg=-16.0, mane_wave_phase=ph * 2.0, mane_wave_amp=9.0,
+                    right_leg_behind=True, l_thigh_deg=-22.0, l_shin_deg=20.0, r_thigh_deg=24.0, r_shin_deg=-16.0,
+                    l_sode_rel_deg=10.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=18.0, r_fore_rel_deg=-26.0,
+                    right_arm_in_front=True, odachi_deg=-3.0, odachi_len=27.2, odachi_glow=0.45,
+                    saya_deg=150.0, drums_active=True,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-1.0, pelvis_dy=64.0, torso_deg=17.0,
+                    head_rel_deg=-7.0, mane_rel_deg=-19.0, mane_wave_phase=ph * 2.2, mane_wave_amp=9.5,
+                    right_leg_behind=True, l_thigh_deg=-24.0, l_shin_deg=20.0, r_thigh_deg=26.0, r_shin_deg=-16.0,
+                    l_sode_rel_deg=14.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=20.0, r_fore_rel_deg=-22.0,
+                    right_arm_in_front=True, odachi_deg=14.0, odachi_len=27.2, odachi_glow=0.45,
+                    saya_deg=148.0, drums_active=True,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=3.0, pelvis_dy=56.0, torso_deg=15.0,
+                    head_rel_deg=-6.0, mane_rel_deg=-16.0, mane_wave_phase=ph * 2.0, mane_wave_amp=8.5,
+                    right_leg_behind=True, l_thigh_deg=-20.0, l_shin_deg=16.0, r_thigh_deg=22.0, r_shin_deg=-14.0,
+                    l_sode_rel_deg=12.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=34.0, r_fore_rel_deg=24.0,
+                    right_arm_in_front=True, odachi_deg=86.0, odachi_len=26.5, odachi_glow=0.35,
+                    saya_deg=150.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=4.0, pelvis_dy=42.0, torso_deg=12.0,
+                    head_rel_deg=-5.0, mane_rel_deg=-13.0, mane_wave_phase=ph * 1.6, mane_wave_amp=7.5,
+                    right_leg_behind=True, l_thigh_deg=-14.0, l_shin_deg=12.0, r_thigh_deg=14.0, r_shin_deg=-10.0,
+                    l_sode_rel_deg=8.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=50.0, r_fore_rel_deg=40.0,
+                    right_arm_in_front=True, odachi_deg=146.0, odachi_len=27.0, odachi_glow=0.30,
+                    saya_deg=152.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=1.0, pelvis_dy=30.0, torso_deg=8.0,
+                    head_rel_deg=-3.0, mane_rel_deg=-8.0, mane_wave_phase=ph, mane_wave_amp=6.5,
+                    l_thigh_deg=-8.0, l_shin_deg=8.0, r_thigh_deg=8.0, r_shin_deg=-6.0,
+                    l_sode_rel_deg=4.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=48.0, r_fore_rel_deg=38.0,
+                    right_arm_in_front=True, odachi_deg=142.0, odachi_len=27.0, odachi_glow=0.30,
+                    saya_deg=152.0, drums_active=False,
+                ),
+
+                # --- SLICE 2 (F15..F22): Kiri-Age Gyaku-Gesa (+144° Low-Back Coil -> +28° -> +2° -> -15° -> -120° -> -164° Wide Behind-Back) ---
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-6.0, pelvis_dy=50.0, torso_deg=8.0,
+                    head_rel_deg=-3.0, mane_rel_deg=-9.0, mane_wave_phase=ph * 1.5, mane_wave_amp=7.0,
+                    l_thigh_deg=-16.0, l_shin_deg=16.0, r_thigh_deg=18.0, r_shin_deg=-14.0,
+                    l_sode_rel_deg=10.0, l_fore_rel_deg=-20.0, r_sode_rel_deg=48.0, r_fore_rel_deg=38.0,
+                    right_arm_in_front=True, odachi_deg=142.0, odachi_curve=1.0, odachi_len=27.0, odachi_glow=0.30,
+                    saya_deg=154.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-10.0, pelvis_dy=66.0, torso_deg=12.0,
+                    head_rel_deg=-5.0, mane_rel_deg=-11.0, mane_wave_phase=ph * 1.6, mane_wave_amp=7.5,
+                    l_thigh_deg=-22.0, l_shin_deg=22.0, r_thigh_deg=22.0, r_shin_deg=-18.0,
+                    l_sode_rel_deg=14.0, l_fore_rel_deg=-18.0, r_sode_rel_deg=52.0, r_fore_rel_deg=42.0,
+                    right_arm_in_front=True, odachi_deg=148.0, odachi_curve=1.0, odachi_len=27.0, odachi_glow=0.35,
+                    saya_deg=156.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-3.0, pelvis_dy=62.0, torso_deg=14.0,
+                    head_rel_deg=-6.0, mane_rel_deg=-15.0, mane_wave_phase=ph * 1.9, mane_wave_amp=8.5,
+                    l_thigh_deg=18.0, l_shin_deg=14.0, r_thigh_deg=-20.0, r_shin_deg=14.0,
+                    l_sode_rel_deg=-6.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=22.0, r_fore_rel_deg=-10.0,
+                    right_arm_in_front=True, odachi_deg=28.0, odachi_curve=1.0, odachi_len=26.8, odachi_glow=0.40,
+                    saya_deg=152.0, drums_active=True,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-2.0, pelvis_dy=58.0, torso_deg=15.0,
+                    head_rel_deg=-6.0, mane_rel_deg=-18.0, mane_wave_phase=ph * 2.2, mane_wave_amp=9.5,
+                    l_thigh_deg=24.0, l_shin_deg=16.0, r_thigh_deg=-26.0, r_shin_deg=16.0,
+                    l_sode_rel_deg=-14.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=18.0, r_fore_rel_deg=-26.0,
+                    right_arm_in_front=True, odachi_deg=2.0, odachi_curve=1.0, odachi_len=27.2, odachi_glow=0.45,
+                    saya_deg=150.0, drums_active=True,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-1.0, pelvis_dy=52.0, torso_deg=15.0,
+                    head_rel_deg=-6.0, mane_rel_deg=-19.0, mane_wave_phase=ph * 2.3, mane_wave_amp=9.5,
+                    l_thigh_deg=24.0, l_shin_deg=14.0, r_thigh_deg=-26.0, r_shin_deg=16.0,
+                    l_sode_rel_deg=-18.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=18.0, r_fore_rel_deg=-30.0,
+                    right_arm_in_front=True, odachi_deg=-15.0, odachi_curve=1.0, odachi_len=27.2, odachi_glow=0.45,
+                    saya_deg=150.0, drums_active=True,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=2.0, pelvis_dy=44.0, torso_deg=12.0,
+                    head_rel_deg=-4.0, mane_rel_deg=-15.0, mane_wave_phase=ph * 1.9, mane_wave_amp=8.5,
+                    l_thigh_deg=18.0, l_shin_deg=12.0, r_thigh_deg=-20.0, r_shin_deg=12.0,
+                    l_sode_rel_deg=-12.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=44.0, r_fore_rel_deg=22.0,
+                    right_arm_in_front=False, odachi_deg=-120.0, odachi_curve=1.0, odachi_len=26.5, odachi_glow=0.35,
+                    saya_deg=150.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=4.0, pelvis_dy=34.0, torso_deg=8.0,
+                    head_rel_deg=-3.0, mane_rel_deg=-11.0, mane_wave_phase=ph * 1.5, mane_wave_amp=7.5,
+                    l_thigh_deg=12.0, l_shin_deg=8.0, r_thigh_deg=-14.0, r_shin_deg=8.0,
+                    l_sode_rel_deg=-8.0, l_fore_rel_deg=-24.0, r_sode_rel_deg=66.0, r_fore_rel_deg=44.0,
+                    right_arm_in_front=False, odachi_deg=-164.0, odachi_curve=1.0, odachi_len=27.0, odachi_glow=0.30,
+                    saya_deg=152.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=1.0, pelvis_dy=22.0, torso_deg=4.0,
+                    head_rel_deg=-1.0, mane_rel_deg=-7.0, mane_wave_phase=ph, mane_wave_amp=6.5,
+                    l_thigh_deg=6.0, l_shin_deg=6.0, r_thigh_deg=-6.0, r_shin_deg=6.0,
+                    l_sode_rel_deg=-10.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=60.0, r_fore_rel_deg=38.0,
+                    right_arm_in_front=False, odachi_deg=-156.0, odachi_len=27.0, odachi_glow=0.30,
+                    saya_deg=152.0, drums_active=False,
+                ),
+
+                # --- SLICE 3 (F23..F29): Morote Kiri-Nuki & Chiburi (-152° Behind-Shoulder -> -3° -> +14° -> +84° -> +148° Chiburi Flick -> Chudan) ---
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-8.0, pelvis_dy=54.0, torso_deg=2.0,
+                    head_rel_deg=-1.0, mane_rel_deg=-10.0, mane_wave_phase=ph * 1.6, mane_wave_amp=7.5,
+                    l_thigh_deg=-20.0, l_shin_deg=20.0, r_thigh_deg=20.0, r_shin_deg=-16.0,
+                    l_sode_rel_deg=-14.0, l_fore_rel_deg=-26.0, r_sode_rel_deg=58.0, r_fore_rel_deg=36.0,
+                    right_arm_in_front=False, odachi_deg=-152.0, odachi_len=27.0, odachi_glow=0.35,
+                    saya_deg=154.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-3.0, pelvis_dy=64.0, torso_deg=15.0,
+                    head_rel_deg=-6.0, mane_rel_deg=-18.0, mane_wave_phase=ph * 2.2, mane_wave_amp=9.5,
+                    l_thigh_deg=24.0, l_shin_deg=16.0, r_thigh_deg=-26.0, r_shin_deg=18.0,
+                    l_sode_rel_deg=-28.0, l_fore_rel_deg=-8.0, r_sode_rel_deg=18.0, r_fore_rel_deg=-26.0,
+                    right_arm_in_front=True, odachi_deg=-3.0, odachi_len=27.4, odachi_glow=0.45,
+                    saya_deg=150.0, drums_active=True,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=-1.0, pelvis_dy=66.0, torso_deg=17.0,
+                    head_rel_deg=-7.0, mane_rel_deg=-20.0, mane_wave_phase=ph * 2.4, mane_wave_amp=10.0,
+                    l_thigh_deg=26.0, l_shin_deg=16.0, r_thigh_deg=-28.0, r_shin_deg=18.0,
+                    l_sode_rel_deg=-22.0, l_fore_rel_deg=-6.0, r_sode_rel_deg=20.0, r_fore_rel_deg=-22.0,
+                    right_arm_in_front=True, odachi_deg=14.0, odachi_len=27.2, odachi_glow=0.45,
+                    saya_deg=148.0, drums_active=True,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=3.0, pelvis_dy=56.0, torso_deg=15.0,
+                    head_rel_deg=-6.0, mane_rel_deg=-16.0, mane_wave_phase=ph * 2.0, mane_wave_amp=8.5,
+                    l_thigh_deg=20.0, l_shin_deg=14.0, r_thigh_deg=-22.0, r_shin_deg=14.0,
+                    l_sode_rel_deg=8.0, l_fore_rel_deg=-18.0, r_sode_rel_deg=34.0, r_fore_rel_deg=24.0,
+                    right_arm_in_front=True, odachi_deg=84.0, odachi_curve=1.0, odachi_len=26.5, odachi_glow=0.35,
+                    saya_deg=150.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=4.0, pelvis_dy=42.0, torso_deg=12.0,
+                    head_rel_deg=-5.0, mane_rel_deg=-13.0, mane_wave_phase=ph * 1.6, mane_wave_amp=7.5,
+                    l_thigh_deg=14.0, l_shin_deg=10.0, r_thigh_deg=-16.0, r_shin_deg=10.0,
+                    l_sode_rel_deg=4.0, l_fore_rel_deg=-20.0, r_sode_rel_deg=52.0, r_fore_rel_deg=42.0,
+                    right_arm_in_front=True, odachi_deg=148.0, odachi_curve=1.0, odachi_len=27.0, odachi_glow=0.30,
+                    saya_deg=152.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=1.0, pelvis_dy=24.0, torso_deg=8.0,
+                    head_rel_deg=-3.0, mane_rel_deg=-9.0, mane_wave_phase=ph * 1.2, mane_wave_amp=7.0,
+                    l_thigh_deg=8.0, l_shin_deg=6.0, r_thigh_deg=-8.0, r_shin_deg=6.0,
+                    l_sode_rel_deg=-4.0, l_fore_rel_deg=-22.0, r_sode_rel_deg=26.0, r_fore_rel_deg=-8.0,
+                    right_arm_in_front=True, odachi_deg=24.0, odachi_len=27.0, odachi_glow=0.30,
+                    saya_deg=152.0, drums_active=False,
+                ),
+                dict(
+                    fixed_crop_x=True, pelvis_dx=0.0, pelvis_dy=8.0, torso_deg=3.0,
+                    head_rel_deg=-1.0, mane_rel_deg=-5.0, mane_wave_phase=ph, mane_wave_amp=6.5,
+                    l_thigh_deg=2.0, l_shin_deg=2.0, r_thigh_deg=-2.0, r_shin_deg=2.0,
+                    l_sode_rel_deg=-48.0, l_fore_rel_deg=8.0, r_sode_rel_deg=32.0, r_fore_rel_deg=-52.0,
+                    right_arm_in_front=True, odachi_deg=-36.0, odachi_len=27.5, odachi_glow=0.30,
+                    saya_deg=156.0, drums_active=False,
+                ),
+            ]
+            cfgs.append(row2_table[f])
 
         elif row_idx == 3:
             # Row 3: SKILL (Zantetsuken Flash — Grounded Cast + 3 Multi-Angle Spear Passes!)

@@ -119,8 +119,8 @@ export class Fighter {
       case 'ronin':
         return {
           comboGoal: 3,
-          sweetMin: 118,
-          sweetMax: 162,
+          sweetMin: 78,
+          sweetMax: 106,
           counterCrouchBias: 0.66,
           midLeapMin: 175,
           midLeapMax: 280,
@@ -1314,8 +1314,27 @@ export class Fighter {
                 this.moveDir = 0;
               }
             }
-          } else if (this.heroId === 'ronin' || this.heroId === 'android') {
-            // Iaido Samurai (Kaze-Maru) & Cyber-Valkyrie (VEX-09): disciplined blade-tip spacing (118..148px)
+          } else if (this.heroId === 'ronin') {
+            // Iaido Samurai (Kaze-Maru): close-quarters katana maai (76..106px) so physical cuts reach enemy flesh!
+            const nearSpacingWall = this.x < effMinWall + 60 || this.x > effBackMaxWall - 60;
+            if (dist > 106) {
+              this.state = 'WALK';
+              this.moveDir = 1;
+              this.walkPhase += dt * 4.4;
+              this.x += this.facing * this.moveSpeed * 0.84 * dt;
+              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
+            } else if (dist < 76 && !nearSpacingWall) {
+              this.state = 'WALK';
+              this.moveDir = -1;
+              this.walkPhase += dt * 3.8;
+              this.x -= this.facing * this.moveSpeed * 0.42 * dt;
+              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.2;
+            } else {
+              this.state = 'IDLE';
+              this.moveDir = 0;
+            }
+          } else if (this.heroId === 'android') {
+            // Cyber-Valkyrie (VEX-09): disciplined blade-tip spacing (118..148px)
             const nearSpacingWall = this.x < effMinWall + 60 || this.x > effBackMaxWall - 60;
             if (dist > 148) {
               this.state = 'WALK';

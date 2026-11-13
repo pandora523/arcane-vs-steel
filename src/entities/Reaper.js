@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps96';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps96';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps96';
+import { Fighter } from './Fighter.js?v=30fps97';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps97';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps97';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps96';
+} from '../engine/shaders/abyssalShaders.js?v=30fps97';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -153,13 +153,13 @@ export class Reaper extends Fighter {
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
       if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps87')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps96';
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps97';
       }
       if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps87')) {
-        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps96';
+        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps97';
       }
       if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps87')) {
-        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps96';
+        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps97';
       }
     }
   }
