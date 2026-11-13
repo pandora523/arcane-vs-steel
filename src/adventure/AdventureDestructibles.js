@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps94';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps95';
 
 /**
  * Interactive 2.5D Architectural Monuments, Braziers & Ancient Artifact Shrines (`AdventureDestructibles`)
@@ -245,18 +245,27 @@ function seloutRect(ctx, x, y, w, h, baseCol, litCol = null) {
   }
 }
 
-function drawSubtlePropGlow(ctx, glowTex, cx, cy, rx, ry, alpha) {
-  if (!glowTex || alpha <= 0.004) return;
+function drawSteppedPropPixelBloom(ctx, primaryCol, accentCol, cx, cy, rx, ry, alpha) {
+  if (alpha <= 0.004) return;
+  const u = 4;
+  const sx = Math.round(cx / u) * u;
+  const sy = Math.round(cy / u) * u;
+  const hw = Math.max(u * 2, Math.round(rx / u) * u);
+  const hh = Math.max(u, Math.round(ry / u) * u);
+  const capped = Math.max(0, Math.min(0.14, alpha));
+
   ctx.save();
   ctx.globalCompositeOperation = 'lighter';
-  ctx.globalAlpha = Math.max(0, Math.min(0.16, alpha));
-  ctx.drawImage(
-    glowTex,
-    Math.round(cx - rx),
-    Math.round(cy - ry),
-    Math.round(rx * 2),
-    Math.round(ry * 2)
-  );
+  ctx.fillStyle = primaryCol || '#38bdf8';
+  ctx.globalAlpha = capped * 0.48;
+  ctx.fillRect(sx - hw, sy - Math.max(u, hh >> 1), hw * 2, Math.max(u * 2, hh));
+  ctx.fillRect(sx - Math.max(u, hw >> 1), sy - hh, Math.max(u * 2, hw), hh * 2);
+
+  ctx.fillStyle = accentCol || primaryCol || '#fde047';
+  ctx.globalAlpha = capped * 0.78;
+  ctx.fillRect(sx - Math.max(u, hw >> 1), sy - Math.max(u, hh >> 1), Math.max(u * 2, hw), Math.max(u * 2, hh));
+  ctx.globalCompositeOperation = 'source-over';
+  ctx.globalAlpha = 1;
   ctx.restore();
 }
 
@@ -799,11 +808,17 @@ export class AdventureDestructibles {
         ctx.fillRect(cx - p.halfW + 2, gy - 8, (p.halfW - 2) * 2, 14);
 
         if (p.hasGlow || p.isArtifact) {
-          const glowTex = renderer?.getGlowForColor
-            ? renderer.getGlowForColor(p.primaryColor)
-            : renderer?.glowGold;
           const pulse = 0.78 + 0.22 * Math.sin(t * 4.5 + p.index);
-          drawSubtlePropGlow(ctx, glowTex, cx, gy, p.halfW + 24, 18, 0.13 * pulse);
+          drawSteppedPropPixelBloom(
+            ctx,
+            p.primaryColor,
+            p.accentColor,
+            cx,
+            gy,
+            p.halfW + 16,
+            12,
+            0.11 * pulse
+          );
         }
         continue;
       }
@@ -937,12 +952,18 @@ export class AdventureDestructibles {
       );
     }
 
-    // Subtle atmospheric core halo on lit braziers, lanterns & artifact monuments (`alpha <= 0.14`)
+    // Subtle stepped pixel-grid core bloom on lit braziers, lanterns & artifact monuments (`alpha <= 0.12`)
     if (!isRefl && (prop.hasGlow || prop.isArtifact)) {
-      const glowTex = renderer?.getGlowForColor
-        ? renderer.getGlowForColor(prop.primaryColor)
-        : renderer?.glowGold;
-      drawSubtlePropGlow(ctx, glowTex, cx, by - prop.height * 0.62, 56, 56, 0.14 * flick);
+      drawSteppedPropPixelBloom(
+        ctx,
+        prop.primaryColor,
+        prop.accentColor,
+        cx,
+        by - prop.height * 0.62,
+        40,
+        40,
+        0.12 * flick
+      );
     }
 
     // Crisp pixel impact-glint cross on strike
