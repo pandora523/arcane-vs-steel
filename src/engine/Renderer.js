@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps102';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps102';
+import { PixelForge } from './PixelForge.js?v=30fps103';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps103';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -886,10 +886,28 @@ export class Renderer {
         ctx.translate(rx, ry);
         ctx.scale(dScale, dScale);
         ctx.translate(-rx, -ry);
+        if (!f.isDead && typeof f.drawAdventureDodgeFX === 'function') {
+          f.drawAdventureDodgeFX(ctx, 'back');
+        }
         f.draw(ctx, false, this);
+        if (!f.isDead && typeof f.drawAdventureDodgeFX === 'function') {
+          f.drawAdventureDodgeFX(ctx, 'front');
+        }
+        if (!f.isDead && typeof f.drawHackAndSlashStreaks === 'function') {
+          f.drawHackAndSlashStreaks(ctx);
+        }
         ctx.restore();
       } else {
+        if (!f.isDead && typeof f.drawAdventureDodgeFX === 'function') {
+          f.drawAdventureDodgeFX(ctx, 'back');
+        }
         f.draw(ctx, false, this);
+        if (!f.isDead && typeof f.drawAdventureDodgeFX === 'function') {
+          f.drawAdventureDodgeFX(ctx, 'front');
+        }
+        if (!f.isDead && typeof f.drawHackAndSlashStreaks === 'function') {
+          f.drawHackAndSlashStreaks(ctx);
+        }
       }
     }
 

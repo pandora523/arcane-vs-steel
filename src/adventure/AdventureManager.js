@@ -1,13 +1,13 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps102';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps102';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps102';
+import { Fighter } from '../entities/Fighter.js?v=30fps103';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps103';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps103';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps102';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps102';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps102';
+} from './AdventureProgression.js?v=30fps103';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps103';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps103';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -869,6 +869,12 @@ export class AdventureManager {
   stopCampaign() {
     this.closeSkillTree(false);
     if (this.game.leftFighter) {
+      if (this.game.leftFighter._advPureDodge) {
+        this.finishHeroAdventureDodge(this.game.leftFighter, false);
+      }
+      this.game.leftFighter._advDodgeFrameOverride = null;
+      this.game.leftFighter._advDodgeTrails = [];
+      this.game.leftFighter._hnsStreaks = [];
       this.game.leftFighter.isManualAdventureControl = false;
       this.game.leftFighter._manualWalkActive = false;
       this.game.leftFighter._manualSpeedRatio = 0;
@@ -1598,6 +1604,527 @@ export class AdventureManager {
     }
   }
 
+  pushHeroDodgeTrail(player, entry) {
+    if (!player) return;
+    if (!player._advDodgeTrails) player._advDodgeTrails = [];
+    if (player._advDodgeTrails.length >= 24) player._advDodgeTrails.shift();
+    player._advDodgeTrails.push({
+      age: 0,
+      maxLife: entry.maxLife ?? 0.30,
+      layer: entry.layer || 'back',
+      kind: entry.kind || 'streak',
+      x: entry.x ?? player.x,
+      y: entry.y ?? player.groundY,
+      w: entry.w ?? 28,
+      h: entry.h ?? 4,
+      color: entry.color || player.primaryColor || '#38bdf8'
+    });
+  }
+
+  finishHeroAdventureDodge(player, returnToIdle = true) {
+    if (!player) return;
+    const heroId = player.heroId || 'mage';
+    player._advPureDodge = false;
+    player._advDodgeFrameOverride = null;
+    player._advDodgeGhostStep = 0;
+    player._advDodgeArrivalDone = false;
+    player.isInvulnerable = false;
+    player.vx = 0;
+    player.vy = 0;
+    player.y = player.groundY;
+    if (heroId === 'priestess') {
+      player.isAngelicAscent = false;
+    } else if (heroId === 'reaper' || heroId === 'mage') {
+      player.wraithAlpha = 1.0;
+    } else if (heroId === 'titan') {
+      player.unstoppablePoise = false;
+    }
+    if (returnToIdle && !player.isDead && player.state === 'DODGE') {
+      player.setState('IDLE');
+    }
+  }
+
+  startHeroAdventureDodge(player, evadeX, evadeZ, stats) {
+    if (!player) return;
+    const heroId = player.heroId || 'mage';
+    if (Math.abs(evadeX) > 0.15) {
+      player.facing = evadeX > 0 ? 1 : -1;
+    }
+    this.dodgeCdMax = Math.max(0.55, 1.35 * (stats?.mobilityCdMult ?? 1));
+    player.dodgeCooldown = this.dodgeCdMax;
+    player.dashDir = evadeX >= 0 ? 1 : -1;
+    player._advPureDodge = true;
+    player._advPureDodgeTimer = 0;
+    player._advPureDodgeDur = 0.28;
+    player._advPureDodgeDirX = evadeX;
+    player._advPureDodgeDirZ = evadeZ;
+    player._advDodgeGhostStep = 0;
+    player._advDodgeTrailAccum = 0;
+    player._advDodgeArrivalDone = false;
+    player._advVaultVelZ = 0;
+
+    let speedMult = 1.08;
+    let initFrame = 184;
+    if (heroId === 'valkyrie') {
+      speedMult = 1.08;
+      initFrame = 124; // Row 4 Twin-Winged Sovereign Glide pose!
+    } else if (heroId === 'icemage') {
+      speedMult = 1.14;
+      initFrame = 182; // Row 6 Figure-Skating Ice-Slide!
+    } else if (heroId === 'android') {
+      speedMult = 1.16;
+      initFrame = 184; // Row 6 Rocket-Thruster Boost!
+    } else if (heroId === 'priestess') {
+      speedMult = 1.06;
+      initFrame = 182; // Row 6 + Seraphim 30f Archangel Wings!
+    } else if (heroId === 'mage') {
+      speedMult = 1.12;
+      initFrame = 180; // Row 6 Solar Phoenix Fire-Blink!
+    } else if (heroId === 'archer') {
+      speedMult = 1.12;
+      initFrame = 244; // Row 8 Sylvan Zephyr Wind-Vault!
+    } else if (heroId === 'reaper') {
+      speedMult = 1.12;
+      initFrame = 183; // Row 6 Abyssal Wraith Shadow-Shift!
+    } else if (heroId === 'chronomancer') {
+      speedMult = 1.14;
+      initFrame = 182; // Row 6 Horological Time-Warp!
+    } else if (heroId === 'warrior') {
+      speedMult = 1.10;
+      initFrame = 184; // Row 6 Celestial Runic Flash-Step!
+    } else if (heroId === 'ronin') {
+      speedMult = 1.16;
+      initFrame = 185; // Row 6 Lightning Suriashi Slide!
+    } else if (heroId === 'titan') {
+      speedMult = 1.08;
+      initFrame = 183; // Row 6 Molten Bull-Rush Stride!
+    }
+    player._advDodgeSpeedMult = speedMult;
+    player._advDodgeFrameOverride = initFrame;
+
+    player.setState('DODGE');
+    player._advPureDodge = true;
+    player._advDodgeFrameOverride = initFrame;
+    player.dashDuration = 0.28;
+    player.isInvulnerable = true;
+    player.isFlipVault = false;
+    player.isWraithPhase = false;
+    player.vx = 0;
+    player.vy = 0;
+    player.y = player.groundY;
+
+    this.progression.gainSpirit(18);
+    const audio = this.game?.audio;
+    const vfx = this.game?.vfx;
+
+    // Trigger each champion's signature non-attacking Dodge Shaders, Wings, Thrusters & SFX (0 projectiles / 0 damage!)
+    switch (heroId) {
+      case 'valkyrie': {
+        // Freyja (`GLIDE` — Wings Icon): Sovereign Winged Glide + 6-Pinion Valkyrie Light-Wings & Feather Slipstream!
+        audio?.play?.('dash_whoosh', player.x);
+        player.fx?.spawn('valhallaGroundBurst', player.x, player.groundY, {
+          light: 1.06,
+          extra: { radius: 26 }
+        });
+        player.fx?.spawn('valkyrieWingPlume', player.x - player.facing * 18, player.y - 116, {
+          follow: player,
+          offsetX: -18,
+          offsetY: -116,
+          flip: player.facing < 0,
+          maxDuration: 0.30,
+          light: 1.14,
+          extra: { wingSpan: 28 }
+        });
+        player.fx?.spawn('valkyrieSlipstreamTrail', player.x - player.facing * 18, player.y - 94, {
+          follow: player,
+          offsetX: -18,
+          offsetY: -94,
+          flip: player.facing < 0,
+          maxDuration: 0.28,
+          light: 1.04,
+          extra: { length: 28, tilt: -0.08 }
+        });
+        vfx?.spawnShockwave?.(player.x, player.groundY - 4, 56, '#fbbf24', 0.20, true);
+        break;
+      }
+      case 'icemage': {
+        // Lyra (`SKATE` — Skate Icon): Graceful Figure-Skating Ice Slide + Glacial Skate Ribbon & Frost Track!
+        audio?.play?.('frost_cast', player.x);
+        audio?.play?.('dash_whoosh', player.x);
+        player.ensureGlacialSkateRibbon?.();
+        player.fx?.spawn('permafrostSnowflakeSigil', player.x, player.groundY - 4, {
+          maxDuration: 0.30,
+          light: 1.08,
+          extra: { radius: 24 }
+        });
+        player.spawnPixelFrostRing?.(player.x, player.groundY - 10, 52, '#67e8f9', 0.20, true, false);
+        this.pushHeroDodgeTrail(player, {
+          kind: 'ice_track',
+          layer: 'back',
+          x: player.x,
+          y: player.groundY - 2,
+          w: 34,
+          maxLife: 0.38
+        });
+        break;
+      }
+      case 'android': {
+        // VEX-09 (`THRUST` — Rocket Icon): Twin Wing-Pylon Rocket-Thruster Boost & Neon Plasma Exhaust!
+        audio?.play?.('dash_whoosh', player.x);
+        player.fx?.spawn('wingPylonThruster', player.x - player.facing * 18, player.y - 132, {
+          follow: player,
+          offsetX: -18,
+          offsetY: -132,
+          flip: player.facing < 0,
+          maxDuration: 0.28,
+          light: 1.08,
+          extra: { length: 28, tilt: -0.82 }
+        });
+        player.fx?.spawn('wingPylonThruster', player.x - player.facing * 20, player.y - 98, {
+          follow: player,
+          offsetX: -20,
+          offsetY: -98,
+          flip: player.facing < 0,
+          maxDuration: 0.28,
+          light: 1.04,
+          extra: { length: 24, tilt: -0.84 }
+        });
+        player.fx?.spawn('cyberImpactSpark', player.x - player.facing * 16, player.groundY - 88, {
+          flip: player.facing < 0,
+          light: 1.10
+        });
+        vfx?.spawnShockwave?.(player.x, player.groundY - 6, 56, '#00f0ff', 0.18, true);
+        break;
+      }
+      case 'priestess': {
+        // Seraphina (`GLIDE` — Wings Icon): Unfurls her 30-frame `seraphim_wings.png` Archangel Wings & Radiant Slipstream!
+        player.isAngelicAscent = true;
+        audio?.play?.('holy_bolt', player.x);
+        player.ensureSlipstream?.();
+        player.fx?.spawn('graceHealBloom', player.x, player.groundY, {
+          follow: player,
+          offsetX: 0,
+          offsetY: 0,
+          useGroundY: true,
+          maxDuration: 0.28,
+          light: 1.12
+        });
+        vfx?.spawnGlyphBurst?.(player.x, player.groundY - 94, 5, 'radiant');
+        break;
+      }
+      case 'mage': {
+        // Ignis Sol (`BLINK` — Flame Rift Icon): Solar Phoenix Fire-Blink Rift & Blazing Glide Trail!
+        audio?.play?.('blink', player.x);
+        player.fx?.spawn('arcaneBlinkRift', player.x, player.groundY, {
+          light: 1.24,
+          extra: { isArrival: false }
+        });
+        player.ensureSolarGlideTrail?.();
+        player.spawnSolarEcho?.(182, 0.85, 0.24);
+        vfx?.spawnGlyphBurst?.(player.x, player.groundY - 92, 5, 'arcane');
+        break;
+      }
+      case 'archer': {
+        // Sylvara (`DASH` — Sylvan Wind Icon): Acrobatic Zephyr Wind-Vault + Astral Emerald Wing-Plume!
+        audio?.play?.('zephyr_flip', player.x);
+        player.fx?.spawn('zephyrGroundBurst', player.x, player.groundY, {
+          light: 1.05,
+          extra: { radius: 26 }
+        });
+        player.fx?.spawn('zephyrVaultSlipstream', player.x - player.facing * 14, player.y - 104, {
+          follow: player,
+          offsetX: -14,
+          offsetY: -104,
+          flip: player.facing < 0,
+          maxDuration: 0.28,
+          light: 1.06,
+          extra: { length: 28, tilt: -0.14 }
+        });
+        player.fx?.spawn('astralWingPlume', player.x - player.facing * 14, player.y - 110, {
+          follow: player,
+          offsetX: -14,
+          offsetY: -110,
+          flip: player.facing < 0,
+          maxDuration: 0.28,
+          light: 1.08,
+          extra: { wingSpan: 24 }
+        });
+        break;
+      }
+      case 'reaper': {
+        // Malakor (`SHIFT` — Abyssal Wraith Icon): Ghostly Translucent Wraith Shadow-Shift & Rift Portal!
+        audio?.play?.('dash_whoosh', player.x);
+        player.wraithAlpha = 0.34;
+        player.fx?.spawn('companionSummonRiftPortal', player.x, player.groundY - 4, {
+          light: 1.18,
+          extra: { radius: 26, isCrimson: false, customDuration: 0.28 }
+        });
+        player.spawnAfterimage?.(player.x, player.groundY, player.facing, 6, 4, 0.22);
+        break;
+      }
+      case 'chronomancer': {
+        // Chronos (`WARP` — Clockwork Portal Icon): Horological Time-Warp Rift + Paradox Temporal Echoes!
+        audio?.play?.('time_rewind', player.x);
+        player.fx?.spawn('warpPortalPairRift', player.x, player.groundY - 92, {
+          flip: player.facing < 0,
+          light: 1.22,
+          extra: { isArrival: false }
+        });
+        player.spawnTemporalEcho?.(182);
+        vfx?.spawnGlyphBurst?.(player.x, player.groundY - 92, 4, 'chrono');
+        break;
+      }
+      case 'warrior': {
+        // Aethelgard (`STEP` — Runic Flash-Step Icon): Celestial Paladin Runic Teleport Pillar & Speed-Mirage!
+        audio?.play?.('dash_whoosh', player.x);
+        player.fx?.spawn('blinkTeleportPillar', player.x, player.groundY, {
+          maxDuration: 0.24,
+          light: 1.16,
+          extra: { width: 22, height: 138 }
+        });
+        player.spawnAfterimage?.(player.x, player.groundY, player.facing, 6, 4, 0.20);
+        vfx?.spawnShockwave?.(player.x, player.groundY - 4, 54, '#38bdf8', 0.18, true);
+        break;
+      }
+      case 'ronin': {
+        // Kaze-Maru (`SURIASHI` — Lightning Footwork Icon): Grounded Lightning Shunpo / Suriashi Slide!
+        audio?.play?.('dash_whoosh', player.x);
+        player.spawnSayaGlint?.(false);
+        player.spawnAfterimage?.(player.x, player.groundY, player.facing, 6, 5, 0.20, 0);
+        vfx?.spawnShockwave?.(player.x, player.groundY - 4, 52, '#38bdf8', 0.16, true);
+        break;
+      }
+      case 'titan': {
+        // Torgar (`STRIDE` — Molten Forge Icon): Unstoppable Khazad Bull-Rush Stride & Molten Anvil Sparks!
+        audio?.play?.('dash_whoosh', player.x);
+        player.unstoppablePoise = true;
+        player.fx?.spawn('runicBulwarkDome', player.x, player.y - 78, {
+          follow: player,
+          offsetX: 0,
+          offsetY: -78,
+          flip: player.facing < 0,
+          maxDuration: 0.28,
+          light: 1.12
+        });
+        player.fx?.spawn('moltenAnvilSparks', player.x, player.groundY - 10, {
+          flip: player.facing < 0,
+          light: 1.14
+        });
+        this.game?.renderer?.triggerShake?.(3.5, 0.08);
+        vfx?.spawnShockwave?.(player.x, player.groundY - 4, 58, '#f59e0b', 0.20, true);
+        break;
+      }
+      default: {
+        audio?.play?.('dash_whoosh', player.x);
+        vfx?.spawnShockwave?.(player.x, player.groundY - 6, 46, '#bae6fd', 0.18, true);
+        break;
+      }
+    }
+  }
+
+  updateHeroAdventureDodge(dt, player) {
+    player._manualWalkActive = false;
+    player._manualSpeedRatio = 0;
+    if (player.isDead || player.state !== 'DODGE') {
+      this.finishHeroAdventureDodge(player, false);
+      return false;
+    }
+
+    const heroId = player.heroId || 'mage';
+    player._advPureDodgeTimer = (player._advPureDodgeTimer || 0) + dt;
+    const dur = player._advPureDodgeDur || 0.28;
+    const u = Math.min(1, player._advPureDodgeTimer / dur);
+
+    // Hero-specific velocity curve (Lyra SKATE glides smoothly with minimal friction; THRUST/SURIASHI burst fast!)
+    const speedMult = player._advDodgeSpeedMult || 1.08;
+    const speedScale =
+      heroId === 'icemage'
+        ? speedMult * (1.24 - 0.28 * u)
+        : speedMult * 1.36 * (1 - 0.56 * u * u);
+    player.x += (player._advPureDodgeDirX || 0) * 580 * speedScale * dt;
+    this.shiftEntityDepth(player, (player._advPureDodgeDirZ || 0) * 355 * speedScale * dt);
+
+    // Hero-specific vertical flight / hover / skate profile & exact sprite frame slice
+    let liftY = 0;
+    if (heroId === 'valkyrie') {
+      liftY = Math.sin(u * Math.PI) * 30;
+      player._advDodgeFrameOverride = 124 + Math.min(7, Math.floor(u * 8));
+    } else if (heroId === 'priestess') {
+      player.isAngelicAscent = true;
+      liftY = Math.sin(u * Math.PI) * 26;
+      player._advDodgeFrameOverride = 182 + Math.min(23, Math.floor(u * 24));
+    } else if (heroId === 'archer') {
+      liftY = Math.sin(u * Math.PI) * 34;
+      player._advDodgeFrameOverride = 244 + Math.min(21, Math.floor(u * 22));
+    } else if (heroId === 'android') {
+      liftY = Math.sin(u * Math.PI) * 14;
+      player._advDodgeFrameOverride = 184 + Math.min(21, Math.floor(u * 22));
+    } else if (heroId === 'mage') {
+      liftY = Math.sin(u * Math.PI) * 16;
+      player.wraithAlpha = u > 0.16 && u < 0.64 ? 0.34 : 1.0;
+      player._advDodgeFrameOverride = 180 + Math.min(28, Math.floor(u * 29));
+    } else if (heroId === 'icemage') {
+      liftY = Math.sin(u * Math.PI) * 4;
+      player._advDodgeFrameOverride = 182 + Math.min(24, Math.floor(u * 25));
+    } else if (heroId === 'reaper') {
+      liftY = Math.sin(u * Math.PI) * 10;
+      player.wraithAlpha = u < 0.88 ? 0.34 : 1.0;
+      player._advDodgeFrameOverride = 183 + Math.min(23, Math.floor(u * 24));
+    } else if (heroId === 'chronomancer') {
+      liftY = Math.sin(u * Math.PI) * 8;
+      player._advDodgeFrameOverride = 182 + Math.min(24, Math.floor(u * 25));
+    } else if (heroId === 'warrior') {
+      liftY = Math.sin(u * Math.PI) * 8;
+      player._advDodgeFrameOverride = 184 + Math.min(21, Math.floor(u * 22));
+    } else if (heroId === 'ronin') {
+      liftY = 0;
+      player._advDodgeFrameOverride = 185 + Math.min(20, Math.floor(u * 21));
+    } else {
+      liftY = 0;
+      player._advDodgeFrameOverride = 183 + Math.min(22, Math.floor(u * 23));
+    }
+
+    player.isInvulnerable = true;
+    player.vx = 0;
+    player.vy = 0;
+    player.y = player.groundY - liftY;
+
+    // Continuous mid-dodge signature trails, feathers, ice-tracks, rocket exhaust & afterimages
+    player._advDodgeTrailAccum = (player._advDodgeTrailAccum || 0) + dt;
+    if (player._advDodgeTrailAccum >= 0.032) {
+      player._advDodgeTrailAccum = 0;
+      if (heroId === 'icemage') {
+        this.pushHeroDodgeTrail(player, {
+          kind: 'ice_track',
+          layer: 'back',
+          x: player.x - player.facing * 8,
+          y: player.groundY - 2,
+          w: 32,
+          maxLife: 0.36
+        });
+      } else if (heroId === 'android') {
+        this.pushHeroDodgeTrail(player, {
+          kind: 'rocket_exhaust',
+          layer: 'back',
+          x: player.x - player.facing * 24,
+          y: player.y - 108,
+          w: 30,
+          h: 6,
+          color: '#00f0ff',
+          maxLife: 0.20
+        });
+        this.pushHeroDodgeTrail(player, {
+          kind: 'rocket_exhaust',
+          layer: 'back',
+          x: player.x - player.facing * 26,
+          y: player.y - 82,
+          w: 24,
+          h: 5,
+          color: '#ff2e93',
+          maxLife: 0.18
+        });
+      } else if (heroId === 'valkyrie' || heroId === 'priestess') {
+        this.pushHeroDodgeTrail(player, {
+          kind: 'feather_mote',
+          layer: 'front',
+          x: player.x - player.facing * 18,
+          y: player.y - 86,
+          color: heroId === 'valkyrie' ? '#fbbf24' : '#fef08a',
+          maxLife: 0.30
+        });
+      } else if (heroId === 'ronin' || heroId === 'warrior') {
+        this.pushHeroDodgeTrail(player, {
+          kind: 'lightning_spark',
+          layer: 'front',
+          x: player.x - player.facing * 14,
+          y: player.groundY - (heroId === 'ronin' ? 14 : 52),
+          w: 28,
+          color: heroId === 'ronin' ? '#38bdf8' : '#fde047',
+          maxLife: 0.20
+        });
+      } else if (heroId === 'titan' || heroId === 'mage') {
+        this.pushHeroDodgeTrail(player, {
+          kind: 'magma_tread',
+          layer: 'back',
+          x: player.x - player.facing * 12,
+          y: player.groundY - 2,
+          w: 28,
+          color: heroId === 'titan' ? '#f59e0b' : '#fb923c',
+          maxLife: 0.28
+        });
+      } else {
+        this.pushHeroDodgeTrail(player, {
+          kind: 'streak',
+          layer: 'back',
+          x: player.x - player.facing * 16,
+          y: player.y - 72,
+          w: 28,
+          h: 4,
+          color: heroId === 'reaper' ? '#a855f7' : heroId === 'archer' ? '#34d399' : '#2dd4bf',
+          maxLife: 0.22
+        });
+      }
+    }
+
+    const gStep = player._advDodgeGhostStep || 0;
+    if ((gStep === 0 && u >= 0.24) || (gStep === 1 && u >= 0.58)) {
+      player._advDodgeGhostStep = gStep + 1;
+      const col = Math.min(28, Math.floor(u * 24) + 4);
+      if (heroId === 'valkyrie') {
+        player.spawnAfterimage?.(player.x, player.y, player.facing, 4, 4 + Math.min(7, Math.floor(u * 7)), 0.18);
+      } else if (heroId === 'archer') {
+        player.spawnAfterimage?.(player.x, player.y, player.facing, 8, 4 + Math.min(20, Math.floor(u * 20)), 0.18);
+      } else if (heroId === 'mage') {
+        player.spawnSolarEcho?.(player._advDodgeFrameOverride, 0.78, 0.20);
+      } else if (heroId === 'chronomancer') {
+        player.spawnTemporalEcho?.(player._advDodgeFrameOverride);
+      } else if (heroId === 'ronin') {
+        player.spawnAfterimage?.(player.x, player.groundY, player.facing, 6, col, 0.18, 0);
+      } else {
+        player.spawnAfterimage?.(player.x, player.y, player.facing, 6, col, 0.18);
+      }
+    }
+
+    // Arrival rift flashes for Blink / Warp / Shadow-Shift champions
+    if (!player._advDodgeArrivalDone && u >= 0.82) {
+      player._advDodgeArrivalDone = true;
+      if (heroId === 'mage') {
+        player.fx?.spawn('arcaneBlinkRift', player.x, player.groundY, {
+          light: 1.20,
+          extra: { isArrival: true }
+        });
+      } else if (heroId === 'chronomancer') {
+        player.fx?.spawn('warpPortalPairRift', player.x, player.groundY - 92, {
+          flip: player.facing < 0,
+          light: 1.20,
+          extra: { isArrival: true }
+        });
+      } else if (heroId === 'reaper') {
+        player.fx?.spawn('companionSummonRiftPortal', player.x, player.groundY - 4, {
+          light: 1.16,
+          extra: { radius: 24, isCrimson: true, customDuration: 0.24 }
+        });
+      } else if (heroId === 'warrior') {
+        player.fx?.spawn('blinkTeleportPillar', player.x, player.groundY, {
+          maxDuration: 0.20,
+          light: 1.12,
+          extra: { width: 20, height: 126 }
+        });
+      }
+    }
+
+    this.skillSets.beginPlayerStep(dt, player, null, true, player._advPureDodgeDirZ || 0);
+    player.update(dt, null, this.game);
+    player.vx = 0;
+    player.vy = 0;
+    player.y = player.groundY - liftY;
+
+    if (player._advPureDodgeTimer >= dur) {
+      this.finishHeroAdventureDodge(player, true);
+    }
+    return true;
+  }
+
   processPlayerControls(dt, player, target) {
     player.isPlayerControlled = true;
     player.isManualAdventureControl = true;
@@ -1628,12 +2155,12 @@ export class AdventureManager {
       (this.comboResetTimer || 0) > 0 &&
       this._comboLockTarget &&
       !this._comboLockTarget.isDead &&
-      Math.abs(this._comboLockTarget.x - player.x) <= 265 &&
+      Math.abs(this._comboLockTarget.x - player.x) <= 315 &&
       (this._comboLockTarget.isColossalBoss ||
         Math.abs(
           (this._comboLockTarget.groundY || this._comboLockTarget.y) -
             (player.groundY || player.y)
-        ) <= 88)
+        ) <= 92)
     ) {
       target = this._comboLockTarget;
     }
@@ -1658,36 +2185,9 @@ export class AdventureManager {
         }
       }
 
-      // 0. Advance active Pure 3D Evade Dash smoothly during Auto-Play
+      // 0. Advance active Bespoke 11-Hero Pure 3D Evade Dash smoothly during Auto-Play
       if (player._advPureDodge) {
-        player._manualWalkActive = false;
-        player._manualSpeedRatio = 0;
-        if (player.isDead || player.state !== 'DODGE') {
-          player._advPureDodge = false;
-          player.isInvulnerable = false;
-        } else {
-          player._advPureDodgeTimer += dt;
-          const dur = player._advPureDodgeDur || 0.28;
-          const u = Math.min(1, player._advPureDodgeTimer / dur);
-          const speedScale = 1.36 * (1 - 0.56 * u * u);
-          player.x += (player._advPureDodgeDirX || 0) * 580 * speedScale * dt;
-          this.shiftEntityDepth(player, (player._advPureDodgeDirZ || 0) * 355 * speedScale * dt);
-          player.isInvulnerable = true;
-          player.vx = 0;
-          player.vy = 0;
-          player.y = player.groundY;
-          this.skillSets.beginPlayerStep(dt, player, null, true, player._advPureDodgeDirZ || 0);
-          player.update(dt, null, this.game);
-          player.vx = 0;
-          player.vy = 0;
-          player.y = player.groundY;
-          if (player._advPureDodgeTimer >= dur) {
-            player._advPureDodge = false;
-            player.isInvulnerable = false;
-            if (!player.isDead && player.state === 'DODGE') {
-              player.setState('IDLE');
-            }
-          }
+        if (this.updateHeroAdventureDodge(dt, player)) {
           this.progression.syncGaugesToPlayer(player);
           return;
         }
@@ -1805,7 +2305,7 @@ export class AdventureManager {
         }
       }
 
-      // Reactive Pure 3D Evade Dash out of imminent floor telegraphs / incoming fire
+      // Reactive Bespoke 11-Champion Pure 3D Evade Dash out of imminent floor telegraphs / incoming fire
       if (
         imminentEvade &&
         !this.game.isMatchOver &&
@@ -1818,26 +2318,7 @@ export class AdventureManager {
         const mag = Math.hypot(imminentEvade.dirX, imminentEvade.dirZ) || 1;
         const evX = imminentEvade.dirX / mag;
         const evZ = imminentEvade.dirZ / mag;
-        if (Math.abs(evX) > 0.15) player.facing = evX > 0 ? 1 : -1;
-        this.dodgeCdMax = Math.max(0.55, 1.35 * stats.mobilityCdMult);
-        player.dodgeCooldown = this.dodgeCdMax;
-        player.dashDir = evX >= 0 ? 1 : -1;
-        player._advPureDodge = true;
-        player._advPureDodgeTimer = 0;
-        player._advPureDodgeDur = 0.28;
-        player._advPureDodgeDirX = evX;
-        player._advPureDodgeDirZ = evZ;
-        player._advVaultVelZ = 0;
-        player.setState('DODGE');
-        player.isInvulnerable = true;
-        player.isFlipVault = false;
-        player.isWraithPhase = false;
-        player.vx = 0;
-        player.vy = 0;
-        player.y = player.groundY;
-        this.progression.gainSpirit(18);
-        this.game.audio?.play?.('dash_whoosh', player.x);
-        this.game.vfx?.spawnShockwave?.(player.x, player.groundY - 6, 46, '#bae6fd', 0.18, true);
+        this.startHeroAdventureDodge(player, evX, evZ, stats);
         this.progression.syncGaugesToPlayer(player);
         return;
       }
@@ -2270,7 +2751,7 @@ export class AdventureManager {
         (player.autoCooldown <= 0 &&
           player.stateTimer >=
             (player.isHackAndSlashMelee?.()
-              ? (player.autoDuration || 0.48) * 0.78
+              ? (player.autoDuration || 0.42) * 0.72
               : Math.min(0.35, (player.autoDuration || 0.48) * 0.72))));
 
     const canAct =
@@ -2331,7 +2812,7 @@ export class AdventureManager {
           );
         }
       } else if (act === 'dodge' && player.dodgeCooldown <= 0) {
-        // 100% Pure Non-Attacking 360° 3D Evade Dash (zero counter-projectiles, zero decoys, zero damage!)
+        // 100% Pure Non-Attacking Bespoke 11-Champion 360° 3D Evade (zero projectiles, zero decoys, zero damage!)
         this.queuedAction = null;
         const inputMag = Math.hypot(rawDirX, rawDirY);
         let evadeX = 0;
@@ -2341,38 +2822,35 @@ export class AdventureManager {
           evadeZ = rawDirY / inputMag;
         } else {
           evadeX =
-            target && Math.abs(target.x - player.x) < 280
+            target && !target.isDestructibleProp && Math.abs(target.x - player.x) < 280
               ? player.x <= target.x
                 ? -1
                 : 1
               : player.facing || 1;
           evadeZ = 0;
         }
-        if (Math.abs(evadeX) > 0.15) {
-          player.facing = evadeX > 0 ? 1 : -1;
-        }
-        this.dodgeCdMax = Math.max(0.55, 1.35 * stats.mobilityCdMult);
-        player.dodgeCooldown = this.dodgeCdMax;
-        player.dashDir = evadeX >= 0 ? 1 : -1;
-        player._advPureDodge = true;
-        player._advPureDodgeTimer = 0;
-        player._advPureDodgeDur = 0.28;
-        player._advPureDodgeDirX = evadeX;
-        player._advPureDodgeDirZ = evadeZ;
-        player._advVaultVelZ = 0;
-        player.setState('DODGE');
-        player.isInvulnerable = true;
-        player.isFlipVault = false;
-        player.isWraithPhase = false;
-        player.vx = 0;
-        player.vy = 0;
-        player.y = player.groundY;
-        this.progression.gainSpirit(18);
-        this.game.audio?.play?.('dash_whoosh', player.x);
-        this.game.vfx?.spawnShockwave?.(player.x, player.groundY - 6, 46, '#bae6fd', 0.18, true);
+        this.startHeroAdventureDodge(player, evadeX, evadeZ, stats);
       } else if (act === 'attack' && player.autoCooldown <= 0) {
         this.queuedAction = null;
-        if (target) {
+        const isHns = Boolean(player.isHackAndSlashMelee?.());
+        const lockableHnsTarget =
+          isHns &&
+          target &&
+          !target.isDead &&
+          !target.isDestructibleProp &&
+          !target.isDummyFocal &&
+          (target.isColossalBoss || Math.abs(target.x - player.x) <= 275);
+        if (isHns) {
+          if (lockableHnsTarget) {
+            player.facing = target.x >= player.x ? 1 : -1;
+            this._comboLockTarget = target;
+          } else {
+            if (moveDirX !== 0) {
+              player.facing = moveDirX;
+            }
+            this._comboLockTarget = null;
+          }
+        } else if (target) {
           player.facing = target.x >= player.x ? 1 : -1;
           this._comboLockTarget = target;
         } else if (moveDirX !== 0) {
@@ -2380,13 +2858,13 @@ export class AdventureManager {
         }
         this.comboResetTimer = 1.85;
         player.setState('AUTO_ATTACK');
-        if (player.isHackAndSlashMelee?.()) {
+        if (isHns) {
           if ((player.comboStep || 0) !== 0) {
-            this.autoCdMax = 0.36;
-            player.autoCooldown = 0.04;
+            this.autoCdMax = 0.34;
+            player.autoCooldown = 0.03;
           } else {
-            this.autoCdMax = 0.38;
-            player.autoCooldown = 0.38;
+            this.autoCdMax = 0.36;
+            player.autoCooldown = 0.34;
             this._comboLockTarget = null;
           }
         } else {
@@ -2398,36 +2876,9 @@ export class AdventureManager {
       }
     }
 
-    // Advance Pure Non-Attacking 360° 3D Evade Dash when active
+    // Advance Bespoke 11-Champion Pure Non-Attacking 360° 3D Evade Dash when active
     if (player._advPureDodge) {
-      player._manualWalkActive = false;
-      player._manualSpeedRatio = 0;
-      if (player.isDead || player.state !== 'DODGE') {
-        player._advPureDodge = false;
-        player.isInvulnerable = false;
-      } else {
-        player._advPureDodgeTimer += dt;
-        const dur = player._advPureDodgeDur || 0.28;
-        const u = Math.min(1, player._advPureDodgeTimer / dur);
-        const speedScale = 1.36 * (1 - 0.56 * u * u);
-        player.x += (player._advPureDodgeDirX || 0) * 580 * speedScale * dt;
-        this.shiftEntityDepth(player, (player._advPureDodgeDirZ || 0) * 355 * speedScale * dt);
-        player.isInvulnerable = true;
-        player.vx = 0;
-        player.vy = 0;
-        player.y = player.groundY;
-        this.skillSets.beginPlayerStep(dt, player, null, true, player._advPureDodgeDirZ || 0);
-        player.update(dt, null, this.game);
-        player.vx = 0;
-        player.vy = 0;
-        player.y = player.groundY;
-        if (player._advPureDodgeTimer >= dur) {
-          player._advPureDodge = false;
-          player.isInvulnerable = false;
-          if (!player.isDead && player.state === 'DODGE') {
-            player.setState('IDLE');
-          }
-        }
+      if (this.updateHeroAdventureDodge(dt, player)) {
         return;
       }
     }

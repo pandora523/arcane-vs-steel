@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps102';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps102';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps102';
+import { Fighter } from './Fighter.js?v=30fps103';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps103';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps103';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps102';
+} from '../engine/shaders/cyberShaders.js?v=30fps103';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 const AUTO_SLICES_4 = [
@@ -72,10 +72,10 @@ export class Android extends Fighter {
     if (typeof Image !== 'undefined') {
       const androidAssets = PixelForge.initAssets()?.android;
       if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps87')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps102';
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps103';
       }
       if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps87')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps102';
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps103';
       }
     }
 
@@ -121,6 +121,7 @@ export class Android extends Fighter {
     if (
       newState !== 'AUTO_ATTACK' &&
       newState !== 'DASH' &&
+      newState !== 'DODGE' &&
       newState !== 'JUMP' &&
       newState !== 'ULTIMATE' &&
       newState !== 'TRUE_ULTIMATE'
@@ -130,6 +131,7 @@ export class Android extends Fighter {
     if (newState === 'AUTO_ATTACK') {
       this._autoVariant = ((this.comboStep || 0) % 4 + 4) % 4;
       this.comboStep = (this._autoVariant + 1) % 4;
+      this.autoDuration = this._autoVariant === 3 ? 0.48 : 0.42;
       this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
       this._autoGapClosed = false;
     }
@@ -415,14 +417,14 @@ export class Android extends Fighter {
   }
 
   updateAutoAttack(dt, enemy, game) {
-    const dur = this.autoDuration || 0.48;
-    const u = Math.min(1, Math.max(0, this.stateTimer / dur));
     const variant = ((this._autoVariant ?? 0) % 4 + 4) % 4;
+    const dur = this.autoDuration || (variant === 3 ? 0.48 : 0.42);
+    const u = Math.min(1, Math.max(0, this.stateTimer / dur));
     const [sliceStart, sliceLen] = AUTO_SLICES_4[variant];
     const localCol = Math.min(sliceLen - 1, Math.max(0, Math.floor(u * sliceLen)));
 
-    // Drive exact 4-variant Row 2 slice (`60..67` Jet-Step Cleave, `68..74` Cross-Through Dragon Kick-Slash,
-    // `75..82` Thruster Dash-Slash + Fin-Funnel Lances, `83..89` Advancing Hop Fang Chakram Slam)
+    // Drive exact 4-variant Row 2 slice (`60..67` Jet-Rush Cleave, `68..74` Wide Cross-Through Dragon Kick-Slash,
+    // `75..82` Supersonic Thruster Dash-Pierce + Fin-Funnel Lances, `83..89` Soaring Aerial Fang Chakram Slam)
     this.trueUltFrameOverride = sliceStart + localCol;
 
     const isAdv = Boolean(game?.adventure?.active);
@@ -432,31 +434,43 @@ export class Android extends Fighter {
         f.isColossalBoss ||
         Math.abs((f.groundY || f.y) - (this.groundY || this.y)) <= 88
     );
+    const combatFoes = foes.filter((f) => !f.isDestructibleProp && !f.isDummyFocal);
     const frontFoe =
-      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 270 ? enemy : null) ||
-      foes.find((f) => Math.abs(f.x - this.x) <= 270) ||
+      (enemy &&
+      !enemy.isDead &&
+      !enemy.isDestructibleProp &&
+      !enemy.isDummyFocal &&
+      Math.abs(enemy.x - this.x) <= 275
+        ? enemy
+        : null) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 275) ||
       null;
 
     const hns = this.updateHackAndSlashMotion(dt, frontFoe, game, {
       variant,
       u,
       moveEndU: 0.40,
-      coilEndU: 0.08,
-      contactDist: 82,
-      flankDist: 86,
-      dashContactDist: 78,
-      dashFlankDist: 86,
-      finisherDist: 82,
-      v1HopHeight: 18,
-      v3HopHeight: 18,
-      hopEndU: 0.68,
-      maxLockDist: 270,
+      coilEndU: 0.075,
+      contactDist: 68,
+      flankDist: 128,
+      dashContactDist: 66,
+      dashFlankDist: 132,
+      dashPierceThreshold: 235,
+      finisherDist: 68,
+      v1HopHeight: 28,
+      v3HopHeight: 48,
+      hopEndU: 0.58,
+      openStepPx: 128,
+      openCrossPx: 154,
+      openDashPx: 228,
+      openFinisherPx: 146,
+      maxLockDist: 275,
       margin: 84,
       onGhost: (gx, gy, gf) =>
-        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.21)
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.22)
     });
 
-    if (u < 0.40 && !this._autoGapClosed && hns && Math.abs(this.x - hns.startX) > 20) {
+    if (u < 0.40 && !this._autoGapClosed && hns && Math.abs(this.x - hns.startX) > 16) {
       this._autoGapClosed = true;
       this.fx.spawn('wingPylonThruster', this.x - this.facing * 18, this.y - 134, {
         follow: this,
@@ -464,16 +478,19 @@ export class Android extends Fighter {
         offsetY: -134,
         flip: this.facing < 0,
         palette: variant === 1 || variant === 3 ? CYBER_MAGENTA_PALETTE : CYBER_NEON_PALETTE,
-        maxDuration: 0.18,
-        light: 0.95,
-        extra: { length: variant === 2 ? 20 : 16, tilt: -0.78 }
+        maxDuration: 0.20,
+        light: 0.98,
+        extra: { length: variant === 2 ? 24 : 18, tilt: -0.78 }
       });
     }
 
     if (!this.didActionFrame && u >= 0.42) {
       this.didActionFrame = true;
       const step = variant;
-      const strikeTarget = frontFoe || (enemy && !enemy.isDead ? enemy : null);
+      const strikeTarget =
+        frontFoe ||
+        foes.find((f) => Math.abs(f.x - this.x) <= 240) ||
+        (enemy && !enemy.isDead ? enemy : null);
       const hitX = strikeTarget ? strikeTarget.x : this.x + this.facing * 115;
 
       if (step === 3) {
@@ -546,7 +563,7 @@ export class Android extends Fighter {
         game.audio.play('cyber_slash', this.x);
       }
 
-      if (strikeTarget && !strikeTarget.isDead && Math.abs(strikeTarget.x - this.x) <= 215) {
+      if (strikeTarget && !strikeTarget.isDead && Math.abs(strikeTarget.x - this.x) <= 240) {
         if (step === 2) {
           // Odachi needle pierce (48 dmg) + synchronized dual Fin-Funnel laser lances (+18 bonus = 66 total)
           const isCrit = Math.random() < 0.24;

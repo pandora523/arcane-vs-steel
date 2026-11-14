@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps102';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps102';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps102';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps102';
+import { Fighter } from './Fighter.js?v=30fps103';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps103';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps103';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps103';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps102';
+} from '../engine/shaders/chronoShaders.js?v=30fps103';
 
 const ROMAN_CLOCK_HOURS = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
 const AUTO_SLICES_4 = [
@@ -114,7 +114,7 @@ export class Chronomancer extends Fighter {
     if (typeof Image !== 'undefined') {
       const chronoAssets = PixelForge.initAssets()?.chronomancer;
       if (chronoAssets?.vfx?.src && !chronoAssets.vfx.src.includes('v=30fps62')) {
-        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps102';
+        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps103';
       }
     }
 
@@ -152,6 +152,7 @@ export class Chronomancer extends Fighter {
       this._autoVariant = ((this.comboStep || 0) % 4 + 4) % 4;
       this._currentAutoStage = this._autoVariant;
       this.comboStep = (this._autoVariant + 1) % 4;
+      this.autoDuration = this._autoVariant === 3 ? 0.50 : 0.42;
       this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
     }
 
@@ -992,15 +993,15 @@ export class Chronomancer extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.autoDuration || 0.50;
-    const u = Math.min(0.999, Math.max(0, t / dur));
     const stage = ((this._autoVariant ?? this._currentAutoStage ?? 0) % 4 + 4) % 4;
+    const dur = this.autoDuration || (stage === 3 ? 0.50 : 0.42);
+    const u = Math.min(0.999, Math.max(0, t / dur));
     const [sliceStart, sliceLen] = AUTO_SLICES_4[stage];
     const localCol = Math.min(sliceLen - 1, Math.floor(u * sliceLen));
 
-    // Drive exact 4-variant Row 2 slice (`60..67` Minute-Glaive Forward Lunge Cleave,
-    // `68..74` Cross-Through Paradox Phantom Scissor, `75..82` Horological Fleche Dash-Slash,
-    // `83..89` Advancing Hop XII Chime Execution Cleave)
+    // Drive exact 4-variant Row 2 slice (`60..67` Minute-Glaive Rush Cleave,
+    // `68..74` Wide Cross-Through Paradox Phantom Scissor, `75..82` Supersonic Horological Dash-Pierce,
+    // `83..89` Soaring Aerial XII Chime Execution Cleave)
     this.trueUltFrameOverride = sliceStart + localCol;
 
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
@@ -1028,52 +1029,68 @@ export class Chronomancer extends Fighter {
         f.isColossalBoss ||
         Math.abs((f.groundY || f.y) - (this.groundY || this.y)) <= 88
     );
+    const combatFoes = foes.filter((f) => !f.isDestructibleProp && !f.isDummyFocal);
     const frontFoe =
-      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 265 ? enemy : null) ||
-      foes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 265) ||
-      foes.find((f) => Math.abs(f.x - this.x) <= 225) ||
+      (enemy &&
+      !enemy.isDead &&
+      !enemy.isDestructibleProp &&
+      !enemy.isDummyFocal &&
+      Math.abs(enemy.x - this.x) <= 270
+        ? enemy
+        : null) ||
+      combatFoes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 270) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 235) ||
       null;
 
     this.updateHackAndSlashMotion(dt, frontFoe, game, {
       variant: stage,
       u,
       moveEndU: 0.40,
-      coilEndU: 0.08,
-      contactDist: 82,
-      flankDist: 84,
-      dashContactDist: 78,
-      dashFlankDist: 84,
-      finisherDist: 82,
-      v3HopHeight: 18,
-      hopEndU: 0.60,
-      maxLockDist: 265,
+      coilEndU: 0.075,
+      contactDist: 68,
+      flankDist: 124,
+      dashContactDist: 66,
+      dashFlankDist: 128,
+      dashPierceThreshold: 235,
+      finisherDist: 68,
+      v1HopHeight: 22,
+      v3HopHeight: 48,
+      hopEndU: 0.58,
+      openStepPx: 124,
+      openCrossPx: 150,
+      openDashPx: 222,
+      openFinisherPx: 142,
+      maxLockDist: 270,
       margin: 76,
       onGhost: () => this.spawnTemporalEcho(sliceStart + localCol)
     });
 
-    if (t < 0.22) {
-      this.torsoAngle = -this.facing * 0.10 * (t / 0.22);
+    if (t < 0.20) {
+      this.torsoAngle = -this.facing * 0.10 * (t / 0.20);
       return;
     }
 
-    if (!this.didActionFrame && t >= 0.22) {
+    if (!this.didActionFrame && t >= 0.20) {
       this.didActionFrame = true;
       this.torsoVel = this.facing * 9;
 
-      const primary = frontFoe || (enemy && !enemy.isDead ? enemy : foes[0] || null);
+      const primary =
+        frontFoe ||
+        foes.find((f) => Math.abs(f.x - this.x) <= 236) ||
+        (enemy && !enemy.isDead ? enemy : foes[0] || null);
       const hitPool =
         primary && !foes.includes(primary) ? [...foes, primary] : foes;
 
       // ----------------------------------------------------------------------
       // V0 (`stage === 0`, frames `60..67` — `MINUTE-GLAIVE DIAGONAL CLEAVE`):
       // Lunges forward sweeping the Minute-Glaive along a `+34°` diagonal cut (`Row 2 F00..F07`),
-      // cleaving enemies within `174px` (`64 dmg` / `48` splash) with a razor `chronoTimeRiftSlash`!
+      // cleaving enemies within `182px` (`64 dmg` / `48` splash) with a razor `chronoTimeRiftSlash`!
       // ----------------------------------------------------------------------
       if (stage === 0) {
         this.vx = this.facing * 32;
         if (game?.audio) game.audio.play('slash', this.x);
 
-        const inRangeFoe = primary && Math.abs(primary.x - this.x) <= 174 ? primary : null;
+        const inRangeFoe = primary && Math.abs(primary.x - this.x) <= 182 ? primary : null;
         const slashX = inRangeFoe ? inRangeFoe.x : this.x + this.facing * 74;
         const slashY = (inRangeFoe ? inRangeFoe.y : this.y) - 98;
 
@@ -1091,7 +1108,7 @@ export class Chronomancer extends Fighter {
 
         for (const foe of hitPool) {
           const dxFoe = foe.x - this.x;
-          if (Math.abs(dxFoe) <= 174 && dxFoe * this.facing >= -28) {
+          if (Math.abs(dxFoe) <= 182 && dxFoe * this.facing >= -28) {
             foe.takeDamage(foe === primary ? 64 : 48, this, false, 64, -24);
           }
         }
@@ -1110,7 +1127,7 @@ export class Chronomancer extends Fighter {
           game.audio.play('slash', primary ? primary.x : this.x);
         }
 
-        const inRangePrimary = primary && Math.abs(primary.x - this.x) <= 215 ? primary : null;
+        const inRangePrimary = primary && Math.abs(primary.x - this.x) <= 238 ? primary : null;
         const strikeX = inRangePrimary
           ? inRangePrimary.x
           : this.clampArenaX(this.x + this.facing * 88, game, 96);
@@ -1158,7 +1175,7 @@ export class Chronomancer extends Fighter {
 
         for (const foe of hitPool) {
           const dxFoe = foe.x - this.x;
-          if (Math.abs(foe.x - strikeX) <= 118 || (Math.abs(dxFoe) <= 195 && dxFoe * this.facing >= -28)) {
+          if (Math.abs(foe.x - strikeX) <= 122 || (Math.abs(dxFoe) <= 238 && dxFoe * this.facing >= -28)) {
             foe.takeDamage(foe === primary ? 70 : 54, this, false, 38, -32);
           }
         }
@@ -1167,7 +1184,7 @@ export class Chronomancer extends Fighter {
       // ----------------------------------------------------------------------
       // V2 (`stage === 2`, frames `75..82` — `HOROLOGICAL FLECHE DASH-SLASH`):
       // High-speed temporal dash-slash (`Row 2 F15..F22`) driving the Minute-Glaive needle
-      // straight through melee range (`72 dmg` / `54` splash within `188px`) + `+4.5 Mana`!
+      // straight through melee range (`72 dmg` / `54` splash within `238px`) + `+4.5 Mana`!
       // ----------------------------------------------------------------------
       else if (stage === 2) {
         this.vx = this.facing * 36;
@@ -1177,7 +1194,7 @@ export class Chronomancer extends Fighter {
           game.audio.play('clock_gear', this.x);
         }
 
-        const inThrustRange = primary && Math.abs(primary.x - this.x) <= 188 ? primary : null;
+        const inThrustRange = primary && Math.abs(primary.x - this.x) <= 238 ? primary : null;
         const thrustX = inThrustRange ? inThrustRange.x : this.x + this.facing * 84;
         const thrustY = (inThrustRange ? inThrustRange.y : this.y) - 96;
 
@@ -1195,7 +1212,7 @@ export class Chronomancer extends Fighter {
 
         for (const foe of hitPool) {
           const dxFoe = foe.x - this.x;
-          if (Math.abs(dxFoe) <= 188 && dxFoe * this.facing >= -28) {
+          if (Math.abs(dxFoe) <= 238 && dxFoe * this.facing >= -28) {
             foe.takeDamage(foe === primary ? 72 : 54, this, false, 68, -20);
           }
         }
@@ -1217,7 +1234,7 @@ export class Chronomancer extends Fighter {
           game.audio.play('clock_gear', this.x);
         }
 
-        const inExecRange = primary && Math.abs(primary.x - this.x) <= 198 ? primary : null;
+        const inExecRange = primary && Math.abs(primary.x - this.x) <= 215 ? primary : null;
         const snapX = inExecRange
           ? inExecRange.x
           : this.clampArenaX(this.x + this.facing * 106, game, 96);

@@ -18,7 +18,7 @@ import {
   buildLightningChain,
   drawTiltedOrbitBand,
   drawStarburstFlare
-} from '../ArcaneShaderFX.js?v=30fps102';
+} from '../ArcaneShaderFX.js?v=30fps103';
 
 // Luminous Refractive Crystal-Ice Master Palette (zero murky #061224 / #0c2948 / #1d4ed8 dark-navy slabs!)
 export const GLACIAL_CRYO_PALETTE = [

@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps102';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps102';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps102';
+import { Fighter } from './Fighter.js?v=30fps103';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps103';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps103';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps102';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps103';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -99,11 +99,11 @@ export class Warrior extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const warriorAssets = PixelForge.initAssets()?.warrior;
-      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps102')) {
-        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps102';
+      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps103')) {
+        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps103';
       }
       if (warriorAssets?.vfx?.src && !warriorAssets.vfx.src.includes('v=30fps60')) {
-        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps102';
+        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps103';
       }
     }
   }
@@ -113,6 +113,7 @@ export class Warrior extends Fighter {
     if (newState === 'AUTO_ATTACK') {
       this._autoVariant = (((this.comboStep || 0) % 4) + 4) % 4;
       this.comboStep = (this._autoVariant + 1) % 4;
+      this.autoDuration = this._autoVariant === 3 ? 0.50 : 0.42;
       this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
     } else if (newState !== 'ULTIMATE' && newState !== 'TRUE_ULTIMATE') {
       this.trueUltFrameOverride = null;
@@ -857,8 +858,8 @@ export class Warrior extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.autoDuration || 0.50;
     const mode = (((this._autoVariant ?? 0) % 4) + 4) % 4;
+    const dur = this.autoDuration || (mode === 3 ? 0.50 : 0.42);
     const u = Math.min(0.999, Math.max(0, t / dur));
     const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
     const localCol = Math.min(sliceLen - 1, Math.floor(u * sliceLen));
@@ -875,33 +876,46 @@ export class Warrior extends Fighter {
           f.isColossalBoss ||
           Math.abs((f.groundY || f.y) - (this.groundY || this.y)) <= 88)
     );
+    const combatFoes = foes.filter((f) => !f.isDestructibleProp && !f.isDummyFocal);
     const frontFoe =
-      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 270 ? enemy : null) ||
-      foes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 270) ||
-      foes.find((f) => Math.abs(f.x - this.x) <= 230) ||
+      (enemy &&
+      !enemy.isDead &&
+      !enemy.isDestructibleProp &&
+      !enemy.isDummyFocal &&
+      Math.abs(enemy.x - this.x) <= 275
+        ? enemy
+        : null) ||
+      combatFoes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 275) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 240) ||
       null;
 
-    // 4-Beat Kinetic Hack-and-Slash Choreography:
-    // V0: Forward Lunge Cleave | V1: Cross-Through Flank-Slash | V2: Supersonic Dash-Slash | V3: Advancing Hop Guillotine
+    // 4-Beat Wild Kinetic Hack-and-Slash Choreography:
+    // V0: Explosive Rush Cleave | V1: Wide Cross-Through Vault-Slash | V2: Supersonic Dash-Pierce | V3: Soaring Aerial Guillotine
     this.updateHackAndSlashMotion(dt, frontFoe, game, {
       variant: mode,
       u,
-      moveEndU: 0.42,
-      coilEndU: 0.08,
-      contactDist: 82,
-      flankDist: 88,
-      dashContactDist: 78,
-      dashFlankDist: 88,
-      finisherDist: 82,
-      v3HopHeight: 22,
-      hopEndU: 0.64,
-      maxLockDist: 270,
+      moveEndU: 0.40,
+      coilEndU: 0.075,
+      contactDist: 68,
+      flankDist: 128,
+      dashContactDist: 66,
+      dashFlankDist: 132,
+      dashPierceThreshold: 235,
+      finisherDist: 68,
+      v1HopHeight: 24,
+      v3HopHeight: 52,
+      hopEndU: 0.58,
+      openStepPx: 128,
+      openCrossPx: 152,
+      openDashPx: 224,
+      openFinisherPx: 146,
+      maxLockDist: 275,
       onGhost: (gx, gy, gf) =>
         this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.22)
     });
 
-    if (t < 0.22) {
-      this.torsoAngle = -this.facing * (mode === 2 ? 0.14 : 0.20) * (t / 0.22);
+    if (t < 0.20) {
+      this.torsoAngle = -this.facing * (mode === 2 ? 0.14 : 0.20) * (t / 0.20);
     } else if (t < dur) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
@@ -967,7 +981,7 @@ export class Warrior extends Fighter {
 
         game?.vfx?.spawnGlyphBurst(cx, cy, 5, 'steel');
 
-        const reach = mode === 2 ? 224 : this.attackRange + 50;
+        const reach = mode === 1 || mode === 2 ? 240 : this.attackRange + 56;
         const hitPool =
           frontFoe && !foes.includes(frontFoe) ? [...foes, frontFoe] : foes;
 

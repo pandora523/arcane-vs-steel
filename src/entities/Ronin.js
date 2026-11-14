@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps102';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps102';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps102';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps102';
+import { Fighter } from './Fighter.js?v=30fps103';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps103';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps103';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps103';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -88,11 +88,11 @@ export class Ronin extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const roninAssets = PixelForge.initAssets()?.ronin;
-      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps102')) {
-        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps102';
+      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps103')) {
+        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps103';
       }
       if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps63')) {
-        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps102';
+        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps103';
       }
     }
   }
@@ -163,6 +163,7 @@ export class Ronin extends Fighter {
     if (newState === 'AUTO_ATTACK') {
       this._autoVariant = (((this.comboStep || 0) % 4) + 4) % 4;
       this.comboStep = (this._autoVariant + 1) % 4;
+      this.autoDuration = this._autoVariant === 3 ? 0.44 : 0.38;
       this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
       this._drewAutoGlint = false;
     }
@@ -664,8 +665,8 @@ export class Ronin extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.autoDuration || 0.44;
     const mode = (((this._autoVariant ?? 0) % 4) + 4) % 4;
+    const dur = this.autoDuration || (mode === 3 ? 0.44 : 0.38);
     const u = Math.min(0.999, Math.max(0, t / dur));
     const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
     const localCol = Math.min(sliceLen - 1, Math.floor(u * sliceLen));
@@ -683,37 +684,47 @@ export class Ronin extends Fighter {
           f.isColossalBoss ||
           Math.abs((f.groundY || f.y) - (this.groundY || this.y)) <= 88)
     );
+    const combatFoes = foes.filter((f) => !f.isDestructibleProp && !f.isDummyFocal);
     const frontFoe =
-      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 245 ? enemy : null) ||
-      foes.find((f) => (f.x - this.x) * this.facing >= -24 && Math.abs(f.x - this.x) <= 245) ||
-      foes.find((f) => Math.abs(f.x - this.x) <= 210) ||
+      (enemy &&
+      !enemy.isDead &&
+      !enemy.isDestructibleProp &&
+      !enemy.isDummyFocal &&
+      Math.abs(enemy.x - this.x) <= 255
+        ? enemy
+        : null) ||
+      combatFoes.find((f) => (f.x - this.x) * this.facing >= -24 && Math.abs(f.x - this.x) <= 255) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 225) ||
       null;
 
-    // 4-Beat Grounded Iaido Hack-and-Slash Choreography (0 bloated VFX, pure afterimages + blade cuts):
-    // V0: Fumikomi Forward Cut | V1: Cross-Through Flank Reverse-Cut | V2: Shunpo Dash-Slash | V3: Morote Kiri-Nuki
+    // 4-Beat Grounded Iaido Shunpo Hack-and-Slash Choreography (0 bloated VFX, pure afterimages + blade cuts):
+    // V0: Fumikomi Rush Cut | V1: Wide Shunpo Cross-Through | V2: Supersonic Suriashi Dash-Pierce | V3: Morote Kiri-Nuki
     this.updateHackAndSlashMotion(dt, frontFoe, game, {
       variant: mode,
       u,
-      moveEndU: 0.36,
-      coilEndU: 0.08,
-      contactDist: 72,
-      minCloseDist: 48,
-      flankDist: 74,
-      dashContactDist: 70,
-      dashFlankDist: 74,
-      finisherDist: 68,
-      openStepPx: 68,
-      openCrossPx: 102,
-      openDashPx: 148,
-      openFinisherPx: 66,
+      groundedOnly: true,
+      moveEndU: 0.38,
+      coilEndU: 0.07,
+      contactDist: 64,
+      minCloseDist: 34,
+      flankDist: 112,
+      dashContactDist: 62,
+      dashFlankDist: 116,
+      dashPierceThreshold: 225,
+      finisherDist: 62,
+      openStepPx: 122,
+      openCrossPx: 148,
+      openDashPx: 222,
+      openFinisherPx: 138,
+      v1HopHeight: 0,
       v3HopHeight: 0,
-      maxLockDist: 245,
+      maxLockDist: 255,
       margin: 68,
       onGhost: (gx, gy, gf) =>
-        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.19, 0)
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.20, 0)
     });
 
-    if (t >= 0.17 && !this.didActionFrame) {
+    if (t >= 0.16 && !this.didActionFrame) {
       this.didActionFrame = true;
       if (game?.audio) {
         if (mode === 2) game.audio.play('dash_whoosh', this.x);
@@ -745,7 +756,7 @@ export class Ronin extends Fighter {
         frontFoe && !foes.includes(frontFoe) ? [...foes, frontFoe] : foes;
       let landed = false;
       for (const foe of hitPool) {
-        const reachLim = foe.isColossalBoss ? 148 : 138;
+        const reachLim = foe.isColossalBoss ? 164 : mode === 1 || mode === 2 ? 162 : 144;
         if ((foe.x - this.x) * this.facing >= -28 && Math.abs(foe.x - this.x) <= reachLim) {
           const isCrit = Math.random() < critRates[mode];
           const dmg = baseDmgs[mode] * (isCrit ? 1.32 : 1);
