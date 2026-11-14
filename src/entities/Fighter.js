@@ -229,6 +229,16 @@ export class Fighter {
     }
   }
 
+  isHackAndSlashMelee() {
+    return (
+      this.heroId === 'warrior' ||
+      this.heroId === 'ronin' ||
+      this.heroId === 'android' ||
+      this.heroId === 'reaper' ||
+      this.heroId === 'chronomancer'
+    );
+  }
+
   setState(newState) {
     this.state = newState;
     this.stateTimer = 0;
@@ -239,10 +249,10 @@ export class Fighter {
     if (newState === 'AUTO_ATTACK') {
       const profile = this.getAiStyleProfile();
       this._aiComboCount = (this._aiComboCount || 0) + 1;
-      this._aiComboChainTimer = 1.45;
+      this._aiComboChainTimer = 1.85;
       if (this._aiComboCount >= profile.comboGoal) {
         this._aiComboCount = 0;
-        this._aiComboReadyFinisher = 0.70;
+        this._aiComboReadyFinisher = 0.85;
       }
     } else if (
       newState === 'SKILL' ||
@@ -514,7 +524,7 @@ export class Fighter {
       (!this.hasPoise || isCrit || amount >= 145) &&
       (this.state === 'IDLE' ||
         this.state === 'WALK' ||
-        (this.state === 'AUTO_ATTACK' && !this.didActionFrame && isCrit))
+        (this.state === 'AUTO_ATTACK' && !this.didActionFrame && isCrit && !this.isHackAndSlashMelee()))
     ) {
       this.setState('HURT');
     }
@@ -1027,7 +1037,13 @@ export class Fighter {
       this._aiComboChainTimer = Math.max(0, this._aiComboChainTimer - dt);
       if (this._aiComboChainTimer <= 0) {
         this._aiComboCount = 0;
+        if (!this.isPlayerControlled && this.isHackAndSlashMelee()) {
+          this.comboStep = 0;
+        }
       }
+    }
+    if (this._hnsAirAnchorTimer > 0) {
+      this._hnsAirAnchorTimer = Math.max(0, this._hnsAirAnchorTimer - dt);
     }
     if (this.skillCooldown <= 0) {
       this._aiSkillReadyTime = (this._aiSkillReadyTime || 0) + dt;
@@ -1143,15 +1159,20 @@ export class Fighter {
 
         // 2. Signature Counter-Read Defense (`CROUCH` Parries/Shields/Hex-Deflects/Mirrors/Burrows + `JUMP` Vaults + `DODGE` — VS Modes only)
         const isAdvMode = Boolean(game?.isAdventureMode?.());
-        const threatType = !isAdvMode ? this.detectIncomingThreatType(enemy, game) : null;
-        if (!isAdvMode && this.dodgeCooldown <= 0 && threatType) {
+        const inHackSlashChain =
+          this.isHackAndSlashMelee() &&
+          (this.comboStep || 0) !== 0 &&
+          (this._aiComboChainTimer || 0) > 0 &&
+          dist <= 275;
+        const threatType = !isAdvMode && !inHackSlashChain ? this.detectIncomingThreatType(enemy, game) : null;
+        if (!isAdvMode && !inHackSlashChain && this.dodgeCooldown <= 0 && threatType) {
           this.triggerSignatureDefense(enemy, game, threatType);
           return;
         }
 
         // 3. Combo-Finisher & Tactical Window `SKILL` Execution (chains off combos & punishes commitments instead of raw frame-0 spam!)
         const maxSkillDist = this.skillTriggerRange || this.attackRange * 2.2;
-        if (this.skillCooldown <= 0 && dist <= maxSkillDist && !enemy.isInvulnerable) {
+        if (!inHackSlashChain && this.skillCooldown <= 0 && dist <= maxSkillDist && !enemy.isInvulnerable) {
           const isComboFinisher = (this._aiComboReadyFinisher || 0) > 0;
           const isPunishWindow =
             enemy.state === 'AUTO_ATTACK' ||
@@ -1186,7 +1207,7 @@ export class Fighter {
         }
 
         // 4. Post-Combo Archetype Signature Maneuver (VS Modes only)
-        if (!isAdvMode && (this._aiComboReadyFinisher || 0) > 0) {
+        if (!inHackSlashChain && !isAdvMode && (this._aiComboReadyFinisher || 0) > 0) {
           if (this.triggerPostComboSignature(enemy, game, dist)) {
             return;
           }
@@ -1194,6 +1215,7 @@ export class Fighter {
 
         // 5. Mid-Range Aerial Vault Engage (`JUMP`) & Archetype Repositioning `DASH` (VS Modes only)
         if (
+          !inHackSlashChain &&
           !isAdvMode &&
           aiProfile.midLeapChance > 0 &&
           dist >= aiProfile.midLeapMin &&
@@ -1210,6 +1232,7 @@ export class Fighter {
         }
 
         const shouldDash =
+          !inHackSlashChain &&
           !isAdvMode &&
           (this.heroId === 'ronin' || this.heroId === 'android'
             ? dist > 185
@@ -1222,7 +1245,8 @@ export class Fighter {
         }
 
         // 6. Disciplined Combo Strings & Expressive Per-Champion Neutral Footsies
-        if (dist <= atkRange) {
+        const effAtkRange = inHackSlashChain ? Math.max(atkRange, 275) : atkRange;
+        if (dist <= effAtkRange) {
           const bossColossalAlive = Boolean(
             isAdvMode && game?.adventure?.bossEntity && !game.adventure.bossEntity.isDead && game.adventure.bossEntity.isColossalBoss
           );
@@ -1231,7 +1255,7 @@ export class Fighter {
           const outstepMargin = 85;
           const rangeWallMargin = 95;
           // Brief martial out-step feint right after completing a full combo string so fighters breathe & bait whiffs!
-          if ((this._aiOutstepTimer || 0) > 0 && dist < atkRange * 0.94) {
+          if (!inHackSlashChain && (this._aiOutstepTimer || 0) > 0 && dist < atkRange * 0.94) {
             const nearWall = this.x < effMinWall + outstepMargin || this.x > effBackMaxWall - outstepMargin;
             const stepSign = nearWall ? 1 : this._aiOutstepDir || -1;
             this.state = 'WALK';
@@ -1243,8 +1267,25 @@ export class Fighter {
           }
 
           if (this.autoCooldown <= 0) {
-            this.autoCooldown = this.autoInterval * (0.88 + Math.random() * 0.22);
             this.setState('AUTO_ATTACK');
+            if (this.isHackAndSlashMelee()) {
+              if ((this.comboStep || 0) !== 0) {
+                this.autoCooldown = 0.02;
+              } else {
+                const postInt = this._postFlurryInterval || 1.65;
+                this.autoCooldown = postInt * (0.90 + Math.random() * 0.20);
+                this._aiOutstepTimer = 0.22;
+                this._aiOutstepDir = -1;
+              }
+            } else {
+              this.autoCooldown = this.autoInterval * (0.88 + Math.random() * 0.22);
+            }
+            return;
+          }
+
+          if (inHackSlashChain) {
+            this.moveDir = 0;
+            this.vx = 0;
             return;
           }
 
@@ -1599,29 +1640,63 @@ export class Fighter {
 
     const variant = (((opts.variant ?? this._autoVariant ?? 0) % 4) + 4) % 4;
     const u = Math.min(1, Math.max(0, opts.u ?? 0));
-    const moveEndU = opts.moveEndU ?? 0.32;
+    const moveEndU = opts.moveEndU ?? 0.40;
     const coilEndU = opts.coilEndU ?? 0.08;
-    const maxLockDist = opts.maxLockDist ?? 265;
+    const maxLockDist = opts.maxLockDist ?? 270;
 
     if (
       !this._hnsState ||
       this._hnsState.variant !== variant ||
-      (Number.isFinite(this._hnsState.lastX) && Math.abs(this.x - this._hnsState.lastX) > 135)
+      (Number.isFinite(this._hnsState.lastX) && Math.abs(this.x - this._hnsState.lastX) > 145)
     ) {
       const validTarget = Boolean(
         target && !target.isDead && Math.abs(target.x - this.x) <= maxLockDist
       );
-      const dir = validTarget
-        ? Math.sign(target.x - this.x) || this.facing || 1
-        : this.facing || 1;
-      const startDist = validTarget ? Math.abs(target.x - this.x) : 999;
+      const stickPushSameWay =
+        !validTarget &&
+        this.isPlayerControlled &&
+        !this.adventureAutoPlay &&
+        Math.abs(this.manualMoveAxis || 0) > 0.38;
+      const useAirAnchor = !validTarget && !stickPushSameWay;
+      if (validTarget) {
+        this._hnsAirAnchorX = target.x;
+        this._hnsAirAnchorTimer = 2.4;
+      } else if (useAirAnchor) {
+        if (
+          variant === 0 ||
+          !Number.isFinite(this._hnsAirAnchorX) ||
+          (this._hnsAirAnchorTimer || 0) <= 0 ||
+          Math.abs(this._hnsAirAnchorX - this.x) > 250
+        ) {
+          const seedDir = this.facing || 1;
+          let anchorX = clampX(this.x + seedDir * 114);
+          if (Math.abs(anchorX - this.x) < 60) {
+            anchorX = clampX(this.x - seedDir * 114);
+          }
+          this._hnsAirAnchorX = anchorX;
+        }
+        this._hnsAirAnchorTimer = 2.4;
+      }
+
+      const virtualPivotX = validTarget
+        ? target.x
+        : useAirAnchor
+          ? this._hnsAirAnchorX
+          : null;
+      const hasPivot = Number.isFinite(virtualPivotX);
+      const dir = hasPivot
+        ? Math.sign(virtualPivotX - this.x) || this.facing || 1
+        : stickPushSameWay
+          ? Math.sign(this.manualMoveAxis) || this.facing || 1
+          : this.facing || 1;
+      const startDist = hasPivot ? Math.abs(virtualPivotX - this.x) : 999;
       const isBoss = Boolean(validTarget && target.isColossalBoss);
-      const flankDist = opts.flankDist ?? 82;
-      const dashFlankDist = opts.dashFlankDist ?? 84;
-      const testCrossX = validTarget ? clampX(target.x + dir * flankDist) : this.x;
-      const canCrossV1 = Boolean(validTarget && !isBoss && (testCrossX - target.x) * dir >= 44);
-      const testDashCrossX = validTarget ? clampX(target.x + dir * dashFlankDist) : this.x;
-      const canCrossV2 = Boolean(validTarget && !isBoss && (testDashCrossX - target.x) * dir >= 44);
+      const flankDist = opts.flankDist ?? 86;
+      const dashFlankDist = opts.dashFlankDist ?? 88;
+      const testCrossX = hasPivot ? clampX(virtualPivotX + dir * flankDist) : this.x;
+      const canCrossV1 = Boolean(hasPivot && !isBoss && (testCrossX - virtualPivotX) * dir >= 44);
+      const testDashCrossX = hasPivot ? clampX(virtualPivotX + dir * dashFlankDist) : this.x;
+      const canCrossV2 = Boolean(hasPivot && !isBoss && (testDashCrossX - virtualPivotX) * dir >= 44);
 
       this._hnsState = {
         variant,
@@ -1630,12 +1705,15 @@ export class Fighter {
         dir,
         startDist,
         hasTarget: validTarget,
+        hasPivot,
+        anchorX: virtualPivotX,
         isBoss,
         canCrossV1,
         canCrossV2,
         crossedSide: false,
         endFacing: dir,
         ghostStep: 0,
+        dashRingSpawned: false,
         finishedMove: false
       };
     }
@@ -1644,7 +1722,7 @@ export class Fighter {
     const manualPullBack = Boolean(
       this.isPlayerControlled &&
         !this.adventureAutoPlay &&
-        (this.manualMoveAxis || 0) * hns.dir < -0.28
+        (this.manualMoveAxis || 0) * hns.dir < -0.32
     );
     if (manualPullBack) {
       this._hnsSpeed = 0;
@@ -1653,18 +1731,23 @@ export class Fighter {
     }
 
     // Athletic vertical hop curve (V1 kick-slash on Android or V3 heavy finisher hop)
-    const hopEndU = opts.hopEndU ?? 0.58;
+    const hopEndU = opts.hopEndU ?? 0.62;
     const hopHeight =
       variant === 1 ? (opts.v1HopHeight ?? 0) : variant === 3 ? (opts.v3HopHeight ?? 0) : 0;
-    if (hopHeight > 0 && u >= 0.06 && u <= hopEndU) {
-      const hopP = (u - 0.06) / Math.max(0.05, hopEndU - 0.06);
+    if (hopHeight > 0 && u >= 0.05 && u <= hopEndU) {
+      const hopP = (u - 0.05) / Math.max(0.05, hopEndU - 0.05);
       this.y = this.groundY - Math.sin(hopP * Math.PI) * hopHeight;
     } else {
       this.y = this.groundY;
     }
 
     const liveTargetOk = Boolean(hns.hasTarget && target && !target.isDead);
-    const tX = liveTargetOk ? target.x : hns.startX + hns.dir * hns.startDist;
+    const pivotActive = Boolean(liveTargetOk || hns.hasPivot);
+    const tX = liveTargetOk
+      ? target.x
+      : hns.hasPivot && Number.isFinite(hns.anchorX)
+        ? hns.anchorX
+        : hns.startX + hns.dir * hns.startDist;
     const prevX = this.x;
 
     if (u < moveEndU || !hns.finishedMove) {
@@ -1676,43 +1759,43 @@ export class Fighter {
       this.vy = 0;
 
       if (variant === 0) {
-        // Hit 1: Smooth eased Forward Step-Slash into physical blade contact
+        // Hit 1: Snappy Forward Lunge-Slash into physical blade contact
         const p = Math.min(1, uEff / Math.max(0.02, moveEndU));
-        const ease = 1 - Math.pow(1 - p, 2.6);
+        const ease = 1 - Math.pow(1 - p, 2.7);
         let destX;
-        if (liveTargetOk) {
-          const contactDist = hns.isBoss ? Math.max(88, opts.contactDist ?? 84) : (opts.contactDist ?? 84);
-          const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 52);
+        if (pivotActive) {
+          const contactDist = hns.isBoss ? Math.max(88, opts.contactDist ?? 80) : (opts.contactDist ?? 80);
+          const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 50);
           const idealAdv = (tX - hns.dir * contactDist - hns.startX) * hns.dir;
           const minAdv = Math.max(0, (tX - hns.dir * minCloseDist - hns.startX) * hns.dir);
-          const advance = Math.max(0, Math.max(idealAdv, Math.min(24, minAdv)));
+          const advance = Math.max(0, Math.max(idealAdv, Math.min(36, minAdv)));
           destX = clampX(hns.startX + hns.dir * advance);
         } else {
-          destX = clampX(hns.startX + hns.dir * (opts.openStepPx ?? 68));
+          destX = clampX(hns.startX + hns.dir * (opts.openStepPx ?? 74));
         }
         this.x = clampX(hns.startX + (destX - hns.startX) * ease);
         this.facing = hns.dir;
-        if (p >= 0.44 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 34) {
+        if (p >= 0.36 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 22) {
           hns.ghostStep = 1;
           opts.onGhost?.(this.x, this.y, this.facing, p);
         }
       } else if (variant === 1) {
-        // Hit 2: Cross-Through Slash onto the enemy's OPPOSITE side + 180° pivot!
+        // Hit 2: Cross-Through Slash gliding straight through onto the OPPOSITE flank + 180° turn!
         const p = Math.min(1, uEff / Math.max(0.02, moveEndU));
         const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) * 0.5;
-        if (liveTargetOk && hns.canCrossV1) {
-          const flankDist = opts.flankDist ?? 82;
+        if (pivotActive && hns.canCrossV1) {
+          const flankDist = opts.flankDist ?? 86;
           const destX = clampX(tX + hns.dir * flankDist);
           this.x = clampX(hns.startX + (destX - hns.startX) * ease);
-          if (p >= 0.26 && hns.ghostStep < 1) {
+          if (p >= 0.22 && hns.ghostStep < 1) {
             hns.ghostStep = 1;
             opts.onGhost?.(this.x, this.y, hns.dir, p);
           }
-          if (p >= 0.58 && hns.ghostStep < 2) {
+          if (p >= 0.54 && hns.ghostStep < 2) {
             hns.ghostStep = 2;
             opts.onGhost?.(this.x, this.y, hns.dir, p);
           }
-          if (p >= 0.72) {
+          if (p >= 0.68) {
             hns.crossedSide = true;
             hns.endFacing = -hns.dir;
             this.facing = tX >= this.x ? 1 : -1;
@@ -1721,44 +1804,55 @@ export class Fighter {
           }
         } else {
           let destX;
-          if (liveTargetOk) {
-            const contactDist = hns.isBoss ? Math.max(88, opts.contactDist ?? 84) : (opts.contactDist ?? 84);
-            const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 52);
+          if (pivotActive) {
+            const contactDist = hns.isBoss ? Math.max(88, opts.contactDist ?? 80) : (opts.contactDist ?? 80);
+            const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 50);
             const idealAdv = (tX - hns.dir * contactDist - hns.startX) * hns.dir;
             const minAdv = Math.max(0, (tX - hns.dir * minCloseDist - hns.startX) * hns.dir);
-            destX = clampX(hns.startX + hns.dir * Math.max(0, Math.max(idealAdv, Math.min(26, minAdv))));
+            destX = clampX(hns.startX + hns.dir * Math.max(0, Math.max(idealAdv, Math.min(32, minAdv))));
           } else {
-            destX = clampX(hns.startX + hns.dir * (opts.openCrossPx ?? 96));
+            destX = clampX(hns.startX + hns.dir * (opts.openCrossPx ?? 108));
           }
           this.x = clampX(hns.startX + (destX - hns.startX) * ease);
           this.facing = hns.dir;
-          if (p >= 0.30 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 32) {
+          if (p >= 0.28 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 26) {
             hns.ghostStep = 1;
             opts.onGhost?.(this.x, this.y, this.facing, p);
           }
-          if (p >= 0.62 && hns.ghostStep < 2 && Math.abs(destX - hns.startX) >= 58) {
+          if (p >= 0.58 && hns.ghostStep < 2 && Math.abs(destX - hns.startX) >= 48) {
             hns.ghostStep = 2;
             opts.onGhost?.(this.x, this.y, this.facing, p);
           }
         }
       } else if (variant === 2) {
-        // Hit 3: Brief Spring-Coil -> High-Speed Horizontal Dash-Slash!
+        // Hit 3: Brief Spring-Coil -> Supersonic Horizontal Dash-Slash (pierces back across at close range)!
         if (uEff < coilEndU) {
           const coilP = uEff / Math.max(0.01, coilEndU);
-          this.x = clampX(hns.startX - hns.dir * 7 * coilP);
+          this.x = clampX(hns.startX - hns.dir * 9 * coilP);
           this.facing = hns.dir;
         } else {
           const p = Math.min(1, (uEff - coilEndU) / Math.max(0.02, moveEndU - coilEndU));
-          const ease = 1 - Math.pow(1 - p, 3.1);
-          const coilStartX = clampX(hns.startX - hns.dir * 7);
+          const ease = 1 - Math.pow(1 - p, 3.2);
+          const coilStartX = clampX(hns.startX - hns.dir * 9);
+          if (!hns.dashRingSpawned) {
+            hns.dashRingSpawned = true;
+            game?.vfx?.spawnShockwave?.(
+              this.x,
+              this.groundY - 4,
+              52,
+              this.primaryColor || '#38bdf8',
+              0.18,
+              true
+            );
+          }
           const dashPierce = Boolean(
-            liveTargetOk && hns.canCrossV2 && hns.startDist <= (opts.dashPierceThreshold ?? 124)
+            pivotActive && hns.canCrossV2 && hns.startDist <= (opts.dashPierceThreshold ?? 152)
           );
           if (dashPierce) {
-            const dashFlankDist = opts.dashFlankDist ?? 84;
+            const dashFlankDist = opts.dashFlankDist ?? 88;
             const destX = clampX(tX + hns.dir * dashFlankDist);
             this.x = clampX(coilStartX + (destX - coilStartX) * ease);
-            if (p >= 0.74) {
+            if (p >= 0.70) {
               hns.crossedSide = true;
               hns.endFacing = -hns.dir;
               this.facing = tX >= this.x ? 1 : -1;
@@ -1767,32 +1861,32 @@ export class Fighter {
             }
           } else {
             let destX;
-            if (liveTargetOk) {
+            if (pivotActive) {
               const dashContact = hns.isBoss
-                ? Math.max(88, opts.dashContactDist ?? 80)
-                : (opts.dashContactDist ?? 80);
-              const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 50);
+                ? Math.max(88, opts.dashContactDist ?? 78)
+                : (opts.dashContactDist ?? 78);
+              const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 48);
               const idealAdv = (tX - hns.dir * dashContact - hns.startX) * hns.dir;
               const minAdv = Math.max(0, (tX - hns.dir * minCloseDist - hns.startX) * hns.dir);
               destX = clampX(
-                hns.startX + hns.dir * Math.max(0, Math.max(idealAdv, Math.min(34, minAdv)))
+                hns.startX + hns.dir * Math.max(0, Math.max(idealAdv, Math.min(42, minAdv)))
               );
             } else {
-              destX = clampX(hns.startX + hns.dir * (opts.openDashPx ?? 148));
+              destX = clampX(hns.startX + hns.dir * (opts.openDashPx ?? 156));
             }
             this.x = clampX(coilStartX + (destX - coilStartX) * ease);
             this.facing = hns.dir;
           }
 
-          if (p >= 0.16 && hns.ghostStep < 1) {
+          if (p >= 0.14 && hns.ghostStep < 1) {
             hns.ghostStep = 1;
             opts.onGhost?.(this.x, this.y, hns.dir, p);
           }
-          if (p >= 0.44 && hns.ghostStep < 2) {
+          if (p >= 0.42 && hns.ghostStep < 2) {
             hns.ghostStep = 2;
             opts.onGhost?.(this.x, this.y, hns.dir, p);
           }
-          if (p >= 0.72 && hns.ghostStep < 3) {
+          if (p >= 0.68 && hns.ghostStep < 3) {
             hns.ghostStep = 3;
             opts.onGhost?.(this.x, this.y, this.facing, p);
           }
@@ -1802,18 +1896,18 @@ export class Fighter {
         const p = Math.min(1, uEff / Math.max(0.02, moveEndU));
         const ease = 1 - Math.pow(1 - p, 2.4);
         let destX;
-        if (liveTargetOk) {
-          const finDist = hns.isBoss ? Math.max(88, opts.finisherDist ?? 82) : (opts.finisherDist ?? 82);
-          const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 52);
+        if (pivotActive) {
+          const finDist = hns.isBoss ? Math.max(88, opts.finisherDist ?? 78) : (opts.finisherDist ?? 78);
+          const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 50);
           const idealAdv = (tX - hns.dir * finDist - hns.startX) * hns.dir;
           const minAdv = Math.max(0, (tX - hns.dir * minCloseDist - hns.startX) * hns.dir);
-          destX = clampX(hns.startX + hns.dir * Math.max(0, Math.max(idealAdv, Math.min(22, minAdv))));
+          destX = clampX(hns.startX + hns.dir * Math.max(0, Math.max(idealAdv, Math.min(32, minAdv))));
         } else {
-          destX = clampX(hns.startX + hns.dir * (opts.openFinisherPx ?? 64));
+          destX = clampX(hns.startX + hns.dir * (opts.openFinisherPx ?? 72));
         }
         this.x = clampX(hns.startX + (destX - hns.startX) * ease);
         this.facing = hns.dir;
-        if (p >= 0.38 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 28) {
+        if (p >= 0.34 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 24) {
           hns.ghostStep = 1;
           opts.onGhost?.(this.x, this.y, this.facing, p);
         }
@@ -1823,7 +1917,7 @@ export class Fighter {
     } else {
       this._hnsSpeed *= Math.pow(0.02, dt || 1 / 60);
       if (hns.crossedSide) {
-        this.facing = liveTargetOk ? (tX >= this.x ? 1 : -1) : hns.endFacing;
+        this.facing = pivotActive ? (tX >= this.x ? 1 : -1) : hns.endFacing;
       }
     }
 

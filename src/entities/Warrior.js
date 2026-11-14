@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps101';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps101';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps101';
+import { Fighter } from './Fighter.js?v=30fps102';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps102';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps102';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps101';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps102';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -39,7 +39,8 @@ export class Warrior extends Fighter {
     this.theme = 'steel';
     this.deathSfx = 'death_warrior';
     this.hasPoise = true; // Runic Juggernaut Poise resists ranged knockback/hitstun
-    this.autoDuration = 0.88;
+    this.autoDuration = 0.50;
+    this._postFlurryInterval = 1.72;
     this.skillDuration = 1.04;
     this.ultDuration = 1.86;
     this.trueUltDuration = 4.45;
@@ -98,11 +99,11 @@ export class Warrior extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const warriorAssets = PixelForge.initAssets()?.warrior;
-      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps101')) {
-        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps101';
+      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps102')) {
+        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps102';
       }
       if (warriorAssets?.vfx?.src && !warriorAssets.vfx.src.includes('v=30fps60')) {
-        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps101';
+        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps102';
       }
     }
   }
@@ -804,7 +805,11 @@ export class Warrior extends Fighter {
       }
     }
 
+    const inMidCombo =
+      (this._aiComboCount || 0) > 0 && (this._aiComboChainTimer || 0) > 0;
     if (
+      !this.isPlayerControlled &&
+      !inMidCombo &&
       enemy &&
       !enemy.isDead &&
       (this.state === 'IDLE' || this.state === 'WALK') &&
@@ -852,40 +857,51 @@ export class Warrior extends Fighter {
 
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.autoDuration || 0.88;
+    const dur = this.autoDuration || 0.50;
     const mode = (((this._autoVariant ?? 0) % 4) + 4) % 4;
     const u = Math.min(0.999, Math.max(0, t / dur));
     const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
     const localCol = Math.min(sliceLen - 1, Math.floor(u * sliceLen));
     this.trueUltFrameOverride = sliceStart + localCol;
 
+    const isAdv = Boolean(game?.adventure?.active);
     const rawFoes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
-    const foes = rawFoes.filter((f) => f && !f.isDead && !f.isBenched);
+    const foes = rawFoes.filter(
+      (f) =>
+        f &&
+        !f.isDead &&
+        !f.isBenched &&
+        (!isAdv ||
+          f.isColossalBoss ||
+          Math.abs((f.groundY || f.y) - (this.groundY || this.y)) <= 88)
+    );
     const frontFoe =
-      foes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 260) ||
-      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 260 ? enemy : null);
+      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 270 ? enemy : null) ||
+      foes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 270) ||
+      foes.find((f) => Math.abs(f.x - this.x) <= 230) ||
+      null;
 
     // 4-Beat Kinetic Hack-and-Slash Choreography:
-    // V0: Forward Lunge Cleave | V1: Cross-Through Flank-Slash | V2: High-Speed Dash-Slash | V3: Advancing Hop Guillotine
+    // V0: Forward Lunge Cleave | V1: Cross-Through Flank-Slash | V2: Supersonic Dash-Slash | V3: Advancing Hop Guillotine
     this.updateHackAndSlashMotion(dt, frontFoe, game, {
       variant: mode,
       u,
-      moveEndU: 0.32,
+      moveEndU: 0.42,
       coilEndU: 0.08,
-      contactDist: 86,
-      flankDist: 84,
-      dashContactDist: 82,
-      dashFlankDist: 86,
-      finisherDist: 86,
-      v3HopHeight: 16,
-      hopEndU: 0.56,
-      maxLockDist: 260,
+      contactDist: 82,
+      flankDist: 88,
+      dashContactDist: 78,
+      dashFlankDist: 88,
+      finisherDist: 82,
+      v3HopHeight: 22,
+      hopEndU: 0.64,
+      maxLockDist: 270,
       onGhost: (gx, gy, gf) =>
-        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.20)
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.22)
     });
 
-    if (t < 0.30) {
-      this.torsoAngle = -this.facing * (mode === 2 ? 0.14 : 0.20) * (t / 0.30);
+    if (t < 0.22) {
+      this.torsoAngle = -this.facing * (mode === 2 ? 0.14 : 0.20) * (t / 0.22);
     } else if (t < dur) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
@@ -936,7 +952,7 @@ export class Warrior extends Fighter {
             color: '#38bdf8',
             coreColor: '#fef08a',
             owner: this,
-            damage: 64,
+            damage: 54,
             type: 'blade_wave'
           });
           this.spawnVfxAnim(0, cx + this.facing * 14, cy, 196, 196, 0.30, {
@@ -952,8 +968,10 @@ export class Warrior extends Fighter {
         game?.vfx?.spawnGlyphBurst(cx, cy, 5, 'steel');
 
         const reach = mode === 2 ? 224 : this.attackRange + 50;
+        const hitPool =
+          frontFoe && !foes.includes(frontFoe) ? [...foes, frontFoe] : foes;
 
-        for (const foe of foes) {
+        for (const foe of hitPool) {
           if (Math.abs(foe.x - this.x) <= reach) {
             const isCrit =
               mode === 3
@@ -963,7 +981,7 @@ export class Warrior extends Fighter {
                   : mode === 1
                     ? Math.random() < 0.28
                     : Math.random() < 0.25;
-            const dmg = mode === 3 ? 76 : mode === 2 ? 68 : mode === 1 ? 66 : 60;
+            const dmg = mode === 3 ? 66 : mode === 2 ? 56 : mode === 1 ? 52 : 48;
             const knockX = mode === 3 ? 125 : mode === 2 ? 82 : mode === 1 ? 72 : 76;
             const knockY = mode === 3 ? -130 : mode === 1 ? -58 : 0;
             foe.takeDamage(dmg, this, isCrit, knockX, knockY);

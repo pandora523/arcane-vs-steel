@@ -1,21 +1,21 @@
-import { Renderer } from './engine/Renderer.js?v=30fps101';
-import { VFXManager } from './engine/VFXManager.js?v=30fps101';
-import { PixelForge } from './engine/PixelForge.js?v=30fps101';
-import { AudioManager } from './engine/AudioManager.js?v=30fps101';
-import { Fighter } from './entities/Fighter.js?v=30fps101';
-import { Warrior } from './entities/Warrior.js?v=30fps101';
-import { FireMage } from './entities/FireMage.js?v=30fps101';
-import { Archer } from './entities/Archer.js?v=30fps101';
-import { Priestess } from './entities/Priestess.js?v=30fps101';
-import { Reaper } from './entities/Reaper.js?v=30fps101';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps101';
-import { Titan } from './entities/Titan.js?v=30fps101';
-import { Ronin } from './entities/Ronin.js?v=30fps101';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps101';
-import { IceMage } from './entities/IceMage.js?v=30fps101';
-import { Android } from './entities/Android.js?v=30fps101';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps101';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps101';
+import { Renderer } from './engine/Renderer.js?v=30fps102';
+import { VFXManager } from './engine/VFXManager.js?v=30fps102';
+import { PixelForge } from './engine/PixelForge.js?v=30fps102';
+import { AudioManager } from './engine/AudioManager.js?v=30fps102';
+import { Fighter } from './entities/Fighter.js?v=30fps102';
+import { Warrior } from './entities/Warrior.js?v=30fps102';
+import { FireMage } from './entities/FireMage.js?v=30fps102';
+import { Archer } from './entities/Archer.js?v=30fps102';
+import { Priestess } from './entities/Priestess.js?v=30fps102';
+import { Reaper } from './entities/Reaper.js?v=30fps102';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps102';
+import { Titan } from './entities/Titan.js?v=30fps102';
+import { Ronin } from './entities/Ronin.js?v=30fps102';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps102';
+import { IceMage } from './entities/IceMage.js?v=30fps102';
+import { Android } from './entities/Android.js?v=30fps102';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps102';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps102';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -2577,13 +2577,19 @@ class Game {
     if (activeEnemies.length > 0) return activeEnemies;
     const anyLivingEnemies = this.fighters.filter((f) => f && f.team !== fighter.team && !f.isDead);
     if (anyLivingEnemies.length > 0) return anyLivingEnemies;
+    if (typeof this.isAdventureMode === 'function' && this.isAdventureMode()) {
+      return [];
+    }
     const fallback = fighter.team === 1 ? this.rightFighter : this.leftFighter;
-    return fallback ? [fallback] : [];
+    return fallback && !fallback.isDead ? [fallback] : [];
   }
 
   getTargetFor(fighter) {
     const enemies = this.getEnemiesOf(fighter);
     if (enemies.length <= 1) {
+      if (typeof this.isAdventureMode === 'function' && this.isAdventureMode()) {
+        return enemies[0] || null;
+      }
       return enemies[0] || (fighter.team === 1 ? this.rightFighter : this.leftFighter);
     }
     // Dynamic 2v2 targeting: pick nearest enemy, with a tactical bias toward low-HP targets or cross-comboing

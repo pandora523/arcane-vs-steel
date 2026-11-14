@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps101';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps101';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps101';
+import { Fighter } from './Fighter.js?v=30fps102';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps102';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps102';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps101';
+} from '../engine/shaders/abyssalShaders.js?v=30fps102';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -68,7 +68,8 @@ export class Reaper extends Fighter {
 
     this.skillMaxCooldown = 4.85;
     this.skillTriggerRange = 450;
-    this.autoDuration = 0.88;
+    this.autoDuration = 0.52;
+    this._postFlurryInterval = 1.66;
     this.skillDuration = 0.98;
     this.ultDuration = 1.86;
 
@@ -153,13 +154,13 @@ export class Reaper extends Fighter {
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
       if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps87')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps101';
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps102';
       }
       if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps87')) {
-        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps101';
+        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps102';
       }
       if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps87')) {
-        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps101';
+        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps102';
       }
     }
   }
@@ -1942,7 +1943,16 @@ export class Reaper extends Fighter {
       }
     }
 
-    if (!this.isDead && enemy && !enemy.isDead && (this.state === 'IDLE' || this.state === 'WALK')) {
+    const inMidCombo =
+      (this._aiComboCount || 0) > 0 && (this._aiComboChainTimer || 0) > 0;
+    if (
+      !this.isDead &&
+      !this.isPlayerControlled &&
+      !inMidCombo &&
+      enemy &&
+      !enemy.isDead &&
+      (this.state === 'IDLE' || this.state === 'WALK')
+    ) {
       const ww = game?.renderer ? game.renderer.worldWidth : 1200;
       const dist = Math.abs(enemy.x - this.x);
       const pinnedLeft = this.x < 240 && enemy.x > this.x;
@@ -1985,11 +1995,11 @@ export class Reaper extends Fighter {
    * - V2 (`mode === 2`, `75..82`): Thanatos Phantom Whirl — manifests Towering `Thanatos Stand` (`Row 3`)
    *   + hurls piercing/returning `Soul-Disc` boomerang (`Row 0`) + guaranteed crit cleave.
    * - V3 (`mode === 3`, `83..89`): Guillotine Execution Pillar Slam — overhead necrotic crash erupting
-   *   an abyssal ground rift portal + `Row 2` Guillotine Bone Obelisk spire (`86` guaranteed crit + `9` leech).
+   *   an abyssal ground rift portal + `Row 2` Guillotine Bone Obelisk spire (`74` guaranteed crit + `7` leech).
    */
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = 0.84;
+    const dur = this.autoDuration || 0.52;
     const mode = ((this._autoVariant ?? 0) % 4 + 4) % 4;
     const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
     const u = Math.min(1, Math.max(0, t / dur));
@@ -1998,11 +2008,22 @@ export class Reaper extends Fighter {
     // Drive exact 4-variant Row 2 slice (`60..67`, `68..74`, `75..82`, `83..89`)
     this.trueUltFrameOverride = sliceStart + localCol;
 
+    const isAdv = Boolean(game?.adventure?.active);
     const rawFoes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
-    const foes = rawFoes.filter((f) => f && !f.isDead && !f.isBenched);
+    const foes = rawFoes.filter(
+      (f) =>
+        f &&
+        !f.isDead &&
+        !f.isBenched &&
+        (!isAdv ||
+          f.isColossalBoss ||
+          Math.abs((f.groundY || f.y) - (this.groundY || this.y)) <= 88)
+    );
     const liveFoe =
-      foes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 265) ||
-      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 265 ? enemy : null);
+      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 270 ? enemy : null) ||
+      foes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 270) ||
+      foes.find((f) => Math.abs(f.x - this.x) <= 230) ||
+      null;
     const usingEffigy = Boolean(
       !liveFoe &&
         this.severedSoul &&
@@ -2014,27 +2035,27 @@ export class Reaper extends Fighter {
     const hns = this.updateHackAndSlashMotion(dt, motionTarget, game, {
       variant: mode,
       u,
-      moveEndU: 0.28,
-      coilEndU: 0.075,
-      contactDist: 88,
+      moveEndU: 0.41,
+      coilEndU: 0.08,
+      contactDist: 84,
       flankDist: usingEffigy ? 58 : 86,
-      dashContactDist: 84,
+      dashContactDist: 80,
       dashFlankDist: 86,
-      finisherDist: 88,
-      v3HopHeight: 15,
-      hopEndU: 0.56,
-      maxLockDist: 265,
+      finisherDist: 84,
+      v3HopHeight: 20,
+      hopEndU: 0.62,
+      maxLockDist: 270,
       onGhost: (gx, gy, gf) =>
-        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.19)
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.21)
     });
 
-    if (t < 0.25) {
-      this.torsoAngle = -this.facing * 0.18 * (t / 0.25);
+    if (t < 0.22) {
+      this.torsoAngle = -this.facing * 0.18 * (t / 0.22);
       if (mode === 2 && !this.thanatosStand) {
         // Pre-manifest Towering Thanatos Death-God Stand behind Malakor on V2 coil!
         this.spawnThanatosStand(0.66, 268);
       }
-    } else if (t < 0.62) {
+    } else if (t < dur) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
         this.vx = this.facing * (mode === 3 ? 58 : 34);
@@ -2042,6 +2063,7 @@ export class Reaper extends Fighter {
 
         const cx = this.x + this.facing * 58;
         const cy = this.y - 98;
+        const strikeFoe = liveFoe || (enemy && !enemy.isDead ? enemy : null);
 
         this.fx?.spawn('soulHarvestScytheArc', cx, cy, {
           flip: this.facing < 0,
@@ -2056,7 +2078,7 @@ export class Reaper extends Fighter {
 
         if (mode === 0) {
           // V0 (`60..67` — Crescent Soul-Reap): Launch mid-range Crescent Soul-Wave (`Row 0`) when starting or swinging at >150px!
-          if ((hns && hns.startDist > 150) || !enemy || Math.abs(enemy.x - this.x) > 150) {
+          if ((hns && hns.startDist > 150) || !strikeFoe || Math.abs(strikeFoe.x - this.x) > 150) {
             this.spawnCrescentScytheWave();
           }
           if (game?.audio) game.audio.play('scythe_reap', this.x);
@@ -2065,12 +2087,12 @@ export class Reaper extends Fighter {
           const chainOriginX = this.x + this.facing * 36;
           const chainOriginY = this.y - 96;
           const hasNearFoe =
-            enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 58;
+            strikeFoe && !strikeFoe.isDead && Math.abs(strikeFoe.x - this.x) <= this.attackRange + 58;
           this.fx?.spawn('skeletalChainTetherBeam', chainOriginX, chainOriginY, {
             light: 1.28,
             extra: {
-              dx: hasNearFoe ? enemy.x - chainOriginX : this.facing * 142,
-              dy: hasNearFoe ? enemy.y - 96 - chainOriginY : 6,
+              dx: hasNearFoe ? strikeFoe.x - chainOriginX : this.facing * 142,
+              dy: hasNearFoe ? strikeFoe.y - 96 - chainOriginY : 6,
               arcH: 10,
               isCrimson: false,
               showClaw: true,
@@ -2104,8 +2126,8 @@ export class Reaper extends Fighter {
         } else {
           // V3 (`83..89` — Guillotine Execution Pillar Slam): Advancing hop necrotic crash + Ground Rift & Bone Obelisk!
           const impactX =
-            enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 58
-              ? enemy.x
+            strikeFoe && !strikeFoe.isDead && Math.abs(strikeFoe.x - this.x) <= this.attackRange + 58
+              ? strikeFoe.x
               : this.x + this.facing * 112;
           this.fx?.spawn('companionSummonRiftPortal', impactX, this.groundY - 4, {
             palette: BLOOD_MOON_CRIMSON_PALETTE,
@@ -2141,19 +2163,19 @@ export class Reaper extends Fighter {
           }
         }
 
-        if (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 50) {
+        if (strikeFoe && !strikeFoe.isDead && Math.abs(strikeFoe.x - this.x) <= this.attackRange + 50) {
           const isCrit = mode === 2 || mode === 3 || Math.random() < 0.24;
-          let dmg = mode === 3 ? 86 : mode === 2 ? 82 : mode === 1 ? 74 : 66;
-          let leechAmt = mode === 3 ? 9 : 7;
+          let dmg = mode === 3 ? 74 : mode === 2 ? 68 : mode === 1 ? 60 : 54;
+          let leechAmt = mode === 3 ? 7 : 5;
 
           if (mode === 2 && this.soulStacks >= 5) {
             this.consumeSoulStacks(2);
-            dmg = 102;
-            leechAmt = 12;
+            dmg = 88;
+            leechAmt = 9;
             if (game?.vfx) {
               game.vfx.spawnDamageText(
-                enemy.x,
-                enemy.y - 172,
+                strikeFoe.x,
+                strikeFoe.y - 172,
                 0,
                 false,
                 '★ CRIMSON REAP! ★',
@@ -2164,18 +2186,18 @@ export class Reaper extends Fighter {
 
           const inwardPull = mode === 3 ? 95 : mode === 2 ? -64 : -58;
           const popY = mode === 3 ? -85 : mode === 2 ? -95 : -28;
-          this.strikeWithSoulResonance(enemy, dmg, isCrit, inwardPull, popY, game);
-          if (!enemy.unstoppablePoise && mode !== 3) {
-            enemy.x += Math.sign(this.x - enemy.x) * (mode === 1 ? 26 : 20);
+          this.strikeWithSoulResonance(strikeFoe, dmg, isCrit, inwardPull, popY, game);
+          if (!strikeFoe.unstoppablePoise && mode !== 3) {
+            strikeFoe.x += Math.sign(this.x - strikeFoe.x) * (mode === 1 ? 26 : 20);
           }
           this.gainSoulStack(1);
-          this.leechLife(leechAmt, enemy, game, 'SOUL HARVEST');
+          this.leechLife(leechAmt, strikeFoe, game, 'SOUL HARVEST');
           if (game?.audio) {
-            game.audio.play(mode === 2 ? 'soul_drain' : 'scythe_reap', enemy.x);
+            game.audio.play(mode === 2 ? 'soul_drain' : 'scythe_reap', strikeFoe.x);
           }
           if (game?.renderer) game.renderer.triggerHitStop(mode === 3 ? 0.065 : 0.055);
         } else {
-          const effigyBaseDmg = mode === 3 ? 86 : mode === 2 ? 82 : mode === 1 ? 74 : 66;
+          const effigyBaseDmg = mode === 3 ? 74 : mode === 2 ? 68 : mode === 1 ? 60 : 54;
           if (!this.tryStrikeSeveredEffigy(cx, effigyBaseDmg, game)) {
             this.tryStrikeSeveredEffigy(this.x, effigyBaseDmg, game);
           }

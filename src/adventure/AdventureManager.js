@@ -1,13 +1,13 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps101';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps101';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps101';
+import { Fighter } from '../entities/Fighter.js?v=30fps102';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps102';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps102';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps101';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps101';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps101';
+} from './AdventureProgression.js?v=30fps102';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps102';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps102';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -140,6 +140,8 @@ export class AdventureManager {
     this.uiHeldAttack = false;
     this.queuedAction = null;
     this.queuedActionTimer = 0;
+    this.comboResetTimer = 0;
+    this._comboLockTarget = null;
 
     // Tracked cooldown maximums for smooth 360-degree radial HUD sweeps
     this.autoCdMax = 0.52;
@@ -178,6 +180,7 @@ export class AdventureManager {
     this.smoothVelY = 0;
     this.queuedAction = null;
     this.queuedActionTimer = 0;
+    this._comboLockTarget = null;
     this.setJoystickVector(0, 0, false);
   }
 
@@ -563,7 +566,7 @@ export class AdventureManager {
   triggerAction(actionName) {
     if (!this.active || this.game.isMatchOver || this.isSkillTreeOpen) return;
     this.queuedAction = actionName;
-    this.queuedActionTimer = 0.48;
+    this.queuedActionTimer = actionName === 'attack' ? 0.62 : 0.48;
   }
 
   setAutoPlay(enabled, playSound = false) {
@@ -1607,6 +1610,34 @@ export class AdventureManager {
       }
     }
 
+    if (player.state === 'AUTO_ATTACK') {
+      this.comboResetTimer = 1.85;
+    } else if (this.comboResetTimer > 0) {
+      this.comboResetTimer = Math.max(0, this.comboResetTimer - dt);
+      if (this.comboResetTimer <= 0) {
+        this._comboLockTarget = null;
+        if (player.isHackAndSlashMelee?.()) {
+          player.comboStep = 0;
+        }
+      }
+    }
+
+    if (
+      player.isHackAndSlashMelee?.() &&
+      (player.comboStep || 0) !== 0 &&
+      (this.comboResetTimer || 0) > 0 &&
+      this._comboLockTarget &&
+      !this._comboLockTarget.isDead &&
+      Math.abs(this._comboLockTarget.x - player.x) <= 265 &&
+      (this._comboLockTarget.isColossalBoss ||
+        Math.abs(
+          (this._comboLockTarget.groundY || this._comboLockTarget.y) -
+            (player.groundY || player.y)
+        ) <= 88)
+    ) {
+      target = this._comboLockTarget;
+    }
+
     const stats = this.progression.getComputedStats();
 
     // =========================================================================
@@ -1614,6 +1645,7 @@ export class AdventureManager {
     // =========================================================================
     if (this.autoPlay) {
       player._advVaultVelZ = 0;
+      player.manualMoveAxis = 0;
 
       // Auto-spend Skill Points in Auto-Play so autonomous showcase runs demonstrate the Skill Tree!
       if (this.progression.skillPoints > 0) {
@@ -1965,6 +1997,12 @@ export class AdventureManager {
         const dxToTarget = target.x - player.x;
         const absDx = Math.abs(dxToTarget);
         const absDz = target.isColossalBoss ? 0 : Math.abs(targetGy - pGy);
+        const isHackSlash = Boolean(player.isHackAndSlashMelee?.());
+        const midHackChain =
+          isHackSlash &&
+          (player.comboStep || 0) !== 0 &&
+          (this.comboResetTimer || 0) > 0 &&
+          (target.isColossalBoss ? player.x >= 9145 : absDx <= 265 && absDz <= 78);
 
         if (player.state === 'IDLE' || player.state === 'WALK') {
           if (
@@ -1998,6 +2036,7 @@ export class AdventureManager {
             player.setState('ULTIMATE');
             this.game.triggerUltimateCinematic(player);
           } else if (
+            !midHackChain &&
             player.skillCooldown <= 0 &&
             (target.isColossalBoss ||
               (absDx <= Math.max(255, effRange * 1.45) && absDz <= (isRanged ? 96 : 74))) &&
@@ -2012,19 +2051,36 @@ export class AdventureManager {
             player.setState('SKILL');
           } else if (
             player.autoCooldown <= 0 &&
-            Math.hypot(avoidVx, avoidVz) < 175 &&
+            (midHackChain || Math.hypot(avoidVx, avoidVz) < 175) &&
             (target.isColossalBoss
               ? isRanged
                 ? player.x >= 8480
                 : player.x >= 9145
-              : absDx <= effRange * 0.96 && absDz <= (isRanged ? 76 : 44))
+              : absDx <= (midHackChain ? Math.max(effRange, 265) : effRange * 0.96) &&
+                absDz <= (midHackChain ? 78 : isRanged ? 76 : 44))
           ) {
             player._manualWalkActive = false;
             player._manualSpeedRatio = 0;
             player.facing = target.x >= player.x ? 1 : -1;
-            this.autoCdMax = player.autoInterval || 0.44;
-            player.autoCooldown = this.autoCdMax;
+            this._comboLockTarget = target;
+            this.comboResetTimer = 1.85;
             player.setState('AUTO_ATTACK');
+            if (isHackSlash) {
+              if ((player.comboStep || 0) !== 0) {
+                this.autoCdMax = 0.36;
+                player.autoCooldown = 0.03;
+              } else {
+                this.autoCdMax = 0.62;
+                player.autoCooldown = 0.62;
+                this._comboLockTarget = null;
+              }
+            } else {
+              this.autoCdMax = player.autoInterval || 0.44;
+              player.autoCooldown = this.autoCdMax;
+            }
+          } else if (midHackChain) {
+            player._manualWalkActive = false;
+            player._manualSpeedRatio = 0;
           } else if (target.isColossalBoss) {
             const bossGoalX = isRanged
               ? 8865 + Math.sin(aiClock * 1.35) * 65
@@ -2109,14 +2165,18 @@ export class AdventureManager {
             absDx < 155 &&
             (player.x < minWalkX + 95 || player.x > maxWalkX - 95);
           if (player.state === 'AUTO_ATTACK' && (Math.hypot(avoidVx, avoidVz) > 20 || cornerCrowded)) {
-            const escDirX = player.x < (minWalkX + maxWalkX) * 0.5 ? 1 : -1;
-            const escDirZ = targetGy > ADVENTURE_DEPTH_MID_Y ? -1 : 1;
-            const glideVx = cornerCrowded ? escDirX * maxAutoVx * 0.72 + avoidVx * 0.5 : avoidVx * 0.65;
-            const glideVz = cornerCrowded ? escDirZ * maxAutoVz * 0.78 + avoidVz * 0.5 : avoidVz * 0.72;
-            player.x = Math.max(minWalkX, Math.min(maxWalkX, player.x + glideVx * dt));
-            this.shiftEntityDepth(player, glideVz * dt);
-            player.facing = target.x >= player.x ? 1 : -1;
-            isMovingCombat = true;
+            if (isHackSlash) {
+              this.shiftEntityDepth(player, avoidVz * 0.65 * dt);
+            } else {
+              const escDirX = player.x < (minWalkX + maxWalkX) * 0.5 ? 1 : -1;
+              const escDirZ = targetGy > ADVENTURE_DEPTH_MID_Y ? -1 : 1;
+              const glideVx = cornerCrowded ? escDirX * maxAutoVx * 0.72 + avoidVx * 0.5 : avoidVx * 0.65;
+              const glideVz = cornerCrowded ? escDirZ * maxAutoVz * 0.78 + avoidVz * 0.5 : avoidVz * 0.72;
+              player.x = Math.max(minWalkX, Math.min(maxWalkX, player.x + glideVx * dt));
+              this.shiftEntityDepth(player, glideVz * dt);
+              player.facing = target.x >= player.x ? 1 : -1;
+              isMovingCombat = true;
+            }
           }
         }
       } else {
@@ -2188,12 +2248,13 @@ export class AdventureManager {
     if (Math.abs(targetVy) < 0.01 && Math.abs(this.smoothVelY) < 2.0) this.smoothVelY = 0;
 
     const moveDirX = Math.abs(rawDirX) > 0.06 ? (rawDirX > 0 ? 1 : -1) : 0;
+    player.manualMoveAxis = rawDirX;
     const isMoving3D = Math.hypot(this.smoothVelX, this.smoothVelY) > 1.2 || Math.hypot(rawDirX, rawDirY) > 0.012;
 
     // Continuous hold-to-attack on primary thumb orb or [J/Z] — works simultaneously while dragging joystick!
-    if (!this.queuedAction && (this.heldAttack || this.uiHeldAttack) && player.autoCooldown <= 0) {
+    if (!this.queuedAction && (this.heldAttack || this.uiHeldAttack)) {
       this.queuedAction = 'attack';
-      this.queuedActionTimer = 0.20;
+      this.queuedActionTimer = 0.58;
     }
 
     // Pure 3D Dodge can cancel AUTO_ATTACK immediately so players can reactively evade boss/monster telegraphs!
@@ -2207,7 +2268,10 @@ export class AdventureManager {
       this.queuedAction &&
       (this.queuedAction !== 'attack' ||
         (player.autoCooldown <= 0 &&
-          player.stateTimer >= Math.min(0.35, (player.autoDuration || 0.48) * 0.72)));
+          player.stateTimer >=
+            (player.isHackAndSlashMelee?.()
+              ? (player.autoDuration || 0.48) * 0.78
+              : Math.min(0.35, (player.autoDuration || 0.48) * 0.72))));
 
     const canAct =
       !player.isDead &&
@@ -2308,11 +2372,27 @@ export class AdventureManager {
         this.game.vfx?.spawnShockwave?.(player.x, player.groundY - 6, 46, '#bae6fd', 0.18, true);
       } else if (act === 'attack' && player.autoCooldown <= 0) {
         this.queuedAction = null;
-        if (target) player.facing = target.x >= player.x ? 1 : -1;
-        else if (moveDirX !== 0) player.facing = moveDirX;
-        this.autoCdMax = player.autoInterval || 0.44;
-        player.autoCooldown = this.autoCdMax;
+        if (target) {
+          player.facing = target.x >= player.x ? 1 : -1;
+          this._comboLockTarget = target;
+        } else if (moveDirX !== 0) {
+          player.facing = moveDirX;
+        }
+        this.comboResetTimer = 1.85;
         player.setState('AUTO_ATTACK');
+        if (player.isHackAndSlashMelee?.()) {
+          if ((player.comboStep || 0) !== 0) {
+            this.autoCdMax = 0.36;
+            player.autoCooldown = 0.04;
+          } else {
+            this.autoCdMax = 0.38;
+            player.autoCooldown = 0.38;
+            this._comboLockTarget = null;
+          }
+        } else {
+          this.autoCdMax = player.autoInterval || 0.44;
+          player.autoCooldown = this.autoCdMax;
+        }
       } else if (act !== 'attack' && act !== 'dodge' && act !== 'skill' && act !== 'overdrive' && act !== 'ultimate') {
         this.queuedAction = null;
       }
@@ -2400,13 +2480,18 @@ export class AdventureManager {
         isMoving3D &&
         !this.game.isMatchOver
       ) {
-        // Simultaneous Run-and-Cast: glide smoothly along joystick vector while keeping aim locked on target!
-        player.x += this.smoothVelX * 0.82 * dt;
-        this.shiftEntityDepth(player, this.smoothVelY * 0.85 * dt);
-        if (target) {
-          player.facing = target.x >= player.x ? 1 : -1;
-        } else if (moveDirX !== 0) {
-          player.facing = moveDirX;
+        if (player.isHackAndSlashMelee?.()) {
+          // Allow smooth 2.5D depth-lane micro-steering while preserving Hack-and-Slash cross-through & 180° turns!
+          this.shiftEntityDepth(player, this.smoothVelY * 0.85 * dt);
+        } else {
+          // Simultaneous Run-and-Cast: glide smoothly along joystick vector while keeping aim locked on target!
+          player.x += this.smoothVelX * 0.82 * dt;
+          this.shiftEntityDepth(player, this.smoothVelY * 0.85 * dt);
+          if (target) {
+            player.facing = target.x >= player.x ? 1 : -1;
+          } else if (moveDirX !== 0) {
+            player.facing = moveDirX;
+          }
         }
       } else {
         player._advVaultVelZ = 0;
@@ -2416,7 +2501,12 @@ export class AdventureManager {
       const combatTarget = this.skillSets.resolveTarget(player, target);
       this.skillSets.beginPlayerStep(dt, player, combatTarget, isMoving3D, rawDirY);
       player.update(dt, combatTarget, this.game);
-      if (player.state === 'AUTO_ATTACK' && isMoving3D && Math.abs(player.vx) > 8) {
+      if (
+        player.state === 'AUTO_ATTACK' &&
+        !player.isHackAndSlashMelee?.() &&
+        isMoving3D &&
+        Math.abs(player.vx) > 8
+      ) {
         const isMeleeForwardLunge =
           (player.attackRange || 180) < 300 && player.vx * this.smoothVelX >= -5;
         if (!isMeleeForwardLunge) {
