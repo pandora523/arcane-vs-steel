@@ -1,9 +1,13 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps99';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps99';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps99';
-import { AdventureProgression, ADVENTURE_SKILL_TREE } from './AdventureProgression.js?v=30fps99';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps99';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps99';
+import { Fighter } from '../entities/Fighter.js?v=30fps100';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps100';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
+import {
+  AdventureProgression,
+  ADVENTURE_SKILL_TREE,
+  getHeroSkillTreeTheme
+} from './AdventureProgression.js?v=30fps100';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps100';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps100';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -348,10 +352,42 @@ export class AdventureManager {
     if (!grid || typeof document.createElement !== 'function') return;
     grid.innerHTML = '';
 
+    const heroKey = player?.heroId || this.game?.slot1Hero || 'mage';
+    const heroTheme = getHeroSkillTreeTheme(heroKey);
+
+    const createIconCanvas = (actionSlot, extraClass = '') => {
+      const cvs = document.createElement('canvas');
+      cvs.width = 64;
+      cvs.height = 64;
+      cvs.className = extraClass ? `adv-st-icon-canvas ${extraClass}` : 'adv-st-icon-canvas';
+      if (typeof cvs.getContext === 'function') {
+        const ictx = cvs.getContext('2d');
+        if (ictx) {
+          PixelForge.drawAdventureActionIcon(ictx, heroKey, actionSlot || 'skill', 64, 64, 0);
+        }
+      }
+      return cvs;
+    };
+
     const branches = [
-      { key: 'wrath', title: '🔥 SOLAR WRATH', sub: 'OFFENSE & SPIRIT' },
-      { key: 'astral', title: '✦ ASTRAL AWAKENING', sub: 'DRIVE & RELIC SEALS' },
-      { key: 'aegis', title: '🛡️ PHOENIX AEGIS', sub: 'VITALITY & AGILITY' }
+      {
+        key: 'wrath',
+        title: heroTheme.branches.wrath.title,
+        sub: heroTheme.branches.wrath.sub,
+        iconSlot: heroTheme.branches.wrath.iconSlot
+      },
+      {
+        key: 'astral',
+        title: heroTheme.branches.astral.title,
+        sub: heroTheme.branches.astral.sub,
+        iconSlot: heroTheme.branches.astral.iconSlot
+      },
+      {
+        key: 'aegis',
+        title: heroTheme.branches.aegis.title,
+        sub: heroTheme.branches.aegis.sub,
+        iconSlot: heroTheme.branches.aegis.iconSlot
+      }
     ];
 
     for (const b of branches) {
@@ -360,7 +396,22 @@ export class AdventureManager {
 
       const hdr = document.createElement('div');
       hdr.className = 'adv-st-branch-hdr';
-      hdr.innerHTML = `<span>${b.title}</span><span>${prog.getBranchPointsSpent(b.key)} PTS</span>`;
+      const hdrTitleWrap = document.createElement('span');
+      hdrTitleWrap.className = 'adv-st-branch-title-wrap';
+      hdrTitleWrap.appendChild(createIconCanvas(b.iconSlot, 'adv-st-branch-canvas'));
+      const hdrTextBox = document.createElement('span');
+      const hdrTitleSpan = document.createElement('span');
+      hdrTitleSpan.textContent = b.title;
+      const hdrSubSpan = document.createElement('span');
+      hdrSubSpan.className = 'adv-st-branch-sub';
+      hdrSubSpan.textContent = b.sub;
+      hdrTextBox.appendChild(hdrTitleSpan);
+      hdrTextBox.appendChild(hdrSubSpan);
+      hdrTitleWrap.appendChild(hdrTextBox);
+      const hdrPtsSpan = document.createElement('span');
+      hdrPtsSpan.textContent = `${prog.getBranchPointsSpent(b.key)} PTS`;
+      hdr.appendChild(hdrTitleWrap);
+      hdr.appendChild(hdrPtsSpan);
       col.appendChild(hdr);
 
       const nodes = ADVENTURE_SKILL_TREE.filter((n) => n.branch === b.key);
@@ -378,13 +429,17 @@ export class AdventureManager {
 
         const top = document.createElement('div');
         top.className = 'adv-st-node-top';
+        const titleWrap = document.createElement('span');
+        titleWrap.className = 'adv-st-node-title-wrap';
+        titleWrap.appendChild(createIconCanvas(node.iconSlot || 'skill'));
         const titleSpan = document.createElement('span');
         titleSpan.className = 'adv-st-node-title';
-        titleSpan.textContent = `${node.glyph} ${node.name}`;
+        titleSpan.textContent = heroTheme.nodes?.[node.id] || node.name;
+        titleWrap.appendChild(titleSpan);
         const rankSpan = document.createElement('span');
         rankSpan.className = 'adv-st-node-rank';
         rankSpan.textContent = `${rank} / ${node.maxRank}`;
-        top.appendChild(titleSpan);
+        top.appendChild(titleWrap);
         top.appendChild(rankSpan);
 
         const desc = document.createElement('p');
@@ -646,6 +701,9 @@ export class AdventureManager {
       (heroKey !== 'mage' && heroIconsNowReady && !this._renderedHeroIconsReady)
     ) {
       this.refreshActionIcons(heroKey);
+      if (this.isSkillTreeOpen) {
+        this.renderSkillTreeModal();
+      }
     }
 
     const updateOrbSlot = (slot, mode, sweepRatio, labelText, hidden = false) => {
@@ -973,15 +1031,23 @@ export class AdventureManager {
       );
     } else if (zoneIdx === 1 && subWave === 2) {
       this.totalWaveLabel = 'WAVE 4 / 8';
-      this.spawnMonster('treant', 4240, { groundY: 558 });
-      this.spawnMonster('dryad', 4040, { groundY: 480 });
-      this.spawnMonster('dryad', 4420, { groundY: 640 });
-      this.spawnMonster('treant', 4580, { groundY: 524 });
+      this.spawnMonster('treant', 4460, {
+        isElite: true,
+        isMiniBoss: true,
+        wardenName: 'ELDER BRIAR-KING',
+        wardenTitle: 'STARWOOD WARDEN',
+        maxHp: 1720,
+        spriteScale: 1.36,
+        dmgScale: 1.12,
+        groundY: 558
+      });
+      this.spawnMonster('dryad', 4140, { groundY: 478 });
+      this.spawnMonster('dryad', 4340, { groundY: 642 });
       this.game.renderer?.triggerStageEvent?.(
-        '★ STARWOOD WAYGATE COVEN! ★',
-        'TWISTED SYLVAN GUARDIANS EMERGE FROM THE RIFTS!',
+        '⚠ REALM WARDEN: ELDER BRIAR-KING! ⚠',
+        'SOVEREIGN OF THE CURSED STARWOOD AWAKENS!',
         '#34d399',
-        2.5
+        2.9
       );
     } else if (zoneIdx === 2 && subWave === 1) {
       this.totalWaveLabel = 'WAVE 5 / 8';
@@ -997,15 +1063,23 @@ export class AdventureManager {
       );
     } else if (zoneIdx === 2 && subWave === 2) {
       this.totalWaveLabel = 'WAVE 6 / 8';
-      this.spawnMonster('ghoul', 6680, { isElite: true, groundY: 562 });
-      this.spawnMonster('cultist', 6880, { isElite: true, groundY: 484 });
+      this.spawnMonster('cultist', 6860, {
+        isElite: true,
+        isMiniBoss: true,
+        wardenName: 'ARCH-LICH MORVATH',
+        wardenTitle: 'OSSUARY WARDEN',
+        maxHp: 1520,
+        spriteScale: 1.24,
+        dmgScale: 1.12,
+        groundY: 548
+      });
+      this.spawnMonster('ghoul', 6560, { isElite: true, groundY: 482 });
       this.spawnMonster('ghoul', 6420, { groundY: 640 });
-      this.spawnMonster('cultist', 6990, { groundY: 618 });
       this.game.renderer?.triggerStageEvent?.(
-        '★ NECROPOLIS PORTCULLIS SIEGE! ★',
-        'BREAK THE LICH-PRIESTS & BONE-STALKERS!',
+        '⚠ REALM WARDEN: ARCH-LICH MORVATH! ⚠',
+        'LORD OF THE OSSUARY BONE-GATE UNSEALS THE CRYPT!',
         '#c084fc',
-        2.6
+        2.9
       );
     } else if (zoneIdx === 3 && subWave === 1) {
       this.totalWaveLabel = 'WAVE 7 / 8';
@@ -1093,15 +1167,24 @@ export class AdventureManager {
     this.score += pts;
 
     const player = this.game.leftFighter;
-    const xpGain = deadMonster.isBoss ? 320 : deadMonster.isElite ? 95 : 52;
+    const xpGain = deadMonster.isBoss
+      ? 320
+      : deadMonster.isMiniBoss
+        ? 145
+        : deadMonster.isElite
+          ? 95
+          : 52;
     this.progression.gainXp(xpGain, player);
 
     if (!deadMonster.isBoss) {
-      // Slain monsters drop magnetic Soul Embers to fuel Solar Awakening Ultimate!
+      // Slain monsters drop magnetic Soul Embers to fuel Overdrive; Realm Wardens also drop Elixir + Relic Seal!
       this.spawnPickup('ember', deadMonster.x, deadMonster.groundY, {
-        ultAmt: deadMonster.isElite ? 26 : 19
+        ultAmt: deadMonster.isMiniBoss ? 32 : deadMonster.isElite ? 26 : 19
       });
-      if (deadMonster.isElite) {
+      if (deadMonster.isMiniBoss) {
+        this.spawnPickup('relic', deadMonster.x + 48, deadMonster.groundY);
+        this.spawnPickup('hp', deadMonster.x - 48, deadMonster.groundY);
+      } else if (deadMonster.isElite) {
         this.spawnPickup('relic', deadMonster.x + 44, deadMonster.groundY);
       }
     }
@@ -1430,8 +1513,26 @@ export class AdventureManager {
   syncStageBadge() {
     const badge = this.game.hudEls?.stageBadge;
     if (!badge) return;
-    if (this.game.renderer?.permanentStageOverride === 'inferno') {
-      badge.textContent = `Z${this.zoneIndex + 1} • LAYWASTE OF INFERNO`;
+    const ov = this.game.renderer?.permanentStageOverride;
+    const zPrefix = `Z${this.zoneIndex + 1}`;
+    if (ov === 'inferno') {
+      badge.textContent = `${zPrefix} • LAYWASTE OF INFERNO`;
+      return;
+    }
+    if (ov === 'glacial') {
+      badge.textContent = `${zPrefix} • PERMAFROST AURORA SANCTUM`;
+      return;
+    }
+    if (ov === 'shogunate') {
+      badge.textContent = `${zPrefix} • CRIMSON MOON SHOGUNATE`;
+      return;
+    }
+    if (ov === 'shogunate_inferno') {
+      badge.textContent = `${zPrefix} • BURNING SAKURA SHOGUNATE`;
+      return;
+    }
+    if (ov === 'shogunate_glacial') {
+      badge.textContent = `${zPrefix} • FROZEN SAKURA SHOGUNATE`;
       return;
     }
     const z = ADVENTURE_ZONES[this.zoneIndex] || ADVENTURE_ZONES[0];
@@ -1447,21 +1548,30 @@ export class AdventureManager {
     const primaryMonster =
       this.bossEntity && !this.bossEntity.isDead
         ? this.bossEntity
-        : living.find((m) => m.isElite) || living[0] || g.rightFighter;
+        : living.find((m) => m.isMiniBoss) ||
+          living.find((m) => m.isElite) ||
+          living[0] ||
+          g.rightFighter;
 
     if (primaryMonster) {
       g.rightFighter = primaryMonster;
       if (rightEls.name) {
         rightEls.name.textContent = primaryMonster.isBoss
           ? `★ ${primaryMonster.name}`
-          : living.length > 1
-            ? `${primaryMonster.name} (+${living.length - 1})`
-            : primaryMonster.name;
+          : primaryMonster.isMiniBoss
+            ? living.length > 1
+              ? `★ ${primaryMonster.name} (+${living.length - 1})`
+              : `★ ${primaryMonster.name}`
+            : living.length > 1
+              ? `${primaryMonster.name} (+${living.length - 1})`
+              : primaryMonster.name;
       }
       if (rightEls.skillText) {
         rightEls.skillText.textContent = primaryMonster.isBoss
           ? `PHASE ${primaryMonster.bossPhase || 1} • ${primaryMonster.skillName}`
-          : this.totalWaveLabel;
+          : primaryMonster.isMiniBoss
+            ? `WARDEN • ${primaryMonster.skillName}`
+            : this.totalWaveLabel;
       }
       if (rightEls.hpBar) {
         rightEls.hpBar.className = `hp-fill fill-${primaryMonster.theme || 'abyssal'}`;

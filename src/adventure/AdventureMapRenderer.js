@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps99';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
 
 /**
  * Seamless Multi-Plane HD-2D Adventure World Panorama Renderer (`AdventureMapRenderer`)
@@ -890,7 +890,12 @@ export class AdventureMapRenderer {
     const isInfernoPerm =
       renderer.permanentStageOverride === 'inferno' ||
       renderer.permanentStageOverride === 'shogunate_inferno';
-    const isShogunatePerm = renderer.permanentStageOverride === 'shogunate';
+    const isGlacialPerm =
+      renderer.permanentStageOverride === 'glacial' ||
+      renderer.permanentStageOverride === 'shogunate_glacial';
+    const isShogunatePerm =
+      renderer.permanentStageOverride === 'shogunate' ||
+      renderer.permanentStageOverride === 'shogunate_glacial';
     const infernoAlpha = isInfernoPerm
       ? 1.0
       : renderer.trueUltStageOverride === 'inferno' ||
@@ -910,9 +915,18 @@ export class AdventureMapRenderer {
     // =========================================================================
     const skyTopY = Math.min(viewTop, -900);
     const skyGrad = ctx.createLinearGradient(0, skyTopY, 0, ADVENTURE_ROAD_TOP_Y);
-    skyGrad.addColorStop(0, infernoAlpha > 0.5 ? '#0c0507' : isShogunatePerm ? '#050816' : '#04060e');
-    skyGrad.addColorStop(0.55, infernoAlpha > 0.5 ? '#1a0a0d' : isShogunatePerm ? '#0b1228' : '#080c1a');
-    skyGrad.addColorStop(1, infernoAlpha > 0.5 ? '#261012' : isShogunatePerm ? '#121d38' : '#0d1326');
+    skyGrad.addColorStop(
+      0,
+      infernoAlpha > 0.5 ? '#0c0507' : isGlacialPerm ? '#030918' : isShogunatePerm ? '#050816' : '#04060e'
+    );
+    skyGrad.addColorStop(
+      0.55,
+      infernoAlpha > 0.5 ? '#1a0a0d' : isGlacialPerm ? '#071936' : isShogunatePerm ? '#0b1228' : '#080c1a'
+    );
+    skyGrad.addColorStop(
+      1,
+      infernoAlpha > 0.5 ? '#261012' : isGlacialPerm ? '#0c284e' : isShogunatePerm ? '#121d38' : '#0d1326'
+    );
     ctx.fillStyle = skyGrad;
     ctx.fillRect(viewLeft, skyTopY, viewW, ADVENTURE_ROAD_TOP_Y - skyTopY + 16);
 
@@ -980,14 +994,19 @@ export class AdventureMapRenderer {
         (isShogunatePerm ? 18 : 0)
     );
     const mistG = Math.round(
-      38 * camWeights[0] + 64 * camWeights[1] + 28 * camWeights[2] + 24 * camWeights[3]
+      38 * camWeights[0] +
+        64 * camWeights[1] +
+        28 * camWeights[2] +
+        24 * camWeights[3] +
+        (isGlacialPerm ? 28 : 0)
     );
     const mistB = Math.round(
       62 * camWeights[0] +
         68 * camWeights[1] +
         76 * camWeights[2] +
         30 * camWeights[3] +
-        (isShogunatePerm ? 26 : 0)
+        (isShogunatePerm ? 26 : 0) +
+        (isGlacialPerm ? 42 : 0)
     );
     const canyonMist = ctx.createLinearGradient(0, 175, 0, ADVENTURE_ROAD_TOP_Y + 8);
     canyonMist.addColorStop(0, `rgba(${mistR},${mistG},${mistB},0)`);
@@ -1002,15 +1021,17 @@ export class AdventureMapRenderer {
     const mStart = Math.floor((viewLeft - mistAnchor) / mistStep) - 1;
     const mEnd = Math.ceil((viewRight - mistAnchor) / mistStep) + 1;
     const mistHex =
-      infernoAlpha > 0.45 || camWeights[3] > 0.45
+      infernoAlpha > 0.45 || (camWeights[3] > 0.45 && !isGlacialPerm)
         ? '#fb923c'
-        : isShogunatePerm
-          ? '#fda4af'
-          : camWeights[2] > 0.45
-            ? '#a855f7'
-            : camWeights[1] > 0.45
-              ? '#2dd4bf'
-              : '#38bdf8';
+        : isGlacialPerm
+          ? '#67e8f9'
+          : isShogunatePerm
+            ? '#fda4af'
+            : camWeights[2] > 0.45
+              ? '#a855f7'
+              : camWeights[1] > 0.45
+                ? '#2dd4bf'
+                : '#38bdf8';
     ctx.save();
     ctx.globalCompositeOperation = 'lighter';
     ctx.fillStyle = mistHex;
@@ -1202,7 +1223,12 @@ export class AdventureMapRenderer {
       ((renderer.trueUltStageOverride === 'inferno' ||
         renderer.trueUltStageOverride === 'shogunate_inferno') &&
         (renderer.trueUltStageAlpha || 0) > 0.5);
-    const isShogunate = renderer.permanentStageOverride === 'shogunate';
+    const isShogunate =
+      renderer.permanentStageOverride === 'shogunate' ||
+      renderer.permanentStageOverride === 'shogunate_glacial';
+    const isGlacial =
+      renderer.permanentStageOverride === 'glacial' ||
+      renderer.permanentStageOverride === 'shogunate_glacial';
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -1220,21 +1246,35 @@ export class AdventureMapRenderer {
       ctx.fillRect(fx - 42, 690, buttW - 8, 5);
 
       // 2. Drifting Near-Camera Foreground Pixel Cross-Motes / Raining Shogunate Cherry Blossoms (`1.24x` depth)
-      const moteCount = isShogunate ? 8 : 4;
+      const moteCount = isShogunate || isGlacial ? 8 : 4;
       for (let m = 0; m < moteCount; m++) {
         const cyc = (t * (0.18 + (m % 3) * 0.05) + m * 0.17 + Math.abs(f) * 0.19) % 1;
         const mx = snapPx(
-          fx - 220 + m * (isShogunate ? 68 : 126) + (isShogunate ? cyc * 135 : 0) + Math.sin(t * 1.8 + m + f) * 26,
+          fx -
+            220 +
+            m * (isShogunate || isGlacial ? 68 : 126) +
+            (isShogunate || isGlacial ? cyc * 135 : 0) +
+            Math.sin(t * 1.8 + m + f) * 26,
           2
         );
-        const my = snapPx(isShogunate || z === 1 ? 80 + cyc * 560 : 640 - cyc * 460, 2);
+        const my = snapPx(isShogunate || isGlacial || z === 1 ? 80 + cyc * 560 : 640 - cyc * 460, 2);
         if (isShogunate) {
           ctx.globalCompositeOperation = 'source-over';
           ctx.globalAlpha = Math.sin(cyc * Math.PI) * 0.82;
           const ph = (Math.floor(t * 4.8 + m) + m) & 3;
-          ctx.fillStyle = '#881337';
+          ctx.fillStyle = isGlacial ? '#0c4a6e' : '#881337';
           ctx.fillRect(mx - 4, my + 1, 7, 2);
-          ctx.fillStyle = m % 3 === 0 ? '#fbcfe8' : m % 2 === 0 ? '#fda4af' : '#fb7185';
+          ctx.fillStyle = isGlacial
+            ? m % 3 === 0
+              ? '#f5d0fe'
+              : m % 2 === 0
+                ? '#bae6fd'
+                : '#67e8f9'
+            : m % 3 === 0
+              ? '#fbcfe8'
+              : m % 2 === 0
+                ? '#fda4af'
+                : '#fb7185';
           if (ph % 2 === 0) {
             ctx.fillRect(mx - 4, my - 2, 3, 3);
             ctx.fillRect(mx + 1, my - 2, 3, 3);
@@ -1248,8 +1288,11 @@ export class AdventureMapRenderer {
           ctx.globalAlpha = 1;
           continue;
         }
-        const col =
-          z === 3
+        const col = isGlacial
+          ? m % 3 === 0
+            ? '#e879f9'
+            : '#67e8f9'
+          : z === 3
             ? m % 2 === 0
               ? '#fb923c'
               : '#fde047'
@@ -1258,7 +1301,16 @@ export class AdventureMapRenderer {
               : z === 1
                 ? '#5eead4'
                 : '#7dd3fc';
-        drawPixelCrossGlint(ctx, mx, my, col, '#ffffff', 3, 1, Math.sin(cyc * Math.PI) * 0.16);
+        drawPixelCrossGlint(
+          ctx,
+          mx,
+          my,
+          col,
+          '#ffffff',
+          3,
+          1,
+          Math.sin(cyc * Math.PI) * (isGlacial ? 0.34 : 0.16)
+        );
       }
 
       // 3. High Overhead Vaulted Chain Silhouette (`y = viewTop .. -56`, visible on high aerial leaps!)

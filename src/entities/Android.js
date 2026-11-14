@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps99';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps99';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps99';
+import { Fighter } from './Fighter.js?v=30fps100';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps100';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps99';
+} from '../engine/shaders/cyberShaders.js?v=30fps100';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 const AUTO_SLICES_4 = [
@@ -71,10 +71,10 @@ export class Android extends Fighter {
     if (typeof Image !== 'undefined') {
       const androidAssets = PixelForge.initAssets()?.android;
       if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps87')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps99';
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps100';
       }
       if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps87')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps99';
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps100';
       }
     }
 
@@ -1226,8 +1226,8 @@ export class Android extends Fighter {
 
     if (renderer?.glowCyber || renderer?.glowCyan) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.16);
-      ctx.drawImage(renderer.glowCyber || renderer.glowCyan, -w * 0.65, -h * 0.65, w * 1.3, h * 1.3);
+      ctx.globalAlpha = Math.min(1, alpha * 0.11);
+      ctx.drawImage(renderer.glowCyber || renderer.glowCyan, -w * 0.56, -h * 0.56, w * 1.12, h * 1.12);
     }
 
     ctx.globalCompositeOperation = 'source-over';
@@ -1235,7 +1235,7 @@ export class Android extends Fighter {
     ctx.drawImage(vfxSheet, sx, sy, 208, 208, Math.round(-w * 0.5), Math.round(-h * 0.5), Math.round(w), Math.round(h));
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * 0.18);
+    ctx.globalAlpha = Math.min(1, alpha * 0.13);
     ctx.drawImage(vfxSheet, sx, sy, 208, 208, Math.round(-w * 0.5), Math.round(-h * 0.5), Math.round(w), Math.round(h));
     ctx.restore();
   }
@@ -1285,7 +1285,7 @@ export class Android extends Fighter {
     // 1. Holographic Cyber Afterimages
     if (this.afterimages.length > 0 && sprites?.sheet?.complete) {
       for (const img of this.afterimages) {
-        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.30);
+        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.20);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.translate(Math.round(img.x / 4) * 4, Math.round(img.y / 4) * 4);
@@ -1383,16 +1383,16 @@ export class Android extends Fighter {
         const beamCol = i % 2 === 0 ? '#00f0ff' : '#ff2e93';
 
         ctx.strokeStyle = beamCol;
-        ctx.globalAlpha = 0.68;
-        ctx.lineWidth = 4;
+        ctx.globalAlpha = 0.34;
+        ctx.lineWidth = 2;
         ctx.beginPath();
         ctx.moveTo(Math.round(dx), Math.round(dy));
         ctx.lineTo(Math.round(cx), Math.round(cy));
         ctx.stroke();
 
         ctx.strokeStyle = '#ffffff';
-        ctx.globalAlpha = 0.92;
-        ctx.lineWidth = 1.5;
+        ctx.globalAlpha = 0.60;
+        ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(Math.round(dx), Math.round(dy));
         ctx.lineTo(Math.round(cx), Math.round(cy));
@@ -1411,9 +1411,9 @@ export class Android extends Fighter {
           (baseCol + i * 3) % 30,
           dx,
           dy,
-          156,
-          156,
-          0.95 * ringProgress,
+          144,
+          144,
+          0.92 * ringProgress,
           Math.cos(ang) < 0,
           renderer
         );
@@ -1449,12 +1449,12 @@ export class Android extends Fighter {
 
       if (renderer?.glowCyber || renderer?.glowCyan) {
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = Math.min(1, alpha * 0.34);
-        ctx.drawImage(renderer.glowCyber || renderer.glowCyan, cx - colW * 0.85, this.groundY - 680, colW * 1.7, 740);
+        ctx.globalAlpha = Math.min(1, alpha * 0.15);
+        ctx.drawImage(renderer.glowCyber || renderer.glowCyan, cx - colW * 0.72, this.groundY - 660, colW * 1.44, 700);
       }
 
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = Math.min(1, alpha * 0.96);
+      ctx.globalAlpha = Math.min(1, alpha * 0.97);
       ctx.drawImage(vfxSheet, sx, coreSliceY, 208, baseSliceH, cx - halfW, trunkBotY, colW, baseH);
       for (let seg = 0; seg < 4; seg++) {
         const yTop = trunkBotY - (seg + 1) * stepH;
@@ -1462,7 +1462,7 @@ export class Android extends Fighter {
       }
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.34);
+      ctx.globalAlpha = Math.min(1, alpha * 0.16);
       ctx.drawImage(vfxSheet, sx, coreSliceY, 208, baseSliceH, cx - halfW, trunkBotY, colW, baseH);
       for (let seg = 0; seg < 4; seg++) {
         const yTop = trunkBotY - (seg + 1) * stepH;

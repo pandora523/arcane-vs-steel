@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps99';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps99';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps99';
+import { Fighter } from './Fighter.js?v=30fps100';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps100';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps99';
+} from '../engine/shaders/abyssalShaders.js?v=30fps100';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -153,13 +153,13 @@ export class Reaper extends Fighter {
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
       if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps87')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps99';
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps100';
       }
       if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps87')) {
-        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps99';
+        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps100';
       }
       if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps87')) {
-        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps99';
+        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps100';
       }
     }
   }
@@ -3145,9 +3145,9 @@ export class Reaper extends Fighter {
         : renderer?.glowViolet || renderer?.glowPurple || renderer?.glowCrimson;
     if (glowSprite) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.20);
-      const gw = Math.round(w * 1.15);
-      const gh = Math.round(h * 1.15);
+      ctx.globalAlpha = Math.min(1, alpha * 0.12);
+      const gw = Math.round(w * 1.05);
+      const gh = Math.round(h * 1.05);
       ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
     }
 
@@ -3156,7 +3156,7 @@ export class Reaper extends Fighter {
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * 0.22);
+    ctx.globalAlpha = Math.min(1, alpha * 0.14);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.restore();
@@ -3280,7 +3280,7 @@ export class Reaper extends Fighter {
     // 1. Crisp Un-Rotated HD-2D Wraith Afterimage Silhouettes & Wraith Executioner Clones
     if (sprites?.sheet?.complete) {
       for (const img of this.afterimages) {
-        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.28);
+        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.18);
         const sc = img.scale || 1.0;
         ctx.save();
         ctx.imageSmoothingEnabled = false;
@@ -3304,7 +3304,7 @@ export class Reaper extends Fighter {
         ctx.globalAlpha = fade * 0.78;
         PixelForge.drawAfterimageFrame(ctx, sprites, frameIdx, 208, 208);
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.42;
+        ctx.globalAlpha = fade * 0.18;
         PixelForge.drawAfterimageFrame(ctx, sprites, frameIdx, 208, 208);
         ctx.restore();
       }
@@ -3608,8 +3608,8 @@ export class Reaper extends Fighter {
       if (glowImg) {
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = (inCastPose ? 0.38 : 0.22) * lifeFade;
-        ctx.drawImage(glowImg, cx - 88, cy - 162, 176, 176);
+        ctx.globalAlpha = (inCastPose ? 0.16 : 0.09) * lifeFade;
+        ctx.drawImage(glowImg, cx - 72, cy - 148, 144, 144);
         ctx.restore();
       }
 
@@ -3783,14 +3783,14 @@ export class Reaper extends Fighter {
     for (let s = -steps; s <= steps; s++) {
       const u = s / steps; // -1 .. +1
       const taper = 1 - Math.abs(u) * 0.72;
-      const thickOuter = Math.max(2, Math.round(12 * taper));
-      const thickCore = Math.max(1, Math.round(4 * taper));
+      const thickOuter = Math.max(2, Math.round(7 * taper));
+      const thickCore = Math.max(1, Math.round(2 * taper));
       const xOff = Math.round(u * halfW);
       const yOff = Math.round(u * halfH);
       const segW = Math.max(6, Math.ceil((halfW * 2) / (steps * 2)) + 2);
 
       // Diagonal 1 (\) & Diagonal 2 (/) outer plasma
-      ctx.globalAlpha = Math.min(1, alpha * 0.56);
+      ctx.globalAlpha = Math.min(1, alpha * 0.36);
       ctx.fillStyle = outerColor;
       ctx.fillRect(
         Math.round(cx + xOff - segW * 0.5),
@@ -3807,7 +3807,7 @@ export class Reaper extends Fighter {
       );
 
       // Pure white razor core on both diagonals
-      ctx.globalAlpha = Math.min(1, alpha * 0.94);
+      ctx.globalAlpha = Math.min(1, alpha * 0.76);
       ctx.fillStyle = coreColor;
       ctx.fillRect(
         Math.round(cx + xOff - segW * 0.5),
@@ -3825,21 +3825,21 @@ export class Reaper extends Fighter {
 
     // Full-span horizontal Reality-Crack Streak across the execution epicenter
     const horizSpan = Math.round(halfW * 1.16);
-    ctx.globalAlpha = Math.min(1, alpha * 0.62);
+    ctx.globalAlpha = Math.min(1, alpha * 0.42);
     ctx.fillStyle = midColor;
-    ctx.fillRect(Math.round(cx - horizSpan), Math.round(cy - 4), horizSpan * 2, 8);
-    ctx.globalAlpha = Math.min(1, alpha * 0.98);
+    ctx.fillRect(Math.round(cx - horizSpan), Math.round(cy - 2), horizSpan * 2, 4);
+    ctx.globalAlpha = Math.min(1, alpha * 0.80);
     ctx.fillStyle = coreColor;
-    ctx.fillRect(Math.round(cx - Math.round(horizSpan * 0.94)), Math.round(cy - 1), Math.round(horizSpan * 1.88), 3);
+    ctx.fillRect(Math.round(cx - Math.round(horizSpan * 0.94)), Math.round(cy - 1), Math.round(horizSpan * 1.88), 2);
 
     // Central Starburst Flash Cross
-    ctx.globalAlpha = Math.min(1, alpha);
+    ctx.globalAlpha = Math.min(1, alpha * 0.72);
     ctx.fillStyle = outerColor;
-    ctx.fillRect(Math.round(cx - 26), Math.round(cy - 5), 52, 10);
-    ctx.fillRect(Math.round(cx - 5), Math.round(cy - 34), 10, 68);
+    ctx.fillRect(Math.round(cx - 20), Math.round(cy - 3), 40, 6);
+    ctx.fillRect(Math.round(cx - 3), Math.round(cy - 24), 6, 48);
     ctx.fillStyle = coreColor;
-    ctx.fillRect(Math.round(cx - 16), Math.round(cy - 2), 32, 4);
-    ctx.fillRect(Math.round(cx - 2), Math.round(cy - 22), 4, 44);
+    ctx.fillRect(Math.round(cx - 12), Math.round(cy - 1), 24, 2);
+    ctx.fillRect(Math.round(cx - 1), Math.round(cy - 16), 2, 32);
 
     ctx.restore();
   }

@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps99';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps99';
+import { Fighter } from './Fighter.js?v=30fps100';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -190,8 +190,9 @@ const MONSTER_ARCHETYPES = {
 export class Monster extends Fighter {
   constructor(kind, x, groundY, facing = -1, opts = {}) {
     const cfg = MONSTER_ARCHETYPES[kind] || MONSTER_ARCHETYPES.templar;
-    const isElite = Boolean(opts.isElite);
-    const skillLabel =
+    const isMiniBoss = Boolean(opts.isMiniBoss);
+    const isElite = Boolean(opts.isElite || isMiniBoss);
+    const baseSkillLabel =
       kind === 'astrologer'
         ? 'ECLIPSE SIGIL'
         : kind === 'dryad'
@@ -207,8 +208,16 @@ export class Monster extends Fighter {
                   : kind === 'fiend'
                     ? 'HELLFIRE LEAP'
                     : 'CRYPT POUNCE';
+    const skillLabel =
+      opts.skillLabel ||
+      (isMiniBoss && kind === 'treant'
+        ? 'BRIAR-CROWN CATACLYSM'
+        : isMiniBoss && kind === 'cultist'
+          ? 'TRI-SIGIL OSSUARY RIFT'
+          : baseSkillLabel);
+    const resolvedName = opts.wardenName || (isElite ? cfg.eliteName : cfg.name);
     super({
-      name: isElite ? cfg.eliteName : cfg.name,
+      name: resolvedName,
       heroId: cfg.heroId,
       x,
       groundY,
@@ -217,10 +226,10 @@ export class Monster extends Fighter {
       primaryColor: cfg.primaryColor,
       secondaryColor: cfg.secondaryColor,
       maxHp: opts.maxHp || (isElite ? cfg.eliteHp : cfg.maxHp),
-      moveSpeed: cfg.moveSpeed * (isElite ? 1.08 : 1.0),
-      attackRange: cfg.attackRange,
-      autoInterval: cfg.autoInterval * (isElite ? 0.90 : 1.0),
-      skillMaxCooldown: cfg.skillMaxCooldown * (isElite ? 0.88 : 1.0),
+      moveSpeed: cfg.moveSpeed * (isMiniBoss ? 1.12 : isElite ? 1.08 : 1.0),
+      attackRange: cfg.attackRange + (isMiniBoss ? 14 : 0),
+      autoInterval: cfg.autoInterval * (isMiniBoss ? 0.86 : isElite ? 0.90 : 1.0),
+      skillMaxCooldown: cfg.skillMaxCooldown * (isMiniBoss ? 0.80 : isElite ? 0.88 : 1.0),
       skillName: skillLabel,
       ultName: 'ABYSSAL SURGE',
       deathSfx: cfg.deathSfx
@@ -234,28 +243,32 @@ export class Monster extends Fighter {
     this.deathSfx = cfg.deathSfx;
     this.isMonster = true;
     this.isElite = isElite;
+    this.isMiniBoss = isMiniBoss;
+    this.wardenTitle = opts.wardenTitle || (isMiniBoss ? 'REALM WARDEN' : '');
     this.isBoss = false;
     this.isCasterArchetype = kind === 'cultist' || kind === 'astrologer' || kind === 'dryad';
     this.isHeavyArchetype = kind === 'brute' || kind === 'treant';
     this.hasTrueUltimate = false;
     this.team = 2;
-    this.dmgScale = (isElite ? 1.22 : 1.0) * (opts.dmgScale || 1.0);
+    this.dmgScale = (isMiniBoss ? 1.28 : isElite ? 1.22 : 1.0) * (opts.dmgScale || 1.0);
     this.spriteScale = opts.spriteScale || (isElite ? cfg.eliteScale : cfg.spriteScale);
-    this.scoreValue = Math.round(cfg.scoreValue * (isElite ? 1.75 : 1.0));
+    this.scoreValue =
+      opts.scoreValue ||
+      Math.round(cfg.scoreValue * (isMiniBoss ? 2.6 : isElite ? 1.75 : 1.0));
 
     this.autoDuration = cfg.autoDuration;
     this.skillDuration = cfg.skillDuration;
-    this.skillMaxCooldown = cfg.skillMaxCooldown * (isElite ? 0.88 : 1.0);
+    this.skillMaxCooldown = cfg.skillMaxCooldown * (isMiniBoss ? 0.80 : isElite ? 0.88 : 1.0);
     this.skillName = skillLabel;
     this.ultName = 'ABYSSAL SURGE';
     this.dashDuration = cfg.dashDuration;
     this.dashMaxCooldown = cfg.dashMaxCooldown;
 
     this.autoCooldown = 0.55 + Math.random() * 0.55;
-    this.skillCooldown = 1.65 + Math.random() * 1.4;
+    this.skillCooldown = isMiniBoss ? 1.15 : 1.65 + Math.random() * 1.4;
     this.dashCooldown = 1.25 + Math.random() * 1.2;
 
-    this.hasPoise = this.isHeavyArchetype || isElite;
+    this.hasPoise = this.isHeavyArchetype || isElite || isMiniBoss;
     this.isInvulnerable = false;
     this.portalSpawnMax = 0.72;
     this.portalSpawnTimer = opts.skipPortal ? 0 : 0.72;
@@ -920,14 +933,51 @@ export class Monster extends Fighter {
             : this.kind === 'dryad'
               ? '#10b981'
               : '#a855f7';
-        const sigilLbl =
-          this.kind === 'astrologer'
+        const sigilLbl = this.isMiniBoss
+          ? this.skillName || 'TRI-SIGIL RIFT'
+          : this.kind === 'astrologer'
             ? 'ECLIPSE SIGIL'
             : this.kind === 'dryad'
               ? 'BRIAR SNARE'
               : 'SOUL SIGIL';
-        this.spawnFloorTelegraph(targetX, 82, 0.72, 54, sigilCol, sigilLbl, targetGy);
-        if (this.isElite) {
+        this.spawnFloorTelegraph(targetX, 84, 0.72, 54, sigilCol, sigilLbl, targetGy);
+        if (this.isMiniBoss && this.kind === 'cultist') {
+          // ARCH-LICH MORVATH: Tri-Sigil Ossuary Cataclysm bracketing 3D lanes + twin void-soul bolts!
+          const upperGy = Math.max(458, Math.min(664, targetGy > 540 ? 478 : 562));
+          const lowerGy = Math.max(458, Math.min(664, targetGy < 590 ? 642 : 562));
+          this.spawnFloorTelegraph(
+            targetX + this.facing * 136,
+            78,
+            0.90,
+            48,
+            '#e879f9',
+            sigilLbl,
+            upperGy
+          );
+          this.spawnFloorTelegraph(
+            targetX - this.facing * 124,
+            78,
+            1.08,
+            48,
+            '#c084fc',
+            sigilLbl,
+            lowerGy
+          );
+          for (const vyOff of [-26, 26]) {
+            game?.vfx?.spawnProjectile?.({
+              x: this.x + this.facing * 38,
+              y: this.y - 88,
+              vx: this.facing * 320,
+              vy: vyOff,
+              radius: 15,
+              color: '#a855f7',
+              coreColor: '#f3e8ff',
+              damage: Math.round(36 * this.dmgScale),
+              owner: this
+            });
+          }
+          if (game?.renderer) game.renderer.triggerShake(9, 0.20);
+        } else if (this.isElite) {
           const riftGy = Math.max(454, Math.min(668, targetGy + (targetGy > 561 ? -54 : 54)));
           this.spawnFloorTelegraph(
             targetX + this.facing * 125,
@@ -947,11 +997,11 @@ export class Monster extends Fighter {
         const isTreant = this.kind === 'treant';
         const sx = this.x + this.facing * 62;
         if (game?.audio) game.audio.play('thunder_slam', sx);
-        if (game?.renderer) game.renderer.triggerShake(13, 0.25);
+        if (game?.renderer) game.renderer.triggerShake(this.isMiniBoss ? 15 : 13, 0.26);
         game?.vfx?.spawnShockwave(
           sx,
           this.groundY - 8,
-          135,
+          this.isMiniBoss ? 155 : 135,
           isTreant ? '#34d399' : '#f59e0b',
           0.34,
           true
@@ -976,6 +1026,14 @@ export class Monster extends Fighter {
           owner: this,
           type: 'forge_wave'
         });
+        if (this.isMiniBoss && isTreant) {
+          // ELDER BRIAR-KING: 3-Lane Staggered Briar-Root Eruption across Upper, Mid & Lower causeway lanes!
+          const targetX = enemy ? enemy.x : this.x + this.facing * 260;
+          const rootLbl = this.skillName || 'BRIAR-CROWN CATACLYSM';
+          this.spawnFloorTelegraph(targetX - 70, 76, 0.74, 48, '#34d399', rootLbl, 476);
+          this.spawnFloorTelegraph(targetX + 20, 82, 0.94, 52, '#10b981', rootLbl, 560);
+          this.spawnFloorTelegraph(targetX + 110, 76, 1.14, 48, '#2dd4bf', rootLbl, 644);
+        }
       }
     } else {
       // Vanguard 3D Lunge (`templar` Eclipse Thrust / `ghoul` Crypt Pounce / `fiend` Hellfire Leap)
@@ -1055,10 +1113,12 @@ export class Monster extends Fighter {
   drawOverheadPlate(ctx) {
     if (this.isDead) return;
     const scale = this.spriteScale || 1;
-    const barW = this.isBoss ? 96 : this.isElite ? 66 : 52;
-    const barH = this.isBoss ? 7 : 5;
+    const barW = this.isBoss ? 96 : this.isMiniBoss ? 86 : this.isElite ? 66 : 52;
+    const barH = this.isBoss ? 7 : this.isMiniBoss ? 6 : 5;
     const bx = Math.round(this.x);
-    const by = Math.round(this.y - 168 * scale - (this.isBoss ? 18 : 6));
+    const by = Math.round(
+      this.y - 168 * scale - (this.isBoss ? 18 : this.isMiniBoss ? 10 : 6)
+    );
     const x0 = bx - Math.floor(barW * 0.5);
     const hpPct = Math.max(0, Math.min(1, this.hp / Math.max(1, this.maxHp)));
 
@@ -1074,6 +1134,32 @@ export class Monster extends Fighter {
       ctx.strokeRect(bx - Math.floor(tw * 0.5), by - 25, tw, 12);
       ctx.fillStyle = '#fef08a';
       ctx.fillText(this.telegraphLabel, bx, by - 16);
+    } else if (this.isMiniBoss && !this.isBoss) {
+      // Gold-Crowned Realm Mini-Boss Warden Nameplate (pure integer fillRect crown, 0 ctx.rotate!)
+      const tag = `WARDEN • ${this.name}`;
+      const tw = Math.max(92, tag.length * 5 + 14);
+      const px0 = bx - Math.floor(tw * 0.5);
+      ctx.fillStyle = '#070a14';
+      ctx.fillRect(px0, by - 16, tw, 12);
+      ctx.strokeStyle = '#d4af37';
+      ctx.lineWidth = 1;
+      ctx.strokeRect(px0, by - 16, tw, 12);
+      // 5-pixel sovereign crown crest centered above plaque
+      const cy = by - 22;
+      ctx.fillStyle = '#05070e';
+      ctx.fillRect(bx - 6, cy - 1, 12, 6);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(bx - 5, cy + 2, 10, 2);
+      ctx.fillRect(bx - 5, cy, 2, 2);
+      ctx.fillRect(bx - 1, cy - 1, 2, 3);
+      ctx.fillRect(bx + 3, cy, 2, 2);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(bx - 1, cy - 1, 2, 1);
+
+      ctx.font = '6px "ArcanePixel", "Press Start 2P", monospace';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#fef08a';
+      ctx.fillText(tag, bx, by - 8);
     } else if (this.isElite || this.isBoss) {
       ctx.font = '7px "ArcanePixel", "Press Start 2P", monospace';
       ctx.textAlign = 'center';
@@ -1084,7 +1170,13 @@ export class Monster extends Fighter {
 
     ctx.fillStyle = '#05070e';
     ctx.fillRect(x0 - 1, by - 1, barW + 2, barH + 2);
-    ctx.strokeStyle = this.isBoss ? '#ef4444' : this.isElite ? '#facc15' : '#475569';
+    ctx.strokeStyle = this.isBoss
+      ? '#ef4444'
+      : this.isMiniBoss
+        ? '#fde047'
+        : this.isElite
+          ? '#facc15'
+          : '#475569';
     ctx.lineWidth = 1;
     ctx.strokeRect(x0 - 1, by - 1, barW + 2, barH + 2);
 
@@ -1092,6 +1184,12 @@ export class Monster extends Fighter {
     ctx.fillRect(x0, by, Math.round(barW * hpPct), barH);
     ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
     ctx.fillRect(x0, by, Math.round(barW * hpPct), 1);
+    if (this.isMiniBoss) {
+      ctx.fillStyle = 'rgba(5, 7, 14, 0.72)';
+      for (const frac of [0.25, 0.5, 0.75]) {
+        ctx.fillRect(x0 + Math.round(barW * frac), by, 1, barH);
+      }
+    }
     ctx.restore();
   }
 

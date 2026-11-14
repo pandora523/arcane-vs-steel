@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps99';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps99';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps99';
+import { Fighter } from './Fighter.js?v=30fps100';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps100';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps99';
+} from '../engine/shaders/forgeShaders.js?v=30fps100';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -140,11 +140,11 @@ export class Titan extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const titanAssets = PixelForge.initAssets()?.titan;
-      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps99')) {
-        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps99';
+      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps100')) {
+        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps100';
       }
       if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps87')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps99';
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps100';
       }
     }
   }
@@ -2366,9 +2366,9 @@ export class Titan extends Fighter {
         : renderer?.glowGold || renderer?.glowOrange;
     if (glowSprite) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.20);
-      const gw = Math.round(w * 1.15);
-      const gh = Math.round(h * 1.15);
+      ctx.globalAlpha = Math.min(1, alpha * 0.12);
+      const gw = Math.round(w * 1.05);
+      const gh = Math.round(h * 1.05);
       ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
     }
 
@@ -2378,7 +2378,7 @@ export class Titan extends Fighter {
 
     if (useGlow) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.20);
+      ctx.globalAlpha = Math.min(1, alpha * 0.13);
       ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
     }
 

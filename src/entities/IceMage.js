@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps99';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps99';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps99';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps99';
+import { Fighter } from './Fighter.js?v=30fps100';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps100';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps100';
 
 /**
  * Lyra (`icemage`) — Winter Empress & Sovereign of Absolute Zero (v6 Full Rework).
@@ -134,7 +134,7 @@ export class IceMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
       if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps87')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps99';
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps100';
       }
     }
   }
@@ -1990,6 +1990,18 @@ export class IceMage extends Fighter {
         if (foe) foe.chronoTimeStopTimer = 0;
       }
 
+      game?.renderer?.setStageTransformation?.('glacial', 1.0, true, 0);
+      if (!advBounds) {
+        const finalStg = game?.renderer?.permanentStageOverride || 'glacial';
+        game?.renderer?.triggerStageEvent?.(
+          finalStg === 'shogunate_glacial' ? 'FROZEN SAKURA SHOGUNATE' : 'PERMAFROST AURORA SANCTUM',
+          finalStg === 'shogunate_glacial'
+            ? 'BOREALIS RIME-ICE ENCASES THE SHOGUNATE CASTLE'
+            : 'ABSOLUTE ZERO CRYSTALLIZES THE ARENA',
+          '#67e8f9',
+          7.5
+        );
+      }
       game?.renderer?.triggerImpactFrame?.(cx, this.groundY - 120, 0.06, 'glacial');
       game?.renderer?.triggerShake?.(28, 0.72);
       game?.renderer?.triggerAberration?.(18);
@@ -2075,8 +2087,8 @@ export class IceMage extends Fighter {
 
     if (renderer && renderer.glowGlacial && glowScale > 0) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * (r === 2 ? 0.14 : 0.18);
-      const gSize = drawSize * Math.min(1.35, glowScale);
+      ctx.globalAlpha = fade * (r === 2 ? 0.08 : 0.11);
+      const gSize = drawSize * Math.min(1.18, glowScale);
       ctx.drawImage(renderer.glowGlacial, -gSize * 0.5, -gSize * 0.5, gSize, gSize);
     }
 
@@ -2085,7 +2097,7 @@ export class IceMage extends Fighter {
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, half, half, drawSize, drawSize);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * (r === 2 ? 0.09 : 0.14);
+    ctx.globalAlpha = fade * (r === 2 ? 0.06 : 0.10);
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, half, half, drawSize, drawSize);
 
     ctx.restore();
@@ -2112,9 +2124,9 @@ export class IceMage extends Fighter {
 
     if (renderer && renderer.glowGlacial && glowScale > 0) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.18;
-      const gW = drawW * Math.min(1.32, glowScale);
-      const gH = drawH * Math.min(1.32, glowScale);
+      ctx.globalAlpha = fade * 0.11;
+      const gW = drawW * Math.min(1.18, glowScale);
+      const gH = drawH * Math.min(1.18, glowScale);
       ctx.drawImage(renderer.glowGlacial, -gW * 0.5, -gH * 0.5, gW, gH);
     }
 
@@ -2123,7 +2135,7 @@ export class IceMage extends Fighter {
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, halfW, halfH, drawW, drawH);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = fade * 0.14;
+    ctx.globalAlpha = fade * 0.10;
     ctx.drawImage(vfxSheet, c * 208, r * 208, 208, 208, halfW, halfH, drawW, drawH);
 
     ctx.restore();
@@ -2385,7 +2397,7 @@ export class IceMage extends Fighter {
       ctx.globalAlpha = fade * 0.88;
       PixelForge.drawAfterimageFrame(ctx, sprites, d.frameIdx, 208, 208);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.45;
+      ctx.globalAlpha = fade * 0.18;
       PixelForge.drawGhostFrame(ctx, sprites, d.frameIdx, 208, 208);
       ctx.restore();
     }
@@ -2716,16 +2728,16 @@ export class IceMage extends Fighter {
         const pA = vertices[a];
         const pB = vertices[b];
         ctx.strokeStyle = idx < 3 ? '#38bdf8' : '#e879f9';
-        ctx.lineWidth = 4;
-        ctx.globalAlpha = fade * 0.52;
+        ctx.lineWidth = 2.5;
+        ctx.globalAlpha = fade * 0.34;
         ctx.beginPath();
         ctx.moveTo(pA.x, pA.y);
         ctx.lineTo(pB.x, pB.y);
         ctx.stroke();
 
         ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.5;
-        ctx.globalAlpha = fade * 0.80;
+        ctx.lineWidth = 1;
+        ctx.globalAlpha = fade * 0.62;
         ctx.beginPath();
         ctx.moveTo(pA.x, pA.y);
         ctx.lineTo(pB.x, pB.y);

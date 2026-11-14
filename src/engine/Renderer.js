@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps99';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps99';
+import { PixelForge } from './PixelForge.js?v=30fps100';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps100';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -27,6 +27,16 @@ export const ULTIMATE_STAGE_MAP = {
     id: 'shogunate_inferno',
     name: 'BURNING SHOGUNATE INFERNO',
     assetKey: 'arenaShogunateInferno'
+  },
+  glacial: {
+    id: 'glacial',
+    name: 'PERMAFROST AURORA SANCTUM',
+    assetKey: 'arenaGlacial'
+  },
+  shogunate_glacial: {
+    id: 'shogunate_glacial',
+    name: 'FROZEN SAKURA SHOGUNATE',
+    assetKey: 'arenaShogunateGlacial'
   }
 };
 
@@ -112,26 +122,39 @@ export class Renderer {
 
   setStageTransformation(stageKey, alpha = 1.0, permanent = false, holdDuration = 0) {
     let resolvedKey = stageKey;
-    // Bidirectional Ignis Sol <-> Kaze-Maru Stage Synergy:
-    // - Ignis Sol's Inferno cast inside Kaze-Maru's Japanese realm ignites the Burning Japanese Stage (`shogunate_inferno`)!
-    // - Kaze-Maru's Shogunate slice inside Ignis Sol's Inferno realm teleports into the Burning Japanese Stage (`shogunate_inferno`)!
-    if (
-      resolvedKey === 'inferno' &&
-      (this.permanentStageOverride === 'shogunate' ||
-        this.permanentStageOverride === 'shogunate_inferno' ||
-        this.stageId === 'shogunate' ||
-        this.stageId === 'shogunate_inferno')
-    ) {
+    const isCurShogunate =
+      this.permanentStageOverride === 'shogunate' ||
+      this.permanentStageOverride === 'shogunate_inferno' ||
+      this.permanentStageOverride === 'shogunate_glacial' ||
+      this.stageId === 'shogunate' ||
+      this.stageId === 'shogunate_inferno' ||
+      this.stageId === 'shogunate_glacial';
+    const isCurInferno =
+      this.permanentStageOverride === 'inferno' ||
+      this.permanentStageOverride === 'shogunate_inferno' ||
+      this.trueUltStageOverride === 'inferno' ||
+      this.stageId === 'inferno' ||
+      this.stageId === 'shogunate_inferno';
+    const isCurGlacial =
+      this.permanentStageOverride === 'glacial' ||
+      this.permanentStageOverride === 'shogunate_glacial' ||
+      this.trueUltStageOverride === 'glacial' ||
+      this.stageId === 'glacial' ||
+      this.stageId === 'shogunate_glacial';
+
+    // Bidirectional 3-Way Elemental Stage Domain Synergy (Ignis Sol <-> Kaze-Maru <-> Lyra):
+    // - Ignis Sol's Inferno inside any Shogunate realm -> `shogunate_inferno` (melts `shogunate_glacial` too!)
+    // - Lyra's Glacial inside any Shogunate realm -> `shogunate_glacial` (flash-freezes `shogunate_inferno` too!)
+    // - Kaze-Maru's Shogunate slice inside Inferno -> `shogunate_inferno`; inside Glacial -> `shogunate_glacial`!
+    // - Direct Thermal Clash outside Shogunate: `inferno` <-> `glacial` cleanly overtakes the arena!
+    if (resolvedKey === 'inferno' && isCurShogunate) {
       resolvedKey = 'shogunate_inferno';
-    } else if (
-      resolvedKey === 'shogunate' &&
-      (this.permanentStageOverride === 'inferno' ||
-        this.permanentStageOverride === 'shogunate_inferno' ||
-        this.trueUltStageOverride === 'inferno' ||
-        this.stageId === 'inferno' ||
-        this.stageId === 'shogunate_inferno')
-    ) {
+    } else if (resolvedKey === 'glacial' && isCurShogunate) {
+      resolvedKey = 'shogunate_glacial';
+    } else if (resolvedKey === 'shogunate' && isCurInferno) {
       resolvedKey = 'shogunate_inferno';
+    } else if (resolvedKey === 'shogunate' && isCurGlacial) {
+      resolvedKey = 'shogunate_glacial';
     }
 
     if (permanent && ULTIMATE_STAGE_MAP[resolvedKey]) {
@@ -139,6 +162,10 @@ export class Renderer {
       this.trueUltStageOverride = resolvedKey;
       this.trueUltStageAlpha = 1.0;
       this.trueUltStageTimer = Math.max(this.trueUltStageTimer, holdDuration);
+      if (!this.adventureMode && typeof document !== 'undefined') {
+        const badgeEl = document.getElementById('hud-stage-badge');
+        if (badgeEl) badgeEl.textContent = ULTIMATE_STAGE_MAP[resolvedKey].name;
+      }
       return;
     }
     if (!resolvedKey) {
@@ -703,12 +730,14 @@ export class Renderer {
     const reflAlpha =
       activeStageForRefl === 'inferno' || activeStageForRefl === 'shogunate_inferno'
         ? 0.16
-        : activeStageForRefl === 'sylvan' ||
-            activeStageForRefl === 'sanctuary' ||
-            activeStageForRefl === 'cathedral' ||
-            activeStageForRefl === 'shogunate'
-          ? 0.28
-          : 0.24;
+        : activeStageForRefl === 'glacial' || activeStageForRefl === 'shogunate_glacial'
+          ? 0.32
+          : activeStageForRefl === 'sylvan' ||
+              activeStageForRefl === 'sanctuary' ||
+              activeStageForRefl === 'cathedral' ||
+              activeStageForRefl === 'shogunate'
+            ? 0.28
+            : 0.24;
     if (this.adventureMode) {
       // Per-fighter local stone-road sheen anchored to each entity's own 2.5D depth `f.groundY`
       for (const f of fighters) {
@@ -1130,6 +1159,15 @@ export class Renderer {
           const sw = 48 + ((seg * 17 + r * 11) & 31);
           ctx.fillRect(sx, ry + 1, sw, 1);
         }
+      } else if (seamStage === 'glacial' || seamStage === 'shogunate_glacial') {
+        ctx.fillStyle = 'rgba(6, 14, 30, 0.36)';
+        ctx.fillRect(-800, ry, ww + 1600, 3);
+        const iceSeamAlpha = (0.14 + 0.07 * Math.sin(this.time * 4.2 + r * 1.4)).toFixed(3);
+        ctx.fillStyle =
+          r % 2 === 0
+            ? `rgba(103, 232, 249, ${iceSeamAlpha})`
+            : `rgba(232, 121, 249, ${iceSeamAlpha})`;
+        ctx.fillRect(-800, ry + 1, ww + 1600, 2);
       } else if (seamStage === 'shogunate') {
         ctx.fillStyle = 'rgba(8, 12, 26, 0.36)';
         ctx.fillRect(-800, ry, ww + 1600, 3);
@@ -1187,10 +1225,14 @@ export class Renderer {
     const baseStageId = this.permanentStageOverride || this.stageId;
     if (baseStageId === 'inferno') {
       this.drawInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
+    } else if (baseStageId === 'glacial') {
+      this.drawGlacialStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
     } else if (baseStageId === 'shogunate') {
       this.drawShogunateStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
     } else if (baseStageId === 'shogunate_inferno') {
       this.drawShogunateInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
+    } else if (baseStageId === 'shogunate_glacial') {
+      this.drawShogunateGlacialStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
     } else if (baseStageId === 'sanctuary') {
       this.drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, 1.0);
     } else if (baseStageId === 'sylvan') {
@@ -1211,10 +1253,14 @@ export class Renderer {
     ) {
       if (this.trueUltStageOverride === 'inferno') {
         this.drawInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
+      } else if (this.trueUltStageOverride === 'glacial') {
+        this.drawGlacialStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
       } else if (this.trueUltStageOverride === 'shogunate') {
         this.drawShogunateStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
       } else if (this.trueUltStageOverride === 'shogunate_inferno') {
         this.drawShogunateInfernoStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
+      } else if (this.trueUltStageOverride === 'shogunate_glacial') {
+        this.drawShogunateGlacialStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
       } else if (this.trueUltStageOverride === 'sanctuary') {
         this.drawSanctuaryStageEffects(ctx, drawX, drawY, drawW, drawH, gy, this.trueUltStageAlpha);
       }
@@ -1247,8 +1293,9 @@ export class Renderer {
         const cutY0 = sliceCy + (x0 - sliceCx) * slope;
         const cutY1 = sliceCy + (x1 - sliceCx) * slope;
         const isInfernoSlice = this.stageSliceToId === 'shogunate_inferno';
-        const rimOuter = isInfernoSlice ? '#f97316' : '#38bdf8';
-        const rimInner = isInfernoSlice ? '#fef08a' : '#ecfeff';
+        const isGlacialSlice = this.stageSliceToId === 'shogunate_glacial';
+        const rimOuter = isInfernoSlice ? '#f97316' : isGlacialSlice ? '#e879f9' : '#38bdf8';
+        const rimInner = isInfernoSlice ? '#fef08a' : isGlacialSlice ? '#67e8f9' : '#ecfeff';
 
         for (let half = 0; half < 2; half++) {
           const sign = half === 0 ? -1 : 1;
@@ -2932,10 +2979,270 @@ export class Renderer {
   }
 
   /**
+   * Crisp 2-Phase Pixel-Art Diamond-Dust Snowflake Crystal (`0` `ctx.rotate`!).
+   */
+  drawDiamondCrystalPixel(
+    ctx,
+    px,
+    py,
+    phase2 = 0,
+    scale = 1,
+    bodyCol = '#67e8f9',
+    hiCol = '#ffffff',
+    rimCol = '#0c4a6e'
+  ) {
+    const s = scale >= 1.6 ? 2 : 1;
+    const x = Math.round(px);
+    const y = Math.round(py);
+    ctx.fillStyle = rimCol;
+    if ((phase2 & 1) === 0) {
+      ctx.fillRect(x - 3 * s, y, 6 * s, 1 * s);
+      ctx.fillRect(x, y - 3 * s, 1 * s, 6 * s);
+      ctx.fillStyle = bodyCol;
+      ctx.fillRect(x - 2 * s, y - 1 * s, 5 * s, 2 * s);
+      ctx.fillRect(x - 1 * s, y - 2 * s, 2 * s, 5 * s);
+      ctx.fillStyle = hiCol;
+      ctx.fillRect(x - 1 * s, y - 1 * s, 2 * s, 2 * s);
+    } else {
+      ctx.fillRect(x - 2 * s, y - 2 * s, 5 * s, 5 * s);
+      ctx.fillStyle = bodyCol;
+      ctx.fillRect(x - 1 * s, y - 2 * s, 3 * s, 5 * s);
+      ctx.fillRect(x - 2 * s, y - 1 * s, 5 * s, 3 * s);
+      ctx.fillStyle = hiCol;
+      ctx.fillRect(x, y - 1 * s, 1 * s, 3 * s);
+      ctx.fillRect(x - 1 * s, y, 3 * s, 1 * s);
+    }
+  }
+
+  /**
+   * Permafrost Aurora Sanctum (`arena_glacial.png` — Lyra Supreme Ultimate Domain!):
+   *   - Polar Crescent Moon & Borealis Ribbon shimmer at `(0.589, 0.155)` (`'lighter'` <= 0.15)
+   *   - Flanking Sapphire Glacier Spire glints & stepped Borealis sky curtains
+   *   - Drifting permafrost floor mist & 56 sparkling Diamond-Dust Snowflakes (`0` ctx.rotate!)
+   */
+  drawGlacialStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
+    if (alpha <= 0.01) return;
+    const t = this.time;
+    const moonCx = drawX + drawW * 0.589;
+    const moonCy = drawY + drawH * 0.155;
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Polar Crescent Moon & Borealis Sky Shimmer (`'lighter'` capped <= 0.15)
+    ctx.globalCompositeOperation = 'lighter';
+    if (this.glowCyan) {
+      ctx.globalAlpha = (0.12 + 0.03 * Math.sin(t * 1.9)) * alpha;
+      ctx.drawImage(this.glowCyan, moonCx - 260, moonCy - 165, 520, 330);
+    }
+    if (this.glowViolet) {
+      ctx.globalAlpha = (0.10 + 0.03 * Math.cos(t * 1.5)) * alpha;
+      ctx.drawImage(this.glowViolet, drawX + drawW * 0.36 - 240, drawY + drawH * 0.18 - 140, 480, 280);
+    }
+
+    // Stepped vertical Aurora Borealis pixel curtains gently undulating in the upper sky
+    const auroraCols = ['#67e8f9', '#2dd4bf', '#38bdf8', '#e879f9', '#c084fc'];
+    for (let a = 0; a < 14; a++) {
+      const ax = Math.round((drawX + drawW * (0.18 + a * 0.046) + Math.sin(t * 1.4 + a * 0.8) * 14) / 4) * 4;
+      const ay = Math.round((drawY + drawH * (0.04 + (a % 3) * 0.03) + Math.cos(t * 1.8 + a) * 8) / 4) * 4;
+      const ah = Math.round(drawH * (0.14 + (a % 4) * 0.035));
+      ctx.globalAlpha = (0.045 + 0.025 * Math.sin(t * 2.4 + a * 1.1)) * alpha;
+      ctx.fillStyle = auroraCols[a % auroraCols.length];
+      ctx.fillRect(ax, ay, 8, ah);
+    }
+
+    // 2. Flanking Sapphire Glacier Spire Specular Glints & Mirror-Ice Mist
+    const spires = [
+      { cx: 0.235, cy: 0.48, seed: 0.8 },
+      { cx: 0.765, cy: 0.48, seed: 2.9 }
+    ];
+    for (const sp of spires) {
+      const sx = Math.round(drawX + drawW * sp.cx);
+      const sy = Math.round(drawY + drawH * sp.cy);
+      const pulse = 0.65 + 0.35 * Math.sin(t * 3.1 + sp.seed);
+      if (this.glowCyan) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(0.14, 0.11 * pulse) * alpha;
+        ctx.drawImage(this.glowCyan, sx - 90, sy - 110, 180, 220);
+      }
+    }
+
+    for (let m = 0; m < 4; m++) {
+      const mDrift = Math.sin(t * 0.78 + m * 1.6) * 56;
+      const mx = Math.round((drawX + drawW * (0.20 + m * 0.20) + mDrift) / 4) * 4;
+      const my = Math.round((gy - 28 + (m % 2) * 12) / 4) * 4;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = (0.055 + 0.02 * Math.sin(t * 1.7 + m)) * alpha;
+      ctx.fillStyle = m % 2 === 0 ? '#67e8f9' : '#e879f9';
+      ctx.fillRect(mx - 116, my, 232, 6);
+      ctx.fillRect(mx - 72, my - 6, 144, 6);
+    }
+
+    // 3. 56 Drifting Diamond-Dust Snowflakes (`0` ctx.rotate!)
+    const flakeCols = ['#bae6fd', '#67e8f9', '#e0f2fe', '#f5d0fe', '#38bdf8'];
+    const spanH = Math.max(240, gy - drawY + 56);
+    ctx.globalCompositeOperation = 'source-over';
+    for (let p = 0; p < 56; p++) {
+      const cyc = (t * (0.16 + (p % 5) * 0.036) + p * 0.149) % 1;
+      const startX = drawX - 60 + (((p * 59) % 120) / 120) * (drawW + 120);
+      const breezeX = cyc * 92 + Math.sin(t * 2.1 + p * 1.37) * 24;
+      const px = Math.round((startX + breezeX) / 2) * 2;
+      const py = Math.round((drawY - 20 + cyc * spanH) / 2) * 2;
+      const fade = Math.sin(cyc * Math.PI) * alpha;
+      if (fade <= 0.03) continue;
+      ctx.globalAlpha = fade * 0.90;
+      this.drawDiamondCrystalPixel(
+        ctx,
+        px,
+        py,
+        (Math.floor(t * 4.2 + p) + p) & 1,
+        p % 7 === 0 ? 1.7 : 1,
+        flakeCols[p % flakeCols.length],
+        '#ffffff',
+        '#0c4a6e'
+      );
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
+   * Frozen Sakura Shogunate (`arena_shogunate_glacial.png` — Kaze-Maru <-> Lyra Synergy!):
+   *   - Ice-Blue Full Moon & Borealis Ribbons at `(0.584, 0.200)` (`'lighter'` <= 0.15)
+   *   - 4 Cold Spirit-Ice Stone Tōrō Lanterns at `(0.058, 0.590)`, `(0.263, 0.596)`, `(0.737, 0.597)`, `(0.940, 0.588)`
+   *   - 64 Raining Frost-Crystallized Sakura Petals & Diamond-Dust Flakes (`0` ctx.rotate!)
+   */
+  drawShogunateGlacialStageEffects(ctx, drawX, drawY, drawW, drawH, gy, alpha = 1.0) {
+    if (alpha <= 0.01) return;
+    const t = this.time;
+    const moonCx = drawX + drawW * 0.584;
+    const moonCy = drawY + drawH * 0.200;
+    const lanterns = [
+      { cx: 0.058, cy: 0.590, seed: 0.7 },
+      { cx: 0.263, cy: 0.596, seed: 2.1 },
+      { cx: 0.737, cy: 0.597, seed: 3.6 },
+      { cx: 0.940, cy: 0.588, seed: 5.2 }
+    ];
+
+    ctx.save();
+    ctx.imageSmoothingEnabled = false;
+
+    // 1. Ice-Blue Full Moon & Borealis Halo (`'lighter'` capped <= 0.15)
+    ctx.globalCompositeOperation = 'lighter';
+    if (this.glowCyan) {
+      ctx.globalAlpha = (0.13 + 0.03 * Math.sin(t * 2.0)) * alpha;
+      ctx.drawImage(this.glowCyan, moonCx - 280, moonCy - 200, 560, 400);
+    }
+    if (this.glowViolet) {
+      ctx.globalAlpha = (0.10 + 0.025 * Math.cos(t * 1.6)) * alpha;
+      ctx.drawImage(this.glowViolet, moonCx - 230, moonCy - 160, 460, 320);
+    }
+
+    // 2. 4 Cold Spirit-Ice Stone Tōrō Lantern Halos & Mirror-Ice Reflections
+    for (let i = 0; i < lanterns.length; i++) {
+      const l = lanterns[i];
+      const lx = Math.round(drawX + drawW * l.cx);
+      const ly = Math.round(drawY + drawH * l.cy);
+      const flick = 0.74 + 0.26 * Math.sin(t * 5.8 + l.seed) * Math.cos(t * 3.4 + l.seed);
+
+      ctx.globalCompositeOperation = 'lighter';
+      if (this.glowCyan) {
+        ctx.globalAlpha = Math.min(0.15, 0.13 * flick) * alpha;
+        ctx.drawImage(this.glowCyan, lx - 72, ly - 64, 144, 128);
+        ctx.globalAlpha = Math.min(0.12, 0.10 * flick) * alpha;
+        ctx.drawImage(this.glowCyan, lx - 84, gy - 8, 168, 44);
+      }
+
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = 0.90 * alpha;
+      ctx.fillStyle = '#22d3ee';
+      ctx.fillRect(lx - 4, ly - 5, 8, 10);
+      ctx.fillStyle = '#ecfeff';
+      ctx.fillRect(lx - 2, ly - 3, 4, 6);
+    }
+
+    // 3. Stepped Borealis Courtyard Frost-Mist Ribbons
+    ctx.globalCompositeOperation = 'lighter';
+    for (let m = 0; m < 4; m++) {
+      const mDrift = Math.sin(t * 0.82 + m * 1.7) * 56;
+      const mx = Math.round((drawX + drawW * (0.20 + m * 0.20) + mDrift) / 4) * 4;
+      const my = Math.round((gy - 32 + (m % 2) * 14) / 4) * 4;
+      ctx.globalAlpha = (0.05 + 0.02 * Math.sin(t * 1.6 + m)) * alpha;
+      ctx.fillStyle = m % 2 === 0 ? '#67e8f9' : '#f5d0fe';
+      ctx.fillRect(mx - 110, my, 220, 6);
+      ctx.fillRect(mx - 70, my - 6, 140, 6);
+    }
+
+    // 4. 64 Raining Frost-Crystallized Sakura Petals & Diamond-Dust Flakes + 14 Skittering Ice Petals (`0` ctx.rotate!)
+    const frostPetalCols = ['#bae6fd', '#67e8f9', '#f5d0fe', '#e9d5ff', '#fbcfe8'];
+    const spanH = Math.max(240, gy - drawY + 64);
+    ctx.globalCompositeOperation = 'source-over';
+    for (let p = 0; p < 64; p++) {
+      const cyc = (t * (0.19 + (p % 5) * 0.04) + p * 0.137) % 1;
+      const startX = drawX - 90 + (((p * 53) % 116) / 116) * (drawW + 140);
+      const breezeX = cyc * (185 + (p % 4) * 32) + Math.sin(t * 2.5 + p * 1.31) * 24;
+      const flutterY = Math.cos(t * 3.6 + p * 1.73) * 7;
+      const px = Math.round((startX + breezeX) / 2) * 2;
+      const py = Math.round((drawY - 24 + cyc * spanH + flutterY) / 2) * 2;
+      const fade = Math.sin(cyc * Math.PI) * alpha;
+      if (fade <= 0.03) continue;
+
+      ctx.globalAlpha = fade * 0.92;
+      if (p % 3 === 0) {
+        this.drawDiamondCrystalPixel(
+          ctx,
+          px,
+          py,
+          (Math.floor(t * 4.4 + p) + p) & 1,
+          p % 9 === 0 ? 1.7 : 1,
+          frostPetalCols[p % frostPetalCols.length],
+          '#ffffff',
+          '#0c4a6e'
+        );
+      } else {
+        this.drawSakuraPetalPixel(
+          ctx,
+          px,
+          py,
+          Math.floor(t * (4.6 + (p % 3)) + p) & 3,
+          p % 6 === 0 ? 1.5 : 1,
+          frostPetalCols[p % frostPetalCols.length],
+          '#ffffff'
+        );
+      }
+    }
+
+    for (let s = 0; s < 14; s++) {
+      const cyc = (t * (0.24 + (s % 3) * 0.05) + s * 0.19) % 1;
+      const baseX = drawX + ((s * 67) % Math.max(200, Math.round(drawW - 140)));
+      const sx = Math.round((baseX + cyc * 175) / 2) * 2;
+      const sy = Math.round((gy - 6 + ((s * 9) % 34) - Math.abs(Math.sin(t * 4.2 + s)) * 6) / 2) * 2;
+      const sFade = Math.sin(cyc * Math.PI) * alpha * 0.84;
+      if (sFade <= 0.03) continue;
+      ctx.globalAlpha = sFade;
+      this.drawSakuraPetalPixel(
+        ctx,
+        sx,
+        sy,
+        (s + Math.floor(t * 4.6)) & 3,
+        1,
+        frostPetalCols[(s + 1) % frostPetalCols.length],
+        '#ecfeff'
+      );
+    }
+
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.globalAlpha = 1;
+    ctx.restore();
+  }
+
+  /**
    * World-Space Full-Viewport Diagonal Katana Dimensional Rift Seam (`this.stageSliceTimer > 0`):
    *   - Blazing diagonal katana cut line across the entire viewport (`0` ctx.rotate!)
    *   - High-voltage jagged lightning surge bolts racing along & branching off the dimensional seam
-   *   - 40 sakura petals (or blazing solar cinders for `shogunate_inferno`) bursting from the cut
+   *   - 40 sakura petals (or blazing solar cinders for `shogunate_inferno` / frost sakura for `shogunate_glacial`) bursting from the cut
    */
   drawDimensionalStageSliceWorld(ctx, ww, gy) {
     const p = Math.max(
@@ -2954,12 +3261,15 @@ export class Renderer {
     const y0 = sliceCy + (x0 - sliceCx) * slope;
     const y1 = sliceCy + (x1 - sliceCx) * slope;
     const isInfernoSlice = this.stageSliceToId === 'shogunate_inferno';
+    const isGlacialSlice = this.stageSliceToId === 'shogunate_glacial';
 
-    const outerCol = isInfernoSlice ? '#ea580c' : '#4f46e5';
-    const midCol = isInfernoSlice ? '#fb923c' : '#38bdf8';
+    const outerCol = isInfernoSlice ? '#ea580c' : isGlacialSlice ? '#a855f7' : '#4f46e5';
+    const midCol = isInfernoSlice ? '#fb923c' : isGlacialSlice ? '#67e8f9' : '#38bdf8';
     const petalCols = isInfernoSlice
       ? ['#fef08a', '#fb923c', '#f43f5e', '#ffffff']
-      : ['#fda4af', '#fb7185', '#fbcfe8', '#ffffff'];
+      : isGlacialSlice
+        ? ['#bae6fd', '#67e8f9', '#f5d0fe', '#ffffff']
+        : ['#fda4af', '#fb7185', '#fbcfe8', '#ffffff'];
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -3751,7 +4061,10 @@ export class Renderer {
           ? this.glowViolet
           : activeStage === 'clocktower'
             ? this.glowTeal
-            : activeStage === 'sanctuary' || activeStage === 'shogunate'
+            : activeStage === 'sanctuary' ||
+                activeStage === 'shogunate' ||
+                activeStage === 'glacial' ||
+                activeStage === 'shogunate_glacial'
               ? this.glowCyan
               : activeStage === 'inferno' || activeStage === 'shogunate_inferno'
                 ? this.glowOrange
@@ -3762,6 +4075,9 @@ export class Renderer {
     if ((activeStage === 'inferno' || activeStage === 'shogunate_inferno') && this.glowCrimson) {
       ctx.globalAlpha = 0.16 + 0.04 * Math.cos(t * 2.1);
       ctx.drawImage(this.glowCrimson, viewCenterX - 320 + parX * 0.3, gy - 480, 640, 420);
+    } else if ((activeStage === 'glacial' || activeStage === 'shogunate_glacial') && this.glowViolet) {
+      ctx.globalAlpha = 0.12 + 0.03 * Math.cos(t * 1.7);
+      ctx.drawImage(this.glowViolet, viewCenterX - 300 + parX * 0.3, gy - 510, 600, 420);
     } else if (activeStage === 'shogunate' && this.glowIndigo) {
       ctx.globalAlpha = 0.14 + 0.03 * Math.cos(t * 1.8);
       ctx.drawImage(this.glowIndigo, viewCenterX - 280 + parX * 0.3, gy - 510, 560, 420);
@@ -3792,6 +4108,12 @@ export class Renderer {
               : '250, 204, 21';
         midRgb = s % 3 === 0 ? '239, 68, 68' : '234, 88, 12';
         baseAlpha = 0.095;
+      } else if (activeStage === 'glacial' || activeStage === 'shogunate_glacial') {
+        topX = viewCenterX + 20 + idx * 132 + parX;
+        botX = viewCenterX - 18 + idx * 178 + sway + parX * 1.15;
+        topRgb = s % 2 === 0 ? '103, 232, 249' : '232, 121, 249';
+        midRgb = s % 2 === 0 ? '56, 189, 248' : '192, 132, 252';
+        baseAlpha = 0.078;
       } else if (activeStage === 'shogunate') {
         topX = viewCenterX + 45 + idx * 128 + parX;
         botX = viewCenterX - 25 + idx * 176 + sway + parX * 1.15;
@@ -3869,41 +4191,64 @@ export class Renderer {
     const moteColors =
       activeStage === 'inferno' || activeStage === 'shogunate_inferno'
         ? ['#fb923c', '#fde047']
-        : activeStage === 'shogunate'
-          ? ['#fda4af', '#fbcfe8']
-          : activeStage === 'sanctuary'
-            ? ['#7dd3fc', '#fef08a']
-            : activeStage === 'sylvan'
-              ? ['#34d399', '#fde047']
-              : activeStage === 'boneyard'
-                ? ['#c084fc', '#f43f5e']
-                : activeStage === 'clocktower'
-                  ? ['#2dd4bf', '#fde047']
-                  : ['#38bdf8', '#fb923c'];
+        : activeStage === 'glacial' || activeStage === 'shogunate_glacial'
+          ? ['#67e8f9', '#e879f9']
+          : activeStage === 'shogunate'
+            ? ['#fda4af', '#fbcfe8']
+            : activeStage === 'sanctuary'
+              ? ['#7dd3fc', '#fef08a']
+              : activeStage === 'sylvan'
+                ? ['#34d399', '#fde047']
+                : activeStage === 'boneyard'
+                  ? ['#c084fc', '#f43f5e']
+                  : activeStage === 'clocktower'
+                    ? ['#2dd4bf', '#fde047']
+                    : ['#38bdf8', '#fb923c'];
     const isInfernoFamily = activeStage === 'inferno' || activeStage === 'shogunate_inferno';
-    const isShogunateRain = activeStage === 'shogunate';
-    const spdMult = isInfernoFamily ? 1.85 : isShogunateRain ? 1.18 : activeStage === 'sanctuary' ? 1.05 : 1.25;
-    const windBias = isInfernoFamily ? 28 : isShogunateRain ? 155 : 0;
+    const isGlacialFamily = activeStage === 'glacial' || activeStage === 'shogunate_glacial';
+    const isShogunateRain = activeStage === 'shogunate' || activeStage === 'shogunate_glacial';
+    const isFallingMotes = isShogunateRain || activeStage === 'glacial';
+    const spdMult = isInfernoFamily
+      ? 1.85
+      : isShogunateRain
+        ? 1.18
+        : isGlacialFamily
+          ? 0.96
+          : activeStage === 'sanctuary'
+            ? 1.05
+            : 1.25;
+    const windBias = isInfernoFamily ? 28 : isShogunateRain ? 145 : isGlacialFamily ? 68 : 0;
 
     for (let i = 0; i < this.motes.length; i++) {
       const m = this.motes[i];
       const riseSpan = 540;
       const u = ((m.y + t * m.spdY * spdMult) % riseSpan) / riseSpan;
-      const my = isShogunateRain ? gy - 510 + u * 545 : gy + 20 - u * riseSpan;
+      const my = isFallingMotes ? gy - 510 + u * 545 : gy + 20 - u * riseSpan;
       const moteParallax = (this.camParallaxX || 0) * (0.08 + (i % 3) * 0.04);
       const rawDriftX =
         m.x +
-        Math.sin(t * (isInfernoFamily ? 2.8 : isShogunateRain ? 2.3 : 1.6) + m.phase) * 26 +
+        Math.sin(t * (isInfernoFamily ? 2.8 : isFallingMotes ? 2.1 : 1.6) + m.phase) * 26 +
         u * windBias;
       const mx = this.adventureMode
         ? this.camX - 760 + ((((rawDriftX - (this.camX - 760)) % 1520) + 1520) % 1520)
         : rawDriftX + moteAnchorOffset + moteParallax;
       const pulse = 0.5 + 0.5 * Math.sin(t * 3.8 + m.phase);
-      const alpha = isShogunateRain ? Math.sin(u * Math.PI) * 0.90 : 0.36 + 0.50 * pulse;
+      const alpha = isFallingMotes ? Math.sin(u * Math.PI) * 0.88 : 0.36 + 0.50 * pulse;
       if (alpha <= 0.02) continue;
 
       if (isShogunateRain) {
-        const pCol = i % 3 === 0 ? '#fb7185' : m.isBlue ? '#fda4af' : '#fbcfe8';
+        const pCol =
+          activeStage === 'shogunate_glacial'
+            ? i % 3 === 0
+              ? '#67e8f9'
+              : m.isBlue
+                ? '#bae6fd'
+                : '#f5d0fe'
+            : i % 3 === 0
+              ? '#fb7185'
+              : m.isBlue
+                ? '#fda4af'
+                : '#fbcfe8';
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = alpha;
         this.drawSakuraPetalPixel(
@@ -3914,6 +4259,22 @@ export class Renderer {
           i % 5 === 0 ? 1.8 : 1,
           pCol,
           '#ffffff'
+        );
+        continue;
+      }
+
+      if (activeStage === 'glacial') {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha;
+        this.drawDiamondCrystalPixel(
+          ctx,
+          mx,
+          my,
+          (Math.floor(t * 4.2 + i) + i) & 1,
+          i % 6 === 0 ? 1.7 : 1,
+          m.isBlue ? '#67e8f9' : '#f5d0fe',
+          '#ffffff',
+          '#0c4a6e'
         );
         continue;
       }
@@ -3941,9 +4302,12 @@ export class Renderer {
       }
     }
 
-    // Continuous Mid-World Cherry Blossom Rain (`24` extra sakura petals drifting around fighters on `shogunate`)
+    // Continuous Mid-World Cherry Blossom / Frost Sakura Rain (`24` extra petals drifting around fighters)
     if (isShogunateRain) {
-      const sakuraPalette = ['#fda4af', '#fb7185', '#fbcfe8', '#fff1f2'];
+      const sakuraPalette =
+        activeStage === 'shogunate_glacial'
+          ? ['#bae6fd', '#67e8f9', '#f5d0fe', '#ecfeff']
+          : ['#fda4af', '#fb7185', '#fbcfe8', '#fff1f2'];
       ctx.globalCompositeOperation = 'source-over';
       for (let k = 0; k < 24; k++) {
         const cyc = (t * (0.23 + (k % 4) * 0.045) + k * 0.17) % 1;
@@ -4049,6 +4413,50 @@ export class Renderer {
         const glow = p % 4 === 0 ? this.glowCrimson : p % 2 === 0 ? this.glowOrange : this.glowGold;
         const sz = p % 3 === 0 ? 5 : 4;
         drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 24, pAlpha, tailDx, tailDy);
+      }
+    } else if (activeStage === 'glacial' || activeStage === 'shogunate_glacial') {
+      // ★ GLACIAL / FROZEN SHOGUNATE PHENOMENON: BOREALIS DIAMOND-DUST BLIZZARD (`0` ctx.rotate!)
+      const originX = ww * 0.54;
+      const originY = gy - 385;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = 0.20 * fade;
+      if (this.glowCyan) ctx.drawImage(this.glowCyan, originX - 380, originY - 220, 760, 440);
+      ctx.globalAlpha = 0.15 * fade;
+      if (this.glowViolet) ctx.drawImage(this.glowViolet, ww * 0.5 - 420, gy - 320, 840, 340);
+
+      for (let f = 0; f < 68; f++) {
+        const cycle = (t * (0.31 + (f % 4) * 0.06) + f * 0.17) % 1;
+        const baseX = -60 + ((f * 89) % (ww + 80));
+        const breezeX = cycle * 235 + Math.sin(t * 2.6 + f * 1.4) * 26;
+        const fx = Math.round(baseX + breezeX);
+        const fy = Math.round(gy - 530 + cycle * 555);
+        const fAlpha = fade * Math.sin(cycle * Math.PI);
+        const pCol = f % 3 === 0 ? '#f5d0fe' : f % 2 === 0 ? '#67e8f9' : '#bae6fd';
+
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = fAlpha * 0.94;
+        if (activeStage === 'shogunate_glacial' && f % 2 === 0) {
+          this.drawSakuraPetalPixel(
+            ctx,
+            fx,
+            fy,
+            (Math.floor(t * 5.2 + f) + f) & 3,
+            f % 6 === 0 ? 2 : 1,
+            pCol,
+            '#ffffff'
+          );
+        } else {
+          this.drawDiamondCrystalPixel(
+            ctx,
+            fx,
+            fy,
+            (Math.floor(t * 4.8 + f) + f) & 1,
+            f % 5 === 0 ? 1.8 : 1,
+            pCol,
+            '#ffffff',
+            '#0c4a6e'
+          );
+        }
       }
     } else if (activeStage === 'shogunate') {
       // ★ SHOGUNATE PHENOMENON: MOONLIT SAKURA FUBUKI GALE & ASTRAL BLADE BREEZE
@@ -4241,7 +4649,7 @@ export class Renderer {
 
   /**
    * Near-Camera 1.22x Parallax Foreground Depth Layer (`14` sparse edge-biased particles — or `22` raining
-   * cherry blossoms on `shogunate` — at modest alpha so fighter faces & silhouettes stay 100% clear!).
+   * cherry blossoms on `shogunate` / frost sakura on `shogunate_glacial` / diamond flakes on `glacial` — at modest alpha!).
    */
   drawStageForeground(ctx, ww, gy) {
     const activeStage = this.getActiveStageId();
@@ -4250,7 +4658,9 @@ export class Renderer {
     const fgShiftY = -(this.camParallaxY || 0) * 0.10;
     const viewSpanW = this.adventureMode ? 1200 : ww;
     const viewLeftX = this.adventureMode ? this.camX - viewSpanW * 0.5 : 0;
-    const count = activeStage === 'shogunate' ? 22 : 14;
+    const isShogFg = activeStage === 'shogunate' || activeStage === 'shogunate_glacial';
+    const isGlacFg = activeStage === 'glacial';
+    const count = isShogFg ? 22 : isGlacFg ? 18 : 14;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -4261,7 +4671,7 @@ export class Renderer {
       const speed =
         activeStage === 'inferno' || activeStage === 'shogunate_inferno'
           ? 0.34 + (i % 3) * 0.08
-          : activeStage === 'shogunate'
+          : isShogFg || isGlacFg
             ? 0.20 + (i % 4) * 0.045
             : activeStage === 'sanctuary' || activeStage === 'sylvan'
               ? 0.16 + (i % 3) * 0.04
@@ -4269,32 +4679,35 @@ export class Renderer {
       const cycle = (t * speed + i * 0.19) % 1;
       const flankSpan = viewSpanW * 0.28;
       const baseX =
-        activeStage === 'shogunate'
+        isShogFg || isGlacFg
           ? viewLeftX - 70 + ((i * 73) % Math.max(240, Math.round(viewSpanW + 80)))
           : isLeftFlank
             ? viewLeftX - 35 + ((slot * 67) % Math.round(flankSpan))
             : viewLeftX + viewSpanW - flankSpan + ((slot * 71) % Math.round(flankSpan)) + 35;
       const swayX =
         Math.sin(t * 2.2 + i * 1.3) * 22 +
-        (activeStage === 'shogunate'
+        (isShogFg
           ? cycle * 165
-          : activeStage === 'inferno' || activeStage === 'shogunate_inferno'
-            ? cycle * 38
-            : 0);
+          : isGlacFg
+            ? cycle * 92
+            : activeStage === 'inferno' || activeStage === 'shogunate_inferno'
+              ? cycle * 38
+              : 0);
       const px = Math.round((baseX + swayX + fgShiftX) / 2) * 2;
 
       const isFalling =
         activeStage === 'sanctuary' ||
-        activeStage === 'shogunate' ||
+        isShogFg ||
+        isGlacFg ||
         (activeStage === 'sylvan' && i % 3 !== 0);
       const rawY =
-        activeStage === 'shogunate'
+        isShogFg || isGlacFg
           ? gy - 470 + cycle * 555
           : isFalling
             ? gy - 340 + cycle * 435
             : gy + 92 - cycle * 410;
       const py = Math.round((rawY + fgShiftY) / 2) * 2;
-      const alpha = Math.sin(cycle * Math.PI) * (activeStage === 'shogunate' ? 0.62 : 0.44);
+      const alpha = Math.sin(cycle * Math.PI) * (isShogFg ? 0.62 : isGlacFg ? 0.54 : 0.44);
       if (alpha <= 0.02) continue;
 
       if (activeStage === 'inferno' || activeStage === 'shogunate_inferno') {
@@ -4317,15 +4730,26 @@ export class Renderer {
           ctx.fillStyle = '#fef08a';
           ctx.fillRect(px - 1, py - 1, 3, 3);
         }
-      } else if (activeStage === 'shogunate') {
-        if (this.glowCrimson && i % 4 === 0) {
+      } else if (isShogFg) {
+        if (activeStage === 'shogunate' && this.glowCrimson && i % 4 === 0) {
           ctx.globalCompositeOperation = 'lighter';
           ctx.globalAlpha = Math.min(0.14, alpha * 0.16);
           ctx.drawImage(this.glowCrimson, px - 16, py - 16, 32, 32);
         }
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = alpha * 0.92;
-        const fgPetalCol = i % 3 === 0 ? '#fbcfe8' : i % 2 === 0 ? '#fda4af' : '#fb7185';
+        const fgPetalCol =
+          activeStage === 'shogunate_glacial'
+            ? i % 3 === 0
+              ? '#f5d0fe'
+              : i % 2 === 0
+                ? '#bae6fd'
+                : '#67e8f9'
+            : i % 3 === 0
+              ? '#fbcfe8'
+              : i % 2 === 0
+                ? '#fda4af'
+                : '#fb7185';
         this.drawSakuraPetalPixel(
           ctx,
           px,
@@ -4334,6 +4758,19 @@ export class Renderer {
           2,
           fgPetalCol,
           '#ffffff'
+        );
+      } else if (isGlacFg) {
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = alpha * 0.90;
+        this.drawDiamondCrystalPixel(
+          ctx,
+          px,
+          py,
+          (Math.floor(t * 4.0 + i) + i) & 1,
+          2,
+          i % 3 === 0 ? '#f5d0fe' : '#67e8f9',
+          '#ffffff',
+          '#0c4a6e'
         );
       } else if (activeStage === 'sylvan') {
         const gTex = i % 2 === 0 ? this.glowEmerald : this.glowCyan;

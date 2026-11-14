@@ -16,7 +16,7 @@
 
 export const ADVENTURE_SKILL_TREE = [
   // =========================================================================
-  // BRANCH I: SOLAR WRATH (Offense, Basic Fireball & Flame Pillar Mastery)
+  // BRANCH I: SOLAR WRATH (Offense, Basic Combo & Skill Mastery)
   // =========================================================================
   {
     id: 'wrath_1',
@@ -24,7 +24,7 @@ export const ADVENTURE_SKILL_TREE = [
     branchName: 'SOLAR WRATH',
     tier: 1,
     maxRank: 3,
-    glyph: '🔥',
+    iconSlot: 'attack',
     name: 'IGNITED VOLLEY',
     summary: (r) =>
       `+${r * 15 || 15}% Basic Attack Power${r >= 2 ? ' • Every 2nd cast launches a Homing Seeker!' : ' (Rank 2: Homing Seeker bolt)'}`
@@ -35,7 +35,7 @@ export const ADVENTURE_SKILL_TREE = [
     branchName: 'SOLAR WRATH',
     tier: 2,
     maxRank: 2,
-    glyph: '⚡',
+    iconSlot: 'skill',
     name: 'COMBUSTION FLOW',
     summary: (r) =>
       `Basic hits grant +${(r || 1) * 6} bonus Spirit & shave -${((r || 1) * 0.55).toFixed(2)}s off Skill CD`
@@ -46,14 +46,14 @@ export const ADVENTURE_SKILL_TREE = [
     branchName: 'SOLAR WRATH',
     tier: 3,
     maxRank: 2,
-    glyph: '🌋',
+    iconSlot: 'skill',
     name: 'SEARING MASTERY',
     summary: (r) =>
       `Skill Spirit cost ${r === 2 ? '14' : r === 1 ? '22' : '22/14'} (from 32) & +${(r || 1) * 28}% Skill Damage`
   },
 
   // =========================================================================
-  // BRANCH II: ASTRAL AWAKENING (Ultimate & Super-Ultimate Relic Mastery)
+  // BRANCH II: ASTRAL AWAKENING (Overdrive & Supreme Ultimate Relic Mastery)
   // =========================================================================
   {
     id: 'astral_1',
@@ -61,7 +61,7 @@ export const ADVENTURE_SKILL_TREE = [
     branchName: 'ASTRAL AWAKENING',
     tier: 1,
     maxRank: 3,
-    glyph: '✦',
+    iconSlot: 'overdrive',
     name: 'SOUL HARVESTER',
     summary: (r) =>
       `+${(r || 1) * 25}% Ultimate charge from Soul Embers & Combos (+Boss hit charge)`
@@ -72,7 +72,7 @@ export const ADVENTURE_SKILL_TREE = [
     branchName: 'ASTRAL AWAKENING',
     tier: 2,
     maxRank: 2,
-    glyph: '🌑',
+    iconSlot: 'overdrive',
     name: 'ECLIPSE OVERCHARGE',
     summary: (r) =>
       `+${(r || 1) * 28}% Overdrive Ultimate Damage & +${(r || 1) * 14}% bonus Astral Seal resonance`
@@ -83,7 +83,7 @@ export const ADVENTURE_SKILL_TREE = [
     branchName: 'ASTRAL AWAKENING',
     tier: 3,
     maxRank: 2,
-    glyph: '☄️',
+    iconSlot: 'ultimate',
     name: 'CATACLYSM SOVEREIGN',
     summary: (r) =>
       `Unseals +${(r || 1) * 34}% Astral Relic immediately & +${(r || 1) * 35}% Supreme Ultimate Damage`
@@ -98,10 +98,10 @@ export const ADVENTURE_SKILL_TREE = [
     branchName: 'PHOENIX AEGIS',
     tier: 1,
     maxRank: 3,
-    glyph: '🛡️',
+    iconSlot: 'crouch',
     name: 'SUNFORGED VITALITY',
     summary: (r) =>
-      `+${(r || 1) * 240} Max Adventure HP & +${(r || 1) * 7}% Solar Ward Damage Reduction`
+      `+${(r || 1) * 240} Max Adventure HP & +${(r || 1) * 7}% Ward Damage Reduction`
   },
   {
     id: 'aegis_2',
@@ -109,10 +109,10 @@ export const ADVENTURE_SKILL_TREE = [
     branchName: 'PHOENIX AEGIS',
     tier: 2,
     maxRank: 2,
-    glyph: '🪽',
+    iconSlot: 'dodge',
     name: 'ZEPHYR STRIDE',
     summary: (r) =>
-      `+${(r || 1) * 12}% 3D Move Speed & -${(r || 1) * 20}% Blink / Vault / Ward Cooldowns`
+      `+${(r || 1) * 12}% 3D Move Speed & -${(r || 1) * 20}% Evade / Vault / Ward Cooldowns`
   },
   {
     id: 'aegis_3',
@@ -120,12 +120,222 @@ export const ADVENTURE_SKILL_TREE = [
     branchName: 'PHOENIX AEGIS',
     tier: 3,
     maxRank: 2,
-    glyph: '☀️',
+    iconSlot: 'jump',
     name: 'UNDYING PHOENIX',
     summary: (r) =>
-      `Ward & Blink heal +${(r || 1) * 45} bonus HP • Soul Embers restore +${(r || 1) * 5}% Max HP`
+      `Evade & Ward heal +${(r || 1) * 45} bonus HP • Soul Embers restore +${(r || 1) * 5}% Max HP`
   }
 ];
+
+/**
+ * Bespoke Champion Skill Tree Branch & Node Display Themes across all 11 Champions.
+ * Preserves Ignis Sol's (`mage`) exact `SOLAR WRATH / ASTRAL AWAKENING / PHOENIX AEGIS` nomenclature
+ * while giving every other champion authentic lore-matched RPG branches & node titles.
+ */
+export const HERO_SKILL_TREE_THEMES = {
+  mage: {
+    branches: {
+      wrath: { title: 'SOLAR WRATH', sub: 'OFFENSE & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'ASTRAL AWAKENING', sub: 'DRIVE & RELIC SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'PHOENIX AEGIS', sub: 'VITALITY & AGILITY', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'IGNITED VOLLEY',
+      wrath_2: 'COMBUSTION FLOW',
+      wrath_3: 'SEARING MASTERY',
+      astral_1: 'SOUL HARVESTER',
+      astral_2: 'ECLIPSE OVERCHARGE',
+      astral_3: 'CATACLYSM SOVEREIGN',
+      aegis_1: 'SUNFORGED VITALITY',
+      aegis_2: 'ZEPHYR STRIDE',
+      aegis_3: 'UNDYING PHOENIX'
+    }
+  },
+  warrior: {
+    branches: {
+      wrath: { title: 'RADIANT GREATSWORD', sub: 'CLEAVE & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'CATHEDRAL SOVEREIGN', sub: 'VOW & RELIC SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'SACRED BULWARK', sub: 'PLATE & VANGUARD', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'SUNBLADE TEMPER',
+      wrath_2: 'CRUSADER CADENCE',
+      wrath_3: 'JUDGEMENT MASTERY',
+      astral_1: 'VALOR HARVESTER',
+      astral_2: 'SACRED VOW SURGE',
+      astral_3: 'CATHEDRAL SOVEREIGN',
+      aegis_1: 'BASTION PLATE',
+      aegis_2: 'VANGUARD STRIDE',
+      aegis_3: 'IMMORTAL TEMPLAR'
+    }
+  },
+  valkyrie: {
+    branches: {
+      wrath: { title: 'GUNGNIR TEMPEST', sub: 'LANCE & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'ASGARDIAN ASCENSION', sub: 'SKY-DRIVE & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'EINHERJAR WINGS', sub: 'AEGIS & FLIGHT', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'THUNDERBOLT THRUST',
+      wrath_2: 'STORMFLOW LANCE',
+      wrath_3: 'VALHALLA IMPALE',
+      astral_1: 'EINHERJAR HARVEST',
+      astral_2: 'BIFROST OVERDRIVE',
+      astral_3: 'RAGNAROK SOVEREIGN',
+      aegis_1: 'VALKYRIE MAIL',
+      aegis_2: 'SKYBORN GLIDE',
+      aegis_3: 'UNDYING SERAPHIM'
+    }
+  },
+  priestess: {
+    branches: {
+      wrath: { title: 'LUMINOUS CHORUS', sub: 'SMITE & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'SERAPHIC COVENANT', sub: 'GRACE & RELIC SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'HALO SANCTUARY', sub: 'WARD & WINGS', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'CELESTIAL RAY',
+      wrath_2: 'HYMN OF DEVOTION',
+      wrath_3: 'SANCTIFIED HALO',
+      astral_1: 'GRACE HARVESTER',
+      astral_2: 'RADIANT BENEDICTION',
+      astral_3: 'FINAL GRACE SOVEREIGN',
+      aegis_1: 'BLESSED VESTMENTS',
+      aegis_2: 'FEATHERED VAULT',
+      aegis_3: 'UNDYING SANCTUARY'
+    }
+  },
+  ronin: {
+    branches: {
+      wrath: { title: 'IAIDO BLADE-ART', sub: 'DRAW-CUT & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'SHOGUNATE REALM', sub: 'MOON-DRIVE & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'SAKURA FOOTWORK', sub: 'POISE & SHUNPO', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'CRIMSON NUKITSUKE',
+      wrath_2: 'TSUBA CADENCE',
+      wrath_3: 'KENSEI SLASH MASTERY',
+      astral_1: 'MOONLIGHT HARVEST',
+      astral_2: 'HIGANBANA OVERDRIVE',
+      astral_3: 'AMAKAKERU SOVEREIGN',
+      aegis_1: 'RONIN RESOLVE',
+      aegis_2: 'SHUNPO GALE',
+      aegis_3: 'UNDYING KENJUTSU'
+    }
+  },
+  chronomancer: {
+    branches: {
+      wrath: { title: 'PARADOX BLADES', sub: 'TWIN-CUT & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'EPOCH CONVERGENCE', sub: 'CHRONO-DRIVE & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'TEMPORAL AEGIS', sub: 'REWIND & PHASE', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'CLOCK-HAND VOLLEY',
+      wrath_2: 'PENDULUM CADENCE',
+      wrath_3: 'SCHISM MASTERY',
+      astral_1: 'EPOCH HARVESTER',
+      astral_2: 'TIME-STOP OVERCHARGE',
+      astral_3: 'ETERNAL ZERO SOVEREIGN',
+      aegis_1: 'HOURGLASS WARD',
+      aegis_2: 'PHASE-SLIP STRIDE',
+      aegis_3: 'TIMELESS REWIND'
+    }
+  },
+  archer: {
+    branches: {
+      wrath: { title: 'STARWOOD LONGBOW', sub: 'VOLLEY & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'VERDANT ECLIPSE', sub: 'GALE-DRIVE & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'SYLVAN WINDWALK', sub: 'WARD & AGILITY', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'EMERALD FLETCHING',
+      wrath_2: 'WINDSTRING FLOW',
+      wrath_3: 'PIERCING RAIN MASTERY',
+      astral_1: 'SYLVAN HARVESTER',
+      astral_2: 'STARFALL OVERCHARGE',
+      astral_3: 'WORLD-TREE SOVEREIGN',
+      aegis_1: 'THORNCLOAK VITALITY',
+      aegis_2: 'ZEPHYR TUMBLE',
+      aegis_3: 'UNDYING DRYAD'
+    }
+  },
+  reaper: {
+    branches: {
+      wrath: { title: 'ABYSSAL SCYTHE', sub: 'REAP & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'GRIM APOTHEOSIS', sub: 'SOUL-DRIVE & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'WRAITH SHROUD', sub: 'BLOODWARD & MIST', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'CRESCENT REAPING',
+      wrath_2: 'NECROTIC HARVEST',
+      wrath_3: 'GUILLOTINE MASTERY',
+      astral_1: 'PHANTOM COLLECTOR',
+      astral_2: 'DEATHBELL OVERCHARGE',
+      astral_3: 'OBLIVION SOVEREIGN',
+      aegis_1: 'OSSUARY CARAPACE',
+      aegis_2: 'SHADOW-MIST STEP',
+      aegis_3: 'UNDYING REVENANT'
+    }
+  },
+  titan: {
+    branches: {
+      wrath: { title: 'THUNDERBREAKER', sub: 'COLOSSUS & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'TECTONIC WRATH', sub: 'QUAKE-DRIVE & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'GRANITE FORTRESS', sub: 'IRONHIDE & CHARGE', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'EARTHSHAKER MAUL',
+      wrath_2: 'FULGURITE SURGE',
+      wrath_3: 'SEISMIC SLAM MASTERY',
+      astral_1: 'STORM-CORE HARVEST',
+      astral_2: 'CATACLYSMIC ANVIL',
+      astral_3: 'WORLD-BREAKER SOVEREIGN',
+      aegis_1: 'BEDROCK VITALITY',
+      aegis_2: 'THUNDER-STAMPEDE',
+      aegis_3: 'UNBREAKABLE TITAN'
+    }
+  },
+  icemage: {
+    branches: {
+      wrath: { title: 'GLACIAL SCEPTER', sub: 'FROST & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'BOREALIS SANCTUM', sub: 'CRYO-DRIVE & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'CRYSTAL AEGIS', sub: 'MIRROR-ICE & BLINK', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'DIAMOND-DUST LANCE',
+      wrath_2: 'PERMAFROST FLOW',
+      wrath_3: 'HOARFROST MASTERY',
+      astral_1: 'AURORA HARVESTER',
+      astral_2: 'BLIZZARD OVERCHARGE',
+      astral_3: 'ABSOLUTE ZERO SOVEREIGN',
+      aegis_1: 'CRYSTALLINE WARD',
+      aegis_2: 'GLACIER SLIDE',
+      aegis_3: 'UNDYING WINTER'
+    }
+  },
+  android: {
+    branches: {
+      wrath: { title: 'HYPER-PLASMA CORE', sub: 'RAIL-BLADE & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'OMEGA PROTOCOL', sub: 'OVERCLOCK & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'AEGIS CHASSIS', sub: 'NANOSHIELD & THRUST', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'PHOTON ACCELERATOR',
+      wrath_2: 'CYCLOTRON FEEDBACK',
+      wrath_3: 'RAIL-CANNON MASTERY',
+      astral_1: 'REACTOR HARVESTER',
+      astral_2: 'OVERCLOCK SURGE',
+      astral_3: 'ORBITAL LASER SOVEREIGN',
+      aegis_1: 'TITANIUM PLATING',
+      aegis_2: 'VECTOR THRUSTERS',
+      aegis_3: 'SELF-REPAIR MATRIX'
+    }
+  }
+};
+
+export function getHeroSkillTreeTheme(heroId = 'mage') {
+  return HERO_SKILL_TREE_THEMES[heroId] || HERO_SKILL_TREE_THEMES.mage;
+}
 
 export class AdventureProgression {
   constructor(adventure) {

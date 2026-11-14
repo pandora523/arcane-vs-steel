@@ -28,35 +28,63 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps99';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps99';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps99';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps99';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps99';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps99';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps99';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps99';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps99';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps99';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps99';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps99';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps99';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps99';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps99';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps99';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps99';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps100';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps100';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps100';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps100';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps100';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps100';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps100';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps100';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps100';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps100';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps100';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps100';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps100';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps100';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps100';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps100';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps100';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps99';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps99';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps99';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps99';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps100';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps100';
+import {
+  ADVENTURE_SKILL_TREE,
+  HERO_SKILL_TREE_THEMES,
+  getHeroSkillTreeTheme
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps100';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps100';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps100';
 
 function createMockCtx(trackForbidden = null) {
-  return {
-    save() {},
-    restore() {},
+  const stateStack = [];
+  const ctx = {
+    _stateStack: stateStack,
+    save() {
+      stateStack.push({
+        globalAlpha: ctx.globalAlpha,
+        globalCompositeOperation: ctx.globalCompositeOperation,
+        imageSmoothingEnabled: ctx.imageSmoothingEnabled,
+        fillStyle: ctx.fillStyle,
+        strokeStyle: ctx.strokeStyle,
+        lineWidth: ctx.lineWidth,
+        lineDashOffset: ctx.lineDashOffset
+      });
+    },
+    restore() {
+      const s = stateStack.pop();
+      if (s) {
+        ctx.globalAlpha = s.globalAlpha;
+        ctx.globalCompositeOperation = s.globalCompositeOperation;
+        ctx.imageSmoothingEnabled = s.imageSmoothingEnabled;
+        ctx.fillStyle = s.fillStyle;
+        ctx.strokeStyle = s.strokeStyle;
+        ctx.lineWidth = s.lineWidth;
+        ctx.lineDashOffset = s.lineDashOffset;
+      }
+    },
     translate() {},
     scale() {},
     rotate() {
@@ -106,6 +134,7 @@ function createMockCtx(trackForbidden = null) {
     lineWidth: 1,
     lineDashOffset: 0
   };
+  return ctx;
 }
 
 function createMockGame() {
@@ -612,7 +641,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps99');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps100');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -915,6 +944,16 @@ for (const [name, Cls] of CLASSES) {
         if (curStageOv !== null && curStageOv !== 'shogunate') {
           throw new Error(`[${spec.label}] Expected 'shogunate' stage override, got ${curStageOv}`);
         }
+      } else if (spec.Cls === IceMage) {
+        const curStageOv = game.renderer.permanentStageOverride || game.renderer.trueUltStageOverride;
+        if (hero.state === 'TRUE_ULTIMATE' && hero.stateTimer < 3.27 && curStageOv !== null) {
+          throw new Error(
+            `[${spec.label}] Premature glacial stage override before Sovereign Scepter-Tap (t=${hero.stateTimer.toFixed(2)}): ${curStageOv}`
+          );
+        }
+        if (curStageOv !== null && curStageOv !== 'glacial') {
+          throw new Error(`[${spec.label}] Expected 'glacial' stage override, got ${curStageOv}`);
+        }
       } else if (game.renderer.trueUltStageOverride !== null || game.renderer.permanentStageOverride !== null) {
         throw new Error(`[${spec.label}] TRUE_ULTIMATE illegally altered the stage background!`);
       }
@@ -930,6 +969,11 @@ for (const [name, Cls] of CLASSES) {
     if (spec.Cls === Ronin && game.renderer.permanentStageOverride !== 'shogunate') {
       throw new Error(
         `[${spec.label}] Expected TRUE_ULTIMATE vs Warrior to teleport stage to 'shogunate', got '${game.renderer.permanentStageOverride}'`
+      );
+    }
+    if (spec.Cls === IceMage && game.renderer.permanentStageOverride !== 'glacial') {
+      throw new Error(
+        `[${spec.label}] Expected TRUE_ULTIMATE vs Warrior to freeze stage into 'glacial', got '${game.renderer.permanentStageOverride}'`
       );
     }
     if (ultDamage < 200) {
@@ -1019,7 +1063,7 @@ for (const [name, Cls] of CLASSES) {
     malakor.x = 420;
     foe.x = c === 0 ? 640 : 540;
     malakor.setState('AUTO_ATTACK');
-    for (let i = 0; i < 28; i++) {
+    for (let i = 0; i < 28 && malakor.state === 'AUTO_ATTACK'; i++) {
       malakor.update(1 / 30, foe, game);
       if (malakor.scytheWave) sawWave = true;
       if (malakor.thanatosStand) sawStandInAuto = true;
@@ -5095,6 +5139,481 @@ for (const [name, Cls] of CLASSES) {
     `[PASS] Suite 23: Chronos Surgical 10-Row Rework (SHA-256 identical Rows 0/1/5/6/9, 0/300 & 0/240 border clips), Razor VFX & Close-Quarters 4-Slice Twin Clock-Blade Melee verified!`
   );
 }
+
+// ============================================================================
+// 24. BATCH ?v=30fps100: NON-PROTECTED HERO VFX DECLUTTER (24A), LYRA GLACIAL &
+//     FROZEN SHOGUNATE 3-WAY STAGE SYNERGY (24B), & ADVENTURE WARDENS + 11-HERO
+//     HD-2D SKILL TREE MODAL (24C)
+// ============================================================================
+{
+  // 24A. Verify decluttered combat & ultimate overlays across all 5 non-protected champions (0 char ctx.rotate, no leaked composite)
+  const declutterHeroes = [Android, Reaper, IceMage, Archer, Titan];
+  for (const Cls of declutterHeroes) {
+    const dGame = createMockGame();
+    dGame.renderer.stageId = 'cathedral';
+    const hero = new Cls(380, 520, 1);
+    const dummy = new Warrior(620, 520, -1);
+    hero.game = dGame;
+    dummy.game = dGame;
+    dGame.fighters = [hero, dummy];
+    dGame.getEnemiesOf = (f) => dGame.fighters.filter((o) => o !== f);
+
+    let charRot = 0;
+    const dCtx = createMockCtx({ rotateCalls: 0, quadCalls: 0, syValues: new Set() });
+    for (const st of ['AUTO_ATTACK', 'SKILL', 'ULTIMATE', 'TRUE_ULTIMATE']) {
+      hero.setState(st);
+      for (let f = 0; f < 18; f++) {
+        hero.update(1 / 30, dummy, dGame);
+        const prevR = dCtx.rotate;
+        dCtx.rotate = () => {
+          charRot++;
+        };
+        hero.draw(dCtx, false, dGame.renderer);
+        dCtx.rotate = prevR;
+        hero.drawForegroundOverlay(dCtx, dGame.renderer);
+        hero.drawUltimateForeground(dCtx, dGame.renderer);
+        if (dCtx.globalCompositeOperation !== 'source-over' || dCtx._stateStack.length !== 0) {
+          throw new Error(
+            `[Suite 24A] ${hero.name} (${st}) leaked globalCompositeOperation='${dCtx.globalCompositeOperation}' or unbalanced save/restore (depth=${dCtx._stateStack.length})!`
+          );
+        }
+      }
+    }
+    if (charRot !== 0) {
+      throw new Error(`[Suite 24A] Expected 0 character ctx.rotate on ${hero.name}, got ${charRot}`);
+    }
+  }
+
+  // 24B. Verify arena_glacial.png & arena_shogunate_glacial.png 640x360 PNG headers, PixelForge registration & 3-way bidirectional stage synergy
+  for (const fp of [
+    '/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/arena_glacial.png',
+    '/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/arena_shogunate_glacial.png'
+  ]) {
+    if (!fs.existsSync(fp)) {
+      throw new Error(`[Suite 24B] Missing Glacial stage PNG: ${fp}`);
+    }
+    const buf = fs.readFileSync(fp);
+    if (buf[0] !== 0x89 || buf[1] !== 0x50 || buf[2] !== 0x4e || buf[3] !== 0x47) {
+      throw new Error(`[Suite 24B] Invalid PNG header in ${fp}`);
+    }
+    const w = buf.readUInt32BE(16);
+    const h = buf.readUInt32BE(20);
+    if (w !== 640 || h !== 360) {
+      throw new Error(`[Suite 24B] Expected 640x360 PNG for ${fp}, got ${w}x${h}`);
+    }
+  }
+  const pfAssets24 = PixelForge.initAssets();
+  if (!pfAssets24.arenaGlacial || !pfAssets24.arenaShogunateGlacial) {
+    throw new Error(
+      '[Suite 24B] PixelForge.initAssets() missing arenaGlacial or arenaShogunateGlacial!'
+    );
+  }
+  pfAssets24.arenaGlacial.naturalWidth = 640;
+  pfAssets24.arenaGlacial.naturalHeight = 360;
+  pfAssets24.arenaShogunateGlacial.naturalWidth = 640;
+  pfAssets24.arenaShogunateGlacial.naturalHeight = 360;
+
+  // Test 3-way bidirectional stage fusion & thermal clash in Renderer + Ronin Katana Slice over 'glacial'
+  const gGame = createMockGame();
+  gGame.renderer.stageId = 'cathedral';
+  const gTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
+  const gTrackCtx = createMockCtx(gTrack);
+  gGame.renderer.ctx = gTrackCtx;
+
+  const lyra = new IceMage(360, 520, 1);
+  const kaze = new Ronin(820, 520, -1);
+  lyra.game = gGame;
+  kaze.game = gGame;
+  gGame.fighters = [lyra, kaze];
+  gGame.getEnemiesOf = (f) => gGame.fighters.filter((o) => o !== f);
+
+  const emptyVfx24 = new VFXManager();
+  // Order 1: Lyra casts TRUE_ULTIMATE -> 'glacial' at t >= 3.28s -> Kaze-Maru slices stage -> 'shogunate_glacial'!
+  lyra.setState('TRUE_ULTIMATE');
+  for (let step = 0; step < 190 && lyra.state === 'TRUE_ULTIMATE'; step++) {
+    lyra.update(1 / 30, kaze, gGame);
+    if (
+      lyra.state === 'TRUE_ULTIMATE' &&
+      lyra.stateTimer < 3.27 &&
+      gGame.renderer.permanentStageOverride !== null
+    ) {
+      throw new Error(
+        `[Suite 24B] Lyra triggered glacial stage before Sovereign Scepter-Tap (t=${lyra.stateTimer.toFixed(2)})`
+      );
+    }
+    gGame.renderer.update(1 / 30, [lyra, kaze]);
+    gGame.renderer.render([lyra, kaze], emptyVfx24);
+  }
+  if (gGame.renderer.permanentStageOverride !== 'glacial') {
+    throw new Error(
+      `[Suite 24B] Expected Lyra TRUE_ULTIMATE to transform stage into 'glacial', got '${gGame.renderer.permanentStageOverride}'`
+    );
+  }
+
+  kaze.setState('TRUE_ULTIMATE');
+  for (let step = 0; step < 190 && kaze.state === 'TRUE_ULTIMATE'; step++) {
+    kaze.update(1 / 30, lyra, gGame);
+    gGame.renderer.update(1 / 30, [lyra, kaze]);
+    gGame.renderer.render([lyra, kaze], emptyVfx24);
+  }
+  if (
+    gGame.renderer.permanentStageOverride !== 'shogunate_glacial' ||
+    gGame.renderer.stageSliceToId !== 'shogunate_glacial'
+  ) {
+    throw new Error(
+      `[Suite 24B] Expected Kaze-Maru TRUE_ULTIMATE over 'glacial' to slice into 'shogunate_glacial', got permanent=${gGame.renderer.permanentStageOverride}, sliceTo=${gGame.renderer.stageSliceToId}`
+    );
+  }
+
+  // Order 2 & Thermal Clash checks:
+  // - 'shogunate' + 'glacial' -> 'shogunate_glacial'
+  // - 'shogunate_glacial' + 'inferno' -> 'shogunate_inferno'
+  // - 'shogunate_inferno' + 'glacial' -> 'shogunate_glacial'
+  // - 'inferno' + 'glacial' -> 'glacial' & 'glacial' + 'inferno' -> 'inferno'
+  gGame.renderer.permanentStageOverride = 'shogunate';
+  gGame.renderer.setStageTransformation('glacial', 1.0, true, 0);
+  if (gGame.renderer.permanentStageOverride !== 'shogunate_glacial') {
+    throw new Error(
+      `[Suite 24B] Expected 'glacial' over 'shogunate' to fuse into 'shogunate_glacial', got ${gGame.renderer.permanentStageOverride}`
+    );
+  }
+  gGame.renderer.setStageTransformation('inferno', 1.0, true, 0);
+  if (gGame.renderer.permanentStageOverride !== 'shogunate_inferno') {
+    throw new Error(
+      `[Suite 24B] Expected 'inferno' over 'shogunate_glacial' to scorch into 'shogunate_inferno', got ${gGame.renderer.permanentStageOverride}`
+    );
+  }
+  gGame.renderer.setStageTransformation('glacial', 1.0, true, 0);
+  if (gGame.renderer.permanentStageOverride !== 'shogunate_glacial') {
+    throw new Error(
+      `[Suite 24B] Expected 'glacial' over 'shogunate_inferno' to freeze back into 'shogunate_glacial', got ${gGame.renderer.permanentStageOverride}`
+    );
+  }
+  gGame.renderer.permanentStageOverride = 'inferno';
+  gGame.renderer.setStageTransformation('glacial', 1.0, true, 0);
+  if (gGame.renderer.permanentStageOverride !== 'glacial') {
+    throw new Error(
+      `[Suite 24B] Expected thermal clash 'glacial' over 'inferno' -> 'glacial', got ${gGame.renderer.permanentStageOverride}`
+    );
+  }
+  gGame.renderer.setStageTransformation('inferno', 1.0, true, 0);
+  if (gGame.renderer.permanentStageOverride !== 'inferno') {
+    throw new Error(
+      `[Suite 24B] Expected thermal clash 'inferno' over 'glacial' -> 'inferno', got ${gGame.renderer.permanentStageOverride}`
+    );
+  }
+  if (gTrack.rotateCalls !== 0 || gTrack.quadCalls !== 0) {
+    throw new Error(
+      `[Suite 24B] Forbidden canvas calls in Glacial / Frozen Shogunate stage render: rotate=${gTrack.rotateCalls}, quad=${gTrack.quadCalls}`
+    );
+  }
+
+  // Verify AdventureMapRenderer under 'glacial' & 'shogunate_glacial' (0 ctx.rotate, 0 arena_* draws)
+  const advGTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
+  const advGCtx = createMockCtx(advGTrack);
+  for (const ov of ['glacial', 'shogunate_glacial']) {
+    const mockAdvRen = {
+      width: 1200,
+      height: 600,
+      zoom: 0.9,
+      camX: 3400,
+      camY: 466,
+      time: 2.1,
+      permanentStageOverride: ov
+    };
+    AdventureMapRenderer.render(advGCtx, mockAdvRen, ADVENTURE_WORLD_WIDTH);
+    AdventureMapRenderer.renderForegroundDepth(advGCtx, mockAdvRen);
+  }
+  if (
+    advGTrack.rotateCalls !== 0 ||
+    advGTrack.quadCalls !== 0 ||
+    advGCtx.globalCompositeOperation !== 'source-over'
+  ) {
+    throw new Error(
+      `[Suite 24B] AdventureMapRenderer glacial pass failed: rotate=${advGTrack.rotateCalls}, quad=${advGTrack.quadCalls}, comp=${advGCtx.globalCompositeOperation}`
+    );
+  }
+
+  // 24C. Verify Adventure Wave 4 (`ELDER BRIAR-KING`) & Wave 6 (`ARCH-LICH MORVATH`) Mini-Boss Wardens + All-11-Hero HD-2D Skill Tree Modal
+  {
+    const stTrack = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
+    const makeStEl = (tag = 'div') => {
+      const children = [];
+      const listeners = {};
+      const classes = new Set();
+      return {
+        tag,
+        width: 64,
+        height: 64,
+        textContent: '',
+        disabled: false,
+        className: '',
+        children,
+        style: { width: '', transform: '', setProperty() {}, getProperty() { return ''; } },
+        classList: {
+          add(...cs) { cs.forEach((c) => classes.add(c)); },
+          remove(...cs) { cs.forEach((c) => classes.delete(c)); },
+          toggle(c, f) {
+            const on = f === undefined ? !classes.has(c) : Boolean(f);
+            if (on) classes.add(c);
+            else classes.delete(c);
+            return on;
+          },
+          contains(c) { return classes.has(c); }
+        },
+        set innerHTML(_v) {
+          children.length = 0;
+        },
+        appendChild(ch) {
+          children.push(ch);
+          return ch;
+        },
+        addEventListener(ev, fn) {
+          listeners[ev] = fn;
+        },
+        click() {
+          if (!this.disabled && typeof listeners.click === 'function') listeners.click();
+        },
+        setAttribute() {},
+        getContext() {
+          return createMockCtx(stTrack);
+        }
+      };
+    };
+
+    const stDom = new Map();
+    for (const id of [
+      'app',
+      'adventure-controls',
+      'adv-skill-tree-modal',
+      'adv-st-grid',
+      'adv-st-title',
+      'adv-st-level-badge',
+      'adv-st-xp-fill',
+      'adv-st-xp-text',
+      'adv-st-sp-count',
+      'adv-st-stat-hp',
+      'adv-st-stat-atk',
+      'adv-st-stat-spirit',
+      'adv-st-stat-ult',
+      'adv-st-stat-ward'
+    ]) {
+      stDom.set(id, makeStEl(id));
+    }
+
+    const prevGetById = globalThis.document.getElementById;
+    const prevCreateEl = globalThis.document.createElement;
+    globalThis.document.getElementById = (id) => stDom.get(id) || null;
+    globalThis.document.createElement = (tag) => makeStEl(tag);
+
+    try {
+      const wGame = createMockGame();
+      wGame.gameMode = 'adventure';
+      wGame.isAdventureMode = () => true;
+      wGame.hudEls = {
+        left: {},
+        right: {
+          name: { textContent: '' },
+          skillText: { textContent: '' },
+          partnerWing: { classList: { add() {} } }
+        },
+        crestVs: {},
+        modeBadge: {},
+        stageBadge: { textContent: '' }
+      };
+      const wAdv = new AdventureManager(wGame);
+      wGame.adventure = wAdv;
+      wGame.onFighterDeath = (df) => {
+        if (df.isMonster) wAdv.onMonsterDeath(df);
+      };
+
+      const heroLyra = new IceMage(240, 561, 1);
+      heroLyra.game = wGame;
+      wGame.leftFighter = heroLyra;
+      wAdv.startCampaign(heroLyra);
+
+      // Verify Wave 4 / 8 (`zoneIdx=1, subWave=2`) spawns Realm Mini-Boss Warden `ELDER BRIAR-KING`
+      wGame.fighters = [heroLyra];
+      wAdv.pickups.length = 0;
+      wAdv.spawnZoneEncounter(1, 2);
+      const briarKing = wAdv.getLivingMonsters().find((m) => m.isMiniBoss);
+      if (
+        !briarKing ||
+        briarKing.name !== 'ELDER BRIAR-KING' ||
+        briarKing.maxHp !== 1720 ||
+        !wGame.hudEls.right.skillText.textContent.includes('WARDEN')
+      ) {
+        throw new Error(
+          `[Suite 24C] Expected Wave 4 ELDER BRIAR-KING Warden (1720 HP, WARDEN HUD), got ${briarKing?.name} (${briarKing?.maxHp}), hud='${wGame.hudEls.right.skillText.textContent}'`
+        );
+      }
+      briarKing.portalSpawnTimer = 0;
+      briarKing.setState('SKILL');
+      let maxBriarRings = 0;
+      for (let f = 0; f < 15; f++) {
+        briarKing.update(1 / 30, heroLyra, wGame);
+        maxBriarRings = Math.max(maxBriarRings, briarKing.telegraphRings.length);
+        briarKing.draw(createMockCtx(stTrack), false, wGame.renderer);
+      }
+      if (maxBriarRings < 3 || stTrack.rotateCalls !== 0) {
+        throw new Error(
+          `[Suite 24C] Expected ELDER BRIAR-KING 3-Lane Briar-Root Eruption (>=3 telegraphs, 0 rotate), got rings=${maxBriarRings}, rotate=${stTrack.rotateCalls}`
+        );
+      }
+      const xpBeforeW4 = wAdv.progression.xp + (wAdv.progression.level - 1) * 115;
+      briarKing.takeDamage(99999, heroLyra, true, 120, 0);
+      if (
+        !wAdv.pickups.some((p) => p.type === 'relic') ||
+        !wAdv.pickups.some((p) => p.type === 'hp') ||
+        !wAdv.pickups.some((p) => p.type === 'ember') ||
+        wAdv.progression.level < 2 && wAdv.progression.xp <= xpBeforeW4
+      ) {
+        throw new Error(
+          `[Suite 24C] Expected ELDER BRIAR-KING death to grant XP and drop relic+hp+ember, got pickups=${wAdv.pickups.map((p) => p.type).join(',')}`
+        );
+      }
+
+      // Verify Wave 6 / 8 (`zoneIdx=2, subWave=2`) spawns Realm Mini-Boss Warden `ARCH-LICH MORVATH`
+      wGame.fighters = [heroLyra];
+      wAdv.pickups.length = 0;
+      wGame.vfx.projectiles.length = 0;
+      wAdv.spawnZoneEncounter(2, 2);
+      const morvath = wAdv.getLivingMonsters().find((m) => m.isMiniBoss);
+      if (!morvath || morvath.name !== 'ARCH-LICH MORVATH' || morvath.maxHp !== 1520) {
+        throw new Error(
+          `[Suite 24C] Expected Wave 6 ARCH-LICH MORVATH Warden (1520 HP), got ${morvath?.name} (${morvath?.maxHp})`
+        );
+      }
+      morvath.portalSpawnTimer = 0;
+      morvath.setState('SKILL');
+      let maxMorvathRings = 0;
+      for (let f = 0; f < 12; f++) {
+        morvath.update(1 / 30, heroLyra, wGame);
+        maxMorvathRings = Math.max(maxMorvathRings, morvath.telegraphRings.length);
+        morvath.draw(createMockCtx(stTrack), false, wGame.renderer);
+      }
+      if (
+        maxMorvathRings < 3 ||
+        wGame.vfx.projectiles.length < 2 ||
+        stTrack.rotateCalls !== 0
+      ) {
+        throw new Error(
+          `[Suite 24C] Expected ARCH-LICH MORVATH Tri-Sigil Ossuary Cataclysm (>=3 telegraphs + >=2 bolts, 0 rotate), got rings=${maxMorvathRings}, bolts=${wGame.vfx.projectiles.length}, rotate=${stTrack.rotateCalls}`
+        );
+      }
+      morvath.takeDamage(99999, heroLyra, true, 120, 0);
+      if (
+        !wAdv.pickups.some((p) => p.type === 'relic') ||
+        !wAdv.pickups.some((p) => p.type === 'hp') ||
+        !wAdv.pickups.some((p) => p.type === 'ember')
+      ) {
+        throw new Error(
+          `[Suite 24C] Expected ARCH-LICH MORVATH death to drop relic+hp+ember, got ${wAdv.pickups.map((p) => p.type).join(',')}`
+        );
+      }
+
+      // Verify syncStageBadge reflects 'glacial' and 'shogunate_glacial'
+      wGame.renderer.permanentStageOverride = 'glacial';
+      wAdv.syncStageBadge();
+      if (!wGame.hudEls.stageBadge.textContent.includes('PERMAFROST AURORA SANCTUM')) {
+        throw new Error(`[Suite 24C] Expected glacial stage badge, got '${wGame.hudEls.stageBadge.textContent}'`);
+      }
+      wGame.renderer.permanentStageOverride = 'shogunate_glacial';
+      wAdv.syncStageBadge();
+      if (!wGame.hudEls.stageBadge.textContent.includes('FROZEN SAKURA SHOGUNATE')) {
+        throw new Error(`[Suite 24C] Expected shogunate_glacial stage badge, got '${wGame.hudEls.stageBadge.textContent}'`);
+      }
+
+      // Verify All-11-Hero Skill Tree Themes & <canvas> HD-2D Icons (Ignis Sol preserved; 10 others bespoke; 0 raw Unicode emojis!)
+      const rawEmojiRe = /\p{Extended_Pictographic}/u;
+      const progSrc = fs.readFileSync(
+        '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js',
+        'utf8'
+      );
+      if (rawEmojiRe.test(progSrc)) {
+        throw new Error('[Suite 24C] AdventureProgression.js still contains raw Unicode emoji glyphs!');
+      }
+
+      const all11Classes = [
+        [FireMage, 'mage'],
+        [Warrior, 'warrior'],
+        [Valkyrie, 'valkyrie'],
+        [Priestess, 'priestess'],
+        [Ronin, 'ronin'],
+        [Chronomancer, 'chronomancer'],
+        [Archer, 'archer'],
+        [Reaper, 'reaper'],
+        [Titan, 'titan'],
+        [IceMage, 'icemage'],
+        [Android, 'android']
+      ];
+      const seenWrathTitles = new Set();
+      for (const [HeroCls, hKey] of all11Classes) {
+        const hInst = new HeroCls(240, 561, 1);
+        hInst.game = wGame;
+        wGame.leftFighter = hInst;
+        wAdv.renderSkillTreeModal();
+        const gridEl = stDom.get('adv-st-grid');
+        if (gridEl.children.length !== 3) {
+          throw new Error(`[Suite 24C] Expected 3 skill branches for ${hKey}, got ${gridEl.children.length}`);
+        }
+        const theme = getHeroSkillTreeTheme(hKey);
+        if (!HERO_SKILL_TREE_THEMES[hKey] || !theme) {
+          throw new Error(`[Suite 24C] Missing HERO_SKILL_TREE_THEMES entry for ${hKey}`);
+        }
+        if (hKey === 'mage') {
+          if (
+            theme.branches.wrath.title !== 'SOLAR WRATH' ||
+            theme.branches.astral.title !== 'ASTRAL AWAKENING' ||
+            theme.branches.aegis.title !== 'PHOENIX AEGIS' ||
+            theme.nodes.wrath_1 !== 'IGNITED VOLLEY'
+          ) {
+            throw new Error('[Suite 24C] Ignis Sol (`mage`) Skill Tree nomenclature must stay 100% intact!');
+          }
+        } else if (theme.branches.wrath.title === 'SOLAR WRATH') {
+          throw new Error(`[Suite 24C] Non-Sol hero ${hKey} still displays generic SOLAR WRATH branch!`);
+        }
+        seenWrathTitles.add(theme.branches.wrath.title);
+
+        // Verify branch header & node cards render <canvas> icons and preserve card.children[2] === button!
+        for (let bi = 0; bi < 3; bi++) {
+          const col = gridEl.children[bi];
+          const hdrWrap = col.children[0].children[0];
+          if (hdrWrap.children[0]?.tag !== 'canvas') {
+            throw new Error(`[Suite 24C] Expected branch ${bi} header <canvas> icon for ${hKey}!`);
+          }
+          for (let ni = 1; ni <= 3; ni++) {
+            const card = col.children[ni];
+            const nodeTitleWrap = card.children[0].children[0];
+            if (nodeTitleWrap.children[0]?.tag !== 'canvas' || card.children[2]?.tag !== 'button') {
+              throw new Error(
+                `[Suite 24C] Broken node card DOM structure on ${hKey} (${bi},${ni}): icon=${nodeTitleWrap.children[0]?.tag}, btn=${card.children[2]?.tag}`
+              );
+            }
+            if (rawEmojiRe.test(nodeTitleWrap.children[1]?.textContent || '')) {
+              throw new Error(`[Suite 24C] Raw Unicode emoji leaked in ${hKey} node title!`);
+            }
+          }
+        }
+      }
+      if (seenWrathTitles.size !== 11 || stTrack.rotateCalls !== 0) {
+        throw new Error(
+          `[Suite 24C] Expected 11 distinct champion Branch-I themes and 0 ctx.rotate, got distinct=${seenWrathTitles.size}, rotate=${stTrack.rotateCalls}`
+        );
+      }
+
+      wAdv.stopCampaign();
+    } finally {
+      globalThis.document.getElementById = prevGetById;
+      globalThis.document.createElement = prevCreateEl;
+    }
+  }
+
+  console.log(
+    '[PASS] Suite 24: Non-Protected Hero VFX Declutter (24A), Lyra Glacial & Frozen Sakura Shogunate 3-Way Stage Synergy (24B), & Adventure Wardens + All-11-Hero HD-2D Skill Tree Modal (24C) verified!'
+  );
+}
+
 
 
 

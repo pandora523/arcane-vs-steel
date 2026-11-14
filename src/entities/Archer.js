@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps99';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps99';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps99';
+import { Fighter } from './Fighter.js?v=30fps100';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps100';
 import {
   SYLVAN_EFFECT_REGISTRY,
   SYLVAN_EMERALD_PALETTE,
   SYLVAN_STARLIGHT_PALETTE
-} from '../engine/shaders/sylvanShaders.js?v=30fps99';
+} from '../engine/shaders/sylvanShaders.js?v=30fps100';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -86,7 +86,7 @@ export class Archer extends Fighter {
     if (typeof Image !== 'undefined') {
       const archerAssets = PixelForge.initAssets()?.archer;
       if (archerAssets?.vfx?.src && !archerAssets.vfx.src.includes('v=30fps87')) {
-        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps99';
+        archerAssets.vfx.src = 'assets/sprites/archer_vfx.png?v=30fps100';
       }
     }
 
@@ -1759,7 +1759,7 @@ export class Archer extends Fighter {
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.94));
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.20));
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.13));
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
       ctx.restore();
     }
@@ -1775,7 +1775,7 @@ export class Archer extends Fighter {
     // 1. Crisp Emerald-Starlight Zephyr Afterimages (`JUMP` Vault, `DASH` Gale Stride, & 180° Somersaults)
     if (this.afterimages.length > 0 && sprites?.sheet?.complete) {
       for (const img of this.afterimages) {
-        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.28);
+        const alpha = Math.max(0, (1 - img.age / img.maxLife) * 0.18);
         ctx.save();
         ctx.imageSmoothingEnabled = false;
         ctx.translate(Math.round(img.x / 4) * 4, Math.round(img.y / 4) * 4);
@@ -1846,7 +1846,7 @@ export class Archer extends Fighter {
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.96));
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.20));
+      ctx.globalAlpha = Math.max(0, Math.min(1, alpha * 0.13));
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -v.w * 0.5, -v.h * 0.5, v.w, v.h);
       ctx.restore();
     }
@@ -1863,19 +1863,19 @@ export class Archer extends Fighter {
 
       // Cross-stage emerald-gold Sagittarius lock sightline connecting far-edge Greatbow to the rooted enemy!
       ctx.save();
-      const sightAlpha = Math.min(0.82, 0.25 + chargeU * 0.65);
+      const sightAlpha = Math.min(0.68, 0.20 + chargeU * 0.48);
       ctx.globalCompositeOperation = 'lighter';
       ctx.strokeStyle = '#34d399';
-      ctx.lineWidth = 3;
-      ctx.globalAlpha = sightAlpha * 0.45;
+      ctx.lineWidth = 2;
+      ctx.globalAlpha = sightAlpha * 0.36;
       ctx.beginPath();
       ctx.moveTo(bowX + this.facing * 42, bowY);
       ctx.lineTo(this._trueUltTargetX, this.groundY - 96);
       ctx.stroke();
 
       ctx.strokeStyle = '#fef9c3';
-      ctx.lineWidth = 1.5;
-      ctx.globalAlpha = sightAlpha * 0.85;
+      ctx.lineWidth = 1;
+      ctx.globalAlpha = sightAlpha * 0.72;
       ctx.beginPath();
       ctx.moveTo(bowX + this.facing * 42, bowY);
       ctx.lineTo(this._trueUltTargetX, this.groundY - 96);
@@ -1888,7 +1888,7 @@ export class Archer extends Fighter {
       ctx.globalAlpha = 0.96;
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -140, -140, 280, 280);
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = 0.22;
+      ctx.globalAlpha = 0.14;
       ctx.drawImage(vfxSheet, sx, sy, 208, 208, -140, -140, 280, 280);
       ctx.restore();
     }
@@ -1923,12 +1923,12 @@ export class Archer extends Fighter {
       ctx.drawImage(vfxSheet, sx, 6 * 208, 208, 208, -140, -140, 280, 280);
 
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.max(0, Math.min(1, env * 0.22));
+      ctx.globalAlpha = Math.max(0, Math.min(1, env * 0.15));
       for (let i = 0; i < segCount; i++) {
         const segX = 24 + i * coreSliceW;
-        ctx.drawImage(vfxSheet, coreSliceX, sy, coreSliceW, 208, segX, -120, coreSliceW, 240);
+        ctx.drawImage(vfxSheet, coreSliceX, sy, coreSliceW, 208, segX, -112, coreSliceW, 224);
       }
-      ctx.drawImage(vfxSheet, tipSliceX, sy, tipSliceW, 208, 24 + segCount * coreSliceW, -120, tipSliceW, 240);
+      ctx.drawImage(vfxSheet, tipSliceX, sy, tipSliceW, 208, 24 + segCount * coreSliceW, -112, tipSliceW, 224);
       ctx.drawImage(vfxSheet, sx, 6 * 208, 208, 208, -140, -140, 280, 280);
 
       ctx.restore();
