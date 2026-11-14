@@ -1,5 +1,5 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
-import { Adventure3DObjects } from './Adventure3DObjects.js?v=30fps105';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps106';
+import { Adventure3DObjects } from './Adventure3DObjects.js?v=30fps106';
 
 const CTX_GRAD_CACHE = new WeakMap();
 

@@ -28,36 +28,36 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps105';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps105';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps105';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps105';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps105';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps105';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps105';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps105';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps105';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps105';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps105';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps105';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps105';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps105';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps105';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps105';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps105';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps106';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps106';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps106';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps106';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps106';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps106';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps106';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps106';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps106';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps106';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps106';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps106';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps106';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps106';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps106';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps106';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps106';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps105';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps105';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps106';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps106';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps105';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps105';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps105';
-import { Adventure3DObjects } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/Adventure3DObjects.js?v=30fps105';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps106';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps106';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps106';
+import { Adventure3DObjects } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/Adventure3DObjects.js?v=30fps106';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -642,7 +642,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps105');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps106');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -6885,19 +6885,66 @@ for (const [name, Cls] of CLASSES) {
     }
 
     const requiredNewCells = [
-      '0,2', '1,2', '2,2', '3,2', // Beating Abyssal Great-Wings
-      '4,2', '5,2',               // Articulated Bicep + Forearm Gauntlet
-      '6,2', '7,2',               // Multi-frame Hellfire Torrent
-      '0,3', '1,3',               // Multi-frame 3-Talon Slash Wave
+      '0,2', '1,2', '2,2', '3,2', // Root-locked Abyssal Great-Wings
+      '4,2', '5,2',               // Horizontal Rune Siege Vambrace + Abyssal Hell-Rift Portal Maw
+      '6,2', '7,2',               // Multi-frame Cohesive Hellfire Torrent
+      '0,3', '1,3',               // Multi-frame Cohesive 3-Talon Slash Wave
       '2,3', '3,3',               // Erupting Obsidian Magma Spires
-      '4,3', '5,3',               // Ballistic 3D Magma Boulders
-      '6,3',                      // Phase II/III Sovereign Burning Halo-Crown
-      '7,3'                       // Churning Abyssal Magma Vortex Core
+      '4,3', '5,3',               // Ballistic 3D Volcanic Shrapnel Boulders
+      '6,3',                      // Phase II/III Sovereign Burning Eclipse Crown Crest
+      '7,3'                       // Exposed Molten Heart-Core Rupture (Vulnerable Punish)
     ];
     const missingCells = requiredNewCells.filter((c) => !sampledCells.has(c));
     if (missingCells.length > 0) {
       throw new Error(
         `[Suite 27B] Missing upgraded Rows 2..3 boss cells: [${missingCells.join(', ')}] (sampled: [${[...sampledCells].join(', ')}])`
+      );
+    }
+
+    // 5. Verify (7,3) is NEVER drawn on throat/chest while non-vulnerable, and damped torso motion has <= 12px 1-frame delta!
+    boss.vulnerableTimer = 0;
+    boss.fistVisible = false;
+    boss.rakeActive = false;
+    boss.state = 'SKILL';
+    boss.skillVariant = 0;
+    boss.stateTimer = 0.40;
+    boss.jawOpen = 1.0;
+    let nonVulnCoreDraws = 0;
+    let torsoPos = null;
+    bossCtx.drawImage = (img, sx, sy, sw, sh, dx, dy) => {
+      if (img === assets.archfiend.colossus && sw === 512 && sh === 512) {
+        const col = Math.round(sx / 512);
+        const row = Math.round(sy / 512);
+        if (col === 7 && row === 3) nonVulnCoreDraws++;
+        if ((col === 1 || col === 2) && row === 0) torsoPos = { x: dx, y: dy };
+      }
+    };
+    boss.draw(bossCtx, false, { time: 5.0 });
+    if (nonVulnCoreDraws !== 0) {
+      throw new Error(
+        `[Suite 27B] Expected 0 Cell (7,3) draws while non-vulnerable, got ${nonVulnCoreDraws}`
+      );
+    }
+
+    boss.setState('IDLE');
+    boss.attackCooldown = 0.04;
+    boss.skillCooldown = 0.04;
+    boss.ultCooldown = 0.35;
+    let prevTorso = null;
+    let maxTorsoStep = 0;
+    for (let f = 0; f < 90; f++) {
+      torsoPos = null;
+      boss.update(1 / 30, hero, bossGame);
+      boss.draw(bossCtx, false, { time: 6.0 + f / 30 });
+      if (torsoPos && prevTorso) {
+        const step = Math.hypot(torsoPos.x - prevTorso.x, torsoPos.y - prevTorso.y);
+        if (step > maxTorsoStep) maxTorsoStep = step;
+      }
+      if (torsoPos) prevTorso = torsoPos;
+    }
+    if (maxTorsoStep > 12) {
+      throw new Error(
+        `[Suite 27B] Discontinuous boss torso jump detected: max 1-frame step=${maxTorsoStep.toFixed(2)}px (> 12px)`
       );
     }
   }

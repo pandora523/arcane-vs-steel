@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps105';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps105';
+import { Fighter } from './Fighter.js?v=30fps106';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps106';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps106';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps105';
+} from '../engine/shaders/forgeShaders.js?v=30fps106';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -141,11 +141,11 @@ export class Titan extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('titan');
       const titanAssets = PixelForge.initAssets()?.titan;
-      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps105')) {
-        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps105';
+      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps106')) {
+        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps106';
       }
-      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps105')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps105';
+      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps106')) {
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps106';
       }
     }
   }

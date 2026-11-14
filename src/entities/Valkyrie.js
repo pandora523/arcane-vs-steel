@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps105';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps105';
+import { Fighter } from './Fighter.js?v=30fps106';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps106';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps106';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps105';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps106';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -84,8 +84,8 @@ export class Valkyrie extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('valkyrie');
       const valkyrieAssets = PixelForge.initAssets()?.valkyrie;
-      if (valkyrieAssets?.vfx?.src && !valkyrieAssets.vfx.src.includes('v=30fps105')) {
-        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps105';
+      if (valkyrieAssets?.vfx?.src && !valkyrieAssets.vfx.src.includes('v=30fps106')) {
+        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps106';
       }
     }
 
