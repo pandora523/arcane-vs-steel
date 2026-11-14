@@ -1,4 +1,24 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
+import { Adventure3DObjects } from './Adventure3DObjects.js?v=30fps105';
+
+const CTX_GRAD_CACHE = new WeakMap();
+
+function getCachedVerticalGrad(ctx, slot, y0, y1, stopsKey, buildStops) {
+  let map = CTX_GRAD_CACHE.get(ctx);
+  if (!map) {
+    map = Object.create(null);
+    CTX_GRAD_CACHE.set(ctx, map);
+  }
+  const fullKey = `${slot}|${y0}|${y1}|${stopsKey}`;
+  let entry = map[slot];
+  if (!entry || entry.key !== fullKey) {
+    const grad = ctx.createLinearGradient(0, y0, 0, y1);
+    buildStops(grad);
+    entry = { key: fullKey, grad };
+    map[slot] = entry;
+  }
+  return entry.grad;
+}
 
 /**
  * Seamless Multi-Plane HD-2D Adventure World Panorama Renderer (`AdventureMapRenderer`)
@@ -13,9 +33,11 @@ import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
  *                        Bloom Halos, Pixel-Staircase Light Rays & Crisp Pixel Cross-Glints
  *                        directly over the painted braziers, lanterns, crystals & sconces
  *                        (zero pasted flame sprites, zero floating wisp orbs, zero radial circles)
+ *   - Plane 2.5 (`3D Perspective`): `Adventure3DObjects` camera-projected 3D Gothic/Sylvan/Ossuary/Obsidian
+ *                        buttress piers, rotating 3D polyhedral realm relics & Boss Sanctuary 3D pylons
  *   - Plane 3 (`1.00x`): `advFloorPano` (`4570x96`, 10 bays) + Emissive Pixel-Grid Floor Bloom
  *                        & Stepped Rune/Reflection/Fissure Pixel Glints across all 9600px
- *   - Plane 4 (`1.24x`): Near-Camera Foreground Vault Spandrels, Hanging Chains & Pixel Motes
+ *   - Plane 4 (`1.24x` + `3D`): Near-Camera Foreground 3D Spurs, Hanging Chains & Pixel Motes
  *
  * Strictly zero canvas rotation calls, crisp integer pixel coordinates, subtle additive
  * `'lighter'` pixel-grid bloom (`alpha <= 0.16`), and seamless periodic wrap tiling.
@@ -914,18 +936,28 @@ export class AdventureMapRenderer {
     // PLANE 0 (`0.14x`): UPPER ABYSSAL COSMOS VAULT (`viewTop .. ARCH_WORLD_TOP_Y + 32`)
     // =========================================================================
     const skyTopY = Math.min(viewTop, -900);
-    const skyGrad = ctx.createLinearGradient(0, skyTopY, 0, ADVENTURE_ROAD_TOP_Y);
-    skyGrad.addColorStop(
-      0,
-      infernoAlpha > 0.5 ? '#0c0507' : isGlacialPerm ? '#030918' : isShogunatePerm ? '#050816' : '#04060e'
-    );
-    skyGrad.addColorStop(
-      0.55,
-      infernoAlpha > 0.5 ? '#1a0a0d' : isGlacialPerm ? '#071936' : isShogunatePerm ? '#0b1228' : '#080c1a'
-    );
-    skyGrad.addColorStop(
-      1,
-      infernoAlpha > 0.5 ? '#261012' : isGlacialPerm ? '#0c284e' : isShogunatePerm ? '#121d38' : '#0d1326'
+    const skyModeKey =
+      infernoAlpha > 0.5 ? 'inf' : isGlacialPerm ? 'glc' : isShogunatePerm ? 'shg' : 'def';
+    const skyGrad = getCachedVerticalGrad(
+      ctx,
+      'sky',
+      skyTopY,
+      ADVENTURE_ROAD_TOP_Y,
+      skyModeKey,
+      (g) => {
+        g.addColorStop(
+          0,
+          skyModeKey === 'inf' ? '#0c0507' : skyModeKey === 'glc' ? '#030918' : skyModeKey === 'shg' ? '#050816' : '#04060e'
+        );
+        g.addColorStop(
+          0.55,
+          skyModeKey === 'inf' ? '#1a0a0d' : skyModeKey === 'glc' ? '#071936' : skyModeKey === 'shg' ? '#0b1228' : '#080c1a'
+        );
+        g.addColorStop(
+          1,
+          skyModeKey === 'inf' ? '#261012' : skyModeKey === 'glc' ? '#0c284e' : skyModeKey === 'shg' ? '#121d38' : '#0d1326'
+        );
+      }
     );
     ctx.fillStyle = skyGrad;
     ctx.fillRect(viewLeft, skyTopY, viewW, ADVENTURE_ROAD_TOP_Y - skyTopY + 16);
@@ -976,9 +1008,18 @@ export class AdventureMapRenderer {
     );
 
     // Top edge feather blending `advVistaPano` (`ARCH_WORLD_TOP_Y = -257`) into Plane 0 sky vault
-    const topBlendGrad = ctx.createLinearGradient(0, ARCH_WORLD_TOP_Y - 6, 0, ARCH_WORLD_TOP_Y + 56);
-    topBlendGrad.addColorStop(0, infernoAlpha > 0.5 ? '#15080b' : '#070a16');
-    topBlendGrad.addColorStop(1, 'rgba(7, 10, 22, 0)');
+    const topBlendColor = infernoAlpha > 0.5 ? '#15080b' : '#070a16';
+    const topBlendGrad = getCachedVerticalGrad(
+      ctx,
+      'topBlend',
+      ARCH_WORLD_TOP_Y - 6,
+      ARCH_WORLD_TOP_Y + 56,
+      topBlendColor,
+      (g) => {
+        g.addColorStop(0, topBlendColor);
+        g.addColorStop(1, 'rgba(7, 10, 22, 0)');
+      }
+    );
     ctx.fillStyle = topBlendGrad;
     ctx.fillRect(viewLeft, ARCH_WORLD_TOP_Y - 8, viewW, 66);
 
@@ -1008,10 +1049,18 @@ export class AdventureMapRenderer {
         (isShogunatePerm ? 26 : 0) +
         (isGlacialPerm ? 42 : 0)
     );
-    const canyonMist = ctx.createLinearGradient(0, 175, 0, ADVENTURE_ROAD_TOP_Y + 8);
-    canyonMist.addColorStop(0, `rgba(${mistR},${mistG},${mistB},0)`);
-    canyonMist.addColorStop(0.62, `rgba(${mistR},${mistG},${mistB},0.16)`);
-    canyonMist.addColorStop(1, 'rgba(8, 11, 20, 0.34)');
+    const canyonMist = getCachedVerticalGrad(
+      ctx,
+      'canyonMist',
+      175,
+      ADVENTURE_ROAD_TOP_Y + 8,
+      `${mistR},${mistG},${mistB}`,
+      (g) => {
+        g.addColorStop(0, `rgba(${mistR},${mistG},${mistB},0)`);
+        g.addColorStop(0.62, `rgba(${mistR},${mistG},${mistB},0.16)`);
+        g.addColorStop(1, 'rgba(8, 11, 20, 0.34)');
+      }
+    );
     ctx.fillStyle = canyonMist;
     ctx.fillRect(viewLeft, 175, viewW, ADVENTURE_ROAD_TOP_Y - 167);
 
@@ -1146,12 +1195,31 @@ export class AdventureMapRenderer {
     );
 
     // Subtle grounded contact occlusion right under the `y = 436` stone curb (`alpha <= 0.24`)
-    const curbShadow = ctx.createLinearGradient(0, ADVENTURE_ROAD_TOP_Y - 2, 0, ADVENTURE_ROAD_TOP_Y + 14);
-    curbShadow.addColorStop(0, 'rgba(4, 6, 12, 0.24)');
-    curbShadow.addColorStop(0.45, 'rgba(4, 6, 12, 0.14)');
-    curbShadow.addColorStop(1, 'rgba(4, 6, 12, 0)');
+    const curbShadow = getCachedVerticalGrad(
+      ctx,
+      'curbShadow',
+      ADVENTURE_ROAD_TOP_Y - 2,
+      ADVENTURE_ROAD_TOP_Y + 14,
+      'curb',
+      (g) => {
+        g.addColorStop(0, 'rgba(4, 6, 12, 0.24)');
+        g.addColorStop(0.45, 'rgba(4, 6, 12, 0.14)');
+        g.addColorStop(1, 'rgba(4, 6, 12, 0)');
+      }
+    );
     ctx.fillStyle = curbShadow;
     ctx.fillRect(viewLeft, ADVENTURE_ROAD_TOP_Y - 2, viewW, 16);
+
+    // PLANE 2.5 (`3D Perspective`): True-3D Camera-Projected Colonnade Buttress Piers,
+    // Rotating 3D Polyhedral Realm Relics & Boss Sanctuary 3D Obsidian Seal Pylons (`y <= 438`)
+    Adventure3DObjects.renderUpperColonnade3D(ctx, renderer, {
+      camX,
+      camY,
+      viewLeft,
+      viewRight,
+      t,
+      infernoAlpha
+    });
 
     // Right-Side Boss Sanctuary Runic Floor Seal (`x: 8920`) in front of Behemoth Malphas (`x: 9335`)
     const bossSealX = 8920;
@@ -1174,10 +1242,13 @@ export class AdventureMapRenderer {
     // Lower cliffside stone coping & abyssal escarpment below walkable road (`y: 686 .. viewBot`)
     const curbY = ADVENTURE_ROAD_BOT_Y;
     const cliffH = Math.max(140, viewBot - curbY + 40);
-    const cliffGrad = ctx.createLinearGradient(0, curbY, 0, curbY + Math.min(480, cliffH));
-    cliffGrad.addColorStop(0, infernoAlpha > 0.45 || camWeights[3] > 0.5 ? '#1c0f14' : '#111625');
-    cliffGrad.addColorStop(0.28, '#080b14');
-    cliffGrad.addColorStop(1, '#03050a');
+    const cliffTopHex = infernoAlpha > 0.45 || camWeights[3] > 0.5 ? '#1c0f14' : '#111625';
+    const cliffGradEnd = curbY + Math.min(480, cliffH);
+    const cliffGrad = getCachedVerticalGrad(ctx, 'cliff', curbY, cliffGradEnd, cliffTopHex, (g) => {
+      g.addColorStop(0, cliffTopHex);
+      g.addColorStop(0.28, '#080b14');
+      g.addColorStop(1, '#03050a');
+    });
     ctx.fillStyle = cliffGrad;
     ctx.fillRect(viewLeft, curbY, viewW, cliffH);
 
@@ -1194,6 +1265,16 @@ export class AdventureMapRenderer {
       const bodyCol = isWarm ? '#2b1417' : isBone ? '#211932' : isSylv ? '#142d2c' : '#182132';
       seloutBlock(ctx, cx, curbY, copingW, 20, bodyCol, topCol, '#080b14');
     }
+
+    // True-3D Perspective-Extruded Parapet Coping Piers & Chasm Lantern Plinths (`y >= 682`, `wz > 0`)
+    Adventure3DObjects.renderParapetCurb3D(ctx, renderer, {
+      camX,
+      camY,
+      viewLeft,
+      viewRight,
+      t,
+      infernoAlpha
+    });
 
     ctx.restore();
   }
@@ -1330,6 +1411,7 @@ export class AdventureMapRenderer {
 
     ctx.globalCompositeOperation = 'source-over';
     ctx.globalAlpha = 1;
+    Adventure3DObjects.renderForeground3D(ctx, renderer);
     ctx.restore();
   }
 }

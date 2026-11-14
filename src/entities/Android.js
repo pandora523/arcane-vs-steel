@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps104';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps104';
+import { Fighter } from './Fighter.js?v=30fps105';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps105';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps104';
+} from '../engine/shaders/cyberShaders.js?v=30fps105';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 const AUTO_SLICES_4 = [
@@ -70,12 +70,13 @@ export class Android extends Fighter {
 
     // Ensure browser always fetches latest VEX-09 sprite & VFX sheets
     if (typeof Image !== 'undefined') {
+      PixelForge.ensureHeroLoaded?.('android');
       const androidAssets = PixelForge.initAssets()?.android;
-      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps87')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps104';
+      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps105')) {
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps105';
       }
-      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps87')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps104';
+      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps105')) {
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps105';
       }
     }
 
@@ -440,34 +441,32 @@ export class Android extends Fighter {
       !enemy.isDead &&
       !enemy.isDestructibleProp &&
       !enemy.isDummyFocal &&
-      Math.abs(enemy.x - this.x) <= 275
+      Math.abs(enemy.x - this.x) <= 210
         ? enemy
         : null) ||
-      combatFoes.find((f) => Math.abs(f.x - this.x) <= 275) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 210) ||
       null;
 
     const hns = this.updateHackAndSlashMotion(dt, frontFoe, game, {
       variant,
       u,
+      allowV2Cross: false,
       moveEndU: 0.40,
-      coilEndU: 0.075,
-      contactDist: 68,
-      flankDist: 128,
-      dashContactDist: 66,
-      dashFlankDist: 132,
-      dashPierceThreshold: 235,
-      finisherDist: 68,
-      v1HopHeight: 28,
-      v3HopHeight: 48,
-      hopEndU: 0.58,
-      openStepPx: 128,
-      openCrossPx: 154,
-      openDashPx: 228,
-      openFinisherPx: 146,
-      maxLockDist: 275,
+      contactDist: 84,
+      minCloseDist: 76,
+      dashContactDist: 80,
+      finisherDist: 82,
+      maxStepAdvance: 74,
+      v3HopHeight: 20,
+      hopEndU: 0.56,
+      openStepPx: 36,
+      openCrossPx: 32,
+      openDashPx: 44,
+      openFinisherPx: 38,
+      maxLockDist: 210,
       margin: 84,
       onGhost: (gx, gy, gf) =>
-        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.22)
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.18)
     });
 
     if (u < 0.40 && !this._autoGapClosed && hns && Math.abs(this.x - hns.startX) > 16) {

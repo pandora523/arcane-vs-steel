@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps104';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps104';
+import { Fighter } from './Fighter.js?v=30fps105';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps105';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps104';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps105';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -98,12 +98,13 @@ export class Warrior extends Fighter {
     this.haloFxSlot = null;
 
     if (typeof Image !== 'undefined') {
+      PixelForge.ensureHeroLoaded?.('warrior');
       const warriorAssets = PixelForge.initAssets()?.warrior;
-      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps104')) {
-        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps104';
+      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps105')) {
+        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps105';
       }
-      if (warriorAssets?.vfx?.src && !warriorAssets.vfx.src.includes('v=30fps60')) {
-        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps104';
+      if (warriorAssets?.vfx?.src && !warriorAssets.vfx.src.includes('v=30fps105')) {
+        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps105';
       }
     }
   }
@@ -882,36 +883,34 @@ export class Warrior extends Fighter {
       !enemy.isDead &&
       !enemy.isDestructibleProp &&
       !enemy.isDummyFocal &&
-      Math.abs(enemy.x - this.x) <= 275
+      Math.abs(enemy.x - this.x) <= 205
         ? enemy
         : null) ||
-      combatFoes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 275) ||
-      combatFoes.find((f) => Math.abs(f.x - this.x) <= 240) ||
+      combatFoes.find((f) => (f.x - this.x) * this.facing >= -24 && Math.abs(f.x - this.x) <= 205) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 185) ||
       null;
 
-    // 4-Beat Wild Kinetic Hack-and-Slash Choreography:
-    // V0: Explosive Rush Cleave | V1: Wide Cross-Through Vault-Slash | V2: Supersonic Dash-Pierce | V3: Soaring Aerial Guillotine
+    // 4-Beat Grounded Vanguard Greatsword Footwork (`allowV2Cross: false` — stays strictly in front, zero cross-spam!):
+    // V0: Advancing Cleave Step | V1: Grounded Reverse-Edge Slash | V2: Runeblade Thrust Step | V3: Hop Guillotine Wave
     this.updateHackAndSlashMotion(dt, frontFoe, game, {
       variant: mode,
       u,
+      allowV2Cross: false,
       moveEndU: 0.40,
-      coilEndU: 0.075,
-      contactDist: 68,
-      flankDist: 128,
-      dashContactDist: 66,
-      dashFlankDist: 132,
-      dashPierceThreshold: 235,
-      finisherDist: 68,
-      v1HopHeight: 24,
-      v3HopHeight: 52,
-      hopEndU: 0.58,
-      openStepPx: 128,
-      openCrossPx: 152,
-      openDashPx: 224,
-      openFinisherPx: 146,
-      maxLockDist: 275,
+      contactDist: 86,
+      minCloseDist: 78,
+      dashContactDist: 82,
+      finisherDist: 84,
+      maxStepAdvance: 52,
+      v3HopHeight: 22,
+      hopEndU: 0.56,
+      openStepPx: 36,
+      openCrossPx: 32,
+      openDashPx: 44,
+      openFinisherPx: 38,
+      maxLockDist: 205,
       onGhost: (gx, gy, gf) =>
-        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.22)
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.18)
     });
 
     if (t < 0.20) {

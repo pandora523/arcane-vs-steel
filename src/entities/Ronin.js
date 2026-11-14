@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps104';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps104';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps104';
+import { Fighter } from './Fighter.js?v=30fps105';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps105';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps105';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -87,12 +87,13 @@ export class Ronin extends Fighter {
     });
 
     if (typeof Image !== 'undefined') {
+      PixelForge.ensureHeroLoaded?.('ronin');
       const roninAssets = PixelForge.initAssets()?.ronin;
-      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps104')) {
-        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps104';
+      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps105')) {
+        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps105';
       }
-      if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps63')) {
-        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps104';
+      if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps105')) {
+        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps105';
       }
     }
   }
@@ -690,38 +691,38 @@ export class Ronin extends Fighter {
       !enemy.isDead &&
       !enemy.isDestructibleProp &&
       !enemy.isDummyFocal &&
-      Math.abs(enemy.x - this.x) <= 255
+      Math.abs(enemy.x - this.x) <= 205
         ? enemy
         : null) ||
-      combatFoes.find((f) => (f.x - this.x) * this.facing >= -24 && Math.abs(f.x - this.x) <= 255) ||
-      combatFoes.find((f) => Math.abs(f.x - this.x) <= 225) ||
+      combatFoes.find((f) => (f.x - this.x) * this.facing >= -24 && Math.abs(f.x - this.x) <= 205) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 185) ||
       null;
 
-    // 4-Beat Grounded Iaido Shunpo Hack-and-Slash Choreography (0 bloated VFX, pure afterimages + blade cuts):
-    // V0: Fumikomi Rush Cut | V1: Wide Shunpo Cross-Through | V2: Supersonic Suriashi Dash-Pierce | V3: Morote Kiri-Nuki
+    // 4-Beat Grounded Iaido Duelist Footwork (`allowV2Cross: true` — single Shunpo Cross-Slash on V2 within <= 165px!):
+    // V0: Fumikomi Step Cut | V1: Grounded Gyaku-Gesa Step | V2: Single Shunpo Cross-Slash | V3: Morote Kiri-Nuki
     this.updateHackAndSlashMotion(dt, frontFoe, game, {
       variant: mode,
       u,
+      allowV2Cross: true,
+      crossRange: 165,
       groundedOnly: true,
       moveEndU: 0.38,
-      coilEndU: 0.07,
-      contactDist: 64,
-      minCloseDist: 34,
-      flankDist: 112,
-      dashContactDist: 62,
-      dashFlankDist: 116,
-      dashPierceThreshold: 225,
-      finisherDist: 62,
-      openStepPx: 122,
-      openCrossPx: 148,
-      openDashPx: 222,
-      openFinisherPx: 138,
-      v1HopHeight: 0,
+      coilEndU: 0.065,
+      contactDist: 80,
+      minCloseDist: 74,
+      dashContactDist: 78,
+      dashFlankDist: 112,
+      finisherDist: 80,
+      maxStepAdvance: 54,
+      openStepPx: 36,
+      openCrossPx: 32,
+      openDashPx: 54,
+      openFinisherPx: 38,
       v3HopHeight: 0,
-      maxLockDist: 255,
+      maxLockDist: 205,
       margin: 68,
       onGhost: (gx, gy, gf) =>
-        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.20, 0)
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.19, 0)
     });
 
     if (t >= 0.16 && !this.didActionFrame) {

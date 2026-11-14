@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps104';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps104';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps104';
+import { Fighter } from './Fighter.js?v=30fps105';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps105';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps105';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps104';
+} from '../engine/shaders/chronoShaders.js?v=30fps105';
 
 const ROMAN_CLOCK_HOURS = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
 const AUTO_SLICES_4 = [
@@ -112,9 +112,10 @@ export class Chronomancer extends Fighter {
     });
 
     if (typeof Image !== 'undefined') {
+      PixelForge.ensureHeroLoaded?.('chronomancer');
       const chronoAssets = PixelForge.initAssets()?.chronomancer;
-      if (chronoAssets?.vfx?.src && !chronoAssets.vfx.src.includes('v=30fps62')) {
-        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps104';
+      if (chronoAssets?.vfx?.src && !chronoAssets.vfx.src.includes('v=30fps105')) {
+        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps105';
       }
     }
 
@@ -1035,32 +1036,33 @@ export class Chronomancer extends Fighter {
       !enemy.isDead &&
       !enemy.isDestructibleProp &&
       !enemy.isDummyFocal &&
-      Math.abs(enemy.x - this.x) <= 270
+      Math.abs(enemy.x - this.x) <= 205
         ? enemy
         : null) ||
-      combatFoes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 270) ||
-      combatFoes.find((f) => Math.abs(f.x - this.x) <= 235) ||
+      combatFoes.find((f) => (f.x - this.x) * this.facing >= -24 && Math.abs(f.x - this.x) <= 205) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 185) ||
       null;
 
     this.updateHackAndSlashMotion(dt, frontFoe, game, {
       variant: stage,
       u,
+      allowV2Cross: true,
+      crossRange: 165,
       moveEndU: 0.40,
-      coilEndU: 0.075,
-      contactDist: 68,
-      flankDist: 124,
-      dashContactDist: 66,
-      dashFlankDist: 128,
-      dashPierceThreshold: 235,
-      finisherDist: 68,
-      v1HopHeight: 22,
-      v3HopHeight: 48,
-      hopEndU: 0.58,
-      openStepPx: 124,
-      openCrossPx: 150,
-      openDashPx: 222,
-      openFinisherPx: 142,
-      maxLockDist: 270,
+      coilEndU: 0.065,
+      contactDist: 78,
+      minCloseDist: 76,
+      dashContactDist: 76,
+      dashFlankDist: 114,
+      finisherDist: 78,
+      maxStepAdvance: 68,
+      v3HopHeight: 22,
+      hopEndU: 0.56,
+      openStepPx: 34,
+      openCrossPx: 30,
+      openDashPx: 52,
+      openFinisherPx: 38,
+      maxLockDist: 205,
       margin: 76,
       onGhost: () => this.spawnTemporalEcho(sliceStart + localCol)
     });

@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js?v=30fps104';
-import { PixelForge } from './PixelForge.js?v=30fps104';
+import { PixelFont } from './PixelFont.js?v=30fps105';
+import { PixelForge } from './PixelForge.js?v=30fps105';
 
 export class VFXManager {
   constructor() {
@@ -56,6 +56,7 @@ export class VFXManager {
     alpha = 1.0,
     isReflection = false
   ) {
+    PixelForge.ensureImage?.(sheet);
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
     const prevSmooth = ctx.imageSmoothingEnabled;
     const prevComp = ctx.globalCompositeOperation;
@@ -577,44 +578,47 @@ export class VFXManager {
       }
     }
 
-    for (let i = this.particles.length - 1; i >= 0; i--) {
+    const bounceGy = renderer?.adventureMode ? Math.max(groundY, 640) : groundY;
+    let pw = 0;
+    for (let i = 0, len = this.particles.length; i < len; i++) {
       const p = this.particles[i];
       p.life += dt;
-      if (p.life >= p.maxLife) {
-        this.particles.splice(i, 1);
-        continue;
-      }
+      if (p.life >= p.maxLife) continue;
       p.vx *= p.drag;
       p.vy = p.vy * p.drag + p.gravity * dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
-      const bounceGy = renderer?.adventureMode ? Math.max(groundY, 640) : groundY;
       if (p.y > bounceGy && p.gravity > 0) {
         p.y = bounceGy;
         p.vy *= -0.45;
         p.vx *= 0.7;
       }
+      this.particles[pw++] = p;
     }
+    this.particles.length = pw;
 
-    for (let i = this.glyphs.length - 1; i >= 0; i--) {
+    let gw = 0;
+    for (let i = 0, len = this.glyphs.length; i < len; i++) {
       const g = this.glyphs[i];
       g.life += dt;
-      if (g.life >= g.maxLife) {
-        this.glyphs.splice(i, 1);
-        continue;
-      }
+      if (g.life >= g.maxLife) continue;
       g.x += g.vx * dt;
       g.y += g.vy * dt;
       g.vx *= 0.95;
       g.vy = g.vy * 0.95 - 28 * dt;
       g.rot += g.vRot * dt;
+      this.glyphs[gw++] = g;
     }
+    this.glyphs.length = gw;
 
     const stepList = (arr) => {
-      for (let i = arr.length - 1; i >= 0; i--) {
-        arr[i].life += dt;
-        if (arr[i].life >= arr[i].maxLife) arr.splice(i, 1);
+      let w = 0;
+      for (let i = 0, len = arr.length; i < len; i++) {
+        const item = arr[i];
+        item.life += dt;
+        if (item.life < item.maxLife) arr[w++] = item;
       }
+      arr.length = w;
     };
     stepList(this.slashes);
     stepList(this.shockwaves);
@@ -1128,8 +1132,20 @@ export class VFXManager {
     return lights;
   }
 
-  renderGroundDecals(ctx, gy) {
+  renderGroundDecals(ctx, gy, renderer = null) {
+    const hasBounds = Boolean(
+      renderer &&
+        Number.isFinite(renderer.camX) &&
+        Number.isFinite(renderer.width) &&
+        renderer.width > 0
+    );
+    const halfSpan = hasBounds
+      ? (renderer.width * 0.5) / Math.max(0.1, renderer.zoom || 1) + 280
+      : Infinity;
+    const camX = hasBounds ? renderer.camX : 0;
+
     for (const d of this.decals) {
+      if (hasBounds && Math.abs(d.x - camX) > halfSpan) continue;
       const alpha = Math.min(1, (1 - d.life / d.maxLife) * 1.5);
       const dGy = Number.isFinite(d.groundY) ? d.groundY : gy;
       ctx.save();
@@ -1164,11 +1180,22 @@ export class VFXManager {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
     const assets = PixelForge.initAssets();
+    const hasBounds = Boolean(
+      renderer &&
+        Number.isFinite(renderer.camX) &&
+        Number.isFinite(renderer.width) &&
+        renderer.width > 0
+    );
+    const camX = hasBounds ? renderer.camX : 0;
+    const halfViewW = hasBounds
+      ? (renderer.width * 0.5) / Math.max(0.1, renderer.zoom || 1)
+      : Infinity;
 
     // 1. TORNADOS: Unmistakable Conical S-Curving Pixel-Art Tornado Funnel with Swirling Horizontal Wind Bands & Top Vortex Eye
     for (const tor of this.tornados) {
       const isUltTor = !!tor.isUltimate || tor.radius >= 95;
       if (!isReflection && isUltTor !== ultimateOnly) continue;
+      if (hasBounds && Math.abs(tor.x - camX) > halfViewW + 380) continue;
       const fade = Math.min(1, (tor.maxLife - tor.life) * 3.2, tor.life * 5.5);
       const pxSize = 4;
       const baseX = Math.round(tor.x / pxSize) * pxSize;
@@ -1284,6 +1311,7 @@ export class VFXManager {
     for (const pil of this.pillars) {
       const isUltPil = !!pil.isUltimate;
       if (!isReflection && isUltPil !== ultimateOnly) continue;
+      if (hasBounds && Math.abs(pil.x - camX) > halfViewW + 380) continue;
       const p = Math.min(1, pil.life / Math.max(0.15, pil.delay));
       const pxSize = 4;
       const baseX = Math.round(pil.x / pxSize) * pxSize;
@@ -2004,6 +2032,7 @@ export class VFXManager {
 
     // 5. PARTICLES: Luminous HD-2D Embers with Smooth Radial Glow Halos & Crisp Cores (Zero oversized +6px squares!)
     for (const p of !ultimateOnly ? this.particles : []) {
+      if (hasBounds && Math.abs(p.x - camX) > halfViewW + 140) continue;
       const t = p.life / p.maxLife;
       const fade = 1 - t;
       const s = Math.max(2, Math.min(5, Math.round(p.size * fade + p.endSize * t)));
@@ -2031,6 +2060,7 @@ export class VFXManager {
     for (const s of this.slashes) {
       const isUltSlash = s.radius >= 118;
       if (!isReflection && isUltSlash !== ultimateOnly) continue;
+      if (hasBounds && Math.abs(s.x - camX) > halfViewW + 280) continue;
       const t = s.life / s.maxLife;
       const alpha = 1 - t;
       const isFullCircle = Math.abs(s.endAngle - s.startAngle) > Math.PI * 1.8;
@@ -2097,6 +2127,7 @@ export class VFXManager {
           sheet = assets.warrior?.vfx;
         }
 
+        PixelForge.ensureImage?.(sheet);
         if (sheet && sheet.complete && sheet.naturalWidth) {
           ctx.save();
           ctx.translate(sx, sy);
@@ -2126,6 +2157,7 @@ export class VFXManager {
     for (const sw of this.shockwaves) {
       const isUltSw = sw.maxRadius >= 155;
       if (!isReflection && isUltSw !== ultimateOnly) continue;
+      if (hasBounds && Math.abs(sw.x - camX) > halfViewW + sw.maxRadius + 120) continue;
       const t = sw.life / sw.maxLife;
       const alpha = Math.max(0, 1 - t);
       const r = sw.maxRadius * (1 - Math.pow(1 - t, 3));
@@ -2595,6 +2627,7 @@ export class VFXManager {
     // 10. PURE PIXEL-ART RUNIC CRYSTALS, SOLAR STARS, SACRED CROSSES, NECROTIC SKULLS, CLOCKWORK COGS & ASTRAL FEATHERS
     if (!isReflection && !ultimateOnly) {
       for (const g of this.glyphs) {
+        if (hasBounds && Math.abs(g.x - camX) > halfViewW + 140) continue;
         const p = g.life / g.maxLife;
         const gx = Math.round(g.x / 2) * 2;
         const gy = Math.round(g.y / 2) * 2;
@@ -2652,6 +2685,7 @@ export class VFXManager {
       // 11. SPECIAL MOVE & ULTIMATE RISING ENERGY STREAMERS FLANKING CASTER
       for (const ca of this.castAuras) {
         if (!ca.fighter || ca.fighter.isDead) continue;
+        if (hasBounds && Math.abs(ca.fighter.x - camX) > halfViewW + 220) continue;
         const t = ca.life / ca.maxLife;
         const env = t < 0.14 ? t / 0.14 : Math.max(0, 1 - (t - 0.14) / 0.86);
         const glowTex = renderer && renderer.getGlowForColor ? renderer.getGlowForColor(ca.mainColor) : null;
@@ -2682,6 +2716,7 @@ export class VFXManager {
 
       // 12. ON-HIT ELEMENTAL DIAMOND STAR-FLARES (Sleek Tapered Impact Flares — Zero Stepped Square Chains!)
       for (const imp of this.hitImpacts) {
+        if (hasBounds && Math.abs(imp.x - camX) > halfViewW + 220) continue;
         const t = imp.life / imp.maxLife;
         const env = t < 0.18 ? t / 0.18 : Math.max(0, 1 - (t - 0.18) / 0.82);
         const ix = Math.round(imp.x);

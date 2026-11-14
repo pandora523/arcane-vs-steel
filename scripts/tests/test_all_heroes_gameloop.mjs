@@ -28,35 +28,36 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps104';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps104';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps104';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps104';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps104';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps104';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps104';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps104';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps104';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps104';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps104';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps104';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps104';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps104';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps104';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps104';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps104';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps105';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps105';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps105';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps105';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps105';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps105';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps105';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps105';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps105';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps105';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps105';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps105';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps105';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps105';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps105';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps105';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps105';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps104';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps104';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps105';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps105';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps104';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps104';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps104';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps105';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps105';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps105';
+import { Adventure3DObjects } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/Adventure3DObjects.js?v=30fps105';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -641,7 +642,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps104');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps105');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -2156,8 +2157,8 @@ for (const [name, Cls] of CLASSES) {
     const colossusBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/boss_colossus_sheet.png');
     const cw = colossusBuf.readUInt32BE(16);
     const ch = colossusBuf.readUInt32BE(20);
-    if (cw !== 4096 || ch !== 1024) {
-      throw new Error(`Expected boss_colossus_sheet.png dimensions 4096x1024 (16 cells x 512x512), got ${cw}x${ch}`);
+    if (cw !== 4096 || ch !== 2048) {
+      throw new Error(`Expected boss_colossus_sheet.png dimensions 4096x2048 (32 cells x 512x512), got ${cw}x${ch}`);
     }
     const iconBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/mage_icons.png');
     const iw = iconBuf.readUInt32BE(16);
@@ -2405,7 +2406,7 @@ for (const [name, Cls] of CLASSES) {
   const allAssets = PixelForge.initAssets();
   if (allAssets.archfiend?.colossus) {
     allAssets.archfiend.colossus.naturalWidth = 4096;
-    allAssets.archfiend.colossus.naturalHeight = 1024;
+    allAssets.archfiend.colossus.naturalHeight = 2048;
   }
   if (allAssets.advFxSheet) {
     allAssets.advFxSheet.naturalWidth = 1024;
@@ -4171,7 +4172,7 @@ for (const [name, Cls] of CLASSES) {
   // 20D. Verify Right-Side Colossal Boss (`ArchfiendBoss` at `x=9335`, `facing=-1`) Climb, Leftward Attacks, HD-2D VFX & Clipped Death
   if (allAssets20.archfiend?.colossus) {
     allAssets20.archfiend.colossus.naturalWidth = 4096;
-    allAssets20.archfiend.colossus.naturalHeight = 1024;
+    allAssets20.archfiend.colossus.naturalHeight = 2048;
   }
   const bossGame = createMockGame();
   bossGame.gameMode = 'adventure';
@@ -5765,11 +5766,13 @@ for (const [name, Cls] of CLASSES) {
       throw new Error(`[Suite 25B ${label}] Expected AI comboGoal === 4, got ${hero.getAiStyleProfile().comboGoal}`);
     }
 
-    // Hit 1 (V0 — Forward Lunge Slash): advances forward >= 45px from 165px gap & deals melee damage
-    hero.x = 400;
+    const isDuelist = heroId === 'ronin' || heroId === 'chronomancer';
+
+    // Hit 1 (V0 — Grounded Advancing Martial Step): steps forward in front of dummy (`>= 24px`, `< dummy.x - 50`) & deals melee damage
+    hero.x = 425;
     hero.y = 561;
     hero.facing = 1;
-    dummy.x = 565;
+    dummy.x = 560;
     hero.comboStep = 0;
     const hp0 = dummy.hp;
     hero.setState('AUTO_ATTACK');
@@ -5778,14 +5781,14 @@ for (const [name, Cls] of CLASSES) {
       hero.update(1 / 30, dummy, hGame);
       if (hero.trueUltFrameOverride >= 60 && hero.trueUltFrameOverride <= 67) sawSlice0 = true;
     }
-    if (hero.x - 400 < 45 || dummy.hp >= hp0 || !sawSlice0) {
+    if (hero.x - 425 < 24 || hero.x >= dummy.x - 50 || hero.facing !== 1 || dummy.hp >= hp0 || !sawSlice0) {
       throw new Error(
-        `[Suite 25B ${label} V0] Expected forward lunge slash: dx=${(hero.x - 400).toFixed(1)}, dmg=${hp0 - dummy.hp}, slice0=${sawSlice0}`
+        `[Suite 25B ${label} V0] Expected grounded front step: dx=${(hero.x - 425).toFixed(1)}, heroX=${hero.x.toFixed(1)}, dummyX=${dummy.x}, dmg=${hp0 - dummy.hp}, slice0=${sawSlice0}`
       );
     }
 
-    // Hit 2 (V1 — Cross-Through Slash to Other Side): crosses past dummy.x onto opposite flank & flips facing 180°!
-    hero.x = 460;
+    // Hit 2 (V1 — Grounded Reverse-Edge Counter Step): stays strictly IN FRONT (`0` cross-throughs, `facing === 1`)!
+    hero.x = 435;
     hero.y = 561;
     hero.facing = 1;
     dummy.x = 550;
@@ -5796,50 +5799,55 @@ for (const [name, Cls] of CLASSES) {
     const hp1 = dummy.hp;
     hero.setState('AUTO_ATTACK');
     let sawSlice1 = false;
-    let maxGhosts1 = 0;
     let facingAtStrike1 = hero.facing;
     let xAtStrike1 = hero.x;
     for (let tick = 0; tick < 36 && hero.state === 'AUTO_ATTACK'; tick++) {
       const wasDone = hero.didActionFrame;
       hero.update(1 / 30, dummy, hGame);
       if (hero.trueUltFrameOverride >= 68 && hero.trueUltFrameOverride <= 74) sawSlice1 = true;
-      maxGhosts1 = Math.max(maxGhosts1, countHeroGhosts(hero));
       if (!wasDone && hero.didActionFrame) {
         facingAtStrike1 = hero.facing;
         xAtStrike1 = hero.x;
       }
     }
-    if (xAtStrike1 <= dummy.x + 50 || facingAtStrike1 !== -1 || dummy.hp >= hp1 || maxGhosts1 < 2 || !sawSlice1) {
+    if (
+      xAtStrike1 <= 445 ||
+      xAtStrike1 >= dummy.x - 45 ||
+      facingAtStrike1 !== 1 ||
+      dummy.hp >= hp1 ||
+      !sawSlice1 ||
+      (heroId === 'chronomancer' && (hero.phantomClones || []).length < 1)
+    ) {
       throw new Error(
-        `[Suite 25B ${label} V1] Expected cross-through to other side + 180° turn: xAtStrike=${xAtStrike1.toFixed(1)} (dummy=${dummy.x}), facing=${facingAtStrike1}, dmg=${hp1 - dummy.hp}, ghosts=${maxGhosts1}, slice1=${sawSlice1}`
+        `[Suite 25B ${label} V1] Expected front-side reverse slash (0 cross-through): xAtStrike=${xAtStrike1.toFixed(1)} (dummy=${dummy.x}), facing=${facingAtStrike1}, dmg=${hp1 - dummy.hp}, slice1=${sawSlice1}`
       );
     }
 
-    // Hit 3A (V2 Mid-Range Gap-Close Dash-Slash): rockets >= 95px from 195px gap & hits
-    hero.x = 350;
+    // Hit 3A (V2 Out-of-Cross-Range Front Step at 190px > 165px): advances forward IN FRONT (`0` cross-through from afar!)
+    hero.x = 365;
     hero.y = 561;
     hero.facing = 1;
-    dummy.x = 545;
+    dummy.x = 555;
     if (hero.afterimages) hero.afterimages.length = 0;
     if (hero.temporalEchoes) hero.temporalEchoes.length = 0;
     hero.comboStep = 2;
     const hp2A = dummy.hp;
     hero.setState('AUTO_ATTACK');
     let sawSlice2 = false;
-    let maxGhosts2A = 0;
     for (let tick = 0; tick < 36 && hero.state === 'AUTO_ATTACK'; tick++) {
       hero.update(1 / 30, dummy, hGame);
       if (hero.trueUltFrameOverride >= 75 && hero.trueUltFrameOverride <= 82) sawSlice2 = true;
-      maxGhosts2A = Math.max(maxGhosts2A, countHeroGhosts(hero));
     }
-    if (hero.x - 350 < 95 || dummy.hp >= hp2A || maxGhosts2A < 2 || !sawSlice2) {
+    if (hero.x - 365 < 42 || hero.x >= dummy.x - 45 || hero.facing !== 1 || dummy.hp >= hp2A || !sawSlice2) {
       throw new Error(
-        `[Suite 25B ${label} V2-GapClose] Expected mid-range dash-slash >=95px: dx=${(hero.x - 350).toFixed(1)}, dmg=${hp2A - dummy.hp}, ghosts=${maxGhosts2A}`
+        `[Suite 25B ${label} V2-MidStep] Expected front-side step without far lock-on cross: dx=${(hero.x - 365).toFixed(1)}, heroX=${hero.x.toFixed(1)}, dmg=${hp2A - dummy.hp}`
       );
     }
 
-    // Hit 3B (V2 Close-Range Supersonic Dash-Pierce): starts at x=630 (right of dummy=550), dashes >=135px across to left flank!
-    hero.x = 630;
+    // Hit 3B (V2 Close-Range Role Check at 90px <= 165px):
+    // - Duelists (`Ronin`, `Chronomancer`): Single Cross-Slash across dummy to left flank (`x < dummy.x - 50`, `facing === 1`)!
+    // - Heavy Vanguards (`Warrior`, `Reaper`, `Android`): Stay strictly on right front side (`x > dummy.x + 50`, `facing === -1`)!
+    hero.x = 640;
     hero.y = 561;
     hero.facing = -1;
     dummy.x = 550;
@@ -5860,13 +5868,19 @@ for (const [name, Cls] of CLASSES) {
         facingAtStrike2B = hero.facing;
       }
     }
-    if (630 - xAtStrike2B < 135 || xAtStrike2B >= dummy.x - 50 || facingAtStrike2B !== 1 || dummy.hp >= hp2B || maxGhosts2B < 2) {
+    if (isDuelist) {
+      if (640 - xAtStrike2B < 135 || xAtStrike2B >= dummy.x - 50 || facingAtStrike2B !== 1 || dummy.hp >= hp2B || maxGhosts2B < 2) {
+        throw new Error(
+          `[Suite 25B ${label} V2-DuelistCross] Expected single V2 cross-slash across dummy: xAtStrike=${xAtStrike2B.toFixed(1)}, facing=${facingAtStrike2B}, dmg=${hp2B - dummy.hp}, ghosts=${maxGhosts2B}`
+        );
+      }
+    } else if (xAtStrike2B <= dummy.x + 50 || facingAtStrike2B !== -1 || dummy.hp >= hp2B) {
       throw new Error(
-        `[Suite 25B ${label} V2-DashPierce] Expected supersonic dash-pierce across dummy: xAtStrike=${xAtStrike2B.toFixed(1)}, facing=${facingAtStrike2B}, dmg=${hp2B - dummy.hp}, ghosts=${maxGhosts2B}`
+        `[Suite 25B ${label} V2-VanguardFront] Expected Vanguard to stay in front without crossing: xAtStrike=${xAtStrike2B.toFixed(1)}, facing=${facingAtStrike2B}, dmg=${hp2B - dummy.hp}`
       );
     }
 
-    // Hit 4 (V3 — Advancing Hop/Step Heavy Finisher): advances forward, hits with Row 2 83..89, & lands cleanly at groundY
+    // Hit 4 (V3 — Advancing Hop/Step Heavy Finisher): advances forward in front, hits with Row 2 83..89, & lands cleanly at groundY
     hero.x = 435;
     hero.y = 561;
     hero.facing = 1;
@@ -5879,9 +5893,9 @@ for (const [name, Cls] of CLASSES) {
       hero.update(1 / 30, dummy, hGame);
       if (hero.trueUltFrameOverride >= 83 && hero.trueUltFrameOverride <= 89) sawSlice3 = true;
     }
-    if (hero.x <= 450 || dummy.hp >= hp3 || !sawSlice3 || hero.y !== hero.groundY || hero.state !== 'IDLE') {
+    if (hero.x <= 450 || hero.x >= dummy.x - 45 || dummy.hp >= hp3 || !sawSlice3 || hero.y !== hero.groundY || hero.state !== 'IDLE') {
       throw new Error(
-        `[Suite 25B ${label} V3] Expected advancing finisher & grounded IDLE exit: x=${hero.x.toFixed(1)}, y=${hero.y}, state=${hero.state}, dmg=${hp3 - dummy.hp}, slice3=${sawSlice3}`
+        `[Suite 25B ${label} V3] Expected advancing front finisher & grounded IDLE exit: x=${hero.x.toFixed(1)}, y=${hero.y}, state=${hero.state}, dmg=${hp3 - dummy.hp}, slice3=${sawSlice3}`
       );
     }
   }
@@ -5953,9 +5967,11 @@ for (const [name, Cls] of CLASSES) {
     );
   }
 
-  // 25D. Live 1v1 VS Dual-Update (_hnsPhaseThrough) + Adventure Mode (Hold, Pure Forward Open-Air Blitz & AUTO-Play) Audit
+  // 25D. Live 1v1 VS Dual-Update Role Footwork + Adventure Mode (Hold, Controlled Open-Air Steps & AUTO-Play) Audit
   for (const [HeroCls, heroKey, label] of slasherSpecs) {
-    // (1) Live 1v1 VS Mode AI Autonomous 4-Beat Flurry WITH Dual Fighter Updates (verifying _hnsPhaseThrough prevents pushbox shove!)
+    const isDuelist = heroKey === 'ronin' || heroKey === 'chronomancer';
+
+    // (1) Live 1v1 VS Mode AI Autonomous 4-Beat Flurry WITH Dual Fighter Updates
     {
       const vsGame = createMockGame();
       vsGame.gameMode = '1v1';
@@ -5969,18 +5985,19 @@ for (const [name, Cls] of CLASSES) {
       foe.maxHp = 99999;
       foe.hasPoise = true;
       foe.unstoppablePoise = true;
-      foe.isPlayerControlled = true; // Passive standing rival that STILL runs Fighter.update pushbox separation!
+      foe.isPlayerControlled = true;
       vsGame.leftFighter = hero;
       vsGame.rightFighter = foe;
       vsGame.fighters = [hero, foe];
       vsGame.getEnemiesOf = (f) => (f === hero ? [foe] : [hero]);
 
       const seenVars = [];
-      let crossedRightOnV1 = false;
-      let dashedLeftOnV2 = false;
+      let crossedOnV1 = false;
+      let crossedRightOnV2 = false;
       for (let tick = 0; tick < 80 && seenVars.length < 4; tick++) {
         const prevState = hero.state;
         const prevVar = hero._autoVariant;
+        foe.x = 575;
         hero.update(1 / 30, foe, vsGame);
         foe.update(1 / 30, hero, vsGame);
         if (
@@ -5990,19 +6007,20 @@ for (const [name, Cls] of CLASSES) {
           seenVars.push(hero._autoVariant);
         }
         if (hero.state === 'AUTO_ATTACK' && hero._autoVariant === 1) {
-          if (hero.x > foe.x + 65 && hero.facing === -1) crossedRightOnV1 = true;
+          if (hero.x > foe.x + 25) crossedOnV1 = true;
         }
         if (hero.state === 'AUTO_ATTACK' && hero._autoVariant === 2) {
-          if (hero.x < foe.x - 65 && hero.facing === 1) dashedLeftOnV2 = true;
+          if (hero.x > foe.x + 55 && hero.facing === -1) crossedRightOnV2 = true;
         }
       }
       if (
         seenVars.slice(0, 4).join(',') !== '0,1,2,3' ||
-        !crossedRightOnV1 ||
-        !dashedLeftOnV2
+        crossedOnV1 ||
+        crossedRightOnV2 !== isDuelist ||
+        foe.hp >= 99999
       ) {
         throw new Error(
-          `[Suite 25D VS-1v1 ${label}] Expected dual-updated 1v1 0,1,2,3 phase-through cross+dash, got vars=[${seenVars.join(',')}], crossV1=${crossedRightOnV1}, dashV2=${dashedLeftOnV2}, heroX=${hero.x.toFixed(1)}, foeX=${foe.x.toFixed(1)}`
+          `[Suite 25D VS-1v1 ${label}] Role footwork mismatch: vars=[${seenVars.join(',')}], crossV1=${crossedOnV1}, crossV2=${crossedRightOnV2} (expected ${isDuelist}), heroX=${hero.x.toFixed(1)}`
         );
       }
     }
@@ -6038,8 +6056,8 @@ for (const [name, Cls] of CLASSES) {
 
       adv.heldAttack = true;
       const seenVars = [];
-      let crossedRightOnV1 = false;
-      let dashedLeftOnV2 = false;
+      let crossedOnV1 = false;
+      let crossedRightOnV2 = false;
       for (let tick = 0; tick < 80 && seenVars.length < 4; tick++) {
         const prevVar = hero._autoVariant;
         const prevState = hero.state;
@@ -6053,26 +6071,26 @@ for (const [name, Cls] of CLASSES) {
           seenVars.push(hero._autoVariant);
         }
         if (hero.state === 'AUTO_ATTACK' && hero._autoVariant === 1) {
-          if (hero.x > primaryMob.x + 65 && hero.facing === -1) crossedRightOnV1 = true;
+          if (hero.x > primaryMob.x + 25) crossedOnV1 = true;
         }
         if (hero.state === 'AUTO_ATTACK' && hero._autoVariant === 2) {
-          if (hero.x < primaryMob.x - 65 && hero.facing === 1) dashedLeftOnV2 = true;
+          if (hero.x > primaryMob.x + 55 && hero.facing === -1) crossedRightOnV2 = true;
         }
       }
       adv.stopCampaign();
       if (
         seenVars.slice(0, 4).join(',') !== '0,1,2,3' ||
-        !crossedRightOnV1 ||
-        !dashedLeftOnV2 ||
+        crossedOnV1 ||
+        crossedRightOnV2 !== isDuelist ||
         primaryMob.hp >= 99999
       ) {
         throw new Error(
-          `[Suite 25D Adv-Hold ${label}] Expected sticky-locked 0,1,2,3 wide cross+dash vs primaryMob (x=565) ignoring distractor (x=745), got vars=[${seenVars.join(',')}], crossV1=${crossedRightOnV1}, dashV2=${dashedLeftOnV2}, dmg=${99999 - primaryMob.hp}`
+          `[Suite 25D Adv-Hold ${label}] Sticky-locked role footwork mismatch: vars=[${seenVars.join(',')}], crossV1=${crossedOnV1}, crossV2=${crossedRightOnV2} (expected ${isDuelist}), dmg=${99999 - primaryMob.hp}`
         );
       }
     }
 
-    // (3) Adventure Mode Open-Air / No-Nearby-Enemy Pure Forward Blitz (0 Leftward Turns even w/ far straggler at x=85!)
+    // (3) Adventure Mode Open-Air / No-Nearby-Enemy Controlled Martial Steps (0 Leftward Turns, NO across-screen dash spam!)
     {
       const airGame = createMockGame();
       airGame.gameMode = 'adventure';
@@ -6089,7 +6107,7 @@ for (const [name, Cls] of CLASSES) {
       hero.groundY = 561;
       hero.y = 561;
       hero.facing = 1;
-      // Spawn a distant straggler monster 375px BEHIND on the left (> 275px melee lock range)
+      // Spawn a distant straggler monster 375px BEHIND on the left (> 215px melee lock range)
       const farLeftStraggler = adv.spawnMonster('goblin', 85, { groundY: 561, skipPortal: true });
       farLeftStraggler.hp = 99999;
       farLeftStraggler.maxHp = 99999;
@@ -6099,7 +6117,6 @@ for (const [name, Cls] of CLASSES) {
       adv.heldAttack = true;
       const seenVars = [];
       let everTurnedLeft = false;
-      let maxStreaks = 0;
       let maxLift = 0;
       for (let tick = 0; tick < 64; tick++) {
         const prevVar = hero._autoVariant;
@@ -6109,7 +6126,6 @@ for (const [name, Cls] of CLASSES) {
         if (hero.facing !== 1) {
           everTurnedLeft = true;
         }
-        maxStreaks = Math.max(maxStreaks, (hero._hnsStreaks || []).length);
         maxLift = Math.max(maxLift, hero.groundY - hero.y);
         if (
           hero.state === 'AUTO_ATTACK' &&
@@ -6123,17 +6139,17 @@ for (const [name, Cls] of CLASSES) {
         if (seenVars.length >= 4 && hero.state !== 'AUTO_ATTACK') break;
       }
       const totalForwardGain = hero.x - 460;
-      const liftOk = heroKey === 'ronin' ? maxLift === 0 : maxLift >= 18;
+      const liftOk = heroKey === 'ronin' ? maxLift === 0 : maxLift >= 16 && maxLift <= 28;
       adv.stopCampaign();
       if (
         seenVars.slice(0, 4).join(',') !== '0,1,2,3' ||
         everTurnedLeft ||
-        totalForwardGain < 440 ||
-        maxStreaks === 0 ||
+        totalForwardGain < 95 ||
+        totalForwardGain > 260 ||
         !liftOk
       ) {
         throw new Error(
-          `[Suite 25D Adv-OpenAir ${label}] Expected 100% pure forward wild blitz (0 left turns, >=440px forward gain), got vars=[${seenVars.join(',')}], everTurnedLeft=${everTurnedLeft}, gain=${totalForwardGain.toFixed(1)}, maxStreaks=${maxStreaks}, maxLift=${maxLift.toFixed(1)}`
+          `[Suite 25D Adv-OpenAir ${label}] Expected controlled forward martial steps (95..260px, 0 left turns), got vars=[${seenVars.join(',')}], everTurnedLeft=${everTurnedLeft}, gain=${totalForwardGain.toFixed(1)}, maxLift=${maxLift.toFixed(1)}`
         );
       }
     }
@@ -6165,7 +6181,7 @@ for (const [name, Cls] of CLASSES) {
 
       const seenVars = [];
       let crossedAutoV1 = false;
-      let dashedAutoV2 = false;
+      let crossedRightAutoV2 = false;
       for (let tick = 0; tick < 80 && seenVars.length < 4; tick++) {
         const prevVar = hero._autoVariant;
         const prevState = hero.state;
@@ -6178,16 +6194,21 @@ for (const [name, Cls] of CLASSES) {
           seenVars.push(hero._autoVariant);
         }
         if (hero.state === 'AUTO_ATTACK' && hero._autoVariant === 1) {
-          if (hero.x > mob.x + 65 && hero.facing === -1) crossedAutoV1 = true;
+          if (hero.x > mob.x + 25) crossedAutoV1 = true;
         }
         if (hero.state === 'AUTO_ATTACK' && hero._autoVariant === 2) {
-          if (hero.x < mob.x - 65 && hero.facing === 1) dashedAutoV2 = true;
+          if (hero.x > mob.x + 55 && hero.facing === -1) crossedRightAutoV2 = true;
         }
       }
       adv.stopCampaign();
-      if (seenVars.slice(0, 4).join(',') !== '0,1,2,3' || !crossedAutoV1 || !dashedAutoV2) {
+      if (
+        seenVars.slice(0, 4).join(',') !== '0,1,2,3' ||
+        crossedAutoV1 ||
+        crossedRightAutoV2 !== isDuelist ||
+        mob.hp >= 99999
+      ) {
         throw new Error(
-          `[Suite 25D Adv-AutoPlay ${label}] Expected AUTO-play 0,1,2,3 cross+dash flurry, got vars=[${seenVars.join(',')}], crossV1=${crossedAutoV1}, dashV2=${dashedAutoV2}`
+          `[Suite 25D Adv-AutoPlay ${label}] Expected role-based AUTO-play 0,1,2,3 flurry, got vars=[${seenVars.join(',')}], crossV1=${crossedAutoV1}, crossV2=${crossedRightAutoV2} (expected ${isDuelist})`
         );
       }
     }
@@ -6337,26 +6358,45 @@ for (const [name, Cls] of CLASSES) {
 }
 
 // ============================================================================
-// SUITE 26: 3-MAGE SPELL-BLADE HACK-AND-SLASH OVERHAUL (?v=30fps104)
+// SUITE 26: 3-MAGE RANGED BATTLE-MAGE SPELL-SLASH & KITING FOOTWORK (?v=30fps105)
 // Verifies Ignis Sol (`FireMage`), Lyra (`IceMage`), and Seraphina (`Priestess`)
-// 4-Beat Spell-Blade Hack-and-Slash combos across VS 1v1, Adventure Manual Hold,
-// Adventure Open-Air Pure Forward Blitz (0 left turns, 0 backward spells),
-// Seraphina's strict 0px-float contract, and Adventure AUTO Play!
+// 4-Beat Spell-Slash combos with true ranged spacing (`sweetMin >= 305`),
+// ZERO melee cross-throughs, Beat-4 (`V3`) Backstep Kite, Open-Air 0-Left-Turn /
+// 0-Backward-Shot safety, Seraphina's strict 0px-float contract, and Adventure AUTO Play!
 // ============================================================================
 {
   const mageHackSlashSpecs = [
-    [FireMage, 'mage', 'Ignis Sol (Helios Spell-Blade)', (h) => (h.solarEchoes || []).length],
-    [IceMage, 'icemage', 'Lyra (Figure-Skating Spell-Blade)', (h) => (h.afterimages || []).length],
-    [Priestess, 'priestess', 'Seraphina (Grounded Radiant Spell-Blade)', (h) => (h.afterimages || []).length]
+    [FireMage, 'mage', 'Ignis Sol (Helios Battle-Mage)', (h) => (h.solarEchoes || []).length],
+    [IceMage, 'icemage', 'Lyra (Figure-Skating Battle-Mage)', (h) => (h.afterimages || []).length],
+    [Priestess, 'priestess', 'Seraphina (Grounded Radiant Battle-Mage)', (h) => (h.afterimages || []).length]
   ];
 
+  const stepMockProjectiles = (vfx, targets, dt) => {
+    if (!vfx?.projectiles) return;
+    for (let i = vfx.projectiles.length - 1; i >= 0; i--) {
+      const p = vfx.projectiles[i];
+      p.x += (p.vx || 0) * dt;
+      p.y += (p.vy || 0) * dt;
+      for (const t of targets) {
+        if (t && !t.isDead && p.owner !== t && Math.abs(p.x - t.x) <= 46) {
+          t.takeDamage(p.damage || 24, p.owner, false, 0, 0);
+          vfx.projectiles.splice(i, 1);
+          break;
+        }
+      }
+    }
+  };
+
   for (const [HeroCls, heroKey, label, countEchoes] of mageHackSlashSpecs) {
-    // (1) VS 1v1 Dual-Fighter Phase-Through 4-Beat Spell-Blade Combo + Render Hygiene
+    // (1) VS 1v1 Ranged 4-Beat Spell-Slash + Beat-4 Backstep Kite (ZERO cross-throughs!) + Render Hygiene
     {
       const vsGame = createMockGame();
       vsGame.gameMode = 'duel';
-      const hero = new HeroCls(380, 561, 1);
-      const foe = new Titan(560, 561, -1);
+      const hero = new HeroCls(320, 561, 1);
+      const foe = new Titan(680, 561, -1);
+      if (hero.getAiStyleProfile().sweetMin < 305) {
+        throw new Error(`[Suite 26A ${label}] Expected ranged sweetMin >= 305, got ${hero.getAiStyleProfile().sweetMin}`);
+      }
       hero.game = vsGame;
       foe.game = vsGame;
       foe.hp = 99999;
@@ -6376,37 +6416,44 @@ for (const [name, Cls] of CLASSES) {
       const track = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
       const rCtx = createMockCtx(track);
       const seenVars = [];
-      let crossedRightOnV1 = false;
-      let dashedLeftOnV2 = false;
+      let everCrossedFoe = false;
+      let everTurnedAway = false;
+      let v3StartX = null;
+      let v3EndX = null;
       let maxEchoes = 0;
       let maxLift = 0;
       let sawAngelicAscent = false;
       let saveDelta = 0;
 
-      for (let tick = 0; tick < 84 && seenVars.length < 4; tick++) {
+      for (let tick = 0; tick < 90; tick++) {
         const prevState = hero.state;
         const prevVar = hero._autoVariant;
-        foe.x = 560;
+        foe.x = 680;
         foe.vx = 0;
         hero.update(1 / 30, foe, vsGame);
         foe.update(1 / 30, hero, vsGame);
+        vsGame.vfx?.update?.(1 / 30, 561, vsGame.renderer);
+        stepMockProjectiles(vsGame.vfx, [foe], 1 / 30);
 
         maxEchoes = Math.max(maxEchoes, countEchoes(hero));
         maxLift = Math.max(maxLift, Math.abs(hero.groundY - hero.y));
         if (hero.isAngelicAscent) sawAngelicAscent = true;
+        if (hero.x >= foe.x - 100) everCrossedFoe = true;
+        if (hero.state === 'AUTO_ATTACK' && hero.facing !== 1) everTurnedAway = true;
 
         if (
           hero.state === 'AUTO_ATTACK' &&
           (prevState !== 'AUTO_ATTACK' || hero._autoVariant !== prevVar)
         ) {
           seenVars.push(hero._autoVariant);
+          if (hero._autoVariant === 3 && v3StartX === null) {
+            v3StartX = hero.x;
+          }
         }
-        if (hero.state === 'AUTO_ATTACK' && hero._autoVariant === 1) {
-          if (hero.x > foe.x + 65 && hero.facing === -1) crossedRightOnV1 = true;
+        if (v3StartX !== null && hero.state === 'AUTO_ATTACK' && hero._autoVariant === 3) {
+          v3EndX = hero.x;
         }
-        if (hero.state === 'AUTO_ATTACK' && hero._autoVariant === 2) {
-          if (hero.x < foe.x - 65 && hero.facing === 1) dashedLeftOnV2 = true;
-        }
+        if (seenVars.length >= 4 && hero.state !== 'AUTO_ATTACK') break;
 
         const s0 = rCtx._stateStack.length;
         hero.drawForegroundOverlay?.(rCtx, vsGame.renderer);
@@ -6416,29 +6463,31 @@ for (const [name, Cls] of CLASSES) {
         saveDelta += Math.abs(rCtx._stateStack.length - s0);
       }
 
-      const liftOk = heroKey === 'priestess' ? maxLift <= 0.001 && !sawAngelicAscent : maxLift >= 18;
+      const backstepDelta = v3StartX !== null && v3EndX !== null ? v3StartX - v3EndX : 0;
+      const liftOk = heroKey === 'priestess' ? maxLift <= 0.001 && !sawAngelicAscent : maxLift >= 12 && maxLift <= 24;
       if (
         hero.heroId !== heroKey ||
         seenVars.slice(0, 4).join(',') !== '0,1,2,3' ||
-        !crossedRightOnV1 ||
-        !dashedLeftOnV2 ||
-        maxEchoes < 3 ||
+        everCrossedFoe ||
+        everTurnedAway ||
+        backstepDelta < 28 ||
+        maxEchoes < 1 ||
         !liftOk ||
         foe.hp >= 99999 ||
         track.rotateCalls !== 0 ||
         saveDelta !== 0
       ) {
         throw new Error(
-          `[Suite 26A VS-1v1 ${label}] Spell-Blade H&S failed: vars=[${seenVars.join(',')}], crossV1=${crossedRightOnV1}, dashV2=${dashedLeftOnV2}, maxEchoes=${maxEchoes}, maxLift=${maxLift.toFixed(3)}, sawAscent=${sawAngelicAscent}, dmg=${99999 - foe.hp}, rotates=${track.rotateCalls}, saveDelta=${saveDelta}`
+          `[Suite 26A VS-1v1 ${label}] Battle-Mage footwork failed: vars=[${seenVars.join(',')}], crossed=${everCrossedFoe}, turned=${everTurnedAway}, backstep=${backstepDelta.toFixed(1)}, maxEchoes=${maxEchoes}, maxLift=${maxLift.toFixed(3)}, sawAscent=${sawAngelicAscent}, dmg=${99999 - foe.hp}, rotates=${track.rotateCalls}, saveDelta=${saveDelta}`
         );
       }
     }
 
-    // (2) Adventure Mode Manual Hold (`heldAttack = true`) Sticky-Target Cross & Dash-Pierce
+    // (2) Adventure Mode Manual Hold (`heldAttack = true`) Ranged Spell-Slash + Beat-4 Backstep Kite (0 melee cross!)
     {
       const advGame = createMockGame();
       advGame.gameMode = 'adventure';
-      const hero = new HeroCls(450, 561, 1);
+      const hero = new HeroCls(380, 561, 1);
       hero.game = advGame;
       advGame.leftFighter = hero;
       const adv = new AdventureManager(advGame);
@@ -6448,12 +6497,12 @@ for (const [name, Cls] of CLASSES) {
       adv.lockMinX = 180;
       adv.lockMaxX = 980;
       advGame.fighters = [hero];
-      hero.x = 450;
+      hero.x = 380;
       hero.groundY = 561;
       hero.y = 561;
       hero.facing = 1;
-      const primaryMob = adv.spawnMonster('goblin', 585, { groundY: 561, skipPortal: true });
-      const distractorMob = adv.spawnMonster('skeleton', 785, { groundY: 561, skipPortal: true });
+      const primaryMob = adv.spawnMonster('goblin', 710, { groundY: 561, skipPortal: true });
+      const distractorMob = adv.spawnMonster('skeleton', 880, { groundY: 561, skipPortal: true });
       primaryMob.hp = 99999;
       primaryMob.maxHp = 99999;
       primaryMob.autoCooldown = 999;
@@ -6465,46 +6514,52 @@ for (const [name, Cls] of CLASSES) {
 
       adv.heldAttack = true;
       const seenVars = [];
-      let crossedRightOnV1 = false;
-      let dashedLeftOnV2 = false;
-      for (let tick = 0; tick < 84 && seenVars.length < 4; tick++) {
+      let everCrossedMob = false;
+      let v3StartX = null;
+      let v3EndX = null;
+      for (let tick = 0; tick < 90; tick++) {
         const prevVar = hero._autoVariant;
         const prevState = hero.state;
-        primaryMob.x = 585;
-        distractorMob.x = 785;
+        const preTickX = hero.x;
+        primaryMob.x = 710;
+        distractorMob.x = 880;
         adv.processPlayerControls(1 / 30, hero, adv.getNearestLivingMonster(hero));
+        advGame.vfx?.update?.(1 / 30, 561, advGame.renderer);
+        stepMockProjectiles(advGame.vfx, [primaryMob, distractorMob], 1 / 30);
+        if (hero.x >= primaryMob.x - 120) everCrossedMob = true;
         if (
           hero.state === 'AUTO_ATTACK' &&
           (prevState !== 'AUTO_ATTACK' || hero._autoVariant !== prevVar)
         ) {
           seenVars.push(hero._autoVariant);
+          if (hero._autoVariant === 3 && v3StartX === null) v3StartX = preTickX;
+          if (seenVars.length >= 4) adv.heldAttack = false;
         }
-        if (hero.state === 'AUTO_ATTACK' && hero._autoVariant === 1) {
-          if (hero.x > primaryMob.x + 65 && hero.facing === -1) crossedRightOnV1 = true;
+        if (v3StartX !== null && seenVars.length === 4 && hero.state === 'AUTO_ATTACK' && hero._autoVariant === 3) {
+          v3EndX = hero.x;
         }
-        if (hero.state === 'AUTO_ATTACK' && hero._autoVariant === 2) {
-          if (hero.x < primaryMob.x - 65 && hero.facing === 1) dashedLeftOnV2 = true;
-        }
+        if (seenVars.length >= 4 && hero.state !== 'AUTO_ATTACK') break;
       }
+      const backstepDelta = v3StartX !== null && v3EndX !== null ? v3StartX - v3EndX : 0;
       adv.stopCampaign();
       if (
         seenVars.slice(0, 4).join(',') !== '0,1,2,3' ||
-        !crossedRightOnV1 ||
-        !dashedLeftOnV2 ||
+        everCrossedMob ||
+        backstepDelta < 28 ||
         primaryMob.hp >= 99999
       ) {
         throw new Error(
-          `[Suite 26B Adv-Hold ${label}] Expected sticky-locked 0,1,2,3 Spell-Blade cross+dash vs primaryMob (x=585), got vars=[${seenVars.join(',')}], crossV1=${crossedRightOnV1}, dashV2=${dashedLeftOnV2}, dmg=${99999 - primaryMob.hp}`
+          `[Suite 26B Adv-Hold ${label}] Expected ranged 0,1,2,3 Spell-Slash + V3 backstep kite vs primaryMob (x=710), got vars=[${seenVars.join(',')}], crossed=${everCrossedMob}, backstep=${backstepDelta.toFixed(1)}, dmg=${99999 - primaryMob.hp}`
         );
       }
     }
 
-    // (3) Adventure Mode Open-Air (`No Nearby Enemy`, Far Left Straggler at x=85 = 375px Behind > 310px Lock Range)
-    // Must execute a 100% pure forward 4-beat Spell-Blade blitz with ZERO leftward turns and ZERO backward projectiles!
+    // (3) Adventure Mode Open-Air (`No Nearby Enemy`, Far Left Straggler at x=85 = 575px Behind > 510px Lock Range)
+    // Must execute gentle local forward cast-steps (45..140px total) with ZERO leftward turns and ZERO backward projectiles!
     {
       const airGame = createMockGame();
       airGame.gameMode = 'adventure';
-      const hero = new HeroCls(460, 561, 1);
+      const hero = new HeroCls(660, 561, 1);
       hero.game = airGame;
       airGame.leftFighter = hero;
       const adv = new AdventureManager(airGame);
@@ -6513,7 +6568,7 @@ for (const [name, Cls] of CLASSES) {
       adv.lockActive = false;
       airGame.fighters = [hero];
       if (adv.destructibles) adv.destructibles.props = [];
-      hero.x = 460;
+      hero.x = 660;
       hero.groundY = 561;
       hero.y = 561;
       hero.facing = 1;
@@ -6527,10 +6582,9 @@ for (const [name, Cls] of CLASSES) {
       const seenVars = [];
       let everTurnedLeft = false;
       let everShotBackward = false;
-      let maxStreaks = 0;
       let maxLift = 0;
 
-      for (let tick = 0; tick < 68; tick++) {
+      for (let tick = 0; tick < 72; tick++) {
         const prevVar = hero._autoVariant;
         const prevState = hero.state;
         farLeftStraggler.x = 85;
@@ -6539,7 +6593,6 @@ for (const [name, Cls] of CLASSES) {
         for (const p of airGame.vfx?.projectiles || []) {
           if (p.owner === hero && p.vx < 0) everShotBackward = true;
         }
-        maxStreaks = Math.max(maxStreaks, (hero._hnsStreaks || []).length);
         maxLift = Math.max(maxLift, Math.abs(hero.groundY - hero.y));
 
         if (
@@ -6554,28 +6607,28 @@ for (const [name, Cls] of CLASSES) {
         if (seenVars.length >= 4 && hero.state !== 'AUTO_ATTACK') break;
       }
 
-      const totalForwardGain = hero.x - 460;
-      const liftOk = heroKey === 'priestess' ? maxLift <= 0.001 : maxLift >= 18;
+      const totalForwardGain = hero.x - 660;
+      const liftOk = heroKey === 'priestess' ? maxLift <= 0.001 : maxLift >= 12 && maxLift <= 24;
       adv.stopCampaign();
       if (
         seenVars.slice(0, 4).join(',') !== '0,1,2,3' ||
         everTurnedLeft ||
         everShotBackward ||
-        totalForwardGain < 420 ||
-        maxStreaks === 0 ||
+        totalForwardGain < 45 ||
+        totalForwardGain > 145 ||
         !liftOk
       ) {
         throw new Error(
-          `[Suite 26C Adv-OpenAir ${label}] Expected 100% pure forward Spell-Blade blitz (0 left turns, 0 backward projectiles, >=420px forward gain), got vars=[${seenVars.join(',')}], everTurnedLeft=${everTurnedLeft}, everShotBackward=${everShotBackward}, gain=${totalForwardGain.toFixed(1)}, maxStreaks=${maxStreaks}, maxLift=${maxLift.toFixed(3)}`
+          `[Suite 26C Adv-OpenAir ${label}] Expected controlled local forward cast-steps (45..145px, 0 left turns, 0 backward projectiles), got vars=[${seenVars.join(',')}], everTurnedLeft=${everTurnedLeft}, everShotBackward=${everShotBackward}, gain=${totalForwardGain.toFixed(1)}, maxLift=${maxLift.toFixed(3)}`
         );
       }
     }
 
-    // (4) Adventure Mode `AUTO` Play (`autoPlay = true`) Seamless 4-Beat Spell-Blade Flurry
+    // (4) Adventure Mode `AUTO` Play (`autoPlay = true`) Seamless 4-Beat Ranged Spell-Slash Flurry
     {
       const autoGame = createMockGame();
       autoGame.gameMode = 'adventure';
-      const hero = new HeroCls(450, 561, 1);
+      const hero = new HeroCls(380, 561, 1);
       hero.game = autoGame;
       autoGame.leftFighter = hero;
       const adv = new AdventureManager(autoGame);
@@ -6586,11 +6639,11 @@ for (const [name, Cls] of CLASSES) {
       adv.lockMinX = 180;
       adv.lockMaxX = 980;
       autoGame.fighters = [hero];
-      hero.x = 450;
+      hero.x = 380;
       hero.groundY = 561;
       hero.y = 561;
       hero.skillCooldown = 999;
-      const mob = adv.spawnMonster('goblin', 610, { groundY: 561, skipPortal: true });
+      const mob = adv.spawnMonster('goblin', 710, { groundY: 561, skipPortal: true });
       mob.hp = 99999;
       mob.maxHp = 99999;
       mob.autoCooldown = 999;
@@ -6600,7 +6653,7 @@ for (const [name, Cls] of CLASSES) {
       for (let tick = 0; tick < 90 && seenVars.length < 4; tick++) {
         const prevVar = hero._autoVariant;
         const prevState = hero.state;
-        mob.x = 610;
+        mob.x = 710;
         adv.processPlayerControls(1 / 30, hero, adv.getNearestLivingMonster(hero));
         if (
           hero.state === 'AUTO_ATTACK' &&
@@ -6612,15 +6665,359 @@ for (const [name, Cls] of CLASSES) {
       adv.stopCampaign();
       if (seenVars.slice(0, 4).join(',') !== '0,1,2,3') {
         throw new Error(
-          `[Suite 26D Adv-AutoPlay ${label}] Expected seamless AUTO Play 0,1,2,3 Spell-Blade flurry, got vars=[${seenVars.join(',')}]`
+          `[Suite 26D Adv-AutoPlay ${label}] Expected seamless AUTO Play 0,1,2,3 Spell-Slash flurry, got vars=[${seenVars.join(',')}]`
         );
       }
     }
   }
 
   console.log(
-    '[PASS] Suite 26: 3-Mage Spell-Blade Hack-and-Slash Overhaul (Ignis Sol, Lyra, Seraphina — VS 1v1 Phase-Through, Adventure Sticky-Lock, Open-Air 0-Left-Turn / 0-Back-Shot Pure Forward Blitz, Seraphina 0px-Float & AUTO Play) verified!'
+    '[PASS] Suite 26: 3-Mage Ranged Battle-Mage Spell-Slash & Beat-4 Backstep Kite (Ignis Sol, Lyra, Seraphina — Zero Melee Cross-Spam, Ranged Spacing, Seraphina 0px-Float & AUTO Play) verified!'
   );
 }
 
+// ============================================================================
+// SUITE 27: Adventure 3D HD-2D Stage Objects, 32-Cell Colossal Boss Malphas & Lossless Optimizations
+// ============================================================================
+{
+  const readPngDims = (absPath) => {
+    const buf = fs.readFileSync(absPath);
+    if (buf.length < 24 || buf.readUInt32BE(0) !== 0x89504e47) {
+      throw new Error(`[Suite 27] Invalid PNG header at ${absPath}`);
+    }
+    return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
+  };
+
+  // (27A) Adventure3DObjects: Pinhole 3D Perspective Shift, Frustum Culling, 0 ctx.rotate & Bloom <= 0.16
+  {
+    const forbidden = { rotate: 0, quad: 0, maxLighterAlpha: 0 };
+    const make3DCtx = (vertLog = null, counter = null) => {
+      const base = createMockCtx();
+      base.rotate = () => {
+        forbidden.rotate++;
+      };
+      base.quadraticCurveTo = () => {
+        forbidden.quad++;
+      };
+      const origFillRect = base.fillRect.bind(base);
+      base.fillRect = (x, y, w, h) => {
+        if (base.globalCompositeOperation === 'lighter') {
+          forbidden.maxLighterAlpha = Math.max(forbidden.maxLighterAlpha, base.globalAlpha ?? 1);
+        }
+        origFillRect(x, y, w, h);
+      };
+      base.lineTo = (x, y) => {
+        if (vertLog) vertLog.push(`${x},${y}`);
+      };
+      base.fill = () => {
+        if (counter) counter.fills++;
+      };
+      return base;
+    };
+
+    for (const camX of [780, 3080, 5480, 8850]) {
+      const counts = { fills: 0 };
+      const ctx3d = make3DCtx(null, counts);
+      const mockRenderer = {
+        camX,
+        camY: 445,
+        width: 1200,
+        zoom: 1,
+        time: 2.35,
+        permanentStageOverride: null,
+        trueUltStageOverride: null,
+        trueUltStageAlpha: 0
+      };
+      Adventure3DObjects.renderUpperColonnade3D(ctx3d, mockRenderer);
+      Adventure3DObjects.renderParapetCurb3D(ctx3d, mockRenderer);
+      Adventure3DObjects.renderForeground3D(ctx3d, mockRenderer);
+      if (ctx3d._stateStack.length !== 0) {
+        throw new Error(
+          `[Suite 27A] Unbalanced ctx.save/restore stack (${ctx3d._stateStack.length}) at camX=${camX}`
+        );
+      }
+      if (counts.fills < 16) {
+        throw new Error(
+          `[Suite 27A] Expected >=16 painter-sorted 3D faces rendered at camX=${camX}, got ${counts.fills}`
+        );
+      }
+    }
+
+    if (forbidden.rotate !== 0 || forbidden.quad !== 0 || forbidden.maxLighterAlpha > 0.1601) {
+      throw new Error(
+        `[Suite 27A] Forbidden 3D stage calls/bloom: rotate=${forbidden.rotate}, quad=${forbidden.quad}, maxLighterAlpha=${forbidden.maxLighterAlpha}`
+      );
+    }
+
+    // Verify genuine 3D perspective vertex shift as camera sweeps past pier `wx = 1300`
+    const vertsCamLeft = [];
+    const vertsCamRight = [];
+    Adventure3DObjects.renderUpperColonnade3D(make3DCtx(vertsCamLeft), {
+      camX: 1120,
+      camY: 445,
+      width: 1200,
+      zoom: 1,
+      time: 1.0
+    }, {
+      camX: 1120,
+      camY: 445,
+      viewLeft: 1260,
+      viewRight: 1340,
+      t: 1.0
+    });
+    Adventure3DObjects.renderUpperColonnade3D(make3DCtx(vertsCamRight), {
+      camX: 1480,
+      camY: 445,
+      width: 1200,
+      zoom: 1,
+      time: 1.0
+    }, {
+      camX: 1480,
+      camY: 445,
+      viewLeft: 1260,
+      viewRight: 1340,
+      t: 1.0
+    });
+    if (
+      vertsCamLeft.length === 0 ||
+      vertsCamRight.length === 0 ||
+      vertsCamLeft.join('|') === vertsCamRight.join('|')
+    ) {
+      throw new Error('[Suite 27A] Expected true 3D perspective vertex shift across camX=1120 vs camX=1480');
+    }
+
+    // Verify camera frustum culling outside world bounds (`viewLeft = 9850..10200`)
+    const culledCounts = { fills: 0 };
+    Adventure3DObjects.renderUpperColonnade3D(make3DCtx(null, culledCounts), {
+      camX: 10000,
+      camY: 445,
+      width: 1200,
+      zoom: 1,
+      time: 1.0
+    }, {
+      camX: 10000,
+      camY: 445,
+      viewLeft: 9850,
+      viewRight: 10200,
+      t: 1.0
+    });
+    if (culledCounts.fills !== 0) {
+      throw new Error(`[Suite 27A] Expected 0 3D faces in culled slice, got ${culledCounts.fills}`);
+    }
+  }
+
+  // (27B) Upgraded 32-Cell `boss_colossus_sheet.png` (4096x2048) & Multi-Joint/Multi-Frame `ArchfiendBoss`
+  {
+    const bossSheetDims = readPngDims(
+      '/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/boss_colossus_sheet.png'
+    );
+    if (bossSheetDims.width !== 4096 || bossSheetDims.height !== 2048) {
+      throw new Error(
+        `[Suite 27B] Expected boss_colossus_sheet.png 4096x2048, got ${bossSheetDims.width}x${bossSheetDims.height}`
+      );
+    }
+
+    const assets = PixelForge.initAssets();
+    assets.archfiend.colossus.complete = true;
+    assets.archfiend.colossus.naturalWidth = 4096;
+    assets.archfiend.colossus.naturalHeight = 2048;
+
+    const bossGame = createMockGame();
+    bossGame.gameMode = 'adventure';
+    const hero = new Warrior(8920, 561, 1);
+    hero.game = bossGame;
+    const boss = new ArchfiendBoss(9335, 561);
+    boss.game = bossGame;
+
+    const sampledCells = new Set();
+    let bossRotates = 0;
+    const bossCtx = createMockCtx();
+    bossCtx.rotate = () => {
+      bossRotates++;
+    };
+    bossCtx.drawImage = (img, sx, sy, sw, sh) => {
+      if (img === assets.archfiend.colossus && sw === 512 && sh === 512) {
+        sampledCells.add(`${Math.round(sx / 512)},${Math.round(sy / 512)}`);
+      }
+    };
+
+    // 1. Step through emerge eruption (spawns magma spires & boulders + beats wings)
+    for (let i = 0; i < 52; i++) {
+      boss.update(1 / 30, hero, bossGame);
+      boss.draw(bossCtx, false, { time: i / 30 });
+    }
+    // 2. Drive Phase 3 + Jaw Hellfire (`skillVariant = 0`) across 3-frame torrent cycle
+    boss.bossPhase = 3;
+    boss.emergeTimer = 0;
+    boss.state = 'SKILL';
+    boss.skillVariant = 0;
+    boss.jawOpen = 0.92;
+    for (let i = 0; i < 8; i++) {
+      boss.stateTimer = 0.32 + i * 0.05;
+      boss.animTime += 1 / 30;
+      boss.wingPhase += 0.7;
+      boss.draw(bossCtx, false, { time: 2.0 + i * 0.05 });
+    }
+    // 3. Drive Razor Rake (`skillVariant = 1`, `rakeActive = true`) across 3-frame talon slash wave
+    boss.state = 'SKILL';
+    boss.skillVariant = 1;
+    boss.rakeActive = true;
+    boss.fistVisible = false;
+    for (let i = 0; i < 8; i++) {
+      boss.stateTimer = 0.50 + i * 0.04;
+      boss.animTime += 1 / 30;
+      boss.draw(bossCtx, false, { time: 3.0 + i * 0.04 });
+    }
+    // 4. Drive Airborne Meteor Fist (`fistVisible = true`) + Vulnerable Heart-Core Vortex
+    boss.rakeActive = false;
+    boss.state = 'AUTO_ATTACK';
+    boss.stateTimer = 0.56;
+    boss.fistVisible = true;
+    boss.fistWorldX = 8950;
+    boss.fistWorldY = 360;
+    boss.vulnerableTimer = 1.2;
+    boss.draw(bossCtx, false, { time: 4.1 });
+
+    if (bossRotates !== 0 || bossCtx._stateStack.length !== 0) {
+      throw new Error(
+        `[Suite 27B] Boss render invariant failed: rotate=${bossRotates}, stack=${bossCtx._stateStack.length}`
+      );
+    }
+
+    const requiredNewCells = [
+      '0,2', '1,2', '2,2', '3,2', // Beating Abyssal Great-Wings
+      '4,2', '5,2',               // Articulated Bicep + Forearm Gauntlet
+      '6,2', '7,2',               // Multi-frame Hellfire Torrent
+      '0,3', '1,3',               // Multi-frame 3-Talon Slash Wave
+      '2,3', '3,3',               // Erupting Obsidian Magma Spires
+      '4,3', '5,3',               // Ballistic 3D Magma Boulders
+      '6,3',                      // Phase II/III Sovereign Burning Halo-Crown
+      '7,3'                       // Churning Abyssal Magma Vortex Core
+    ];
+    const missingCells = requiredNewCells.filter((c) => !sampledCells.has(c));
+    if (missingCells.length > 0) {
+      throw new Error(
+        `[Suite 27B] Missing upgraded Rows 2..3 boss cells: [${missingCells.join(', ')}] (sampled: [${[...sampledCells].join(', ')}])`
+      );
+    }
+  }
+
+  // (27C) 100% Lossless Engine Optimizations: Portrait Dirty-Check, Deferred Loader, VFX Frustum Culling & Champion Sheet Purity
+  {
+    // 1. Portrait dirty-check eliminates redundant 60fps <canvas>.width resets & drawImage blits
+    const prevDoc = globalThis.document;
+    try {
+      let portraitDraws = 0;
+      const mockCanvas = {
+        width: 300,
+        height: 150,
+        getContext() {
+          return {
+            imageSmoothingEnabled: true,
+            clearRect() {},
+            drawImage() {
+              portraitDraws++;
+            }
+          };
+        }
+      };
+      globalThis.document = {
+        ...prevDoc,
+        getElementById(id) {
+          return id === 'left-portrait' ? mockCanvas : null;
+        }
+      };
+      const imgA = { complete: true, naturalWidth: 128, naturalHeight: 128 };
+      const imgB = { complete: true, naturalWidth: 128, naturalHeight: 128 };
+      for (let i = 0; i < 10; i++) {
+        PixelForge.drawPortrait('left-portrait', imgA, '#38bdf8');
+      }
+      if (portraitDraws !== 1 || mockCanvas.width !== 128 || mockCanvas.height !== 128) {
+        throw new Error(
+          `[Suite 27C] Expected exactly 1 portrait draw across 10 identical calls, got ${portraitDraws}`
+        );
+      }
+      PixelForge.drawPortrait('left-portrait', imgB, '#f97316');
+      if (portraitDraws !== 2) {
+        throw new Error(
+          `[Suite 27C] Expected immediate portrait redraw when image changes, got ${portraitDraws}`
+        );
+      }
+    } finally {
+      globalThis.document = prevDoc;
+    }
+
+    // 2. Deferred asset promotion (`ensureImage`)
+    let deferredLoaded = false;
+    const deferredImg = {
+      src: '',
+      _deferredSrc: 'assets/sprites/arena_sylvan.png',
+      _deferredOnLoad: () => {
+        deferredLoaded = true;
+      }
+    };
+    PixelForge.ensureImage(deferredImg);
+    if (deferredImg.src !== 'assets/sprites/arena_sylvan.png' || deferredImg._deferredSrc !== null) {
+      throw new Error('[Suite 27C] ensureImage failed to promote _deferredSrc -> .src');
+    }
+    deferredImg.onload?.();
+    if (!deferredLoaded) {
+      throw new Error('[Suite 27C] ensureImage failed to wire _deferredOnLoad callback');
+    }
+
+    // 3. VFXManager horizontal camera frustum culling + O(N) zero-GC compaction
+    const vfx = new VFXManager();
+    vfx.spawnParticle({ x: 520, y: 480, vx: 0, vy: 0, size: 6, color: '#38bdf8', maxLife: 0.5 });
+    vfx.spawnParticle({ x: 4600, y: 480, vx: 0, vy: 0, size: 6, color: '#f97316', maxLife: 0.5 });
+    const drawnXs = [];
+    const vfxCtx = createMockCtx();
+    vfxCtx.fillRect = (x) => {
+      drawnXs.push(x);
+    };
+    vfx.renderMainPass(vfxCtx, false, {
+      camX: 500,
+      width: 1200,
+      zoom: 1,
+      getGlowForColor: () => null
+    });
+    const hasOnScreen = drawnXs.some((x) => x >= 480 && x <= 560);
+    const hasOffScreen = drawnXs.some((x) => x > 2000);
+    if (!hasOnScreen || hasOffScreen) {
+      throw new Error(
+        `[Suite 27C] VFX frustum culling failed: hasOnScreen=${hasOnScreen}, hasOffScreen=${hasOffScreen}, xs=[${drawnXs.join(',')}]`
+      );
+    }
+    vfx.update(0.75);
+    if (vfx.particles.length !== 0) {
+      throw new Error(
+        `[Suite 27C] Expected O(N) compaction to clear expired particles, got ${vfx.particles.length}`
+      );
+    }
+
+    // 4. Lossless guarantee: all 11 champion sheets remain 6240x2080 untouched
+    const champSheets = [
+      'warrior_sheet.png',
+      'mage_sheet.png',
+      'archer_sheet.png',
+      'priestess_sheet.png',
+      'reaper_sheet.png',
+      'chronomancer_sheet.png',
+      'titan_sheet.png',
+      'ronin_sheet.png',
+      'valkyrie_sheet.png',
+      'icemage_sheet.png',
+      'android_sheet.png'
+    ];
+    for (const fn of champSheets) {
+      const dims = readPngDims(`/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${fn}`);
+      if (dims.width !== 6240 || dims.height !== 2080) {
+        throw new Error(`[Suite 27C] Champion sheet ${fn} dims altered: ${dims.width}x${dims.height}`);
+      }
+    }
+  }
+
+  console.log(
+    '[PASS] Suite 27: Adventure 3D HD-2D Stage Objects, 32-Cell Colossal Boss Malphas & 100% Lossless Engine Optimizations verified!'
+  );
+}
 

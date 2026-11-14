@@ -1,21 +1,21 @@
-import { Renderer } from './engine/Renderer.js?v=30fps104';
-import { VFXManager } from './engine/VFXManager.js?v=30fps104';
-import { PixelForge } from './engine/PixelForge.js?v=30fps104';
-import { AudioManager } from './engine/AudioManager.js?v=30fps104';
-import { Fighter } from './entities/Fighter.js?v=30fps104';
-import { Warrior } from './entities/Warrior.js?v=30fps104';
-import { FireMage } from './entities/FireMage.js?v=30fps104';
-import { Archer } from './entities/Archer.js?v=30fps104';
-import { Priestess } from './entities/Priestess.js?v=30fps104';
-import { Reaper } from './entities/Reaper.js?v=30fps104';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps104';
-import { Titan } from './entities/Titan.js?v=30fps104';
-import { Ronin } from './entities/Ronin.js?v=30fps104';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps104';
-import { IceMage } from './entities/IceMage.js?v=30fps104';
-import { Android } from './entities/Android.js?v=30fps104';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps104';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps104';
+import { Renderer } from './engine/Renderer.js?v=30fps105';
+import { VFXManager } from './engine/VFXManager.js?v=30fps105';
+import { PixelForge } from './engine/PixelForge.js?v=30fps105';
+import { AudioManager } from './engine/AudioManager.js?v=30fps105';
+import { Fighter } from './entities/Fighter.js?v=30fps105';
+import { Warrior } from './entities/Warrior.js?v=30fps105';
+import { FireMage } from './entities/FireMage.js?v=30fps105';
+import { Archer } from './entities/Archer.js?v=30fps105';
+import { Priestess } from './entities/Priestess.js?v=30fps105';
+import { Reaper } from './entities/Reaper.js?v=30fps105';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps105';
+import { Titan } from './entities/Titan.js?v=30fps105';
+import { Ronin } from './entities/Ronin.js?v=30fps105';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps105';
+import { IceMage } from './entities/IceMage.js?v=30fps105';
+import { Android } from './entities/Android.js?v=30fps105';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps105';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps105';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -2228,18 +2228,21 @@ class Game {
     const t = now * 0.001;
     const is2v2 = this.is2v2Mode();
 
-    // 1. Render the 7 Center Portrait Selector Tiles from crisp pixel portraits
+    // 1. Render the Center Portrait Selector Tiles from crisp pixel portraits (dirty-checked: 0ms steady-state!)
     Object.keys(CHAMPION_ROSTER).forEach((heroKey) => {
       const canvas = this.previewCanvases[heroKey];
       const port = assets[heroKey]?.portrait;
       if (!canvas || !port || !port.complete || !port.naturalWidth) return;
+      if (canvas._drawnPortraitImg === port) return;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
       ctx.imageSmoothingEnabled = false;
       ctx.drawImage(port, 0, 0, canvas.width, canvas.height);
+      canvas._drawnPortraitImg = port;
     });
 
     const drawAnimatedHeroOnStage = (sctx, heroKey, flipX, destX, destY, destSize, phaseOffset = 0, alpha = 1, drawBadge = false) => {
+      PixelForge.ensureHeroLoaded?.(heroKey);
       const sheet = assets[heroKey]?.sheet;
       const cfg = CHAMPION_ROSTER[heroKey];
       if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
@@ -2669,6 +2672,8 @@ class Game {
 
       const gy = this.renderer.groundY;
       const heroKey = CHAMPION_ROSTER[this.slot1Hero] ? this.slot1Hero : 'mage';
+      PixelForge.ensureHeroLoaded?.(heroKey);
+      PixelForge.ensureAdventureLoaded?.(0);
       const c1 = CHAMPION_ROSTER[heroKey];
       this.leftFighter = new c1.cls(240, gy, 1);
       if (!this.leftFighter.heroId) this.leftFighter.heroId = heroKey;
@@ -2737,6 +2742,12 @@ class Game {
     const c1b = CHAMPION_ROSTER[this.slot1PartnerHero] || CHAMPION_ROSTER.priestess;
     const c2 = CHAMPION_ROSTER[this.slot2Hero] || CHAMPION_ROSTER.archer;
     const c2b = CHAMPION_ROSTER[this.slot2PartnerHero] || CHAMPION_ROSTER.reaper;
+    PixelForge.ensureHeroLoaded?.(c1.id);
+    PixelForge.ensureHeroLoaded?.(c2.id);
+    if (is2v2) {
+      PixelForge.ensureHeroLoaded?.(c1b.id);
+      PixelForge.ensureHeroLoaded?.(c2b.id);
+    }
 
     this.leftFighter = new c1.cls(is2v2 ? ww * 0.25 : ww * 0.2, gy, 1);
     this.rightFighter = new c2.cls(is2v2 ? ww * 0.75 : ww * 0.8, gy, -1);

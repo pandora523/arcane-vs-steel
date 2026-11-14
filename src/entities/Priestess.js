@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps104';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps104';
+import { Fighter } from './Fighter.js?v=30fps105';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps105';
 import {
   SERAPHIC_EFFECT_REGISTRY,
   SERAPHIC_GOLD_PALETTE,
   SERAPHIC_GRACE_PALETTE,
   SERAPHIC_STAINED_PALETTE
-} from '../engine/shaders/seraphicShaders.js?v=30fps104';
+} from '../engine/shaders/seraphicShaders.js?v=30fps105';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -93,9 +93,10 @@ export class Priestess extends Fighter {
     });
 
     if (typeof Image !== 'undefined') {
+      PixelForge.ensureHeroLoaded?.('priestess');
       const priestessAssets = PixelForge.initAssets()?.priestess;
-      if (priestessAssets?.vfx?.src && !priestessAssets.vfx.src.includes('v=30fps62')) {
-        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps104';
+      if (priestessAssets?.vfx?.src && !priestessAssets.vfx.src.includes('v=30fps105')) {
+        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps105';
       }
     }
   }
@@ -656,7 +657,7 @@ export class Priestess extends Fighter {
       (this.comboStep || 0) !== 0 &&
       (this._aiComboChainTimer || 0) > 0 &&
       enemy &&
-      Math.abs(enemy.x - this.x) <= Math.max(this.attackRange, 320);
+      Math.abs(enemy.x - this.x) <= Math.max(this.attackRange, 480);
 
     if (
       !isManualPlayer &&
@@ -734,44 +735,36 @@ export class Priestess extends Fighter {
       !enemy.isDead &&
       !enemy.isDestructibleProp &&
       !enemy.isDummyFocal &&
-      Math.abs(enemy.x - this.x) <= 310
+      Math.abs(enemy.x - this.x) <= 510
         ? enemy
         : null) ||
-      combatFoes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 310) ||
-      combatFoes.find((f) => Math.abs(f.x - this.x) <= 275) ||
+      combatFoes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 510) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 460) ||
       null;
 
-    if (mode === 1 || mode === 2) {
-      this.ensureSlipstream();
-    }
     if (mode === 3) {
+      this.ensureSlipstream();
       this.ensureSanctuarySeal(false);
     }
 
-    // Strictly Grounded (`groundedOnly: true`, `0px` hop heights) 4-Beat Radiant Flash-Step Hack-and-Slash!
-    this.updateHackAndSlashMotion(dt, frontFoe, game, {
+    // Strictly Grounded (`groundedOnly: true`, `0.00px` hop) Ranged Radiant Battle-Mage Footwork + Beat-4 Backstep Kite!
+    this.updateCasterSpellSlashMotion(dt, frontFoe, game, {
       variant: mode,
       u,
-      moveEndU: 0.40,
-      coilEndU: 0.075,
-      contactDist: 94,
-      flankDist: 138,
-      dashContactDist: 92,
-      dashFlankDist: 140,
-      dashPierceThreshold: 295,
-      finisherDist: 96,
+      moveEndU: 0.42,
       groundedOnly: true,
-      v1HopHeight: 0,
-      v2OpenHopHeight: 0,
+      minSafeDist: 172,
+      v0StepPx: 20,
+      v1StepPx: 18,
+      v2StepPx: 24,
+      backstepPx: 38,
+      openV3StepPx: 18,
+      kiteMaxDist: 485,
       v3HopHeight: 0,
-      hopEndU: 0.58,
-      openStepPx: 120,
-      openCrossPx: 144,
-      openDashPx: 212,
-      openFinisherPx: 132,
-      maxLockDist: 310,
+      hopEndU: 0.56,
+      maxLockDist: 510,
       onGhost: (gx, _gy, gf) =>
-        this.spawnAfterimage(gx, this.groundY, gf, 2, sliceStart - 60 + localCol, 0.22)
+        this.spawnAfterimage(gx, this.groundY, gf, 2, sliceStart - 60 + localCol, 0.19)
     });
 
     // Re-enforce 0px grounded invariant immediately after motion integration!

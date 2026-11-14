@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps104';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps104';
+import { PixelForge } from './PixelForge.js?v=30fps105';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps105';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -157,6 +157,9 @@ export class Renderer {
       resolvedKey = 'shogunate_glacial';
     }
 
+    if (resolvedKey) {
+      PixelForge.ensureStageLoaded?.(resolvedKey);
+    }
     if (permanent && ULTIMATE_STAGE_MAP[resolvedKey]) {
       this.permanentStageOverride = resolvedKey;
       this.trueUltStageOverride = resolvedKey;
@@ -184,6 +187,8 @@ export class Renderer {
   triggerDimensionalStageSlice(opts = {}) {
     this.stageSliceFromId = opts.fromStageId || this.getActiveStageId() || this.stageId || 'cathedral';
     this.stageSliceToId = opts.toStageId || 'shogunate';
+    PixelForge.ensureStageLoaded?.(this.stageSliceFromId);
+    PixelForge.ensureStageLoaded?.(this.stageSliceToId);
     this.stageSliceFocusX = Number.isFinite(opts.focusX) ? opts.focusX : this.worldWidth * 0.5;
     this.stageSliceFocusY = Number.isFinite(opts.focusY) ? opts.focusY : this.groundY - 92;
     this.stageSliceDir = opts.dir === -1 ? -1 : 1;
@@ -232,12 +237,14 @@ export class Renderer {
       (STAGE_ROSTER.some((s) => s.id === forcedStage) || Boolean(ULTIMATE_STAGE_MAP[forcedStage]))
     ) {
       this.stageId = forcedStage;
+      PixelForge.ensureStageLoaded?.(this.stageId);
       return this.stageId;
     }
     const candidates = STAGE_ROSTER.filter((s) => s.id !== this.stageId);
     const pool = candidates.length > 0 ? candidates : STAGE_ROSTER;
     const chosen = pool[Math.floor(Math.random() * pool.length)];
     this.stageId = chosen.id;
+    PixelForge.ensureStageLoaded?.(this.stageId);
     return this.stageId;
   }
 
@@ -723,7 +730,7 @@ export class Renderer {
     }
 
     // 2. Ground Scorch & Fissures
-    vfx.renderGroundDecals(ctx, gy);
+    vfx.renderGroundDecals(ctx, gy, this);
 
     // 3. Real-Time Pixel-Art Stage-Aware Floor Reflections
     const activeStageForRefl = this.getActiveStageId();
@@ -739,9 +746,11 @@ export class Renderer {
             ? 0.28
             : 0.24;
     if (this.adventureMode) {
-      // Per-fighter local stone-road sheen anchored to each entity's own 2.5D depth `f.groundY`
+      // Per-fighter local stone-road sheen anchored to each entity's own 2.5D depth `f.groundY` (frustum-culled!)
+      const reflHalfW = (this.width * 0.5) / safeZoom + 260;
       for (const f of fighters) {
         if (f.isBenched || f.isFullyBurrowed || f.isColossalBoss) continue;
+        if (Number.isFinite(this.camX) && Math.abs(f.x - this.camX) > reflHalfW) continue;
         const fGy = Number.isFinite(f.groundY) ? f.groundY : gy;
         ctx.save();
         ctx.beginPath();
@@ -791,12 +800,18 @@ export class Renderer {
     if (typeof vfx.renderBackgroundCastSeals === 'function') {
       vfx.renderBackgroundCastSeals(ctx, this);
     }
-    const sorted = [...fighters].sort((a, b) => {
-      if (a.isBenched !== b.isBenched) return a.isBenched ? -1 : 1;
-      const aGy = Number.isFinite(a.groundY) ? a.groundY : a.y;
-      const bGy = Number.isFinite(b.groundY) ? b.groundY : b.y;
-      return aGy - bGy || a.y - b.y;
-    });
+    const depthCmp =
+      this._depthSortCmp ||
+      (this._depthSortCmp = (a, b) => {
+        if (a.isBenched !== b.isBenched) return a.isBenched ? -1 : 1;
+        const aGy = Number.isFinite(a.groundY) ? a.groundY : a.y;
+        const bGy = Number.isFinite(b.groundY) ? b.groundY : b.y;
+        return aGy - bGy || a.y - b.y;
+      });
+    const sorted = this._sortedFighters || (this._sortedFighters = []);
+    sorted.length = fighters.length;
+    for (let i = 0; i < fighters.length; i++) sorted[i] = fighters[i];
+    if (sorted.length > 1) sorted.sort(depthCmp);
     for (const f of sorted) {
       if (f.isBenched && !f.isDead) {
         this.drawTagPedestalWorld(ctx, f);
@@ -858,15 +873,14 @@ export class Renderer {
       this.adventureMode && typeof this.adventureHook?.getStandingProps === 'function'
         ? this.adventureHook.getStandingProps()
         : [];
-    const charPassList =
-      standingProps.length > 0
-        ? [...sorted, ...standingProps].sort((a, b) => {
-            if (a.isBenched !== b.isBenched) return a.isBenched ? -1 : 1;
-            const aGy = Number.isFinite(a.groundY) ? a.groundY : a.y;
-            const bGy = Number.isFinite(b.groundY) ? b.groundY : b.y;
-            return aGy - bGy || a.y - b.y;
-          })
-        : sorted;
+    let charPassList = sorted;
+    if (standingProps.length > 0) {
+      charPassList = this._charPassList || (this._charPassList = []);
+      charPassList.length = sorted.length + standingProps.length;
+      for (let i = 0; i < sorted.length; i++) charPassList[i] = sorted[i];
+      for (let j = 0; j < standingProps.length; j++) charPassList[sorted.length + j] = standingProps[j];
+      charPassList.sort(depthCmp);
+    }
     for (const f of charPassList) {
       if (f.isBenched) {
         const rx = Math.round(f.x);
@@ -1086,7 +1100,9 @@ export class Renderer {
     const assets = PixelForge.initAssets();
 
     const stageMeta = this.getCurrentStageMeta();
-    const bg = (stageMeta && assets[stageMeta.assetKey]) || assets.arenaBg;
+    const bg = PixelForge.ensureImage(
+      (stageMeta && assets[stageMeta.assetKey]) || assets.arenaBg
+    );
     const drawW = 1680;
     const drawH = 945;
     const drawX = Math.round((ww - drawW) * 0.5);
@@ -1144,7 +1160,7 @@ export class Renderer {
     // Dynamic or Permanent Supreme Ultimate Stage Transformation Overlay (`arenaSanctuary` / `arenaInferno`)
     const overrideKey = this.trueUltStageOverride;
     const overrideMeta = overrideKey ? ULTIMATE_STAGE_MAP[overrideKey] : null;
-    const overrideImg = overrideMeta ? assets[overrideMeta.assetKey] : null;
+    const overrideImg = overrideMeta ? PixelForge.ensureImage(assets[overrideMeta.assetKey]) : null;
     if (
       overrideImg &&
       overrideImg !== bg &&
@@ -1287,7 +1303,9 @@ export class Renderer {
     // Whole-Stage Diagonal Katana Slice Split: shears & separates the previous stage in two polygon-clipped halves!
     if (this.stageSliceTimer > 0) {
       const fromMeta = this.getStageMetaById(this.stageSliceFromId);
-      const fromImg = (fromMeta && assets[fromMeta.assetKey]) || assets.arenaBg;
+      const fromImg = PixelForge.ensureImage(
+        (fromMeta && assets[fromMeta.assetKey]) || assets.arenaBg
+      );
       const p = Math.max(
         0,
         Math.min(1, 1 - this.stageSliceTimer / Math.max(0.1, this.stageSliceMaxTimer || 1.08))
@@ -5049,25 +5067,71 @@ export class Renderer {
     const h = this.height;
     ctx.save();
 
-    // Soft radial HD-2D optical vignette (no vertical side bars!)
-    const rad = Math.hypot(w * 0.5, h * 0.5);
-    const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, rad * 0.52, w * 0.5, h * 0.5, rad * 1.02);
-    vig.addColorStop(0, 'rgba(2, 3, 7, 0)');
-    vig.addColorStop(1, 'rgba(2, 3, 7, 0.62)');
-    ctx.fillStyle = vig;
-    ctx.fillRect(0, 0, w, h);
+    // Soft radial HD-2D optical vignette + top/bottom letterbox (cached offscreen in browser: 1 blit vs 3 full-screen gradients!)
+    const canCacheVignette =
+      typeof HTMLCanvasElement !== 'undefined' &&
+      this.canvas instanceof HTMLCanvasElement &&
+      typeof document !== 'undefined' &&
+      w > 0 &&
+      h > 0;
+    if (canCacheVignette) {
+      if (!this._vignetteCanvas || this._vigW !== w || this._vigH !== h) {
+        this._vignetteCanvas = this._vignetteCanvas || document.createElement('canvas');
+        this._vignetteCanvas.width = w;
+        this._vignetteCanvas.height = h;
+        this._vigW = w;
+        this._vigH = h;
+        const vCtx = this._vignetteCanvas.getContext('2d');
+        if (vCtx) {
+          vCtx.clearRect(0, 0, w, h);
+          const rad = Math.hypot(w * 0.5, h * 0.5);
+          const vig = vCtx.createRadialGradient(
+            w * 0.5,
+            h * 0.5,
+            rad * 0.52,
+            w * 0.5,
+            h * 0.5,
+            rad * 1.02
+          );
+          vig.addColorStop(0, 'rgba(2, 3, 7, 0)');
+          vig.addColorStop(1, 'rgba(2, 3, 7, 0.62)');
+          vCtx.fillStyle = vig;
+          vCtx.fillRect(0, 0, w, h);
 
-    const topG = ctx.createLinearGradient(0, 0, 0, h * 0.18);
-    topG.addColorStop(0, 'rgba(2, 3, 7, 0.72)');
-    topG.addColorStop(1, 'rgba(2, 3, 7, 0)');
-    ctx.fillStyle = topG;
-    ctx.fillRect(0, 0, w, h * 0.18);
+          const topG = vCtx.createLinearGradient(0, 0, 0, h * 0.18);
+          topG.addColorStop(0, 'rgba(2, 3, 7, 0.72)');
+          topG.addColorStop(1, 'rgba(2, 3, 7, 0)');
+          vCtx.fillStyle = topG;
+          vCtx.fillRect(0, 0, w, h * 0.18);
 
-    const botG = ctx.createLinearGradient(0, h * 0.80, 0, h);
-    botG.addColorStop(0, 'rgba(2, 3, 7, 0)');
-    botG.addColorStop(1, 'rgba(2, 3, 7, 0.80)');
-    ctx.fillStyle = botG;
-    ctx.fillRect(0, h * 0.80, w, h * 0.20);
+          const botG = vCtx.createLinearGradient(0, h * 0.80, 0, h);
+          botG.addColorStop(0, 'rgba(2, 3, 7, 0)');
+          botG.addColorStop(1, 'rgba(2, 3, 7, 0.80)');
+          vCtx.fillStyle = botG;
+          vCtx.fillRect(0, h * 0.80, w, h * 0.20);
+        }
+      }
+      ctx.drawImage(this._vignetteCanvas, 0, 0, w, h);
+    } else {
+      const rad = Math.hypot(w * 0.5, h * 0.5);
+      const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, rad * 0.52, w * 0.5, h * 0.5, rad * 1.02);
+      vig.addColorStop(0, 'rgba(2, 3, 7, 0)');
+      vig.addColorStop(1, 'rgba(2, 3, 7, 0.62)');
+      ctx.fillStyle = vig;
+      ctx.fillRect(0, 0, w, h);
+
+      const topG = ctx.createLinearGradient(0, 0, 0, h * 0.18);
+      topG.addColorStop(0, 'rgba(2, 3, 7, 0.72)');
+      topG.addColorStop(1, 'rgba(2, 3, 7, 0)');
+      ctx.fillStyle = topG;
+      ctx.fillRect(0, 0, w, h * 0.18);
+
+      const botG = ctx.createLinearGradient(0, h * 0.80, 0, h);
+      botG.addColorStop(0, 'rgba(2, 3, 7, 0)');
+      botG.addColorStop(1, 'rgba(2, 3, 7, 0.80)');
+      ctx.fillStyle = botG;
+      ctx.fillRect(0, h * 0.80, w, h * 0.20);
+    }
 
     // 1. High-Impact Stage Phenomenon & Blessing Announcement (Upper Center Sky — Crystal-Clear Blessing Callout!)
     if (this.stageEventBannerTimer > 0 && !(this.cutInTimer > 0)) {

@@ -1,13 +1,13 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps104';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps104';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
+import { Fighter } from '../entities/Fighter.js?v=30fps105';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps105';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps104';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps104';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps104';
+} from './AdventureProgression.js?v=30fps105';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps105';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps105';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -997,6 +997,7 @@ export class AdventureManager {
   spawnZoneEncounter(zoneIdx, subWave = 1) {
     const z = ADVENTURE_ZONES[zoneIdx];
     if (!z) return;
+    PixelForge.ensureAdventureLoaded?.(zoneIdx);
     this.zoneIndex = zoneIdx;
     this.subWave = subWave;
     this.goPromptActive = false;
@@ -1524,28 +1525,24 @@ export class AdventureManager {
     if (!badge) return;
     const ov = this.game.renderer?.permanentStageOverride;
     const zPrefix = `Z${this.zoneIndex + 1}`;
+    let nextText;
     if (ov === 'inferno') {
-      badge.textContent = `${zPrefix} • LAYWASTE OF INFERNO`;
-      return;
+      nextText = `${zPrefix} • LAYWASTE OF INFERNO`;
+    } else if (ov === 'glacial') {
+      nextText = `${zPrefix} • PERMAFROST AURORA SANCTUM`;
+    } else if (ov === 'shogunate') {
+      nextText = `${zPrefix} • CRIMSON MOON SHOGUNATE`;
+    } else if (ov === 'shogunate_inferno') {
+      nextText = `${zPrefix} • BURNING SAKURA SHOGUNATE`;
+    } else if (ov === 'shogunate_glacial') {
+      nextText = `${zPrefix} • FROZEN SAKURA SHOGUNATE`;
+    } else {
+      const z = ADVENTURE_ZONES[this.zoneIndex] || ADVENTURE_ZONES[0];
+      nextText = z.title;
     }
-    if (ov === 'glacial') {
-      badge.textContent = `${zPrefix} • PERMAFROST AURORA SANCTUM`;
-      return;
+    if (badge.textContent !== nextText) {
+      badge.textContent = nextText;
     }
-    if (ov === 'shogunate') {
-      badge.textContent = `${zPrefix} • CRIMSON MOON SHOGUNATE`;
-      return;
-    }
-    if (ov === 'shogunate_inferno') {
-      badge.textContent = `${zPrefix} • BURNING SAKURA SHOGUNATE`;
-      return;
-    }
-    if (ov === 'shogunate_glacial') {
-      badge.textContent = `${zPrefix} • FROZEN SAKURA SHOGUNATE`;
-      return;
-    }
-    const z = ADVENTURE_ZONES[this.zoneIndex] || ADVENTURE_ZONES[0];
-    badge.textContent = z.title;
   }
 
   syncRightHUD() {
@@ -1565,7 +1562,7 @@ export class AdventureManager {
     if (primaryMonster) {
       g.rightFighter = primaryMonster;
       if (rightEls.name) {
-        rightEls.name.textContent = primaryMonster.isBoss
+        const nextName = primaryMonster.isBoss
           ? `★ ${primaryMonster.name}`
           : primaryMonster.isMiniBoss
             ? living.length > 1
@@ -1574,22 +1571,34 @@ export class AdventureManager {
             : living.length > 1
               ? `${primaryMonster.name} (+${living.length - 1})`
               : primaryMonster.name;
+        if (rightEls.name.textContent !== nextName) {
+          rightEls.name.textContent = nextName;
+        }
       }
       if (rightEls.skillText) {
-        rightEls.skillText.textContent = primaryMonster.isBoss
+        const nextSkill = primaryMonster.isBoss
           ? `PHASE ${primaryMonster.bossPhase || 1} • ${primaryMonster.skillName}`
           : primaryMonster.isMiniBoss
             ? `WARDEN • ${primaryMonster.skillName}`
             : this.totalWaveLabel;
+        if (rightEls.skillText.textContent !== nextSkill) {
+          rightEls.skillText.textContent = nextSkill;
+        }
       }
       if (rightEls.hpBar) {
-        rightEls.hpBar.className = `hp-fill fill-${primaryMonster.theme || 'abyssal'}`;
+        const nextBarCls = `hp-fill fill-${primaryMonster.theme || 'abyssal'}`;
+        if (rightEls.hpBar.className !== nextBarCls) {
+          rightEls.hpBar.className = nextBarCls;
+        }
       }
       if (rightEls.portraitFrame) {
-        rightEls.portraitFrame.className = 'portrait-frame frame-abyssal';
+        const nextFrameCls = 'portrait-frame frame-abyssal';
+        if (rightEls.portraitFrame.className !== nextFrameCls) {
+          rightEls.portraitFrame.className = nextFrameCls;
+        }
       }
-      if (rightEls.partnerWing) {
-        rightEls.partnerWing.classList.add('hidden');
+      if (rightEls.partnerWing && !rightEls.partnerWing.classList?.contains?.('hidden')) {
+        rightEls.partnerWing.classList?.add?.('hidden');
       }
       const leftHeroId = g.leftFighter?.heroId || 'mage';
       const leftCol = g.leftFighter?.primaryColor || '#fb923c';
@@ -1597,10 +1606,16 @@ export class AdventureManager {
     }
 
     if (g.hudEls?.crestVs) {
-      g.hudEls.crestVs.textContent = this.zoneIndex === 3 ? 'BOSS' : `Z${this.zoneIndex + 1}`;
+      const nextCrest = this.zoneIndex === 3 ? 'BOSS' : `Z${this.zoneIndex + 1}`;
+      if (g.hudEls.crestVs.textContent !== nextCrest) {
+        g.hudEls.crestVs.textContent = nextCrest;
+      }
     }
     if (g.hudEls?.modeBadge) {
-      g.hudEls.modeBadge.textContent = `LV.${this.progression.level} • ${this.totalWaveLabel} • ${this.score} PTS`;
+      const nextBadge = `LV.${this.progression.level} • ${this.totalWaveLabel} • ${this.score} PTS`;
+      if (g.hudEls.modeBadge.textContent !== nextBadge) {
+        g.hudEls.modeBadge.textContent = nextBadge;
+      }
     }
   }
 
@@ -2480,7 +2495,7 @@ export class AdventureManager {
         const absDx = Math.abs(dxToTarget);
         const absDz = target.isColossalBoss ? 0 : Math.abs(targetGy - pGy);
         const isHackSlash = Boolean(player.hasHackAndSlashCombo?.());
-        const autoChainMaxDx = player.isHackAndSlashCaster?.() ? 315 : 265;
+        const autoChainMaxDx = player.isHackAndSlashCaster?.() ? 475 : 210;
         const midHackChain =
           isHackSlash &&
           (player.comboStep || 0) !== 0 &&
@@ -2566,7 +2581,7 @@ export class AdventureManager {
             player._manualSpeedRatio = 0;
           } else if (target.isColossalBoss) {
             const bossGoalX = player.isHackAndSlashCaster?.()
-              ? 9055 + Math.sin(aiClock * 1.45) * 45
+              ? 8895 + Math.sin(aiClock * 1.4) * 55
               : isRanged
                 ? 8865 + Math.sin(aiClock * 1.35) * 65
                 : 9226 + Math.sin(aiClock * 1.7) * 16;
@@ -2581,7 +2596,7 @@ export class AdventureManager {
             isMovingCombat = applyCurvedAutoSteer(bossGoalX, bossGoalGy, 20, 1);
           } else {
             const idealDistX = player.isHackAndSlashCaster?.()
-              ? 225
+              ? 320
               : isRanged
                 ? Math.min(355, Math.max(225, effRange * 0.74))
                 : Math.max(82, Math.min(132, effRange * 0.68));
@@ -3149,7 +3164,14 @@ export class AdventureManager {
 
       ctx.save();
       ctx.imageSmoothingEnabled = false;
+      const pHasBounds = Boolean(
+        renderer && Number.isFinite(renderer.camX) && Number.isFinite(renderer.width) && renderer.width > 0
+      );
+      const pHalfSpan = pHasBounds
+        ? (renderer.width * 0.5) / Math.max(0.1, renderer.zoom || 1) + 260
+        : Infinity;
       for (const p of this.portals) {
+        if (pHasBounds && Math.abs(p.x - renderer.camX) > pHalfSpan) continue;
         const u = Math.max(0, Math.min(1, p.age / p.maxLife));
         const openScale = p.age < 0.22 ? 0.35 + 0.65 * (p.age / 0.22) : u > 0.75 ? 1 - 0.55 * ((u - 0.75) / 0.25) : 1;
         const alpha = p.age < 0.14 ? p.age / 0.14 : u > 0.72 ? (1 - u) / 0.28 : 1;
@@ -3234,7 +3256,7 @@ export class AdventureManager {
     // 3. Render Generated & Pixel-Converted HD-2D 3D RPG Pickups (`Solar Elixir +HP`, `Soul Ember +NOVA`, `Astral Relic +SEAL`)
     if (this.pickups.length > 0) {
       const assets = PixelForge.initAssets();
-      const propsSheet = assets?.advPropsSheet;
+      const propsSheet = PixelForge.ensureImage?.(assets?.advPropsSheet) || assets?.advPropsSheet;
       const sheetReady =
         Boolean(propsSheet) &&
         (typeof HTMLImageElement === 'undefined' ||
@@ -3243,10 +3265,20 @@ export class AdventureManager {
 
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      const sortedPickups = [...this.pickups].sort(
-        (a, b) => (a.groundY || a.y || 561) - (b.groundY || b.y || 561)
+      const pkHasBounds = Boolean(
+        renderer && Number.isFinite(renderer.camX) && Number.isFinite(renderer.width) && renderer.width > 0
       );
+      const pkHalfSpan = pkHasBounds
+        ? (renderer.width * 0.5) / Math.max(0.1, renderer.zoom || 1) + 220
+        : Infinity;
+      const sortedPickups =
+        this.pickups.length > 1
+          ? [...this.pickups].sort(
+              (a, b) => (a.groundY || a.y || 561) - (b.groundY || b.y || 561)
+            )
+          : this.pickups;
       for (const pk of sortedPickups) {
+        if (pkHasBounds && Math.abs(pk.x - renderer.camX) > pkHalfSpan) continue;
         const pkGy = Math.round(Number.isFinite(pk.groundY) ? pk.groundY : pk.y);
         const bob = Math.round(Math.sin(t * 5.2 + pk.x * 0.03) * 6);
         const px = Math.round(pk.x);
@@ -3313,7 +3345,7 @@ export class AdventureManager {
     // Render Standing Biome-Matched HD-2D Dimensional Summoning Portals BEHIND emerging Realm enemies (`advFxSheet` Rows 0..3 Cols 0..3)
     if (this.portals.length > 0) {
       const assets = PixelForge.initAssets();
-      const fxSheet = assets?.advFxSheet;
+      const fxSheet = PixelForge.ensureImage?.(assets?.advFxSheet) || assets?.advFxSheet;
       const fxReady =
         Boolean(fxSheet) &&
         (typeof HTMLImageElement === 'undefined' ||
@@ -3322,9 +3354,19 @@ export class AdventureManager {
 
       ctx.save();
       ctx.imageSmoothingEnabled = false;
-      const sortedPortals = [...this.portals].sort((a, b) => (a.groundY || 561) - (b.groundY || 561));
+      const pHasBounds = Boolean(
+        renderer && Number.isFinite(renderer.camX) && Number.isFinite(renderer.width) && renderer.width > 0
+      );
+      const pHalfSpan = pHasBounds
+        ? (renderer.width * 0.5) / Math.max(0.1, renderer.zoom || 1) + 260
+        : Infinity;
+      const sortedPortals =
+        this.portals.length > 1
+          ? [...this.portals].sort((a, b) => (a.groundY || 561) - (b.groundY || 561))
+          : this.portals;
 
       for (const p of sortedPortals) {
+        if (pHasBounds && Math.abs(p.x - renderer.camX) > pHalfSpan) continue;
         const u = Math.max(0, Math.min(1, p.age / p.maxLife));
         let scaleX = 1.0;
         let scaleY = 1.0;

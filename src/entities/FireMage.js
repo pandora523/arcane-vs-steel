@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps104';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps104';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps104';
+import { Fighter } from './Fighter.js?v=30fps105';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps105';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps105';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -100,9 +100,10 @@ export class FireMage extends Fighter {
     });
 
     if (typeof Image !== 'undefined') {
+      PixelForge.ensureHeroLoaded?.('mage');
       const mageAssets = PixelForge.initAssets()?.mage;
-      if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps60')) {
-        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps104';
+      if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps105')) {
+        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps105';
       }
     }
   }
@@ -694,7 +695,7 @@ export class FireMage extends Fighter {
       (this.comboStep || 0) !== 0 &&
       (this._aiComboChainTimer || 0) > 0 &&
       enemy &&
-      Math.abs(enemy.x - this.x) <= Math.max(this.attackRange, 320);
+      Math.abs(enemy.x - this.x) <= Math.max(this.attackRange, 480);
 
     if (
       !isManualPlayer &&
@@ -785,46 +786,34 @@ export class FireMage extends Fighter {
       !enemy.isDead &&
       !enemy.isDestructibleProp &&
       !enemy.isDummyFocal &&
-      Math.abs(enemy.x - this.x) <= 310
+      Math.abs(enemy.x - this.x) <= 510
         ? enemy
         : null) ||
-      combatFoes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 310) ||
-      combatFoes.find((f) => Math.abs(f.x - this.x) <= 275) ||
+      combatFoes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 510) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 460) ||
       null;
 
-    // 4-Beat Helios Spell-Blade Hack-and-Slash Choreography:
-    // V0: Blazing Flame-Rush Staff-Slash | V1: Solar Blink Cross-Slash | V2: Phoenix 5-Echo Dash-Pierce | V3: Rising Helios Hop-Slam
-    if (mode === 1 || mode === 2) {
+    // 4-Beat Ranged Helios Battle-Mage Footwork (`0` melee lock-on dashes, `0` cross-throughs, `-40px` Beat-4 Backstep Kite!):
+    // V0: Solar Staff Cast-Step | V1: Twin Corona Cast-Step | V2: Ignition Lance Step | V3: Graceful Helios Backstep Kite + Solar Wave
+    if (mode === 3) {
       this.ensureSolarGlideTrail();
-      if (mode === 1 && !this._didHnsBlinkRift && u >= 0.05) {
-        this._didHnsBlinkRift = true;
-        this.fx?.spawn('arcaneBlinkRift', this.x, this.groundY, {
-          light: 1.18,
-          extra: { isArrival: false }
-        });
-      }
     }
 
-    this.updateHackAndSlashMotion(dt, frontFoe, game, {
+    this.updateCasterSpellSlashMotion(dt, frontFoe, game, {
       variant: mode,
       u,
-      moveEndU: 0.40,
-      coilEndU: 0.075,
-      contactDist: 92,
-      flankDist: 136,
-      dashContactDist: 90,
-      dashFlankDist: 140,
-      dashPierceThreshold: 295,
-      finisherDist: 94,
-      v1HopHeight: 22,
-      v3HopHeight: 42,
-      hopEndU: 0.58,
-      openStepPx: 122,
-      openCrossPx: 146,
-      openDashPx: 214,
-      openFinisherPx: 136,
-      maxLockDist: 310,
-      onGhost: (gx, gy, gf) => this.spawnSolarEcho(sliceStart + localCol, 0.78, 0.24, gx, gy, gf)
+      moveEndU: 0.42,
+      minSafeDist: 170,
+      v0StepPx: 22,
+      v1StepPx: 18,
+      v2StepPx: 26,
+      backstepPx: 40,
+      openV3StepPx: 20,
+      kiteMaxDist: 485,
+      v3HopHeight: 16,
+      hopEndU: 0.56,
+      maxLockDist: 510,
+      onGhost: (gx, gy, gf) => this.spawnSolarEcho(sliceStart + localCol, 0.72, 0.20, gx, gy, gf)
     });
 
     if (u < 0.42) {

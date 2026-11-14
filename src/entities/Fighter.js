@@ -188,8 +188,8 @@ export class Fighter {
       case 'icemage':
         return {
           comboGoal: 4,
-          sweetMin: 235,
-          sweetMax: 335,
+          sweetMin: 310,
+          sweetMax: 435,
           counterCrouchBias: 0.58,
           midLeapMin: 0,
           midLeapMax: 0,
@@ -199,8 +199,8 @@ export class Fighter {
       case 'priestess':
         return {
           comboGoal: 4,
-          sweetMin: 245,
-          sweetMax: 345,
+          sweetMin: 315,
+          sweetMax: 445,
           counterCrouchBias: 0.56,
           midLeapMin: 0,
           midLeapMax: 0,
@@ -210,8 +210,8 @@ export class Fighter {
       case 'mage':
         return {
           comboGoal: 4,
-          sweetMin: 240,
-          sweetMax: 340,
+          sweetMin: 305,
+          sweetMax: 430,
           counterCrouchBias: 0.48,
           midLeapMin: 0,
           midLeapMax: 0,
@@ -242,6 +242,10 @@ export class Fighter {
     );
   }
 
+  isCrossSlashDuelist() {
+    return this.heroId === 'ronin' || this.heroId === 'chronomancer';
+  }
+
   isHackAndSlashCaster() {
     return (
       this.heroId === 'mage' ||
@@ -255,7 +259,7 @@ export class Fighter {
   }
 
   getHackAndSlashLockRange() {
-    return this.isHackAndSlashCaster() ? 310 : 275;
+    return this.isHackAndSlashCaster() ? 510 : 215;
   }
 
   setState(newState) {
@@ -265,7 +269,7 @@ export class Fighter {
     this.didSecondaryAction = false;
     this._hnsState = null;
     this._hnsSpeed = 0;
-    this._hnsPhaseThrough = newState === 'AUTO_ATTACK' && this.hasHackAndSlashCombo();
+    this._hnsPhaseThrough = false;
     if (newState === 'AUTO_ATTACK') {
       const profile = this.getAiStyleProfile();
       this._aiComboCount = (this._aiComboCount || 0) + 1;
@@ -928,7 +932,10 @@ export class Fighter {
       if (!isAdv3D || depthDiff < 46) {
         const dx = this.x - enemy.x;
         const absDx = Math.abs(dx);
-        const minSep = isAdv3D ? 82 : 110;
+        const inCloseMeleeSwing =
+          (this.state === 'AUTO_ATTACK' && this.isHackAndSlashMelee()) ||
+          (enemy.state === 'AUTO_ATTACK' && enemy.isHackAndSlashMelee?.());
+        const minSep = inCloseMeleeSwing ? (isAdv3D ? 68 : 76) : isAdv3D ? 82 : 110;
         if (absDx < minSep) {
           const pushDir = dx === 0 ? -this.facing : Math.sign(dx);
           this.x += pushDir * (minSep - absDx) * 6.5 * dt;
@@ -1205,9 +1212,9 @@ export class Fighter {
         const isAdvMode = Boolean(game?.isAdventureMode?.());
         const hnsChainRange = this.isHackAndSlashCaster()
           ? isAdvMode
-            ? 315
-            : Math.max(atkRange, 320)
-          : 275;
+            ? 475
+            : Math.max(atkRange, 480)
+          : 205;
         const inHackSlashChain =
           this.hasHackAndSlashCombo() &&
           (this.comboStep || 0) !== 0 &&
@@ -1660,16 +1667,15 @@ export class Fighter {
   }
 
   /**
-   * Shared 4-Beat Wild Kinetic Hack-and-Slash Auto-Attack Choreography:
-   * - Open Air (`no living enemy`): 100% pure forward high-speed Hack-and-Slash blitz (`0` backward/left turns!).
-   * - Against Living Enemies (`_hnsPhaseThrough = true`, `0` pushbox bulldozer shove):
-   *   * Variant 0 (`60..67`): Explosive Forward Rush-Cleave + post-strike momentum skid.
-   *   * Variant 1 (`68..74`): Wide Cross-Through Vault-Slash (`112–130px` past enemy) + `180°` whip-turn + inward glide.
-   *   * Variant 2 (`75..82`): `-14px` Spring-Coil -> Supersonic `245–295px` Blitz Dash-Pierce + `5` afterimages + `180°` whip-turn.
-   *   * Variant 3 (`83..89`): Soaring `48–54px` Aerial Leap Crash Finisher (`0px` grounded *Morote Kiri-Nuki* surge on Ronin).
+   * Role-Based Grounded Hack-and-Slash Melee Footwork (`Warrior`, `Reaper`, `Android`, `Ronin`, `Chronomancer`):
+   * - Zero lock-on magnet dashes from afar (`maxLockDist <= 215px`), zero ping-pong cross-spam.
+   * - Heavy / Vanguard Melee (`Warrior`, `Reaper`, `Android`): Stay 100% IN FRONT of the enemy on all 4 beats
+   *   with weighty `26–45px` advancing martial steps (`_hnsPhaseThrough = false`, `0` cross-throughs, `0` 180° turns).
+   * - Speed Duelists (`Ronin`, `Chronomancer` -> `allowV2Cross: true`): Grounded advancing sword steps on `V0`, `V1`, `V3`,
+   *   and perform ONLY ONE close-range Cross-Slash per 4-hit combo — on Beat 3 (`V2`) when within `<= 165px`!
+   * - Open Air (`no living enemy`): Crisp `30–44px` forward martial sword steps (`0` backward/leftward turns).
    */
   updateHackAndSlashMotion(dt, target, game, opts = {}) {
-    this._hnsPhaseThrough = true;
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const margin = opts.margin ?? 82;
     const minX =
@@ -1692,15 +1698,17 @@ export class Fighter {
     const variant = (((opts.variant ?? this._autoVariant ?? 0) % 4) + 4) % 4;
     const u = Math.min(1, Math.max(0, opts.u ?? 0));
     const moveEndU = opts.moveEndU ?? 0.40;
-    const coilEndU = opts.coilEndU ?? 0.075;
-    const maxLockDist = opts.maxLockDist ?? 275;
+    const coilEndU = opts.coilEndU ?? 0.065;
+    const maxLockDist = opts.maxLockDist ?? 210;
+    const allowV2Cross = Boolean(opts.allowV2Cross ?? this.isCrossSlashDuelist());
+    const crossRange = opts.crossRange ?? 165;
 
     if (
       !this._hnsState ||
       this._hnsState.variant !== variant ||
       (Number.isFinite(this._hnsState.lastX) && Math.abs(this.x - this._hnsState.lastX) > 185)
     ) {
-      // Strictly lock onto living combatants/soul-effigies ONLY — NEVER roadside props or invisible air points!
+      // Strictly lock onto nearby living combatants/soul-effigies ONLY — NEVER props or distant targets!
       const validTarget = Boolean(
         target &&
           !target.isDead &&
@@ -1720,12 +1728,16 @@ export class Fighter {
         : manualInputDir || this.facing || 1;
       const startDist = validTarget ? Math.abs(target.x - this.x) : 999;
       const isBoss = Boolean(validTarget && target.isColossalBoss);
-      const flankDist = opts.flankDist ?? 126;
-      const dashFlankDist = opts.dashFlankDist ?? 130;
-      const testCrossX = validTarget ? clampX(target.x + dir * flankDist) : this.x;
-      const canCrossV1 = Boolean(validTarget && !isBoss && (testCrossX - target.x) * dir >= 52);
+      const dashFlankDist = opts.dashFlankDist ?? 114;
       const testDashCrossX = validTarget ? clampX(target.x + dir * dashFlankDist) : this.x;
-      const canCrossV2 = Boolean(validTarget && !isBoss && (testDashCrossX - target.x) * dir >= 52);
+      const willCrossV2 = Boolean(
+        allowV2Cross &&
+          variant === 2 &&
+          validTarget &&
+          !isBoss &&
+          startDist <= crossRange &&
+          (testDashCrossX - target.x) * dir >= 52
+      );
 
       this._hnsState = {
         variant,
@@ -1737,8 +1749,7 @@ export class Fighter {
         hasTarget: validTarget,
         anchorX: validTarget ? target.x : null,
         isBoss,
-        canCrossV1,
-        canCrossV2,
+        willCrossV2,
         crossedSide: false,
         endFacing: dir,
         ghostStep: 0,
@@ -1747,6 +1758,340 @@ export class Fighter {
         landRingSpawned: false,
         cutRibbonSpawned: false,
         streakAccum: 0,
+        finishedMove: false
+      };
+    }
+
+    const hns = this._hnsState;
+    this._hnsPhaseThrough = Boolean(hns.willCrossV2);
+
+    const manualPullBack = Boolean(
+      this.isPlayerControlled &&
+        !this.adventureAutoPlay &&
+        (this.manualMoveAxis || 0) * hns.dir < -0.36
+    );
+    if (manualPullBack) {
+      this._hnsPhaseThrough = false;
+      this._hnsSpeed = 0;
+      this.y = this.groundY;
+      return hns;
+    }
+
+    // Grounded martial stance on V0..V2 (`0px` bounce); modest execution hop (`20–24px`) on V3 only (`0px` on Ronin)
+    const isGroundedStyle = opts.groundedOnly === true || this.heroId === 'ronin';
+    const hopEndU = opts.hopEndU ?? 0.56;
+    const hopHeight = isGroundedStyle ? 0 : variant === 3 ? (opts.v3HopHeight ?? 22) : 0;
+    if (hopHeight > 0 && u >= 0.05 && u <= hopEndU) {
+      const hopP = (u - 0.05) / Math.max(0.05, hopEndU - 0.05);
+      this.y = this.groundY - Math.sin(hopP * Math.PI) * hopHeight;
+    } else {
+      if (hopHeight >= 18 && u > hopEndU && !hns.landRingSpawned) {
+        hns.landRingSpawned = true;
+        game?.vfx?.spawnShockwave?.(
+          this.x + this.facing * 18,
+          this.groundY - 4,
+          54,
+          this.secondaryColor || this.primaryColor || '#facc15',
+          0.18,
+          true
+        );
+      }
+      this.y = this.groundY;
+    }
+
+    const liveTargetOk = Boolean(
+      hns.hasTarget && target && !target.isDead && !target.isDestructibleProp
+    );
+    const pivotActive = Boolean(liveTargetOk || (hns.hasTarget && Number.isFinite(hns.anchorX)));
+    const tX = liveTargetOk
+      ? Number.isFinite(hns.anchorX)
+        ? hns.anchorX * 0.30 + target.x * 0.70
+        : target.x
+      : Number.isFinite(hns.anchorX)
+        ? hns.anchorX
+        : hns.startX + hns.dir * 96;
+    const prevX = this.x;
+    const accentCol = this.primaryColor || '#38bdf8';
+    const coreCol = this.secondaryColor || '#fef08a';
+    const maxStepAdvance = opts.maxStepAdvance ?? 68;
+
+    const computeFrontStepDest = (desiredContact, minClose, minMartialStep) => {
+      const contact = hns.isBoss ? Math.max(90, desiredContact) : desiredContact;
+      const closeFloor = hns.isBoss ? 88 : minClose;
+      const idealAdv = (tX - hns.dir * contact - hns.startX) * hns.dir;
+      const maxAllowedInward = Math.max(0, (tX - hns.dir * closeFloor - hns.startX) * hns.dir);
+      const rawAdv = Math.max(0, Math.max(idealAdv, Math.min(minMartialStep, maxAllowedInward)));
+      const clampedAdv = Math.min(maxStepAdvance, Math.min(rawAdv, maxAllowedInward));
+      return clampX(hns.startX + hns.dir * clampedAdv);
+    };
+
+    if (u < moveEndU || !hns.finishedMove) {
+      const uEff = Math.min(moveEndU, u);
+      const p = Math.min(1, uEff / Math.max(0.02, moveEndU));
+      this.vx = 0;
+      this.vy = 0;
+
+      if (variant === 0) {
+        // Beat 1: Grounded Advancing Cleave Step (stays strictly in front)
+        const ease = 1 - Math.pow(1 - p, 2.5);
+        const destX = pivotActive
+          ? computeFrontStepDest(opts.contactDist ?? 84, opts.minCloseDist ?? 78, 26)
+          : clampX(hns.startX + hns.dir * (opts.openStepPx ?? 34));
+        this.x = clampX(hns.startX + (destX - hns.startX) * ease);
+        this.facing = hns.dir;
+        if (p >= 0.34 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 34) {
+          hns.ghostStep = 1;
+          opts.onGhost?.(this.x, this.y, this.facing, p);
+        }
+      } else if (variant === 1) {
+        // Beat 2: Grounded Reverse-Edge Counter Slash Step (stays strictly in front — ZERO cross-through!)
+        const ease = 1 - Math.pow(1 - p, 2.4);
+        const destX = pivotActive
+          ? computeFrontStepDest(opts.contactDist ?? 82, opts.minCloseDist ?? 76, 24)
+          : clampX(hns.startX + hns.dir * (opts.openCrossPx ?? 30));
+        this.x = clampX(hns.startX + (destX - hns.startX) * ease);
+        this.facing = hns.dir;
+        if (p >= 0.36 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 32) {
+          hns.ghostStep = 1;
+          opts.onGhost?.(this.x, this.y, this.facing, p);
+        }
+      } else if (variant === 2) {
+        // Beat 3:
+        // - Duelists (`Ronin`, `Chronomancer`) within `<= 165px`: Single Crisp Cross-Slash onto enemy flank + 180° turn!
+        // - Heavy Vanguards (`Warrior`, `Reaper`, `Android`) or Open Air: Grounded Lunging Thrust/Cleave in front!
+        const coilPx = hns.willCrossV2 ? 6 : 0;
+        if (coilPx > 0 && uEff < coilEndU) {
+          const coilP = uEff / Math.max(0.01, coilEndU);
+          this.x = clampX(hns.startX - hns.dir * coilPx * coilP);
+          this.facing = hns.dir;
+        } else {
+          const dp =
+            coilPx > 0
+              ? Math.min(1, (uEff - coilEndU) / Math.max(0.02, moveEndU - coilEndU))
+              : p;
+          const ease = 1 - Math.pow(1 - dp, hns.willCrossV2 ? 3.0 : 2.55);
+          const coilStartX = clampX(hns.startX - hns.dir * coilPx);
+
+          if (pivotActive && hns.willCrossV2) {
+            if (!hns.dashRingSpawned) {
+              hns.dashRingSpawned = true;
+              game?.vfx?.spawnShockwave?.(
+                this.x,
+                this.groundY - 4,
+                52,
+                accentCol,
+                0.18,
+                true
+              );
+            }
+            const dashFlankDist = opts.dashFlankDist ?? 114;
+            const destX = clampX(tX + hns.dir * dashFlankDist);
+            this.x = clampX(coilStartX + (destX - coilStartX) * ease);
+            if (!hns.cutRibbonSpawned && dp >= 0.38) {
+              hns.cutRibbonSpawned = true;
+              this.spawnHnsStreak(
+                'cut',
+                coilStartX + hns.dir * 18,
+                destX - hns.dir * 12,
+                this.y - 86,
+                accentCol,
+                coreCol,
+                0.19
+              );
+            }
+            if (dp >= 0.18 && hns.ghostStep < 1) {
+              hns.ghostStep = 1;
+              opts.onGhost?.(this.x, this.y, hns.dir, dp);
+            }
+            if (dp >= 0.44 && hns.ghostStep < 2) {
+              hns.ghostStep = 2;
+              opts.onGhost?.(this.x, this.y, hns.dir, dp);
+            }
+            if (dp >= 0.72 && hns.ghostStep < 3) {
+              hns.ghostStep = 3;
+              opts.onGhost?.(this.x, this.y, this.facing, dp);
+            }
+            if (dp >= 0.66) {
+              hns.crossedSide = true;
+              hns.endFacing = -hns.dir;
+              this.facing = tX >= this.x ? 1 : -1;
+            } else {
+              this.facing = hns.dir;
+            }
+          } else {
+            const destX = pivotActive
+              ? computeFrontStepDest(opts.dashContactDist ?? 80, opts.minCloseDist ?? 76, 30)
+              : clampX(hns.startX + hns.dir * (opts.openDashPx ?? 42));
+            this.x = clampX(hns.startX + (destX - hns.startX) * ease);
+            this.facing = hns.dir;
+            if (dp >= 0.34 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 28) {
+              hns.ghostStep = 1;
+              opts.onGhost?.(this.x, this.y, this.facing, dp);
+            }
+          }
+        }
+      } else {
+        // Beat 4: Heavy Advancing Execution Finisher (stays strictly in front)
+        const ease = 1 - Math.pow(1 - p, 2.4);
+        const destX = pivotActive
+          ? computeFrontStepDest(opts.finisherDist ?? 82, opts.minCloseDist ?? 76, 28)
+          : clampX(hns.startX + hns.dir * (opts.openFinisherPx ?? 36));
+        this.x = clampX(hns.startX + (destX - hns.startX) * ease);
+        this.facing = hns.dir;
+        if (p >= 0.32 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 30) {
+          hns.ghostStep = 1;
+          opts.onGhost?.(this.x, this.y, this.facing, p);
+        }
+      }
+
+      if (u >= moveEndU) {
+        hns.finishedMove = true;
+        hns.moveDoneX = this.x;
+      }
+      this._hnsSpeed = Math.abs(this.x - prevX) / Math.max(0.001, dt || 1 / 60);
+    } else {
+      // Controlled Martial Stance Settle (prevents sliding across the arena after the blade lands)
+      if (hns.crossedSide) {
+        this.facing = pivotActive ? (tX >= this.x ? 1 : -1) : hns.endFacing;
+      } else {
+        this.facing = hns.dir;
+      }
+      const skidEndU = 0.80;
+      const skidP = Math.min(1, Math.max(0, (u - moveEndU) / Math.max(0.08, skidEndU - moveEndU)));
+      const skidEase = 1 - Math.pow(1 - skidP, 2.0);
+      let skidDist = pivotActive ? (hns.isBoss ? 0 : 4) : 5;
+      const skidDir = this.facing || hns.dir;
+      if (pivotActive && !hns.isBoss) {
+        const minFront = hns.crossedSide ? 76 : (opts.minCloseDist ?? 76);
+        const maxInward = Math.max(0, (tX - skidDir * minFront - hns.moveDoneX) * skidDir);
+        skidDist = Math.min(skidDist, maxInward);
+      }
+      this.x = clampX(hns.moveDoneX + skidDir * skidDist * skidEase);
+      this.vx = 0;
+      this._hnsSpeed = Math.abs(this.x - prevX) / Math.max(0.001, dt || 1 / 60);
+    }
+
+    // Crisp horizontal speed-streaks reserved ONLY for actual high-speed duelist V2 cross-slashes!
+    if (hns.willCrossV2 && this._hnsSpeed >= 520) {
+      hns.streakAccum = (hns.streakAccum || 0) + (dt || 1 / 60);
+      if (hns.streakAccum >= 0.036) {
+        hns.streakAccum = 0;
+        const moveSign = Math.sign(this.x - prevX) || this.facing || 1;
+        const len = Math.min(78, Math.max(30, Math.round(this._hnsSpeed * 0.058)));
+        const bandIdx = (Math.round(this.x) + variant * 7) % 3;
+        const bandY = this.y - (bandIdx === 0 ? 36 : bandIdx === 1 ? 76 : 110);
+        this.spawnHnsStreak(
+          'wind',
+          this.x - moveSign * (14 + len),
+          this.x - moveSign * 10,
+          bandY,
+          accentCol,
+          '#ffffff',
+          0.13
+        );
+      }
+    }
+
+    hns.lastX = this.x;
+    return hns;
+  }
+
+  /**
+   * Ranged Battle-Mage 4-Beat Spell-Slash Footwork (`Ignis Sol`, `Lyra`, `Seraphina`):
+   * - ZERO melee lock-on magnet dashes, ZERO cross-throughs behind enemies, ZERO `180°` turns!
+   * - `V0..V2`: Graceful `18–28px` local cast-steps / figure-skate glides that respect ranged spacing
+   *   (never stepping closer than `minSafeDist` `~168px` toward a nearby enemy).
+   * - `V3`: Stylish `-38..-42px` Backstep Kite away from nearby enemies while keeping `facing` locked forward
+   *   on the target as the 4th finisher spell fires (`0.00px` strictly grounded on `Seraphina`!).
+   */
+  updateCasterSpellSlashMotion(dt, target, game, opts = {}) {
+    this._hnsPhaseThrough = false;
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const margin = opts.margin ?? 84;
+    const minX =
+      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
+        ? game.adventure.lockMinX + 24
+        : margin;
+    const bossEntity = game?.adventure?.bossEntity;
+    const bossWallAlive = Boolean(
+      bossEntity && !bossEntity.isDead && bossEntity.isColossalBoss && !this.isColossalBoss
+    );
+    const rawMaxX =
+      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMaxX)
+        ? game.adventure.lockMaxX - 24
+        : ww - margin;
+    const maxX = bossWallAlive
+      ? Math.min(rawMaxX, (bossEntity.anchorX || 9335) - 96)
+      : rawMaxX;
+    const clampX = (val) => Math.max(minX, Math.min(maxX, val));
+
+    const variant = (((opts.variant ?? this._autoVariant ?? 0) % 4) + 4) % 4;
+    const u = Math.min(1, Math.max(0, opts.u ?? 0));
+    const moveEndU = opts.moveEndU ?? 0.42;
+    const maxLockDist = opts.maxLockDist ?? 510;
+
+    if (
+      !this._hnsState ||
+      this._hnsState.variant !== variant ||
+      (Number.isFinite(this._hnsState.lastX) && Math.abs(this.x - this._hnsState.lastX) > 185)
+    ) {
+      const validTarget = Boolean(
+        target &&
+          !target.isDead &&
+          !target.isDestructibleProp &&
+          !target.isDummyFocal &&
+          Math.abs(target.x - this.x) <= maxLockDist
+      );
+      const manualInputDir =
+        !validTarget &&
+        this.isPlayerControlled &&
+        !this.adventureAutoPlay &&
+        Math.abs(this.manualMoveAxis || 0) > 0.18
+          ? Math.sign(this.manualMoveAxis)
+          : 0;
+      const dir = validTarget
+        ? Math.sign(target.x - this.x) || this.facing || 1
+        : manualInputDir || this.facing || 1;
+      const startDist = validTarget ? Math.abs(target.x - this.x) : 999;
+      const isBoss = Boolean(validTarget && target.isColossalBoss);
+      const minSafeDist = isBoss ? 220 : (opts.minSafeDist ?? 168);
+
+      let stepDelta = 0;
+      if (variant === 3) {
+        if (validTarget && startDist <= (opts.kiteMaxDist ?? 485)) {
+          stepDelta = -(opts.backstepPx ?? 40);
+        } else {
+          stepDelta = opts.openV3StepPx ?? 20;
+        }
+      } else {
+        const rawStep =
+          variant === 0
+            ? (opts.v0StepPx ?? 24)
+            : variant === 1
+              ? (opts.v1StepPx ?? 20)
+              : (opts.v2StepPx ?? 28);
+        if (validTarget) {
+          if (startDist < minSafeDist - 16 && variant === 1) {
+            stepDelta = -16;
+          } else {
+            const maxInward = Math.max(0, startDist - minSafeDist);
+            stepDelta = Math.min(rawStep, maxInward);
+          }
+        } else {
+          stepDelta = rawStep;
+        }
+      }
+
+      const destX = clampX(this.x + dir * stepDelta);
+      this._hnsState = {
+        variant,
+        startX: this.x,
+        lastX: this.x,
+        destX,
+        dir,
+        startDist,
+        hasTarget: validTarget,
+        ghostStep: 0,
         finishedMove: false
       };
     }
@@ -1763,336 +2108,41 @@ export class Fighter {
       return hns;
     }
 
-    // Dynamic vertical vault/leap curves (grounded 0px on Ronin Iaido; soaring leaps on Warrior/Android/Reaper/Chronos)
-    const isGroundedStyle = opts.groundedOnly === true || this.heroId === 'ronin';
-    const hopEndU = opts.hopEndU ?? 0.58;
-    const hopHeight = isGroundedStyle
-      ? 0
-      : variant === 1
-        ? hns.hasTarget
-          ? (opts.v1HopHeight ?? 22)
-          : (opts.v1OpenHopHeight ?? opts.v1HopHeight ?? 24)
-        : variant === 2 && !hns.hasTarget
-          ? (opts.v2OpenHopHeight ?? 10)
-          : variant === 3
-            ? (opts.v3HopHeight ?? 50)
-            : 0;
-    if (hopHeight > 0 && u >= 0.04 && u <= hopEndU) {
-      const hopP = (u - 0.04) / Math.max(0.05, hopEndU - 0.04);
+    const isGroundedCaster = opts.groundedOnly === true || this.heroId === 'priestess';
+    const hopEndU = opts.hopEndU ?? 0.56;
+    const hopHeight = isGroundedCaster ? 0 : variant === 3 ? (opts.v3HopHeight ?? 16) : 0;
+    if (hopHeight > 0 && u >= 0.05 && u <= hopEndU) {
+      const hopP = (u - 0.05) / Math.max(0.05, hopEndU - 0.05);
       this.y = this.groundY - Math.sin(hopP * Math.PI) * hopHeight;
     } else {
-      if (hopHeight >= 34 && u > hopEndU && !hns.landRingSpawned) {
-        hns.landRingSpawned = true;
-        game?.vfx?.spawnShockwave?.(
-          this.x + this.facing * 18,
-          this.groundY - 4,
-          64,
-          this.secondaryColor || this.primaryColor || '#facc15',
-          0.20,
-          true
-        );
-      }
       this.y = this.groundY;
     }
-
-    const liveTargetOk = Boolean(
-      hns.hasTarget && target && !target.isDead && !target.isDestructibleProp
-    );
-    const pivotActive = Boolean(liveTargetOk || (hns.hasTarget && Number.isFinite(hns.anchorX)));
-    const tX = liveTargetOk
-      ? Number.isFinite(hns.anchorX)
-        ? hns.anchorX * 0.25 + target.x * 0.75
-        : target.x
-      : Number.isFinite(hns.anchorX)
-        ? hns.anchorX
-        : hns.startX + hns.dir * 120;
-    const prevX = this.x;
-    const accentCol = this.primaryColor || '#38bdf8';
-    const coreCol = this.secondaryColor || '#fef08a';
-
-    if (u < moveEndU || !hns.finishedMove) {
-      const uEff = Math.min(moveEndU, u);
-      const p = Math.min(1, uEff / Math.max(0.02, moveEndU));
-      this.vx = 0;
+    if (isGroundedCaster) {
+      this.y = this.groundY;
       this.vy = 0;
+      this.isAngelicAscent = false;
+    }
 
-      if (variant === 0) {
-        // Hit 1: Explosive Forward Rush-Cleave!
-        const ease = 1 - Math.pow(1 - p, 2.85);
-        if (!hns.launchRingSpawned && p >= 0.06) {
-          hns.launchRingSpawned = true;
-          game?.vfx?.spawnShockwave?.(
-            this.x - hns.dir * 10,
-            this.groundY - 4,
-            42,
-            accentCol,
-            0.15,
-            true
-          );
-        }
-        let destX;
-        if (pivotActive) {
-          const contactDist = hns.isBoss
-            ? Math.max(88, opts.contactDist ?? 68)
-            : (opts.contactDist ?? 68);
-          const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 34);
-          const idealAdv = (tX - hns.dir * contactDist - hns.startX) * hns.dir;
-          const minAdv = Math.max(0, (tX - hns.dir * minCloseDist - hns.startX) * hns.dir);
-          const advance = Math.max(0, Math.max(idealAdv, Math.min(62, minAdv)));
-          destX = clampX(hns.startX + hns.dir * advance);
-        } else {
-          destX = clampX(hns.startX + hns.dir * (opts.openStepPx ?? 124));
-        }
-        this.x = clampX(hns.startX + (destX - hns.startX) * ease);
-        this.facing = hns.dir;
-        if (p >= 0.24 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 24) {
-          hns.ghostStep = 1;
-          opts.onGhost?.(this.x, this.y, this.facing, p);
-        }
-        if (p >= 0.56 && hns.ghostStep < 2 && Math.abs(destX - hns.startX) >= 54) {
-          hns.ghostStep = 2;
-          opts.onGhost?.(this.x, this.y, this.facing, p);
-        }
-      } else if (variant === 1) {
-        // Hit 2: Against Enemy -> Wide Cross-Through Vault-Slash + 180° Whip-Turn!
-        //        Open Air -> Wild Forward Rising Vault-Slash (NEVER turns backward!)
-        const ease = p < 0.45 ? 2.2 * p * p : 1 - Math.pow(-1.82 * p + 1.82, 2) * 0.48;
-        if (pivotActive && hns.canCrossV1) {
-          const flankDist = opts.flankDist ?? 126;
-          const destX = clampX(tX + hns.dir * flankDist);
-          this.x = clampX(hns.startX + (destX - hns.startX) * ease);
-          if (!hns.cutRibbonSpawned && p >= 0.42) {
-            hns.cutRibbonSpawned = true;
-            this.spawnHnsStreak('cut', hns.startX + hns.dir * 18, destX - hns.dir * 14, this.y - 84, accentCol, coreCol, 0.19);
-          }
-          if (p >= 0.16 && hns.ghostStep < 1) {
-            hns.ghostStep = 1;
-            opts.onGhost?.(this.x, this.y, hns.dir, p);
-          }
-          if (p >= 0.38 && hns.ghostStep < 2) {
-            hns.ghostStep = 2;
-            opts.onGhost?.(this.x, this.y, hns.dir, p);
-          }
-          if (p >= 0.62 && hns.ghostStep < 3) {
-            hns.ghostStep = 3;
-            opts.onGhost?.(this.x, this.y, hns.dir, p);
-          }
-          if (p >= 0.66) {
-            hns.crossedSide = true;
-            hns.endFacing = -hns.dir;
-            this.facing = tX >= this.x ? 1 : -1;
-          } else {
-            this.facing = hns.dir;
-          }
-        } else {
-          let destX;
-          if (pivotActive) {
-            const contactDist = hns.isBoss
-              ? Math.max(88, opts.contactDist ?? 68)
-              : (opts.contactDist ?? 68);
-            const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 34);
-            const idealAdv = (tX - hns.dir * contactDist - hns.startX) * hns.dir;
-            const minAdv = Math.max(0, (tX - hns.dir * minCloseDist - hns.startX) * hns.dir);
-            destX = clampX(hns.startX + hns.dir * Math.max(0, Math.max(idealAdv, Math.min(54, minAdv))));
-          } else {
-            destX = clampX(hns.startX + hns.dir * (opts.openCrossPx ?? 148));
-            if (!hns.cutRibbonSpawned && p >= 0.44) {
-              hns.cutRibbonSpawned = true;
-              this.spawnHnsStreak('cut', hns.startX + hns.dir * 20, destX + hns.dir * 24, this.y - 86, accentCol, coreCol, 0.18);
-            }
-          }
-          this.x = clampX(hns.startX + (destX - hns.startX) * ease);
-          this.facing = hns.dir;
-          if (p >= 0.22 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 26) {
-            hns.ghostStep = 1;
-            opts.onGhost?.(this.x, this.y, this.facing, p);
-          }
-          if (p >= 0.48 && hns.ghostStep < 2 && Math.abs(destX - hns.startX) >= 52) {
-            hns.ghostStep = 2;
-            opts.onGhost?.(this.x, this.y, this.facing, p);
-          }
-          if (p >= 0.72 && hns.ghostStep < 3 && Math.abs(destX - hns.startX) >= 88) {
-            hns.ghostStep = 3;
-            opts.onGhost?.(this.x, this.y, this.facing, p);
-          }
-        }
-      } else if (variant === 2) {
-        // Hit 3: Spring-Coil -> Supersonic Blitz Dash-Slash!
-        //        Against Enemy -> Rockets 245–295px straight back across enemy + 180° Whip-Turn!
-        //        Open Air -> Rockets +220px PURE FORWARD (ZERO leftward/backward turn!)
-        const coilPx = hns.isBoss ? 6 : 13;
-        if (uEff < coilEndU) {
-          const coilP = uEff / Math.max(0.01, coilEndU);
-          this.x = clampX(hns.startX - hns.dir * coilPx * coilP);
-          this.facing = hns.dir;
-        } else {
-          const dp = Math.min(1, (uEff - coilEndU) / Math.max(0.02, moveEndU - coilEndU));
-          const ease = 1 - Math.pow(1 - dp, 3.35);
-          const coilStartX = clampX(hns.startX - hns.dir * coilPx);
-          if (!hns.dashRingSpawned) {
-            hns.dashRingSpawned = true;
-            game?.vfx?.spawnShockwave?.(
-              this.x,
-              this.groundY - 4,
-              62,
-              accentCol,
-              0.20,
-              true
-            );
-          }
-          const dashPierce = Boolean(
-            pivotActive && hns.canCrossV2 && hns.startDist <= (opts.dashPierceThreshold ?? 235)
-          );
-          if (dashPierce) {
-            const dashFlankDist = opts.dashFlankDist ?? 130;
-            const destX = clampX(tX + hns.dir * dashFlankDist);
-            this.x = clampX(coilStartX + (destX - coilStartX) * ease);
-            if (!hns.cutRibbonSpawned && dp >= 0.36) {
-              hns.cutRibbonSpawned = true;
-              this.spawnHnsStreak('cut', coilStartX + hns.dir * 16, destX - hns.dir * 10, this.y - 88, accentCol, coreCol, 0.22);
-              this.spawnHnsStreak('cut', coilStartX + hns.dir * 32, destX - hns.dir * 24, this.y - 72, coreCol, '#ffffff', 0.18);
-            }
-            if (dp >= 0.66) {
-              hns.crossedSide = true;
-              hns.endFacing = -hns.dir;
-              this.facing = tX >= this.x ? 1 : -1;
-            } else {
-              this.facing = hns.dir;
-            }
-          } else {
-            let destX;
-            if (pivotActive) {
-              const dashContact = hns.isBoss
-                ? Math.max(88, opts.dashContactDist ?? 68)
-                : (opts.dashContactDist ?? 68);
-              const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 34);
-              const idealAdv = (tX - hns.dir * dashContact - hns.startX) * hns.dir;
-              const minAdv = Math.max(0, (tX - hns.dir * minCloseDist - hns.startX) * hns.dir);
-              destX = clampX(
-                hns.startX + hns.dir * Math.max(0, Math.max(idealAdv, Math.min(68, minAdv)))
-              );
-            } else {
-              destX = clampX(hns.startX + hns.dir * (opts.openDashPx ?? 218));
-            }
-            this.x = clampX(coilStartX + (destX - coilStartX) * ease);
-            this.facing = hns.dir;
-            if (!hns.cutRibbonSpawned && dp >= 0.36 && Math.abs(destX - coilStartX) >= 85) {
-              hns.cutRibbonSpawned = true;
-              this.spawnHnsStreak('cut', coilStartX + hns.dir * 18, destX + hns.dir * 26, this.y - 84, accentCol, coreCol, 0.21);
-              this.spawnHnsStreak('cut', coilStartX + hns.dir * 34, destX + hns.dir * 12, this.y - 70, coreCol, '#ffffff', 0.17);
-            }
-          }
-
-          if (dp >= 0.12 && hns.ghostStep < 1) {
-            hns.ghostStep = 1;
-            opts.onGhost?.(this.x, this.y, hns.dir, dp);
-          }
-          if (dp >= 0.28 && hns.ghostStep < 2) {
-            hns.ghostStep = 2;
-            opts.onGhost?.(this.x, this.y, hns.dir, dp);
-          }
-          if (dp >= 0.46 && hns.ghostStep < 3) {
-            hns.ghostStep = 3;
-            opts.onGhost?.(this.x, this.y, hns.dir, dp);
-          }
-          if (dp >= 0.64 && hns.ghostStep < 4) {
-            hns.ghostStep = 4;
-            opts.onGhost?.(this.x, this.y, this.facing, dp);
-          }
-          if (dp >= 0.82 && hns.ghostStep < 5) {
-            hns.ghostStep = 5;
-            opts.onGhost?.(this.x, this.y, this.facing, dp);
-          }
-        }
-      } else {
-        // Hit 4: Soaring Aerial Leap / Heavy Execution Crash Finisher!
-        const ease = 1 - Math.pow(1 - p, 2.5);
-        if (!hns.launchRingSpawned && p >= 0.06) {
-          hns.launchRingSpawned = true;
-          game?.vfx?.spawnShockwave?.(
-            this.x,
-            this.groundY - 4,
-            48,
-            accentCol,
-            0.16,
-            true
-          );
-        }
-        let destX;
-        if (pivotActive) {
-          const finDist = hns.isBoss
-            ? Math.max(88, opts.finisherDist ?? 68)
-            : (opts.finisherDist ?? 68);
-          const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 36);
-          const idealAdv = (tX - hns.dir * finDist - hns.startX) * hns.dir;
-          const minAdv = Math.max(0, (tX - hns.dir * minCloseDist - hns.startX) * hns.dir);
-          destX = clampX(hns.startX + hns.dir * Math.max(0, Math.max(idealAdv, Math.min(58, minAdv))));
-        } else {
-          destX = clampX(hns.startX + hns.dir * (opts.openFinisherPx ?? 140));
-        }
-        this.x = clampX(hns.startX + (destX - hns.startX) * ease);
-        this.facing = hns.dir;
-        if (p >= 0.22 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 24) {
-          hns.ghostStep = 1;
-          opts.onGhost?.(this.x, this.y, this.facing, p);
-        }
-        if (p >= 0.50 && hns.ghostStep < 2 && Math.abs(destX - hns.startX) >= 48) {
-          hns.ghostStep = 2;
-          opts.onGhost?.(this.x, this.y, this.facing, p);
-        }
-        if (p >= 0.76 && hns.ghostStep < 3 && Math.abs(destX - hns.startX) >= 82) {
-          hns.ghostStep = 3;
-          opts.onGhost?.(this.x, this.y, this.facing, p);
-        }
+    const prevX = this.x;
+    if (u < moveEndU || !hns.finishedMove) {
+      const p = Math.min(1, u / Math.max(0.02, moveEndU));
+      const ease = 1 - Math.pow(1 - p, 2.35);
+      this.vx = 0;
+      this.x = clampX(hns.startX + (hns.destX - hns.startX) * ease);
+      this.facing = hns.dir;
+      if (p >= 0.36 && hns.ghostStep < 1 && Math.abs(hns.destX - hns.startX) >= 22) {
+        hns.ghostStep = 1;
+        opts.onGhost?.(this.x, this.y, this.facing, p);
       }
-
       if (u >= moveEndU) {
         hns.finishedMove = true;
-        hns.moveDoneX = this.x;
       }
-      this._hnsSpeed = Math.abs(this.x - prevX) / Math.max(0.001, dt || 1 / 60);
     } else {
-      // Continuous Post-Strike Kinetic Momentum Skid (ZERO frozen statue frames!)
-      if (hns.crossedSide) {
-        this.facing = pivotActive ? (tX >= this.x ? 1 : -1) : hns.endFacing;
-      } else {
-        this.facing = hns.dir;
-      }
-      const skidEndU = 0.88;
-      const skidP = Math.min(1, Math.max(0, (u - moveEndU) / Math.max(0.08, skidEndU - moveEndU)));
-      const skidEase = 1 - Math.pow(1 - skidP, 2.1);
-      let skidDist = pivotActive ? (hns.isBoss ? 0 : 18) : variant === 2 ? 26 : 22;
-      const skidDir = this.facing || hns.dir;
-      if (pivotActive && !hns.isBoss) {
-        const maxInward = Math.max(0, (tX - skidDir * 44 - hns.moveDoneX) * skidDir);
-        skidDist = Math.min(skidDist, maxInward);
-      }
-      this.x = clampX(hns.moveDoneX + skidDir * skidDist * skidEase);
+      this.facing = hns.dir;
       this.vx = 0;
-      this._hnsSpeed = Math.abs(this.x - prevX) / Math.max(0.001, dt || 1 / 60);
     }
 
-    // Spawn crisp horizontal pixel speed-streaks during high-velocity Hack-and-Slash surges (0 ctx.rotate!)
-    if (this._hnsSpeed >= 260) {
-      hns.streakAccum = (hns.streakAccum || 0) + (dt || 1 / 60);
-      if (hns.streakAccum >= 0.032) {
-        hns.streakAccum = 0;
-        const moveSign = Math.sign(this.x - prevX) || this.facing || 1;
-        const len = Math.min(92, Math.max(34, Math.round(this._hnsSpeed * 0.068)));
-        const bandIdx = (Math.round(this.x) + variant * 7) % 3;
-        const bandY = this.y - (bandIdx === 0 ? 34 : bandIdx === 1 ? 74 : 112);
-        this.spawnHnsStreak(
-          'wind',
-          this.x - moveSign * (14 + len),
-          this.x - moveSign * 10,
-          bandY,
-          accentCol,
-          '#ffffff',
-          0.14
-        );
-      }
-    }
-
+    this._hnsSpeed = Math.abs(this.x - prevX) / Math.max(0.001, dt || 1 / 60);
     hns.lastX = this.x;
     return hns;
   }

@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps104';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps104';
+import { Fighter } from './Fighter.js?v=30fps105';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps105';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps104';
+} from '../engine/shaders/abyssalShaders.js?v=30fps105';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -152,15 +152,16 @@ export class Reaper extends Fighter {
     });
 
     if (typeof Image !== 'undefined') {
+      PixelForge.ensureHeroLoaded?.('reaper');
       const reaperAssets = PixelForge.initAssets()?.reaper;
-      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps87')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps104';
+      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps105')) {
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps105';
       }
-      if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps87')) {
-        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps104';
+      if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps105')) {
+        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps105';
       }
-      if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps87')) {
-        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps104';
+      if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps105')) {
+        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps105';
       }
     }
   }
@@ -2029,41 +2030,39 @@ export class Reaper extends Fighter {
       !enemy.isDead &&
       !enemy.isDestructibleProp &&
       !enemy.isDummyFocal &&
-      Math.abs(enemy.x - this.x) <= 275
+      Math.abs(enemy.x - this.x) <= 210
         ? enemy
         : null) ||
-      combatFoes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 275) ||
-      combatFoes.find((f) => Math.abs(f.x - this.x) <= 240) ||
+      combatFoes.find((f) => (f.x - this.x) * this.facing >= -24 && Math.abs(f.x - this.x) <= 210) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 190) ||
       null;
     const usingEffigy = Boolean(
       !liveFoe &&
         this.severedSoul &&
         this.severedSoul.life > 0 &&
-        Math.abs(this.severedSoul.x - this.x) <= 220
+        Math.abs(this.severedSoul.x - this.x) <= 195
     );
     const motionTarget = usingEffigy ? this.severedSoul : liveFoe;
 
     const hns = this.updateHackAndSlashMotion(dt, motionTarget, game, {
       variant: mode,
       u,
+      allowV2Cross: false,
       moveEndU: 0.40,
-      coilEndU: 0.075,
-      contactDist: 70,
-      flankDist: usingEffigy ? 76 : 126,
-      dashContactDist: 68,
-      dashFlankDist: 130,
-      dashPierceThreshold: 235,
-      finisherDist: 70,
-      v1HopHeight: 22,
-      v3HopHeight: 54,
-      hopEndU: 0.58,
-      openStepPx: 126,
-      openCrossPx: 150,
-      openDashPx: 224,
-      openFinisherPx: 148,
-      maxLockDist: 275,
+      contactDist: 88,
+      minCloseDist: 78,
+      dashContactDist: 84,
+      finisherDist: 86,
+      maxStepAdvance: 54,
+      v3HopHeight: 24,
+      hopEndU: 0.56,
+      openStepPx: 36,
+      openCrossPx: 32,
+      openDashPx: 44,
+      openFinisherPx: 40,
+      maxLockDist: 210,
       onGhost: (gx, gy, gf) =>
-        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.22)
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.18)
     });
 
     if (t < 0.20) {

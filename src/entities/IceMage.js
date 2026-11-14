@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps104';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps104';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps104';
+import { Fighter } from './Fighter.js?v=30fps105';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps105';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps105';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps105';
 
 /**
  * Lyra (`icemage`) — Winter Empress & Sovereign of Absolute Zero (v6 Full Rework).
@@ -136,9 +136,10 @@ export class IceMage extends Fighter {
     });
 
     if (typeof Image !== 'undefined') {
+      PixelForge.ensureHeroLoaded?.('icemage');
       const iceAssets = PixelForge.initAssets()?.icemage;
-      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps87')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps104';
+      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps105')) {
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps105';
       }
     }
   }
@@ -1290,7 +1291,7 @@ export class IceMage extends Fighter {
       (this.comboStep || 0) !== 0 &&
       (this._aiComboChainTimer || 0) > 0 &&
       enemy &&
-      Math.abs(enemy.x - this.x) <= Math.max(this.attackRange, 320);
+      Math.abs(enemy.x - this.x) <= Math.max(this.attackRange, 480);
 
     // 8. Proactive Winter Empress Tactical Figure-Skating AI (VS Duel / 2v2 Modes)
     if (
@@ -1398,38 +1399,33 @@ export class IceMage extends Fighter {
       !enemy.isDead &&
       !enemy.isDestructibleProp &&
       !enemy.isDummyFocal &&
-      Math.abs(enemy.x - this.x) <= 310
+      Math.abs(enemy.x - this.x) <= 510
         ? enemy
         : null) ||
-      combatFoes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 310) ||
-      combatFoes.find((f) => Math.abs(f.x - this.x) <= 275) ||
+      combatFoes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 510) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 460) ||
       null;
 
-    if (mode === 1 || mode === 2) {
+    if (mode === 0 || mode === 3) {
       this.ensureGlacialSkateRibbon();
     }
 
-    this.updateHackAndSlashMotion(dt, frontFoe, game, {
+    this.updateCasterSpellSlashMotion(dt, frontFoe, game, {
       variant: mode,
       u,
-      moveEndU: 0.40,
-      coilEndU: 0.075,
-      contactDist: 94,
-      flankDist: 138,
-      dashContactDist: 92,
-      dashFlankDist: 142,
-      dashPierceThreshold: 295,
-      finisherDist: 96,
-      v1HopHeight: 24,
-      v3HopHeight: 38,
-      hopEndU: 0.58,
-      openStepPx: 124,
-      openCrossPx: 148,
-      openDashPx: 218,
-      openFinisherPx: 134,
-      maxLockDist: 310,
+      moveEndU: 0.42,
+      minSafeDist: 170,
+      v0StepPx: 24,
+      v1StepPx: 20,
+      v2StepPx: 28,
+      backstepPx: 42,
+      openV3StepPx: 22,
+      kiteMaxDist: 485,
+      v3HopHeight: 16,
+      hopEndU: 0.56,
+      maxLockDist: 510,
       onGhost: (gx, gy, gf) =>
-        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + subFrame, 0.22)
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + subFrame, 0.19)
     });
 
     if (u < 0.42) {
