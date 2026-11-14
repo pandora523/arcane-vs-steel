@@ -1,13 +1,13 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps103';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps103';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps103';
+import { Fighter } from '../entities/Fighter.js?v=30fps104';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps104';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps103';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps103';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps103';
+} from './AdventureProgression.js?v=30fps104';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps104';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps104';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -2143,19 +2143,20 @@ export class AdventureManager {
       this.comboResetTimer = Math.max(0, this.comboResetTimer - dt);
       if (this.comboResetTimer <= 0) {
         this._comboLockTarget = null;
-        if (player.isHackAndSlashMelee?.()) {
+        if (player.hasHackAndSlashCombo?.()) {
           player.comboStep = 0;
         }
       }
     }
 
+    const stickyLockMaxX = (player.getHackAndSlashLockRange?.() || 275) + 45;
     if (
-      player.isHackAndSlashMelee?.() &&
+      player.hasHackAndSlashCombo?.() &&
       (player.comboStep || 0) !== 0 &&
       (this.comboResetTimer || 0) > 0 &&
       this._comboLockTarget &&
       !this._comboLockTarget.isDead &&
-      Math.abs(this._comboLockTarget.x - player.x) <= 315 &&
+      Math.abs(this._comboLockTarget.x - player.x) <= stickyLockMaxX &&
       (this._comboLockTarget.isColossalBoss ||
         Math.abs(
           (this._comboLockTarget.groundY || this._comboLockTarget.y) -
@@ -2478,12 +2479,13 @@ export class AdventureManager {
         const dxToTarget = target.x - player.x;
         const absDx = Math.abs(dxToTarget);
         const absDz = target.isColossalBoss ? 0 : Math.abs(targetGy - pGy);
-        const isHackSlash = Boolean(player.isHackAndSlashMelee?.());
+        const isHackSlash = Boolean(player.hasHackAndSlashCombo?.());
+        const autoChainMaxDx = player.isHackAndSlashCaster?.() ? 315 : 265;
         const midHackChain =
           isHackSlash &&
           (player.comboStep || 0) !== 0 &&
           (this.comboResetTimer || 0) > 0 &&
-          (target.isColossalBoss ? player.x >= 9145 : absDx <= 265 && absDz <= 78);
+          (target.isColossalBoss ? player.x >= 8480 : absDx <= autoChainMaxDx && absDz <= 78);
 
         if (player.state === 'IDLE' || player.state === 'WALK') {
           if (
@@ -2537,7 +2539,7 @@ export class AdventureManager {
               ? isRanged
                 ? player.x >= 8480
                 : player.x >= 9145
-              : absDx <= (midHackChain ? Math.max(effRange, 265) : effRange * 0.96) &&
+              : absDx <= (midHackChain ? Math.max(effRange, autoChainMaxDx) : effRange * 0.96) &&
                 absDz <= (midHackChain ? 78 : isRanged ? 76 : 44))
           ) {
             player._manualWalkActive = false;
@@ -2563,9 +2565,11 @@ export class AdventureManager {
             player._manualWalkActive = false;
             player._manualSpeedRatio = 0;
           } else if (target.isColossalBoss) {
-            const bossGoalX = isRanged
-              ? 8865 + Math.sin(aiClock * 1.35) * 65
-              : 9226 + Math.sin(aiClock * 1.7) * 16;
+            const bossGoalX = player.isHackAndSlashCaster?.()
+              ? 9055 + Math.sin(aiClock * 1.45) * 45
+              : isRanged
+                ? 8865 + Math.sin(aiClock * 1.35) * 65
+                : 9226 + Math.sin(aiClock * 1.7) * 16;
             let bossGoalGy = ADVENTURE_DEPTH_MID_Y + Math.sin(aiClock * 1.65) * 44;
             if (target.rakeWarnOnly || target.rakeActive) {
               bossGoalGy = (target.rakeLaneGy || 561) <= ADVENTURE_DEPTH_MID_Y ? 638 : 484;
@@ -2576,9 +2580,11 @@ export class AdventureManager {
             }
             isMovingCombat = applyCurvedAutoSteer(bossGoalX, bossGoalGy, 20, 1);
           } else {
-            const idealDistX = isRanged
-              ? Math.min(355, Math.max(225, effRange * 0.74))
-              : Math.max(82, Math.min(132, effRange * 0.68));
+            const idealDistX = player.isHackAndSlashCaster?.()
+              ? 225
+              : isRanged
+                ? Math.min(355, Math.max(225, effRange * 0.74))
+                : Math.max(82, Math.min(132, effRange * 0.68));
             const leftSlot = target.x - idealDistX;
             const rightSlot = target.x + idealDistX;
             const wallMargin = isRanged ? 72 : 40;
@@ -2750,8 +2756,8 @@ export class AdventureManager {
       (this.queuedAction !== 'attack' ||
         (player.autoCooldown <= 0 &&
           player.stateTimer >=
-            (player.isHackAndSlashMelee?.()
-              ? (player.autoDuration || 0.42) * 0.72
+            (player.hasHackAndSlashCombo?.()
+              ? (player.autoDuration || 0.44) * 0.72
               : Math.min(0.35, (player.autoDuration || 0.48) * 0.72))));
 
     const canAct =
@@ -2832,14 +2838,15 @@ export class AdventureManager {
         this.startHeroAdventureDodge(player, evadeX, evadeZ, stats);
       } else if (act === 'attack' && player.autoCooldown <= 0) {
         this.queuedAction = null;
-        const isHns = Boolean(player.isHackAndSlashMelee?.());
+        const isHns = Boolean(player.hasHackAndSlashCombo?.());
+        const hnsLockRange = player.getHackAndSlashLockRange?.() || 275;
         const lockableHnsTarget =
           isHns &&
           target &&
           !target.isDead &&
           !target.isDestructibleProp &&
           !target.isDummyFocal &&
-          (target.isColossalBoss || Math.abs(target.x - player.x) <= 275);
+          (target.isColossalBoss || Math.abs(target.x - player.x) <= hnsLockRange);
         if (isHns) {
           if (lockableHnsTarget) {
             player.facing = target.x >= player.x ? 1 : -1;
@@ -2931,7 +2938,7 @@ export class AdventureManager {
         isMoving3D &&
         !this.game.isMatchOver
       ) {
-        if (player.isHackAndSlashMelee?.()) {
+        if (player.hasHackAndSlashCombo?.()) {
           // Allow smooth 2.5D depth-lane micro-steering while preserving Hack-and-Slash cross-through & 180° turns!
           this.shiftEntityDepth(player, this.smoothVelY * 0.85 * dt);
         } else {
@@ -2954,7 +2961,7 @@ export class AdventureManager {
       player.update(dt, combatTarget, this.game);
       if (
         player.state === 'AUTO_ATTACK' &&
-        !player.isHackAndSlashMelee?.() &&
+        !player.hasHackAndSlashCombo?.() &&
         isMoving3D &&
         Math.abs(player.vx) > 8
       ) {

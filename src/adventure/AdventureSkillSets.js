@@ -322,7 +322,7 @@ export class AdventureSkillSets {
     if (!living || living.length <= 1) return;
 
     const st = attacker.state;
-    let radX = (attacker.attackRange || 180) < 300 ? 155 : 130;
+    let radX = attacker.hasHackAndSlashCombo?.() || (attacker.attackRange || 180) < 300 ? 155 : 130;
     let radZ = 100;
     let splashMult = 0.75;
 

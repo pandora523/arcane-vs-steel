@@ -187,9 +187,9 @@ export class Fighter {
         };
       case 'icemage':
         return {
-          comboGoal: 2,
-          sweetMin: 345,
-          sweetMax: 445,
+          comboGoal: 4,
+          sweetMin: 235,
+          sweetMax: 335,
           counterCrouchBias: 0.58,
           midLeapMin: 0,
           midLeapMax: 0,
@@ -198,9 +198,9 @@ export class Fighter {
         };
       case 'priestess':
         return {
-          comboGoal: 2,
-          sweetMin: 365,
-          sweetMax: 470,
+          comboGoal: 4,
+          sweetMin: 245,
+          sweetMax: 345,
           counterCrouchBias: 0.56,
           midLeapMin: 0,
           midLeapMax: 0,
@@ -209,9 +209,9 @@ export class Fighter {
         };
       case 'mage':
         return {
-          comboGoal: 3,
-          sweetMin: 355,
-          sweetMax: 460,
+          comboGoal: 4,
+          sweetMin: 240,
+          sweetMax: 340,
           counterCrouchBias: 0.48,
           midLeapMin: 0,
           midLeapMax: 0,
@@ -242,6 +242,22 @@ export class Fighter {
     );
   }
 
+  isHackAndSlashCaster() {
+    return (
+      this.heroId === 'mage' ||
+      this.heroId === 'icemage' ||
+      this.heroId === 'priestess'
+    );
+  }
+
+  hasHackAndSlashCombo() {
+    return this.isHackAndSlashMelee() || this.isHackAndSlashCaster();
+  }
+
+  getHackAndSlashLockRange() {
+    return this.isHackAndSlashCaster() ? 310 : 275;
+  }
+
   setState(newState) {
     this.state = newState;
     this.stateTimer = 0;
@@ -249,7 +265,7 @@ export class Fighter {
     this.didSecondaryAction = false;
     this._hnsState = null;
     this._hnsSpeed = 0;
-    this._hnsPhaseThrough = newState === 'AUTO_ATTACK' && this.isHackAndSlashMelee();
+    this._hnsPhaseThrough = newState === 'AUTO_ATTACK' && this.hasHackAndSlashCombo();
     if (newState === 'AUTO_ATTACK') {
       const profile = this.getAiStyleProfile();
       this._aiComboCount = (this._aiComboCount || 0) + 1;
@@ -528,7 +544,7 @@ export class Fighter {
       (!this.hasPoise || isCrit || amount >= 145) &&
       (this.state === 'IDLE' ||
         this.state === 'WALK' ||
-        (this.state === 'AUTO_ATTACK' && !this.didActionFrame && isCrit && !this.isHackAndSlashMelee()))
+        (this.state === 'AUTO_ATTACK' && !this.didActionFrame && isCrit && !this.hasHackAndSlashCombo()))
     ) {
       this.setState('HURT');
     }
@@ -1026,8 +1042,10 @@ export class Fighter {
       (!isManualPlayer || (this.state !== 'IDLE' && this.state !== 'WALK')) &&
       !(
         this.state === 'AUTO_ATTACK' &&
-        this.isHackAndSlashMelee() &&
-        (enemy.isDestructibleProp || enemy.isDummyFocal || Math.abs(enemy.x - this.x) > 275)
+        this.hasHackAndSlashCombo() &&
+        (enemy.isDestructibleProp ||
+          enemy.isDummyFocal ||
+          Math.abs(enemy.x - this.x) > this.getHackAndSlashLockRange())
       )
     ) {
       this.facing = enemy.x >= this.x ? 1 : -1;
@@ -1050,7 +1068,7 @@ export class Fighter {
       this._aiComboChainTimer = Math.max(0, this._aiComboChainTimer - dt);
       if (this._aiComboChainTimer <= 0) {
         this._aiComboCount = 0;
-        if (!this.isPlayerControlled && this.isHackAndSlashMelee()) {
+        if (!this.isPlayerControlled && this.hasHackAndSlashCombo()) {
           this.comboStep = 0;
         }
       }
@@ -1185,11 +1203,16 @@ export class Fighter {
 
         // 2. Signature Counter-Read Defense (`CROUCH` Parries/Shields/Hex-Deflects/Mirrors/Burrows + `JUMP` Vaults + `DODGE` — VS Modes only)
         const isAdvMode = Boolean(game?.isAdventureMode?.());
+        const hnsChainRange = this.isHackAndSlashCaster()
+          ? isAdvMode
+            ? 315
+            : Math.max(atkRange, 320)
+          : 275;
         const inHackSlashChain =
-          this.isHackAndSlashMelee() &&
+          this.hasHackAndSlashCombo() &&
           (this.comboStep || 0) !== 0 &&
           (this._aiComboChainTimer || 0) > 0 &&
-          dist <= 275;
+          dist <= hnsChainRange;
         const threatType = !isAdvMode && !inHackSlashChain ? this.detectIncomingThreatType(enemy, game) : null;
         if (!isAdvMode && !inHackSlashChain && this.dodgeCooldown <= 0 && threatType) {
           this.triggerSignatureDefense(enemy, game, threatType);
@@ -1271,7 +1294,7 @@ export class Fighter {
         }
 
         // 6. Disciplined Combo Strings & Expressive Per-Champion Neutral Footsies
-        const effAtkRange = inHackSlashChain ? Math.max(atkRange, 275) : atkRange;
+        const effAtkRange = inHackSlashChain ? Math.max(atkRange, hnsChainRange) : atkRange;
         if (dist <= effAtkRange) {
           const bossColossalAlive = Boolean(
             isAdvMode && game?.adventure?.bossEntity && !game.adventure.bossEntity.isDead && game.adventure.bossEntity.isColossalBoss
@@ -1294,7 +1317,7 @@ export class Fighter {
 
           if (this.autoCooldown <= 0) {
             this.setState('AUTO_ATTACK');
-            if (this.isHackAndSlashMelee()) {
+            if (this.hasHackAndSlashCombo()) {
               if ((this.comboStep || 0) !== 0) {
                 this.autoCooldown = 0.02;
               } else {

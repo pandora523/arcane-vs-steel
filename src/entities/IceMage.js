@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps103';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps103';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps103';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps103';
+import { Fighter } from './Fighter.js?v=30fps104';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps104';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps104';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps104';
 
 /**
  * Lyra (`icemage`) — Winter Empress & Sovereign of Absolute Zero (v6 Full Rework).
@@ -62,12 +62,14 @@ export class IceMage extends Fighter {
       moveSpeed: 186,
       autoInterval: 1.07,
       lightColor: 'rgba(103, 232, 249, 1)',
-      primaryColor: '#67e8f9'
+      primaryColor: '#67e8f9',
+      secondaryColor: '#e0f2fe'
     });
     this.heroId = 'icemage';
     this.theme = 'glacial';
     this.deathSfx = 'death_icemage';
-    this.autoDuration = 0.76;
+    this.autoDuration = 0.45;
+    this._postFlurryInterval = 1.96;
     this.skillMaxCooldown = 4.70;
     this.skillTriggerRange = 545;
     this.skillName = 'GLACIAL JAWS: TWIN ICEBERG CRUSH';
@@ -85,7 +87,9 @@ export class IceMage extends Fighter {
 
     this.comboStep = 0;
     this._autoVariant = 0;
+    this.castCount = 0;
     this.stepDustTimer = 0;
+    this.afterimages = [];
 
     // Bespoke Winter Empress Combat Constructs
     this.cryoPrisms = []; // Preserved array for telemetry / ambient floating snow-halos
@@ -134,7 +138,7 @@ export class IceMage extends Fighter {
     if (typeof Image !== 'undefined') {
       const iceAssets = PixelForge.initAssets()?.icemage;
       if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps87')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps103';
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps104';
       }
     }
   }
@@ -145,8 +149,13 @@ export class IceMage extends Fighter {
     this._drewScepterFocus = false;
 
     if (newState === 'AUTO_ATTACK') {
-      this._autoVariant = this.comboStep % 4;
+      this._autoVariant = (((this.comboStep || 0) % 4) + 4) % 4;
+      this.comboStep = (this._autoVariant + 1) % 4;
+      this.autoDuration = this._autoVariant === 3 ? 0.50 : 0.45;
       this.trueUltFrameOverride = LYRA_AUTO_SLICES[this._autoVariant][0];
+    } else if (newState === 'SKILL') {
+      this.skillCooldown = Math.max(this.skillCooldown || 0, this.skillMaxCooldown);
+      this.trueUltFrameOverride = null;
     } else if (newState === 'TRUE_ULTIMATE') {
       this._trueUltStep = 0;
       this.clearPermafrostZones();
@@ -164,9 +173,27 @@ export class IceMage extends Fighter {
       this.cameraAirLift = 0;
     }
 
-    if (newState !== 'JUMP' && newState !== 'DODGE' && newState !== 'DASH') {
+    if (
+      newState !== 'JUMP' &&
+      newState !== 'DODGE' &&
+      newState !== 'DASH' &&
+      newState !== 'AUTO_ATTACK'
+    ) {
       this.fx?.stopByKey('glacialSkateRibbon');
     }
+  }
+
+  spawnAfterimage(x, y, facing, row = 2, col = 4, maxLife = 0.22) {
+    if (this.afterimages.length > 9) this.afterimages.shift();
+    this.afterimages.push({
+      x,
+      y,
+      facing,
+      row,
+      col,
+      life: 0,
+      maxLife
+    });
   }
 
   ensureGlacialSkateRibbon() {
@@ -302,9 +329,14 @@ export class IceMage extends Fighter {
    */
   spawnSnowflakeChakram(startX, startY, targetX, targetY, outDmg = 50, returnDmg = 22, target = null) {
     const ww = this.game?.renderer ? this.game.renderer.worldWidth : 1200;
+    const advBounds = this.game?.isAdventureMode?.()
+      ? this.game.adventure?.getActiveStageBounds?.()
+      : null;
+    const minX = advBounds ? advBounds.minX + 44 : 85;
+    const maxX = advBounds ? advBounds.maxX - 44 : ww - 85;
     const dir = targetX >= startX ? 1 : -1;
     const rawSpan = Math.max(220, Math.min(545, Math.abs(targetX - startX) + 64));
-    const apexX = Math.max(85, Math.min(ww - 85, startX + dir * rawSpan));
+    const apexX = Math.max(minX, Math.min(maxX, startX + dir * rawSpan));
     const apexY = Math.max(this.groundY - 195, Math.min(this.groundY - 56, targetY));
 
     if (this.activeChakrams.length >= 3) {
@@ -336,15 +368,20 @@ export class IceMage extends Fighter {
    */
   spawnGlacierStalagmiteMarch(enemy, baseDmg = 54) {
     const ww = this.game?.renderer ? this.game.renderer.worldWidth : 1200;
+    const advBounds = this.game?.isAdventureMode?.()
+      ? this.game.adventure?.getActiveStageBounds?.()
+      : null;
+    const minX = advBounds ? advBounds.minX + 48 : 95;
+    const maxX = advBounds ? advBounds.maxX - 48 : ww - 95;
     const dir = enemy ? (enemy.x >= this.x ? 1 : -1) : this.facing;
-    const distToEnemy = enemy ? Math.max(195, Math.min(530, Math.abs(enemy.x - this.x))) : 285;
-    const step1 = Math.max(95, Math.round(distToEnemy * 0.36));
-    const step2 = Math.max(165, Math.round(distToEnemy * 0.68));
+    const distToEnemy = enemy ? Math.max(125, Math.min(530, Math.abs(enemy.x - this.x))) : 265;
+    const step1 = Math.max(64, Math.round(distToEnemy * 0.38));
+    const step2 = Math.max(102, Math.round(distToEnemy * 0.70));
     const step3 = distToEnemy;
 
     const offsets = [step1, step2, step3];
     for (let i = 0; i < 3; i++) {
-      const sx = Math.max(95, Math.min(ww - 95, this.x + dir * offsets[i]));
+      const sx = Math.max(minX, Math.min(maxX, this.x + dir * offsets[i]));
       this.activeMarchingSpires.push({
         x: sx,
         y: this.groundY,
@@ -367,10 +404,15 @@ export class IceMage extends Fighter {
    */
   spawnBorealisSkyIcicleHail(enemy, perIcicleDmg = 19) {
     const ww = this.game?.renderer ? this.game.renderer.worldWidth : 1200;
+    const advBounds = this.game?.isAdventureMode?.()
+      ? this.game.adventure?.getActiveStageBounds?.()
+      : null;
+    const minX = advBounds ? advBounds.minX + 54 : 110;
+    const maxX = advBounds ? advBounds.maxX - 54 : ww - 110;
     const dir = enemy ? (enemy.x >= this.x ? 1 : -1) : this.facing;
     const baseTargetX = enemy
-      ? Math.max(110, Math.min(ww - 110, enemy.x))
-      : Math.max(110, Math.min(ww - 110, this.x + dir * 320));
+      ? Math.max(minX, Math.min(maxX, enemy.x))
+      : Math.max(minX, Math.min(maxX, this.x + dir * 285));
 
     if (this.fx) {
       this.fx.spawn('borealisIcicleHail', baseTargetX, this.groundY, {
@@ -380,9 +422,11 @@ export class IceMage extends Fighter {
     }
 
     const volleyState = { appliedFrost: false };
+    const laneMin = advBounds ? advBounds.minX + 40 : 68;
+    const laneMax = advBounds ? advBounds.maxX - 40 : ww - 68;
     for (let i = 0; i < 3; i++) {
-      const endX = Math.max(92, Math.min(ww - 92, baseTargetX + (i - 1) * 28));
-      const startX = Math.max(68, Math.min(ww - 68, endX - dir * 88));
+      const endX = Math.max(laneMin + 24, Math.min(laneMax - 24, baseTargetX + (i - 1) * 28));
+      const startX = Math.max(laneMin, Math.min(laneMax, endX - dir * 88));
       const startY = this.groundY - 256 - (i === 1 ? 18 : 0);
       this.activeSkyIcicles.push({
         startX,
@@ -1233,12 +1277,25 @@ export class IceMage extends Fighter {
         this.activeFrostRings.splice(i, 1);
       }
     }
+    for (let i = this.afterimages.length - 1; i >= 0; i--) {
+      this.afterimages[i].life += dt;
+      if (this.afterimages[i].life >= this.afterimages[i].maxLife) {
+        this.afterimages.splice(i, 1);
+      }
+    }
 
     this.fx.update(dt);
+
+    const inHackSlashChain =
+      (this.comboStep || 0) !== 0 &&
+      (this._aiComboChainTimer || 0) > 0 &&
+      enemy &&
+      Math.abs(enemy.x - this.x) <= Math.max(this.attackRange, 320);
 
     // 8. Proactive Winter Empress Tactical Figure-Skating AI (VS Duel / 2v2 Modes)
     if (
       !game?.isAdventureMode?.() &&
+      !inHackSlashChain &&
       enemy &&
       !enemy.isDead &&
       (this.state === 'IDLE' || this.state === 'WALK')
@@ -1252,7 +1309,7 @@ export class IceMage extends Fighter {
         game.vfx &&
         game.vfx.projectiles.some((p) => p.owner === enemy && Math.abs(p.x - this.x) < 175);
 
-      if ((pinnedLeft || pinnedRight) && dist < 260 && this.dodgeCooldown <= 0 && this.wallFlipCooldown <= 0) {
+      if ((pinnedLeft || pinnedRight) && dist < 245 && this.dodgeCooldown <= 0 && this.wallFlipCooldown <= 0) {
         this.wallFlipCooldown = 3.0;
         this.startJump(enemy, game);
         return;
@@ -1263,17 +1320,25 @@ export class IceMage extends Fighter {
         return;
       }
 
-      if ((dist < 225 || (nearWall && dist < 295)) && this.dodgeCooldown <= 0) {
-        this.startDodge(enemy, game);
+      if (
+        ((dist < 200 && this.autoCooldown > 0.22) || (nearWall && dist < 265 && this.autoCooldown > 0.22)) &&
+        this.dodgeCooldown <= 0
+      ) {
+        if ((this.castCount || 0) % 2 === 1 && this.wallFlipCooldown <= 0) {
+          this.wallFlipCooldown = 3.0;
+          this.startJump(enemy, game);
+        } else {
+          this.startDodge(enemy, game);
+        }
         return;
       }
 
       if (
-        dist >= 265 &&
+        dist >= 275 &&
         dist <= this.attackRange &&
         this.autoCooldown <= 0 &&
         this.crouchCooldown <= 0 &&
-        this.comboStep % 5 === 3
+        (this.castCount || 0) % 5 === 4
       ) {
         this.autoCooldown = this.autoInterval * (0.92 + Math.random() * 0.18);
         this.startCrouch(enemy, game);
@@ -1282,40 +1347,94 @@ export class IceMage extends Fighter {
     }
 
     super.update(dt, enemy, game);
+
+    if (
+      this.state === 'IDLE' ||
+      this.state === 'WALK' ||
+      this.state === 'SKILL' ||
+      this.state === 'ULTIMATE' ||
+      this.state === 'CROUCH'
+    ) {
+      this.y = this.groundY;
+      this.vy = 0;
+    }
   }
 
   /**
-   * ★ 4-VARIANT DYNAMIC ROYAL FIGURE-SKATING NORMAL ATTACK (`Row 2`):
-   *  - Variant 0 (`F00..F07`, `60..67`): Rime-Lance Skate Lunge (fencing skate-lunge + supersonic Borealis cryo-comet)
-   *  - Variant 1 (`F08..F14`, `68..74`): Arabesque Halo Boomerang (high rear-leg Arabesque + returning 6-bladed Snowflake Chakram)
-   *  - Variant 2 (`F15..F22`, `75..82`): Glacier Stalagmite Slam (2H overhead hoist & floor slam + 3 marching Glacier Spires)
-   *  - Variant 3 (`F23..F29`, `83..89`): Borealis Sky-Icicle Hail (agile backward skate-hop + 3 diagonal Sky-Icicle Lances)
+   * ★ 4-BEAT FIGURE-SKATING SPELL-BLADE HACK-AND-SLASH (`Row 2`):
+   *  - Variant 0 (`F00..F07`, `60..67`): Rime-Lance Skate Lunge (explosive forward skate-rush + frost scepter cut + Borealis cryo-comet)
+   *  - Variant 1 (`F08..F14`, `68..74`): Arabesque Cross-Skate Slash (24px hop-skate through enemy flank + 180° turn + returning Snowflake Chakram)
+   *  - Variant 2 (`F15..F22`, `75..82`): Permafrost 5-Echo Dash-Pierce Slam (-12px coil -> supersonic 280px skate-pierce + 3 marching Glacier Spires)
+   *  - Variant 3 (`F23..F29`, `83..89`): Borealis Axel Hop-Slash Finisher (38px rising skate-hop scepter cut + 3 diagonal Sky-Icicle Lances)
    */
-  updateAutoAttack(_dt, enemy, game) {
+  updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.autoDuration || 0.76;
-    const mode = (this._autoVariant || 0) % 4;
+    const mode = (((this._autoVariant || 0) % 4) + 4) % 4;
+    const dur = this.autoDuration || (mode === 3 ? 0.50 : 0.45);
     const [sliceStart, sliceLen] = LYRA_AUTO_SLICES[mode] || LYRA_AUTO_SLICES[0];
-    const subFrame = Math.min(sliceLen - 1, Math.floor((t / dur) * sliceLen));
+    const u = Math.max(0, Math.min(0.999, t / Math.max(0.01, dur)));
+    const subFrame = Math.min(sliceLen - 1, Math.floor(u * sliceLen));
     this.trueUltFrameOverride = sliceStart + subFrame;
 
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-    const foeDist = enemy ? Math.abs(enemy.x - this.x) : 340;
+    const isAdv = Boolean(game?.adventure?.active);
+    const advBounds = isAdv ? game.adventure?.getActiveStageBounds?.() : null;
+    const fxMinX = advBounds ? advBounds.minX + 44 : 85;
+    const fxMaxX = advBounds ? advBounds.maxX - 44 : ww - 85;
 
-    if (t < 0.22) {
-      this.torsoAngle = -this.facing * 0.10 * (t / 0.22);
-      // Expressive Figure-Skating Footwork per normal-attack variant so she never casts statically on one spot!
-      if (mode === 0 && foeDist > 165) {
-        this.vx = this.facing * 165;
-      } else if (mode === 1) {
-        this.vx = this.facing * (foeDist > 235 ? 118 : -64);
-      } else if (mode === 2 && foeDist > 175) {
-        this.vx = this.facing * 130;
-      } else if (mode === 3 && this.x > 165 && this.x < ww - 165) {
-        this.vx = -this.facing * 145;
-      }
+    const rawFoes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+    const foes = rawFoes.filter(
+      (f) =>
+        f &&
+        !f.isDead &&
+        !f.isBenched &&
+        (!isAdv ||
+          f.isColossalBoss ||
+          Math.abs((f.groundY || f.y) - (this.groundY || this.y)) <= 88)
+    );
+    const combatFoes = foes.filter((f) => !f.isDestructibleProp && !f.isDummyFocal);
+    const frontFoe =
+      (enemy &&
+      !enemy.isDead &&
+      !enemy.isDestructibleProp &&
+      !enemy.isDummyFocal &&
+      Math.abs(enemy.x - this.x) <= 310
+        ? enemy
+        : null) ||
+      combatFoes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 310) ||
+      combatFoes.find((f) => Math.abs(f.x - this.x) <= 275) ||
+      null;
 
-      if (t >= 0.04 && !this._drewScepterFocus) {
+    if (mode === 1 || mode === 2) {
+      this.ensureGlacialSkateRibbon();
+    }
+
+    this.updateHackAndSlashMotion(dt, frontFoe, game, {
+      variant: mode,
+      u,
+      moveEndU: 0.40,
+      coilEndU: 0.075,
+      contactDist: 94,
+      flankDist: 138,
+      dashContactDist: 92,
+      dashFlankDist: 142,
+      dashPierceThreshold: 295,
+      finisherDist: 96,
+      v1HopHeight: 24,
+      v3HopHeight: 38,
+      hopEndU: 0.58,
+      openStepPx: 124,
+      openCrossPx: 148,
+      openDashPx: 218,
+      openFinisherPx: 134,
+      maxLockDist: 310,
+      onGhost: (gx, gy, gf) =>
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + subFrame, 0.22)
+    });
+
+    if (u < 0.42) {
+      this.torsoAngle = -this.facing * 0.14 * (u / 0.42);
+      if (u >= 0.06 && !this._drewScepterFocus) {
         this._drewScepterFocus = true;
         this.fx.spawn('cryoScepterFocus', this.x + this.facing * 44, this.y - 110, {
           follow: this,
@@ -1325,27 +1444,75 @@ export class IceMage extends Fighter {
           light: 1.20
         });
       }
-    } else if (t < 0.56) {
+    } else if (t < dur) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
-        this.comboStep++;
-        this.torsoVel = this.facing * (mode === 3 ? -5.8 : 7.8);
+        this.castCount = (this.castCount || 0) + 1;
+        this.torsoVel = this.facing * (mode === 3 ? -5.8 : 9.5);
 
         const spawnX = this.x + this.facing * 52;
         const spawnY = this.y - 108;
-        const targetX = enemy ? enemy.x : spawnX + this.facing * 440;
-        const targetY = enemy ? enemy.y - 104 : spawnY;
+        const cAng = this.facing > 0 ? 0 : Math.PI;
+        game?.vfx?.spawnSlash?.(
+          spawnX,
+          spawnY,
+          mode === 3 ? 64 : 56,
+          cAng - 0.85,
+          cAng + 0.85,
+          '#67e8f9',
+          0.20
+        );
+
+        // Close-quarters Frost-Scepter Spell-Blade Cleave
+        const cleaveTarget =
+          frontFoe ||
+          foes.find((f) => {
+            const dxF = (f.x - this.x) * this.facing;
+            return dxF >= -34 && dxF <= 154;
+          });
+        if (cleaveTarget && !cleaveTarget.isDead) {
+          const dxC = (cleaveTarget.x - this.x) * this.facing;
+          if (dxC >= -36 && dxC <= 156) {
+            const cleaveDmg = mode === 3 ? 24 : mode === 2 ? 21 : 18;
+            cleaveTarget.takeDamage(
+              cleaveDmg,
+              this,
+              mode === 3,
+              mode === 3 ? 115 : 58,
+              mode === 3 ? -65 : -18
+            );
+            if (mode === 0) {
+              this.applyBrittleFrost(cleaveTarget, 1, game, spawnX, spawnY);
+            }
+            game?.vfx?.spawnHitBurst?.(
+              (this.x + cleaveTarget.x) * 0.5,
+              cleaveTarget.y - 96,
+              '#67e8f9',
+              4
+            );
+          }
+        }
+
+        // Open-Air Forward Aim Guard: never fire backward at distant stragglers behind Lyra!
+        const aimFoe =
+          frontFoe ||
+          combatFoes.find(
+            (f) => (f.x - this.x) * this.facing >= -24 && Math.abs(f.x - this.x) <= 560
+          ) ||
+          null;
+        const targetX = aimFoe ? aimFoe.x : spawnX + this.facing * 440;
+        const targetY = aimFoe ? aimFoe.y - 104 : spawnY;
         const dx = targetX - spawnX;
         const dy = targetY - spawnY;
         const dist = Math.hypot(dx, dy) || 1;
 
-        const isVanguard = enemy && enemy.hasPoise && enemy.attackRange <= 160;
-        const isHarvester = enemy && enemy.hasPoise && enemy.attackRange > 160;
-        const isGroundedCaster = enemy && !enemy.hasPoise && enemy.moveSpeed <= 122;
+        const isVanguard = aimFoe && aimFoe.hasPoise && aimFoe.attackRange <= 160;
+        const isHarvester = aimFoe && aimFoe.hasPoise && aimFoe.attackRange > 160;
+        const isGroundedCaster = aimFoe && !aimFoe.hasPoise && aimFoe.moveSpeed <= 122;
 
         if (mode === 0) {
           // Variant 1 (`60..67`): Rime-Lance Skate Lunge — High-Speed Borealis Cryo-Comet + Mach Cone
-          const lanceDmg = isVanguard ? 50 : isHarvester ? 53 : isGroundedCaster ? 56 : 58;
+          const lanceDmg = isVanguard ? 42 : isHarvester ? 45 : isGroundedCaster ? 47 : 49;
           if (game?.audio) game.audio.play('prism_beam', this.x);
           game?.vfx?.spawnProjectile?.({
             x: spawnX,
@@ -1359,41 +1526,46 @@ export class IceMage extends Fighter {
             damage: lanceDmg,
             type: 'cryo_shard'
           });
-          this.fx.spawn('cryoPrismMachCone', Math.max(85, Math.min(ww - 85, spawnX)), spawnY, {
+          this.fx.spawn('cryoPrismMachCone', Math.max(fxMinX, Math.min(fxMaxX, spawnX)), spawnY, {
             flip: false,
             light: 1.22,
             extra: { aimAngle: Math.atan2(dy, dx), empowered: false }
           });
         } else if (mode === 1) {
-          // Variant 2 (`68..74`): Arabesque Halo Boomerang — Returning 6-Bladed Snowflake Chakram + Halo Burst!
-          const chakramOutDmg = isVanguard ? 50 : isHarvester ? 53 : isGroundedCaster ? 56 : 58;
+          // Variant 2 (`68..74`): Arabesque Cross-Skate Slash — Returning 6-Bladed Snowflake Chakram + Halo Burst!
+          const chakramOutDmg = isVanguard ? 40 : isHarvester ? 43 : isGroundedCaster ? 45 : 47;
           if (game?.audio) game.audio.play('frost_cast', this.x);
-          this.spawnSnowflakeChakram(spawnX, spawnY, targetX, targetY, chakramOutDmg, 22, enemy);
-          this.fx.spawn('snowflakeChakramBurst', Math.max(85, Math.min(ww - 85, spawnX)), spawnY, {
+          this.spawnSnowflakeChakram(spawnX, spawnY, targetX, targetY, chakramOutDmg, 18, aimFoe);
+          this.fx.spawn('snowflakeChakramBurst', Math.max(fxMinX, Math.min(fxMaxX, spawnX)), spawnY, {
             light: 1.20
           });
           if (game?.vfx) {
             game.vfx.spawnDamageText(this.x, this.y - 148, 0, false, 'SNOWFLAKE CHAKRAM!', '#a5f3fc');
           }
         } else if (mode === 2) {
-          // Variant 3 (`75..82`): Glacier Stalagmite Slam — 2H Floor Slam Erupting 3 Ground-Marching Spires!
-          const spireBaseDmg = isVanguard ? 54 : isHarvester ? 57 : isGroundedCaster ? 60 : 62;
+          // Variant 3 (`75..82`): Permafrost Dash-Pierce Slam — 3 Ground-Marching Spires!
+          const spireBaseDmg = isVanguard ? 44 : isHarvester ? 47 : isGroundedCaster ? 49 : 51;
           if (game?.audio) game.audio.play('frost_cast', this.x);
-          this.spawnGlacierStalagmiteMarch(enemy, spireBaseDmg);
-          this.fx.spawn('glacierStalagmiteErupt', Math.max(90, Math.min(ww - 90, this.x + this.facing * 58)), this.groundY, {
-            light: 1.22
-          });
+          this.spawnGlacierStalagmiteMarch(aimFoe, spireBaseDmg);
+          this.fx.spawn(
+            'glacierStalagmiteErupt',
+            Math.max(fxMinX, Math.min(fxMaxX, this.x + this.facing * 58)),
+            this.groundY,
+            { light: 1.22 }
+          );
         } else {
-          // Variant 4 (`83..89`): Borealis Sky-Icicle Hail — Skyward Scepter Rift + 3 Diagonal Sky-Icicle Lances!
-          const perIcicleDmg = isVanguard ? 18 : isHarvester ? 19 : isGroundedCaster ? 20 : 20;
+          // Variant 4 (`83..89`): Borealis Axel Hop-Slash Finisher — 3 Diagonal Sky-Icicle Lances!
+          const perIcicleDmg = isVanguard ? 16 : isHarvester ? 17 : isGroundedCaster ? 18 : 18;
           if (game?.audio) game.audio.play('frost_cast', this.x);
-          this.spawnBorealisSkyIcicleHail(enemy, perIcicleDmg);
+          this.spawnBorealisSkyIcicleHail(aimFoe, perIcicleDmg);
           if (game?.vfx) {
             game.vfx.spawnDamageText(this.x, this.y - 148, 0, false, 'BOREALIS ICICLE HAIL!', '#e0f2fe');
           }
         }
       }
     } else if (t >= dur) {
+      this.y = this.groundY;
+      this.vy = 0;
       this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }
@@ -2923,12 +3095,29 @@ export class IceMage extends Fighter {
     this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
   }
 
+  drawSkateAfterimages(ctx, sprites) {
+    if (!this.afterimages.length || !sprites?.sheet?.complete) return;
+    const groundPlantOffset = 4;
+    for (const g of this.afterimages) {
+      const fade = Math.max(0, 1 - g.life / Math.max(0.01, g.maxLife));
+      ctx.save();
+      ctx.imageSmoothingEnabled = false;
+      ctx.translate(Math.round(g.x), Math.round(g.y + groundPlantOffset));
+      ctx.scale(g.facing, 1);
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade * 0.20;
+      PixelForge.drawAfterimageFrame(ctx, sprites, (g.row || 2) * 30 + (g.col || 0), 208, 208);
+      ctx.restore();
+    }
+  }
+
   draw(ctx, isReflection = false, renderer = null) {
     const sprites = PixelForge.initAssets().icemage;
     if (!sprites) return;
 
     if (!isReflection) {
       this.drawBehind(ctx, renderer);
+      this.drawSkateAfterimages(ctx, sprites);
       this.drawOrbitingCryoPrisms(ctx, renderer);
     }
 
