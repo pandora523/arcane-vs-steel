@@ -107,7 +107,7 @@ export class Fighter {
         };
       case 'warrior':
         return {
-          comboGoal: 3,
+          comboGoal: 4,
           sweetMin: 114,
           sweetMax: 146,
           counterCrouchBias: 0.64,
@@ -118,7 +118,7 @@ export class Fighter {
         };
       case 'ronin':
         return {
-          comboGoal: 3,
+          comboGoal: 4,
           sweetMin: 78,
           sweetMax: 106,
           counterCrouchBias: 0.66,
@@ -129,7 +129,7 @@ export class Fighter {
         };
       case 'android':
         return {
-          comboGoal: 3,
+          comboGoal: 4,
           sweetMin: 112,
           sweetMax: 158,
           counterCrouchBias: 0.60,
@@ -140,7 +140,7 @@ export class Fighter {
         };
       case 'reaper':
         return {
-          comboGoal: 3,
+          comboGoal: 4,
           sweetMin: 118,
           sweetMax: 160,
           counterCrouchBias: 0.62,
@@ -234,6 +234,8 @@ export class Fighter {
     this.stateTimer = 0;
     this.didActionFrame = false;
     this.didSecondaryAction = false;
+    this._hnsState = null;
+    this._hnsSpeed = 0;
     if (newState === 'AUTO_ATTACK') {
       const profile = this.getAiStyleProfile();
       this._aiComboCount = (this._aiComboCount || 0) + 1;
@@ -894,7 +896,7 @@ export class Fighter {
       if (!isAdv3D || depthDiff < 46) {
         const dx = this.x - enemy.x;
         const absDx = Math.abs(dx);
-        const minSep = isAdv3D ? 82 : 110;
+        const minSep = this._hnsState ? 66 : isAdv3D ? 82 : 110;
         if (absDx < minSep) {
           const pushDir = dx === 0 ? -this.facing : Math.sign(dx);
           this.x += pushDir * (minSep - absDx) * 6.5 * dt;
@@ -1557,14 +1559,276 @@ export class Fighter {
         targetLean = -0.055;
       }
     } else if (this.state === 'AUTO_ATTACK' || this.state === 'SKILL') {
-      const fwdVel = (this.vx || 0) * this.facing;
+      const fwdVel = Math.max((this.vx || 0) * this.facing, this._hnsSpeed || 0);
       if (fwdVel > 40) {
-        targetLean = Math.min(0.18, 0.08 + fwdVel / 950);
+        targetLean = Math.min(0.19, 0.08 + fwdVel / 1350);
       } else if (this.attackRange < 260 && this.stateTimer > 0.08 && this.stateTimer < 0.38) {
         targetLean = 0.075;
       }
     }
     this.forwardLean = (this.forwardLean || 0) + (targetLean - (this.forwardLean || 0)) * Math.min(1, dt * 15);
+  }
+
+  /**
+   * Shared 4-Beat Kinetic Hack-and-Slash Auto-Attack Choreography (opt-in for blade/scythe melee slashers):
+   * - Variant 0 (`60..67`): Smooth eased Forward Step-Slash closing into real physical blade contact.
+   * - Variant 1 (`68..74`): Cross-Through Slash gliding onto the enemy's OPPOSITE flank + 180° turn-back!
+   * - Variant 2 (`75..82`): Brief spring-coil -> High-Speed Dash-Slash (gap-closes from mid-range OR
+   *   dash-pierces straight through to the opposite flank when already close) with 3 crisp afterimages!
+   * - Variant 3 (`83..89`): Advancing athletic step/hop into heavy Execution Finisher.
+   */
+  updateHackAndSlashMotion(dt, target, game, opts = {}) {
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const margin = opts.margin ?? 82;
+    const minX =
+      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
+        ? game.adventure.lockMinX + 24
+        : margin;
+    const bossEntity = game?.adventure?.bossEntity;
+    const bossWallAlive = Boolean(
+      bossEntity && !bossEntity.isDead && bossEntity.isColossalBoss && !this.isColossalBoss
+    );
+    const rawMaxX =
+      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMaxX)
+        ? game.adventure.lockMaxX - 24
+        : ww - margin;
+    const maxX = bossWallAlive
+      ? Math.min(rawMaxX, (bossEntity.anchorX || 9335) - 88)
+      : rawMaxX;
+    const clampX = (val) => Math.max(minX, Math.min(maxX, val));
+
+    const variant = (((opts.variant ?? this._autoVariant ?? 0) % 4) + 4) % 4;
+    const u = Math.min(1, Math.max(0, opts.u ?? 0));
+    const moveEndU = opts.moveEndU ?? 0.32;
+    const coilEndU = opts.coilEndU ?? 0.08;
+    const maxLockDist = opts.maxLockDist ?? 265;
+
+    if (
+      !this._hnsState ||
+      this._hnsState.variant !== variant ||
+      (Number.isFinite(this._hnsState.lastX) && Math.abs(this.x - this._hnsState.lastX) > 135)
+    ) {
+      const validTarget = Boolean(
+        target && !target.isDead && Math.abs(target.x - this.x) <= maxLockDist
+      );
+      const dir = validTarget
+        ? Math.sign(target.x - this.x) || this.facing || 1
+        : this.facing || 1;
+      const startDist = validTarget ? Math.abs(target.x - this.x) : 999;
+      const isBoss = Boolean(validTarget && target.isColossalBoss);
+      const flankDist = opts.flankDist ?? 82;
+      const dashFlankDist = opts.dashFlankDist ?? 84;
+      const testCrossX = validTarget ? clampX(target.x + dir * flankDist) : this.x;
+      const canCrossV1 = Boolean(validTarget && !isBoss && (testCrossX - target.x) * dir >= 44);
+      const testDashCrossX = validTarget ? clampX(target.x + dir * dashFlankDist) : this.x;
+      const canCrossV2 = Boolean(validTarget && !isBoss && (testDashCrossX - target.x) * dir >= 44);
+
+      this._hnsState = {
+        variant,
+        startX: this.x,
+        lastX: this.x,
+        dir,
+        startDist,
+        hasTarget: validTarget,
+        isBoss,
+        canCrossV1,
+        canCrossV2,
+        crossedSide: false,
+        endFacing: dir,
+        ghostStep: 0,
+        finishedMove: false
+      };
+    }
+
+    const hns = this._hnsState;
+    const manualPullBack = Boolean(
+      this.isPlayerControlled &&
+        !this.adventureAutoPlay &&
+        (this.manualMoveAxis || 0) * hns.dir < -0.28
+    );
+    if (manualPullBack) {
+      this._hnsSpeed = 0;
+      this.y = this.groundY;
+      return hns;
+    }
+
+    // Athletic vertical hop curve (V1 kick-slash on Android or V3 heavy finisher hop)
+    const hopEndU = opts.hopEndU ?? 0.58;
+    const hopHeight =
+      variant === 1 ? (opts.v1HopHeight ?? 0) : variant === 3 ? (opts.v3HopHeight ?? 0) : 0;
+    if (hopHeight > 0 && u >= 0.06 && u <= hopEndU) {
+      const hopP = (u - 0.06) / Math.max(0.05, hopEndU - 0.06);
+      this.y = this.groundY - Math.sin(hopP * Math.PI) * hopHeight;
+    } else {
+      this.y = this.groundY;
+    }
+
+    const liveTargetOk = Boolean(hns.hasTarget && target && !target.isDead);
+    const tX = liveTargetOk ? target.x : hns.startX + hns.dir * hns.startDist;
+    const prevX = this.x;
+
+    if (u < moveEndU || !hns.finishedMove) {
+      const uEff = Math.min(moveEndU, u);
+      if (u >= moveEndU) {
+        hns.finishedMove = true;
+      }
+      this.vx = 0;
+      this.vy = 0;
+
+      if (variant === 0) {
+        // Hit 1: Smooth eased Forward Step-Slash into physical blade contact
+        const p = Math.min(1, uEff / Math.max(0.02, moveEndU));
+        const ease = 1 - Math.pow(1 - p, 2.6);
+        let destX;
+        if (liveTargetOk) {
+          const contactDist = hns.isBoss ? Math.max(88, opts.contactDist ?? 84) : (opts.contactDist ?? 84);
+          const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 52);
+          const idealAdv = (tX - hns.dir * contactDist - hns.startX) * hns.dir;
+          const minAdv = Math.max(0, (tX - hns.dir * minCloseDist - hns.startX) * hns.dir);
+          const advance = Math.max(0, Math.max(idealAdv, Math.min(24, minAdv)));
+          destX = clampX(hns.startX + hns.dir * advance);
+        } else {
+          destX = clampX(hns.startX + hns.dir * (opts.openStepPx ?? 68));
+        }
+        this.x = clampX(hns.startX + (destX - hns.startX) * ease);
+        this.facing = hns.dir;
+        if (p >= 0.44 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 34) {
+          hns.ghostStep = 1;
+          opts.onGhost?.(this.x, this.y, this.facing, p);
+        }
+      } else if (variant === 1) {
+        // Hit 2: Cross-Through Slash onto the enemy's OPPOSITE side + 180° pivot!
+        const p = Math.min(1, uEff / Math.max(0.02, moveEndU));
+        const ease = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) * 0.5;
+        if (liveTargetOk && hns.canCrossV1) {
+          const flankDist = opts.flankDist ?? 82;
+          const destX = clampX(tX + hns.dir * flankDist);
+          this.x = clampX(hns.startX + (destX - hns.startX) * ease);
+          if (p >= 0.26 && hns.ghostStep < 1) {
+            hns.ghostStep = 1;
+            opts.onGhost?.(this.x, this.y, hns.dir, p);
+          }
+          if (p >= 0.58 && hns.ghostStep < 2) {
+            hns.ghostStep = 2;
+            opts.onGhost?.(this.x, this.y, hns.dir, p);
+          }
+          if (p >= 0.72) {
+            hns.crossedSide = true;
+            hns.endFacing = -hns.dir;
+            this.facing = tX >= this.x ? 1 : -1;
+          } else {
+            this.facing = hns.dir;
+          }
+        } else {
+          let destX;
+          if (liveTargetOk) {
+            const contactDist = hns.isBoss ? Math.max(88, opts.contactDist ?? 84) : (opts.contactDist ?? 84);
+            const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 52);
+            const idealAdv = (tX - hns.dir * contactDist - hns.startX) * hns.dir;
+            const minAdv = Math.max(0, (tX - hns.dir * minCloseDist - hns.startX) * hns.dir);
+            destX = clampX(hns.startX + hns.dir * Math.max(0, Math.max(idealAdv, Math.min(26, minAdv))));
+          } else {
+            destX = clampX(hns.startX + hns.dir * (opts.openCrossPx ?? 96));
+          }
+          this.x = clampX(hns.startX + (destX - hns.startX) * ease);
+          this.facing = hns.dir;
+          if (p >= 0.30 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 32) {
+            hns.ghostStep = 1;
+            opts.onGhost?.(this.x, this.y, this.facing, p);
+          }
+          if (p >= 0.62 && hns.ghostStep < 2 && Math.abs(destX - hns.startX) >= 58) {
+            hns.ghostStep = 2;
+            opts.onGhost?.(this.x, this.y, this.facing, p);
+          }
+        }
+      } else if (variant === 2) {
+        // Hit 3: Brief Spring-Coil -> High-Speed Horizontal Dash-Slash!
+        if (uEff < coilEndU) {
+          const coilP = uEff / Math.max(0.01, coilEndU);
+          this.x = clampX(hns.startX - hns.dir * 7 * coilP);
+          this.facing = hns.dir;
+        } else {
+          const p = Math.min(1, (uEff - coilEndU) / Math.max(0.02, moveEndU - coilEndU));
+          const ease = 1 - Math.pow(1 - p, 3.1);
+          const coilStartX = clampX(hns.startX - hns.dir * 7);
+          const dashPierce = Boolean(
+            liveTargetOk && hns.canCrossV2 && hns.startDist <= (opts.dashPierceThreshold ?? 124)
+          );
+          if (dashPierce) {
+            const dashFlankDist = opts.dashFlankDist ?? 84;
+            const destX = clampX(tX + hns.dir * dashFlankDist);
+            this.x = clampX(coilStartX + (destX - coilStartX) * ease);
+            if (p >= 0.74) {
+              hns.crossedSide = true;
+              hns.endFacing = -hns.dir;
+              this.facing = tX >= this.x ? 1 : -1;
+            } else {
+              this.facing = hns.dir;
+            }
+          } else {
+            let destX;
+            if (liveTargetOk) {
+              const dashContact = hns.isBoss
+                ? Math.max(88, opts.dashContactDist ?? 80)
+                : (opts.dashContactDist ?? 80);
+              const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 50);
+              const idealAdv = (tX - hns.dir * dashContact - hns.startX) * hns.dir;
+              const minAdv = Math.max(0, (tX - hns.dir * minCloseDist - hns.startX) * hns.dir);
+              destX = clampX(
+                hns.startX + hns.dir * Math.max(0, Math.max(idealAdv, Math.min(34, minAdv)))
+              );
+            } else {
+              destX = clampX(hns.startX + hns.dir * (opts.openDashPx ?? 148));
+            }
+            this.x = clampX(coilStartX + (destX - coilStartX) * ease);
+            this.facing = hns.dir;
+          }
+
+          if (p >= 0.16 && hns.ghostStep < 1) {
+            hns.ghostStep = 1;
+            opts.onGhost?.(this.x, this.y, hns.dir, p);
+          }
+          if (p >= 0.44 && hns.ghostStep < 2) {
+            hns.ghostStep = 2;
+            opts.onGhost?.(this.x, this.y, hns.dir, p);
+          }
+          if (p >= 0.72 && hns.ghostStep < 3) {
+            hns.ghostStep = 3;
+            opts.onGhost?.(this.x, this.y, this.facing, p);
+          }
+        }
+      } else {
+        // Hit 4: Advancing Hop / Heavy Execution Finisher
+        const p = Math.min(1, uEff / Math.max(0.02, moveEndU));
+        const ease = 1 - Math.pow(1 - p, 2.4);
+        let destX;
+        if (liveTargetOk) {
+          const finDist = hns.isBoss ? Math.max(88, opts.finisherDist ?? 82) : (opts.finisherDist ?? 82);
+          const minCloseDist = hns.isBoss ? 86 : (opts.minCloseDist ?? 52);
+          const idealAdv = (tX - hns.dir * finDist - hns.startX) * hns.dir;
+          const minAdv = Math.max(0, (tX - hns.dir * minCloseDist - hns.startX) * hns.dir);
+          destX = clampX(hns.startX + hns.dir * Math.max(0, Math.max(idealAdv, Math.min(22, minAdv))));
+        } else {
+          destX = clampX(hns.startX + hns.dir * (opts.openFinisherPx ?? 64));
+        }
+        this.x = clampX(hns.startX + (destX - hns.startX) * ease);
+        this.facing = hns.dir;
+        if (p >= 0.38 && hns.ghostStep < 1 && Math.abs(destX - hns.startX) >= 28) {
+          hns.ghostStep = 1;
+          opts.onGhost?.(this.x, this.y, this.facing, p);
+        }
+      }
+
+      this._hnsSpeed = Math.abs(this.x - prevX) / Math.max(0.001, dt || 1 / 60);
+    } else {
+      this._hnsSpeed *= Math.pow(0.02, dt || 1 / 60);
+      if (hns.crossedSide) {
+        this.facing = liveTargetOk ? (tX >= this.x ? 1 : -1) : hns.endFacing;
+      }
+    }
+
+    hns.lastX = this.x;
+    return hns;
   }
 
   getTargetTorsoAngle() {

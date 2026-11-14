@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps100';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps100';
+import { Fighter } from './Fighter.js?v=30fps101';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps101';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps101';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps100';
+} from '../engine/shaders/abyssalShaders.js?v=30fps101';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -153,13 +153,13 @@ export class Reaper extends Fighter {
     if (typeof Image !== 'undefined') {
       const reaperAssets = PixelForge.initAssets()?.reaper;
       if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps87')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps100';
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps101';
       }
       if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps87')) {
-        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps100';
+        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps101';
       }
       if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps87')) {
-        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps100';
+        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps101';
       }
     }
   }
@@ -1989,15 +1989,47 @@ export class Reaper extends Fighter {
    */
   updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
+    const dur = 0.84;
     const mode = ((this._autoVariant ?? 0) % 4 + 4) % 4;
     const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
-    const u = Math.min(1, Math.max(0, t / 0.84));
+    const u = Math.min(1, Math.max(0, t / dur));
+    const localCol = Math.min(sliceLen - 1, Math.floor(u * sliceLen));
 
     // Drive exact 4-variant Row 2 slice (`60..67`, `68..74`, `75..82`, `83..89`)
-    this.trueUltFrameOverride = sliceStart + Math.min(sliceLen - 1, Math.floor(u * sliceLen));
+    this.trueUltFrameOverride = sliceStart + localCol;
+
+    const rawFoes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+    const foes = rawFoes.filter((f) => f && !f.isDead && !f.isBenched);
+    const liveFoe =
+      foes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 265) ||
+      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 265 ? enemy : null);
+    const usingEffigy = Boolean(
+      !liveFoe &&
+        this.severedSoul &&
+        this.severedSoul.life > 0 &&
+        Math.abs(this.severedSoul.x - this.x) <= 210
+    );
+    const motionTarget = usingEffigy ? this.severedSoul : liveFoe;
+
+    const hns = this.updateHackAndSlashMotion(dt, motionTarget, game, {
+      variant: mode,
+      u,
+      moveEndU: 0.28,
+      coilEndU: 0.075,
+      contactDist: 88,
+      flankDist: usingEffigy ? 58 : 86,
+      dashContactDist: 84,
+      dashFlankDist: 86,
+      finisherDist: 88,
+      v3HopHeight: 15,
+      hopEndU: 0.56,
+      maxLockDist: 265,
+      onGhost: (gx, gy, gf) =>
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.19)
+    });
 
     if (t < 0.25) {
-      this.torsoAngle = -this.facing * 0.22 * (t / 0.25);
+      this.torsoAngle = -this.facing * 0.18 * (t / 0.25);
       if (mode === 2 && !this.thanatosStand) {
         // Pre-manifest Towering Thanatos Death-God Stand behind Malakor on V2 coil!
         this.spawnThanatosStand(0.66, 268);
@@ -2005,7 +2037,7 @@ export class Reaper extends Fighter {
     } else if (t < 0.62) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
-        this.vx += this.facing * (mode === 3 ? 152 : 138);
+        this.vx = this.facing * (mode === 3 ? 58 : 34);
         this.torsoVel = this.facing * (mode === 3 ? 15 : 13);
 
         const cx = this.x + this.facing * 58;
@@ -2023,13 +2055,13 @@ export class Reaper extends Fighter {
         });
 
         if (mode === 0) {
-          // V0 (`60..67` — Crescent Soul-Reap): Launch mid-range Crescent Soul-Wave (`Row 0`) when |enemy.x - x| > 150!
-          if (!enemy || Math.abs(enemy.x - this.x) > 150) {
+          // V0 (`60..67` — Crescent Soul-Reap): Launch mid-range Crescent Soul-Wave (`Row 0`) when starting or swinging at >150px!
+          if ((hns && hns.startDist > 150) || !enemy || Math.abs(enemy.x - this.x) > 150) {
             this.spawnCrescentScytheWave();
           }
           if (game?.audio) game.audio.play('scythe_reap', this.x);
         } else if (mode === 1) {
-          // V1 (`68..74` — Abyssal Hook Drag-Rend): Skeletal hook-chain snap pulling foes inward!
+          // V1 (`68..74` — Cross-Through Abyssal Hook Drag-Rend): Skeletal hook-chain snap pulling foes inward!
           const chainOriginX = this.x + this.facing * 36;
           const chainOriginY = this.y - 96;
           const hasNearFoe =
@@ -2047,8 +2079,11 @@ export class Reaper extends Fighter {
           });
           if (game?.audio) game.audio.play('chain_hook', this.x);
         } else if (mode === 2) {
-          // V2 (`75..82` — Thanatos Phantom Whirl): Unison Thanatos Stand + Returning Soul-Disc Boomerang!
-          if (game?.audio) game.audio.play('scythe_reap', this.x);
+          // V2 (`75..82` — Shadow Dash-Slash & Thanatos Phantom Whirl): Unison Thanatos Stand + Returning Soul-Disc Boomerang!
+          if (game?.audio) {
+            game.audio.play('dash_whoosh', this.x);
+            game.audio.play('scythe_reap', this.x);
+          }
           this.spawnThanatosStand(0.56, 276);
           this.spawnBoomerangScythe();
           this.spawnVfxAnim(4, cx, cy, 172, 172, 0.28, {
@@ -2067,7 +2102,7 @@ export class Reaper extends Fighter {
             );
           }
         } else {
-          // V3 (`83..89` — Guillotine Execution Pillar Slam): Overhead necrotic crash + Ground Rift & Bone Obelisk!
+          // V3 (`83..89` — Guillotine Execution Pillar Slam): Advancing hop necrotic crash + Ground Rift & Bone Obelisk!
           const impactX =
             enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= this.attackRange + 58
               ? enemy.x
@@ -2127,11 +2162,11 @@ export class Reaper extends Fighter {
             }
           }
 
-          const inwardPull = mode === 3 ? 95 : mode === 2 ? -80 : -68;
+          const inwardPull = mode === 3 ? 95 : mode === 2 ? -64 : -58;
           const popY = mode === 3 ? -85 : mode === 2 ? -95 : -28;
           this.strikeWithSoulResonance(enemy, dmg, isCrit, inwardPull, popY, game);
           if (!enemy.unstoppablePoise && mode !== 3) {
-            enemy.x += Math.sign(this.x - enemy.x) * (mode === 1 ? 30 : 22);
+            enemy.x += Math.sign(this.x - enemy.x) * (mode === 1 ? 26 : 20);
           }
           this.gainSoulStack(1);
           this.leechLife(leechAmt, enemy, game, 'SOUL HARVEST');
@@ -2141,10 +2176,13 @@ export class Reaper extends Fighter {
           if (game?.renderer) game.renderer.triggerHitStop(mode === 3 ? 0.065 : 0.055);
         } else {
           const effigyBaseDmg = mode === 3 ? 86 : mode === 2 ? 82 : mode === 1 ? 74 : 66;
-          this.tryStrikeSeveredEffigy(cx, effigyBaseDmg, game);
+          if (!this.tryStrikeSeveredEffigy(cx, effigyBaseDmg, game)) {
+            this.tryStrikeSeveredEffigy(this.x, effigyBaseDmg, game);
+          }
         }
       }
-    } else if (t >= 0.84) {
+    } else if (t >= dur) {
+      this.y = this.groundY;
       this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }

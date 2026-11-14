@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps101';
 
 /**
  * Seamless Multi-Plane HD-2D Adventure World Panorama Renderer (`AdventureMapRenderer`)

@@ -28,35 +28,35 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps100';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps100';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps100';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps100';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps100';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps100';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps100';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps100';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps100';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps100';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps100';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps100';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps100';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps100';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps100';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps100';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps100';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps101';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps101';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps101';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps101';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps101';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps101';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps101';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps101';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps101';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps101';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps101';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps101';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps101';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps101';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps101';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps101';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps101';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps100';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps100';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps101';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps101';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps100';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps100';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps100';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps101';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps101';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps101';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -641,7 +641,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps100');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps101');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -5613,6 +5613,347 @@ for (const [name, Cls] of CLASSES) {
     '[PASS] Suite 24: Non-Protected Hero VFX Declutter (24A), Lyra Glacial & Frozen Sakura Shogunate 3-Way Stage Synergy (24B), & Adventure Wardens + All-11-Hero HD-2D Skill Tree Modal (24C) verified!'
   );
 }
+
+// ============================================================================
+// 25. BATCH ?v=30fps101: 5-CHAMPION HACK-AND-SLASH MELEE AUTO-ATTACK OVERHAUL
+//     (25A: Surgical Row-2 PNG Integrity & SHA-256 Untouched Row Identity,
+//      25B: 4-Beat Forward-Lunge / Cross-Through / Dash-Slash / Hop-Finisher,
+//      25C: Colossal Boss BEHEMOTH MALPHAS Wall Safety & 0-ctx.rotate Audit)
+// ============================================================================
+{
+  const cryptoMod = await import('node:crypto');
+  const zlibMod = await import('node:zlib');
+
+  const decodePngRgba = (buf) => {
+    const width = buf.readUInt32BE(16);
+    const height = buf.readUInt32BE(20);
+    const idatChunks = [];
+    let off = 8;
+    while (off + 8 <= buf.length) {
+      const len = buf.readUInt32BE(off);
+      const type = buf.subarray(off + 4, off + 8).toString('ascii');
+      if (type === 'IDAT') idatChunks.push(buf.subarray(off + 8, off + 8 + len));
+      if (type === 'IEND') break;
+      off += 12 + len;
+    }
+    const raw = zlibMod.inflateSync(Buffer.concat(idatChunks));
+    const stride = width * 4;
+    const data = Buffer.allocUnsafe(height * stride);
+    const paeth = (a, b, c) => {
+      const p = a + b - c;
+      const pa = Math.abs(p - a);
+      const pb = Math.abs(p - b);
+      const pc = Math.abs(p - c);
+      return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+    };
+    for (let y = 0; y < height; y++) {
+      const fType = raw[y * (stride + 1)];
+      const srcOff = y * (stride + 1) + 1;
+      const dstOff = y * stride;
+      const prevOff = (y - 1) * stride;
+      for (let i = 0; i < stride; i++) {
+        const xByte = raw[srcOff + i];
+        const a = i >= 4 ? data[dstOff + i - 4] : 0;
+        const b = y > 0 ? data[prevOff + i] : 0;
+        const c = y > 0 && i >= 4 ? data[prevOff + i - 4] : 0;
+        let recon = xByte;
+        if (fType === 1) recon = (xByte + a) & 0xff;
+        else if (fType === 2) recon = (xByte + b) & 0xff;
+        else if (fType === 3) recon = (xByte + ((a + b) >> 1)) & 0xff;
+        else if (fType === 4) recon = (xByte + paeth(a, b, c)) & 0xff;
+        data[dstOff + i] = recon;
+      }
+    }
+    return { width, height, data };
+  };
+
+  // 25A. Verify surgical `--auto-only` Row-2 rebuild on warrior_sheet.png & reaper_sheet.png
+  //      (0/300 border clips + 100% SHA-256 byte-identity on untouched Rows 0, 1, 3, 4, 5, 6, 7, 8, 9)
+  const expectedUntouchedHashes = {
+    'warrior_sheet.png': {
+      0: '7068d3122768267af761355d777ed1c027b29ae6d69f90852cd049ca0846f1e4',
+      1: 'd1daf9cca62acadc5cc893788876f3d9cf0531463423985c3b9a1777ebddaf08',
+      3: 'b790e131d2c56662ee602e012472bfaab07e23757158c67678b9928c5fe23b8a',
+      4: 'c2d3b2a85526fb99d61423ff4073bfe895a99ced13f466a1e09b794162884d8c',
+      5: 'd5ef547e372459fada6ad99cf2abf73e23846d3184b30ac816de17c0d7af6117',
+      6: 'b74d61ac969cf20b6038135a3a2a0567acc841b9ab8397c37716ba85004dca74',
+      7: 'c05a50bd995f9ec3f02ba8b3e83a0f796b754e5026442637fa0bdbb64d7b2639',
+      8: 'aa369d839b92ab7014fec2f9976d1f56ecf43f41884aacdaa5bd81bd328d0469',
+      9: '3336a44121118bfcd838432c094169b1059f52146cb0bd32b59ab08ce02cc5da'
+    },
+    'reaper_sheet.png': {
+      0: '3e3895484fef38a1f569821c8837135d5fe9689da5f6d5bf9d98099988b56023',
+      1: '1e2786ce13cfd155698f1d97ae0e35612cb9f39cbe00f6c747610b63628bdb56',
+      3: 'c6073c8d0ad8d9a169a464768c725e54217e2ceae67566c64b3f84781b6b725e',
+      4: '1de9010af276a3056e6523daeb0d45f17e6c60f07fedb12382409e4ab0e3e14e',
+      5: 'c0556577932a9aa6542c4525e08862c456f80535b8b318be90bc6c3f5a1bd979',
+      6: '96993cef3efe8b53987901c7f1d183aa85e388396930acf43d0741a29e9e5d78',
+      7: '0cff3a4023209b32bca23cafa666b46dd23a0ff92eadbeaace852354747e136e',
+      8: 'd9a1d9fb520494819004b95468d26b5f1223a769e721f7a92aadf14c08d2ee5e',
+      9: '09f19aa106fc9c03902b1bb2a215f85529d030d2e2d98c0fdd7d3d788f42f490'
+    }
+  };
+  const rowByteLen = 6240 * 208 * 4;
+  for (const [sheetName, rowMap] of Object.entries(expectedUntouchedHashes)) {
+    const png = decodePngRgba(
+      fs.readFileSync(`/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${sheetName}`)
+    );
+    if (png.width !== 6240 || png.height !== 2080) {
+      throw new Error(`[Suite 25A] Expected ${sheetName} 6240x2080, got ${png.width}x${png.height}`);
+    }
+    for (const [rStr, expHash] of Object.entries(rowMap)) {
+      const r = Number(rStr);
+      const slice = png.data.subarray(r * rowByteLen, (r + 1) * rowByteLen);
+      const gotHash = cryptoMod.createHash('sha256').update(slice).digest('hex');
+      if (gotHash !== expHash) {
+        throw new Error(`[Suite 25A] ${sheetName} preserved Row ${r} SHA-256 mismatch: got ${gotHash}`);
+      }
+    }
+    let clips = 0;
+    for (let r = 0; r < 10; r++) {
+      for (let c = 0; c < 30; c++) {
+        let cellClip = false;
+        for (let y = 0; y < 208 && !cellClip; y++) {
+          for (let x = 0; x < 208; x++) {
+            if (x >= 4 && x < 204 && y >= 4 && y < 204) continue;
+            const idx = ((r * 208 + y) * 6240 + (c * 208 + x)) * 4;
+            if (png.data[idx + 3] > 0) {
+              cellClip = true;
+              break;
+            }
+          }
+        }
+        if (cellClip) clips++;
+      }
+    }
+    if (clips !== 0) {
+      throw new Error(`[Suite 25A] Expected 0/300 border clips on ${sheetName}, got ${clips}`);
+    }
+  }
+
+  // 25B. Verify 4-Beat Kinetic Hack-and-Slash Choreography across all 5 melee slashers
+  const slasherSpecs = [
+    [Warrior, 'warrior', 'Aethelgard'],
+    [Ronin, 'ronin', 'Kaze-Maru'],
+    [Android, 'android', 'VEX-09'],
+    [Reaper, 'reaper', 'Malakor'],
+    [Chronomancer, 'chronomancer', 'Chronos']
+  ];
+
+  const countHeroGhosts = (h) =>
+    (h.afterimages?.length || 0) + (h.temporalEchoes?.length || 0) + (h.phantomClones?.length || 0);
+
+  for (const [HeroCls, heroId, label] of slasherSpecs) {
+    const hGame = createMockGame();
+    const hero = new HeroCls(400, 561, 1);
+    const dummy = new Warrior(565, 561, -1);
+    hero.game = hGame;
+    dummy.game = hGame;
+    dummy.hasPoise = true;
+    dummy.unstoppablePoise = true;
+    dummy.maxHp = 99999;
+    dummy.hp = 99999;
+    hGame.fighters = [hero, dummy];
+    hGame.leftFighter = hero;
+    hGame.rightFighter = dummy;
+    hGame.getEnemiesOf = (f) => (f === hero ? [dummy] : [hero]);
+
+    if (hero.getAiStyleProfile().comboGoal !== 4) {
+      throw new Error(`[Suite 25B ${label}] Expected AI comboGoal === 4, got ${hero.getAiStyleProfile().comboGoal}`);
+    }
+
+    // Hit 1 (V0 — Forward Lunge Slash): advances forward >= 45px from 165px gap & deals melee damage
+    hero.x = 400;
+    hero.y = 561;
+    hero.facing = 1;
+    dummy.x = 565;
+    hero.comboStep = 0;
+    const hp0 = dummy.hp;
+    hero.setState('AUTO_ATTACK');
+    let sawSlice0 = false;
+    for (let tick = 0; tick < 36 && hero.state === 'AUTO_ATTACK'; tick++) {
+      hero.update(1 / 30, dummy, hGame);
+      if (hero.trueUltFrameOverride >= 60 && hero.trueUltFrameOverride <= 67) sawSlice0 = true;
+    }
+    if (hero.x - 400 < 45 || dummy.hp >= hp0 || !sawSlice0) {
+      throw new Error(
+        `[Suite 25B ${label} V0] Expected forward lunge slash: dx=${(hero.x - 400).toFixed(1)}, dmg=${hp0 - dummy.hp}, slice0=${sawSlice0}`
+      );
+    }
+
+    // Hit 2 (V1 — Cross-Through Slash to Other Side): crosses past dummy.x onto opposite flank & flips facing 180°!
+    hero.x = 460;
+    hero.y = 561;
+    hero.facing = 1;
+    dummy.x = 550;
+    if (hero.afterimages) hero.afterimages.length = 0;
+    if (hero.temporalEchoes) hero.temporalEchoes.length = 0;
+    if (hero.phantomClones) hero.phantomClones.length = 0;
+    hero.comboStep = 1;
+    const hp1 = dummy.hp;
+    hero.setState('AUTO_ATTACK');
+    let sawSlice1 = false;
+    let maxGhosts1 = 0;
+    let facingAtStrike1 = hero.facing;
+    let xAtStrike1 = hero.x;
+    for (let tick = 0; tick < 36 && hero.state === 'AUTO_ATTACK'; tick++) {
+      const wasDone = hero.didActionFrame;
+      hero.update(1 / 30, dummy, hGame);
+      if (hero.trueUltFrameOverride >= 68 && hero.trueUltFrameOverride <= 74) sawSlice1 = true;
+      maxGhosts1 = Math.max(maxGhosts1, countHeroGhosts(hero));
+      if (!wasDone && hero.didActionFrame) {
+        facingAtStrike1 = hero.facing;
+        xAtStrike1 = hero.x;
+      }
+    }
+    if (xAtStrike1 <= dummy.x + 50 || facingAtStrike1 !== -1 || dummy.hp >= hp1 || maxGhosts1 < 2 || !sawSlice1) {
+      throw new Error(
+        `[Suite 25B ${label} V1] Expected cross-through to other side + 180° turn: xAtStrike=${xAtStrike1.toFixed(1)} (dummy=${dummy.x}), facing=${facingAtStrike1}, dmg=${hp1 - dummy.hp}, ghosts=${maxGhosts1}, slice1=${sawSlice1}`
+      );
+    }
+
+    // Hit 3A (V2 Mid-Range Gap-Close Dash-Slash): rockets >= 95px from 195px gap & hits
+    hero.x = 350;
+    hero.y = 561;
+    hero.facing = 1;
+    dummy.x = 545;
+    if (hero.afterimages) hero.afterimages.length = 0;
+    if (hero.temporalEchoes) hero.temporalEchoes.length = 0;
+    hero.comboStep = 2;
+    const hp2A = dummy.hp;
+    hero.setState('AUTO_ATTACK');
+    let sawSlice2 = false;
+    let maxGhosts2A = 0;
+    for (let tick = 0; tick < 36 && hero.state === 'AUTO_ATTACK'; tick++) {
+      hero.update(1 / 30, dummy, hGame);
+      if (hero.trueUltFrameOverride >= 75 && hero.trueUltFrameOverride <= 82) sawSlice2 = true;
+      maxGhosts2A = Math.max(maxGhosts2A, countHeroGhosts(hero));
+    }
+    if (hero.x - 350 < 95 || dummy.hp >= hp2A || maxGhosts2A < 2 || !sawSlice2) {
+      throw new Error(
+        `[Suite 25B ${label} V2-GapClose] Expected mid-range dash-slash >=95px: dx=${(hero.x - 350).toFixed(1)}, dmg=${hp2A - dummy.hp}, ghosts=${maxGhosts2A}`
+      );
+    }
+
+    // Hit 3B (V2 Close-Range Supersonic Dash-Pierce): starts at x=630 (right of dummy=550), dashes >=135px across to left flank!
+    hero.x = 630;
+    hero.y = 561;
+    hero.facing = -1;
+    dummy.x = 550;
+    if (hero.afterimages) hero.afterimages.length = 0;
+    if (hero.temporalEchoes) hero.temporalEchoes.length = 0;
+    hero.comboStep = 2;
+    const hp2B = dummy.hp;
+    hero.setState('AUTO_ATTACK');
+    let xAtStrike2B = hero.x;
+    let facingAtStrike2B = hero.facing;
+    let maxGhosts2B = 0;
+    for (let tick = 0; tick < 36 && hero.state === 'AUTO_ATTACK'; tick++) {
+      const wasDone = hero.didActionFrame;
+      hero.update(1 / 30, dummy, hGame);
+      maxGhosts2B = Math.max(maxGhosts2B, countHeroGhosts(hero));
+      if (!wasDone && hero.didActionFrame) {
+        xAtStrike2B = hero.x;
+        facingAtStrike2B = hero.facing;
+      }
+    }
+    if (630 - xAtStrike2B < 135 || xAtStrike2B >= dummy.x - 50 || facingAtStrike2B !== 1 || dummy.hp >= hp2B || maxGhosts2B < 2) {
+      throw new Error(
+        `[Suite 25B ${label} V2-DashPierce] Expected supersonic dash-pierce across dummy: xAtStrike=${xAtStrike2B.toFixed(1)}, facing=${facingAtStrike2B}, dmg=${hp2B - dummy.hp}, ghosts=${maxGhosts2B}`
+      );
+    }
+
+    // Hit 4 (V3 — Advancing Hop/Step Heavy Finisher): advances forward, hits with Row 2 83..89, & lands cleanly at groundY
+    hero.x = 435;
+    hero.y = 561;
+    hero.facing = 1;
+    dummy.x = 550;
+    hero.comboStep = 3;
+    const hp3 = dummy.hp;
+    hero.setState('AUTO_ATTACK');
+    let sawSlice3 = false;
+    for (let tick = 0; tick < 36 && hero.state === 'AUTO_ATTACK'; tick++) {
+      hero.update(1 / 30, dummy, hGame);
+      if (hero.trueUltFrameOverride >= 83 && hero.trueUltFrameOverride <= 89) sawSlice3 = true;
+    }
+    if (hero.x <= 450 || dummy.hp >= hp3 || !sawSlice3 || hero.y !== hero.groundY || hero.state !== 'IDLE') {
+      throw new Error(
+        `[Suite 25B ${label} V3] Expected advancing finisher & grounded IDLE exit: x=${hero.x.toFixed(1)}, y=${hero.y}, state=${hero.state}, dmg=${hp3 - dummy.hp}, slice3=${sawSlice3}`
+      );
+    }
+  }
+
+  // 25C. Verify Colossal Boss `BEHEMOTH MALPHAS` Wall-Boundary Safety & 0-`ctx.rotate` Character Render Audit
+  let charRotCalls = 0;
+  let saveRestoreDelta = 0;
+  for (const [HeroCls, _heroId, label] of slasherSpecs) {
+    const bGame = createMockGame();
+    const boss = {
+      x: 9335,
+      y: 561,
+      groundY: 561,
+      anchorX: 9335,
+      facing: -1,
+      hp: 99999,
+      maxHp: 99999,
+      isDead: false,
+      isBenched: false,
+      isColossalBoss: true,
+      unstoppablePoise: true,
+      hasPoise: true,
+      takeDamage(amt) {
+        this.hp -= amt;
+      }
+    };
+    bGame.adventure = {
+      active: true,
+      lockActive: true,
+      lockMinX: 8800,
+      lockMaxX: 9520,
+      depthMinY: 442,
+      depthMaxY: 680,
+      bossEntity: boss
+    };
+    const hero = new HeroCls(9220, 561, 1);
+    hero.game = bGame;
+    bGame.fighters = [hero, boss];
+    bGame.getEnemiesOf = () => [boss];
+
+    const track = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
+    const rCtx = createMockCtx(track);
+    for (let c = 0; c < 4; c++) {
+      hero.comboStep = c;
+      hero.setState('AUTO_ATTACK');
+      for (let tick = 0; tick < 34 && hero.state === 'AUTO_ATTACK'; tick++) {
+        hero.update(1 / 30, boss, bGame);
+        if (hero.x > 9252) {
+          throw new Error(
+            `[Suite 25C ${label} V${c}] Crossed Colossal Boss wall! hero.x=${hero.x.toFixed(1)} > 9252`
+          );
+        }
+        const stackBefore = rCtx._stateStack.length;
+        hero.draw(rCtx, false, bGame.renderer);
+        saveRestoreDelta += Math.abs(rCtx._stateStack.length - stackBefore);
+        if (rCtx.globalCompositeOperation !== 'source-over') {
+          throw new Error(
+            `[Suite 25C ${label} V${c}] Composite op leaked: ${rCtx.globalCompositeOperation}`
+          );
+        }
+      }
+    }
+    charRotCalls += track.rotateCalls;
+  }
+  if (charRotCalls !== 0 || saveRestoreDelta !== 0) {
+    throw new Error(
+      `[Suite 25C] Expected 0 character ctx.rotate calls and balanced save/restore, got rotates=${charRotCalls}, saveDelta=${saveRestoreDelta}`
+    );
+  }
+
+  console.log(
+    '[PASS] Suite 25: 5-Champion Hack-and-Slash Melee Overhaul (Row-2 SHA-256 & 0-Clip Integrity, 4-Beat Lunge/Cross-Through/Dash-Slash/Finisher & Colossal Boss Safety) verified!'
+  );
+}
+
 
 
 

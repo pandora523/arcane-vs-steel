@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps100';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps100';
+import { Fighter } from './Fighter.js?v=30fps101';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps101';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps101';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps100';
+} from '../engine/shaders/cyberShaders.js?v=30fps101';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 const AUTO_SLICES_4 = [
@@ -71,10 +71,10 @@ export class Android extends Fighter {
     if (typeof Image !== 'undefined') {
       const androidAssets = PixelForge.initAssets()?.android;
       if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps87')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps100';
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps101';
       }
       if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps87')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps100';
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps101';
       }
     }
 
@@ -416,56 +416,51 @@ export class Android extends Fighter {
   updateAutoAttack(dt, enemy, game) {
     const dur = this.autoDuration || 0.52;
     const u = Math.min(1, Math.max(0, this.stateTimer / dur));
-    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const variant = ((this._autoVariant ?? 0) % 4 + 4) % 4;
     const [sliceStart, sliceLen] = AUTO_SLICES_4[variant];
+    const localCol = Math.min(sliceLen - 1, Math.max(0, Math.floor(u * sliceLen)));
 
-    // Drive exact 4-variant Row 2 slice (`60..67` Jet-Step Cleave, `68..74` Rising Dragon Kick-Slash,
-    // `75..82` Fin-Funnel Pincer Thrust, `83..89` Overhead Fang Chakram Slam)
-    this.trueUltFrameOverride =
-      sliceStart + Math.min(sliceLen - 1, Math.max(0, Math.floor(u * sliceLen)));
+    // Drive exact 4-variant Row 2 slice (`60..67` Jet-Step Cleave, `68..74` Cross-Through Dragon Kick-Slash,
+    // `75..82` Thruster Dash-Slash + Fin-Funnel Lances, `83..89` Advancing Hop Fang Chakram Slam)
+    this.trueUltFrameOverride = sliceStart + localCol;
 
-    // Variant 1 (`68..74` — Rising Dragon High-Kick Slash) gets a crisp 18px athletic hop off the floor
-    if (variant === 1 && u >= 0.16 && u <= 0.78) {
-      const hopU = (u - 0.16) / 0.62;
-      this.y = this.groundY - Math.sin(hopU * Math.PI) * 18;
-    } else {
-      this.y = this.groundY;
-    }
+    const foes = this.getEnemyTargets(enemy, game);
+    const frontFoe =
+      (enemy && !enemy.isDead ? enemy : null) ||
+      foes.find((f) => Math.abs(f.x - this.x) <= 265) ||
+      null;
 
-    // Real Model Gap-Close BEFORE Swinging (`u < 0.35`, prior to blade strike frame!):
-    // Physically thruster-glide VEX-09 right up to true point-blank blade contact (`108px` from `enemy.x`)
-    // across ALL 4 variants so she NEVER swings into empty air from afar!
-    if (u < 0.35) {
-      if (enemy && !enemy.isDead) {
-        if (u < 0.08 && Math.abs(enemy.x - this.x) > 12) {
-          this.facing = enemy.x >= this.x ? 1 : -1;
-        }
-        const contactGap = 108;
-        const desiredX = Math.max(85, Math.min(ww - 85, enemy.x - this.facing * contactGap));
-        const forwardDelta = (desiredX - this.x) * this.facing;
-        if (forwardDelta > 1.5) {
-          if (!this._autoGapClosed && forwardDelta > 26) {
-            this._autoGapClosed = true;
-            this.spawnAfterimage(this.x, this.y, this.facing, 2, sliceStart - 60 + 1, 0.20);
-            this.fx.spawn('wingPylonThruster', this.x - this.facing * 18, this.y - 134, {
-              follow: this,
-              offsetX: -18,
-              offsetY: -134,
-              flip: this.facing < 0,
-              palette:
-                variant === 1 || variant === 3 ? CYBER_MAGENTA_PALETTE : CYBER_NEON_PALETTE,
-              maxDuration: 0.18,
-              light: 0.95,
-              extra: { length: 16, tilt: -0.78 }
-            });
-          }
-          const maxStep = Math.min(forwardDelta, 780 * dt);
-          this.x = Math.max(85, Math.min(ww - 85, this.x + this.facing * maxStep));
-        }
-      } else if (u >= 0.08) {
-        this.x = Math.max(85, Math.min(ww - 85, this.x + this.facing * 215 * dt));
-      }
+    const hns = this.updateHackAndSlashMotion(dt, frontFoe, game, {
+      variant,
+      u,
+      moveEndU: 0.33,
+      coilEndU: 0.08,
+      contactDist: 86,
+      flankDist: 84,
+      dashContactDist: 82,
+      dashFlankDist: 84,
+      finisherDist: 86,
+      v1HopHeight: 16,
+      v3HopHeight: 14,
+      hopEndU: 0.68,
+      maxLockDist: 265,
+      margin: 84,
+      onGhost: (gx, gy, gf) =>
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.19)
+    });
+
+    if (u < 0.33 && !this._autoGapClosed && hns && Math.abs(this.x - hns.startX) > 20) {
+      this._autoGapClosed = true;
+      this.fx.spawn('wingPylonThruster', this.x - this.facing * 18, this.y - 134, {
+        follow: this,
+        offsetX: -18,
+        offsetY: -134,
+        flip: this.facing < 0,
+        palette: variant === 1 || variant === 3 ? CYBER_MAGENTA_PALETTE : CYBER_NEON_PALETTE,
+        maxDuration: 0.18,
+        light: 0.95,
+        extra: { length: variant === 2 ? 20 : 16, tilt: -0.78 }
+      });
     }
 
     if (!this.didActionFrame && u >= 0.35) {

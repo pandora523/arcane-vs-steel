@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps100';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps100';
+import { Fighter } from './Fighter.js?v=30fps101';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps101';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps101';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps100';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps101';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -98,11 +98,11 @@ export class Warrior extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const warriorAssets = PixelForge.initAssets()?.warrior;
-      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps100')) {
-        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps100';
+      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps101')) {
+        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps101';
       }
       if (warriorAssets?.vfx?.src && !warriorAssets.vfx.src.includes('v=30fps60')) {
-        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps100';
+        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps101';
       }
     }
   }
@@ -856,15 +856,40 @@ export class Warrior extends Fighter {
     const mode = (((this._autoVariant ?? 0) % 4) + 4) % 4;
     const u = Math.min(0.999, Math.max(0, t / dur));
     const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
-    this.trueUltFrameOverride = sliceStart + Math.min(sliceLen - 1, Math.floor(u * sliceLen));
+    const localCol = Math.min(sliceLen - 1, Math.floor(u * sliceLen));
+    this.trueUltFrameOverride = sliceStart + localCol;
+
+    const rawFoes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
+    const foes = rawFoes.filter((f) => f && !f.isDead && !f.isBenched);
+    const frontFoe =
+      foes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 260) ||
+      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 260 ? enemy : null);
+
+    // 4-Beat Kinetic Hack-and-Slash Choreography:
+    // V0: Forward Lunge Cleave | V1: Cross-Through Flank-Slash | V2: High-Speed Dash-Slash | V3: Advancing Hop Guillotine
+    this.updateHackAndSlashMotion(dt, frontFoe, game, {
+      variant: mode,
+      u,
+      moveEndU: 0.32,
+      coilEndU: 0.08,
+      contactDist: 86,
+      flankDist: 84,
+      dashContactDist: 82,
+      dashFlankDist: 86,
+      finisherDist: 86,
+      v3HopHeight: 16,
+      hopEndU: 0.56,
+      maxLockDist: 260,
+      onGhost: (gx, gy, gf) =>
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.20)
+    });
 
     if (t < 0.30) {
-      this.torsoAngle = -this.facing * (mode === 2 ? 0.16 : 0.24) * (t / 0.30);
+      this.torsoAngle = -this.facing * (mode === 2 ? 0.14 : 0.20) * (t / 0.30);
     } else if (t < dur) {
       if (!this.didActionFrame) {
         this.didActionFrame = true;
-        const stepVx = mode === 2 ? 205 : mode === 1 ? 170 : mode === 0 ? 155 : 145;
-        this.vx += this.facing * stepVx;
+        this.vx = this.facing * (mode === 3 ? 62 : 34);
         this.torsoVel = this.facing * (mode === 2 ? 15 : 13);
 
         const cx = this.x + this.facing * (mode === 2 ? 54 : 42);
@@ -885,15 +910,18 @@ export class Warrior extends Fighter {
         }
 
         if (mode === 2) {
-          // V2 (Sovereign Pommel-Thrust Piercer): Star-cross runic pierce spark at sword tip
-          if (game?.audio) game.audio.play('slash', this.x);
+          // V2 (High-Speed Runeblade Dash-Slash): Star-cross runic pierce spark at sword tip
+          if (game?.audio) {
+            game.audio.play('dash_whoosh', this.x);
+            game.audio.play('slash', this.x);
+          }
           this.spawnVfxAnim(4, cx + this.facing * 20, cy + 4, 192, 192, 0.28, {
             flipX: this.facing < 0,
             glowColor: 'cyan',
             foreground: true
           });
         } else if (mode === 3) {
-          // V3 (Cathedral Guillotine Wave): Overhead smash + ranged Glacial/Celestial Blade-Wave!
+          // V3 (Cathedral Guillotine Wave): Advancing hop overhead smash + ranged Glacial/Celestial Blade-Wave!
           if (game?.audio) {
             game.audio.play('blade_wave', this.x);
             game.audio.play('heavy_cleave', this.x);
@@ -901,7 +929,7 @@ export class Warrior extends Fighter {
           game?.vfx?.spawnDamageText(this.x, this.y - 145, 0, false, 'GUILLOTINE WAVE!', '#fde047');
           game?.vfx?.spawnProjectile({
             x: this.x + this.facing * 54,
-            y: this.y - 104,
+            y: this.groundY - 104,
             vx: this.facing * 645,
             vy: 0,
             radius: 20,
@@ -923,8 +951,6 @@ export class Warrior extends Fighter {
 
         game?.vfx?.spawnGlyphBurst(cx, cy, 5, 'steel');
 
-        const rawFoes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
-        const foes = rawFoes.filter((f) => f && !f.isDead && !f.isBenched);
         const reach = mode === 2 ? 224 : this.attackRange + 50;
 
         for (const foe of foes) {
@@ -938,7 +964,7 @@ export class Warrior extends Fighter {
                     ? Math.random() < 0.28
                     : Math.random() < 0.25;
             const dmg = mode === 3 ? 76 : mode === 2 ? 68 : mode === 1 ? 66 : 60;
-            const knockX = mode === 2 ? 130 : mode === 3 ? 125 : mode === 0 ? 110 : 105;
+            const knockX = mode === 3 ? 125 : mode === 2 ? 82 : mode === 1 ? 72 : 76;
             const knockY = mode === 3 ? -130 : mode === 1 ? -58 : 0;
             foe.takeDamage(dmg, this, isCrit, knockX, knockY);
             if (game?.audio) game.audio.play(isCrit ? 'hit_crit' : 'clang', foe.x);
@@ -951,7 +977,7 @@ export class Warrior extends Fighter {
             });
 
             if (mode === 1) {
-              // V1 (Celestial Rising Upper-Slash): Grounded Cathedral Pillar spark + lightning bolt on hit
+              // V1 (Cross-Through Flank Slash): Grounded Cathedral Pillar spark + lightning bolt on hit
               const pillarH = 196;
               this.spawnVfxAnim(
                 2,
@@ -987,6 +1013,7 @@ export class Warrior extends Fighter {
         }
       }
     } else {
+      this.y = this.groundY;
       this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }

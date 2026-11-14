@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps100';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps100';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps100';
+import { Fighter } from './Fighter.js?v=30fps101';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps101';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps101';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps101';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps100';
+} from '../engine/shaders/chronoShaders.js?v=30fps101';
 
 const ROMAN_CLOCK_HOURS = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
 const AUTO_SLICES_4 = [
@@ -113,7 +113,7 @@ export class Chronomancer extends Fighter {
     if (typeof Image !== 'undefined') {
       const chronoAssets = PixelForge.initAssets()?.chronomancer;
       if (chronoAssets?.vfx?.src && !chronoAssets.vfx.src.includes('v=30fps62')) {
-        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps100';
+        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps101';
       }
     }
 
@@ -991,17 +991,18 @@ export class Chronomancer extends Fighter {
     const u = Math.min(0.999, Math.max(0, t / dur));
     const stage = ((this._autoVariant ?? this._currentAutoStage ?? 0) % 4 + 4) % 4;
     const [sliceStart, sliceLen] = AUTO_SLICES_4[stage];
+    const localCol = Math.min(sliceLen - 1, Math.floor(u * sliceLen));
 
-    // Drive exact 4-variant Row 2 slice (`60..67` Minute-Glaive Diagonal Cleave,
-    // `68..74` Paradox Phantom Scissor, `75..82` Horological Fleche Thrust,
-    // `83..89` XII Chime Execution Cleave)
-    this.trueUltFrameOverride = sliceStart + Math.min(sliceLen - 1, Math.floor(u * sliceLen));
+    // Drive exact 4-variant Row 2 slice (`60..67` Minute-Glaive Forward Lunge Cleave,
+    // `68..74` Cross-Through Paradox Phantom Scissor, `75..82` Horological Fleche Dash-Slash,
+    // `83..89` Advancing Hop XII Chime Execution Cleave)
+    this.trueUltFrameOverride = sliceStart + localCol;
 
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     const minX =
       game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
         ? game.adventure.lockMinX + 24
-        : 72;
+        : 76;
     const bossWallAlive = Boolean(
       game?.adventure?.bossEntity &&
         !game.adventure.bossEntity.isDead &&
@@ -1010,31 +1011,32 @@ export class Chronomancer extends Fighter {
     const rawMaxX =
       game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMaxX)
         ? game.adventure.lockMaxX - 24
-        : ww - 72;
+        : ww - 76;
     const maxX = bossWallAlive
-      ? Math.min(rawMaxX, (game.adventure.bossEntity.anchorX || 9335) - 85)
+      ? Math.min(rawMaxX, (game.adventure.bossEntity.anchorX || 9335) - 88)
       : rawMaxX;
 
     const foes = this.getActiveEnemies(enemy, game);
     const frontFoe =
-      foes.find((f) => (f.x - this.x) * this.facing >= -24 && Math.abs(f.x - this.x) <= 240) ||
-      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 240 ? enemy : null);
+      foes.find((f) => (f.x - this.x) * this.facing >= -28 && Math.abs(f.x - this.x) <= 255) ||
+      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 255 ? enemy : null);
 
-    // Physical Horological Step-In (0.00..0.22s): close directly into 88..94px Twin Clock-Blade maai
-    const manualPullBack =
-      this.isPlayerControlled &&
-      !this.adventureAutoPlay &&
-      (this.manualMoveAxis || 0) * this.facing < -0.2;
-    if (t < 0.22 && frontFoe && !manualPullBack) {
-      const fDir = frontFoe.x >= this.x ? 1 : -1;
-      this.facing = fDir;
-      const idealDist = frontFoe.isColossalBoss ? 92 : stage === 2 ? 88 : 94;
-      const curDist = Math.abs(frontFoe.x - this.x);
-      if (curDist > idealDist) {
-        const stepPx = Math.min(curDist - idealDist, 360 * dt);
-        this.x = Math.max(minX, Math.min(maxX, this.x + fDir * stepPx));
-      }
-    }
+    this.updateHackAndSlashMotion(dt, frontFoe, game, {
+      variant: stage,
+      u,
+      moveEndU: 0.255,
+      coilEndU: 0.07,
+      contactDist: 86,
+      flankDist: 84,
+      dashContactDist: 82,
+      dashFlankDist: 84,
+      finisherDist: 86,
+      v3HopHeight: 14,
+      hopEndU: 0.54,
+      maxLockDist: 255,
+      margin: 76,
+      onGhost: () => this.spawnTemporalEcho(sliceStart + localCol)
+    });
 
     if (t < 0.22) {
       this.torsoAngle = -this.facing * 0.10 * (t / 0.22);
@@ -1049,11 +1051,11 @@ export class Chronomancer extends Fighter {
 
       // ----------------------------------------------------------------------
       // V0 (`stage === 0`, frames `60..67` — `MINUTE-GLAIVE DIAGONAL CLEAVE`):
-      // Steps forward sweeping the Minute-Glaive along a `+34°` diagonal cut (`Row 2 F00..F07`),
+      // Lunges forward sweeping the Minute-Glaive along a `+34°` diagonal cut (`Row 2 F00..F07`),
       // cleaving enemies within `174px` (`76 dmg` / `58` splash) with a razor `chronoTimeRiftSlash`!
       // ----------------------------------------------------------------------
       if (stage === 0) {
-        this.vx = this.facing * 96;
+        this.vx = this.facing * 32;
         if (game?.audio) game.audio.play('slash', this.x);
 
         const inRangeFoe = primary && Math.abs(primary.x - this.x) <= 174 ? primary : null;
@@ -1075,20 +1077,19 @@ export class Chronomancer extends Fighter {
         for (const foe of foes) {
           const dxFoe = foe.x - this.x;
           if (Math.abs(dxFoe) <= 174 && dxFoe * this.facing >= -28) {
-            foe.takeDamage(foe === primary ? 76 : 58, this, false, 72, -24);
+            foe.takeDamage(foe === primary ? 76 : 58, this, false, 64, -24);
           }
         }
         game?.vfx?.spawnGlyphBurst?.(slashX, slashY, 4, 'chrono');
       }
 
       // ----------------------------------------------------------------------
-      // V1 (`stage === 1`, frames `68..74` — `PARADOX PHANTOM SCISSOR`):
-      // Chronos rips both Clock-Blades from the front while manifesting a luminous Cyan Future-Self
-      // Phantom Clone directly BEHIND the enemy (`Row 2 F08..F14` = `68..74`), stamping razor
-      // `Row 5` `paradoxTwinScissorCell` twin-cuts (`82 dmg` / `64` splash)!
+      // V1 (`stage === 1`, frames `68..74` — `PARADOX CROSS-THROUGH SCISSOR`):
+      // Chronos glides straight through the enemy onto their opposite flank while leaving a luminous
+      // Cyan Future-Self Phantom Clone on the original side (`68..74`), stamping razor `Row 5` twin-cuts!
       // ----------------------------------------------------------------------
       else if (stage === 1) {
-        this.vx = this.facing * 82;
+        this.vx = this.facing * 28;
         if (game?.audio) {
           game.audio.play('time_rewind', this.x);
           game.audio.play('slash', primary ? primary.x : this.x);
@@ -1097,11 +1098,11 @@ export class Chronomancer extends Fighter {
         const inRangePrimary = primary && Math.abs(primary.x - this.x) <= 215 ? primary : null;
         const strikeX = inRangePrimary
           ? inRangePrimary.x
-          : this.clampArenaX(this.x + this.facing * 108, game, 96);
+          : this.clampArenaX(this.x + this.facing * 88, game, 96);
         const strikeY = inRangePrimary ? inRangePrimary.groundY : this.groundY;
         const cloneX = Math.max(minX, Math.min(maxX, strikeX + this.facing * 76));
 
-        // Manifest Luminous Cyan Future-Self Phantom Clone behind the enemy (`68..74` over `0.42s`)!
+        // Manifest Luminous Cyan Future-Self Phantom Clone on the opposite side of `strikeX` (`68..74` over `0.42s`)!
         this.spawnPhantomClone(cloneX, strikeY, -this.facing, 'future', {
           startFrame: 68,
           endFrame: 74,
@@ -1149,13 +1150,14 @@ export class Chronomancer extends Fighter {
       }
 
       // ----------------------------------------------------------------------
-      // V2 (`stage === 2`, frames `75..82` — `HOROLOGICAL FLECHE THRUST`):
-      // Deep horological fencer lunge (`Row 2 F15..F22`) driving the Minute-Glaive needle
-      // straight through close melee range (`84 dmg` / `64` splash within `188px`) + `+5 Mana`!
+      // V2 (`stage === 2`, frames `75..82` — `HOROLOGICAL FLECHE DASH-SLASH`):
+      // High-speed temporal dash-slash (`Row 2 F15..F22`) driving the Minute-Glaive needle
+      // straight through melee range (`84 dmg` / `64` splash within `188px`) + `+5 Mana`!
       // ----------------------------------------------------------------------
       else if (stage === 2) {
-        this.vx = this.facing * 138;
+        this.vx = this.facing * 36;
         if (game?.audio) {
+          game.audio.play('dash_whoosh', this.x);
           game.audio.play('slash', this.x);
           game.audio.play('clock_gear', this.x);
         }
@@ -1178,8 +1180,8 @@ export class Chronomancer extends Fighter {
 
         for (const foe of foes) {
           const dxFoe = foe.x - this.x;
-          if (Math.abs(dxFoe) <= 188 && dxFoe * this.facing >= -24) {
-            foe.takeDamage(foe === primary ? 84 : 64, this, false, 78, -20);
+          if (Math.abs(dxFoe) <= 188 && dxFoe * this.facing >= -28) {
+            foe.takeDamage(foe === primary ? 84 : 64, this, false, 68, -20);
           }
         }
 
@@ -1189,12 +1191,12 @@ export class Chronomancer extends Fighter {
 
       // ----------------------------------------------------------------------
       // V3 (`stage === 3`, frames `83..89` — `XII CHIME EXECUTION CLEAVE`):
-      // Chronos hoists both Clock-Blades to XII and cleaves down (`Row 2 F23..F29`),
+      // Chronos hops forward hoisting both Clock-Blades to XII and cleaves down (`Row 2 F23..F29`),
       // stamping razor `Row 5` twin-cuts + `Row 4` crystal shatter, dealing Guaranteed Crit
       // (`98 dmg` / `74` splash, `'XII CHIME!'`), `1.15s` Chrono Slow & `+7 Mana`!
       // ----------------------------------------------------------------------
       else {
-        this.vx = this.facing * 116;
+        this.vx = this.facing * 48;
         if (game?.audio) {
           game.audio.play('chrono_hit', primary ? primary.x : this.x);
           game.audio.play('clock_gear', this.x);
@@ -1239,6 +1241,7 @@ export class Chronomancer extends Fighter {
     }
 
     if (t >= dur) {
+      this.y = this.groundY;
       this.trueUltFrameOverride = null;
       this.setState('IDLE');
     }

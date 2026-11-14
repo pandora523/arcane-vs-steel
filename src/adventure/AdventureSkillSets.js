@@ -222,7 +222,12 @@ export class AdventureSkillSets {
         player,
         Math.max(220, (player.attackRange || 180) + 75)
       );
-      if (propTarget) {
+      if (
+        propTarget &&
+        (!this.adventure?.lockActive ||
+          (propTarget.x >= (this.adventure.lockMinX ?? 0) &&
+            propTarget.x <= (this.adventure.lockMaxX ?? 9600)))
+      ) {
         return propTarget;
       }
       if (player.state === 'AUTO_ATTACK') {

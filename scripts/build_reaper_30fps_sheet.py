@@ -208,7 +208,7 @@ def apply_2h_scythe_ik(cfg):
 
 
 TWO_HAND_NUMERIC_KEYS = tuple(BASE_NUMERIC_KEYS) + (
-    "grip_x", "grip_y", "grip_sep", "chain_lx", "chain_ly", "chain_reach",
+    "grip_x", "grip_y", "grip_sep", "chain_lx", "chain_ly", "chain_reach", "l_hip_dx", "r_hip_dx",
 )
 
 
@@ -893,40 +893,40 @@ def build_row_configs(row_idx):
             cfgs.append(cfg)
 
         elif row_idx == 2:
-            # Row 2: AUTO_ATTACK — 4 DISTINCT ARCH-REAPER COMBO VARIANTS (`[[0..7], [8..14], [15..22], [23..29]]`)!
-            #   Slice 0 (F00..F07, 8f -> 60..67): Crescent Soul-Reap
-            #   Slice 1 (F08..F14, 7f -> 68..74): Abyssal Hook Drag-Rend
-            #   Slice 2 (F15..F22, 8f -> 75..82): Thanatos Phantom Whirl
-            #   Slice 3 (F23..F29, 7f -> 83..89): Guillotine Execution Slam
+            # Row 2: AUTO_ATTACK — 4 DISTINCT KINETIC HACK-AND-SLASH ARCH-REAPER SLICES (`[[0..7], [8..14], [15..22], [23..29]]`, ZERO baked banana arcs!):
+            #   Slice 0 (F00..F07, 8f -> 60..67): Advancing Crescent Soul-Reap (shoulder coil -> wide predatory forward reap)
+            #   Slice 1 (F08..F14, 7f -> 68..74): Spectral Cross-Through Hook-Rend (low wraith pass-through -> reverse-stance hook rip)
+            #   Slice 2 (F15..F22, 8f -> 75..82): Shadow-Rush Dash-Slash (crouched wraith coil -> aerodynamic horizontal dash-reap)
+            #   Slice 3 (F23..F29, 7f -> 83..89): Advancing Hop Guillotine Slam (athletic hop hoist -> wide-split execution slam)
             if f <= 7:
                 kfs = [
                     (0, dict(
-                        pelvis_dx=0.0, pelvis_dy=0.0, torso_deg=3.0, head_rel_deg=-1.5,
-                        right_leg_behind=False, l_thigh_deg=-2.0, l_shin_deg=2.0, r_thigh_deg=2.0, r_shin_deg=-2.0,
+                        pelvis_dx=0.0, pelvis_dy=4.0, torso_deg=5.0, head_rel_deg=-2.0,
+                        right_leg_behind=False, l_thigh_deg=6.0, l_shin_deg=10.0, r_thigh_deg=-8.0, r_shin_deg=0.0,
                         grip_x=48.0, grip_y=-12.0, weapon_deg=-42.0, weapon_scale=0.90, grip_sep=36.0,
                         chain_cast_mode=False, chain_active=False, hook_sign=1.0, foot_y=99.0,
                     )),
                     (2, dict(
-                        pelvis_dx=-16.0, pelvis_dy=24.0, torso_deg=-16.0, head_rel_deg=10.0,
-                        right_leg_behind=False, l_thigh_deg=-20.0, l_shin_deg=20.0, r_thigh_deg=20.0, r_shin_deg=-12.0,
-                        grip_x=10.0, grip_y=-54.0, weapon_deg=-114.0, weapon_scale=0.88, grip_sep=32.0,
+                        pelvis_dx=-16.0, pelvis_dy=28.0, torso_deg=-15.0, head_rel_deg=10.0,
+                        right_leg_behind=False, l_thigh_deg=22.0, l_shin_deg=28.0, r_thigh_deg=-24.0, r_shin_deg=6.0,
+                        grip_x=6.0, grip_y=-58.0, weapon_deg=-120.0, weapon_scale=0.88, grip_sep=32.0,
                         chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
                     )),
                     (4, dict(
-                        pelvis_dx=16.0, pelvis_dy=44.0, torso_deg=24.0, head_rel_deg=-12.0,
-                        right_leg_behind=False, l_thigh_deg=24.0, l_shin_deg=20.0, r_thigh_deg=-26.0, r_shin_deg=20.0,
-                        grip_x=64.0, grip_y=-6.0, weapon_deg=16.0, weapon_scale=0.90, grip_sep=36.0,
+                        pelvis_dx=20.0, pelvis_dy=54.0, torso_deg=27.0, head_rel_deg=-14.0,
+                        right_leg_behind=False, l_thigh_deg=36.0, l_shin_deg=44.0, r_thigh_deg=-40.0, r_shin_deg=-6.0,
+                        grip_x=70.0, grip_y=-4.0, weapon_deg=16.0, weapon_scale=0.90, grip_sep=36.0,
                         chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
                     )),
                     (5, dict(
-                        pelvis_dx=14.0, pelvis_dy=38.0, torso_deg=20.0, head_rel_deg=-10.0,
-                        right_leg_behind=False, l_thigh_deg=20.0, l_shin_deg=18.0, r_thigh_deg=-22.0, r_shin_deg=18.0,
-                        grip_x=58.0, grip_y=6.0, weapon_deg=28.0, weapon_scale=0.88, grip_sep=36.0,
+                        pelvis_dx=18.0, pelvis_dy=48.0, torso_deg=24.0, head_rel_deg=-12.0,
+                        right_leg_behind=False, l_thigh_deg=32.0, l_shin_deg=38.0, r_thigh_deg=-36.0, r_shin_deg=-4.0,
+                        grip_x=64.0, grip_y=8.0, weapon_deg=28.0, weapon_scale=0.88, grip_sep=36.0,
                         chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
                     )),
                     (7, dict(
-                        pelvis_dx=2.0, pelvis_dy=8.0, torso_deg=4.0, head_rel_deg=-2.0,
-                        right_leg_behind=False, l_thigh_deg=4.0, l_shin_deg=4.0, r_thigh_deg=-4.0, r_shin_deg=4.0,
+                        pelvis_dx=2.0, pelvis_dy=8.0, torso_deg=5.0, head_rel_deg=-2.0,
+                        right_leg_behind=False, l_thigh_deg=6.0, l_shin_deg=8.0, r_thigh_deg=-8.0, r_shin_deg=0.0,
                         grip_x=48.0, grip_y=-14.0, weapon_deg=-36.0, weapon_scale=0.90, grip_sep=36.0,
                         chain_cast_mode=False, chain_active=False, hook_sign=1.0, foot_y=99.0,
                     )),
@@ -934,32 +934,37 @@ def build_row_configs(row_idx):
             elif f <= 14:
                 kfs = [
                     (8, dict(
-                        pelvis_dx=6.0, pelvis_dy=22.0, torso_deg=14.0, head_rel_deg=-6.0,
-                        right_leg_behind=True, l_thigh_deg=-18.0, l_shin_deg=22.0, r_thigh_deg=18.0, r_shin_deg=14.0,
-                        grip_x=54.0, grip_y=2.0, weapon_deg=10.0, weapon_scale=0.88, grip_sep=34.0,
+                        pelvis_dx=10.0, pelvis_dy=38.0, torso_deg=20.0, head_rel_deg=-10.0,
+                        right_leg_behind=True, l_hip_dx=20.0, r_hip_dx=-20.0,
+                        l_thigh_deg=-36.0, l_shin_deg=-6.0, r_thigh_deg=34.0, r_shin_deg=42.0,
+                        grip_x=60.0, grip_y=4.0, weapon_deg=14.0, weapon_scale=0.88, grip_sep=34.0,
                         chain_cast_mode=False, chain_active=False, hook_sign=-1.0, foot_y=99.0,
                     )),
                     (9, dict(
-                        pelvis_dx=18.0, pelvis_dy=38.0, torso_deg=24.0, head_rel_deg=-11.0,
-                        right_leg_behind=True, l_thigh_deg=-28.0, l_shin_deg=28.0, r_thigh_deg=26.0, r_shin_deg=18.0,
-                        grip_x=66.0, grip_y=6.0, weapon_deg=18.0, weapon_scale=0.88, grip_sep=34.0,
-                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=-1.0, foot_y=99.0,
+                        pelvis_dx=20.0, pelvis_dy=52.0, torso_deg=26.0, head_rel_deg=-13.0,
+                        right_leg_behind=True, l_hip_dx=24.0, r_hip_dx=-24.0,
+                        l_thigh_deg=-42.0, l_shin_deg=-8.0, r_thigh_deg=38.0, r_shin_deg=48.0,
+                        grip_x=70.0, grip_y=8.0, weapon_deg=22.0, weapon_scale=0.88, grip_sep=34.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=-1.0, foot_y=98.5,
                     )),
                     (11, dict(
-                        pelvis_dx=-10.0, pelvis_dy=18.0, torso_deg=-14.0, head_rel_deg=9.0,
-                        right_leg_behind=True, l_thigh_deg=-12.0, l_shin_deg=18.0, r_thigh_deg=22.0, r_shin_deg=16.0,
-                        grip_x=34.0, grip_y=-58.0, weapon_deg=-68.0, weapon_scale=0.86, grip_sep=34.0,
+                        pelvis_dx=-8.0, pelvis_dy=40.0, torso_deg=-6.0, head_rel_deg=6.0,
+                        right_leg_behind=True, l_hip_dx=26.0, r_hip_dx=-26.0,
+                        l_thigh_deg=-38.0, l_shin_deg=-6.0, r_thigh_deg=38.0, r_shin_deg=46.0,
+                        grip_x=30.0, grip_y=-58.0, weapon_deg=-70.0, weapon_scale=0.86, grip_sep=34.0,
                         chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=-1.0, foot_y=99.0,
                     )),
                     (12, dict(
-                        pelvis_dx=-14.0, pelvis_dy=14.0, torso_deg=-16.0, head_rel_deg=10.0,
-                        right_leg_behind=True, l_thigh_deg=-8.0, l_shin_deg=14.0, r_thigh_deg=20.0, r_shin_deg=14.0,
-                        grip_x=22.0, grip_y=-62.0, weapon_deg=-82.0, weapon_scale=0.85, grip_sep=32.0,
+                        pelvis_dx=-12.0, pelvis_dy=34.0, torso_deg=-10.0, head_rel_deg=8.0,
+                        right_leg_behind=True, l_hip_dx=22.0, r_hip_dx=-22.0,
+                        l_thigh_deg=-34.0, l_shin_deg=-4.0, r_thigh_deg=34.0, r_shin_deg=42.0,
+                        grip_x=18.0, grip_y=-64.0, weapon_deg=-84.0, weapon_scale=0.85, grip_sep=32.0,
                         chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=-1.0, foot_y=99.0,
                     )),
                     (14, dict(
-                        pelvis_dx=-2.0, pelvis_dy=8.0, torso_deg=0.0, head_rel_deg=0.0,
-                        right_leg_behind=True, l_thigh_deg=-6.0, l_shin_deg=8.0, r_thigh_deg=8.0, r_shin_deg=6.0,
+                        pelvis_dx=0.0, pelvis_dy=8.0, torso_deg=3.0, head_rel_deg=-1.5,
+                        right_leg_behind=True, l_hip_dx=0.0, r_hip_dx=0.0,
+                        l_thigh_deg=6.0, l_shin_deg=8.0, r_thigh_deg=-8.0, r_shin_deg=0.0,
                         grip_x=44.0, grip_y=-24.0, weapon_deg=-48.0, weapon_scale=0.88, grip_sep=34.0,
                         chain_cast_mode=False, chain_active=False, hook_sign=-1.0, foot_y=99.0,
                     )),
@@ -967,36 +972,36 @@ def build_row_configs(row_idx):
             elif f <= 22:
                 kfs = [
                     (15, dict(
-                        pelvis_dx=-12.0, pelvis_dy=20.0, torso_deg=-14.0, head_rel_deg=8.0,
-                        right_leg_behind=False, l_thigh_deg=-18.0, l_shin_deg=20.0, r_thigh_deg=18.0, r_shin_deg=12.0,
-                        grip_x=-10.0, grip_y=-34.0, weapon_deg=-138.0, weapon_scale=0.88,
+                        pelvis_dx=-12.0, pelvis_dy=34.0, torso_deg=10.0, head_rel_deg=-5.0,
+                        right_leg_behind=False, l_thigh_deg=22.0, l_shin_deg=28.0, r_thigh_deg=-24.0, r_shin_deg=8.0,
+                        grip_x=-12.0, grip_y=-24.0, weapon_deg=-142.0, weapon_scale=0.88,
                         chain_cast_mode=True, chain_active=False, chain_lx=46.0, chain_ly=-16.0,
                         halo_grand=True, hook_sign=1.0, foot_y=99.0,
                     )),
                     (16, dict(
-                        pelvis_dx=-16.0, pelvis_dy=26.0, torso_deg=-18.0, head_rel_deg=11.0,
-                        right_leg_behind=False, l_thigh_deg=-22.0, l_shin_deg=24.0, r_thigh_deg=22.0, r_shin_deg=14.0,
-                        grip_x=-18.0, grip_y=-28.0, weapon_deg=-150.0, weapon_scale=0.86,
+                        pelvis_dx=-16.0, pelvis_dy=44.0, torso_deg=14.0, head_rel_deg=-7.0,
+                        right_leg_behind=False, l_thigh_deg=28.0, l_shin_deg=36.0, r_thigh_deg=-30.0, r_shin_deg=10.0,
+                        grip_x=-18.0, grip_y=-18.0, weapon_deg=-152.0, weapon_scale=0.86,
                         chain_cast_mode=True, chain_active=False, chain_lx=54.0, chain_ly=-12.0,
                         halo_grand=True, hook_sign=1.0, foot_y=99.0,
                     )),
                     (18, dict(
-                        pelvis_dx=20.0, pelvis_dy=36.0, torso_deg=22.0, head_rel_deg=-11.0,
-                        right_leg_behind=False, l_thigh_deg=26.0, l_shin_deg=18.0, r_thigh_deg=-28.0, r_shin_deg=22.0,
-                        grip_x=66.0, grip_y=-16.0, weapon_deg=-6.0, weapon_scale=0.86,
+                        pelvis_dx=24.0, pelvis_dy=56.0, torso_deg=28.0, head_rel_deg=-15.0,
+                        right_leg_behind=False, l_thigh_deg=40.0, l_shin_deg=48.0, r_thigh_deg=-42.0, r_shin_deg=-6.0,
+                        grip_x=72.0, grip_y=-14.0, weapon_deg=-5.0, weapon_scale=0.86,
                         chain_cast_mode=True, chain_active=False, chain_lx=-46.0, chain_ly=-22.0,
                         right_arm_in_front=True, halo_grand=True, hook_sign=1.0, foot_y=99.0,
                     )),
                     (20, dict(
-                        pelvis_dx=18.0, pelvis_dy=32.0, torso_deg=18.0, head_rel_deg=-9.0,
-                        right_leg_behind=False, l_thigh_deg=22.0, l_shin_deg=16.0, r_thigh_deg=-24.0, r_shin_deg=20.0,
-                        grip_x=62.0, grip_y=-4.0, weapon_deg=12.0, weapon_scale=0.86,
+                        pelvis_dx=22.0, pelvis_dy=52.0, torso_deg=25.0, head_rel_deg=-13.0,
+                        right_leg_behind=False, l_thigh_deg=36.0, l_shin_deg=44.0, r_thigh_deg=-38.0, r_shin_deg=-4.0,
+                        grip_x=68.0, grip_y=-2.0, weapon_deg=10.0, weapon_scale=0.86,
                         chain_cast_mode=True, chain_active=False, chain_lx=-38.0, chain_ly=-14.0,
                         right_arm_in_front=True, halo_grand=True, hook_sign=1.0, foot_y=99.0,
                     )),
                     (22, dict(
                         pelvis_dx=4.0, pelvis_dy=12.0, torso_deg=5.0, head_rel_deg=-2.0,
-                        right_leg_behind=False, l_thigh_deg=6.0, l_shin_deg=6.0, r_thigh_deg=-8.0, r_shin_deg=8.0,
+                        right_leg_behind=False, l_thigh_deg=6.0, l_shin_deg=8.0, r_thigh_deg=-8.0, r_shin_deg=0.0,
                         grip_x=50.0, grip_y=-16.0, weapon_deg=-34.0, weapon_scale=0.90, grip_sep=36.0,
                         chain_cast_mode=False, chain_active=False, hook_sign=1.0, foot_y=99.0,
                     )),
@@ -1004,27 +1009,27 @@ def build_row_configs(row_idx):
             else:
                 kfs = [
                     (23, dict(
-                        pelvis_dx=-8.0, pelvis_dy=12.0, torso_deg=-12.0, head_rel_deg=8.0,
-                        right_leg_behind=False, l_thigh_deg=-14.0, l_shin_deg=18.0, r_thigh_deg=16.0, r_shin_deg=12.0,
-                        grip_x=22.0, grip_y=-66.0, weapon_deg=-102.0, weapon_scale=0.85, grip_sep=32.0,
-                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                        pelvis_dx=-8.0, pelvis_dy=16.0, torso_deg=-12.0, head_rel_deg=8.0,
+                        right_leg_behind=False, l_thigh_deg=18.0, l_shin_deg=26.0, r_thigh_deg=-20.0, r_shin_deg=14.0,
+                        grip_x=22.0, grip_y=-68.0, weapon_deg=-104.0, weapon_scale=0.85, grip_sep=32.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=97.8,
                     )),
                     (24, dict(
-                        pelvis_dx=-10.0, pelvis_dy=10.0, torso_deg=-15.0, head_rel_deg=10.0,
-                        right_leg_behind=False, l_thigh_deg=-10.0, l_shin_deg=16.0, r_thigh_deg=18.0, r_shin_deg=14.0,
-                        grip_x=26.0, grip_y=-70.0, weapon_deg=-96.0, weapon_scale=0.84, grip_sep=32.0,
-                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
+                        pelvis_dx=-12.0, pelvis_dy=12.0, torso_deg=-15.0, head_rel_deg=10.0,
+                        right_leg_behind=False, l_thigh_deg=22.0, l_shin_deg=32.0, r_thigh_deg=-24.0, r_shin_deg=18.0,
+                        grip_x=24.0, grip_y=-74.0, weapon_deg=-98.0, weapon_scale=0.84, grip_sep=32.0,
+                        chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=97.2,
                     )),
                     (26, dict(
-                        pelvis_dx=18.0, pelvis_dy=48.0, torso_deg=26.0, head_rel_deg=-13.0,
-                        right_leg_behind=False, l_thigh_deg=30.0, l_shin_deg=26.0, r_thigh_deg=-32.0, r_shin_deg=26.0,
-                        grip_x=62.0, grip_y=4.0, weapon_deg=22.0, weapon_scale=0.88, grip_sep=36.0,
+                        pelvis_dx=22.0, pelvis_dy=58.0, torso_deg=28.0, head_rel_deg=-15.0,
+                        right_leg_behind=False, l_thigh_deg=38.0, l_shin_deg=46.0, r_thigh_deg=-42.0, r_shin_deg=-6.0,
+                        grip_x=68.0, grip_y=6.0, weapon_deg=22.0, weapon_scale=0.88, grip_sep=36.0,
                         chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
                     )),
                     (27, dict(
-                        pelvis_dx=14.0, pelvis_dy=40.0, torso_deg=22.0, head_rel_deg=-10.0,
-                        right_leg_behind=False, l_thigh_deg=24.0, l_shin_deg=22.0, r_thigh_deg=-26.0, r_shin_deg=22.0,
-                        grip_x=58.0, grip_y=0.0, weapon_deg=14.0, weapon_scale=0.88, grip_sep=36.0,
+                        pelvis_dx=18.0, pelvis_dy=50.0, torso_deg=24.0, head_rel_deg=-12.0,
+                        right_leg_behind=False, l_thigh_deg=32.0, l_shin_deg=40.0, r_thigh_deg=-36.0, r_shin_deg=-4.0,
+                        grip_x=62.0, grip_y=2.0, weapon_deg=14.0, weapon_scale=0.88, grip_sep=36.0,
                         chain_cast_mode=False, chain_active=False, halo_grand=True, hook_sign=1.0, foot_y=99.0,
                     )),
                     (29, dict(
@@ -1034,19 +1039,7 @@ def build_row_configs(row_idx):
                         chain_cast_mode=False, chain_active=False, hook_sign=1.0, foot_y=99.0,
                     )),
                 ]
-            cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, extra_meta_keys=("weapon_scale",), wave_mult=2.2)
-            if 3 <= f <= 5:
-                u = (f - 3) / 2.0
-                cfg["slash_arc"] = dict(dx=4.0, dy=10.0, r=25.5, a0=-76.0 + 22.0 * u, a1=44.0 + 14.0 * u, intensity=1.22)
-            elif 11 <= f <= 12:
-                u = float(f - 11)
-                cfg["slash_arc"] = dict(dx=6.0, dy=6.0, r=25.0, a0=48.0 - 30.0 * u, a1=-42.0 - 34.0 * u, intensity=1.24)
-            elif 18 <= f <= 20:
-                u = (f - 18) / 2.0
-                cfg["slash_arc"] = dict(dx=6.0, dy=8.0, r=26.0, a0=-46.0 + 18.0 * u, a1=42.0 + 18.0 * u, intensity=1.25)
-            elif 26 <= f <= 27:
-                u = float(f - 26)
-                cfg["slash_arc"] = dict(dx=5.0, dy=11.0, r=25.5, a0=-86.0 + 18.0 * u, a1=48.0 + 10.0 * u, intensity=1.25)
+            cfg = eval_2h_keyframes(f, kfs, ph, DEFAULTS, extra_meta_keys=("weapon_scale",), wave_mult=2.5)
             cfgs.append(cfg)
 
         elif row_idx == 3:

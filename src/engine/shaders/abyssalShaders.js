@@ -22,7 +22,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps100';
+} from '../ArcaneShaderFX.js?v=30fps101';
 
 export const ABYSSAL_VIOLET_PALETTE = [
   '#080412',

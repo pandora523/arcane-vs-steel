@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps100';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps100';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps100';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps100';
+import { Fighter } from './Fighter.js?v=30fps101';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps101';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps101';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps101';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -87,11 +87,11 @@ export class Ronin extends Fighter {
 
     if (typeof Image !== 'undefined') {
       const roninAssets = PixelForge.initAssets()?.ronin;
-      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps100')) {
-        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps100';
+      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps101')) {
+        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps101';
       }
       if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps63')) {
-        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps100';
+        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps101';
       }
     }
   }
@@ -667,56 +667,48 @@ export class Ronin extends Fighter {
     const mode = (((this._autoVariant ?? 0) % 4) + 4) % 4;
     const u = Math.min(0.999, Math.max(0, t / dur));
     const [sliceStart, sliceLen] = AUTO_SLICES_4[mode];
-    this.trueUltFrameOverride = sliceStart + Math.min(sliceLen - 1, Math.floor(u * sliceLen));
+    const localCol = Math.min(sliceLen - 1, Math.floor(u * sliceLen));
+    this.trueUltFrameOverride = sliceStart + localCol;
     this.y = this.groundY;
-
-    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
-    const minX =
-      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
-        ? game.adventure.lockMinX + 20
-        : 65;
-    const bossWallAlive = Boolean(
-      game?.adventure?.bossEntity &&
-        !game.adventure.bossEntity.isDead &&
-        game.adventure.bossEntity.isColossalBoss
-    );
-    const rawMaxX =
-      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMaxX)
-        ? game.adventure.lockMaxX - 20
-        : ww - 65;
-    const maxX = bossWallAlive
-      ? Math.min(rawMaxX, (game.adventure.bossEntity.anchorX || 9335) - 85)
-      : rawMaxX;
 
     const rawFoes = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
     const foes = rawFoes.filter((f) => f && !f.isDead && !f.isBenched);
     const frontFoe =
-      foes.find((f) => (f.x - this.x) * this.facing >= -20 && Math.abs(f.x - this.x) <= 195) ||
-      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 195 ? enemy : null);
+      foes.find((f) => (f.x - this.x) * this.facing >= -24 && Math.abs(f.x - this.x) <= 235) ||
+      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 235 ? enemy : null);
 
-    // Physical Fumikomi Step-In (0.00..0.22s): close directly into 68..74px body-to-body distance
-    // so Kaze-Maru's +92px Thunder-Odachi sprite physically slices straight through enemy flesh!
-    const manualPullBack =
-      this.isPlayerControlled &&
-      !this.adventureAutoPlay &&
-      (this.manualMoveAxis || 0) * this.facing < -0.2;
-    if (t < 0.22 && frontFoe && !manualPullBack) {
-      const fDir = frontFoe.x >= this.x ? 1 : -1;
-      this.facing = fDir;
-      const idealDist = frontFoe.isColossalBoss ? 86 : mode === 3 ? 68 : 74;
-      const curDist = Math.abs(frontFoe.x - this.x);
-      if (curDist > idealDist) {
-        const stepPx = Math.min(curDist - idealDist, 390 * dt);
-        this.x = Math.max(minX, Math.min(maxX, this.x + fDir * stepPx));
-      }
-    }
+    // 4-Beat Grounded Iaido Hack-and-Slash Choreography (0 bloated VFX, pure afterimages + blade cuts):
+    // V0: Fumikomi Forward Cut | V1: Cross-Through Flank Reverse-Cut | V2: Shunpo Dash-Slash | V3: Morote Kiri-Nuki
+    this.updateHackAndSlashMotion(dt, frontFoe, game, {
+      variant: mode,
+      u,
+      moveEndU: 0.33,
+      coilEndU: 0.08,
+      contactDist: 72,
+      minCloseDist: 48,
+      flankDist: 74,
+      dashContactDist: 70,
+      dashFlankDist: 74,
+      finisherDist: 68,
+      openStepPx: 64,
+      openCrossPx: 92,
+      openDashPx: 142,
+      openFinisherPx: 62,
+      v3HopHeight: 0,
+      maxLockDist: 235,
+      margin: 68,
+      onGhost: (gx, gy, gf) =>
+        this.spawnAfterimage(gx, gy, gf, 2, sliceStart - 60 + localCol, 0.18, 0)
+    });
 
     if (t >= 0.16 && !this.didActionFrame) {
       this.didActionFrame = true;
-      if (game?.audio) game.audio.play('slash', this.x);
+      if (game?.audio) {
+        if (mode === 2) game.audio.play('dash_whoosh', this.x);
+        game.audio.play('slash', this.x);
+      }
 
-      const closeInFlesh = Boolean(frontFoe && Math.abs(frontFoe.x - this.x) <= 82);
-      this.vx = this.facing * (closeInFlesh ? 56 : mode === 3 ? 185 : 155);
+      this.vx = this.facing * (mode === 3 ? 54 : 30);
 
       // Shallow horizontal katana cut plane matching the 4 full-furikiri Row-2 animations (ZERO bloated VFX!)
       const cutSlope = mode === 0 ? -0.14 : mode === 1 ? 0.14 : mode === 2 ? -0.22 : 0.08;
@@ -733,14 +725,14 @@ export class Ronin extends Fighter {
 
       const baseDmgs = [48, 52, 58, 78];
       const critRates = [0.28, 0.30, 0.34, 0.38];
-      const knockXs = [52, 58, 64, 92];
+      const knockXs = [52, 56, 62, 92];
       const knockYs = [0, -75, -95, -120];
       const manaGains = [2.5, 2.6, 2.9, 3.4];
 
       let landed = false;
       for (const foe of foes) {
-        const reachLim = foe.isColossalBoss ? 148 : 134;
-        if ((foe.x - this.x) * this.facing >= -24 && Math.abs(foe.x - this.x) <= reachLim) {
+        const reachLim = foe.isColossalBoss ? 148 : 138;
+        if ((foe.x - this.x) * this.facing >= -28 && Math.abs(foe.x - this.x) <= reachLim) {
           const isCrit = Math.random() < critRates[mode];
           const dmg = baseDmgs[mode] * (isCrit ? 1.32 : 1);
           foe.takeDamage(dmg, this, isCrit, knockXs[mode], knockYs[mode]);
