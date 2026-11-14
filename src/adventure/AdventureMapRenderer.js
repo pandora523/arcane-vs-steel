@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps107';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps108';
 
 const CTX_GRAD_CACHE = new WeakMap();
 
@@ -79,56 +79,62 @@ const PIXEL_BLOOM_PALETTES = {
   ember: ['#dc2626', '#fb923c', '#fef08a']
 };
 
-// Exact BFS-measured emissive light & bowl-lip coordinates in `adv_arch_pano.png` (`3930x272` art px):
-// `[artX, artY, paletteKey, tierSize, vfxRow, bowlLipArtY, vfxSize]`
-// Locked 0.0px onto every painted brazier, hanging lantern, crystal cluster, soul-pyre & cauldron!
+// Exact 1px-ruler-verified emissive light, bowl-lip, lantern & crystal coordinates in `adv_arch_pano.png` (`3930x272`):
+// `[centerArtX, glowArtY, paletteKey, tierSize, vfxRow, anchorArtY, worldW, worldH, mode]`
+//   - `mode === 'brazier'`: wide-basin roaring flame (`lipRatio = 0.844` = `y_128 = 108`), covers 100% of bowl rim & painted flame!
+//   - `mode === 'prism'`:   centered `Row 11` radial crystal/glass-lantern prism pulse (`0` upward fire tongue!)
+//   - `mode === 'moonwell'`: skimming `Row 7` luminous water-surface wisp across Starwood Moonwell basins
 const ARCH_EMISSIVE_ANCHORS = [
-  // Zone I: Eclipse Cathedral Golden Solar & Astral Cyan Braziers
-  [5, 220, 'cyan', 2, 1, 231, 96],
-  [256, 220, 'gold', 2, 0, 231, 98],
-  [299, 207, 'gold', 2, 0, 218, 104],
-  [347, 206, 'cyan', 2, 1, 218, 104],
-  [397, 220, 'cyan', 2, 1, 231, 96],
-  [649, 220, 'gold', 2, 0, 231, 98],
-  [692, 207, 'gold', 2, 0, 218, 104],
-  [740, 206, 'cyan', 2, 1, 218, 104],
-  [790, 220, 'cyan', 2, 1, 231, 96],
-  [1044, 218, 'gold', 2, 0, 231, 100],
-  // Zone II: Cursed Starwood Hanging Crystal Lanterns, Base Spirit Flames, Root Crystals & Moonwells
-  [1127, 116, 'aqua', 2, 2, 125, 68],
-  [1133, 224, 'emerald', 3, 2, 236, 106],
-  [1195, 234, 'aqua', 2, 2, 243, 78],
-  [1302, 258, 'emerald', 3, 7, 268, 128],
-  [1478, 116, 'aqua', 2, 2, 125, 68],
-  [1481, 225, 'emerald', 2, 2, 236, 102],
-  [1519, 116, 'aqua', 2, 2, 125, 68],
-  [1526, 224, 'aqua', 3, 2, 236, 106],
-  [1588, 234, 'aqua', 2, 2, 243, 78],
-  [1695, 258, 'emerald', 3, 7, 268, 128],
-  [1871, 116, 'aqua', 2, 2, 125, 68],
-  [1873, 225, 'aqua', 2, 2, 236, 102],
-  // Zone III: Abyssal Bone-Gate Necrotic Violet Crypt Braziers
-  [1915, 225, 'violet', 3, 4, 237, 112],
-  [2267, 225, 'violet', 3, 4, 238, 110],
-  [2312, 225, 'violet', 3, 4, 237, 110],
-  // Zone IV: Black Pit Obsidian Hellfire Cauldrons & Crucible Sconces
-  [2686, 208, 'ember', 2, 6, 220, 100],
-  [2705, 208, 'ember', 3, 6, 219, 108],
-  [2755, 222, 'ember', 2, 6, 231, 98],
-  [3004, 221, 'ember', 2, 6, 231, 98],
-  [3052, 208, 'ember', 2, 6, 219, 104],
-  [3079, 208, 'ember', 2, 6, 220, 100],
-  [3098, 208, 'ember', 3, 6, 219, 108],
-  [3148, 222, 'ember', 2, 6, 231, 98],
-  [3397, 221, 'ember', 2, 6, 231, 98],
-  [3445, 208, 'ember', 2, 6, 219, 104],
-  [3472, 208, 'ember', 2, 6, 220, 100],
-  [3491, 208, 'ember', 3, 6, 219, 108],
-  [3541, 222, 'ember', 2, 6, 231, 98],
-  [3790, 222, 'ember', 2, 6, 231, 98],
-  // Periodic wrap bridge back to Zone I
-  [3884, 206, 'cyan', 2, 1, 218, 104],
-  [3920, 221, 'cyan', 2, 1, 231, 96]
+  // Zone I: Eclipse Cathedral Wide-Basin Golden Solar (`Row 0`), Astral Cyan (`Row 1`) & Tall Dual Gold+Cyan (`Row 10`) Braziers
+  [5.5, 214, 'cyan', 2, 1, 233, 158, 166, 'brazier'],
+  [253.0, 214, 'gold', 2, 0, 233, 158, 166, 'brazier'],
+  [302.0, 202, 'gold', 3, 0, 223, 172, 184, 'brazier'],
+  [349.0, 202, 'cyan', 3, 10, 223, 172, 184, 'brazier'],
+  [398.0, 214, 'cyan', 2, 1, 233, 158, 166, 'brazier'],
+  [646.0, 214, 'gold', 2, 0, 233, 158, 166, 'brazier'],
+  [695.0, 202, 'gold', 3, 0, 223, 172, 184, 'brazier'],
+  [742.0, 202, 'cyan', 3, 10, 223, 172, 184, 'brazier'],
+  [791.0, 214, 'cyan', 2, 1, 233, 158, 166, 'brazier'],
+  [1039.5, 214, 'gold', 2, 0, 233, 160, 168, 'brazier'],
+
+  // Zone II: Cursed Starwood Closed Hanging Glass Lanterns (`Row 11` prism), Open Spirit Bowls (`Row 2`), Root Crystals (`Row 11`) & Moonwells (`Row 7`)
+  [1085.5, 151, 'emerald', 2, 11, 151, 68, 68, 'prism'],
+  [1110.5, 107, 'aqua', 2, 11, 107, 52, 52, 'prism'],
+  [1125.5, 116, 'aqua', 2, 11, 116, 76, 76, 'prism'],
+  [1133.5, 218, 'emerald', 3, 2, 236, 166, 178, 'brazier'],
+  [1193.0, 237, 'aqua', 2, 11, 237, 92, 92, 'prism'],
+  [1302.0, 260, 'emerald', 3, 7, 266, 160, 78, 'moonwell'],
+  [1476.0, 116, 'aqua', 2, 11, 116, 76, 76, 'prism'],
+  [1478.5, 220, 'emerald', 2, 2, 236, 156, 166, 'brazier'],
+  [1492.0, 106, 'aqua', 2, 11, 106, 52, 52, 'prism'],
+  [1504.0, 106, 'aqua', 2, 11, 106, 52, 52, 'prism'],
+  [1519.0, 116, 'aqua', 2, 11, 116, 76, 76, 'prism'],
+  [1526.5, 218, 'aqua', 3, 2, 236, 166, 178, 'brazier'],
+  [1586.0, 237, 'aqua', 2, 11, 237, 92, 92, 'prism'],
+  [1695.0, 260, 'emerald', 3, 7, 266, 160, 78, 'moonwell'],
+  [1869.0, 116, 'aqua', 2, 11, 116, 76, 76, 'prism'],
+  [1872.0, 220, 'aqua', 2, 2, 236, 156, 166, 'brazier'],
+
+  // Zone III: Abyssal Bone-Gate Wide Necrotic Violet Crypt Soul-Pyres (`Row 4`)
+  [1915.5, 218, 'violet', 3, 4, 237, 170, 182, 'brazier'],
+  [2264.5, 218, 'violet', 3, 4, 237, 168, 180, 'brazier'],
+  [2311.5, 218, 'violet', 3, 4, 237, 168, 180, 'brazier'],
+
+  // Zone IV: Black Pit Wide Obsidian Hellfire Cauldrons (`Row 6`, false wall-column anchors removed!)
+  [2705.5, 202, 'ember', 3, 6, 223, 174, 186, 'brazier'],
+  [2754.5, 214, 'ember', 2, 6, 233, 160, 168, 'brazier'],
+  [3004.5, 214, 'ember', 2, 6, 233, 160, 168, 'brazier'],
+  [3052.0, 202, 'ember', 3, 6, 223, 174, 186, 'brazier'],
+  [3098.5, 202, 'ember', 3, 6, 223, 174, 186, 'brazier'],
+  [3147.5, 214, 'ember', 2, 6, 233, 160, 168, 'brazier'],
+  [3397.5, 214, 'ember', 2, 6, 233, 160, 168, 'brazier'],
+  [3445.0, 202, 'ember', 3, 6, 223, 174, 186, 'brazier'],
+  [3491.5, 202, 'ember', 3, 6, 223, 174, 186, 'brazier'],
+  [3540.5, 214, 'ember', 2, 6, 233, 160, 168, 'brazier'],
+  [3790.5, 214, 'ember', 2, 6, 233, 160, 168, 'brazier'],
+
+  // Periodic Wrap Bridge back to Zone I (tall dual Solar+Cyan Cathedral brazier)
+  [3888.5, 202, 'cyan', 3, 10, 223, 172, 184, 'brazier']
 ];
 
 // Lazy cache for coarse pixel-grid emissive bloom canvases extracted from the painted panoramas
@@ -301,7 +307,7 @@ function blitStageOverlayPixelCell(
   ctx.imageSmoothingEnabled = false;
   if (albedoAlpha > 0.008) {
     ctx.globalCompositeOperation = 'source-over';
-    ctx.globalAlpha = Math.min(0.92, albedoAlpha);
+    ctx.globalAlpha = Math.min(0.94, albedoAlpha);
     ctx.drawImage(vfxImg, sx, sy, STAGE_VFX_CELL, STAGE_VFX_CELL, rx, ry, rw, rh);
   }
   if (glowAlpha > 0.006) {
@@ -627,12 +633,12 @@ export class AdventureMapRenderer {
     for (let k = firstK; k <= lastK; k++) {
       const baseWx = vistaAnchor + k * vistaPeriod;
 
-      // A. Zone I: Solar Eclipse Stepped Pixel-Rim Corona (`artX = 404, artY = 73`) & Pixel Prominences
-      const eclipseX = baseWx + 404 * PANO_SCALE;
-      const eclipseY = ARCH_WORLD_TOP_Y + 73 * PANO_SCALE; // -65
+      // A. Zone I: Solar Eclipse Stepped Pixel-Rim Corona (`artX = 406, artY = 70, rimR = 44 * PANO_SCALE`)
+      const eclipseX = baseWx + 406 * PANO_SCALE;
+      const eclipseY = ARCH_WORLD_TOP_Y + 70 * PANO_SCALE; // -73
       if (eclipseX + 380 >= viewLeft && eclipseX - 380 <= viewRight) {
         const rimPal = infernoAlpha > 0.5 ? 'ember' : isGlacialPerm ? 'cyan' : 'gold';
-        const rimR = 57 * PANO_SCALE; // ~150px true painted eclipse rim
+        const rimR = 44 * PANO_SCALE; // 115.5px exact ruler-measured eclipse ring!
         for (let i = 0; i < 8; i++) {
           const ang = (i / 8) * Math.PI * 2 + Math.floor(t * 2.0) * 0.196;
           const rx = eclipseX + Math.cos(ang) * rimR;
@@ -643,16 +649,16 @@ export class AdventureMapRenderer {
             drawPixelCrossGlint(ctx, rx, ry, '#fde047', '#ffffff', 4, 2, 0.14 * pulse);
           }
         }
-        // Character-shader pixel prominence tongues licking upward off the eclipse crown
+        // Character-shader pixel prominence tongues hugging the painted eclipse crown (`rimR - 4`)
         const promRow = infernoAlpha > 0.5 ? 6 : isGlacialPerm ? 1 : 0;
-        const promAngles = [-2.25, -1.78, -1.36, -0.88];
+        const promAngles = [-2.22, -1.76, -1.38, -0.92];
         for (let pIdx = 0; pIdx < promAngles.length; pIdx++) {
           const ang = promAngles[pIdx];
-          const px = eclipseX + Math.cos(ang) * (rimR - 6);
-          const py = eclipseY + Math.sin(ang) * (rimR - 6);
-          const pRow = pIdx % 2 === 1 && infernoAlpha <= 0.5 ? 1 : promRow;
+          const px = eclipseX + Math.cos(ang) * (rimR - 4);
+          const py = eclipseY + Math.sin(ang) * (rimR - 4);
+          const pRow = pIdx % 2 === 1 && infernoAlpha <= 0.5 ? 10 : promRow;
           const fCol = Math.floor(t * 12 + pIdx * 4 + k * 3);
-          blitStageOverlayPixelCell(ctx, vfxSheet, pRow, fCol, px - 34, py - 52, 68, 68, 0.54, 0.12);
+          blitStageOverlayPixelCell(ctx, vfxSheet, pRow, fCol, px - 36, py - 58, 72, 74, 0.58, 0.12);
         }
         // Periodic pixel lightning corona arc across the eclipse crest (`Row 5`)
         if ((Math.floor(t * 2.4 + Math.abs(k)) % 3) !== 2) {
@@ -662,24 +668,27 @@ export class AdventureMapRenderer {
             vfxSheet,
             5,
             arcCol,
-            eclipseX - 44,
-            eclipseY - rimR - 46,
+            eclipseX - 42,
+            eclipseY - rimR - 40,
+            84,
             88,
-            92,
             0.52,
             0.12
           );
         }
         // Stepped pixel-staircase diagonal eclipse god-rays
         const rayPulse = 0.7 + 0.3 * Math.sin(t * 1.9 + k);
-        drawPixelStaircaseRay(ctx, eclipseX - 110, eclipseY + 96, -14, 42, 36, 6, '#fde047', 0.042 * rayPulse);
-        drawPixelStaircaseRay(ctx, eclipseX + 74, eclipseY + 96, 14, 42, 36, 6, '#38bdf8', 0.038 * rayPulse);
+        drawPixelStaircaseRay(ctx, eclipseX - 96, eclipseY + 86, -14, 42, 36, 6, '#fde047', 0.042 * rayPulse);
+        drawPixelStaircaseRay(ctx, eclipseX + 62, eclipseY + 86, 14, 42, 36, 6, '#38bdf8', 0.038 * rayPulse);
       }
 
-      // B. Zone II: Starwood Ravine Cascading Pixel Waterfalls (`artX = 523, 566, artY = 198..258`)
+      // B. Zone II: Starwood Ravine Cascading Cliff Waterfalls (exact ruler-verified chutes `447, 493, 552, 642`!)
       const wfChutes = [
-        [523, 198, 54, 118],
-        [566, 208, 62, 126]
+        [447, 196, 46, 112],
+        [493, 214, 52, 112],
+        [552, 226, 56, 104],
+        [642, 130, 60, 176],
+        [638, 210, 72, 140]
       ];
       for (let wf = 0; wf < wfChutes.length; wf++) {
         const [wfArtX, wfArtY, wfW, wfH] = wfChutes[wf];
@@ -691,49 +700,38 @@ export class AdventureMapRenderer {
           ctx,
           wfX,
           wfTopY + wfH * 0.55,
-          wf === 0 ? 'cyan' : 'emerald',
+          wf % 2 === 0 ? 'cyan' : 'emerald',
           6,
           3,
           0.08 * p
         );
-        // `Row 3` (`WATERFALL_CASCADE_FOAM`) locked directly onto the painted cliff waterfall chutes
+        // `Row 3` (`WATERFALL_CASCADE_FOAM`) locked 0.0px onto each painted cliff waterfall chute
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
           3,
-          Math.floor(t * 15 + wf * 6),
+          Math.floor(t * 15 + wf * 5),
           wfX - wfW * 0.5,
-          wfTopY - 8,
+          wfTopY - 6,
           wfW,
           wfH,
-          0.54,
-          0.11
+          0.62,
+          0.12
         );
-        // Plunge-basin rising pixel mist wisp (`Row 7`)
-        blitStageOverlayPixelCell(
-          ctx,
-          vfxSheet,
-          7,
-          Math.floor(t * 10 + wf * 7),
-          wfX - 58,
-          wfTopY + wfH - 36,
-          116,
-          56,
-          0.42,
-          0.08
-        );
-        for (let s = 0; s < 4; s++) {
-          const cyc = (t * (0.62 + (s % 3) * 0.12) + s * 0.23 + wf * 0.4) % 1;
-          const dx = wfX - 12 + (s % 4) * 8;
-          const dy = snapPx(wfTopY + 6 + cyc * (wfH - 18), 4);
-          ctx.save();
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = Math.min(0.14, Math.sin(cyc * Math.PI) * 0.13);
-          ctx.fillStyle = s % 2 === 0 ? '#67e8f9' : '#6ee7b7';
-          ctx.fillRect(dx, dy, 4, 10);
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = 1;
-          ctx.restore();
+        if (wf !== 3) {
+          // Plunge-basin rising pixel mist wisp (`Row 7`) at base of each chute
+          blitStageOverlayPixelCell(
+            ctx,
+            vfxSheet,
+            7,
+            Math.floor(t * 10 + wf * 7),
+            wfX - 58,
+            wfTopY + wfH - 34,
+            116,
+            56,
+            0.44,
+            0.08
+          );
         }
       }
 
@@ -751,7 +749,6 @@ export class AdventureMapRenderer {
         const p = 0.68 + 0.32 * Math.sin(t * 3.1 + sp * 1.8);
         drawSteppedPixelBloom(ctx, spX, spY, 'violet', 5, 2, 0.095 * p);
         if (sp % 2 === 0) {
-          // Distant coiling necropolis soul-mist (`Row 8`)
           blitStageOverlayPixelCell(
             ctx,
             vfxSheet,
@@ -761,10 +758,9 @@ export class AdventureMapRenderer {
             spY - 22,
             116,
             70,
-            0.50,
+            0.52,
             0.10
           );
-          // Duty-cycled jagged spire lightning (`Row 5`) above the necropolis towers
           const strikeWindow = (t * 0.85 + sp * 0.37 + Math.abs(k) * 0.23) % 1;
           if (strikeWindow < 0.46) {
             blitStageOverlayPixelCell(
@@ -783,59 +779,60 @@ export class AdventureMapRenderer {
         }
       }
 
-      // D. Zone IV: Black Pit Volcano Crater Vents (`artY = 96`) & Distant Magma Rivers (`artY = 222`)
+      // D. Zone IV: Black Pit Volcano Smoking Cones (`artX = 1103..1542`) & Valley Lava Pools (`artY = 228`)
       const volcanoCraters = [
-        [1111, 92],
-        [1270, 98],
-        [1454, 98]
+        [1103, 103],
+        [1198, 106],
+        [1263, 103],
+        [1358, 106],
+        [1447, 103],
+        [1542, 106]
       ];
       for (let cr = 0; cr < volcanoCraters.length; cr++) {
         const crX = baseWx + volcanoCraters[cr][0] * PANO_SCALE;
-        if (crX + 120 < viewLeft || crX - 120 > viewRight) continue;
+        if (crX + 90 < viewLeft || crX - 90 > viewRight) continue;
         const crY = ARCH_WORLD_TOP_Y + volcanoCraters[cr][1] * PANO_SCALE;
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
-          6,
-          Math.floor(t * 12 + cr * 5),
-          crX - 28,
-          crY - 44,
-          56,
-          58,
-          0.48,
+          9,
+          Math.floor(t * 11 + cr * 3),
+          crX - 20,
+          crY - 17,
+          40,
+          30,
+          0.58,
           0.10
         );
       }
 
-      const magmaPts = [1148, 1308, 1495];
+      const magmaPts = [1152, 1316, 1482];
       for (let vc = 0; vc < magmaPts.length; vc++) {
         const vcX = baseWx + magmaPts[vc] * PANO_SCALE;
         if (vcX + 170 < viewLeft || vcX - 170 > viewRight) continue;
-        const vcY = ARCH_WORLD_TOP_Y + 222 * PANO_SCALE;
+        const vcY = ARCH_WORLD_TOP_Y + 228 * PANO_SCALE;
         const p = 0.72 + 0.28 * Math.sin(t * 4.6 + vc * 1.9);
         drawSteppedPixelBloom(ctx, vcX, vcY, 'ember', 6, 3, 0.10 * p);
-        // Horizontal bubbling lava-river surge (`Row 9`) hugging the painted valley magma pools
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
           9,
           Math.floor(t * 13 + vc * 5),
-          vcX - 58,
-          vcY - 34,
-          116,
-          58,
-          0.56,
-          0.11
+          vcX - 66,
+          vcY - 37,
+          132,
+          66,
+          0.66,
+          0.12
         );
         if (((t * 0.72 + vc * 0.41) % 1) < 0.34) {
-          // Volcanic ash-cloud dry lightning (`Row 5`) between mountain peaks
           blitStageOverlayPixelCell(
             ctx,
             vfxSheet,
             5,
             Math.floor(t * 17 + vc * 6),
             vcX - 40,
-            vcY - 210,
+            vcY - 216,
             80,
             98,
             0.48,
@@ -935,8 +932,8 @@ export class AdventureMapRenderer {
       }
     }
 
-    // 2. Per-Light `ArcaneShaderFX` Pixel Overlay Animations + Stepped Pixel-Grid Bloom
-    //    locked 0.0px onto the BFS-measured `(artX, bowlLipArtY)` of `adv_arch_pano.png`!
+    // 2. Per-Fixture `ArcaneShaderFX` Wide-Basin Flames, Prism Lanterns & Moonwells
+    //    locked 0.0px onto the ruler-verified coordinates of `adv_arch_pano.png`!
     const archAnchor = PANO_ORIGIN_WORLD_X + (1 - 0.86) * camX;
     const periodWorld = 3930 * PANO_SCALE; // 10316.25
     const firstK = Math.floor((viewLeft - archAnchor) / periodWorld) - 1;
@@ -946,87 +943,79 @@ export class AdventureMapRenderer {
       const baseWx = archAnchor + k * periodWorld;
 
       for (let i = 0; i < ARCH_EMISSIVE_ANCHORS.length; i++) {
-        const [artX, artY, basePalKey, tierSize, baseVfxRow, bowlLipArtY, vfxSize] =
+        const [artX, artY, basePalKey, tierSize, baseVfxRow, anchorArtY, worldW, worldH, mode] =
           ARCH_EMISSIVE_ANCHORS[i];
         const wx = baseWx + artX * PANO_SCALE;
-        if (wx + 140 < viewLeft || wx - 140 > viewRight) continue;
+        if (wx + 160 < viewLeft || wx - 160 > viewRight) continue;
 
         const wy = ARCH_WORLD_TOP_Y + artY * PANO_SCALE;
-        const wyBowl = ARCH_WORLD_TOP_Y + bowlLipArtY * PANO_SCALE;
+        const wyAnchor = ARCH_WORLD_TOP_Y + anchorArtY * PANO_SCALE;
         const palKey = infernoAlpha > 0.65 ? 'ember' : isGlacialPerm ? 'cyan' : basePalKey;
         const flick =
-          0.66 +
-          0.22 * Math.sin(t * (5.2 + (i % 3) * 1.1) + i * 1.73) +
+          0.68 +
+          0.20 * Math.sin(t * (5.2 + (i % 3) * 1.1) + i * 1.73) +
           0.12 * Math.cos(t * 8.4 + i * 2.41);
 
-        // Stepped pixel-diamond bloom halo behind & around the animated pixel flame
         drawSteppedPixelBloom(ctx, wx, wy, palKey, 5, tierSize, 0.11 * flick);
 
-        // Character-style `adv_stage_vfx.png` pixel animation anchored to the painted bowl lip
-        const vfxRow =
-          baseVfxRow === 7
-            ? infernoAlpha > 0.55
-              ? 9
-              : 7
-            : infernoAlpha > 0.55
-              ? 6
-              : isGlacialPerm
-                ? 1
-                : baseVfxRow;
         const fps = 13 + (i % 4) * 1.25;
         const frameCol = Math.floor(t * fps + i * 3 + k * 5);
 
-        if (baseVfxRow === 7) {
-          // Starwood Moonwell glowing water-rune wisp skimming the basin surface
-          const mwW = vfxSize * 1.12;
-          const mwH = vfxSize * 0.58;
+        if (mode === 'moonwell') {
+          const mwRow = infernoAlpha > 0.55 ? 9 : 7;
           blitStageOverlayPixelCell(
             ctx,
             vfxSheet,
-            vfxRow,
+            mwRow,
             frameCol,
-            wx - mwW * 0.5,
-            wyBowl - mwH * 0.62,
-            mwW,
-            mwH,
-            0.62,
+            wx - worldW * 0.5,
+            wyAnchor - worldH * 0.58,
+            worldW,
+            worldH,
+            0.66,
             0.12
           );
-        } else if (artY < 150) {
-          // Hanging Starwood crystal lantern spirit-aura plume (`artY = 116`)
+        } else if (mode === 'prism') {
+          // Closed hanging glass lantern or solid root crystal (`Row 11` centered, NO upward flame tongue!)
+          const prRow = infernoAlpha > 0.65 ? 9 : 11;
           blitStageOverlayPixelCell(
             ctx,
             vfxSheet,
-            vfxRow,
+            prRow,
             frameCol,
-            wx - vfxSize * 0.5,
-            wyBowl - vfxSize * 0.72,
-            vfxSize,
-            vfxSize,
-            0.58,
-            0.12
+            wx - worldW * 0.5,
+            wyAnchor - worldH * 0.50,
+            worldW,
+            worldH,
+            0.68,
+            0.13
           );
         } else {
-          // Standing brazier / root-crystal / crypt soul-pyre / hellfire cauldron (`y_128 = 98` = `0.766` lip)
+          // Wide-Basin Standing Brazier / Spirit Bowl / Soul-Pyre / Hellfire Cauldron (`lip = 0.844`!)
+          const vfxRow =
+            infernoAlpha > 0.55 ? 6 : isGlacialPerm ? 1 : baseVfxRow;
           blitStageOverlayPixelCell(
             ctx,
             vfxSheet,
             vfxRow,
             frameCol,
-            wx - vfxSize * 0.5,
-            wyBowl - vfxSize * 0.766,
-            vfxSize,
-            vfxSize,
-            0.78,
+            wx - worldW * 0.5,
+            wyAnchor - worldH * 0.844,
+            worldW,
+            worldH,
+            0.90,
             0.14
           );
 
-          // 2 character-VFX-style rising pixel sparks/embers drifting out of each brazier
+          // 3 character-VFX-style rising pixel sparks/embers across the full basin width
           const pal = PIXEL_BLOOM_PALETTES[palKey] || PIXEL_BLOOM_PALETTES.gold;
-          for (let sp = 0; sp < 2; sp++) {
-            const sCyc = (t * (0.58 + sp * 0.21) + i * 0.31 + sp * 0.47) % 1;
-            const sx = wx + Math.sin(t * 3.4 + i + sp * 2.2) * (8 + sCyc * 10) + (sp === 0 ? -5 : 5);
-            const sy = wyBowl - 22 - sCyc * 84;
+          for (let sp = 0; sp < 3; sp++) {
+            const sCyc = (t * (0.56 + sp * 0.19) + i * 0.31 + sp * 0.33) % 1;
+            const sx =
+              wx +
+              (sp - 1) * 16 +
+              Math.sin(t * 3.4 + i + sp * 2.2) * (10 + sCyc * 12);
+            const sy = wyAnchor - 26 - sCyc * 98;
             drawRisingPixelSparkWake(
               ctx,
               sx,
@@ -1034,16 +1023,15 @@ export class AdventureMapRenderer {
               sCyc < 0.45 ? 4 : 2,
               pal[2],
               pal[1],
-              Math.sin(sCyc * Math.PI) * 0.85
+              Math.sin(sCyc * Math.PI) * 0.86
             );
           }
         }
 
-        // Periodic crisp pixel `+` glint at the heart/tip of the painted light
         const tw = 0.5 + 0.5 * Math.sin(t * 6.2 + i * 2.1);
         if (tw > 0.45) {
           const pal = PIXEL_BLOOM_PALETTES[palKey] || PIXEL_BLOOM_PALETTES.cyan;
-          const glintLift = artY < 150 ? 0 : -14;
+          const glintLift = mode === 'prism' ? 0 : -18;
           drawPixelCrossGlint(ctx, wx, wy + glintLift, pal[1], pal[2], 4, 2, 0.13 * tw);
         }
       }
@@ -1058,7 +1046,6 @@ export class AdventureMapRenderer {
         const rayBreath = 0.72 + 0.28 * Math.sin(t * 1.85 + b * 1.4);
 
         if (z === 0) {
-          // Zone I: Cathedral stained-glass rays + sweeping pixel wind-ribbons (`Row 7`) + incense sparks
           drawPixelStaircaseRay(ctx, cx - 84, -72, 18, 66, 42, 7, '#7dd3fc', 0.046 * rayBreath);
           drawPixelStaircaseRay(ctx, cx + 48, -54, 18, 66, 36, 6, '#fde047', 0.038 * rayBreath);
           const windX = cx - 220 + ((t * 42 + b * 170) % 440);
@@ -1082,7 +1069,6 @@ export class AdventureMapRenderer {
             drawPixelCrossGlint(ctx, mx, my, col, '#ffffff', 3, 1, Math.sin(cyc * Math.PI) * 0.14);
           }
         } else if (z === 1) {
-          // Zone II: Starwood canopy beams + bioluminescent sylvan wind-streams (`Row 7`) + spores
           drawPixelStaircaseRay(ctx, cx - 96, -66, 16, 64, 42, 7, '#2dd4bf', 0.045 * rayBreath);
           drawPixelStaircaseRay(ctx, cx + 64, -48, 16, 64, 36, 6, '#34d399', 0.040 * rayBreath);
           for (let wIdx = 0; wIdx < 2; wIdx++) {
@@ -1108,7 +1094,6 @@ export class AdventureMapRenderer {
             drawPixelCrossGlint(ctx, sx, sy, col, '#ecfeff', 3, 1, Math.sin(cyc * Math.PI) * 0.15);
           }
         } else if (z === 2) {
-          // Zone III: Amethyst portcullis shafts + coiling crypt soul-mist (`Row 8`) + vault lightning (`Row 5`)
           drawPixelStaircaseRay(ctx, cx - 64, -60, 12, 66, 42, 7, '#c084fc', 0.042 * rayBreath);
           for (let mIdx = 0; mIdx < 2; mIdx++) {
             const mistX = cx - 250 + ((t * (28 + mIdx * 9) + b * 160 + mIdx * 260) % 500);
@@ -1146,18 +1131,18 @@ export class AdventureMapRenderer {
             drawPixelCrossGlint(ctx, wxM, wyM, '#c084fc', '#f3e8ff', 3, 1, Math.sin(cyc * Math.PI) * 0.15);
           }
         } else {
-          // Zone IV: Molten forge heat-columns + colonnade base magma surges (`Row 9`) + rising pixel cinders
+          // Zone IV: Molten forge heat-columns + colonnade curb magma surges (`y = 396..444`) + rising pixel cinders
           drawPixelStaircaseRay(ctx, cx - 72, 42, -10, 58, 42, 6, '#fb923c', 0.044 * rayBreath);
           blitStageOverlayPixelCell(
             ctx,
             vfxSheet,
             9,
             Math.floor(t * 13 + b * 4),
-            cx - 68,
-            356,
-            136,
-            82,
-            0.56,
+            cx - 72,
+            396,
+            144,
+            68,
+            0.58,
             0.11
           );
           for (let e = 0; e < 6; e++) {
@@ -1235,7 +1220,7 @@ export class AdventureMapRenderer {
       );
     }
 
-    // 2. Crisp Causeway Pixel Overlay Animations (`adv_stage_vfx.png`) & Rune Specular Glints
+    // 2. Ruler-Locked Causeway Rune Channels (`y = 483, 551, 663`) & Lava Veins (`y = 496, 567, 615`)!
     const segSpan = 480;
     const firstSeg = Math.floor(viewLeft / segSpan) - 1;
     const lastSeg = Math.ceil(viewRight / segSpan) + 1;
@@ -1247,48 +1232,48 @@ export class AdventureMapRenderer {
       const pulse = 0.58 + 0.42 * Math.sin(t * 3.4 + s * 1.3);
 
       if (z === 0) {
-        drawSteppedPixelBloom(ctx, baseX + 146, 468, s % 2 === 0 ? 'cyan' : 'gold', 5, 2, 0.065 * pulse);
-        // Foreshortened astral wind-wisp skimming along the causeway curb (`Row 7`)
+        drawSteppedPixelBloom(ctx, baseX + 146, 483, s % 2 === 0 ? 'cyan' : 'gold', 5, 2, 0.065 * pulse);
         const slipX = baseX + ((t * 46 + Math.abs(s) * 137) % segSpan);
+        const runeY = s % 2 === 0 ? 483 : 551;
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
           7,
           Math.floor(t * 12 + Math.abs(s) * 3),
           slipX - 72,
-          s % 2 === 0 ? 444 : 612,
+          runeY - 29,
           144,
           58,
-          0.42,
+          0.44,
           0.08
         );
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = Math.min(0.16, 0.13 * pulse);
         ctx.fillStyle = s % 2 === 0 ? '#38bdf8' : '#eab308';
-        ctx.fillRect(baseX + 128, 558, 36, 3);
-        ctx.fillRect(baseX + 312, 562, 36, 3);
+        ctx.fillRect(baseX + 116, 482, 44, 3);
+        ctx.fillRect(baseX + 296, 550, 44, 3);
         ctx.globalCompositeOperation = 'source-over';
         ctx.globalAlpha = 1;
         ctx.restore();
       } else if (z === 1) {
-        drawSteppedPixelBloom(ctx, baseX + 112, 468, 'emerald', 5, 2, 0.075 * pulse);
-        drawSteppedPixelBloom(ctx, baseX + 356, 650, 'aqua', 5, 2, 0.075 * pulse);
+        drawSteppedPixelBloom(ctx, baseX + 112, 483, 'emerald', 5, 2, 0.075 * pulse);
+        drawSteppedPixelBloom(ctx, baseX + 356, 663, 'aqua', 5, 2, 0.075 * pulse);
         const slipX = baseX + ((t * 38 + Math.abs(s) * 163) % segSpan);
+        const sylvY = s % 3 === 0 ? 483 : s % 3 === 1 ? 551 : 663;
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
           7,
           Math.floor(t * 11 + Math.abs(s) * 5),
           slipX - 76,
-          s % 2 === 0 ? 448 : 604,
+          sylvY - 32,
           152,
           64,
           0.50,
           0.10
         );
       } else if (z === 2) {
-        // Coiling pixel crypt-mist ribbon (`Row 8`) creeping across the skull-paved causeway
         const driftX = snapPx(baseX + ((t * 26 + Math.abs(s) * 97) % segSpan), 6);
         const mistY = 492 + (Math.abs(s) % 3) * 44;
         blitStageOverlayPixelCell(
@@ -1313,33 +1298,35 @@ export class AdventureMapRenderer {
         ctx.globalAlpha = 1;
         ctx.restore();
       } else {
-        // Bubbling molten obsidian road-fissure surges (`Row 9`) + rising pixel cinders
+        // Locked 0.0px onto Zone IV's main horizontal lava vein (`y = 567`) & secondary cracks (`y = 496, 615`)!
         const hotPulse = 0.64 + 0.36 * Math.sin(t * 5.0 + s * 1.9);
-        drawSteppedPixelBloom(ctx, baseX + 132, 490, 'ember', 5, 2, 0.085 * hotPulse);
-        drawSteppedPixelBloom(ctx, baseX + 342, 636, 'ember', 5, 2, 0.085 * hotPulse);
+        drawSteppedPixelBloom(ctx, baseX + 140, 567, 'ember', 5, 2, 0.085 * hotPulse);
+        drawSteppedPixelBloom(ctx, baseX + 350, s % 2 === 0 ? 496 : 615, 'ember', 5, 2, 0.085 * hotPulse);
 
         const surgeRow = isGlacialPerm && infernoAlpha <= 0.5 ? 1 : 9;
+        // Row 9 crack line sits at `0.5625` (`36/64`) of cell height -> `567 - 68 * 0.5625 = 529`!
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
           surgeRow,
           Math.floor(t * 13 + Math.abs(s) * 3),
-          baseX + 74,
-          444,
-          118,
-          66,
-          0.64,
+          baseX + 72,
+          567 - 38,
+          136,
+          68,
+          0.68,
           0.12
         );
+        const secVeinY = s % 2 === 0 ? 496 : 615;
         blitStageOverlayPixelCell(
           ctx,
           vfxSheet,
           surgeRow,
           Math.floor(t * 13 + Math.abs(s) * 3 + 7),
-          baseX + 284,
-          608,
-          118,
-          66,
+          baseX + 286,
+          secVeinY - 36,
+          128,
+          64,
           0.64,
           0.12
         );
@@ -1347,8 +1334,8 @@ export class AdventureMapRenderer {
         const cyc = (t * 0.72 + (Math.abs(s) % 5) * 0.2) % 1;
         drawPixelCrossGlint(
           ctx,
-          baseX + 132,
-          488 - cyc * 36,
+          baseX + 140,
+          567 - cyc * 38,
           '#fb923c',
           '#fde047',
           3,

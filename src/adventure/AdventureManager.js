@@ -1,13 +1,13 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps107';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps107';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps107';
+import { Fighter } from '../entities/Fighter.js?v=30fps108';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps108';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps108';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps107';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps107';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps107';
+} from './AdventureProgression.js?v=30fps108';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps108';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps108';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -3155,7 +3155,7 @@ export class AdventureManager {
     // -0.5. Render Dimensional Summoning Portal 2.5D Foreshortened Ground Rune Seals (`advFxSheet` Row 4 Cols 4..7)
     if (this.portals.length > 0) {
       const assets = PixelForge.initAssets();
-      const fxSheet = assets?.advFxSheet;
+      const fxSheet = PixelForge.ensureImage?.(assets?.advFxSheet) || assets?.advFxSheet;
       const fxReady =
         Boolean(fxSheet) &&
         (typeof HTMLImageElement === 'undefined' ||
@@ -3315,10 +3315,10 @@ export class AdventureManager {
             512,
             128,
             128,
-            px - 29,
-            py - 29,
-            58,
-            58
+            px - 32,
+            py - 32,
+            64,
+            64
           );
         } else {
           const colMain = isHp ? '#22c55e' : isEmber ? '#fb923c' : '#38bdf8';
@@ -3331,9 +3331,9 @@ export class AdventureManager {
         ctx.font = '8px "ArcanePixel", "Press Start 2P", monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#05070e';
-        ctx.fillText(tag, px + 1, py - 24);
+        ctx.fillText(tag, px + 1, py - 27);
         ctx.fillStyle = colCore;
-        ctx.fillText(tag, px, py - 25);
+        ctx.fillText(tag, px, py - 28);
       }
       ctx.restore();
     }

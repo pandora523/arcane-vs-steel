@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps107';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps107';
+import { Fighter } from './Fighter.js?v=30fps108';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps108';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -1084,23 +1084,38 @@ export class Monster extends Fighter {
     ctx.save();
     for (const r of this.telegraphRings) {
       const u = Math.max(0, Math.min(1, r.timer / Math.max(0.05, r.maxTimer)));
-      const rx = Math.round(r.x);
-      const ry = Math.round(r.y - 4);
-      const radX = Math.round(r.radius);
-      const radY = Math.max(10, Math.round(r.radius * 0.28));
+      const rx = Math.round(r.x / 2) * 2;
+      const ry = Math.round((r.y - 4) / 2) * 2;
+      const radX = Math.max(12, Math.round(r.radius / 4) * 4);
+      const radY = Math.max(12, Math.round((r.radius * 0.28) / 4) * 4);
+      const fillRx = Math.max(4, Math.round((radX * u) / 4) * 4);
+      const fillRy = Math.max(4, Math.round((radY * u) / 4) * 4);
 
+      // Quantized 4px-stepped pixel-art foreshortened ground fill (0 vector .ellipse calls)
       ctx.globalAlpha = 0.22 + u * 0.28;
       ctx.fillStyle = r.color;
-      ctx.beginPath();
-      ctx.ellipse(rx, ry, radX * u, radY * u, 0, 0, Math.PI * 2);
-      ctx.fill();
+      for (let dy = -fillRy; dy <= fillRy; dy += 4) {
+        const ny = dy / fillRy;
+        const span = Math.round((Math.sqrt(Math.max(0, 1 - ny * ny)) * fillRx) / 4) * 4;
+        if (span >= 4) {
+          ctx.fillRect(rx - span, ry + dy, span * 2, 4);
+        }
+      }
 
+      // Stepped pixel-art foreshortened perimeter ring
       ctx.globalAlpha = 0.88;
-      ctx.strokeStyle = u > 0.78 ? '#fef08a' : r.color;
-      ctx.lineWidth = u > 0.78 ? 3 : 2;
-      ctx.beginPath();
-      ctx.ellipse(rx, ry, radX, radY, 0, 0, Math.PI * 2);
-      ctx.stroke();
+      ctx.fillStyle = u > 0.78 ? '#fef08a' : r.color;
+      const ringT = u > 0.78 ? 4 : 3;
+      let prevSpan = 0;
+      for (let dy = -radY; dy <= radY; dy += 4) {
+        const ny = dy / radY;
+        const span = Math.round((Math.sqrt(Math.max(0, 1 - ny * ny)) * radX) / 4) * 4;
+        const segW = Math.max(ringT, Math.abs(span - prevSpan) + ringT);
+        const edgeX = Math.max(0, Math.max(span, prevSpan) - segW);
+        ctx.fillRect(rx - edgeX - segW, ry + dy, segW, ringT);
+        ctx.fillRect(rx + edgeX, ry + dy, segW, ringT);
+        prevSpan = span;
+      }
 
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(rx - radX - 2, ry - 2, 4, 4);
@@ -2419,9 +2434,9 @@ export class ArchfiendBoss extends Monster {
       ctx.save();
       ctx.imageSmoothingEnabled = false;
 
-      // 1. Subtle Abyssal Magma Underglow along the Right Throne Parapet Lip (`y <= 650`)
+      // 1. Subtle Abyssal Magma Underglow tucked strictly inside the curved CALDERA_RIM (`0,0`) mouth
       ctx.fillStyle = isRoaring ? 'rgba(251, 146, 60, 0.20)' : 'rgba(239, 68, 68, 0.14)';
-      ctx.fillRect(anchorBaseX + 34, 614, torsoSize - 68, 36);
+      ctx.fillRect(anchorBaseX + 108, 596, torsoSize - 216, 30);
 
       // 2. Chasm Clip Mask (`y <= 641 <= 654`) BEFORE stationary CALDERA_RIM!
       ctx.save();
@@ -2476,13 +2491,13 @@ export class ArchfiendBoss extends Monster {
         const chasmTuckX = Math.round(Math.min(1, (riseY + sinkY) / 95) * 114);
         const rearClawX = Math.round(
           torsoX -
-            54 +
+            78 +
             chasmTuckX +
             (this.isDead ? 0 : (this._poseRearClawX || 0) + Math.cos(t * 2.1) * 4)
         );
         const rearClawY = Math.round(
           torsoY +
-            162 +
+            196 +
             (this.isDead ? 0 : (this._poseRearClawY || 0) + Math.sin(t * 2.1) * 4)
         );
         blitCell(rearClawCol, 1, rearClawX, rearClawY, rearClawSz, rearClawSz);
@@ -2616,19 +2631,15 @@ export class ArchfiendBoss extends Monster {
           const fx = Math.round(this.fistWorldX - fistSz * 0.5);
           const fy = Math.round(this.fistWorldY - fistSz + 22);
 
-          // Grounded 2.5D shadow beneath the airborne fist
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.46)';
-          ctx.beginPath();
-          ctx.ellipse(
-            Math.round(this.fistWorldX),
-            Math.round(this.fistShadowGy - 4),
-            56,
-            16,
-            0,
-            0,
-            Math.PI * 2
-          );
-          ctx.fill();
+          // Grounded 2.5D stepped pixel shadow beneath the airborne fist (0 vector .ellipse calls)
+          const shX = Math.round(this.fistWorldX / 2) * 2;
+          const shY = Math.round((this.fistShadowGy - 4) / 2) * 2;
+          ctx.fillStyle = 'rgba(0, 0, 0, 0.44)';
+          ctx.fillRect(shX - 28, shY - 16, 56, 6);
+          ctx.fillRect(shX - 46, shY - 10, 92, 6);
+          ctx.fillRect(shX - 56, shY - 4, 112, 8);
+          ctx.fillRect(shX - 46, shY + 4, 92, 6);
+          ctx.fillRect(shX - 28, shY + 10, 56, 6);
 
           // Overhead Abyssal Hell-Rift Siege Portal Maw (`Cell 5,2`) crowning the vertical gauntlet cuff!
           const riftW = 312;

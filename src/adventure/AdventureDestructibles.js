@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps107';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps108';
 
 /**
  * Interactive 2.5D Architectural Monuments, Braziers & Ancient Artifact Shrines (`AdventureDestructibles`)
@@ -920,6 +920,11 @@ export class AdventureDestructibles {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
+    let propDx = cx - prop.halfW;
+    let propDy = by - prop.height;
+    let propDw = prop.halfW * 2;
+    let propDh = prop.height;
+
     if (sheetReady) {
       // Row 0: Intact Frame A, Row 1: Intact Gleam Frame B, Row 2: Cracked (`0 < hp <= 55%`)
       const gleamFrame = Math.floor(t * 2.8 + prop.index * 0.7) % 2;
@@ -928,6 +933,10 @@ export class AdventureDestructibles {
       const dh = Math.round(PROP_CELL * prop.drawScale);
       const dx = Math.round(cx - dw * 0.5);
       const dy = Math.round(by - (PROP_BASE_Y_IN_CELL / PROP_CELL) * dh);
+      propDx = dx;
+      propDy = dy;
+      propDw = dw;
+      propDh = dh;
 
       ctx.drawImage(
         sheet,
@@ -952,17 +961,74 @@ export class AdventureDestructibles {
       );
     }
 
-    // Subtle stepped pixel-grid core bloom on lit braziers, lanterns & artifact monuments (`alpha <= 0.12`)
-    if (!isRefl && (prop.hasGlow || prop.isArtifact)) {
+    // Live 30fps `adv_stage_vfx.png` pixel flame / prism-aura / mist / surge overlays locked `0.0px`
+    // onto each standing monument's ruler-measured `128x128` emissive socket (`0` `ctx.rotate`!)
+    const stageVfx = !isRefl
+      ? PixelForge.ensureImage?.(assets?.advStageVfx) || assets?.advStageVfx
+      : null;
+    if (!isRefl && isPropSheetReady(stageVfx) && sheetReady) {
+      const fStep = (Math.floor(t * 14 + prop.index * 3) % 16 + 16) % 16;
+      const blitMonumentVfx = (vRow, cellX, cellY, cellW, cellH, anchorRatioY, albA, glwA, fOff = 0) => {
+        const col = (fStep + fOff) & 15;
+        const ow = Math.max(4, Math.round((cellW / PROP_CELL) * propDw));
+        const oh = Math.max(4, Math.round((cellH / PROP_CELL) * propDh));
+        const ox = Math.round(propDx + (cellX / PROP_CELL) * propDw - ow * 0.5);
+        const oy = Math.round(propDy + (cellY / PROP_CELL) * propDh - oh * anchorRatioY);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = isCracked ? albA * 0.72 : albA;
+        ctx.drawImage(stageVfx, col * 128, vRow * 128, 128, 128, ox, oy, ow, oh);
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(0.14, glwA);
+        ctx.drawImage(stageVfx, col * 128, vRow * 128, 128, 128, ox, oy, ow, oh);
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 1;
+      };
+
+      switch (prop.sheetCol) {
+        case 0: // eclipse_brazier: Dual Gold+Cyan flame (`Row 10`) on upper bowl lip `(63.5, 40)`
+          blitMonumentVfx(10, 63.5, 40.0, 64, 68, 0.844, 0.86, 0.13);
+          break;
+        case 1: // eclipse_reliquary: Astral Prism Aura (`Row 11`) centered on stele seal `(64, 64)`
+          blitMonumentVfx(11, 64.0, 64.0, 48, 48, 0.50, 0.64, 0.12);
+          break;
+        case 2: // eclipse_astrolabe: Astral Prism Aura (`Row 11`) centered on orrery core `(63.5, 56)`
+          blitMonumentVfx(11, 63.5, 56.0, 62, 62, 0.50, 0.68, 0.13);
+          break;
+        case 3: // starwood_lantern: Prism Aura (`Row 11`) on right-side hanging lantern arm `(85, 61)`!
+          blitMonumentVfx(11, 85.0, 61.0, 48, 52, 0.50, 0.70, 0.13);
+          break;
+        case 4: // starwood_crystal: Prism Aura (`Row 11`) centered on runestone crystal `(63.5, 44)`
+          blitMonumentVfx(11, 63.5, 44.0, 68, 74, 0.50, 0.66, 0.13);
+          break;
+        case 5: // soul_brazier: Wide Necrotic Soul-Pyre (`Row 4`) on gargoyle bowl lip `(63.5, 62)`
+          blitMonumentVfx(4, 63.5, 62.0, 88, 88, 0.844, 0.88, 0.13);
+          break;
+        case 6: // ossuary_obelisk: Spectral Mist Coil (`Row 8`) around skull collar `(63.5, 68)`
+          blitMonumentVfx(8, 63.5, 68.0, 78, 48, 0.50, 0.62, 0.11);
+          break;
+        case 7: // blackpit_brazier: Wide Hellfire Roar (`Row 6`) on spiked cauldron lip `(63.5, 59)`
+          blitMonumentVfx(6, 63.5, 59.0, 88, 88, 0.844, 0.88, 0.14);
+          break;
+        case 8: // hellfire_pylon: Molten Fissure Surge (`Row 9`) on summit crater `(64, 36)` & base `(64, 92)`
+          blitMonumentVfx(9, 64.0, 36.0, 66, 48, 0.5625, 0.72, 0.12, 0);
+          blitMonumentVfx(9, 64.0, 92.0, 74, 44, 0.5625, 0.68, 0.11, 7);
+          break;
+        default:
+          break;
+      }
+    }
+
+    // Fallback stepped pixel-grid core bloom only while deferred `advStageVfx` is still loading
+    if (!isRefl && !isPropSheetReady(stageVfx) && (prop.hasGlow || prop.isArtifact)) {
       drawSteppedPropPixelBloom(
         ctx,
         prop.primaryColor,
         prop.accentColor,
         cx,
         by - prop.height * 0.62,
-        40,
-        40,
-        0.12 * flick
+        28,
+        28,
+        0.10 * flick
       );
     }
 
