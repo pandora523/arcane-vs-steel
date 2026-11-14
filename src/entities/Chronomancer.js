@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps106';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps106';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps106';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps106';
+import { Fighter } from './Fighter.js?v=30fps107';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps107';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps107';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps107';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps106';
+} from '../engine/shaders/chronoShaders.js?v=30fps107';
 
 const ROMAN_CLOCK_HOURS = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
 const AUTO_SLICES_4 = [
@@ -114,8 +114,8 @@ export class Chronomancer extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('chronomancer');
       const chronoAssets = PixelForge.initAssets()?.chronomancer;
-      if (chronoAssets?.vfx?.src && !chronoAssets.vfx.src.includes('v=30fps106')) {
-        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps106';
+      if (chronoAssets?.vfx?.src && !chronoAssets.vfx.src.includes('v=30fps107')) {
+        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps107';
       }
     }
 

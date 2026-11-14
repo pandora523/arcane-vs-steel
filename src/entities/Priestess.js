@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps106';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps106';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps106';
+import { Fighter } from './Fighter.js?v=30fps107';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps107';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps107';
 import {
   SERAPHIC_EFFECT_REGISTRY,
   SERAPHIC_GOLD_PALETTE,
   SERAPHIC_GRACE_PALETTE,
   SERAPHIC_STAINED_PALETTE
-} from '../engine/shaders/seraphicShaders.js?v=30fps106';
+} from '../engine/shaders/seraphicShaders.js?v=30fps107';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -95,8 +95,8 @@ export class Priestess extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('priestess');
       const priestessAssets = PixelForge.initAssets()?.priestess;
-      if (priestessAssets?.vfx?.src && !priestessAssets.vfx.src.includes('v=30fps106')) {
-        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps106';
+      if (priestessAssets?.vfx?.src && !priestessAssets.vfx.src.includes('v=30fps107')) {
+        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps107';
       }
     }
   }

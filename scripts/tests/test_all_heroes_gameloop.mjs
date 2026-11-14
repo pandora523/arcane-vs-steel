@@ -28,36 +28,35 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps106';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps106';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps106';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps106';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps106';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps106';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps106';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps106';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps106';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps106';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps106';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps106';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps106';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps106';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps106';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps106';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps106';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps107';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps107';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps107';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps107';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps107';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps107';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps107';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps107';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps107';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps107';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps107';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps107';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps107';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps107';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps107';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps107';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps107';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps106';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps106';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps107';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps107';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps106';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps106';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps106';
-import { Adventure3DObjects } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/Adventure3DObjects.js?v=30fps106';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps107';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps107';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps107';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -110,7 +109,7 @@ function createMockCtx(trackForbidden = null) {
     strokeRect() {},
     clearRect() {},
     drawImage(_img, _sx, sy) {
-      if (trackForbidden && typeof sy === 'number') {
+      if (trackForbidden && trackForbidden.syValues && typeof sy === 'number') {
         trackForbidden.syValues.add(sy);
       }
     },
@@ -642,7 +641,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps106');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps107');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -6688,10 +6687,56 @@ for (const [name, Cls] of CLASSES) {
     return { width: buf.readUInt32BE(16), height: buf.readUInt32BE(20) };
   };
 
-  // (27A) Adventure3DObjects: Pinhole 3D Perspective Shift, Frustum Culling, 0 ctx.rotate & Bloom <= 0.16
+  // (27A) Zero 3D Stage Polygons + `ArcaneShaderFX` 10-Row `adv_stage_vfx.png` (2048x1280) Multi-Plane Pixel Overlays
   {
-    const forbidden = { rotate: 0, quad: 0, maxLighterAlpha: 0 };
-    const make3DCtx = (vertLog = null, counter = null) => {
+    const removed3dPath =
+      '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/Adventure3DObjects.js';
+    if (fs.existsSync(removed3dPath)) {
+      throw new Error('[Suite 27A] Adventure3DObjects.js must be completely removed!');
+    }
+    const mapRendererSrc = fs.readFileSync(
+      '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js',
+      'utf8'
+    );
+    if (
+      mapRendererSrc.includes('Adventure3DObjects') ||
+      mapRendererSrc.includes('.ellipse(') ||
+      /\.rotate\s*\(/.test(mapRendererSrc)
+    ) {
+      throw new Error(
+        '[Suite 27A] AdventureMapRenderer.js must contain 0 Adventure3DObjects, 0 vector .ellipse(), and 0 .rotate() calls!'
+      );
+    }
+
+    const stageVfxDims = readPngDims(
+      '/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/adv_stage_vfx.png'
+    );
+    if (stageVfxDims.width !== 2048 || stageVfxDims.height !== 1280) {
+      throw new Error(
+        `[Suite 27A] Expected adv_stage_vfx.png 2048x1280 (10x16 @ 128x128), got ${stageVfxDims.width}x${stageVfxDims.height}`
+      );
+    }
+
+    const pfAssets = PixelForge.initAssets();
+    if (!pfAssets.advStageVfx) {
+      throw new Error('[Suite 27A] PixelForge.initAssets() missing advStageVfx entry!');
+    }
+    pfAssets.advStageVfx.complete = true;
+    pfAssets.advStageVfx.naturalWidth = 2048;
+    pfAssets.advStageVfx.naturalHeight = 1280;
+
+    const forbidden = {
+      rotate: 0,
+      quad: 0,
+      smoothingTrue: 0,
+      maxLighterRectAlpha: 0,
+      maxLighterImgAlpha: 0
+    };
+    const seenRows = new Set();
+    const seenCols = new Set();
+    let stageVfxDraws = 0;
+
+    const makeStageVfxCtx = () => {
       const base = createMockCtx();
       base.rotate = () => {
         forbidden.rotate++;
@@ -6702,107 +6747,96 @@ for (const [name, Cls] of CLASSES) {
       const origFillRect = base.fillRect.bind(base);
       base.fillRect = (x, y, w, h) => {
         if (base.globalCompositeOperation === 'lighter') {
-          forbidden.maxLighterAlpha = Math.max(forbidden.maxLighterAlpha, base.globalAlpha ?? 1);
+          forbidden.maxLighterRectAlpha = Math.max(
+            forbidden.maxLighterRectAlpha,
+            base.globalAlpha ?? 1
+          );
         }
         origFillRect(x, y, w, h);
       };
-      base.lineTo = (x, y) => {
-        if (vertLog) vertLog.push(`${x},${y}`);
-      };
-      base.fill = () => {
-        if (counter) counter.fills++;
+      base.drawImage = (img, sx, sy, sw, sh, dx, dy, dw, dh) => {
+        if (img && typeof img.src === 'string' && img.src.includes('adv_stage_vfx.png')) {
+          stageVfxDraws++;
+          if (base.imageSmoothingEnabled !== false) forbidden.smoothingTrue++;
+          if (sw !== 128 || sh !== 128) {
+            throw new Error(`[Suite 27A] Expected 128x128 cell blit, got ${sw}x${sh}`);
+          }
+          if ([sx, sy, dx, dy, dw, dh].some((v) => !Number.isFinite(v))) {
+            throw new Error('[Suite 27A] Non-finite adv_stage_vfx drawImage arg');
+          }
+          const col = Math.round(sx / 128);
+          const row = Math.round(sy / 128);
+          if (col < 0 || col >= 16 || row < 0 || row >= 10) {
+            throw new Error(`[Suite 27A] Out-of-bounds adv_stage_vfx cell (row=${row}, col=${col})`);
+          }
+          seenRows.add(row);
+          seenCols.add(col);
+          if (base.globalCompositeOperation === 'lighter') {
+            forbidden.maxLighterImgAlpha = Math.max(
+              forbidden.maxLighterImgAlpha,
+              base.globalAlpha ?? 1
+            );
+          }
+        }
       };
       return base;
     };
 
-    for (const camX of [780, 3080, 5480, 8850]) {
-      const counts = { fills: 0 };
-      const ctx3d = make3DCtx(null, counts);
+    for (const camX of [640, 3360, 5620, 8860]) {
+      for (const time of [0.15, 0.52, 0.91]) {
+        const ctxAudit = makeStageVfxCtx();
+        const mockRenderer = {
+          camX,
+          camY: 445,
+          width: 1280,
+          height: 720,
+          zoom: 1,
+          time,
+          permanentStageOverride: null,
+          trueUltStageOverride: null,
+          trueUltStageAlpha: 0
+        };
+        AdventureMapRenderer.render(ctxAudit, mockRenderer, ADVENTURE_WORLD_WIDTH);
+        AdventureMapRenderer.renderForegroundDepth(ctxAudit, mockRenderer);
+        if (ctxAudit._stateStack.length !== 0) {
+          throw new Error(
+            `[Suite 27A] Unbalanced ctx.save/restore stack (${ctxAudit._stateStack.length}) at camX=${camX}`
+          );
+        }
+      }
+    }
+
+    // Also verify Inferno & Glacial stage synergies transform stage pixel overlays cleanly
+    for (const override of ['inferno', 'glacial']) {
+      const ctxOv = makeStageVfxCtx();
       const mockRenderer = {
-        camX,
+        camX: 640,
         camY: 445,
-        width: 1200,
+        width: 1280,
+        height: 720,
         zoom: 1,
-        time: 2.35,
-        permanentStageOverride: null,
+        time: 1.35,
+        permanentStageOverride: override,
         trueUltStageOverride: null,
         trueUltStageAlpha: 0
       };
-      Adventure3DObjects.renderUpperColonnade3D(ctx3d, mockRenderer);
-      Adventure3DObjects.renderParapetCurb3D(ctx3d, mockRenderer);
-      Adventure3DObjects.renderForeground3D(ctx3d, mockRenderer);
-      if (ctx3d._stateStack.length !== 0) {
-        throw new Error(
-          `[Suite 27A] Unbalanced ctx.save/restore stack (${ctx3d._stateStack.length}) at camX=${camX}`
-        );
-      }
-      if (counts.fills < 16) {
-        throw new Error(
-          `[Suite 27A] Expected >=16 painter-sorted 3D faces rendered at camX=${camX}, got ${counts.fills}`
-        );
-      }
+      AdventureMapRenderer.render(ctxOv, mockRenderer, ADVENTURE_WORLD_WIDTH);
+      AdventureMapRenderer.renderForegroundDepth(ctxOv, mockRenderer);
     }
 
-    if (forbidden.rotate !== 0 || forbidden.quad !== 0 || forbidden.maxLighterAlpha > 0.1601) {
-      throw new Error(
-        `[Suite 27A] Forbidden 3D stage calls/bloom: rotate=${forbidden.rotate}, quad=${forbidden.quad}, maxLighterAlpha=${forbidden.maxLighterAlpha}`
-      );
-    }
-
-    // Verify genuine 3D perspective vertex shift as camera sweeps past pier `wx = 1300`
-    const vertsCamLeft = [];
-    const vertsCamRight = [];
-    Adventure3DObjects.renderUpperColonnade3D(make3DCtx(vertsCamLeft), {
-      camX: 1120,
-      camY: 445,
-      width: 1200,
-      zoom: 1,
-      time: 1.0
-    }, {
-      camX: 1120,
-      camY: 445,
-      viewLeft: 1260,
-      viewRight: 1340,
-      t: 1.0
-    });
-    Adventure3DObjects.renderUpperColonnade3D(make3DCtx(vertsCamRight), {
-      camX: 1480,
-      camY: 445,
-      width: 1200,
-      zoom: 1,
-      time: 1.0
-    }, {
-      camX: 1480,
-      camY: 445,
-      viewLeft: 1260,
-      viewRight: 1340,
-      t: 1.0
-    });
     if (
-      vertsCamLeft.length === 0 ||
-      vertsCamRight.length === 0 ||
-      vertsCamLeft.join('|') === vertsCamRight.join('|')
+      seenRows.size !== 10 ||
+      seenCols.size < 12 ||
+      stageVfxDraws < 400 ||
+      forbidden.rotate !== 0 ||
+      forbidden.quad !== 0 ||
+      forbidden.smoothingTrue !== 0 ||
+      forbidden.maxLighterRectAlpha > 0.1801 ||
+      forbidden.maxLighterImgAlpha > 0.1601
     ) {
-      throw new Error('[Suite 27A] Expected true 3D perspective vertex shift across camX=1120 vs camX=1480');
-    }
-
-    // Verify camera frustum culling outside world bounds (`viewLeft = 9850..10200`)
-    const culledCounts = { fills: 0 };
-    Adventure3DObjects.renderUpperColonnade3D(make3DCtx(null, culledCounts), {
-      camX: 10000,
-      camY: 445,
-      width: 1200,
-      zoom: 1,
-      time: 1.0
-    }, {
-      camX: 10000,
-      camY: 445,
-      viewLeft: 9850,
-      viewRight: 10200,
-      t: 1.0
-    });
-    if (culledCounts.fills !== 0) {
-      throw new Error(`[Suite 27A] Expected 0 3D faces in culled slice, got ${culledCounts.fills}`);
+      throw new Error(
+        `[Suite 27A] adv_stage_vfx audit failed: rows=${[...seenRows].sort((a, b) => a - b).join(',')}, cols=${seenCols.size}, draws=${stageVfxDraws}, forbidden=${JSON.stringify(forbidden)}`
+      );
     }
   }
 
@@ -7064,7 +7098,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   console.log(
-    '[PASS] Suite 27: Adventure 3D HD-2D Stage Objects, 32-Cell Colossal Boss Malphas & 100% Lossless Engine Optimizations verified!'
+    '[PASS] Suite 27: Character-Style Stage Pixel Overlays (adv_stage_vfx.png, 0 3D Polygons), 32-Cell Colossal Boss Malphas & 100% Lossless Engine Optimizations verified!'
   );
 }
 

@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps106';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps106';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps106';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps106';
+import { Fighter } from './Fighter.js?v=30fps107';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps107';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps107';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps107';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -102,8 +102,8 @@ export class FireMage extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('mage');
       const mageAssets = PixelForge.initAssets()?.mage;
-      if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps106')) {
-        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps106';
+      if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps107')) {
+        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps107';
       }
     }
   }
