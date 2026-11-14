@@ -30,7 +30,7 @@ import {
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const ARTIFACT_DIR =
-  '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/3a4b2cf8-05c2-45a3-bb65-af6f5b5a1088';
+  '/home/antigravity/.gemini/jetski/brain/v1/default/jetski_remote_agents_3p/7821d65d-384a-4e26-8167-f32a84e377d8/scratch';
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -244,6 +244,7 @@ function bakeVfxSheet() {
   const cell104 = new Uint8Array(LOGICAL * LOGICAL * 4);
   const cell208 = new Uint8Array(CELL * CELL * 4);
 
+  let rawBorderClips = 0;
   let borderClips = 0;
 
   for (let r = 0; r < ROWS; r++) {
@@ -256,6 +257,13 @@ function bakeVfxSheet() {
       inst.render(pen104, 'back');
       inst.render(pen104, 'front');
       resolveSurfaceToRGBA(surface104, cell104, 1.15);
+
+      cell208.fill(0);
+      blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, cell208, CELL, 0, 0);
+      if (has4pxBorderClip208(cell208, CELL, 4)) {
+        rawBorderClips++;
+      }
+
       enforceSafeCellMargin104(cell104, LOGICAL, LOGICAL);
 
       cell208.fill(0);
@@ -292,9 +300,9 @@ function bakeVfxSheet() {
   fs.writeFileSync(outClosePath, encodeRgbaPng(closeW, closeH, closeRgba));
 
   console.log(
-    `[build_chronomancer_vfx_30fps] Wrote ${outSheetPath} (${sheetW}x${sheetH}), ${outDbgPath} (${dbgW}x${dbgH}), ${outClosePath} (${closeW}x${closeH}) | borderClips=${borderClips}/240`
+    `[build_chronomancer_vfx_30fps] Wrote ${outSheetPath} (${sheetW}x${sheetH}), ${outDbgPath} (${dbgW}x${dbgH}), ${outClosePath} (${closeW}x${closeH}) | rawBorderClips=${rawBorderClips}/240 | borderClips=${borderClips}/240`
   );
-  if (borderClips > 0) {
+  if (rawBorderClips > 0 || borderClips > 0) {
     process.exitCode = 1;
   }
 }

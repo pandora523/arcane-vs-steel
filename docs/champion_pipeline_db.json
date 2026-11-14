@@ -101,7 +101,7 @@
       "theme": "chrono",
       "base_source": "assets/sprites/chronomancer_v3_base.jpg",
       "logical_res": "104x104 (2x NEAREST -> 208x208, 10 rows x 30 cols = 6240x2080)",
-      "rig": "14-part cel-clustered Midnight-Navy & Brass-Gold Horological Duelist rig + Rotating Grand XII Clock-Wheel Halo + Twin Hands of Fate (Minute Glaive + Hour Short-Blade / Pocket-Astrolabe) + Row 9 XII-Hour Halo Bow Victory Pose + 8-Row Eternal Zero & Paradox Clone VFX Suite + Supine Collapse",
+      "rig": "14-part cel-clustered Midnight-Navy & Brass-Gold Horological Duelist rig (--combat-rows-only surgical 10-row pipeline preserving SHA-256 identity on Rows 0/1/5/6/9) + Rotating Grand XII Clock-Wheel Halo + Twin Hands of Fate (Minute Glaive + Hour Short-Blade / Pocket-Astrolabe) + 4-Variant Close-Quarters Twin Clock-Blade Melee (Row 2: F00..F07 Diagonal Cleave, F08..F14 Paradox Phantom Scissor, F15..F22 Horological Fleche Thrust, F23..F29 XII Chime Execution) + Sovereign Y-Invocation & Pocket-Astrolabe Snap (Row 4) + Row 9 XII-Hour Halo Bow Victory Pose + 8-Row Razor Hairline Twin-Cut & Ornate Escapement Clock-Hand Knife VFX Suite + Supine Collapse",
       "script": "scripts/build_chronomancer_30fps_sheet.py",
       "vfx_script": "scripts/build_chronomancer_vfx_30fps.mjs"
     },

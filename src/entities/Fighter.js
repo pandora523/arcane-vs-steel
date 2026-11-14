@@ -151,13 +151,13 @@ export class Fighter {
         };
       case 'chronomancer':
         return {
-          comboGoal: 3,
-          sweetMin: 145,
-          sweetMax: 235,
-          counterCrouchBias: 0.58,
-          midLeapMin: 215,
-          midLeapMax: 335,
-          midLeapChance: 0.36,
+          comboGoal: 4,
+          sweetMin: 98,
+          sweetMax: 142,
+          counterCrouchBias: 0.56,
+          midLeapMin: 175,
+          midLeapMax: 285,
+          midLeapChance: 0.38,
           postStyle: 'chrono'
         };
       case 'valkyrie':
@@ -1040,13 +1040,14 @@ export class Fighter {
     this.torsoVel += force * dt;
     this.torsoAngle += this.torsoVel * dt;
 
-    // Ambient Aura & Desperation Overdrive Particles (decluttered for the 5 custom-shader heroes)
+    // Ambient Aura & Desperation Overdrive Particles (decluttered for the custom-shader heroes)
     const isDeclutteredHero =
       this.heroId === 'titan' ||
       this.heroId === 'reaper' ||
       this.heroId === 'archer' ||
       this.heroId === 'icemage' ||
       this.heroId === 'android' ||
+      this.heroId === 'chronomancer' ||
       Boolean(this.isMonster);
     const ambientChance = isDeclutteredHero ? (this.isBerserk ? 0.10 : 0) : this.isBerserk ? 0.56 : 0.28;
     if (!this.isFullyBurrowed && ambientChance > 0 && Math.random() < ambientChance) {
@@ -1353,19 +1354,19 @@ export class Fighter {
               this.moveDir = 0;
             }
           } else if (this.heroId === 'chronomancer') {
-            // Sovereign of Time (Chronos): poised mid-close halberd spacing (145..205px)
+            // Sovereign of Time (Chronos): close-quarters Twin Clock-Blade duelist spacing (98..136px)
             const nearChronoWall = this.x < effMinWall + 65 || this.x > effBackMaxWall - 65;
-            if (dist > 205) {
+            if (dist > 136) {
               this.state = 'WALK';
               this.moveDir = 1;
-              this.walkPhase += dt * 4.2;
-              this.x += this.facing * this.moveSpeed * 0.80 * dt;
+              this.walkPhase += dt * 4.4;
+              this.x += this.facing * this.moveSpeed * 0.88 * dt;
               this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-            } else if (dist < 145 && !nearChronoWall) {
+            } else if (dist < 98 && !nearChronoWall) {
               this.state = 'WALK';
               this.moveDir = -1;
               this.walkPhase += dt * 4.0;
-              this.x -= this.facing * this.moveSpeed * 0.65 * dt;
+              this.x -= this.facing * this.moveSpeed * 0.62 * dt;
               this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
             } else {
               this.state = 'IDLE';

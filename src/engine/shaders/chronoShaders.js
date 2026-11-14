@@ -34,7 +34,7 @@ import {
   drawTiltedOrbitBand,
   drawStarburstFlare,
   drawMultiLayerCrescentArc
-} from '../ArcaneShaderFX.js?v=30fps98';
+} from '../ArcaneShaderFX.js?v=30fps99';
 
 const TWO_PI = Math.PI * 2;
 const BACK_HALF = (theta) => Math.sin(theta) < 0;
@@ -341,7 +341,7 @@ export const temporalCrescentRift = {
         const primaryRamp = cfg.isGold ? brass : teal;
         const secondaryRamp = cfg.isGold ? teal : brass;
         const r = (cfg.radius || 26) * (0.72 + 0.36 * grow);
-        const w = (cfg.width || 10) * (1 - u * 0.38);
+        const w = (cfg.width || 10) * 0.65 * (1 - u * 0.38);
 
         drawMultiLayerCrescentArc(pen, {
           cx: -2 + Math.cos(aim) * 4,
@@ -349,8 +349,8 @@ export const temporalCrescentRift = {
           radius: r,
           width: w,
           eccentricity: 0.78,
-          headAngle: aim + 1.05 + grow * 0.35,
-          tailAngle: aim - 1.35 + grow * 0.2,
+          headAngle: aim + 0.96 + grow * 0.32,
+          tailAngle: aim - 1.24 + grow * 0.2,
           fade,
           ramp: primaryRamp,
           seed: cfg.seed || 67,
@@ -358,16 +358,16 @@ export const temporalCrescentRift = {
           flashHot: u < 0.28
         });
 
-        if (u > 0.05 && u < 0.88) {
+        if (u > 0.05 && u < 0.84) {
           drawMultiLayerCrescentArc(pen, {
             cx: -4,
             cy: 0,
             radius: r * 0.72,
-            width: w * 0.65,
+            width: w * 0.62,
             eccentricity: 0.76,
-            headAngle: aim + 0.85 + grow * 0.25,
-            tailAngle: aim - 1.05,
-            fade: fade * 0.9,
+            headAngle: aim + 0.78 + grow * 0.22,
+            tailAngle: aim - 0.96,
+            fade: fade * 0.85,
             ramp: secondaryRamp,
             seed: (cfg.seed || 67) + 19,
             t,
@@ -375,10 +375,6 @@ export const temporalCrescentRift = {
           });
         }
 
-        const tipX = Math.cos(aim) * (r * 0.68);
-        const tipY = Math.sin(aim) * (r * 0.68);
-        drawChronoCrosshair(pen, tipX, tipY, 8 * fade, brass[6], teal[5], fade, t * 8);
-        drawStarburstFlare(pen, tipX, tipY, 9 * fade, fade, primaryRamp);
         motes.render(pen);
       }
     };
@@ -386,21 +382,26 @@ export const temporalCrescentRift = {
 };
 
 // ============================================================================
-// 3. LIVE 2.5D TWIN CLOCK-HAND X-SCISSOR RIFT SLASH (`chronoTimeRiftSlash`)
+// 3. LIVE 2.5D RAZOR HAIRLINE TIME-SLIT & TWIN X-CUT (`chronoTimeRiftSlash`)
 // ============================================================================
 export const chronoTimeRiftSlash = {
-  duration: 0.42,
+  duration: 0.34,
   loop: false,
   defaults: {
     palette: CHRONO_TEAL_PALETTE,
     seed: 79,
-    radius: 30
+    radius: 28,
+    angle: -0.28,
+    cross: false
   },
   create(cfg) {
     const teal = buildColorRamp(cfg.palette, 8);
     const brass = buildColorRamp(CHRONO_BRASS_PALETTE, 8);
     const rng = new DeterministicRng(cfg.seed);
     const motes = new MotePool({ rng, sparkRamp: [PURE_WHITE, brass[6], teal[5], teal[4]] });
+    const isCross = Boolean(cfg.cross);
+    const primaryAng = cfg.angle ?? (isCross ? (20 * Math.PI) / 180 : -0.28);
+    const secondaryAng = -(22 * Math.PI) / 180;
     let t = 0;
     let burstDone = false;
 
@@ -408,20 +409,21 @@ export const chronoTimeRiftSlash = {
       step(dt) {
         if (!burstDone) {
           burstDone = true;
-          for (let i = 0; i < 18; i++) {
-            const baseAng = (i % 2 === 0 ? 28 : -28) * (Math.PI / 180) + (i < 9 ? 0 : Math.PI);
-            const a = baseAng + rng.between(-0.32, 0.32);
-            const spd = rng.between(65, 185);
+          const count = isCross ? 10 : 7;
+          for (let i = 0; i < count; i++) {
+            const baseAng = (isCross && i % 2 === 1 ? secondaryAng : primaryAng) + (i % 3 === 0 ? Math.PI : 0);
+            const a = baseAng + rng.between(-0.22, 0.22);
+            const spd = rng.between(48, 135);
             motes.emit(
               i % 3 === 0 ? 'glint' : 'spark',
-              Math.cos(a) * 6,
-              Math.sin(a) * 6,
+              Math.cos(a) * 5,
+              Math.sin(a) * 5,
               Math.cos(a) * spd,
               Math.sin(a) * spd,
-              rng.between(0.18, 0.36),
-              i % 2 === 0 ? teal[5] : brass[5],
+              rng.between(0.14, 0.28),
+              i % 2 === 0 ? teal[5] : brass[6],
               1,
-              15
+              8
             );
           }
         }
@@ -429,27 +431,55 @@ export const chronoTimeRiftSlash = {
         motes.step(dt);
       },
       renderBack(pen) {
-        const u = clamp01(t / 0.42);
-        const fade = 1 - smoothStep(0.68, 1.0, u);
+        const u = clamp01(t / 0.34);
+        const fade = 1 - smoothStep(0.62, 1.0, u);
         if (fade <= 0.03) return;
-        const r = (cfg.radius || 30) * (0.7 + 0.3 * Easing.outCubic(u));
-        pen.radialGlow(0, 0, r * 0.95, teal[5], 0.34 * fade);
+        const r = (cfg.radius || 28) * (0.72 + 0.28 * Easing.outCubic(u));
+        pen.radialGlow(0, 0, r * 0.72, teal[5], 0.22 * fade);
       },
       renderFront(pen) {
-        const u = clamp01(t / 0.42);
-        const pop = smoothStep(0, 0.14, u);
-        const fade = 1 - smoothStep(0.7, 1.0, u);
+        const u = clamp01(t / 0.34);
+        const fade = 1 - smoothStep(0.64, 1.0, u);
         if (fade <= 0.03) return;
-        const span = (cfg.radius || 30) * (0.72 + 0.34 * Easing.outCubic(u));
-        const angA = (28 * Math.PI) / 180;
-        const angB = (-28 * Math.PI) / 180;
+        const span = Math.min(34, (cfg.radius || 28) * (0.78 + 0.26 * Easing.outCubic(u)));
+        const maxHw = mixScalar(1.35, 0.55, smoothStep(0.45, 1.0, u));
+        const cA = Math.cos(primaryAng);
+        const sA = Math.sin(primaryAng);
+        const cB = Math.cos(secondaryAng);
+        const sB = Math.sin(secondaryAng);
+        const boxR = Math.ceil(span + 3);
 
-        drawClockHand(pen, 0, 0, angA, span, 3.6 * fade, teal[5], PURE_WHITE, fade);
-        drawClockHand(pen, 0, 0, angA + Math.PI, span * 0.85, 3.0 * fade, teal[4], teal[6], fade);
-        drawClockHand(pen, 0, 0, angB, span, 3.6 * fade, brass[5], PURE_WHITE, fade);
-        drawClockHand(pen, 0, 0, angB + Math.PI, span * 0.85, 3.0 * fade, brass[4], brass[6], fade);
+        pen.shadeBox(-boxR, -boxR, boxR, boxR, (px, py, out) => {
+          const alongA = px * cA + py * sA;
+          const perpA = Math.abs(-px * sA + py * cA);
+          const uA = Math.abs(alongA) / Math.max(1, span);
+          if (uA <= 1.0) {
+            const hwA = maxHw * (1 - 0.68 * uA * uA);
+            if (perpA <= hwA) {
+              out.alpha = fade > 0.35 ? 1 : fade;
+              out.glowColor = COL_CYAN_HOT;
+              out.glowStrength = 0.24 * fade;
+              return perpA < 0.55 && uA < 0.78 ? PURE_WHITE : uA < 0.55 ? COL_CYAN_HOT : COL_TURQUOISE;
+            }
+          }
 
-        drawStarburstFlare(pen, 0, 0, (10 + 4 * pop) * fade, fade, brass);
+          if (isCross) {
+            const alongB = px * cB + py * sB;
+            const perpB = Math.abs(-px * sB + py * cB);
+            const uB = Math.abs(alongB) / Math.max(1, span * 0.92);
+            if (uB <= 1.0) {
+              const hwB = maxHw * 0.94 * (1 - 0.68 * uB * uB);
+              if (perpB <= hwB) {
+                out.alpha = fade > 0.35 ? 1 : fade;
+                out.glowColor = COL_GOLD_HOT;
+                out.glowStrength = 0.24 * fade;
+                return perpB < 0.52 && uB < 0.74 ? PURE_WHITE : uB < 0.55 ? COL_GOLD_HOT : COL_GOLD_BRIGHT;
+              }
+            }
+          }
+          return 0;
+        });
+
         motes.render(pen);
       }
     };
@@ -1430,16 +1460,15 @@ export const chronoShatterBurstCell = {
           }
         }
 
-        // 4. Central 8-Point Horological Star-Burst Core (`F00..F18`)
-        if (u < 0.68) {
-          const coreScale = 1 - u / 0.68;
-          drawChronoCrosshair(pen, 0, 0, 18 * coreScale, COL_GOLD_HOT, COL_CYAN_HOT, 1, 0);
-          drawChronoCrosshair(pen, 0, 0, 12 * coreScale, COL_TURQUOISE, COL_GOLD_BRIGHT, 1, Math.PI * 0.25);
+        // 4. Crisp Early Cardinal Spark Core (`F00..F07`, ZERO 45-deg X-crosshair!)
+        if (u < 0.28) {
+          const coreScale = 1 - u / 0.28;
+          drawChronoCrosshair(pen, 0, 0, 10 * coreScale, COL_GOLD_HOT, COL_CYAN_HOT, 1, 0);
         }
 
         applySelectiveOutlineOnSurface(pen.surface, SELOUT_INDIGO, 3);
-        if (shrink > 0.15) {
-          drawStarburstFlare(pen, 0, 0, 12 * shrink, 1, brass);
+        if (u < 0.32) {
+          drawStarburstFlare(pen, 0, 0, 7 * (1 - u / 0.32), 1, brass);
         }
       }
     };
@@ -1450,9 +1479,9 @@ export const timeShatterNovaCell = chronoShatterBurstCell;
 
 /**
  * Row 5 (`y = 1040`) — `paradoxTwinScissorCell`:
- * Wide, dramatic Twin Clock-Hand X-Scissor Cleave:
- *  - `+28°` cyan-white Minute slash intersecting `-28°` burnished-gold Hour slash
- *  - Central 4-point horological starflare & scissor-snap spark burst!
+ * Razor Hairline Twin-Cuts (`+22°` Cyan-White Minute Slit x `-24°` Sovereign-Gold Hour Slit):
+ *  - Ultra-crisp ~1.2px hairline intersecting blade cuts with 1px dark Selout
+ *  - Zero center ring, zero 45-deg X-crosshair, zero fat diamond propeller!
  */
 export const paradoxTwinScissorCell = {
   duration: 1.0,
@@ -1460,7 +1489,6 @@ export const paradoxTwinScissorCell = {
   defaults: { palette: CHRONO_TEAL_PALETTE, seed: 659 },
   create(cfg) {
     const teal = buildColorRamp(cfg.palette, 8);
-    const brass = buildColorRamp(CHRONO_BRASS_PALETTE, 8);
 
     return {
       step() {},
@@ -1468,94 +1496,63 @@ export const paradoxTwinScissorCell = {
         const u = clamp01(localT / 1.0);
         if (u >= 0.96) return;
 
-        // Scissor-snap kinematics: jaws close rapidly toward +-28° (`F00..F06`), lock & blaze (`F07..F19`), taper clean (`F20..F28`)
-        const snap = Easing.outCubic(clamp01(u / 0.22));
-        const taper = 1 - smoothStep(0.64, 0.96, u);
-        const halfAngle = mixScalar(44, 28, snap) * (Math.PI / 180);
-        const span = (26 + 13 * Easing.outBack(clamp01(u / 0.25), 1.15)) * (0.86 + 0.14 * taper);
-        const bladeW = 5.6 * taper;
+        // Scissor-snap kinematics: jaws snap from +-36° to +-22° (`F00..F05`), hold razor tension (`F06..F21`), dash-fade (`F22..F28`)
+        const snap = Easing.outCubic(clamp01(u / 0.16));
+        const taper = 1 - smoothStep(0.68, 0.96, u);
+        const angA = mixScalar(36, 21, snap) * (Math.PI / 180);
+        const angB = -mixScalar(38, 24, snap) * (Math.PI / 180);
+        const spanA = 35.5 * (0.9 + 0.1 * snap);
+        const spanB = 33.5 * (0.9 + 0.1 * snap);
+        const maxHw = mixScalar(1.28, 0.62, smoothStep(0.58, 0.96, u));
 
-        pen.radialGlow(0, 0, 34 * taper, teal[5], 0.4 * taper);
+        pen.radialGlow(0, 0, 22 * taper, teal[5], 0.18 * taper);
 
-        const cA = Math.cos(halfAngle);
-        const sA = Math.sin(halfAngle);
-        const cB = Math.cos(-halfAngle);
-        const sB = Math.sin(-halfAngle);
+        const cA = Math.cos(angA);
+        const sA = Math.sin(angA);
+        const cB = Math.cos(angB);
+        const sB = Math.sin(angB);
 
-        // Render Twin Intersecting Clock-Hand Scissor Blades inside `[-39, +39]`
-        pen.shadeBox(-40, -36, 40, 36, (px, py, out) => {
-          if (Math.abs(px) > 39 || Math.abs(py) > 34) return 0;
+        pen.shadeBox(-38, -30, 38, 30, (px, py, out) => {
+          if (Math.abs(px) > 37 || Math.abs(py) > 28) return 0;
 
-          // Blade A (`+28°` Luminous Cyan-White Minute Slash, slightly bowed outward)
+          // Optional crisp pixel-dash breakup only at the very end (`F25..F28`, `u > 0.82`)
+          const dashFade = u > 0.82 ? ((Math.abs(Math.round(px)) + Math.abs(Math.round(py))) % 3 === 0) : false;
+          if (dashFade) return 0;
+
+          // Hairline Cut A (`+21°` Cyan-White Razor Slit)
           const alongA = px * cA + py * sA;
-          const perpA = -px * sA + py * cA;
-          const uA = alongA / Math.max(1, span);
-          if (Math.abs(uA) <= 1.0) {
-            const profA = Math.pow(1 - uA * uA, 0.72);
-            const bowA = 2.6 * (1 - uA * uA);
-            const dA = Math.abs(perpA - bowA);
-            const hwA = bladeW * profA;
-            if (hwA > 0.55 && dA <= hwA) {
+          const dA = Math.abs(-px * sA + py * cA);
+          const uA = Math.abs(alongA) / spanA;
+          if (uA <= 1.0) {
+            const hwA = maxHw * (1 - 0.52 * uA * uA);
+            if (dA <= hwA) {
               out.alpha = 1;
-              const qA = 1 - dA / hwA;
               out.glowColor = COL_CYAN_HOT;
-              out.glowStrength = 0.34 * qA;
-              if (qA > 0.62) return PURE_WHITE;
-              if (qA > 0.32) return COL_CYAN_HOT;
-              return perpA > bowA ? COL_TURQUOISE : COL_TEAL_DEEP;
+              out.glowStrength = 0.24 * taper;
+              if (dA < 0.56 && uA < 0.82) return PURE_WHITE;
+              return uA < 0.58 ? COL_CYAN_HOT : COL_TURQUOISE;
             }
           }
 
-          // Blade B (`-28°` Burnished-Gold Hour Slash, slightly bowed opposite)
+          // Hairline Cut B (`-24°` Sovereign-Gold Razor Slit)
           const alongB = px * cB + py * sB;
-          const perpB = -px * sB + py * cB;
-          const uB = alongB / Math.max(1, span);
-          if (Math.abs(uB) <= 1.0) {
-            const profB = Math.pow(1 - uB * uB, 0.72);
-            const bowB = -2.6 * (1 - uB * uB);
-            const dB = Math.abs(perpB - bowB);
-            const hwB = bladeW * profB;
-            if (hwB > 0.55 && dB <= hwB) {
+          const dB = Math.abs(-px * sB + py * cB);
+          const uB = Math.abs(alongB) / spanB;
+          if (uB <= 1.0) {
+            const hwB = maxHw * 0.96 * (1 - 0.52 * uB * uB);
+            if (dB <= hwB) {
               out.alpha = 1;
-              const qB = 1 - dB / hwB;
               out.glowColor = COL_GOLD_HOT;
-              out.glowStrength = 0.34 * qB;
-              if (qB > 0.62) return PURE_WHITE;
-              if (qB > 0.32) return COL_GOLD_HOT;
-              return perpB < bowB ? COL_GOLD_BRIGHT : COL_BRASS_MID;
+              out.glowStrength = 0.24 * taper;
+              if (dB < 0.54 && uB < 0.78) return PURE_WHITE;
+              return uB < 0.56 ? COL_GOLD_HOT : COL_GOLD_BRIGHT;
             }
           }
 
           return 0;
         });
 
-        // Escapement Pivot Ring at Intersection + Scissor-Snap Sparks
-        if (taper > 0.25) {
-          pen.strokeRing(0, 0, 8.5 * snap, 1.5, u < 0.3 ? PURE_WHITE : COL_GOLD_BRIGHT, 1);
-          for (let i = 0; i < 8; i++) {
-            const isCyan = i % 2 === 0;
-            const baseA = (isCyan ? halfAngle : -halfAngle) + (i < 4 ? 0 : Math.PI);
-            const dist = (10 + u * 24) * (0.75 + (i % 3) * 0.12);
-            const sx = Math.cos(baseA + 0.18 * (isCyan ? 1 : -1)) * dist;
-            const sy = Math.sin(baseA + 0.18 * (isCyan ? 1 : -1)) * dist;
-            if (Math.abs(sx) <= 37 && Math.abs(sy) <= 32) {
-              pen.fillCircle(sx, sy, 1.5, isCyan ? COL_TURQUOISE : COL_GOLD_BRIGHT, 1);
-              pen.pixel(sx, sy, PURE_WHITE);
-            }
-          }
-        }
-
-        // Crisp 4-Point Central Horological Starflare!
-        const starLen = (15 + 5 * Math.sin(clamp01(u / 0.5) * Math.PI)) * taper;
-        if (starLen > 2.5) {
-          drawChronoCrosshair(pen, 0, 0, starLen, COL_GOLD_HOT, COL_CYAN_HOT, 1, 0);
-          pen.fillCircle(0, 0, Math.max(1.8, 3.6 * taper), PURE_WHITE, 1);
-        }
-
         applySelectiveOutlineOnSurface(pen.surface, SELOUT_INDIGO, 3);
-        if (taper > 0.15) {
-          drawStarburstFlare(pen, 0, 0, 11 * taper, 1, brass);
-        }
       }
     };
   }
@@ -1563,11 +1560,10 @@ export const paradoxTwinScissorCell = {
 
 /**
  * Row 6 (`y = 1248`) — `suspendedClockSpearCell`:
- * Unmistakable horizontal (`+X` pointing) Colossal Golden-Brass & Cyan-Crystal Giant Clock-Hand Spear:
- *  - `x = 12..92` in `104x104` logical space (`lx = -40..+40` -> `160px` long in `208x208`!)
- *  - Ornate circular brass escapement hilt on the left (`lx = -39..-17`)
- *  - Razor-tapered diamond clock-hand spearhead pointing `+X` on the right (`lx = -16..+40`)
- *    with pulsing cyan-white energy core & golden Roman tick marks!
+ * Crisp Horizontal (`+X` pointing) Golden-Brass & Cyan-Crystal Clock-Hand Knife / Spear:
+ *  - Strictly bounded inside `lx = -30..+34, ly = -12..+12` (`0/240` raw & post border clips!)
+ *  - Ornate 8-cog brass escapement wheel hilt with 4 dark quadrant cutouts on the left (`lx = -28..-11`)
+ *  - Swept gold wing cross-guard (`lx = -12..-7`) + sleek cyan-gold Clock-Hand Knife blade (`lx = -8..+33`)
  */
 export const suspendedClockSpearCell = {
   duration: 1.0,
@@ -1582,151 +1578,117 @@ export const suspendedClockSpearCell = {
       renderFront(pen, localT) {
         const progress = clamp01(localT / 1.0);
         const rot = progress * TWO_PI;
-        const pulseX = -14 + ((progress * 2) % 1) * 52;
+        const pulseX = -6 + ((progress * 2) % 1) * 36;
 
-        // Luminous horological aura along the spear core & tip
-        pen.radialGlow(-25, 0, 16, brass[5], 0.32);
-        pen.radialGlow(14, 0, 24, teal[5], 0.36);
+        pen.radialGlow(-19, 0, 13, brass[5], 0.24);
+        pen.radialGlow(11, 0, 19, teal[5], 0.28);
 
-        pen.shadeBox(-41, -22, 41, 22, (px, py, out) => {
+        pen.shadeBox(-32, -15, 35, 15, (px, py, out) => {
           const ay = Math.abs(py);
 
-          // A. Left Pommel Finial (`px = -40..-34`)
-          if (px >= -40 && px < -33.5) {
-            const pMax = 3.6 * (1 - Math.abs(px + 36.8) / 3.6);
+          // A. Left Pommel Finial (`px = -29.5..-26.0`)
+          if (px >= -29.5 && px < -25.5) {
+            const pMax = 2.8 * (1 - Math.abs(px + 27.5) / 2.6);
             if (ay <= pMax) {
               out.alpha = 1;
               out.glowColor = COL_GOLD_BRIGHT;
-              out.glowStrength = 0.24;
-              return ay < 1.2 ? COL_GOLD_HOT : py < 0 ? COL_GOLD_BRIGHT : COL_BRASS_DEEP;
+              out.glowStrength = 0.2;
+              return ay < 1.0 ? COL_GOLD_HOT : py < 0 ? COL_GOLD_BRIGHT : COL_BRASS_DEEP;
             }
           }
 
-          // B. Ornate Circular Brass Escapement Hilt Ring (`cx = -25.5, cy = 0, r = 9.2`)
-          const hdx = px + 25.5;
+          // B. Ornate 8-Cog Brass Escapement Gear Hilt (`cx = -19.0, cy = 0, r <= 8.6`)
+          const hdx = px + 19.0;
           const hdy = py;
           const hr = Math.hypot(hdx, hdy);
-          if (hr <= 10.6) {
+          if (hr <= 8.8) {
             const ha = Math.atan2(hdy, hdx) + rot;
             const normHa = ((ha % TWO_PI) + TWO_PI) % TWO_PI;
             const cogF = ((normHa / TWO_PI) * 8) % 1;
-            const outerHiltR = cogF >= 0.22 && cogF <= 0.78 ? 10.4 : 8.8;
+            const outerHiltR = cogF >= 0.22 && cogF <= 0.78 ? 8.6 : 7.0;
 
-            if (hr >= 6.0 && hr <= outerHiltR) {
+            if (hr >= 5.0 && hr <= outerHiltR) {
               out.alpha = 1;
               out.glowColor = COL_GOLD_BRIGHT;
-              out.glowStrength = 0.26;
-              return hr > 8.6 ? COL_GOLD_HOT : py < 0 ? COL_GOLD_BRIGHT : COL_BRASS_MID;
+              out.glowStrength = 0.22;
+              return hr > 7.0 ? COL_GOLD_HOT : py < 0 ? COL_GOLD_BRIGHT : COL_BRASS_MID;
             }
-            // Spinning Interior Escapement Cross-Spokes & Cyan Jewel Hub
             const spokeF = ((normHa / TWO_PI) * 4) % 1;
-            if (hr < 2.6) {
+            if (hr < 2.3) {
               out.alpha = 1;
               out.glowColor = PURE_WHITE;
-              out.glowStrength = 0.38;
-              return hr < 1.4 ? PURE_WHITE : COL_CYAN_HOT;
+              out.glowStrength = 0.32;
+              return hr < 1.2 ? PURE_WHITE : COL_GOLD_HOT;
             }
-            if (hr < 6.0 && (spokeF < 0.16 || spokeF > 0.84)) {
+            if (hr < 5.0 && (spokeF < 0.17 || spokeF > 0.83)) {
               out.alpha = 1;
               return COL_GOLD_BRIGHT;
             }
           }
 
-          // C. Swept Horological Crescent Cross-Guard Wings (`px = -17..-10, ay <= 13.5`)
-          if (px >= -17.5 && px <= -10.0) {
-            const gU = (px + 17.5) / 7.5;
-            const wingOuter = 13.5 * Math.sin(gU * Math.PI * 0.85 + 0.2);
-            const wingInner = Math.max(0, 5.2 * (1 - gU));
+          // C. Swept Gold Cross-Guard Quillons (`px = -12.5..-7.0, ay <= 10.2`)
+          if (px >= -12.5 && px <= -7.0) {
+            const gU = (px + 12.5) / 5.5;
+            const wingOuter = 10.2 * Math.sin(gU * Math.PI * 0.85 + 0.2);
+            const wingInner = Math.max(0, 3.8 * (1 - gU));
             if (ay >= wingInner && ay <= wingOuter) {
               out.alpha = 1;
               out.glowColor = COL_GOLD_HOT;
-              out.glowStrength = 0.26;
-              if (ay > wingOuter - 1.6) return COL_GOLD_HOT;
+              out.glowStrength = 0.22;
+              if (ay > wingOuter - 1.3) return COL_GOLD_HOT;
               return py < 0 ? COL_GOLD_BRIGHT : COL_BRASS_MID;
             }
           }
 
-          // D. Colossal Razor-Tapered Diamond Clock-Hand Spearhead (`px = -13..+40`, pointing `+X`)
-          if (px >= -13.0 && px <= 40.0) {
+          // D. Sleek Clock-Hand Knife Blade (`px = -8.5..+33.0`, pointing `+X`)
+          if (px >= -8.5 && px <= 33.0) {
             let maxHalfW;
-            if (px < -1.0) {
-              // Neck widening into diamond clock-hand shoulder (`px = -13..-1`: `3.8 -> 9.4`)
-              const uNeck = (px + 13.0) / 12.0;
-              maxHalfW = mixScalar(3.8, 9.4, uNeck);
+            if (px < -1.5) {
+              const uNeck = (px + 8.5) / 7.0;
+              maxHalfW = mixScalar(3.4, 6.8, uNeck);
             } else {
-              // Long razor-tapered spearhead from shoulder (`px = -1`: `9.4`) to needle point (`px = +40`: `0.5`)
-              const uTip = (px + 1.0) / 41.0;
-              maxHalfW = 9.4 * Math.pow(1 - uTip, 0.88) + 0.45 * (1 - uTip);
-            }
-
-            // Ornate rear barb cutout notch at `px = -3..+1`
-            if (px >= -4.5 && px <= -1.5 && ay > 6.8 && ay < 8.4) {
-              return 0;
+              const uTip = (px + 1.5) / 34.5;
+              maxHalfW = 6.8 * Math.pow(1 - uTip, 0.86) + 0.45 * (1 - uTip);
             }
 
             if (ay <= maxHalfW) {
               out.alpha = 1;
 
-              // Open Horological Diamond Aperture (`px = -7..+1, ay = 1.8..4.0`)
-              if (px >= -7.5 && px <= 0.5) {
-                const dAp = Math.abs(px + 3.5) / 4.0 + Math.abs(ay - 3.0) / 1.5;
-                if (dAp < 0.85) {
-                  out.glowColor = COL_TURQUOISE;
-                  out.glowStrength = 0.34;
-                  return COL_CYAN_HOT;
-                }
-              }
-
-              // Pulsing Cyan-White Energy Core along center spine (`ay <= 1.7`)
-              const coreHalf = Math.min(1.75, maxHalfW * 0.42);
-              if (ay <= coreHalf || px > 35.5) {
-                const nearPulse = Math.abs(px - pulseX) < 7.5;
+              // Crisp Horizontal Pure-White Fuller Spine (`py in [-1.1..+0.4]`)
+              if (py >= -1.1 && py <= 0.45 && px >= -5.5 && px <= 31.5) {
+                const nearPulse = Math.abs(px - pulseX) < 6.0;
                 out.glowColor = PURE_WHITE;
-                out.glowStrength = nearPulse ? 0.48 : 0.36;
-                return ay < 0.9 || nearPulse || px > 34.0 ? PURE_WHITE : COL_CYAN_HOT;
-              }
-
-              // Roman Tick Marks Engraved Along the Clock-Spear Spine!
-              const tickRel = (px + 10) % 8.0;
-              const isRomanTick =
-                px >= -9 &&
-                px <= 28 &&
-                tickRel >= 0 &&
-                tickRel <= 1.35 &&
-                ay >= coreHalf + 0.4 &&
-                ay <= Math.min(maxHalfW - 0.9, coreHalf + 3.2);
-              if (isRomanTick) {
-                out.glowColor = COL_GOLD_HOT;
-                out.glowStrength = 0.32;
+                out.glowStrength = nearPulse ? 0.38 : 0.28;
                 return PURE_WHITE;
               }
 
-              // Cyan-Crystal Inner Bevel (`ay <= maxHalfW * 0.62`) + Golden-Brass Outer Razor Edge!
-              if (ay <= maxHalfW * 0.62) {
-                out.glowColor = COL_TURQUOISE;
-                out.glowStrength = 0.24;
-                return py < 0 ? COL_TURQUOISE : COL_TEAL_DEEP;
+              // Burnished Sovereign-Gold Outer Collar & Lower Bevel
+              const isGoldCollar = px < -3.5 && ay > maxHalfW * 0.52;
+              const isLowerGoldEdge = py > 0 && ay >= Math.max(1.8, maxHalfW * 0.56);
+              const isUpperGoldRim = py < 0 && ay >= maxHalfW - 1.05 && px < 14.0;
+              if (isGoldCollar || isLowerGoldEdge || isUpperGoldRim) {
+                out.glowColor = COL_GOLD_BRIGHT;
+                out.glowStrength = 0.2;
+                return py < 0 || ay >= maxHalfW - 1.0 ? COL_GOLD_HOT : py > maxHalfW * 0.78 ? COL_BRASS_MID : COL_GOLD_BRIGHT;
               }
 
-              out.glowColor = COL_GOLD_BRIGHT;
-              out.glowStrength = 0.22;
-              if (ay >= maxHalfW - 1.25) {
-                return py <= 0 ? COL_GOLD_HOT : COL_GOLD_BRIGHT;
+              // Subtle Dark-Teal Horological Minute Ribs Engraved Across Cyan Blade Face
+              const ribPhase = (px + 4.0) % 6.0;
+              if (px >= -2.0 && px <= 21.0 && ribPhase >= 0 && ribPhase < 0.95 && ay >= 1.4 && ay <= maxHalfW - 1.4) {
+                return COL_TEAL_DEEP;
               }
-              return py < 0 ? COL_GOLD_BRIGHT : COL_BRASS_MID;
+
+              // Luminous Cyan-Crystal Upper & Core Blade Face
+              out.glowColor = COL_TURQUOISE;
+              out.glowStrength = 0.24;
+              return py < 0 || px > 24.0 ? COL_CYAN_HOT : COL_TURQUOISE;
             }
           }
 
           return 0;
         });
 
-        // 1px Dark Selective Outline (`Selout`) around the entire 160px Giant Clock-Hand Spear!
         applySelectiveOutlineOnSurface(pen.surface, SELOUT_INDIGO, 2);
-
-        // Tip Star-Glint at `lx = +38, ly = 0` (stays strictly inside `<= +40`!)
-        pen.pixel(39, 0, PURE_WHITE);
-        pen.pixel(38, -1, COL_CYAN_HOT);
-        pen.pixel(38, 1, COL_CYAN_HOT);
       }
     };
   }
@@ -1736,7 +1698,7 @@ export const suspendedClockSpearCell = {
  * Row 7 (`y = 1456`) — `twelfthBellCataclysmCell`:
  * Massive Twelfth Bell Midnight Shatter Nova —
  * fracturing XII clock-ring exploding into sharp turquoise-cyan glass shards,
- * golden escapement sparks, and white shock-rings!
+ * golden escapement sparks, white shock-rings, and vertical Midnight XII pointer (zero 45-deg X-crosshair!).
  */
 export const twelfthBellCataclysmCell = {
   duration: 1.0,
@@ -1755,16 +1717,16 @@ export const twelfthBellCataclysmCell = {
         const grow = Easing.outCubic(u);
         const shrink = 1 - smoothStep(0.68, 0.97, u);
 
-        pen.radialGlow(0, 0, 38 * shrink, u < 0.22 ? brass[6] : teal[5], 0.46 * shrink);
+        pen.radialGlow(0, 0, 36 * shrink, u < 0.22 ? brass[6] : teal[5], 0.38 * shrink);
 
         // 1. Twin Expanding Pure-White & Cyan-Gold Shock-Rings (`r <= 37.5`)
         const outerShockR = 9 + grow * 28.5;
         const innerShockR = 5 + Easing.outCubic(clamp01((u - 0.08) / 0.92)) * 24;
         if (u < 0.84) {
-          pen.strokeRing(0, 0, outerShockR, Math.max(1.2, 2.8 * (1 - u * 0.7)), u < 0.3 ? PURE_WHITE : COL_CYAN_HOT, 1);
+          pen.strokeRing(0, 0, outerShockR, Math.max(1.2, 2.6 * (1 - u * 0.7)), u < 0.3 ? PURE_WHITE : COL_CYAN_HOT, 1);
         }
         if (u > 0.08 && u < 0.88) {
-          pen.strokeRing(0, 0, innerShockR, Math.max(1.0, 2.0 * (1 - u * 0.65)), COL_GOLD_BRIGHT, 1);
+          pen.strokeRing(0, 0, innerShockR, Math.max(1.0, 1.9 * (1 - u * 0.65)), COL_GOLD_BRIGHT, 1);
         }
 
         // 2. Fracturing XII Clock-Ring Exploding into 12 Sharp Stained-Glass Wedge Shards!
@@ -1814,19 +1776,14 @@ export const twelfthBellCataclysmCell = {
           }
         }
 
-        // 4. Midnight XII Hands & Central Cataclysmic Star-Cross (`F00..F19`)
-        if (u < 0.66) {
-          const k = 1 - u / 0.66;
-          drawClockHand(pen, 0, -2, -Math.PI * 0.5, 24 * k, 3.0 * k, COL_GOLD_HOT, PURE_WHITE, 1);
-          drawChronoCrosshair(pen, 0, 0, 22 * k, COL_GOLD_HOT, COL_CYAN_HOT, 1, 0);
-          drawChronoCrosshair(pen, 0, 0, 15 * k, COL_TURQUOISE, COL_GOLD_BRIGHT, 1, Math.PI * 0.25);
-          pen.fillCircle(0, 0, Math.max(2.0, 5.5 * k), PURE_WHITE, 1);
+        // 4. Vertical Midnight XII Hand Only (`F00..F16`, ZERO 45-deg X-crosshair!)
+        if (u < 0.56) {
+          const k = 1 - u / 0.56;
+          drawClockHand(pen, 0, 2, -Math.PI * 0.5, 11 * k, Math.max(1.2, 2.2 * k), COL_GOLD_HOT, PURE_WHITE, 1);
+          pen.line(-Math.round(3 * k), 0, Math.round(3 * k), 0, COL_GOLD_BRIGHT, 1);
         }
 
         applySelectiveOutlineOnSurface(pen.surface, SELOUT_INDIGO, 3);
-        if (shrink > 0.12) {
-          drawStarburstFlare(pen, 0, 0, 14 * shrink, 1, brass);
-        }
       }
     };
   }

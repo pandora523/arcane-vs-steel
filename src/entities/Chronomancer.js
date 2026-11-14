@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps98';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps98';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps98';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps98';
+import { Fighter } from './Fighter.js?v=30fps99';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps99';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps99';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps99';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps98';
+} from '../engine/shaders/chronoShaders.js?v=30fps99';
 
 const ROMAN_CLOCK_HOURS = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
 const AUTO_SLICES_4 = [
@@ -17,20 +17,20 @@ const AUTO_SLICES_4 = [
 ];
 
 /**
- * Chronos (`chronomancer`) — Martial Clock-Blade & Temporal Paradox Clone Sovereign.
+ * Chronos (`chronomancer`) — Martial Twin Clock-Blade & Temporal Paradox Clone Sovereign.
  * Powered natively by `ArcaneShaderFX` (dual-buffer 120Hz HD-2D 2.5D shader & particle engine)
- * + `assets/sprites/chronomancer_sheet.png` & `assets/sprites/chronomancer_vfx.png` (8 rows x 30 cols @ 208x208).
+ * + `assets/sprites/chronomancer_sheet.png` (10 rows x 30 cols @ 208x208) & `assets/sprites/chronomancer_vfx.png` (8 rows x 30 cols @ 208x208).
  *
  * Signature Kit:
- *  - 4-Stage Horological Blade & Clone Auto-Attack:
- *      1. MINUTE-GLAIVE RIFT WAVE (`Row 2 F00..F07` close cleave + piercing `Row 0` Crescent Sonic Wave)
- *      2. PARADOX PHANTOM PINCER (Cyan Future-Clone behind enemy `68..74` + `Row 5` Twin Clock-Hand X-Scissor)
- *      3. ESCAPEMENT NEEDLE VOLLEY (`Row 2 F15..F22` fencer lunge + twin angled piercing Chrono-Needles)
- *      4. XII CHIME PENDULUM SLAM (Guaranteed Crit `Row 5` + `Row 4` Shatter, `1.15s` Chrono Slow & `+7 Mana`)
+ *  - 4-Stage Close-Quarters Twin Clock-Blade & Clone Auto-Attack (`Row 2`, zero `clock_gear` saw-disc spam):
+ *      1. MINUTE-GLAIVE DIAGONAL CLEAVE (`Row 2 F00..F07` step-in + `+34°` Twin Clock-Blade cut & razor `chronoTimeRiftSlash`)
+ *      2. PARADOX PHANTOM SCISSOR (Cyan Future-Clone behind enemy `68..74` + `Row 5` Razor Hairline Twin-Cuts)
+ *      3. HOROLOGICAL FLECHE THRUST (`Row 2 F15..F22` coiled fencer lunge + razor horizontal needle slit & `+5 Mana`)
+ *      4. XII CHIME EXECUTION CLEAVE (Guaranteed Crit `Row 5` + `Row 4` Crystal Shatter, `1.15s` Chrono Slow & `+7 Mana`)
  *  - Skill: CHRONO-SCHISM: PARADOX ASSAULT & REWIND (`Row 1` Past-Timeline Anchor -> Warp X-Scissor + `3.8s` Stasis Field -> Instant Rewind & Heal)
  *  - Overdrive (`ULTIMATE`): TRI-TIMELINE CONVERGENCE (`Row 3` Grand Horologium + Gold Past-Clone & Cyan Future-Clone 3-Beat Cross-Slash)
  *  - Supreme Ultimate (`TRUE_ULTIMATE`): ETERNAL ZERO: TWELFTH BELL (`4.55s` True Time-Stop, Grand XII Astral Clockwork Dome,
- *      6-Angle Paradox Clone & `Row 6` Giant Clock-Spear Barrage in Stopped Time -> Single Instant `395` Crit Midnight Shatter!)
+ *      6-Angle Paradox Clone & `Row 6` Giant Clock-Hand Knife Barrage in Stopped Time -> Single Instant `680` Crit Midnight Shatter!)
  */
 export class Chronomancer extends Fighter {
   constructor(x, groundY, facing = 1) {
@@ -39,9 +39,9 @@ export class Chronomancer extends Fighter {
       ...opts,
       name: opts.name || 'Chronos',
       maxHp: 3730,
-      attackRange: 260,
-      moveSpeed: 218,
-      autoInterval: 0.88,
+      attackRange: 152,
+      moveSpeed: 224,
+      autoInterval: 0.84,
       lightColor: 'rgba(45, 212, 191, 1)',
       primaryColor: '#2dd4bf',
       hasTrueUltimate: true,
@@ -52,7 +52,7 @@ export class Chronomancer extends Fighter {
     this.theme = 'chrono';
     this.deathSfx = 'death_chrono';
 
-    this.autoDuration = 0.86;
+    this.autoDuration = 0.82;
     this.skillMaxCooldown = 4.58;
     this.skillDuration = 1.08;
     this.skillTriggerRange = 435;
@@ -113,7 +113,7 @@ export class Chronomancer extends Fighter {
     if (typeof Image !== 'undefined') {
       const chronoAssets = PixelForge.initAssets()?.chronomancer;
       if (chronoAssets?.vfx?.src && !chronoAssets.vfx.src.includes('v=30fps62')) {
-        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps98';
+        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps99';
       }
     }
 
@@ -218,6 +218,11 @@ export class Chronomancer extends Fighter {
   }
 
   clampArenaX(x, game, margin = 115) {
+    if (game?.adventure?.active && game.adventure.lockActive) {
+      const lMin = (game.adventure.lockMinX || 80) + 32;
+      const lMax = Math.max(lMin + 40, (game.adventure.lockMaxX || 9520) - 32);
+      return Math.max(lMin, Math.min(lMax, x));
+    }
     const ww = game?.renderer ? game.renderer.worldWidth : 1200;
     return Math.max(margin, Math.min(ww - margin, x));
   }
@@ -420,21 +425,21 @@ export class Chronomancer extends Fighter {
     if (enemy && !enemy.isDead) {
       const dist = Math.abs(enemy.x - this.x);
       if (dist < 210) {
-        // Vault cleanly over/past close pressure onto the open Clock-Blade flank (`175px` sweet-spot)
+        // Vault cleanly over/past close pressure onto the open Clock-Blade flank (`132px` melee sweet-spot)
         const crossSign = this.x < enemy.x ? 1 : -1;
-        let target = enemy.x + crossSign * 175;
+        let target = enemy.x + crossSign * 132;
         if (target < 140 || target > ww - 140) {
-          target = enemy.x - crossSign * 185;
+          target = enemy.x - crossSign * 140;
         }
         this.flipTargetX = this.clampArenaX(target, game, 130);
       } else {
-        // Agile aerial advance into mid-close Clock-Blade range (`165px`)
+        // Agile aerial advance into close Clock-Blade range (`128px`)
         const toEnemy = Math.sign(enemy.x - this.x) || this.facing;
-        this.flipTargetX = this.clampArenaX(enemy.x - toEnemy * 165, game, 130);
+        this.flipTargetX = this.clampArenaX(enemy.x - toEnemy * 128, game, 130);
       }
       this.dashDir = Math.sign(this.flipTargetX - this.flipStartX) || dir;
     } else {
-      this.flipTargetX = this.clampArenaX(this.x + dir * 250, game, 130);
+      this.flipTargetX = this.clampArenaX(this.x + dir * 235, game, 130);
       this.dashDir = dir;
     }
 
@@ -470,7 +475,7 @@ export class Chronomancer extends Fighter {
       light: 1.24,
       extra: { isArrival: true }
     });
-    this.spawnVfxAnim(1, this.x + this.facing * 34, this.y - 88, 148, 148, 0.36, {
+    this.spawnVfxAnim(1, this.x + this.facing * 34, this.y - 88, 128, 128, 0.32, {
       followOwner: true,
       offsetX: 34,
       offsetY: -88,
@@ -500,7 +505,7 @@ export class Chronomancer extends Fighter {
       flip: advanceDir < 0,
       palette: CHRONO_TEAL_PALETTE,
       light: 1.22,
-      extra: { isGold: false, radius: 25, width: 9 }
+      extra: { isGold: false, radius: 24, width: 7 }
     });
     if (game?.audio) game.audio.play('time_rewind', this.x);
     game?.vfx?.spawnGlyphBurst?.(this.x, this.y - 88, 6, 'chrono');
@@ -508,7 +513,7 @@ export class Chronomancer extends Fighter {
   }
 
   onStartDodge(enemy, game, dir) {
-    // Check if an enemy projectile is approaching: counter-parry with Escapement Crouch!
+    // Check if an enemy projectile is approaching: counter-parry with Escapement X-Guard Crouch!
     const incomingProj =
       game?.vfx?.projectiles?.some(
         (p) =>
@@ -532,7 +537,7 @@ export class Chronomancer extends Fighter {
     this.spawnTemporalEcho(PixelForge.getFrameIndex(this, this.walkPhase));
     if (game?.audio) game.audio.play('time_rewind', this.x);
 
-    // Signature Skirmisher Flank Warp: warps through close pressure to enemy's opposite 170px flank!
+    // Signature Skirmisher Flank Warp: warps through close pressure onto enemy's opposite 136px Clock-Blade flank!
     if (enemy && !enemy.isDead && (dist < 195 || nearWall)) {
       this.isChronoWarp = true;
       this.didChronoWarp = false;
@@ -542,9 +547,9 @@ export class Chronomancer extends Fighter {
       this.vx = 0;
 
       const crossSign = this.x < enemy.x ? 1 : -1;
-      let targetX = enemy.x + crossSign * 172;
+      let targetX = enemy.x + crossSign * 136;
       if (targetX < 135 || targetX > ww - 135) {
-        targetX = enemy.x - crossSign * 185;
+        targetX = enemy.x - crossSign * 144;
       }
       this.warpTargetX = this.clampArenaX(targetX, game, 125);
       this.dashDir = Math.sign(this.warpTargetX - this.warpOriginX) || 1;
@@ -580,7 +585,7 @@ export class Chronomancer extends Fighter {
   updateDashOrDodge(dt, enemy, game) {
     const t = this.stateTimer;
 
-    // Row 8 (`JUMP` — Time-Glide Aerial Vault & Apex Minute-Blade Crescent Wave)
+    // Row 8 (`JUMP` — Pendulum Leap & `+34°` Plunge Cleave)
     if ((this.state === 'JUMP' || this.state === 'DODGE') && this.isFlipVault) {
       const u = Math.min(1, t / this.dashDuration);
       const airU = Math.max(0, Math.min(1, (u - 0.1) / 0.76));
@@ -611,36 +616,50 @@ export class Chronomancer extends Fighter {
 
       if (u >= 0.48 && !this.didActionFrame && enemy && !enemy.isDead) {
         this.didActionFrame = true;
-        if (game?.audio) game.audio.play('clock_gear', this.x);
         const sx = this.x + this.facing * 42;
-        const sy = this.y - 104;
-        const dx = enemy.x - sx;
-        const dy = enemy.y - 96 - sy;
-        const td = Math.hypot(dx, dy) || 1;
-        game?.vfx?.spawnProjectile?.({
-          x: sx,
-          y: sy,
-          vx: (dx / td) * 675,
-          vy: (dy / td) * 675,
-          radius: 19,
-          color: '#2dd4bf',
-          coreColor: '#facc15',
-          owner: this,
-          damage: 46,
-          pierce: true,
-          type: 'clock_gear'
-        });
-        this.fx?.spawn('temporalCrescentRift', sx, sy, {
-          flip: this.facing < 0,
-          palette: CHRONO_BRASS_PALETTE,
-          light: 1.24,
-          extra: { aimAngle: Math.atan2(dy, Math.abs(dx)), isGold: true, radius: 26, width: 10 }
-        });
-        this.spawnVfxAnim(0, sx, sy, 176, 176, 0.24, {
-          flipX: this.facing < 0,
-          glowColor: 'teal',
-          inFront: true
-        });
+        const sy = this.y - 98;
+        const distNow = Math.abs(enemy.x - this.x);
+
+        if (distNow <= 175) {
+          // Close-range `+34°` Plunge Cleave (`Row 8 F12..F21`) — pure razor blade strike!
+          if (game?.audio) game.audio.play('slash', enemy.x);
+          enemy.takeDamage(52, this, false, 88, -34);
+          this.fx?.spawn('chronoTimeRiftSlash', enemy.x, enemy.y - 96, {
+            flip: this.facing < 0,
+            palette: CHRONO_TEAL_PALETTE,
+            light: 1.24,
+            extra: { cross: false, angle: 0.34, radius: 30 }
+          });
+          this.spawnVfxAnim(5, enemy.x, enemy.y - 96, 168, 168, 0.24, {
+            flipX: this.facing < 0,
+            glowColor: 'teal',
+            inFront: true
+          });
+        } else {
+          if (game?.audio) game.audio.play('clock_gear', this.x);
+          const dx = enemy.x - sx;
+          const dy = enemy.y - 96 - sy;
+          const td = Math.hypot(dx, dy) || 1;
+          game?.vfx?.spawnProjectile?.({
+            x: sx,
+            y: sy,
+            vx: (dx / td) * 675,
+            vy: (dy / td) * 675,
+            radius: 17,
+            color: '#2dd4bf',
+            coreColor: '#facc15',
+            owner: this,
+            damage: 46,
+            pierce: true,
+            type: 'clock_gear'
+          });
+          this.fx?.spawn('temporalCrescentRift', sx, sy, {
+            flip: this.facing < 0,
+            palette: CHRONO_BRASS_PALETTE,
+            light: 1.22,
+            extra: { aimAngle: Math.atan2(dy, Math.abs(dx)), isGold: true, radius: 24, width: 7 }
+          });
+        }
       }
 
       if (t >= this.dashDuration) {
@@ -668,7 +687,7 @@ export class Chronomancer extends Fighter {
           light: 1.3,
           extra: { isArrival: true }
         });
-        this.spawnVfxAnim(4, this.x, this.groundY - 94, 188, 188, 0.28, {
+        this.spawnVfxAnim(4, this.x, this.groundY - 94, 168, 168, 0.26, {
           flipX: this.facing < 0,
           glowColor: 'gold',
           inFront: true
@@ -693,17 +712,17 @@ export class Chronomancer extends Fighter {
       !this.didActionFrame &&
       enemy &&
       !enemy.isDead &&
-      Math.abs(enemy.x - this.x) <= 146
+      Math.abs(enemy.x - this.x) <= 148
     ) {
       this.didActionFrame = true;
-      enemy.takeDamage(48, this, false, 95, -50);
+      enemy.takeDamage(50, this, false, 95, -50);
       if (game?.audio) game.audio.play('slash', enemy.x);
       this.fx?.spawn('chronoTimeRiftSlash', enemy.x, enemy.y - 94, {
         flip: this.facing < 0,
-        light: 1.28,
-        extra: { radius: 28 }
+        light: 1.26,
+        extra: { cross: true, radius: 28 }
       });
-      this.spawnVfxAnim(5, enemy.x, enemy.y - 94, 212, 212, 0.28, {
+      this.spawnVfxAnim(5, enemy.x, enemy.y - 94, 176, 176, 0.26, {
         flipX: this.facing < 0,
         glowColor: 'teal',
         inFront: true
@@ -726,35 +745,48 @@ export class Chronomancer extends Fighter {
 
     if (t >= 0.34 && !this.didActionFrame) {
       this.didActionFrame = true;
-      this.vx += this.facing * 75;
-      if (game?.audio) game.audio.play('clock_gear', this.x);
+      this.vx += this.facing * 85;
+      const spawnX = this.x + this.facing * 56;
+      const spawnY = this.y - 90;
+      const distNow = enemy && !enemy.isDead ? Math.abs(enemy.x - this.x) : 999;
 
-      const spawnX = this.x + this.facing * 52;
-      const spawnY = this.y - 92;
-      game?.vfx?.spawnProjectile?.({
-        x: spawnX,
-        y: spawnY,
-        vx: this.facing * 680,
-        vy: 0,
-        radius: 20,
-        color: '#2dd4bf',
-        coreColor: '#facc15',
-        owner: this,
-        damage: 54,
-        pierce: true,
-        type: 'clock_gear'
-      });
-      this.fx?.spawn('temporalCrescentRift', spawnX, spawnY, {
-        flip: this.facing < 0,
-        palette: CHRONO_BRASS_PALETTE,
-        light: 1.26,
-        extra: { aimAngle: 0, isGold: true, radius: 26, width: 10 }
-      });
-      this.spawnVfxAnim(0, spawnX, spawnY, 184, 184, 0.24, {
-        flipX: this.facing < 0,
-        glowColor: 'gold',
-        inFront: true
-      });
+      if (enemy && !enemy.isDead && distNow <= 172) {
+        // Close-range Low Clock-Blade Riposte (`Row 7 F10..F21`)
+        if (game?.audio) game.audio.play('slash', enemy.x);
+        enemy.takeDamage(58, this, false, 102, -28);
+        this.fx?.spawn('chronoTimeRiftSlash', enemy.x, enemy.y - 92, {
+          flip: this.facing < 0,
+          palette: CHRONO_BRASS_PALETTE,
+          light: 1.26,
+          extra: { cross: false, angle: -0.04, radius: 30 }
+        });
+        this.spawnVfxAnim(5, enemy.x, enemy.y - 92, 168, 168, 0.24, {
+          flipX: this.facing < 0,
+          glowColor: 'gold',
+          inFront: true
+        });
+      } else {
+        if (game?.audio) game.audio.play('clock_gear', this.x);
+        game?.vfx?.spawnProjectile?.({
+          x: spawnX,
+          y: spawnY,
+          vx: this.facing * 680,
+          vy: 0,
+          radius: 18,
+          color: '#2dd4bf',
+          coreColor: '#facc15',
+          owner: this,
+          damage: 54,
+          pierce: true,
+          type: 'clock_gear'
+        });
+        this.fx?.spawn('temporalCrescentRift', spawnX, spawnY, {
+          flip: this.facing < 0,
+          palette: CHRONO_BRASS_PALETTE,
+          light: 1.24,
+          extra: { aimAngle: 0, isGold: true, radius: 24, width: 7 }
+        });
+      }
     }
 
     if (t >= dur) {
@@ -950,115 +982,126 @@ export class Chronomancer extends Fighter {
   }
 
   // ============================================================================
-  // 4-STAGE HOROLOGICAL BLADE & CLONE AUTO-ATTACK (`updateAutoAttack`)
+  // 4-STAGE CLOSE-QUARTERS TWIN CLOCK-BLADE & CLONE AUTO-ATTACK (`updateAutoAttack`)
   // ============================================================================
 
-  updateAutoAttack(_dt, enemy, game) {
+  updateAutoAttack(dt, enemy, game) {
     const t = this.stateTimer;
-    const dur = this.autoDuration || 0.86;
-    const u = Math.min(1, Math.max(0, t / dur));
+    const dur = this.autoDuration || 0.82;
+    const u = Math.min(0.999, Math.max(0, t / dur));
     const stage = ((this._autoVariant ?? this._currentAutoStage ?? 0) % 4 + 4) % 4;
     const [sliceStart, sliceLen] = AUTO_SLICES_4[stage];
 
-    // Drive exact 4-variant Row 2 slice (`60..67` Minute-Glaive Rift Sweep,
-    // `68..74` Paradox Scissor Cross-Slash, `75..82` Escapement Needle Thrust,
-    // `83..89` Twelfth-Chime Pendulum Slam)
+    // Drive exact 4-variant Row 2 slice (`60..67` Minute-Glaive Diagonal Cleave,
+    // `68..74` Paradox Phantom Scissor, `75..82` Horological Fleche Thrust,
+    // `83..89` XII Chime Execution Cleave)
     this.trueUltFrameOverride = sliceStart + Math.min(sliceLen - 1, Math.floor(u * sliceLen));
 
-    if (t < 0.26) {
-      this.torsoAngle = -this.facing * 0.14 * (t / 0.26);
+    const ww = game?.renderer ? game.renderer.worldWidth : 1200;
+    const minX =
+      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMinX)
+        ? game.adventure.lockMinX + 24
+        : 72;
+    const bossWallAlive = Boolean(
+      game?.adventure?.bossEntity &&
+        !game.adventure.bossEntity.isDead &&
+        game.adventure.bossEntity.isColossalBoss
+    );
+    const rawMaxX =
+      game?.adventure?.lockActive && Number.isFinite(game.adventure.lockMaxX)
+        ? game.adventure.lockMaxX - 24
+        : ww - 72;
+    const maxX = bossWallAlive
+      ? Math.min(rawMaxX, (game.adventure.bossEntity.anchorX || 9335) - 85)
+      : rawMaxX;
+
+    const foes = this.getActiveEnemies(enemy, game);
+    const frontFoe =
+      foes.find((f) => (f.x - this.x) * this.facing >= -24 && Math.abs(f.x - this.x) <= 240) ||
+      (enemy && !enemy.isDead && Math.abs(enemy.x - this.x) <= 240 ? enemy : null);
+
+    // Physical Horological Step-In (0.00..0.22s): close directly into 88..94px Twin Clock-Blade maai
+    const manualPullBack =
+      this.isPlayerControlled &&
+      !this.adventureAutoPlay &&
+      (this.manualMoveAxis || 0) * this.facing < -0.2;
+    if (t < 0.22 && frontFoe && !manualPullBack) {
+      const fDir = frontFoe.x >= this.x ? 1 : -1;
+      this.facing = fDir;
+      const idealDist = frontFoe.isColossalBoss ? 92 : stage === 2 ? 88 : 94;
+      const curDist = Math.abs(frontFoe.x - this.x);
+      if (curDist > idealDist) {
+        const stepPx = Math.min(curDist - idealDist, 360 * dt);
+        this.x = Math.max(minX, Math.min(maxX, this.x + fDir * stepPx));
+      }
+    }
+
+    if (t < 0.22) {
+      this.torsoAngle = -this.facing * 0.10 * (t / 0.22);
       return;
     }
 
-    if (!this.didActionFrame && t >= 0.26) {
+    if (!this.didActionFrame && t >= 0.22) {
       this.didActionFrame = true;
-      this.torsoVel = this.facing * 10;
+      this.torsoVel = this.facing * 9;
 
-      const foes = this.getActiveEnemies(enemy, game);
-      const primary = enemy && !enemy.isDead ? enemy : foes[0] || null;
+      const primary = frontFoe || (enemy && !enemy.isDead ? enemy : foes[0] || null);
 
       // ----------------------------------------------------------------------
-      // V0 (`stage === 0`, frames `60..67` — `MINUTE-GLAIVE RIFT WAVE`):
-      // Steps forward (`vx = facing * 135`) sweeping Minute Glaive (`Row 2 F00..F07`),
-      // cleaving enemies within `155px` (`48 dmg` / `38` splash) AND launching a fast
-      // piercing `Row 0` Minute-Blade Crescent Wave (`speed = 650`, `damage = 60`, `pierce = true`)!
+      // V0 (`stage === 0`, frames `60..67` — `MINUTE-GLAIVE DIAGONAL CLEAVE`):
+      // Steps forward sweeping the Minute-Glaive along a `+34°` diagonal cut (`Row 2 F00..F07`),
+      // cleaving enemies within `174px` (`76 dmg` / `58` splash) with a razor `chronoTimeRiftSlash`!
       // ----------------------------------------------------------------------
       if (stage === 0) {
-        this.vx = this.facing * 135;
-        if (game?.audio) game.audio.play('clock_gear', this.x);
+        this.vx = this.facing * 96;
+        if (game?.audio) game.audio.play('slash', this.x);
 
-        const slashX = this.x + this.facing * 62;
-        const slashY = this.y - 102;
+        const inRangeFoe = primary && Math.abs(primary.x - this.x) <= 174 ? primary : null;
+        const slashX = inRangeFoe ? inRangeFoe.x : this.x + this.facing * 74;
+        const slashY = (inRangeFoe ? inRangeFoe.y : this.y) - 98;
 
-        this.fx?.spawn('temporalCrescentRift', slashX, slashY, {
+        this.fx?.spawn('chronoTimeRiftSlash', slashX, slashY, {
           flip: this.facing < 0,
           palette: CHRONO_TEAL_PALETTE,
           light: 1.24,
-          extra: { aimAngle: 0, isGold: false, radius: 28, width: 10 }
+          extra: { cross: false, angle: 0.30, radius: 30 }
         });
-        this.spawnVfxAnim(0, slashX + this.facing * 14, slashY, 184, 184, 0.24, {
-          vx: this.facing * 180,
+        this.spawnVfxAnim(0, this.x + this.facing * 64, this.y - 98, 152, 152, 0.20, {
           flipX: this.facing < 0,
           glowColor: 'teal',
           inFront: true
         });
 
-        // Close Minute-Glaive Cleave (`155px`, `48 dmg` primary / `38` splash)
         for (const foe of foes) {
           const dxFoe = foe.x - this.x;
-          if (Math.abs(dxFoe) <= 155 && dxFoe * this.facing >= -28) {
-            foe.takeDamage(foe === primary ? 48 : 38, this, false, 78, -25);
-            this.spawnVfxAnim(4, foe.x, foe.y - 96, 176, 176, 0.26, {
-              flipX: this.facing < 0,
-              glowColor: 'teal',
-              inFront: true
-            });
+          if (Math.abs(dxFoe) <= 174 && dxFoe * this.facing >= -28) {
+            foe.takeDamage(foe === primary ? 76 : 58, this, false, 72, -24);
           }
         }
-
-        // Fast Piercing `Row 0` Minute-Blade Crescent Sonic Wave (`speed = 650`, `damage = 60`, `pierce = true`)
-        const targetY = primary ? primary.y - 102 : slashY;
-        const dx = primary ? primary.x - slashX : this.facing * 520;
-        const dy = primary && Math.abs(dx) > 95 ? targetY - slashY : 0;
-        const d = Math.hypot(dx, dy) || 1;
-        const speed = 650;
-        const dirSign = primary ? Math.sign(dx) || this.facing : this.facing;
-
-        game?.vfx?.spawnProjectile?.({
-          x: slashX,
-          y: slashY,
-          vx: primary && Math.abs(dx) > 95 ? (dx / d) * speed : dirSign * speed,
-          vy: primary && Math.abs(dx) > 95 ? (dy / d) * speed : 0,
-          radius: 20,
-          color: '#2dd4bf',
-          coreColor: '#facc15',
-          owner: this,
-          damage: 60,
-          pierce: true,
-          type: 'clock_gear'
-        });
-        game?.vfx?.spawnGlyphBurst?.(slashX, slashY, 5, 'chrono');
+        game?.vfx?.spawnGlyphBurst?.(slashX, slashY, 4, 'chrono');
       }
 
       // ----------------------------------------------------------------------
-      // V1 (`stage === 1`, frames `68..74` — `PARADOX PHANTOM PINCER`):
-      // Chronos slashes from the front while manifesting a luminous Cyan Future-Self
-      // Phantom Clone directly BEHIND the enemy (`enemy.x + facing * 78`, facing `-this.facing`,
-      // playing `Row 2 F08..F14` = `68..74` over `0.42s`!), executing a Pincer Cross-Slash
-      // (`80 dmg` / `62` splash, `'PARADOX PINCER!'`, stamping `Row 5` `paradoxTwinScissorCell`)!
+      // V1 (`stage === 1`, frames `68..74` — `PARADOX PHANTOM SCISSOR`):
+      // Chronos rips both Clock-Blades from the front while manifesting a luminous Cyan Future-Self
+      // Phantom Clone directly BEHIND the enemy (`Row 2 F08..F14` = `68..74`), stamping razor
+      // `Row 5` `paradoxTwinScissorCell` twin-cuts (`82 dmg` / `64` splash)!
       // ----------------------------------------------------------------------
       else if (stage === 1) {
-        this.vx = this.facing * 95;
+        this.vx = this.facing * 82;
         if (game?.audio) {
           game.audio.play('time_rewind', this.x);
           game.audio.play('slash', primary ? primary.x : this.x);
         }
 
-        const strikeX = primary ? primary.x : this.clampArenaX(this.x + this.facing * 185, game, 110);
-        const strikeY = primary ? primary.groundY : this.groundY;
-        const cloneX = this.clampArenaX(strikeX + this.facing * 78, game, 88);
+        const inRangePrimary = primary && Math.abs(primary.x - this.x) <= 215 ? primary : null;
+        const strikeX = inRangePrimary
+          ? inRangePrimary.x
+          : this.clampArenaX(this.x + this.facing * 108, game, 96);
+        const strikeY = inRangePrimary ? inRangePrimary.groundY : this.groundY;
+        const cloneX = Math.max(minX, Math.min(maxX, strikeX + this.facing * 76));
 
-        // Manifest Luminous Cyan Future-Self Phantom Clone behind the enemy (`Row 2 F08..F14` = `68..74` over `0.42s`)!
+        // Manifest Luminous Cyan Future-Self Phantom Clone behind the enemy (`68..74` over `0.42s`)!
         this.spawnPhantomClone(cloneX, strikeY, -this.facing, 'future', {
           startFrame: 68,
           endFrame: 74,
@@ -1069,18 +1112,18 @@ export class Chronomancer extends Fighter {
         this.fx?.spawn('warpPortalPairRift', cloneX, strikeY - 94, {
           flip: this.facing > 0,
           palette: CHRONO_TEAL_PALETTE,
-          light: 1.26,
+          light: 1.24,
           extra: { isArrival: true }
         });
         this.fx?.spawn('chronoTimeRiftSlash', strikeX, strikeY - 96, {
           flip: this.facing < 0,
           palette: CHRONO_TEAL_PALETTE,
-          light: 1.32,
-          extra: { radius: 32 }
+          light: 1.28,
+          extra: { cross: true, radius: 30 }
         });
 
-        // Stamp `Row 5` `paradoxTwinScissorCell` directly on the enemy!
-        this.spawnVfxAnim(5, strikeX, strikeY - 96, 232, 232, 0.34, {
+        // Stamp crisp `Row 5` `paradoxTwinScissorCell` razor twin-cuts on the target!
+        this.spawnVfxAnim(5, strikeX, strikeY - 96, 176, 176, 0.28, {
           flipX: this.facing < 0,
           glowColor: 'teal',
           inFront: true
@@ -1094,36 +1137,40 @@ export class Chronomancer extends Fighter {
           'PARADOX PINCER!',
           '#2dd4bf'
         );
-        game?.vfx?.spawnGlyphBurst?.(strikeX, strikeY - 96, 7, 'chrono');
-        game?.renderer?.triggerShake?.(8, 0.14);
+        game?.vfx?.spawnGlyphBurst?.(strikeX, strikeY - 96, 5, 'chrono');
+        game?.renderer?.triggerShake?.(7, 0.12);
 
         for (const foe of foes) {
-          if (Math.abs(foe.x - strikeX) <= 135 || Math.abs(foe.x - this.x) <= 275) {
-            foe.takeDamage(foe === primary ? 80 : 62, this, false, 35, -35);
+          const dxFoe = foe.x - this.x;
+          if (Math.abs(foe.x - strikeX) <= 118 || (Math.abs(dxFoe) <= 195 && dxFoe * this.facing >= -28)) {
+            foe.takeDamage(foe === primary ? 82 : 64, this, false, 38, -32);
           }
         }
       }
 
       // ----------------------------------------------------------------------
-      // V2 (`stage === 2`, frames `75..82` — `ESCAPEMENT NEEDLE VOLLEY`):
-      // Deep horological fencer lunge (`vx = facing * 175`) thrusting the Minute-Glaive
-      // needle-tip (`44 dmg` / `34` splash within `190px`) while firing twin angled
-      // piercing `'clock_gear'` Chrono-Needles (`speed 710` & `640`, `38` + `32 dmg`) + `+4 Mana`!
+      // V2 (`stage === 2`, frames `75..82` — `HOROLOGICAL FLECHE THRUST`):
+      // Deep horological fencer lunge (`Row 2 F15..F22`) driving the Minute-Glaive needle
+      // straight through close melee range (`84 dmg` / `64` splash within `188px`) + `+5 Mana`!
       // ----------------------------------------------------------------------
       else if (stage === 2) {
-        this.vx = this.facing * 175;
-        if (game?.audio) game.audio.play('clock_gear', this.x);
+        this.vx = this.facing * 138;
+        if (game?.audio) {
+          game.audio.play('slash', this.x);
+          game.audio.play('clock_gear', this.x);
+        }
 
-        const thrustX = this.x + this.facing * 72;
-        const thrustY = this.y - 100;
+        const inThrustRange = primary && Math.abs(primary.x - this.x) <= 188 ? primary : null;
+        const thrustX = inThrustRange ? inThrustRange.x : this.x + this.facing * 84;
+        const thrustY = (inThrustRange ? inThrustRange.y : this.y) - 96;
 
-        this.fx?.spawn('temporalCrescentRift', thrustX, thrustY, {
+        this.fx?.spawn('chronoTimeRiftSlash', thrustX, thrustY, {
           flip: this.facing < 0,
           palette: CHRONO_BRASS_PALETTE,
-          light: 1.28,
-          extra: { aimAngle: 0, isGold: true, radius: 26, width: 8 }
+          light: 1.26,
+          extra: { cross: false, angle: -0.03, radius: 32 }
         });
-        this.spawnVfxAnim(4, thrustX + this.facing * 12, thrustY, 176, 176, 0.25, {
+        this.spawnVfxAnim(4, thrustX, thrustY, 148, 148, 0.22, {
           flipX: this.facing < 0,
           glowColor: 'gold',
           inFront: true
@@ -1131,96 +1178,46 @@ export class Chronomancer extends Fighter {
 
         for (const foe of foes) {
           const dxFoe = foe.x - this.x;
-          if (Math.abs(dxFoe) <= 190 && dxFoe * this.facing >= -24) {
-            foe.takeDamage(foe === primary ? 44 : 34, this, false, 68, -20);
+          if (Math.abs(dxFoe) <= 188 && dxFoe * this.facing >= -24) {
+            foe.takeDamage(foe === primary ? 84 : 64, this, false, 78, -20);
           }
         }
 
-        const targetY = primary ? primary.y - 98 : thrustY;
-        const dx = primary ? primary.x - thrustX : this.facing * 540;
-        const dy = primary && Math.abs(dx) > 90 ? targetY - thrustY : 0;
-        const baseAngle =
-          primary && Math.abs(dx) > 90
-            ? Math.atan2(dy, dx)
-            : this.facing >= 0
-              ? 0
-              : Math.PI;
-
-        const needleSpecs = [
-          {
-            speed: 710,
-            dmg: 38,
-            angleOffset: -0.045,
-            ox: 8,
-            oy: -8,
-            radius: 17,
-            color: '#2dd4bf',
-            coreColor: '#fde047'
-          },
-          {
-            speed: 640,
-            dmg: 32,
-            angleOffset: 0.045,
-            ox: -12,
-            oy: 8,
-            radius: 15,
-            color: '#facc15',
-            coreColor: '#ffffff'
-          }
-        ];
-
-        for (const spec of needleSpecs) {
-          const ang = baseAngle + spec.angleOffset;
-          game?.vfx?.spawnProjectile?.({
-            x: thrustX + this.facing * spec.ox,
-            y: thrustY + spec.oy,
-            vx: Math.cos(ang) * spec.speed,
-            vy: Math.sin(ang) * spec.speed,
-            radius: spec.radius,
-            color: spec.color,
-            coreColor: spec.coreColor,
-            owner: this,
-            damage: spec.dmg,
-            pierce: true,
-            type: 'clock_gear'
-          });
-        }
-
-        this.gainMana(4);
-        game?.vfx?.spawnGlyphBurst?.(thrustX, thrustY, 6, 'chrono');
+        this.gainMana(5);
+        game?.vfx?.spawnGlyphBurst?.(thrustX, thrustY, 4, 'chrono');
       }
 
       // ----------------------------------------------------------------------
-      // V3 (`stage === 3`, frames `83..89` — `XII CHIME PENDULUM SLAM`):
-      // Chronos hoists both Clock-Blades to XII and slams down (`Row 5` `paradoxTwinScissorCell`
-      // + `Row 4` `chronoShatterBurstCell` on target), dealing a Guaranteed Crit (`102 dmg` / `78` splash,
-      // `'XII CHIME!'`), applying `enemy.chronoSlowTimer = 1.15`, and refunding `+7 Mana`!
+      // V3 (`stage === 3`, frames `83..89` — `XII CHIME EXECUTION CLEAVE`):
+      // Chronos hoists both Clock-Blades to XII and cleaves down (`Row 2 F23..F29`),
+      // stamping razor `Row 5` twin-cuts + `Row 4` crystal shatter, dealing Guaranteed Crit
+      // (`98 dmg` / `74` splash, `'XII CHIME!'`), `1.15s` Chrono Slow & `+7 Mana`!
       // ----------------------------------------------------------------------
       else {
-        this.vx = this.facing * 155;
+        this.vx = this.facing * 116;
         if (game?.audio) {
           game.audio.play('chrono_hit', primary ? primary.x : this.x);
           game.audio.play('clock_gear', this.x);
         }
 
-        const snapX =
-          primary && Math.abs(primary.x - this.x) <= 305
-            ? primary.x
-            : this.clampArenaX(this.x + this.facing * 175, game, 110);
-        const snapY = (primary ? primary.y : this.groundY) - 96;
+        const inExecRange = primary && Math.abs(primary.x - this.x) <= 198 ? primary : null;
+        const snapX = inExecRange
+          ? inExecRange.x
+          : this.clampArenaX(this.x + this.facing * 106, game, 96);
+        const snapY = (inExecRange ? inExecRange.y : this.groundY) - 96;
 
         this.fx?.spawn('chronoTimeRiftSlash', snapX, snapY, {
           flip: this.facing < 0,
           palette: CHRONO_BRASS_PALETTE,
-          light: 1.38,
-          extra: { radius: 35 }
+          light: 1.32,
+          extra: { cross: true, radius: 34 }
         });
-        this.spawnVfxAnim(5, snapX, snapY, 252, 252, 0.38, {
+        this.spawnVfxAnim(5, snapX, snapY, 188, 188, 0.30, {
           flipX: this.facing < 0,
           glowColor: 'gold',
           inFront: true
         });
-        this.spawnVfxAnim(4, snapX, snapY, 216, 216, 0.34, {
+        this.spawnVfxAnim(4, snapX, snapY, 172, 172, 0.28, {
           flipX: this.facing < 0,
           glowColor: 'teal',
           inFront: true
@@ -1228,13 +1225,14 @@ export class Chronomancer extends Fighter {
 
         this.gainMana(7);
         game?.vfx?.spawnDamageText?.(snapX, snapY - 64, 0, true, 'XII CHIME!', '#fde047');
-        game?.vfx?.spawnGlyphBurst?.(snapX, snapY, 8, 'chrono');
-        game?.renderer?.triggerShake?.(11, 0.18);
+        game?.vfx?.spawnGlyphBurst?.(snapX, snapY, 6, 'chrono');
+        game?.renderer?.triggerShake?.(10, 0.16);
 
         for (const foe of foes) {
-          if (Math.abs(foe.x - snapX) <= 135 || Math.abs(foe.x - this.x) <= 295) {
+          const dxFoe = foe.x - this.x;
+          if (Math.abs(foe.x - snapX) <= 118 || (Math.abs(dxFoe) <= 198 && dxFoe * this.facing >= -28)) {
             foe.chronoSlowTimer = Math.max(foe.chronoSlowTimer || 0, 1.15);
-            foe.takeDamage(foe === primary ? 102 : 78, this, true, 115, -75);
+            foe.takeDamage(foe === primary ? 98 : 74, this, true, 112, -68);
           }
         }
       }
@@ -2059,6 +2057,11 @@ export class Chronomancer extends Fighter {
       this.eternalZeroDome = null;
       this.suspendedClockSpears = [];
       this.y = this.groundY;
+      this.autoCooldown = Math.max(this.autoCooldown, 0.55);
+      this.crouchCooldown = Math.max(this.crouchCooldown, 0.55);
+      this.dodgeCooldown = Math.max(this.dodgeCooldown, 0.55);
+      this.dashCooldown = Math.max(this.dashCooldown, 0.55);
+      this.skillCooldown = Math.max(this.skillCooldown, 0.65);
       this.setState('IDLE');
     }
   }
@@ -2104,9 +2107,9 @@ export class Chronomancer extends Fighter {
           : renderer?.glowTeal || renderer?.glowGold;
     if (glowSprite) {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.4);
-      const gw = Math.round(w * 1.14);
-      const gh = Math.round(h * 1.14);
+      ctx.globalAlpha = Math.min(1, alpha * 0.20);
+      const gw = Math.round(w * 1.12);
+      const gh = Math.round(h * 1.12);
       ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
     }
 
@@ -2115,7 +2118,7 @@ export class Chronomancer extends Fighter {
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * 0.44);
+    ctx.globalAlpha = Math.min(1, alpha * 0.22);
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.restore();
@@ -2316,11 +2319,11 @@ export class Chronomancer extends Fighter {
 
       // Pass 2: Luminous Cyan (Future) or Burnished Gold (Past) Temporal Aura Tint
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = alpha * 0.52;
+      ctx.globalAlpha = alpha * 0.34;
       PixelForge.drawSilhouetteFrame(ctx, sprites, frameIdx, 208, 208, tintMain);
 
       ctx.translate(-2, 0);
-      ctx.globalAlpha = alpha * 0.26;
+      ctx.globalAlpha = alpha * 0.18;
       PixelForge.drawSilhouetteFrame(ctx, sprites, frameIdx, 208, 208, tintRim);
 
       ctx.restore();

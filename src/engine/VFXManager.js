@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js?v=30fps98';
-import { PixelForge } from './PixelForge.js?v=30fps98';
+import { PixelFont } from './PixelFont.js?v=30fps99';
+import { PixelForge } from './PixelForge.js?v=30fps99';
 
 export class VFXManager {
   constructor() {
@@ -2174,10 +2174,10 @@ export class VFXManager {
           : renderer.glowOrange;
         ctx.save();
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = proj.type === 'clock_gear' ? 0.68 : 0.50;
+        ctx.globalAlpha = proj.type === 'clock_gear' ? 0.24 : 0.50;
         ctx.drawImage(tex, px - r * 1.15, py - r * 1.15, r * 2.3, r * 2.3);
         if (proj.type === 'clock_gear' && renderer.glowGold) {
-          ctx.globalAlpha = 0.52;
+          ctx.globalAlpha = 0.16;
           ctx.drawImage(renderer.glowGold, px - r * 0.9, py - r * 0.9, r * 1.8, r * 1.8);
         }
         ctx.restore();
@@ -2245,7 +2245,7 @@ export class VFXManager {
         ctx.translate(px, py);
         ctx.scale(dir, 1);
         if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
-          const gearSize = 108;
+          const gearSize = 88;
           this.drawBloomedSprite(
             ctx,
             renderer,

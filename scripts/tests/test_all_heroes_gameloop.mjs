@@ -28,30 +28,30 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps98';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps98';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps98';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps98';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps98';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps98';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps98';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps98';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps98';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps98';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps98';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps98';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps98';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps98';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps98';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps98';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps98';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps99';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps99';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps99';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps99';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps99';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps99';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps99';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps99';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps99';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps99';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps99';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps99';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps99';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps99';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps99';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps99';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps99';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps98';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps98';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps98';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps98';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps99';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps99';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps99';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps99';
 
 function createMockCtx(trackForbidden = null) {
   return {
@@ -612,7 +612,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps98');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps99');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -4697,6 +4697,7 @@ for (const [name, Cls] of CLASSES) {
   // 21F. Verify Ronin 4-Variant Flesh-Cutting Physical Auto-Attacks (fumikomi step-in <= 82px, 0 bloated VFX, cleanBladeCuts active)
   {
     const aGame = createMockGame();
+    aGame.renderer.stageId = 'cathedral';
     const track = { rotateCalls: 0, quadCalls: 0, syValues: new Set() };
     const trackCtx = createMockCtx(track);
     const emptyVfx = new VFXManager();
@@ -4886,5 +4887,214 @@ for (const [name, Cls] of CLASSES) {
     `[PASS] Suite 22: Freyja Supreme Ultimate Twin-Winged Sky-Sovereign Model, Shot-Synced Downward Gungnir Command & Steep Falcon Spear-Dive verified (0 ctx.rotate, dealt=${dealt})!`
   );
 }
+
+// ============================================================================
+// SUITE 23: CHRONOS (CHRONOMANCER) SURGICAL 10-ROW REWORK, SHA-256 ROW IDENTITY,
+//           RAZOR HOROLOGICAL VFX & CLOSE-QUARTERS 4-SLICE TWIN CLOCK-BLADE MELEE
+// ============================================================================
+{
+  const cryptoMod = await import('node:crypto');
+  const zlibMod = await import('node:zlib');
+
+  const decodePngRgba = (buf) => {
+    const width = buf.readUInt32BE(16);
+    const height = buf.readUInt32BE(20);
+    const idatChunks = [];
+    let off = 8;
+    while (off + 8 <= buf.length) {
+      const len = buf.readUInt32BE(off);
+      const type = buf.subarray(off + 4, off + 8).toString('ascii');
+      if (type === 'IDAT') idatChunks.push(buf.subarray(off + 8, off + 8 + len));
+      if (type === 'IEND') break;
+      off += 12 + len;
+    }
+    const raw = zlibMod.inflateSync(Buffer.concat(idatChunks));
+    const stride = width * 4;
+    const data = Buffer.allocUnsafe(height * stride);
+    const paeth = (a, b, c) => {
+      const p = a + b - c;
+      const pa = Math.abs(p - a);
+      const pb = Math.abs(p - b);
+      const pc = Math.abs(p - c);
+      return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+    };
+    for (let y = 0; y < height; y++) {
+      const fType = raw[y * (stride + 1)];
+      const srcOff = y * (stride + 1) + 1;
+      const dstOff = y * stride;
+      const prevOff = (y - 1) * stride;
+      for (let i = 0; i < stride; i++) {
+        const xByte = raw[srcOff + i];
+        const a = i >= 4 ? data[dstOff + i - 4] : 0;
+        const b = y > 0 ? data[prevOff + i] : 0;
+        const c = y > 0 && i >= 4 ? data[prevOff + i - 4] : 0;
+        let recon = xByte;
+        if (fType === 1) recon = (xByte + a) & 0xff;
+        else if (fType === 2) recon = (xByte + b) & 0xff;
+        else if (fType === 3) recon = (xByte + ((a + b) >> 1)) & 0xff;
+        else if (fType === 4) recon = (xByte + paeth(a, b, c)) & 0xff;
+        data[dstOff + i] = recon;
+      }
+    }
+    return { width, height, data };
+  };
+
+  // 23A. Verify chronomancer_sheet.png (6240x2080) SHA-256 byte-identity on untouched Rows 0, 1, 5, 6, 9 + 0/300 border clips
+  const sheetBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/chronomancer_sheet.png');
+  const sheetPng = decodePngRgba(sheetBuf);
+  if (sheetPng.width !== 6240 || sheetPng.height !== 2080) {
+    throw new Error(`[Suite 23A] Expected chronomancer_sheet.png 6240x2080, got ${sheetPng.width}x${sheetPng.height}`);
+  }
+
+  const expectedPreservedRowHashes = {
+    0: 'ee5b0b861493a70f8260e3377b03374327fcb655a341f9c218275aa38578bda3',
+    1: '85d135cbfabd6f3eb55fd621c50bb32071fbc6708b79300af300751de03d489b',
+    5: '31ecdc582025b5769d900b61aa2c4f82f3b4b2a00335e04aaf636003642ac9ed',
+    6: '6253f1cdf53f79417cb42e2af128b1d8314db74cacf6200d264b328628842b93',
+    9: '1f0b965e855559b6e28ee177de6daae6c343d063edf52fea1be78261778af9c3'
+  };
+  const rowByteLen = 6240 * 208 * 4;
+  for (const [rStr, expHash] of Object.entries(expectedPreservedRowHashes)) {
+    const r = Number(rStr);
+    const slice = sheetPng.data.subarray(r * rowByteLen, (r + 1) * rowByteLen);
+    const gotHash = cryptoMod.createHash('sha256').update(slice).digest('hex');
+    if (gotHash !== expHash) {
+      throw new Error(`[Suite 23A] Preserved Row ${r} SHA-256 mismatch: expected ${expHash}, got ${gotHash}`);
+    }
+  }
+
+  let sheetBorderClips = 0;
+  for (let r = 0; r < 10; r++) {
+    for (let c = 0; c < 30; c++) {
+      let clipped = false;
+      for (let y = 0; y < 208 && !clipped; y++) {
+        for (let x = 0; x < 208; x++) {
+          if (x >= 4 && x < 204 && y >= 4 && y < 204) continue;
+          const idx = ((r * 208 + y) * 6240 + (c * 208 + x)) * 4;
+          if (sheetPng.data[idx + 3] > 0) {
+            clipped = true;
+            break;
+          }
+        }
+      }
+      if (clipped) sheetBorderClips++;
+    }
+  }
+  if (sheetBorderClips !== 0) {
+    throw new Error(`[Suite 23A] Expected 0/300 border clips on chronomancer_sheet.png, got ${sheetBorderClips}`);
+  }
+
+  // Verify chronomancer_vfx.png (6240x1664) 0/240 border clips & compact razor Row 5 twin-cuts + Row 6 Clock-Hand Knife
+  const vfxBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/chronomancer_vfx.png');
+  const vfxPng = decodePngRgba(vfxBuf);
+  if (vfxPng.width !== 6240 || vfxPng.height !== 1664) {
+    throw new Error(`[Suite 23A] Expected chronomancer_vfx.png 6240x1664, got ${vfxPng.width}x${vfxPng.height}`);
+  }
+  let vfxBorderClips = 0;
+  let row5MaxFillRatio = 0;
+  let row6MaxSpanX = 0;
+  for (let r = 0; r < 8; r++) {
+    for (let c = 0; c < 30; c++) {
+      let clipped = false;
+      let opaque = 0;
+      let minX = 208;
+      let maxX = -1;
+      for (let y = 0; y < 208; y++) {
+        for (let x = 0; x < 208; x++) {
+          const idx = ((r * 208 + y) * 6240 + (c * 208 + x)) * 4;
+          if (vfxPng.data[idx + 3] > 0) {
+            opaque++;
+            if (x < minX) minX = x;
+            if (x > maxX) maxX = x;
+            if (x < 4 || x >= 204 || y < 4 || y >= 204) clipped = true;
+          }
+        }
+      }
+      if (clipped) vfxBorderClips++;
+      if (r === 5) row5MaxFillRatio = Math.max(row5MaxFillRatio, opaque / (208 * 208));
+      if (r === 6 && maxX >= minX) row6MaxSpanX = Math.max(row6MaxSpanX, maxX - minX + 1);
+    }
+  }
+  if (vfxBorderClips !== 0) {
+    throw new Error(`[Suite 23A] Expected 0/240 border clips on chronomancer_vfx.png, got ${vfxBorderClips}`);
+  }
+  if (row5MaxFillRatio > 0.14 || row5MaxFillRatio < 0.008) {
+    throw new Error(`[Suite 23A] Expected razor-slim Row 5 paradoxTwinScissorCell fill ratio in [0.008..0.14], got ${row5MaxFillRatio.toFixed(4)}`);
+  }
+  if (row6MaxSpanX < 100) {
+    throw new Error(`[Suite 23A] Expected full horizontal Row 6 Clock-Hand Knife span >= 100px, got ${row6MaxSpanX}`);
+  }
+
+  // 23B. Verify Close-Quarters Twin Clock-Blade 4-Variant Melee, Step-In Lunge & Zero clock_gear Spam
+  const cGame = createMockGame();
+  const chronos = new Chronomancer({ x: 380, groundY: 520, facing: 1 });
+  const dummy = new Warrior({ x: 545, groundY: 520, facing: -1 });
+  dummy.maxHp = 50000;
+  dummy.hp = 50000;
+  chronos.game = cGame;
+  dummy.game = cGame;
+  cGame.fighters = [chronos, dummy];
+  cGame.getEnemiesOf = (f) => cGame.fighters.filter((o) => o !== f);
+
+  const aiProfile = chronos.getAiStyleProfile();
+  if (chronos.attackRange > 160 || aiProfile.comboGoal !== 4 || aiProfile.sweetMax > 148) {
+    throw new Error(
+      `[Suite 23B] Expected close-quarters Chronos config (attackRange<=160, comboGoal=4, sweetMax<=148), got range=${chronos.attackRange}, profile=${JSON.stringify(aiProfile)}`
+    );
+  }
+
+  let charRotCalls = 0;
+  const cAuditCtx = createMockCtx({ rotateCalls: 0, quadCalls: 0, syValues: new Set() });
+  chronos.comboStep = 0;
+  let sawCloneStage1 = false;
+
+  for (let v = 0; v < 4; v++) {
+    chronos.x = 380;
+    chronos.y = 520;
+    chronos.facing = 1;
+    chronos.autoCooldown = 999;
+    dummy.x = 545;
+    dummy.y = 520;
+    dummy.stunTimer = 99;
+    cGame.vfx.projectiles.length = 0;
+
+    const hpBefore = dummy.hp;
+    let minDist = Math.abs(dummy.x - chronos.x);
+    chronos.setState('AUTO_ATTACK');
+
+    for (let tick = 0; tick < 30 && chronos.state === 'AUTO_ATTACK'; tick++) {
+      chronos.update(1 / 30, dummy, cGame);
+      minDist = Math.min(minDist, Math.abs(dummy.x - chronos.x));
+      if (v === 1 && chronos.phantomClones.length >= 1) sawCloneStage1 = true;
+
+      const prevRot = cAuditCtx.rotate;
+      cAuditCtx.rotate = () => {
+        charRotCalls++;
+      };
+      chronos.draw(cAuditCtx, false, cGame.renderer);
+      cAuditCtx.rotate = prevRot;
+
+      chronos.drawForegroundOverlay(cAuditCtx, cGame.renderer);
+      chronos.drawUltimateForeground(cAuditCtx, cGame.renderer);
+    }
+
+    if (!(dummy.hp < hpBefore) || !(minDist <= 102) || cGame.vfx.projectiles.length !== 0) {
+      throw new Error(
+        `[Suite 23B V${v}] Expected close-quarters Clock-Blade hit with 0 projectiles: hpDrop=${hpBefore - dummy.hp}, minDist=${minDist.toFixed(1)}, projs=${cGame.vfx.projectiles.length}`
+      );
+    }
+  }
+
+  if (!sawCloneStage1 || !(dummy.chronoSlowTimer > 0) || charRotCalls !== 0) {
+    throw new Error(
+      `[Suite 23B] Expected Stage-1 Future Clone (${sawCloneStage1}), Stage-3 Chrono Slow (${dummy.chronoSlowTimer}), and 0 char ctx.rotate (${charRotCalls})`
+    );
+  }
+
+  console.log(
+    `[PASS] Suite 23: Chronos Surgical 10-Row Rework (SHA-256 identical Rows 0/1/5/6/9, 0/300 & 0/240 border clips), Razor VFX & Close-Quarters 4-Slice Twin Clock-Blade Melee verified!`
+  );
+}
+
 
 
