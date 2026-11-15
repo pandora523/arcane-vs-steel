@@ -10,6 +10,7 @@ import AppKit
 public final class SanctumWebCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate {
     let bridge = NativePlatformBridge()
     var didLoadInitialURL = false
+    private var lastScenePhase: ScenePhase?
 
     func makeConfiguredWebView() -> WKWebView {
         let contentController = WKUserContentController()
@@ -75,13 +76,48 @@ public final class SanctumWebCoordinator: NSObject, WKNavigationDelegate, WKUIDe
         webView.load(req)
     }
 
-    func setSceneActive(_ active: Bool, in webView: WKWebView) {
-        bridge.setApplicationActive(active)
-        #if os(iOS)
-        if webView.isHidden == active {
-            webView.isHidden = !active
+    func updateScenePhase(_ phase: ScenePhase, in webView: WKWebView) {
+        let prevPhase = lastScenePhase
+        lastScenePhase = phase
+
+        switch phase {
+        case .active:
+            #if os(iOS)
+            if webView.isHidden {
+                webView.isHidden = false
+            }
+            #endif
+            if prevPhase != .active {
+                bridge.setApplicationActive(true)
+            }
+        case .inactive:
+            // Transient .inactive (Control Center, Notification Center, Siri, or mid-wake transition):
+            // Never tear down audio/loop or hide WKWebView; ensure webView is visible when waking from sleep.
+            #if os(iOS)
+            if webView.isHidden {
+                webView.isHidden = false
+            }
+            #endif
+        case .background:
+            if prevPhase != .background {
+                bridge.setApplicationActive(false)
+            }
+            #if os(iOS)
+            if !webView.isHidden {
+                webView.isHidden = true
+            }
+            #endif
+        @unknown default:
+            break
         }
+    }
+
+    public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+        #if os(iOS)
+        webView.isHidden = false
         #endif
+        bridge.setApplicationActive(true)
+        webView.reload()
     }
 
     private static func buildMetalFastPathDocumentStartScript() -> String {
@@ -340,7 +376,7 @@ public final class SanctumWebCoordinator: NSObject, WKNavigationDelegate, WKUIDe
 
 #if os(iOS)
 private struct SanctumWebHostView: UIViewRepresentable {
-    let isSceneActive: Bool
+    let scenePhase: ScenePhase
 
     func makeCoordinator() -> SanctumWebCoordinator {
         SanctumWebCoordinator()
@@ -349,17 +385,17 @@ private struct SanctumWebHostView: UIViewRepresentable {
     func makeUIView(context: Context) -> WKWebView {
         let webView = context.coordinator.makeConfiguredWebView()
         context.coordinator.loadSanctumIfNeeded(in: webView)
-        context.coordinator.setSceneActive(isSceneActive, in: webView)
+        context.coordinator.updateScenePhase(scenePhase, in: webView)
         return webView
     }
 
     func updateUIView(_ uiView: WKWebView, context: Context) {
-        context.coordinator.setSceneActive(isSceneActive, in: uiView)
+        context.coordinator.updateScenePhase(scenePhase, in: uiView)
     }
 }
 #elseif os(macOS)
 private struct SanctumWebHostView: NSViewRepresentable {
-    let isSceneActive: Bool
+    let scenePhase: ScenePhase
 
     func makeCoordinator() -> SanctumWebCoordinator {
         SanctumWebCoordinator()
@@ -368,7 +404,7 @@ private struct SanctumWebHostView: NSViewRepresentable {
     func makeNSView(context: Context) -> WKWebView {
         let webView = context.coordinator.makeConfiguredWebView()
         context.coordinator.loadSanctumIfNeeded(in: webView)
-        context.coordinator.setSceneActive(isSceneActive, in: webView)
+        context.coordinator.updateScenePhase(scenePhase, in: webView)
         DispatchQueue.main.async {
             webView.window?.makeFirstResponder(webView)
         }
@@ -376,17 +412,21 @@ private struct SanctumWebHostView: NSViewRepresentable {
     }
 
     func updateNSView(_ nsView: WKWebView, context: Context) {
-        context.coordinator.setSceneActive(isSceneActive, in: nsView)
+        context.coordinator.updateScenePhase(scenePhase, in: nsView)
     }
 }
 #endif
 
 public struct SanctumWebStageView: View {
     @ObservedObject private var metal = SanctumMetalPipeline.shared
-    private let isSceneActive: Bool
+    private let scenePhase: ScenePhase
 
-    public init(isSceneActive: Bool = true) {
-        self.isSceneActive = isSceneActive
+    public init(scenePhase: ScenePhase = .active) {
+        self.scenePhase = scenePhase
+    }
+
+    public init(isSceneActive: Bool) {
+        self.scenePhase = isSceneActive ? .active : .background
     }
 
     public var body: some View {
@@ -395,7 +435,7 @@ public struct SanctumWebStageView: View {
                 SanctumMetalBackdropView()
                     .ignoresSafeArea()
             }
-            SanctumWebHostView(isSceneActive: isSceneActive)
+            SanctumWebHostView(scenePhase: scenePhase)
                 .ignoresSafeArea()
         }
         .background(Color(red: 5.0 / 255.0, green: 7.0 / 255.0, blue: 12.0 / 255.0))
