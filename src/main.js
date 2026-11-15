@@ -1,21 +1,21 @@
-import { Renderer } from './engine/Renderer.js?v=30fps109';
-import { VFXManager } from './engine/VFXManager.js?v=30fps109';
-import { PixelForge } from './engine/PixelForge.js?v=30fps109';
-import { AudioManager } from './engine/AudioManager.js?v=30fps109';
-import { Fighter } from './entities/Fighter.js?v=30fps109';
-import { Warrior } from './entities/Warrior.js?v=30fps109';
-import { FireMage } from './entities/FireMage.js?v=30fps109';
-import { Archer } from './entities/Archer.js?v=30fps109';
-import { Priestess } from './entities/Priestess.js?v=30fps109';
-import { Reaper } from './entities/Reaper.js?v=30fps109';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps109';
-import { Titan } from './entities/Titan.js?v=30fps109';
-import { Ronin } from './entities/Ronin.js?v=30fps109';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps109';
-import { IceMage } from './entities/IceMage.js?v=30fps109';
-import { Android } from './entities/Android.js?v=30fps109';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps109';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps109';
+import { Renderer } from './engine/Renderer.js?v=30fps110';
+import { VFXManager } from './engine/VFXManager.js?v=30fps110';
+import { PixelForge } from './engine/PixelForge.js?v=30fps110';
+import { AudioManager } from './engine/AudioManager.js?v=30fps110';
+import { Fighter } from './entities/Fighter.js?v=30fps110';
+import { Warrior } from './entities/Warrior.js?v=30fps110';
+import { FireMage } from './entities/FireMage.js?v=30fps110';
+import { Archer } from './entities/Archer.js?v=30fps110';
+import { Priestess } from './entities/Priestess.js?v=30fps110';
+import { Reaper } from './entities/Reaper.js?v=30fps110';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps110';
+import { Titan } from './entities/Titan.js?v=30fps110';
+import { Ronin } from './entities/Ronin.js?v=30fps110';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps110';
+import { IceMage } from './entities/IceMage.js?v=30fps110';
+import { Android } from './entities/Android.js?v=30fps110';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps110';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps110';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -47,7 +47,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'HEAVENLY EARTHSHATTER',
-        type: '★ OVERDRIVE ULT',
+        type: 'OVERDRIVE ULT',
         vfxCell: 2,
         desc: 'Leaps skyward and slams a colossal Runeblade monolith, erupting 5 glacial spires across the stage.'
       }
@@ -82,7 +82,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'ZEPHYR VAULT: 180° STARLOCK',
-        type: '★ OVERDRIVE ULT',
+        type: 'OVERDRIVE ULT',
         vfxCell: 2,
         desc: 'Charges into the enemy, vaults in a 180° overhead somersault flip, and fires 7 radial lock-on homing arrows around the 180° arc!'
       }
@@ -117,7 +117,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'ASTRAL METEOR CATACLYSM',
-        type: '★ OVERDRIVE ULT',
+        type: 'OVERDRIVE ULT',
         vfxCell: 0,
         desc: 'Ignites a Black-Sun Supernova overhead and hurls a colossal burning meteor into the arena.'
       }
@@ -152,7 +152,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'SERAPHIC CATHEDRAL',
-        type: '★ OVERDRIVE ULT',
+        type: 'OVERDRIVE ULT',
         vfxCell: 2,
         desc: 'Ascends on radiant Seraphim wings, restoring sanctuary vitality while raining pillars of holy judgment.'
       }
@@ -187,7 +187,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: "DEATH'S SOVEREIGNTY",
-        type: '★ THANATOS OVERDRIVE',
+        type: 'THANATOS OVERDRIVE',
         vfxCell: 3,
         desc: 'Unleashes Blood-Moon Thanatos Stand, vaults into a Sky-Lock suspension with Wraith Clones & slams a 5-spire Guillotine!'
       }
@@ -222,7 +222,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'GRAND HOROLOGIUM',
-        type: '★ OVERDRIVE ULT',
+        type: 'OVERDRIVE ULT',
         vfxCell: 3,
         desc: 'Manifests the Astral Clocktower dial & paradox echoes to cleave across converging timelines.'
       }
@@ -257,7 +257,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'WORLD-BREAKER HOME RUN',
-        type: '★ OVERDRIVE ULT',
+        type: 'OVERDRIVE ULT',
         vfxCell: 4,
         desc: 'Swings his 2H World-Maul like a colossal baseball bat, blasting the enemy to the farthest side of the stage and stunning them for 0.8s!'
       }
@@ -292,7 +292,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'SUSANOO OMNISLASH',
-        type: '★ OVERDRIVE ULT',
+        type: 'OVERDRIVE ULT',
         vfxCell: 3,
         desc: 'Teleports around the airborne target for an 8-hit omnidirectional storm-slash cage.'
       }
@@ -327,7 +327,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'VALHALLA SKY-SANCTUARY',
-        type: '★ OVERDRIVE ULT',
+        type: 'OVERDRIVE ULT',
         vfxCell: 3,
         desc: 'Sweeps across the heavens raining 12 Gungnir Light-Javelins before 5 Sovereign Judgment Obelisks!'
       }
@@ -362,7 +362,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'WINTER CORONATION',
-        type: '★ OVERDRIVE ULT',
+        type: 'OVERDRIVE ULT',
         vfxCell: 4,
         desc: 'Rains 6 Giant Celestial Ice-Claymores to cage the foe in a sword palisade before a colossal 7th Sovereign Crown-Sword shatters all 7!'
       }
@@ -397,7 +397,7 @@ const CHAMPION_ROSTER = {
       },
       {
         name: 'VALKYRIE VISOR HYPER-LASER',
-        type: '★ OVERDRIVE ULT',
+        type: 'OVERDRIVE ULT',
         vfxCell: 2,
         desc: 'Boosts backward away from danger, deploys a 4-Funnel Optical Ring around her head, and fires a searing Face-Visor Laser!'
       }
@@ -730,6 +730,35 @@ class Game {
     }
   }
 
+  syncMobileFullZoomUI() {
+    const active = Boolean(this.renderer?.mobileFullZoomOut ?? true);
+    if (this.btnPauseFullZoom) {
+      this.btnPauseFullZoom.classList.toggle('active-zoom-toggle', active);
+      this.btnPauseFullZoom.setAttribute('aria-pressed', String(active));
+    }
+    if (this.pauseFullZoomLabel) {
+      this.pauseFullZoomLabel.textContent = active ? 'FULL ZOOM: ON' : 'FULL ZOOM: OFF';
+    }
+  }
+
+  setMobileFullZoomOut(enabled, playSound = true) {
+    const nextVal = Boolean(enabled);
+    this.renderer?.setMobileFullZoomOut?.(nextVal);
+    if (this.fighters && this.renderer) {
+      this.renderer.update(0, this.fighters);
+    }
+    this._pausedFrameRendered = false;
+    this.syncMobileFullZoomUI();
+    if (playSound && this.audio) {
+      this.audio.play('clock_gear', 600);
+    }
+  }
+
+  toggleMobileFullZoomOut(playSound = true) {
+    const cur = Boolean(this.renderer?.mobileFullZoomOut ?? true);
+    this.setMobileFullZoomOut(!cur, playSound);
+  }
+
   syncPauseMenuUI() {
     const isAdv = this.isAdventureMode();
     const subtitleEl = document.getElementById('pause-mode-subtitle');
@@ -744,6 +773,7 @@ class Game {
     }
     this.pauseVsSection?.classList.toggle('hidden', isAdv);
     this.pauseAdvSection?.classList.toggle('hidden', !isAdv);
+    this.syncMobileFullZoomUI();
     const showPause = Boolean(this.isPaused && !this.isLandingOpen);
     this.pauseModal?.classList.toggle('hidden', !showPause);
     this.btnGamePause?.setAttribute('aria-expanded', String(showPause));
@@ -846,16 +876,16 @@ class Game {
     const navCommenceLabel = document.getElementById('nav-commence-label');
     if (btnNavCommence) btnNavCommence.classList.toggle('hidden', onTitle);
     if (navCommenceLabel) {
-      navCommenceLabel.textContent = isAdv ? '⚔ START CAMPAIGN' : '⚔ START MATCH';
+      navCommenceLabel.textContent = isAdv ? 'START CAMPAIGN' : 'START MATCH';
     }
 
     const rosterBackLabel = document.getElementById('roster-back-label');
     if (rosterBackLabel) {
-      rosterBackLabel.textContent = isAdv ? '← TITLE SCREEN' : '← VS SETUP';
+      rosterBackLabel.textContent = isAdv ? 'TITLE SCREEN' : 'VS SETUP';
     }
     const ctaHeadline = document.getElementById('cta-headline-text');
     if (ctaHeadline) {
-      ctaHeadline.textContent = isAdv ? '⚔ EMBARK ON CAMPAIGN' : '⚔ COMMENCE BATTLE';
+      ctaHeadline.textContent = isAdv ? 'EMBARK ON CAMPAIGN' : 'COMMENCE BATTLE';
     }
     const rosterConfigBadge = document.getElementById('btn-roster-config-badge');
     if (rosterConfigBadge) {
@@ -912,7 +942,7 @@ class Game {
           : this.gameMode === '2v2_tag'
             ? 'TAG VS'
             : '1V1 DUEL';
-    return this.testModeUnlimitedHp && !this.isAdventureMode() ? `${base} • ∞ HP` : base;
+    return this.testModeUnlimitedHp && !this.isAdventureMode() ? `${base} • UNLIMITED HP` : base;
   }
 
   syncTestModeUI() {
@@ -922,7 +952,9 @@ class Game {
       this.landingBtnTestMode.setAttribute('aria-pressed', String(active));
     }
     if (this.landingTestModeLabel) {
-      this.landingTestModeLabel.textContent = active ? 'TEST MODE: ∞ HP ON' : 'TEST MODE: ∞ HP OFF';
+      this.landingTestModeLabel.textContent = active
+        ? 'TEST SANDBOX: UNLIMITED HP ON'
+        : 'TEST SANDBOX: UNLIMITED HP OFF';
     }
     if (this.landingTestModeTag) {
       this.landingTestModeTag.textContent = active ? 'ON' : 'OFF';
@@ -931,7 +963,7 @@ class Game {
       this.btnTestMode.setAttribute('aria-pressed', String(active));
     }
     if (this.hudTestModeLabel) {
-      this.hudTestModeLabel.textContent = active ? '∞ HP: ON' : '∞ HP: OFF';
+      this.hudTestModeLabel.textContent = active ? 'UNLIMITED HP: ON' : 'UNLIMITED HP: OFF';
     }
     if (this.hudEls?.modeBadge) {
       if (this.isAdventureMode() && this.adventure?.active) {
@@ -979,6 +1011,8 @@ class Game {
     this.pauseModal = document.getElementById('pause-modal');
     this.btnPauseResume = document.getElementById('btn-pause-resume');
     this.btnPauseTitle = document.getElementById('btn-pause-title');
+    this.btnPauseFullZoom = document.getElementById('btn-pause-full-zoom');
+    this.pauseFullZoomLabel = document.getElementById('pause-full-zoom-label');
     this.pauseVsSection = document.getElementById('pause-vs-section');
     this.pauseAdvSection = document.getElementById('pause-adv-section');
     this.btnVsPauseLandscape = document.getElementById('btn-vs-pause-landscape');
@@ -1015,6 +1049,10 @@ class Game {
     if (this.btnPauseTitle) {
       this.btnPauseTitle.addEventListener('click', () => this.goToTitleScreen(true));
     }
+    if (this.btnPauseFullZoom) {
+      this.btnPauseFullZoom.addEventListener('click', () => this.toggleMobileFullZoomOut(true));
+    }
+    this.syncMobileFullZoomUI();
     if (this.btnVictoryTitle) {
       this.btnVictoryTitle.addEventListener('click', () => this.goToTitleScreen(true));
     }
@@ -1814,11 +1852,11 @@ class Game {
     const labelText =
       physW < physH
         ? this.mobileLandscapeEnabled
-          ? '⛶ LANDSCAPE: ON'
-          : '⟳ LANDSCAPE: OFF'
+          ? 'LANDSCAPE: ON'
+          : 'LANDSCAPE: OFF'
         : isFs
-          ? '⛶ FULLSCREEN: ON'
-          : '⛶ FULLSCREEN';
+          ? 'FULLSCREEN: ON'
+          : 'FULLSCREEN';
 
     const navLbl = document.getElementById('mobile-landscape-label');
     const advLbl = document.getElementById('adv-landscape-label');
@@ -2059,7 +2097,7 @@ class Game {
       this.btnTagAssist.classList.toggle('hidden', !is2v2);
       if (this.tagAssistLabel) {
         this.tagAssistLabel.textContent =
-          this.gameMode === '2v2_tag' ? '⚡ TAG SWAP' : '⚡ TWIN ASSIST';
+          this.gameMode === '2v2_tag' ? 'TAG SWAP' : 'TWIN ASSIST';
       }
     }
     this.syncTestModeUI();
@@ -2084,7 +2122,7 @@ class Game {
     const stageTitleStr = isAdv
       ? 'AUTO: 4-ZONE CAMPAIGN MAP'
       : stageNames[this.forcedStage || 'auto'] || 'AUTO REALM';
-    const hpStr = this.vsTestModeUnlimitedHp ? '∞ HP: ON' : 'MORTAL HP';
+    const hpStr = this.vsTestModeUnlimitedHp ? 'UNLIMITED HP: ON' : 'MORTAL HP';
     const summaryStr = isAdv
       ? `${modeTitleStr} • ${stageTitleStr} • RPG PROGRESSION`
       : `${modeTitleStr} • ${stageTitleStr} • SANDBOX ${hpStr}`;
@@ -2102,23 +2140,23 @@ class Game {
     if (matchupVsEl) matchupVsEl.textContent = isAdv ? 'SOLO' : is2v2 ? 'TAG VS' : '1V1';
 
     const slotLabelMap = {
-      1: '★ P1 LEAD',
-      2: '★ P2 LEAD',
-      3: '★ P1B ALLY',
-      4: '★ P2B ALLY'
+      1: 'P1 LEAD',
+      2: 'P2 LEAD',
+      3: 'P1B ALLY',
+      4: 'P2B ALLY'
     };
     const gridPromptEl = document.getElementById('portrait-grid-label');
     if (gridPromptEl) {
       gridPromptEl.textContent = isAdv
         ? 'SELECT ANY OF THE 11 CHAMPIONS FOR YOUR 4-REALM ADVENTURE CAMPAIGN'
-        : `SELECT A CHAMPION FOR ${slotLabelMap[this.activeAssignSlot] || '★ P1 LEAD'} — OR CLICK P1 / P2 ON ANY MEDALLION`;
+        : `SELECT A CHAMPION FOR ${slotLabelMap[this.activeAssignSlot] || 'P1 LEAD'} — OR CLICK P1 / P2 ON ANY MEDALLION`;
     }
 
     // 2. Matchup Banner 4-Slot Names, Tags & Active Slot Highlight
     const slotLeftTagEl = document.getElementById('slot-left-tag');
     const slotRightTagEl = document.getElementById('slot-right-tag');
-    if (slotLeftTagEl) slotLeftTagEl.textContent = isAdv ? '★ CAMPAIGN HERO' : '★ P1 LEAD';
-    if (slotRightTagEl) slotRightTagEl.textContent = isAdv ? '☠ BOSS ENCOUNTER' : '★ P2 LEAD';
+    if (slotLeftTagEl) slotLeftTagEl.textContent = isAdv ? 'CAMPAIGN HERO' : 'P1 LEAD';
+    if (slotRightTagEl) slotRightTagEl.textContent = isAdv ? 'BOSS ENCOUNTER' : 'P2 LEAD';
 
     if (this.slotLeftName) this.slotLeftName.textContent = c1.name;
     if (this.slotLeftPartnerName) this.slotLeftPartnerName.textContent = c1b.name;
@@ -2145,13 +2183,13 @@ class Game {
     const p2CornerTagEl = document.getElementById('p2-corner-tag');
     const p2SkillsHeaderEl = document.getElementById('p2-skills-header');
     if (p1CornerTagEl) {
-      p1CornerTagEl.textContent = isAdv ? '★ SOLO HERO' : is2v2 ? '★ TEAM 1' : 'CHAMPION • LEFT SIDE';
+      p1CornerTagEl.textContent = isAdv ? 'SOLO HERO' : is2v2 ? 'TEAM 1' : 'CHAMPION • LEFT SIDE';
     }
     if (p2CornerTagEl) {
       p2CornerTagEl.textContent = isAdv
         ? 'COLOSSAL BOSS • ZONE IV'
         : is2v2
-          ? '★ TEAM 2'
+          ? 'TEAM 2'
           : 'CHALLENGER • RIGHT SIDE';
     }
     if (p2SkillsHeaderEl) {
@@ -2168,7 +2206,7 @@ class Game {
     }
 
     if (this.p1TabLead) {
-      this.p1TabLead.textContent = `★ P1: ${c1.name}`;
+      this.p1TabLead.textContent = `P1: ${c1.name}`;
       this.p1TabLead.classList.toggle('active-duo-tab', this.inspectLeftRole === 'lead');
       this.p1TabLead.classList.toggle('active-tab', this.inspectLeftRole === 'lead');
     }
@@ -2178,7 +2216,7 @@ class Game {
       this.p1TabPartner.classList.toggle('active-tab', this.inspectLeftRole === 'partner');
     }
     if (this.p2TabLead) {
-      this.p2TabLead.textContent = `★ P2: ${c2.name}`;
+      this.p2TabLead.textContent = `P2: ${c2.name}`;
       this.p2TabLead.classList.toggle('active-duo-tab', this.inspectRightRole === 'lead');
       this.p2TabLead.classList.toggle('active-tab', this.inspectRightRole === 'lead');
     }
@@ -2211,16 +2249,16 @@ class Game {
       if (ribbon) {
         ribbon.textContent = isAdv
           ? isP1
-            ? '★ CAMPAIGN HERO'
+            ? 'CAMPAIGN HERO'
             : 'SELECT HERO'
           : isP1
-            ? '★ P1 LEAD'
+            ? 'P1 LEAD'
             : isP1B
-              ? '★ P1B ALLY'
+              ? 'P1B ALLY'
               : isP2
-                ? '★ P2 LEAD'
+                ? 'P2 LEAD'
                 : isP2B
-                  ? '★ P2B ALLY'
+                  ? 'P2B ALLY'
                   : slotPrompts[this.activeAssignSlot] || 'SET P1';
       }
     });
@@ -2232,12 +2270,12 @@ class Game {
       btn.classList.toggle('active-p1', isP1 || isP1B);
       btn.textContent = isAdv
         ? isP1
-          ? '★ HERO'
+          ? 'HERO'
           : 'SELECT'
         : isP1
-          ? '★ P1'
+          ? 'P1'
           : isP1B
-            ? '★ P1B'
+            ? 'P1B'
             : this.activeAssignSlot === 3 && is2v2
               ? '+P1B'
               : 'P1';
@@ -2248,7 +2286,7 @@ class Game {
       const isP2B = !isAdv && is2v2 && this.slot2PartnerHero === k;
       btn.classList.toggle('hidden', isAdv);
       btn.classList.toggle('active-p2', isP2 || isP2B);
-      btn.textContent = isP2 ? '★ P2' : isP2B ? '★ P2B' : this.activeAssignSlot === 4 && is2v2 ? '+P2B' : 'P2';
+      btn.textContent = isP2 ? 'P2' : isP2B ? 'P2B' : this.activeAssignSlot === 4 && is2v2 ? '+P2B' : 'P2';
     });
 
     // 4. Populate Left (P1 / P1B) and Right (P2 / P2B or Adventure Final Boss) Profile Panels
@@ -2435,7 +2473,7 @@ class Game {
           row = heroKey === 'priestess' ? 4 : 8;
           const u = (cycle - 3.8) / 1.0;
           col = Math.min(29, Math.floor(u * 30));
-          stateTag = '★ OVERDRIVE ULT';
+          stateTag = 'OVERDRIVE ULT';
           if (heroKey === 'priestess') wingEnv = Math.min(1, Math.sin(u * Math.PI) * 1.7);
         } else {
           row = 1;
@@ -2519,7 +2557,7 @@ class Game {
         const tx = flipX ? 264 : 8;
         sctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
         sctx.fillText(stateTag, tx + 1, 13);
-        sctx.fillStyle = stateTag === '★ OVERDRIVE ULT' ? '#facc15' : primaryCol;
+        sctx.fillStyle = stateTag === 'OVERDRIVE ULT' ? '#facc15' : primaryCol;
         sctx.fillText(stateTag, tx, 12);
         sctx.restore();
       }
@@ -2626,9 +2664,9 @@ class Game {
         }
         bctx.font = 'bold 10px monospace';
         bctx.fillStyle = '#09070d';
-        bctx.fillText('★ ZONE IV COLOSSUS', 75, 13);
+        bctx.fillText('ZONE IV COLOSSUS', 81, 13);
         bctx.fillStyle = '#fb923c';
-        bctx.fillText('★ ZONE IV COLOSSUS', 74, 12);
+        bctx.fillText('ZONE IV COLOSSUS', 80, 12);
       }
       const drawBossThreatIcon = (ictx, idx, iw, ih, timeSec) => {
         if (PixelForge.drawHeroSheetIcon?.(ictx, 'archfiend', idx, iw, ih, timeSec)) {
@@ -3076,7 +3114,7 @@ class Game {
     this.vfx.spawnSpecialCastAura(
       reserve,
       'TAG-IN ASSAULT!',
-      `★ ${reserve.name} ENTERS! ★`,
+      `${reserve.name} ENTERS!`,
       reserve.theme || 'steel',
       false
     );
@@ -3107,7 +3145,7 @@ class Game {
       this.vfx.spawnSpecialCastAura(
         ally,
         'TAG ASSIST!',
-        `★ ${ally.name} COVER FIRE ★`,
+        `${ally.name} COVER FIRE`,
         ally.theme || 'steel',
         false
       );
@@ -3162,7 +3200,7 @@ class Game {
     this.vfx.spawnSpecialCastAura(
       ally,
       'TWIN-SOUL ASSIST!',
-      `★ ${point.name} × ${ally.name} ★`,
+      `${point.name} × ${ally.name}`,
       ally.theme || 'steel',
       false
     );
@@ -3182,7 +3220,7 @@ class Game {
     this.vfx.spawnSpecialCastAura(
       caster,
       caster.ultName,
-      '★ OVERDRIVE ART ★',
+      'OVERDRIVE ART',
       caster.theme || 'steel',
       true
     );
@@ -3198,7 +3236,7 @@ class Game {
     this.vfx.spawnSpecialCastAura(
       caster,
       caster.trueUltName || 'CELESTIAL SWORD OF JUSTICE',
-      '★ SUPREME ULTIMATE FINISHER ★',
+      'SUPREME ULTIMATE FINISHER',
       caster.theme || 'steel',
       true
     );
@@ -3217,42 +3255,42 @@ class Game {
 
     if (stageId === 'inferno') {
       this.renderer.triggerStageEvent(
-        '★ CATACLYSMIC CALDERA ERUPTION ★',
+        'CATACLYSMIC CALDERA ERUPTION',
         'BLESSING: +55% OVERDRIVE CHARGE!',
         '#fb923c',
         10.0
       );
     } else if (stageId === 'sanctuary') {
       this.renderer.triggerStageEvent(
-        '★ SERAPHIC CHOIR BENEDICTION ★',
+        'SERAPHIC CHOIR BENEDICTION',
         'BLESSING: +420 HP SANCTUARY REGEN!',
         '#60a5fa',
         10.0
       );
     } else if (stageId === 'cathedral') {
       this.renderer.triggerStageEvent(
-        '★ SOLAR ECLIPSE PHENOMENON ★',
+        'SOLAR ECLIPSE PHENOMENON',
         'BLESSING: +55% OVERDRIVE CHARGE!',
         '#facc15',
         10.0
       );
     } else if (stageId === 'sylvan') {
       this.renderer.triggerStageEvent(
-        '★ STARLIGHT MONSOON PHENOMENON ★',
+        'STARLIGHT MONSOON PHENOMENON',
         'BLESSING: +420 HP SANCTUARY REGEN!',
         '#34d399',
         10.0
       );
     } else if (stageId === 'boneyard') {
       this.renderer.triggerStageEvent(
-        '★ BLOOD MOON FRENZY PHENOMENON ★',
+        'BLOOD MOON FRENZY PHENOMENON',
         'BLESSING: +18% ABYSSAL ATTACK DAMAGE!',
         '#f43f5e',
         10.0
       );
     } else {
       this.renderer.triggerStageEvent(
-        '★ MIDNIGHT OVERCLOCK PHENOMENON ★',
+        'MIDNIGHT OVERCLOCK PHENOMENON',
         'BLESSING: +35% SKILL & ATTACK HASTE!',
         '#2dd4bf',
         10.0
@@ -3297,7 +3335,7 @@ class Game {
       survivingAlly.skillCooldown = 0;
       this.vfx.spawnSpecialCastAura(
         survivingAlly,
-        '★ AVENGER OVERDRIVE! ★',
+        'AVENGER OVERDRIVE!',
         `${deadFighter.name} FALLEN • FINAL STAND!`,
         survivingAlly.theme || 'steel',
         true
@@ -3461,7 +3499,7 @@ class Game {
     }
   }
 
-  triggerClashSpark(cx, cy, col1, col2, label = '★ CLASH! ★') {
+  triggerClashSpark(cx, cy, col1, col2, label = 'CLASH!') {
     if (this.audio) this.audio.play('clang', cx);
     this.renderer.triggerHitStop(0.065);
     const f1 = this.getPointFighter(1);
@@ -3507,7 +3545,7 @@ class Game {
         if (dist < (p.radius || 18) + (q.radius || 18) + 28) {
           const cx = (p.x + q.x) * 0.5;
           const cy = (p.y + q.y) * 0.5;
-          this.triggerClashSpark(cx, cy, p.color, q.color, '★ ARCANE CLASH! ★');
+          this.triggerClashSpark(cx, cy, p.color, q.color, 'ARCANE CLASH!');
           if (!p.isMeteor && !q.isMeteor) {
             this.vfx.projectiles.splice(i, 1);
             this.vfx.projectiles.splice(j, 1);
@@ -3790,7 +3828,7 @@ class Game {
       els.hpDmg.style.width = `${hpPct}%`;
       els.hpText.textContent =
         this.testModeUnlimitedHp && !isAdv && !f.isMonster
-          ? `∞ ${Math.ceil(f.hp)}`
+          ? `MAX ${Math.ceil(f.hp)}`
           : `${Math.ceil(f.hp)}`;
       els.state.textContent = f.isDead ? 'DEFEATED' : f.state;
 
@@ -3799,7 +3837,7 @@ class Game {
         ? `PHASE ${f.bossPhase || 1} / 3${(f.vulnerableTimer || 0) > 0 ? ' • CORE EXPOSED!' : ''}`
         : f.isMonster
           ? f.isElite
-            ? '★ ELITE MONSTER'
+            ? 'ELITE MONSTER'
             : 'ABYSSAL HORDE'
           : isAdv
             ? `${advTags?.overdrive || 'DRIVE'} ${Math.floor(manaPct)}% (EMBERS)`
@@ -3817,10 +3855,10 @@ class Game {
           const seals = Math.min(3, Math.floor((finPct + 0.5) / 33.33));
           els.finisherLabel.textContent =
             f.state === 'TRUE_ULTIMATE'
-              ? `★ ULTIMATE: ${f.trueUltName || 'SWORD OF JUSTICE'}! ★`
+              ? `ULTIMATE: ${f.trueUltName || 'SWORD OF JUSTICE'}!`
               : isAdv
-                ? `★ ${advTags?.ultimate || 'CATACLYSM'} ${Math.floor(finPct)}% (${seals}/3 SEALS) ★`
-                : `★ ULTIMATE ${Math.floor(finPct)}% (${seals}/3 OD) ★`;
+                ? `${advTags?.ultimate || 'CATACLYSM'} ${Math.floor(finPct)}% (${seals}/3 SEALS)`
+                : `ULTIMATE ${Math.floor(finPct)}% (${seals}/3 OD)`;
         } else {
           els.finisherFrame.classList.add('hidden');
         }
@@ -3845,7 +3883,7 @@ class Game {
         if (els.partnerManaBar) els.partnerManaBar.style.width = `${pManaPct}%`;
         if (els.partnerHpText) {
           els.partnerHpText.textContent = this.testModeUnlimitedHp
-            ? `∞ ${Math.ceil(partner.hp)}`
+            ? `MAX ${Math.ceil(partner.hp)}`
             : `${Math.ceil(partner.hp)}`;
         }
         if (els.partnerStatus) {
@@ -4018,7 +4056,7 @@ class Game {
             const cy = this.renderer.groundY - 102;
             f1.vx = -155;
             f2.vx = 155;
-            this.triggerClashSpark(cx, cy, f1.primaryColor, f2.primaryColor, '★ PARRY CLASH! ★');
+            this.triggerClashSpark(cx, cy, f1.primaryColor, f2.primaryColor, 'PARRY CLASH!');
             clashed = true;
             break;
           }

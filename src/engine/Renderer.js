@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps109';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps109';
+import { PixelForge } from './PixelForge.js?v=30fps110';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps110';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -52,6 +52,18 @@ export class Renderer {
     this.isMobile = this.width < 768 || this.height < 540;
     this.isMobileLandscape = this.isMobile && this.width > this.height;
     this.isMobilePortrait = this.isMobile && !this.isMobileLandscape;
+
+    let savedFullZoom = true;
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        const raw = window.localStorage.getItem('avs_mobile_full_zoom_out');
+        if (raw === '0' || raw === 'false') savedFullZoom = false;
+      }
+    } catch {
+      // Ignore storage access errors in restricted webviews
+    }
+    this.mobileFullZoomOut = savedFullZoom;
+    this._stageUpperVaultCache = new Map();
 
     this.worldWidth = 1200;
     this.groundY = 520;
@@ -119,6 +131,7 @@ export class Renderer {
     this.sylvanWaterfallCanvas = null;
     this.infernoMagmaCanvas = null;
     this.shogunateInfernoFlameCanvas = null;
+    if (this._stageUpperVaultCache) this._stageUpperVaultCache.clear();
   }
 
   resetStageOverrides() {
@@ -405,6 +418,26 @@ export class Renderer {
     return Math.max(0.26, Math.min(0.46, this.width / fullStageW));
   }
 
+  setMobileFullZoomOut(enabled) {
+    this.mobileFullZoomOut = Boolean(enabled);
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem('avs_mobile_full_zoom_out', this.mobileFullZoomOut ? '1' : '0');
+      }
+    } catch {
+      // Ignore storage access errors in restricted webviews
+    }
+    if (this.mobileFullZoomOut) {
+      if (this.isMobileLandscape) {
+        this.zoom = this.getMobileLandscapeFixedZoom(false);
+      } else if (this.isMobilePortrait) {
+        this.zoom = this.getMobilePortraitFixedZoom(false);
+      }
+    } else if (this.isMobile) {
+      this.zoom = Math.max(0.52, Math.min(0.85, this.width / 780));
+    }
+  }
+
   resize() {
     const isCssRotated =
       typeof document !== 'undefined' &&
@@ -414,10 +447,12 @@ export class Renderer {
     this.isMobile = this.width < 768 || this.height < 540;
     this.isMobileLandscape = this.isMobile && this.width > this.height;
     this.isMobilePortrait = this.isMobile && !this.isMobileLandscape;
-    if (this.isMobileLandscape) {
-      this.zoom = this.getMobileLandscapeFixedZoom(false);
-    } else if (this.isMobilePortrait) {
-      this.zoom = this.getMobilePortraitFixedZoom(false);
+    if (this.mobileFullZoomOut) {
+      if (this.isMobileLandscape) {
+        this.zoom = this.getMobileLandscapeFixedZoom(false);
+      } else if (this.isMobilePortrait) {
+        this.zoom = this.getMobilePortraitFixedZoom(false);
+      }
     }
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     this.canvas.width = Math.round(this.width * dpr);
@@ -457,8 +492,8 @@ export class Renderer {
       ? caster.trueUltName || 'CELESTIAL SWORD OF JUSTICE'
       : caster.ultName || 'ULTIMATE ART';
     this.cutInEyebrow = isTrueUlt
-      ? `★ ${(caster.name || 'CHAMPION').toUpperCase()} • SUPREME ULTIMATE FINISHER ★`
-      : `★ ${(caster.name || 'CHAMPION').toUpperCase()} • OVERDRIVE ART ★`;
+      ? `${(caster.name || 'CHAMPION').toUpperCase()} • SUPREME ULTIMATE FINISHER`
+      : `${(caster.name || 'CHAMPION').toUpperCase()} • OVERDRIVE ART`;
     this.cutInColor = caster.primaryColor || '#38bdf8';
     this.cutInFacing = caster.facing || 1;
   }
@@ -631,13 +666,15 @@ export class Renderer {
       const horizSpan = this.adventureMode ? Math.min(1220, Math.max(820, rawHorizSpan)) : rawHorizSpan;
       const dist = Math.max(horizSpan, maxAirLift * 1.48 + 340);
 
-      const lockWideMobileZoom = Boolean(this.isMobileLandscape || this.isMobilePortrait);
+      const lockWideMobileZoom = Boolean(
+        this.mobileFullZoomOut && (this.isMobileLandscape || this.isMobilePortrait)
+      );
       let targetZoom;
-      if (this.isMobileLandscape) {
-        // Mobile Landscape: ZERO camera zoom-in — constant wide full-stage viewport fit
+      if (lockWideMobileZoom && this.isMobileLandscape) {
+        // Mobile Landscape (Full Zoom ON): ZERO camera zoom-in — constant wide full-stage viewport fit
         targetZoom = this.getMobileLandscapeFixedZoom(false);
-      } else if (this.isMobilePortrait) {
-        // Mobile Portrait: FULL stage zoom-out — fits entire 1260-1360px arena width with zero dynamic zoom-in cropping!
+      } else if (lockWideMobileZoom && this.isMobilePortrait) {
+        // Mobile Portrait (Full Zoom ON): FULL stage zoom-out — fits entire 1260-1360px arena width with zero dynamic zoom-in cropping!
         targetZoom = this.getMobilePortraitFixedZoom(Boolean(colossalBoss));
       } else {
         const maxSpanW = this.adventureMode ? 1280 : this.worldWidth;
@@ -671,7 +708,7 @@ export class Renderer {
       }
 
       if (this.koZoomTimer > 0) {
-        // Dramatic K.O. Finisher focus (skip zoom-in on mobile portrait & landscape)
+        // Dramatic K.O. Finisher focus (skip zoom-in on mobile portrait & landscape when Full Zoom is ON)
         if (!lockWideMobileZoom) {
           targetZoom *= 1.12;
         }
@@ -723,9 +760,9 @@ export class Renderer {
           targetX = (camMin + camMax) * 0.5;
         }
       } else {
-        // Clamp camera X so the viewport stays comfortably inside the 1680-wide cathedral diorama
-        const bgLeft = (this.worldWidth - 1680) * 0.5 + 16;
-        const bgRight = (this.worldWidth + 1680) * 0.5 - 16;
+        // Clamp camera X so the viewport stays comfortably inside the enlarged 1920-wide (3x integer) arena diorama
+        const bgLeft = (this.worldWidth - 1920) * 0.5 + 16;
+        const bgRight = (this.worldWidth + 1920) * 0.5 - 16;
         if (bgRight - bgLeft > halfViewW * 2) {
           targetX = Math.max(bgLeft + halfViewW, Math.min(bgRight - halfViewW, targetX));
         } else {
@@ -1055,7 +1092,7 @@ export class Renderer {
     // 8. Screen-Space Unreal HD-2D Soft Tilt-Shift Vignette (Zero hard vertical bars)
     this.drawHD2DPostProcess(ctx);
 
-    // 9. Adventure Mode Screen-Space Progress Strip, Flashing "GO! ➔" Arrow & Boss Warning Banner
+    // 9. Adventure Mode Screen-Space Progress Strip, Flashing "GO!" Pixel Arrow & Boss Warning Banner
     if (this.adventureMode && this.adventureHook) {
       this.adventureHook.renderScreenHUD(ctx, this);
     }
@@ -1117,10 +1154,10 @@ export class Renderer {
       : isLeft
         ? f.slotRole === 'partner'
           ? 'P1B'
-          : '★P1'
+          : 'P1'
         : f.slotRole === 'partner'
           ? 'P2B'
-          : '★P2';
+          : 'P2';
     const borderCol = isLeft
       ? f.slotRole === 'partner'
         ? '#2dd4bf'
@@ -1163,6 +1200,253 @@ export class Renderer {
     ctx.restore();
   }
 
+  getOrBakeStageUpperVault(img) {
+    if (!img || !img.complete || img.naturalWidth <= 0 || typeof document === 'undefined') {
+      return null;
+    }
+    if (!this._stageUpperVaultCache) {
+      this._stageUpperVaultCache = new Map();
+    }
+    const cacheKey = img.src || img;
+    const cached = this._stageUpperVaultCache.get(cacheKey);
+    if (cached) return cached;
+
+    const srcW = img.naturalWidth || 640;
+    const srcH = img.naturalHeight || 360;
+    const sampleH = Math.min(24, srcH);
+    const vaultH = 280;
+
+    const sampleCanvas = document.createElement('canvas');
+    sampleCanvas.width = srcW;
+    sampleCanvas.height = sampleH;
+    const sctx = sampleCanvas.getContext('2d', { willReadFrequently: true });
+    if (!sctx) return null;
+    sctx.imageSmoothingEnabled = false;
+    sctx.drawImage(img, 0, 0, srcW, sampleH, 0, 0, srcW, sampleH);
+    const srcData = sctx.getImageData(0, 0, srcW, sampleH).data;
+
+    const vaultCanvas = document.createElement('canvas');
+    vaultCanvas.width = srcW;
+    vaultCanvas.height = vaultH;
+    const vctx = vaultCanvas.getContext('2d');
+    if (!vctx) return null;
+    vctx.imageSmoothingEnabled = false;
+    const outImg = vctx.getImageData(0, 0, srcW, vaultH);
+    const out = outImg.data;
+
+    // 1. Extract stage-authentic center sky palette (`x in [0.33..0.67]`, `y in [0..19]`)
+    const xStart = Math.floor(srcW * 0.33);
+    const xEnd = Math.ceil(srcW * 0.67);
+    const skySamples = [];
+    for (let sy = 0; sy < Math.min(20, sampleH); sy += 2) {
+      for (let sx = xStart; sx < xEnd; sx += 2) {
+        const idx = (sy * srcW + sx) * 4;
+        const r = srcData[idx];
+        const g = srcData[idx + 1];
+        const b = srcData[idx + 2];
+        const lum = 0.299 * r + 0.587 * g + 0.114 * b;
+        skySamples.push({ r, g, b, lum });
+      }
+    }
+    skySamples.sort((a, b) => a.lum - b.lum);
+    const pickPct = (p, fb) =>
+      skySamples.length > 0
+        ? skySamples[Math.min(skySamples.length - 1, Math.max(0, Math.floor(skySamples.length * p)))]
+        : fb;
+    const p20 = pickPct(0.20, { r: 10, g: 16, b: 32, lum: 15 });
+    const p50 = pickPct(0.50, { r: 18, g: 28, b: 52, lum: 26 });
+    const p88 = pickPct(0.88, { r: 44, g: 68, b: 108, lum: 64 });
+
+    const skyMid = [
+      Math.round(p50.r * 0.78 + 4 * 0.22),
+      Math.round(p50.g * 0.78 + 5 * 0.22),
+      Math.round(p50.b * 0.78 + 10 * 0.22)
+    ];
+    const skyUpper = [
+      Math.round(p20.r * 0.48 + 4 * 0.52),
+      Math.round(p20.g * 0.48 + 5 * 0.52),
+      Math.round(p20.b * 0.48 + 10 * 0.52)
+    ];
+    const skyZenith = [4, 5, 10];
+    const nebulaTint = [
+      Math.min(255, Math.round(p88.r * 0.85 + 14)),
+      Math.min(255, Math.round(p88.g * 0.85 + 16)),
+      Math.min(255, Math.round(p88.b * 0.85 + 22))
+    ];
+    const starTint = [
+      Math.min(255, Math.max(168, p88.r + 78)),
+      Math.min(255, Math.max(176, p88.g + 78)),
+      Math.min(255, Math.max(196, p88.b + 84))
+    ];
+
+    // 2. Build smoothed horizon envelope from `y = 0..3` so sky colors transition without vertical stripes
+    const colHorizonR = new Float32Array(srcW);
+    const colHorizonG = new Float32Array(srcW);
+    const colHorizonB = new Float32Array(srcW);
+    const blurRadius = 18;
+    for (let x = 0; x < srcW; x++) {
+      let sr = 0;
+      let sg = 0;
+      let sb = 0;
+      let cnt = 0;
+      const lo = Math.max(0, x - blurRadius);
+      const hi = Math.min(srcW - 1, x + blurRadius);
+      for (let kx = lo; kx <= hi; kx++) {
+        for (let ky = 0; ky < Math.min(4, sampleH); ky++) {
+          const kIdx = (ky * srcW + kx) * 4;
+          sr += srcData[kIdx];
+          sg += srcData[kIdx + 1];
+          sb += srcData[kIdx + 2];
+          cnt++;
+        }
+      }
+      colHorizonR[x] = sr / Math.max(1, cnt);
+      colHorizonG[x] = sg / Math.max(1, cnt);
+      colHorizonB[x] = sb / Math.max(1, cnt);
+    }
+
+    const BAYER_4X4 = [
+      0 / 16, 8 / 16, 2 / 16, 10 / 16,
+      12 / 16, 4 / 16, 14 / 16, 6 / 16,
+      3 / 16, 11 / 16, 1 / 16, 9 / 16,
+      15 / 16, 7 / 16, 13 / 16, 5 / 16
+    ];
+    const hash2 = (ix, iy) => {
+      let n = (ix * 374761393 + iy * 668265263) | 0;
+      n = ((n ^ (n >>> 13)) * 1274126177) | 0;
+      return ((n ^ (n >>> 16)) >>> 0) / 4294967295;
+    };
+    const valueNoise2D = (fx, fy) => {
+      const x0 = Math.floor(fx);
+      const y0 = Math.floor(fy);
+      const tx = fx - x0;
+      const ty = fy - y0;
+      const ux = tx * tx * (3 - 2 * tx);
+      const uy = ty * ty * (3 - 2 * ty);
+      const v00 = hash2(x0, y0);
+      const v10 = hash2(x0 + 1, y0);
+      const v01 = hash2(x0, y0 + 1);
+      const v11 = hash2(x0 + 1, y0 + 1);
+      const a = v00 + (v10 - v00) * ux;
+      const b = v01 + (v11 - v01) * ux;
+      return a + (b - a) * uy;
+    };
+
+    const halfW = srcW * 0.5;
+    for (let vy = 0; vy < vaultH; vy++) {
+      const h = vaultH - 1 - vy; // 0 right at seam `drawY`, 279 at top of vault
+      for (let x = 0; x < srcW; x++) {
+        const outIdx = (vy * srcW + x) * 4;
+        if (h === 0) {
+          // Exact 0.0px pixel-identical join with `y = 0` of the stage PNG
+          const s0 = x * 4;
+          out[outIdx] = srcData[s0];
+          out[outIdx + 1] = srcData[s0 + 1];
+          out[outIdx + 2] = srcData[s0 + 2];
+          out[outIdx + 3] = 255;
+          continue;
+        }
+
+        const bayer = BAYER_4X4[(vy & 3) * 4 + (x & 3)] - 0.5;
+        const nx = (x - halfW) / halfW; // -1..+1
+        const absNx = Math.abs(nx);
+
+        // Organic inward-arching canopy/vault crown strictly on outer framing columns (`|nx| > 0.28`)
+        const crownNoise =
+          valueNoise2D(x * 0.055, h * 0.045) * 0.65 + valueNoise2D(x * 0.13 + 17.3, h * 0.11) * 0.35;
+        const outerFactor = Math.max(0, (absNx - 0.28) / 0.72);
+        const archReach =
+          outerFactor > 0
+            ? 4 + Math.pow(outerFactor, 1.15) * 56 + (crownNoise - 0.35) * 24 * outerFactor
+            : 3;
+
+        // Exponentially diffuse `colHorizon[x]` upward into unified deep night cosmos (`0` vertical streaks & `0` shelf!)
+        const horizonKeep = Math.exp(-h / 36);
+        const baseSkyR = skyUpper[0] * 0.72 + skyZenith[0] * 0.28;
+        const baseSkyG = skyUpper[1] * 0.72 + skyZenith[1] * 0.28;
+        const baseSkyB = skyUpper[2] * 0.72 + skyZenith[2] * 0.28;
+        const seamR = colHorizonR[x] * horizonKeep + baseSkyR * (1 - horizonKeep);
+        const seamG = colHorizonG[x] * horizonKeep + baseSkyG * (1 - horizonKeep);
+        const seamB = colHorizonB[x] * horizonKeep + baseSkyB * (1 - horizonKeep);
+
+        const skyT = Math.min(1, Math.max(0, (h + bayer * 12) / (vaultH - 8)));
+        const zenithMix = Math.pow(skyT, 0.85);
+        let sr = seamR + (skyZenith[0] - seamR) * zenithMix;
+        let sg = seamG + (skyZenith[1] - seamG) * zenithMix;
+        let sb = seamB + (skyZenith[2] - seamB) * zenithMix;
+
+        // Subtle pixel-stepped celestial cloud / aurora / ember haze bands in mid-vault
+        const cloudField =
+          valueNoise2D(x * 0.016 + 3.1, h * 0.038 + 1.7) * 0.68 +
+          valueNoise2D(x * 0.042 + 11.4, h * 0.085) * 0.32;
+        const colLum = 0.299 * seamR + 0.587 * seamG + 0.114 * seamB;
+        const cloudBand = Math.sin(Math.min(1, h / 185) * Math.PI) * Math.min(1, (colLum + 14) / 76);
+        if (cloudField + bayer * 0.22 > 0.64 && cloudBand > 0.10) {
+          const cw = Math.min(0.22, (cloudField - 0.58) * 0.45 * cloudBand);
+          sr += (nebulaTint[0] - sr) * cw;
+          sg += (nebulaTint[1] - sg) * cw;
+          sb += (nebulaTint[2] - sb) * cw;
+        }
+
+        // Blend organic inward-arching canopy / pillar stone clumps near the lower seam (`h < archReach`)
+        if (h < archReach) {
+          const archDir = nx >= 0 ? -1 : 1;
+          const lateralDrift =
+            outerFactor > 0
+              ? archDir * Math.round(h * (0.48 + 0.34 * absNx)) + Math.round((crownNoise - 0.5) * 11)
+              : 0;
+          const sxSample = Math.max(0, Math.min(srcW - 1, x + lateralDrift));
+          const sySample =
+            h <= 2
+              ? 0
+              : Math.min(
+                  sampleH - 1,
+                  Math.floor(valueNoise2D(x * 0.19 + 5.7, h * 0.21) * Math.min(10, sampleH))
+                );
+          const cIdx = (sySample * srcW + sxSample) * 4;
+          const cr = srcData[cIdx];
+          const cg = srcData[cIdx + 1];
+          const cb = srcData[cIdx + 2];
+          const dissolve = Math.max(0, Math.min(1, 1 - (h + bayer * 6) / Math.max(4, archReach)));
+          const useCanopy = h <= 2 || dissolve > 0.42;
+          if (useCanopy) {
+            const shade = 1 - Math.min(0.34, h * 0.0045);
+            sr = cr * shade * dissolve + sr * (1 - dissolve);
+            sg = cg * shade * dissolve + sg * (1 - dissolve);
+            sb = cb * shade * dissolve + sb * (1 - dissolve);
+          }
+        } else if (h > 18 && colLum < 120) {
+          // Crisp 1x1 & 2x2 pixel stars / celestial embers in open night sky
+          const cellX = x >> 1;
+          const cellY = vy >> 1;
+          const starRoll = hash2(cellX + 911, cellY + 353);
+          if (starRoll > 0.9945) {
+            const subX = x & 1;
+            const subY = vy & 1;
+            const isCross = starRoll > 0.9982;
+            if ((subX === 0 && subY === 0) || (isCross && (subX === 0 || subY === 0))) {
+              const fadeTop = Math.min(1, (vaultH - h) / 48);
+              const bright = subX === 0 && subY === 0 ? 0.92 * fadeTop : 0.46 * fadeTop;
+              sr = sr + (starTint[0] - sr) * bright;
+              sg = sg + (starTint[1] - sg) * bright;
+              sb = sb + (starTint[2] - sb) * bright;
+            }
+          }
+        }
+
+        // Quantize to crisp 6-bit cel steps so sky bands feel 100% authentic pixel art
+        out[outIdx] = Math.max(0, Math.min(255, Math.round(sr / 3) * 3));
+        out[outIdx + 1] = Math.max(0, Math.min(255, Math.round(sg / 3) * 3));
+        out[outIdx + 2] = Math.max(0, Math.min(255, Math.round(sb / 3) * 3));
+        out[outIdx + 3] = 255;
+      }
+    }
+
+    vctx.putImageData(outImg, 0, 0);
+    this._stageUpperVaultCache.set(cacheKey, vaultCanvas);
+    return vaultCanvas;
+  }
+
   drawHD2DArena(ctx, ww, gy) {
     if (this.adventureMode && ww > 1600) {
       AdventureMapRenderer.render(ctx, this, ww);
@@ -1175,35 +1459,46 @@ export class Renderer {
     const bg = PixelForge.ensureImage(
       (stageMeta && assets[stageMeta.assetKey]) || assets.arenaBg
     );
-    const drawW = 1680;
-    const drawH = 945;
+    // Exact 3.0x integer pixel scale of 640x360 (`1920x1080`) for larger, razor-crisp VS arenas
+    const drawW = 1920;
+    const drawH = 1080;
     const drawX = Math.round((ww - drawW) * 0.5);
     const drawY = Math.round(gy - drawH * 0.82);
 
     const drawStageImageWithWings = (img, alpha = 1.0) => {
       if (!img || !img.complete || img.naturalWidth <= 0 || alpha <= 0.005) return;
       const bottomY = drawY + drawH;
+      const upperVault = this.getOrBakeStageUpperVault(img);
+      const srcH = img.naturalHeight || 360;
+      const vaultDrawH = upperVault
+        ? Math.round(drawH * (upperVault.height / srcH))
+        : 0;
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
-      // Seamless upper-sky vertical mirror above `drawY` (`gy - 775`) for high-cosmos camera shots
-      ctx.save();
-      ctx.translate(drawX, drawY);
-      ctx.scale(-1, -1);
-      ctx.drawImage(img, 0, 0, drawW, drawH);
-      ctx.restore();
+      // Seamless HD-2D pixel-art upper sky/vault continuation above `drawY` (ZERO upside-down top mirror!)
+      if (upperVault && vaultDrawH > 0) {
+        const vaultTopY = drawY - vaultDrawH;
+        ctx.fillStyle = '#04050a';
+        ctx.fillRect(drawX - drawW, vaultTopY - 960, drawW * 3, 964);
 
-      ctx.save();
-      ctx.translate(drawX + drawW * 2, drawY);
-      ctx.scale(-1, -1);
-      ctx.drawImage(img, 0, 0, drawW, drawH);
-      ctx.restore();
+        ctx.save();
+        ctx.translate(drawX, vaultTopY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(upperVault, 0, 0, drawW, vaultDrawH);
+        ctx.restore();
 
-      ctx.save();
-      ctx.translate(drawX, drawY);
-      ctx.scale(1, -1);
-      ctx.drawImage(img, 0, 0, drawW, drawH);
-      ctx.restore();
+        ctx.save();
+        ctx.translate(drawX + drawW * 2, vaultTopY);
+        ctx.scale(-1, 1);
+        ctx.drawImage(upperVault, 0, 0, drawW, vaultDrawH);
+        ctx.restore();
+
+        ctx.drawImage(upperVault, drawX, vaultTopY, drawW, vaultDrawH);
+      } else {
+        ctx.fillStyle = '#04050a';
+        ctx.fillRect(drawX - drawW, drawY - 1200, drawW * 3, 1204);
+      }
 
       ctx.save();
       ctx.translate(drawX, drawY);
@@ -1219,7 +1514,7 @@ export class Renderer {
 
       ctx.drawImage(img, drawX, drawY, drawW, drawH);
 
-      // Seamless lower-floor vertical mirror below `bottomY` + darkforge floor vignette for wide Mobile Portrait camera zoom
+      // Seamless lower-floor vertical mirror below `bottomY` + darkforge floor vignette (100% preserved!)
       ctx.save();
       ctx.translate(drawX, bottomY + drawH);
       ctx.scale(-1, -1);
@@ -4504,7 +4799,7 @@ export class Renderer {
     };
 
     if (activeStage === 'inferno' || activeStage === 'shogunate_inferno') {
-      // ★ INFERNO / SHOGUNATE INFERNO PHENOMENON: PYROCLASTIC CINDER STORM & SOLAR FLARE
+      // INFERNO / SHOGUNATE INFERNO PHENOMENON: PYROCLASTIC CINDER STORM & SOLAR FLARE
       const calderaX = ww * 0.495;
       const calderaY = gy - 355;
       ctx.globalCompositeOperation = 'lighter';
@@ -4551,7 +4846,7 @@ export class Renderer {
         drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 24, pAlpha, tailDx, tailDy);
       }
     } else if (activeStage === 'glacial' || activeStage === 'shogunate_glacial') {
-      // ★ GLACIAL / FROZEN SHOGUNATE PHENOMENON: BOREALIS DIAMOND-DUST BLIZZARD (`0` ctx.rotate!)
+      // GLACIAL / FROZEN SHOGUNATE PHENOMENON: BOREALIS DIAMOND-DUST BLIZZARD (`0` ctx.rotate!)
       const originX = ww * 0.54;
       const originY = gy - 385;
       ctx.globalCompositeOperation = 'lighter';
@@ -4595,7 +4890,7 @@ export class Renderer {
         }
       }
     } else if (activeStage === 'shogunate') {
-      // ★ SHOGUNATE PHENOMENON: MOONLIT SAKURA FUBUKI GALE & ASTRAL BLADE BREEZE
+      // SHOGUNATE PHENOMENON: MOONLIT SAKURA FUBUKI GALE & ASTRAL BLADE BREEZE
       const originX = ww * 0.56;
       const originY = gy - 385;
       ctx.globalCompositeOperation = 'lighter';
@@ -4633,7 +4928,7 @@ export class Renderer {
         );
       }
     } else if (activeStage === 'sanctuary') {
-      // ★ SANCTUARY PHENOMENON: RADIANT SERAPHIM FEATHER & HALO SHOWER
+      // SANCTUARY PHENOMENON: RADIANT SERAPHIM FEATHER & HALO SHOWER
       const originX = ww * 0.50;
       const originY = gy - 390;
       ctx.globalCompositeOperation = 'lighter';
@@ -4679,7 +4974,7 @@ export class Renderer {
         ctx.fillRect(fx - 2 * tilt, fy - 1, 4, 2);
       }
     } else if (activeStage === 'cathedral') {
-      // ★ CATHEDRAL PHENOMENON: SOLAR ECLIPSE EMBER RAIN
+      // CATHEDRAL PHENOMENON: SOLAR ECLIPSE EMBER RAIN
       const originX = ww * 0.504;
       const originY = gy - 380;
       ctx.globalCompositeOperation = 'lighter';
@@ -4704,7 +4999,7 @@ export class Renderer {
         drawGlowingParticle(px, py, sz, '#ffffff', midCol, glow, 22, pAlpha, 0, -5);
       }
     } else if (activeStage === 'sylvan') {
-      // ★ SYLVAN PHENOMENON: ASTRAL STARFALL METEOR SHOWER & BIOLUMINESCENT FIREFLY SWARM
+      // SYLVAN PHENOMENON: ASTRAL STARFALL METEOR SHOWER & BIOLUMINESCENT FIREFLY SWARM
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.34 * fade;
       ctx.drawImage(this.glowEmerald, ww * 0.5 - 460, gy - 420, 920, 440);
@@ -4738,7 +5033,7 @@ export class Renderer {
         drawGlowingParticle(fx, fy, 4, '#ffffff', midCol, glow, 20, fAlpha, -3, 2);
       }
     } else if (activeStage === 'boneyard') {
-      // ★ BONEYARD PHENOMENON: ABYSSAL SOUL-EMBER ASCENSION
+      // BONEYARD PHENOMENON: ABYSSAL SOUL-EMBER ASCENSION
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.36 * fade;
       ctx.drawImage(this.glowViolet, ww * 0.5 - 480, gy - 320, 960, 360);
@@ -4757,7 +5052,7 @@ export class Renderer {
         drawGlowingParticle(wx, wy, sz, '#ffffff', midCol, this.glowViolet, 24, wAlpha, -swirlX * 0.08, 6);
       }
     } else if (activeStage === 'clocktower') {
-      // ★ CLOCKTOWER PHENOMENON: ANTI-GRAVITY TIME-SAND VORTEX
+      // CLOCKTOWER PHENOMENON: ANTI-GRAVITY TIME-SAND VORTEX
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = 0.36 * fade;
       ctx.drawImage(this.glowTeal, ww * 0.5 - 460, gy - 420, 920, 440);
@@ -5302,10 +5597,10 @@ export class Renderer {
       ctx.textAlign = 'center';
       ctx.font = `${this.isMobile ? 9 : 13}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', 2, -14);
-      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', -2, -14);
+      ctx.fillText(this.stageEventTitle || 'STAGE PHENOMENON', 2, -14);
+      ctx.fillText(this.stageEventTitle || 'STAGE PHENOMENON', -2, -14);
       ctx.fillStyle = evCol;
-      ctx.fillText(this.stageEventTitle || '★ STAGE PHENOMENON ★', 0, -16);
+      ctx.fillText(this.stageEventTitle || 'STAGE PHENOMENON', 0, -16);
 
       // Bottom Line: HUGE, Unmistakable Active Blessing Headline
       const blessText = this.stageEventSubtitle || '';
@@ -5389,7 +5684,7 @@ export class Renderer {
       ctx.textAlign = 'center';
       ctx.font = `${this.isMobile ? 7 : 10}px "Press Start 2P", monospace`;
       const eyebrow =
-        this.cutInEyebrow || `★ ${(this.cutInName || 'CHAMPION').toUpperCase()} • OVERDRIVE ART ★`;
+        this.cutInEyebrow || `${(this.cutInName || 'CHAMPION').toUpperCase()} • OVERDRIVE ART`;
       ctx.fillStyle = '#020617';
       ctx.fillText(eyebrow, textShiftX + 2, -9);
       ctx.fillText(eyebrow, textShiftX - 2, -9);
@@ -5479,10 +5774,10 @@ export class Renderer {
       const kTextX = Math.round(kcx + pSz * 0.28);
       ctx.font = `${this.isMobile ? 12 : 19}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
-      ctx.fillText('★ DECISIVE FINISH • K.O.! ★', kTextX + 3, kcy - 8 + 3);
-      ctx.fillText('★ DECISIVE FINISH • K.O.! ★', kTextX - 2, kcy - 8 + 2);
+      ctx.fillText('DECISIVE FINISH • K.O.!', kTextX + 3, kcy - 8 + 3);
+      ctx.fillText('DECISIVE FINISH • K.O.!', kTextX - 2, kcy - 8 + 2);
       ctx.fillStyle = '#fde047';
-      ctx.fillText('★ DECISIVE FINISH • K.O.! ★', kTextX, kcy - 8);
+      ctx.fillText('DECISIVE FINISH • K.O.!', kTextX, kcy - 8);
 
       ctx.font = `${this.isMobile ? 8 : 11}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';

@@ -327,13 +327,13 @@ export class AdventureSkillSets {
     let splashMult = 0.75;
 
     if (st === 'TRUE_ULTIMATE') {
-      radX = 680;
-      radZ = 240;
-      splashMult = 0.90;
+      radX = 400;
+      radZ = 185;
+      splashMult = 0.50;
     } else if (st === 'ULTIMATE') {
       radX = 310;
       radZ = 175;
-      splashMult = 0.85;
+      splashMult = 0.72;
     } else if (st === 'SKILL') {
       radX = 215;
       radZ = 128;

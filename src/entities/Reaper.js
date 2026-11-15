@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps109';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps109';
+import { Fighter } from './Fighter.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps110';
 import {
   ABYSSAL_EFFECT_REGISTRY,
   ABYSSAL_VIOLET_PALETTE,
   BLOOD_MOON_CRIMSON_PALETTE,
   NECRO_SOUL_EMERALD_PALETTE
-} from '../engine/shaders/abyssalShaders.js?v=30fps109';
+} from '../engine/shaders/abyssalShaders.js?v=30fps110';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -154,14 +154,14 @@ export class Reaper extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('reaper');
       const reaperAssets = PixelForge.initAssets()?.reaper;
-      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps109')) {
-        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps109';
+      if (reaperAssets?.vfx?.src && !reaperAssets.vfx.src.includes('v=30fps110')) {
+        reaperAssets.vfx.src = 'assets/sprites/reaper_vfx.png?v=30fps110';
       }
-      if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps109')) {
-        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps109';
+      if (reaperAssets?.sheet?.src && !reaperAssets.sheet.src.includes('v=30fps110')) {
+        reaperAssets.sheet.src = 'assets/sprites/reaper_sheet.png?v=30fps110';
       }
-      if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps109')) {
-        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps109';
+      if (reaperAssets?.companions?.src && !reaperAssets.companions.src.includes('v=30fps110')) {
+        reaperAssets.companions.src = 'assets/sprites/reaper_companions.png?v=30fps110';
       }
     }
   }
@@ -492,7 +492,7 @@ export class Reaper extends Fighter {
       }
     });
     if (game?.vfx) {
-      game.vfx.spawnDamageText(tgt.x, tgt.y - 152, 0, false, '★ SOUL LINK REND! ★', '#f43f5e');
+      game.vfx.spawnDamageText(tgt.x, tgt.y - 152, 0, false, 'SOUL LINK REND!', '#f43f5e');
     }
     return true;
   }
@@ -763,7 +763,7 @@ export class Reaper extends Fighter {
         this.groundY - 208,
         0,
         true,
-        '★ OBLIVION COVENANT: DEATH MAGE & SOUL HEALER! ★',
+        'OBLIVION COVENANT: DEATH MAGE & SOUL HEALER!',
         '#e879f9'
       );
     }
@@ -824,7 +824,7 @@ export class Reaper extends Fighter {
           comp.y - 154,
           0,
           false,
-          comp.role === 'mage' ? '✖ DEATH MAGE BANISHED!' : '✖ SOUL HEALER BANISHED!',
+          comp.role === 'mage' ? 'DEATH MAGE BANISHED!' : 'SOUL HEALER BANISHED!',
           '#fb7185'
         );
       }
@@ -1152,7 +1152,7 @@ export class Reaper extends Fighter {
                     mage.y - 144,
                     0,
                     false,
-                    `✚ MAGE MEND +${Math.round(restored)}`,
+                    `MAGE MEND +${Math.round(restored)}`,
                     '#6ee7b7'
                   );
                 }
@@ -1165,7 +1165,7 @@ export class Reaper extends Fighter {
                     mage.y - 144,
                     0,
                     false,
-                    '✚ SOUL WARD + DARK COVENANT!',
+                    'SOUL WARD + DARK COVENANT!',
                     '#67e8f9'
                   );
                 }
@@ -1180,7 +1180,7 @@ export class Reaper extends Fighter {
               if (!this.isDead && this.hp < this.maxHp) {
                 this.heal(22, 'COVENANT GRACE');
               } else if (game?.vfx) {
-                game.vfx.spawnDamageText(comp.x, comp.y - 144, 0, false, '✚ WARD MEND +68', '#6ee7b7');
+                game.vfx.spawnDamageText(comp.x, comp.y - 144, 0, false, 'WARD MEND +68', '#6ee7b7');
               }
             }
           }
@@ -1225,7 +1225,7 @@ export class Reaper extends Fighter {
     if (game && game.audio) game.audio.play('soul_drain', this.x);
     if (game && game.vfx) {
       game.vfx.spawnGlyphBurst(this.x, this.groundY - 18, 3, 'abyssal');
-      game.vfx.spawnDamageText(this.x, this.y - 134, 0, false, '▼ SHADOW BURROW! ▼', '#c084fc');
+      game.vfx.spawnDamageText(this.x, this.y - 134, 0, false, 'SHADOW BURROW!', '#c084fc');
     }
   }
 
@@ -1421,7 +1421,7 @@ export class Reaper extends Fighter {
           this.gainSoulStack(1);
           this.leechLife(11, enemy, game, 'FALLING GUILLOTINE');
           if (game.vfx) {
-            game.vfx.spawnDamageText(enemy.x, enemy.y - 156, 0, false, '★ FALLING GUILLOTINE! ★', '#f43f5e');
+            game.vfx.spawnDamageText(enemy.x, enemy.y - 156, 0, false, 'FALLING GUILLOTINE!', '#f43f5e');
           }
           if (game.renderer) game.renderer.triggerShake(12, 0.24);
         } else {
@@ -1557,7 +1557,7 @@ export class Reaper extends Fighter {
         this.burrowWarned = true;
         if (game?.audio) game.audio.play('chain_hook', this.x);
         if (game?.vfx) {
-          game.vfx.spawnDamageText(this.x, this.groundY - 56, 0, false, '★ SHADOW LOCK! ★', '#f43f5e');
+          game.vfx.spawnDamageText(this.x, this.groundY - 56, 0, false, 'SHADOW LOCK!', '#f43f5e');
         }
       }
 
@@ -1630,7 +1630,7 @@ export class Reaper extends Fighter {
       });
       if (game.vfx) {
         game.vfx.spawnGlyphBurst(eruptX, eruptY, 10, 'abyssal');
-        game.vfx.spawnDamageText(this.x, this.groundY - 168, 0, true, '★ SURPRISE ATTACK! ★', '#f43f5e');
+        game.vfx.spawnDamageText(this.x, this.groundY - 168, 0, true, 'SURPRISE ATTACK!', '#f43f5e');
       }
 
       // Grant 1.45s of Abyssal Grave-Ward DR upon erupting from underground!
@@ -1887,7 +1887,7 @@ export class Reaper extends Fighter {
           this.leechLife(4, enemy, game, 'RETURN REAP!');
           this.mana = Math.min(this.maxMana, manaPreRet + 4);
           if (game.vfx) {
-            game.vfx.spawnDamageText(enemy.x, enemy.y - 150, 0, false, '★ SOUL DISC RETURN! ★', '#e879f9');
+            game.vfx.spawnDamageText(enemy.x, enemy.y - 150, 0, false, 'SOUL DISC RETURN!', '#e879f9');
           }
         }
         if (dist < 42 || bs.timer >= 0.75) {
@@ -2139,7 +2139,7 @@ export class Reaper extends Fighter {
               this.y - 150,
               0,
               false,
-              '★ THANATOS CROSS-REAP! ★',
+              'THANATOS CROSS-REAP!',
               '#e879f9'
             );
           }
@@ -2177,7 +2177,7 @@ export class Reaper extends Fighter {
               this.groundY - 162,
               0,
               true,
-              '★ GUILLOTINE SLAM! ★',
+              'GUILLOTINE SLAM!',
               '#f43f5e'
             );
           }
@@ -2198,7 +2198,7 @@ export class Reaper extends Fighter {
                 strikeFoe.y - 172,
                 0,
                 false,
-                '★ CRIMSON REAP! ★',
+                'CRIMSON REAP!',
                 '#f43f5e'
               );
             }
@@ -2282,7 +2282,7 @@ export class Reaper extends Fighter {
           const effigyX = Math.max(105, Math.min(ww - 105, this.x + this.facing * 122));
           this.spawnSeveredSoulEffigy(enemy, effigyX, game);
           if (game.vfx) {
-            game.vfx.spawnDamageText(enemy.x, enemy.y - 156, 0, false, '★ SOUL SEVERED! ★', '#d946ef');
+            game.vfx.spawnDamageText(enemy.x, enemy.y - 156, 0, false, 'SOUL SEVERED!', '#d946ef');
           }
           if (game.renderer) game.renderer.triggerShake(11, 0.22);
         }
@@ -2387,7 +2387,7 @@ export class Reaper extends Fighter {
    * - Beat 2 (`0.28s`): High-speed L->R Phantom Pincer Cross-Slash (`Row 2` scythe cleave) + opposite Wraith Clone!
    * - Beat 3 (`0.56s`): `112px` Rising Scythe Vault R->L (`Row 8`) + Twin Criss-Crossing Wraith Clones!
    * - Beat 4 (`0.86s .. 1.18s`): High-Sky Apex Suspension (`groundY - 168`) flanked by Twin Aerial Wraith Clones
-   *   firing Triple Downward Death-Chains (`★ THANATOS SKY-LOCK! ★`)!
+   *   firing Triple Downward Death-Chains (`THANATOS SKY-LOCK!`)!
    * - Beat 5 (`1.20s`): Cataclysmic Sky-Drop Slam with `0.08s` Abyssal Impact Frame, `30px` quake, Reality-Crack
    *   slash flash, `348x284` `Row 7` Guillotine, 5-Wave Obelisk Fault-Line & `2.2s` Abyssal Grave-Ward!
    */
@@ -2490,7 +2490,7 @@ export class Reaper extends Fighter {
           this.groundY - 262,
           0,
           true,
-          "★ DEATH'S SOVEREIGNTY! ★",
+          "DEATH'S SOVEREIGNTY!",
           '#d946ef'
         );
       }
@@ -2664,7 +2664,7 @@ export class Reaper extends Fighter {
       }
 
       if (game.vfx) {
-        game.vfx.spawnDamageText(targetX, this.groundY - 246, 0, false, '★ THANATOS SKY-LOCK! ★', '#f43f5e');
+        game.vfx.spawnDamageText(targetX, this.groundY - 246, 0, false, 'THANATOS SKY-LOCK!', '#f43f5e');
       }
 
       if (enemy && !enemy.isDead) {
@@ -2866,7 +2866,7 @@ export class Reaper extends Fighter {
           this.groundY - 254,
           0,
           true,
-          '★ GATES OF OBLIVION: UNSEAL! ★',
+          'GATES OF OBLIVION: UNSEAL!',
           '#d946ef'
         );
 
@@ -3015,7 +3015,7 @@ export class Reaper extends Fighter {
           this.groundY - 266,
           0,
           true,
-          '★ MEMENTO MORI: FINAL TOLL! ★',
+          'MEMENTO MORI: FINAL TOLL!',
           '#f43f5e'
         );
       }

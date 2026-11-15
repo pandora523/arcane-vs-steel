@@ -401,7 +401,7 @@ export class AdventureProgression {
     this.skillPoints = Math.max(0, this.skillPoints - 1);
 
     if (nodeId === 'astral_3') {
-      this.gainAstralRelic(34, player, '★ ASTRAL SEAL UNLOCKED! ★');
+      this.gainAstralRelic(18, player, 'ASTRAL SEAL UNLOCKED!');
     }
 
     if (player) {
@@ -627,7 +627,7 @@ export class AdventureProgression {
             player.y - 208,
             0,
             true,
-            `★ LEVEL UP! LV.${this.level} (+1 SP) ★`,
+            `LEVEL UP! LV.${this.level} (+1 SP)`,
             '#fde047'
           );
         }

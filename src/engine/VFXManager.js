@@ -1,5 +1,5 @@
-import { PixelFont } from './PixelFont.js?v=30fps109';
-import { PixelForge } from './PixelForge.js?v=30fps109';
+import { PixelFont } from './PixelFont.js?v=30fps110';
+import { PixelForge } from './PixelForge.js?v=30fps110';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -492,7 +492,7 @@ export class VFXManager {
     });
   }
 
-  spawnSpecialCastAura(fighter, title, tag = '✦ SPECIAL SKILL ✦', theme = 'steel', isUltimate = false) {
+  spawnSpecialCastAura(fighter, title, tag = 'SPECIAL SKILL', theme = 'steel', isUltimate = false) {
     if (!fighter) return;
     // Replace any existing cast aura on the same fighter so head banners never overlap
     for (let i = this.castAuras.length - 1; i >= 0; i--) {

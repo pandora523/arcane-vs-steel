@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps109';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
-import { PixelFont } from '../engine/PixelFont.js?v=30fps109';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps109';
+import { Fighter } from './Fighter.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
+import { PixelFont } from '../engine/PixelFont.js?v=30fps110';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps110';
 import {
   CHRONO_EFFECT_REGISTRY,
   CHRONO_TEAL_PALETTE,
   CHRONO_BRASS_PALETTE
-} from '../engine/shaders/chronoShaders.js?v=30fps109';
+} from '../engine/shaders/chronoShaders.js?v=30fps110';
 
 const ROMAN_CLOCK_HOURS = ['XII', 'I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X', 'XI'];
 const AUTO_SLICES_4 = [
@@ -114,8 +114,8 @@ export class Chronomancer extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('chronomancer');
       const chronoAssets = PixelForge.initAssets()?.chronomancer;
-      if (chronoAssets?.vfx?.src && !chronoAssets.vfx.src.includes('v=30fps109')) {
-        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps109';
+      if (chronoAssets?.vfx?.src && !chronoAssets.vfx.src.includes('v=30fps110')) {
+        chronoAssets.vfx.src = 'assets/sprites/chronomancer_vfx.png?v=30fps110';
       }
     }
 
@@ -1724,7 +1724,7 @@ export class Chronomancer extends Fighter {
         this.groundY - 392,
         0,
         true,
-        '★ THE TWELFTH BELL TOLLS... ★',
+        'THE TWELFTH BELL TOLLS...',
         '#fde047'
       );
     }
@@ -1781,7 +1781,7 @@ export class Chronomancer extends Fighter {
     }
 
     // =========================================================================
-    // PHASE 2 (`t = 1.15s`): `"★ TIME STOP — ETERNAL ZERO! ★"`
+    // PHASE 2 (`t = 1.15s`): `"TIME STOP — ETERNAL ZERO!"`
     // Genuine mid-air / mid-animation Time-Stop Lock on all active enemies!
     // =========================================================================
     if (this._trueUltStage === 0) {
@@ -1839,7 +1839,7 @@ export class Chronomancer extends Fighter {
         this.eternalTargetY - 196,
         0,
         true,
-        '★ TIME STOP — ETERNAL ZERO! ★',
+        'TIME STOP — ETERNAL ZERO!',
         '#2dd4bf'
       );
     }
@@ -1963,7 +1963,7 @@ export class Chronomancer extends Fighter {
     }
 
     // =========================================================================
-    // PHASE 4 (`t = 3.50s`): `"★ TIME RESUMES — TWELFTH BELL! ★"`
+    // PHASE 4 (`t = 3.50s`): `"TIME RESUMES — TWELFTH BELL!"`
     // SINGLE INSTANT CATACLYSMIC SHATTER (`395` Crit Damage + `25%` MaxHP Rewind Heal)!
     // =========================================================================
     if (this._trueUltStage < 3) {
@@ -2053,7 +2053,7 @@ export class Chronomancer extends Fighter {
         impactY - 122,
         0,
         true,
-        '★ TWELFTH BELL — TIME SHATTER! ★',
+        'TWELFTH BELL — TIME SHATTER!',
         '#fde047'
       );
 

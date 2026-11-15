@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps109';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps109';
+import { Fighter } from './Fighter.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps110';
 import {
   VALKYRIE_EFFECT_REGISTRY,
   VALKYRIE_CRIMSON_PALETTE,
   VALKYRIE_GOLD_PALETTE
-} from '../engine/shaders/valkyrieShaders.js?v=30fps109';
+} from '../engine/shaders/valkyrieShaders.js?v=30fps110';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -84,8 +84,8 @@ export class Valkyrie extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('valkyrie');
       const valkyrieAssets = PixelForge.initAssets()?.valkyrie;
-      if (valkyrieAssets?.vfx?.src && !valkyrieAssets.vfx.src.includes('v=30fps109')) {
-        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps109';
+      if (valkyrieAssets?.vfx?.src && !valkyrieAssets.vfx.src.includes('v=30fps110')) {
+        valkyrieAssets.vfx.src = 'assets/sprites/valkyrie_vfx.png?v=30fps110';
       }
     }
 
@@ -543,7 +543,7 @@ export class Valkyrie extends Fighter {
         this.y - 148,
         0,
         true,
-        '★ VALKYRIE BACKFLIP! ★',
+        'VALKYRIE BACKFLIP!',
         '#fbbf24'
       );
       game.vfx.spawnShockwave(this.x, this.groundY - 6, 98, '#f43f5e', 0.24, true);
@@ -715,7 +715,7 @@ export class Valkyrie extends Fighter {
         this.y - 148,
         0,
         true,
-        '★ VALKYRIE WING-GLIDE! ★',
+        'VALKYRIE WING-GLIDE!',
         '#fbbf24'
       );
       game.vfx.spawnShockwave(this.x, this.groundY - 4, 108, '#fbbf24', 0.26, true);
@@ -1064,7 +1064,7 @@ export class Valkyrie extends Fighter {
       });
 
       if (game?.vfx) {
-        game.vfx.spawnSpecialCastAura(this, this.skillName, '✦ VALKYRIE SKILL ✦', 'crimson', false);
+        game.vfx.spawnSpecialCastAura(this, this.skillName, 'VALKYRIE SKILL', 'crimson', false);
         game.vfx.spawnShockwave(this.x, this.groundY - 4, 108, '#fbbf24', 0.26, true);
       }
       this.spawnVfxAnim(3, this.x, this.groundY - 92, 196, 196, 0.30, {
@@ -1289,7 +1289,7 @@ export class Valkyrie extends Fighter {
       });
 
       if (game?.vfx) {
-        game.vfx.spawnSpecialCastAura(this, this.ultName, '★ ULTIMATE OVERDRIVE ★', 'crimson', true);
+        game.vfx.spawnSpecialCastAura(this, this.ultName, 'ULTIMATE OVERDRIVE', 'crimson', true);
         game.vfx.spawnShockwave(this.x, this.groundY - 4, 155, '#fbbf24', 0.34, true);
       }
     }
@@ -1517,7 +1517,7 @@ export class Valkyrie extends Fighter {
           this.groundY - 178,
           0,
           true,
-          '★ GUNGNIR SOVEREIGN JUDGMENT! ★',
+          'GUNGNIR SOVEREIGN JUDGMENT!',
           '#fbbf24'
         );
       }
@@ -1667,7 +1667,7 @@ export class Valkyrie extends Fighter {
           this.groundY - 168,
           0,
           true,
-          '★ TWILIGHT OF RAGNAROK: GUNGNIR ★',
+          'TWILIGHT OF RAGNAROK: GUNGNIR',
           '#fbbf24'
         );
       }
@@ -2060,7 +2060,7 @@ export class Valkyrie extends Fighter {
           this.groundY - 196,
           0,
           true,
-          '★ TWILIGHT OF RAGNAROK! ★',
+          'TWILIGHT OF RAGNAROK!',
           '#fbbf24'
         );
       }

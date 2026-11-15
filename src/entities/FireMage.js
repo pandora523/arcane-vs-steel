@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps109';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps109';
-import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps109';
+import { Fighter } from './Fighter.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps110';
+import { SOLAR_EFFECT_REGISTRY } from '../engine/shaders/solarShaders.js?v=30fps110';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -102,8 +102,8 @@ export class FireMage extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('mage');
       const mageAssets = PixelForge.initAssets()?.mage;
-      if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps109')) {
-        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps109';
+      if (mageAssets?.vfx?.src && !mageAssets.vfx.src.includes('v=30fps110')) {
+        mageAssets.vfx.src = 'assets/sprites/mage_vfx.png?v=30fps110';
       }
     }
   }
@@ -1039,7 +1039,7 @@ export class FireMage extends Fighter {
       this.didSkillAura = true;
       this.vx = 0;
       this.heal(12, 'SOLAR WARD');
-      game.vfx.spawnSpecialCastAura(this, this.skillName, '✦ SOLAR ARCHMAGE ✦', 'arcane', false);
+      game.vfx.spawnSpecialCastAura(this, this.skillName, 'SOLAR ARCHMAGE', 'arcane', false);
       this.fx.spawn('heliosPalmFocus', this.x + this.facing * 26, this.y - 108, {
         follow: this,
         offsetX: 26,
@@ -1140,7 +1140,7 @@ export class FireMage extends Fighter {
         this.spawnedEclipse = true;
         this.heal(18, 'SOLAR CORONA');
         if (game.audio) game.audio.play('eclipse_charge', eclipseX);
-        game.vfx.spawnSpecialCastAura(this, this.ultName, '★ ECLIPSE SUPERNOVA ★', 'arcane', true);
+        game.vfx.spawnSpecialCastAura(this, this.ultName, 'ECLIPSE SUPERNOVA', 'arcane', true);
 
         game.vfx.spawnEclipseSupernova({
           x: eclipseX,
@@ -1245,7 +1245,7 @@ export class FireMage extends Fighter {
         this.groundY - 178,
         0,
         true,
-        '★ ECLIPSE SUPERNOVA! ★',
+        'ECLIPSE SUPERNOVA!',
         '#fef08a'
       );
     } else if (t >= this.ultDuration) {
@@ -1255,7 +1255,7 @@ export class FireMage extends Fighter {
   }
 
   /**
-   * ★ SUPREME ULTIMATE FINISHER (`TRUE_ULTIMATE`):
+   * SUPREME ULTIMATE FINISHER (`TRUE_ULTIMATE`):
    * "ASTRAL METEOR CATACLYSM" — FF14 Black Mage Limit Break III:
    * - Phase 1 (`0.00s - 1.55s`): Sol channels grand Black Mage Ley-Lines on the arena floor while
    *   the camera zooms out into the upper cosmos (`groundY - 670`) as a 620px Dimensional Heavensfall
@@ -1347,7 +1347,7 @@ export class FireMage extends Fighter {
         this.groundY - 212,
         0,
         true,
-        '★ LIMIT BREAK III: ASTRAL METEOR! ★',
+        'LIMIT BREAK III: ASTRAL METEOR!',
         '#fef08a'
       );
     }
@@ -1431,7 +1431,7 @@ export class FireMage extends Fighter {
           this.groundY - 258,
           0,
           true,
-          '★ HEAVENSFALL METEOR DESCENT! ★',
+          'HEAVENSFALL METEOR DESCENT!',
           '#fb923c'
         );
       }
@@ -1584,7 +1584,7 @@ export class FireMage extends Fighter {
           this.groundY - 224,
           0,
           true,
-          '★ ASTRAL METEOR CATACLYSM! ★',
+          'ASTRAL METEOR CATACLYSM!',
           '#fef08a'
         );
       }

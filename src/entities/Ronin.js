@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps109';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps109';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps109';
+import { Fighter } from './Fighter.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps110';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps110';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -89,11 +89,11 @@ export class Ronin extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('ronin');
       const roninAssets = PixelForge.initAssets()?.ronin;
-      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps109')) {
-        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps109';
+      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps110')) {
+        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps110';
       }
-      if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps109')) {
-        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps109';
+      if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps110')) {
+        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps110';
       }
     }
   }
@@ -347,7 +347,7 @@ export class Ronin extends Fighter {
         this.y - 156,
         0,
         true,
-        '★ IAIDO COUNTER-BLINK! ★',
+        'IAIDO COUNTER-BLINK!',
         '#38bdf8'
       );
     }
@@ -921,7 +921,7 @@ export class Ronin extends Fighter {
         this.y - 156,
         0,
         true,
-        '★ ZANTETSUKEN: SHEATH! ★',
+        'ZANTETSUKEN: SHEATH!',
         '#38bdf8'
       );
 
@@ -1189,7 +1189,7 @@ export class Ronin extends Fighter {
         this.groundY - 176,
         0,
         true,
-        '★ SUSANOO HEAVEN-SPLIT! ★',
+        'SUSANOO HEAVEN-SPLIT!',
         '#38bdf8'
       );
 
@@ -1309,7 +1309,7 @@ export class Ronin extends Fighter {
           this.groundY - 168,
           0,
           true,
-          '★ AMAKAKERU: SHOGUNATE REALM SLICE ★',
+          'AMAKAKERU: SHOGUNATE REALM SLICE',
           '#38bdf8'
         );
       }
@@ -1620,7 +1620,7 @@ export class Ronin extends Fighter {
           this.groundY - 198,
           0,
           true,
-          stageAlreadyBurning ? '★ BURNING SHOGUNATE REALM SLICE! ★' : '★ SHOGUNATE REALM SLICE! ★',
+          stageAlreadyBurning ? 'BURNING SHOGUNATE REALM SLICE!' : 'SHOGUNATE REALM SLICE!',
           stageAlreadyBurning ? '#fb923c' : '#67e8f9'
         );
       }

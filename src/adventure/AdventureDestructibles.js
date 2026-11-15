@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
 
 /**
  * Interactive 2.5D Architectural Monuments, Braziers & Ancient Artifact Shrines (`AdventureDestructibles`)
@@ -75,7 +75,7 @@ const PROP_ARCHETYPES = {
     debrisCols: ['#d97706', '#fde047', '#38bdf8', '#334155'],
     hitSfx: 'reflect',
     breakSfx: 'time_shatter',
-    breakCallout: '★ ANCIENT ORRERY UNSEALED! ★',
+    breakCallout: 'ANCIENT ORRERY UNSEALED!',
     calloutColor: '#fde047'
   },
   starwood_lantern: {
@@ -110,7 +110,7 @@ const PROP_ARCHETYPES = {
     debrisCols: ['#059669', '#34d399', '#38bdf8', '#ecfeff'],
     hitSfx: 'frost_cast',
     breakSfx: 'ice_shatter',
-    breakCallout: '★ SYLVAN RUNESTONE UNSEALED! ★',
+    breakCallout: 'SYLVAN RUNESTONE UNSEALED!',
     calloutColor: '#67e8f9'
   },
   soul_brazier: {
@@ -145,7 +145,7 @@ const PROP_ARCHETYPES = {
     debrisCols: ['#2e1065', '#9333ea', '#cbd5e1', '#f43f5e'],
     hitSfx: 'clang',
     breakSfx: 'time_shatter',
-    breakCallout: '★ NECROPOLIS RELIC UNSEALED! ★',
+    breakCallout: 'NECROPOLIS RELIC UNSEALED!',
     calloutColor: '#e879f9'
   },
   blackpit_brazier: {
@@ -180,7 +180,7 @@ const PROP_ARCHETYPES = {
     debrisCols: ['#271215', '#b45309', '#ef4444', '#fde047'],
     hitSfx: 'clang',
     breakSfx: 'meteor_impact',
-    breakCallout: '★ ABYSSAL PYLON SHATTERED! ★',
+    breakCallout: 'ABYSSAL PYLON SHATTERED!',
     calloutColor: '#fde047'
   }
 };
@@ -190,28 +190,28 @@ const CURATED_PROP_LAYOUT = [
   // Zone I: Eclipse Cathedral Outskirts (`0..2400`) — Gothic Stone Braziers, Reliquary Steles & Astral Orrery
   { kind: 'eclipse_brazier', zone: 0, x: 420, groundY: 458, dropType: null },
   { kind: 'eclipse_reliquary', zone: 0, x: 920, groundY: 660, dropType: null },
-  { kind: 'eclipse_astrolabe', zone: 0, x: 1380, groundY: 458, dropType: 'relic', relicAmt: 28 },
+  { kind: 'eclipse_astrolabe', zone: 0, x: 1380, groundY: 458, dropType: 'relic', relicAmt: 12 },
   { kind: 'eclipse_brazier', zone: 0, x: 1840, groundY: 660, dropType: null },
   { kind: 'eclipse_reliquary', zone: 0, x: 2240, groundY: 458, dropType: 'hp' },
 
   // Zone II: Cursed Starwood Crossing (`2400..4800`) — Root-Wrapped Shrine Lanterns & Starwood Runestone Monoliths
   { kind: 'starwood_lantern', zone: 1, x: 2680, groundY: 458, dropType: null },
   { kind: 'starwood_lantern', zone: 1, x: 3160, groundY: 660, dropType: null },
-  { kind: 'starwood_crystal', zone: 1, x: 3620, groundY: 458, dropType: 'relic', relicAmt: 28 },
+  { kind: 'starwood_crystal', zone: 1, x: 3620, groundY: 458, dropType: 'relic', relicAmt: 12 },
   { kind: 'starwood_lantern', zone: 1, x: 4120, groundY: 660, dropType: null },
   { kind: 'starwood_crystal', zone: 1, x: 4580, groundY: 458, dropType: 'hp' },
 
   // Zone III: Sunken Bone-Bridge Necropolis (`4800..7200`) — Gargoyle Soul-Braziers & Skull-Crowned Ossuary Obelisks
   { kind: 'soul_brazier', zone: 2, x: 5080, groundY: 458, dropType: null },
   { kind: 'soul_brazier', zone: 2, x: 5560, groundY: 660, dropType: null },
-  { kind: 'ossuary_obelisk', zone: 2, x: 6020, groundY: 458, dropType: 'relic', relicAmt: 30 },
+  { kind: 'ossuary_obelisk', zone: 2, x: 6020, groundY: 458, dropType: 'relic', relicAmt: 14 },
   { kind: 'soul_brazier', zone: 2, x: 6520, groundY: 660, dropType: null },
   { kind: 'ossuary_obelisk', zone: 2, x: 6980, groundY: 458, dropType: 'hp' },
 
   // Zone IV: Throne of the Black Pit (`7200..9600`, Boss at `9335`) — Spiked Hellfire Braziers & Chained Obsidian Pylons
   { kind: 'blackpit_brazier', zone: 3, x: 7460, groundY: 458, dropType: null },
   { kind: 'blackpit_brazier', zone: 3, x: 7880, groundY: 660, dropType: null },
-  { kind: 'hellfire_pylon', zone: 3, x: 8280, groundY: 458, dropType: 'relic', relicAmt: 32 },
+  { kind: 'hellfire_pylon', zone: 3, x: 8280, groundY: 458, dropType: 'relic', relicAmt: 14 },
   { kind: 'blackpit_brazier', zone: 3, x: 8660, groundY: 660, dropType: null },
   { kind: 'hellfire_pylon', zone: 3, x: 9010, groundY: 458, dropType: 'hp' }
 ];
@@ -492,14 +492,14 @@ export class AdventureDestructibles {
           prop.x - (hasBonus ? 22 : 0),
           prop.groundY,
           {
-            ultAmt: prop.ultAmt || 20,
-            relicAmt: prop.relicAmt || 28
+            ultAmt: prop.ultAmt || 16,
+            relicAmt: prop.relicAmt || 14
           }
         );
         if (hasBonus) {
           this.adventure.spawnPickup(prop.bonusDrop, prop.x + 24, prop.groundY, {
-            ultAmt: prop.ultAmt || 20,
-            relicAmt: prop.relicAmt || 28
+            ultAmt: prop.ultAmt || 16,
+            relicAmt: prop.relicAmt || 14
           });
         }
       }
@@ -511,7 +511,7 @@ export class AdventureDestructibles {
       0,
       true,
       prop.breakCallout ||
-        (prop.isArtifact ? '★ ANCIENT ARTIFACT UNSEALED! ★' : 'MONUMENT SHATTERED!'),
+        (prop.isArtifact ? 'ANCIENT ARTIFACT UNSEALED!' : 'MONUMENT SHATTERED!'),
       prop.calloutColor || (prop.isArtifact ? '#fde047' : '#fb923c')
     );
 

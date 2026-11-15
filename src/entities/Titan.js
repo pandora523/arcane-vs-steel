@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps109';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps109';
+import { Fighter } from './Fighter.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps110';
 import {
   FORGE_EFFECT_REGISTRY,
   FORGE_GOLD_PALETTE,
   FORGE_JADE_PALETTE
-} from '../engine/shaders/forgeShaders.js?v=30fps109';
+} from '../engine/shaders/forgeShaders.js?v=30fps110';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -37,7 +37,7 @@ const AUTO_SLICES_4 = [
  *   - Signature Skill (`WORLD-ANVIL CATACLYSM`):
  *       Plants a persistent **World-Forge Anvil Altar** (`Row 3` 8-Cog Mandala + `Row 1` Horned Iron Anvil,
  *       `3.8s`) with a Magnetic Gravity Slam, then batters a blazing **Ricocheting Anvil Cannonball**
- *       across the arena that rebounds ONCE off the stage wall (`★ ANVIL WALL-RICOCHET! ★`)!
+ *       across the arena that rebounds ONCE off the stage wall (`ANVIL WALL-RICOCHET!`)!
  *   - Overdrive (`WORLD-BREAKER HOME RUN`, `1.46s`):
  *       Steps into the Batter's Box cocking his symmetric 2H Mjolnir behind his rear shoulder (`Row 4 F00..F05`),
  *       and rips a chest-high horizontal Baseball-Bat Home-Run Swing (`Row 4 F06..F14`) that launches the enemy
@@ -141,11 +141,11 @@ export class Titan extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('titan');
       const titanAssets = PixelForge.initAssets()?.titan;
-      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps109')) {
-        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps109';
+      if (titanAssets?.sheet?.src && !titanAssets.sheet.src.includes('v=30fps110')) {
+        titanAssets.sheet.src = 'assets/sprites/titan_sheet.png?v=30fps110';
       }
-      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps109')) {
-        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps109';
+      if (titanAssets?.vfx?.src && !titanAssets.vfx.src.includes('v=30fps110')) {
+        titanAssets.vfx.src = 'assets/sprites/titan_vfx.png?v=30fps110';
       }
     }
   }
@@ -172,7 +172,7 @@ export class Titan extends Fighter {
         this.y - 166,
         0,
         false,
-        '★ CRUCIBLE MAX TEMPER! ★',
+        'CRUCIBLE MAX TEMPER!',
         '#10b981'
       );
     }
@@ -205,7 +205,7 @@ export class Titan extends Fighter {
       this.y - 172,
       0,
       true,
-      '★ WORLD-BREAKER TEMPER! ★',
+      'WORLD-BREAKER TEMPER!',
       '#34d399'
     );
 
@@ -273,7 +273,7 @@ export class Titan extends Fighter {
       this.groundY - 142,
       0,
       true,
-      '✦ ANVIL RESONANCE! ✦',
+      'ANVIL RESONANCE!',
       '#34d399'
     );
 
@@ -678,7 +678,7 @@ export class Titan extends Fighter {
                 t.y - 165,
                 0,
                 true,
-                '★ ANVIL WALL-CRUSH! ★',
+                'ANVIL WALL-CRUSH!',
                 '#fef08a'
               );
               this.fx?.spawn('moltenAnvilSparks', t.x, t.y - 54, {
@@ -706,7 +706,7 @@ export class Titan extends Fighter {
             this.groundY - 128,
             0,
             true,
-            '★ ANVIL WALL-RICOCHET! ★',
+            'ANVIL WALL-RICOCHET!',
             '#34d399'
           );
           this.fx?.spawn('moltenAnvilSparks', a.x, a.y - 44, {
@@ -997,7 +997,7 @@ export class Titan extends Fighter {
         this.groundY - 135,
         0,
         true,
-        '✦ CRUCIBLE OVERCHARGE! ✦',
+        'CRUCIBLE OVERCHARGE!',
         '#34d399'
       );
     }
@@ -1199,7 +1199,7 @@ export class Titan extends Fighter {
               foe.y - 164,
               0,
               true,
-              '★ BATTERING-RAM SLAM! ★',
+              'BATTERING-RAM SLAM!',
               '#10b981'
             );
           } else if (stage === 3) {
@@ -1315,7 +1315,7 @@ export class Titan extends Fighter {
       game?.vfx?.spawnSpecialCastAura?.(
         this,
         this.skillName,
-        '✦ WORLD-ANVIL CATACLYSM ✦',
+        'WORLD-ANVIL CATACLYSM',
         'forge',
         false
       );
@@ -1380,7 +1380,7 @@ export class Titan extends Fighter {
         this.y - 158,
         0,
         true,
-        '★ ANVIL CANNONBALL! ★',
+        'ANVIL CANNONBALL!',
         '#fbbf24'
       );
 
@@ -1475,7 +1475,7 @@ export class Titan extends Fighter {
         game.vfx.spawnSpecialCastAura(
           this,
           this.ultName,
-          '★ WORLD-BREAKER HOME RUN! ★',
+          'WORLD-BREAKER HOME RUN!',
           'forge',
           true
         );
@@ -1484,7 +1484,7 @@ export class Titan extends Fighter {
           this.y - 168,
           0,
           true,
-          '★ BATTER UP! ★',
+          'BATTER UP!',
           '#fde047'
         );
       }
@@ -1579,7 +1579,7 @@ export class Titan extends Fighter {
         this.groundY - 178,
         0,
         true,
-        '★ HOME-RUN GRAND SLAM! ★',
+        'HOME-RUN GRAND SLAM!',
         '#fde047'
       );
 
@@ -1694,7 +1694,7 @@ export class Titan extends Fighter {
             this.groundY - 176,
             0,
             true,
-            '★ WALL CRASH! STUNNED 0.8S! ★',
+            'WALL CRASH! STUNNED 0.8S!',
             '#34d399'
           );
 
@@ -1801,7 +1801,7 @@ export class Titan extends Fighter {
       game?.vfx?.spawnSpecialCastAura?.(
         this,
         this.trueUltName,
-        '★ GOD-HAMMER MJOLNIR! ★',
+        'GOD-HAMMER MJOLNIR!',
         'forge',
         true
       );
@@ -1810,7 +1810,7 @@ export class Titan extends Fighter {
         this.y - 185,
         0,
         true,
-        '★ COLOSSUS AWAKENING! ★',
+        'COLOSSUS AWAKENING!',
         '#f97316'
       );
 
@@ -1879,7 +1879,7 @@ export class Titan extends Fighter {
           this.groundY - 205,
           0,
           true,
-          '★ MJOLNIR SKY-UPPERCUT! ★',
+          'MJOLNIR SKY-UPPERCUT!',
           '#fbbf24'
         );
         this.fx?.spawn('tectonicCraterSlam', this._trueUltAnvilX, this.groundY - 4, {
@@ -1973,7 +1973,7 @@ export class Titan extends Fighter {
             this.groundY - 190,
             0,
             true,
-            '★ COLOSSUS SKY-LEAP! ★',
+            'COLOSSUS SKY-LEAP!',
             '#fbbf24'
           );
         }
@@ -2119,7 +2119,7 @@ export class Titan extends Fighter {
         this.groundY - 210,
         0,
         true,
-        '★ CONTINENTAL SUNDER! STUNNED! ★',
+        'CONTINENTAL SUNDER! STUNNED!',
         '#f97316'
       );
 

@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps109';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps109';
+import { Fighter } from './Fighter.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps110';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps109';
+} from '../engine/shaders/cyberShaders.js?v=30fps110';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 const AUTO_SLICES_4 = [
@@ -72,11 +72,11 @@ export class Android extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('android');
       const androidAssets = PixelForge.initAssets()?.android;
-      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps109')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps109';
+      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps110')) {
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps110';
       }
-      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps109')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps109';
+      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps110')) {
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps110';
       }
     }
 
@@ -324,7 +324,7 @@ export class Android extends Fighter {
         });
         if (game.audio) game.audio.play('reflect', this.x);
         if (game.vfx) {
-          game.vfx.spawnDamageText(this.x, this.y - 186, 0, true, '★ CHAKRAM DEFLECT! ★', '#00f0ff');
+          game.vfx.spawnDamageText(this.x, this.y - 186, 0, true, 'CHAKRAM DEFLECT!', '#00f0ff');
         }
       }
     }
@@ -1026,7 +1026,7 @@ export class Android extends Fighter {
           this.y - 190,
           0,
           true,
-          '★ PROJECT GUNG-09: ORBITAL LOCK! ★',
+          'PROJECT GUNG-09: ORBITAL LOCK!',
           '#00f0ff'
         );
         this.fx.spawn('wingPylonThruster', this.x - this.facing * 18, this.y - 146, {

@@ -28,35 +28,35 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps109';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps109';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps109';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps109';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps109';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps109';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps109';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps109';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps109';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps109';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps109';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps109';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps109';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps109';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps109';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps109';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps109';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps110';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps110';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps110';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps110';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps110';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps110';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps110';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps110';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps110';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps110';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps110';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps110';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps110';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps110';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps110';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps110';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps110';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps109';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps109';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps110';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps110';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps109';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps109';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps109';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps110';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps110';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps110';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -641,7 +641,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps109');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps110');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -5445,11 +5445,11 @@ for (const [name, Cls] of CLASSES) {
       if (
         !briarKing ||
         briarKing.name !== 'ELDER BRIAR-KING' ||
-        briarKing.maxHp !== 1720 ||
+        briarKing.maxHp !== 3100 ||
         !wGame.hudEls.right.skillText.textContent.includes('WARDEN')
       ) {
         throw new Error(
-          `[Suite 24C] Expected Wave 4 ELDER BRIAR-KING Warden (1720 HP, WARDEN HUD), got ${briarKing?.name} (${briarKing?.maxHp}), hud='${wGame.hudEls.right.skillText.textContent}'`
+          `[Suite 24C] Expected Wave 4 ELDER BRIAR-KING Warden (3100 HP, WARDEN HUD), got ${briarKing?.name} (${briarKing?.maxHp}), hud='${wGame.hudEls.right.skillText.textContent}'`
         );
       }
       briarKing.portalSpawnTimer = 0;
@@ -5484,9 +5484,9 @@ for (const [name, Cls] of CLASSES) {
       wGame.vfx.projectiles.length = 0;
       wAdv.spawnZoneEncounter(2, 2);
       const morvath = wAdv.getLivingMonsters().find((m) => m.isMiniBoss);
-      if (!morvath || morvath.name !== 'ARCH-LICH MORVATH' || morvath.maxHp !== 1520) {
+      if (!morvath || morvath.name !== 'ARCH-LICH MORVATH' || morvath.maxHp !== 2800) {
         throw new Error(
-          `[Suite 24C] Expected Wave 6 ARCH-LICH MORVATH Warden (1520 HP), got ${morvath?.name} (${morvath?.maxHp})`
+          `[Suite 24C] Expected Wave 6 ARCH-LICH MORVATH Warden (2800 HP), got ${morvath?.name} (${morvath?.maxHp})`
         );
       }
       morvath.portalSpawnTimer = 0;
@@ -7487,5 +7487,317 @@ for (const [name, Cls] of CLASSES) {
     '[PASS] Suite 28: Separated Dual-Gateway Landing, Zero Background Load, 1v1 + Tag VS Isolation, Mobile Portrait Full Zoom-Out, Pause GO TO TITLE SCREEN & Adventure AUTO Button verified!'
   );
 }
+
+// =========================================================================
+// SUITE 29: Emoji/Dingbat Zero-Tolerance + Brand Logo, Mobile Full Zoom Toggle,
+// VS 1920x1080 Seamless Upper-Sky Vault (`0` Top Mirror), & Adventure Boss Grab + Unavoidable Soul-Tithe
+// =========================================================================
+{
+  const repoRoot = '/home/antigravity/pandora523/arcane-vs-steel';
+
+  // (29A) Zero Emojis/Dingbats across UI/CSS/Manifest/JS + Official Brand Logo (`avs_brand_logo.png`) + Mobile Full Zoom Toggle
+  {
+    const emojiRe = /[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/u;
+    const filesToAudit = [
+      `${repoRoot}/index.html`,
+      `${repoRoot}/style.css`,
+      `${repoRoot}/manifest.json`
+    ];
+    const collectJs = (dir) => {
+      for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+        const full = `${dir}/${ent.name}`;
+        if (ent.isDirectory()) collectJs(full);
+        else if (ent.name.endsWith('.js') && ent.name !== 'PixelFont.js') filesToAudit.push(full);
+      }
+    };
+    collectJs(`${repoRoot}/src`);
+    for (const fPath of filesToAudit) {
+      const txt = fs.readFileSync(fPath, 'utf8');
+      const m = txt.match(emojiRe);
+      if (m) {
+        throw new Error(
+          `[Suite 29A] Forbidden emoji/dingbat '${m[0]}' (U+${m[0].codePointAt(0).toString(16).toUpperCase()}) found in ${fPath}!`
+        );
+      }
+    }
+
+    const logoBuf = fs.readFileSync(`${repoRoot}/assets/sprites/avs_brand_logo.png`);
+    const logoW = logoBuf.readUInt32BE(16);
+    const logoH = logoBuf.readUInt32BE(20);
+    const htmlTxt = fs.readFileSync(`${repoRoot}/index.html`, 'utf8');
+    const manifestTxt = fs.readFileSync(`${repoRoot}/manifest.json`, 'utf8');
+    if (
+      logoBuf[0] !== 0x89 ||
+      logoW !== 128 ||
+      logoH !== 128 ||
+      !htmlTxt.includes('avs_brand_logo.png') ||
+      !manifestTxt.includes('avs_brand_logo.png') ||
+      !htmlTxt.includes('id="btn-pause-full-zoom"') ||
+      !htmlTxt.includes('id="pause-full-zoom-label"')
+    ) {
+      throw new Error(
+        `[Suite 29A] Brand logo or #btn-pause-full-zoom missing/invalid: size=${logoW}x${logoH}`
+      );
+    }
+
+    const prevW = globalThis.window.innerWidth;
+    const prevH = globalThis.window.innerHeight;
+    try {
+      globalThis.window.innerWidth = 390;
+      globalThis.window.innerHeight = 844;
+      const zoomCanvas = {
+        width: 390,
+        height: 844,
+        getContext() {
+          return createMockCtx();
+        }
+      };
+      const rZoom = new Renderer(zoomCanvas);
+      const zA = new Warrior(260, 480, 1);
+      const zB = new FireMage(940, 480, -1);
+
+      rZoom.setMobileFullZoomOut(true);
+      for (let i = 0; i < 15; i++) rZoom.update(1 / 30, [zA, zB]);
+      const fullZoomVal = rZoom.zoom;
+
+      rZoom.setMobileFullZoomOut(false);
+      for (let i = 0; i < 25; i++) rZoom.update(1 / 30, [zA, zB]);
+      const standardZoomVal = rZoom.zoom;
+
+      if (
+        !rZoom.isMobilePortrait ||
+        fullZoomVal > 0.34 ||
+        standardZoomVal < 0.50 ||
+        standardZoomVal <= fullZoomVal + 0.16
+      ) {
+        throw new Error(
+          `[Suite 29A] Mobile Full Zoom-Out toggle failed: fullZoom=${fullZoomVal}, standardZoom=${standardZoomVal}`
+        );
+      }
+      rZoom.setMobileFullZoomOut(true);
+    } finally {
+      globalThis.window.innerWidth = prevW;
+      globalThis.window.innerHeight = prevH;
+    }
+  }
+
+  // (29B) VS Stage 1920x1080 (`3x`) Scale + Seamless Upper Vault (`0` Upside-Down Top Mirror) + Intact Bottom Reflection
+  {
+    const stageCanvas = {
+      width: 1200,
+      height: 600,
+      getContext() {
+        return createMockCtx();
+      }
+    };
+    const rStage = new Renderer(stageCanvas);
+    rStage.pickRandomStage('cathedral');
+    const assets = PixelForge.initAssets();
+    PixelForge.ensureImage(assets.arenaBg);
+    assets.arenaBg.naturalWidth = 640;
+    assets.arenaBg.naturalHeight = 360;
+
+    const stageCtx = createMockCtx();
+    let curTxY = 0;
+    let curScaleY = 1;
+    const stateStack29B = [];
+    const origSave = stageCtx.save.bind(stageCtx);
+    const origRestore = stageCtx.restore.bind(stageCtx);
+    stageCtx.save = () => {
+      stateStack29B.push({ ty: curTxY, sy: curScaleY });
+      origSave();
+    };
+    stageCtx.restore = () => {
+      const s = stateStack29B.pop();
+      if (s) {
+        curTxY = s.ty;
+        curScaleY = s.sy;
+      }
+      origRestore();
+    };
+    stageCtx.translate = (_tx, ty) => {
+      curTxY += ty || 0;
+    };
+    stageCtx.scale = (_sx, sy) => {
+      curScaleY *= sy ?? 1;
+    };
+
+    let sawMain1920x1080 = false;
+    let sawUpperVaultAboveTop = false;
+    let upsideDownTopDraws = 0;
+    let lowerFloorMirrorDraws = 0;
+    const expectedDrawY = Math.round(480 - 1080 * 0.82); // -406
+    const expectedBottomY = expectedDrawY + 1080; // 674
+
+    stageCtx.drawImage = (img, dx, dy, dw, dh) => {
+      if (img === assets.arenaBg && dw === 1920 && dh === 1080 && dy === expectedDrawY && curScaleY > 0) {
+        sawMain1920x1080 = true;
+      }
+      if (curScaleY < 0) {
+        if (curTxY <= expectedDrawY + 10) {
+          upsideDownTopDraws++;
+        } else if (curTxY >= expectedBottomY) {
+          lowerFloorMirrorDraws++;
+        }
+      } else if (img !== assets.arenaBg && (dy < expectedDrawY || curTxY < expectedDrawY) && dw === 1920) {
+        sawUpperVaultAboveTop = true;
+      }
+    };
+
+    rStage.drawHD2DArena(stageCtx, 1200, 480);
+    if (
+      !sawMain1920x1080 ||
+      !sawUpperVaultAboveTop ||
+      upsideDownTopDraws !== 0 ||
+      lowerFloorMirrorDraws < 1 ||
+      stageCtx._stateStack.length !== 0
+    ) {
+      throw new Error(
+        `[Suite 29B] VS stage upper-vault / reflection check failed: main1920=${sawMain1920x1080}, upperVault=${sawUpperVaultAboveTop}, topMirror=${upsideDownTopDraws}, bottomRefl=${lowerFloorMirrorDraws}`
+      );
+    }
+  }
+
+  // (29C) Adventure Anti-Supreme-Ultimate-Spam, 11800 HP Behemoth Malphas, Abyssal Siege Grab & Unavoidable Hellpit Soul-Tithe
+  {
+    const g29 = createMockGame();
+    g29.gameMode = 'adventure';
+    g29.isAdventureMode = () => true;
+    g29.renderer.worldWidth = ADVENTURE_WORLD_WIDTH;
+    const adv29 = new AdventureManager(g29);
+    g29.adventure = adv29;
+    const hero29 = new Warrior(8860, 561, 1);
+    hero29.game = g29;
+    hero29.isManualAdventureControl = true;
+    g29.leftFighter = hero29;
+    adv29.startCampaign(hero29);
+    adv29.lockMinX = 8360;
+    adv29.lockMaxX = 9250;
+
+    // 1. Regular Elite monsters must NOT drop Astral Relics (anti-Supreme-Ultimate spam)
+    adv29.pickups.length = 0;
+    const regElite = new Monster('templar', 8750, 561, -1, { isElite: true, skipPortal: true });
+    regElite.game = g29;
+    g29.fighters = [hero29, regElite];
+    regElite.takeDamage(29999, hero29, true, 100, 0);
+    if (adv29.pickups.some((p) => p.type === 'relic')) {
+      throw new Error('[Suite 29C] Regular isElite monster should NOT drop an Astral Relic!');
+    }
+
+    // 2. Behemoth Malphas spawns with 11,800 HP and caps single-hit TRUE_ULTIMATE burst (`<= 12% maxHp`)
+    const boss29 = new ArchfiendBoss(9335, 561);
+    boss29.game = g29;
+    boss29.emergeTimer = 0;
+    if (boss29.maxHp !== 11800 || boss29.hp !== 11800) {
+      throw new Error(`[Suite 29C] Expected ArchfiendBoss maxHp=11800, got ${boss29.maxHp}`);
+    }
+    hero29.state = 'TRUE_ULTIMATE';
+    boss29.takeDamage(5000, hero29, true, 0, 0);
+    hero29.state = 'IDLE';
+    const singleTrueUltLoss = 11800 - boss29.hp;
+    if (singleTrueUltLoss > Math.round(11800 * 0.12) + 2 || singleTrueUltLoss < 800) {
+      throw new Error(
+        `[Suite 29C] Expected TRUE_ULTIMATE single-hit boss cap (~1416 HP), got loss=${singleTrueUltLoss}`
+      );
+    }
+
+    // 3. Abyssal Siege Grab (`skillVariant = 2`):
+    //    (a) Dodging / invulnerable hero cleanly evades the snatch!
+    hero29.x = 8920;
+    hero29.groundY = 561;
+    hero29.y = 561;
+    hero29.isInvulnerable = true;
+    hero29.state = 'DODGE';
+    boss29.skillVariant = 2;
+    boss29.grabLaneGy = 561;
+    boss29.grabTargetX = 8920;
+    boss29._grabInitDone = false;
+    boss29.soulTitheCooldown = 99;
+    boss29.setState('SKILL');
+    for (let f = 0; f < 34; f++) {
+      boss29.update(1 / 30, hero29, g29);
+    }
+    if (boss29.grabbedTarget || hero29._grabbedByBoss) {
+      throw new Error('[Suite 29C] Dodging/invulnerable hero should evade Abyssal Siege Grab!');
+    }
+
+    //    (b) Standing hero in grab lane is snatched, hoisted into the air, crushed twice, and hurled LEFTWARD!
+    hero29.isInvulnerable = false;
+    hero29.setState('IDLE');
+    hero29.hp = hero29.maxHp;
+    hero29.x = 8940;
+    hero29.groundY = 561;
+    hero29.y = 561;
+    boss29.skillVariant = 2;
+    boss29.grabLaneGy = 561;
+    boss29.grabTargetX = 8940;
+    boss29._grabInitDone = false;
+    boss29.soulTitheCooldown = 99;
+    boss29.setState('SKILL');
+
+    const grabTrack = { rotateCalls: 0, quadCalls: 0 };
+    const grabCtx = createMockCtx(grabTrack);
+    let wasPinned = false;
+    let minGrabHeroY = 999;
+    let minHurlVx = 0;
+    for (let f = 0; f < 48; f++) {
+      boss29.update(1 / 30, hero29, g29);
+      hero29.update(1 / 30, boss29, g29);
+      boss29.drawTelegraphRings(grabCtx);
+      boss29.draw(grabCtx, false, { time: f / 30 });
+      if (hero29._grabbedByBoss) {
+        wasPinned = true;
+        minGrabHeroY = Math.min(minGrabHeroY, hero29.y);
+      }
+      minHurlVx = Math.min(minHurlVx, hero29.vx || 0);
+    }
+    const grabDamageTaken = hero29.maxHp - hero29.hp;
+    if (
+      !wasPinned ||
+      minGrabHeroY > 495 ||
+      minHurlVx > -450 ||
+      hero29._grabbedByBoss ||
+      grabDamageTaken < 160 ||
+      grabTrack.rotateCalls !== 0
+    ) {
+      throw new Error(
+        `[Suite 29C] Abyssal Siege Grab audit failed: wasPinned=${wasPinned}, minY=${minGrabHeroY}, minVx=${minHurlVx}, stillPinned=${hero29._grabbedByBoss}, dmg=${grabDamageTaken}, rotate=${grabTrack.rotateCalls}`
+      );
+    }
+
+    // 4. Automatic Unavoidable Attack (`HELLPIT SOUL-TITHE`): deals guaranteed real HP damage even through Dodge/Invulnerability!
+    hero29.hp = hero29.maxHp;
+    hero29.x = 8440;
+    hero29.isInvulnerable = true;
+    hero29.state = 'DODGE';
+    boss29.setState('IDLE');
+    boss29.autoCooldown = 99;
+    boss29.skillCooldown = 99;
+    boss29.ultCooldown = 99;
+    boss29.soulTitheCooldown = 0.12;
+    boss29.soulTitheWindupTimer = 0;
+    boss29.soulTitheCount = 0;
+    for (let f = 0; f < 30; f++) {
+      boss29.update(1 / 30, hero29, g29);
+      boss29.drawTelegraphRings(grabCtx);
+    }
+    const titheLoss = hero29.maxHp - hero29.hp;
+    const minExpectedTithe = Math.round(hero29.maxHp * 0.11);
+    if (
+      boss29.soulTitheCount < 1 ||
+      titheLoss < minExpectedTithe ||
+      grabCtx._stateStack.length !== 0
+    ) {
+      throw new Error(
+        `[Suite 29C] Expected automatic unavoidable Hellpit Soul-Tithe to deal >=${minExpectedTithe} guaranteed HP damage through Dodge/Invuln: count=${boss29.soulTitheCount}, loss=${titheLoss}, maxHp=${hero29.maxHp}`
+      );
+    }
+  }
+
+  console.log(
+    '[PASS] Suite 29: Zero Emojis + HD-2D Brand Crest, Mobile Full Zoom-Out Toggle, VS 1920x1080 Seamless Upper Vault, Anti-Ult-Spam & 11,800 HP Malphas Grab + Unavoidable Soul-Tithe verified!'
+  );
+}
+
 
 

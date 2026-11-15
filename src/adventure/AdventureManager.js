@@ -1,14 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps109';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps109';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
+import { Fighter } from '../entities/Fighter.js?v=30fps110';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps109';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps109';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps109';
-import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps109';
+} from './AdventureProgression.js?v=30fps110';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps110';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps110';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps110';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -80,7 +80,7 @@ export const ADVENTURE_ZONES = [
 /**
  * Marvel-Arcade 2.5D Beat-'Em-Up Adventure Campaign Coordinator:
  * - 9600px continuous seamless 4-Zone 3D stage (`X: 80..9520`, `groundY: 442..680`) with 8 staged
- *   wave encounters, `"GO! ➔"` prompts, HD-2D RPG pickups (`HP`, `SOUL EMBER`, `ASTRAL RELIC`),
+ *   wave encounters, `"GO!"` prompts, HD-2D RPG pickups (`HP`, `SOUL EMBER`, `ASTRAL RELIC`),
  *   3-Branch Skill Tree leveling, Dedicated 11-Hero 2.5D Adventure Skill Sets, and a Giant Right-Side Colossal Boss (`BEHEMOTH MALPHAS`).
  */
 export class AdventureManager {
@@ -456,7 +456,7 @@ export class AdventureManager {
         btn.disabled = !canUp;
         btn.textContent =
           rank >= node.maxRank
-            ? '★ MAXED'
+            ? 'MAXED'
             : tierLocked
               ? `REQ TIER ${node.tier - 1}`
               : prog.skillPoints <= 0
@@ -651,7 +651,7 @@ export class AdventureManager {
 
     const stLbl = document.getElementById('adv-skilltree-label');
     if (stLbl) {
-      stLbl.textContent = `✦ LV.${this.progression.level} SKILLS`;
+      stLbl.textContent = `LV.${this.progression.level} SKILLS`;
     }
     const spBadge = document.getElementById('adv-sp-badge');
     if (spBadge) {
@@ -1038,7 +1038,7 @@ export class AdventureManager {
       this.spawnMonster('astrologer', 1980, { groundY: 562 });
       this.spawnMonster('templar', 2140, { groundY: 636 });
       this.game.renderer?.triggerStageEvent?.(
-        '★ ECLIPSE CHAPEL SANCTUM! ★',
+        'ECLIPSE CHAPEL SANCTUM!',
         'ASTRAL PORTALS OPEN — FALLEN TEMPLARS & SEER!',
         '#38bdf8',
         2.4
@@ -1049,7 +1049,7 @@ export class AdventureManager {
       this.spawnMonster('dryad', 3290, { groundY: 478 });
       this.spawnMonster('dryad', 3420, { groundY: 642 });
       this.game.renderer?.triggerStageEvent?.(
-        '★ ZONE II: CURSED STARWOOD ★',
+        'ZONE II: CURSED STARWOOD',
         'BRIAR PORTALS TEAR OPEN — ELDERTREE & DRYADS!',
         '#34d399',
         2.6
@@ -1061,15 +1061,15 @@ export class AdventureManager {
         isMiniBoss: true,
         wardenName: 'ELDER BRIAR-KING',
         wardenTitle: 'STARWOOD WARDEN',
-        maxHp: 1720,
+        maxHp: 3100,
         spriteScale: 1.36,
-        dmgScale: 1.12,
+        dmgScale: 1.16,
         groundY: 558
       });
       this.spawnMonster('dryad', 4140, { groundY: 478 });
       this.spawnMonster('dryad', 4340, { groundY: 642 });
       this.game.renderer?.triggerStageEvent?.(
-        '⚠ REALM WARDEN: ELDER BRIAR-KING! ⚠',
+        'REALM WARDEN: ELDER BRIAR-KING!',
         'SOVEREIGN OF THE CURSED STARWOOD AWAKENS!',
         '#34d399',
         2.9
@@ -1081,7 +1081,7 @@ export class AdventureManager {
       this.spawnMonster('ghoul', 5660, { groundY: 646 });
       this.spawnMonster('cultist', 5800, { isElite: true, groundY: 518 });
       this.game.renderer?.triggerStageEvent?.(
-        '★ ZONE III: ABYSSAL BONE-GATE ★',
+        'ZONE III: ABYSSAL BONE-GATE',
         'CRYPT PORTALS UNSEALED — OSSUARY UNDEAD LEGION!',
         '#c084fc',
         2.8
@@ -1093,15 +1093,15 @@ export class AdventureManager {
         isMiniBoss: true,
         wardenName: 'ARCH-LICH MORVATH',
         wardenTitle: 'OSSUARY WARDEN',
-        maxHp: 1520,
+        maxHp: 2800,
         spriteScale: 1.24,
-        dmgScale: 1.12,
+        dmgScale: 1.16,
         groundY: 548
       });
       this.spawnMonster('ghoul', 6560, { isElite: true, groundY: 482 });
       this.spawnMonster('ghoul', 6420, { groundY: 640 });
       this.game.renderer?.triggerStageEvent?.(
-        '⚠ REALM WARDEN: ARCH-LICH MORVATH! ⚠',
+        'REALM WARDEN: ARCH-LICH MORVATH!',
         'LORD OF THE OSSUARY BONE-GATE UNSEALS THE CRYPT!',
         '#c084fc',
         2.9
@@ -1113,7 +1113,7 @@ export class AdventureManager {
       this.spawnMonster('fiend', 8210, { groundY: 638 });
       this.spawnMonster('fiend', 7720, { groundY: 616 });
       this.game.renderer?.triggerStageEvent?.(
-        '★ ZONE IV: BLACK PIT VANGUARD ★',
+        'ZONE IV: BLACK PIT VANGUARD',
         'HELL-MAW PORTALS ERUPT BEFORE MALPHAS!',
         '#fb923c',
         2.7
@@ -1135,7 +1135,7 @@ export class AdventureManager {
       if (this.game.renderer) {
         this.game.renderer.triggerShake(16, 0.72);
         this.game.renderer.triggerStageEvent?.(
-          '⚠ WARNING: BEHEMOTH MALPHAS! ⚠',
+          'WARNING: BEHEMOTH MALPHAS!',
           'COLOSSAL SOVEREIGN RISES ON THE EAST ABYSS!',
           '#ef4444',
           3.4
@@ -1154,11 +1154,11 @@ export class AdventureManager {
       this.spawnMonster('fiend', 8620, { groundY: 484 });
       this.spawnMonster('fiend', 8780, { groundY: 638 });
       this.spawnPickup('hp', 8880, 502);
-      this.spawnPickup('ember', 8980, 622, { ultAmt: 28 });
+      this.spawnPickup('ember', 8980, 622, { ultAmt: 20 });
     } else if (phase === 3) {
       this.spawnPickup('hp', 8860, 496);
-      this.spawnPickup('relic', 8980, 626);
-      this.spawnPickup('ember', 9080, 558, { ultAmt: 30 });
+      this.spawnPickup('relic', 8980, 626, { relicAmt: 18 });
+      this.spawnPickup('ember', 9080, 558, { ultAmt: 22 });
     }
   }
 
@@ -1202,15 +1202,13 @@ export class AdventureManager {
     this.progression.gainXp(xpGain, player);
 
     if (!deadMonster.isBoss) {
-      // Slain monsters drop magnetic Soul Embers to fuel Overdrive; Realm Wardens also drop Elixir + Relic Seal!
+      // Slain monsters drop magnetic Soul Embers to fuel Overdrive; ONLY Realm Mini-Boss Wardens drop a Relic Seal!
       this.spawnPickup('ember', deadMonster.x, deadMonster.groundY, {
-        ultAmt: deadMonster.isMiniBoss ? 32 : deadMonster.isElite ? 26 : 19
+        ultAmt: deadMonster.isMiniBoss ? 24 : deadMonster.isElite ? 18 : 13
       });
       if (deadMonster.isMiniBoss) {
-        this.spawnPickup('relic', deadMonster.x + 48, deadMonster.groundY);
+        this.spawnPickup('relic', deadMonster.x + 48, deadMonster.groundY, { relicAmt: 18 });
         this.spawnPickup('hp', deadMonster.x - 48, deadMonster.groundY);
-      } else if (deadMonster.isElite) {
-        this.spawnPickup('relic', deadMonster.x + 44, deadMonster.groundY);
       }
     }
 
@@ -1444,17 +1442,17 @@ export class AdventureManager {
     const dropBaseX = p ? Math.min(this.lockMaxX - 180, p.x + 140) : zoneIdx * 2400 + 2020;
     if (zoneIdx === 0) {
       this.spawnPickup('hp', dropBaseX, 514);
-      this.spawnPickup('ember', dropBaseX + 68, 566, { ultAmt: 24 });
-      this.spawnPickup('relic', dropBaseX + 136, 614);
+      this.spawnPickup('ember', dropBaseX + 68, 566, { ultAmt: 16 });
+      this.spawnPickup('relic', dropBaseX + 136, 614, { relicAmt: 12 });
     } else if (zoneIdx === 1) {
       this.spawnPickup('hp', dropBaseX, 512);
-      this.spawnPickup('ember', dropBaseX + 68, 564, { ultAmt: 24 });
-      this.spawnPickup('relic', dropBaseX + 136, 612);
+      this.spawnPickup('ember', dropBaseX + 68, 564, { ultAmt: 16 });
+      this.spawnPickup('relic', dropBaseX + 136, 612, { relicAmt: 12 });
     } else if (zoneIdx === 2) {
       // Sanctuary Boss-Prep Cache staggered across the 3D road before Throne of the Black Pit!
       this.spawnPickup('hp', 6920, 498);
-      this.spawnPickup('ember', 7000, 562, { ultAmt: 28 });
-      this.spawnPickup('relic', 7080, 626);
+      this.spawnPickup('ember', 7000, 562, { ultAmt: 18 });
+      this.spawnPickup('relic', 7080, 626, { relicAmt: 12 });
     }
 
     if (this.game.audio) {
@@ -1510,7 +1508,7 @@ export class AdventureManager {
           player.heal(Math.round(player.maxHp * 0.34), 'SOLAR ELIXIR +HP!');
           this.game.vfx?.spawnBurst(pk.x, pk.y - 24, 14, '#4ade80', 190, { upBias: 120, size: 5 });
         } else if (pk.type === 'ember' || pk.type === 'mana') {
-          const gainAmt = pk.ultAmt || 20;
+          const gainAmt = pk.ultAmt || 16;
           this.progression.gainAdventureUlt(gainAmt, player);
           this.progression.gainSpirit(14);
           if (stats.emberHealPct > 0) {
@@ -1527,8 +1525,8 @@ export class AdventureManager {
           );
           this.game.vfx?.spawnBurst(pk.x, pk.y - 24, 14, '#fb923c', 190, { upBias: 120, size: 5 });
         } else if (pk.type === 'relic' || pk.type === 'ult') {
-          const rAmt = pk.relicAmt || 34;
-          this.progression.gainAstralRelic(rAmt, player, `★ ASTRAL SEAL +${rAmt}%! ★`);
+          const rAmt = pk.relicAmt || 18;
+          this.progression.gainAstralRelic(rAmt, player, `ASTRAL SEAL +${rAmt}%!`);
           this.game.vfx?.spawnBurst(pk.x, pk.y - 24, 18, '#67e8f9', 210, { upBias: 135, size: 5 });
         }
       }
@@ -1578,11 +1576,11 @@ export class AdventureManager {
       g.rightFighter = primaryMonster;
       if (rightEls.name) {
         const nextName = primaryMonster.isBoss
-          ? `★ ${primaryMonster.name}`
+          ? `${primaryMonster.name}`
           : primaryMonster.isMiniBoss
             ? living.length > 1
-              ? `★ ${primaryMonster.name} (+${living.length - 1})`
-              : `★ ${primaryMonster.name}`
+              ? `${primaryMonster.name} (+${living.length - 1})`
+              : `${primaryMonster.name}`
             : living.length > 1
               ? `${primaryMonster.name} (+${living.length - 1})`
               : primaryMonster.name;
@@ -2198,6 +2196,26 @@ export class AdventureManager {
 
     const stats = this.progression.getComputedStats();
 
+    // Lock manual/auto steering & queued skills while hoisted inside Behemoth Malphas's Siege Grab!
+    if (player._grabbedByBoss && (player._grabbedByBossTimer || 0) > 0) {
+      player._grabbedByBossTimer = Math.max(0, player._grabbedByBossTimer - dt);
+      this.queuedAction = null;
+      this.queuedActionTimer = 0;
+      player._advVaultVelZ = 0;
+      player.manualMoveAxis = 0;
+      player._manualWalkActive = false;
+      player._manualSpeedRatio = 0;
+      this.smoothVelX = 0;
+      this.smoothVelY = 0;
+      if (player._grabbedByBossTimer <= 0) {
+        player._grabbedByBoss = false;
+        player.y = player.groundY;
+      }
+      player.update(dt, target, this.game);
+      this.progression.syncGaugesToPlayer(player);
+      return;
+    }
+
     // =========================================================================
     // OPTIONAL AUTO-PLAY AI: 2.5D CURVED TACTICAL NAVIGATOR & ANTI-STUCK ORBIT
     // =========================================================================
@@ -2290,17 +2308,19 @@ export class AdventureManager {
           const laneGy =
             m.rakeWarnOnly || m.rakeActive
               ? m.rakeLaneGy || 561
-              : m.bossAction === 'claw_sweep'
-                ? m.sweepLane === 'upper'
-                  ? 504
-                  : 620
-                : null;
+              : m.grabWarnOnly || m.grabActive || m.bossAction === 'claw_grab'
+                ? m.grabLaneGy || 561
+                : m.bossAction === 'claw_sweep'
+                  ? m.sweepLane === 'upper'
+                    ? 504
+                    : 620
+                  : null;
           if (laneGy !== null && Math.abs(pGy - laneGy) < 68) {
             const safeGy = laneGy <= ADVENTURE_DEPTH_MID_Y ? 638 : 484;
             const dirZ = safeGy >= pGy ? 1 : -1;
             avoidVz += dirZ * 260;
-            if (Math.abs(pGy - laneGy) < 46) {
-              imminentEvade = { dirX: -0.25, dirZ };
+            if (Math.abs(pGy - laneGy) < 48) {
+              imminentEvade = { dirX: -0.35, dirZ };
             }
           }
           if (m.fistVisible) {
@@ -2542,7 +2562,7 @@ export class AdventureManager {
             this.progression.gainAstralRelic(
               stats.ultResonanceAstral,
               player,
-              '✦ ECLIPSE SEAL RESONANCE! ✦'
+              'ECLIPSE SEAL RESONANCE!'
             );
             this.progression.syncGaugesToPlayer(player);
             if (player.stats) player.stats.ultsUsed++;
@@ -2603,6 +2623,8 @@ export class AdventureManager {
             let bossGoalGy = ADVENTURE_DEPTH_MID_Y + Math.sin(aiClock * 1.65) * 44;
             if (target.rakeWarnOnly || target.rakeActive) {
               bossGoalGy = (target.rakeLaneGy || 561) <= ADVENTURE_DEPTH_MID_Y ? 638 : 484;
+            } else if (target.grabWarnOnly || target.grabActive || target.bossAction === 'claw_grab') {
+              bossGoalGy = (target.grabLaneGy || 561) <= ADVENTURE_DEPTH_MID_Y ? 640 : 482;
             } else if (target.bossAction === 'claw_sweep') {
               bossGoalGy = target.sweepLane === 'upper' ? 636 : 484;
             } else if (target.fistVisible && Math.abs((target.slamTargetGy || 561) - pGy) < 76) {
@@ -2822,7 +2844,7 @@ export class AdventureManager {
         this.progression.gainAstralRelic(
           stats.ultResonanceAstral,
           player,
-          '✦ ECLIPSE SEAL RESONANCE! ✦'
+          'ECLIPSE SEAL RESONANCE!'
         );
         this.progression.syncGaugesToPlayer(player);
         if (player.stats) player.stats.ultsUsed++;
@@ -3305,7 +3327,7 @@ export class AdventureManager {
         const isHp = pk.type === 'hp';
         const isEmber = pk.type === 'ember' || pk.type === 'mana';
         const colCore = isHp ? '#bbf7d0' : isEmber ? '#fef08a' : '#ecfeff';
-        const tag = isHp ? '+HP' : isEmber ? '✦EMBER' : '★SEAL';
+        const tag = isHp ? '+HP' : isEmber ? '+EMBER' : '+SEAL';
         const baseCol = isHp ? 0 : isEmber ? 2 : 4;
         const gleam = Math.floor(t * 4.2 + pk.x * 0.05) % 2;
 
@@ -3560,7 +3582,7 @@ export class AdventureManager {
       subY + 6
     );
 
-    // 2. Classic Marvel/Capcom Flashing `"GO! ➔"` Arcade Advance Prompt
+    // 2. Classic Flashing "GO!" Arcade Advance Prompt with Crisp Pixel Arrow
     if (this.goPromptActive && !this.game.isMatchOver) {
       const blink = Math.sin(t * 9.5) > -0.25;
       if (blink) {
@@ -3579,11 +3601,21 @@ export class AdventureManager {
           : '12px "ArcanePixel", "Press Start 2P", monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#fef08a';
-        ctx.fillText(`${this.goPromptText} ➔`, gx - 7 + shift, gy + 4);
+        ctx.fillText(this.goPromptText, gx - 16 + shift, gy + 4);
+
+        // Crisp 16-bit pixel arrow (zero OS dingbat glyph)
+        const ax = gx + 36 + shift;
+        const ay = gy - 2;
+        ctx.fillStyle = '#facc15';
+        ctx.fillRect(ax, ay - 2, 12, 4);
+        ctx.fillRect(ax + 10, ay - 6, 4, 12);
+        ctx.fillRect(ax + 14, ay - 4, 4, 8);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(ax + 18, ay - 2, 4, 4);
       }
     }
 
-    // 3. Dramatic Colossal Boss Approaching Arcade Alert Banner
+    // 3. Dramatic Colossal Boss Approaching Arcade Alert Banner with Pixel Hazard Crests
     if (this.bossWarningTimer > 0) {
       const flash = Math.abs(Math.sin(t * 12));
       const by = Math.round(h * 0.34);
@@ -3593,12 +3625,25 @@ export class AdventureManager {
       ctx.fillRect(0, by - 30, w, 3);
       ctx.fillRect(0, by + 27, w, 3);
 
+      const drawHazardCrest = (cx, cy) => {
+        ctx.fillStyle = '#ef4444';
+        ctx.fillRect(cx - 2, cy - 8, 4, 16);
+        ctx.fillRect(cx - 6, cy - 4, 12, 8);
+        ctx.fillRect(cx - 8, cy - 2, 16, 4);
+        ctx.fillStyle = '#fef08a';
+        ctx.fillRect(cx - 1, cy - 5, 2, 6);
+        ctx.fillRect(cx - 1, cy + 3, 2, 2);
+      };
+      const crestOffset = renderer.isMobile ? Math.min(Math.round(w * 0.44), 210) : 292;
+      drawHazardCrest(Math.round(w * 0.5) - crestOffset, by);
+      drawHazardCrest(Math.round(w * 0.5) + crestOffset, by);
+
       ctx.font = renderer.isMobile
         ? '10px "ArcanePixel", "Press Start 2P", monospace'
         : '14px "ArcanePixel", "Press Start 2P", monospace';
       ctx.textAlign = 'center';
       ctx.fillStyle = '#fef08a';
-      ctx.fillText('⚠ WARNING! BEHEMOTH MALPHAS RISES ON THE EAST! ⚠', Math.round(w * 0.5), by + 5);
+      ctx.fillText('WARNING! BEHEMOTH MALPHAS RISES ON THE EAST!', Math.round(w * 0.5), by + 5);
     }
 
     ctx.restore();

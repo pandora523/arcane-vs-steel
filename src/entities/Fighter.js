@@ -435,7 +435,7 @@ export class Fighter {
             this.y - 232,
             0,
             false,
-            '★ TWIN-SOUL COMBO! ★',
+            'TWIN-SOUL COMBO!',
             '#fde047'
           );
           this.game.vfx.spawnShockwave(this.x, this.y - 98, 96, attacker.primaryColor, 0.28);
@@ -524,7 +524,7 @@ export class Fighter {
           this.y - 218,
           0,
           false,
-          '★ DESPERATION OVERDRIVE! ★',
+          'DESPERATION OVERDRIVE!',
           '#facc15'
         );
         this.game.vfx.spawnBurst(this.x, this.y - 95, 22, '#facc15', 245, { upBias: 115, size: 6 });
@@ -925,7 +925,9 @@ export class Fighter {
       !this._hnsPhaseThrough &&
       !enemy._hnsPhaseThrough &&
       !this.isFullyBurrowed &&
-      !enemy.isFullyBurrowed
+      !enemy.isFullyBurrowed &&
+      !this._grabbedByBoss &&
+      !enemy._grabbedByBoss
     ) {
       const isAdv3D = Boolean(game?.adventure?.active);
       const depthDiff = Math.abs((this.groundY || this.y) - (enemy.groundY || enemy.y));
@@ -969,8 +971,8 @@ export class Fighter {
       }
     }
 
-    // Physics integration & Gravity (skipped while in a controlled parabolic flip-vault arc, Adventure pure dodge, or hard-rooted)
-    if (this.isRooted) {
+    // Physics integration & Gravity (skipped while in a controlled parabolic flip-vault arc, Adventure pure dodge, boss grab, or hard-rooted)
+    if (this.isRooted || this._grabbedByBoss) {
       this.vx = 0;
       this.vy = 0;
     } else if (!this.isFlipVault && !this._advPureDodge) {
@@ -1571,7 +1573,7 @@ export class Fighter {
               this.y - 196,
               0,
               true,
-              '★ VICTORY! ★',
+              'VICTORY!',
               this.primaryColor || '#fde047'
             );
           }

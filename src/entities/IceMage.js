@@ -1,14 +1,14 @@
-import { Fighter } from './Fighter.js?v=30fps109';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps109';
-import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps109';
+import { Fighter } from './Fighter.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps110';
+import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=30fps110';
 
 /**
  * Lyra (`icemage`) — Winter Empress & Sovereign of Absolute Zero (v6 Full Rework).
  *
  * 100% Bespoke Kit & Visual Identity:
  *  - Passive (`HOARFROST RIME & SOLID CRYSTAL STASIS`): Frost hits stack Hoarfrost Rime [1..4].
- *    At 4 stacks, triggers ★ SOLID CRYSTAL FREEZE! ★ — encasing the foe inside a translucent
+ *    At 4 stacks, triggers SOLID CRYSTAL FREEZE! — encasing the foe inside a translucent
  *    Row-6 Ice-Crystal Block (`0.46s` solid freeze stun), dealing crit shatter damage, and
  *    granting Lyra a Cryo Mirror Shield (`+14 HP`).
  *  - 4-Variant Royal Figure-Skating Auto-Attack (`Row 2`):
@@ -40,7 +40,7 @@ import { GLACIAL_EFFECT_REGISTRY } from '../engine/shaders/glacialShaders.js?v=3
  *              towering Row-6 Diamond-Coffin Monolith inside a 6-Mirror Borealis Star-Snowflake Cathedral.
  *      Act III: Reality freezes brittle with arena-wide branching glass fault-lines as Lyra performs her
  *               vertical Sovereign Scepter-Tap (`Row 4 F17..F23`).
- *      Act IV: ★ DIAMOND DUST ETERNITY! ★ — Reality shatters into 28 faceted crystal glass panes +
+ *      Act IV: DIAMOND DUST ETERNITY! — Reality shatters into 28 faceted crystal glass panes +
  *              triple Row-7 Prismatic Starbursts + `diamondDustCataclysmNova` for an instantaneous
  *              `675` Crit Execution + `12%` Max HP Sovereign Heal!
  */
@@ -138,8 +138,8 @@ export class IceMage extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('icemage');
       const iceAssets = PixelForge.initAssets()?.icemage;
-      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps109')) {
-        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps109';
+      if (iceAssets?.vfx?.src && !iceAssets.vfx.src.includes('v=30fps110')) {
+        iceAssets.vfx.src = 'assets/sprites/icemage_vfx.png?v=30fps110';
       }
     }
   }
@@ -454,8 +454,7 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * Applies Hoarfrost Rime stacks (1..4) to an enemy; at 4 stacks triggers ★ SOLID CRYSTAL FREEZE! ★
-   */
+   * Applies Hoarfrost Rime stacks (1..4) to an enemy; at 4 stacks triggers SOLID CRYSTAL FREEZE! */
   applyBrittleFrost(enemy, stacks, game, sourceX = null, sourceY = null) {
     if (!enemy || enemy.isDead || enemy.isInvulnerable) return;
     enemy.brittleStacks = (enemy.brittleStacks || 0) + stacks;
@@ -477,7 +476,7 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * Detonates 4 Hoarfrost Rime stacks into ★ SOLID CRYSTAL FREEZE! ★ — encasing the enemy in a
+   * Detonates 4 Hoarfrost Rime stacks into SOLID CRYSTAL FREEZE! — encasing the enemy in a
    * translucent Row-6 Ice-Crystal Block (`0.40s` solid stun), dealing crit shatter damage, and
    * granting Lyra a Cryo Mirror Shield!
    */
@@ -516,7 +515,7 @@ export class IceMage extends Fighter {
         game.renderer.triggerAberration(7);
       }
       if (game.vfx) {
-        game.vfx.spawnDamageText(enemy.x, enemy.y - 176, 0, true, '★ SOLID CRYSTAL FREEZE! ★', '#67e8f9');
+        game.vfx.spawnDamageText(enemy.x, enemy.y - 176, 0, true, 'SOLID CRYSTAL FREEZE!', '#67e8f9');
         this.spawnPixelFrostRing(enemy.x, enemy.y - 96, 128, '#67e8f9', 0.34, false, true);
         game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 96, 4, 'glacial');
       }
@@ -1362,7 +1361,7 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * ★ 4-BEAT FIGURE-SKATING SPELL-BLADE HACK-AND-SLASH (`Row 2`):
+   * 4-BEAT FIGURE-SKATING SPELL-BLADE HACK-AND-SLASH (`Row 2`):
    *  - Variant 0 (`F00..F07`, `60..67`): Rime-Lance Skate Lunge (explosive forward skate-rush + frost scepter cut + Borealis cryo-comet)
    *  - Variant 1 (`F08..F14`, `68..74`): Arabesque Cross-Skate Slash (24px hop-skate through enemy flank + 180° turn + returning Snowflake Chakram)
    *  - Variant 2 (`F15..F22`, `75..82`): Permafrost 5-Echo Dash-Pierce Slam (-12px coil -> supersonic 280px skate-pierce + 3 marching Glacier Spires)
@@ -1568,7 +1567,7 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * ★ SIGNATURE SKILL (`Row 3`, `0.90s`): "GLACIAL JAWS: TWIN ICEBERG CRUSH"
+   * SIGNATURE SKILL (`Row 3`, `0.90s`): "GLACIAL JAWS: TWIN ICEBERG CRUSH"
    * Erupts TWO towering Row-2 Glacier Iceberg Monoliths to the LEFT and RIGHT of the enemy,
    * pulling them into the blizzard jaws before SLAMMING both giant icebergs inward together!
    */
@@ -1698,7 +1697,7 @@ export class IceMage extends Fighter {
         }
       }
       if (game?.vfx) {
-        game.vfx.spawnDamageText(tx, ty - 216, 0, true, '★ TWIN ICEBERG CRUSH! ★', '#f0f9ff');
+        game.vfx.spawnDamageText(tx, ty - 216, 0, true, 'TWIN ICEBERG CRUSH!', '#f0f9ff');
       }
     } else if (t >= 0.90) {
       this.isDeflecting = false;
@@ -1707,7 +1706,7 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * ★ OVERDRIVE ULTIMATE (`Row 4`, `1.62s`): "WINTER CORONATION: SEVEN CELESTIAL ICE-SWORDS"
+   * OVERDRIVE ULTIMATE (`Row 4`, `1.62s`): "WINTER CORONATION: SEVEN CELESTIAL ICE-SWORDS"
    *  - Stage 1 (`0.05s`): Freezes Royal Winter Palace Rink & summons 7 Giant Celestial Ice-Claymores (`Row 4`)
    *                       in a Coronation Halo high above the target.
    *  - Stage 2 (`0.28s..0.73s`): The 6 outer Celestial Ice-Claymores plunge down sequentially to IMPALE
@@ -1889,7 +1888,7 @@ export class IceMage extends Fighter {
         colors: ['#ffffff', '#bae6fd', '#67e8f9', '#38bdf8', '#e879f9']
       });
       game.vfx.spawnGlyphBurst(cx, cy, 5, 'glacial');
-      game.vfx.spawnDamageText(cx, this.groundY - 372, 0, true, '★ SOVEREIGN CROWN-SWORD SHATTER! ★', '#f0f9ff');
+      game.vfx.spawnDamageText(cx, this.groundY - 372, 0, true, 'SOVEREIGN CROWN-SWORD SHATTER!', '#f0f9ff');
 
       if (enemy && !enemy.isDead) {
         const d3 = isVanguard ? 118 : isHarvester ? 124 : isGroundedCaster ? 130 : 136;
@@ -2002,7 +2001,7 @@ export class IceMage extends Fighter {
   }
 
   /**
-   * ★ 3-OVERDRIVE SUPREME ULTIMATE (`state === 'TRUE_ULTIMATE'`, `4.60s`):
+   * 3-OVERDRIVE SUPREME ULTIMATE (`state === 'TRUE_ULTIMATE'`, `4.60s`):
    * "ABSOLUTE ZERO: DIAMOND DUST ETERNITY"
    * Never alters `trueUltStageOverride` or `permanentStageOverride`.
    */
@@ -2057,7 +2056,7 @@ export class IceMage extends Fighter {
           this.y - 172,
           0,
           true,
-          '★ POLAR NIGHT: ABSOLUTE ZERO! ★',
+          'POLAR NIGHT: ABSOLUTE ZERO!',
           '#67e8f9'
         );
         this.fx?.spawn('absoluteZeroAuroraVeil', this._trueUltCoffinX, this.groundY - 6, { light: 1.28 });
@@ -2092,7 +2091,7 @@ export class IceMage extends Fighter {
         this.groundY - 278,
         0,
         true,
-        '★ -273.15°C • REALITY FREEZING! ★',
+        '-273.15°C • REALITY FREEZING!',
         '#e879f9'
       );
     }
@@ -2134,7 +2133,7 @@ export class IceMage extends Fighter {
     }
 
     // =========================================================================
-    // ACT IV (t >= 3.28s — Sovereign Scepter-Tap & ★ DIAMOND DUST ETERNITY! ★)
+    // ACT IV (t >= 3.28s — Sovereign Scepter-Tap & DIAMOND DUST ETERNITY!)
     // =========================================================================
     if (t >= 3.28 && this._trueUltStep < 4) {
       this._trueUltStep = 4;
@@ -2199,7 +2198,7 @@ export class IceMage extends Fighter {
         this.groundY - 284,
         0,
         true,
-        '★ DIAMOND DUST ETERNITY! ★',
+        'DIAMOND DUST ETERNITY!',
         '#f0f9ff'
       );
 
@@ -2961,7 +2960,7 @@ export class IceMage extends Fighter {
       const kelvin = Math.max(0, 273.15 + celsius);
       const atZero = kelvin <= 0.05 || t >= 2.34;
       const label = atZero
-        ? '★ 0.00 K  •  -273.15°C  ABSOLUTE ZERO ★'
+        ? '0.00 K  •  -273.15°C  ABSOLUTE ZERO'
         : `${kelvin.toFixed(1)} K  •  ${celsius.toFixed(1)}°C`;
 
       ctx.save();

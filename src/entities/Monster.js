@@ -1,5 +1,5 @@
-import { Fighter } from './Fighter.js?v=30fps109';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
+import { Fighter } from './Fighter.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
 
 /**
  * HD-2D 30fps Arcade Adventure Monster Archetypes (`ghoul`, `cultist`, `brute`)
@@ -16,8 +16,8 @@ const MONSTER_ARCHETYPES = {
     theme: 'sanctuary',
     primaryColor: '#38bdf8',
     secondaryColor: '#facc15',
-    maxHp: 480,
-    eliteHp: 770,
+    maxHp: 740,
+    eliteHp: 1180,
     moveSpeed: 198,
     attackRange: 126,
     autoInterval: 1.20,
@@ -38,8 +38,8 @@ const MONSTER_ARCHETYPES = {
     theme: 'sanctuary',
     primaryColor: '#38bdf8',
     secondaryColor: '#fde047',
-    maxHp: 390,
-    eliteHp: 650,
+    maxHp: 600,
+    eliteHp: 980,
     moveSpeed: 154,
     attackRange: 460,
     autoInterval: 1.65,
@@ -60,8 +60,8 @@ const MONSTER_ARCHETYPES = {
     theme: 'sylvan',
     primaryColor: '#34d399',
     secondaryColor: '#2dd4bf',
-    maxHp: 920,
-    eliteHp: 1350,
+    maxHp: 1420,
+    eliteHp: 2080,
     moveSpeed: 126,
     attackRange: 148,
     autoInterval: 1.72,
@@ -82,8 +82,8 @@ const MONSTER_ARCHETYPES = {
     theme: 'sylvan',
     primaryColor: '#10b981',
     secondaryColor: '#a7f3d0',
-    maxHp: 410,
-    eliteHp: 670,
+    maxHp: 640,
+    eliteHp: 1040,
     moveSpeed: 162,
     attackRange: 455,
     autoInterval: 1.60,
@@ -104,8 +104,8 @@ const MONSTER_ARCHETYPES = {
     theme: 'abyssal',
     primaryColor: '#c084fc',
     secondaryColor: '#34d399',
-    maxHp: 470,
-    eliteHp: 750,
+    maxHp: 740,
+    eliteHp: 1180,
     moveSpeed: 214,
     attackRange: 118,
     autoInterval: 1.18,
@@ -126,8 +126,8 @@ const MONSTER_ARCHETYPES = {
     theme: 'abyssal',
     primaryColor: '#a855f7',
     secondaryColor: '#e879f9',
-    maxHp: 400,
-    eliteHp: 660,
+    maxHp: 620,
+    eliteHp: 1020,
     moveSpeed: 152,
     attackRange: 455,
     autoInterval: 1.65,
@@ -148,8 +148,8 @@ const MONSTER_ARCHETYPES = {
     theme: 'forge',
     primaryColor: '#f59e0b',
     secondaryColor: '#dc2626',
-    maxHp: 940,
-    eliteHp: 1380,
+    maxHp: 1480,
+    eliteHp: 2160,
     moveSpeed: 128,
     attackRange: 146,
     autoInterval: 1.72,
@@ -170,8 +170,8 @@ const MONSTER_ARCHETYPES = {
     theme: 'forge',
     primaryColor: '#ef4444',
     secondaryColor: '#fb923c',
-    maxHp: 520,
-    eliteHp: 820,
+    maxHp: 820,
+    eliteHp: 1280,
     moveSpeed: 222,
     attackRange: 124,
     autoInterval: 1.14,
@@ -327,6 +327,23 @@ export class Monster extends Fighter {
     const prog = this.game?.isAdventureMode?.() ? this.game.adventure?.progression : null;
     if (prog && attacker && !attacker.isMonster) {
       finalAmount = prog.scaleOutgoingDamage(amount, attacker, this, isCrit);
+    }
+    if (
+      attacker &&
+      !attacker.isMonster &&
+      attacker.state === 'TRUE_ULTIMATE' &&
+      amount < 9000
+    ) {
+      const trueUltCap = this.isColossalBoss
+        ? Math.round(this.maxHp * 0.12)
+        : this.isMiniBoss
+          ? Math.round(this.maxHp * 0.34)
+          : this.isElite
+            ? Math.round(this.maxHp * 0.54)
+            : Infinity;
+      if (finalAmount > trueUltCap) {
+        finalAmount = trueUltCap;
+      }
     }
     if (this.isColossalBoss) {
       knockX = 0;
@@ -573,10 +590,10 @@ export class Monster extends Fighter {
         this.skillCooldown = this.skillMaxCooldown;
         this.telegraphLabel =
           this.kind === 'astrologer'
-            ? '★ ECLIPSE SIGIL! ★'
+            ? 'ECLIPSE SIGIL!'
             : this.kind === 'dryad'
-              ? '★ BRIAR SNARE! ★'
-              : '★ SOUL SIGIL! ★';
+              ? 'BRIAR SNARE!'
+              : 'SOUL SIGIL!';
         this.telegraphTimer = 0.78;
         this.setState('SKILL');
         return;
@@ -1179,7 +1196,7 @@ export class Monster extends Fighter {
     } else if (this.isElite || this.isBoss) {
       ctx.font = '7px "ArcanePixel", "Press Start 2P", monospace';
       ctx.textAlign = 'center';
-      const tag = this.isBoss ? `★ BOSS • PHASE ${this.bossPhase || 1} ★` : '★ ELITE';
+      const tag = this.isBoss ? `BOSS • PHASE ${this.bossPhase || 1}` : 'ELITE';
       ctx.fillStyle = this.isBoss ? '#fca5a5' : '#fde047';
       ctx.fillText(tag, bx, by - 5);
     }
@@ -1260,9 +1277,9 @@ export class Monster extends Fighter {
 export class ArchfiendBoss extends Monster {
   constructor(x = 9335, groundY = 561, _facing = -1) {
     super('brute', x, groundY, -1, {
-      maxHp: 3900,
+      maxHp: 11800,
       spriteScale: 2.18,
-      dmgScale: 1.18,
+      dmgScale: 1.24,
       skipPortal: true
     });
     this.heroId = 'archfiend';
@@ -1275,7 +1292,7 @@ export class ArchfiendBoss extends Monster {
     this.isColossalBoss = true;
     this.isElite = true;
     this.portalSpawnTimer = 0;
-    this.scoreValue = 4200;
+    this.scoreValue = 6800;
 
     // Permanently anchored on the FAR RIGHT side of Zone IV facing LEFT (-X)!
     this.anchorX = Number.isFinite(x) ? x : 9335;
@@ -1335,6 +1352,20 @@ export class ArchfiendBoss extends Monster {
     this.bossAction = null;
     this.sweepLane = null;
 
+    // Abyssal Siege Grab (`skillVariant === 2`) & Automatic Unavoidable Hellpit Soul-Tithe State
+    this.grabWarnOnly = false;
+    this.grabActive = false;
+    this.grabLaneGy = 561;
+    this.grabTargetX = this.anchorX - 420;
+    this.grabbedTarget = null;
+    this._grabCrushTicks = 0;
+    this._grabInitDone = false;
+
+    this.soulTitheCooldown = 5.4;
+    this.soulTitheWindupTimer = 0;
+    this.soulTitheFlashTimer = 0;
+    this.soulTitheCount = 0;
+
     // Upgraded 32-Cell HD-2D Wingbeat, Smooth Damped Pose Channels, Erupting Magma Spires & 3D Boulder Debris
     this.animTime = 0;
     this.wingPhase = 0;
@@ -1351,6 +1382,113 @@ export class ArchfiendBoss extends Monster {
     this._poseRearClawX = 0;
     this._poseRearClawY = 0;
   }
+
+  releaseGrabbedTarget() {
+    const target = this.grabbedTarget;
+    this.grabbedTarget = null;
+    this.grabWarnOnly = false;
+    this.grabActive = false;
+    this._grabCrushTicks = 0;
+    this._grabInitDone = false;
+    if (this.bossAction === 'claw_grab') {
+      this.bossAction = null;
+    }
+    if (target) {
+      target._grabbedByBoss = false;
+      target.vx = 0;
+      target.vy = 0;
+      target.y = target.groundY || target.y || 561;
+      if (!target.isDead && target.state !== 'VICTORY' && target.state === 'HURT') {
+        target.hurtTimer = Math.min(target.hurtTimer || 0, 0.16);
+      }
+    }
+  }
+
+  takeDamage(amount, attacker, spawnHitVfx = true, knockback = 0, launchVy = 0) {
+    if (this.hp - Math.max(0, amount) <= 0 && this.grabbedTarget) {
+      this.releaseGrabbedTarget();
+    }
+    const res = super.takeDamage(amount, attacker, spawnHitVfx, knockback, launchVy);
+    if (this.isDead && this.grabbedTarget) {
+      this.releaseGrabbedTarget();
+    }
+    return res;
+  }
+
+  applyBossGuaranteedDamage(target, rawDmg, game, callout = '') {
+    if (!target || target.isDead || target.state === 'VICTORY') return 0;
+    const advProg = game?.adventure?.progression;
+    const defenseScale = advProg ? Math.max(0.62, 1 - (advProg.damageReduction || 0) * 0.45) : 1;
+    const dmg = Math.max(22, Math.round(rawDmg * defenseScale));
+    const prevHp = target.hp;
+    if (target.state === 'ULTIMATE' || target.state === 'TRUE_ULTIMATE') {
+      target.hp = Math.max(1, target.hp - dmg);
+    } else {
+      target.hp = Math.max(0, target.hp - dmg);
+    }
+    const dealt = prevHp - target.hp;
+    target.hitFlash = 0.24;
+    if (target.stats) {
+      target.stats.damageTaken = (target.stats.damageTaken || 0) + dealt;
+    }
+    if (this.stats) {
+      this.stats.damageDealt = (this.stats.damageDealt || 0) + dealt;
+    }
+    if (game?.vfx) {
+      if (callout) {
+        game.vfx.spawnDamageText(target.x, target.y - 224, 0, true, callout, '#f43f5e');
+      }
+      game.vfx.spawnDamageText(target.x - (target.facing || 1) * 20, target.y - 190, dealt, true);
+      game.vfx.spawnBurst(target.x, target.y - 96, 12, '#ef4444', 210, { upBias: 95, size: 6 });
+      game.vfx.spawnShockwave(target.x, (target.groundY || target.y) - 6, 86, '#dc2626', 0.28, true);
+    }
+    if (target.hp <= 0 && !target.isDead) {
+      this.releaseGrabbedTarget();
+      target.isDead = true;
+      target.state = 'DEATH';
+      target.deathTimer = 0;
+      target.isFlipVault = false;
+      target.isAngelicAscent = false;
+      target.isBlinkTeleport = false;
+      target.isChronoWarp = false;
+      target.isOmnislashing = false;
+      target.isCrouching = false;
+      target.isDeflecting = false;
+      target.vy = 0;
+      target.vx = -115;
+      if (game) {
+        game.renderer?.triggerShake(12, 0.25);
+        game.renderer?.triggerAberration(8);
+        game.onFighterDeath?.(target);
+      }
+    }
+    return dealt;
+  }
+
+  triggerUnavoidableSoulTithe(enemy, game) {
+    if (!enemy || enemy.isDead || enemy.state === 'VICTORY') return 0;
+    this.soulTitheCount = (this.soulTitheCount || 0) + 1;
+    this.soulTitheFlashTimer = 0.48;
+    this.roarFlashTimer = Math.max(this.roarFlashTimer || 0, 0.36);
+    this.impactRecoilTimer = Math.max(this.impactRecoilTimer || 0, 0.22);
+    const phasePct = this.bossPhase >= 3 ? 0.095 : this.bossPhase >= 2 ? 0.082 : 0.070;
+    const rawTithe = Math.round((enemy.maxHp || 3600) * phasePct + 52 * this.dmgScale);
+    this.telegraphLabel = 'HELLPIT SOUL-TITHE! (UNAVOIDABLE)';
+    this.telegraphTimer = Math.max(this.telegraphTimer || 0, 0.95);
+    if (game?.audio) game.audio.play('flame_pillar', enemy.x);
+    if (game?.renderer) {
+      game.renderer.triggerShake(14, 0.30);
+      game.renderer.triggerAberration(9);
+    }
+    if (game?.vfx) {
+      game.vfx.spawnShockwave(this.anchorX - 110, 520, 320, '#dc2626', 0.44, true);
+      game.vfx.spawnShockwave(enemy.x, (enemy.groundY || enemy.y) - 8, 165, '#f43f5e', 0.38, true);
+      game.vfx.spawnGlyphBurst(enemy.x, enemy.y - 98, 7, 'abyssal');
+      game.vfx.spawnDecal(enemy.x, 108, 'fissure', '#dc2626', 3.4, enemy.groundY || enemy.y);
+    }
+    return this.applyBossGuaranteedDamage(enemy, rawTithe, game, 'SOUL-TITHE! (UNAVOIDABLE)');
+  }
+
 
   spawnBossMagmaSpire(x, groundY, scale = 1.0, maxLife = 1.05) {
     if (this.activeMagmaSpires.length >= 8) {
@@ -1436,8 +1574,12 @@ export class ArchfiendBoss extends Monster {
     this.animTime = (this.animTime || 0) + safeDt;
     this.stepBossMagmaFX(safeDt, game);
     this.impactRecoilTimer = Math.max(0, (this.impactRecoilTimer || 0) - safeDt);
+    this.soulTitheFlashTimer = Math.max(0, (this.soulTitheFlashTimer || 0) - safeDt);
 
     if (this.isDead) {
+      this.releaseGrabbedTarget();
+      this.soulTitheWindupTimer = 0;
+      this.soulTitheFlashTimer = 0;
       this.fistVisible = false;
       this.rakeActive = false;
       this.rakeWarnOnly = false;
@@ -1585,7 +1727,7 @@ export class ArchfiendBoss extends Monster {
 
       if (this._emergeStage === 0 && elapsed >= 0.02) {
         this._emergeStage = 1;
-        this.telegraphLabel = '⚠ THE EASTERN PIT ERUPTS! ⚠';
+        this.telegraphLabel = 'THE EASTERN PIT ERUPTS!';
         this.telegraphTimer = 1.05;
         this.spawnBossMagmaSpire(this.anchorX - 118, 604, 0.92, 1.05);
         this.spawnBossMagmaBoulders(this.anchorX + 10, 610, 596, 5, 1.05);
@@ -1619,7 +1761,7 @@ export class ArchfiendBoss extends Monster {
         this.roarFlashTimer = 0.50;
         this.impactRecoilTimer = 0.28;
         this.spawnBossMagmaBoulders(this.anchorX - 54, 420, 560, 4, 1.0);
-        this.telegraphLabel = '★ SOVEREIGN OF THE BLACK PIT! ★';
+        this.telegraphLabel = 'SOVEREIGN OF THE BLACK PIT!';
         this.telegraphTimer = 0.95;
         if (game?.audio) game.audio.play('fireball', this.anchorX - 70);
         if (game?.renderer) {
@@ -1631,7 +1773,7 @@ export class ArchfiendBoss extends Monster {
           game.vfx.spawnSpecialCastAura(
             this,
             'BEHEMOTH MALPHAS',
-            '★ SOVEREIGN OF THE BLACK PIT ★',
+            'SOVEREIGN OF THE BLACK PIT',
             'abyssal',
             true
           );
@@ -1648,13 +1790,14 @@ export class ArchfiendBoss extends Monster {
       this.didPhase2 = true;
       this.bossPhase = 2;
       this.ultCooldown = 0.45;
+      this.soulTitheCooldown = Math.min(this.soulTitheCooldown || 5.4, 0.85);
       this.jawOpen = 1.0;
       this.roarFlashTimer = 0.72;
       this.impactRecoilTimer = 0.30;
       this.spawnBossMagmaSpire(this.anchorX - 192, 512, 1.02, 1.15);
       this.spawnBossMagmaSpire(this.anchorX - 228, 616, 1.06, 1.15);
       this.spawnBossMagmaBoulders(this.anchorX - 120, 520, 565, 5, 1.08);
-      this.telegraphLabel = '★ PHASE II: SIEGE CLAW AWAKENING! ★';
+      this.telegraphLabel = 'PHASE II: SIEGE CLAW AWAKENING!';
       this.telegraphTimer = 1.75;
       if (game?.renderer) {
         game.renderer.triggerShake(18, 0.55);
@@ -1664,7 +1807,7 @@ export class ArchfiendBoss extends Monster {
         game.vfx.spawnSpecialCastAura(
           this,
           'COLOSSAL CALDERA SURGE',
-          '★ BEHEMOTH PHASE II ★',
+          'BEHEMOTH PHASE II',
           'abyssal',
           true
         );
@@ -1679,6 +1822,7 @@ export class ArchfiendBoss extends Monster {
       this.bossPhase = 3;
       this.isBerserk = true;
       this.ultCooldown = 0.2;
+      this.soulTitheCooldown = Math.min(this.soulTitheCooldown || 5.4, 0.75);
       this.jawOpen = 1.0;
       this.roarFlashTimer = 0.85;
       this.impactRecoilTimer = 0.34;
@@ -1686,7 +1830,7 @@ export class ArchfiendBoss extends Monster {
       this.spawnBossMagmaSpire(this.anchorX - 265, 572, 1.18, 1.25);
       this.spawnBossMagmaSpire(this.anchorX - 210, 632, 1.12, 1.25);
       this.spawnBossMagmaBoulders(this.anchorX - 130, 510, 565, 6, 1.16);
-      this.telegraphLabel = '★ PHASE III: BLACK PIT CATACLYSM! ★';
+      this.telegraphLabel = 'PHASE III: BLACK PIT CATACLYSM!';
       this.telegraphTimer = 1.9;
       if (game?.renderer) {
         game.renderer.triggerShake(24, 0.72);
@@ -1696,7 +1840,7 @@ export class ArchfiendBoss extends Monster {
         game.vfx.spawnSpecialCastAura(
           this,
           'BLACK PIT CATACLYSM',
-          '★ FINAL COLOSSUS ENRAGE ★',
+          'FINAL COLOSSUS ENRAGE',
           'arcane',
           true
         );
@@ -1705,11 +1849,40 @@ export class ArchfiendBoss extends Monster {
       game?.adventure?.onBossPhaseShift?.(this, 3);
     }
 
-    // Smooth articulated claw hover along the front-left parapet when not actively raking or slamming
+    // Autonomous Unavoidable Arena-Wide Blood-Pact Pulse (`HELLPIT SOUL-TITHE`) — deliberate unavoidable boss attrition!
+    if (
+      this.emergeTimer <= 0 &&
+      safeDt > 0 &&
+      enemy &&
+      !enemy.isDead &&
+      enemy.state !== 'VICTORY' &&
+      !game?.isMatchOver
+    ) {
+      if (this.soulTitheWindupTimer > 0) {
+        this.soulTitheWindupTimer = Math.max(0, this.soulTitheWindupTimer - safeDt);
+        if (this.soulTitheWindupTimer <= 0) {
+          this.soulTitheCooldown = this.bossPhase >= 3 ? 5.2 : this.bossPhase >= 2 ? 6.4 : 7.6;
+          this.triggerUnavoidableSoulTithe(enemy, game);
+        }
+      } else {
+        this.soulTitheCooldown = Math.max(0, (this.soulTitheCooldown ?? 5.4) - safeDt);
+        if (this.soulTitheCooldown <= 0) {
+          this.soulTitheWindupTimer = 0.56;
+          this.telegraphLabel = 'UNAVOIDABLE: HELLPIT SOUL-TITHE!';
+          this.telegraphTimer = Math.max(this.telegraphTimer || 0, 0.68);
+          if (game?.audio) game.audio.play('fireball', this.anchorX - 95);
+        }
+      }
+    }
+
+    // Smooth articulated claw hover along the front-left parapet when not actively raking, grabbing, or slamming
     if (this.state !== 'AUTO_ATTACK' && this.state !== 'ULTIMATE') {
       this.fistVisible = false;
     }
     if (this.state !== 'SKILL') {
+      if (this.grabbedTarget || this.grabWarnOnly || this.grabActive) {
+        this.releaseGrabbedTarget();
+      }
       this.rakeActive = false;
       this.rakeWarnOnly = false;
       this.bossAction = null;
@@ -1749,6 +1922,8 @@ export class ArchfiendBoss extends Monster {
       targetJaw = this.stateTimer < 0.20 ? 0.06 : this.stateTimer < 0.84 ? 1.0 : 0.26;
     } else if (this.state === 'SKILL' && this.skillVariant === 1) {
       targetJaw = this.rakeActive ? 0.62 : 0.30;
+    } else if (this.state === 'SKILL' && this.skillVariant === 2) {
+      targetJaw = this.grabbedTarget ? 0.88 : this.grabActive ? 0.68 : 0.28;
     } else if (this.state === 'ULTIMATE') {
       targetJaw = 0.92;
     } else if (this.state === 'AUTO_ATTACK') {
@@ -1775,15 +1950,17 @@ export class ArchfiendBoss extends Monster {
     const isHoistingFist =
       (this.state === 'AUTO_ATTACK' && this.stateTimer < 0.50) ||
       (this.state === 'ULTIMATE' && this.stateTimer < 0.80);
-    const isRakingClaw = this.state === 'SKILL' && this.skillVariant === 1;
+    const isRakingClaw = this.state === 'SKILL' && (this.skillVariant === 1 || this.skillVariant === 2);
+    const isClawWindup = this.rakeWarnOnly || this.grabWarnOnly;
+    const isClawThrust = this.rakeActive || this.grabActive;
     const isWindingUp =
       (this.state === 'AUTO_ATTACK' && this.stateTimer < 0.44) ||
-      (isRakingClaw && this.rakeWarnOnly) ||
+      (isRakingClaw && isClawWindup) ||
       (this.state === 'SKILL' && this.skillVariant === 0 && this.stateTimer < 0.22) ||
       (this.state === 'ULTIMATE' && this.stateTimer < 0.72);
     const isLungingStrike =
       (this.state === 'AUTO_ATTACK' && this.stateTimer >= 0.48 && this.stateTimer <= 0.74) ||
-      (isRakingClaw && this.rakeActive) ||
+      (isRakingClaw && isClawThrust) ||
       (this.state === 'ULTIMATE' && this.stateTimer >= 0.72 && this.stateTimer <= 1.22) ||
       isRoaring;
 
@@ -1794,7 +1971,7 @@ export class ArchfiendBoss extends Monster {
     const tgtBodyY = (isWindingUp ? -6 : isLungingStrike ? 5 : 0) + (isVulnerable ? 18 : 0);
     const tgtShrugY = isHoistingFist ? -8 : isRoaring ? -6 : isLungingStrike ? 4 : isVulnerable ? 7 : 0;
     const tgtFrontShX = isRakingClaw
-      ? this.rakeActive
+      ? isClawThrust
         ? -11
         : 7
       : isLungingStrike
@@ -1836,7 +2013,7 @@ export class ArchfiendBoss extends Monster {
     if (this.vulnerableTimer > 0) {
       this.state = 'IDLE';
       this.moveDir = 0;
-      this.telegraphLabel = '★ HEART CORE EXPOSED! (+45% DMG) ★';
+      this.telegraphLabel = 'HEART CORE EXPOSED! (+45% DMG)';
       this.telegraphTimer = Math.max(this.telegraphTimer, 0.14);
       return;
     }
@@ -1852,14 +2029,14 @@ export class ArchfiendBoss extends Monster {
       );
       this.slamTargetGy = Math.max(462, Math.min(660, enemyGy));
       this.telegraphLabel =
-        this.bossPhase >= 3 ? '★ BLACK PIT CATACLYSM! ★' : '★ CALDERA FIST BARRAGE! ★';
+        this.bossPhase >= 3 ? 'BLACK PIT CATACLYSM!' : 'CALDERA FIST BARRAGE!';
       this.telegraphTimer = 1.45;
       this.setState('ULTIMATE');
       if (game?.vfx) {
         game.vfx.spawnSpecialCastAura(
           this,
           this.bossPhase >= 3 ? 'BLACK PIT CATACLYSM' : 'CALDERA FIST BARRAGE',
-          '⚠ COLOSSUS OVERDRIVE ⚠',
+          'COLOSSUS OVERDRIVE',
           'abyssal',
           true
         );
@@ -1867,10 +2044,11 @@ export class ArchfiendBoss extends Monster {
       return;
     }
 
-    // Alternating Special Skill: Colossal Claw 3D Leftward Lane Rake vs Abyssal Jaw Hellfire Fan
+    // 3-Way Special Skill Rotation: (0) Jaw Hellfire Fan -> (1) Colossal Claw Lane Sweep -> (2) Abyssal Siege Grab!
     if (this.skillCooldown <= 0) {
       this.skillCooldown = this.skillMaxCooldown * (this.bossPhase >= 3 ? 0.76 : 1.0);
-      this.skillVariant = (this.skillVariant + 1) % 2;
+      this.skillVariant = ((this.skillVariant ?? 0) + 1) % 3;
+      this.skillDuration = this.skillVariant === 2 ? 1.48 : 1.08;
       if (this.skillVariant === 1) {
         this.rakeLaneGy = enemyGy <= 561 ? 500 : 624;
         this.sweepLane = this.rakeLaneGy <= 561 ? 'upper' : 'lower';
@@ -1878,12 +2056,35 @@ export class ArchfiendBoss extends Monster {
         this._rakeSparkAccum = 0;
         this._rakeSpireStage = 0;
         this.telegraphLabel =
-          this.rakeLaneGy <= 561 ? '⚠ CLAW SWEEP: UPPER ROAD! ⚠' : '⚠ CLAW SWEEP: LOWER ROAD! ⚠';
+          this.rakeLaneGy <= 561 ? 'CLAW SWEEP: UPPER ROAD!' : 'CLAW SWEEP: LOWER ROAD!';
         this.telegraphTimer = 0.95;
+      } else if (this.skillVariant === 2) {
+        this.grabLaneGy = Math.max(468, Math.min(654, enemyGy));
+        this.grabTargetX = Math.max(
+          this.anchorX - 880,
+          Math.min(this.anchorX - 180, enemy ? enemy.x : this.anchorX - 460)
+        );
+        this.grabWarnOnly = true;
+        this.grabActive = false;
+        this._grabCrushTicks = 0;
+        this._grabInitDone = true;
+        this.sweepLane = null;
+        this.bossAction = 'claw_grab';
+        this.telegraphLabel = 'ABYSSAL SIEGE GRAB!';
+        this.telegraphTimer = 0.95;
+        this.spawnFloorTelegraph(
+          this.grabTargetX,
+          96,
+          0.42,
+          0,
+          '#c084fc',
+          'SIEGE GRAB',
+          this.grabLaneGy
+        );
       } else {
         this.sweepLane = null;
         this.bossAction = null;
-        this.telegraphLabel = '★ ABYSSAL JAW HELLFIRE! ★';
+        this.telegraphLabel = 'ABYSSAL JAW HELLFIRE!';
         this.telegraphTimer = 0.85;
       }
       this.setState('SKILL');
@@ -1980,6 +2181,193 @@ export class ArchfiendBoss extends Monster {
 
   updateSkill(dt, enemy, game) {
     const t = this.stateTimer;
+
+    if (this.skillVariant === 2) {
+      // Variant C: Abyssal Siege-Claw Grab -> Clenched Air-Hoist -> Twin Vise Crushes -> Violent Leftward Hurl Slam!
+      if (!this._grabInitDone) {
+        this._grabInitDone = true;
+        this.skillDuration = 1.48;
+        this._grabCrushTicks = 0;
+        const initGy = enemy ? enemy.groundY || enemy.y || 561 : 561;
+        this.grabLaneGy = Math.max(468, Math.min(654, this.grabLaneGy || initGy));
+        this.grabTargetX = Math.max(
+          this.anchorX - 880,
+          Math.min(this.anchorX - 180, enemy ? enemy.x : this.anchorX - 460)
+        );
+      }
+
+      if (t < 0.42) {
+        this.grabWarnOnly = true;
+        this.grabActive = false;
+        this.bossAction = 'claw_grab';
+        const coil = t / 0.42;
+        this.clawWorldX = this.anchorX - 118 + coil * 44;
+        this.clawWorldY = this.grabLaneGy + 12 - Math.sin(coil * Math.PI * 0.5) * 18;
+      } else if (t < 0.68) {
+        this.grabWarnOnly = false;
+        this.grabActive = true;
+        this.bossAction = 'claw_grab';
+        if (!this.didSecondaryAction) {
+          this.didSecondaryAction = true;
+          this.impactRecoilTimer = 0.22;
+          if (game?.audio) game.audio.play('heavy_cleave', this.clawWorldX);
+          if (game?.renderer) game.renderer.triggerShake(12, 0.22);
+        }
+        const u = (t - 0.42) / 0.26;
+        const reachX = Math.max(
+          this.anchorX - 910,
+          Math.min(this.grabTargetX - 36, this.anchorX - 815)
+        );
+        this.clawWorldX = this.anchorX - 74 + (reachX - (this.anchorX - 74)) * u;
+        this.clawWorldY = this.grabLaneGy + 10;
+
+        if (
+          !this.grabbedTarget &&
+          enemy &&
+          !enemy.isDead &&
+          !enemy.isInvulnerable &&
+          enemy.state !== 'DODGE' &&
+          !(enemy._advDodgeTimer > 0) &&
+          !enemy.isSubmerged &&
+          Math.abs(enemy.x - this.clawWorldX) <= 132 &&
+          Math.abs((enemy.groundY || enemy.y) - this.grabLaneGy) <= 66
+        ) {
+          this.grabbedTarget = enemy;
+          enemy._grabbedByBoss = true;
+          enemy.vx = 0;
+          enemy.vy = 0;
+          enemy.moveDir = 0;
+          enemy.facing = 1;
+          enemy.setState('HURT');
+          enemy.hurtTimer = 0.95;
+          this.telegraphLabel = 'GRABBED! SIEGE CLAW VISE!';
+          this.telegraphTimer = 0.85;
+          if (game?.audio) game.audio.play('thunder_slam', enemy.x);
+          if (game?.renderer) game.renderer.triggerShake(14, 0.26);
+          game?.vfx?.spawnShockwave(enemy.x, this.grabLaneGy - 20, 128, '#c084fc', 0.30, true);
+          this.applyBossGuaranteedDamage(enemy, Math.round(44 * this.dmgScale), game, 'GRABBED!');
+        }
+
+        if (this.grabbedTarget && !this.grabbedTarget.isDead) {
+          this.grabbedTarget.x = Math.round(this.clawWorldX - 18);
+          this.grabbedTarget.y = Math.round(
+            Math.min((this.grabbedTarget.groundY || this.grabLaneGy) - 18, this.clawWorldY + 8)
+          );
+          this.grabbedTarget.vx = 0;
+          this.grabbedTarget.vy = 0;
+        }
+      } else if (t < 1.24) {
+        if (this.grabbedTarget && !this.grabbedTarget.isDead) {
+          this.grabWarnOnly = false;
+          this.grabActive = true;
+          this.bossAction = 'claw_grab';
+          const uHoist = Math.min(1, (t - 0.68) / 0.32);
+          const easeH = 1 - Math.pow(1 - uHoist, 2);
+          const startX = Math.max(this.anchorX - 880, this.grabTargetX);
+          const hoistX = this.anchorX - 228;
+          const hoistY = 446;
+          this.clawWorldX = startX + (hoistX - startX) * easeH + Math.sin(t * 28) * 4;
+          this.clawWorldY = this.grabLaneGy + 10 + (hoistY - (this.grabLaneGy + 10)) * easeH;
+
+          const victim = this.grabbedTarget;
+          const pinGy = Math.round(this.grabLaneGy + (561 - this.grabLaneGy) * easeH);
+          victim.groundY = pinGy;
+          victim.x = Math.round(this.clawWorldX - 18);
+          victim.y = Math.round(Math.min(pinGy - 28, this.clawWorldY + 12));
+          victim.vx = 0;
+          victim.vy = 0;
+          victim.facing = 1;
+          if (!victim.isDead && victim.state !== 'VICTORY') {
+            victim.state = 'HURT';
+            victim.hurtTimer = 0.40;
+          }
+
+          if (
+            (this._grabCrushTicks === 0 && t >= 0.84) ||
+            (this._grabCrushTicks === 1 && t >= 1.06)
+          ) {
+            this._grabCrushTicks++;
+            this.impactRecoilTimer = 0.18;
+            if (game?.audio) game.audio.play('heavy_cleave', victim.x);
+            if (game?.renderer) game.renderer.triggerShake(11, 0.18);
+            this.applyBossGuaranteedDamage(
+              victim,
+              Math.round(46 * this.dmgScale),
+              game,
+              'VISE CRUSH!'
+            );
+          }
+        } else {
+          // Player evaded / dodged the grab snatch -> retract claw cleanly!
+          this.grabWarnOnly = false;
+          this.grabActive = false;
+          this.bossAction = null;
+          const uRet = Math.min(1, (t - 0.68) / 0.32);
+          this.clawWorldX = (this.anchorX - 815) * (1 - uRet) + (this.anchorX - 166) * uRet;
+          this.clawWorldY = this.grabLaneGy + 10 - Math.sin(uRet * Math.PI) * 22;
+          if (t >= 1.00) {
+            this.releaseGrabbedTarget();
+            this.skillDuration = 1.08;
+            this.setState('IDLE');
+            return;
+          }
+        }
+      } else {
+        if (!this.didActionFrame) {
+          this.didActionFrame = true;
+          const victim = this.grabbedTarget;
+          this.releaseGrabbedTarget();
+          if (victim && !victim.isDead && victim.state !== 'VICTORY') {
+            const slamGy = Math.max(468, Math.min(654, victim.groundY || 561));
+            victim.groundY = slamGy;
+            victim.y = Math.min(slamGy - 18, victim.y);
+            victim.vx = -640;
+            victim.vy = -195;
+            victim.setState('HURT');
+            victim.hurtTimer = 0.48;
+            this.impactRecoilTimer = 0.28;
+            this.spawnBossMagmaSpire(
+              Math.max(this.anchorX - 880, victim.x - 120),
+              slamGy,
+              1.02,
+              1.05
+            );
+            this.spawnBossMagmaBoulders(victim.x - 60, slamGy - 14, slamGy, 4, 1.04);
+            if (game?.audio) game.audio.play('meteor_impact', victim.x);
+            if (game?.renderer) {
+              game.renderer.triggerShake(18, 0.32);
+              game.renderer.triggerAberration(10);
+            }
+            game?.vfx?.spawnShockwave(victim.x - 40, slamGy - 12, 185, '#c084fc', 0.38, true);
+            game?.vfx?.spawnDecal(
+              Math.max(this.anchorX - 880, victim.x - 90),
+              116,
+              'fissure',
+              '#ea580c',
+              4.0,
+              slamGy
+            );
+            this.applyBossGuaranteedDamage(
+              victim,
+              Math.round(76 * this.dmgScale),
+              game,
+              'ABYSSAL HURL!'
+            );
+          }
+        }
+        const uThrow = Math.min(1, (t - 1.24) / 0.24);
+        this.clawWorldX =
+          (this.anchorX - 330) * (1 - uThrow) + (this.anchorX - 166) * uThrow;
+        this.clawWorldY = 468 + uThrow * 68;
+      }
+
+      if (t >= 1.48) {
+        this.releaseGrabbedTarget();
+        this.skillDuration = 1.08;
+        this.setState('IDLE');
+      }
+      return;
+    }
 
     if (this.skillVariant === 1) {
       // Variant B: Giant Flexed Siege-Claw + HD-2D 3-Talon Slash Arc 3D Leftward Lane Sweep (`x: 9225 -> 8395`)!
@@ -2230,7 +2618,7 @@ export class ArchfiendBoss extends Monster {
     if (t >= this.ultDuration) {
       this.fistVisible = false;
       this.vulnerableTimer = this.bossPhase >= 3 ? 2.2 : 1.45;
-      this.telegraphLabel = '★ HEART CORE EXPOSED! (+45% DMG) ★';
+      this.telegraphLabel = 'HEART CORE EXPOSED! (+45% DMG)';
       this.telegraphTimer = this.vulnerableTimer;
       this.setState('IDLE');
     }
@@ -2238,9 +2626,63 @@ export class ArchfiendBoss extends Monster {
 
   drawTelegraphRings(ctx) {
     super.drawTelegraphRings(ctx);
-    if (!ctx || (!this.rakeWarnOnly && !this.rakeActive)) return;
+    if (!ctx) return;
 
-    // Clear 3D Full-Lane Danger Corridor for Leftward Colossal Claw Sweep (`x: anchorX-935 .. anchorX-95`)
+    // 1. Arena-Wide Unavoidable Hellpit Soul-Tithe Blood-Pact Floor Seal (`0` .ellipse, `0` rotate)
+    if ((this.soulTitheWindupTimer || 0) > 0 || (this.soulTitheFlashTimer || 0) > 0) {
+      ctx.save();
+      const isFlash = (this.soulTitheFlashTimer || 0) > 0;
+      const sx0 = Math.round(this.anchorX - 960);
+      const sx1 = Math.round(this.anchorX - 96);
+      const sw = sx1 - sx0;
+      const sy0 = 456;
+      const sh = 212;
+      const alpha = isFlash
+        ? Math.min(0.32, (this.soulTitheFlashTimer || 0) * 0.65)
+        : 0.14 + 0.08 * Math.sin((this.walkPhase || 0) * 18);
+      ctx.fillStyle = isFlash
+        ? `rgba(244, 63, 94, ${alpha.toFixed(3)})`
+        : `rgba(220, 38, 38, ${alpha.toFixed(3)})`;
+      ctx.fillRect(sx0, sy0, sw, sh);
+      ctx.strokeStyle = isFlash ? '#fef08a' : '#f43f5e';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(sx0, sy0, sw, sh);
+      ctx.strokeRect(sx0 + 8, sy0 + 8, sw - 16, sh - 16);
+      ctx.restore();
+    }
+
+    // 2. 3D Target-Lane Danger Corridor for Abyssal Siege Grab (`skillVariant === 2`)
+    if (this.grabWarnOnly || (this.grabActive && !this.grabbedTarget)) {
+      ctx.save();
+      const gyTop = Math.round(this.grabLaneGy - 50);
+      const gBandH = 100;
+      const gxEnd = Math.round(this.anchorX - 95);
+      const gxStart = Math.round(this.anchorX - 905);
+      const gBandW = gxEnd - gxStart;
+      const gPulse = 0.18 + 0.10 * Math.sin((this.walkPhase || 0) * 16);
+      ctx.fillStyle = this.grabActive
+        ? 'rgba(192, 132, 252, 0.28)'
+        : `rgba(168, 85, 247, ${gPulse.toFixed(3)})`;
+      ctx.fillRect(gxStart, gyTop, gBandW, gBandH);
+      ctx.strokeStyle = this.grabActive ? '#fef08a' : '#e879f9';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(gxStart, gyTop, gBandW, gBandH);
+      ctx.fillStyle = '#fef08a';
+      for (let cx = gxStart + 90; cx < gxStart + gBandW - 70; cx += 170) {
+        const cy = Math.round(this.grabLaneGy);
+        ctx.fillRect(cx - 12, cy - 12, 10, 4);
+        ctx.fillRect(cx - 12, cy - 12, 4, 24);
+        ctx.fillRect(cx - 12, cy + 8, 10, 4);
+        ctx.fillRect(cx + 8, cy - 12, 10, 4);
+        ctx.fillRect(cx + 14, cy - 12, 4, 24);
+        ctx.fillRect(cx + 8, cy + 8, 10, 4);
+      }
+      ctx.restore();
+    }
+
+    if (!this.rakeWarnOnly && !this.rakeActive) return;
+
+    // 3. Clear 3D Full-Lane Danger Corridor for Leftward Colossal Claw Sweep (`x: anchorX-935 .. anchorX-95`)
     ctx.save();
     const yTop = Math.round(this.rakeLaneGy - 54);
     const bandH = 108;
@@ -2651,6 +3093,8 @@ export class ArchfiendBoss extends Monster {
         } else if (!hideEarlyClimbClaw) {
           const useFlexedClaw =
             this.rakeActive ||
+            this.grabActive ||
+            Boolean(this.grabbedTarget) ||
             (this.emergeTimer > 0 && emergeU >= 0.24 && emergeU <= 0.74) ||
             this.bossPhase >= 3;
           const clawCol = useFlexedClaw ? 1 : 0;
@@ -2739,7 +3183,7 @@ export class ArchfiendBoss extends Monster {
         ctx.font = '7px "ArcanePixel", "Press Start 2P", monospace';
         ctx.textAlign = 'center';
         ctx.fillStyle = '#fca5a5';
-        ctx.fillText(`★ COLOSSUS • PHASE ${this.bossPhase || 1} ★`, bx, by - 6);
+        ctx.fillText(`COLOSSUS • PHASE ${this.bossPhase || 1}`, bx, by - 6);
       }
 
       ctx.fillStyle = '#05070e';

@@ -1,12 +1,12 @@
-import { Fighter } from './Fighter.js?v=30fps109';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps109';
+import { Fighter } from './Fighter.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps110';
 import {
   SERAPHIC_EFFECT_REGISTRY,
   SERAPHIC_GOLD_PALETTE,
   SERAPHIC_GRACE_PALETTE,
   SERAPHIC_STAINED_PALETTE
-} from '../engine/shaders/seraphicShaders.js?v=30fps109';
+} from '../engine/shaders/seraphicShaders.js?v=30fps110';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -95,8 +95,8 @@ export class Priestess extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('priestess');
       const priestessAssets = PixelForge.initAssets()?.priestess;
-      if (priestessAssets?.vfx?.src && !priestessAssets.vfx.src.includes('v=30fps109')) {
-        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps109';
+      if (priestessAssets?.vfx?.src && !priestessAssets.vfx.src.includes('v=30fps110')) {
+        priestessAssets.vfx.src = 'assets/sprites/priestess_vfx.png?v=30fps110';
       }
     }
   }
@@ -1498,7 +1498,7 @@ export class Priestess extends Fighter {
               foe.y - 156,
               0,
               true,
-              `★ FINAL GRACE: ${counterDmg}! ★`,
+              `FINAL GRACE: ${counterDmg}!`,
               '#fde047'
             );
           }
@@ -1516,7 +1516,7 @@ export class Priestess extends Fighter {
           beamY - 48,
           0,
           true,
-          `★ FINAL GRACE: ${counterDmg}! ★`,
+          `FINAL GRACE: ${counterDmg}!`,
           '#fde047'
         );
       }

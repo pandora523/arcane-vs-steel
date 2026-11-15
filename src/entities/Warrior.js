@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps109';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps109';
+import { Fighter } from './Fighter.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps110';
 import {
   RUNIC_STEEL_EFFECT_REGISTRY,
   RUNIC_CYAN_PALETTE,
   RUNIC_GOLD_PALETTE
-} from '../engine/shaders/runicSteelShaders.js?v=30fps109';
+} from '../engine/shaders/runicSteelShaders.js?v=30fps110';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -100,11 +100,11 @@ export class Warrior extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('warrior');
       const warriorAssets = PixelForge.initAssets()?.warrior;
-      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps109')) {
-        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps109';
+      if (warriorAssets?.sheet?.src && !warriorAssets.sheet.src.includes('v=30fps110')) {
+        warriorAssets.sheet.src = 'assets/sprites/warrior_sheet.png?v=30fps110';
       }
-      if (warriorAssets?.vfx?.src && !warriorAssets.vfx.src.includes('v=30fps109')) {
-        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps109';
+      if (warriorAssets?.vfx?.src && !warriorAssets.vfx.src.includes('v=30fps110')) {
+        warriorAssets.vfx.src = 'assets/sprites/warrior_vfx.png?v=30fps110';
       }
     }
   }
@@ -1440,7 +1440,7 @@ export class Warrior extends Fighter {
         });
         if (game?.audio) game.audio.play('storm_leap', this.x);
         game?.vfx?.spawnLightning(this.x, this.y - 160, this.groundY, '#ffffff', '#38bdf8');
-        game?.vfx?.spawnDamageText(this.x, this.y - 148, 0, true, '★ HEAVENLY RUNE SLASH! ★', '#fef08a');
+        game?.vfx?.spawnDamageText(this.x, this.y - 148, 0, true, 'HEAVENLY RUNE SLASH!', '#fef08a');
       }
 
       this.x = apexX;
@@ -1773,7 +1773,7 @@ export class Warrior extends Fighter {
           this.groundY - 172,
           0,
           true,
-          '★ SACRED VOW OF JUSTICE... ★',
+          'SACRED VOW OF JUSTICE...',
           '#e0f2fe'
         );
       }
@@ -1863,7 +1863,7 @@ export class Warrior extends Fighter {
               this.groundY - 182,
               0,
               true,
-              '★ AWAKENING SERAPHIM WINGS! ★',
+              'AWAKENING SERAPHIM WINGS!',
               '#e0f2fe'
             );
           }
@@ -1945,7 +1945,7 @@ export class Warrior extends Fighter {
             this.y - 148,
             0,
             true,
-            '★ ARCHANGEL OF JUSTICE! ★',
+            'ARCHANGEL OF JUSTICE!',
             '#ffffff'
           );
         }
@@ -2001,7 +2001,7 @@ export class Warrior extends Fighter {
         );
         if (game?.audio) game.audio.play('blade_wave', targetX);
         game?.renderer?.triggerShake?.(16, 0.22);
-        game?.vfx?.spawnDamageText?.(targetX, this.groundY - 188, 0, true, '★ SLASH OF JUSTICE I! ★', '#e0f2fe');
+        game?.vfx?.spawnDamageText?.(targetX, this.groundY - 188, 0, true, 'SLASH OF JUSTICE I!', '#e0f2fe');
         if (enemy && !enemy.isDead) {
           enemy.takeDamage(68, this, true, 16, -45);
         }
@@ -2029,7 +2029,7 @@ export class Warrior extends Fighter {
         );
         if (game?.audio) game.audio.play('heavy_cleave', targetX);
         game?.renderer?.triggerShake?.(18, 0.24);
-        game?.vfx?.spawnDamageText?.(targetX, this.groundY - 204, 0, true, '★ SLASH OF JUSTICE II! ★', '#fef08a');
+        game?.vfx?.spawnDamageText?.(targetX, this.groundY - 204, 0, true, 'SLASH OF JUSTICE II!', '#fef08a');
         if (enemy && !enemy.isDead) {
           enemy.takeDamage(72, this, true, -16, -60);
         }
@@ -2059,7 +2059,7 @@ export class Warrior extends Fighter {
           this.groundY - 220,
           0,
           true,
-          '★ SWORD OF JUSTICE DESCENDS! ★',
+          'SWORD OF JUSTICE DESCENDS!',
           '#ffffff'
         );
         if (enemy && !enemy.isDead) {
@@ -2223,7 +2223,7 @@ export class Warrior extends Fighter {
           this.groundY - 224,
           0,
           true,
-          '★ CELESTIAL SWORD OF JUSTICE! ★',
+          'CELESTIAL SWORD OF JUSTICE!',
           '#ffffff'
         );
       }
