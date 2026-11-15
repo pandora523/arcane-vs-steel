@@ -152,10 +152,43 @@ export class AdventureSkillSets {
     this._frameCleavedMonsters = new Set();
     this._savedBossRef = null;
     this._savedBossY = 561;
+    this._origGetEnemiesOf = null;
+    this._wrappedGameRef = null;
+    this._facingLockedPlayer = null;
+    this._facingLockedValue = 1;
+    this._freeAimCastState = null;
+    this._freeAimCastFacing = 1;
+    this._freeAimOriginX = null;
+    this._freeAimFocalX = null;
+    this._freeAimLastTimer = 0;
+  }
+
+  _restoreStepGuards() {
+    if (this._facingLockedPlayer) {
+      const p = this._facingLockedPlayer;
+      const val = this._facingLockedValue || 1;
+      this._facingLockedPlayer = null;
+      Object.defineProperty(p, 'facing', {
+        value: val,
+        writable: true,
+        enumerable: true,
+        configurable: true
+      });
+    }
+    if (this._origGetEnemiesOf && this._wrappedGameRef) {
+      this._wrappedGameRef.getEnemiesOf = this._origGetEnemiesOf;
+      this._origGetEnemiesOf = null;
+      this._wrappedGameRef = null;
+    }
   }
 
   resetEffects() {
     this._frameCleavedMonsters.clear();
+    this._restoreStepGuards();
+    this._freeAimCastState = null;
+    this._freeAimOriginX = null;
+    this._freeAimFocalX = null;
+    this._freeAimLastTimer = 0;
     if (this._savedBossRef) {
       this._savedBossRef.y = this._savedBossRef.anchorGroundY || this._savedBossY;
       this._savedBossRef = null;
@@ -203,11 +236,195 @@ export class AdventureSkillSets {
     }
   }
 
+  isManualFreeAim() {
+    return Boolean(
+      this.adventure?.active && !this.adventure?.autoPlay && !this.adventure?.manualTargetLock
+    );
+  }
+
+  getFreeAimEnvelope(player) {
+    const st = player?.state || 'IDLE';
+    const isRanged = Boolean(
+      player?.isHackAndSlashCaster?.() ||
+        player?.heroId === 'archer' ||
+        (player?.attackRange || 0) >= 260
+    );
+    const baseRange = player?.attackRange || (isRanged ? 420 : 180);
+    if (st === 'ULTIMATE' || st === 'TRUE_ULTIMATE') {
+      return { maxForward: Math.max(620, baseRange + 240), laneTol: 148 };
+    }
+    if (st === 'SKILL') {
+      return { maxForward: Math.max(480, baseRange + 160), laneTol: 112 };
+    }
+    if (st === 'AUTO_ATTACK') {
+      return {
+        maxForward: isRanged ? Math.max(520, baseRange + 90) : Math.max(245, baseRange + 65),
+        laneTol: isRanged ? 94 : 88
+      };
+    }
+    return { maxForward: isRanged ? 500 : 240, laneTol: 88 };
+  }
+
+  isMonsterInFreeAimArc(player, m, facing = player?.facing || 1, refX = player?.x || 0) {
+    if (!player || !m || m.isDead || m.isFullyBurrowed) return false;
+    const dir = facing >= 0 ? 1 : -1;
+    if (m.isColossalBoss) {
+      return dir > 0 && player.x >= 8450;
+    }
+    const { maxForward, laneTol } = this.getFreeAimEnvelope(player);
+    const signedDx = (m.x - refX) * dir;
+    if (signedDx < -36 || signedDx > maxForward) return false;
+    const pGy = Number.isFinite(player.groundY) ? player.groundY : player.y || 561;
+    const mGy = Number.isFinite(m.groundY) ? m.groundY : m.y || 561;
+    if (Math.abs(mGy - pGy) > laneTol) return false;
+    if (
+      this.adventure?.lockActive &&
+      (m.x < (this.adventure.lockMinX ?? 0) - 48 || m.x > (this.adventure.lockMaxX ?? 9600) + 48)
+    ) {
+      return false;
+    }
+    return true;
+  }
+
+  findBestFreeAimMonster(player, facing = player?.facing || 1, refX = player?.x || 0) {
+    if (!player) return null;
+    const living = this.adventure?.getLivingMonsters?.() || [];
+    if (!living.length) return null;
+    const dir = facing >= 0 ? 1 : -1;
+    const pGy = Number.isFinite(player.groundY) ? player.groundY : player.y || 561;
+    let best = null;
+    let bestScore = Infinity;
+    for (let i = 0; i < living.length; i++) {
+      const m = living[i];
+      const matchesRef = this.isMonsterInFreeAimArc(player, m, dir, refX);
+      const matchesCur =
+        !matchesRef && refX !== player.x && this.isMonsterInFreeAimArc(player, m, dir, player.x);
+      if (!matchesRef && !matchesCur) continue;
+      let score;
+      if (m.isColossalBoss) {
+        score = Math.max(0, (m.x - player.x) * 0.85);
+      } else {
+        const signedDx = (m.x - player.x) * dir;
+        const mGy = Number.isFinite(m.groundY) ? m.groundY : m.y || 561;
+        const xCost = signedDx < 0 ? Math.abs(signedDx) + 28 : signedDx;
+        score = xCost + Math.abs(mGy - pGy) * 0.9 - (m.isMiniBoss ? 18 : 0);
+      }
+      if (score < bestScore) {
+        bestScore = score;
+        best = m;
+      }
+    }
+    return best;
+  }
+
+  _syncFreeAimCastSession(player) {
+    if (!player) {
+      this._freeAimCastState = null;
+      return;
+    }
+    const st = player.state;
+    const isCast = st === 'SKILL' || st === 'ULTIMATE' || st === 'TRUE_ULTIMATE';
+    if (!isCast) {
+      this._freeAimCastState = null;
+      this._freeAimLastTimer = 0;
+      return;
+    }
+    const curTimer = player.stateTimer || 0;
+    if (
+      this._freeAimCastState !== st ||
+      curTimer <= 0.04 ||
+      curTimer < (this._freeAimLastTimer || 0)
+    ) {
+      const facing = player.facing || 1;
+      const rawFocalX = this.clampX(player.x + facing * 220, 44);
+      this._freeAimCastState = st;
+      this._freeAimCastFacing = facing;
+      this._freeAimOriginX = player.x;
+      this._freeAimFocalX =
+        (rawFocalX - player.x) * facing < 16 ? player.x + facing * 20 : rawFocalX;
+    }
+    this._freeAimLastTimer = curTimer;
+  }
+
+  _buildDummyFocal(player, focalX) {
+    const gy = Number.isFinite(player.groundY) ? player.groundY : player.y || 561;
+    return {
+      x: focalX,
+      y: gy,
+      groundY: gy,
+      vx: 0,
+      vy: 0,
+      hp: 1,
+      maxHp: 1,
+      isDead: false,
+      isDummyFocal: true,
+      hasPoise: true,
+      attackRange: 140,
+      moveSpeed: 150,
+      takeDamage() {}
+    };
+  }
+
   /**
-   * Provides an in-zone focal target ONLY during active Skill / Overdrive / Ultimate casts when no
-   * living monster exists, preventing `enemy ? enemy.x : ww * 0.5` from targeting `x = 2400`!
+   * Provides an in-zone focal target during active Skill / Overdrive / Ultimate casts when no
+   * qualifying living monster exists, and enforces forward-only manual free-aim when `LOCK: OFF`.
    */
   resolveTarget(player, nearestMonster) {
+    if (this.isManualFreeAim()) {
+      this._syncFreeAimCastSession(player);
+      if (
+        !player ||
+        (player.state !== 'AUTO_ATTACK' &&
+          player.state !== 'SKILL' &&
+          player.state !== 'ULTIMATE' &&
+          player.state !== 'TRUE_ULTIMATE')
+      ) {
+        return null;
+      }
+
+      const facing =
+        player.state === 'AUTO_ATTACK'
+          ? player.facing || 1
+          : this._freeAimCastFacing || player.facing || 1;
+      const refX =
+        player.state === 'AUTO_ATTACK'
+          ? player.x
+          : Number.isFinite(this._freeAimOriginX)
+            ? this._freeAimOriginX
+            : player.x;
+
+      const frontMonster = this.findBestFreeAimMonster(player, facing, refX);
+      if (frontMonster) {
+        return frontMonster;
+      }
+
+      const propTarget = this.adventure?.destructibles?.getIntactTargetInFront?.(
+        player,
+        Math.max(220, (player.attackRange || 180) + 75)
+      );
+      if (
+        propTarget &&
+        (propTarget.x - player.x) * (player.facing || 1) >= -36 &&
+        (!this.adventure?.lockActive ||
+          (propTarget.x >= (this.adventure.lockMinX ?? 0) &&
+            propTarget.x <= (this.adventure.lockMaxX ?? 9600)))
+      ) {
+        return propTarget;
+      }
+
+      if (player.state === 'AUTO_ATTACK') {
+        return null;
+      }
+
+      const rawFocalX = this.clampX(player.x + (player.facing || 1) * 220, 44);
+      const safeFocalX = Number.isFinite(this._freeAimFocalX)
+        ? this._freeAimFocalX
+        : (rawFocalX - player.x) * (player.facing || 1) < 16
+          ? player.x + (player.facing || 1) * 20
+          : rawFocalX;
+      return this._buildDummyFocal(player, safeFocalX);
+    }
+
     if (nearestMonster && !nearestMonster.isDead) {
       return nearestMonster;
     }
@@ -234,22 +451,7 @@ export class AdventureSkillSets {
         return null;
       }
       const focalX = this.clampX(player.x + (player.facing || 1) * 240, 44);
-      const gy = Number.isFinite(player.groundY) ? player.groundY : player.y || 561;
-      return {
-        x: focalX,
-        y: gy,
-        groundY: gy,
-        vx: 0,
-        vy: 0,
-        hp: 1,
-        maxHp: 1,
-        isDead: false,
-        isDummyFocal: true,
-        hasPoise: true,
-        attackRange: 140,
-        moveSpeed: 150,
-        takeDamage() {}
-      };
+      return this._buildDummyFocal(player, focalX);
     }
     return nearestMonster || null;
   }
@@ -258,22 +460,111 @@ export class AdventureSkillSets {
    * Adapts 2.5D depth lane alignment and Colossal Boss vertical hitplane right before `player.update`.
    */
   beginPlayerStep(dt, player, target, _isMoving3D = false, rawDirY = 0) {
+    this._restoreStepGuards();
     if (!player) return;
     if (player.fx) {
       const camX = this.adventure?.game?.renderer?.camX;
       player.fx.overrideCenterWorldX = Number.isFinite(camX) ? camX : player.x;
     }
 
-    if (!target || target.isDead || target.isDummyFocal) return;
-
-    if (target.isColossalBoss) {
+    const activeBoss =
+      target && target.isColossalBoss && !target.isDead
+        ? target
+        : this.adventure?.bossEntity &&
+            !this.adventure.bossEntity.isDead &&
+            this.adventure.bossEntity.isColossalBoss
+          ? this.adventure.bossEntity
+          : null;
+    if (activeBoss) {
       // Align Colossal Boss hitplane Y to the player's active 3D lane during player.update so all 11
       // champions' real melee checks (`|this.y - enemy.y| < 95`) and horizontal projectiles hit cleanly!
-      this._savedBossRef = target;
-      this._savedBossY = target.anchorGroundY || target.y || 561;
-      target.y = player.groundY || player.y || 561;
+      this._savedBossRef = activeBoss;
+      this._savedBossY = activeBoss.anchorGroundY || activeBoss.y || 561;
+      activeBoss.y = player.groundY || player.y || 561;
+    }
+
+    if (this.isManualFreeAim()) {
+      this._syncFreeAimCastSession(player);
+      const isActiveCombatState =
+        player.state === 'AUTO_ATTACK' ||
+        player.state === 'SKILL' ||
+        player.state === 'ULTIMATE' ||
+        player.state === 'TRUE_ULTIMATE';
+      const game = this.adventure?.game;
+      if (
+        isActiveCombatState &&
+        game &&
+        typeof game.getEnemiesOf === 'function' &&
+        !this._origGetEnemiesOf
+      ) {
+        const origGetEnemiesOf = game.getEnemiesOf;
+        const self = this;
+        const stepFacing =
+          player.state === 'SKILL' ||
+          player.state === 'ULTIMATE' ||
+          player.state === 'TRUE_ULTIMATE'
+            ? this._freeAimCastFacing || player.facing || 1
+            : player.facing || 1;
+        const stepOriginX =
+          (player.state === 'SKILL' ||
+            player.state === 'ULTIMATE' ||
+            player.state === 'TRUE_ULTIMATE') &&
+          Number.isFinite(this._freeAimOriginX)
+            ? this._freeAimOriginX
+            : player.x;
+        this._origGetEnemiesOf = origGetEnemiesOf;
+        this._wrappedGameRef = game;
+        game.getEnemiesOf = function freeAimGetEnemiesOf(fighter) {
+          const raw = origGetEnemiesOf.call(this, fighter);
+          if (fighter !== player || !Array.isArray(raw) || !self.isManualFreeAim()) {
+            return raw;
+          }
+          const activeFacing =
+            player.state === 'AUTO_ATTACK' ? player.facing || stepFacing : stepFacing;
+          const refX = player.state === 'AUTO_ATTACK' ? player.x : stepOriginX;
+          return raw.filter(
+            (m) =>
+              self.isMonsterInFreeAimArc(player, m, activeFacing, refX) ||
+              (refX !== player.x && self.isMonsterInFreeAimArc(player, m, activeFacing, player.x))
+          );
+        };
+      }
+
+      const isDuelistV2Cross = Boolean(
+        player.state === 'AUTO_ATTACK' &&
+          typeof player.isCrossSlashDuelist === 'function' &&
+          player.isCrossSlashDuelist() &&
+          target &&
+          !target.isDummyFocal &&
+          !target.isAdventureProp &&
+          (player._autoVariant === 2 ||
+            player.comboStep === 2 ||
+            (target.x - player.x) * (player.facing || 1) >= 0)
+      );
+      const shouldLockFacing =
+        !isDuelistV2Cross &&
+        (player.state === 'AUTO_ATTACK' ||
+          player.state === 'SKILL' ||
+          ((player.state === 'ULTIMATE' || player.state === 'TRUE_ULTIMATE') &&
+            (player.stateTimer || 0) <= 0.06));
+      if (shouldLockFacing) {
+        const lockedFacing = player.facing || 1;
+        this._facingLockedPlayer = player;
+        this._facingLockedValue = lockedFacing;
+        Object.defineProperty(player, 'facing', {
+          get() {
+            return lockedFacing;
+          },
+          set(_v) {},
+          enumerable: true,
+          configurable: true
+        });
+      }
+      // Zero automatic shiftEntityDepth lane magnetism in manual LOCK: OFF!
       return;
     }
+
+    if (!target || target.isDead || target.isDummyFocal || target.isColossalBoss) return;
 
     const targetGy = Number.isFinite(target.groundY) ? target.groundY : target.y;
     const playerGy = Number.isFinite(player.groundY) ? player.groundY : player.y;
@@ -371,6 +662,7 @@ export class AdventureSkillSets {
    * Restores Colossal Boss anchor Y and clamps hero movement waypoints inside active stage bounds.
    */
   endPlayerStep(_dt, player, minWalkX, maxWalkX, colossalAlive = false) {
+    this._restoreStepGuards();
     if (this._savedBossRef) {
       this._savedBossRef.y = this._savedBossRef.anchorGroundY || this._savedBossY;
       this._savedBossRef = null;
