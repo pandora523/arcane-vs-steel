@@ -27,7 +27,11 @@ export const ADVENTURE_SKILL_TREE = [
     iconSlot: 'attack',
     name: 'IGNITED VOLLEY',
     summary: (r) =>
-      `+${r * 15 || 15}% Basic Attack Power${r >= 2 ? ' • Every 2nd cast launches a Homing Seeker!' : ' (Rank 2: Homing Seeker bolt)'}`
+      `+${r * 15 || 15}% Basic Attack Power${
+        r >= 2
+          ? ' • Every 2nd attack unleashes a long-range Slash / Seeker wave!'
+          : ' (Rank 2: Long-range Slash / Seeker wave)'
+      }`
   },
   {
     id: 'wrath_2',
@@ -678,29 +682,127 @@ export class AdventureProgression {
   }
 
   onPlayerCastBasicAttack(player, target, game) {
+    if (!player || !game?.vfx) return;
     const stats = this.getComputedStats();
-    if (!stats.hasHomingSeeker || !player || !game?.vfx) return;
+    const rWrath1 = this.getRank('wrath_1');
+    const dir = (player.facing || 1) >= 0 ? 1 : -1;
+    const isFreeAim = Boolean(this.adventure?.skillSets?.isManualFreeAim?.());
+
+    // Kaze-Maru (`ronin`): Signature HD-2D Long-Range Crescent Katana Slash Waves (`ronin_slash`) — ZERO blue fireball orbs!
+    if (player.heroId === 'ronin') {
+      this.seekerShotCounter++;
+      const variant = (((player._autoVariant ?? 0) % 4) + 4) % 4;
+      const shouldFireWave =
+        rWrath1 >= 2 ||
+        this.seekerShotCounter % 2 === 0 ||
+        variant === 1 ||
+        variant === 3;
+      if (!shouldFireWave) return;
+
+      const sx = player.x + dir * 52;
+      const sy = (player.y || player.groundY) - 76;
+      const speed = 780;
+      let vx = dir * speed;
+      let vy = 0;
+
+      if (
+        !isFreeAim &&
+        target &&
+        !target.isDead &&
+        !target.isDummyFocal &&
+        (target.x - player.x) * dir > 12
+      ) {
+        const dx = target.x - sx;
+        const ty = target.isColossalBoss
+          ? target.y - 135
+          : (target.y || target.groundY) - 76;
+        const rawDy = ty - sy;
+        const absDx = Math.max(80, Math.abs(dx));
+        const clampedSlope = Math.max(-0.22, Math.min(0.22, rawDy / absDx));
+        const mag = Math.hypot(1, clampedSlope) || 1;
+        vx = (dir * speed) / mag;
+        vy = (clampedSlope * speed) / mag;
+      }
+
+      const isTwinSlash = rWrath1 >= 2 && this.seekerShotCounter % 2 === 0;
+      const waveDamage = rWrath1 >= 2 ? (isTwinSlash ? 66 : 52) : 46;
+      game.vfx.spawnProjectile({
+        x: sx,
+        y: sy,
+        groundY: player.groundY || player.y,
+        vx,
+        vy,
+        radius: 18,
+        color: '#38bdf8',
+        coreColor: '#ffffff',
+        owner: player,
+        damage: waveDamage,
+        type: 'ronin_slash',
+        isMeteor: false,
+        pierce: true,
+        maxRange: 640,
+        isTwinSlash,
+        ignoreTargets: player._lastAutoMeleeHitFoes || null
+      });
+      return;
+    }
+
+    if (!stats.hasHomingSeeker) return;
     this.seekerShotCounter++;
     if (this.seekerShotCounter % 2 !== 0) return;
 
-    const sx = player.x + player.facing * 44;
-    const sy = player.y - 122;
-    const tx = target ? target.x : sx + player.facing * 440;
-    const ty = target ? (target.isColossalBoss ? target.y - 135 : target.y - 102) : sy;
-    const dx = tx - sx;
-    const dy = ty - sy;
-    const len = Math.hypot(dx, dy) || 1;
+    const HERO_SEEKER_CONFIG = {
+      warrior: { type: 'blade_wave', color: '#38bdf8', coreColor: '#e0f2fe', radius: 16, pierce: true },
+      valkyrie: { type: 'dragon_lance', color: '#f43f5e', coreColor: '#fbbf24', radius: 14, pierce: false },
+      reaper: { type: 'phantom_scythe', color: '#c084fc', coreColor: '#f43f5e', radius: 16, pierce: true },
+      chronomancer: { type: 'clock_gear', color: '#2dd4bf', coreColor: '#facc15', radius: 14, pierce: false },
+      titan: { type: 'forge_wave', color: '#f59e0b', coreColor: '#fef08a', radius: 17, pierce: true },
+      android: { type: 'cyber_disc', color: '#00f0ff', coreColor: '#ff2e93', radius: 15, pierce: true },
+      icemage: { type: 'cryo_shard', color: '#67e8f9', coreColor: '#ffffff', radius: 13, pierce: false },
+      archer: { type: 'arrow', color: '#34d399', coreColor: '#fef08a', radius: 12, pierce: false },
+      priestess: { type: 'holy_light', color: '#facc15', coreColor: '#ffffff', radius: 13, pierce: false },
+      mage: { type: 'fireball', color: '#fb923c', coreColor: '#fef08a', radius: 12, pierce: false }
+    };
+    const cfg = HERO_SEEKER_CONFIG[player.heroId] || HERO_SEEKER_CONFIG.mage;
+    const isGroundWave = cfg.type === 'blade_wave' || cfg.type === 'forge_wave' || cfg.type === 'phantom_scythe' || cfg.type === 'cyber_disc';
+
+    const sx = player.x + dir * 46;
+    const sy = (player.y || player.groundY) - (isGroundWave ? 82 : 112);
+    const speed = 690;
+    let vx = dir * speed;
+    let vy = 0;
+
+    if (
+      !isFreeAim &&
+      target &&
+      !target.isDead &&
+      !target.isDummyFocal &&
+      (target.x - player.x) * dir > 12
+    ) {
+      const tx = target.x;
+      const ty = target.isColossalBoss ? target.y - 135 : (target.y || target.groundY) - (isGroundWave ? 84 : 102);
+      const dx = tx - sx;
+      const dy = ty - sy;
+      const len = Math.hypot(dx, dy) || 1;
+      vx = (dx / len) * speed;
+      vy = isGroundWave
+        ? Math.max(-150, Math.min(150, (dy / len) * speed))
+        : (dy / len) * speed - 12;
+    }
+
     game.vfx.spawnProjectile({
       x: sx,
       y: sy,
-      vx: (dx / len) * 690,
-      vy: (dy / len) * 690 - 18,
-      radius: 11,
-      color: player.primaryColor || '#fde047',
-      coreColor: '#ffffff',
+      groundY: player.groundY || player.y,
+      vx,
+      vy,
+      radius: cfg.radius,
+      color: cfg.color,
+      coreColor: cfg.coreColor,
       owner: player,
       damage: 58,
-      type: 'fireball',
+      type: cfg.type,
+      pierce: cfg.pierce,
       isMeteor: false
     });
   }

@@ -469,9 +469,23 @@ export class VFXManager {
   }
 
   spawnProjectile(opts) {
+    const ignoreSet = new Set();
+    if (opts.ignoreTargets) {
+      if (typeof opts.ignoreTargets[Symbol.iterator] === 'function') {
+        for (const t of opts.ignoreTargets) {
+          if (t) ignoreSet.add(t);
+        }
+      } else if (typeof opts.ignoreTargets === 'object') {
+        ignoreSet.add(opts.ignoreTargets);
+      }
+    }
+    const hitSet = new Set(ignoreSet);
     this.projectiles.push({
       x: opts.x,
       y: opts.y,
+      startX: opts.x,
+      startY: opts.y,
+      groundY: Number.isFinite(opts.groundY) ? opts.groundY : opts.owner?.groundY,
       vx: opts.vx,
       vy: opts.vy,
       radius: opts.radius || 14,
@@ -482,7 +496,13 @@ export class VFXManager {
       type: opts.type || (opts.isMeteor ? 'meteor' : 'fireball'),
       isMeteor: !!opts.isMeteor,
       isUltimate: !!opts.isUltimate,
+      isTwinSlash: !!opts.isTwinSlash,
       pierce: !!opts.pierce,
+      maxRange: Number.isFinite(opts.maxRange) && opts.maxRange > 0 ? opts.maxRange : 0,
+      travelDist: 0,
+      ignoreTargets: ignoreSet,
+      hitSet,
+      _hitTargets: hitSet,
       age: 0,
       ringTimer: 0
     });
@@ -950,6 +970,18 @@ export class VFXManager {
       if (pil.life >= pil.maxLife) this.pillars.splice(i, 1);
     }
 
+    for (let i = this.projectiles.length - 1; i >= 0; i--) {
+      const p = this.projectiles[i];
+      if (Number.isFinite(p.startX) && Number.isFinite(p.startY)) {
+        p.travelDist = Math.hypot(p.x - p.startX, p.y - p.startY);
+      } else {
+        p.travelDist = (p.travelDist || 0) + Math.hypot(p.vx || 0, p.vy || 0) * dt;
+      }
+      if (p.maxRange > 0 && p.travelDist >= p.maxRange) {
+        this.projectiles.splice(i, 1);
+      }
+    }
+
     for (let i = this.texts.length - 1; i >= 0; i--) {
       const t = this.texts[i];
       t.life += dt;
@@ -1107,12 +1139,13 @@ export class VFXManager {
     for (const p of this.projectiles) {
       const colorType = typeForHex(p.color);
       const pGy = Number.isFinite(p.owner?.groundY) ? p.owner.groundY : gy;
+      const isKatanaWave = p.type === 'ronin_slash' || p.type === 'storm_wave';
       pushLight(
         p.x,
         p.y,
-        p.isMeteor ? 360 : p.type === 'clock_gear' ? 225 : 205,
+        p.isMeteor ? 360 : isKatanaWave ? 145 : p.type === 'clock_gear' ? 225 : 205,
         colorType,
-        p.isMeteor ? 1.85 : p.type === 'clock_gear' ? 1.55 : 1.42,
+        p.isMeteor ? 1.85 : isKatanaWave ? 0.92 : p.type === 'clock_gear' ? 1.55 : 1.42,
         72,
         pGy
       );
@@ -2270,7 +2303,7 @@ export class VFXManager {
       const px = Math.round(proj.x / 4) * 4;
       const py = Math.round(proj.y / 4) * 4;
       const pCol = Math.floor((proj.age || 0) * 30) % 30;
-      if (renderer) {
+      if (renderer && proj.type !== 'ronin_slash' && proj.type !== 'storm_wave') {
         const tex = renderer.getGlowForColor
           ? renderer.getGlowForColor(proj.color)
           : renderer.glowOrange;
@@ -2421,34 +2454,120 @@ export class VFXManager {
           );
         }
         ctx.restore();
-      } else if (proj.type === 'storm_wave') {
+      } else if (proj.type === 'ronin_slash' || proj.type === 'storm_wave') {
         const roninVfx = assets.ronin?.vfx;
-        const ang = Math.atan2(proj.vy || 0, proj.vx || 1);
+        PixelForge.ensureImage?.(roninVfx);
+        const dir = (proj.vx || 1) >= 0 ? 1 : -1;
+        const qx = Math.round(proj.x / 2) * 2;
+        const qy = Math.round(proj.y / 2) * 2;
+        const rangeRatio =
+          proj.maxRange > 0 ? Math.min(1, (proj.travelDist || 0) / proj.maxRange) : 0;
+        const fadeAlpha =
+          rangeRatio > 0.85 ? Math.max(0.18, 1 - (rangeRatio - 0.85) / 0.15) : 1;
+        const reflScale = isReflection ? 0.38 : 1;
+
         ctx.save();
-        ctx.translate(px, py);
-        ctx.rotate(ang);
-        if (roninVfx && roninVfx.complete && roninVfx.naturalWidth) {
-          const waveSize = 140;
-          this.drawBloomedSprite(
-            ctx,
-            renderer,
-            roninVfx,
-            pCol * 208,
-            0,
-            208,
-            208,
-            -waveSize * 0.5,
-            -waveSize * 0.5,
-            waveSize,
-            waveSize,
-            '#818cf8',
-            0.98,
-            isReflection
-          );
-        } else {
-          ctx.fillStyle = '#818cf8';
-          ctx.fillRect(-18, -14, 36, 28);
+        ctx.translate(qx, qy);
+        ctx.scale(dir, 1);
+        ctx.imageSmoothingEnabled = false;
+
+        // 1. Horizontal wind-shear & storm-lightning wake trails behind the katana wave
+        if (!isReflection) {
+          const tick = Math.floor((proj.age || 0) * 30);
+          const shearRows = [-38, -14, 14, 38];
+          ctx.globalCompositeOperation = 'source-over';
+          for (let si = 0; si < shearRows.length; si++) {
+            const wy = shearRows[si] + (((tick + si * 3) % 3) - 1) * 2;
+            const uWake = wy / 56;
+            const arcBackX = Math.round((24 * (1 - uWake * uWake * 0.88)) / 2) * 2 - 10;
+            const wakeLen = (si === 1 || si === 2 ? 78 : 54) + ((tick + si * 5) % 4) * 6;
+            ctx.globalAlpha = 0.72 * fadeAlpha;
+            ctx.fillStyle = '#080c24';
+            ctx.fillRect(arcBackX - wakeLen - 2, wy - 2, wakeLen + 4, 6);
+            ctx.globalAlpha = 0.86 * fadeAlpha;
+            ctx.fillStyle = si % 2 === 0 ? '#4f46e5' : '#38bdf8';
+            ctx.fillRect(arcBackX - wakeLen, wy, wakeLen, 2);
+            // Stepped 2px storm-lightning kink along the wake
+            const kinkX = arcBackX - Math.round((wakeLen * 0.48) / 2) * 2;
+            const kinkDy = si % 2 === 0 ? -2 : 2;
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(kinkX - 12, wy + kinkDy, 14, 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(arcBackX - Math.min(28, wakeLen), wy, Math.min(26, wakeLen), 2);
+          }
         }
+
+        // 2. Crisp HD-2D ronin.vfx Row 0 stormKatanaWaveCell (source-over + subtle 0.22 lighter, ZERO radial halo)
+        if (roninVfx && (roninVfx.width || roninVfx.naturalWidth)) {
+          const waveW = 148;
+          const waveH = 176;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = (isReflection ? 0.36 : 0.94) * fadeAlpha;
+          ctx.drawImage(roninVfx, pCol * 208, 0, 208, 208, -82, -88, waveW, waveH);
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = (isReflection ? 0.08 : 0.22) * fadeAlpha;
+          ctx.drawImage(roninVfx, pCol * 208, 0, 208, 208, -82, -88, waveW, waveH);
+        }
+
+        // 3. Stepped 2px/4px pixel-art curved katana vacuum crescent blade arc
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = 0.98 * fadeAlpha * reflScale;
+        const maxRow = 28;
+        const baseChord = proj.isTwinSlash ? 18 : 14;
+        for (let row = -maxRow; row <= maxRow; row++) {
+          const yy = row * 2;
+          const u = row / maxRow;
+          const u2 = u * u;
+          const leadX = Math.round((24 * (1 - u2 * 0.88)) / 2) * 2;
+          const chord = Math.max(
+            2,
+            Math.round((baseChord * (1 - u2) * (1 - u2 * 0.35)) / 2) * 2
+          );
+          const spineX = leadX - chord;
+
+          // Selout spine (#080c24)
+          ctx.fillStyle = '#080c24';
+          ctx.fillRect(spineX - 2, yy, 2, 2);
+          if (Math.abs(row) === maxRow) {
+            ctx.fillRect(spineX - 2, yy + (row < 0 ? -2 : 2), chord + 4, 2);
+          }
+
+          // Storm-indigo inner bevel (#4f46e5)
+          if (chord >= 6) {
+            ctx.fillStyle = '#4f46e5';
+            ctx.fillRect(spineX, yy, chord - 4, 2);
+          }
+
+          // Storm-steel cyan bevel (#38bdf8)
+          if (chord >= 4) {
+            const cyanW = Math.min(4, chord - 2);
+            ctx.fillStyle = '#38bdf8';
+            ctx.fillRect(leadX - 2 - cyanW, yy, cyanW, 2);
+          }
+
+          // Pure white razor ha leading edge (#ffffff)
+          ctx.fillStyle = '#ffffff';
+          const haW = Math.abs(row) <= 6 ? 4 : 2;
+          ctx.fillRect(leadX - 2, yy, haW, 2);
+        }
+
+        // 4. Twin crossed katana scar when Crimson Nukitsuke twin wave is active
+        if (proj.isTwinSlash) {
+          ctx.globalAlpha = 0.94 * fadeAlpha * reflScale;
+          for (let s = -20; s <= 20; s++) {
+            const sy2 = s * 2;
+            const su = s / 20;
+            const sx2 = Math.round((-s * 0.82 + 4 - su * su * 6) / 2) * 2;
+            const cThick = Math.abs(s) <= 10 ? 6 : 4;
+            ctx.fillStyle = '#080c24';
+            ctx.fillRect(sx2 - cThick - 2, sy2, 2, 2);
+            ctx.fillStyle = Math.abs(s) % 2 === 0 ? '#c084fc' : '#fb7185';
+            ctx.fillRect(sx2 - cThick, sy2, cThick - 2, 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.fillRect(sx2 - 2, sy2, 2, 2);
+          }
+        }
+
         ctx.restore();
       } else if (proj.type === 'dragon_lance') {
         const valkVfx = assets.valkyrie?.vfx;
