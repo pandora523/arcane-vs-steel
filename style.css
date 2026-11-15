@@ -933,6 +933,66 @@ html, body {
 
 .victory-btn-row { display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 
+/* Adventure Mode Fallen-Sanctum Defeat Plaque Variant (.victory-overlay.is-defeat-plaque) */
+.victory-overlay.is-defeat-plaque {
+  background: radial-gradient(
+    ellipse 78% 68% at 50% 46%,
+    rgba(69, 10, 10, 0.62) 0%,
+    rgba(12, 6, 12, 0.78) 68%,
+    rgba(3, 5, 10, 0.86) 100%
+  );
+}
+
+.victory-overlay.is-defeat-plaque .victory-plaque {
+  background: linear-gradient(180deg, rgba(28, 8, 12, 0.96) 0%, rgba(9, 10, 18, 0.97) 100%);
+  border: 3px solid #ef4444;
+  outline: 2px solid #000;
+  box-shadow:
+    inset 0 0 0 1px #991b1b,
+    inset 0 0 28px rgba(153, 27, 27, 0.36),
+    0 0 28px rgba(239, 68, 68, 0.34),
+    0 20px 50px rgba(0, 0, 0, 0.92);
+}
+
+.victory-overlay.is-defeat-plaque .victory-eyebrow {
+  color: #fca5a5;
+  text-shadow: 0 1px 0 #000, 0 0 8px rgba(239, 68, 68, 0.55);
+}
+
+.victory-overlay.is-defeat-plaque .victory-winner {
+  color: #fde047;
+  text-shadow:
+    0 2px 0 #450a0a,
+    0 0 14px rgba(252, 165, 165, 0.75),
+    0 0 26px rgba(239, 68, 68, 0.65);
+}
+
+.victory-overlay.is-defeat-plaque .victory-stats {
+  color: #fecaca;
+}
+
+.victory-overlay.is-defeat-plaque .victory-telemetry {
+  background: rgba(14, 7, 12, 0.94);
+  border-color: #991b1b;
+}
+
+.victory-overlay.is-defeat-plaque .telemetry-vs {
+  color: #ef4444;
+}
+
+.victory-overlay.is-defeat-plaque .victory-auto-next {
+  color: #fca5a5;
+}
+
+.victory-overlay.is-defeat-plaque #btn-play-again {
+  background: linear-gradient(180deg, #991b1b 0%, #450a0a 100%);
+  border-color: #ef4444;
+  color: #fde047;
+  box-shadow:
+    inset 0 1px 0 rgba(254, 240, 138, 0.28),
+    0 0 12px rgba(239, 68, 68, 0.42);
+}
+
 /* =========================================================================
    AAA HD-2D 3-STAGE ARCADE FLOW (#landing-overlay)
    Forged Dark-Iron (#090c14) • Burnished Brass (#d4af37) • Crisp Ivory (#f4f1ea)
@@ -2970,6 +3030,76 @@ html, body {
   }
 }
 
+/* Mobile Portrait HUD & Defeat/Victory Button Ergonomics (360px..560px incl. iPhone 17 Pro Max 440x956) */
+@media (max-width: 560px) and (orientation: portrait) {
+  html:not(.is-mobile-landscape) .hud-top {
+    padding: 0 6px;
+    gap: 5px;
+  }
+
+  html:not(.is-mobile-landscape) .hud-top .cd-box {
+    display: none;
+  }
+
+  html:not(.is-mobile-landscape) .hud-top .sub-row,
+  html:not(.is-mobile-landscape) .hud-top .plate-right .sub-row {
+    grid-template-columns: 1fr;
+  }
+
+  html:not(.is-mobile-landscape) .hud-top .ult-label,
+  html:not(.is-mobile-landscape) .hud-top .finisher-label {
+    max-width: 100%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  html:not(.is-mobile-landscape) .hud-top .center-emblem {
+    min-width: 0;
+    padding: 0 2px;
+  }
+
+  html:not(.is-mobile-landscape) .hud-top #hud-mode-badge,
+  html:not(.is-mobile-landscape) .hud-top .hud-stage-tag {
+    max-width: 96px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  html:not(.is-mobile-landscape) .victory-overlay {
+    padding: 10px;
+  }
+
+  html:not(.is-mobile-landscape) .victory-plaque {
+    width: min(94vw, 460px);
+    padding: 14px 12px;
+  }
+
+  html:not(.is-mobile-landscape) .victory-btn-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 7px;
+    width: 100%;
+  }
+
+  html:not(.is-mobile-landscape) .victory-btn-row .iron-btn {
+    flex: 1 1 calc(50% - 4px);
+    justify-content: center;
+    min-width: 0;
+    max-width: 100%;
+    padding: 8px 6px;
+    font-size: 0.34rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  html:not(.is-mobile-landscape) .victory-btn-row #btn-play-again {
+    flex: 1 1 100%;
+    padding: 9px 10px;
+    font-size: 0.38rem;
+  }
+}
+
 /* =========================================================================
    ADVENTURE CAMPAIGN CTA & FORGED ARCADE CONTROL DECK
    ========================================================================= */
@@ -3096,6 +3226,18 @@ html, body {
   box-shadow: 0 0 6px #4ade80;
 }
 
+.adv-btn-lock.is-lock-on {
+  background: linear-gradient(180deg, #0c4a6e 0%, #082f49 100%);
+  border-color: #38bdf8;
+  color: #fde047;
+  box-shadow: 0 0 10px rgba(56, 189, 248, 0.42);
+}
+
+.adv-btn-lock.is-lock-on .adv-util-dot {
+  background: #38bdf8;
+  box-shadow: 0 0 6px #fde047, 0 0 10px #38bdf8;
+}
+
 /* =========================================================================
    LEFT SIDE: TOUCH-SCREEN VIRTUAL ANALOG JOYSTICK
    ========================================================================= */
@@ -3220,7 +3362,7 @@ html, body {
   right: max(14px, env(safe-area-inset-right));
   bottom: max(14px, env(safe-area-inset-bottom));
   width: 186px;
-  height: 222px;
+  height: 254px;
   pointer-events: none;
 }
 
@@ -3452,13 +3594,13 @@ html, body {
   50% { transform: scale(1.05); }
 }
 
-/* Special AUTO AI Toggle Pill Beside Adventure Skill Cluster */
-.adv-auto-skill-btn {
+/* Special AUTO AI & Manual Target-Lock Toggle Pills Beside Adventure Skill Cluster */
+.adv-auto-skill-btn,
+.adv-lock-skill-btn {
   position: absolute;
-  right: 6px;
-  bottom: 182px;
+  bottom: 222px;
   width: 68px;
-  height: 30px;
+  height: 28px;
   padding: 0 6px;
   border-radius: 999px;
   border: 2px solid #94a3b8;
@@ -3478,16 +3620,53 @@ html, body {
   cursor: pointer;
   pointer-events: auto;
   touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
   transition: transform 0.08s ease, border-color 0.15s ease, box-shadow 0.15s ease, color 0.15s ease;
 }
 
-.adv-auto-skill-btn:hover {
+.adv-auto-skill-btn {
+  right: 6px;
+}
+
+.adv-lock-skill-btn {
+  right: 80px;
+}
+
+.adv-auto-skill-btn:hover,
+.adv-lock-skill-btn:hover {
   border-color: #fde047;
   color: #fef9c3;
 }
 
-.adv-auto-skill-btn:active {
+.adv-auto-skill-btn:active,
+.adv-lock-skill-btn:active {
   transform: scale(0.94);
+}
+
+.adv-lock-skill-btn .px-ui-icon {
+  flex-shrink: 0;
+  color: #94a3b8;
+  transition: color 0.15s ease, filter 0.15s ease;
+}
+
+.adv-lock-skill-btn.is-lock-on {
+  border-color: #38bdf8;
+  background: linear-gradient(180deg, rgba(12, 74, 110, 0.96) 0%, rgba(8, 47, 73, 0.98) 100%);
+  color: #fde047;
+  box-shadow:
+    0 0 0 1px #000,
+    0 0 14px rgba(56, 189, 248, 0.68),
+    inset 0 1px 0 rgba(254, 240, 138, 0.28),
+    0 4px 12px rgba(0, 0, 0, 0.9);
+}
+
+.adv-lock-skill-btn.is-lock-on .px-ui-icon {
+  color: #fde047;
+  filter: drop-shadow(0 0 4px rgba(56, 189, 248, 0.9));
+}
+
+.adv-lock-skill-btn.is-lock-on .px-ui-icon rect:last-child {
+  fill: #fde047;
 }
 
 .adv-auto-dot {
@@ -3545,15 +3724,15 @@ html, body {
   }
 }
 
-/* Compact scaling for narrow portrait phones (360px..420px) & short landscape phones */
-@media (max-width: 430px) {
-  .adv-joystick-zone {
+/* Compact scaling for portrait phones (360px..540px incl. iPhone 16/17 Pro Max 440x956) & short landscape phones */
+@media (max-width: 540px) and (orientation: portrait) {
+  html:not(.is-mobile-landscape) .adv-joystick-zone {
     transform: scale(0.88);
     transform-origin: bottom left;
     left: max(8px, env(safe-area-inset-left));
     bottom: max(10px, env(safe-area-inset-bottom));
   }
-  .adv-skill-cluster {
+  html:not(.is-mobile-landscape) .adv-skill-cluster {
     transform: scale(0.86);
     transform-origin: bottom right;
     right: max(8px, env(safe-area-inset-right));
@@ -4597,6 +4776,16 @@ html.is-mobile-landscape .pause-adv-hint {
   display: none;
 }
 
-
-
-
+/* Thermal & Compositor Optimization: pause infinite @keyframes animations on hidden overlays & inactive panels */
+.hidden,
+.hidden *,
+[hidden],
+[hidden] *,
+#app:not(.is-landing-open) .landing-overlay,
+#app:not(.is-landing-open) .landing-overlay *,
+.landing-step-panel:not(.is-active-step),
+.landing-step-panel:not(.is-active-step) *,
+#app:not(.is-adventure-active) .adventure-controls,
+#app:not(.is-adventure-active) .adventure-controls * {
+  animation-play-state: paused !important;
+}

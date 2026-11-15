@@ -261,7 +261,17 @@
           <span class="adv-key-hint">I</span>
         </button>
 
-        <!-- Dedicated Special AUTO Combat Toggle Positioned Right Beside the Upper Skills -->
+        <!-- Dedicated Special AUTO Combat & Manual Target-Lock Toggles Positioned Right Beside the Upper Skills -->
+        <button id="adv-btn-lock" class="adv-lock-skill-btn" type="button" aria-pressed="false" title="Toggle Manual Target Lock [Tab / R]">
+          <svg class="px-ui-icon" width="12" height="12" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">
+            <rect x="5" y="0" width="2" height="3" fill="currentColor" />
+            <rect x="5" y="9" width="2" height="3" fill="currentColor" />
+            <rect x="0" y="5" width="3" height="2" fill="currentColor" />
+            <rect x="9" y="5" width="3" height="2" fill="currentColor" />
+            <rect x="4" y="4" width="4" height="4" fill="#38bdf8" />
+          </svg>
+          <span id="adv-lock-label">LOCK</span>
+        </button>
         <button id="adv-btn-auto" class="adv-auto-skill-btn" type="button" aria-pressed="false" title="Toggle Autonomous Combat AI [P]">
           <span class="adv-auto-dot" aria-hidden="true"></span>
           <span id="adv-auto-label">AUTO</span>
@@ -363,9 +373,9 @@
                 </svg>
                 <span id="tag-assist-label">TAG SWAP</span>
               </button>
-              <button id="btn-test-mode" class="iron-btn iron-btn-test" type="button" aria-pressed="true" title="Toggle Test Mode: Unlimited HP (Default ON — fighters never die &amp; regenerate HP so you can test full fights &amp; Ultimates)">
+              <button id="btn-test-mode" class="iron-btn iron-btn-test" type="button" aria-pressed="false" title="Toggle Test Mode: Unlimited HP (Default OFF — mortal HP active; enable so fighters regenerate HP &amp; never KO)">
                 <span class="gem-indicator gem-emerald"></span>
-                <span id="hud-test-mode-label">UNLIMITED HP: ON</span>
+                <span id="hud-test-mode-label">UNLIMITED HP: OFF</span>
               </button>
               <button id="btn-test-ult" class="iron-btn iron-btn-ult" type="button" title="Instantly charge &amp; unleash Supreme ULTIMATE Finisher!">
                 <svg class="px-ui-icon" width="12" height="12" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">
@@ -420,6 +430,10 @@
               <span class="adv-util-dot"></span>
               <span id="adv-autoplay-label">AI: OFF</span>
             </button>
+            <button id="adv-btn-pause-lock" class="adv-util-btn adv-btn-lock" type="button" aria-pressed="false" title="Toggle Manual Target Lock [Tab / R]">
+              <span class="adv-util-dot"></span>
+              <span id="adv-pause-lock-label">LOCK: OFF</span>
+            </button>
             <button id="adv-btn-landscape" class="adv-util-btn adv-btn-landscape" type="button" title="Toggle Mobile Landscape / Fullscreen">
               <svg class="px-ui-icon" width="12" height="12" viewBox="0 0 12 12" shape-rendering="crispEdges" aria-hidden="true">
                 <rect x="1" y="2" width="10" height="8" fill="none" stroke="currentColor" stroke-width="2" />
@@ -430,7 +444,7 @@
             <button id="adv-btn-restart" class="adv-util-btn" type="button" title="Restart Campaign">RETRY</button>
             <button id="adv-btn-menu" class="adv-util-btn" type="button" title="Open Adventure Hero Select">HERO SELECT</button>
           </div>
-          <p class="pause-adv-hint">SHORTCUTS: <strong>[T]</strong> SKILL TREE • <strong>[P]</strong> AUTO-AI • <strong>[WASD]</strong> MOVE • <strong>[J/K/L/U/I]</strong> ACTIONS</p>
+          <p class="pause-adv-hint">SHORTCUTS: <strong>[T]</strong> SKILL TREE • <strong>[P]</strong> AUTO-AI • <strong>[R/TAB]</strong> TARGET LOCK • <strong>[WASD]</strong> MOVE • <strong>[J/K/L/U/I]</strong> ACTIONS</p>
         </section>
 
         <!-- Shared Audio, Mobile Full Zoom-Out Toggle & Return to Title Screen Footer -->
@@ -753,14 +767,14 @@
             <div class="rules-sandbox-grid" id="vs-rules-grid">
               <button
                 type="button"
-                class="rule-toggle-card test-mode-pill active-test-mode"
+                class="rule-toggle-card test-mode-pill"
                 id="landing-btn-test-mode"
-                aria-pressed="true"
-                title="Toggle Test Sandbox (Default ON): Unlimited HP so champions regenerate and never KO"
+                aria-pressed="false"
+                title="Toggle Test Sandbox (Default OFF): Enable Unlimited HP so champions regenerate and never KO"
               >
                 <div class="rule-copy">
                   <div class="rule-title-line">
-                    <strong class="rule-name" id="landing-test-mode-label">TEST SANDBOX: UNLIMITED HP</strong>
+                    <strong class="rule-name" id="landing-test-mode-label">TEST SANDBOX: UNLIMITED HP OFF</strong>
                   </div>
                   <p class="rule-desc">
                     Fighters regenerate HP &amp; never KO so you can test full kits &amp; 3-Overdrive Supreme Ultimates.
@@ -768,7 +782,7 @@
                 </div>
                 <div class="forged-switch-wrap">
                   <span class="forged-switch-track"><span class="forged-switch-thumb"></span></span>
-                  <span class="test-mode-tag" id="landing-test-mode-tag">ON</span>
+                  <span class="test-mode-tag" id="landing-test-mode-tag">OFF</span>
                 </div>
               </button>
 
@@ -892,7 +906,7 @@
               <span>TITLE SCREEN</span>
             </button>
             <div class="mode-footer-status" id="mode-step-summary">
-              1V1 SOVEREIGN DUEL • AUTO REALM • SANDBOX UNLIMITED HP: ON
+              1V1 SOVEREIGN DUEL • AUTO REALM • MORTAL HP
             </div>
             <button type="button" class="forged-next-cta" id="btn-mode-next">
               <span>PROCEED TO CHAMPION SELECT</span>
@@ -950,7 +964,7 @@
                 id="btn-roster-config-badge"
                 title="Click to adjust Versus Format, Sandbox Unlimited HP, or Arena Stage"
               >
-                <span id="roster-config-badge-text">1V1 SOVEREIGN DUEL • AUTO REALM • SANDBOX UNLIMITED HP: ON</span>
+                <span id="roster-config-badge-text">1V1 SOVEREIGN DUEL • AUTO REALM • MORTAL HP</span>
               </button>
             </div>
 

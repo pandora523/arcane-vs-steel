@@ -191,17 +191,35 @@ export function buildLightningChain(rng, x0, y0, x1, y1, jitter = 0.3, subdivisi
   return pts;
 }
 
-/** Dual-buffer pixel surface (`albedo` + additive `emissive`). */
+/** Dual-buffer pixel surface (`albedo` + additive `emissive`) with exact dirty-rect bounds. */
 export function createPixelSurface(width, height) {
   return {
     width,
     height,
     albedo: new Uint32Array(width * height),
-    emissive: new Uint32Array(width * height)
+    emissive: new Uint32Array(width * height),
+    dirtyMinX: width,
+    dirtyMinY: height,
+    dirtyMaxX: -1,
+    dirtyMaxY: -1
   };
 }
 
 export function clearPixelSurface(surface) {
+  if (typeof surface.dirtyMinY === 'number' && typeof surface.dirtyMaxY === 'number') {
+    if (surface.dirtyMaxY >= surface.dirtyMinY) {
+      const w = surface.width;
+      const start = Math.max(0, surface.dirtyMinY) * w;
+      const end = Math.min(surface.height, surface.dirtyMaxY + 1) * w;
+      surface.albedo.fill(0, start, end);
+      surface.emissive.fill(0, start, end);
+    }
+    surface.dirtyMinX = surface.width;
+    surface.dirtyMinY = surface.height;
+    surface.dirtyMaxX = -1;
+    surface.dirtyMaxY = -1;
+    return;
+  }
   surface.albedo.fill(0);
   surface.emissive.fill(0);
 }
@@ -395,15 +413,29 @@ export class ShaderPen {
     if (!color) return;
     const a = alpha * this.masterFade;
     if (a <= 0) return;
+    sx |= 0;
+    sy |= 0;
     if (a < 1 && a <= BAYER_THRESHOLD_4X4[((sy & 3) << 2) | (sx & 3)]) return;
     if (sx < 0 || sy < 0 || sx >= this.w || sy >= this.h) return;
+    const surf = this.surface;
+    if (sx < surf.dirtyMinX) surf.dirtyMinX = sx;
+    if (sx > surf.dirtyMaxX) surf.dirtyMaxX = sx;
+    if (sy < surf.dirtyMinY) surf.dirtyMinY = sy;
+    if (sy > surf.dirtyMaxY) surf.dirtyMaxY = sy;
     this.albedo[sy * this.w + sx] = color >>> 0;
   }
 
   writeRawGlow(sx, sy, color, intensity = 1) {
     const k = intensity * this.masterFade * this.bloomScale;
     if (!color || k <= 0.004) return;
+    sx |= 0;
+    sy |= 0;
     if (sx < 0 || sy < 0 || sx >= this.w || sy >= this.h) return;
+    const surf = this.surface;
+    if (sx < surf.dirtyMinX) surf.dirtyMinX = sx;
+    if (sx > surf.dirtyMaxX) surf.dirtyMaxX = sx;
+    if (sy < surf.dirtyMinY) surf.dirtyMinY = sy;
+    if (sy > surf.dirtyMaxY) surf.dirtyMaxY = sy;
     const idx = sy * this.w + sx;
     const cur = this.emissive[idx];
     const r = Math.min(255, (cur & 255) + (color & 255) * k) | 0;
@@ -415,7 +447,14 @@ export class ShaderPen {
   writeRawBlend(sx, sy, color, alpha) {
     const a = clamp01(alpha * this.masterFade);
     if (!color || a <= 0.004) return;
+    sx |= 0;
+    sy |= 0;
     if (sx < 0 || sy < 0 || sx >= this.w || sy >= this.h) return;
+    const surf = this.surface;
+    if (sx < surf.dirtyMinX) surf.dirtyMinX = sx;
+    if (sx > surf.dirtyMaxX) surf.dirtyMaxX = sx;
+    if (sy < surf.dirtyMinY) surf.dirtyMinY = sy;
+    if (sy > surf.dirtyMaxY) surf.dirtyMaxY = sy;
     const idx = sy * this.w + sx;
     const dst = this.albedo[idx];
     const dstA = (dst >>> 24) / 255;
@@ -901,6 +940,58 @@ export function instantiateShaderEffect(def, userCfg = {}) {
  * ArcaneShaderFX — Arena-wide 2.5D (`back` + `front`) pixel-shader VFX runtime for Arcane vs. Steel.
  */
 export class ArcaneShaderFX {
+  static _sharedScratch = null;
+
+  static _acquireSharedScratch(minW, minH) {
+    if (typeof document === 'undefined' || typeof document.createElement !== 'function') {
+      return null;
+    }
+    let s = ArcaneShaderFX._sharedScratch;
+    if (!s || s.w < minW || s.h < minH) {
+      const w = Math.max(720, minW, s ? s.w : 0);
+      const h = Math.max(460, minH, s ? s.h : 0);
+      const normCanvas = s?.normCanvas || document.createElement('canvas');
+      const glowCanvas = s?.glowCanvas || document.createElement('canvas');
+      normCanvas.width = w;
+      normCanvas.height = h;
+      glowCanvas.width = w;
+      glowCanvas.height = h;
+      const normCtx = normCanvas.getContext('2d');
+      const glowCtx = glowCanvas.getContext('2d');
+      if (!normCtx || !glowCtx || !normCtx.createImageData) return null;
+      const normImg = normCtx.createImageData(w, h);
+      const glowImg = glowCtx.createImageData(w, h);
+      s = {
+        w,
+        h,
+        normCanvas,
+        normCtx,
+        normImg,
+        normData: normImg.data,
+        glowCanvas,
+        glowCtx,
+        glowImg,
+        glowData: glowImg.data
+      };
+      ArcaneShaderFX._sharedScratch = s;
+    }
+    return s;
+  }
+
+  static releaseSharedCanvases() {
+    const s = ArcaneShaderFX._sharedScratch;
+    if (!s) return;
+    if (s.normCanvas) {
+      s.normCanvas.width = 0;
+      s.normCanvas.height = 0;
+    }
+    if (s.glowCanvas) {
+      s.glowCanvas.width = 0;
+      s.glowCanvas.height = 0;
+    }
+    ArcaneShaderFX._sharedScratch = null;
+  }
+
   constructor(registry = {}, { pixelScale = 3, viewW = 640, viewH = 420, topRatio = 0.72 } = {}) {
     this.registry = registry;
     this.pixelScale = pixelScale;
@@ -908,16 +999,16 @@ export class ArcaneShaderFX {
     this.viewH = Math.max(420, viewH);
     this.topRatio = Math.min(0.74, Math.max(0.68, topRatio));
 
-    this.surfaceBack = createPixelSurface(this.viewW, this.viewH);
-    this.surfaceFront = createPixelSurface(this.viewW, this.viewH);
-    this.penBack = new ShaderPen(this.surfaceBack);
-    this.penFront = new ShaderPen(this.surfaceFront);
-    this.rgbaBack = new Uint8ClampedArray(this.viewW * this.viewH * 4);
-    this.rgbaFront = new Uint8ClampedArray(this.viewW * this.viewH * 4);
-    this.albedoRgbaBack = new Uint8ClampedArray(this.viewW * this.viewH * 4);
-    this.emissiveRgbaBack = new Uint8ClampedArray(this.viewW * this.viewH * 4);
-    this.albedoRgbaFront = new Uint8ClampedArray(this.viewW * this.viewH * 4);
-    this.emissiveRgbaFront = new Uint8ClampedArray(this.viewW * this.viewH * 4);
+    this._surfaceBack = null;
+    this._surfaceFront = null;
+    this._penBack = null;
+    this._penFront = null;
+    this._rgbaBack = null;
+    this._rgbaFront = null;
+    this._albedoRgbaBack = null;
+    this._emissiveRgbaBack = null;
+    this._albedoRgbaFront = null;
+    this._emissiveRgbaFront = null;
 
     this.active = [];
     this.worldMotes = [];
@@ -925,54 +1016,78 @@ export class ArcaneShaderFX {
     this.seedSeq = 211;
     this.arenaCenterX = 600;
     this.groundWorldY = 580;
+  }
 
-    this.backCanvas = null;
-    this.backCtx = null;
-    this.backImageData = null;
-    this.backGlowCanvas = null;
-    this.backGlowCtx = null;
-    this.backGlowImageData = null;
+  get surfaceBack() {
+    if (!this._surfaceBack) this._surfaceBack = createPixelSurface(this.viewW, this.viewH);
+    return this._surfaceBack;
+  }
+  set surfaceBack(v) {
+    this._surfaceBack = v;
+  }
 
-    this.frontCanvas = null;
-    this.frontCtx = null;
-    this.frontImageData = null;
-    this.frontGlowCanvas = null;
-    this.frontGlowCtx = null;
-    this.frontGlowImageData = null;
+  get surfaceFront() {
+    if (!this._surfaceFront) this._surfaceFront = createPixelSurface(this.viewW, this.viewH);
+    return this._surfaceFront;
+  }
+  set surfaceFront(v) {
+    this._surfaceFront = v;
+  }
 
-    if (typeof document !== 'undefined' && typeof document.createElement === 'function') {
-      this.backCanvas = document.createElement('canvas');
-      this.backCanvas.width = this.viewW;
-      this.backCanvas.height = this.viewH;
-      this.backCtx = this.backCanvas.getContext('2d');
-      if (this.backCtx?.createImageData) {
-        this.backImageData = this.backCtx.createImageData(this.viewW, this.viewH);
-      }
+  get penBack() {
+    if (!this._penBack) this._penBack = new ShaderPen(this.surfaceBack);
+    return this._penBack;
+  }
+  set penBack(v) {
+    this._penBack = v;
+  }
 
-      this.backGlowCanvas = document.createElement('canvas');
-      this.backGlowCanvas.width = this.viewW;
-      this.backGlowCanvas.height = this.viewH;
-      this.backGlowCtx = this.backGlowCanvas.getContext('2d');
-      if (this.backGlowCtx?.createImageData) {
-        this.backGlowImageData = this.backGlowCtx.createImageData(this.viewW, this.viewH);
-      }
+  get penFront() {
+    if (!this._penFront) this._penFront = new ShaderPen(this.surfaceFront);
+    return this._penFront;
+  }
+  set penFront(v) {
+    this._penFront = v;
+  }
 
-      this.frontCanvas = document.createElement('canvas');
-      this.frontCanvas.width = this.viewW;
-      this.frontCanvas.height = this.viewH;
-      this.frontCtx = this.frontCanvas.getContext('2d');
-      if (this.frontCtx?.createImageData) {
-        this.frontImageData = this.frontCtx.createImageData(this.viewW, this.viewH);
-      }
+  get rgbaBack() {
+    if (!this._rgbaBack) this._rgbaBack = new Uint8ClampedArray(this.viewW * this.viewH * 4);
+    return this._rgbaBack;
+  }
+  get rgbaFront() {
+    if (!this._rgbaFront) this._rgbaFront = new Uint8ClampedArray(this.viewW * this.viewH * 4);
+    return this._rgbaFront;
+  }
+  get albedoRgbaBack() {
+    if (!this._albedoRgbaBack) this._albedoRgbaBack = new Uint8ClampedArray(this.viewW * this.viewH * 4);
+    return this._albedoRgbaBack;
+  }
+  get emissiveRgbaBack() {
+    if (!this._emissiveRgbaBack) this._emissiveRgbaBack = new Uint8ClampedArray(this.viewW * this.viewH * 4);
+    return this._emissiveRgbaBack;
+  }
+  get albedoRgbaFront() {
+    if (!this._albedoRgbaFront) this._albedoRgbaFront = new Uint8ClampedArray(this.viewW * this.viewH * 4);
+    return this._albedoRgbaFront;
+  }
+  get emissiveRgbaFront() {
+    if (!this._emissiveRgbaFront) this._emissiveRgbaFront = new Uint8ClampedArray(this.viewW * this.viewH * 4);
+    return this._emissiveRgbaFront;
+  }
 
-      this.frontGlowCanvas = document.createElement('canvas');
-      this.frontGlowCanvas.width = this.viewW;
-      this.frontGlowCanvas.height = this.viewH;
-      this.frontGlowCtx = this.frontGlowCanvas.getContext('2d');
-      if (this.frontGlowCtx?.createImageData) {
-        this.frontGlowImageData = this.frontGlowCtx.createImageData(this.viewW, this.viewH);
-      }
-    }
+  dispose() {
+    this.active.length = 0;
+    this.worldMotes.length = 0;
+    this._penBack = null;
+    this._penFront = null;
+    this._surfaceBack = null;
+    this._surfaceFront = null;
+    this._rgbaBack = null;
+    this._rgbaFront = null;
+    this._albedoRgbaBack = null;
+    this._emissiveRgbaBack = null;
+    this._albedoRgbaFront = null;
+    this._emissiveRgbaFront = null;
   }
 
   computeViewport(centerWorldX = this.arenaCenterX, groundWorldY = this.groundWorldY) {
@@ -1136,21 +1251,20 @@ export class ArcaneShaderFX {
     }
   }
 
-  rasterizeLayer(passName, centerWorldX = 600, groundWorldY = 580) {
+  _rasterizePassToSurface(passName, centerWorldX = 600, groundWorldY = 580) {
+    const isBack = passName === 'back';
+    if (this.active.length === 0 && (isBack || this.worldMotes.length === 0)) {
+      return null;
+    }
     this.arenaCenterX = Number.isFinite(this.overrideCenterWorldX)
       ? this.overrideCenterWorldX
       : centerWorldX;
     this.groundWorldY = groundWorldY;
-    const isBack = passName === 'back';
     const surface = isBack ? this.surfaceBack : this.surfaceFront;
     const pen = isBack ? this.penBack : this.penFront;
-    const rgba = isBack ? this.rgbaBack : this.rgbaFront;
-    const albedoRgba = isBack ? this.albedoRgbaBack : this.albedoRgbaFront;
-    const emissiveRgba = isBack ? this.emissiveRgbaBack : this.emissiveRgbaFront;
     const { scale, worldW, worldH, worldLeft, worldTop } = this.computeViewport(centerWorldX, groundWorldY);
 
     clearPixelSurface(surface);
-    let drewAny = false;
     for (let i = 0; i < this.active.length; i++) {
       const s = this.active[i];
       const lx = Math.round((s.worldX - worldLeft) / scale);
@@ -1159,7 +1273,6 @@ export class ArcaneShaderFX {
       s.inst.cfg.x = lx;
       s.inst.cfg.y = ly;
       s.inst.render(pen, passName);
-      drewAny = true;
     }
 
     if (!isBack && this.worldMotes.length > 0) {
@@ -1186,88 +1299,223 @@ export class ArcaneShaderFX {
           pen.line(tx, ty, mx, my, u < 0.25 ? PURE_WHITE : m.color, fade);
           pen.radialGlow(mx, my, 3.2, m.color, 0.24 * fade);
         }
-        drewAny = true;
       }
     }
 
-    if (drewAny) {
-      resolveSurfaceToRGBA(surface, rgba, 1.15);
-      resolveSurfaceToSplitRGBA(surface, albedoRgba, emissiveRgba, 1.22);
-      const w = this.viewW;
-      const h = this.viewH;
-      const m = 16;
-      for (let y = 0; y < h; y++) {
-        const yEdge = Math.min(y, h - 1 - y);
-        const fullRow = yEdge < m;
-        for (let x = 0; x < w; x++) {
-          if (!fullRow && x >= m && x < w - m) {
-            x = w - m - 1;
-            continue;
-          }
-          const d = Math.min(yEdge, x, w - 1 - x);
-          const u = d <= 0 ? 0 : d / m;
-          const k = u * u * (3 - 2 * u);
-          const o = (y * w + x) * 4;
-          rgba[o + 3] = (rgba[o + 3] * k) | 0;
-          albedoRgba[o + 3] = (albedoRgba[o + 3] * k) | 0;
-          emissiveRgba[o] = (emissiveRgba[o] * k) | 0;
-          emissiveRgba[o + 1] = (emissiveRgba[o + 1] * k) | 0;
-          emissiveRgba[o + 2] = (emissiveRgba[o + 2] * k) | 0;
-          emissiveRgba[o + 3] = (emissiveRgba[o + 3] * k) | 0;
+    if (surface.dirtyMaxX < surface.dirtyMinX || surface.dirtyMaxY < surface.dirtyMinY) {
+      return null;
+    }
+    return { surface, scale, worldW, worldH, worldLeft, worldTop };
+  }
+
+  rasterizeLayer(passName, centerWorldX = 600, groundWorldY = 580) {
+    const isBack = passName === 'back';
+    const rast = this._rasterizePassToSurface(passName, centerWorldX, groundWorldY);
+    const rgba = isBack ? this.rgbaBack : this.rgbaFront;
+    const albedoRgba = isBack ? this.albedoRgbaBack : this.albedoRgbaFront;
+    const emissiveRgba = isBack ? this.emissiveRgbaBack : this.emissiveRgbaFront;
+    if (!rast) {
+      const { worldW, worldH, worldLeft, worldTop } = this.computeViewport(centerWorldX, groundWorldY);
+      return { drewAny: false, worldLeft, worldTop, worldW, worldH, rgba, albedoRgba, emissiveRgba };
+    }
+
+    const { surface, worldLeft, worldTop, worldW, worldH } = rast;
+    resolveSurfaceToRGBA(surface, rgba, 1.15);
+    resolveSurfaceToSplitRGBA(surface, albedoRgba, emissiveRgba, 1.22);
+    const w = this.viewW;
+    const h = this.viewH;
+    const m = 16;
+    for (let y = 0; y < h; y++) {
+      const yEdge = Math.min(y, h - 1 - y);
+      const fullRow = yEdge < m;
+      for (let x = 0; x < w; x++) {
+        if (!fullRow && x >= m && x < w - m) {
+          x = w - m - 1;
+          continue;
         }
+        const d = Math.min(yEdge, x, w - 1 - x);
+        const u = d <= 0 ? 0 : d / m;
+        const k = u * u * (3 - 2 * u);
+        const o = (y * w + x) * 4;
+        rgba[o + 3] = (rgba[o + 3] * k) | 0;
+        albedoRgba[o + 3] = (albedoRgba[o + 3] * k) | 0;
+        emissiveRgba[o] = (emissiveRgba[o] * k) | 0;
+        emissiveRgba[o + 1] = (emissiveRgba[o + 1] * k) | 0;
+        emissiveRgba[o + 2] = (emissiveRgba[o + 2] * k) | 0;
+        emissiveRgba[o + 3] = (emissiveRgba[o + 3] * k) | 0;
       }
     }
-    return { drewAny, worldLeft, worldTop, worldW, worldH, rgba, albedoRgba, emissiveRgba };
+    return { drewAny: true, worldLeft, worldTop, worldW, worldH, rgba, albedoRgba, emissiveRgba };
   }
 
   renderLayer(ctx, passName, centerWorldX = 600, groundWorldY = 580, alpha = 1.0) {
     if ((!this.active.length && !this.worldMotes.length) || !ctx) return;
-    const isBack = passName === 'back';
-    const canvasEl = isBack ? this.backCanvas : this.frontCanvas;
-    const canvasCtx = isBack ? this.backCtx : this.frontCtx;
-    const imgData = isBack ? this.backImageData : this.frontImageData;
-    const glowCanvasEl = isBack ? this.backGlowCanvas : this.frontGlowCanvas;
-    const glowCanvasCtx = isBack ? this.backGlowCtx : this.frontGlowCtx;
-    const glowImgData = isBack ? this.backGlowImageData : this.frontGlowImageData;
-    if (!canvasEl || !canvasCtx || !imgData) return;
+    const rast = this._rasterizePassToSurface(passName, centerWorldX, groundWorldY);
+    if (!rast) return;
 
-    const { drewAny, worldLeft, worldTop, worldW, worldH, rgba, albedoRgba, emissiveRgba } = this.rasterizeLayer(
-      passName,
-      centerWorldX,
-      groundWorldY
-    );
-    if (!drewAny) return;
+    const scratch = ArcaneShaderFX._acquireSharedScratch(this.viewW, this.viewH);
+    if (!scratch) return;
+
+    const { surface, scale, worldW, worldH, worldLeft, worldTop } = rast;
+    const w = this.viewW;
+    const h = this.viewH;
+    const minX = Math.max(0, surface.dirtyMinX);
+    const minY = Math.max(0, surface.dirtyMinY);
+    const maxX = Math.min(w - 1, surface.dirtyMaxX);
+    const maxY = Math.min(h - 1, surface.dirtyMaxY);
+    const bw = maxX - minX + 1;
+    const bh = maxY - minY + 1;
+    if (bw <= 0 || bh <= 0) return;
+
+    const alb = surface.albedo;
+    const emi = surface.emissive;
+    const normData = scratch.normData;
+    const glowData = scratch.glowData;
+    const sw = scratch.w;
+    const emissiveGain = 1.22;
+    const borderM = 16;
+
+    let hasAlbedo = false;
+    let hasEmissive = false;
+
+    for (let y = minY; y <= maxY; y++) {
+      const yEdge = Math.min(y, h - 1 - y);
+      const yNearBorder = yEdge < borderM;
+      const srcRow = y * w;
+      const dstRow = y * sw;
+
+      for (let x = minX; x <= maxX; x++) {
+        const sIdx = srcRow + x;
+        const c = alb[sIdx];
+        const l = emi[sIdx] & 0xffffff;
+        const o = (dstRow + x) * 4;
+
+        if (!c && !l) {
+          normData[o] = 0;
+          normData[o + 1] = 0;
+          normData[o + 2] = 0;
+          normData[o + 3] = 0;
+          glowData[o] = 0;
+          glowData[o + 1] = 0;
+          glowData[o + 2] = 0;
+          glowData[o + 3] = 0;
+          continue;
+        }
+
+        let k = 1;
+        if (yNearBorder || x < borderM || x >= w - borderM) {
+          const d = Math.min(yEdge, x, w - 1 - x);
+          const u = d <= 0 ? 0 : d / borderM;
+          k = u * u * (3 - 2 * u);
+        }
+
+        if (!c) {
+          normData[o] = 0;
+          normData[o + 1] = 0;
+          normData[o + 2] = 0;
+          normData[o + 3] = 0;
+        } else {
+          const outA = k < 1 ? ((c >>> 24) * k) | 0 : c >>> 24;
+          normData[o] = c & 255;
+          normData[o + 1] = (c >>> 8) & 255;
+          normData[o + 2] = (c >>> 16) & 255;
+          normData[o + 3] = outA;
+          if (outA > 0) hasAlbedo = true;
+        }
+
+        let lr = (l & 255) * emissiveGain;
+        let lg = ((l >>> 8) & 255) * emissiveGain;
+        let lb = ((l >>> 16) & 255) * emissiveGain;
+
+        if (c) {
+          const cr = c & 255;
+          const cg = (c >>> 8) & 255;
+          const cb = (c >>> 16) & 255;
+          const ca = (c >>> 24) / 255;
+          const peak = Math.max(cr, cg, cb);
+          if (peak > 150) {
+            const boost = ((peak - 150) / 105) * 0.42 * ca;
+            lr += cr * boost;
+            lg += cg * boost;
+            lb += cb * boost;
+          }
+        }
+
+        const maxL = Math.max(lr, lg, lb);
+        if (maxL < 2) {
+          glowData[o] = 0;
+          glowData[o + 1] = 0;
+          glowData[o + 2] = 0;
+          glowData[o + 3] = 0;
+        } else {
+          const aEmi = Math.min(255, Math.round(maxL));
+          const invScale = 255 / Math.max(1, aEmi);
+          const er = Math.min(255, Math.round(lr * invScale));
+          const eg = Math.min(255, Math.round(lg * invScale));
+          const eb = Math.min(255, Math.round(lb * invScale));
+          if (k < 1) {
+            const outEA = (aEmi * k) | 0;
+            glowData[o] = (er * k) | 0;
+            glowData[o + 1] = (eg * k) | 0;
+            glowData[o + 2] = (eb * k) | 0;
+            glowData[o + 3] = outEA;
+            if (outEA > 0) hasEmissive = true;
+          } else {
+            glowData[o] = er;
+            glowData[o + 1] = eg;
+            glowData[o + 2] = eb;
+            glowData[o + 3] = aEmi;
+            hasEmissive = true;
+          }
+        }
+      }
+    }
+
+    if (!hasAlbedo && !hasEmissive) return;
 
     const prevSmooth = ctx.imageSmoothingEnabled;
     const prevAlpha = ctx.globalAlpha;
     const prevComp = ctx.globalCompositeOperation;
     ctx.imageSmoothingEnabled = false;
 
-    if (glowCanvasEl && glowCanvasCtx && glowImgData) {
-      imgData.data.set(albedoRgba);
-      canvasCtx.putImageData(imgData, 0, 0);
-      glowImgData.data.set(emissiveRgba);
-      glowCanvasCtx.putImageData(glowImgData, 0, 0);
+    const dstX = worldLeft + minX * scale;
+    const dstY = worldTop + minY * scale;
+    const dstW = bw * scale;
+    const dstH = bh * scale;
 
+    if (hasEmissive) {
+      scratch.glowCtx.putImageData(scratch.glowImg, 0, 0, minX, minY, bw, bh);
       // Multi-Layer Sub-Pass 1: Wide Additive Emissive Under-Bloom (`lighter`)
+      const bloomScaleX = (worldW + 8) / w;
+      const bloomScaleY = (worldH + 8) / h;
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = prevAlpha * alpha * 0.48;
-      ctx.drawImage(glowCanvasEl, 0, 0, this.viewW, this.viewH, worldLeft - 4, worldTop - 4, worldW + 8, worldH + 8);
+      ctx.drawImage(
+        scratch.glowCanvas,
+        minX,
+        minY,
+        bw,
+        bh,
+        worldLeft - 4 + minX * bloomScaleX,
+        worldTop - 4 + minY * bloomScaleY,
+        bw * bloomScaleX,
+        bh * bloomScaleY
+      );
+    }
 
+    if (hasAlbedo) {
+      scratch.normCtx.putImageData(scratch.normImg, 0, 0, minX, minY, bw, bh);
       // Multi-Layer Sub-Pass 2: Crisp Stepped Pixel-Art Albedo (`source-over`)
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = prevAlpha * alpha;
-      ctx.drawImage(canvasEl, 0, 0, this.viewW, this.viewH, worldLeft, worldTop, worldW, worldH);
+      ctx.drawImage(scratch.normCanvas, minX, minY, bw, bh, dstX, dstY, dstW, dstH);
+    }
 
+    if (hasEmissive) {
       // Multi-Layer Sub-Pass 3: Pixel-Aligned Specular Emissive Over-Bloom (`lighter`)
       ctx.globalCompositeOperation = 'lighter';
       ctx.globalAlpha = prevAlpha * alpha * 0.76;
-      ctx.drawImage(glowCanvasEl, 0, 0, this.viewW, this.viewH, worldLeft, worldTop, worldW, worldH);
-    } else {
-      imgData.data.set(rgba);
-      canvasCtx.putImageData(imgData, 0, 0);
-      ctx.globalAlpha = prevAlpha * alpha;
-      ctx.drawImage(canvasEl, 0, 0, this.viewW, this.viewH, worldLeft, worldTop, worldW, worldH);
+      ctx.drawImage(scratch.glowCanvas, minX, minY, bw, bh, dstX, dstY, dstW, dstH);
     }
 
     ctx.globalCompositeOperation = prevComp;

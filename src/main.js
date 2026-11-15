@@ -2,6 +2,7 @@ import { Renderer } from './engine/Renderer.js?v=30fps110';
 import { VFXManager } from './engine/VFXManager.js?v=30fps110';
 import { PixelForge } from './engine/PixelForge.js?v=30fps110';
 import { AudioManager } from './engine/AudioManager.js?v=30fps110';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps110';
 import { Fighter } from './entities/Fighter.js?v=30fps110';
 import { Warrior } from './entities/Warrior.js?v=30fps110';
 import { FireMage } from './entities/FireMage.js?v=30fps110';
@@ -431,6 +432,10 @@ class Game {
     this.matchTime = 0;
     this.hudTimer = 0;
     this.isMatchOver = false;
+    this.victoryRevealPending = false;
+    this.deadMatchFighter = null;
+    this.postDeathHoldTimer = 0;
+    this.matchOverSafetyTimer = 0;
     this.fighters = [];
     this.leftFighter = null;
     this.rightFighter = null;
@@ -461,14 +466,7 @@ class Game {
     }
     const testModeParam = params.get('testmode');
     this.explicitAdvUnlimitedHp = testModeParam === '1' || testModeParam === 'true';
-    this.testModeUnlimitedHp =
-      testModeParam === '0' || testModeParam === 'false'
-        ? false
-        : testModeParam === '1' || testModeParam === 'true'
-          ? true
-          : Boolean(params.get('kill'))
-            ? false
-            : true;
+    this.testModeUnlimitedHp = testModeParam === '1' || testModeParam === 'true';
     this.vsTestModeUnlimitedHp = this.testModeUnlimitedHp;
     this.forcedStage = params.get('stage') || null;
     const modeParam = params.get('mode');
@@ -708,8 +706,124 @@ class Game {
       this.updateHUD();
     }
 
-    this.lastTime = performance.now();
-    requestAnimationFrame((t) => this.loop(t));
+    this._boundLoop = (t) => this.loop(t);
+    this._rafId = 0;
+    this._lastPacedTime = 0;
+    this._appSuspended = false;
+    this._autoNextRemainingMs = 0;
+    this._autoNextDeadlineMs = 0;
+    this._activeFightersScratch = [];
+    this._lastActiveVsStageId = null;
+    this._wasAdventureMatch = false;
+    this.installVisibilityAndThermalLifecycle();
+
+    this.lastTime = 0;
+    this.startLoop();
+  }
+
+  installVisibilityAndThermalLifecycle() {
+    if (typeof window !== 'undefined') {
+      window.__avsGame = this;
+      window.__avsSetAppActive = (active) => this.setAppForegroundState(Boolean(active));
+      window.addEventListener('pagehide', () => this.setAppForegroundState(false));
+      window.addEventListener('pageshow', () => {
+        const hidden = typeof document !== 'undefined' && Boolean(document.hidden);
+        this.setAppForegroundState(!hidden);
+      });
+      const isTouchMobile =
+        Boolean(this.renderer?.isMobile) ||
+        (typeof navigator !== 'undefined' && (navigator.maxTouchPoints || 0) > 0);
+      if (isTouchMobile) {
+        window.addEventListener('blur', () => this.setAppForegroundState(false));
+        window.addEventListener('focus', () => {
+          const hidden = typeof document !== 'undefined' && Boolean(document.hidden);
+          this.setAppForegroundState(!hidden);
+        });
+      }
+    }
+    if (typeof document !== 'undefined') {
+      document.addEventListener('visibilitychange', () => {
+        this.setAppForegroundState(!document.hidden);
+      });
+      if (document.hidden) {
+        this._appSuspended = true;
+      }
+    }
+  }
+
+  startLoop() {
+    if (this._appSuspended || this._rafId) return;
+    if (typeof requestAnimationFrame === 'function') {
+      this._rafId = requestAnimationFrame(this._boundLoop);
+    }
+  }
+
+  stopLoop() {
+    if (this._rafId && typeof cancelAnimationFrame === 'function') {
+      cancelAnimationFrame(this._rafId);
+    }
+    this._rafId = 0;
+  }
+
+  _scheduleAutoNext(delayMs = 4200) {
+    clearTimeout(this.autoNextTimeout);
+    this._autoNextRemainingMs = 0;
+    const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    this._autoNextDeadlineMs = nowMs + delayMs;
+    this.autoNextTimeout = setTimeout(() => {
+      this.autoNextTimeout = null;
+      this._autoNextDeadlineMs = 0;
+      if (
+        !this._appSuspended &&
+        this.isMatchOver &&
+        this.autoTourney &&
+        !this.isAdventureMode() &&
+        !this.isLandingOpen &&
+        !this.isSimPaused
+      ) {
+        this.advanceTourneyChallenger();
+      }
+    }, delayMs);
+  }
+
+  setAppForegroundState(active) {
+    const nextActive = Boolean(active);
+    if (!nextActive) {
+      if (this._appSuspended) return;
+      this._appSuspended = true;
+      this.stopLoop();
+      this.adventure?.clearHeldInputs?.();
+      this.audio?.suspendForBackground?.();
+      if (this.autoNextTimeout) {
+        const nowMs = typeof performance !== 'undefined' ? performance.now() : Date.now();
+        this._autoNextRemainingMs = Math.max(250, (this._autoNextDeadlineMs || nowMs + 1000) - nowMs);
+        clearTimeout(this.autoNextTimeout);
+        this.autoNextTimeout = null;
+      }
+      return;
+    }
+
+    if (!this._appSuspended) return;
+    this._appSuspended = false;
+    this.lastTime = 0;
+    this._lastPacedTime = 0;
+    this._pausedFrameRendered = false;
+    this.audio?.resumeFromBackground?.();
+    if (
+      this._autoNextRemainingMs > 0 &&
+      this.isMatchOver &&
+      this.autoTourney &&
+      !this.isAdventureMode() &&
+      !this.isLandingOpen &&
+      !this.isSimPaused
+    ) {
+      const resumeDelay = this._autoNextRemainingMs;
+      this._autoNextRemainingMs = 0;
+      this._scheduleAutoNext(resumeDelay);
+    } else {
+      this._autoNextRemainingMs = 0;
+    }
+    this.startLoop();
   }
 
   is2v2Mode() {
@@ -809,15 +923,31 @@ class Game {
     this.setPaused(!this.isPaused, playSound);
   }
 
+  disposeActiveFighterResources() {
+    if (Array.isArray(this.fighters)) {
+      for (const f of this.fighters) {
+        f?.fx?.dispose?.();
+      }
+    }
+    this.leftFighter?.fx?.dispose?.();
+    this.rightFighter?.fx?.dispose?.();
+    this.leftPartner?.fx?.dispose?.();
+    this.rightPartner?.fx?.dispose?.();
+  }
+
   teardownActiveMatch(releaseMemory = false) {
     clearTimeout(this.victoryTimeout);
     clearTimeout(this.autoNextTimeout);
     clearTimeout(this.ultBannerTimeout);
+    this.autoNextTimeout = null;
+    this._autoNextRemainingMs = 0;
+    this._autoNextDeadlineMs = 0;
     if (this.adventure?.active) {
       this.adventure.stopCampaign();
     } else {
       this.adventure?.clearHeldInputs?.();
     }
+    this.disposeActiveFighterResources();
     this.vfx?.clear?.();
     this.fighters = [];
     this.leftFighter = null;
@@ -828,12 +958,19 @@ class Game {
     this.victoryRevealPending = false;
     this.deadMatchFighter = null;
     this.postDeathHoldTimer = 0;
+    this.matchOverSafetyTimer = 0;
     this._pausedFrameRendered = false;
+    this.victoryOverlay?.classList.remove('is-defeat-plaque');
     this.victoryOverlay?.classList.add('hidden');
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
     if (releaseMemory) {
-      this.renderer?.releaseStageCutoutCaches?.();
+      this.renderer?.releaseStageCutoutCaches?.(true);
       PixelForge.releaseInactiveAssets?.([], [], false);
+      ArcaneShaderFX.releaseSharedCanvases?.();
+      this._lastActiveVsStageId = null;
+      this._wasAdventureMatch = false;
     }
   }
 
@@ -1082,6 +1219,7 @@ class Game {
     if (this.landingBtnTestMode) {
       this.landingBtnTestMode.addEventListener('click', () => this.toggleTestModeUnlimitedHp(true));
     }
+    this.syncTestModeUI();
 
     this.modeBtns = {
       '1v1': document.getElementById('mode-btn-1v1'),
@@ -2122,10 +2260,10 @@ class Game {
     const stageTitleStr = isAdv
       ? 'AUTO: 4-ZONE CAMPAIGN MAP'
       : stageNames[this.forcedStage || 'auto'] || 'AUTO REALM';
-    const hpStr = this.vsTestModeUnlimitedHp ? 'UNLIMITED HP: ON' : 'MORTAL HP';
+    const hpStr = this.vsTestModeUnlimitedHp ? 'SANDBOX UNLIMITED HP: ON' : 'MORTAL HP';
     const summaryStr = isAdv
       ? `${modeTitleStr} • ${stageTitleStr} • RPG PROGRESSION`
-      : `${modeTitleStr} • ${stageTitleStr} • SANDBOX ${hpStr}`;
+      : `${modeTitleStr} • ${stageTitleStr} • ${hpStr}`;
 
     const titleFooterEl = document.getElementById('title-status-footer');
     if (titleFooterEl) {
@@ -2385,6 +2523,9 @@ class Game {
     this.isLandingOpen = false;
     this.setPaused(false, false);
     this._pausedFrameRendered = false;
+    this.victoryOverlay?.classList.remove('is-defeat-plaque');
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.landingOverlay) this.landingOverlay.classList.add('hidden');
     if (this.appEl) this.appEl.classList.remove('is-landing-open');
     this.audio?.ensureCombatWavFiles?.();
@@ -2411,7 +2552,17 @@ class Game {
   }
 
   renderChampionPreviews(now) {
-    if (!this.isLandingOpen || this.landingStep !== 'roster') return;
+    if (
+      !this.isLandingOpen ||
+      this.landingStep !== 'roster' ||
+      this._appSuspended ||
+      (typeof document !== 'undefined' && document.hidden)
+    ) {
+      return;
+    }
+    if (this.landingOverlay && this.landingOverlay.classList.contains('hidden')) {
+      return;
+    }
     const assets = PixelForge.initAssets();
     const t = now * 0.001;
     const is2v2 = this.is2v2Mode();
@@ -2419,8 +2570,9 @@ class Game {
     // 1. Render the Center Portrait Selector Tiles from crisp pixel portraits (dirty-checked: 0ms steady-state!)
     Object.keys(CHAMPION_ROSTER).forEach((heroKey) => {
       const canvas = this.previewCanvases[heroKey];
+      if (!canvas || (canvas.offsetParent === null && canvas.clientWidth === 0)) return;
       const port = PixelForge.ensureImage(assets[heroKey]?.portrait);
-      if (!canvas || !port || !port.complete || !port.naturalWidth) return;
+      if (!port || !port.complete || !port.naturalWidth) return;
       if (canvas._drawnPortraitImg === port) return;
       const ctx = canvas.getContext('2d');
       ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -2569,7 +2721,7 @@ class Game {
       if (!cfg) return;
 
       const spriteCanvas = document.getElementById(`${prefix}-sprite-canvas`);
-      if (spriteCanvas) {
+      if (spriteCanvas && (spriteCanvas.offsetParent !== null || spriteCanvas.clientWidth > 0)) {
         const cw = 272;
         const ch = 208;
         if (spriteCanvas.width !== cw || spriteCanvas.height !== ch) {
@@ -2794,27 +2946,39 @@ class Game {
   }
 
   getTargetFor(fighter) {
-    const enemies = this.getEnemiesOf(fighter);
-    if (enemies.length <= 1) {
-      if (typeof this.isAdventureMode === 'function' && this.isAdventureMode()) {
-        return enemies[0] || null;
-      }
-      return enemies[0] || (fighter.team === 1 ? this.rightFighter : this.leftFighter);
-    }
-    // Dynamic 2v2 targeting: pick nearest enemy, with a tactical bias toward low-HP targets or cross-comboing
-    let best = enemies[0];
-    let bestScore = Infinity;
-    for (const e of enemies) {
-      const dist = Math.abs(e.x - fighter.x);
+    if (!fighter || !this.fighters) return null;
+    const myTeam = fighter.team;
+    const myX = fighter.x;
+    const isPartner = fighter.slotRole === 'partner';
+    let bestActive = null;
+    let bestActiveScore = Infinity;
+    let bestAnyLiving = null;
+    let bestAnyLivingScore = Infinity;
+
+    for (let i = 0; i < this.fighters.length; i++) {
+      const e = this.fighters[i];
+      if (!e || e.team === myTeam || e.isDead) continue;
+      const dist = Math.abs(e.x - myX);
       const hpRatio = e.hp / Math.max(1, e.maxHp);
-      const roleBias = fighter.slotRole === 'partner' && e.slotRole === 'partner' ? -55 : 0;
+      const roleBias = isPartner && e.slotRole === 'partner' ? -55 : 0;
       const score = dist + hpRatio * 95 + roleBias;
-      if (score < bestScore) {
-        bestScore = score;
-        best = e;
+      if (!e.isBenched) {
+        if (score < bestActiveScore) {
+          bestActiveScore = score;
+          bestActive = e;
+        }
+      } else if (score < bestAnyLivingScore) {
+        bestAnyLivingScore = score;
+        bestAnyLiving = e;
       }
     }
-    return best;
+
+    if (bestActive) return bestActive;
+    if (bestAnyLiving) return bestAnyLiving;
+    if (typeof this.isAdventureMode === 'function' && this.isAdventureMode()) {
+      return null;
+    }
+    return fighter.team === 1 ? this.rightFighter : this.leftFighter;
   }
 
   getPointFighter(team) {
@@ -2857,10 +3021,14 @@ class Game {
 
   resetMatch() {
     this.setPaused(false, false);
+    this.disposeActiveFighterResources();
     this.vfx.clear();
     clearTimeout(this.victoryTimeout);
     clearTimeout(this.autoNextTimeout);
     clearTimeout(this.ultBannerTimeout);
+    this.autoNextTimeout = null;
+    this._autoNextRemainingMs = 0;
+    this._autoNextDeadlineMs = 0;
 
     this.testModeUnlimitedHp = this.isAdventureMode()
       ? Boolean(this.explicitAdvUnlimitedHp)
@@ -2868,16 +3036,20 @@ class Game {
 
     if (this.isAdventureMode()) {
       if (this.renderer) {
+        this.renderer.releaseStageCutoutCaches?.(false);
         this.renderer.stageEventTimer = 0;
         this.renderer.stageEventBannerTimer = 0;
         this.renderer.koZoomTimer = 0;
         this.renderer.cutInTimer = 0;
       }
+      this._lastActiveVsStageId = null;
+      this._wasAdventureMatch = true;
       if (this.btnNextChallenger) this.btnNextChallenger.classList.add('hidden');
       if (this.btnPlayAgain) this.btnPlayAgain.textContent = 'RETRY CAMPAIGN';
 
       const gy = this.renderer.groundY;
       const heroKey = CHAMPION_ROSTER[this.slot1Hero] ? this.slot1Hero : 'mage';
+      PixelForge.releaseInactiveAssets?.([heroKey], [], true);
       PixelForge.ensureHeroLoaded?.(heroKey);
       PixelForge.ensureAdventureLoaded?.(0);
       const c1 = CHAMPION_ROSTER[heroKey];
@@ -2904,7 +3076,11 @@ class Game {
       this.victoryRevealPending = false;
       this.deadMatchFighter = null;
       this.postDeathHoldTimer = 0;
+      this.matchOverSafetyTimer = 0;
+      this.victoryOverlay.classList.remove('is-defeat-plaque');
       this.victoryOverlay.classList.add('hidden');
+      if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+      if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
       if (this.ultBanner) this.ultBanner.classList.add('hidden');
 
       this.syncTestModeUI();
@@ -2920,11 +3096,18 @@ class Game {
     this.pauseSpBadge?.classList.add('hidden');
     if (this.btnNextChallenger) this.btnNextChallenger.classList.remove('hidden');
     if (this.btnPlayAgain) this.btnPlayAgain.textContent = 'REMATCH';
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
 
     if (this.renderer) {
       if (typeof this.renderer.pickRandomStage === 'function') {
         this.renderer.pickRandomStage(this.forcedStage);
       }
+      if (this._wasAdventureMatch || this._lastActiveVsStageId !== this.renderer.stageId) {
+        this.renderer.releaseStageCutoutCaches?.(true);
+      }
+      this._lastActiveVsStageId = this.renderer.stageId;
+      this._wasAdventureMatch = false;
       this.renderer.stageEventTimer = 0;
       this.renderer.stageEventBannerTimer = 0;
       this.renderer.koZoomTimer = 0;
@@ -2951,6 +3134,10 @@ class Game {
     const c1b = CHAMPION_ROSTER[this.slot1PartnerHero] || CHAMPION_ROSTER.priestess;
     const c2 = CHAMPION_ROSTER[this.slot2Hero] || CHAMPION_ROSTER.archer;
     const c2b = CHAMPION_ROSTER[this.slot2PartnerHero] || CHAMPION_ROSTER.reaper;
+    const activeHeroIds = is2v2 ? [c1.id, c2.id, c1b.id, c2b.id] : [c1.id, c2.id];
+    const activeStageMeta = this.renderer?.getCurrentStageMeta?.();
+    const activeStageKeys = activeStageMeta?.assetKey ? [activeStageMeta.assetKey] : ['arenaBg'];
+    PixelForge.releaseInactiveAssets?.(activeHeroIds, activeStageKeys, false);
     PixelForge.ensureHeroLoaded?.(c1.id);
     PixelForge.ensureHeroLoaded?.(c2.id);
     if (is2v2) {
@@ -3037,7 +3224,11 @@ class Game {
     this.victoryRevealPending = false;
     this.deadMatchFighter = null;
     this.postDeathHoldTimer = 0;
+    this.matchOverSafetyTimer = 0;
+    this.victoryOverlay.classList.remove('is-defeat-plaque');
     this.victoryOverlay.classList.add('hidden');
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
     this.updateHUD();
   }
@@ -3371,6 +3562,8 @@ class Game {
     this.deadMatchFighter = deadFighter;
     this.victoryRevealPending = true;
     this.postDeathHoldTimer = 0;
+    this.matchOverSafetyTimer = 0;
+    this.victoryOverlay?.classList.remove('is-defeat-plaque');
     this.updateHUD();
 
     const winningTeam = deadFighter.team === 1 ? 2 : 1;
@@ -3425,6 +3618,8 @@ class Game {
     if (telRightExtraLbl) telRightExtraLbl.textContent = 'HEAL / CLASH';
     if (this.btnNextChallenger) this.btnNextChallenger.classList.remove('hidden');
     if (this.btnPlayAgain) this.btnPlayAgain.textContent = 'REMATCH';
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
 
     // Populate Post-Match Combat Telemetry Card (aggregates team stats in 2v2!)
     const fillTel = (side, teamNum) => {
@@ -3481,21 +3676,11 @@ class Game {
     if (!this.isMatchOver || !this.victoryRevealPending) return;
     this.setPaused(false, false);
     this.victoryRevealPending = false;
+    this.matchOverSafetyTimer = 0;
     this.victoryOverlay.classList.remove('hidden');
     if (this.audio) this.audio.play('victory_fanfare');
     if (this.autoTourney && !this.isAdventureMode() && !this.isSimPaused) {
-      clearTimeout(this.autoNextTimeout);
-      this.autoNextTimeout = setTimeout(() => {
-        if (
-          this.isMatchOver &&
-          this.autoTourney &&
-          !this.isAdventureMode() &&
-          !this.isLandingOpen &&
-          !this.isSimPaused
-        ) {
-          this.advanceTourneyChallenger();
-        }
-      }, 4200);
+      this._scheduleAutoNext(4200);
     }
   }
 
@@ -3832,6 +4017,7 @@ class Game {
           : `${Math.ceil(f.hp)}`;
       els.state.textContent = f.isDead ? 'DEFEATED' : f.state;
 
+      const isMobilePortrait = Boolean(this.renderer?.isMobilePortrait);
       els.manaBar.style.width = `${manaPct}%`;
       els.ultLabel.textContent = f.isBoss
         ? `PHASE ${f.bossPhase || 1} / 3${(f.vulnerableTimer || 0) > 0 ? ' • CORE EXPOSED!' : ''}`
@@ -3839,9 +4025,13 @@ class Game {
           ? f.isElite
             ? 'ELITE MONSTER'
             : 'ABYSSAL HORDE'
-          : isAdv
-            ? `${advTags?.overdrive || 'DRIVE'} ${Math.floor(manaPct)}% (EMBERS)`
-            : `OVERDRIVE ${Math.floor(manaPct)}%`;
+          : isMobilePortrait
+            ? isAdv
+              ? `${advTags?.overdrive || 'DRIVE'} ${Math.floor(manaPct)}%`
+              : `DRIVE ${Math.floor(manaPct)}%`
+            : isAdv
+              ? `${advTags?.overdrive || 'DRIVE'} ${Math.floor(manaPct)}% (EMBERS)`
+              : `OVERDRIVE ${Math.floor(manaPct)}%`;
 
       if (els.finisherFrame && els.finisherBar && els.finisherLabel) {
         if (f.hasTrueUltimate) {
@@ -3856,9 +4046,13 @@ class Game {
           els.finisherLabel.textContent =
             f.state === 'TRUE_ULTIMATE'
               ? `ULTIMATE: ${f.trueUltName || 'SWORD OF JUSTICE'}!`
-              : isAdv
-                ? `${advTags?.ultimate || 'CATACLYSM'} ${Math.floor(finPct)}% (${seals}/3 SEALS)`
-                : `ULTIMATE ${Math.floor(finPct)}% (${seals}/3 OD)`;
+              : isMobilePortrait
+                ? isAdv
+                  ? `${advTags?.ultimate || 'ULT'} ${Math.floor(finPct)}% (${seals}/3)`
+                  : `ULT ${Math.floor(finPct)}% (${seals}/3)`
+                : isAdv
+                  ? `${advTags?.ultimate || 'CATACLYSM'} ${Math.floor(finPct)}% (${seals}/3 SEALS)`
+                  : `ULTIMATE ${Math.floor(finPct)}% (${seals}/3 OD)`;
         } else {
           els.finisherFrame.classList.add('hidden');
         }
@@ -3937,7 +4131,12 @@ class Game {
     if (this.team1AssistCd > 0) this.team1AssistCd = Math.max(0, this.team1AssistCd - dt);
     if (this.team2AssistCd > 0) this.team2AssistCd = Math.max(0, this.team2AssistCd - dt);
 
-    const activeFighters = this.fighters.filter((f) => f && !f.isDead && !f.isBenched);
+    const activeFighters = this._activeFightersScratch;
+    activeFighters.length = 0;
+    for (let i = 0; i < this.fighters.length; i++) {
+      const f = this.fighters[i];
+      if (f && !f.isDead && !f.isBenched) activeFighters.push(f);
+    }
 
     // Trigger Autonomous Mid-Match Stage Phenomenon at 11.5s or when any active fighter drops below 58% HP (Arena Duel/2v2 modes)
     if (
@@ -4018,34 +4217,46 @@ class Game {
       }
     }
 
-    // Reveal the Victory / Rematch plaque ONLY after all 30 death frames (F00..F29) have finished
-    // AND the winning champion has showcased their Row 9 VICTORY flourish & pose for ~1.35s!
+    // Reveal the Victory / Rematch / Defeat plaque ONLY after all 30 death frames (F00..F29) have finished
+    // AND the winning champion has showcased their Row 9 VICTORY flourish & pose (snappier 0.65s hold on Adventure defeat)!
     if (this.isMatchOver && this.victoryRevealPending && !this.isSimPaused) {
+      this.matchOverSafetyTimer = (this.matchOverSafetyTimer || 0) + rawDt;
       const fallen = this.deadMatchFighter || this.fighters.find((f) => f && f.isDead);
       const fullDeathDur = fallen?.isColossalBoss ? 2.4 : PixelForge.DEATH_DURATION || 1.55;
-      const onFloor =
-        !fallen || fallen.isColossalBoss || fallen.y >= this.renderer.groundY - 2;
+      const targetFloorY =
+        this.isAdventureMode() && Number.isFinite(fallen?.groundY)
+          ? fallen.groundY
+          : this.renderer.groundY;
+      const onFloor = !fallen || fallen.isColossalBoss || fallen.y >= targetFloorY - 4;
+      const holdNeeded = this.isAdventureMode() && fallen && !fallen.isMonster ? 0.65 : 1.35;
       if (!fallen || ((fallen.deathTimer || 0) >= fullDeathDur && onFloor)) {
         this.postDeathHoldTimer = (this.postDeathHoldTimer || 0) + rawDt;
-        if (this.postDeathHoldTimer >= 1.35) {
+        if (this.postDeathHoldTimer >= holdNeeded) {
           this.revealVictoryOverlay();
         }
       }
+      if (this.victoryRevealPending && this.matchOverSafetyTimer >= 3.4) {
+        this.revealVictoryOverlay();
+      }
+    } else if (!this.isMatchOver || !this.victoryRevealPending) {
+      this.matchOverSafetyTimer = 0;
     }
 
     // Check Simultaneous Melee / Skill Blade Clash across opposing active fighters
     if (!this.isMatchOver && this.clashCooldown <= 0) {
-      const team1Active = activeFighters.filter((f) => f.team === 1);
-      const team2Active = activeFighters.filter((f) => f.team === 2);
       let clashed = false;
-      for (const f1 of team1Active) {
+      for (let i = 0; i < this.fighters.length; i++) {
         if (clashed) break;
+        const f1 = this.fighters[i];
+        if (!f1 || f1.isDead || f1.isBenched || f1.team !== 1) continue;
         const f1Swinging =
           (f1.state === 'AUTO_ATTACK' || f1.state === 'SKILL') &&
           f1.stateTimer >= 0.14 &&
           f1.stateTimer <= 0.42;
         if (!f1Swinging) continue;
-        for (const f2 of team2Active) {
+        for (let j = 0; j < this.fighters.length; j++) {
+          const f2 = this.fighters[j];
+          if (!f2 || f2.isDead || f2.isBenched || f2.team !== 2) continue;
           const f2Swinging =
             (f2.state === 'AUTO_ATTACK' || f2.state === 'SKILL') &&
             f2.stateTimer >= 0.14 &&
@@ -4075,13 +4286,44 @@ class Game {
   }
 
   loop(now) {
-    requestAnimationFrame((t) => this.loop(t));
+    this._rafId = 0;
+    if (this._appSuspended || (typeof document !== 'undefined' && document.hidden)) {
+      return;
+    }
+    this.startLoop();
 
-    const rawDt = Math.min(0.05, Math.max(0.001, (now - this.lastTime) / 1000));
+    // Rock-solid 60.0 FPS VSync-aligned frame pacer:
+    // - On 120Hz ProMotion (8.33ms ticks), odd ticks (~8.33ms < 15.2ms) return with zero CPU/GPU work
+    //   and even ticks (~16.67ms >= 15.2ms) advance cleanly at locked 60.0 FPS without drift.
+    // - On native 60Hz displays (16.67ms ticks, even with +-1.4ms VSync jitter), every tick runs!
+    const TARGET_FRAME_MS = 1000 / 60;
+    const PACE_THRESHOLD_MS = 15.2;
+    if (this._lastPacedTime > 0) {
+      const elapsed = now - this._lastPacedTime;
+      if (elapsed < PACE_THRESHOLD_MS) {
+        return;
+      }
+      if (elapsed > 50) {
+        this._lastPacedTime = now;
+      } else if (elapsed >= TARGET_FRAME_MS) {
+        this._lastPacedTime = now - (elapsed % TARGET_FRAME_MS);
+      } else {
+        this._lastPacedTime += TARGET_FRAME_MS;
+      }
+    } else {
+      this._lastPacedTime = now;
+    }
+
+    const rawDt =
+      this.lastTime > 0
+        ? Math.min(0.05, Math.max(0.001, (now - this.lastTime) / 1000))
+        : 1 / 60;
     this.lastTime = now;
 
     if (this.isLandingOpen) {
-      this.renderChampionPreviews(now);
+      if (this.landingStep === 'roster') {
+        this.renderChampionPreviews(now);
+      }
       return;
     }
 

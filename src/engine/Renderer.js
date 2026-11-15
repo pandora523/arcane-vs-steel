@@ -64,6 +64,8 @@ export class Renderer {
     }
     this.mobileFullZoomOut = savedFullZoom;
     this._stageUpperVaultCache = new Map();
+    this._cachedHudBottomY = 0;
+    this._hudBottomCacheAt = -1;
 
     this.worldWidth = 1200;
     this.groundY = 520;
@@ -125,13 +127,49 @@ export class Renderer {
     window.addEventListener('resize', () => this.resize());
   }
 
-  releaseStageCutoutCaches() {
+  _releaseCanvas(c) {
+    if (c) {
+      c.width = 0;
+      c.height = 0;
+    }
+  }
+
+  releaseStageCutoutCaches(includeAdventure = true) {
+    this._releaseCanvas(this.flameOnlyCanvas);
+    this._releaseCanvas(this.boneyardFlameCanvas);
+    this._releaseCanvas(this.sylvanWaterfallCanvas);
+    this._releaseCanvas(this.infernoMagmaCanvas);
+    this._releaseCanvas(this.shogunateInfernoFlameCanvas);
     this.flameOnlyCanvas = null;
     this.boneyardFlameCanvas = null;
     this.sylvanWaterfallCanvas = null;
     this.infernoMagmaCanvas = null;
     this.shogunateInfernoFlameCanvas = null;
-    if (this._stageUpperVaultCache) this._stageUpperVaultCache.clear();
+    if (this._stageUpperVaultCache) {
+      for (const c of this._stageUpperVaultCache.values()) {
+        this._releaseCanvas(c);
+      }
+      this._stageUpperVaultCache.clear();
+    }
+    if (this._stageWingCompositeCache) {
+      for (const entry of this._stageWingCompositeCache.values()) {
+        this._releaseCanvas(entry?.canvas);
+      }
+      this._stageWingCompositeCache.clear();
+    }
+    if (this._avsStageMosaic?.canvas) {
+      this._releaseCanvas(this._avsStageMosaic.canvas);
+      this._avsStageMosaic = null;
+    }
+    if (this._avsGodRayCanvas?.canvas) {
+      this._releaseCanvas(this._avsGodRayCanvas.canvas);
+      this._avsGodRayCanvas = null;
+    }
+    if (this._godRayGradCache) this._godRayGradCache.clear();
+    if (this._sanctuaryRayGradCache) this._sanctuaryRayGradCache.clear();
+    if (includeAdventure) {
+      AdventureMapRenderer.clearBloomCache?.();
+    }
   }
 
   resetStageOverrides() {
@@ -407,15 +445,24 @@ export class Renderer {
   }
 
   getMobileLandscapeFixedZoom(colossalBoss = false) {
-    const fullStageW = this.adventureMode ? 1420 : 1360;
-    const fullStageH = this.adventureMode ? 710 : 690;
+    if (this.adventureMode) {
+      const fullStageW = 1760;
+      const fullStageH = 880;
+      const baseWide = Math.max(0.38, Math.min(this.width / fullStageW, this.height / fullStageH));
+      return colossalBoss ? Math.min(baseWide, 0.44) : baseWide;
+    }
+    const fullStageW = 1360;
+    const fullStageH = 690;
     const baseWide = Math.max(0.46, Math.min(this.width / fullStageW, this.height / fullStageH));
     return colossalBoss ? Math.min(baseWide, 0.52) : baseWide;
   }
 
   getMobilePortraitFixedZoom(colossalBoss = false) {
-    const fullStageW = this.adventureMode ? (colossalBoss ? 1360 : 1280) : 1260;
-    return Math.max(0.26, Math.min(0.46, this.width / fullStageW));
+    if (this.adventureMode) {
+      const fullStageW = colossalBoss ? 1720 : 1600;
+      return Math.max(0.21, Math.min(0.46, this.width / fullStageW));
+    }
+    return Math.max(0.26, Math.min(0.46, this.width / 1260));
   }
 
   setMobileFullZoomOut(enabled) {
@@ -434,11 +481,43 @@ export class Renderer {
         this.zoom = this.getMobilePortraitFixedZoom(false);
       }
     } else if (this.isMobile) {
-      this.zoom = Math.max(0.52, Math.min(0.85, this.width / 780));
+      this.zoom = this.adventureMode
+        ? Math.max(0.42, Math.min(0.68, this.width / 980))
+        : Math.max(0.52, Math.min(0.85, this.width / 780));
     }
   }
 
+  getHudBottomY() {
+    const fallback = this.isMobilePortrait ? 142 : this.isMobileLandscape ? 84 : 104;
+    const nowSec =
+      typeof performance !== 'undefined' && typeof performance.now === 'function'
+        ? performance.now() * 0.001
+        : this.time || 0;
+    if (this._hudBottomCacheAt >= 0 && nowSec - this._hudBottomCacheAt < 0.25) {
+      return this._cachedHudBottomY > 20 ? this._cachedHudBottomY : fallback;
+    }
+    let measured = 0;
+    try {
+      if (typeof document !== 'undefined' && typeof document.querySelector === 'function') {
+        const el = document.querySelector('.hud-top');
+        if (el) {
+          const val = (Number(el.offsetTop) || 0) + (Number(el.offsetHeight) || 0);
+          if (Number.isFinite(val) && val > 20) {
+            measured = Math.round(val);
+          }
+        }
+      }
+    } catch {
+      // Ignore DOM measurement errors in headless environments
+    }
+    this._cachedHudBottomY = measured;
+    this._hudBottomCacheAt = nowSec;
+    return measured > 20 ? measured : fallback;
+  }
+
   resize() {
+    this._cachedHudBottomY = 0;
+    this._hudBottomCacheAt = -1;
     const isCssRotated =
       typeof document !== 'undefined' &&
       Boolean(document.documentElement?.classList?.contains('is-css-rotated-landscape'));
@@ -663,7 +742,9 @@ export class Renderer {
           : (minX + maxX) * 0.5;
       const rawHorizSpan =
         Math.abs(maxX - minX) + (colossalBoss ? 180 : validFighters.length > 2 ? 380 : 340);
-      const horizSpan = this.adventureMode ? Math.min(1220, Math.max(820, rawHorizSpan)) : rawHorizSpan;
+      const horizSpan = this.adventureMode
+        ? Math.min(1680, Math.max(1160, rawHorizSpan + 240))
+        : rawHorizSpan;
       const dist = Math.max(horizSpan, maxAirLift * 1.48 + 340);
 
       const lockWideMobileZoom = Boolean(
@@ -672,14 +753,22 @@ export class Renderer {
       let targetZoom;
       if (lockWideMobileZoom && this.isMobileLandscape) {
         // Mobile Landscape (Full Zoom ON): ZERO camera zoom-in — constant wide full-stage viewport fit
-        targetZoom = this.getMobileLandscapeFixedZoom(false);
+        targetZoom = this.getMobileLandscapeFixedZoom(Boolean(colossalBoss));
       } else if (lockWideMobileZoom && this.isMobilePortrait) {
-        // Mobile Portrait (Full Zoom ON): FULL stage zoom-out — fits entire 1260-1360px arena width with zero dynamic zoom-in cropping!
+        // Mobile Portrait (Full Zoom ON): FULL stage zoom-out — fits entire arena width with zero dynamic zoom-in cropping!
         targetZoom = this.getMobilePortraitFixedZoom(Boolean(colossalBoss));
-      } else {
-        const maxSpanW = this.adventureMode ? 1280 : this.worldWidth;
+      } else if (this.adventureMode) {
+        const maxSpanW = 1740;
         const fitScaleX = this.width / Math.max(620, Math.min(maxSpanW, dist));
-        const fitScaleY = this.height / (this.adventureMode ? 760 : 720);
+        const fitScaleY = this.height / 940;
+        targetZoom = Math.min(fitScaleX, fitScaleY);
+        const minZoomCap = colossalBoss ? 0.38 : 0.44;
+        const maxZoomCap = this.isMobile ? 0.68 : 0.80;
+        targetZoom = Math.max(minZoomCap, Math.min(maxZoomCap, targetZoom));
+      } else {
+        const maxSpanW = this.worldWidth;
+        const fitScaleX = this.width / Math.max(620, Math.min(maxSpanW, dist));
+        const fitScaleY = this.height / 720;
         targetZoom = Math.min(fitScaleX, fitScaleY * 1.15);
         const minZoomCap = colossalBoss ? 0.44 : 0.52;
         const maxZoomCap = this.isMobile ? 0.85 : 1.12;
@@ -912,7 +1001,10 @@ export class Renderer {
     const depthCmp =
       this._depthSortCmp ||
       (this._depthSortCmp = (a, b) => {
-        if (a.isBenched !== b.isBenched) return a.isBenched ? -1 : 1;
+        if (Boolean(a.isBenched) !== Boolean(b.isBenched)) return a.isBenched ? -1 : 1;
+        if (Boolean(a.isColossalBoss) !== Boolean(b.isColossalBoss)) {
+          return a.isColossalBoss ? -1 : 1;
+        }
         const aGy = Number.isFinite(a.groundY) ? a.groundY : a.y;
         const bGy = Number.isFinite(b.groundY) ? b.groundY : b.y;
         return aGy - bGy || a.y - b.y;
@@ -1224,6 +1316,8 @@ export class Renderer {
     sctx.imageSmoothingEnabled = false;
     sctx.drawImage(img, 0, 0, srcW, sampleH, 0, 0, srcW, sampleH);
     const srcData = sctx.getImageData(0, 0, srcW, sampleH).data;
+    sampleCanvas.width = 0;
+    sampleCanvas.height = 0;
 
     const vaultCanvas = document.createElement('canvas');
     vaultCanvas.width = srcW;
@@ -1234,7 +1328,7 @@ export class Renderer {
     const outImg = vctx.getImageData(0, 0, srcW, vaultH);
     const out = outImg.data;
 
-    // 1. Extract stage-authentic center sky palette (`x in [0.33..0.67]`, `y in [0..19]`)
+    // 1. Extract stage-authentic muted upper vault palette (`x in [0.33..0.67]`, `y in [0..19]`)
     const xStart = Math.floor(srcW * 0.33);
     const xEnd = Math.ceil(srcW * 0.67);
     const skySamples = [];
@@ -1253,33 +1347,16 @@ export class Renderer {
       skySamples.length > 0
         ? skySamples[Math.min(skySamples.length - 1, Math.max(0, Math.floor(skySamples.length * p)))]
         : fb;
-    const p20 = pickPct(0.20, { r: 10, g: 16, b: 32, lum: 15 });
-    const p50 = pickPct(0.50, { r: 18, g: 28, b: 52, lum: 26 });
-    const p88 = pickPct(0.88, { r: 44, g: 68, b: 108, lum: 64 });
+    const p20 = pickPct(0.20, { r: 8, g: 12, b: 24, lum: 12 });
 
-    const skyMid = [
-      Math.round(p50.r * 0.78 + 4 * 0.22),
-      Math.round(p50.g * 0.78 + 5 * 0.22),
-      Math.round(p50.b * 0.78 + 10 * 0.22)
-    ];
     const skyUpper = [
-      Math.round(p20.r * 0.48 + 4 * 0.52),
-      Math.round(p20.g * 0.48 + 5 * 0.52),
-      Math.round(p20.b * 0.48 + 10 * 0.52)
+      Math.round(p20.r * 0.44 + 4 * 0.56),
+      Math.round(p20.g * 0.44 + 5 * 0.56),
+      Math.round(p20.b * 0.44 + 10 * 0.56)
     ];
     const skyZenith = [4, 5, 10];
-    const nebulaTint = [
-      Math.min(255, Math.round(p88.r * 0.85 + 14)),
-      Math.min(255, Math.round(p88.g * 0.85 + 16)),
-      Math.min(255, Math.round(p88.b * 0.85 + 22))
-    ];
-    const starTint = [
-      Math.min(255, Math.max(168, p88.r + 78)),
-      Math.min(255, Math.max(176, p88.g + 78)),
-      Math.min(255, Math.max(196, p88.b + 84))
-    ];
 
-    // 2. Build smoothed horizon envelope from `y = 0..3` so sky colors transition without vertical stripes
+    // 2. Build smoothed horizon envelope from `y = 0..3` so vault colors diffuse without vertical stripes
     const colHorizonR = new Float32Array(srcW);
     const colHorizonG = new Float32Array(srcW);
     const colHorizonB = new Float32Array(srcW);
@@ -1360,33 +1437,20 @@ export class Renderer {
             ? 4 + Math.pow(outerFactor, 1.15) * 56 + (crownNoise - 0.35) * 24 * outerFactor
             : 3;
 
-        // Exponentially diffuse `colHorizon[x]` upward into unified deep night cosmos (`0` vertical streaks & `0` shelf!)
-        const horizonKeep = Math.exp(-h / 36);
-        const baseSkyR = skyUpper[0] * 0.72 + skyZenith[0] * 0.28;
-        const baseSkyG = skyUpper[1] * 0.72 + skyZenith[1] * 0.28;
-        const baseSkyB = skyUpper[2] * 0.72 + skyZenith[2] * 0.28;
+        // Exponentially diffuse `colHorizon[x]` upward into `#04050a` (`[4, 5, 10]`) darkforge vignette shadow (`0` stars!)
+        const horizonKeep = Math.exp(-h / 34);
+        const baseSkyR = skyUpper[0] * 0.68 + skyZenith[0] * 0.32;
+        const baseSkyG = skyUpper[1] * 0.68 + skyZenith[1] * 0.32;
+        const baseSkyB = skyUpper[2] * 0.68 + skyZenith[2] * 0.32;
         const seamR = colHorizonR[x] * horizonKeep + baseSkyR * (1 - horizonKeep);
         const seamG = colHorizonG[x] * horizonKeep + baseSkyG * (1 - horizonKeep);
         const seamB = colHorizonB[x] * horizonKeep + baseSkyB * (1 - horizonKeep);
 
-        const skyT = Math.min(1, Math.max(0, (h + bayer * 12) / (vaultH - 8)));
-        const zenithMix = Math.pow(skyT, 0.85);
+        const skyT = Math.min(1, Math.max(0, (h + bayer * 14) / (vaultH - 12)));
+        const zenithMix = Math.pow(skyT, 0.80);
         let sr = seamR + (skyZenith[0] - seamR) * zenithMix;
         let sg = seamG + (skyZenith[1] - seamG) * zenithMix;
         let sb = seamB + (skyZenith[2] - seamB) * zenithMix;
-
-        // Subtle pixel-stepped celestial cloud / aurora / ember haze bands in mid-vault
-        const cloudField =
-          valueNoise2D(x * 0.016 + 3.1, h * 0.038 + 1.7) * 0.68 +
-          valueNoise2D(x * 0.042 + 11.4, h * 0.085) * 0.32;
-        const colLum = 0.299 * seamR + 0.587 * seamG + 0.114 * seamB;
-        const cloudBand = Math.sin(Math.min(1, h / 185) * Math.PI) * Math.min(1, (colLum + 14) / 76);
-        if (cloudField + bayer * 0.22 > 0.64 && cloudBand > 0.10) {
-          const cw = Math.min(0.22, (cloudField - 0.58) * 0.45 * cloudBand);
-          sr += (nebulaTint[0] - sr) * cw;
-          sg += (nebulaTint[1] - sg) * cw;
-          sb += (nebulaTint[2] - sb) * cw;
-        }
 
         // Blend organic inward-arching canopy / pillar stone clumps near the lower seam (`h < archReach`)
         if (h < archReach) {
@@ -1410,41 +1474,137 @@ export class Renderer {
           const dissolve = Math.max(0, Math.min(1, 1 - (h + bayer * 6) / Math.max(4, archReach)));
           const useCanopy = h <= 2 || dissolve > 0.42;
           if (useCanopy) {
-            const shade = 1 - Math.min(0.34, h * 0.0045);
+            const shade = 1 - Math.min(0.40, h * 0.0052);
             sr = cr * shade * dissolve + sr * (1 - dissolve);
             sg = cg * shade * dissolve + sg * (1 - dissolve);
             sb = cb * shade * dissolve + sb * (1 - dissolve);
           }
-        } else if (h > 18 && colLum < 120) {
-          // Crisp 1x1 & 2x2 pixel stars / celestial embers in open night sky
-          const cellX = x >> 1;
-          const cellY = vy >> 1;
-          const starRoll = hash2(cellX + 911, cellY + 353);
-          if (starRoll > 0.9945) {
-            const subX = x & 1;
-            const subY = vy & 1;
-            const isCross = starRoll > 0.9982;
-            if ((subX === 0 && subY === 0) || (isCross && (subX === 0 || subY === 0))) {
-              const fadeTop = Math.min(1, (vaultH - h) / 48);
-              const bright = subX === 0 && subY === 0 ? 0.92 * fadeTop : 0.46 * fadeTop;
-              sr = sr + (starTint[0] - sr) * bright;
-              sg = sg + (starTint[1] - sg) * bright;
-              sb = sb + (starTint[2] - sb) * bright;
-            }
-          }
         }
 
-        // Quantize to crisp 6-bit cel steps so sky bands feel 100% authentic pixel art
-        out[outIdx] = Math.max(0, Math.min(255, Math.round(sr / 3) * 3));
-        out[outIdx + 1] = Math.max(0, Math.min(255, Math.round(sg / 3) * 3));
-        out[outIdx + 2] = Math.max(0, Math.min(255, Math.round(sb / 3) * 3));
+        // 4x4 Bayer dithering + quantized 6-bit cel steps anchored cleanly onto `#04050a` (`[4, 5, 10]`)
+        const ditherAmt = (1 - zenithMix) * 2.2;
+        out[outIdx] = Math.max(0, Math.min(255, 4 + Math.round((sr + bayer * ditherAmt - 4) / 3) * 3));
+        out[outIdx + 1] = Math.max(0, Math.min(255, 5 + Math.round((sg + bayer * ditherAmt - 5) / 3) * 3));
+        out[outIdx + 2] = Math.max(0, Math.min(255, 10 + Math.round((sb + bayer * ditherAmt - 10) / 3) * 3));
         out[outIdx + 3] = 255;
       }
     }
 
     vctx.putImageData(outImg, 0, 0);
+    if (this._stageUpperVaultCache.size >= 4) {
+      const oldestKey = this._stageUpperVaultCache.keys().next().value;
+      this._releaseCanvas(this._stageUpperVaultCache.get(oldestKey));
+      this._stageUpperVaultCache.delete(oldestKey);
+    }
     this._stageUpperVaultCache.set(cacheKey, vaultCanvas);
     return vaultCanvas;
+  }
+
+  getOrBakeStageWingComposite(img) {
+    if (!img || !img.complete || img.naturalWidth <= 0 || typeof document === 'undefined') {
+      return null;
+    }
+    if (!this._stageWingCompositeCache) {
+      this._stageWingCompositeCache = new Map();
+    }
+    const cacheKey = img.src || img;
+    const existing = this._stageWingCompositeCache.get(cacheKey);
+    if (existing && existing.canvas && existing.canvas.width > 0) {
+      return existing;
+    }
+
+    const srcW = img.naturalWidth || 640;
+    const srcH = img.naturalHeight || 360;
+    const upperVault = this.getOrBakeStageUpperVault(img);
+    const vaultH = upperVault ? upperVault.height : 0;
+    const floorSrcH = Math.min(srcH, Math.ceil((520 * srcH) / 1080) + 2);
+    const compW = srcW * 3;
+    const compH = vaultH + srcH + floorSrcH;
+
+    const compCanvas = document.createElement('canvas');
+    compCanvas.width = compW;
+    compCanvas.height = compH;
+    const cctx = compCanvas.getContext('2d');
+    if (!cctx) {
+      this._releaseCanvas(compCanvas);
+      return null;
+    }
+    cctx.imageSmoothingEnabled = false;
+
+    if (upperVault && vaultH > 0) {
+      cctx.save();
+      cctx.translate(srcW, 0);
+      cctx.scale(-1, 1);
+      cctx.drawImage(upperVault, 0, 0, srcW, vaultH);
+      cctx.restore();
+
+      cctx.drawImage(upperVault, srcW, 0, srcW, vaultH);
+
+      cctx.save();
+      cctx.translate(srcW * 3, 0);
+      cctx.scale(-1, 1);
+      cctx.drawImage(upperVault, 0, 0, srcW, vaultH);
+      cctx.restore();
+    }
+
+    cctx.save();
+    cctx.translate(srcW, vaultH);
+    cctx.scale(-1, 1);
+    cctx.drawImage(img, 0, 0, srcW, srcH);
+    cctx.restore();
+
+    cctx.drawImage(img, srcW, vaultH, srcW, srcH);
+
+    cctx.save();
+    cctx.translate(srcW * 3, vaultH);
+    cctx.scale(-1, 1);
+    cctx.drawImage(img, 0, 0, srcW, srcH);
+    cctx.restore();
+
+    const mirrorBottomY = vaultH + srcH * 2;
+    cctx.save();
+    cctx.translate(srcW, mirrorBottomY);
+    cctx.scale(-1, -1);
+    cctx.drawImage(img, 0, 0, srcW, srcH);
+    cctx.restore();
+
+    cctx.save();
+    cctx.translate(srcW, mirrorBottomY);
+    cctx.scale(1, -1);
+    cctx.drawImage(img, 0, 0, srcW, srcH);
+    cctx.restore();
+
+    cctx.save();
+    cctx.translate(srcW * 3, mirrorBottomY);
+    cctx.scale(-1, -1);
+    cctx.drawImage(img, 0, 0, srcW, srcH);
+    cctx.restore();
+
+    const fadeTop = vaultH + srcH - (12 * srcH) / 1080;
+    const fadeBot = vaultH + srcH + (520 * srcH) / 1080;
+    const floorFade = cctx.createLinearGradient(0, fadeTop, 0, fadeBot);
+    floorFade.addColorStop(0, 'rgba(4, 5, 10, 0)');
+    floorFade.addColorStop(0.46, 'rgba(4, 5, 10, 0.84)');
+    floorFade.addColorStop(1, '#04050a');
+    cctx.fillStyle = floorFade;
+    cctx.fillRect(0, fadeTop, compW, compH - fadeTop + 1);
+
+    if (this._stageWingCompositeCache.size >= 2) {
+      const oldestKey = this._stageWingCompositeCache.keys().next().value;
+      const evicted = this._stageWingCompositeCache.get(oldestKey);
+      this._releaseCanvas(evicted?.canvas);
+      this._stageWingCompositeCache.delete(oldestKey);
+    }
+
+    const entry = {
+      canvas: compCanvas,
+      srcW,
+      srcH,
+      vaultH,
+      floorSrcH
+    };
+    this._stageWingCompositeCache.set(cacheKey, entry);
+    return entry;
   }
 
   drawHD2DArena(ctx, ww, gy) {
@@ -1468,6 +1628,31 @@ export class Renderer {
     const drawStageImageWithWings = (img, alpha = 1.0) => {
       if (!img || !img.complete || img.naturalWidth <= 0 || alpha <= 0.005) return;
       const bottomY = drawY + drawH;
+      const baked = this.getOrBakeStageWingComposite(img);
+      if (baked && baked.canvas && baked.canvas.width > 0) {
+        const scaleY = drawH / baked.srcH;
+        const vaultDrawH = Math.round(baked.vaultH * scaleY);
+        const floorDrawH = Math.round(baked.floorSrcH * scaleY);
+        const compDrawH = vaultDrawH + drawH + floorDrawH;
+        const compTopY = drawY - vaultDrawH;
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.fillStyle = '#04050a';
+        ctx.fillRect(drawX - drawW, compTopY - 960, drawW * 3, 964);
+        ctx.drawImage(baked.canvas, drawX - drawW, compTopY, drawW * 3, compDrawH);
+        if (bottomY + drawH + 4 > compTopY + compDrawH) {
+          ctx.fillRect(
+            drawX - drawW,
+            compTopY + compDrawH - 3,
+            drawW * 3,
+            bottomY + drawH + 8 - (compTopY + compDrawH)
+          );
+        }
+        ctx.restore();
+        return;
+      }
+
       const upperVault = this.getOrBakeStageUpperVault(img);
       const srcH = img.naturalHeight || 360;
       const vaultDrawH = upperVault
@@ -1533,11 +1718,15 @@ export class Renderer {
       ctx.drawImage(img, 0, 0, drawW, drawH);
       ctx.restore();
 
-      const floorFade = ctx.createLinearGradient(0, bottomY - 12, 0, bottomY + 520);
-      floorFade.addColorStop(0, 'rgba(4, 5, 10, 0)');
-      floorFade.addColorStop(0.46, 'rgba(4, 5, 10, 0.84)');
-      floorFade.addColorStop(1, '#04050a');
-      ctx.fillStyle = floorFade;
+      if (this._floorFadeGradBottomY !== bottomY || !this._floorFadeGrad) {
+        const floorFade = ctx.createLinearGradient(0, bottomY - 12, 0, bottomY + 520);
+        floorFade.addColorStop(0, 'rgba(4, 5, 10, 0)');
+        floorFade.addColorStop(0.46, 'rgba(4, 5, 10, 0.84)');
+        floorFade.addColorStop(1, '#04050a');
+        this._floorFadeGrad = floorFade;
+        this._floorFadeGradBottomY = bottomY;
+      }
+      ctx.fillStyle = this._floorFadeGrad;
       ctx.fillRect(drawX - drawW, bottomY - 12, drawW * 3, drawH + 16);
 
       ctx.restore();
@@ -2722,15 +2911,23 @@ export class Renderer {
     if (this.glowGold) ctx.drawImage(this.glowGold, sanctuaryCx - 210, roseY - 160, 420, 320);
 
     // 2. 5 Soft Diagonal Heavenly Sanctuary God-Ray Shafts Streaming Down from the Sky Breach
+    if (!this._sanctuaryRayGradCache) this._sanctuaryRayGradCache = new Map();
     for (let i = -2; i <= 2; i++) {
       const topX = sanctuaryCx - 80 + i * 105;
-      const botX = sanctuaryCx + 40 + i * 165 + Math.sin(t * 1.8 + i) * 18;
+      const midBotX = sanctuaryCx + 40 + i * 165;
+      const botX = midBotX + Math.sin(t * 1.8 + i) * 18;
       const rayW = i === 0 ? 92 : 64;
-      const rayGrad = ctx.createLinearGradient(topX, drawY + 30, botX, gy + 12);
-      rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-      rayGrad.addColorStop(0.22, i === 0 ? 'rgba(255, 255, 255, 0.28)' : 'rgba(125, 211, 252, 0.20)');
-      rayGrad.addColorStop(0.65, 'rgba(56, 189, 248, 0.10)');
-      rayGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      const gradKey = `${sanctuaryCx}:${drawY}:${gy}:${i}`;
+      let rayGrad = this._sanctuaryRayGradCache.get(gradKey);
+      if (!rayGrad) {
+        if (this._sanctuaryRayGradCache.size >= 15) this._sanctuaryRayGradCache.clear();
+        rayGrad = ctx.createLinearGradient(topX, drawY + 30, midBotX, gy + 12);
+        rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        rayGrad.addColorStop(0.22, i === 0 ? 'rgba(255, 255, 255, 0.28)' : 'rgba(125, 211, 252, 0.20)');
+        rayGrad.addColorStop(0.65, 'rgba(56, 189, 248, 0.10)');
+        rayGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+        this._sanctuaryRayGradCache.set(gradKey, rayGrad);
+      }
       ctx.globalAlpha = alpha * (0.72 + 0.22 * Math.sin(t * 3.2 + i * 1.3));
       ctx.fillStyle = rayGrad;
       ctx.beginPath();
@@ -4588,11 +4785,18 @@ export class Renderer {
       const topY = gy - 545;
       const botY = this.adventureMode ? 684 : gy + 16;
       const beamAlpha = baseAlpha + 0.025 * Math.sin(t * 2.1 + s * 1.3);
-      const grad = ctx.createLinearGradient(topX, topY, botX, botY);
-      grad.addColorStop(0, `rgba(${topRgb}, 0)`);
-      grad.addColorStop(0.24, `rgba(${topRgb}, 1)`);
-      grad.addColorStop(0.68, `rgba(${midRgb}, 0.52)`);
-      grad.addColorStop(1, `rgba(${midRgb}, 0)`);
+      if (!this._godRayGradCache) this._godRayGradCache = new Map();
+      const gradKey = `${topY}:${botY}:${topRgb}:${midRgb}`;
+      let grad = this._godRayGradCache.get(gradKey);
+      if (!grad) {
+        if (this._godRayGradCache.size >= 64) this._godRayGradCache.clear();
+        grad = ctx.createLinearGradient(0, topY, 0, botY);
+        grad.addColorStop(0, `rgba(${topRgb}, 0)`);
+        grad.addColorStop(0.24, `rgba(${topRgb}, 1)`);
+        grad.addColorStop(0.68, `rgba(${midRgb}, 0.52)`);
+        grad.addColorStop(1, `rgba(${midRgb}, 0)`);
+        this._godRayGradCache.set(gradKey, grad);
+      }
 
       ctx.fillStyle = grad;
       const wTop = s === 2 ? 78 : 58;
@@ -5508,36 +5712,49 @@ export class Renderer {
       }
       ctx.drawImage(this._vignetteCanvas, 0, 0, w, h);
     } else {
-      const rad = Math.hypot(w * 0.5, h * 0.5);
-      const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, rad * 0.52, w * 0.5, h * 0.5, rad * 1.02);
-      vig.addColorStop(0, 'rgba(2, 3, 7, 0)');
-      vig.addColorStop(1, 'rgba(2, 3, 7, 0.62)');
-      ctx.fillStyle = vig;
+      if (!this._fallbackVigGrads || this._fbVigW !== w || this._fbVigH !== h) {
+        const rad = Math.hypot(w * 0.5, h * 0.5);
+        const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, rad * 0.52, w * 0.5, h * 0.5, rad * 1.02);
+        vig.addColorStop(0, 'rgba(2, 3, 7, 0)');
+        vig.addColorStop(1, 'rgba(2, 3, 7, 0.62)');
+
+        const topG = ctx.createLinearGradient(0, 0, 0, h * 0.18);
+        topG.addColorStop(0, 'rgba(2, 3, 7, 0.72)');
+        topG.addColorStop(1, 'rgba(2, 3, 7, 0)');
+
+        const botG = ctx.createLinearGradient(0, h * 0.80, 0, h);
+        botG.addColorStop(0, 'rgba(2, 3, 7, 0)');
+        botG.addColorStop(1, 'rgba(2, 3, 7, 0.80)');
+
+        this._fallbackVigGrads = { vig, topG, botG };
+        this._fbVigW = w;
+        this._fbVigH = h;
+      }
+      ctx.fillStyle = this._fallbackVigGrads.vig;
       ctx.fillRect(0, 0, w, h);
-
-      const topG = ctx.createLinearGradient(0, 0, 0, h * 0.18);
-      topG.addColorStop(0, 'rgba(2, 3, 7, 0.72)');
-      topG.addColorStop(1, 'rgba(2, 3, 7, 0)');
-      ctx.fillStyle = topG;
+      ctx.fillStyle = this._fallbackVigGrads.topG;
       ctx.fillRect(0, 0, w, h * 0.18);
-
-      const botG = ctx.createLinearGradient(0, h * 0.80, 0, h);
-      botG.addColorStop(0, 'rgba(2, 3, 7, 0)');
-      botG.addColorStop(1, 'rgba(2, 3, 7, 0.80)');
-      ctx.fillStyle = botG;
+      ctx.fillStyle = this._fallbackVigGrads.botG;
       ctx.fillRect(0, h * 0.80, w, h * 0.20);
     }
 
-    // 1. High-Impact Stage Phenomenon & Blessing Announcement (Upper Center Sky — Crystal-Clear Blessing Callout!)
+    const hudBottomY = this.getHudBottomY();
+    const safeTopY = hudBottomY + (this.adventureMode && this.adventureHook?.active ? 46 : 14);
+
+    // 1. High-Impact Stage Phenomenon & Blessing Announcement (Lowered cleanly below `.hud-top` / Adventure Strip!)
     if (this.stageEventBannerTimer > 0 && !(this.cutInTimer > 0)) {
       const maxT = 3.8;
       const p = Math.max(0, Math.min(1, 1 - this.stageEventBannerTimer / maxT));
       const alpha = p < 0.08 ? p / 0.08 : p > 0.84 ? (1 - p) / 0.16 : 1;
       const slamScale = 1 + Math.max(0, 1 - p / 0.12) * 0.28;
       const cx = Math.round(w * 0.5);
-      const cy = Math.round(h * 0.185);
-      const rx = Math.min(w * 0.48, 490);
-      const ry = this.isMobile ? 48 : 66;
+      const ry = this.isMobileLandscape ? 34 : this.isMobile ? 42 : 56;
+      const cy = Math.max(
+        Math.round(safeTopY + ry * 1.18),
+        Math.round(h * (this.isMobileLandscape ? 0.34 : 0.25))
+      );
+      const rx = Math.min(Math.round(w * 0.48), 490);
+      const maxWidth = Math.max(180, Math.round((w - 24) / slamScale));
       const evCol = this.stageEventColor || '#facc15';
 
       ctx.save();
@@ -5548,11 +5765,14 @@ export class Renderer {
       // Soft radial feathered obsidian-elemental veil (fades smoothly to 0 on all edges, zero box!)
       ctx.save();
       ctx.scale(rx, ry);
-      const veil = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1.0);
-      veil.addColorStop(0, 'rgba(3, 6, 15, 0.90)');
-      veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.64)');
-      veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
-      ctx.fillStyle = veil;
+      if (!ctx.__avsEventVeilGrad) {
+        const veil = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1.0);
+        veil.addColorStop(0, 'rgba(3, 6, 15, 0.90)');
+        veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.64)');
+        veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
+        ctx.__avsEventVeilGrad = veil;
+      }
+      ctx.fillStyle = ctx.__avsEventVeilGrad;
       ctx.beginPath();
       ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
       ctx.fill();
@@ -5594,37 +5814,54 @@ export class Renderer {
       ctx.fill();
 
       // Top Line: Phenomenon Title
+      const titleText = String(this.stageEventTitle || 'STAGE PHENOMENON');
+      const baseTitlePx = this.isMobile ? 9 : 13;
+      const titlePx = Math.max(
+        7,
+        Math.min(baseTitlePx, Math.floor(maxWidth / Math.max(1, titleText.length * 1.02)))
+      );
       ctx.textAlign = 'center';
-      ctx.font = `${this.isMobile ? 9 : 13}px "Press Start 2P", monospace`;
+      ctx.font = `${titlePx}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(this.stageEventTitle || 'STAGE PHENOMENON', 2, -14);
-      ctx.fillText(this.stageEventTitle || 'STAGE PHENOMENON', -2, -14);
+      ctx.fillText(titleText, 2, -13, maxWidth);
+      ctx.fillText(titleText, -2, -13, maxWidth);
       ctx.fillStyle = evCol;
-      ctx.fillText(this.stageEventTitle || 'STAGE PHENOMENON', 0, -16);
+      ctx.fillText(titleText, 0, -15, maxWidth);
 
       // Bottom Line: HUGE, Unmistakable Active Blessing Headline
-      const blessText = this.stageEventSubtitle || '';
-      ctx.font = `${this.isMobile ? 11 : 18}px "Press Start 2P", monospace`;
+      const blessText = String(this.stageEventSubtitle || '');
+      const baseBlessPx = this.isMobile ? 11 : 18;
+      const blessPx =
+        blessText.length > 0
+          ? Math.max(
+              8,
+              Math.min(baseBlessPx, Math.floor(maxWidth / Math.max(1, blessText.length * 1.02)))
+            )
+          : baseBlessPx;
+      ctx.font = `${blessPx}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(blessText, 3, 27);
-      ctx.fillText(blessText, -2, 26);
-      ctx.fillText(blessText, 0, 28);
+      ctx.fillText(blessText, 3, 25, maxWidth);
+      ctx.fillText(blessText, -2, 24, maxWidth);
+      ctx.fillText(blessText, 0, 26, maxWidth);
       ctx.fillStyle = evCol;
-      ctx.fillText(blessText, 1, 25);
+      ctx.fillText(blessText, 1, 23, maxWidth);
       ctx.fillStyle = '#fef08a';
-      ctx.fillText(blessText, 0, 24);
+      ctx.fillText(blessText, 0, 22, maxWidth);
       ctx.restore();
     }
 
-    // 2. Clean Top-Center Overdrive Awakening Callout with Circular Hero Medallion Portrait (Tucked cleanly under the VS Diamond!)
+    // 2. Clean Top-Center Overdrive Awakening Callout with Circular Hero Medallion Portrait (Below `.hud-top` / Strip!)
     if (this.cutInTimer > 0) {
       const p = 1 - this.cutInTimer / (this.cutInMaxTimer || 1.05);
       const alpha = p < 0.07 ? p / 0.07 : p > 0.80 ? (1 - p) / 0.20 : 1;
       const slamScale = 1 + Math.max(0, 1 - p / 0.12) * 0.24;
       const cx = Math.round(w * 0.5);
-      const cy = this.isMobile ? 64 : 92;
-      const rx = this.isMobile ? 235 : 365;
-      const ry = this.isMobile ? 30 : 40;
+      const ry = this.isMobileLandscape ? 24 : this.isMobile ? 28 : 38;
+      const rx = Math.min(Math.round(w * 0.47), this.isMobile ? 216 : 365);
+      const cy = Math.max(
+        Math.round(safeTopY + ry * 1.22),
+        this.isMobileLandscape ? 116 : this.isMobile ? 168 : 158
+      );
       const elemCol = this.cutInColor || '#38bdf8';
       const assets = PixelForge.initAssets();
       const cutPort = PixelForge.ensureImage(assets[this.cutInHeroId || 'warrior']?.portrait);
@@ -5637,11 +5874,14 @@ export class Renderer {
       // Subtle feathered obsidian backdrop cushion strictly behind the text for 100% legibility (Zero screen wash-out!)
       ctx.save();
       ctx.scale(rx, ry);
-      const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
-      veil.addColorStop(0, 'rgba(3, 6, 15, 0.88)');
-      veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.52)');
-      veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
-      ctx.fillStyle = veil;
+      if (!ctx.__avsCutInVeilGrad) {
+        const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
+        veil.addColorStop(0, 'rgba(3, 6, 15, 0.88)');
+        veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.52)');
+        veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
+        ctx.__avsCutInVeilGrad = veil;
+      }
+      ctx.fillStyle = ctx.__avsCutInVeilGrad;
       ctx.beginPath();
       ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
       ctx.fill();
@@ -5657,11 +5897,37 @@ export class Renderer {
       ctx.fillStyle = lineG;
       ctx.fillRect(-rx * 0.76, -3, rx * 1.52, 2);
 
-      // Circular Hero Portrait Medallion on the left of the Cut-In Callout
-      const pR = this.isMobile ? 18 : 24;
-      const pCx = -rx * 0.56;
+      const eyebrow = String(
+        this.cutInEyebrow || `${(this.cutInName || 'CHAMPION').toUpperCase()} • OVERDRIVE ART`
+      );
+      const ultStr = String(this.cutInUltName || 'ULTIMATE ART');
+      const hasPort = Boolean(cutPort && cutPort.complete && cutPort.naturalWidth);
+      const pR = this.isMobile ? 16 : 24;
+      const maxTotalW = Math.max(180, Math.round((w - 24) / slamScale));
+      const cutMaxTextW = hasPort ? Math.max(140, maxTotalW - (pR * 2 + 12)) : maxTotalW;
+      const eyeFontPx = Math.max(
+        6,
+        Math.min(this.isMobile ? 7 : 10, Math.floor(cutMaxTextW / Math.max(1, eyebrow.length * 1.02)))
+      );
+      const ultFontPx = Math.max(
+        9,
+        Math.min(this.isMobile ? 12 : 19, Math.floor(cutMaxTextW / Math.max(1, ultStr.length * 1.02)))
+      );
+      const estTextW = Math.min(
+        cutMaxTextW,
+        Math.max(ultStr.length * ultFontPx, eyebrow.length * eyeFontPx)
+      );
+      const textShiftX = hasPort ? Math.round(pR + 5) : 0;
+      const pCx = hasPort
+        ? Math.max(
+            -Math.round(maxTotalW * 0.5) + pR + 2,
+            Math.min(-Math.round(rx * 0.46), textShiftX - Math.round(estTextW * 0.5) - pR - 8)
+          )
+        : -Math.round(rx * 0.56);
       const pCy = 2;
-      if (cutPort && cutPort.complete && cutPort.naturalWidth) {
+
+      // Circular Hero Portrait Medallion on the left of the Cut-In Callout
+      if (hasPort) {
         ctx.save();
         const pGlow = ctx.createRadialGradient(pCx, pCy, pR * 0.35, pCx, pCy, pR * 1.32);
         pGlow.addColorStop(0, '#fde047');
@@ -5680,31 +5946,28 @@ export class Renderer {
         ctx.restore();
       }
 
-      const textShiftX = cutPort ? Math.round(pR * 0.55) : 0;
       ctx.textAlign = 'center';
-      ctx.font = `${this.isMobile ? 7 : 10}px "Press Start 2P", monospace`;
-      const eyebrow =
-        this.cutInEyebrow || `${(this.cutInName || 'CHAMPION').toUpperCase()} • OVERDRIVE ART`;
+      ctx.font = `${eyeFontPx}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(eyebrow, textShiftX + 2, -9);
-      ctx.fillText(eyebrow, textShiftX - 2, -9);
+      ctx.fillText(eyebrow, textShiftX + 2, -9, cutMaxTextW);
+      ctx.fillText(eyebrow, textShiftX - 2, -9, cutMaxTextW);
       ctx.fillStyle = '#fde047';
-      ctx.fillText(eyebrow, textShiftX, -11);
+      ctx.fillText(eyebrow, textShiftX, -11, cutMaxTextW);
 
-      ctx.font = `${this.isMobile ? 12 : 19}px "Press Start 2P", monospace`;
+      ctx.font = `${ultFontPx}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
-      ctx.fillText(this.cutInUltName, textShiftX + 3, 21);
-      ctx.fillText(this.cutInUltName, textShiftX - 2, 20);
-      ctx.fillText(this.cutInUltName, textShiftX, 22);
+      ctx.fillText(ultStr, textShiftX + 3, 20, cutMaxTextW);
+      ctx.fillText(ultStr, textShiftX - 2, 19, cutMaxTextW);
+      ctx.fillText(ultStr, textShiftX, 21, cutMaxTextW);
       ctx.fillStyle = elemCol;
-      ctx.fillText(this.cutInUltName, textShiftX + 2, 19);
+      ctx.fillText(ultStr, textShiftX + 2, 18, cutMaxTextW);
       ctx.fillStyle = '#ffffff';
-      ctx.fillText(this.cutInUltName, textShiftX, 18);
+      ctx.fillText(ultStr, textShiftX, 17, cutMaxTextW);
 
       ctx.restore();
     }
 
-    // 3. Borderless Decisive K.O. Finisher Emblem (Feathered Golden Flare + Circular Medallion Portrait + Floating Typography)
+    // 3. Borderless Decisive K.O. Finisher Emblem (Lowered cleanly below `.hud-top` / Adventure Strip!)
     if (this.koZoomTimer > 0) {
       const p = 1 - this.koZoomTimer / (this.koMaxTimer || 1.35);
       const alpha = p < 0.08 ? p / 0.08 : Math.max(0, 1 - (p - 0.08) / 0.92);
@@ -5712,10 +5975,13 @@ export class Renderer {
       const winPort = PixelForge.ensureImage(assets[this.koWinnerHeroId || 'warrior']?.portrait);
 
       ctx.save();
-      const kw = Math.min(w - 24, 680);
-      const kh = this.isMobile ? 72 : 96;
+      const kw = Math.min(w - 20, 680);
+      const kh = this.isMobileLandscape ? 58 : this.isMobile ? 68 : 92;
       const kx = Math.round((w - kw) * 0.5);
-      const ky = Math.round(h * 0.135);
+      const ky = Math.max(
+        Math.round(safeTopY + 8),
+        Math.round(h * (this.isMobileLandscape ? 0.25 : 0.19))
+      );
       const kcx = Math.round(w * 0.5);
       const kcy = ky + Math.round(kh * 0.5);
       const koCol = this.koColor || '#facc15';
@@ -5727,11 +5993,14 @@ export class Renderer {
       ctx.save();
       ctx.translate(kcx, kcy);
       ctx.scale(kw * 0.55, kh * 0.65);
-      const koVeil = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1.0);
-      koVeil.addColorStop(0, 'rgba(4, 7, 15, 0.84)');
-      koVeil.addColorStop(0.6, 'rgba(8, 12, 24, 0.48)');
-      koVeil.addColorStop(1, 'rgba(4, 7, 15, 0)');
-      ctx.fillStyle = koVeil;
+      if (!ctx.__avsKoVeilGrad) {
+        const koVeil = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1.0);
+        koVeil.addColorStop(0, 'rgba(4, 7, 15, 0.84)');
+        koVeil.addColorStop(0.6, 'rgba(8, 12, 24, 0.48)');
+        koVeil.addColorStop(1, 'rgba(4, 7, 15, 0)');
+        ctx.__avsKoVeilGrad = koVeil;
+      }
+      ctx.fillStyle = ctx.__avsKoVeilGrad;
       ctx.beginPath();
       ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
       ctx.fill();
@@ -5745,13 +6014,15 @@ export class Renderer {
       koFlare.addColorStop(0.75, koCol);
       koFlare.addColorStop(1, 'rgba(250, 204, 21, 0)');
       ctx.fillStyle = koFlare;
-      ctx.fillRect(kx + 30, kcy + 3, kw - 60, 2);
+      ctx.fillRect(kx + 24, kcy + 3, Math.max(40, kw - 48), 2);
 
-      const pSz = kh - 12;
-      const pCx = kx + 28 + Math.round(pSz * 0.5);
+      const hasWinPort = Boolean(winPort && winPort.complete && winPort.naturalWidth);
+      const pSz = this.isMobilePortrait ? Math.min(46, kh - 18) : kh - 12;
+      const pPadLeft = this.isMobile ? 12 : 28;
+      const pCx = kx + pPadLeft + Math.round(pSz * 0.5);
       const pCy = kcy;
       const pR = Math.round(pSz * 0.48);
-      if (winPort && winPort.complete && winPort.naturalWidth) {
+      if (hasWinPort) {
         ctx.save();
         const pGlow = ctx.createRadialGradient(pCx, pCy, pR * 0.4, pCx, pCy, pR * 1.28);
         pGlow.addColorStop(0, '#fde047');
@@ -5770,27 +6041,43 @@ export class Renderer {
         ctx.restore();
       }
 
-      ctx.textAlign = 'center';
-      const kTextX = Math.round(kcx + pSz * 0.28);
-      ctx.font = `${this.isMobile ? 12 : 19}px "Press Start 2P", monospace`;
-      ctx.fillStyle = '#020617';
-      ctx.fillText('DECISIVE FINISH • K.O.!', kTextX + 3, kcy - 8 + 3);
-      ctx.fillText('DECISIVE FINISH • K.O.!', kTextX - 2, kcy - 8 + 2);
-      ctx.fillStyle = '#fde047';
-      ctx.fillText('DECISIVE FINISH • K.O.!', kTextX, kcy - 8);
+      const leftLimit = hasWinPort ? pCx + pR + 8 : kx + 8;
+      const rightLimit = kx + kw - 8;
+      const koMaxTextW = Math.max(140, rightLimit - leftLimit);
+      const kTextX = hasWinPort ? Math.round((leftLimit + rightLimit) * 0.5) : kcx;
+      const koTitleText = 'DECISIVE FINISH • K.O.!';
+      const koSubText = `${(this.koWinnerName || 'CHAMPION').toUpperCase()} CLAIMS THE SANCTUARY!`;
+      const koTitlePx = Math.max(
+        9,
+        Math.min(this.isMobile ? 12 : 19, Math.floor(koMaxTextW / (koTitleText.length * 1.02)))
+      );
+      const koSubPx = Math.max(
+        7,
+        Math.min(this.isMobile ? 8 : 11, Math.floor(koMaxTextW / Math.max(1, koSubText.length * 1.02)))
+      );
 
-      ctx.font = `${this.isMobile ? 8 : 11}px "Press Start 2P", monospace`;
+      ctx.textAlign = 'center';
+      ctx.font = `${koTitlePx}px "Press Start 2P", monospace`;
+      ctx.fillStyle = '#020617';
+      ctx.fillText(koTitleText, kTextX + 3, kcy - 7 + 3, koMaxTextW);
+      ctx.fillText(koTitleText, kTextX - 2, kcy - 7 + 2, koMaxTextW);
+      ctx.fillStyle = '#fde047';
+      ctx.fillText(koTitleText, kTextX, kcy - 7, koMaxTextW);
+
+      ctx.font = `${koSubPx}px "Press Start 2P", monospace`;
       ctx.fillStyle = '#020617';
       ctx.fillText(
-        `${(this.koWinnerName || 'CHAMPION').toUpperCase()} CLAIMS THE SANCTUARY!`,
+        koSubText,
         kTextX + 2,
-        kcy + (this.isMobile ? 18 : 24) + 2
+        kcy + (this.isMobile ? 16 : 22) + 2,
+        koMaxTextW
       );
       ctx.fillStyle = '#ffffff';
       ctx.fillText(
-        `${(this.koWinnerName || 'CHAMPION').toUpperCase()} CLAIMS THE SANCTUARY!`,
+        koSubText,
         kTextX,
-        kcy + (this.isMobile ? 18 : 24)
+        kcy + (this.isMobile ? 16 : 22),
+        koMaxTextW
       );
       ctx.restore();
     }

@@ -24,7 +24,7 @@ function getCachedVerticalGrad(ctx, slot, y0, y1, stopsKey, buildStops) {
  *
  * Renders the bespoke "Abyssal Eclipse Pilgrimage" 5-plane panoramic stage across
  * the expanded 9600px (`4 x 2400px` Realms) 2.5D campaign (`X: -inf..+inf`, walkable depth `Z/Y: 442..680`):
- *   - Plane 0 (`0.14x`): Upper Abyssal Star-Cosmos & Nebula Vault (`viewTop .. -240`)
+ *   - Plane 0: Biome-Weighted Darkforge Vault Shadow Fade (`viewTop .. -257`, `0` stars!)
  *   - Plane 1 (`0.26x`): `advVistaPano` (`1620x272`) + `ArcaneShaderFX`-crafted Pixel Overlay
  *                        Eclipse Corona Flares, Cascading Waterfall Foam, Spire Lightning & Volcano Vents
  *   - Plane 1.5 (`0.70x`): Mid-Chasm Drifting Canyon Mist & Stepped Pixel-Band Atmospheric Veils
@@ -1367,7 +1367,7 @@ export class AdventureMapRenderer {
   // MAIN BACKGROUND & CAUSEWAY RENDER PASS (Planes 0, 1, 1.5, 2, and 3)
   // ===========================================================================
   static render(ctx, renderer, _ww) {
-    const zoom = Math.max(0.20, renderer.zoom || 1);
+    const zoom = Math.max(0.18, renderer.zoom || 1);
     const camX = Number.isFinite(renderer.camX) ? renderer.camX : 600;
     const camY = Number.isFinite(renderer.camY) ? renderer.camY : 445;
     const screenAnchorY =
@@ -1380,8 +1380,8 @@ export class AdventureMapRenderer {
             ? 0.58
             : 0.68);
 
-    const viewLeft = Math.floor(camX - (renderer.width * 0.5) / zoom - 240);
-    const viewRight = Math.ceil(camX + (renderer.width * 0.5) / zoom + 240);
+    const viewLeft = Math.floor(camX - (renderer.width * 0.5) / zoom - 300);
+    const viewRight = Math.ceil(camX + (renderer.width * 0.5) / zoom + 300);
     const viewTop = Math.floor(camY - screenAnchorY / zoom - 260);
     const viewBot = Math.ceil(camY + (renderer.height - screenAnchorY) / zoom + 260);
     const viewW = viewRight - viewLeft;
@@ -1411,52 +1411,69 @@ export class AdventureMapRenderer {
     ctx.imageSmoothingEnabled = false;
 
     // =========================================================================
-    // PLANE 0 (`0.14x`): UPPER ABYSSAL COSMOS VAULT (`viewTop .. ARCH_WORLD_TOP_Y + 32`)
+    // PLANE 0: BIOME-WEIGHTED DARKFORGE ATMOSPHERIC SHADOW FADE (`0` STARS!)
     // =========================================================================
-    const skyTopY = Math.min(viewTop, -900);
-    const skyModeKey =
-      infernoAlpha > 0.5 ? 'inf' : isGlacialPerm ? 'glc' : isShogunatePerm ? 'shg' : 'def';
+    const skyTopY = Math.min(Math.floor(viewTop / 32) * 32, -928);
+    let rawAmbR =
+      13 * camWeights[0] + 9 * camWeights[1] + 20 * camWeights[2] + 28 * camWeights[3];
+    let rawAmbG =
+      18 * camWeights[0] + 24 * camWeights[1] + 13 * camWeights[2] + 12 * camWeights[3];
+    let rawAmbB =
+      32 * camWeights[0] + 24 * camWeights[1] + 30 * camWeights[2] + 14 * camWeights[3];
+    if (isGlacialPerm) {
+      rawAmbR = rawAmbR * 0.35 + 10 * 0.65;
+      rawAmbG = rawAmbG * 0.35 + 26 * 0.65;
+      rawAmbB = rawAmbB * 0.35 + 40 * 0.65;
+    } else if (isShogunatePerm) {
+      rawAmbR = rawAmbR * 0.45 + 14 * 0.55;
+      rawAmbG = rawAmbG * 0.45 + 18 * 0.55;
+      rawAmbB = rawAmbB * 0.45 + 34 * 0.55;
+    }
+    if (infernoAlpha > 0) {
+      rawAmbR += (34 - rawAmbR) * infernoAlpha;
+      rawAmbG += (12 - rawAmbG) * infernoAlpha;
+      rawAmbB += (14 - rawAmbB) * infernoAlpha;
+    }
+    const ambR = Math.round(rawAmbR / 2) * 2;
+    const ambG = Math.round(rawAmbG / 2) * 2;
+    const ambB = Math.round(rawAmbB / 2) * 2;
+    const seamR = Math.round(4 * 0.68 + ambR * 0.32);
+    const seamG = Math.round(5 * 0.68 + ambG * 0.32);
+    const seamB = Math.round(10 * 0.68 + ambB * 0.32);
+    const midVaultR = Math.round(4 * 0.35 + ambR * 0.65);
+    const midVaultG = Math.round(5 * 0.35 + ambG * 0.65);
+    const midVaultB = Math.round(10 * 0.35 + ambB * 0.65);
+
+    const skySpan = Math.max(1, ADVENTURE_ROAD_TOP_Y - skyTopY);
+    const darkCeilStop = Math.max(
+      0.04,
+      Math.min(0.70, (ARCH_WORLD_TOP_Y - 76 - skyTopY) / skySpan)
+    );
+    const archSeamStop = Math.max(
+      darkCeilStop + 0.02,
+      Math.min(0.80, (ARCH_WORLD_TOP_Y - 6 - skyTopY) / skySpan)
+    );
+    const midVaultStop = Math.max(
+      archSeamStop + 0.04,
+      Math.min(0.94, (ARCH_WORLD_TOP_Y + 320 - skyTopY) / skySpan)
+    );
+    const skyGradKey = `${ambR},${ambG},${ambB}`;
     const skyGrad = getCachedVerticalGrad(
       ctx,
       'sky',
       skyTopY,
       ADVENTURE_ROAD_TOP_Y,
-      skyModeKey,
+      skyGradKey,
       (g) => {
-        g.addColorStop(
-          0,
-          skyModeKey === 'inf' ? '#0c0507' : skyModeKey === 'glc' ? '#030918' : skyModeKey === 'shg' ? '#050816' : '#04060e'
-        );
-        g.addColorStop(
-          0.55,
-          skyModeKey === 'inf' ? '#1a0a0d' : skyModeKey === 'glc' ? '#071936' : skyModeKey === 'shg' ? '#0b1228' : '#080c1a'
-        );
-        g.addColorStop(
-          1,
-          skyModeKey === 'inf' ? '#261012' : skyModeKey === 'glc' ? '#0c284e' : skyModeKey === 'shg' ? '#121d38' : '#0d1326'
-        );
+        g.addColorStop(0, '#04050a');
+        g.addColorStop(darkCeilStop, '#04050a');
+        g.addColorStop(archSeamStop, `rgb(${seamR},${seamG},${seamB})`);
+        g.addColorStop(midVaultStop, `rgb(${midVaultR},${midVaultG},${midVaultB})`);
+        g.addColorStop(1, `rgb(${ambR},${ambG},${ambB})`);
       }
     );
     ctx.fillStyle = skyGrad;
     ctx.fillRect(viewLeft, skyTopY, viewW, ADVENTURE_ROAD_TOP_Y - skyTopY + 16);
-
-    // Subtle twinkling high-altitude stars above the colonnade (`y < -120`, `0.14x` parallax)
-    const starAnchor = (1 - 0.14) * camX;
-    const starSpan = 360;
-    const firstStar = Math.floor((viewLeft - starAnchor) / starSpan);
-    const lastStar = Math.ceil((viewRight - starAnchor) / starSpan);
-    for (let sc = firstStar; sc <= lastStar; sc++) {
-      for (let i = 0; i < 8; i++) {
-        const sy = Math.round(-680 + hash2D(sc, i * 5 + 3) * 520);
-        if (sy < viewTop || sy > ARCH_WORLD_TOP_Y + 40) continue;
-        const sx = Math.round(starAnchor + sc * starSpan + hash2D(sc, i * 5 + 1) * starSpan);
-        const tw = 0.4 + 0.6 * Math.sin(t * (2.1 + (i % 3) * 0.7) + sc + i);
-        ctx.globalAlpha = tw * 0.72;
-        ctx.fillStyle = i % 3 === 0 ? '#bae6fd' : '#f8fafc';
-        ctx.fillRect(sx, sy, i % 4 === 0 ? 3 : 2, i % 4 === 0 ? 3 : 2);
-      }
-    }
-    ctx.globalAlpha = 1;
 
     // =========================================================================
     // PLANE 1 (`0.26x`): FAR ABYSSAL ECLIPSE CANYON VISTA (`advVistaPano`, `1620x272`)
@@ -1487,17 +1504,18 @@ export class AdventureMapRenderer {
       isGlacialPerm
     );
 
-    // Top edge feather blending `advVistaPano` (`ARCH_WORLD_TOP_Y = -257`) into Plane 0 sky vault
-    const topBlendColor = infernoAlpha > 0.5 ? '#15080b' : '#070a16';
+    // Top edge feather blending `advVistaPano` (`ARCH_WORLD_TOP_Y = -257`) into Plane 0 darkforge vault shadow
+    const topBlendKey = `${seamR},${seamG},${seamB}`;
     const topBlendGrad = getCachedVerticalGrad(
       ctx,
       'topBlend',
-      ARCH_WORLD_TOP_Y - 6,
-      ARCH_WORLD_TOP_Y + 56,
-      topBlendColor,
+      ARCH_WORLD_TOP_Y - 8,
+      ARCH_WORLD_TOP_Y + 58,
+      topBlendKey,
       (g) => {
-        g.addColorStop(0, topBlendColor);
-        g.addColorStop(1, 'rgba(7, 10, 22, 0)');
+        g.addColorStop(0, `rgb(${seamR},${seamG},${seamB})`);
+        g.addColorStop(0.40, `rgba(${seamR},${seamG},${seamB},0.56)`);
+        g.addColorStop(1, `rgba(${seamR},${seamG},${seamB},0)`);
       }
     );
     ctx.fillStyle = topBlendGrad;
@@ -1805,7 +1823,7 @@ export class AdventureMapRenderer {
   // PLANE 4 (`1.24x`): NEAR-CAMERA FOREGROUND PARALLAX FRAMING & PIXEL OVERLAYS
   // ===========================================================================
   static renderForegroundDepth(ctx, renderer) {
-    const zoom = Math.max(0.20, renderer.zoom || 1);
+    const zoom = Math.max(0.18, renderer.zoom || 1);
     const camX = Number.isFinite(renderer.camX) ? renderer.camX : 600;
     const camY = Number.isFinite(renderer.camY) ? renderer.camY : 445;
     const screenAnchorY =
@@ -1818,8 +1836,8 @@ export class AdventureMapRenderer {
             ? 0.58
             : 0.68);
 
-    const viewLeft = Math.floor(camX - (renderer.width * 0.5) / zoom - 180);
-    const viewRight = Math.ceil(camX + (renderer.width * 0.5) / zoom + 180);
+    const viewLeft = Math.floor(camX - (renderer.width * 0.5) / zoom - 220);
+    const viewRight = Math.ceil(camX + (renderer.width * 0.5) / zoom + 220);
     const viewTop = Math.floor(camY - screenAnchorY / zoom - 120);
     const viewBot = Math.ceil(camY + (renderer.height - screenAnchorY) / zoom + 180);
 
@@ -1943,18 +1961,22 @@ export class AdventureMapRenderer {
         );
       }
 
-      // 4. High Overhead Vaulted Chain Silhouette (`y = viewTop .. -56`, visible on high aerial leaps!)
-      if (viewTop < -48) {
+      // 4. Overhead Vaulted Chain Silhouette anchored strictly under `ARCH_WORLD_TOP_Y` (`y = -248 .. -56`)
+      if (viewTop < -48 && z !== 1) {
         const sway = Math.round(Math.sin(t * 1.4 + f * 1.7) * 4);
-        const chainTop = Math.min(viewTop, -240);
+        const chainTop = Math.max(viewTop, ARCH_WORLD_TOP_Y + 10);
         for (let ly = chainTop; ly < -56; ly += 14) {
           const u = (ly - chainTop) / Math.max(1, -56 - chainTop);
+          const topFade = Math.min(1, (ly - (ARCH_WORLD_TOP_Y + 6)) / 42);
           const lx = fx + Math.round(sway * u);
-          ctx.fillStyle = 'rgba(7, 9, 18, 0.82)';
+          ctx.globalAlpha = 0.82 * topFade;
+          ctx.fillStyle = '#070912';
           ctx.fillRect(lx - 4, ly, 8, 11);
-          ctx.fillStyle = 'rgba(56, 72, 102, 0.38)';
+          ctx.globalAlpha = 0.34 * topFade;
+          ctx.fillStyle = '#384866';
           ctx.fillRect(lx - 2, ly + 2, 2, 6);
         }
+        ctx.globalAlpha = 1;
       }
     }
 

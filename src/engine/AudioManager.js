@@ -119,12 +119,15 @@ export class AudioManager {
     this.uiBootWavKeys = ['clock_gear', 'reflect', 'ult_cast', 'slash'];
     this._loadingWavKeys = new Set();
     this._combatWavsEnsured = false;
+    this._bgSuspended = false;
+    this._unlockedByGesture = false;
 
     this.initContext();
     this.preloadWavFiles();
 
     const unlock = () => {
-      if (this.ctx && this.ctx.state === 'suspended') {
+      this._unlockedByGesture = true;
+      if (!this._bgSuspended && this.enabled && this.ctx && this.ctx.state === 'suspended') {
         this.ctx.resume().catch(() => {});
       }
     };
@@ -229,12 +232,53 @@ export class AudioManager {
 
   toggle() {
     this.enabled = !this.enabled;
+    if (this.ctx) {
+      if (!this.enabled && this.ctx.state === 'running') {
+        this.ctx.suspend().catch(() => {});
+      } else if (this.enabled && !this._bgSuspended && this._unlockedByGesture && this.ctx.state === 'suspended') {
+        this.ctx.resume().catch(() => {});
+      }
+    }
     return this.enabled;
   }
 
+  suspendForBackground() {
+    this._bgSuspended = true;
+    if (this.ctx && this.ctx.state === 'running') {
+      this._wasRunningBeforeBg = true;
+      this.ctx.suspend().catch(() => {});
+    }
+  }
+
+  resumeFromBackground() {
+    this._bgSuspended = false;
+    if (
+      this.enabled &&
+      (this._unlockedByGesture || this._wasRunningBeforeBg) &&
+      this.ctx &&
+      this.ctx.state === 'suspended'
+    ) {
+      this._wasRunningBeforeBg = false;
+      this.ctx.resume().catch(() => {});
+    }
+  }
+
+  _disconnectChain(...nodes) {
+    for (let i = 0; i < nodes.length; i++) {
+      const n = nodes[i];
+      if (!n) continue;
+      try {
+        n.disconnect();
+      } catch (_) {}
+    }
+  }
+
   play(rawName, worldX = null) {
-    if (!this.enabled || !this.ctx) return;
-    if (this.ctx.state === 'suspended') this.ctx.resume().catch(() => {});
+    if (!this.enabled || this._bgSuspended || !this.ctx) return;
+    if (this.ctx.state === 'suspended') {
+      if (!this._unlockedByGesture) return;
+      this.ctx.resume().catch(() => {});
+    }
 
     const aliasMap = {
       death_knight: 'death_warrior'
@@ -332,8 +376,9 @@ export class AudioManager {
 
     voiceGain.connect(warmthFilter);
 
+    let panner = null;
     if (worldX !== null && name !== 'victory_fanfare' && typeof this.ctx.createStereoPanner === 'function') {
-      const panner = this.ctx.createStereoPanner();
+      panner = this.ctx.createStereoPanner();
       panner.pan.value = Math.max(-0.48, Math.min(0.48, (worldX - 600) / 650));
       warmthFilter.connect(panner);
       panner.connect(this.master);
@@ -352,78 +397,103 @@ export class AudioManager {
         src.playbackRate.value =
           rateSpread > 0 ? 1.0 - rateSpread * 0.5 + Math.random() * rateSpread : 1.0;
         src.connect(voiceGain);
-        src.start(0);
 
-        const voiceEntry = { gainNode: voiceGain, startTime: now, isBig: isBigCinematic, name };
-        this.activeVoices.push(voiceEntry);
-        src.onended = () => {
-          const idx = this.activeVoices.indexOf(voiceEntry);
-          if (idx !== -1) this.activeVoices.splice(idx, 1);
+        let cleaned = false;
+        const voiceEntry = {
+          src,
+          gainNode: voiceGain,
+          startTime: now,
+          isBig: isBigCinematic,
+          name,
+          cleanup: () => {
+            if (cleaned) return;
+            cleaned = true;
+            src.onended = null;
+            const idx = this.activeVoices.indexOf(voiceEntry);
+            if (idx !== -1) this.activeVoices.splice(idx, 1);
+            this._disconnectChain(src, voiceGain, warmthFilter, panner);
+          }
         };
+        this.activeVoices.push(voiceEntry);
+        src.onended = voiceEntry.cleanup;
+        src.start(0);
         return;
-      } catch (_) {}
+      } catch (_) {
+        this._disconnectChain(voiceGain, warmthFilter, panner);
+      }
     }
 
-      // Trigger background WAV fetch/decode if this combat sound hasn't finished preloading yet
-      if (this.volumes[name] !== undefined) {
-        this.loadWavKey(name);
-      }
-
-      // Punchy physical transient + swept turbulence fallback if triggered in the first ~30ms before WAV decode
-      this.playWarmFallback(name, voiceGain);
+    // Trigger background WAV fetch/decode if this combat sound hasn't finished preloading yet
+    if (this.volumes[name] !== undefined) {
+      this.loadWavKey(name);
     }
-  
-    pruneAndDuckVoices(now, incomingIsBig, isMatchEndSound = false) {
-      for (let i = this.activeVoices.length - 1; i >= 0; i--) {
-        if (now - this.activeVoices[i].startTime > 2200) {
-          this.activeVoices.splice(i, 1);
-        }
+
+    // Punchy physical transient + swept turbulence fallback if triggered in the first ~30ms before WAV decode
+    this.playWarmFallback(name, voiceGain, warmthFilter, panner);
+  }
+
+  pruneAndDuckVoices(now, incomingIsBig, isMatchEndSound = false) {
+    for (let i = this.activeVoices.length - 1; i >= 0; i--) {
+      if (now - this.activeVoices[i].startTime > 2200) {
+        const expired = this.activeVoices[i];
+        this.activeVoices.splice(i, 1);
+        expired?.cleanup?.();
       }
-  
-      if (isMatchEndSound) {
-        const t = this.ctx.currentTime;
-        while (this.activeVoices.length > 0) {
-          const v = this.activeVoices.shift();
-          if (v && v.gainNode) {
-            try {
-              v.gainNode.gain.setValueAtTime(v.gainNode.gain.value, t);
-              v.gainNode.gain.exponentialRampToValueAtTime(0.0008, t + 0.06);
-            } catch (_) {}
+    }
+
+    if (isMatchEndSound) {
+      const t = this.ctx.currentTime;
+      while (this.activeVoices.length > 0) {
+        const v = this.activeVoices.shift();
+        if (v && v.gainNode) {
+          try {
+            v.gainNode.gain.setValueAtTime(v.gainNode.gain.value, t);
+            v.gainNode.gain.exponentialRampToValueAtTime(0.0008, t + 0.06);
+            if (v.src) v.src.stop(t + 0.065);
+          } catch (_) {
+            v.cleanup?.();
           }
         }
-        return;
       }
-  
-      while (this.activeVoices.length > 8) {
-        const oldest = this.activeVoices.shift();
-        if (oldest && oldest.gainNode) {
+      return;
+    }
+
+    while (this.activeVoices.length > 8) {
+      const oldest = this.activeVoices.shift();
+      if (oldest && oldest.gainNode) {
+        try {
+          const t = this.ctx.currentTime;
+          oldest.gainNode.gain.setValueAtTime(oldest.gainNode.gain.value, t);
+          oldest.gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+          if (oldest.src) oldest.src.stop(t + 0.055);
+        } catch (_) {
+          oldest.cleanup?.();
+        }
+      }
+    }
+
+    if (incomingIsBig) {
+      const t = this.ctx.currentTime;
+      for (const v of this.activeVoices) {
+        if (!v.isBig && v.gainNode) {
           try {
-            const t = this.ctx.currentTime;
-            oldest.gainNode.gain.setValueAtTime(oldest.gainNode.gain.value, t);
-            oldest.gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
+            const cur = v.gainNode.gain.value;
+            v.gainNode.gain.setValueAtTime(cur, t);
+            v.gainNode.gain.linearRampToValueAtTime(cur * 0.45, t + 0.035);
           } catch (_) {}
         }
       }
-  
-      if (incomingIsBig) {
-        const t = this.ctx.currentTime;
-        for (const v of this.activeVoices) {
-          if (!v.isBig && v.gainNode) {
-            try {
-              const cur = v.gainNode.gain.value;
-              v.gainNode.gain.setValueAtTime(cur, t);
-              v.gainNode.gain.linearRampToValueAtTime(cur * 0.45, t + 0.035);
-            } catch (_) {}
-          }
-        }
-      }
     }
-  
-    playWarmFallback(name, dest) {
-      if (!this.ctx) return;
-      if (!this.pinkNoiseBuffer) this.createPinkNoiseBuffer();
-      if (!this.pinkNoiseBuffer) return;
-      const t = this.ctx.currentTime;
+  }
+
+  playWarmFallback(name, dest, warmthFilter = null, panner = null) {
+    if (!this.ctx) return;
+    if (!this.pinkNoiseBuffer) this.createPinkNoiseBuffer();
+    if (!this.pinkNoiseBuffer) {
+      this._disconnectChain(dest, warmthFilter, panner);
+      return;
+    }
+    const t = this.ctx.currentTime;
 
     // 1. Swept aerodynamic / elemental noise burst (zero stationary tone)
     const src = this.ctx.createBufferSource();
@@ -469,5 +539,14 @@ export class AudioManager {
     punchGain.connect(dest);
     punchOsc.start(t);
     punchOsc.stop(t + 0.085);
+
+    punchOsc.onended = () => {
+      punchOsc.onended = null;
+      this._disconnectChain(punchOsc, punchGain);
+    };
+    src.onended = () => {
+      src.onended = null;
+      this._disconnectChain(src, bp, g, punchOsc, punchGain, dest, warmthFilter, panner);
+    };
   }
 }
