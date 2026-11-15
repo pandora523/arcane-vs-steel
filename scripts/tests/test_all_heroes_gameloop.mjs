@@ -30,40 +30,40 @@ globalThis.document = {
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps111';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps111';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps111';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps111';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps111';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps111';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps111';
-import { Archer } from '../../src/entities/Archer.js?v=30fps111';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps111';
-import { Titan } from '../../src/entities/Titan.js?v=30fps111';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps111';
-import { Android } from '../../src/entities/Android.js?v=30fps111';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps111';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps111';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps111';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps111';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps111';
-import { Game } from '../../src/main.js?v=30fps111';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps111';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps112';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps112';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps112';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps112';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps112';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps112';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps112';
+import { Archer } from '../../src/entities/Archer.js?v=30fps112';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps112';
+import { Titan } from '../../src/entities/Titan.js?v=30fps112';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps112';
+import { Android } from '../../src/entities/Android.js?v=30fps112';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps112';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps112';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps112';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps112';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps112';
+import { Game } from '../../src/main.js?v=30fps112';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps112';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '../../src/adventure/AdventureManager.js?v=30fps111';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps111';
+} from '../../src/adventure/AdventureManager.js?v=30fps112';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps112';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps111';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps111';
+} from '../../src/adventure/AdventureProgression.js?v=30fps112';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps112';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps111';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps112';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -651,7 +651,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps111');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps112');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -8802,6 +8802,640 @@ for (const [name, Cls] of CLASSES) {
     '[PASS] Suite 30: Star-Free Upper Vault & Plane 0, Widened Adventure Camera Zoom, Default Mortal HP, Non-Overlapping Portrait HUD & Lowered Banners, Colossal Boss Depth Sort, Manual LOCK Free-Aim + Retargeting, Upper-Lane Defeat Plaque, Orthogonal Colonnade Props & 60.0 FPS ProMotion Pacer + Memory Release verified!'
   );
 }
+
+// ============================================================================
+// SUITE 31: Kaze-Maru (`ronin`) Long-Range HD-2D Katana Slash Waves (`0` Blue
+// Orbs) & `AudioManager` iOS Sleep/Lock `'interrupted'` + Stalled/Closed Recovery
+// ============================================================================
+{
+  // (31.1) Kaze-Maru (`ronin`) Long-Range `'ronin_slash'` Katana Waves (`0` `'fireball'` Blue Orbs)
+  // Across Adventure Lv.1, Adventure `wrath_1` Rank 2 (`LOCK: OFF`, `LOCK: ON`, & `AUTO`),
+  // and VS Mode (`mode === 3` 4th-Hit Finisher & `CROUCH` Shunpo Draw-Cut) + Piercing & `ignoreTargets`
+  {
+    const spawnedAll = [];
+
+    const makeAdvRoninHarness = () => {
+      const aGame = createMockGame();
+      aGame.gameMode = 'adventure';
+      aGame.testModeUnlimitedHp = false;
+      aGame.isAdventureMode = () => true;
+      aGame.is2v2Mode = () => false;
+      aGame.isLandingOpen = false;
+      const aAdv = new AdventureManager(aGame);
+      aGame.adventure = aAdv;
+      aGame.getEnemiesOf = () => aAdv.getLivingMonsters();
+      aGame.getTargetFor = (f) => aAdv.getNearestMonster(f);
+      aGame.updateProjectiles = Game.prototype.updateProjectiles.bind(aGame);
+
+      const origSpawnProj = aGame.vfx.spawnProjectile.bind(aGame.vfx);
+      const localSpawns = [];
+      aGame.vfx.spawnProjectile = (opts) => {
+        origSpawnProj(opts);
+        const created = aGame.vfx.projectiles[aGame.vfx.projectiles.length - 1];
+        localSpawns.push(created);
+        spawnedAll.push(created);
+      };
+
+      const kaze = new Ronin(520, 561, 1);
+      kaze.game = aGame;
+      aGame.leftFighter = kaze;
+      aGame.fighters = [kaze];
+      aAdv.startCampaign(kaze);
+      for (const m of aAdv.getLivingMonsters()) m.isDead = true;
+      return { aGame, aAdv, kaze, localSpawns };
+    };
+
+    // 1. Adventure Lv.1 (`wrath_1 = 0`, Manual `LOCK: OFF`): launches `'ronin_slash'`, `0` `'fireball'`
+    {
+      const { aGame, aAdv, kaze, localSpawns } = makeAdvRoninHarness();
+      const foeAhead = aAdv.spawnMonster('ghoul', 920, { groundY: 561, skipPortal: true });
+      foeAhead.maxHp = 99999;
+      foeAhead.hp = 99999;
+      foeAhead.stunTimer = 99;
+
+      for (let swing = 0; swing < 4; swing++) {
+        kaze.autoCooldown = 0;
+        aAdv.triggerAction('attack');
+        for (let f = 0; f < 16; f++) {
+          aAdv.update(1 / 30);
+          aGame.updateProjectiles(1 / 30);
+          aGame.vfx.update(1 / 30, 561, aGame.audio);
+        }
+      }
+      const lv1Slashes = localSpawns.filter((p) => p?.type === 'ronin_slash');
+      const lv1Fireballs = localSpawns.filter((p) => p?.type === 'fireball');
+      if (lv1Slashes.length < 2 || lv1Fireballs.length !== 0) {
+        throw new Error(
+          `[Suite 31.1] Expected Adventure Lv.1 Kaze-Maru to launch >= 2 'ronin_slash' waves and 0 'fireball', got slashes=${lv1Slashes.length}, fireballs=${lv1Fireballs.length}`
+        );
+      }
+      aAdv.stopCampaign();
+    }
+
+    // 2. Adventure `wrath_1` Rank 2 (`CRIMSON NUKITSUKE`) in Manual `LOCK: OFF` Free-Aim:
+    // Fires strictly in `player.facing` (`vy === 0`, `Math.sign(vx) === facing`) even when monster is BEHIND & OFF-LANE!
+    {
+      const { aGame, aAdv, kaze, localSpawns } = makeAdvRoninHarness();
+      aAdv.progression.skillPoints = 4;
+      aAdv.progression.upgradeNode('wrath_1', kaze);
+      aAdv.progression.upgradeNode('wrath_1', kaze);
+      if (aAdv.progression.getRank('wrath_1') !== 2 || aAdv.manualTargetLock !== false) {
+        throw new Error('[Suite 31.1] Expected wrath_1 Rank 2 and default LOCK: OFF!');
+      }
+
+      const behindOffLane = aAdv.spawnMonster('cultist', 300, { groundY: 468, skipPortal: true });
+      behindOffLane.maxHp = 99999;
+      behindOffLane.hp = 99999;
+      behindOffLane.stunTimer = 99;
+
+      // Face RIGHT (+1) while monster is at x=300 (< 520) and groundY=468 (!== 561)
+      kaze.x = 520;
+      kaze.groundY = 561;
+      kaze.y = 561;
+      kaze.facing = 1;
+      for (let swing = 0; swing < 2; swing++) {
+        kaze.autoCooldown = 0;
+        aAdv.triggerAction('attack');
+        for (let f = 0; f < 16; f++) {
+          aAdv.update(1 / 30);
+          aGame.updateProjectiles(1 / 30);
+          aGame.vfx.update(1 / 30, 561, aGame.audio);
+        }
+      }
+      // Also test facing LEFT (-1) in LOCK: OFF
+      kaze.setState('IDLE');
+      kaze.x = 760;
+      kaze.facing = -1;
+      behindOffLane.x = 1040; // Now monster is behind to the right!
+      kaze.autoCooldown = 0;
+      aAdv.triggerAction('attack');
+      for (let f = 0; f < 16; f++) {
+        aAdv.update(1 / 30);
+        aGame.updateProjectiles(1 / 30);
+        aGame.vfx.update(1 / 30, 561, aGame.audio);
+      }
+
+      const freeAimWaves = localSpawns.filter((p) => p?.type === 'ronin_slash');
+      const rightWaves = freeAimWaves.slice(0, 2);
+      const leftWave = freeAimWaves[2];
+      if (
+        freeAimWaves.length < 3 ||
+        !rightWaves.every((w) => w.vx > 700 && w.vy === 0 && w.pierce === true && w.maxRange === 640) ||
+        !freeAimWaves.some((w) => w.isTwinSlash === true) ||
+        !leftWave ||
+        !(leftWave.vx < -700 && leftWave.vy === 0)
+      ) {
+        throw new Error(
+          `[Suite 31.1] LOCK: OFF free-aim failed to fire horizontal 'ronin_slash' strictly in player.facing: count=${freeAimWaves.length}`
+        );
+      }
+      aAdv.stopCampaign();
+    }
+
+    // 3. Adventure `wrath_1` Rank 2 in Manual `LOCK: ON` & `AUTO` Play:
+    {
+      const { aGame, aAdv, kaze, localSpawns } = makeAdvRoninHarness();
+      aAdv.progression.skillPoints = 4;
+      aAdv.progression.upgradeNode('wrath_1', kaze);
+      aAdv.progression.upgradeNode('wrath_1', kaze);
+
+      const lockedFoe = aAdv.spawnMonster('ghoul', 900, { groundY: 492, skipPortal: true });
+      lockedFoe.maxHp = 99999;
+      lockedFoe.hp = 99999;
+      lockedFoe.stunTimer = 99;
+
+      // Manual `LOCK: ON`: turns toward lockedFoe (+1) and aims clamped blade slope toward lockedFoe (`vy < 0`)
+      kaze.x = 520;
+      kaze.groundY = 561;
+      kaze.y = 561;
+      kaze.facing = -1;
+      aAdv.toggleTargetLock(false);
+      if (!aAdv.manualTargetLock) {
+        throw new Error('[Suite 31.1] Expected manualTargetLock === true after toggleTargetLock!');
+      }
+      kaze.autoCooldown = 0;
+      aAdv.triggerAction('attack');
+      for (let f = 0; f < 16; f++) {
+        aAdv.update(1 / 30);
+        aGame.updateProjectiles(1 / 30);
+        aGame.vfx.update(1 / 30, 561, aGame.audio);
+      }
+      const lockOnWaves = localSpawns.filter((p) => p?.type === 'ronin_slash');
+      if (
+        lockOnWaves.length < 1 ||
+        kaze.facing !== 1 ||
+        !(lockOnWaves[0].vx > 700 && lockOnWaves[0].vy < 0 && Math.abs(lockOnWaves[0].vy) <= 180)
+      ) {
+        throw new Error(
+          `[Suite 31.1] Expected LOCK: ON to turn toward locked foe and aim clamped 'ronin_slash', got count=${lockOnWaves.length}, vx=${lockOnWaves[0]?.vx}, vy=${lockOnWaves[0]?.vy}`
+        );
+      }
+
+      // `AUTO` Play: launches `'ronin_slash'` waves automatically (`0` `'fireball'`)
+      const beforeAutoCount = localSpawns.length;
+      aAdv.toggleAutoPlay(true);
+      kaze.setState('IDLE');
+      kaze.x = 760;
+      kaze.groundY = 492;
+      kaze.y = 492;
+      kaze.autoCooldown = 0;
+      for (let f = 0; f < 45; f++) {
+        aAdv.update(1 / 30);
+        aGame.updateProjectiles(1 / 30);
+        aGame.vfx.update(1 / 30, 492, aGame.audio);
+      }
+      const autoWaves = localSpawns.slice(beforeAutoCount).filter((p) => p?.type === 'ronin_slash');
+      if (autoWaves.length < 1) {
+        throw new Error('[Suite 31.1] Expected Adventure AUTO play with Kaze-Maru to launch ronin_slash waves!');
+      }
+
+      // Render active `'ronin_slash'` (normal + `isTwinSlash`) & `'storm_wave'` via `VFXManager.renderMainPass` -> `0` `ctx.rotate`, `0` `.ellipse()`
+      const slashVfx = new VFXManager();
+      slashVfx.spawnProjectile({
+        x: 640,
+        y: 485,
+        groundY: 561,
+        vx: 780,
+        vy: 0,
+        radius: 18,
+        color: '#38bdf8',
+        coreColor: '#ffffff',
+        owner: kaze,
+        damage: 66,
+        type: 'ronin_slash',
+        pierce: true,
+        maxRange: 640,
+        isTwinSlash: true
+      });
+      slashVfx.spawnProjectile({
+        x: 520,
+        y: 485,
+        groundY: 561,
+        vx: -760,
+        vy: 0,
+        radius: 18,
+        color: '#38bdf8',
+        coreColor: '#ffffff',
+        owner: kaze,
+        damage: 34,
+        type: 'storm_wave',
+        pierce: true,
+        maxRange: 580
+      });
+      let ellipseCalls = 0;
+      const slashTrack = { rotateCalls: 0 };
+      const slashCtx = createMockCtx(slashTrack);
+      slashCtx.ellipse = () => {
+        ellipseCalls++;
+      };
+      slashVfx.renderMainPass(slashCtx, false, aGame.renderer, false);
+      slashVfx.renderMainPass(slashCtx, true, aGame.renderer, false);
+      if (slashTrack.rotateCalls !== 0 || ellipseCalls !== 0) {
+        throw new Error(
+          `[Suite 31.1] Expected 0 ctx.rotate & 0 ctx.ellipse when rendering ronin_slash, got rotate=${slashTrack.rotateCalls}, ellipse=${ellipseCalls}`
+        );
+      }
+      aAdv.stopCampaign();
+    }
+
+    // 4. VS Mode 4th-Hit Finisher (`mode === 3`) & Crouch Shunpo Draw-Cut (`CROUCH`):
+    // Verify `ignoreTargets` prevents double-hitting close melee foe while piercing wave hits multiple lane foes ONCE each!
+    {
+      const vsGame = createMockGame();
+      vsGame.gameMode = '1v1';
+      vsGame.testModeUnlimitedHp = false;
+      vsGame.isAdventureMode = () => false;
+      vsGame.is2v2Mode = () => false;
+      vsGame.updateProjectiles = Game.prototype.updateProjectiles.bind(vsGame);
+
+      const origVsSpawn = vsGame.vfx.spawnProjectile.bind(vsGame.vfx);
+      const vsSpawns = [];
+      vsGame.vfx.spawnProjectile = (opts) => {
+        origVsSpawn(opts);
+        const created = vsGame.vfx.projectiles[vsGame.vfx.projectiles.length - 1];
+        vsSpawns.push(created);
+        spawnedAll.push(created);
+      };
+
+      const vsKaze = new Ronin(320, 520, 1);
+      vsKaze.game = vsGame;
+      const closeFoe = new Warrior(410, 520, -1);
+      const midLaneFoe = new Warrior(620, 520, -1);
+      const farLaneFoe = new Warrior(810, 520, -1);
+      const beyondRangeFoe = new Warrior(1080, 520, -1); // > 580px maxRange from sx=372!
+      const allVsFoes = [closeFoe, midLaneFoe, farLaneFoe, beyondRangeFoe];
+
+      const hitCounts = new Map();
+      for (const foe of allVsFoes) {
+        foe.game = vsGame;
+        foe.maxHp = 99999;
+        foe.hp = 99999;
+        foe.stunTimer = 99;
+        hitCounts.set(foe, 0);
+        const origTakeDmg = foe.takeDamage.bind(foe);
+        foe.takeDamage = (...args) => {
+          hitCounts.set(foe, (hitCounts.get(foe) || 0) + 1);
+          return origTakeDmg(...args);
+        };
+      }
+      vsGame.leftFighter = vsKaze;
+      vsGame.rightFighter = closeFoe;
+      vsGame.fighters = [vsKaze, ...allVsFoes];
+      vsGame.getEnemiesOf = (f) => (f === vsKaze ? allVsFoes : [vsKaze]);
+
+      // Trigger 4th-hit `AUTO_ATTACK` (`comboStep = 3` -> `mode === 3`, `Morote Kiri-Nuki`)
+      vsKaze._autoVariant = 3;
+      vsKaze.comboStep = 3;
+      vsKaze.setState('AUTO_ATTACK');
+      let meleeHitsOnClose = 0;
+      for (let f = 0; f < 36; f++) {
+        if (vsKaze.state === 'AUTO_ATTACK') {
+          const prevDid = vsKaze.didActionFrame;
+          vsKaze.update(1 / 30, closeFoe, vsGame);
+          if (!prevDid && vsKaze.didActionFrame) {
+            meleeHitsOnClose = hitCounts.get(closeFoe);
+          }
+        }
+        vsGame.updateProjectiles(1 / 30);
+        vsGame.vfx.update(1 / 30, 520, vsGame.renderer, vsGame.audio);
+      }
+
+      const mode3Wave = vsSpawns.find((p) => p?.type === 'ronin_slash');
+      if (
+        !mode3Wave ||
+        meleeHitsOnClose !== 1 ||
+        hitCounts.get(closeFoe) !== 1 ||
+        hitCounts.get(midLaneFoe) !== 1 ||
+        hitCounts.get(farLaneFoe) !== 1 ||
+        hitCounts.get(beyondRangeFoe) !== 0 ||
+        vsGame.vfx.projectiles.length !== 0
+      ) {
+        throw new Error(
+          `[Suite 31.1] VS mode===3 piercing & ignoreTargets check failed: close=${hitCounts.get(closeFoe)} (melee=${meleeHitsOnClose}), mid=${hitCounts.get(midLaneFoe)}, far=${hitCounts.get(farLaneFoe)}, beyond=${hitCounts.get(beyondRangeFoe)}, leftoverProj=${vsGame.vfx.projectiles.length}`
+        );
+      }
+
+      // Trigger VS `CROUCH` Shunpo Draw-Cut (`t >= 0.38s`) -> spawns `'ronin_slash'` without double-hitting close target
+      for (const foe of allVsFoes) hitCounts.set(foe, 0);
+      vsSpawns.length = 0;
+      vsKaze.x = 300;
+      vsKaze.y = 520;
+      vsKaze.facing = 1;
+      closeFoe.x = 390;
+      midLaneFoe.x = 640;
+      farLaneFoe.x = 830;
+      beyondRangeFoe.x = 1140;
+      vsKaze.startCrouch(closeFoe, vsGame);
+      for (let f = 0; f < 40; f++) {
+        if (vsKaze.state === 'CROUCH') {
+          vsKaze.update(1 / 30, closeFoe, vsGame);
+        }
+        vsGame.updateProjectiles(1 / 30);
+        vsGame.vfx.update(1 / 30, 520, vsGame.renderer, vsGame.audio);
+      }
+      const crouchWave = vsSpawns.find((p) => p?.type === 'ronin_slash');
+      if (
+        !crouchWave ||
+        hitCounts.get(closeFoe) !== 1 ||
+        hitCounts.get(midLaneFoe) !== 1 ||
+        hitCounts.get(farLaneFoe) !== 1 ||
+        hitCounts.get(beyondRangeFoe) !== 0
+      ) {
+        throw new Error(
+          `[Suite 31.1] VS CROUCH draw-cut 'ronin_slash' failed: wave=${Boolean(crouchWave)}, close=${hitCounts.get(closeFoe)}, mid=${hitCounts.get(midLaneFoe)}, far=${hitCounts.get(farLaneFoe)}, beyond=${hitCounts.get(beyondRangeFoe)}`
+        );
+      }
+    }
+
+    if (spawnedAll.some((p) => p?.type === 'fireball')) {
+      throw new Error('[Suite 31.1] Kaze-Maru spawned a forbidden blue/orange fireball projectile!');
+    }
+  }
+
+  // (31.2) `AudioManager` iOS Sleep/Lock Recovery (`'interrupted'` & `'suspended'` Resume on
+  // `resumeFromBackground()`, User Gesture, & `play()`; Stalled/Closed `AudioContext` Triggers
+  // `rebuildContext()` While Preserving Decoded `buffers`)
+  {
+    const prevAudioCtx = globalThis.window.AudioContext;
+    const prevWebkitAudioCtx = globalThis.window.webkitAudioContext;
+    const prevAddEventListener = globalThis.window.addEventListener;
+    const prevFetch = globalThis.fetch;
+
+    const gestureListeners = new Map();
+    const createdContexts = [];
+    let nextContextMode = 'normal'; // 'normal' | 'async_resume' | 'stalled_clock'
+
+    class MockIOSAudioContext {
+      constructor() {
+        this.mode = nextContextMode;
+        this.state = 'suspended';
+        this.sampleRate = 44100;
+        this._clock = 1.25;
+        this.resumeCalls = 0;
+        this.suspendCalls = 0;
+        this.closeCalls = 0;
+        this.startedBufferSources = [];
+        this.onstatechange = null;
+        this.destination = { connect() {}, disconnect() {} };
+        createdContexts.push(this);
+      }
+      get currentTime() {
+        if (this.state === 'running' && this.mode !== 'stalled_clock') {
+          this._clock += 0.016;
+        }
+        return this._clock;
+      }
+      createGain() {
+        return {
+          gain: {
+            value: 1,
+            setValueAtTime(v) {
+              this.value = v;
+            },
+            linearRampToValueAtTime(v) {
+              this.value = v;
+            },
+            exponentialRampToValueAtTime(v) {
+              this.value = v;
+            }
+          },
+          connect() {},
+          disconnect() {}
+        };
+      }
+      createBiquadFilter() {
+        return {
+          type: 'lowpass',
+          frequency: { value: 1000, setValueAtTime() {}, exponentialRampToValueAtTime() {} },
+          Q: { value: 0.707 },
+          connect() {},
+          disconnect() {}
+        };
+      }
+      createDynamicsCompressor() {
+        return {
+          threshold: { value: 0 },
+          knee: { value: 0 },
+          ratio: { value: 1 },
+          attack: { value: 0 },
+          release: { value: 0 },
+          connect() {},
+          disconnect() {}
+        };
+      }
+      createStereoPanner() {
+        return { pan: { value: 0 }, connect() {}, disconnect() {} };
+      }
+      createBuffer(ch, len, rate) {
+        return {
+          numberOfChannels: ch,
+          length: len,
+          sampleRate: rate,
+          getChannelData: () => new Float32Array(len)
+        };
+      }
+      createBufferSource() {
+        const ctxRef = this;
+        const node = {
+          buffer: null,
+          playbackRate: { value: 1 },
+          onended: null,
+          connect() {},
+          disconnect() {},
+          start() {
+            ctxRef.startedBufferSources.push(this.buffer);
+          },
+          stop() {}
+        };
+        return node;
+      }
+      resume() {
+        this.resumeCalls++;
+        if (this.state === 'closed') {
+          return Promise.reject(new Error('AudioContext closed'));
+        }
+        if (this.mode === 'async_resume') {
+          return new Promise((resolve) => {
+            setTimeout(() => {
+              if (this.state !== 'closed') {
+                this.state = 'running';
+                this.onstatechange?.();
+              }
+              resolve();
+            }, 8);
+          });
+        }
+        this.state = 'running';
+        this.onstatechange?.();
+        return Promise.resolve();
+      }
+      suspend() {
+        this.suspendCalls++;
+        if (this.state !== 'closed') {
+          this.state = 'suspended';
+          this.onstatechange?.();
+        }
+        return Promise.resolve();
+      }
+      close() {
+        this.closeCalls++;
+        this.state = 'closed';
+        return Promise.resolve();
+      }
+    }
+
+    try {
+      globalThis.window.AudioContext = MockIOSAudioContext;
+      globalThis.window.webkitAudioContext = MockIOSAudioContext;
+      globalThis.window.addEventListener = (type, fn) => {
+        if (!gestureListeners.has(type)) gestureListeners.set(type, []);
+        gestureListeners.get(type).push(fn);
+      };
+      globalThis.fetch = async () => ({ ok: false });
+
+      const audio = new AudioManager();
+      const decodedSlashBuf = { id: 'decoded_slash_wav', length: 22050, sampleRate: 44100 };
+      const decodedCleaveBuf = { id: 'decoded_cleave_wav', length: 22050, sampleRate: 44100 };
+      audio.buffers.slash = decodedSlashBuf;
+      audio.buffers.heavy_cleave = decodedCleaveBuf;
+
+      for (const ev of ['pointerdown', 'touchstart', 'touchend', 'click', 'keydown']) {
+        if (!(gestureListeners.get(ev)?.length >= 1)) {
+          throw new Error(`[Suite 31.2] Expected capture-phase window '${ev}' unlock listener on AudioManager!`);
+        }
+      }
+
+      // 1. Both `'interrupted'` (iOS lock-screen) and `'suspended'` resume on `resumeFromBackground()`:
+      for (const pausedState of ['interrupted', 'suspended']) {
+        audio.suspendForBackground();
+        audio.ctx.state = pausedState;
+        if (!audio.isContextPaused()) {
+          throw new Error(`[Suite 31.2] Expected isContextPaused() === true for state='${pausedState}'!`);
+        }
+        audio.resumeFromBackground(false);
+        await Promise.resolve();
+        if (audio.ctx.state !== 'running' || audio._bgSuspended !== false) {
+          throw new Error(
+            `[Suite 31.2] resumeFromBackground() failed to recover from '${pausedState}': state='${audio.ctx.state}'`
+          );
+        }
+      }
+      if (audio._stalledCheckTimer) {
+        clearTimeout(audio._stalledCheckTimer);
+        audio._stalledCheckTimer = null;
+      }
+
+      // 2. Both `'interrupted'` and `'suspended'` resume on user gesture (`touchstart` / `pointerdown`) + silent 1-frame unlock tick:
+      for (const pausedState of ['interrupted', 'suspended']) {
+        audio.ctx.state = pausedState;
+        const beforeSources = audio.ctx.startedBufferSources.length;
+        gestureListeners.get('touchstart')[0]();
+        await Promise.resolve();
+        const silentTickPlayed = audio.ctx.startedBufferSources
+          .slice(beforeSources)
+          .some((b) => b && b.length === 1 && b.sampleRate === 22050);
+        if (audio.ctx.state !== 'running' || !silentTickPlayed) {
+          throw new Error(
+            `[Suite 31.2] User gesture failed to resume '${pausedState}' & prime 1-sample silent tick: state='${audio.ctx.state}', silentTick=${silentTickPlayed}`
+          );
+        }
+      }
+      if (audio._stalledCheckTimer) {
+        clearTimeout(audio._stalledCheckTimer);
+        audio._stalledCheckTimer = null;
+      }
+
+      // 3. Both `'interrupted'` and `'suspended'` resume on `play()` (including async `ctx.resume()` queueing + flush):
+      for (const [idx, pausedState] of ['interrupted', 'suspended'].entries()) {
+        const sfxKey = idx === 0 ? 'slash' : 'heavy_cleave';
+        const expectedBuf = idx === 0 ? decodedSlashBuf : decodedCleaveBuf;
+        audio.lastPlayed = {};
+        audio.ctx.mode = 'async_resume';
+        audio.ctx.state = pausedState;
+        const beforeSources = audio.ctx.startedBufferSources.length;
+        audio.play(sfxKey, 500);
+        // Wait for 8ms async resume -> `_flushPendingPlays()` should fire the queued buffer!
+        await new Promise((r) => setTimeout(r, 22));
+        audio.ctx.mode = 'normal';
+        const playedExpected = audio.ctx.startedBufferSources.slice(beforeSources).includes(expectedBuf);
+        if (audio.ctx.state !== 'running' || !playedExpected) {
+          throw new Error(
+            `[Suite 31.2] play('${sfxKey}') while '${pausedState}' failed to resume & flush queued buffer: state='${audio.ctx.state}', played=${playedExpected}`
+          );
+        }
+      }
+
+      // 4. Closed `AudioContext` (`ctx.state = 'closed'`) triggers `rebuildContext()` while preserving decoded `buffers`:
+      const closedCtx = audio.ctx;
+      closedCtx.state = 'closed';
+      audio.lastPlayed = {};
+      audio.play('slash', 600);
+      await Promise.resolve();
+      if (
+        audio.ctx === closedCtx ||
+        audio.ctx.state !== 'running' ||
+        audio._rebuildCount < 1 ||
+        audio.buffers.slash !== decodedSlashBuf ||
+        audio.buffers.heavy_cleave !== decodedCleaveBuf ||
+        !audio.ctx.startedBufferSources.includes(decodedSlashBuf)
+      ) {
+        throw new Error(
+          `[Suite 31.2] Closed AudioContext failed to trigger rebuildContext() & preserve decoded buffers! rebuildCount=${audio._rebuildCount}`
+        );
+      }
+
+      // 5. Stalled/frozen `AudioContext` clock (`ctx.currentTime` stuck after wake) triggers `rebuildContext()` while preserving `buffers`:
+      const stalledCtx = audio.ctx;
+      stalledCtx.mode = 'stalled_clock';
+      stalledCtx.state = 'running';
+      nextContextMode = 'normal';
+      const rebuildsBeforeStall = audio._rebuildCount;
+      audio._scheduleStalledClockCheck(15);
+      await new Promise((r) => setTimeout(r, 35));
+      if (
+        audio.ctx === stalledCtx ||
+        stalledCtx.closeCalls < 1 ||
+        audio._rebuildCount <= rebuildsBeforeStall ||
+        audio.ctx.state !== 'running' ||
+        audio.buffers.slash !== decodedSlashBuf ||
+        audio.buffers.heavy_cleave !== decodedCleaveBuf
+      ) {
+        throw new Error(
+          `[Suite 31.2] Stalled AudioContext clock failed to trigger rebuildContext() while preserving buffers! rebuilds=${audio._rebuildCount}`
+        );
+      }
+
+      // 6. Native Swift `window.__avsResumeAudio(true)` (`mediaServicesWereResetNotification`) forces clean rebuild preserving `buffers`:
+      const preResetCtx = audio.ctx;
+      globalThis.window.__avsResumeAudio(true);
+      await Promise.resolve();
+      if (
+        audio.ctx === preResetCtx ||
+        audio.ctx.state !== 'running' ||
+        audio.buffers.slash !== decodedSlashBuf
+      ) {
+        throw new Error('[Suite 31.2] window.__avsResumeAudio(true) failed to rebuild context while preserving buffers!');
+      }
+      if (audio._stalledCheckTimer) {
+        clearTimeout(audio._stalledCheckTimer);
+        audio._stalledCheckTimer = null;
+      }
+    } finally {
+      if (prevAudioCtx === undefined) delete globalThis.window.AudioContext;
+      else globalThis.window.AudioContext = prevAudioCtx;
+      if (prevWebkitAudioCtx === undefined) delete globalThis.window.webkitAudioContext;
+      else globalThis.window.webkitAudioContext = prevWebkitAudioCtx;
+      globalThis.window.addEventListener = prevAddEventListener;
+      if (prevFetch === undefined) delete globalThis.fetch;
+      else globalThis.fetch = prevFetch;
+    }
+  }
+
+  console.log(
+    '[PASS] Suite 31: Kaze-Maru (`ronin`) Long-Range HD-2D Katana Slash Waves (`0` Blue Orbs, LOCK: OFF/ON/AUTO + VS Mode Piercing & ignoreTargets) & AudioManager iOS Sleep/Lock Recovery (`interrupted`/`suspended` + Stalled/Closed rebuildContext) verified!'
+  );
+}
+
 
 
 

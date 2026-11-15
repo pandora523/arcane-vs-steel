@@ -74,19 +74,19 @@ globalThis.document = {
   }
 };
 
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps111';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps111';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps111';
-import { Archer } from '../../src/entities/Archer.js?v=30fps111';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps111';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps111';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps111';
-import { Titan } from '../../src/entities/Titan.js?v=30fps111';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps111';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps111';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps111';
-import { Android } from '../../src/entities/Android.js?v=30fps111';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps111';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps112';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps112';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps112';
+import { Archer } from '../../src/entities/Archer.js?v=30fps112';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps112';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps112';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps112';
+import { Titan } from '../../src/entities/Titan.js?v=30fps112';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps112';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps112';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps112';
+import { Android } from '../../src/entities/Android.js?v=30fps112';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps112';
 
 const ROSTER = [
   { id: 'titan', name: 'Torgar', Cls: Titan },

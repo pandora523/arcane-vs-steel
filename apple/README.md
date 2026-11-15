@@ -19,7 +19,7 @@ This directory contains the isolated **Xcode / Swift + Metal (iOS + macOS)** nat
   - Promotes `6240x2080` champion/VFX sprite sheets and `9600px` Adventure panoramas once into a 14-slot GPU `IOSurface` canvas LRU cache (`~84–140 MB` peak VRAM, flushing immediately on `resetMatch()` / `goToTitleScreen()`), eliminating CPU PNG re-decoding mid-combat.
 - **`Core/LocalSanctumServer.swift` & `Core/NativePlatformBridge.swift`**:
   - 64 MB `NSCache` RAM asset cache (`<= 8 MB` per entry) + persistent `HTTP/1.1 keep-alive` sockets + immutable cache headers + full `scenePhase` / `NSApplication` lifecycle thermal suspension.
-  - Pre-warmed `UIImpactFeedbackGenerator` tactile haptics, `5ms` low-latency `AVAudioSession`, ProMotion `CADisableMinimumFrameDurationOnPhone = true`, and event-driven `GCController` gamepad polling (0% CPU when no controller is connected).
+  - Pre-warmed `UIImpactFeedbackGenerator` tactile haptics, off-main-thread `audioSessionQueue` `10ms` `AVAudioSession` (`0` main-thread CoreAudio hangs, full iOS lock/sleep `'interrupted'` & `mediaServicesWereReset` WebAudio recovery), ProMotion `CADisableMinimumFrameDurationOnPhone = true`, and event-driven `GCController` gamepad polling (0% CPU when no controller is connected).
 - **Zero Impact on Web/Vercel**: `apple/` is excluded in `.vercelignore`, and root Web files (`index.html`, `style.css`, `src/`, `assets/`, `vercel.json`) have **zero modifications**.
 
 ## Building & Running Locally (`Release` Recommended for Full `-O` + Metal Speed)

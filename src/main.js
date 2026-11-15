@@ -1,22 +1,22 @@
-import { Renderer } from './engine/Renderer.js?v=30fps111';
-import { VFXManager } from './engine/VFXManager.js?v=30fps111';
-import { PixelForge } from './engine/PixelForge.js?v=30fps111';
-import { AudioManager } from './engine/AudioManager.js?v=30fps111';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps111';
-import { Fighter } from './entities/Fighter.js?v=30fps111';
-import { Warrior } from './entities/Warrior.js?v=30fps111';
-import { FireMage } from './entities/FireMage.js?v=30fps111';
-import { Archer } from './entities/Archer.js?v=30fps111';
-import { Priestess } from './entities/Priestess.js?v=30fps111';
-import { Reaper } from './entities/Reaper.js?v=30fps111';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps111';
-import { Titan } from './entities/Titan.js?v=30fps111';
-import { Ronin } from './entities/Ronin.js?v=30fps111';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps111';
-import { IceMage } from './entities/IceMage.js?v=30fps111';
-import { Android } from './entities/Android.js?v=30fps111';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps111';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps111';
+import { Renderer } from './engine/Renderer.js?v=30fps112';
+import { VFXManager } from './engine/VFXManager.js?v=30fps112';
+import { PixelForge } from './engine/PixelForge.js?v=30fps112';
+import { AudioManager } from './engine/AudioManager.js?v=30fps112';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps112';
+import { Fighter } from './entities/Fighter.js?v=30fps112';
+import { Warrior } from './entities/Warrior.js?v=30fps112';
+import { FireMage } from './entities/FireMage.js?v=30fps112';
+import { Archer } from './entities/Archer.js?v=30fps112';
+import { Priestess } from './entities/Priestess.js?v=30fps112';
+import { Reaper } from './entities/Reaper.js?v=30fps112';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps112';
+import { Titan } from './entities/Titan.js?v=30fps112';
+import { Ronin } from './entities/Ronin.js?v=30fps112';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps112';
+import { IceMage } from './entities/IceMage.js?v=30fps112';
+import { Android } from './entities/Android.js?v=30fps112';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps112';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps112';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -3774,6 +3774,14 @@ export class Game {
       p.ringTimer = (p.ringTimer || 0) + dt;
       p.x += p.vx * dt;
       p.y += p.vy * dt;
+      p.travelDist =
+        Number.isFinite(p.startX) && Number.isFinite(p.startY)
+          ? Math.hypot(p.x - p.startX, p.y - p.startY)
+          : (p.travelDist || 0) + Math.hypot(p.vx || 0, p.vy || 0) * dt;
+      if (p.maxRange > 0 && p.travelDist >= p.maxRange) {
+        this.vfx.projectiles.splice(i, 1);
+        continue;
+      }
 
       const hasSylvanShaderFX = p.type === 'arrow' && Boolean(p.owner?.fx);
       const hasCustomShaderFX = typeof p.owner?.onProjectileTrail === 'function' && Boolean(p.owner?.fx);
@@ -3838,13 +3846,15 @@ export class Game {
       let hitTarget = null;
       for (const cand of enemies) {
         if (!cand || cand.isDead || cand.isBenched) continue;
-        if (isAdv && p.pierce && p._hitTargets && p._hitTargets.has(cand)) continue;
+        if (p.ignoreTargets && p.ignoreTargets.has(cand)) continue;
+        if ((isAdv || p.type === 'ronin_slash') && p.pierce && p._hitTargets && p._hitTargets.has(cand)) continue;
         if (
           isAdv &&
           !cand.isColossalBoss &&
-          (p.type === 'forge_wave' || p.type === 'blade_wave') &&
+          (p.type === 'forge_wave' || p.type === 'blade_wave' || p.type === 'ronin_slash') &&
           Math.abs(p.vy || 0) < 25 &&
-          Math.abs((cand.groundY || cand.y) - (p.owner?.groundY || cand.groundY)) > 58
+          Math.abs((cand.groundY || cand.y) - (p.groundY || p.owner?.groundY || cand.groundY)) >
+            (p.type === 'ronin_slash' ? 64 : 58)
         ) {
           continue;
         }
@@ -3904,9 +3914,13 @@ export class Game {
                           ? isCrit
                             ? 'hit_crit'
                             : 'heavy_cleave'
-                          : p.type === 'holy_light'
-                            ? 'holy_hit'
-                            : 'fire_hit';
+                          : p.type === 'ronin_slash' || p.type === 'storm_wave'
+                            ? isCrit
+                              ? 'hit_crit'
+                              : 'raijin_slash'
+                            : p.type === 'holy_light'
+                              ? 'holy_hit'
+                              : 'fire_hit';
             this.audio.play(impactSfx, hitTarget.x);
           }
           this.renderer.triggerHitStop(0.055);
@@ -4002,7 +4016,7 @@ export class Game {
             this.vfx.spawnBurst(p.x, gy, 8, p.color, 150, { upBias: 70 });
           }
         }
-        if (isAdv && p.pierce && hitTarget && !hitGround && !p.isMeteor) {
+        if ((isAdv || p.type === 'ronin_slash') && p.pierce && hitTarget && !hitGround && !p.isMeteor) {
           if (!p._hitTargets) p._hitTargets = new Set();
           p._hitTargets.add(hitTarget);
           if (p._hitTargets.size >= 5) {
