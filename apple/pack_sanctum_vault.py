@@ -572,6 +572,27 @@ def is_pak_up_to_date(pak_path: Path, max_input_mtime_ns: int) -> bool:
         return False
 
 
+def purge_legacy_bundle_resources(res_dir: Path) -> None:
+    """
+    Removes any stale pre-vault raw game files (`index.html`, `style.css`, `manifest.json`,
+    `src/`, `assets/`) left behind in incremental `.app` bundle build folders.
+    Strictly guarded so it ONLY operates inside `.app` bundle directories, never on repo root.
+    """
+    resolved = res_dir.resolve()
+    if resolved == REPO_ROOT.resolve() or ".app" not in str(resolved):
+        return
+    for legacy_file in ("index.html", "style.css", "manifest.json"):
+        p = resolved / legacy_file
+        if p.is_file() or p.is_symlink():
+            p.unlink()
+    for legacy_dir in ("src", "assets"):
+        d = resolved / legacy_dir
+        if d.is_symlink():
+            d.unlink()
+        elif d.is_dir():
+            shutil.rmtree(d)
+
+
 def main() -> int:
     t0 = time.perf_counter()
     parser = argparse.ArgumentParser(
@@ -605,6 +626,7 @@ def main() -> int:
 
     out_str = args.output or args.positional_output
     output_path = Path(out_str).resolve() if out_str else resolve_default_output_path().resolve()
+    purge_legacy_bundle_resources(output_path.parent)
 
     entries, max_input_mtime_ns = collect_vault_inputs()
     key = reconstruct_vault_key()

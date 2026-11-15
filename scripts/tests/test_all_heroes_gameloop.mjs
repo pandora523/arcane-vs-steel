@@ -28,7 +28,17 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
+import path from 'node:path';
+import os from 'node:os';
+import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import {
+  parseAvsvPackHeader,
+  decryptAvsvPack,
+  unpackCodeVaultPayload,
+  extractMasterKeyFromBootScript
+} from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
 import { Fighter } from '../../src/entities/Fighter.js?v=30fps112';
 import { Warrior } from '../../src/entities/Warrior.js?v=30fps112';
@@ -9433,6 +9443,386 @@ for (const [name, Cls] of CLASSES) {
 
   console.log(
     '[PASS] Suite 31: Kaze-Maru (`ronin`) Long-Range HD-2D Katana Slash Waves (`0` Blue Orbs, LOCK: OFF/ON/AUTO + VS Mode Piercing & ignoreTargets) & AudioManager iOS Sleep/Lock Recovery (`interrupted`/`suspended` + Stalled/Closed rebuildContext) verified!'
+  );
+}
+
+// ============================================================================
+// Suite 32: Pre-Change Fallback Backup System, Web/Vercel AES-256-GCM `AVSV` Vault & Apple iOS/macOS `AVSK` `sanctum.pak` Vault (`< 3s`)
+// ============================================================================
+{
+  const suite32StartMs = performance.now();
+
+  // --------------------------------------------------------------------------
+  // 32.1: Fallback Backup Script (`scripts/create_fallback_backup.sh`), Ignore Rules & Snapshot Integrity
+  // --------------------------------------------------------------------------
+  {
+    const backupScriptPath = path.join(REPO_ROOT, 'scripts/create_fallback_backup.sh');
+    if (!fs.existsSync(backupScriptPath)) {
+      throw new Error('[Suite 32.1] Missing scripts/create_fallback_backup.sh!');
+    }
+    const backupScriptStat = fs.statSync(backupScriptPath);
+    if ((backupScriptStat.mode & 0o111) === 0) {
+      throw new Error('[Suite 32.1] scripts/create_fallback_backup.sh must be executable (`chmod +x`)!');
+    }
+
+    const gitignoreSrc = fs.readFileSync(path.join(REPO_ROOT, '.gitignore'), 'utf8');
+    if (!gitignoreSrc.includes('fallback_backups/') || !gitignoreSrc.includes('dist/')) {
+      throw new Error('[Suite 32.1] .gitignore must ignore both fallback_backups/ and dist/!');
+    }
+    const vercelignoreSrc = fs.readFileSync(path.join(REPO_ROOT, '.vercelignore'), 'utf8');
+    if (!vercelignoreSrc.includes('fallback_backups/')) {
+      throw new Error('[Suite 32.1] .vercelignore must exclude fallback_backups/!');
+    }
+    const vercelignoreLines = vercelignoreSrc
+      .split(/\r?\n/)
+      .map((l) => l.trim())
+      .filter((l) => l && !l.startsWith('#'));
+    if (vercelignoreLines.some((l) => l === 'build' || l === 'build/' || l === '/build' || l === '/build/')) {
+      throw new Error('[Suite 32.1] .vercelignore must NOT exclude build/ so Vercel can execute build/build_web_vault.mjs!');
+    }
+
+    const fallbackRoot = path.join(REPO_ROOT, 'fallback_backups');
+    if (!fs.existsSync(fallbackRoot) || !fs.statSync(fallbackRoot).isDirectory()) {
+      throw new Error('[Suite 32.1] Missing fallback_backups/ directory!');
+    }
+    const snapshotDirs = fs
+      .readdirSync(fallbackRoot, { withFileTypes: true })
+      .filter((d) => d.isDirectory() && !d.name.startsWith('.'))
+      .map((d) => path.join(fallbackRoot, d.name))
+      .sort();
+    if (snapshotDirs.length < 1) {
+      throw new Error('[Suite 32.1] Expected at least 1 fallback snapshot inside fallback_backups/!');
+    }
+
+    const validSnapshot = snapshotDirs.find(
+      (dir) =>
+        fs.existsSync(path.join(dir, 'RESTORE_THIS_BACKUP.sh')) &&
+        fs.existsSync(path.join(dir, 'SHA256SUMS.txt')) &&
+        fs.existsSync(path.join(dir, 'index.html')) &&
+        fs.existsSync(path.join(dir, 'src/main.js')) &&
+        fs.existsSync(path.join(dir, 'assets/sprites/ronin_sheet.png'))
+    );
+    if (!validSnapshot) {
+      throw new Error(
+        `[Suite 32.1] No valid fallback snapshot with RESTORE_THIS_BACKUP.sh & SHA256SUMS.txt found in ${fallbackRoot}!`
+      );
+    }
+    if ((fs.statSync(path.join(validSnapshot, 'RESTORE_THIS_BACKUP.sh')).mode & 0o111) === 0) {
+      throw new Error('[Suite 32.1] RESTORE_THIS_BACKUP.sh inside snapshot must be executable!');
+    }
+
+    const shaLines = fs
+      .readFileSync(path.join(validSnapshot, 'SHA256SUMS.txt'), 'utf8')
+      .trim()
+      .split(/\r?\n/)
+      .filter(Boolean);
+    if (shaLines.length < 200) {
+      throw new Error(`[Suite 32.1] Expected >= 200 hashed files in SHA256SUMS.txt, got ${shaLines.length}!`);
+    }
+    // Spot-check critical files in SHA256SUMS.txt for bit-exact snapshot integrity
+    const shaMap = new Map();
+    for (const line of shaLines) {
+      const m = line.match(/^([0-9a-f]{64})\s+\*?(.+)$/i);
+      if (m) shaMap.set(m[2].trim(), m[1].toLowerCase());
+    }
+    for (const reqRel of [
+      'RESTORE_THIS_BACKUP.sh',
+      'index.html',
+      'style.css',
+      'src/main.js',
+      'assets/sprites/ronin_sheet.png',
+      'assets/sfx/slash.wav'
+    ]) {
+      const expectedHex = shaMap.get(reqRel);
+      if (!expectedHex) {
+        throw new Error(`[Suite 32.1] Missing '${reqRel}' entry in snapshot SHA256SUMS.txt!`);
+      }
+      const actualHex = crypto
+        .createHash('sha256')
+        .update(fs.readFileSync(path.join(validSnapshot, reqRel)))
+        .digest('hex');
+      if (actualHex !== expectedHex) {
+        throw new Error(`[Suite 32.1] Snapshot SHA-256 mismatch on ${reqRel}: ${actualHex} !== ${expectedHex}`);
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 32.2: Web / Vercel AES-256-GCM Vault (`node build/build_web_vault.mjs` + `vercel.json`)
+  // --------------------------------------------------------------------------
+  {
+    const vercelCfg = JSON.parse(fs.readFileSync(path.join(REPO_ROOT, 'vercel.json'), 'utf8'));
+    if (
+      vercelCfg.outputDirectory !== 'dist' ||
+      vercelCfg.buildCommand !== 'node build/build_web_vault.mjs'
+    ) {
+      throw new Error(
+        `[Suite 32.2] vercel.json must configure buildCommand='node build/build_web_vault.mjs' and outputDirectory='dist', got ${JSON.stringify(vercelCfg)}`
+      );
+    }
+
+    const distDir = path.join(REPO_ROOT, 'dist');
+    const hadDistBefore = fs.existsSync(distDir);
+    try {
+      execFileSync(process.execPath, [path.join(REPO_ROOT, 'build/build_web_vault.mjs')], {
+        cwd: REPO_ROOT,
+        stdio: 'pipe'
+      });
+
+      if (!fs.existsSync(distDir) || fs.existsSync(path.join(distDir, 'src')) || fs.existsSync(path.join(distDir, 'assets'))) {
+        throw new Error('[Suite 32.2] dist/ must exist with ZERO dist/src/ or dist/assets/ directories!');
+      }
+
+      const allDistFiles = [];
+      const walkDist = (dir) => {
+        for (const ent of fs.readdirSync(dir, { withFileTypes: true })) {
+          const full = path.join(dir, ent.name);
+          if (ent.isDirectory()) walkDist(full);
+          else allDistFiles.push(path.relative(distDir, full).split(path.sep).join('/'));
+        }
+      };
+      walkDist(distDir);
+
+      const leakedPlainFiles = allDistFiles.filter((rel) => /\.(png|wav|ttf|css)$/i.test(rel));
+      if (leakedPlainFiles.length !== 0) {
+        throw new Error(`[Suite 32.2] Found leaked unencrypted assets in dist/: ${leakedPlainFiles.join(', ')}`);
+      }
+
+      const bootFiles = allDistFiles.filter((rel) => /^boot\.[0-9a-f]{12}\.js$/.test(rel));
+      const packFiles = allDistFiles.filter((rel) => /^packs\/[0-9a-f]{16}\.bin$/.test(rel));
+      if (
+        bootFiles.length !== 1 ||
+        packFiles.length < 135 ||
+        !allDistFiles.includes('index.html') ||
+        !allDistFiles.includes('manifest.json') ||
+        !allDistFiles.includes('robots.txt')
+      ) {
+        throw new Error(
+          `[Suite 32.2] Unexpected dist/ layout: bootFiles=${bootFiles.length}, packFiles=${packFiles.length}, files=${allDistFiles.length}`
+        );
+      }
+
+      const distHtml = fs.readFileSync(path.join(distDir, 'index.html'), 'utf8');
+      if (/(?<![\w-])(?:src|href)\s*=\s*["'](?:\.\/|\/)?(?:assets\/|style\.css|src\/)/i.test(distHtml)) {
+        throw new Error('[Suite 32.2] dist/index.html leaked plain assets/, style.css, or src/ URL!');
+      }
+
+      const bootSrc = fs.readFileSync(path.join(distDir, bootFiles[0]), 'utf8');
+      const masterKey = extractMasterKeyFromBootScript(bootSrc);
+      const cpMatch = bootSrc.match(/CP="([0-9a-f]{16})"/);
+      if (!cpMatch) {
+        throw new Error('[Suite 32.2] Missing encrypted code pack ID in boot.<hash>.js!');
+      }
+
+      // Verify AVSV\x01 header on every .bin pack in dist/packs/
+      for (const relPack of packFiles) {
+        const hdr = parseAvsvPackHeader(fs.readFileSync(path.join(distDir, relPack)));
+        if (hdr.version !== 1 || hdr.iv.length !== 12 || hdr.authTag.length !== 16) {
+          throw new Error(`[Suite 32.2] Invalid AVSV header on ${relPack}`);
+        }
+      }
+
+      // Decrypt code+style vault & verify 100% bit-for-bit SHA-256 equality across ALL PNG, WAV & TTF packs!
+      const codePackPlain = decryptAvsvPack(
+        fs.readFileSync(path.join(distDir, `packs/${cpMatch[1]}.bin`)),
+        masterKey
+      );
+      const codeVault = unpackCodeVaultPayload(codePackPlain);
+      if (
+        codeVault.entry !== 'src/main.js' ||
+        !codeVault.modules?.['src/main.js'] ||
+        !codeVault.modules?.['src/entities/Ronin.js'] ||
+        typeof codeVault.css !== 'string' ||
+        codeVault.css.length < 10000
+      ) {
+        throw new Error('[Suite 32.2] Decrypted code+style vault missing expected modules or CSS!');
+      }
+
+      const assetEntries = Object.entries(codeVault.assets || {});
+      let pngVerified = 0;
+      let wavVerified = 0;
+      let ttfVerified = 0;
+      for (const [relAsset, [packId]] of assetEntries) {
+        const decBytes = decryptAvsvPack(
+          fs.readFileSync(path.join(distDir, `packs/${packId}.bin`)),
+          masterKey
+        );
+        const srcBytes = fs.readFileSync(path.join(REPO_ROOT, relAsset));
+        const decSha = crypto.createHash('sha256').update(decBytes).digest('hex');
+        const srcSha = crypto.createHash('sha256').update(srcBytes).digest('hex');
+        if (decSha !== srcSha) {
+          throw new Error(`[Suite 32.2] Bit-exact SHA-256 mismatch after AVSV decrypt for ${relAsset}!`);
+        }
+        if (relAsset.endsWith('.png')) pngVerified++;
+        else if (relAsset.endsWith('.wav')) wavVerified++;
+        else if (relAsset.endsWith('.ttf')) ttfVerified++;
+      }
+      if (pngVerified < 65 || wavVerified < 65 || ttfVerified < 1) {
+        throw new Error(
+          `[Suite 32.2] Unexpected asset counts in AVSV vault: png=${pngVerified}, wav=${wavVerified}, ttf=${ttfVerified}`
+        );
+      }
+    } finally {
+      if (!hadDistBefore) {
+        fs.rmSync(distDir, { recursive: true, force: true });
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 32.3: Native Apple iOS/macOS AES-256-GCM `AVSK` `sanctum.pak` Vault + Xcode & Swift Server Audit
+  // --------------------------------------------------------------------------
+  {
+    const genXcodeSrc = fs.readFileSync(path.join(REPO_ROOT, 'apple/generate_xcodeproj.py'), 'utf8');
+    const pbxprojSrc = fs.readFileSync(
+      path.join(REPO_ROOT, 'apple/ArcaneVsSteel.xcodeproj/project.pbxproj'),
+      'utf8'
+    );
+    const resPhaseMatch = pbxprojSrc.match(
+      /Begin PBXResourcesBuildPhase section[\s\S]*?End PBXResourcesBuildPhase section/
+    );
+    if (!resPhaseMatch) {
+      throw new Error('[Suite 32.3] Missing PBXResourcesBuildPhase in project.pbxproj!');
+    }
+    const resPhaseBlock = resPhaseMatch[0];
+    if (
+      /\.\.\/src|\.\.\/assets|index\.html|style\.css|manifest\.json/.test(resPhaseBlock) ||
+      !resPhaseBlock.includes('Assets.xcassets in Resources') ||
+      /shared_bundle_items/.test(genXcodeSrc) ||
+      !pbxprojSrc.includes('Pack Encrypted Sanctum Vault') ||
+      !pbxprojSrc.includes('pack_sanctum_vault.py')
+    ) {
+      throw new Error(
+        '[Suite 32.3] ResourcesBuildPhase / generate_xcodeproj.py must exclude raw ../src & ../assets and run Pack Encrypted Sanctum Vault!'
+      );
+    }
+
+    const swiftServerSrc = fs.readFileSync(
+      path.join(REPO_ROOT, 'apple/ArcaneVsSteel/Core/LocalSanctumServer.swift'),
+      'utf8'
+    );
+    const swiftStageSrc = fs.readFileSync(
+      path.join(REPO_ROOT, 'apple/ArcaneVsSteel/UI/SanctumWebStageView.swift'),
+      'utf8'
+    );
+    if (
+      !swiftServerSrc.includes('import CryptoKit') ||
+      !swiftServerSrc.includes('import Security') ||
+      !swiftServerSrc.includes('AES.GCM.SealedBox(combined:') ||
+      !swiftServerSrc.includes('AES.GCM.open(') ||
+      !swiftServerSrc.includes('SecRandomCopyBytes') ||
+      !swiftServerSrc.includes('"/v_\\(randomHex32)"') ||
+      !swiftServerSrc.includes('decodedPath.hasPrefix(requiredPrefix)') ||
+      !swiftServerSrc.includes('sendStatus(fd: fd, code: 403, message: "Forbidden")') ||
+      swiftStageSrc.includes("from '/src/engine/ArcaneShaderFX.js") ||
+      !swiftStageSrc.includes('./src/engine/ArcaneShaderFX.js') ||
+      !swiftStageSrc.includes('isInspectable = false')
+    ) {
+      throw new Error(
+        '[Suite 32.3] LocalSanctumServer.swift / SanctumWebStageView.swift failed CryptoKit AES.GCM.open + per-launch 403 token audit!'
+      );
+    }
+
+    // Reconstruct the 32-byte key directly from LocalSanctumServer.swift XOR shards to verify Swift <-> Python parity
+    const shardAMatch = swiftServerSrc.match(/vaultShardA:\s*\[UInt8\]\s*=\s*\[([\s\S]*?)\]/);
+    const shardBMatch = swiftServerSrc.match(/vaultShardB:\s*\[UInt8\]\s*=\s*\[([\s\S]*?)\]/);
+    if (!shardAMatch || !shardBMatch) {
+      throw new Error('[Suite 32.3] Missing XOR-masked vaultShardA / vaultShardB in LocalSanctumServer.swift!');
+    }
+    const parseHexBytes = (s) =>
+      (s.match(/0x[0-9a-fA-F]{2}/g) || []).map((tok) => Number.parseInt(tok, 16));
+    const shardA = parseHexBytes(shardAMatch[1]);
+    const shardB = parseHexBytes(shardBMatch[1]);
+    if (shardA.length !== 32 || shardB.length !== 32) {
+      throw new Error(`[Suite 32.3] Expected 32-byte XOR shards, got ${shardA.length} & ${shardB.length}`);
+    }
+    const swiftKey = Buffer.from(shardA.map((b, i) => b ^ shardB[i]));
+
+    const tmpPakDir = fs.mkdtempSync(path.join(os.tmpdir(), 'avs-suite32-pak-'));
+    const tmpPakPath = path.join(tmpPakDir, 'sanctum.pak');
+    try {
+      execFileSync('python3', [path.join(REPO_ROOT, 'apple/pack_sanctum_vault.py'), '--force', '--output', tmpPakPath], {
+        cwd: REPO_ROOT,
+        stdio: 'pipe'
+      });
+
+      const pakBuf = fs.readFileSync(tmpPakPath);
+      if (
+        pakBuf.length < 37 ||
+        pakBuf[0] !== 0x41 ||
+        pakBuf[1] !== 0x56 ||
+        pakBuf[2] !== 0x53 ||
+        pakBuf[3] !== 0x4b ||
+        pakBuf[4] !== 0x01
+      ) {
+        throw new Error('[Suite 32.3] sanctum.pak missing AVSK\\x01 magic header!');
+      }
+
+      const openCombinedGcm = (sealedBox) => {
+        const nonce = sealedBox.subarray(0, 12);
+        const ct = sealedBox.subarray(12, sealedBox.length - 16);
+        const tag = sealedBox.subarray(sealedBox.length - 16);
+        const decipher = crypto.createDecipheriv('aes-256-gcm', swiftKey, nonce);
+        decipher.setAuthTag(tag);
+        return Buffer.concat([decipher.update(ct), decipher.final()]);
+      };
+
+      const tocSealedLen = pakBuf.readUInt32LE(5);
+      const tocPlain = openCombinedGcm(pakBuf.subarray(9, 9 + tocSealedLen));
+      const toc = JSON.parse(tocPlain.toString('utf8'));
+      const tocKeys = Object.keys(toc);
+      if (tocKeys.length < 180) {
+        throw new Error(`[Suite 32.3] Expected >= 180 encrypted files in sanctum.pak TOC, got ${tocKeys.length}`);
+      }
+
+      for (const sampleRel of [
+        'index.html',
+        'style.css',
+        'src/main.js',
+        'assets/sprites/ronin_sheet.png',
+        'assets/sprites/mage_sheet.png',
+        'assets/sfx/slash.wav',
+        'assets/fonts/pixel_art.ttf'
+      ]) {
+        const entry = toc[sampleRel];
+        if (!Array.isArray(entry) || entry.length < 3) {
+          throw new Error(`[Suite 32.3] Missing '${sampleRel}' in sanctum.pak encrypted TOC!`);
+        }
+        const [offset, length] = entry;
+        const decBuf = openCombinedGcm(pakBuf.subarray(offset, offset + length));
+        const srcBuf = fs.readFileSync(path.join(REPO_ROOT, sampleRel));
+        const decSha = crypto.createHash('sha256').update(decBuf).digest('hex');
+        const srcSha = crypto.createHash('sha256').update(srcBuf).digest('hex');
+        if (decSha !== srcSha) {
+          throw new Error(`[Suite 32.3] sanctum.pak SHA-256 mismatch on ${sampleRel}!`);
+        }
+      }
+
+      // Verify AES-GCM authTag tamper detection rejects forged ciphertext
+      const [testOff, testLen] = toc['index.html'];
+      const tamperedBox = Buffer.from(pakBuf.subarray(testOff, testOff + testLen));
+      tamperedBox[tamperedBox.length - 1] ^= 0xff;
+      let rejectedTamper = false;
+      try {
+        openCombinedGcm(tamperedBox);
+      } catch (_) {
+        rejectedTamper = true;
+      }
+      if (!rejectedTamper) {
+        throw new Error('[Suite 32.3] Expected AES-256-GCM open to reject tampered sanctum.pak authTag!');
+      }
+    } finally {
+      fs.rmSync(tmpPakDir, { recursive: true, force: true });
+    }
+  }
+
+  const suite32ElapsedMs = performance.now() - suite32StartMs;
+  if (suite32ElapsedMs >= 3000) {
+    throw new Error(`[Suite 32] Expected Suite 32 runtime < 3000ms, got ${suite32ElapsedMs.toFixed(1)}ms!`);
+  }
+
+  console.log(
+    `[PASS] Suite 32: Pre-Change Fallback Backup Snapshot, Web/Vercel AES-256-GCM AVSV Vault (0 plain assets, 100% SHA-256 lossless) & Apple CryptoKit AVSK sanctum.pak + Per-Launch 403 Token verified in ${suite32ElapsedMs.toFixed(0)}ms!`
   );
 }
 
