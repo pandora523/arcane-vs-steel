@@ -10165,15 +10165,22 @@ for (const [name, Cls] of CLASSES) {
     }
 
     const indexHtml33 = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+    const styleCss33 = fs.readFileSync(path.join(REPO_ROOT, 'style.css'), 'utf8');
+    const mainJs33 = fs.readFileSync(path.join(REPO_ROOT, 'src/main.js'), 'utf8');
     const rosterCardCount = (indexHtml33.match(/class="champ-card\b/g) || []).length;
     if (
       rosterCardCount !== 12 ||
       !indexHtml33.includes('id="card-warrior"') ||
       !indexHtml33.includes('id="card-warrior_ex"') ||
-      !indexHtml33.includes('AETHELGARD EX')
+      !indexHtml33.includes('AETHELGARD EX') ||
+      !/id="p1-sprite-canvas"[^>]*width="320"[^>]*height="240"/.test(indexHtml33) ||
+      !/id="p2-sprite-canvas"[^>]*width="320"[^>]*height="240"/.test(indexHtml33) ||
+      !styleCss33.includes('aspect-ratio: 320 / 240;') ||
+      !mainJs33.includes('const cw = 320;') ||
+      !mainJs33.includes('const ch = 240;')
     ) {
       throw new Error(
-        `[Suite 33.2] Expected 12 champion cards in index.html with both #card-warrior & #card-warrior_ex, got count=${rosterCardCount}`
+        `[Suite 33.2] Expected 12 champion cards + zero-clip 320x240 #p1/#p2 pedestal canvases across index.html/style.css/main.js, got count=${rosterCardCount}`
       );
     }
   }
