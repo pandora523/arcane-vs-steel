@@ -728,25 +728,39 @@ export class Game {
       window.addEventListener('pagehide', () => this.setAppForegroundState(false));
       window.addEventListener('pageshow', () => {
         const hidden = typeof document !== 'undefined' && Boolean(document.hidden);
-        this.setAppForegroundState(!hidden);
+        if (!hidden) {
+          this.setAppForegroundState(true);
+        }
+      });
+      window.addEventListener('focus', () => {
+        const hidden = typeof document !== 'undefined' && Boolean(document.hidden);
+        if (!hidden) {
+          this.setAppForegroundState(true);
+        }
       });
       const isTouchMobile =
         Boolean(this.renderer?.isMobile) ||
         (typeof navigator !== 'undefined' && (navigator.maxTouchPoints || 0) > 0);
       if (isTouchMobile) {
-        window.addEventListener('blur', () => this.setAppForegroundState(false));
-        window.addEventListener('focus', () => {
-          const hidden = typeof document !== 'undefined' && Boolean(document.hidden);
-          this.setAppForegroundState(!hidden);
+        window.addEventListener('blur', () => {
+          // Only suspend if the document is actually hidden/backgrounded (never on transient iOS overlays!)
+          if (typeof document !== 'undefined' && Boolean(document.hidden)) {
+            this.setAppForegroundState(false);
+          }
         });
       }
     }
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', () => {
-        this.setAppForegroundState(!document.hidden);
+        if (document.hidden) {
+          this.setAppForegroundState(false);
+        } else {
+          this.setAppForegroundState(true);
+        }
       });
       if (document.hidden) {
         this._appSuspended = true;
+        this.audio?.suspendForBackground?.();
       }
     }
   }
@@ -789,7 +803,10 @@ export class Game {
   setAppForegroundState(active) {
     const nextActive = Boolean(active);
     if (!nextActive) {
-      if (this._appSuspended) return;
+      if (this._appSuspended) {
+        this.audio?.suspendForBackground?.();
+        return;
+      }
       this._appSuspended = true;
       this.stopLoop();
       this.adventure?.clearHeldInputs?.();
@@ -803,7 +820,11 @@ export class Game {
       return;
     }
 
-    if (!this._appSuspended) return;
+    if (!this._appSuspended) {
+      this.audio?.resumeFromBackground?.();
+      this.startLoop();
+      return;
+    }
     this._appSuspended = false;
     this.lastTime = 0;
     this._lastPacedTime = 0;

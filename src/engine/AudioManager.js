@@ -121,74 +121,337 @@ export class AudioManager {
     this._combatWavsEnsured = false;
     this._bgSuspended = false;
     this._unlockedByGesture = false;
+    this._wasRunningBeforeBg = false;
+    this._needsPostWakePrime = true;
+    this._stalledCheckTimer = null;
+    this._inStateChangeResume = false;
+    this._rebuildCount = 0;
+    this._pendingPlays = [];
 
     this.initContext();
     this.preloadWavFiles();
 
-    const unlock = () => {
-      this._unlockedByGesture = true;
-      if (!this._bgSuspended && this.enabled && this.ctx && this.ctx.state === 'suspended') {
-        this.ctx.resume().catch(() => {});
+    this._boundUnlockFromGesture = () => this.unlockFromGesture();
+    if (typeof window !== 'undefined') {
+      if (typeof window.addEventListener === 'function') {
+        const gestureOpts = { passive: true, capture: true };
+        window.addEventListener('pointerdown', this._boundUnlockFromGesture, gestureOpts);
+        window.addEventListener('touchstart', this._boundUnlockFromGesture, gestureOpts);
+        window.addEventListener('touchend', this._boundUnlockFromGesture, gestureOpts);
+        window.addEventListener('click', this._boundUnlockFromGesture, gestureOpts);
+        window.addEventListener('keydown', this._boundUnlockFromGesture, gestureOpts);
       }
-    };
-    window.addEventListener('pointerdown', unlock, { passive: true });
-    window.addEventListener('touchstart', unlock, { passive: true });
-    window.addEventListener('keydown', unlock, { passive: true });
+      window.__avsAudio = this;
+      window.__avsResumeAudio = (forceRebuild = false) => {
+        if (forceRebuild) {
+          this._bgSuspended = false;
+          this._needsPostWakePrime = true;
+          if (this.enabled) {
+            this.rebuildContext();
+          }
+          return;
+        }
+        this.resumeFromBackground(false);
+      };
+    }
+  }
+
+  isContextPaused() {
+    return Boolean(this.ctx && (this.ctx.state === 'suspended' || this.ctx.state === 'interrupted'));
+  }
+
+  _playSilentUnlockTick() {
+    if (!this.ctx || this.ctx.state === 'closed') return;
+    try {
+      if (
+        typeof this.ctx.createBuffer !== 'function' ||
+        typeof this.ctx.createBufferSource !== 'function' ||
+        !this.ctx.destination
+      ) {
+        return;
+      }
+      const silentBuf = this.ctx.createBuffer(1, 1, 22050);
+      const src = this.ctx.createBufferSource();
+      src.buffer = silentBuf;
+      src.connect(this.ctx.destination);
+      src.onended = () => {
+        src.onended = null;
+        try {
+          src.disconnect();
+        } catch (_) {}
+      };
+      src.start(0);
+    } catch (_) {}
+  }
+
+  _scheduleStalledClockCheck(delayMs = 250) {
+    if (!this.ctx) return;
+    if (this._stalledCheckTimer) {
+      clearTimeout(this._stalledCheckTimer);
+      this._stalledCheckTimer = null;
+    }
+    const refCtx = this.ctx;
+    const t0 = typeof refCtx.currentTime === 'number' ? refCtx.currentTime : 0;
+    this._stalledCheckTimer = setTimeout(() => {
+      this._stalledCheckTimer = null;
+      if (!refCtx || this.ctx !== refCtx || !this.enabled || this._bgSuspended) return;
+      const stateWedged =
+        refCtx.state === 'closed' || (this._unlockedByGesture && refCtx.state !== 'running');
+      const clockFrozen =
+        refCtx.state === 'running' &&
+        typeof refCtx.currentTime === 'number' &&
+        refCtx.currentTime <= t0;
+      if (stateWedged || clockFrozen) {
+        this.rebuildContext();
+      }
+    }, delayMs);
+    if (this._stalledCheckTimer && typeof this._stalledCheckTimer.unref === 'function') {
+      this._stalledCheckTimer.unref();
+    }
+  }
+
+  _enqueuePendingPlay(rawName, worldX) {
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    // Prune stale queued sounds (> 600ms old) and cap queue to 4 entries
+    this._pendingPlays = this._pendingPlays.filter((item) => now - item.queuedAt <= 600);
+    if (this._pendingPlays.length >= 4) {
+      this._pendingPlays.shift();
+    }
+    this._pendingPlays.push({ rawName, worldX, queuedAt: now });
+  }
+
+  _flushPendingPlays() {
+    if (!this._pendingPlays.length || !this.enabled || this._bgSuspended) return;
+    if (!this.ctx || this.ctx.state !== 'running') return;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    const pending = this._pendingPlays.splice(0, this._pendingPlays.length);
+    for (let i = 0; i < pending.length; i++) {
+      const item = pending[i];
+      if (now - item.queuedAt <= 600) {
+        this._playNow(item.rawName, item.worldX);
+      }
+    }
+  }
+
+  unlockFromGesture() {
+    this._unlockedByGesture = true;
+    if (!this.enabled || this._bgSuspended) return;
+
+    if (!this.ctx || this.ctx.state === 'closed') {
+      this._needsPostWakePrime = false;
+      this.rebuildContext();
+      return;
+    }
+
+    if (this.ctx.state !== 'running') {
+      const ctxRef = this.ctx;
+      this._needsPostWakePrime = false;
+      this._playSilentUnlockTick();
+      try {
+        Promise.resolve(ctxRef.resume())
+          .then(() => {
+            if (this.ctx === ctxRef) {
+              this._playSilentUnlockTick();
+              this._flushPendingPlays();
+            }
+          })
+          .catch(() => {
+            if (this.ctx === ctxRef && this.enabled && !this._bgSuspended) {
+              this.rebuildContext();
+            }
+          });
+      } catch (_) {
+        this.rebuildContext();
+        return;
+      }
+      if (this.ctx === ctxRef && this.ctx.state === 'running') {
+        this._flushPendingPlays();
+      }
+      this._scheduleStalledClockCheck(250);
+      return;
+    }
+
+    if (this._needsPostWakePrime) {
+      this._needsPostWakePrime = false;
+      this._playSilentUnlockTick();
+      this._scheduleStalledClockCheck(250);
+    }
+  }
+
+  rebuildContext() {
+    if (typeof window === 'undefined') return null;
+    const AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (!AudioCtx) return null;
+
+    if (this._stalledCheckTimer) {
+      clearTimeout(this._stalledCheckTimer);
+      this._stalledCheckTimer = null;
+    }
+
+    while (this.activeVoices.length > 0) {
+      const v = this.activeVoices.pop();
+      try {
+        v?.cleanup?.();
+      } catch (_) {}
+    }
+    this.pinkNoiseBuffer = null;
+
+    const deadCtx = this.ctx;
+    this.ctx = null;
+    this.master = null;
+    if (deadCtx) {
+      try {
+        deadCtx.onstatechange = null;
+      } catch (_) {}
+      if (deadCtx.state !== 'closed' && typeof deadCtx.close === 'function') {
+        try {
+          Promise.resolve(deadCtx.close()).catch(() => {});
+        } catch (_) {}
+      }
+    }
+
+    this._rebuildCount = (this._rebuildCount || 0) + 1;
+    this.initContext();
+    if (!this.ctx) return null;
+
+    if (Object.keys(this.buffers).length === 0) {
+      this.preloadWavFiles();
+    }
+
+    if (this.enabled && !this._bgSuspended) {
+      const rebuiltCtx = this.ctx;
+      try {
+        if (rebuiltCtx.state !== 'running' && typeof rebuiltCtx.resume === 'function') {
+          Promise.resolve(rebuiltCtx.resume())
+            .then(() => {
+              if (this.ctx === rebuiltCtx) {
+                this._playSilentUnlockTick();
+                this._flushPendingPlays();
+              }
+            })
+            .catch(() => {});
+        }
+      } catch (_) {}
+      this._playSilentUnlockTick();
+      if (this.ctx === rebuiltCtx && this.ctx.state === 'running') {
+        this._flushPendingPlays();
+      }
+    }
+
+    return this.ctx;
   }
 
   initContext() {
+    if (typeof window === 'undefined') return;
     const AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (!AudioCtx) return;
-    this.ctx = new AudioCtx({ latencyHint: 'interactive' });
+    let ctx = null;
+    try {
+      ctx = new AudioCtx({ latencyHint: 'interactive' });
+    } catch (_) {
+      try {
+        ctx = new AudioCtx();
+      } catch (_2) {
+        return;
+      }
+    }
+    this.ctx = ctx;
 
-    // 1. Clean 36Hz High-Pass Filter (preserves 38-55Hz cinematic sub-drops while blocking DC/rumble)
-    const hpf = this.ctx.createBiquadFilter();
-    hpf.type = 'highpass';
-    hpf.frequency.value = 36;
-    hpf.Q.value = 0.707;
+    ctx.onstatechange = () => {
+      if (this.ctx !== ctx) return;
+      if (ctx.state === 'suspended' || ctx.state === 'interrupted') {
+        this._needsPostWakePrime = true;
+        if (this.enabled && !this._bgSuspended && !this._inStateChangeResume) {
+          this._inStateChangeResume = true;
+          try {
+            Promise.resolve(ctx.resume())
+              .then(() => {
+                if (this.ctx === ctx && ctx.state === 'running') {
+                  this._playSilentUnlockTick();
+                  this._flushPendingPlays();
+                }
+              })
+              .catch(() => {})
+              .finally(() => {
+                this._inStateChangeResume = false;
+              });
+          } catch (_) {
+            this._inStateChangeResume = false;
+          }
+        }
+      } else if (ctx.state === 'running') {
+        this._flushPendingPlays();
+      }
+    };
 
-    // 2. Wide 16.5kHz Studio Low-Pass Filter (preserves crisp katana shing, crystal shatter & electric arcs)
-    const lpf = this.ctx.createBiquadFilter();
-    lpf.type = 'lowpass';
-    lpf.frequency.value = 16500;
-    lpf.Q.value = 0.707;
+    if (
+      typeof ctx.createBiquadFilter === 'function' &&
+      typeof ctx.createDynamicsCompressor === 'function' &&
+      typeof ctx.createGain === 'function'
+    ) {
+      // 1. Clean 36Hz High-Pass Filter (preserves 38-55Hz cinematic sub-drops while blocking DC/rumble)
+      const hpf = ctx.createBiquadFilter();
+      hpf.type = 'highpass';
+      hpf.frequency.value = 36;
+      hpf.Q.value = 0.707;
 
-    // 3. Transparent Studio Peak Limiter (gentle ratio, fast transient catch, zero pumping)
-    const limiter = this.ctx.createDynamicsCompressor();
-    limiter.threshold.value = -3.5;
-    limiter.knee.value = 6;
-    limiter.ratio.value = 4.0;
-    limiter.attack.value = 0.003;
-    limiter.release.value = 0.11;
+      // 2. Wide 16.5kHz Studio Low-Pass Filter (preserves crisp katana shing, crystal shatter & electric arcs)
+      const lpf = ctx.createBiquadFilter();
+      lpf.type = 'lowpass';
+      lpf.frequency.value = 16500;
+      lpf.Q.value = 0.707;
 
-    // 4. Master Output Gain
-    const masterGain = this.ctx.createGain();
-    masterGain.gain.value = 0.90;
+      // 3. Transparent Studio Peak Limiter (gentle ratio, fast transient catch, zero pumping)
+      const limiter = ctx.createDynamicsCompressor();
+      limiter.threshold.value = -3.5;
+      limiter.knee.value = 6;
+      limiter.ratio.value = 4.0;
+      limiter.attack.value = 0.003;
+      limiter.release.value = 0.11;
 
-    hpf.connect(lpf);
-    lpf.connect(limiter);
-    limiter.connect(masterGain);
-    masterGain.connect(this.ctx.destination);
-    this.master = hpf;
+      // 4. Master Output Gain
+      const masterGain = ctx.createGain();
+      masterGain.gain.value = 0.90;
+
+      hpf.connect(lpf);
+      lpf.connect(limiter);
+      limiter.connect(masterGain);
+      masterGain.connect(ctx.destination);
+      this.master = hpf;
+    } else if (typeof ctx.createGain === 'function') {
+      const masterGain = ctx.createGain();
+      if (masterGain.gain) masterGain.gain.value = 0.90;
+      if (ctx.destination && typeof masterGain.connect === 'function') {
+        masterGain.connect(ctx.destination);
+      }
+      this.master = masterGain;
+    } else {
+      this.master = ctx.destination || null;
+    }
   }
 
   createPinkNoiseBuffer() {
-    if (!this.ctx || this.pinkNoiseBuffer) return;
-    const rate = this.ctx.sampleRate;
-    const len = Math.max(4096, Math.floor(rate * 0.25));
-    this.pinkNoiseBuffer = this.ctx.createBuffer(1, len, rate);
-    const pink = this.pinkNoiseBuffer.getChannelData(0);
-    let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
-    for (let i = 0; i < len; i++) {
-      const w = Math.random() * 2 - 1;
-      b0 = 0.99886 * b0 + w * 0.0555179;
-      b1 = 0.99332 * b1 + w * 0.0750759;
-      b2 = 0.96900 * b2 + w * 0.1538520;
-      b3 = 0.86650 * b3 + w * 0.3104856;
-      b4 = 0.55000 * b4 + w * 0.5329522;
-      b5 = -0.7616 * b5 - w * 0.0168980;
-      pink[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11;
-      b6 = w * 0.115926;
+    if (!this.ctx || this.pinkNoiseBuffer || typeof this.ctx.createBuffer !== 'function') return;
+    try {
+      const rate = this.ctx.sampleRate || 44100;
+      const len = Math.max(4096, Math.floor(rate * 0.25));
+      this.pinkNoiseBuffer = this.ctx.createBuffer(1, len, rate);
+      if (typeof this.pinkNoiseBuffer.getChannelData !== 'function') return;
+      const pink = this.pinkNoiseBuffer.getChannelData(0);
+      let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
+      for (let i = 0; i < len; i++) {
+        const w = Math.random() * 2 - 1;
+        b0 = 0.99886 * b0 + w * 0.0555179;
+        b1 = 0.99332 * b1 + w * 0.0750759;
+        b2 = 0.96900 * b2 + w * 0.1538520;
+        b3 = 0.86650 * b3 + w * 0.3104856;
+        b4 = 0.55000 * b4 + w * 0.5329522;
+        b5 = -0.7616 * b5 - w * 0.0168980;
+        pink[i] = (b0 + b1 + b2 + b3 + b4 + b5 + b6 + w * 0.5362) * 0.11;
+        b6 = w * 0.115926;
+      }
+    } catch (_) {
+      this.pinkNoiseBuffer = null;
     }
   }
 
@@ -232,11 +495,30 @@ export class AudioManager {
 
   toggle() {
     this.enabled = !this.enabled;
-    if (this.ctx) {
-      if (!this.enabled && this.ctx.state === 'running') {
-        this.ctx.suspend().catch(() => {});
-      } else if (this.enabled && !this._bgSuspended && this._unlockedByGesture && this.ctx.state === 'suspended') {
-        this.ctx.resume().catch(() => {});
+    if (!this.enabled) {
+      this._pendingPlays.length = 0;
+      if (this.ctx && this.ctx.state === 'running' && typeof this.ctx.suspend === 'function') {
+        try {
+          Promise.resolve(this.ctx.suspend()).catch(() => {});
+        } catch (_) {}
+      }
+    } else if (!this._bgSuspended) {
+      if (!this.ctx || this.ctx.state === 'closed') {
+        this.rebuildContext();
+      } else if (this.isContextPaused() || this.ctx.state !== 'running') {
+        const ctxRef = this.ctx;
+        this._playSilentUnlockTick();
+        try {
+          Promise.resolve(ctxRef.resume())
+            .then(() => {
+              if (this.ctx === ctxRef) {
+                this._playSilentUnlockTick();
+                this._flushPendingPlays();
+              }
+            })
+            .catch(() => {});
+        } catch (_) {}
+        this._scheduleStalledClockCheck(250);
       }
     }
     return this.enabled;
@@ -244,22 +526,70 @@ export class AudioManager {
 
   suspendForBackground() {
     this._bgSuspended = true;
-    if (this.ctx && this.ctx.state === 'running') {
-      this._wasRunningBeforeBg = true;
-      this.ctx.suspend().catch(() => {});
+    this._needsPostWakePrime = true;
+    this._pendingPlays.length = 0;
+    if (this._stalledCheckTimer) {
+      clearTimeout(this._stalledCheckTimer);
+      this._stalledCheckTimer = null;
+    }
+    if (this.ctx) {
+      if (this.ctx.state === 'running' || this.ctx.state === 'interrupted') {
+        this._wasRunningBeforeBg = true;
+      }
+      if (this.ctx.state === 'running' && typeof this.ctx.suspend === 'function') {
+        try {
+          Promise.resolve(this.ctx.suspend()).catch(() => {});
+        } catch (_) {}
+      }
     }
   }
 
-  resumeFromBackground() {
+  resumeFromBackground(forceRebuild = false) {
     this._bgSuspended = false;
-    if (
-      this.enabled &&
-      (this._unlockedByGesture || this._wasRunningBeforeBg) &&
-      this.ctx &&
-      this.ctx.state === 'suspended'
-    ) {
+    this._needsPostWakePrime = true;
+    if (!this.enabled) return;
+
+    if (forceRebuild) {
+      this.rebuildContext();
+      return;
+    }
+
+    if (!this.ctx || this.ctx.state === 'closed') {
+      this.rebuildContext();
+      return;
+    }
+
+    if (this.isContextPaused() || this.ctx.state !== 'running') {
       this._wasRunningBeforeBg = false;
-      this.ctx.resume().catch(() => {});
+      const ctxRef = this.ctx;
+      try {
+        if (typeof ctxRef.resume === 'function') {
+          Promise.resolve(ctxRef.resume())
+            .then(() => {
+              if (this.ctx === ctxRef) {
+                this._playSilentUnlockTick();
+                this._flushPendingPlays();
+              }
+            })
+            .catch(() => {
+              if (this.ctx === ctxRef && ctxRef.state === 'closed') {
+                this.rebuildContext();
+              }
+            });
+        }
+      } catch (_) {
+        if (ctxRef.state === 'closed') {
+          this.rebuildContext();
+          return;
+        }
+      }
+      if (this.ctx === ctxRef && this.ctx.state === 'running') {
+        this._playSilentUnlockTick();
+        this._flushPendingPlays();
+      }
+      this._scheduleStalledClockCheck(250);
+    } else {
+      this._scheduleStalledClockCheck(250);
     }
   }
 
@@ -274,11 +604,50 @@ export class AudioManager {
   }
 
   play(rawName, worldX = null) {
-    if (!this.enabled || this._bgSuspended || !this.ctx) return;
-    if (this.ctx.state === 'suspended') {
-      if (!this._unlockedByGesture) return;
-      this.ctx.resume().catch(() => {});
+    if (!this.enabled || this._bgSuspended) return;
+
+    if (!this.ctx || this.ctx.state === 'closed') {
+      this.rebuildContext();
     }
+    if (!this.ctx) return;
+
+    if (this.ctx.state !== 'running') {
+      const ctxBefore = this.ctx;
+      try {
+        if (typeof ctxBefore.resume === 'function') {
+          Promise.resolve(ctxBefore.resume())
+            .then(() => {
+              if (this.ctx === ctxBefore && ctxBefore.state === 'running') {
+                this._playSilentUnlockTick();
+                this._flushPendingPlays();
+              }
+            })
+            .catch(() => {
+              if (
+                this.ctx === ctxBefore &&
+                this.enabled &&
+                !this._bgSuspended &&
+                ctxBefore.state === 'closed'
+              ) {
+                this.rebuildContext();
+              }
+            });
+        }
+      } catch (_) {
+        this.rebuildContext();
+      }
+
+      if (!this.ctx || this.ctx.state !== 'running') {
+        this._enqueuePendingPlay(rawName, worldX);
+        return;
+      }
+    }
+
+    this._playNow(rawName, worldX);
+  }
+
+  _playNow(rawName, worldX = null) {
+    if (!this.enabled || this._bgSuspended || !this.ctx) return;
 
     const aliasMap = {
       death_knight: 'death_warrior'
@@ -366,60 +735,85 @@ export class AudioManager {
 
     const baseVol = this.volumes[name] || 0.70;
     const voiceGain = this.ctx.createGain();
-    voiceGain.gain.setValueAtTime(baseVol, this.ctx.currentTime);
+    if (voiceGain.gain) {
+      if (typeof voiceGain.gain.setValueAtTime === 'function') {
+        voiceGain.gain.setValueAtTime(baseVol, this.ctx.currentTime || 0);
+      } else {
+        voiceGain.gain.value = baseVol;
+      }
+    }
 
     // Full-bandwidth natural studio air filter
-    const warmthFilter = this.ctx.createBiquadFilter();
-    warmthFilter.type = 'lowpass';
-    warmthFilter.frequency.value = isBigCinematic || isMatchEndSound ? 16400 : 14600 + Math.random() * 1800;
-    warmthFilter.Q.value = 0.65;
-
-    voiceGain.connect(warmthFilter);
+    let warmthFilter = null;
+    let chainTail = voiceGain;
+    if (typeof this.ctx.createBiquadFilter === 'function') {
+      warmthFilter = this.ctx.createBiquadFilter();
+      warmthFilter.type = 'lowpass';
+      warmthFilter.frequency.value = isBigCinematic || isMatchEndSound ? 16400 : 14600 + Math.random() * 1800;
+      warmthFilter.Q.value = 0.65;
+      voiceGain.connect(warmthFilter);
+      chainTail = warmthFilter;
+    }
 
     let panner = null;
     if (worldX !== null && name !== 'victory_fanfare' && typeof this.ctx.createStereoPanner === 'function') {
       panner = this.ctx.createStereoPanner();
       panner.pan.value = Math.max(-0.48, Math.min(0.48, (worldX - 600) / 650));
-      warmthFilter.connect(panner);
-      panner.connect(this.master);
-    } else {
-      warmthFilter.connect(this.master);
+      chainTail.connect(panner);
+      if (this.master) panner.connect(this.master);
+    } else if (this.master && typeof chainTail.connect === 'function') {
+      chainTail.connect(this.master);
     }
 
     // Play the studio-mastered 44.1kHz stereo physical-foley WAV buffer
     const buf = this.buffers[name];
     if (buf) {
+      let bufferAssigned = false;
       try {
         const src = this.ctx.createBufferSource();
-        src.buffer = buf;
-        // Subtle organic foley variation on repeatable attacks; exact 1.0x timing on ultimates & match end
-        const rateSpread = isBigCinematic || isMatchEndSound ? 0.0 : 0.045;
-        src.playbackRate.value =
-          rateSpread > 0 ? 1.0 - rateSpread * 0.5 + Math.random() * rateSpread : 1.0;
-        src.connect(voiceGain);
-
-        let cleaned = false;
-        const voiceEntry = {
-          src,
-          gainNode: voiceGain,
-          startTime: now,
-          isBig: isBigCinematic,
-          name,
-          cleanup: () => {
-            if (cleaned) return;
-            cleaned = true;
-            src.onended = null;
-            const idx = this.activeVoices.indexOf(voiceEntry);
-            if (idx !== -1) this.activeVoices.splice(idx, 1);
-            this._disconnectChain(src, voiceGain, warmthFilter, panner);
+        try {
+          src.buffer = buf;
+          bufferAssigned = true;
+        } catch (_) {
+          // Self-heal if a decoded AudioBuffer ever needs re-decoding after a media daemon reset
+          delete this.buffers[name];
+          if (this.volumes[name] !== undefined) {
+            this.loadWavKey(name);
           }
-        };
-        this.activeVoices.push(voiceEntry);
-        src.onended = voiceEntry.cleanup;
-        src.start(0);
-        return;
+        }
+        if (bufferAssigned) {
+          // Subtle organic foley variation on repeatable attacks; exact 1.0x timing on ultimates & match end
+          const rateSpread = isBigCinematic || isMatchEndSound ? 0.0 : 0.045;
+          if (src.playbackRate) {
+            src.playbackRate.value =
+              rateSpread > 0 ? 1.0 - rateSpread * 0.5 + Math.random() * rateSpread : 1.0;
+          }
+          src.connect(voiceGain);
+
+          let cleaned = false;
+          const voiceEntry = {
+            src,
+            gainNode: voiceGain,
+            startTime: now,
+            isBig: isBigCinematic,
+            name,
+            cleanup: () => {
+              if (cleaned) return;
+              cleaned = true;
+              src.onended = null;
+              const idx = this.activeVoices.indexOf(voiceEntry);
+              if (idx !== -1) this.activeVoices.splice(idx, 1);
+              this._disconnectChain(src, voiceGain, warmthFilter, panner);
+            }
+          };
+          this.activeVoices.push(voiceEntry);
+          src.onended = voiceEntry.cleanup;
+          src.start(0);
+          return;
+        }
       } catch (_) {
         this._disconnectChain(voiceGain, warmthFilter, panner);
+        return;
       }
     }
 
@@ -487,66 +881,82 @@ export class AudioManager {
   }
 
   playWarmFallback(name, dest, warmthFilter = null, panner = null) {
-    if (!this.ctx) return;
+    if (!this.ctx || typeof this.ctx.createBufferSource !== 'function' || typeof this.ctx.createBiquadFilter !== 'function') {
+      this._disconnectChain(dest, warmthFilter, panner);
+      return;
+    }
     if (!this.pinkNoiseBuffer) this.createPinkNoiseBuffer();
     if (!this.pinkNoiseBuffer) {
       this._disconnectChain(dest, warmthFilter, panner);
       return;
     }
-    const t = this.ctx.currentTime;
+    let src = null;
+    let bp = null;
+    let g = null;
+    let punchOsc = null;
+    let punchGain = null;
+    try {
+      const t = this.ctx.currentTime || 0;
 
-    // 1. Swept aerodynamic / elemental noise burst (zero stationary tone)
-    const src = this.ctx.createBufferSource();
-    src.buffer = this.pinkNoiseBuffer;
-    src.playbackRate.value = 0.92 + Math.random() * 0.22;
+      // 1. Swept aerodynamic / elemental noise burst (zero stationary tone)
+      src = this.ctx.createBufferSource();
+      src.buffer = this.pinkNoiseBuffer;
+      if (src.playbackRate) {
+        src.playbackRate.value = 0.92 + Math.random() * 0.22;
+      }
 
-    const bp = this.ctx.createBiquadFilter();
-    bp.type = 'bandpass';
-    const isSharp =
-      name.includes('slash') ||
-      name.includes('clang') ||
-      name.includes('ice') ||
-      name.includes('frost') ||
-      name.includes('cyber') ||
-      name.includes('holy') ||
-      name.includes('arrow');
-    const fStart = isSharp ? 3400 : name.includes('fire') || name.includes('meteor') ? 1350 : 2200;
-    const fEnd = isSharp ? 720 : 280;
-    bp.frequency.setValueAtTime(fStart, t);
-    bp.frequency.exponentialRampToValueAtTime(fEnd, t + 0.16);
-    bp.Q.value = isSharp ? 1.8 : 1.1;
+      bp = this.ctx.createBiquadFilter();
+      bp.type = 'bandpass';
+      const isSharp =
+        name.includes('slash') ||
+        name.includes('clang') ||
+        name.includes('ice') ||
+        name.includes('frost') ||
+        name.includes('cyber') ||
+        name.includes('holy') ||
+        name.includes('arrow');
+      const fStart = isSharp ? 3400 : name.includes('fire') || name.includes('meteor') ? 1350 : 2200;
+      const fEnd = isSharp ? 720 : 280;
+      bp.frequency.setValueAtTime(fStart, t);
+      bp.frequency.exponentialRampToValueAtTime(fEnd, t + 0.16);
+      bp.Q.value = isSharp ? 1.8 : 1.1;
 
-    const g = this.ctx.createGain();
-    g.gain.setValueAtTime(0.001, t);
-    g.gain.linearRampToValueAtTime(0.42, t + 0.005);
-    g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
+      g = this.ctx.createGain();
+      g.gain.setValueAtTime(0.001, t);
+      g.gain.linearRampToValueAtTime(0.42, t + 0.005);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.18);
 
-    src.connect(bp);
-    bp.connect(g);
-    g.connect(dest);
-    src.start(t);
-    src.stop(t + 0.19);
+      src.connect(bp);
+      bp.connect(g);
+      g.connect(dest);
+      src.start(t);
+      if (typeof src.stop === 'function') src.stop(t + 0.19);
 
-    // 2. Crisp 18ms physical transient snap + fast sub-punch drop (125Hz -> 42Hz)
-    const punchOsc = this.ctx.createOscillator();
-    const punchGain = this.ctx.createGain();
-    punchOsc.type = 'triangle';
-    punchOsc.frequency.setValueAtTime(125, t);
-    punchOsc.frequency.exponentialRampToValueAtTime(42, t + 0.075);
-    punchGain.gain.setValueAtTime(0.28, t);
-    punchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
-    punchOsc.connect(punchGain);
-    punchGain.connect(dest);
-    punchOsc.start(t);
-    punchOsc.stop(t + 0.085);
+      // 2. Crisp 18ms physical transient snap + fast sub-punch drop (125Hz -> 42Hz)
+      if (typeof this.ctx.createOscillator === 'function') {
+        punchOsc = this.ctx.createOscillator();
+        punchGain = this.ctx.createGain();
+        punchOsc.type = 'triangle';
+        punchOsc.frequency.setValueAtTime(125, t);
+        punchOsc.frequency.exponentialRampToValueAtTime(42, t + 0.075);
+        punchGain.gain.setValueAtTime(0.28, t);
+        punchGain.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
+        punchOsc.connect(punchGain);
+        punchGain.connect(dest);
+        punchOsc.start(t);
+        if (typeof punchOsc.stop === 'function') punchOsc.stop(t + 0.085);
 
-    punchOsc.onended = () => {
-      punchOsc.onended = null;
-      this._disconnectChain(punchOsc, punchGain);
-    };
-    src.onended = () => {
-      src.onended = null;
+        punchOsc.onended = () => {
+          punchOsc.onended = null;
+          this._disconnectChain(punchOsc, punchGain);
+        };
+      }
+      src.onended = () => {
+        src.onended = null;
+        this._disconnectChain(src, bp, g, punchOsc, punchGain, dest, warmthFilter, panner);
+      };
+    } catch (_) {
       this._disconnectChain(src, bp, g, punchOsc, punchGain, dest, warmthFilter, panner);
-    };
+    }
   }
 }

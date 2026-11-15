@@ -13,7 +13,7 @@ public struct ArcaneVsSteelApp: App {
             ZStack {
                 Color(red: 5.0 / 255.0, green: 7.0 / 255.0, blue: 12.0 / 255.0)
                     .ignoresSafeArea()
-                SanctumWebStageView(isSceneActive: scenePhase == .active)
+                SanctumWebStageView(scenePhase: scenePhase)
                     .ignoresSafeArea()
             }
             .preferredColorScheme(.dark)

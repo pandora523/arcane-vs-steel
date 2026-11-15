@@ -18,6 +18,13 @@ public final class NativePlatformBridge: NSObject, WKScriptMessageHandler {
     private var activeVirtualKeys: Set<String> = []
     private var prevButtonEdge: [String: Bool] = [:]
     private var isApplicationActive: Bool = true
+    private var pendingAudioForceRebuild: Bool = false
+    nonisolated(unsafe) private var observerTokens: [NSObjectProtocol] = []
+
+    nonisolated private static let audioSessionQueue = DispatchQueue(
+        label: "com.gabugabu.arcanevssteel.audiosession",
+        qos: .userInitiated
+    )
 
     #if os(iOS)
     private lazy var hapticLight = UIImpactFeedbackGenerator(style: .light)
@@ -27,7 +34,8 @@ public final class NativePlatformBridge: NSObject, WKScriptMessageHandler {
 
     public override init() {
         super.init()
-        configureNativeAudioSession()
+        Self.activateAudioSessionAsync()
+        configureLifecycleAndAudioSessionObservers()
         configureEventDrivenGamepadObservers()
         #if os(iOS)
         hapticLight.prepare()
@@ -35,37 +43,156 @@ public final class NativePlatformBridge: NSObject, WKScriptMessageHandler {
         #endif
     }
 
-    private func configureNativeAudioSession() {
+    deinit {
+        for token in observerTokens {
+            NotificationCenter.default.removeObserver(token)
+        }
+    }
+
+    nonisolated private static func activateAudioSessionAsync(
+        onComplete: (@MainActor @Sendable () -> Void)? = nil
+    ) {
         #if os(iOS)
-        do {
-            let session = AVAudioSession.sharedInstance()
-            try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
-            try session.setPreferredIOBufferDuration(0.010) // Thermal-balanced 10ms combat audio buffer (halves CoreAudio HAL wakeups vs 5ms)
-            try session.setActive(true)
-        } catch {
-            // Non-fatal in simulator
+        audioSessionQueue.async {
+            do {
+                let session = AVAudioSession.sharedInstance()
+                try session.setCategory(.ambient, mode: .default, options: [.mixWithOthers])
+                try session.setPreferredIOBufferDuration(0.010) // Thermal-balanced 10ms combat audio buffer
+                try session.setActive(true)
+            } catch {
+                // Non-fatal in simulator
+            }
+            if let onComplete {
+                Task { @MainActor in
+                    onComplete()
+                }
+            }
+        }
+        #else
+        if let onComplete {
+            Task { @MainActor in
+                onComplete()
+            }
         }
         #endif
     }
 
-    public func setApplicationActive(_ active: Bool) {
-        guard isApplicationActive != active else { return }
-        isApplicationActive = active
-        syncGamepadTimerState()
-        SanctumMetalPipeline.shared.setApplicationActive(active)
+    private func configureLifecycleAndAudioSessionObservers() {
         #if os(iOS)
-        let session = AVAudioSession.sharedInstance()
-        if active {
-            try? session.setActive(true)
-        } else {
-            try? session.setActive(false, options: [.notifyOthersOnDeactivation])
+        let center = NotificationCenter.default
+
+        let interruptionToken = center.addObserver(
+            forName: AVAudioSession.interruptionNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] notification in
+            let rawType = notification.userInfo?[AVAudioSessionInterruptionTypeKey] as? UInt
+            Task { @MainActor in
+                guard let self,
+                      let rawType,
+                      let type = AVAudioSession.InterruptionType(rawValue: rawType) else {
+                    return
+                }
+                if type == .ended {
+                    Self.activateAudioSessionAsync { [weak self] in
+                        guard let self else { return }
+                        if UIApplication.shared.applicationState != .background {
+                            self.webView?.evaluateJavaScript(
+                                "window.__avsSetAppActive && window.__avsSetAppActive(true); window.__avsResumeAudio && window.__avsResumeAudio(false);",
+                                completionHandler: nil
+                            )
+                        }
+                    }
+                }
+            }
         }
+        observerTokens.append(interruptionToken)
+
+        let mediaResetToken = center.addObserver(
+            forName: AVAudioSession.mediaServicesWereResetNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                guard let self else { return }
+                if UIApplication.shared.applicationState == .background {
+                    self.pendingAudioForceRebuild = true
+                }
+                Self.activateAudioSessionAsync { [weak self] in
+                    guard let self else { return }
+                    if UIApplication.shared.applicationState == .background {
+                        self.pendingAudioForceRebuild = true
+                    } else {
+                        self.pendingAudioForceRebuild = false
+                        self.webView?.evaluateJavaScript(
+                            "window.__avsSetAppActive && window.__avsSetAppActive(true); window.__avsResumeAudio && window.__avsResumeAudio(true);",
+                            completionHandler: nil
+                        )
+                    }
+                }
+            }
+        }
+        observerTokens.append(mediaResetToken)
+
+        let willEnterFgToken = center.addObserver(
+            forName: UIApplication.willEnterForegroundNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.setApplicationActive(true)
+            }
+        }
+        observerTokens.append(willEnterFgToken)
+
+        let didBecomeActiveToken = center.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            Task { @MainActor in
+                self?.setApplicationActive(true)
+            }
+        }
+        observerTokens.append(didBecomeActiveToken)
         #endif
-        let flag = active ? "true" : "false"
-        webView?.evaluateJavaScript(
-            "window.__avsSetAppActive && window.__avsSetAppActive(\(flag));",
-            completionHandler: nil
-        )
+    }
+
+    public func setApplicationActive(_ active: Bool) {
+        if !active {
+            guard isApplicationActive else { return }
+            isApplicationActive = false
+            syncGamepadTimerState()
+            SanctumMetalPipeline.shared.setApplicationActive(false)
+            // Keep host AVAudioSession untouched when backgrounding so WebKit's out-of-process
+            // GPU/WebContent audio route stays valid on wake; JS AudioContext.suspend() drops background power to 0%.
+            webView?.evaluateJavaScript(
+                "window.__avsSetAppActive && window.__avsSetAppActive(false);",
+                completionHandler: nil
+            )
+            return
+        }
+
+        isApplicationActive = true
+        syncGamepadTimerState()
+        SanctumMetalPipeline.shared.setApplicationActive(true)
+        #if os(iOS)
+        if webView?.isHidden == true {
+            webView?.isHidden = false
+        }
+        hapticLight.prepare()
+        hapticMedium.prepare()
+        #endif
+        let forceRebuild = pendingAudioForceRebuild
+        pendingAudioForceRebuild = false
+        let rebuildFlag = forceRebuild ? "true" : "false"
+        Self.activateAudioSessionAsync { [weak self] in
+            guard let self, self.isApplicationActive else { return }
+            self.webView?.evaluateJavaScript(
+                "window.__avsSetAppActive && window.__avsSetAppActive(true); window.__avsResumeAudio && window.__avsResumeAudio(\(rebuildFlag));",
+                completionHandler: nil
+            )
+        }
     }
 
     // MARK: - WKScriptMessageHandler (`window.webkit.messageHandlers.avsNative.postMessage(...)`)
