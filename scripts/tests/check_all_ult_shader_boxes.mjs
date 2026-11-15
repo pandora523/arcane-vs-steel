@@ -3,7 +3,7 @@ import fs from 'node:fs';
 import {
   ArcaneShaderFX,
   ShaderPen
-} from '../../src/engine/ArcaneShaderFX.js?v=30fps110';
+} from '../../src/engine/ArcaneShaderFX.js?v=30fps111';
 import { Warrior } from '../../src/entities/Warrior.js';
 import { Titan } from '../../src/entities/Titan.js';
 import { Ronin } from '../../src/entities/Ronin.js';

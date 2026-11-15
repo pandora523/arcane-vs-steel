@@ -150,7 +150,7 @@ public final class SanctumWebCoordinator: NSObject, WKNavigationDelegate, WKUIDe
         return """
         window.__AVS_IS_IOS_SIMULATOR__ = \(isSimFlag);
         """ + "\n" + #"""
-        import { ArcaneShaderFX } from '/src/engine/ArcaneShaderFX.js?v=30fps110';
+        import { ArcaneShaderFX } from '/src/engine/ArcaneShaderFX.js?v=30fps111';
 
         // Default to ArcaneShaderFX's unified low-power dirty-rect 2D compositor:
         // - Eliminates permanent ANGLE WebGL2 context + `powerPreference: 'high-performance'` GPU P-state boost

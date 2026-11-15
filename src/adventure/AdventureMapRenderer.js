@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps110';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps111';
 
 const CTX_GRAD_CACHE = new WeakMap();
 
@@ -378,7 +378,14 @@ function getEmissivePixelBloomSet(img, cacheKey, srcY, srcH, minLum = 180, minSa
       const wCtx =
         work.getContext &&
         (work.getContext('2d', { willReadFrequently: true }) || work.getContext('2d'));
-      if (!wCtx || typeof wCtx.getImageData !== 'function' || typeof wCtx.putImageData !== 'function') {
+      if (
+        !wCtx ||
+        typeof wCtx.getImageData !== 'function' ||
+        typeof wCtx.createImageData !== 'function' ||
+        typeof wCtx.putImageData !== 'function'
+      ) {
+        work.width = 0;
+        work.height = 0;
         return null;
       }
       wCtx.imageSmoothingEnabled = false;
@@ -458,9 +465,10 @@ function getEmissivePixelBloomSet(img, cacheKey, srcY, srcH, minLum = 180, minSa
     const tight = buildCoarseLayer(2, 3, [255, 182, 116, 62, 28]);
     const wide = buildCoarseLayer(4, 3, [224, 152, 92, 46, 20]);
     const result = tight && wide ? { tight, wide, texW } : null;
-    if (result) PIXEL_BLOOM_CACHE.set(cacheKey, result);
+    PIXEL_BLOOM_CACHE.set(cacheKey, result);
     return result;
   } catch {
+    PIXEL_BLOOM_CACHE.set(cacheKey, null);
     return null;
   }
 }
@@ -576,6 +584,16 @@ function drawWrappedPixelBloomLayer(
 
 export class AdventureMapRenderer {
   static clearBloomCache() {
+    for (const entry of PIXEL_BLOOM_CACHE.values()) {
+      if (entry?.tight?.canvas) {
+        entry.tight.canvas.width = 0;
+        entry.tight.canvas.height = 0;
+      }
+      if (entry?.wide?.canvas) {
+        entry.wide.canvas.width = 0;
+        entry.wide.canvas.height = 0;
+      }
+    }
     PIXEL_BLOOM_CACHE.clear();
   }
 

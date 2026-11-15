@@ -16,9 +16,9 @@ This directory contains the isolated **Xcode / Swift + Metal (iOS + macOS)** nat
   - Compiles an ES 3.00 fragment shader directly to Apple Metal (`MTLRenderPipelineState`) via WebKit's `webgl2` (`high-performance`) backend, executing `ArcaneShaderFX` dual-buffer (`albedo` + `emissive` HDR split & `16px` smoothstep border feather) across an 8-slot `2560x1680` GPU atlas with **zero** `putImageData` cross-process IPC stalls and **zero** `268,800`-pixel CPU resolve loops.
 - **1x Pixel-Pure Arena Resolution + GPU `IOSurface` Sprite Atlas LRU**:
   - Locks `#arena-canvas` to crisp `1x` pixel-art resolution (`4x–6.25x` lower fragment fill-rate) upscaled via hardware Metal Nearest-Neighbor while keeping all HTML/CSS HUD fonts (`ArcanePixel`) Retina-sharp.
-  - Promotes `6240x2080` champion/VFX sprite sheets and `9600px` Adventure panoramas once into an 18-slot GPU `IOSurface` canvas LRU cache, eliminating CPU PNG re-decoding mid-combat.
+  - Promotes `6240x2080` champion/VFX sprite sheets and `9600px` Adventure panoramas once into a 14-slot GPU `IOSurface` canvas LRU cache (`~84–140 MB` peak VRAM, flushing immediately on `resetMatch()` / `goToTitleScreen()`), eliminating CPU PNG re-decoding mid-combat.
 - **`Core/LocalSanctumServer.swift` & `Core/NativePlatformBridge.swift`**:
-  - 256 MB `NSCache` RAM asset cache + persistent `HTTP/1.1 keep-alive` sockets + immutable cache headers.
+  - 64 MB `NSCache` RAM asset cache (`<= 8 MB` per entry) + persistent `HTTP/1.1 keep-alive` sockets + immutable cache headers + full `scenePhase` / `NSApplication` lifecycle thermal suspension.
   - Pre-warmed `UIImpactFeedbackGenerator` tactile haptics, `5ms` low-latency `AVAudioSession`, ProMotion `CADisableMinimumFrameDurationOnPhone = true`, and event-driven `GCController` gamepad polling (0% CPU when no controller is connected).
 - **Zero Impact on Web/Vercel**: `apple/` is excluded in `.vercelignore`, and root Web files (`index.html`, `style.css`, `src/`, `assets/`, `vercel.json`) have **zero modifications**.
 

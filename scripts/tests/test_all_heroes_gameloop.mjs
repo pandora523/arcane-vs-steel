@@ -30,35 +30,40 @@ globalThis.document = {
 import fs from 'node:fs';
 import { fileURLToPath } from 'node:url';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps110';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps110';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps110';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps110';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps110';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps110';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps110';
-import { Archer } from '../../src/entities/Archer.js?v=30fps110';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps110';
-import { Titan } from '../../src/entities/Titan.js?v=30fps110';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps110';
-import { Android } from '../../src/entities/Android.js?v=30fps110';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps110';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps110';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps110';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps110';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps110';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps111';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps111';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps111';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps111';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps111';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps111';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps111';
+import { Archer } from '../../src/entities/Archer.js?v=30fps111';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps111';
+import { Titan } from '../../src/entities/Titan.js?v=30fps111';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps111';
+import { Android } from '../../src/entities/Android.js?v=30fps111';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps111';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps111';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps111';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps111';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps111';
+import { Game } from '../../src/main.js?v=30fps111';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps111';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '../../src/adventure/AdventureManager.js?v=30fps110';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps110';
+} from '../../src/adventure/AdventureManager.js?v=30fps111';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps111';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps110';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps110';
-import { AdventureDestructibles } from '../../src/adventure/AdventureDestructibles.js?v=30fps110';
+} from '../../src/adventure/AdventureProgression.js?v=30fps111';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps111';
+import {
+  AdventureDestructibles,
+  getOrBakeOrthogonalPropsSheet
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps111';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -125,7 +130,10 @@ function createMockCtx(trackForbidden = null) {
       return { addColorStop() {} };
     },
     getImageData(_x, _y, w, h) {
-      return { data: new Uint8ClampedArray(w * h * 4) };
+      return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) };
+    },
+    createImageData(w, h) {
+      return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) };
     },
     putImageData() {},
     globalAlpha: 1,
@@ -643,7 +651,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps110');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps111');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -3593,13 +3601,13 @@ for (const [name, Cls] of CLASSES) {
       for (let s = 0; s < 15; s++) mobRenderer.update(0.05, [mobSol, mobGhoulClose]);
       const zoomFarAndKo = mobRenderer.zoom;
 
-      if (zoomClose < 0.48 || zoomClose > 0.62 || Math.abs(zoomClose - zoomFarAndKo) > 0.0001) {
+      if (zoomClose < 0.38 || zoomClose > 0.48 || Math.abs(zoomClose - zoomFarAndKo) > 0.0001) {
         throw new Error(
-          `Expected unzoomed constant mobile-landscape fit in [0.48..0.62] with zero zoom drift, got close=${zoomClose.toFixed(4)}, far+KO=${zoomFarAndKo.toFixed(4)}`
+          `Expected widened constant Adventure mobile-landscape fit in [0.38..0.48] with zero zoom drift, got close=${zoomClose.toFixed(4)}, far+KO=${zoomFarAndKo.toFixed(4)}`
         );
       }
 
-      // Case 2: Portrait-Locked Phone (390x844) when user opts in (`is-css-rotated-landscape` active) -> Logical 844x390 unzoomed!
+      // Case 2: Portrait-Locked Phone (390x844) when user opts in (`is-css-rotated-landscape` active) -> Logical 844x390 widened Adventure fit!
       globalThis.window.innerWidth = 390;
       globalThis.window.innerHeight = 844;
       rootClasses.add('is-css-rotated-landscape');
@@ -3608,11 +3616,11 @@ for (const [name, Cls] of CLASSES) {
         mobRenderer.width !== 844 ||
         mobRenderer.height !== 390 ||
         !mobRenderer.isMobileLandscape ||
-        mobRenderer.zoom < 0.48 ||
-        mobRenderer.zoom > 0.62
+        mobRenderer.zoom < 0.38 ||
+        mobRenderer.zoom > 0.48
       ) {
         throw new Error(
-          `Expected CSS-rotated portrait 390x844 -> logical 844x390 unzoomed, got ${mobRenderer.width}x${mobRenderer.height} zoom=${mobRenderer.zoom.toFixed(3)}`
+          `Expected CSS-rotated portrait 390x844 -> logical 844x390 widened Adventure fit, got ${mobRenderer.width}x${mobRenderer.height} zoom=${mobRenderer.zoom.toFixed(3)}`
         );
       }
     } finally {
@@ -4070,10 +4078,10 @@ for (const [name, Cls] of CLASSES) {
   for (const mp of destAdv.destructibles.props) {
     const expZone = Math.floor(mp.x / 2400);
     if (
-      (mp.groundY !== 458 && mp.groundY !== 660) ||
+      !(mp.groundY >= 448 && mp.groundY <= 456) ||
       mp.zone !== expZone ||
-      !(mp.drawScale >= 1.5) ||
-      !(mp.height >= 148)
+      !(mp.drawScale >= 1.08 && mp.drawScale <= 1.18) ||
+      !(mp.height >= 92 && mp.height <= 112)
     ) {
       throw new Error(
         `Invalid monument placement/scale (${mp.kind}): x=${mp.x}, gy=${mp.groundY}, zone=${mp.zone} (exp ${expZone}), scale=${mp.drawScale}, h=${mp.height}`
@@ -4131,16 +4139,21 @@ for (const [name, Cls] of CLASSES) {
     );
   }
 
-  // Render standing props, rubble, HD-2D pickups & shard debris -> verify advPropsSheet 9-arg blits & 0 ctx.rotate()!
+  // Render standing props, rubble, HD-2D pickups & shard debris -> verify baked orthogonal 128x128 atlas + advPropsSheet 64x64 shards & 0 ctx.rotate()!
+  const orthoAtlas = getOrBakeOrthogonalPropsSheet();
   const propTrack = { rotateCalls: 0 };
   const propCtx = createMockCtx(propTrack);
   let propCellBlits128 = 0;
   let shardBlits64 = 0;
   propCtx.drawImage = (...args) => {
-    if (args.length === 9 && args[0] === allAssets20.advPropsSheet) {
-      const [, sx, sy, sw, sh] = args;
-      if (sw === 128 && sh === 128 && sx >= 0 && sy >= 0) propCellBlits128++;
-      if (sw === 64 && sh === 64 && sy >= 512) shardBlits64++;
+    if (args.length === 9) {
+      const [srcImg, sx, sy, sw, sh] = args;
+      if (srcImg === orthoAtlas && sw === 128 && sh === 128 && sx >= 0 && sy >= 0) {
+        propCellBlits128++;
+      }
+      if (srcImg === allAssets20.advPropsSheet && sw === 64 && sh === 64 && sy >= 512) {
+        shardBlits64++;
+      }
     }
   };
   for (const camX of [0, 1400, 2800, 4400, 6000, 7600, 8600]) {
@@ -7261,7 +7274,10 @@ for (const [name, Cls] of CLASSES) {
       '[Suite 28A] Expected main.js default gameMode="1v1", cycleGameMode=["1v1","2v2_tag"], goToTitleScreen(), and teardownActiveMatch()!'
     );
   }
-  const landingLoopMatch = mainJs.match(/if\s*\(\s*this\.isLandingOpen\s*\)\s*\{([\s\S]*?)\}/);
+  const loopTail = mainJs.slice(mainJs.indexOf('loop(now)'));
+  const landingLoopMatch = loopTail.match(
+    /if\s*\(\s*this\.isLandingOpen\s*\)\s*\{([\s\S]*?return;\s*)\}/
+  );
   if (
     !landingLoopMatch ||
     landingLoopMatch[1].includes('this.renderer.update') ||
@@ -7417,7 +7433,8 @@ for (const [name, Cls] of CLASSES) {
         throw new Error('[Suite 28C] Unbalanced ctx stack in Mobile Portrait AdventureMapRenderer');
       }
 
-      // Mobile Landscape (`844x390`) must remain untouched (`[0.48..0.62]`)
+      // Mobile Landscape VS Mode (`844x390`, `adventureMode = false`) must remain untouched (`[0.48..0.62]`)
+      rPortrait.adventureMode = false;
       globalThis.window.innerWidth = 844;
       globalThis.window.innerHeight = 390;
       rPortrait.resize();
@@ -7631,7 +7648,62 @@ for (const [name, Cls] of CLASSES) {
     const expectedDrawY = Math.round(480 - 1080 * 0.82); // -406
     const expectedBottomY = expectedDrawY + 1080; // 674
 
+    rStage._stageWingCompositeCache?.clear();
+    const prevCreateEl29B = globalThis.document.createElement;
+    globalThis.document.createElement = (tag) => {
+      const el = prevCreateEl29B(tag);
+      const baseGetCtx = el.getContext.bind(el);
+      el.getContext = (...gArgs) => {
+        const cctx = baseGetCtx(...gArgs);
+        let bTxY = 0;
+        let bScaleY = 1;
+        const bStack = [];
+        const bSave = cctx.save.bind(cctx);
+        const bRestore = cctx.restore.bind(cctx);
+        cctx.save = () => {
+          bStack.push({ ty: bTxY, sy: bScaleY });
+          bSave();
+        };
+        cctx.restore = () => {
+          const s = bStack.pop();
+          if (s) {
+            bTxY = s.ty;
+            bScaleY = s.sy;
+          }
+          bRestore();
+        };
+        cctx.translate = (_tx, ty) => {
+          bTxY += ty || 0;
+        };
+        cctx.scale = (_sx, sy) => {
+          bScaleY *= sy ?? 1;
+        };
+        const origDraw = cctx.drawImage.bind(cctx);
+        cctx.drawImage = (img, dx, dy, dw, dh, ...rest) => {
+          if (el.width === 1920) {
+            const vaultH = 280;
+            if (img === assets.arenaBg && dw === 640 && dh === 360 && dy === vaultH && bScaleY > 0) {
+              sawMain1920x1080 = true;
+            }
+            if (bScaleY < 0) {
+              if (bTxY <= vaultH + 10) upsideDownTopDraws++;
+              else if (bTxY >= vaultH + 360 * 2) lowerFloorMirrorDraws++;
+            } else if (img !== assets.arenaBg && dy === 0 && dw === 640 && dh === vaultH) {
+              sawUpperVaultAboveTop = true;
+            }
+          }
+          return origDraw(img, dx, dy, dw, dh, ...rest);
+        };
+        return cctx;
+      };
+      return el;
+    };
+
+    let sawComposite5760Blit = false;
     stageCtx.drawImage = (img, dx, dy, dw, dh) => {
+      if (dw === 5760 && dy < expectedDrawY && dh > 1080 && curScaleY > 0) {
+        sawComposite5760Blit = true;
+      }
       if (img === assets.arenaBg && dw === 1920 && dh === 1080 && dy === expectedDrawY && curScaleY > 0) {
         sawMain1920x1080 = true;
       }
@@ -7646,8 +7718,13 @@ for (const [name, Cls] of CLASSES) {
       }
     };
 
-    rStage.drawHD2DArena(stageCtx, 1200, 480);
+    try {
+      rStage.drawHD2DArena(stageCtx, 1200, 480);
+    } finally {
+      globalThis.document.createElement = prevCreateEl29B;
+    }
     if (
+      !sawComposite5760Blit ||
       !sawMain1920x1080 ||
       !sawUpperVaultAboveTop ||
       upsideDownTopDraws !== 0 ||
@@ -7655,7 +7732,7 @@ for (const [name, Cls] of CLASSES) {
       stageCtx._stateStack.length !== 0
     ) {
       throw new Error(
-        `[Suite 29B] VS stage upper-vault / reflection check failed: main1920=${sawMain1920x1080}, upperVault=${sawUpperVaultAboveTop}, topMirror=${upsideDownTopDraws}, bottomRefl=${lowerFloorMirrorDraws}`
+        `[Suite 29B] VS stage upper-vault / reflection check failed: comp5760=${sawComposite5760Blit}, main1920=${sawMain1920x1080}, upperVault=${sawUpperVaultAboveTop}, topMirror=${upsideDownTopDraws}, bottomRefl=${lowerFloorMirrorDraws}`
       );
     }
   }
@@ -7800,6 +7877,881 @@ for (const [name, Cls] of CLASSES) {
     '[PASS] Suite 29: Zero Emojis + HD-2D Brand Crest, Mobile Full Zoom-Out Toggle, VS 1920x1080 Seamless Upper Vault, Anti-Ult-Spam & 11,800 HP Malphas Grab + Unavoidable Soul-Tithe verified!'
   );
 }
+
+// =========================================================================
+// SUITE 30: Star-Free Vault & Plane 0, Widened Adventure Camera Zoom, Default Mortal HP,
+// Non-Overlapping Portrait HUD & Lowered Banners, Colossal Boss Depth Sort, Manual LOCK Free-Aim
+// + Retargeting, Upper-Lane Adventure Defeat Plaque, Orthogonal Colonnade Props & 60 FPS ProMotion Pacer
+// =========================================================================
+{
+  const repoRoot = REPO_ROOT;
+
+  // (30.1) Star-Free Upper Vault (`getOrBakeStageUpperVault`) & Star-Free Adventure `Plane 0`
+  {
+    let capturedVaultPixels = null;
+    const synthHorizon = new Uint8ClampedArray(640 * 24 * 4);
+    for (let y = 0; y < 24; y++) {
+      for (let x = 0; x < 640; x++) {
+        const idx = (y * 640 + x) * 4;
+        synthHorizon[idx] = 18 + ((x * 7 + y * 3) % 22);
+        synthHorizon[idx + 1] = 24 + ((x * 5 + y * 5) % 26);
+        synthHorizon[idx + 2] = 44 + ((x * 3 + y * 7) % 30);
+        synthHorizon[idx + 3] = 255;
+      }
+    }
+    const prevCreate30 = globalThis.document.createElement;
+    globalThis.document.createElement = (tag) => {
+      const el = prevCreate30(tag);
+      const baseGetCtx = el.getContext.bind(el);
+      el.getContext = (...args) => {
+        const c = baseGetCtx(...args);
+        c.getImageData = (_x, _y, w, h) => {
+          if (h === 24 && w === 640) {
+            return { width: w, height: h, data: synthHorizon };
+          }
+          return { width: w, height: h, data: new Uint8ClampedArray(w * h * 4) };
+        };
+        c.putImageData = (imgData) => {
+          if (el.height === 280 && el.width === 640) {
+            capturedVaultPixels = imgData.data;
+          }
+        };
+        return c;
+      };
+      return el;
+    };
+
+    try {
+      const vRenderer = new Renderer({
+        width: 1200,
+        height: 600,
+        getContext: () => createMockCtx()
+      });
+      const fakeStageImg = {
+        complete: true,
+        naturalWidth: 640,
+        naturalHeight: 360,
+        src: 'synthetic://cathedral_vault_audit'
+      };
+      const vaultCanvas = vRenderer.getOrBakeStageUpperVault(fakeStageImg);
+      if (
+        !vaultCanvas ||
+        vaultCanvas.width !== 640 ||
+        vaultCanvas.height !== 280 ||
+        !capturedVaultPixels
+      ) {
+        throw new Error('[Suite 30.1] Expected 640x280 baked upper vault canvas with pixel output!');
+      }
+
+      // Verify exact 0.0px bottom-row seam join (`vy = 279` === `synthHorizon y = 0`)
+      for (let x = 0; x < 640; x++) {
+        const vIdx = (279 * 640 + x) * 4;
+        const sIdx = x * 4;
+        if (
+          capturedVaultPixels[vIdx] !== synthHorizon[sIdx] ||
+          capturedVaultPixels[vIdx + 1] !== synthHorizon[sIdx + 1] ||
+          capturedVaultPixels[vIdx + 2] !== synthHorizon[sIdx + 2]
+        ) {
+          throw new Error(`[Suite 30.1] Non-zero seam mismatch at x=${x}!`);
+        }
+      }
+
+      // Verify zenith (`vy = 0`) converges to `#04050a` (`[4, 5, 10]`) & 0 isolated star spikes across sky (`vy = 0..200`)
+      let starSpikeCount = 0;
+      for (let vy = 1; vy < 200; vy++) {
+        for (let x = 1; x < 639; x++) {
+          const idx = (vy * 640 + x) * 4;
+          const lum =
+            capturedVaultPixels[idx] * 0.299 +
+            capturedVaultPixels[idx + 1] * 0.587 +
+            capturedVaultPixels[idx + 2] * 0.114;
+          const n1 = (vy * 640 + (x - 1)) * 4;
+          const n2 = (vy * 640 + (x + 1)) * 4;
+          const n3 = ((vy - 1) * 640 + x) * 4;
+          const n4 = ((vy + 1) * 640 + x) * 4;
+          const avgNeighborLum =
+            ((capturedVaultPixels[n1] +
+              capturedVaultPixels[n2] +
+              capturedVaultPixels[n3] +
+              capturedVaultPixels[n4]) *
+              0.299 +
+              (capturedVaultPixels[n1 + 1] +
+                capturedVaultPixels[n2 + 1] +
+                capturedVaultPixels[n3 + 1] +
+                capturedVaultPixels[n4 + 1]) *
+                0.587 +
+              (capturedVaultPixels[n1 + 2] +
+                capturedVaultPixels[n2 + 2] +
+                capturedVaultPixels[n3 + 2] +
+                capturedVaultPixels[n4 + 2]) *
+                0.114) *
+            0.25;
+          if (lum - avgNeighborLum > 22) {
+            starSpikeCount++;
+          }
+        }
+      }
+      const zIdx = 320 * 4;
+      if (
+        starSpikeCount !== 0 ||
+        Math.abs(capturedVaultPixels[zIdx] - 4) > 3 ||
+        Math.abs(capturedVaultPixels[zIdx + 1] - 5) > 3 ||
+        Math.abs(capturedVaultPixels[zIdx + 2] - 10) > 3
+      ) {
+        throw new Error(
+          `[Suite 30.1] Expected star-free upper vault anchored to #04050a zenith: starSpikes=${starSpikeCount}, zenith=[${capturedVaultPixels[zIdx]},${capturedVaultPixels[zIdx + 1]},${capturedVaultPixels[zIdx + 2]}]`
+        );
+      }
+    } finally {
+      globalThis.document.createElement = prevCreate30;
+    }
+
+    // Verify Adventure `Plane 0` is 100% star-free in source & runtime sky pass (`y < -220`)
+    const advMapSrc = fs.readFileSync(`${repoRoot}/src/adventure/AdventureMapRenderer.js`, 'utf8');
+    const plane0Slice = advMapSrc.slice(
+      advMapSrc.indexOf('PLANE 0'),
+      advMapSrc.indexOf('PLANE 1')
+    );
+    if (/starCount|twinkle|starField/i.test(plane0Slice)) {
+      throw new Error('[Suite 30.1] AdventureMapRenderer Plane 0 must be 100% star-free!');
+    }
+    let tinyHighSkySpecks = 0;
+    const skyAuditCtx = createMockCtx();
+    skyAuditCtx.fillRect = (_x, y, w, h) => {
+      if (y < -260 && w <= 6 && h <= 6) tinyHighSkySpecks++;
+    };
+    const skyRen = new Renderer({
+      width: 1280,
+      height: 720,
+      getContext: () => createMockCtx()
+    });
+    skyRen.adventureMode = true;
+    skyRen.worldWidth = ADVENTURE_WORLD_WIDTH;
+    AdventureMapRenderer.render(skyAuditCtx, skyRen, ADVENTURE_WORLD_WIDTH);
+    if (tinyHighSkySpecks !== 0 || skyAuditCtx._stateStack.length !== 0) {
+      throw new Error(
+        `[Suite 30.1] Expected 0 high-sky star specks in Adventure Plane 0, got ${tinyHighSkySpecks}`
+      );
+    }
+  }
+
+  // (30.2) Widened Adventure Mode Camera Zoom Across Mobile Portrait, Mobile Landscape & Desktop (VS Unchanged)
+  {
+    const prevW = globalThis.window.innerWidth;
+    const prevH = globalThis.window.innerHeight;
+    try {
+      // Mobile Portrait: 390x844 & 440x956
+      for (const [pw, ph] of [
+        [390, 844],
+        [440, 956]
+      ]) {
+        globalThis.window.innerWidth = pw;
+        globalThis.window.innerHeight = ph;
+        const rP = new Renderer({ width: pw, height: ph, getContext: () => createMockCtx() });
+        rP.adventureMode = false;
+        const vsPortFixed = rP.getMobilePortraitFixedZoom(false);
+        rP.adventureMode = true;
+        const advPortFixed = rP.getMobilePortraitFixedZoom(false);
+        const advPortBoss = rP.getMobilePortraitFixedZoom(true);
+        const expectedVs = Math.max(0.26, Math.min(0.46, pw / 1260));
+        const expectedAdv = Math.max(0.21, Math.min(0.46, pw / 1600));
+        if (
+          Math.abs(vsPortFixed - expectedVs) > 0.0005 ||
+          Math.abs(advPortFixed - expectedAdv) > 0.0005 ||
+          !(advPortBoss < advPortFixed && advPortFixed < vsPortFixed - 0.04)
+        ) {
+          throw new Error(
+            `[Suite 30.2] Mobile Portrait (${pw}x${ph}) zoom mismatch: vs=${vsPortFixed}, adv=${advPortFixed}, advBoss=${advPortBoss}`
+          );
+        }
+      }
+
+      // Mobile Landscape: 844x390
+      globalThis.window.innerWidth = 844;
+      globalThis.window.innerHeight = 390;
+      const rL = new Renderer({ width: 844, height: 390, getContext: () => createMockCtx() });
+      rL.adventureMode = false;
+      const vsLandFixed = rL.getMobileLandscapeFixedZoom(false);
+      rL.adventureMode = true;
+      const advLandFixed = rL.getMobileLandscapeFixedZoom(false);
+      const advLandBoss = rL.getMobileLandscapeFixedZoom(true);
+      if (
+        vsLandFixed < 0.54 ||
+        vsLandFixed > 0.59 ||
+        advLandFixed < 0.42 ||
+        advLandFixed > 0.46 ||
+        !(advLandBoss <= 0.44 && advLandFixed < vsLandFixed - 0.10)
+      ) {
+        throw new Error(
+          `[Suite 30.2] Mobile Landscape (844x390) zoom mismatch: vs=${vsLandFixed}, adv=${advLandFixed}, advBoss=${advLandBoss}`
+        );
+      }
+
+      // Desktop: 1280x720
+      globalThis.window.innerWidth = 1280;
+      globalThis.window.innerHeight = 720;
+      const rD = new Renderer({ width: 1280, height: 720, getContext: () => createMockCtx() });
+      const vsMockG = createMockGame();
+      const dLeft = new Warrior(380, 520, 1);
+      const dRight = new FireMage(760, 520, -1);
+      dLeft.game = vsMockG;
+      dRight.game = vsMockG;
+      for (let i = 0; i < 30; i++) rD.update(1 / 30, [dLeft, dRight]);
+      const vsDeskZoom = rD.zoom;
+
+      const advMockG = createMockGame();
+      advMockG.gameMode = 'adventure';
+      advMockG.isAdventureMode = () => true;
+      rD.adventureMode = true;
+      rD.worldWidth = ADVENTURE_WORLD_WIDTH;
+      dLeft.game = advMockG;
+      dRight.game = advMockG;
+      dLeft.groundY = 561;
+      dRight.groundY = 561;
+      for (let i = 0; i < 35; i++) rD.update(1 / 30, [dLeft, dRight]);
+      const advDeskZoom = rD.zoom;
+
+      if (!(vsDeskZoom > 0.92 && advDeskZoom <= 0.80 && advDeskZoom < vsDeskZoom - 0.14)) {
+        throw new Error(
+          `[Suite 30.2] Desktop (1280x720) zoom mismatch: vs=${vsDeskZoom.toFixed(3)}, adv=${advDeskZoom.toFixed(3)}`
+        );
+      }
+    } finally {
+      globalThis.window.innerWidth = prevW;
+      globalThis.window.innerHeight = prevH;
+    }
+  }
+
+  // (30.3) Default `testModeUnlimitedHp === false` (`MORTAL HP`) Across HTML & `main.js`
+  {
+    const htmlTxt = fs.readFileSync(`${repoRoot}/index.html`, 'utf8');
+    const mainTxt = fs.readFileSync(`${repoRoot}/src/main.js`, 'utf8');
+    if (
+      !htmlTxt.includes('MORTAL HP') ||
+      !htmlTxt.includes('TEST SANDBOX: UNLIMITED HP OFF') ||
+      !htmlTxt.includes('UNLIMITED HP: OFF') ||
+      htmlTxt.includes('TEST SANDBOX: UNLIMITED HP ON') ||
+      htmlTxt.includes('>UNLIMITED HP: ON<') ||
+      !mainTxt.includes("this.explicitAdvUnlimitedHp = testModeParam === '1' || testModeParam === 'true';") ||
+      !mainTxt.includes("this.testModeUnlimitedHp = testModeParam === '1' || testModeParam === 'true';") ||
+      !mainTxt.includes('this.vsTestModeUnlimitedHp = this.testModeUnlimitedHp;')
+    ) {
+      throw new Error('[Suite 30.3] Default Mortal HP (`testModeUnlimitedHp === false`) check failed!');
+    }
+    const mortalGame = createMockGame();
+    mortalGame.testModeUnlimitedHp = false;
+    const fMortal = new Warrior(320, 520, 1);
+    const fAttacker = new FireMage(520, 520, -1);
+    fMortal.game = mortalGame;
+    fAttacker.game = mortalGame;
+    fMortal.takeDamage(99999, fAttacker, true, 0, 0);
+    if (!fMortal.isDead || fMortal.hp !== 0 || fMortal.state !== 'DEATH') {
+      throw new Error(`[Suite 30.3] Expected mortal KO at default testModeUnlimitedHp=false, got hp=${fMortal.hp}`);
+    }
+  }
+
+  // (30.4) Non-Overlapping Mobile Portrait Adventure Strip (`stripY > getHudBottomY()`) & Lowered Announcements (`cy - ry >= getHudBottomY()`)
+  {
+    const prevW = globalThis.window.innerWidth;
+    const prevH = globalThis.window.innerHeight;
+    const prevQS = globalThis.document.querySelector;
+    try {
+      globalThis.window.innerWidth = 390;
+      globalThis.window.innerHeight = 844;
+      globalThis.document.querySelector = (sel) =>
+        sel === '.hud-top' ? { offsetTop: 14, offsetHeight: 144 } : null;
+
+      const hudCanvas = { width: 390, height: 844, getContext: () => createMockCtx() };
+      const rHud = new Renderer(hudCanvas);
+      const hudBottom = rHud.getHudBottomY(); // 158
+      if (hudBottom !== 158) {
+        throw new Error(`[Suite 30.4] Expected measured .hud-top bottom = 158, got ${hudBottom}`);
+      }
+
+      const advHudGame = createMockGame();
+      advHudGame.gameMode = 'adventure';
+      advHudGame.isAdventureMode = () => true;
+      advHudGame.isLandingOpen = false;
+      advHudGame.renderer = rHud;
+      const advHud = new AdventureManager(advHudGame);
+      advHudGame.adventure = advHud;
+      const pHud = new FireMage(240, 561, 1);
+      pHud.game = advHudGame;
+      advHudGame.leftFighter = pHud;
+      advHud.startCampaign(pHud);
+
+      const stripCtx = createMockCtx();
+      advHud.renderScreenHUD(stripCtx, rHud);
+      if (!advHud._hudStripRect || !(advHud._hudStripRect.y > hudBottom)) {
+        throw new Error(
+          `[Suite 30.4] Expected Mobile Portrait Adventure stripY > ${hudBottom}, got ${advHud._hudStripRect?.y}`
+        );
+      }
+
+      // Measure top edge (`cy - ry`) of Stage Phenomenon, Overdrive Cut-In & K.O. Finisher banners!
+      const probeBannerMinTop = (setupFn) => {
+        const bCtx = createMockCtx();
+        let tx = 0;
+        let ty = 0;
+        let sx = 1;
+        let sy = 1;
+        const st = [];
+        const oSave = bCtx.save.bind(bCtx);
+        const oRestore = bCtx.restore.bind(bCtx);
+        bCtx.save = () => {
+          st.push({ tx, ty, sx, sy });
+          oSave();
+        };
+        bCtx.restore = () => {
+          const prev = st.pop();
+          if (prev) {
+            tx = prev.tx;
+            ty = prev.ty;
+            sx = prev.sx;
+            sy = prev.sy;
+          }
+          oRestore();
+        };
+        bCtx.setTransform = () => {
+          tx = 0;
+          ty = 0;
+          sx = 1;
+          sy = 1;
+        };
+        bCtx.translate = (dx, dy) => {
+          tx += (dx || 0) * sx;
+          ty += (dy || 0) * sy;
+        };
+        bCtx.scale = (kx, ky) => {
+          sx *= kx ?? 1;
+          sy *= ky ?? 1;
+        };
+        const veilTops = [];
+        bCtx.arc = (_ax, _ay, r) => {
+          if (Math.abs(r - 1.0) < 0.01 && Math.abs(tx - 195) < 4 && sy >= 18) {
+            veilTops.push(ty - sy);
+          }
+        };
+        rHud.ctx = bCtx;
+        rHud.stageEventBannerTimer = 0;
+        rHud.cutInTimer = 0;
+        rHud.koZoomTimer = 0;
+        setupFn();
+        rHud.render([pHud], advHudGame.vfx);
+        return veilTops;
+      };
+
+      const stageEventTops = probeBannerMinTop(() => {
+        rHud.triggerStageEvent('SANCTUM BLESSING', '+25% SOLAR SPIRIT', '#facc15', 8.0);
+        rHud.stageEventBannerTimer = 2.0; // settled post-slam (`slamScale === 1`)
+      });
+      const cutInTops = probeBannerMinTop(() => {
+        rHud.triggerUltimateCutIn(pHud, false);
+        rHud.cutInTimer = 0.55; // settled post-slam (`slamScale === 1`)
+      });
+      const koTops = probeBannerMinTop(() => {
+        rHud.triggerKOFinisher(240, 480, '#facc15', 'IGNIS SOL', 'mage');
+        rHud.koZoomTimer = 1.2;
+      });
+
+      if (
+        stageEventTops.length === 0 ||
+        cutInTops.length === 0 ||
+        koTops.length === 0 ||
+        Math.min(...stageEventTops) < hudBottom ||
+        Math.min(...cutInTops) < hudBottom ||
+        Math.min(...koTops) < hudBottom
+      ) {
+        throw new Error(
+          `[Suite 30.4] Announcement banner overlapped .hud-top (${hudBottom}px): event=${JSON.stringify(stageEventTops)}, cutIn=${JSON.stringify(cutInTops)}, ko=${JSON.stringify(koTops)}`
+        );
+      }
+      advHud.stopCampaign();
+    } finally {
+      globalThis.window.innerWidth = prevW;
+      globalThis.window.innerHeight = prevH;
+      globalThis.document.querySelector = prevQS;
+    }
+  }
+
+  // (30.5) Colossal Boss Depth Sort (`isColossalBoss` Sorted Behind Player Across All `groundY`)
+  {
+    const sortRen = new Renderer({ width: 1280, height: 720, getContext: () => createMockCtx() });
+    sortRen.adventureMode = true;
+    sortRen.worldWidth = ADVENTURE_WORLD_WIDTH;
+    const sortGame = createMockGame();
+    sortGame.gameMode = 'adventure';
+    sortGame.isAdventureMode = () => true;
+    const heroSort = new Warrior(9020, 442, 1);
+    const bossSort = new ArchfiendBoss(9335, 561, -1);
+    heroSort.game = sortGame;
+    bossSort.game = sortGame;
+    bossSort.emergeTimer = 0;
+
+    let seqCounter = 0;
+    let bossOrder = -1;
+    let heroOrder = -1;
+    const origBossDraw = bossSort.draw.bind(bossSort);
+    const origHeroDraw = heroSort.draw.bind(heroSort);
+    bossSort.draw = (...args) => {
+      bossOrder = ++seqCounter;
+      return origBossDraw(...args);
+    };
+    heroSort.draw = (...args) => {
+      heroOrder = ++seqCounter;
+      return origHeroDraw(...args);
+    };
+
+    for (const gy of [442, 480, 561, 680]) {
+      seqCounter = 0;
+      bossOrder = -1;
+      heroOrder = -1;
+      heroSort.groundY = gy;
+      heroSort.y = gy;
+      // Pass `[heroSort, bossSort]` with hero FIRST to prove sort moves `isColossalBoss` behind hero even when `gy=442 < 561`!
+      sortRen.render([heroSort, bossSort], sortGame.vfx);
+      if (!(bossOrder > 0 && heroOrder > bossOrder)) {
+        throw new Error(
+          `[Suite 30.5] Expected Colossal Boss drawn BEFORE player at groundY=${gy}, got bossOrder=${bossOrder}, heroOrder=${heroOrder}`
+        );
+      }
+    }
+  }
+
+  // (30.6) Manual `LOCK: OFF` Free-Aim (`0` Backward Facing Snap, `0` Lane Magnetism) + `LOCK: ON` Retargeting
+  {
+    const prevGetEl = globalThis.document.getElementById;
+    const lockBtnCls = new Set();
+    const lockBtnEl = {
+      classList: {
+        toggle(c, on) {
+          if (on) lockBtnCls.add(c);
+          else lockBtnCls.delete(c);
+        },
+        contains: (c) => lockBtnCls.has(c)
+      },
+      setAttribute() {}
+    };
+    const lockLblEl = { textContent: '' };
+    const pauseLockLblEl = { textContent: '' };
+    try {
+      globalThis.document.getElementById = (id) => {
+        if (id === 'adv-btn-lock') return lockBtnEl;
+        if (id === 'adv-lock-label') return lockLblEl;
+        if (id === 'adv-pause-lock-label') return pauseLockLblEl;
+        return null;
+      };
+      const gLock = createMockGame();
+      gLock.gameMode = 'adventure';
+      gLock.isAdventureMode = () => true;
+      gLock.isLandingOpen = false;
+      const advLock = new AdventureManager(gLock);
+      gLock.adventure = advLock;
+      const hLock = new Warrior(620, 561, 1);
+      hLock.game = gLock;
+      gLock.leftFighter = hLock;
+      advLock.startCampaign(hLock);
+
+      if (
+        advLock.manualTargetLock !== false ||
+        lockLblEl.textContent !== 'LOCK' ||
+        pauseLockLblEl.textContent !== 'LOCK: OFF' ||
+        lockBtnCls.has('is-lock-on')
+      ) {
+        throw new Error(
+          `[Suite 30.6] Expected default manualTargetLock=false ('LOCK' / 'LOCK: OFF'), got ${advLock.manualTargetLock} ('${lockLblEl.textContent}' / '${pauseLockLblEl.textContent}')`
+        );
+      }
+
+      // Clear wave monsters and spawn a single monster BEHIND & OFF-LANE (`x=440 < 620`, `groundY=468 !== 561`)
+      for (const m of advLock.getLivingMonsters()) m.isDead = true;
+      const behindM = advLock.spawnMonster('ghoul', 440, { groundY: 468, skipPortal: true });
+      behindM.maxHp = 9999;
+      behindM.hp = 9999;
+      behindM.stunTimer = 99;
+
+      const resetFreeHero = () => {
+        hLock.setState('IDLE');
+        hLock.x = 620;
+        hLock.groundY = 561;
+        hLock.y = 561;
+        hLock.facing = 1;
+        hLock.autoCooldown = 0;
+        hLock.skillCooldown = 0;
+        hLock.dodgeCooldown = 0;
+        advLock.progression.spirit = 100;
+        advLock.progression.ultCharge = 100;
+        advLock.progression.astralCharge = 100;
+        advLock.setJoystickVector(0, 0, false);
+      };
+
+      // Verify `attack`, `skill`, `overdrive`, `ultimate` NEVER snap facing backward (-1) or magnetize `groundY` toward 468!
+      for (const act of ['attack', 'skill', 'overdrive', 'ultimate']) {
+        resetFreeHero();
+        advLock.triggerAction(act);
+        advLock.update(1 / 30);
+        for (let i = 0; i < 6; i++) advLock.update(1 / 30);
+        if (hLock.facing !== 1 || Math.abs(hLock.groundY - 561) > 0.5) {
+          throw new Error(
+            `[Suite 30.6] LOCK: OFF '${act}' snapped backward or magnetized Z-lane! facing=${hLock.facing}, gy=${hLock.groundY}`
+          );
+        }
+      }
+
+      // Verify neutral `dodge` with LOCK: OFF dashes forward (`+X`) in `player.facing` instead of away from `behindM`!
+      resetFreeHero();
+      advLock.triggerAction('dodge');
+      for (let i = 0; i < 10; i++) advLock.update(1 / 30);
+      if (!(hLock.x > 690 && Math.abs(hLock.groundY - 561) < 0.5)) {
+        throw new Error(
+          `[Suite 30.6] Expected neutral LOCK: OFF dodge to dash forward (+X) on gy=561, got x=${hLock.x}, gy=${hLock.groundY}`
+        );
+      }
+
+      // Toggle `LOCK: ON` -> locks onto `behindM`, renders pixel 'LOCKED' reticle, snaps facing on attack, and retargets on kill!
+      const aheadM = advLock.spawnMonster('cultist', 820, { groundY: 615, skipPortal: true });
+      aheadM.maxHp = 9999;
+      aheadM.hp = 9999;
+      aheadM.stunTimer = 99;
+
+      resetFreeHero();
+      hLock.facing = -1; // Facing left toward `behindM` (`x=440`)
+      advLock.toggleTargetLock(false);
+      if (
+        !advLock.manualTargetLock ||
+        pauseLockLblEl.textContent !== 'LOCK: ON' ||
+        !lockBtnCls.has('is-lock-on') ||
+        advLock.getActiveLockedMonster(hLock) !== behindM
+      ) {
+        throw new Error('[Suite 30.6] Expected toggleTargetLock() to engage LOCK: ON onto front monster `behindM`!');
+      }
+
+      // Render foreground reticle (`0` ctx.rotate, draws `'LOCKED'` label)
+      const retTrack = { rotateCalls: 0 };
+      const retCtx = createMockCtx(retTrack);
+      let sawLockedText = false;
+      retCtx.fillText = (txt) => {
+        if (String(txt) === 'LOCKED') sawLockedText = true;
+      };
+      advLock.renderWorldForeground(retCtx, gLock.renderer);
+      if (!sawLockedText || retTrack.rotateCalls !== 0) {
+        throw new Error(
+          `[Suite 30.6] Expected pixel 'LOCKED' reticle with 0 ctx.rotate, sawText=${sawLockedText}, rot=${retTrack.rotateCalls}`
+        );
+      }
+
+      // Face away (+1) while locked onto `behindM` (`x=440`) -> `attack` snaps facing to `-1` toward locked target!
+      hLock.facing = 1;
+      hLock.autoCooldown = 0;
+      advLock.triggerAction('attack');
+      advLock.update(1 / 30);
+      if (hLock.facing !== -1) {
+        throw new Error(`[Suite 30.6] Expected LOCK: ON attack to snap facing to locked monster (-1), got ${hLock.facing}`);
+      }
+
+      // Slay `behindM` -> `getActiveLockedMonster` automatically retargets onto surviving `aheadM`!
+      behindM.takeDamage(99999, hLock, true, 0, 0);
+      const retargeted = advLock.getActiveLockedMonster(hLock);
+      if (retargeted !== aheadM) {
+        throw new Error('[Suite 30.6] Expected LOCK: ON to automatically retarget onto surviving monster after kill!');
+      }
+      advLock.stopCampaign();
+    } finally {
+      globalThis.document.getElementById = prevGetEl;
+    }
+  }
+
+  // (30.7) Adventure Player Death at `groundY = 480` (`< 618`) Advances `postDeathHoldTimer` -> `revealVictoryOverlay()` w/ `.is-defeat-plaque`
+  {
+    const prevGetEl = globalThis.document.getElementById;
+    const makePlaqueEl = () => {
+      const cls = new Set(['hidden']);
+      return {
+        textContent: '',
+        classList: {
+          add: (...cs) => cs.forEach((c) => cls.add(c)),
+          remove: (...cs) => cs.forEach((c) => cls.delete(c)),
+          toggle: (c, f) => {
+            const on = f === undefined ? !cls.has(c) : Boolean(f);
+            if (on) cls.add(c);
+            else cls.delete(c);
+            return on;
+          },
+          contains: (c) => cls.has(c)
+        }
+      };
+    };
+    const dom30 = new Map();
+    for (const id of [
+      'victory-overlay',
+      'victory-eyebrow',
+      'victory-winner',
+      'victory-stats',
+      'victory-auto-next',
+      'btn-next-challenger',
+      'btn-play-again',
+      'btn-victory-select',
+      'btn-victory-title'
+    ]) {
+      dom30.set(id, makePlaqueEl());
+    }
+    try {
+      globalThis.document.getElementById = (id) => dom30.get(id) || null;
+      const dGame = createMockGame();
+      dGame.gameMode = 'adventure';
+      dGame.isAdventureMode = () => true;
+      dGame.is2v2Mode = () => false;
+      dGame.isLandingOpen = false;
+      dGame.isSimPaused = false;
+      dGame.autoTourney = false;
+      dGame.testModeUnlimitedHp = false;
+      dGame._activeFightersScratch = [];
+      dGame.victoryOverlay = dom30.get('victory-overlay');
+      dGame.setPaused = () => {};
+      dGame.updateHUD = () => {};
+      dGame.updateProjectiles = () => {};
+      dGame.revealVictoryOverlay = Game.prototype.revealVictoryOverlay.bind(dGame);
+
+      const dAdv = new AdventureManager(dGame);
+      dGame.adventure = dAdv;
+      dGame.onFighterDeath = (deadF) => {
+        if (deadF.isMonster) dAdv.onMonsterDeath(deadF);
+        else dAdv.onPlayerDeath(deadF);
+      };
+
+      const dHero = new FireMage(340, 480, 1);
+      dHero.game = dGame;
+      dGame.leftFighter = dHero;
+      dAdv.startCampaign(dHero);
+
+      // Position hero on UPPER lane (`groundY = 480`, strictly `< dGame.renderer.groundY = 618`!)
+      dHero.groundY = 480;
+      dHero.y = 480;
+      for (const m of dAdv.getLivingMonsters()) m.stunTimer = 99;
+      const killerM = dAdv.getLivingMonsters()[0];
+      dHero.takeDamage(99999, killerM, true, 0, 0);
+
+      if (
+        !dHero.isDead ||
+        !dGame.isMatchOver ||
+        !dGame.victoryRevealPending ||
+        !dGame.victoryOverlay.classList.contains('is-defeat-plaque') ||
+        !dGame.victoryOverlay.classList.contains('hidden') ||
+        dom30.get('btn-play-again').textContent !== 'RETRY CAMPAIGN' ||
+        dom30.get('btn-victory-select').textContent !== 'CHANGE HERO' ||
+        dom30.get('btn-victory-title').textContent !== 'TITLE SCREEN'
+      ) {
+        throw new Error('[Suite 30.7] Expected onPlayerDeath to arm `.is-defeat-plaque` with RETRY CAMPAIGN / CHANGE HERO / TITLE SCREEN!');
+      }
+
+      // Step real `Game.prototype.stepSimulation` for 82 frames (`2.73s < 3.4s` safety timer!)
+      // Proves `onFloor` (`y=480 >= targetFloorY - 4`) advances `postDeathHoldTimer >= 0.65` naturally without waiting for 3.4s fallback!
+      let revealedAtStep = -1;
+      for (let step = 1; step <= 82; step++) {
+        Game.prototype.stepSimulation.call(dGame, 1 / 30);
+        if (!dGame.victoryRevealPending && revealedAtStep < 0) {
+          revealedAtStep = step;
+          break;
+        }
+      }
+      if (
+        revealedAtStep < 0 ||
+        dGame.postDeathHoldTimer < 0.65 ||
+        dGame.victoryOverlay.classList.contains('hidden') ||
+        !dGame.victoryOverlay.classList.contains('is-defeat-plaque')
+      ) {
+        throw new Error(
+          `[Suite 30.7] Upper-lane (groundY=480 < 618) death failed to advance postDeathHoldTimer & reveal defeat plaque! step=${revealedAtStep}, deathTimer=${dHero.deathTimer?.toFixed(2)}, hold=${dGame.postDeathHoldTimer?.toFixed(2)}`
+        );
+      }
+      dAdv.stopCampaign();
+    } finally {
+      globalThis.document.getElementById = prevGetEl;
+    }
+  }
+
+  // (30.8) Orthogonal Destructibles Along Upper Colonnade (`groundY: 448..456`, `0` `y = 660` Props)
+  {
+    const oGame = createMockGame();
+    oGame.gameMode = 'adventure';
+    const oHero = new Warrior(240, 561, 1);
+    oHero.game = oGame;
+    oGame.leftFighter = oHero;
+    const oAdv = new AdventureManager(oGame);
+    oGame.adventure = oAdv;
+    oAdv.startCampaign(oHero);
+
+    const props = oAdv.destructibles.props;
+    const lowerParapetProps = props.filter((p) => p.groundY >= 600);
+    const outOfBandProps = props.filter((p) => p.groundY < 448 || p.groundY > 456);
+    const atlas = getOrBakeOrthogonalPropsSheet();
+    if (
+      props.length !== 20 ||
+      lowerParapetProps.length !== 0 ||
+      outOfBandProps.length !== 0 ||
+      !atlas ||
+      atlas.width !== 1152 ||
+      atlas.height !== 512
+    ) {
+      throw new Error(
+        `[Suite 30.8] Orthogonal upper-colonnade destructibles check failed: count=${props.length}, y>=600=${lowerParapetProps.length}, outOfBand=${outOfBandProps.length}, atlas=${atlas?.width}x${atlas?.height}`
+      );
+    }
+    oAdv.stopCampaign();
+  }
+
+  // (30.9) `60.0 FPS` ProMotion Frame Pacer (`600` Steps/10s at `120Hz` & `60Hz`) + `resetMatch()` / `teardownActiveMatch(true)` Asset Release
+  {
+    const runPacerSim = (hz, jitterAmpMs = 0) => {
+      let steps = 0;
+      const pGame = {
+        _rafId: 0,
+        _appSuspended: false,
+        _lastPacedTime: 0,
+        lastTime: 0,
+        isLandingOpen: false,
+        isPaused: false,
+        isSimPaused: false,
+        _pausedFrameRendered: false,
+        fighters: [],
+        vfx: {},
+        isAdventureMode: () => false,
+        startLoop() {},
+        stepSimulation() {
+          steps++;
+        },
+        renderer: {
+          render() {}
+        }
+      };
+      const totalTicks = Math.round(10 * hz);
+      const dtMs = 1000 / hz;
+      for (let i = 1; i <= totalTicks; i++) {
+        const jitter = jitterAmpMs ? Math.sin(i * 1.7) * jitterAmpMs : 0;
+        Game.prototype.loop.call(pGame, 1000 + i * dtMs + jitter);
+      }
+      return steps;
+    };
+
+    const steps120Hz = runPacerSim(120, 0);
+    const steps60Hz = runPacerSim(60, 0.45);
+    if (steps120Hz < 599 || steps120Hz > 601 || steps60Hz < 599 || steps60Hz > 601) {
+      throw new Error(
+        `[Suite 30.9] Expected ~600 simulation steps over 10s on both 120Hz ProMotion & 60Hz displays, got 120Hz=${steps120Hz}, 60Hz=${steps60Hz}`
+      );
+    }
+
+    // Verify `resetMatch()` & `teardownActiveMatch(true)` dispose fighter shader FX & release inactive assets/caches!
+    const prevHTMLImageElement = globalThis.HTMLImageElement;
+    globalThis.Image.prototype.removeAttribute = function (attr) {
+      if (attr === 'src') this.src = '';
+    };
+    globalThis.HTMLImageElement = globalThis.Image;
+    try {
+      const assets = PixelForge.initAssets();
+      PixelForge.ensureHeroLoaded('warrior');
+      PixelForge.ensureHeroLoaded('mage');
+      PixelForge.ensureHeroLoaded('titan');
+      PixelForge.ensureImage(assets.arenaSylvan);
+
+      const oldF1 = new Titan(260, 520, 1);
+      const oldF2 = new FireMage(940, 520, -1);
+      let f1Disposed = 0;
+      let f2Disposed = 0;
+      const origDisp1 = oldF1.fx.dispose.bind(oldF1.fx);
+      const origDisp2 = oldF2.fx.dispose.bind(oldF2.fx);
+      oldF1.fx.dispose = () => {
+        f1Disposed++;
+        origDisp1();
+      };
+      oldF2.fx.dispose = () => {
+        f2Disposed++;
+        origDisp2();
+      };
+
+      const makeClassEl = () => ({
+        textContent: '',
+        classList: { add() {}, remove() {}, toggle() {}, contains: () => false }
+      });
+      const rMem = new Renderer({ width: 1200, height: 600, getContext: () => createMockCtx() });
+      const mGame = {
+        gameMode: 'adventure',
+        slot1Hero: 'warrior',
+        explicitAdvUnlimitedHp: false,
+        vsTestModeUnlimitedHp: false,
+        testModeUnlimitedHp: false,
+        fighters: [oldF1, oldF2],
+        leftFighter: oldF1,
+        rightFighter: oldF2,
+        leftPartner: null,
+        rightPartner: null,
+        renderer: rMem,
+        vfx: new VFXManager(),
+        hudEls: { left: {}, right: {} },
+        victoryOverlay: makeClassEl(),
+        btnNextChallenger: makeClassEl(),
+        btnPlayAgain: makeClassEl(),
+        btnVictorySelect: makeClassEl(),
+        btnVictoryTitle: makeClassEl(),
+        ultBanner: makeClassEl(),
+        isAdventureMode() {
+          return this.gameMode === 'adventure';
+        },
+        is2v2Mode: () => false,
+        setPaused() {},
+        applySideHUDTheme() {},
+        syncTestModeUI() {},
+        syncPauseMenuUI() {},
+        updateHUD() {},
+        disposeActiveFighterResources: Game.prototype.disposeActiveFighterResources
+      };
+      mGame.adventure = new AdventureManager(mGame);
+
+      Game.prototype.resetMatch.call(mGame);
+      if (
+        f1Disposed < 1 ||
+        f2Disposed < 1 ||
+        !assets.warrior.sheet.src.includes('warrior_sheet.png') ||
+        assets.titan.sheet.src !== '' ||
+        assets.mage.sheet.src !== ''
+      ) {
+        throw new Error(
+          `[Suite 30.9] resetMatch() failed to dispose old fighter FX or release inactive hero sheets: disp=[${f1Disposed},${f2Disposed}], titan='${assets.titan.sheet.src}', mage='${assets.mage.sheet.src}'`
+        );
+      }
+
+      // Populate stage wing & upper vault caches, then verify `teardownActiveMatch(true)` releases ALL hero sheets, stage cutout caches & shared ArcaneShaderFX scratch canvases!
+      rMem.getOrBakeStageWingComposite({
+        complete: true,
+        naturalWidth: 640,
+        naturalHeight: 360,
+        src: 'synthetic://mem_audit'
+      });
+      Game.prototype.teardownActiveMatch.call(mGame, true);
+      if (
+        mGame.fighters.length !== 0 ||
+        assets.warrior.sheet.src !== '' ||
+        (rMem._stageWingCompositeCache?.size || 0) !== 0 ||
+        (rMem._stageUpperVaultCache?.size || 0) !== 0 ||
+        (ArcaneShaderFX._sharedWorkCanvas && ArcaneShaderFX._sharedWorkCanvas.width !== 0)
+      ) {
+        throw new Error('[Suite 30.9] teardownActiveMatch(true) failed to release all active sheets & shared caches!');
+      }
+      PixelForge.ensureAllPortraitsLoaded();
+    } finally {
+      if (prevHTMLImageElement === undefined) {
+        delete globalThis.HTMLImageElement;
+      } else {
+        globalThis.HTMLImageElement = prevHTMLImageElement;
+      }
+    }
+  }
+
+  console.log(
+    '[PASS] Suite 30: Star-Free Upper Vault & Plane 0, Widened Adventure Camera Zoom, Default Mortal HP, Non-Overlapping Portrait HUD & Lowered Banners, Colossal Boss Depth Sort, Manual LOCK Free-Aim + Retargeting, Upper-Lane Defeat Plaque, Orthogonal Colonnade Props & 60.0 FPS ProMotion Pacer + Memory Release verified!'
+  );
+}
+
 
 
 

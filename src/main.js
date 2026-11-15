@@ -1,22 +1,22 @@
-import { Renderer } from './engine/Renderer.js?v=30fps110';
-import { VFXManager } from './engine/VFXManager.js?v=30fps110';
-import { PixelForge } from './engine/PixelForge.js?v=30fps110';
-import { AudioManager } from './engine/AudioManager.js?v=30fps110';
-import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps110';
-import { Fighter } from './entities/Fighter.js?v=30fps110';
-import { Warrior } from './entities/Warrior.js?v=30fps110';
-import { FireMage } from './entities/FireMage.js?v=30fps110';
-import { Archer } from './entities/Archer.js?v=30fps110';
-import { Priestess } from './entities/Priestess.js?v=30fps110';
-import { Reaper } from './entities/Reaper.js?v=30fps110';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps110';
-import { Titan } from './entities/Titan.js?v=30fps110';
-import { Ronin } from './entities/Ronin.js?v=30fps110';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps110';
-import { IceMage } from './entities/IceMage.js?v=30fps110';
-import { Android } from './entities/Android.js?v=30fps110';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps110';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps110';
+import { Renderer } from './engine/Renderer.js?v=30fps111';
+import { VFXManager } from './engine/VFXManager.js?v=30fps111';
+import { PixelForge } from './engine/PixelForge.js?v=30fps111';
+import { AudioManager } from './engine/AudioManager.js?v=30fps111';
+import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps111';
+import { Fighter } from './entities/Fighter.js?v=30fps111';
+import { Warrior } from './entities/Warrior.js?v=30fps111';
+import { FireMage } from './entities/FireMage.js?v=30fps111';
+import { Archer } from './entities/Archer.js?v=30fps111';
+import { Priestess } from './entities/Priestess.js?v=30fps111';
+import { Reaper } from './entities/Reaper.js?v=30fps111';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps111';
+import { Titan } from './entities/Titan.js?v=30fps111';
+import { Ronin } from './entities/Ronin.js?v=30fps111';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps111';
+import { IceMage } from './entities/IceMage.js?v=30fps111';
+import { Android } from './entities/Android.js?v=30fps111';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps111';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps111';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -406,7 +406,7 @@ const CHAMPION_ROSTER = {
   }
 };
 
-class Game {
+export class Game {
   constructor() {
     this.canvas = document.getElementById('arena-canvas');
     this.renderer = new Renderer(this.canvas);
@@ -4342,6 +4342,8 @@ class Game {
   }
 }
 
-window.addEventListener('DOMContentLoaded', () => {
-  new Game();
-});
+if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+  window.addEventListener('DOMContentLoaded', () => {
+    new Game();
+  });
+}
