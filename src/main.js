@@ -2652,7 +2652,19 @@ export class Game {
         assets.heroIconsSheet?.naturalWidth
     );
 
-    const drawAnimatedHeroOnStage = (sctx, heroKey, flipX, destX, destY, destSize, phaseOffset = 0, alpha = 1, drawBadge = false) => {
+    const drawAnimatedHeroOnStage = (
+      sctx,
+      heroKey,
+      flipX,
+      destX,
+      destY,
+      destSize,
+      phaseOffset = 0,
+      alpha = 1,
+      drawBadge = false,
+      cw = 320,
+      ch = 240
+    ) => {
       PixelForge.ensureHeroLoaded?.(heroKey);
       const heroEntry = assets[heroKey];
       const sheet = heroEntry?.sheet;
@@ -2663,6 +2675,7 @@ export class Game {
       const cellH = isClassic208 ? 208 : heroEntry?.cellH || (sheet.naturalHeight === 2400 ? 240 : 208);
       const anchorX = isClassic208 ? 104 : heroEntry?.anchorX ?? (cellW === 320 ? 112 : 104);
       const anchorY = isClassic208 ? 198 : heroEntry?.anchorY ?? (cellH === 240 ? 230 : 198);
+      const isWideCell = !(cellW === 208 && cellH === 208);
       const cols = Math.max(1, Math.round(sheet.naturalWidth / cellW));
       let col = 0;
       let row = 0;
@@ -2714,10 +2727,38 @@ export class Game {
             : Math.round(Math.sin((t + phaseOffset) * 3.2) * 2)
           : 0;
 
+      const sf = destSize / 208;
+      const dw = isWideCell ? Math.round(cellW * sf) : destSize;
+      const dh = isWideCell ? Math.round(cellH * sf) : destSize;
+      const scaledAnchorX = Math.round(anchorX * sf);
+      const scaledAnchorY = Math.round(anchorY * sf);
+      let wideLeft = destX;
+      let wideTop = destY;
+      let footCx = Math.round(destX + destSize * 0.5);
+      let footY = Math.min(ch - 6, Math.round(destY + destSize * (198 / 208)));
+
+      if (isWideCell) {
+        if (destSize === 208 && cw >= cellW && ch >= cellH) {
+          // 1v1 full-size 320x240 showcase: exact 1:1 integer blit at (0, 0, 320, 240) with 0px clipping!
+          wideLeft = Math.round((cw - cellW) * 0.5);
+          wideTop = ch - cellH;
+          footCx = flipX ? wideLeft + cellW - anchorX : wideLeft + anchorX;
+          footY = Math.min(ch - 6, wideTop + anchorY);
+        } else {
+          // 2v2_tag duo showcase: align anchor to slot foot position and clamp inside [0..cw] x [0..ch]!
+          const targetFootX = Math.round(destX + destSize * 0.5);
+          const targetFootY = Math.round(destY + destSize * (198 / 208));
+          const rawLeft = flipX ? targetFootX - (dw - scaledAnchorX) : targetFootX - scaledAnchorX;
+          const rawTop = targetFootY - scaledAnchorY;
+          wideLeft = Math.max(0, Math.min(cw - dw, rawLeft));
+          wideTop = Math.max(0, Math.min(ch - dh, rawTop));
+          footCx = flipX ? wideLeft + dw - scaledAnchorX : wideLeft + scaledAnchorX;
+          footY = Math.min(ch - 6, wideTop + scaledAnchorY);
+        }
+      }
+
       // Grounded HD-2D Elemental Pedestal Rim & Rising Embers
       const primaryCol = cfg?.color || '#38bdf8';
-      const footCx = Math.round(destX + destSize * 0.5);
-      const footY = Math.min(204, Math.round(destY + destSize * 0.91));
       sctx.save();
       sctx.globalAlpha = alpha * 0.72;
       sctx.fillStyle = primaryCol;
@@ -2737,7 +2778,6 @@ export class Game {
 
       const wingSheet = heroKey === 'priestess' ? assets.priestess?.wings : null;
       const drawHeroWithWings = () => {
-        const sf = destSize / 208;
         if (wingEnv > 0.02 && wingSheet && wingSheet.complete && wingSheet.naturalWidth > 0) {
           const wScale = (0.72 + 0.10 * wingEnv) * sf;
           const wW = Math.round(320 * wScale);
@@ -2752,25 +2792,19 @@ export class Game {
           sctx.drawImage(wingSheet, wCol * 320, 0, 320, 232, wdx, wdy, wW, wH);
           sctx.restore();
         }
-        if (cellW === 208 && cellH === 208) {
-          sctx.drawImage(sheet, col * 208, row * 208, 208, 208, 0, 0, destSize, destSize);
-        } else {
-          const dw = Math.round(cellW * sf);
-          const dh = Math.round(cellH * sf);
-          const dx = Math.round((104 - anchorX) * sf);
-          const dy = Math.round((198 - anchorY) * sf);
-          sctx.drawImage(sheet, col * cellW, row * cellH, cellW, cellH, dx, dy, dw, dh);
-        }
+        sctx.drawImage(sheet, col * cellW, row * cellH, cellW, cellH, 0, 0, dw, dh);
       };
 
       sctx.save();
       sctx.globalAlpha = alpha;
+      const blitX = isWideCell ? wideLeft : destX;
+      const blitY = (isWideCell ? wideTop : destY) + hover;
       if (flipX) {
-        sctx.translate(destX + destSize, destY + hover);
+        sctx.translate(blitX + dw, blitY);
         sctx.scale(-1, 1);
         drawHeroWithWings();
       } else {
-        sctx.translate(destX, destY + hover);
+        sctx.translate(blitX, blitY);
         drawHeroWithWings();
       }
       sctx.restore();
@@ -2779,7 +2813,7 @@ export class Game {
         sctx.save();
         sctx.font = '7px "Press Start 2P", monospace';
         sctx.textAlign = flipX ? 'right' : 'left';
-        const tx = flipX ? 264 : 8;
+        const tx = flipX ? cw - 8 : 8;
         sctx.fillStyle = 'rgba(2, 6, 23, 0.85)';
         sctx.fillText(stateTag, tx + 1, 13);
         sctx.fillStyle = stateTag === 'OVERDRIVE ULT' ? '#facc15' : primaryCol;
@@ -2795,8 +2829,8 @@ export class Game {
 
       const spriteCanvas = document.getElementById(`${prefix}-sprite-canvas`);
       if (spriteCanvas && (spriteCanvas.offsetParent !== null || spriteCanvas.clientWidth > 0)) {
-        const cw = 272;
-        const ch = 208;
+        const cw = 320;
+        const ch = 240;
         if (spriteCanvas.width !== cw || spriteCanvas.height !== ch) {
           spriteCanvas.width = cw;
           spriteCanvas.height = ch;
@@ -2806,15 +2840,15 @@ export class Game {
         sctx.imageSmoothingEnabled = false;
 
         if (is2v2 && secondaryKey && CHAMPION_ROSTER[secondaryKey]) {
-          // Draw partner slightly behind & clearly separated horizontally to showcase the 2v2 Duo on the stage pedestal
+          // Draw partner slightly behind & clearly separated horizontally to showcase the 2v2 Duo on the 320x240 stage pedestal
           const backSize = 164;
           const frontSize = 186;
-          const backX = flipX ? 112 : -4;
-          const frontX = flipX ? 4 : 84;
-          drawAnimatedHeroOnStage(sctx, secondaryKey, flipX, backX, 26, backSize, 2.1, 0.92, false);
-          drawAnimatedHeroOnStage(sctx, primaryKey, flipX, frontX, 16, frontSize, 0, 1.0, true);
+          const backX = flipX ? 140 : 16;
+          const frontX = flipX ? 28 : 106;
+          drawAnimatedHeroOnStage(sctx, secondaryKey, flipX, backX, 58, backSize, 2.1, 0.92, false, cw, ch);
+          drawAnimatedHeroOnStage(sctx, primaryKey, flipX, frontX, 48, frontSize, 0, 1.0, true, cw, ch);
         } else {
-          drawAnimatedHeroOnStage(sctx, primaryKey, flipX, 32, 0, 208, 0, 1.0, true);
+          drawAnimatedHeroOnStage(sctx, primaryKey, flipX, 56, 32, 208, 0, 1.0, true, cw, ch);
         }
       }
 
@@ -2863,8 +2897,8 @@ export class Game {
     if (this.isAdventureMode()) {
       const bossCanvas = document.getElementById('p2-sprite-canvas');
       if (bossCanvas) {
-        const cw = 272;
-        const ch = 208;
+        const cw = 320;
+        const ch = 240;
         if (bossCanvas.width !== cw || bossCanvas.height !== ch) {
           bossCanvas.width = cw;
           bossCanvas.height = ch;
@@ -2877,21 +2911,21 @@ export class Game {
         );
         const pulse = 0.55 + 0.25 * Math.sin(t * 3.8);
         bctx.fillStyle = `rgba(220, 38, 38, ${(0.22 * pulse).toFixed(3)})`;
-        bctx.fillRect(46, 174, 180, 18);
+        bctx.fillRect(70, 204, 180, 18);
         if (bossPort?.complete && bossPort.naturalWidth) {
           const bob = Math.round(Math.sin(t * 2.4) * 3);
-          bctx.drawImage(bossPort, 52, 16 + bob, 168, 168);
+          bctx.drawImage(bossPort, 76, 32 + bob, 168, 168);
           bctx.strokeStyle = '#f97316';
           bctx.lineWidth = 2;
-          bctx.strokeRect(52, 16 + bob, 168, 168);
+          bctx.strokeRect(76, 32 + bob, 168, 168);
         } else {
-          drawAnimatedHeroOnStage(bctx, 'reaper', true, 32, 0, 208, 0, 1.0, false);
+          drawAnimatedHeroOnStage(bctx, 'reaper', true, 56, 32, 208, 0, 1.0, false, cw, ch);
         }
         bctx.font = 'bold 10px monospace';
         bctx.fillStyle = '#09070d';
-        bctx.fillText('ZONE IV COLOSSUS', 81, 13);
+        bctx.fillText('ZONE IV COLOSSUS', 105, 15);
         bctx.fillStyle = '#fb923c';
-        bctx.fillText('ZONE IV COLOSSUS', 80, 12);
+        bctx.fillText('ZONE IV COLOSSUS', 104, 14);
       }
       const drawBossThreatIcon = (ictx, idx, iw, ih, timeSec) => {
         if (PixelForge.drawHeroSheetIcon?.(ictx, 'archfiend', idx, iw, ih, timeSec)) {
