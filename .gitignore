@@ -1,6 +1,8 @@
 .*
 !.gitignore
 !.nojekyll
+!.agents/
+!.agents/**
 pandora523/
 upload/
 __pycache__/
