@@ -10,5 +10,7 @@
    - **Strict Mode Separation**: Keep **Versus Mode** (`1v1` + `Tag VS`, enlarged `3x` `1920x1080` stage with seamless upper vault & intact lower floor/character reflections) strictly separated from **Adventure Mode** (`9600px` 4-Realm pilgrimage, `11,800 HP` `BEHEMOTH MALPHAS` with `ABYSSAL SIEGE GRAB` & automatic unavoidable `HELLPIT SOUL-TITHE`) from the Title Screen.
    - **Protected Champions**: Never alter the 6 protected champions' sprite sheets or VS combat kits (`Ignis Sol`, `Aethelgard`, `Freyja`, `Seraphina`, `Kaze-Maru`, `Chronos`) unless explicitly asked by the user.
 
-3. **Local macOS & Xcode Integration**:
-   - When running locally on macOS for the Swift iOS/macOS version, use `xcodebuild` and `xcrun simctl` directly to build, verify, and launch iOS Simulator / native macOS targets, and use `open <Project>.xcodeproj` when opening in `Xcode.app`.
+3. **Dual-Platform Coexistence (Web/Vercel + Native Swift iOS/macOS — Never Abandon Web!)**:
+   - Both the **Web version** (root `index.html`, `style.css`, `src/`, `vercel.json` auto-deployed to Vercel on `git push origin main`) and the **Native Swift iOS/macOS version** are active first-class targets.
+   - Keep all Xcode / Swift files cleanly isolated inside a dedicated subfolder (e.g. `apple/`) or sibling folder so root Web/Vercel builds and URLs stay 100% untouched and fast.
+   - When running locally on macOS, you can develop & push Web updates to Vercel AND build/launch iOS Simulator & macOS targets via `xcodebuild`, `xcrun simctl`, and `open apple/<Project>.xcodeproj`.

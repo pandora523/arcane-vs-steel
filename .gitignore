@@ -1,6 +1,7 @@
 .*
 !.gitignore
 !.nojekyll
+!.vercelignore
 !.agents/
 !.agents/**
 pandora523/

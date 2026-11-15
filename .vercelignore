@@ -1,0 +1,8 @@
+apple/
+backups/
+docs/
+scripts/
+tools/
+*.xcodeproj
+*.xcworkspace
+DerivedData/
