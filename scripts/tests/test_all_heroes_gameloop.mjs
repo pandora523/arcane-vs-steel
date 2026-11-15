@@ -40,40 +40,41 @@ import {
   extractMasterKeyFromBootScript
 } from '../../build/build_web_vault.mjs';
 const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
-import { Fighter } from '../../src/entities/Fighter.js?v=30fps112';
-import { Warrior } from '../../src/entities/Warrior.js?v=30fps112';
-import { FireMage } from '../../src/entities/FireMage.js?v=30fps112';
-import { Ronin } from '../../src/entities/Ronin.js?v=30fps112';
-import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps112';
-import { Reaper } from '../../src/entities/Reaper.js?v=30fps112';
-import { Priestess } from '../../src/entities/Priestess.js?v=30fps112';
-import { Archer } from '../../src/entities/Archer.js?v=30fps112';
-import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps112';
-import { Titan } from '../../src/entities/Titan.js?v=30fps112';
-import { IceMage } from '../../src/entities/IceMage.js?v=30fps112';
-import { Android } from '../../src/entities/Android.js?v=30fps112';
-import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps112';
-import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps112';
-import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps112';
-import { Renderer } from '../../src/engine/Renderer.js?v=30fps112';
-import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps112';
-import { Game } from '../../src/main.js?v=30fps112';
-import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps112';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps113';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps113';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps113';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps113';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps113';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps113';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps113';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps113';
+import { Archer } from '../../src/entities/Archer.js?v=30fps113';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps113';
+import { Titan } from '../../src/entities/Titan.js?v=30fps113';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps113';
+import { Android } from '../../src/entities/Android.js?v=30fps113';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps113';
+import { ArcaneShaderFX } from '../../src/engine/ArcaneShaderFX.js?v=30fps113';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps113';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps113';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps113';
+import { Game } from '../../src/main.js?v=30fps113';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps113';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '../../src/adventure/AdventureManager.js?v=30fps112';
-import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps112';
+} from '../../src/adventure/AdventureManager.js?v=30fps113';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps113';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '../../src/adventure/AdventureProgression.js?v=30fps112';
-import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps112';
+} from '../../src/adventure/AdventureProgression.js?v=30fps113';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps113';
 import {
   AdventureDestructibles,
   getOrBakeOrthogonalPropsSheet
-} from '../../src/adventure/AdventureDestructibles.js?v=30fps112';
+} from '../../src/adventure/AdventureDestructibles.js?v=30fps113';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -194,6 +195,7 @@ function createMockGame() {
 
 const CLASSES = [
   ['Warrior', Warrior],
+  ['WarriorEx', WarriorEx],
   ['FireMage', FireMage],
   ['Ronin', Ronin],
   ['Valkyrie', Valkyrie],
@@ -661,7 +663,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps112');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps113');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -3269,6 +3271,7 @@ for (const [name, Cls] of CLASSES) {
     {
       const allAdvHeroes = [
         { key: 'warrior', Cls: Warrior },
+        { key: 'warrior_ex', Cls: WarriorEx },
         { key: 'archer', Cls: Archer },
         { key: 'mage', Cls: FireMage },
         { key: 'priestess', Cls: Priestess },
@@ -3789,6 +3792,7 @@ for (const [name, Cls] of CLASSES) {
   ];
   const autoRoster = [
     ['warrior', Warrior, 145],
+    ['warrior_ex', WarriorEx, 145],
     ['mage', FireMage, 320],
     ['ronin', Ronin, 150],
     ['valkyrie', Valkyrie, 320],
@@ -5567,6 +5571,7 @@ for (const [name, Cls] of CLASSES) {
       const all11Classes = [
         [FireMage, 'mage'],
         [Warrior, 'warrior'],
+        [WarriorEx, 'warrior_ex'],
         [Valkyrie, 'valkyrie'],
         [Priestess, 'priestess'],
         [Ronin, 'ronin'],
@@ -5626,9 +5631,9 @@ for (const [name, Cls] of CLASSES) {
           }
         }
       }
-      if (seenWrathTitles.size !== 11 || stTrack.rotateCalls !== 0) {
+      if (seenWrathTitles.size !== 12 || stTrack.rotateCalls !== 0) {
         throw new Error(
-          `[Suite 24C] Expected 11 distinct champion Branch-I themes and 0 ctx.rotate, got distinct=${seenWrathTitles.size}, rotate=${stTrack.rotateCalls}`
+          `[Suite 24C] Expected 12 distinct champion Branch-I themes and 0 ctx.rotate, got distinct=${seenWrathTitles.size}, rotate=${stTrack.rotateCalls}`
         );
       }
 
@@ -9632,6 +9637,7 @@ for (const [name, Cls] of CLASSES) {
         codeVault.entry !== 'src/main.js' ||
         !codeVault.modules?.['src/main.js'] ||
         !codeVault.modules?.['src/entities/Ronin.js'] ||
+        !codeVault.modules?.['src/entities/WarriorEx.js'] ||
         typeof codeVault.css !== 'string' ||
         codeVault.css.length < 10000
       ) {
@@ -9779,6 +9785,8 @@ for (const [name, Cls] of CLASSES) {
         'index.html',
         'style.css',
         'src/main.js',
+        'src/entities/WarriorEx.js',
+        'assets/sprites/warrior_ex_sheet.png',
         'assets/sprites/ronin_sheet.png',
         'assets/sprites/mage_sheet.png',
         'assets/sfx/slash.wav',
@@ -9823,6 +9831,636 @@ for (const [name, Cls] of CLASSES) {
 
   console.log(
     `[PASS] Suite 32: Pre-Change Fallback Backup Snapshot, Web/Vercel AES-256-GCM AVSV Vault (0 plain assets, 100% SHA-256 lossless) & Apple CryptoKit AVSK sanctum.pak + Per-Launch 403 Token verified in ${suite32ElapsedMs.toFixed(0)}ms!`
+  );
+}
+
+// ============================================================================
+// SUITE 33: Next-Gen Wide-Canvas (`320x240`) Aethelgard EX (`warrior_ex`),
+//           100% Untouched Classic Aethelgard (`warrior`), R&D Spec & Dual-Mode Combat (`< 3s`)
+// ============================================================================
+{
+  const suite33StartMs = performance.now();
+  const zlibMod33 = await import('node:zlib');
+
+  // --------------------------------------------------------------------------
+  // 33.1: Preserved Classic Aethelgard (`warrior`) + Core Pipeline SHA-256 Audit & R&D Doc Hygiene
+  // --------------------------------------------------------------------------
+  {
+    const preservedSha256 = {
+      'docs/CHAMPION_DEVELOPMENT_PLAYBOOK.md':
+        '2891ca38b0ec6e6df9e629e99ccdc1fe1403b297e41fc330174b4c556f9b0361',
+      '.agents/skills/arcane-vs-steel-pipeline/SKILL.md':
+        '8a4614b8007fb6f93a7f37dfe7c0357aef37927837fdedde52a56c7ae3afc3bc',
+      'scripts/hd2d_rig_core.py':
+        '66f2bfe8cdd45e031349d30cd9b980cea12621051709782196d776f2a12c8777',
+      'scripts/build_warrior_30fps_sheet.py':
+        'a68f71cab77380d09e9039da32eff499a29dfc8b3d6e2ba10fd8f346234e51de',
+      'src/entities/Warrior.js':
+        'bead5970fbc64f121eabfd75ad5c02d00e7a768118d28c055e3eb3e768b27adf',
+      'assets/sprites/warrior_sheet.png':
+        '2e5c187e90209f417dc15d0e0f5edf9d4c08ed894b60c8708c50fccf8ee2ad08',
+      'assets/sprites/warrior_vfx.png':
+        '0e3fff5ffebd70aeefed042c8f31e1b2c760f9ac3d3712272122a800175a8520',
+      'assets/sprites/warrior_portrait.png':
+        '1b26c5d4083c72f91e5dc5a3bfeec9bbb97cd40973dc3aa922d33e0ceac692ee'
+    };
+
+    for (const [relFile, expectedHex] of Object.entries(preservedSha256)) {
+      const absFile = path.join(REPO_ROOT, relFile);
+      if (!fs.existsSync(absFile)) {
+        throw new Error(`[Suite 33.1] Missing preserved baseline file: ${relFile}`);
+      }
+      const actualHex = crypto
+        .createHash('sha256')
+        .update(fs.readFileSync(absFile))
+        .digest('hex');
+      if (actualHex !== expectedHex) {
+        throw new Error(
+          `[Suite 33.1] Protected baseline file '${relFile}' was modified! expected=${expectedHex}, actual=${actualHex}`
+        );
+      }
+    }
+
+    const rndPath = path.join(REPO_ROOT, 'docs/NEXT_GEN_SPRITE_ANIMATION_RND.md');
+    if (!fs.existsSync(rndPath)) {
+      throw new Error('[Suite 33.1] Missing docs/NEXT_GEN_SPRITE_ANIMATION_RND.md!');
+    }
+    const rndSrc = fs.readFileSync(rndPath, 'utf8');
+    const emojiRe = /[\p{Extended_Pictographic}\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}]/gu;
+    if (
+      rndSrc.length < 20000 ||
+      emojiRe.test(rndSrc) ||
+      !rndSrc.includes('320x240') ||
+      !rndSrc.includes('112') ||
+      !rndSrc.includes('230') ||
+      !rndSrc.includes('Brave Exvius') ||
+      !rndSrc.includes('Last Cloudia')
+    ) {
+      throw new Error(
+        '[Suite 33.1] docs/NEXT_GEN_SPRITE_ANIMATION_RND.md failed content/zero-emoji audit!'
+      );
+    }
+
+    const fbRoot = path.join(REPO_ROOT, 'fallback_backups');
+    if (fs.existsSync(fbRoot)) {
+      const snaps = fs
+        .readdirSync(fbRoot)
+        .filter((d) => d.endsWith('_pre_aethelgard_ex_overhaul'));
+      if (snaps.length < 1) {
+        throw new Error(
+          '[Suite 33.1] Missing fallback_backups/*_pre_aethelgard_ex_overhaul snapshot!'
+        );
+      }
+      const snapDir = path.join(fbRoot, snaps[snaps.length - 1]);
+      const restoreScript = path.join(snapDir, 'RESTORE_THIS_BACKUP.sh');
+      const sumsFile = path.join(snapDir, 'SHA256SUMS.txt');
+      if (
+        !fs.existsSync(restoreScript) ||
+        !fs.existsSync(sumsFile) ||
+        (fs.statSync(restoreScript).mode & 0o111) === 0
+      ) {
+        throw new Error(
+          `[Suite 33.1] Incomplete fallback snapshot at ${snapDir}!`
+        );
+      }
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 33.2: Wide-Canvas `warrior_ex_sheet.png` (`9600x2400` = `30x10` @ `320x240`),
+  //       `warrior_ex_vfx.png` (`6240x1664`), `warrior_ex_portrait.png` (`128x128`) & Smear Reach Audit
+  // --------------------------------------------------------------------------
+  {
+    const decodePngRgba33 = (buf) => {
+      if (buf.length < 29 || buf.readUInt32BE(0) !== 0x89504e47) {
+        throw new Error('[Suite 33.2] Invalid PNG magic bytes!');
+      }
+      const width = buf.readUInt32BE(16);
+      const height = buf.readUInt32BE(20);
+      const bitDepth = buf[24];
+      const colorType = buf[25];
+      if (bitDepth !== 8 || colorType !== 6) {
+        throw new Error(
+          `[Suite 33.2] Expected 8-bit RGBA PNG (colorType=6), got bitDepth=${bitDepth}, colorType=${colorType}`
+        );
+      }
+      const idatChunks = [];
+      let off = 8;
+      while (off + 8 <= buf.length) {
+        const len = buf.readUInt32BE(off);
+        const type = buf.subarray(off + 4, off + 8).toString('ascii');
+        if (type === 'IDAT') idatChunks.push(buf.subarray(off + 8, off + 8 + len));
+        if (type === 'IEND') break;
+        off += 12 + len;
+      }
+      const raw = zlibMod33.inflateSync(Buffer.concat(idatChunks));
+      const stride = width * 4;
+      const data = Buffer.allocUnsafe(height * stride);
+      const paeth = (a, b, c) => {
+        const p = a + b - c;
+        const pa = Math.abs(p - a);
+        const pb = Math.abs(p - b);
+        const pc = Math.abs(p - c);
+        return pa <= pb && pa <= pc ? a : pb <= pc ? b : c;
+      };
+      for (let y = 0; y < height; y++) {
+        const fType = raw[y * (stride + 1)];
+        const srcOff = y * (stride + 1) + 1;
+        const dstOff = y * stride;
+        const prevOff = (y - 1) * stride;
+        for (let i = 0; i < stride; i++) {
+          const xByte = raw[srcOff + i];
+          const a = i >= 4 ? data[dstOff + i - 4] : 0;
+          const b = y > 0 ? data[prevOff + i] : 0;
+          const c = y > 0 && i >= 4 ? data[prevOff + i - 4] : 0;
+          let recon = xByte;
+          if (fType === 1) recon = (xByte + a) & 0xff;
+          else if (fType === 2) recon = (xByte + b) & 0xff;
+          else if (fType === 3) recon = (xByte + ((a + b) >> 1)) & 0xff;
+          else if (fType === 4) recon = (xByte + paeth(a, b, c)) & 0xff;
+          data[dstOff + i] = recon;
+        }
+      }
+      return { width, height, data };
+    };
+
+    const exSheetPng = decodePngRgba33(
+      fs.readFileSync(path.join(REPO_ROOT, 'assets/sprites/warrior_ex_sheet.png'))
+    );
+    if (exSheetPng.width !== 9600 || exSheetPng.height !== 2400) {
+      throw new Error(
+        `[Suite 33.2] Expected warrior_ex_sheet.png 9600x2400 (30x10 @ 320x240), got ${exSheetPng.width}x${exSheetPng.height}`
+      );
+    }
+
+    const cellW = 320;
+    const cellH = 240;
+    const sheetStride = exSheetPng.width * 4;
+    let borderClipCells = 0;
+
+    for (let r = 0; r < 10; r++) {
+      let rowTransitions = 0;
+      for (let c = 0; c < 30; c++) {
+        const ox = c * cellW;
+        const oy = r * cellH;
+        let clipped = false;
+        for (let x = 0; x < cellW && !clipped; x++) {
+          for (let m = 0; m < 4; m++) {
+            if (
+              exSheetPng.data[(oy + m) * sheetStride + (ox + x) * 4 + 3] > 0 ||
+              exSheetPng.data[(oy + cellH - 1 - m) * sheetStride + (ox + x) * 4 + 3] > 0
+            ) {
+              clipped = true;
+              break;
+            }
+          }
+        }
+        for (let y = 0; y < cellH && !clipped; y++) {
+          for (let m = 0; m < 4; m++) {
+            if (
+              exSheetPng.data[(oy + y) * sheetStride + (ox + m) * 4 + 3] > 0 ||
+              exSheetPng.data[(oy + y) * sheetStride + (ox + cellW - 1 - m) * 4 + 3] > 0
+            ) {
+              clipped = true;
+              break;
+            }
+          }
+        }
+        if (clipped) borderClipCells++;
+
+        if (c > 0) {
+          const prevOx = (c - 1) * cellW;
+          let differs = false;
+          for (let y = 0; y < cellH && !differs; y += 2) {
+            const rowBase = (oy + y) * sheetStride;
+            for (let x = 0; x < cellW; x += 2) {
+              const i0 = rowBase + (prevOx + x) * 4;
+              const i1 = rowBase + (ox + x) * 4;
+              if (
+                exSheetPng.data[i0] !== exSheetPng.data[i1] ||
+                exSheetPng.data[i0 + 1] !== exSheetPng.data[i1 + 1] ||
+                exSheetPng.data[i0 + 2] !== exSheetPng.data[i1 + 2] ||
+                exSheetPng.data[i0 + 3] !== exSheetPng.data[i1 + 3]
+              ) {
+                differs = true;
+                break;
+              }
+            }
+          }
+          if (differs) rowTransitions++;
+        }
+      }
+      if (rowTransitions !== 29) {
+        throw new Error(
+          `[Suite 33.2] Expected 29/29 distinct frame transitions on warrior_ex_sheet Row ${r}, got ${rowTransitions}/29`
+        );
+      }
+    }
+    if (borderClipCells !== 0) {
+      throw new Error(
+        `[Suite 33.2] Expected 0/300 border clips on warrior_ex_sheet.png, got ${borderClipCells}/300`
+      );
+    }
+
+    // Verify Row 2 (`AUTO_ATTACK`) snap frames (`F03`, `F09`, `F17`, `F25`) project wide smear pixels into `x > 200`!
+    for (const snapCol of [3, 9, 17, 25]) {
+      const ox = snapCol * cellW;
+      const oy = 2 * cellH;
+      let maxFrontX = 0;
+      let frontSmearPx = 0;
+      for (let y = 0; y < cellH; y++) {
+        const rowBase = (oy + y) * sheetStride;
+        for (let x = 201; x < cellW; x++) {
+          if (exSheetPng.data[rowBase + (ox + x) * 4 + 3] > 0) {
+            frontSmearPx++;
+            if (x > maxFrontX) maxFrontX = x;
+          }
+        }
+      }
+      if (maxFrontX <= 200 || frontSmearPx < 240) {
+        throw new Error(
+          `[Suite 33.2] Expected wide FFBE smear reach (x > 200, >= 240 px) on Row 2 snap col F${String(snapCol).padStart(2, '0')}, got maxFrontX=${maxFrontX}, frontSmearPx=${frontSmearPx}`
+        );
+      }
+    }
+
+    const exVfxPng = decodePngRgba33(
+      fs.readFileSync(path.join(REPO_ROOT, 'assets/sprites/warrior_ex_vfx.png'))
+    );
+    if (exVfxPng.width !== 6240 || exVfxPng.height !== 1664) {
+      throw new Error(
+        `[Suite 33.2] Expected warrior_ex_vfx.png 6240x1664 (30x8 @ 208x208), got ${exVfxPng.width}x${exVfxPng.height}`
+      );
+    }
+    let vfxBorderClips = 0;
+    const vfxStride = exVfxPng.width * 4;
+    for (let r = 0; r < 8; r++) {
+      for (let c = 0; c < 30; c++) {
+        const ox = c * 208;
+        const oy = r * 208;
+        let clipped = false;
+        for (let x = 0; x < 208 && !clipped; x++) {
+          if (
+            exVfxPng.data[oy * vfxStride + (ox + x) * 4 + 3] > 0 ||
+            exVfxPng.data[(oy + 207) * vfxStride + (ox + x) * 4 + 3] > 0
+          ) {
+            clipped = true;
+          }
+        }
+        for (let y = 0; y < 208 && !clipped; y++) {
+          if (
+            exVfxPng.data[(oy + y) * vfxStride + ox * 4 + 3] > 0 ||
+            exVfxPng.data[(oy + y) * vfxStride + (ox + 207) * 4 + 3] > 0
+          ) {
+            clipped = true;
+          }
+        }
+        if (clipped) vfxBorderClips++;
+      }
+    }
+    if (vfxBorderClips !== 0) {
+      throw new Error(
+        `[Suite 33.2] Expected 0/240 border clips on warrior_ex_vfx.png, got ${vfxBorderClips}/240`
+      );
+    }
+
+    const exPortBuf = fs.readFileSync(
+      path.join(REPO_ROOT, 'assets/sprites/warrior_ex_portrait.png')
+    );
+    if (exPortBuf.readUInt32BE(16) !== 128 || exPortBuf.readUInt32BE(20) !== 128) {
+      throw new Error('[Suite 33.2] Expected warrior_ex_portrait.png to be 128x128!');
+    }
+
+    // Verify PixelForge wide-cell mirror-safe metrics & dual-Aethelgard 12-champion HTML roster cards
+    const pfAssets = PixelForge.initAssets();
+    pfAssets.warrior_ex.sheet.naturalWidth = 9600;
+    pfAssets.warrior_ex.sheet.naturalHeight = 2400;
+    const exMetrics = PixelForge.resolveSheetMetrics(
+      pfAssets.warrior_ex,
+      pfAssets.warrior_ex.sheet,
+      208,
+      208
+    );
+    const classicMetrics = PixelForge.resolveSheetMetrics(
+      pfAssets.warrior,
+      { naturalWidth: 6240, naturalHeight: 2080 },
+      208,
+      208
+    );
+    if (
+      exMetrics.cellW !== 320 ||
+      exMetrics.cellH !== 240 ||
+      exMetrics.drawW !== 320 ||
+      exMetrics.drawH !== 240 ||
+      exMetrics.baseX !== -112 ||
+      exMetrics.baseY !== -230 ||
+      classicMetrics.cellW !== 208 ||
+      classicMetrics.cellH !== 208 ||
+      classicMetrics.baseX !== -104 ||
+      classicMetrics.baseY !== -198
+    ) {
+      throw new Error(
+        `[Suite 33.2] Unexpected resolveSheetMetrics: ex=${JSON.stringify(exMetrics)}, classic=${JSON.stringify(classicMetrics)}`
+      );
+    }
+
+    const indexHtml33 = fs.readFileSync(path.join(REPO_ROOT, 'index.html'), 'utf8');
+    const rosterCardCount = (indexHtml33.match(/class="champ-card\b/g) || []).length;
+    if (
+      rosterCardCount !== 12 ||
+      !indexHtml33.includes('id="card-warrior"') ||
+      !indexHtml33.includes('id="card-warrior_ex"') ||
+      !indexHtml33.includes('AETHELGARD EX')
+    ) {
+      throw new Error(
+        `[Suite 33.2] Expected 12 champion cards in index.html with both #card-warrior & #card-warrior_ex, got count=${rosterCardCount}`
+      );
+    }
+  }
+
+  // --------------------------------------------------------------------------
+  // 33.3: Full `WarriorEx` (`warrior_ex`) Versus Mode (`AETHELGARD EX` vs `AETHELGARD`)
+  //       & Adventure Mode (Manual + `AUTO` Combo + Skill Tree + `BLITZ` Dodge) Simulation
+  // --------------------------------------------------------------------------
+  {
+    const assertFiniteFighter = (f, tag) => {
+      for (const k of ['x', 'y', 'vx', 'vy', 'hp', 'maxHp', 'mana', 'finisherGauge']) {
+        if (!Number.isFinite(f[k])) {
+          throw new Error(`[Suite 33.3 ${tag}] Non-finite ${k}=${f[k]} on ${f.name}`);
+        }
+      }
+    };
+
+    // (A) Versus Mode: AETHELGARD EX (`warrior_ex`) vs Classic AETHELGARD (`warrior`)
+    {
+      const vsTrack = { rotateCalls: 0, quadCalls: 0 };
+      const vsCtx = createMockCtx(vsTrack);
+      let ellipseCalls = 0;
+      vsCtx.ellipse = () => {
+        ellipseCalls++;
+      };
+
+      const vsGame = createMockGame();
+      const ex = new WarriorEx({ x: 380, groundY: 560, facing: 1, name: 'Aethelgard EX', team: 'left' });
+      const classic = new Warrior({ x: 545, groundY: 560, facing: -1, name: 'Aethelgard', team: 'right' });
+      ex.game = vsGame;
+      classic.game = vsGame;
+      classic.maxHp = 999999;
+      classic.hp = 999999;
+      ex.maxHp = 999999;
+      ex.hp = 999999;
+      vsGame.fighters = [ex, classic];
+      vsGame.getEnemiesOf = (f) => (f === ex ? [classic] : [ex]);
+      vsGame.getTargetFor = (f) => (f === ex ? classic : ex);
+      vsGame.spawnProjectile = (p) => vsGame.vfx.projectiles.push(p);
+      vsGame.vfx.projectiles.length = 0;
+
+      // 1) Seamless 4-beat FFBE/Cloudia AUTO_ATTACK chain (zero IDLE reset, planted boots on snap, hit-stop, multi-hit + Beat 4 blade_wave)
+      ex.skillCooldown = 999;
+      ex.crouchCooldown = 999;
+      ex.vaultCooldown = 999;
+      ex.dashCooldown = 999;
+      ex.dodgeCooldown = 999;
+      ex.mana = 0;
+      ex.finisherGauge = 0;
+      classic.stunTimer = 999;
+
+      ex.comboStep = 0;
+      ex.setState('AUTO_ATTACK');
+
+      const seenBeats = [];
+      let sawIdleMidChain = false;
+      let sawHitStop = false;
+      let sawEnemyHitShake = false;
+      let sawPlantedSnapZeroVx = false;
+      let damageHitEvents = 0;
+      let prevClassicHp = classic.hp;
+
+      for (let tick = 0; tick < 140; tick++) {
+        if (ex.state === 'AUTO_ATTACK') {
+          if (seenBeats[seenBeats.length - 1] !== ex._autoVariant) {
+            seenBeats.push(ex._autoVariant);
+          }
+          // Queue next beat while beats 0..2 are active so the 0.015s intra-combo link chains straight through!
+          if (ex._autoVariant < 3) {
+            ex.queueNextComboBeat();
+          }
+        } else if (seenBeats.length > 0 && seenBeats.length < 4 && ex.state === 'IDLE') {
+          sawIdleMidChain = true;
+        }
+
+        ex.update(1 / 60, classic, vsGame);
+        classic.stunTimer = 999;
+        assertFiniteFighter(ex, 'VS-Auto-EX');
+        assertFiniteFighter(classic, 'VS-Auto-Classic');
+
+        if ((ex._hitStopTimer || 0) > 0) sawHitStop = true;
+        if ((classic._hitShakeTimer || 0) > 0) sawEnemyHitShake = true;
+        if (ex._bootsPlanted && Math.abs(ex.vx) < 0.001) sawPlantedSnapZeroVx = true;
+        if (classic.hp < prevClassicHp) {
+          damageHitEvents++;
+          prevClassicHp = classic.hp;
+        }
+
+        ex.drawForegroundOverlay?.(vsCtx, vsGame.renderer);
+        ex.draw(vsCtx, false, vsGame.renderer);
+        ex.drawUltimateForeground?.(vsCtx, vsGame.renderer);
+        classic.draw(vsCtx, false, vsGame.renderer);
+
+        if (seenBeats.length >= 4 && ex.state === 'IDLE') break;
+      }
+
+      const spawnedBladeWave = vsGame.vfx.projectiles.some((p) => p.type === 'blade_wave');
+      if (
+        seenBeats.slice(0, 4).join(',') !== '0,1,2,3' ||
+        sawIdleMidChain ||
+        !sawHitStop ||
+        !sawEnemyHitShake ||
+        !sawPlantedSnapZeroVx ||
+        damageHitEvents < 6 ||
+        !spawnedBladeWave
+      ) {
+        throw new Error(
+          `[Suite 33.3 VS-Auto] Expected 0,1,2,3 zero-IDLE chain w/ hit-stop, hit-shake, planted vx=0, >=6 hits & blade_wave; got beats=[${seenBeats.join(',')}], idleMid=${sawIdleMidChain}, hitStop=${sawHitStop}, shake=${sawEnemyHitShake}, planted=${sawPlantedSnapZeroVx}, hits=${damageHitEvents}, wave=${spawnedBladeWave}`
+        );
+      }
+
+      // 2) SKILL (`ASTRAL BLADE-RUSH`), ULTIMATE (`RADIANT OMNISLASH`), TRUE_ULTIMATE (`EXVIUS DAWN: SOVEREIGN OF LIGHT`)
+      for (const [mode, maxSteps] of [
+        ['SKILL', 45],
+        ['ULTIMATE', 75],
+        ['TRUE_ULTIMATE', 150]
+      ]) {
+        ex.x = 420;
+        ex.y = 560;
+        classic.x = 560;
+        classic.y = 560;
+        const hpStart = classic.hp;
+        if (mode === 'ULTIMATE') ex.mana = ex.maxMana;
+        if (mode === 'TRUE_ULTIMATE') ex.finisherGauge = ex.maxFinisherGauge;
+        ex.setState(mode);
+        let sawWings = false;
+        for (let i = 0; i < maxSteps; i++) {
+          ex.update(1 / 30, classic, vsGame);
+          if (ex.justiceWingsActive) sawWings = true;
+          assertFiniteFighter(ex, `VS-${mode}`);
+          ex.drawForegroundOverlay?.(vsCtx, vsGame.renderer);
+          ex.draw(vsCtx, false, vsGame.renderer);
+          ex.drawUltimateForeground?.(vsCtx, vsGame.renderer);
+          if (ex.state === 'IDLE' && i > 5) break;
+        }
+        if (classic.hp >= hpStart || ex.state !== 'IDLE') {
+          throw new Error(
+            `[Suite 33.3 VS-${mode}] Expected ${mode} to deal damage (${hpStart - classic.hp}) and exit cleanly to IDLE (state=${ex.state})`
+          );
+        }
+        if (mode === 'TRUE_ULTIMATE' && (!sawWings || ex.justiceFeathers.length === 0)) {
+          throw new Error(
+            `[Suite 33.3 VS-TRUE_ULTIMATE] Expected seraphic wings (${sawWings}) & falling Exvius feathers (${ex.justiceFeathers.length})!`
+          );
+        }
+      }
+
+      if (vsTrack.rotateCalls !== 0 || ellipseCalls !== 0) {
+        throw new Error(
+          `[Suite 33.3 VS] Expected 0 ctx.rotate (${vsTrack.rotateCalls}) and 0 ctx.ellipse (${ellipseCalls})!`
+        );
+      }
+    }
+
+    // (B) Adventure Mode: `warrior_ex` Manual Combo + Skill Tree (`wrath_1` blade_wave) + `BLITZ` Dodge + `AUTO` Play
+    {
+      const advTrack = { rotateCalls: 0, quadCalls: 0 };
+      const advCtx = createMockCtx(advTrack);
+      const advGame = createMockGame();
+      advGame.gameMode = 'adventure';
+      advGame.isAdventureMode = () => true;
+      advGame.spawnProjectile = (p) => advGame.vfx.projectiles.push(p);
+
+      const hero = new WarriorEx(360, 561, 1);
+      hero.game = advGame;
+      advGame.leftFighter = hero;
+      advGame.fighters = [hero];
+
+      const adv = new AdventureManager(advGame);
+      advGame.adventure = adv;
+      adv.startCampaign(hero);
+      adv.setAutoPlay(false, false);
+      adv.lockActive = true;
+      adv.lockMinX = 180;
+      adv.lockMaxX = 980;
+
+      // Verify Skill Tree Theme + `wrath_1 >= 2` launching piercing `'blade_wave'`
+      const exTheme = getHeroSkillTreeTheme('warrior_ex');
+      if (!exTheme || !HERO_SKILL_TREE_THEMES.warrior_ex) {
+        throw new Error('[Suite 33.3 Adv] Missing HERO_SKILL_TREE_THEMES.warrior_ex!');
+      }
+      adv.progression.skillPoints = 2;
+      adv.progression.upgradeNode('wrath_1', hero);
+      adv.progression.upgradeNode('wrath_1', hero);
+      if (adv.progression.getRank('wrath_1') !== 2) {
+        throw new Error('[Suite 33.3 Adv] Failed to upgrade wrath_1 to rank 2!');
+      }
+      advGame.vfx.projectiles.length = 0;
+
+      const mob = adv.spawnMonster('templar', 485, { groundY: 561, skipPortal: true });
+      mob.maxHp = 999999;
+      mob.hp = 999999;
+      mob.autoCooldown = 999;
+      mob.skillCooldown = 999;
+
+      // 1) Manual hold-to-slash 4-beat combo (`0 -> 1 -> 2 -> 3`) + `wrath_1` `'blade_wave'`
+      const manualBeats = [];
+      adv.heldAttack = true;
+      for (let tick = 0; tick < 110 && manualBeats.length < 4; tick++) {
+        const prevVar = hero._autoVariant;
+        const prevState = hero.state;
+        mob.x = hero.x + 118;
+        adv.processPlayerControls(1 / 30, hero, mob);
+        assertFiniteFighter(hero, 'Adv-Manual');
+        if (
+          hero.state === 'AUTO_ATTACK' &&
+          (prevState !== 'AUTO_ATTACK' || hero._autoVariant !== prevVar)
+        ) {
+          manualBeats.push(hero._autoVariant);
+        }
+      }
+      adv.heldAttack = false;
+      const advWaveSpawned = advGame.vfx.projectiles.some((p) => p.type === 'blade_wave');
+      if (manualBeats.slice(0, 4).join(',') !== '0,1,2,3' || !advWaveSpawned) {
+        throw new Error(
+          `[Suite 33.3 Adv-Manual] Expected manual 0,1,2,3 combo & wrath_1 blade_wave, got beats=[${manualBeats.join(',')}], wave=${advWaveSpawned}`
+        );
+      }
+
+      // 2) Bespoke `BLITZ` Adventure Dodge (`startHeroAdventureDodge` -> frame 183+, 0 lift, afterimage)
+      hero.setState('IDLE');
+      hero.dodgeCooldown = 0;
+      adv.startHeroAdventureDodge(hero, 1);
+      if (!hero._advPureDodge || hero._advDodgeFrameOverride !== 183) {
+        throw new Error(
+          `[Suite 33.3 Adv-Dodge] Expected BLITZ dodge active at frame 183, got active=${hero._advPureDodge}, frame=${hero._advDodgeFrameOverride}`
+        );
+      }
+      let maxDodgeLift = 0;
+      for (let i = 0; i < 8; i++) {
+        adv.updateHeroAdventureDodge(1 / 30, hero);
+        maxDodgeLift = Math.max(maxDodgeLift, Math.max(0, hero.groundY - hero.y));
+        hero.drawAdventureDodgeFX?.(advCtx);
+        hero.draw(advCtx, false, advGame.renderer);
+      }
+      adv.finishHeroAdventureDodge?.(hero, false);
+      if (maxDodgeLift > 0.01 || hero.afterimages.length === 0) {
+        throw new Error(
+          `[Suite 33.3 Adv-Dodge] Expected grounded 0-lift Sword-Drag BLITZ dodge w/ afterimages, got lift=${maxDodgeLift}, afterimages=${hero.afterimages.length}`
+        );
+      }
+
+      // 3) `AUTO` Play 4-beat combo (`0 -> 1 -> 2 -> 3`)
+      hero.setState('IDLE');
+      hero._advDodgeActive = false;
+      hero._advPureDodge = false;
+      hero.skillCooldown = 999;
+      hero.mana = 0;
+      hero.finisherGauge = 0;
+      adv.progression.spirit = 0;
+      adv.progression.ultCharge = 0;
+      adv.progression.astralCharge = 0;
+      hero.x = 360;
+      mob.x = 480;
+      adv.setAutoPlay(true, false);
+      const autoBeats = [];
+      for (let tick = 0; tick < 110 && autoBeats.length < 4; tick++) {
+        const prevVar = hero._autoVariant;
+        const prevState = hero.state;
+        mob.x = hero.x + 116;
+        adv.processPlayerControls(1 / 30, hero, mob);
+        assertFiniteFighter(hero, 'Adv-Auto');
+        if (
+          hero.state === 'AUTO_ATTACK' &&
+          (prevState !== 'AUTO_ATTACK' || hero._autoVariant !== prevVar)
+        ) {
+          autoBeats.push(hero._autoVariant);
+        }
+      }
+      adv.stopCampaign();
+      if (autoBeats.slice(0, 4).join(',') !== '0,1,2,3' || advTrack.rotateCalls !== 0) {
+        throw new Error(
+          `[Suite 33.3 Adv-Auto] Expected AUTO 0,1,2,3 combo & 0 ctx.rotate, got beats=[${autoBeats.join(',')}], rotate=${advTrack.rotateCalls}`
+        );
+      }
+    }
+  }
+
+  const suite33ElapsedMs = performance.now() - suite33StartMs;
+  if (suite33ElapsedMs >= 3000) {
+    throw new Error(
+      `[Suite 33] Expected Suite 33 runtime < 3000ms, got ${suite33ElapsedMs.toFixed(1)}ms!`
+    );
+  }
+
+  console.log(
+    `[PASS] Suite 33: Untouched Classic Aethelgard SHA-256 + R&D Spec, Wide-Canvas 9600x2400 Aethelgard EX (0/300 clips, 29/29 transitions, x>200 FFBE smears) & Dual-Mode VS/Adventure Combat verified in ${suite33ElapsedMs.toFixed(0)}ms!`
   );
 }
 

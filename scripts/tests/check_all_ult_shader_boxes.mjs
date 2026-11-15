@@ -3,8 +3,12 @@ import fs from 'node:fs';
 import {
   ArcaneShaderFX,
   ShaderPen
+} from '../../src/engine/ArcaneShaderFX.js?v=30fps113';
+import {
+  ShaderPen as ShaderPen112
 } from '../../src/engine/ArcaneShaderFX.js?v=30fps112';
 import { Warrior } from '../../src/entities/Warrior.js';
+import { WarriorEx } from '../../src/entities/WarriorEx.js?v=30fps113';
 import { Titan } from '../../src/entities/Titan.js';
 import { Ronin } from '../../src/entities/Ronin.js';
 import { FireMage } from '../../src/entities/FireMage.js';
@@ -18,6 +22,7 @@ import { Android } from '../../src/entities/Android.js';
 
 const HEROES = [
   ['warrior', Warrior],
+  ['warrior_ex', WarriorEx],
   ['titan', Titan],
   ['ronin', Ronin],
   ['mage', FireMage],
@@ -36,33 +41,35 @@ let currentMode = '';
 const shadeBoxClips = new Map();
 const viewportClips = new Map();
 
-const origShadeBox = ShaderPen.prototype.shadeBox;
-ShaderPen.prototype.shadeBox = function (x0, y0, x1, y1, shaderFn) {
-  let edgeAlbedo = 0;
-  let edgeGlow = 0;
-  const wrapped = (lx, ly, out) => {
-    const ret = shaderFn(lx, ly, out);
-    const col = ret || out.color;
-    const onBoxEdge =
-      Math.abs(lx - x0) <= 1.05 ||
-      Math.abs(lx - x1) <= 1.05 ||
-      Math.abs(ly - y0) <= 1.05 ||
-      Math.abs(ly - y1) <= 1.05;
-    if (onBoxEdge) {
-      if (col && out.alpha > 0.15) edgeAlbedo++;
-      if (out.glowStrength > 0.04) edgeGlow++;
+for (const PenCls of new Set([ShaderPen, ShaderPen112])) {
+  const origShadeBox = PenCls.prototype.shadeBox;
+  PenCls.prototype.shadeBox = function (x0, y0, x1, y1, shaderFn) {
+    let edgeAlbedo = 0;
+    let edgeGlow = 0;
+    const wrapped = (lx, ly, out) => {
+      const ret = shaderFn(lx, ly, out);
+      const col = ret || out.color;
+      const onBoxEdge =
+        Math.abs(lx - x0) <= 1.05 ||
+        Math.abs(lx - x1) <= 1.05 ||
+        Math.abs(ly - y0) <= 1.05 ||
+        Math.abs(ly - y1) <= 1.05;
+      if (onBoxEdge) {
+        if (col && out.alpha > 0.15) edgeAlbedo++;
+        if (out.glowStrength > 0.04) edgeGlow++;
+      }
+      return ret;
+    };
+    origShadeBox.call(this, x0, y0, x1, y1, wrapped);
+    if (edgeAlbedo >= 8 || edgeGlow >= 8) {
+      const key = `${currentHero}:${currentMode}:box[${Math.round(x0)},${Math.round(y0)}..${Math.round(x1)},${Math.round(y1)}]`;
+      const prev = shadeBoxClips.get(key) || { edgeAlbedo: 0, edgeGlow: 0 };
+      if (edgeAlbedo + edgeGlow > prev.edgeAlbedo + prev.edgeGlow) {
+        shadeBoxClips.set(key, { edgeAlbedo, edgeGlow });
+      }
     }
-    return ret;
   };
-  origShadeBox.call(this, x0, y0, x1, y1, wrapped);
-  if (edgeAlbedo >= 8 || edgeGlow >= 8) {
-    const key = `${currentHero}:${currentMode}:box[${Math.round(x0)},${Math.round(y0)}..${Math.round(x1)},${Math.round(y1)}]`;
-    const prev = shadeBoxClips.get(key) || { edgeAlbedo: 0, edgeGlow: 0 };
-    if (edgeAlbedo + edgeGlow > prev.edgeAlbedo + prev.edgeGlow) {
-      shadeBoxClips.set(key, { edgeAlbedo, edgeGlow });
-    }
-  }
-};
+}
 
 function makeMockGame(hero, dummy) {
   const nop = () => {};
@@ -203,8 +210,10 @@ for (const [id, Cls] of HEROES) {
   }
 }
 
-const reaperShadeClips = [...shadeBoxClips.keys()].filter((k) => k.startsWith('reaper:'));
-console.log("=== REAPER SHADEBOX CLIPS ===", reaperShadeClips.length);
+const reaperShadeClips = [...shadeBoxClips.keys()].filter(
+  (k) => k.startsWith('reaper:') || k.startsWith('warrior_ex:')
+);
+console.log("=== REAPER & WARRIOR_EX SHADEBOX CLIPS ===", reaperShadeClips.length);
 for (const k of reaperShadeClips) {
   const v = shadeBoxClips.get(k);
   console.log(`  ${k}: edgeAlbedo=${v.edgeAlbedo} edgeGlow=${v.edgeGlow}`);
@@ -216,4 +225,4 @@ for (const [k, v] of viewportClips.entries()) {
 if (reaperShadeClips.length > 0 || viewportClips.size > 0) {
   process.exit(1);
 }
-console.log("[PASS] Zero viewport border leaks across all 11 champions AND zero shadeBox/viewport clips across Malakor CROUCH, ULTIMATE & TRUE_ULTIMATE!");
+console.log("[PASS] Zero viewport border leaks across all 12 champions AND zero shadeBox/viewport clips across Malakor & Aethelgard EX!");

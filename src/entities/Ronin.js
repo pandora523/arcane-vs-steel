@@ -1,7 +1,7 @@
-import { Fighter } from './Fighter.js?v=30fps112';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps112';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps112';
-import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps112';
+import { Fighter } from './Fighter.js?v=30fps113';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps113';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps113';
+import { STORM_EFFECT_REGISTRY } from '../engine/shaders/stormShaders.js?v=30fps113';
 
 const AUTO_SLICES_4 = [
   [60, 8],
@@ -89,11 +89,11 @@ export class Ronin extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('ronin');
       const roninAssets = PixelForge.initAssets()?.ronin;
-      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps112')) {
-        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps112';
+      if (roninAssets?.sheet?.src && !roninAssets.sheet.src.includes('v=30fps113')) {
+        roninAssets.sheet.src = 'assets/sprites/ronin_sheet.png?v=30fps113';
       }
-      if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps112')) {
-        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps112';
+      if (roninAssets?.vfx?.src && !roninAssets.vfx.src.includes('v=30fps113')) {
+        roninAssets.vfx.src = 'assets/sprites/ronin_vfx.png?v=30fps113';
       }
     }
   }

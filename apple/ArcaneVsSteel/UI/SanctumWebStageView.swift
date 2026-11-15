@@ -210,7 +210,7 @@ public final class SanctumWebCoordinator: NSObject, WKNavigationDelegate, WKUIDe
           }
 
           try {
-            const { ArcaneShaderFX } = await import('./src/engine/ArcaneShaderFX.js?v=30fps112');
+            const { ArcaneShaderFX } = await import('./src/engine/ArcaneShaderFX.js?v=30fps113');
             if (!ArcaneShaderFX) {
               window.__AVS_METAL_WEBGL2_ACTIVE__ = false;
               window.__AVS_GL_RENDERER__ = 'Unified2D-DirtyRect-LowPower';
