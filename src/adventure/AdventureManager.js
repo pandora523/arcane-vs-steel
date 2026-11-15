@@ -88,6 +88,9 @@ export class AdventureManager {
     this.game = game;
     this.active = false;
     this.autoPlay = false;
+    this.manualTargetLock = false;
+    this.lockedMonster = null;
+    this._hudStripRect = null;
 
     this.progression = new AdventureProgression(this);
     this.skillSets = new AdventureSkillSets(this);
@@ -156,9 +159,101 @@ export class AdventureManager {
     this._boundKeyUp = (e) => this.onKeyUp(e);
     this._boundBlur = () => this.clearHeldInputs();
     this._listenersAttached = false;
+    this.bindDOMControls();
+  }
+
+  bindDOMControls() {
+    if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
+
+    const lockBtn = document.getElementById('adv-btn-lock');
+    if (lockBtn) {
+      lockBtn._advOwner = this;
+      if (!lockBtn._advLockBound && typeof lockBtn.addEventListener === 'function') {
+        lockBtn._advLockBound = true;
+        let lastTouchTs = 0;
+        lockBtn.addEventListener(
+          'touchstart',
+          (e) => {
+            const owner = lockBtn._advOwner;
+            if (!owner) return;
+            e.preventDefault?.();
+            lastTouchTs = Date.now();
+            if (owner.autoPlay) owner.setAutoPlay(false, false);
+            owner.toggleTargetLock(true);
+          },
+          { passive: false }
+        );
+        lockBtn.addEventListener('click', () => {
+          const owner = lockBtn._advOwner;
+          if (!owner || Date.now() - lastTouchTs < 450) return;
+          if (owner.autoPlay) owner.setAutoPlay(false, false);
+          owner.toggleTargetLock(true);
+        });
+      }
+    }
+
+    const pauseLockBtn = document.getElementById('adv-btn-pause-lock');
+    if (pauseLockBtn) {
+      pauseLockBtn._advOwner = this;
+      if (!pauseLockBtn._advLockBound && typeof pauseLockBtn.addEventListener === 'function') {
+        pauseLockBtn._advLockBound = true;
+        pauseLockBtn.addEventListener('click', () => {
+          pauseLockBtn._advOwner?.toggleTargetLock(true);
+        });
+      }
+    }
+
+    const canvas = document.getElementById('arena-canvas');
+    if (canvas) {
+      canvas._advOwner = this;
+      if (!canvas._advStripBound && typeof canvas.addEventListener === 'function') {
+        canvas._advStripBound = true;
+        canvas.addEventListener('pointerdown', (e) => {
+          const owner = canvas._advOwner;
+          if (
+            !owner ||
+            !owner.active ||
+            owner.game.isLandingOpen ||
+            owner.game.isMatchOver ||
+            owner.game.isPaused ||
+            owner.isSkillTreeOpen ||
+            !owner._hudStripRect
+          ) {
+            return;
+          }
+          const renderer = owner.game.renderer;
+          const cw = renderer?.width || canvas.width || 1280;
+          const ch = renderer?.height || canvas.height || 720;
+          const rect =
+            typeof canvas.getBoundingClientRect === 'function'
+              ? canvas.getBoundingClientRect()
+              : null;
+          let px = e.offsetX ?? e.clientX ?? -1;
+          let py = e.offsetY ?? e.clientY ?? -1;
+          if (rect && rect.width > 0 && rect.height > 0 && typeof e.clientX === 'number') {
+            const isCssRotated = Boolean(
+              document.documentElement?.classList?.contains?.('is-css-rotated-landscape')
+            );
+            if (isCssRotated) {
+              px = ((e.clientY - rect.top) / rect.height) * cw;
+              py = ((rect.right - e.clientX) / rect.width) * ch;
+            } else {
+              px = ((e.clientX - rect.left) / rect.width) * cw;
+              py = ((e.clientY - rect.top) / rect.height) * ch;
+            }
+          }
+          const sr = owner._hudStripRect;
+          if (px >= sr.x - 4 && px <= sr.x + sr.w + 4 && py >= sr.y - 4 && py <= sr.y + sr.h + 4) {
+            e.preventDefault?.();
+            owner.openSkillTree(true);
+          }
+        });
+      }
+    }
   }
 
   attachListeners() {
+    this.bindDOMControls();
     if (this._listenersAttached || typeof window === 'undefined') return;
     this._listenersAttached = true;
     window.addEventListener('keydown', this._boundKeyDown);
@@ -247,6 +342,9 @@ export class AdventureManager {
       e.preventDefault();
     } else if (code === 'KeyP') {
       this.toggleAutoPlay(true);
+      e.preventDefault();
+    } else if (!this.autoPlay && (code === 'Tab' || code === 'KeyR')) {
+      this.toggleTargetLock(true);
       e.preventDefault();
     }
   }
@@ -589,6 +687,69 @@ export class AdventureManager {
     this.setAutoPlay(!this.autoPlay, playSound);
   }
 
+  acquireBestLockMonster(player = this.game.leftFighter) {
+    const living = this.getLivingMonsters();
+    if (!living.length) return null;
+    if (!player) return living[0];
+    const facing = player.facing || 1;
+    const pGy = Number.isFinite(player.groundY) ? player.groundY : player.y || ADVENTURE_DEPTH_MID_Y;
+
+    let bestFront = null;
+    let bestFrontScore = Infinity;
+    for (let i = 0; i < living.length; i++) {
+      const m = living[i];
+      const signedDx = (m.x - player.x) * facing;
+      const inFront = signedDx >= -24 || (m.isColossalBoss && facing > 0);
+      if (!inFront) continue;
+      const mGy = Number.isFinite(m.groundY) ? m.groundY : m.y || ADVENTURE_DEPTH_MID_Y;
+      const depthDist = m.isColossalBoss ? 0 : (mGy - pGy) * 1.5;
+      const score =
+        Math.hypot(m.x - player.x, depthDist) -
+        (m.isBoss ? 55 : m.isMiniBoss ? 22 : 0);
+      if (score < bestFrontScore) {
+        bestFrontScore = score;
+        bestFront = m;
+      }
+    }
+    if (bestFront) return bestFront;
+    return this.getNearestLivingMonster(player);
+  }
+
+  getActiveLockedMonster(player = this.game.leftFighter) {
+    if (!this.manualTargetLock) {
+      this.lockedMonster = null;
+      return null;
+    }
+    if (
+      this.lockedMonster &&
+      !this.lockedMonster.isDead &&
+      (!this.game.fighters || this.game.fighters.includes(this.lockedMonster))
+    ) {
+      return this.lockedMonster;
+    }
+    this.lockedMonster = this.acquireBestLockMonster(player);
+    return this.lockedMonster;
+  }
+
+  setTargetLock(enabled, playSound = false) {
+    this.manualTargetLock = Boolean(enabled);
+    const player = this.game.leftFighter;
+    if (this.manualTargetLock) {
+      this.lockedMonster = this.acquireBestLockMonster(player);
+    } else {
+      this.lockedMonster = null;
+      this._comboLockTarget = null;
+    }
+    this.syncControlDeckUI();
+    if (playSound && this.game.audio) {
+      this.game.audio.play('clock_gear', player ? player.x : 600);
+    }
+  }
+
+  toggleTargetLock(playSound = true) {
+    this.setTargetLock(!this.manualTargetLock, playSound);
+  }
+
   refreshActionIcons(heroKey = 'mage') {
     if (typeof document === 'undefined' || typeof document.getElementById !== 'function') return;
     const slots = ['attack', 'dodge', 'skill', 'overdrive', 'ultimate'];
@@ -682,6 +843,26 @@ export class AdventureManager {
     }
     if (skillAutoLbl) {
       skillAutoLbl.textContent = 'AUTO';
+    }
+
+    const lockActive = Boolean(this.manualTargetLock);
+    const lockBtn = document.getElementById('adv-btn-lock');
+    const lockLbl = document.getElementById('adv-lock-label');
+    if (lockBtn) {
+      lockBtn.setAttribute?.('aria-pressed', String(lockActive));
+      lockBtn.classList?.toggle('is-lock-on', lockActive);
+    }
+    if (lockLbl) {
+      lockLbl.textContent = 'LOCK';
+    }
+    const pauseLockBtn = document.getElementById('adv-btn-pause-lock');
+    const pauseLockLbl = document.getElementById('adv-pause-lock-label');
+    if (pauseLockBtn) {
+      pauseLockBtn.setAttribute?.('aria-pressed', String(lockActive));
+      pauseLockBtn.classList?.toggle('is-lock-on', lockActive);
+    }
+    if (pauseLockLbl) {
+      pauseLockLbl.textContent = lockActive ? 'LOCK: ON' : 'LOCK: OFF';
     }
 
     this.syncJoystickKnobUI();
@@ -789,9 +970,16 @@ export class AdventureManager {
 
   startCampaign(playerFighter) {
     this.attachListeners();
+    this.bindDOMControls();
     this.active = true;
     this.isSkillTreeOpen = false;
+    this.manualTargetLock = false;
+    this.lockedMonster = null;
+    this._hudStripRect = null;
     this.clearHeldInputs();
+    if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+      document.getElementById('victory-overlay')?.classList?.remove('is-defeat-plaque');
+    }
 
     this.zoneIndex = 0;
     this.subWave = 0;
@@ -836,8 +1024,8 @@ export class AdventureManager {
           : renderer.isMobilePortrait && typeof renderer.getMobilePortraitFixedZoom === 'function'
             ? renderer.getMobilePortraitFixedZoom(false)
             : renderer.isMobile
-              ? 0.80
-              : 0.90;
+              ? 0.64
+              : 0.76;
     }
 
     playerFighter.x = 240;
@@ -902,6 +1090,9 @@ export class AdventureManager {
     this.destructibles.resetForCampaign();
     AdventureMapRenderer.clearBloomCache?.();
     this.active = false;
+    this.manualTargetLock = false;
+    this.lockedMonster = null;
+    this._hudStripRect = null;
     this.lockActive = false;
     this.goPromptActive = false;
     this.bossWarningTimer = 0;
@@ -911,6 +1102,9 @@ export class AdventureManager {
     this.pickups = [];
     this.portals = [];
     this.clearHeldInputs();
+    if (typeof document !== 'undefined' && typeof document.getElementById === 'function') {
+      document.getElementById('victory-overlay')?.classList?.remove('is-defeat-plaque');
+    }
 
     const renderer = this.game.renderer;
     if (renderer) {
@@ -1275,15 +1469,27 @@ export class AdventureManager {
       this.score >= 8200 ? 'S+ SOLAR SOVEREIGN' : this.score >= 6500 ? 'S RANK' : this.score >= 4800 ? 'A RANK' : 'B RANK';
 
     const hasDom = typeof document !== 'undefined' && typeof document.getElementById === 'function';
+    const victoryOverlay = hasDom ? document.getElementById('victory-overlay') : null;
     const eyebrowEl = hasDom ? document.getElementById('victory-eyebrow') : null;
     const winnerEl = hasDom ? document.getElementById('victory-winner') : null;
     const statsEl = hasDom ? document.getElementById('victory-stats') : null;
     const autoEl = hasDom ? document.getElementById('victory-auto-next') : null;
     const nextChallengerBtn = hasDom ? document.getElementById('btn-next-challenger') : null;
     const playAgainBtn = hasDom ? document.getElementById('btn-play-again') : null;
+    const selectBtn = hasDom ? document.getElementById('btn-victory-select') : null;
+    const titleBtn = hasDom ? document.getElementById('btn-victory-title') : null;
 
+    victoryOverlay?.classList?.remove('is-defeat-plaque');
     nextChallengerBtn?.classList?.add('hidden');
     if (playAgainBtn) playAgainBtn.textContent = 'RETRY CAMPAIGN';
+    if (selectBtn) {
+      selectBtn.classList?.remove('hidden');
+      selectBtn.textContent = 'CHANGE HERO';
+    }
+    if (titleBtn) {
+      titleBtn.classList?.remove('hidden');
+      titleBtn.textContent = 'TITLE SCREEN';
+    }
 
     if (eyebrowEl) {
       eyebrowEl.textContent = `ADVENTURE CAMPAIGN CLEARED • ${rank} • SCORE: ${this.score}`;
@@ -1328,6 +1534,23 @@ export class AdventureManager {
 
   onPlayerDeath(player) {
     const g = this.game;
+    if (this.isSkillTreeOpen) {
+      this.closeSkillTree(false);
+    }
+    if (player) {
+      if (player._advPureDodge) {
+        this.finishHeroAdventureDodge(player, false);
+      }
+      player._grabbedByBoss = false;
+      player._grabbedByBossTimer = 0;
+      player._advPureDodge = false;
+      player._advDodgeFrameOverride = null;
+      if (Number.isFinite(player.groundY) && player.y < player.groundY) {
+        player.y = player.groundY;
+        player.vy = 0;
+      }
+    }
+
     g.setPaused?.(false, false);
     g.isMatchOver = true;
     g.koSlowTimer = 0.48;
@@ -1338,28 +1561,40 @@ export class AdventureManager {
     const killer = this.bossEntity || this.getLivingMonsters()[0] || null;
     const killerName = killer && killer !== player ? killer.name : 'ABYSSAL HORDE';
     const hasDom = typeof document !== 'undefined' && typeof document.getElementById === 'function';
+    const victoryOverlay = hasDom ? document.getElementById('victory-overlay') : null;
     const eyebrowEl = hasDom ? document.getElementById('victory-eyebrow') : null;
     const winnerEl = hasDom ? document.getElementById('victory-winner') : null;
     const statsEl = hasDom ? document.getElementById('victory-stats') : null;
     const autoEl = hasDom ? document.getElementById('victory-auto-next') : null;
     const nextChallengerBtn = hasDom ? document.getElementById('btn-next-challenger') : null;
     const playAgainBtn = hasDom ? document.getElementById('btn-play-again') : null;
+    const selectBtn = hasDom ? document.getElementById('btn-victory-select') : null;
+    const titleBtn = hasDom ? document.getElementById('btn-victory-title') : null;
 
+    victoryOverlay?.classList?.add('is-defeat-plaque');
     nextChallengerBtn?.classList?.add('hidden');
     if (playAgainBtn) playAgainBtn.textContent = 'RETRY CAMPAIGN';
+    if (selectBtn) {
+      selectBtn.classList?.remove('hidden');
+      selectBtn.textContent = 'CHANGE HERO';
+    }
+    if (titleBtn) {
+      titleBtn.classList?.remove('hidden');
+      titleBtn.textContent = 'TITLE SCREEN';
+    }
 
     if (eyebrowEl) {
-      eyebrowEl.textContent = `ADVENTURE FALLEN AT ZONE ${this.zoneIndex + 1} • SCORE: ${this.score}`;
+      eyebrowEl.textContent = `PILGRIMAGE DEFEAT • ZONE ${this.zoneIndex + 1} • SCORE: ${this.score}`;
     }
     if (winnerEl) {
-      winnerEl.textContent = `${killerName.toUpperCase()} PREVAILS`;
+      winnerEl.textContent = `DEFEATED — ${killerName.toUpperCase()} PREVAILS`;
     }
     if (statsEl) {
       statsEl.textContent = 'The Black Pit claims another soul — spend Skill Points, unleash Overdrive, and retry!';
     }
     if (autoEl) {
-      autoEl.textContent = '';
-      autoEl.classList?.add('hidden');
+      autoEl.classList?.remove('hidden');
+      autoEl.textContent = 'PILGRIMAGE FALLEN • CHOOSE RETRY OR CHANGE HERO';
     }
 
     if (hasDom) {
@@ -1625,7 +1860,13 @@ export class AdventureManager {
       }
     }
     if (g.hudEls?.modeBadge) {
-      const nextBadge = `LV.${this.progression.level} • ${this.totalWaveLabel} • ${this.score} PTS`;
+      let nextBadge;
+      if (g.renderer?.isMobilePortrait) {
+        const shortWave = this.totalWaveLabel.replace('WAVE ', 'W').replace(/\s+/g, '');
+        nextBadge = `${shortWave} • ${this.score}P`;
+      } else {
+        nextBadge = `LV.${this.progression.level} • ${this.totalWaveLabel} • ${this.score} PTS`;
+      }
       if (g.hudEls.modeBadge.textContent !== nextBadge) {
         g.hudEls.modeBadge.textContent = nextBadge;
       }
@@ -2158,6 +2399,22 @@ export class AdventureManager {
     player.isManualAdventureControl = true;
     player.adventureAutoPlay = this.autoPlay;
 
+    if (this.game.isMatchOver && player.isDead) {
+      player._grabbedByBoss = false;
+      player._grabbedByBossTimer = 0;
+      player._advPureDodge = false;
+      player._advDodgeFrameOverride = null;
+      player._manualWalkActive = false;
+      player._manualSpeedRatio = 0;
+      player.manualMoveAxis = 0;
+      if (Number.isFinite(player.groundY) && player.y < player.groundY) {
+        player.y = player.groundY;
+        player.vy = 0;
+      }
+      player.update(dt, null, this.game);
+      return;
+    }
+
     if (this.queuedActionTimer > 0) {
       this.queuedActionTimer = Math.max(0, this.queuedActionTimer - dt);
       if (this.queuedActionTimer <= 0) {
@@ -2177,8 +2434,19 @@ export class AdventureManager {
       }
     }
 
+    if (!this.autoPlay) {
+      if (this.manualTargetLock) {
+        target = this.getActiveLockedMonster(player);
+      } else {
+        this.lockedMonster = null;
+        this._comboLockTarget = null;
+        target = null;
+      }
+    }
+
     const stickyLockMaxX = (player.getHackAndSlashLockRange?.() || 275) + 45;
     if (
+      (this.autoPlay || this.manualTargetLock) &&
       player.hasHackAndSlashCombo?.() &&
       (player.comboStep || 0) !== 0 &&
       (this.comboResetTimer || 0) > 0 &&
@@ -2822,6 +3090,8 @@ export class AdventureManager {
         isInstantDodgeCancel ||
         isAttackRecoveryCancel);
 
+    const lockTarget = this.manualTargetLock && target && !target.isDead ? target : null;
+
     if (canAct && this.queuedAction) {
       const act = this.queuedAction;
       if (
@@ -2831,7 +3101,11 @@ export class AdventureManager {
         typeof player.updateTrueUltimate === 'function'
       ) {
         this.queuedAction = null;
-        if (target) player.facing = target.x >= player.x ? 1 : -1;
+        if (lockTarget) {
+          player.facing = lockTarget.x >= player.x ? 1 : -1;
+        } else if (moveDirX !== 0) {
+          player.facing = moveDirX;
+        }
         this.progression.astralCharge = 0;
         this.progression.syncGaugesToPlayer(player);
         if (player.stats) player.stats.ultsUsed++;
@@ -2839,7 +3113,11 @@ export class AdventureManager {
         this.game.triggerTrueUltimateCinematic(player);
       } else if (act === 'overdrive' && this.progression.ultCharge >= 99.9) {
         this.queuedAction = null;
-        if (target) player.facing = target.x >= player.x ? 1 : -1;
+        if (lockTarget) {
+          player.facing = lockTarget.x >= player.x ? 1 : -1;
+        } else if (moveDirX !== 0) {
+          player.facing = moveDirX;
+        }
         this.progression.ultCharge = 0;
         this.progression.gainAstralRelic(
           stats.ultResonanceAstral,
@@ -2853,7 +3131,11 @@ export class AdventureManager {
       } else if (act === 'skill' && player.skillCooldown <= 0) {
         if (this.progression.trySpendSkillSpirit()) {
           this.queuedAction = null;
-          if (target) player.facing = target.x >= player.x ? 1 : -1;
+          if (lockTarget) {
+            player.facing = lockTarget.x >= player.x ? 1 : -1;
+          } else if (moveDirX !== 0) {
+            player.facing = moveDirX;
+          }
           this.skillCdMax = Math.max(0.5, player.skillMaxCooldown * 0.78);
           player.skillCooldown = this.skillCdMax;
           if (player.stats) player.stats.skillsUsed++;
@@ -2878,13 +3160,15 @@ export class AdventureManager {
         if (inputMag > 0.08) {
           evadeX = rawDirX / inputMag;
           evadeZ = rawDirY / inputMag;
+        } else if (
+          lockTarget &&
+          !lockTarget.isDestructibleProp &&
+          Math.abs(lockTarget.x - player.x) < 280
+        ) {
+          evadeX = player.x <= lockTarget.x ? -1 : 1;
+          evadeZ = 0;
         } else {
-          evadeX =
-            target && !target.isDestructibleProp && Math.abs(target.x - player.x) < 280
-              ? player.x <= target.x
-                ? -1
-                : 1
-              : player.facing || 1;
+          evadeX = player.facing || 1;
           evadeZ = 0;
         }
         this.startHeroAdventureDodge(player, evadeX, evadeZ, stats);
@@ -2892,28 +3176,35 @@ export class AdventureManager {
         this.queuedAction = null;
         const isHns = Boolean(player.hasHackAndSlashCombo?.());
         const hnsLockRange = player.getHackAndSlashLockRange?.() || 275;
-        const lockableHnsTarget =
-          isHns &&
-          target &&
-          !target.isDead &&
-          !target.isDestructibleProp &&
-          !target.isDummyFocal &&
-          (target.isColossalBoss || Math.abs(target.x - player.x) <= hnsLockRange);
-        if (isHns) {
-          if (lockableHnsTarget) {
-            player.facing = target.x >= player.x ? 1 : -1;
-            this._comboLockTarget = target;
-          } else {
-            if (moveDirX !== 0) {
-              player.facing = moveDirX;
-            }
-            this._comboLockTarget = null;
+        if (!this.manualTargetLock) {
+          if (moveDirX !== 0) {
+            player.facing = moveDirX;
           }
-        } else if (target) {
-          player.facing = target.x >= player.x ? 1 : -1;
-          this._comboLockTarget = target;
-        } else if (moveDirX !== 0) {
-          player.facing = moveDirX;
+          this._comboLockTarget = null;
+        } else {
+          const lockableHnsTarget =
+            isHns &&
+            lockTarget &&
+            !lockTarget.isDead &&
+            !lockTarget.isDestructibleProp &&
+            !lockTarget.isDummyFocal &&
+            (lockTarget.isColossalBoss || Math.abs(lockTarget.x - player.x) <= hnsLockRange);
+          if (isHns) {
+            if (lockableHnsTarget) {
+              player.facing = lockTarget.x >= player.x ? 1 : -1;
+              this._comboLockTarget = lockTarget;
+            } else {
+              if (moveDirX !== 0) {
+                player.facing = moveDirX;
+              }
+              this._comboLockTarget = null;
+            }
+          } else if (lockTarget) {
+            player.facing = lockTarget.x >= player.x ? 1 : -1;
+            this._comboLockTarget = lockTarget;
+          } else if (moveDirX !== 0) {
+            player.facing = moveDirX;
+          }
         }
         this.comboResetTimer = 1.85;
         player.setState('AUTO_ATTACK');
@@ -2994,11 +3285,11 @@ export class AdventureManager {
           // Allow smooth 2.5D depth-lane micro-steering while preserving Hack-and-Slash cross-through & 180° turns!
           this.shiftEntityDepth(player, this.smoothVelY * 0.85 * dt);
         } else {
-          // Simultaneous Run-and-Cast: glide smoothly along joystick vector while keeping aim locked on target!
+          // Simultaneous Run-and-Cast: glide smoothly along joystick vector!
           player.x += this.smoothVelX * 0.82 * dt;
           this.shiftEntityDepth(player, this.smoothVelY * 0.85 * dt);
-          if (target) {
-            player.facing = target.x >= player.x ? 1 : -1;
+          if (lockTarget) {
+            player.facing = lockTarget.x >= player.x ? 1 : -1;
           } else if (moveDirX !== 0) {
             player.facing = moveDirX;
           }
@@ -3008,7 +3299,7 @@ export class AdventureManager {
       }
 
       const prevDidAction = Boolean(player.didActionFrame);
-      const combatTarget = this.skillSets.resolveTarget(player, target);
+      const combatTarget = this.skillSets.resolveTarget(player, lockTarget);
       this.skillSets.beginPlayerStep(dt, player, combatTarget, isMoving3D, rawDirY);
       player.update(dt, combatTarget, this.game);
       if (
@@ -3024,7 +3315,7 @@ export class AdventureManager {
         }
       }
       if (player.state === 'AUTO_ATTACK' && !prevDidAction && player.didActionFrame) {
-        this.progression.onPlayerCastBasicAttack(player, target, this.game);
+        this.progression.onPlayerCastBasicAttack(player, combatTarget, this.game);
       }
     }
   }
@@ -3048,12 +3339,16 @@ export class AdventureManager {
 
   update(dt) {
     if (!this.active) return;
-    if (this.isSkillTreeOpen) {
-      this.syncControlDeckUI();
-      return;
-    }
     const g = this.game;
     const player = g.leftFighter;
+    if (this.isSkillTreeOpen) {
+      if (g.isMatchOver && player?.isDead) {
+        this.closeSkillTree(false);
+      } else {
+        this.syncControlDeckUI();
+        return;
+      }
+    }
     if (!player) return;
 
     this.goBlinkTimer += dt;
@@ -3508,6 +3803,97 @@ export class AdventureManager {
 
     this.skillSets.renderForeground(ctx);
     this.destructibles?.renderDebris(ctx, renderer);
+
+    // Crisp 16-bit Pixel Target-Lock Reticle (`0` emojis, `0` ctx.rotate — Selout corner brackets + 'LOCKED' pixel tag)
+    if (!this.autoPlay && this.manualTargetLock && !this.game.isMatchOver) {
+      const activeLockedTarget = this.getActiveLockedMonster(this.game.leftFighter);
+      if (activeLockedTarget && !activeLockedTarget.isDead) {
+        const t = renderer?.time || 0;
+        const pulse = Math.round(Math.sin(t * 8.0) * 3);
+        let cx;
+        let cy;
+        let halfW;
+        let halfH;
+        let arm;
+        if (activeLockedTarget.isColossalBoss) {
+          cx = Math.round((activeLockedTarget.anchorX || activeLockedTarget.x) - 56);
+          cy = Math.round((activeLockedTarget.anchorGroundY || 561) - 148);
+          halfW = 74 + pulse;
+          halfH = 84 + pulse;
+          arm = 18;
+        } else {
+          cx = Math.round(activeLockedTarget.x);
+          const baseY = Number.isFinite(activeLockedTarget.y)
+            ? activeLockedTarget.y
+            : activeLockedTarget.groundY || 561;
+          const bodyH = activeLockedTarget.isMiniBoss
+            ? 128
+            : activeLockedTarget.isElite
+              ? 108
+              : 92;
+          cy = Math.round(baseY - Math.round(bodyH * 0.54));
+          halfW =
+            (activeLockedTarget.isMiniBoss ? 50 : activeLockedTarget.isElite ? 42 : 36) + pulse;
+          halfH = Math.round(bodyH * 0.52) + pulse;
+          arm = 13;
+        }
+
+        const rx0 = cx - halfW;
+        const rx1 = cx + halfW;
+        const ry0 = cy - halfH;
+        const ry1 = cy + halfH;
+        const thick = 3;
+
+        const seloutBar = (bx, by, bw, bh, col) => {
+          ctx.fillStyle = '#0d0f1c';
+          ctx.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+          ctx.fillStyle = col;
+          ctx.fillRect(bx, by, bw, bh);
+        };
+
+        ctx.save();
+        ctx.imageSmoothingEnabled = false;
+
+        // Stepped cyan (#38bdf8) Selout corner brackets
+        seloutBar(rx0, ry0, arm, thick, '#38bdf8');
+        seloutBar(rx0, ry0, thick, arm, '#38bdf8');
+        seloutBar(rx1 - arm, ry0, arm, thick, '#38bdf8');
+        seloutBar(rx1 - thick, ry0, thick, arm, '#38bdf8');
+        seloutBar(rx0, ry1 - thick, arm, thick, '#38bdf8');
+        seloutBar(rx0, ry1 - arm, thick, arm, '#38bdf8');
+        seloutBar(rx1 - arm, ry1 - thick, arm, thick, '#38bdf8');
+        seloutBar(rx1 - thick, ry1 - arm, thick, arm, '#38bdf8');
+
+        // Gold (#fde047) corner vertex pips & cardinal crosshair ticks
+        seloutBar(rx0, ry0, 4, 4, '#fde047');
+        seloutBar(rx1 - 4, ry0, 4, 4, '#fde047');
+        seloutBar(rx0, ry1 - 4, 4, 4, '#fde047');
+        seloutBar(rx1 - 4, ry1 - 4, 4, 4, '#fde047');
+
+        seloutBar(cx - 1, ry0 - 5, 3, 6, '#fde047');
+        seloutBar(cx - 1, ry1 - 1, 3, 6, '#fde047');
+        seloutBar(rx0 - 5, cy - 1, 6, 3, '#fde047');
+        seloutBar(rx1 - 1, cy - 1, 6, 3, '#fde047');
+
+        // Crisp darkforge 'LOCKED' pixel tag
+        const tagW = 52;
+        const tagH = 13;
+        const tagX = cx - Math.floor(tagW * 0.5);
+        const tagY = ry0 - tagH - 7;
+        ctx.fillStyle = '#0d0f1c';
+        ctx.fillRect(tagX - 1, tagY - 1, tagW + 2, tagH + 2);
+        ctx.fillStyle = '#090d18';
+        ctx.fillRect(tagX, tagY, tagW, tagH);
+        ctx.fillStyle = '#38bdf8';
+        ctx.fillRect(tagX, tagY, tagW, 1);
+        ctx.fillStyle = '#fde047';
+        ctx.font = '7px "ArcanePixel", "Press Start 2P", monospace';
+        ctx.textAlign = 'center';
+        ctx.fillText('LOCKED', cx, tagY + 10);
+
+        ctx.restore();
+      }
+    }
   }
 
   renderScreenHUD(ctx, renderer) {
@@ -3519,11 +3905,29 @@ export class AdventureManager {
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Compact 4-Zone Campaign Progress + Solar Spirit & XP RPG Strip
-    const stripW = Math.min(renderer.isMobileLandscape ? 290 : 360, Math.round(w * 0.48));
+    // 1. Compact 4-Zone Campaign Progress + Solar Spirit & XP RPG Strip (safely below .hud-top!)
+    const hudBottomY =
+      typeof renderer.getHudBottomY === 'function'
+        ? renderer.getHudBottomY()
+        : renderer.isMobilePortrait
+          ? 142
+          : renderer.isMobileLandscape
+            ? 84
+            : 104;
+    const stripW = renderer.isMobilePortrait
+      ? Math.min(336, Math.max(244, Math.round(w * 0.80)))
+      : Math.min(renderer.isMobileLandscape ? 290 : 360, Math.round(w * 0.48));
     const stripH = renderer.isMobileLandscape ? 25 : 29;
     const stripX = Math.round((w - stripW) * 0.5);
-    const stripY = renderer.isMobileLandscape ? 72 : renderer.isMobile ? 98 : 106;
+    const stripY = Math.round(hudBottomY + (renderer.isMobilePortrait ? 8 : 6));
+    if (!this._hudStripRect) {
+      this._hudStripRect = { x: stripX, y: stripY, w: stripW, h: stripH };
+    } else {
+      this._hudStripRect.x = stripX;
+      this._hudStripRect.y = stripY;
+      this._hudStripRect.w = stripW;
+      this._hudStripRect.h = stripH;
+    }
     ctx.fillStyle = 'rgba(6, 9, 18, 0.86)';
     ctx.fillRect(stripX, stripY, stripW, stripH);
     ctx.strokeStyle = '#d4af37';
@@ -3582,29 +3986,46 @@ export class AdventureManager {
       subY + 6
     );
 
-    // 2. Classic Flashing "GO!" Arcade Advance Prompt with Crisp Pixel Arrow
+    // 2. Classic Flashing "GO!" Arcade Advance Prompt with Crisp Pixel Arrow (zero overflow!)
     if (this.goPromptActive && !this.game.isMatchOver) {
       const blink = Math.sin(t * 9.5) > -0.25;
       if (blink) {
-        const gx = w - (renderer.isMobileLandscape ? 212 : renderer.isMobile ? 128 : 168);
-        const gy = Math.round(h * (renderer.isMobileLandscape ? 0.30 : 0.36));
-        const shift = Math.round(Math.sin(t * 8.0) * 6);
+        const promptText = String(this.goPromptText || 'GO!');
+        let goFontPx = renderer.isMobilePortrait ? 9 : renderer.isMobileLandscape ? 10 : 11;
+        if (promptText.length > 16 && goFontPx > 9) {
+          goFontPx = 9;
+        }
+        ctx.font = `${goFontPx}px "ArcanePixel", "Press Start 2P", monospace`;
+        const measuredW = ctx.measureText?.(promptText)?.width || 0;
+        const estTextW = Math.max(measuredW, promptText.length * goFontPx * 0.94);
+        const arrowW = 24;
+        const boxW = Math.max(168, Math.min(252, Math.ceil(estTextW + arrowW + 26)));
+        const boxH = 38;
+        const gy = Math.max(
+          stripY + stripH + 34,
+          Math.round(h * (renderer.isMobileLandscape ? 0.36 : 0.38))
+        );
+        const shift = Math.round(Math.sin(t * 8.0) * 5);
+        const rightPad = renderer.isMobilePortrait ? 14 : renderer.isMobileLandscape ? 124 : 80;
+        const boxX = Math.max(
+          12,
+          Math.min(Math.max(12, w - boxW - 12), w - rightPad - boxW + shift)
+        );
+        const boxY = gy - Math.floor(boxH * 0.5);
 
         ctx.fillStyle = 'rgba(9, 12, 22, 0.90)';
-        ctx.fillRect(gx - 88 + shift, gy - 20, 162, 38);
+        ctx.fillRect(boxX, boxY, boxW, boxH);
         ctx.strokeStyle = '#facc15';
         ctx.lineWidth = 2;
-        ctx.strokeRect(gx - 88 + shift, gy - 20, 162, 38);
+        ctx.strokeRect(boxX, boxY, boxW, boxH);
 
-        ctx.font = renderer.isMobileLandscape
-          ? '10px "ArcanePixel", "Press Start 2P", monospace'
-          : '12px "ArcanePixel", "Press Start 2P", monospace';
+        const textRegionW = boxW - arrowW - 12;
         ctx.textAlign = 'center';
         ctx.fillStyle = '#fef08a';
-        ctx.fillText(this.goPromptText, gx - 16 + shift, gy + 4);
+        ctx.fillText(promptText, boxX + 6 + Math.floor(textRegionW * 0.5), gy + 4);
 
         // Crisp 16-bit pixel arrow (zero OS dingbat glyph)
-        const ax = gx + 36 + shift;
+        const ax = boxX + boxW - arrowW - 8;
         const ay = gy - 2;
         ctx.fillStyle = '#facc15';
         ctx.fillRect(ax, ay - 2, 12, 4);
@@ -3618,12 +4039,15 @@ export class AdventureManager {
     // 3. Dramatic Colossal Boss Approaching Arcade Alert Banner with Pixel Hazard Crests
     if (this.bossWarningTimer > 0) {
       const flash = Math.abs(Math.sin(t * 12));
-      const by = Math.round(h * 0.34);
+      const by = Math.max(stripY + stripH + 46, Math.round(h * 0.36));
+      const isNarrowWarn = w < 560;
+      const banH = isNarrowWarn ? 64 : 60;
+      const banTop = by - Math.floor(banH * 0.5);
       ctx.fillStyle = `rgba(69, 10, 10, ${(0.78 + flash * 0.16).toFixed(3)})`;
-      ctx.fillRect(0, by - 30, w, 60);
+      ctx.fillRect(0, banTop, w, banH);
       ctx.fillStyle = '#ef4444';
-      ctx.fillRect(0, by - 30, w, 3);
-      ctx.fillRect(0, by + 27, w, 3);
+      ctx.fillRect(0, banTop, w, 3);
+      ctx.fillRect(0, banTop + banH - 3, w, 3);
 
       const drawHazardCrest = (cx, cy) => {
         ctx.fillStyle = '#ef4444';
@@ -3634,16 +4058,30 @@ export class AdventureManager {
         ctx.fillRect(cx - 1, cy - 5, 2, 6);
         ctx.fillRect(cx - 1, cy + 3, 2, 2);
       };
-      const crestOffset = renderer.isMobile ? Math.min(Math.round(w * 0.44), 210) : 292;
-      drawHazardCrest(Math.round(w * 0.5) - crestOffset, by);
-      drawHazardCrest(Math.round(w * 0.5) + crestOffset, by);
 
-      ctx.font = renderer.isMobile
-        ? '10px "ArcanePixel", "Press Start 2P", monospace'
-        : '14px "ArcanePixel", "Press Start 2P", monospace';
-      ctx.textAlign = 'center';
-      ctx.fillStyle = '#fef08a';
-      ctx.fillText('WARNING! BEHEMOTH MALPHAS RISES ON THE EAST!', Math.round(w * 0.5), by + 5);
+      const centerX = Math.round(w * 0.5);
+      if (isNarrowWarn) {
+        const crestOffset = Math.min(Math.round(w * 0.45), Math.max(120, Math.floor(w * 0.5) - 18));
+        drawHazardCrest(centerX - crestOffset, by);
+        drawHazardCrest(centerX + crestOffset, by);
+
+        const warnPx = w < 375 ? 8 : 9;
+        ctx.font = `${warnPx}px "ArcanePixel", "Press Start 2P", monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#fef08a';
+        ctx.fillText('WARNING! BEHEMOTH MALPHAS', centerX, by - 4);
+        ctx.fillText('RISES ON THE EAST!', centerX, by + 13);
+      } else {
+        const crestOffset = renderer.isMobile ? Math.min(Math.round(w * 0.45), 248) : Math.min(Math.round(w * 0.45), 292);
+        drawHazardCrest(centerX - crestOffset, by);
+        drawHazardCrest(centerX + crestOffset, by);
+
+        const warnPx = w < 760 ? 10 : renderer.isMobile ? 10 : 14;
+        ctx.font = `${warnPx}px "ArcanePixel", "Press Start 2P", monospace`;
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#fef08a';
+        ctx.fillText('WARNING! BEHEMOTH MALPHAS RISES ON THE EAST!', centerX, by + 5);
+      }
     }
 
     ctx.restore();
