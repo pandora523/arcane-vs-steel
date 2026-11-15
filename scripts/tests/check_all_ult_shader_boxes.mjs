@@ -1,20 +1,20 @@
-import { VFXManager } from "/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js";
+import { VFXManager } from '../../src/engine/VFXManager.js';
 import fs from 'node:fs';
 import {
   ArcaneShaderFX,
   ShaderPen
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/ArcaneShaderFX.js?v=30fps110';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js';
+} from '../../src/engine/ArcaneShaderFX.js?v=30fps110';
+import { Warrior } from '../../src/entities/Warrior.js';
+import { Titan } from '../../src/entities/Titan.js';
+import { Ronin } from '../../src/entities/Ronin.js';
+import { FireMage } from '../../src/entities/FireMage.js';
+import { Archer } from '../../src/entities/Archer.js';
+import { Priestess } from '../../src/entities/Priestess.js';
+import { Valkyrie } from '../../src/entities/Valkyrie.js';
+import { IceMage } from '../../src/entities/IceMage.js';
+import { Reaper } from '../../src/entities/Reaper.js';
+import { Chronomancer } from '../../src/entities/Chronomancer.js';
+import { Android } from '../../src/entities/Android.js';
 
 const HEROES = [
   ['warrior', Warrior],

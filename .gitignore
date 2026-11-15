@@ -9,3 +9,8 @@ upload/
 __pycache__/
 *.pyc
 IMG_*
+DerivedData/
+xcuserdata/
+*.xcuserstate
+apple/build/
+apple/.build/

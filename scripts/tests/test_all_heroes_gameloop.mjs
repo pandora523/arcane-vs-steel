@@ -28,35 +28,37 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps110';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps110';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps110';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps110';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps110';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps110';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps110';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps110';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps110';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps110';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps110';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps110';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps110';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps110';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps110';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps110';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps110';
+import { fileURLToPath } from 'node:url';
+const REPO_ROOT = fileURLToPath(new URL('../..', import.meta.url)).replace(/\/$/, '');
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps110';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps110';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps110';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps110';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps110';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps110';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps110';
+import { Archer } from '../../src/entities/Archer.js?v=30fps110';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps110';
+import { Titan } from '../../src/entities/Titan.js?v=30fps110';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps110';
+import { Android } from '../../src/entities/Android.js?v=30fps110';
+import { PixelForge } from '../../src/engine/PixelForge.js?v=30fps110';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps110';
+import { Renderer } from '../../src/engine/Renderer.js?v=30fps110';
+import { AudioManager } from '../../src/engine/AudioManager.js?v=30fps110';
+import { Monster, ArchfiendBoss } from '../../src/entities/Monster.js?v=30fps110';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps110';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps110';
+} from '../../src/adventure/AdventureManager.js?v=30fps110';
+import { ADVENTURE_HERO_KITS } from '../../src/adventure/AdventureSkillSets.js?v=30fps110';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps110';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps110';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps110';
+} from '../../src/adventure/AdventureProgression.js?v=30fps110';
+import { AdventureMapRenderer } from '../../src/adventure/AdventureMapRenderer.js?v=30fps110';
+import { AdventureDestructibles } from '../../src/adventure/AdventureDestructibles.js?v=30fps110';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -540,7 +542,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 4. Verify Seraphina (`Priestess`) Grounded Auto/Skill + Cross-Stage Flight + Supreme Ultimate `"FINAL GRACE"`!
 {
-  const { Priestess } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js');
+  const { Priestess } = await import('../../src/entities/Priestess.js');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = true;
 
@@ -641,7 +643,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps110');
+  const { Chronomancer } = await import('../../src/entities/Chronomancer.js?v=30fps110');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -779,7 +781,7 @@ for (const [name, Cls] of CLASSES) {
     }
   }
   for (const k of keys) {
-    const wavPath = `/home/antigravity/pandora523/arcane-vs-steel/assets/sfx/${k}.wav`;
+    const wavPath = `${REPO_ROOT}/assets/sfx/${k}.wav`;
     if (!fs.existsSync(wavPath)) {
       throw new Error(`Missing WAV file on disk for AudioManager key '${k}': ${wavPath}`);
     }
@@ -791,10 +793,10 @@ for (const [name, Cls] of CLASSES) {
 
   // Scan all src/**/*.js files to confirm 100% of literal audio.play('...'), selectSfx, and deathSfx keys are registered!
   const jsFiles = [
-    '/home/antigravity/pandora523/arcane-vs-steel/src/main.js',
-    '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js',
-    ...fs.readdirSync('/home/antigravity/pandora523/arcane-vs-steel/src/entities').map(
-      (f) => `/home/antigravity/pandora523/arcane-vs-steel/src/entities/${f}`
+    `${REPO_ROOT}/src/main.js`,
+    `${REPO_ROOT}/src/adventure/AdventureManager.js`,
+    ...fs.readdirSync(`${REPO_ROOT}/src/entities`).map(
+      (f) => `${REPO_ROOT}/src/entities/${f}`
     )
   ];
   let checkedRefs = 0;
@@ -987,9 +989,9 @@ for (const [name, Cls] of CLASSES) {
 
 // 8. Verify 3-Step Landing -> Mode Select -> Character Select DOM Integrity & Zero "Final Spark" Strings!
 {
-  const indexHtml = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/index.html', 'utf8');
-  const mainJs = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/src/main.js', 'utf8');
-  const styleCss = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/style.css', 'utf8');
+  const indexHtml = fs.readFileSync(`${REPO_ROOT}/index.html`, 'utf8');
+  const mainJs = fs.readFileSync(`${REPO_ROOT}/src/main.js`, 'utf8');
+  const styleCss = fs.readFileSync(`${REPO_ROOT}/style.css`, 'utf8');
 
   // 8A. Verify every literal document.getElementById('...') in main.js exists in index.html (unless optional-chained / guarded, still report any missing IDs!)
   const htmlIds = new Set([...indexHtml.matchAll(/\bid="([^"]+)"/g)].map((m) => m[1]));
@@ -1010,12 +1012,12 @@ for (const [name, Cls] of CLASSES) {
 
   // 8C. Verify zero "Final Spark" strings anywhere in index.html, style.css, or src/
   const allCheckFiles = [
-    '/home/antigravity/pandora523/arcane-vs-steel/index.html',
-    '/home/antigravity/pandora523/arcane-vs-steel/style.css',
-    '/home/antigravity/pandora523/arcane-vs-steel/src/main.js',
-    '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js',
-    ...fs.readdirSync('/home/antigravity/pandora523/arcane-vs-steel/src/entities').map(
-      (f) => `/home/antigravity/pandora523/arcane-vs-steel/src/entities/${f}`
+    `${REPO_ROOT}/index.html`,
+    `${REPO_ROOT}/style.css`,
+    `${REPO_ROOT}/src/main.js`,
+    `${REPO_ROOT}/src/adventure/AdventureManager.js`,
+    ...fs.readdirSync(`${REPO_ROOT}/src/entities`).map(
+      (f) => `${REPO_ROOT}/src/entities/${f}`
     )
   ];
   for (const p of allCheckFiles) {
@@ -2045,7 +2047,7 @@ for (const [name, Cls] of CLASSES) {
     'android'
   ];
   for (const key of sheetFiles) {
-    const p = `/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${key}_sheet.png`;
+    const p = `${REPO_ROOT}/assets/sprites/${key}_sheet.png`;
     const buf = fs.readFileSync(p);
     const w = buf.readUInt32BE(16);
     const h = buf.readUInt32BE(20);
@@ -2138,7 +2140,7 @@ for (const [name, Cls] of CLASSES) {
     'boss_archfiend_sheet.png'
   ];
   for (const fname of monsterSheets) {
-    const p = `/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${fname}`;
+    const p = `${REPO_ROOT}/assets/sprites/${fname}`;
     const buf = fs.readFileSync(p);
     const w = buf.readUInt32BE(16);
     const h = buf.readUInt32BE(20);
@@ -2147,53 +2149,53 @@ for (const [name, Cls] of CLASSES) {
     }
   }
   {
-    const portBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/boss_archfiend_portrait.png');
+    const portBuf = fs.readFileSync(`${REPO_ROOT}/assets/sprites/boss_archfiend_portrait.png`);
     const pw = portBuf.readUInt32BE(16);
     const ph = portBuf.readUInt32BE(20);
     if (pw !== 128 || ph !== 128) {
       throw new Error(`Expected boss_archfiend_portrait.png dimensions 128x128, got ${pw}x${ph}`);
     }
-    const colossusBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/boss_colossus_sheet.png');
+    const colossusBuf = fs.readFileSync(`${REPO_ROOT}/assets/sprites/boss_colossus_sheet.png`);
     const cw = colossusBuf.readUInt32BE(16);
     const ch = colossusBuf.readUInt32BE(20);
     if (cw !== 4096 || ch !== 2048) {
       throw new Error(`Expected boss_colossus_sheet.png dimensions 4096x2048 (32 cells x 512x512), got ${cw}x${ch}`);
     }
-    const iconBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/mage_icons.png');
+    const iconBuf = fs.readFileSync(`${REPO_ROOT}/assets/sprites/mage_icons.png`);
     const iw = iconBuf.readUInt32BE(16);
     const ih = iconBuf.readUInt32BE(20);
     if (iw !== 448 || ih !== 64) {
       throw new Error(`Expected mage_icons.png dimensions 448x64 (7 cells x 64x64), got ${iw}x${ih}`);
     }
-    const heroIconsBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/hero_icons_sheet.png');
+    const heroIconsBuf = fs.readFileSync(`${REPO_ROOT}/assets/sprites/hero_icons_sheet.png`);
     const hiw = heroIconsBuf.readUInt32BE(16);
     const hih = heroIconsBuf.readUInt32BE(20);
     if (hiw !== 384 || hih !== 704) {
       throw new Error(`Expected hero_icons_sheet.png dimensions 384x704 (6 cols x 11 rows @ 64x64), got ${hiw}x${hih}`);
     }
-    const advFxBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/adv_fx_sheet.png');
+    const advFxBuf = fs.readFileSync(`${REPO_ROOT}/assets/sprites/adv_fx_sheet.png`);
     const fxw = advFxBuf.readUInt32BE(16);
     const fxh = advFxBuf.readUInt32BE(20);
     if (fxw !== 1024 || fxh !== 640) {
       throw new Error(`Expected adv_fx_sheet.png dimensions 1024x640 (8 cols x 5 rows @ 128x128), got ${fxw}x${fxh}`);
     }
     const manifestJson = JSON.parse(
-      fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/manifest.json', 'utf8')
+      fs.readFileSync(`${REPO_ROOT}/manifest.json`, 'utf8')
     );
     if (manifestJson.orientation !== 'any' || manifestJson.display !== 'fullscreen') {
       throw new Error(
         `Expected manifest.json orientation='any' (portrait default, landscape opt-in) & display='fullscreen', got ${JSON.stringify(manifestJson)}`
       );
     }
-    const mainJs = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/src/main.js', 'utf8');
+    const mainJs = fs.readFileSync(`${REPO_ROOT}/src/main.js`, 'utf8');
     if (!mainJs.includes('this.mobileLandscapeEnabled = Boolean(this.forceMobileLandscapeParam);')) {
       throw new Error('Expected main.js to default mobileLandscapeEnabled to false unless ?landscape=1 is explicitly passed!');
     }
   }
 
   // 17B. Verify HTML Adventure Mode Mobile Joystick + Right-Side Skill Cluster + Skill Tree Modal + Opt-In Landscape DOM IDs
-  const indexHtml = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/index.html', 'utf8');
-  const advJs = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js', 'utf8');
+  const indexHtml = fs.readFileSync(`${REPO_ROOT}/index.html`, 'utf8');
+  const advJs = fs.readFileSync(`${REPO_ROOT}/src/adventure/AdventureManager.js`, 'utf8');
   if (!indexHtml.includes('LANDSCAPE: OFF')) {
     throw new Error('Expected index.html default mobile landscape button labels to start as LANDSCAPE: OFF!');
   }
@@ -3640,7 +3642,7 @@ for (const [name, Cls] of CLASSES) {
 // 18. Bipedal Walk Playback (Forward + Backward) + Pause Modal & UI Isolation
 // =========================================================================
 {
-  const repoRoot = '/home/antigravity/pandora523/arcane-vs-steel';
+  const repoRoot = REPO_ROOT;
   const html = fs.readFileSync(`${repoRoot}/index.html`, 'utf8');
   const css = fs.readFileSync(`${repoRoot}/style.css`, 'utf8');
   const mainSrc = fs.readFileSync(`${repoRoot}/src/main.js`, 'utf8');
@@ -3896,7 +3898,7 @@ for (const [name, Cls] of CLASSES) {
   ];
   for (const hid of heroIds) {
     const buf = fs.readFileSync(
-      `/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${hid}_sheet.png`
+      `${REPO_ROOT}/assets/sprites/${hid}_sheet.png`
     );
     const w = buf.readUInt32BE(16);
     const h = buf.readUInt32BE(20);
@@ -3918,7 +3920,7 @@ for (const [name, Cls] of CLASSES) {
     ['adv_fx_sheet.png', 1024, 640],
     ['hero_icons_sheet.png', 384, 704]
   ]) {
-    const pbuf = fs.readFileSync(`/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${fname}`);
+    const pbuf = fs.readFileSync(`${REPO_ROOT}/assets/sprites/${fname}`);
     const pw = pbuf.readUInt32BE(16);
     const ph = pbuf.readUInt32BE(20);
     if (pw !== expW || ph !== expH) {
@@ -4030,7 +4032,7 @@ for (const [name, Cls] of CLASSES) {
     );
   }
   const mapSrc = fs.readFileSync(
-    '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js',
+    `${REPO_ROOT}/src/adventure/AdventureMapRenderer.js`,
     'utf8'
   );
   if (
@@ -4438,8 +4440,8 @@ for (const [name, Cls] of CLASSES) {
 {
   // 21A. Verify arena_shogunate.png & arena_shogunate_inferno.png PNG headers (640x360) and PixelForge registration
   const shogunateFiles = [
-    '/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/arena_shogunate.png',
-    '/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/arena_shogunate_inferno.png'
+    `${REPO_ROOT}/assets/sprites/arena_shogunate.png`,
+    `${REPO_ROOT}/assets/sprites/arena_shogunate_inferno.png`
   ];
   for (const fp of shogunateFiles) {
     if (!fs.existsSync(fp)) {
@@ -4989,7 +4991,7 @@ for (const [name, Cls] of CLASSES) {
   };
 
   // 23A. Verify chronomancer_sheet.png (6240x2080) SHA-256 byte-identity on untouched Rows 0, 1, 5, 6, 9 + 0/300 border clips
-  const sheetBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/chronomancer_sheet.png');
+  const sheetBuf = fs.readFileSync(`${REPO_ROOT}/assets/sprites/chronomancer_sheet.png`);
   const sheetPng = decodePngRgba(sheetBuf);
   if (sheetPng.width !== 6240 || sheetPng.height !== 2080) {
     throw new Error(`[Suite 23A] Expected chronomancer_sheet.png 6240x2080, got ${sheetPng.width}x${sheetPng.height}`);
@@ -5034,7 +5036,7 @@ for (const [name, Cls] of CLASSES) {
   }
 
   // Verify chronomancer_vfx.png (6240x1664) 0/240 border clips & compact razor Row 5 twin-cuts + Row 6 Clock-Hand Knife
-  const vfxBuf = fs.readFileSync('/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/chronomancer_vfx.png');
+  const vfxBuf = fs.readFileSync(`${REPO_ROOT}/assets/sprites/chronomancer_vfx.png`);
   const vfxPng = decodePngRgba(vfxBuf);
   if (vfxPng.width !== 6240 || vfxPng.height !== 1664) {
     throw new Error(`[Suite 23A] Expected chronomancer_vfx.png 6240x1664, got ${vfxPng.width}x${vfxPng.height}`);
@@ -5191,8 +5193,8 @@ for (const [name, Cls] of CLASSES) {
 
   // 24B. Verify arena_glacial.png & arena_shogunate_glacial.png 640x360 PNG headers, PixelForge registration & 3-way bidirectional stage synergy
   for (const fp of [
-    '/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/arena_glacial.png',
-    '/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/arena_shogunate_glacial.png'
+    `${REPO_ROOT}/assets/sprites/arena_glacial.png`,
+    `${REPO_ROOT}/assets/sprites/arena_shogunate_glacial.png`
   ]) {
     if (!fs.existsSync(fp)) {
       throw new Error(`[Suite 24B] Missing Glacial stage PNG: ${fp}`);
@@ -5532,7 +5534,7 @@ for (const [name, Cls] of CLASSES) {
       // Verify All-11-Hero Skill Tree Themes & <canvas> HD-2D Icons (Ignis Sol preserved; 10 others bespoke; 0 raw Unicode emojis!)
       const rawEmojiRe = /\p{Extended_Pictographic}/u;
       const progSrc = fs.readFileSync(
-        '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js',
+        `${REPO_ROOT}/src/adventure/AdventureProgression.js`,
         'utf8'
       );
       if (rawEmojiRe.test(progSrc)) {
@@ -5701,7 +5703,7 @@ for (const [name, Cls] of CLASSES) {
   const rowByteLen = 6240 * 208 * 4;
   for (const [sheetName, rowMap] of Object.entries(expectedUntouchedHashes)) {
     const png = decodePngRgba(
-      fs.readFileSync(`/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${sheetName}`)
+      fs.readFileSync(`${REPO_ROOT}/assets/sprites/${sheetName}`)
     );
     if (png.width !== 6240 || png.height !== 2080) {
       throw new Error(`[Suite 25A] Expected ${sheetName} 6240x2080, got ${png.width}x${png.height}`);
@@ -6692,24 +6694,24 @@ for (const [name, Cls] of CLASSES) {
   // (27A) Zero 3D Stage Polygons + `ArcaneShaderFX` 12-Row `adv_stage_vfx.png` (2048x1536) Multi-Plane & Monument Pixel Overlays
   {
     const removed3dPath =
-      '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/Adventure3DObjects.js';
+      `${REPO_ROOT}/src/adventure/Adventure3DObjects.js`;
     if (fs.existsSync(removed3dPath)) {
       throw new Error('[Suite 27A] Adventure3DObjects.js must be completely removed!');
     }
     const mapRendererSrc = fs.readFileSync(
-      '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js',
+      `${REPO_ROOT}/src/adventure/AdventureMapRenderer.js`,
       'utf8'
     );
     const destructiblesSrc = fs.readFileSync(
-      '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js',
+      `${REPO_ROOT}/src/adventure/AdventureDestructibles.js`,
       'utf8'
     );
     const advMgrSrc = fs.readFileSync(
-      '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js',
+      `${REPO_ROOT}/src/adventure/AdventureManager.js`,
       'utf8'
     );
     const monsterSrc = fs.readFileSync(
-      '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js',
+      `${REPO_ROOT}/src/entities/Monster.js`,
       'utf8'
     );
     if (
@@ -6727,7 +6729,7 @@ for (const [name, Cls] of CLASSES) {
     }
 
     const stageVfxDims = readPngDims(
-      '/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/adv_stage_vfx.png'
+      `${REPO_ROOT}/assets/sprites/adv_stage_vfx.png`
     );
     if (stageVfxDims.width !== 2048 || stageVfxDims.height !== 1536) {
       throw new Error(
@@ -6735,10 +6737,10 @@ for (const [name, Cls] of CLASSES) {
       );
     }
     const propsDims = readPngDims(
-      '/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/adv_props_sheet.png'
+      `${REPO_ROOT}/assets/sprites/adv_props_sheet.png`
     );
     const fxDims = readPngDims(
-      '/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/adv_fx_sheet.png'
+      `${REPO_ROOT}/assets/sprites/adv_fx_sheet.png`
     );
     if (
       propsDims.width !== 1152 ||
@@ -6925,7 +6927,7 @@ for (const [name, Cls] of CLASSES) {
   // (27B) Upgraded 32-Cell Chunky HD-2D `boss_colossus_sheet.png` (4096x2048) & Multi-Joint/Multi-Frame `ArchfiendBoss`
   {
     const bossSheetDims = readPngDims(
-      '/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/boss_colossus_sheet.png'
+      `${REPO_ROOT}/assets/sprites/boss_colossus_sheet.png`
     );
     if (bossSheetDims.width !== 4096 || bossSheetDims.height !== 2048) {
       throw new Error(
@@ -7172,7 +7174,7 @@ for (const [name, Cls] of CLASSES) {
       'android_sheet.png'
     ];
     for (const fn of champSheets) {
-      const dims = readPngDims(`/home/antigravity/pandora523/arcane-vs-steel/assets/sprites/${fn}`);
+      const dims = readPngDims(`${REPO_ROOT}/assets/sprites/${fn}`);
       if (dims.width !== 6240 || dims.height !== 2080) {
         throw new Error(`[Suite 27C] Champion sheet ${fn} dims altered: ${dims.width}x${dims.height}`);
       }
@@ -7191,11 +7193,11 @@ for (const [name, Cls] of CLASSES) {
 // ============================================================================
 {
   const indexHtml = fs.readFileSync(
-    '/home/antigravity/pandora523/arcane-vs-steel/index.html',
+    `${REPO_ROOT}/index.html`,
     'utf8'
   );
   const mainJs = fs.readFileSync(
-    '/home/antigravity/pandora523/arcane-vs-steel/src/main.js',
+    `${REPO_ROOT}/src/main.js`,
     'utf8'
   );
 
@@ -7493,7 +7495,7 @@ for (const [name, Cls] of CLASSES) {
 // VS 1920x1080 Seamless Upper-Sky Vault (`0` Top Mirror), & Adventure Boss Grab + Unavoidable Soul-Tithe
 // =========================================================================
 {
-  const repoRoot = '/home/antigravity/pandora523/arcane-vs-steel';
+  const repoRoot = REPO_ROOT;
 
   // (29A) Zero Emojis/Dingbats across UI/CSS/Manifest/JS + Official Brand Logo (`avs_brand_logo.png`) + Mobile Full Zoom Toggle
   {

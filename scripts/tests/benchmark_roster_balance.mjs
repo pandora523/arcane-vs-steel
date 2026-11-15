@@ -74,19 +74,19 @@ globalThis.document = {
   }
 };
 
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps110';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps110';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps110';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps110';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps110';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps110';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps110';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps110';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps110';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps110';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps110';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps110';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps110';
+import { Fighter } from '../../src/entities/Fighter.js?v=30fps110';
+import { Warrior } from '../../src/entities/Warrior.js?v=30fps110';
+import { FireMage } from '../../src/entities/FireMage.js?v=30fps110';
+import { Archer } from '../../src/entities/Archer.js?v=30fps110';
+import { Priestess } from '../../src/entities/Priestess.js?v=30fps110';
+import { Reaper } from '../../src/entities/Reaper.js?v=30fps110';
+import { Chronomancer } from '../../src/entities/Chronomancer.js?v=30fps110';
+import { Titan } from '../../src/entities/Titan.js?v=30fps110';
+import { Ronin } from '../../src/entities/Ronin.js?v=30fps110';
+import { Valkyrie } from '../../src/entities/Valkyrie.js?v=30fps110';
+import { IceMage } from '../../src/entities/IceMage.js?v=30fps110';
+import { Android } from '../../src/entities/Android.js?v=30fps110';
+import { VFXManager } from '../../src/engine/VFXManager.js?v=30fps110';
 
 const ROSTER = [
   { id: 'titan', name: 'Torgar', Cls: Titan },
