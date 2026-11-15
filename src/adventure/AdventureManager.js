@@ -1,13 +1,14 @@
-import { Fighter } from '../entities/Fighter.js?v=30fps108';
-import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps108';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps108';
+import { Fighter } from '../entities/Fighter.js?v=30fps109';
+import { Monster, ArchfiendBoss } from '../entities/Monster.js?v=30fps109';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
 import {
   AdventureProgression,
   ADVENTURE_SKILL_TREE,
   getHeroSkillTreeTheme
-} from './AdventureProgression.js?v=30fps108';
-import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps108';
-import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps108';
+} from './AdventureProgression.js?v=30fps109';
+import { AdventureSkillSets, ADVENTURE_HERO_KITS } from './AdventureSkillSets.js?v=30fps109';
+import { AdventureDestructibles } from './AdventureDestructibles.js?v=30fps109';
+import { AdventureMapRenderer } from './AdventureMapRenderer.js?v=30fps109';
 
 export const ADVENTURE_WORLD_WIDTH = 9600;
 export const ADVENTURE_BOSS_ANCHOR_X = 9335;
@@ -673,6 +674,15 @@ export class AdventureManager {
     if (autoLbl) {
       autoLbl.textContent = this.autoPlay ? 'AI: ON' : 'AI: OFF';
     }
+    const skillAutoBtn = document.getElementById('adv-btn-auto');
+    const skillAutoLbl = document.getElementById('adv-auto-label');
+    if (skillAutoBtn) {
+      skillAutoBtn.setAttribute?.('aria-pressed', String(this.autoPlay));
+      skillAutoBtn.classList?.toggle('is-autoplay-on', this.autoPlay);
+    }
+    if (skillAutoLbl) {
+      skillAutoLbl.textContent = 'AUTO';
+    }
 
     this.syncJoystickKnobUI();
 
@@ -823,9 +833,11 @@ export class AdventureManager {
       renderer.zoom =
         renderer.isMobileLandscape && typeof renderer.getMobileLandscapeFixedZoom === 'function'
           ? renderer.getMobileLandscapeFixedZoom(false)
-          : renderer.isMobile
-            ? 0.80
-            : 0.90;
+          : renderer.isMobilePortrait && typeof renderer.getMobilePortraitFixedZoom === 'function'
+            ? renderer.getMobilePortraitFixedZoom(false)
+            : renderer.isMobile
+              ? 0.80
+              : 0.90;
     }
 
     playerFighter.x = 240;
@@ -888,6 +900,7 @@ export class AdventureManager {
     this.progression.detachFromFighter(this.game.leftFighter);
     this.skillSets.detachFromFighter(this.game.leftFighter);
     this.destructibles.resetForCampaign();
+    AdventureMapRenderer.clearBloomCache?.();
     this.active = false;
     this.lockActive = false;
     this.goPromptActive = false;
@@ -911,9 +924,11 @@ export class AdventureManager {
       renderer.zoom =
         renderer.isMobileLandscape && typeof renderer.getMobileLandscapeFixedZoom === 'function'
           ? renderer.getMobileLandscapeFixedZoom(false)
-          : renderer.isMobile
-            ? 0.72
-            : 1.0;
+          : renderer.isMobilePortrait && typeof renderer.getMobilePortraitFixedZoom === 'function'
+            ? renderer.getMobilePortraitFixedZoom(false)
+            : renderer.isMobile
+              ? 0.72
+              : 1.0;
     }
     this.syncControlDeckUI();
   }

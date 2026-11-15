@@ -28,35 +28,35 @@ globalThis.document = {
 };
 
 import fs from 'node:fs';
-import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps108';
-import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps108';
-import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps108';
-import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps108';
-import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps108';
-import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps108';
-import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps108';
-import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps108';
-import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps108';
-import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps108';
-import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps108';
-import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps108';
-import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps108';
-import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps108';
-import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps108';
-import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps108';
-import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps108';
+import { Fighter } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Fighter.js?v=30fps109';
+import { Warrior } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Warrior.js?v=30fps109';
+import { FireMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/FireMage.js?v=30fps109';
+import { Ronin } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Ronin.js?v=30fps109';
+import { Valkyrie } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Valkyrie.js?v=30fps109';
+import { Reaper } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Reaper.js?v=30fps109';
+import { Priestess } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Priestess.js?v=30fps109';
+import { Archer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Archer.js?v=30fps109';
+import { Chronomancer } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps109';
+import { Titan } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Titan.js?v=30fps109';
+import { IceMage } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/IceMage.js?v=30fps109';
+import { Android } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Android.js?v=30fps109';
+import { PixelForge } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/PixelForge.js?v=30fps109';
+import { VFXManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/VFXManager.js?v=30fps109';
+import { Renderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/Renderer.js?v=30fps109';
+import { AudioManager } from '/home/antigravity/pandora523/arcane-vs-steel/src/engine/AudioManager.js?v=30fps109';
+import { Monster, ArchfiendBoss } from '/home/antigravity/pandora523/arcane-vs-steel/src/entities/Monster.js?v=30fps109';
 import {
   AdventureManager,
   ADVENTURE_WORLD_WIDTH
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps108';
-import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps108';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureManager.js?v=30fps109';
+import { ADVENTURE_HERO_KITS } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureSkillSets.js?v=30fps109';
 import {
   ADVENTURE_SKILL_TREE,
   HERO_SKILL_TREE_THEMES,
   getHeroSkillTreeTheme
-} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps108';
-import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps108';
-import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps108';
+} from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureProgression.js?v=30fps109';
+import { AdventureMapRenderer } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureMapRenderer.js?v=30fps109';
+import { AdventureDestructibles } from '/home/antigravity/pandora523/arcane-vs-steel/src/adventure/AdventureDestructibles.js?v=30fps109';
 
 function createMockCtx(trackForbidden = null) {
   const stateStack = [];
@@ -641,7 +641,7 @@ for (const [name, Cls] of CLASSES) {
 
 // 5. Verify Chronos (`Chronomancer`) Overhaul: 3-Stage Blade/Clone Combo, Chrono-Schism Rewind & `"ETERNAL ZERO: TWELFTH BELL"`!
 {
-  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps108');
+  const { Chronomancer } = await import('/home/antigravity/pandora523/arcane-vs-steel/src/entities/Chronomancer.js?v=30fps109');
   game.renderer.resetStageOverrides();
   game.testModeUnlimitedHp = false;
 
@@ -2215,6 +2215,8 @@ for (const [name, Cls] of CLASSES) {
     'adv-sp-badge',
     'adv-btn-autoplay',
     'adv-autoplay-label',
+    'adv-btn-auto',
+    'adv-auto-label',
     'adv-btn-landscape',
     'adv-landscape-label',
     'adv-btn-restart',
@@ -7181,4 +7183,309 @@ for (const [name, Cls] of CLASSES) {
     '[PASS] Suite 27: Character-Style Stage Pixel Overlays (adv_stage_vfx.png, 0 3D Polygons), 32-Cell Colossal Boss Malphas & 100% Lossless Engine Optimizations verified!'
   );
 }
+
+// ============================================================================
+// SUITE 28: Separated VS / Adventure Landing Overhaul, Zero Background Load,
+//           1v1 + Tag VS Format Isolation, Mobile Portrait Full Zoom-Out,
+//           Pause Menu GO TO TITLE SCREEN & Adventure Skill-Cluster AUTO Button
+// ============================================================================
+{
+  const indexHtml = fs.readFileSync(
+    '/home/antigravity/pandora523/arcane-vs-steel/index.html',
+    'utf8'
+  );
+  const mainJs = fs.readFileSync(
+    '/home/antigravity/pandora523/arcane-vs-steel/src/main.js',
+    'utf8'
+  );
+
+  // (28A) Dual-Gateway Separated Landing Page, 2v2 Brawl Hidden, Pause GO TO TITLE SCREEN & Lazy Stage Thumbs
+  if (
+    !indexHtml.includes('id="btn-go-mode"') ||
+    !indexHtml.includes('VERSUS MODE') ||
+    !indexHtml.includes('id="btn-title-adventure"') ||
+    !indexHtml.includes('ADVENTURE MODE') ||
+    indexHtml.includes('id="btn-go-roster"') ||
+    indexHtml.includes('id="btn-title-quick-duel"')
+  ) {
+    throw new Error(
+      '[Suite 28A] Title Screen must expose strictly separated VERSUS MODE (#btn-go-mode) & ADVENTURE MODE (#btn-title-adventure) gateways!'
+    );
+  }
+  const brawlBtnMatch = indexHtml.match(/<button[^>]*id="mode-btn-2v2-brawl"[^>]*>/);
+  const advModeBtnMatch = indexHtml.match(/<button[^>]*id="mode-btn-adventure"[^>]*>/);
+  if (
+    !brawlBtnMatch ||
+    !/\bhidden\b/.test(brawlBtnMatch[0]) ||
+    !advModeBtnMatch ||
+    !/\bhidden\b/.test(advModeBtnMatch[0]) ||
+    !indexHtml.includes('>TAG VS<')
+  ) {
+    throw new Error(
+      '[Suite 28A] Expected #mode-btn-2v2-brawl and #mode-btn-adventure to be hidden in #landing-step-mode, leaving 1V1 + TAG VS!'
+    );
+  }
+  if (
+    !indexHtml.includes('id="btn-pause-title"') ||
+    !indexHtml.includes('GO TO TITLE SCREEN') ||
+    !indexHtml.includes('id="btn-victory-title"') ||
+    !indexHtml.includes('id="adv-btn-auto"') ||
+    !indexHtml.includes('id="adv-auto-label"')
+  ) {
+    throw new Error(
+      '[Suite 28A] Missing #btn-pause-title (GO TO TITLE SCREEN), #btn-victory-title, or #adv-btn-auto / #adv-auto-label!'
+    );
+  }
+  const stageImgMatches = [
+    ...indexHtml.matchAll(/<img\s+[^>]*src="assets\/sprites\/arena_[^"]+"[^>]*>/g)
+  ];
+  if (
+    stageImgMatches.length < 6 ||
+    stageImgMatches.some(
+      (m) => !m[0].includes('loading="lazy"') || !m[0].includes('decoding="async"')
+    )
+  ) {
+    throw new Error(
+      `[Suite 28A] Expected all 6 stage gallery <img> tags to carry loading="lazy" decoding="async", found ${stageImgMatches.length}`
+    );
+  }
+  if (
+    !mainJs.includes("this.gameMode = '1v1';") ||
+    !mainJs.includes("const order = ['1v1', '2v2_tag'];") ||
+    !mainJs.includes('goToTitleScreen(') ||
+    !mainJs.includes('teardownActiveMatch(')
+  ) {
+    throw new Error(
+      '[Suite 28A] Expected main.js default gameMode="1v1", cycleGameMode=["1v1","2v2_tag"], goToTitleScreen(), and teardownActiveMatch()!'
+    );
+  }
+  const landingLoopMatch = mainJs.match(/if\s*\(\s*this\.isLandingOpen\s*\)\s*\{([\s\S]*?)\}/);
+  if (
+    !landingLoopMatch ||
+    landingLoopMatch[1].includes('this.renderer.update') ||
+    landingLoopMatch[1].includes('this.renderer.render') ||
+    !landingLoopMatch[1].includes('return;')
+  ) {
+    throw new Error(
+      '[Suite 28A] Expected loop() to return early when isLandingOpen is true without running background renderer.update / renderer.render!'
+    );
+  }
+
+  // (28B) Adventure `#adv-btn-auto` Skill-Cluster Button 1:1 State Sync
+  {
+    const prevGetEl = globalThis.document.getElementById;
+    const makeBtnMock = () => {
+      const cls = new Set();
+      const attrs = {};
+      return {
+        textContent: '',
+        classList: {
+          toggle(c, on) {
+            if (on) cls.add(c);
+            else cls.delete(c);
+          },
+          contains(c) {
+            return cls.has(c);
+          },
+          add(c) {
+            cls.add(c);
+          },
+          remove(c) {
+            cls.delete(c);
+          }
+        },
+        setAttribute(k, v) {
+          attrs[k] = String(v);
+        },
+        getAttribute(k) {
+          return attrs[k];
+        }
+      };
+    };
+    const mockAutoSkillBtn = makeBtnMock();
+    const mockAutoSkillLbl = { textContent: '' };
+    const mockPauseAiBtn = makeBtnMock();
+    const mockPauseAiLbl = { textContent: '' };
+    try {
+      globalThis.document.getElementById = (id) => {
+        if (id === 'adv-btn-auto') return mockAutoSkillBtn;
+        if (id === 'adv-auto-label') return mockAutoSkillLbl;
+        if (id === 'adv-btn-autoplay') return mockPauseAiBtn;
+        if (id === 'adv-autoplay-label') return mockPauseAiLbl;
+        return null;
+      };
+      const advGame = createMockGame();
+      advGame.gameMode = 'adventure';
+      advGame.isLandingOpen = false;
+      const hero = new Warrior(240, 561, 1);
+      hero.game = advGame;
+      const adv = new AdventureManager(advGame);
+      adv.startCampaign(hero);
+      if (
+        mockAutoSkillBtn.classList.contains('is-autoplay-on') ||
+        mockAutoSkillBtn.getAttribute('aria-pressed') !== 'false' ||
+        mockAutoSkillLbl.textContent !== 'AUTO'
+      ) {
+        throw new Error('[Suite 28B] Expected #adv-btn-auto to start OFF with label "AUTO"');
+      }
+      adv.toggleAutoPlay(false);
+      if (
+        !mockAutoSkillBtn.classList.contains('is-autoplay-on') ||
+        mockAutoSkillBtn.getAttribute('aria-pressed') !== 'true' ||
+        mockAutoSkillLbl.textContent !== 'AUTO' ||
+        mockPauseAiLbl.textContent !== 'AI: ON'
+      ) {
+        throw new Error('[Suite 28B] Expected toggleAutoPlay() to activate #adv-btn-auto ("AUTO") & #adv-btn-autoplay ("AI: ON")');
+      }
+      adv.stopCampaign();
+    } finally {
+      globalThis.document.getElementById = prevGetEl;
+    }
+  }
+
+  // (28C) Mobile Portrait (`390x844`) Full Camera Zoom-Out vs Mobile Landscape (`844x390`)
+  {
+    const prevW = globalThis.window.innerWidth;
+    const prevH = globalThis.window.innerHeight;
+    try {
+      const portraitCanvas = {
+        width: 390,
+        height: 844,
+        getContext() {
+          return createMockCtx();
+        }
+      };
+      globalThis.window.innerWidth = 390;
+      globalThis.window.innerHeight = 844;
+      const rPortrait = new Renderer(portraitCanvas);
+      const expectedPortraitZoom = rPortrait.getMobilePortraitFixedZoom(false);
+      if (
+        !rPortrait.isMobile ||
+        !rPortrait.isMobilePortrait ||
+        rPortrait.isMobileLandscape ||
+        expectedPortraitZoom < 0.28 ||
+        expectedPortraitZoom > 0.34 ||
+        Math.abs(rPortrait.zoom - expectedPortraitZoom) > 0.001
+      ) {
+        throw new Error(
+          `[Suite 28C] Mobile Portrait (390x844) resize failed: isMobilePortrait=${rPortrait.isMobilePortrait}, zoom=${rPortrait.zoom}, expected=${expectedPortraitZoom}`
+        );
+      }
+
+      // Close-range fighters + active Ult/KO timers must NEVER zoom in on Mobile Portrait!
+      const fLeft = new Warrior(580, rPortrait.groundY, 1);
+      const fRight = new FireMage(620, rPortrait.groundY, -1);
+      const vsMock = createMockGame();
+      fLeft.game = vsMock;
+      fRight.game = vsMock;
+      rPortrait.koZoomTimer = 1.1;
+      rPortrait.ultZoomTimer = 0.9;
+      for (let i = 0; i < 20; i++) {
+        rPortrait.update(1 / 30, [fLeft, fRight]);
+      }
+      if (Math.abs(rPortrait.zoom - expectedPortraitZoom) > 0.002) {
+        throw new Error(
+          `[Suite 28C] Expected Mobile Portrait VS zoom to stay locked at ${expectedPortraitZoom.toFixed(3)} during close-up/KO/Ult, got ${rPortrait.zoom.toFixed(3)}`
+        );
+      }
+      rPortrait.pickRandomStage('cathedral');
+      rPortrait.render([fLeft, fRight], vsMock.vfx);
+
+      // Mobile Portrait Adventure Mode + Colossal Boss wide framing
+      const advMock = createMockGame();
+      advMock.gameMode = 'adventure';
+      advMock.isAdventureMode = () => true;
+      const advHero = new Warrior(8950, 561, 1);
+      advHero.game = advMock;
+      const advBoss = new ArchfiendBoss(9335, 561);
+      advBoss.game = advMock;
+      for (let i = 0; i < 20; i++) {
+        rPortrait.update(1 / 30, [advHero, advBoss]);
+      }
+      const expectedBossPortraitZoom = rPortrait.getMobilePortraitFixedZoom(true);
+      if (Math.abs(rPortrait.zoom - expectedBossPortraitZoom) > 0.005) {
+        throw new Error(
+          `[Suite 28C] Expected Mobile Portrait Boss zoom ~${expectedBossPortraitZoom.toFixed(3)}, got ${rPortrait.zoom.toFixed(3)}`
+        );
+      }
+      const advPortraitCtx = createMockCtx();
+      AdventureMapRenderer.render(advPortraitCtx, rPortrait, ADVENTURE_WORLD_WIDTH);
+      AdventureMapRenderer.renderForegroundDepth(advPortraitCtx, rPortrait);
+      if (advPortraitCtx._stateStack.length !== 0) {
+        throw new Error('[Suite 28C] Unbalanced ctx stack in Mobile Portrait AdventureMapRenderer');
+      }
+
+      // Mobile Landscape (`844x390`) must remain untouched (`[0.48..0.62]`)
+      globalThis.window.innerWidth = 844;
+      globalThis.window.innerHeight = 390;
+      rPortrait.resize();
+      if (
+        !rPortrait.isMobileLandscape ||
+        rPortrait.isMobilePortrait ||
+        rPortrait.zoom < 0.48 ||
+        rPortrait.zoom > 0.62
+      ) {
+        throw new Error(
+          `[Suite 28C] Mobile Landscape (844x390) regression: isMobileLandscape=${rPortrait.isMobileLandscape}, zoom=${rPortrait.zoom}`
+        );
+      }
+    } finally {
+      globalThis.window.innerWidth = prevW;
+      globalThis.window.innerHeight = prevH;
+    }
+  }
+
+  // (28D) Lossless Memory Reclamation (`releaseInactiveAssets`) & Zero-Alloc Light Pooling (`VFXManager.getActiveLights`)
+  {
+    const prevHTMLImageElement = globalThis.HTMLImageElement;
+    globalThis.Image.prototype.removeAttribute = function (attr) {
+      if (attr === 'src') this.src = '';
+    };
+    globalThis.HTMLImageElement = globalThis.Image;
+    try {
+      const assets = PixelForge.initAssets();
+      PixelForge.ensureHeroLoaded('warrior');
+      PixelForge.ensureHeroLoaded('mage');
+      PixelForge.ensureImage(assets.arenaSylvan);
+      PixelForge.releaseInactiveAssets(['warrior'], [], false);
+      if (
+        !assets.warrior.sheet.src.includes('warrior_sheet.png') ||
+        assets.mage.sheet.src !== '' ||
+        !assets.mage.sheet._deferredSrc?.includes('mage_sheet.png') ||
+        assets.arenaSylvan.src !== ''
+      ) {
+        throw new Error(
+          `[Suite 28D] releaseInactiveAssets failed: warrior=${assets.warrior.sheet.src}, mage=${assets.mage.sheet.src}, sylvan=${assets.arenaSylvan.src}`
+        );
+      }
+      // Re-promoting released hero works losslessly
+      PixelForge.ensureHeroLoaded('mage');
+      if (!assets.mage.sheet.src.includes('mage_sheet.png')) {
+        throw new Error('[Suite 28D] Failed to re-promote mage sheet after releaseInactiveAssets!');
+      }
+      PixelForge.ensureAllPortraitsLoaded();
+    } finally {
+      if (prevHTMLImageElement === undefined) {
+        delete globalThis.HTMLImageElement;
+      } else {
+        globalThis.HTMLImageElement = prevHTMLImageElement;
+      }
+    }
+
+    const vfx = new VFXManager();
+    const lightHero = new Warrior(420, 480, 1);
+    vfx.spawnProjectile({ x: 510, y: 450, vx: 300, vy: 0, radius: 20, color: '#fb923c', damage: 50 });
+    const lightsA = vfx.getActiveLights([lightHero], 480);
+    const firstObjRef = lightsA[0];
+    const lightsB = vfx.getActiveLights([lightHero], 480);
+    if (lightsA !== lightsB || lightsB.length < 2 || lightsB[0] !== firstObjRef) {
+      throw new Error('[Suite 28D] Expected VFXManager.getActiveLights() to reuse pooled array & light descriptors!');
+    }
+  }
+
+  console.log(
+    '[PASS] Suite 28: Separated Dual-Gateway Landing, Zero Background Load, 1v1 + Tag VS Isolation, Mobile Portrait Full Zoom-Out, Pause GO TO TITLE SCREEN & Adventure AUTO Button verified!'
+  );
+}
+
 

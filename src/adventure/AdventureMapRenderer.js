@@ -1,4 +1,4 @@
-import { PixelForge } from '../engine/PixelForge.js?v=30fps108';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
 
 const CTX_GRAD_CACHE = new WeakMap();
 
@@ -192,7 +192,9 @@ function drawSteppedPixelBloom(ctx, wx, wy, palKey, pxUnit, tierSize, alpha) {
   const rOuter = u * (tierSize >= 3 ? 7 : 5);
   const rDiag = u * (tierSize >= 3 ? 5 : 4);
 
-  ctx.save();
+  const prevComp = ctx.globalCompositeOperation;
+  const prevAlpha = ctx.globalAlpha;
+  const prevFill = ctx.fillStyle;
   ctx.globalCompositeOperation = 'lighter';
 
   // 1. Stepped outer pixel cross + octagonal shoulder blocks
@@ -216,9 +218,9 @@ function drawSteppedPixelBloom(ctx, wx, wy, palKey, pxUnit, tierSize, alpha) {
   ctx.fillRect(cx - rCore, cy - u, rCore * 2, u * 2);
   ctx.fillRect(cx - u, cy - rCore, u * 2, rCore * 2);
 
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1;
-  ctx.restore();
+  ctx.globalCompositeOperation = prevComp;
+  ctx.globalAlpha = prevAlpha;
+  ctx.fillStyle = prevFill;
 }
 
 /**
@@ -231,7 +233,9 @@ function drawPixelCrossGlint(ctx, wx, wy, colHex, coreHex, pxUnit, armSteps, alp
   const cy = snapPx(wy, u);
   const arm = u * Math.max(1, armSteps | 0);
 
-  ctx.save();
+  const prevComp = ctx.globalCompositeOperation;
+  const prevAlpha = ctx.globalAlpha;
+  const prevFill = ctx.fillStyle;
   ctx.globalCompositeOperation = 'lighter';
   ctx.fillStyle = colHex;
   ctx.globalAlpha = Math.min(0.16, alpha * 0.68);
@@ -241,9 +245,9 @@ function drawPixelCrossGlint(ctx, wx, wy, colHex, coreHex, pxUnit, armSteps, alp
   ctx.fillStyle = coreHex;
   ctx.globalAlpha = Math.min(0.18, alpha);
   ctx.fillRect(cx, cy, u, u);
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1;
-  ctx.restore();
+  ctx.globalCompositeOperation = prevComp;
+  ctx.globalAlpha = prevAlpha;
+  ctx.fillStyle = prevFill;
 }
 
 /**
@@ -254,7 +258,9 @@ function drawPixelStaircaseRay(ctx, topX, topY, stepDx, stepDy, widthPx, steps, 
   const u = 6;
   const rw = snapPx(widthPx, u);
   const rh = snapPx(stepDy + u, u);
-  ctx.save();
+  const prevComp = ctx.globalCompositeOperation;
+  const prevAlpha = ctx.globalAlpha;
+  const prevFill = ctx.fillStyle;
   ctx.globalCompositeOperation = 'lighter';
   ctx.fillStyle = colHex;
   for (let s = 0; s < steps; s++) {
@@ -264,9 +270,9 @@ function drawPixelStaircaseRay(ctx, topX, topY, stepDx, stepDy, widthPx, steps, 
     const sy = snapPx(topY + s * stepDy, u);
     ctx.fillRect(sx, sy, rw, rh);
   }
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1;
-  ctx.restore();
+  ctx.globalCompositeOperation = prevComp;
+  ctx.globalAlpha = prevAlpha;
+  ctx.fillStyle = prevFill;
 }
 
 function isImageReadyForBlit(img) {
@@ -303,7 +309,9 @@ function blitStageOverlayPixelCell(
   const rw = Math.max(2, Math.round(dw));
   const rh = Math.max(2, Math.round(dh));
 
-  ctx.save();
+  const prevSmooth = ctx.imageSmoothingEnabled;
+  const prevComp = ctx.globalCompositeOperation;
+  const prevAlpha = ctx.globalAlpha;
   ctx.imageSmoothingEnabled = false;
   if (albedoAlpha > 0.008) {
     ctx.globalCompositeOperation = 'source-over';
@@ -315,9 +323,9 @@ function blitStageOverlayPixelCell(
     ctx.globalAlpha = Math.min(0.16, glowAlpha);
     ctx.drawImage(vfxImg, sx, sy, STAGE_VFX_CELL, STAGE_VFX_CELL, rx, ry, rw, rh);
   }
-  ctx.globalCompositeOperation = 'source-over';
-  ctx.globalAlpha = 1;
-  ctx.restore();
+  ctx.imageSmoothingEnabled = prevSmooth;
+  ctx.globalCompositeOperation = prevComp;
+  ctx.globalAlpha = prevAlpha;
   return true;
 }
 
@@ -330,7 +338,9 @@ function drawRisingPixelSparkWake(ctx, wx, wy, szPx, coreHex, wakeHex, alpha) {
   const rx = snapPx(wx, 2);
   const ry = snapPx(wy, 2);
   const sz = Math.max(2, snapPx(szPx, 2));
-  ctx.save();
+  const prevComp = ctx.globalCompositeOperation;
+  const prevAlpha = ctx.globalAlpha;
+  const prevFill = ctx.fillStyle;
   ctx.globalCompositeOperation = 'source-over';
   ctx.globalAlpha = Math.min(0.55, alpha * 0.52);
   ctx.fillStyle = wakeHex;
@@ -338,8 +348,9 @@ function drawRisingPixelSparkWake(ctx, wx, wy, szPx, coreHex, wakeHex, alpha) {
   ctx.globalAlpha = Math.min(0.92, alpha);
   ctx.fillStyle = coreHex;
   ctx.fillRect(rx - (sz >> 1), ry - (sz >> 1), sz, sz);
-  ctx.globalAlpha = 1;
-  ctx.restore();
+  ctx.globalCompositeOperation = prevComp;
+  ctx.globalAlpha = prevAlpha;
+  ctx.fillStyle = prevFill;
 }
 
 /**
@@ -364,7 +375,9 @@ function getEmissivePixelBloomSet(img, cacheKey, srcY, srcH, minLum = 180, minSa
       const work = document.createElement('canvas');
       work.width = bw;
       work.height = bh;
-      const wCtx = work.getContext && work.getContext('2d');
+      const wCtx =
+        work.getContext &&
+        (work.getContext('2d', { willReadFrequently: true }) || work.getContext('2d'));
       if (!wCtx || typeof wCtx.getImageData !== 'function' || typeof wCtx.putImageData !== 'function') {
         return null;
       }
@@ -562,6 +575,10 @@ function drawWrappedPixelBloomLayer(
 }
 
 export class AdventureMapRenderer {
+  static clearBloomCache() {
+    PIXEL_BLOOM_CACHE.clear();
+  }
+
   static getBiomeWeights(wx) {
     const t01 = smoothstep(1920, 2880, wx);
     const t12 = smoothstep(4320, 5280, wx);
@@ -1350,10 +1367,18 @@ export class AdventureMapRenderer {
   // MAIN BACKGROUND & CAUSEWAY RENDER PASS (Planes 0, 1, 1.5, 2, and 3)
   // ===========================================================================
   static render(ctx, renderer, _ww) {
-    const zoom = Math.max(0.35, renderer.zoom || 1);
+    const zoom = Math.max(0.20, renderer.zoom || 1);
     const camX = Number.isFinite(renderer.camX) ? renderer.camX : 600;
     const camY = Number.isFinite(renderer.camY) ? renderer.camY : 445;
-    const screenAnchorY = renderer.height * (renderer.isMobile ? 0.58 : 0.68);
+    const screenAnchorY =
+      renderer.height *
+      (renderer.isMobileLandscape
+        ? 0.63
+        : renderer.isMobilePortrait
+          ? 0.54
+          : renderer.isMobile
+            ? 0.58
+            : 0.68);
 
     const viewLeft = Math.floor(camX - (renderer.width * 0.5) / zoom - 240);
     const viewRight = Math.ceil(camX + (renderer.width * 0.5) / zoom + 240);
@@ -1780,10 +1805,18 @@ export class AdventureMapRenderer {
   // PLANE 4 (`1.24x`): NEAR-CAMERA FOREGROUND PARALLAX FRAMING & PIXEL OVERLAYS
   // ===========================================================================
   static renderForegroundDepth(ctx, renderer) {
-    const zoom = Math.max(0.35, renderer.zoom || 1);
+    const zoom = Math.max(0.20, renderer.zoom || 1);
     const camX = Number.isFinite(renderer.camX) ? renderer.camX : 600;
     const camY = Number.isFinite(renderer.camY) ? renderer.camY : 445;
-    const screenAnchorY = renderer.height * (renderer.isMobile ? 0.58 : 0.68);
+    const screenAnchorY =
+      renderer.height *
+      (renderer.isMobileLandscape
+        ? 0.63
+        : renderer.isMobilePortrait
+          ? 0.54
+          : renderer.isMobile
+            ? 0.58
+            : 0.68);
 
     const viewLeft = Math.floor(camX - (renderer.width * 0.5) / zoom - 180);
     const viewRight = Math.ceil(camX + (renderer.width * 0.5) / zoom + 180);

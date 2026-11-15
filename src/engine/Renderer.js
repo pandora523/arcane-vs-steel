@@ -1,5 +1,5 @@
-import { PixelForge } from './PixelForge.js?v=30fps108';
-import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps108';
+import { PixelForge } from './PixelForge.js?v=30fps109';
+import { AdventureMapRenderer } from '../adventure/AdventureMapRenderer.js?v=30fps109';
 
 const CYAN_FIRE_PAL = ['#0369a1', '#0284c7', '#0ea5e9', '#38bdf8'];
 const SOLAR_FIRE_PAL = ['#9a3412', '#ea580c', '#f97316', '#facc15'];
@@ -51,10 +51,10 @@ export class Renderer {
     this.height = isCssRotated ? window.innerWidth : window.innerHeight;
     this.isMobile = this.width < 768 || this.height < 540;
     this.isMobileLandscape = this.isMobile && this.width > this.height;
+    this.isMobilePortrait = this.isMobile && !this.isMobileLandscape;
 
     this.worldWidth = 1200;
     this.groundY = 520;
-
     this.shakeTime = 0;
     this.shakeIntensity = 0;
     this.aberration = 0;
@@ -67,6 +67,10 @@ export class Renderer {
     this.camParallaxY = 0;
     this.zoom = 1;
     this.time = 0;
+    this._validFighters = [];
+    this._activePool = [];
+    this._framePool = [];
+    this._victoryPool = [];
 
     // Supreme Finisher Stage Transformation, Whole-Stage Katana Slice, Impact Frame & White-Out Deletion State
     this.trueUltStageOverride = null;
@@ -91,8 +95,9 @@ export class Renderer {
     this.whiteoutFocusY = 420;
     this.whiteoutStyle = 'inferno';
 
-    this.stageId = 'cathedral';
-    this.pickRandomStage();
+    // Select a random default stage ID WITHOUT triggering a stage PNG download on Title boot!
+    const initStage = STAGE_ROSTER[Math.floor(Math.random() * STAGE_ROSTER.length)];
+    this.stageId = initStage ? initStage.id : 'cathedral';
 
     this.motes = Array.from({ length: 42 }, (_, i) => ({
       x: (i * 137) % 1300 - 50,
@@ -106,6 +111,14 @@ export class Renderer {
     this.bakeLightTextures();
     this.resize();
     window.addEventListener('resize', () => this.resize());
+  }
+
+  releaseStageCutoutCaches() {
+    this.flameOnlyCanvas = null;
+    this.boneyardFlameCanvas = null;
+    this.sylvanWaterfallCanvas = null;
+    this.infernoMagmaCanvas = null;
+    this.shogunateInfernoFlameCanvas = null;
   }
 
   resetStageOverrides() {
@@ -387,6 +400,11 @@ export class Renderer {
     return colossalBoss ? Math.min(baseWide, 0.52) : baseWide;
   }
 
+  getMobilePortraitFixedZoom(colossalBoss = false) {
+    const fullStageW = this.adventureMode ? (colossalBoss ? 1360 : 1280) : 1260;
+    return Math.max(0.26, Math.min(0.46, this.width / fullStageW));
+  }
+
   resize() {
     const isCssRotated =
       typeof document !== 'undefined' &&
@@ -395,8 +413,11 @@ export class Renderer {
     this.height = isCssRotated ? window.innerWidth : window.innerHeight;
     this.isMobile = this.width < 768 || this.height < 540;
     this.isMobileLandscape = this.isMobile && this.width > this.height;
+    this.isMobilePortrait = this.isMobile && !this.isMobileLandscape;
     if (this.isMobileLandscape) {
       this.zoom = this.getMobileLandscapeFixedZoom(false);
+    } else if (this.isMobilePortrait) {
+      this.zoom = this.getMobilePortraitFixedZoom(false);
     }
     const dpr = Math.min(window.devicePixelRatio || 1, 2.5);
     this.canvas.width = Math.round(this.width * dpr);
@@ -523,29 +544,66 @@ export class Renderer {
     if (!Number.isFinite(this.camX)) this.camX = this.worldWidth * 0.5;
     if (!Number.isFinite(this.camY)) this.camY = this.groundY - 95;
 
-    const validFighters = Array.isArray(fighters)
-      ? fighters.filter((f) => f && Number.isFinite(f.x) && Number.isFinite(f.y))
-      : [];
+    const validFighters = this._validFighters;
+    validFighters.length = 0;
+    if (Array.isArray(fighters)) {
+      for (let i = 0; i < fighters.length; i++) {
+        const f = fighters[i];
+        if (f && Number.isFinite(f.x) && Number.isFinite(f.y)) {
+          validFighters.push(f);
+        }
+      }
+    }
 
     if (validFighters.length >= 1) {
-      const activePool = validFighters.filter(
-        (f) => !f.isBenched && (!f.isDead || (f.deathTimer || 0) < 2.8)
-      );
+      const activePool = this._activePool;
+      activePool.length = 0;
+      for (let i = 0; i < validFighters.length; i++) {
+        const f = validFighters[i];
+        if (!f.isBenched && (!f.isDead || (f.deathTimer || 0) < 2.8)) {
+          activePool.push(f);
+        }
+      }
       const pool = activePool.length > 0 ? activePool : validFighters;
-      const player = this.adventureMode ? pool.find((f) => f.team === 1) || pool[0] : null;
-      const framePool =
-        this.adventureMode && player
-          ? pool.filter((f) => f === player || f.isColossalBoss || Math.abs(f.x - player.x) <= 920)
-          : pool;
-      const colossalBoss = this.adventureMode
-        ? framePool.find((f) => f.isColossalBoss && (!f.isDead || (f.deathTimer || 0) < 2.38))
-        : null;
+      let player = null;
+      if (this.adventureMode) {
+        for (let i = 0; i < pool.length; i++) {
+          if (pool[i].team === 1) {
+            player = pool[i];
+            break;
+          }
+        }
+        if (!player) player = pool[0];
+      }
+      let framePool = pool;
+      if (this.adventureMode && player) {
+        framePool = this._framePool;
+        framePool.length = 0;
+        for (let i = 0; i < pool.length; i++) {
+          const f = pool[i];
+          if (f === player || f.isColossalBoss || Math.abs(f.x - player.x) <= 920) {
+            framePool.push(f);
+          }
+        }
+        if (framePool.length === 0) framePool = pool;
+      }
+      let colossalBoss = null;
+      if (this.adventureMode) {
+        for (let i = 0; i < framePool.length; i++) {
+          const f = framePool[i];
+          if (f.isColossalBoss && (!f.isDead || (f.deathTimer || 0) < 2.38)) {
+            colossalBoss = f;
+            break;
+          }
+        }
+      }
 
       let minX = framePool[0].x;
       let maxX = framePool[0].x;
       let maxAirLift = 0;
       let maxSkyFocus = 0;
-      for (const f of framePool) {
+      for (let i = 0; i < framePool.length; i++) {
+        const f = framePool[i];
         if (f.x < minX) minX = f.x;
         if (f.x > maxX) maxX = f.x;
         const fGy = Number.isFinite(f.groundY) ? f.groundY : this.groundY;
@@ -573,10 +631,14 @@ export class Renderer {
       const horizSpan = this.adventureMode ? Math.min(1220, Math.max(820, rawHorizSpan)) : rawHorizSpan;
       const dist = Math.max(horizSpan, maxAirLift * 1.48 + 340);
 
+      const lockWideMobileZoom = Boolean(this.isMobileLandscape || this.isMobilePortrait);
       let targetZoom;
       if (this.isMobileLandscape) {
         // Mobile Landscape: ZERO camera zoom-in — constant wide full-stage viewport fit
         targetZoom = this.getMobileLandscapeFixedZoom(false);
+      } else if (this.isMobilePortrait) {
+        // Mobile Portrait: FULL stage zoom-out — fits entire 1260-1360px arena width with zero dynamic zoom-in cropping!
+        targetZoom = this.getMobilePortraitFixedZoom(Boolean(colossalBoss));
       } else {
         const maxSpanW = this.adventureMode ? 1280 : this.worldWidth;
         const fitScaleX = this.width / Math.max(620, Math.min(maxSpanW, dist));
@@ -600,7 +662,7 @@ export class Renderer {
       // Wide-cosmos framing for grounded celestial finishers (e.g. Ignis Sol's Heavensfall Meteor)
       // Keeps the arena floor (`groundY`) visible near the bottom while revealing `groundY - 720+` high in the sky!
       if (maxSkyFocus > 0) {
-        if (!this.isMobileLandscape) {
+        if (!lockWideMobileZoom) {
           const skyZoom = Math.max(0.66, (this.height * 0.80) / Math.max(500, maxSkyFocus + 165));
           targetZoom = Math.min(targetZoom, skyZoom);
         }
@@ -609,32 +671,38 @@ export class Renderer {
       }
 
       if (this.koZoomTimer > 0) {
-        // Dramatic K.O. Finisher focus (skip zoom-in on mobile landscape)
-        if (!this.isMobileLandscape) {
+        // Dramatic K.O. Finisher focus (skip zoom-in on mobile portrait & landscape)
+        if (!lockWideMobileZoom) {
           targetZoom *= 1.12;
         }
         if (Number.isFinite(this.koFocusX)) {
           targetX = midX * 0.45 + this.koFocusX * 0.55;
         }
-      } else if (this.clashZoomTimer > 0 && !this.isMobileLandscape) {
+      } else if (this.clashZoomTimer > 0 && !lockWideMobileZoom) {
         targetZoom *= 1.045;
-      } else if (this.ultZoomTimer > 0 && maxSkyFocus <= 0 && !this.isMobileLandscape) {
+      } else if (this.ultZoomTimer > 0 && maxSkyFocus <= 0 && !lockWideMobileZoom) {
         // Gentle 2.5% cinematic breathe without jerking the camera away from the arena center
         targetZoom *= 1.025;
       }
 
       // Cinematic Winner Camera Framing during Victory Pose (`f.state === 'VICTORY'`)
-      const victoryFighters = pool.filter(
-        (f) => !f.isBenched && !f.isDead && f.state === 'VICTORY'
-      );
+      const victoryFighters = this._victoryPool;
+      victoryFighters.length = 0;
+      for (let i = 0; i < pool.length; i++) {
+        const f = pool[i];
+        if (!f.isBenched && !f.isDead && f.state === 'VICTORY') {
+          victoryFighters.push(f);
+        }
+      }
       const holdColossalDeath = Boolean(
         colossalBoss && colossalBoss.isDead && (colossalBoss.deathTimer || 0) < 2.38
       );
       if (victoryFighters.length > 0 && (this.koZoomTimer || 0) <= 0.85 && !holdColossalDeath) {
-        const winMidX =
-          victoryFighters.reduce((sum, f) => sum + f.x, 0) / victoryFighters.length;
+        let winSumX = 0;
+        for (let i = 0; i < victoryFighters.length; i++) winSumX += victoryFighters[i].x;
+        const winMidX = winSumX / victoryFighters.length;
         targetX = targetX * 0.20 + winMidX * 0.80;
-        if (!this.isMobileLandscape) {
+        if (!lockWideMobileZoom) {
           const winZoomCap = this.isMobile ? 0.88 : 1.15;
           targetZoom = Math.max(0.52, Math.min(winZoomCap, targetZoom * 1.08));
         }
@@ -667,7 +735,7 @@ export class Renderer {
 
       const camSpeed = maxSkyFocus > 0 ? 7.5 : this.adventureMode ? 7.0 : 6;
       const lerpFactor = Math.min(1, Math.max(0, rawDt * camSpeed));
-      if (this.isMobileLandscape) {
+      if (lockWideMobileZoom) {
         this.zoom = targetZoom;
       } else {
         this.zoom += (targetZoom - this.zoom) * lerpFactor;
@@ -703,11 +771,15 @@ export class Renderer {
           ? this.adventureMode
             ? 0.63
             : 0.67
-          : this.adventureMode && this.isMobile
-            ? 0.58
-            : this.isMobile
-              ? 0.64
-              : 0.68)
+          : this.isMobilePortrait
+            ? this.adventureMode
+              ? 0.54
+              : 0.56
+            : this.adventureMode && this.isMobile
+              ? 0.58
+              : this.isMobile
+                ? 0.64
+                : 0.68)
     );
     const safeZoom = Math.max(0.1, this.zoom || 1);
     const snappedCamX = Math.round(this.camX * safeZoom) / safeZoom;
@@ -1110,6 +1182,7 @@ export class Renderer {
 
     const drawStageImageWithWings = (img, alpha = 1.0) => {
       if (!img || !img.complete || img.naturalWidth <= 0 || alpha <= 0.005) return;
+      const bottomY = drawY + drawH;
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
 
@@ -1145,6 +1218,33 @@ export class Renderer {
       ctx.restore();
 
       ctx.drawImage(img, drawX, drawY, drawW, drawH);
+
+      // Seamless lower-floor vertical mirror below `bottomY` + darkforge floor vignette for wide Mobile Portrait camera zoom
+      ctx.save();
+      ctx.translate(drawX, bottomY + drawH);
+      ctx.scale(-1, -1);
+      ctx.drawImage(img, 0, 0, drawW, drawH);
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(drawX + drawW * 2, bottomY + drawH);
+      ctx.scale(-1, -1);
+      ctx.drawImage(img, 0, 0, drawW, drawH);
+      ctx.restore();
+
+      ctx.save();
+      ctx.translate(drawX, bottomY + drawH);
+      ctx.scale(1, -1);
+      ctx.drawImage(img, 0, 0, drawW, drawH);
+      ctx.restore();
+
+      const floorFade = ctx.createLinearGradient(0, bottomY - 12, 0, bottomY + 520);
+      floorFade.addColorStop(0, 'rgba(4, 5, 10, 0)');
+      floorFade.addColorStop(0.46, 'rgba(4, 5, 10, 0.84)');
+      floorFade.addColorStop(1, '#04050a');
+      ctx.fillStyle = floorFade;
+      ctx.fillRect(drawX - drawW, bottomY - 12, drawW * 3, drawH + 16);
+
       ctx.restore();
     };
 
@@ -5232,7 +5332,7 @@ export class Renderer {
       const ry = this.isMobile ? 30 : 40;
       const elemCol = this.cutInColor || '#38bdf8';
       const assets = PixelForge.initAssets();
-      const cutPort = assets[this.cutInHeroId || 'warrior']?.portrait;
+      const cutPort = PixelForge.ensureImage(assets[this.cutInHeroId || 'warrior']?.portrait);
 
       ctx.save();
       ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
@@ -5314,7 +5414,7 @@ export class Renderer {
       const p = 1 - this.koZoomTimer / (this.koMaxTimer || 1.35);
       const alpha = p < 0.08 ? p / 0.08 : Math.max(0, 1 - (p - 0.08) / 0.92);
       const assets = PixelForge.initAssets();
-      const winPort = assets[this.koWinnerHeroId || 'warrior']?.portrait;
+      const winPort = PixelForge.ensureImage(assets[this.koWinnerHeroId || 'warrior']?.portrait);
 
       ctx.save();
       const kw = Math.min(w - 24, 680);

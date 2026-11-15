@@ -1,21 +1,21 @@
-import { Renderer } from './engine/Renderer.js?v=30fps108';
-import { VFXManager } from './engine/VFXManager.js?v=30fps108';
-import { PixelForge } from './engine/PixelForge.js?v=30fps108';
-import { AudioManager } from './engine/AudioManager.js?v=30fps108';
-import { Fighter } from './entities/Fighter.js?v=30fps108';
-import { Warrior } from './entities/Warrior.js?v=30fps108';
-import { FireMage } from './entities/FireMage.js?v=30fps108';
-import { Archer } from './entities/Archer.js?v=30fps108';
-import { Priestess } from './entities/Priestess.js?v=30fps108';
-import { Reaper } from './entities/Reaper.js?v=30fps108';
-import { Chronomancer } from './entities/Chronomancer.js?v=30fps108';
-import { Titan } from './entities/Titan.js?v=30fps108';
-import { Ronin } from './entities/Ronin.js?v=30fps108';
-import { Valkyrie } from './entities/Valkyrie.js?v=30fps108';
-import { IceMage } from './entities/IceMage.js?v=30fps108';
-import { Android } from './entities/Android.js?v=30fps108';
-import { AdventureManager } from './adventure/AdventureManager.js?v=30fps108';
-import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps108';
+import { Renderer } from './engine/Renderer.js?v=30fps109';
+import { VFXManager } from './engine/VFXManager.js?v=30fps109';
+import { PixelForge } from './engine/PixelForge.js?v=30fps109';
+import { AudioManager } from './engine/AudioManager.js?v=30fps109';
+import { Fighter } from './entities/Fighter.js?v=30fps109';
+import { Warrior } from './entities/Warrior.js?v=30fps109';
+import { FireMage } from './entities/FireMage.js?v=30fps109';
+import { Archer } from './entities/Archer.js?v=30fps109';
+import { Priestess } from './entities/Priestess.js?v=30fps109';
+import { Reaper } from './entities/Reaper.js?v=30fps109';
+import { Chronomancer } from './entities/Chronomancer.js?v=30fps109';
+import { Titan } from './entities/Titan.js?v=30fps109';
+import { Ronin } from './entities/Ronin.js?v=30fps109';
+import { Valkyrie } from './entities/Valkyrie.js?v=30fps109';
+import { IceMage } from './entities/IceMage.js?v=30fps109';
+import { Android } from './entities/Android.js?v=30fps109';
+import { AdventureManager } from './adventure/AdventureManager.js?v=30fps109';
+import { ADVENTURE_HERO_KITS } from './adventure/AdventureSkillSets.js?v=30fps109';
 
 const CHAMPION_ROSTER = {
   warrior: {
@@ -431,11 +431,16 @@ class Game {
     this.matchTime = 0;
     this.hudTimer = 0;
     this.isMatchOver = false;
+    this.fighters = [];
+    this.leftFighter = null;
+    this.rightFighter = null;
+    this.leftPartner = null;
+    this.rightPartner = null;
+    this._pausedFrameRendered = false;
+    this._lastPreviewMs = 0;
 
-    // Default Mode & 4-Slot Team Lineup:
-    // Team 1 (Arcane & Sanctuary): Torgar (Titan-Forger) + Seraphina (High Priestess)
-    // Team 2 (Challenger Duo): Sylvara (Tempest Bowmaster) + Malakor (Abyssal Soulreaper)
-    this.gameMode = '2v2_brawl'; // '1v1' | '2v2_brawl' | '2v2_tag' | 'adventure'
+    // Default Versus Mode (`1v1` Sovereign Duel; `2v2_tag` = Tag VS; `adventure` = Solo Campaign):
+    this.gameMode = '1v1'; // '1v1' | '2v2_tag' | '2v2_brawl' | 'adventure'
     this.slot1Hero = 'warrior';
     this.slot1PartnerHero = 'titan';
     this.slot2Hero = 'reaper';
@@ -511,7 +516,6 @@ class Game {
     this.bindUI();
     this.setLandingStep(this.landingStep, false);
     this.syncRosterSelectionUI(false);
-    this.resetMatch();
 
     const simSec = Number(params.get('sim') || 0);
     const killTarget = params.get('kill');
@@ -735,8 +739,8 @@ class Game {
         : this.gameMode === '2v2_brawl'
           ? '2V2 CHAOS BRAWL'
           : this.gameMode === '2v2_tag'
-            ? '2V2 TAG TEAM'
-            : '1V1 DUEL';
+            ? 'TAG VS'
+            : '1V1 SOVEREIGN DUEL';
     }
     this.pauseVsSection?.classList.toggle('hidden', isAdv);
     this.pauseAdvSection?.classList.toggle('hidden', !isAdv);
@@ -759,6 +763,9 @@ class Game {
     }
     const changed = this.isPaused !== nextPaused;
     this.isPaused = nextPaused;
+    if (changed) {
+      this._pausedFrameRendered = false;
+    }
     if (nextPaused) {
       this.adventure?.clearHeldInputs();
     }
@@ -770,6 +777,91 @@ class Game {
 
   togglePause(playSound = true) {
     this.setPaused(!this.isPaused, playSound);
+  }
+
+  teardownActiveMatch(releaseMemory = false) {
+    clearTimeout(this.victoryTimeout);
+    clearTimeout(this.autoNextTimeout);
+    clearTimeout(this.ultBannerTimeout);
+    if (this.adventure?.active) {
+      this.adventure.stopCampaign();
+    } else {
+      this.adventure?.clearHeldInputs?.();
+    }
+    this.vfx?.clear?.();
+    this.fighters = [];
+    this.leftFighter = null;
+    this.rightFighter = null;
+    this.leftPartner = null;
+    this.rightPartner = null;
+    this.isMatchOver = false;
+    this.victoryRevealPending = false;
+    this.deadMatchFighter = null;
+    this.postDeathHoldTimer = 0;
+    this._pausedFrameRendered = false;
+    this.victoryOverlay?.classList.add('hidden');
+    if (this.ultBanner) this.ultBanner.classList.add('hidden');
+    if (releaseMemory) {
+      this.renderer?.releaseStageCutoutCaches?.();
+      PixelForge.releaseInactiveAssets?.([], [], false);
+    }
+  }
+
+  goToTitleScreen(playSound = true) {
+    this.setPaused(false, false);
+    this.teardownActiveMatch(true);
+    this.openLanding('title');
+    if (playSound && this.audio) {
+      this.audio.play('clock_gear', 600);
+    }
+  }
+
+  syncLandingBranchUI() {
+    const isAdv = this.isAdventureMode();
+    const onTitle = this.landingStep === 'title';
+    const branch = onTitle ? 'title' : isAdv ? 'adventure' : 'vs';
+    if (this.landingOverlay) {
+      this.landingOverlay.setAttribute('data-branch', isAdv ? 'adventure' : 'vs');
+    }
+    const navEl = document.querySelector('.arcade-step-nav');
+    if (navEl) {
+      navEl.setAttribute('data-branch', branch);
+    }
+
+    const stepDividerMode = document.getElementById('step-divider-mode');
+    const stepTabMode = document.getElementById('step-tab-mode');
+    const stepDividerRoster = document.getElementById('step-divider-roster');
+    const stepTabRoster = document.getElementById('step-tab-roster');
+    if (stepDividerMode) stepDividerMode.hidden = onTitle || isAdv;
+    if (stepTabMode) stepTabMode.hidden = onTitle || isAdv;
+    if (stepDividerRoster) stepDividerRoster.hidden = onTitle;
+    if (stepTabRoster) stepTabRoster.hidden = onTitle;
+
+    const stepNumRoster = document.getElementById('step-num-roster');
+    const stepLabelRoster = document.getElementById('step-label-roster');
+    if (stepNumRoster) stepNumRoster.textContent = isAdv ? '01' : '02';
+    if (stepLabelRoster) stepLabelRoster.textContent = isAdv ? 'HERO SELECT' : 'CHAMPION SELECT';
+
+    const btnNavCommence = document.getElementById('btn-nav-commence');
+    const navCommenceLabel = document.getElementById('nav-commence-label');
+    if (btnNavCommence) btnNavCommence.classList.toggle('hidden', onTitle);
+    if (navCommenceLabel) {
+      navCommenceLabel.textContent = isAdv ? '⚔ START CAMPAIGN' : '⚔ START MATCH';
+    }
+
+    const rosterBackLabel = document.getElementById('roster-back-label');
+    if (rosterBackLabel) {
+      rosterBackLabel.textContent = isAdv ? '← TITLE SCREEN' : '← VS SETUP';
+    }
+    const ctaHeadline = document.getElementById('cta-headline-text');
+    if (ctaHeadline) {
+      ctaHeadline.textContent = isAdv ? '⚔ EMBARK ON CAMPAIGN' : '⚔ COMMENCE BATTLE';
+    }
+    const rosterConfigBadge = document.getElementById('btn-roster-config-badge');
+    if (rosterConfigBadge) {
+      rosterConfigBadge.disabled = isAdv;
+      rosterConfigBadge.setAttribute('aria-disabled', String(isAdv));
+    }
   }
 
   setGameMode(mode, playSound = true) {
@@ -794,14 +886,17 @@ class Game {
     } else {
       this.ensureDistinctTeamPartners();
     }
+    this.syncLandingBranchUI();
     this.syncRosterSelectionUI(playSound);
-    this.resetMatch();
+    if (!this.isLandingOpen) {
+      this.resetMatch();
+    }
     this.adventure?.syncControlDeckUI();
     this.syncPauseMenuUI();
   }
 
   cycleGameMode() {
-    const order = ['2v2_brawl', '2v2_tag', '1v1'];
+    const order = ['1v1', '2v2_tag'];
     const curIdx = order.indexOf(this.gameMode);
     const next = order[(curIdx >= 0 ? curIdx + 1 : 0) % order.length];
     this.setPaused(false, false);
@@ -815,7 +910,7 @@ class Game {
         : this.gameMode === '2v2_brawl'
           ? 'CHAOS BRAWL'
           : this.gameMode === '2v2_tag'
-            ? 'TAG RELAY'
+            ? 'TAG VS'
             : '1V1 DUEL';
     return this.testModeUnlimitedHp && !this.isAdventureMode() ? `${base} • ∞ HP` : base;
   }
@@ -883,6 +978,7 @@ class Game {
     this.pauseSpBadge = document.getElementById('pause-sp-badge');
     this.pauseModal = document.getElementById('pause-modal');
     this.btnPauseResume = document.getElementById('btn-pause-resume');
+    this.btnPauseTitle = document.getElementById('btn-pause-title');
     this.pauseVsSection = document.getElementById('pause-vs-section');
     this.pauseAdvSection = document.getElementById('pause-adv-section');
     this.btnVsPauseLandscape = document.getElementById('btn-vs-pause-landscape');
@@ -905,6 +1001,7 @@ class Game {
     this.btnPlayAgain = document.getElementById('btn-play-again');
     this.btnOpenSelect = document.getElementById('btn-open-select');
     this.btnVictorySelect = document.getElementById('btn-victory-select');
+    this.btnVictoryTitle = document.getElementById('btn-victory-title');
     this.victoryOverlay = document.getElementById('victory-overlay');
     this.landingOverlay = document.getElementById('landing-overlay');
     this.timerEl = document.getElementById('match-timer');
@@ -914,6 +1011,12 @@ class Game {
     }
     if (this.btnPauseResume) {
       this.btnPauseResume.addEventListener('click', () => this.setPaused(false, true));
+    }
+    if (this.btnPauseTitle) {
+      this.btnPauseTitle.addEventListener('click', () => this.goToTitleScreen(true));
+    }
+    if (this.btnVictoryTitle) {
+      this.btnVictoryTitle.addEventListener('click', () => this.goToTitleScreen(true));
     }
     if (this.pauseModal) {
       this.pauseModal.addEventListener('click', (e) => {
@@ -950,7 +1053,10 @@ class Game {
     };
     Object.entries(this.modeBtns).forEach(([modeKey, btn]) => {
       if (!btn) return;
-      btn.addEventListener('click', () => this.setGameMode(modeKey, true));
+      btn.addEventListener('click', () => {
+        if (modeKey === 'adventure' || modeKey === '2v2_brawl') return;
+        this.setGameMode(modeKey, true);
+      });
     });
 
     this.stageBtns = document.querySelectorAll('[data-stage]');
@@ -960,7 +1066,9 @@ class Game {
         const stg = btn.getAttribute('data-stage');
         this.forcedStage = stg === 'auto' ? null : stg;
         this.syncRosterSelectionUI(true);
-        this.resetMatch();
+        if (!this.isLandingOpen) {
+          this.resetMatch();
+        }
       });
     });
 
@@ -1240,14 +1348,19 @@ class Game {
     if (this.btnOpenSelect) {
       this.btnOpenSelect.addEventListener('click', () => {
         this.setPaused(false, false);
+        this.teardownActiveMatch(false);
         this.openLanding('roster');
       });
     }
     if (this.btnVictorySelect) {
-      this.btnVictorySelect.addEventListener('click', () => this.openLanding('roster'));
+      this.btnVictorySelect.addEventListener('click', () => {
+        this.setPaused(false, false);
+        this.teardownActiveMatch(false);
+        this.openLanding('roster');
+      });
     }
 
-    // 3-Step Arcade Flow Navigation (01 Title -> 02 Mode & Arena -> 03 Champion Select)
+    // Separated Arcade Flow Navigation (Title Screen -> Dedicated VS Branch OR Dedicated Adventure Branch)
     this.appEl = document.getElementById('app');
     this.stepTabBtns = document.querySelectorAll('.step-tab[data-landing-step]');
     this.stepPanels = {
@@ -1258,25 +1371,35 @@ class Game {
     this.stepTabBtns.forEach((tabBtn) => {
       tabBtn.addEventListener('click', () => {
         const targetStep = tabBtn.getAttribute('data-landing-step');
+        if (targetStep === 'title') {
+          this.goToTitleScreen(true);
+          return;
+        }
+        if (this.landingStep === 'title') return;
+        if (targetStep === 'mode' && this.isAdventureMode()) return;
         this.setLandingStep(targetStep, true);
       });
     });
 
     const stepNavBrand = document.getElementById('step-nav-brand');
     if (stepNavBrand) {
-      stepNavBrand.addEventListener('click', () => this.setLandingStep('title', true));
+      stepNavBrand.addEventListener('click', () => this.goToTitleScreen(true));
     }
     const btnNavCommence = document.getElementById('btn-nav-commence');
     if (btnNavCommence) {
-      btnNavCommence.addEventListener('click', () => this.startDuel(true));
+      btnNavCommence.addEventListener('click', () => {
+        if (this.landingStep === 'title') return;
+        this.startDuel(true);
+      });
     }
     const btnGoMode = document.getElementById('btn-go-mode');
     if (btnGoMode) {
-      btnGoMode.addEventListener('click', () => this.setLandingStep('mode', true));
-    }
-    const btnGoRoster = document.getElementById('btn-go-roster');
-    if (btnGoRoster) {
-      btnGoRoster.addEventListener('click', () => this.setLandingStep('roster', true));
+      btnGoMode.addEventListener('click', () => {
+        if (this.isAdventureMode() || this.gameMode === '2v2_brawl') {
+          this.setGameMode('1v1', false);
+        }
+        this.setLandingStep('mode', true);
+      });
     }
     const btnTitleAdventure = document.getElementById('btn-title-adventure');
     if (btnTitleAdventure) {
@@ -1285,19 +1408,9 @@ class Game {
         this.setLandingStep('roster', true);
       });
     }
-    const btnTitleQuickDuel = document.getElementById('btn-title-quick-duel');
-    if (btnTitleQuickDuel) {
-      btnTitleQuickDuel.addEventListener('click', () => {
-        if (this.isAdventureMode()) {
-          this.gameMode = '2v2_brawl';
-          this.testModeUnlimitedHp = Boolean(this.vsTestModeUnlimitedHp);
-        }
-        triggerRandomizeAndStart();
-      });
-    }
     const btnModeBack = document.getElementById('btn-mode-back');
     if (btnModeBack) {
-      btnModeBack.addEventListener('click', () => this.setLandingStep('title', true));
+      btnModeBack.addEventListener('click', () => this.goToTitleScreen(true));
     }
     const btnModeNext = document.getElementById('btn-mode-next');
     if (btnModeNext) {
@@ -1305,11 +1418,21 @@ class Game {
     }
     const btnRosterBackMode = document.getElementById('btn-roster-back-mode');
     if (btnRosterBackMode) {
-      btnRosterBackMode.addEventListener('click', () => this.setLandingStep('mode', true));
+      btnRosterBackMode.addEventListener('click', () => {
+        if (this.isAdventureMode()) {
+          this.goToTitleScreen(true);
+        } else {
+          this.setLandingStep('mode', true);
+        }
+      });
     }
     const btnRosterConfigBadge = document.getElementById('btn-roster-config-badge');
     if (btnRosterConfigBadge) {
-      btnRosterConfigBadge.addEventListener('click', () => this.setLandingStep('mode', true));
+      btnRosterConfigBadge.addEventListener('click', () => {
+        if (!this.isAdventureMode()) {
+          this.setLandingStep('mode', true);
+        }
+      });
     }
 
     this.landingBtnAutoTourney = document.getElementById('landing-btn-auto-tourney');
@@ -1607,6 +1730,23 @@ class Game {
         this.adventure?.toggleAutoPlay(true);
       });
     }
+    const advBtnAutoSkill = document.getElementById('adv-btn-auto');
+    if (advBtnAutoSkill) {
+      let lastAutoTouchMs = 0;
+      advBtnAutoSkill.addEventListener(
+        'touchstart',
+        (e) => {
+          e.preventDefault();
+          lastAutoTouchMs = performance.now();
+          this.adventure?.toggleAutoPlay(true);
+        },
+        { passive: false }
+      );
+      advBtnAutoSkill.addEventListener('click', () => {
+        if (performance.now() - lastAutoTouchMs < 420) return;
+        this.adventure?.toggleAutoPlay(true);
+      });
+    }
     const advBtnRestart = document.getElementById('adv-btn-restart');
     if (advBtnRestart) {
       advBtnRestart.addEventListener('click', () => {
@@ -1618,7 +1758,7 @@ class Game {
     if (advBtnMenu) {
       advBtnMenu.addEventListener('click', () => {
         this.setPaused(false, false);
-        this.adventure?.clearHeldInputs();
+        this.teardownActiveMatch(false);
         this.openLanding('roster');
       });
     }
@@ -1702,6 +1842,7 @@ class Game {
       vsPauseBtn.setAttribute('aria-pressed', String(activeLandscape || isFs));
     }
 
+    this._pausedFrameRendered = false;
     this.renderer?.resize();
   }
 
@@ -1756,8 +1897,14 @@ class Game {
   }
 
   setLandingStep(step, playSound = true) {
-    const validStep = step === 'mode' || step === 'roster' ? step : 'title';
+    let validStep = step === 'mode' || step === 'roster' ? step : 'title';
+    if (validStep === 'mode' && this.isAdventureMode()) {
+      validStep = 'roster';
+    }
     this.landingStep = validStep;
+    if (validStep === 'roster') {
+      PixelForge.ensureAllPortraitsLoaded?.();
+    }
     if (this.landingOverlay) {
       this.landingOverlay.setAttribute('data-active-step', validStep);
     }
@@ -1779,6 +1926,7 @@ class Game {
         panel.hidden = !active;
       });
     }
+    this.syncLandingBranchUI();
     if (playSound && this.audio) {
       this.audio.play('clock_gear', 600);
     }
@@ -1855,9 +2003,6 @@ class Game {
     }
     this.ensureDistinctTeamPartners();
     this.syncRosterSelectionUI(playSound, heroKey);
-    if (this.isLandingOpen && this.renderer) {
-      this.resetMatch();
-    }
   }
 
   syncRosterSelectionUI(playSound = false, soundHeroKey = null) {
@@ -1907,7 +2052,7 @@ class Game {
         this.gameMode === '2v2_brawl'
           ? 'MODE: 2V2 BRAWL'
           : this.gameMode === '2v2_tag'
-            ? 'MODE: 2V2 TAG'
+            ? 'MODE: TAG VS'
             : 'MODE: 1V1 DUEL';
     }
     if (this.btnTagAssist) {
@@ -1926,7 +2071,7 @@ class Game {
         : this.gameMode === '2v2_brawl'
           ? '2V2 CHAOS BRAWL'
           : this.gameMode === '2v2_tag'
-            ? '2V2 TAG RELAY'
+            ? 'TAG VS'
             : '1V1 SOVEREIGN DUEL';
     const stageNames = {
       auto: 'AUTO REALM',
@@ -1945,13 +2090,16 @@ class Game {
       : `${modeTitleStr} • ${stageTitleStr} • SANDBOX ${hpStr}`;
 
     const titleFooterEl = document.getElementById('title-status-footer');
-    if (titleFooterEl) titleFooterEl.textContent = summaryStr;
+    if (titleFooterEl) {
+      titleFooterEl.textContent =
+        'SEPARATED ARENA & CAMPAIGN REALMS • ZERO BACKGROUND LOAD • INSTANT READY';
+    }
     const modeSummaryEl = document.getElementById('mode-step-summary');
     if (modeSummaryEl) modeSummaryEl.textContent = summaryStr;
     const rosterBadgeTextEl = document.getElementById('roster-config-badge-text');
     if (rosterBadgeTextEl) rosterBadgeTextEl.textContent = summaryStr;
     const matchupVsEl = document.getElementById('matchup-vs-text');
-    if (matchupVsEl) matchupVsEl.textContent = isAdv ? 'SOLO' : is2v2 ? '2V2' : '1V1';
+    if (matchupVsEl) matchupVsEl.textContent = isAdv ? 'SOLO' : is2v2 ? 'TAG VS' : '1V1';
 
     const slotLabelMap = {
       1: '★ P1 LEAD',
@@ -2198,8 +2346,10 @@ class Game {
   startDuel(playSound = true) {
     this.isLandingOpen = false;
     this.setPaused(false, false);
+    this._pausedFrameRendered = false;
     if (this.landingOverlay) this.landingOverlay.classList.add('hidden');
     if (this.appEl) this.appEl.classList.remove('is-landing-open');
+    this.audio?.ensureCombatWavFiles?.();
     this.resetMatch();
     this.adventure?.syncControlDeckUI();
     this.syncPauseMenuUI();
@@ -2223,7 +2373,7 @@ class Game {
   }
 
   renderChampionPreviews(now) {
-    if (!this.isLandingOpen) return;
+    if (!this.isLandingOpen || this.landingStep !== 'roster') return;
     const assets = PixelForge.initAssets();
     const t = now * 0.001;
     const is2v2 = this.is2v2Mode();
@@ -2231,7 +2381,7 @@ class Game {
     // 1. Render the Center Portrait Selector Tiles from crisp pixel portraits (dirty-checked: 0ms steady-state!)
     Object.keys(CHAMPION_ROSTER).forEach((heroKey) => {
       const canvas = this.previewCanvases[heroKey];
-      const port = assets[heroKey]?.portrait;
+      const port = PixelForge.ensureImage(assets[heroKey]?.portrait);
       if (!canvas || !port || !port.complete || !port.naturalWidth) return;
       if (canvas._drawnPortraitImg === port) return;
       const ctx = canvas.getContext('2d');
@@ -2240,6 +2390,17 @@ class Game {
       ctx.drawImage(port, 0, 0, canvas.width, canvas.height);
       canvas._drawnPortraitImg = port;
     });
+
+    // Lossless 30fps cadence lock for animated 30fps showcase pedestals (cuts menu CPU/GPU load in half with zero visual change!)
+    if (now - (this._lastPreviewMs || 0) < 30) return;
+    this._lastPreviewMs = now;
+
+    const iconsReady = Boolean(
+      assets.mageIcons?.complete &&
+        assets.mageIcons?.naturalWidth &&
+        assets.heroIconsSheet?.complete &&
+        assets.heroIconsSheet?.naturalWidth
+    );
 
     const drawAnimatedHeroOnStage = (sctx, heroKey, flipX, destX, destY, destSize, phaseOffset = 0, alpha = 1, drawBadge = false) => {
       PixelForge.ensureHeroLoaded?.(heroKey);
@@ -2398,8 +2559,11 @@ class Game {
         cfg.skills.forEach((_sk, idx) => {
           const iconCanvas = document.getElementById(`${prefix}-skill-icon-${idx}`);
           if (!iconCanvas) return;
+          if (iconCanvas._drawnHeroKey === primaryKey && iconCanvas._iconsReady && iconsReady) return;
           const ictx = iconCanvas.getContext('2d');
           PixelForge.drawSkillIcon(ictx, primaryKey, idx, iconCanvas.width, iconCanvas.height, t);
+          iconCanvas._drawnHeroKey = primaryKey;
+          iconCanvas._iconsReady = iconsReady;
         });
       }
 
@@ -2410,15 +2574,19 @@ class Game {
         supIconCanvas.classList.toggle('hidden', !showSupIcon);
         if (supBox) supBox.classList.toggle('has-supreme-icon', showSupIcon);
         if (showSupIcon) {
-          const sictx = supIconCanvas.getContext('2d');
-          PixelForge.drawSkillIcon(
-            sictx,
-            primaryKey,
-            3,
-            supIconCanvas.width,
-            supIconCanvas.height,
-            t
-          );
+          if (!(supIconCanvas._drawnHeroKey === primaryKey && supIconCanvas._iconsReady && iconsReady)) {
+            const sictx = supIconCanvas.getContext('2d');
+            PixelForge.drawSkillIcon(
+              sictx,
+              primaryKey,
+              3,
+              supIconCanvas.width,
+              supIconCanvas.height,
+              t
+            );
+            supIconCanvas._drawnHeroKey = primaryKey;
+            supIconCanvas._iconsReady = iconsReady;
+          }
         }
       }
     };
@@ -2441,9 +2609,9 @@ class Game {
         const bctx = bossCanvas.getContext('2d');
         bctx.clearRect(0, 0, cw, ch);
         bctx.imageSmoothingEnabled = false;
-        const bossPort =
-          PixelForge.initAssets()?.archfiend?.portrait ||
-          PixelForge.initAssets()?.boss_archfiend?.portrait;
+        const bossPort = PixelForge.ensureImage(
+          assets.archfiend?.portrait || assets.boss_archfiend?.portrait
+        );
         const pulse = 0.55 + 0.25 * Math.sin(t * 3.8);
         bctx.fillStyle = `rgba(220, 38, 38, ${(0.22 * pulse).toFixed(3)})`;
         bctx.fillRect(46, 174, 180, 18);
@@ -2629,7 +2797,7 @@ class Game {
   drawPartnerPortrait(canvas, heroId, accentColor) {
     if (!canvas) return;
     const assets = PixelForge.initAssets();
-    const port = assets[heroId]?.portrait;
+    const port = PixelForge.ensureImage(assets[heroId]?.portrait);
     const ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     ctx.imageSmoothingEnabled = false;
@@ -2729,9 +2897,12 @@ class Game {
         this.renderer.isMobileLandscape &&
         typeof this.renderer.getMobileLandscapeFixedZoom === 'function'
           ? this.renderer.getMobileLandscapeFixedZoom(false)
-          : this.renderer.isMobile
-            ? 0.72
-            : 1.0;
+          : this.renderer.isMobilePortrait &&
+              typeof this.renderer.getMobilePortraitFixedZoom === 'function'
+            ? this.renderer.getMobilePortraitFixedZoom(false)
+            : this.renderer.isMobile
+              ? 0.72
+              : 1.0;
     }
     const gy = this.renderer.groundY;
     const ww = this.renderer.worldWidth;
@@ -3872,17 +4043,22 @@ class Game {
     this.lastTime = now;
 
     if (this.isLandingOpen) {
-      this.renderer.update(rawDt, this.fighters);
-      this.vfx.update(rawDt * 0.4, this.renderer.groundY, this.renderer, this.audio);
       this.renderChampionPreviews(now);
-    } else if (
+      return;
+    }
+
+    if (
       !this.isPaused &&
       !this.isSimPaused &&
       !(this.isAdventureMode() && this.adventure?.isSkillTreeOpen)
     ) {
+      this._pausedFrameRendered = false;
       this.stepSimulation(rawDt);
+      this.renderer.render(this.fighters, this.vfx);
+    } else if (!this._pausedFrameRendered) {
+      this.renderer.render(this.fighters, this.vfx);
+      this._pausedFrameRendered = true;
     }
-    this.renderer.render(this.fighters, this.vfx);
   }
 }
 

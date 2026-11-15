@@ -1,5 +1,14 @@
-import { PixelFont } from './PixelFont.js?v=30fps108';
-import { PixelForge } from './PixelForge.js?v=30fps108';
+import { PixelFont } from './PixelFont.js?v=30fps109';
+import { PixelForge } from './PixelForge.js?v=30fps109';
+
+const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
+const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
+const LIGHT_RGB_VIOLET = { nr: 0.78, ng: 0.36, nb: 0.98 };
+const LIGHT_RGB_INDIGO = { nr: 0.51, ng: 0.55, nb: 0.98 };
+const LIGHT_RGB_CRIMSON = { nr: 0.96, ng: 0.25, nb: 0.37 };
+const LIGHT_RGB_TEAL = { nr: 0.18, ng: 0.86, nb: 0.78 };
+const LIGHT_RGB_GOLD = { nr: 1.0, ng: 0.88, nb: 0.28 };
+const LIGHT_RGB_ORANGE = { nr: 1.0, ng: 0.52, nb: 0.16 };
 
 export class VFXManager {
   constructor() {
@@ -19,6 +28,9 @@ export class VFXManager {
     this.hitImpacts = [];
     this.glyphs = [];
     this.texts = [];
+    this._particleRingIdx = 0;
+    this._lightPool = [];
+    this._activeLights = [];
   }
 
   clear() {
@@ -38,6 +50,8 @@ export class VFXManager {
     this.hitImpacts.length = 0;
     this.glyphs.length = 0;
     this.texts.length = 0;
+    this._particleRingIdx = 0;
+    this._activeLights.length = 0;
   }
 
   drawBloomedSprite(
@@ -188,7 +202,25 @@ export class VFXManager {
 
   spawnParticle(opts) {
     if (!opts || !Number.isFinite(opts.x) || !Number.isFinite(opts.y)) return;
-    if (this.particles.length > 750) this.particles.shift();
+    if (this.particles.length >= 750) {
+      const slot = this.particles[this._particleRingIdx];
+      this._particleRingIdx = (this._particleRingIdx + 1) % 750;
+      if (slot) {
+        slot.x = opts.x;
+        slot.y = opts.y;
+        slot.vx = opts.vx || 0;
+        slot.vy = opts.vy || 0;
+        slot.size = opts.size || 6;
+        slot.endSize = opts.endSize ?? 0;
+        slot.color = opts.color || '#38bdf8';
+        slot.life = 0;
+        slot.maxLife = opts.maxLife || 0.55;
+        slot.gravity = opts.gravity || 0;
+        slot.additive = opts.additive !== false;
+        slot.drag = opts.drag || 0.98;
+        return;
+      }
+    }
     this.particles.push({
       x: opts.x,
       y: opts.y,
@@ -917,17 +949,18 @@ export class VFXManager {
     }
   }
 
-  getActiveLights(fighters, gy) {
-    const lights = [];
+  getActiveLights(fighters = [], gy = 480) {
+    const lights = this._activeLights;
+    let count = 0;
     const rgbForType = (type) => {
-      if (type === 'cyan') return { nr: 0.22, ng: 0.74, nb: 0.98 };
-      if (type === 'emerald') return { nr: 0.16, ng: 0.85, nb: 0.58 };
-      if (type === 'violet') return { nr: 0.78, ng: 0.36, nb: 0.98 };
-      if (type === 'indigo') return { nr: 0.51, ng: 0.55, nb: 0.98 };
-      if (type === 'crimson') return { nr: 0.96, ng: 0.25, nb: 0.37 };
-      if (type === 'teal') return { nr: 0.18, ng: 0.86, nb: 0.78 };
-      if (type === 'gold') return { nr: 1.0, ng: 0.88, nb: 0.28 };
-      return { nr: 1.0, ng: 0.52, nb: 0.16 };
+      if (type === 'cyan') return LIGHT_RGB_CYAN;
+      if (type === 'emerald') return LIGHT_RGB_EMERALD;
+      if (type === 'violet') return LIGHT_RGB_VIOLET;
+      if (type === 'indigo') return LIGHT_RGB_INDIGO;
+      if (type === 'crimson') return LIGHT_RGB_CRIMSON;
+      if (type === 'teal') return LIGHT_RGB_TEAL;
+      if (type === 'gold') return LIGHT_RGB_GOLD;
+      return LIGHT_RGB_ORANGE;
     };
     const typeForHex = (col) => {
       if (!col) return 'cyan';
@@ -970,8 +1003,34 @@ export class VFXManager {
       return 'cyan';
     };
     const pushLight = (x, y, radius, colorType, intensity, z = 68, groundY = gy) => {
-      const { nr, ng, nb } = rgbForType(colorType);
-      lights.push({ x, y, z, radius, colorType, intensity, nr, ng, nb, groundY });
+      const rgb = rgbForType(colorType);
+      let slot = this._lightPool[count];
+      if (!slot) {
+        slot = {
+          x: 0,
+          y: 0,
+          z: 68,
+          radius: 0,
+          colorType: 'cyan',
+          intensity: 1,
+          nr: 0,
+          ng: 0,
+          nb: 0,
+          groundY: gy
+        };
+        this._lightPool[count] = slot;
+      }
+      slot.x = x;
+      slot.y = y;
+      slot.z = z;
+      slot.radius = radius;
+      slot.colorType = colorType;
+      slot.intensity = intensity;
+      slot.nr = rgb.nr;
+      slot.ng = rgb.ng;
+      slot.nb = rgb.nb;
+      slot.groundY = groundY;
+      lights[count++] = slot;
     };
 
     for (const f of fighters) {
@@ -1110,7 +1169,7 @@ export class VFXManager {
     const pLen = this.particles.length;
     if (pLen > 0) {
       const stride = Math.max(1, Math.floor(pLen / 8));
-      for (let i = 0; i < pLen && lights.length < 34; i += stride) {
+      for (let i = 0; i < pLen && count < 34; i += stride) {
         const pt = this.particles[i];
         const fade = 1 - pt.life / pt.maxLife;
         if (fade > 0.25) {
@@ -1121,7 +1180,7 @@ export class VFXManager {
     const gLen = this.glyphs.length;
     if (gLen > 0) {
       const gStride = Math.max(1, Math.floor(gLen / 5));
-      for (let i = 0; i < gLen && lights.length < 38; i += gStride) {
+      for (let i = 0; i < gLen && count < 38; i += gStride) {
         const gl = this.glyphs[i];
         const fade = 1 - gl.life / gl.maxLife;
         if (fade > 0.25) {
@@ -1129,6 +1188,7 @@ export class VFXManager {
         }
       }
     }
+    lights.length = count;
     return lights;
   }
 

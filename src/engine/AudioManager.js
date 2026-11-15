@@ -116,6 +116,9 @@ export class AudioManager {
     };
 
     this.wavKeys = Object.keys(this.volumes);
+    this.uiBootWavKeys = ['clock_gear', 'reflect', 'ult_cast', 'slash'];
+    this._loadingWavKeys = new Set();
+    this._combatWavsEnsured = false;
 
     this.initContext();
     this.preloadWavFiles();
@@ -164,14 +167,12 @@ export class AudioManager {
     limiter.connect(masterGain);
     masterGain.connect(this.ctx.destination);
     this.master = hpf;
-
-    this.createPinkNoiseBuffer();
   }
 
   createPinkNoiseBuffer() {
-    if (!this.ctx) return;
+    if (!this.ctx || this.pinkNoiseBuffer) return;
     const rate = this.ctx.sampleRate;
-    const len = rate * 2;
+    const len = Math.max(4096, Math.floor(rate * 0.25));
     this.pinkNoiseBuffer = this.ctx.createBuffer(1, len, rate);
     const pink = this.pinkNoiseBuffer.getChannelData(0);
     let b0 = 0, b1 = 0, b2 = 0, b3 = 0, b4 = 0, b5 = 0, b6 = 0;
@@ -188,18 +189,42 @@ export class AudioManager {
     }
   }
 
+  async loadWavKey(key) {
+    if (!this.ctx || !key || this.buffers[key] || this._loadingWavKeys.has(key)) return;
+    this._loadingWavKeys.add(key);
+    try {
+      const res = await fetch(`assets/sfx/${key}.wav?v=sfx3`);
+      if (!res.ok) return;
+      const arr = await res.arrayBuffer();
+      this.buffers[key] = await this.ctx.decodeAudioData(arr);
+    } catch (_) {
+    } finally {
+      this._loadingWavKeys.delete(key);
+    }
+  }
+
   async preloadWavFiles() {
     if (!this.ctx) return;
-    await Promise.all(
-      this.wavKeys.map(async (key) => {
-        try {
-          const res = await fetch(`assets/sfx/${key}.wav?v=sfx3`);
-          if (!res.ok) return;
-          const arr = await res.arrayBuffer();
-          this.buffers[key] = await this.ctx.decodeAudioData(arr);
-        } catch (_) {}
-      })
-    );
+    await Promise.all(this.uiBootWavKeys.map((key) => this.loadWavKey(key)));
+  }
+
+  ensureCombatWavFiles() {
+    if (!this.ctx || this._combatWavsEnsured) return;
+    this._combatWavsEnsured = true;
+    const queue = this.wavKeys.filter((k) => !this.buffers[k] && !this._loadingWavKeys.has(k));
+    const CONCURRENCY = 6;
+    let cursor = 0;
+    const worker = async () => {
+      while (cursor < queue.length) {
+        const key = queue[cursor++];
+        await this.loadWavKey(key);
+      }
+    };
+    const workers = [];
+    for (let i = 0; i < Math.min(CONCURRENCY, queue.length); i++) {
+      workers.push(worker());
+    }
+    Promise.all(workers).catch(() => {});
   }
 
   toggle() {
@@ -339,59 +364,66 @@ export class AudioManager {
       } catch (_) {}
     }
 
-    // Punchy physical transient + swept turbulence fallback if triggered in the first ~30ms before WAV decode
-    this.playWarmFallback(name, voiceGain);
-  }
-
-  pruneAndDuckVoices(now, incomingIsBig, isMatchEndSound = false) {
-    for (let i = this.activeVoices.length - 1; i >= 0; i--) {
-      if (now - this.activeVoices[i].startTime > 2200) {
-        this.activeVoices.splice(i, 1);
+      // Trigger background WAV fetch/decode if this combat sound hasn't finished preloading yet
+      if (this.volumes[name] !== undefined) {
+        this.loadWavKey(name);
       }
-    }
 
-    if (isMatchEndSound) {
-      const t = this.ctx.currentTime;
-      while (this.activeVoices.length > 0) {
-        const v = this.activeVoices.shift();
-        if (v && v.gainNode) {
+      // Punchy physical transient + swept turbulence fallback if triggered in the first ~30ms before WAV decode
+      this.playWarmFallback(name, voiceGain);
+    }
+  
+    pruneAndDuckVoices(now, incomingIsBig, isMatchEndSound = false) {
+      for (let i = this.activeVoices.length - 1; i >= 0; i--) {
+        if (now - this.activeVoices[i].startTime > 2200) {
+          this.activeVoices.splice(i, 1);
+        }
+      }
+  
+      if (isMatchEndSound) {
+        const t = this.ctx.currentTime;
+        while (this.activeVoices.length > 0) {
+          const v = this.activeVoices.shift();
+          if (v && v.gainNode) {
+            try {
+              v.gainNode.gain.setValueAtTime(v.gainNode.gain.value, t);
+              v.gainNode.gain.exponentialRampToValueAtTime(0.0008, t + 0.06);
+            } catch (_) {}
+          }
+        }
+        return;
+      }
+  
+      while (this.activeVoices.length > 8) {
+        const oldest = this.activeVoices.shift();
+        if (oldest && oldest.gainNode) {
           try {
-            v.gainNode.gain.setValueAtTime(v.gainNode.gain.value, t);
-            v.gainNode.gain.exponentialRampToValueAtTime(0.0008, t + 0.06);
+            const t = this.ctx.currentTime;
+            oldest.gainNode.gain.setValueAtTime(oldest.gainNode.gain.value, t);
+            oldest.gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
           } catch (_) {}
         }
       }
-      return;
-    }
-
-    while (this.activeVoices.length > 8) {
-      const oldest = this.activeVoices.shift();
-      if (oldest && oldest.gainNode) {
-        try {
-          const t = this.ctx.currentTime;
-          oldest.gainNode.gain.setValueAtTime(oldest.gainNode.gain.value, t);
-          oldest.gainNode.gain.exponentialRampToValueAtTime(0.001, t + 0.045);
-        } catch (_) {}
-      }
-    }
-
-    if (incomingIsBig) {
-      const t = this.ctx.currentTime;
-      for (const v of this.activeVoices) {
-        if (!v.isBig && v.gainNode) {
-          try {
-            const cur = v.gainNode.gain.value;
-            v.gainNode.gain.setValueAtTime(cur, t);
-            v.gainNode.gain.linearRampToValueAtTime(cur * 0.45, t + 0.035);
-          } catch (_) {}
+  
+      if (incomingIsBig) {
+        const t = this.ctx.currentTime;
+        for (const v of this.activeVoices) {
+          if (!v.isBig && v.gainNode) {
+            try {
+              const cur = v.gainNode.gain.value;
+              v.gainNode.gain.setValueAtTime(cur, t);
+              v.gainNode.gain.linearRampToValueAtTime(cur * 0.45, t + 0.035);
+            } catch (_) {}
+          }
         }
       }
     }
-  }
-
-  playWarmFallback(name, dest) {
-    if (!this.ctx || !this.pinkNoiseBuffer) return;
-    const t = this.ctx.currentTime;
+  
+    playWarmFallback(name, dest) {
+      if (!this.ctx) return;
+      if (!this.pinkNoiseBuffer) this.createPinkNoiseBuffer();
+      if (!this.pinkNoiseBuffer) return;
+      const t = this.ctx.currentTime;
 
     // 1. Swept aerodynamic / elemental noise burst (zero stationary tone)
     const src = this.ctx.createBufferSource();

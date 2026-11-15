@@ -1,11 +1,11 @@
-import { Fighter } from './Fighter.js?v=30fps108';
-import { PixelForge } from '../engine/PixelForge.js?v=30fps108';
-import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps108';
+import { Fighter } from './Fighter.js?v=30fps109';
+import { PixelForge } from '../engine/PixelForge.js?v=30fps109';
+import { ArcaneShaderFX } from '../engine/ArcaneShaderFX.js?v=30fps109';
 import {
   CYBER_EFFECT_REGISTRY,
   CYBER_NEON_PALETTE,
   CYBER_MAGENTA_PALETTE
-} from '../engine/shaders/cyberShaders.js?v=30fps108';
+} from '../engine/shaders/cyberShaders.js?v=30fps109';
 
 const CYBER_HIT_STOP_SEC = 0.038;
 const AUTO_SLICES_4 = [
@@ -72,11 +72,11 @@ export class Android extends Fighter {
     if (typeof Image !== 'undefined') {
       PixelForge.ensureHeroLoaded?.('android');
       const androidAssets = PixelForge.initAssets()?.android;
-      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps108')) {
-        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps108';
+      if (androidAssets?.sheet?.src && !androidAssets.sheet.src.includes('v=30fps109')) {
+        androidAssets.sheet.src = 'assets/sprites/android_sheet.png?v=30fps109';
       }
-      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps108')) {
-        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps108';
+      if (androidAssets?.vfx?.src && !androidAssets.vfx.src.includes('v=30fps109')) {
+        androidAssets.vfx.src = 'assets/sprites/android_vfx.png?v=30fps109';
       }
     }
 

@@ -11,7 +11,7 @@
   <meta name="description" content="HD-2D pixel-art idle auto-battler featuring articulated 40-frame sprite animations, dynamic lighting, floor reflections, and cinematic ultimates." />
   <link rel="manifest" href="manifest.json" />
   <link rel="preload" href="assets/fonts/pixel_art.ttf" as="font" type="font/ttf" crossorigin />
-  <link rel="stylesheet" href="style.css?v=30fps108" />
+  <link rel="stylesheet" href="style.css?v=30fps109" />
 </head>
 <body>
   <main id="app" class="is-landing-open" data-landing-step="title">
@@ -229,6 +229,12 @@
           <span id="adv-tag-ultimate" class="adv-orb-tag">METEOR</span>
           <span class="adv-key-hint">I</span>
         </button>
+
+        <!-- Dedicated Special AUTO Combat Toggle Positioned Right Beside the Upper Skills -->
+        <button id="adv-btn-auto" class="adv-auto-skill-btn" type="button" aria-pressed="false" title="Toggle Autonomous Combat AI [P]">
+          <span class="adv-auto-dot" aria-hidden="true"></span>
+          <span id="adv-auto-label">AUTO</span>
+        </button>
       </div>
 
       <!-- Adventure RPG Stats & 3-Branch Skill Tree Modal -->
@@ -276,7 +282,7 @@
       <div class="pause-plaque">
         <header class="pause-header">
           <div class="pause-title-block">
-            <span class="pause-kicker" id="pause-mode-subtitle">2V2 CHAOS BRAWL</span>
+            <span class="pause-kicker" id="pause-mode-subtitle">1V1 SOVEREIGN DUEL</span>
             <h2 id="pause-modal-title" class="pause-modal-title">GAME PAUSED</h2>
           </div>
           <button id="btn-pause-resume" class="pause-resume-btn" type="button" title="Resume Gameplay [Esc]">
@@ -289,13 +295,13 @@
           <div class="pause-section-label">ARENA SPECTATOR &amp; SANDBOX CONTROLS</div>
           <footer class="hud-bottom pause-hud-bottom">
             <div class="iron-bar">
-              <button id="btn-mode-cycle" class="iron-btn iron-btn-mode" type="button" title="Cycle Battle Mode: 1v1 Duel / 2v2 Chaos Brawl / 2v2 Tag Relay">
+              <button id="btn-mode-cycle" class="iron-btn iron-btn-mode" type="button" title="Cycle Versus Format: 1v1 Duel / Tag VS">
                 <span class="gem-indicator gem-gold"></span>
-                <span id="mode-cycle-label">MODE: 2V2 BRAWL</span>
+                <span id="mode-cycle-label">MODE: 1V1 DUEL</span>
               </button>
-              <button id="btn-tag-assist" class="iron-btn iron-btn-skill" type="button" title="Trigger Team Tag-Swap or Twin-Soul Synchronized Assist!">
+              <button id="btn-tag-assist" class="iron-btn iron-btn-skill hidden" type="button" title="Trigger Team Tag-Swap!">
                 <span class="gem-indicator gem-cyan"></span>
-                <span id="tag-assist-label">⚡ TWIN ASSIST</span>
+                <span id="tag-assist-label">⚡ TAG SWAP</span>
               </button>
               <button id="btn-test-mode" class="iron-btn iron-btn-test" type="button" aria-pressed="true" title="Toggle Test Mode: Unlimited HP (Default ON — fighters never die &amp; regenerate HP so you can test full fights &amp; Ultimates)">
                 <span class="gem-indicator gem-emerald"></span>
@@ -317,7 +323,7 @@
                 <span id="vs-pause-landscape-label">⟳ LANDSCAPE: OFF</span>
               </button>
               <button id="btn-open-select" class="iron-btn" type="button">
-                <span>ROSTER</span>
+                <span>VS ROSTER</span>
               </button>
               <button id="btn-reset" class="iron-btn iron-btn-gold" type="button">
                 <span>REMATCH</span>
@@ -342,34 +348,38 @@
               <span id="adv-landscape-label">⟳ LANDSCAPE: OFF</span>
             </button>
             <button id="adv-btn-restart" class="adv-util-btn" type="button" title="Restart Campaign">RETRY</button>
-            <button id="adv-btn-menu" class="adv-util-btn" type="button" title="Open Champion Roster">ROSTER</button>
+            <button id="adv-btn-menu" class="adv-util-btn" type="button" title="Open Adventure Hero Select">HERO SELECT</button>
           </div>
           <p class="pause-adv-hint">SHORTCUTS: <strong>[T]</strong> SKILL TREE • <strong>[P]</strong> AUTO-AI • <strong>[WASD]</strong> MOVE • <strong>[J/K/L/U/I]</strong> ACTIONS</p>
         </section>
 
-        <!-- Shared Audio & Quick Resume Footer -->
+        <!-- Shared Audio, Return to Title Screen & Quick Resume Footer -->
         <div class="pause-shared-row">
           <button id="btn-sfx" class="iron-btn pause-sfx-btn" type="button" aria-pressed="true" title="Toggle Sound Effects">
             <span class="gem-indicator"></span>
             <span id="sfx-label">SFX</span>
           </button>
           <span class="pause-esc-hint">PRESS [ESC] OR TAP OUTSIDE TO RESUME</span>
+          <button id="btn-pause-title" class="iron-btn pause-title-btn" type="button" title="Exit current mode and return to the Title Screen">
+            <span>⌂ GO TO TITLE SCREEN</span>
+          </button>
         </div>
       </div>
     </div>
 
-    <!-- AAA HD-2D 3-Stage Arcade Flow: 01 Title Sanctum • 02 Mode & Arena • 03 Champion Select -->
+    <!-- AAA HD-2D Separated Mode Flow: Title Screen -> Dedicated VS Mode OR Dedicated Adventure Mode -->
     <section
       id="landing-overlay"
       class="landing-overlay"
       data-active-step="title"
-      aria-label="Arcane vs. Steel Arcade Flow"
+      data-branch="vs"
+      aria-label="Arcane vs. Steel Title &amp; Mode Setup"
     >
-      <!-- Persistent Top Forged-Brass Arcade Step Bar -->
+      <!-- Persistent Top Forged-Brass Arcade Step Bar (Branch-Isolated) -->
       <nav class="arcade-step-nav" aria-label="Arcade Setup Navigation">
-        <div class="step-nav-brand" id="step-nav-brand">ARCANE <span>VS.</span> STEEL</div>
+        <div class="step-nav-brand" id="step-nav-brand" title="Return to Title Screen">ARCANE <span>VS.</span> STEEL</div>
 
-        <div class="step-tab-strip" role="tablist" aria-label="Setup Stages">
+        <div class="step-tab-strip" id="step-tab-strip" role="tablist" aria-label="Setup Stages">
           <button
             type="button"
             class="step-tab active-step-tab"
@@ -378,10 +388,10 @@
             role="tab"
             aria-selected="true"
           >
-            <span class="step-num">01</span>
-            <span class="step-label">TITLE</span>
+            <span class="step-num">⌂</span>
+            <span class="step-label">TITLE SCREEN</span>
           </button>
-          <span class="step-divider" aria-hidden="true">▸</span>
+          <span class="step-divider" id="step-divider-mode" aria-hidden="true">▸</span>
           <button
             type="button"
             class="step-tab"
@@ -390,10 +400,10 @@
             role="tab"
             aria-selected="false"
           >
-            <span class="step-num">02</span>
-            <span class="step-label">MODE &amp; ARENA</span>
+            <span class="step-num">01</span>
+            <span class="step-label">VS SETUP</span>
           </button>
-          <span class="step-divider" aria-hidden="true">▸</span>
+          <span class="step-divider" id="step-divider-roster" aria-hidden="true">▸</span>
           <button
             type="button"
             class="step-tab"
@@ -402,8 +412,8 @@
             role="tab"
             aria-selected="false"
           >
-            <span class="step-num">03</span>
-            <span class="step-label">CHAMPION SELECT</span>
+            <span class="step-num" id="step-num-roster">02</span>
+            <span class="step-label" id="step-label-roster">CHAMPION SELECT</span>
           </button>
         </div>
 
@@ -420,16 +430,16 @@
             type="button"
             class="step-nav-quick-btn"
             id="btn-nav-commence"
-            title="Launch straight into the arena with the active lineup"
+            title="Launch straight into battle with the active lineup"
           >
-            <span>⚔ QUICK LAUNCH</span>
+            <span id="nav-commence-label">⚔ START MATCH</span>
           </button>
         </div>
       </nav>
 
       <!-- =========================================================================
-           STEP 1: TITLE SANCTUM (#landing-step-title)
-           Live HD-2D battle arena breathes clearly behind the Forged Sanctum Plaque
+           STEP 1: OVERHAULED DUAL-PILLAR TITLE SCREEN (#landing-step-title)
+           Zero Background Arena Simulation • Strictly Separated VS Mode vs Adventure Mode
            ========================================================================= -->
       <div
         id="landing-step-title"
@@ -437,94 +447,109 @@
         role="tabpanel"
         aria-labelledby="step-tab-title"
       >
-        <div class="sanctum-plaque">
-          <!-- Ornate Pixel-Crisp Crossed Runeblade & Sanctuary Crest Divider -->
-          <div class="sanctum-crest-divider" aria-hidden="true">
-            <span class="crest-line crest-line-left"></span>
-            <svg
-              class="sanctum-crest-svg"
-              width="52"
-              height="26"
-              viewBox="0 0 52 26"
-              shape-rendering="crispEdges"
-            >
-              <!-- Outer brass diamond frame -->
-              <rect x="24" y="1" width="4" height="2" fill="#d4af37" />
-              <rect x="22" y="3" width="8" height="2" fill="#d4af37" />
-              <rect x="20" y="5" width="12" height="2" fill="#9a762d" />
-              <rect x="18" y="7" width="16" height="12" fill="#090c14" />
-              <rect x="16" y="9" width="2" height="8" fill="#d4af37" />
-              <rect x="34" y="9" width="2" height="8" fill="#d4af37" />
-              <rect x="20" y="19" width="12" height="2" fill="#9a762d" />
-              <rect x="22" y="21" width="8" height="2" fill="#d4af37" />
-              <rect x="24" y="23" width="4" height="2" fill="#d4af37" />
-              <!-- Left & Right Forged Blade Wings -->
-              <rect x="2" y="12" width="12" height="2" fill="#785c28" />
-              <rect x="6" y="10" width="8" height="2" fill="#d4af37" />
-              <rect x="38" y="12" width="12" height="2" fill="#785c28" />
-              <rect x="38" y="10" width="8" height="2" fill="#d4af37" />
-              <!-- Central Vertical Runeblade & Ivory Core -->
-              <rect x="25" y="4" width="2" height="18" fill="#f4f1ea" />
-              <rect x="21" y="12" width="10" height="2" fill="#d4af37" />
-              <rect x="24" y="11" width="4" height="4" fill="#38bdf8" />
-            </svg>
-            <span class="crest-line crest-line-right"></span>
-          </div>
+        <div class="sanctum-plaque sanctum-dual-shell">
+          <header class="sanctum-hero-head">
+            <div class="sanctum-crest-divider" aria-hidden="true">
+              <span class="crest-line crest-line-left"></span>
+              <svg
+                class="sanctum-crest-svg"
+                width="52"
+                height="26"
+                viewBox="0 0 52 26"
+                shape-rendering="crispEdges"
+              >
+                <rect x="24" y="1" width="4" height="2" fill="#d4af37" />
+                <rect x="22" y="3" width="8" height="2" fill="#d4af37" />
+                <rect x="20" y="5" width="12" height="2" fill="#9a762d" />
+                <rect x="18" y="7" width="16" height="12" fill="#090c14" />
+                <rect x="16" y="9" width="2" height="8" fill="#d4af37" />
+                <rect x="34" y="9" width="2" height="8" fill="#d4af37" />
+                <rect x="20" y="19" width="12" height="2" fill="#9a762d" />
+                <rect x="22" y="21" width="8" height="2" fill="#d4af37" />
+                <rect x="24" y="23" width="4" height="2" fill="#d4af37" />
+                <rect x="2" y="12" width="12" height="2" fill="#785c28" />
+                <rect x="6" y="10" width="8" height="2" fill="#d4af37" />
+                <rect x="38" y="12" width="12" height="2" fill="#785c28" />
+                <rect x="38" y="10" width="8" height="2" fill="#d4af37" />
+                <rect x="25" y="4" width="2" height="18" fill="#f4f1ea" />
+                <rect x="21" y="12" width="10" height="2" fill="#d4af37" />
+                <rect x="24" y="11" width="4" height="4" fill="#38bdf8" />
+              </svg>
+              <span class="crest-line crest-line-right"></span>
+            </div>
 
-          <h1 class="sanctum-title">ARCANE <span>VS.</span> STEEL</h1>
-          <p class="sanctum-subtitle">
-            HD-2D AUTONOMOUS ARENA BATTLER • 11 SOVEREIGN CHAMPIONS
-          </p>
+            <h1 class="sanctum-title">ARCANE <span>VS.</span> STEEL</h1>
+            <p class="sanctum-subtitle">
+              CHOOSE YOUR REALM • 11 HD-2D SOVEREIGN CHAMPIONS @ 30FPS
+            </p>
+          </header>
 
-          <div class="sanctum-rule" aria-hidden="true"></div>
-
-          <div class="sanctum-actions">
-            <button type="button" class="sanctum-btn sanctum-btn-gold" id="btn-go-mode">
-              <span class="sanctum-btn-mark">01</span>
-              <span class="sanctum-btn-body">
-                <strong class="sanctum-btn-title">ENTER BATTLE SETUP</strong>
-                <span class="sanctum-btn-sub">CHOOSE FORMAT, SANDBOX RULES &amp; ARENA REALM</span>
-              </span>
-              <span class="sanctum-btn-arrow">→</span>
+          <div class="sanctum-gateway-grid" role="group" aria-label="Select Primary Game Mode">
+            <!-- PILLAR I: DEDICATED VERSUS ARENA GATEWAY -->
+            <button type="button" class="gateway-pillar gateway-vs" id="btn-go-mode">
+              <div class="gateway-top-row">
+                <span class="gateway-kicker">REALM I • ARENA DUELS</span>
+                <span class="gateway-emblem" aria-hidden="true">
+                  <svg width="28" height="28" viewBox="0 0 28 28" shape-rendering="crispEdges">
+                    <rect x="4" y="20" width="4" height="4" fill="#9a762d" />
+                    <rect x="8" y="16" width="4" height="4" fill="#e2e8f0" />
+                    <rect x="12" y="12" width="4" height="4" fill="#f8fafc" />
+                    <rect x="16" y="8" width="4" height="4" fill="#38bdf8" />
+                    <rect x="20" y="4" width="4" height="4" fill="#bae6fd" />
+                    <rect x="20" y="20" width="4" height="4" fill="#9a762d" />
+                    <rect x="16" y="16" width="4" height="4" fill="#e2e8f0" />
+                    <rect x="8" y="8" width="4" height="4" fill="#fbbf24" />
+                    <rect x="4" y="4" width="4" height="4" fill="#fef08a" />
+                  </svg>
+                </span>
+              </div>
+              <strong class="gateway-title">VERSUS MODE</strong>
+              <span class="gateway-format-line">1V1 DUEL • TAG VS RELAY</span>
+              <p class="gateway-desc">
+                Head-to-head arena battles and 2v2 Tag VS relays across 6 sanctuary realms with 3-Overdrive Supreme Ultimates.
+              </p>
+              <div class="gateway-cta-strip">
+                <span>ENTER VERSUS ARENA</span>
+                <span class="gateway-arrow" aria-hidden="true">→</span>
+              </div>
             </button>
 
-            <button type="button" class="sanctum-btn sanctum-btn-iron" id="btn-go-roster">
-              <span class="sanctum-btn-mark">02</span>
-              <span class="sanctum-btn-body">
-                <strong class="sanctum-btn-title">CHAMPION SELECT</strong>
-                <span class="sanctum-btn-sub">DRAFT LINEUP &amp; INSPECT SUPREME ULTIMATES</span>
-              </span>
-              <span class="sanctum-btn-arrow">→</span>
-            </button>
-
-            <button type="button" class="sanctum-btn sanctum-btn-adventure" id="btn-title-adventure">
-              <span class="sanctum-btn-mark">🔥</span>
-              <span class="sanctum-btn-body">
-                <strong class="sanctum-btn-title">ADVENTURE CAMPAIGN (11 CHAMPIONS)</strong>
-                <span class="sanctum-btn-sub">CHOOSE ANY HERO • 4-REALM GAUNTLET &amp; COLOSSAL BOSS</span>
-              </span>
-              <span class="sanctum-btn-arrow">▸</span>
-            </button>
-
-            <button type="button" class="sanctum-btn sanctum-btn-spectate" id="btn-title-quick-duel">
-              <span class="sanctum-btn-mark">⚔</span>
-              <span class="sanctum-btn-body">
-                <strong class="sanctum-btn-title">QUICK SPECTATE / RANDOM DUEL</strong>
-                <span class="sanctum-btn-sub">RANDOMIZE CHAMPIONS &amp; ENTER THE ARENA INSTANTLY</span>
-              </span>
-              <span class="sanctum-btn-arrow">▸</span>
+            <!-- PILLAR II: DEDICATED ADVENTURE CAMPAIGN GATEWAY -->
+            <button type="button" class="gateway-pillar gateway-adventure" id="btn-title-adventure">
+              <div class="gateway-top-row">
+                <span class="gateway-kicker">REALM II • ACTION RPG</span>
+                <span class="gateway-emblem" aria-hidden="true">
+                  <svg width="28" height="28" viewBox="0 0 28 28" shape-rendering="crispEdges">
+                    <rect x="12" y="3" width="4" height="4" fill="#fef08a" />
+                    <rect x="10" y="7" width="8" height="4" fill="#fb923c" />
+                    <rect x="8" y="11" width="12" height="6" fill="#ea580c" />
+                    <rect x="12" y="11" width="4" height="6" fill="#fde047" />
+                    <rect x="6" y="17" width="16" height="4" fill="#9a3412" />
+                    <rect x="4" y="21" width="20" height="4" fill="#d4af37" />
+                  </svg>
+                </span>
+              </div>
+              <strong class="gateway-title">ADVENTURE MODE</strong>
+              <span class="gateway-format-line">SOLO CAMPAIGN • 4 REALMS + BOSS</span>
+              <p class="gateway-desc">
+                Command any champion through a 4-realm monster gauntlet with 2.5D evade skills, RPG Skill Tree &amp; Colossal Boss Malphas.
+              </p>
+              <div class="gateway-cta-strip">
+                <span>ENTER ADVENTURE</span>
+                <span class="gateway-arrow" aria-hidden="true">→</span>
+              </div>
             </button>
           </div>
 
           <footer class="sanctum-footer" id="title-status-footer">
-            MODE: 2V2 BRAWL • ARENA: AUTO REALM • SANDBOX ∞ HP: ON
+            SEPARATED ARENA &amp; CAMPAIGN REALMS • ZERO BACKGROUND LOAD • INSTANT READY
           </footer>
         </div>
       </div>
 
       <!-- =========================================================================
-           STEP 2: SELECT BATTLE MODE & ARENA (#landing-step-mode)
-           4 Spacious Forged Mode Cards + Sandbox Bar + 6-Stage Pixel Thumbnail Gallery
+           STEP 2: VERSUS MODE & ARENA SETUP (#landing-step-mode)
+           Strictly Isolated to VS Formats: 1V1 Sovereign Duel + Tag VS
            ========================================================================= -->
       <div
         id="landing-step-mode"
@@ -534,17 +559,17 @@
         hidden
       >
         <div class="mode-arena-shell">
-          <!-- Section A: Choose Battle Format -->
-          <section class="setup-section" aria-label="Choose Battle Format">
+          <!-- Section A: Choose Versus Battle Format -->
+          <section class="setup-section" aria-label="Choose Versus Battle Format">
             <div class="setup-section-head">
-              <span class="setup-kicker">SECTION I • BATTLE FORMAT</span>
-              <h2 class="setup-heading">SELECT COMBAT PROTOCOL</h2>
+              <span class="setup-kicker">SECTION I • VERSUS FORMAT</span>
+              <h2 class="setup-heading">SELECT VERSUS PROTOCOL</h2>
             </div>
 
             <div class="mode-cards-grid" role="group" aria-label="Battle Mode Selector">
-              <button type="button" class="forged-mode-card mode-pill" id="mode-btn-1v1" data-mode="1v1">
+              <button type="button" class="forged-mode-card mode-pill active-mode" id="mode-btn-1v1" data-mode="1v1">
                 <div class="mode-card-top">
-                  <span class="mode-roman">FORMAT I</span>
+                  <span class="mode-roman">FORMAT I • DUEL</span>
                   <span class="mode-active-seal">SELECTED</span>
                 </div>
                 <div class="mode-card-title">1V1 SOVEREIGN DUEL</div>
@@ -556,43 +581,40 @@
 
               <button
                 type="button"
-                class="forged-mode-card mode-pill active-mode"
+                class="forged-mode-card mode-pill"
                 id="mode-btn-2v2-brawl"
                 data-mode="2v2_brawl"
+                hidden
               >
                 <div class="mode-card-top">
-                  <span class="mode-roman">FORMAT II • SIGNATURE</span>
+                  <span class="mode-roman">LEGACY</span>
                   <span class="mode-active-seal">SELECTED</span>
                 </div>
                 <div class="mode-card-title">2V2 CHAOS BRAWL</div>
-                <div class="mode-card-meta">4 CHAMPIONS • SIMULTANEOUS WARFARE</div>
-                <p class="mode-card-desc">
-                  All four champions clash on-screen at once with synchronized Twin-Soul Assists &amp; Avenger Overdrive surges.
-                </p>
+                <div class="mode-card-meta">4 CHAMPIONS</div>
+                <p class="mode-card-desc">Simultaneous 2v2 arena brawl.</p>
               </button>
 
               <button type="button" class="forged-mode-card mode-pill" id="mode-btn-2v2-tag" data-mode="2v2_tag">
                 <div class="mode-card-top">
-                  <span class="mode-roman">FORMAT III</span>
+                  <span class="mode-roman">FORMAT II • TAG RELAY</span>
                   <span class="mode-active-seal">SELECTED</span>
                 </div>
-                <div class="mode-card-title">2V2 TAG RELAY</div>
+                <div class="mode-card-title">TAG VS</div>
                 <div class="mode-card-meta">4 CHAMPIONS • POINT &amp; RESERVE TAG</div>
                 <p class="mode-card-desc">
                   Point champions duel while partners recover on Sanctuary pedestals, firing cover volleys &amp; leaping in on Tag Swaps.
                 </p>
               </button>
 
-              <button type="button" class="forged-mode-card mode-pill" id="mode-btn-adventure" data-mode="adventure">
+              <button type="button" class="forged-mode-card mode-pill" id="mode-btn-adventure" data-mode="adventure" hidden>
                 <div class="mode-card-top">
-                  <span class="mode-roman">FORMAT IV • ARCADE</span>
+                  <span class="mode-roman">CAMPAIGN</span>
                   <span class="mode-active-seal">SELECTED</span>
                 </div>
                 <div class="mode-card-title">ADVENTURE CAMPAIGN</div>
-                <div class="mode-card-meta">ALL 11 CHAMPIONS • 4 REALMS + COLOSSAL BOSS</div>
-                <p class="mode-card-desc">
-                  Select any of the 11 champions for a 2.5D monster gauntlet with RPG Skill Tree leveling &amp; Colossal Boss Malphas.
-                </p>
+                <div class="mode-card-meta">ALL 11 CHAMPIONS</div>
+                <p class="mode-card-desc">Solo 2.5D Adventure Mode (entered from Title Screen).</p>
               </button>
             </div>
           </section>
@@ -659,14 +681,14 @@
             <div class="adv-stage-lock-banner hidden" id="adv-stage-lock-banner">
               <div class="adv-stage-lock-badge">AUTO: 4-ZONE CAMPAIGN MAP</div>
               <p class="adv-stage-lock-desc">
-                Continuous 4,800px 2.5D journey across <strong>Eclipse Sanctuary → Cursed Starwood → Abyssal Bone-Gate → Throne of the Black Pit</strong> with mortal RPG HP, Level-Up Skill Tree &amp; Colossal Boss Malphas.
+                Continuous 9,600px 2.5D journey across <strong>Eclipse Sanctuary → Cursed Starwood → Abyssal Bone-Gate → Throne of the Black Pit</strong> with mortal RPG HP, Level-Up Skill Tree &amp; Colossal Boss Malphas.
               </p>
             </div>
 
             <div class="stage-gallery-grid" id="stage-gallery-grid" role="group" aria-label="Arena Stage Gallery">
               <button type="button" class="stage-card stage-pill active-stage" id="stage-btn-auto" data-stage="auto">
                 <div class="stage-thumb-wrap stage-thumb-auto">
-                  <img src="assets/sprites/arena_bg.png" alt="Auto Rotating Realm" loading="eager" />
+                  <img src="assets/sprites/arena_bg.png?v=30fps109" alt="Auto Rotating Realm" loading="lazy" decoding="async" />
                   <span class="stage-auto-emblem">❖</span>
                 </div>
                 <div class="stage-card-meta">
@@ -677,7 +699,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-cathedral" data-stage="cathedral">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_bg.png" alt="Eclipse Cathedral" loading="eager" />
+                  <img src="assets/sprites/arena_bg.png?v=30fps109" alt="Eclipse Cathedral" loading="lazy" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">ECLIPSE CATHEDRAL</strong>
@@ -687,7 +709,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-sanctuary" data-stage="sanctuary">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_sanctuary.png" alt="Radiant Sanctuary" loading="eager" />
+                  <img src="assets/sprites/arena_sanctuary.png?v=30fps109" alt="Radiant Sanctuary" loading="lazy" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">RADIANT SANCTUARY</strong>
@@ -697,7 +719,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-sylvan" data-stage="sylvan">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_sylvan.png" alt="Sylvan Starwood" loading="eager" />
+                  <img src="assets/sprites/arena_sylvan.png?v=30fps109" alt="Sylvan Starwood" loading="lazy" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">SYLVAN STARWOOD</strong>
@@ -707,7 +729,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-boneyard" data-stage="boneyard">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_boneyard.png" alt="Abyssal Necropolis" loading="eager" />
+                  <img src="assets/sprites/arena_boneyard.png?v=30fps109" alt="Abyssal Necropolis" loading="lazy" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">ABYSSAL NECROPOLIS</strong>
@@ -717,7 +739,7 @@
 
               <button type="button" class="stage-card stage-pill" id="stage-btn-clocktower" data-stage="clocktower">
                 <div class="stage-thumb-wrap">
-                  <img src="assets/sprites/arena_clocktower.png" alt="Astral Clocktower" loading="eager" />
+                  <img src="assets/sprites/arena_clocktower.png?v=30fps109" alt="Astral Clocktower" loading="lazy" decoding="async" />
                 </div>
                 <div class="stage-card-meta">
                   <strong class="stage-card-name">ASTRAL CLOCKTOWER</strong>
@@ -730,10 +752,10 @@
           <!-- Step 2 Footer Navigation -->
           <footer class="mode-step-footer">
             <button type="button" class="forged-back-btn" id="btn-mode-back">
-              <span>← BACK TO TITLE</span>
+              <span>← TITLE SCREEN</span>
             </button>
             <div class="mode-footer-status" id="mode-step-summary">
-              2V2 CHAOS BRAWL • AUTO REALM • SANDBOX ∞ HP: ON
+              1V1 SOVEREIGN DUEL • AUTO REALM • SANDBOX ∞ HP: ON
             </div>
             <button type="button" class="forged-next-cta" id="btn-mode-next">
               <span>PROCEED TO CHAMPION SELECT →</span>
@@ -778,14 +800,14 @@
             </div>
 
             <div class="matchup-center-crest">
-              <div class="matchup-vs-badge" id="matchup-vs-text">2V2</div>
+              <div class="matchup-vs-badge" id="matchup-vs-text">1V1</div>
               <button
                 type="button"
                 class="roster-config-chip"
                 id="btn-roster-config-badge"
-                title="Click to adjust Battle Mode, Sandbox ∞ HP, or Arena Stage"
+                title="Click to adjust Versus Format, Sandbox ∞ HP, or Arena Stage"
               >
-                <span id="roster-config-badge-text">2V2 BRAWL • AUTO REALM • ∞ HP ON</span>
+                <span id="roster-config-badge-text">1V1 SOVEREIGN DUEL • AUTO REALM • SANDBOX ∞ HP: ON</span>
               </button>
             </div>
 
@@ -1068,15 +1090,15 @@
 
               <footer class="landing-actions">
                 <button id="btn-roster-back-mode" class="iron-btn roster-nav-btn" type="button">
-                  <span>← MODE &amp; ARENA</span>
+                  <span id="roster-back-label">← VS SETUP</span>
                 </button>
                 <button id="btn-random-duel" class="iron-btn roster-nav-btn" type="button">
                   <span>❖ RANDOMIZE</span>
                 </button>
                 <button id="btn-start-duel" class="landing-cta-btn" type="button">
-                  <span class="cta-headline">⚔ COMMENCE BATTLE</span>
+                  <span class="cta-headline" id="cta-headline-text">⚔ COMMENCE BATTLE</span>
                   <span class="cta-subline" id="start-duel-text">
-                    AETHELGARD + TORGAR VS. MALAKOR + IGNIS SOL
+                    AETHELGARD VS. MALAKOR
                   </span>
                 </button>
               </footer>
@@ -1214,11 +1236,14 @@
           <button id="btn-victory-select" class="iron-btn" type="button">
             ROSTER SELECT
           </button>
+          <button id="btn-victory-title" class="iron-btn pause-title-btn" type="button">
+            TITLE SCREEN
+          </button>
         </div>
       </div>
     </div>
   </main>
 
-  <script type="module" src="src/main.js?v=30fps108"></script>
+  <script type="module" src="src/main.js?v=30fps109"></script>
 </body>
 </html>
