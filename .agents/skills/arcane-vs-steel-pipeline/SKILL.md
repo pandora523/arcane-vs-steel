@@ -17,10 +17,13 @@ description: Mandatory HD-2D 30fps sprite sheet, VFX sheet, portrait, champion, 
   4. `Seraphina` (`Priestess.js`, `priestess`) — Strictly grounded `foot_y=99.0` Auto/Skill rig (Wing Vault `86px` preserved) + `FINAL GRACE` (`+30%` heal + `740` beam at `t = 3.03s`).
   5. `Kaze-Maru / Ronin` (`Ronin.js`, `ronin`) — Two-handed *Chūdan-no-Kamae* `Row 1` walk, flesh-cutting gap-close 4-Auto, & 3-beat `AMAKAKERU: SHOGUNATE REALM SLICE` (`shogunate` unburned w/ raining `Sakura Fubuki` blossoms; fuses to `shogunate_inferno` when `inferno` is active or `shogunate_glacial` when `glacial` is active).
   6. `Chronos` (`Chronomancer.js`, `chronomancer`) — Close-quarters 4-slice Twin Clock-Blade/Clone melee (`0` `clock_gear` auto spam), Chrono-Schism Rewind, Mid-Air Time-Stop + `ETERNAL ZERO` (`680` dmg at `t = 3.53s`).
+- **Mandatory Pre-Change Fallback Backup (`fallback_backups/`)**:
+  - Before modifying project code/assets in any task, always run `bash scripts/create_fallback_backup.sh <label>` so a clean fallback snapshot (`RESTORE_THIS_BACKUP.sh` + `SHA256SUMS.txt`) is saved in `fallback_backups/`.
 - **Mandatory Pre-Push Web Test Suites**:
   - `node scripts/tests/check_all_ult_shader_boxes.mjs`
   - `node scripts/tests/test_all_heroes_gameloop.mjs`
-  - `node scripts/tests/benchmark_roster_balance.mjs`
+- **Character Balance Benchmark Policy (`benchmark_roster_balance.mjs`)**:
+  - **NEVER run `scripts/tests/benchmark_roster_balance.mjs` or adjust character combat balance during normal UI, engine, stage, Adventure, audio, or platform tasks — ONLY run `benchmark_roster_balance.mjs` when the user explicitly asks to test or change character balance!**
 
 ## 2. Core Non-Negotiable HD-2D Sprite & Rendering Rules (Web & Native Swift/SpriteKit/Metal)
 1. **Nearest-Neighbor Pixel Purity (`0` Bilinear Blur, `0` Emojis)**:

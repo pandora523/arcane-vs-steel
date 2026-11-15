@@ -14,3 +14,10 @@
    - Both the **Web version** (root `index.html`, `style.css`, `src/`, `vercel.json` auto-deployed to Vercel on `git push origin main`) and the **Native Swift iOS/macOS version** are active first-class targets.
    - Keep all Xcode / Swift files cleanly isolated inside a dedicated subfolder (e.g. `apple/`) or sibling folder so root Web/Vercel builds and URLs stay 100% untouched and fast.
    - When running locally on macOS, you can develop & push Web updates to Vercel AND build/launch iOS Simulator & macOS targets via `xcodebuild`, `xcrun simctl`, and `open apple/<Project>.xcodeproj`.
+
+4. **Mandatory Pre-Change Fallback Backup (`fallback_backups/`)**:
+   - Before modifying project code/assets in any task, always run `bash scripts/create_fallback_backup.sh <label>` so a clean fallback snapshot (`RESTORE_THIS_BACKUP.sh` + `SHA256SUMS.txt`) is saved in `fallback_backups/`.
+
+5. **Verification & Character Balance Policy (Never Run Balance Benchmarks Unasked)**:
+   - Routine pre-push Web verification runs ONLY the fast suites: `node scripts/tests/check_all_ult_shader_boxes.mjs` and `node scripts/tests/test_all_heroes_gameloop.mjs`.
+   - **NEVER run `scripts/tests/benchmark_roster_balance.mjs` or adjust character combat balance during normal UI, engine, stage, Adventure, audio, or platform tasks — ONLY run `benchmark_roster_balance.mjs` when the user explicitly asks to test or change character balance!**

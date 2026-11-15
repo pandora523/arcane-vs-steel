@@ -14,3 +14,5 @@ xcuserdata/
 *.xcuserstate
 apple/build/
 apple/.build/
+fallback_backups/
+dist/
