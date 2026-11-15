@@ -298,6 +298,7 @@ export class VFXManager {
   }
 
   spawnSlash(x, y, radius, startAngle, endAngle, color = '#38bdf8', duration = 0.28) {
+    if (this.slashes.length >= 32) this.slashes.shift();
     this.slashes.push({ x, y, radius, startAngle, endAngle, color, life: 0, maxLife: duration });
     // Emit glowing arc sparks along the slash wave!
     for (let i = 0; i < 8; i++) {
@@ -318,6 +319,7 @@ export class VFXManager {
   }
 
   spawnShockwave(x, y, maxRadius, color = '#38bdf8', duration = 0.42, flat = false, vertical = false) {
+    if (this.shockwaves.length >= 32) this.shockwaves.shift();
     this.shockwaves.push({ x, y, maxRadius, color, life: 0, maxLife: duration, flat, vertical });
   }
 
@@ -336,6 +338,7 @@ export class VFXManager {
   }
 
   spawnLightning(x, topY, bottomY, color = '#fde08a', mainColor = '#38bdf8') {
+    if (this.lightnings.length >= 24) this.lightnings.shift();
     const pts = [{ x, y: topY }];
     const steps = 12;
     for (let i = 1; i < steps; i++) {
@@ -349,6 +352,7 @@ export class VFXManager {
   }
 
   spawnFlamePillar(x, groundY, owner, target, opts = {}) {
+    if (this.pillars.length >= 24) this.pillars.shift();
     const resolvedGy =
       owner?.game?.isAdventureMode?.() && target && Number.isFinite(target.groundY) && owner.team === 1
         ? target.groundY
@@ -370,6 +374,7 @@ export class VFXManager {
   }
 
   spawnTornado(opts) {
+    if (this.tornados.length >= 12) this.tornados.shift();
     this.tornados.push({
       x: opts.x,
       groundY: opts.groundY,
@@ -386,6 +391,7 @@ export class VFXManager {
   }
 
   spawnBeam(optsOrX1, y1, x2, y2, color = '#c084fc', width = 24, maxLife = 0.45) {
+    if (this.beams.length >= 12) this.beams.shift();
     const opts =
       typeof optsOrX1 === 'object'
         ? optsOrX1
@@ -404,6 +410,7 @@ export class VFXManager {
   }
 
   spawnCrystalSpike(opts) {
+    if (this.crystalSpikes.length >= 32) this.crystalSpikes.shift();
     this.crystalSpikes.push({
       x: opts.x,
       groundY: opts.groundY || 520,
@@ -424,6 +431,7 @@ export class VFXManager {
   }
 
   spawnEclipseSupernova(opts) {
+    if (this.supernovas.length >= 8) this.supernovas.shift();
     this.supernovas.push({
       x: opts.x,
       y: opts.y || 185,
@@ -437,6 +445,7 @@ export class VFXManager {
   }
 
   spawnSkyStrike(opts) {
+    if (this.skyStrikes.length >= 36) this.skyStrikes.shift();
     this.skyStrikes.push({
       x: opts.x,
       y: opts.y ?? -180,
@@ -480,6 +489,7 @@ export class VFXManager {
   }
 
   spawnDamageText(x, y, amount, isCrit = false, label = '', customColor = '') {
+    if (this.texts.length >= 48) this.texts.shift();
     this.texts.push({
       x: x + (Math.random() - 0.5) * 26,
       y: y - 24,
@@ -3040,7 +3050,9 @@ export class VFXManager {
 
   renderFloatingTexts(ctx) {
     // 1. BORDERLESS OVERHEAD SPECIAL MOVE & ULTIMATE ART FLOATING CALLOUTS ABOVE CHARACTER HEAD
-    const activeBanners = [];
+    const activeBanners = this._activeBanners || (this._activeBanners = []);
+    const bannerPool = this._bannerPool || (this._bannerPool = []);
+    let bannerCount = 0;
     for (let idx = 0; idx < this.castAuras.length; idx++) {
       const ca = this.castAuras[idx];
       if (!ca.fighter || ca.fighter.isDead) continue;
@@ -3054,12 +3066,20 @@ export class VFXManager {
       const floatLift = Math.round(Math.min(14, t * 20) / 2) * 2;
       let headY = Math.round((ca.fighter.y - 238 - floatLift) / 2) * 2;
 
-      for (const prev of activeBanners) {
+      for (let bi = 0; bi < bannerCount; bi++) {
+        const prev = activeBanners[bi];
         if (Math.abs(headX - prev.x) < 210 && Math.abs(headY - prev.y) < 42) {
           headY = prev.y - 44;
         }
       }
-      activeBanners.push({ x: headX, y: headY });
+      let slot = bannerPool[bannerCount];
+      if (!slot) {
+        slot = { x: 0, y: 0 };
+        bannerPool[bannerCount] = slot;
+      }
+      slot.x = headX;
+      slot.y = headY;
+      activeBanners[bannerCount++] = slot;
 
       const heroLabel = (ca.fighter.name || ca.fighter.heroId || '').toUpperCase();
       const headerTag = heroLabel ? `* ${heroLabel} *` : ca.tag;
@@ -3077,11 +3097,15 @@ export class VFXManager {
       ctx.save();
       ctx.translate(headX, headY);
       ctx.scale(halfW, 20);
-      const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
-      veil.addColorStop(0, 'rgba(3, 6, 14, 0.65)');
-      veil.addColorStop(0.65, 'rgba(3, 6, 14, 0.28)');
-      veil.addColorStop(1, 'rgba(3, 6, 14, 0)');
-      ctx.fillStyle = veil;
+      let veil = ctx.__avsTextVeilGrad;
+      if (!veil && typeof ctx.createRadialGradient === 'function') {
+        veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
+        veil.addColorStop(0, 'rgba(3, 6, 14, 0.65)');
+        veil.addColorStop(0.65, 'rgba(3, 6, 14, 0.28)');
+        veil.addColorStop(1, 'rgba(3, 6, 14, 0)');
+        ctx.__avsTextVeilGrad = veil;
+      }
+      if (veil) ctx.fillStyle = veil;
       ctx.beginPath();
       ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
       ctx.fill();

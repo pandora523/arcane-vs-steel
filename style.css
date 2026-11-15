@@ -4776,6 +4776,16 @@ html.is-mobile-landscape .pause-adv-hint {
   display: none;
 }
 
-
-
-
+/* Thermal & Compositor Optimization: pause infinite @keyframes animations on hidden overlays & inactive panels */
+.hidden,
+.hidden *,
+[hidden],
+[hidden] *,
+#app:not(.is-landing-open) .landing-overlay,
+#app:not(.is-landing-open) .landing-overlay *,
+.landing-step-panel:not(.is-active-step),
+.landing-step-panel:not(.is-active-step) *,
+#app:not(.is-adventure-active) .adventure-controls,
+#app:not(.is-adventure-active) .adventure-controls * {
+  animation-play-state: paused !important;
+}

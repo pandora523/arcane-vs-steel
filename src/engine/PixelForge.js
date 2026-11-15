@@ -101,6 +101,18 @@ export class PixelForge {
     img._deferredSrc = img._origSrc;
     img._deferredOnLoad = img._origOnLoad || null;
     img.removeAttribute('src');
+    if (typeof window.__avsEvictImageCache === 'function') {
+      window.__avsEvictImageCache(img);
+    }
+  }
+
+  static _releaseCharSetNormalMap(entry) {
+    if (!entry || !entry.normalMapData) return;
+    if (entry.normalMapData.litCanvas) {
+      entry.normalMapData.litCanvas.width = 0;
+      entry.normalMapData.litCanvas.height = 0;
+    }
+    entry.normalMapData = null;
   }
 
   static ensureAllPortraitsLoaded() {
@@ -162,6 +174,7 @@ export class PixelForge {
         if (!keepHeroes.has(mk) && this.assets[mk]) {
           this.releaseImage(this.assets[mk].sheet);
           this.releaseImage(this.assets[mk].colossus);
+          this._releaseCharSetNormalMap(this.assets[mk]);
         }
       }
     }
@@ -189,6 +202,7 @@ export class PixelForge {
       this.releaseImage(entry.vfx);
       this.releaseImage(entry.meteor);
       this.releaseImage(entry.companions);
+      this._releaseCharSetNormalMap(entry);
       if (!keepSharedWings && entry.wings) {
         this.releaseImage(entry.wings);
       }
@@ -554,6 +568,8 @@ export class PixelForge {
     tCtx.drawImage(sheet, 0, 0, wLow, hLow);
 
     const srcData = tCtx.getImageData(0, 0, wLow, hLow).data;
+    tmpCanvas.width = 0;
+    tmpCanvas.height = 0;
     const totalPixels = wLow * hLow;
     const heightMap = new Float32Array(totalPixels);
     const distMap = new Float32Array(totalPixels);

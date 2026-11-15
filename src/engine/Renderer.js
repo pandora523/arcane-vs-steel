@@ -127,13 +127,49 @@ export class Renderer {
     window.addEventListener('resize', () => this.resize());
   }
 
-  releaseStageCutoutCaches() {
+  _releaseCanvas(c) {
+    if (c) {
+      c.width = 0;
+      c.height = 0;
+    }
+  }
+
+  releaseStageCutoutCaches(includeAdventure = true) {
+    this._releaseCanvas(this.flameOnlyCanvas);
+    this._releaseCanvas(this.boneyardFlameCanvas);
+    this._releaseCanvas(this.sylvanWaterfallCanvas);
+    this._releaseCanvas(this.infernoMagmaCanvas);
+    this._releaseCanvas(this.shogunateInfernoFlameCanvas);
     this.flameOnlyCanvas = null;
     this.boneyardFlameCanvas = null;
     this.sylvanWaterfallCanvas = null;
     this.infernoMagmaCanvas = null;
     this.shogunateInfernoFlameCanvas = null;
-    if (this._stageUpperVaultCache) this._stageUpperVaultCache.clear();
+    if (this._stageUpperVaultCache) {
+      for (const c of this._stageUpperVaultCache.values()) {
+        this._releaseCanvas(c);
+      }
+      this._stageUpperVaultCache.clear();
+    }
+    if (this._stageWingCompositeCache) {
+      for (const entry of this._stageWingCompositeCache.values()) {
+        this._releaseCanvas(entry?.canvas);
+      }
+      this._stageWingCompositeCache.clear();
+    }
+    if (this._avsStageMosaic?.canvas) {
+      this._releaseCanvas(this._avsStageMosaic.canvas);
+      this._avsStageMosaic = null;
+    }
+    if (this._avsGodRayCanvas?.canvas) {
+      this._releaseCanvas(this._avsGodRayCanvas.canvas);
+      this._avsGodRayCanvas = null;
+    }
+    if (this._godRayGradCache) this._godRayGradCache.clear();
+    if (this._sanctuaryRayGradCache) this._sanctuaryRayGradCache.clear();
+    if (includeAdventure) {
+      AdventureMapRenderer.clearBloomCache?.();
+    }
   }
 
   resetStageOverrides() {
@@ -1280,6 +1316,8 @@ export class Renderer {
     sctx.imageSmoothingEnabled = false;
     sctx.drawImage(img, 0, 0, srcW, sampleH, 0, 0, srcW, sampleH);
     const srcData = sctx.getImageData(0, 0, srcW, sampleH).data;
+    sampleCanvas.width = 0;
+    sampleCanvas.height = 0;
 
     const vaultCanvas = document.createElement('canvas');
     vaultCanvas.width = srcW;
@@ -1453,8 +1491,120 @@ export class Renderer {
     }
 
     vctx.putImageData(outImg, 0, 0);
+    if (this._stageUpperVaultCache.size >= 4) {
+      const oldestKey = this._stageUpperVaultCache.keys().next().value;
+      this._releaseCanvas(this._stageUpperVaultCache.get(oldestKey));
+      this._stageUpperVaultCache.delete(oldestKey);
+    }
     this._stageUpperVaultCache.set(cacheKey, vaultCanvas);
     return vaultCanvas;
+  }
+
+  getOrBakeStageWingComposite(img) {
+    if (!img || !img.complete || img.naturalWidth <= 0 || typeof document === 'undefined') {
+      return null;
+    }
+    if (!this._stageWingCompositeCache) {
+      this._stageWingCompositeCache = new Map();
+    }
+    const cacheKey = img.src || img;
+    const existing = this._stageWingCompositeCache.get(cacheKey);
+    if (existing && existing.canvas && existing.canvas.width > 0) {
+      return existing;
+    }
+
+    const srcW = img.naturalWidth || 640;
+    const srcH = img.naturalHeight || 360;
+    const upperVault = this.getOrBakeStageUpperVault(img);
+    const vaultH = upperVault ? upperVault.height : 0;
+    const floorSrcH = Math.min(srcH, Math.ceil((520 * srcH) / 1080) + 2);
+    const compW = srcW * 3;
+    const compH = vaultH + srcH + floorSrcH;
+
+    const compCanvas = document.createElement('canvas');
+    compCanvas.width = compW;
+    compCanvas.height = compH;
+    const cctx = compCanvas.getContext('2d');
+    if (!cctx) {
+      this._releaseCanvas(compCanvas);
+      return null;
+    }
+    cctx.imageSmoothingEnabled = false;
+
+    if (upperVault && vaultH > 0) {
+      cctx.save();
+      cctx.translate(srcW, 0);
+      cctx.scale(-1, 1);
+      cctx.drawImage(upperVault, 0, 0, srcW, vaultH);
+      cctx.restore();
+
+      cctx.drawImage(upperVault, srcW, 0, srcW, vaultH);
+
+      cctx.save();
+      cctx.translate(srcW * 3, 0);
+      cctx.scale(-1, 1);
+      cctx.drawImage(upperVault, 0, 0, srcW, vaultH);
+      cctx.restore();
+    }
+
+    cctx.save();
+    cctx.translate(srcW, vaultH);
+    cctx.scale(-1, 1);
+    cctx.drawImage(img, 0, 0, srcW, srcH);
+    cctx.restore();
+
+    cctx.drawImage(img, srcW, vaultH, srcW, srcH);
+
+    cctx.save();
+    cctx.translate(srcW * 3, vaultH);
+    cctx.scale(-1, 1);
+    cctx.drawImage(img, 0, 0, srcW, srcH);
+    cctx.restore();
+
+    const mirrorBottomY = vaultH + srcH * 2;
+    cctx.save();
+    cctx.translate(srcW, mirrorBottomY);
+    cctx.scale(-1, -1);
+    cctx.drawImage(img, 0, 0, srcW, srcH);
+    cctx.restore();
+
+    cctx.save();
+    cctx.translate(srcW, mirrorBottomY);
+    cctx.scale(1, -1);
+    cctx.drawImage(img, 0, 0, srcW, srcH);
+    cctx.restore();
+
+    cctx.save();
+    cctx.translate(srcW * 3, mirrorBottomY);
+    cctx.scale(-1, -1);
+    cctx.drawImage(img, 0, 0, srcW, srcH);
+    cctx.restore();
+
+    const fadeTop = vaultH + srcH - (12 * srcH) / 1080;
+    const fadeBot = vaultH + srcH + (520 * srcH) / 1080;
+    const floorFade = cctx.createLinearGradient(0, fadeTop, 0, fadeBot);
+    floorFade.addColorStop(0, 'rgba(4, 5, 10, 0)');
+    floorFade.addColorStop(0.46, 'rgba(4, 5, 10, 0.84)');
+    floorFade.addColorStop(1, '#04050a');
+    cctx.fillStyle = floorFade;
+    cctx.fillRect(0, fadeTop, compW, compH - fadeTop + 1);
+
+    if (this._stageWingCompositeCache.size >= 2) {
+      const oldestKey = this._stageWingCompositeCache.keys().next().value;
+      const evicted = this._stageWingCompositeCache.get(oldestKey);
+      this._releaseCanvas(evicted?.canvas);
+      this._stageWingCompositeCache.delete(oldestKey);
+    }
+
+    const entry = {
+      canvas: compCanvas,
+      srcW,
+      srcH,
+      vaultH,
+      floorSrcH
+    };
+    this._stageWingCompositeCache.set(cacheKey, entry);
+    return entry;
   }
 
   drawHD2DArena(ctx, ww, gy) {
@@ -1478,6 +1628,31 @@ export class Renderer {
     const drawStageImageWithWings = (img, alpha = 1.0) => {
       if (!img || !img.complete || img.naturalWidth <= 0 || alpha <= 0.005) return;
       const bottomY = drawY + drawH;
+      const baked = this.getOrBakeStageWingComposite(img);
+      if (baked && baked.canvas && baked.canvas.width > 0) {
+        const scaleY = drawH / baked.srcH;
+        const vaultDrawH = Math.round(baked.vaultH * scaleY);
+        const floorDrawH = Math.round(baked.floorSrcH * scaleY);
+        const compDrawH = vaultDrawH + drawH + floorDrawH;
+        const compTopY = drawY - vaultDrawH;
+
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, Math.min(1, alpha));
+        ctx.fillStyle = '#04050a';
+        ctx.fillRect(drawX - drawW, compTopY - 960, drawW * 3, 964);
+        ctx.drawImage(baked.canvas, drawX - drawW, compTopY, drawW * 3, compDrawH);
+        if (bottomY + drawH + 4 > compTopY + compDrawH) {
+          ctx.fillRect(
+            drawX - drawW,
+            compTopY + compDrawH - 3,
+            drawW * 3,
+            bottomY + drawH + 8 - (compTopY + compDrawH)
+          );
+        }
+        ctx.restore();
+        return;
+      }
+
       const upperVault = this.getOrBakeStageUpperVault(img);
       const srcH = img.naturalHeight || 360;
       const vaultDrawH = upperVault
@@ -1543,11 +1718,15 @@ export class Renderer {
       ctx.drawImage(img, 0, 0, drawW, drawH);
       ctx.restore();
 
-      const floorFade = ctx.createLinearGradient(0, bottomY - 12, 0, bottomY + 520);
-      floorFade.addColorStop(0, 'rgba(4, 5, 10, 0)');
-      floorFade.addColorStop(0.46, 'rgba(4, 5, 10, 0.84)');
-      floorFade.addColorStop(1, '#04050a');
-      ctx.fillStyle = floorFade;
+      if (this._floorFadeGradBottomY !== bottomY || !this._floorFadeGrad) {
+        const floorFade = ctx.createLinearGradient(0, bottomY - 12, 0, bottomY + 520);
+        floorFade.addColorStop(0, 'rgba(4, 5, 10, 0)');
+        floorFade.addColorStop(0.46, 'rgba(4, 5, 10, 0.84)');
+        floorFade.addColorStop(1, '#04050a');
+        this._floorFadeGrad = floorFade;
+        this._floorFadeGradBottomY = bottomY;
+      }
+      ctx.fillStyle = this._floorFadeGrad;
       ctx.fillRect(drawX - drawW, bottomY - 12, drawW * 3, drawH + 16);
 
       ctx.restore();
@@ -2732,15 +2911,23 @@ export class Renderer {
     if (this.glowGold) ctx.drawImage(this.glowGold, sanctuaryCx - 210, roseY - 160, 420, 320);
 
     // 2. 5 Soft Diagonal Heavenly Sanctuary God-Ray Shafts Streaming Down from the Sky Breach
+    if (!this._sanctuaryRayGradCache) this._sanctuaryRayGradCache = new Map();
     for (let i = -2; i <= 2; i++) {
       const topX = sanctuaryCx - 80 + i * 105;
-      const botX = sanctuaryCx + 40 + i * 165 + Math.sin(t * 1.8 + i) * 18;
+      const midBotX = sanctuaryCx + 40 + i * 165;
+      const botX = midBotX + Math.sin(t * 1.8 + i) * 18;
       const rayW = i === 0 ? 92 : 64;
-      const rayGrad = ctx.createLinearGradient(topX, drawY + 30, botX, gy + 12);
-      rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-      rayGrad.addColorStop(0.22, i === 0 ? 'rgba(255, 255, 255, 0.28)' : 'rgba(125, 211, 252, 0.20)');
-      rayGrad.addColorStop(0.65, 'rgba(56, 189, 248, 0.10)');
-      rayGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+      const gradKey = `${sanctuaryCx}:${drawY}:${gy}:${i}`;
+      let rayGrad = this._sanctuaryRayGradCache.get(gradKey);
+      if (!rayGrad) {
+        if (this._sanctuaryRayGradCache.size >= 15) this._sanctuaryRayGradCache.clear();
+        rayGrad = ctx.createLinearGradient(topX, drawY + 30, midBotX, gy + 12);
+        rayGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+        rayGrad.addColorStop(0.22, i === 0 ? 'rgba(255, 255, 255, 0.28)' : 'rgba(125, 211, 252, 0.20)');
+        rayGrad.addColorStop(0.65, 'rgba(56, 189, 248, 0.10)');
+        rayGrad.addColorStop(1, 'rgba(56, 189, 248, 0)');
+        this._sanctuaryRayGradCache.set(gradKey, rayGrad);
+      }
       ctx.globalAlpha = alpha * (0.72 + 0.22 * Math.sin(t * 3.2 + i * 1.3));
       ctx.fillStyle = rayGrad;
       ctx.beginPath();
@@ -4598,11 +4785,18 @@ export class Renderer {
       const topY = gy - 545;
       const botY = this.adventureMode ? 684 : gy + 16;
       const beamAlpha = baseAlpha + 0.025 * Math.sin(t * 2.1 + s * 1.3);
-      const grad = ctx.createLinearGradient(topX, topY, botX, botY);
-      grad.addColorStop(0, `rgba(${topRgb}, 0)`);
-      grad.addColorStop(0.24, `rgba(${topRgb}, 1)`);
-      grad.addColorStop(0.68, `rgba(${midRgb}, 0.52)`);
-      grad.addColorStop(1, `rgba(${midRgb}, 0)`);
+      if (!this._godRayGradCache) this._godRayGradCache = new Map();
+      const gradKey = `${topY}:${botY}:${topRgb}:${midRgb}`;
+      let grad = this._godRayGradCache.get(gradKey);
+      if (!grad) {
+        if (this._godRayGradCache.size >= 64) this._godRayGradCache.clear();
+        grad = ctx.createLinearGradient(0, topY, 0, botY);
+        grad.addColorStop(0, `rgba(${topRgb}, 0)`);
+        grad.addColorStop(0.24, `rgba(${topRgb}, 1)`);
+        grad.addColorStop(0.68, `rgba(${midRgb}, 0.52)`);
+        grad.addColorStop(1, `rgba(${midRgb}, 0)`);
+        this._godRayGradCache.set(gradKey, grad);
+      }
 
       ctx.fillStyle = grad;
       const wTop = s === 2 ? 78 : 58;
@@ -5518,23 +5712,29 @@ export class Renderer {
       }
       ctx.drawImage(this._vignetteCanvas, 0, 0, w, h);
     } else {
-      const rad = Math.hypot(w * 0.5, h * 0.5);
-      const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, rad * 0.52, w * 0.5, h * 0.5, rad * 1.02);
-      vig.addColorStop(0, 'rgba(2, 3, 7, 0)');
-      vig.addColorStop(1, 'rgba(2, 3, 7, 0.62)');
-      ctx.fillStyle = vig;
+      if (!this._fallbackVigGrads || this._fbVigW !== w || this._fbVigH !== h) {
+        const rad = Math.hypot(w * 0.5, h * 0.5);
+        const vig = ctx.createRadialGradient(w * 0.5, h * 0.5, rad * 0.52, w * 0.5, h * 0.5, rad * 1.02);
+        vig.addColorStop(0, 'rgba(2, 3, 7, 0)');
+        vig.addColorStop(1, 'rgba(2, 3, 7, 0.62)');
+
+        const topG = ctx.createLinearGradient(0, 0, 0, h * 0.18);
+        topG.addColorStop(0, 'rgba(2, 3, 7, 0.72)');
+        topG.addColorStop(1, 'rgba(2, 3, 7, 0)');
+
+        const botG = ctx.createLinearGradient(0, h * 0.80, 0, h);
+        botG.addColorStop(0, 'rgba(2, 3, 7, 0)');
+        botG.addColorStop(1, 'rgba(2, 3, 7, 0.80)');
+
+        this._fallbackVigGrads = { vig, topG, botG };
+        this._fbVigW = w;
+        this._fbVigH = h;
+      }
+      ctx.fillStyle = this._fallbackVigGrads.vig;
       ctx.fillRect(0, 0, w, h);
-
-      const topG = ctx.createLinearGradient(0, 0, 0, h * 0.18);
-      topG.addColorStop(0, 'rgba(2, 3, 7, 0.72)');
-      topG.addColorStop(1, 'rgba(2, 3, 7, 0)');
-      ctx.fillStyle = topG;
+      ctx.fillStyle = this._fallbackVigGrads.topG;
       ctx.fillRect(0, 0, w, h * 0.18);
-
-      const botG = ctx.createLinearGradient(0, h * 0.80, 0, h);
-      botG.addColorStop(0, 'rgba(2, 3, 7, 0)');
-      botG.addColorStop(1, 'rgba(2, 3, 7, 0.80)');
-      ctx.fillStyle = botG;
+      ctx.fillStyle = this._fallbackVigGrads.botG;
       ctx.fillRect(0, h * 0.80, w, h * 0.20);
     }
 
@@ -5565,11 +5765,14 @@ export class Renderer {
       // Soft radial feathered obsidian-elemental veil (fades smoothly to 0 on all edges, zero box!)
       ctx.save();
       ctx.scale(rx, ry);
-      const veil = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1.0);
-      veil.addColorStop(0, 'rgba(3, 6, 15, 0.90)');
-      veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.64)');
-      veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
-      ctx.fillStyle = veil;
+      if (!ctx.__avsEventVeilGrad) {
+        const veil = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1.0);
+        veil.addColorStop(0, 'rgba(3, 6, 15, 0.90)');
+        veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.64)');
+        veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
+        ctx.__avsEventVeilGrad = veil;
+      }
+      ctx.fillStyle = ctx.__avsEventVeilGrad;
       ctx.beginPath();
       ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
       ctx.fill();
@@ -5671,11 +5874,14 @@ export class Renderer {
       // Subtle feathered obsidian backdrop cushion strictly behind the text for 100% legibility (Zero screen wash-out!)
       ctx.save();
       ctx.scale(rx, ry);
-      const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
-      veil.addColorStop(0, 'rgba(3, 6, 15, 0.88)');
-      veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.52)');
-      veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
-      ctx.fillStyle = veil;
+      if (!ctx.__avsCutInVeilGrad) {
+        const veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
+        veil.addColorStop(0, 'rgba(3, 6, 15, 0.88)');
+        veil.addColorStop(0.62, 'rgba(5, 9, 22, 0.52)');
+        veil.addColorStop(1, 'rgba(3, 6, 15, 0)');
+        ctx.__avsCutInVeilGrad = veil;
+      }
+      ctx.fillStyle = ctx.__avsCutInVeilGrad;
       ctx.beginPath();
       ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
       ctx.fill();
@@ -5787,11 +5993,14 @@ export class Renderer {
       ctx.save();
       ctx.translate(kcx, kcy);
       ctx.scale(kw * 0.55, kh * 0.65);
-      const koVeil = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1.0);
-      koVeil.addColorStop(0, 'rgba(4, 7, 15, 0.84)');
-      koVeil.addColorStop(0.6, 'rgba(8, 12, 24, 0.48)');
-      koVeil.addColorStop(1, 'rgba(4, 7, 15, 0)');
-      ctx.fillStyle = koVeil;
+      if (!ctx.__avsKoVeilGrad) {
+        const koVeil = ctx.createRadialGradient(0, 0, 0.08, 0, 0, 1.0);
+        koVeil.addColorStop(0, 'rgba(4, 7, 15, 0.84)');
+        koVeil.addColorStop(0.6, 'rgba(8, 12, 24, 0.48)');
+        koVeil.addColorStop(1, 'rgba(4, 7, 15, 0)');
+        ctx.__avsKoVeilGrad = koVeil;
+      }
+      ctx.fillStyle = ctx.__avsKoVeilGrad;
       ctx.beginPath();
       ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
       ctx.fill();
