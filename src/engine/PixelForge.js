@@ -120,6 +120,7 @@ export class PixelForge {
     if (!assets) return;
     const heroKeys = [
       'warrior',
+      'warrior_ex',
       'mage',
       'archer',
       'priestess',
@@ -182,6 +183,7 @@ export class PixelForge {
     // 3. Release heavy 6240x2080 champion sprite/VFX sheets for unselected heroes (keep tiny 128x128 portraits warm)
     const heroKeys = [
       'warrior',
+      'warrior_ex',
       'mage',
       'archer',
       'priestess',
@@ -193,7 +195,8 @@ export class PixelForge {
       'icemage',
       'android'
     ];
-    const keepSharedWings = keepHeroes.has('warrior') || keepHeroes.has('priestess');
+    const keepSharedWings =
+      keepHeroes.has('warrior') || keepHeroes.has('warrior_ex') || keepHeroes.has('priestess');
     for (const hk of heroKeys) {
       if (keepHeroes.has(hk)) continue;
       const entry = this.assets[hk];
@@ -268,6 +271,16 @@ export class PixelForge {
         wings: sharedSeraphimWings,
         vfx: loadDeferredImg('assets/sprites/warrior_vfx.png?v=30fps112'),
         portrait: loadDeferredImg('assets/sprites/warrior_portrait.png?v=30fps112', () => this.refreshPortraits())
+      },
+      warrior_ex: {
+        sheet: loadDeferredImg('assets/sprites/warrior_ex_sheet.png?v=30fps113'),
+        wings: sharedSeraphimWings,
+        vfx: loadDeferredImg('assets/sprites/warrior_ex_vfx.png?v=30fps113'),
+        portrait: loadDeferredImg('assets/sprites/warrior_ex_portrait.png?v=30fps113', () => this.refreshPortraits()),
+        cellW: 320,
+        cellH: 240,
+        anchorX: 112,
+        anchorY: 230
       },
       mage: {
         sheet: loadDeferredImg('assets/sprites/mage_sheet.png?v=30fps112'),
@@ -741,22 +754,77 @@ export class PixelForge {
     return charSet.normalMapData;
   }
 
+  static resolveSheetMetrics(charSet, sheet, w, h) {
+    const natW = sheet.naturalWidth || 208;
+    const natH = sheet.naturalHeight || 208;
+    const hasCustomMeta = Boolean(charSet && (charSet.cellW || charSet.cellH));
+
+    // Legacy 208x208 path: guarantees 0.00px behavioral change across all 11 existing champions & monsters
+    if (!hasCustomMeta && natW !== 9600) {
+      const cellW = 208;
+      const cellH = 208;
+      return {
+        cellW,
+        cellH,
+        cols: Math.max(1, Math.round(natW / cellW)),
+        rows: Math.max(1, Math.round(natH / cellH)),
+        drawW: w,
+        drawH: h,
+        baseX: -w * 0.5,
+        baseY: -h + 10
+      };
+    }
+
+    // Automatic fallback/adaptation if a 30x10 sheet has standard 6240x2080 or custom wide dimensions
+    let cellW = charSet?.cellW || 320;
+    let cellH = charSet?.cellH || 240;
+    let anchorX = charSet?.anchorX ?? 112;
+    let anchorY = charSet?.anchorY ?? 230;
+    if (natW === 6240 && natH === 2080) {
+      cellW = 208;
+      cellH = 208;
+      anchorX = 104;
+      anchorY = 198;
+    } else if (natW > 0 && natH > 0 && (natW % cellW !== 0 || natH % cellH !== 0) && natW % 30 === 0 && natH % 10 === 0) {
+      const nextCellW = natW / 30;
+      const nextCellH = natH / 10;
+      anchorX = Math.round(anchorX * (nextCellW / cellW));
+      anchorY = Math.round(anchorY * (nextCellH / cellH));
+      cellW = nextCellW;
+      cellH = nextCellH;
+    }
+
+    const scaleY = h / 208;
+    return {
+      cellW,
+      cellH,
+      cols: Math.max(1, Math.round(natW / cellW)),
+      rows: Math.max(1, Math.round(natH / cellH)),
+      drawW: Math.round(cellW * scaleY),
+      drawH: Math.round(cellH * scaleY),
+      baseX: -anchorX * scaleY,
+      baseY: -anchorY * scaleY
+    };
+  }
+
   static drawSheetFrame(ctx, charSet, fighter, w, h, phase, isReflection = false, renderer = null) {
     if (fighter?.heroId) this.ensureHeroLoaded(fighter.heroId);
     const sheet = this.ensureImage(charSet?.sheet);
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
-    const cell = 208;
-    const cols = Math.max(1, Math.round(sheet.naturalWidth / cell));
-    const rows = Math.max(1, Math.round((sheet.naturalHeight || cell) / cell));
+    const { cellW, cellH, cols, rows, drawW, drawH, baseX, baseY } = this.resolveSheetMetrics(
+      charSet,
+      sheet,
+      w,
+      h
+    );
 
     ctx.imageSmoothingEnabled = false;
 
     const frameIdx = this.getFrameIndex(fighter, phase);
     const col = frameIdx % cols;
     const row = Math.min(rows - 1, Math.max(0, (frameIdx / cols) | 0));
-    const sx = col * cell;
-    const sy = row * cell;
-    const baseY = -h + 10;
+    const sx = col * cellW;
+    const sy = row * cellH;
 
     // Crisp pixel-art afterimage trail during active horizontal DASH, DODGE, or Warrior Omnislash Ultimate
     if (
@@ -774,24 +842,24 @@ export class PixelForge {
         sheet,
         sx,
         sy,
-        cell,
-        cell,
-        Math.round(-w * 0.5 - dir * 32),
+        cellW,
+        cellH,
+        Math.round(baseX - dir * 32),
         Math.round(baseY),
-        w,
-        h
+        drawW,
+        drawH
       );
       ctx.globalAlpha = 0.42;
       ctx.drawImage(
         sheet,
         sx,
         sy,
-        cell,
-        cell,
-        Math.round(-w * 0.5 - dir * 16),
+        cellW,
+        cellH,
+        Math.round(baseX - dir * 16),
         Math.round(baseY),
-        w,
-        h
+        drawW,
+        drawH
       );
       ctx.restore();
     }
@@ -802,6 +870,10 @@ export class PixelForge {
     if (!isReflection && !fighter.isDead && fighter.hurtTimer > 0) {
       recoilX = -6 + Math.round((Math.sin(fighter.hurtTimer * 60) * 4) / 2) * 2;
       recoilY = -2;
+    }
+    // Opt-in crunchy anime hit-stop shake jitter (+-3px) when struck by heavy melee smashes
+    if (!isReflection && !fighter.isDead && fighter._hitShakeTimer > 0) {
+      recoilX += (Math.floor(fighter._hitShakeTimer * 90) & 1) === 0 ? 3 : -3;
     }
 
     // HD-2D Normal-Mapped 4-Step Pixel Lighting + Dual-Layer Character Inking Pass
@@ -1048,12 +1120,12 @@ export class PixelForge {
       sheet,
       sx,
       sy,
-      cell,
-      cell,
-      Math.round(-w * 0.5 + recoilX),
+      cellW,
+      cellH,
+      Math.round(baseX + recoilX),
       Math.round(baseY + recoilY),
-      w,
-      h
+      drawW,
+      drawH
     );
   }
 
@@ -1064,50 +1136,69 @@ export class PixelForge {
   static drawAfterimageFrame(ctx, charSet, frameIdx, w, h) {
     const sheet = this.ensureImage(charSet?.sheet);
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
-    const cell = 208;
-    const cols = Math.max(1, Math.round(sheet.naturalWidth / cell));
+    const { cellW, cellH, cols, rows, drawW, drawH, baseX, baseY } = this.resolveSheetMetrics(
+      charSet,
+      sheet,
+      w,
+      h
+    );
     const safeIdx = Math.max(0, frameIdx | 0);
     const col = safeIdx % cols;
-    const row = (safeIdx / cols) | 0;
-    const sx = col * cell;
-    const sy = row * cell;
-    const baseY = -h + 10;
-    ctx.drawImage(sheet, sx, sy, cell, cell, Math.round(-w * 0.5), Math.round(baseY), w, h);
+    const row = Math.min(rows - 1, Math.max(0, (safeIdx / cols) | 0));
+    const sx = col * cellW;
+    const sy = row * cellH;
+    ctx.drawImage(sheet, sx, sy, cellW, cellH, Math.round(baseX), Math.round(baseY), drawW, drawH);
   }
 
   static drawSilhouetteFrame(ctx, charSet, frameIdx, w, h, color = '#03040a') {
     const sheet = this.ensureImage(charSet?.sheet);
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
-    const cell = 208;
-    const cols = Math.max(1, Math.round(sheet.naturalWidth / cell));
+    const { cellW, cellH, cols, rows, drawW, drawH, baseX, baseY } = this.resolveSheetMetrics(
+      charSet,
+      sheet,
+      w,
+      h
+    );
     const safeIdx = Math.max(0, frameIdx | 0);
     const col = safeIdx % cols;
-    const row = (safeIdx / cols) | 0;
-    const sx = col * cell;
-    const sy = row * cell;
-    const baseY = -h + 10;
+    const row = Math.min(rows - 1, Math.max(0, (safeIdx / cols) | 0));
+    const sx = col * cellW;
+    const sy = row * cellH;
 
     if (typeof document !== 'undefined') {
       if (!this._silCanvas) {
         this._silCanvas = document.createElement('canvas');
-        this._silCanvas.width = cell;
-        this._silCanvas.height = cell;
+        this._silCanvas.width = cellW;
+        this._silCanvas.height = cellH;
         this._silCtx = this._silCanvas.getContext('2d');
+      } else if (this._silCanvas.width < cellW || this._silCanvas.height < cellH) {
+        this._silCanvas.width = Math.max(this._silCanvas.width, cellW);
+        this._silCanvas.height = Math.max(this._silCanvas.height, cellH);
       }
       const sCtx = this._silCtx;
       if (sCtx) {
         sCtx.imageSmoothingEnabled = false;
         sCtx.globalCompositeOperation = 'source-over';
-        sCtx.clearRect(0, 0, cell, cell);
-        sCtx.drawImage(sheet, sx, sy, cell, cell, 0, 0, cell, cell);
+        sCtx.clearRect(0, 0, cellW, cellH);
+        sCtx.drawImage(sheet, sx, sy, cellW, cellH, 0, 0, cellW, cellH);
         sCtx.globalCompositeOperation = 'source-in';
         sCtx.fillStyle = color;
-        sCtx.fillRect(0, 0, cell, cell);
-        ctx.drawImage(this._silCanvas, 0, 0, cell, cell, Math.round(-w * 0.5), Math.round(baseY), w, h);
+        sCtx.fillRect(0, 0, cellW, cellH);
+        ctx.drawImage(
+          this._silCanvas,
+          0,
+          0,
+          cellW,
+          cellH,
+          Math.round(baseX),
+          Math.round(baseY),
+          drawW,
+          drawH
+        );
         return;
       }
     }
-    ctx.drawImage(sheet, sx, sy, cell, cell, Math.round(-w * 0.5), Math.round(baseY), w, h);
+    ctx.drawImage(sheet, sx, sy, cellW, cellH, Math.round(baseX), Math.round(baseY), drawW, drawH);
   }
 
   /**
@@ -1251,6 +1342,7 @@ export class PixelForge {
 
     const themes = {
       warrior: { bg0: '#061024', bg1: '#0c2d5e', rim: '#38bdf8', glow: '#7dd3fc', gold: '#facc15' },
+      warrior_ex: { bg0: '#040c24', bg1: '#0f2e6b', rim: '#38bdf8', glow: '#bae6fd', gold: '#facc15' },
       archer: { bg0: '#041b15', bg1: '#0b4635', rim: '#34d399', glow: '#6ee7b7', gold: '#fde047' },
       mage: { bg0: '#1c0806', bg1: '#57160b', rim: '#fb923c', glow: '#fde047', gold: '#facc15' },
       priestess: { bg0: '#191205', bg1: '#4d360b', rim: '#fde047', glow: '#fef9c3', gold: '#fbbf24' },
@@ -1322,6 +1414,57 @@ export class PixelForge {
         // Golden impact shockwave at base
         drawLinePx(4, 23, 23, 23, '#fde047', 2);
         drawLinePx(8, 24, 19, 24, '#ffffff', 1);
+      }
+    } else if (heroKey === 'warrior_ex') {
+      if (slotIdx === 0) {
+        // DAWN-BREAKER SMEAR SLASH: Wide FFBE Golden-Cyan Serrated Crescent Smear + 2H Dawn-Breaker Greatsword
+        drawCirclePx(14, 14, 10, '#1d4ed8', false);
+        drawCirclePx(15, 14, 9, '#38bdf8', false);
+        drawCirclePx(16, 13, 8, '#fde047', false);
+        drawCirclePx(17, 13, 7, '#ffffff', false);
+        fillRectPx(3, 4, 8, 12, null); // Open rear hemisphere for serrated forward crescent
+        // Diagonal 2H Dawn-Breaker Greatsword cutting bottom-left -> top-right
+        drawLinePx(4, 23, 22, 5, '#0284c7', 3);
+        drawLinePx(5, 22, 23, 4, '#7dd3fc', 2);
+        drawLinePx(6, 21, 23, 4, '#ffffff', 1);
+        // Winged Neo-Vision Gold Crossguard & Sapphire Gem
+        drawLinePx(6, 15, 13, 22, '#f59e0b', 2);
+        drawLinePx(7, 15, 12, 20, '#fef08a', 1);
+        fillRectPx(3, 22, 3, 3, '#facc15');
+        setPx(9, 18, '#38bdf8');
+      } else if (slotIdx === 1) {
+        // ASTRAL CROSS-BLITZ: Twin Intersecting X-Smear Slashes + Rising Dragon-Fang Pillar
+        fillRectPx(12, 4, 4, 19, '#1d4ed8');
+        fillRectPx(13, 3, 2, 20, '#7dd3fc');
+        // X-shaped golden-cyan razor cross-slashes
+        drawLinePx(4, 6, 23, 22, '#38bdf8', 3);
+        drawLinePx(5, 6, 23, 21, '#fde047', 2);
+        drawLinePx(23, 6, 4, 22, '#38bdf8', 3);
+        drawLinePx(22, 6, 4, 21, '#ffffff', 1);
+        drawCirclePx(14, 14, 3, '#facc15', true);
+        drawCirclePx(14, 14, 1.5, '#ffffff', true);
+      } else if (slotIdx === 3) {
+        // DAWN OF EXVIUS SUPREME JUDGMENT: Seraphic Wings + Colossal Cathedral Dawn-Breaker Beam-Blade
+        drawLinePx(3, 12, 11, 7, '#f59e0b', 2);
+        drawLinePx(4, 16, 11, 11, '#fde047', 2);
+        drawLinePx(24, 12, 16, 7, '#f59e0b', 2);
+        drawLinePx(23, 16, 16, 11, '#fde047', 2);
+        fillRectPx(11, 2, 6, 21, '#0284c7');
+        fillRectPx(12, 2, 4, 21, '#38bdf8');
+        fillRectPx(13, 2, 2, 22, '#ffffff');
+        fillRectPx(8, 7, 12, 2, '#facc15');
+        drawLinePx(3, 23, 24, 23, '#fde047', 2);
+        drawLinePx(7, 24, 20, 24, '#ffffff', 1);
+      } else {
+        // SOVEREIGN OMNISLASH (slotIdx === 2): 5-Angle Multi-Vector Astral Smear Blitz
+        drawCirclePx(14, 14, 9.5, '#1d4ed8', false);
+        drawLinePx(4, 14, 24, 14, '#38bdf8', 2);
+        drawLinePx(6, 5, 22, 22, '#7dd3fc', 2);
+        drawLinePx(22, 5, 6, 22, '#fde047', 2);
+        drawLinePx(14, 3, 14, 24, '#e0f2fe', 2);
+        drawLinePx(5, 19, 23, 9, '#ffffff', 1);
+        drawCirclePx(14, 14, 3.2, '#facc15', true);
+        drawCirclePx(14, 14, 1.6, '#ffffff', true);
       }
     } else if (heroKey === 'archer') {
       if (slotIdx === 0) {
@@ -1795,6 +1938,7 @@ export class PixelForge {
 
     const themes = {
       warrior: { bg0: '#061024', bg1: '#0c2d5e', rim: '#38bdf8', glow: '#7dd3fc', gold: '#facc15', deep: '#0284c7' },
+      warrior_ex: { bg0: '#040c24', bg1: '#0f2e6b', rim: '#38bdf8', glow: '#bae6fd', gold: '#facc15', deep: '#0284c7' },
       archer: { bg0: '#041b15', bg1: '#0b4635', rim: '#34d399', glow: '#6ee7b7', gold: '#fde047', deep: '#059669' },
       mage: { bg0: '#1c0806', bg1: '#5c180a', rim: '#fb923c', glow: '#fde047', gold: '#facc15', deep: '#dc2626' },
       priestess: { bg0: '#191205', bg1: '#4d360b', rim: '#fde047', glow: '#fef9c3', gold: '#fbbf24', deep: '#d97706' },
@@ -1809,7 +1953,10 @@ export class PixelForge {
     const th = themes[heroKey] || themes.mage;
 
     const bgGrad = ctx.createRadialGradient(w * 0.5, h * 0.5, 4, w * 0.5, h * 0.5, w * 0.72);
-    bgGrad.addColorStop(0, actionType === 'ultimate' ? '#581c0c' : th.bg1);
+    bgGrad.addColorStop(
+      0,
+      actionType === 'ultimate' ? (heroKey === 'warrior_ex' ? '#17387a' : '#581c0c') : th.bg1
+    );
     bgGrad.addColorStop(1, th.bg0);
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, w, h);
@@ -1821,7 +1968,31 @@ export class PixelForge {
     ctx.fillRect(0, h - px, w, px);
     ctx.fillRect(w - px, 0, px, h);
 
-    if (actionType === 'ultimate') {
+    if (actionType === 'ultimate' && heroKey === 'warrior_ex') {
+      // DAWN OF EXVIUS SUPREME JUDGMENT: Seraphic Golden Wings + Cathedral Dawn-Breaker Beam-Blade
+      drawLinePx(3, 12, 11, 7, '#f59e0b', 2);
+      drawLinePx(4, 16, 11, 11, '#fde047', 2);
+      drawLinePx(24, 12, 16, 7, '#f59e0b', 2);
+      drawLinePx(23, 16, 16, 11, '#fde047', 2);
+      fillRectPx(11, 2, 6, 21, '#0284c7');
+      fillRectPx(12, 2, 4, 21, '#38bdf8');
+      fillRectPx(13, 2, 2, 22, '#ffffff');
+      fillRectPx(8, 7, 12, 2, '#facc15');
+      drawLinePx(3, 23, 24, 23, '#fde047', 2);
+      drawLinePx(7, 24, 20, 24, '#ffffff', 1);
+    } else if (actionType === 'dodge' && heroKey === 'warrior_ex') {
+      // FLASH-STEP DODGE: Low Sword-Drag Cinder Trail + Triple Astral Blitz Chevrons
+      drawLinePx(3, 21, 18, 17, '#0284c7', 3);
+      drawLinePx(4, 21, 19, 17, '#fde047', 1);
+      setPx(5, 22, '#ffffff');
+      setPx(9, 20, '#facc15');
+      drawLinePx(7, 8, 12, 13, '#7dd3fc', 2);
+      drawLinePx(7, 18, 12, 13, '#7dd3fc', 2);
+      drawLinePx(13, 7, 18, 13, '#fde047', 2);
+      drawLinePx(13, 19, 18, 13, '#fde047', 2);
+      drawLinePx(18, 6, 24, 13, '#ffffff', 2);
+      drawLinePx(18, 20, 24, 13, '#ffffff', 2);
+    } else if (actionType === 'ultimate') {
       // SUPREME CATACLYSM METEOR / CELESTIAL FINISHER:
       // Astral cosmic ring + Colossal blazing meteor plunging top-right -> bottom-left + magma crater
       drawCirclePx(14, 14, 10, th.deep, false);

@@ -5,6 +5,7 @@ import { AudioManager } from './engine/AudioManager.js?v=30fps112';
 import { ArcaneShaderFX } from './engine/ArcaneShaderFX.js?v=30fps112';
 import { Fighter } from './entities/Fighter.js?v=30fps112';
 import { Warrior } from './entities/Warrior.js?v=30fps112';
+import { WarriorEx } from './entities/WarriorEx.js?v=30fps112';
 import { FireMage } from './entities/FireMage.js?v=30fps112';
 import { Archer } from './entities/Archer.js?v=30fps112';
 import { Priestess } from './entities/Priestess.js?v=30fps112';
@@ -51,6 +52,41 @@ const CHAMPION_ROSTER = {
         type: 'OVERDRIVE ULT',
         vfxCell: 2,
         desc: 'Leaps skyward and slams a colossal Runeblade monolith, erupting 5 glacial spires across the stage.'
+      }
+    ]
+  },
+  warrior_ex: {
+    id: 'warrior_ex',
+    name: 'AETHELGARD EX',
+    role: 'EXVIUS SOVEREIGN',
+    style: 'FFBE SMEAR VANGUARD',
+    trait: 'PASSIVE: DAWN-BREAKER HIT-STOP & PARRY',
+    cls: WarriorEx,
+    theme: 'exvius',
+    color: '#38bdf8',
+    selectSfx: 'heavy_cleave',
+    victoryLine: 'The Dawn-Breaker cleaves fate itself in Exvius light!',
+    trueUltName: 'EXVIUS DAWN: SOVEREIGN OF LIGHT',
+    trueUltDesc:
+      'Consecrates the Dawn-Breaker, boxes foes in a 6-slash celestial smear cage & cleaves heaven to earth!',
+    skills: [
+      {
+        name: 'DAWN-BREAKER SMEAR',
+        type: 'AUTO + PASSIVE',
+        vfxCell: 0,
+        desc: '4-beat grounded FFBE smear chain with crunchy hit-stop, cross-rip & Heavensplitter wave.'
+      },
+      {
+        name: 'ASTRAL BLADE-RUSH',
+        type: 'SKILL • 4.6S CD',
+        vfxCell: 1,
+        desc: 'Rapid 3-slash advancing chain-flurry ending in a rising Dragon-Fang uppercut pillar.'
+      },
+      {
+        name: 'RADIANT OMNISLASH',
+        type: 'OVERDRIVE ULT',
+        vfxCell: 2,
+        desc: 'Five-fold multi-angle teleporting smear blitz leaving golden-cyan silhouettes into a skyward plunge.'
       }
     ]
   },
@@ -1319,6 +1355,7 @@ export class Game {
 
     this.cards = {
       warrior: document.getElementById('card-warrior'),
+      warrior_ex: document.getElementById('card-warrior_ex'),
       archer: document.getElementById('card-archer'),
       mage: document.getElementById('card-mage'),
       priestess: document.getElementById('card-priestess'),
@@ -1332,6 +1369,7 @@ export class Game {
     };
     this.ribbons = {
       warrior: document.getElementById('ribbon-warrior'),
+      warrior_ex: document.getElementById('ribbon-warrior_ex'),
       archer: document.getElementById('ribbon-archer'),
       mage: document.getElementById('ribbon-mage'),
       priestess: document.getElementById('ribbon-priestess'),
@@ -1345,6 +1383,7 @@ export class Game {
     };
     this.previewCanvases = {
       warrior: document.getElementById('preview-warrior'),
+      warrior_ex: document.getElementById('preview-warrior_ex'),
       archer: document.getElementById('preview-archer'),
       mage: document.getElementById('preview-mage'),
       priestess: document.getElementById('preview-priestess'),
@@ -2307,7 +2346,7 @@ export class Game {
     const gridPromptEl = document.getElementById('portrait-grid-label');
     if (gridPromptEl) {
       gridPromptEl.textContent = isAdv
-        ? 'SELECT ANY OF THE 11 CHAMPIONS FOR YOUR 4-REALM ADVENTURE CAMPAIGN'
+        ? 'SELECT ANY OF THE 12 CHAMPIONS FOR YOUR 4-REALM ADVENTURE CAMPAIGN'
         : `SELECT A CHAMPION FOR ${slotLabelMap[this.activeAssignSlot] || 'P1 LEAD'} — OR CLICK P1 / P2 ON ANY MEDALLION`;
     }
 
@@ -2615,11 +2654,16 @@ export class Game {
 
     const drawAnimatedHeroOnStage = (sctx, heroKey, flipX, destX, destY, destSize, phaseOffset = 0, alpha = 1, drawBadge = false) => {
       PixelForge.ensureHeroLoaded?.(heroKey);
-      const sheet = assets[heroKey]?.sheet;
+      const heroEntry = assets[heroKey];
+      const sheet = heroEntry?.sheet;
       const cfg = CHAMPION_ROSTER[heroKey];
       if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
-      const cell = 208;
-      const cols = Math.max(1, Math.round(sheet.naturalWidth / cell));
+      const isClassic208 = sheet.naturalWidth === 6240 && sheet.naturalHeight === 2080;
+      const cellW = isClassic208 ? 208 : heroEntry?.cellW || (sheet.naturalWidth === 9600 ? 320 : 208);
+      const cellH = isClassic208 ? 208 : heroEntry?.cellH || (sheet.naturalHeight === 2400 ? 240 : 208);
+      const anchorX = isClassic208 ? 104 : heroEntry?.anchorX ?? (cellW === 320 ? 112 : 104);
+      const anchorY = isClassic208 ? 198 : heroEntry?.anchorY ?? (cellH === 240 ? 230 : 198);
+      const cols = Math.max(1, Math.round(sheet.naturalWidth / cellW));
       let col = 0;
       let row = 0;
       let stateTag = 'IDLE';
@@ -2637,13 +2681,13 @@ export class Game {
           stateTag = 'ATTACK • 30FPS';
           if (heroKey === 'priestess') wingEnv = Math.sin(u * Math.PI) * 0.88;
         } else if (cycle < 3.8) {
-          row = heroKey === 'priestess' ? 3 : 7;
+          row = heroKey === 'priestess' || heroKey === 'warrior_ex' ? 3 : 7;
           const u = (cycle - 2.8) / 1.0;
           col = Math.min(29, Math.floor(u * 30));
           stateTag = 'SKILL • 30FPS';
           if (heroKey === 'priestess') wingEnv = Math.min(1, Math.sin(u * Math.PI) * 1.55);
         } else if (cycle < 4.8) {
-          row = heroKey === 'priestess' ? 4 : 8;
+          row = heroKey === 'priestess' || heroKey === 'warrior_ex' ? 4 : 8;
           const u = (cycle - 3.8) / 1.0;
           col = Math.min(29, Math.floor(u * 30));
           stateTag = 'OVERDRIVE ULT';
@@ -2693,8 +2737,8 @@ export class Game {
 
       const wingSheet = heroKey === 'priestess' ? assets.priestess?.wings : null;
       const drawHeroWithWings = () => {
+        const sf = destSize / 208;
         if (wingEnv > 0.02 && wingSheet && wingSheet.complete && wingSheet.naturalWidth > 0) {
-          const sf = destSize / cell;
           const wScale = (0.72 + 0.10 * wingEnv) * sf;
           const wW = Math.round(320 * wScale);
           const wH = Math.round(232 * wScale);
@@ -2708,7 +2752,15 @@ export class Game {
           sctx.drawImage(wingSheet, wCol * 320, 0, 320, 232, wdx, wdy, wW, wH);
           sctx.restore();
         }
-        sctx.drawImage(sheet, col * cell, row * cell, cell, cell, 0, 0, destSize, destSize);
+        if (cellW === 208 && cellH === 208) {
+          sctx.drawImage(sheet, col * 208, row * 208, 208, 208, 0, 0, destSize, destSize);
+        } else {
+          const dw = Math.round(cellW * sf);
+          const dh = Math.round(cellH * sf);
+          const dx = Math.round((104 - anchorX) * sf);
+          const dy = Math.round((198 - anchorY) * sf);
+          sctx.drawImage(sheet, col * cellW, row * cellH, cellW, cellH, dx, dy, dw, dh);
+        }
       };
 
       sctx.save();
@@ -3390,7 +3442,7 @@ export class Game {
                           ? 'cryo_shard'
                           : ally.heroId === 'android'
                             ? 'cyber_disc'
-                            : ally.heroId === 'warrior'
+                            : ally.heroId === 'warrior' || ally.heroId === 'warrior_ex'
                               ? 'blade_wave'
                               : 'fireball'
       });

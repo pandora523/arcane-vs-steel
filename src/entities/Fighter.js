@@ -93,6 +93,8 @@ export class Fighter {
     this._hnsPhaseThrough = false;
     this._hnsStreaks = [];
     this._advDodgeTrails = [];
+    this._hitStopTimer = 0;
+    this._hitShakeTimer = 0;
   }
 
   getAiStyleProfile() {
@@ -117,6 +119,17 @@ export class Fighter {
           midLeapMin: 185,
           midLeapMax: 295,
           midLeapChance: 0.38,
+          postStyle: 'vanguard'
+        };
+      case 'warrior_ex':
+        return {
+          comboGoal: 4,
+          sweetMin: 108,
+          sweetMax: 126,
+          counterCrouchBias: 0.64,
+          midLeapMin: 185,
+          midLeapMax: 300,
+          midLeapChance: 0.42,
           postStyle: 'vanguard'
         };
       case 'ronin':
@@ -235,6 +248,7 @@ export class Fighter {
   isHackAndSlashMelee() {
     return (
       this.heroId === 'warrior' ||
+      this.heroId === 'warrior_ex' ||
       this.heroId === 'ronin' ||
       this.heroId === 'android' ||
       this.heroId === 'reaper' ||
@@ -835,6 +849,7 @@ export class Fighter {
 
     if (this.hitFlash > 0) this.hitFlash = Math.max(0, this.hitFlash - dt);
     if (this.hurtTimer > 0) this.hurtTimer = Math.max(0, this.hurtTimer - dt);
+    if (this._hitShakeTimer > 0) this._hitShakeTimer = Math.max(0, this._hitShakeTimer - dt);
     if (this._evadeManaCd > 0) this._evadeManaCd = Math.max(0, this._evadeManaCd - dt);
 
     // Chronos "ETERNAL ZERO" Time-Stop Freeze: freezes enemies mid-frame & mid-air in stopped time!
@@ -849,6 +864,12 @@ export class Fighter {
         this._timeStopLockX = null;
         this._timeStopLockY = null;
       }
+      return;
+    }
+
+    // Opt-in Crunchy Anime Hit-Stop (`_hitStopTimer`): freezes stateTimer, frame & physics on heavy melee impact!
+    if (this._hitStopTimer > 0 && !this.isDead && !this.isBenched && this.state !== 'TRUE_ULTIMATE') {
+      this._hitStopTimer = Math.max(0, this._hitStopTimer - dt);
       return;
     }
 
@@ -937,7 +958,19 @@ export class Fighter {
         const inCloseMeleeSwing =
           (this.state === 'AUTO_ATTACK' && this.isHackAndSlashMelee()) ||
           (enemy.state === 'AUTO_ATTACK' && enemy.isHackAndSlashMelee?.());
-        const minSep = inCloseMeleeSwing ? (isAdv3D ? 68 : 76) : isAdv3D ? 82 : 110;
+        const isExviusSwing =
+          inCloseMeleeSwing && (this.heroId === 'warrior_ex' || enemy.heroId === 'warrior_ex');
+        const minSep = isExviusSwing
+          ? isAdv3D
+            ? 88
+            : 98
+          : inCloseMeleeSwing
+            ? isAdv3D
+              ? 68
+              : 76
+            : isAdv3D
+              ? 82
+              : 110;
         if (absDx < minSep) {
           const pushDir = dx === 0 ? -this.facing : Math.sign(dx);
           this.x += pushDir * (minSep - absDx) * 6.5 * dt;
@@ -1113,6 +1146,7 @@ export class Fighter {
 
     // Ambient Aura & Desperation Overdrive Particles (decluttered for the custom-shader heroes)
     const isDeclutteredHero =
+      this.heroId === 'warrior_ex' ||
       this.heroId === 'titan' ||
       this.heroId === 'reaper' ||
       this.heroId === 'archer' ||
@@ -1192,7 +1226,7 @@ export class Fighter {
 
         // 1. Smart Archetype Overdrive Timing (don't waste Overdrive into an invulnerable dodge or from out of effective range!)
         const ultRangeOk =
-          this.heroId === 'warrior'
+          this.heroId === 'warrior' || this.heroId === 'warrior_ex'
             ? dist <= 400
             : this.heroId === 'reaper' || this.heroId === 'titan' || this.heroId === 'ronin'
               ? dist <= 480
@@ -1292,7 +1326,7 @@ export class Fighter {
         const shouldDash =
           !inHackSlashChain &&
           !isAdvMode &&
-          (this.heroId === 'ronin' || this.heroId === 'android'
+          (this.heroId === 'ronin' || this.heroId === 'android' || this.heroId === 'warrior_ex'
             ? dist > 185
             : this.attackRange < 200
               ? dist > 205
@@ -1328,7 +1362,7 @@ export class Fighter {
             this.setState('AUTO_ATTACK');
             if (this.hasHackAndSlashCombo()) {
               if ((this.comboStep || 0) !== 0) {
-                this.autoCooldown = 0.02;
+                this.autoCooldown = this.heroId === 'warrior_ex' ? 0.015 : 0.02;
               } else {
                 const postInt = this._postFlurryInterval || 1.65;
                 this.autoCooldown = postInt * (0.90 + Math.random() * 0.20);
@@ -1498,6 +1532,25 @@ export class Fighter {
               this.moveDir = -1;
               this.walkPhase += dt * 4.0;
               this.x -= this.facing * this.moveSpeed * 0.45 * dt;
+              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
+            } else {
+              this.state = 'IDLE';
+              this.moveDir = 0;
+            }
+          } else if (this.heroId === 'warrior_ex') {
+            // Exvius Sovereign (Aethelgard EX): disciplined 108..126px Dawn-Breaker sweet-spot so the enemy stands inside the fattest belly of the 208px smear crescent!
+            const nearExWall = this.x < effMinWall + 65 || this.x > effBackMaxWall - 65;
+            if (dist > 126) {
+              this.state = 'WALK';
+              this.moveDir = 1;
+              this.walkPhase += dt * 4.5;
+              this.x += this.facing * this.moveSpeed * 0.88 * dt;
+              this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
+            } else if (dist < 108 && !nearExWall) {
+              this.state = 'WALK';
+              this.moveDir = -1;
+              this.walkPhase += dt * 4.0;
+              this.x -= this.facing * this.moveSpeed * 0.55 * dt;
               this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
             } else {
               this.state = 'IDLE';
