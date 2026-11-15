@@ -167,6 +167,7 @@ export class Ronin extends Fighter {
       this.autoDuration = this._autoVariant === 3 ? 0.44 : 0.38;
       this.trueUltFrameOverride = AUTO_SLICES_4[this._autoVariant][0];
       this._drewAutoGlint = false;
+      this._lastAutoMeleeHitFoes = null;
     }
     if (newState === 'DEATH') {
       this.fx?.clear();
@@ -179,6 +180,114 @@ export class Ronin extends Fighter {
   getEffectiveAttackRange() {
     const nextVar = (((this.comboStep || 0) % 4) + 4) % 4;
     return nextVar === 3 ? 124 : nextVar === 2 ? 118 : this.attackRange;
+  }
+
+  onProjectileTrail(p, game) {
+    if (!p) return;
+    const sx = Number.isFinite(p.startX) ? p.startX : p.x;
+    const sy = Number.isFinite(p.startY) ? p.startY : p.y;
+    p.travelDist = Math.hypot(p.x - sx, p.y - sy);
+    if (p.maxRange > 0 && p.travelDist >= p.maxRange) {
+      p._expiredByRange = true;
+      p.vx = 0;
+      p.vy = 0;
+      p.x = -9999;
+      p.y = -9999;
+      return;
+    }
+
+    if (
+      game &&
+      typeof game.getEnemiesOf === 'function' &&
+      !game._roninProjFilterActive &&
+      ((p.ignoreTargets && p.ignoreTargets.size > 0) ||
+        (p.pierce && p._hitTargets && p._hitTargets.size > 0) ||
+        (p.type === 'ronin_slash' && (game.isAdventureMode?.() || game.adventure?.active)))
+    ) {
+      const origGetEnemiesOf = game.getEnemiesOf;
+      game._roninProjFilterActive = true;
+      game.getEnemiesOf = function roninSlashEnemies(fighter) {
+        game.getEnemiesOf = origGetEnemiesOf;
+        game._roninProjFilterActive = false;
+        const list = origGetEnemiesOf.call(this, fighter);
+        if (fighter !== p.owner || !Array.isArray(list)) return list;
+        const isAdvNow = Boolean(this.isAdventureMode?.() || this.adventure?.active);
+        const slashGy = Number.isFinite(p.groundY)
+          ? p.groundY
+          : Number.isFinite(p.owner?.groundY)
+            ? p.owner.groundY
+            : null;
+        return list.filter((cand) => {
+          if (!cand) return false;
+          if (p.ignoreTargets && p.ignoreTargets.has(cand)) return false;
+          if (p.pierce && p._hitTargets && p._hitTargets.has(cand)) return false;
+          if (
+            isAdvNow &&
+            !cand.isColossalBoss &&
+            Number.isFinite(slashGy) &&
+            Math.abs(p.vy || 0) < 25 &&
+            Math.abs((cand.groundY || cand.y) - slashGy) > 64
+          ) {
+            return false;
+          }
+          return true;
+        });
+      };
+    }
+
+    if (this.fx && (p.type === 'ronin_slash' || p.type === 'storm_wave') && (p.ringTimer || 0) >= 0.048) {
+      p.ringTimer = 0;
+      const dir = Math.sign(p.vx || this.facing || 1);
+      this.fx.burst(p.x - dir * 18, p.y + (((Math.round(p.travelDist || 0) >> 3) % 3) - 1) * 14, {
+        count: 2,
+        speedMin: 24,
+        speedMax: 72,
+        lifeMin: 0.12,
+        lifeMax: 0.22,
+        gravity: 0,
+        spread: 0.45,
+        angle: dir >= 0 ? Math.PI : 0,
+        colors: ['#ffffff', '#e0f2fe', '#38bdf8']
+      });
+    }
+  }
+
+  onProjectileHit(p, hitTarget, isCrit, game) {
+    if (!p) return false;
+    if (hitTarget) {
+      if (!p._hitTargets) p._hitTargets = new Set();
+      p._hitTargets.add(hitTarget);
+      if (p.hitSet && p.hitSet !== p._hitTargets) {
+        p.hitSet.add(hitTarget);
+      }
+    }
+    const dir = Math.sign(p.vx || this.facing || 1);
+    const hx = hitTarget ? hitTarget.x : p.x;
+    const hy = hitTarget ? (hitTarget.y || this.groundY) - 82 : p.y;
+    this.cleanBladeCuts.push({
+      type: 'wound',
+      x: hx,
+      y: hy,
+      dir,
+      slope: p.isTwinSlash ? -0.22 : -0.14,
+      isCrit: Boolean(isCrit || p.isTwinSlash),
+      seed: Math.round((p.age || 0) * 1000) + 31,
+      age: 0,
+      maxLife: 0.22
+    });
+    if (game?.audio) {
+      game.audio.play(isCrit ? 'hit_crit' : 'slash', hx);
+    }
+    this.fx?.burst(hx, hy, {
+      count: isCrit ? 10 : 6,
+      speedMin: 55,
+      speedMax: isCrit ? 195 : 145,
+      lifeMin: 0.14,
+      lifeMax: 0.26,
+      gravity: 55,
+      colors: ['#ffffff', '#e0f2fe', '#38bdf8', '#818cf8']
+    });
+    return true;
   }
 
   spawnSayaGlint(isSheath = false) {
@@ -532,8 +641,28 @@ export class Ronin extends Fighter {
       });
       this.spawnPixelShockwave(this.x, this.y - 72, 108, 'cyan', 0.26, false);
       if (game?.audio) game.audio.play('slash', this.x);
+      const crouchHitFoes = [];
       if (enemy && !enemy.isDead && Math.abs(enemy.x - (oldX + this.x) * 0.5) < 145) {
         enemy.takeDamage(52, this, true, 125, -135);
+        crouchHitFoes.push(enemy);
+      }
+      if (game?.vfx) {
+        game.vfx.spawnProjectile({
+          x: this.x + this.facing * 52,
+          y: (this.y || this.groundY) - 76,
+          groundY: this.groundY || this.y,
+          vx: this.facing * 760,
+          vy: 0,
+          radius: 18,
+          color: '#38bdf8',
+          coreColor: '#ffffff',
+          owner: this,
+          damage: 34,
+          type: 'ronin_slash',
+          pierce: true,
+          maxRange: 580,
+          ignoreTargets: crouchHitFoes
+        });
       }
     }
 
@@ -755,6 +884,7 @@ export class Ronin extends Fighter {
 
       const hitPool =
         frontFoe && !foes.includes(frontFoe) ? [...foes, frontFoe] : foes;
+      const meleeHitFoes = [];
       let landed = false;
       for (const foe of hitPool) {
         const reachLim = foe.isColossalBoss ? 164 : mode === 1 || mode === 2 ? 162 : 144;
@@ -762,6 +892,7 @@ export class Ronin extends Fighter {
           const isCrit = Math.random() < critRates[mode];
           const dmg = baseDmgs[mode] * (isCrit ? 1.32 : 1);
           foe.takeDamage(dmg, this, isCrit, knockXs[mode], knockYs[mode]);
+          meleeHitFoes.push(foe);
           this.cleanBladeCuts.push({
             type: 'wound',
             x: foe.x,
@@ -776,7 +907,31 @@ export class Ronin extends Fighter {
           landed = true;
         }
       }
+      this._lastAutoMeleeHitFoes = meleeHitFoes;
       if (landed) this.gainMana(manaGains[mode]);
+
+      // 4th-Hit `Morote Kiri-Nuki` (`mode === 3`) unleashes a long-range katana slash wave (`ronin_slash`),
+      // ignoring any foe already damaged by the close-range melee strike on this frame (and deferring to
+      // `AdventureProgression.onPlayerCastBasicAttack` in Adventure Mode so waves never double-spawn).
+      const advProgressionHandlesWave = Boolean(isAdv && game?.adventure?.progression);
+      if (mode === 3 && !advProgressionHandlesWave && game?.vfx) {
+        game.vfx.spawnProjectile({
+          x: this.x + this.facing * 52,
+          y: (this.y || this.groundY) - 76,
+          groundY: this.groundY || this.y,
+          vx: this.facing * 760,
+          vy: 0,
+          radius: 18,
+          color: '#38bdf8',
+          coreColor: '#ffffff',
+          owner: this,
+          damage: 34,
+          type: 'ronin_slash',
+          pierce: true,
+          maxRange: 580,
+          ignoreTargets: meleeHitFoes
+        });
+      }
     }
 
     if (t >= dur) {
@@ -1710,18 +1865,20 @@ export class Ronin extends Fighter {
     ctx.translate(Math.round(x), Math.round(y));
     if (flipX) ctx.scale(-1, 1);
 
-    const glowSprite =
-      glowColor === 'gold'
-        ? renderer?.glowGold || renderer?.glowCyan
-        : glowColor === 'purple'
-          ? renderer?.glowViolet || renderer?.glowPurple || renderer?.glowCyan
-          : renderer?.glowCyan;
-    if (glowSprite) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(1, alpha * 0.42);
-      const gw = Math.round(w * 1.15);
-      const gh = Math.round(h * 1.15);
-      ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
+    if (row !== 0) {
+      const glowSprite =
+        glowColor === 'gold'
+          ? renderer?.glowGold || renderer?.glowCyan
+          : glowColor === 'purple'
+            ? renderer?.glowViolet || renderer?.glowPurple || renderer?.glowCyan
+            : renderer?.glowCyan;
+      if (glowSprite) {
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(0.14, alpha * 0.14);
+        const gw = Math.round(w * 1.04);
+        const gh = Math.round(h * 1.04);
+        ctx.drawImage(glowSprite, -gw * 0.5, -gh * 0.5, gw, gh);
+      }
     }
 
     ctx.globalCompositeOperation = 'source-over';
@@ -1729,7 +1886,7 @@ export class Ronin extends Fighter {
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(1, alpha * 0.52);
+    ctx.globalAlpha = Math.min(0.22, alpha * (row === 0 ? 0.18 : 0.22));
     ctx.drawImage(vfxSheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.globalCompositeOperation = 'source-over';

@@ -3003,7 +3003,7 @@ export class AdventureManager {
       this.skillSets.beginPlayerStep(dt, player, combatTarget, isMovingCombat, normAutoVz);
       player.update(dt, combatTarget, this.game);
       if (player.state === 'AUTO_ATTACK' && !prevDidAction && player.didActionFrame) {
-        this.progression.onPlayerCastBasicAttack(player, target, this.game);
+        this.progression.onPlayerCastBasicAttack(player, combatTarget || target, this.game);
       }
       this.progression.syncGaugesToPlayer(player);
       return;
@@ -3185,17 +3185,22 @@ export class AdventureManager {
           }
           this._comboLockTarget = null;
         } else {
-          const lockableHnsTarget =
-            isHns &&
+          const validLockMonster =
             lockTarget &&
             !lockTarget.isDead &&
             !lockTarget.isDestructibleProp &&
-            !lockTarget.isDummyFocal &&
+            !lockTarget.isDummyFocal;
+          const lockableHnsTarget =
+            isHns &&
+            validLockMonster &&
             (lockTarget.isColossalBoss || Math.abs(lockTarget.x - player.x) <= hnsLockRange);
           if (isHns) {
             if (lockableHnsTarget) {
               player.facing = lockTarget.x >= player.x ? 1 : -1;
               this._comboLockTarget = lockTarget;
+            } else if (validLockMonster) {
+              player.facing = lockTarget.x >= player.x ? 1 : -1;
+              this._comboLockTarget = null;
             } else {
               if (moveDirX !== 0) {
                 player.facing = moveDirX;
@@ -3318,8 +3323,9 @@ export class AdventureManager {
         }
       }
       if (player.state === 'AUTO_ATTACK' && !prevDidAction && player.didActionFrame) {
-        this.progression.onPlayerCastBasicAttack(player, combatTarget, this.game);
+        this.progression.onPlayerCastBasicAttack(player, lockTarget || combatTarget, this.game);
       }
+      this.progression.syncGaugesToPlayer(player);
     }
   }
 
