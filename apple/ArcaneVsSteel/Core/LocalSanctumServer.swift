@@ -1,39 +1,196 @@
 import Foundation
 import Darwin
+import CryptoKit
+import Security
 
-/// Ultra-fast, zero-dependency, 100% offline RAM-cached loopback HTTP/1.1 server bound strictly to `127.0.0.1`.
-/// Serves the exact, unmodified Arcane vs. Steel runtime (`index.html`, `style.css`, `src/`, `assets/`)
-/// from `Bundle.main.resourceURL` with persistent `keep-alive` sockets and immutable asset headers so
-/// sprite sheets, stereo WAVs, ES modules, and `ArcanePixel` (`pixel_art.ttf`) stream from RAM in `< 0.05ms`.
+/// Ultra-fast, zero-dependency, 100% offline AES-256-GCM encrypted vault server bound strictly to `127.0.0.1`.
+/// Memory-maps `sanctum.pak` (`~0 MB` dirty RSS), reconstructs the 256-bit `SymmetricKey` from two XOR-masked
+/// `[UInt8]` shards, gates all HTTP requests behind a per-launch `SecRandomCopyBytes` secret session prefix
+/// (`403 Forbidden` to any unauthorized local probe), and decrypts assets on demand in RAM via Apple Silicon
+/// hardware `CryptoKit` (`AES.GCM.open`) with a bounded `64 MB` (`<= 8 MB`/entry) RAM cache.
 public final class LocalSanctumServer: @unchecked Sendable {
     public static let shared = LocalSanctumServer()
+
+    private struct VaultEntry {
+        let offset: Int
+        let length: Int
+        let mimeType: String
+        let cacheControl: String
+    }
+
+    private struct LoadedVault {
+        let mappedPak: Data
+        let key: SymmetricKey
+        let toc: [String: VaultEntry]
+    }
+
+    private static let maxCacheTotalBytes = 64 * 1024 * 1024
+    private static let maxCacheEntryBytes = 8 * 1024 * 1024
+
+    // Two 32-byte non-ASCII obfuscated shards XOR-combined at runtime (zero plaintext keys or filenames in binary)
+    private static let vaultShardA: [UInt8] = [
+        0x20, 0x28, 0xEE, 0x99, 0x50, 0xA4, 0xB4, 0x8F,
+        0x93, 0x03, 0xE2, 0xBE, 0x17, 0xCD, 0x7A, 0xAB,
+        0x34, 0x19, 0x47, 0x1A, 0x0C, 0x96, 0x57, 0xCB,
+        0xE3, 0x9A, 0x44, 0xE9, 0x5B, 0x63, 0xF9, 0x50
+    ]
+    private static let vaultShardB: [UInt8] = [
+        0x57, 0xE1, 0x7F, 0xF6, 0x98, 0x8F, 0x7F, 0x59,
+        0xF1, 0x0B, 0x25, 0x1B, 0xF8, 0x28, 0xF1, 0x11,
+        0x2E, 0xCB, 0x03, 0x03, 0x90, 0x43, 0xFE, 0x93,
+        0xE6, 0xBC, 0x46, 0x9F, 0x11, 0xB6, 0x30, 0x99
+    ]
 
     private let lock = NSLock()
     private var listenFD: Int32 = -1
     private var boundPort: UInt16 = 0
+    private var sessionPrefix: String = ""
+    private var loadedVault: LoadedVault?
     private var isRunning = false
-    private let rootDirectory: URL
+
     private let fileCache = NSCache<NSString, NSData>()
     private let acceptQueue = DispatchQueue(label: "com.arcanevssteel.sanctum.accept", qos: .userInitiated)
     private let clientQueue = DispatchQueue(label: "com.arcanevssteel.sanctum.client", qos: .userInitiated, attributes: .concurrent)
 
     private init() {
-        fileCache.totalCostLimit = 24 * 1024 * 1024 // Bounded 24 MB loopback cache (avoids duplicating hundreds of MB of PNGs in UI process)
-        fileCache.countLimit = 96
-        if let bundleRes = Bundle.main.resourceURL,
-           FileManager.default.fileExists(atPath: bundleRes.appendingPathComponent("index.html").path) {
-            self.rootDirectory = bundleRes.standardizedFileURL
-        } else {
-            self.rootDirectory = URL(fileURLWithPath: FileManager.default.currentDirectoryPath).standardizedFileURL
+        fileCache.totalCostLimit = Self.maxCacheTotalBytes
+        fileCache.countLimit = 192
+    }
+
+    @inline(never)
+    private static func reconstructVaultKey() -> SymmetricKey {
+        var raw = [UInt8](repeating: 0, count: 32)
+        for idx in 0..<32 {
+            raw[idx] = vaultShardA[idx] ^ vaultShardB[idx]
         }
+        let symKey = SymmetricKey(data: raw)
+        for idx in 0..<32 {
+            raw[idx] = 0
+        }
+        return symKey
+    }
+
+    private static func generateSessionPrefix() -> String {
+        var entropy = [UInt8](repeating: 0, count: 16)
+        let status = entropy.withUnsafeMutableBytes { buf -> Int32 in
+            guard let base = buf.baseAddress else { return errSecParam }
+            return SecRandomCopyBytes(kSecRandomDefault, buf.count, base)
+        }
+        if status != errSecSuccess {
+            let fallback = SymmetricKey(size: .bits128)
+            fallback.withUnsafeBytes { rawBuf in
+                for i in 0..<min(16, rawBuf.count) {
+                    entropy[i] = rawBuf[i]
+                }
+            }
+        }
+        let hexAlphabet: [UInt8] = Array("0123456789abcdef".utf8)
+        var hexChars = [UInt8]()
+        hexChars.reserveCapacity(32)
+        for byte in entropy {
+            hexChars.append(hexAlphabet[Int(byte >> 4)])
+            hexChars.append(hexAlphabet[Int(byte & 0x0F)])
+        }
+        let randomHex32 = String(decoding: hexChars, as: UTF8.self)
+        return "/v_\(randomHex32)"
+    }
+
+    private static func locateSanctumPakURL() -> URL? {
+        if let bundled = Bundle.main.url(forResource: "sanctum", withExtension: "pak") {
+            return bundled
+        }
+        if let resDir = Bundle.main.resourceURL {
+            let direct = resDir.appendingPathComponent("sanctum.pak")
+            if FileManager.default.fileExists(atPath: direct.path) {
+                return direct
+            }
+        }
+        let devFallback = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+            .appendingPathComponent("apple/build/sanctum.pak")
+        if FileManager.default.fileExists(atPath: devFallback.path) {
+            return devFallback
+        }
+        return nil
+    }
+
+    private static func openEncryptedVault() -> LoadedVault? {
+        guard let pakURL = locateSanctumPakURL(),
+              let pakData = try? Data(contentsOf: pakURL, options: .mappedIfSafe),
+              pakData.count > 37 else {
+            return nil
+        }
+
+        // Verify magic `"AVSK\x01"` (`0x41 0x56 0x53 0x4B 0x01`)
+        guard pakData[0] == 0x41,
+              pakData[1] == 0x56,
+              pakData[2] == 0x53,
+              pakData[3] == 0x4B,
+              pakData[4] == 0x01 else {
+            return nil
+        }
+
+        let b0 = UInt32(pakData[5])
+        let b1 = UInt32(pakData[6]) << 8
+        let b2 = UInt32(pakData[7]) << 16
+        let b3 = UInt32(pakData[8]) << 24
+        let tocSealedLen = Int(b0 | b1 | b2 | b3)
+        let payloadBase = 9 + tocSealedLen
+        guard tocSealedLen >= 28, payloadBase <= pakData.count else {
+            return nil
+        }
+
+        let key = reconstructVaultKey()
+        let tocSlice = pakData.subdata(in: 9..<payloadBase)
+        guard let tocBox = try? AES.GCM.SealedBox(combined: tocSlice),
+              let tocPlain = try? AES.GCM.open(tocBox, using: key),
+              let rawJSON = try? JSONSerialization.jsonObject(with: tocPlain, options: []),
+              let rawMap = rawJSON as? [String: [Any]] else {
+            return nil
+        }
+
+        var toc = [String: VaultEntry]()
+        toc.reserveCapacity(rawMap.count)
+        for (vpath, tuple) in rawMap {
+            guard tuple.count >= 3,
+                  let offsetNum = tuple[0] as? NSNumber,
+                  let lengthNum = tuple[1] as? NSNumber,
+                  let mime = tuple[2] as? String else {
+                continue
+            }
+            let offset = offsetNum.intValue
+            let length = lengthNum.intValue
+            guard offset >= payloadBase,
+                  length >= 28,
+                  offset + length <= pakData.count else {
+                continue
+            }
+            let ext = (vpath as NSString).pathExtension.lowercased()
+            toc[vpath] = VaultEntry(
+                offset: offset,
+                length: length,
+                mimeType: mime,
+                cacheControl: cacheControlHeader(for: ext)
+            )
+        }
+
+        guard !toc.isEmpty else { return nil }
+        return LoadedVault(mappedPak: pakData, key: key, toc: toc)
+    }
+
+    private static var defaultEntryName: String {
+        String(decoding: [0x69, 0x6E, 0x64, 0x65, 0x78, 0x2E, 0x68, 0x74, 0x6D, 0x6C] as [UInt8], as: UTF8.self)
     }
 
     public func ensureStarted() -> URL? {
         lock.lock()
         defer { lock.unlock() }
 
-        if isRunning, boundPort > 0 {
-            return URL(string: "http://127.0.0.1:\(boundPort)/index.html")
+        if isRunning, boundPort > 0, !sessionPrefix.isEmpty {
+            return URL(string: "http://127.0.0.1:\(boundPort)\(sessionPrefix)/\(Self.defaultEntryName)")
+        }
+
+        guard let vault = Self.openEncryptedVault() else {
+            return nil
         }
 
         let fd = Darwin.socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)
@@ -71,6 +228,9 @@ public final class LocalSanctumServer: @unchecked Sendable {
             return nil
         }
 
+        let prefix = Self.generateSessionPrefix()
+        self.loadedVault = vault
+        self.sessionPrefix = prefix
         self.listenFD = fd
         self.boundPort = UInt16(bigEndian: actualAddr.sin_port)
         self.isRunning = true
@@ -79,7 +239,7 @@ public final class LocalSanctumServer: @unchecked Sendable {
             self?.acceptLoop(serverFD: fd)
         }
 
-        return URL(string: "http://127.0.0.1:\(boundPort)/index.html")
+        return URL(string: "http://127.0.0.1:\(boundPort)\(prefix)/\(Self.defaultEntryName)")
     }
 
     private func acceptLoop(serverFD: Int32) {
@@ -101,23 +261,51 @@ public final class LocalSanctumServer: @unchecked Sendable {
         }
     }
 
-    private func loadCachedData(for fileURL: URL) -> Data? {
-        let key = fileURL.path as NSString
-        if let cached = fileCache.object(forKey: key) {
-            return cached as Data
-        }
-        var isDir: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: fileURL.path, isDirectory: &isDir),
-              !isDir.boolValue,
-              let nsData = try? NSData(contentsOf: fileURL, options: .mappedIfSafe) else {
+    private func decryptVaultEntry(for virtualPath: String, vault: LoadedVault) -> (Data, VaultEntry)? {
+        guard let entry = vault.toc[virtualPath] else {
             return nil
         }
-        fileCache.setObject(nsData, forKey: key, cost: nsData.length)
-        return nsData as Data
+        let cacheKey = virtualPath as NSString
+        if let cached = fileCache.object(forKey: cacheKey) {
+            return (cached as Data, entry)
+        }
+
+        let slice = vault.mappedPak.subdata(in: entry.offset..<(entry.offset + entry.length))
+        guard let sealedBox = try? AES.GCM.SealedBox(combined: slice),
+              let decrypted = try? AES.GCM.open(sealedBox, using: vault.key) else {
+            return nil
+        }
+
+        if decrypted.count <= Self.maxCacheEntryBytes {
+            fileCache.setObject(decrypted as NSData, forKey: cacheKey, cost: decrypted.count)
+        }
+        return (decrypted, entry)
+    }
+
+    private static func normalizeVirtualPath(_ rawSubpath: String) -> String? {
+        if rawSubpath.contains("\0") || rawSubpath.contains("\\") {
+            return nil
+        }
+        let parts = rawSubpath.split(separator: "/", omittingEmptySubsequences: true)
+        var clean: [Substring] = []
+        clean.reserveCapacity(parts.count)
+        for seg in parts {
+            if seg == "." { continue }
+            if seg == ".." { return nil }
+            clean.append(seg)
+        }
+        if clean.isEmpty {
+            return defaultEntryName
+        }
+        return clean.joined(separator: "/")
     }
 
     private func handleClient(fd: Int32) {
         defer { Darwin.close(fd) }
+
+        guard let vault = loadedVault else { return }
+        let requiredPrefix = sessionPrefix + "/"
+        guard !sessionPrefix.isEmpty else { return }
 
         var yes: Int32 = 1
         _ = setsockopt(fd, SOL_SOCKET, SO_NOSIGPIPE, &yes, socklen_t(MemoryLayout<Int32>.size))
@@ -129,7 +317,6 @@ public final class LocalSanctumServer: @unchecked Sendable {
         _ = setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &tv, socklen_t(MemoryLayout<timeval>.size))
 
         var buffer = [UInt8](repeating: 0, count: 16384)
-        let rootPrefix = rootDirectory.path.hasSuffix("/") ? rootDirectory.path : (rootDirectory.path + "/")
 
         // Persistent HTTP/1.1 keep-alive loop avoids opening 70+ sockets when loading hero & audio assets
         while true {
@@ -157,23 +344,24 @@ public final class LocalSanctumServer: @unchecked Sendable {
             let rawTarget = String(parts[1])
             let pathOnly = rawTarget.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? "/"
             let decodedPath = pathOnly.removingPercentEncoding ?? pathOnly
-            let cleanRel = decodedPath.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-            let relFile = cleanRel.isEmpty ? "index.html" : cleanRel
 
-            let fileURL = rootDirectory.appendingPathComponent(relFile).standardizedFileURL
-            guard fileURL.path.hasPrefix(rootPrefix) else {
+            // Strictly enforce unguessable per-launch cryptographic session prefix (`403 Forbidden` otherwise)
+            guard decodedPath.hasPrefix(requiredPrefix) else {
                 sendStatus(fd: fd, code: 403, message: "Forbidden")
                 break
             }
 
-            guard let fileData = loadCachedData(for: fileURL) else {
+            let subpath = String(decodedPath.dropFirst(requiredPrefix.count))
+            guard let virtualPath = Self.normalizeVirtualPath(subpath) else {
+                sendStatus(fd: fd, code: 403, message: "Forbidden")
+                break
+            }
+
+            guard let (fileData, entry) = decryptVaultEntry(for: virtualPath, vault: vault) else {
                 sendStatus(fd: fd, code: 404, message: "Not Found")
                 if wantsClose { break } else { continue }
             }
 
-            let ext = fileURL.pathExtension.lowercased()
-            let mime = Self.mimeType(for: ext)
-            let cacheControl = Self.cacheControlHeader(for: ext)
             let connHeader = wantsClose ? "close" : "keep-alive"
             let totalLen = fileData.count
 
@@ -182,12 +370,12 @@ public final class LocalSanctumServer: @unchecked Sendable {
                 let sliceLen = end - start + 1
                 let header = [
                     "HTTP/1.1 206 Partial Content",
-                    "Content-Type: \(mime)",
+                    "Content-Type: \(entry.mimeType)",
                     "Content-Length: \(sliceLen)",
                     "Content-Range: bytes \(start)-\(end)/\(totalLen)",
                     "Accept-Ranges: bytes",
-                    "Access-Control-Allow-Origin: *",
-                    "Cache-Control: \(cacheControl)",
+                    "Cache-Control: \(entry.cacheControl)",
+                    "X-Content-Type-Options: nosniff",
                     "Connection: \(connHeader)",
                     "",
                     ""
@@ -201,11 +389,11 @@ public final class LocalSanctumServer: @unchecked Sendable {
 
             let header = [
                 "HTTP/1.1 200 OK",
-                "Content-Type: \(mime)",
+                "Content-Type: \(entry.mimeType)",
                 "Content-Length: \(totalLen)",
                 "Accept-Ranges: bytes",
-                "Access-Control-Allow-Origin: *",
-                "Cache-Control: \(cacheControl)",
+                "Cache-Control: \(entry.cacheControl)",
+                "X-Content-Type-Options: nosniff",
                 "Connection: \(connHeader)",
                 "",
                 ""
@@ -267,28 +455,11 @@ public final class LocalSanctumServer: @unchecked Sendable {
     private static func cacheControlHeader(for ext: String) -> String {
         switch ext {
         case "png", "wav", "ttf", "otf", "woff2", "svg", "ico":
-            return "public, max-age=31536000, immutable"
+            return "private, max-age=31536000, immutable"
         case "js", "mjs", "css":
-            return "public, max-age=3600"
+            return "private, max-age=3600"
         default:
-            return "no-cache"
-        }
-    }
-
-    private static func mimeType(for ext: String) -> String {
-        switch ext {
-        case "html", "htm": return "text/html; charset=utf-8"
-        case "css":         return "text/css; charset=utf-8"
-        case "js", "mjs":   return "text/javascript; charset=utf-8"
-        case "json":        return "application/json; charset=utf-8"
-        case "png":         return "image/png"
-        case "wav":         return "audio/wav"
-        case "ttf":         return "font/ttf"
-        case "otf":         return "font/otf"
-        case "woff2":       return "font/woff2"
-        case "svg":         return "image/svg+xml"
-        case "ico":         return "image/x-icon"
-        default:            return "application/octet-stream"
+            return "no-store"
         }
     }
 }

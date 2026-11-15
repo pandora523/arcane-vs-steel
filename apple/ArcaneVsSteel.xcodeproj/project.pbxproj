@@ -7,35 +7,26 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		135ECE810EE6D30F0BF94D79 /* index.html in Resources */ = {isa = PBXBuildFile; fileRef = D69C37A1F2CCE7A1A80FFD0B /* index.html */; };
-		22944728148252A3ADDC0A15 /* style.css in Resources */ = {isa = PBXBuildFile; fileRef = 1C6682754A0926E0911F0D4A /* style.css */; };
-		35F8FA878095842B08D50244 /* SanctumShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 0A0822F83CEBEEAFE0440CC5 /* SanctumShaders.metal */; };
-		7F3A94C94D434A7082BA6748 /* SanctumMetalPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE50DAAB0BA4E5C7B166EAA5 /* SanctumMetalPipeline.swift */; };
-		7FB98C50380650AE04C45E34 /* SanctumWebStageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B3C0C1470D6CD0BF7BEA9B /* SanctumWebStageView.swift */; };
-		9BE715F84FD4ACBCA6E57FC3 /* assets in Resources */ = {isa = PBXBuildFile; fileRef = A67C0D00EC8BB072BE4D3363 /* assets */; };
-		A1FA152CEB269AAB9E086D74 /* NativePlatformBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9627643F347880CB866D64E /* NativePlatformBridge.swift */; };
 		AC15EE1C178F10C69181B6EE /* ArcaneVsSteelApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0E490933524C46C64AD10842 /* ArcaneVsSteelApp.swift */; };
 		CD05EDFECE18FA13A1D94410 /* LocalSanctumServer.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3AA2D16C4B511D1FF7A4730B /* LocalSanctumServer.swift */; };
+		A1FA152CEB269AAB9E086D74 /* NativePlatformBridge.swift in Sources */ = {isa = PBXBuildFile; fileRef = D9627643F347880CB866D64E /* NativePlatformBridge.swift */; };
+		7F3A94C94D434A7082BA6748 /* SanctumMetalPipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE50DAAB0BA4E5C7B166EAA5 /* SanctumMetalPipeline.swift */; };
+		35F8FA878095842B08D50244 /* SanctumShaders.metal in Sources */ = {isa = PBXBuildFile; fileRef = 0A0822F83CEBEEAFE0440CC5 /* SanctumShaders.metal */; };
+		7FB98C50380650AE04C45E34 /* SanctumWebStageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9B3C0C1470D6CD0BF7BEA9B /* SanctumWebStageView.swift */; };
 		D3FDBE29C0B031B13DC84E4E /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = EE456F7180D4191E290FEFE0 /* Assets.xcassets */; };
-		DBBCADA25EB82B58F1C1F74A /* manifest.json in Resources */ = {isa = PBXBuildFile; fileRef = F8C06A8EB1191A2845A78C17 /* manifest.json */; };
-		F84E31E796D3652A1E32EF75 /* src in Resources */ = {isa = PBXBuildFile; fileRef = AD44A1136645E4E9B92D315E /* src */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		0A0822F83CEBEEAFE0440CC5 /* SanctumShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = file.metal; path = SanctumShaders.metal; sourceTree = "<group>"; };
 		0E490933524C46C64AD10842 /* ArcaneVsSteelApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ArcaneVsSteelApp.swift; sourceTree = "<group>"; };
-		1C6682754A0926E0911F0D4A /* style.css */ = {isa = PBXFileReference; lastKnownFileType = text.css; name = style.css; path = ../style.css; sourceTree = "<group>"; };
 		3AA2D16C4B511D1FF7A4730B /* LocalSanctumServer.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LocalSanctumServer.swift; sourceTree = "<group>"; };
-		4D26660E7A037D4ADFD6BA79 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
-		A67C0D00EC8BB072BE4D3363 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; name = assets; path = ../assets; sourceTree = "<group>"; };
-		AD44A1136645E4E9B92D315E /* src */ = {isa = PBXFileReference; lastKnownFileType = folder; name = src; path = ../src; sourceTree = "<group>"; };
-		AE50DAAB0BA4E5C7B166EAA5 /* SanctumMetalPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SanctumMetalPipeline.swift; sourceTree = "<group>"; };
-		AF05E76347BD0A99D7A428B4 /* ArcaneVsSteel.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArcaneVsSteel.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		B9B3C0C1470D6CD0BF7BEA9B /* SanctumWebStageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SanctumWebStageView.swift; sourceTree = "<group>"; };
-		D69C37A1F2CCE7A1A80FFD0B /* index.html */ = {isa = PBXFileReference; lastKnownFileType = text.html; name = index.html; path = ../index.html; sourceTree = "<group>"; };
 		D9627643F347880CB866D64E /* NativePlatformBridge.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = NativePlatformBridge.swift; sourceTree = "<group>"; };
+		AE50DAAB0BA4E5C7B166EAA5 /* SanctumMetalPipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SanctumMetalPipeline.swift; sourceTree = "<group>"; };
+		0A0822F83CEBEEAFE0440CC5 /* SanctumShaders.metal */ = {isa = PBXFileReference; lastKnownFileType = file.metal; path = SanctumShaders.metal; sourceTree = "<group>"; };
+		B9B3C0C1470D6CD0BF7BEA9B /* SanctumWebStageView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SanctumWebStageView.swift; sourceTree = "<group>"; };
+		AF05E76347BD0A99D7A428B4 /* ArcaneVsSteel.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ArcaneVsSteel.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		4D26660E7A037D4ADFD6BA79 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		EE456F7180D4191E290FEFE0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
-		F8C06A8EB1191A2845A78C17 /* manifest.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; name = manifest.json; path = ../manifest.json; sourceTree = "<group>"; };
+		88F7CB47E9671B7EAFE924D4 /* pack_sanctum_vault.py */ = {isa = PBXFileReference; lastKnownFileType = text.script.python; path = pack_sanctum_vault.py; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -49,24 +40,24 @@
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
-		240E0FA8D5EB375FAAC2556C /* UI */ = {
+		D9C52F509355ADDDB824CBF7 = {
 			isa = PBXGroup;
 			children = (
-				B9B3C0C1470D6CD0BF7BEA9B /* SanctumWebStageView.swift */,
+				E56483A1B2F72A222298AAAD /* ArcaneVsSteel */,
+				88F7CB47E9671B7EAFE924D4 /* pack_sanctum_vault.py */,
+				C14052F78C9CB75FBB0C6D09 /* Products */,
 			);
-			path = UI;
 			sourceTree = "<group>";
 		};
-		7AC374E16F0EC55728B16750 /* SharedGameRuntime */ = {
+		E56483A1B2F72A222298AAAD /* ArcaneVsSteel */ = {
 			isa = PBXGroup;
 			children = (
-				D69C37A1F2CCE7A1A80FFD0B /* index.html */,
-				1C6682754A0926E0911F0D4A /* style.css */,
-				F8C06A8EB1191A2845A78C17 /* manifest.json */,
-				AD44A1136645E4E9B92D315E /* src */,
-				A67C0D00EC8BB072BE4D3363 /* assets */,
+				D749E26C43CA02049591EA6D /* App */,
+				EEE96318F4FD74C896B85A09 /* Core */,
+				FBDF6979CBF6B7DE06D762B2 /* Metal */,
+				240E0FA8D5EB375FAAC2556C /* UI */,
 			);
-			name = SharedGameRuntime;
+			path = ArcaneVsSteel;
 			sourceTree = "<group>";
 		};
 		C14052F78C9CB75FBB0C6D09 /* Products */ = {
@@ -87,26 +78,6 @@
 			path = App;
 			sourceTree = "<group>";
 		};
-		D9C52F509355ADDDB824CBF7 = {
-			isa = PBXGroup;
-			children = (
-				E56483A1B2F72A222298AAAD /* ArcaneVsSteel */,
-				7AC374E16F0EC55728B16750 /* SharedGameRuntime */,
-				C14052F78C9CB75FBB0C6D09 /* Products */,
-			);
-			sourceTree = "<group>";
-		};
-		E56483A1B2F72A222298AAAD /* ArcaneVsSteel */ = {
-			isa = PBXGroup;
-			children = (
-				D749E26C43CA02049591EA6D /* App */,
-				EEE96318F4FD74C896B85A09 /* Core */,
-				FBDF6979CBF6B7DE06D762B2 /* Metal */,
-				240E0FA8D5EB375FAAC2556C /* UI */,
-			);
-			path = ArcaneVsSteel;
-			sourceTree = "<group>";
-		};
 		EEE96318F4FD74C896B85A09 /* Core */ = {
 			isa = PBXGroup;
 			children = (
@@ -125,6 +96,14 @@
 			path = Metal;
 			sourceTree = "<group>";
 		};
+		240E0FA8D5EB375FAAC2556C /* UI */ = {
+			isa = PBXGroup;
+			children = (
+				B9B3C0C1470D6CD0BF7BEA9B /* SanctumWebStageView.swift */,
+			);
+			path = UI;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
@@ -135,6 +114,7 @@
 				39F34E268CF8DD639261D570 /* Sources */,
 				4F1E8CD2EA2EB1AADFE11BB5 /* Frameworks */,
 				E1B8974A8FE3D0B91D616D71 /* Resources */,
+				2B82E4D81C1EF878C0331368 /* Pack Encrypted Sanctum Vault */,
 			);
 			buildRules = (
 			);
@@ -153,7 +133,7 @@
 			attributes = {
 				BuildIndependentTargetsInParallel = 1;
 				LastSwiftUpdateCheck = 1600;
-				LastUpgradeCheck = 2710;
+				LastUpgradeCheck = 1600;
 				TargetAttributes = {
 					0767222A1E2071EED3FECE27 = {
 						CreatedOnToolsVersion = 16.0;
@@ -186,15 +166,32 @@
 			buildActionMask = 2147483647;
 			files = (
 				D3FDBE29C0B031B13DC84E4E /* Assets.xcassets in Resources */,
-				135ECE810EE6D30F0BF94D79 /* index.html in Resources */,
-				22944728148252A3ADDC0A15 /* style.css in Resources */,
-				DBBCADA25EB82B58F1C1F74A /* manifest.json in Resources */,
-				F84E31E796D3652A1E32EF75 /* src in Resources */,
-				9BE715F84FD4ACBCA6E57FC3 /* assets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		2B82E4D81C1EF878C0331368 /* Pack Encrypted Sanctum Vault */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Pack Encrypted Sanctum Vault";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "set -eu\nexport PATH=\"/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH\"\nDEST_DIR=\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\"\nmkdir -p \"${DEST_DIR}\"\npython3 \"${PROJECT_DIR}/pack_sanctum_vault.py\" --output \"${DEST_DIR}/sanctum.pak\"\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		39F34E268CF8DD639261D570 /* Sources */ = {
@@ -213,104 +210,28 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		78AB144C35B530094D1FA403 /* Release */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ALWAYS_SEARCH_USER_PATHS = NO;
-				CLANG_ENABLE_MODULES = YES;
-				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
-				COMPRESS_PNG_FILES = NO;
-				COPY_PHASE_STRIP = NO;
-				DEAD_CODE_STRIPPING = YES;
-				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				ENABLE_NS_ASSERTIONS = NO;
-				ENABLE_STRICT_OBJC_MSGSEND = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
-				GCC_NO_COMMON_BLOCKS = YES;
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
-				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MTL_ENABLE_DEBUG_INFO = NO;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
-				STRIP_PNG_TEXT = NO;
-				SWIFT_COMPILATION_MODE = wholemodule;
-				SWIFT_OPTIMIZATION_LEVEL = "-O";
-				SWIFT_VERSION = 5.0;
-			};
-			name = Release;
-		};
 		D206CEAE226D57349376F36D /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ENABLE_MODULES = YES;
 				CLANG_ENABLE_OBJC_ARC = YES;
-				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
-				CLANG_WARN_BOOL_CONVERSION = YES;
-				CLANG_WARN_COMMA = YES;
-				CLANG_WARN_CONSTANT_CONVERSION = YES;
-				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
-				CLANG_WARN_EMPTY_BODY = YES;
-				CLANG_WARN_ENUM_CONVERSION = YES;
-				CLANG_WARN_INFINITE_RECURSION = YES;
-				CLANG_WARN_INT_CONVERSION = YES;
-				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
-				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
-				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
-				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
-				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
-				CLANG_WARN_STRICT_PROTOTYPES = YES;
-				CLANG_WARN_SUSPICIOUS_MOVE = YES;
-				CLANG_WARN_UNREACHABLE_CODE = YES;
-				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COMPRESS_PNG_FILES = NO;
 				COPY_PHASE_STRIP = NO;
-				DEAD_CODE_STRIPPING = YES;
 				DEBUG_INFORMATION_FORMAT = dwarf;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
-				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GCC_DYNAMIC_NO_PIC = NO;
-				GCC_NO_COMMON_BLOCKS = YES;
 				GCC_OPTIMIZATION_LEVEL = 0;
 				GCC_PREPROCESSOR_DEFINITIONS = (
 					"DEBUG=1",
 					"$(inherited)",
 				);
-				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
-				GCC_WARN_ABOUT_RETURN_TYPE = YES;
-				GCC_WARN_UNDECLARED_SELECTOR = YES;
-				GCC_WARN_UNINITIALIZED_AUTOS = YES;
-				GCC_WARN_UNUSED_FUNCTION = YES;
-				GCC_WARN_UNUSED_VARIABLE = YES;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
 				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
 				ONLY_ACTIVE_ARCH = YES;
-				STRING_CATALOG_GENERATE_SYMBOLS = YES;
 				STRIP_PNG_TEXT = NO;
 				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
 				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
@@ -318,50 +239,25 @@
 			};
 			name = Debug;
 		};
-		D345D9445D09212BA6A4B230 /* Release */ = {
+		78AB144C35B530094D1FA403 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				AD_HOC_CODE_SIGNING_ALLOWED = YES;
-				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "-";
-				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
-				CODE_SIGN_STYLE = Manual;
-				"CODE_SIGN_STYLE[sdk=iphoneos*]" = Automatic;
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
 				COMPRESS_PNG_FILES = NO;
-				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = JD7HC7GF88;
-				ENABLE_APP_SANDBOX = NO;
-				ENABLE_HARDENED_RUNTIME = NO;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_FILE = ArcaneVsSteel/App/Info.plist;
-				INFOPLIST_KEY_CFBundleDisplayName = "Arcane vs. Steel";
-				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.action-games";
-				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
-				"INFOPLIST_KEY_UIStatusBarHidden[sdk=iphoneos*]" = YES;
-				"INFOPLIST_KEY_UIStatusBarHidden[sdk=iphonesimulator*]" = YES;
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
-				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
-				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
-				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
 				MACOSX_DEPLOYMENT_TARGET = 15.0;
-				MARKETING_VERSION = 1.0.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.arcanevssteel.app;
-				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.gabugabu.arcanevssteel;
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SDKROOT = auto;
+				MTL_ENABLE_DEBUG_INFO = NO;
 				STRIP_PNG_TEXT = NO;
-				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
-				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
 				SWIFT_VERSION = 5.0;
-				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
 		};
@@ -375,12 +271,12 @@
 				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
 				CODE_SIGN_STYLE = Manual;
 				"CODE_SIGN_STYLE[sdk=iphoneos*]" = Automatic;
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = JD7HC7GF88;
 				COMPRESS_PNG_FILES = NO;
 				CURRENT_PROJECT_VERSION = 1;
-				DEAD_CODE_STRIPPING = YES;
-				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = JD7HC7GF88;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_FILE = ArcaneVsSteel/App/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "Arcane vs. Steel";
@@ -412,23 +308,70 @@
 			};
 			name = Debug;
 		};
+		D345D9445D09212BA6A4B230 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				AD_HOC_CODE_SIGNING_ALLOWED = YES;
+				ALLOW_TARGET_PLATFORM_SPECIALIZATION = YES;
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "-";
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "Apple Development";
+				CODE_SIGN_STYLE = Manual;
+				"CODE_SIGN_STYLE[sdk=iphoneos*]" = Automatic;
+				"DEVELOPMENT_TEAM[sdk=iphoneos*]" = JD7HC7GF88;
+				COMPRESS_PNG_FILES = NO;
+				CURRENT_PROJECT_VERSION = 1;
+				ENABLE_APP_SANDBOX = NO;
+				ENABLE_HARDENED_RUNTIME = NO;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = ArcaneVsSteel/App/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "Arcane vs. Steel";
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.action-games";
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSceneManifest_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UILaunchScreen_Generation[sdk=iphonesimulator*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarHidden[sdk=iphoneos*]" = YES;
+				"INFOPLIST_KEY_UIStatusBarHidden[sdk=iphonesimulator*]" = YES;
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown";
+				INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone = "UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight UIInterfaceOrientationPortrait";
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				LD_RUNPATH_SEARCH_PATHS = "@executable_path/Frameworks";
+				"LD_RUNPATH_SEARCH_PATHS[sdk=macosx*]" = "@executable_path/../Frameworks";
+				MACOSX_DEPLOYMENT_TARGET = 15.0;
+				MARKETING_VERSION = 1.0.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.arcanevssteel.app;
+				"PRODUCT_BUNDLE_IDENTIFIER[sdk=iphoneos*]" = com.gabugabu.arcanevssteel;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = auto;
+				STRIP_PNG_TEXT = NO;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator macosx";
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		429C646A19D17B9A5AE8CDBE /* Build configuration list for PBXNativeTarget "ArcaneVsSteel" */ = {
-			isa = XCConfigurationList;
-			buildConfigurations = (
-				FBCFB3246BE1BF463022D982 /* Debug */,
-				D345D9445D09212BA6A4B230 /* Release */,
-			);
-			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Release;
-		};
 		EC838D9AE7104237E9AC0D48 /* Build configuration list for PBXProject "ArcaneVsSteel" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				D206CEAE226D57349376F36D /* Debug */,
 				78AB144C35B530094D1FA403 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		429C646A19D17B9A5AE8CDBE /* Build configuration list for PBXNativeTarget "ArcaneVsSteel" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				FBCFB3246BE1BF463022D982 /* Debug */,
+				D345D9445D09212BA6A4B230 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

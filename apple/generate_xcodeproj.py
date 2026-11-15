@@ -2,9 +2,10 @@
 """
 Deterministic Xcode multiplatform project generator for Arcane vs. Steel (iOS + macOS).
 Generates `apple/ArcaneVsSteel.xcodeproj/project.pbxproj` and shared scheme `ArcaneVsSteel`.
-Bundles the exact, untouched original game (`../index.html`, `../style.css`, `../manifest.json`,
-`../src`, `../assets`) as read-only bundle references with 100% lossless PNG preservation
-(`COMPRESS_PNG_FILES = NO`, `STRIP_PNG_TEXT = NO`) while leaving the root Web/Vercel build untouched.
+Packs the game runtime & lossless assets (`../index.html`, `../style.css`, `../manifest.json`,
+`../src`, `../assets`) at build time into an AES-256-GCM encrypted archive (`sanctum.pak`)
+via `pack_sanctum_vault.py`, shipping ZERO raw `.js`, `.html`, `.css`, `.png`, `.wav`, or `.ttf`
+files inside `ArcaneVsSteel.app` while leaving the root Web/Vercel build 100% untouched.
 """
 
 import hashlib
@@ -39,7 +40,6 @@ def generate() -> None:
     proj_id = pbx_id("PBXProject")
     main_group_id = pbx_id("MainGroup")
     src_group_id = pbx_id("SourceGroup:ArcaneVsSteel")
-    web_group_id = pbx_id("SharedGameRuntimeGroup")
     products_group_id = pbx_id("ProductsGroup")
 
     target_id = pbx_id("NativeTarget:ArcaneVsSteel")
@@ -47,6 +47,7 @@ def generate() -> None:
     sources_phase_id = pbx_id("SourcesBuildPhase")
     frameworks_phase_id = pbx_id("FrameworksBuildPhase")
     resources_phase_id = pbx_id("ResourcesBuildPhase")
+    vault_script_phase_id = pbx_id("ShellScriptBuildPhase:PackEncryptedSanctumVault")
 
     proj_cfg_list_id = pbx_id("ConfigList:Project")
     proj_debug_id = pbx_id("BuildConfig:Project:Debug")
@@ -59,15 +60,7 @@ def generate() -> None:
     infoplist_file_id = pbx_id("FileRef:Info.plist")
     xcassets_file_id = pbx_id("FileRef:Assets.xcassets")
     xcassets_build_id = pbx_id("BuildFile:Assets.xcassets")
-
-    # Read-only references to the exact original game runtime & lossless assets
-    shared_bundle_items = [
-        ("index.html", "../index.html", "text.html"),
-        ("style.css", "../style.css", "text.css"),
-        ("manifest.json", "../manifest.json", "text.json"),
-        ("src", "../src", "folder"),
-        ("assets", "../assets", "folder"),
-    ]
+    vault_packer_file_id = pbx_id("FileRef:pack_sanctum_vault.py")
 
     group_ids = {grp: pbx_id(f"Group:{grp}") for grp in groups}
     group_children = {grp: [] for grp in groups}
@@ -75,8 +68,8 @@ def generate() -> None:
     build_file_lines = []
     file_ref_lines = []
     source_build_ids = []
+    # Strictly ONLY Assets.xcassets in ResourcesBuildPhase (zero raw game .js/.png/.wav/.html/.css files!)
     resource_build_ids = [(xcassets_build_id, "Assets.xcassets")]
-    shared_group_children = []
 
     for grp, fname, rel_path, ftype in source_entries:
         f_id = pbx_id(f"FileRef:{rel_path}")
@@ -103,18 +96,9 @@ def generate() -> None:
     file_ref_lines.append(
         f"\t\t{xcassets_file_id} /* Assets.xcassets */ = {{isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = \"<group>\"; }};"
     )
-
-    for name, rel_path, ftype in shared_bundle_items:
-        fid = pbx_id(f"FileRef:{rel_path}")
-        bid = pbx_id(f"BuildFile:{rel_path}")
-        shared_group_children.append((fid, name))
-        resource_build_ids.append((bid, name))
-        build_file_lines.append(
-            f"\t\t{bid} /* {name} in Resources */ = {{isa = PBXBuildFile; fileRef = {fid} /* {name} */; }};"
-        )
-        file_ref_lines.append(
-            f"\t\t{fid} /* {name} */ = {{isa = PBXFileReference; lastKnownFileType = {ftype}; name = {name}; path = {rel_path}; sourceTree = \"<group>\"; }};"
-        )
+    file_ref_lines.append(
+        f"\t\t{vault_packer_file_id} /* pack_sanctum_vault.py */ = {{isa = PBXFileReference; lastKnownFileType = text.script.python; path = pack_sanctum_vault.py; sourceTree = \"<group>\"; }};"
+    )
 
     group_children["App"].append((infoplist_file_id, "Info.plist"))
     group_children["App"].append((xcassets_file_id, "Assets.xcassets"))
@@ -135,9 +119,16 @@ def generate() -> None:
         )
 
     src_group_children_str = "\n".join(f"\t\t\t\t{group_ids[grp]} /* {grp} */," for grp in groups)
-    shared_children_str = "\n".join(f"\t\t\t\t{fid} /* {fname} */," for fid, fname in shared_group_children)
     sources_files_str = "\n".join(f"\t\t\t\t{bid} /* {bname} in Sources */," for bid, bname in source_build_ids)
     resources_files_str = "\n".join(f"\t\t\t\t{bid} /* {bname} in Resources */," for bid, bname in resource_build_ids)
+
+    vault_shell_script = (
+        "set -eu\\n"
+        "export PATH=\\\"/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:$PATH\\\"\\n"
+        "DEST_DIR=\\\"${TARGET_BUILD_DIR}/${UNLOCALIZED_RESOURCES_FOLDER_PATH}\\\"\\n"
+        "mkdir -p \\\"${DEST_DIR}\\\"\\n"
+        "python3 \\\"${PROJECT_DIR}/pack_sanctum_vault.py\\\" --output \\\"${DEST_DIR}/sanctum.pak\\\"\\n"
+    )
 
     pbxproj = f"""// !$*UTF8*$!
 {{
@@ -170,7 +161,7 @@ def generate() -> None:
 \t\t\tisa = PBXGroup;
 \t\t\tchildren = (
 \t\t\t\t{src_group_id} /* ArcaneVsSteel */,
-\t\t\t\t{web_group_id} /* SharedGameRuntime */,
+\t\t\t\t{vault_packer_file_id} /* pack_sanctum_vault.py */,
 \t\t\t\t{products_group_id} /* Products */,
 \t\t\t);
 \t\t\tsourceTree = "<group>";
@@ -181,14 +172,6 @@ def generate() -> None:
 {src_group_children_str}
 \t\t\t);
 \t\t\tpath = ArcaneVsSteel;
-\t\t\tsourceTree = "<group>";
-\t\t}};
-\t\t{web_group_id} /* SharedGameRuntime */ = {{
-\t\t\tisa = PBXGroup;
-\t\t\tchildren = (
-{shared_children_str}
-\t\t\t);
-\t\t\tname = SharedGameRuntime;
 \t\t\tsourceTree = "<group>";
 \t\t}};
 \t\t{products_group_id} /* Products */ = {{
@@ -210,6 +193,7 @@ def generate() -> None:
 \t\t\t\t{sources_phase_id} /* Sources */,
 \t\t\t\t{frameworks_phase_id} /* Frameworks */,
 \t\t\t\t{resources_phase_id} /* Resources */,
+\t\t\t\t{vault_script_phase_id} /* Pack Encrypted Sanctum Vault */,
 \t\t\t);
 \t\t\tbuildRules = (
 \t\t\t);
@@ -266,6 +250,28 @@ def generate() -> None:
 \t\t}};
 /* End PBXResourcesBuildPhase section */
 
+/* Begin PBXShellScriptBuildPhase section */
+\t\t{vault_script_phase_id} /* Pack Encrypted Sanctum Vault */ = {{
+\t\t\tisa = PBXShellScriptBuildPhase;
+\t\t\talwaysOutOfDate = 1;
+\t\t\tbuildActionMask = 2147483647;
+\t\t\tfiles = (
+\t\t\t);
+\t\t\tinputFileListPaths = (
+\t\t\t);
+\t\t\tinputPaths = (
+\t\t\t);
+\t\t\tname = "Pack Encrypted Sanctum Vault";
+\t\t\toutputFileListPaths = (
+\t\t\t);
+\t\t\toutputPaths = (
+\t\t\t);
+\t\t\trunOnlyForDeploymentPostprocessing = 0;
+\t\t\tshellPath = /bin/sh;
+\t\t\tshellScript = "{vault_shell_script}";
+\t\t}};
+/* End PBXShellScriptBuildPhase section */
+
 /* Begin PBXSourcesBuildPhase section */
 \t\t{sources_phase_id} /* Sources */ = {{
 \t\t\tisa = PBXSourcesBuildPhase;
@@ -289,6 +295,7 @@ def generate() -> None:
 \t\t\t\tDEBUG_INFORMATION_FORMAT = dwarf;
 \t\t\t\tENABLE_STRICT_OBJC_MSGSEND = YES;
 \t\t\t\tENABLE_TESTABILITY = YES;
+\t\t\t\tENABLE_USER_SCRIPT_SANDBOXING = NO;
 \t\t\t\tGCC_DYNAMIC_NO_PIC = NO;
 \t\t\t\tGCC_OPTIMIZATION_LEVEL = 0;
 \t\t\t\tGCC_PREPROCESSOR_DEFINITIONS = (
@@ -317,6 +324,7 @@ def generate() -> None:
 \t\t\t\tDEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
 \t\t\t\tENABLE_NS_ASSERTIONS = NO;
 \t\t\t\tENABLE_STRICT_OBJC_MSGSEND = YES;
+\t\t\t\tENABLE_USER_SCRIPT_SANDBOXING = NO;
 \t\t\t\tIPHONEOS_DEPLOYMENT_TARGET = 17.0;
 \t\t\t\tMACOSX_DEPLOYMENT_TARGET = 15.0;
 \t\t\t\tMTL_ENABLE_DEBUG_INFO = NO;
@@ -342,6 +350,7 @@ def generate() -> None:
 \t\t\t\tCURRENT_PROJECT_VERSION = 1;
 \t\t\t\tENABLE_APP_SANDBOX = NO;
 \t\t\t\tENABLE_HARDENED_RUNTIME = NO;
+\t\t\t\tENABLE_USER_SCRIPT_SANDBOXING = NO;
 \t\t\t\tGENERATE_INFOPLIST_FILE = YES;
 \t\t\t\tINFOPLIST_FILE = ArcaneVsSteel/App/Info.plist;
 \t\t\t\tINFOPLIST_KEY_CFBundleDisplayName = "Arcane vs. Steel";
@@ -388,6 +397,7 @@ def generate() -> None:
 \t\t\t\tCURRENT_PROJECT_VERSION = 1;
 \t\t\t\tENABLE_APP_SANDBOX = NO;
 \t\t\t\tENABLE_HARDENED_RUNTIME = NO;
+\t\t\t\tENABLE_USER_SCRIPT_SANDBOXING = NO;
 \t\t\t\tGENERATE_INFOPLIST_FILE = YES;
 \t\t\t\tINFOPLIST_FILE = ArcaneVsSteel/App/Info.plist;
 \t\t\t\tINFOPLIST_KEY_CFBundleDisplayName = "Arcane vs. Steel";
@@ -450,7 +460,7 @@ def generate() -> None:
 
     scheme_xml = f"""<?xml version="1.0" encoding="UTF-8"?>
 <Scheme
-   LastUpgradeVersion = "1600"
+   LastUpgradeVersion = "2710"
    version = "1.7">
    <BuildAction
       parallelizeBuildables = "YES"
@@ -528,7 +538,7 @@ def generate() -> None:
 </Scheme>
 """
     (SCHEMES_DIR / "ArcaneVsSteel.xcscheme").write_text(scheme_xml, encoding="utf-8")
-    print(f"Generated {XCODEPROJ_DIR} with {len(source_entries)} Swift/Metal source files and exact shared game runtime.")
+    print(f"Generated {XCODEPROJ_DIR} with {len(source_entries)} Swift/Metal source files and AES-256-GCM Sanctum Vault phase.")
 
 
 if __name__ == "__main__":

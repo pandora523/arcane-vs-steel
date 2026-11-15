@@ -41,6 +41,11 @@ public final class SanctumWebCoordinator: NSObject, WKNavigationDelegate, WKUIDe
         #endif
 
         let webView = WKWebView(frame: .zero, configuration: config)
+        #if !DEBUG
+        if #available(iOS 16.4, macOS 13.3, *) {
+            webView.isInspectable = false
+        }
+        #endif
         webView.navigationDelegate = self
         webView.uiDelegate = self
         bridge.webView = webView
@@ -117,7 +122,11 @@ public final class SanctumWebCoordinator: NSObject, WKNavigationDelegate, WKUIDe
         webView.isHidden = false
         #endif
         bridge.setApplicationActive(true)
-        webView.reload()
+        if webView.url != nil {
+            webView.reload()
+        } else if let url = LocalSanctumServer.shared.ensureStarted() {
+            webView.load(URLRequest(url: url))
+        }
     }
 
     private static func buildMetalFastPathDocumentStartScript() -> String {
@@ -186,23 +195,27 @@ public final class SanctumWebCoordinator: NSObject, WKNavigationDelegate, WKUIDe
         return """
         window.__AVS_IS_IOS_SIMULATOR__ = \(isSimFlag);
         """ + "\n" + #"""
-        import { ArcaneShaderFX } from '/src/engine/ArcaneShaderFX.js?v=30fps112';
-
         // Default to ArcaneShaderFX's unified low-power dirty-rect 2D compositor:
         // - Eliminates permanent ANGLE WebGL2 context + `powerPreference: 'high-performance'` GPU P-state boost
         // - Eliminates cross-context WebGL2 <-> Canvas2D Metal command-buffer stalls (up to 8 flushes/frame)
         // - Performs 0 pixel scans, 0 uploads, and 0 blits whenever `dirtyMaxX < dirtyMinX`
         // - Produces 100% bit-identical HD-2D pixel albedo + additive emissive bloom!
-        (function configureThermalOptimalShaderPipeline() {
+        (async function configureThermalOptimalShaderPipeline() {
           const params = new URLSearchParams(window.location.search || '');
           const forceWebGL = params.get('webglShader') === '1';
-          if (!forceWebGL || !ArcaneShaderFX) {
+          if (!forceWebGL) {
             window.__AVS_METAL_WEBGL2_ACTIVE__ = false;
             window.__AVS_GL_RENDERER__ = 'Unified2D-DirtyRect-LowPower';
             return;
           }
 
           try {
+            const { ArcaneShaderFX } = await import('./src/engine/ArcaneShaderFX.js?v=30fps112');
+            if (!ArcaneShaderFX) {
+              window.__AVS_METAL_WEBGL2_ACTIVE__ = false;
+              window.__AVS_GL_RENDERER__ = 'Unified2D-DirtyRect-LowPower';
+              return;
+            }
             const MAX_W = 736;
             const MAX_H = 464;
             const GL_W = MAX_W;
