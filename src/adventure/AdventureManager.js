@@ -1964,6 +1964,9 @@ export class AdventureManager {
     } else if (heroId === 'warrior') {
       speedMult = 1.10;
       initFrame = 184; // Row 6 Celestial Runic Flash-Step!
+    } else if (heroId === 'warrior_ex') {
+      speedMult = 1.15;
+      initFrame = 183; // Row 6 Exvius Sword-Drag Flash-Step Blitz!
     } else if (heroId === 'ronin') {
       speedMult = 1.16;
       initFrame = 185; // Row 6 Lightning Suriashi Slide!
@@ -2158,6 +2161,18 @@ export class AdventureManager {
         vfx?.spawnShockwave?.(player.x, player.groundY - 4, 54, '#38bdf8', 0.18, true);
         break;
       }
+      case 'warrior_ex': {
+        // Aethelgard EX (`BLITZ` — Sword-Drag Flash-Step Icon): Low Exvius Sword-Drag Cinder Blitz & Astral Mirage!
+        audio?.play?.('dash_whoosh', player.x);
+        player.fx?.spawn('blinkTeleportPillar', player.x, player.groundY, {
+          maxDuration: 0.22,
+          light: 1.22,
+          extra: { width: 24, height: 142 }
+        });
+        player.spawnAfterimage?.(player.x, player.groundY, player.facing, 6, 4, 0.22, 'gold');
+        vfx?.spawnShockwave?.(player.x, player.groundY - 4, 60, '#facc15', 0.18, true);
+        break;
+      }
       case 'ronin': {
         // Kaze-Maru (`SURIASHI` — Lightning Footwork Icon): Grounded Lightning Shunpo / Suriashi Slide!
         audio?.play?.('dash_whoosh', player.x);
@@ -2248,6 +2263,9 @@ export class AdventureManager {
     } else if (heroId === 'warrior') {
       liftY = Math.sin(u * Math.PI) * 8;
       player._advDodgeFrameOverride = 184 + Math.min(21, Math.floor(u * 22));
+    } else if (heroId === 'warrior_ex') {
+      liftY = 0;
+      player._advDodgeFrameOverride = 183 + Math.min(23, Math.floor(u * 24));
     } else if (heroId === 'ronin') {
       liftY = 0;
       player._advDodgeFrameOverride = 185 + Math.min(20, Math.floor(u * 21));
@@ -2304,15 +2322,15 @@ export class AdventureManager {
           color: heroId === 'valkyrie' ? '#fbbf24' : '#fef08a',
           maxLife: 0.30
         });
-      } else if (heroId === 'ronin' || heroId === 'warrior') {
+      } else if (heroId === 'ronin' || heroId === 'warrior' || heroId === 'warrior_ex') {
         this.pushHeroDodgeTrail(player, {
           kind: 'lightning_spark',
           layer: 'front',
           x: player.x - player.facing * 14,
-          y: player.groundY - (heroId === 'ronin' ? 14 : 52),
-          w: 28,
+          y: player.groundY - (heroId === 'ronin' || heroId === 'warrior_ex' ? 14 : 52),
+          w: heroId === 'warrior_ex' ? 32 : 28,
           color: heroId === 'ronin' ? '#38bdf8' : '#fde047',
-          maxLife: 0.20
+          maxLife: 0.22
         });
       } else if (heroId === 'titan' || heroId === 'mage') {
         this.pushHeroDodgeTrail(player, {
@@ -2376,10 +2394,10 @@ export class AdventureManager {
           light: 1.16,
           extra: { radius: 24, isCrimson: true, customDuration: 0.24 }
         });
-      } else if (heroId === 'warrior') {
+      } else if (heroId === 'warrior' || heroId === 'warrior_ex') {
         player.fx?.spawn('blinkTeleportPillar', player.x, player.groundY, {
           maxDuration: 0.20,
-          light: 1.12,
+          light: 1.14,
           extra: { width: 20, height: 126 }
         });
       }
@@ -2872,7 +2890,7 @@ export class AdventureManager {
             if (isHackSlash) {
               if ((player.comboStep || 0) !== 0) {
                 this.autoCdMax = 0.36;
-                player.autoCooldown = 0.03;
+                player.autoCooldown = player.heroId === 'warrior_ex' ? 0.015 : 0.03;
               } else {
                 this.autoCdMax = 0.62;
                 player.autoCooldown = 0.62;
@@ -3219,7 +3237,7 @@ export class AdventureManager {
         if (isHns) {
           if ((player.comboStep || 0) !== 0) {
             this.autoCdMax = 0.34;
-            player.autoCooldown = 0.03;
+            player.autoCooldown = player.heroId === 'warrior_ex' ? 0.015 : 0.03;
           } else {
             this.autoCdMax = 0.36;
             player.autoCooldown = 0.34;

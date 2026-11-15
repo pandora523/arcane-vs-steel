@@ -24,6 +24,16 @@ export const ADVENTURE_HERO_KITS = {
       ultimate: 'JUSTICE'
     }
   },
+  warrior_ex: {
+    id: 'warrior_ex',
+    tags: {
+      attack: 'DAWN',
+      dodge: 'BLITZ',
+      skill: 'RUSH',
+      overdrive: 'OMNISLSH',
+      ultimate: 'EXVIUS'
+    }
+  },
   mage: {
     id: 'mage',
     tags: {
@@ -699,9 +709,9 @@ export class AdventureSkillSets {
       }
     }
 
-    // Keep Aethelgard's 78 Seraphim Justice Feathers raining around the active Adventure camera!
+    // Keep Aethelgard & Aethelgard EX's Seraphim Justice Feathers raining around the active Adventure camera!
     if (
-      player.heroId === 'warrior' &&
+      (player.heroId === 'warrior' || player.heroId === 'warrior_ex') &&
       Array.isArray(player.justiceFeathers) &&
       player.justiceFeathers.length > 0
     ) {

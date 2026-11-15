@@ -173,6 +173,24 @@ export const HERO_SKILL_TREE_THEMES = {
       aegis_3: 'IMMORTAL TEMPLAR'
     }
   },
+  warrior_ex: {
+    branches: {
+      wrath: { title: 'DAWN-BREAKER ART', sub: 'SMEAR & SPIRIT', iconSlot: 'attack' },
+      astral: { title: 'EXVIUS AWAKENING', sub: 'OMNISLASH & SEALS', iconSlot: 'ultimate' },
+      aegis: { title: 'SOVEREIGN VANGUARD', sub: 'PARRY & BLITZ', iconSlot: 'dodge' }
+    },
+    nodes: {
+      wrath_1: 'CRESCENT SMEAR EDGE',
+      wrath_2: 'RELENTLESS CHAIN-FLOW',
+      wrath_3: 'DRAGON-FANG MASTERY',
+      astral_1: 'CRYSTAL VISION HARVEST',
+      astral_2: 'RADIANT OMNISLASH SURGE',
+      astral_3: 'EXVIUS DAWN SOVEREIGN',
+      aegis_1: 'PLATINUM RUNE-PLATE',
+      aegis_2: 'SWORD-DRAG FLASH-STEP',
+      aegis_3: 'UNDYING EXVIUS KNIGHT'
+    }
+  },
   valkyrie: {
     branches: {
       wrath: { title: 'GUNGNIR TEMPEST', sub: 'LANCE & SPIRIT', iconSlot: 'attack' },
@@ -753,6 +771,7 @@ export class AdventureProgression {
 
     const HERO_SEEKER_CONFIG = {
       warrior: { type: 'blade_wave', color: '#38bdf8', coreColor: '#e0f2fe', radius: 16, pierce: true },
+      warrior_ex: { type: 'blade_wave', color: '#38bdf8', coreColor: '#fef08a', radius: 18, pierce: true },
       valkyrie: { type: 'dragon_lance', color: '#f43f5e', coreColor: '#fbbf24', radius: 14, pierce: false },
       reaper: { type: 'phantom_scythe', color: '#c084fc', coreColor: '#f43f5e', radius: 16, pierce: true },
       chronomancer: { type: 'clock_gear', color: '#2dd4bf', coreColor: '#facc15', radius: 14, pierce: false },
