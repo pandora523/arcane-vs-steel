@@ -431,6 +431,10 @@ class Game {
     this.matchTime = 0;
     this.hudTimer = 0;
     this.isMatchOver = false;
+    this.victoryRevealPending = false;
+    this.deadMatchFighter = null;
+    this.postDeathHoldTimer = 0;
+    this.matchOverSafetyTimer = 0;
     this.fighters = [];
     this.leftFighter = null;
     this.rightFighter = null;
@@ -461,14 +465,7 @@ class Game {
     }
     const testModeParam = params.get('testmode');
     this.explicitAdvUnlimitedHp = testModeParam === '1' || testModeParam === 'true';
-    this.testModeUnlimitedHp =
-      testModeParam === '0' || testModeParam === 'false'
-        ? false
-        : testModeParam === '1' || testModeParam === 'true'
-          ? true
-          : Boolean(params.get('kill'))
-            ? false
-            : true;
+    this.testModeUnlimitedHp = testModeParam === '1' || testModeParam === 'true';
     this.vsTestModeUnlimitedHp = this.testModeUnlimitedHp;
     this.forcedStage = params.get('stage') || null;
     const modeParam = params.get('mode');
@@ -828,8 +825,12 @@ class Game {
     this.victoryRevealPending = false;
     this.deadMatchFighter = null;
     this.postDeathHoldTimer = 0;
+    this.matchOverSafetyTimer = 0;
     this._pausedFrameRendered = false;
+    this.victoryOverlay?.classList.remove('is-defeat-plaque');
     this.victoryOverlay?.classList.add('hidden');
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
     if (releaseMemory) {
       this.renderer?.releaseStageCutoutCaches?.();
@@ -1082,6 +1083,7 @@ class Game {
     if (this.landingBtnTestMode) {
       this.landingBtnTestMode.addEventListener('click', () => this.toggleTestModeUnlimitedHp(true));
     }
+    this.syncTestModeUI();
 
     this.modeBtns = {
       '1v1': document.getElementById('mode-btn-1v1'),
@@ -2122,10 +2124,10 @@ class Game {
     const stageTitleStr = isAdv
       ? 'AUTO: 4-ZONE CAMPAIGN MAP'
       : stageNames[this.forcedStage || 'auto'] || 'AUTO REALM';
-    const hpStr = this.vsTestModeUnlimitedHp ? 'UNLIMITED HP: ON' : 'MORTAL HP';
+    const hpStr = this.vsTestModeUnlimitedHp ? 'SANDBOX UNLIMITED HP: ON' : 'MORTAL HP';
     const summaryStr = isAdv
       ? `${modeTitleStr} • ${stageTitleStr} • RPG PROGRESSION`
-      : `${modeTitleStr} • ${stageTitleStr} • SANDBOX ${hpStr}`;
+      : `${modeTitleStr} • ${stageTitleStr} • ${hpStr}`;
 
     const titleFooterEl = document.getElementById('title-status-footer');
     if (titleFooterEl) {
@@ -2385,6 +2387,9 @@ class Game {
     this.isLandingOpen = false;
     this.setPaused(false, false);
     this._pausedFrameRendered = false;
+    this.victoryOverlay?.classList.remove('is-defeat-plaque');
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.landingOverlay) this.landingOverlay.classList.add('hidden');
     if (this.appEl) this.appEl.classList.remove('is-landing-open');
     this.audio?.ensureCombatWavFiles?.();
@@ -2904,7 +2909,11 @@ class Game {
       this.victoryRevealPending = false;
       this.deadMatchFighter = null;
       this.postDeathHoldTimer = 0;
+      this.matchOverSafetyTimer = 0;
+      this.victoryOverlay.classList.remove('is-defeat-plaque');
       this.victoryOverlay.classList.add('hidden');
+      if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+      if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
       if (this.ultBanner) this.ultBanner.classList.add('hidden');
 
       this.syncTestModeUI();
@@ -2920,6 +2929,8 @@ class Game {
     this.pauseSpBadge?.classList.add('hidden');
     if (this.btnNextChallenger) this.btnNextChallenger.classList.remove('hidden');
     if (this.btnPlayAgain) this.btnPlayAgain.textContent = 'REMATCH';
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
 
     if (this.renderer) {
       if (typeof this.renderer.pickRandomStage === 'function') {
@@ -3037,7 +3048,11 @@ class Game {
     this.victoryRevealPending = false;
     this.deadMatchFighter = null;
     this.postDeathHoldTimer = 0;
+    this.matchOverSafetyTimer = 0;
+    this.victoryOverlay.classList.remove('is-defeat-plaque');
     this.victoryOverlay.classList.add('hidden');
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
     if (this.ultBanner) this.ultBanner.classList.add('hidden');
     this.updateHUD();
   }
@@ -3371,6 +3386,8 @@ class Game {
     this.deadMatchFighter = deadFighter;
     this.victoryRevealPending = true;
     this.postDeathHoldTimer = 0;
+    this.matchOverSafetyTimer = 0;
+    this.victoryOverlay?.classList.remove('is-defeat-plaque');
     this.updateHUD();
 
     const winningTeam = deadFighter.team === 1 ? 2 : 1;
@@ -3425,6 +3442,8 @@ class Game {
     if (telRightExtraLbl) telRightExtraLbl.textContent = 'HEAL / CLASH';
     if (this.btnNextChallenger) this.btnNextChallenger.classList.remove('hidden');
     if (this.btnPlayAgain) this.btnPlayAgain.textContent = 'REMATCH';
+    if (this.btnVictorySelect) this.btnVictorySelect.textContent = 'ROSTER SELECT';
+    if (this.btnVictoryTitle) this.btnVictoryTitle.textContent = 'TITLE SCREEN';
 
     // Populate Post-Match Combat Telemetry Card (aggregates team stats in 2v2!)
     const fillTel = (side, teamNum) => {
@@ -3481,6 +3500,7 @@ class Game {
     if (!this.isMatchOver || !this.victoryRevealPending) return;
     this.setPaused(false, false);
     this.victoryRevealPending = false;
+    this.matchOverSafetyTimer = 0;
     this.victoryOverlay.classList.remove('hidden');
     if (this.audio) this.audio.play('victory_fanfare');
     if (this.autoTourney && !this.isAdventureMode() && !this.isSimPaused) {
@@ -3832,6 +3852,7 @@ class Game {
           : `${Math.ceil(f.hp)}`;
       els.state.textContent = f.isDead ? 'DEFEATED' : f.state;
 
+      const isMobilePortrait = Boolean(this.renderer?.isMobilePortrait);
       els.manaBar.style.width = `${manaPct}%`;
       els.ultLabel.textContent = f.isBoss
         ? `PHASE ${f.bossPhase || 1} / 3${(f.vulnerableTimer || 0) > 0 ? ' • CORE EXPOSED!' : ''}`
@@ -3839,9 +3860,13 @@ class Game {
           ? f.isElite
             ? 'ELITE MONSTER'
             : 'ABYSSAL HORDE'
-          : isAdv
-            ? `${advTags?.overdrive || 'DRIVE'} ${Math.floor(manaPct)}% (EMBERS)`
-            : `OVERDRIVE ${Math.floor(manaPct)}%`;
+          : isMobilePortrait
+            ? isAdv
+              ? `${advTags?.overdrive || 'DRIVE'} ${Math.floor(manaPct)}%`
+              : `DRIVE ${Math.floor(manaPct)}%`
+            : isAdv
+              ? `${advTags?.overdrive || 'DRIVE'} ${Math.floor(manaPct)}% (EMBERS)`
+              : `OVERDRIVE ${Math.floor(manaPct)}%`;
 
       if (els.finisherFrame && els.finisherBar && els.finisherLabel) {
         if (f.hasTrueUltimate) {
@@ -3856,9 +3881,13 @@ class Game {
           els.finisherLabel.textContent =
             f.state === 'TRUE_ULTIMATE'
               ? `ULTIMATE: ${f.trueUltName || 'SWORD OF JUSTICE'}!`
-              : isAdv
-                ? `${advTags?.ultimate || 'CATACLYSM'} ${Math.floor(finPct)}% (${seals}/3 SEALS)`
-                : `ULTIMATE ${Math.floor(finPct)}% (${seals}/3 OD)`;
+              : isMobilePortrait
+                ? isAdv
+                  ? `${advTags?.ultimate || 'ULT'} ${Math.floor(finPct)}% (${seals}/3)`
+                  : `ULT ${Math.floor(finPct)}% (${seals}/3)`
+                : isAdv
+                  ? `${advTags?.ultimate || 'CATACLYSM'} ${Math.floor(finPct)}% (${seals}/3 SEALS)`
+                  : `ULTIMATE ${Math.floor(finPct)}% (${seals}/3 OD)`;
         } else {
           els.finisherFrame.classList.add('hidden');
         }
@@ -4018,19 +4047,29 @@ class Game {
       }
     }
 
-    // Reveal the Victory / Rematch plaque ONLY after all 30 death frames (F00..F29) have finished
-    // AND the winning champion has showcased their Row 9 VICTORY flourish & pose for ~1.35s!
+    // Reveal the Victory / Rematch / Defeat plaque ONLY after all 30 death frames (F00..F29) have finished
+    // AND the winning champion has showcased their Row 9 VICTORY flourish & pose (snappier 0.65s hold on Adventure defeat)!
     if (this.isMatchOver && this.victoryRevealPending && !this.isSimPaused) {
+      this.matchOverSafetyTimer = (this.matchOverSafetyTimer || 0) + rawDt;
       const fallen = this.deadMatchFighter || this.fighters.find((f) => f && f.isDead);
       const fullDeathDur = fallen?.isColossalBoss ? 2.4 : PixelForge.DEATH_DURATION || 1.55;
-      const onFloor =
-        !fallen || fallen.isColossalBoss || fallen.y >= this.renderer.groundY - 2;
+      const targetFloorY =
+        this.isAdventureMode() && Number.isFinite(fallen?.groundY)
+          ? fallen.groundY
+          : this.renderer.groundY;
+      const onFloor = !fallen || fallen.isColossalBoss || fallen.y >= targetFloorY - 4;
+      const holdNeeded = this.isAdventureMode() && fallen && !fallen.isMonster ? 0.65 : 1.35;
       if (!fallen || ((fallen.deathTimer || 0) >= fullDeathDur && onFloor)) {
         this.postDeathHoldTimer = (this.postDeathHoldTimer || 0) + rawDt;
-        if (this.postDeathHoldTimer >= 1.35) {
+        if (this.postDeathHoldTimer >= holdNeeded) {
           this.revealVictoryOverlay();
         }
       }
+      if (this.victoryRevealPending && this.matchOverSafetyTimer >= 3.4) {
+        this.revealVictoryOverlay();
+      }
+    } else if (!this.isMatchOver || !this.victoryRevealPending) {
+      this.matchOverSafetyTimer = 0;
     }
 
     // Check Simultaneous Melee / Skill Blade Clash across opposing active fighters
