@@ -822,7 +822,7 @@ export class AdventureManager {
     const pauseSpBadge = document.getElementById('pause-sp-badge');
     if (pauseSpBadge) {
       const showPip = Boolean(visible && this.progression.skillPoints > 0);
-      pauseSpBadge.textContent = `${this.progression.skillPoints} SP`;
+      pauseSpBadge.textContent = '';
       pauseSpBadge.classList?.toggle('hidden', !showPip);
     }
 
@@ -1862,7 +1862,10 @@ export class AdventureManager {
     if (g.hudEls?.modeBadge) {
       let nextBadge;
       if (g.renderer?.isMobilePortrait) {
-        const shortWave = this.totalWaveLabel.replace('WAVE ', 'W').replace(/\s+/g, '');
+        const shortWave =
+          this.totalWaveLabel === 'COLOSSAL BOSS'
+            ? 'BOSS'
+            : this.totalWaveLabel.replace('WAVE ', 'W').replace(/\s+/g, '');
         nextBadge = `${shortWave} • ${this.score}P`;
       } else {
         nextBadge = `LV.${this.progression.level} • ${this.totalWaveLabel} • ${this.score} PTS`;

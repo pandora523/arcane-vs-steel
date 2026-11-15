@@ -8266,6 +8266,54 @@ for (const [name, Cls] of CLASSES) {
           `[Suite 30.4] Announcement banner overlapped .hud-top (${hudBottom}px): event=${JSON.stringify(stageEventTops)}, cutIn=${JSON.stringify(cutInTops)}, ko=${JSON.stringify(koTops)}`
         );
       }
+
+      // Verify compact textless 7x7px `#pause-sp-badge` pip & Mobile Portrait `'BOSS • 0P'` `#hud-mode-badge`!
+      const html304 = fs.readFileSync(`${repoRoot}/index.html`, 'utf8');
+      const css304 = fs.readFileSync(`${repoRoot}/style.css`, 'utf8');
+      const pipBlockMatch = css304.match(/\.pause-sp-badge\s*\{[\s\S]*?\}/);
+      if (
+        !/id="pause-sp-badge"[^>]*><\/span>/.test(html304) ||
+        !pipBlockMatch ||
+        !/width:\s*7px/.test(pipBlockMatch[0]) ||
+        !/height:\s*7px/.test(pipBlockMatch[0]) ||
+        !/font-size:\s*0\b/.test(pipBlockMatch[0])
+      ) {
+        throw new Error('[Suite 30.4] Expected #pause-sp-badge to be a textless 7x7px gold corner pip!');
+      }
+      const prevGetEl304 = globalThis.document.getElementById;
+      const pipCls = new Set(['hidden']);
+      const mockPipEl = {
+        textContent: 'STALE',
+        classList: {
+          toggle: (c, f) => {
+            if (f) pipCls.add(c);
+            else pipCls.delete(c);
+          }
+        }
+      };
+      try {
+        globalThis.document.getElementById = (id) => (id === 'pause-sp-badge' ? mockPipEl : null);
+        advHud.progression.skillPoints = 2;
+        advHud.syncControlDeckUI();
+        if (mockPipEl.textContent !== '' || pipCls.has('hidden')) {
+          throw new Error(
+            `[Suite 30.4] Expected #pause-sp-badge textContent === '' & visible when SP > 0, got text='${mockPipEl.textContent}', hidden=${pipCls.has('hidden')}`
+          );
+        }
+      } finally {
+        globalThis.document.getElementById = prevGetEl304;
+      }
+
+      advHudGame.hudEls = { right: {}, modeBadge: { textContent: '' } };
+      advHud.totalWaveLabel = 'COLOSSAL BOSS';
+      advHud.score = 0;
+      advHud.syncRightHUD();
+      if (advHudGame.hudEls.modeBadge.textContent !== 'BOSS • 0P') {
+        throw new Error(
+          `[Suite 30.4] Expected Mobile Portrait Zone 4 Boss #hud-mode-badge === 'BOSS • 0P', got '${advHudGame.hudEls.modeBadge.textContent}'`
+        );
+      }
+
       advHud.stopCampaign();
     } finally {
       globalThis.window.innerWidth = prevW;
@@ -8531,17 +8579,20 @@ for (const [name, Cls] of CLASSES) {
       const killerM = dAdv.getLivingMonsters()[0];
       dHero.takeDamage(99999, killerM, true, 0, 0);
 
+      const css307 = fs.readFileSync(`${repoRoot}/style.css`, 'utf8');
       if (
         !dHero.isDead ||
         !dGame.isMatchOver ||
         !dGame.victoryRevealPending ||
         !dGame.victoryOverlay.classList.contains('is-defeat-plaque') ||
         !dGame.victoryOverlay.classList.contains('hidden') ||
+        !dom30.get('btn-next-challenger').classList.contains('hidden') ||
+        !/\.victory-btn-row\s+\.iron-btn\.hidden\s*\{\s*display:\s*none\s*!important;\s*\}/.test(css307) ||
         dom30.get('btn-play-again').textContent !== 'RETRY CAMPAIGN' ||
         dom30.get('btn-victory-select').textContent !== 'CHANGE HERO' ||
         dom30.get('btn-victory-title').textContent !== 'TITLE SCREEN'
       ) {
-        throw new Error('[Suite 30.7] Expected onPlayerDeath to arm `.is-defeat-plaque` with RETRY CAMPAIGN / CHANGE HERO / TITLE SCREEN!');
+        throw new Error('[Suite 30.7] Expected onPlayerDeath to arm `.is-defeat-plaque` with collapsed hidden `#btn-next-challenger` and RETRY CAMPAIGN / CHANGE HERO / TITLE SCREEN!');
       }
 
       // Step real `Game.prototype.stepSimulation` for 82 frames (`2.73s < 3.4s` safety timer!)

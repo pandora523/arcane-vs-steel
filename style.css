@@ -681,22 +681,21 @@ html, body {
 
 .pause-sp-badge {
   position: absolute;
-  top: -5px;
-  right: -6px;
-  min-width: 13px;
-  height: 13px;
-  padding: 0 3px;
+  top: -3px;
+  right: -3px;
+  width: 7px;
+  height: 7px;
+  min-width: 0;
+  padding: 0;
   border-radius: 999px;
-  background: #ca8a04;
+  background: #eab308;
   border: 1.5px solid #fef08a;
-  color: #05070e;
-  font-family: var(--font-pixel);
-  font-size: 0.24rem;
-  line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 0 8px rgba(250, 204, 21, 0.85);
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  overflow: hidden;
+  display: block;
+  box-shadow: 0 0 6px rgba(250, 204, 21, 0.9);
   animation: advUltPulse 1.15s ease-in-out infinite;
   pointer-events: none;
 }
@@ -2717,6 +2716,10 @@ html, body {
   opacity: 0 !important;
   visibility: hidden !important;
   pointer-events: none !important;
+}
+
+.victory-btn-row .iron-btn.hidden {
+  display: none !important;
 }
 
 /* Tablet & Compact Viewport Adaptations */
