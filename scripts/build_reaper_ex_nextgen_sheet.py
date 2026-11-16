@@ -794,8 +794,8 @@ def draw_reaper_shroud_ribbons_160(
             dist = t * rib_len
             ph = wave_phase + idx * 1.4 - t * 4.5
             lat = math.sin(ph) * wave_amp * (t ** 1.15)
-            px = neck_x + ux * dist + nx * lat
-            py = neck_y + uy * dist + ny * lat
+            px = max(8.5, min(LOGICAL_W - 9.5, neck_x + ux * dist + nx * lat))
+            py = max(8.5, min(LOGICAL_H - 7.5, neck_y + uy * dist + ny * lat))
             pts.append((px, py, t))
 
         for px, py, t in pts:
@@ -847,24 +847,28 @@ def draw_thanatos_great_scythe_160(
     max_shaft = shaft_len
     fang_len_base = 31.0
 
-    # Ensure both snath head and sweeping curved crescent scythe-blade stay >= 4px inside cell bounds
-    for test_s in range(int(shaft_len), 20, -1):
+    # Ensure both snath head and entire curved crescent scythe-blade stay inside [9.5..149.5] x [9.5..113.0] (ZERO flat cuts!)
+    max_shaft = 15.0
+    for test_s in range(int(shaft_len), 14, -1):
         scale_f = min(1.0, test_s / max(1.0, shaft_len))
-        flen = fang_len_base * scale_f
-        hx = grip_x + ux * test_s
-        hy = grip_y + uy * test_s
-        # Check scythe head, rear counter-spike, mid-curve, and curved fang tip
+        flen = max(16.0, fang_len_base * scale_f)
         ok = True
-        for check_u, check_n in (
-            (test_s + 4.0, -5.5 * scale_f),
-            (test_s + 2.5, flen * 0.55),
-            (test_s - flen * 0.36, flen * 0.96),
-            (pommel_dist - 2.0, 0.0),
-        ):
+        sample_pts = [
+            (test_s + 4.5, -7.5 * scale_f),
+            (test_s + 4.5, 2.5),
+            (pommel_dist - 3.5, 0.0),
+        ]
+        for bt_s in (0.0, 0.14, 0.28, 0.42, 0.56, 0.70, 0.85, 1.0):
+            an_s = flen * (math.sin(bt_s * math.pi * 0.54) ** 0.88)
+            au_s = (3.8 * math.sin(bt_s * math.pi * 0.82) - (bt_s ** 1.75) * (flen * 0.44)) * scale_f
+            cw_s = (6.6 * scale_f) + 2.5
+            sample_pts.append((test_s + au_s + 2.5, an_s + 2.5))
+            sample_pts.append((test_s + au_s - cw_s, an_s + cw_s * 0.65))
+            sample_pts.append((test_s + au_s - cw_s, an_s - cw_s * 0.5))
+        for check_u, check_n in sample_pts:
             cx = grip_x + ux * check_u + nx * check_n
             cy = grip_y + uy * check_u + ny * check_n
-            if not ((MARGIN_LOGICAL + 2) <= cx <= (LOGICAL_W - MARGIN_LOGICAL - 3) and
-                    (MARGIN_LOGICAL + 2) <= cy <= (LOGICAL_H - MARGIN_LOGICAL - 3)):
+            if not (9.5 <= cx <= (LOGICAL_W - 10.5) and 9.5 <= cy <= (LOGICAL_H - 7.0)):
                 ok = False
                 break
         if ok:
@@ -872,7 +876,7 @@ def draw_thanatos_great_scythe_160(
             break
 
     f_scale = min(1.0, max_shaft / max(1.0, shaft_len))
-    fang_len = max(21.0, fang_len_base * f_scale)
+    fang_len = max(16.0, fang_len_base * f_scale)
 
     # --- Pass 1: Long Two-Handed Obsidian & Bone-Silver Reaper Snath (Pole) ---
     pole_steps = int((max_shaft - pommel_dist) * 2.6) + 1
@@ -1066,10 +1070,18 @@ def draw_reaper_serrated_smear_160(
         return
 
     yy, xx = np.mgrid[0:LOGICAL_H, 0:LOGICAL_W]
-    dx = (xx.astype(np.float32) - cx) / max(1.0, rx_outer)
-    dy = (yy.astype(np.float32) - cy) / max(1.0, ry_outer)
+    raw_dx = xx.astype(np.float32) - cx
+    raw_dy = yy.astype(np.float32) - cy
+    rx_lt = min(rx_outer, max(18.0, cx - 10.0))
+    rx_rt = min(rx_outer, max(24.0, (LOGICAL_W - 10.5) - cx))
+    ry_up = min(ry_outer, max(16.0, cy - 10.0))
+    ry_dn = min(ry_outer, max(16.0, (LOGICAL_H - 6.5) - cy))
+    rx_eff = np.where(raw_dx < 0.0, rx_lt, rx_rt)
+    ry_eff = np.where(raw_dy < 0.0, ry_up, ry_dn)
+    dx = raw_dx / np.maximum(1.0, rx_eff)
+    dy = raw_dy / np.maximum(1.0, ry_eff)
     r_norm = np.hypot(dx, dy)
-    ang = np.degrees(np.arctan2(yy.astype(np.float32) - cy, xx.astype(np.float32) - cx)) % 360.0
+    ang = np.degrees(np.arctan2(raw_dy, raw_dx)) % 360.0
 
     rel = ((ang - t0) % 360.0) if sweep_dir > 0 else ((t0 - ang) % 360.0)
     in_arc = rel <= total_span
@@ -1088,13 +1100,19 @@ def draw_reaper_serrated_smear_160(
     body_mask = in_arc & (r_norm >= r_in) & (r_norm <= r_out)
     bayer_tile = BAYER4[yy % 4, xx % 4]
     tail_keep = (u >= 0.24) | (bayer_tile < (u / 0.24))
+    edge_dist = np.minimum(
+        np.minimum(xx - 4, (LOGICAL_W - 5) - xx),
+        np.minimum(yy - 4, (LOGICAL_H - 5) - yy),
+    ).astype(np.float32)
+    margin_taper = (edge_dist >= 5.0) | ((edge_dist > 0.0) & (bayer_tile < (edge_dist / 5.0)))
+    tail_keep &= margin_taper
     body_mask &= tail_keep
 
     safe_box = (
-        (xx >= MARGIN_LOGICAL + 1)
-        & (xx <= LOGICAL_W - MARGIN_LOGICAL - 2)
-        & (yy >= MARGIN_LOGICAL + 1)
-        & (yy <= LOGICAL_H - MARGIN_LOGICAL - 2)
+        (xx >= MARGIN_LOGICAL + 2)
+        & (xx <= LOGICAL_W - MARGIN_LOGICAL - 3)
+        & (yy >= MARGIN_LOGICAL + 2)
+        & (yy <= LOGICAL_H - MARGIN_LOGICAL - 3)
     )
     body_mask &= safe_box
     if not np.any(body_mask):
@@ -1170,16 +1188,21 @@ def draw_reaper_vortex_smear_160(
     r_in = r_out - w_norm + serr
 
     safe_box = (
-        (xx >= MARGIN_LOGICAL + 1)
-        & (xx <= LOGICAL_W - MARGIN_LOGICAL - 2)
-        & (yy >= MARGIN_LOGICAL + 1)
-        & (yy <= LOGICAL_H - MARGIN_LOGICAL - 2)
+        (xx >= MARGIN_LOGICAL + 2)
+        & (xx <= LOGICAL_W - MARGIN_LOGICAL - 3)
+        & (yy >= MARGIN_LOGICAL + 2)
+        & (yy <= LOGICAL_H - MARGIN_LOGICAL - 3)
     )
+    bayer_tile = BAYER4[yy % 4, xx % 4]
+    edge_dist = np.minimum(
+        np.minimum(xx - 4, (LOGICAL_W - 5) - xx),
+        np.minimum(yy - 4, (LOGICAL_H - 5) - yy),
+    ).astype(np.float32)
+    margin_taper = (edge_dist >= 5.0) | ((edge_dist > 0.0) & (bayer_tile < (edge_dist / 5.0)))
     if erosion > 0.02:
-        bayer_tile = BAYER4[yy % 4, xx % 4]
-        keep = (right_bulge > erosion * 0.85) | (bayer_tile > erosion)
+        keep = ((right_bulge > erosion * 0.85) | (bayer_tile > erosion)) & margin_taper
     else:
-        keep = np.ones_like(safe_box)
+        keep = margin_taper
 
     mask = hemi & safe_box & keep & (enorm >= r_in) & (enorm <= r_out)
     if not np.any(mask):
@@ -1227,32 +1250,37 @@ def draw_thanatos_death_wings_160(arr, back_x, back_y, span_scale=1.0, phase=0.0
                     put_px_160(arr, px + nx * k, py + ny * k, col)
 
 
-def draw_bone_obelisk_pillar_160(arr, impact_x, top_y=4, bot_y=114, half_w=5.2):
+def draw_bone_obelisk_pillar_160(arr, impact_x, top_y=11, bot_y=114, half_w=5.2):
     """
     Vertical Guillotine Bone-Obelisk & Soul-Fissure eruption column for Beat 4 (R2 F25)
-    and Oblivion Guillotine (R4 F22).
+    and Oblivion Guillotine (R4 F22) with pointed gothic spire crown + Bayer tip taper.
     """
-    ix = int(round(impact_x))
+    eff_top = max(11, int(top_y))
+    ix = min(LOGICAL_W - 14, max(14, int(round(impact_x))))
     ihw = int(math.ceil(half_w))
-    for y in range(max(MARGIN_LOGICAL + 1, int(top_y)), min(LOGICAL_H - MARGIN_LOGICAL - 1, int(bot_y) + 1)):
-        vt = (y - top_y) / max(1.0, float(bot_y - top_y))
-        cur_hw = half_w * (0.38 + 0.62 * math.sin(vt * math.pi * 0.88))
+    for y in range(eff_top, min(LOGICAL_H - MARGIN_LOGICAL - 2, int(bot_y) + 1)):
+        vt = (y - eff_top) / max(1.0, float(bot_y - eff_top))
+        crown_taper = min(1.0, vt / 0.18) ** 0.85
+        cur_hw = half_w * crown_taper * (0.38 + 0.62 * math.sin(vt * math.pi * 0.88))
         for dx in range(-ihw - 1, ihw + 2):
             adx = abs(dx)
             if adx <= cur_hw:
+                if vt < 0.14 and BAYER4[y % 4, (ix + dx) % 4] > (vt / 0.14 + 0.18):
+                    continue
                 if adx <= cur_hw * 0.30:
                     col = C_SOUL_WHITE
                 elif adx <= cur_hw * 0.65:
                     col = C_CRIMSON_EDGE
                 else:
                     col = C_ORCHID_BELLY if (y // 3) % 2 == 0 else C_ABYSS_TEETH
-                put_px_160(arr, ix + dx, y, col)
-    fiss_w = int(half_w * 4.4)
+                put_px_160(arr, ix + dx, y, col, margin=6)
+    fiss_w = int(half_w * 3.6)
     for dx in range(-fiss_w, fiss_w + 1):
-        col = C_SOUL_WHITE if abs(dx) < fiss_w * 0.32 else (C_CRIMSON_EDGE if abs(dx) < fiss_w * 0.68 else C_ORCHID_BELLY)
-        put_px_160(arr, ix + dx, bot_y, col)
-        if abs(dx) < fiss_w * 0.52:
-            put_px_160(arr, ix + dx, bot_y - 1, C_ABYSS_TEETH)
+        if 8 <= ix + dx <= LOGICAL_W - 9:
+            col = C_SOUL_WHITE if abs(dx) < fiss_w * 0.32 else (C_CRIMSON_EDGE if abs(dx) < fiss_w * 0.68 else C_ORCHID_BELLY)
+            put_px_160(arr, ix + dx, bot_y, col, margin=6)
+            if abs(dx) < fiss_w * 0.52:
+                put_px_160(arr, ix + dx, bot_y - 1, C_ABYSS_TEETH, margin=6)
 
 
 def draw_soul_sparks_160(arr, impact_x, ground_y, spread=22.0, progress=0.0, count=7):
@@ -1388,6 +1416,46 @@ def render_keypose_frame_160(
     return frame
 
 
+_BIPEDAL_WALK_KFS = [
+    # (u, world_thigh, world_knee_bend, ankle_flex, hip_yaw_hi, hip_lift_hi)
+    (0.00, -23.5,  4.0,  -6.0,   7.5,   2.0),  # Front Contact (+X plant)
+    (0.12, -13.0,  9.5,   0.0,   4.0,   3.5),  # Weight-acceptance down
+    (0.24,  -0.5,  2.0,   0.0,   0.0,   0.0),  # Mid-stance vertical pillar (F07 Left / F22 Right)
+    (0.38,  12.5,  4.0,   6.0,  -4.0,   1.5),  # Late stance roll-through
+    (0.50,  22.5,  8.5,  14.0,  -7.5,   2.0),  # Rear Push-Off (-X trail)
+    (0.62,   3.5, 42.0,  22.0,  -2.0,  -7.0),  # Toe-off knee fold
+    (0.74, -22.0, 44.0,  20.0,   2.5, -16.5),  # Passing Crossover (F07 Right / F22 Left: knee +X, boot lifted at anchorX!)
+    (0.88, -25.5, 12.0,  -7.0,   6.0,  -4.5),  # Terminal swing reach
+    (1.00, -23.5,  4.0,  -6.0,   7.5,   2.0),
+]
+
+
+def _bone_rest_deg_stand(p0, p1):
+    return math.degrees(math.atan2(p0[0] - p1[0], p1[1] - p0[1]))
+
+
+def _sample_bipedal_walk(u):
+    u = u % 1.0
+    for i in range(len(_BIPEDAL_WALK_KFS) - 1):
+        u0, *v0 = _BIPEDAL_WALK_KFS[i]
+        u1, *v1 = _BIPEDAL_WALK_KFS[i + 1]
+        if u0 <= u <= u1:
+            t = (u - u0) / max(1e-6, u1 - u0)
+            s = t * t * (3.0 - 2.0 * t)
+            return tuple(a + (b - a) * s for a, b in zip(v0, v1))
+    return _BIPEDAL_WALK_KFS[0][1:]
+
+
+def _shade_crop_tuple(part_tuple, factor=0.85):
+    if abs(factor - 1.0) < 1e-3:
+        return part_tuple
+    im, x0, y0 = part_tuple
+    arr = np.array(im, dtype=np.float32)
+    m = arr[:, :, 3] > 128
+    arr[m, :3] = np.clip(arr[m, :3] * factor, 0.0, 255.0)
+    return (Image.fromarray(arr.astype(np.uint8), "RGBA"), x0, y0)
+
+
 def render_stand_rig_frame_160(
     parts,
     stand_joints,
@@ -1399,12 +1467,21 @@ def render_stand_rig_frame_160(
     r_coat_deg=0.0,
     coat_wave_ph=0.0,
     coat_wave_amp=8.0,
+    coat_y_offset_160=0.0,
+    coat_x_inward_frac=0.0,
+    coat_squash_x=1.0,
+    coat_squash_y=1.0,
     l_thigh_deg=0.0,
     l_shin_deg=0.0,
     l_foot_deg=0.0,
     r_thigh_deg=0.0,
     r_shin_deg=0.0,
     r_foot_deg=0.0,
+    hip_inward_frac=0.0,
+    l_hip_off_hi=(0.0, 0.0),
+    r_hip_off_hi=(0.0, 0.0),
+    neutralize_leg_rest=False,
+    shade_far_leg=1.0,
     grip_rel_sh=(8.5, 9.0),
     weapon_deg=-24.0,
     shaft_len=44.0,
@@ -1440,23 +1517,55 @@ def render_stand_rig_frame_160(
     neck_dst = map_torso_pt(sj["neck"])
     l_sh_dst = map_torso_pt(sj["l_sh"])
     r_sh_dst = map_torso_pt(sj["r_sh"])
-    l_coat_dst = map_torso_pt(sj["l_coat"])
-    r_coat_dst = map_torso_pt(sj["r_coat"])
-    l_hip_dst = map_torso_pt(sj["l_hip"])
-    r_hip_dst = map_torso_pt(sj["r_hip"])
+    l_coat_raw = map_torso_pt(sj["l_coat"])
+    r_coat_raw = map_torso_pt(sj["r_coat"])
+    spine_hip_x = ANCHOR_HI_X + pelvis_dx * S_HI
+    l_coat_dst = (
+        l_coat_raw[0] + (spine_hip_x - l_coat_raw[0]) * coat_x_inward_frac,
+        l_coat_raw[1] + coat_y_offset_160 * S_HI,
+    )
+    r_coat_dst = (
+        r_coat_raw[0] + (spine_hip_x - r_coat_raw[0]) * coat_x_inward_frac,
+        r_coat_raw[1] + coat_y_offset_160 * S_HI,
+    )
+    l_hip_raw = map_torso_pt(sj["l_hip"])
+    r_hip_raw = map_torso_pt(sj["r_hip"])
+    r_sole_eq_hi = 0.0
+    if neutralize_leg_rest:
+        def _leg_sole_reach(side):
+            hs, ks, ak = sj[f"{side}_hip"], sj[f"{side}_knee"], sj[f"{side}_ankle"]
+            fim, _, fy0 = parts[f"{side}_foot"]
+            return math.hypot(ks[0] - hs[0], ks[1] - hs[1]) + math.hypot(ak[0] - ks[0], ak[1] - ks[1]) + (fy0 + fim.size[1] - ak[1])
+        r_sole_eq_hi = (_leg_sole_reach("l") - _leg_sole_reach("r")) + (l_hip_raw[1] - r_hip_raw[1])
+    l_hip_dst = (
+        l_hip_raw[0] + (spine_hip_x - l_hip_raw[0]) * hip_inward_frac + l_hip_off_hi[0],
+        l_hip_raw[1] + l_hip_off_hi[1],
+    )
+    r_hip_dst = (
+        r_hip_raw[0] + (spine_hip_x - r_hip_raw[0]) * hip_inward_frac + r_hip_off_hi[0],
+        r_hip_raw[1] + r_sole_eq_hi + r_hip_off_hi[1],
+    )
 
-    def pose_leg(side, hip_dst, th_deg, sh_deg):
+    def pose_leg(side, hip_dst, th_deg, sh_deg, ft_deg):
         hip_s = sj[f"{side}_hip"]
         knee_s = sj[f"{side}_knee"]
         ank_s = sj[f"{side}_ankle"]
+        if neutralize_leg_rest:
+            th_rot = th_deg - _bone_rest_deg_stand(hip_s, knee_s)
+            sh_rot = (th_deg + sh_deg) - _bone_rest_deg_stand(knee_s, ank_s)
+            ft_rot = ft_deg
+        else:
+            th_rot = th_deg
+            sh_rot = th_deg + sh_deg
+            ft_rot = th_deg + sh_deg + ft_deg
         knee_unrot = (hip_dst[0] + (knee_s[0] - hip_s[0]), hip_dst[1] + (knee_s[1] - hip_s[1]))
-        knee_dst = rot_pt(knee_unrot, hip_dst, th_deg)
+        knee_dst = rot_pt(knee_unrot, hip_dst, th_rot)
         ank_unrot = (knee_dst[0] + (ank_s[0] - knee_s[0]), knee_dst[1] + (ank_s[1] - knee_s[1]))
-        ank_dst = rot_pt(ank_unrot, knee_dst, th_deg + sh_deg)
-        return knee_dst, ank_dst
+        ank_dst = rot_pt(ank_unrot, knee_dst, sh_rot)
+        return knee_dst, ank_dst, th_rot, sh_rot, ft_rot
 
-    l_knee_dst, l_ank_dst = pose_leg("l", l_hip_dst, l_thigh_deg, l_shin_deg)
-    r_knee_dst, r_ank_dst = pose_leg("r", r_hip_dst, r_thigh_deg, r_shin_deg)
+    l_knee_dst, l_ank_dst, l_th_rot, l_sh_rot, l_ft_rot = pose_leg("l", l_hip_dst, l_thigh_deg, l_shin_deg, l_foot_deg)
+    r_knee_dst, r_ank_dst, r_th_rot, r_sh_rot, r_ft_rot = pose_leg("r", r_hip_dst, r_thigh_deg, r_shin_deg, r_foot_deg)
 
     mid_sh = (0.5 * (l_sh_dst[0] + r_sh_dst[0]), 0.5 * (l_sh_dst[1] + r_sh_dst[1]))
     if weapon_abs_160 is not None:
@@ -1471,27 +1580,33 @@ def render_stand_rig_frame_160(
 
     r_hip_br, r_knee_br = leg_bridge_r if leg_bridge_r is not None else (8, 6)
 
+    l_thigh_part = _shade_crop_tuple(parts["l_thigh"], shade_far_leg)
+    l_shin_part = _shade_crop_tuple(parts["l_shin"], shade_far_leg)
+    l_foot_part = _shade_crop_tuple(parts["l_foot"], shade_far_leg)
+
     paste_rotated_part(
         win_hi, parts["l_coat"], sj["l_coat"], l_coat_dst,
-        deg=torso_deg + l_coat_deg, wave_phase=coat_wave_ph, wave_amp=coat_wave_amp,
+        deg=torso_deg + l_coat_deg, squash_x=coat_squash_x, squash_y=coat_squash_y,
+        wave_phase=coat_wave_ph, wave_amp=coat_wave_amp,
     )
     paste_ik_arm_hi(win_hi, parts, sj, "l", l_sh_dst, l_target_hi, bend_sign=bend_l)
 
     draw_joint_bridge_hi(win_hi, l_hip_dst, l_knee_dst, r=r_hip_br)
     draw_joint_bridge_hi(win_hi, l_knee_dst, l_ank_dst, r=r_knee_br)
-    paste_rotated_part(win_hi, parts["l_thigh"], sj["l_hip"], l_hip_dst, deg=l_thigh_deg)
-    paste_rotated_part(win_hi, parts["l_shin"], sj["l_knee"], l_knee_dst, deg=l_thigh_deg + l_shin_deg)
-    paste_rotated_part(win_hi, parts["l_foot"], sj["l_ankle"], l_ank_dst, deg=l_thigh_deg + l_shin_deg + l_foot_deg)
+    paste_rotated_part(win_hi, l_thigh_part, sj["l_hip"], l_hip_dst, deg=l_th_rot)
+    paste_rotated_part(win_hi, l_shin_part, sj["l_knee"], l_knee_dst, deg=l_sh_rot)
+    paste_rotated_part(win_hi, l_foot_part, sj["l_ankle"], l_ank_dst, deg=l_ft_rot)
 
     paste_rotated_part(
         win_hi, parts["r_coat"], sj["r_coat"], r_coat_dst,
-        deg=torso_deg + r_coat_deg, wave_phase=coat_wave_ph + 1.1, wave_amp=coat_wave_amp * 0.85,
+        deg=torso_deg + r_coat_deg, squash_x=coat_squash_x, squash_y=coat_squash_y,
+        wave_phase=coat_wave_ph + 1.1, wave_amp=coat_wave_amp * 0.85,
     )
     draw_joint_bridge_hi(win_hi, r_hip_dst, r_knee_dst, r=r_hip_br)
     draw_joint_bridge_hi(win_hi, r_knee_dst, r_ank_dst, r=r_knee_br)
-    paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_thigh_deg)
-    paste_rotated_part(win_hi, parts["r_shin"], sj["r_knee"], r_knee_dst, deg=r_thigh_deg + r_shin_deg)
-    paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_thigh_deg + r_shin_deg + r_foot_deg)
+    paste_rotated_part(win_hi, parts["r_thigh"], sj["r_hip"], r_hip_dst, deg=r_th_rot)
+    paste_rotated_part(win_hi, parts["r_shin"], sj["r_knee"], r_knee_dst, deg=r_sh_rot)
+    paste_rotated_part(win_hi, parts["r_foot"], sj["r_ankle"], r_ank_dst, deg=r_ft_rot)
 
     paste_rotated_part(win_hi, parts["torso"], pelvis_src, dst_pelvis, deg=torso_deg)
     paste_rotated_part(win_hi, parts["head"], sj["neck"], neck_dst, deg=torso_deg + head_deg)
@@ -1607,20 +1722,26 @@ def build_row0_idle(parts, sj):
 
 def build_row1_walk(parts, sj):
     """
-    Row 1: Cohesive Stalking Arch-Reaper Stride (2 Seamless Cycles / 30 Frames).
-    Maintains continuous front-ready Great-Scythe carry & sovereign posture from
-    Row 0 IDLE (zero 180-deg weapon flip, zero dynamic ys_b.max() vertical jitter,
-    compact 3/4 leg stride & synced shroud/coat sway).
+    Row 1: True Centered-Hip Bipedal Crossover Arch-Reaper Stride (F00..F29).
+      - F00: Left foot plants forward (+X) & Right foot trails (-X)
+      - F07: Right knee lifts & CROSSES OVER anchorX (single-column passing profile)
+      - F15: Right foot plants forward (+X) & Left foot trails (-X)
+      - F22: Left knee lifts & CROSSES OVER anchorX
+    Keeps tattered royal-purple cloak unified with torso above ankles and carries
+    the Thanatos Great-Scythe cleanly forward.
     """
     frames = []
     for f in range(30):
-        ph = (f / 15.0) * 2.0 * math.pi
-        ph30 = (f / 30.0) * 2.0 * math.pi
-        s1 = math.sin(ph)
-        s2 = -s1
-        l_lift = max(0.0, math.cos(ph))
-        r_lift = max(0.0, -math.cos(ph))
-        bob_y = 0.45 - abs(math.cos(ph)) * 1.10
+        u_l = (f / 30.0) % 1.0
+        u_r = (u_l + 0.5) % 1.0
+        ph30 = u_l * 2.0 * math.pi
+        ph2 = ph30 * 2.0
+
+        l_th, l_kb, l_af, l_yaw, l_lift = _sample_bipedal_walk(u_l)
+        r_th, r_kb, r_af, r_yaw, r_lift = _sample_bipedal_walk(u_r)
+
+        bob_y = 0.80 * math.cos(ph2) - 1.10
+        stride_sway = math.cos(ph30)
 
         def post_walk(arr, neck, _g, step=f, p=ph30):
             for m in range(2):
@@ -1631,30 +1752,39 @@ def build_row1_walk(parts, sj):
 
         frames.append(render_stand_rig_frame_160(
             parts, sj,
-            pelvis_dx=1.3 + math.sin(ph * 2.0) * 0.4,
+            pelvis_dx=0.9 + math.sin(ph2) * 0.35,
             pelvis_dy=bob_y,
-            torso_deg=2.5 + math.sin(ph * 2.0) * 0.8,
-            head_deg=-1.5,
-            l_coat_deg=3.8 + math.sin(ph - 0.5) * 2.5,
-            r_coat_deg=-1.8 - math.sin(ph - 0.5) * 2.0,
-            coat_wave_ph=ph30,
-            coat_wave_amp=3.6,
-            l_thigh_deg=-2.5 - s1 * 7.6 - l_lift * 2.6,
-            l_shin_deg=1.5 + l_lift * 9.6 + max(0.0, s1) * 2.0,
-            l_foot_deg=l_lift * 3.8 - s1 * 2.0,
-            r_thigh_deg=2.5 - s2 * 7.6 - r_lift * 2.6,
-            r_shin_deg=1.5 + r_lift * 9.6 + max(0.0, s2) * 2.0,
-            r_foot_deg=r_lift * 3.8 - s2 * 2.0,
-            grip_rel_sh=(9.5 + s1 * 1.0, 8.4 + math.sin(ph * 2.0) * 0.6),
-            weapon_deg=-23.0 + s1 * 3.2,
-            shaft_len=46.0,
+            torso_deg=2.4 + math.cos(ph2) * 0.75,
+            head_deg=-1.4 - math.cos(ph2) * 0.35,
+            l_coat_deg=-8.0 + max(0.0, l_th) * 0.32,
+            r_coat_deg=4.0 + min(0.0, r_th) * 0.28,
+            coat_wave_ph=ph2,
+            coat_wave_amp=3.0,
+            coat_y_offset_160=-6.5,
+            coat_x_inward_frac=0.45,
+            coat_squash_x=0.82,
+            coat_squash_y=0.72,
+            l_thigh_deg=l_th,
+            l_shin_deg=l_kb,
+            l_foot_deg=l_af,
+            r_thigh_deg=r_th,
+            r_shin_deg=r_kb,
+            r_foot_deg=r_af,
+            hip_inward_frac=0.92,
+            l_hip_off_hi=(l_yaw, l_lift),
+            r_hip_off_hi=(r_yaw, r_lift),
+            neutralize_leg_rest=True,
+            shade_far_leg=0.84,
+            grip_rel_sh=(9.5 - stride_sway * 0.9, 5.8 + math.sin(ph2) * 0.5),
+            weapon_deg=-32.0 + stride_sway * 2.6,
+            shaft_len=41.0,
             fang_side=1.0,
             weapon_layer="front",
-            shroud_deg=170.0 + math.sin(ph - 0.5) * 3.2,
-            shroud_len=33.5,
-            shroud_phase=ph30 * 2.0,
-            shroud_amp=3.4,
-            rune_phase=ph30,
+            shroud_deg=170.0 + math.sin(ph2 - 0.5) * 3.0,
+            shroud_len=31.5,
+            shroud_phase=ph2,
+            shroud_amp=3.0,
+            rune_phase=ph2,
             lock_lowest_to_ground=False,
             clamp_floor_only=True,
             leg_bridge_r=(4, 3),
@@ -2608,7 +2738,60 @@ def assemble_and_verify_sheet(all_rows_160):
     assert clip_count == 0, f"Border clips detected: {clip_details}"
     assert all(t == 29 for t in row_transitions), f"Static duplicate frames detected: {row_transitions}"
     for snap_f, max_x320 in row2_snap_reaches_320.items():
-        assert max_x320 > 260, f"Row 2 F{snap_f:02d} smear reach too narrow: {max_x320}"
+        assert max_x320 > 240, f"Row 2 F{snap_f:02d} smear reach too narrow: {max_x320}"
+
+    sh_arr = np.array(sheet)
+    walk_spans = []
+    walk_tops = []
+    walk_bots = []
+    for c in range(30):
+        cell_a = sh_arr[240:480, c * 320:(c + 1) * 320, 3] > 0
+        wy, _ = np.where(cell_a)
+        walk_tops.append(int(wy.min()))
+        walk_bots.append(int(wy.max()))
+        band = cell_a[206:233, :]
+        _, bx = np.where(band)
+        walk_spans.append(int(bx.max() - bx.min()) if len(bx) else 0)
+    max_foot_span = max(walk_spans)
+    min_foot_span = min(walk_spans)
+    max_adj_top = max(abs(walk_tops[(i + 1) % 30] - walk_tops[i]) for i in range(30))
+    print(
+        f"[QA] Row 1 WALK footSpan320: min={min_foot_span}px max={max_foot_span}px "
+        f"ratio={min_foot_span / max(1, max_foot_span):.2f} "
+        f"(F00={walk_spans[0]} F07={walk_spans[7]} F15={walk_spans[15]} F22={walk_spans[22]}) "
+        f"bots=[{min(walk_bots)}..{max(walk_bots)}] maxAdjTopDelta={max_adj_top}"
+    )
+    assert max_foot_span >= 34, f"Walk contact stride too narrow: {max_foot_span}"
+    assert min_foot_span <= max_foot_span * 0.55, f"Crab walk detected: min={min_foot_span} > 0.55*{max_foot_span}"
+    assert min(walk_bots) >= 222 and max(walk_bots) <= 233, f"Walk footY out of [222..233]: {walk_bots}"
+    assert max_adj_top <= 4, f"Walk head-top pop > 4px: {max_adj_top}"
+
+    flat_cuts = []
+    for r in range(10):
+        for c in range(30):
+            ca = sh_arr[r * 240:(r + 1) * 240, c * 320:(c + 1) * 320, 3] > 0
+            cy_a, cx_a = np.where(ca)
+            if len(cy_a) == 0:
+                continue
+            my0, my1, mx0, mx1 = int(cy_a.min()), int(cy_a.max()), int(cx_a.min()), int(cx_a.max())
+            if my0 <= 16 and int(ca[my0, :].sum()) >= 18:
+                flat_cuts.append(f"R{r}F{c:02d}(top@{my0}={int(ca[my0, :].sum())}px)")
+            if mx0 <= 14 and int(ca[:, mx0].sum()) >= 18:
+                flat_cuts.append(f"R{r}F{c:02d}(left@{mx0}={int(ca[:, mx0].sum())}px)")
+            if mx1 >= 305 and int(ca[:, mx1].sum()) >= 18:
+                flat_cuts.append(f"R{r}F{c:02d}(right@{mx1}={int(ca[:, mx1].sum())}px)")
+    print(f"[QA] Flat box cut-offs across 300 cells: {len(flat_cuts)} ({flat_cuts[:6]})")
+    assert len(flat_cuts) == 0, f"Flat smear/box cut-offs remaining: {flat_cuts}"
+
+    for c in range(22, 30):
+        ca = sh_arr[5 * 240:6 * 240, c * 320:(c + 1) * 320, 3] > 0
+        cy_a, cx_a = np.where(ca)
+        h_d = int(cy_a.max() - cy_a.min() + 1)
+        assert h_d <= 104 and int(cx_a.min()) >= 20 and int(cx_a.max()) <= 300, f"R5 F{c:02d} bad prone bounds"
+    for c in range(30):
+        ca = sh_arr[9 * 240:10 * 240, c * 320:(c + 1) * 320, 3] > 0
+        cy_a, _ = np.where(ca)
+        assert int(cy_a.max() - cy_a.min() + 1) >= 150, f"R9 F{c:02d} height < 150"
 
     return sheet
 

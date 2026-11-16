@@ -1,21 +1,17 @@
 #!/usr/bin/env node
 /**
- * Newly-Born Neo-Vision 30fps VFX Sprite Sheet Builder for Malakor EX (`reaper_ex` / `ReaperEx.js`).
- * Powered natively by `src/engine/ArcaneShaderFX.js`.
+ * Next-Gen 30fps HD-2D Luminescent VFX Sprite Sheet Builder for Malakor EX (`reaper_ex` / `ReaperEx.js`).
+ * Powered by `src/engine/ArcaneShaderFX.js` + read-only `src/engine/shaders/abyssalShaders.js`.
  *
  * Row Contract (`assets/sprites/reaper_ex_vfx.png`, 6240x1664 = 8 rows x 30 cols @ 208x208):
- *   - Row 0: Tattered Crimson-Violet Phantom Soul-Scythe Crescent (`phantom_scythe` & Soul-Disc)
- *   - Row 1: Glowing Crimson-Violet Soul-Lantern Effigy & Rising Soul-Flame (`ABYSSAL SOUL-GUILLOTINE`)
- *   - Row 2: Towering Ossuary Bone-Obelisk Scythe Guillotine Spire
- *   - Row 3: Towering Skeletal Thanatos Sovereign Stand Avatar (`LEGION OF THANATOS` & `MEMENTO MORI`)
- *   - Row 4: Asymmetric Neo-Vision Abyssal Soul-Starburst & Bone Shards (0 chevron bars!)
- *   - Row 5: Gothic Cathedral Gate of Oblivion (`MEMENTO MORI: CATHEDRAL OF OBLIVION`)
- *   - Row 6: Pixel-Dithered Blood-Moon Eclipse Seal (`LEGION OF THANATOS` overhead eclipse)
- *   - Row 7: Colossal Violet-Crimson Scythe Guillotine Execution Crescent (6-Pillar Guillotine)
- *
- * Invariants:
- *   - 100% 2x2 integer pixel blocks (104x104 logical -> 2x NEAREST)
- *   - Pure binary alpha (0 or 255), 0/240 4px border clips, 0 Unicode emojis
+ *   - Row 0: Tattered Crimson-Violet Soul-Scythe Wave (`phantom_scythe` & Abyssal Beam head)
+ *   - Row 1: Homing Abyssal Soul-Lantern & Skull Wisp (`ABYSSAL SOUL-GUILLOTINE`)
+ *   - Row 2: Erupting Ossuary Necrotic Bone-Spire (`spawnFlamePillar({ theme: 'abyssal' })` & tombstones)
+ *   - Row 3: Thanatos Sovereign Rift Halo & Spectral Death-Avatar Aura (`LEGION OF THANATOS`)
+ *   - Row 4: Blood-Moon Abyssal Reap Starburst Nova
+ *   - Row 5: Twin Obsidian Gothic Gates of the Necropolis (`MEMENTO MORI: CATHEDRAL OF OBLIVION`)
+ *   - Row 6: Blood-Moon Eclipse & Grave-Chain Covenant Seal
+ *   - Row 7: Memento Mori Death-God Guillotine Crescent
  */
 
 import fs from 'node:fs';
@@ -26,32 +22,28 @@ import { fileURLToPath } from 'node:url';
 import {
   PURE_WHITE,
   packHexColor,
-  clamp01,
   smoothStep,
-  DeterministicRng,
   createPixelSurface,
   clearPixelSurface,
   resolveSurfaceToRGBA,
-  ShaderPen
-} from '../src/engine/ArcaneShaderFX.js?v=30fps115';
+  ShaderPen,
+  instantiateShaderEffect
+} from '../src/engine/ArcaneShaderFX.js';
+
+import {
+  ABYSSAL_VIOLET_PALETTE,
+  BLOOD_MOON_CRIMSON_PALETTE,
+  ABYSSAL_EFFECT_REGISTRY
+} from '../src/engine/shaders/abyssalShaders.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const SCRATCH_DIR =
-  '/Users/rei/.gemini/antigravity/brain/407ee22f-2468-4119-a090-789cbc49325d/scratch';
+  '/Users/rei/.gemini/antigravity/brain/5416474b-0e5f-4471-85c8-b7a88055e218/scratch';
 
-const C_SEL_DARK = packHexColor('#070410');
-const C_OBSIDIAN = packHexColor('#1a0b2e');
-const C_ABYSS_VIOLET = packHexColor('#581c87');
-const C_ORCHID = packHexColor('#c084fc');
-const C_ORCHID_LIT = packHexColor('#e879f9');
-const C_CRIMSON_DEEP = packHexColor('#9f1239');
 const C_CRIMSON = packHexColor('#f43f5e');
-const C_CRIMSON_PALE = packHexColor('#fda4af');
-const C_BONE_DARK = packHexColor('#94a3b8');
-const C_BONE_LIT = packHexColor('#e2e8f0');
+const C_ORCHID = packHexColor('#e879f9');
 const C_SOUL_WHITE = packHexColor('#fdf4ff');
-const C_WHITE = PURE_WHITE;
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -100,25 +92,43 @@ function encodeRgbaPng(width, height, rgba) {
   ]);
 }
 
-function enforceStrictCellMargin104(rgba, w = 104, h = 104) {
+function applyEllipticalEnvelope(rgba, w, h, env, minMargin) {
+  const cx = env?.cx ?? (w - 1) * 0.5;
+  const cy = env?.cy ?? (h - 1) * 0.5;
+  const rx = env?.rx ?? w * 0.43;
+  const ry = env?.ry ?? h * 0.43;
+  const inner = env?.inner ?? 0.64;
+
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
       const o = (y * w + x) * 4;
-      if (distEdge < 3) {
+      const a0 = rgba[o + 3];
+      if (!a0) continue;
+      const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
+      const rNorm = Math.hypot((x - cx) / rx, (y - cy) / ry);
+      if (distEdge < minMargin || rNorm >= 1.0) {
         rgba[o] = 0;
         rgba[o + 1] = 0;
         rgba[o + 2] = 0;
         rgba[o + 3] = 0;
-      } else if (rgba[o + 3] > 0) {
-        if (rgba[o + 3] < 104) {
-          rgba[o] = 0;
-          rgba[o + 1] = 0;
-          rgba[o + 2] = 0;
-          rgba[o + 3] = 0;
-        } else {
-          rgba[o + 3] = 255;
-        }
+        continue;
+      }
+      let k = 1.0;
+      if (rNorm > inner) {
+        k *= 1.0 - smoothStep(inner, 1.0, rNorm);
+      }
+      const softBand = minMargin + (w >= 200 ? 12 : 6);
+      if (distEdge < softBand) {
+        k *= smoothStep(minMargin - 0.5, softBand, distEdge);
+      }
+      const a1 = Math.round(a0 * k);
+      if (a1 < 10) {
+        rgba[o] = 0;
+        rgba[o + 1] = 0;
+        rgba[o + 2] = 0;
+        rgba[o + 3] = 0;
+      } else {
+        rgba[o + 3] = a1;
       }
     }
   }
@@ -148,6 +158,20 @@ function blitUpscaledNearest(srcRgba, srcW, srcH, scale, dstRgba, dstW, dstX, ds
   }
 }
 
+function downsample2xTo104(src208, dst104) {
+  dst104.fill(0);
+  for (let y = 0; y < 104; y++) {
+    for (let x = 0; x < 104; x++) {
+      const so = (y * 2 * 208 + x * 2) * 4;
+      const to = (y * 104 + x) * 4;
+      dst104[to] = src208[so];
+      dst104[to + 1] = src208[so + 1];
+      dst104[to + 2] = src208[so + 2];
+      dst104[to + 3] = src208[so + 3];
+    }
+  }
+}
+
 function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
   for (let sy = 0; sy < srcH; sy++) {
     for (let sx = 0; sx < srcW; sx++) {
@@ -168,473 +192,56 @@ function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
   }
 }
 
-function has4pxBorderClip208(cellRgba, cell = 208, margin = 4) {
-  for (let y = 0; y < cell; y++) {
-    for (let x = 0; x < cell; x++) {
-      if (x >= margin && x < cell - margin && y >= margin && y < cell - margin) continue;
-      if (cellRgba[(y * cell + x) * 4 + 3] > 0) return true;
-    }
-  }
-  return false;
-}
-
-function drawPixelBox(pen, x0, y0, x1, y1, fillCol, borderCol = C_SEL_DARK, alpha = 1) {
-  const lx0 = Math.round(Math.min(x0, x1));
-  const lx1 = Math.round(Math.max(x0, x1));
-  const ly0 = Math.round(Math.min(y0, y1));
-  const ly1 = Math.round(Math.max(y0, y1));
-  for (let y = ly0; y <= ly1; y++) {
-    for (let x = lx0; x <= lx1; x++) {
-      const edge = x === lx0 || x === lx1 || y === ly0 || y === ly1;
-      pen.stipple(x, y, edge ? borderCol : fillCol, alpha);
-    }
+function drawSoulStarAccent(pen, cx, cy, arm, colMain, colTip, alpha = 0.9) {
+  pen.configure(cx, cy, true, 0, 1, 1);
+  pen.pixel(0, 0, PURE_WHITE, alpha);
+  for (let i = 1; i <= arm; i++) {
+    const c = i === 1 ? colMain : colTip;
+    const a = alpha * (1 - (i - 1) / (arm + 1));
+    pen.pixel(i, 0, c, a);
+    pen.pixel(-i, 0, c, a);
+    pen.pixel(0, i, c, a);
+    pen.pixel(0, -i, c, a);
   }
 }
 
-function drawSoulStar(pen, cx, cy, armH, armV, tipCol, alpha = 1) {
-  const rx = Math.round(cx);
-  const ry = Math.round(cy);
-  const lh = Math.max(1, Math.round(armH));
-  const lv = Math.max(1, Math.round(armV));
-  for (let i = 1; i <= lh; i++) {
-    pen.stipple(rx + i, ry, i === 1 ? C_SOUL_WHITE : tipCol, alpha);
-    pen.stipple(rx - i, ry, i === 1 ? C_SOUL_WHITE : tipCol, alpha);
-  }
-  for (let j = 1; j <= lv; j++) {
-    pen.stipple(rx, ry + j, j === 1 ? C_SOUL_WHITE : tipCol, alpha);
-    pen.stipple(rx, ry - j, j === 1 ? C_SOUL_WHITE : tipCol, alpha);
-  }
-  pen.stipple(rx, ry, C_WHITE, alpha);
-}
-
-function drawTaperedSoulRay(pen, x0, y0, x1, y1, maxHalfW, bevelCol, accentCol, alpha = 1) {
-  if (alpha <= 0.04) return;
-  const dx = x1 - x0;
-  const dy = y1 - y0;
-  const len = Math.hypot(dx, dy);
-  if (len < 2) return;
-  const ux = dx / len;
-  const uy = dy / len;
-  const nx = -uy;
-  const ny = ux;
-  const steps = Math.ceil(len * 2.2);
-
-  for (let i = 0; i <= steps; i++) {
-    const s = i / steps;
-    const hw = maxHalfW * Math.pow(Math.sin(s * Math.PI), 0.72);
-    const bx = x0 + ux * (s * len);
-    const by = y0 + uy * (s * len);
-    const span = Math.ceil(hw + 1.0);
-    for (let q = -span; q <= span; q += 0.5) {
-      if (Math.abs(q) <= hw + 0.85 && Math.abs(q) >= hw - 0.2) {
-        pen.stipple(bx + nx * q, by + ny * q, C_SEL_DARK, alpha * 0.95);
+function auditCell208(cell208, margin = 4) {
+  let clipped = false;
+  let minX = 208;
+  let maxX = -1;
+  let minY = 208;
+  let maxY = -1;
+  for (let y = 0; y < 208; y++) {
+    for (let x = 0; x < 208; x++) {
+      const a = cell208[(y * 208 + x) * 4 + 3];
+      if (a > 0 && (x < margin || x >= 208 - margin || y < margin || y >= 208 - margin)) {
+        clipped = true;
+      }
+      if (a > 16) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
       }
     }
   }
-  for (let i = 0; i <= steps; i++) {
-    const s = i / steps;
-    const hw = maxHalfW * Math.pow(Math.sin(s * Math.PI), 0.72);
-    const bx = x0 + ux * (s * len);
-    const by = y0 + uy * (s * len);
-    const span = Math.ceil(hw);
-    for (let q = -span; q <= span; q += 0.5) {
-      if (Math.abs(q) < hw - 0.1) {
-        pen.stipple(bx + nx * q, by + ny * q, q >= 0 ? bevelCol : accentCol, alpha);
-      }
+  let maxEdgeRun = 0;
+  if (maxX >= minX && maxY >= minY) {
+    let topRun = 0;
+    let botRun = 0;
+    let leftRun = 0;
+    let rightRun = 0;
+    for (let x = minX; x <= maxX; x++) {
+      if (cell208[(minY * 208 + x) * 4 + 3] > 16) topRun++;
+      if (cell208[(maxY * 208 + x) * 4 + 3] > 16) botRun++;
     }
-  }
-  for (let i = 1; i < steps; i++) {
-    const s = i / steps;
-    const hw = maxHalfW * 0.38 * Math.sin(s * Math.PI);
-    const bx = x0 + ux * (s * len);
-    const by = y0 + uy * (s * len);
-    for (let q = -hw; q <= hw; q += 0.5) {
-      pen.stipple(bx + nx * q, by + ny * q, C_SOUL_WHITE, alpha);
+    for (let y = minY; y <= maxY; y++) {
+      if (cell208[(y * 208 + minX) * 4 + 3] > 16) leftRun++;
+      if (cell208[(y * 208 + maxX) * 4 + 3] > 16) rightRun++;
     }
+    maxEdgeRun = Math.max(topRun, botRun, leftRun, rightRun);
   }
-}
-
-function drawTatteredReaperCrescent(pen, opts) {
-  const {
-    cx = 0,
-    cy = 0,
-    rx = 34,
-    ry = 38,
-    rotRad = 0,
-    aStart = -1.42,
-    aEnd = 1.42,
-    maxWidth = 17,
-    teethCount = 7,
-    toothDepth = 0.48,
-    crimsonDominant = false,
-    alpha = 1,
-    phase = 0
-  } = opts;
-  if (alpha <= 0.04 || maxWidth <= 0.6) return;
-
-  const cosR = Math.cos(rotRad);
-  const sinR = Math.sin(rotRad);
-  const spanA = aEnd - aStart;
-  const steps = Math.max(96, Math.ceil(Math.abs(spanA) * Math.max(rx, ry) * 2.6));
-  for (let i = 0; i <= steps; i++) {
-    const s = i / steps;
-    const ang = aStart + spanA * s;
-    const cA = Math.cos(ang);
-    const sA = Math.sin(ang);
-    const belly = s < 0.72 ? Math.pow(s / 0.72, 1.32) : Math.pow(Math.max(0, (1 - s) / 0.28), 0.56);
-    const toothArg = s * teethCount + phase * 0.4;
-    const saw = toothArg - Math.floor(toothArg);
-    const ripNotch = s > 0.08 && s < 0.90 ? Math.pow(saw, 1.45) * toothDepth : 0;
-    const wTotal = maxWidth * belly * (1 - ripNotch);
-    if (wTotal < 0.45) continue;
-
-    const rSteps = Math.max(3, Math.ceil(wTotal * 2.2));
-    for (let j = 0; j <= rSteps; j++) {
-      const v = j / rSteps;
-      const curRx = rx - (1 - v) * wTotal;
-      const curRy = ry - (1 - v) * wTotal * (ry / Math.max(1, rx));
-      if (curRx <= 1 || curRy <= 1) continue;
-      const ex = cA * curRx;
-      const ey = sA * curRy;
-      const px = cx + ex * cosR - ey * sinR;
-      const py = cy + ex * sinR + ey * cosR;
-
-      let col;
-      let pixAlpha = alpha;
-      if (v > 0.92 || s > 0.96 || (v < 0.08 && s > 0.24)) col = C_SEL_DARK;
-      else if (v > 0.80) col = C_SOUL_WHITE;
-      else if (v > 0.56) col = crimsonDominant ? C_CRIMSON : C_ORCHID_LIT;
-      else if (v > 0.28) col = crimsonDominant ? C_ORCHID : C_CRIMSON;
-      else {
-        col = C_ABYSS_VIOLET;
-        pixAlpha = alpha * 0.84;
-      }
-      pen.stipple(px, py, col, pixAlpha);
-    }
-  }
-}
-
-/** Row 0: Tattered Crimson-Violet Phantom Scythe Wave (`phantom_scythe` & Soul-Disc) */
-function renderRow0SoulScytheWave(pen, f) {
-  const ph = (f / 30) * Math.PI * 2;
-  const pulse = Math.sin(ph);
-
-  for (let k = 0; k < 5; k++) {
-    const wy = -24 + k * 12 + Math.sin(ph + k * 1.4) * 1.5;
-    const xStart = -34 + ((f * 3 + k * 9) % 18);
-    const xEnd = 10 + (k % 2) * 5;
-    pen.line(xStart + 3, wy + 1, xEnd, wy + 1, C_SEL_DARK, 0.88);
-    pen.line(xStart, wy, xEnd, wy, k % 2 === 0 ? C_CRIMSON : C_ORCHID_LIT, 0.94);
-  }
-
-  drawTatteredReaperCrescent(pen, {
-    cx: -6 + pulse * 1.2,
-    cy: 0,
-    rx: 35,
-    ry: 40,
-    rotRad: Math.sin(ph) * 0.12,
-    aStart: -1.36,
-    aEnd: 1.36,
-    maxWidth: 17 + pulse * 1.2,
-    teethCount: 7,
-    toothDepth: 0.48,
-    crimsonDominant: true,
-    alpha: 1.0,
-    phase: f * 0.35
-  });
-
-  drawTatteredReaperCrescent(pen, {
-    cx: -11,
-    cy: 0,
-    rx: 23,
-    ry: 28,
-    rotRad: -Math.sin(ph) * 0.16,
-    aStart: -0.96,
-    aEnd: 0.96,
-    maxWidth: 8,
-    teethCount: 5,
-    toothDepth: 0.40,
-    crimsonDominant: false,
-    alpha: 0.95,
-    phase: -f * 0.32
-  });
-
-  drawSoulStar(pen, 28 + pulse, 0, 5, 7, C_CRIMSON, 1.0);
-}
-
-/** Row 1: Glowing Crimson-Violet Soul-Lantern Effigy & Rising Soul-Flame (`ABYSSAL SOUL-GUILLOTINE`) */
-function renderRow1SoulLanternEffigy(pen, f) {
-  const ph = (f / 30) * Math.PI * 2;
-  const sway = Math.round(Math.sin(ph) * 2);
-  const bob = Math.round(Math.cos(ph) * 2);
-
-  // Rising Tapered Soul-Flame Plume above the Lantern Spire
-  for (let y = -36; y <= -14; y++) {
-    const t = clamp01((-14 - y) / 22);
-    const waveX = sway + Math.round(Math.sin(ph * 2 + t * 5) * 2.5);
-    const hw = Math.max(1, Math.round((1 - t) * 7));
-    for (let dx = -hw; dx <= hw; dx++) {
-      const col = Math.abs(dx) === hw ? C_SEL_DARK : Math.abs(dx) <= 1 ? C_SOUL_WHITE : dx < 0 ? C_CRIMSON : C_ORCHID_LIT;
-      pen.stipple(waveX + dx, y + bob, col, 1.0);
-    }
-  }
-
-  // Wrought-Iron Gothic Soul-Lantern Cage + Pulsing Crimson-Violet Soul Core
-  pen.line(sway, -22 + bob, sway, -15 + bob, C_BONE_LIT, 1.0);
-  drawPixelBox(pen, sway - 12, -15 + bob, sway + 12, -10 + bob, C_OBSIDIAN, C_SEL_DARK, 1.0);
-  drawPixelBox(pen, sway - 10, 14 + bob, sway + 10, 19 + bob, C_OBSIDIAN, C_SEL_DARK, 1.0);
-
-  // Inner Glowing Soul Heart
-  for (let y = -9; y <= 13; y++) {
-    const ny = y / 11;
-    const hw = Math.max(2, Math.round(8 * Math.sqrt(Math.max(0, 1 - ny * ny * 0.65))));
-    for (let dx = -hw; dx <= hw; dx++) {
-      const r = Math.hypot(dx / 8, ny);
-      const col = r < 0.36 ? C_WHITE : r < 0.68 ? C_CRIMSON : C_ORCHID_LIT;
-      pen.stipple(sway + dx, y + bob, col, 1.0);
-    }
-  }
-
-  // Lantern Iron Ribs
-  for (const rxOff of [-10, 0, 10]) {
-    pen.line(sway + rxOff, -10 + bob, sway + rxOff, 14 + bob, C_SEL_DARK, 1.0);
-  }
-  // Trailing Chain Links below Lantern
-  for (let c = 0; c < 4; c++) {
-    const cy = 21 + c * 4 + bob;
-    drawPixelBox(pen, sway - 2 + (c % 2), cy, sway + 2 + (c % 2), cy + 3, C_BONE_DARK, C_SEL_DARK, 0.95);
-  }
-  drawSoulStar(pen, sway - 16, -4 + bob, 3, 4, C_ORCHID_LIT, 0.92);
-  drawSoulStar(pen, sway + 16, 4 + bob, 3, 4, C_CRIMSON, 0.92);
-}
-
-/** Row 2: Towering Ossuary Bone-Obelisk Scythe Guillotine Spire */
-function renderRow2BoneObeliskSpire(pen, f) {
-  const u = f / 29;
-  const erupt = u < 0.14 ? smoothStep(0, 0.14, u) : 1.0;
-  const fade = u > 0.74 ? 1 - (u - 0.74) / 0.26 : 1.0;
-
-  const baseY = 34;
-  const spireH = Math.round(70 * erupt);
-  const topY = baseY - spireH;
-
-  // Grave-Earth Crimson-Violet Rupture Ring
-  for (let i = 0; i < 56; i++) {
-    const a = (i / 56) * Math.PI * 2 + u * 2;
-    const rx = Math.cos(a) * 26 * erupt;
-    const ry = baseY + Math.sin(a) * 6 * erupt;
-    pen.stipple(rx, ry + 1, C_SEL_DARK, fade);
-    pen.stipple(rx, ry, i % 2 === 0 ? C_CRIMSON : C_ORCHID, fade);
-  }
-
-  // Sculpted Bone-Ribbed Obsidian Obelisk Column + Scythe Finial Crown
-  for (let y = topY; y <= baseY; y++) {
-    const hFrac = clamp01((baseY - y) / Math.max(1, spireH));
-    const taper = hFrac > 0.78 ? (1 - hFrac) / 0.22 : 1.0 - hFrac * 0.28;
-    const rib = Math.abs(((y - topY) % 8) - 4) <= 1 && hFrac < 0.72 ? 3 : 0;
-    const hw = Math.max(1, Math.round(11 * taper + rib));
-    for (let x = -hw; x <= hw; x++) {
-      const ax = Math.abs(x);
-      let col;
-      if (ax === hw) col = C_SEL_DARK;
-      else if (rib > 0 && ax >= hw - 3) col = C_BONE_LIT;
-      else if (ax <= 1 && hFrac < 0.85) col = (y + f) % 4 < 2 ? C_CRIMSON : C_SOUL_WHITE;
-      else col = x < 0 ? C_ABYSS_VIOLET : C_OBSIDIAN;
-      pen.stipple(x, y, col, fade);
-    }
-  }
-
-  // Curved Scythe-Blade Crown atop Obelisk
-  if (erupt > 0.5 && fade > 0.15) {
-    drawTatteredReaperCrescent(pen, {
-      cx: 4,
-      cy: topY + 14,
-      rx: 22 * erupt,
-      ry: 14 * erupt,
-      rotRad: -0.45,
-      aStart: -1.3,
-      aEnd: 1.1,
-      maxWidth: 6.5 * fade,
-      teethCount: 4,
-      toothDepth: 0.35,
-      crimsonDominant: true,
-      alpha: fade,
-      phase: u * 2
-    });
-  }
-}
-
-/** Row 3: Towering Skeletal Thanatos Sovereign Stand Avatar (`LEGION OF THANATOS`) */
-function renderRow3ThanatosSovereignStand(pen, f) {
-  const ph = (f / 30) * Math.PI * 2;
-  const bob = Math.round(Math.sin(ph) * 2);
-  const wingLift = Math.round(Math.cos(ph) * 3);
-
-  // Swept Twin Spectral Scythe-Pinion Wings behind Thanatos
-  for (const side of [-1, 1]) {
-    drawTaperedSoulRay(pen, side * 8, -8 + bob, side * 38, -28 + wingLift, 4.2, C_ABYSS_VIOLET, C_CRIMSON_DEEP, 0.96);
-    drawTaperedSoulRay(pen, side * 10, 0 + bob, side * 35, -12 + wingLift, 3.4, C_ORCHID, C_ABYSS_VIOLET, 0.96);
-    drawTaperedSoulRay(pen, side * 8, 8 + bob, side * 28, 4 + wingLift, 2.8, C_CRIMSON, C_OBSIDIAN, 0.92);
-  }
-
-  // Tattered Abyssal Mantle Torso + Sculpted Bone Ribcage
-  for (let y = -14; y <= 32; y++) {
-    const t = (y + 14) / 46;
-    const ragged = Math.sin(t * 14 + ph) * 2;
-    const hw = Math.round((t < 0.45 ? 15 - t * 6 : 12 + (t - 0.45) * 14) + ragged * 0.5);
-    for (let x = -hw; x <= hw; x++) {
-      if (y > 24 && Math.abs(x * 3 + y) % 5 === 0) continue; // tattered hem!
-      const ax = Math.abs(x);
-      let col;
-      if (ax === hw) col = C_SEL_DARK;
-      else if (y >= -6 && y <= 10 && ax >= 2 && ax <= 9 && (y + 16) % 4 <= 1) {
-        col = ax <= 5 ? C_BONE_LIT : C_BONE_DARK; // skeletal ribcage!
-      } else if (ax <= 2 && y >= -6 && y <= 14) {
-        col = C_CRIMSON; // glowing soul-furnace spine!
-      } else {
-        col = x < 0 ? C_OBSIDIAN : C_ABYSS_VIOLET;
-      }
-      pen.stipple(x, y + bob, col, 1.0);
-    }
-  }
-
-  // Hooded Obsidian Cowl + Horned Crown + Skull Visage + Blazing Crimson Eyes
-  drawPixelBox(pen, -10, -30 + bob, 10, -14 + bob, C_OBSIDIAN, C_SEL_DARK, 1.0);
-  drawPixelBox(pen, -6, -26 + bob, 6, -16 + bob, C_BONE_LIT, C_SEL_DARK, 1.0);
-  // Twin Sovereign Death-Horns
-  drawTaperedSoulRay(pen, -8, -26 + bob, -18, -38 + bob, 2.2, C_ORCHID_LIT, C_CRIMSON, 1.0);
-  drawTaperedSoulRay(pen, 8, -26 + bob, 18, -38 + bob, 2.2, C_ORCHID_LIT, C_CRIMSON, 1.0);
-  // Glowing Crimson Eyes
-  pen.stipple(-3, -22 + bob, C_CRIMSON, 1.0);
-  pen.stipple(-2, -22 + bob, C_WHITE, 1.0);
-  pen.stipple(3, -22 + bob, C_CRIMSON, 1.0);
-  pen.stipple(2, -22 + bob, C_WHITE, 1.0);
-}
-
-/** Row 4: Asymmetric Neo-Vision Abyssal Soul-Starburst (0 chevron bars!) */
-function renderRow4AbyssalStarburst(pen, f) {
-  const u = f / 29;
-  const pop = u < 0.10 ? u / 0.10 : 1.0;
-  const fade = clamp01(1.16 - u * 1.24);
-  const rng = new DeterministicRng(709 + f * 17);
-  if (fade <= 0.04) return;
-
-  const mainLen = 38 * pop * (0.75 + 0.25 * fade);
-  const crossLen = 27 * pop * (0.75 + 0.25 * fade);
-  drawTaperedSoulRay(pen, -mainLen * 0.34, mainLen * 0.94, mainLen * 0.34, -mainLen * 0.94, 3.1 * fade, C_CRIMSON, C_ABYSS_VIOLET, fade);
-  drawTaperedSoulRay(pen, -crossLen * 0.94, -crossLen * 0.28, crossLen * 0.94, crossLen * 0.28, 2.5 * fade, C_ORCHID_LIT, C_CRIMSON_DEEP, fade);
-  drawSoulStar(pen, 0, 0, Math.max(2, Math.round(6 * fade)), Math.max(2, Math.round(8 * fade)), C_CRIMSON, fade);
-
-  for (let i = 0; i < 8; i++) {
-    const a = (i * Math.PI) / 4 + 0.3 + rng.between(-0.15, 0.15);
-    const dist = (8 + u * 32) * rng.between(0.75, 1.04);
-    const sx = Math.cos(a) * dist;
-    const sy = Math.sin(a) * dist;
-    if (Math.abs(sx) < 42 && Math.abs(sy) < 42) {
-      drawSoulStar(pen, sx, sy, 2, 3, i % 2 === 0 ? C_CRIMSON : C_ORCHID_LIT, fade);
-    }
-  }
-}
-
-/** Row 5: Gothic Cathedral Gate of Oblivion (`MEMENTO MORI: CATHEDRAL OF OBLIVION`) */
-function renderRow5GothicOblivionGate(pen, f) {
-  const ph = (f / 30) * Math.PI * 2;
-  const pulse = 0.5 + 0.5 * Math.sin(ph);
-
-  // Twin Gothic Buttress Pillars + Pointed Lancet Arch
-  drawPixelBox(pen, -28, -22, -18, 38, C_OBSIDIAN, C_SEL_DARK, 1.0);
-  drawPixelBox(pen, 18, -22, 28, 38, C_OBSIDIAN, C_SEL_DARK, 1.0);
-  // Finial Spires
-  drawTaperedSoulRay(pen, -23, -22, -23, -38, 3.2, C_BONE_DARK, C_OBSIDIAN, 1.0);
-  drawTaperedSoulRay(pen, 23, -22, 23, -38, 3.2, C_BONE_DARK, C_OBSIDIAN, 1.0);
-  drawTaperedSoulRay(pen, 0, -30, 0, -42, 3.4, C_CRIMSON, C_ORCHID, 1.0);
-
-  // Pointed Gothic Archway & Glowing Violet-Crimson Portal Interior
-  for (let y = -30; y <= 36; y++) {
-    const archFrac = y < -4 ? clamp01((y + 30) / 26) : 1.0;
-    const innerW = Math.round(17 * Math.pow(archFrac, 0.68));
-    for (let x = -innerW - 3; x <= innerW + 3; x++) {
-      const ax = Math.abs(x);
-      if (ax > innerW) {
-        pen.stipple(x, y, ax === innerW + 3 ? C_SEL_DARK : C_BONE_DARK, 1.0);
-      } else {
-        // Swirling Gothic Stained/Vortex Portal bars
-        const bar = ax === 6 || ax === 12;
-        if (bar) {
-          pen.stipple(x, y, C_SEL_DARK, 1.0);
-        } else if (((x + y + Math.floor(f * 0.5)) & 1) === 0) {
-          const r = Math.hypot(x / 16, (y - 4) / 28);
-          const col = r < 0.35 + pulse * 0.1 ? C_SOUL_WHITE : r < 0.68 ? C_CRIMSON : C_ABYSS_VIOLET;
-          pen.stipple(x, y, col, 0.96);
-        }
-      }
-    }
-  }
-  // Skull Keystone at Arch Apex
-  drawPixelBox(pen, -4, -30, 4, -22, C_BONE_LIT, C_SEL_DARK, 1.0);
-  pen.stipple(-2, -26, C_CRIMSON, 1.0);
-  pen.stipple(2, -26, C_CRIMSON, 1.0);
-}
-
-/** Row 6: Pixel-Dithered Blood-Moon Eclipse Seal (`LEGION OF THANATOS` & `MEMENTO MORI`) */
-function renderRow6BloodMoonEclipse(pen, f) {
-  const ph = (f / 30) * Math.PI * 2;
-  const R = 26;
-
-  // Blazing Crimson-Violet Corona Ring + Pitch-Black Lunar Disc
-  for (let y = -38; y <= 38; y++) {
-    for (let x = -38; x <= 38; x++) {
-      const r = Math.hypot(x, y);
-      if (r < R - 2) {
-        pen.stipple(x, y, r > R - 5 && ((x + y) & 1) === 0 ? C_OBSIDIAN : C_SEL_DARK, 1.0);
-      } else if (r <= R + 2.2) {
-        pen.stipple(x, y, r <= R ? C_SOUL_WHITE : C_CRIMSON, 1.0);
-      } else if (r <= R + 10) {
-        const flare = Math.sin(Math.atan2(y, x) * 6 + ph) * 2.5;
-        if (r <= R + 6 + flare && ((x ^ y) & 1) === 0) {
-          pen.stipple(x, y, r < R + 5 ? C_CRIMSON : C_ORCHID, 0.95);
-        }
-      }
-    }
-  }
-
-  // 6 Orbiting Scythe-Fang EclipseSpikes
-  for (let k = 0; k < 6; k++) {
-    const a = ph * 0.5 + (k * Math.PI) / 3;
-    const x0 = Math.cos(a) * (R + 1);
-    const y0 = Math.sin(a) * (R + 1);
-    const x1 = Math.cos(a + 0.18) * (R + 12);
-    const y1 = Math.sin(a + 0.18) * (R + 12);
-    drawTaperedSoulRay(pen, x0, y0, x1, y1, 2.2, k % 2 === 0 ? C_CRIMSON : C_ORCHID_LIT, C_ABYSS_VIOLET, 1.0);
-  }
-}
-
-/** Row 7: Colossal Violet-Crimson Scythe Guillotine Execution Crescent */
-function renderRow7GuillotineCrescent(pen, f) {
-  const u = f / 29;
-  const fade = u > 0.72 ? 1 - (u - 0.72) / 0.28 : 1.0;
-  if (fade <= 0.04) return;
-
-  // Sweeping Downward Colossal Executioner Scythe Blade
-  drawTatteredReaperCrescent(pen, {
-    cx: 0,
-    cy: -2,
-    rx: 39,
-    ry: 35,
-    rotRad: Math.PI * 0.5 + (u - 0.3) * 0.28,
-    aStart: -1.48,
-    aEnd: 1.48,
-    maxWidth: 19 * fade,
-    teethCount: 8,
-    toothDepth: 0.46,
-    crimsonDominant: true,
-    alpha: fade,
-    phase: u * 3
-  });
-
-  // Vertical Guillotine Pillar Spine
-  drawTaperedSoulRay(pen, 0, -40, 0, 40, 3.2 * fade, C_ORCHID_LIT, C_CRIMSON, fade);
-  drawSoulStar(pen, 0, 12, Math.max(2, Math.round(8 * fade)), Math.max(2, Math.round(6 * fade)), C_CRIMSON_PALE, fade);
+  return { clipped, maxEdgeRun };
 }
 
 function bakeVfxSheet() {
@@ -657,38 +264,191 @@ function bakeVfxSheet() {
     dbgRgba[i * 4 + 3] = 255;
   }
 
+  const rowSpecs = [
+    {
+      name: 'Row 0: Tattered Crimson-Violet Soul-Scythe Wave',
+      windowSec: 1.0,
+      exposure: 1.18,
+      env: { cx: 51.5, cy: 51.5, rx: 42.5, ry: 42.5, inner: 0.66 },
+      layers: [
+        { def: ABYSSAL_EFFECT_REGISTRY.soulScytheWaveCell, warmup: 0, cfg: { x: 52, y: 52, palette: BLOOD_MOON_CRIMSON_PALETTE, seed: 901 } },
+        { def: ABYSSAL_EFFECT_REGISTRY.soulScytheWaveCell, warmup: 0.03, cfg: { x: 49, y: 52, palette: ABYSSAL_VIOLET_PALETTE, seed: 907 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawSoulStarAccent(pen, 72 + Math.cos(ph) * 2, 52 + Math.sin(ph) * 3, 4, C_SOUL_WHITE, C_CRIMSON, 0.88);
+      }
+    },
+    {
+      name: 'Row 1: Homing Abyssal Soul-Lantern & Skull Wisp',
+      windowSec: 1.0,
+      exposure: 1.18,
+      env: { cx: 51.5, cy: 49.0, rx: 17.5, ry: 22.0, inner: 0.58 },
+      layers: [
+        { def: ABYSSAL_EFFECT_REGISTRY.abyssalSkullWispCell, warmup: 0, cfg: { x: 52, y: 52, palette: ABYSSAL_VIOLET_PALETTE, seed: 911 } },
+        { def: ABYSSAL_EFFECT_REGISTRY.abyssalSkullWispCell, warmup: 0.06, cfg: { x: 52, y: 52, palette: BLOOD_MOON_CRIMSON_PALETTE, seed: 919 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawSoulStarAccent(pen, 52 + Math.cos(ph) * 8, 48 + Math.sin(ph) * 7, 3, C_CRIMSON, C_ORCHID, 0.84);
+      }
+    },
+    {
+      name: 'Row 2: Erupting Ossuary Necrotic Bone-Spire',
+      windowSec: 1.0,
+      exposure: 1.18,
+      env: { cx: 51.5, cy: 62.0, rx: 16.0, ry: 24.0, inner: 0.56 },
+      layers: [
+        { def: ABYSSAL_EFFECT_REGISTRY.necroticBoneSpireCell, warmup: 0, cfg: { x: 52, y: 50, palette: ABYSSAL_VIOLET_PALETTE, seed: 929 } },
+        { def: ABYSSAL_EFFECT_REGISTRY.necroticBoneSpireCell, warmup: 0.03, cfg: { x: 52, y: 50, palette: BLOOD_MOON_CRIMSON_PALETTE, seed: 937 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawSoulStarAccent(pen, 52 + Math.sin(ph) * 5, 52 + Math.cos(ph) * 5, 3, C_SOUL_WHITE, C_CRIMSON, 0.84);
+      }
+    },
+    {
+      name: 'Row 3: Native 208x208 Thanatos Sovereign Death-Avatar & Blood-Moon Cathedral',
+      windowSec: 1.38,
+      native208: true,
+      exposure: 1.2,
+      env: { cx: 103.5, cy: 105.0, rx: 70.0, ry: 68.0, inner: 0.58 },
+      layers: [
+        { def: ABYSSAL_EFFECT_REGISTRY.deathAvatarCathedral, warmup: 0.08, cfg: { x: 104, y: 138, palette: ABYSSAL_VIOLET_PALETTE, seed: 941 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawSoulStarAccent(pen, 104 + Math.cos(ph) * 26, 108 + Math.sin(ph) * 20, 5, C_CRIMSON, C_ORCHID, 0.86);
+      }
+    },
+    {
+      name: 'Row 4: Blood-Moon Abyssal Reap Starburst Nova',
+      windowSec: 1.0,
+      exposure: 1.2,
+      env: { cx: 51.5, cy: 50.5, rx: 28.0, ry: 22.0, inner: 0.58 },
+      layers: [
+        { def: ABYSSAL_EFFECT_REGISTRY.abyssalReapNovaCell, warmup: 0, cfg: { x: 52, y: 52, palette: BLOOD_MOON_CRIMSON_PALETTE, seed: 953 } },
+        { def: ABYSSAL_EFFECT_REGISTRY.abyssalReapNovaCell, warmup: 0.02, cfg: { x: 52, y: 52, palette: ABYSSAL_VIOLET_PALETTE, seed: 967 } }
+      ],
+      accent(pen, c) {
+        drawSoulStarAccent(pen, 52, 52, 4 + (c % 2), C_SOUL_WHITE, C_CRIMSON, 0.85);
+      }
+    },
+    {
+      name: 'Row 5: Twin Obsidian Gothic Gates of the Necropolis',
+      windowSec: 1.0,
+      exposure: 1.18,
+      env: { cx: 51.5, cy: 53.0, rx: 21.5, ry: 28.5, inner: 0.54 },
+      layers: [
+        { def: ABYSSAL_EFFECT_REGISTRY.necropolisObsidianGatesCell, warmup: 0, cfg: { x: 52, y: 48, palette: ABYSSAL_VIOLET_PALETTE, seed: 971 } },
+        { def: ABYSSAL_EFFECT_REGISTRY.necropolisObsidianGatesCell, warmup: 0.04, cfg: { x: 52, y: 48, palette: BLOOD_MOON_CRIMSON_PALETTE, seed: 977 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawSoulStarAccent(pen, 52, 46 + Math.sin(ph) * 4, 4, C_CRIMSON, C_ORCHID, 0.88);
+      }
+    },
+    {
+      name: 'Row 6: Blood-Moon Eclipse & Grave-Chain Covenant Seal',
+      windowSec: 1.0,
+      exposure: 1.2,
+      env: { cx: 51.5, cy: 49.0, rx: 32.0, ry: 28.0, inner: 0.58 },
+      layers: [
+        { def: ABYSSAL_EFFECT_REGISTRY.graveChainAltarBindCell, warmup: 0, cfg: { x: 52, y: 52, palette: BLOOD_MOON_CRIMSON_PALETTE, seed: 983 } },
+        { def: ABYSSAL_EFFECT_REGISTRY.thanatosPentagramSealCell, warmup: 0.16, cfg: { x: 52, y: 52, palette: ABYSSAL_VIOLET_PALETTE, seed: 991 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawSoulStarAccent(pen, 52 + Math.cos(ph) * 18, 52 + Math.sin(ph) * 18, 3, C_CRIMSON, C_ORCHID, 0.85);
+      }
+    },
+    {
+      name: 'Row 7: Memento Mori Death-God Guillotine Crescent',
+      windowSec: 1.0,
+      exposure: 1.2,
+      env: { cx: 51.5, cy: 51.5, rx: 41.5, ry: 41.5, inner: 0.64 },
+      layers: [
+        { def: ABYSSAL_EFFECT_REGISTRY.mementoMoriGuillotineCell, warmup: 0, cfg: { x: 52, y: 52, palette: BLOOD_MOON_CRIMSON_PALETTE, seed: 997 } },
+        { def: ABYSSAL_EFFECT_REGISTRY.mementoMoriGuillotineCell, warmup: 0.02, cfg: { x: 52, y: 52, palette: ABYSSAL_VIOLET_PALETTE, seed: 1009 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawSoulStarAccent(pen, 52, 56 + Math.sin(ph) * 4, 5, C_SOUL_WHITE, C_CRIMSON, 0.88);
+      }
+    }
+  ];
+
   const surface104 = createPixelSurface(LOGICAL, LOGICAL);
   const pen104 = new ShaderPen(surface104);
   const cell104 = new Uint8Array(LOGICAL * LOGICAL * 4);
+  const surface208 = createPixelSurface(CELL, CELL);
+  const pen208 = new ShaderPen(surface208);
   const cell208 = new Uint8Array(CELL * CELL * 4);
 
-  const rowFns = [
-    renderRow0SoulScytheWave,
-    renderRow1SoulLanternEffigy,
-    renderRow2BoneObeliskSpire,
-    renderRow3ThanatosSovereignStand,
-    renderRow4AbyssalStarburst,
-    renderRow5GothicOblivionGate,
-    renderRow6BloodMoonEclipse,
-    renderRow7GuillotineCrescent
-  ];
-
   let borderClips = 0;
+  let worstEdgeRun = 0;
 
   for (let r = 0; r < ROWS; r++) {
-    const fn = rowFns[r];
+    const spec = rowSpecs[r];
+    const dt = spec.windowSec / COLS;
+    const instances = spec.layers.map((l) => {
+      const inst = instantiateShaderEffect(l.def, l.cfg);
+      if (l.warmup > 0) inst.step(l.warmup);
+      return inst;
+    });
+
+    let prevCell = null;
+    let transitions = 0;
+
     for (let c = 0; c < COLS; c++) {
-      clearPixelSurface(surface104);
-      pen104.configure(52, 52, false, 0, 1, 1);
-      fn(pen104, c);
-      resolveSurfaceToRGBA(surface104, cell104, 1.0);
-      enforceStrictCellMargin104(cell104, LOGICAL, LOGICAL);
+      if (spec.native208) {
+        clearPixelSurface(surface208);
+        for (const inst of instances) inst.render(pen208, 'back');
+        for (const inst of instances) inst.render(pen208, 'front');
+        spec.accent?.(pen208, c);
+        resolveSurfaceToRGBA(surface208, cell208, spec.exposure);
+        applyEllipticalEnvelope(cell208, CELL, CELL, spec.env, 5);
+        downsample2xTo104(cell208, cell104);
+      } else {
+        clearPixelSurface(surface104);
+        for (const inst of instances) inst.render(pen104, 'back');
+        for (const inst of instances) inst.render(pen104, 'front');
+        spec.accent?.(pen104, c);
+        resolveSurfaceToRGBA(surface104, cell104, spec.exposure);
 
-      cell208.fill(0);
-      blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, cell208, CELL, 0, 0);
-      if (has4pxBorderClip208(cell208, CELL, 4)) borderClips++;
+        cell208.fill(0);
+        blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, cell208, CELL, 0, 0);
+        applyEllipticalEnvelope(cell208, CELL, CELL, {
+          cx: spec.env.cx * 2 + 0.5,
+          cy: spec.env.cy * 2 + 0.5,
+          rx: spec.env.rx * 2,
+          ry: spec.env.ry * 2,
+          inner: spec.env.inner
+        }, 5);
+        downsample2xTo104(cell208, cell104);
+      }
 
-      blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
+      const { clipped, maxEdgeRun } = auditCell208(cell208, 4);
+      if (clipped) borderClips++;
+      if (maxEdgeRun > worstEdgeRun) worstEdgeRun = maxEdgeRun;
+
+      if (prevCell) {
+        let diff = false;
+        for (let i = 0; i < cell208.length; i++) {
+          if (cell208[i] !== prevCell[i]) {
+            diff = true;
+            break;
+          }
+        }
+        if (diff) transitions++;
+      }
+      prevCell = cell208.slice();
+
+      for (let sy = 0; sy < CELL; sy++) {
+        const srcOff = sy * CELL * 4;
+        const dstOff = ((r * CELL + sy) * sheetW + c * CELL) * 4;
+        sheetRgba.set(cell208.subarray(srcOff, srcOff + CELL * 4), dstOff);
+      }
 
       const dx = dbgPad + c * (LOGICAL + dbgPad);
       const dy = dbgPad + r * (LOGICAL + dbgPad);
@@ -703,21 +463,25 @@ function bakeVfxSheet() {
         }
       }
       alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
+
+      for (const inst of instances) inst.step(dt);
+    }
+
+    if (transitions !== 29) {
+      throw new Error(`[reaper_ex_vfx] Row ${r} expected 29/29 transitions, got ${transitions}`);
     }
   }
 
-  if (borderClips !== 0) {
-    throw new Error(`[reaper_ex_vfx] Expected 0/240 border clips, got ${borderClips}/240`);
+  if (borderClips !== 0 || worstEdgeRun >= 28) {
+    throw new Error(`[reaper_ex_vfx] QA failed: borderClips=${borderClips}/240, worstEdgeRun=${worstEdgeRun}px`);
   }
 
   const outPath = path.join(REPO_ROOT, 'assets', 'sprites', 'reaper_ex_vfx.png');
   fs.writeFileSync(outPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
-  console.log(`[reaper_ex_vfx] Wrote ${outPath} (${sheetW}x${sheetH}, borderClips=${borderClips}/240)`);
-
   fs.mkdirSync(SCRATCH_DIR, { recursive: true });
-  const dbgPath = path.join(SCRATCH_DIR, 'debug_reaper_ex_vfx_contact.png');
+  const dbgPath = path.join(SCRATCH_DIR, 'debug_reaper_ex_vfx.png');
   fs.writeFileSync(dbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
-  console.log(`[reaper_ex_vfx] Wrote contact sheet -> ${dbgPath}`);
+  console.log(`[reaper_ex_vfx] Wrote ${outPath} (${sheetW}x${sheetH}, borderClips=0/240, maxEdgeRun=${worstEdgeRun}px) & ${dbgPath}`);
 }
 
 bakeVfxSheet();

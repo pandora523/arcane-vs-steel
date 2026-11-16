@@ -227,6 +227,20 @@ export class ReaperEx extends Fighter {
     return Math.max(minX, Math.min(maxX, xv));
   }
 
+  _safeFxX(xv, game = this.game) {
+    const g = game || this.game;
+    const ww = g?.renderer ? g.renderer.worldWidth : 1200;
+    return Math.max(48, Math.min(ww - 48, xv));
+  }
+
+  _resolveShaderCenterX(renderer) {
+    const ww = renderer?.worldWidth || 1200;
+    if (ww > 2400) {
+      return Number.isFinite(renderer?.camX) ? renderer.camX : this.x;
+    }
+    return ww * 0.5;
+  }
+
   setState(newState) {
     const prevState = this.state;
     super.setState(newState);
@@ -2307,6 +2321,32 @@ export class ReaperEx extends Fighter {
             : this.x + this.facing * 118;
 
       this.spawnThanatosStand(0.52, 272);
+      game?.renderer?.triggerImpactFrame?.(reapX, this.groundY - 104, 0.06, 'abyssal');
+      this.fx?.spawn('soulHarvestScytheArc', reapX, this.y - 104, {
+        flip: this.facing < 0,
+        light: 1.38,
+        extra: { radiusWorld: 168, isCrimson: true, isCross: true, isUppercut: false }
+      });
+      game?.vfx?.spawnFlamePillar?.(reapX, this.groundY, this, null, {
+        theme: 'abyssal',
+        damage: 0,
+        width: 108,
+        height: 244,
+        delay: 0.02,
+        maxLife: 0.50
+      });
+      game?.vfx?.spawnBeam?.({
+        x1: reapX,
+        y1: this.groundY - 460,
+        x2: reapX,
+        y2: this.groundY,
+        width: 30,
+        color: '#c084fc',
+        coreColor: '#f43f5e',
+        maxLife: 0.28,
+        owner: this
+      });
+      game?.vfx?.spawnShockwave?.(reapX, this.groundY - 2, '#f43f5e', 132, 0.34);
       this.spawnGuillotinePillar(reapX, this.groundY, 44, 0.42, true);
       this.spawnVfxAnim(7, reapX, this.y - 108, 232, 232, 0.38, {
         flipX: this.facing < 0,
@@ -2614,10 +2654,29 @@ export class ReaperEx extends Fighter {
       this.spawnWraithClone(lockX - 150, this.groundY - 112, lockX + 70, this.groundY, 1, 0.36, 4, 14, 24);
       this.spawnWraithClone(lockX + 150, this.groundY - 112, lockX - 70, this.groundY, -1, 0.36, 4, 14, 24);
 
-      // Synchronized 3-Scythe Guillotine Pillars & Bone-Obelisks across [-118, 0, +118]!
+      // Synchronized 3-Scythe Guillotine Pillars, Abyssal Pillars & Crimson-Violet Beams across [-118, 0, +118]!
       for (const offset of [-118, 0, 118]) {
         const sx = Math.max(uMin, Math.min(uMax, lockX + offset));
         this.spawnGuillotinePillar(sx, this.groundY, offset === 0 ? 58 : 38, 0.48, offset !== 0);
+        game?.vfx?.spawnFlamePillar?.(sx, this.groundY, this, null, {
+          theme: 'abyssal',
+          damage: 0,
+          width: offset === 0 ? 124 : 96,
+          height: offset === 0 ? 268 : 224,
+          delay: 0.02,
+          maxLife: 0.48
+        });
+        game?.vfx?.spawnBeam?.({
+          x1: sx,
+          y1: this.groundY - 480,
+          x2: sx,
+          y2: this.groundY,
+          width: offset === 0 ? 36 : 24,
+          color: '#c084fc',
+          coreColor: '#f43f5e',
+          maxLife: 0.30,
+          owner: this
+        });
         this.spawnVfxAnim(7, sx, this.groundY - 114, offset === 0 ? 296 : 224, offset === 0 ? 268 : 212, 0.46, {
           flipX: offset < 0,
           glowColor: offset === 0 ? 'crimson' : 'violet',
@@ -2629,6 +2688,7 @@ export class ReaperEx extends Fighter {
           inFront: false
         });
       }
+      game?.vfx?.spawnShockwave?.(lockX, this.groundY - 2, '#f43f5e', 178, 0.40);
 
       this.fx?.spawn('deathAvatarCathedral', lockX, this.groundY - 4, { light: 1.42 });
       this.fx?.spawn('soulHarvestScytheArc', lockX, this.groundY - 112, {
@@ -2905,6 +2965,7 @@ export class ReaperEx extends Fighter {
       game?.renderer?.shake?.(34, 0.82);
       game?.renderer?.triggerShake?.(34, 0.82);
       game?.renderer?.triggerAberration?.(22);
+      game?.renderer?.triggerHitStop?.(0.09);
       game?.renderer?.flash?.(0.32, '#fdf4ff');
 
       game?.audio?.play?.('reaper_ult', this._trueUltAltarX);
@@ -2918,6 +2979,25 @@ export class ReaperEx extends Fighter {
         const isInner = Math.abs(sixOffsets[idx]) <= 45;
         const isCrim = idx % 2 === 1;
         this.spawnGuillotinePillar(px, this.groundY, isInner ? 56 : 38, 0.78, isCrim);
+        game?.vfx?.spawnFlamePillar?.(px, this.groundY, this, null, {
+          theme: 'abyssal',
+          damage: 0,
+          width: isInner ? 128 : 96,
+          height: isInner ? 284 : 232,
+          delay: 0.02 + Math.floor(Math.abs(sixOffsets[idx]) / 90) * 0.03,
+          maxLife: 0.62
+        });
+        game?.vfx?.spawnBeam?.({
+          x1: px,
+          y1: this.groundY - 540,
+          x2: px,
+          y2: this.groundY,
+          width: isInner ? 38 : 26,
+          color: '#c084fc',
+          coreColor: '#f43f5e',
+          maxLife: 0.42,
+          owner: this
+        });
         this.spawnVfxAnim(7, px, this.groundY - 118, isInner ? 284 : 216, isInner ? 264 : 204, 0.68, {
           flipX: sixOffsets[idx] < 0,
           glowColor: isCrim ? 'crimson' : 'violet',
@@ -2929,6 +3009,7 @@ export class ReaperEx extends Fighter {
           inFront: false
         });
       }
+      game?.vfx?.spawnShockwave?.(this._trueUltAltarX, this.groundY - 2, '#f43f5e', 224, 0.48);
 
       this.fx?.spawn('deathAvatarCathedral', this._trueUltAltarX, this.groundY - 4, { light: 1.44 });
       this.fx?.spawn('soulHarvestScytheArc', this._trueUltAltarX, this.groundY - 114, {
@@ -2976,7 +3057,12 @@ export class ReaperEx extends Fighter {
   }
 
   update(dt, enemy, game) {
+    this.game = game || this.game;
     this._currentEnemy = enemy;
+    if ((this.state === 'IDLE' || this.state === 'WALK') && !this._advPureDodge) {
+      this._overrideFrameIdx = null;
+      this.trueUltFrameOverride = null;
+    }
     this.wallFlipCooldown = Math.max(0, this.wallFlipCooldown - dt);
     this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
     this.graveWardTimer = Math.max(0, (this.graveWardTimer || 0) - dt);
@@ -3459,10 +3545,28 @@ export class ReaperEx extends Fighter {
     flipX = false
   ) {
     const sheet = PixelForge.ensureImage?.(vfxSheet) || vfxSheet;
-    if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
+    if (!sheet || !sheet.complete || !sheet.naturalWidth || alpha <= 0.01) return;
     const cell = 208;
-    const sx = Math.max(0, Math.min(29, Math.floor(col))) * cell;
-    const sy = Math.max(0, Math.min(7, Math.floor(row))) * cell;
+    const clampedRow = Math.max(0, Math.min(7, Math.floor(row)));
+    const clampedCol = Math.max(0, Math.min(29, Math.floor(col)));
+    if (this.game?.vfx?.drawBloomedSprite) {
+      this.game.vfx.drawBloomedSprite(
+        ctx,
+        sheet,
+        clampedCol * cell,
+        clampedRow * cell,
+        cell,
+        cell,
+        Math.round(x),
+        Math.round(y),
+        w,
+        h,
+        { alpha, bloomAlpha: Math.min(0.28, alpha * 0.24), bloomScale: 1.04, flipX }
+      );
+      return;
+    }
+    const sx = clampedCol * cell;
+    const sy = clampedRow * cell;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -3474,7 +3578,7 @@ export class ReaperEx extends Fighter {
     ctx.drawImage(sheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(0.14, alpha * 0.14);
+    ctx.globalAlpha = Math.min(0.24, alpha * 0.22);
     ctx.drawImage(sheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
 
     ctx.restore();
@@ -3485,7 +3589,7 @@ export class ReaperEx extends Fighter {
     const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
 
-    // Overhead Pixel-Dithered Blood-Moon Eclipse Seal (`LEGION OF THANATOS`)
+    // Overhead Pixel-Dithered Blood-Moon Eclipse Seal & Spectral Covenant Wraiths (`LEGION OF THANATOS`)
     if (this._bloodMoonSeal) {
       const bm = this._bloodMoonSeal;
       const u = bm.age / bm.maxLife;
@@ -3493,6 +3597,24 @@ export class ReaperEx extends Fighter {
       const bmCol = Math.floor((bm.age * 20) % 30);
       this.drawBayerPixelHalo(ctx, bm.x, bm.y, 128, 128, '#581c87', '#f43f5e', 0.16 * fade);
       this.drawBloomedVfxCell(ctx, vfxSheet, 6, bmCol, bm.x, bm.y, 248, 248, fade * 0.96, false);
+
+      const compSheet = this.getCompanionSheet();
+      if (compSheet && compSheet.complete && compSheet.naturalWidth) {
+        const wCol = Math.floor((bm.age * 24) % 30);
+        for (const [side, row] of [[-1, 1], [1, 3]]) {
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.translate(Math.round(bm.x + side * 142), Math.round(this.groundY - 12));
+          ctx.scale(-side, 1);
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = 0.72 * fade;
+          ctx.drawImage(compSheet, wCol * 208, row * 208, 208, 208, -86, -172, 172, 172);
+          ctx.globalCompositeOperation = 'lighter';
+          ctx.globalAlpha = 0.20 * fade;
+          ctx.drawImage(compSheet, wCol * 208, row * 208, 208, 208, -86, -172, 172, 172);
+          ctx.restore();
+        }
+      }
     }
 
     // Towering Skeletal Thanatos Sovereign Stand (`Row 3`)
@@ -3562,7 +3684,7 @@ export class ReaperEx extends Fighter {
       );
     }
 
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    const arenaCenterX = this._resolveShaderCenterX(renderer);
     this.fx?.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
 
     this.drawBehind(ctx);
@@ -3842,10 +3964,8 @@ export class ReaperEx extends Fighter {
           ctx.drawImage(compSheet, sx, sy, 208, 208, -drawW * 0.5, -drawH, drawW, drawH);
         }
         ctx.restore();
-      } else {
-        ctx.globalAlpha = 0.85 * lifeFade;
-        ctx.fillStyle = isMage ? '#7e22ce' : '#059669';
-        ctx.fillRect(cx - 18, cy - 96, 36, 86);
+      } else if (vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth) {
+        this.drawBloomedVfxCell(ctx, vfxSheet, 3, col, cx, cy - 78, 164, 164, 0.86 * lifeFade, (comp.facing || 1) < 0);
       }
 
       if (hasShield) {
@@ -3927,27 +4047,27 @@ export class ReaperEx extends Fighter {
    */
   drawNeoVisionAbyssForeground(ctx) {
     if (!ctx?.fillRect) return;
+    const sprites = this.getExSprites();
+    const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
+    const hasVfx = Boolean(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
+
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    // 1. Vertical Gothic Violet-Crimson Scythe Guillotine Pillars
-    for (let i = 0; i < this.guillotinePillars.length; i++) {
-      const gp = this.guillotinePillars[i];
-      const u = Math.min(1, gp.age / gp.maxLife);
-      const env = u < 0.10 ? u / 0.10 : Math.max(0, 1 - (u - 0.10) / 0.90);
-      const hw = Math.max(3, Math.round(gp.width * 0.5 * env));
-      const topY = Math.round(gp.groundY - 580);
-      const beamH = Math.round(gp.groundY - topY);
-
-      ctx.globalAlpha = Math.min(1, env * 0.92);
-      ctx.fillStyle = '#070410';
-      ctx.fillRect(gp.x - hw - 4, topY, (hw + 4) * 2, beamH);
-      ctx.fillStyle = gp.isCrimson ? '#9f1239' : '#581c87';
-      ctx.fillRect(gp.x - hw, topY, hw * 2, beamH);
-      ctx.fillStyle = gp.isCrimson ? '#f43f5e' : '#c084fc';
-      ctx.fillRect(gp.x - Math.round(hw * 0.64), topY, Math.round(hw * 1.28), beamH);
-      ctx.fillStyle = '#fdf4ff';
-      ctx.fillRect(gp.x - Math.max(2, Math.round(hw * 0.22)), topY, Math.max(4, Math.round(hw * 0.44)), beamH);
+    // 1. Sculpted Gothic Violet-Crimson Scythe Guillotine Spires (`Row 5` + `Row 2` shader cells — 0 boxy fillRect columns!)
+    if (hasVfx) {
+      for (let i = 0; i < this.guillotinePillars.length; i++) {
+        const gp = this.guillotinePillars[i];
+        const u = Math.min(1, gp.age / Math.max(0.04, gp.maxLife));
+        const env = u < 0.10 ? u / 0.10 : Math.max(0, 1 - (u - 0.10) / 0.90);
+        if (env <= 0.02) continue;
+        const col = Math.min(29, Math.floor(u * 30));
+        const pilW = Math.max(152, Math.round(gp.width * 3.4));
+        const pilH = Math.max(252, Math.round(gp.width * 5.2));
+        this.drawBayerPixelHalo(ctx, gp.x, gp.groundY - 2, Math.round(pilW * 0.40), 12, '#581c87', gp.isCrimson ? '#f43f5e' : '#c084fc', 0.16 * env);
+        this.drawBloomedVfxCell(ctx, vfxSheet, 5, col, gp.x, gp.groundY - Math.round(pilH * 0.44), pilW, pilH, env * 0.92, gp.isCrimson);
+        this.drawBloomedVfxCell(ctx, vfxSheet, 2, (col + 7) % 30, gp.x, gp.groundY - Math.round(pilH * 0.32), Math.round(pilW * 0.86), Math.round(pilH * 0.78), env * 0.82, !gp.isCrimson);
+      }
     }
 
     // 2. Hairline 3-Pass `2px` Soul-Threads (0 overlapping chevrons!)
@@ -4063,7 +4183,7 @@ export class ReaperEx extends Fighter {
   }
 
   drawUltimateForeground(ctx, renderer = null) {
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    const arenaCenterX = this._resolveShaderCenterX(renderer);
     this.fx?.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
 
     this.drawNeoVisionAbyssForeground(ctx);
@@ -4187,6 +4307,38 @@ export class ReaperEx extends Fighter {
     if (!isReflection) {
       this.drawBurrowShadowIndicator(ctx);
       this.drawDeathCompanions(ctx, sprites);
+    } else if (!this.isDead && !this.isFullyBurrowed) {
+      const compSheet = this.getCompanionSheet();
+      const vfxSheetRefl = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
+      if (compSheet && compSheet.complete && compSheet.naturalWidth && Array.isArray(this.deathCompanions)) {
+        for (const comp of this.deathCompanions) {
+          if (!comp || comp.isDead || comp.life <= 0) continue;
+          const isMage = comp.role === 'mage';
+          const row = comp.castAnimTimer > 0 || this.state === 'TRUE_ULTIMATE' ? (isMage ? 1 : 3) : (isMage ? 0 : 2);
+          const col = Math.floor(((comp.hoverPhase * 9.2) % 30 + 30) % 30);
+          const drawW = isMage ? 174 : 170;
+          ctx.save();
+          ctx.imageSmoothingEnabled = false;
+          ctx.translate(Math.round(comp.x), Math.round(comp.y + 4));
+          ctx.scale(comp.facing || 1, 1);
+          ctx.globalAlpha = 0.38;
+          ctx.drawImage(compSheet, col * 208, row * 208, 208, 208, -drawW * 0.5, -drawW, drawW, drawW);
+          ctx.restore();
+        }
+      }
+      if (vfxSheetRefl && vfxSheetRefl.complete && vfxSheetRefl.naturalWidth) {
+        if (this.thanatosStand && this.state !== 'TRUE_ULTIMATE') {
+          const st = this.thanatosStand;
+          const col = Math.min(29, Math.floor((st.age * 26) % 30));
+          const standY = Number.isFinite(st.y) ? st.y : this.groundY - Math.round(st.size * 0.52);
+          this.drawBloomedVfxCell(ctx, vfxSheetRefl, 3, col, st.x, standY, st.size, st.size, 0.36, st.facing < 0);
+        } else if (this.state === 'TRUE_ULTIMATE') {
+          const col = Math.min(29, Math.floor(((this.stateTimer || 0) * 24) % 30));
+          this.drawBloomedVfxCell(ctx, vfxSheetRefl, 5, col, this._trueUltAltarX - 168, this.groundY - 138, 320, 320, 0.36, false);
+          this.drawBloomedVfxCell(ctx, vfxSheetRefl, 5, col, this._trueUltAltarX + 168, this.groundY - 138, 320, 320, 0.36, true);
+          this.drawBloomedVfxCell(ctx, vfxSheetRefl, 3, col, this._trueUltAltarX, this.groundY - 186, 352, 352, 0.38, this.facing < 0);
+        }
+      }
     }
 
     if (!this.isFullyBurrowed) {
@@ -4220,12 +4372,6 @@ export class ReaperEx extends Fighter {
         ? Math.round(Math.min(1, Math.max(0, this.submergeDepth || 0)) * 234)
         : 0;
 
-      if (isBurrowPlunging && sinkOffset > 2 && ctx?.rect && ctx?.clip) {
-        ctx.beginPath();
-        ctx.rect(this.x - 224, this.groundY - 280, 448, 282);
-        ctx.clip();
-      }
-
       ctx.translate(
         Math.round(this.x),
         Math.round(this.y + groundPlantOffset + sinkOffset)
@@ -4236,9 +4382,26 @@ export class ReaperEx extends Fighter {
         ctx.globalAlpha = this.wraithAlpha;
       }
 
-      PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection, renderer);
+      const sheet = PixelForge.ensureImage?.(sprites.sheet) || sprites.sheet;
+      if (isBurrowPlunging && sinkOffset > 2 && sheet && sheet.complete && sheet.naturalWidth) {
+        const { cellW, cellH, cols, rows, drawW, drawH, baseX, baseY } = PixelForge.resolveSheetMetrics(
+          sprites,
+          sheet,
+          w,
+          h
+        );
+        const visibleH = Math.max(0, Math.min(drawH, Math.round(-baseY - sinkOffset / Math.max(0.5, scale) + 2)));
+        const srcVisH = Math.round((visibleH / Math.max(1, drawH)) * cellH);
+        if (srcVisH > 0 && visibleH > 0) {
+          const col = frameIdx % cols;
+          const row = Math.min(rows - 1, Math.max(0, (frameIdx / cols) | 0));
+          ctx.drawImage(sheet, col * cellW, row * cellH, cellW, srcVisH, baseX, baseY, drawW, visibleH);
+        }
+      } else {
+        PixelForge.drawSheetFrame(ctx, sprites, this, w, h, this.walkPhase, isReflection, renderer);
+      }
 
-      if (this.hitFlash > 0 && !isReflection) {
+      if (this.hitFlash > 0 && !isReflection && !(isBurrowPlunging && sinkOffset > 2)) {
         ctx.globalCompositeOperation = 'lighter';
         ctx.globalAlpha = 0.5;
         PixelForge.drawGhostFrame(ctx, sprites, frameIdx, w, h);

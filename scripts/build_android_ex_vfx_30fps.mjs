@@ -1,21 +1,17 @@
 #!/usr/bin/env node
 /**
- * Newly-Born Next-Gen 30fps VFX Sprite Sheet Builder for VEX-09 EX (`android_ex` / `AndroidEx.js`).
- * Powered natively by `src/engine/ArcaneShaderFX.js` with Neo-Vision Singularity Valkyrie pixel art:
- *   Row 0: Muramasa-09 HF-Plasma Odachi Crescent & Cyber-Disc Chakram
- *   Row 1: Diamond/Hex Cyber-Matrix Aegis Prism & Deflect Flash
- *   Row 2: Singularity EMP Odachi Cross-Cut Plasma Spire
- *   Row 3: Valkyrie Pixel HUD Target-Matrix Reticle (0 ellipses!)
- *   Row 4: Asymmetric 4-Point Cyber-Prism Hit-Starburst & Hex Sparks (0 chevrons!)
- *   Row 5: Stratified Orbital Relay Gate & Hex-Matrix Floor Lock Seal
- *   Row 6: Articulated Autonomous Cyber Fin-Funnel Wing-Drone Node
- *   Row 7: Seamless Vertical `PROJECT GUNG-09` Orbital Singularity Buster Column
+ * Next-Gen 30fps HD-2D Luminescent VFX Sprite Sheet Builder for VEX-09 EX (`android_ex` / `AndroidEx.js`).
+ * Powered by `src/engine/ArcaneShaderFX.js` + read-only `src/engine/shaders/cyberShaders.js`.
  *
- * Invariants:
- *   - Output: `assets/sprites/android_ex_vfx.png` (6240x1664, 8 rows x 30 cols @ 208x208)
- *   - 100% 2x2 integer pixel blocks (authored on 104x104 logical grid -> 2x NEAREST)
- *   - Strict 3px logical (6px output) transparent safety margin on all 240 cells (0/240 clips)
- *   - Binary alpha (0 or 255), crisp #0a0c1c / #161a34 Selout, 0 Unicode emojis anywhere
+ * Row Contract (`assets/sprites/android_ex_vfx.png`, 6240x1664 = 8 rows x 30 cols @ 208x208):
+ *   - Row 0: Muramasa-09 HF-Plasma Odachi Crescent Wave & Chakram Vortex Disc
+ *   - Row 1: Autonomous Cyber Fin-Funnel Drone Pod & Hex Aegis Prism
+ *   - Row 2: Singularity EMP Gravity Tether Spire
+ *   - Row 3: Valkyrie Holo Target-Lock Hex Reticle
+ *   - Row 4: Hex-Glitch Cross-Slash & Cyber Impact Starburst
+ *   - Row 5: Cyber Singularity Reactor Sphere & Orbital Relay Core
+ *   - Row 6: Fin-Funnel All-Range Convergence Laser Node
+ *   - Row 7: Overdrive Orbital Satellite Buster / Railgun Column (`PROJECT GUNG-09`)
  */
 
 import fs from 'node:fs';
@@ -26,31 +22,28 @@ import { fileURLToPath } from 'node:url';
 import {
   PURE_WHITE,
   packHexColor,
-  clamp01,
   smoothStep,
-  DeterministicRng,
   createPixelSurface,
   clearPixelSurface,
   resolveSurfaceToRGBA,
-  ShaderPen
+  ShaderPen,
+  instantiateShaderEffect
 } from '../src/engine/ArcaneShaderFX.js';
+
+import {
+  CYBER_NEON_PALETTE,
+  CYBER_MAGENTA_PALETTE,
+  CYBER_EFFECT_REGISTRY
+} from '../src/engine/shaders/cyberShaders.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = path.resolve(__dirname, '..');
 const SCRATCH_DIR =
-  '/Users/rei/.gemini/antigravity/brain/3134f27a-cc2a-4935-88e2-e05d540e5f89/scratch';
+  '/Users/rei/.gemini/antigravity/brain/5416474b-0e5f-4471-85c8-b7a88055e218/scratch';
 
-// Locked Singularity Valkyrie Palette (matches `android_ex_sheet.png` 1:1)
-const C_SEL_DARK = packHexColor('#0a0c1c');
-const C_GUNMETAL = packHexColor('#384060');
-const C_TITANIUM = packHexColor('#d6e0f6');
-const C_CYAN_DEEP = packHexColor('#0891b2');
-const C_CYAN_NEON = packHexColor('#22d3ee');
+const C_CYAN = packHexColor('#22d3ee');
 const C_CYAN_CREST = packHexColor('#67e8f9');
-const C_PLUM_DEEP = packHexColor('#311042');
-const C_MAG_HOT = packHexColor('#ec4899');
-const C_MAG_PINK = packHexColor('#f9a8d4');
-const C_WHITE = PURE_WHITE;
+const C_MAGENTA = packHexColor('#ec4899');
 
 const CRC_TABLE = (() => {
   const table = new Uint32Array(256);
@@ -90,7 +83,6 @@ function encodeRgbaPng(width, height, rgba) {
   ihdr.writeUInt32BE(height, 4);
   ihdr[8] = 8;
   ihdr[9] = 6;
-
   const compressed = zlib.deflateSync(raw, { level: 6 });
   return Buffer.concat([
     Buffer.from([137, 80, 78, 71, 13, 10, 26, 10]),
@@ -100,25 +92,43 @@ function encodeRgbaPng(width, height, rgba) {
   ]);
 }
 
-function enforceStrictCellMargin104(rgba, w = 104, h = 104) {
+function applyEllipticalEnvelope(rgba, w, h, env, minMargin) {
+  const cx = env?.cx ?? (w - 1) * 0.5;
+  const cy = env?.cy ?? (h - 1) * 0.5;
+  const rx = env?.rx ?? w * 0.43;
+  const ry = env?.ry ?? h * 0.43;
+  const inner = env?.inner ?? 0.64;
+
   for (let y = 0; y < h; y++) {
     for (let x = 0; x < w; x++) {
-      const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
       const o = (y * w + x) * 4;
-      if (distEdge < 3) {
+      const a0 = rgba[o + 3];
+      if (!a0) continue;
+      const distEdge = Math.min(x, y, w - 1 - x, h - 1 - y);
+      const rNorm = Math.hypot((x - cx) / rx, (y - cy) / ry);
+      if (distEdge < minMargin || rNorm >= 1.0) {
         rgba[o] = 0;
         rgba[o + 1] = 0;
         rgba[o + 2] = 0;
         rgba[o + 3] = 0;
-      } else if (rgba[o + 3] > 0) {
-        if (rgba[o + 3] < 108) {
-          rgba[o] = 0;
-          rgba[o + 1] = 0;
-          rgba[o + 2] = 0;
-          rgba[o + 3] = 0;
-        } else {
-          rgba[o + 3] = 255;
-        }
+        continue;
+      }
+      let k = 1.0;
+      if (rNorm > inner) {
+        k *= 1.0 - smoothStep(inner, 1.0, rNorm);
+      }
+      const softBand = minMargin + (w >= 200 ? 12 : 6);
+      if (distEdge < softBand) {
+        k *= smoothStep(minMargin - 0.5, softBand, distEdge);
+      }
+      const a1 = Math.round(a0 * k);
+      if (a1 < 10) {
+        rgba[o] = 0;
+        rgba[o + 1] = 0;
+        rgba[o + 2] = 0;
+        rgba[o + 3] = 0;
+      } else {
+        rgba[o + 3] = a1;
       }
     }
   }
@@ -148,437 +158,90 @@ function blitUpscaledNearest(srcRgba, srcW, srcH, scale, dstRgba, dstW, dstX, ds
   }
 }
 
-function has4pxBorderClip208(cellRgba, cell = 208, margin = 4) {
-  for (let y = 0; y < cell; y++) {
-    for (let x = 0; x < cell; x++) {
-      if (x >= margin && x < cell - margin && y >= margin && y < cell - margin) continue;
-      if (cellRgba[(y * cell + x) * 4 + 3] > 0) return true;
+function downsample2xTo104(src208, dst104) {
+  dst104.fill(0);
+  for (let y = 0; y < 104; y++) {
+    for (let x = 0; x < 104; x++) {
+      const so = (y * 2 * 208 + x * 2) * 4;
+      const to = (y * 104 + x) * 4;
+      dst104[to] = src208[so];
+      dst104[to + 1] = src208[so + 1];
+      dst104[to + 2] = src208[so + 2];
+      dst104[to + 3] = src208[so + 3];
     }
   }
-  return false;
 }
 
-function drawStarSpark(pen, cx, cy, armLen, coreCol, tipCol, alpha = 1) {
-  if (alpha <= 0.05 || armLen < 1) return;
-  const L = Math.round(armLen);
-  pen.stipple(cx, cy, C_WHITE, alpha);
-  for (let i = 1; i <= L; i++) {
-    const col = i === 1 ? coreCol : tipCol;
-    const a = alpha * (1 - (i - 1) / (L + 1.2));
-    pen.stipple(cx + i, cy, col, a);
-    pen.stipple(cx - i, cy, col, a);
-    pen.stipple(cx, cy + i, col, a);
-    pen.stipple(cx, cy - i, col, a);
-  }
-  if (L >= 3) {
-    pen.stipple(cx + 1, cy + 1, tipCol, alpha * 0.8);
-    pen.stipple(cx - 1, cy - 1, tipCol, alpha * 0.8);
-    pen.stipple(cx + 1, cy - 1, tipCol, alpha * 0.8);
-    pen.stipple(cx - 1, cy + 1, tipCol, alpha * 0.8);
-  }
-}
-
-function drawHollowHex(pen, cx, cy, r, col, alpha = 1) {
-  for (let k = 0; k < 6; k++) {
-    const a0 = (k * Math.PI) / 3;
-    const a1 = ((k + 1) * Math.PI) / 3;
-    pen.line(cx + Math.cos(a0) * r, cy + Math.sin(a0) * r, cx + Math.cos(a1) * r, cy + Math.sin(a1) * r, col, alpha);
+function alphaCompositeOnto(srcRgba, srcW, srcH, dstRgba, dstW, dstX, dstY) {
+  for (let sy = 0; sy < srcH; sy++) {
+    for (let sx = 0; sx < srcW; sx++) {
+      const so = (sy * srcW + sx) * 4;
+      const sa = srcRgba[so + 3] / 255;
+      if (sa <= 0) continue;
+      const tx = dstX + sx;
+      const ty = dstY + sy;
+      const to = (ty * dstW + tx) * 4;
+      const da = dstRgba[to + 3] / 255;
+      const outA = sa + da * (1 - sa);
+      if (outA <= 0) continue;
+      dstRgba[to] = Math.round((srcRgba[so] * sa + dstRgba[to] * da * (1 - sa)) / outA);
+      dstRgba[to + 1] = Math.round((srcRgba[so + 1] * sa + dstRgba[to + 1] * da * (1 - sa)) / outA);
+      dstRgba[to + 2] = Math.round((srcRgba[so + 2] * sa + dstRgba[to + 2] * da * (1 - sa)) / outA);
+      dstRgba[to + 3] = Math.round(outA * 255);
+    }
   }
 }
 
-// Strict 2-pass tapered plasma lance (Pass 1 outer bevels, Pass 2 white core -- 0 chevrons!)
-function drawTwoPassPlasmaLance(pen, x0, y0, x1, y1, maxHalfW, bevelCol, accentCol, alpha = 1) {
-  if (alpha <= 0.04) return;
-  const dx = x1 - x0;
-  const dy = y1 - y0;
-  const len = Math.hypot(dx, dy);
-  if (len < 2) return;
-  const ux = dx / len;
-  const uy = dy / len;
-  const nx = -uy;
-  const ny = ux;
-  const steps = Math.ceil(len * 2.2);
+function drawCyberPrismAccent(pen, cx, cy, arm, colMain, colTip, alpha = 0.9) {
+  pen.configure(cx, cy, true, 0, 1, 1);
+  pen.pixel(0, 0, PURE_WHITE, alpha);
+  for (let i = 1; i <= arm; i++) {
+    const c = i === 1 ? colMain : colTip;
+    const a = alpha * (1 - (i - 1) / (arm + 1));
+    pen.pixel(i, 0, c, a);
+    pen.pixel(-i, 0, c, a);
+    pen.pixel(0, i, c, a);
+    pen.pixel(0, -i, c, a);
+  }
+}
 
-  for (let i = 0; i <= steps; i++) {
-    const s = i / steps;
-    const env = Math.sin(s * Math.PI);
-    const hw = maxHalfW * Math.pow(env, 0.72);
-    const bx = x0 + ux * (s * len);
-    const by = y0 + uy * (s * len);
-    const span = Math.ceil(hw + 1.1);
-    for (let q = -span; q <= span; q += 0.45) {
-      const aq = Math.abs(q);
-      if (aq > hw + 0.85) continue;
-      const px = bx + nx * q;
-      const py = by + ny * q;
-      if (aq >= hw - 0.15) {
-        pen.stipple(px, py, C_SEL_DARK, alpha * 0.95);
-      } else if (aq >= hw * 0.42) {
-        pen.stipple(px, py, q > 0 ? bevelCol : accentCol, alpha);
+function auditCell208(cell208, margin = 4) {
+  let clipped = false;
+  let minX = 208;
+  let maxX = -1;
+  let minY = 208;
+  let maxY = -1;
+  for (let y = 0; y < 208; y++) {
+    for (let x = 0; x < 208; x++) {
+      const a = cell208[(y * 208 + x) * 4 + 3];
+      if (a > 0 && (x < margin || x >= 208 - margin || y < margin || y >= 208 - margin)) {
+        clipped = true;
+      }
+      if (a > 16) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
       }
     }
   }
-  for (let i = 1; i < steps; i++) {
-    const s = i / steps;
-    const env = Math.sin(s * Math.PI);
-    const hw = maxHalfW * 0.42 * env;
-    const bx = x0 + ux * (s * len);
-    const by = y0 + uy * (s * len);
-    for (let q = -hw; q <= hw; q += 0.45) {
-      pen.stipple(bx + nx * q, by + ny * q, C_WHITE, alpha);
+  let maxEdgeRun = 0;
+  if (maxX >= minX && maxY >= minY) {
+    let topRun = 0;
+    let botRun = 0;
+    let leftRun = 0;
+    let rightRun = 0;
+    for (let x = minX; x <= maxX; x++) {
+      if (cell208[(minY * 208 + x) * 4 + 3] > 16) topRun++;
+      if (cell208[(maxY * 208 + x) * 4 + 3] > 16) botRun++;
     }
-  }
-}
-
-function drawPlasmaSerratedArc(pen, opts) {
-  const {
-    cx = 0,
-    cy = 0,
-    rx = 34,
-    ry = 34,
-    rotRad = 0,
-    aStart = -1.35,
-    aEnd = 1.35,
-    maxWidth = 15,
-    teethCount = 8,
-    toothDepth = 0.46,
-    magentaDominant = false,
-    alpha = 1,
-    phase = 0
-  } = opts;
-  if (alpha <= 0.04 || maxWidth <= 0.6) return;
-
-  const cosR = Math.cos(rotRad);
-  const sinR = Math.sin(rotRad);
-  const spanA = aEnd - aStart;
-  if (Math.abs(spanA) < 0.06) return;
-
-  const steps = Math.max(90, Math.ceil(Math.abs(spanA) * Math.max(rx, ry) * 2.6));
-  for (let i = 0; i <= steps; i++) {
-    const s = i / steps;
-    const ang = aStart + spanA * s;
-    const cA = Math.cos(ang);
-    const sA = Math.sin(ang);
-
-    const belly = s < 0.74 ? Math.pow(s / 0.74, 1.35) : Math.pow(Math.max(0, (1 - s) / 0.26), 0.58);
-    const toothArg = s * teethCount + phase * 0.4;
-    const saw = toothArg - Math.floor(toothArg);
-    const ripNotch = s > 0.08 && s < 0.88 ? Math.pow(saw, 1.5) * toothDepth : 0;
-    const wTotal = maxWidth * belly * (1 - ripNotch);
-    if (wTotal < 0.45) continue;
-
-    const rSteps = Math.max(3, Math.ceil(wTotal * 2.2));
-    for (let j = 0; j <= rSteps; j++) {
-      const v = j / rSteps;
-      const curRx = rx - (1 - v) * wTotal;
-      const curRy = ry - (1 - v) * wTotal * (ry / Math.max(1, rx));
-      if (curRx <= 1 || curRy <= 1) continue;
-
-      const ex = cA * curRx;
-      const ey = sA * curRy;
-      const px = cx + ex * cosR - ey * sinR;
-      const py = cy + ex * sinR + ey * cosR;
-
-      let col;
-      let pixAlpha = alpha;
-      if (v > 0.92 || s > 0.96 || (v < 0.08 && s > 0.25)) {
-        col = C_SEL_DARK;
-      } else if (v > 0.80) {
-        col = C_WHITE;
-      } else if (v > 0.56) {
-        col = magentaDominant ? C_MAG_PINK : C_CYAN_CREST;
-      } else if (v > 0.30) {
-        col = magentaDominant ? C_MAG_HOT : C_CYAN_NEON;
-      } else {
-        col = magentaDominant ? C_PLUM_DEEP : C_MAG_HOT;
-        pixAlpha = alpha * 0.88;
-      }
-      pen.stipple(px, py, col, pixAlpha);
+    for (let y = minY; y <= maxY; y++) {
+      if (cell208[(y * 208 + minX) * 4 + 3] > 16) leftRun++;
+      if (cell208[(y * 208 + maxX) * 4 + 3] > 16) rightRun++;
     }
+    maxEdgeRun = Math.max(topRun, botRun, leftRun, rightRun);
   }
-}
-
-// Row 0: Muramasa-09 HF-Plasma Odachi Wave & Spinning Cyber-Disc Chakram
-function renderRow0PlasmaWave(pen, f) {
-  const ph = (f / 30) * Math.PI * 2;
-  const pulse = Math.sin(ph);
-  const rng = new DeterministicRng(501 + f * 17);
-
-  for (let k = 0; k < 5; k++) {
-    const wy = -22 + k * 11;
-    const xEnd = 10 + (k % 2) * 5;
-    const xStart = -34 + ((f * 4 + k * 9) % 18);
-    pen.line(xStart, wy, xEnd, wy, k % 2 === 0 ? C_CYAN_NEON : C_MAG_HOT, 0.9);
-    pen.line(xStart + 3, wy - 1, xEnd, wy - 1, C_SEL_DARK, 0.85);
-  }
-
-  drawPlasmaSerratedArc(pen, {
-    cx: -6 + pulse * 1.2,
-    cy: 0,
-    rx: 34,
-    ry: 39,
-    rotRad: 0,
-    aStart: -1.28,
-    aEnd: 1.28,
-    maxWidth: 16.5 + pulse,
-    teethCount: 8,
-    toothDepth: 0.48,
-    magentaDominant: false,
-    alpha: 1.0,
-    phase: f * 0.35
-  });
-
-  drawPlasmaSerratedArc(pen, {
-    cx: -10,
-    cy: 0,
-    rx: 23,
-    ry: 28,
-    rotRad: 0,
-    aStart: -0.95,
-    aEnd: 0.95,
-    maxWidth: 7.2,
-    teethCount: 5,
-    toothDepth: 0.38,
-    magentaDominant: true,
-    alpha: 0.95,
-    phase: -f * 0.3
-  });
-
-  drawStarSpark(pen, 28 + pulse, 0, 5 + (f % 2), C_CYAN_CREST, C_MAG_HOT, 1.0);
-  for (let s = 0; s < 5; s++) {
-    const sx = rng.between(-30, 20);
-    const sy = rng.between(-28, 28);
-    drawHollowHex(pen, sx, sy, 3, s % 2 === 0 ? C_CYAN_CREST : C_MAG_HOT, 0.9);
-  }
-}
-
-// Row 1: Diamond/Hex Cyber-Matrix Aegis Shield & Deflect Prism
-function renderRow1HexAegis(pen, f) {
-  const u = f / 29;
-  const pop = u < 0.16 ? smoothStep(0, 0.16, u) : 1.0;
-  const fade = u > 0.74 ? 1 - (u - 0.74) / 0.26 : 1.0;
-  const rHex = 32 * pop;
-
-  for (let k = 0; k < 6; k++) {
-    const a0 = (k * Math.PI) / 3 + u * 0.8;
-    const a1 = ((k + 1) * Math.PI) / 3 + u * 0.8;
-    drawTwoPassPlasmaLance(
-      pen,
-      Math.cos(a0) * rHex,
-      Math.sin(a0) * rHex,
-      Math.cos(a1) * rHex,
-      Math.sin(a1) * rHex,
-      2.5 * fade,
-      k % 2 === 0 ? C_CYAN_NEON : C_MAG_HOT,
-      C_PLUM_DEEP,
-      fade
-    );
-    drawTwoPassPlasmaLance(
-      pen,
-      Math.cos(a0) * (rHex * 0.56),
-      Math.sin(a0) * (rHex * 0.56),
-      Math.cos(a1) * (rHex * 0.56),
-      Math.sin(a1) * (rHex * 0.56),
-      1.8 * fade,
-      C_MAG_HOT,
-      C_CYAN_DEEP,
-      fade
-    );
-  }
-  drawStarSpark(pen, 0, 0, Math.round(7 * fade), C_CYAN_CREST, C_MAG_HOT, fade);
-}
-
-// Row 2: Singularity EMP Odachi Cross-Cut Plasma Spire
-function renderRow2SingularityPillar(pen, f) {
-  const u = f / 29;
-  const erupt = u < 0.16 ? smoothStep(0, 0.16, u) : 1.0;
-  const fade = u > 0.70 ? 1 - (u - 0.70) / 0.30 : 1.0;
-  const baseY = 36;
-  const pillarH = 74 * erupt;
-  const halfW = (13.0 - u * 4.5) * erupt;
-
-  if (halfW >= 1.2 && fade > 0.05) {
-    const topY = baseY - pillarH;
-    for (let y = Math.floor(topY); y <= baseY; y++) {
-      const hFrac = clamp01((baseY - y) / Math.max(1, pillarH));
-      const scanNotch = (y + f * 2) % 5 === 0 ? 0.80 : 1.0;
-      const w = halfW * (1 - hFrac * 0.24) * scanNotch;
-      const iw = Math.ceil(w + 1);
-      for (let x = -iw; x <= iw; x++) {
-        const ax = Math.abs(x);
-        if (ax > w + 0.8) continue;
-        let col;
-        if (ax >= w - 0.2) col = C_SEL_DARK;
-        else if (ax >= w * 0.65) col = x < 0 ? C_CYAN_NEON : C_MAG_HOT;
-        else if (ax >= w * 0.32) col = C_CYAN_CREST;
-        else col = C_WHITE;
-        pen.stipple(x, y, col, fade);
-      }
-    }
-  }
-  // EMP Odachi Cross-Cut X-beams at spire core
-  drawTwoPassPlasmaLance(pen, -28 * erupt, baseY - 12, 28 * erupt, baseY - 38, 2.2 * fade, C_CYAN_NEON, C_MAG_HOT, fade);
-  drawTwoPassPlasmaLance(pen, -28 * erupt, baseY - 38, 28 * erupt, baseY - 12, 2.2 * fade, C_MAG_HOT, C_CYAN_NEON, fade);
-  drawTwoPassPlasmaLance(pen, -30 * erupt, baseY, 30 * erupt, baseY, 2.6 * fade, C_CYAN_CREST, C_MAG_HOT, fade);
-}
-
-// Row 3: Valkyrie Pixel HUD Target-Matrix Reticle (Octagonal/Square Telemetry HUD, 0 ellipses!)
-function renderRow3HoloReticle(pen, f) {
-  const ph = (f / 30) * Math.PI * 2;
-  const rOct = 35;
-
-  // Segmented Octagonal Pixel HUD Ring
-  for (let k = 0; k < 8; k++) {
-    const a0 = ph * 0.5 + (k * Math.PI) / 4;
-    const a1 = ph * 0.5 + ((k + 1) * Math.PI) / 4;
-    const mx0 = Math.cos(a0) * rOct;
-    const my0 = Math.sin(a0) * rOct;
-    const mx1 = Math.cos(a1) * rOct;
-    const my1 = Math.sin(a1) * rOct;
-    pen.line(mx0, my0, mx0 + (mx1 - mx0) * 0.72, my0 + (my1 - my0) * 0.72, k % 2 === 0 ? C_CYAN_NEON : C_MAG_HOT, 1.0);
-  }
-
-  // 4 Crisp Corner Lock Brackets + Rangefinder Telemetry Bars
-  for (const sx of [-1, 1]) {
-    for (const sy of [-1, 1]) {
-      const bx = sx * 25;
-      const by = sy * 25;
-      pen.line(bx, by, bx - sx * 10, by, C_CYAN_CREST, 1.0);
-      pen.line(bx, by, bx, by - sy * 10, C_CYAN_CREST, 1.0);
-      pen.line(bx - sx * 1, by - sy * 1, bx - sx * 7, by - sy * 1, C_WHITE, 1.0);
-    }
-    // Side telemetry tick bars
-    for (let t = -2; t <= 2; t++) {
-      const barW = (Math.abs(t + f) % 3) + 2;
-      pen.line(sx * 31, t * 5, sx * (31 - barW), t * 5, t === 0 ? C_WHITE : C_MAG_HOT, 0.95);
-    }
-  }
-  // Central Diamond Crosshair
-  drawHollowHex(pen, 0, 0, 9, C_CYAN_NEON, 0.95);
-  drawStarSpark(pen, 0, 0, 5 + (f % 2), C_MAG_HOT, C_CYAN_NEON, 1.0);
-}
-
-// Row 4: Asymmetric 4-Point Cyber-Prism Hit-Starburst & Hex Sparks (0 fat chevron bars!)
-function renderRow4CyberHitScar(pen, f) {
-  const u = f / 29;
-  const fade = clamp01(1.18 - u * 1.22);
-  const snap = u < 0.10 ? u / 0.10 : 1.0;
-  const rng = new DeterministicRng(609 + f * 13);
-
-  if (fade > 0.04) {
-    // Asymmetric long/short optical prism needles (2-pass -> crisp white core!)
-    const L1 = 38 * snap * (1 - u * 0.35);
-    const L2 = 25 * snap * (1 - u * 0.35);
-    drawTwoPassPlasmaLance(pen, -L1, -L1 * 0.28, L1, L1 * 0.28, 2.4 * fade, C_CYAN_NEON, C_PLUM_DEEP, fade);
-    drawTwoPassPlasmaLance(pen, L2 * 0.28, -L2, -L2 * 0.28, L2, 2.1 * fade, C_MAG_HOT, C_CYAN_DEEP, fade);
-    drawStarSpark(pen, 0, 0, Math.max(2, Math.round(8 * fade)), C_CYAN_CREST, C_MAG_HOT, fade);
-
-    for (let i = 0; i < 6; i++) {
-      const a = (i * Math.PI) / 3 + u * 0.9 + rng.between(-0.15, 0.15);
-      const dist = 10 + u * 28;
-      const sx = Math.cos(a) * dist;
-      const sy = Math.sin(a) * dist;
-      if (Math.abs(sx) < 39 && Math.abs(sy) < 39) {
-        drawHollowHex(pen, sx, sy, 3, i % 2 === 0 ? C_CYAN_NEON : C_MAG_HOT, fade);
-        pen.stipple(sx, sy, C_WHITE, fade);
-      }
-    }
-  }
-}
-
-// Row 5: Stratified Orbital Relay Gate & Hex-Matrix Floor Lock Seal
-function renderRow5OrbitalHexSeal(pen, f) {
-  const ph = (f / 30) * Math.PI * 2;
-  const rx = 41;
-  const ry = 14;
-
-  for (let k = 0; k < 6; k++) {
-    const a0 = ph + (k * Math.PI) / 3;
-    const a1 = ph + ((k + 1) * Math.PI) / 3;
-    drawTwoPassPlasmaLance(
-      pen,
-      Math.cos(a0) * rx,
-      Math.sin(a0) * ry,
-      Math.cos(a1) * rx,
-      Math.sin(a1) * ry,
-      2.2,
-      k % 2 === 0 ? C_CYAN_NEON : C_MAG_HOT,
-      C_PLUM_DEEP,
-      1.0
-    );
-    drawTwoPassPlasmaLance(
-      pen,
-      Math.cos(-a0) * (rx * 0.62),
-      Math.sin(-a0) * (ry * 0.62),
-      Math.cos(-a1) * (rx * 0.62),
-      Math.sin(-a1) * (ry * 0.62),
-      1.6,
-      C_MAG_HOT,
-      C_CYAN_DEEP,
-      0.95
-    );
-  }
-  drawStarSpark(pen, 0, 0, 5, C_MAG_HOT, C_CYAN_NEON, 1.0);
-}
-
-// Row 6: Articulated Autonomous Cyber Fin-Funnel Wing-Drone Node
-function renderRow6FinFunnelNode(pen, f) {
-  const ph = (f / 30) * Math.PI * 2;
-  const bob = Math.sin(ph) * 2.0;
-
-  for (const side of [-1, 1]) {
-    drawTwoPassPlasmaLance(pen, side * 4, bob - 2, side * 27, bob - 19, 3.4, C_TITANIUM, C_GUNMETAL, 1.0);
-    drawTwoPassPlasmaLance(pen, side * 4, bob + 3, side * 23, bob + 17, 2.8, C_CYAN_NEON, C_MAG_HOT, 1.0);
-  }
-  drawHollowHex(pen, 0, bob, 8, C_CYAN_CREST, 1.0);
-  for (let dy = -5; dy <= 5; dy++) {
-    for (let dx = -5; dx <= 5; dx++) {
-      const d = Math.hypot(dx, dy);
-      if (d <= 5.4) {
-        const col = d > 4.4 ? C_SEL_DARK : d > 2.8 ? C_MAG_HOT : d > 1.4 ? C_CYAN_CREST : C_WHITE;
-        pen.stipple(dx, bob + dy, col, 1.0);
-      }
-    }
-  }
-  drawStarSpark(pen, 0, bob, 5 + (f % 2), C_CYAN_CREST, C_MAG_HOT, 1.0);
-}
-
-// Row 7: Seamless Vertical `PROJECT GUNG-09` Orbital Singularity Buster Column
-function renderRow7OrbitalBusterColumn(pen, f) {
-  const ph = (f / 30) * Math.PI * 2;
-  const halfW = 24;
-
-  // Vertical Buster Core (`y = -42..+42`) with exact 24-logical-px (48px) 3-ring period across `[-36..+36]`!
-  for (let y = -42; y <= 42; y++) {
-    const edgeTaper = Math.abs(y) > 36 ? Math.max(0.25, 1 - (Math.abs(y) - 36) / 7) : 1.0;
-    const wave = Math.sin(((y + 36) / 24) * Math.PI * 2 - ph * 2);
-    const w = (halfW + wave * 2.2) * edgeTaper;
-    const lim = Math.ceil(w + 1);
-    for (let x = -lim; x <= lim; x++) {
-      const ax = Math.abs(x);
-      if (ax > w + 0.7) continue;
-      let col;
-      if (ax >= w - 0.25) col = C_SEL_DARK;
-      else if (ax >= w * 0.74) col = (y + f * 2) % 6 < 3 ? C_MAG_HOT : C_PLUM_DEEP;
-      else if (ax >= w * 0.48) col = C_CYAN_NEON;
-      else if (ax >= w * 0.24) col = C_CYAN_CREST;
-      else col = C_WHITE;
-      pen.stipple(x, y, col, 1.0);
-    }
-  }
-
-  // 3 Helical Hex-Plasma Compression Rings spaced every 24 logical px (`-24, 0, +24`) inside `[-36..+36]`!
-  for (const ry of [-24, 0, 24]) {
-    for (let i = 0; i < 56; i++) {
-      const a = (i / 56) * Math.PI * 2 + ph * 2;
-      const rx = Math.cos(a) * 33;
-      const py = ry + Math.sin(a) * 4.5;
-      if (Math.abs(py) <= 42) {
-        pen.stipple(rx, py + 1, C_SEL_DARK, 0.95);
-        pen.stipple(rx, py, i % 2 === 0 ? C_WHITE : C_MAG_HOT, 1.0);
-      }
-    }
-  }
+  return { clipped, maxEdgeRun };
 }
 
 function bakeVfxSheet() {
@@ -590,72 +253,226 @@ function bakeVfxSheet() {
   const sheetH = ROWS * CELL;
   const sheetRgba = new Uint8Array(sheetW * sheetH * 4);
 
-  const sampleCols = [0, 3, 7, 12, 17, 22, 27];
-  const qaW = sampleCols.length * CELL;
-  const qaH = ROWS * CELL;
-  const qaRgba = new Uint8Array(qaW * qaH * 4);
-  for (let i = 0; i < qaW * qaH; i++) {
-    qaRgba[i * 4] = 8;
-    qaRgba[i * 4 + 1] = 12;
-    qaRgba[i * 4 + 2] = 26;
-    qaRgba[i * 4 + 3] = 255;
+  const dbgPad = 3;
+  const dbgW = COLS * (LOGICAL + dbgPad) + dbgPad;
+  const dbgH = ROWS * (LOGICAL + dbgPad) + dbgPad;
+  const dbgRgba = new Uint8Array(dbgW * dbgH * 4);
+  for (let i = 0; i < dbgW * dbgH; i++) {
+    dbgRgba[i * 4] = 14;
+    dbgRgba[i * 4 + 1] = 17;
+    dbgRgba[i * 4 + 2] = 30;
+    dbgRgba[i * 4 + 3] = 255;
   }
+
+  const rowSpecs = [
+    {
+      name: 'Row 0: Muramasa-09 HF-Plasma Crescent Wave & Chakram Disc',
+      windowSec: 0.60,
+      exposure: 1.18,
+      env: { cx: 51.5, cy: 51.5, rx: 41.5, ry: 41.5, inner: 0.66 },
+      layers: [
+        { def: CYBER_EFFECT_REGISTRY.hfPlasmaCrescentWave, warmup: 0.18, cfg: { x: 50, y: 52, radius: 30, palette: CYBER_NEON_PALETTE, seed: 401 } },
+        { def: CYBER_EFFECT_REGISTRY.chakramVortexDisc, warmup: 0.05, cfg: { x: 46, y: 52, radius: 22, palette: CYBER_MAGENTA_PALETTE, seed: 409 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawCyberPrismAccent(pen, 70 + Math.cos(ph) * 2, 52 + Math.sin(ph) * 3, 4, C_CYAN_CREST, C_MAGENTA, 0.88);
+      }
+    },
+    {
+      name: 'Row 1: Autonomous Cyber Fin-Funnel Drone Pod & Hex Aegis',
+      windowSec: 0.60,
+      exposure: 1.18,
+      env: { cx: 51.5, cy: 51.5, rx: 40.5, ry: 40.5, inner: 0.66 },
+      layers: [
+        { def: CYBER_EFFECT_REGISTRY.finFunnelDronePod, warmup: 0.18, cfg: { x: 54, y: 52, palette: CYBER_NEON_PALETTE, seed: 419 } },
+        { def: CYBER_EFFECT_REGISTRY.cyberImpactSpark, warmup: 0.02, cfg: { x: 52, y: 52, palette: CYBER_MAGENTA_PALETTE, seed: 421 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawCyberPrismAccent(pen, 54 + Math.cos(ph) * 8, 52 + Math.sin(ph) * 6, 3, C_MAGENTA, C_CYAN, 0.82);
+      }
+    },
+    {
+      name: 'Row 2: Singularity EMP Gravity Tether Spire',
+      windowSec: 1.00,
+      exposure: 1.2,
+      env: { cx: 51.5, cy: 48.5, rx: 34.0, ry: 32.0, inner: 0.58 },
+      layers: [
+        { def: CYBER_EFFECT_REGISTRY.empGravityTetherSpire, warmup: 0.20, cfg: { x: 52, y: 74, radius: 32, palette: CYBER_NEON_PALETTE, seed: 431 } },
+        { def: CYBER_EFFECT_REGISTRY.empGravityTetherSpire, warmup: 0.24, cfg: { x: 52, y: 74, radius: 26, palette: CYBER_MAGENTA_PALETTE, seed: 433 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawCyberPrismAccent(pen, 52 + Math.sin(ph) * 6, 44 + Math.cos(ph) * 6, 3, C_CYAN_CREST, C_MAGENTA, 0.85);
+      }
+    },
+    {
+      name: 'Row 3: Valkyrie Holo Target-Lock Hex Reticle',
+      windowSec: 1.00,
+      exposure: 1.2,
+      env: { cx: 51.5, cy: 51.5, rx: 41.0, ry: 41.0, inner: 0.66 },
+      layers: [
+        { def: CYBER_EFFECT_REGISTRY.orbitalTargetLockHex, warmup: 0.02, cfg: { x: 52, y: 52, radius: 35, squashY: 0.92, palette: CYBER_NEON_PALETTE, seed: 439 } },
+        { def: CYBER_EFFECT_REGISTRY.holoTargetReticle, warmup: 0.05, cfg: { x: 52, y: 52, radius: 24, palette: CYBER_MAGENTA_PALETTE, seed: 443 } }
+      ],
+      accent(pen, c) {
+        drawCyberPrismAccent(pen, 52, 52, 4 + (c % 2), C_MAGENTA, C_CYAN, 0.88);
+      }
+    },
+    {
+      name: 'Row 4: Hex-Glitch Cross-Slash & Cyber Impact Starburst',
+      windowSec: 0.56,
+      exposure: 1.2,
+      env: { cx: 51.5, cy: 51.5, rx: 38.5, ry: 38.5, inner: 0.62 },
+      layers: [
+        { def: CYBER_EFFECT_REGISTRY.twinCrossSlash, warmup: 0.02, cfg: { x: 52, y: 52, palette: CYBER_NEON_PALETTE, seed: 449 } },
+        { def: CYBER_EFFECT_REGISTRY.hexGlitchCrossSlash, warmup: 0.02, cfg: { x: 52, y: 52, palette: CYBER_MAGENTA_PALETTE, seed: 457 } }
+      ],
+      accent(pen, c) {
+        drawCyberPrismAccent(pen, 52, 52, 4 + (c % 2), C_CYAN_CREST, C_MAGENTA, 0.86);
+      }
+    },
+    {
+      name: 'Row 5: Cyber Singularity Reactor Sphere & Orbital Relay Core',
+      windowSec: 1.00,
+      exposure: 1.2,
+      env: { cx: 51.5, cy: 51.5, rx: 38.5, ry: 38.5, inner: 0.64 },
+      layers: [
+        { def: CYBER_EFFECT_REGISTRY.cyberSingularityCore, warmup: 0.02, cfg: { x: 52, y: 52, radius: 33, palette: CYBER_NEON_PALETTE, seed: 461 } },
+        { def: CYBER_EFFECT_REGISTRY.cyberSingularityCore, warmup: 0.14, cfg: { x: 52, y: 52, radius: 24, palette: CYBER_MAGENTA_PALETTE, seed: 463 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawCyberPrismAccent(pen, 52 + Math.cos(ph) * 14, 52 + Math.sin(ph) * 14, 3, C_MAGENTA, C_CYAN, 0.85);
+      }
+    },
+    {
+      name: 'Row 6: Fin-Funnel All-Range Convergence Laser Node',
+      windowSec: 0.60,
+      exposure: 1.2,
+      env: { cx: 53.5, cy: 51.5, rx: 36.5, ry: 28.0, inner: 0.56 },
+      layers: [
+        { def: CYBER_EFFECT_REGISTRY.finFunnelLaserNode, warmup: 0.05, cfg: { x: 26, y: 52, beamLength: 60, palette: CYBER_NEON_PALETTE, seed: 467 } },
+        { def: CYBER_EFFECT_REGISTRY.finFunnelDronePod, warmup: 0.10, cfg: { x: 30, y: 52, palette: CYBER_MAGENTA_PALETTE, seed: 479 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawCyberPrismAccent(pen, 30, 52 + Math.sin(ph) * 2, 4, C_CYAN_CREST, C_MAGENTA, 0.9);
+      }
+    },
+    {
+      name: 'Row 7: Overdrive Orbital Satellite Buster / Railgun Column',
+      windowSec: 0.60,
+      exposure: 1.2,
+      env: { cx: 51.5, cy: 51.5, rx: 16.5, ry: 37.5, inner: 0.42 },
+      layers: [
+        { def: CYBER_EFFECT_REGISTRY.orbitalBusterColumn, warmup: 0.04, cfg: { x: 52, y: 52, halfWidth: 16, halfHeight: 38, palette: CYBER_NEON_PALETTE, seed: 487 } },
+        { def: CYBER_EFFECT_REGISTRY.orbitalBusterColumn, warmup: 0.12, cfg: { x: 52, y: 52, halfWidth: 11, halfHeight: 36, palette: CYBER_MAGENTA_PALETTE, seed: 491 } }
+      ],
+      accent(pen, c) {
+        const ph = (c / 30) * Math.PI * 2;
+        drawCyberPrismAccent(pen, 52, 52 + Math.sin(ph) * 14, 4, C_MAGENTA, C_CYAN_CREST, 0.88);
+      }
+    }
+  ];
 
   const surface104 = createPixelSurface(LOGICAL, LOGICAL);
   const pen104 = new ShaderPen(surface104);
   const cell104 = new Uint8Array(LOGICAL * LOGICAL * 4);
   const cell208 = new Uint8Array(CELL * CELL * 4);
 
-  const rowFns = [
-    renderRow0PlasmaWave,
-    renderRow1HexAegis,
-    renderRow2SingularityPillar,
-    renderRow3HoloReticle,
-    renderRow4CyberHitScar,
-    renderRow5OrbitalHexSeal,
-    renderRow6FinFunnelNode,
-    renderRow7OrbitalBusterColumn
-  ];
-
   let borderClips = 0;
+  let worstEdgeRun = 0;
+  const rowMaxRuns = [];
 
   for (let r = 0; r < ROWS; r++) {
-    const fn = rowFns[r];
+    let rowWorst = 0;
+    const spec = rowSpecs[r];
+    const dt = spec.windowSec / COLS;
+    const instances = spec.layers.map((l) => {
+      const inst = instantiateShaderEffect(l.def, l.cfg);
+      if (l.warmup > 0) inst.step(l.warmup);
+      return inst;
+    });
+
+    let prevCell = null;
+    let transitions = 0;
+
     for (let c = 0; c < COLS; c++) {
       clearPixelSurface(surface104);
-      pen104.configure(52, 52, false, 0, 1, 1);
-      fn(pen104, c);
-      resolveSurfaceToRGBA(surface104, cell104, 1.0);
-      enforceStrictCellMargin104(cell104, LOGICAL, LOGICAL);
+      for (const inst of instances) inst.render(pen104, 'back');
+      for (const inst of instances) inst.render(pen104, 'front');
+      spec.accent?.(pen104, c);
+      resolveSurfaceToRGBA(surface104, cell104, spec.exposure);
 
       cell208.fill(0);
       blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, cell208, CELL, 0, 0);
-      if (has4pxBorderClip208(cell208, CELL, 4)) {
-        borderClips++;
+      applyEllipticalEnvelope(cell208, CELL, CELL, {
+        cx: spec.env.cx * 2 + 0.5,
+        cy: spec.env.cy * 2 + 0.5,
+        rx: spec.env.rx * 2,
+        ry: spec.env.ry * 2,
+        inner: spec.env.inner
+      }, 5);
+      downsample2xTo104(cell208, cell104);
+
+      const { clipped, maxEdgeRun } = auditCell208(cell208, 4);
+      if (clipped) borderClips++;
+      if (maxEdgeRun > worstEdgeRun) worstEdgeRun = maxEdgeRun;
+      if (maxEdgeRun > rowWorst) rowWorst = maxEdgeRun;
+
+      if (prevCell) {
+        let diff = false;
+        for (let i = 0; i < cell208.length; i++) {
+          if (cell208[i] !== prevCell[i]) {
+            diff = true;
+            break;
+          }
+        }
+        if (diff) transitions++;
+      }
+      prevCell = cell208.slice();
+
+      for (let sy = 0; sy < CELL; sy++) {
+        const srcOff = sy * CELL * 4;
+        const dstOff = ((r * CELL + sy) * sheetW + c * CELL) * 4;
+        sheetRgba.set(cell208.subarray(srcOff, srcOff + CELL * 4), dstOff);
       }
 
-      blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, sheetRgba, sheetW, c * CELL, r * CELL);
-      const sIdx = sampleCols.indexOf(c);
-      if (sIdx >= 0) {
-        blitUpscaledNearest(cell104, LOGICAL, LOGICAL, 2, qaRgba, qaW, sIdx * CELL, r * CELL);
+      const dx = dbgPad + c * (LOGICAL + dbgPad);
+      const dy = dbgPad + r * (LOGICAL + dbgPad);
+      for (let yy = 0; yy < LOGICAL; yy++) {
+        for (let xx = 0; xx < LOGICAL; xx++) {
+          const isEdge = xx === 0 || yy === 0 || xx === LOGICAL - 1 || yy === LOGICAL - 1;
+          const o = ((dy + yy) * dbgW + (dx + xx)) * 4;
+          dbgRgba[o] = isEdge ? 44 : 20;
+          dbgRgba[o + 1] = isEdge ? 54 : 25;
+          dbgRgba[o + 2] = isEdge ? 84 : 44;
+          dbgRgba[o + 3] = 255;
+        }
       }
+      alphaCompositeOnto(cell104, LOGICAL, LOGICAL, dbgRgba, dbgW, dx, dy);
+
+      for (const inst of instances) inst.step(dt);
     }
+
+    if (transitions !== 29) {
+      throw new Error(`[android_ex_vfx] Row ${r} expected 29/29 transitions, got ${transitions}`);
+    }
+    rowMaxRuns.push(`R${r}:${rowWorst}`);
   }
 
-  const outSheetPath = path.join(REPO_ROOT, 'assets', 'sprites', 'android_ex_vfx.png');
-  fs.mkdirSync(path.dirname(outSheetPath), { recursive: true });
-  fs.writeFileSync(outSheetPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
+  if (borderClips !== 0 || worstEdgeRun >= 28) {
+    throw new Error(`[android_ex_vfx] QA failed: borderClips=${borderClips}/240, worstEdgeRun=${worstEdgeRun}px (${rowMaxRuns.join(' ')})`);
+  }
 
+  const outPath = path.join(REPO_ROOT, 'assets', 'sprites', 'android_ex_vfx.png');
+  fs.writeFileSync(outPath, encodeRgbaPng(sheetW, sheetH, sheetRgba));
   fs.mkdirSync(SCRATCH_DIR, { recursive: true });
-  const outDbgPath = path.join(SCRATCH_DIR, 'debug_android_ex_vfx_30fps.png');
-  fs.writeFileSync(outDbgPath, encodeRgbaPng(qaW, qaH, qaRgba));
-
-  console.log(
-    `[build_android_ex_vfx_30fps] Wrote ${outSheetPath} (${sheetW}x${sheetH}) and ${outDbgPath} (${qaW}x${qaH}) | borderClips=${borderClips}/240`
-  );
-  if (borderClips > 0) {
-    process.exitCode = 1;
-  }
+  const dbgPath = path.join(SCRATCH_DIR, 'debug_android_ex_vfx.png');
+  fs.writeFileSync(dbgPath, encodeRgbaPng(dbgW, dbgH, dbgRgba));
+  console.log(`[android_ex_vfx] Wrote ${outPath} (${sheetW}x${sheetH}, borderClips=0/240, maxEdgeRun=${worstEdgeRun}px) & ${dbgPath}`);
 }
 
 bakeVfxSheet();

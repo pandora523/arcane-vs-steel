@@ -188,6 +188,20 @@ export class TitanEx extends Fighter {
     return Math.max(minX, Math.min(maxX, xv));
   }
 
+  _safeFxX(xv, game = this.game) {
+    const g = game || this.game;
+    const ww = g?.renderer ? g.renderer.worldWidth : 1200;
+    return Math.max(48, Math.min(ww - 48, xv));
+  }
+
+  _resolveShaderCenterX(renderer) {
+    const ww = renderer?.worldWidth || 1200;
+    if (ww > 2400) {
+      return Number.isFinite(renderer?.camX) ? renderer.camX : this.x;
+    }
+    return ww * 0.5;
+  }
+
   getActiveEnemies(enemy, game) {
     const isAdv = Boolean(game?.isAdventureMode?.() && game?.adventure?.active);
     const raw = game?.getEnemiesOf ? game.getEnemiesOf(this) : enemy ? [enemy] : [];
@@ -1425,9 +1439,34 @@ export class TitanEx extends Fighter {
       this.fx?.spawn('tectonicCraterSlam', anvilX, this.groundY - 4, {
         flip: dir < 0,
         palette: FORGE_JADE_PALETTE,
-        light: 1.24,
+        light: 1.28,
         extra: { maxRx: 132 }
       });
+      this.fx?.spawn('runicBulwarkDome', this.x, this.groundY - 32, {
+        follow: this,
+        offsetX: 0,
+        offsetY: -32,
+        useGroundY: true,
+        flip: dir < 0,
+        palette: FORGE_JADE_PALETTE,
+        light: 1.22
+      });
+      game?.vfx?.spawnSkyStrike?.({
+        x: anvilX,
+        groundY: this.groundY,
+        owner: this,
+        target: null,
+        damage: 0,
+        delay: 0.01,
+        flightDuration: 0.14,
+        impactDuration: 0.42,
+        type: 'runic_anvil',
+        color: '#10b981',
+        scale: 1.18,
+        isUltimate: false
+      });
+      game?.vfx?.spawnDecal?.(anvilX, this.groundY, 'fissure', 92);
+      game?.vfx?.spawnShockwave?.(anvilX, this.groundY - 2, '#10b981', 124, 0.32);
       this.spawnForgeShockRing(anvilX, this.groundY - 2, 118, true, 0.34);
       this.spawnMagmaFissureNode(anvilX, this.groundY, true, 0.85);
       this.spawnForgeParticles(anvilX, this.groundY - 48, 8, { isJade: true });
@@ -1467,16 +1506,23 @@ export class TitanEx extends Fighter {
         game.audio.play('thunder_slam', impactX);
         game.audio.play('clang', impactX);
       }
-      game?.renderer?.triggerShake?.(12, 0.24);
-      this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.056);
-      game?.renderer?.triggerHitStop?.(0.044);
+      game?.renderer?.triggerShake?.(13, 0.24);
+      game?.renderer?.triggerImpactFrame?.(impactX, impactY - 58, 0.06, 'forge');
+      this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.058);
+      game?.renderer?.triggerHitStop?.(0.048);
 
       this.fx?.spawn('tectonicCraterSlam', impactX, impactY, {
         flip: dir < 0,
         palette: FORGE_GOLD_PALETTE,
-        light: 1.28,
+        light: 1.30,
         extra: { maxRx: 134 }
       });
+      this.fx?.spawn('moltenAnvilSparks', impactX, impactY - 48, {
+        flip: dir < 0,
+        palette: FORGE_GOLD_PALETTE,
+        light: 1.26
+      });
+      game?.vfx?.spawnShockwave?.(impactX, this.groundY - 2, '#f59e0b', 136, 0.34);
       this.spawnSheetBurst(4, impactX, impactY - 58, {
         w: 212,
         h: 212,
@@ -1595,6 +1641,15 @@ export class TitanEx extends Fighter {
       const eruptX = leadFoe && !leadFoe.isDead ? leadFoe.x : this.x + batDir * 110;
       if (game?.audio) game.audio.play('thunder_slam', eruptX);
       game?.renderer?.triggerShake?.(12, 0.20);
+      game?.vfx?.spawnFlamePillar?.(eruptX, this.groundY, this, null, {
+        theme: 'emerald',
+        damage: 0,
+        width: 112,
+        height: 244,
+        delay: 0.02,
+        maxLife: 0.46
+      });
+      game?.vfx?.spawnShockwave?.(eruptX, this.groundY - 2, '#10b981', 128, 0.32);
       this.spawnSheetBurst(2, eruptX, this.groundY - 86, {
         w: 228,
         h: 228,
@@ -1666,6 +1721,22 @@ export class TitanEx extends Fighter {
       game?.renderer?.triggerHitStop?.(0.065);
       this._hitStopTimer = Math.max(this._hitStopTimer || 0, 0.064);
 
+      this.fx?.spawn('moltenAnvilSparks', contactX, contactY, {
+        flip: batDir < 0,
+        palette: FORGE_JADE_PALETTE,
+        light: 1.32
+      });
+      game?.vfx?.spawnBeam?.({
+        x1: contactX,
+        y1: contactY,
+        x2: this._homeRunTargetWallX,
+        y2: contactY,
+        width: 24,
+        color: '#10b981',
+        coreColor: '#fde047',
+        maxLife: 0.28,
+        owner: this
+      });
       this.spawnAnvilShockBurst(contactX, contactY, 76, 26, 0.28, true);
       this.spawnSheetBurst(4, contactX, contactY, {
         w: 224,
@@ -1779,6 +1850,22 @@ export class TitanEx extends Fighter {
             light: 1.38,
             extra: { maxRx: 165 }
           });
+          game?.vfx?.spawnSkyStrike?.({
+            x: wallX,
+            groundY: this.groundY,
+            owner: this,
+            target: null,
+            damage: 0,
+            delay: 0.01,
+            flightDuration: 0.12,
+            impactDuration: 0.42,
+            type: 'runic_anvil',
+            color: '#10b981',
+            scale: 1.28,
+            isUltimate: true
+          });
+          game?.vfx?.spawnDecal?.(wallX, this.groundY, 'fissure', 112);
+          game?.vfx?.spawnShockwave?.(wallX, this.groundY - 2, '#10b981', 148, 0.36);
           this.spawnSheetBurst(4, wallX, this.groundY - 78, {
             w: 216,
             h: 216,
@@ -2143,7 +2230,24 @@ export class TitanEx extends Fighter {
         extra: { maxRx: 215 }
       });
 
-      // Multi-layered 2.5D Pixel Magma Crater (`Row 7` + persistent caldera pool)
+      // Multi-layered 2.5D Molten Caldera + SkyStrike Runic Anvil + 5 Volcanic Fissure Pillars (`0` boxy fillRect slabs!)
+      game?.vfx?.spawnSkyStrike?.({
+        x: this._trueUltAnvilX,
+        groundY: this.groundY,
+        owner: this,
+        target: null,
+        damage: 0,
+        delay: 0.01,
+        flightDuration: 0.14,
+        impactDuration: 0.56,
+        type: 'runic_anvil',
+        color: '#f59e0b',
+        scale: 1.65,
+        isUltimate: true
+      });
+      game?.vfx?.spawnDecal?.(this._trueUltAnvilX, this.groundY, 'fissure', 168);
+      game?.vfx?.spawnShockwave?.(this._trueUltAnvilX, this.groundY - 2, '#f59e0b', 228, 0.48);
+
       this._magmaCrater = {
         x: this._trueUltAnvilX,
         y: this.groundY,
@@ -2157,20 +2261,29 @@ export class TitanEx extends Fighter {
         h: 248,
         maxLife: 1.15,
         flipX: ultDir < 0,
-        glowColor: 'none',
+        glowColor: 'gold',
         inFront: false
       });
 
-      // Queue 5 Erupting Jade-Gold Lava Geysers + Stepped Pixel Lightning across the sundered fault!
+      // Queue 5 Erupting Jade-Gold Lava Geysers + Volcanic Flame Pillars + Stepped Pixel Lightning across the sundered fault!
       const geyserOffsets = [0, -108, 108, -214, 214];
       this.lavaGeyserQueue = [];
       for (let gIdx = 0; gIdx < geyserOffsets.length; gIdx++) {
         const gx = Math.max(96, Math.min(ww - 96, this._trueUltAnvilX + geyserOffsets[gIdx]));
+        const gDelay = Math.floor(gIdx / 2) * 0.085;
         this.lavaGeyserQueue.push({
           x: gx,
-          delay: Math.floor(gIdx / 2) * 0.085,
+          delay: gDelay,
           isJade: gIdx % 2 === 1,
           size: gIdx === 0 ? 284 : 228
+        });
+        game?.vfx?.spawnFlamePillar?.(gx, this.groundY, this, null, {
+          theme: 'emerald',
+          damage: 0,
+          width: gIdx === 0 ? 132 : 98,
+          height: gIdx === 0 ? 286 : 232,
+          delay: Math.max(0.02, gDelay + 0.02),
+          maxLife: 0.62
         });
       }
       this.spawnMjolnirLightning(this._trueUltAnvilX, this.groundY, 440, false, 0.46);
@@ -2246,7 +2359,12 @@ export class TitanEx extends Fighter {
   }
 
   update(dt, enemy, game) {
+    this.game = game || this.game;
     this._currentEnemy = enemy;
+    if ((this.state === 'IDLE' || this.state === 'WALK') && !this._advPureDodge) {
+      this._overrideFrameIdx = null;
+      this.trueUltFrameOverride = null;
+    }
     if (this._comboPersistTimer > 0 && this.state !== 'AUTO_ATTACK') {
       this._comboPersistTimer = Math.max(0, this._comboPersistTimer - dt);
       if (this._comboPersistTimer <= 0) {
@@ -2704,85 +2822,87 @@ export class TitanEx extends Fighter {
   }
 
   drawAnvilShockBursts(ctx) {
-    if (!ctx?.fillRect || this.anvilShockBursts.length === 0) return;
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
+    if (this.anvilShockBursts.length === 0) return;
+    const sprites = this.getExSprites();
+    const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
+    const hasVfx = Boolean(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
+    if (!hasVfx) return;
+
     for (let i = 0; i < this.anvilShockBursts.length; i++) {
       const b = this.anvilShockBursts[i];
-      const u = Math.min(1, b.age / b.maxLife);
+      const u = Math.min(1, b.age / Math.max(0.04, b.maxLife));
       const fade = u < 0.14 ? 1.0 : Math.max(0, 1 - (u - 0.14) / 0.86);
       if (fade <= 0.02) continue;
 
-      const expand = 1 + u * 0.42;
-      const hw = Math.max(12, Math.round((b.halfW * expand) / 2) * 2);
-      const hh = Math.max(6, Math.round((b.halfH * (1 - u * 0.48)) / 2) * 2);
-
-      ctx.globalAlpha = Math.min(1, fade * 0.92);
-      ctx.fillStyle = b.isJade ? '#064e3b' : '#78350f';
-      ctx.fillRect(b.cx - hw - 4, b.cy - hh - 2, (hw + 4) * 2, (hh + 2) * 2);
-
-      ctx.fillStyle = b.isJade ? '#10b981' : '#f59e0b';
-      ctx.fillRect(b.cx - hw, b.cy - hh, hw * 2, hh * 2);
-
-      const midW = Math.max(8, Math.round(hw * 0.78));
-      const midH = Math.max(4, Math.round(hh * 0.62));
-      ctx.fillStyle = '#fde047';
-      ctx.fillRect(b.cx - midW, b.cy - midH, midW * 2, midH * 2);
-
-      const coreW = Math.max(6, Math.round(hw * 0.52));
-      const coreH = Math.max(2, Math.round(hh * 0.34));
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(b.cx - coreW, b.cy - coreH, coreW * 2, coreH * 2);
+      const col = Math.min(29, Math.floor(u * 30));
+      const drawW = Math.max(132, Math.round(b.halfW * 2.6 * (0.85 + 0.30 * u)));
+      const drawH = Math.max(96, Math.round(b.halfH * 4.8 * (0.90 + 0.22 * u)));
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        4,
+        col,
+        b.cx,
+        b.cy,
+        drawW,
+        drawH,
+        fade * 0.94,
+        i % 2 === 1,
+        null,
+        b.isJade ? 'emerald' : 'gold'
+      );
     }
-    ctx.restore();
   }
 
   /**
-   * Renders Stepped Molten Magma Fissure Trails, 2.5D Pixel Magma Crater, Stepped Mjolnir Lightning, & Forge Particles!
+   * Renders Molten Magma Fissure Wakes, 2.5D Caldera Seal (`0` boxy fillRect slabs!), Stepped Mjolnir Lightning, & Forge Particles!
    */
   drawForgeFloorAndParticles(ctx, inFront = false) {
     if (!ctx?.fillRect) return;
+    const sprites = this.getExSprites();
+    const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
+    const hasVfx = Boolean(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
+
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
     if (!inFront) {
-      // 1. Persistent Multi-Layered 2.5D Pixel Magma Crater (`MJOLNIR GENESIS: CONTINENTAL SUNDER`)
+      // 1. Persistent Multi-Layered 2.5D Molten Caldera (`MJOLNIR GENESIS: CONTINENTAL SUNDER` — sculpted Row 5 + Row 7 cells!)
       if (this._magmaCrater) {
         const mc = this._magmaCrater;
-        const u = mc.age / mc.maxLife;
+        const u = mc.age / Math.max(0.05, mc.maxLife);
         const fade = u > 0.72 ? (1 - u) / 0.28 : 1.0;
         this.drawBayerPixelHalo(ctx, mc.x, mc.y - 2, mc.rx + 28, mc.ry + 10, '#9a3412', '#fde047', 0.18 * fade);
-
-        ctx.globalAlpha = 0.92 * fade;
-        const irx = Math.round(mc.rx / 4) * 4;
-        const iry = Math.round(mc.ry / 4) * 4;
-        for (let dy = -iry; dy <= iry; dy += 4) {
-          const ny = dy / Math.max(1, iry);
-          const span = Math.round((irx * Math.sqrt(Math.max(0, 1 - ny * ny))) / 4) * 4;
-          if (span < 4) continue;
-          ctx.fillStyle = '#241914';
-          ctx.fillRect(mc.x - span - 4, mc.y - 2 + dy, (span + 4) * 2, 4);
-          ctx.fillStyle = Math.abs(dy) < iry * 0.5 ? '#f97316' : '#9a3412';
-          ctx.fillRect(mc.x - span, mc.y - 2 + dy, span * 2, 4);
-          if (Math.abs(dy) <= 4) {
-            ctx.fillStyle = '#fde047';
-            ctx.fillRect(mc.x - Math.round(span * 0.65), mc.y - 2 + dy, Math.round(span * 1.3), 4);
-          }
+        if (hasVfx) {
+          const col = Math.floor((mc.age * 24) % 30);
+          this.drawBloomedVfxCell(ctx, vfxSheet, 5, col, mc.x, mc.y - 16, Math.round(mc.rx * 1.65), 148, 0.86 * fade, false, null, 'gold');
+          this.drawBloomedVfxCell(ctx, vfxSheet, 7, (col + 8) % 30, mc.x, mc.y - 42, Math.round(mc.rx * 1.48), 184, 0.74 * fade, true, null, 'emerald');
         }
       }
 
-      // 2. Stepped Molten Magma Fissure Nodes (Anvil Ricochet ground wake)
+      // 2. Sculpted Molten Magma Fissure Nodes (`Row 0` Tectonic Magma Wave cells — 0 rectangular fillRect slabs!)
       for (let i = 0; i < this.magmaFissureNodes.length; i++) {
         const fn = this.magmaFissureNodes[i];
-        const u = fn.age / fn.maxLife;
+        const u = Math.min(1, fn.age / Math.max(0.04, fn.maxLife));
         const fade = u > 0.68 ? (1 - u) / 0.32 : 1.0;
-        ctx.globalAlpha = fade * 0.92;
-        ctx.fillStyle = '#0d0907';
-        ctx.fillRect(fn.x - fn.w - 2, fn.y - 5, (fn.w + 2) * 2, 8);
-        ctx.fillStyle = fn.isJade ? '#10b981' : '#f97316';
-        ctx.fillRect(fn.x - fn.w, fn.y - 4, fn.w * 2, 4);
-        ctx.fillStyle = '#fde047';
-        ctx.fillRect(fn.x - Math.round(fn.w * 0.55), fn.y - 3, Math.round(fn.w * 1.1), 2);
+        this.drawBayerPixelHalo(ctx, fn.x, fn.y - 2, fn.w + 18, 9, fn.isJade ? '#065f46' : '#9a3412', '#fde047', 0.15 * fade);
+        if (hasVfx) {
+          const col = Math.min(29, Math.floor(u * 30));
+          this.drawBloomedVfxCell(
+            ctx,
+            vfxSheet,
+            0,
+            col,
+            fn.x,
+            fn.y - 24,
+            Math.max(96, fn.w * 4),
+            88,
+            fade * 0.84,
+            fn.isJade,
+            null,
+            fn.isJade ? 'emerald' : 'gold'
+          );
+        }
       }
       ctx.restore();
       return;
@@ -2939,10 +3059,28 @@ export class TitanEx extends Fighter {
     glowColor = 'gold'
   ) {
     const sheet = PixelForge.ensureImage?.(vfxSheet) || vfxSheet;
-    if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
+    if (!sheet || !sheet.complete || !sheet.naturalWidth || alpha <= 0.01) return;
     const cell = 208;
-    const sx = Math.max(0, Math.min(29, Math.floor(col))) * cell;
-    const sy = Math.max(0, Math.min(7, Math.floor(row))) * cell;
+    const clampedRow = Math.max(0, Math.min(7, Math.floor(row)));
+    const clampedCol = Math.max(0, Math.min(29, Math.floor(col)));
+    if (this.game?.vfx?.drawBloomedSprite && glowColor !== 'none') {
+      this.game.vfx.drawBloomedSprite(
+        ctx,
+        sheet,
+        clampedCol * cell,
+        clampedRow * cell,
+        cell,
+        cell,
+        Math.round(x),
+        Math.round(y),
+        w,
+        h,
+        { alpha, bloomAlpha: Math.min(0.28, alpha * 0.24), bloomScale: 1.04, flipX }
+      );
+      return;
+    }
+    const sx = clampedCol * cell;
+    const sy = clampedRow * cell;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -2955,7 +3093,7 @@ export class TitanEx extends Fighter {
 
     if (glowColor !== 'none') {
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = Math.min(0.14, alpha * 0.14);
+      ctx.globalAlpha = Math.min(0.24, alpha * 0.22);
       ctx.drawImage(sheet, sx, sy, cell, cell, -w * 0.5, -h * 0.5, w, h);
     }
 
@@ -3164,61 +3302,59 @@ export class TitanEx extends Fighter {
 
     this.drawSoilRockSplash(ctx, false);
 
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    const arenaCenterX = this._resolveShaderCenterX(renderer);
     this.fx?.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
 
     this.drawCrucibleCores(ctx, false);
   }
 
   /**
-   * Renders the Horizontal World-Breaker Home-Run Concussion Shock-Cone (`0` vector curves).
+   * Renders the Horizontal World-Breaker Home-Run Concussion Shock-Cone via sculpted blunt shock-rings (`0` sword crescents, `0` boxy slabs!).
    */
   drawHomeRunShockCone(ctx) {
-    if (!ctx?.fillRect || !this._homeRunSwingStreak) return;
+    if (!this._homeRunSwingStreak) return;
     const st = this._homeRunSwingStreak;
-    const u = Math.min(1, st.age / st.maxLife);
+    const u = Math.min(1, st.age / Math.max(0.04, st.maxLife));
     const alpha = u < 0.15 ? u / 0.15 : Math.max(0, 1 - (u - 0.15) / 0.85);
     if (alpha <= 0.02) return;
+
+    const sprites = this.getExSprites();
+    const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
+    if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth) return;
 
     const flight = this._homeRunFlights?.[0];
     const endX = flight?.foe
       ? Math.round(flight.foe.x)
       : Math.round(st.startX + (st.targetWallX - st.startX) * Math.min(1, u * 1.4));
     const startX = Math.round(st.startX);
-    const minX = Math.min(startX, endX);
     const spanW = Math.max(12, Math.abs(endX - startX));
     const cy = Math.round(st.startY);
+    const baseCol = Math.min(29, Math.floor(u * 30));
 
-    ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    ctx.globalAlpha = alpha * 0.86;
-    ctx.fillStyle = '#0d0907';
-    ctx.fillRect(minX, cy - 5, spanW, 10);
-    ctx.fillStyle = '#10b981';
-    ctx.fillRect(minX, cy - 4, spanW, 8);
-    ctx.fillStyle = '#fbbf24';
-    ctx.fillRect(minX, cy - 2, spanW, 4);
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(minX, cy - 1, spanW, 2);
-
-    // Expanding Blunt Vertical Concussion Shock-Cone Rings along the Home-Run Flight!
     const ringCount = Math.min(5, Math.max(2, Math.floor(spanW / 120)));
     for (let i = 1; i <= ringCount; i++) {
       const frac = i / (ringCount + 1);
       const rx = Math.round(startX + (endX - startX) * frac);
-      const coneH = Math.round(16 + frac * 28);
-      ctx.fillStyle = '#0d0907';
-      ctx.fillRect(rx - 4, cy - coneH - 2, 8, (coneH + 2) * 2);
-      ctx.fillStyle = i % 2 === 0 ? '#10b981' : '#f59e0b';
-      ctx.fillRect(rx - 2, cy - coneH, 4, coneH * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillRect(rx - 1, cy - Math.round(coneH * 0.7), 2, Math.round(coneH * 1.4));
+      const sz = Math.round(118 + frac * 76);
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        i % 2 === 0 ? 4 : 0,
+        (baseCol + i * 4) % 30,
+        rx,
+        cy,
+        sz,
+        sz,
+        alpha * 0.86,
+        st.dir < 0,
+        null,
+        i % 2 === 0 ? 'emerald' : 'gold'
+      );
     }
-    ctx.restore();
   }
 
   drawUltimateForeground(ctx, renderer = null) {
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    const arenaCenterX = this._resolveShaderCenterX(renderer);
     this.fx?.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
 
     this.drawAnvilShockBursts(ctx);
@@ -3245,6 +3381,45 @@ export class TitanEx extends Fighter {
     const frameIdx = PixelForge.getFrameIndex(this, this.walkPhase);
     const groundPlantOffset = 4;
     const sheet = PixelForge.ensureImage?.(sprites.sheet) || sprites.sheet;
+
+    if (isReflection && !this.isDead) {
+      const vfxSheet = PixelForge.ensureImage?.(sprites?.vfx) || sprites?.vfx;
+      const hasVfx = Boolean(vfxSheet && vfxSheet.complete && vfxSheet.naturalWidth > 0);
+      if (hasVfx) {
+        if (this._crucibleBackHaloTimer > 0 || this.crucibleStacks >= this.maxCrucibleStacks) {
+          const haloCol = Math.floor((this._crucibleOrbitPhase * 6) % 30);
+          this.drawBloomedVfxCell(
+            ctx,
+            vfxSheet,
+            3,
+            haloCol,
+            this.x - this.facing * Math.round(8 * scale),
+            this.y - Math.round(104 * scale),
+            Math.round(164 * scale),
+            Math.round(164 * scale),
+            0.38,
+            this.facing < 0,
+            renderer,
+            'gold'
+          );
+        }
+        if (this.worldAnvilAltar && this.worldAnvilAltar.life > 0) {
+          const altar = this.worldAnvilAltar;
+          const col = Math.floor(altar.age * 30) % 30;
+          const fade = altar.life < 0.45 ? Math.max(0, altar.life / 0.45) : 1.0;
+          this.drawBloomedVfxCell(ctx, vfxSheet, 1, col, altar.x, altar.y - 52, 188, 188, 0.40 * fade, altar.dir < 0, renderer, 'gold');
+        }
+        if (this.activeAnvil && this.activeAnvil.state === 'flying') {
+          const a = this.activeAnvil;
+          const col = Math.floor(a.age * 30) % 30;
+          this.drawBloomedVfxCell(ctx, vfxSheet, 1, col, a.x, a.y - 52, 196, 196, 0.40, a.dir < 0, renderer, a.rebounded ? 'emerald' : 'gold');
+        }
+        if (this.state === 'TRUE_ULTIMATE' && (this.stateTimer || 0) < 2.36) {
+          const col = Math.floor((this.stateTimer || 0) * 30) % 30;
+          this.drawBloomedVfxCell(ctx, vfxSheet, 5, col, this._trueUltAnvilX || this.x, this.groundY - 56, 268, 268, 0.38, this.facing < 0, renderer, 'gold');
+        }
+      }
+    }
 
     if (
       !isReflection &&

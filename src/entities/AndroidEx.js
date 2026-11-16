@@ -465,8 +465,15 @@ export class AndroidEx extends Fighter {
   _safeFxX(xv, game) {
     const g = game || this.game;
     const ww = g?.renderer ? g.renderer.worldWidth : 1200;
-    const center = ww * 0.5;
-    return Math.max(center - 740, Math.min(center + 740, Math.max(84, Math.min(ww - 84, xv))));
+    return Math.max(48, Math.min(ww - 48, xv));
+  }
+
+  _resolveShaderCenterX(renderer) {
+    const ww = renderer?.worldWidth || 1200;
+    if (ww > 2400) {
+      return Number.isFinite(renderer?.camX) ? renderer.camX : this.x;
+    }
+    return ww * 0.5;
   }
 
   _safeFxY(yv) {
@@ -1345,6 +1352,17 @@ export class AndroidEx extends Fighter {
       ];
       for (let i = 0; i < nodes.length; i++) {
         this.spawnPlasmaBeam(nodes[i][0], nodes[i][1], lockX, lockY, 0.24, i % 2 === 1, 4, 2);
+        game?.vfx?.spawnBeam?.({
+          x1: nodes[i][0],
+          y1: nodes[i][1],
+          x2: lockX,
+          y2: lockY,
+          width: 12,
+          color: i % 2 === 1 ? '#ec4899' : '#22d3ee',
+          coreColor: '#ffffff',
+          maxLife: 0.22,
+          owner: this
+        });
       }
       this._applyOdachiStrike(enemy, game, {
         damage: 28,
@@ -1367,6 +1385,28 @@ export class AndroidEx extends Fighter {
       const g = this.diamondFunnelGrid || { cx: lockX, cy: lockY, rx: 92, ry: 78 };
       this.spawnPlasmaBeam(g.cx - g.rx, g.cy, g.cx + g.rx, g.cy, 0.22, true, 4, 2);
       this.spawnPlasmaBeam(g.cx, g.cy - g.ry, g.cx, g.cy + g.ry * 0.72, 0.22, false, 4, 2);
+      game?.vfx?.spawnBeam?.({
+        x1: g.cx - g.rx,
+        y1: g.cy,
+        x2: g.cx + g.rx,
+        y2: g.cy,
+        width: 14,
+        color: '#ec4899',
+        coreColor: '#ffffff',
+        maxLife: 0.20,
+        owner: this
+      });
+      game?.vfx?.spawnBeam?.({
+        x1: g.cx,
+        y1: g.cy - g.ry,
+        x2: g.cx,
+        y2: g.cy + g.ry * 0.72,
+        width: 14,
+        color: '#22d3ee',
+        coreColor: '#ffffff',
+        maxLife: 0.20,
+        owner: this
+      });
       this.fx?.spawn(
         'twinCrossSlash',
         this._safeFxX(this.x + this.facing * 76, game),
@@ -1396,7 +1436,10 @@ export class AndroidEx extends Fighter {
       this._skillStepMask |= 8;
       const empX = this.x + this.facing * 82;
       game?.renderer?.triggerShake?.(14, 0.26);
+      game?.renderer?.triggerImpactFrame?.(empX, this.groundY - 86, 0.06, 'cyber');
       game?.audio?.play?.('emp_blast', empX);
+      game?.vfx?.spawnShockwave?.(empX, this.groundY - 2, '#ec4899', 132, 0.32);
+      game?.vfx?.spawnDecal?.(empX, this.groundY, 'scorch', 88);
       this.fx?.spawn('empOverloadDome', this._safeFxX(empX, game), this._safeFxY(this.groundY), {
         palette: CYBER_NEON_PALETTE,
         warmup: 0.36,
@@ -1546,9 +1589,20 @@ export class AndroidEx extends Fighter {
       const beamDx = Math.max(-200, Math.min(200, (this._ultFocusX - visorX) / 3));
       const beamDy = Math.max(-60, Math.min(52, (targetY - visorY) / 3));
 
-      // Multi-band 2-pass Cyan & Hot-Magenta Visor Beams
+      // Multi-band Cyan & Hot-Magenta Visor Lasers + Converging Funnel Plasma Beams
       this.spawnPlasmaBeam(visorX, visorY - 4, this._ultFocusX, targetY - 6, 0.24, false, 4, 2);
       this.spawnPlasmaBeam(visorX, visorY + 4, this._ultFocusX, targetY + 6, 0.24, true, 4, 2);
+      game?.vfx?.spawnBeam?.({
+        x1: visorX,
+        y1: visorY,
+        x2: this._ultFocusX,
+        y2: targetY,
+        width: 18,
+        color: pulseIdx % 2 === 0 ? '#ec4899' : '#22d3ee',
+        coreColor: '#ffffff',
+        maxLife: 0.22,
+        owner: this
+      });
 
       this.fx?.spawn('visorHyperLaserBeam', this._safeFxX(visorX, game), this._safeFxY(visorY), {
         flip: false,
@@ -1570,7 +1624,20 @@ export class AndroidEx extends Fighter {
           fn.fired = true;
           const fx0 = this._ultFocusX + fn.ox;
           const fy0 = this.groundY + fn.oy;
-          this.spawnPlasmaBeam(fx0, fy0, this._ultFocusX + (k === 0 ? -14 : 14), this.groundY - 88, 0.26, k === 1, 4, 2);
+          const tx1 = this._ultFocusX + (k === 0 ? -14 : 14);
+          const ty1 = this.groundY - 88;
+          this.spawnPlasmaBeam(fx0, fy0, tx1, ty1, 0.26, k === 1, 4, 2);
+          game?.vfx?.spawnBeam?.({
+            x1: fx0,
+            y1: fy0,
+            x2: tx1,
+            y2: ty1,
+            width: 14,
+            color: k === 1 ? '#ec4899' : '#22d3ee',
+            coreColor: '#ffffff',
+            maxLife: 0.24,
+            owner: this
+          });
         }
       }
 
@@ -1597,8 +1664,25 @@ export class AndroidEx extends Fighter {
       const beamDx = Math.max(-200, Math.min(200, (this._ultFocusX - visorX) / 3));
       const beamDy = Math.max(-60, Math.min(52, (this.groundY - 92 - visorY) / 3));
 
+      // Overdrive Railgun Lance + Orbital Column Finisher!
       this.spawnPlasmaBeam(visorX, visorY - 5, this._ultFocusX, this.groundY - 98, 0.30, false, 4, 2);
       this.spawnPlasmaBeam(visorX, visorY + 5, this._ultFocusX, this.groundY - 86, 0.30, true, 4, 2);
+      game?.vfx?.spawnBeam?.({
+        x1: visorX,
+        y1: visorY,
+        x2: this._ultFocusX,
+        y2: this.groundY - 92,
+        width: 32,
+        color: '#ec4899',
+        coreColor: '#22d3ee',
+        maxLife: 0.34,
+        owner: this
+      });
+      this.spawnVfxAnim(7, this._ultFocusX, this.groundY - 112, 224, 288, 0.40, {
+        foreground: true
+      });
+      game?.vfx?.spawnShockwave?.(this._ultFocusX, this.groundY - 2, '#22d3ee', 164, 0.38);
+      game?.vfx?.spawnDecal?.(this._ultFocusX, this.groundY, 'scorch', 112);
 
       this.fx?.spawn('visorHyperLaserBeam', this._safeFxX(visorX, game), this._safeFxY(visorY), {
         flip: false,
@@ -1630,9 +1714,10 @@ export class AndroidEx extends Fighter {
         }
       }
       this.spawnCyberHexBurst(this._ultFocusX, this.groundY - 92, 12, true);
-      game?.renderer?.triggerShake?.(15, 0.28);
+      game?.renderer?.triggerImpactFrame?.(this._ultFocusX, this.groundY - 94, 0.08, 'cyber');
+      game?.renderer?.triggerShake?.(16, 0.28);
       game?.renderer?.triggerAberration?.(8);
-      game?.renderer?.triggerHitStop?.(0.05);
+      game?.renderer?.triggerHitStop?.(0.065);
       game?.audio?.play?.('emp_blast', this._ultFocusX);
     }
 
@@ -1736,6 +1821,20 @@ export class AndroidEx extends Fighter {
         this._trueUltStep = 2;
         game?.audio?.play?.('cyber_beam', this._trueUltTargetX);
         game?.audio?.play?.('blink', this.x);
+        for (let k = 0; k < 4; k++) {
+          const ang = k * Math.PI * 0.5 + 0.35;
+          game?.vfx?.spawnBeam?.({
+            x1: this._trueUltTargetX + Math.cos(ang) * 164,
+            y1: this.groundY - 110 + Math.sin(ang) * 108,
+            x2: this._trueUltTargetX - Math.cos(ang) * 164,
+            y2: this.groundY - 110 - Math.sin(ang) * 108,
+            width: 12,
+            color: k % 2 === 0 ? '#22d3ee' : '#ec4899',
+            coreColor: '#ffffff',
+            maxLife: 0.34,
+            owner: this
+          });
+        }
         game?.vfx?.spawnDamageText?.(
           this._trueUltTargetX,
           this.groundY - 196,
@@ -1778,10 +1877,35 @@ export class AndroidEx extends Fighter {
         }
       });
 
-      game?.renderer?.triggerImpactFrame?.(this._trueUltTargetX, this.groundY - 110, 0.10, 'cyber');
+      game?.renderer?.triggerImpactFrame?.(this._trueUltTargetX, this.groundY - 110, 0.11, 'cyber');
       game?.renderer?.triggerShake?.(28, 0.75);
       game?.renderer?.triggerAberration?.(12);
-      game?.renderer?.triggerHitStop?.(0.08);
+      game?.renderer?.triggerHitStop?.(0.085);
+
+      game?.vfx?.spawnBeam?.({
+        x1: visorX,
+        y1: visorY,
+        x2: this._trueUltTargetX,
+        y2: this.groundY - 104,
+        width: 28,
+        color: '#22d3ee',
+        coreColor: '#ffffff',
+        maxLife: 0.42,
+        owner: this
+      });
+      game?.vfx?.spawnBeam?.({
+        x1: this._trueUltTargetX,
+        y1: this.groundY - 620,
+        x2: this._trueUltTargetX,
+        y2: this.groundY,
+        width: 64,
+        color: '#22d3ee',
+        coreColor: '#ec4899',
+        maxLife: 0.88,
+        owner: this
+      });
+      game?.vfx?.spawnDecal?.(this._trueUltTargetX, this.groundY, 'scorch', 152);
+      game?.vfx?.spawnShockwave?.(this._trueUltTargetX, this.groundY - 2, '#ec4899', 216, 0.46);
 
       game?.audio?.play?.('ult_cast', this._trueUltTargetX);
       game?.audio?.play?.('cyber_beam', this._trueUltTargetX);
@@ -1867,6 +1991,10 @@ export class AndroidEx extends Fighter {
   update(dt, enemy, game) {
     this.game = game || this.game;
     this._currentEnemy = enemy;
+    if ((this.state === 'IDLE' || this.state === 'WALK') && !this._advPureDodge) {
+      this._overrideFrameIdx = null;
+      this.trueUltFrameOverride = null;
+    }
     this.fx?.update(dt);
     if (this.crouchCooldown > 0) this.crouchCooldown = Math.max(0, this.crouchCooldown - dt);
     if (this.vaultCooldown > 0) this.vaultCooldown = Math.max(0, this.vaultCooldown - dt);
@@ -1970,12 +2098,32 @@ export class AndroidEx extends Fighter {
    */
   drawBloomedVfxCell(ctx, vfxSheet, row, col, x, y, w, h, alpha = 0.95, flipX = false, _renderer = null) {
     if (!vfxSheet || !vfxSheet.complete || !vfxSheet.naturalWidth || alpha <= 0.01) return;
-    const sx = Math.max(0, Math.min(29, Math.floor(col))) * 208;
-    const sy = Math.max(0, Math.min(7, Math.floor(row))) * 208;
+    const clampedRow = Math.max(0, Math.min(7, Math.floor(row)));
+    const clampedCol = Math.max(0, Math.min(29, Math.floor(col)));
 
-    if (row !== 0) {
+    if (clampedRow !== 0 && clampedRow !== 1) {
       drawCyberBayerHalo(ctx, x, y, w * 0.34, h * 0.22, '#0891b2', '#ec4899', Math.min(0.12, alpha * 0.12));
     }
+
+    if (this.game?.vfx?.drawBloomedSprite) {
+      this.game.vfx.drawBloomedSprite(
+        ctx,
+        vfxSheet,
+        clampedCol * 208,
+        clampedRow * 208,
+        208,
+        208,
+        Math.round(x),
+        Math.round(y),
+        Math.round(w),
+        Math.round(h),
+        { alpha: alpha * 0.96, bloomAlpha: Math.min(0.26, alpha * 0.22), bloomScale: 1.04, flipX }
+      );
+      return;
+    }
+
+    const sx = clampedCol * 208;
+    const sy = clampedRow * 208;
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -1997,7 +2145,7 @@ export class AndroidEx extends Fighter {
     );
 
     ctx.globalCompositeOperation = 'lighter';
-    ctx.globalAlpha = Math.min(0.13, alpha * 0.12);
+    ctx.globalAlpha = Math.min(0.24, alpha * 0.20);
     ctx.drawImage(
       vfxSheet,
       sx,
@@ -2010,6 +2158,30 @@ export class AndroidEx extends Fighter {
       Math.round(h)
     );
     ctx.restore();
+  }
+
+  drawOrbitingFunnelPods(ctx, vfxSheet, inFront = false, alphaScale = 1.0) {
+    if (this.isDead || !vfxSheet?.complete || !vfxSheet.naturalWidth || !Array.isArray(this.funnelDrones)) return;
+    if (this.state === 'ULTIMATE' || (this.state === 'TRUE_ULTIMATE' && (this.stateTimer || 0) >= 1.15)) return;
+    for (let i = 0; i < this.funnelDrones.length; i++) {
+      const d = this.funnelDrones[i];
+      const depth = Math.sin(d.angle);
+      if (inFront ? depth < 0 : depth >= 0) continue;
+      const col = Math.floor(((d.angle * 4.8 + i * 7) % 30 + 30) % 30);
+      const podSize = inFront ? 84 : 74;
+      this.drawBloomedVfxCell(
+        ctx,
+        vfxSheet,
+        1,
+        col,
+        d.x,
+        d.y,
+        podSize,
+        podSize,
+        (inFront ? 0.92 : 0.78) * alphaScale,
+        this.facing < 0
+      );
+    }
   }
 
   drawFunnelBeamsAndCyberParticles(ctx, vfxSheet) {
@@ -2031,7 +2203,7 @@ export class AndroidEx extends Fighter {
       }
     }
 
-    // 2. Pixel HUD Target-Matrix Reticle & 6 Orbital Fin-Funnel Nodes (`VALKYRIE HYPER-PRISM BARRAGE` Ultimate, 0 ellipses!)
+    // 2. Holo Target-Matrix Hex Reticle & 6 Orbital Fin-Funnel Nodes (`VALKYRIE HYPER-PRISM BARRAGE` Ultimate — 0 boxy fillRect brackets!)
     if (this.hudTargetMatrix) {
       const m = this.hudTargetMatrix;
       const fade = Math.max(0, 1 - m.age / m.maxLife);
@@ -2039,7 +2211,7 @@ export class AndroidEx extends Fighter {
       const my = Math.round(m.y / 2) * 2;
       if (vfxSheet?.complete && vfxSheet.naturalWidth) {
         const col = Math.floor(m.age * 28) % 30;
-        this.drawBloomedVfxCell(ctx, vfxSheet, 3, col, mx, my, 196, 196, fade * 0.88, false);
+        this.drawBloomedVfxCell(ctx, vfxSheet, 3, col, mx, my, 212, 212, fade * 0.92, false);
         for (let i = 0; i < this.orbitalStrikeFunnels.length; i++) {
           const fn = this.orbitalStrikeFunnels[i];
           this.drawBloomedVfxCell(
@@ -2049,26 +2221,13 @@ export class AndroidEx extends Fighter {
             (col + i * 4) % 30,
             mx + fn.ox,
             this.groundY + fn.oy,
-            104,
-            104,
-            fade * 0.90,
+            112,
+            112,
+            fade * 0.94,
             fn.ox > 0
           );
         }
       }
-      ctx.save();
-      ctx.imageSmoothingEnabled = false;
-      ctx.globalAlpha = Math.min(0.86, fade);
-      for (const sx of [-1, 1]) {
-        for (const sy of [-1, 1]) {
-          const bx = mx + sx * 68;
-          const by = my + sy * 62;
-          ctx.fillStyle = '#22d3ee';
-          ctx.fillRect(sx < 0 ? bx : bx - 18, by, 18, 2);
-          ctx.fillRect(bx, sy < 0 ? by : by - 18, 2, 18);
-        }
-      }
-      ctx.restore();
     }
 
     // 3. 2-Pass Crisp 2px Plasma Beams (`<= 0.14` bloom, zero chevrons!)
@@ -2203,6 +2362,7 @@ export class AndroidEx extends Fighter {
     }
 
     this.drawBehind(ctx, renderer);
+    this.drawOrbitingFunnelPods(ctx, vfxSheet, false, 1.0);
 
     if (this.afterimages.length > 0 && sheet?.complete && sheet.naturalWidth) {
       for (const img of this.afterimages) {
@@ -2235,7 +2395,7 @@ export class AndroidEx extends Fighter {
       }
     }
 
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    const arenaCenterX = this._resolveShaderCenterX(renderer);
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'back', arenaCenterX, this.groundY, 0.96);
     }
@@ -2256,17 +2416,37 @@ export class AndroidEx extends Fighter {
       }
     }
 
-    const arenaCenterX = renderer?.worldWidth ? renderer.worldWidth * 0.5 : 600;
+    const arenaCenterX = this._resolveShaderCenterX(renderer);
     if (this.fx && !this.isDead) {
       this.fx.renderLayer(ctx, 'front', arenaCenterX, this.groundY, 0.98);
     }
 
+    this.drawOrbitingFunnelPods(ctx, vfxSheet, true, 1.0);
     this.drawFunnelBeamsAndCyberParticles(ctx, vfxSheet);
   }
 
   draw(ctx, isReflection = false, renderer = null) {
     const sprites = this.getExSprites();
     if (!sprites) return;
+    const vfxSheet = PixelForge.ensureImage(sprites.vfx);
+
+    if (isReflection && !this.isDead && vfxSheet?.complete && vfxSheet.naturalWidth) {
+      this.drawOrbitingFunnelPods(ctx, vfxSheet, false, 0.42);
+      this.drawOrbitingFunnelPods(ctx, vfxSheet, true, 0.42);
+      if (this.hudTargetMatrix) {
+        const m = this.hudTargetMatrix;
+        const fade = Math.max(0, 1 - m.age / m.maxLife);
+        const col = Math.floor(m.age * 28) % 30;
+        this.drawBloomedVfxCell(ctx, vfxSheet, 3, col, m.x, m.y, 184, 184, fade * 0.36, false, renderer);
+      }
+      if (this.state === 'TRUE_ULTIMATE' || this._trueUltBusterTimer > 0) {
+        const col = Math.floor(((this.stateTimer || 0) * 30) % 30);
+        this.drawBloomedVfxCell(ctx, vfxSheet, 5, col, this._trueUltTargetX, this.groundY - 6, 288, 208, 0.38, false, renderer);
+        if (this._trueUltBusterTimer > 0) {
+          this.drawBloomedVfxCell(ctx, vfxSheet, 7, col, this._trueUltTargetX, this.groundY - 128, 288, 296, 0.40, false, renderer);
+        }
+      }
+    }
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
@@ -2290,7 +2470,6 @@ export class AndroidEx extends Fighter {
     ctx.restore();
 
     if (isReflection) return;
-    const vfxSheet = PixelForge.ensureImage(sprites.vfx);
     if (!vfxSheet?.complete || !vfxSheet.naturalWidth) return;
 
     // Supreme Ultimate Phase 2 (`1.15..3.05s`): 8-Drone Hexagonal/Octagonal Cyber-Matrix Cage!
