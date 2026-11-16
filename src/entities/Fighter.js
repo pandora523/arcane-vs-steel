@@ -131,8 +131,8 @@ export class Fighter {
       case 'titan_ex':
         return {
           comboGoal: isEx ? 4 : 3,
-          sweetMin: isEx ? 110 : 114,
-          sweetMax: isEx ? 132 : 138,
+          sweetMin: isEx ? 112 : 114,
+          sweetMax: isEx ? 140 : 138,
           counterCrouchBias: 0.68,
           midLeapMin: 195,
           midLeapMax: 315,
@@ -153,8 +153,8 @@ export class Fighter {
       case 'warrior_ex':
         return {
           comboGoal: 4,
-          sweetMin: 108,
-          sweetMax: 126,
+          sweetMin: 112,
+          sweetMax: 142,
           counterCrouchBias: 0.64,
           midLeapMin: 185,
           midLeapMax: 300,
@@ -165,8 +165,8 @@ export class Fighter {
       case 'ronin_ex':
         return {
           comboGoal: 4,
-          sweetMin: isEx ? 96 : 78,
-          sweetMax: isEx ? 120 : 106,
+          sweetMin: isEx ? 112 : 78,
+          sweetMax: isEx ? 140 : 106,
           counterCrouchBias: 0.66,
           midLeapMin: 175,
           midLeapMax: 285,
@@ -177,8 +177,8 @@ export class Fighter {
       case 'android_ex':
         return {
           comboGoal: 4,
-          sweetMin: isEx ? 108 : 112,
-          sweetMax: isEx ? 128 : 158,
+          sweetMin: isEx ? 116 : 112,
+          sweetMax: isEx ? 148 : 158,
           counterCrouchBias: 0.60,
           midLeapMin: 180,
           midLeapMax: 290,
@@ -189,8 +189,8 @@ export class Fighter {
       case 'reaper_ex':
         return {
           comboGoal: 4,
-          sweetMin: isEx ? 112 : 118,
-          sweetMax: isEx ? 136 : 160,
+          sweetMin: isEx ? 118 : 118,
+          sweetMax: isEx ? 150 : 160,
           counterCrouchBias: 0.62,
           midLeapMin: 185,
           midLeapMax: 295,
@@ -201,8 +201,8 @@ export class Fighter {
       case 'chronomancer_ex':
         return {
           comboGoal: 4,
-          sweetMin: isEx ? 104 : 98,
-          sweetMax: isEx ? 128 : 142,
+          sweetMin: isEx ? 112 : 98,
+          sweetMax: isEx ? 142 : 142,
           counterCrouchBias: 0.56,
           midLeapMin: 175,
           midLeapMax: 285,
@@ -357,6 +357,7 @@ export class Fighter {
         this._aiComboReadyFinisher = 0;
       }
     }
+    this._overrideFrameIdx = null;
     if (newState !== 'TRUE_ULTIMATE') {
       this.trueUltFrameOverride = null;
     }
@@ -652,6 +653,7 @@ export class Fighter {
           core: pal.core,
           layer: 'front'
         });
+        this.game.vfx.spawnBurst(this.x, this.y - 102, isCrit ? 12 : 7, pal.primary || this.primaryColor, 185);
       } else {
         this.game.vfx.spawnBurst(this.x, this.y - 105, isCrit ? 14 : 8, this.primaryColor, 185);
       }
@@ -664,10 +666,10 @@ export class Fighter {
       }
     }
 
-    if (this.hp <= 0) {
-      this.isDead = true;
-      this.state = 'DEATH';
-      this.deathTimer = 0;
+    if (this.hp <= 0 && !this.isDead) {
+      this.trueUltFrameOverride = null;
+      this._overrideFrameIdx = null;
+      this.cameraAirLift = 0;
       this.isFlipVault = false;
       this.isAngelicAscent = false;
       this.isBlinkTeleport = false;
@@ -675,7 +677,23 @@ export class Fighter {
       this.isOmnislashing = false;
       this.isCrouching = false;
       this.isDeflecting = false;
-      this.vy = this.y >= this.groundY - 4 ? 0 : Math.max(0, this.vy * 0.35);
+      this.isSubmerged = false;
+      this.isFullyBurrowed = false;
+      this.isInvulnerable = false;
+      this.unstoppablePoise = false;
+      this.hasPoise = false;
+      this.isRooted = false;
+      this._grabbedByBoss = false;
+      this._advPureDodge = false;
+      this._advDodgeFrameOverride = null;
+      this.chronoTimeStopTimer = 0;
+      this.chronoTimeStopFrame = null;
+      this._hitStopTimer = 0;
+      this.stunTimer = 0;
+      this.setState('DEATH');
+      this.isDead = true;
+      this.deathTimer = 0;
+      this.vy = this.y >= this.groundY - 4 ? 0 : Math.max(0, (this.vy || 0) * 0.35);
       this.vx = dir * 115;
       this.torsoVel = dir * 10;
       if (this.game) {
@@ -980,6 +998,8 @@ export class Fighter {
       this.vy = 0;
       this.facing = isLeftTeam ? 1 : -1;
       this.state = 'IDLE';
+      this._overrideFrameIdx = null;
+      this.trueUltFrameOverride = null;
       this.walkPhase += dt * 2.5;
       this.headBob = Math.sin(this.walkPhase) * 1.8;
       this.torsoAngle *= Math.pow(0.05, dt);
@@ -1091,7 +1111,10 @@ export class Fighter {
     }
 
     // Physics integration & Gravity (skipped while in a controlled parabolic flip-vault arc, Adventure pure dodge, boss grab, or hard-rooted)
-    if (this.isRooted || this._grabbedByBoss) {
+    if (this.isDead) {
+      this.x += (this.vx || 0) * dt;
+      this.vx = (this.vx || 0) * Math.pow(0.002, dt);
+    } else if (this.isRooted || this._grabbedByBoss) {
       this.vx = 0;
       this.vy = 0;
     } else if (!this.isFlipVault && !this._advPureDodge) {
@@ -1143,9 +1166,26 @@ export class Fighter {
     this.updateCape(dt);
 
     if (this.isDead) {
-      this.deathTimer += dt;
+      if (this.state !== 'DEATH') {
+        this.state = 'DEATH';
+      }
+      this.trueUltFrameOverride = null;
+      this._overrideFrameIdx = null;
+      this.cameraAirLift = 0;
+      this.deathTimer = (this.deathTimer || 0) + dt;
+      if (this.y < this.groundY) {
+        this.vy = (this.vy || 0) + 1450 * dt;
+        this.y = Math.min(this.groundY, this.y + this.vy * dt);
+        if (this.y >= this.groundY) {
+          this.y = this.groundY;
+          this.vy = 0;
+        }
+      } else {
+        this.y = this.groundY;
+        this.vy = 0;
+      }
       this.torsoAngle += (Math.PI * 0.48 * -this.facing - this.torsoAngle) * 6 * dt;
-      if (this.deathTimer < 2.6 && Math.random() < 0.22) {
+      if (this.deathTimer < 2.6 && Math.random() < 0.22 && game?.vfx) {
         game.vfx.spawnParticle({
           x: this.x + (Math.random() - 0.5) * 64,
           y: this.y - 12 - Math.random() * 24,
@@ -1281,6 +1321,8 @@ export class Fighter {
     }
 
     if (this.state === 'IDLE' || this.state === 'WALK') {
+      this._overrideFrameIdx = null;
+      this.trueUltFrameOverride = null;
       if (isManualPlayer) {
         if (game?.isMatchOver && !this.isDead && this.y >= this.groundY - 2) {
           this.setState('VICTORY');
@@ -1553,16 +1595,18 @@ export class Fighter {
                 this.moveDir = 0;
               }
             }
-          } else if (this.heroId === 'ronin') {
-            // Iaido Samurai (Kaze-Maru): close-quarters katana maai (76..106px) so physical cuts reach enemy flesh!
+          } else if (this.heroId === 'ronin' || this.heroId === 'ronin_ex') {
+            // Iaido Samurai (Kaze-Maru / Kaze-Maru EX): close-quarters katana maai with >= 28px deadband above minSep=110 on EX!
             const nearSpacingWall = this.x < effMinWall + 60 || this.x > effBackMaxWall - 60;
-            if (dist > 106) {
+            const roninMin = isExFighter ? 112 : 76;
+            const roninMax = isExFighter ? 140 : 106;
+            if (dist > roninMax) {
               this.state = 'WALK';
               this.moveDir = 1;
               this.walkPhase += dt * 4.4;
               this.x += this.facing * this.moveSpeed * 0.84 * dt;
               this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
-            } else if (dist < 76 && !nearSpacingWall) {
+            } else if (dist < roninMin && !nearSpacingWall) {
               this.state = 'WALK';
               this.moveDir = -1;
               this.walkPhase += dt * 3.8;
@@ -1572,16 +1616,18 @@ export class Fighter {
               this.state = 'IDLE';
               this.moveDir = 0;
             }
-          } else if (this.heroId === 'android') {
-            // Cyber-Valkyrie (VEX-09): disciplined blade-tip spacing (118..148px)
+          } else if (this.heroId === 'android' || this.heroId === 'android_ex') {
+            // Cyber-Valkyrie (VEX-09 / VEX-09 EX): disciplined blade-tip spacing (>= 30px deadband above minSep=110)
             const nearSpacingWall = this.x < effMinWall + 60 || this.x > effBackMaxWall - 60;
-            if (dist > 148) {
+            const andMin = isExFighter ? 116 : 118;
+            const andMax = 148;
+            if (dist > andMax) {
               this.state = 'WALK';
               this.moveDir = 1;
               this.walkPhase += dt * 4.4;
               this.x += this.facing * this.moveSpeed * 0.76 * 0.85 * dt;
               this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.3;
-            } else if (dist < 118 && !nearSpacingWall) {
+            } else if (dist < andMin && !nearSpacingWall) {
               this.state = 'WALK';
               this.moveDir = -1;
               this.walkPhase += dt * 4.0;
@@ -1591,16 +1637,18 @@ export class Fighter {
               this.state = 'IDLE';
               this.moveDir = 0;
             }
-          } else if (this.heroId === 'chronomancer') {
-            // Sovereign of Time (Chronos): close-quarters Twin Clock-Blade duelist spacing (98..136px)
+          } else if (this.heroId === 'chronomancer' || this.heroId === 'chronomancer_ex') {
+            // Sovereign of Time (Chronos / Chronos EX): close-quarters Twin Clock-Blade duelist spacing (>= 30px deadband on EX)
             const nearChronoWall = this.x < effMinWall + 65 || this.x > effBackMaxWall - 65;
-            if (dist > 136) {
+            const chrMin = isExFighter ? 112 : 98;
+            const chrMax = isExFighter ? 142 : 136;
+            if (dist > chrMax) {
               this.state = 'WALK';
               this.moveDir = 1;
               this.walkPhase += dt * 4.4;
               this.x += this.facing * this.moveSpeed * 0.88 * dt;
               this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-            } else if (dist < 98 && !nearChronoWall) {
+            } else if (dist < chrMin && !nearChronoWall) {
               this.state = 'WALK';
               this.moveDir = -1;
               this.walkPhase += dt * 4.0;
@@ -1610,9 +1658,10 @@ export class Fighter {
               this.state = 'IDLE';
               this.moveDir = 0;
             }
-          } else if (this.heroId === 'titan') {
-            // Unstoppable Mountain Juggernaut (Torgar): heavy, earth-shaking march into point-blank maul range (124px)
-            if (dist > 124) {
+          } else if (this.heroId === 'titan' || this.heroId === 'titan_ex') {
+            // Unstoppable Mountain Juggernaut (Torgar / Torgar EX): heavy march into maul range (140px on EX = 30px deadband above minSep=110)
+            const titanMax = isExFighter ? 140 : 124;
+            if (dist > titanMax) {
               this.state = 'WALK';
               this.moveDir = 1;
               this.walkPhase += dt * 3.4;
@@ -1622,15 +1671,16 @@ export class Fighter {
               this.state = 'IDLE';
               this.moveDir = 0;
             }
-          } else if (this.heroId === 'reaper') {
-            // Abyssal Harvester (Malakor): predatory scythe-hook stalking (124..152px)
+          } else if (this.heroId === 'reaper' || this.heroId === 'reaper_ex') {
+            // Abyssal Harvester (Malakor / Malakor EX): predatory scythe-hook stalking (118..150px = 32px deadband above minSep=110)
+            const nearReaperWall = this.x < effMinWall + 65 || this.x > effBackMaxWall - 65;
             if (dist > 150) {
               this.state = 'WALK';
               this.moveDir = 1;
               this.walkPhase += dt * 4.3;
               this.x += this.facing * this.moveSpeed * 0.86 * dt;
               this.headBob = Math.sin((this.walkPhase * Math.PI) / 2.0) * 1.4;
-            } else if (dist < 118) {
+            } else if (dist < 118 && (!isExFighter || !nearReaperWall)) {
               this.state = 'WALK';
               this.moveDir = -1;
               this.walkPhase += dt * 4.0;
@@ -1641,9 +1691,9 @@ export class Fighter {
               this.moveDir = 0;
             }
           } else if (isExFighter) {
-            // Next-Gen Wide-Canvas (320x240, anchorX=112) Exvius Sovereign sweet-spot so enemies stand inside the fattest belly of the 208px smear arc!
-            const exSweetMin = aiProfile.sweetMin || 108;
-            const exSweetMax = aiProfile.sweetMax || 128;
+            // Next-Gen Wide-Canvas (320x240, anchorX=112) Exvius Sovereign sweet-spot (>= 30px deadband above minSep=110 so zero crab jitter!)
+            const exSweetMin = Math.max(112, aiProfile.sweetMin || 112);
+            const exSweetMax = Math.max(exSweetMin + 30, aiProfile.sweetMax || 142);
             const nearExWall = this.x < effMinWall + 65 || this.x > effBackMaxWall - 65;
             if (dist > exSweetMax) {
               this.state = 'WALK';

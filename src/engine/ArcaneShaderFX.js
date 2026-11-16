@@ -225,10 +225,15 @@ export function clearPixelSurface(surface) {
 }
 
 /** Merge `albedo` + additive `emissive` into unpremultiplied RGBA bytes for Canvas `putImageData` or PNG export. */
-export function resolveSurfaceToRGBA(surface, outRgba, emissiveGain = 1.08) {
-  const total = surface.width * surface.height;
+export function resolveSurfaceToRGBA(surface, outRgba, emissiveGain = 1.08, opts = null) {
+  const w = surface.width;
+  const h = surface.height;
+  const total = w * h;
   const alb = surface.albedo;
   const emi = surface.emissive;
+  const softEdges = Boolean(opts && (opts === true || opts.softViewportEdges));
+  const borderFade = softEdges ? Math.max(1, opts.borderFadePx ?? 12) : 0;
+
   for (let i = 0; i < total; i++) {
     const c = alb[i];
     const l = emi[i] & 0xffffff;
@@ -270,6 +275,16 @@ export function resolveSurfaceToRGBA(surface, outRgba, emissiveGain = 1.08) {
       }
     }
 
+    if (softEdges && a > 0) {
+      const x = i % w;
+      const y = (i / w) | 0;
+      const distEdge = Math.min(x, w - 1 - x, y, h - 1 - y);
+      if (distEdge < borderFade) {
+        const edgeFactor = distEdge <= 0 ? 0 : distEdge / borderFade;
+        a = (a * edgeFactor) | 0;
+      }
+    }
+
     outRgba[o] = r | 0;
     outRgba[o + 1] = g | 0;
     outRgba[o + 2] = b | 0;
@@ -283,14 +298,35 @@ export function resolveSurfaceToRGBA(surface, outRgba, emissiveGain = 1.08) {
  *  1. `outAlbedoRgba`: Crisp palette-indexed pixel art (`source-over`)
  *  2. `outEmissiveRgba`: Pure additive HDR bloom + specular core (`lighter`)
  */
-export function resolveSurfaceToSplitRGBA(surface, outAlbedoRgba, outEmissiveRgba, emissiveGain = 1.18) {
-  const total = surface.width * surface.height;
+export function resolveSurfaceToSplitRGBA(
+  surface,
+  outAlbedoRgba,
+  outEmissiveRgba,
+  emissiveGain = 1.18,
+  opts = null
+) {
+  const w = surface.width;
+  const h = surface.height;
+  const total = w * h;
   const alb = surface.albedo;
   const emi = surface.emissive;
+  const softEdges = Boolean(opts && (opts === true || opts.softViewportEdges));
+  const borderFade = softEdges ? Math.max(1, opts.borderFadePx ?? 12) : 0;
+
   for (let i = 0; i < total; i++) {
     const c = alb[i];
     const l = emi[i] & 0xffffff;
     const o = i * 4;
+
+    let edgeFactor = 1;
+    if (softEdges && (c || l)) {
+      const x = i % w;
+      const y = (i / w) | 0;
+      const distEdge = Math.min(x, w - 1 - x, y, h - 1 - y);
+      if (distEdge < borderFade) {
+        edgeFactor = distEdge <= 0 ? 0 : distEdge / borderFade;
+      }
+    }
 
     if (!c) {
       outAlbedoRgba[o] = 0;
@@ -301,7 +337,7 @@ export function resolveSurfaceToSplitRGBA(surface, outAlbedoRgba, outEmissiveRgb
       outAlbedoRgba[o] = c & 255;
       outAlbedoRgba[o + 1] = (c >>> 8) & 255;
       outAlbedoRgba[o + 2] = (c >>> 16) & 255;
-      outAlbedoRgba[o + 3] = c >>> 24;
+      outAlbedoRgba[o + 3] = edgeFactor < 1 ? ((c >>> 24) * edgeFactor) | 0 : c >>> 24;
     }
 
     if (!l && !c) {
@@ -331,7 +367,7 @@ export function resolveSurfaceToSplitRGBA(surface, outAlbedoRgba, outEmissiveRgb
     }
 
     const maxL = Math.max(lr, lg, lb);
-    if (maxL < 2) {
+    if (maxL < 2 || edgeFactor <= 0) {
       outEmissiveRgba[o] = 0;
       outEmissiveRgba[o + 1] = 0;
       outEmissiveRgba[o + 2] = 0;
@@ -339,10 +375,13 @@ export function resolveSurfaceToSplitRGBA(surface, outAlbedoRgba, outEmissiveRgb
     } else {
       const aEmi = Math.min(255, Math.round(maxL));
       const scale = 255 / Math.max(1, aEmi);
-      outEmissiveRgba[o] = Math.min(255, Math.round(lr * scale));
-      outEmissiveRgba[o + 1] = Math.min(255, Math.round(lg * scale));
-      outEmissiveRgba[o + 2] = Math.min(255, Math.round(lb * scale));
-      outEmissiveRgba[o + 3] = aEmi;
+      const er = Math.min(255, Math.round(lr * scale));
+      const eg = Math.min(255, Math.round(lg * scale));
+      const eb = Math.min(255, Math.round(lb * scale));
+      outEmissiveRgba[o] = edgeFactor < 1 ? (er * edgeFactor) | 0 : er;
+      outEmissiveRgba[o + 1] = edgeFactor < 1 ? (eg * edgeFactor) | 0 : eg;
+      outEmissiveRgba[o + 2] = edgeFactor < 1 ? (eb * edgeFactor) | 0 : eb;
+      outEmissiveRgba[o + 3] = edgeFactor < 1 ? (aEmi * edgeFactor) | 0 : aEmi;
     }
   }
 }
@@ -1097,9 +1136,37 @@ export class ArcaneShaderFX {
   }
 
   computeViewport(centerWorldX = this.arenaCenterX, groundWorldY = this.groundWorldY) {
-    const effectiveCenterX = Number.isFinite(this.overrideCenterWorldX)
-      ? this.overrideCenterWorldX
-      : centerWorldX;
+    let effectiveCenterX = centerWorldX;
+    if (Number.isFinite(this.overrideCenterWorldX)) {
+      effectiveCenterX = this.overrideCenterWorldX;
+    } else if (this.active.length > 0 || this.worldMotes.length > 0) {
+      let minWX = Infinity;
+      let maxWX = -Infinity;
+      for (let i = 0; i < this.active.length; i++) {
+        const s = this.active[i];
+        const wx = s?.worldX;
+        if (Number.isFinite(wx)) {
+          if (wx < minWX) minWX = wx;
+          if (wx > maxWX) maxWX = wx;
+          const spanX = s.inst?.cfg?.spanX;
+          if (Number.isFinite(spanX) && spanX > 0) {
+            const wxEnd = s.inst?.cfg?.mirror ? wx - spanX : wx + spanX;
+            if (wxEnd < minWX) minWX = wxEnd;
+            if (wxEnd > maxWX) maxWX = wxEnd;
+          }
+        }
+      }
+      for (let i = 0; i < this.worldMotes.length; i++) {
+        const mx = this.worldMotes[i].worldX;
+        if (Number.isFinite(mx)) {
+          if (mx < minWX) minWX = mx;
+          if (mx > maxWX) maxWX = mx;
+        }
+      }
+      if (minWX <= maxWX) {
+        effectiveCenterX = clampRange((minWX + maxWX) * 0.5, 0, 9600);
+      }
+    }
     const scale = this.pixelScale;
     const worldW = this.viewW * scale;
     const worldH = this.viewH * scale;
@@ -1129,16 +1196,20 @@ export class ArcaneShaderFX {
       this.active.shift();
     }
 
-    const { scale, worldLeft, worldTop } = this.computeViewport();
+    const { scale, worldLeft, worldTop } = this.computeViewport(
+      this.active.length > 0 ? this.arenaCenterX : worldX,
+      this.groundWorldY
+    );
     const lx = Math.round((worldX - worldLeft) / scale);
     const ly = Math.round((worldY - worldTop) / scale);
+    const lightLevel = opts.light ?? opts.bloom ?? 1.0;
 
     const inst = instantiateShaderEffect(def, {
       x: lx,
       y: ly,
       mirror: Boolean(opts.flip ?? opts.mirror),
       angle: opts.angle ?? 0,
-      bloom: opts.light ?? opts.bloom ?? 1.0,
+      bloom: lightLevel,
       seed: opts.seed ?? this.seedSeq++,
       ...(opts.palette ? { palette: opts.palette } : {}),
       ...(opts.extra || {})
@@ -1153,6 +1224,7 @@ export class ArcaneShaderFX {
       inst,
       worldX,
       worldY,
+      light: lightLevel,
       vx: opts.vx || 0,
       vy: opts.vy || 0,
       follow: opts.follow || null,
@@ -1326,8 +1398,11 @@ export class ArcaneShaderFX {
     }
 
     const { surface, worldLeft, worldTop, worldW, worldH } = rast;
-    resolveSurfaceToRGBA(surface, rgba, 1.15);
-    resolveSurfaceToSplitRGBA(surface, albedoRgba, emissiveRgba, 1.22);
+    resolveSurfaceToRGBA(surface, rgba, 1.15, { softViewportEdges: true, borderFadePx: 12 });
+    resolveSurfaceToSplitRGBA(surface, albedoRgba, emissiveRgba, 1.22, {
+      softViewportEdges: true,
+      borderFadePx: 12
+    });
     const w = this.viewW;
     const h = this.viewH;
     const m = 16;

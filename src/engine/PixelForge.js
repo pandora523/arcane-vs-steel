@@ -570,9 +570,16 @@ export class PixelForge {
       return 180 + step;
     }
 
-    const frameOverride = fighter.trueUltFrameOverride ?? fighter._overrideFrameIdx;
-    if (frameOverride !== undefined && frameOverride !== null) {
-      return frameOverride;
+    if (
+      st === 'AUTO_ATTACK' ||
+      st === 'SKILL' ||
+      st === 'ULTIMATE' ||
+      st === 'TRUE_ULTIMATE'
+    ) {
+      const frameOverride = fighter.trueUltFrameOverride ?? fighter._overrideFrameIdx;
+      if (frameOverride !== undefined && frameOverride !== null) {
+        return frameOverride;
+      }
     }
 
     if (st === 'AUTO_ATTACK') {
@@ -1170,6 +1177,54 @@ export class PixelForge {
       return;
     }
 
+    // Real-Time Ray-Cast Directional Specular Rim-Lighting on Characters (`2px` pixel silhouette catchlight)
+    if (
+      !isReflection &&
+      !fighter.isDead &&
+      typeof document !== 'undefined' &&
+      renderer?.activePointLights?.length > 0
+    ) {
+      const lights = renderer.activePointLights;
+      let bestLight = null;
+      let bestScore = 0.35;
+      for (let li = 0; li < lights.length; li++) {
+        const L = lights[li];
+        if (!L || (L.isSelfPassive && L.owner === fighter)) continue;
+        const dx = L.x - fighter.x;
+        const dy = L.y - (fighter.y - 76);
+        if (Math.abs(dx) > 480 || Math.abs(dy) > 480) continue;
+        const dist = Math.hypot(dx, dy);
+        if (dist >= 480) continue;
+        const maxSpan = Math.max(180, (L.radius || 180) * 1.35);
+        if (dist >= maxSpan) continue;
+        const score = (L.intensity || 1) * (1 - dist / maxSpan);
+        if (score > bestScore) {
+          bestScore = score;
+          bestLight = L;
+        }
+      }
+      if (bestLight) {
+        const facingSign = fighter.facing || 1;
+        const rimDx = Math.sign((bestLight.x - fighter.x) * facingSign || 1) * 2;
+        const rimDy = bestLight.y < fighter.y - 70 ? -2 : 0;
+        const lightHex = this._lightHexForType(bestLight.colorType);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = Math.min(0.46, 0.16 + bestScore * 0.22);
+        this.drawSilhouetteFrame(
+          ctx,
+          charSet,
+          frameIdx,
+          w,
+          h,
+          lightHex,
+          recoilX + rimDx,
+          recoilY + rimDy
+        );
+        ctx.restore();
+      }
+    }
+
     // Draw crisp 30fps handcrafted sprite frame directly on the integer pixel grid (ZERO horizontal shear/pulling!)
     ctx.drawImage(
       sheet,
@@ -1184,11 +1239,34 @@ export class PixelForge {
     );
   }
 
-  static drawGhostFrame(_ctx, _charSet, _frameIdx, _w, _h) {
-    // Disabled additive double-exposure so character faces and inked silhouettes stay 100% crisp during hits
+  static _lightHexForType(colorType) {
+    switch (colorType) {
+      case 'emerald':
+        return '#34d399';
+      case 'violet':
+        return '#d946ef';
+      case 'indigo':
+        return '#818cf8';
+      case 'crimson':
+        return '#f43f5e';
+      case 'teal':
+        return '#2dd4bf';
+      case 'gold':
+        return '#fde047';
+      case 'orange':
+        return '#fb923c';
+      case 'cyan':
+      default:
+        return '#38bdf8';
+    }
   }
 
-  static drawAfterimageFrame(ctx, charSet, frameIdx, w, h) {
+  static drawGhostFrame(_ctx, _charSet, _frameIdx, _w, _h) {
+    // Disabled additive double-exposure so character faces and inked silhouettes stay 100% crisp during hits
+    // (resolveSheetMetrics handles 320x240 *_ex and 208x208 Legacy cells across all active frame helpers)
+  }
+
+  static drawAfterimageFrame(ctx, charSet, frameIdx, w, h, offsetX = 0, offsetY = 0) {
     const sheet = this.ensureImage(charSet?.sheet);
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
     const { cellW, cellH, cols, rows, drawW, drawH, baseX, baseY } = this.resolveSheetMetrics(
@@ -1202,10 +1280,29 @@ export class PixelForge {
     const row = Math.min(rows - 1, Math.max(0, (safeIdx / cols) | 0));
     const sx = col * cellW;
     const sy = row * cellH;
-    ctx.drawImage(sheet, sx, sy, cellW, cellH, Math.round(baseX), Math.round(baseY), drawW, drawH);
+    ctx.drawImage(
+      sheet,
+      sx,
+      sy,
+      cellW,
+      cellH,
+      Math.round(baseX + offsetX),
+      Math.round(baseY + offsetY),
+      drawW,
+      drawH
+    );
   }
 
-  static drawSilhouetteFrame(ctx, charSet, frameIdx, w, h, color = '#03040a') {
+  static drawSilhouetteFrame(
+    ctx,
+    charSet,
+    frameIdx,
+    w,
+    h,
+    color = '#03040a',
+    offsetX = 0,
+    offsetY = 0
+  ) {
     const sheet = this.ensureImage(charSet?.sheet);
     if (!sheet || !sheet.complete || !sheet.naturalWidth) return;
     const { cellW, cellH, cols, rows, drawW, drawH, baseX, baseY } = this.resolveSheetMetrics(
@@ -1234,7 +1331,7 @@ export class PixelForge {
       if (sCtx) {
         sCtx.imageSmoothingEnabled = false;
         sCtx.globalCompositeOperation = 'source-over';
-        sCtx.clearRect(0, 0, cellW, cellH);
+        sCtx.clearRect(0, 0, this._silCanvas.width, this._silCanvas.height);
         sCtx.drawImage(sheet, sx, sy, cellW, cellH, 0, 0, cellW, cellH);
         sCtx.globalCompositeOperation = 'source-in';
         sCtx.fillStyle = color;
@@ -1245,15 +1342,25 @@ export class PixelForge {
           0,
           cellW,
           cellH,
-          Math.round(baseX),
-          Math.round(baseY),
+          Math.round(baseX + offsetX),
+          Math.round(baseY + offsetY),
           drawW,
           drawH
         );
         return;
       }
     }
-    ctx.drawImage(sheet, sx, sy, cellW, cellH, Math.round(baseX), Math.round(baseY), drawW, drawH);
+    ctx.drawImage(
+      sheet,
+      sx,
+      sy,
+      cellW,
+      cellH,
+      Math.round(baseX + offsetX),
+      Math.round(baseY + offsetY),
+      drawW,
+      drawH
+    );
   }
 
   /**

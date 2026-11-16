@@ -1,5 +1,6 @@
 import { PixelFont } from './PixelFont.js?v=30fps115';
 import { PixelForge } from './PixelForge.js?v=30fps115';
+import { drawExHitStarburst, getExHeroPalette } from './shaders/exNextGenFX.js?v=30fps115';
 
 const LIGHT_RGB_CYAN = { nr: 0.22, ng: 0.74, nb: 0.98 };
 const LIGHT_RGB_EMERALD = { nr: 0.16, ng: 0.85, nb: 0.58 };
@@ -180,12 +181,12 @@ export class VFXManager {
     });
     const baseHero = baseHeroKey(heroId);
     const isDecluttered =
-      heroId.endsWith('_ex') ||
-      baseHero === 'titan' ||
-      baseHero === 'reaper' ||
-      baseHero === 'archer' ||
-      baseHero === 'icemage' ||
-      baseHero === 'android';
+      !heroId.endsWith('_ex') &&
+      (baseHero === 'titan' ||
+        baseHero === 'reaper' ||
+        baseHero === 'archer' ||
+        baseHero === 'icemage' ||
+        baseHero === 'android');
     if (isDecluttered) {
       // Crisp, readable hit sparks without burying the 5 custom-shader heroes in double-layered confetti
       this.spawnBurst(x, y, isCrit ? 6 : 3, col, isCrit ? 220 : 175, {
@@ -319,20 +320,52 @@ export class VFXManager {
     }
   }
 
-  spawnSlash(x, y, radius, startAngle, endAngle, color = '#38bdf8', duration = 0.28) {
+  spawnSlash(
+    xOrOpts,
+    y,
+    radius,
+    startAngle,
+    endAngle,
+    color = '#38bdf8',
+    duration = 0.28,
+    extraOpts = null
+  ) {
     if (this.slashes.length >= 32) this.slashes.shift();
-    this.slashes.push({ x, y, radius, startAngle, endAngle, color, life: 0, maxLife: duration });
+    const isObj = xOrOpts && typeof xOrOpts === 'object';
+    const sx = isObj ? xOrOpts.x : xOrOpts;
+    const sy = isObj ? xOrOpts.y : y;
+    const sRad = isObj ? xOrOpts.radius ?? 84 : radius;
+    const sA0 = isObj ? xOrOpts.startAngle ?? -0.8 : startAngle;
+    const sA1 = isObj ? xOrOpts.endAngle ?? 0.8 : endAngle;
+    const sCol = isObj ? xOrOpts.color || '#38bdf8' : color;
+    const sDur = isObj ? xOrOpts.duration ?? xOrOpts.maxLife ?? 0.28 : duration;
+    const sOwner = isObj ? xOrOpts.owner || null : extraOpts?.owner || null;
+    const sHeroId = isObj
+      ? xOrOpts.heroId || sOwner?.heroId || null
+      : extraOpts?.heroId || sOwner?.heroId || null;
+    this.slashes.push({
+      x: sx,
+      y: sy,
+      radius: sRad,
+      startAngle: sA0,
+      endAngle: sA1,
+      color: sCol,
+      owner: sOwner,
+      heroId: sHeroId,
+      life: 0,
+      maxLife: sDur
+    });
     // Emit glowing arc sparks along the slash wave!
     for (let i = 0; i < 8; i++) {
       const u = i / 7;
-      const a = startAngle + (endAngle - startAngle) * u;
+      const a = sA0 + (sA1 - sA0) * u;
       this.spawnParticle({
-        x: x + Math.cos(a) * radius * 0.85,
-        y: y + Math.sin(a) * radius * 0.85,
+        x: sx + Math.cos(a) * sRad * 0.85,
+        y: sy + Math.sin(a) * sRad * 0.85,
         vx: Math.cos(a) * (110 + Math.random() * 90),
         vy: Math.sin(a) * (110 + Math.random() * 90) - 35,
         size: 6 + Math.random() * 4,
-        color,
+        color: sCol,
         maxLife: 0.32 + Math.random() * 0.16,
         gravity: 90,
         additive: true
@@ -397,11 +430,14 @@ export class VFXManager {
 
   spawnTornado(opts) {
     if (this.tornados.length >= 12) this.tornados.shift();
+    const owner = opts.owner || opts.followFighter || null;
     this.tornados.push({
       x: opts.x,
       groundY: opts.groundY,
       vx: opts.vx || 0,
       followFighter: opts.followFighter || null,
+      owner,
+      heroId: opts.heroId || owner?.heroId || null,
       radius: opts.radius || 68,
       height: opts.height || 260,
       color: opts.color || '#10b981',
@@ -412,12 +448,33 @@ export class VFXManager {
     });
   }
 
-  spawnBeam(optsOrX1, y1, x2, y2, color = '#c084fc', width = 24, maxLife = 0.45) {
+  spawnBeam(
+    optsOrX1,
+    y1,
+    x2,
+    y2,
+    color = '#c084fc',
+    width = 24,
+    maxLife = 0.45,
+    extraOpts = null
+  ) {
     if (this.beams.length >= 12) this.beams.shift();
     const opts =
       typeof optsOrX1 === 'object'
         ? optsOrX1
-        : { x1: optsOrX1, y1, x2, y2, color, coreColor: '#f43f5e', width, maxLife };
+        : {
+            x1: optsOrX1,
+            y1,
+            x2,
+            y2,
+            color,
+            coreColor: extraOpts?.coreColor || '#f43f5e',
+            width,
+            maxLife,
+            owner: extraOpts?.owner || null,
+            heroId: extraOpts?.heroId || extraOpts?.owner?.heroId || null
+          };
+    const owner = opts.owner || null;
     this.beams.push({
       x1: opts.x1,
       y1: opts.y1,
@@ -426,6 +483,8 @@ export class VFXManager {
       width: opts.width || 44,
       color: opts.color || '#10b981',
       coreColor: opts.coreColor || '#fef08a',
+      owner,
+      heroId: opts.heroId || owner?.heroId || null,
       life: 0,
       maxLife: opts.maxLife || 0.62
     });
@@ -433,6 +492,7 @@ export class VFXManager {
 
   spawnCrystalSpike(opts) {
     if (this.crystalSpikes.length >= 32) this.crystalSpikes.shift();
+    const owner = opts.owner || null;
     this.crystalSpikes.push({
       x: opts.x,
       groundY: opts.groundY || 520,
@@ -441,7 +501,8 @@ export class VFXManager {
       tilt: opts.tilt || 0,
       color: opts.color || '#38bdf8',
       coreColor: opts.coreColor || '#e0f2fe',
-      owner: opts.owner || null,
+      owner,
+      heroId: opts.heroId || owner?.heroId || null,
       target: opts.target || null,
       damage: opts.damage || 28,
       delay: opts.delay || 0,
@@ -454,6 +515,7 @@ export class VFXManager {
 
   spawnEclipseSupernova(opts) {
     if (this.supernovas.length >= 8) this.supernovas.shift();
+    const owner = opts.owner || null;
     this.supernovas.push({
       x: opts.x,
       y: opts.y || 185,
@@ -461,6 +523,8 @@ export class VFXManager {
       maxRadius: opts.maxRadius || 96,
       color: opts.color || '#fb923c',
       coreColor: opts.coreColor || '#fef08a',
+      owner,
+      heroId: opts.heroId || owner?.heroId || null,
       life: 0,
       maxLife: opts.maxLife || 1.25
     });
@@ -468,6 +532,7 @@ export class VFXManager {
 
   spawnSkyStrike(opts) {
     if (this.skyStrikes.length >= 36) this.skyStrikes.shift();
+    const owner = opts.owner || null;
     this.skyStrikes.push({
       x: opts.x,
       y: opts.y ?? -180,
@@ -478,7 +543,8 @@ export class VFXManager {
       type: opts.type || 'starfall_arrow', // 'starfall_arrow' | 'runeblade' | 'solar_lance' | 'holy_spear'
       color: opts.color || '#10b981',
       coreColor: opts.coreColor || '#fef08a',
-      owner: opts.owner || null,
+      owner,
+      heroId: opts.heroId || owner?.heroId || null,
       target: opts.target || null,
       damage: opts.damage ?? 28,
       delay: opts.delay || 0,
@@ -514,6 +580,7 @@ export class VFXManager {
       color: opts.color || '#fb923c',
       coreColor: opts.coreColor || '#fef08a',
       owner: opts.owner,
+      heroId: opts.heroId || opts.owner?.heroId || null,
       damage: opts.damage || 60,
       type: opts.type || (opts.isMeteor ? 'meteor' : 'fireball'),
       isMeteor: !!opts.isMeteor,
@@ -591,12 +658,12 @@ export class VFXManager {
     const hId = fighter?.heroId || '';
     const baseHId = baseHeroKey(hId);
     const isDecluttered =
-      hId.endsWith('_ex') ||
-      baseHId === 'titan' ||
-      baseHId === 'reaper' ||
-      baseHId === 'archer' ||
-      baseHId === 'icemage' ||
-      baseHId === 'android';
+      !hId.endsWith('_ex') &&
+      (baseHId === 'titan' ||
+        baseHId === 'reaper' ||
+        baseHId === 'archer' ||
+        baseHId === 'icemage' ||
+        baseHId === 'android');
 
     // Immediate special-cast burst around the head & shoulders (skip circular shockwave ring for abyssal Reaper & chrono)
     if (!isDecluttered && theme !== 'abyssal' && theme !== 'chrono') {
@@ -630,12 +697,12 @@ export class VFXManager {
       const caHeroId = ca.fighter.heroId || '';
       const caBaseHero = baseHeroKey(caHeroId);
       const caDecluttered =
-        caHeroId.endsWith('_ex') ||
-        caBaseHero === 'titan' ||
-        caBaseHero === 'reaper' ||
-        caBaseHero === 'archer' ||
-        caBaseHero === 'icemage' ||
-        caBaseHero === 'android';
+        !caHeroId.endsWith('_ex') &&
+        (caBaseHero === 'titan' ||
+          caBaseHero === 'reaper' ||
+          caBaseHero === 'archer' ||
+          caBaseHero === 'icemage' ||
+          caBaseHero === 'android');
       if (caDecluttered) {
         if (Math.random() < (ca.isUltimate ? 0.35 : 0.18)) {
           this.spawnParticle({
@@ -1045,7 +1112,9 @@ export class VFXManager {
         col === '#c084fc' ||
         col === '#9333ea' ||
         col === '#7e22ce' ||
-        col === '#e879f9'
+        col === '#e879f9' ||
+        col === '#d946ef' ||
+        col === '#a855f7'
       ) {
         return 'violet';
       }
@@ -1070,7 +1139,17 @@ export class VFXManager {
       }
       return 'cyan';
     };
-    const pushLight = (x, y, radius, colorType, intensity, z = 68, groundY = gy) => {
+    const pushLight = (
+      x,
+      y,
+      radius,
+      colorType,
+      intensity,
+      z = 68,
+      groundY = gy,
+      owner = null,
+      isSelfPassive = false
+    ) => {
       const rgb = rgbForType(colorType);
       let slot = this._lightPool[count];
       if (!slot) {
@@ -1084,7 +1163,9 @@ export class VFXManager {
           nr: 0,
           ng: 0,
           nb: 0,
-          groundY: gy
+          groundY: gy,
+          owner: null,
+          isSelfPassive: false
         };
         this._lightPool[count] = slot;
       }
@@ -1098,41 +1179,101 @@ export class VFXManager {
       slot.ng = rgb.ng;
       slot.nb = rgb.nb;
       slot.groundY = groundY;
+      slot.owner = owner;
+      slot.isSelfPassive = isSelfPassive;
       lights[count++] = slot;
     };
 
     for (const f of fighters) {
       const fGy = Number.isFinite(f.groundY) ? f.groundY : gy;
       const colorType = typeForHex(f.primaryColor);
+      const isTrueUlt = f.state === 'TRUE_ULTIMATE';
+      const isUlt = f.state === 'ULTIMATE';
+      const isSkill = f.state === 'SKILL';
       pushLight(
         f.x + f.facing * 24,
         f.y - 68,
-        f.state === 'ULTIMATE' ? 295 : f.state === 'SKILL' ? 235 : 175,
+        isTrueUlt ? 420 : isUlt ? 315 : isSkill ? 245 : 175,
         colorType,
-        f.state === 'ULTIMATE' ? 1.85 : f.state === 'SKILL' ? 1.50 : 1.12,
+        isTrueUlt ? 2.10 : isUlt ? 1.88 : isSkill ? 1.56 : 1.12,
         64,
-        fGy
+        fGy,
+        f,
+        !isTrueUlt && !isUlt && !isSkill
       );
       const fBaseHero = baseHeroKey(f.heroId);
+      const isAnyUlt = isUlt || isTrueUlt;
       // Seraphina's active Cathedral Rose Halo & Seraphim Wings emit intense Celestial Gold + Emerald Grace light!
-      if (fBaseHero === 'priestess' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isAngelicAscent)) {
-        pushLight(f.x, f.y - 124, f.state === 'ULTIMATE' ? 385 : 310, 'gold', f.state === 'ULTIMATE' ? 1.98 : 1.75, 90, fGy);
-        pushLight(f.x, f.y - 95, 240, 'emerald', 1.35, 76, fGy);
+      if (fBaseHero === 'priestess' && (isSkill || isAnyUlt || f.isAngelicAscent)) {
+        pushLight(f.x, f.y - 124, isAnyUlt ? 385 : 310, 'gold', isAnyUlt ? 1.98 : 1.75, 90, fGy, f, false);
+        pushLight(f.x, f.y - 95, 240, 'emerald', 1.35, 76, fGy, f, false);
       }
       // Torgar's World-Breaker War-Hammer & Ragnarok World-Forge emit Molten Gold + Emerald Jade Runic light!
-      if (fBaseHero === 'titan' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isBulwarkActive)) {
-        pushLight(f.x, f.y - 110, f.state === 'ULTIMATE' ? 390 : 300, 'gold', f.state === 'ULTIMATE' ? 1.95 : 1.70, 88, fGy);
-        pushLight(f.x + f.facing * 32, f.y - 82, 235, 'emerald', 1.40, 74, fGy);
+      if (fBaseHero === 'titan' && (isSkill || isAnyUlt || f.isBulwarkActive)) {
+        pushLight(f.x, f.y - 110, isAnyUlt ? 390 : 300, 'gold', isAnyUlt ? 1.95 : 1.70, 88, fGy, f, false);
+        pushLight(f.x + f.facing * 32, f.y - 82, 235, 'emerald', 1.40, 74, fGy, f, false);
       }
       // Kaze-Maru's Thunder-Odachi & Susanoo Storm-God Avatar emit Electric Indigo + Thunder-Cyan light!
-      if (fBaseHero === 'ronin' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isDeflecting)) {
-        pushLight(f.x, f.y - 115, f.state === 'ULTIMATE' ? 395 : 305, 'indigo', f.state === 'ULTIMATE' ? 1.95 : 1.72, 88, fGy);
-        pushLight(f.x + f.facing * 34, f.y - 84, 240, 'cyan', 1.45, 76, fGy);
+      if (fBaseHero === 'ronin' && (isSkill || isAnyUlt || f.isDeflecting)) {
+        pushLight(f.x, f.y - 115, isAnyUlt ? 395 : 305, 'indigo', isAnyUlt ? 1.95 : 1.72, 88, fGy, f, false);
+        pushLight(f.x + f.facing * 34, f.y - 84, 240, 'cyan', 1.45, 76, fGy, f, false);
       }
       // Freyja's Gungnir Dragon-Lance & Bahamut Cataclysm emit Dragonfire Crimson + Imperial Gold light!
-      if (fBaseHero === 'valkyrie' && (f.state === 'SKILL' || f.state === 'ULTIMATE' || f.isDeflecting)) {
-        pushLight(f.x, f.y - 118, f.state === 'ULTIMATE' ? 395 : 305, 'crimson', f.state === 'ULTIMATE' ? 1.95 : 1.72, 88, fGy);
-        pushLight(f.x + f.facing * 34, f.y - 84, 245, 'gold', 1.48, 76, fGy);
+      if (fBaseHero === 'valkyrie' && (isSkill || isAnyUlt || f.isDeflecting)) {
+        pushLight(f.x, f.y - 118, isAnyUlt ? 395 : 305, 'crimson', isAnyUlt ? 1.95 : 1.72, 88, fGy, f, false);
+        pushLight(f.x + f.facing * 34, f.y - 84, 245, 'gold', 1.48, 76, fGy, f, false);
+      }
+      // Harvest up to 6 active lights from f.fx.active (ArcaneShaderFX) & f.activeVfxAnims!
+      let harvestedCount = 0;
+      if (Array.isArray(f.fx?.active) && f.fx.active.length > 0) {
+        const actList = f.fx.active;
+        const step = Math.max(1, Math.ceil(actList.length / 4));
+        for (let i = 0; i < actList.length && harvestedCount < 6; i += step) {
+          const inst = actList[i];
+          if (!inst || !Number.isFinite(inst.worldX) || !Number.isFinite(inst.worldY)) continue;
+          const lScale = Number.isFinite(inst.light)
+            ? inst.light
+            : Number.isFinite(inst.inst?.cfg?.bloom)
+              ? inst.inst.cfg.bloom
+              : 1;
+          pushLight(
+            inst.worldX,
+            inst.worldY,
+            240 * lScale,
+            colorType,
+            1.45 * lScale,
+            74,
+            fGy,
+            f,
+            false
+          );
+          harvestedCount++;
+        }
+      }
+      if (Array.isArray(f.activeVfxAnims) && f.activeVfxAnims.length > 0 && harvestedCount < 6) {
+        const vList = f.activeVfxAnims;
+        const rem = 6 - harvestedCount;
+        const step = Math.max(1, Math.ceil(vList.length / rem));
+        for (let i = 0; i < vList.length && harvestedCount < 6; i += step) {
+          const v = vList[i];
+          if (!v || !Number.isFinite(v.x) || !Number.isFinite(v.y)) continue;
+          const vFade =
+            Number.isFinite(v.age) && Number.isFinite(v.maxLife) && v.maxLife > 0
+              ? Math.max(0.3, 1 - v.age / v.maxLife)
+              : 1;
+          pushLight(
+            v.x,
+            v.y,
+            220,
+            v.glowCol ? typeForHex(v.glowCol) : colorType,
+            1.40 * vFade,
+            72,
+            fGy,
+            f,
+            false
+          );
+          harvestedCount++;
+        }
       }
       // Chronomancer's active Colossal Doomsday Clock & Stasis Hourglass emit intense dual Teal + Gold light!
       if (f.doomsdayClock) {
@@ -1796,9 +1937,14 @@ export class VFXManager {
         if (!s.impacted) {
           // Row 1 F00..F11: 30fps Descending Starfall Comet-Arrow
           const col = Math.floor((s.flightTime || 0) * 30) % 12;
-          const ang = Math.atan2(s.vy, s.vx || 0.01);
+          const isExStrike = Boolean(strikeHeroId && strikeHeroId.endsWith('_ex'));
           ctx.translate(sx, sy);
-          ctx.rotate(ang);
+          if (isExStrike) {
+            ctx.scale((s.vx || 1) < 0 ? -1 : 1, 1);
+          } else {
+            const ang = Math.atan2(s.vy, s.vx || 0.01);
+            ctx.rotate(ang);
+          }
           const arrSz = 148;
           this.drawBloomedSprite(
             ctx,
@@ -1808,7 +1954,7 @@ export class VFXManager {
             208,
             208,
             208,
-            Math.round(-arrSz * 0.78),
+            Math.round(-arrSz * (isExStrike ? 0.5 : 0.78)),
             Math.round(-arrSz * 0.5),
             arrSz,
             arrSz,
@@ -1853,15 +1999,138 @@ export class VFXManager {
       const dy = b.y2 - b.y1;
       const dist = Math.hypot(dx, dy) || 1;
       const ang = Math.atan2(dy, dx);
-
-      ctx.translate(b.x1, b.y1);
-      ctx.rotate(ang);
+      const beamOwnerHeroId = b.owner?.heroId || b.heroId || null;
+      const isExBeam = Boolean(beamOwnerHeroId && beamOwnerHeroId.endsWith('_ex'));
 
       const isEmeraldCheck = b.color === '#10b981' || b.color === '#34d399';
       const headX = Math.min(dist, dist * Math.min(1, t / (isEmeraldCheck ? 0.62 : 0.28)));
       const tailX = Math.max(0, dist * Math.max(0, (t - (isEmeraldCheck ? 0.45 : 0.38)) / (isEmeraldCheck ? 0.55 : 0.62)));
       const spanLen = Math.max(40, headX - tailX);
-      const stepPx = 8;
+
+      if (isExBeam) {
+        // 100% Pixel-Grid World-Space Stepped Beam for EX Heroes (`0` ctx.rotate!)
+        const ux = dx / dist;
+        const uy = dy / dist;
+        const nx = -uy;
+        const ny = ux;
+        const pxStep = 4;
+        const hMax = Math.max(8, b.width * 0.65 * env);
+        const startCol = Math.floor(tailX / pxStep) * pxStep;
+        const endCol = Math.ceil(headX / pxStep) * pxStep;
+
+        if (renderer && !isReflection && renderer.getGlowForColor) {
+          const bGlow = renderer.getGlowForColor(b.color);
+          if (bGlow) {
+            ctx.globalCompositeOperation = 'lighter';
+            const gR = Math.max(95, b.width * 2.4);
+            for (let gStep = 0; gStep <= 4; gStep++) {
+              const gd = tailX + (spanLen * gStep) / 4;
+              const gx = Math.round(b.x1 + ux * gd);
+              const gyB = Math.round(b.y1 + uy * gd);
+              ctx.globalAlpha = beamAlpha * 0.42;
+              ctx.drawImage(bGlow, gx - gR, gyB - gR * 0.65, gR * 2, gR * 1.3);
+            }
+          }
+        }
+
+        // Pass 1: Outer primary pixel band (`lighter`)
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = beamAlpha * (isReflection ? 0.36 : 0.78);
+        ctx.fillStyle = b.color;
+        for (let d = startCol; d <= endCol; d += pxStep) {
+          const u = Math.max(0, Math.min(1, (d - tailX) / Math.max(1, spanLen)));
+          const taper = Math.sin(Math.pow(u, 0.75) * Math.PI);
+          const halfH = Math.max(4, Math.round((hMax * 0.95 * taper) / pxStep) * pxStep);
+          const bx = b.x1 + ux * d;
+          const by = b.y1 + uy * d;
+          for (let off = -halfH; off < halfH; off += pxStep) {
+            const sx = Math.round((bx + nx * off) / pxStep) * pxStep;
+            const sy = Math.round((by + ny * off) / pxStep) * pxStep;
+            ctx.fillRect(sx, sy, pxStep, pxStep);
+          }
+        }
+
+        // Pass 2: Mid coreColor pixel band
+        ctx.globalAlpha = beamAlpha * (isReflection ? 0.45 : 0.88);
+        ctx.fillStyle = b.coreColor || '#fef08a';
+        for (let d = startCol + pxStep * 2; d <= endCol; d += pxStep) {
+          const u = Math.max(0, Math.min(1, (d - tailX) / Math.max(1, spanLen)));
+          const taper = Math.sin(Math.pow(u, 0.75) * Math.PI);
+          const halfH = Math.max(4, Math.round((hMax * 0.52 * taper) / pxStep) * pxStep);
+          const bx = b.x1 + ux * d;
+          const by = b.y1 + uy * d;
+          for (let off = -halfH; off < halfH; off += pxStep) {
+            const sx = Math.round((bx + nx * off) / pxStep) * pxStep;
+            const sy = Math.round((by + ny * off) / pxStep) * pxStep;
+            ctx.fillRect(sx, sy, pxStep, pxStep);
+          }
+        }
+
+        // Pass 3: Crisp `#ffffff` core lance + helical `4x4` pixel motes
+        ctx.globalCompositeOperation = 'source-over';
+        ctx.globalAlpha = beamAlpha;
+        ctx.fillStyle = '#ffffff';
+        for (let d = startCol + pxStep * 3; d <= endCol + pxStep; d += pxStep) {
+          const u = Math.max(0, Math.min(1, (d - tailX) / Math.max(1, spanLen)));
+          const taper = Math.sin(Math.pow(u, 0.75) * Math.PI);
+          const halfH = Math.max(2, Math.round((hMax * 0.24 * taper) / 2) * 2);
+          const bx = b.x1 + ux * d;
+          const by = b.y1 + uy * d;
+          for (let off = -halfH; off <= halfH; off += 2) {
+            const sx = Math.round((bx + nx * off) / 2) * 2;
+            const sy = Math.round((by + ny * off) / 2) * 2;
+            ctx.fillRect(sx, sy, pxStep, 2);
+          }
+        }
+        for (const sign of [-1, 1]) {
+          ctx.fillStyle = sign > 0 ? b.coreColor || '#fef08a' : b.color;
+          ctx.globalAlpha = beamAlpha * 0.9;
+          for (let d = startCol; d <= endCol; d += pxStep * 2) {
+            const u = Math.max(0, Math.min(1, (d - tailX) / Math.max(1, spanLen)));
+            const taper = Math.sin(u * Math.PI);
+            const rawOff = sign * Math.sin(d * 0.045 - b.life * 34) * (hMax * 0.95 * taper);
+            const sx = Math.round((b.x1 + ux * d + nx * rawOff) / pxStep) * pxStep;
+            const sy = Math.round((b.y1 + uy * d + ny * rawOff) / pxStep) * pxStep;
+            ctx.fillRect(sx, sy - 2, pxStep + 2, pxStep);
+          }
+        }
+
+        // Unrotated 30fps leading VFX head sprite at `(hx, hy)`
+        const hx = Math.round(b.x1 + ux * headX);
+        const hy = Math.round(b.y1 + uy * headX);
+        const dirSign = dx < 0 ? -1 : 1;
+        const bCol = Math.min(29, Math.floor(t * 30));
+        const exVfx = this.resolveHeroVfx(assets, baseHeroKey(beamOwnerHeroId), beamOwnerHeroId);
+        if (exVfx && exVfx.complete && exVfx.naturalWidth) {
+          const headSz = isEmeraldCheck ? 224 : 172;
+          const rowY = isEmeraldCheck ? 624 : 0;
+          ctx.save();
+          ctx.translate(hx, hy);
+          ctx.scale(dirSign, 1);
+          this.drawBloomedSprite(
+            ctx,
+            renderer,
+            exVfx,
+            bCol * 208,
+            rowY,
+            208,
+            208,
+            Math.round(-headSz * 0.5),
+            Math.round(-headSz * 0.5),
+            headSz,
+            headSz,
+            b.color,
+            1 - t * 0.25,
+            isReflection
+          );
+          ctx.restore();
+        }
+        ctx.restore();
+        continue;
+      }
+
+      ctx.translate(b.x1, b.y1);
+      ctx.rotate(ang);
 
       // 1. Emit large radial light halos along the beam shaft so beams visibly illuminate the stage!
       if (renderer && !isReflection && renderer.getGlowForColor) {
@@ -1939,7 +2208,6 @@ export class VFXManager {
         b.color === '#9333ea' ||
         b.color === '#f43f5e';
       const isFireBeam = b.color === '#fb923c' || b.color === '#ea580c' || b.color === '#f97316';
-      const beamOwnerHeroId = b.owner?.heroId || b.heroId || null;
       const archerVfx = this.resolveHeroVfx(assets, 'archer', beamOwnerHeroId);
       const priestVfx = this.resolveHeroVfx(assets, 'priestess', beamOwnerHeroId);
       const reaperVfx = this.resolveHeroVfx(assets, 'reaper', beamOwnerHeroId);
@@ -2109,7 +2377,11 @@ export class VFXManager {
         const spireH = Math.round(cs.height * 1.44 * pop);
         const spCol = Math.min(29, Math.floor(t * 30));
         ctx.translate(bx, by + 10);
-        ctx.rotate(cs.tilt * 0.18);
+        if (csPrefHeroId && csPrefHeroId.endsWith('_ex')) {
+          ctx.scale((cs.tilt || 0) < -0.05 ? -1 : 1, 1);
+        } else {
+          ctx.rotate(cs.tilt * 0.18);
+        }
         this.drawBloomedSprite(
           ctx,
           renderer,
@@ -2270,7 +2542,11 @@ export class VFXManager {
         if (sheet && sheet.complete && sheet.naturalWidth) {
           ctx.save();
           ctx.translate(sx, sy);
-          ctx.rotate(midAng);
+          if (slashPrefHeroId && slashPrefHeroId.endsWith('_ex')) {
+            ctx.scale(Math.cos(midAng) < 0 ? -1 : 1, Math.sin(midAng) < -0.35 ? -1 : 1);
+          } else {
+            ctx.rotate(midAng);
+          }
           this.drawBloomedSprite(
             ctx,
             renderer,
@@ -2314,18 +2590,24 @@ export class VFXManager {
       }
 
       const sparkCount = 14;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = alpha * (isReflection ? 0.42 : 0.92);
+      ctx.fillStyle = sw.color;
       for (let i = 0; i < sparkCount; i++) {
         const a = i * 2.39996 + t * (i % 2 === 0 ? 1.4 : -1.1);
         const distMult = 0.28 + ((i * 7 + 3) % 11) * 0.085;
         const curR = r * distMult;
-        const px = Math.round(sw.x + Math.cos(a) * curR * xScale);
-        const py = Math.round(sw.y + Math.sin(a) * curR * yScale - (sw.flat ? t * (12 + (i % 5) * 9) : 0));
-
-        ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = alpha * (isReflection ? 0.42 : 0.92);
-        ctx.fillStyle = sw.color;
+        const px = Math.round((sw.x + Math.cos(a) * curR * xScale) / 2) * 2;
+        const py = Math.round((sw.y + Math.sin(a) * curR * yScale - (sw.flat ? t * (12 + (i % 5) * 9) : 0)) / 2) * 2;
         ctx.fillRect(px - 2, py - 2, 4, 4);
-        ctx.fillStyle = '#ffffff';
+      }
+      ctx.fillStyle = '#ffffff';
+      for (let i = 0; i < sparkCount; i++) {
+        const a = i * 2.39996 + t * (i % 2 === 0 ? 1.4 : -1.1);
+        const distMult = 0.28 + ((i * 7 + 3) % 11) * 0.085;
+        const curR = r * distMult;
+        const px = Math.round((sw.x + Math.cos(a) * curR * xScale) / 2) * 2;
+        const py = Math.round((sw.y + Math.sin(a) * curR * yScale - (sw.flat ? t * (12 + (i % 5) * 9) : 0)) / 2) * 2;
         ctx.fillRect(px - 1, py - 1, 2, 2);
       }
     }
@@ -2355,14 +2637,18 @@ export class VFXManager {
       }
 
       const projHeroId = proj.owner?.heroId || proj.heroId || null;
+      const isExProj = Boolean(projHeroId && projHeroId.endsWith('_ex'));
       if (proj.isMeteor) {
         const mageVfx = this.resolveHeroVfx(assets, 'mage', projHeroId);
-        const ang = Math.atan2(proj.vy, proj.vx || 1);
         if (mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
           const mSize = 156;
           ctx.save();
           ctx.translate(px, py);
-          ctx.rotate(ang);
+          if (isExProj) {
+            ctx.scale((proj.vx || 1) >= 0 ? 1 : -1, 1);
+          } else {
+            ctx.rotate(Math.atan2(proj.vy, proj.vx || 1));
+          }
           this.drawBloomedSprite(
             ctx,
             renderer,
@@ -2467,10 +2753,13 @@ export class VFXManager {
         ctx.restore();
       } else if (proj.type === 'blade_wave') {
         const warriorVfx = this.resolveHeroVfx(assets, 'warrior', projHeroId);
-        const ang = Math.atan2(proj.vy || 0, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
-        ctx.rotate(ang);
+        if (isExProj) {
+          ctx.scale((proj.vx || 1) >= 0 ? 1 : -1, 1);
+        } else {
+          ctx.rotate(Math.atan2(proj.vy || 0, proj.vx || 1));
+        }
         if (warriorVfx && warriorVfx.complete && warriorVfx.naturalWidth) {
           const waveSize = 138;
           this.drawBloomedSprite(
@@ -2607,10 +2896,13 @@ export class VFXManager {
         ctx.restore();
       } else if (proj.type === 'dragon_lance') {
         const valkVfx = this.resolveHeroVfx(assets, 'valkyrie', projHeroId);
-        const ang = Math.atan2(proj.vy || 0, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
-        ctx.rotate(ang);
+        if (isExProj) {
+          ctx.scale((proj.vx || 1) >= 0 ? 1 : -1, 1);
+        } else {
+          ctx.rotate(Math.atan2(proj.vy || 0, proj.vx || 1));
+        }
         if (valkVfx && valkVfx.complete && valkVfx.naturalWidth) {
           const lanceSize = 142;
           this.drawBloomedSprite(
@@ -2722,10 +3014,13 @@ export class VFXManager {
         ctx.restore();
       } else if (proj.type === 'arrow') {
         const archerVfx = this.resolveHeroVfx(assets, 'archer', projHeroId);
-        const ang = Math.atan2(proj.vy, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
-        ctx.rotate(ang);
+        if (isExProj) {
+          ctx.scale((proj.vx || 1) >= 0 ? 1 : -1, 1);
+        } else {
+          ctx.rotate(Math.atan2(proj.vy, proj.vx || 1));
+        }
 
         if (archerVfx && archerVfx.complete && archerVfx.naturalWidth) {
           // Row 0 F00..F29: 30fps Supersonic Tempest Arrow (spinning fletching, double-helix wind ribbon & Mach cone)
@@ -2753,10 +3048,13 @@ export class VFXManager {
         ctx.restore();
       } else if (proj.type === 'holy_light') {
         const priestessVfx = this.resolveHeroVfx(assets, 'priestess', projHeroId);
-        const ang = Math.atan2(proj.vy, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
-        ctx.rotate(ang);
+        if (isExProj) {
+          ctx.scale((proj.vx || 1) >= 0 ? 1 : -1, 1);
+        } else {
+          ctx.rotate(Math.atan2(proj.vy, proj.vx || 1));
+        }
         if (priestessVfx && priestessVfx.complete && priestessVfx.naturalWidth) {
           const orbSize = 114;
           this.drawBloomedSprite(
@@ -2779,10 +3077,13 @@ export class VFXManager {
         ctx.restore();
       } else {
         const mageVfx = this.resolveHeroVfx(assets, 'mage', projHeroId);
-        const ang = Math.atan2(proj.vy, proj.vx || 1);
         ctx.save();
         ctx.translate(px, py);
-        ctx.rotate(ang);
+        if (isExProj) {
+          ctx.scale((proj.vx || 1) >= 0 ? 1 : -1, 1);
+        } else {
+          ctx.rotate(Math.atan2(proj.vy, proj.vx || 1));
+        }
         if (mageVfx && mageVfx.complete && mageVfx.naturalWidth) {
           const fbSize = 116;
           this.drawBloomedSprite(
@@ -2827,6 +3128,10 @@ export class VFXManager {
       }
 
       const outerCol = l.color === '#ffffff' ? '#38bdf8' : l.color;
+      // Pass 1: Outer additive electric sheath (`4x4` pixel grid)
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = fade * 0.78;
+      ctx.fillStyle = outerCol;
       for (let idx = 0; idx < l.pts.length - 1; idx++) {
         const p0 = l.pts[idx];
         const p1 = l.pts[idx + 1];
@@ -2836,13 +3141,22 @@ export class VFXManager {
           const u = s / steps;
           const px = Math.round((p0.x + (p1.x - p0.x) * u) / 4) * 4;
           const py = Math.round((p0.y + (p1.y - p0.y) * u) / 4) * 4;
-          ctx.globalCompositeOperation = 'lighter';
-          ctx.globalAlpha = fade * 0.78;
-          ctx.fillStyle = outerCol;
           ctx.fillRect(px - 6, py - 2, 12, 8);
-          ctx.globalCompositeOperation = 'source-over';
-          ctx.globalAlpha = fade;
-          ctx.fillStyle = '#ffffff';
+        }
+      }
+      // Pass 2: Crisp white-hot core (`4x4` pixel grid)
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.globalAlpha = fade;
+      ctx.fillStyle = '#ffffff';
+      for (let idx = 0; idx < l.pts.length - 1; idx++) {
+        const p0 = l.pts[idx];
+        const p1 = l.pts[idx + 1];
+        const segLen = Math.hypot(p1.x - p0.x, p1.y - p0.y);
+        const steps = Math.max(1, Math.ceil(segLen / 4));
+        for (let s = 0; s <= steps; s++) {
+          const u = s / steps;
+          const px = Math.round((p0.x + (p1.x - p0.x) * u) / 4) * 4;
+          const py = Math.round((p0.y + (p1.y - p0.y) * u) / 4) * 4;
           ctx.fillRect(px - 2, py, 4, 4);
         }
       }
@@ -2939,7 +3253,7 @@ export class VFXManager {
         ctx.restore();
       }
 
-      // 12. ON-HIT ELEMENTAL DIAMOND STAR-FLARES (Sleek Tapered Impact Flares — Zero Stepped Square Chains!)
+      // 12. ON-HIT ELEMENTAL IMPACT BURSTS (Chunky 30fps Pixel-Art Starbursts on EX; Sleek Flares on Legacy!)
       for (const imp of this.hitImpacts) {
         if (hasBounds && Math.abs(imp.x - camX) > halfViewW + 220) continue;
         const t = imp.life / imp.maxLife;
@@ -2949,6 +3263,67 @@ export class VFXManager {
         const rInner = 14 + t * 28;
         const rOuter = (imp.isCrit ? 64 : 46) + t * 38;
         const glowTex = renderer && renderer.getGlowForColor ? renderer.getGlowForColor(imp.color) : null;
+
+        if (imp.heroId && imp.heroId.endsWith('_ex')) {
+          const exPal = getExHeroPalette(imp.heroId, imp.color);
+          ctx.save();
+          if (glowTex) {
+            ctx.globalCompositeOperation = 'lighter';
+            ctx.globalAlpha = Math.min(1, env * 0.62);
+            ctx.drawImage(glowTex, ix - 92, iy - 92, 184, 184);
+          }
+          const exImpVfx = assets[imp.heroId]?.vfx;
+          PixelForge.ensureImage?.(exImpVfx);
+          if (exImpVfx && exImpVfx.complete && exImpVfx.naturalWidth) {
+            const impCol = Math.min(29, Math.floor(t * 30));
+            const impSz = Math.round(((imp.isCrit ? 156 : 124) * (0.78 + 0.34 * Math.min(1, t * 2.4))) / 4) * 4;
+            ctx.save();
+            ctx.translate(Math.round(ix / 2) * 2, Math.round(iy / 2) * 2);
+            ctx.scale(imp.dir || 1, 1);
+            this.drawBloomedSprite(
+              ctx,
+              null,
+              exImpVfx,
+              impCol * 208,
+              0,
+              208,
+              208,
+              Math.round(-impSz * 0.5),
+              Math.round(-impSz * 0.5),
+              impSz,
+              impSz,
+              exPal.primary,
+              env * 0.76,
+              false
+            );
+            ctx.restore();
+          }
+          drawExHitStarburst(ctx, ix, iy, t, exPal.primary, exPal.accent);
+          // Multi-frame expanding `4x4` pixel-art radial shard glints (`0` ctx.rotate, `0` beginPath!)
+          const qx = Math.round(ix / 2) * 2;
+          const qy = Math.round(iy / 2) * 2;
+          const shardCount = imp.isCrit ? 8 : 6;
+          ctx.globalCompositeOperation = 'source-over';
+          ctx.globalAlpha = Math.min(1, env * 0.94);
+          ctx.fillStyle = exPal.primary;
+          for (let r = 0; r < shardCount; r++) {
+            const a = (r / shardCount) * Math.PI * 2 + 0.38;
+            const d = rInner * 0.8 + (rOuter - rInner) * 0.68;
+            const sx = Math.round((qx + Math.cos(a) * d) / 4) * 4;
+            const sy = Math.round((qy + Math.sin(a) * d) / 4) * 4;
+            ctx.fillRect(sx - 2, sy - 2, 6, 6);
+          }
+          ctx.fillStyle = '#ffffff';
+          for (let r = 0; r < shardCount; r++) {
+            const a = (r / shardCount) * Math.PI * 2 + 0.38;
+            const d = rInner * 0.8 + (rOuter - rInner) * 0.68;
+            const sx = Math.round((qx + Math.cos(a) * d) / 4) * 4;
+            const sy = Math.round((qy + Math.sin(a) * d) / 4) * 4;
+            ctx.fillRect(sx, sy, 2, 2);
+          }
+          ctx.restore();
+          continue;
+        }
 
         ctx.save();
         if (glowTex) {
@@ -3274,23 +3649,32 @@ export class VFXManager {
       const tagW = PixelFont.measureWidth(headerTag, tagScale);
       const halfW = Math.max(76, Math.round(Math.max(titleW, tagW) * 0.58));
 
-      // Soft feathered elliptical shadow veil behind floating pixel text (ZERO rectangular box or border!)
-      ctx.save();
-      ctx.translate(headX, headY);
-      ctx.scale(halfW, 20);
-      let veil = ctx.__avsTextVeilGrad;
-      if (!veil && typeof ctx.createRadialGradient === 'function') {
-        veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
-        veil.addColorStop(0, 'rgba(3, 6, 14, 0.65)');
-        veil.addColorStop(0.65, 'rgba(3, 6, 14, 0.28)');
-        veil.addColorStop(1, 'rgba(3, 6, 14, 0)');
-        ctx.__avsTextVeilGrad = veil;
+      // Soft shadow veil behind floating pixel text (`0` beginPath/arc on EX!)
+      if (ca.fighter.heroId && ca.fighter.heroId.endsWith('_ex')) {
+        ctx.save();
+        ctx.fillStyle = 'rgba(3, 6, 14, 0.56)';
+        ctx.fillRect(headX - halfW + 8, headY - 16, (halfW - 8) * 2, 30);
+        ctx.fillStyle = 'rgba(3, 6, 14, 0.28)';
+        ctx.fillRect(headX - halfW, headY - 12, halfW * 2, 22);
+        ctx.restore();
+      } else {
+        ctx.save();
+        ctx.translate(headX, headY);
+        ctx.scale(halfW, 20);
+        let veil = ctx.__avsTextVeilGrad;
+        if (!veil && typeof ctx.createRadialGradient === 'function') {
+          veil = ctx.createRadialGradient(0, 0, 0.1, 0, 0, 1.0);
+          veil.addColorStop(0, 'rgba(3, 6, 14, 0.65)');
+          veil.addColorStop(0.65, 'rgba(3, 6, 14, 0.28)');
+          veil.addColorStop(1, 'rgba(3, 6, 14, 0)');
+          ctx.__avsTextVeilGrad = veil;
+        }
+        if (veil) ctx.fillStyle = veil;
+        ctx.beginPath();
+        ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.restore();
       }
-      if (veil) ctx.fillStyle = veil;
-      ctx.beginPath();
-      ctx.arc(0, 0, 1.0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
 
       // Top micro-tag showing Champion Name in 1px bitmap font
       PixelFont.drawCentered(ctx, headerTag, headX, headY - 10, tagScale, ca.coreColor, '#ffffff', true);

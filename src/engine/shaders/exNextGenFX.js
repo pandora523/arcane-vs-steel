@@ -9,7 +9,7 @@
  * - ZERO sequential nested-square chevron loops (`fillRect(outer)` + `fillRect(inner)` in one loop);
  *   every multi-tone ray, lightning bolt, or starburst renders in separate full-geometry passes
  *   (Pass 1: dark Selout / outer tone -> Pass 2: mid accent -> Pass 3: `#ffffff` core).
- * - `4x4` Bayer ordered stipple dithering (`alpha <= 0.22`) for crisp, non-washed-out pixel light pools.
+ * - `4x4` Bayer ordered stipple dithering (`alpha <= 0.42`) for crisp, non-washed-out pixel light pools.
  */
 
 const BAYER_4X4 = [
@@ -222,8 +222,8 @@ function getOrBakeBayerHaloSprite(qRx, qRy, colorHex, coreHex) {
 }
 
 /**
- * Subtle (`alpha <= 0.22`) `4x4` Bayer-stippled pixel-art rim/floor light pool
- * replacing blurry `renderer.glow*` radial gradient blobs on EX champions.
+ * Warm (`alpha <= 0.42`) `4x4` Bayer-stippled pixel-art rim/floor light pool
+ * for rich HD-2D luminescence without washing out to white.
  */
 export function drawExBayerHalo(
   ctx,
@@ -236,7 +236,7 @@ export function drawExBayerHalo(
   alpha = 0.18
 ) {
   if (!ctx) return;
-  const clampedAlpha = Math.min(0.22, Math.max(0, alpha));
+  const clampedAlpha = Math.min(0.42, Math.max(0, alpha));
   if (clampedAlpha <= 0.01) return;
 
   const qRx = Math.max(6, Math.round(rx / 4) * 4);

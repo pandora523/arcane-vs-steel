@@ -404,7 +404,13 @@ export class Renderer {
 
   getGlowForColor(col) {
     if (!col) return this.glowCyan;
-    if (col === 'cyber' || col === '#00f0ff' || col === '#ff2e93' || col === '#7df9ff') {
+    if (
+      col === 'cyber' ||
+      col === '#00f0ff' ||
+      col === '#22d3ee' ||
+      col === '#ff2e93' ||
+      col === '#7df9ff'
+    ) {
       return this.glowCyber || this.glowCyan;
     }
     if (col === 'glacial' || col === '#67e8f9' || col === '#a5f3fc') {
@@ -440,7 +446,9 @@ export class Renderer {
       col === '#c084fc' ||
       col === '#9333ea' ||
       col === '#7e22ce' ||
-      col === '#e879f9'
+      col === '#e879f9' ||
+      col === '#d946ef' ||
+      col === '#a855f7'
     ) {
       return this.glowViolet;
     }
@@ -1056,7 +1064,7 @@ export class Renderer {
         const fGy = Math.round(Number.isFinite(f.groundY) ? f.groundY : gy);
         const airRatio = Math.max(0.32, 1 - Math.max(0, fGy - f.y) / 280);
         const floorAlpha =
-          (isUltAct ? 0.21 : isSkillAct ? 0.16 : 0.12) * deathFade * benchScale * airRatio;
+          (isUltAct ? 0.30 : isSkillAct ? 0.22 : 0.15) * deathFade * benchScale * airRatio;
         if (f.heroId !== 'reaper_ex') {
           drawExBayerHalo(
             ctx,
@@ -1077,14 +1085,14 @@ export class Renderer {
             12,
             '#6b21a8',
             '#d946ef',
-            floorAlpha * 0.82
+            floorAlpha * 0.85
           );
         }
         if (!f.isDead && !f.isBenched) {
           this.drawExGroundRimReflection(ctx, f, fGy, exPal, airRatio);
         }
         if (!f.isDead) {
-          const rimAlpha = (isUltAct ? 0.14 : isSkillAct ? 0.09 : 0.055) * benchScale;
+          const rimAlpha = (isUltAct ? 0.20 : isSkillAct ? 0.13 : 0.08) * benchScale;
           drawExBayerHalo(
             ctx,
             f.x,
@@ -1099,20 +1107,27 @@ export class Renderer {
         if (f._exParticles && typeof f._exParticles.renderBack === 'function') {
           f._exParticles.renderBack(ctx);
         }
-        continue;
       }
 
       ctx.save();
       ctx.globalCompositeOperation = 'lighter';
       const deathFade = f.isDead ? Math.min(1, Math.max(0.08, 1 - (f.deathTimer || 0) * 0.65)) : 1;
       const isChrono = f.heroId === 'chronomancer' || f.heroId === 'chronomancer_ex';
-      const baseAlpha = isChrono
-        ? f.state === 'IDLE' || f.state === 'WALK'
-          ? 0.28
-          : 0.42
-        : f.state === 'IDLE' || f.state === 'WALK'
-          ? 0.16
-          : 0.26;
+      const isExUlt = f.state === 'ULTIMATE' || f.state === 'TRUE_ULTIMATE';
+      const isExSkillOrAuto = f.state === 'SKILL' || f.state === 'AUTO_ATTACK';
+      const baseAlpha = isExHero
+        ? isExUlt
+          ? 0.42
+          : isExSkillOrAuto
+            ? 0.30
+            : 0.18
+        : isChrono
+          ? f.state === 'IDLE' || f.state === 'WALK'
+            ? 0.28
+            : 0.42
+          : f.state === 'IDLE' || f.state === 'WALK'
+            ? 0.16
+            : 0.26;
       ctx.globalAlpha = baseAlpha * deathFade * (f.isBenched ? 0.65 : 1);
       const glow = this.getGlowForColor(f.primaryColor);
       ctx.drawImage(glow, f.x - 125, f.y - (f.isDead ? 95 : 175), 250, 250);
@@ -3990,40 +4005,62 @@ export class Renderer {
 
     ctx.save();
     ctx.imageSmoothingEnabled = false;
-    ctx.lineCap = 'butt';
-    ctx.lineJoin = 'miter';
 
-    // 1. Razor-Bright Full-Viewport Diagonal Katana Seam
+    const halfSpanX =
+      Number.isFinite(this.width) && this.width > 0
+        ? Math.ceil((this.width * 0.5) / Math.max(0.18, this.zoom || 1)) + 240
+        : 1200;
+    const refCamX = Number.isFinite(this.camX) ? this.camX : sliceCx;
+    const minVisX = Math.floor(Math.max(x0, refCamX - halfSpanX) / 4) * 4;
+    const maxVisX = Math.ceil(Math.min(x1, refCamX + halfSpanX) / 4) * 4;
+
+    const drawSteppedSeg = (ax, ay, bx, by, pxW, pxH) => {
+      const dx = bx - ax;
+      const dy = by - ay;
+      const steps = Math.max(1, Math.ceil(Math.max(Math.abs(dx), Math.abs(dy)) / 2));
+      const ox = pxW >> 1;
+      const oy = pxH >> 1;
+      for (let i = 0; i <= steps; i++) {
+        const u = i / steps;
+        const sx = Math.round((ax + dx * u) * 0.5) * 2;
+        const sy = Math.round((ay + dy * u) * 0.5) * 2;
+        ctx.fillRect(sx - ox, sy - oy, pxW, pxH);
+      }
+    };
+
+    // 1. Surgical Anime Hairline Katana Seam (`outer <= 5.5px` at `alpha <= 0.42`, `mid <= 2.2px` sheath, `core 1.2px` `#ffffff`; `0` vector stroke!)
     const seamFade = p < 0.22 ? 1.0 : Math.max(0, 1 - (p - 0.22) / 0.78);
     if (seamFade > 0.01) {
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = seamFade * 0.55;
-      ctx.strokeStyle = outerCol;
-      ctx.lineWidth = Math.max(2, (1 - p * 0.7) * 26);
-      ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(x1, y1);
-      ctx.stroke();
+      const outerH = Math.max(2, Math.min(5, Math.round((1 - p * 0.65) * 5)));
+      const midH = Math.max(1, Math.min(2, Math.round((1 - p * 0.5) * 2)));
+      const outerOff = outerH >> 1;
+      const midOff = midH >> 1;
 
-      ctx.globalAlpha = seamFade * 0.82;
-      ctx.strokeStyle = midCol;
-      ctx.lineWidth = Math.max(1.5, (1 - p * 0.75) * 11);
-      ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(x1, y1);
-      ctx.stroke();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.globalAlpha = seamFade * 0.38;
+      ctx.fillStyle = outerCol;
+      for (let sx = minVisX; sx <= maxVisX; sx += 4) {
+        const sy = Math.round(sliceCy + (sx + 2 - sliceCx) * slope);
+        ctx.fillRect(sx, sy - outerOff, 4, outerH);
+      }
+
+      ctx.globalAlpha = seamFade * 0.72;
+      ctx.fillStyle = midCol;
+      for (let sx = minVisX; sx <= maxVisX; sx += 4) {
+        const sy = Math.round(sliceCy + (sx + 2 - sliceCx) * slope);
+        ctx.fillRect(sx, sy - midOff, 4, midH);
+      }
 
       ctx.globalCompositeOperation = 'source-over';
       ctx.globalAlpha = seamFade * 0.98;
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = Math.max(1, (1 - p * 0.8) * 4);
-      ctx.beginPath();
-      ctx.moveTo(x0, y0);
-      ctx.lineTo(x1, y1);
-      ctx.stroke();
+      ctx.fillStyle = '#ffffff';
+      for (let sx = minVisX; sx <= maxVisX; sx += 4) {
+        const sy = Math.round(sliceCy + (sx + 2 - sliceCx) * slope);
+        ctx.fillRect(sx, sy, 4, 1);
+      }
     }
 
-    // 2. 6 Full-Viewport High-Voltage Jagged Lightning Surge Arcs + Forking Branches along the Katana Rift!
+    // 2. 6 Stepped `2x2` Pixel-Grid Jagged Lightning Surge Arcs + Forking Branches along the Katana Rift (`0` vector stroke!)
     const tick = Math.floor(this.time * 24);
     const jHash = (n) => {
       const s = Math.sin(n * 91.7 + tick * 271.3) * 43758.5453;
@@ -4038,57 +4075,48 @@ export class Renderer {
         const u = s / segs;
         const bx = seamStartX + (seamEndX - seamStartX) * u;
         const baseBy = sliceCy + (bx - sliceCx) * slope;
-        const spread = (b % 2 === 0 ? 1 : -1) * (12 + (b >> 1) * 18) * (0.4 + 0.6 * p);
-        const jit = jHash(b * 37 + s * 13) * (28 - p * 10);
-        pts.push([Math.round(bx), Math.round(baseBy + spread + jit)]);
+        const spread = (b % 2 === 0 ? 1 : -1) * (10 + (b >> 1) * 14) * (0.4 + 0.6 * p);
+        const jit = jHash(b * 37 + s * 13) * (22 - p * 8);
+        pts.push([Math.round(bx / 2) * 2, Math.round((baseBy + spread + jit) / 2) * 2]);
       }
 
+      // Pass 1: Outer additive pixel sheath
       ctx.globalCompositeOperation = 'lighter';
-      ctx.globalAlpha = fade * 0.68;
-      ctx.strokeStyle = b % 2 === 0 ? midCol : outerCol;
-      ctx.lineWidth = b < 2 ? 4.5 : 3;
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0], pts[s][1]);
-      ctx.stroke();
+      ctx.globalAlpha = fade * 0.56;
+      ctx.fillStyle = b % 2 === 0 ? midCol : outerCol;
+      const sheathSz = b < 2 ? 4 : 3;
+      for (let s = 1; s < pts.length; s++) {
+        drawSteppedSeg(pts[s - 1][0], pts[s - 1][1], pts[s][0], pts[s][1], sheathSz, sheathSz);
+      }
 
+      // Pass 2: Crisp `#ffffff` pixel core
       ctx.globalCompositeOperation = 'source-over';
-      ctx.globalAlpha = fade * 0.94;
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = b < 2 ? 1.8 : 1.2;
-      ctx.beginPath();
-      ctx.moveTo(pts[0][0], pts[0][1]);
-      for (let s = 1; s < pts.length; s++) ctx.lineTo(pts[s][0], pts[s][1]);
-      ctx.stroke();
+      ctx.globalAlpha = fade * 0.92;
+      ctx.fillStyle = '#ffffff';
+      for (let s = 1; s < pts.length; s++) {
+        drawSteppedSeg(pts[s - 1][0], pts[s - 1][1], pts[s][0], pts[s][1], 2, 2);
+      }
 
-      // Forking lightning tendrils leaping vertically off the dimensional cut into both halves of the stage!
+      // Forking lightning tendrils leaping vertically off the dimensional cut (`2x2` pixel steps)
       for (let fk = 2; fk < segs; fk += 4) {
         const anchor = pts[fk];
         const fSign = (fk + b) % 2 === 0 ? -1 : 1;
-        const mx = anchor[0] + Math.round(jHash(b * 71 + fk) * 38);
-        const my = anchor[1] + fSign * Math.round(52 + Math.abs(jHash(b * 53 + fk)) * 58);
-        const ex = mx + Math.round(jHash(b * 97 + fk) * 44);
-        const ey = my + fSign * Math.round(48 + Math.abs(jHash(b * 113 + fk)) * 64);
+        const mx = anchor[0] + Math.round((jHash(b * 71 + fk) * 34) / 2) * 2;
+        const my = anchor[1] + fSign * (Math.round((44 + Math.abs(jHash(b * 53 + fk)) * 48) / 2) * 2);
+        const ex = mx + Math.round((jHash(b * 97 + fk) * 38) / 2) * 2;
+        const ey = my + fSign * (Math.round((40 + Math.abs(jHash(b * 113 + fk)) * 52) / 2) * 2);
 
         ctx.globalCompositeOperation = 'lighter';
-        ctx.globalAlpha = fade * 0.62;
-        ctx.strokeStyle = midCol;
-        ctx.lineWidth = 2.6;
-        ctx.beginPath();
-        ctx.moveTo(anchor[0], anchor[1]);
-        ctx.lineTo(mx, my);
-        ctx.lineTo(ex, ey);
-        ctx.stroke();
+        ctx.globalAlpha = fade * 0.52;
+        ctx.fillStyle = midCol;
+        drawSteppedSeg(anchor[0], anchor[1], mx, my, 3, 3);
+        drawSteppedSeg(mx, my, ex, ey, 2, 2);
 
         ctx.globalCompositeOperation = 'source-over';
-        ctx.globalAlpha = fade * 0.90;
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 1.1;
-        ctx.beginPath();
-        ctx.moveTo(anchor[0], anchor[1]);
-        ctx.lineTo(mx, my);
-        ctx.lineTo(ex, ey);
-        ctx.stroke();
+        ctx.globalAlpha = fade * 0.88;
+        ctx.fillStyle = '#ffffff';
+        drawSteppedSeg(anchor[0], anchor[1], mx, my, 2, 1);
+        drawSteppedSeg(mx, my, ex, ey, 1, 1);
       }
     }
 
@@ -4353,13 +4381,22 @@ export class Renderer {
 
   drawCharacterGroundHalo(ctx, f) {
     if (f.isDead && (f.deathTimer || 0) > 0.6) return;
-    const isBlue = f.primaryColor === '#38bdf8';
+    const isStorm = f.primaryColor === '#818cf8' || f.heroId === 'ronin' || f.heroId === 'ronin_ex';
+    const isCyber =
+      f.heroId === 'android' ||
+      f.heroId === 'android_ex' ||
+      f.primaryColor === '#00f0ff' ||
+      f.primaryColor === '#22d3ee';
+    const isBlue = !isStorm && (f.primaryColor === '#38bdf8' || isCyber);
     const isEmerald = f.primaryColor === '#10b981' || f.primaryColor === '#34d399';
     const isRadiant = f.primaryColor === '#fde047';
-    const isAbyssal = f.primaryColor === '#c084fc';
+    const isAbyssal =
+      f.primaryColor === '#c084fc' ||
+      f.primaryColor === '#d946ef' ||
+      f.heroId === 'reaper' ||
+      f.heroId === 'reaper_ex';
     const isChrono = f.primaryColor === '#2dd4bf';
     const isForge = f.primaryColor === '#f59e0b';
-    const isStorm = f.primaryColor === '#818cf8';
     const isCrimson = f.primaryColor === '#f43f5e';
     const isGlacial = f.primaryColor === '#67e8f9';
     const pal = isBlue
@@ -4382,7 +4419,11 @@ export class Renderer {
                       ? GLACIAL_FIRE_PAL
                       : SOLAR_FIRE_PAL;
     const glowTex = this.getGlowForColor(f.primaryColor);
-    const isAction = f.state === 'SKILL' || f.state === 'ULTIMATE' || f.state === 'AUTO_ATTACK';
+    const isAction =
+      f.state === 'SKILL' ||
+      f.state === 'ULTIMATE' ||
+      f.state === 'TRUE_ULTIMATE' ||
+      f.state === 'AUTO_ATTACK';
     const gy = f.groundY || this.groundY;
 
     // Crisp HD-2D Horizontal Floor Rim Reflection (Zero dotted circles under characters!)
@@ -4404,13 +4445,22 @@ export class Renderer {
 
   drawCharacterPixelFlames(ctx, f) {
     if (f.isDead && (f.deathTimer || 0) > 0.9) return;
-    const isBlue = f.primaryColor === '#38bdf8';
+    const isStorm = f.primaryColor === '#818cf8' || f.heroId === 'ronin' || f.heroId === 'ronin_ex';
+    const isCyber =
+      f.heroId === 'android' ||
+      f.heroId === 'android_ex' ||
+      f.primaryColor === '#00f0ff' ||
+      f.primaryColor === '#22d3ee';
+    const isBlue = !isStorm && (f.primaryColor === '#38bdf8' || isCyber);
     const isEmerald = f.primaryColor === '#10b981' || f.primaryColor === '#34d399';
     const isRadiant = f.primaryColor === '#fde047';
-    const isAbyssal = f.primaryColor === '#c084fc';
+    const isAbyssal =
+      f.primaryColor === '#c084fc' ||
+      f.primaryColor === '#d946ef' ||
+      f.heroId === 'reaper' ||
+      f.heroId === 'reaper_ex';
     const isChrono = f.primaryColor === '#2dd4bf';
     const isForge = f.primaryColor === '#f59e0b';
-    const isStorm = f.primaryColor === '#818cf8';
     const isCrimson = f.primaryColor === '#f43f5e';
     const isGlacial = f.primaryColor === '#67e8f9';
     const pal = isBlue
@@ -6211,12 +6261,76 @@ export class Renderer {
   }
 
   drawDynamicShadows(ctx, fighters, lights, gy) {
+    const assets = PixelForge.initAssets();
     for (const f of fighters) {
       if (f.isFullyBurrowed || f.isColossalBoss) continue;
       const fGy = Number.isFinite(f.groundY) ? f.groundY : gy;
       const jumpH = Math.max(0, fGy - f.y);
       const scale = Math.max(0.25, 1 - jumpH / 320);
       const deadStretch = f.isDead ? 1 + Math.min(0.45, (f.deathTimer || 0) * 0.38) : 1;
+
+      // 1. Real-Time Ray-Projected Ground Silhouette Cast Shadows (up to 2 strongest nearby dynamic lights)
+      const sprites = f.heroId ? assets[f.heroId] : null;
+      if (
+        sprites?.sheet?.complete &&
+        sprites.sheet.naturalWidth > 0 &&
+        Array.isArray(lights) &&
+        lights.length > 0 &&
+        typeof ctx.transform === 'function'
+      ) {
+        let bestL1 = null;
+        let bestS1 = 0;
+        let bestL2 = null;
+        let bestS2 = 0;
+        for (let li = 0; li < lights.length; li++) {
+          const L = lights[li];
+          if (!L || L.intensity < 1.25 || (L.isSelfPassive && L.owner === f)) continue;
+          const dx = f.x - L.x;
+          const dy = f.y - 70 - L.y;
+          if (Math.abs(dx) > 520 || Math.abs(dy) > 520) continue;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 520) continue;
+          const atten = 1 - dist / 520;
+          const s = atten * L.intensity;
+          if (s > bestS1) {
+            bestS2 = bestS1;
+            bestL2 = bestL1;
+            bestS1 = s;
+            bestL1 = L;
+          } else if (s > bestS2) {
+            bestS2 = s;
+            bestL2 = L;
+          }
+        }
+        if (bestL1) {
+          const frameIdx = PixelForge.getFrameIndex(f, f.walkPhase || f.runeOrbit || 0);
+          const castForLight = (L) => {
+            const dist = Math.hypot(f.x - L.x, f.y - 70 - L.y);
+            const atten = Math.max(0, 1 - dist / 520);
+            const alpha =
+              Math.max(0, Math.min(0.36, 0.14 + 0.16 * atten * (L.intensity - 1.0))) *
+              scale *
+              (f.isBenched ? 0.5 : 1);
+            if (alpha <= 0.015) return;
+            // Note: sprite local Y is negative (-198..-230 at head, 0 at boots), so shear c=(L.x-f.x)/260
+            // projects the head shadow AWAY from light L while keeping the boots pinned at (f.x, fGy + 2).
+            const shearX = Math.max(-0.85, Math.min(0.85, (L.x - f.x) / 260));
+            ctx.save();
+            ctx.imageSmoothingEnabled = false;
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = alpha;
+            ctx.translate(Math.round(f.x), Math.round(fGy + 2));
+            ctx.transform(1, 0, shearX, -0.30 * scale, 0, 0);
+            ctx.scale(f.facing || 1, 1);
+            PixelForge.drawSilhouetteFrame(ctx, sprites, frameIdx, 208, 208, '#03050c');
+            ctx.restore();
+          };
+          castForLight(bestL1);
+          if (bestL2) castForLight(bestL2);
+        }
+      }
+
+      // 2. Crisp Grounded Contact Shadow Under Fighter Boots
       let shiftX = 0;
       for (const l of lights) {
         const dx = f.x - l.x;
